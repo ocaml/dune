@@ -1,7 +1,7 @@
 dnl This file is input of the m4 macro processor.
 `# Specifications for the "camlp4" preprocessor:'
 `requires = ""'
-`version = "'camlp4_version`"'
+`version = "[distributed with Ocaml]"'
 `directory = "'camlp4_dir`"'
 `# For the toploop:'
 `archive(byte,toploop,camlp4o) = "camlp4o.cma"'

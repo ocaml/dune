@@ -984,10 +984,17 @@ or to link.
 
 <listitem>
 <para>
-toploop: The predicate "toploop" is set when ocamlmktop is used to
-compile or to link.
+toploop: The predicate "toploop" is set when a toploop is being executed
 </para>
 </listitem>
+
+<listitem>
+<para>
+create_toploop: The predicate "toploop" is set when ocamlmktop is used to
+compile or to link a toploop
+</para>
+</listitem>
+
 
 <listitem>
 <para>
@@ -1145,7 +1152,8 @@ ocamlfind ocamlmktop -o toploop -package p1,p2,...,pN,findlib -linkpkg
 (Maybe you have to add the -custom switch.) Note that one of the 
 packages should be "findlib" itself, because this adds the 
 additional directives mentioned above, i.e. you can directly use
-these directives without #use "topfind".
+these directives without #use "topfind" (but running "topfind" 
+is harmless).
 </para>
 
 <para>

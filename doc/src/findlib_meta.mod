@@ -284,7 +284,15 @@ The "native" predicate means that the native compiler is used.
 <listitem>
 <para>
 The "toploop" predicate means that the toploop is available in the
-linked program.
+linked program. It is only set when the toploop is running, not when
+the toploop is generated.
+</para>
+</listitem>
+
+<listitem>
+<para>
+The "create_toploop" predicate means that a toploop is created (using
+ocamlmktop).
 </para>
 </listitem>
 

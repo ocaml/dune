@@ -107,6 +107,14 @@ configuration files, and library routines in detail.</p>
     <title>List of Changes</title>
     <ul>
 
+      <li><p><em>1.0.4:</em> Fix: In previous versions, "ocamlmktop"
+set the "toploop" predicate. It turned out, however, that the toploops
+generated in this way did not work properly. For this reason,
+"ocamlmktop" does not set "toploop" any more for link time, but
+instead a new predicate "create_toploop".  When the toploop is
+executed, the predicate "toploop" is again added.</p>
+      </li>
+
       <li><p><em>1.0.3:</em> Fix: The relative position of "-cclib -l"
       options on the command line is preserved. In previous versions,
 these options were moved to the beginning of the argument list. This

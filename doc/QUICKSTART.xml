@@ -15,16 +15,18 @@
 <readme title="QUICKSTART - The most important ways to use findlib">
   <sect1>
     <title>Intro</title>
-    <p>
-<em>Caution!</em> The following text explains findlib for O'Caml versions
-3.03-alpha and up. (Previous O'Caml versions need special toploops.)</p>
-
     <p>See the file INSTALL for instructions how to build and install
 findlib.</p>
   </sect1>
 
   <sect1>
-    <title>Findlib and the toploop</title>
+    <title>Findlib and the toploop</title> 
+
+<p>For a number of platforms, O'Caml can load bytecode-compiled
+libraries dynamically. For these platforms, findlib is very simple to
+use as explained in the following. For other platforms, see the paragraph
+below about "custom toploops".</p>
+
     <p>After the toploop has been started, it is possible to load the special
 findlib support:<footnote>In previous versions, #use "findlib" loaded the
 library. However, this caused a name conflict for a certain type of
@@ -34,7 +36,7 @@ for backwards compatibility.</footnote>
 
 <code>
 $ ocaml
-        Objective Caml version 3.03 ALPHA
+        Objective Caml version 3.07
 
 # #use "topfind";;
 Findlib has been successfully loaded. Additional directives:
@@ -42,7 +44,9 @@ Findlib has been successfully loaded. Additional directives:
   #list;;                   to list the available packages
   #camlp4o;;                to load camlp4 (standard syntax)
   #camlp4r;;                to load camlp4 (revised syntax)
+  #predicates "p,q,...";;   to set these predicates
   Topfind.reset();;         to force that packages will be reloaded
+  #thread;;                 to enable threads
 
 - : unit = ()
 </code>
@@ -71,10 +75,10 @@ and load packages by simply typing:
 
 <code>
 # #require "netstring";;
-Loading /opt/ocaml-3.03a/lib/unix.cma
-Loading /opt/ocaml-3.03a/lib/str.cma
-Loading /opt/ocaml-3.03a/site-lib/netstring/netstring.cma
-Loading /opt/ocaml-3.03a/site-lib/netstring/netstring_top.cmo
+Loading /opt/ocaml/lib/unix.cma
+Loading /opt/ocaml/lib/str.cma
+Loading /opt/ocaml/site-lib/netstring/netstring.cma
+Loading /opt/ocaml/site-lib/netstring/netstring_top.cmo
 </code>
 
 Findlib takes care to load packages that are required by loaded packages
@@ -100,6 +104,36 @@ Loading /opt/ocaml-3.03a/lib/camlp4/camlp4r.cma
 </code>
 
 for the revised syntax. (But you cannot switch between the syntaxes.)
+</p>
+  </sect1>
+
+  <sect1>
+    <title>Custom Toploops</title>
+
+    <p>For some platforms, O'Caml does not implement loading external
+libraries (e.g. Cygwin). One has to create a so-called custom toploop
+that statically links with these libraries. Example:
+
+<code>
+$ ocamlfind ocamlmktop -o mytop -package findlib,unix -linkpkg
+$ ./mytop
+        Objective Caml version 3.07
+ 
+# #use "topfind";;
+Findlib has been successfully loaded. Additional directives:
+  #require "package";;      to load a package
+  #list;;                   to list the available packages
+  #camlp4o;;                to load camlp4 (standard syntax)
+  #camlp4r;;                to load camlp4 (revised syntax)
+  #predicates "p,q,...";;   to set these predicates
+  Topfind.reset();;         to force that packages will be reloaded
+  #thread;;                 to enable threads
+
+- : unit = ()
+</code>
+
+Now "#require" works for all libraries referring to the special "unix"
+functions.
 </p>
   </sect1>
 

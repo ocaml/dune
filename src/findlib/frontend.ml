@@ -787,7 +787,7 @@ let ocamlc which () =
   begin match which with
     "ocamlc"     -> predicates := "byte" :: !predicates;
   | "ocamlcp"    -> predicates := "byte" :: !predicates;
-  | "ocamlmktop" -> predicates := "byte" :: "toploop" :: !predicates;
+  | "ocamlmktop" -> predicates := "byte" :: "create_toploop" :: !predicates;
   | "ocamlopt"   -> predicates := "native" :: !predicates;
   | _            -> failwith "unsupported backend"
   end;
@@ -886,7 +886,7 @@ let ocamlc which () =
   let vmthreads_dir = Filename.concat stdlibdir "vmthreads" in
 
   let initl_file_needed =
-    List.mem "toploop" !predicates && List.mem "findlib" eff_link in
+    List.mem "create_toploop" !predicates && List.mem "findlib" eff_link in
 
   let initl_file_name =
     if initl_file_needed then
@@ -918,7 +918,8 @@ let ocamlc which () =
 	 String.concat ";"
 	   (List.map
 	      (fun pred -> "\"" ^ String.escaped pred ^ "\"")
-	      !predicates) ^
+	      ("toploop" :: 
+		 (List.filter (fun p -> p <> "create_toploop") !predicates))) ^
 	 "];;\n");
       close_out initl;
     with

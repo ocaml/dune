@@ -472,8 +472,19 @@ compiler is used.
 <listitem>
 <para>
 The "toploop" predicate means that the toploop is available in the
-linked program. It is automatically included into the predicate set if
-the "ocamlmktop" compiler is used.
+linked program. This predicate is only set when the toploop is actually
+being executed, not when the toploop is created (this changed in version
+1.0.4 of findlib).
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
+<term>create_toploop</term>
+<listitem>
+<para>
+This predicate means that a toploop is being created (using
+ocamlmktop).
 </para>
 </listitem>
 </varlistentry>

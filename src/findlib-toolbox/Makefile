@@ -3,7 +3,7 @@ include $(TOP)/Makefile.config
 
 .PHONY: all opt install uninstall clean
 
-all: make_wizard
+all: make_wizard$(EXEC_SUFFIX)
 
 opt:
 	true
@@ -34,4 +34,4 @@ tree_editor: lx_spots.mli lx_spots.ml lx_tree.mli lx_tree.ml tree_editor.ml
 
 clean:
 	rm -f *.cmi *.cmo
-	rm -f make_wizard # tree tree_editor
+	rm -f make_wizard$(EXEC_SUFFIX) # tree tree_editor

@@ -5,6 +5,7 @@ dnl This file is input of the m4 macro processor.
 `version = "[distributed with Ocaml]"'
 `package "core" ('
 `  directory = "^"'
+`  version = "[internal]"'
 `  browse_interfaces = "'interfaces`"'
 `  archive(byte) = "nums.cma"'
 `  archive(native) = "nums.cmxa"'

@@ -60,6 +60,10 @@ DONE
 Remove: mt modules
 DONE
 
+Fix:
+ocamlfind ocamlopt -thread" must not generate the flag -wmthread on
+vmthread-only systems, but signal an error.
+
 ======================================================================
 Changes:
 ======================================================================

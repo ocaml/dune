@@ -9,7 +9,7 @@ exception Usage;;
 
 type mode =
     M_use | M_query | M_install | M_remove | M_compiler of string | M_dep
-  | M_printconf | M_guess | M_list | M_browser | M_call of (string*string)
+  | M_printconf | M_list | M_browser | M_call of (string*string)
   | M_doc
 ;;
 
@@ -83,13 +83,12 @@ let arg n =
 
 
 let use_package prefix pkgnames =
+  (* may raise No_such_package *)
   let pdirs =
     List.map
       (fun pname ->
-        try
-          "-I " ^ package_directory pname
-        with
-	  Not_found -> failwith ("Cannot find package " ^ pname))
+         "-I " ^ package_directory pname
+      )
       pkgnames
   in
 
@@ -203,14 +202,12 @@ let conflict_report incpath =
 
 
 let check_package_list l =
+  (* may raise No_such_package *)
   List.iter
     (fun pkg ->
-       try
-	 let _ = package_directory pkg in
-	 ()
-       with
-	   No_such_package(_,_) ->
-	     failwith ("package '" ^ pkg ^ "' not found"))
+       let _ = package_directory pkg in
+       ()
+    )
     l
 ;;
 
@@ -282,6 +279,7 @@ let run_command ?filter verbose cmd args =
 
 
 let expand predicates eff_packages format =
+  (* may raise No_such_package *)
 
     (* format:
      * %p         package name
@@ -372,10 +370,16 @@ let query_package () =
               "          a string printed after the last answer";
       "-recursive", Arg.Set recursive,
                  "       select direct and indirect ancestors/descendants, too";
+      "-r", Arg.Set recursive,
+         "               same as -recursive";
       "-descendants", Arg.Unit (fun () ->  descendants := true; recursive := true),
                    "     query descendants instead of ancestors; implies -recursive";
+      "-d", Arg.Unit (fun () ->  descendants := true; recursive := true),
+         "               same as -descendants";
       "-long-format", Arg.Unit (fun () -> format := long_format),
                    "     specifies long output format";
+      "-l", Arg.Unit (fun () -> format := long_format),
+         "               same as -long-format";
       "-i-format", Arg.Unit (fun () -> format := i_format),
                 "        prints -I options for ocamlc";
       "-l-format", Arg.Unit (fun () -> format := l_format),
@@ -419,6 +423,7 @@ let query_package () =
 
 let process_pp_spec syntax_preds packages pp_opts =
   (* Returns: pp_command *)
+  (* may raise No_such_package *)
 
   let pp_packages =
     package_deep_ancestors syntax_preds packages in
@@ -553,6 +558,7 @@ let ocamlc which () =
     Arg.String (fun s -> pp_opts := !pp_opts @ [s]) in
   let add_dll_pkg =
     Arg.String (fun s -> dll_pkgs := !dll_pkgs @ (Fl_split.in_words s)) in
+  let ignore_error = ref false in
 
 
   Arg.parse
@@ -574,6 +580,8 @@ let ocamlc which () =
                    "<pkg> Add -dllpath for this package";
       "-dllpath-all", Arg.Set dll_pkgs_all,
                    "      Add -dllpath for all linked packages";
+      "-ignore-error", Arg.Set ignore_error,
+                    "     Ignore the 'error' directive in META files";
       "-passopt", Arg.String (fun s -> pass_options := !pass_options @ [s]),
                " <opt>    Pass option <opt> directly to ocamlc/opt/mktop\nSTANDARD OPTIONS:";
 
@@ -619,8 +627,9 @@ let ocamlc which () =
          "                Print the types";
       "-I", (Arg.String
 	       (fun s ->
-		  incpath := s :: !incpath;
-		  add_spec_fn "-I" s)),
+		  let s = resolve_path s in
+		  incpath := s :: !incpath;  (* reverted below *)
+		  add_spec_fn "-I" s )),
          " <dir>          Add <dir> to the list of include directories";
       "-impl", Arg.String (fun s -> pass_files := !pass_files @ [ Impl s ]),
             " <file>      Compile <file> as a .ml file";
@@ -735,6 +744,8 @@ let ocamlc which () =
     (fun s -> pass_files := !pass_files @ [ Pass s])
     ("usage: ocamlfind " ^ which ^ " [options] file ...");
 
+  (* ---- Start requirements analysis ---- *)
+
   begin match which with
     "ocamlc"     -> predicates := "byte" :: !predicates;
   | "ocamlcp"    -> predicates := "byte" :: !predicates;
@@ -742,6 +753,8 @@ let ocamlc which () =
   | "ocamlopt"   -> predicates := "native" :: !predicates;
   | _            -> failwith "unsupported backend"
   end;
+
+  incpath := List.rev !incpath;
 
   ( match !threads with
 	`None -> 
@@ -773,16 +786,8 @@ let ocamlc which () =
 
   let verbose = List.mem "-verbose" !switches in
 
-  if verbose then begin
-    if !syntax_preds <> [] then
-      print_string ("Effective set of preprocessor predicates: " ^
-		    String.concat "," !syntax_preds ^ "\n");
-    print_string ("Effective set of compiler predicates: " ^
-		  String.concat "," !predicates ^ "\n");
-  end;
-
   if !pp_specified && !syntax_preds <> [] then
-    prerr_endline("Warning: -pp overrides the effect of -syntax partly");
+    prerr_endline("ocamlfind: [WARNING] -pp overrides the effect of -syntax partly");
 
   (* check packages: *)
   check_package_list !packages;
@@ -795,6 +800,8 @@ let ocamlc which () =
    * initialized). Furthermore, "unix" is an ancestor of "threads", both
    * for POSIX threads and bytecode threads. So we put these two libraries
    * at the beginning of the package list.
+   * The reason for this is that many META files forget to declare the
+   * dependency on "threads".
    *)
   (* TODO: find a better (not hardcoded) way *)
   let eff_packages =
@@ -824,6 +831,34 @@ let ocamlc which () =
 
   (* Conflict report: *)
   conflict_report (!incpath @ ["."; Findlib.ocaml_stdlib() ]);
+
+  (* ---- End of requirements analysis ---- *)
+
+  (* Add the pkg_<name> predicates: *)
+  predicates := List.map (fun pkg -> "pkg_" ^ pkg) eff_packages @ !predicates;
+
+  (* Check on [error] directives: *)
+  List.iter
+    (fun pkg ->
+       try
+	 let error = package_property !predicates pkg "error" in
+	 if !ignore_error then
+	   prerr_endline("ocamlfind: [WARNING] Package `" ^ pkg ^ 
+			 "' signals error: " ^ error)
+	 else
+	   failwith ("Error from package `" ^ pkg ^ "': " ^ error)
+       with
+	   Not_found -> ()
+    )
+    eff_packages;
+
+  if verbose then begin
+    if !syntax_preds <> [] then
+      print_string ("Effective set of preprocessor predicates: " ^
+		    String.concat "," !syntax_preds ^ "\n");
+    print_string ("Effective set of compiler predicates: " ^
+		  String.concat "," !predicates ^ "\n");
+  end;
 
   let initf_file_needed =
     List.mem "toploop" !predicates in
@@ -921,6 +956,9 @@ let ocamlc which () =
   let vmthreads_dir = Filename.concat stdlibdir "vmthreads" in
 
   let exclude_list = [ stdlibdir; threads_dir; vmthreads_dir ] in
+  (* Don't generate -I options for these directories because there is
+   * also some magic in ocamlc/ocamlopt that would not work otherwise
+   *)
 
   let i_options =
     List.flatten
@@ -967,24 +1005,7 @@ let ocamlc which () =
 	       package_directory pkg in
 	   List.map
 	     (fun arch -> 
-		if String.contains arch '/' then (
-		  (* CHECK: There is currently no way to point to a foreign
-		   * package directory
-		   * CHECK: There is similar code in topfind.ml
-		   *)
-		  match arch.[0] with
-		      '^'
-		    | '+' ->
-			Filename.concat
-			  stdlibdir
-			  (String.sub arch 1 (String.length arch - 1))
-		    | '/' ->
-			arch
-		    | _ ->
-			Filename.concat pkg_dir arch
-		)
-		else
-		  Filename.concat pkg_dir arch)
+		resolve_path ~base:pkg_dir arch)
 	     (Fl_split.in_words al)
 	 )
 	 eff_link) 
@@ -1019,11 +1040,11 @@ let ocamlc which () =
 	      Pass s ->
 		if s.[0] = '-'
 		then [ "-"; String.sub s 1 (String.length s - 1) ]
-		else [ s ]
+		else [ resolve_path s ]
 	    | Impl s ->
-		[ "-impl"; s ]
+		[ "-impl"; resolve_path s ]
 	    | Intf s ->
-		[ "-intf"; s ]
+		[ "-intf"; resolve_path s ]
 	 )
 	 !pass_files)
   in
@@ -1040,14 +1061,14 @@ let ocamlc which () =
 	 dll_dirs) in
 
   let arguments =
-    !pass_options @
-    i_options @
-    pp_command @
-    (if !linkpkg then l_options else []) @
-    (if !linkpkg then archives else []) @
-    pass_files' @
-    (if !linkpkg then linkopts else []) @
-    dll_options
+    !pass_options @    (* other options from the command line *)
+    i_options @        (* Generated -I options from package analysis *)
+    pp_command @       (* Optional preprocessor command *)
+    (if !linkpkg then l_options else []) @  (* Generated -ccopt -L options *)
+    (if !linkpkg then archives else []) @   (* Gen file names to link *)
+    pass_files' @                           (* File names from cmd line *)
+    (if !linkpkg then linkopts else []) @   (* Generated link options *)
+    dll_options                             (* Generated -dllpath options *)
   in
 
   let actual_command =
@@ -1149,7 +1170,8 @@ let ocamldep () =
 	                 "  Output only dependencies for bytecode";
 	"-verbose", Arg.Set verbose,
 	         "          Print calls to external commands\nSTANDARD OPTIONS:";
-	"-I", add_spec "-I",
+	"-I", Arg.String (fun s -> 
+			    add_spec_fn "-I" (resolve_path s)),
            " <dir>          Add <dir> to the list of include directories";
 	"-native", add_switch "-native",
                 "           Generate dependencies for a pure native-code project";
@@ -1231,7 +1253,7 @@ let ocamlbrowser () =
 
   Arg.parse
       [
-	"-I", add_spec "-I",
+	"-I", Arg.String (fun s -> add_spec_fn "-I" (resolve_path s)),
            " <dir>          Add <dir> to the list of include directories";
 	"-all", Arg.Set add_all,
 	     "              Add all packages to include path";
@@ -1647,6 +1669,7 @@ let remove_package () =
 ;;
 
 
+(*
 let guess_meta_file () =
   let pkgname = ref "" in
   let files = ref [] in
@@ -1667,6 +1690,7 @@ let guess_meta_file () =
 
   Findlib_guess.guess_meta_file !pkgname !files
 ;;
+*)
 
 
 let list_packages() =
@@ -1786,7 +1810,6 @@ let select_mode() =
     | ("ocamldep"|"-ocamldep"|"dep")       -> M_dep 
     | ("ocamlbrowser"|"-ocamlbrowser"|"browser") -> M_browser
     | ("printconf"|"-printconf")           -> M_printconf
-    | ("guess"|"-guess")                   -> M_guess
     | ("list"|"-list")                     -> M_list
     | s when String.contains m_string '/' -> 
 	let k = String.index m_string '/' in
@@ -1818,7 +1841,6 @@ let main() =
     | M_install        -> install_package()
     | M_remove         -> remove_package ()
     | M_printconf      -> print_configuration ()
-    | M_guess          -> guess_meta_file()
     | M_list           -> list_packages()
     | M_compiler which -> ocamlc which ()
     | M_dep            -> ocamldep()    
@@ -1835,7 +1857,6 @@ let main() =
       prerr_endline "   or: ocamlfind ocamlbrowser [-help | other options]";
       prerr_endline "   or: ocamlfind install      [-help | other options] <package_name> <file> ...";
       prerr_endline "   or: ocamlfind remove       [-help | other options] <package_name>";
-      prerr_endline "   or: ocamlfind guess        [-help] <package_name> <file> ...";
       prerr_endline "   or: ocamlfind printconf    [-help] [variable]";
       prerr_endline "   or: ocamlfind list";
       prerr_endline "   or: ocamlfind pkg/cmd arg ...";

@@ -28,6 +28,7 @@ Besides having a name component in common with the main package,
 subpackages are independent entities. There are no relations to
 the main package except the declared ones. (Exception: Directory
 location is inherited.)
+DONE (missing: some checks)
 
 Directives #thread and #vmthread for the toploop.
 #predicate.
@@ -37,6 +38,7 @@ Fix: num-top
 Negated predicates in declarations, e.g.
 archive(byte,feature) = "..."
 archive(byte,-feature) = "..."
+DONE
 
 Fix syntax:
 +pkg searches in stdlib
@@ -53,3 +55,16 @@ var(pred) = "base def"
 var(pred,feature) += "additional def"
 "+=" definitions are appended to the single base definition. In contrast
 to "=", _all_ matching definitions are selected, not only the best matching.
+DONE
+
+Remove: mt modules
+DONE
+
+======================================================================
+Changes:
+======================================================================
+
+Findlib:
+	- init_manually has additional () arg
+	- exceptions No_such_package, Package_loop
+

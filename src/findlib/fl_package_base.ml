@@ -71,6 +71,7 @@ let packages_in_meta_file ?(directory_required = false)
      *)
     (* Determine the final package directory: *)
     let d =
+      (* The value of "directory", or "" if not applicable *)
       try
 	lookup "directory" [] pkg_expr.pkg_defs
       with
@@ -78,7 +79,7 @@ let packages_in_meta_file ?(directory_required = false)
 	    if pkg_name_prefix="" && directory_required then
 	      failwith ("The `directory' directive is required in this META definition");
 
-	    pkg_dir
+	    ""
     in
     let d' =
       if d = "" then

@@ -1,4 +1,4 @@
-(* $Id: fl_split.ml,v 1.1 2002/09/22 13:32:32 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -41,7 +41,9 @@ let in_words_ws s =
 
 
 let package_name s =
-  (* splits s in words separated by dots *)
+  (* splits s in words separated by dots.
+   * As a special case, when s="." the package "." is returned.
+   *)
   let l = String.length s in
   let rec split i j =
     if j < l then
@@ -54,11 +56,15 @@ let package_name s =
     else
       if i<j then [ String.sub s i (j-i) ] else []
   in
-  split 0 0
+  if s="." then
+    ["."]
+  else
+    split 0 0
 ;;
 
 
 let is_valid_package_name s =
+  (* Use this only for installation/deinstallation of packages! *)
   not(String.contains s '.')
 ;;
 

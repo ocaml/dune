@@ -1,0 +1,67 @@
+(* $Id: fl_metacache_mt.mml,v 1.2 2002/09/22 20:12:32 gerd Exp $
+ * ----------------------------------------------------------------------
+ *
+ *)
+
+(* This is a thread-safe wrapper of Fl_metacache. *)
+
+let mutex = Mutex.create();;
+
+type meta = Fl_metacache.meta;;
+
+let init_cache path stdlib =
+  Mutex.lock mutex;
+  Fl_metacache.init_cache path stdlib;
+  Mutex.unlock mutex
+;;
+
+let query package =
+  Mutex.lock mutex;
+  let answer = Fl_metacache.query package in
+  Mutex.unlock mutex;
+  answer
+;;
+
+let requires plist package =
+  Mutex.lock mutex;
+  let answer = Fl_metacache.requires plist package in
+  Mutex.unlock mutex;
+  answer
+;;
+
+let requires_deeply plist package_list = 
+  Mutex.lock mutex;
+  let answer = Fl_metacache.requires_deeply plist package_list in
+  Mutex.unlock mutex;
+  answer
+;;
+
+  
+
+
+(* ======================================================================
+ * History:
+ * 
+ * $Log: fl_metacache_mt.mml,v $
+ * Revision 1.2  2002/09/22 20:12:32  gerd
+ * 	Renamed modules (prefix fl_)
+ *
+ * Revision 1.1  2002/09/22 13:32:26  gerd
+ * 	Renamed file from metacache_mt.mml to fl_metacache_mt.mml to avoid
+ * name clashes
+ *
+ * ======================================================================
+ * OLD LOGS FOR metacache_mt.mml:
+ *
+ * Revision 1.2  2001/07/24 20:00:08  gerd
+ * 	Support for dynamically set stdlib
+ *
+ * Revision 1.1  1999/06/20 19:26:26  gerd
+ * 	Major change: Added support for META files. In META files, knowlege
+ * about compilation options, and dependencies on other packages can be stored.
+ * The "ocamlfind query" subcommand has been extended in order to have a
+ * direct interface for that. "ocamlfind ocamlc/ocamlopt/ocamlmktop/ocamlcp"
+ * subcommands have been added to simplify the invocation of the compiler.
+ *
+ * 
+ *)

@@ -1,0 +1,471 @@
+#! /bin/sh
+# $Id: configure,v 1.20 2003/09/30 11:25:26 gerd Exp $
+# ----------------------------------------------------------------------
+#
+
+# Some functions
+
+#set -x
+
+# Remember the old IFS value:
+oldifs="$IFS"
+
+
+in_path () {
+    # Does $1 exist in $PATH?
+    IFS=":"
+    for d in $PATH; do
+	if test -x "$d/$1"; then
+	    IFS="$oldifs"
+	    return 0
+	fi
+    done
+    IFS="$oldifs"
+    return 1
+#--- The following is not portable enough:
+#    if test -x `type -p ls`; then
+#	# type -p works!
+#        type -p $1 >/dev/null
+#    else
+#        # use 'which' instead
+#        p=`which $1`
+#	test -x "$p"
+#    fi
+}
+
+
+get_path () {
+    IFS=":"
+    for d in $PATH; do
+	if test -x "$d/$1"; then
+	    IFS="$oldifs"
+	    echo "$d/$1"
+	    return
+	fi
+    done
+    IFS="$oldifs"
+#--- The following is not portable enough:
+#    if test -x `type -p ls`; then
+#	# type -p works!
+#        type -p $1
+#    else
+#        # use 'which' instead
+#        p=`which $1`
+#	test -x "$p" && echo $p
+#    fi
+}
+
+
+get_stdlib () {
+    # Older versions of ocamlc do not accept -where, so there is a fallback
+    # method:
+    ocamlc -where 2>/dev/null || {
+	ocamlc -v | sed -n -e "/Standard library directory/s/.*: \(.*\)/\1/p"; }
+}
+
+
+get_lib () {
+    # $1: name of a library to search for
+    # $2...: places to test
+    libname="$1"
+    while [ "$#" != "0" ]; do
+	if [ -f "$1/lib${libname}.so" -o -f "$1/lib${libname}.a" ]; then
+	    echo "$1"
+	    return 0
+	fi
+	shift
+    done
+    return 1
+}
+
+
+get_lib_file () {
+    # $1: name of library without "lib" and suffix
+    # $2: directory
+    # returns full path of library
+    if [ -f "$2/lib$1.so" ]; then
+	echo "$2/lib$1.so"
+    elif [ -f "$2/lib$1.a" ]; then
+	echo "$2/lib$1.a"
+    else
+	echo ""
+    fi
+}
+
+
+apply_cygpath () {
+    v=$1
+    eval "p=\"\$$v\""
+    p="`cygpath -w -s \"$p\"`"
+    p="`cygpath -u \"$p\"`"
+    eval "$v=\"$p\""
+}
+
+
+######################################################################
+# Here the main program begins:
+
+findlibversion=`cat RELEASE`
+echo "Welcome to findlib version $findlibversion"
+echo "Configuring core..."
+
+######################################################################
+# Interpret the command line
+
+ocamlfind_bin=""
+ocamlfind_man=""
+ocaml_sitelib=""
+ocamlfind_config=""
+use_cygpath=0
+
+while [ "$#" != "0" ]; do
+    case "$1" in
+        -bindir) ocamlfind_bin=$2
+	         shift 2
+		 ;;
+        -mandir) ocamlfind_man=$2
+	         shift 2
+		 ;;
+        -sitelib) ocaml_sitelib=$2
+	          shift 2
+		  ;;
+        -config) ocamlfind_config=$2
+	         shift 2
+		 ;;
+	-cygpath) use_cygpath=1
+	         shift
+		 ;;
+        -h|-help|--help) echo "usage: configure [options]" 1>&2
+		  echo "  -bindir path         where binaries are installed" 1>&2
+		  echo "  -mandir path         where manual pages are installed" 1>&2
+		  echo "  -sitelib path        set the location of the site-specific packages" 1>&2
+                  echo "  -config path         set the location of the configuration file" 1>&2
+		  echo "  -cygpath             fix paths for cygwin environment" 1>&2
+		  exit
+		  ;;
+         *)       echo "configure: say 'configure -h' to get help" 1>&2
+		  exit 1
+		  ;;
+    esac
+done
+
+
+
+#######################################################################
+# inspect the system
+
+# Some standard Unix tools must be available:
+
+for tool in sed awk ocamlc uname rm make cat m4 dirname basename; do
+    if in_path $tool; then true; else
+	echo "configure: $tool not in PATH; this is required" 1>&2
+	exit 1
+    fi
+done
+
+# Find out standard library location
+
+ocaml_core_stdlib=`get_stdlib`
+if [ ! -d "$ocaml_core_stdlib" ]; then
+   echo "configure: cannot determine ocaml's standard library directory" 1>&2
+    exit 1
+fi
+
+if [ ${use_cygpath} -gt 0 ]; then
+    echo "Applying cygpath..."
+    apply_cygpath ocaml_core_stdlib
+fi
+
+# Set site-lib directory:
+
+if [ -z "$ocaml_sitelib" ]; then
+    case "$ocaml_core_stdlib" in
+	/opt/*)		ocaml_sitelib=`dirname ${ocaml_core_stdlib}`/site-lib
+			;;
+	*)		ocaml_sitelib="${ocaml_core_stdlib}/site-lib"
+			;;
+    esac
+fi
+
+# Find out the directory where ocamlc is:
+
+ocamlc=`get_path ocamlc`
+ocaml_core_bin=`dirname ${ocamlc}`
+
+# Set the directory of ocamlfind:
+
+test -n "$ocamlfind_bin" || ocamlfind_bin="$ocaml_core_bin"
+
+# Find the directory for the manual:
+
+# Fallback:
+ocaml_core_man=/usr/local/man
+
+d="$ocaml_core_bin"
+while [ "$d" != '/' ]; do
+    f=0
+    if [ -d "$d/man/man1" ]; then
+	if [ -f "$d/man/man1/ocamlc.1" -o \
+	     -f "$d/man/man1/ocamlc.1.gz" -o \
+	     -f "$d/man/man1/ocamlc.1.Z" ]; then
+	     f=1
+	fi
+    else
+	if [ -d "$d/man/mann" ]; then
+	    if [ -f "$d/man/mann/ocamlc.n" -o \
+		 -f "$d/man/mann/ocamlc.n.gz" -o \
+		 -f "$d/man/mann/ocamlc.n.Z" ]; then
+		f=1
+	    fi
+	fi
+    fi
+    if [ "$f" = "1" ]; then
+	ocaml_core_man="$d/man"
+	d="/"
+    else
+	d=`dirname $d`
+    fi
+done
+
+# Set the directory for ocamlfind's manuals:
+
+test -n "$ocamlfind_man" || ocamlfind_man="$ocaml_core_man"
+
+# Guess the right directory for the configuration file:
+
+if [ -z "${ocamlfind_config}" ]; then
+    d="$ocaml_core_bin"
+    case "$d" in
+        */bin)
+	    ocamlfind_config=`dirname $d`/etc/ocamlfind.conf
+	    ;;
+	*)
+	    ocamlfind_config=/usr/local/etc/ocamlfind.conf
+	    # Fallback value
+	    ;;
+    esac
+fi
+
+
+######################################################################
+# Test the threading model
+
+echo "Testing threading model..."
+
+if ocamlc -vmthread >/dev/null 2>/dev/null; then
+    :
+else
+    echo "The -vmthread switch is not supported: Your ocaml version is too old!"
+    exit 1
+fi
+
+rm -f config/simple
+ocamlc -custom -thread -o config/simple unix.cma threads.cma config/simple_threads.ml \
+    >config/err.out 2>&1
+output=`cat config/err.out`
+
+if [ -z "$output" ]; then
+    ocaml_threads="posix"
+else
+    ocaml_threads="bytecode"
+fi
+
+######################################################################
+# Does this version of OCaml support autolinking?
+
+# Works for O'Caml >= 3.00 on. Because findlib can only be compiled
+# with these O'Caml versions, we can safely assume that autolinking
+# is enabled.
+
+ocaml_autolink="true"
+
+######################################################################
+# Configure libraries
+
+echo "Configuring libraries..."
+
+# Check whether Bigarray is present.
+
+lbigarray=bigarray
+# always
+
+# Check whether labltk is present.
+
+make_toolbox=yes
+if [ -f "${ocaml_core_stdlib}/labltk/labltk.cma" ]; then
+    llabltk=labltk
+    echo "labltk: found"
+else
+    llabltk=''
+    make_toolbox=no
+    echo "labltk: not present"
+fi
+
+# Check on camlp4:
+
+if in_path camlp4; then
+    lcamlp4=camlp4
+    camlp4_dir=`camlp4 -where`
+    camlp4_version=`camlp4 -v 2>&1`
+    echo "camlp4: found"
+else
+    lcamlp4=''
+    echo "camlp4: not present"
+fi
+
+# Generate the META files now.
+
+l="dbm dynlink graphics num num-top str threads unix stdlib bigarray $llabltk $lcamlp4"
+
+for dir in site-lib/*; do
+    # We do not really know if $dir is a directory.
+    rm -f $dir/META
+done
+
+for lib in $l; do
+    if=""
+    if [ -f site-lib/$lib/interfaces.out ]; then
+	if=`cat site-lib/$lib/interfaces.out`
+    fi
+    m4 -Dos=$os \
+	"-Dtype_of_threads=${ocaml_threads}" \
+	"-Dcamlp4_dir=${camlp4_dir}" \
+	"-Dcamlp4_version=${camlp4_version}" \
+	"-Dinterfaces=${if}" \
+	site-lib/$lib/META.in >site-lib/$lib/META
+    echo "Configuration for $lib written to site-lib/$lib/META"
+done
+
+# Finally a check for Cygwin:
+
+exec_suffix=
+case `uname` in
+  CYGWIN*)
+    exec_suffix=.exe 
+    echo "Cygwin found; using .exe as suffix for binaries"
+    ;;
+  *)
+    true ;;
+esac
+
+
+######################################################################
+# Write Makefile.config
+
+echo "# Makefile.config written by configure" >Makefile.config
+echo "OCAML_CORE_STDLIB=${ocaml_core_stdlib}" >>Makefile.config
+echo "OCAML_CORE_BIN=${ocaml_core_bin}" >>Makefile.config
+echo "OCAML_CORE_MAN=${ocaml_core_man}" >>Makefile.config
+echo "OCAML_SITELIB=${ocaml_sitelib}" >>Makefile.config
+echo "OCAML_THREADS=${ocaml_threads}" >>Makefile.config
+echo "OCAMLFIND_BIN=${ocamlfind_bin}" >>Makefile.config
+echo "OCAMLFIND_MAN=${ocamlfind_man}" >>Makefile.config
+echo "OCAMLFIND_CONF=${ocamlfind_config}" >>Makefile.config
+echo "OCAML_AUTOLINK=${ocaml_autolink}" >>Makefile.config
+echo "EXEC_SUFFIX=${exec_suffix}" >>Makefile.config
+echo "MAKE_TOOLBOX=${make_toolbox}" >>Makefile.config
+
+# All OK
+
+echo
+echo "About the OCAML core installation:"
+echo "    Standard library:      ${ocaml_core_stdlib}"
+echo "    Binaries:              ${ocaml_core_bin}"
+echo "    Manual pages:          ${ocaml_core_man}"
+echo "    Multi-threading type:  ${ocaml_threads}"
+echo "The directory of site-specific packages will be"
+echo "    site-lib:              ${ocaml_sitelib}"
+echo "The configuration file is written to:"
+echo "    findlib config file:   ${ocamlfind_config}"
+echo "Software will be installed:"
+echo "    Libraries:             in <site-lib>/findlib"
+echo "    Binaries:              ${ocamlfind_bin}"
+echo "    Manual pages:          ${ocamlfind_man}"
+echo "Findlib toolbox:"
+echo "    Will be built:         ${make_toolbox}"
+echo
+echo "Configuration has been written to Makefile.config"
+echo
+echo "You can now do 'make all', and optionally 'make opt', to build ocamlfind."
+
+
+# ======================================================================
+# History:
+#
+# $Log: configure,v $
+# Revision 1.20  2003/09/30 11:25:26  gerd
+# 	Generating browse_interfaces
+# 	Removed support for camltk (is now part of labltk)
+#
+# Revision 1.19  2003/09/30 00:28:29  gerd
+# 	Changes for 3.07: thread implementation
+# 	num-top
+#
+# Revision 1.18  2002/09/22 13:17:53  gerd
+# 	New option -cygpath; improved handling of spaces in paths
+#
+# Revision 1.17  2002/06/08 19:40:20  gerd
+# 	Updated.
+#
+# Revision 1.16  2002/04/26 14:51:00  gerd
+#         Fix: For bytecode threads, the path to unix.cma was wrong.
+#
+# Revision 1.15  2001/06/15 22:54:03  gerd
+# 	Changes for cygwin
+#
+# Revision 1.14  2001/03/10 08:59:17  gerd
+# 	camltk: the inst dir is now variable
+#
+# Revision 1.13  2001/03/06 20:16:10  gerd
+# 	Removed all the library checks (dropping support for
+# O'Caml versions w/o autolinking)
+#
+# Revision 1.12  2001/02/24 20:25:56  gerd
+# 	Support for locating the config file.
+#
+# Revision 1.11  2000/07/31 01:37:56  gerd
+# 	camlp4 support.
+#
+# Revision 1.10  2000/04/26 16:19:49  gerd
+# 	The META files are all deleted before the configured ones are
+# written.
+#
+# Revision 1.9  2000/04/26 14:39:03  gerd
+# 	There was still a bug in get_path.
+#
+# Revision 1.8  2000/04/26 00:09:20  gerd
+# 	O'Caml 3 changes.
+#
+# Revision 1.7  1999/08/06 23:44:38  gerd
+# 	dbm: accepting libdb.so, too; accepting that ndbm is integrated
+# into libc, too; dbm is skipped if libmldbm.a is absent
+# 	graphics: skipped if libgraphics.a is absent
+# 	threads: fixed a typo (-lpthread instead of -pthread)
+# 	overall: modules not installed are completely left out. Added
+# -guess that forces searching of libraries.
+#
+# Revision 1.6  1999/07/18 14:05:01  gerd
+# 	Added stdlib.
+#
+# Revision 1.5  1999/07/09 15:28:37  gerd
+# 	Added automatic recognition of POSIX threads. The META file in
+# the "threads" package has now a variable "type_of_threads" with
+# possible values "bytecode" and "posix". This variable is set when
+# "findlib" is configured. The compiler frontends query this variable
+# (with an empty predicate list), and add "mt_posix" to the predicate
+# list if the variable has the value "posix".
+#
+# Revision 1.4  1999/07/09 12:15:05  gerd
+# 	Included a test on the type of threads, either "bytecode" or
+# "posix". The result is written to Makefile.config.
+#
+# Revision 1.3  1999/07/09 11:16:48  gerd
+# 	Added auto-configuration for the META files.
+#
+# Revision 1.2  1999/06/20 22:23:15  gerd
+# 	Works now with the core libraries.
+#
+# Revision 1.1  1999/03/26 00:02:47  gerd
+# 	Initial release.
+#
+#

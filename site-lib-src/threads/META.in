@@ -1,0 +1,16 @@
+dnl This file is input of the m4 macro processor.
+`# Specifications for the "threads" library:'
+`version = "[distributed with Ocaml]"'
+`requires = "unix"'
+dnl There is directory magic for "threads" in frontend.ml:
+`directory = "^"'
+`type_of_threads = "'type_of_threads`"'
+
+`browse_interfaces = "'interfaces`"'
+
+`# --- Bytecode-only threads:'
+`archive(byte,mt,mt_vm) = "threads.cma"'
+
+`# --- POSIX-threads:'
+`archive(byte,mt,mt_posix) = "threads.cma"'
+`archive(native,mt,mt_posix) = "threads.cmxa"'

@@ -1,0 +1,143 @@
+#! /bin/sh
+# $Id: itest,v 1.10 2003/09/30 11:25:26 gerd Exp $
+# ----------------------------------------------------------------------
+#
+
+case `uname` in
+    CYGWIN*)
+	execsuffix=.exe ;;
+    *)
+	execsuffix= ;;
+esac
+ocamlfind="./ocamlfind${execsuffix}"
+
+check_linkage () {
+    p=$1
+    shift
+    rm -f config/simple
+    $ocamlfind ocamlc -linkall -linkpkg -custom "$@" -o config/simple config/simple_$p.ml >config/err.out 2>&1
+    output=`cat config/err.out | sed -e '/WARNING.*/ d'`
+    error=0
+    if [ -n "$output" ]; then
+	echo "* When trying to compile with"
+	echo "       $ocamlfind ocamlc -linkall -linkpkg -custom "$@" -o config/simple config/simple_$p.ml"
+   	echo "  an error has occurred. The error error message has been written"
+	echo "  to config/err.out."
+	error=1
+    fi
+    if [ "$error" = "0" ]; then
+	result=`config/simple${execsuffix}`
+        [ "x$result" = "xOK" ]
+    else
+	return $error
+    fi
+}
+
+problems () {
+    echo "* This test failed. Please check the settings in site-lib/$1/META,"
+    echo "  especially the 'linkopts' variable, and try again. You can invoke"
+    echo "  this test directly by: ./itest $1"
+}
+
+
+do_test () {
+    case "$1" in
+    dbm|graphics|num|str|unix|bigarray|labltk)
+	echo "* Checking linker options for $1 library"
+	rm -f config/testdb*
+	if check_linkage $1 -package $1; then
+	    echo "ok"
+	else
+	    problems $1
+	fi
+	;;
+    threads)
+	echo "* Checking linker options for threads library"
+	if check_linkage $1 -package $1 -thread; then
+	    echo "ok"
+	else
+	    problems $1
+	fi
+	;;
+
+    camlp4)
+	echo "* Checking options for camlp4 preprocessor"
+	if check_linkage $1 -package $1 -syntax camlp4r; then
+	    echo "ok"
+	else
+	    problems $1
+	fi
+	;;
+
+    *)
+	echo "unknown test: $1"
+	;;
+    esac
+}
+
+
+OCAMLPATH="./site-lib"
+export OCAMLPATH
+
+if [ ! -f "$ocamlfind" ]; then
+    echo "Sorry, you must first compile the library before you can invoke" 1>&2
+    echo "the integration test." 1>&2
+    exit 1
+fi
+
+if [ "$#" = "0" ]; then
+    for t in unix str dbm graphics num threads bigarray labltk camlp4; do
+	if [ -f "site-lib/$t/META" ]; then
+	    echo "------------------------------------------------------------------------------"
+	    do_test $t
+	    echo
+	fi
+    done
+else
+    do_test $1
+fi
+
+
+# ======================================================================
+# History:
+#
+# $Log: itest,v $
+# Revision 1.10  2003/09/30 11:25:26  gerd
+# 	Generating browse_interfaces
+# 	Removed support for camltk (is now part of labltk)
+#
+# Revision 1.9  2002/06/08 19:50:06  gerd
+# 	Updated.
+#
+# Revision 1.8  2001/06/16 00:24:14  gerd
+# 	Cygwin support.
+# 	Fixed: WARNINGS may happen
+#
+# Revision 1.7  2000/07/31 01:37:56  gerd
+# 	camlp4 support.
+#
+# Revision 1.6  2000/04/26 00:39:59  gerd
+# 	Some new tests.
+#
+# Revision 1.5  1999/08/06 23:52:19  gerd
+# 	The "threads" test is now like all other tests because bytecode
+# and native threads can be distinguished a priori.
+#
+# Revision 1.4  1999/07/09 15:28:39  gerd
+# 	Added automatic recognition of POSIX threads. The META file in
+# the "threads" package has now a variable "type_of_threads" with
+# possible values "bytecode" and "posix". This variable is set when
+# "findlib" is configured. The compiler frontends query this variable
+# (with an empty predicate list), and add "mt_posix" to the predicate
+# list if the variable has the value "posix".
+#
+# Revision 1.3  1999/07/09 11:17:05  gerd
+# 	Updated.
+#
+# Revision 1.2  1999/06/24 20:17:51  gerd
+# 	Further modifications (dont know which...)
+#
+# Revision 1.1  1999/06/20 22:23:18  gerd
+# 	Works now with the core libraries.
+#
+#

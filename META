@@ -1,0 +1,14 @@
+# specifications for "findlib":
+description = "Package manager"
+requires = ""
+requires(mt) = "threads"
+version = "0.9"
+archive(byte) = "findlib.cma"
+archive(byte,mt) = "findlib_mt.cma"
+archive(byte,toploop) = "findlib.cma findlib_top.cma"
+archive(byte,mt,toploop) = "findlib_mt.cma findlib_top.cma"
+archive(native) = "findlib.cmxa"
+archive(native,mt) = "findlib_mt.cmxa"
+
+# Note: There is another archive, "findlib_unix" that is not selected
+# by default because it depends on the "unix" library.

@@ -1,0 +1,1859 @@
+<!DOCTYPE book PUBLIC "-//Davenport//DTD DocBook V3.0//EN" [
+  <!ENTITY findlibmeta SYSTEM "findlib_meta.mod">
+  <!ENTITY findlibsitelib SYSTEM "findlib_sitelib.mod">
+  <!ENTITY findlibmli SYSTEM "findlib_mli.mod">
+  <!ENTITY findlibtopfind SYSTEM "findlib_topfind.mod">
+  <!ENTITY findlibocamlfind SYSTEM "findlib_ocamlfind.mod">
+  <!ENTITY findlibconf SYSTEM "findlib_conf.mod">
+  <!ENTITY % gps.common SYSTEM "../common.xml">
+  %gps.common;
+]>
+
+<book>
+
+<title>The findlib user's guide and reference manual</title>
+<bookinfo>
+<!-- <bookbiblio> -->
+<authorgroup>
+  <author>
+    <firstname>Gerd</firstname>
+    <surname>Stolpmann</surname>
+    <authorblurb>
+      <para>
+        <address>
+	  <email>gerd@gerd-stolpmann.de</email>
+        </address>
+      </para>
+    </authorblurb>
+  </author>
+</authorgroup>
+
+<copyright>
+<year>1999</year><holder>Gerd Stolpmann</holder>
+</copyright>
+<!-- </bookbiblio> -->
+
+<abstract>
+<para>
+The "findlib" library provides a scheme to manage reusable software
+components (packages), and includes tools that support this
+scheme. Packages are collections of OCaml modules for which
+metainformation can be stored. The packages are kept in the filesystem
+hierarchy, but with strict directory structure. The library contains
+functions to look the directory up that stores a package, to query
+metainformation about a package, and to retrieve dependency
+information about multiple packages. There is also a tool that allows
+the user to enter queries on the command-line. In order to simplify
+compilation and linkage, there are new frontends of the various OCaml
+compilers that can directly deal with packages.
+</para>
+
+<para>
+Together with the packages metainformation is stored. This includes a
+version string, the archives the package consists of, and additional
+linker options. Packages can also be dependent on other
+packages. There is a query which finds out all predecessors of a list
+of packages and sorts them topologically. The new compiler frontends
+do this implicitly.
+</para>
+
+<para>
+Metainformation can be conditional, i.e. depend on a set of
+predicates. This is mainly used to be able to react on certain
+properties of the environment, such as if the bytecode or the native
+compiler is invoked, if the application is multi-threaded, and a few
+more. If the new compiler frontends are used, most predicates are
+found out automatically.
+</para>
+
+<para>
+There is special support for scripts. A new directive, "#require",
+loads packages into scripts. Of course, this works only with newly
+created toploops which include the "findlib" library.
+</para>
+
+<formalpara>
+<title>Download findlib</title>
+<para>
+This manual describes version &release.findlib; of the software
+package. It can be downloaded at
+<ulink URL="&url.gps-ocaml-download;">
+&url.gps-ocaml-download;
+</ulink>. The user's guide and the reference manual are included.
+Newest releases of "findlib" will be announced in
+<ulink URL="&url.linkdb;">The OCaml Link
+Database</ulink>.
+</para>
+</formalpara>
+
+<formalpara>
+<title>Quickstart</title>
+<para>
+See also the <ulink URL="&url.findlib-quickstart;">Quickstart page</ulink>
+for instructions for the most common
+cases (this page assumes O'Caml 3.03-alpha, though).</para>
+</formalpara>
+</abstract>
+
+<legalnotice>
+<title>License</title>
+<para>
+This document, and the described software, "findlib", are copyright by
+Gerd Stolpmann.
+</para>
+
+<para>
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this document and the "findlib" software (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+</para>
+
+<para>
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+</para>
+
+<para>
+The Software is provided ``as is'', without warranty of any kind, express
+or implied, including but not limited to the warranties of
+merchantability, fitness for a particular purpose and noninfringement.
+In no event shall Gerd Stolpmann be liable for any claim, damages or
+other liability, whether in an action of contract, tort or otherwise,
+arising from, out of or in connection with the Software or the use or
+other dealings in the software.
+</para>
+</legalnotice>
+
+</bookinfo>
+
+
+
+<!-- ********************************************************************** -->
+
+
+
+<part>
+<title>User's guide</title>
+
+<chapter>
+<title>Packages: Reusable software components</title>
+
+<para> Reusability is one of the keywords in software engineering
+today. It simply means to have source code that can be shared by
+several programs. As the idea might be simple, its practical
+implementation is complex because sharing of source code has an impact
+on all steps and phases in software production. This document only
+addresses the following problems:
+</para>
+
+<itemizedlist mark="bullet" spacing="compact">
+<listitem>
+<para>
+Storing the components in file hierarchies
+</para>
+</listitem>
+
+<listitem>
+<para>
+Compiling and linking programs using such components
+</para>
+</listitem>
+
+<listitem>
+<para>
+Managing dependencies between components
+</para>
+</listitem>
+</itemizedlist>
+
+<para>
+Objective Caml has a variety of language means to support
+reusability. Most important, polymorphic functions can be written
+which generalize the types of input arguments and the
+type of the result value. There are many examples in the core library
+such that I assume that the reader is familiar with this
+feature. Second, modules and functors must be mentioned which not only
+generalize types of values, but can even generalize structures,
+i.e. types with associated operations. Third, the class construct
+allows us to adopt the object-oriented techniques of abstraction such
+as inheritage and dynamic method lookup.
+</para>
+
+<para>
+There are no general rules how to make components reusable. Often,
+data structures must be identified which are supposed to depend on the
+particular kind of usage; then one of OCaml's techniques of making
+these structures more general should be applied, such as
+introducing a functor. As it is often not worthwhile to make a module
+"fully general" (whatever this means), one has to study possible cases
+how the component could be used, and to decide which of the data
+structures must become more general such that these cases are possible
+applications of the component.
+</para>
+
+<para>
+Sometimes there is a new application for an already existing
+component, and it is decided to make the component more general such
+that the new case can be satisfied by it. Of course, the more general
+component must be compatible to older applications. This is a very
+common situation, and it simply means that it must be possible to
+modify (improve, extend) components and to re-integrate the changed
+component into programs.
+</para>
+
+<para>
+The consequence of this is that components must be kept seperate from
+the programs using them, and even to separate the various components
+from each other. A component must be able to be "plugged out" of the
+system, and to be replaced by a compatible substitute. In terms of
+system administration, such a replaceable component is called a
+<emphasis>package</emphasis>, and because this document discusses the
+administrative side of the problem, the term "package" has been
+adopted.
+</para>
+
+<para>
+Strictly speaking, a package is only the part of the component which
+is needed to allow the integration into a program. Objective Caml
+compiles both interfaces and implementations of modules, and this is
+our first definition of a package: A package is a collection of
+compiled module interfaces and module implementations. It is then a
+simple task to manage the packages of a system; just have somewhere a
+central package directory "site-lib" which has subdirectories for
+every package of the system. If you want to replace a package with a
+newer version, just delete the directory representing the package, and
+create a new one with the same name and the new binaries.
+</para>
+
+<para>
+There are still some open questions. Replacing a package works only if
+the interface does not change; OCaml keeps checksums of used
+interfaces and can detect modified interfaces almost always. A
+<emphasis>package manager</emphasis>, i.e. a tool supporting using and
+administering packages, could help by finding out all programs and
+packages that use the replaced package such that it is possible to
+check if they still work or need to be recompiled. The package manager
+needs information about the dependencies between packages and programs
+in order to do this.
+</para>
+
+<para>
+Furthermore, it has to be specified which link operation is necessary
+to use a package. Often, only a single archive file needs to be linked
+in, but sometimes additional archives or system libraries must be
+linked, too.
+</para>
+
+<para>
+The <emphasis>findlib</emphasis> library is my suggestion for a
+package manager suitable for Objective Caml. It is a library (stored
+as a package itself) which can answer the following questions:
+</para>
+
+<itemizedlist mark="bullet" spacing="compact">
+<listitem>
+<para>If I want to use a package, which is the directory containing
+the compiled interfaces and implementations? - The package directory
+may vary from system to system, and this feature makes it easier to
+write Makefiles that run everywhere. Furthermore, OCaml can load
+modules dynamically, and it is not a good practice to compile in the
+location of such modules. The better way is to ask findlib where the
+module resides today.
+</para>
+</listitem>
+
+<listitem>
+<para>Which other packages must be linked in, too, if I want to use a
+certain package?
+</para>
+</listitem>
+
+<listitem>
+<para>Which archives need to be linked in, and which compiler options
+are necessary?
+</para>
+</listitem>
+
+<listitem>
+<para>If there is a version of the archive with additional properties,
+which file should I use? - Additional properties are at least:
+Thread-safety, using POSIX threads, and being gprof-enabled. It is
+simple to add more criterions.
+</para>
+</listitem>
+</itemizedlist>
+
+
+<para>
+Furthermore, there is a frontend for this library called
+<emphasis>ocamlfind</emphasis>. It is a command-line interface for the
+library, but has also some additional abilities:
+</para>
+
+
+<itemizedlist mark="bullet" spacing="compact">
+<listitem>
+<para>It can invoke ocamlc, ocamlopt, ocamlmktop, and ocamlcp such
+that compiler arguments necessary to use a package or link it in are
+automatically added.
+</para>
+</listitem>
+
+<listitem>
+<para>It can install and uninstall packages.
+</para>
+</listitem>
+
+<listitem>
+<para>It can find out dependent packages.
+</para>
+</listitem>
+</itemizedlist>
+
+<para>
+As you'll see in the following chapters, the usage of this library is
+really simple. If you want only to link in packages written by other
+people, you must only change the command that invokes the compiler,
+e.g. instead of calling "ocamlc program.ml" invoke "ocamlfind ocamlc
+-package name_of_package_to_use -linkpkg program.ml", and you can
+refer to the named package within program.ml. If you want to turn your
+collection of modules into a package, you need only to write one
+adminstrative file (META) containing all extra information such as
+required other packages.
+</para>
+
+
+</chapter>
+
+<!-- ********************************************************************** -->
+
+<chapter>
+<title>Using packages</title>
+
+<sect1>
+<title>Listing the installed packages</title>
+
+<para>
+You can list which packages are installed by executing
+
+<programlisting>
+ocamlfind list
+</programlisting>
+
+You will get a list of names and version numbers.
+</para>
+</sect1>
+
+
+<sect1>
+<title>Looking up package directories</title>
+
+<para>
+The package manager knows the preferred location for packages (this
+location is compiled in), which is usually
+/usr/local/lib/ocaml/site-lib. You can ask the package manager where
+package p is stored by simply typing
+</para>
+
+<programlisting>
+ocamlfind query p
+</programlisting>
+
+<para>
+and it will answer something like
+</para>
+
+<programlisting>
+/usr/local/lib/ocaml/site-lib/p
+</programlisting>
+
+<para>
+There is an environment variable OCAMLPATH which can specify further
+directories where packages are stored. (The search order is: first
+the directories in OCAMLPATH in turn, then the default path
+set in ocamlfind.conf)
+</para>
+
+<para>
+Historically, this kind of query was the first and only way of using
+ocamlfind, and because of the similiarity to the Unix find command it
+got its name. Finding out package locations is a basic but
+nethertheless important feature because it hides the details of the
+filesystem hierarchy. It is sufficient only to know the name of the
+package, and if needed, you can use the lookup mechanism implemented
+in ocamlfind to get the concrete directory.
+</para>
+</sect1>
+
+
+<sect1>
+<title>How a package directory looks like</title>
+
+<para>
+Let us assume that the package p implements the modules M1 and M2. If
+you compile m1.mli and m2.mli you get the corresponding binary files
+m1.cmi and m2.cmi describing the interfaces of the modules. Of course,
+these cmi files must go into the package directory. It is recommended
+to put the source mli files into the directory, too, as they document
+the interface.
+</para>
+
+<para>
+Another product of the compilation are two cmo files, m1.cmo and
+m2.cmo (we assume the bytecode compiler, the native compiler would
+create m1.cmx and m2.cmx). It is possible to put these files directly
+into the directory, but there is a better way. As it makes only sense
+to use both modules (a very common assumption), they should first be
+archived by doing
+</para>
+
+<programlisting>
+ocamlc -a -o p.cma m1.cmo m2.cmo
+</programlisting>
+
+<para>
+The archive p.cma contains both cmo files, and preserves the order of
+the files. Assumed that in M2 there is a reference to an entity in M1,
+M2 depends on M1 and when linking a program using these modules, M1
+must be mentioned first (e.g. ocamlc m1.cmo m2.cmo
+program.ml)<footnote><para>Note that C linkers usually require the reverse
+order, but only for archive elements, i.e. files with suffix
+.a.</para></footnote>. If you create the archive p.cma it contains already
+this dependency, and you need not to remember it when linking in the
+p.cma.
+</para>
+
+<para>
+So far the files m1.cmi, m2.cmi, and p.cma are needed, and m1.mli and
+m2.mli are recommended. Usually there is another file in the
+directory, META, containing additional information about the package.
+In our example, META looks like
+</para>
+
+<programlisting>
+requires = ""
+version = "1"
+archive(byte) = "p.cma"
+</programlisting>
+
+<para>The variable "requires" contains a list of packages that are
+required by this package (the names may be separated by commas or
+spaces). As our package, p, does not depend on any other package, this
+list is empty. I'll explain what happens with non-empty lists below.
+</para>
+
+<para>
+The variable "version" is simply a version string.
+</para>
+
+<para>The variable "archive" denotes the files that have to be
+actually linked in if the package is used. This is again a list of
+(file) names. In contrast to the other variables, "archive" has a
+condition, written in parantheses. This value of "archive" will only
+be used if the predicate "byte" is true; this predicate is usually
+given if the program is compiled to bytecode. If you have a native
+archive, p.cmxa, of the two modules M1 and M2, you can add another
+line to META:
+</para>
+
+<programlisting>
+archive(native) = "p.cmxa"
+</programlisting>
+
+<para>
+The correct value for the "archive" variable is selected upon the
+given set of predicates.
+</para>
+</sect1>
+
+
+<sect1>
+<title>Querying information stored in META files</title>
+
+<para>
+By setting some options of ocamlfind you can query the variables from
+the META files. For example, -long-format selects all interesting
+variables:
+</para>
+
+<programlisting>
+ocamlfind query -long-format p
+</programlisting>
+
+<para>
+This would answer something like:
+</para>
+
+<programlisting>
+package:    p
+version:    1
+archive(s):
+linkopts:
+location:   /usr/local/lib/ocaml/site-lib/p
+</programlisting>
+
+<para>
+The values of the "archive" variable are missing because no predicate
+has been set, without further options "ocamlfind query" operates with
+an empty set of predicates. To get the bytecode archive, run:
+</para>
+
+<programlisting>
+ocamlfind query -long-format -predicates byte p
+</programlisting>
+
+<para>
+You can set more than one predicate. It usually does not make sense, but
+you could for example select both bytecode and native archives by:
+</para>
+
+<programlisting>
+ocamlfind query -long-format -predicates byte,native p
+</programlisting>
+
+<para>
+As both settings for "archive" are now equally like, the extraction
+mechnism chooses simply the first. The general rule is that the first
+most special value is selected.
+</para>
+</sect1>
+
+
+<sect1>
+<title>How to compile and link a program that uses a package</title>
+
+<para>
+Now suppose you want to compile a program which calls functions of
+your new package p. If prog1.ml, prog2.ml, and prog3.ml are the three
+source files the program consists of, compile them with the commands
+</para>
+
+<programlisting>
+ocamlfind ocamlc -package p -c prog1.ml
+ocamlfind ocamlc -package p -c prog2.ml
+ocamlfind ocamlc -package p -c prog3.ml
+</programlisting>
+
+<para>
+The "ocamlfind ocamlc" invocation is a frontend to "ocamlc". Most
+arguments are directly passed to "ocamlc", but there are a few new
+options, and often some new options are implicitly added. Here, the
+new -package option is used, which adds search paths such that the
+modules of package p are found. Effectively, the following direct
+ocamlc invocations would be equivalent
+<footnote><para>If you specify the -verbose option, the constructed
+command is printed to the terminal. Actually, there are some more
+implicitly added options, especially -ccopt -I&lt;dir&gt; for every
+package directory &lt;dir&gt;. This means that you can compile C
+programs accessing header files stored in the package directory.
+</para></footnote>:
+</para>
+
+<programlisting>
+ocamlc -I /usr/local/lib/ocaml/site-lib/p -c prog1.ml
+ocamlc -I /usr/local/lib/ocaml/site-lib/p -c prog2.ml
+ocamlc -I /usr/local/lib/ocaml/site-lib/p -c prog3.ml
+</programlisting>
+
+<para>
+The -I option has the effect that the named directory is also searched
+when looking up cmi files. Because of this you can refer directly to
+the modules M1 and M2 in the program sources.
+</para>
+
+<para>
+In order to link the program use the following command:
+</para>
+
+<programlisting>
+ocamlfind ocamlc -o program -package p -linkpkg prog1.cmo prog2.cmo prog3.cmo
+</programlisting>
+
+<para>
+The -linkpkg option causes some more arguments to be added to the
+constructed ocamlc command. Especially, the name of the archive of p
+is extracted from the META file, and automatically inserted before the
+prog1.cmo argument. The resulting command looks like<footnote>
+<para>Again, the actual command contains even some more arguments...
+</para></footnote>:
+</para>
+
+<programlisting>
+ocamlc -o program -I /usr/local/lib/ocaml/site-lib/p p.cma prog1.cmo prog2.cmo prog3.cmo
+</programlisting>
+
+<para>
+Please note that the bytecode archive p.cma has been selected, and not
+the native archive p.cmxa. As it is known that the bytecode compiler
+is used, the predicate "byte" is automatically set.
+</para>
+
+</sect1>
+
+
+<sect1>
+<title>Dependencies</title>
+
+<para>
+Often packages use other packages themselves. Let q be another package
+consisting of the single module M3 which contains references to M1 and
+M2. At the first glance, we can ignore this when describing the
+package, as we could always add "-package p" and "-package q" options
+when compiling programs using q. This solution is not optimal, as the
+user of a package must have knowlege about details of the package that
+should normally be hidden. When we introduced the notion of packages,
+one of the most important properties was that we can replace packages
+by improved versions. Imagine that q is replaced by q', but q' uses
+not only p but also r. Every program that used q and is now forced to
+use q' must be changed (at least in the Makefile) in order to link r,
+too. This is clearly not what is intended by packages.
+</para>
+
+<para>
+The far better solution is to store dependency information in the META
+files. The "requires" variable can list names of packages that are
+direct ancestors, i.e. referred directly. (Do not put indirect
+ancestors into this variable, for example further packages required by
+r when describing q - these are found out automatically.) The META
+file of q looks like:
+</para>
+
+<programlisting>
+requires = "p"
+version = "1"
+archive(byte) = q.cma
+archive(native) = q.cmxa
+</programlisting>
+
+<para>
+If you want to put several package names into "requires", separate
+them with commas or spaces.
+</para>
+
+<para>
+The "ocamlfind query" command ignores the "requires" value by default,
+you must add the -recursive option. In this case, all direct or
+indirect ancestors of the packages given on the command line are
+selected, too, and printed in topological order. For example, the
+command
+</para>
+
+<programlisting>
+ocamlfind query -recursive -long-format -predicate byte q
+</programlisting>
+
+<para>
+prints two records:
+</para>
+
+<programlisting>
+package:    p
+version:    1
+archive(s): p.cma
+linkopts:
+location:   /usr/local/lib/ocaml/site-lib/p
+
+package:    q
+version:    1
+archive(s): q.cma
+linkopts:
+location:   /usr/local/lib/ocaml/site-lib/p
+</programlisting>
+
+<para>
+Without -recursive, only q would have been printed.
+</para>
+
+<para>
+The compiler frontend provided with ocamlfind always works
+recursively. In order to compile and link another.ml that uses q, the
+following command is sufficient:
+</para>
+
+<programlisting>
+ocamlfind ocamlc -o another -package q -linkpkg another.ml
+</programlisting>
+
+<para>
+It is not necessary to specify -package p in this statement as the
+dependency relation is always used to find out the actually meant
+set of packages.
+</para>
+
+</sect1>
+
+
+<sect1>
+<title>Linker options</title>
+
+<para>
+<emphasis>
+Beginning with OCaml 3.00, the compiler itself has an interesting feature
+called "automatic linking" that makes the following mechanism superflous in
+most cases. Automatic linking means that it is possible to store the linker
+options into the cma or cmxa file such that the compiler itself knows which
+options are necessary. Of course, the following mechanism still works, and it
+is still helpful in conjunction with multi-threaded programs.
+</emphasis>
+</para>
+
+<para>
+OCaml has a C interface which means that C libraries can be linked in
+and C functions can be declared as new language primitives. Using such
+libraries requires special linker options. Some of the core libraries
+distributed with OCaml are partly implemented in C and thus additional
+libraries must be specified in the linking phase of the program.
+</para>
+
+<para>
+For example, the "str" library providing regular expressions requires
+to be linked as follows:
+</para>
+
+<programlisting>
+ocamlc -o prog str.cma my_file1.cmo my_file2.cmo -cclib -lstr
+</programlisting>
+
+<para>
+The -cclib option passes the following argument directly to the
+underlying C linker which has the effect that libstr.a is linked in,
+too. The "-cclib -lstr" is directly associated with str.cma as the
+latter simply cannot be used without the former. Assume you would
+write a META file describing str. That "str.cma" should be linked in
+as archive is clear; the "-cclib -lstr" can be specified in another
+variable called "linkopts". The META file would look like:
+</para>
+
+<programlisting>
+requires = ""
+version = "str from ocaml 2.02"
+archive(byte) = "str.cma"
+archive(native) = "str.cmxa"
+linkopts = "-cclib -lstr"
+</programlisting>
+
+<para>
+This has the effect that specifying -linkpkg in one of the compiler
+frontends not only chooses one of the archive files, but also extracts
+the necessary linker options from the META file. The above example can
+also be compiled with:
+</para>
+
+<programlisting>
+ocamlfind ocamlc -o prog -package str -linkpkg my_file1.cmo my_file2.cmo
+</programlisting>
+
+<para>
+Most people will never write META files with "linkopts" settings. But
+this feature is very useful at least for the core libraries such as
+str. Because of this, the "findlib" distribution comes with META files
+for the core libraries in order to hide the linker options. This
+means that you can already use the packages "str", "dbm", "dynlink",
+"graphics", "num", "threads", "unix", and "camltk", and that the
+appropriate archives and linker options are automatically extracted.
+</para>
+
+</sect1>
+
+</chapter>
+
+<!-- ********************************************************************** -->
+
+<chapter>
+<title>Dependency analysis of packages</title>
+
+<sect1>
+<title>Querying ancestors</title>
+
+<para>
+Every package denotes in its META file only the list of direct
+ancestors. The theoretical model of the dependency relation is a
+directed acyclic graph (DAG), with the packages as vertices and edges
+from packages to their direct ancestors. The graph must be acyclic
+because OCaml does not allow cyclic dependencies between modules.
+</para>
+
+<para>
+What happens if you query something like
+</para>
+
+<programlisting>
+ocamlfind query -recursive p1 p2 ... pN
+</programlisting>
+
+<para>
+is that the named packages p1 to pN are marked in the graph, and that
+repeatedly all direct ancestors of marked packages are marked, too,
+until there is not any marked package remaining with an unmarked
+ancestor. All marked packages are then printed in topological
+order. This simply means that for the printed packages p1 to pM holds
+that if pI is printed before pJ then pI is a (possibly indirect)
+ancestor of pJ.
+</para>
+
+<para>
+The topological order plays a role when the link command is
+constructed by "ocamlfind ocamlc", as Ocaml requires that archives
+must be linked in topological order. For example, the link statement
+</para>
+
+<programlisting>
+ocamlfind ocamlc -o another -package q -linkpkg another.ml
+</programlisting>
+
+<para>
+must be turned into the effective command
+</para>
+
+<programlisting>
+ocamlc -o another [...more options...] p.cma q.cma another.ml
+</programlisting>
+
+<para>
+and <emphasis>not</emphasis>
+</para>
+
+<programlisting>
+ocamlc -o another [...more options...] q.cma p.cma another.ml
+</programlisting>
+
+<para>
+because there are references from q.cma to p.cma.
+</para>
+
+<para>
+In C, there is a similar requirement when linking static archives. The
+linker backend ld wants the archives in <emphasis>reversed</emphasis>
+topological order, i.e. the deepest ancestor must come last in the
+list of linked archives. Because of this, the additional linker
+options specified in the "linkopts" variable are passed in reversed
+order to the underlying linker. This means that you can refer to C
+libraries of ancestor packages of p in C libraries provided in p.
+</para>
+
+<para>
+Note that most operating systems do not require any specific order for
+dynamically linked C libraries (the exception is, surprise!, AIX).
+</para>
+
+</sect1>
+
+
+<sect1>
+<title>Querying descendants</title>
+
+<para>
+It is often useful to find out the descendants of a package, i.e. all
+direct or indirect users of the package. There is another "ocamlfind"
+subcommand that allows us to query descendants. For example, to get
+the direct and indirect users of p, type in
+</para>
+
+<programlisting>
+ocamlfind query -descendants -recursive p
+</programlisting>
+
+<para>
+Note that -descendants has no effect without -recursive.  The output
+is again sorted topologically.
+</para>
+
+<para>
+The set of packages that are possible descendants is determined as
+follows:
+
+<itemizedlist mark="bullet" spacing="compact">
+<listitem>
+<para>
+All packages located in directories mentioned in the environment
+variable OCAMLPATH are candidates. Note that only package directories
+containing META files are taken.
+</para>
+</listitem>
+
+<listitem>
+<para>
+The packages in the default package directory are candidates, too.
+</para>
+</listitem>
+
+<listitem>
+<para>
+If there are two packages with the same name, only the first
+counts, i.e. the first in OCAMLPATH, then the one in the default directory.
+</para>
+</listitem>
+</itemizedlist>
+
+After this set has been determined, the complete dependency graph is
+constructed on it. As the descendants are queried, the dependencies
+are read in the inverse way compared with queries of the ancestors.
+</para>
+
+</sect1>
+
+
+</chapter>
+
+<!-- ********************************************************************** -->
+
+<chapter>
+<title>A new frontend for ocamlc</title>
+
+<sect1>
+<title>Compiling and linking</title>
+
+<para>
+There are compiler frontends for the four compilers ocamlc, ocamlopt,
+ocamlmktop, and ocamlcp. They are simply called by specifying the name
+of the compiler as first argument to ocamlfind, i.e.
+</para>
+
+<programlisting>
+ocamlfind ocamlc ...arguments...
+ocamlfind ocamlopt ...arguments...
+ocamlfind ocamlmktop ...arguments...
+ocamlfind ocamlcp ...arguments...
+</programlisting>
+
+<para>
+In addition to the compiler options handled by the compilers
+themselves, the following options are available:
+</para>
+
+<itemizedlist mark="bullet" spacing="compact">
+<listitem>
+<para>
+-package &lt;name&gt;: Causes that the package &lt;name&gt is added to
+the package list, and that -I options are added for every package, and
+all direct or indirect ancestors.
+</para>
+</listitem>
+
+<listitem>
+<para>
+-linkpkg: Causes that the archives of the packages in the package list
+and all their direct or indirect ancestors are added in topological
+order to the command line before the first file to compile or to
+link. Packages specified by -dontlink are not linked in, though.
+Furthermore, the linker options of these packages are added in
+reverse topological order at the end of the command line.
+</para>
+</listitem>
+
+<listitem>
+<para>
+-predicates &lt;predicate-list&gt;: The named predicates are included
+in the list of predicates. Note that there are some predicates set by
+default, see below.
+</para>
+</listitem>
+
+<listitem>
+<para>
+-dontlink &lt;name&gt;: Specifies that the package &lt;name&gt; and
+all its direct or indirect ancestors should not be linked in.
+</para>
+</listitem>
+
+
+<listitem>
+<para>
+-passopt &lt;opt&gt;: The option &lt;opt&gt; is passed directly to the
+underlying compiler. This is especially needed to pass undocumented
+options to the compiler.
+</para>
+</listitem>
+</itemizedlist>
+
+<para>
+If you only want to compile, i.e. the -c option is in effect, you
+normally only need the -package option.
+</para>
+
+<para>
+Depending on the compiler and on the given options, some predicates
+are set by default:
+</para>
+
+<itemizedlist mark="bullet" spacing="compact">
+<listitem>
+<para>
+byte: The predicate "byte" is set when ocamlc, ocamlcp, or ocamlmktop
+is used to compile or link.
+</para>
+</listitem>
+
+<listitem>
+<para>
+native: The predicate "native" is set when ocamlopt is used to compile
+or to link.
+</para>
+</listitem>
+
+<listitem>
+<para>
+toploop: The predicate "toploop" is set when ocamlmktop is used to
+compile or to link.
+</para>
+</listitem>
+
+<listitem>
+<para>
+gprof: The predicate "gprof" is set when ocamlopt with -p option is
+invoked.
+</para>
+</listitem>
+
+<listitem>
+<para>
+mt: The predicate "mt" is set when the -thread or the -vmthread option is in effect.
+</para>
+</listitem>
+
+<listitem>
+<para>
+mt_posix: The predicate "mt_posix" is set together with "mt" if the
+POSIX thread implementation is selected.
+</para>
+</listitem>
+
+<listitem>
+<para>
+mt_vm: The predicate "mt_vm" is set together with "mt" if the bytecode
+thread implementation is selected.
+</para>
+</listitem>
+
+<listitem>
+<para>
+autolink: The predicate "autolink" is set if the O'Caml compiler can perform
+automatic linking. This predicate is never set if the -noautolink option is
+in effect.
+</para>
+</listitem>
+
+</itemizedlist>
+
+</sect1>
+
+
+<sect1>
+<title>Creating toploops and runtime systems</title>
+
+<para>
+It is now relatively simple to create toploops. In order to include
+the packages p1,p2,..,pN simply execute the command
+</para>
+
+<programlisting>
+ocamlfind ocamlmktop -o toploop -package p1,p2,...,pN -linkpkg -custom
+</programlisting>
+
+<para>
+Toploops that already have "findlib" itself linked in support loading
+packages from scripts. This means that if a toploop is created by
+</para>
+
+<programlisting>
+ocamlfind ocamlmktop -o toploop -package findlib,p1,p2,...,pN -linkpkg -custom
+</programlisting>
+
+<para>
+it offers an additional directive "#require". This directive loads
+additional packages:
+</para>
+
+<programlisting>
+#require "q1,q2,...,qM"
+</programlisting>
+
+<para>
+"#require" loads the listed packages and all their ancestors in the
+right order, but leaves packages out that have already been loaded,
+either by a previous "#require" or by having them specified in the
+"ocamlmktop" command that created the toploop. Scripts can now simply
+document which packages must have been loaded by a "#require"
+directive right at the beginning of the script. Either these packages
+are already compiled into the toploop, or the packages are loaded at
+the moment the script is being executed.
+</para>
+
+<para>
+For platforms that support DLLs, it is even possible to #require packages
+that have associated C libraries. Because it is not necessary to build
+custom toploops for these platforms at all, there is now a way to load
+findlib itself dynamically: Just invoke the directive
+
+<programlisting>
+#use "topfind";;
+</programlisting>
+
+into the standard toploop "ocaml", and findlib is available! For a
+sample session, see the <ulink URL="&url.findlib-quickstart;">Quickstart
+page</ulink>.
+</para>
+
+<para>
+However, this does not work for platforms without DLL support.
+For these environments you must still specify the packages in the
+ocamlmktop command that link C libraries, and work with custom
+toploops.
+</para>
+
+<para>
+Especially when developing packages, it is sometimes necessary to
+reload all dynamically loaded packages in the toploop. This can be
+forced by
+</para>
+
+<programlisting>
+Topfind.reset();;
+</programlisting>
+
+<para>
+which causes the "#require" directive to load all packages again.
+</para>
+
+<para>
+Building of runtime systems is supported, too. For example, you can run
+</para>
+
+<programlisting>
+ocamlfind ocamlc -o runtime -make-runtime -package p1,p2,...,pN -linkpkg
+</programlisting>
+
+<para>
+but the problem is which options to specify when a program is linked
+for this runtime system. If you executed
+</para>
+
+<programlisting>
+ocamlfind ocamlc -o program -use-runtime runtime -package p1,p2,...,pN\
+          -linkpkg m1.cmo ... mM.cmo
+</programlisting>
+
+<para>
+it would be tried to link the archives from the packages again into
+the bytecode binary. Because of this, it is necessary to suppress
+linking in packages of the runtime system when linking binaries for a
+runtime system. The -dontlink option can be used for this:
+</para>
+
+<programlisting>
+ocamlfind ocamlc -o program -use-runtime runtime -package p1,p2,...,pN\
+          -dontlink p1,p2,...,pN -linkpkg m1.cmo ... mM.cmo
+</programlisting>
+
+<para>
+Note that the -package option can enumerate more packages than
+-dontlink, and in this case the additional packages are actually
+linked in as they are not contained in the runtime system.
+</para>
+
+</sect1>
+
+
+<sect1>
+<title>Multi-threaded applications</title>
+
+<para>
+If an already existing package is planned to be used in a
+multi-threaded environment, some language constructs must be replaced
+by different ones. For example, global variables must be protected by
+locks (mutexes). Because of
+this it is common practice to provide two versions of such packages,
+one for single-, one for multi-threaded applications.
+</para>
+
+<para>
+The predicate "mt" should be used to recognize multi-threaded
+applications. For example, a package could consist of two archives,
+p.cma, and p_mt.cma, where the latter archive is designed for
+multi-threaded execution. The META file would contain the following
+lines causing that always the appropriate archive is linked:
+</para>
+
+<programlisting>
+archive(byte) = "p.cma"
+archive(byte,mt) = "p_mt.cma"
+</programlisting>
+
+<para>
+When querying the package database the option "-predicates mt" must be
+included in the commands in order to select the appropriate entries.
+</para>
+
+<para>
+When compiling or linking it is necessary to specify the "-thread"
+option anyway. The compiler frontends detect the -thread option, and
+automatically set the "mt" predicate. The following command is an
+example for this; note that the "threads" package means the standard
+library of Ocaml providing thread support:
+</para>
+
+<programlisting>
+ocamlfind ocamlc -thread -package threads,p,q -c x.ml
+</programlisting>
+
+<para>
+For some operating systems, Ocaml supports the native multithreading
+libraries conforming to the POSIX interface. As the linker options are
+generally different, another predicate must be set to get these
+libraries linked in. The predicate "mt_posix" indicates POSIX
+threads. Since release 0.2.1 of "findlib", it is automatically determined
+if POSIX threads are used, so you need not worry about this.
+</para>
+
+</sect1>
+
+
+<sect1>
+<title>Support for gprof-enabled modules</title>
+
+<para>
+When a program is compiled and linked with ocamlopt, gprof-style
+profiling can be enabled by selecting the -p option. This means that
+the resulting archives are different, and that it would be useful if
+there were another predicate in order to select such archives.
+</para>
+
+<para>
+The predicate "gprof" can be used for this. It is automatically set if
+the -p option turns on the gprof-mode in an ocamlopt invocation.
+</para>
+
+</sect1>
+
+</chapter>
+
+<!-- ********************************************************************** -->
+
+<chapter>
+<title>Conditional properties of packages</title>
+
+<sect1>
+<title>The standard predicates</title>
+
+<para>
+Settings in the META file suffice the general form:
+</para>
+
+<programlisting>
+varname ( predname1, predname2, ... ) = "value"
+</programlisting>
+
+<para>
+The names in the parantheses are called <emphasis>formal
+predicates</emphasis> and express a condition which must hold such
+that the value on the right side is selected. When querying
+information you can specify a set of <emphasis> actual
+predicates</emphasis> that are assumed to be true. There are the
+following standard predicates:
+</para>
+
+<itemizedlist mark="bullet" spacing="compact">
+<listitem>
+<para>
+The "byte" predicate means that the bytecode compiler is used.
+</para>
+</listitem>
+
+<listitem>
+<para>
+The "native" predicate means that the native compiler is used.
+</para>
+</listitem>
+
+<listitem>
+<para>
+The "toploop" predicate means that the toploop is available in the
+linked program.
+</para>
+</listitem>
+
+<listitem>
+<para>
+The "mt" predicate means that the program is multi-threaded.
+</para>
+</listitem>
+
+<listitem>
+<para>
+The "mt_posix" predicate means that in the case "mt" is set, too, the
+POSIX libraries are used to implement threads.
+</para>
+</listitem>
+
+<listitem>
+<para>
+The "mt_vm" predicate means that in the case "mt" is set, too, the
+VM-based libraries are used to implement threads.
+</para>
+</listitem>
+
+<listitem>
+<para>
+The "gprof" predicate means that in the case "native" is set, too, the
+program is compiled for profiling
+</para>
+</listitem>
+
+<listitem>
+<para>
+The "autolink" predicate indicates that ocamlc is able to perform
+automatic linking.
+</para>
+</listitem>
+
+
+</itemizedlist>
+
+<para>
+It is possible to have more predicates indicating different
+environments; just use them, it is not necessary to declare them
+anywhere.
+</para>
+
+<para>
+The value which is selected for a variable depends on the set of
+assumed predicates. In order to get selected, all formal predicates
+must be included in the set of actual predicates; if still
+multiple values fulfill this condition, the value with the maximum
+number of formal predicates is used; and if still in doubt, the first
+of these in the META file is taken.
+</para>
+
+<para>
+This rule has the advantage that it is a boolean "and-or" expression
+and that every condition can be formulated using it.
+</para>
+
+</sect1>
+
+
+<sect1>
+<title>Defining additional predicates</title>
+
+<para>
+As additional predicates can be simply introduced this a natural means
+to express conditional linkage. For example, one may provide archives
+for various conditions, such as a production archive, and a
+development archive. A single new predicate, "development", would be
+sufficient to express this:
+</para>
+
+<programlisting>
+archive(byte) = "p_production.cma"
+archive(byte,development) = "p_development.cma"
+</programlisting>
+
+<para>
+When linking, include a "-predicates development" argument in the
+compiler command to select the development archive, otherwise the
+production archive is taken.
+</para>
+
+<para>
+Predicates could also be used to select among several implementations
+of the same module. Define simply one predicate per implementation,
+e.g. "p_impl1", "p_impl2", and "p_impl3", and specify the archives for
+every implementation separately:
+</para>
+
+<programlisting>
+archive(byte,p_impl1) = "p_impl1.cma"
+archive(byte,p_impl2) = "p_impl2.cma"
+archive(byte,p_impl3) = "p_impl3.cma"
+</programlisting>
+
+<para>
+In the case that the implementations have different dependencies,
+simply provide multiple "requires" variables:
+</para>
+
+<programlisting>
+requires(p_impl1) = "q"
+requires(p_impl2) = "q,r"
+requires(p_impl3) = "r,s"
+</programlisting>
+
+<para>
+Sometimes, the implementations require different linker options. In
+this case, define several versions of the "linkopts" variable just
+like in the "requires" example.
+</para>
+
+</sect1>
+
+</chapter>
+
+<!-- ********************************************************************** -->
+
+<chapter>
+<title>How to provide your own packages</title>
+
+<sect1>
+<title>Step 1: Change your Makefile</title>
+
+<para>
+Here is a commented version of a Makefile that may be used to compile
+and link a package. It describes the frequent case that the package
+simply consists of a bundle of modules that are dependent on other
+packages.
+</para>
+
+<para>
+First, some general definitions. NAME is the name of the package.  The
+OBJECTS variable enumerates the bytecode objects, whereas XOBJECTS
+names the native objects. The same naming convention is used for
+ARCHIVE and XARCHIVE, specifying the resulting bytecode, resp. native
+archive file. The REQUIRES variable lists the names of the packages
+that are needed for this package.  If you need additional predicates,
+put them into the PREDICATES variable.
+</para>
+
+<programlisting>
+NAME     = p
+
+OCAMLC   = ocamlfind ocamlc
+OCAMLOPT = ocamlfind ocamlopt
+OCAMLDEP = ocamldep
+
+OBJECTS  = p1.cmo p2.cmo
+XOBJECTS = p1.cmx p2.cmx
+
+ARCHIVE  = $(NAME).cma
+XARCHIVE = $(NAME).cmxa
+
+REQUIRES = unix str q r s
+PREDICATES =
+</programlisting>
+
+<para>
+The default goal is "all", causing the bytecode archive to be
+created. In order to get a native archive, choose "opt" as second goal.
+(The ".PHONY" line is a declaration meaningful for GNU-make; "all" and
+"opt" are only virtual goals as there no files "all", or "opt" which
+is indicated by making them dependents of ".PHONY".)
+</para>
+
+<programlisting>
+.PHONY: all opt
+all: $(ARCHIVE)
+opt: $(XARCHIVE)
+</programlisting>
+
+<para>
+The following two rules create the bytecode resp. native archive from
+the objects.
+</para>
+
+<programlisting>
+$(ARCHIVE): $(OBJECTS)
+        $(OCAMLC) -a -o $(ARCHIVE) -package "$(REQUIRES)" -linkpkg \
+	          -predicates "$(PREDICATES)" $(OBJECTS)
+$(XARCHIVE): $(XOBJECTS)
+        $(OCAMLOPT) -a -o $(XARCHIVE) -package "$(REQUIRES)" -linkpkg \
+	          -predicates "$(PREDICATES)" $(XOBJECTS)
+</programlisting>
+
+<para>
+These rules compile the modules independently. The lines similar to
+".ml.cmo" must be read: "How to transform files with suffix .ml into
+files with suffix .cmo". The corresponding command can refer to the
+input file as "$&lt;" and to the output file(s) as "$@".
+</para>
+
+<programlisting>
+.SUFFIXES: .cmo .cmi .cmx .ml .mli
+
+.ml.cmo:
+        $(OCAMLC) -package "$(REQUIRES)" -predicates "$(PREDICATES)" \
+                  -c $&lt;
+.mli.cmi:
+        $(OCAMLC) -package "$(REQUIRES)" -predicates "$(PREDICATES)" \
+                  -c $&lt;
+.ml.cmx:
+        $(OCAMLOPT) -package "$(REQUIRES)" -predicates "$(PREDICATES)" \
+                  -c $&lt;
+</programlisting>
+
+<para>
+The "depend" goal is the file describing the dependencies within the
+package; it is created by ocamldep.
+</para>
+
+<programlisting>
+depend: *.ml *.mli
+         $(OCAMLDEP) *.ml *.mli &gt;depend
+include depend
+</programlisting>
+
+<para>
+The "install" rule is a bit tricky. First it is tested if there is a
+native archive to install, and if so, the variable "extra" contains
+the corresponding files. The "ocamlfind install" command creates a new
+package directory and puts the given files into it.
+</para>
+
+<programlisting>
+.PHONY: install uninstall
+install: all
+         { test ! -f $(XARCHIVE) || extra="$(XARCHIVE) "`basename $(XARCHIVE) .cmxa`.a }; \
+	 ocamlfind install $(NAME) *.mli *.cmi $(ARCHIVE) META $$extra
+
+uninstall:
+         ocamlfind remove $(NAME)
+</programlisting>
+
+<para>
+Last but not least a cleanup rule:
+</para>
+
+<programlisting>
+.PHONY: clean
+         rm -f *.cmi *.cmo *.cmx *.cma *.cmxa *.a
+</programlisting>
+</sect1>
+
+<sect1>
+<title>Step 2: Write a META file</title>
+
+<para>
+The META file for this simple kind of package looks like:
+</para>
+
+<programlisting>
+requires = "unix str q r s"
+version = "the version string"
+archive(byte) = "p.cma"
+archive(native) = "p.cmxa"
+</programlisting>
+
+<para>
+If you know all that, it will be simple to write such a file by hand. However,
+if you get third-party software, and you want to include it into your package
+base, the META file is no longer obvious. Especially for this case there is the
+<literal>ocamlfind guess</literal> command that tries to
+<emphasis>guess</emphasis> META from a set of files. Invoke it as follows:
+
+<programlisting>
+ocamlfind guess pkgname file ... &gt;META
+</programlisting>
+
+The first argument <literal>pkgname</literal> must be the package name. The
+other arguments should be the .cmi, .cma, and .cmxa files of the compiled
+library.
+</para>
+
+<para>I hope that the result of that is not too bad.</para>
+
+</sect1>
+
+
+</chapter>
+
+
+<!-- ********************************************************************** -->
+
+<chapter>
+<title>FAQs</title>
+
+<sect1>
+<title>Does findlib support the autolink feature of O'Caml 3?</title>
+
+<para>
+<emphasis>Short answer:</emphasis> Findlib is compatible with autolink
+</para>
+
+<para>
+The new archive format introduced with O'Caml 3 can store the linker options
+that are necessary to link an archive. For example:
+
+<programlisting>
+ocamlc -a -o myarchive.cma mymodule.cmo -cclib -lmylibrary
+</programlisting>
+
+This command does not only create the new archive
+<literal>myarchive.cma</literal>, but it also writes into a special section of
+that file that the linker option <literal>-cclib -lmylibrary</literal> is
+necessary to link this archive.
+</para>
+
+<para>
+This means for findlib that most of the "linkopts" attributes in META files
+have become superflous: The compiler itself already knows the linker options,
+we do not need to tell the compiler the options. We could simply leave all
+"linkopts" attributes out.
+</para>
+
+<para>
+Of course, the "linkopts" feature of findlib still works. This is necessary
+because findlib should keep the compatibility with older software, and because
+"linkopts" is more powerful (you can have conditional linker options).
+</para>
+
+<para>
+If you have software that must run in both O'Caml 2 and O'Caml 3 environments,
+you can make your "linkopts" attribute dependent on the "autolink"
+predicate. For example:
+
+<programlisting>
+linkopts = "-cclib -lmylibrary"
+linkopts(autolink) = ""
+</programlisting>
+
+The findlib installation for O'Caml 3 will take the second line which is
+reasonable because ocamlc already knows how to link; the installation for
+O'Caml 2 never sets the "autolink" predicate and therefore uses the first line.
+</para>
+      </sect1>
+
+
+
+      <sect1>
+	<title>Why does findlib not automatically include the -custom option if
+linked with C code?</title>
+
+	<para><emphasis>Short answer:</emphasis>
+Because there are several ways of linking, and findlib is not the
+right instance to find out the right way</para>
+
+	<para>Recent versions of OCaml support DLLs, at least for some
+platforms. Here, the option -custom is not necessary at all, because the
+C libraries can be looked up and loaded at runtime. The option -custom
+would have the effect of forcing static linking.</para>
+
+	<para>But even for platforms without DLL support, there are two
+alternatives. One possibility is to use -custom, and the other is to
+create runtime systems with -make-runtime, and reference them with
+-use-runtime. Fortunately, recent versions of OCaml select now themselves
+-custom automatically if -make-runtime is omitted, so findlib needs not to
+bother with it.
+</para>
+      </sect1>
+
+
+
+      <sect1>
+	<title>Does findlib support linking of applications as well as
+packages?</title>
+
+	<para>
+<emphasis>Short answer:</emphasis> Yes, but it is not very obvious</para>
+
+	<para>
+Applications also depend on other components, they have predicates, sometimes
+they need linker options; there seems to be only little difference between
+applications (stand-alone programs) and packages. If you want to use the
+findlib mechanisms for applications, too, the following trick helps.
+</para>
+
+	<para>
+The environment variable <literal>OCAMLPATH</literal> may contain a
+colon-separated path of possible sitelib locations. It is allowed to include
+"." into the path (Shell commands follow):
+
+<programlisting>
+OCAMLPATH=.
+export OCAMLPATH
+</programlisting>
+
+This makes ".", i.e.  your current directory, another sitelib location. You may
+now put the components of your applications into subdirectories together with
+META files; the hierarchy might look as follows:
+
+<programlisting>
+./Makefile                          global Makefile
+./localpkg1/META                    first local package directory: Contains META
+./localpkg1/...                     ... and more
+./localpkg2/META                    second local package dir: Contains META
+./localpkg2/...                     ... and more
+...
+</programlisting>
+
+From findlib's point of view, these directories are now package directories,
+and you can refer to them on the command line:
+
+<programlisting>
+ocamlfind ocamlc -o ... -linkpkg -package localpkg1,localpkg2,...
+</programlisting>
+
+If you do not want subdirectories, you can also refer to the META file in the
+same directory by the name ".", e.g.:
+
+<programlisting>
+ocamlfind ocamlc -o ... -linkpkg -package .
+</programlisting>
+
+In this case, the linking information will be taken from
+<literal>./META</literal>.
+</para>
+      </sect1>
+
+
+      <sect1>
+        <title>
+	  Does Findlib support camlp4?
+        </title>
+
+	<para>
+	<emphasis>Short answer:</emphasis> Yes, but there is only little
+	documentation.</para>
+
+	<para>
+	Since Findlib-0.4, there is some experimental camlp4 support. For
+example, the following compiler invocation chooses the revised syntax:
+
+<programlisting>
+ocamlfind ocamlc -syntax camlp4r -package camlp4 -c file.ml
+</programlisting>
+
+        As you can see, camlp4 must be included as package, and the
+-syntax option must specify which syntax is selected (either
+<literal>camlp4o</literal> or <literal>camlp4r</literal>).</para>
+
+        <para>
+	If you want to pass additional options to the preprocessor,
+you can use the <literal>-ppopt</literal> option:
+
+<programlisting>
+ocamlfind ocamlc -syntax camlp4r -package camlp4 -ppopt pa_ifdef.cmo -c file.ml
+</programlisting>
+        </para>
+
+	<para>
+From the toploop, the following commands work:
+
+<programlisting>
+$ ocamlfattop
+        Objective Caml version 3.00
+
+# #camlp4o;;                    (* or #camlp4r *)
+        Camlp4 Parsing version 3.00
+
+# _
+</programlisting>
+
+It is assumed that <literal>ocamlfattop</literal> has been previously
+created by
+
+<programlisting>
+ocamlfind ocamlmktop -o ocamlfattop -custom -linkpkg -package findlib
+</programlisting>
+</para>
+
+<sect2>
+<title>The concept</title>
+<para>
+If you have a <literal>-syntax</literal> option on the command line,
+ocamlfind will generate a <literal>-pp</literal> parameter and pass it to the
+invoked compiler. This is performed as follows: The specified packages are
+inspected under a certain set of predicates, the <emphasis>syntax
+predicates</emphasis>. The syntax predicates are <literal>syntax</literal>,
+<literal>preprocessor</literal>, and the predicates following
+<literal>-syntax</literal>. The predicate <literal>syntax</literal> simply
+means that the <literal>-syntax</literal> option has been specified.
+The predicate <literal>preprocessor</literal> means that the preprocessor
+command is being constructed. The predicates added by
+<literal>-syntax</literal> may be used to distinguish between syntax variants
+(currently <literal>camlp4o</literal> and <literal>camlp4r</literal>).
+</para>
+
+<para>The packages are searched for a variable <literal>preprocessor</literal>;
+normally the <literal>camlp4</literal> package defines it as (see its META
+file):
+
+<programlisting>
+preprocessor = "camlp4 -nolib"
+</programlisting>
+
+Now that the name of the preprocessor command is known, the arguments of the
+command are looked up. The META files are evaluated under the syntax
+predicates, and all <literal>archive</literal> variables are collected and
+passed as arguments to the preprocessor. For example, the camlp4 package
+defines:
+
+<programlisting>
+archive(syntax,preprocessor,camlp4o) = "pa_o.cmo pa_op.cmo pr_dump.cmo"
+archive(syntax,preprocessor,camlp4r) = "pa_r.cmo pa_rp.cmo pr_dump.cmo"
+</programlisting>
+
+Note that the predicate <literal>preprocessor</literal> prevents ocamlfind from
+including these archives into the regular list of archives to link.
+</para>
+</sect2>
+<sect2>
+<title>How to write a META file for your own syntax extension</title>
+<para>
+Suppose you have two archives: <literal>pa_myext.cma</literal> contains the
+extension code of camlp4, and <literal>run_myext.cma</literal> contains runtime
+material that must be present in programs compiled with your extensions. Your
+META file should look as follows:
+
+<programlisting>
+requires = "camlp4"
+archive(syntax,toploop) = "pa_myext.cma run_myext.cma"
+archive(syntax,preprocessor) = "pa_myext.cma"
+archive(syntax,byte)    = "run_myext.cma"
+archive(syntax,native)  = "run_myext.cmxa"
+</programlisting>
+
+You may add dependencies on <literal>camlp4o</literal> or
+<literal>camlp4r</literal> if you have archives only working for one of the two
+syntax variants.
+</para>
+
+<para>To compile a program using your syntax extension package, one should use:
+
+<programlisting>
+ocamlfind ocamlc -package yourname -syntax variant ...
+</programlisting>
+</para>
+</sect2>
+
+	<sect2>
+	  <title>Example</title>
+
+<para>The package <literal>xstrp4</literal> defines a syntax extension allowing
+$-substitutions in O'Caml strings. Version 1.0 of this package takes advantage
+from the new camlp4 support of findlib; you may have a look at it for an
+example.</para>
+
+<para>You can find <literal>xstrp4</literal>
+<ulink URL="&url.xstrp4-project;">here</ulink>.</para>
+	</sect2>
+</sect1>
+
+  </chapter>
+
+
+</part>
+
+<!-- ********************************************************************** -->
+
+
+<part>
+<title>Reference manual</title>
+
+&findlibocamlfind;
+
+&findlibmli;
+
+&findlibtopfind;
+
+&findlibmeta;
+
+&findlibconf;
+
+&findlibsitelib;
+
+</part>
+
+
+</book>

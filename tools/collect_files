@@ -1,0 +1,23 @@
+#! /bin/sh
+#
+# $Id: collect_files,v 1.1 2001/10/12 20:19:50 gerd Exp $
+# ----------------------------------------------------------------------
+#
+# usage: collect_files file ...
+#
+# Prints the names of the files passed as arguments which actually
+# exist and are regular files.
+
+for x in "$@"; do
+    if [ -f "$x" ]; then
+	echo "$x"
+    fi
+done
+
+# ======================================================================
+#
+# $Log: collect_files,v $
+# Revision 1.1  2001/10/12 20:19:50  gerd
+# 	Initial revision.
+#
+

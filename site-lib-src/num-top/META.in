@@ -1,0 +1,6 @@
+dnl This file is input of the m4 macro processor.
+`# Specification for the "num-top" library add-on:'
+`requires = ""'
+`version = "[distributed with findlib]"'
+dnl There is not any archive because this directory
+dnl exists only for packaging reasons. See num/META.

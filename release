@@ -1,0 +1,36 @@
+#! /bin/sh
+
+# Simple release script.
+
+set -e
+
+name=findlib
+
+make RELEASE
+
+# Check that all entries in findlib.files are regular files (or symlinks):
+{ while read file; do
+    test -f "$file" || { echo "Not existing or not regular: $file"; exit 1; }
+  done
+} <$name.files
+
+mkdir -p packages
+version=`cat RELEASE`
+echo "packaging version $version"
+
+prefix="packages/$name-$version"
+
+rm -rf "$prefix"
+
+umask 022
+
+{ while read file; do
+    d=`dirname $file`
+    mkdir -p "$prefix/$d"
+    cp --no-dereference "$file" "$prefix/$file"
+  done
+} <$name.files
+
+cd packages
+tar -c -z -f "$name-$version.tar.gz" "$name-$version"
+

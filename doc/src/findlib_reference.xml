@@ -1,0 +1,2082 @@
+<?xml version="1.0"?>
+<REFERENCE
+><TITLE
+>Reference</TITLE><REFENTRY
+><REFMETA
+><REFENTRYTITLE
+>ocamlfind</REFENTRYTITLE><MANVOLNUM
+>1</MANVOLNUM><REFMISCINFO
+>The findlib package manager for OCaml</REFMISCINFO></REFMETA><REFNAMEDIV
+ID="OCAMLFIND"
+><REFNAME
+>ocamlfind</REFNAME><REFPURPOSE
+>[Command-line interface of the Package manager]</REFPURPOSE></REFNAMEDIV><REFSYNOPSISDIV
+><TITLE
+>SYNOPSIS</TITLE><SYNOPSIS
+FORMAT="LINESPECIFIC"
+>       <LINK
+LINKEND="OCAMLFIND.QUERY"
+>ocamlfind query [-help | other options] <REPLACEABLE
+>package_name</REPLACEABLE> ...</LINK>
+   or: <LINK
+LINKEND="OCAMLFIND.OCAMLC"
+>ocamlfind ocamlc [-help | other options] <REPLACEABLE
+>file</REPLACEABLE> ...</LINK>
+   or: <LINK
+LINKEND="OCAMLFIND.OCAMLCP"
+>ocamlfind ocamlcp [-help | other options] <REPLACEABLE
+>file</REPLACEABLE> ...</LINK>
+   or: <LINK
+LINKEND="OCAMLFIND.OCAMLMKTOP"
+>ocamlfind ocamlmktop [-help | other options] <REPLACEABLE
+>file</REPLACEABLE> ...</LINK>
+   or: <LINK
+LINKEND="OCAMLFIND.OCAMLOPT"
+>ocamlfind ocamlopt [-help | other options] <REPLACEABLE
+>file</REPLACEABLE> ...</LINK>
+   or: <LINK
+LINKEND="OCAMLFIND.OCAMLDEP"
+>ocamlfind ocamldep [-help | other options] <REPLACEABLE
+>file</REPLACEABLE> ...</LINK>
+   or: <LINK
+LINKEND="OCAMLFIND.OCAMLBROWSER"
+>ocamlfind ocamlbrowser [-help | other options]</LINK>
+   or: <LINK
+LINKEND="OCAMLFIND.INSTALL"
+>ocamlfind install [-help | other options] <REPLACEABLE
+>package_name</REPLACEABLE> <REPLACEABLE
+>file</REPLACEABLE> ...</LINK>
+   or: <LINK
+LINKEND="OCAMLFIND.REMOVE"
+>ocamlfind remove [-help | other options] <REPLACEABLE
+>package_name</REPLACEABLE></LINK>
+   or: <LINK
+LINKEND="OCAMLFIND.GUESS"
+>ocamlfind guess <REPLACEABLE
+>package_name</REPLACEABLE> <REPLACEABLE
+>file</REPLACEABLE> ...</LINK>
+   or: <LINK
+LINKEND="OCAMLFIND.LIST"
+>ocamlfind list</LINK>
+   or: <LINK
+LINKEND="OCAMLFIND.PRINTCONF"
+>ocamlfind printconf [ variable ]</LINK>
+   or: <LINK
+LINKEND="OCAMLFIND.PKGCMD"
+>ocamlfind <REPLACEABLE
+>package</REPLACEABLE>/<REPLACEABLE
+>command</REPLACEABLE> <REPLACEABLE
+>arg</REPLACEABLE> ...</LINK></SYNOPSIS></REFSYNOPSISDIV><REFSECT1
+><TITLE
+><ANCHOR
+ID="OCAMLFIND.QUERY"
+></ANCHOR>
+  THE "query" SUBCOMMAND</TITLE><REFSECT2
+><TITLE
+>Synopsis</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind query [ -predicates <REPLACEABLE
+>p</REPLACEABLE>  | 
+                  -format <REPLACEABLE
+>f</REPLACEABLE> |
+                  -long-format | 
+                  -i-format |
+                  -l-format | 
+                  -a-format |
+                  -o-format | 
+	          -p-format |
+                  -prefix <REPLACEABLE
+>p</REPLACEABLE> |
+                  -separator <REPLACEABLE
+>s</REPLACEABLE> | 
+                  -suffix <REPLACEABLE
+>s</REPLACEABLE> |
+                  -descendants | 
+                  -recursive  ] <REPLACEABLE
+>package</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
+><TITLE
+>Description</TITLE><PARA
+>This command looks packages up, sorts them optionally, and prints
+attributes of them. If the option -recursive is not specified, exactly
+the packages given on the command line are looked up; if -recursive is
+present, the packages and all their ancestors, or if -descendants is
+present, too, all their descendants are printed.</PARA><PARA
+>Package lookup and the selection of the attributes of the packages can
+be modified by specifying predicates; without a -predicates option the
+empty set of predicates is used. Note that even the lookup is
+influenced by the set of actual predicates as the "requires" variables
+may be conditional.</PARA><PARA
+>What is printed about a package depends on the specified format; there
+are a number of options that modify the format. Some formats denote
+sets of values (such as -format %a), in which case multiple output
+records are printed for every package. (It is even possible to specify
+formats denoting the Cartesian product of sets, such as -format %a%o,
+but this does not make sense.) Before the first output record the
+prefix is printed, and the suffix after the last record. Between two
+records the separator is printed.</PARA></REFSECT2><REFSECT2
+><TITLE
+>Options</TITLE><VARIABLELIST
+><VARLISTENTRY
+><TERM
+>-predicates <REPLACEABLE
+>p</REPLACEABLE></TERM><LISTITEM
+><PARA
+>Sets the set of actual predicates. The argument
+  <REPLACEABLE
+>p</REPLACEABLE> is a list of predicate names separated
+  by commas and/or whitespace. If multiple -predicates options are
+  given, the union of all specified sets is effectively used.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-format <REPLACEABLE
+>f</REPLACEABLE></TERM><LISTITEM
+><PARA
+>Sets the format to the string
+  <REPLACEABLE
+>f</REPLACEABLE>. Characters preceded by a percent sign
+  are interpreted as placeholders; all other characters mean
+  themselves. The defined placeholders are listed below.
+  The default format is "%d".</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-long-format</TERM><LISTITEM
+><PARA
+>Sets the format such that all relevant variables are printed.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-i-format</TERM><LISTITEM
+><PARA
+>Same as -format "-I %d", i.e. directory options for ocamlc are printed.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-l-format</TERM><LISTITEM
+><PARA
+>Same as -format "-ccopt -L%d", i.e. directory options for the
+linker backend are printed.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-a-format</TERM><LISTITEM
+><PARA
+>Same as -format "%a", i.e. archive file names are printed.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-o-format</TERM><LISTITEM
+><PARA
+>Same as -format "%o", i.e. linker options are printed.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-p-format</TERM><LISTITEM
+><PARA
+>Same as -format "%p", i.e. package names are printed.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-prefix <REPLACEABLE
+>p</REPLACEABLE></TERM><LISTITEM
+><PARA
+>Sets the prefix that is printed before the first output record
+  to the given string. The default prefix is the empty string.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-suffix <REPLACEABLE
+>s</REPLACEABLE></TERM><LISTITEM
+><PARA
+>Sets the suffix that is printed after the last output record
+  to the given string. The default suffix is the empty string.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-separator <REPLACEABLE
+>s</REPLACEABLE></TERM><LISTITEM
+><PARA
+>Sets the separator that is printed between output records to
+  the given string. The default separator is a linefeed character.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-recursive</TERM><LISTITEM
+><PARA
+>Not only the packages given on the command line are queried
+  but also all ancestors or descendants. If the option -descendants is
+  specified, too, the descendants are printed, otherwise the
+  ancestors. The packages are topologically sorted.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-descendants</TERM><LISTITEM
+><PARA
+>Instead of the ancestors the descendants of the
+  given packages are queried. This option implies <LITERAL
+MOREINFO="NONE"
+>-recursive</LITERAL>.</PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2><REFSECT2
+><TITLE
+>Placeholders meaningful in the -format option</TITLE><VARIABLELIST
+><VARLISTENTRY
+><TERM
+>%p</TERM><LISTITEM
+><PARA
+>Replaced by the package name</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>%d</TERM><LISTITEM
+><PARA
+>Replaced by the package directory</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>%v</TERM><LISTITEM
+><PARA
+>Replaced by the version string</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>%a</TERM><LISTITEM
+><PARA
+>Replaced by the archive filename. If there is more
+  than one archive, a separate output record is printed for every archive.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>%A</TERM><LISTITEM
+><PARA
+>Replaced by the list of archive filenames.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>%o</TERM><LISTITEM
+><PARA
+>Replaced by one linker option. If there is more than
+  one option, a separate output record is printed for every option.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>%O</TERM><LISTITEM
+><PARA
+>Replaced by the list of linker options.</PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2></REFSECT1><REFSECT1
+><TITLE
+><ANCHOR
+ID="OCAMLFIND.OCAMLC"
+></ANCHOR>
+  <ANCHOR
+ID="OCAMLFIND.OCAMLCP"
+></ANCHOR>
+  <ANCHOR
+ID="OCAMLFIND.OCAMLOPT"
+></ANCHOR>
+  <ANCHOR
+ID="OCAMLFIND.OCAMLMKTOP"
+></ANCHOR>
+  THE SUBCOMMANDS "ocamlc", "ocamlcp", "ocamlopt", and "ocamlmktop"</TITLE><REFSECT2
+><TITLE
+>Synopsis</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind ( ocamlc | ocamlcp | ocamlopt | ocamlmktop )
+          [ -package <REPLACEABLE
+>package-name-list</REPLACEABLE> |
+            -linkpkg |
+	    -predicates <REPLACEABLE
+>pred-name-list</REPLACEABLE> |
+            -dontlink <REPLACEABLE
+>package-name-list</REPLACEABLE> |
+	    -syntax <REPLACEABLE
+>pred-name-list</REPLACEABLE> |
+            -ppopt <REPLACEABLE
+>camlp4-arg</REPLACEABLE> |
+            -dllpath-pkg <REPLACEABLE
+>package-name-list</REPLACEABLE> |
+            -dllpath-all |
+	    -passopt <REPLACEABLE
+>arg</REPLACEABLE> |
+	    <REPLACEABLE
+>standard-option</REPLACEABLE> ]
+          <REPLACEABLE
+>file</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
+><TITLE
+>Description</TITLE><PARA
+>These subcommands are drivers for the compilers with the same names,
+i.e. "ocamlfind ocamlc" is a driver for "ocamlc", and so on. The
+subcommands understand all documented options of the compilers (here
+called <REPLACEABLE
+>standard-options</REPLACEABLE>), but also a few
+more options. If these subcommands are invoked only with standard
+options, they behave as if the underlying compiler had been called
+directly. The extra options modify this.</PARA><PARA
+>Internally, these subcommands transform the given list of options and
+file arguments into an invocation of the driven compiler. This
+transformation only adds options and files, and the relative order of
+the options and files passed directly is unchanged.</PARA><PARA
+>If there are -package options, additional directory search specifiers
+will be included ("-I", and "-ccopt -I"), such that files of all named
+packages and all ancestors can be found.</PARA><PARA
+>The -linkpkg option causes that the packages listed in the -package
+options and all necessary ancestors are linked in. This means that the
+archive files implementing the packages are inserted into the list of
+file arguments.</PARA><PARA
+>As the package database is queried a set of predicates is needed. Most
+predicates are set automatically, see below, but additional predicates
+can be given by a -predicates option.</PARA><PARA
+>If there is a <LITERAL
+MOREINFO="NONE"
+>-syntax</LITERAL> option, the drivers assume that
+a preprocessor is to be used. In this case, the preprocessor command
+is built first in a preprocessor stage, and this command is passed to the
+compiler using the <LITERAL
+MOREINFO="NONE"
+>-pp</LITERAL> option. The set of predicates
+in the preprocessor stage is different from the set in the compiler/linker
+stage.</PARA></REFSECT2><REFSECT2
+><TITLE
+>Options for compiling and linking</TITLE><PARA
+>Here, only the additional options not interpreted by the compiler but
+by the driver itself, and options with additional effects are explained.
+Some options are only meaningful for the preprocessor call, and are
+explained below.</PARA><VARIABLELIST
+><VARLISTENTRY
+><TERM
+>-package <REPLACEABLE
+>package-name-list</REPLACEABLE></TERM><LISTITEM
+><PARA
+>Adds the listed package names to the set of included
+  packages. The package names may be separated by commas and/or
+  whitespace. In the transformed command, for every package of the set
+  of included packages and for any ancestor a directory search option
+  is inserted after the already given options. This means that
+  "-I" and "-ccopt -I" options are added for every package directory.
+  </PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-linkpkg</TERM><LISTITEM
+><PARA
+>Causes that in the transformed command all archives
+  of the packages specified by -packages and all their ancestors are
+  added to the file arguments. More precisely, these archives are
+  inserted before the first given file argument. Furthermore, "-ccopt
+  -L" options for all package directories, and the linker options of
+  the selected packages are added, too. Note that the archives are
+  inserted in topological order while the linker options are added in
+  reverse toplogical order.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-predicates <REPLACEABLE
+>pred-name-list</REPLACEABLE></TERM><LISTITEM
+><PARA
+>Adds the given predicates to the set of actual
+  predicates. The predicates must be separated by commas and/or
+  whitespace. </PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-dontlink <REPLACEABLE
+>package-name-list</REPLACEABLE></TERM><LISTITEM
+><PARA
+>This option modifies the behaviour of
+  -linkpkg. Packages specified here and all ancestors are not linked
+  in. Again the packages are separated by commas and/or whitespace.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-dllpath-pkg <REPLACEABLE
+>package-name-list</REPLACEABLE></TERM><LISTITEM
+><PARA
+>For these packages <LITERAL
+MOREINFO="NONE"
+>-dllpath</LITERAL> options
+  are added to the compiler command. This may be useful when the ld.conf
+  file is not properly configured.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-dllpath-all</TERM><LISTITEM
+><PARA
+>For all linked packages <LITERAL
+MOREINFO="NONE"
+>-dllpath</LITERAL> options
+  are added to the compiler command. This may be useful when the ld.conf
+  file is not properly configured.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-passopt <REPLACEABLE
+>arg</REPLACEABLE></TERM><LISTITEM
+><PARA
+>The argument <REPLACEABLE
+>arg</REPLACEABLE> is
+  passed directly to the underlying compiler. This is needed to
+  specify undocumented compiler options.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-verbose</TERM><LISTITEM
+><PARA
+>This standard option is interpreted by the driver, too.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-thread</TERM><LISTITEM
+><PARA
+>This standard option causes that the predicate "mt"
+  is added to the set of actual predicates.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-p</TERM><LISTITEM
+><PARA
+>This standard option of "ocamlopt" causes that the
+  predicate "gprof" is added to the set of actual predicates.</PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2><REFSECT2
+><TITLE
+>Options for preprocessing</TITLE><PARA
+>The options relevant for the preprocessor are the following:</PARA><VARIABLELIST
+><VARLISTENTRY
+><TERM
+>-package <REPLACEABLE
+>package-name-list</REPLACEABLE></TERM><LISTITEM
+><PARA
+>These packages are considered while looking up the
+  preprocessor arguments. (It does not cause problems that the same
+  -package option is used for this purpose, because the set of predicates
+  is different.) It is recommended to mention at least <LITERAL
+MOREINFO="NONE"
+>camlp4</LITERAL>
+  here if the preprocessor is going to be used.
+  </PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-syntax <REPLACEABLE
+>pred-name-list</REPLACEABLE></TERM><LISTITEM
+><PARA
+>These predicates are assumed to be true in addition
+  to the standard preprocessor predicates. See below for a list.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-ppopt <REPLACEABLE
+>camlp4-arg</REPLACEABLE></TERM><LISTITEM
+><PARA
+>This argument is passed to the camlp4 call.
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2><REFSECT2
+><TITLE
+>Predicates for compiling and linking</TITLE><VARIABLELIST
+><VARLISTENTRY
+><TERM
+>byte</TERM><LISTITEM
+><PARA
+>The "byte" predicate means that one of the bytecode compilers is
+used. It is automatically included into the predicate set if the
+"ocamlc", "ocamlcp", or "ocamlmktop" compiler is used.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>native</TERM><LISTITEM
+><PARA
+>The "native" predicate means that the native compiler is used. It is
+automatically included into the predicate set if the "ocamlopt"
+compiler is used.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>toploop</TERM><LISTITEM
+><PARA
+>The "toploop" predicate means that the toploop is available in the
+linked program. It is automatically included into the predicate set if
+the "ocamlmktop" compiler is used.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>mt</TERM><LISTITEM
+><PARA
+>The "mt" predicate means that the program is multi-threaded. It is
+automatically included into the predicate set if the -thread option is
+given. </PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>mt_posix</TERM><LISTITEM
+><PARA
+>The "mt_posix" predicate means that in the case "mt" is set, too, the
+POSIX libraries are used to implement threads. "mt_posix" is automatically
+included into the predicate set if the variable "type_of_threads" in the
+META description of the "threads" package has the value "posix". This
+is normally the case if "findlib" is configured for POSIX threads.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>gprof</TERM><LISTITEM
+><PARA
+>The "gprof" predicate means that in the case "native" is set, too, the
+program is compiled for profiling. It is automatically included into
+the predicate set if "ocamlopt" is used and the -p option is in
+effect.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>autolink</TERM><LISTITEM
+><PARA
+>The "autolink" predicate means that ocamlc is able to perform automatic
+linking. It is automatically included into the predicate set if ocamlc
+knows automatic linking (from version 3.00), but it is not set if the
+-noautolink option is set.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>syntax</TERM><LISTITEM
+><PARA
+>This predicate is set if there is a <LITERAL
+MOREINFO="NONE"
+>-syntax</LITERAL>
+  option. It is set both for the preprocessor and the compiler/linker stage,
+  and it can be used to find out whether the preprocessor is enabled or not.
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2><REFSECT2
+><TITLE
+>Predicates for preprocessing</TITLE><VARIABLELIST
+><VARLISTENTRY
+><TERM
+>preprocessor</TERM><LISTITEM
+><PARA
+>This predicate is always set while looking up the
+  preprocessor arguments. It can be used to distinguish between the
+  preprocessor stage and the compiler/linker stage.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>syntax</TERM><LISTITEM
+><PARA
+>This predicate is set if there is a <LITERAL
+MOREINFO="NONE"
+>-syntax</LITERAL>
+  option. It is set both for the preprocessor and the compiler/linker stage,
+  and it can be used to find out whether the preprocessor is enabled or not.
+  </PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>camlp4o</TERM><LISTITEM
+><PARA
+>This is the reserved predicate for the standard O'Caml syntax.
+  It can be used in the <LITERAL
+MOREINFO="NONE"
+>-syntax</LITERAL> predicate list.
+  </PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>camlp4r</TERM><LISTITEM
+><PARA
+>This is the reserved predicate for the revised O'Caml syntax.
+  It can be used in the <LITERAL
+MOREINFO="NONE"
+>-syntax</LITERAL> predicate list.
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2><REFSECT2
+><TITLE
+>Special behaviour of "ocamlmktop"</TITLE><PARA
+>As there is a special module <XREF
+ENDTERM="TOPFIND"
+LINKEND="TOPFIND"
+></XREF> that supports loading of packages in scripts, the
+"ocamlmktop" subcommand can add initialization code for this module.
+This extra code is linked in if "findlib" is in the set of effectively
+linked packages.</PARA></REFSECT2><REFSECT2
+><TITLE
+>How to set the names of the compiler executables</TITLE><PARA
+> Normally, the O'Caml bytecode compiler can be called under the name
+<LITERAL
+MOREINFO="NONE"
+>ocamlc</LITERAL>. However, this is not always true; sometimes a
+different name is chosen.</PARA><PARA
+> You can instruct ocamlfind to call executables with other names than
+<LITERAL
+MOREINFO="NONE"
+>ocamlc</LITERAL>, <LITERAL
+MOREINFO="NONE"
+>ocamlopt</LITERAL>,
+<LITERAL
+MOREINFO="NONE"
+>ocamlmktop</LITERAL>, and <LITERAL
+MOREINFO="NONE"
+>ocamlcp</LITERAL>. If present,
+the environment variable <LITERAL
+MOREINFO="NONE"
+>OCAMLFIND_COMMANDS</LITERAL> is interpreted
+as a mapping from the standard names to the actual names of the executables. It
+must have the following format:
+
+<PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+><REPLACEABLE
+>standardname1</REPLACEABLE>=<REPLACEABLE
+>actualname1</REPLACEABLE> <REPLACEABLE
+>standardname2</REPLACEABLE>=<REPLACEABLE
+>actualname2</REPLACEABLE> ...</PROGRAMLISTING></PARA><PARA
+>Example: You may set <LITERAL
+MOREINFO="NONE"
+>OCAMLFIND_COMMANDS</LITERAL> as follows:
+
+<PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>OCAMLFIND_COMMANDS='ocamlc=ocamlc-3.00 ocamlopt=ocamlopt-3.00'
+export OCAMLFIND_COMMANDS</PROGRAMLISTING></PARA><PARA
+>Alternatively, you can change the configuration file
+<LINK
+LINKEND="FINDLIB.CONF"
+>findlib.conf</LINK>.</PARA></REFSECT2></REFSECT1><REFSECT1
+><TITLE
+><ANCHOR
+ID="OCAMLFIND.OCAMLDEP"
+></ANCHOR>
+  THE "ocamldep" SUBCOMMAND</TITLE><REFSECT2
+><TITLE
+>Synopsis</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind ocamldep [-package <REPLACEABLE
+>package-name-list</REPLACEABLE> |
+                    -syntax <REPLACEABLE
+>pred-name-list</REPLACEABLE> |
+                    -ppopt <REPLACEABLE
+>camlp4-arg</REPLACEABLE> |
+                    -passopt <REPLACEABLE
+>arg</REPLACEABLE> |
+                    -verbose |
+                    <REPLACEABLE
+>standard-option</REPLACEABLE>] <REPLACEABLE
+>file</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
+><TITLE
+>Description</TITLE><PARA
+>This command is a driver for the tool <LITERAL
+MOREINFO="NONE"
+>ocamldep</LITERAL> of the
+O'Caml distribution. This driver is only useful in conjunction with
+the preprocessor camlp4; otherwise it does not provide more functions
+than <LITERAL
+MOREINFO="NONE"
+>ocamldep</LITERAL> itself.</PARA></REFSECT2><REFSECT2
+><TITLE
+>Options</TITLE><PARA
+>Here, only the additional options not interpreted by <LITERAL
+MOREINFO="NONE"
+>ocamldep</LITERAL>
+but
+by the driver itself, and options with additional effects are explained.</PARA><VARIABLELIST
+><VARLISTENTRY
+><TERM
+>-package <REPLACEABLE
+>package-name-list</REPLACEABLE></TERM><LISTITEM
+><PARA
+>The packages named here are only used to look up the
+preprocessor options. The package <LITERAL
+MOREINFO="NONE"
+>camlp4</LITERAL> should be
+specified anyway, but further packages that add capabilities to the
+preprocessor can also be passed.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-syntax <REPLACEABLE
+>pred-name-list</REPLACEABLE></TERM><LISTITEM
+><PARA
+>The predicates that are in effect during the look-up
+of the preprocessor options. At least, either <LITERAL
+MOREINFO="NONE"
+>camlp4o</LITERAL>
+(selecting the normal syntax), or <LITERAL
+MOREINFO="NONE"
+>camlp4r</LITERAL> (selecting
+the revised syntax) should be specified.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-ppopt <REPLACEABLE
+>camlp4-arg</REPLACEABLE></TERM><LISTITEM
+><PARA
+>An option that is passed through to the camlp4 call.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-passopt <REPLACEABLE
+>arg</REPLACEABLE></TERM><LISTITEM
+><PARA
+>An option that is passed through to the ocamldep call.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-verbose</TERM><LISTITEM
+><PARA
+>Displays the resulting ocamldep command (for debugging)</PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2><REFSECT2
+><TITLE
+>Example</TITLE><PARA
+>A typical way of using this driver:
+
+<PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind ocamldep -package camlp4,xstrp4 -syntax camlp4r file1.ml file2.ml</PROGRAMLISTING>
+
+This command outputs the dependencies of <LITERAL
+MOREINFO="NONE"
+>file1.ml</LITERAL> and
+<LITERAL
+MOREINFO="NONE"
+>file2.ml</LITERAL>, although these modules make use of the
+syntax extensions provided by <LITERAL
+MOREINFO="NONE"
+>xstrp4</LITERAL> and are written
+in revised syntax.</PARA></REFSECT2></REFSECT1><REFSECT1
+><TITLE
+><ANCHOR
+ID="OCAMLFIND.OCAMLBROWSER"
+></ANCHOR>
+  THE "ocamlbrowser" SUBCOMMAND</TITLE><REFSECT2
+><TITLE
+>Synopsis</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind ocamlbrowser [-package <REPLACEABLE
+>package-name-list</REPLACEABLE> |
+                        -all |
+                        -passopt <REPLACEABLE
+>arg</REPLACEABLE> ]</PROGRAMLISTING></REFSECT2><REFSECT2
+><TITLE
+>Description</TITLE><PARA
+>This driver calls the <LITERAL
+MOREINFO="NONE"
+>ocamlbrowser</LITERAL> with package options.
+With <LITERAL
+MOREINFO="NONE"
+>-package</LITERAL>, the specified packages are included into
+the search path of the browser, and the modules of these packages become
+visible (in addition to the standard library). The option <LITERAL
+MOREINFO="NONE"
+>-all</LITERAL> causes that all packages are selected that are managed by findlib.</PARA><PARA
+>As for other drivers, the option <LITERAL
+MOREINFO="NONE"
+>-passopt</LITERAL> can be used
+to pass arguments directly to the <LITERAL
+MOREINFO="NONE"
+>ocamlbrowser</LITERAL> program.</PARA></REFSECT2></REFSECT1><REFSECT1
+><TITLE
+><ANCHOR
+ID="OCAMLFIND.INSTALL"
+></ANCHOR>
+  THE "install" SUBCOMMAND</TITLE><REFSECT2
+><TITLE
+>Synopsis</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind install [ -destdir <REPLACEABLE
+>directory</REPLACEABLE> ]
+                  [ -metadir <REPLACEABLE
+>directory</REPLACEABLE> ]
+	          [ -ldconf <REPLACEABLE
+>path</REPLACEABLE> ]
+                  [ -dont-add-directory-directive ]
+	          [ -dll ] [ -nodll ]
+                  <REPLACEABLE
+>package_name</REPLACEABLE> <REPLACEABLE
+>file</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
+><TITLE
+>Description</TITLE><PARA
+>This subcommand installs a new package either at the default location
+(see the variable <LITERAL
+MOREINFO="NONE"
+>destdir</LITERAL> of
+<LINK
+LINKEND="FINDLIB.CONF"
+>findlib.conf</LINK>), or in the directory
+specified by the -destdir option. This
+means that a new package directory is created and that the files on
+the command line are copied to this directory. It is required that a
+<LITERAL
+MOREINFO="NONE"
+>META</LITERAL> file is one of the files copied to the target
+directory.</PARA><PARA
+>Note that package directories should be flat (no
+subdirectories). Existing packages are never overwritten.</PARA><PARA
+>It is possible to have a separate directory for all the META files. If
+you want that, you have either to set the variable
+<LITERAL
+MOREINFO="NONE"
+>metadir</LITERAL> of 
+<LINK
+LINKEND="FINDLIB.CONF"
+>findlib.conf</LINK>, or to specify the
+-metadir option. In this case, the file called META is copied to the
+specified directory and renamed to META.p (where p is the package
+name), while all the other files are copied to the package
+directory as usual. Furthermore, the META file is modified such that the
+<LITERAL
+MOREINFO="NONE"
+>directory</LITERAL> variable contains the path of the package
+directory. </PARA><PARA
+> 
+The option -dont-add-directory-directive prevents the installer from
+adding a <LITERAL
+MOREINFO="NONE"
+>directory</LITERAL> variable.</PARA><PARA
+>If there are files ending in the suffixes <LITERAL
+MOREINFO="NONE"
+>.so</LITERAL> or
+<LITERAL
+MOREINFO="NONE"
+>.dll</LITERAL>, the package directory will be added to the
+DLL configuration file <LITERAL
+MOREINFO="NONE"
+>ld.conf</LITERAL>, such that the dynamic
+loader can find the DLL. The location of this file can be overriden by
+the -ldconf option. To turn this feature off, use "-ldconf ignore";
+this causes that the ld.conf file is not modified.</PARA><PARA
+>However, if there is a libexec directory in site-lib, the DLLs are not
+installed in the package directory, but in this directory that is
+shared by all packages that are installed at the same location.
+In this case, the configuration file <LITERAL
+MOREINFO="NONE"
+>ld.conf</LITERAL> is
+not modified, so you do not need to say "-ldconf ignore" if you
+prefer this style of installation.</PARA><PARA
+>The options -dll and -nodll can be used to control exactly which files
+are considered as DLLs and which not. By default, the mentioned
+suffix rule is in effect: files ending in ".so" (Unix) or ".dll"
+(Windows) are DLLs. The switch -dll changes this, and all following
+files are considered as DLLs, regardless of their suffix. The switch 
+-nodll expresses that the following files are not DLLs, even if they
+have a DLL-like suffix. For example, in the following call the files
+f1 and f2 are handled by the suffix rule; f3 and f4 are DLLs anyway;
+and f5 and f6 are not DLLs:
+
+<PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind install p f1 f2 -dll f3 f4 -nodll f5 f6</PROGRAMLISTING></PARA></REFSECT2></REFSECT1><REFSECT1
+><TITLE
+><ANCHOR
+ID="OCAMLFIND.REMOVE"
+></ANCHOR>
+  THE "remove" SUBCOMMAND</TITLE><REFSECT2
+><TITLE
+>Synopsis</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind remove [ -destdir <REPLACEABLE
+>directory</REPLACEABLE> ]
+                 [ -metadir <REPLACEABLE
+>directory</REPLACEABLE> ]
+                 [ -ldconf <REPLACEABLE
+>path</REPLACEABLE> ]
+                 <REPLACEABLE
+>package_name</REPLACEABLE></PROGRAMLISTING></REFSECT2><REFSECT2
+><TITLE
+>Description</TITLE><PARA
+>The package will removed if it is installed at the default location 
+(see the variable <LITERAL
+MOREINFO="NONE"
+>destdir</LITERAL> of
+<LINK
+LINKEND="FINDLIB.CONF"
+>findlib.conf</LINK>). If the package
+resides at a different location, it will not be removed by default;
+however, you can pass an alternate directory for packages by the
+-destdir option. (This must be the same directory as specified at
+installation time.)</PARA><PARA
+>Note that package directories should be flat (no subdirectories); this
+subcommand cannot remove deep package directories. </PARA><PARA
+>If you have a separate directory for META files, you must either
+configure this directory by the <LITERAL
+MOREINFO="NONE"
+>metadir</LITERAL> variable
+of <LINK
+LINKEND="FINDLIB.CONF"
+>findlib.conf</LINK>, or by specifying
+the -metadir option.</PARA><PARA
+> 
+The command does not fail if the package and/or the META
+file cannot be located. You will get a warning only in this case.</PARA><PARA
+>If the package directory is mentioned in the <LITERAL
+MOREINFO="NONE"
+>ld.conf</LITERAL>
+configuration file for DLLs, it will be tried to remove this entry
+from the file. The location of this file can be overriden by
+the -ldconf option. To turn this feature off, use "-ldconf ignore";
+this causes that the ld.conf file is not modified.</PARA><PARA
+>If there is a libexec directory, it is checked whether the package
+owns any of the files in this directory, and the owned files will
+be deleted.</PARA></REFSECT2></REFSECT1><REFSECT1
+><TITLE
+><ANCHOR
+ID="OCAMLFIND.GUESS"
+></ANCHOR>
+  THE "guess" SUBCOMMAND</TITLE><REFSECT2
+><TITLE
+>Synopsis</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind guess <REPLACEABLE
+>package_name</REPLACEABLE> <REPLACEABLE
+>file</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
+><TITLE
+>Description</TITLE><PARA
+>This command is experimental: It tries to determine the META file by
+inspecting the files to install for a package, and by comparing these
+files with the current package base.</PARA><PARA
+>Simply call this command after you have built your library and before
+you want to install it for the first time. The first argument must be
+the package name, and the other arguments must be the files you are
+going to install. The command inspects the .cmi and .cma/.cmxa files
+and writes a META file to stdout. (Of course, it does not install any
+of these files.)</PARA><PARA
+>Note that the generated META file is guessed and may be wrong.</PARA></REFSECT2></REFSECT1><REFSECT1
+><TITLE
+><ANCHOR
+ID="OCAMLFIND.LIST"
+></ANCHOR>
+  THE "list" SUBCOMMAND</TITLE><REFSECT2
+><TITLE
+>Synopsis</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind list</PROGRAMLISTING></REFSECT2><REFSECT2
+><TITLE
+>Description</TITLE><PARA
+>This command lists all packages in the search path.</PARA></REFSECT2></REFSECT1><REFSECT1
+><TITLE
+><ANCHOR
+ID="OCAMLFIND.PRINTCONF"
+></ANCHOR>
+  THE "printconf" SUBCOMMAND</TITLE><REFSECT2
+><TITLE
+>Synopsis</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind printconf [ conf | path | destdir | metadir | stdlib | ldconf ]</PROGRAMLISTING></REFSECT2><REFSECT2
+><TITLE
+>Description</TITLE><PARA
+>This command prints the effective configuration after reading the
+configuration file, and after applying the various environment
+variables overriding settings. When called without arguments, the command
+prints all configuration options in a human-readable form. When called
+with an argument, only the value of the requested option is printed without
+explaining texts:</PARA><VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>conf</LITERAL></TERM><LISTITEM
+><PARA
+>Prints the location of the configuration file findlib.conf
+  </PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>path</LITERAL></TERM><LISTITEM
+><PARA
+>Prints the search path for packages. The members of the
+  path are separated by linefeeds.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>destdir</LITERAL></TERM><LISTITEM
+><PARA
+>Prints the location where package are installed and
+  removed by default.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>metadir</LITERAL></TERM><LISTITEM
+><PARA
+>Prints the location where META files are installed and
+  removed (if the alternative layout is used).</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>stdlib</LITERAL></TERM><LISTITEM
+><PARA
+>Prints the location of the standard library.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>ldconf</LITERAL></TERM><LISTITEM
+><PARA
+>Prints the location of the ld.conf file</PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2></REFSECT1><REFSECT1
+><TITLE
+><ANCHOR
+ID="OCAMLFIND.PKGCMD"
+></ANCHOR>
+  THE SUBCOMMAND CALLING PACKAGE PROGRAMS</TITLE><REFSECT2
+><TITLE
+>Synopsis</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind <REPLACEABLE
+>pkg</REPLACEABLE>/<REPLACEABLE
+>cmd</REPLACEABLE> <REPLACEABLE
+>argument</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
+><TITLE
+>Description</TITLE><PARA
+>This subcommand is useful to call programs that are installed in
+package directories. It looks up the directory for 
+<REPLACEABLE
+>pkg</REPLACEABLE> and calls the command named
+<REPLACEABLE
+>cmd</REPLACEABLE> in this directory. The remaining arguments
+are passed to this command.</PARA><PARA
+>argv(0) contains the absolute path to the command, and argv(1) and
+the following argv entries contain the arguments. The working directory
+is not changed.</PARA><PARA
+>Example: To call the program "x" that is installed in package "p",
+with arguments "y" and "z", run:</PARA><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind p/x y z</PROGRAMLISTING></REFSECT2></REFSECT1></REFENTRY><REFENTRY
+><REFMETA
+><REFENTRYTITLE
+>Findlib</REFENTRYTITLE><MANVOLNUM
+>3</MANVOLNUM><REFMISCINFO
+>The findlib package manager for OCaml</REFMISCINFO></REFMETA><REFNAMEDIV
+ID="FINDLIB"
+><REFNAME
+>Findlib</REFNAME><REFPURPOSE
+>[Module for package management]</REFPURPOSE></REFNAMEDIV><REFSYNOPSISDIV
+><TITLE
+>SIGNATURE</TITLE><SYNOPSIS
+FORMAT="LINESPECIFIC"
+>module Findlib :
+  sig
+    <LINK
+ENDTERM="VAL.FINDLIB.PACKAGE-DIRECTORY"
+LINKEND="FINDLIB.PACKAGE-DIRECTORY"
+></LINK>
+    <LINK
+ENDTERM="VAL.FINDLIB.PACKAGE-PROPERTY"
+LINKEND="FINDLIB.PACKAGE-PROPERTY"
+></LINK>
+    <LINK
+ENDTERM="VAL.FINDLIB.PACKAGE-ANCESTORS"
+LINKEND="FINDLIB.PACKAGE-ANCESTORS"
+></LINK>
+    <LINK
+ENDTERM="VAL.FINDLIB.PACKAGE-DEEP-ANCESTORS"
+LINKEND="FINDLIB.PACKAGE-DEEP-ANCESTORS"
+></LINK>
+    <LINK
+ENDTERM="VAL.FINDLIB.DEFAULT-LOCATION"
+LINKEND="FINDLIB.DEFAULT-LOCATION"
+></LINK>
+
+    (* Note: This signature is incomplete. See findlib.mli for the
+     * full signature.
+     *)
+
+  end</SYNOPSIS></REFSYNOPSISDIV><REFSECT1
+><TITLE
+>PACKAGING</TITLE><PARA
+>The Findlib module is part of the "findlib" package. In order to link
+it in, it is sufficient to link "findlib" in, e.g.</PARA><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind ocamlc <REPLACEABLE
+>options</REPLACEABLE> -package findlib -linkpkg <REPLACEABLE
+>options</REPLACEABLE></PROGRAMLISTING><PARA
+>There are archives for the bytecode compiler and for the native
+compiler; for single-threaded and for multi-threaded applications, and
+there is a special addition for toploops.</PARA></REFSECT1><REFSECT1
+><TITLE
+>DESCRIPTION</TITLE><PARA
+>The Findlib module is the primary interface of the findlib library. It
+contains functions to lookup packages, to interpret <XREF
+ENDTERM="META"
+LINKEND="META"
+></XREF> files, and to determine the ancestors of
+packages.</PARA><REFSECT2
+><TITLE
+><ANCHOR
+ID="FINDLIB.PACKAGE-DIRECTORY"
+></ANCHOR>
+Findlib.package_directory <REPLACEABLE
+>pkg</REPLACEABLE></TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.FINDLIB.PACKAGE-DIRECTORY"
+>val package_directory : string -&gt; string</PROGRAMLISTING><PARA
+>Gets the absolute path of the directory where the package
+<REPLACEABLE
+>pkg</REPLACEABLE> is stored. The exception Not_found is
+raised if the package could not be found.
+Other exceptions may occur as file I/O is done.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="FINDLIB.PACKAGE-PROPERTY"
+></ANCHOR>
+Findlib.package_property <REPLACEABLE
+>predicates</REPLACEABLE>
+<REPLACEABLE
+>pkg</REPLACEABLE> <REPLACEABLE
+>variable</REPLACEABLE></TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.FINDLIB.PACKAGE-PROPERTY"
+>val package_property : string list -&gt; string -&gt; string -&gt; string</PROGRAMLISTING><PARA
+>Determines the value of the <REPLACEABLE
+>variable</REPLACEABLE>
+defined in the <XREF
+ENDTERM="META"
+LINKEND="META"
+></XREF> file of package
+<REPLACEABLE
+>pkg</REPLACEABLE> with the given set of
+<REPLACEABLE
+>predicates</REPLACEABLE>. The exception Not_found is
+raised if the package or the variable could not be found.  Other
+exceptions may occur as file I/O is done.</PARA><REFSECT3
+><TITLE
+>Examples</TITLE><PARA
+>Get the value of the "requires" variable of package "p" with an empty
+set of predicates:</PARA><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>Findlib.package_property [] "p" "requires"</PROGRAMLISTING><PARA
+>Get the value of the "archive" variable of package "p" for
+multi-threaded bytecode applications:</PARA><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>Findlib.package_property [ "mt"; "byte" ] "p" "archive"</PROGRAMLISTING></REFSECT3></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="FINDLIB.PACKAGE-ANCESTORS"
+></ANCHOR>
+Findlib.package_ancestors <REPLACEABLE
+>predicates</REPLACEABLE>
+  <REPLACEABLE
+>pkg</REPLACEABLE></TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.FINDLIB.PACKAGE-ANCESTORS"
+>val package_ancestors : string list -&gt; string -&gt; string list</PROGRAMLISTING><PARA
+>Determines the direct ancestors of package
+<REPLACEABLE
+>pkg</REPLACEABLE> for the set of
+<REPLACEABLE
+>predicates</REPLACEABLE>. The returned list has no
+specific order. The exception Not_found is raised if the package could
+not be found. The exception Failure is raised if one of the ancestors
+could not be found, or if a circular dependency has been
+detected. Other exceptions may occur as file I/O is done.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="FINDLIB.PACKAGE-DEEP-ANCESTORS"
+></ANCHOR>
+Findlib.package_deep_ancestors <REPLACEABLE
+>predicates</REPLACEABLE>
+  <REPLACEABLE
+>pkglist</REPLACEABLE></TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.FINDLIB.PACKAGE-DEEP-ANCESTORS"
+>val package_deep_ancestors : string list -&gt; string list -&gt; string list</PROGRAMLISTING><PARA
+>Determines the list of direct or indirect ancestors of the packages in
+<REPLACEABLE
+>pkglist</REPLACEABLE> for the set of
+<REPLACEABLE
+>predicates</REPLACEABLE>. The returned list is
+topologically sorted.
+The exception Not_found is raised if the package could
+not be found. The exception Failure is raised if one of the ancestors
+could not be found, or if a circular dependency has been
+detected. Other exceptions may occur as file I/O is done.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="FINDLIB.DEFAULT-LOCATION"
+></ANCHOR>
+Findlib.default_location ()</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.FINDLIB.DEFAULT-LOCATION"
+>val default_location : unit -&gt; string</PROGRAMLISTING><PARA
+>Gets the default location where new packages will be installed.</PARA></REFSECT2></REFSECT1></REFENTRY><REFENTRY
+><REFMETA
+><REFENTRYTITLE
+>Topfind</REFENTRYTITLE><MANVOLNUM
+>3</MANVOLNUM><REFMISCINFO
+>The findlib package manager for OCaml</REFMISCINFO></REFMETA><REFNAMEDIV
+ID="TOPFIND"
+><REFNAME
+>Topfind</REFNAME><REFPURPOSE
+>[Module to load packages into toploops]</REFPURPOSE></REFNAMEDIV><REFSYNOPSISDIV
+><TITLE
+>SIGNATURE</TITLE><SYNOPSIS
+FORMAT="LINESPECIFIC"
+>module Topfind :
+  sig
+    <LINK
+ENDTERM="VAL.TOPFIND.PREDICATES"
+LINKEND="TOPFIND.PREDICATES"
+></LINK>
+    <LINK
+ENDTERM="VAL.TOPFIND.ADD-PREDICATES"
+LINKEND="TOPFIND.ADD-PREDICATES"
+></LINK>
+    <LINK
+ENDTERM="VAL.TOPFIND.SYNTAX"
+LINKEND="TOPFIND.SYNTAX"
+></LINK>
+    <LINK
+ENDTERM="VAL.TOPFIND.STANDARD-SYNTAX"
+LINKEND="TOPFIND.STANDARD-SYNTAX"
+></LINK>
+    <LINK
+ENDTERM="VAL.TOPFIND.REVISED-SYNTAX"
+LINKEND="TOPFIND.REVISED-SYNTAX"
+></LINK>
+    <LINK
+ENDTERM="VAL.TOPFIND.DONT-LOAD"
+LINKEND="TOPFIND.DONT-LOAD"
+></LINK>
+    <LINK
+ENDTERM="VAL.TOPFIND.DONT-LOAD-DEEPLY"
+LINKEND="TOPFIND.DONT-LOAD-DEEPLY"
+></LINK>
+    <LINK
+ENDTERM="VAL.TOPFIND.LOAD"
+LINKEND="TOPFIND.LOAD"
+></LINK>
+    <LINK
+ENDTERM="VAL.TOPFIND.LOAD-DEEPLY"
+LINKEND="TOPFIND.LOAD-DEEPLY"
+></LINK>
+    <LINK
+ENDTERM="VAL.TOPFIND.RESET"
+LINKEND="TOPFIND.RESET"
+></LINK>
+  end</SYNOPSIS></REFSYNOPSISDIV><REFSECT1
+><TITLE
+>DIRECTIVES</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+><LINK
+ENDTERM="VAL.TOPFIND.REQUIRE"
+LINKEND="TOPFIND.REQUIRE"
+></LINK>
+<LINK
+ENDTERM="VAL.TOPFIND.CAMLP4O"
+LINKEND="TOPFIND.CAMLP4O"
+></LINK>
+<LINK
+ENDTERM="VAL.TOPFIND.CAMLP4R"
+LINKEND="TOPFIND.CAMLP4R"
+></LINK>
+<LINK
+ENDTERM="VAL.TOPFIND.LIST"
+LINKEND="TOPFIND.LIST"
+></LINK></PROGRAMLISTING></REFSECT1><REFSECT1
+><TITLE
+>PACKAGING</TITLE><PARA
+>The Topfind module is part of the "findlib" package. The module
+depends on the presence of a toploop. When building a toploop, it is
+automatically linked in if "findlib" is linked in, e.g.</PARA><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind ocamlmktop <REPLACEABLE
+>options</REPLACEABLE> -package findlib -linkpkg <REPLACEABLE
+>options</REPLACEABLE></PROGRAMLISTING><PARA
+>When the platform supports DLLs, another possibility to get a toploop
+with findlib directives is to load the file "topfind" (normally installed
+in the standard library directory):</PARA><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>~ &gt; ocaml
+        Objective Caml version 3.04
+
+# #use "topfind";;
+Findlib has been successfully loaded. Additional directives:
+  #require "package";;      to load a package
+  #list;;                   to list the available packages
+  #camlp4o;;                to load camlp4 (standard syntax)
+  #camlp4r;;                to load camlp4 (revised syntax)
+  Topfind.reset();;         to force that packages will be reloaded
+
+- : unit = ()
+# _</PROGRAMLISTING><PARA
+>This works even in scripts (but the startup message is suppressed in this
+case).</PARA><PARA
+>The module is not thread-safe; if used in a multi-threaded script, all
+packgage loading must have happened before the first thread forks.</PARA></REFSECT1><REFSECT1
+><TITLE
+>DESCRIPTION</TITLE><PARA
+>The Topfind module contains some functions simplifying package loading
+in scripts. Most important, there is a new directive "#require" for
+the same purpose.</PARA><PARA
+>The Topfind module needs some initialization, in particular the <LINK
+LINKEND="TOPFIND.PREDICATES"
+>predicates</LINK> variable needs to be
+set, and the packages already compiled into the toploop needs to be
+declared by the <LINK
+LINKEND="TOPFIND.DONT-LOAD"
+>don't_load</LINK>
+function. If the toploop has been built by <XREF
+ENDTERM="OCAMLFIND"
+LINKEND="OCAMLFIND"
+></XREF>, the necessary initialization is
+automatically compiled in.</PARA><REFSECT2
+><TITLE
+><ANCHOR
+ID="TOPFIND.PREDICATES"
+></ANCHOR>
+The variable Topfind.predicates</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.TOPFIND.PREDICATES"
+>val predicates : string list ref</PROGRAMLISTING><PARA
+>The variable contains the set of predicates that is assumed when
+packages are loaded.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="TOPFIND.ADD-PREDICATES"
+></ANCHOR>
+Topfind.add_predicates <REPLACEABLE
+>predlist</REPLACEABLE></TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.TOPFIND.ADD-PREDICATES"
+>val add_predicates : string list -&gt; unit</PROGRAMLISTING><PARA
+>This function adds the passed predicates <REPLACEABLE
+>predlist</REPLACEABLE>
+to the variable
+<LITERAL
+MOREINFO="NONE"
+>predicates</LITERAL>.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="TOPFIND.SYNTAX"
+></ANCHOR>
+Topfind.syntax <REPLACEABLE
+>variant</REPLACEABLE></TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.TOPFIND.SYNTAX"
+>val syntax : string -&gt; unit</PROGRAMLISTING><PARA
+>This function emulates the <LITERAL
+MOREINFO="NONE"
+>-syntax</LITERAL> command line
+switch of ocamlfind.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="TOPFIND.STANDARD-SYNTAX"
+></ANCHOR>
+Topfind.standard_syntax ()</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.TOPFIND.STANDARD-SYNTAX"
+>val standard_syntax : unit -&gt; unit</PROGRAMLISTING><PARA
+>The same as <LITERAL
+MOREINFO="NONE"
+>syntax "camlp4o"</LITERAL>.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="TOPFIND.REVISED-SYNTAX"
+></ANCHOR>
+Topfind.revised_syntax ()</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.TOPFIND.REVISED-SYNTAX"
+>val revised_syntax : unit -&gt; unit</PROGRAMLISTING><PARA
+>The same as <LITERAL
+MOREINFO="NONE"
+>syntax "camlp4r"</LITERAL>.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="TOPFIND.DONT-LOAD"
+></ANCHOR>
+Topfind.don't_load <REPLACEABLE
+>pkglist</REPLACEABLE></TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.TOPFIND.DONT-LOAD"
+>val don't_load : string list -&gt; unit</PROGRAMLISTING><PARA
+>Declares the packages enumerated in <REPLACEABLE
+>pkglist</REPLACEABLE>
+as being linked into the toploop.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="TOPFIND.DONT-LOAD-DEEPLY"
+></ANCHOR>
+Topfind.don't_load_deeply <REPLACEABLE
+>pkglist</REPLACEABLE></TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.TOPFIND.DONT-LOAD-DEEPLY"
+>val don't_load_deeply : string list -&gt; unit</PROGRAMLISTING><PARA
+>Declares the packages enumerated in <REPLACEABLE
+>pkglist</REPLACEABLE>
+and all direct and indirect ancestors as being linked into the toploop.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="TOPFIND.LOAD"
+></ANCHOR>
+Topfind.load <REPLACEABLE
+>pkglist</REPLACEABLE></TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.TOPFIND.LOAD"
+>val load : string list -&gt; unit</PROGRAMLISTING><PARA
+>The packages enumerated in <REPLACEABLE
+>pkglist</REPLACEABLE> are
+loaded in turn; packages that have already been loaded or that have
+been declared as linked in are skipped.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="TOPFIND.LOAD-DEEPLY"
+></ANCHOR>
+Topfind.load_deeply <REPLACEABLE
+>pkglist</REPLACEABLE></TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.TOPFIND.LOAD-DEEPLY"
+>val load_deeply : string list -&gt; unit</PROGRAMLISTING><PARA
+>The packages enumerated in <REPLACEABLE
+>pkglist</REPLACEABLE> and all
+direct or indirect ancestors are loaded in topological order;
+packages that have already been loaded or that have
+been declared as linked in are skipped.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="TOPFIND.RESET"
+></ANCHOR>
+Topfind.reset ()</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.TOPFIND.RESET"
+>val reset : unit -&gt; unit</PROGRAMLISTING><PARA
+>This function causes that Topfind forgets that any package has already
+been loaded. Infomation about packages linked into the toploop remain
+intact. The effect of this function is that all dynamically loaded
+packages will be loaded again when <LINK
+LINKEND="TOPFIND.LOAD"
+>load</LINK>, <LINK
+LINKEND="TOPFIND.LOAD-DEEPLY"
+>load_deeply</LINK> functions, or the
+<LINK
+LINKEND="TOPFIND.REQUIRE"
+>#require</LINK> directive are executed.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="TOPFIND.REQUIRE"
+></ANCHOR>
+#require "<REPLACEABLE
+>package-name-list</REPLACEABLE>";;</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.TOPFIND.REQUIRE"
+>#require "<REPLACEABLE
+>package-name-list</REPLACEABLE>";;</PROGRAMLISTING><PARA
+>The argument of the directive is a list of package names, separated by
+commas and/or whitespace. The directive has the same effect as <LINK
+LINKEND="TOPFIND.LOAD-DEEPLY"
+>load_deeply</LINK>, i.e. the listed
+packages  and all
+direct or indirect ancestors are loaded in topological order;
+packages that have already been loaded or that have
+been declared as linked in are skipped.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="TOPFIND.CAMLP4O"
+></ANCHOR>
+#camlp4o ;;</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.TOPFIND.CAMLP4O"
+>#camlp4o ;;</PROGRAMLISTING><PARA
+>Selects the standard syntax and loads the camlp4 preprocessor.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="TOPFIND.CAMLP4R"
+></ANCHOR>
+#camlp4r ;;</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.TOPFIND.CAMLP4R"
+>#camlp4r ;;</PROGRAMLISTING><PARA
+>Selects the revised syntax and loads the camlp4 preprocessor.</PARA></REFSECT2><REFSECT2
+><TITLE
+><ANCHOR
+ID="TOPFIND.LIST"
+></ANCHOR>
+#list ;;</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+ID="VAL.TOPFIND.LIST"
+>#list ;;</PROGRAMLISTING><PARA
+>Lists the packages that are in the search path.</PARA></REFSECT2></REFSECT1></REFENTRY><REFENTRY
+><REFMETA
+><REFENTRYTITLE
+>META</REFENTRYTITLE><MANVOLNUM
+>5</MANVOLNUM><REFMISCINFO
+>The findlib package manager for OCaml</REFMISCINFO></REFMETA><REFNAMEDIV
+ID="META"
+><REFNAME
+>META</REFNAME><REFPURPOSE
+>[File that specifies metainformation of OCaml packages]</REFPURPOSE></REFNAMEDIV><REFSYNOPSISDIV
+><TITLE
+>GRAMMAR</TITLE><SYNOPSIS
+FORMAT="LINESPECIFIC"
+>            entry ::= variable_name [ formal_predicates ] '=' value
+formal_predicates ::= '(' formal_predicate { ',' formal_predicate } ')'
+    variable_name ::= name
+ formal_predicate ::= name
+             name ::= [ 'A'-'Z' 'a'-'z' '0'-'9' '_' ]+
+            value ::= '"' character* '"'</SYNOPSIS></REFSYNOPSISDIV><REFSECT1
+><TITLE
+>DESCRIPTION</TITLE><PARA
+>If a package directory contains a file with the fixed name "META" it
+is interpreted as described here. The file is a sequence of entries
+following the given grammar; every entry defines a variable under a
+certain condition given by the list of formal predicates.</PARA><PARA
+>There is a list of predefined variables and a list of standard
+predicates. These variables define: required packages, version
+information, directories, archive files, and linker options. The
+predicates denote circumstances of the application of the variables:
+whether the bytecode or the native compiler is used, if there is a
+toploop compiled in, details of multi-threading execution, details of
+profiling. </PARA></REFSECT1><REFSECT1
+><TITLE
+>DETAILS OF THE FILE FORMAT</TITLE><PARA
+>The file consists of a sequence of entries which must be formed as the
+grammar prescribes. The lexical tokens are names, values, and
+interpunctuation like '(', ',' and so on. Note that linefeeds do not
+play a special role, i.e. an entry definition may be given in more than
+one line, or several definitions may occur on a single line. There may
+be comments which begin with '#' and consist of the rest of the line.</PARA><PARA
+>Names are sequences of the characters A-Z, a-z, 0-9, or _. Names
+containing capital letters and names beginning with digits are
+allowed but not recommended.</PARA><PARA
+>Values are enclosed between double quotes. Values may contain any
+character. The characters " and \ must be preceded by backslashes. </PARA></REFSECT1><REFSECT1
+><TITLE
+>SEMANTICS OF DEFINITIONS</TITLE><PARA
+>There may be multiple definitions for the same variable if the lists of
+formal predicates are different. The effective definition is selected
+upon a set of actual predicates, i.e. the set of predicates that are
+assumed to be true. In order to determine the value of a variable, the
+following rule applies:</PARA><ITEMIZEDLIST
+SPACING="COMPACT"
+MARK="bullet"
+><LISTITEM
+><PARA
+> 
+A definition can only be used if all formal parameters are included in
+the set of actual parameters, such a definition is called
+<EMPHASIS
+>applicable</EMPHASIS>. If there is no such definition, the
+variable has no value.</PARA></LISTITEM><LISTITEM
+><PARA
+>If there is more than one applicable definition, the definition with
+the biggest number of formal parameters is selected.</PARA></LISTITEM><LISTITEM
+><PARA
+>If there is still more than one definition, both applicable and with a
+maximum number of formal parameters, the definition that is defined
+first is selected.</PARA></LISTITEM></ITEMIZEDLIST></REFSECT1><REFSECT1
+><TITLE
+>VARIABLES</TITLE><PARA
+>There is a set of variables with predefined meaning:</PARA><ITEMIZEDLIST
+SPACING="COMPACT"
+MARK="bullet"
+><LISTITEM
+><PARA
+> 
+The variable "directory" redefines the location of the package
+directory. Normally, the META file is the first file read in the
+package directory, and before any other file is read, the "directory"
+variable is evaluated in order to see if the package directory must be
+changed. The value of the "directory" variable is determined with an
+empty set of actual predicates. The value must be either: an absolute
+path name of the alternate directory, or a path name relative to the
+stdlib directory of OCaml (written "^path" or "+path").</PARA></LISTITEM><LISTITEM
+><PARA
+> 
+The variable "requires" specifies the list of required packages. The
+names of the packages must be separated by white space and/or commas.</PARA></LISTITEM><LISTITEM
+><PARA
+> 
+The variable "version" specifies the version string.</PARA></LISTITEM><LISTITEM
+><PARA
+> 
+The variable "archive" specifies the list of archive files. These
+files should be given as plain names without any directory
+information; they are only searched in the package directory. The
+names of the files must be separated by white space and/or commas.
+In the preprocessor stage, the archive files are passed as extensions
+to the preprocessor (camlp4) call. In the linker stage (-linkpkg), the archive
+files are linked. In the compiler stage, the archive files are ignored.</PARA></LISTITEM><LISTITEM
+><PARA
+> 
+The variable "linkopts" specifies additional linker options.</PARA></LISTITEM><LISTITEM
+><PARA
+> 
+The variable "description" may include a short description of the
+package (displayed by <LITERAL
+MOREINFO="NONE"
+>ocamlfind list</LITERAL>).</PARA></LISTITEM></ITEMIZEDLIST><PARA
+>It is possible to define additional variables but there is currently
+no software interpreting them.</PARA></REFSECT1><REFSECT1
+><TITLE
+>PREDICATES</TITLE><PARA
+>There is a list of standard predicates:</PARA><ITEMIZEDLIST
+SPACING="COMPACT"
+MARK="bullet"
+><LISTITEM
+><PARA
+>The "byte" predicate means that the bytecode compiler is used.</PARA></LISTITEM><LISTITEM
+><PARA
+>The "native" predicate means that the native compiler is used.</PARA></LISTITEM><LISTITEM
+><PARA
+>The "toploop" predicate means that the toploop is available in the
+linked program.</PARA></LISTITEM><LISTITEM
+><PARA
+>The "mt" predicate means that the program is multi-threaded.</PARA></LISTITEM><LISTITEM
+><PARA
+>The "mt_posix" predicate means that in the case "mt" is set, too, the
+POSIX libraries are used to implement threads.</PARA></LISTITEM><LISTITEM
+><PARA
+>The "mt_vm" predicate means that in the case "mt" is set, too, the
+VM-based libraries are used to implement threads.</PARA></LISTITEM><LISTITEM
+><PARA
+>The "gprof" predicate means that in the case "native" is set, too, the
+program is compiled for profiling</PARA></LISTITEM><LISTITEM
+><PARA
+>The "autolink" predicate means that ocamlc can/will perform automatic linking.</PARA></LISTITEM><LISTITEM
+><PARA
+>The "preprocessor" predicate means that the META variables are scanned for
+preprocessor options.</PARA></LISTITEM><LISTITEM
+><PARA
+>The "syntax" predicate means that the -syntax option is present on the
+command line.</PARA></LISTITEM></ITEMIZEDLIST></REFSECT1></REFENTRY><REFENTRY
+><REFMETA
+><REFENTRYTITLE
+>findlib.conf</REFENTRYTITLE><MANVOLNUM
+>5</MANVOLNUM><REFMISCINFO
+>The findlib package manager for OCaml</REFMISCINFO></REFMETA><REFNAMEDIV
+ID="FINDLIB.CONF"
+><REFNAME
+>findlib.conf</REFNAME><REFPURPOSE
+>[Configuration of findlib/ocamlfind]</REFPURPOSE></REFNAMEDIV><REFSECT1
+><TITLE
+>GENERAL</TITLE><PARA
+>There are three possibilities to configure the findlib library:
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+>Build time:</TERM><LISTITEM
+><PARA
+>    Before findlib is compiled, a "configure" script is invoked to figure
+    out the settings that are most likely to work on the system. Most
+    settings are simply entered into text files and can easily be changed
+    after installation. The following properties cannot be changed later
+    because they are compiled into the resulting binaries:
+
+    <ITEMIZEDLIST
+><LISTITEM
+><PARA
+>    The default location of the configuration file findlib.conf. However,
+    you can set a different location by the environment variable
+    <LITERAL
+MOREINFO="NONE"
+>OCAMLFIND_CONF</LITERAL>.
+    </PARA></LISTITEM><LISTITEM
+><PARA
+>    Whether the installed O'Caml version supports autolinking or not.
+    </PARA></LISTITEM></ITEMIZEDLIST>
+  </PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>Configuration file findlib.conf:</TERM><LISTITEM
+><PARA
+>    An initial version of this file is generated by the configure script,
+    but you are free to modify it later. Most important, this file
+    contains the system-wide search path used to look up packages, and the
+    default location where to install new packages.
+  </PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>Environment variables:</TERM><LISTITEM
+><PARA
+>    The settings of findlib.conf can be overridden by environment variables.
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+Last but not least, several settings can also be passed as
+command-line options, or by invoking the function
+<LITERAL
+MOREINFO="NONE"
+>Findlib.init</LITERAL>. </PARA></REFSECT1><REFSECT1
+><TITLE
+>findlib.conf</TITLE><PARA
+>The directory containing findlib.conf is determined at build time (by
+running the configure script), the fallback default is
+<LITERAL
+MOREINFO="NONE"
+>/usr/local/etc</LITERAL>. You can set a different location by
+changing the environment variable <LITERAL
+MOREINFO="NONE"
+>OCAMLFIND_CONF</LITERAL>
+which must contain the absolute path of findlib.conf.</PARA><PARA
+>The file has the same syntax as <LINK
+LINKEND="META"
+><LITERAL
+MOREINFO="NONE"
+>META</LITERAL></LINK>, i.e. it consists of a
+number of lines with the format
+
+<PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+><REPLACEABLE
+>variable</REPLACEABLE> = "<REPLACEABLE
+>value</REPLACEABLE>"</PROGRAMLISTING></PARA><PARA
+>Here is the list of allowed variables:
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>path</LITERAL></TERM><LISTITEM
+><PARA
+>    The search path for META files/package directories. The variable
+    enumerates directories which are separated by colons (Windows:
+    semicolons), and these directories are tried in turn to find a certain
+    package. More exactly, if d is such a directory and p the searched
+    package, the search algorithm will first check whether d/p/META
+    exists. In this case, this META file is taken, and d/p is the package
+    directory. Second, the algorithm tries d/META.p, but the package
+    directory must be specified in this META.p file by a
+    <LITERAL
+MOREINFO="NONE"
+>directory</LITERAL> directive.
+  </PARA><PARA
+>    Note that the first found META file is taken, so the order of the
+    directories in the search path counts.
+  </PARA><PARA
+>    This variable is required.
+  </PARA><PARA
+>  Example:
+
+  <PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>path = "/usr/local/lib/ocaml/site-lib:/usr/lib/ocaml/site-lib"</PROGRAMLISTING>
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>destdir</LITERAL></TERM><LISTITEM
+><PARA
+>    This variable determines the location where <LITERAL
+MOREINFO="NONE"
+>ocamlfind
+    install</LITERAL> puts the packages by default: If d is this
+    directory, and p the package to install, a new subdirectory d/p will
+    be created containing all the files of the package.
+  </PARA><PARA
+>Example:
+  <PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>destdir = "/usr/local/lib/ocaml/site-lib"</PROGRAMLISTING>
+  </PARA><PARA
+>    This variable is required.
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>metadir</LITERAL></TERM><LISTITEM
+><PARA
+>    If set, the command <LITERAL
+MOREINFO="NONE"
+>ocamlfind install</LITERAL> will put the
+    META files of packages into this directory (files are named META.p
+    where p=package name); otherwise the META files are put into the
+    package directories like any other file.
+  </PARA><PARA
+>Example:
+  <PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>metadir = "/var/lib/findlib/metaregistry"</PROGRAMLISTING>
+  </PARA><PARA
+>    This variable is optional. It is not used by default.
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>ocamlc</LITERAL>,
+        <LITERAL
+MOREINFO="NONE"
+>ocamlopt</LITERAL>,
+        <LITERAL
+MOREINFO="NONE"
+>ocamlcp</LITERAL>,
+        <LITERAL
+MOREINFO="NONE"
+>ocamlmktop</LITERAL>,
+	<LITERAL
+MOREINFO="NONE"
+>ocamldep</LITERAL>,
+	<LITERAL
+MOREINFO="NONE"
+>ocamlbrowser</LITERAL>
+  </TERM><LISTITEM
+><PARA
+>    If you want to call other executables than "ocamlc", "ocamlopt",
+    "ocamlcp", "ocamlmktop", "ocamldep", and "ocamlbrowser", you can
+    set the names of
+    the executables here. The command <LITERAL
+MOREINFO="NONE"
+>ocamlfind</LITERAL> looks
+    into these four variables to determine the names of the compilers to
+    call.
+  </PARA><PARA
+>Example:
+  <PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlc     = "ocamlc.opt"
+ocamlopt   = "ocamlopt.opt"
+ocamlcp    = "ocamlcp.opt"
+ocamlmktop = "ocamlmktop.opt"</PROGRAMLISTING>
+  </PARA><PARA
+>    This variable is optional. It is not used by default.
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>stdlib</LITERAL></TERM><LISTITEM
+><PARA
+>    This variable determines the location of the standard library. This must
+    be the same directory for which the O'Caml compilers are configured.
+  </PARA><PARA
+>    This variable is optional. It is not recommend to set this variable
+    unless you know what you are doing!
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>ldconf</LITERAL></TERM><LISTITEM
+><PARA
+>    This variable determines the location of the ld.conf file. This must
+    be the same file the O'Caml compilers read in; it is updated by 
+    ocamlfind when installing and removing packages. You can set this
+    variable to the special value "<LITERAL
+MOREINFO="NONE"
+>ignore</LITERAL>" to disable
+    the automatic modification of the ld.conf file.
+  </PARA><PARA
+>    If not set, the ld.conf file is assumed to reside in the O'Caml
+    standard library directory.
+  </PARA><PARA
+>    This variable is optional. It is not recommended to set this variable
+    unless you know what you are doing!
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+</PARA></REFSECT1><REFSECT1
+><TITLE
+>Environment</TITLE><PARA
+>A number of environment variables modifies the behaviour of
+findlib/ocamlfind:
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>OCAMLFIND_CONF</LITERAL></TERM><LISTITEM
+><PARA
+>    This variable overrides the location of the configuration file
+    findlib.conf. It must contain the absolute path name of this file.
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>OCAMLPATH</LITERAL></TERM><LISTITEM
+><PARA
+>    This variable may contain an additional search path for package
+    directories. It is treated as if the directories were prepended to
+    the configuration variable <LITERAL
+MOREINFO="NONE"
+>path</LITERAL>.
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>OCAMLFIND_DESTDIR</LITERAL></TERM><LISTITEM
+><PARA
+>    This variable overrides the configuration variable
+    <LITERAL
+MOREINFO="NONE"
+>destdir</LITERAL>. 
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>OCAMLFIND_METADIR</LITERAL></TERM><LISTITEM
+><PARA
+>    This variable overrides the configuration variable
+    <LITERAL
+MOREINFO="NONE"
+>metadir</LITERAL>. 
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>OCAMLFIND_COMMANDS</LITERAL></TERM><LISTITEM
+><PARA
+>    This variable overrides the configuration variables
+    <LITERAL
+MOREINFO="NONE"
+>ocamlc</LITERAL>, <LITERAL
+MOREINFO="NONE"
+>ocamlopt</LITERAL>,
+    <LITERAL
+MOREINFO="NONE"
+>ocamlcp</LITERAL>, 
+    <LITERAL
+MOREINFO="NONE"
+>ocamlmktop</LITERAL>, <LITERAL
+MOREINFO="NONE"
+>ocamldep</LITERAL>,
+    and/or <LITERAL
+MOREINFO="NONE"
+>ocamlbrowser</LITERAL>. Its value must conform to the
+    syntax
+
+    <PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlc=<REPLACEABLE
+>name</REPLACEABLE> ocamlopt=<REPLACEABLE
+>name</REPLACEABLE> ocamlcp=<REPLACEABLE
+>name</REPLACEABLE> ocamlmktop=<REPLACEABLE
+>name</REPLACEABLE> ocamldep=<REPLACEABLE
+>name</REPLACEABLE> ocamlbrowser=<REPLACEABLE
+>name</REPLACEABLE></PROGRAMLISTING>
+  </PARA><PARA
+>Example:
+    <PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlc=ocamlc-3.00 ocamlopt=ocamlopt-3.00 ocamlcp=ocamlcp-3.00 ocamlmktop=ocamlmktop-3.00</PROGRAMLISTING>
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>CAMLLIB</LITERAL> or <LITERAL
+MOREINFO="NONE"
+>OCAMLLIB</LITERAL></TERM><LISTITEM
+><PARA
+>    This variable overrides the configuration variable
+    <LITERAL
+MOREINFO="NONE"
+>stdlib</LITERAL>. 
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>OCAMLFIND_LDCONF</LITERAL></TERM><LISTITEM
+><PARA
+>    This variable overrides the configuration variable
+    <LITERAL
+MOREINFO="NONE"
+>ldconf</LITERAL>. 
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+</PARA></REFSECT1></REFENTRY><REFENTRY
+><REFMETA
+><REFENTRYTITLE
+>site-lib</REFENTRYTITLE><MANVOLNUM
+>5</MANVOLNUM><REFMISCINFO
+>The findlib package manager for OCaml</REFMISCINFO></REFMETA><REFNAMEDIV
+ID="SITE-LIB"
+><REFNAME
+>site-lib</REFNAME><REFPURPOSE
+>[Location of package directories]</REFPURPOSE></REFNAMEDIV><REFSYNOPSISDIV
+><TITLE
+>STANDARD LAYOUT</TITLE><SYNOPSIS
+FORMAT="LINESPECIFIC"
+>...somewhere in the filesystem hierarchy...
+   |
+   \ 
+     site-lib
+     |
+     +- (optional) stublibs
+     +- (optional) postinstall
+     +- (optional) postremove
+     |
+     +- <REPLACEABLE
+>package1</REPLACEABLE>
+     |  |
+     |  +- META
+     |  +- <REPLACEABLE
+>archive files</REPLACEABLE>
+     |  +- <REPLACEABLE
+>interface definitions</REPLACEABLE>
+     |
+     +- <REPLACEABLE
+>package2</REPLACEABLE>
+     +
+     :
+     :
+     \
+        <REPLACEABLE
+>packageN</REPLACEABLE></SYNOPSIS></REFSYNOPSISDIV><REFSECT1
+><TITLE
+>DESCRIPTION</TITLE><PARA
+>Every installation of "findlib" has a default location for package
+directories, which is normally a directory called "site-lib". The
+location can be set by the configuration variables
+<LITERAL
+MOREINFO="NONE"
+>path</LITERAL> (used to look up packages), and
+<LITERAL
+MOREINFO="NONE"
+>destdir</LITERAL> (used to install new packages);
+see <LINK
+LINKEND="FINDLIB.CONF"
+>findlib.conf</LINK>.</PARA><PARA
+>The name of a package is the name of the package directory. For
+example, if <LITERAL
+MOREINFO="NONE"
+>destdir=/usr/local/lib/ocaml/site-lib</LITERAL>, the
+package p will be installed in the subdirectory
+<LITERAL
+MOREINFO="NONE"
+>/usr/local/lib/ocaml/site-lib/p</LITERAL>. This subdirectory
+must contain the META file and all other files belonging to the package.</PARA><PARA
+>The variable <LITERAL
+MOREINFO="NONE"
+>destdir</LITERAL> specifies the directory for
+new packages. You can only have one such directory at a time; but of
+course you can change this directory in findlib.conf. The command
+<LITERAL
+MOREINFO="NONE"
+>ocamlfind install</LITERAL> puts new packages into this
+directory; it is recommended to use this command for installation
+because it ensures that the directory layout is right.</PARA><PARA
+>For searching packages, findlib uses (only) the variable
+<LITERAL
+MOREINFO="NONE"
+>path</LITERAL> which may name several locations to look at.</PARA><PARA
+>For systems with DLL support another directory may exist: stublibs. 
+If present, findlib will install DLLs into this directory that is
+shared by all packages at the same site-lib location. Findlib remembers
+which DLL belongs to which package by special files with the suffix
+".owner"; e.g. for the DLL "dllpcre.so" there is another file
+"dllpcre.so.owner" containing the string "pcre", so findlib knows
+that the package "pcre" owns this DLL. It is not possible that a DLL
+is owned by several packages.</PARA><PARA
+>If the stublibs directory does not exist, DLLs are installed regularly
+in the package directories like any other file.</PARA><PARA
+>For special needs, a postinstall and/or a postremove script may be
+installed in the site-lib directory. These scripts are invoked after
+installation or removal of a package, respectively.</PARA></REFSECT1><REFSECT1
+><TITLE
+>ALTERNATE LAYOUT</TITLE><PARA
+>
+<PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>...somewhere in the filesystem hierarchy...
+   |
+   \ 
+     site-lib
+     |
+     +- (optional) stublibs
+     +- (optional) postinstall
+     +- (optional) postremove
+     |
+     +- <REPLACEABLE
+>package1</REPLACEABLE>
+     |  |
+     |  +- <REPLACEABLE
+>archive files</REPLACEABLE>
+     |  +- <REPLACEABLE
+>interface definitions</REPLACEABLE>
+     |
+     +- <REPLACEABLE
+>package2</REPLACEABLE>
+     +
+     :
+     :
+     \
+  :     <REPLACEABLE
+>packageN</REPLACEABLE>
+  |
+  \
+    metaregistry
+    |
+    +- META.package1
+    +- META.package2
+    +
+    :
+    \
+       META.packageN</PROGRAMLISTING></PARA><PARA
+>This is an alternate directory layout collecting all META files in one
+directory. You can configure this layout by setting
+<LITERAL
+MOREINFO="NONE"
+>path</LITERAL> to the absolute location of
+<LITERAL
+MOREINFO="NONE"
+>metaregistry</LITERAL>. Findlib recognizes that there are
+META files in this directory and uses them; it is not necessary to
+include <LITERAL
+MOREINFO="NONE"
+>site-lib</LITERAL> into the <LITERAL
+MOREINFO="NONE"
+>path</LITERAL>.</PARA><PARA
+>In order to work, the META files must contain a
+<LITERAL
+MOREINFO="NONE"
+>directory</LITERAL> directive pointing to the corresponding
+package directory that resides below <LITERAL
+MOREINFO="NONE"
+>site-lib</LITERAL>.</PARA><PARA
+>The command <LITERAL
+MOREINFO="NONE"
+>ocamlfind install</LITERAL> copes with this
+layout, too. The variable <LITERAL
+MOREINFO="NONE"
+>destdir</LITERAL> must contain the
+absolute location of <LITERAL
+MOREINFO="NONE"
+>site-lib</LITERAL>, and the variable
+<LITERAL
+MOREINFO="NONE"
+>metadir</LITERAL> must contain the absolute location of
+<LITERAL
+MOREINFO="NONE"
+>metaregistry</LITERAL>. Note that <LITERAL
+MOREINFO="NONE"
+>ocamlfind
+install</LITERAL> automatically adds a <LITERAL
+MOREINFO="NONE"
+>directory</LITERAL>
+directive to the META file, so you need not do it manually.</PARA></REFSECT1><REFSECT1
+><TITLE
+>MODULE FINDLIB</TITLE><SIMPLELIST
+TYPE="VERT"
+><MEMBER
+><LINK
+LINKEND="FINDLIB.DEFAULT-LOCATION"
+>Findlib.default_location</LINK></MEMBER><MEMBER
+><LINK
+LINKEND="FINDLIB.PACKAGE-DIRECTORY"
+>Findlib.package_directory</LINK></MEMBER></SIMPLELIST></REFSECT1></REFENTRY></REFERENCE>

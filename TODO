@@ -1,0 +1,28 @@
+Feature wish (Renieris):
+	basic ocamldoc support
+
+Error: 
+	ocamlfind -I +pkg outputs a warning.
+
+Feature wish: ocamlfind printconf -sh
+	Prints the configuration such that it can be sourced from sh.
+
+Feature wish: (zack)
+	-ldconf /path/to/ldconf
+		Changes the path of the ld.conf to modify
+	-create-ldconf
+		Creates ld.conf if it does not exist
+
+Support for libexec:
+	config option: ldconfpolicy = (donttouch|repository|package)
+		(default: package)
+	donttouch: ld.conf is never modified
+	package: current behaviour
+	repository: every repository has a directory libexec containing
+		symlinks to the DLLs. when a package is installed:
+		- no libexec dir: create one and populate it. Remove
+		  all other package dirs from ld.conf
+		- Put (relative) symlink into libexec, done.
+		When a package is removed:
+		- Check whether there is a libexec dir, and remove symlinks
+		  pointing to the package directory.

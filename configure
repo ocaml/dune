@@ -252,10 +252,10 @@ if [ -z "${ocamlfind_config}" ]; then
     d="$ocaml_core_bin"
     case "$d" in
         */bin)
-	    ocamlfind_config=`dirname $d`/etc/ocamlfind.conf
+	    ocamlfind_config=`dirname $d`/etc/findlib.conf
 	    ;;
 	*)
-	    ocamlfind_config=/usr/local/etc/ocamlfind.conf
+	    ocamlfind_config=/usr/local/etc/findlib.conf
 	    # Fallback value
 	    ;;
     esac

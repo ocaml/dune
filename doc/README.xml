@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE readme SYSTEM "readme.dtd" [
+
+<!ENTITY % common SYSTEM "common.xml">
+%common;
+
+<!-- Special HTML config: -->
+<!ENTITY % readme:html:up '<a href="../..">up</a>'>
+
+<!ENTITY % config SYSTEM "config.xml">
+%config;
+
+]>
+
+<readme title="README - The findlib library manager">
+  <sect1>
+    <title>Introduction</title> 
+
+<p>The "findlib" software provides a scheme to manage reusable software
+components in the form of libraries, and includes tools that support
+this scheme. A library installed as a findlib component is also called
+a package. The point is that the findlib scheme allows it to store
+metainformation about the library, especially how it can be used in
+programs. The packages are kept in the filesystem hierarchy, but the
+directory structure is defined by findlib, and there is no way to
+deviate from this standard. The library contains functions to look the
+directory up that stores a package, to query metainformation about a
+package, and to retrieve dependency information about multiple
+packages. There is also a tool that allows the user to enter queries
+on the command-line. In order to simplify compilation and linkage,
+there are new frontends of the various OCaml compilers that can
+directly deal with packages.
+    </p>
+
+    <p>It is important to understand that findlib is <em>not</em> a
+general-purpose package manager (like rpm for Linux), and does <em>not</em>
+support the management of arbitrary files, but only O'Caml libraries.
+However, there are lots of special functions for libraries. findlib
+is more comparable with Gnome's pkg-config and Perl's MakeMaker, but
+of course there are language-specific differences.</p>
+
+    <p>The metainformation includes:</p>
+
+    <ul>
+      <li><p>The necessary command-line arguments to use a library.</p>
+      </li>
+      <li><p>Dependencies on other packages.</p>
+      </li>
+      <li><p>Version strings.</p>
+      </li>
+    </ul>
+
+    <p>These data can be conditional. Possible conditions are certain
+environmental settings, such as whether the bytecode or the native code
+compiler is used, or whether the application is multi-threaded. It is
+also possible that a package behaves differently when a certain other
+package is selected.</p>
+
+    <p>There is special support for scripts. It is possible to load
+libraries into toploops, including all dependent libraries, with only
+one command.</p>
+
+    <p>Findlib has been developed since March 1999, and has matured
+for more than four years until the release of version 1.0. One of the
+important questions during this long period of development was which
+features are necessary and which not. The result is a utility that
+follows still simple concepts, but is flexible enough to allow even
+the description of complex libraries and complex interdependencies.
+    </p>
+  </sect1>
+
+  <sect1>
+    <title>Documentation</title>
+
+    <p>See the file QUICKSTART for the most important findlib commands.</p>
+
+    <p>There is a User's Guide introducing into the concepts of findlib,
+especially explaining how to create packages.</p>
+
+    <p>The Reference Manual describes commands, directory structure,
+configuration files, and library routines in detail.</p>
+  </sect1>
+
+  <sect1>
+    <title>Installation</title>
+
+    <p>See the file INSTALL.</p>
+  </sect1>
+
+  <sect1>
+    <title>Download</title>
+    <p>
+      The current version is announced in the 
+      <a href="&url.linkdb;">Objective Caml Link Database</a>.
+    </p>
+  </sect1>
+
+  <sect1>
+    <title>Copyright and License Conditions</title>
+    <p>
+      Findlib is copyright 2003 by Gerd Stolpmann. See the file LICENSE
+      for the MIT/X11 style license conditions.
+    </p>
+  </sect1>
+
+  <sect1>
+    <title>List of Changes</title>
+    <ul>
+
+      <li><p><em>1.0:</em> It is now possible to divide the
+description of a package into subpackages (but there is still only one
+META file, but with enhanced syntax). This allows it to describe
+intra-package dependencies.</p>
+	
+	<p>Predicates in META files can be negated.</p>
+
+	<p>The "error" variable allows you to detect conditions under which
+the library would not work, and to generate error messages.</p>
+
+	<p>It is possible to refer to archive files installed in other
+packages.</p>
+
+	<p>The set of predicates is extended by "package predicates"
+after the dependency analysis, making conditions expressable that
+depend on whether other packages are selected.</p>
+
+	<p>The "+=" operator in META files adds words to variables rather
+than setting them.</p>
+	
+	<p>The "#thread" directive enables multi-threading in toploops and
+scripts, if possible.</p>
+
+	<p>The "#predicates" directive simplifies the addition of predicates.
+	</p>
+
+	<p>Support for "ocamlfind ocamldoc". However, the implementation is
+quite sloppy.</p>
+
+	<p>The configuration file is called "findlib.conf" by default,
+not "ocamlfind.conf".</p>
+	
+	<p>Removal of "ocamlfind guess".</p>
+
+	<p>Support for #use "findlib" and #use "ocamlfind" has been
+removed. The only remaining way to load findlib is by #use "topfind".</p>
+
+	<p>There is no longer a thread-safe version of findlib. The user
+has to ensure that only one thread uses findlib (which is usually trivial
+to achieve).</p>
+
+	<p>ocamlmktop: Directories are no longer automatically added
+to the search path. This did not work anyway, and this change forces
+scripts to always invoke "#require" to load/enable libraries, for
+better uniformity.</p>
+
+	<p>Fixes: num-top works. "ocamlfind ocamlopt -thread" generates
+a better error message on non-POSIX systems. "ocamlfind query -descendants"
+takes predicates into account (it did not do that in previous versions of
+findlib).</p>
+      </li>
+
+      <li><p><em>0.9:</em> Changes for O'Caml 3.07 (-thread,
+      -vmthread). Includes Zack's toploop printers for bigints.</p>
+      </li>
+
+      <li><p><em>0.8 - 0.8.1:</em> Renamed a lot of modules to avoid name
+	clashes with O'Caml core modules.  Cygwin: Additional option
+	-cygpath for "configure".  The man pages have a NAME
+	section. Bugfix in Makefile wizard.</p>
+      </li>
+
+      <li><p><em>0.7 - 0.7.2:</em> DLLs: There are now two styles of
+	  installation: DLLs can be installed in the package
+	  directories (like before), or in a shared directory
+	  "stublibs". For the first style, there is now an option
+	  "ldconf" that determines whether the ld.conf file is to be
+	  updated, and if so, which file. The latter style is enabled
+	  by simply creating a directory "stublibs" in the site-lib
+	  directory. (In the first version the directory was called
+	  "libexec". By user request, the name of the DLL directory
+	  has been changed to "stublibs".)</p>
+
+	<p>"ocamlfind install" preserves now the mtime of the files.</p>
+
+	<p>"ocamlfind printconf" is more flexible, and easier to call
+	from scripts.</p>
+
+	<p>"ocamlfind browser" calls ocamlbrowser with the right -I
+	options.</p>
+
+	<p>"ocamlfind query": -descendants implies now -recursive.</p>
+
+	<p>"ocamlfind ocamldep": -native-filter and -bytecode-filter for more
+	exact dependency generation.</p>
+
+	<p>There may be now postinstall and postremove scripts.</p>
+
+	<p>"ocamlfind pkg/cmd": This syntax can be used to call the program cmd
+	that is installed in the package directory for pkg. Intended to
+	simplify the invocation of programs that are installed in package
+	directories and not in XXX/bin, which may be useful for package-
+	related tools.</p>
+
+	<p>Findlib has now a toolbox containing helpful programs besides
+	ocamlfind. For the beginning, there is a Makefile wizard that
+	can be called by "ocamlfind findlib/make_wizard".</p>
+
+	<p>#use "topfind" instead of #use "findlib" to avoid name clashes
+	in a certain configuration. #use "findlib" and #use "ocamlfind"
+	are still supported for backward compatibility if the name clash
+	does not occur.</p>
+
+	<p>Fix: bytecode threads work again. (The wrong unix library was
+	linked for recent O'Caml versions.)</p>
+
+	<p>Many smaller improvements; the docs have been updated.</p>
+      </li>
+
+      <li><p><em>0.6 - 0.6.2:</em> Minor changes for Ocaml-3.03-alpha
+	  (and later for 3.04). New #list directive. New: #use
+	  "findlib" loads the findlib directives into every toploop
+	  (Ocaml-3.03-alpha).</p>
+
+	<p>The file ld.conf is automatically updated when DLLs are
+	installed or removed.</p>
+
+	<p>Fix: /tmp/findlib_initf* no longer overflows. The thread
+	library is now always the first linked library.</p>
+      </li>
+
+      <li><p><em>0.5 - 0.5.4:</em> Findlib has now a configuration
+	file (see documentation under findlib.conf). Much more
+	environment variables. The location of the standard library is
+	now configurable at runtime.
+	</p>
+
+	<p>The package search path can now be selected independently
+	of the package installation directory.</p>
+
+	<p>New commands: ocamlfind list, ocamlfind printconf, ocamlfind guess
+	(See documentation under ocamlfind)</p>
+
+	<p>Optional alternate directory layout: All META files go into
+	a separate directory (see documentation under site-lib).</p>
+
+	<p>Findlib works now only for O'Caml 3; support for O'Caml 2 has been
+	dropped. As a consequence, the "configure" script could be
+	simplified; it is no longer necessary to figure out the
+	linker options.</p>
+
+	<p>Improved support for camlp4: New directives #camlp4o and
+	#camlp4r for the toploop.</p>
+
+	<p>ocamlfind now detects whether two selected packages have
+	equally named toplevel modules, and prints a warning in this case.</p>
+
+	<p>There is a downstripped version ocamlfind-mini (see directory
+	"mini"). This is a one-file script that can be easily
+	distributed with any software. ocamlfind-mini has reduced
+	functionality, but it is sufficient to compile and install a
+	library. (But it does not support using a library.)</p>
+
+	<p>Support for the Cygwin port of O'Caml.</p>
+
+	<p>Installation of packages: The file permissions are
+	preserved when files are installed.  However, the umask is
+	applied. The "install" and "remove" subcommands have better
+	diagnostics.</p>
+
+	<p>ocamlfind ocamlmktop: Generates now initialization code for the
+	include path. You don't need to call your toploop with -I
+	options any more. Furthermore, this fixes some problems with
+	packages that add printers to the toploop.</p>
+
+	<p>New: ocamlfind ocamldep. ocamlfind is now prepared for the new
+	-pp option of ocamldep (upcoming Ocaml 3.03).</p>
+
+	<p>Installation of findlib: New PREFIX variable in Makefile to
+	install locally.</p>
+
+	<p>Fixes: itest. ocamlfind query -descendants works again.</p>
+      </li>
+
+      <li><p><em>0.4:</em> Experimental support for camlp4 (see FAQ
+	section in the manual).  New environment variable
+	OCAMLFIND_COMMANDS (see ocamlfind(1)).
+	</p>
+      </li>
+
+      <li><p><em>0.3 - 0.3.1:</em> Necessary updates for O'Caml
+3. Bugfix: Findlib did not work for bytecode threads. The reason was
+that findlib added the directory of the stdlib to the search
+path. Works now.
+	</p>
+      </li>
+
+    </ul>
+    <p>Older changes are no longer documented.</p>
+  </sect1>
+</readme>

@@ -2,9 +2,10 @@ The installation procedure consists of the steps:
 
 1) configure the "findlib" library
 2) compile "findlib" and the "ocamlfind" frontend of "findlib"
-3) test the core library configuration by performing integration tests
-   - DO NOT SKIP THIS STEP
-4) install "findlib" and the core library configuration
+3) install "findlib" and the core library configuration
+
+Optionally, you can run ./itest after step 2 to check the
+configuration. Problems with the configuration are unlikely, however.
 
 
 ----------------------------------------------------------------------
@@ -49,7 +50,19 @@ options:
 	-config <file>
 
 		set the location of the configuration file.
-		Default: <bindir>/../etc/ocamlfind.conf
+		Default: <bindir>/../etc/findlib.conf
+
+	-no-topfind
+
+		the "topfind" script is not installed in the standard
+		library directory. (This is not a good idea in general,
+		because #use "topfind" will not work when this option
+		is enabled.)
+
+	-with-toolbox
+		also compile and install the "toolbox". This requires
+		that labltk is available. The toolbox contains the
+		"make_wizard" to easily create findlib-enabled Makefiles.
 
 	-cygpath
 		Cygwin environment only: If "ocamlc -where" does not
@@ -112,7 +125,7 @@ With
 the build directory is cleaned up.
 
 
-OPTIONAL:
+OPTIONAL (BUT RECOMMENDED):
 
 If you want a separate directory for DLLs, create this directory
 now: 
@@ -124,11 +137,6 @@ this directory: Add the absolute path of this directory to
 the ld.conf file (type "ocamlfind printconf ldconf" to get the
 location of the ld.conf file). Every line of this text file lists
 one possible directory for DLLs.
-
-Note: The version 0.7 of findlib called this directory "libexec".
-The name has been changed to "stublibs" as a result of the debate
-on the O'Caml mailing list.
-
 
 ----------------------------------------------------------------------
 

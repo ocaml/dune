@@ -13,16 +13,41 @@ Feature wish: (zack)
 	-create-ldconf
 		Creates ld.conf if it does not exist
 
-Support for libexec:
-	config option: ldconfpolicy = (donttouch|repository|package)
-		(default: package)
-	donttouch: ld.conf is never modified
-	package: current behaviour
-	repository: every repository has a directory libexec containing
-		symlinks to the DLLs. when a package is installed:
-		- no libexec dir: create one and populate it. Remove
-		  all other package dirs from ld.conf
-		- Put (relative) symlink into libexec, done.
-		When a package is removed:
-		- Check whether there is a libexec dir, and remove symlinks
-		  pointing to the package directory.
+Subpackages: META files may define several packages. Subpackages
+have names <mainpkg>.<subpkg>. Syntax in META:
+	<main package decls>
+	[<mainpkg>.<subpkg>]
+	<decls for this subpackage>
+	[<mainpkg>.<subpkg>]
+	<decls for this subpackage>
+	...
+"." is no longer allowed in package names (reserved as delimiter).
+Besides having a name component in common with the main package,
+subpackages are independent entities. There are no relations to
+the main package except the declared ones. (Exception: Directory
+location is inherited.)
+
+Directives #thread and #vmthread for the toploop.
+#predicate.
+
+Fix: num-top
+
+Negated predicates in declarations, e.g.
+archive(byte,feature) = "..."
+archive(byte,-feature) = "..."
+
+Fix syntax:
++pkg searches in stdlib
+=pkg performs a findlib package lookup
+
+error(pred,...) = "message": if predicates are true, an error is
+indicated
+
+package predicates: If pkg is selected, the predicate pkg_<name> is
+automatically set.
+
+Operator += in META, e.g.
+var(pred) = "base def"
+var(pred,feature) += "additional def"
+"+=" definitions are appended to the single base definition. In contrast
+to "=", _all_ matching definitions are selected, not only the best matching.

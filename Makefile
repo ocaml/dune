@@ -35,8 +35,11 @@ clean:
 	rm -f findlib.conf
 
 .PHONY: release
-release:
+release: README
 	XXX
+
+README: doc/README
+	ln -s doc/README .
 
 
 .PHONY: all-config

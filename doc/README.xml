@@ -107,6 +107,10 @@ configuration files, and library routines in detail.</p>
     <title>List of Changes</title>
     <ul>
 
+      <li><p><em>1.0.1:</em>Fix: Forgot to install some .cmi
+files</p>
+      </li>
+
       <li><p><em>1.0:</em> It is now possible to divide the
 description of a package into subpackages (but there is still only one
 META file, but with enhanced syntax). This allows it to describe

@@ -3,83 +3,75 @@
  *
  *)
 
+(** Parses META files *)
+
 open Fl_metatoken
 
-val parse : in_channel -> (string * (string list * string)) list
+type formal_pred =
+    [ `Pred of string     (** Positive occurence of a formal predicate var *)
+    | `NegPred of string  (** Negative occurence of a formal predicate var *)
+    ]
 
-  (* parse ch:
-   * 
-   * scans and parses the file connected with channel ch. The file format
-   * is as following:
+type flavour =
+    [ `BaseDef 
+    | `Appendix 
+    ]
+  (** [`BaseDef] refers to META definitions using the "=" operator,
+   * and [`Appendix] refers to definitions using the "+=" operator.
+   *)
+
+type pkg_definition =
+    { def_var : string;              (** The name of the defined variable *)
+      def_flav : flavour;            (** The flavour of the definition *)
+      def_preds : formal_pred list;  (** The formal predicates of the def *)
+      def_value : string;            (** The value assigned to the variable *)
+    }
+  (** A [pkg_definition] is expressed by the syntax
+   *  {[ var(p1,p2,...) = "value" ]} (flavour `BaseDef), 
+   *  or the syntax
+   *  {[ var(p1,p2,...) += "value" ]} (flavour `Appendix)
+   *  in the META file. The list of predicates may be omitted. Predicates
+   *  may be negated by using "-", e.g. "-x".
+   *)
+
+type pkg_expr =
+    { pkg_defs : pkg_definition list;
+      pkg_children : (string * pkg_expr) list;
+    }
+  (** A value of type [pkg_expr] denotes the contents of a META file.
+   *  The component [pkg_defs] are the variable definitions.
+   *  The component [pkg_children] contains
+   *  the definitions of the subpackages.
+   *)
+
+
+val parse : in_channel -> pkg_expr
+  (** [parse ch:] 
+   * scans and parses the file connected with channel [ch]. The file must
+   * have a syntax compatible with the META format. The return value
+   * contains the found definitions for the package and all subpackages.
    *
-   * - The file is a sequence of settings (not necessarily separated by
-   *   linefeeds although this is recommended)
-   * - A simple setting has the form 'name = "string"'
-   * - A parametrized setting has the form 'name ( name, name, ... ) = "string"'
-   * - Names are sequences of letters, digits, and '_'
-   * - The characters quotation mark and backslash may occur within strings
-   *   if they are preceded by a backslash
-   * - Comments are indicated by '#'
-   *
-   * Parametrized settings: the arguments represent predicates. This means
-   * that the setting should be used if all of the named predicates are
-   * fulfilled. If more than one setting would apply, the most specific is
-   * taken.
-   * 
-   * Return value is a list with elements (variable_name, (arguments, value))
-   * where
-   * - variable_name is the name to the left of '='
-   * - arguments are the names within '()'. The arguments are alphabetically
-   *   sorted; double arguments only occur once.
-   * - value is the string on the right side
-   * The list has the same order as the settings in the file that has been
-   * read.
-   *
-   * exception Stream.Error of string:
-   * - raised on syntax errors. The string explains the error.
+   * [exception Stream.Error of string:] is
+   * raised on syntax errors. The string explains the error.
    *)
 
 
 val lookup : 
-    string -> string list -> (string * (string list * string)) list -> string
-
-  (* lookup variable_name predicate_list parsed_file:
+    string -> string list -> pkg_definition list -> string
+  (** [lookup variable_name predicate_list def]:
    *
-   * parsed_file is the value returned by the 'parse' function above.
-   * The value for the given variable_name is looked up. The predicate_list
-   * is the set of true predicates. The function returns the first value
-   * for variable_name with a maximum number of predicates for which all
-   * predicates are contained in predicate_list.
+   * Returns the value of [variable_name] in [def] under the assumption
+   * that the predicates in [predicate_list] hold, but no other predicates.
    *
-   * exception Not_found if there is no entry in parsed_file for variable_name
-   * whose predicates are all fulfilled.
+   * The rules are as follows: In the step (A), only the [`BaseDef]
+   * definitions are considered. The first base definition is determined that
+   * matches all predicates and that has the longest predicate list.
+   * In the step (B) only the [`Appendix] definitions are considered.
+   * All definitions are determined that match all predicates.
+   * The final result is the concatenation of the single result of (A)
+   * and all results of (B) (in the order they are defined). A space
+   * character is inserted between two concatenated strings.
+   *
+   * When step (A) does not find any matching definition, the exception
+   * [Not_found] is raised.
    *)
-
-
-
-(* ======================================================================
- * History:
- * 
- * $Log: fl_metascanner.mli,v $
- * Revision 1.2  2002/09/22 20:12:32  gerd
- * 	Renamed modules (prefix fl_)
- *
- * Revision 1.1  2002/09/22 13:32:29  gerd
- * 	Renamed file from metascanner.mli to fl_metascanner.mli to avoid
- * name clashes
- *
- * ======================================================================
- * OLD LOGS FOR metascanner.mli:
- *
- * Revision 1.2  2001/02/24 20:22:24  gerd
- * 	Corrected documentation.
- *
- * Revision 1.1  1999/06/20 19:26:26  gerd
- * 	Major change: Added support for META files. In META files, knowlege
- * about compilation options, and dependencies on other packages can be stored.
- * The "ocamlfind query" subcommand has been extended in order to have a
- * direct interface for that. "ocamlfind ocamlc/ocamlopt/ocamlmktop/ocamlcp"
- * subcommands have been added to simplify the invocation of the compiler.
- *
- * 
- *)

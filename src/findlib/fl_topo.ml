@@ -40,6 +40,8 @@ module type S =
     val clear : t -> unit
     val replace : t -> key -> el_t -> unit
     val delete : t -> key -> unit
+
+    val copy : t -> t
   end
 
 
@@ -64,6 +66,37 @@ module Make(H: IdentifiedType) =
 	{ mutable cnt : el_t node list;
 	  mutable lock : bool
 	} 
+
+    let copy ord =
+      (* This operation is quite expensive when the graph has already
+       * relations. In findlib, this case is avoided, and is here only
+       * implemented for completeness.
+       *)
+      let ord' = 
+	{ cnt = List.map (fun n -> { n with 
+				       smaller = [];
+				       bigger = [];
+				       mark = false }) ord.cnt;
+	  lock = false
+	} in
+      let combined_list = List.combine ord.cnt ord'.cnt in
+      let lookup_node n =
+	(* Find the new node corresponding to old node n *)
+	try List.assq n combined_list 
+	with Not_found -> assert false
+      in
+      List.iter2
+	(fun n n' ->
+	   (* n: old node, n': new node *)
+	   let smaller = List.map lookup_node n.smaller in
+	   let bigger  = List.map lookup_node n.bigger in
+	   n'.smaller <- smaller;
+	   n'.bigger <- bigger;
+	)
+	ord.cnt
+	ord'.cnt;
+      ord'
+
 
     let rec delete_all p l =
       match l with
@@ -307,24 +340,3 @@ module Make(H: IdentifiedType) =
     (******************************************************************)
 
   end
-
-(* ======================================================================
- * History:
- * 
- * $Log: fl_topo.ml,v $
- * Revision 1.1  2002/09/22 13:32:33  gerd
- * 	Renamed file from topo.ml to fl_topo.ml to avoid
- * name clashes
- *
- * ======================================================================
- * OLD LOGS FOR topo.ml:
- *
- * Revision 1.1  1999/06/20 19:26:26  gerd
- * 	Major change: Added support for META files. In META files, knowlege
- * about compilation options, and dependencies on other packages can be stored.
- * The "ocamlfind query" subcommand has been extended in order to have a
- * direct interface for that. "ocamlfind ocamlc/ocamlopt/ocamlmktop/ocamlcp"
- * subcommands have been added to simplify the invocation of the compiler.
- *
- * 
- *)

@@ -43,7 +43,7 @@ let imported_interfaces cmifile =
 
 
 let guess_required_packages excludelist cmifiles =
-  let packages = Fl_metacache_unix.list_packages() in
+  let packages = Fl_package_base.list_packages() in
 
   let get_pkg_of_mod modname =
     List.find

@@ -40,6 +40,24 @@ let in_words_ws s =
 ;;
 
 
+let package_name s =
+  (* splits s in words separated by dots *)
+  let l = String.length s in
+  let rec split i j =
+    if j < l then
+      match s.[j] with
+	'.' ->
+	  if i<j then (String.sub s i (j-i)) :: (split (j+1) (j+1))
+		 else split (j+1) (j+1)
+      |	_ ->
+	  split i (j+1)
+    else
+      if i<j then [ String.sub s i (j-i) ] else []
+  in
+  split 0 0
+;;
+
+
 let path_separator =
   match Sys.os_type with
       "Unix"   -> ':'
@@ -119,30 +137,3 @@ let norm_dir d =
     | "Win32" -> norm_dir_win(); expunge()
     | _ -> failwith "This os_type is not supported"
 ;;
-
-(* ======================================================================
- * History:
- * 
- * $Log: fl_split.ml,v $
- * Revision 1.1  2002/09/22 13:32:32  gerd
- * 	Renamed file from split.ml to fl_split.ml to avoid
- * name clashes
- *
- * ======================================================================
- * OLD LOGS FOR split.ml:
- *
- * Revision 1.3  2001/10/12 20:16:08  gerd
- * 	New: norm_dir.
- *
- * Revision 1.2  2001/02/24 20:22:47  gerd
- * 	Split.path: Support for the cygwin port.
- *
- * Revision 1.1  1999/06/20 19:26:26  gerd
- * 	Major change: Added support for META files. In META files, knowlege
- * about compilation options, and dependencies on other packages can be stored.
- * The "ocamlfind query" subcommand has been extended in order to have a
- * direct interface for that. "ocamlfind ocamlc/ocamlopt/ocamlmktop/ocamlcp"
- * subcommands have been added to simplify the invocation of the compiler.
- *
- * 
- *)

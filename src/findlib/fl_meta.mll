@@ -21,10 +21,20 @@ rule token =
     RParen
   } 
 
+  | "+="
+  {
+    PlusEqual
+  }
+
   | '='
   {
     Equal
   } 
+
+  | '-'
+  {
+    Minus
+  }
 
   | ','
   {

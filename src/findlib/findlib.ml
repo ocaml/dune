@@ -3,6 +3,16 @@
  *
  *)
 
+exception No_such_package 
+  = Fl_package_base.No_such_package
+
+
+exception Package_loop 
+  = Fl_package_base.Package_loop
+
+
+
+
 let conf_default_location = ref "";;
 let conf_meta_directory = ref "";;
 let conf_search_path = ref [];;
@@ -16,10 +26,7 @@ let ocamlcp_default = "ocamlcp";;
 let ocamlmktop_default = "ocamlmktop";;
 let ocamldep_default = "ocamldep";;
 let ocamlbrowser_default = "ocamlbrowser";;
-
-
-module M = @METACACHE@;;
-  (* M is either Fl_metacache or Fl_metacache_mt *)
+let ocamldoc_default = "ocamldoc";;
 
 
 let init_manually 
@@ -29,24 +36,26 @@ let init_manually
       ?(ocamlmktop_command = ocamlmktop_default)
       ?(ocamldep_command = ocamldep_default)
       ?(ocamlbrowser_command = ocamlbrowser_default)
+      ?(ocamldoc_command = ocamldoc_default)
       ?(stdlib = Findlib_config.ocaml_stdlib)
       ?(ldconf = Findlib_config.ocaml_ldconf)
       ~install_dir
       ~meta_dir
-      ~search_path =
+      ~search_path () =
   conf_command := [ `ocamlc,     ocamlc_command;
 		    `ocamlopt,   ocamlopt_command;
 		    `ocamlcp,    ocamlcp_command;
 		    `ocamlmktop, ocamlmktop_command;
 		    `ocamldep,   ocamldep_command;
 		    `ocamlbrowser, ocamlbrowser_command;
+		    `ocamldoc,   ocamldoc_command;
 		  ];
   conf_search_path := search_path;
   conf_default_location := install_dir;
   conf_meta_directory := meta_dir;
   conf_stdlib := stdlib;
   conf_ldconf := ldconf;
-  M.init_cache !conf_search_path stdlib
+  Fl_package_base.init !conf_search_path stdlib
 ;;
 
 
@@ -88,12 +97,12 @@ let init
   in
 
   let sys_ocamlc, sys_ocamlopt, sys_ocamlcp, sys_ocamlmktop, sys_ocamldep,
-      sys_ocamlbrowser,
+      sys_ocamlbrowser, sys_ocamldoc,
       sys_search_path, sys_destdir, sys_metadir, sys_stdlib, sys_ldconf = begin
     if Sys.file_exists config_file then begin
       let ch = open_in config_file in
       try
-	let vars = Fl_metascanner.parse ch in
+	let vars = (Fl_metascanner.parse ch).Fl_metascanner.pkg_defs in
 	let lookup name default =
 	  try Fl_metascanner.lookup name [] vars
 	  with Not_found -> default
@@ -105,6 +114,7 @@ let init
 	    (lookup "ocamlmktop" ocamlmktop_default),
 	    (lookup "ocamldep" ocamldep_default),
 	    (lookup "ocamlbrowser" ocamlbrowser_default),
+	    (lookup "ocamldoc" ocamldoc_default),
 	    Fl_split.path (lookup "path" ""),
 	    (lookup "destdir" ""),
 	    (lookup "metadir" "none"),
@@ -120,7 +130,7 @@ let init
     end
     else
       ( ocamlc_default, ocamlopt_default, ocamlcp_default, ocamlmktop_default,
-	ocamldep_default, ocamlbrowser_default,
+	ocamldep_default, ocamlbrowser_default, ocamldoc_default,
 	[],
 	"",
         "none",
@@ -174,6 +184,7 @@ let init
   in
 
   let ocamlc, ocamlopt, ocamlcp, ocamlmktop, ocamldep, ocamlbrowser,
+      ocamldoc,
       search_path, destdir, metadir, stdlib, ldconf =
     (try List.assoc "ocamlc"     env_commands with Not_found -> sys_ocamlc),
     (try List.assoc "ocamlopt"   env_commands with Not_found -> sys_ocamlopt),
@@ -181,6 +192,7 @@ let init
     (try List.assoc "ocamlmktop" env_commands with Not_found -> sys_ocamlmktop),
     (try List.assoc "ocamldep"   env_commands with Not_found -> sys_ocamldep),
     (try List.assoc "ocamlbrowser" env_commands with Not_found -> sys_ocamlbrowser),
+    (try List.assoc "ocamldoc"   env_commands with Not_found -> sys_ocamldoc),
     (env_search_path @ sys_search_path),
     (if env_destdir = "" then sys_destdir else env_destdir),
     (if env_metadir = "" then sys_metadir else env_metadir),
@@ -195,92 +207,59 @@ let init
     ~ocamlmktop_command: ocamlmktop
     ~ocamldep_command: ocamldep
     ~ocamlbrowser_command: ocamlbrowser
+    ~ocamldoc_command: ocamldoc
     ~stdlib: stdlib
     ~ldconf: ldconf
     ~install_dir: destdir
     ~meta_dir: metadir
     ~search_path: search_path
+    ()
 ;;
 
 
 let default_location() = !conf_default_location;;
+
+
 let meta_directory() =
   if !conf_meta_directory = "none" then "" else !conf_meta_directory;;
+
+
 let search_path() = !conf_search_path;;
+
+
 let command which =
   try 
     List.assoc which !conf_command
   with
       Not_found -> assert false
 ;;
+
+
 let ocaml_stdlib() = !conf_stdlib;;
+
+
 let ocaml_ldconf() = !conf_ldconf;;
 
 
 let package_directory pkg =
-  (M.query pkg).Fl_metacache.package_dir
+  (Fl_package_base.query pkg).Fl_package_base.package_dir
 ;;
 
 
 let package_property predlist pkg propname =
-  let l = M.query pkg in
-  Fl_metascanner.lookup propname predlist l.Fl_metacache.meta_file
+  let l = Fl_package_base.query pkg in
+  Fl_metascanner.lookup propname predlist l.Fl_package_base.package_defs
 ;;
 
 
 let package_ancestors predlist pkg =
-  M.requires predlist pkg
+  Fl_package_base.requires predlist pkg
 ;;
 
 
 let package_deep_ancestors predlist pkglist =
-  M.requires_deeply predlist pkglist
+  Fl_package_base.requires_deeply predlist pkglist
 ;;
 
 
 init();
-
-
-(* ======================================================================
- * History:
- *
- * $Log: findlib.mlp,v $
- * Revision 1.11  2002/09/22 20:12:32  gerd
- * 	Renamed modules (prefix fl_)
- *
- * Revision 1.10  2002/04/26 15:45:22  gerd
- * 	New: ocamlfind browser
- *
- * Revision 1.9  2002/04/26 14:51:54  gerd
- * 	New option -ldconf
- *
- * Revision 1.8  2001/12/15 17:59:35  gerd
- * 	OCAMLLIB overrides CAMLLIB (O'Caml 3.04)
- *
- * Revision 1.7  2001/09/04 16:11:27  gerd
- * 	Added command ocamldep.
- *
- * Revision 1.6  2001/07/24 19:57:17  gerd
- * 	Supports options for stdlib
- *
- * Revision 1.5  2001/02/24 20:19:41  gerd
- * 	Support for configuration file. New functions init, init_manually.
- *
- * Revision 1.4  1999/06/24 20:17:49  gerd
- * 	Further modifications (dont know which...)
- *
- * Revision 1.3  1999/06/20 22:23:17  gerd
- * 	Works now with the core libraries.
- *
- * Revision 1.2  1999/06/20 19:26:23  gerd
- * 	Major change: Added support for META files. In META files, knowlege
- * about compilation options, and dependencies on other packages can be stored.
- * The "ocamlfind query" subcommand has been extended in order to have a
- * direct interface for that. "ocamlfind ocamlc/ocamlopt/ocamlmktop/ocamlcp"
- * subcommands have been added to simplify the invocation of the compiler.
- *
- * Revision 1.1  1999/03/26 00:02:47  gerd
- * 	Initial release.
- *
- *
- *)

@@ -34,30 +34,9 @@ module type S =
     val clear : t -> unit
     val replace : t -> key -> el_t -> unit
     val delete : t -> key -> unit
+    val copy : t -> t
   end
 
 module Make(H: IdentifiedType): 
     (S with type el_t = H.t
         and type key = H.id_t)
-
-
-(* ======================================================================
- * History:
- * 
- * $Log: fl_topo.mli,v $
- * Revision 1.1  2002/09/22 13:32:34  gerd
- * 	Renamed file from topo.mli to fl_topo.mli to avoid
- * name clashes
- *
- * ======================================================================
- * OLD LOGS FOR topo.mli:
- *
- * Revision 1.1  1999/06/20 19:26:26  gerd
- * 	Major change: Added support for META files. In META files, knowlege
- * about compilation options, and dependencies on other packages can be stored.
- * The "ocamlfind query" subcommand has been extended in order to have a
- * direct interface for that. "ocamlfind ocamlc/ocamlopt/ocamlmktop/ocamlcp"
- * subcommands have been added to simplify the invocation of the compiler.
- *
- * 
- *)

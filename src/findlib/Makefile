@@ -20,57 +20,37 @@ CAMLP4O =  camlp4 pa_o.cmo pa_op.cmo pr_o.cmo --
 
 
 OBJECTS        = findlib_config.cmo fl_split.cmo fl_metatoken.cmo fl_meta.cmo \
-		 fl_metascanner.cmo fl_topo.cmo
-OBJECTS_NONMT  = fl_metacache.cmo findlib.cmo
-OBJECTS_MT     = fl_metacache.cmo fl_metacache_mt.cmo mt/findlib.cmo
-OBJECTS_UNIX   = fl_metacache_unix.cmo findlib_guess.cmo
+		 fl_metascanner.cmo fl_topo.cmo fl_package_base.cmo \
+	         findlib.cmo findlib_guess.cmo
 TOBJECTS       = topfind.cmo
 
 XOBJECTS       = $(OBJECTS:.cmo=.cmx)
-XOBJECTS_NONMT = $(OBJECTS_NONMT:.cmo=.cmx)
-XOBJECTS_MT    = $(OBJECTS_MT:.cmo=.cmx)
-XOBJECTS_UNIX  = $(OBJECTS_UNIX:.cmo=.cmx)
 
 OCAMLFIND_OBJECTS = frontend.cmo
 OCAMLFIND_XOBJECTS = frontend.cmx
 
 NUMTOP_OBJECTS = num_top_printers.cmo num_top.cmo
 
-all: ocamlfind$(EXEC_SUFFIX) findlib.cma findlib_mt.cma findlib_top.cma topfind num_top.cma
+all: ocamlfind$(EXEC_SUFFIX) findlib.cma findlib_top.cma topfind num_top.cma
 
 opt: ocamlfind_opt$(EXEC_SUFFIX) findlib.cmxa topfind
-	if [ "$(OCAML_THREADS)" = "posix" ]; then  \
-		$(MAKE) findlib_mt.cmxa;           \
-	fi
 
-ocamlfind$(EXEC_SUFFIX): findlib.cma findlib_unix.cma $(OCAMLFIND_OBJECTS)
+ocamlfind$(EXEC_SUFFIX): findlib.cma $(OCAMLFIND_OBJECTS)
 	$(OCAMLC) -custom -o ocamlfind$(EXEC_SUFFIX) findlib.cma unix.cma \
-	          findlib_unix.cma $(OCAMLFIND_OBJECTS)
+	          $(OCAMLFIND_OBJECTS)
 
-ocamlfind_opt$(EXEC_SUFFIX): findlib.cmxa findlib_unix.cmxa $(OCAMLFIND_XOBJECTS)
+ocamlfind_opt$(EXEC_SUFFIX): findlib.cmxa $(OCAMLFIND_XOBJECTS)
 	$(OCAMLOPT) -o ocamlfind_opt$(EXEC_SUFFIX) findlib.cmxa unix.cmxa \
-		  findlib_unix.cmxa $(OCAMLFIND_XOBJECTS)
+		  $(OCAMLFIND_XOBJECTS)
 
-findlib.cma: $(OBJECTS) $(OBJECTS_NONMT)
-	$(OCAMLC) -a -o findlib.cma $(OBJECTS) $(OBJECTS_NONMT)
-
-findlib_mt.cma: $(OBJECTS) $(OBJECTS_MT)
-	$(OCAMLC) -a -o findlib_mt.cma $(OBJECTS) $(OBJECTS_MT)
-
-findlib_unix.cma: $(OBJECTS_UNIX)
-	$(OCAMLC) -a -o findlib_unix.cma $(OBJECTS_UNIX)
+findlib.cma: $(OBJECTS)
+	$(OCAMLC) -a -o findlib.cma $(OBJECTS)
 
 findlib_top.cma: $(TOBJECTS)
 	$(OCAMLC) -a -o findlib_top.cma $(TOBJECTS)
 
-findlib.cmxa: $(XOBJECTS) $(XOBJECTS_NONMT)
-	$(OCAMLOPT) -a -o findlib.cmxa $(XOBJECTS) $(XOBJECTS_NONMT)
-
-findlib_mt.cmxa: $(XOBJECTS) $(XOBJECTS_MT)
-	$(OCAMLOPT) -a -o findlib_mt.cmxa $(XOBJECTS) $(XOBJECTS_MT)
-
-findlib_unix.cmxa: $(XOBJECTS_UNIX)
-	$(OCAMLOPT) -a -o findlib_unix.cmxa $(XOBJECTS_UNIX)
+findlib.cmxa: $(XOBJECTS)
+	$(OCAMLOPT) -a -o findlib.cmxa $(XOBJECTS)
 
 findlib_config.ml: findlib_config.mlp 
 	sed -e 's;@CONFIGFILE@;$(OCAMLFIND_CONF);g' \
@@ -82,37 +62,13 @@ topfind: topfind.p
 	sed -e 's;@SITELIB@;$(OCAML_SITELIB);g' \
 	    topfind.p >topfind
 
-findlib.ml: findlib.mlp
-	echo "(* THIS FILE IS GENERATED! DO NOT CHANGE! *)" >findlib.ml
-	sed -e 's:@METACACHE@:Fl_metacache:g' \
-	    findlib.mlp >>findlib.ml
-
-mt/findlib.mml: findlib.mlp
-	mkdir -p mt
-	echo "(* THIS FILE IS GENERATED! DO NOT CHANGE! *)" >mt/findlib.mml
-	sed -e 's:@METACACHE@:Fl_metacache_mt:g' \
-	    findlib.mlp >>mt/findlib.mml
-
-mt/findlib.cmo: findlib.cmo fl_metacache_mt.cmo mt/findlib.cmi
-mt/findlib.cmx: findlib.cmx fl_metacache_mt.cmx mt/findlib.cmi
-fl_metacache_mt.cmo: fl_metacache.cmo
-fl_metacache_mt.cmx: fl_metacache.cmx
-
-mt/findlib.cmi: findlib.cmi
-	mkdir -p mt
-	cp findlib.cmi findlib.mli mt
-
-# num_top.cma: This archive really includes the whole nums.cma.
-# This simplifies package making.
-
 num_top.cma: $(NUMTOP_OBJECTS)
 	$(OCAMLC) -a -o num_top.cma $(NUMTOP_OBJECTS)
 
 clean:
-	rm -f *.cmi *.cmo *.cma *.cmx *.a *.o *.cmxa findlib.ml findlib_mt.mml \
-	  mt/*.* fl_meta.ml findlib_config.ml findlib.mml topfind \
+	rm -f *.cmi *.cmo *.cma *.cmx *.a *.o *.cmxa \
+	  fl_meta.ml findlib_config.ml findlib.mml topfind \
 	  ocamlfind$(EXEC_SUFFIX) ocamlfind_opt$(EXEC_SUFFIX)
-	rm -rf mt
 
 install: all
 	mkdir -p $(PREFIX)$(OCAML_SITELIB)/$(NAME)
@@ -120,7 +76,7 @@ install: all
 	cp topfind $(PREFIX)$(OCAML_CORE_STDLIB)
 	$(TOP)/tools/file_exists $(PREFIX)$(OCAML_CORE_STDLIB)/findlib || ln -s topfind $(PREFIX)$(OCAML_CORE_STDLIB)/findlib # compat
 	$(TOP)/tools/file_exists $(PREFIX)$(OCAML_CORE_STDLIB)/ocamlfind || ln -s topfind $(PREFIX)$(OCAML_CORE_STDLIB)/ocamlfind # compat
-	files=`$(TOP)/tools/collect_files $(TOP)/Makefile.config findlib.cmi findlib.mli findlib.cma findlib_mt.cma findlib_unix.cma topfind.cmi topfind.mli findlib_top.cma findlib.cmxa findlib.a findlib_mt.cmxa findlib_mt.a findlib_unix.cmxa findlib_unix.a META` && \
+	files=`$(TOP)/tools/collect_files $(TOP)/Makefile.config findlib.cmi findlib.mli findlib.cma topfind.cmi topfind.mli findlib_top.cma findlib.cmxa findlib.a META` && \
 	cp $$files $(PREFIX)$(OCAML_SITELIB)/$(NAME)
 	f="ocamlfind$(EXEC_SUFFIX)"; { test -f ocamlfind_opt$(EXEC_SUFFIX) && f="ocamlfind_opt$(EXEC_SUFFIX)"; }; \
 	cp $$f $(PREFIX)$(OCAMLFIND_BIN)/ocamlfind$(EXEC_SUFFIX)
@@ -131,7 +87,7 @@ uninstall:
 	rm -f $(PREFIX)$(OCAMLFIND_BIN)/ocamlfind$(EXEC_SUFFIX)
 
 
-depend: *.ml *.mli findlib.ml fl_meta.ml fl_metascanner.ml
+depend: *.ml *.mli fl_meta.ml fl_metascanner.ml
 	$(OCAMLDEP) *.ml *.mli >depend
 
 # Some 'make' implementations require that .SUFFIXES must occur before

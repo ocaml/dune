@@ -10,6 +10,7 @@ exception Usage;;
 type mode =
     M_use | M_query | M_install | M_remove | M_compiler of string | M_dep
   | M_printconf | M_guess | M_list | M_browser | M_call of (string*string)
+  | M_doc
 ;;
 
 
@@ -142,16 +143,21 @@ let is_dll p =
 ;;
 
 
+let identify_dir d =
+  let s = Unix.stat d in
+  (s.Unix.st_dev, s.Unix.st_ino)
+;;
+
+
 let conflict_report incpath =
   (* First check whether there are several definitions for packages
    * in the current path. We remove duplicate directories first.
    * Note that all other checks are not sensitive to duplicate directories.
    *)
-  let path = Fl_metacache_unix.remove_dups_from_path(Findlib.search_path()) in
-  Fl_metacache.package_conflict_report path;
+  Fl_package_base.package_conflict_report ~identify_dir ();
 
   (* Second check whether there are module conflicts *)
-  Fl_metacache_unix.module_conflict_report incpath;
+  Fl_package_base.module_conflict_report incpath;
 
   (* Finally check whether there are multiple DLLs: *)
   (* Note: Only the directories mentioned in ld.conf are checked, but not the
@@ -167,7 +173,7 @@ let conflict_report incpath =
 	(List.map
 	   (fun dll_dir ->
 	      let files =
-		try Fl_metacache_unix.list_dir dll_dir
+		try Array.to_list (Sys.readdir dll_dir)
 		with _ ->
 		  prerr_endline ("ocamlfind: [WARNING] Cannot read directory " ^ 
 				 dll_dir ^ " which is mentioned in ld.conf");
@@ -203,7 +209,7 @@ let check_package_list l =
 	 let _ = package_directory pkg in
 	 ()
        with
-	   Not_found ->
+	   No_such_package(_,_) ->
 	     failwith ("package '" ^ pkg ^ "' not found"))
     l
 ;;
@@ -290,10 +296,8 @@ let expand predicates eff_packages format =
   List.flatten
     (List.map
        (fun pkg ->
-	 let dir =
-	   try package_directory pkg
-	   with Not_found -> failwith ("package '" ^ pkg ^ "' not found")
-	 in
+	 let dir = package_directory pkg in
+	    (* May raise No_such_package *)
 	 let spec =
 	   [ 'p',  [pkg];
              'd',  [dir];
@@ -392,22 +396,10 @@ let query_package () =
                          -separator <s>   | 
                          -descendants     | -recursive  ] package ...";
 
-    (* check packages: *)
-    List.iter
-      (fun pkg ->
-	try
-	  let _ = package_directory pkg in
-	  ()
-	with
-	  Not_found ->
-	    failwith ("package '" ^ pkg ^ "' not found"))
-      !packages;
-
-
     let eff_packages =
       if !recursive then begin
 	if !descendants then
-	  Fl_metacache_unix.users !packages
+	  Fl_package_base.package_users !predicates !packages
 	else
 	  package_deep_ancestors !predicates !packages
       end
@@ -1251,7 +1243,7 @@ let ocamlbrowser () =
       (fun s -> raise (Arg.Bad ("Unexpected argument: " ^ s)))
       ("usage: ocamlfind ocamlbrowser [options] file ...");
 
-  if !add_all then packages := Fl_metacache_unix.list_packages();
+  if !add_all then packages := Fl_package_base.list_packages();
   check_package_list !packages;
   
   let arguments =
@@ -1350,7 +1342,7 @@ let create_owner_file pkg file =
 
 
 let find_owned_files pkg dir =
-  let files = Fl_metacache_unix.list_dir dir in
+  let files = Array.to_list(Sys.readdir dir) in
   List.filter
     (fun file ->
        let owner_file = 
@@ -1626,16 +1618,10 @@ let remove_package () =
 
   (* Remove the files from the package directory: *)
   if Sys.file_exists pkgdir then begin
-    try
-      let files = Fl_metacache_unix.list_dir pkgdir in
-      List.iter (fun f -> Sys.remove (Filename.concat pkgdir f)) files;
-      Unix.rmdir pkgdir;
-      prerr_endline ("Removed " ^ pkgdir)
-    with
-	Unix.Unix_error(e,_,s) ->
-	  failwith
-	    ((if s <> "" then s ^ ": " else "") ^
-	     Unix.error_message e)
+    let files = Sys.readdir pkgdir in
+    Array.iter (fun f -> Sys.remove (Filename.concat pkgdir f)) files;
+    Unix.rmdir pkgdir;
+    prerr_endline ("Removed " ^ pkgdir)
   end
   else
     prerr_endline("ocamlfind: [WARNING] No such directory: " ^ pkgdir);
@@ -1684,11 +1670,10 @@ let guess_meta_file () =
 
 
 let list_packages() =
-  let packages = Fl_metacache_unix.list_packages() in
+  let packages = Fl_package_base.list_packages() in
   let packages_sorted = List.sort compare packages in
 
-  let path = Fl_metacache_unix.remove_dups_from_path(Findlib.search_path()) in
-  Fl_metacache.package_conflict_report path;
+  Fl_package_base.package_conflict_report ~identify_dir ();
 
   let n = 20 in
   List.iter
@@ -1769,11 +1754,7 @@ let print_configuration() =
 
 
 let ocamlcall pkg cmd =
-  let dir = 
-    try package_directory pkg 
-    with Not_found ->
-      failwith ("Cannot find package: " ^ pkg)
-  in
+  let dir = package_directory pkg in
   let path = Filename.concat dir cmd in
   begin
     try Unix.access path [ Unix.X_OK ]
@@ -1863,6 +1844,16 @@ let main() =
   | Failure f ->
       prerr_endline ("ocamlfind: " ^ f);
       exit 2
+  | Sys_error f ->
+      prerr_endline ("ocamlfind: " ^ f);
+      exit 2
+  | Findlib.No_such_package(pkg,info) ->
+      prerr_endline ("ocamlfind: Package `" ^ pkg ^ "' not found" ^
+		     (if info <> "" then " - " ^ info else ""));
+      exit 2
+  | Findlib.Package_loop pkg ->
+      prerr_endline ("ocamlfind: Package `" ^ pkg ^ "' requires itself");
+      exit 2
 ;;
 
 
@@ -1879,174 +1870,3 @@ with
     if raise_again then raise any;
     exit 3
 ;;
-
-
-(* ======================================================================
- * History:
- *
- * $Log: frontend.ml,v $
- * Revision 1.45  2003/11/08 12:10:36  gerd
- * 	ocamlopt -thread outputs an error message if only bytecode
- * threads are supported.
- *
- * Revision 1.44  2003/10/08 11:47:26  gerd
- * 	Added -ffast-math option
- *
- * Revision 1.43  2003/09/30 11:25:26  gerd
- * 	Generating browse_interfaces
- * 	Removed support for camltk (is now part of labltk)
- *
- * Revision 1.42  2003/09/30 00:28:29  gerd
- * 	Changes for 3.07: thread implementation
- * 	num-top
- *
- * Revision 1.41  2002/09/22 20:12:32  gerd
- * 	Renamed modules (prefix fl_)
- *
- * Revision 1.40  2002/07/05 12:46:41  gerd
- * 	0.7.1: libexec becomes stublibs
- *
- * Revision 1.39  2002/06/08 18:59:03  gerd
- * 	New options -dll and -nodll for [ocamlfind install]
- *
- * Revision 1.38  2002/05/20 23:19:18  gerd
- * 	Improved: The package_conflict_report does no longer complain
- * about duplicate META files if only the same directory is mentioned
- * several times.
- *
- * Revision 1.37  2002/05/16 23:47:45  gerd
- * 	Support for libexec directory.
- * 	Support for postinstall and postremove scripts.
- *
- * Revision 1.36  2002/05/16 21:49:36  gerd
- * 	"-ldconf ignore" turns ld.conf modification off.
- *
- * Revision 1.35  2002/05/05 15:20:03  gerd
- * 	Added -native-filter and -bytecode-filter for ocamldep
- *
- * Revision 1.34  2002/04/29 14:50:09  gerd
- * 	Support for pkg/cmd, i.e. for calling commands that are installed
- * in package directories
- *
- * Revision 1.33  2002/04/26 20:48:30  gerd
- * 	-descendants implies -recursive
- *
- * Revision 1.32  2002/04/26 15:50:32  gerd
- * 	Minor fixes
- *
- * Revision 1.31  2002/04/26 15:45:22  gerd
- * 	New: ocamlfind browser
- *
- * Revision 1.30  2002/04/24 00:14:18  gerd
- * 	'install' preserves mtime.
- *
- * Revision 1.29  2002/04/23 23:45:15  gerd
- * 	printconf can now also print individual config variables
- *
- * Revision 1.28  2002/04/23 23:25:04  gerd
- * 	New option -ldconf
- *
- * Revision 1.27  2001/12/15 18:01:33  gerd
- * 	Fix: /tmp/findlib_initf* is cleaned up.
- * 	Change: Support for new O'Caml 3.04 arguments.
- * 	Change: The thread library is now always the first linked library.
- *
- * Revision 1.26  2001/10/13 13:16:43  gerd
- * 	New -dllpath-pkg, -dllpath-all options.
- * 	ld.conf is automatically kept in synch with packages.
- *
- * Revision 1.25  2001/10/12 20:16:41  gerd
- * 	When directory names are compared, they are now normalized.
- *
- * Revision 1.24  2001/10/12 15:04:15  gerd
- * 	ocaml-3.03
- *
- * Revision 1.23  2001/09/04 16:12:32  gerd
- * 	Splitted the init code for ocamlmktop in an early part and a late
- * part. The early init code section sets up the include path (-I).
- * 	Added ocamlfind ocamldep.
- *
- * Revision 1.22  2001/07/24 20:05:19  gerd
- * 	printconf prints the standard library
- *
- * Revision 1.21  2001/07/24 19:59:22  gerd
- * 	New query option -p-format.
- * 	Install/remove: usage message includes default values
- * 	Remove: Warning if the removed package is not the visible package
- * 	Overall: Using Findlib.ocaml_stdlib instead of Findlib_config.
- * The stdlib location can now be changed
- *
- * Revision 1.20  2001/03/27 20:22:34  gerd
- * 	copy_file: sets the permissions of the installed files
- * according to the umask and the originial permissions.
- *
- * Revision 1.19  2001/03/10 08:15:22  gerd
- * 	-warn-error
- *
- * Revision 1.18  2001/03/06 20:14:26  gerd
- * 	Added -where (for O'Caml 3.01).
- *
- * Revision 1.17  2001/03/04 23:00:56  gerd
- * 	Fix
- *
- * Revision 1.16  2001/03/03 19:28:34  gerd
- * 	Added conflict reports.
- *
- * Revision 1.15  2001/02/24 20:23:28  gerd
- * 	New subcommands: guess, list, printconf.
- * 	Improved subcommands: install, remove.
- *
- * Revision 1.14  2000/07/31 01:37:37  gerd
- * 	Added options -syntax, -ppopt.
- * 	Added support for OCAMLFIND_COMMANDS.
- *
- * Revision 1.13  2000/04/28 13:45:25  gerd
- * 	The compiler frontends do not produce -I and -L options for the
- * standard library directory anymore.
- *
- * Revision 1.12  2000/04/26 00:09:20  gerd
- * 	O'Caml 3 changes.
- *
- * Revision 1.11  2000/02/28 20:23:53  gerd
- * 	Bugfix: option -output-obj works now.
- *
- * Revision 1.10  2000/02/28 20:22:05  gerd
- * 	Minor change.
- *
- * Revision 1.8  2000/01/10 22:48:04  gerd
- * 	The relative order of files passed using -intf <file> and
- * -impl <file> is not changed.
- *
- * Revision 1.7  1999/11/10 23:45:17  gerd
- * 	The -dontlink option can now list several packages.
- *
- * Revision 1.6  1999/07/09 15:28:38  gerd
- * 	Added automatic recognition of POSIX threads. The META file in
- * the "threads" package has now a variable "type_of_threads" with
- * possible values "bytecode" and "posix". This variable is set when
- * "findlib" is configured. The compiler frontends query this variable
- * (with an empty predicate list), and add "mt_posix" to the predicate
- * list if the variable has the value "posix".
- *
- * Revision 1.5  1999/06/26 15:44:33  gerd
- * 	Some minor changes; the /tmp files are now removed always;
- * multiple directories are only passed once to the underlying compiler.
- *
- * Revision 1.4  1999/06/26 15:01:49  gerd
- * 	Added the -descendants option.
- *
- * Revision 1.3  1999/06/24 20:17:50  gerd
- * 	Further modifications (dont know which...)
- *
- * Revision 1.2  1999/06/20 19:26:24  gerd
- * 	Major change: Added support for META files. In META files, knowlege
- * about compilation options, and dependencies on other packages can be stored.
- * The "ocamlfind query" subcommand has been extended in order to have a
- * direct interface for that. "ocamlfind ocamlc/ocamlopt/ocamlmktop/ocamlcp"
- * subcommands have been added to simplify the invocation of the compiler.
- *
- * Revision 1.1  1999/03/26 00:02:47  gerd
- * 	Initial release.
- *
- *
- *)

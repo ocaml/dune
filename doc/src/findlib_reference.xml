@@ -452,8 +452,14 @@ compiler is used.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 >toploop</TERM><LISTITEM
 ><PARA
 >The "toploop" predicate means that the toploop is available in the
-linked program. It is automatically included into the predicate set if
-the "ocamlmktop" compiler is used.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+linked program. This predicate is only set when the toploop is actually
+being executed, not when the toploop is created (this changed in version
+1.0.4 of findlib).</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>create_toploop</TERM><LISTITEM
+><PARA
+>This predicate means that a toploop is being created (using
+ocamlmktop).</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
 >mt</TERM><LISTITEM
 ><PARA
@@ -1251,7 +1257,11 @@ MARK="bullet"
 >The "native" predicate means that the native compiler is used.</PARA></LISTITEM><LISTITEM
 ><PARA
 >The "toploop" predicate means that the toploop is available in the
-linked program.</PARA></LISTITEM><LISTITEM
+linked program. It is only set when the toploop is running, not when
+the toploop is generated.</PARA></LISTITEM><LISTITEM
+><PARA
+>The "create_toploop" predicate means that a toploop is created (using
+ocamlmktop).</PARA></LISTITEM><LISTITEM
 ><PARA
 >The "mt" predicate means that the program is multi-threaded.</PARA></LISTITEM><LISTITEM
 ><PARA

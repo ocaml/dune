@@ -295,4 +295,24 @@ let resolve_path ?base p =
 ;;
 
 
+let list_packages ?(tab = 20) ch =
+  let packages = Fl_package_base.list_packages() in
+  let packages_sorted = List.sort compare packages in
+
+  List.iter
+    (fun p ->
+       let v_string =
+	 try
+	   let v = package_property [] p "version" in
+	   let spaces = String.make (max 1 (tab-String.length p)) ' ' in
+	   spaces ^ "(version: " ^ v ^ ")"
+	 with
+	     Not_found -> ""
+       in
+       output_string ch (p ^ v_string ^ "\n")
+    )
+    packages_sorted
+;;
+
+
 init();

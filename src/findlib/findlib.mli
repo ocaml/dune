@@ -167,3 +167,9 @@ val resolve_path : ?base:string -> string -> string
    *   [base] path is prepended. Otherwise, the path is returned as
    *   it is.
    *)
+
+val list_packages : ?tab:int -> out_channel -> unit
+  (** Prints the list of available packages to the [out_channel].
+   *
+   * @param tab The tabulator width, by default 20
+   *)

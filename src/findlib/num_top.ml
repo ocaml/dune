@@ -30,13 +30,3 @@ let _ =
       "Something weird appened while installing Num library printers";
     Format.pp_print_flush error_fmt ()
   end
-
-(* ======================================================================
- * History:
- * 
- * $Log: num_top.ml,v $
- * Revision 1.1  2003/09/30 00:27:37  gerd
- * 	initial revision
- *
- * 
- *)

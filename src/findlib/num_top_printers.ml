@@ -15,12 +15,3 @@ let ratio_printer fmt v =
 let num_printer fmt v =
   Format.fprintf fmt "<num %s>" (Num.string_of_num v)
 
-(* ======================================================================
- * History:
- * 
- * $Log: num_top_printers.ml,v $
- * Revision 1.1  2003/09/30 00:27:37  gerd
- * 	initial revision
- *
- * 
- *)

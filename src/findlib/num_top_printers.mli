@@ -20,12 +20,3 @@ val big_int_printer : Format.formatter -> Big_int.big_int -> unit
 val ratio_printer : Format.formatter -> Ratio.ratio -> unit
 val num_printer: Format.formatter -> Num.num -> unit
 
-(* ======================================================================
- * History:
- * 
- * $Log: num_top_printers.mli,v $
- * Revision 1.1  2003/09/30 00:27:37  gerd
- * 	initial revision
- *
- * 
- *)

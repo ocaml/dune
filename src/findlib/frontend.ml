@@ -1482,6 +1482,8 @@ let install_package () =
 	)
 	errmsg;
   if !pkgname = "" then (Arg.usage keywords errmsg; exit 1);
+  if not (Fl_split.is_valid_package_name !pkgname) then
+    failwith "Package names must not contain the character '.'!";
 
   let pkgdir = Filename.concat !destdir !pkgname in
   let dlldir = Filename.concat !destdir Findlib_config.libexec_name in
@@ -1636,6 +1638,8 @@ let remove_package () =
   if !pkgname = "" then (Arg.usage keywords errmsg; exit 1);
   if List.mem !pkgname reserved_names then 
     failwith ("You are not allowed to remove this thing by ocamlfind!");
+  if not (Fl_split.is_valid_package_name !pkgname) then
+    failwith "Package names must not contain the character '.'!";
 
   let meta_dot_pkg = "META." ^ !pkgname in
   let has_metadir = !metadir <> "" in

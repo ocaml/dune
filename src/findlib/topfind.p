@@ -8,3 +8,4 @@
 #directory "@SITELIB@/findlib";;
 Topfind.add_predicates [ "byte"; "toploop" ];
 Topfind.don't_load ["findlib"];;
+Topfind.announce();;

@@ -52,25 +52,27 @@ let parse ch =
       x :: l' -> if List.mem x l' then mk_set l' else x :: mk_set l'
     | [] -> []
   in
+  let error_msg m line col =
+    m ^ " at line " ^ string_of_int line ^ " position " ^ string_of_int col
+  in
   let rec parse_all need_rparen stream =
     let (strm__ : _ Stream.t) = stream in
     match Stream.peek strm__ with
       Some (line, col, Name "package") ->
         Stream.junk strm__;
         begin match Stream.peek strm__ with
-          Some (_, _, String n) ->
+          Some (l, c, String n) ->
             Stream.junk strm__;
             begin match Stream.peek strm__ with
-              Some (_, _, LParen) ->
+              Some (l, c, LParen) ->
                 Stream.junk strm__;
                 let subpkg =
                   try parse_all true strm__ with
                     Stream.Failure ->
                       raise
                         (Stream.Error
-                           ("Error in subpackage clause  in line " ^
-                              string_of_int line ^ " position " ^
-                              string_of_int col))
+                           (error_msg "Error in subpackage definition" line
+                              col))
                 in
                 let rest =
                   try parse_all need_rparen strm__ with
@@ -78,9 +80,15 @@ let parse ch =
                 in
                 {pkg_defs = rest.pkg_defs;
                  pkg_children = (n, subpkg) :: rest.pkg_children}
-            | _ -> raise (Stream.Error "")
+            | _ ->
+                raise
+                  (Stream.Error (error_msg "'(' expected after string" l c))
             end
-        | _ -> raise (Stream.Error "")
+        | _ ->
+            raise
+              (Stream.Error
+                 (error_msg "String literal expected after 'package'" line
+                    col))
         end
     | Some (line, col, Name n) ->
         Stream.junk strm__;
@@ -89,8 +97,7 @@ let parse ch =
             Stream.Failure ->
               raise
                 (Stream.Error
-                   ("Error in 'name = value' clause  in line " ^
-                      string_of_int line ^ " position " ^ string_of_int col))
+                   (error_msg "Error in 'name = value' clause" line col))
         in
         let rest =
           try parse_all need_rparen strm__ with
@@ -125,9 +132,7 @@ let parse ch =
     | Some (line, col, _) ->
         Stream.junk strm__;
         raise
-          (Stream.Error
-             ("Expected 'name = value' clause  in line " ^
-                string_of_int line ^ " position " ^ string_of_int col))
+          (Stream.Error (error_msg "Expected 'name = value' clause" line col))
     | _ -> raise Stream.Failure
   and parse_properties stream =
     let (strm__ : _ Stream.t) = stream in
@@ -136,11 +141,7 @@ let parse ch =
         Stream.junk strm__;
         let arg1 =
           try parse_argument strm__ with
-            Stream.Failure ->
-              raise
-                (Stream.Error
-                   ("After a '(' there must be a predicate name in line " ^
-                      string_of_int line ^ " position " ^ string_of_int col))
+            Stream.Failure -> raise (Stream.Error "")
         in
         let args =
           try parse_arguments strm__ with
@@ -148,10 +149,7 @@ let parse ch =
         in
         let flav =
           try parse_flavour strm__ with
-            Stream.Failure ->
-              raise
-                (Stream.Error
-                   ("'=' or '+=' expected after '(predicates)' clause in line " ^ string_of_int line ^ " position " ^ string_of_int col))
+            Stream.Failure -> raise (Stream.Error "")
         in
         begin match Stream.peek strm__ with
           Some (line3, col3, String s) ->
@@ -159,8 +157,7 @@ let parse ch =
         | _ ->
             raise
               (Stream.Error
-                 ("Expected string constant after '=' in line " ^
-                    string_of_int line ^ " position " ^ string_of_int col))
+                 (error_msg "Expected string constant after '='" line col))
         end
     | Some (line, col, Equal) ->
         Stream.junk strm__;
@@ -169,8 +166,9 @@ let parse ch =
         | _ ->
             raise
               (Stream.Error
-                 ("'=' must be followed by a string constant in line " ^
-                    string_of_int line ^ " position " ^ string_of_int col))
+                 (error_msg
+                    "'=' must be followed by a string constant in line " line
+                    col))
         end
     | Some (line, col, PlusEqual) ->
         Stream.junk strm__;
@@ -179,15 +177,16 @@ let parse ch =
         | _ ->
             raise
               (Stream.Error
-                 ("'+=' must be followed by a string constant in line " ^
-                    string_of_int line ^ " position " ^ string_of_int col))
+                 (error_msg
+                    "'+=' must be followed by a string constant in line " line
+                    col))
         end
     | Some (line, col, _) ->
         Stream.junk strm__;
         raise
           (Stream.Error
-             ("Expected a '=' or a '(arguments,...)=' clause in line " ^
-                string_of_int line ^ " position " ^ string_of_int col))
+             (error_msg "Expected a '=' or a '(arguments,...)=' clause" line
+                col))
     | _ -> raise Stream.Failure
   and parse_arguments stream =
     let (strm__ : _ Stream.t) = stream in
@@ -196,11 +195,7 @@ let parse ch =
         Stream.junk strm__;
         let arg =
           try parse_argument strm__ with
-            Stream.Failure ->
-              raise
-                (Stream.Error
-                   ("Expected predicate name after ',' in line " ^
-                      string_of_int line ^ " position " ^ string_of_int col))
+            Stream.Failure -> raise (Stream.Error "")
         in
         let args =
           try parse_arguments strm__ with
@@ -212,8 +207,7 @@ let parse ch =
         Stream.junk strm__;
         raise
           (Stream.Error
-             ("Another predicate or a ')' expected in line " ^
-                string_of_int line ^ " position " ^ string_of_int col))
+             (error_msg "Another predicate or a ')' expected" line col))
     | _ -> raise Stream.Failure
   and parse_argument stream =
     let (strm__ : _ Stream.t) = stream in
@@ -222,15 +216,23 @@ let parse ch =
     | Some (line, col, Minus) ->
         Stream.junk strm__;
         begin match Stream.peek strm__ with
-          Some (_, _, Name n) -> Stream.junk strm__; `NegPred n
-        | _ -> raise (Stream.Error "")
+          Some (l, c, Name n) -> Stream.junk strm__; `NegPred n
+        | _ ->
+            raise
+              (Stream.Error (error_msg "Name expected after '-'" line col))
         end
+    | Some (line, col, _) ->
+        Stream.junk strm__;
+        raise (Stream.Error (error_msg "Name or -Name expected" line col))
     | _ -> raise Stream.Failure
   and parse_flavour stream =
     let (strm__ : _ Stream.t) = stream in
     match Stream.peek strm__ with
       Some (line, col, Equal) -> Stream.junk strm__; `BaseDef
     | Some (line, col, PlusEqual) -> Stream.junk strm__; `Appendix
+    | Some (line, col, _) ->
+        Stream.junk strm__;
+        raise (Stream.Error (error_msg "'+' or '+=' expected" line col))
     | _ -> raise Stream.Failure
   in
   let rec check_defs p l =
@@ -263,7 +265,9 @@ let parse ch =
          if List.mem n !l then
            raise (Stream.Error ("Double definition for subpackage " ^ p'));
          if String.contains n '.' then
-           raise (Stream.Error "Subpackage name must not contain '.'");
+           raise
+             (Stream.Error
+                ("Subpackage name must not contain '.': \"" ^ n ^ "\""));
          check_pkg p' subpkg;
          l := n :: !l)
       pkg.pkg_children

@@ -70,15 +70,18 @@ let parse ch =
 	[]
   in
 
+  let error_msg m line col =
+    m ^ " at line " ^ string_of_int line ^ " position " ^ string_of_int col
+  in
+
   let rec parse_all need_rparen stream =
     match stream with parser
       [< '(line, col, Name "package");
-	 '(_, _, String n);
-	 '(_, _, LParen);
+	 '(l, c, String n) ?? (error_msg "String literal expected after 'package'" line col);
+	 '(l, c, LParen)   ?? (error_msg "'(' expected after string" l c);
 	 subpkg = parse_all true
-	  ?? ("Error in subpackage clause  in line " ^
-		   string_of_int line ^ " position " ^ string_of_int col);
-	 rest = parse_all need_rparen
+	  ?? (error_msg "Error in subpackage definition" line col);
+	 rest = parse_all need_rparen;
       >]
 	-> { pkg_defs = rest.pkg_defs;
 	     pkg_children = (n, subpkg) :: rest.pkg_children
@@ -86,8 +89,7 @@ let parse ch =
 
     | [< '(line, col, Name n);
          props = parse_properties
-	  ?? ("Error in 'name = value' clause  in line " ^
-		   string_of_int line ^ " position " ^ string_of_int col);
+	  ?? (error_msg "Error in 'name = value' clause" line col);
 	 rest = parse_all need_rparen
        >]
 	-> 
@@ -123,70 +125,66 @@ let parse ch =
 	  }
 
     | [< '(line,col,_) >]
-	-> raise(Stream.Error("Expected 'name = value' clause  in line " ^
-			      string_of_int line ^ " position " ^
-			      string_of_int col))
+	-> raise(Stream.Error(error_msg "Expected 'name = value' clause" line col))
 
   and parse_properties stream =
     match stream with parser
       [< '(line,col,LParen);
-	 arg1 = parse_argument
-	  ?? ("After a '(' there must be a predicate name in line " ^
-	    string_of_int line ^ " position " ^ string_of_int col);
+	 arg1 = parse_argument;
 	 args = parse_arguments;
-	 flav = parse_flavour
-	  ?? ("'=' or '+=' expected after '(predicates)' clause in line " ^
-	    string_of_int line ^ " position " ^ string_of_int col);
+	 flav = parse_flavour;
          '(line3,col3,String s)
-	  ?? ("Expected string constant after '=' in line " ^
-	     string_of_int line ^ " position " ^ string_of_int col)
+	  ?? (error_msg "Expected string constant after '='" line col)
       >]
 	-> arg1::args, flav, s
 
     | [< '(line,col,Equal); '(_,_,String s)
-	 ?? ("'=' must be followed by a string constant in line " ^
-	    string_of_int line ^ " position " ^ string_of_int col)
+	 ?? (error_msg "'=' must be followed by a string constant in line "
+	       line col)
       >]
 	-> [], `BaseDef, s
 
     | [< '(line,col,PlusEqual); '(_,_,String s)
-	 ?? ("'+=' must be followed by a string constant in line " ^
-	    string_of_int line ^ " position " ^ string_of_int col)
+	 ?? (error_msg "'+=' must be followed by a string constant in line "
+	       line col)
       >]
 	-> [], `Appendix, s
 
     | [< '(line,col,_) >]
-	-> raise(Stream.Error("Expected a '=' or a '(arguments,...)=' clause in line " ^
-			      string_of_int line ^ " position " ^
-			      string_of_int col))
+	-> raise(Stream.Error(error_msg 
+				"Expected a '=' or a '(arguments,...)=' clause"
+				line col))
 
   and parse_arguments stream =
     match stream with parser
       [< '(line,col,Comma);
-	 arg = parse_argument
-	   ?? ("Expected predicate name after ',' in line " ^
-	      string_of_int line ^ " position " ^ string_of_int col);
+	 arg = parse_argument;
 	 args = parse_arguments
       >]
 	-> arg :: args
     | [< '(_,_,RParen) >]
 	-> []
     | [< '(line,col,_) >]
-	-> raise(Stream.Error("Another predicate or a ')' expected in line " ^
-			      string_of_int line ^ " position " ^
-			      string_of_int col))
+	-> raise(Stream.Error(error_msg 
+				"Another predicate or a ')' expected"
+				line col))
 
   and parse_argument stream =
     match stream with parser
 	[< '(line,col,Name n) >] -> `Pred n
       | [< '(line,col,Minus);
-	   '(_,_,Name n) >] -> `NegPred n
+	   '(l,c,Name n) ?? (error_msg "Name expected after '-'" line col) >]
+	                 -> `NegPred n
+      | [< '(line,col,_) >] ->
+	  raise(Stream.Error(error_msg "Name or -Name expected" line col))
 	     
 
   and parse_flavour stream =
     match stream with parser
 	[< '(line,col,Equal) >]     -> `BaseDef
       | [< '(line,col,PlusEqual) >] -> `Appendix
+      | [< '(line,col,_) >] ->
+	  raise(Stream.Error(error_msg "'+' or '+=' expected" line col))
   in
 
   let rec check_defs p l =
@@ -220,7 +218,7 @@ let parse ch =
 	 if List.mem n !l then
 	   raise(Stream.Error("Double definition for subpackage " ^ p'));
 	 if String.contains n '.' then
-	   raise(Stream.Error "Subpackage name must not contain '.'");
+	   raise(Stream.Error("Subpackage name must not contain '.': \"" ^ n ^ "\""));
 	 check_pkg p' subpkg;
 	 l := n :: !l
       )

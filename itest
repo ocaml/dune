@@ -9,7 +9,7 @@ case `uname` in
     *)
 	execsuffix= ;;
 esac
-ocamlfind="./ocamlfind${execsuffix}"
+ocamlfind="src/findlib/ocamlfind${execsuffix}"
 
 check_linkage () {
     p=$1
@@ -34,7 +34,7 @@ check_linkage () {
 }
 
 problems () {
-    echo "* This test failed. Please check the settings in site-lib/$1/META,"
+    echo "* This test failed. Please check the settings in site-lib-src/$1/META,"
     echo "  especially the 'linkopts' variable, and try again. You can invoke"
     echo "  this test directly by: ./itest $1"
 }
@@ -76,7 +76,7 @@ do_test () {
 }
 
 
-OCAMLPATH="./site-lib"
+OCAMLPATH="./site-lib-src"
 export OCAMLPATH
 
 if [ ! -f "$ocamlfind" ]; then
@@ -87,7 +87,7 @@ fi
 
 if [ "$#" = "0" ]; then
     for t in unix str dbm graphics num threads bigarray labltk camlp4; do
-	if [ -f "site-lib/$t/META" ]; then
+	if [ -f "site-lib-src/$t/META" ]; then
 	    echo "------------------------------------------------------------------------------"
 	    do_test $t
 	    echo

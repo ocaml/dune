@@ -716,7 +716,7 @@ let label_box frame box =
 
 
 let scrolled_listbox ?(click = fun _ _ -> ()) ?(context = fun _ _ -> ()) 
-                     ?(separator = true) ?(height = 10) frame =
+                     ?(separator = true) ?(height = 8) frame =
   let f = Frame.create frame in
   let lb = Listbox.create ~selectmode:`Multiple ~width:20 ~height
 	     ~exportselection:false f in
@@ -1087,7 +1087,7 @@ let pkginfo lb row =  (* when the user right-clicks at a listbox row *)
     with
 	Not_found ->
 	  let dir = Findlib.package_directory pkg in
-	  let files = Fl_metacache_unix.list_dir dir in
+	  let files = Array.to_list(Sys.readdir dir) in
 	  List.map
 	    (fun name -> 
 	       String.capitalize (Filename.chop_suffix name ".cmi"))
@@ -1109,7 +1109,7 @@ let pkginfo lb row =  (* when the user right-clicks at a listbox row *)
 
 let preprocessor_scan_extensions() =
   (* Find out all packages with a "preprocessor" predicate *)
-  let packages = Fl_metacache_unix.list_packages() in
+  let packages = Fl_package_base.list_packages() in
   let plist =
     List.filter
       (fun pkg ->
@@ -1196,7 +1196,7 @@ add_screen preprocessor_screen;;
 
 let prerequisites_scan_packages() =
   (* Find out all packages *)
-  List.sort Pervasives.compare (Fl_metacache_unix.list_packages())
+  List.sort Pervasives.compare (Fl_package_base.list_packages())
 ;;
 
 
@@ -1215,7 +1215,7 @@ more about a package."; (* "" *)
     wiz_required_packages := listbox_get_selection lb;
   in
 
-  let (f_lb,lb) = scrolled_listbox ~height:20 ~click ~context:pkginfo frame in
+  let (f_lb,lb) = scrolled_listbox ~height:18 ~click ~context:pkginfo frame in
   Listbox.insert lb ~index:`End ~texts:!wiz_all_packages;
   listbox_select lb !wiz_required_packages;
   pack ~anchor:`W [f_lb];
@@ -1244,7 +1244,7 @@ add_screen prerequisites_screen;;
 (**********************************************************************)
 
 let buildlib_scan_modules() =
-  let files = Fl_metacache_unix.list_dir "." in
+  let files = Array.to_list(Sys.readdir ".") in
   let suffixes = Fl_split.in_words_ws !wiz_source_suffixes in
   let files' = 
     List.filter
@@ -1381,7 +1381,7 @@ build any.";
     end
   in
 
-  let (f_lb,lb) = scrolled_listbox ~click ~height:5 frame in
+  let (f_lb,lb) = scrolled_listbox ~click ~height:3 frame in
   Listbox.configure ~selectmode:`Single lb;
   Listbox.insert lb ~index:`End ~texts:!wiz_executables;
   pack ~anchor:`W [f_lb];
@@ -1532,7 +1532,7 @@ Wm.title_set !top "findlib/make-wizard";
 Wm.protocol_set !top ~name:"WM_DELETE_WINDOW"
   ~command:(fun () -> if ask_and_save !top then destroy !top);
 Toplevel.configure ~width:(pixels(`Pt 450.0)) 
-                   ~height:(pixels (`Pt 550.0)) (Winfo.toplevel !top);
+                   ~height:(pixels (`Pt 650.0)) (Winfo.toplevel !top);
 Pack.propagate_set !top false;
 topframe := coe(Frame.create !top);
 redraw();

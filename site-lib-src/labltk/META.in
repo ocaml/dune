@@ -2,7 +2,7 @@ dnl This file is input of the m4 macro processor.
 `# Specifications for the "labltk" library:'
 `requires = ""'
 `version = "[distributed with Ocaml]"'
-`directory = "^/labltk"'
+`directory = "+labltk"'
 `browse_interfaces = "'interfaces`"'
 `archive(byte) = "labltk.cma"'
 `archive(native) = "labltk.cmxa"'

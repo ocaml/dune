@@ -154,3 +154,16 @@ val package_deep_ancestors : string list -> string list -> string list
    * the ancestors cannot be found. Raises [Package_loop] if there is a
    * cyclic dependency.
    *)
+
+val resolve_path : ?base:string -> string -> string
+  (** Resolves findlib notation in filename paths. The notation 
+   * [+name/path] can be used to refer to the subdirectory [name]
+   * of the standard library directory; the continuation [/path] is
+   * optional. The notation [@name/path] can be used to refer to
+   * the directory of the package [name]; the continuation [/path]
+   * is optional. For these two notations, absolute paths are returned.
+   * 
+   * @param base When the function is applied on a relative path, the
+   *   [base] path is prepended. Otherwise, the path is returned as
+   *   it is.
+   *)

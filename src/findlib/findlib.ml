@@ -262,4 +262,37 @@ let package_deep_ancestors predlist pkglist =
 ;;
 
 
+let resolve_path ?base p =
+  if p = "" then "" else (
+    match p.[0] with
+	'^' | '+' ->
+	  let stdlibdir = Fl_split.norm_dir (ocaml_stdlib()) in
+	  Filename.concat
+	    stdlibdir
+	    (String.sub p 1 (String.length p - 1))
+      | '@' ->
+	  (* Search slash *)
+	  ( try 
+	      let k = String.index p '/' in  (* or Not_found *)
+	      let pkg = String.sub p 1 (k-1) in
+	      let p' = String.sub p (k+1) (String.length p - k - 1) in
+	      let pkgdir = package_directory pkg in
+	      Filename.concat pkgdir p'
+	    with
+		Not_found ->
+		  let pkg = String.sub p 1 (String.length p - 1) in
+		  package_directory pkg
+	  )
+      | '/' ->
+	  p
+      | _ ->
+	  ( match base with
+		None -> p
+	      | Some b ->
+		  Filename.concat b p
+	  )
+  )
+;;
+
+
 init();

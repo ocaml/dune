@@ -14,10 +14,3 @@ for x in "$@"; do
     fi
 done
 
-# ======================================================================
-#
-# $Log: collect_files,v $
-# Revision 1.1  2001/10/12 20:19:50  gerd
-# 	Initial revision.
-#
-

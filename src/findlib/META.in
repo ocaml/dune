@@ -2,7 +2,7 @@
 description = "Package manager"
 requires = ""
 requires(mt) = "threads"
-version = "0.9"
+version = "@VERSION@"
 archive(byte) = "findlib.cma"
 archive(byte,mt) = "findlib_mt.cma"
 archive(byte,toploop) = "findlib.cma findlib_top.cma"

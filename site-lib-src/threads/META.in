@@ -1,16 +1,30 @@
 dnl This file is input of the m4 macro processor.
 `# Specifications for the "threads" library:'
 `version = "[distributed with Ocaml]"'
-`requires = "unix"'
-dnl There is directory magic for "threads" in frontend.ml:
+`requires(mt,mt_vm) = "threads.vm"'
+`requires(mt,mt_posix) = "threads.posix"'
 `directory = "^"'
 `type_of_threads = "'type_of_threads`"'
 
 `browse_interfaces = "'interfaces`"'
 
-`# --- Bytecode-only threads:'
-`archive(byte,mt,mt_vm) = "threads.cma"'
+`error(-mt) = "Missing -thread or -vmthread switch"'
+`error(-mt_vm,-mt_posix) = "Missing -thread or -vmthread switch"'
 
-`# --- POSIX-threads:'
-`archive(byte,mt,mt_posix) = "threads.cma"'
-`archive(native,mt,mt_posix) = "threads.cmxa"'
+`package "vm" ('
+`  # --- Bytecode-only threads:'
+`  requires = "unix"'
+`  directory = "+vmthreads"'
+`  archive(byte,mt,mt_vm) = "threads.cma"'
+`  version = "[internal]"'
+`)'
+
+`package "posix" ('
+`  # --- POSIX-threads:'
+`  requires = "unix"'
+`  directory = "+threads"'
+`  archive(byte,mt,mt_posix) = "threads.cma"'
+`  archive(native,mt,mt_posix) = "threads.cmxa"'
+`  version = "[internal]"'
+`)'
+

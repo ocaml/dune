@@ -56,6 +56,7 @@ example, if <literal>destdir=/usr/local/lib/ocaml/site-lib</literal>, the
 package p will be installed in the subdirectory
 <literal>/usr/local/lib/ocaml/site-lib/p</literal>. This subdirectory
 must contain the META file and all other files belonging to the package.
+Package names must not contain the '.' character.
 </para>
 
 <para>
@@ -159,22 +160,6 @@ absolute location of <literal>site-lib</literal>, and the variable
 install</literal> automatically adds a <literal>directory</literal>
 directive to the META file, so you need not do it manually.
 </para>
-</refsect1>
-
-
-<refsect1>
-<title>MODULE FINDLIB</title>
-
-<simplelist>
-<member>
-<link linkend="Findlib.default-location">Findlib.default_location</link>
-</member>
-
-<member>
-<link linkend="Findlib.package-directory">Findlib.package_directory</link>
-</member>
-</simplelist>
-
 </refsect1>
 
 </refentry>

@@ -3,7 +3,15 @@
  *
  *)
 
-(** The official findlib interface *)
+(** The primary findlib interface
+ *
+ * The Findlib module is the primary interface of the findlib library. It
+ * contains functions to look up packages, to interpret META
+ * files, and to determine the ancestors of packages.
+ *
+ * This module must be initialized before it can be used: Call either
+ * [init] or [init_manually] for this.
+ *)
 
 exception No_such_package of string * string
   (** First arg is the package name not found, second arg contains additional
@@ -157,10 +165,10 @@ val package_deep_ancestors : string list -> string list -> string list
 
 val resolve_path : ?base:string -> string -> string
   (** Resolves findlib notation in filename paths. The notation 
-   * [+name/path] can be used to refer to the subdirectory [name]
-   * of the standard library directory; the continuation [/path] is
-   * optional. The notation [@name/path] can be used to refer to
-   * the directory of the package [name]; the continuation [/path]
+   * [ +name/path ] can be used to refer to the subdirectory [name]
+   * of the standard library directory; the continuation [ /path ] is
+   * optional. The notation [ \@name/path ] can be used to refer to
+   * the directory of the package [name]; the continuation [ /path ]
    * is optional. For these two notations, absolute paths are returned.
    * 
    * @param base When the function is applied on a relative path, the

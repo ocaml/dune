@@ -133,6 +133,12 @@ scripts, if possible.</p>
 	<p>The "#predicates" directive simplifies the addition of predicates.
 	</p>
 
+	<p>Queries: The format specifier %D prints the description of
+the package. -long-format includes the description. Short options
+-r, -l, -d.</p>
+
+	<p>ocamlfind list -describe prints package descriptions.</p>
+
 	<p>Support for "ocamlfind ocamldoc". However, the implementation is
 quite sloppy.</p>
 

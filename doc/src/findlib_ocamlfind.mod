@@ -20,12 +20,12 @@
    or: <link linkend="ocamlfind.ocamlcp">ocamlfind ocamlcp [-help | other options] <replaceable>file</replaceable> ...</link>
    or: <link linkend="ocamlfind.ocamlmktop">ocamlfind ocamlmktop [-help | other options] <replaceable>file</replaceable> ...</link>
    or: <link linkend="ocamlfind.ocamlopt">ocamlfind ocamlopt [-help | other options] <replaceable>file</replaceable> ...</link>
+   or: <link linkend="ocamlfind.ocamldoc">ocamlfind ocamldoc [-help | other options] <replaceable>file</replaceable> ...</link>
    or: <link linkend="ocamlfind.ocamldep">ocamlfind ocamldep [-help | other options] <replaceable>file</replaceable> ...</link>
    or: <link linkend="ocamlfind.ocamlbrowser">ocamlfind ocamlbrowser [-help | other options]</link>
    or: <link linkend="ocamlfind.install">ocamlfind install [-help | other options] <replaceable>package_name</replaceable> <replaceable>file</replaceable> ...</link>
    or: <link linkend="ocamlfind.remove">ocamlfind remove [-help | other options] <replaceable>package_name</replaceable></link>
-   or: <link linkend="ocamlfind.guess">ocamlfind guess <replaceable>package_name</replaceable> <replaceable>file</replaceable> ...</link>
-   or: <link linkend="ocamlfind.list">ocamlfind list</link>
+   or: <link linkend="ocamlfind.list">ocamlfind list [-describe]</link>
    or: <link linkend="ocamlfind.printconf">ocamlfind printconf [ variable ]</link>
    or: <link linkend="ocamlfind.pkgcmd">ocamlfind <replaceable>package</replaceable>/<replaceable>command</replaceable> <replaceable>arg</replaceable> ...</link>
 </synopsis>
@@ -44,7 +44,7 @@
 <programlisting>
 ocamlfind query [ -predicates <replaceable>p</replaceable>  | 
                   -format <replaceable>f</replaceable> |
-                  -long-format | 
+                  -long-format | -l |
                   -i-format |
                   -l-format | 
                   -a-format |
@@ -53,19 +53,18 @@ ocamlfind query [ -predicates <replaceable>p</replaceable>  |
                   -prefix <replaceable>p</replaceable> |
                   -separator <replaceable>s</replaceable> | 
                   -suffix <replaceable>s</replaceable> |
-                  -descendants | 
-                  -recursive  ] <replaceable>package</replaceable> ...
+                  -descendants | -d |
+                  -recursive  | -r ] <replaceable>package</replaceable> ...
 </programlisting>
 </refsect2>
 
-<refsect2>
-<title>Description</title>
-<para>
-This command looks packages up, sorts them optionally, and prints
-attributes of them. If the option -recursive is not specified, exactly
-the packages given on the command line are looked up; if -recursive is
-present, the packages and all their ancestors, or if -descendants is
-present, too, all their descendants are printed.
+<refsect2> <title>Description</title> 
+
+<para> This command looks packages up, sorts them optionally, and
+prints attributes of them. If the option -recursive (short: -r) is not
+specified, exactly the packages given on the command line are looked
+up; if -recursive is present, the packages and all their ancestors, or
+if -descendants (short: -d) is present, too, all their descendants are printed.
 </para>
 
 <para>
@@ -110,7 +109,7 @@ records the separator is printed.
 </para></listitem>
 </varlistentry>
 <varlistentry>
-<term>-long-format</term>
+<term>-long-format or -l</term>
 <listitem><para>Sets the format such that all relevant variables are printed.
 </para></listitem>
 </varlistentry>
@@ -159,7 +158,7 @@ linker backend are printed.
 </para></listitem>
 </varlistentry>
 <varlistentry>
-<term>-recursive</term>
+<term>-recursive or -r</term>
 <listitem><para>Not only the packages given on the command line are queried
   but also all ancestors or descendants. If the option -descendants is
   specified, too, the descendants are printed, otherwise the
@@ -167,7 +166,7 @@ linker backend are printed.
 </para></listitem>
 </varlistentry>
 <varlistentry>
-<term>-descendants</term>
+<term>-descendants -d</term>
 <listitem><para>Instead of the ancestors the descendants of the
   given packages are queried. This option implies <literal>-recursive</literal>.
 </para></listitem>
@@ -186,6 +185,10 @@ linker backend are printed.
 <varlistentry>
 <term>%d</term>
   <listitem><para>Replaced by the package directory</para></listitem>
+</varlistentry>
+<varlistentry>
+<term>%D</term>
+  <listitem><para>Replaced by the package description</para></listitem>
 </varlistentry>
 <varlistentry>
 <term>%v</term>
@@ -369,7 +372,16 @@ explained below.
 <varlistentry>
 <term>-thread</term>
   <listitem><para>This standard option causes that the predicate "mt"
-  is added to the set of actual predicates.
+  is added to the set of actual predicates. If POSIX threads are available,
+  the predicate "mt_posix" is selected, too. If only VM threads are
+  available, the predicate "mt_vm" is included into the set, and the
+  compiler switch is changed into -vmthread.
+</para></listitem>
+</varlistentry>
+<varlistentry>
+<term>-vmthread</term>
+  <listitem><para>This standard option causes that the predicates "mt"
+  and "mt_vm" are added to the set of actual predicates.
 </para></listitem>
 </varlistentry>
 <varlistentry>
@@ -476,6 +488,16 @@ is normally the case if "findlib" is configured for POSIX threads.
 </varlistentry>
 
 <varlistentry>
+<term>mt_vm</term>
+<listitem>
+<para>
+The "mt_vm" predicate means that in the case "mt" is set, too, the
+VM thread emulation is used to implement multi-threading.
+</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
 <term>gprof</term>
 <listitem>
 <para>
@@ -547,12 +569,11 @@ knows automatic linking (from version 3.00), but it is not set if the
 <refsect2>
 <title>Special behaviour of "ocamlmktop"</title>
 
-<para>
-As there is a special module <xref linkend="Topfind"
-endterm="Topfind"> that supports loading of packages in scripts, the
-"ocamlmktop" subcommand can add initialization code for this module.
-This extra code is linked in if "findlib" is in the set of effectively
-linked packages.
+<para> As there is a special module <literal>Topfind</literal> that
+supports loading of packages in scripts, the "ocamlmktop" subcommand
+can add initialization code for this module.  This extra code is
+linked into the executable if "findlib" is in the set of effectively
+linked packages.  
 </para>
 
 </refsect2>
@@ -716,6 +737,84 @@ to pass arguments directly to the <literal>ocamlbrowser</literal> program.
 
 <!-- ********************************************************************** -->
 
+<refsect1>
+<title><anchor id="ocamlfind.ocamldoc">
+  THE SUBCOMMAND "ocamldoc"
+</title>
+
+<refsect2>
+<title>Synopsis</title>
+<programlisting>
+ocamlfind ocamldoc
+          [ -package <replaceable>package-name-list</replaceable> |
+	    -predicates <replaceable>pred-name-list</replaceable> |
+	    -syntax <replaceable>pred-name-list</replaceable> |
+            -ppopt <replaceable>camlp4-arg</replaceable> |
+	    <replaceable>standard-option</replaceable> ]
+          <replaceable>file</replaceable> ...
+</programlisting>
+</refsect2>
+
+<refsect2>
+<title>Description</title>
+
+<para>
+This subcommand is a driver for ocamldoc. It undestands all options
+ocamldoc supports plus the mentioned findlib options. Basically,
+the -package options are translated into -I options, and the selected
+syntax options are translated into camlp4 options.
+</para>
+</refsect2>
+
+<refsect2>
+<title>Options</title>
+
+<para>
+Here, only the additional options not interpreted by <literal>ocamldep</literal>
+but
+by the driver itself, and options with additional effects are explained.
+</para>
+
+<variablelist>
+<varlistentry>
+<term>-package <replaceable>package-name-list</replaceable></term>
+  <listitem><para>Adds the listed package names to the set of included
+  packages. The package names may be separated by commas and/or
+  whitespace. In the transformed command, for every package of the set
+  of included packages and for any ancestor a directory search option
+  is inserted after the already given options. This means that
+  "-I" options are added for every package directory.
+  </para></listitem>
+</varlistentry>
+
+<varlistentry>
+<term>-predicates <replaceable>pred-name-list</replaceable></term>
+  <listitem><para>Adds the given predicates to the set of actual
+  predicates. The predicates must be separated by commas and/or
+  whitespace. 
+</para></listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>-syntax <replaceable>pred-name-list</replaceable></term>
+  <listitem><para>The predicates that are in effect during the look-up
+of the preprocessor options. At least, either <literal>camlp4o</literal>
+(selecting the normal syntax), or <literal>camlp4r</literal> (selecting
+the revised syntax) should be specified.</para></listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>-ppopt <replaceable>camlp4-arg</replaceable></term>
+  <listitem><para>An option that is passed through to the camlp4 call.</para>
+</listitem>
+</varlistentry>
+</variablelist>
+</refsect2>
+</refsect1>
+
+
+<!-- ********************************************************************** -->
+
 <!--
 
 <refsect1>
@@ -807,7 +906,7 @@ this causes that the ld.conf file is not modified.
 </para>
 
 <para>
-However, if there is a libexec directory in site-lib, the DLLs are not
+However, if there is a stublibs directory in site-lib, the DLLs are not
 installed in the package directory, but in this directory that is
 shared by all packages that are installed at the same location.
 In this case, the configuration file <literal>ld.conf</literal> is
@@ -891,49 +990,11 @@ this causes that the ld.conf file is not modified.
 </para>
 
 <para>
-If there is a libexec directory, it is checked whether the package
+If there is a stublibs directory, it is checked whether the package
 owns any of the files in this directory, and the owned files will
 be deleted.
 </para>
 
-</refsect2>
-</refsect1>
-
-
-<!-- ********************************************************************** -->
-
-<refsect1>
-<title><anchor id="ocamlfind.guess">
-  THE "guess" SUBCOMMAND
-</title>
-
-<refsect2>
-<title>Synopsis</title>
-<programlisting>
-ocamlfind guess <replaceable>package_name</replaceable> <replaceable>file</replaceable> ...
-</programlisting>
-</refsect2>
-
-<refsect2>
-<title>Description</title>
-<para>
-This command is experimental: It tries to determine the META file by
-inspecting the files to install for a package, and by comparing these
-files with the current package base.
-</para>
-
-<para>
-Simply call this command after you have built your library and before
-you want to install it for the first time. The first argument must be
-the package name, and the other arguments must be the files you are
-going to install. The command inspects the .cmi and .cma/.cmxa files
-and writes a META file to stdout. (Of course, it does not install any
-of these files.)
-</para>
-
-<para>
-Note that the generated META file is guessed and may be wrong.
-</para>
 </refsect2>
 </refsect1>
 
@@ -948,14 +1009,15 @@ Note that the generated META file is guessed and may be wrong.
 <refsect2>
 <title>Synopsis</title>
 <programlisting>
-ocamlfind list
+ocamlfind list [-describe]
 </programlisting>
 </refsect2>
 
 <refsect2>
 <title>Description</title>
 <para>
-This command lists all packages in the search path.
+This command lists all packages in the search path. The option -describe
+outputs the package descriptions, too.
 </para>
 </refsect2>
 </refsect1>

@@ -58,6 +58,11 @@ let package_name s =
 ;;
 
 
+let is_valid_package_name s =
+  not(String.contains s '.')
+;;
+
+
 let path_separator =
   match Sys.os_type with
       "Unix"   -> ':'

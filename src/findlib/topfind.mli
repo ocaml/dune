@@ -3,7 +3,70 @@
  *
  *)
 
-(** Load packages from toploops (including scripts) *)
+(** Load packages from toploops and scripts
+ *
+ * The [Topfind] module is part of the [findlib] package. The module
+ * depends on the presence of a toploop. When building a toploop, it is
+ * automatically linked in if "findlib" is linked in, e.g.
+ * {[
+ * ocamlfind ocamlmktop ...options... -package findlib -linkpkg 
+ * ]}
+ * 
+ * When the platform supports DLLs, another possibility to get a toploop
+ * with findlib directives is to load the file "topfind" (normally installed
+ * in the standard library directory):
+ * {[
+ * $ ocaml
+ *         Objective Caml version 3.04
+ * # #use "topfind";;
+ * Findlib has been successfully loaded. Additional directives:
+ *   #require "package";;      to load a package
+ *   #list;;                   to list the available packages
+ *   #camlp4o;;                to load camlp4 (standard syntax)
+ *   #camlp4r;;                to load camlp4 (revised syntax)
+ *   Topfind.reset();;         to force that packages will be reloaded
+ * ~ : unit = ()
+ * # _
+ * ]}
+ *
+ * This works even in scripts (but the startup message is suppressed in this
+ * case).
+ *
+ * The module is not thread-safe; if used in a multi-threaded script, all
+ * packgage loading must have happened before the first thread forks.
+ *
+ * The Topfind module contains some functions simplifying package loading
+ * in scripts. Most important, there is a new directive [#require] for
+ * the same purpose (see below).
+ *
+ * The [Topfind] module needs some initialization, in particular the 
+ * [predicates] variable needs to be
+ * set, and the packages already compiled into the toploop needs to be
+ * declared by the [don't_load]
+ * function. If the toploop has been built by [ocamlfind],
+ * the necessary initialization is
+ * automatically compiled in.
+ *)
+
+(** {1 Directives}
+ *
+ * This module also defines the following directives for the toploop:
+ *
+ * - [#require "<package>"]
+ *   loads the package (and if necessary the prerequisites of the package)
+ * - [#camlp4o]
+ *   loads camlp4 and selects standard syntax
+ * - [#camlp4r]
+ *   loads camlp4 and selects revised syntax
+ * - [#list]
+ *   lists the available packages (calls external command "ocamlfind")
+ * - [#thread]
+ *   enables multi-threading if possible
+ * - [#predicates "p1,p2,..."]
+ *   adds these predicates
+ *)
+
+(** {1 Functions and variables} *)
 
 val predicates : string list ref
   (** The list of predicates used for package loading *)
@@ -55,21 +118,3 @@ val reset : unit -> unit
 val announce : unit -> unit
   (** Output the startup message *)
 
-
-(** {1 Directives}
- *
- * This module also defines the following directives for the toploop:
- *
- * - [#require "<package>"]
- *   loads the package (and if necessary the prerequisites of the package)
- * - [#camlp4o]
- *   loads camlp4 and selects standard syntax
- * - [#camlp4r]
- *   loads camlp4 and selects revised syntax
- * - [#list]
- *   lists the available packages (calls external command "ocamlfind")
- * - [#thread]
- *   enables multi-threading if possible
- * - [#predicates "p1,p2,..."]
- *   adds these predicates
- *)

@@ -6,7 +6,7 @@
 { open Fl_metatoken }
 
 rule token =
-  parse [ 'A'-'Z' 'a'-'z' '_' '0'-'9' ]+ 
+  parse [ 'A'-'Z' 'a'-'z' '_' '0'-'9' '.' ]+ 
   {
     Name (Lexing.lexeme lexbuf)
   } 

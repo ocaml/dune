@@ -35,6 +35,10 @@ LINKEND="OCAMLFIND.OCAMLOPT"
 >ocamlfind ocamlopt [-help | other options] <REPLACEABLE
 >file</REPLACEABLE> ...</LINK>
    or: <LINK
+LINKEND="OCAMLFIND.OCAMLDOC"
+>ocamlfind ocamldoc [-help | other options] <REPLACEABLE
+>file</REPLACEABLE> ...</LINK>
+   or: <LINK
 LINKEND="OCAMLFIND.OCAMLDEP"
 >ocamlfind ocamldep [-help | other options] <REPLACEABLE
 >file</REPLACEABLE> ...</LINK>
@@ -51,13 +55,8 @@ LINKEND="OCAMLFIND.REMOVE"
 >ocamlfind remove [-help | other options] <REPLACEABLE
 >package_name</REPLACEABLE></LINK>
    or: <LINK
-LINKEND="OCAMLFIND.GUESS"
->ocamlfind guess <REPLACEABLE
->package_name</REPLACEABLE> <REPLACEABLE
->file</REPLACEABLE> ...</LINK>
-   or: <LINK
 LINKEND="OCAMLFIND.LIST"
->ocamlfind list</LINK>
+>ocamlfind list [-describe]</LINK>
    or: <LINK
 LINKEND="OCAMLFIND.PRINTCONF"
 >ocamlfind printconf [ variable ]</LINK>
@@ -79,7 +78,7 @@ FORMAT="LINESPECIFIC"
 >p</REPLACEABLE>  | 
                   -format <REPLACEABLE
 >f</REPLACEABLE> |
-                  -long-format | 
+                  -long-format | -l |
                   -i-format |
                   -l-format | 
                   -a-format |
@@ -91,16 +90,16 @@ FORMAT="LINESPECIFIC"
 >s</REPLACEABLE> | 
                   -suffix <REPLACEABLE
 >s</REPLACEABLE> |
-                  -descendants | 
-                  -recursive  ] <REPLACEABLE
+                  -descendants | -d |
+                  -recursive  | -r ] <REPLACEABLE
 >package</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
 ><TITLE
 >Description</TITLE><PARA
->This command looks packages up, sorts them optionally, and prints
-attributes of them. If the option -recursive is not specified, exactly
-the packages given on the command line are looked up; if -recursive is
-present, the packages and all their ancestors, or if -descendants is
-present, too, all their descendants are printed.</PARA><PARA
+> This command looks packages up, sorts them optionally, and
+prints attributes of them. If the option -recursive (short: -r) is not
+specified, exactly the packages given on the command line are looked
+up; if -recursive is present, the packages and all their ancestors, or
+if -descendants (short: -d) is present, too, all their descendants are printed.</PARA><PARA
 >Package lookup and the selection of the attributes of the packages can
 be modified by specifying predicates; without a -predicates option the
 empty set of predicates is used. Note that even the lookup is
@@ -137,7 +136,7 @@ records the separator is printed.</PARA></REFSECT2><REFSECT2
   themselves. The defined placeholders are listed below.
   The default format is "%d".</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
->-long-format</TERM><LISTITEM
+>-long-format or -l</TERM><LISTITEM
 ><PARA
 >Sets the format such that all relevant variables are printed.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
@@ -180,14 +179,14 @@ linker backend are printed.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 >Sets the separator that is printed between output records to
   the given string. The default separator is a linefeed character.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
->-recursive</TERM><LISTITEM
+>-recursive or -r</TERM><LISTITEM
 ><PARA
 >Not only the packages given on the command line are queried
   but also all ancestors or descendants. If the option -descendants is
   specified, too, the descendants are printed, otherwise the
   ancestors. The packages are topologically sorted.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
->-descendants</TERM><LISTITEM
+>-descendants -d</TERM><LISTITEM
 ><PARA
 >Instead of the ancestors the descendants of the
   given packages are queried. This option implies <LITERAL
@@ -204,6 +203,10 @@ MOREINFO="NONE"
 >%d</TERM><LISTITEM
 ><PARA
 >Replaced by the package directory</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>%D</TERM><LISTITEM
+><PARA
+>Replaced by the package description</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
 >%v</TERM><LISTITEM
 ><PARA
@@ -374,7 +377,15 @@ MOREINFO="NONE"
 >-thread</TERM><LISTITEM
 ><PARA
 >This standard option causes that the predicate "mt"
-  is added to the set of actual predicates.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+  is added to the set of actual predicates. If POSIX threads are available,
+  the predicate "mt_posix" is selected, too. If only VM threads are
+  available, the predicate "mt_vm" is included into the set, and the
+  compiler switch is changed into -vmthread.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-vmthread</TERM><LISTITEM
+><PARA
+>This standard option causes that the predicates "mt"
+  and "mt_vm" are added to the set of actual predicates.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
 >-p</TERM><LISTITEM
 ><PARA
@@ -444,6 +455,11 @@ included into the predicate set if the variable "type_of_threads" in the
 META description of the "threads" package has the value "posix". This
 is normally the case if "findlib" is configured for POSIX threads.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
+>mt_vm</TERM><LISTITEM
+><PARA
+>The "mt_vm" predicate means that in the case "mt" is set, too, the
+VM thread emulation is used to implement multi-threading.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
 >gprof</TERM><LISTITEM
 ><PARA
 >The "gprof" predicate means that in the case "native" is set, too, the
@@ -502,13 +518,13 @@ MOREINFO="NONE"
   </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2><REFSECT2
 ><TITLE
 >Special behaviour of "ocamlmktop"</TITLE><PARA
->As there is a special module <XREF
-ENDTERM="TOPFIND"
-LINKEND="TOPFIND"
-></XREF> that supports loading of packages in scripts, the
-"ocamlmktop" subcommand can add initialization code for this module.
-This extra code is linked in if "findlib" is in the set of effectively
-linked packages.</PARA></REFSECT2><REFSECT2
+> As there is a special module <LITERAL
+MOREINFO="NONE"
+>Topfind</LITERAL> that
+supports loading of packages in scripts, the "ocamlmktop" subcommand
+can add initialization code for this module.  This extra code is
+linked into the executable if "findlib" is in the set of effectively
+linked packages.  </PARA></REFSECT2><REFSECT2
 ><TITLE
 >How to set the names of the compiler executables</TITLE><PARA
 > Normally, the O'Caml bytecode compiler can be called under the name
@@ -677,6 +693,76 @@ MOREINFO="NONE"
 >ocamlbrowser</LITERAL> program.</PARA></REFSECT2></REFSECT1><REFSECT1
 ><TITLE
 ><ANCHOR
+ID="OCAMLFIND.OCAMLDOC"
+></ANCHOR>
+  THE SUBCOMMAND "ocamldoc"</TITLE><REFSECT2
+><TITLE
+>Synopsis</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind ocamldoc
+          [ -package <REPLACEABLE
+>package-name-list</REPLACEABLE> |
+	    -predicates <REPLACEABLE
+>pred-name-list</REPLACEABLE> |
+	    -syntax <REPLACEABLE
+>pred-name-list</REPLACEABLE> |
+            -ppopt <REPLACEABLE
+>camlp4-arg</REPLACEABLE> |
+	    <REPLACEABLE
+>standard-option</REPLACEABLE> ]
+          <REPLACEABLE
+>file</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
+><TITLE
+>Description</TITLE><PARA
+>This subcommand is a driver for ocamldoc. It undestands all options
+ocamldoc supports plus the mentioned findlib options. Basically,
+the -package options are translated into -I options, and the selected
+syntax options are translated into camlp4 options.</PARA></REFSECT2><REFSECT2
+><TITLE
+>Options</TITLE><PARA
+>Here, only the additional options not interpreted by <LITERAL
+MOREINFO="NONE"
+>ocamldep</LITERAL>
+but
+by the driver itself, and options with additional effects are explained.</PARA><VARIABLELIST
+><VARLISTENTRY
+><TERM
+>-package <REPLACEABLE
+>package-name-list</REPLACEABLE></TERM><LISTITEM
+><PARA
+>Adds the listed package names to the set of included
+  packages. The package names may be separated by commas and/or
+  whitespace. In the transformed command, for every package of the set
+  of included packages and for any ancestor a directory search option
+  is inserted after the already given options. This means that
+  "-I" options are added for every package directory.
+  </PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-predicates <REPLACEABLE
+>pred-name-list</REPLACEABLE></TERM><LISTITEM
+><PARA
+>Adds the given predicates to the set of actual
+  predicates. The predicates must be separated by commas and/or
+  whitespace. </PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-syntax <REPLACEABLE
+>pred-name-list</REPLACEABLE></TERM><LISTITEM
+><PARA
+>The predicates that are in effect during the look-up
+of the preprocessor options. At least, either <LITERAL
+MOREINFO="NONE"
+>camlp4o</LITERAL>
+(selecting the normal syntax), or <LITERAL
+MOREINFO="NONE"
+>camlp4r</LITERAL> (selecting
+the revised syntax) should be specified.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-ppopt <REPLACEABLE
+>camlp4-arg</REPLACEABLE></TERM><LISTITEM
+><PARA
+>An option that is passed through to the camlp4 call.</PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2></REFSECT1><REFSECT1
+><TITLE
+><ANCHOR
 ID="OCAMLFIND.INSTALL"
 ></ANCHOR>
   THE "install" SUBCOMMAND</TITLE><REFSECT2
@@ -745,7 +831,7 @@ MOREINFO="NONE"
 loader can find the DLL. The location of this file can be overriden by
 the -ldconf option. To turn this feature off, use "-ldconf ignore";
 this causes that the ld.conf file is not modified.</PARA><PARA
->However, if there is a libexec directory in site-lib, the DLLs are not
+>However, if there is a stublibs directory in site-lib, the DLLs are not
 installed in the package directory, but in this directory that is
 shared by all packages that are installed at the same location.
 In this case, the configuration file <LITERAL
@@ -815,32 +901,9 @@ configuration file for DLLs, it will be tried to remove this entry
 from the file. The location of this file can be overriden by
 the -ldconf option. To turn this feature off, use "-ldconf ignore";
 this causes that the ld.conf file is not modified.</PARA><PARA
->If there is a libexec directory, it is checked whether the package
+>If there is a stublibs directory, it is checked whether the package
 owns any of the files in this directory, and the owned files will
 be deleted.</PARA></REFSECT2></REFSECT1><REFSECT1
-><TITLE
-><ANCHOR
-ID="OCAMLFIND.GUESS"
-></ANCHOR>
-  THE "guess" SUBCOMMAND</TITLE><REFSECT2
-><TITLE
->Synopsis</TITLE><PROGRAMLISTING
-FORMAT="LINESPECIFIC"
->ocamlfind guess <REPLACEABLE
->package_name</REPLACEABLE> <REPLACEABLE
->file</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
-><TITLE
->Description</TITLE><PARA
->This command is experimental: It tries to determine the META file by
-inspecting the files to install for a package, and by comparing these
-files with the current package base.</PARA><PARA
->Simply call this command after you have built your library and before
-you want to install it for the first time. The first argument must be
-the package name, and the other arguments must be the files you are
-going to install. The command inspects the .cmi and .cma/.cmxa files
-and writes a META file to stdout. (Of course, it does not install any
-of these files.)</PARA><PARA
->Note that the generated META file is guessed and may be wrong.</PARA></REFSECT2></REFSECT1><REFSECT1
 ><TITLE
 ><ANCHOR
 ID="OCAMLFIND.LIST"
@@ -849,10 +912,11 @@ ID="OCAMLFIND.LIST"
 ><TITLE
 >Synopsis</TITLE><PROGRAMLISTING
 FORMAT="LINESPECIFIC"
->ocamlfind list</PROGRAMLISTING></REFSECT2><REFSECT2
+>ocamlfind list [-describe]</PROGRAMLISTING></REFSECT2><REFSECT2
 ><TITLE
 >Description</TITLE><PARA
->This command lists all packages in the search path.</PARA></REFSECT2></REFSECT1><REFSECT1
+>This command lists all packages in the search path. The option -describe
+outputs the package descriptions, too.</PARA></REFSECT2></REFSECT1><REFSECT1
 ><TITLE
 ><ANCHOR
 ID="OCAMLFIND.PRINTCONF"
@@ -1404,20 +1468,26 @@ ID="META"
 ><TITLE
 >GRAMMAR</TITLE><SYNOPSIS
 FORMAT="LINESPECIFIC"
->            entry ::= variable_name [ formal_predicates ] '=' value
+>         metafile ::= entry*
+            entry ::= assignment | addition | subpackage
+       subpackage ::= "package" pkgname '(' metafile ')'
+       assignment ::= variable_name [ formal_predicates ] '='  value
+         addition ::= variable_name [ formal_predicates ] '+=' value
 formal_predicates ::= '(' formal_predicate { ',' formal_predicate } ')'
     variable_name ::= name
- formal_predicate ::= name
-             name ::= [ 'A'-'Z' 'a'-'z' '0'-'9' '_' ]+
+ formal_predicate ::= name | '-' name
+             name ::= [ 'A'-'Z' 'a'-'z' '0'-'9' '_' '.' ]+
+          pkgname ::= '"' (character but not '.')* '"'
             value ::= '"' character* '"'</SYNOPSIS></REFSYNOPSISDIV><REFSECT1
 ><TITLE
 >DESCRIPTION</TITLE><PARA
 >If a package directory contains a file with the fixed name "META" it
 is interpreted as described here. The file is a sequence of entries
 following the given grammar; every entry defines a variable under a
-certain condition given by the list of formal predicates.</PARA><PARA
+certain condition given by the list of formal predicates, or it
+introduces a subpackage.</PARA><PARA
 >There is a list of predefined variables and a list of standard
-predicates. These variables define: required packages, version
+predicates. These variables define: required packages, description, version
 information, directories, archive files, and linker options. The
 predicates denote circumstances of the application of the variables:
 whether the bytecode or the native compiler is used, if there is a
@@ -1430,36 +1500,79 @@ grammar prescribes. The lexical tokens are names, values, and
 interpunctuation like '(', ',' and so on. Note that linefeeds do not
 play a special role, i.e. an entry definition may be given in more than
 one line, or several definitions may occur on a single line. There may
-be comments which begin with '#' and consist of the rest of the line.</PARA><PARA
+be comments which begin with '#' and run until the end of the line.</PARA><PARA
 >Names are sequences of the characters A-Z, a-z, 0-9, or _. Names
 containing capital letters and names beginning with digits are
 allowed but not recommended.</PARA><PARA
 >Values are enclosed between double quotes. Values may contain any
-character. The characters " and \ must be preceded by backslashes. </PARA></REFSECT1><REFSECT1
+character. The characters " and \ must be preceded by backslashes. </PARA><PARA
+>Package names must not contain the '.' character because it is used
+as delimiter of compound names.</PARA></REFSECT1><REFSECT1
 ><TITLE
->SEMANTICS OF DEFINITIONS</TITLE><PARA
->There may be multiple definitions for the same variable if the lists of
-formal predicates are different. The effective definition is selected
-upon a set of actual predicates, i.e. the set of predicates that are
-assumed to be true. In order to determine the value of a variable, the
-following rule applies:</PARA><ITEMIZEDLIST
+>MAIN PACKAGES AND SUBPACKAGES</TITLE><PARA
+>The outermost variable assignments and additions belong to the main
+package. The name of the main package is not defined within META;
+it is either the name of the directory containing META or the suffix
+of the META file (if the name of the META file is formed like
+META.name).</PARA><PARA
+>The keyword <LITERAL
+MOREINFO="NONE"
+>package</LITERAL> starts the definition
+of a subpackage. There must not be two such definitions with the
+same name. Within the parantheses, the variable assignments and
+additions refer to the subpackage. It is allowed that a subpackage
+contains further subpackages.</PARA><PARA
+>The package name following <LITERAL
+MOREINFO="NONE"
+>package</LITERAL>
+is the local name relative to the main package, i.e. the
+name of the main package is not mentioned. At all other places,
+however, the subpackage must be prefixed by the name of the
+containing package, separated by a '.'.</PARA><PARA
+>Subpackages are independent of the containing package, except
+that the subpackage points to the same installation directory as
+the containing package (i.e. the location of the installation directory
+is inherited from the containing package).</PARA></REFSECT1><REFSECT1
+><TITLE
+>SEMANTICS OF VARIABLE DEFINITIONS</TITLE><PARA
+>In order to determine the value of a variable, first all assignments
+are inspected, and the most specific assignment is taken (if there is
+none, the empty string will be taken as value). In a second step,
+all additions are gone through one after the other in the order
+they occur in the file, and the values of all matching additions are
+appended to the current value. In the following, it is further
+clarified which assignment is the most specific, which additions
+actually match, and how the details of the value addition look like.</PARA><PARA
+> The most specific assignment is selected upon a set of actual
+predicates, i.e. the set of predicates that are assumed to be true.
+The predicates occuring in the definitions of assignments and
+additions are called formal predicates. They may be positive or
+negative; the latter are prepended by a '-' sign. In order to
+determine the value after the evaluation of the assignments, the
+following rules apply: </PARA><ITEMIZEDLIST
 SPACING="COMPACT"
 MARK="bullet"
 ><LISTITEM
 ><PARA
-> 
-A definition can only be used if all formal parameters are included in
-the set of actual parameters, such a definition is called
+> An assignment can only be used if all positive formal
+predicates are included in the set of actual predicates, and if all
+negative formal predicates are not included in the set of actual
+predicates.  Such an assignment is called
 <EMPHASIS
->applicable</EMPHASIS>. If there is no such definition, the
-variable has no value.</PARA></LISTITEM><LISTITEM
+>applicable</EMPHASIS>. If there is no such assignment, the
+variable will have no value.  </PARA></LISTITEM><LISTITEM
 ><PARA
->If there is more than one applicable definition, the definition with
-the biggest number of formal parameters is selected.</PARA></LISTITEM><LISTITEM
+>If there is more than one applicable assignment, the definition with
+the biggest number of formal predicates is selected.</PARA></LISTITEM><LISTITEM
 ><PARA
->If there is still more than one definition, both applicable and with a
-maximum number of formal parameters, the definition that is defined
-first is selected.</PARA></LISTITEM></ITEMIZEDLIST></REFSECT1><REFSECT1
+>If there is still more than one applicable assignment, both applicable 
+and with a maximum number of formal predicates, the definition that is defined
+first is selected.</PARA></LISTITEM></ITEMIZEDLIST><PARA
+>An addition is matching when all positive formal predicates are
+included in the set of actual predicates, and all negative formal
+predicates are not included.</PARA><PARA
+>The value of an addition is appended to the current value with
+implicit white space as separator.</PARA></REFSECT1><REFSECT1
 ><TITLE
 >VARIABLES</TITLE><PARA
 >There is a set of variables with predefined meaning:</PARA><ITEMIZEDLIST
@@ -1475,19 +1588,38 @@ variable is evaluated in order to see if the package directory must be
 changed. The value of the "directory" variable is determined with an
 empty set of actual predicates. The value must be either: an absolute
 path name of the alternate directory, or a path name relative to the
-stdlib directory of OCaml (written "^path" or "+path").</PARA></LISTITEM><LISTITEM
+stdlib directory of OCaml (written "+path"), or a normal relative path 
+name (without special syntax). In the latter case, the path is interpreted
+relative to the default location for main packages, or relative to
+the containing package for subpackages. Subpackages inherit the
+changed location of the package directory, but they are free to 
+set "directory" to change the location again.</PARA></LISTITEM><LISTITEM
 ><PARA
 > 
 The variable "requires" specifies the list of required packages. The
-names of the packages must be separated by white space and/or commas.</PARA></LISTITEM><LISTITEM
+names of the packages must be separated by white space and/or commas.
+The names must be fully qualified (i.e. when they refer to a subpackage,
+the names of all containing packages must be prepended, separated by
+'.').</PARA></LISTITEM><LISTITEM
+><PARA
+> 
+The variable "description" may include a short description of the
+package (displayed by <LITERAL
+MOREINFO="NONE"
+>ocamlfind list</LITERAL>).</PARA></LISTITEM><LISTITEM
 ><PARA
 > 
 The variable "version" specifies the version string.</PARA></LISTITEM><LISTITEM
 ><PARA
 > 
 The variable "archive" specifies the list of archive files. These
-files should be given as plain names without any directory
-information; they are only searched in the package directory. The
+files should be given either as (1) plain names without any directory
+information; they are only searched in the package directory.
+(2) Or they have the form "+path" in which case the files are looked up
+relative to the standard library. (3) Or they have the form "@name/file"
+in which case the files are looked up in the package directory
+of another package. (4) Or they are given as absolute paths.</PARA><PARA
+>The
 names of the files must be separated by white space and/or commas.
 In the preprocessor stage, the archive files are passed as extensions
 to the preprocessor (camlp4) call. In the linker stage (-linkpkg), the archive
@@ -1496,11 +1628,9 @@ files are linked. In the compiler stage, the archive files are ignored.</PARA></
 > 
 The variable "linkopts" specifies additional linker options.</PARA></LISTITEM><LISTITEM
 ><PARA
-> 
-The variable "description" may include a short description of the
-package (displayed by <LITERAL
-MOREINFO="NONE"
->ocamlfind list</LITERAL>).</PARA></LISTITEM></ITEMIZEDLIST><PARA
+>The variable "error" can be used to signal error conditions. When
+this variable is applicable, the ocaml compilers are stopped, and
+an error message is printed. The message is the value of the variable.</PARA></LISTITEM></ITEMIZEDLIST><PARA
 >It is possible to define additional variables but there is currently
 no software interpreting them.</PARA></REFSECT1><REFSECT1
 ><TITLE
@@ -1534,7 +1664,13 @@ program is compiled for profiling</PARA></LISTITEM><LISTITEM
 preprocessor options.</PARA></LISTITEM><LISTITEM
 ><PARA
 >The "syntax" predicate means that the -syntax option is present on the
-command line.</PARA></LISTITEM></ITEMIZEDLIST></REFSECT1></REFENTRY><REFENTRY
+command line.</PARA></LISTITEM></ITEMIZEDLIST><PARA
+>In addition to these predicates, there are package predicates
+for every package that is finally selected. Of course, this kind of
+predicate must not be used to select "directory" and "requires"
+variables, but for the other variables they are perfectly valid.
+The package predicates have the form "pkg_" plus the name of the
+package (fully qualified).</PARA></REFSECT1></REFENTRY><REFENTRY
 ><REFMETA
 ><REFENTRYTITLE
 >findlib.conf</REFENTRYTITLE><MANVOLNUM
@@ -1711,6 +1847,9 @@ MOREINFO="NONE"
 >ocamlmktop</LITERAL>,
 	<LITERAL
 MOREINFO="NONE"
+>ocamldoc</LITERAL>,
+	<LITERAL
+MOREINFO="NONE"
 >ocamldep</LITERAL>,
 	<LITERAL
 MOREINFO="NONE"
@@ -1718,7 +1857,8 @@ MOREINFO="NONE"
   </TERM><LISTITEM
 ><PARA
 >    If you want to call other executables than "ocamlc", "ocamlopt",
-    "ocamlcp", "ocamlmktop", "ocamldep", and "ocamlbrowser", you can
+    "ocamlcp", "ocamlmktop", "ocamldoc", "ocamldep", and
+    "ocamlbrowser", you can
     set the names of
     the executables here. The command <LITERAL
 MOREINFO="NONE"
@@ -1837,24 +1977,26 @@ MOREINFO="NONE"
 MOREINFO="NONE"
 >OCAMLFIND_COMMANDS</LITERAL></TERM><LISTITEM
 ><PARA
->    This variable overrides the configuration variables
-    <LITERAL
+>  This variable overrides the configuration variables
+  <LITERAL
 MOREINFO="NONE"
 >ocamlc</LITERAL>, <LITERAL
 MOREINFO="NONE"
 >ocamlopt</LITERAL>,
-    <LITERAL
+  <LITERAL
 MOREINFO="NONE"
->ocamlcp</LITERAL>, 
-    <LITERAL
+>ocamlcp</LITERAL>, <LITERAL
 MOREINFO="NONE"
->ocamlmktop</LITERAL>, <LITERAL
+>ocamlmktop</LITERAL>,
+  <LITERAL
 MOREINFO="NONE"
->ocamldep</LITERAL>,
-    and/or <LITERAL
+>ocamldoc</LITERAL>, <LITERAL
 MOREINFO="NONE"
->ocamlbrowser</LITERAL>. Its value must conform to the
-    syntax
+>ocamldep</LITERAL>, and/or
+  <LITERAL
+MOREINFO="NONE"
+>ocamlbrowser</LITERAL>. 
+  Its value must conform to the syntax
 
     <PROGRAMLISTING
 FORMAT="LINESPECIFIC"
@@ -1862,6 +2004,7 @@ FORMAT="LINESPECIFIC"
 >name</REPLACEABLE> ocamlopt=<REPLACEABLE
 >name</REPLACEABLE> ocamlcp=<REPLACEABLE
 >name</REPLACEABLE> ocamlmktop=<REPLACEABLE
+>name</REPLACEABLE> ocamldoc=<REPLACEABLE
 >name</REPLACEABLE> ocamldep=<REPLACEABLE
 >name</REPLACEABLE> ocamlbrowser=<REPLACEABLE
 >name</REPLACEABLE></PROGRAMLISTING>
@@ -1960,7 +2103,8 @@ package p will be installed in the subdirectory
 <LITERAL
 MOREINFO="NONE"
 >/usr/local/lib/ocaml/site-lib/p</LITERAL>. This subdirectory
-must contain the META file and all other files belonging to the package.</PARA><PARA
+must contain the META file and all other files belonging to the package.
+Package names must not contain the '.' character.</PARA><PARA
 >The variable <LITERAL
 MOREINFO="NONE"
 >destdir</LITERAL> specifies the directory for
@@ -2069,14 +2213,4 @@ MOREINFO="NONE"
 install</LITERAL> automatically adds a <LITERAL
 MOREINFO="NONE"
 >directory</LITERAL>
-directive to the META file, so you need not do it manually.</PARA></REFSECT1><REFSECT1
-><TITLE
->MODULE FINDLIB</TITLE><SIMPLELIST
-TYPE="VERT"
-><MEMBER
-><LINK
-LINKEND="FINDLIB.DEFAULT-LOCATION"
->Findlib.default_location</LINK></MEMBER><MEMBER
-><LINK
-LINKEND="FINDLIB.PACKAGE-DIRECTORY"
->Findlib.package_directory</LINK></MEMBER></SIMPLELIST></REFSECT1></REFENTRY></REFERENCE>
+directive to the META file, so you need not do it manually.</PARA></REFSECT1></REFENTRY></REFERENCE>

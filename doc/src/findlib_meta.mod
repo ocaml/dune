@@ -15,11 +15,16 @@
 <refsynopsisdiv>
 <title>GRAMMAR</title>
 <synopsis>
-            entry ::= variable_name [ formal_predicates ] '=' value
+         metafile ::= entry*
+            entry ::= assignment | addition | subpackage
+       subpackage ::= "package" pkgname '(' metafile ')'
+       assignment ::= variable_name [ formal_predicates ] '='  value
+         addition ::= variable_name [ formal_predicates ] '+=' value
 formal_predicates ::= '(' formal_predicate { ',' formal_predicate } ')'
     variable_name ::= name
- formal_predicate ::= name
-             name ::= [ 'A'-'Z' 'a'-'z' '0'-'9' '_' ]+
+ formal_predicate ::= name | '-' name
+             name ::= [ 'A'-'Z' 'a'-'z' '0'-'9' '_' '.' ]+
+          pkgname ::= '"' (character but not '.')* '"'
             value ::= '"' character* '"'
 </synopsis>
 </refsynopsisdiv>
@@ -30,12 +35,13 @@ formal_predicates ::= '(' formal_predicate { ',' formal_predicate } ')'
 If a package directory contains a file with the fixed name "META" it
 is interpreted as described here. The file is a sequence of entries
 following the given grammar; every entry defines a variable under a
-certain condition given by the list of formal predicates.
+certain condition given by the list of formal predicates, or it
+introduces a subpackage.
 </para>
 
 <para>
 There is a list of predefined variables and a list of standard
-predicates. These variables define: required packages, version
+predicates. These variables define: required packages, description, version
 information, directories, archive files, and linker options. The
 predicates denote circumstances of the application of the variables:
 whether the bytecode or the native compiler is used, if there is a
@@ -52,7 +58,7 @@ grammar prescribes. The lexical tokens are names, values, and
 interpunctuation like '(', ',' and so on. Note that linefeeds do not
 play a special role, i.e. an entry definition may be given in more than
 one line, or several definitions may occur on a single line. There may
-be comments which begin with '#' and consist of the rest of the line.
+be comments which begin with '#' and run until the end of the line.
 </para>
 
 <para>
@@ -65,43 +71,97 @@ allowed but not recommended.
 Values are enclosed between double quotes. Values may contain any
 character. The characters " and \ must be preceded by backslashes. 
 </para>
+
+<para>
+Package names must not contain the '.' character because it is used
+as delimiter of compound names.
+</para>
+
 </refsect1>
 
 <refsect1>
-<title>SEMANTICS OF DEFINITIONS</title>
+<title>MAIN PACKAGES AND SUBPACKAGES</title>
 <para>
-There may be multiple definitions for the same variable if the lists of
-formal predicates are different. The effective definition is selected
-upon a set of actual predicates, i.e. the set of predicates that are
-assumed to be true. In order to determine the value of a variable, the
-following rule applies:
-</para>
+The outermost variable assignments and additions belong to the main
+package. The name of the main package is not defined within META;
+it is either the name of the directory containing META or the suffix
+of the META file (if the name of the META file is formed like
+META.name).</para>
+
+<para>The keyword <literal>package</literal> starts the definition
+of a subpackage. There must not be two such definitions with the
+same name. Within the parantheses, the variable assignments and
+additions refer to the subpackage. It is allowed that a subpackage
+contains further subpackages.</para>
+
+<para>The package name following <literal>package</literal>
+is the local name relative to the main package, i.e. the
+name of the main package is not mentioned. At all other places,
+however, the subpackage must be prefixed by the name of the
+containing package, separated by a '.'.</para>
+
+<para>Subpackages are independent of the containing package, except
+that the subpackage points to the same installation directory as
+the containing package (i.e. the location of the installation directory
+is inherited from the containing package).</para>
+</refsect1>
+
+
+<refsect1>
+<title>SEMANTICS OF VARIABLE DEFINITIONS</title>
+
+<para>
+In order to determine the value of a variable, first all assignments
+are inspected, and the most specific assignment is taken (if there is
+none, the empty string will be taken as value). In a second step,
+all additions are gone through one after the other in the order
+they occur in the file, and the values of all matching additions are
+appended to the current value. In the following, it is further
+clarified which assignment is the most specific, which additions
+actually match, and how the details of the value addition look like.</para>
+
+<para> The most specific assignment is selected upon a set of actual
+predicates, i.e. the set of predicates that are assumed to be true.
+The predicates occuring in the definitions of assignments and
+additions are called formal predicates. They may be positive or
+negative; the latter are prepended by a '-' sign. In order to
+determine the value after the evaluation of the assignments, the
+following rules apply: </para>
 
 <itemizedlist mark="bullet" spacing="compact"> 
 <listitem> 
-<para> 
-A definition can only be used if all formal parameters are included in
-the set of actual parameters, such a definition is called
-<emphasis>applicable</emphasis>. If there is no such definition, the
-variable has no value.
+<para> An assignment can only be used if all positive formal
+predicates are included in the set of actual predicates, and if all
+negative formal predicates are not included in the set of actual
+predicates.  Such an assignment is called
+<emphasis>applicable</emphasis>. If there is no such assignment, the
+variable will have no value.  
+</para> 
+</listitem>
+
+<listitem>
+<para>
+If there is more than one applicable assignment, the definition with
+the biggest number of formal predicates is selected.
 </para>
 </listitem>
 
 <listitem>
 <para>
-If there is more than one applicable definition, the definition with
-the biggest number of formal parameters is selected.
-</para>
-</listitem>
-
-<listitem>
-<para>
-If there is still more than one definition, both applicable and with a
-maximum number of formal parameters, the definition that is defined
+If there is still more than one applicable assignment, both applicable 
+and with a maximum number of formal predicates, the definition that is defined
 first is selected.
 </para>
 </listitem>
 </itemizedlist>
+
+<para>An addition is matching when all positive formal predicates are
+included in the set of actual predicates, and all negative formal
+predicates are not included.</para>
+
+<para>The value of an addition is appended to the current value with
+implicit white space as separator.</para>
+
 </refsect1>
 
 <refsect1>
@@ -121,7 +181,12 @@ variable is evaluated in order to see if the package directory must be
 changed. The value of the "directory" variable is determined with an
 empty set of actual predicates. The value must be either: an absolute
 path name of the alternate directory, or a path name relative to the
-stdlib directory of OCaml (written "^path" or "+path").
+stdlib directory of OCaml (written "+path"), or a normal relative path 
+name (without special syntax). In the latter case, the path is interpreted
+relative to the default location for main packages, or relative to
+the containing package for subpackages. Subpackages inherit the
+changed location of the package directory, but they are free to 
+set "directory" to change the location again.
 </para>
 </listitem>
 
@@ -129,6 +194,16 @@ stdlib directory of OCaml (written "^path" or "+path").
 <para> 
 The variable "requires" specifies the list of required packages. The
 names of the packages must be separated by white space and/or commas.
+The names must be fully qualified (i.e. when they refer to a subpackage,
+the names of all containing packages must be prepended, separated by
+'.').
+</para>
+</listitem>
+
+<listitem> 
+<para> 
+The variable "description" may include a short description of the
+package (displayed by <literal>ocamlfind list</literal>).
 </para>
 </listitem>
 
@@ -141,8 +216,15 @@ The variable "version" specifies the version string.
 <listitem> 
 <para> 
 The variable "archive" specifies the list of archive files. These
-files should be given as plain names without any directory
-information; they are only searched in the package directory. The
+files should be given either as (1) plain names without any directory
+information; they are only searched in the package directory.
+(2) Or they have the form "+path" in which case the files are looked up
+relative to the standard library. (3) Or they have the form "@name/file"
+in which case the files are looked up in the package directory
+of another package. (4) Or they are given as absolute paths.
+</para>
+
+<para>The
 names of the files must be separated by white space and/or commas.
 In the preprocessor stage, the archive files are passed as extensions
 to the preprocessor (camlp4) call. In the linker stage (-linkpkg), the archive
@@ -156,13 +238,13 @@ The variable "linkopts" specifies additional linker options.
 </para>
 </listitem>
 
-<listitem> 
-<para> 
-The variable "description" may include a short description of the
-package (displayed by <literal>ocamlfind list</literal>).
+<listitem>
+<para>
+The variable "error" can be used to signal error conditions. When
+this variable is applicable, the ocaml compilers are stopped, and
+an error message is printed. The message is the value of the variable.
 </para>
 </listitem>
-
 
 </itemizedlist>
 
@@ -246,6 +328,15 @@ command line.</para>
 </listitem>
 
 </itemizedlist>
+
+<para>In addition to these predicates, there are package predicates
+for every package that is finally selected. Of course, this kind of
+predicate must not be used to select "directory" and "requires"
+variables, but for the other variables they are perfectly valid.
+The package predicates have the form "pkg_" plus the name of the
+package (fully qualified).</para>
+
+
 </refsect1>
 
 </refentry>

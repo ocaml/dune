@@ -2,44 +2,51 @@ DOCBOOK_HTML  = /usr/share/sgml/docbook/stylesheet/dsssl/modular/html
 DOCBOOK_PRINT = /usr/share/sgml/docbook/stylesheet/dsssl/modular/print
 SRC = $(PWD)/src
 
-.PHONY: html tex man
+EXPORTED = findlib.mli fl_package_base.mli fl_metascanner.mli topfind.mli
 
-default: html man QUICKSTART
-# 'tex' still not working
+.PHONY: guide-html ref-html ref-man
 
-html: html/book1.htm
-tex: tex/findlib.dvi
+default: guide-html ref-html ref-man README QUICKSTART
 
+guide-html: guide-html/TIMESTAMP
+ref-html: ref-html/TIMESTAMP
+ref-man: ref-man/TIMESTAMP
 
-html/book1.htm: src/*.sgml src/*.mod QUICKSTART.xml common.xml config.xml
-	mkdir -p html
-	cd html; \
+guide-html/TIMESTAMP: src/*.sgml src/*.mod QUICKSTART.xml common.xml config.xml
+	mkdir -p guide-html
+	cd guide-html; \
 	rm -f *.htm*; \
 	jade -t sgml -D$(DOCBOOK_HTML) -D$(SRC) findlib.sgml; \
 	true
-	readme -html QUICKSTART.xml >html/quickstart.html
-	touch html/TIMESTAMP
+	readme -html QUICKSTART.xml >guide-html/quickstart.html
+	touch guide-html/TIMESTAMP
+
+ref-html/TIMESTAMP: src/*.sgml src/*.mod common.xml config.xml $(EXPORTED:%=../src/findlib/%)
+	mkdir -p ref-html
+	cd ref-html; \
+	rm -f *.htm*; \
+	jade -t sgml -D$(DOCBOOK_HTML) -D$(SRC) findlib_ref.sgml; \
+	true
+	mkdir -p ref-html/lib
+	cd ../src/findlib && \
+	ocamldoc -html -d $(PWD)/ref-html/lib -stars -t "The Findlib Library" $(EXPORTED)
+	touch ref-html/TIMESTAMP
 
 src/findlib_reference.xml: src/*.sgml src/*.mod
 	sgml2xml -D$(DOCBOOK_HTML) -D$(SRC) \
 		findlib_reference.sgml >src/findlib_reference.xml ; \
 	true
 
-man: src/findlib_reference.xml
-	mkdir -p man
-	cd man; \
-	rm -f *.[0-9]; \
+ref-man/TIMESTAMP: src/findlib_reference.xml
+	mkdir -p ref-man
+	cd ref-man; \
+	rm -f *.[0-9] TIMESTAMP; \
 	db2man <../src/findlib_reference.xml
+	touch ref-man/TIMESTAMP
 
-tex/findlib.tex: src/*.sgml src/*.mod
-	mkdir -p tex
-	cd tex;
-	jade -t tex -D$(DOCBOOK_PRINT) -D$(SRC) findlib.sgml; \
-	true
-
-tex/findlib.dvi: tex/findlib.tex
-	cd tex;
-	jadetex findlib.tex
+# Unfortunately, output of ocamldoc -man is too bad to be useful.
+#	cd ../src/findlib && \
+#	ocamldoc -man -man-mini -d $(PWD)/ref-man -man-suffix 3 -stars -t "The Findlib Library" $(EXPORTED)
 
 .SUFFIXES: .xml .sgml
 
@@ -49,7 +56,7 @@ tex/findlib.dvi: tex/findlib.tex
 
 
 clean:
-	rm -rf html man tex
+	rm -rf guide-html guide-man
 	rm -f src/*.xml
 
 distclean:
@@ -59,3 +66,7 @@ distclean:
 
 QUICKSTART: QUICKSTART.xml
 	readme -text QUICKSTART.xml >QUICKSTART
+
+README: README.xml
+	readme -text README.xml >README
+

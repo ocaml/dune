@@ -191,12 +191,14 @@ metadir = "/var/lib/findlib/metaregistry"
         <literal>ocamlopt</literal>,
         <literal>ocamlcp</literal>,
         <literal>ocamlmktop</literal>,
+	<literal>ocamldoc</literal>,
 	<literal>ocamldep</literal>,
 	<literal>ocamlbrowser</literal>
   </term>
   <listitem><para>
     If you want to call other executables than "ocamlc", "ocamlopt",
-    "ocamlcp", "ocamlmktop", "ocamldep", and "ocamlbrowser", you can
+    "ocamlcp", "ocamlmktop", "ocamldoc", "ocamldep", and
+    "ocamlbrowser", you can
     set the names of
     the executables here. The command <literal>ocamlfind</literal> looks
     into these four variables to determine the names of the compilers to
@@ -323,17 +325,16 @@ findlib/ocamlfind:
 
 <variablelist>
 <varlistentry>
-  <term><literal>OCAMLFIND_COMMANDS</literal></term>
-  <listitem><para>
-    This variable overrides the configuration variables
-    <literal>ocamlc</literal>, <literal>ocamlopt</literal>,
-    <literal>ocamlcp</literal>, 
-    <literal>ocamlmktop</literal>, <literal>ocamldep</literal>,
-    and/or <literal>ocamlbrowser</literal>. Its value must conform to the
-    syntax
+  <term><literal>OCAMLFIND_COMMANDS</literal></term> <listitem><para>
+  This variable overrides the configuration variables
+  <literal>ocamlc</literal>, <literal>ocamlopt</literal>,
+  <literal>ocamlcp</literal>, <literal>ocamlmktop</literal>,
+  <literal>ocamldoc</literal>, <literal>ocamldep</literal>, and/or
+  <literal>ocamlbrowser</literal>. 
+  Its value must conform to the syntax
 
     <programlisting>
-ocamlc=<replaceable>name</replaceable> ocamlopt=<replaceable>name</replaceable> ocamlcp=<replaceable>name</replaceable> ocamlmktop=<replaceable>name</replaceable> ocamldep=<replaceable>name</replaceable> ocamlbrowser=<replaceable>name</replaceable>
+ocamlc=<replaceable>name</replaceable> ocamlopt=<replaceable>name</replaceable> ocamlcp=<replaceable>name</replaceable> ocamlmktop=<replaceable>name</replaceable> ocamldoc=<replaceable>name</replaceable> ocamldep=<replaceable>name</replaceable> ocamlbrowser=<replaceable>name</replaceable>
 </programlisting>
   </para>
 

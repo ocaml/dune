@@ -171,24 +171,30 @@ implicit white space as separator.</para>
 There is a set of variables with predefined meaning:
 </para>
 
-<itemizedlist mark="bullet" spacing="compact"> 
-<listitem> 
-<para> 
-The variable "directory" redefines the location of the package
+<itemizedlist mark="bullet" spacing="compact"> <listitem> <para> The
+variable "directory" redefines the location of the package
 directory. Normally, the META file is the first file read in the
 package directory, and before any other file is read, the "directory"
 variable is evaluated in order to see if the package directory must be
 changed. The value of the "directory" variable is determined with an
 empty set of actual predicates. The value must be either: an absolute
 path name of the alternate directory, or a path name relative to the
-stdlib directory of OCaml (written "+path"), or a normal relative path 
-name (without special syntax). In the latter case, the path is interpreted
-relative to the default location for main packages, or relative to
-the containing package for subpackages. Subpackages inherit the
-changed location of the package directory, but they are free to 
-set "directory" to change the location again.
-</para>
-</listitem>
+stdlib directory of OCaml (written "+path"), or a normal relative path
+name (without special syntax). In the latter case, the interpretation
+depends on whether it is contained in a main or sub package, and
+whether the standard repository layout or the alternate layout is in
+effect (see <link linkend="site-lib">site-lib</link> for these terms).
+For a main package in standard layout the base directory is the
+directory physically containing the META file, and the relative path
+is interpreted for this base directory. For a main package in
+alternate layout the base directory is the directory physically
+containing the META.pkg files. The base directory for subpackages is
+the package directory of the containing package. (In the case
+that a subpackage definition does not have a "directory" setting,
+the subpackage simply inherits the package directory of the containing
+package. By writing a "directory" directive one can change this
+location again.)
+</para> </listitem>
 
 <listitem> 
 <para> 

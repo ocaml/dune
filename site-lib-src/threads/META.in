@@ -1,6 +1,7 @@
 dnl This file is input of the m4 macro processor.
 `# Specifications for the "threads" library:'
 `version = "[distributed with Ocaml]"'
+`description = "Multi-threading"'
 `requires(mt,mt_vm) = "threads.vm"'
 `requires(mt,mt_posix) = "threads.posix"'
 `directory = "^"'

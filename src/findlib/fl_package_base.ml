@@ -1,4 +1,4 @@
-(* $Id: fl_metacache.ml,v 1.2 2002/09/22 20:12:32 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -45,11 +45,14 @@ let init path stdlib =
 ;;
 
 
-let packages_in_meta_file ~name:package_name ~dir:package_dir ~meta_file () =
+let packages_in_meta_file ?(directory_required = false) 
+                          ~name:package_name ~dir:package_dir ~meta_file () =
   (* Parses the META file whose name is [meta_file]. In [package_name], the
    * name of the main package must be passed. [package_dir] is the
    * directory associated with the package by default (i.e. before
    * it is overriden by the "directory" directive).
+   *
+   * directory_required: If true, a "directory" directive is necessary.
    *
    * Returns the [package] records found in this file. The "directory"
    * directive is already applied.
@@ -65,7 +68,11 @@ let packages_in_meta_file ~name:package_name ~dir:package_dir ~meta_file () =
       try
 	lookup "directory" [] pkg_expr.pkg_defs
       with
-	  Not_found -> pkg_dir
+	  Not_found -> 
+	    if pkg_name_prefix="" && directory_required then
+	      failwith ("The `directory' directive is required in this META definition");
+
+	    pkg_dir
     in
     let d' =
       if d = "" then
@@ -121,9 +128,10 @@ let query package_name =
   if package_name_comps = [] then invalid_arg "Fl_package_base.query";
   let main_name = List.hd package_name_comps in
 
-  let process_file_and_lookup package_dir meta_file =
+  let process_file_and_lookup ?directory_required package_dir meta_file =
     let packages = 
-      packages_in_meta_file main_name package_dir meta_file () in
+      packages_in_meta_file 
+	?directory_required ~name:main_name ~dir:package_dir ~meta_file () in
     List.iter (Fl_metastore.add store) packages;
     try
       List.find
@@ -145,7 +153,10 @@ let query package_name =
 	  process_file_and_lookup package_dir meta_file_1
 	else
 	  if Sys.file_exists meta_file_2 then
-	    process_file_and_lookup package_dir (* questionable *)  meta_file_2
+	    process_file_and_lookup ~directory_required:true dir meta_file_2
+	      (* Note: It is allowed to have relative "directory" directives.
+	       * The base directory is [dir] in this case.
+	       *)
 	  else
 	    run_ocamlpath path'
   in
@@ -425,7 +436,7 @@ let load_base() =
 	  []
   in
 
-  let process_file main_name package_dir meta_file =
+  let process_file ?directory_required main_name package_dir meta_file =
     try
       let _ = Fl_metastore.find store main_name in
       (* Note: If the main package is already loaded into the graph, we 
@@ -436,7 +447,8 @@ let load_base() =
 	Not_found ->
 	  let packages = 
 	  try
-	    packages_in_meta_file main_name package_dir meta_file () 
+	    packages_in_meta_file 
+	      ?directory_required ~name:main_name ~dir:package_dir ~meta_file () 
 	  with
 	      Failure s ->
 		prerr_endline ("findlib: [WARNING] " ^ s); []
@@ -459,12 +471,12 @@ let load_base() =
 	       process_file f package_dir meta_file_1
 	     else
 	       (* If f is META.pkgname: Add package pkgname *)
-	       if String.length f >= 6 && String.sub f 0 5 = "META." then begin
+	       (* We skip over filenames ending in '~' *)
+	       if String.length f >= 6 && String.sub f 0 5 = "META." &&
+		  String.sub f (String.length f - 1) 1 <> "~" then begin
 		 let name = String.sub f 5 (String.length f - 5) in
-		 let package_dir = Filename.concat dir name in 
-		     (* as in [query] *)
-		 let meta_file_2 = package_dir in
-		 process_file name package_dir meta_file_2
+		 let meta_file_2 = Filename.concat dir f in
+		 process_file ~directory_required:true name dir meta_file_2
 	       end;
 	  )
 	  files;

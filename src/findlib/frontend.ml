@@ -16,17 +16,28 @@ type mode =
 
 type psubst =
     Const of string
-  | Percent of char
+  | Percent of string
+  | Lookup of string
 ;;
 
 
-let percent_subst spec s =
-  (* spec = [ 'c', [ "ctext1"; "ctext2"; ... ];
-   *          'd', [ "dtext1"; "dtext2"; ... ] ]
+let percent_subst spec lookup s =
+  (* spec = [ "%c", [ "ctext1"; "ctext2"; ... ];
+   *          "%d", [ "dtext1"; "dtext2"; ... ] ]
    * All occurrences of %c in the string s are replaced as specified in spec.
-   * spec is an association list with the characters of the %-notation as keys
+   * spec is an association list with the %-notation as keys
    * and lists of strings as values. The result is a list of strings containing
    * every combination of substituted values.
+   *
+   * Support for the %(name) syntax: In this case, the name is taken as
+   * key for the [lookup] function, which either returns the string value
+   * or raises Not_found.
+   *
+   * Example:
+   * spec = [ "%a", [ "file1" ] ]
+   * lookup = function "archive" -> "file2" | _ -> raise Not_found
+   * Here, %a is substituted by file1, and %(archive) is substituted by
+   * file2.
    *)
 
   let l = String.length s in
@@ -35,8 +46,23 @@ let percent_subst spec s =
       match s.[j] with
 	'%' ->
 	  if j+1<l then begin
+	    let prev = Const(String.sub s i (j-i)) in
 	    let c = s.[j+1] in
-	    Const(String.sub s i (j-i)) :: Percent c :: preprocess (j+2) (j+2)
+	    match c with
+		'%' -> 
+		  prev :: Const "%" :: preprocess (j+2) (j+2)
+	      | '(' -> (
+		  try		  
+		    if j+2>=l then raise Not_found;
+		    let k = String.index_from s (j+2) ')' in
+		    let name = String.sub s (j+2) (k-j-2) in
+		    prev :: Lookup name :: preprocess (k+1) (k+1)
+		  with Not_found ->
+		    failwith "bad format string";
+		)
+	      | _ ->
+		  let name = "%" ^ String.make 1 c in
+		  prev :: Percent name :: preprocess (j+2) (j+2)
 	  end
 	  else failwith "bad format string"
       |	_ ->
@@ -54,15 +80,20 @@ let percent_subst spec s =
       [] -> [prefix]
     | Const s :: l' ->
 	subst (prefix ^ s) l'
-    | Percent c :: l' ->
+    | Percent name :: l' ->
 	let replacements =
-	  try List.assoc c spec
+	  try List.assoc name spec
 	  with Not_found -> failwith "bad format string" in
 	List.flatten
 	  (List.map
 	     (fun replacement ->
 	       subst (prefix ^ replacement) l')
 	     replacements)
+    | Lookup name :: l' ->
+	let replacement =
+	  try lookup name
+	  with Not_found -> "" in
+	subst (prefix ^ replacement) l'
   in
 
   subst "" (preprocess 0 0)
@@ -300,29 +331,30 @@ let expand predicates eff_packages format =
 	 let dir = package_directory pkg in
 	    (* May raise No_such_package *)
 	 let spec =
-	   [ 'p',  [pkg];
-             'd',  [dir];
-	     'D',  [try package_property predicates pkg "description"
-		    with Not_found -> "[n/a]"];
-	     'v',  [try package_property predicates pkg "version"
-	            with Not_found -> "[unspecified]"];
-	     'a',  Fl_split.in_words
-	             (try package_property predicates pkg "archive"
-		      with Not_found -> "");
-	     'A',  [String.concat " "
+	   [ "%p",  [pkg];
+             "%d",  [dir];
+	     "%D",  [try package_property predicates pkg "description"
+		     with Not_found -> "[n/a]"];
+	     "%v",  [try package_property predicates pkg "version"
+	             with Not_found -> "[unspecified]"];
+	     "%a",  Fl_split.in_words
+	              (try package_property predicates pkg "archive"
+		       with Not_found -> "");
+	     "%A",  [String.concat " "
 		       (Fl_split.in_words
 		          (try package_property predicates pkg "archive"
 			   with Not_found -> ""))];
-	     'o',  Fl_split.in_words_ws
+	     "%o",  Fl_split.in_words_ws
 	             (try package_property predicates pkg "linkopts"
 		      with Not_found -> "");
-	     'O',  [String.concat " "
+	     "%O",  [String.concat " "
 		       (Fl_split.in_words_ws
 		          (try package_property predicates pkg "linkopts"
 			   with Not_found -> ""))];
 	   ]
 	 in
-	 percent_subst spec format)
+	 let lookup = package_property predicates pkg in
+	 percent_subst spec lookup format)
        eff_packages)
 ;;
 

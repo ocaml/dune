@@ -1,4 +1,4 @@
-(* $Id: topfind.ml,v 1.8 2003/09/30 11:25:26 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -11,7 +11,9 @@ let directories = ref [ Findlib.ocaml_stdlib() ];;
 
 (* Note: Sys.interactive is always _true_ during toploop startup.
  * When a script is executed, it is set to false just before the
- * script starts.
+ * script starts. This is important for ocamlmktop-generated toploops:
+ * For initialization code linked into the toploop, Sys.interactive
+ * is _true_. It is set to false just before the script starts.
  *)
 
 let real_toploop = 

@@ -60,6 +60,9 @@ val requires : preds:string list -> string -> string list
    * hold. The function returns the names of the required packages.
    * It is checked whether these packages exist.
    *
+   * If there is the "mt" predicate, missing dependencies on "threads"
+   * are silently added.
+   *
    * The function may raise [No_such_package] or [Package_loop].
    *
    * This function loads package definitions into the graph kept in memory.
@@ -70,6 +73,9 @@ val requires_deeply : preds:string list -> string list -> string list
    * are passed as second argument under the assumption that the predicates
    * [preds] hold. The function returns the names of the required packages.
    * It is checked whether these packages exist.
+   *
+   * If there is the "mt" predicate, missing dependencies on "threads"
+   * are silently added.
    *
    * The function may raise [No_such_package] or [Package_loop].
    *
@@ -96,10 +102,13 @@ val package_conflict_report :
    * on the Unix module).
    *)
 
-val module_conflict_report : string list -> unit
+val module_conflict_report : ?identify_dir:(string -> 'a) -> string list -> unit
   (** Checks whether there are cmi files for the same modules. The
-   * directories passed as argument are checked, and all package directories
-   * of the loaded part of the graph. Complaints are printed to stderr.
+   * directories passed as first argument are checked. (Note:
+   * Neither the '+' nor the '@' notation are recognized.)
+   * Complaints about double cmi files are printed to stderr.
+   *
+   * @param identify_dir See [package_conflict_report].
    *)
 
 val load_base : unit -> unit
@@ -120,6 +129,9 @@ val package_users : preds:string list -> string list -> string list
    * the packages passed as second argument. The [preds] are assumed
    * for the evaluation of the [requires] directives.
    * The returned list is sorted in ascending order.
+   *
+   * If there is the "mt" predicate, missing dependencies on "threads"
+   * are silently added.
    *
    * Raises [No_such_package] if one of the passed packages cannot
    * be found.

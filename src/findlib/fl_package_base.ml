@@ -27,6 +27,9 @@ module Fl_metastore =
 ;;
 
 
+module StringSet = Set.Make(String);;
+
+
 let ocamlpath = ref [];;
 let ocamlstdlib = ref "";;
 
@@ -219,6 +222,30 @@ let add_all_relations predlist s =
 ;;
 
 
+let has_prefix s pref =
+  String.length s >= String.length pref &&
+  String.sub s 0 (String.length pref) = pref
+;;
+
+
+let fixup_thread_deps s =
+  (* All packages (except "threads", "threads.*", and "unix") are made
+   * dependent on "threads"
+   *)
+  let pkgs = ref [] in
+  Fl_metastore.iter_up
+    (fun p -> pkgs := p.package_name :: !pkgs)
+    s;
+
+  List.iter
+    (fun pkg ->
+       if pkg <> "unix" && pkg <> "threads" && (has_prefix pkg "threads.") then
+	 Fl_metastore.let_le s pkg "threads"  (* add relation *)
+    )
+    !pkgs
+;;
+
+
 let requires ~preds:predlist package_name =
   (* returns names of packages required by [package_name], the fully qualified
    * name of the package. It is checked that the packages really exist.
@@ -228,6 +255,7 @@ let requires ~preds:predlist package_name =
   let ancestors = query_requirements predlist package_name in
   let store' = Fl_metastore.copy store in     (* work with a copy *)
   add_relations store' ancestors package_name;
+  if List.mem "mt" predlist then fixup_thread_deps store';
   ancestors
 ;;
 
@@ -243,15 +271,14 @@ let requires_deeply ~preds:predlist package_list =
    * - raises [Failure] if some of the ancestors do not exist
    *)
 
-  let done_pkgs = ref [] in
-  (* TODO: Use a set *)
+  let pkgset = ref StringSet.empty in
 
   let rec query_packages pkglist =
     match pkglist with
       pkg :: pkglist' ->
-	if not(List.mem pkg !done_pkgs) then begin
+	if not(StringSet.mem pkg !pkgset) then begin
 	  let pkg_ancestors = query_requirements predlist pkg in
-	  done_pkgs := pkg :: !done_pkgs;
+	  pkgset := StringSet.add pkg !pkgset;
           query_packages pkg_ancestors
 	end;
 	query_packages pkglist'
@@ -265,14 +292,19 @@ let requires_deeply ~preds:predlist package_list =
   (* Now make a copy of the store, and add the relations: *)
   let store' = Fl_metastore.copy store in
   add_all_relations predlist store';
+  if List.mem "mt" predlist then fixup_thread_deps store';
 
-  (* Finally, iterate through the graph: *)
+  (* Finally, iterate through the graph. Note that the graph may
+   * contain more members than required, so we have to test explicitly
+   * whether the packages are contained in pkgset.
+   *)
 
   let l = ref [] in
 
   Fl_metastore.iter_up_at
     (fun m ->
-      l := m.package_name :: !l)
+       if StringSet.mem m.package_name !pkgset then
+	 l := m.package_name :: !l)
     store'
     package_list;
 
@@ -464,6 +496,7 @@ let package_users ~preds pl =
   load_base();
   let store' = Fl_metastore.copy store in
   add_all_relations preds store';
+  if List.mem "mt" preds then fixup_thread_deps store';
 
   let l = ref [] in
 
@@ -477,31 +510,22 @@ let package_users ~preds pl =
 ;;
 
 
-let module_conflict_report incpath =
-  (* Find any *.cmi files occurring twice in (incpath @ package directories).
+let module_conflict_report_1 identify_dir incpath =
+  (* Find any *.cmi files occurring twice in incpath.
    *)
   let dir_of_module = Hashtbl.create 100 in
   let dirs = ref [] in
 
   let examine_dir d = 
-    (* If d ends with a slash: remove it *)
-    let d' = Fl_split.norm_dir d in
-    (* If d' begins with '+': Expand *)
-    let d' =
-      if d' <> "" && d'.[0] = '+' then
-	Filename.concat 
-	  !ocamlstdlib 
-	  (String.sub d' 1 (String.length d' - 1))
-      else
-	d'
-    in
+    let d    = Fl_split.norm_dir d in
+    let d_id = identify_dir d in
 
-    (* Is d' new? *)
-    if not (List.mem d' !dirs) then begin
-      dirs := d' :: !dirs;
+    (* Is d new? *)
+    if not (List.mem d_id !dirs) then begin
+      dirs := d_id :: !dirs;
       (* Yes: Get all files ending in .cmi *)
       try
-	let d_all = Array.to_list(Sys.readdir d') in   (* or Sys_error *)
+	let d_all = Array.to_list(Sys.readdir d) in   (* or Sys_error *)
 	let d_cmi = List.filter 
 		      (fun n -> Filename.check_suffix n ".cmi") 
 		      d_all in
@@ -510,10 +534,10 @@ let module_conflict_report incpath =
 	  (fun m ->
 	     try
 	       let entry = Hashtbl.find dir_of_module m in (* or Not_found *)
-	       entry := d' :: !entry
+	       entry := d :: !entry
 	     with
 		 Not_found ->
-		   Hashtbl.add dir_of_module m (ref [d'])
+		   Hashtbl.add dir_of_module m (ref [d])
 	  )
 	  d_cmi
       with
@@ -538,10 +562,14 @@ let module_conflict_report incpath =
   in
 
   List.iter examine_dir incpath;
-  Fl_metastore.iter_up 
-    (fun pkg -> examine_dir pkg.package_dir)
-    store;
 
   print_report();
   flush stderr
+;;
+
+
+let module_conflict_report ?identify_dir incpath =
+  match identify_dir with
+      None   -> module_conflict_report_1 (fun s -> s) incpath
+    | Some f -> module_conflict_report_1 f incpath
 ;;

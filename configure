@@ -119,6 +119,7 @@ ocaml_sitelib=""
 ocamlfind_config=""
 use_cygpath=0
 with_toolbox=0
+with_topfind=1
 
 while [ "$#" != "0" ]; do
     case "$1" in
@@ -140,6 +141,9 @@ while [ "$#" != "0" ]; do
 	-with-toolbox) with_toolbox=1
 	         shift
 		 ;;
+	-no-topfind) with_topfind=0
+	         shift
+		 ;;
 	-version)
 	         echo "$version"
 		 exit 0
@@ -151,9 +155,10 @@ while [ "$#" != "0" ]; do
                   echo "  -config path         set the location of the configuration file" 1>&2
 		  echo "  -cygpath             fix paths for cygwin environment" 1>&2
 		  echo "  -with-toolbox        also build the toolbox" 1>&2
+		  echo "  -no-topfind          don't install topfind script into stdlib directory" 1>&2
 		  exit
 		  ;;
-         *)       echo "configure: say 'configure -h' to get help" 1>&2
+         *)       echo "configure: run 'configure -h' to get help" 1>&2
 		  exit 1
 		  ;;
     esac
@@ -277,7 +282,7 @@ output=`cat itest-aux/err.out`
 if [ -z "$output" ]; then
     ocaml_threads="posix"
 else
-    ocaml_threads="bytecode"
+    ocaml_threads="vm"
 fi
 
 ######################################################################
@@ -344,6 +349,7 @@ for lib in $l; do
 	"-Dcamlp4_dir=${camlp4_dir}" \
 	"-Dcamlp4_version=${camlp4_version}" \
 	"-Dinterfaces=${if}" \
+	"-Dfindlib_version=${version}" \
 	site-lib-src/$lib/META.in >site-lib-src/$lib/META
     echo "Configuration for $lib written to site-lib-src/$lib/META"
 done
@@ -387,6 +393,7 @@ echo "OCAMLFIND_CONF=${ocamlfind_config}" >>Makefile.config
 echo "OCAML_AUTOLINK=${ocaml_autolink}" >>Makefile.config
 echo "EXEC_SUFFIX=${exec_suffix}" >>Makefile.config
 echo "PARTS=${parts}" >>Makefile.config
+echo "INSTALL_TOPFIND=${with_topfind}" >>Makefile.config
 
 # All OK
 
@@ -404,6 +411,11 @@ echo "Software will be installed:"
 echo "    Libraries:             in <site-lib>/findlib"
 echo "    Binaries:              ${ocamlfind_bin}"
 echo "    Manual pages:          ${ocamlfind_man}"
+if [ $with_topfind -gt 0 ]; then
+    echo "    topfind script:        ${ocaml_core_stdlib}"
+else
+    echo "    topfind script:        omitted"
+fi
 
 if [ $with_toolbox -gt 0 ]; then
     echo "Toolbox:                   yes"

@@ -40,7 +40,7 @@ let add_dir d =
     Topdirs.dir_directory d;
     directories := d :: !directories;
     if real_toploop then
-      prerr_endline (d ^ ": added to seach path")
+      prerr_endline (d ^ ": added to search path")
   end
 ;;
 

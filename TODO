@@ -9,10 +9,24 @@ Feature wish: (zack)
 
 ocamlfind ocamldoc: understands -package, but not more.
 
-Directives #thread and #vmthread for the toploop.
-#predicate.
-
 - Fertig -------------------------------------------------------------
+
+#predicate.
+DONE
+
+Analyse #thread: Hierzu ist zu tun:
+- Check, ob POSIX-Threads unterstützt werden (z.B. Abfrage,
+  ob das threads-Paket geladen werden könnte).
+- Prädikate setzen (mt, mt_posix)
+- #directory "+threads"
+- Pakete unix und threads laden
+DONE
+
+Analyse #vmthread: geht nicht. Eine toploop mit vmthread-
+Support muss immer schon unix,threads und stdlib geladen
+haben. Daher verweis auf ocamlmktop. Damit kann man so eine
+toploop bauen.
+OK
 
 Fix: num-top
 DONE
@@ -80,3 +94,11 @@ ocamlfind:
 	- ocamlfind query -r -d -l
 	- Syntax "+dir" and "@pkg": is recognized at more places:
 	  After -I, in "archive" settings, as normal file arguments
+
+Topfind:
+	- #use "findlib", #use "ocamlfind" no longer work
+
+ocamlmktop:
+	- directories are no longer automatically added. This means that
+	  you must use #require in scripts even if the package is already
+	  compiled into the toploop.

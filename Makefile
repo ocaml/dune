@@ -20,6 +20,7 @@ install:
 	for p in $(PARTS); do ( cd src/$$p; $(MAKE) install ); done
 	$(MAKE) install-doc
 	$(MAKE) install-meta
+	cd src/findlib; $(MAKE) install-num-top
 	$(MAKE) install-config
 
 uninstall:
@@ -64,7 +65,6 @@ uninstall-doc:
 .PHONY: install-meta
 install-meta:
 	for x in `ls site-lib-src`; do if [ "$$x" != "CVS" -a -f "site-lib-src/$$x/META" ]; then mkdir -p $(PREFIX)$(OCAML_SITELIB)/$$x; cp site-lib-src/$$x/META $(PREFIX)$(OCAML_SITELIB)/$$x; fi; done
-	cp src/findlib/num_top.cma $(PREFIX)$(OCAML_SITELIB)/num-top
 
 .PHONY: uninstall-meta
 uninstall-meta:

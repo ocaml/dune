@@ -148,7 +148,7 @@ let identify_dir d =
 ;;
 
 
-let conflict_report incpath =
+let conflict_report incpath pkglist =
   (* First check whether there are several definitions for packages
    * in the current path. We remove duplicate directories first.
    * Note that all other checks are not sensitive to duplicate directories.
@@ -156,7 +156,9 @@ let conflict_report incpath =
   Fl_package_base.package_conflict_report ~identify_dir ();
 
   (* Second check whether there are module conflicts *)
-  Fl_package_base.module_conflict_report incpath;
+  let pkgpath =
+    List.map Findlib.package_directory pkglist in
+  Fl_package_base.module_conflict_report ~identify_dir incpath;
 
   (* Finally check whether there are multiple DLLs: *)
   (* Note: Only the directories mentioned in ld.conf are checked, but not the
@@ -534,8 +536,8 @@ let ocamlc which () =
   let threads_default = 
     match type_of_threads with
 	"posix" -> `POSIX_threads
-      | "bytecode" -> `VM_threads
-      | _ -> `None
+      | "vm"    -> `VM_threads
+      | _       -> `None
   in
   let threads = ref `None in
 
@@ -793,25 +795,8 @@ let ocamlc which () =
   check_package_list !packages;
   check_package_list !dontlink;
 
-  let eff_packages0 =
-    package_deep_ancestors !predicates !packages in
-
-  (* Reorder eff_packages, such that "threads" is always first (early
-   * initialized). Furthermore, "unix" is an ancestor of "threads", both
-   * for POSIX threads and bytecode threads. So we put these two libraries
-   * at the beginning of the package list.
-   * The reason for this is that many META files forget to declare the
-   * dependency on "threads".
-   *)
-  (* TODO: find a better (not hardcoded) way *)
   let eff_packages =
-    if List.mem "threads" eff_packages0 then begin
-      [ "unix"; "threads" ] @ 
-      List.filter (fun n -> n <> "unix" && n <> "threads") eff_packages0
-    end
-    else 
-      eff_packages0
-  in
+    package_deep_ancestors !predicates !packages in
 
   let eff_dontlink =
     package_deep_ancestors !predicates !dontlink in
@@ -830,7 +815,7 @@ let ocamlc which () =
     remove_dups (List.map package_directory eff_link) in
 
   (* Conflict report: *)
-  conflict_report (!incpath @ ["."; Findlib.ocaml_stdlib() ]);
+  conflict_report (!incpath @ ["."; Findlib.ocaml_stdlib() ]) eff_packages;
 
   (* ---- End of requirements analysis ---- *)
 
@@ -860,17 +845,13 @@ let ocamlc which () =
 		  String.concat "," !predicates ^ "\n");
   end;
 
-  let initf_file_needed =
-    List.mem "toploop" !predicates in
+  let stdlibdir = Fl_split.norm_dir (Findlib.ocaml_stdlib()) in
+  let threads_dir = Filename.concat stdlibdir "threads" in
+  let vmthreads_dir = Filename.concat stdlibdir "vmthreads" in
+
   let initl_file_needed =
     List.mem "toploop" !predicates && List.mem "findlib" eff_link in
 
-  let initf_file_name =
-    if initf_file_needed then
-      Filename.temp_file "findlib_initf" ".ml" 
-    else
-      ""
-  in
   let initl_file_name =
     if initl_file_needed then
       Filename.temp_file "findlib_initl" ".ml"
@@ -878,32 +859,9 @@ let ocamlc which () =
       ""
   in
 
-  (* initf_file_name: the initialization code inserted at the beginning of
-   *   the cma/cmo list (initf = init first)
-   * initl_file_name: the initialization code inserted at the end of
+  (* initl_file_name: the initialization code inserted at the end of
    *   the cma/cmo list (initl = init last)
    *)
-
-  if initf_file_needed then begin
-    (* Extend list of -I directories *)
-    let initf = open_out_gen
-		  [Open_wronly; Open_trunc; Open_text]
-		  0o777
-		  initf_file_name in
-    try
-      List.iter
-	(fun d ->
-	   output_string initf ("Topdirs.dir_directory \"" ^ 
-				String.escaped d ^ "\";;\n")
-	)
-	eff_link_dl;
-      close_out initf;
-    with
-      any ->
-	close_out initf;
-	Sys.remove initf_file_name;
-	raise any
-  end;
 
   if initl_file_needed then begin
     (* Generate initializer for "findlib_top.cma" *)
@@ -934,14 +892,6 @@ let ocamlc which () =
 	raise any
   end;
 
-  if initf_file_needed then
-    at_exit
-      (fun () ->
-	let tr f x = try f x with _ -> () in
-	tr Sys.remove initf_file_name;
-	tr Sys.remove (Filename.chop_extension initf_file_name ^ ".cmi");
-	tr Sys.remove (Filename.chop_extension initf_file_name ^ ".cmo");
-      );
   if initl_file_needed then
     at_exit
       (fun () ->
@@ -950,10 +900,6 @@ let ocamlc which () =
 	tr Sys.remove (Filename.chop_extension initl_file_name ^ ".cmi");
 	tr Sys.remove (Filename.chop_extension initl_file_name ^ ".cmo");
       );
-
-  let stdlibdir = Fl_split.norm_dir (Findlib.ocaml_stdlib()) in
-  let threads_dir = Filename.concat stdlibdir "threads" in
-  let vmthreads_dir = Filename.concat stdlibdir "vmthreads" in
 
   let exclude_list = [ stdlibdir; threads_dir; vmthreads_dir ] in
   (* Don't generate -I options for these directories because there is
@@ -984,12 +930,6 @@ let ocamlc which () =
 	 eff_link_dl) in
 
   let archives =
-    (if initf_file_needed then
-       [ initf_file_name ]
-     else 
-       []
-    ) 
-    @
     List.flatten
       (List.map
 	 (fun pkg ->
@@ -1081,6 +1021,111 @@ let ocamlc which () =
   in
 
   run_command verbose actual_command arguments
+;;
+
+
+(************************************************************************)
+
+let ocamldoc_help = 
+  "Usage: ocamlfind ocamldoc { <findlib_options> <ocamldoc_options> ... }
+findlib_options are :
+  -package <name>  Add this package to the search path
+  -predicates <p>  Add predicate <p> when calculating dependencies
+  -syntax <p>      Use preprocessor with predicate <p>
+  -ppopt <opt>     Append option <opt> to preprocessor invocation
+  -verbose         Be verbose
+ocamldoc_options : see `ocamldoc -help'
+";;
+
+
+let ocamldoc() =
+
+  let packages = ref [] in
+  let predicates = ref [] in
+  let syntax_preds = ref [] in
+  let pp_opts = ref [] in
+  let pp_specified = ref false in
+
+  let verbose = ref false in
+
+  let options = ref [] in
+
+  let k = ref 2 in
+  while !k < Array.length Sys.argv do
+    let arg = Sys.argv.( !k ) in
+    incr k;
+
+    let next_arg() =
+      if !k < Array.length Sys.argv then (
+	let narg = Sys.argv.( !k ) in
+	incr k;
+	narg
+      )
+      else
+	failwith ocamldoc_help
+    in
+
+    match arg with
+	"-package" ->
+	  packages := Fl_split.in_words (next_arg()) @ !packages;
+      | "-predicates" ->
+	  predicates := Fl_split.in_words (next_arg()) @ !predicates;
+      | "-syntax" ->
+	  syntax_preds := Fl_split.in_words (next_arg()) @ !syntax_preds;
+      | "-ppopt" ->
+	  pp_opts := next_arg() :: !pp_opts
+      | "-verbose" 
+      | "-v" ->
+	  verbose := true
+      | "-pp" ->
+	  pp_specified := true;
+	  options := !options @ [ arg ];
+      | "-help" | "--help" ->
+	  print_string ocamldoc_help;
+	  exit 0
+      | _ ->
+	  options := !options @ [ arg ];
+  done;
+
+  check_package_list !packages;
+
+  if !syntax_preds <> [] then (
+    predicates := "syntax" :: !predicates;
+    syntax_preds := "preprocessor" :: "syntax" :: !syntax_preds;
+  );
+  
+  if !verbose then begin
+    if !syntax_preds <> [] then
+      print_string ("Effective set of preprocessor predicates: " ^
+		    String.concat "," !syntax_preds ^ "\n");
+    print_string ("Effective set of compiler predicates: " ^
+		  String.concat "," !predicates ^ "\n");
+  end;
+
+  if !pp_specified && !syntax_preds <> [] then
+    prerr_endline("Warning: -pp overrides the effect of -syntax partly");
+
+  let pp_command = 
+    if !pp_specified then
+      []
+    else
+      process_pp_spec !syntax_preds !packages !pp_opts
+  in
+
+  let eff_packages =
+    package_deep_ancestors !predicates !packages in
+
+  let eff_packages_dl =
+    remove_dups (List.map package_directory eff_packages) in
+
+  let arguments =
+    (List.flatten (List.map (fun d -> [ "-I"; d ]) eff_packages_dl)) @
+    pp_command @
+    !options in
+
+  let actual_command = Findlib.command `ocamldoc in
+
+  run_command !verbose actual_command arguments
 ;;
 
 
@@ -1694,25 +1739,8 @@ let guess_meta_file () =
 
 
 let list_packages() =
-  let packages = Fl_package_base.list_packages() in
-  let packages_sorted = List.sort compare packages in
-
-  Fl_package_base.package_conflict_report ~identify_dir ();
-
-  let n = 20 in
-  List.iter
-    (fun p ->
-       let v_string =
-	 try
-	   let v = Findlib.package_property [] p "version" in
-	   let spaces = String.make (max 1 (n-String.length p)) ' ' in
-	   spaces ^ "(version: " ^ v ^ ")"
-	 with
-	     Not_found -> ""
-       in
-       print_endline (p ^ v_string)
-    )
-    packages_sorted
+  Findlib.list_packages stdout;
+  Fl_package_base.package_conflict_report ~identify_dir ()
 ;;
 
 
@@ -1809,6 +1837,7 @@ let select_mode() =
     | ("ocamlopt"|"-ocamlopt"|"opt")       -> M_compiler "ocamlopt"
     | ("ocamldep"|"-ocamldep"|"dep")       -> M_dep 
     | ("ocamlbrowser"|"-ocamlbrowser"|"browser") -> M_browser
+    | ("ocamldoc"|"-ocamldoc"|"doc")       -> M_doc
     | ("printconf"|"-printconf")           -> M_printconf
     | ("list"|"-list")                     -> M_list
     | s when String.contains m_string '/' -> 
@@ -1845,6 +1874,7 @@ let main() =
     | M_compiler which -> ocamlc which ()
     | M_dep            -> ocamldep()    
     | M_browser        -> ocamlbrowser()
+    | M_doc            -> ocamldoc()
     | M_call(pkg,cmd)  -> ocamlcall pkg cmd
   with
     Usage ->
@@ -1855,6 +1885,7 @@ let main() =
       prerr_endline "   or: ocamlfind ocamlopt     [-help | other options] <file> ...";
       prerr_endline "   or: ocamlfind ocamldep     [-help | other options] <file> ...";
       prerr_endline "   or: ocamlfind ocamlbrowser [-help | other options]";
+      prerr_endline "   or: ocamlfind ocamldoc     [-help | other options] <file> ...";
       prerr_endline "   or: ocamlfind install      [-help | other options] <package_name> <file> ...";
       prerr_endline "   or: ocamlfind remove       [-help | other options] <package_name>";
       prerr_endline "   or: ocamlfind printconf    [-help] [variable]";

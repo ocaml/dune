@@ -76,7 +76,8 @@ let packages_in_meta_file ~name:package_name ~dir:package_dir ~meta_file () =
 	  | '+' -> Filename.concat
 	      !ocamlstdlib
 	      (String.sub d 1 (String.length d - 1))
-	  | _ -> d
+	  | '/' -> d   (* absolute path *)
+	  | _ -> Filename.concat pkg_dir d
     in
     let p_name = 
       if pkg_name_prefix = "" then 

@@ -13,6 +13,8 @@ Feature wish: (zack)
 	-create-ldconf
 		Creates ld.conf if it does not exist
 
+ocamlfind ocamldoc: understands -package, but not more.
+
 Subpackages: META files may define several packages. Subpackages
 have names <mainpkg>.<subpkg>. Syntax in META:
 	<main package decls>

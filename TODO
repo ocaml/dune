@@ -12,9 +12,10 @@ ocamlfind ocamldoc: understands -package, but not more.
 Directives #thread and #vmthread for the toploop.
 #predicate.
 
-Fix: num-top
-
 - Fertig -------------------------------------------------------------
+
+Fix: num-top
+DONE
 
 Subpackages: META files may define several packages. Subpackages
 have names <mainpkg>.<subpkg>. Syntax in META:

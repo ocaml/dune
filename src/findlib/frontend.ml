@@ -1,4 +1,4 @@
-(* $Id: frontend.ml,v 1.45 2003/11/08 12:10:36 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -176,7 +176,7 @@ let conflict_report incpath pkglist =
 	      let files =
 		try Array.to_list (Sys.readdir dll_dir)
 		with _ ->
-		  prerr_endline ("ocamlfind: [WARNING] Cannot read directory " ^ 
+		  prerr_endline ("ocamlfind: [WARNING] Cannot read directory " ^
 				 dll_dir ^ " which is mentioned in ld.conf");
 		  []
 	      in
@@ -194,7 +194,7 @@ let conflict_report incpath pkglist =
       (fun file dll_dir ->
 	 let locations = Hashtbl.find_all dll_hash file in
 	 if List.length locations > 1 then begin
-	   prerr_endline ("ocamlfind: [WARNING] The DLL " ^ file ^ 
+	   prerr_endline ("ocamlfind: [WARNING] The DLL " ^ file ^
 			  " occurs in multiple directories: " ^ dll_dir)
 	 end
       )
@@ -221,13 +221,13 @@ let run_command ?filter verbose cmd args =
     if filter <> None then
       print_string ("  (output of this command is filtered by ocamlfind)\n")
   end;
-  
+
   flush stdout;
 
   let filter_input, cmd_output =
     match filter with
 	None -> Unix.stdin (* dummy *), Unix.stdout
-      | Some f -> Unix.pipe() 
+      | Some f -> Unix.pipe()
   in
 
   let pid =
@@ -253,7 +253,7 @@ let run_command ?filter verbose cmd args =
 	    done;
 	    assert false
 	  with
-	      End_of_file -> 
+	      End_of_file ->
 		close_in ch;
 		flush stdout
 	end
@@ -402,7 +402,7 @@ let query_package () =
                          -l-format        | -a-format   |
 			 -o-format        | -p-format   |
                          -prefix <p>      | -suffix <s> |
-                         -separator <s>   | 
+                         -separator <s>   |
                          -descendants     | -recursive  ] package ...";
 
     let eff_packages =
@@ -447,7 +447,7 @@ let process_pp_spec syntax_preds packages pp_opts =
 	        pp_packages
       )
   in
-    
+
   let preprocessor_cmd =
     if syntax_preds <> [] then
       match preprocessor_cmds with
@@ -475,7 +475,7 @@ let process_pp_spec syntax_preds packages pp_opts =
 	      [ "-I"; pkgdir ]
 	 )
 	 pp_packages) in
-  
+
   let pp_archives =
     if preprocessor_cmd = None then
       []
@@ -488,7 +488,7 @@ let process_pp_spec syntax_preds packages pp_opts =
 	      Fl_split.in_words al
 	   )
 	   pp_packages) in
-  
+
   match preprocessor_cmd with
       None -> []
     | Some cmd ->
@@ -504,8 +504,9 @@ let process_pp_spec syntax_preds packages pp_opts =
 
 type pass_file_t =
     Pass of string
-  | Impl of string
-  | Intf of string
+  | Impl of string   (* Forces module implementation: -impl <file> *)
+  | Intf of string   (* Forces module interface: -intf <file> *)
+  | Cclib of string  (* Option for the C linker: -cclib <opt> *)
 ;;
 
 
@@ -532,11 +533,11 @@ let ocamlc which () =
   let pp_opts = ref [] in
   let pp_specified = ref false in
 
-  let type_of_threads = 
+  let type_of_threads =
     try package_property [] "threads" "type_of_threads"
     with Not_found -> "ignore"
   in
-  let threads_default = 
+  let threads_default =
     match type_of_threads with
 	"posix" -> `POSIX_threads
       | "vm"    -> `VM_threads
@@ -596,7 +597,7 @@ let ocamlc which () =
          "                Compile only (do not link)";
       "-cc", add_spec "-cc",
           " <comp>        Use <comp> as the C compiler and linker";
-      "-cclib", add_spec "-cclib",
+      "-cclib", Arg.String (fun s -> pass_files := !pass_files @ [ Cclib s ]),
              " <opt>      Pass option <opt> to the C linker";
       "-ccopt", add_spec "-ccopt",
              " <opt>      Pass option <opt> to the C compiler and linker";
@@ -762,7 +763,7 @@ let ocamlc which () =
   incpath := List.rev !incpath;
 
   ( match !threads with
-	`None -> 
+	`None ->
 	  ()
 
       | `VM_threads ->
@@ -831,7 +832,7 @@ let ocamlc which () =
        try
 	 let error = package_property !predicates pkg "error" in
 	 if !ignore_error then
-	   prerr_endline("ocamlfind: [WARNING] Package `" ^ pkg ^ 
+	   prerr_endline("ocamlfind: [WARNING] Package `" ^ pkg ^
 			 "' signals error: " ^ error)
 	 else
 	   failwith ("Error from package `" ^ pkg ^ "': " ^ error)
@@ -947,11 +948,11 @@ let ocamlc which () =
 	     else
 	       package_directory pkg in
 	   List.map
-	     (fun arch -> 
+	     (fun arch ->
 		resolve_path ~base:pkg_dir arch)
 	     (Fl_split.in_words al)
 	 )
-	 eff_link) 
+	 eff_link)
     @
     (if initl_file_needed then
        [ initl_file_name ]
@@ -969,7 +970,7 @@ let ocamlc which () =
 	   Fl_split.in_words_ws ol)
 	 (List.rev eff_link)) in
 
-  let pp_command = 
+  let pp_command =
     if !pp_specified then
       []
     else
@@ -988,6 +989,8 @@ let ocamlc which () =
 		[ "-impl"; resolve_path s ]
 	    | Intf s ->
 		[ "-intf"; resolve_path s ]
+	    | Cclib s ->
+		[ "-cclib"; s ]
 	 )
 	 !pass_files)
   in
@@ -1029,7 +1032,7 @@ let ocamlc which () =
 
 (************************************************************************)
 
-let ocamldoc_help = 
+let ocamldoc_help =
   "Usage: ocamlfind ocamldoc { <findlib_options> <ocamldoc_options> ... }
 findlib_options are :
   -package <name>  Add this package to the search path
@@ -1077,7 +1080,7 @@ let ocamldoc() =
 	  syntax_preds := Fl_split.in_words (next_arg()) @ !syntax_preds;
       | "-ppopt" ->
 	  pp_opts := next_arg() :: !pp_opts
-      | "-verbose" 
+      | "-verbose"
       | "-v" ->
 	  verbose := true
       | "-pp" ->
@@ -1096,7 +1099,7 @@ let ocamldoc() =
     predicates := "syntax" :: !predicates;
     syntax_preds := "preprocessor" :: "syntax" :: !syntax_preds;
   );
-  
+
   if !verbose then begin
     if !syntax_preds <> [] then
       print_string ("Effective set of preprocessor predicates: " ^
@@ -1108,7 +1111,7 @@ let ocamldoc() =
   if !pp_specified && !syntax_preds <> [] then
     prerr_endline("Warning: -pp overrides the effect of -syntax partly");
 
-  let pp_command = 
+  let pp_command =
     if !pp_specified then
       []
     else
@@ -1218,7 +1221,7 @@ let ocamldep () =
 	                 "  Output only dependencies for bytecode";
 	"-verbose", Arg.Set verbose,
 	         "          Print calls to external commands\nSTANDARD OPTIONS:";
-	"-I", Arg.String (fun s -> 
+	"-I", Arg.String (fun s ->
 			    add_spec_fn "-I" (resolve_path s)),
            " <dir>          Add <dir> to the list of include directories";
 	"-native", add_switch "-native",
@@ -1234,13 +1237,13 @@ let ocamldep () =
 
   if !native_filter && !bytecode_filter then
     failwith "The options -native-filter and -bytecode-filter are incompatible";
-  
+
   if !native_filter && not (List.mem "-native" !switches) then
     pass_options := "-native" :: !pass_options;
 
   if !syntax_preds <> [] then
     syntax_preds := "preprocessor" :: "syntax" :: !syntax_preds;
-  
+
   if !verbose && !syntax_preds <> [] then
     print_string ("Effective set of preprocessor predicates: " ^
 		  String.concat "," !syntax_preds ^ "\n");
@@ -1248,7 +1251,7 @@ let ocamldep () =
   if !pp_specified && !syntax_preds <> [] then
     prerr_endline("Warning: -pp overrides the effect of -syntax partly");
 
-  let pp_command = 
+  let pp_command =
     if !pp_specified then
       []
     else
@@ -1315,12 +1318,12 @@ let ocamlbrowser () =
 
   if !add_all then packages := Fl_package_base.list_packages();
   check_package_list !packages;
-  
+
   let arguments =
     !pass_options @
     (List.flatten
        (List.map
-	  (fun pkg -> 
+	  (fun pkg ->
 	     let dir = Findlib.package_directory pkg in
 	     [ "-I"; dir ]
 	  )
@@ -1358,7 +1361,7 @@ let copy_file ?(rename = (fun name -> name)) ?(append = "") src dstdir =
     let outpath = Filename.concat dstdir outname in
     if Sys.file_exists outpath then
       prerr_endline ("ocamlfind: [WARNING] Overwriting file " ^ outpath);
-    let ch_out = open_out_gen 
+    let ch_out = open_out_gen
 		   [Open_wronly; Open_creat; Open_trunc; Open_binary]
 		   perm'
 		   outpath in
@@ -1415,10 +1418,10 @@ let find_owned_files pkg dir =
   let files = Array.to_list(Sys.readdir dir) in
   List.filter
     (fun file ->
-       let owner_file = 
-	 if Filename.check_suffix file ".owner" then 
-	   file 
-	 else 
+       let owner_file =
+	 if Filename.check_suffix file ".owner" then
+	   file
+	 else
 	   file ^ ".owner" in
        (List.mem owner_file files) && (
 	 let f = open_in (Filename.concat dir owner_file) in
@@ -1452,7 +1455,7 @@ let install_package () =
 
   let keywords =
     [ "-destdir", (Arg.String (fun s -> destdir := s)),
-              ("<path>    Set the destination directory (default: " ^ 
+              ("<path>    Set the destination directory (default: " ^
 	       !destdir ^ ")");
       "-metadir", (Arg.String (fun s -> metadir := s)),
               ("<path>    Install the META file into this directory (default: "^
@@ -1474,7 +1477,7 @@ let install_package () =
 	(fun s ->
 	   if !pkgname = ""
 	   then pkgname := s
-	   else 
+	   else
 	     match !which with
 		 Auto -> auto_files := s :: !auto_files
 	       | Dll  -> dll_files := s :: !dll_files
@@ -1520,7 +1523,7 @@ let install_package () =
       (fun dll ->
 	 let b = Filename.basename dll in
 	 if Sys.file_exists (Filename.concat dlldir b) then
-	   failwith ("Conflict with another package: Library " ^ b ^ 
+	   failwith ("Conflict with another package: Library " ^ b ^
 		     " has already been installed by another package");
       )
       dll_list
@@ -1569,9 +1572,9 @@ let install_package () =
   (* Copy the DLLs into the libexec directory if necessary *)
   if have_libexec then begin
     List.iter
-      (fun p -> 
+      (fun p ->
 	 copy_file p dlldir;
-	 create_owner_file !pkgname 
+	 create_owner_file !pkgname
 	   (Filename.concat dlldir (Filename.basename p))
       )
       dll_list
@@ -1583,7 +1586,7 @@ let install_package () =
       begin
 	let lines = read_ldconf !ldconf in
 	write_ldconf !ldconf lines [ pkgdir ]
-      end 
+      end
     else
       prerr_endline("ocamlfind: [WARNING] You have installed DLLs but there is no ld.conf")
   end;
@@ -1616,7 +1619,7 @@ let remove_package () =
 
   let keywords =
     [ "-destdir", (Arg.String (fun s -> destdir := s; destdir_set := true)),
-              ("<path>      Set the destination directory (default: " ^ 
+              ("<path>      Set the destination directory (default: " ^
 	       !destdir ^ ")");
       "-metadir", (Arg.String (fun s -> metadir := s)),
               ("<path>      Remove the META file from this directory (default: " ^
@@ -1636,7 +1639,7 @@ let remove_package () =
 	)
 	errmsg;
   if !pkgname = "" then (Arg.usage keywords errmsg; exit 1);
-  if List.mem !pkgname reserved_names then 
+  if List.mem !pkgname reserved_names then
     failwith ("You are not allowed to remove this thing by ocamlfind!");
   if not (Fl_split.is_valid_package_name !pkgname) then
     failwith "Package names must not contain the character '.'!";
@@ -1648,7 +1651,7 @@ let remove_package () =
   let have_libexec = Sys.file_exists dlldir in
 
   (* Warn if there is another package with the same name: *)
-  let other_pkgdir = 
+  let other_pkgdir =
     try Findlib.package_directory !pkgname with Not_found -> "" in
   if other_pkgdir <> "" && not !destdir_set then begin
     (* Is pkgdir = other_pkgdir? - We check physical identity: *)
@@ -1657,7 +1660,7 @@ let remove_package () =
       try
 	let s_pkgdir = Unix.stat pkgdir in
 	if (s_pkgdir.Unix.st_dev <> s_other_pkgdir.Unix.st_dev) ||
-	   (s_pkgdir.Unix.st_ino <> s_other_pkgdir.Unix.st_ino) 
+	   (s_pkgdir.Unix.st_ino <> s_other_pkgdir.Unix.st_ino)
 	then
 	  prerr_endline("ocamlfind: [WARNING] You are removing the package from " ^ pkgdir ^ " but the currently visible package is at " ^ other_pkgdir ^ "; you may want to specify the -destdir option");
       with
@@ -1711,7 +1714,7 @@ let remove_package () =
 	  let lines' = List.filter (fun p -> Fl_split.norm_dir p <> d) lines in
 	  write_ldconf !ldconf lines' []
 	end
-      end 
+      end
   end;
 
   (* Check if there is a postremove script: *)
@@ -1749,18 +1752,18 @@ let list_packages() =
 
   let descr = ref false in
 
-  let keywords = 
+  let keywords =
     [ "-describe", Arg.Set descr,
                 "    Output package descriptions";
     ] in
   let errmsg = "usage: ocamlfind list [options]" in
 
   Arg.current := 1;
-  Arg.parse 
-      keywords 
+  Arg.parse
+      keywords
       (fun _ -> Arg.usage keywords errmsg; exit 1)
       errmsg;
-  
+
   Findlib.list_packages ~descr:!descr stdout;
   Fl_package_base.package_conflict_report ~identify_dir ()
 ;;
@@ -1857,12 +1860,12 @@ let select_mode() =
     | ("ocamlcp"|"-ocamlcp"|"cp")          -> M_compiler "ocamlcp"
     | ("ocamlmktop"|"-ocamlmktop"|"mktop") -> M_compiler "ocamlmktop"
     | ("ocamlopt"|"-ocamlopt"|"opt")       -> M_compiler "ocamlopt"
-    | ("ocamldep"|"-ocamldep"|"dep")       -> M_dep 
+    | ("ocamldep"|"-ocamldep"|"dep")       -> M_dep
     | ("ocamlbrowser"|"-ocamlbrowser"|"browser") -> M_browser
     | ("ocamldoc"|"-ocamldoc"|"doc")       -> M_doc
     | ("printconf"|"-printconf")           -> M_printconf
     | ("list"|"-list")                     -> M_list
-    | s when String.contains m_string '/' -> 
+    | s when String.contains m_string '/' ->
 	let k = String.index m_string '/' in
 	let pkg = String.sub m_string 0 k in
 	let cmd = String.sub m_string (k+1) (String.length m_string - k - 1) in
@@ -1894,7 +1897,7 @@ let main() =
     | M_printconf      -> print_configuration ()
     | M_list           -> list_packages()
     | M_compiler which -> ocamlc which ()
-    | M_dep            -> ocamldep()    
+    | M_dep            -> ocamldep()
     | M_browser        -> ocamlbrowser()
     | M_doc            -> ocamldoc()
     | M_call(pkg,cmd)  -> ocamlcall pkg cmd

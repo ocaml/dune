@@ -14,7 +14,7 @@
 
 <readme title="README - The findlib library manager">
   <sect1>
-    <title>Introduction</title> 
+    <title>Introduction</title>
 
 <p>The "findlib" software provides a scheme to manage reusable software
 components in the form of libraries, and includes tools that support
@@ -90,7 +90,7 @@ configuration files, and library routines in detail.</p>
   <sect1>
     <title>Download</title>
     <p>
-      The current version is announced in the 
+      The current version is announced in the
       <a href="&url.linkdb;">Objective Caml Link Database</a>.
     </p>
   </sect1>
@@ -107,6 +107,12 @@ configuration files, and library routines in detail.</p>
     <title>List of Changes</title>
     <ul>
 
+      <li><p><em>1.0.3:</em>Fix: The relative position of "-cclib -l"
+      options on the command line is preserved. In previous versions,
+these options were moved to the beginning of the argument list. This
+did not work for static link editing; dynamic link editing was not
+affected.</p></li>
+
       <li><p><em>1.0.2:</em>Fix: The alternate package layout did
 not fully work. This is repaired now, and there are some clarifications
 about relative directory paths in the documentation.</p>
@@ -120,7 +126,7 @@ files</p>
 description of a package into subpackages (but there is still only one
 META file, but with enhanced syntax). This allows it to describe
 intra-package dependencies.</p>
-	
+
 	<p>Predicates in META files can be negated.</p>
 
 	<p>The "error" variable allows you to detect conditions under which
@@ -135,7 +141,7 @@ depend on whether other packages are selected.</p>
 
 	<p>The "+=" operator in META files adds words to variables rather
 than setting them.</p>
-	
+
 	<p>The "#thread" directive enables multi-threading in toploops and
 scripts, if possible.</p>
 
@@ -153,7 +159,7 @@ quite sloppy.</p>
 
 	<p>The configuration file is called "findlib.conf" by default,
 not "ocamlfind.conf".</p>
-	
+
 	<p>Removal of "ocamlfind guess".</p>
 
 	<p>Support for #use "findlib" and #use "ocamlfind" has been

@@ -3,17 +3,23 @@
  *
  *)
 
-type meta =
+open Fl_metascanner
+
+type package =
     { package_name : string;
+        (* the fully qualified package name, i.e. for subpackages the
+	 * names of the containing packages are prepended and the name
+	 * components are separated by '.'
+	 *)
       package_dir : string;
-      meta_file : (string * (string list * string)) list;
+      package_defs : Fl_metascanner.pkg_definition list;
     }
 ;;
 
 
 module Fl_metaentry =
   struct
-    type t = meta
+    type t = package
     type id_t = string
     let id m = m.package_name
   end
@@ -37,20 +43,31 @@ let init_cache path stdlib =
 ;;
 
 
-let get_entry package package_dir meta_file =
-  (* Parse the META file: *)
-  let ch = open_in meta_file in
-  try
-    let mf = Fl_metascanner.parse ch in
+let packages_in_meta_file package_name package_dir meta_file =
+  (* Parses the META file whose name is [meta_file]. In [package_name], the
+   * name of the main package must be passed. [package_dir] is the
+   * directory associated with the package by default (i.e. before
+   * it is overriden by the "directory" directive).
+   *
+   * Returns the [package] records found in this file. The "directory"
+   * directive is already applied.
+   *)
+  let rec flatten_meta pkg_name_prefix pkg_dir (pkg_name_component,pkg_expr) =
+    (* Turns the recursive [pkg_expr] into a flat list of [package]s. 
+     * [pkg_dir] is the default package directory. [pkg_name_prefix] is
+     * the name prefix to prepend to the fully qualified package name, or
+     * "". [pkg_name_component] is the local package name.
+     *)
+    (* Determine the final package directory: *)
     let d =
       try
-	Fl_metascanner.lookup "directory" [] mf
+	lookup "directory" [] pkg_expr.pkg_defs
       with
-	  Not_found -> package_dir
+	  Not_found -> pkg_dir
     in
     let d' =
       if d = "" then
-	package_dir
+	pkg_dir
       else
 	match d.[0] with
           | '^' 
@@ -59,14 +76,26 @@ let get_entry package package_dir meta_file =
 	      (String.sub d 1 (String.length d - 1))
 	  | _ -> d
     in
-    
-    let e =
-      { package_name = package;
+    let p_name = 
+      if pkg_name_prefix = "" then 
+	pkg_name_component 
+      else
+	pkg_name_prefix ^ "." ^ pkg_name_component in
+    let p = 
+      { package_name = p_name;
 	package_dir = d';
-	meta_file = mf;
+	package_defs = pkg_expr.pkg_defs
       } in
+    p :: (List.flatten 
+	    (List.map (flatten_meta p_name d') pkg_expr.pkg_children))
+  in
+
+  let ch = open_in meta_file in
+  try
+    let pkg_expr = Fl_metascanner.parse ch in
+    let packages = flatten_meta "" package_dir (package_name, pkg_expr) in
     close_in ch;
-    e
+    packages
   with
       Failure s ->
 	close_in ch;
@@ -80,27 +109,46 @@ let get_entry package package_dir meta_file =
 ;;
 
 
-let query package =
-  (* returns the 'meta' entry for 'package' or raises Not_found. *)
+exception No_such_package of string * string
+  (* First arg is the package name not found, second arg contains additional
+   * info for the user
+   *)
+
+
+let query package_name =
+  (* Returns the [package] definition for the fully-qualified [package_name],
+   * or raises [No_such_package].
+   *)
+
+  let package_name_comps = Fl_split.package_name package_name in
+  if package_name_comps = [] then invalid_arg "Fl_metacache.query";
+  let main_name = List.hd package_name_comps in
+
+  let process_file_and_lookup meta_file =
+    let packages = 
+      packages_in_meta_file main_name package_dir meta_file in
+    List.iter (Fl_metastore.add store) packages;
+    try
+      List.find
+	(fun p -> p.package_name = package_name)
+	packages
+    with
+	Not_found ->
+	  raise (No_such_package (package_name, ""))
+  in
 
   let rec run_ocamlpath path =
     match path with
       [] -> raise Not_found
     | dir :: path' ->
-	let package_dir = Filename.concat dir package in
+	let package_dir = Filename.concat dir main_name in
 	let meta_file_1 = Filename.concat package_dir "META" in
-	let meta_file_2 = Filename.concat dir ("META." ^ package) in
-	if Sys.file_exists meta_file_1 then begin
-	  let entry = get_entry package package_dir meta_file_1 in
-	  Fl_metastore.add store entry;
-	  entry
-	end
+	let meta_file_2 = Filename.concat dir ("META." ^ main_name) in
+	if Sys.file_exists meta_file_1 then
+	  process_file_and_lookup meta_file_1
 	else
-	  if Sys.file_exists meta_file_2 then begin
-	    let entry = get_entry package package_dir meta_file_2 in
-	    Fl_metastore.add store entry;
-	    entry
-	  end
+	  if Sys.file_exists meta_file_2 then
+	    process_file_and_lookup meta_file_2
 	  else
 	    run_ocamlpath path'
   in
@@ -113,44 +161,53 @@ let query package =
 ;;
 
 
-let requires plist package =
-  (* returns names of package required by 'package'. It is checked that
-   * the packages really exist.
-   * 'plist': list of true predicates
-   * - raises Not_found if there is no 'package'
-   * - raises Failure if some of the ancestors do not exist
+exception Package_loop of string
+  (* A package is required by itself. The arg is the name of the 
+   * package 
    *)
-  let m = query package in
+
+let requires predlist package_name =
+  (* returns names of packages required by [package_name], the fully qualified
+   * name of the package. It is checked that the packages really exist.
+   * [predlist]: list of true predicates
+   * May raise [No_such_package] or [Package_loop].
+   *)
+  let m = query package_name in
+    (* may raise No_such_package *)
   let r =
-    try Fl_metascanner.lookup "requires" plist m.meta_file
+    try Fl_metascanner.lookup "requires" predlist m.package_defs
 	with Not_found -> ""
   in
   let ancestors = Fl_split.in_words r in
   List.iter
     (fun p ->
       try
-	let _ = query p in
-	Fl_metastore.let_le store p package
+	let _ = query p in      (* may raise No_such_package *)
+	Fl_metastore.let_le store p package_name  (* add relation *)
       with
-	Not_found ->
-	  failwith ("Findlib: package '" ^ p ^ "' not found (required by '" ^
-		    package ^ "')")
-      | Fl_topo.Inconsistent_ordering ->
-	  failwith ("Findlib: package '" ^ p ^ "' required by itself"))
+	  No_such_package(pname,_) ->
+	    raise(No_such_package(pname, "Required by `" ^ package_name ^ "'"))
+	| Fl_topo.Inconsistent_ordering ->
+	    raise(Package_loop p)
+    )
     ancestors;
   ancestors
 ;;
 
+(** TODO: Rename into Fl_package_base, add mli *)
 
-let requires_deeply plist package_list =
-  (* returns names of packages required by the packages in 'package_list',
+(** STOP **)
+
+
+let requires_deeply predlist package_list =
+  (* returns names of packages required by the packages in [package_list],
    * either directly or indirectly.
    * It is checked that the packages really exist.
    * The list of names is sorted topologically; first comes the deepest
-   * ancestor, last 'package' itself.
-   * 'plist': list of true predicates
-   * - raises Not_found if there is no 'package'
-   * - raises Failure if some of the ancestors do not exist
+   * ancestor.
+   * [predlist]: list of true predicates
+   * - raises [Not_found] if there is no 'package'
+   * - raises [Failure] if some of the ancestors do not exist
    *)
 
   let done_pkgs = ref [] in

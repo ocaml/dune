@@ -51,32 +51,32 @@ findlib.conf: findlib.conf.in
 
 .PHONY: install-doc
 install-doc:
-	mkdir -p $(PREFIX)$(OCAMLFIND_MAN)/man1 $(PREFIX)$(OCAMLFIND_MAN)/man3 $(PREFIX)$(OCAMLFIND_MAN)/man5
-	cp doc/ref-man/ocamlfind.1 $(PREFIX)$(OCAMLFIND_MAN)/man1
-	cp doc/ref-man/META.5 doc/ref-man/site-lib.5 doc/ref-man/findlib.conf.5 $(PREFIX)$(OCAMLFIND_MAN)/man5
+	mkdir -p $(prefix)$(OCAMLFIND_MAN)/man1 $(prefix)$(OCAMLFIND_MAN)/man3 $(prefix)$(OCAMLFIND_MAN)/man5
+	cp doc/ref-man/ocamlfind.1 $(prefix)$(OCAMLFIND_MAN)/man1
+	cp doc/ref-man/META.5 doc/ref-man/site-lib.5 doc/ref-man/findlib.conf.5 $(prefix)$(OCAMLFIND_MAN)/man5
 
 .PHONY: uninstall-doc
 uninstall-doc:
-	rm -f $(PREFIX)$(OCAMLFIND_MAN)/man1/ocamlfind.1
-	rm -f $(PREFIX)$(OCAMLFIND_MAN)/man3/Findlib.3
-	rm -f $(PREFIX)$(OCAMLFIND_MAN)/man3/Topfind.3
-	rm -f $(PREFIX)$(OCAMLFIND_MAN)/man5/META.5
-	rm -f $(PREFIX)$(OCAMLFIND_MAN)/man5/site-lib.5
+	rm -f $(prefix)$(OCAMLFIND_MAN)/man1/ocamlfind.1
+	rm -f $(prefix)$(OCAMLFIND_MAN)/man3/Findlib.3
+	rm -f $(prefix)$(OCAMLFIND_MAN)/man3/Topfind.3
+	rm -f $(prefix)$(OCAMLFIND_MAN)/man5/META.5
+	rm -f $(prefix)$(OCAMLFIND_MAN)/man5/site-lib.5
 
 
 .PHONY: install-meta
 install-meta:
-	for x in `ls site-lib-src`; do if [ "$$x" != "CVS" -a -f "site-lib-src/$$x/META" ]; then mkdir -p $(PREFIX)$(OCAML_SITELIB)/$$x; cp site-lib-src/$$x/META $(PREFIX)$(OCAML_SITELIB)/$$x; fi; done
+	for x in `ls site-lib-src`; do if [ "$$x" != "CVS" -a -f "site-lib-src/$$x/META" ]; then mkdir -p $(prefix)$(OCAML_SITELIB)/$$x; cp site-lib-src/$$x/META $(prefix)$(OCAML_SITELIB)/$$x; fi; done
 
 .PHONY: uninstall-meta
 uninstall-meta:
-	for x in `ls site-lib-src`; do if [ "$$x" != "CVS" ]; then rm -rf $(PREFIX)$(OCAML_SITELIB)/$$x; fi; done
+	for x in `ls site-lib-src`; do if [ "$$x" != "CVS" ]; then rm -rf $(prefix)$(OCAML_SITELIB)/$$x; fi; done
 
 .PHONY: install-config
 install-config:
-	mkdir -p `dirname $(PREFIX)$(OCAMLFIND_CONF)`
-	@if [ -f $(PREFIX)$(OCAMLFIND_CONF) ]; then echo "!!! Keeping old $(PREFIX)$(OCAMLFIND_CONF) !!!"; fi
-	test -f $(PREFIX)$(OCAMLFIND_CONF) || cp findlib.conf $(PREFIX)$(OCAMLFIND_CONF)
+	mkdir -p `dirname $(prefix)$(OCAMLFIND_CONF)`
+	@if [ -f $(prefix)$(OCAMLFIND_CONF) ]; then echo "!!! Keeping old $(prefix)$(OCAMLFIND_CONF) !!!"; fi
+	test -f $(prefix)$(OCAMLFIND_CONF) || cp findlib.conf $(prefix)$(OCAMLFIND_CONF)
 
 .PHONY: uninstall-config
 uninstall-config:

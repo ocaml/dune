@@ -107,6 +107,11 @@ configuration files, and library routines in detail.</p>
     <title>List of Changes</title>
     <ul>
 
+      <li><p><em>1.0.2:</em>Fix: The alternate package layout did
+not fully work. This is repaired now, and there are some clarifications
+about relative directory paths in the documentation.</p>
+      </li>
+
       <li><p><em>1.0.1:</em>Fix: Forgot to install some .cmi
 files</p>
       </li>

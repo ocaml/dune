@@ -30,6 +30,12 @@ module Fl_metastore =
 module StringSet = Set.Make(String);;
 
 
+let has_prefix s pref =
+  String.length s >= String.length pref &&
+  String.sub s 0 (String.length pref) = pref
+;;
+
+
 let ocamlpath = ref [];;
 let ocamlstdlib = ref "";;
 
@@ -45,7 +51,7 @@ let init path stdlib =
 ;;
 
 
-let packages_in_meta_file ?(directory_required = false) 
+let packages_in_meta_file ?(directory_required = false)
                           ~name:package_name ~dir:package_dir ~meta_file () =
   (* Parses the META file whose name is [meta_file]. In [package_name], the
    * name of the main package must be passed. [package_dir] is the
@@ -58,7 +64,7 @@ let packages_in_meta_file ?(directory_required = false)
    * directive is already applied.
    *)
   let rec flatten_meta pkg_name_prefix pkg_dir (pkg_name_component,pkg_expr) =
-    (* Turns the recursive [pkg_expr] into a flat list of [package]s. 
+    (* Turns the recursive [pkg_expr] into a flat list of [package]s.
      * [pkg_dir] is the default package directory. [pkg_name_prefix] is
      * the name prefix to prepend to the fully qualified package name, or
      * "". [pkg_name_component] is the local package name.
@@ -68,7 +74,7 @@ let packages_in_meta_file ?(directory_required = false)
       try
 	lookup "directory" [] pkg_expr.pkg_defs
       with
-	  Not_found -> 
+	  Not_found ->
 	    if pkg_name_prefix="" && directory_required then
 	      failwith ("The `directory' directive is required in this META definition");
 
@@ -79,24 +85,24 @@ let packages_in_meta_file ?(directory_required = false)
 	pkg_dir
       else
 	match d.[0] with
-          | '^' 
+          | '^'
 	  | '+' -> Filename.concat
 	      !ocamlstdlib
 	      (String.sub d 1 (String.length d - 1))
 	  | '/' -> d   (* absolute path *)
 	  | _ -> Filename.concat pkg_dir d
     in
-    let p_name = 
-      if pkg_name_prefix = "" then 
-	pkg_name_component 
+    let p_name =
+      if pkg_name_prefix = "" then
+	pkg_name_component
       else
 	pkg_name_prefix ^ "." ^ pkg_name_component in
-    let p = 
+    let p =
       { package_name = p_name;
 	package_dir = d';
 	package_defs = pkg_expr.pkg_defs
       } in
-    p :: (List.flatten 
+    p :: (List.flatten
 	    (List.map (flatten_meta p_name d') pkg_expr.pkg_children))
   in
 
@@ -129,8 +135,8 @@ let query package_name =
   let main_name = List.hd package_name_comps in
 
   let process_file_and_lookup ?directory_required package_dir meta_file =
-    let packages = 
-      packages_in_meta_file 
+    let packages =
+      packages_in_meta_file
 	?directory_required ~name:main_name ~dir:package_dir ~meta_file () in
     List.iter (Fl_metastore.add store) packages;
     try
@@ -170,9 +176,31 @@ let query package_name =
 
 
 exception Package_loop of string
-  (* A package is required by itself. The arg is the name of the 
-   * package 
+  (* A package is required by itself. The arg is the name of the
+   * package
    *)
+
+
+let fixup_thread_needed_1 predlist =
+  (* When the thread fixup is required to apply, 1st criterion *)
+  List.mem "mt" predlist
+;;
+
+
+let fixup_thread_needed_2 pkg =
+  (* When the thread fixup is required to apply, 2nd criterion *)
+  (pkg <> "unix" && pkg <> "threads" && not (has_prefix pkg "threads."))
+;;
+
+
+let fixup_thread_base predlist pkg =
+  (* Add the package "threads" if required *)
+  if fixup_thread_needed_1 predlist && fixup_thread_needed_2 pkg then
+    [ "threads" ]
+  else
+    []
+;;
+
 
 let query_requirements ~preds:predlist package_name =
   (* Part of [requires] implementation: Load all required packages, but
@@ -184,7 +212,8 @@ let query_requirements ~preds:predlist package_name =
     try Fl_metascanner.lookup "requires" predlist m.package_defs
 	with Not_found -> ""
   in
-  let ancestors = Fl_split.in_words r in
+  let ancestors = Fl_split.in_words r @
+		  fixup_thread_base predlist package_name in
   List.iter
     (fun p ->
       try
@@ -234,12 +263,6 @@ let add_all_relations predlist s =
 ;;
 
 
-let has_prefix s pref =
-  String.length s >= String.length pref &&
-  String.sub s 0 (String.length pref) = pref
-;;
-
-
 let fixup_thread_deps s =
   (* All packages (except "threads", "threads.*", and "unix") are made
    * dependent on "threads"
@@ -251,8 +274,19 @@ let fixup_thread_deps s =
 
   List.iter
     (fun pkg ->
-       if pkg <> "unix" && pkg <> "threads" && (has_prefix pkg "threads.") then
-	 Fl_metastore.let_le s pkg "threads"  (* add relation *)
+       if fixup_thread_needed_2 pkg then (
+	 try
+	   Fl_metastore.let_le s "threads" pkg  (* add relation *)
+	 with
+	     Not_found ->
+	       (* Because "threads" does not exist! Normally this is an
+		* error, because "threads" is also magically added by
+		* query_requirements. However, there are situations
+		* where it cannot be expected that required packages
+		* are loaded, so ignore this case.
+		*)
+	       ()
+       )
     )
     !pkgs
 ;;
@@ -331,7 +365,7 @@ let requires_deeply ~preds:predlist package_list =
  *)
 
 let package_definitions ~search_path package_name =
-  (* Return all META files defining this [package_name] that occur in the 
+  (* Return all META files defining this [package_name] that occur in the
    * directories mentioned in [search_path]
    *)
 
@@ -400,7 +434,7 @@ let package_conflict_report_1 identify_dir () =
 	     (* pkg is a main package *)
 	     ( let c = package_definitions search_path pkg.package_name in
 	       match c with
-		   [] 
+		   []
 		 | [_] ->
 		     ()
 		 | _ ->
@@ -439,16 +473,16 @@ let load_base() =
   let process_file ?directory_required main_name package_dir meta_file =
     try
       let _ = Fl_metastore.find store main_name in
-      (* Note: If the main package is already loaded into the graph, we 
+      (* Note: If the main package is already loaded into the graph, we
        * do not even look at the subpackages!
        *)
       ()
     with
 	Not_found ->
-	  let packages = 
+	  let packages =
 	  try
-	    packages_in_meta_file 
-	      ?directory_required ~name:main_name ~dir:package_dir ~meta_file () 
+	    packages_in_meta_file
+	      ?directory_required ~name:main_name ~dir:package_dir ~meta_file ()
 	  with
 	      Failure s ->
 		prerr_endline ("findlib: [WARNING] " ^ s); []
@@ -503,7 +537,7 @@ let list_packages() =
 
 let package_users ~preds pl =
   (* Check that all packages in [pl] really exist, or raise No_such_package: *)
-  List.iter 
+  List.iter
     (fun p -> let _ = query p in ())
     pl;
   load_base();
@@ -529,7 +563,7 @@ let module_conflict_report_1 identify_dir incpath =
   let dir_of_module = Hashtbl.create 100 in
   let dirs = ref [] in
 
-  let examine_dir d = 
+  let examine_dir d =
     let d    = Fl_split.norm_dir d in
     let d_id = identify_dir d in
 
@@ -539,8 +573,8 @@ let module_conflict_report_1 identify_dir incpath =
       (* Yes: Get all files ending in .cmi *)
       try
 	let d_all = Array.to_list(Sys.readdir d) in   (* or Sys_error *)
-	let d_cmi = List.filter 
-		      (fun n -> Filename.check_suffix n ".cmi") 
+	let d_cmi = List.filter
+		      (fun n -> Filename.check_suffix n ".cmi")
 		      d_all in
 	(* Add the modules to dir_of_module: *)
 	List.iter

@@ -111,7 +111,10 @@ configuration files, and library routines in detail.</p>
       options on the command line is preserved. In previous versions,
 these options were moved to the beginning of the argument list. This
 did not work for static link editing; dynamic link editing was not
-affected.</p></li>
+affected.</p>
+      <p>Fix: The automatic fixup of "threads" dependencies
+works again. In the previous version, this was broken.</p>
+</li>
 
       <li><p><em>1.0.2:</em>Fix: The alternate package layout did
 not fully work. This is repaired now, and there are some clarifications

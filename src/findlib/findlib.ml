@@ -295,7 +295,7 @@ let resolve_path ?base p =
 ;;
 
 
-let list_packages ?(tab = 20) ch =
+let list_packages ?(tab = 20) ?(descr = false) ch =
   let packages = Fl_package_base.list_packages() in
   let packages_sorted = List.sort compare packages in
 
@@ -304,12 +304,22 @@ let list_packages ?(tab = 20) ch =
        let v_string =
 	 try
 	   let v = package_property [] p "version" in
-	   let spaces = String.make (max 1 (tab-String.length p)) ' ' in
-	   spaces ^ "(version: " ^ v ^ ")"
+	   "(version: " ^ v ^ ")"
 	 with
-	     Not_found -> ""
+	     Not_found -> "(version: n/a)"
        in
-       output_string ch (p ^ v_string ^ "\n")
+       let descr_string =
+	 try package_property [] p "description" 
+	 with Not_found -> "(no description)" in
+       let spaces1 = String.make (max 1 (tab-String.length p)) ' ' in
+       let spaces2 = String.make tab ' ' in
+       
+       if descr then (
+	 output_string ch (p ^ spaces1 ^ descr_string ^ "\n");
+	 output_string ch (spaces2 ^ v_string ^ "\n")
+       )
+       else
+	 output_string ch (p ^ spaces1 ^ v_string ^ "\n");
     )
     packages_sorted
 ;;

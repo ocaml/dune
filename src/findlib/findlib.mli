@@ -168,8 +168,9 @@ val resolve_path : ?base:string -> string -> string
    *   it is.
    *)
 
-val list_packages : ?tab:int -> out_channel -> unit
+val list_packages : ?tab:int -> ?descr:bool -> out_channel -> unit
   (** Prints the list of available packages to the [out_channel].
    *
    * @param tab The tabulator width, by default 20
+   * @param descr Whether package descriptions are printed. Default: false
    *)

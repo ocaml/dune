@@ -286,6 +286,7 @@ let expand predicates eff_packages format =
     (* format:
      * %p         package name
      * %d         package directory
+     * %D         description
      * %v         version
      * %a         archive file(s)
      * %A         archive files as single string
@@ -301,6 +302,8 @@ let expand predicates eff_packages format =
 	 let spec =
 	   [ 'p',  [pkg];
              'd',  [dir];
+	     'D',  [try package_property predicates pkg "description"
+		    with Not_found -> "[n/a]"];
 	     'v',  [try package_property predicates pkg "version"
 	            with Not_found -> "[unspecified]"];
 	     'a',  Fl_split.in_words
@@ -330,7 +333,7 @@ let query_package () =
   Arg.current := 1;
 
   let long_format =
-    "package:    %p\nversion:    %v\narchive(s): %A\nlinkopts:   %O\nlocation:   %d\n" in
+    "package:     %p\ndescription: %D\nversion:     %v\narchive(s):  %A\nlinkopts:    %O\nlocation:    %d\n" in
   let i_format =
     "-I %d" in
   let l_format =
@@ -1739,7 +1742,22 @@ let guess_meta_file () =
 
 
 let list_packages() =
-  Findlib.list_packages stdout;
+
+  let descr = ref false in
+
+  let keywords = 
+    [ "-describe", Arg.Set descr,
+                "    Output package descriptions";
+    ] in
+  let errmsg = "usage: ocamlfind list [options]" in
+
+  Arg.current := 1;
+  Arg.parse 
+      keywords 
+      (fun _ -> Arg.usage keywords errmsg; exit 1)
+      errmsg;
+  
+  Findlib.list_packages ~descr:!descr stdout;
   Fl_package_base.package_conflict_report ~identify_dir ()
 ;;
 

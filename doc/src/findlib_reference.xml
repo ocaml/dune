@@ -196,6 +196,10 @@ MOREINFO="NONE"
 >Placeholders meaningful in the -format option</TITLE><VARIABLELIST
 ><VARLISTENTRY
 ><TERM
+>%%</TERM><LISTITEM
+><PARA
+>Replaced by a single percent sign</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
 >%p</TERM><LISTITEM
 ><PARA
 >Replaced by the package name</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
@@ -228,7 +232,13 @@ MOREINFO="NONE"
 ><TERM
 >%O</TERM><LISTITEM
 ><PARA
->Replaced by the list of linker options.</PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2></REFSECT1><REFSECT1
+>Replaced by the list of linker options.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>%(<REPLACEABLE
+>property</REPLACEABLE>)</TERM><LISTITEM
+><PARA
+>Replaced by the value of the property named in parentheses,
+or the empty string if not defined.</PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2></REFSECT1><REFSECT1
 ><TITLE
 ><ANCHOR
 ID="OCAMLFIND.OCAMLC"
@@ -380,12 +390,16 @@ MOREINFO="NONE"
   is added to the set of actual predicates. If POSIX threads are available,
   the predicate "mt_posix" is selected, too. If only VM threads are
   available, the predicate "mt_vm" is included into the set, and the
-  compiler switch is changed into -vmthread.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+  compiler switch is changed into -vmthread.</PARA><PARA
+>Note that the presence of the "mt" predicate triggers special
+fixup of the dependency graph (see below).</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
 >-vmthread</TERM><LISTITEM
 ><PARA
 >This standard option causes that the predicates "mt"
-  and "mt_vm" are added to the set of actual predicates.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+  and "mt_vm" are added to the set of actual predicates.</PARA><PARA
+>Note that the presence of the "mt" predicate triggers special
+fixup of the dependency graph (see below).</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
 >-p</TERM><LISTITEM
 ><PARA
@@ -525,6 +539,33 @@ supports loading of packages in scripts, the "ocamlmktop" subcommand
 can add initialization code for this module.  This extra code is
 linked into the executable if "findlib" is in the set of effectively
 linked packages.  </PARA></REFSECT2><REFSECT2
+><TITLE
+>Fixup of the dependency graph for multi-threading</TITLE><PARA
+>For a number of reasons the presence of the "mt" predicate triggers
+that (1) the package "threads" is added to the list of required packages
+and (2) the package "threads" becomes prerequisite of all other packages
+(except of itself and a few hardcoded exceptions). The effect is that
+the options -thread and -vmthread automatically select the "threads"
+package, and that "threads" is inserted at the right position in the
+package list.</PARA></REFSECT2><REFSECT2
+><TITLE
+>Extended file naming</TITLE><PARA
+>At a number of places one can not only refer to files by absolute
+or relative path names, but also by extended names. These have two
+major forms: "+<REPLACEABLE
+>name</REPLACEABLE>"
+refers to the subdirectory <REPLACEABLE
+>name</REPLACEABLE> of the
+standard library directory, and "@<REPLACEABLE
+>name</REPLACEABLE>"
+refers to the package directory of the package <REPLACEABLE
+>name</REPLACEABLE>.
+Both forms can be continued by a path, e.g. "@netstring/netstring_top.cma".</PARA><PARA
+>You can use extended names: (1) With <LITERAL
+MOREINFO="NONE"
+>-I</LITERAL> options,
+(2) as normal file arguments of the compiler, (3) in the 
+"archive" property of packages.</PARA></REFSECT2><REFSECT2
 ><TITLE
 >How to set the names of the compiler executables</TITLE><PARA
 > Normally, the O'Caml bytecode compiler can be called under the name
@@ -1002,7 +1043,14 @@ is not changed.</PARA><PARA
 >Example: To call the program "x" that is installed in package "p",
 with arguments "y" and "z", run:</PARA><PROGRAMLISTING
 FORMAT="LINESPECIFIC"
->ocamlfind p/x y z</PROGRAMLISTING></REFSECT2></REFSECT1></REFENTRY><REFENTRY
+>ocamlfind p/x y z</PROGRAMLISTING></REFSECT2></REFSECT1><REFSECT1
+><TITLE
+>  CONFIGURATION FILE, ENVIRONMENT VARIABLES</TITLE><PARA
+> The configuration file and environment variables are documented
+in the manual page for
+ <LINK
+LINKEND="FINDLIB.CONF"
+>findlib.conf</LINK>.</PARA></REFSECT1></REFENTRY><REFENTRY
 ><REFMETA
 ><REFENTRYTITLE
 >META</REFENTRYTITLE><MANVOLNUM

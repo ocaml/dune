@@ -107,21 +107,23 @@ configuration files, and library routines in detail.</p>
     <title>List of Changes</title>
     <ul>
 
-      <li><p><em>1.0.3:</em>Fix: The relative position of "-cclib -l"
+      <li><p><em>1.0.3:</em> Fix: The relative position of "-cclib -l"
       options on the command line is preserved. In previous versions,
 these options were moved to the beginning of the argument list. This
 did not work for static link editing; dynamic link editing was not
 affected.</p>
       <p>Fix: The automatic fixup of "threads" dependencies
 works again. In the previous version, this was broken.</p>
+	<p>Addition: -format '%(name)' for ocamlfind query.</p>
+	<p>Some minor improvements of the documentation.</p>
 </li>
 
-      <li><p><em>1.0.2:</em>Fix: The alternate package layout did
+      <li><p><em>1.0.2:</em> Fix: The alternate package layout did
 not fully work. This is repaired now, and there are some clarifications
 about relative directory paths in the documentation.</p>
       </li>
 
-      <li><p><em>1.0.1:</em>Fix: Forgot to install some .cmi
+      <li><p><em>1.0.1:</em> Fix: Forgot to install some .cmi
 files</p>
       </li>
 

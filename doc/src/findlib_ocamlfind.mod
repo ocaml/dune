@@ -179,6 +179,10 @@ linker backend are printed.
 
 <variablelist>
 <varlistentry>
+<term>%%</term>
+  <listitem><para>Replaced by a single percent sign</para></listitem>
+</varlistentry>
+<varlistentry>
 <term>%p</term>
   <listitem><para>Replaced by the package name</para></listitem>
 </varlistentry>
@@ -213,6 +217,11 @@ linker backend are printed.
 <varlistentry>
 <term>%O</term>
   <listitem><para>Replaced by the list of linker options.</para></listitem>
+</varlistentry>
+<varlistentry>
+<term>%(<replaceable>property</replaceable>)</term>
+  <listitem><para>Replaced by the value of the property named in parentheses,
+or the empty string if not defined.</para></listitem>
 </varlistentry>
 </variablelist>
 </refsect2>
@@ -376,13 +385,19 @@ explained below.
   the predicate "mt_posix" is selected, too. If only VM threads are
   available, the predicate "mt_vm" is included into the set, and the
   compiler switch is changed into -vmthread.
-</para></listitem>
+</para>
+  <para>Note that the presence of the "mt" predicate triggers special
+fixup of the dependency graph (see below).</para>
+</listitem>
 </varlistentry>
 <varlistentry>
 <term>-vmthread</term>
   <listitem><para>This standard option causes that the predicates "mt"
   and "mt_vm" are added to the set of actual predicates.
-</para></listitem>
+</para>
+  <para>Note that the presence of the "mt" predicate triggers special
+fixup of the dependency graph (see below).</para>
+</listitem>
 </varlistentry>
 <varlistentry>
 <term>-p</term>
@@ -577,6 +592,38 @@ linked packages.
 </para>
 
 </refsect2>
+
+
+<refsect2>
+<title>Fixup of the dependency graph for multi-threading</title>
+<para>For a number of reasons the presence of the "mt" predicate triggers
+that (1) the package "threads" is added to the list of required packages
+and (2) the package "threads" becomes prerequisite of all other packages
+(except of itself and a few hardcoded exceptions). The effect is that
+the options -thread and -vmthread automatically select the "threads"
+package, and that "threads" is inserted at the right position in the
+package list.</para>
+</refsect2>
+
+
+<refsect2>
+<title>Extended file naming</title>
+<para>At a number of places one can not only refer to files by absolute
+or relative path names, but also by extended names. These have two
+major forms: "+<replaceable>name</replaceable>"
+refers to the subdirectory <replaceable>name</replaceable> of the
+standard library directory, and "@<replaceable>name</replaceable>"
+refers to the package directory of the package <replaceable>name</replaceable>.
+Both forms can be continued by a path, e.g. "@netstring/netstring_top.cma".
+</para>
+
+<para>
+You can use extended names: (1) With <literal>-I</literal> options,
+(2) as normal file arguments of the compiler, (3) in the 
+"archive" property of packages.
+</para>
+</refsect2>
+
 
 <refsect2>
 <title>How to set the names of the compiler executables</title>
@@ -1120,6 +1167,19 @@ ocamlfind p/x y z
 
 </refsect2>
 </refsect1>
+
+
+<refsect1>
+<title>
+  CONFIGURATION FILE, ENVIRONMENT VARIABLES
+</title>
+
+<para> The configuration file and environment variables are documented
+in the manual page for
+ <link linkend="findlib.conf">findlib.conf</link>.
+</para>
+</refsect1>
+
 
 </refentry>
 

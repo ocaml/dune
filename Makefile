@@ -36,7 +36,7 @@ clean:
 
 .PHONY: release
 release: README
-	XXX
+	./release
 
 README: doc/README
 	ln -s doc/README .
@@ -53,7 +53,6 @@ findlib.conf: findlib.conf.in
 install-doc:
 	mkdir -p $(PREFIX)$(OCAMLFIND_MAN)/man1 $(PREFIX)$(OCAMLFIND_MAN)/man3 $(PREFIX)$(OCAMLFIND_MAN)/man5
 	cp doc/ref-man/ocamlfind.1 $(PREFIX)$(OCAMLFIND_MAN)/man1
-	cp doc/ref-man/Findlib.3 doc/ref-man/Topfind.3 $(PREFIX)$(OCAMLFIND_MAN)/man3
 	cp doc/ref-man/META.5 doc/ref-man/site-lib.5 doc/ref-man/findlib.conf.5 $(PREFIX)$(OCAMLFIND_MAN)/man5
 
 .PHONY: uninstall-doc

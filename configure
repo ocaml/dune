@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: configure,v 1.20 2003/09/30 11:25:26 gerd Exp $
+# $Id$
 # ----------------------------------------------------------------------
 #
 
@@ -107,9 +107,6 @@ apply_cygpath () {
 ######################################################################
 # Here the main program begins:
 
-echo "Welcome to findlib version $version"
-echo "Configuring core..."
-
 ######################################################################
 # Interpret the command line
 
@@ -164,6 +161,8 @@ while [ "$#" != "0" ]; do
     esac
 done
 
+echo "Welcome to findlib version $version"
+echo "Configuring core..."
 
 
 #######################################################################

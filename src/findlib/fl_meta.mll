@@ -99,26 +99,3 @@ rule token =
 
 {}
 
-(* ======================================================================
- * History:
- * 
- * $Log: fl_meta.mll,v $
- * Revision 1.2  2002/09/22 20:12:32  gerd
- * 	Renamed modules (prefix fl_)
- *
- * Revision 1.1  2002/09/22 13:32:28  gerd
- * 	Renamed file from meta.mll to fl_meta.mll to avoid
- * name clashes
- *
- * ======================================================================
- * OLD LOGS FOR meta.mll:
- *
- * Revision 1.1  1999/06/20 19:26:25  gerd
- * 	Major change: Added support for META files. In META files, knowlege
- * about compilation options, and dependencies on other packages can be stored.
- * The "ocamlfind query" subcommand has been extended in order to have a
- * direct interface for that. "ocamlfind ocamlc/ocamlopt/ocamlmktop/ocamlcp"
- * subcommands have been added to simplify the invocation of the compiler.
- *
- * 
- *)

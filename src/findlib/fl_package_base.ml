@@ -139,14 +139,17 @@ let query package_name =
     let packages =
       packages_in_meta_file
 	?directory_required ~name:main_name ~dir:package_dir ~meta_file () in
+    let p =
+      ( try
+	  List.find
+	    (fun p -> p.package_name = package_name)
+	    packages
+	with
+	    Not_found ->
+	      raise (No_such_package (package_name, ""))
+      ) in
     List.iter (Fl_metastore.add store) packages;
-    try
-      List.find
-	(fun p -> p.package_name = package_name)
-	packages
-    with
-	Not_found ->
-	  raise (No_such_package (package_name, ""))
+    p
   in
 
   let rec run_ocamlpath path =

@@ -107,6 +107,37 @@ configuration files, and library routines in detail.</p>
     <title>List of Changes</title>
     <ul>
 
+      <li>
+         <p><em>1.1:</em> Automatic detection of standard compiler options.</p>
+
+         <p>Liberated the checks whether a package is already installed.</p>
+
+         <p>The .opt compilers are entered into findlib.conf if available.</p>
+
+         <p>New: "install" has -optional switch for optional files.</p>
+
+         <p>New: "install" has -patch-version to patch the version into
+the installed META file.</p>
+
+         <p>New: "install" has -patch-rmpkg to remove subpackages from
+the installed META file.</p>
+
+         <p>New: "install" has -patch-archives which removes non-existing
+files from "archive" variables. This is experimental.</p>
+
+         <p>New: subpackages can be disabled by exists_if.</p>
+
+         <p>New: Support for toolchains.</p>
+
+         <p>Fix for "remove": -destdir works again.</p>
+
+         <p>Fix for "call": CTRL-C works when calling interactive commands.</p>
+
+         <p>Fix for preprocessor packages: Dependencies on normal packages
+are resolved.</p>
+
+      </li>
+
       <li><p><em>1.0.4:</em> Fix: In previous versions, "ocamlmktop"
 set the "toploop" predicate. It turned out, however, that the toploops
 generated in this way did not work properly. For this reason,

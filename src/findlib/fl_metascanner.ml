@@ -1,9 +1,10 @@
-(* $Id: fl_metascanner.src 49 2003-12-30 09:48:02Z gerd $
+(* $Id: fl_metascanner.src 49 2003-12-30 09:48:02Z gerd $ -*- tuareg -*-
  * ----------------------------------------------------------------------
  *
  *)
 
 open Fl_metatoken
+open Printf
 
 type formal_pred = [ `Pred of string | `NegPred of string ]
 
@@ -274,6 +275,39 @@ let parse ch =
   in
   try let pkg = parse_all false (scan ch) in check_pkg "" pkg; pkg with
     Stream.Error "" -> raise (Stream.Error "Syntax Error")
+
+
+let rec print f pkg =
+  let escape s =
+    let b = Buffer.create (String.length s) in
+    for k = 0 to String.length s - 1 do
+      match s.[k] with
+        '\\' -> Buffer.add_string b "\\\\"
+      | '\"' -> Buffer.add_string b "\\\""
+      | c -> Buffer.add_char b c
+    done;
+    Buffer.contents b
+  in
+  let format_pred =
+    function
+      `Pred s -> s
+    | `NegPred s -> "-" ^ s
+  in
+  let print_def def =
+    fprintf f "%s%s %s \"%s\"\n" def.def_var
+      (match def.def_preds with
+         [] -> ""
+       | l -> "(" ^ String.concat "," (List.map format_pred l) ^ ")")
+      (match def.def_flav with
+         `BaseDef -> "="
+       | `Appendix -> "+=")
+      (escape def.def_value)
+  in
+  List.iter print_def pkg.pkg_defs;
+  List.iter
+    (fun (name, child) ->
+       fprintf f "\npackage %s (\n" name; print f child; fprintf f ")\n")
+    pkg.pkg_children
 
 
 let lookup name predicate_list def =

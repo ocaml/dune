@@ -32,6 +32,7 @@ uninstall:
 clean:
 	for p in `cd src; echo *`; do ( cd src/$$p; $(MAKE) clean ); done
 	(cd itest-aux; $(MAKE) clean)
+	(cd tools/extract_args; $(MAKE) clean)
 	rm -f findlib.conf
 
 .PHONY: release
@@ -48,6 +49,15 @@ all-config: findlib.conf
 findlib.conf: findlib.conf.in 
 	sed -e 's;@SITELIB@;$(OCAML_SITELIB);g' \
 	    findlib.conf.in >findlib.conf
+	if ocamlc.opt >/dev/null 2>&1; then \
+		echo 'ocamlc="ocamlc.opt"' >>findlib.conf; \
+	fi
+	if ocamlopt.opt >/dev/null 2>&1; then \
+		echo 'ocamlopt="ocamlopt.opt"' >>findlib.conf; \
+	fi
+	if ocamldep.opt >/dev/null 2>&1; then \
+		echo 'ocamldep="ocamldep.opt"' >>findlib.conf; \
+	fi
 
 .PHONY: install-doc
 install-doc:

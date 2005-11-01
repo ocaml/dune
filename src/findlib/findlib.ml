@@ -1,4 +1,4 @@
-(* $Id: findlib.mlp,v 1.11 2002/09/22 20:12:32 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -85,7 +85,7 @@ let command_names cmd_spec =
 let init
       ?env_ocamlpath ?env_ocamlfind_destdir ?env_ocamlfind_metadir
       ?env_ocamlfind_commands ?env_camllib ?env_ldconf
-      ?config () =
+      ?config ?toolchain () =
   
   let config_file =
     match config with
@@ -96,48 +96,81 @@ let init
 	  if p = "" then Findlib_config.config_file else p
   in
 
+  let configd_file =
+    config_file ^ ".d" in
+
+  let vars_of_file f =
+    let ch = open_in config_file in
+    try
+      let vars = 
+	(Fl_metascanner.parse ch).Fl_metascanner.pkg_defs in
+      close_in ch;
+      vars
+    with
+      | error -> close_in ch; raise error in
+
+  let vars_of_dir d =
+    let files = Array.to_list (Sys.readdir d) in
+    List.flatten
+      (List.map
+	 (fun file ->
+	    if Filename.check_suffix file ".conf" then
+	      vars_of_file (Filename.concat d file)
+	    else
+	      []
+	 )
+	 files)
+  in
+
+  let config_preds =
+    match toolchain with
+      | None -> []
+      | Some p -> [p] in
+
   let sys_ocamlc, sys_ocamlopt, sys_ocamlcp, sys_ocamlmktop, sys_ocamldep,
       sys_ocamlbrowser, sys_ocamldoc,
-      sys_search_path, sys_destdir, sys_metadir, sys_stdlib, sys_ldconf = begin
-    if Sys.file_exists config_file then begin
-      let ch = open_in config_file in
-      try
-	let vars = (Fl_metascanner.parse ch).Fl_metascanner.pkg_defs in
+      sys_search_path, sys_destdir, sys_metadir, sys_stdlib, sys_ldconf = 
+    (
+      let config_vars =
+	if Sys.file_exists config_file then 
+	  vars_of_file config_file
+	else
+	  [] in
+      let configd_vars =
+	if Sys.file_exists configd_file then 
+	  vars_of_dir configd_file
+	else
+	  [] in
+      let vars = config_vars @ configd_vars in
+      if vars <> [] then (
 	let lookup name default =
-	  try Fl_metascanner.lookup name [] vars
+	  try Fl_metascanner.lookup name config_preds vars
 	  with Not_found -> default
 	in
-	let tuple =
-	  ( (lookup "ocamlc" ocamlc_default),
-	    (lookup "ocamlopt" ocamlopt_default),
-	    (lookup "ocamlcp" ocamlcp_default),
-	    (lookup "ocamlmktop" ocamlmktop_default),
-	    (lookup "ocamldep" ocamldep_default),
-	    (lookup "ocamlbrowser" ocamlbrowser_default),
-	    (lookup "ocamldoc" ocamldoc_default),
-	    Fl_split.path (lookup "path" ""),
-	    (lookup "destdir" ""),
-	    (lookup "metadir" "none"),
-	    (lookup "stdlib" Findlib_config.ocaml_stdlib),
-	    (lookup "ldconf" Findlib_config.ocaml_ldconf)
-	  )
-	in
-	close_in ch;
-	tuple
-      with
-	  exc -> 
-	    close_in ch; raise exc
-    end
-    else
-      ( ocamlc_default, ocamlopt_default, ocamlcp_default, ocamlmktop_default,
-	ocamldep_default, ocamlbrowser_default, ocamldoc_default,
-	[],
-	"",
-        "none",
-	Findlib_config.ocaml_stdlib,
-	Findlib_config.ocaml_ldconf
+	( (lookup "ocamlc" ocamlc_default),
+	  (lookup "ocamlopt" ocamlopt_default),
+	  (lookup "ocamlcp" ocamlcp_default),
+	  (lookup "ocamlmktop" ocamlmktop_default),
+	  (lookup "ocamldep" ocamldep_default),
+	  (lookup "ocamlbrowser" ocamlbrowser_default),
+	  (lookup "ocamldoc" ocamldoc_default),
+	  Fl_split.path (lookup "path" ""),
+	  (lookup "destdir" ""),
+	  (lookup "metadir" "none"),
+	  (lookup "stdlib" Findlib_config.ocaml_stdlib),
+	  (lookup "ldconf" Findlib_config.ocaml_ldconf)
+	)
       )
-  end
+      else
+	( ocamlc_default, ocamlopt_default, ocamlcp_default, ocamlmktop_default,
+	  ocamldep_default, ocamlbrowser_default, ocamldoc_default,
+	  [],
+	  "",
+          "none",
+	  Findlib_config.ocaml_stdlib,
+	  Findlib_config.ocaml_ldconf
+	)
+    )
   in
 
   let env_commands = 

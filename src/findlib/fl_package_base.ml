@@ -103,8 +103,22 @@ let packages_in_meta_file ?(directory_required = false)
 	package_dir = d';
 	package_defs = pkg_expr.pkg_defs
       } in
-    p :: (List.flatten
-	    (List.map (flatten_meta p_name d') pkg_expr.pkg_children))
+    (* Check for exists_if: *)
+    let p_exists =
+      try
+	let def =
+	  List.find (fun def -> def.def_var = "exists_if") p.package_defs  in
+	let files = Fl_split.in_words def.def_value in
+	List.exists 
+	  (fun file -> Sys.file_exists (Filename.concat d' file))
+	  files
+      with Not_found -> true in
+
+    if p_exists then
+      p :: (List.flatten
+	      (List.map (flatten_meta p_name d') pkg_expr.pkg_children))
+    else
+      []
   in
 
   let ch = open_in meta_file in

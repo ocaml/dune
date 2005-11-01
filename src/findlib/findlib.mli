@@ -1,4 +1,4 @@
-(* $Id: findlib.mli,v 1.7 2002/04/26 15:45:22 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -32,6 +32,7 @@ val init :
       ?env_camllib: string ->
       ?env_ldconf: string ->
       ?config: string -> 
+      ?toolchain: string ->
       unit ->
 	unit
   (** Initializes the library from the configuration file and the environment. 

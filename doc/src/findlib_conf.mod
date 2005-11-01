@@ -56,6 +56,10 @@ There are three possibilities to configure the findlib library:
     contains the system-wide search path used to look up packages, and the
     default location where to install new packages.
   </para>
+  <para>
+    All files with the suffix ".conf" found in the directory
+    findlib.conf.d are also scanned for parameters.
+  </para>
   </listitem>
 </varlistentry>
 
@@ -260,9 +264,29 @@ ocamlmktop = "ocamlmktop.opt"
   </listitem>
 </varlistentry>
 </variablelist>
-
-
 </para>
+
+<para>
+Toolchains: It is possible to have variants of the original configuration.
+These variants are called "toolchains" because they are intended to
+select different compilers, e.g. patched compilers. In order to
+set a variable for a certain toolchain, use the syntax
+
+<programlisting>
+<replaceable>variable</replaceable>(<replaceable>toolchain</replaceable>) = "<replaceable>value</replaceable>"
+</programlisting>
+
+For example:
+
+<programlisting>
+ocamlc(mypatch) = "ocamlc-mypatch"
+</programlisting>
+
+When the toolchain "mypatch" is selected, this compiler will be used instead
+of the standard one.</para>
+
+<para>In order to switch to a certain toolchain, use the -toolchain
+option of <link linkend="ocamlfind">ocamlfind</link>.</para>
 
 </refsect1>
 

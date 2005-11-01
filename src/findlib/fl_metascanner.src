@@ -1,9 +1,10 @@
-(* $Id: fl_metascanner.src,v 1.3 2002/09/22 20:12:32 gerd Exp $
+(* $Id$ -*- tuareg -*-
  * ----------------------------------------------------------------------
  *
  *)
 
 open Fl_metatoken;;
+open Printf
 
 type formal_pred =
     [ `Pred of string
@@ -232,6 +233,43 @@ let parse ch =
   with
       Stream.Error "" ->
 	raise(Stream.Error "Syntax Error")
+;;
+
+
+let rec print f pkg =
+  let escape s = (* no Str available :-( *)
+    let b = Buffer.create (String.length s) in
+    for k = 0 to String.length s - 1 do
+      match s.[k] with
+	| '\\' -> Buffer.add_string b "\\\\"
+	| '"'  -> Buffer.add_string b "\\\""
+	| c    -> Buffer.add_char b c
+    done;
+    Buffer.contents b in
+  let format_pred =
+    function
+      | `Pred s -> s
+      | `NegPred s -> "-" ^ s in
+  let print_def def =
+    fprintf f "%s%s %s \"%s\"\n"
+      def.def_var
+      (match def.def_preds with
+	 | [] -> ""
+	 | l -> "(" ^ String.concat "," (List.map format_pred l) ^ ")"
+      )
+      (match def.def_flav with
+	 | `BaseDef -> "="
+	 | `Appendix -> "+="
+      )
+      (escape def.def_value) in
+  List.iter print_def pkg.pkg_defs;
+  List.iter
+    (fun (name,child) ->
+       fprintf f "\npackage %s (\n" name;
+       print f child;
+       fprintf f ")\n"
+    )
+    pkg.pkg_children
 ;;
 
 

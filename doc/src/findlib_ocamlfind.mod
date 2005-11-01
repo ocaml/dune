@@ -28,6 +28,9 @@
    or: <link linkend="ocamlfind.list">ocamlfind list [-describe]</link>
    or: <link linkend="ocamlfind.printconf">ocamlfind printconf [ variable ]</link>
    or: <link linkend="ocamlfind.pkgcmd">ocamlfind <replaceable>package</replaceable>/<replaceable>command</replaceable> <replaceable>arg</replaceable> ...</link>
+
+Optional toolchain selection by:
+  <link linkend="ocamlfind.toolchain">ocamlfind -toolchain <replaceable>name</replaceable> ...</link>
 </synopsis>
 </refsynopsisdiv>
 
@@ -913,7 +916,10 @@ ocamlfind install [ -destdir <replaceable>directory</replaceable> ]
                   [ -metadir <replaceable>directory</replaceable> ]
 	          [ -ldconf <replaceable>path</replaceable> ]
                   [ -dont-add-directory-directive ]
-	          [ -dll ] [ -nodll ]
+                  [ -patch-version <replaceable>string</replaceable> ]
+                  [ -patch-rmpkg <replaceable>name</replaceable> ]
+                  [ -patch-archives ]
+	          [ -dll ] [ -nodll ] [ -optional ]
                   <replaceable>package_name</replaceable> <replaceable>file</replaceable> ...
 </programlisting>
 </refsect2>
@@ -986,6 +992,20 @@ and f5 and f6 are not DLLs:
 <programlisting>
 ocamlfind install p f1 f2 -dll f3 f4 -nodll f5 f6
 </programlisting>
+</para>
+
+<para>
+The switch -optional declares that all following files are optional,
+i.e. the command will not fail if files do not exist.
+</para>
+
+<para>
+The -patch options may be used to change the contents of the META files
+while it is being installed. The option -patch-version changes the
+contents of the top-level "version" variable. The option -patch-rmpkg
+removes the given subpackage. The option -patch-archives is experimental,
+in particular it removes all non-existing files from "archive" variables,
+and even whole subpackages if the archives are missing.
 </para>
 
 </refsect2>
@@ -1191,6 +1211,35 @@ in the manual page for
 </para>
 </refsect1>
 
+<!-- ********************************************************************** -->
+
+<refsect1>
+<title><anchor id="ocamlfind.toolchain">
+  HOW TO SET THE TOOLCHAIN
+</title>
+
+<refsect2>
+<title>Synopsis</title>
+<programlisting>
+ocamlfind -toolchain <replaceable>name</replaceable> ...
+</programlisting>
+</refsect2>
+
+<refsect2>
+<title>Description</title>
+<para>The -toolchain option can be given before any other command,
+e.g.
+<programlisting>
+ocamlfind -toolchain foo ocamlc -c file.ml
+</programlisting>
+compiles file.ml with toolchain "foo". By selecting toolchains one
+can switch to different command sets. For instance, the toolchain
+"foo" may consist of a patched ocamlc compiler. 
+See <link linkend="findlib.conf">findlib.conf</link> how to
+configure toolchains.
+</para>
+</refsect2>
+</refsect1>
 
 </refentry>
 

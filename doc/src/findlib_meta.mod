@@ -252,6 +252,16 @@ an error message is printed. The message is the value of the variable.
 </para>
 </listitem>
 
+<listitem> 
+<para> 
+The variable "exists_if" can be used to disable subpackages. The
+value of "exists_if" is a file; the subpackage is hidden if this
+file does not exist. You can also enumerate several files, and the
+subpackage is hidden if none of the files exist.
+</para>
+</listitem>
+
+
 </itemizedlist>
 
 <para>

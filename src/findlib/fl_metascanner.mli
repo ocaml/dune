@@ -1,4 +1,4 @@
-(* $Id: fl_metascanner.mli,v 1.2 2002/09/22 20:12:32 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -53,6 +53,12 @@ val parse : in_channel -> pkg_expr
    *
    * [exception Stream.Error of string:] is
    * raised on syntax errors. The string explains the error.
+   *)
+
+
+val print : out_channel -> pkg_expr -> unit
+  (** [print ch expr]:
+    * Outputs the package expression to a channel.
    *)
 
 

@@ -26,8 +26,8 @@ TOBJECTS       = topfind.cmo
 
 XOBJECTS       = $(OBJECTS:.cmo=.cmx)
 
-OCAMLFIND_OBJECTS = frontend.cmo
-OCAMLFIND_XOBJECTS = frontend.cmx
+OCAMLFIND_OBJECTS = ocaml_args.cmo frontend.cmo
+OCAMLFIND_XOBJECTS = ocaml_args.cmx frontend.cmx
 
 NUMTOP_OBJECTS = num_top_printers.cmo num_top.cmo
 

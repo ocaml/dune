@@ -65,7 +65,13 @@ LINKEND="OCAMLFIND.PKGCMD"
 >ocamlfind <REPLACEABLE
 >package</REPLACEABLE>/<REPLACEABLE
 >command</REPLACEABLE> <REPLACEABLE
->arg</REPLACEABLE> ...</LINK></SYNOPSIS></REFSYNOPSISDIV><REFSECT1
+>arg</REPLACEABLE> ...</LINK>
+
+Optional toolchain selection by:
+  <LINK
+LINKEND="OCAMLFIND.TOOLCHAIN"
+>ocamlfind -toolchain <REPLACEABLE
+>name</REPLACEABLE> ...</LINK></SYNOPSIS></REFSYNOPSISDIV><REFSECT1
 ><TITLE
 ><ANCHOR
 ID="OCAMLFIND.QUERY"
@@ -823,7 +829,12 @@ FORMAT="LINESPECIFIC"
 	          [ -ldconf <REPLACEABLE
 >path</REPLACEABLE> ]
                   [ -dont-add-directory-directive ]
-	          [ -dll ] [ -nodll ]
+                  [ -patch-version <REPLACEABLE
+>string</REPLACEABLE> ]
+                  [ -patch-rmpkg <REPLACEABLE
+>name</REPLACEABLE> ]
+                  [ -patch-archives ]
+	          [ -dll ] [ -nodll ] [ -optional ]
                   <REPLACEABLE
 >package_name</REPLACEABLE> <REPLACEABLE
 >file</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
@@ -898,7 +909,15 @@ and f5 and f6 are not DLLs:
 
 <PROGRAMLISTING
 FORMAT="LINESPECIFIC"
->ocamlfind install p f1 f2 -dll f3 f4 -nodll f5 f6</PROGRAMLISTING></PARA></REFSECT2></REFSECT1><REFSECT1
+>ocamlfind install p f1 f2 -dll f3 f4 -nodll f5 f6</PROGRAMLISTING></PARA><PARA
+>The switch -optional declares that all following files are optional,
+i.e. the command will not fail if files do not exist.</PARA><PARA
+>The -patch options may be used to change the contents of the META files
+while it is being installed. The option -patch-version changes the
+contents of the top-level "version" variable. The option -patch-rmpkg
+removes the given subpackage. The option -patch-archives is experimental,
+in particular it removes all non-existing files from "archive" variables,
+and even whole subpackages if the archives are missing.</PARA></REFSECT2></REFSECT1><REFSECT1
 ><TITLE
 ><ANCHOR
 ID="OCAMLFIND.REMOVE"
@@ -1056,7 +1075,31 @@ FORMAT="LINESPECIFIC"
 in the manual page for
  <LINK
 LINKEND="FINDLIB.CONF"
->findlib.conf</LINK>.</PARA></REFSECT1></REFENTRY><REFENTRY
+>findlib.conf</LINK>.</PARA></REFSECT1><REFSECT1
+><TITLE
+><ANCHOR
+ID="OCAMLFIND.TOOLCHAIN"
+></ANCHOR>
+  HOW TO SET THE TOOLCHAIN</TITLE><REFSECT2
+><TITLE
+>Synopsis</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind -toolchain <REPLACEABLE
+>name</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
+><TITLE
+>Description</TITLE><PARA
+>The -toolchain option can be given before any other command,
+e.g.
+<PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind -toolchain foo ocamlc -c file.ml</PROGRAMLISTING>
+compiles file.ml with toolchain "foo". By selecting toolchains one
+can switch to different command sets. For instance, the toolchain
+"foo" may consist of a patched ocamlc compiler. 
+See <LINK
+LINKEND="FINDLIB.CONF"
+>findlib.conf</LINK> how to
+configure toolchains.</PARA></REFSECT2></REFSECT1></REFENTRY><REFENTRY
 ><REFMETA
 ><REFENTRYTITLE
 >META</REFENTRYTITLE><MANVOLNUM
@@ -1242,7 +1285,13 @@ The variable "linkopts" specifies additional linker options.</PARA></LISTITEM><L
 ><PARA
 >The variable "error" can be used to signal error conditions. When
 this variable is applicable, the ocaml compilers are stopped, and
-an error message is printed. The message is the value of the variable.</PARA></LISTITEM></ITEMIZEDLIST><PARA
+an error message is printed. The message is the value of the variable.</PARA></LISTITEM><LISTITEM
+><PARA
+> 
+The variable "exists_if" can be used to disable subpackages. The
+value of "exists_if" is a file; the subpackage is hidden if this
+file does not exist. You can also enumerate several files, and the
+subpackage is hidden if none of the files exist.</PARA></LISTITEM></ITEMIZEDLIST><PARA
 >It is possible to define additional variables but there is currently
 no software interpreting them.</PARA></REFSECT1><REFSECT1
 ><TITLE
@@ -1331,6 +1380,9 @@ MOREINFO="NONE"
     but you are free to modify it later. Most important, this file
     contains the system-wide search path used to look up packages, and the
     default location where to install new packages.
+  </PARA><PARA
+>    All files with the suffix ".conf" found in the directory
+    findlib.conf.d are also scanned for parameters.
   </PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
 >Environment variables:</TERM><LISTITEM
@@ -1527,9 +1579,31 @@ MOREINFO="NONE"
   </PARA><PARA
 >    This variable is optional. It is not recommended to set this variable
     unless you know what you are doing!
-  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></PARA><PARA
+>Toolchains: It is possible to have variants of the original configuration.
+These variants are called "toolchains" because they are intended to
+select different compilers, e.g. patched compilers. In order to
+set a variable for a certain toolchain, use the syntax
 
-</PARA></REFSECT1><REFSECT1
+<PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+><REPLACEABLE
+>variable</REPLACEABLE>(<REPLACEABLE
+>toolchain</REPLACEABLE>) = "<REPLACEABLE
+>value</REPLACEABLE>"</PROGRAMLISTING>
+
+For example:
+
+<PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlc(mypatch) = "ocamlc-mypatch"</PROGRAMLISTING>
+
+When the toolchain "mypatch" is selected, this compiler will be used instead
+of the standard one.</PARA><PARA
+>In order to switch to a certain toolchain, use the -toolchain
+option of <LINK
+LINKEND="OCAMLFIND"
+>ocamlfind</LINK>.</PARA></REFSECT1><REFSECT1
 ><TITLE
 >Environment</TITLE><PARA
 >A number of environment variables modifies the behaviour of

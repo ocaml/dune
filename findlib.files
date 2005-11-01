@@ -43,6 +43,9 @@ f mini/ocamlfind-mini
 d tools
 f tools/collect_files
 f tools/file_exists
+d tools/extract_args
+f tools/extract_args/Makefile
+f tools/extract_args/extract_args.ml
 
 d site-lib-src
 d site-lib-src/bigarray
@@ -100,6 +103,7 @@ f src/findlib/findlib_config.mlp
 x src/findlib/fl_metascanner.ml
 x src/findlib/fl_meta.ml
 x src/findlib/findlib_config.ml
+x src/findlib/ocaml_args.ml
 p src/findlib/.*\.ml
 p src/findlib/.*\.mli
 p src/findlib/.*\.mll

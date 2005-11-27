@@ -7,7 +7,7 @@
 
 #set -x
 
-version="1.1"
+version="1.1.1"
 
 # Remember the old IFS value:
 oldifs="$IFS"
@@ -274,7 +274,7 @@ else
 fi
 
 rm -f itest-aux/simple
-ocamlc -custom -thread -o itest-aux/simple unix.cma threads.cma itest-aux/simple_threads.ml \
+ocamlc -w a -custom -thread -o itest-aux/simple unix.cma threads.cma itest-aux/simple_threads.ml \
     >itest-aux/err.out 2>&1
 output=`cat itest-aux/err.out`
 

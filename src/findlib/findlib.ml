@@ -100,7 +100,7 @@ let init
     config_file ^ ".d" in
 
   let vars_of_file f =
-    let ch = open_in config_file in
+    let ch = open_in f in
     try
       let vars = 
 	(Fl_metascanner.parse ch).Fl_metascanner.pkg_defs in

@@ -108,6 +108,11 @@ configuration files, and library routines in detail.</p>
     <ul>
 
       <li>
+	<p><em>1.1.1:</em>Bugfixes only: Fixed detection of threading model
+for O'Caml 3.09. Fixed alternate configuration files.</p>
+      </li>
+
+      <li>
          <p><em>1.1:</em> Automatic detection of standard compiler options.</p>
 
          <p>Liberated the checks whether a package is already installed.</p>

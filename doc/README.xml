@@ -108,12 +108,15 @@ configuration files, and library routines in detail.</p>
     <ul>
 
       <li>
-	<p><em>SVN:</em>Bugfix in the META parser: Backslashes are now
+	<p><em>1.1.2:</em> Bugfix in the META parser: Backslashes are now
 correctly parsed. (Thanks to Martin Jambon for finding this problem.)</p>
+	<p>Fixes for platforms that do not support dynamic loading of
+DLLs.</p>
+	<p>Fixed extraction of camlp4 parameters from packages.</p>
       </li>
 
       <li>
-	<p><em>1.1.1:</em>Bugfixes only: Fixed detection of threading model
+	<p><em>1.1.1:</em> Bugfixes only: Fixed detection of threading model
 for O'Caml 3.09. Fixed alternate configuration files.</p>
       </li>
 

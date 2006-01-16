@@ -22,6 +22,7 @@ camlp4 "$@" 2>$tmp_stderr || {
 	print_stderr=0
 	cp4_mods=""
 	cp4_args=""
+	i=0
 	for arg in "$@"; do
 	    if [ $i -gt 0 ]; then
 		cp4_mods="$cp4_mods -I $arg"

@@ -46,6 +46,7 @@ f tools/file_exists
 d tools/extract_args
 f tools/extract_args/Makefile
 f tools/extract_args/extract_args.ml
+f tools/safe_camlp4
 
 d site-lib-src
 d site-lib-src/bigarray

@@ -1,6 +1,6 @@
 open Tk;;
 
-let top = openTk() in 
+let _ = openTk() in 
 update();
 closeTk()
 ;;

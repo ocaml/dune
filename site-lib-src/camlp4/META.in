@@ -27,7 +27,7 @@ dnl This file is input of the m4 macro processor.
 `archive(syntax,preprocessor,camlp4sml) = "pa_sml.cmo pr_dump.cmo"'
 `archive(syntax,preprocessor,camlp4scheme) = "pa_scheme.cmo pr_dump.cmo"'
 `archive(syntax,preprocessor,camlp4lisp) = "pa_lisp.cmo pr_dump.cmo"'
-`preprocessor = "camlp4 -nolib"'
+`preprocessor = "'camlp4_cmd` -nolib"'
 
 `package "gramlib" ('
 `  requires(toploop) = "camlp4"'

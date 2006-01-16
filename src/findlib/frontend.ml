@@ -468,9 +468,42 @@ let process_pp_spec syntax_preds packages pp_opts =
   (* Returns: pp_command *)
   (* may raise No_such_package *)
 
+  (* [packages]: all packages given on the command line. May include
+   * packages for compilation and for preprocessing.
+   *
+   * The difficulty is now that the preprocessor packages may have
+   * requirements that are non-preprocessor packages. To get exactly
+   * the preprocessor packages and its requirements, we do:
+   *
+   * 1. Determine the subset of [packages] that are preprocessor
+   *    packages by checking whether they have an "archive" for
+   *    [syntax_preds], i.e. the preprocessor packages mentioned
+   *    on the command line = [cl_pp_packages].
+   *
+   * 2. Add their requirements = [pp_packages]
+   *
+   * Because the packages are now mixed, we must evaluate for 
+   * [syntax_preds] + "byte".
+   *)
+
+  let cl_pp_packages =
+    if syntax_preds = [] then
+      (* No syntax predicates, no preprocessor! *)
+      []
+    else
+      List.filter
+	(fun pkg ->
+	   let al = try package_property syntax_preds pkg "archive"
+	            with Not_found -> "" in
+	   let w = Fl_split.in_words al in
+	   w <> []
+	)
+	packages in
+
   let pp_packages =
-    package_deep_ancestors syntax_preds packages in
-  (* the packages used for the preprocessor *)
+    package_deep_ancestors syntax_preds cl_pp_packages in
+
+  (* One packages must now have the variable "preprocessor", usually camlp4 *)
 
   let preprocessor_cmds =
     List.flatten
@@ -521,16 +554,10 @@ let process_pp_spec syntax_preds packages pp_opts =
       List.flatten
 	(List.map
 	   (fun pkg ->
-	      let al = try package_property syntax_preds pkg "archive"
-	               with Not_found -> "" in
-	      let w = Fl_split.in_words al in
-	      if w = [] then
-		let al' =
-		  try package_property ("byte" :: syntax_preds) pkg "archive"
-	          with Not_found -> "" in
-		Fl_split.in_words al'
-	      else
-		w
+	      let al = 
+		try package_property ("byte" :: syntax_preds) pkg "archive"
+	        with Not_found -> "" in
+	      Fl_split.in_words al
 	   )
 	   pp_packages) in
 

@@ -294,6 +294,15 @@ fi
 ocaml_autolink="true"
 
 ######################################################################
+# Does this version of OCaml support DLLs?
+
+echo "Testing DLLs..."
+
+have_dlls="yes"
+
+ocaml unix.cma itest-aux/simple.ml >/dev/null || have_dlls="no"
+
+######################################################################
 # Configure libraries
 
 echo "Configuring libraries..."
@@ -323,6 +332,11 @@ if in_path camlp4; then
     lcamlp4=camlp4
     camlp4_dir=`camlp4 -where`
     camlp4_version=`camlp4 -v 2>&1`
+    if [ "$have_dlls" = "yes" ]; then
+	camlp4_cmd="camlp4"
+    else
+	camlp4_cmd="safe_camlp4"
+    fi
     echo "camlp4: found"
 else
     lcamlp4=''
@@ -347,6 +361,7 @@ for lib in $l; do
 	"-Dtype_of_threads=${ocaml_threads}" \
 	"-Dcamlp4_dir=${camlp4_dir}" \
 	"-Dcamlp4_version=${camlp4_version}" \
+	"-Dcamlp4_cmd=${camlp4_cmd}" \
 	"-Dinterfaces=${if}" \
 	"-Dfindlib_version=${version}" \
 	site-lib-src/$lib/META.in >site-lib-src/$lib/META

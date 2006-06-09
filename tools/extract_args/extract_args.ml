@@ -30,7 +30,7 @@ let get_help cmd =
     try
       let code =
 	Sys.command (sprintf "%s -help >%s" 
-		       (Filename.quote cmd)
+		       cmd
 		       (Filename.quote temp_file)) in
       if code <> 0 then 
 	raise Not_found;  (* Assume command does not exist! *)

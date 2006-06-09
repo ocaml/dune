@@ -170,13 +170,37 @@ echo "Configuring core..."
 
 # Some standard Unix tools must be available:
 
-for tool in sed awk ocamlc uname rm make cat m4 dirname basename; do
+for tool in sed awk ocaml ocamlc uname rm make cat m4 dirname basename; do
     if in_path $tool; then true; else
 	echo "configure: $tool not in PATH; this is required" 1>&2
 	exit 1
     fi
 done
 
+# Check for Cygwin:
+
+exec_suffix=
+case `uname` in
+  CYGWIN*)
+    exec_suffix=.exe
+    echo "Cygwin build environment found; using .exe as suffix for binaries"
+    ;;
+  *)
+    true ;;
+esac
+
+######################################################################
+# Is the target Win32?
+
+os_type=`ocaml itest-aux/os_type.ml`
+# This is what Sys.os_type returns:
+# Unix, Win32, Cygwin
+
+if [ "$os_type" = "Win32" ]; then
+    use_cygpath=1
+fi
+
+######################################################################
 # Find out standard library location
 
 ocaml_core_stdlib=`get_stdlib`
@@ -188,6 +212,7 @@ fi
 if [ ${use_cygpath} -gt 0 ]; then
     echo "Applying cygpath..."
     apply_cygpath ocaml_core_stdlib
+    # This makes ocaml_core_stdlib a Unix-type path
 fi
 
 # Set site-lib directory:
@@ -374,18 +399,6 @@ for part in `cd src; echo *`; do
     fi
 done
 
-# Finally a check for Cygwin:
-
-exec_suffix=
-case `uname` in
-  CYGWIN*)
-    exec_suffix=.exe
-    echo "Cygwin found; using .exe as suffix for binaries"
-    ;;
-  *)
-    true ;;
-esac
-
 ######################################################################
 
 printf "Detecting compiler arguments: "
@@ -427,6 +440,7 @@ echo "OCAML_AUTOLINK=${ocaml_autolink}" >>Makefile.config
 echo "EXEC_SUFFIX=${exec_suffix}" >>Makefile.config
 echo "PARTS=${parts}" >>Makefile.config
 echo "INSTALL_TOPFIND=${with_topfind}" >>Makefile.config
+echo "USE_CYGPATH=${use_cygpath}" >>Makefile.config
 
 # All OK
 

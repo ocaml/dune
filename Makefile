@@ -48,8 +48,10 @@ README: doc/README
 all-config: findlib.conf
 
 findlib.conf: findlib.conf.in 
-	sed -e 's;@SITELIB@;$(OCAML_SITELIB);g' \
-	    findlib.conf.in >findlib.conf
+	USE_CYGPATH="$(USE_CYGPATH)"; \
+	export USE_CYGPATH; \
+	cat findlib.conf.in | \
+		tools/patch '@SITELIB@' '$(OCAML_SITELIB)' >findlib.conf
 	if ocamlc.opt >/dev/null 2>&1; then \
 		echo 'ocamlc="ocamlc.opt"' >>findlib.conf; \
 	fi

@@ -53,14 +53,20 @@ findlib.cmxa: $(XOBJECTS)
 	$(OCAMLOPT) -a -o findlib.cmxa $(XOBJECTS)
 
 findlib_config.ml: findlib_config.mlp 
-	sed -e 's;@CONFIGFILE@;$(OCAMLFIND_CONF);g' \
-	    -e 's;@STDLIB@;$(OCAML_CORE_STDLIB);g' \
-	    -e 's;@AUTOLINK@;$(OCAML_AUTOLINK);g' \
-	    findlib_config.mlp >findlib_config.ml
+	USE_CYGPATH="$(USE_CYGPATH)"; \
+	export USE_CYGPATH; \
+	cat findlib_config.mlp | \
+		$(TOP)/tools/patch '@CONFIGFILE@' '$(OCAMLFIND_CONF)' | \
+		$(TOP)/tools/patch '@STDLIB@' '$(OCAML_CORE_STDLIB)' | \
+		sed -e 's;@AUTOLINK@;$(OCAML_AUTOLINK);g' \
+		     >findlib_config.ml
 
 topfind: topfind.p
-	sed -e 's;@SITELIB@;$(OCAML_SITELIB);g' \
-	    topfind.p >topfind
+	USE_CYGPATH="$(USE_CYGPATH)"; \
+	export USE_CYGPATH; \
+	cat topfind.p | \
+		$(TOP)/tools/patch '@SITELIB@' '$(OCAML_SITELIB)' \
+	    	    >topfind
 
 num_top.cma: $(NUMTOP_OBJECTS)
 	$(OCAMLC) -a -o num_top.cma $(NUMTOP_OBJECTS)

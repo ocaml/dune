@@ -298,15 +298,25 @@ else
     exit 1
 fi
 
-rm -f itest-aux/simple
-ocamlc -w a -custom -thread -o itest-aux/simple unix.cma threads.cma itest-aux/simple_threads.ml \
-    >itest-aux/err.out 2>&1
-output=`cat itest-aux/err.out`
-
-if [ -z "$output" ]; then
-    ocaml_threads="posix"
+if ocamlc -config >/dev/null 2>/dev/null; then
+    # Good. ocamlc tells us the threading model.
+    if ocamlc -config | grep 'systhread_supported: true'; then
+	ocaml_threads="posix"
+    else
+	ocaml_threads="vm"
+    fi
 else
-    ocaml_threads="vm"
+    # Old ocamlc do not have -config. 
+    rm -f itest-aux/simple
+    ocamlc -w a -custom -thread -o itest-aux/simple unix.cma threads.cma itest-aux/simple_threads.ml \
+	>itest-aux/err.out 2>&1
+    output=`cat itest-aux/err.out`
+
+    if [ -z "$output" ]; then
+	ocaml_threads="posix"
+    else
+	ocaml_threads="vm"
+    fi
 fi
 
 ######################################################################

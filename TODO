@@ -1,3 +1,16 @@
+Pietro Abate <pietro.abate@anu.edu.au>
+	include findlib-ppc.patch
+
+Bug report by David Allsopp:
+	(done), mention it in README
+
+Bug report by Adam Montague:
+	(done), mention it in README
+
+Feature idea:
+	requires = "?foo"
+	The package is only dependent on foo if foo exists
+
 Feature wish (Renieris):
 	basic ocamldoc support
 

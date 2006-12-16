@@ -7,6 +7,10 @@ Bug report by David Allsopp:
 Bug report by Adam Montague:
 	(done), mention it in README
 
+Feature wish (Sam Steingold):
+	Avoid warnings "interface ... occurs in several directories"
+	if the interface files are actually hard-linked
+
 Feature idea:
 	requires = "?foo"
 	The package is only dependent on foo if foo exists

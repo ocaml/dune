@@ -22,7 +22,7 @@ install:
 	$(MAKE) install-meta
 	cd src/findlib; $(MAKE) install-num-top
 	$(MAKE) install-config
-	cp tools/safe_camlp4 $(OCAMLFIND_BIN)
+	cp tools/safe_camlp4 $(prefix)$(OCAMLFIND_BIN)
 
 uninstall:
 	$(MAKE) uninstall-doc

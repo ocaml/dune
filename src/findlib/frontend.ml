@@ -704,7 +704,7 @@ let ocamlc which () =
 	  "-I", (Arg.String
 		   (fun s ->
 		      let s = resolve_path s in
-		      incpath := s :: !incpath;  (* reverted below *)
+                      if Sys.file_exists s then incpath := s :: !incpath;  (* reverted below *)
 		      add_spec_fn "-I" s ));
 
 	  "-impl", 

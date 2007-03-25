@@ -7,6 +7,8 @@ The installation procedure consists of the steps:
 Optionally, you can run ./itest after step 2 to check the
 configuration. Problems with the configuration are unlikely, however.
 
+At the end of this file you find notes about MacOS and Windows.
+
 
 ----------------------------------------------------------------------
 
@@ -140,20 +142,46 @@ one possible directory for DLLs.
 
 ----------------------------------------------------------------------
 
-WINDOWS AND MACOS:
+MACOS X:
 
-Does anybody want to port findlib? I cannot do it because I don't have
-access to the necessary systems/tools.
+Findlib can be installed as described. There is even a script to
+create a MacOS X package, use "make package-macosx" to invoke it. As I
+do not have access to a Mac box, I cannot test this script, but I
+fully trust the author that it works.
 
-The ocamlfind command _should_ run at least for Windows, but I never
-tested that. Maybe there are bugs in it.
+----------------------------------------------------------------------
 
-A port would mostly have to rewrite the "configure" script which is
-very Unixish.
+WINDOWS:
 
-Maybe findlib runs on a cygwin platform out of the box... I don't
-know...
+Ocaml for Windows exists in three flavours:
 
+(1) Ocaml as Cygwin program
+(2) Ocaml as Mingw program (i.e. the gcc toolchain is used but
+    Ocaml is a native Windows program)
+(3) Ocaml as VC program
 
+In all three cases you need Cygwin to build and install findlib,
+because "configure" and the Makefile are both Cygwin scripts. The
+golden rule to make everything work is this:
 
+PASS CYGWIN-STYLE PATHS TO CONFIGURE!
 
+Even in cases (2) and (3)! That means use something like
+/cygdrive/c/path and not c:\path when you specify where -bindir,
+-config etc. are. The point is that "configure" itself is a Cygwin
+script, and therefore expects Cygwin input. At the right moment, the
+paths are back-translated to their Windows counterparts.
+
+Until O'Caml 3.08 you must specify whether you have (2) or (3) by
+the configure switches
+
+- "-system mingw" for (2)
+- "-system win32" for (3)
+- nothing for (1)
+
+Since O'Caml 3.09 this is no longer necessary because "ocamlc -config"
+outputs the required information.
+
+In previous versions of Findlib there was a single switch -cygpath 
+for both (2) and (3). It is now interpreted as -system mingw (as
+it was meant as that).

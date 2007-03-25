@@ -59,6 +59,7 @@ findlib_config.ml: findlib_config.mlp
 		$(TOP)/tools/patch '@CONFIGFILE@' '$(OCAMLFIND_CONF)' | \
 		$(TOP)/tools/patch '@STDLIB@' '$(OCAML_CORE_STDLIB)' | \
 		sed -e 's;@AUTOLINK@;$(OCAML_AUTOLINK);g' \
+		    -e 's;@SYSTEM@;$(SYSTEM);g' \
 		     >findlib_config.ml
 
 topfind: topfind.p

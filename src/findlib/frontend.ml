@@ -268,9 +268,19 @@ let run_command ?filter verbose cmd args =
   let old_sigint =
     Sys.signal Sys.sigint Sys.Signal_ignore in
 
+  let need_exe =
+    List.mem Findlib_config.system [ "win32"; "mingw" ] in
+
+  let fixed_cmd =
+    if need_exe then (
+      if Filename.check_suffix cmd ".exe" then cmd else cmd ^ ".exe" 
+    )
+    else
+      cmd in
+
   let pid =
     Unix.create_process
-      cmd
+      fixed_cmd
       (Array.of_list (cmd :: args))
       Unix.stdin
       cmd_output
@@ -376,7 +386,11 @@ let query_package () =
   let i_format =
     "-I %d" in
   let l_format =
-    "-ccopt -L%d" in
+    if Findlib_config.system = "win32" then
+      (* Microsoft toolchain *)
+      "-ccopt \"/link /libpath:%d\""
+    else
+      "-ccopt -L%d" in
   let a_format =
     "%a" in
   let o_format =
@@ -910,7 +924,11 @@ let ocamlc which () =
 	    if List.mem npkgdir exclude_list then
 	      []
 	    else
-	      [ "-ccopt"; "-L" ^ pkgdir; ])
+	      if Findlib_config.system = "win32" then
+		(* Microsoft toolchain *)
+		[ "-ccopt"; "/link /libpath:" ^ pkgdir ]
+	      else
+		[ "-ccopt"; "-L" ^ pkgdir; ])
 	 eff_link_dl) in
 
   let archives =

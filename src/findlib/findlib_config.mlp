@@ -1,4 +1,4 @@
-(* $Id: findlib_config.mlp,v 1.8 2002/07/05 12:46:41 gerd Exp $
+(* $Id$
  * ----------------------------------------------------------------------
  *
  *)
@@ -12,6 +12,9 @@ let ocaml_ldconf = Filename.concat ocaml_stdlib "ld.conf";;
 let ocaml_has_autolinking = @AUTOLINK@;;
 
 let libexec_name = "stublibs";;
+
+let system = "@SYSTEM@";;
+(* - "mingw", "win32", "cygwin", "linux_elf", ... *)
 
 let dll_suffix =
   match Sys.os_type with

@@ -17,6 +17,9 @@ opt:
 	for p in $(PARTS); do ( cd src/$$p; $(MAKE) opt ); done
 
 install:
+	mkdir -p $(prefix)$(OCAMLFIND_BIN)
+	mkdir -p $(prefix)$(OCAMLFIND_LIB)
+	mkdir -p $(prefix)$(OCAMLFIND_MAN)
 	for p in $(PARTS); do ( cd src/$$p; $(MAKE) install ); done
 	$(MAKE) install-doc
 	$(MAKE) install-meta
@@ -113,3 +116,16 @@ interface-lists:
 	    echo "$$iflist" >"site-lib-src/$$x/interfaces.out"; \
 	done
 
+######################################################################
+# The following is from Pietro Abata <pietro.abate@anu.edu.au>
+# to create MacOS X packages. I did not test it, just include it.
+
+.PHONY: package-macosx
+
+package-macosx: all opt
+	mkdir -p package-macosx/root
+	export prefix=`pwd`/package-macosx/root && make install 
+	export VERSION=1.1.2 && tools/make-package-macosx
+
+clean-macosx:
+	sudo rm -rf package-macosx

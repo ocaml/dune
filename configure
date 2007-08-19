@@ -377,7 +377,6 @@ fi
 # Check on camlp4:
 
 if in_path camlp4; then
-    lcamlp4=camlp4
     camlp4_dir=`camlp4 -where`
     camlp4_version=`camlp4 -v 2>&1`
     if [ "$have_dlls" = "yes" ]; then
@@ -385,7 +384,16 @@ if in_path camlp4; then
     else
 	camlp4_cmd="safe_camlp4"
     fi
-    echo "camlp4: found"
+    # Check whether 3.09 or 3.10 style:
+    if camlp4 -loaded-modules >/dev/null 2>/dev/null; then
+	camlp4style=310
+    else
+	camlp4style=309
+    fi
+    lcamlp4="camlp4.$camlp4style"
+    rm -f "site-lib-src/camlp4"
+    ln -s "camlp4.$camlp4style" "site-lib-src/camlp4"
+    echo "camlp4: using $camlp4_cmd, style $camlp4style"
 else
     lcamlp4=''
     echo "camlp4: not present"

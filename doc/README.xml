@@ -118,6 +118,7 @@ when installing safe_camlp4 (thanks to Daniel Janus)</p>
 Pietro Abate)</em></p>
 	<p><em>Better support for Windows (with help from Robert
 Roessler)</em></p>
+	<p><em>Support for camlp4 on O'Caml 3.10</em></p>
       </li>
 
       <li>

@@ -95,11 +95,19 @@ get_lib_file () {
 }
 
 
-apply_cygpath () {
+cygpath_to_unix () {
     v=$1
     eval "p=\"\$$v\""
     p="`cygpath -w -s \"$p\"`"
     p="`cygpath -u \"$p\"`"
+    eval "$v=\"$p\""
+}
+
+
+cygpath_to_win32 () {
+    v=$1
+    eval "p=\"\$$v\""
+    p="`cygpath -w -l \"$p\"`"
     eval "$v=\"$p\""
 }
 
@@ -223,8 +231,7 @@ if [ ! -d "$ocaml_core_stdlib" ]; then
 fi
 
 if [ ${use_cygpath} -gt 0 ]; then
-    echo "Applying cygpath..."
-    apply_cygpath ocaml_core_stdlib
+    cygpath_to_unix ocaml_core_stdlib
     # This makes ocaml_core_stdlib a Unix-type path
 fi
 
@@ -378,6 +385,10 @@ fi
 
 if in_path camlp4; then
     camlp4_dir=`camlp4 -where`
+    if [ ${use_cygpath} -gt 0 ]; then
+        cygpath_to_win32 camlp4_dir
+        # This makes camlp4_dir a windows path
+    fi
     camlp4_version=`camlp4 -v 2>&1`
     if [ "$have_dlls" = "yes" ]; then
 	camlp4_cmd="camlp4"

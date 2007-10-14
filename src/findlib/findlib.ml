@@ -316,13 +316,14 @@ let resolve_path ?base p =
 		  let pkg = String.sub p 1 (String.length p - 1) in
 		  package_directory pkg
 	  )
-      | '/' ->
-	  p
       | _ ->
 	  ( match base with
 		None -> p
 	      | Some b ->
-		  Filename.concat b p
+		  if Filename.is_relative p then
+		    Filename.concat b p
+		  else
+		    p
 	  )
   )
 ;;

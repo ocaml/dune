@@ -1,3 +1,9 @@
+Bug: ocamlfind install -patch-version writes incorrect META for
+    subpackages. It writes
+	package name (...)
+    instead of
+	package "name" (...)
+
 Pietro Abate <pietro.abate@anu.edu.au>
 	include findlib-ppc.patch
 

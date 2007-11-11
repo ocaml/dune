@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: itest,v 1.10 2003/09/30 11:25:26 gerd Exp $
+# $Id$
 # ----------------------------------------------------------------------
 #
 
@@ -10,6 +10,9 @@ case `uname` in
 	execsuffix= ;;
 esac
 ocamlfind="src/findlib/ocamlfind${execsuffix}"
+
+PATH="./tools:$PATH"
+export PATH
 
 check_linkage () {
     p=$1

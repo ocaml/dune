@@ -7,7 +7,7 @@
 
 #set -x
 
-version="1.1.3test1"
+version="1.1.3"
 
 # Remember the old IFS value:
 oldifs="$IFS"
@@ -100,14 +100,6 @@ cygpath_to_unix () {
     eval "p=\"\$$v\""
     p="`cygpath -w -s \"$p\"`"
     p="`cygpath -u \"$p\"`"
-    eval "$v=\"$p\""
-}
-
-
-cygpath_to_win32 () {
-    v=$1
-    eval "p=\"\$$v\""
-    p="`cygpath -w -l \"$p\"`"
     eval "$v=\"$p\""
 }
 
@@ -214,12 +206,12 @@ if [ -z "$system" ]; then
     # - cygwin
     # - some other string means Unix
     # - empty means ocamlc does not support -config
-
-    case "$system" in
-	mingw) use_cygpath=1;;
-	win32) use_cygpath=1;;
-    esac
 fi
+
+case "$system" in
+    mingw) use_cygpath=1;;
+    win32) use_cygpath=1;;
+esac
 
 ######################################################################
 # Find out standard library location
@@ -305,7 +297,6 @@ if [ -z "${ocamlfind_config}" ]; then
     esac
 fi
 
-
 ######################################################################
 # Test the threading model
 
@@ -386,7 +377,7 @@ fi
 if in_path camlp4; then
     camlp4_dir=`camlp4 -where`
     if [ ${use_cygpath} -gt 0 ]; then
-        cygpath_to_win32 camlp4_dir
+	camlp4_dir=`echo x | env USE_CYGPATH=1 tools/patch x "$camlp4_dir"`
         # This makes camlp4_dir a windows path
     fi
     camlp4_version=`camlp4 -v 2>&1`

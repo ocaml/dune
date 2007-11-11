@@ -55,8 +55,10 @@ d site-lib-src/bigarray
 f site-lib-src/bigarray/META.in
 f site-lib-src/bigarray/interfaces.in
 f site-lib-src/bigarray/interfaces.out
-d site-lib-src/camlp4
-f site-lib-src/camlp4/META.in
+d site-lib-src/camlp4.309
+f site-lib-src/camlp4.309/META.in
+d site-lib-src/camlp4.310
+f site-lib-src/camlp4.310/META.in
 d site-lib-src/dbm
 f site-lib-src/dbm/META.in
 f site-lib-src/dbm/interfaces.in

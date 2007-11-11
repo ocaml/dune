@@ -110,7 +110,7 @@ configuration files, and library routines in detail.</p>
     <ul>
 
       <li>
-	<p><em>SVN:</em> Fix in build scripts: Prepending $(prefix)
+	<p><em>1.1.3:</em> Fix in build scripts: Prepending $(prefix)
 when installing safe_camlp4 (thanks to Daniel Janus)</p>
 	<p>Non-existing -I directories are ignored
 (thanks to Nicolas Pouillard)</p>

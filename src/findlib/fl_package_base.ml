@@ -607,33 +607,37 @@ let module_conflict_report_1 identify_dir incpath =
   let dirs = ref [] in
 
   let examine_dir d =
-    let d    = Fl_split.norm_dir d in
-    let d_id = identify_dir d in
-
-    (* Is d new? *)
-    if not (List.mem d_id !dirs) then begin
-      dirs := d_id :: !dirs;
-      (* Yes: Get all files ending in .cmi *)
-      try
-	let d_all = Array.to_list(Sys.readdir d) in   (* or Sys_error *)
-	let d_cmi = List.filter
-		      (fun n -> Filename.check_suffix n ".cmi")
-		      d_all in
-	(* Add the modules to dir_of_module: *)
-	List.iter
-	  (fun m ->
-	     try
-	       let entry = Hashtbl.find dir_of_module m in (* or Not_found *)
-	       entry := d :: !entry
-	     with
-		 Not_found ->
-		   Hashtbl.add dir_of_module m (ref [d])
-	  )
-	  d_cmi
-      with
-	  Sys_error msg ->
-	    prerr_endline ("findlib: [WARNING] cannot read directory " ^ msg)
-    end
+    try
+      let d    = Fl_split.norm_dir d in
+      let d_id = identify_dir d in
+      
+      (* Is d new? *)
+      if not (List.mem d_id !dirs) then begin
+	dirs := d_id :: !dirs;
+	(* Yes: Get all files ending in .cmi *)
+	try
+	  let d_all = Array.to_list(Sys.readdir d) in   (* or Sys_error *)
+	  let d_cmi = 
+	    List.filter
+	      (fun n -> Filename.check_suffix n ".cmi")
+	      d_all in
+	  (* Add the modules to dir_of_module: *)
+	  List.iter
+	    (fun m ->
+	       try
+		 let entry = Hashtbl.find dir_of_module m in (* or Not_found *)
+		 entry := d :: !entry
+	       with
+		   Not_found ->
+		     Hashtbl.add dir_of_module m (ref [d])
+	    )
+	    d_cmi
+	with
+	    Sys_error msg ->
+	      prerr_endline ("findlib: [WARNING] cannot read directory " ^ msg)
+      end
+    with
+      | _ -> ()  (* identify_dir fails *)
   in
 
   let print_report() =

@@ -19,7 +19,7 @@ type package =
     (** The definition of a package *)
 
 
-val init : string list -> string -> unit
+val init : string list -> string -> string option -> unit
   (** This function must be called before [Fl_package_base] can be used.
    * The first string corresponds to the [OCAMLPATH] setting, the second
    * string is the location of the standard library.

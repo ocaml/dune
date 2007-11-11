@@ -29,6 +29,7 @@ val init :
       ?env_ocamlfind_destdir: string ->
       ?env_ocamlfind_metadir: string ->
       ?env_ocamlfind_commands: string ->
+      ?env_ocamlfind_ignore_dups_in: string ->
       ?env_camllib: string ->
       ?env_ldconf: string ->
       ?config: string -> 
@@ -80,6 +81,7 @@ val init_manually :
       ?ocamldep_command: string ->     (* default: "ocamldep"   *)
       ?ocamlbrowser_command: string -> (* default: "ocamlbrowser"   *)
       ?ocamldoc_command: string ->     (* default: "ocamldoc"   *)
+      ?ignore_dups_in:string ->        (* default: None *)
       ?stdlib: string ->               (* default: taken from Findlib_config *)
       ?ldconf: string ->
       install_dir: string ->
@@ -122,6 +124,10 @@ val package_directory : string -> string
    * Raises [No_such_package] if the package cannot be found.
    *)
 
+val ignore_dups_in : unit -> string option
+  (** If [Some d], duplicate packages below [d] are ignored, and do not
+    * produce warnings.  (Only affects the generation of warnings.)
+   *)
 
 val package_property : string list -> string -> string -> string
   (** [package_property predlist pkg propname]:

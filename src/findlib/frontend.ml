@@ -174,13 +174,17 @@ let is_dll p =
 
 
 let identify_dir d =
-  let s = Unix.stat d in
-  (s.Unix.st_dev, s.Unix.st_ino)
+  match Sys.os_type with
+    | "Win32" ->
+	failwith "identify_dir"   (* not available *)
+    | _ ->
+	let s = Unix.stat d in
+	(s.Unix.st_dev, s.Unix.st_ino)
 ;;
 
 
 let conflict_report incpath pkglist =
-  (* First check whether there are several definitions for packages
+  (* Check whether there are several definitions for packages
    * in the current path. We remove duplicate directories first.
    * Note that all other checks are not sensitive to duplicate directories.
    *)

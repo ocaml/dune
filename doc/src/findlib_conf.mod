@@ -394,6 +394,20 @@ ocamlc=ocamlc-3.00 ocamlopt=ocamlopt-3.00 ocamlcp=ocamlcp-3.00 ocamlmktop=ocamlm
 </varlistentry>
 </variablelist>
 
+<variablelist>
+<varlistentry>
+  <term><literal>OCAMLFIND_IGNORE_DUPS_IN</literal></term>
+  <listitem><para>
+    This variable instructs findlib not to emit warnings that packages
+    or module occur several times. The variable must be set to the
+    directory where the packages reside that are to be ignored for this
+    warning.
+  </para>
+  </listitem>
+</varlistentry>
+</variablelist>
+
+
 </para>
 </refsect1>
 

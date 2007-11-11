@@ -19,6 +19,7 @@ let conf_search_path = ref [];;
 let conf_command = ref [];;
 let conf_stdlib = ref "";;
 let conf_ldconf = ref "";;
+let conf_ignore_dups_in = ref (None : string option);;
 
 let ocamlc_default = "ocamlc";;
 let ocamlopt_default = "ocamlopt";;
@@ -37,6 +38,7 @@ let init_manually
       ?(ocamldep_command = ocamldep_default)
       ?(ocamlbrowser_command = ocamlbrowser_default)
       ?(ocamldoc_command = ocamldoc_default)
+      ?ignore_dups_in
       ?(stdlib = Findlib_config.ocaml_stdlib)
       ?(ldconf = Findlib_config.ocaml_ldconf)
       ~install_dir
@@ -55,7 +57,8 @@ let init_manually
   conf_meta_directory := meta_dir;
   conf_stdlib := stdlib;
   conf_ldconf := ldconf;
-  Fl_package_base.init !conf_search_path stdlib
+  conf_ignore_dups_in := ignore_dups_in;
+  Fl_package_base.init !conf_search_path stdlib !conf_ignore_dups_in
 ;;
 
 
@@ -84,7 +87,8 @@ let command_names cmd_spec =
 
 let init
       ?env_ocamlpath ?env_ocamlfind_destdir ?env_ocamlfind_metadir
-      ?env_ocamlfind_commands ?env_camllib ?env_ldconf
+      ?env_ocamlfind_commands ?env_ocamlfind_ignore_dups_in
+      ?env_camllib ?env_ldconf
       ?config ?toolchain () =
   
   let config_file =
@@ -215,6 +219,12 @@ let init
       | None ->
 	  try Sys.getenv "OCAMLFIND_LDCONF" with Not_found -> ""
   in
+  let ignore_dups_in =
+    match  env_ocamlfind_ignore_dups_in with
+      | Some x -> Some x
+      | None ->
+	  try Some(Sys.getenv "OCAMLFIND_IGNORE_DUPS_IN") 
+	  with Not_found -> None in
 
   let ocamlc, ocamlopt, ocamlcp, ocamlmktop, ocamldep, ocamlbrowser,
       ocamldoc,
@@ -241,6 +251,7 @@ let init
     ~ocamldep_command: ocamldep
     ~ocamlbrowser_command: ocamlbrowser
     ~ocamldoc_command: ocamldoc
+    ?ignore_dups_in
     ~stdlib: stdlib
     ~ldconf: ldconf
     ~install_dir: destdir
@@ -273,6 +284,7 @@ let ocaml_stdlib() = !conf_stdlib;;
 
 let ocaml_ldconf() = !conf_ldconf;;
 
+let ignore_dups_in() = !conf_ignore_dups_in;;
 
 let package_directory pkg =
   (Fl_package_base.query pkg).Fl_package_base.package_dir

@@ -39,15 +39,18 @@ let has_prefix s pref =
 let ocamlpath = ref [];;
 let ocamlstdlib = ref "";;
 
+let conf_ignore_dups_in = ref (None : string option)
+
 let store = Fl_metastore.create();;
   (* We collect here only nodes, but no relations. First copy [store]
    * and put relations into the copy.
    *)
 
 
-let init path stdlib =
+let init path stdlib ignore_dups_in =
   ocamlpath := path;
-  ocamlstdlib := stdlib
+  ocamlstdlib := stdlib;
+  conf_ignore_dups_in := ignore_dups_in
 ;;
 
 
@@ -413,6 +416,18 @@ let package_definitions ~search_path package_name =
 ;;
 
 
+let in_report_search_path identify_dir d =
+  (* Whether package dir d is to be considered for generating reports.
+     d is sorted out when the ignore_dups_in option is set
+   *)
+  match !conf_ignore_dups_in with
+    | None -> true
+    | Some id ->
+	try identify_dir d <> identify_dir id 
+	with _ -> Fl_split.norm_dir d <> Fl_split.norm_dir id
+;;
+
+
 let package_conflict_report_1 identify_dir () =
   let remove_dups_from_path p =
     (* Removes directories which are physically the same from the path [p],
@@ -443,8 +458,15 @@ let package_conflict_report_1 identify_dir () =
     remove p
   in
 
+  (* If we have ignore_dups_in this directory is removed from our search
+     path first
+   *)
+  let search_path0 =
+    List.filter (in_report_search_path identify_dir) !ocamlpath in
+
+  (* Now eliminate all duplicates *)
   let search_path =
-    remove_dups_from_path !ocamlpath in
+    remove_dups_from_path search_path0 in
 
   Fl_metastore.iter_up
     (fun pkg ->
@@ -629,7 +651,14 @@ let module_conflict_report_1 identify_dir incpath =
       dir_of_module
   in
 
-  List.iter examine_dir incpath;
+  (* If we have ignore_dups_in this directory is removed from our search
+     path first
+   *)
+  let incpath1 =
+    List.filter (in_report_search_path identify_dir) incpath in
+
+
+  List.iter examine_dir incpath1;
 
   print_report();
   flush stderr

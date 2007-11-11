@@ -112,13 +112,17 @@ configuration files, and library routines in detail.</p>
       <li>
 	<p><em>SVN:</em> Fix in build scripts: Prepending $(prefix)
 when installing safe_camlp4 (thanks to Daniel Janus)</p>
-	<p><em>Non-existing -I directories are ignored
-(thanks to Nicolas Pouillard)</em></p>
-        <p><em>A script to create a MacOS X package (thanks to
-Pietro Abate)</em></p>
-	<p><em>Better support for Windows (with help from Robert
-Roessler and David Allsopp)</em></p>
-	<p><em>Support for camlp4 on O'Caml 3.10</em></p>
+	<p>Non-existing -I directories are ignored
+(thanks to Nicolas Pouillard)</p>
+        <p>A script to create a MacOS X package (thanks to
+Pietro Abate)</p>
+	<p>Better support for Windows (with help from Robert
+Roessler and David Allsopp)</p>
+	<p>Support for camlp4 on O'Caml 3.10</p>
+	<p>Fix: "ocamlfind install" with "-patch" option writes
+now correct META file for the case that subpackages occur</p>
+	<p>Adding environment variable OCAMLFIND_IGNORE_DUPS_IN
+to reduce the number of warnings ocamlfind emits</p>
       </li>
 
       <li>

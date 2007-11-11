@@ -265,7 +265,7 @@ let rec print f pkg =
   List.iter print_def pkg.pkg_defs;
   List.iter
     (fun (name,child) ->
-       fprintf f "\npackage %s (\n" name;
+       fprintf f "\npackage \"%s\" (\n" (escape name);
        print f child;
        fprintf f ")\n"
     )

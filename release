@@ -4,8 +4,8 @@ set -e
 
 version=`./configure -version 2>/dev/null`
 destdir="findlib-$version"
-trunk="https://gps.dynxs.de/svn/lib-findlib/trunk"
-tag="https://gps.dynxs.de/svn/lib-findlib/tags/$destdir"
+trunk="https://godirepo.camlcity.org/svn/lib-findlib/trunk"
+tag="https://godirepo.camlcity.org/svn/lib-findlib/tags/$destdir"
 
 mkdir -p packages
 rm -rf "packages/$destdir"

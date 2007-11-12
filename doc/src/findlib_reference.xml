@@ -1732,6 +1732,20 @@ MOREINFO="NONE"
 MOREINFO="NONE"
 >ldconf</LITERAL>. 
   </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>OCAMLFIND_IGNORE_DUPS_IN</LITERAL></TERM><LISTITEM
+><PARA
+>    This variable instructs findlib not to emit warnings that packages
+    or module occur several times. The variable must be set to the
+    directory where the packages reside that are to be ignored for this
+    warning.
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
 </PARA></REFSECT1></REFENTRY><REFENTRY
 ><REFMETA
 ><REFENTRYTITLE

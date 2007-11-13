@@ -10,8 +10,8 @@ dnl This file is input of the m4 macro processor.
 `archive(byte,toploop,camlp4r) = "camlp4r.cma"'
 
 `# For the preprocessor itself:'
-`archive(syntax,preprocessor,camlp4o) = "-parser o -printer p"'
-`archive(syntax,preprocessor,camlp4r) = "-parser r -printer p"'
+`archive(syntax,preprocessor,camlp4o) = "-parser o -parser op -printer p"'
+`archive(syntax,preprocessor,camlp4r) = "-parser r -parser rp -printer p"'
 `preprocessor = "'camlp4_cmd`"'
 
 `package "lib" ('

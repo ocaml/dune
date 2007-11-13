@@ -110,6 +110,11 @@ configuration files, and library routines in detail.</p>
     <ul>
 
       <li>
+	<p><em>1.2.1:</em>Fix: Camlp4 rules now activate the
+stream parser extension</p>
+      </li>
+
+      <li>
 	<p><em>1.2:</em> Fix in build scripts: Prepending $(prefix)
 when installing safe_camlp4 (thanks to Daniel Janus)</p>
 	<p>Non-existing -I directories are ignored

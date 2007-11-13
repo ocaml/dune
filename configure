@@ -7,7 +7,7 @@
 
 #set -x
 
-version="1.2"
+version="1.2.1"
 
 # Remember the old IFS value:
 oldifs="$IFS"
@@ -392,9 +392,10 @@ if in_path camlp4; then
     else
 	camlp4style=309
     fi
-    lcamlp4="camlp4.$camlp4style"
-    rm -f "site-lib-src/camlp4"
-    ln -s "camlp4.$camlp4style" "site-lib-src/camlp4"
+    lcamlp4="camlp4"
+    rm -rf "site-lib-src/camlp4"
+    mkdir "site-lib-src/camlp4"
+    cp "site-lib-src/camlp4.$camlp4style/META.in" "site-lib-src/camlp4/"
     echo "camlp4: using $camlp4_cmd, style $camlp4style"
 else
     lcamlp4=''

@@ -61,7 +61,7 @@ get_path () {
 get_stdlib () {
     # Older versions of ocamlc do not accept -where, so there is a fallback
     # method:
-    ocamlc -where 2>/dev/null || {
+    ocamlc -where 2>/dev/null | sed -e "s/\r//" || {
 	ocamlc -v | sed -n -e "/Standard library directory/s/.*: \(.*\)/\1/p"; }
 }
 

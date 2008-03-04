@@ -1744,11 +1744,21 @@ let install_package () =
 
   if dll_list <> [] && have_libexec && !ldconf <> "ignore" then begin
     (* Check whether libexec is mentioned in ldconf *)
+    (* FIXME: We have to be careful with case-insensitive filesystems. 
+       Currently, we only check for Win32, but also OS X may have ci 
+       filesystems. So some better check would be nice.
+       Furthermore, String.lowercase assumes that the encoding of file names is
+       ISO-8859-1. This is probably plainly wrong.
+     *)
     let lines = read_ldconf !ldconf in
     let dlldir_norm = Fl_split.norm_dir dlldir in
-    if not (List.exists
-	      (fun d -> Fl_split.norm_dir d = dlldir_norm)
-	      lines) then
+    let dlldir_norm_lc = String.lowercase dlldir_norm in
+    let ci_filesys = (Sys.os_type = "Win32") in
+    let check_dir d =
+      let d' = Fl_split.norm_dir d in
+      (d' = dlldir_norm) || 
+	(ci_filesys && String.lowercase d' = dlldir_norm_lc) in
+    if not (List.exists check_dir lines) then
       prerr_endline("ocamlfind: [WARNING] You have installed DLLs but the directory " ^ dlldir_norm ^ " is not mentioned in ld.conf");
   end;
 

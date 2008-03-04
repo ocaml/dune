@@ -109,6 +109,15 @@ configuration files, and library routines in detail.</p>
     <title>List of Changes</title>
     <ul>
 
+    <li>
+      <p><em>SVN:</em>Fix: Problem with CR character (Cygwin)
+        (Thanks to David Allsopp)
+      </p>
+      <p>Fix: Case-insensitive filesystems (partially solved)
+        (Thanks to David Allsopp)
+	</p>
+    </li>
+
       <li>
 	<p><em>1.2.1:</em>Fix: Camlp4 rules now activate the
 stream parser extension</p>

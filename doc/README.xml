@@ -110,16 +110,18 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
-      <p><em>SVN:</em>Fix: Problem with CR character (Cygwin)
+      <p><em>1.2.2:</em> Fix: Problem with CR character (Cygwin)
         (Thanks to David Allsopp)
       </p>
       <p>Fix: Case-insensitive filesystems (partially solved)
         (Thanks to David Allsopp)
 	</p>
+	<p>Fix: File name with backslashes at the end (Win32; 
+           thanks to Dmitry Grebeniuk)</p>
     </li>
 
       <li>
-	<p><em>1.2.1:</em>Fix: Camlp4 rules now activate the
+	<p><em>1.2.1:</em> Fix: Camlp4 rules now activate the
 stream parser extension</p>
       </li>
 

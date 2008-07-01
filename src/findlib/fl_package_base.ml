@@ -90,9 +90,12 @@ let packages_in_meta_file ?(directory_required = false)
       else
 	match d.[0] with
           | '^'
-	  | '+' -> Filename.concat
-	      !ocamlstdlib
-	      (String.sub d 1 (String.length d - 1))
+	  | '+' -> 
+	      let rest = String.sub d 1 (String.length d - 1) in
+	      if rest = "" then
+		!ocamlstdlib
+	      else
+		Filename.concat !ocamlstdlib rest
 	  | _ -> 
 	      if Filename.is_relative d then
 		Filename.concat pkg_dir d

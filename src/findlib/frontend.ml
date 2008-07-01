@@ -21,6 +21,19 @@ type psubst =
 ;;
 
 
+let slashify s =
+  match Findlib_config.system with
+    | "mingw" | "cygwin" ->
+	let u = String.copy s in
+	for k = 0 to String.length u - 1 do
+	  if u.[k] = '\\' then u.[k] <- '/'
+	done;
+	u
+    | _ ->
+	s
+
+
+
 let percent_subst spec lookup s =
   (* spec = [ "%c", [ "ctext1"; "ctext2"; ... ];
    *          "%d", [ "dtext1"; "dtext2"; ... ] ]
@@ -118,7 +131,7 @@ let use_package prefix pkgnames =
   let pdirs =
     List.map
       (fun pname ->
-         "-I " ^ package_directory pname
+         "-I " ^ slashify(package_directory pname)
       )
       pkgnames
   in
@@ -354,7 +367,7 @@ let expand predicates eff_packages format =
 	    (* May raise No_such_package *)
 	 let spec =
 	   [ "%p",  [pkg];
-             "%d",  [dir];
+             "%d",  [slashify dir];
 	     "%D",  [try package_property predicates pkg "description"
 		     with Not_found -> "[n/a]"];
 	     "%v",  [try package_property predicates pkg "version"
@@ -561,7 +574,7 @@ let process_pp_spec syntax_preds packages pp_opts =
       (List.map
 	 (fun pkg ->
 	    let pkgdir = package_directory pkg in
-	      [ "-I"; pkgdir ]
+	      [ "-I"; slashify pkgdir ]
 	 )
 	 pp_packages) in
 
@@ -723,13 +736,13 @@ let ocamlc which () =
 		   (fun s ->
 		      let s = resolve_path s in
                       if Sys.file_exists s then incpath := s :: !incpath;  (* reverted below *)
-		      add_spec_fn "-I" s ));
+		      add_spec_fn "-I" (slashify s) ));
 
 	  "-impl", 
-	  Arg.String (fun s -> pass_files := !pass_files @ [ Impl s ]);
+	  Arg.String (fun s -> pass_files := !pass_files @ [ Impl(slashify s) ]);
 
 	  "-intf", 
-	  Arg.String (fun s -> pass_files := !pass_files @ [ Intf s ]);
+	  Arg.String (fun s -> pass_files := !pass_files @ [ Intf(slashify s) ]);
 
 	  "-pp", 
 	  Arg.String (fun s -> pp_specified := true; add_spec_fn "-pp" s);
@@ -916,8 +929,8 @@ let ocamlc which () =
 	    if List.mem npkgdir exclude_list then
 	      []
 	    else
-	      [ "-I"; pkgdir;
-		"-ccopt"; "-I" ^ pkgdir; ])
+	      [ "-I"; slashify pkgdir;
+		"-ccopt"; "-I" ^ slashify pkgdir; ])
 	 eff_packages_dl) in
 
   let l_options =
@@ -930,9 +943,9 @@ let ocamlc which () =
 	    else
 	      if Findlib_config.system = "win32" then
 		(* Microsoft toolchain *)
-		[ "-ccopt"; "/link /libpath:" ^ pkgdir ]
+		[ "-ccopt"; "/link /libpath:" ^ slashify pkgdir ]
 	      else
-		[ "-ccopt"; "-L" ^ pkgdir; ])
+		[ "-ccopt"; "-L" ^ slashify pkgdir; ])
 	 eff_link_dl) in
 
   let archives =
@@ -949,6 +962,7 @@ let ocamlc which () =
 		 | `POSIX_threads -> threads_dir
 	     else
 	       package_directory pkg in
+	   let pkg_dir = slashify pkg_dir in
 	   List.map
 	     (fun arch ->
 		resolve_path ~base:pkg_dir arch)
@@ -999,13 +1013,13 @@ let ocamlc which () =
 
   let dll_dirs =
     remove_dups
-      ((List.map package_directory !dll_pkgs) @   (* XXX *)
+      ((List.map package_directory !dll_pkgs) @ 
        (if !dll_pkgs_all then eff_link_dl else [])) in
 
   let dll_options =
     List.flatten
       (List.map
-	 (fun pkg -> ["-dllpath";  pkg] )
+	 (fun pkg -> ["-dllpath";  slashify pkg] )
 	 dll_dirs) in
 
   let arguments =
@@ -1126,7 +1140,7 @@ let ocamldoc() =
     remove_dups (List.map package_directory eff_packages) in
 
   let arguments =
-    (List.flatten (List.map (fun d -> [ "-I"; d ]) eff_packages_dl)) @
+    (List.flatten (List.map (fun d -> [ "-I"; slashify d ]) eff_packages_dl)) @
     pp_command @
     !options in
 
@@ -1233,7 +1247,7 @@ let ocamldep () =
 	    add_switch
 	    add_spec
 	    [ "-I",
-	      Arg.String (fun s -> add_spec_fn "-I" (resolve_path s));
+	      Arg.String (fun s -> add_spec_fn "-I" (slashify (resolve_path s)));
 
 	      "-pp", Arg.String (fun s -> pp_specified := true;
 		 	           add_spec_fn "-pp" s);
@@ -1312,7 +1326,7 @@ let ocamlbrowser () =
 
   Arg.parse
       [
-	"-I", Arg.String (fun s -> add_spec_fn "-I" (resolve_path s)),
+	"-I", Arg.String (fun s -> add_spec_fn "-I" (slashify(resolve_path s))),
            " <dir>          Add <dir> to the list of include directories";
 	"-all", Arg.Set add_all,
 	     "              Add all packages to include path";
@@ -1333,7 +1347,7 @@ let ocamlbrowser () =
        (List.map
 	  (fun pkg ->
 	     let dir = Findlib.package_directory pkg in
-	     [ "-I"; dir ]
+	     [ "-I"; slashify dir ]
 	  )
 	  !packages
        )
@@ -1765,7 +1779,7 @@ let install_package () =
   (* Check if there is a postinstall script: *)
   let postinstall = Filename.concat !destdir "postinstall" in
   if Sys.file_exists postinstall then
-    run_command true postinstall [ !destdir; !pkgname ]
+    run_command true postinstall [ slashify !destdir; !pkgname ]
 ;;
 
 
@@ -1880,7 +1894,7 @@ let remove_package () =
   (* Check if there is a postremove script: *)
   let postremove = Filename.concat !destdir "postremove" in
   if Sys.file_exists postremove then
-    run_command true postremove [ !destdir; !pkgname ]
+    run_command true postremove [ slashify !destdir; !pkgname ]
 ;;
 
 

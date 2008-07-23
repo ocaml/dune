@@ -110,6 +110,11 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>1.2.3:</em> Solving the CR deletion differently, to
+         make OS X happy.</p>
+    </li>	 
+
+    <li>
       <p><em>1.2.2:</em> Fix: Problem with CR character (Cygwin)
         (Thanks to David Allsopp)
       </p>

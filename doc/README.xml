@@ -110,6 +110,15 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>1.2.4:</em> Fix: Bigarray needs unix (Thanks to Markus Mottl)</p>
+      <p>Fix: In the version of camlp4 provided by O'Caml 3.11 various
+         libraries do not contain dynlink anymore. Because of this, dynlink
+         becomes a prerequisite of camlp4. (Thanks to Martin Jambon)</p>
+      <p>Attempt: Fixing the space issue for paths (Win32). It is unclear
+         whether it is solved. (Thanks to Christophe Troestler)</p>
+    </li>
+
+    <li>
       <p><em>1.2.3:</em> Solving the CR deletion differently, to
          make OS X happy.</p>
     </li>	 

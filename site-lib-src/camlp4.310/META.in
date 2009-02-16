@@ -6,6 +6,7 @@ dnl This file is input of the m4 macro processor.
 `directory = "'camlp4_dir`"'
 
 `# For the toploop:'
+`requires(byte,toploop) = "'camlp4_dynlink`"'
 `archive(byte,toploop,camlp4o) = "camlp4o.cma"'
 `archive(byte,toploop,camlp4r) = "camlp4r.cma"'
 
@@ -15,7 +16,7 @@ dnl This file is input of the m4 macro processor.
 `preprocessor = "'camlp4_cmd`"'
 
 `package "lib" ('
-`  requires = "camlp4"'
+`  requires = "camlp4 'camlp4_dynlink`"'
 `  version = "[distributed with Ocaml]"'
 `  description = "Camlp4 library"'
 `  archive(byte) = "camlp4lib.cma"'

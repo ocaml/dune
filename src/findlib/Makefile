@@ -78,18 +78,18 @@ clean:
 	  ocamlfind$(EXEC_SUFFIX) ocamlfind_opt$(EXEC_SUFFIX)
 
 install: all
-	mkdir -p $(prefix)$(OCAML_SITELIB)/$(NAME)
-	mkdir -p $(prefix)$(OCAMLFIND_BIN)
-	test $(INSTALL_TOPFIND) -eq 0 || cp topfind $(prefix)$(OCAML_CORE_STDLIB)
+	mkdir -p "$(prefix)$(OCAML_SITELIB)/$(NAME)"
+	mkdir -p "$(prefix)$(OCAMLFIND_BIN)"
+	test $(INSTALL_TOPFIND) -eq 0 || cp topfind "$(prefix)$(OCAML_CORE_STDLIB)"
 	files=`$(TOP)/tools/collect_files $(TOP)/Makefile.config findlib.cmi findlib.mli findlib.cma topfind.cmi topfind.mli fl_package_base.mli fl_package_base.cmi fl_metascanner.mli fl_metascanner.cmi findlib_top.cma findlib.cmxa findlib.a META` && \
-	cp $$files $(prefix)$(OCAML_SITELIB)/$(NAME)
+	cp $$files "$(prefix)$(OCAML_SITELIB)/$(NAME)"
 	f="ocamlfind$(EXEC_SUFFIX)"; { test -f ocamlfind_opt$(EXEC_SUFFIX) && f="ocamlfind_opt$(EXEC_SUFFIX)"; }; \
-	cp $$f $(prefix)$(OCAMLFIND_BIN)/ocamlfind$(EXEC_SUFFIX)
+	cp $$f "$(prefix)$(OCAMLFIND_BIN)/ocamlfind$(EXEC_SUFFIX)"
 
 install-num-top:
-	mkdir -p $(prefix)$(OCAML_SITELIB)/num-top
+	mkdir -p "$(prefix)$(OCAML_SITELIB)/num-top"
 	cp num_top.cma num_top.cmi num_top_printers.cmi \
-		$(prefix)$(OCAML_SITELIB)/num-top
+		"$(prefix)$(OCAML_SITELIB)/num-top"
 
 # Note: uninstall-num-top is part of the removal of the META files.
 

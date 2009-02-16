@@ -6,4 +6,4 @@ dnl This file is input of the m4 macro processor.
 `directory = "^"'
 `browse_interfaces = "'interfaces`"'
 `archive(byte) = "dynlink.cma"'
-
+natdynlink

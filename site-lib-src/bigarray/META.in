@@ -1,6 +1,6 @@
 dnl This file is input of the m4 macro processor.
 `# Specifications for the "bigarray" library:'
-`requires = ""'
+`requires = "unix"'
 `version = "[distributed with Ocaml]"'
 `description = "Large statically allocated arrays"'
 `directory = "^"'

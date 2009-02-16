@@ -21,6 +21,7 @@ type psubst =
 ;;
 
 
+
 let slashify s =
   match Findlib_config.system with
     | "mingw" | "cygwin" ->
@@ -31,6 +32,33 @@ let slashify s =
 	u
     | _ ->
 	s
+
+
+let out_path ?(prefix="") s =
+  match Findlib_config.system with
+    | "mingw" | "cygwin" ->
+	let u = slashify s in
+	prefix ^ 
+	  (if String.contains u ' ' then
+	     (* Desperate attempt to fix the space problem in paths.
+                Note that we invoke commands via Unix.open_process, and
+                this function already quotes the arguments on win32.
+                However, for -ccopt arguments, one quoting level seems
+                to be lost, and we have to add another level to compensate.
+                E.g. for the list of args
+                  [ -ccopt; -L/my programs/include -L/somewhere ]
+                we get after out_path
+                  [ -ccopt; "-I/my programs/include -L/somewhere" ]
+                which actually translates to
+                  -ccopt "\"-I/my programs/include\" \"-L/somewhere\""
+                on the command line, i.e. a double-quoted argument.
+	      *)
+	     "\"" ^ u ^ "\""
+	   else
+	     u
+	  )
+    | _ ->
+	prefix ^ slashify s
 
 
 
@@ -131,7 +159,7 @@ let use_package prefix pkgnames =
   let pdirs =
     List.map
       (fun pname ->
-         "-I " ^ slashify(package_directory pname)
+         "-I " ^ out_path(package_directory pname)
       )
       pkgnames
   in
@@ -367,7 +395,7 @@ let expand predicates eff_packages format =
 	    (* May raise No_such_package *)
 	 let spec =
 	   [ "%p",  [pkg];
-             "%d",  [slashify dir];
+             "%d",  [out_path dir];
 	     "%D",  [try package_property predicates pkg "description"
 		     with Not_found -> "[n/a]"];
 	     "%v",  [try package_property predicates pkg "version"
@@ -930,7 +958,7 @@ let ocamlc which () =
 	      []
 	    else
 	      [ "-I"; slashify pkgdir;
-		"-ccopt"; "-I" ^ slashify pkgdir; ])
+		"-ccopt"; out_path ~prefix:"-I" pkgdir; ])
 	 eff_packages_dl) in
 
   let l_options =
@@ -943,9 +971,9 @@ let ocamlc which () =
 	    else
 	      if Findlib_config.system = "win32" then
 		(* Microsoft toolchain *)
-		[ "-ccopt"; "/link /libpath:" ^ slashify pkgdir ]
+		[ "-ccopt"; out_path ~prefix:"/link /libpath:" pkgdir ]
 	      else
-		[ "-ccopt"; "-L" ^ slashify pkgdir; ])
+		[ "-ccopt"; out_path ~prefix:"-L" pkgdir; ])
 	 eff_link_dl) in
 
   let archives =

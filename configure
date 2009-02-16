@@ -7,7 +7,7 @@
 
 #set -x
 
-version="1.2.3"
+version="1.2.4"
 
 # Remember the old IFS value:
 oldifs="$IFS"
@@ -231,7 +231,7 @@ fi
 
 if [ -z "$ocaml_sitelib" ]; then
     case "$ocaml_core_stdlib" in
-	/opt/*)		ocaml_sitelib=`dirname ${ocaml_core_stdlib}`/site-lib
+	/opt/*)		ocaml_sitelib=`dirname "${ocaml_core_stdlib}"`/site-lib
 			;;
 	*)		ocaml_sitelib="${ocaml_core_stdlib}/site-lib"
 			;;
@@ -241,7 +241,7 @@ fi
 # Find out the directory where ocamlc is:
 
 ocamlc=`get_path ocamlc`
-ocaml_core_bin=`dirname ${ocamlc}`
+ocaml_core_bin=`dirname "${ocamlc}"`
 
 # Set the directory of ocamlfind:
 
@@ -274,7 +274,7 @@ while [ "$d" != '/' ]; do
 	ocaml_core_man="$d/man"
 	d="/"
     else
-	d=`dirname $d`
+	d=`dirname "$d"`
     fi
 done
 
@@ -288,7 +288,7 @@ if [ -z "${ocamlfind_config}" ]; then
     d="$ocaml_core_bin"
     case "$d" in
         */bin)
-	    ocamlfind_config=`dirname $d`/etc/findlib.conf
+	    ocamlfind_config=`dirname "$d"`/etc/findlib.conf
 	    ;;
 	*)
 	    ocamlfind_config=/usr/local/etc/findlib.conf
@@ -358,6 +358,21 @@ echo "Configuring libraries..."
 lbigarray=bigarray
 # always
 
+# Dynlink check.
+
+have_natdynlink=0
+natdynlink=""
+camlp4_dynlink=""
+if [ -f "${ocaml_core_stdlib}/dynlink.cmxa" ]; then
+    have_natdynlink=1
+    natdynlink="archive(native) = \"dynlink.cmxa\""
+    camlp4_dynlink="dynlink"
+    echo "native dynlink: found"
+else
+    natdynlink="archive(native) = \"\""
+    echo "native dynlink: not found"
+fi
+
 # Check whether labltk is present.
 
 if [ -f "${ocaml_core_stdlib}/labltk/labltk.cma" ]; then
@@ -421,8 +436,10 @@ for lib in $l; do
 	"-Dcamlp4_dir=${camlp4_dir}" \
 	"-Dcamlp4_version=${camlp4_version}" \
 	"-Dcamlp4_cmd=${camlp4_cmd}" \
+	"-Dcamlp4_dynlink=${camlp4_dynlink}" \
 	"-Dinterfaces=${if}" \
 	"-Dfindlib_version=${version}" \
+	"-Dnatdynlink=${natdynlink}" \
 	site-lib-src/$lib/META.in >site-lib-src/$lib/META
     echo "Configuration for $lib written to site-lib-src/$lib/META"
 done

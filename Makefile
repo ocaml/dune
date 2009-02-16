@@ -17,13 +17,13 @@ opt:
 	for p in $(PARTS); do ( cd src/$$p; $(MAKE) opt ); done
 
 install:
-	mkdir -p $(prefix)$(OCAMLFIND_BIN)
-	mkdir -p $(prefix)$(OCAMLFIND_MAN)
+	mkdir -p "$(prefix)$(OCAMLFIND_BIN)"
+	mkdir -p "$(prefix)$(OCAMLFIND_MAN)"
 	for p in $(PARTS); do ( cd src/$$p; $(MAKE) install ); done
 	$(MAKE) install-meta
 	cd src/findlib; $(MAKE) install-num-top
 	$(MAKE) install-config
-	cp tools/safe_camlp4 $(prefix)$(OCAMLFIND_BIN)
+	cp tools/safe_camlp4 "$(prefix)$(OCAMLFIND_BIN)"
 	$(MAKE) install-doc
 
 uninstall:
@@ -89,13 +89,13 @@ uninstall-meta:
 
 .PHONY: install-config
 install-config:
-	mkdir -p `dirname $(prefix)$(OCAMLFIND_CONF)`
-	@if [ -f $(prefix)$(OCAMLFIND_CONF) ]; then echo "!!! Keeping old $(prefix)$(OCAMLFIND_CONF) !!!"; fi
-	test -f $(prefix)$(OCAMLFIND_CONF) || cp findlib.conf $(prefix)$(OCAMLFIND_CONF)
+	mkdir -p "`dirname \"$(prefix)$(OCAMLFIND_CONF)\"`"
+	@if [ -f "$(prefix)$(OCAMLFIND_CONF)" ]; then echo "!!! Keeping old $(prefix)$(OCAMLFIND_CONF) !!!"; fi
+	test -f "$(prefix)$(OCAMLFIND_CONF)" || cp findlib.conf "$(prefix)$(OCAMLFIND_CONF)"
 
 .PHONY: uninstall-config
 uninstall-config:
-	@echo Leaving $(OCAMLFIND_CONF) installed, consider manual removal
+	@echo Leaving "$(OCAMLFIND_CONF)" installed, consider manual removal
 
 .PHONY: interface-lists
 interface-lists:

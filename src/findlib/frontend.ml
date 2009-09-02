@@ -314,7 +314,7 @@ let run_command ?filter verbose cmd args =
     Sys.signal Sys.sigint Sys.Signal_ignore in
 
   let need_exe =
-    List.mem Findlib_config.system [ "win32"; "mingw" ] in
+    List.mem Findlib_config.system [ "win32"; "win64"; "mingw" ] in
 
   let fixed_cmd =
     if need_exe then (
@@ -431,7 +431,7 @@ let query_package () =
   let i_format =
     "-I %d" in
   let l_format =
-    if Findlib_config.system = "win32" then
+    if Findlib_config.system = "win32" || Findlib_config.system = "win64" then
       (* Microsoft toolchain *)
       "-ccopt \"/link /libpath:%d\""
     else
@@ -958,9 +958,22 @@ let ocamlc which () =
 	      []
 	    else
 	      [ "-I"; slashify pkgdir;
-		"-ccopt"; out_path ~prefix:"-I" pkgdir; ])
+		(* "-ccopt"; out_path ~prefix:"-I" pkgdir; -- see comment *)
+	      ])
 	 eff_packages_dl) in
+  (* We no longer emit -ccopt options, because ocamlc/ocamlopt already
+     do that for each -I if the C compiler needs to be invoked
+     (so far I tracked it, ocamlc/ocamlopt have always done this, even
+      back in 1996).
+   *)
 
+  let l_options = [] in
+  (* Also, no longer -ccopt -L options. Current ocamlc/ocamlopt do that
+     for each -I option passed to them anyway, so we can omit that here.
+     See ocaml change (quite old, but I was not aware of it):
+      http://camlcvs.inria.fr/cgi-bin/cvsweb/ocaml/asmcomp/asmlink.ml.diff?r1=1.38;r2=1.39
+   *)
+(*
   let l_options =
     List.flatten
       (List.map
@@ -969,12 +982,13 @@ let ocamlc which () =
 	    if List.mem npkgdir exclude_list then
 	      []
 	    else
-	      if Findlib_config.system = "win32" then
+	      if Findlib_config.system = "win32" || Findlib_config.system = "win64" then
 		(* Microsoft toolchain *)
 		[ "-ccopt"; out_path ~prefix:"/link /libpath:" pkgdir ]
 	      else
 		[ "-ccopt"; out_path ~prefix:"-L" pkgdir; ])
 	 eff_link_dl) in
+ *)
 
   let archives =
     List.flatten

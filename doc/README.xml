@@ -110,6 +110,17 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>1.2.5:</em> Fix: Again CR deletion... Turns out some OS do not
+        understand '\r' but only '\015' (thanks to Isaiah Weiner)</p>
+      <p>Support for Win64 (untested; thanks to David Allsopp)</p>
+      <p>ocamlfind no longer emits auto-generated -ccopt options. These
+         tend to accumulate, and it is possible that for large projects
+         the maximum command line length is exceeded. Current versions of
+         the O'Caml compilers do not need these extra -ccopt anyway, so
+         this code is completely dropped.</p>
+    </li>
+
+    <li>
       <p><em>1.2.4:</em> Fix: Bigarray needs unix (Thanks to Markus Mottl)</p>
       <p>Fix: In the version of camlp4 provided by O'Caml 3.11 various
          libraries do not contain dynlink anymore. Because of this, dynlink

@@ -7,7 +7,7 @@
 
 #set -x
 
-version="1.2.4"
+version="1.2.5test1"
 
 # Remember the old IFS value:
 oldifs="$IFS"
@@ -61,7 +61,7 @@ get_path () {
 get_stdlib () {
     # Older versions of ocamlc do not accept -where, so there is a fallback
     # method:
-    ocamlc -where 2>/dev/null | tr -d '\r' || {
+    ocamlc -where 2>/dev/null | tr -d '\015' || {
 	ocamlc -v | sed -n -e "/Standard library directory/s/.*: \(.*\)/\1/p"; }
 }
 
@@ -203,6 +203,7 @@ if [ -z "$system" ]; then
     # This may be
     # - mingw
     # - win32
+    # - win64
     # - cygwin
     # - some other string means Unix
     # - empty means ocamlc does not support -config
@@ -211,6 +212,7 @@ fi
 case "$system" in
     mingw) use_cygpath=1;;
     win32) use_cygpath=1;;
+    win64) use_cygpath=1;;
 esac
 
 ######################################################################

@@ -7,7 +7,7 @@
 
 #set -x
 
-version="1.2.5test1"
+version="1.2.5"
 
 # Remember the old IFS value:
 oldifs="$IFS"

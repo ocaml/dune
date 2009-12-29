@@ -67,8 +67,8 @@ findlib.conf: findlib.conf.in
 .PHONY: install-doc
 install-doc:
 	mkdir -p $(prefix)$(OCAMLFIND_MAN)/man1 $(prefix)$(OCAMLFIND_MAN)/man3 $(prefix)$(OCAMLFIND_MAN)/man5
-	cp doc/ref-man/ocamlfind.1 $(prefix)$(OCAMLFIND_MAN)/man1
-	cp doc/ref-man/META.5 doc/ref-man/site-lib.5 doc/ref-man/findlib.conf.5 $(prefix)$(OCAMLFIND_MAN)/man5
+	-cp doc/ref-man/ocamlfind.1 $(prefix)$(OCAMLFIND_MAN)/man1
+	-cp doc/ref-man/META.5 doc/ref-man/site-lib.5 doc/ref-man/findlib.conf.5 $(prefix)$(OCAMLFIND_MAN)/man5
 
 .PHONY: uninstall-doc
 uninstall-doc:
@@ -81,11 +81,11 @@ uninstall-doc:
 
 .PHONY: install-meta
 install-meta:
-	for x in `ls site-lib-src`; do if [ "$$x" != "CVS" -a -f "site-lib-src/$$x/META" ]; then mkdir -p $(prefix)$(OCAML_SITELIB)/$$x; cp site-lib-src/$$x/META $(prefix)$(OCAML_SITELIB)/$$x; fi; done
+	for x in `ls site-lib-src`; do if [ "$$x" != "CVS" -a -f "site-lib-src/$$x/META" ]; then mkdir -p "$(prefix)$(OCAML_SITELIB)/$$x"; cp site-lib-src/$$x/META "$(prefix)$(OCAML_SITELIB)/$$x"; fi; done
 
 .PHONY: uninstall-meta
 uninstall-meta:
-	for x in `ls site-lib-src`; do if [ "$$x" != "CVS" ]; then rm -rf $(prefix)$(OCAML_SITELIB)/$$x; fi; done
+	for x in `ls site-lib-src`; do if [ "$$x" != "CVS" ]; then rm -rf "$(prefix)$(OCAML_SITELIB)/$$x"; fi; done
 
 .PHONY: install-config
 install-config:

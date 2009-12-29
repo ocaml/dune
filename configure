@@ -183,10 +183,19 @@ done
 # Check for Cygwin:
 
 exec_suffix=
+pure_mingw="no"
+mingw_lib=
 case `uname` in
   CYGWIN*)
     exec_suffix=.exe
     echo "Cygwin build environment found; using .exe as suffix for binaries"
+    ;;
+  MINGW*)
+    exec_suffix=.exe
+    pure_mingw="yes"
+    echo "MinGW build environment found; using .exe as suffix for binaries"
+    mingw_lib=`get_path gcc`
+    mingw_lib=`dirname "$mingw_lib"`/../lib
     ;;
   *)
     true ;;
@@ -210,7 +219,12 @@ if [ -z "$system" ]; then
 fi
 
 case "$system" in
-    mingw) use_cygpath=1;;
+    mingw)
+	if [ "$pure_mingw" = "no" ];  then
+	    # CYGWIN
+	    use_cygpath=1
+	fi
+	;;
     win32) use_cygpath=1;;
     win64) use_cygpath=1;;
 esac
@@ -396,6 +410,9 @@ if in_path camlp4; then
     if [ ${use_cygpath} -gt 0 ]; then
 	camlp4_dir=`echo x | env USE_CYGPATH=1 tools/patch x "$camlp4_dir"`
         # This makes camlp4_dir a windows path
+    elif [ "${pure_mingw}" = "yes" ]; then
+	# Must double the backslahes
+	camlp4_dir="$(echo "${camlp4_dir}" | sed -e 's;\\;\\\\;g')"
     fi
     camlp4_version=`camlp4 -v 2>&1`
     if [ "$have_dlls" = "yes" ]; then
@@ -464,11 +481,11 @@ if [ "$?" -eq 0 ]; then
     if [ $? -eq 0 ]; then
 	echo "ok"
     else
-	echo "FAILED"
+	echo "FAILED (see the file ocargs.log for details)"
 	exit 1
     fi
 else
-    echo "FAILED"
+    echo "FAILED (see the file ocargs.log for details)"
     exit 1
 fi
 
@@ -496,6 +513,10 @@ echo "INSTALL_TOPFIND=${with_topfind}" >>Makefile.config
 echo "USE_CYGPATH=${use_cygpath}" >>Makefile.config
 echo "VERSION=${version}" >>Makefile.config
 echo "SYSTEM=${system}" >>Makefile.config
+if [ "$mingw_lib" != "" ]; then
+    echo "OCAMLC_FLAGS=-I \"${mingw_lib}\"" >>Makefile.config
+    echo "OCAMLOPT_FLAGS=-I \"${mingw_lib}\"" >>Makefile.config
+fi
 
 # All OK
 

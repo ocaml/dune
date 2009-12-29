@@ -37,11 +37,11 @@ opt: ocamlfind_opt$(EXEC_SUFFIX) findlib.cmxa topfind
 
 ocamlfind$(EXEC_SUFFIX): findlib.cma $(OCAMLFIND_OBJECTS)
 	$(OCAMLC) -custom -o ocamlfind$(EXEC_SUFFIX) findlib.cma unix.cma \
-	          $(OCAMLFIND_OBJECTS)
+	          $(OCAMLC_FLAGS) $(OCAMLFIND_OBJECTS)
 
 ocamlfind_opt$(EXEC_SUFFIX): findlib.cmxa $(OCAMLFIND_XOBJECTS)
 	$(OCAMLOPT) -o ocamlfind_opt$(EXEC_SUFFIX) findlib.cmxa unix.cmxa \
-		  $(OCAMLFIND_XOBJECTS)
+		  $(OCAMLOPT_FLAGS) $(OCAMLFIND_XOBJECTS)
 
 findlib.cma: $(OBJECTS)
 	$(OCAMLC) -a -o findlib.cma $(OBJECTS)
@@ -52,7 +52,7 @@ findlib_top.cma: $(TOBJECTS)
 findlib.cmxa: $(XOBJECTS)
 	$(OCAMLOPT) -a -o findlib.cmxa $(XOBJECTS)
 
-findlib_config.ml: findlib_config.mlp 
+findlib_config.ml: findlib_config.mlp $(TOP)/Makefile.config
 	USE_CYGPATH="$(USE_CYGPATH)"; \
 	export USE_CYGPATH; \
 	cat findlib_config.mlp | \

@@ -292,8 +292,10 @@ let check_package_list l =
 
 let run_command ?filter verbose cmd args =
   if verbose then begin
+    let escape_if_needed s =
+      if String.contains s ' ' then "\"" ^ String.escaped s ^ "\"" else s in
     print_string ("+ " ^ cmd ^ " " ^
-		  String.concat " " args ^ "\n");
+		  String.concat " " (List.map escape_if_needed args) ^ "\n");
     if filter <> None then
       print_string ("  (output of this command is filtered by ocamlfind)\n")
   end;

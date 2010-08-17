@@ -403,6 +403,16 @@ else
     with_toolbox=0
 fi
 
+# Check whether ocamlbuild is present
+
+if [ -f "${ocaml_core_stdlib}/ocamlbuild/ocamlbuildlib.cma" ]; then
+    lobuild=ocamlbuild
+    echo "ocamlbuild: found"
+else
+    lobuild=""
+    echo "ocamlbuild: not present"
+fi
+
 # Check on camlp4:
 
 if in_path camlp4; then
@@ -438,7 +448,7 @@ fi
 
 # Generate the META files now.
 
-l="dbm dynlink graphics num num-top str threads unix stdlib bigarray $llabltk $lcamlp4"
+l="dbm dynlink graphics num num-top str threads unix stdlib bigarray $llabltk $lcamlp4 $lobuild"
 
 for dir in site-lib-src/*; do
     # We do not really know if $dir is a directory.

@@ -97,6 +97,8 @@ d site-lib-src/unix
 f site-lib-src/unix/META.in
 f site-lib-src/unix/interfaces.in
 f site-lib-src/unix/interfaces.out
+d site-lib-src/ocamlbuild
+f site-lib-src/ocamlbuild/META.in
 
 d src
 

@@ -1129,6 +1129,14 @@ let ocamldoc() =
 	Arg.String (fun s -> pp_opts := s :: !pp_opts),
 	"<opt>     Append option <opt> to preprocessor invocation";
 
+	"-thread",
+	Arg.Unit (fun () -> predicates := "mt" :: "mt_posix" :: !predicates),
+	"   Assume kernel multi-threading when doing dependency analyses";
+
+	"-vmthread",
+	Arg.Unit (fun () -> predicates := "mt" :: "mt_vm" :: !predicates),
+	"   Assume bytecode multi-threading when doing dependency analyses";
+
 	"-verbose",
 	Arg.Set verbose,
 	"        Be verbose\nSTANDARD OPTIONS:";
@@ -1179,6 +1187,18 @@ let ocamldoc() =
 
   let eff_packages =
     package_deep_ancestors !predicates !packages in
+
+  (* Check on [error] directives (turned into warnings): *)
+  List.iter
+    (fun pkg ->
+       try
+	 let error = package_property !predicates pkg "error" in
+	 prerr_endline("ocamlfind: [WARNING] Package `" ^ pkg ^
+			 "' signals error: " ^ error)
+       with
+	   Not_found -> ()
+    )
+    eff_packages;
 
   let eff_packages_dl =
     remove_dups (List.map package_directory eff_packages) in

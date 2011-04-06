@@ -110,6 +110,24 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>1.2.7:</em>
+Fix: if a META file defines several packages, and one of the packages
+has a broken dependency, ocamlfind used to report all errors even if
+the broken packages were not used. This is now changed - broken
+subpackages are ignored when they are not needed, in the same way as
+broken top-level packages are ignored when not needed. (Thanks to
+Sylvain Le Gall for reporting the problem.)</p>
+      <p>Added -thread and -vmthread switches to "ocamlfind ocamldoc".
+These actually only add the right predicates. (Thanks to Vladimir
+Ivanov for pointing this problem out.)</p>
+      <p>Package warnings can be emitted by "ocamlfind ocamldoc".</p>
+    </li>
+    <li>
+      <p><em>1.2.6:</em> adding META for ocamlbuild</p>
+      <p>Fixes for MinGW/MSYS platform</p>
+      <p>Improved messages</p>
+    </li>
+    <li>
       <p><em>1.2.5:</em> Fix: Again CR deletion... Turns out some OS do not
         understand '\r' but only '\015' (thanks to Isaiah Weiner)</p>
       <p>Support for Win64 (untested; thanks to David Allsopp)</p>

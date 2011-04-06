@@ -27,7 +27,6 @@ f configure
 f findlib.conf.in
 f INSTALL
 f LICENSE
-f README
 f Makefile
 f Makefile.config.pattern
 f itest

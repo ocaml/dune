@@ -5,10 +5,21 @@
 
 open Fl_metascanner
 
+exception No_such_package of string * string
+  (* (name, reason) *)
+
 type package =
     { package_name : string;
       package_dir : string;
       package_defs : Fl_metascanner.pkg_definition list;
+      package_priv : package_priv
+    }
+and package_priv =
+    { mutable missing_reqs : (string * string) list;
+        (* If non-empty the package is broken. This may be set by
+	   add_all_relations, and should be checked before using the
+	   package later. Each element corresponds to No_such_package.
+	 *)
     }
 ;;
 
@@ -110,7 +121,8 @@ let packages_in_meta_file ?(directory_required = false)
     let p =
       { package_name = p_name;
 	package_dir = d';
-	package_defs = pkg_expr.pkg_defs
+	package_defs = pkg_expr.pkg_defs;
+	package_priv = { missing_reqs = [] }
       } in
     (* Check for exists_if: *)
     let p_exists =
@@ -147,9 +159,6 @@ let packages_in_meta_file ?(directory_required = false)
 	close_in ch;
 	raise any
 ;;
-
-
-exception No_such_package of string * string
 
 
 let query package_name =
@@ -248,7 +257,7 @@ let query_requirements ~preds:predlist package_name =
         ()
       with
 	  No_such_package(pname,_) ->
-	    raise(No_such_package(pname, "Required by `" ^ package_name ^ "'"))
+	    raise(No_such_package(pname, "required by `" ^ package_name ^ "'"))
     )
     ancestors;
   ancestors
@@ -275,16 +284,27 @@ let add_relations s ancestors package_name =
 
 
 let add_all_relations predlist s =
-  (* Adds all relations for the packages currently defined in [s] *)
+  (* Adds all relations for the packages currently defined in [s].
+     Note that missing requirements are not reported immediately (we do
+     not know here which part of the graph [s] is really accessed), and
+     instead the error is added to the missing_reqs field, where
+     it should be checked before used.
+   *)
   let pkgs = ref [] in
   Fl_metastore.iter_up
-    (fun p -> pkgs := p.package_name :: !pkgs)
+    (fun p -> pkgs := p :: !pkgs)
     s;
 
   List.iter
-    (fun pkg ->
-       let pkg_ancestors = query_requirements predlist pkg in
-       add_relations s pkg_ancestors pkg
+    (fun p ->
+       let pkg = p.package_name in
+       try
+	 let pkg_ancestors = query_requirements predlist pkg in
+	 add_relations s pkg_ancestors pkg
+       with
+	 | No_such_package(n,reason) ->
+	     p.package_priv.missing_reqs <- 
+	       (n,reason) :: p.package_priv.missing_reqs
     )
     !pkgs
 ;;
@@ -376,8 +396,14 @@ let requires_deeply ~preds:predlist package_list =
 
   Fl_metastore.iter_up_at
     (fun m ->
-       if StringSet.mem m.package_name !pkgset then
-	 l := m.package_name :: !l)
+       if StringSet.mem m.package_name !pkgset then (
+	 if m.package_priv.missing_reqs <> [] then (
+	   let (n,reason) = List.hd m.package_priv.missing_reqs in
+	   raise(No_such_package(n,reason))
+	 );
+	 l := m.package_name :: !l
+       )
+    )
     store'
     package_list;
 
@@ -595,7 +621,12 @@ let package_users ~preds pl =
 
   Fl_metastore.iter_down_at
     (fun m ->
-      l := m.package_name :: !l)
+       if m.package_priv.missing_reqs <> [] then (
+	 let (n,reason) = List.hd m.package_priv.missing_reqs in
+	 raise(No_such_package(n,reason))
+       );
+       l := m.package_name :: !l
+    )
     store'
     pl;
 

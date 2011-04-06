@@ -15,8 +15,12 @@ type package =
         (** The directory where to lookup package files *)
       package_defs : Fl_metascanner.pkg_definition list;
         (** The definitions in the META file *)
+      package_priv : package_priv;
+        (** Private part of the definition *)
     }
     (** The definition of a package *)
+
+and package_priv
 
 
 val init : string list -> string -> string option -> unit

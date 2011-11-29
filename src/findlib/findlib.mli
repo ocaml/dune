@@ -56,13 +56,13 @@ val init :
    *   The special value ["none"] turns this feature off.
    * - The search path is the concatenation of the env variable OCAMLPATH
    *   and the variable [path] of the config file
-   * - The executables of (ocamlc|ocamlopt|ocamlcp|ocamlmktop) are determined
-   *   as follows: if the env variable OCAMLFIND_COMMANDS is set and non-empty,
-   *   its contents specify the executables. Otherwise, if the config file
-   *   variables [ocamlc], [ocamlopt], [ocamlcp] and [ocamlmktop] are set,
-   *   their contents specify the executables. Otherwise, the obvious default
-   *   values are chosen: ["ocamlc"] for [ocamlc], ["ocamlopt"] for [ocamlopt],
-   *   and so on.
+   * - The executables of (ocamlc|ocamlopt|ocamlcp|ocamlmklib|ocamlmktop) are
+   *   determined as follows: if the env variable OCAMLFIND_COMMANDS is set
+   *   and non-empty, its contents specify the executables. Otherwise, if the
+   *   config file variables [ocamlc], [ocamlopt], [ocamlcp], [ocamlmklib] and
+   *   [ocamlmktop] are set, their contents specify the executables. Otherwise,
+   *   the obvious default values are chosen: ["ocamlc"] for [ocamlc],
+   *   ["ocamlopt"] for [ocamlopt], and so on.
    * - The directory of the standard library is the value of the environment
    *   variable CAMLLIB (or OCAMLLIB), or if unset or empty, the value of
    *   the configuration variable [stdlib], or if unset the built-in location
@@ -77,6 +77,7 @@ val init_manually :
       ?ocamlc_command: string ->       (* default: "ocamlc"     *)
       ?ocamlopt_command: string ->     (* default: "ocamlopt"   *)
       ?ocamlcp_command: string ->      (* default: "ocamlcp"    *)
+      ?ocamlmklib_command: string ->   (* default: "ocamlmklib" *)
       ?ocamlmktop_command: string ->   (* default: "ocamlmktop" *)
       ?ocamldep_command: string ->     (* default: "ocamldep"   *)
       ?ocamlbrowser_command: string -> (* default: "ocamlbrowser"   *)
@@ -105,8 +106,8 @@ val meta_directory : unit -> string
 val search_path : unit -> string list
   (** Get the search path for packages *)
 
-val command : [ `ocamlc | `ocamlopt | `ocamlcp | `ocamlmktop | `ocamldep
-	      | `ocamlbrowser | `ocamldoc
+val command : [ `ocamlc | `ocamlopt | `ocamlcp | `ocamlmklib 
+	      | `ocamlmktop | `ocamldep | `ocamlbrowser | `ocamldoc
 	      ] -> 
               string
   (** Get the name/path of the executable *)

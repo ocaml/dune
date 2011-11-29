@@ -29,7 +29,7 @@ let get_help cmd =
   let help_out =
     try
       let code =
-	Sys.command (sprintf "%s -help >%s" 
+	Sys.command (sprintf "%s -help >%s 2>&1"
 		       cmd
 		       (Filename.quote temp_file)) in
       if code <> 0 then 
@@ -43,7 +43,7 @@ let get_help cmd =
 ;;
 
 
-let switch_re = Str.regexp "[ \t]*\\(-[-a-zA-Z0-9_]*\\)[ \t]\\(.*\\)$";;
+let switch_re = Str.regexp "[ \t]*\\(-[-a-zA-Z0-9_,]*\\)[ \t]?\\(.*\\)$";;
 
 let argument_re = Str.regexp "[ \t]*[<[]";;
 

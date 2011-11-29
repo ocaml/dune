@@ -722,6 +722,7 @@ let ocamlc which () =
     match which with
       | "ocamlc"     -> Ocaml_args.ocamlc_spec
       | "ocamlcp"    -> Ocaml_args.ocamlcp_spec
+      | "ocamlmklib" -> Ocaml_args.ocamlmklib_spec
       | "ocamlmktop" -> Ocaml_args.ocamlmktop_spec
       | "ocamlopt"   -> Ocaml_args.ocamlopt_spec
       | _            -> None in
@@ -752,7 +753,7 @@ let ocamlc which () =
       "-ignore-error", Arg.Set ignore_error,
                     "     Ignore the 'error' directive in META files";
       "-passopt", Arg.String (fun s -> pass_options := !pass_options @ [s]),
-               " <opt>    Pass option <opt> directly to ocamlc/opt/mktop\nSTANDARD OPTIONS:";
+               " <opt>    Pass option <opt> directly to ocamlc/opt/mklib/mktop\nSTANDARD OPTIONS:";
       ];
 
       merge_native_arguments 
@@ -795,6 +796,7 @@ let ocamlc which () =
   begin match which with
     "ocamlc"     -> predicates := "byte" :: !predicates;
   | "ocamlcp"    -> predicates := "byte" :: !predicates;
+  | "ocamlmklib" -> predicates := "byte" :: "native" :: !predicates;
   | "ocamlmktop" -> predicates := "byte" :: "create_toploop" :: !predicates;
   | "ocamlopt"   -> predicates := "native" :: !predicates;
   | _            -> failwith "unsupported backend"
@@ -1066,7 +1068,12 @@ let ocamlc which () =
 	 (fun pkg -> ["-dllpath";  slashify pkg] )
 	 dll_dirs) in
 
+  let mklib_options =
+    ["-ocamlc"; Findlib.command `ocamlc;
+     "-ocamlopt"; Findlib.command `ocamlopt] in
+
   let arguments =
+    (if which = "ocamlmklib" then mklib_options else []) @
     !pass_options @    (* other options from the command line *)
     i_options @        (* Generated -I options from package analysis *)
     pp_command @       (* Optional preprocessor command *)
@@ -1082,6 +1089,7 @@ let ocamlc which () =
 	"ocamlc"     -> Findlib.command `ocamlc
       | "ocamlopt"   -> Findlib.command `ocamlopt
       | "ocamlcp"    -> Findlib.command `ocamlcp
+      | "ocamlmklib" -> Findlib.command `ocamlmklib
       | "ocamlmktop" -> Findlib.command `ocamlmktop
       | _            -> assert false
   in
@@ -2071,6 +2079,7 @@ let rec select_mode () =
     | ("remove"|"-remove")                 -> incr Arg.current; M_remove
     | ("ocamlc"|"-ocamlc"|"c")             -> incr Arg.current; M_compiler "ocamlc"
     | ("ocamlcp"|"-ocamlcp"|"cp")          -> incr Arg.current; M_compiler "ocamlcp"
+    | ("ocamlmklib"|"-ocamlmklib"|"mklib") -> incr Arg.current; M_compiler "ocamlmklib"
     | ("ocamlmktop"|"-ocamlmktop"|"mktop") -> incr Arg.current; M_compiler "ocamlmktop"
     | ("ocamlopt"|"-ocamlopt"|"opt")       -> incr Arg.current; M_compiler "ocamlopt"
     | ("ocamldep"|"-ocamldep"|"dep")       -> incr Arg.current; M_dep
@@ -2126,6 +2135,7 @@ let main() =
       prerr_endline "Usage: ocamlfind query        [-help | other options] <package_name> ...";
       prerr_endline "   or: ocamlfind ocamlc       [-help | other options] <file> ...";
       prerr_endline "   or: ocamlfind ocamlcp      [-help | other options] <file> ...";
+      prerr_endline "   or: ocamlfind ocamlmklib   [-help | other options] <file> ...";
       prerr_endline "   or: ocamlfind ocamlmktop   [-help | other options] <file> ...";
       prerr_endline "   or: ocamlfind ocamlopt     [-help | other options] <file> ...";
       prerr_endline "   or: ocamlfind ocamldep     [-help | other options] <file> ...";

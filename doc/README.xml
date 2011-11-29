@@ -110,6 +110,10 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>SVN:</em>
+Adding support for ocamlmklib (B. Meurer's patches)</p>
+    </li>
+    <li>
       <p><em>1.2.7:</em>
 Fix: if a META file defines several packages, and one of the packages
 has a broken dependency, ocamlfind used to report all errors even if

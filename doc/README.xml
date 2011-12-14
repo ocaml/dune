@@ -112,7 +112,8 @@ configuration files, and library routines in detail.</p>
     <li>
       <p><em>SVN:</em>
 Adding support for ocamlmklib (B. Meurer's patches)</p>
-    </li>
+      <p>Fix for win32 in the configure script.</p>
+     </li>
     <li>
       <p><em>1.2.7:</em>
 Fix: if a META file defines several packages, and one of the packages

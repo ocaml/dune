@@ -416,7 +416,7 @@ fi
 # Check on camlp4:
 
 if in_path camlp4; then
-    camlp4_dir=`camlp4 -where`
+    camlp4_dir=`camlp4 -where | tr -d '\015'`
     if [ ${use_cygpath} -gt 0 ]; then
 	camlp4_dir=`echo x | env USE_CYGPATH=1 tools/patch x "$camlp4_dir"`
         # This makes camlp4_dir a windows path

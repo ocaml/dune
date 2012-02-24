@@ -105,7 +105,7 @@ interface-lists:
             if [ ! -f "site-lib-src/$$x/interfaces.in" ]; then continue; fi; \
 	    cma_spec=`cat site-lib-src/$$x/interfaces.in`;  \
 	    for cma in $$d/$$cma_spec; do               \
-		intf=`objinfo $$cma |                   \
+		intf=`ocamlobjinfo $$cma |                   \
 		      grep 'Unit name:' |               \
 		      sed -e 's/^  Unit name: //' |     \
 		      sort |                            \

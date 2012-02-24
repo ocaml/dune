@@ -110,7 +110,7 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
-      <p><em>SVN:</em>
+      <p><em>1.2.8:</em>
 Adding support for ocamlmklib (B. Meurer's patches)</p>
       <p>Fix for win32 in the configure script.</p>
      </li>

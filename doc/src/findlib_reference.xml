@@ -43,6 +43,10 @@ LINKEND="OCAMLFIND.OCAMLDEP"
 >ocamlfind ocamldep [-help | other options] <REPLACEABLE
 >file</REPLACEABLE> ...</LINK>
    or: <LINK
+LINKEND="OCAMLFIND.OCAMLMKLIB"
+>ocamlfind ocamlmklib [-help | other options] <REPLACEABLE
+>file</REPLACEABLE> ...</LINK>
+   or: <LINK
 LINKEND="OCAMLFIND.OCAMLBROWSER"
 >ocamlfind ocamlbrowser [-help | other options]</LINK>
    or: <LINK
@@ -621,6 +625,35 @@ export OCAMLFIND_COMMANDS</PROGRAMLISTING></PARA><PARA
 <LINK
 LINKEND="FINDLIB.CONF"
 >findlib.conf</LINK>.</PARA></REFSECT2></REFSECT1><REFSECT1
+><TITLE
+><ANCHOR
+ID="OCAMLFIND.OCAMLMKLIB"
+></ANCHOR>
+  THE SUBCOMMAND "ocamlmklib"</TITLE><REFSECT2
+><TITLE
+>Synopsis</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind ocamlmklib
+          [ -package <REPLACEABLE
+>package-name-list</REPLACEABLE> |
+	    -predicates <REPLACEABLE
+>pred-name-list</REPLACEABLE> |
+            -dllpath-pkg <REPLACEABLE
+>package-name-list</REPLACEABLE> |
+            -dllpath-all |
+	    -passopt <REPLACEABLE
+>arg</REPLACEABLE> |
+	    <REPLACEABLE
+>standard-option</REPLACEABLE> ]
+            <REPLACEABLE
+>file</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
+><TITLE
+>Description</TITLE><PARA
+>This is a wrapper around ocamlmklib, and creates library archives and
+DLLs. In addition to the standard options, one can use -package to
+add the search path of packages. Note that no predicates are set by default -
+the wrapper does not know whether this is about byte or native code linking.</PARA><PARA
+>This wrapper is mostly provided for completeness.</PARA></REFSECT2></REFSECT1><REFSECT1
 ><TITLE
 ><ANCHOR
 ID="OCAMLFIND.OCAMLDEP"

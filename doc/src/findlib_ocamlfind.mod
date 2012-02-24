@@ -22,6 +22,7 @@
    or: <link linkend="ocamlfind.ocamlopt">ocamlfind ocamlopt [-help | other options] <replaceable>file</replaceable> ...</link>
    or: <link linkend="ocamlfind.ocamldoc">ocamlfind ocamldoc [-help | other options] <replaceable>file</replaceable> ...</link>
    or: <link linkend="ocamlfind.ocamldep">ocamlfind ocamldep [-help | other options] <replaceable>file</replaceable> ...</link>
+   or: <link linkend="ocamlfind.ocamlmklib">ocamlfind ocamlmklib [-help | other options] <replaceable>file</replaceable> ...</link>
    or: <link linkend="ocamlfind.ocamlbrowser">ocamlfind ocamlbrowser [-help | other options]</link>
    or: <link linkend="ocamlfind.install">ocamlfind install [-help | other options] <replaceable>package_name</replaceable> <replaceable>file</replaceable> ...</link>
    or: <link linkend="ocamlfind.remove">ocamlfind remove [-help | other options] <replaceable>package_name</replaceable></link>
@@ -671,6 +672,46 @@ export OCAMLFIND_COMMANDS
 </refsect2>
 
 </refsect1>
+
+<!-- ********************************************************************** -->
+
+<refsect1>
+<title><anchor id="ocamlfind.ocamlmklib">
+  THE SUBCOMMAND "ocamlmklib"
+</title>
+
+<refsect2>
+<title>Synopsis</title>
+<programlisting>
+ocamlfind ocamlmklib
+          [ -package <replaceable>package-name-list</replaceable> |
+	    -predicates <replaceable>pred-name-list</replaceable> |
+            -dllpath-pkg <replaceable>package-name-list</replaceable> |
+            -dllpath-all |
+	    -passopt <replaceable>arg</replaceable> |
+	    <replaceable>standard-option</replaceable> ]
+            <replaceable>file</replaceable> ...
+</programlisting>
+</refsect2>
+
+<refsect2>
+<title>Description</title>
+
+<para>
+This is a wrapper around ocamlmklib, and creates library archives and
+DLLs. In addition to the standard options, one can use -package to
+add the search path of packages. Note that no predicates are set by default -
+the wrapper does not know whether this is about byte or native code linking.
+</para>
+
+<para>
+This wrapper is mostly provided for completeness.
+</para>
+</refsect2>
+
+</refsect1>
+
+
 
 <!-- ********************************************************************** -->
 

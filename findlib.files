@@ -124,6 +124,9 @@ d doc
 f doc/DOCINFO
 f doc/QUICKSTART
 f doc/README
+p doc/.*\.xml
+p doc/.*\.dtd
+f doc/Makefile
 
 d doc/guide-html
 p doc/guide-html/.*\.html
@@ -142,3 +145,11 @@ f doc/ref-man/findlib.conf.5
 f doc/ref-man/META.5
 f doc/ref-man/site-lib.5
 f doc/ref-man/TIMESTAMP
+
+d doc/src
+p doc/src/.*\.dsl
+p doc/src/.*\.mod
+p doc/src/.*\.sgml
+p doc/src/.*\.xml
+
+

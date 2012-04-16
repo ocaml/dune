@@ -4,6 +4,8 @@
  * working findlib toploop.
  *)
 
+#directory "@SITELIB@/findlib";;
+  (* OCaml-4.00 requires to have #directory before we load anything *)
 
 (* First test whether findlib_top is already loaded. If not, load it now.
  * The test works by executing the toplevel phrase "Topfind.reset" and
@@ -33,7 +35,6 @@ if not(exec_test "Topfind.reset;;") then (
  * initialized
  *)
 
-#directory "@SITELIB@/findlib";;
 Topfind.add_predicates [ "byte"; "toploop" ];
 Topfind.don't_load ["findlib"];
 Topfind.announce();;

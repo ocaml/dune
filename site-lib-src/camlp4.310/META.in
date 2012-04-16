@@ -3,7 +3,7 @@ dnl This file is input of the m4 macro processor.
 `requires = ""'
 `version = "[distributed with Ocaml]"'
 `description = "Base for Camlp4 syntax extensions"'
-`directory = "'camlp4_dir`"'
+`directory = "+camlp4"'
 
 `# For the toploop:'
 `requires(byte,toploop) = "'camlp4_dynlink`"'

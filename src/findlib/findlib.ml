@@ -12,6 +12,7 @@ exception Package_loop
 
 
 
+let init_called = ref false ;;
 
 let conf_default_location = ref "";;
 let conf_meta_directory = ref "";;
@@ -61,7 +62,8 @@ let init_manually
   conf_stdlib := stdlib;
   conf_ldconf := ldconf;
   conf_ignore_dups_in := ignore_dups_in;
-  Fl_package_base.init !conf_search_path stdlib !conf_ignore_dups_in
+  Fl_package_base.init !conf_search_path stdlib !conf_ignore_dups_in;
+  init_called := true
 ;;
 
 
@@ -139,6 +141,12 @@ let init
       sys_search_path, sys_destdir, sys_metadir, sys_stdlib, sys_ldconf = 
     (
       let config_vars =
+        if config_file <> "" &&
+           not(Sys.file_exists config_file) && not(Sys.file_exists configd_file)
+        then
+          failwith("Config file not found - neither " ^ 
+                     config_file ^ " nor the directory " ^ 
+                     configd_file);
 	if Sys.file_exists config_file then 
 	  vars_of_file config_file
 	else
@@ -268,17 +276,27 @@ let init
 ;;
 
 
-let default_location() = !conf_default_location;;
+let lazy_init() =
+  if not !init_called then init()
+
+
+let default_location() = 
+  lazy_init();
+  !conf_default_location;;
 
 
 let meta_directory() =
+  lazy_init();
   if !conf_meta_directory = "none" then "" else !conf_meta_directory;;
 
 
-let search_path() = !conf_search_path;;
+let search_path() = 
+  lazy_init();
+  !conf_search_path;;
 
 
 let command which =
+  lazy_init();
   try 
     List.assoc which !conf_command
   with
@@ -286,35 +304,46 @@ let command which =
 ;;
 
 
-let ocaml_stdlib() = !conf_stdlib;;
+let ocaml_stdlib() = 
+  lazy_init();
+  !conf_stdlib;;
 
 
-let ocaml_ldconf() = !conf_ldconf;;
+let ocaml_ldconf() = 
+  lazy_init();
+  !conf_ldconf;;
 
-let ignore_dups_in() = !conf_ignore_dups_in;;
+let ignore_dups_in() = 
+  lazy_init();
+  !conf_ignore_dups_in;;
 
 let package_directory pkg =
+  lazy_init();
   (Fl_package_base.query pkg).Fl_package_base.package_dir
 ;;
 
 
 let package_property predlist pkg propname =
+  lazy_init();
   let l = Fl_package_base.query pkg in
   Fl_metascanner.lookup propname predlist l.Fl_package_base.package_defs
 ;;
 
 
 let package_ancestors predlist pkg =
+  lazy_init();
   Fl_package_base.requires predlist pkg
 ;;
 
 
 let package_deep_ancestors predlist pkglist =
+  lazy_init();
   Fl_package_base.requires_deeply predlist pkglist
 ;;
 
 
 let resolve_path ?base p =
+  lazy_init();
   if p = "" then "" else (
     match p.[0] with
 	'^' | '+' ->
@@ -349,6 +378,7 @@ let resolve_path ?base p =
 
 
 let list_packages ?(tab = 20) ?(descr = false) ch =
+  lazy_init();
   let packages = Fl_package_base.list_packages() in
   let packages_sorted = List.sort compare packages in
 
@@ -376,6 +406,3 @@ let list_packages ?(tab = 20) ?(descr = false) ch =
     )
     packages_sorted
 ;;
-
-
-init();

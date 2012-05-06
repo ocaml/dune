@@ -110,16 +110,16 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
-      <p><em>1.3.0</em>Fixes for ocaml-4.00 (especially topfind).</p>
+      <p><em>1.3.0:</em> Fixes for ocaml-4.00 (especially topfind).</p>
       <p>Emitting an error if the configuration file does not exist.</p>
       <p>Emitting a warning if the selected toolchain does not exist.</p>
-      <p>camlp4 is referenced by "+camlp4" in META</p>
-      <p>including the sources for the documentation in the tarball</p>
-      <p>License change (simplification) for num_top_printers.mli</p>
-      <p>Fix ocamlmklib wrapper: processing contracted args (like -L/dir) correctly</p>
+      <p>camlp4 is referenced by "+camlp4" in META.</p>
+      <p>including the sources for the documentation in the tarball.</p>
+      <p>License change (simplification) for num_top_printers.mli.</p>
+      <p>Fix ocamlmklib wrapper: processing contracted args (like -L/dir) correctly.</p>
       <p>Many wrappers get a new option -passrest instructing to pass all
-remaining options on the command-line unchanged to the invoked tool</p>
-      <p>Prettified -help output</p>
+remaining options on the command-line unchanged to the invoked tool.</p>
+      <p>Prettified -help output.</p>
      </li>
 
     <li>

@@ -110,6 +110,15 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>1.3.0</em>Fixes for ocaml-4.00 (especially topfind).</p>
+      <p>Emitting an error if the configuration file does not exist.</p>
+      <p>Emitting a warning if the selected toolchain does not exist.</p>
+      <p>camlp4 is referenced by "+camlp4" in META</p>
+      <p>including the sources for the documentation in the tarball</p>
+      <p>License change (simplification) for num_top_printers.mli</p>
+     </li>
+
+    <li>
       <p><em>1.2.8:</em>
 Adding support for ocamlmklib (B. Meurer's patches)</p>
       <p>Fix for win32 in the configure script.</p>

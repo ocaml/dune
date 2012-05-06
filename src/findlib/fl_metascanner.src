@@ -319,3 +319,16 @@ let lookup name predicate_list def =
 
   String.concat " " (step_a :: step_b)
 ;;
+
+
+let predicate_exists p defs =
+  List.exists
+    (fun def ->
+       List.exists
+         (function
+	      `Pred n    -> n=p
+            | `NegPred n -> n=p
+         )
+         def.def_preds
+    )
+    defs

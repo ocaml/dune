@@ -70,14 +70,22 @@ val lookup :
    * that the predicates in [predicate_list] hold, but no other predicates.
    *
    * The rules are as follows: In the step (A), only the [`BaseDef]
-   * definitions are considered. The first base definition is determined that
-   * matches all predicates and that has the longest predicate list.
+   * definitions are considered. The first base definition is determined where
+   * all predicates are satisfied and that has the longest predicate list.
    * In the step (B) only the [`Appendix] definitions are considered.
-   * All definitions are determined that match all predicates.
+   * All definitions are determined where all predicates are satisfied.
    * The final result is the concatenation of the single result of (A)
    * and all results of (B) (in the order they are defined). A space
    * character is inserted between two concatenated strings.
    *
    * When step (A) does not find any matching definition, the exception
    * [Not_found] is raised.
+   *)
+
+
+val predicate_exists :
+    string -> pkg_definition list -> bool
+  (** [predicate_exists variable_name def]:
+
+      Whether [variable_name] is explicitly mentioned in [def].
    *)

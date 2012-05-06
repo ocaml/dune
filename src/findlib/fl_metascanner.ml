@@ -357,4 +357,11 @@ let lookup name predicate_list def =
   let step_a = search_base (-1) "" def in
   let step_b = search_appdx def in String.concat " " (step_a :: step_b)
   
+let predicate_exists p defs =
+  List.exists
+    (fun def ->
+       List.exists (function | `Pred n -> n = p | `NegPred n -> n = p)
+         def.def_preds)
+    defs
+  
 

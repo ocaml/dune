@@ -158,24 +158,36 @@ let init
 	  [] in
       let vars = config_vars @ configd_vars in
       if vars <> [] then (
+        let found = ref false in
 	let lookup name default =
-	  try Fl_metascanner.lookup name config_preds vars
+          let explicit_preds =
+            List.for_all
+              (fun p -> Fl_metascanner.predicate_exists p vars) 
+              config_preds in
+          found := !found || explicit_preds;
+	  try 
+            Fl_metascanner.lookup name config_preds vars
 	  with Not_found -> default
 	in
-	( (lookup "ocamlc" ocamlc_default),
-	  (lookup "ocamlopt" ocamlopt_default),
-	  (lookup "ocamlcp" ocamlcp_default),
-	  (lookup "ocamlmklib" ocamlmklib_default),
-	  (lookup "ocamlmktop" ocamlmktop_default),
-	  (lookup "ocamldep" ocamldep_default),
-	  (lookup "ocamlbrowser" ocamlbrowser_default),
-	  (lookup "ocamldoc" ocamldoc_default),
-	  Fl_split.path (lookup "path" ""),
-	  (lookup "destdir" ""),
-	  (lookup "metadir" "none"),
-	  (lookup "stdlib" Findlib_config.ocaml_stdlib),
-	  (lookup "ldconf" Findlib_config.ocaml_ldconf)
-	)
+        let config_tuple =
+	  ( (lookup "ocamlc" ocamlc_default),
+	    (lookup "ocamlopt" ocamlopt_default),
+	    (lookup "ocamlcp" ocamlcp_default),
+	    (lookup "ocamlmklib" ocamlmklib_default),
+	    (lookup "ocamlmktop" ocamlmktop_default),
+	    (lookup "ocamldep" ocamldep_default),
+	    (lookup "ocamlbrowser" ocamlbrowser_default),
+	    (lookup "ocamldoc" ocamldoc_default),
+	    Fl_split.path (lookup "path" ""),
+	    (lookup "destdir" ""),
+	    (lookup "metadir" "none"),
+	    (lookup "stdlib" Findlib_config.ocaml_stdlib),
+	    (lookup "ldconf" Findlib_config.ocaml_ldconf)
+	  ) in
+        if not !found && config_preds <> [] then
+          prerr_endline("ocamlfind: [WARNING] Undefined toolchain: " ^ 
+                          String.concat "" config_preds);
+        config_tuple
       )
       else
 	( ocamlc_default, ocamlopt_default, ocamlcp_default, ocamlmklib_default,

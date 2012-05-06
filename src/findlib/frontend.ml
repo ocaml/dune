@@ -373,6 +373,46 @@ let run_command ?filter verbose cmd args =
 ;;
 
 
+(**************** Generic argument processing *************************)
+
+let merge_native_arguments native_spec f_unit f_string f_special_list =
+  List.map
+    (fun (switch_name, switch_has_arg, help_text) ->
+       let f =
+	 try
+	   List.assoc switch_name f_special_list
+	 with
+	     Not_found ->
+	       if switch_has_arg then 
+		 f_string switch_name 
+	       else 
+		 f_unit switch_name in
+       (switch_name, f, help_text)
+    )
+    native_spec
+;;
+
+
+let parse_args
+      ?(current = Arg.current) ?(args = Sys.argv) 
+      ?(align = true)
+      spec anon usage =
+  try
+    Arg.parse_argv
+      ~current
+      args
+      (if align then Arg.align spec else spec)
+      anon
+      usage
+  with
+    | Arg.Help text ->
+        print_string text;
+        exit 0
+    | Arg.Bad text ->
+        prerr_string text;
+        exit 2  
+
+
 (************************* format expansion *************************)
 
 
@@ -461,17 +501,17 @@ let query_package () =
   in
 
 
-  Arg.parse
+  parse_args
     [ "-predicates", Arg.String append_predicate,
                   "      specifies comma-separated list of assumed predicates";
       "-format", Arg.String (fun s -> format := s),
-              "          specifies the output format";
+              "<fmt>      specifies the output format";
       "-separator", Arg.String (fun s -> separator := s),
                  "       specifies the string that separates multiple answers";
       "-prefix", Arg.String (fun s -> prefix := s),
-              "          a string printed before the first answer";
+              "<p>        a string printed before the first answer";
       "-suffix", Arg.String (fun s -> suffix := s),
-              "          a string printed after the last answer";
+              "<s>        a string printed after the last answer";
       "-recursive", Arg.Set recursive,
                  "       select direct and indirect ancestors/descendants, too";
       "-r", Arg.Set recursive,
@@ -635,26 +675,6 @@ let process_pp_spec syntax_preds packages pp_opts =
 ;;
 
 
-(**************** Generic argument processing *************************)
-
-let merge_native_arguments native_spec f_unit f_string f_special_list =
-  List.map
-    (fun (switch_name, switch_has_arg, help_text) ->
-       let f =
-	 try
-	   List.assoc switch_name f_special_list
-	 with
-	     Not_found ->
-	       if switch_has_arg then 
-		 f_string switch_name 
-	       else 
-		 f_unit switch_name in
-       (switch_name, f, help_text)
-    )
-    native_spec
-;;
-
-
 (**************** OCAMLC/OCAMLMKTOP/OCAMLOPT subcommands ****************)
 
 type pass_file_t =
@@ -749,17 +769,17 @@ let ocamlc which () =
     List.flatten
       [ [
           "-package", add_pkg,
-            " <name>   Refer to package when compiling";
+            "<name>   Refer to package when compiling";
           "-linkpkg", Arg.Set linkpkg,
             "          Link the packages in";
           "-predicates", add_pred,
-            " <p>   Add predicate <p> when resolving package properties";
+            "<p>   Add predicate <p> when resolving package properties";
           "-dontlink", add_dontlink,
-            " <name>  Do not link in package <name> and its ancestors";
+            "<name>  Do not link in package <name> and its ancestors";
           "-syntax", add_syntax_pred,
-            " <p>       Use preprocessor with predicate <p>";
+            "<p>       Use preprocessor with predicate <p>";
           "-ppopt", add_pp_opt,
-            " <opt>      Append option <opt> to preprocessor invocation";
+            "<opt>      Append option <opt> to preprocessor invocation";
           "-dllpath-pkg", add_dll_pkg,
             "<pkg> Add -dllpath for this package";
           "-dllpath-all", Arg.Set dll_pkgs_all,
@@ -767,7 +787,9 @@ let ocamlc which () =
           "-ignore-error", Arg.Set ignore_error,
             "     Ignore the 'error' directive in META files";
           "-passopt", Arg.String (fun s -> pass_options := !pass_options @ [s]),
-            " <opt>    Pass option <opt> directly to ocamlc/opt/mklib/mktop\nSTANDARD OPTIONS:";
+            "<opt>    Pass option <opt> directly to ocamlc/opt/mklib/mktop";
+          "-passrest", Arg.Rest (fun s -> pass_options := !pass_options @ [s]),
+            "         Pass all remaining options directly\nSTANDARD OPTIONS:";
         ];
 
         merge_native_arguments 
@@ -832,24 +854,15 @@ let ocamlc which () =
     else
       (Arg.current, Sys.argv) in
 
-  ( try
-      Arg.parse_argv
-        ~current
-        args
-        arg_spec
-        (fun s -> pass_files := !pass_files @ [ Pass s])
-        ("usage: ocamlfind " ^ which ^ " [options] file ...");
-    with
-      | Arg.Help text ->
-          print_string text;
-          exit 0
-      | Arg.Bad text ->
-          prerr_string text;
-          exit 2          
-  );
+  parse_args
+    ~current
+    ~args
+    arg_spec
+    (fun s -> pass_files := !pass_files @ [ Pass s])
+    ("usage: ocamlfind " ^ which ^ " [options] file ...");
 
   (* ---- Start requirements analysis ---- *)
-
+  
   begin match which with
     "ocamlc"     -> predicates := "byte" :: !predicates;
   | "ocamlcp"    -> predicates := "byte" :: !predicates;
@@ -1174,38 +1187,48 @@ let ocamldoc() =
       | None -> failwith "Not supported in your configuration: ocamldoc"
       | Some s -> s in
 
-  Arg.parse
-    ( [ "-package",
-	Arg.String (fun s -> 
-		      packages := Fl_split.in_words s @ !packages),
-	"<name>  Add this package to the search path";
+  parse_args
+    ~align:false
+    ( Arg.align
+        [ "-package",
+	  Arg.String (fun s -> 
+		        packages := Fl_split.in_words s @ !packages),
+	  "<name>  Add this package to the search path";
+          
+	  "-predicates",
+	  Arg.String (fun s ->
+		        predicates := Fl_split.in_words s @ !predicates),
+	  "<p>  Add predicate <p> when calculating dependencies";
 
-	"-predicates",
-	Arg.String (fun s ->
-		      predicates := Fl_split.in_words s @ !predicates),
-	"<p>  Add predicate <p> when calculating dependencies";
+	  "-syntax",
+	  Arg.String (fun s ->
+		        syntax_preds := Fl_split.in_words s @ !syntax_preds),
+	  "<p>  Use preprocessor with predicate <p>";
 
-	"-syntax",
-	Arg.String (fun s ->
-		      syntax_preds := Fl_split.in_words s @ !syntax_preds),
-	"<p>      Use preprocessor with predicate <p>";
-
-	"-ppopt",
-	Arg.String (fun s -> pp_opts := s :: !pp_opts),
-	"<opt>     Append option <opt> to preprocessor invocation";
-
-	"-thread",
-	Arg.Unit (fun () -> predicates := "mt" :: "mt_posix" :: !predicates),
-	"   Assume kernel multi-threading when doing dependency analyses";
-
-	"-vmthread",
-	Arg.Unit (fun () -> predicates := "mt" :: "mt_vm" :: !predicates),
-	"   Assume bytecode multi-threading when doing dependency analyses";
-
-	"-verbose",
-	Arg.Set verbose,
-	"        Be verbose\nSTANDARD OPTIONS:";
-      ]
+	  "-ppopt",
+	  Arg.String (fun s -> pp_opts := s :: !pp_opts),
+	  "<opt>  Append option <opt> to preprocessor invocation";
+          
+	  "-thread",
+	  Arg.Unit (fun () -> predicates := "mt" :: "mt_posix" :: !predicates),
+	  "  Assume kernel multi-threading when doing dependency analyses";
+          
+	  "-vmthread",
+	  Arg.Unit (fun () -> predicates := "mt" :: "mt_vm" :: !predicates),
+	  "  Assume bytecode multi-threading when doing dependency analyses";
+          
+          "-passopt",
+          Arg.String (fun s -> options := !options @ [s]),
+          "<opt>  Pass this option directly to ocamldoc";
+          
+          "-passrest",
+          Arg.Rest (fun s -> options := !options @ [s]),
+          "  Pass all remaining options directly to ocamldoc";
+          
+	  "-verbose",
+	  Arg.Set verbose,
+	  "  Be verbose\nSTANDARD OPTIONS:";
+        ]
       @
       ( merge_native_arguments
 	  native_spec
@@ -1353,16 +1376,18 @@ let ocamldep () =
       | None -> failwith "Not supported in your configuration: ocamldep"
       | Some s -> s in
 
-  Arg.parse
+  parse_args
     ( [
 	"-syntax", add_syntax_pred,
-                " <p>       Use preprocessor with predicate <p>";
+                "<p>       Use preprocessor with predicate <p>";
 	"-package", add_pkg,
-	         " <p>      Add preprocessor package <p>";
+	         "<p>      Add preprocessor package <p>";
 	"-ppopt", add_pp_opt,
-               " <opt>      Append option <opt> to preprocessor invocation";
+               "<opt>      Append option <opt> to preprocessor invocation";
 	"-passopt", Arg.String (fun s -> pass_options := !pass_options @ [s]),
-                 " <opt>    Pass option <opt> directly to ocamlc/opt/mktop";
+                 "<opt>    Pass option <opt> directly to ocamlc/opt/mktop";
+        "-passrest", Arg.Rest (fun s -> pass_options := !pass_options @ [s]),
+                  "         Pass all remaining options directly";
 	"-native-filter", Arg.Set native_filter,
 	               "    Output only dependencies for native code (implies -native)";
 	"-bytecode-filter", Arg.Set bytecode_filter,
@@ -1453,16 +1478,18 @@ let ocamlbrowser () =
   let add_pkg =
     Arg.String (fun s -> packages := !packages @ (Fl_split.in_words s)) in
 
-  Arg.parse
+  parse_args
       [
 	"-I", Arg.String (fun s -> add_spec_fn "-I" (slashify(resolve_path s))),
-           " <dir>          Add <dir> to the list of include directories";
+           "<dir>          Add <dir> to the list of include directories";
 	"-all", Arg.Set add_all,
 	     "              Add all packages to include path";
 	"-package", add_pkg,
-	         " <p>      Add package <p> to include path";
+	         "<p>      Add package <p> to include path";
 	"-passopt", Arg.String (fun s -> pass_options := !pass_options @ [s]),
-                 " <opt>    Pass option <opt> directly to ocamlbrowser";
+                 "<opt>    Pass option <opt> directly to ocamlbrowser";
+        "-passrest", Arg.Rest (fun s -> pass_options := !pass_options @ [s]),
+                 "          Pass all remaining options directly";
       ]
       (fun s -> raise (Arg.Bad ("Unexpected argument: " ^ s)))
       ("usage: ocamlfind ocamlbrowser [options] file ...");
@@ -1722,7 +1749,7 @@ let install_package () =
     ] in
   let errmsg = "usage: ocamlfind install [options] <package_name> <file> ..." in
 
-  Arg.parse
+  parse_args
         keywords
 	(fun s ->
 	   if !pkgname = ""
@@ -1933,7 +1960,7 @@ let remove_package () =
     ] in
   let errmsg = "usage: ocamlfind remove [options] <package_name>" in
 
-  Arg.parse
+  parse_args
         keywords
 	(fun s ->
 	   if !pkgname = ""
@@ -2037,7 +2064,7 @@ let list_packages() =
     ] in
   let errmsg = "usage: ocamlfind list [options]" in
 
-  Arg.parse
+  parse_args
       keywords
       (fun _ -> Arg.usage keywords errmsg; exit 1)
       errmsg;
@@ -2058,7 +2085,7 @@ let print_configuration() =
   let var = ref None in
   let errmsg = "usage: ocamlfind printconf (conf|path|destdir|metadir|stdlib|ldconf)" in
 
-  Arg.parse
+  parse_args
         []
 	(fun s ->
 	   if !var <> None then raise(Arg.Bad "Unexpected argument");

@@ -117,6 +117,9 @@ configuration files, and library routines in detail.</p>
       <p>including the sources for the documentation in the tarball</p>
       <p>License change (simplification) for num_top_printers.mli</p>
       <p>Fix ocamlmklib wrapper: processing contracted args (like -L/dir) correctly</p>
+      <p>Many wrappers get a new option -passrest instructing to pass all
+remaining options on the command-line unchanged to the invoked tool</p>
+      <p>Prettified -help output</p>
      </li>
 
     <li>

@@ -256,6 +256,7 @@ ocamlfind ( ocamlc | ocamlcp | ocamlopt | ocamlmktop )
             -dllpath-pkg <replaceable>package-name-list</replaceable> |
             -dllpath-all |
 	    -passopt <replaceable>arg</replaceable> |
+            -passrest <replaceable>arg...</replaceable> |
 	    <replaceable>standard-option</replaceable> ]
           <replaceable>file</replaceable> ...
 </programlisting>
@@ -372,6 +373,13 @@ explained below.
 <varlistentry>
 <term>-passopt <replaceable>arg</replaceable></term>
   <listitem><para>The argument <replaceable>arg</replaceable> is
+  passed directly to the underlying compiler. This is needed to
+  specify undocumented compiler options.
+</para></listitem>
+</varlistentry>
+<varlistentry>
+<term>-passrest <replaceable>arg...</replaceable></term>
+  <listitem><para>All following arguments <replaceable>arg...</replaceable> are
   passed directly to the underlying compiler. This is needed to
   specify undocumented compiler options.
 </para></listitem>
@@ -689,6 +697,7 @@ ocamlfind ocamlmklib
             -dllpath-pkg <replaceable>package-name-list</replaceable> |
             -dllpath-all |
 	    -passopt <replaceable>arg</replaceable> |
+            -passrest <replaceable>arg...</replaceable> |
 	    <replaceable>standard-option</replaceable> ]
             <replaceable>file</replaceable> ...
 </programlisting>
@@ -727,6 +736,7 @@ ocamlfind ocamldep [-package <replaceable>package-name-list</replaceable> |
                     -syntax <replaceable>pred-name-list</replaceable> |
                     -ppopt <replaceable>camlp4-arg</replaceable> |
                     -passopt <replaceable>arg</replaceable> |
+                    -passrest <replaceable>arg...</replaceable> |
                     -verbose |
                     <replaceable>standard-option</replaceable>] <replaceable>file</replaceable> ...
 </programlisting>
@@ -780,6 +790,13 @@ the revised syntax) should be specified.</para></listitem>
 </varlistentry>
 
 <varlistentry>
+  <term>-passrest <replaceable>arg...</replaceable></term>
+  <listitem><para>All further arguments are passed down to ocamldep
+  unprocessed</para>
+</listitem>
+</varlistentry>
+
+<varlistentry>
   <term>-verbose</term>
   <listitem><para>Displays the resulting ocamldep command (for debugging)
 </para></listitem>
@@ -819,7 +836,8 @@ in revised syntax.
 <programlisting>
 ocamlfind ocamlbrowser [-package <replaceable>package-name-list</replaceable> |
                         -all |
-                        -passopt <replaceable>arg</replaceable> ]
+                        -passopt <replaceable>arg</replaceable> 
+                        -passrest ]
 </programlisting>
 </refsect2>
 
@@ -831,7 +849,8 @@ the search path of the browser, and the modules of these packages become
 visible (in addition to the standard library). The option <literal>-all</literal> causes that all packages are selected that are managed by findlib.</para>
 
 <para>
-As for other drivers, the option <literal>-passopt</literal> can be used
+As for other drivers, the options <literal>-passopt</literal> and
+<literal>-passrest</literal> can be used
 to pass arguments directly to the <literal>ocamlbrowser</literal> program.
 </para>
 </refsect2>

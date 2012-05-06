@@ -43,7 +43,7 @@ let get_help cmd =
 ;;
 
 
-let switch_re = Str.regexp "[ \t]*\\(-[-a-zA-Z0-9_,]*\\)[ \t]?\\(.*\\)$";;
+let switch_re = Str.regexp "[ \t]*\\(-[-a-zA-Z0-9_,]*\\)[ \t]\\(.*\\)$";;
 
 let argument_re = Str.regexp "[ \t]*[<[]";;
 

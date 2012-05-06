@@ -584,16 +584,18 @@ let process_pp_spec syntax_preds packages pp_opts =
     if syntax_preds <> [] then
       match preprocessor_cmds with
 	  [] ->
-	    failwith("When using -syntax, the META variable 'preprocessor' must be set")
+	    failwith("Using -syntax, but no package is selected specifying \
+                     a preprocessor as required for -syntax")
 	| [_, cmd] -> Some cmd
 	| _ ->
-	    failwith("No unique value for the META variable 'preprocessor': " ^
-		     String.concat ", "
-		       (List.map
-			  (fun (n,v) ->
-			  "package " ^ n ^ " defines `" ^ v ^ "'")
-			  preprocessor_cmds
-		       )
+	    failwith("Several packages are selected that specify \
+                      preprocessors: " ^ 
+		       String.concat ", "
+		      (List.map
+			 (fun (n,v) ->
+			    "package " ^ n ^ " defines `" ^ v ^ "'")
+			 preprocessor_cmds
+		      )
 		    )
     else
       None

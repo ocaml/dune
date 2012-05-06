@@ -663,6 +663,13 @@ type pass_file_t =
 ;;
 
 
+let contracted_ocamlmklib_options =
+  [ "-l"; "-L"; "-R"; "-F"; "-Wl,-rpath,"; "-Wl,-R" ]
+    (* The ocamlmklib options where the argument is directly attached to the
+       switch (e.g. -L<path> instead of -L <path>)
+     *)
+
+
 let ocamlc which () =
 
   let destdir = ref (default_location()) in
@@ -703,7 +710,12 @@ let ocamlc which () =
                 pass_options := !pass_options @ [name]) in
   let add_spec_fn name s =
     pass_options := !pass_options @ [name; s] in
-  let add_spec name = Arg.String (add_spec_fn name) in
+  let add_spec name = 
+    Arg.String (add_spec_fn name) in
+  let add_contracted_spec_fn name s =
+    pass_options := !pass_options @ [name ^ s] in
+  let add_contracted_spec name =
+    Arg.String (add_contracted_spec_fn name) in
   let add_pkg =
     Arg.String (fun s -> packages := !packages @ (Fl_split.in_words s)) in
   let add_pred =
@@ -731,65 +743,108 @@ let ocamlc which () =
       | None -> failwith ("Not supported in your configuration: " ^ which)
       | Some s -> s in
 
-  Arg.parse
-    (List.flatten
-    [ [
-      "-package", add_pkg,
-               " <name>   Refer to package when compiling";
-      "-linkpkg", Arg.Set linkpkg,
-               "          Link the packages in";
-      "-predicates", add_pred,
-                  " <p>   Add predicate <p> when resolving package properties";
-      "-dontlink", add_dontlink,
-                " <name>  Do not link in package <name> and its ancestors";
-      "-syntax", add_syntax_pred,
-              " <p>       Use preprocessor with predicate <p>";
-      "-ppopt", add_pp_opt,
-             " <opt>      Append option <opt> to preprocessor invocation";
-      "-dllpath-pkg", add_dll_pkg,
-                   "<pkg> Add -dllpath for this package";
-      "-dllpath-all", Arg.Set dll_pkgs_all,
-                   "      Add -dllpath for all linked packages";
-      "-ignore-error", Arg.Set ignore_error,
-                    "     Ignore the 'error' directive in META files";
-      "-passopt", Arg.String (fun s -> pass_options := !pass_options @ [s]),
-               " <opt>    Pass option <opt> directly to ocamlc/opt/mklib/mktop\nSTANDARD OPTIONS:";
-      ];
+  let arg_spec =
+    List.flatten
+      [ [
+          "-package", add_pkg,
+            " <name>   Refer to package when compiling";
+          "-linkpkg", Arg.Set linkpkg,
+            "          Link the packages in";
+          "-predicates", add_pred,
+            " <p>   Add predicate <p> when resolving package properties";
+          "-dontlink", add_dontlink,
+            " <name>  Do not link in package <name> and its ancestors";
+          "-syntax", add_syntax_pred,
+            " <p>       Use preprocessor with predicate <p>";
+          "-ppopt", add_pp_opt,
+            " <opt>      Append option <opt> to preprocessor invocation";
+          "-dllpath-pkg", add_dll_pkg,
+            "<pkg> Add -dllpath for this package";
+          "-dllpath-all", Arg.Set dll_pkgs_all,
+            "      Add -dllpath for all linked packages";
+          "-ignore-error", Arg.Set ignore_error,
+            "     Ignore the 'error' directive in META files";
+          "-passopt", Arg.String (fun s -> pass_options := !pass_options @ [s]),
+            " <opt>    Pass option <opt> directly to ocamlc/opt/mklib/mktop\nSTANDARD OPTIONS:";
+        ];
 
-      merge_native_arguments 
-	native_spec 
-	add_switch
-	add_spec
-	[ "-cclib", 
-	  Arg.String (fun s -> pass_files := !pass_files @ [ Cclib s ]);
+        merge_native_arguments 
+	  native_spec 
+	  add_switch
+	  add_spec
+          (
+	    [ "-cclib", 
+	      Arg.String (fun s -> pass_files := !pass_files @ [ Cclib s ]);
+              
+	      "-I", (Arg.String
+		       (fun s ->
+		          let s = resolve_path s in
+                          if Sys.file_exists s then incpath := s :: !incpath;  (* reverted below *)
+		          add_spec_fn "-I" (slashify s) ));
+              
+	      "-impl", 
+	      Arg.String (fun s -> pass_files := !pass_files @ [ Impl(slashify s) ]);
+              
+	      "-intf", 
+	      Arg.String (fun s -> pass_files := !pass_files @ [ Intf(slashify s) ]);
+              
+	      "-pp", 
+	      Arg.String (fun s -> pp_specified := true; add_spec_fn "-pp" s);
+	      
+	      "-thread", 
+	      Arg.Unit (fun _ -> threads := threads_default);
+            
+	      "-vmthread", 
+	      Arg.Unit (fun _ -> threads := `VM_threads);
+              
+	      "-", 
+	      Arg.String (fun s -> pass_files := !pass_files @  [ Pass s ]);
+              
+	    ] @
+            if which = "ocamlmklib" then
+              List.map
+                (fun opt ->
+                   (opt, add_contracted_spec opt)
+                )
+                contracted_ocamlmklib_options
+            else
+              []
+          )
+      ] in
 
-	  "-I", (Arg.String
-		   (fun s ->
-		      let s = resolve_path s in
-                      if Sys.file_exists s then incpath := s :: !incpath;  (* reverted below *)
-		      add_spec_fn "-I" (slashify s) ));
+  let (current,args) =
+    if which = "ocamlmklib" then
+      (* Special processing for -L, -R etc. *)
+      let c = !(Arg.current) in
+      let l = Array.length Sys.argv in
+      let args1 = Array.sub Sys.argv (c+1) (l-c-1) in
+      let args2 =
+        Array.append
+          [| Sys.argv.(0) |]
+          (Fl_args.rewrite_contracted_args
+             arg_spec
+             contracted_ocamlmklib_options
+             args1
+          ) in
+      (ref 0, args2)
+    else
+      (Arg.current, Sys.argv) in
 
-	  "-impl", 
-	  Arg.String (fun s -> pass_files := !pass_files @ [ Impl(slashify s) ]);
-
-	  "-intf", 
-	  Arg.String (fun s -> pass_files := !pass_files @ [ Intf(slashify s) ]);
-
-	  "-pp", 
-	  Arg.String (fun s -> pp_specified := true; add_spec_fn "-pp" s);
-	  
-	  "-thread", 
-	  Arg.Unit (fun _ -> threads := threads_default);
-
-	  "-vmthread", 
-	  Arg.Unit (fun _ -> threads := `VM_threads);
-
-	  "-", 
-	  Arg.String (fun s -> pass_files := !pass_files @  [ Pass s ]);
-	]
-    ])
-    (fun s -> pass_files := !pass_files @ [ Pass s])
-    ("usage: ocamlfind " ^ which ^ " [options] file ...");
+  ( try
+      Arg.parse_argv
+        ~current
+        args
+        arg_spec
+        (fun s -> pass_files := !pass_files @ [ Pass s])
+        ("usage: ocamlfind " ^ which ^ " [options] file ...");
+    with
+      | Arg.Help text ->
+          print_string text;
+          exit 0
+      | Arg.Bad text ->
+          prerr_string text;
+          exit 2          
+  );
 
   (* ---- Start requirements analysis ---- *)
 
@@ -2125,11 +2180,11 @@ let main() =
     | M_remove         -> remove_package ()
     | M_printconf      -> print_configuration ()
     | M_list           -> list_packages()
-    | M_compiler which -> ocamlc which ()
     | M_dep            -> ocamldep()
     | M_browser        -> ocamlbrowser()
     | M_doc            -> ocamldoc()
     | M_call(pkg,cmd)  -> ocamlcall pkg cmd
+    | M_compiler which -> ocamlc which ()
   with
     Usage ->
       prerr_endline "Usage: ocamlfind query        [-help | other options] <package_name> ...";

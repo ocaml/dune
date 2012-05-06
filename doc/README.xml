@@ -116,6 +116,7 @@ configuration files, and library routines in detail.</p>
       <p>camlp4 is referenced by "+camlp4" in META</p>
       <p>including the sources for the documentation in the tarball</p>
       <p>License change (simplification) for num_top_printers.mli</p>
+      <p>Fix ocamlmklib wrapper: processing contracted args (like -L/dir) correctly</p>
      </li>
 
     <li>

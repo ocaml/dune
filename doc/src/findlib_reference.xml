@@ -283,6 +283,8 @@ FORMAT="LINESPECIFIC"
             -dllpath-all |
 	    -passopt <REPLACEABLE
 >arg</REPLACEABLE> |
+            -passrest <REPLACEABLE
+>arg...</REPLACEABLE> |
 	    <REPLACEABLE
 >standard-option</REPLACEABLE> ]
           <REPLACEABLE
@@ -387,6 +389,14 @@ MOREINFO="NONE"
 ><PARA
 >The argument <REPLACEABLE
 >arg</REPLACEABLE> is
+  passed directly to the underlying compiler. This is needed to
+  specify undocumented compiler options.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-passrest <REPLACEABLE
+>arg...</REPLACEABLE></TERM><LISTITEM
+><PARA
+>All following arguments <REPLACEABLE
+>arg...</REPLACEABLE> are
   passed directly to the underlying compiler. This is needed to
   specify undocumented compiler options.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
@@ -643,6 +653,8 @@ FORMAT="LINESPECIFIC"
             -dllpath-all |
 	    -passopt <REPLACEABLE
 >arg</REPLACEABLE> |
+            -passrest <REPLACEABLE
+>arg...</REPLACEABLE> |
 	    <REPLACEABLE
 >standard-option</REPLACEABLE> ]
             <REPLACEABLE
@@ -670,6 +682,8 @@ FORMAT="LINESPECIFIC"
 >camlp4-arg</REPLACEABLE> |
                     -passopt <REPLACEABLE
 >arg</REPLACEABLE> |
+                    -passrest <REPLACEABLE
+>arg...</REPLACEABLE> |
                     -verbose |
                     <REPLACEABLE
 >standard-option</REPLACEABLE>] <REPLACEABLE
@@ -725,6 +739,12 @@ the revised syntax) should be specified.</PARA></LISTITEM></VARLISTENTRY><VARLIS
 ><PARA
 >An option that is passed through to the ocamldep call.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
+>-passrest <REPLACEABLE
+>arg...</REPLACEABLE></TERM><LISTITEM
+><PARA
+>All further arguments are passed down to ocamldep
+  unprocessed</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
 >-verbose</TERM><LISTITEM
 ><PARA
 >Displays the resulting ocamldep command (for debugging)</PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2><REFSECT2
@@ -758,7 +778,8 @@ FORMAT="LINESPECIFIC"
 >package-name-list</REPLACEABLE> |
                         -all |
                         -passopt <REPLACEABLE
->arg</REPLACEABLE> ]</PROGRAMLISTING></REFSECT2><REFSECT2
+>arg</REPLACEABLE> 
+                        -passrest ]</PROGRAMLISTING></REFSECT2><REFSECT2
 ><TITLE
 >Description</TITLE><PARA
 >This driver calls the <LITERAL
@@ -771,9 +792,12 @@ the search path of the browser, and the modules of these packages become
 visible (in addition to the standard library). The option <LITERAL
 MOREINFO="NONE"
 >-all</LITERAL> causes that all packages are selected that are managed by findlib.</PARA><PARA
->As for other drivers, the option <LITERAL
+>As for other drivers, the options <LITERAL
 MOREINFO="NONE"
->-passopt</LITERAL> can be used
+>-passopt</LITERAL> and
+<LITERAL
+MOREINFO="NONE"
+>-passrest</LITERAL> can be used
 to pass arguments directly to the <LITERAL
 MOREINFO="NONE"
 >ocamlbrowser</LITERAL> program.</PARA></REFSECT2></REFSECT1><REFSECT1

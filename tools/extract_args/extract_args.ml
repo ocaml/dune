@@ -43,7 +43,8 @@ let get_help cmd =
 ;;
 
 
-let switch_re = Str.regexp "[ \t]*\\(-[-a-zA-Z0-9_,]*\\)[ \t]\\(.*\\)$";;
+let switch1_re = Str.regexp "[ \t]*\\(-[-a-zA-Z0-9_,]+\\)[ \t]?\\(.*\\)$";;
+let switch2_re = Str.regexp "[ \t]*\\(-\\)[ \t]+\\(.*\\)$";;
 
 let argument_re = Str.regexp "[ \t]*[<[]";;
 
@@ -52,7 +53,7 @@ let rec extract_signature lines =
     | [] ->
 	[]
     | line :: lines' ->
-	if Str.string_match switch_re line 0 then (
+	if Str.string_match switch1_re line 0 || Str.string_match switch2_re line 0 then (
 	  let switch_name = Str.matched_group 1 line in
 	  let help_text = Str.matched_group 2 line in
 	  let has_arg = Str.string_match argument_re help_text 0 in
@@ -70,7 +71,7 @@ and extract_help_continuation lines =
     | [] ->
 	( [], [] )
     | line :: lines' ->
-	if Str.string_match switch_re line 0 then
+	if Str.string_match switch1_re line 0 || Str.string_match switch2_re line 0 then
 	  ( [], lines )
 	else
 	  let help_lines, lines'' = extract_help_continuation lines' in

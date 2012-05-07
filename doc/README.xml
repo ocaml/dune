@@ -110,6 +110,11 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>1.3.1:</em> Fixing a bug with ocamlmklib that slipped through
+inn 1.3.0</p>
+    </li>
+
+    <li>
       <p><em>1.3.0:</em> Fixes for ocaml-4.00 (especially topfind).</p>
       <p>Emitting an error if the configuration file does not exist.</p>
       <p>Emitting a warning if the selected toolchain does not exist.</p>

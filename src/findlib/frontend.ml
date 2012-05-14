@@ -1114,7 +1114,7 @@ let ocamlc which () =
       (List.map
 	 (function
 	      Pass s ->
-		if s.[0] = '-'
+		if s <> "" && s.[0] = '-'
 		then [ "-"; String.sub s 1 (String.length s - 1) ]
 		else [ resolve_path s ]
 	    | Impl s ->

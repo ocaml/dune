@@ -110,7 +110,8 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
-      <p><em>SVN:</em> Handling of empty arguments (Wojciech Meyer)</p>
+      <p><em>SVN:</em> Handling of empty arguments (Wojciech Meyer).</p>
+      <p>Added entry for camlp4.fulllib.</p>
     </li>
 
     <li>

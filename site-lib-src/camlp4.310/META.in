@@ -30,6 +30,17 @@ dnl This file is input of the m4 macro processor.
 `  description = "Compatibilty name for camlp4.lib"'
 `)'
 
+`# don't use camlp4.lib and camlp4.fulllib together'
+`package "fulllib" ('
+`  requires = "camlp4 'camlp4_dynlink`"'
+`  version = "[distributed with Ocaml]"'
+`  description = "Camlp4 library"'
+`  error(pkg_camlp4.lib) = "camlp4.lib and camlp4.fulllib are incompatible"'
+`  archive(byte) = "camlp4fulllib.cma"'
+`  archive(byte,toploop) = ""  # already contained in camlp4*.cma'
+`  archive(native) = "camlp4fulllib.cmxa"'
+`)'
+
 `package "quotations" ('
 `  version = "[distributed with Ocaml]"'
 `  description = "Syntax extension: Quotations to create AST nodes"'

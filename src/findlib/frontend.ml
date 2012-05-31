@@ -234,7 +234,7 @@ let conflict_report incpath pkglist =
   (* Second check whether there are module conflicts *)
   let pkgpath =
     List.map Findlib.package_directory pkglist in
-  Fl_package_base.module_conflict_report ~identify_dir incpath;
+  Fl_package_base.module_conflict_report ~identify_dir (pkgpath @ incpath);
 
   (* Finally check whether there are multiple DLLs: *)
   (* Note: Only the directories mentioned in ld.conf are checked, but not the
@@ -694,8 +694,8 @@ let contracted_ocamlmklib_options =
 
 let ocamlc which () =
 
-  let destdir = ref (default_location()) in
-
+  (* let destdir = ref (default_location()) in *)
+  
   let switches = ref [] in
   let pass_options = ref [] in
   let pass_files = ref [] in
@@ -920,7 +920,7 @@ let ocamlc which () =
   let eff_link =
     List.flatten
       (List.map
-	 (fun pkg -> if List.mem pkg !dontlink then [] else [pkg])
+	 (fun pkg -> if List.mem pkg eff_dontlink then [] else [pkg])
 	 eff_packages) in
 
 
@@ -1462,19 +1462,21 @@ let ocamldep () =
 (************************************************************************)
 
 let ocamlbrowser () =
-  let switches = ref [] in
+  (* let switches = ref [] in *)
   let pass_options = ref [] in
   let add_all = ref false in
 
   let packages = ref [] in
 
+(*
   let add_switch name =
     Arg.Unit (fun () ->
                 switches := name :: !switches;
                 pass_options := !pass_options @ [name]) in
+ *)
   let add_spec_fn name s =
     pass_options := !pass_options @ [name; s] in
-  let add_spec name = Arg.String (add_spec_fn name) in
+(* let add_spec name = Arg.String (add_spec_fn name) in *)
   let add_pkg =
     Arg.String (fun s -> packages := !packages @ (Fl_split.in_words s)) in
 
@@ -1720,6 +1722,7 @@ let install_package () =
   let dll_files = ref [] in
   let nodll_files = ref [] in
   let which = ref Auto in
+  let add_files = ref false in
   let optional = ref false in
   let patches = ref [] in
 
@@ -1738,6 +1741,8 @@ let install_package () =
            "              The following files are DLLs";
       "-nodll", Arg.Unit (fun () -> which := No_dll),
              "            The following files are not DLLs";
+      "-add", Arg.Unit (fun () -> add_files := true),
+           "              Add files to the package";
       "-optional", Arg.Set optional,
                 "         The following files are optional";
       "-patch-version", Arg.String (fun s -> patches := !patches @ [`Version s]),
@@ -1800,7 +1805,19 @@ let install_package () =
 	nodll_list
     with
       | Not_found ->
-	  failwith "The META file is missing" in
+	  if !add_files then (
+	    let m1 = Filename.concat !metadir meta_dot_pkg in
+	    let m2 = Filename.concat pkgdir "META" in
+	    if Sys.file_exists m1 then
+	      m1
+	    else
+	      if Sys.file_exists m2 then
+		m2
+	      else
+		failwith "Cannot find META in package dir"
+	  )
+	  else
+	    failwith "The META file is missing" in
 
   let meta_pkg =
     let f = open_in meta_name in
@@ -1815,13 +1832,14 @@ let install_package () =
 	  failwith ("Cannot parse '" ^ meta_name ^ "': " ^ s)
   in
 
-  (* Check for frequent reasons why installation can go wrong *)
-  if Sys.file_exists (Filename.concat !metadir meta_dot_pkg) then
-    failwith ("Package " ^ !pkgname ^ " is already installed\n - (file " ^ Filename.concat !metadir meta_dot_pkg ^ " already exists)");
+  if not !add_files then (
+    (* Check for frequent reasons why installation can go wrong *)
+    if Sys.file_exists (Filename.concat !metadir meta_dot_pkg) then
+      failwith ("Package " ^ !pkgname ^ " is already installed\n - (file " ^ Filename.concat !metadir meta_dot_pkg ^ " already exists)");
 
-  if Sys.file_exists (Filename.concat pkgdir "META") then
-    failwith ("Package " ^ !pkgname ^ " is already installed\n - (file " ^ pkgdir ^ "/META already exists)");
-
+    if Sys.file_exists (Filename.concat pkgdir "META") then
+      failwith ("Package " ^ !pkgname ^ " is already installed\n - (file " ^ pkgdir ^ "/META already exists)");
+  );
   List.iter
     (fun f ->
        let f' = Filename.concat pkgdir f in
@@ -1885,10 +1903,12 @@ let install_package () =
       prerr_endline ("Installed " ^ p);
     )
   in
-  if has_metadir then
-    write_meta true !metadir meta_dot_pkg
-  else
-    write_meta false pkgdir "META";
+  if not !add_files then (
+    if has_metadir then
+      write_meta true !metadir meta_dot_pkg
+    else
+      write_meta false pkgdir "META";
+  );
 
   (* Copy the DLLs into the libexec directory if necessary *)
   if have_libexec then begin

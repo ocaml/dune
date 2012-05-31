@@ -98,7 +98,7 @@ configuration files, and library routines in detail.</p>
   <sect1>
     <title>Copyright and License Conditions</title>
     <p>
-      Findlib is copyright 2003 by Gerd Stolpmann. See the file LICENSE
+      Findlib is copyright 1999-2012 by Gerd Stolpmann. See the file LICENSE
       for the MIT/X11 style license conditions.
 
       Contact me at gerd@gerd-stolpmann.de in case of questions.
@@ -112,11 +112,15 @@ configuration files, and library routines in detail.</p>
     <li>
       <p><em>SVN:</em> Handling of empty arguments (Wojciech Meyer).</p>
       <p>Added entry for camlp4.fulllib.</p>
+      <p>New switch -add for "ocamlfind install" (Hans Ole Rafaelsen).</p>
+      <p>Further fixes for ocaml-4.00.</p>
+      <p>Fixing the recognition of double .cmi interface files.</p>
+      <p>Fixing -dontlink (it is now deeply interpreted).</p>
     </li>
 
     <li>
       <p><em>1.3.1:</em> Fixing a bug with ocamlmklib that slipped through
-inn 1.3.0</p>
+in 1.3.0</p>
     </li>
 
     <li>
@@ -124,7 +128,7 @@ inn 1.3.0</p>
       <p>Emitting an error if the configuration file does not exist.</p>
       <p>Emitting a warning if the selected toolchain does not exist.</p>
       <p>camlp4 is referenced by "+camlp4" in META.</p>
-      <p>including the sources for the documentation in the tarball.</p>
+      <p>Including the sources for the documentation in the tarball.</p>
       <p>License change (simplification) for num_top_printers.mli.</p>
       <p>Fix ocamlmklib wrapper: processing contracted args (like -L/dir) correctly.</p>
       <p>Many wrappers get a new option -passrest instructing to pass all
@@ -151,14 +155,14 @@ Ivanov for pointing this problem out.)</p>
       <p>Package warnings can be emitted by "ocamlfind ocamldoc".</p>
     </li>
     <li>
-      <p><em>1.2.6:</em> adding META for ocamlbuild</p>
-      <p>Fixes for MinGW/MSYS platform</p>
-      <p>Improved messages</p>
+      <p><em>1.2.6:</em> adding META for ocamlbuild.</p>
+      <p>Fixes for MinGW/MSYS platform.</p>
+      <p>Improved messages.</p>
     </li>
     <li>
       <p><em>1.2.5:</em> Fix: Again CR deletion... Turns out some OS do not
-        understand '\r' but only '\015' (thanks to Isaiah Weiner)</p>
-      <p>Support for Win64 (untested; thanks to David Allsopp)</p>
+        understand '\r' but only '\015' (thanks to Isaiah Weiner).</p>
+      <p>Support for Win64 (untested; thanks to David Allsopp).</p>
       <p>ocamlfind no longer emits auto-generated -ccopt options. These
          tend to accumulate, and it is possible that for large projects
          the maximum command line length is exceeded. Current versions of
@@ -167,12 +171,12 @@ Ivanov for pointing this problem out.)</p>
     </li>
 
     <li>
-      <p><em>1.2.4:</em> Fix: Bigarray needs unix (Thanks to Markus Mottl)</p>
+      <p><em>1.2.4:</em> Fix: Bigarray needs unix (Thanks to Markus Mottl).</p>
       <p>Fix: In the version of camlp4 provided by O'Caml 3.11 various
          libraries do not contain dynlink anymore. Because of this, dynlink
-         becomes a prerequisite of camlp4. (Thanks to Martin Jambon)</p>
+         becomes a prerequisite of camlp4. (Thanks to Martin Jambon).</p>
       <p>Attempt: Fixing the space issue for paths (Win32). It is unclear
-         whether it is solved. (Thanks to Christophe Troestler)</p>
+         whether it is solved. (Thanks to Christophe Troestler).</p>
     </li>
 
     <li>
@@ -182,13 +186,13 @@ Ivanov for pointing this problem out.)</p>
 
     <li>
       <p><em>1.2.2:</em> Fix: Problem with CR character (Cygwin)
-        (Thanks to David Allsopp)
+        (Thanks to David Allsopp).
       </p>
       <p>Fix: Case-insensitive filesystems (partially solved)
-        (Thanks to David Allsopp)
+        (Thanks to David Allsopp).
 	</p>
 	<p>Fix: File name with backslashes at the end (Win32; 
-           thanks to Dmitry Grebeniuk)</p>
+           thanks to Dmitry Grebeniuk).</p>
     </li>
 
       <li>

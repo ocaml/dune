@@ -979,7 +979,7 @@ ocamlfind install [ -destdir <replaceable>directory</replaceable> ]
                   [ -patch-version <replaceable>string</replaceable> ]
                   [ -patch-rmpkg <replaceable>name</replaceable> ]
                   [ -patch-archives ]
-	          [ -dll ] [ -nodll ] [ -optional ]
+	          [ -dll ] [ -nodll ] [ -optional ] [ -add ]
                   <replaceable>package_name</replaceable> <replaceable>file</replaceable> ...
 </programlisting>
 </refsect2>
@@ -1066,6 +1066,11 @@ contents of the top-level "version" variable. The option -patch-rmpkg
 removes the given subpackage. The option -patch-archives is experimental,
 in particular it removes all non-existing files from "archive" variables,
 and even whole subpackages if the archives are missing.
+</para>
+
+<para>
+The effect of -add is to add further files to an already installed
+packages.
 </para>
 
 </refsect2>

@@ -891,7 +891,7 @@ FORMAT="LINESPECIFIC"
                   [ -patch-rmpkg <REPLACEABLE
 >name</REPLACEABLE> ]
                   [ -patch-archives ]
-	          [ -dll ] [ -nodll ] [ -optional ]
+	          [ -dll ] [ -nodll ] [ -optional ] [ -add ]
                   <REPLACEABLE
 >package_name</REPLACEABLE> <REPLACEABLE
 >file</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
@@ -974,7 +974,9 @@ while it is being installed. The option -patch-version changes the
 contents of the top-level "version" variable. The option -patch-rmpkg
 removes the given subpackage. The option -patch-archives is experimental,
 in particular it removes all non-existing files from "archive" variables,
-and even whole subpackages if the archives are missing.</PARA></REFSECT2></REFSECT1><REFSECT1
+and even whole subpackages if the archives are missing.</PARA><PARA
+>The effect of -add is to add further files to an already installed
+packages.</PARA></REFSECT2></REFSECT1><REFSECT1
 ><TITLE
 ><ANCHOR
 ID="OCAMLFIND.REMOVE"

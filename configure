@@ -446,9 +446,19 @@ else
     echo "camlp4: not present"
 fi
 
+# compiler-libs?
+if [ -d "${ocaml_core_stdlib}/compiler-libs" ]; then
+    echo "compiler-libs: found"
+    lcomplibs="compiler-libs"
+else
+    echo "compiler-libs: not present"
+    lcomplibs=""
+fi
+
+
 # Generate the META files now.
 
-l="dbm dynlink graphics num num-top str threads unix stdlib bigarray $llabltk $lcamlp4 $lobuild"
+l="dbm dynlink graphics num num-top str threads unix stdlib bigarray $llabltk $lcamlp4 $lobuild $lcomplibs"
 
 for dir in site-lib-src/*; do
     # We do not really know if $dir is a directory.

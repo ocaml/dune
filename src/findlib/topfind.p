@@ -7,9 +7,6 @@
 #directory "@SITELIB@/findlib";;
   (* OCaml-4.00 requires to have #directory before we load anything *)
 
-#directory "+compiler-libs";;
-  (* OCaml-4.00: Temporary solution for now *)
-
 (* First test whether findlib_top is already loaded. If not, load it now.
  * The test works by executing the toplevel phrase "Topfind.reset" and
  * checking whether this causes an error.

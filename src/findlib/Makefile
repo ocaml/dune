@@ -86,6 +86,10 @@ install: all
 	cp $$files "$(prefix)$(OCAML_SITELIB)/$(NAME)"
 	f="ocamlfind$(EXEC_SUFFIX)"; { test -f ocamlfind_opt$(EXEC_SUFFIX) && f="ocamlfind_opt$(EXEC_SUFFIX)"; }; \
 	cp $$f "$(prefix)$(OCAMLFIND_BIN)/ocamlfind$(EXEC_SUFFIX)"
+	if [ -d "$(OCAML_CORE_STDLIB)/compiler-libs" ]; then \
+	    cd "$(OCAML_CORE_STDLIB)/compiler-libs/"; \
+	    cp topdirs.cmi toploop.cmi "$(prefix)$(OCAML_SITELIB)/$(NAME)/";
+	fi
 
 install-num-top:
 	mkdir -p "$(prefix)$(OCAML_SITELIB)/num-top"

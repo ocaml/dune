@@ -210,7 +210,7 @@ use_cygpath=0
 if [ -z "$system" ]; then
     system=`ocamlc -config 2>/dev/null|grep system|sed 's/system: //'`
     # This may be
-    # - mingw
+    # - mingw or mingw64
     # - win32
     # - win64
     # - cygwin
@@ -219,7 +219,7 @@ if [ -z "$system" ]; then
 fi
 
 case "$system" in
-    mingw)
+    mingw|mingw64)
 	if [ "$pure_mingw" = "no" ];  then
 	    # CYGWIN
 	    use_cygpath=1

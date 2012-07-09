@@ -8,6 +8,7 @@
 #----------------------------------------------------------------------
 
 TOP=../..
+include $(TOP)/Makefile.config
 
 NAME = findlib
 
@@ -63,10 +64,10 @@ findlib_config.ml: findlib_config.mlp $(TOP)/Makefile.config
 		    -e 's;@SYSTEM@;$(SYSTEM);g' \
 		     >findlib_config.ml
 
-topfind: topfind.p
+topfind: topfind_rd$(OCAML_REMOVE_DIRECTORY).p
 	USE_CYGPATH="$(USE_CYGPATH)"; \
 	export USE_CYGPATH; \
-	cat topfind.p | \
+	cat topfind_rd$(OCAML_REMOVE_DIRECTORY).p | \
 		$(TOP)/tools/patch '@SITELIB@' '$(OCAML_SITELIB)' \
 	    	    >topfind
 
@@ -86,7 +87,8 @@ install: all
 	cp $$files "$(prefix)$(OCAML_SITELIB)/$(NAME)"
 	f="ocamlfind$(EXEC_SUFFIX)"; { test -f ocamlfind_opt$(EXEC_SUFFIX) && f="ocamlfind_opt$(EXEC_SUFFIX)"; }; \
 	cp $$f "$(prefix)$(OCAMLFIND_BIN)/ocamlfind$(EXEC_SUFFIX)"
-	if [ -d "$(OCAML_CORE_STDLIB)/compiler-libs" ]; then \
+	# the following "if" block is only needed for 4.00beta2
+	if [ $(OCAML_REMOVE_DIRECTORY) -eq 0 -a -f "$(OCAML_CORE_STDLIB)/compiler-libs/topdirs.cmi" ]; then \
 	    cd "$(OCAML_CORE_STDLIB)/compiler-libs/"; \
 	    cp topdirs.cmi toploop.cmi "$(prefix)$(OCAML_SITELIB)/$(NAME)/"; \
 	fi
@@ -137,6 +139,5 @@ fl_meta.ml: fl_meta.mll
 # Don't remove fl_metascanner.ml:
 .PRECIOUS: fl_metascanner.ml
 
-include $(TOP)/Makefile.config
 include depend
 

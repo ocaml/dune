@@ -314,6 +314,13 @@ if [ -z "${ocamlfind_config}" ]; then
 fi
 
 ######################################################################
+# do we have #remove_directory?
+
+echo "Checking for #remove_directory..."
+have_remdir=1
+ocaml itest-aux/remdir.ml >/dev/null 2>/dev/null || have_remdir=0
+
+######################################################################
 # Test the threading model
 
 echo "Testing threading model..."
@@ -527,6 +534,7 @@ echo "OCAMLFIND_BIN=${ocamlfind_bin}" >>Makefile.config
 echo "OCAMLFIND_MAN=${ocamlfind_man}" >>Makefile.config
 echo "OCAMLFIND_CONF=${ocamlfind_config}" >>Makefile.config
 echo "OCAML_AUTOLINK=${ocaml_autolink}" >>Makefile.config
+echo "OCAML_REMOVE_DIRECTORY=${have_remdir}" >>Makefile.config
 echo "EXEC_SUFFIX=${exec_suffix}" >>Makefile.config
 echo "PARTS=${parts}" >>Makefile.config
 echo "INSTALL_TOPFIND=${with_topfind}" >>Makefile.config

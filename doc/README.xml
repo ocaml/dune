@@ -110,6 +110,12 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>1.3.3:</em> OCaml-4: using the new #remove_directory directive
+	if present.</p>
+      <p>Better compatibility with the OCaml version from Homebrew.</p>
+    </li>
+
+    <li>
       <p><em>1.3.2:</em> Handling of empty arguments (Wojciech Meyer).</p>
       <p>Added entry for camlp4.fulllib.</p>
       <p>New switch -add for "ocamlfind install" (Hans Ole Rafaelsen).</p>

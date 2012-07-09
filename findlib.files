@@ -106,7 +106,6 @@ d src
 d src/findlib
 f src/findlib/Makefile
 f src/findlib/META.in
-f src/findlib/topfind.p
 f src/findlib/findlib_config.mlp
 x src/findlib/fl_metascanner.ml
 x src/findlib/fl_meta.ml
@@ -116,6 +115,7 @@ p src/findlib/.*\.ml
 p src/findlib/.*\.mli
 p src/findlib/.*\.mll
 p src/findlib/.*\.src
+p src/findlib/.*\.p
 
 d src/findlib-toolbox
 f src/findlib-toolbox/Makefile

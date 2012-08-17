@@ -208,7 +208,7 @@ use_cygpath=0
 # Whether we have to translate Unix paths to/from Windows paths.
 
 if [ -z "$system" ]; then
-    system=`ocamlc -config 2>/dev/null|grep system|sed 's/system: //'`
+    system=`ocamlc -config 2>/dev/null|grep '^system'|sed 's/system: //'`
     # This may be
     # - mingw or mingw64
     # - win32

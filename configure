@@ -116,6 +116,7 @@ ocaml_sitelib=""
 ocamlfind_config=""
 with_toolbox=0
 with_topfind=1
+custom=-custom
 system=""
 
 while [ "$#" != "0" ]; do
@@ -132,6 +133,9 @@ while [ "$#" != "0" ]; do
         -config) ocamlfind_config=$2
 	         shift 2
 		 ;;
+        -no-custom) custom=
+                shift
+                ;;
 	-cygpath) system=mingw
 	         shift
 		 ;;
@@ -153,6 +157,7 @@ while [ "$#" != "0" ]; do
 		  echo "  -mandir path         where manual pages are installed" 1>&2
 		  echo "  -sitelib path        set the location of the site-specific packages" 1>&2
                   echo "  -config path         set the location of the configuration file" 1>&2
+                 echo "  -no-custom           don't link in custom runtime mode" 1>&2
 		  echo "  -system <systype>    override system type (esp. mingw and win32)" 1>&2
 		  echo "  -with-toolbox        also build the toolbox" 1>&2
 		  echo "  -no-topfind          don't install topfind script into stdlib directory" 1>&2
@@ -536,6 +541,7 @@ echo "OCAMLFIND_CONF=${ocamlfind_config}" >>Makefile.config
 echo "OCAML_AUTOLINK=${ocaml_autolink}" >>Makefile.config
 echo "OCAML_REMOVE_DIRECTORY=${have_remdir}" >>Makefile.config
 echo "EXEC_SUFFIX=${exec_suffix}" >>Makefile.config
+echo "CUSTOM=${custom}" >>Makefile.config
 echo "PARTS=${parts}" >>Makefile.config
 echo "INSTALL_TOPFIND=${with_topfind}" >>Makefile.config
 echo "USE_CYGPATH=${use_cygpath}" >>Makefile.config
@@ -572,6 +578,12 @@ if [ $with_toolbox -gt 0 ]; then
     echo "Toolbox:                   yes"
 else
     echo "Toolbox:                   no"
+fi
+
+if [ -z "$custom" ]; then
+    echo "Link custom runtime:       no"
+else
+    echo "Link custom runtime:       yes"
 fi
 
 echo

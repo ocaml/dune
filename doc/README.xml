@@ -114,6 +114,9 @@ configuration files, and library routines in detail.</p>
 need to be processed (Jérôme Vouillon).</p>
       <p>Auto-configuring ocamldoc.opt if it is found (Christopher
 Zimmermann).</p>
+      <p>New config switch -no-custom to prevent that "ocamlfind"
+is linked in custom-runtime mode (bytecode only) (Christopher
+Zimmermann).</p>
     </li>
 
     <li>

@@ -38,7 +38,7 @@ all: ocamlfind$(EXEC_SUFFIX) findlib.cma findlib_top.cma topfind num_top.cma
 opt: ocamlfind_opt$(EXEC_SUFFIX) findlib.cmxa topfind
 
 ocamlfind$(EXEC_SUFFIX): findlib.cma $(OCAMLFIND_OBJECTS)
-	$(OCAMLC) -custom -o ocamlfind$(EXEC_SUFFIX) -g findlib.cma unix.cma \
+       $(OCAMLC) $(CUSTOM) -o ocamlfind$(EXEC_SUFFIX) -g findlib.cma unix.cma \
 	          $(OCAMLC_FLAGS) $(OCAMLFIND_OBJECTS)
 
 ocamlfind_opt$(EXEC_SUFFIX): findlib.cmxa $(OCAMLFIND_XOBJECTS)

@@ -77,6 +77,7 @@ val init_manually :
       ?ocamlc_command: string ->       (* default: "ocamlc"     *)
       ?ocamlopt_command: string ->     (* default: "ocamlopt"   *)
       ?ocamlcp_command: string ->      (* default: "ocamlcp"    *)
+      ?ocamloptp_command: string ->    (* default: "ocamloptp"   *)
       ?ocamlmklib_command: string ->   (* default: "ocamlmklib" *)
       ?ocamlmktop_command: string ->   (* default: "ocamlmktop" *)
       ?ocamldep_command: string ->     (* default: "ocamldep"   *)
@@ -106,7 +107,7 @@ val meta_directory : unit -> string
 val search_path : unit -> string list
   (** Get the search path for packages *)
 
-val command : [ `ocamlc | `ocamlopt | `ocamlcp | `ocamlmklib 
+val command : [ `ocamlc | `ocamlopt | `ocamlcp | `ocamloptp | `ocamlmklib 
 	      | `ocamlmktop | `ocamldep | `ocamlbrowser | `ocamldoc
 	      ] -> 
               string

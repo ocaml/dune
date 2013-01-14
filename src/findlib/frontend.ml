@@ -759,6 +759,7 @@ let ocamlc which () =
       | "ocamlmklib" -> Ocaml_args.ocamlmklib_spec
       | "ocamlmktop" -> Ocaml_args.ocamlmktop_spec
       | "ocamlopt"   -> Ocaml_args.ocamlopt_spec
+      | "ocamloptp"  -> Ocaml_args.ocamloptp_spec
       | _            -> None in
   let native_spec =
     match native_spec_opt with
@@ -869,6 +870,7 @@ let ocamlc which () =
   | "ocamlmklib" -> predicates := "byte" :: "native" :: !predicates;
   | "ocamlmktop" -> predicates := "byte" :: "create_toploop" :: !predicates;
   | "ocamlopt"   -> predicates := "native" :: !predicates;
+  | "ocamloptp"  -> predicates := "native" :: !predicates;
   | _            -> failwith "unsupported backend"
   end;
 
@@ -1161,6 +1163,7 @@ let ocamlc which () =
       | "ocamlcp"    -> Findlib.command `ocamlcp
       | "ocamlmklib" -> Findlib.command `ocamlmklib
       | "ocamlmktop" -> Findlib.command `ocamlmktop
+      | "ocamloptp"  -> Findlib.command `ocamloptp
       | _            -> assert false
   in
 
@@ -2183,6 +2186,7 @@ let rec select_mode () =
     | ("remove"|"-remove")                 -> incr Arg.current; M_remove
     | ("ocamlc"|"-ocamlc"|"c")             -> incr Arg.current; M_compiler "ocamlc"
     | ("ocamlcp"|"-ocamlcp"|"cp")          -> incr Arg.current; M_compiler "ocamlcp"
+    | ("ocamloptp"|"-ocamloptp"|"optp")    -> incr Arg.current; M_compiler "ocamloptp"
     | ("ocamlmklib"|"-ocamlmklib"|"mklib") -> incr Arg.current; M_compiler "ocamlmklib"
     | ("ocamlmktop"|"-ocamlmktop"|"mktop") -> incr Arg.current; M_compiler "ocamlmktop"
     | ("ocamlopt"|"-ocamlopt"|"opt")       -> incr Arg.current; M_compiler "ocamlopt"
@@ -2241,7 +2245,10 @@ let main() =
       prerr_endline "   or: ocamlfind ocamlcp      [-help | other options] <file> ...";
       prerr_endline "   or: ocamlfind ocamlmklib   [-help | other options] <file> ...";
       prerr_endline "   or: ocamlfind ocamlmktop   [-help | other options] <file> ...";
-      prerr_endline "   or: ocamlfind ocamlopt     [-help | other options] <file> ...";
+      if Ocaml_args.ocamlopt_spec <> None then
+	prerr_endline "   or: ocamlfind ocamlopt     [-help | other options] <file> ...";
+      if Ocaml_args.ocamloptp_spec <> None then
+	prerr_endline "   or: ocamlfind ocamloptp    [-help | other options] <file> ...";
       prerr_endline "   or: ocamlfind ocamldep     [-help | other options] <file> ...";
       prerr_endline "   or: ocamlfind ocamlbrowser [-help | other options]";
       prerr_endline "   or: ocamlfind ocamldoc     [-help | other options] <file> ...";

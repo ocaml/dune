@@ -38,7 +38,7 @@ all: ocamlfind$(EXEC_SUFFIX) findlib.cma findlib_top.cma topfind num_top.cma
 opt: ocamlfind_opt$(EXEC_SUFFIX) findlib.cmxa topfind
 
 ocamlfind$(EXEC_SUFFIX): findlib.cma $(OCAMLFIND_OBJECTS)
-       $(OCAMLC) $(CUSTOM) -o ocamlfind$(EXEC_SUFFIX) -g findlib.cma unix.cma \
+	$(OCAMLC) $(CUSTOM) -o ocamlfind$(EXEC_SUFFIX) -g findlib.cma unix.cma \
 	          $(OCAMLC_FLAGS) $(OCAMLFIND_OBJECTS)
 
 ocamlfind_opt$(EXEC_SUFFIX): findlib.cmxa $(OCAMLFIND_XOBJECTS)
@@ -78,6 +78,7 @@ clean:
 	rm -f *.cmi *.cmo *.cma *.cmx *.a *.o *.cmxa \
 	  fl_meta.ml findlib_config.ml findlib.mml topfind \
 	  ocamlfind$(EXEC_SUFFIX) ocamlfind_opt$(EXEC_SUFFIX)
+	#rm -f ocaml_args.ml
 
 install: all
 	mkdir -p "$(prefix)$(OCAML_SITELIB)/$(NAME)"

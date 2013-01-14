@@ -119,6 +119,7 @@ is linked in custom-runtime mode (bytecode only) (Christopher
 Zimmermann).</p>
       <p>The library dbm is no longer part of OCaml, and now
 optional in findlib (Ashish Argawal).</p>
+      <p>Support for ocamloptp.</p>
     </li>
 
     <li>

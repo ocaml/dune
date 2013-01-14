@@ -25,6 +25,7 @@ let conf_ignore_dups_in = ref (None : string option);;
 let ocamlc_default = "ocamlc";;
 let ocamlopt_default = "ocamlopt";;
 let ocamlcp_default = "ocamlcp";;
+let ocamloptp_default = "ocamloptp";;
 let ocamlmklib_default = "ocamlmklib";;
 let ocamlmktop_default = "ocamlmktop";;
 let ocamldep_default = "ocamldep";;
@@ -36,6 +37,7 @@ let init_manually
       ?(ocamlc_command = ocamlc_default)
       ?(ocamlopt_command = ocamlopt_default)
       ?(ocamlcp_command = ocamlcp_default)
+      ?(ocamloptp_command = ocamloptp_default)
       ?(ocamlmklib_command = ocamlmklib_default)
       ?(ocamlmktop_command = ocamlmktop_default)
       ?(ocamldep_command = ocamldep_default)
@@ -50,6 +52,7 @@ let init_manually
   conf_command := [ `ocamlc,     ocamlc_command;
 		    `ocamlopt,   ocamlopt_command;
 		    `ocamlcp,    ocamlcp_command;
+		    `ocamloptp,  ocamloptp_command;
 		    `ocamlmklib, ocamlmklib_command;
 		    `ocamlmktop, ocamlmktop_command;
 		    `ocamldep,   ocamldep_command;
@@ -136,7 +139,7 @@ let init
       | None -> []
       | Some p -> [p] in
 
-  let sys_ocamlc, sys_ocamlopt, sys_ocamlcp, sys_ocamlmklib,
+  let sys_ocamlc, sys_ocamlopt, sys_ocamlcp, sys_ocamloptp, sys_ocamlmklib,
       sys_ocamlmktop, sys_ocamldep, sys_ocamlbrowser, sys_ocamldoc,
       sys_search_path, sys_destdir, sys_metadir, sys_stdlib, sys_ldconf = 
     (
@@ -173,6 +176,7 @@ let init
 	  ( (lookup "ocamlc" ocamlc_default),
 	    (lookup "ocamlopt" ocamlopt_default),
 	    (lookup "ocamlcp" ocamlcp_default),
+	    (lookup "ocamloptp" ocamloptp_default),
 	    (lookup "ocamlmklib" ocamlmklib_default),
 	    (lookup "ocamlmktop" ocamlmktop_default),
 	    (lookup "ocamldep" ocamldep_default),
@@ -190,7 +194,8 @@ let init
         config_tuple
       )
       else
-	( ocamlc_default, ocamlopt_default, ocamlcp_default, ocamlmklib_default,
+	( ocamlc_default, ocamlopt_default, ocamlcp_default, ocamloptp_default,
+	  ocamlmklib_default,
 	  ocamlmktop_default, ocamldep_default, ocamlbrowser_default,
 	  ocamldoc_default,
 	  [],
@@ -251,12 +256,13 @@ let init
 	  try Some(Sys.getenv "OCAMLFIND_IGNORE_DUPS_IN") 
 	  with Not_found -> None in
 
-  let ocamlc, ocamlopt, ocamlcp, ocamlmklib, ocamlmktop,
+  let ocamlc, ocamlopt, ocamlcp, ocamloptp, ocamlmklib, ocamlmktop,
       ocamldep, ocamlbrowser, ocamldoc,
       search_path, destdir, metadir, stdlib, ldconf =
     (try List.assoc "ocamlc"     env_commands with Not_found -> sys_ocamlc),
     (try List.assoc "ocamlopt"   env_commands with Not_found -> sys_ocamlopt),
     (try List.assoc "ocamlcp"    env_commands with Not_found -> sys_ocamlcp),
+    (try List.assoc "ocamloptp"  env_commands with Not_found -> sys_ocamloptp),
     (try List.assoc "ocamlmklib" env_commands with Not_found -> sys_ocamlmklib),
     (try List.assoc "ocamlmktop" env_commands with Not_found -> sys_ocamlmktop),
     (try List.assoc "ocamldep"   env_commands with Not_found -> sys_ocamldep),
@@ -273,6 +279,7 @@ let init
     ~ocamlc_command: ocamlc
     ~ocamlopt_command: ocamlopt
     ~ocamlcp_command: ocamlcp
+    ~ocamloptp_command: ocamloptp
     ~ocamlmklib_command: ocamlmklib
     ~ocamlmktop_command: ocamlmktop
     ~ocamldep_command: ocamldep

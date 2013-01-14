@@ -469,7 +469,7 @@ fi
 
 # dbm?
 
-if [ -f "${ocamlo_core_stdlib}/dbm.cmi" ]; then
+if [ -f "${ocaml_core_stdlib}/dbm.cmi" ]; then
     echo "dbm: found"
     ldbm="dbm"
 else
@@ -518,7 +518,7 @@ printf "Detecting compiler arguments: "
 ( cd tools/extract_args && make ) >ocargs.log 2>&1
 if [ "$?" -eq 0 ]; then
     printf "(extractor built) "
-    tools/extract_args/extract_args -o src/findlib/ocaml_args.ml ocamlc ocamlcp ocamlmklib ocamlmktop ocamlopt ocamldep ocamldoc >>ocargs.log 2>&1
+    tools/extract_args/extract_args -o src/findlib/ocaml_args.ml ocamlc ocamlcp ocamloptp ocamlmklib ocamlmktop ocamlopt ocamldep ocamldoc >>ocargs.log 2>&1
     # ocamlbrowser does not work!
     if [ $? -eq 0 ]; then
 	echo "ok"

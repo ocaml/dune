@@ -63,6 +63,9 @@ findlib.conf: findlib.conf.in
 	if ocamldep.opt >/dev/null 2>&1; then \
 		echo 'ocamldep="ocamldep.opt"' >>findlib.conf; \
 	fi
+	if ocamldoc.opt >/dev/null 2>&1; then \
+		echo 'ocamldoc="ocamldoc.opt"' >>findlib.conf; \
+	fi
 
 .PHONY: install-doc
 install-doc:

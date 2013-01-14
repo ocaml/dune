@@ -157,7 +157,7 @@ while [ "$#" != "0" ]; do
 		  echo "  -mandir path         where manual pages are installed" 1>&2
 		  echo "  -sitelib path        set the location of the site-specific packages" 1>&2
                   echo "  -config path         set the location of the configuration file" 1>&2
-                 echo "  -no-custom           don't link in custom runtime mode" 1>&2
+                  echo "  -no-custom           don't link in custom runtime mode" 1>&2
 		  echo "  -system <systype>    override system type (esp. mingw and win32)" 1>&2
 		  echo "  -with-toolbox        also build the toolbox" 1>&2
 		  echo "  -no-topfind          don't install topfind script into stdlib directory" 1>&2
@@ -467,10 +467,20 @@ else
     lcomplibs=""
 fi
 
+# dbm?
+
+if [ -f "${ocamlo_core_stdlib}/dbm.cmi" ]; then
+    echo "dbm: found"
+    ldbm="dbm"
+else
+    echo "dbm: not present (normal since OCaml-4.00)"
+    ldbm=""
+fi
+
 
 # Generate the META files now.
 
-l="dbm dynlink graphics num num-top str threads unix stdlib bigarray $llabltk $lcamlp4 $lobuild $lcomplibs"
+l="$ldbm dynlink graphics num num-top str threads unix stdlib bigarray $llabltk $lcamlp4 $lobuild $lcomplibs"
 
 for dir in site-lib-src/*; do
     # We do not really know if $dir is a directory.

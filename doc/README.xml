@@ -117,6 +117,8 @@ Zimmermann).</p>
       <p>New config switch -no-custom to prevent that "ocamlfind"
 is linked in custom-runtime mode (bytecode only) (Christopher
 Zimmermann).</p>
+      <p>The library dbm is no longer part of OCaml, and now
+optional in findlib (Ashish Argawal).</p>
     </li>
 
     <li>

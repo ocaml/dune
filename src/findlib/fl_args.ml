@@ -75,7 +75,9 @@ let rewrite_contracted_args spec contracted_opts args =
           arg1 :: arg2 :: rewrite args_rest
       | arg :: args_rest ->
           ( try
-              expand arg contracted_opts @ rewrite args_rest
+              let args1 = expand arg contracted_opts in
+              let args2 = rewrite args_rest in
+	      args1 @ args2
             with
               | Not_found ->
                   arg :: rewrite args_rest

@@ -19,6 +19,8 @@ let directories = ref [ Findlib.ocaml_stdlib() ];;
 let real_toploop = 
   !Sys.interactive;;
 
+let log = ref (if real_toploop then prerr_endline else ignore)
+
 let rec remove_dups l =
   match l with
     x :: l' ->
@@ -41,8 +43,7 @@ let add_dir d =
   if not (List.mem d !directories) then begin
     Topdirs.dir_directory d;
     directories := d :: !directories;
-    if real_toploop then
-      prerr_endline (d ^ ": added to search path")
+    !log (d ^ ": added to search path")
   end
 ;;
 
@@ -68,8 +69,7 @@ let load pkglist =
 	  List.iter
 	    (fun arch -> 
 	       let arch' = Findlib.resolve_path ~base:d arch in
-	       if real_toploop then
-		 prerr_endline (arch' ^ ": loaded");
+	       !log (arch' ^ ": loaded");
 	       Topdirs.dir_load
 		 Format.std_formatter arch')
 	    archives;

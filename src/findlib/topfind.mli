@@ -118,3 +118,5 @@ val reset : unit -> unit
 val announce : unit -> unit
   (** Output the startup message *)
 
+val log : (string -> unit) ref
+  (** Function used to log messages from this module. *)

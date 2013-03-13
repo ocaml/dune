@@ -120,6 +120,8 @@ Zimmermann).</p>
       <p>The library dbm is no longer part of OCaml, and now
 optional in findlib (Ashish Argawal).</p>
       <p>Support for ocamloptp.</p>
+      <p>New function Topfind.log for controlling the verbosity
+(Jeremie Dimino).</p>
     </li>
 
     <li>

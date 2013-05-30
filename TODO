@@ -1,3 +1,5 @@
 Document archive(plugin)
 
-Get rid of stream parser :-(
+Get rid of stream parser :-(  (there are ocaml builds without camlp4)
+
+Get ready for -ppx

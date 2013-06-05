@@ -107,7 +107,7 @@ d src/findlib
 f src/findlib/Makefile
 f src/findlib/META.in
 f src/findlib/findlib_config.mlp
-x src/findlib/fl_metascanner.ml
+#x src/findlib/fl_metascanner.ml
 x src/findlib/fl_meta.ml
 x src/findlib/findlib_config.ml
 x src/findlib/ocaml_args.ml

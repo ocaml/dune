@@ -122,6 +122,8 @@ optional in findlib (Ashish Argawal).</p>
       <p>Support for ocamloptp.</p>
       <p>New function Topfind.log for controlling the verbosity
 (Jeremie Dimino).</p>
+      <p>Rewritten Fl_metascanner without camlp4 (patch from
+Gabriel Scherer)</p>
     </li>
 
     <li>

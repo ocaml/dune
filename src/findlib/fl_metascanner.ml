@@ -1,4 +1,4 @@
-(* $Id: fl_metascanner.src 155 2012-05-06 19:18:35Z gerd $ -*- tuareg -*-
+(* $Id$ -*- tuareg -*-
  * ----------------------------------------------------------------------
  *
  *)
@@ -26,11 +26,10 @@ let string_of_preds pl =
     then ""
     else "(" ^ ((String.concat "," (List.map print pl)) ^ ")")
   
-let scan ch =
-  (* transform an in_channel to a token stream; 'Space' tokens are left
+let scan_lexing buf =
+  (* transform a Lexing.lexbuf into a token stream; 'Space' tokens are left
    * out.
    *)
-  let buf = Lexing.from_channel ch in
   let rec next line pos0 =
     let t = Fl_meta.token buf
     in
@@ -47,7 +46,9 @@ let scan ch =
               (Stream.slazy (fun _ -> next line pos0))
   in next 1 0
   
-let parse ch =
+let scan ch = scan_lexing (Lexing.from_channel ch)
+  
+let parse_lexing lexbuf =
   let rec mk_set l =
     match l with
     | x :: l' -> if List.mem x l' then mk_set l' else x :: (mk_set l')
@@ -295,8 +296,204 @@ let parse ch =
                l := n :: !l))
          pkg.pkg_children)
   in
-    try let pkg = parse_all false (scan ch) in (check_pkg "" pkg; pkg)
+    try
+      let pkg = parse_all false (scan_lexing lexbuf)
+      in (check_pkg "" pkg; pkg)
     with | Stream.Error "" -> raise (Stream.Error "Syntax Error")
+  
+let parse ch = parse_lexing (Lexing.from_channel ch)
+  
+let scan2_lexing buf =
+  (* transform an in_channel to a token stream; 'Space' tokens are left
+   * out.
+   *)
+  let (line_ref, pos0_ref, eof_found) = ((ref 1), (ref 0), (ref false))
+  in
+    fun () ->
+      let rec next line pos0 =
+        let t = Fl_meta.token buf
+        in
+          match t with
+          | Space -> next line pos0
+          | Newline -> next (line + 1) (Lexing.lexeme_end buf)
+          | Eof -> (eof_found := true; produce line pos0 Eof)
+          | _ -> produce line pos0 t
+      and produce line pos0 t =
+        (line_ref := line;
+         pos0_ref := pos0;
+         let pos = (Lexing.lexeme_start buf) - pos0 in (line, pos, t))
+      in
+        if !eof_found
+        then produce !line_ref !pos0_ref Eof
+        else next !line_ref !pos0_ref
+  
+let scan2 ch = scan2_lexing (Lexing.from_channel ch)
+  
+let parse2_lexing lexbuf =
+  let rec mk_set l =
+    match l with
+    | x :: l' -> if List.mem x l' then mk_set l' else x :: (mk_set l')
+    | [] -> [] in
+  let error_msg msg line col =
+    Printf.sprintf "%s at line %d position %d" msg line col in
+  let next_token = scan2_lexing lexbuf in
+  let raise_err error_fun line col =
+    raise (Stream.Error (error_fun line col)) in
+  let get_tok test error_fun =
+    let (line, col, tok) = next_token ()
+    in
+      match test tok with
+      | None -> raise_err error_fun line col
+      | Some result -> result in
+  let get_rule rule arg error_fmt line col =
+    try rule arg with | Stream.Error _ -> raise_err error_fmt line col in
+  let rec parse_all need_rparen =
+    match next_token () with
+    | (line, col, Name "package") ->
+        let n =
+          get_tok string_tok
+            (error_msg "String literal expected after 'package'") in
+        let () =
+          get_tok (const_tok LParen) (error_msg "'(' expected after string") in
+        let subpkg =
+          get_rule parse_all true
+            (error_msg "Error in subpackage definition") line col in
+        let rest = parse_all need_rparen
+        in
+          {
+            pkg_defs = rest.pkg_defs;
+            pkg_children = (n, subpkg) :: rest.pkg_children;
+          }
+    | (line, col, Name n) ->
+        let (args, flav, value) =
+          get_rule parse_properties ()
+            (error_msg "Error in 'name = value' clause") line col in
+        let rest = parse_all need_rparen in (* TODO: Check args *)
+        let args' = Sort.list ( <= ) (mk_set args) in
+        let def =
+          {
+            def_var = n;
+            def_flav = flav;
+            def_preds = args';
+            def_value = value;
+          }
+        in
+          {
+            pkg_defs = def :: rest.pkg_defs;
+            pkg_children = rest.pkg_children;
+          }
+    | (line, col, Eof) ->
+        (if need_rparen
+         then
+           raise_err
+             (Printf.sprintf "Unexpected end of file in line %d position %d")
+             line col
+         else ();
+         { pkg_defs = []; pkg_children = []; })
+    | (line, col, RParen) ->
+        (if not need_rparen
+         then
+           raise_err
+             (Printf.sprintf "Unexpected end of file in line %d position %d")
+             line col
+         else ();
+         { pkg_defs = []; pkg_children = []; })
+    | (line, col, _) ->
+        raise_err (error_msg "Expected 'name = value' clause") line col
+  and parse_properties () =
+    match next_token () with
+    | (line, col, LParen) ->
+        let arg1 = parse_argument () in
+        let args = parse_arguments () in
+        let flav = parse_flavour () in
+        let s =
+          get_tok string_tok (error_msg "Expected string constant after '='")
+        in ((arg1 :: args), flav, s)
+    | (line, col, Equal) ->
+        let s =
+          get_tok string_tok
+            (error_msg "'=' must be followed by a string constant")
+        in ([], `BaseDef, s)
+    | (line, col, PlusEqual) ->
+        let s =
+          get_tok string_tok
+            (error_msg "'+=' must be followed by a string constant")
+        in ([], `Appendix, s)
+    | (line, col, _) ->
+        raise_err (error_msg "Expected a '=' or a '(arguments,...)=' clause")
+          line col
+  and parse_arguments () =
+    match next_token () with
+    | (line, col, Comma) ->
+        let arg = parse_argument () in
+        let args = parse_arguments () in arg :: args
+    | (_, _, RParen) -> []
+    | (line, col, _) ->
+        raise_err (error_msg "Another predicate or a ')' expected") line col
+  and parse_argument () =
+    match next_token () with
+    | (line, col, Name n) -> `Pred n
+    | (line, col, Minus) ->
+        let n = get_tok name_tok (error_msg "Name expected after '-'")
+        in `NegPred n
+    | (line, col, _) ->
+        raise_err (error_msg "Name or -Name expected") line col
+  and parse_flavour () =
+    match next_token () with
+    | (line, col, Equal) -> `BaseDef
+    | (line, col, PlusEqual) -> `Appendix
+    | (line, col, _) -> raise_err (error_msg "'+' or '+=' expected") line col in
+  let rec check_defs p l =
+    match l with
+    | [] -> ()
+    | def :: l' ->
+        (List.iter
+           (fun def' ->
+              if
+                (def.def_var = def'.def_var) &&
+                  ((def.def_preds = def'.def_preds) &&
+                     ((def.def_flav = `BaseDef) && (def'.def_flav = `BaseDef)))
+              then
+                (let prefix =
+                   if p = "" then "" else "In subpackage " ^ (p ^ ": ") in
+                 let args = string_of_preds def.def_preds
+                 in
+                   raise
+                     (Stream.Error
+                        (prefix ^
+                           ("Double definition of '" ^
+                              (def.def_var ^ (args ^ "'"))))))
+              else ())
+           l';
+         check_defs p l') in
+  let rec check_pkg p pkg =
+    (check_defs p pkg.pkg_defs;
+     let l = ref []
+     in
+       List.iter
+         (fun (n, subpkg) ->
+            let p' = if p = "" then n else p ^ ("." ^ n)
+            in
+              (if List.mem n !l
+               then
+                 raise
+                   (Stream.Error ("Double definition for subpackage " ^ p'))
+               else ();
+               if String.contains n '.'
+               then
+                 raise
+                   (Stream.Error
+                      ("Subpackage name must not contain '.': \"" ^
+                         (n ^ "\"")))
+               else ();
+               check_pkg p' subpkg;
+               l := n :: !l))
+         pkg.pkg_children)
+  in
+    try let pkg = parse_all false in (check_pkg "" pkg; pkg)
+    with | Stream.Error "" -> raise (Stream.Error "Syntax Error")
+  
+let parse2 ch = parse2_lexing (Lexing.from_channel ch)
   
 let rec print f pkg =
   let escape s = (* no Str available :-( *)

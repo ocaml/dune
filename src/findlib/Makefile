@@ -17,7 +17,7 @@ OCAMLC = ocamlc -I +compiler-libs
 OCAMLOPT = ocamlopt -I +compiler-libs
 OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
-CAMLP4O =  camlp4 pa_o.cmo pa_op.cmo pr_o.cmo --
+#CAMLP4O =  camlp4 pa_o.cmo pa_op.cmo pr_o.cmo --
 #CAMLP4O =  camlp4 pa_o.cmo pa_op.cmo pr_dump.cmo --
 
 
@@ -44,6 +44,9 @@ ocamlfind$(EXEC_SUFFIX): findlib.cma $(OCAMLFIND_OBJECTS)
 ocamlfind_opt$(EXEC_SUFFIX): findlib.cmxa $(OCAMLFIND_XOBJECTS)
 	$(OCAMLOPT) -o ocamlfind_opt$(EXEC_SUFFIX) findlib.cmxa unix.cmxa \
 		  $(OCAMLOPT_FLAGS) $(OCAMLFIND_XOBJECTS)
+
+test_parser$(EXEC_SUFFIX): fl_metascanner.cmx test_parser.cmx fl_metatoken.cmx fl_meta.cmx
+	$(OCAMLOPT) -o test_parser$(EXEC_SUFFIX) fl_meta.cmx fl_metatoken.cmx fl_metascanner.cmx test_parser.cmx
 
 findlib.cma: $(OBJECTS)
 	$(OCAMLC) -a -o findlib.cma $(OBJECTS)
@@ -112,7 +115,8 @@ depend: *.ml *.mli fl_meta.ml fl_metascanner.ml
 
 # Some 'make' implementations require that .SUFFIXES must occur before
 # the first suffix rule. (E.g. AIX)
-.SUFFIXES: .mll .cmo .cmi .cmx .ml .mli .mml .src
+.SUFFIXES: .mll .cmo .cmi .cmx .ml .mli .mml 
+# .src
 
 .mml.cmo:
 	$(OCAMLC) -g -vmthread -c -impl $<
@@ -129,8 +133,8 @@ depend: *.ml *.mli fl_meta.ml fl_metascanner.ml
 .mli.cmi:
 	$(OCAMLC) -c $<
 
-.src.ml:
-	$(CAMLP4O) -impl $< -o $@
+#.src.ml:
+#	$(CAMLP4O) -impl $< -o $@
 
 # Solaris make does not like the suffix rule .mll.ml,
 # so I replaced it by its single application:

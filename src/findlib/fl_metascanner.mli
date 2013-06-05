@@ -55,6 +55,10 @@ val parse : in_channel -> pkg_expr
    * raised on syntax errors. The string explains the error.
    *)
 
+val parse2 : in_channel -> pkg_expr
+
+val parse2_lexing : Lexing.lexbuf -> pkg_expr
+val parse_lexing : Lexing.lexbuf -> pkg_expr
 
 val print : out_channel -> pkg_expr -> unit
   (** [print ch expr]:

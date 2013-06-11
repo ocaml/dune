@@ -110,7 +110,7 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
-      <p><em>SVN:</em> Fixed performance bug when many arguments
+      <p><em>1.4:</em> Fixed performance bug when many arguments
 need to be processed (Jérôme Vouillon).</p>
       <p>Auto-configuring ocamldoc.opt if it is found (Christopher
 Zimmermann).</p>

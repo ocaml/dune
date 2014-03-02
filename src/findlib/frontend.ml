@@ -1195,21 +1195,21 @@ let ocamldoc() =
     ( Arg.align
         [ "-package",
 	  Arg.String (fun s -> 
-		        packages := Fl_split.in_words s @ !packages),
+		        packages := !packages @ Fl_split.in_words s),
 	  "<name>  Add this package to the search path";
           
 	  "-predicates",
 	  Arg.String (fun s ->
-		        predicates := Fl_split.in_words s @ !predicates),
+		        predicates := !predicates @ Fl_split.in_words s),
 	  "<p>  Add predicate <p> when calculating dependencies";
 
 	  "-syntax",
 	  Arg.String (fun s ->
-		        syntax_preds := Fl_split.in_words s @ !syntax_preds),
+		        syntax_preds := !syntax_preds @ Fl_split.in_words s),
 	  "<p>  Use preprocessor with predicate <p>";
 
 	  "-ppopt",
-	  Arg.String (fun s -> pp_opts := s :: !pp_opts),
+	  Arg.String (fun s -> pp_opts := !pp_opts @ [s]),
 	  "<opt>  Append option <opt> to preprocessor invocation";
           
 	  "-thread",

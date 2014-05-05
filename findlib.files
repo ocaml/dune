@@ -100,6 +100,10 @@ d site-lib-src/ocamlbuild
 f site-lib-src/ocamlbuild/META.in
 d site-lib-src/compiler-libs
 f site-lib-src/compiler-libs/META.in
+d site-lib-src/bytes
+f site-lib-src/bytes/META.in
+f site-lib-src/bytes/interfaces.in
+f site-lib-src/bytes/interfaces.out
 
 d src
 
@@ -121,6 +125,11 @@ d src/findlib-toolbox
 f src/findlib-toolbox/Makefile
 f src/findlib-toolbox/make_wizard.ml
 f src/findlib-toolbox/make_wizard.pattern
+
+d src/bytes
+f src/bytes/Makefile
+f src/bytes/README
+f src/bytes/bytes.ml
 
 d doc
 f doc/DOCINFO

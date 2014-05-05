@@ -455,7 +455,7 @@ if in_path camlp4; then
     echo "camlp4: using $camlp4_cmd, style $camlp4style"
 else
     lcamlp4=''
-    echo "camlp4: not present"
+    echo "camlp4: not present (normal since OCaml-4.02)"
 fi
 
 # compiler-libs?
@@ -477,10 +477,22 @@ else
     ldbm=""
 fi
 
+# bytes?
+
+if [ -f "${ocaml_core_stdlib}/bytes.cmi" ]; then
+    echo "bytes: found, installing fake library"
+    lbytes="bytes"
+    cbytes=0
+else
+    echo "bytes: not found, installing compat library"
+    lbytes=""
+    cbytes=1
+fi
+
 
 # Generate the META files now.
 
-l="$ldbm dynlink graphics num num-top str threads unix stdlib bigarray $llabltk $lcamlp4 $lobuild $lcomplibs"
+l="$ldbm dynlink graphics num num-top str threads unix stdlib bigarray $llabltk $lcamlp4 $lobuild $lcomplibs $lbytes"
 
 for dir in site-lib-src/*; do
     # We do not really know if $dir is a directory.
@@ -538,6 +550,9 @@ parts="findlib"
 if [ $with_toolbox -gt 0 ]; then
     parts="$parts findlib-toolbox"
 fi
+if [ $cbytes -gt 0 ]; then
+    parts="$parts bytes"
+fi
 
 echo "# Makefile.config written by configure" >Makefile.config
 echo "OCAML_CORE_STDLIB=${ocaml_core_stdlib}" >>Makefile.config
@@ -555,6 +570,7 @@ echo "CUSTOM=${custom}" >>Makefile.config
 echo "PARTS=${parts}" >>Makefile.config
 echo "INSTALL_TOPFIND=${with_topfind}" >>Makefile.config
 echo "USE_CYGPATH=${use_cygpath}" >>Makefile.config
+echo "HAVE_NATDYNLINK=${have_natdynlink}" >>Makefile.config
 echo "VERSION=${version}" >>Makefile.config
 echo "SYSTEM=${system}" >>Makefile.config
 if [ "$mingw_lib" != "" ]; then
@@ -594,6 +610,12 @@ if [ -z "$custom" ]; then
     echo "Link custom runtime:       no"
 else
     echo "Link custom runtime:       yes"
+fi
+
+if [ $cbytes -gt 0 ]; then
+    echo "Need bytes compatibility:  yes"
+else
+    echo "Need bytes compatibility:  no"
 fi
 
 echo

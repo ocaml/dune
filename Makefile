@@ -19,10 +19,10 @@ opt:
 install:
 	mkdir -p "$(prefix)$(OCAMLFIND_BIN)"
 	mkdir -p "$(prefix)$(OCAMLFIND_MAN)"
+	$(MAKE) install-config
 	for p in $(PARTS); do ( cd src/$$p; $(MAKE) install ); done
 	$(MAKE) install-meta
 	cd src/findlib; $(MAKE) install-num-top
-	$(MAKE) install-config
 	cp tools/safe_camlp4 "$(prefix)$(OCAMLFIND_BIN)"
 	$(MAKE) install-doc
 

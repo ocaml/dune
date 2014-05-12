@@ -1,5 +1,5 @@
 BYTE_FILES=bytes.cmi bytes.cma
-NATIVE_FILES=bytes.cmx bytes.cmxa bytes.cmxs
+NATIVE_FILES=bytes.cmx bytes.cmxa bytes.a bytes.cmxs
 OCAMLBUILD=ocamlbuild -classic-display -no-links
 
 build: all opt
@@ -10,7 +10,7 @@ all:
 opt:
 	$(OCAMLBUILD) $(NATIVE_FILES)
 
-install: byte
+install: all
 	cd _build/ && ocamlfind install bytes ../META $(BYTE_FILES) -optional $(NATIVE_FILES)
 
 uninstall:

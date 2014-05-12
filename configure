@@ -116,6 +116,7 @@ ocaml_sitelib=""
 ocamlfind_config=""
 with_toolbox=0
 with_topfind=1
+with_camlp4=1
 custom=-custom
 system=""
 
@@ -148,6 +149,9 @@ while [ "$#" != "0" ]; do
 	-no-topfind) with_topfind=0
 	         shift
 		 ;;
+	-no-camlp4) with_camlp4=0
+	         shift
+	         ;;
 	-version)
 	         echo "$version"
 		 exit 0
@@ -161,6 +165,7 @@ while [ "$#" != "0" ]; do
 		  echo "  -system <systype>    override system type (esp. mingw and win32)" 1>&2
 		  echo "  -with-toolbox        also build the toolbox" 1>&2
 		  echo "  -no-topfind          don't install topfind script into stdlib directory" 1>&2
+		  echo "  -no-camlp4           don't install the camlp4 META file" 1>&2
 		  exit
 		  ;;
          *)       echo "configure: run 'configure -h' to get help" 1>&2
@@ -345,7 +350,7 @@ if ocamlc -config >/dev/null 2>/dev/null; then
 	ocaml_threads="vm"
     fi
 else
-    # Old ocamlc do not have -config. 
+    # Old ocamlc do not have -config.
     rm -f itest-aux/simple
     ocamlc -w a -custom -thread -o itest-aux/simple unix.cma threads.cma itest-aux/simple_threads.ml \
 	>itest-aux/err.out 2>&1
@@ -427,7 +432,10 @@ fi
 
 # Check on camlp4:
 
-if in_path camlp4; then
+if [ $with_camlp4 -eq 0 ]; then
+    lcamlp4=''
+    echo "camlp4: disabled"
+else if in_path camlp4; then
     camlp4_dir=`camlp4 -where | tr -d '\015'`
     if [ ${use_cygpath} -gt 0 ]; then
 	camlp4_dir=`echo x | env USE_CYGPATH=1 tools/patch x "$camlp4_dir"`
@@ -456,6 +464,7 @@ if in_path camlp4; then
 else
     lcamlp4=''
     echo "camlp4: not present (normal since OCaml-4.02)"
+fi
 fi
 
 # compiler-libs?
@@ -569,6 +578,7 @@ echo "EXEC_SUFFIX=${exec_suffix}" >>Makefile.config
 echo "CUSTOM=${custom}" >>Makefile.config
 echo "PARTS=${parts}" >>Makefile.config
 echo "INSTALL_TOPFIND=${with_topfind}" >>Makefile.config
+echo "INSTALL_CAMLP4=${with_camlp4}" >>Makefile.config
 echo "USE_CYGPATH=${use_cygpath}" >>Makefile.config
 echo "HAVE_NATDYNLINK=${have_natdynlink}" >>Makefile.config
 echo "VERSION=${version}" >>Makefile.config

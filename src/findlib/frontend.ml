@@ -684,11 +684,16 @@ let process_ppx_spec predicates packages =
     package_deep_ancestors predicates packages in
 
   List.flatten
-    (List.map (fun pname ->
-        try
-          ["-ppx"; package_property predicates pname "ppx"]
-        with Not_found -> [])
-      ppx_packages)
+    (List.map 
+       (fun pname ->
+          let base = package_directory pname in
+          try
+            ["-ppx"; 
+             resolve_path ~base (package_property predicates pname "ppx")
+            ]
+          with Not_found -> []
+       )
+       ppx_packages)
 
 (**************** OCAMLC/OCAMLMKTOP/OCAMLOPT subcommands ****************)
 

@@ -463,6 +463,7 @@ else if in_path camlp4; then
     echo "camlp4: using $camlp4_cmd, style $camlp4style"
 else
     lcamlp4=''
+    with_camlp4=0
     echo "camlp4: not present (normal since OCaml-4.02)"
 fi
 fi

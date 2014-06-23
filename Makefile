@@ -23,7 +23,9 @@ install:
 	for p in $(PARTS); do ( cd src/$$p; $(MAKE) install ); done
 	$(MAKE) install-meta
 	cd src/findlib; $(MAKE) install-num-top
-	cp tools/safe_camlp4 "$(prefix)$(OCAMLFIND_BIN)"
+	if [ $(INSTALL_CAMLP4) -eq 1 ]; then \
+		cp tools/safe_camlp4 "$(prefix)$(OCAMLFIND_BIN)"; \
+	fi
 	$(MAKE) install-doc
 
 uninstall:
@@ -49,7 +51,7 @@ README: doc/README
 .PHONY: all-config
 all-config: findlib.conf
 
-findlib.conf: findlib.conf.in 
+findlib.conf: findlib.conf.in
 	USE_CYGPATH="$(USE_CYGPATH)"; \
 	export USE_CYGPATH; \
 	cat findlib.conf.in | \
@@ -126,7 +128,7 @@ interface-lists:
 
 package-macosx: all opt
 	mkdir -p package-macosx/root
-	export prefix=`pwd`/package-macosx/root && make install 
+	export prefix=`pwd`/package-macosx/root && make install
 	export VERSION=1.1.2 && tools/make-package-macosx
 
 clean-macosx:

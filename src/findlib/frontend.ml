@@ -676,21 +676,41 @@ let process_pp_spec syntax_preds packages pp_opts =
 
 (**************** ppx extensions ****************************************)
 
-let process_ppx_spec predicates packages =
+let process_ppx_spec predicates packages ppx_opts =
   (* Returns: ppx_commands *)
   (* may raise No_such_package *)
 
   let ppx_packages =
     package_deep_ancestors predicates packages in
 
+  let ppx_opts =
+    List.map 
+      (fun opt ->
+         match Fl_split.in_words opt with
+           | pkg :: ((_ :: _) as opts) ->
+               let exists =
+                 try ignore(package_directory pkg); true
+                 with No_such_package _ -> false in
+               if not exists then
+                 failwith ("The package named in -ppxopt does not exist: " ^ 
+                             pkg);
+               pkg, opts
+           | _ -> 
+               failwith "-ppxopt must include package name, e.g. -ppxopt \"foo,-name bar\""
+      )
+      ppx_opts in
+
   List.flatten
     (List.map 
        (fun pname ->
           let base = package_directory pname in
+          let options =
+            try  List.assoc pname ppx_opts
+            with Not_found -> [] in
           try
-            ["-ppx"; 
-             resolve_path ~base (package_property predicates pname "ppx")
-            ]
+            let preprocessor =
+              resolve_path ~base (package_property predicates pname "ppx") in
+            ["-ppx"; String.concat " " (preprocessor :: options)]
           with Not_found -> []
        )
        ppx_packages)
@@ -732,6 +752,7 @@ let ocamlc which () =
 
   let syntax_preds = ref [] in
   let pp_opts = ref [] in
+  let ppx_opts = ref [] in
   let pp_specified = ref false in
 
   let type_of_threads =
@@ -801,6 +822,8 @@ let ocamlc which () =
             "<p>       Use preprocessor with predicate <p>";
           "-ppopt", add_pp_opt,
             "<opt>      Append option <opt> to preprocessor invocation";
+          "-ppxopt", Arg.String (fun s -> ppx_opts := !ppx_opts @ [s]),
+            "<pkg>,<opts>  Append options <opts> to ppx invocation for package <pkg>";
           "-dllpath-pkg", add_dll_pkg,
             "<pkg> Add -dllpath for this package";
           "-dllpath-all", Arg.Set dll_pkgs_all,
@@ -1132,7 +1155,7 @@ let ocamlc which () =
   in
 
   let ppx_commands =
-    process_ppx_spec !predicates !packages
+    process_ppx_spec !predicates !packages !ppx_opts
   in
 
   let pass_files' =
@@ -1204,6 +1227,7 @@ let ocamldoc() =
   let predicates = ref [] in
   let syntax_preds = ref [] in
   let pp_opts = ref [] in
+  let ppx_opts = ref [] in
   let pp_specified = ref false in
 
   let verbose = ref false in
@@ -1236,7 +1260,11 @@ let ocamldoc() =
 	  "-ppopt",
 	  Arg.String (fun s -> pp_opts := !pp_opts @ [s]),
 	  "<opt>  Append option <opt> to preprocessor invocation";
-          
+
+          "-ppxopt",
+          Arg.String (fun s -> ppx_opts := !ppx_opts @ [s]),
+          "<pkg>,<opts>  Append options <opts> to ppx invocation for package <pkg>";
+ 
 	  "-thread",
 	  Arg.Unit (fun () -> predicates := "mt" :: "mt_posix" :: !predicates),
 	  "  Assume kernel multi-threading when doing dependency analyses";
@@ -1302,7 +1330,7 @@ let ocamldoc() =
   in
 
   let ppx_commands =
-    process_ppx_spec !predicates !packages
+    process_ppx_spec !predicates !packages !ppx_opts
   in
 
   let eff_packages =
@@ -1385,6 +1413,7 @@ let ocamldep () =
   let predicates = ref [] in
   let syntax_preds = ref [] in
   let pp_opts = ref [] in
+  let ppx_opts = ref [] in
   let pp_specified = ref false in
 
   let verbose = ref false in
@@ -1422,6 +1451,8 @@ let ocamldep () =
                     "<p>  Add predicate <p> when calculating dependencies";
 	"-ppopt", add_pp_opt,
                "<opt>      Append option <opt> to preprocessor invocation";
+  "-ppxopt", Arg.String (fun s -> ppx_opts := !ppx_opts @ [s]),
+          "<pkg>,<opts>  Append options <opts> to ppx invocation for package <pkg>";
 	"-passopt", Arg.String (fun s -> pass_options := !pass_options @ [s]),
                  "<opt>    Pass option <opt> directly to ocamlc/opt/mktop";
         "-passrest", Arg.Rest (fun s -> pass_options := !pass_options @ [s]),
@@ -1475,7 +1506,7 @@ let ocamldep () =
   in
 
   let ppx_commands =
-    process_ppx_spec !predicates !packages
+    process_ppx_spec !predicates !packages !ppx_opts
   in
 
   let arguments =

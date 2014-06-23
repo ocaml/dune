@@ -16,7 +16,7 @@ let directories = ref [ Findlib.ocaml_stdlib() ];;
  * is _true_. It is set to false just before the script starts.
  *)
 
-let real_toploop = 
+let real_toploop =
   !Sys.interactive;;
 
 let log = ref (if real_toploop then prerr_endline else ignore)
@@ -67,12 +67,31 @@ let load pkglist =
 	  (* Split the 'archive' property and load the files: *)
 	  let archives = Fl_split.in_words archive in
 	  List.iter
-	    (fun arch -> 
+	    (fun arch ->
 	       let arch' = Findlib.resolve_path ~base:d arch in
 	       !log (arch' ^ ": loaded");
 	       Topdirs.dir_load
 		 Format.std_formatter arch')
 	    archives;
+    (* Determine the 'ppx' property: *)
+    let ppx =
+      try  Some (Findlib.package_property !predicates pkg "ppx")
+      with Not_found -> None
+    in
+    (* Feed the 'ppx' property into the toplevel. To remain compatible
+       with pre-4.01 OCaml, construct and execute a phrase instead of directly
+       altering Clflags. *)
+    match ppx with
+    | Some ppx ->
+        begin try
+          match Hashtbl.find Toploop.directive_table "ppx" with
+          | Toploop.Directive_string fn -> fn ppx; !log (ppx ^ ": activated")
+          | _ -> assert false
+        with Not_found ->
+          failwith "Package defines a ppx preprocessor, but OCaml does not support \
+                    the #ppx directive. Use OCaml >=4.02."
+        end
+    | None -> ()
 	end;
 	(* The package is loaded: *)
 	loaded := pkg :: !loaded
@@ -158,7 +177,7 @@ let protect f arg =
       Failure s ->
 	print_endline s
     | Fl_package_base.No_such_package(pkg, reason) ->
-	print_endline ("No such package: " ^ pkg ^ 
+	print_endline ("No such package: " ^ pkg ^
 		       (if reason <> "" then " - " ^ reason else ""))
     | Fl_package_base.Package_loop pkg ->
 	print_endline ("Package requires itself: " ^ pkg)

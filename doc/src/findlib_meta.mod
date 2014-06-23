@@ -261,6 +261,16 @@ subpackage is hidden if none of the files exist.
 </para>
 </listitem>
 
+<listitem>
+<para>
+The variable "ppx" is a command that is added to the compiler invocation
+via the -ppx option (available since OCaml-4.01). If the command is
+relative to the current directory (e.g. ./cmd), the command is expected
+in the package directory. The special forms as defined for "archive"
+are also available (e.g. @otherpkg/cmd). Additional arguments can be
+specified on the ocamlfind command line with the -ppxopt option.
+</para>
+</listitem>
 
 </itemizedlist>
 

@@ -253,10 +253,12 @@ ocamlfind ( ocamlc | ocamlcp | ocamlopt | ocamlmktop )
             -dontlink <replaceable>package-name-list</replaceable> |
 	    -syntax <replaceable>pred-name-list</replaceable> |
             -ppopt <replaceable>camlp4-arg</replaceable> |
+            -ppxopt <replaceable>package</replaceable>,<replaceable>arg</replaceable> |
             -dllpath-pkg <replaceable>package-name-list</replaceable> |
             -dllpath-all |
 	    -passopt <replaceable>arg</replaceable> |
             -passrest <replaceable>arg...</replaceable> |
+            -only-show |
 	    <replaceable>standard-option</replaceable> ]
           <replaceable>file</replaceable> ...
 </programlisting>
@@ -382,6 +384,12 @@ explained below.
   <listitem><para>All following arguments <replaceable>arg...</replaceable> are
   passed directly to the underlying compiler. This is needed to
   specify undocumented compiler options.
+</para></listitem>
+<varlistentry>
+<term>-only-show</term>
+  <listitem><para>Only prints the constructed command (ocamlc/ocamlopt) to
+  stdout, but does not execute the command. (This is for the unlikely event
+  that you need a wrapper around ocamlfind.)
 </para></listitem>
 </varlistentry>
 

@@ -278,6 +278,9 @@ FORMAT="LINESPECIFIC"
 >pred-name-list</REPLACEABLE> |
             -ppopt <REPLACEABLE
 >camlp4-arg</REPLACEABLE> |
+            -ppxopt <REPLACEABLE
+>package</REPLACEABLE>,<REPLACEABLE
+>arg</REPLACEABLE> |
             -dllpath-pkg <REPLACEABLE
 >package-name-list</REPLACEABLE> |
             -dllpath-all |
@@ -285,6 +288,7 @@ FORMAT="LINESPECIFIC"
 >arg</REPLACEABLE> |
             -passrest <REPLACEABLE
 >arg...</REPLACEABLE> |
+            -only-show |
 	    <REPLACEABLE
 >standard-option</REPLACEABLE> ]
           <REPLACEABLE
@@ -399,6 +403,12 @@ MOREINFO="NONE"
 >arg...</REPLACEABLE> are
   passed directly to the underlying compiler. This is needed to
   specify undocumented compiler options.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-only-show</TERM><LISTITEM
+><PARA
+>Only prints the constructed command (ocamlc/ocamlopt) to
+  stdout, but does not execute the command. (This is for the unlikely event
+  that you need a wrapper around ocamlfind.)</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
 >-verbose</TERM><LISTITEM
 ><PARA
@@ -1350,7 +1360,14 @@ an error message is printed. The message is the value of the variable.</PARA></L
 The variable "exists_if" can be used to disable subpackages. The
 value of "exists_if" is a file; the subpackage is hidden if this
 file does not exist. You can also enumerate several files, and the
-subpackage is hidden if none of the files exist.</PARA></LISTITEM></ITEMIZEDLIST><PARA
+subpackage is hidden if none of the files exist.</PARA></LISTITEM><LISTITEM
+><PARA
+>The variable "ppx" is a command that is added to the compiler invocation
+via the -ppx option (available since OCaml-4.01). If the command is
+relative to the current directory (e.g. ./cmd), the command is expected
+in the package directory. The special forms as defined for "archive"
+are also available (e.g. @otherpkg/cmd). Additional arguments can be
+specified on the ocamlfind command line with the -ppxopt option.</PARA></LISTITEM></ITEMIZEDLIST><PARA
 >It is possible to define additional variables but there is currently
 no software interpreting them.</PARA></REFSECT1><REFSECT1
 ><TITLE

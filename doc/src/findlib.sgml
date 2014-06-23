@@ -2156,6 +2156,36 @@ example.</para>
 
 
       <sect1>
+        <title>
+	  Does Findlib support ppx-style preprocessors?
+        </title>
+
+	<para>
+	<emphasis>Short answer:</emphasis> Yes, but there is only little
+	documentation.</para>
+
+        <para>Since findlib-1.5, ppx-style preprocessors are supported
+to some extent. A package can now define a "ppx" property which is simply
+a command to run as preprocessor (the command gets the marshalled AST
+as input, and must generate the transformed AST in its output; see the
+-ppx option of ocamlc/ocamlopt). A META file can simply look like:
+
+<programlisting>
+ppx = "./command"
+</programlisting>
+
+when "command" is installed in the package directory (but you can also
+omit "./" to search it, and you can prefix it with "@name/" if the command
+is taken from another package "name").
+</para>
+
+
+        <para>This feature is still a bit experimental.</para>
+
+      </sect1>
+
+
+      <sect1>
 	<title>Why do some people install the .cmx files?</title>
 
 	<para>In principle, it is not necessary to install the .cmx

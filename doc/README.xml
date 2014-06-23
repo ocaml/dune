@@ -116,6 +116,8 @@ The package aims at helping to support the transition to the new
 "bytes" type for mutable strings.</p>
       <p>Also installing findlib.cmxs if OCaml supports it.</p>
       <p>Allowing to disable camlp4 (in prep for OCaml-4.02).</p>
+      <p>The "ppx" package property can be specified for constructing
+ppx-type preprocessors.</p>
     </li>
 
     <li>

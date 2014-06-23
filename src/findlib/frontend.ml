@@ -674,6 +674,21 @@ let process_pp_spec syntax_preds packages pp_opts =
 	 String.concat " " (List.map Filename.quote pp_opts)]
 ;;
 
+(**************** ppx extensions ****************************************)
+
+let process_ppx_spec predicates packages =
+  (* Returns: ppx_commands *)
+  (* may raise No_such_package *)
+
+  let ppx_packages =
+    package_deep_ancestors predicates packages in
+
+  List.flatten
+    (List.map (fun pname ->
+        try
+          ["-ppx"; package_property predicates pname "ppx"]
+        with Not_found -> [])
+      ppx_packages)
 
 (**************** OCAMLC/OCAMLMKTOP/OCAMLOPT subcommands ****************)
 
@@ -1111,6 +1126,10 @@ let ocamlc which () =
       process_pp_spec !syntax_preds !packages !pp_opts
   in
 
+  let ppx_commands =
+    process_ppx_spec !predicates !packages
+  in
+
   let pass_files' =
     List.flatten
       (List.map
@@ -1149,6 +1168,7 @@ let ocamlc which () =
     !pass_options @    (* other options from the command line *)
     i_options @        (* Generated -I options from package analysis *)
     pp_command @       (* Optional preprocessor command *)
+    ppx_commands @     (* Optional ppx extension commands *)
     (if !linkpkg then l_options else []) @  (* Generated -ccopt -L options *)
     (if !linkpkg then archives else []) @   (* Gen file names to link *)
     pass_files' @                           (* File names from cmd line *)
@@ -1276,6 +1296,10 @@ let ocamldoc() =
       process_pp_spec !syntax_preds !packages !pp_opts
   in
 
+  let ppx_commands =
+    process_ppx_spec !predicates !packages
+  in
+
   let eff_packages =
     package_deep_ancestors !predicates !packages in
 
@@ -1297,6 +1321,7 @@ let ocamldoc() =
   let arguments =
     (List.flatten (List.map (fun d -> [ "-I"; slashify d ]) eff_packages_dl)) @
     pp_command @
+    ppx_commands @
     !options in
 
   let actual_command = Findlib.command `ocamldoc in
@@ -1352,6 +1377,7 @@ let ocamldep () =
   let pass_files = ref [] in
 
   let packages = ref [] in
+  let predicates = ref [] in
   let syntax_preds = ref [] in
   let pp_opts = ref [] in
   let pp_specified = ref false in
@@ -1367,6 +1393,8 @@ let ocamldep () =
   let add_spec_fn name s =
     pass_options := !pass_options @ [name; s] in
   let add_spec name = Arg.String (add_spec_fn name) in
+  let add_pred =
+    Arg.String (fun s -> predicates := !predicates @ (Fl_split.in_words s)) in
   let add_syntax_pred =
     Arg.String (fun s -> syntax_preds := !syntax_preds @ (Fl_split.in_words s)) in
   let add_pp_opt =
@@ -1385,6 +1413,8 @@ let ocamldep () =
                 "<p>       Use preprocessor with predicate <p>";
 	"-package", add_pkg,
 	         "<p>      Add preprocessor package <p>";
+        "-predicates", add_pred,
+                    "<p>  Add predicate <p> when calculating dependencies";
 	"-ppopt", add_pp_opt,
                "<opt>      Append option <opt> to preprocessor invocation";
 	"-passopt", Arg.String (fun s -> pass_options := !pass_options @ [s]),
@@ -1439,9 +1469,14 @@ let ocamldep () =
       process_pp_spec !syntax_preds !packages !pp_opts
   in
 
+  let ppx_commands =
+    process_ppx_spec !predicates !packages
+  in
+
   let arguments =
     !pass_options @
     pp_command @
+    ppx_commands @
     !pass_files
   in
 

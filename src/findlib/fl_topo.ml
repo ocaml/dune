@@ -216,7 +216,7 @@ module Make(H: IdentifiedType) =
 	(* find biggest, non-marked node *)
 	match ordlist with
 	  []             -> raise Not_found
-	| nx :: ordlist' -> if not nx.mark & in_direction nx = [] 
+	| nx :: ordlist' -> if not nx.mark && in_direction nx = [] 
 	                    then nx
 	                    else find_biggest ordlist'
       in
@@ -280,8 +280,10 @@ module Make(H: IdentifiedType) =
 
     let iter_at upwards f ordering startpoints =
 
+(*
       let in_direction n = 
 	if upwards then n.bigger else n.smaller in
+ *)
 
       let against_direction n =
 	if upwards then n.smaller else n.bigger in

@@ -157,7 +157,7 @@
 
 
 <!ENTITY release.findlib
-         "1.2.8">
+         "1.5">
 
 <!ENTITY url.findlib-download
          "&url.gps-ocaml-download;/findlib-&release.findlib;.tar.gz">

@@ -110,14 +110,14 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
-      <p><em>SVN:</em> Including the "bytes" package that is either
+      <p><em>1.5:</em> Including the "bytes" package that is either
 a compat package for ocaml &lt; 4.02 or a fake package for ocaml &gt;= 4.02.
 The package aims at helping to support the transition to the new
 "bytes" type for mutable strings.</p>
       <p>Also installing findlib.cmxs if OCaml supports it.</p>
       <p>Allowing to disable camlp4 (in prep for OCaml-4.02).</p>
       <p>The "ppx" package property can be specified for constructing
-ppx-type preprocessors.</p>
+ppx-type preprocessors (patches from Peter Zotov).</p>
     </li>
 
     <li>

@@ -130,6 +130,7 @@ d src/bytes
 f src/bytes/Makefile
 f src/bytes/README
 f src/bytes/bytes.ml
+f src/bytes/META
 
 d doc
 f doc/DOCINFO

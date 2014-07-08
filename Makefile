@@ -10,11 +10,11 @@ TOP=.
 .PHONY: all opt install uninstall clean
 
 all:
-	for p in $(PARTS); do ( cd src/$$p; $(MAKE) all ); done
+	for p in $(PARTS); do ( cd src/$$p; $(MAKE) all ) || exit; done
 	$(MAKE) all-config
 
 opt:
-	for p in $(PARTS); do ( cd src/$$p; $(MAKE) opt ); done
+	for p in $(PARTS); do ( cd src/$$p; $(MAKE) opt ) || exit; done
 
 install:
 	mkdir -p "$(prefix)$(OCAMLFIND_BIN)"

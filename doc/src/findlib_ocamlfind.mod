@@ -209,9 +209,20 @@ linker backend are printed.
 </para></listitem>
 </varlistentry>
 <varlistentry>
+<term>%+a</term>
+  <listitem><para>Like %a, but the filenames are converted to absolute
+  paths ("+" and "@" notations are resolved)
+</para></listitem>
+</varlistentry>
+<varlistentry>
 <term>%A</term>
   <listitem><para>Replaced by the list of archive filenames.</para></listitem>
 </varlistentry>
+<varlistentry>
+<term>%+A</term>
+  <listitem><para>Like %A, but the filenames are converted to absolute
+  paths ("+" and "@" notations are resolved)
+</para></listitem>
 <varlistentry>
 <term>%o</term>
   <listitem><para>Replaced by one linker option. If there is more than

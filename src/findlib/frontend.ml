@@ -16,8 +16,12 @@ type mode =
 
 type psubst =
     Const of string
-  | Percent of string
-  | Lookup of string
+  | Percent of string * modifier
+  | Lookup of string * modifier
+
+and modifier =
+  | Plain
+  | Plus
 ;;
 
 
@@ -62,7 +66,7 @@ let out_path ?(prefix="") s =
 
 
 
-let percent_subst spec lookup s =
+let percent_subst ?base spec lookup s =
   (* spec = [ "%c", [ "ctext1"; "ctext2"; ... ];
    *          "%d", [ "dtext1"; "dtext2"; ... ] ]
    * All occurrences of %c in the string s are replaced as specified in spec.
@@ -74,14 +78,31 @@ let percent_subst spec lookup s =
    * key for the [lookup] function, which either returns the string value
    * or raises Not_found.
    *
+   * "+" modifier: A "+" after "%" causes that Findlib.resolve_path is
+   * called for the substitution string (e.g. %+c, %+(name)).
+   *
    * Example:
    * spec = [ "%a", [ "file1" ] ]
    * lookup = function "archive" -> "file2" | _ -> raise Not_found
    * Here, %a is substituted by file1, and %(archive) is substituted by
    * file2.
+   *
+   * ?base: The base parameter for Findlib.resolve_path.
    *)
-
   let l = String.length s in
+
+  let fail() =
+    failwith "bad format string" in
+
+  let parenthesized_name j =
+    try		  
+      if j+1>=l then raise Not_found;
+      let k = String.index_from s (j+1) ')' in
+      let name = String.sub s (j+1) (k-j-1) in
+      (name, k+1)
+    with Not_found ->
+      fail() in
+
   let rec preprocess i j =
     if j<l then begin
       match s.[j] with
@@ -92,20 +113,27 @@ let percent_subst spec lookup s =
 	    match c with
 		'%' -> 
 		  prev :: Const "%" :: preprocess (j+2) (j+2)
-	      | '(' -> (
-		  try		  
-		    if j+2>=l then raise Not_found;
-		    let k = String.index_from s (j+2) ')' in
-		    let name = String.sub s (j+2) (k-j-2) in
-		    prev :: Lookup name :: preprocess (k+1) (k+1)
-		  with Not_found ->
-		    failwith "bad format string";
-		)
+	      | '(' ->
+                  let name, j_next = parenthesized_name (j+1) in
+                  prev :: Lookup(name,Plain) :: preprocess j_next j_next
+              | '+' ->
+                  if j+2<l then begin
+                    let c = s.[j+2] in
+                    match c with
+                      | '%' | '+' -> fail()
+                      | '(' ->
+                           let name, j_next = parenthesized_name (j+2) in
+                           prev :: Lookup(name,Plus) :: preprocess j_next j_next
+                      | _ ->
+		           let name = "%" ^ String.make 1 c in
+	                   prev :: Percent(name,Plus) :: preprocess (j+3) (j+3)
+                  end
+                  else fail()
 	      | _ ->
 		  let name = "%" ^ String.make 1 c in
-		  prev :: Percent name :: preprocess (j+2) (j+2)
+		  prev :: Percent(name,Plain) :: preprocess (j+2) (j+2)
 	  end
-	  else failwith "bad format string"
+	  else fail()
       |	_ ->
 	  preprocess i (j+1)
     end
@@ -116,24 +144,40 @@ let percent_subst spec lookup s =
 	[]
   in
 
+  let plus_subst u =
+    String.concat
+      " "
+      (List.map
+         (Findlib.resolve_path ?base)
+         (Fl_split.in_words u)) in
+
+  let any_subst modi u =
+    match modi with
+      | Plain -> u
+      | Plus -> plus_subst u in
+
   let rec subst prefix l =
     match l with
       [] -> [prefix]
     | Const s :: l' ->
 	subst (prefix ^ s) l'
-    | Percent name :: l' ->
-	let replacements =
+    | Percent(name,modi) :: l' ->
+	let replacements0 =
 	  try List.assoc name spec
 	  with Not_found -> failwith "bad format string" in
+        let replacements =
+          List.map (any_subst modi) replacements0 in
 	List.flatten
 	  (List.map
 	     (fun replacement ->
 	       subst (prefix ^ replacement) l')
 	     replacements)
-    | Lookup name :: l' ->
-	let replacement =
+    | Lookup(name,modi) :: l' ->
+	let replacement0 =
 	  try lookup name
 	  with Not_found -> "" in
+        let replacement =
+          any_subst modi replacement0 in
 	subst (prefix ^ replacement) l'
   in
 
@@ -471,9 +515,30 @@ let expand predicates eff_packages format =
 	   ]
 	 in
 	 let lookup = package_property predicates pkg in
-	 percent_subst spec lookup format)
+	 percent_subst ~base:dir spec lookup format)
        eff_packages)
 ;;
+
+
+let help_format() =
+  print_endline
+    "Formats for -format strings:
+
+    %p         package name
+    %d         package directory
+    %D         description
+    %v         version
+    %a         archive file(s)
+    %+a        archive file(s), converted to absolute paths
+    %A         archive files as single string
+    %+A        archive files as single string, converted to absolute paths
+    %o         link option(s)
+    %O         link options as single string
+    %(name)    the value of the property <name>
+    %+(name)   the value of the property <name>, converted to absolute paths
+               (like <archive>)";
+  flush stdout
+
 
 
 (************************** QUERY SUBCOMMAND ***************************)
@@ -491,7 +556,7 @@ let query_package () =
     else
       "-ccopt -L%d" in
   let a_format =
-    "%a" in
+    "%+a" in
   let o_format =
     "%o" in
   let p_format =
@@ -546,6 +611,8 @@ let query_package () =
                 "        prints link options for ocamlc";
       "-p-format", Arg.Unit (fun () -> format := p_format),
                 "        prints package names";
+      "-help-format", Arg.Unit help_format,
+                   "     lists the supported formats for -format";
     ]
     (fun p -> packages := !packages @ [p])
 "usage: ocamlfind query [ -predicates <p>  | -format <f> |

@@ -51,7 +51,7 @@ let add_dir d =
 let load pkglist =
   List.iter
     (fun pkg ->
-      let stdlibdir = Findlib.ocaml_stdlib() in
+      let _stdlibdir = Findlib.ocaml_stdlib() in
       if not (List.mem pkg !loaded) then begin
         (* Determine the package directory: *)
 	let d = Findlib.package_directory pkg in
@@ -73,26 +73,31 @@ let load pkglist =
 	       Topdirs.dir_load
 		 Format.std_formatter arch')
 	    archives;
-    (* Determine the 'ppx' property: *)
-    let ppx =
-      try  Some (Findlib.package_property !predicates pkg "ppx")
-      with Not_found -> None
-    in
-    (* Feed the 'ppx' property into the toplevel. To remain compatible
-       with pre-4.01 OCaml, construct and execute a phrase instead of directly
-       altering Clflags. *)
-    match ppx with
-    | Some ppx ->
-        begin try
-          match Hashtbl.find Toploop.directive_table "ppx" with
-          | Toploop.Directive_string fn -> fn ppx; !log (ppx ^ ": activated")
-          | _ -> assert false
-        with Not_found ->
-          failwith "Package defines a ppx preprocessor, but OCaml does not support \
-                    the #ppx directive. Use OCaml >=4.02."
-        end
-    | None -> ()
-	end;
+          (* Determine the 'ppx' property: *)
+          let ppx =
+            try  
+              Some(Findlib.resolve_path
+                     ~base:d
+                     (Findlib.package_property !predicates pkg "ppx")
+                  )
+            with Not_found -> None
+          in
+          (* Feed the 'ppx' property into the toplevel. To remain compatible
+             with pre-4.01 OCaml, construct and execute a phrase instead of directly
+             altering Clflags. *)
+          match ppx with
+            | Some ppx ->
+                 begin try
+                     match Hashtbl.find Toploop.directive_table "ppx" with
+                       | Toploop.Directive_string fn -> 
+                            fn ppx; !log (ppx ^ ": activated")
+                       | _ -> assert false
+                   with Not_found ->
+                     failwith "Package defines a ppx preprocessor, but OCaml does not support \
+                               the #ppx directive. Use OCaml >=4.02."
+                 end
+            | None -> ()
+        end;
 	(* The package is loaded: *)
 	loaded := pkg :: !loaded
       end)
@@ -113,7 +118,7 @@ let don't_load pkglist =
   forbidden := remove_dups (pkglist @ !forbidden);
   List.iter
     (fun pkg ->
-       let d = Findlib.package_directory pkg in
+       let _d = Findlib.package_directory pkg in
        ()
     )
     pkglist

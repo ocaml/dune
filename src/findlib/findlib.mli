@@ -172,7 +172,7 @@ val package_deep_ancestors : string list -> string list -> string list
    * cyclic dependency.
    *)
 
-val resolve_path : ?base:string -> string -> string
+val resolve_path : ?base:string -> ?explicit:bool -> string -> string
   (** Resolves findlib notation in filename paths. The notation 
    * [ +name/path ] can be used to refer to the subdirectory [name]
    * of the standard library directory; the continuation [ /path ] is
@@ -183,6 +183,8 @@ val resolve_path : ?base:string -> string -> string
    * @param base When the function is applied on a relative path, the
    *   [base] path is prepended. Otherwise, the path is returned as
    *   it is.
+   * @param explicit Changes the meaning of [base] so that only paths
+   *   count as relative that include at least one slash.
    *)
 
 val list_packages : ?tab:int -> ?descr:bool -> out_channel -> unit

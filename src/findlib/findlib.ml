@@ -361,7 +361,7 @@ let package_deep_ancestors predlist pkglist =
 ;;
 
 
-let resolve_path ?base p =
+let resolve_path ?base ?(explicit=false) p =
   lazy_init();
   if p = "" then "" else (
     match p.[0] with
@@ -387,7 +387,9 @@ let resolve_path ?base p =
 	  ( match base with
 		None -> p
 	      | Some b ->
-		  if Filename.is_relative p then
+		  if Filename.is_relative p &&
+                       (not explicit || not (Filename.is_implicit p))
+                  then
 		    Filename.concat b p
 		  else
 		    p

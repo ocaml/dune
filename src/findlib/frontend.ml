@@ -788,7 +788,9 @@ let process_ppx_spec predicates packages ppx_opts =
             with Not_found -> [] in
           try
             let preprocessor =
-              resolve_path ~base (package_property predicates pname "ppx") in
+              resolve_path
+                ~base ~explicit:true 
+                (package_property predicates pname "ppx") in
             ["-ppx"; String.concat " " (preprocessor :: options)]
           with Not_found -> []
        )

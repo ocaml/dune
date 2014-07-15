@@ -77,7 +77,7 @@ let load pkglist =
           let ppx =
             try  
               Some(Findlib.resolve_path
-                     ~base:d
+                     ~base:d ~explicit:true
                      (Findlib.package_property !predicates pkg "ppx")
                   )
             with Not_found -> None

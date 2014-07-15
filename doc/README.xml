@@ -113,6 +113,7 @@ configuration files, and library routines in detail.</p>
       <p><em>SVN:</em> support for the query formats "%+a" and "%+A".</p>
       <p>Fix: the "ppx" property is now also path-expanded when interpreted
 in a toploop</p>
+      <p>Fix: implicit "ppx" is not path-expanded anymore</p>
     </li>
     <li>
       <p><em>1.5.1:</em> includes a file that was missing in 1.5</p>

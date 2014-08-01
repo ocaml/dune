@@ -231,9 +231,19 @@ MOREINFO="NONE"
 >Replaced by the archive filename. If there is more
   than one archive, a separate output record is printed for every archive.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
+>%+a</TERM><LISTITEM
+><PARA
+>Like %a, but the filenames are converted to absolute
+  paths ("+" and "@" notations are resolved)</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
 >%A</TERM><LISTITEM
 ><PARA
 >Replaced by the list of archive filenames.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>%+A</TERM><LISTITEM
+><PARA
+>Like %A, but the filenames are converted to absolute
+  paths ("+" and "@" notations are resolved)</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
 >%o</TERM><LISTITEM
 ><PARA

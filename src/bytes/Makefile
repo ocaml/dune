@@ -19,9 +19,20 @@ opt:
 	$(OCAMLBUILD) $$files
 
 install: all
+	mkdir -p "$(prefix)$(OCAML_SITELIB)/bytes"
+	cd _build/ && cp ../META $(BYTE_FILES) "$(prefix)$(OCAML_SITELIB)/bytes"
+	cd _build/ && for f in $(NATIVE_FILES) $(NATIVE_FILES_DYNLINK); do if [ -f "$$f" ]; then cp $$f "$(prefix)$(OCAML_SITELIB)/bytes"; fi; done
+
+uninstall: 
+	rm -rf "$(prefix)$(OCAML_SITELIB)/bytes"
+
+# install-self and uninstall-self use ocamlfind already. This is a bit
+# questionable here.
+
+install-self: all
 	cd _build/ && ocamlfind install bytes ../META $(BYTE_FILES) -optional $(NATIVE_FILES) $(NATIVE_FILES_DYNLINK)
 
-uninstall:
+uninstall-self:
 	ocamlfind remove bytes
 
 clean:

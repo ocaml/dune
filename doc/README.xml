@@ -110,6 +110,11 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>SVN:</em> The installation of "bytes" respects now $prefix and
+        the configured destination.</p>
+    </li>
+
+    <li>
       <p><em>1.5.2:</em> support for the query formats "%+a" and "%+A".</p>
       <p>Fix: the "ppx" property is now also path-expanded when interpreted
 in a toploop.</p>

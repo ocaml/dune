@@ -429,6 +429,161 @@ let run_command ?filter verbose cmd args =
 ;;
 
 
+(**************** preprocessor ******************************************)
+
+let select_pp_packages syntax_preds packages =
+  if syntax_preds = [] then
+    (* No syntax predicates, no preprocessor! *)
+    []
+  else
+    List.filter
+      (fun pkg ->
+         let al = try package_property syntax_preds pkg "archive"
+	          with Not_found -> "" in
+         let w = Fl_split.in_words al in
+	 w <> []
+      )
+      packages
+
+
+let process_pp_spec syntax_preds packages pp_opts =
+  (* Returns: pp_command *)
+  (* may raise No_such_package *)
+
+  (* [packages]: all packages given on the command line. May include
+   * packages for compilation and for preprocessing.
+   *
+   * The difficulty is now that the preprocessor packages may have
+   * requirements that are non-preprocessor packages. To get exactly
+   * the preprocessor packages and its requirements, we do:
+   *
+   * 1. Determine the subset of [packages] that are preprocessor
+   *    packages by checking whether they have an "archive" for
+   *    [syntax_preds], i.e. the preprocessor packages mentioned
+   *    on the command line = [cl_pp_packages].
+   *
+   * 2. Add their requirements = [pp_packages]
+   *
+   * Because the packages are now mixed, we must evaluate for 
+   * [syntax_preds] + "byte".
+   *)
+
+  (* One packages must now have the variable "preprocessor", usually camlp4 *)
+  let cl_pp_packages = select_pp_packages syntax_preds packages in
+  let pp_packages =
+    package_deep_ancestors syntax_preds cl_pp_packages in
+
+  let preprocessor_cmds =
+    List.flatten
+      (List.map (fun pname ->
+		   try
+		     [ pname,
+		       package_property syntax_preds pname "preprocessor"
+		     ]
+		   with
+ 		       Not_found -> []
+		)
+	        pp_packages
+      )
+  in
+
+  let preprocessor_cmd =
+    if syntax_preds <> [] then
+      match preprocessor_cmds with
+	  [] ->
+	    failwith("Using -syntax, but no package is selected specifying \
+                     a preprocessor as required for -syntax")
+	| [_, cmd] -> Some cmd
+	| _ ->
+	    failwith("Several packages are selected that specify \
+                      preprocessors: " ^ 
+		       String.concat ", "
+		      (List.map
+			 (fun (n,v) ->
+			    "package " ^ n ^ " defines `" ^ v ^ "'")
+			 preprocessor_cmds
+		      )
+		    )
+    else
+      None
+  in
+
+  let pp_i_options =
+    List.flatten
+      (List.map
+	 (fun pkg ->
+	    let pkgdir = package_directory pkg in
+	      [ "-I"; slashify pkgdir ]
+	 )
+	 pp_packages) in
+
+  let pp_archives =
+    if preprocessor_cmd = None then
+      []
+    else
+      List.flatten
+	(List.map
+	   (fun pkg ->
+	      let al = 
+		try package_property ("byte" :: syntax_preds) pkg "archive"
+	        with Not_found -> "" in
+	      Fl_split.in_words al
+	   )
+	   pp_packages) in
+
+  match preprocessor_cmd with
+      None -> []
+    | Some cmd ->
+	["-pp";
+	 cmd ^ " " ^
+	 String.concat " " (List.map Filename.quote pp_i_options) ^ " " ^
+	 String.concat " " (List.map Filename.quote pp_archives) ^ " " ^
+	 String.concat " " (List.map Filename.quote pp_opts)]
+;;
+
+(**************** ppx extensions ****************************************)
+
+let process_ppx_spec predicates packages ppx_opts =
+  (* Returns: ppx_commands *)
+  (* may raise No_such_package *)
+
+  let ppx_packages =
+    package_deep_ancestors predicates packages in
+
+  let ppx_opts =
+    List.map 
+      (fun opt ->
+         match Fl_split.in_words opt with
+           | pkg :: ((_ :: _) as opts) ->
+               let exists =
+                 try ignore(package_directory pkg); true
+                 with No_such_package _ -> false in
+               if not exists then
+                 failwith ("The package named in -ppxopt does not exist: " ^ 
+                             pkg);
+               pkg, opts
+           | _ -> 
+               failwith "-ppxopt must include package name, e.g. -ppxopt \"foo,-name bar\""
+      )
+      ppx_opts in
+
+  List.flatten
+    (List.map 
+       (fun pname ->
+          let base = package_directory pname in
+          let options =
+            try  List.assoc pname ppx_opts
+            with Not_found -> [] in
+          try
+            let preprocessor =
+              resolve_path
+                ~base ~explicit:true 
+                (package_property predicates pname "ppx") in
+            ["-ppx"; String.concat " " (preprocessor :: options)]
+          with Not_found -> []
+       )
+       ppx_packages)
+
 (**************** Generic argument processing *************************)
 
 let merge_native_arguments native_spec f_unit f_string f_special_list =
@@ -569,6 +724,7 @@ let query_package () =
   let suffix = ref "\n" in
   let recursive = ref false in
   let descendants = ref false in
+  let pp = ref false in
 
   let packages = ref [] in
 
@@ -597,6 +753,8 @@ let query_package () =
                    "     query descendants instead of ancestors; implies -recursive";
       "-d", Arg.Unit (fun () ->  descendants := true; recursive := true),
          "               same as -descendants";
+      "-pp", Arg.Unit (fun () -> pp := true; recursive := true),
+          "              get preprocessor pkgs (predicates are taken as syntax preds)";
       "-long-format", Arg.Unit (fun () -> format := long_format),
                    "     specifies long output format";
       "-l", Arg.Unit (fun () -> format := long_format),
@@ -623,178 +781,36 @@ let query_package () =
                          -separator <s>   |
                          -descendants     | -recursive  ] package ...";
 
+  let predicates1 =
+    if !pp then
+      "preprocessor" :: "syntax" :: !predicates
+    else
+      !predicates in
+  let packages1 =
+    if !pp then
+      let predicates2 =
+        List.filter (fun p -> p <> "byte" && p <> "native") predicates1 in
+      select_pp_packages predicates2 !packages
+    else
+      !packages in
   let eff_packages =
     if !recursive then begin
       if !descendants then
-	Fl_package_base.package_users !predicates !packages
+	Fl_package_base.package_users predicates1 packages1
       else
-	package_deep_ancestors !predicates !packages
+	package_deep_ancestors predicates1 packages1
     end
     else
-      !packages
+      packages1
   in
   
-  let answers = expand !predicates eff_packages !format in
+  let answers = expand predicates1 eff_packages !format in
   
   print_string !prefix;
   print_string (String.concat !separator answers);
   print_string !suffix;
 ;;
 
-
-(**************** preprocessor ******************************************)
-
-let process_pp_spec syntax_preds packages pp_opts =
-  (* Returns: pp_command *)
-  (* may raise No_such_package *)
-
-  (* [packages]: all packages given on the command line. May include
-   * packages for compilation and for preprocessing.
-   *
-   * The difficulty is now that the preprocessor packages may have
-   * requirements that are non-preprocessor packages. To get exactly
-   * the preprocessor packages and its requirements, we do:
-   *
-   * 1. Determine the subset of [packages] that are preprocessor
-   *    packages by checking whether they have an "archive" for
-   *    [syntax_preds], i.e. the preprocessor packages mentioned
-   *    on the command line = [cl_pp_packages].
-   *
-   * 2. Add their requirements = [pp_packages]
-   *
-   * Because the packages are now mixed, we must evaluate for 
-   * [syntax_preds] + "byte".
-   *)
-
-  let cl_pp_packages =
-    if syntax_preds = [] then
-      (* No syntax predicates, no preprocessor! *)
-      []
-    else
-      List.filter
-	(fun pkg ->
-	   let al = try package_property syntax_preds pkg "archive"
-	            with Not_found -> "" in
-	   let w = Fl_split.in_words al in
-	   w <> []
-	)
-	packages in
-
-  let pp_packages =
-    package_deep_ancestors syntax_preds cl_pp_packages in
-
-  (* One packages must now have the variable "preprocessor", usually camlp4 *)
-
-  let preprocessor_cmds =
-    List.flatten
-      (List.map (fun pname ->
-		   try
-		     [ pname,
-		       package_property syntax_preds pname "preprocessor"
-		     ]
-		   with
-		       Not_found -> []
-		)
-	        pp_packages
-      )
-  in
-
-  let preprocessor_cmd =
-    if syntax_preds <> [] then
-      match preprocessor_cmds with
-	  [] ->
-	    failwith("Using -syntax, but no package is selected specifying \
-                     a preprocessor as required for -syntax")
-	| [_, cmd] -> Some cmd
-	| _ ->
-	    failwith("Several packages are selected that specify \
-                      preprocessors: " ^ 
-		       String.concat ", "
-		      (List.map
-			 (fun (n,v) ->
-			    "package " ^ n ^ " defines `" ^ v ^ "'")
-			 preprocessor_cmds
-		      )
-		    )
-    else
-      None
-  in
-
-  let pp_i_options =
-    List.flatten
-      (List.map
-	 (fun pkg ->
-	    let pkgdir = package_directory pkg in
-	      [ "-I"; slashify pkgdir ]
-	 )
-	 pp_packages) in
-
-  let pp_archives =
-    if preprocessor_cmd = None then
-      []
-    else
-      List.flatten
-	(List.map
-	   (fun pkg ->
-	      let al = 
-		try package_property ("byte" :: syntax_preds) pkg "archive"
-	        with Not_found -> "" in
-	      Fl_split.in_words al
-	   )
-	   pp_packages) in
-
-  match preprocessor_cmd with
-      None -> []
-    | Some cmd ->
-	["-pp";
-	 cmd ^ " " ^
-	 String.concat " " (List.map Filename.quote pp_i_options) ^ " " ^
-	 String.concat " " (List.map Filename.quote pp_archives) ^ " " ^
-	 String.concat " " (List.map Filename.quote pp_opts)]
-;;
-
-(**************** ppx extensions ****************************************)
-
-let process_ppx_spec predicates packages ppx_opts =
-  (* Returns: ppx_commands *)
-  (* may raise No_such_package *)
-
-  let ppx_packages =
-    package_deep_ancestors predicates packages in
-
-  let ppx_opts =
-    List.map 
-      (fun opt ->
-         match Fl_split.in_words opt with
-           | pkg :: ((_ :: _) as opts) ->
-               let exists =
-                 try ignore(package_directory pkg); true
-                 with No_such_package _ -> false in
-               if not exists then
-                 failwith ("The package named in -ppxopt does not exist: " ^ 
-                             pkg);
-               pkg, opts
-           | _ -> 
-               failwith "-ppxopt must include package name, e.g. -ppxopt \"foo,-name bar\""
-      )
-      ppx_opts in
-
-  List.flatten
-    (List.map 
-       (fun pname ->
-          let base = package_directory pname in
-          let options =
-            try  List.assoc pname ppx_opts
-            with Not_found -> [] in
-          try
-            let preprocessor =
-              resolve_path
-                ~base ~explicit:true 
-                (package_property predicates pname "ppx") in
-            ["-ppx"; String.concat " " (preprocessor :: options)]
-          with Not_found -> []
-       )
-       ppx_packages)
 
 (**************** OCAMLC/OCAMLMKTOP/OCAMLOPT subcommands ****************)
 

@@ -112,6 +112,7 @@ configuration files, and library routines in detail.</p>
     <li>
       <p><em>SVN:</em> The installation of "bytes" respects now $prefix and
         the configured destination.</p>
+      <p>New option -pp for "ocamlfind query", to get preprocessor packages.</p>
     </li>
 
     <li>

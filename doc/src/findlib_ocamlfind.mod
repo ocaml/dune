@@ -57,6 +57,7 @@ ocamlfind query [ -predicates <replaceable>p</replaceable>  |
                   -prefix <replaceable>p</replaceable> |
                   -separator <replaceable>s</replaceable> | 
                   -suffix <replaceable>s</replaceable> |
+                  -pp |
                   -descendants | -d |
                   -recursive  | -r ] <replaceable>package</replaceable> ...
 </programlisting>
@@ -130,7 +131,7 @@ linker backend are printed.
 </varlistentry>
 <varlistentry>
 <term>-a-format</term>
-<listitem><para>Same as -format "%a", i.e. archive file names are printed.
+<listitem><para>Same as -format "%+a", i.e. archive file names are printed.
 </para></listitem>
 </varlistentry>
 <varlistentry>
@@ -175,6 +176,14 @@ linker backend are printed.
   given packages are queried. This option implies <literal>-recursive</literal>.
 </para></listitem>
 </varlistentry>
+<varlistentry>
+<term>-pp</term>
+<listitem><para>Query preprocessor packages (camlp4 syntax extensions). Normally
+it is not needed to set -predicates, except you need the archives (then add
+-predicates byte). This option implies <literal>-recursive</literal>.
+</para></listitem>
+</varlistentry>
+
 </variablelist>
 </refsect2>
 

@@ -110,9 +110,11 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
-      <p><em>SVN:</em> The installation of "bytes" respects now $prefix and
+      <p><em>1.5.3:</em> The installation of "bytes" respects now $prefix and
         the configured destination.</p>
       <p>New option -pp for "ocamlfind query", to get preprocessor packages.</p>
+      <p>Updated the compatibility Bytes module to support extend, init, mapi,
+         blit_string (Gabriel Scherer).</p>
     </li>
 
     <li>

@@ -100,6 +100,7 @@ FORMAT="LINESPECIFIC"
 >s</REPLACEABLE> | 
                   -suffix <REPLACEABLE
 >s</REPLACEABLE> |
+                  -pp |
                   -descendants | -d |
                   -recursive  | -r ] <REPLACEABLE
 >package</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
@@ -161,7 +162,7 @@ linker backend are printed.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
 >-a-format</TERM><LISTITEM
 ><PARA
->Same as -format "%a", i.e. archive file names are printed.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+>Same as -format "%+a", i.e. archive file names are printed.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
 >-o-format</TERM><LISTITEM
 ><PARA
@@ -200,6 +201,14 @@ linker backend are printed.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><PARA
 >Instead of the ancestors the descendants of the
   given packages are queried. This option implies <LITERAL
+MOREINFO="NONE"
+>-recursive</LITERAL>.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-pp</TERM><LISTITEM
+><PARA
+>Query preprocessor packages (camlp4 syntax extensions). Normally
+it is not needed to set -predicates, except you need the archives (then add
+-predicates byte). This option implies <LITERAL
 MOREINFO="NONE"
 >-recursive</LITERAL>.</PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2><REFSECT2
 ><TITLE

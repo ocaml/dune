@@ -315,6 +315,18 @@ findlib/ocamlfind:
 
 <variablelist>
 <varlistentry>
+  <term><literal>OCAMLFIND_TOOLCHAIN</literal></term>
+  <listitem><para>
+    This variable sets the currently selected toolchain when
+    a <literal>-toolchain</literal> option is not passed
+    on the command line.
+  </para>
+  </listitem>
+</varlistentry>
+</variablelist>
+
+<variablelist>
+<varlistentry>
   <term><literal>OCAMLPATH</literal></term>
   <listitem><para>
     This variable may contain an additional search path for package

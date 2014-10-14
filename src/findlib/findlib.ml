@@ -136,7 +136,7 @@ let init
 
   let config_preds =
     match toolchain with
-      | None -> []
+      | None -> (try [Sys.getenv "OCAMLFIND_TOOLCHAIN"] with Not_found -> [])
       | Some p -> [p] in
 
   let sys_ocamlc, sys_ocamlopt, sys_ocamlcp, sys_ocamloptp, sys_ocamlmklib,

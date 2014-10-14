@@ -110,7 +110,9 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
-      <p><em>SVN:</em> New ppxopt META variables (Peter Zotov)</p>
+      <p><em>SVN:</em> New ppxopt META variables (Peter Zotov).</p>
+      <p>Support for OCAMLFIND_TOOLCHAIN environment variable (Peter Zotov).
+         </p>
     </li>
 
     <li>

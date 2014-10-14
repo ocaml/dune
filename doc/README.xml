@@ -110,6 +110,10 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>SVN:</em> New ppxopt META variables (Peter Zotov)</p>
+    </li>
+
+    <li>
       <p><em>1.5.3:</em> The installation of "bytes" respects now $prefix and
         the configured destination.</p>
       <p>New option -pp for "ocamlfind query", to get preprocessor packages.</p>

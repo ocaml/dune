@@ -387,8 +387,12 @@ ocaml unix.cma itest-aux/simple.ml >/dev/null || have_dlls="no"
 echo "Testing whether ppxopt can be supported..."
 
 with_ppxopt=1
+enable_topfind_ppxopt=true
 
-ocaml -I +compiler-libs itest-aux/ppx.ml >/dev/null || with_ppxopt=0
+ocaml -I +compiler-libs itest-aux/ppx.ml >/dev/null || {
+    with_ppxopt=0
+    enable_topfind_ppxopt=false
+}
 
 ######################################################################
 # Configure libraries
@@ -542,14 +546,6 @@ for part in `cd src; echo *`; do
     fi
 done
 
-# Select the correct topfind script
-
-if [ $with_ppxopt -gt 0 ]; then
-    cp src/findlib/topfind.ml.in src/findlib/topfind.ml
-else
-    sed -e '/PPXOPT_BEGIN/,/PPXOPT_END/{d}' src/findlib/topfind.ml.in > src/findlib/topfind.ml
-fi
-
 ######################################################################
 
 printf "Detecting compiler arguments: "
@@ -600,6 +596,7 @@ echo "INSTALL_CAMLP4=${with_camlp4}" >>Makefile.config
 echo "USE_CYGPATH=${use_cygpath}" >>Makefile.config
 echo "HAVE_NATDYNLINK=${have_natdynlink}" >>Makefile.config
 echo "VERSION=${version}" >>Makefile.config
+echo "ENABLE_TOPFIND_PPXOPT=${enable_topfind_ppxopt}" >>Makefile.config
 echo "SYSTEM=${system}" >>Makefile.config
 if [ "$mingw_lib" != "" ]; then
     echo "OCAMLC_FLAGS=-I \"${mingw_lib}\"" >>Makefile.config

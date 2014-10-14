@@ -70,6 +70,17 @@ findlib_config.ml: findlib_config.mlp $(TOP)/Makefile.config
 		    -e 's;@SYSTEM@;$(SYSTEM);g' \
 		     >findlib_config.ml
 
+topfind.ml: topfind.ml.in
+	if [ "$(ENABLE_TOPFIND_PPXOPT)" = "true" ]; then                 \
+		cp topfind.ml.in topfind.ml;                             \
+	else                                                             \
+		sed -e '/PPXOPT_BEGIN/,/PPXOPT_END/{d}' topfind.ml.in    \
+			> topfind.ml ;                                   \
+	fi
+
+topfind.cmo: topfind.cmi
+topfind.cmx: topfind.cmi
+
 topfind: topfind_rd$(OCAML_REMOVE_DIRECTORY).p
 	USE_CYGPATH="$(USE_CYGPATH)"; \
 	export USE_CYGPATH; \
@@ -84,7 +95,6 @@ clean:
 	rm -f *.cmi *.cmo *.cma *.cmx *.a *.o *.cmxa \
 	  fl_meta.ml findlib_config.ml findlib.mml topfind.ml topfind \
 	  ocamlfind$(EXEC_SUFFIX) ocamlfind_opt$(EXEC_SUFFIX)
-	#rm -f ocaml_args.ml
 
 install: all
 	mkdir -p "$(prefix)$(OCAML_SITELIB)/$(NAME)"

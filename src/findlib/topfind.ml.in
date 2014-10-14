@@ -47,6 +47,18 @@ let add_dir d =
   end
 ;;
 
+let exec_string s =
+  let l = Lexing.from_string s in
+  let ph = !Toploop.parse_toplevel_phrase l in
+(* PPXOPT_BEGIN *)
+  let ph = Toploop.preprocess_phrase Format.err_formatter ph in
+(* PPXOPT_END *)
+  let fmt = Format.make_formatter (fun _ _ _ -> ()) (fun _ -> ()) in
+  try
+    Toploop.execute_phrase false fmt ph
+  with
+      _ -> false
+;;
 
 let load pkglist =
   List.iter
@@ -81,22 +93,58 @@ let load pkglist =
                      (Findlib.package_property !predicates pkg "ppx")
                   )
             with Not_found -> None
-          in
+          and ppxopts =
+            try
+              List.map
+                (fun opt ->
+                   match Fl_split.in_words opt with
+                     | pkg :: opts ->
+                          pkg, 
+                          List.map
+                            (Findlib.resolve_path ~base:d ~explicit:true) opts
+                     | _ -> assert false)
+                (Fl_split.in_words_ws
+                   (Findlib.package_property !predicates pkg "ppxopt"))
+            with Not_found -> []          in
           (* Feed the 'ppx' property into the toplevel. To remain compatible
              with pre-4.01 OCaml, construct and execute a phrase instead of directly
              altering Clflags. *)
-          match ppx with
+          begin match ppx with
             | Some ppx ->
+
+
                  begin try
                      match Hashtbl.find Toploop.directive_table "ppx" with
                        | Toploop.Directive_string fn -> 
                             fn ppx; !log (ppx ^ ": activated")
                        | _ -> assert false
                    with Not_found ->
-                     failwith "Package defines a ppx preprocessor, but OCaml does not support \
-                               the #ppx directive. Use OCaml >=4.02."
+                     failwith "Package defines a ppx preprocessor, but OCaml is too old. \
+                               Use OCaml >= 4.02.0 for ppx support."
                  end
             | None -> ()
+          end;
+          (* Feed the 'ppxopt' property into the toplevel. *)
+          match ppxopts with
+            | [] -> ()
+            | _ ->
+(* PPXOPT_BEGIN *)
+                 List.iter
+                   (fun (pkg, opts) ->
+                      ignore (exec_string ("[@@@findlib.ppxopt " ^
+                        (String.concat ", "
+                          (List.map (Printf.sprintf "%S") (pkg :: opts))) ^
+                          "];;"));
+                      !log (pkg ^ ": " ^ (String.concat " " opts) ^ 
+                              ": option added"))
+                   ppxopts
+(*
+(* PPXOPT_END *)
+                failwith "Package defines a ppx preprocessor option, but OCaml is too old. \
+                          Use OCaml >=4.02.1 for ppxopt support."
+(* PPXOPT_BEGIN *)
+*)
+(* PPXOPT_END *)
         end;
 	(* The package is loaded: *)
 	loaded := pkg :: !loaded

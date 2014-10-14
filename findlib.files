@@ -111,10 +111,11 @@ d src/findlib
 f src/findlib/Makefile
 f src/findlib/META.in
 f src/findlib/findlib_config.mlp
-#x src/findlib/fl_metascanner.ml
+f src/findlib/topfind.ml.in
 x src/findlib/fl_meta.ml
 x src/findlib/findlib_config.ml
 x src/findlib/ocaml_args.ml
+x src/findlib/topfind.ml
 p src/findlib/.*\.ml
 p src/findlib/.*\.mli
 p src/findlib/.*\.mll

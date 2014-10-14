@@ -382,6 +382,15 @@ have_dlls="yes"
 ocaml unix.cma itest-aux/simple.ml >/dev/null || have_dlls="no"
 
 ######################################################################
+# Does this version of OCaml support extension points?
+
+echo "Testing whether ppxopt can be supported..."
+
+with_ppxopt=1
+
+ocaml -I +compiler-libs itest-aux/ppx.ml >/dev/null || with_ppxopt=0
+
+######################################################################
 # Configure libraries
 
 echo "Configuring libraries..."
@@ -533,6 +542,14 @@ for part in `cd src; echo *`; do
     fi
 done
 
+# Select the correct topfind script
+
+if [ $with_ppxopt -gt 0 ]; then
+    cp src/findlib/topfind.ml.in src/findlib/topfind.ml
+else
+    sed -e '/PPXOPT_BEGIN/,/PPXOPT_END/{d}' src/findlib/topfind.ml.in > src/findlib/topfind.ml
+fi
+
 ######################################################################
 
 printf "Detecting compiler arguments: "
@@ -609,6 +626,12 @@ if [ $with_topfind -gt 0 ]; then
     echo "    topfind script:        ${ocaml_core_stdlib}"
 else
     echo "    topfind script:        omitted"
+fi
+
+if [ $with_ppxopt -gt 0 ]; then
+    echo "Topfind ppxopt support:    yes"
+else
+    echo "Topfind ppxopt support:    no"
 fi
 
 if [ $with_toolbox -gt 0 ]; then

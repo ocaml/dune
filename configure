@@ -7,7 +7,7 @@
 
 #set -x
 
-version="1.5.3"
+version="1.5.4"
 
 # Remember the old IFS value:
 oldifs="$IFS"

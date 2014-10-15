@@ -1386,7 +1386,18 @@ via the -ppx option (available since OCaml-4.01). If the command is
 relative to the current directory (e.g. ./cmd), the command is expected
 in the package directory. The special forms as defined for "archive"
 are also available (e.g. @otherpkg/cmd). Additional arguments can be
-specified on the ocamlfind command line with the -ppxopt option.</PARA></LISTITEM></ITEMIZEDLIST><PARA
+specified on the ocamlfind command line with the -ppxopt option
+or the "ppxopt" variable.</PARA></LISTITEM><LISTITEM
+><PARA
+>The variable "ppxopt" is a set of options that are added to the ppx
+rewriter invocation. The contents of the variable consists of one or
+several whitespace-separated parts. Every part consists of several
+comma-separated subparts; the first subpart indicates the package
+that contains the ppx rewriter invocation, the rest contain the options
+to be appended. If the option is a path relative to the current directory
+(e.g. ./foo.cma), the path is expanded relative to the package directory.
+The special forms as defined for "archive" are also available
+(e.g. @otherpkg/foo.cma).</PARA></LISTITEM></ITEMIZEDLIST><PARA
 >It is possible to define additional variables but there is currently
 no software interpreting them.</PARA></REFSECT1><REFSECT1
 ><TITLE
@@ -1713,6 +1724,20 @@ MOREINFO="NONE"
 ><PARA
 >    This variable overrides the location of the configuration file
     findlib.conf. It must contain the absolute path name of this file.
+  </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
+
+<VARIABLELIST
+><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>OCAMLFIND_TOOLCHAIN</LITERAL></TERM><LISTITEM
+><PARA
+>    This variable sets the currently selected toolchain when
+    a <LITERAL
+MOREINFO="NONE"
+>-toolchain</LITERAL> option is not passed
+    on the command line.
   </PARA></LISTITEM></VARLISTENTRY></VARIABLELIST>
 
 <VARIABLELIST

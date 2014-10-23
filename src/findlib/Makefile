@@ -74,7 +74,7 @@ topfind.ml: topfind.ml.in
 	if [ "$(ENABLE_TOPFIND_PPXOPT)" = "true" ]; then                 \
 		cp topfind.ml.in topfind.ml;                             \
 	else                                                             \
-		sed -e '/PPXOPT_BEGIN/,/PPXOPT_END/{d}' topfind.ml.in    \
+		sed -e '/PPXOPT_BEGIN/,/PPXOPT_END/ d' topfind.ml.in     \
 			> topfind.ml ;                                   \
 	fi
 

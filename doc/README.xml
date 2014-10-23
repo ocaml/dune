@@ -110,6 +110,10 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>1.5.5:</em> fixes a build problem for BSD systens</p>
+    </li>
+
+    <li>
       <p><em>1.5.4:</em> New ppxopt META variables (Peter Zotov).</p>
       <p>Support for OCAMLFIND_TOOLCHAIN environment variable (Peter Zotov).
          </p>

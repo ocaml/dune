@@ -1,5 +1,5 @@
 BYTE_FILES=bytes.cmi bytes.cma
-NATIVE_FILES=bytes.cmx bytes.a bytes.cmxa
+NATIVE_FILES=bytes.cmx bytes$(LIB_SUFFIX) bytes.cmxa
 NATIVE_FILES_DYNLINK=bytes.cmxs
 OCAMLBUILD=ocamlbuild -classic-display -no-links
 

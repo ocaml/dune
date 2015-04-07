@@ -190,6 +190,8 @@ for tool in sed awk ocaml ocamlc uname rm make cat m4 dirname basename; do
     fi
 done
 
+lib_suffix=`ocamlc -config 2>/dev/null|grep '^ext_lib'|sed 's/ext_lib: //'`
+
 # Check for Cygwin:
 
 exec_suffix=
@@ -589,6 +591,7 @@ echo "OCAMLFIND_CONF=${ocamlfind_config}" >>Makefile.config
 echo "OCAML_AUTOLINK=${ocaml_autolink}" >>Makefile.config
 echo "OCAML_REMOVE_DIRECTORY=${have_remdir}" >>Makefile.config
 echo "EXEC_SUFFIX=${exec_suffix}" >>Makefile.config
+echo "LIB_SUFFIX=${lib_suffix}" >>Makefile.config
 echo "CUSTOM=${custom}" >>Makefile.config
 echo "PARTS=${parts}" >>Makefile.config
 echo "INSTALL_TOPFIND=${with_topfind}" >>Makefile.config

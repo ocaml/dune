@@ -110,6 +110,11 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>SVN:</em> for MSVC build fixing bad filename suffix
+      (Dmitry Bely)</p>
+    </li>
+
+    <li>
       <p><em>1.5.5:</em> fixes a build problem for BSD systens</p>
     </li>
 

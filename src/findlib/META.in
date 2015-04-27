@@ -6,3 +6,15 @@ archive(byte) = "findlib.cma"
 archive(byte,toploop) = "findlib.cma findlib_top.cma"
 archive(byte,create_toploop) = "findlib.cma findlib_top.cma"
 archive(native) = "findlib.cmxa"
+
+package "dynload" (
+  version = "@VERSION@"
+  description = "Package manager dynamic loader"
+  requires = "findlib dynlink"
+  archive(byte) = "findlib_dynload.cma"
+  archive(native) = "findlib_dynload.cmxa"
+#Even if it strange and discouraged to dynload this package
+  archive(byte,plugin) = "findlib_dynload.cma"
+  archive(native,plugin) = "findlib_dynload.cmxs"
+  linkopts = "-linkall"
+)

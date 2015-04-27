@@ -3,6 +3,8 @@
  *
  *)
 
+module StrSet = Set.Make(String)
+
 exception No_such_package 
   = Fl_package_base.No_such_package
 
@@ -427,3 +429,58 @@ let list_packages ?(tab = 20) ?(descr = false) ch =
     )
     packages_sorted
 ;;
+
+
+type rectype =
+  | Record_core
+  | Record_load
+
+let rec_core = ref StrSet.empty
+let rec_load = ref StrSet.empty
+let rec_preds = ref []
+
+let record_package (rt:rectype) (p:string) =
+  match rt with
+    | Record_core ->
+        rec_core := StrSet.add p !rec_core
+    | Record_load ->
+        rec_load := StrSet.add p !rec_load
+
+let recorded_packages rt =
+  match rt with
+    | Record_core ->
+        StrSet.elements !rec_core
+    | Record_load ->
+        StrSet.elements (StrSet.diff !rec_load !rec_core)
+
+let reset_recordings() =
+  rec_load := StrSet.empty
+
+let type_of_recorded_package p =
+  if StrSet.mem p !rec_core then
+    Record_core
+  else
+    if StrSet.mem p !rec_load then
+      Record_load
+    else
+      raise Not_found
+
+let is_recorded_package p =
+  try ignore(type_of_recorded_package p); true with Not_found -> false
+
+
+let rm_preds =
+  [ "create_toploop"; "toploop"; "executable"; "plugin"; "autolink";
+    "preprocessor"; "syntax" ]
+
+let rm_preds_set =
+  List.fold_right StrSet.add rm_preds StrSet.empty
+
+let record_package_predicates preds =
+  let preds' =
+    List.filter (fun p -> not(StrSet.mem p rm_preds_set)) preds in
+  rec_preds := preds'
+
+let recorded_predicates() =
+  !rec_preds
+

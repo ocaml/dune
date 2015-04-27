@@ -1150,8 +1150,10 @@ let ocamlc which () =
   let threads_dir = Filename.concat stdlibdir "threads" in
   let vmthreads_dir = Filename.concat stdlibdir "vmthreads" in
 
-  let initl_file_needed =
+  let create_toploop =
     List.mem "create_toploop" !predicates && List.mem "findlib" eff_link in
+  let initl_file_needed =
+    create_toploop || List.mem "findlib.dynload" eff_link in
 
   let initl_file_name =
     if initl_file_needed then
@@ -1171,21 +1173,22 @@ let ocamlc which () =
 		  0o777
 		  initl_file_name in
     try
+      List.iter
+        (fun pkg ->
+           Printf.fprintf
+             initl
+             "Findlib.record_package Findlib.Record_core %S;;\n"
+             pkg
+        )
+        eff_packages;
       output_string initl
-	("Topfind.don't_load [" ^
-	 String.concat ";"
-	   (List.map
-	      (fun pkg -> "\"" ^ String.escaped pkg ^ "\"")
-	      eff_link) ^
-	 "];;\n");
-      output_string initl
-	("Topfind.predicates := [" ^
+	("Findlib.record_package_predicates [" ^
 	 String.concat ";"
 	   (List.map
 	      (fun pred -> "\"" ^ String.escaped pred ^ "\"")
-	      ("toploop" :: 
-		 (List.filter (fun p -> p <> "create_toploop") !predicates))) ^
-	 "];;\n");
+              !predicates
+           ) ^
+	   "];;\n");
       close_out initl;
     with
       any ->

@@ -193,3 +193,40 @@ val list_packages : ?tab:int -> ?descr:bool -> out_channel -> unit
    * @param tab The tabulator width, by default 20
    * @param descr Whether package descriptions are printed. Default: false
    *)
+
+(** Managing dynamically loaded packages *)
+
+(** This is a registry of packages that are available in-core. This is both
+    used for toploops and for plugins.
+ *)
+
+type rectype =
+  | Record_core  (** The package is part of the executable core *)
+  | Record_load  (** The package has been dynamically loaded *)
+
+val record_package : rectype -> string -> unit
+  (** Record this package *)
+
+val record_package_predicates : string list -> unit
+  (** Record the predicates to be used for package loading. Certain predicates
+      are automatically filtered out if inappropriate. A call of
+      [record_package_predicates] replaces the set of predicates that was
+      installed beforehand.
+   *)
+
+val recorded_packages : rectype -> string list
+  (** The list of packages recorded with [record_package] *)
+
+val is_recorded_package : string -> bool
+  (** Whether there is a recording for this package *)
+
+val type_of_recorded_package : string -> rectype
+  (** Returns the type, or raises [Not_found] *)
+
+val recorded_predicates : unit -> string list
+  (** The most recent version of the recorded predicate list *)
+
+val reset_recordings : unit -> unit
+  (** Removes all [Record_load] packages from the list of recordings.
+      This forces that the packages are loaded again.
+   *)

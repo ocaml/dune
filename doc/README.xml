@@ -111,7 +111,9 @@ configuration files, and library routines in detail.</p>
 
     <li>
       <p><em>SVN:</em> for MSVC build fixing bad filename suffix
-      (Dmitry Bely)</p>
+      (Dmitry Bely).</p>
+      <p>The switch -only-show did not work as described.
+      (Error report from Bob Atkey.)</p>
     </li>
 
     <li>

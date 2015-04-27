@@ -358,74 +358,76 @@ let run_command ?filter verbose cmd args =
   );
   flush stdout;
 
-  let filter_input, cmd_output =
-    match filter with
-	None -> Unix.stdin (* dummy *), Unix.stdout
-      | Some f -> Unix.pipe()
-  in
+  if verbose <> Only_show then (
+    let filter_input, cmd_output =
+      match filter with
+          None -> Unix.stdin (* dummy *), Unix.stdout
+        | Some f -> Unix.pipe()
+    in
 
-  (* Signals: On SIGINT, we wait until the subprocess finishes, and
-   * die then. This allows us to call interactive commands as subprocesses.
-   *)
+    (* Signals: On SIGINT, we wait until the subprocess finishes, and
+     * die then. This allows us to call interactive commands as subprocesses.
+     *)
 
-  let old_sigint =
-    Sys.signal Sys.sigint Sys.Signal_ignore in
+    let old_sigint =
+      Sys.signal Sys.sigint Sys.Signal_ignore in
 
-  let need_exe =
-    List.mem Findlib_config.system [ "win32"; "win64"; "mingw" ] in
+    let need_exe =
+      List.mem Findlib_config.system [ "win32"; "win64"; "mingw" ] in
 
-  let fixed_cmd =
-    if need_exe then (
-      if Filename.check_suffix cmd ".exe" then cmd else cmd ^ ".exe" 
-    )
-    else
-      cmd in
+    let fixed_cmd =
+      if need_exe then (
+        if Filename.check_suffix cmd ".exe" then cmd else cmd ^ ".exe" 
+      )
+      else
+        cmd in
 
-  let pid =
-    Unix.create_process
-      fixed_cmd
-      (Array.of_list (cmd :: args))
-      Unix.stdin
-      cmd_output
-      Unix.stderr
-  in
+    let pid =
+      Unix.create_process
+        fixed_cmd
+        (Array.of_list (cmd :: args))
+        Unix.stdin
+        cmd_output
+        Unix.stderr
+    in
 
-  begin match filter with
-      Some filter_fun ->
-	begin
-	  Unix.close cmd_output;
-	  let ch = Unix.in_channel_of_descr filter_input in
-	  try
-	    while true do
-	      let line = input_line ch in
-	      match filter_fun line with
-		  None -> ()       (* Suppress line *)
-		| Some line' -> print_endline line'
-	    done;
-	    assert false
-	  with
-	      End_of_file ->
-		close_in ch;
-		flush stdout
-	end
-    | None -> ()
-  end;
+    begin match filter with
+        Some filter_fun ->
+          begin
+            Unix.close cmd_output;
+            let ch = Unix.in_channel_of_descr filter_input in
+            try
+              while true do
+                let line = input_line ch in
+                match filter_fun line with
+                    None -> ()       (* Suppress line *)
+                  | Some line' -> print_endline line'
+              done;
+              assert false
+            with
+                End_of_file ->
+                  close_in ch;
+                  flush stdout
+          end
+      | None -> ()
+    end;
 
-  let (_,status) = Unix.waitpid [] pid in
-  Sys.set_signal Sys.sigint old_sigint;
-  begin
-    match status with
-      Unix.WEXITED 0 -> ()
-    | Unix.WEXITED n ->
-	if verbose = Verbose then
-	  print_string (cmd ^ " returned with exit code " ^ string_of_int n ^ "\n");
-	exit n
-    | Unix.WSIGNALED _ ->
-	print_string (cmd ^ " got signal and exited\n");
-	exit 2
-    | Unix.WSTOPPED _ ->
-	failwith "Your operating system does not work correctly"
-  end
+    let (_,status) = Unix.waitpid [] pid in
+    Sys.set_signal Sys.sigint old_sigint;
+    begin
+      match status with
+        Unix.WEXITED 0 -> ()
+      | Unix.WEXITED n ->
+          if verbose = Verbose then
+            print_string (cmd ^ " returned with exit code " ^ string_of_int n ^ "\n");
+          exit n
+      | Unix.WSIGNALED _ ->
+          print_string (cmd ^ " got signal and exited\n");
+          exit 2
+      | Unix.WSTOPPED _ ->
+          failwith "Your operating system does not work correctly"
+    end
+  )
 ;;
 
 
@@ -1192,7 +1194,7 @@ let ocamlc which () =
 	raise any
   end;
 
-  if initl_file_needed then
+  if initl_file_needed && verbose <> Only_show then
     at_exit
       (fun () ->
 	let tr f x = try f x with _ -> () in

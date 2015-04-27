@@ -3,9 +3,11 @@
  *
  *)
 
-let predicates = ref [];;
-let forbidden = ref [];;
-let loaded = ref [];;
+let predicates = ref ("toploop" :: Findlib.recorded_predicates());;
+  (* We also want things like "syntax" here which are not allowed in
+     Findlib, hence we maintain our own list
+   *)
+
 let directories = ref [ Findlib.ocaml_stdlib() ];;
 
 
@@ -29,7 +31,8 @@ let rec remove_dups l =
 ;;
 
 let add_predicates pl =
-  predicates := remove_dups (pl @ !predicates);;
+  predicates := remove_dups (pl @ !predicates);
+  Findlib.record_package_predicates !predicates;;
 
 let syntax s =
   add_predicates [ "syntax"; s ];;
@@ -64,12 +67,18 @@ let load pkglist =
   List.iter
     (fun pkg ->
       let _stdlibdir = Findlib.ocaml_stdlib() in
-      if not (List.mem pkg !loaded) then begin
+      let loaded =
+        Findlib.is_recorded_package pkg &&
+          Findlib.type_of_recorded_package pkg = Findlib.Record_load in
+      let incore =
+        Findlib.is_recorded_package pkg &&
+          Findlib.type_of_recorded_package pkg = Findlib.Record_core in
+      if not loaded then begin
         (* Determine the package directory: *)
 	let d = Findlib.package_directory pkg in
 	add_dir d;
         (* Leave pkg out if mentioned in !forbidden *)
-	if not (List.mem pkg !forbidden) then begin
+	if not incore then begin
 	  (* Determine the 'archive' property: *)
 	  let archive =
 	    try Findlib.package_property !predicates pkg "archive"
@@ -147,7 +156,7 @@ let load pkglist =
 (* PPXOPT_END *)
         end;
 	(* The package is loaded: *)
-	loaded := pkg :: !loaded
+        Findlib.record_package Findlib.Record_load pkg
       end)
     pkglist
 ;;
@@ -162,34 +171,34 @@ let load_deeply pkglist =
 ;;
 
 
-let don't_load pkglist =
-  forbidden := remove_dups (pkglist @ !forbidden);
+let check_existence pkglist =
   List.iter
     (fun pkg ->
-       let _d = Findlib.package_directory pkg in
-       ()
+       let _ = Findlib.package_directory pkg in ()
     )
     pkglist
 ;;
 
 
+let don't_load pkglist =
+  check_existence pkglist;
+  List.iter (Findlib.record_package Findlib.Record_core) pkglist
+;;
+
+
 let don't_load_deeply pkglist =
   (* Check if packages exist: *)
-  List.iter
-    (fun pkg ->
-       let _ = Findlib.package_directory pkg in ()
-    )
-    pkglist;
+  check_existence pkglist;
   (* Get the sorted list of ancestors *)
   let eff_pkglist =
     Findlib.package_deep_ancestors !predicates pkglist in
-  (* Add this to the list of forbidden packages: *)
-  don't_load eff_pkglist
+  (* Add this to the list of core packages: *)
+  List.iter (Findlib.record_package Findlib.Record_core) eff_pkglist
 ;;
 
 
 let reset() =
-  loaded := []
+  Findlib.reset_recordings()
 ;;
 
 
@@ -200,7 +209,7 @@ let have_mt_support() =
 
 let load_mt_support() =
   (* Load only if package "threads" is not yet loaded. *)
-  if not(List.mem "threads" !loaded) then (
+  if not(Findlib.is_recorded_package "threads") then (
     (* This works only for POSIX threads. *)
     if have_mt_support() then (
       add_predicates ["mt"; "mt_posix"];

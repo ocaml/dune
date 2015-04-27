@@ -14,7 +14,7 @@ let ocaml_has_autolinking = @AUTOLINK@;;
 let libexec_name = "stublibs";;
 
 let system = "@SYSTEM@";;
-(* - "mingw", "win32", "cygwin", "linux_elf", ... *)
+(* - "mingw", "mingw64", "win32", "cygwin", "linux_elf", ... *)
 
 let dll_suffix =
   match Sys.os_type with

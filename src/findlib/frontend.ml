@@ -28,7 +28,7 @@ and modifier =
 
 let slashify s =
   match Findlib_config.system with
-    | "mingw" | "cygwin" ->
+    | "mingw" | "mingw64" | "cygwin" ->
 	let u = String.copy s in
 	for k = 0 to String.length u - 1 do
 	  if u.[k] = '\\' then u.[k] <- '/'
@@ -40,7 +40,7 @@ let slashify s =
 
 let out_path ?(prefix="") s =
   match Findlib_config.system with
-    | "mingw" | "cygwin" ->
+    | "mingw" | "mingw64" | "cygwin" ->
 	let u = slashify s in
 	prefix ^ 
 	  (if String.contains u ' ' then
@@ -373,7 +373,7 @@ let run_command ?filter verbose cmd args =
       Sys.signal Sys.sigint Sys.Signal_ignore in
 
     let need_exe =
-      List.mem Findlib_config.system [ "win32"; "win64"; "mingw" ] in
+      List.mem Findlib_config.system [ "win32"; "win64"; "mingw"; "mingw64" ] in
 
     let fixed_cmd =
       if need_exe then (

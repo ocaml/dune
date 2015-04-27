@@ -114,6 +114,7 @@ configuration files, and library routines in detail.</p>
       (Dmitry Bely).</p>
       <p>The switch -only-show did not work as described.
       (Error report from Bob Atkey.)</p>
+      <p>Also support mingw64 as system type (Matthieu Dubuget).</p>
     </li>
 
     <li>

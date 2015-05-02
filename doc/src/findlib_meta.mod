@@ -236,6 +236,19 @@ In the preprocessor stage, the archive files are passed as extensions
 to the preprocessor (camlp4) call. In the linker stage (-linkpkg), the archive
 files are linked. In the compiler stage, the archive files are ignored.
 </para>
+
+<para>
+Note that "archive" should only be used for archive files that are
+intended to be included in executables or loaded into toploops. For
+modules loaded at runtime there is the separate variable "plugin".
+</listitem>
+
+<listitem> 
+<para> 
+The variable "plugin" specifies the plugin archives of the package.
+These can be dynamically loaded with the <literal>Fl_dynload</literal>
+module. The plugin archives can have ".cmo", ".cma", or ".cmxs" suffix.
+</para>
 </listitem>
 
 <listitem> 
@@ -374,6 +387,14 @@ preprocessor options.</para>
 <para>
 The "syntax" predicate means that the -syntax option is present on the
 command line.</para>
+</listitem>
+
+<listitem>
+<para>
+Legacy: The "plugin" predicate could be used in some versions of findlib
+to select cmxs archives instead of cmxa archives. This use is still possible
+but discouraged.
+</para>
 </listitem>
 
 </itemizedlist>

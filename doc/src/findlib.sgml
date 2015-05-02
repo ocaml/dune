@@ -456,6 +456,18 @@ archive(native) = "p.cmxa"
 The correct value for the "archive" variable is selected upon the
 given set of predicates.
 </para>
+
+<para>Many packages can also be loaded at runtime with the
+<literal>Fl_dynload</literal> module. In this case, though, the
+variable "plugin" is used instead of "archive", e.g.</para>
+
+<programlisting>
+plugin(byte) = "p.cma"
+plugin(native) = "p.cmxs"
+</programlisting>
+
+<para>(You can create p.cmxs from p.cmxa with 
+"ocamlopt -shared -o p.cmxs p.cmxa".) Note that "plugin" is entirely optional.
 </sect1>
 
 
@@ -1666,6 +1678,90 @@ be specified, i.e. whether p must be linked first or q.
 </para>
 </sect1>
 
+
+
+<sect1>
+<title>Plugins</title>
+
+<para><emphasis>(Since findlib-1.6.)</emphasis></para>
+
+<para>
+Plugins are packages that can be loaded at runtime. Plugins are
+intended as a mechanism for loading add-on code into
+executables. Technically, there is some overlap with the concept of a
+"shared library". Note, however, that there is no universal support
+for plugins, as it is unimplemented on some platforms, and only
+poorly on some others (including x86 in the 32 bit case). Also, there
+must always be an explicit "load" statement in the loading executable.
+You cannot link an executable directly against plugins.
+</para>
+
+<para>
+For bytecode there is no problem to load cma files at runtime.
+For native-code, though, you need to convert cmxa files into cmxs
+files first:</para>
+
+<programlisting>
+ocamlopt -shared -o m.cmxs m.cmxa
+</programlisting>
+
+<para>As mentioned, be prepared that this command fails on platforms where
+plugins are unavailable.</para>
+
+<para>The cmxs files can then be referenced from META. We don't use
+the "archive" variable in this case but "plugin":</para>
+
+<programlisting>
+plugin(byte) = "m.cma"
+plugin(native) = "m.cmxs"
+</programlisting>
+
+<para>Before findlib-1.6, there was some half-official convention using the
+"plugin" predicate. This is still supported, but deprecated:</para>
+
+<programlisting>
+archive(byte) = "m.cma"
+archive(native,plugin) = "m.cmxs"
+</programlisting>
+
+<para>Dependencies: Plugins can be, of course, be dependent on other
+plugins. You run into a problem, though, when you make a plugin dependent
+on a package that doesn't qualify as plugin (i.e. lacks the "plugin"
+definition). In this case, the loader simply skips the dependency,
+and you cannot load the plugin.</para>
+
+<para>Because of this dependency issue, it is recommended to add the
+"plugin" variable to all packages that are installed on a system,
+because this does not only allow it to load all packages at runtime, but
+also to use these packages as dependency of the actual plugin code.</para>
+
+<para>Linking an executable that can load a plugin: An executable
+must link the package "findlib.dynload". This does not only add
+the loader, but also special initialization code to the executable:</para>
+
+<programlisting>
+ocamlfind ocamlopt -o program -package findlib.dynload -linkpkg ...
+</programlisting>
+
+<para>In particular, this records the packages that are already included
+into the executable (in-core packages). If a plugin is now dependent
+on such a package, this is recognized, and the package is not loaded
+(which would not work anyway).</para>
+
+<para>Now, you can load a plugin "foo" with:</para>
+
+<programlisting>
+Fl_dynload.load_packages ["foo"]
+</programlisting>
+
+<para>This loads the cma or cmxs files, and runs the initialization code
+of all top-level definitions of the included modules.</para>
+
+<para>Of couse, you can also call <literal>load_packages</literal> from
+a library if "findlib.dynload" is a required package of the library
+package.</para>
+</sect1>
+
 </chapter>
 
 <!-- ********************************************************************** -->
@@ -1686,7 +1782,14 @@ ocamlfind install p META m1.cmi m2.cmi p.cma
 </programlisting>
 
 This installs the files into the default location for new packages
-(set in ocamlfind.conf). To remove the package, run
+(set in ocamlfind.conf). If you have files that are not always built,
+add these after the -optional switch:
+
+<programlisting>
+ocamlfind install p META m1.cmi m2.cmi p.cma -optional p.cmxa p.cmxs
+</programlisting>
+
+To remove the package, run
 
 <programlisting>
 ocamlfind remove p
@@ -1730,6 +1833,7 @@ XOBJECTS = p1.cmx p2.cmx
 
 ARCHIVE  = $(NAME).cma
 XARCHIVE = $(NAME).cmxa
+SARCHIVE = $(NAME).cmxs
 
 REQUIRES = unix str q r s
 PREDICATES =
@@ -1746,7 +1850,7 @@ is indicated by making them dependents of ".PHONY".)
 <programlisting>
 .PHONY: all opt
 all: $(ARCHIVE)
-opt: $(XARCHIVE)
+opt: $(XARCHIVE) $(SARCHIVE)
 </programlisting>
 
 <para>
@@ -1761,7 +1865,15 @@ $(ARCHIVE): $(OBJECTS)
 $(XARCHIVE): $(XOBJECTS)
         $(OCAMLOPT) -a -o $(XARCHIVE) -package "$(REQUIRES)" -linkpkg \
 	          -predicates "$(PREDICATES)" $(XOBJECTS)
+
+$(SARCHIVE): $(XARCHIVE)
+        $(OCAMLOPT) -shared -o $(SARCHIVE) $(XARCHIVE) || true
 </programlisting>
+
+<para>
+Note that the cmxs archive is optional: we just ignore the error
+when it cannot be built.
+</para>
 
 <para>
 These rules compile the modules independently. The lines similar to
@@ -1805,8 +1917,8 @@ package directory and puts the given files into it.
 <programlisting>
 .PHONY: install uninstall
 install: all
-         { test ! -f $(XARCHIVE) || extra="$(XARCHIVE) "`basename $(XARCHIVE) .cmxa`.a }; \
-	 ocamlfind install $(NAME) *.mli *.cmi $(ARCHIVE) META $$extra
+	 ocamlfind install $(NAME) *.mli *.cmi $(ARCHIVE) META \
+             -optional $(XARCHIVE) $(SARCHIVE)
 
 uninstall:
          ocamlfind remove $(NAME)

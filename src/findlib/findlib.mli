@@ -24,6 +24,12 @@ exception Package_loop of string
    *)
 
 
+type formal_pred =
+    [ `Pred of string     (** Positive occurence of a formal predicate var *)
+    | `NegPred of string  (** Negative occurence of a formal predicate var *)
+    ]
+  (** A formal predicate as it occurs in a package definition *)
+
 val init : 
       ?env_ocamlpath: string ->
       ?env_ocamlfind_destdir: string ->
@@ -146,6 +152,15 @@ val package_property : string list -> string -> string -> string
    *   get the value of the [archive] property of package [p] for multi-
    *   threaded bytecode applications.
    *)
+
+val package_property_2 : string list -> string -> string ->
+                         string * formal_pred list
+  (** [package_property_2 predlist pkg propname]: This returns two values
+      [(v, preds)]. The first one, [v], is computed as in [package_property].
+      The other list, [preds], contains the predicates that actually had to
+      be set or not set in order to select the particular variable definition.
+   *)
+
 
 val package_ancestors : string list -> string -> string list
   (** [package_ancestors predlist pkg:]

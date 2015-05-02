@@ -523,7 +523,14 @@ let rec print f pkg =
            fprintf f ")\n"))
        pkg.pkg_children)
   
-let lookup name predicate_list def =
+let rec remove_dups l =
+  (* FIXME: O(n^2) *)
+  match l with
+    x :: l' ->
+      if List.mem x l' then remove_dups l' else x::remove_dups l'
+  | [] -> []
+
+let lookup_2 name predicate_list def =
   let fulfills actual_preds formal_preds =
     List.for_all
       (function
@@ -539,7 +546,10 @@ let lookup name predicate_list def =
             ((def.def_flav = `BaseDef) &&
                ((fulfills predicate_list def.def_preds) &&
                   ((List.length def.def_preds) > best_n)))
-        then search_base (List.length def.def_preds) def.def_value l'
+        then search_base
+               (List.length def.def_preds)
+               (def.def_value, def.def_preds)
+               l'
         else search_base best_n best_value l' in
   let rec search_appdx l =
     match l with
@@ -549,11 +559,19 @@ let lookup name predicate_list def =
           (name = def.def_var) &&
             ((def.def_flav = `Appendix) &&
                (fulfills predicate_list def.def_preds))
-        then def.def_value :: (search_appdx l')
+        then (def.def_value, def.def_preds) :: (search_appdx l')
         else search_appdx l' in
-  let step_a = search_base (-1) "" def in
-  let step_b = search_appdx def in String.concat " " (step_a :: step_b)
+  let value_a, preds_a  = search_base (-1) ("",[]) def in
+  let additions = search_appdx def in
+  let values_b = List.map fst additions in
+  let preds_b = List.flatten (List.map snd additions) in
+  let value = String.concat " " (value_a :: values_b) in
+  let preds = remove_dups (preds_a @ preds_b) in
+  (value, preds)
   
+let lookup name predicate_list def =
+  fst(lookup_2 name predicate_list def)
+
 let predicate_exists p defs =
   List.exists
     (fun def ->

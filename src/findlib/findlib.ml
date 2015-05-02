@@ -12,7 +12,10 @@ exception No_such_package
 exception Package_loop 
   = Fl_package_base.Package_loop
 
-
+type formal_pred =
+    [ `Pred of string
+    | `NegPred of string
+    ]
 
 let init_called = ref false ;;
 
@@ -341,6 +344,13 @@ let ignore_dups_in() =
 let package_directory pkg =
   lazy_init();
   (Fl_package_base.query pkg).Fl_package_base.package_dir
+;;
+
+
+let package_property_2 predlist pkg propname =
+  lazy_init();
+  let l = Fl_package_base.query pkg in
+  Fl_metascanner.lookup_2 propname predlist l.Fl_package_base.package_defs
 ;;
 
 

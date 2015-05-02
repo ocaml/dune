@@ -2,7 +2,8 @@ DOCBOOK_HTML  = /usr/share/sgml/docbook/stylesheet/dsssl/modular/html
 DOCBOOK_PRINT = /usr/share/sgml/docbook/stylesheet/dsssl/modular/print
 SRC = $(PWD)/src
 
-EXPORTED = findlib.mli fl_package_base.mli fl_metascanner.mli topfind.mli
+EXPORTED = findlib.mli fl_package_base.mli fl_metascanner.mli \
+	   fl_dynload.mli topfind.mli
 
 .PHONY: guide-html ref-html ref-man
 

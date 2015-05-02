@@ -87,6 +87,13 @@ val lookup :
    *)
 
 
+val lookup_2 : 
+    string -> string list -> pkg_definition list -> string * formal_pred list
+  (** Like [lookup], but also returns the list of predicates that had to
+      be considered to select the particular variable definition.
+   *)
+
+
 val predicate_exists :
     string -> pkg_definition list -> bool
   (** [predicate_exists variable_name def]:

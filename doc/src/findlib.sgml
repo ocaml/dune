@@ -467,7 +467,7 @@ plugin(native) = "p.cmxs"
 </programlisting>
 
 <para>(You can create p.cmxs from p.cmxa with 
-"ocamlopt -shared -o p.cmxs p.cmxa".) Note that "plugin" is entirely optional.
+"ocamlopt -shared -linkall -o p.cmxs p.cmxa".) Note that "plugin" is entirely optional.
 </sect1>
 
 
@@ -1702,7 +1702,7 @@ For native-code, though, you need to convert cmxa files into cmxs
 files first:</para>
 
 <programlisting>
-ocamlopt -shared -o m.cmxs m.cmxa
+ocamlopt -shared -linkall -o m.cmxs m.cmxa
 </programlisting>
 
 <para>As mentioned, be prepared that this command fails on platforms where

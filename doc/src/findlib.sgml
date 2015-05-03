@@ -1696,6 +1696,7 @@ must always be an explicit "load" statement in the loading executable.
 You cannot link an executable directly against plugins.
 </para>
 
+<sect2><title>Preparing a plugin</title>
 <para>
 For bytecode there is no problem to load cma files at runtime.
 For native-code, though, you need to convert cmxa files into cmxs
@@ -1723,8 +1724,10 @@ plugin(native) = "m.cmxs"
 archive(byte) = "m.cma"
 archive(native,plugin) = "m.cmxs"
 </programlisting>
+</sect2>
 
-<para>Dependencies: Plugins can be, of course, be dependent on other
+<sect2><title>Load-time dependencies</title>
+<para>Plugins can be, of course, be dependent on other
 plugins. You run into a problem, though, when you make a plugin dependent
 on a package that doesn't qualify as plugin (i.e. lacks the "plugin"
 definition). In this case, the loader simply skips the dependency,
@@ -1735,6 +1738,17 @@ and you cannot load the plugin.</para>
 because this does not only allow it to load all packages at runtime, but
 also to use these packages as dependency of the actual plugin code.</para>
 
+<para>That said, you just need to add a "requires" directive, e.g.
+
+<programlisting>
+requires = "pkg1"
+plugin(byte) = "m.cma"
+plugin(native) = "m.cmxs"
+</programlisting>
+</para>
+</sect2>
+
+<sect2><title>How to load a plugin</title>
 <para>Linking an executable that can load a plugin: An executable
 must link the package "findlib.dynload". This does not only add
 the loader, but also special initialization code to the executable:</para>
@@ -1757,9 +1771,40 @@ Fl_dynload.load_packages ["foo"]
 <para>This loads the cma or cmxs files, and runs the initialization code
 of all top-level definitions of the included modules.</para>
 
-<para>Of couse, you can also call <literal>load_packages</literal> from
+<para>Of course, you can also call <literal>load_packages</literal> from
 a library if "findlib.dynload" is a required package of the library
 package.</para>
+</sect2>
+
+<sect2><title>Fat plugins</title>
+<para>Sometimes it is handy to create plugins that already include all
+the required packages. The plugin acts more like a dynamically loadable
+executable that already includes whatever it needs. You can create such
+a "fat" plugin with:
+
+<programlisting>
+ocamlfind ocamlopt -shared -linkpkg -linkall -o m.cmxs -package p1,p2,p3 m.cmxa
+</programlisting>
+
+In this case, the "requires" line in the META file should remain empty.
+</para>
+
+<para>
+Note, however, that you cannot handle packages this way that are already
+linked into the main program, because it is invalid to load a module that
+is already part of the main executable. Let's assume that the executable
+links in q1, q2, and q3. Then, you need to exclude these packages from the
+plugin. The -dont-link option comes handy in this case:
+
+<programlisting>
+ocamlfind ocamlopt -shared -linkpkg -linkall -o m.cmxs -package p1,p2,p3 -dont-link q1,q2,q3 m.cmxa
+</programlisting>
+
+This excludes q1,q2,q3 even if these packages occur as dependencies of
+p1,p2,p3. In this case, though, you need to put q1,q2,q3 into the "requires"
+field of META.
+</para>
+</sect2>
 </sect1>
 
 </chapter>

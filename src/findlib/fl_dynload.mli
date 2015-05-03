@@ -2,7 +2,7 @@
 
 (** Utilities for loading dynamically packages *)
 
-val load_packages : string list -> unit
+val load_packages : ?debug:bool -> string list -> unit
 (** Load the given packages and all their dependencies dynamically. Packages
     already loaded or already in-core are not loaded again. The predicates
     are taken from {!Findlib.recorded_predicates}, which are normally the

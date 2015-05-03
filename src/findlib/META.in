@@ -6,6 +6,7 @@ archive(byte) = "findlib.cma"
 archive(byte,toploop) = "findlib.cma findlib_top.cma"
 archive(byte,create_toploop) = "findlib.cma findlib_top.cma"
 archive(native) = "findlib.cmxa"
+plugin(native) = "findlib.cmxs"
 
 package "dynload" (
   version = "@VERSION@"

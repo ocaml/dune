@@ -8,4 +8,7 @@ dnl This file is input of the m4 macro processor.
 `archive(byte) = "unix.cma"'
 `archive(native) = "unix.cmxa"'
 `archive(byte,mt_vm) = "vmthreads/unix.cma"'
+`plugin(byte) = "unix.cma"'
+`plugin(native) = "unix.cmxs"'
+`plugin(byte,mt_vm) = "vmthreads/unix.cma"'
 

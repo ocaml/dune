@@ -7,3 +7,5 @@ dnl This file is input of the m4 macro processor.
 `browse_interfaces = "'interfaces`"'
 `archive(byte) = "graphics.cma"'
 `archive(native) = "graphics.cmxa"'
+`plugin(byte) = "graphics.cma"'
+`plugin(native) = "graphics.cmxs"'

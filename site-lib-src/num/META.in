@@ -10,4 +10,6 @@ dnl This file is input of the m4 macro processor.
 `  browse_interfaces = "'interfaces`"'
 `  archive(byte) = "nums.cma"'
 `  archive(native) = "nums.cmxa"'
+`  plugin(byte) = "nums.cma"'
+`  plugin(native) = "nums.cmxs"'
 `)'

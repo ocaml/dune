@@ -1152,8 +1152,10 @@ let ocamlc which () =
 
   let create_toploop =
     List.mem "create_toploop" !predicates && List.mem "findlib" eff_link in
+  let have_dynload =
+    List.mem "findlib.dynload" eff_link in
   let initl_file_needed =
-    create_toploop || List.mem "findlib.dynload" eff_link in
+    create_toploop || have_dynload in
 
   let initl_file_name =
     if initl_file_needed then
@@ -1258,6 +1260,11 @@ let ocamlc which () =
 	 (fun pkg ->
 	   let al = try package_property !predicates pkg "archive"
 	            with Not_found -> "" in
+           let al_ext =
+             if have_dynload && pkg = "findlib.dynload" then
+               [ initl_file_name ]
+             else
+               [] in
 	   let pkg_dir =
 	     if pkg = "threads" then   (* MAGIC *)
 	       match !threads with
@@ -1270,11 +1277,11 @@ let ocamlc which () =
 	   List.map
 	     (fun arch ->
 		resolve_path ~base:pkg_dir arch)
-	     (Fl_split.in_words al)
+	     (Fl_split.in_words al @ al_ext)
 	 )
 	 eff_link)
     @
-    (if initl_file_needed then
+    (if create_toploop then
        [ initl_file_name ]
      else
        []

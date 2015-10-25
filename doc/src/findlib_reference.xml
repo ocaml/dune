@@ -1366,7 +1366,17 @@ of another package. (4) Or they are given as absolute paths.</PARA><PARA
 names of the files must be separated by white space and/or commas.
 In the preprocessor stage, the archive files are passed as extensions
 to the preprocessor (camlp4) call. In the linker stage (-linkpkg), the archive
-files are linked. In the compiler stage, the archive files are ignored.</PARA></LISTITEM><LISTITEM
+files are linked. In the compiler stage, the archive files are ignored.</PARA><PARA
+>Note that "archive" should only be used for archive files that are
+intended to be included in executables or loaded into toploops. For
+modules loaded at runtime there is the separate variable "plugin".</PARA></LISTITEM><LISTITEM
+><PARA
+> 
+The variable "plugin" specifies the plugin archives of the package.
+These can be dynamically loaded with the <LITERAL
+MOREINFO="NONE"
+>Fl_dynload</LITERAL>
+module. The plugin archives can have ".cmo", ".cma", or ".cmxs" suffix.</PARA></LISTITEM><LISTITEM
 ><PARA
 > 
 The variable "linkopts" specifies additional linker options.</PARA></LISTITEM><LISTITEM
@@ -1435,7 +1445,11 @@ program is compiled for profiling</PARA></LISTITEM><LISTITEM
 preprocessor options.</PARA></LISTITEM><LISTITEM
 ><PARA
 >The "syntax" predicate means that the -syntax option is present on the
-command line.</PARA></LISTITEM></ITEMIZEDLIST><PARA
+command line.</PARA></LISTITEM><LISTITEM
+><PARA
+>Legacy: The "plugin" predicate could be used in some versions of findlib
+to select cmxs archives instead of cmxa archives. This use is still possible
+but discouraged.</PARA></LISTITEM></ITEMIZEDLIST><PARA
 >In addition to these predicates, there are package predicates
 for every package that is finally selected. Of course, this kind of
 predicate must not be used to select "directory" and "requires"

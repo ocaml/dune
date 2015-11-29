@@ -110,6 +110,12 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>1.6.0:</em> Adding support for dynamically loading
+       packages (François Bobot): new "plugin" variable, new
+       Fl_dynload module.</p>
+    </li>
+
+    <li>
       <p><em>1.5.6:</em> for MSVC build fixing bad filename suffix
       (Dmitry Bely).</p>
       <p>The switch -only-show did not work as described.

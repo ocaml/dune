@@ -14,6 +14,9 @@ module Have = struct
         (** archive(plugin,...) or archive(...)) *)
       | `Plugin of [`Plugin|`NoPlugin] * [`Byte | `Native]
         (** plugin(...) *)
+      | `Description
+      | `Requires
+      | `Version
     ]
     let compare = compare
   end
@@ -37,6 +40,9 @@ let scan_def acc def =
     add `BothByteNative
   | "archive" -> add (`Archive(plugin,mode))
   | "plugin"  -> add (`Plugin(plugin,mode))
+  | "description" -> add `Description
+  | "requires" -> add `Requires
+  | "version" -> add `Version
   | _ -> acc
 
 
@@ -47,26 +53,39 @@ let warn_def ~warned pkg =
   let mem x  = Have.Map.mem x haves in
   let find x = Have.Map.find x haves in
   let warning fmt = warned := true; Printf.printf fmt in
-  let if_ ~has ?has_not msg =
-    if mem has && (match has_not with None -> true | Some h -> not (mem h))
-    then warning msg print_def (find has);
+  let if_ ?has ?has_not msg =
+    match has, has_not with
+    | Some has, None when mem has ->
+      warning "%a%s\n\n" print_def (find has) msg;
+    | Some has, Some has_not when mem has && not (mem has_not) ->
+      warning "%a%s\n\n" print_def (find has) msg;
+    | None, Some has_not when not (mem has_not) ->
+      warning "%s\n\n" msg;
+    | _ -> ()
   in
+  if_ ~has_not:`Description
+    "You should add a description.";
+  if_ ~has_not:`Version
+    "You should add a version.";
+  if_ ~has_not:`Requires
+    "You should add the required librairies. You can silent this \
+     warning by using the empty string.";
   if_ ~has:`BothByteNative
-    "%aThis variable shouldn't have at the same time \
-     \"byte\" and \"native\".\n\n";
+    "This variable shouldn't have at the same time \
+     \"byte\" and \"native\".";
   if_ ~has:`NoByteNative
-    "%aThis variable should have at least the predicate \
-     \"byte\" or \"native\".\n\n";
+    "This variable should have at least the predicate \
+     \"byte\" or \"native\".";
   let with_mode mode =
     if_ ~has:(`Plugin (`Plugin,mode))
-      "%aYou must not add the predicate \"plugin\" to the variable \
-       \"plugin\".\n\n";
+      "You must not add the predicate \"plugin\" to the variable \
+       \"plugin\".";
     if_ ~has:(`Archive (`Plugin,mode)) ~has_not:(`Plugin (`NoPlugin,mode))
-      "%aThis specification of dynamic loading is deprecated, you should add a \
-       \"plugin(...)\" variable.\n\n";
+      "This specification of dynamic loading is deprecated, you should add a \
+       \"plugin(...)\" variable.";
     if_ ~has:(`Archive (`NoPlugin,mode)) ~has_not:(`Plugin (`NoPlugin,mode))
-      "%aThis variable indicates how to link statically, you should add a \
-       \"plugin(...)\" variable for linking dynamically.\n\n";
+      "This variable indicates how to link statically, you should add a \
+       \"plugin(...)\" variable for linking dynamically.";
   in
   with_mode `Byte;
   with_mode `Native

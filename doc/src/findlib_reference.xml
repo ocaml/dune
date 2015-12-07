@@ -60,6 +60,10 @@ LINKEND="OCAMLFIND.REMOVE"
 >package_name</REPLACEABLE></LINK>
    or: <LINK
 LINKEND="OCAMLFIND.LIST"
+>ocamlfind lint <REPLACEABLE
+>META</REPLACEABLE></LINK>
+   or: <LINK
+LINKEND="OCAMLFIND.LIST"
 >ocamlfind list [-describe]</LINK>
    or: <LINK
 LINKEND="OCAMLFIND.PRINTCONF"
@@ -1071,6 +1075,19 @@ FORMAT="LINESPECIFIC"
 >Description</TITLE><PARA
 >This command lists all packages in the search path. The option -describe
 outputs the package descriptions, too.</PARA></REFSECT2></REFSECT1><REFSECT1
+><TITLE
+><ANCHOR
+ID="OCAMLFIND.LINT"
+></ANCHOR>
+  THE "lint" SUBCOMMAND</TITLE><REFSECT2
+><TITLE
+>Synopsis</TITLE><PROGRAMLISTING
+FORMAT="LINESPECIFIC"
+>ocamlfind lint <REPLACEABLE
+>file</REPLACEABLE></PROGRAMLISTING></REFSECT2><REFSECT2
+><TITLE
+>Description</TITLE><PARA
+>Checks the META files, and reports possible problems.</PARA></REFSECT2></REFSECT1><REFSECT1
 ><TITLE
 ><ANCHOR
 ID="OCAMLFIND.PRINTCONF"

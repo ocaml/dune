@@ -231,6 +231,10 @@ MOREINFO="NONE"
 ><PARA
 >Replaced by the package directory</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
+>%m</TERM><LISTITEM
+><PARA
+>Replaced by the path to the META file (new since findlib-1.6)</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
 >%D</TERM><LISTITEM
 ><PARA
 >Replaced by the package description</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
@@ -1087,7 +1091,7 @@ FORMAT="LINESPECIFIC"
 >file</REPLACEABLE></PROGRAMLISTING></REFSECT2><REFSECT2
 ><TITLE
 >Description</TITLE><PARA
->Checks the META files, and reports possible problems.</PARA></REFSECT2></REFSECT1><REFSECT1
+>Checks the META file, and reports possible problems.</PARA></REFSECT2></REFSECT1><REFSECT1
 ><TITLE
 ><ANCHOR
 ID="OCAMLFIND.PRINTCONF"
@@ -1096,7 +1100,7 @@ ID="OCAMLFIND.PRINTCONF"
 ><TITLE
 >Synopsis</TITLE><PROGRAMLISTING
 FORMAT="LINESPECIFIC"
->ocamlfind printconf [ conf | path | destdir | metadir | stdlib | ldconf ]</PROGRAMLISTING></REFSECT2><REFSECT2
+>ocamlfind printconf [ conf | path | destdir | metadir | metapath | stdlib | ldconf ]</PROGRAMLISTING></REFSECT2><REFSECT2
 ><TITLE
 >Description</TITLE><PARA
 >This command prints the effective configuration after reading the
@@ -1134,6 +1138,15 @@ MOREINFO="NONE"
 ><PARA
 >Prints the location where META files are installed and
   removed (if the alternative layout is used).</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+><LITERAL
+MOREINFO="NONE"
+>metapath</LITERAL></TERM><LISTITEM
+><PARA
+>Prints the path where the META file is installed for
+a fictive package. The name of the package is marked with '%s' in the
+path. For instance, this command could output "/some/path/%s/META" or
+"/some/path/META.%s", depending on the layout.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
 ><TERM
 ><LITERAL
 MOREINFO="NONE"

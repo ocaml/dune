@@ -26,6 +26,7 @@
    or: <link linkend="ocamlfind.ocamlbrowser">ocamlfind ocamlbrowser [-help | other options]</link>
    or: <link linkend="ocamlfind.install">ocamlfind install [-help | other options] <replaceable>package_name</replaceable> <replaceable>file</replaceable> ...</link>
    or: <link linkend="ocamlfind.remove">ocamlfind remove [-help | other options] <replaceable>package_name</replaceable></link>
+   or: <link linkend="ocamlfind.list">ocamlfind lint <replaceable>META</replaceable></link>
    or: <link linkend="ocamlfind.list">ocamlfind list [-describe]</link>
    or: <link linkend="ocamlfind.printconf">ocamlfind printconf [ variable ]</link>
    or: <link linkend="ocamlfind.pkgcmd">ocamlfind <replaceable>package</replaceable>/<replaceable>command</replaceable> <replaceable>arg</replaceable> ...</link>
@@ -1193,6 +1194,27 @@ outputs the package descriptions, too.
 </refsect2>
 </refsect1>
 
+<!-- ********************************************************************** -->
+
+<refsect1>
+<title><anchor id="ocamlfind.lint">
+  THE "lint" SUBCOMMAND
+</title>
+
+<refsect2>
+<title>Synopsis</title>
+<programlisting>
+ocamlfind lint <replaceable>file</replaceable>
+</programlisting>
+</refsect2>
+
+<refsect2>
+<title>Description</title>
+<para>
+Checks the META files, and reports possible problems.
+</para>
+</refsect2>
+</refsect1>
 
 <!-- ********************************************************************** -->
 

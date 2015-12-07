@@ -2510,6 +2510,7 @@ let main() =
       prerr_endline "   or: ocamlfind install      [-help | other options] <package_name> <file> ...";
       prerr_endline "   or: ocamlfind remove       [-help | other options] <package_name>";
       prerr_endline "   or: ocamlfind printconf    [-help] [variable]";
+      prerr_endline "   or: ocamlfind lint         [-help] <file>";
       prerr_endline "   or: ocamlfind list";
       prerr_endline "   or: ocamlfind pkg/cmd arg ...";
       prerr_endline "Select toolchain with:";

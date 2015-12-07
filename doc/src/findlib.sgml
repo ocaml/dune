@@ -1807,7 +1807,36 @@ field of META.
 </sect2>
 </sect1>
 
+
+
+<sect1>
+<title>Lint</title>
+
+<para><emphasis>(Since findlib-1.6.)</emphasis></para>
+
+<para>
+As it has become more and more complicated to write correct META files
+there is now some support for recognizing typical problems. Just use
+
+<programlisting>
+ocamlfind lint META
+</programlisting>
+
+to check the file META in the current directory. The tool reports problematic
+lines in META, e.g.
+
+<programlisting>
+archive(byte,plugin) = "oUnit.cma"
+This specification of dynamic loading is deprecated, you should add a "plugin(...)" variable.
+
+archive(native,plugin) = "oUnit.cmxs"
+This specification of dynamic loading is deprecated, you should add a "plugin(...)" variable.
+</programlisting>
+
+</para>
+</sect1>
 </chapter>
+
 
 <!-- ********************************************************************** -->
 

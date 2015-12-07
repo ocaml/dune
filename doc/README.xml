@@ -113,6 +113,10 @@ configuration files, and library routines in detail.</p>
       <p><em>1.6.0:</em> Adding support for dynamically loading
        packages (François Bobot): new "plugin" variable, new
        Fl_dynload module.</p>
+      <p>New command "ocamlfind lint" for checking META files
+       (François Bobot).</p>
+      <p>Also support MSYS_NT on Windows. Permit spaces in install
+       paths (Christophe Troestler).</p>
     </li>
 
     <li>

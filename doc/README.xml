@@ -110,6 +110,10 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>1.6.1:</em> Just an important doc fix.</p>
+    </li>
+
+    <li>
       <p><em>1.6.0:</em> Adding support for dynamically loading
        packages (François Bobot): new "plugin" variable, new
        Fl_dynload module.</p>

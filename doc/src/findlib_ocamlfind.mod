@@ -1211,7 +1211,7 @@ ocamlfind lint <replaceable>file</replaceable>
 <refsect2>
 <title>Description</title>
 <para>
-Checks the META files, and reports possible problems.
+Checks the META file, and reports possible problems.
 </para>
 </refsect2>
 </refsect1>

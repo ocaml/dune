@@ -205,6 +205,11 @@ it is not needed to set -predicates, except you need the archives (then add
   <listitem><para>Replaced by the package directory</para></listitem>
 </varlistentry>
 <varlistentry>
+<term>%m</term>
+  <listitem><para>Replaced by the path to the META file (new since findlib-1.6)
+</para></listitem>
+</varlistentry>
+<varlistentry>
 <term>%D</term>
   <listitem><para>Replaced by the package description</para></listitem>
 </varlistentry>
@@ -1226,7 +1231,7 @@ Checks the META file, and reports possible problems.
 <refsect2>
 <title>Synopsis</title>
 <programlisting>
-ocamlfind printconf [ conf | path | destdir | metadir | stdlib | ldconf ]
+ocamlfind printconf [ conf | path | destdir | metadir | metapath | stdlib | ldconf ]
 </programlisting>
 </refsect2>
 
@@ -1261,6 +1266,13 @@ explaining texts:
   <term><literal>metadir</literal></term>
   <listitem><para>Prints the location where META files are installed and
   removed (if the alternative layout is used).</para></listitem>
+</varlistentry>
+<varlistentry>
+  <term><literal>metapath</literal></term>
+  <listitem><para>Prints the path where the META file is installed for
+a fictive package. The name of the package is marked with '%s' in the
+path. For instance, this command could output "/some/path/%s/META" or
+"/some/path/META.%s", depending on the layout.</para></listitem>
 </varlistentry>
 <varlistentry>
   <term><literal>stdlib</literal></term>

@@ -11,6 +11,7 @@ exception No_such_package of string * string
 type package =
     { package_name : string;
       package_dir : string;
+      package_meta : string;
       package_defs : Fl_metascanner.pkg_definition list;
       package_priv : package_priv
     }
@@ -121,6 +122,7 @@ let packages_in_meta_file ?(directory_required = false)
     let p =
       { package_name = p_name;
 	package_dir = d';
+        package_meta = meta_file;
 	package_defs = pkg_expr.pkg_defs;
 	package_priv = { missing_reqs = [] }
       } in

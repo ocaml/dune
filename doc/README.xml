@@ -117,6 +117,10 @@ configuration files, and library routines in detail.</p>
        (François Bobot).</p>
       <p>Also support MSYS_NT on Windows. Permit spaces in install
        paths (Christophe Troestler).</p>
+      <p>Allow to query the location of the META file of a package:
+       "ocamlfind query -format '%m'" (Gerd Stolpmann).</p>
+      <p>Get the install path for the META file of packages:
+       "ocamlfind printconf metapath" (Gerd Stolpmann).</p>
     </li>
 
     <li>

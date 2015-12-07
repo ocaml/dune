@@ -670,6 +670,7 @@ let expand predicates eff_packages format =
     (* format:
      * %p         package name
      * %d         package directory
+     * %m         META file
      * %D         description
      * %v         version
      * %a         archive file(s)
@@ -686,6 +687,7 @@ let expand predicates eff_packages format =
 	 let spec =
 	   [ "%p",  [pkg];
              "%d",  [out_path dir];
+             "%m",  [out_path (package_meta_file pkg)];
 	     "%D",  [try package_property predicates pkg "description"
 		     with Not_found -> "[n/a]"];
 	     "%v",  [try package_property predicates pkg "version"
@@ -718,6 +720,7 @@ let help_format() =
 
     %p         package name
     %d         package directory
+    %m         META file
     %D         description
     %v         version
     %a         archive file(s)
@@ -2336,14 +2339,14 @@ let print_configuration() =
   in
 
   let var = ref None in
-  let errmsg = "usage: ocamlfind printconf (conf|path|destdir|metadir|stdlib|ldconf)" in
+  let errmsg = "usage: ocamlfind printconf (conf|path|destdir|metadir|effmetadir|stdlib|ldconf)" in
 
   parse_args
         []
 	(fun s ->
 	   if !var <> None then raise(Arg.Bad "Unexpected argument");
 	   match s with
-	       ("conf" | "path" | "destdir" | "metadir" | "stdlib" | "ldconf") ->
+	       ("conf" | "path" | "destdir" | "metadir" | "metapath" | "stdlib" | "ldconf") ->
 		 var := Some s
 	     | _ ->
 		 raise(Arg.Bad "Bad argument");
@@ -2378,6 +2381,11 @@ let print_configuration() =
 	print_endline (Findlib.default_location())
     | Some "metadir" ->
 	print_endline (Findlib.meta_directory())
+    | Some "metapath" ->
+        let mdir = Findlib.meta_directory() in
+        let ddir = Findlib.default_location() in
+	print_endline 
+          (if mdir <> "" then mdir ^ "/META.%s" else ddir ^ "/%s/META")
     | Some "stdlib" ->
 	print_endline (Findlib.ocaml_stdlib())
     | Some "ldconf" ->

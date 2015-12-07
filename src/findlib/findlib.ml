@@ -347,6 +347,12 @@ let package_directory pkg =
 ;;
 
 
+let package_meta_file pkg =
+  lazy_init();
+  (Fl_package_base.query pkg).Fl_package_base.package_meta
+;;
+
+
 let package_property_2 predlist pkg propname =
   lazy_init();
   let l = Fl_package_base.query pkg in

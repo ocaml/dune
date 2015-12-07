@@ -71,17 +71,17 @@ findlib.conf: findlib.conf.in
 
 .PHONY: install-doc
 install-doc:
-	mkdir -p $(prefix)$(OCAMLFIND_MAN)/man1 $(prefix)$(OCAMLFIND_MAN)/man3 $(prefix)$(OCAMLFIND_MAN)/man5
-	-cp doc/ref-man/ocamlfind.1 $(prefix)$(OCAMLFIND_MAN)/man1
-	-cp doc/ref-man/META.5 doc/ref-man/site-lib.5 doc/ref-man/findlib.conf.5 $(prefix)$(OCAMLFIND_MAN)/man5
+	mkdir -p "$(prefix)$(OCAMLFIND_MAN)/man1" "$(prefix)$(OCAMLFIND_MAN)/man3 $(prefix)$(OCAMLFIND_MAN)/man5"
+	-cp doc/ref-man/ocamlfind.1 "$(prefix)$(OCAMLFIND_MAN)/man1"
+	-cp doc/ref-man/META.5 doc/ref-man/site-lib.5 doc/ref-man/findlib.conf.5 "$(prefix)$(OCAMLFIND_MAN)/man5"
 
 .PHONY: uninstall-doc
 uninstall-doc:
-	rm -f $(prefix)$(OCAMLFIND_MAN)/man1/ocamlfind.1
-	rm -f $(prefix)$(OCAMLFIND_MAN)/man3/Findlib.3
-	rm -f $(prefix)$(OCAMLFIND_MAN)/man3/Topfind.3
-	rm -f $(prefix)$(OCAMLFIND_MAN)/man5/META.5
-	rm -f $(prefix)$(OCAMLFIND_MAN)/man5/site-lib.5
+	rm -f "$(prefix)$(OCAMLFIND_MAN)/man1/ocamlfind.1"
+	rm -f "$(prefix)$(OCAMLFIND_MAN)/man3/Findlib.3"
+	rm -f "$(prefix)$(OCAMLFIND_MAN)/man3/Topfind.3"
+	rm -f "$(prefix)$(OCAMLFIND_MAN)/man5/META.5"
+	rm -f "$(prefix)$(OCAMLFIND_MAN)/man5/site-lib.5"
 
 
 .PHONY: install-meta

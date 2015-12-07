@@ -10,7 +10,7 @@ exception Usage;;
 type mode =
     M_use | M_query | M_install | M_remove | M_compiler of string | M_dep
   | M_printconf | M_list | M_browser | M_call of (string*string)
-  | M_doc
+  | M_doc | M_lint
 ;;
 
 
@@ -1943,6 +1943,19 @@ exception Skip_file;;
 
 type which = Auto | Dll | No_dll;;
 
+let meta_pkg meta_name =
+  let f = open_in meta_name in
+  try
+    let pkg = Fl_metascanner.parse f in
+    close_in f;
+    pkg
+  with
+  | Failure s
+  | Stream.Error s ->
+    close_in f;
+    failwith ("Cannot parse '" ^ meta_name ^ "': " ^ s)
+
+
 let install_package () =
   let destdir = ref (default_location()) in
   let metadir = ref (meta_directory()) in
@@ -2050,18 +2063,7 @@ let install_package () =
 	  else
 	    failwith "The META file is missing" in
 
-  let meta_pkg =
-    let f = open_in meta_name in
-    try
-      let pkg = Fl_metascanner.parse f in
-      close_in f;
-      pkg
-    with
-      | Failure s
-      | Stream.Error s ->
-	  close_in f;
-	  failwith ("Cannot parse '" ^ meta_name ^ "': " ^ s)
-  in
+  let meta_pkg = meta_pkg meta_name in
 
   if not !add_files then (
     (* Check for frequent reasons why installation can go wrong *)
@@ -2402,6 +2404,29 @@ let ocamlcall pkg cmd =
   run_command Normal path args
 ;;
 
+(** lint META file *)
+let lint () =
+
+  let meta_files = Queue.create () in
+
+  parse_args
+    ~align:false
+    ( Arg.align [
+        ])
+    (fun s -> if Sys.file_exists s
+      then Queue.add s meta_files
+      else raise(Arg.Bad (Printf.sprintf "%s: file doesn't exists" s)))
+    "usage: ocamlfind ocamldoc <options> <files>...";
+
+  let error =
+    Queue.fold (fun error file ->
+        let pkg = meta_pkg file in
+        let error = Fl_lint.warn pkg || error in
+        error
+      ) false meta_files in
+  exit (if error then 1 else 0)
+;;
+
 
 let rec select_mode () =
   let k = !Arg.current in
@@ -2423,6 +2448,7 @@ let rec select_mode () =
     | ("ocamldoc"|"-ocamldoc"|"doc")       -> incr Arg.current; M_doc
     | ("printconf"|"-printconf")           -> incr Arg.current; M_printconf
     | ("list"|"-list")                     -> incr Arg.current; M_list
+    | ("lint"|"-lint")                     -> incr Arg.current; M_lint
     | "-toolchain" ->
 	let t = try arg (k+2) with Not_found -> raise Usage in
 	Findlib.init ~toolchain:t ();
@@ -2466,6 +2492,7 @@ let main() =
     | M_doc            -> ocamldoc()
     | M_call(pkg,cmd)  -> ocamlcall pkg cmd
     | M_compiler which -> ocamlc which ()
+    | M_lint           -> lint()
   with
     Usage ->
       prerr_endline "Usage: ocamlfind query        [-help | other options] <package_name> ...";

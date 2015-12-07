@@ -494,28 +494,30 @@ let parse2_lexing lexbuf =
     with | Stream.Error "" -> raise (Stream.Error "Syntax Error")
   
 let parse2 ch = parse2_lexing (Lexing.from_channel ch)
-  
-let rec print f pkg =
-  let escape s = (* no Str available :-( *)
-    let b = Buffer.create (String.length s)
-    in
-      (for k = 0 to (String.length s) - 1 do
-         (match s.[k] with
-          | '\\' -> Buffer.add_string b "\\\\"
-          | '"' -> Buffer.add_string b "\\\""
-          | c -> Buffer.add_char b c)
-       done;
-       Buffer.contents b) in
-  let format_pred = function | `Pred s -> s | `NegPred s -> "-" ^ s in
-  let print_def def =
-    fprintf f "%s%s %s \"%s\"\n" def.def_var
-      (match def.def_preds with
-       | [] -> ""
-       | l -> "(" ^ ((String.concat "," (List.map format_pred l)) ^ ")"))
-      (match def.def_flav with | `BaseDef -> "=" | `Appendix -> "+=")
-      (escape def.def_value)
+
+let escape s = (* no Str available :-( *)
+  let b = Buffer.create (String.length s)
   in
-    (List.iter print_def pkg.pkg_defs;
+  (for k = 0 to (String.length s) - 1 do
+     (match s.[k] with
+      | '\\' -> Buffer.add_string b "\\\\"
+      | '"' -> Buffer.add_string b "\\\""
+      | c -> Buffer.add_char b c)
+   done;
+   Buffer.contents b)
+
+let print_def f def =
+  let format_pred = function | `Pred s -> s | `NegPred s -> "-" ^ s in
+  fprintf f "%s%s %s \"%s\"\n" def.def_var
+    (match def.def_preds with
+     | [] -> ""
+     | l -> "(" ^ ((String.concat "," (List.map format_pred l)) ^ ")"))
+    (match def.def_flav with | `BaseDef -> "=" | `Appendix -> "+=")
+    (escape def.def_value)
+
+
+let rec print f pkg =
+    (List.iter (print_def f) pkg.pkg_defs;
      List.iter
        (fun (name, child) ->
           (fprintf f "\npackage \"%s\" (\n" (escape name);

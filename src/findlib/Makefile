@@ -23,7 +23,7 @@ OCAMLLEX = ocamllex
 
 OBJECTS        = findlib_config.cmo fl_split.cmo fl_metatoken.cmo fl_meta.cmo \
 		 fl_metascanner.cmo fl_topo.cmo fl_package_base.cmo \
-	         findlib.cmo fl_args.cmo
+	         findlib.cmo fl_args.cmo fl_lint.cmo
 TOBJECTS       = topfind.cmo
 
 XOBJECTS       = $(OBJECTS:.cmo=.cmx)

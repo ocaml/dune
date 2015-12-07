@@ -60,6 +60,12 @@ val parse2 : in_channel -> pkg_expr
 val parse2_lexing : Lexing.lexbuf -> pkg_expr
 val parse_lexing : Lexing.lexbuf -> pkg_expr
 
+
+val print_def : out_channel -> pkg_definition -> unit
+  (** [print_def ch def]:
+    * Outputs the definition to a channel.
+   *)
+
 val print : out_channel -> pkg_expr -> unit
   (** [print ch expr]:
     * Outputs the package expression to a channel.

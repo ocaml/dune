@@ -46,25 +46,14 @@ rule token =
     let s1 = Lexing.lexeme lexbuf in
     let s2 = String.sub s1 1 (String.length s1 - 2) in
     let l2 = String.length s2 in
-    let rec count i n =
+    let b = Buffer.create 80 in
+    let rec fill i =
       if i<l2 then
 	match s2.[i] with
-	  '\\' -> count (i+2) (n+1)
-	| _    -> count (i+1) (n+1)
-      else
-	n
-    in
-    let s3 = String.create (count 0 0) in
-    let rec fill i n =
-      if i<l2 then
-	match s2.[i] with
-	  '\\' -> s3.[n] <- s2.[i+1]; fill (i+2) (n+1)
-	| c    -> s3.[n] <- c;        fill (i+1) (n+1)
-      else
-	()
-    in
-    fill 0 0;
-    String s3
+        | '\\' -> Buffer.add_char b s2.[i+1]; fill (i+2)
+        | c    -> Buffer.add_char b c;        fill (i+1) in
+    fill 0;
+    String (Buffer.contents b)
   } 
 
   | [ ' ' '\t' '\r' ]

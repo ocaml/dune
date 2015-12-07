@@ -108,7 +108,7 @@ let parse_lexing lexbuf =
              (try parse_all need_rparen __strm
               with | Stream.Failure -> raise (Stream.Error "")) in
            let (args, flav, value) = props in (* TODO: Check args *)
-           let args' = Sort.list ( <= ) (mk_set args) in
+           let args' = List.sort compare (mk_set args) in
            let def =
              {
                def_var = n;
@@ -369,7 +369,7 @@ let parse2_lexing lexbuf =
           get_rule parse_properties ()
             (error_msg "Error in 'name = value' clause") line col in
         let rest = parse_all need_rparen in (* TODO: Check args *)
-        let args' = Sort.list ( <= ) (mk_set args) in
+        let args' = List.sort compare (mk_set args) in
         let def =
           {
             def_var = n;

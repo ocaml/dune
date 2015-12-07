@@ -96,7 +96,7 @@ let parse_lexing lexbuf =
 	-> 
 	  let (args, flav, value) = props in
 	  (* TODO: Check args *)
-	  let args' = Sort.list ( <= ) (mk_set args) in
+	  let args' = List.sort ( <= ) (mk_set args) in
 	  let def = { def_var = n;
 		      def_flav = flav;
 		      def_preds = args';
@@ -308,7 +308,7 @@ let parse2_lexing lexbuf =
         let (args, flav, value) = get_rule parse_properties () (error_msg "Error in 'name = value' clause") line col in
         let rest = parse_all need_rparen in
 	(* TODO: Check args *)
-	let args' = Sort.list ( <= ) (mk_set args) in
+	let args' = List.sort ( <= ) (mk_set args) in
 	let def = { def_var = n;
 		    def_flav = flav;
 		    def_preds = args';

@@ -29,11 +29,14 @@ and modifier =
 let slashify s =
   match Findlib_config.system with
     | "mingw" | "mingw64" | "cygwin" ->
-	let u = String.copy s in
-	for k = 0 to String.length u - 1 do
-	  if u.[k] = '\\' then u.[k] <- '/'
-	done;
-	u
+        let b = Buffer.create 80 in
+        String.iter
+          (function
+            | '\\' -> Buffer.add_char b '/'
+            | c -> Buffer.add_char b c
+          )
+          s;
+        Buffer.contents b
     | _ ->
 	s
 
@@ -1781,7 +1784,7 @@ let copy_file ?(rename = (fun name -> name)) ?(append = "") src dstdir =
 		   outpath in
     try
       let buflen = 4096 in
-      let buf = String.create buflen in
+      let buf = String.create buflen in   (* FIXME: Bytes.create *)
       let pos = ref 0 in
       let len = ref (input ch_in buf 0 buflen) in
       while !len > 0 do

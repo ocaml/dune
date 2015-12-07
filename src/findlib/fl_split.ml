@@ -104,47 +104,43 @@ let path str =
 ;;
 
 
-let norm_dir d =
+let norm_dir s =
   (* Converts the file name of the directory [d] to the normal form.
    * For Unix, the '/' characters at the end are removed, and multiple
    * '/' are deleted.
    * For Windows, all '/' characters are converted to '\'. Two
    * backslashes at the beginning are tolerated.
    *)
-  let s = String.copy d in
-  let l = String.length d in
+  let b = Buffer.create 80 in
+  let l = String.length s in
   let norm_dir_unix() =
+    Buffer.add_char b s.[0];
     for k = 1 to l - 1 do
-      if s.[k] = '/' && s.[k-1] = '/' then s.[k] <- Char.chr 0;
-      if s.[k] = '/' && k = l-1 then s.[k] <- Char.chr 0
+      let c = s.[k] in
+      if not ((c = '/' && s.[k-1] = '/') || (c = '/' && k = l-1)) then
+        Buffer.add_char b c
     done
   in
+  let is_slash =
+    function
+    | '/' | '\\' -> true
+    | _ -> false in
   let norm_dir_win() =
-    if l >= 1 && s.[0] = '/' then s.[0] <- '\\';
-    if l >= 2 && s.[1] = '/' then s.[1] <- '\\';
+    if l >= 1 && s.[0] = '/' then
+      Buffer.add_char b '\\' else Buffer.add_char b s.[0];
+    if l >= 2 && s.[1] = '/' then
+      Buffer.add_char b '\\' else Buffer.add_char b s.[1];
     for k = 2 to l - 1 do
-      if s.[k] = '/' then s.[k] <- '\\';
-      if s.[k] = '\\' && s.[k-1] = '\\' then s.[k] <- Char.chr 0;
-      if s.[k] = '\\' && k = l-1 then s.[k] <- Char.chr 0
+      let c = s.[k] in
+      if is_slash c then (
+        if not (is_slash s.[k-1] || k = l-1) then
+          Buffer.add_char b '\\'
+      ) else 
+        Buffer.add_char b c
     done
-  in
-  let expunge() =
-    let n = ref 0 in
-    for k = 0 to l - 1 do
-      if s.[k] = Char.chr 0 then incr n
-    done;
-    let s' = String.create (l - !n) in
-    n := 0;
-    for k = 0 to l - 1 do
-      if s.[k] <> Char.chr 0 then begin
-	s'.[ !n ] <- s.[k];
-	incr n
-      end
-    done;
-    s'
   in
   match Sys.os_type with
-      "Unix" | "Cygwin" -> norm_dir_unix(); expunge()
-    | "Win32" -> norm_dir_win(); expunge()
+      "Unix" | "Cygwin" -> norm_dir_unix(); Buffer.contents b
+    | "Win32" -> norm_dir_win(); Buffer.contents b
     | _ -> failwith "This os_type is not supported"
 ;;

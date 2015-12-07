@@ -202,6 +202,10 @@ case `uname` in
     exec_suffix=.exe
     echo "Cygwin build environment found; using .exe as suffix for binaries"
     ;;
+  MSYS_NT*)
+    exec_suffix=.exe
+    echo "MSYS_NT build environment found; using .exe as suffix for binaries"
+    ;;
   MINGW*)
     exec_suffix=.exe
     pure_mingw="yes"

@@ -25,7 +25,7 @@ val load_packages : ?debug:bool -> string list -> unit
 
      - First, the "plugin" variable is checked (instead of "archive"), e.g.
        {[
-plugin(bytecode) = "my_plugin.cma"
+plugin(byte) = "my_plugin.cma"
 plugin(native) = "my_plugin.cmxs"
        ]}
        This is the preferred style.

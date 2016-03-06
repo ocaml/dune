@@ -46,7 +46,7 @@ let get_help cmd =
 let switch1_re = Str.regexp "[ \t]*\\(-[-a-zA-Z0-9_,]+\\)[ \t]?\\(.*\\)$";;
 let switch2_re = Str.regexp "[ \t]*\\(-\\)[ \t]+\\(.*\\)$";;
 
-let argument_re = Str.regexp "[ \t]*[<[]";;
+let argument_re = Str.regexp "[ \t]*[<[{]";;
 
 let rec extract_signature lines =
   match lines with

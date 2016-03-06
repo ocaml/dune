@@ -112,6 +112,8 @@ configuration files, and library routines in detail.</p>
     <li>
       <p><em>1.6.2:</em>Uninstalling findlib no longer uninstalls the
 ocamlbuild library by accident (Gabriel Scherer, Edwin Török)</p>
+      <p>Adding an "ocamldoc" library, providing the cmi's for ocamldoc
+plugins</p>
     </li>
 
     <li>

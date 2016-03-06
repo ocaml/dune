@@ -114,6 +114,8 @@ configuration files, and library routines in detail.</p>
 ocamlbuild library by accident (Gabriel Scherer, Edwin Török)</p>
       <p>Adding an "ocamldoc" library, providing the cmi's for ocamldoc
 plugins</p>
+      <p>Support for OCaml-4.03: recognize that the new -color option
+has an argument (reported by Guillaume Bury)</p>
     </li>
 
     <li>

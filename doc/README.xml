@@ -110,6 +110,11 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>1.6.2:</em>Uninstalling findlib no longer uninstalls the
+ocamlbuild library by accident (Gabriel Scherer, Edwin Török)</p>
+    </li>
+
+    <li>
       <p><em>1.6.1:</em> Just an important doc fix.</p>
     </li>
 

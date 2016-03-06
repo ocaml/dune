@@ -86,11 +86,11 @@ uninstall-doc:
 
 .PHONY: install-meta
 install-meta:
-	for x in `ls site-lib-src`; do if [ "$$x" != "CVS" -a -f "site-lib-src/$$x/META" ]; then mkdir -p "$(prefix)$(OCAML_SITELIB)/$$x"; cp site-lib-src/$$x/META "$(prefix)$(OCAML_SITELIB)/$$x"; fi; done
+	for x in `ls site-lib-src`; do if [ -f "site-lib-src/$$x/META" ]; then mkdir -p "$(prefix)$(OCAML_SITELIB)/$$x"; cp site-lib-src/$$x/META "$(prefix)$(OCAML_SITELIB)/$$x"; fi; done
 
 .PHONY: uninstall-meta
 uninstall-meta:
-	for x in `ls site-lib-src`; do if [ "$$x" != "CVS" ]; then rm -rf "$(prefix)$(OCAML_SITELIB)/$$x"; fi; done
+	for x in `ls site-lib-src`; do if [ -f "site-lib-src/$$x/META" ]; then rm -rf "$(prefix)$(OCAML_SITELIB)/$$x"; fi; done
 
 .PHONY: install-config
 install-config:

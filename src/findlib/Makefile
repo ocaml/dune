@@ -41,7 +41,7 @@ DYNLOAD_XOBJECTS = $(DYNLOAD_OBJECTS:.cmo=.cmx)
 all: ocamlfind$(EXEC_SUFFIX) findlib.cma findlib_top.cma topfind num_top.cma \
      findlib_dynload.cma
 
-opt: ocamlfind_opt$(EXEC_SUFFIX) findlib.cmxa findlib_top.cmxa topfind_nat \
+opt: ocamlfind_opt$(EXEC_SUFFIX) findlib.cmxa findlib_top.cmxa topfind \
      findlib_dynload.cmxa
 
 ocamlfind$(EXEC_SUFFIX): findlib.cma $(OCAMLFIND_OBJECTS)
@@ -110,13 +110,6 @@ topfind: topfind_rd$(OCAML_REMOVE_DIRECTORY).p
 		$(TOP)/tools/patch '@SITELIB@' '$(OCAML_SITELIB)' \
 	    	    >topfind
 
-topfind_nat: topfind_nat.p
-	USE_CYGPATH="$(USE_CYGPATH)"; \
-	export USE_CYGPATH; \
-	cat topfind_nat.p | \
-		$(TOP)/tools/patch '@SITELIB@' '$(OCAML_SITELIB)' \
-	    	    >topfind_nat
-
 num_top.cma: $(NUMTOP_OBJECTS)
 	$(OCAMLC) -a -o num_top.cma $(NUMTOP_OBJECTS)
 
@@ -129,8 +122,7 @@ install: all
 	mkdir -p "$(prefix)$(OCAML_SITELIB)/$(NAME)"
 	mkdir -p "$(prefix)$(OCAMLFIND_BIN)"
 	test $(INSTALL_TOPFIND) -eq 0 || cp topfind "$(prefix)$(OCAML_CORE_STDLIB)"
-	test $(INSTALL_TOPFIND) -eq 0 -o ! -f topfind_nat || cp topfind_nat "$(prefix)$(OCAML_CORE_STDLIB)"
-	files=`$(TOP)/tools/collect_files $(TOP)/Makefile.config findlib.cmi findlib.mli findlib.cma topfind.cmi topfind.mli fl_package_base.mli fl_package_base.cmi fl_metascanner.mli fl_metascanner.cmi fl_metatoken.cmi findlib_top.cma findlib.cmxa findlib.a findlib.cmxs findlib_dynload.cma findlib_dynload.cmxa findlib_dynload.a findlib_dynload.cmxs fl_dynload.mli fl_dynload.cmi META` && \
+	files=`$(TOP)/tools/collect_files $(TOP)/Makefile.config findlib.cmi findlib.mli findlib.cma findlib.cmxa findlib.a findlib.cmxs topfind.cmi topfind.mli fl_package_base.mli fl_package_base.cmi fl_metascanner.mli fl_metascanner.cmi fl_metatoken.cmi findlib_top.cma findlib_top.cmxa findlib_top.a findlib_top.cmxs findlib_dynload.cma findlib_dynload.cmxa findlib_dynload.a findlib_dynload.cmxs fl_dynload.mli fl_dynload.cmi META` && \
 	cp $$files "$(prefix)$(OCAML_SITELIB)/$(NAME)"
 	f="ocamlfind$(EXEC_SUFFIX)"; { test -f ocamlfind_opt$(EXEC_SUFFIX) && f="ocamlfind_opt$(EXEC_SUFFIX)"; }; \
 	cp $$f "$(prefix)$(OCAMLFIND_BIN)/ocamlfind$(EXEC_SUFFIX)"

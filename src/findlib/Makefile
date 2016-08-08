@@ -154,19 +154,19 @@ depend: *.ml *.mli fl_meta.ml fl_metascanner.ml
 # .src
 
 .mml.cmo:
-	$(OCAMLC) -g -vmthread -c -impl $<
+	$(OCAMLC) $(OPAQUE) -g -vmthread -c -impl $<
 
 .mml.cmx:
-	$(OCAMLOPT) -thread -c -impl $<
+	$(OCAMLOPT) $(OPAQUE) -thread -c -impl $<
 
 .ml.cmx:
-	$(OCAMLOPT) -c $<
+	$(OCAMLOPT) $(OPAQUE) -c $<
 
 .ml.cmo:
-	$(OCAMLC) -g -c $<
+	$(OCAMLC) $(OPAQUE) -g -c $<
 
 .mli.cmi:
-	$(OCAMLC) -c $<
+	$(OCAMLC) $(OPAQUE) -c $<
 
 #.src.ml:
 #	$(CAMLP4O) -impl $< -o $@

@@ -401,6 +401,14 @@ ocaml -I +compiler-libs itest-aux/ppx.ml >/dev/null || {
 }
 
 ######################################################################
+# Check for -opaque
+
+echo "Checking for ocamlc -opaque..."
+
+opaque="-opaque"
+ocamlc -opaque || opaque=""
+
+######################################################################
 # Configure libraries
 
 echo "Configuring libraries..."
@@ -609,6 +617,7 @@ if [ "$mingw_lib" != "" ]; then
     echo "OCAMLC_FLAGS=-I \"${mingw_lib}\"" >>Makefile.config
     echo "OCAMLOPT_FLAGS=-I \"${mingw_lib}\"" >>Makefile.config
 fi
+echo "OPAQUE=${opaque}" >>Makefile.config
 
 # All OK
 

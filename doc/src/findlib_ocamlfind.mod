@@ -60,7 +60,8 @@ ocamlfind query [ -predicates <replaceable>p</replaceable>  |
                   -suffix <replaceable>s</replaceable> |
                   -pp |
                   -descendants | -d |
-                  -recursive  | -r ] <replaceable>package</replaceable> ...
+                  -recursive  | -r
+                  -qe | -qo] <replaceable>package</replaceable> ...
 </programlisting>
 </refsect2>
 
@@ -182,6 +183,16 @@ linker backend are printed.
 <listitem><para>Query preprocessor packages (camlp4 syntax extensions). Normally
 it is not needed to set -predicates, except you need the archives (then add
 -predicates byte). This option implies <literal>-recursive</literal>.
+</para></listitem>
+</varlistentry>
+<varlistentry>
+<term>-qe</term>
+<listitem><para>Do not print most errors to stderr, just set the exit code
+</para></listitem>
+</varlistentry>
+<varlistentry>
+<term>-qo</term>
+<listitem><para>Do not print the regular output.
 </para></listitem>
 </varlistentry>
 

@@ -116,6 +116,7 @@ configuration files, and library routines in detail.</p>
       <p>Preliminary support for native toplevel so far the toplevel
       is implemented symmetrically to the bytecode case (this is not
       correct in vanilla ocaml)</p>
+      <p>New options: ocamlfind query -qe -qo</p>
     </li>
       
     <li>

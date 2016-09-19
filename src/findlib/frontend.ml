@@ -2360,7 +2360,7 @@ let print_configuration() =
       None ->
 	print_endline "Effective configuration:";
 	Printf.printf "Configuration file:\n    %s\n"
-	  (dir Findlib_config.config_file);
+	  (dir (Findlib.config_file()));
 	Printf.printf "Search path:\n";
 	List.iter
 	  (fun p -> Printf.printf "    %s\n" (dir p))

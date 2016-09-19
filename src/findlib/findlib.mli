@@ -92,16 +92,22 @@ val init_manually :
       ?ignore_dups_in:string ->        (* default: None *)
       ?stdlib: string ->               (* default: taken from Findlib_config *)
       ?ldconf: string ->
+      ?config: string -> 
       install_dir: string ->
       meta_dir: string ->
       search_path: string list ->
       unit ->
 	unit
   (** This is an alternate way to initialize the library directly. 
-   * Environment variables and configuration files are ignored.
+   * Environment variables and configuration files are ignored. The
+   * parameter [config] just sets the file name reported by the
+   * [config_file] function below.
    *)
 
 
+val config_file : unit -> string
+  (** The location of the configuration file *)
+          
 val default_location : unit -> string
   (** Get the default installation directory for packages *)
 

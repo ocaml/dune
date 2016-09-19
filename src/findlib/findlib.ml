@@ -19,6 +19,7 @@ type formal_pred =
 
 let init_called = ref false ;;
 
+let conf_config_file = ref "";;
 let conf_default_location = ref "";;
 let conf_meta_directory = ref "";;
 let conf_search_path = ref [];;
@@ -51,6 +52,7 @@ let init_manually
       ?ignore_dups_in
       ?(stdlib = Findlib_config.ocaml_stdlib)
       ?(ldconf = Findlib_config.ocaml_ldconf)
+      ?(config = Findlib_config.config_file)
       ~install_dir
       ~meta_dir
       ~search_path () =
@@ -64,6 +66,7 @@ let init_manually
 		    `ocamlbrowser, ocamlbrowser_command;
 		    `ocamldoc,   ocamldoc_command;
 		  ];
+  conf_config_file := config;
   conf_search_path := search_path;
   conf_default_location := install_dir;
   conf_meta_directory := meta_dir;
@@ -98,6 +101,12 @@ let command_names cmd_spec =
 	[]
 ;;
 
+let auto_config_file() =
+  let p =
+    ( try Sys.getenv "OCAMLFIND_CONF" with Not_found -> "") in
+  if p = "" then Findlib_config.config_file else p
+                                                   
+  
 let init
       ?env_ocamlpath ?env_ocamlfind_destdir ?env_ocamlfind_metadir
       ?env_ocamlfind_commands ?env_ocamlfind_ignore_dups_in
@@ -107,10 +116,7 @@ let init
   let config_file =
     match config with
 	Some f -> f
-      | None ->
-	  let p =
-	    ( try Sys.getenv "OCAMLFIND_CONF" with Not_found -> "") in
-	  if p = "" then Findlib_config.config_file else p
+      | None -> auto_config_file()
   in
 
   let configd_file =
@@ -293,6 +299,7 @@ let init
     ?ignore_dups_in
     ~stdlib: stdlib
     ~ldconf: ldconf
+    ~config: config_file
     ~install_dir: destdir
     ~meta_dir: metadir
     ~search_path: search_path
@@ -303,6 +310,10 @@ let init
 let lazy_init() =
   if not !init_called then init()
 
+let config_file() =
+  lazy_init();
+  !conf_config_file;;
+                               
 
 let default_location() = 
   lazy_init();

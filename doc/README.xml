@@ -110,6 +110,15 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>GIT:</em>Fix: "ocamlfind printconf" respects the
+      environment variable OCAMLFIND_CONF (reported by Andre)</p>
+      <p>Build with -opaque (reported by hhugo)</p>
+      <p>Preliminary support for native toplevel so far the toplevel
+      is implemented symmetrically to the bytecode case (this is not
+      correct in vanilla ocaml)</p>
+    </li>
+      
+    <li>
       <p><em>1.6.2:</em>Uninstalling findlib no longer uninstalls the
 ocamlbuild library by accident (Gabriel Scherer, Edwin Török)</p>
       <p>Adding an "ocamldoc" library, providing the cmi's for ocamldoc

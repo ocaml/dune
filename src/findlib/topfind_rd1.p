@@ -23,11 +23,16 @@ let exec_test s =
   with
       _ -> false
 in
-
+let is_native =
+  (* one of the few observable differences... *)
+  Gc.((get()).stack_limit) = 0 in
+let suffix =
+  if is_native then "cmxs" else "cma" in
 if not(exec_test "Topfind.reset;;") then (
-  Topdirs.dir_load Format.err_formatter "@SITELIB@/findlib/findlib.cma";
-  Topdirs.dir_load Format.err_formatter "@SITELIB@/findlib/findlib_top.cma";
-);;
+  Topdirs.dir_load Format.err_formatter ("@SITELIB@/findlib/findlib." ^ suffix);
+  Topdirs.dir_load Format.err_formatter ("@SITELIB@/findlib/findlib_top." ^ suffix);
+);
+;;
 
 #remove_directory "+compiler-libs";;
 
@@ -40,6 +45,11 @@ if not(exec_test "Topfind.reset;;") then (
  * initialized
  *)
 
-Topfind.add_predicates [ "byte"; "toploop" ];
+let is_native =
+  (* one of the few observable differences... *)
+  Gc.((get()).stack_limit) = 0 in
+let pred =
+  if is_native then "native" else "byte" in
+Topfind.add_predicates [ pred; "toploop" ];
 Topfind.don't_load ["findlib"];
 Topfind.announce();;

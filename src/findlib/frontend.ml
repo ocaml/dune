@@ -6,7 +6,8 @@
 open Findlib;;
 
 exception Usage;;
-
+exception Silent_error;;
+  
 type mode =
     M_use | M_query | M_install | M_remove | M_compiler of string | M_dep
   | M_printconf | M_list | M_browser | M_call of (string*string)
@@ -768,7 +769,9 @@ let query_package () =
   let recursive = ref false in
   let descendants = ref false in
   let pp = ref false in
-
+  let qe = ref false in
+  let qo = ref false in
+  
   let packages = ref [] in
 
   let append_predicate s =
@@ -814,6 +817,10 @@ let query_package () =
                 "        prints package names";
       "-help-format", Arg.Unit help_format,
                    "     lists the supported formats for -format";
+      "-qe", Arg.Set qe,
+          "              do not print most errors, just set the exit code";
+      "-qo", Arg.Set qo,
+          "              do not print regular output";
     ]
     (fun p -> packages := !packages @ [p])
 "usage: ocamlfind query [ -predicates <p>  | -format <f> |
@@ -824,34 +831,42 @@ let query_package () =
                          -separator <s>   |
                          -descendants     | -recursive  ] package ...";
 
-  let predicates1 =
-    if !pp then
-      "preprocessor" :: "syntax" :: !predicates
-    else
-      !predicates in
-  let packages1 =
-    if !pp then
-      let predicates2 =
-        List.filter (fun p -> p <> "byte" && p <> "native") predicates1 in
-      select_pp_packages predicates2 !packages
-    else
-      !packages in
-  let eff_packages =
-    if !recursive then begin
-      if !descendants then
-	Fl_package_base.package_users predicates1 packages1
+  try
+    let predicates1 =
+      if !pp then
+        "preprocessor" :: "syntax" :: !predicates
       else
-	package_deep_ancestors predicates1 packages1
-    end
-    else
-      packages1
-  in
-  
-  let answers = expand predicates1 eff_packages !format in
-  
-  print_string !prefix;
-  print_string (String.concat !separator answers);
-  print_string !suffix;
+        !predicates in
+    let packages1 =
+      if !pp then
+        let predicates2 =
+          List.filter (fun p -> p <> "byte" && p <> "native") predicates1 in
+        select_pp_packages predicates2 !packages
+      else
+        !packages in
+    let eff_packages =
+      if !recursive then begin
+        if !descendants then
+          Fl_package_base.package_users predicates1 packages1
+        else
+          package_deep_ancestors predicates1 packages1
+      end
+      else
+        packages1
+    in
+
+    let answers = expand predicates1 eff_packages !format in
+
+    if not !qo then (
+      print_string !prefix;
+      print_string (String.concat !separator answers);
+      print_string !suffix;
+    )
+  with
+    ( Findlib.No_such_package _
+    | Failure _
+    | Sys_error _
+    ) when !qe -> raise Silent_error
 ;;
 
 
@@ -2541,6 +2556,8 @@ let main() =
       exit 2
   | Findlib.Package_loop pkg ->
       prerr_endline ("ocamlfind: Package `" ^ pkg ^ "' requires itself");
+      exit 2
+  | Silent_error ->
       exit 2
 ;;
 

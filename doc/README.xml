@@ -116,6 +116,9 @@ configuration files, and library routines in detail.</p>
       <p>Preliminary support for native toplevel so far the toplevel
       is implemented symmetrically to the bytecode case (this is not
       correct in vanilla ocaml)</p>
+      <p>Requires ocamlc and ocamlc.opt are installed to the
+      same directory for emitting the "opt" setting in the generated
+      config file - same for ocamlopt.opt, ocamldep.opt, ocamldoc.opt.</p>
     </li>
       
     <li>

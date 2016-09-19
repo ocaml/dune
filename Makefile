@@ -56,16 +56,16 @@ findlib.conf: findlib.conf.in
 	export USE_CYGPATH; \
 	cat findlib.conf.in | \
 		tools/patch '@SITELIB@' '$(OCAML_SITELIB)' >findlib.conf
-	if ocamlc.opt >/dev/null 2>&1; then \
+	if ./tools/cmd_from_same_dir ocamlc; then \
 		echo 'ocamlc="ocamlc.opt"' >>findlib.conf; \
 	fi
-	if ocamlopt.opt >/dev/null 2>&1; then \
+	if ./tools/cmd_from_same_dir ocamlopt; then \
 		echo 'ocamlopt="ocamlopt.opt"' >>findlib.conf; \
 	fi
-	if ocamldep.opt >/dev/null 2>&1; then \
+	if ./tools/cmd_from_same_dir ocamldep; then \
 		echo 'ocamldep="ocamldep.opt"' >>findlib.conf; \
 	fi
-	if ocamldoc.opt >/dev/null 2>&1; then \
+	if ./tools/cmd_from_same_dir ocamldoc; then \
 		echo 'ocamldoc="ocamldoc.opt"' >>findlib.conf; \
 	fi
 

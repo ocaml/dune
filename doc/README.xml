@@ -110,7 +110,7 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
-      <p><em>GIT:</em>Fix: "ocamlfind printconf" respects the
+      <p><em>1.6.3:</em>Fix: "ocamlfind printconf" respects the
       environment variable OCAMLFIND_CONF (reported by Andre)</p>
       <p>Build with -opaque (reported by hhugo)</p>
       <p>Preliminary support for native toplevel so far the toplevel

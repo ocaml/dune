@@ -406,7 +406,7 @@ ocaml -I +compiler-libs itest-aux/ppx.ml >/dev/null || {
 echo "Checking for ocamlc -opaque..."
 
 opaque="-opaque"
-ocamlc -opaque || opaque=""
+ocamlc -opaque >/dev/null 2>/dev/null || opaque=""
 
 ######################################################################
 # Configure libraries

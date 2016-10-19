@@ -496,6 +496,13 @@ The options relevant for the preprocessor are the following:
   <listitem><para>This argument is passed to the camlp4 call.
   </para></listitem>
 </varlistentry>
+<varlistentry>
+  <term>-ppxopt <replaceable>package</replaceable>,<replaceable>arg</replaceable></term>
+  <listitem><para>Add <replaceable>arg</replaceable> to the ppx
+      preprocessor invocation specified via the "ppx" property in
+      the META file of <replaceable>package</replaceable>.
+  </para></listitem>
+</varlistentry>
 </variablelist>
 </refsect2>
 

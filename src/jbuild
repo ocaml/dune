@@ -1,0 +1,8 @@
+;; This program must have no dependencies outside of the compiler
+;; distribution as it is used to build all of Jane Street packages
+(executables
+ ((names (jbuild))
+  (libraries (unix))
+  (preprocess ((no_preprocessing All)))))
+
+(ocamllex (sexp_lexer))

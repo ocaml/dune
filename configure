@@ -526,10 +526,20 @@ else
     cbytes=1
 fi
 
+# spacetime?
+
+if [ -f "${ocaml_core_stdlib}/raw_spacetime_lib.cmxa" ]; then
+    echo "spacetime: found"
+    lspacetime="raw_spacetime"
+else
+    echo "spacetime: not found"
+    lspacetime=""
+fi
+
 
 # Generate the META files now.
 
-l="$ldbm dynlink graphics num num-top str threads unix stdlib bigarray ocamldoc $llabltk $lcamlp4 $lobuild $lcomplibs $lbytes"
+l="$ldbm dynlink graphics num num-top str threads unix stdlib bigarray ocamldoc $llabltk $lcamlp4 $lobuild $lcomplibs $lbytes $lspacetime"
 
 for dir in site-lib-src/*; do
     # We do not really know if $dir is a directory.

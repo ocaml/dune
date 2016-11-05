@@ -2365,6 +2365,28 @@ omit "./" to search it, and you can prefix it with "@name/" if the command
 is taken from another package "name").
 </para>
 
+	<para>For more complex scenarios, additional options or
+arguments for the ppx preprocessor can be specified in descendant
+packages with the "ppxopt" property. Package "A" might provide a
+generic ppx preprocessor with a META file containing
+
+<programlisting>
+ppx = "./generic_ppx"
+</programlisting>
+
+Package B might instantiate that preprocessor with
+
+<programlisting>
+requires = "A"
+ppxopt = "A,ppx_b.cmo"
+</programlisting>
+
+In this case "ocamlfind ocamlc -package B" would
+add <literal>-ppx "path_to_A/genric_ppx ppx_b.cmo"</literal> to
+the ocamlc invocation. The format of the "ppxopt" property is
+specified in the findlib reference manual.
+</para>
+
 
         <para>This feature is still a bit experimental.</para>
 

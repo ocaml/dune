@@ -6,6 +6,10 @@ include MoreLabels
 module String_set = Set.Make(String)
 module String_map = Map.Make(String)
 
+type ('a, 'b) either =
+  | Inl of 'a
+  | Inr of 'b
+
 module List = struct
   include ListLabels
 
@@ -18,6 +22,17 @@ module List = struct
       | Some x -> x :: filter_map l ~f
 
   let concat_map l ~f = concat (map l ~f)
+
+  let partition_map =
+    let rec loop l accl accr ~f =
+      match l with
+      | [] -> (List.rev accl, List.rev accr)
+      | x :: l ->
+        match f x with
+        | Inl y -> loop l (y :: accl) accr ~f
+        | Inr y -> loop l accl (y :: accr) ~f
+    in
+    fun l ~f -> loop l [] [] ~f
 end
 
 type ('a, 'b) eq =
@@ -46,21 +61,3 @@ let lines_of_file fn =
     | line -> loop ic (line :: acc)
   in
   with_file_in fn ~f:(fun ic -> loop ic [])
-
-type location =
-  { start : Lexing.position
-  ; stop  : Lexing.position
-  }
-
-let lexeme_loc lb =
-  { start = Lexing.lexeme_start lb
-  ; stop  = Lexing.lexeme_stop  lb
-  }
-
-exception File_error of location * string
-
-let file_error ~loc fmt =
-  Printf.ksprintf (fun msg -> raise (File_error (loc, msg))) fmt
-
-let lex_error lb fmt =
-  file_error ~loc:(lexeme_loc lb) fmt

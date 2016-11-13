@@ -36,4 +36,4 @@ rule token = parse
   | '=' { Equal }
   | "+=" { Plus_equal }
   | eof { Eof }
-  | _ { lex_error lexbuf "invalid character" }
+  | _ { Loc.fail_lex lexbuf "invalid character" }

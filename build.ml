@@ -10,6 +10,9 @@ let modules =
   [ "Import"
   ; "Clflags"
   ; "Loc"
+  ; "Meta_lexer"
+  ; "Meta"
+  ; "Findlib"
   ; "Sexp"
   ; "Sexp_lexer"
   ; "Future"
@@ -20,7 +23,7 @@ let modules =
   ; "Jbuild"
   ]
 
-let lexers = [ "sexp_lexer" ]
+let lexers = [ "sexp_lexer"; "meta_lexer" ]
 
 let path =
   match Sys.getenv "PATH" with

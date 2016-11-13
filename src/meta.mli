@@ -9,8 +9,10 @@ type t =
 
 and entry =
   | Comment of string
-  | Var     of string * predicate list * action * string
+  | Var     of var
   | Package of t
+
+and var = string * predicate list * action * string
 
 and action = Set | Add
 
@@ -19,3 +21,5 @@ and predicate =
   | A of string (** Absent  *)
 
 val load : string -> entry list
+
+val flatten : t -> (string * var list) list

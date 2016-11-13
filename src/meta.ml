@@ -7,8 +7,10 @@ type t =
 
 and entry =
   | Comment of string
-  | Var     of string * predicate list * action * string
+  | Var     of var
   | Package of t
+
+and var = string * predicate list * action * string
 
 and action = Set | Add
 
@@ -17,7 +19,7 @@ and predicate =
   | A of string
 
 module Parse = struct
-  let error = lex_error
+  let error = Loc.fail_lex
 
   let next = Meta_lexer.token
 
@@ -93,3 +95,22 @@ end
 let load fn =
   with_lexbuf_from_file fn ~f:(fun lb ->
       Parse.entries lb 0 [])
+
+let flatten t =
+  let rec loop path acc_vars acc_pkgs entries =
+    match entries with
+    | [] -> (List.rev acc_vars, acc_pkgs)
+    | entry :: rest ->
+      match entry with
+      | Comment _ ->
+        loop path acc_vars acc_pkgs rest
+      | Var v ->
+        loop path (v :: acc_vars) acc_pkgs rest
+      | Package { name; entries } ->
+        let sub_path = sprintf "%s.%s" path name in
+        let sub_vars, acc_pkgs = loop sub_path [] acc_pkgs entries in
+        let acc_pkgs = (sub_path, sub_vars) :: acc_pkgs in
+        loop path acc_vars acc_pkgs rest
+  in
+  let vars, pkgs = loop t.name [] [] t.entries in
+  (t.name, vars) :: pkgs

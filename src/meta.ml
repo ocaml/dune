@@ -13,9 +13,8 @@ and entry =
 and action = Set | Add
 
 and predicate =
-  | P of string (* Present *)
-  | A of string (* Absent  *)
-
+  | P of string
+  | A of string
 
 module Parse = struct
   let error = lex_error
@@ -91,6 +90,6 @@ module Parse = struct
       error lb "'package' or variable name expected"
 end
 
-let parse fn =
+let load fn =
   with_lexbuf_from_file fn ~f:(fun lb ->
       Parse.entries lb 0 [])

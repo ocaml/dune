@@ -47,24 +47,24 @@ module Parse = struct
     | Plus_equal -> Add
     | _          -> error lb "'=' or '+=' expected"
 
-  let comma lb =
-    match next lb with
-    | Comma -> ()
-    | _     -> error lb "',' expected"
-
   let rec predicates_and_action lb acc =
     match next lb with
     | Rparen -> (List.rev acc, action lb)
-    | Name n -> comma lb; predicates_and_action lb (P n :: acc)
+    | Name n -> after_predicate lb (P n :: acc)
     | Minus  ->
       let n =
         match next lb with
         | Name p -> p
         | _      -> error lb "name expected"
       in
-      comma lb;
-      predicates_and_action lb (A n :: acc)
+      after_predicate lb (A n :: acc)
     | _          -> error lb "name, '-' or ')' expected"
+
+  and after_predicate lb acc =
+    match next lb with
+    | Rparen -> (List.rev acc, action lb)
+    | Comma  -> predicates_and_action lb acc
+    | _      -> error lb "')' or ',' expected"
 
   let rec entries lb depth acc =
     match next lb with
@@ -73,6 +73,11 @@ module Parse = struct
         List.rev acc
       else
         error lb "closing parenthesis without matching opening one"
+    | Eof ->
+      if depth = 0 then
+        List.rev acc
+      else
+        error lb "%d closing parentheses missing" depth
     | Name "package" ->
       let name = package_name lb in
       lparen lb;

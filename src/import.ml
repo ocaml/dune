@@ -28,13 +28,39 @@ let (^/) a b = a ^ "/" ^ b
 
 let sprintf = Printf.sprintf
 
+let protectx x ~finally ~f =
+  match f x with
+  | y           -> finally x; y
+  | exception e -> finally x; raise e
+
+let with_file_in fn ~f =
+  protectx (open_in fn) ~finally:close_in ~f
+
+let with_lexbuf_from_file fn ~f =
+  with_file_in fn ~f:(fun ic -> f (Lexing.from_channel ic))
+
 let lines_of_file fn =
-  let ic = open_in fn in
-  let rec loop acc =
+  let rec loop ic acc =
     match input_line ic with
-    | exception End_of_file -> close_in ic; List.rev acc
-    | line -> loop (line :: acc)
+    | exception End_of_file -> List.rev acc
+    | line -> loop ic (line :: acc)
   in
-  loop []
+  with_file_in fn ~f:(fun ic -> loop ic [])
 
+type location =
+  { start : Lexing.position
+  ; stop  : Lexing.position
+  }
 
+let lexeme_loc lb =
+  { start = Lexing.lexeme_start lb
+  ; stop  = Lexing.lexeme_stop  lb
+  }
+
+exception File_error of location * string
+
+let file_error ~loc fmt =
+  Printf.ksprintf (fun msg -> raise (File_error (loc, msg))) fmt
+
+let lex_error lb fmt =
+  file_error ~loc:(lexeme_loc lb) fmt

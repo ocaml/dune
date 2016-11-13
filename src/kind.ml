@@ -44,7 +44,7 @@ let save kind ~filename x =
   close_out oc
 
 let load kind ~filename =
-  let ic = open_in filename in
-  let sexp, _locs = Sexp_lexer.single (Lexing.from_channel ic) in
-  close_in ic;
+  let sexp, _locs =
+    with_lexbuf_from_file filename ~f:Sexp_lexer.single lb
+  in
   of_sexp kind sexp

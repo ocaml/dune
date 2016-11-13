@@ -3,7 +3,18 @@ open Import
 let internal argv =
   match Array.to_list argv with
   | [_; "findlib-packages"] ->
-    List.iter (Findlib.all_packages ()) ~f:(Printf.printf "%s\n")
+    let pkgs = Findlib.all_packages () in
+    let max_len =
+      List.map pkgs ~f:String.length
+      |> List.fold_left ~init:0 ~f:max
+    in
+    List.iter pkgs ~f:(fun pkg ->
+        let ver =
+          match Findlib.query ~pkg ~preds:[] ~var:"version" with
+          | None -> "n/a"
+          | Some v -> v
+        in
+        Printf.printf "%-*s (version: %s)\n" max_len pkg ver)
   | _ ->
     ()
 

@@ -52,7 +52,7 @@ type package =
 
 let db = Hashtbl.create 1024
 
-let make_rule ((_, preds, action, value) : META.var) =
+let make_rule ((_, preds, action, value) : Meta.var) =
   let preds_required, preds_forbidden =
     List.partition_map preds ~f:(function
         | P x -> Inl x
@@ -64,14 +64,14 @@ let make_rule ((_, preds, action, value) : META.var) =
   ; value
   }
 
-let acknowledge_meta (meta : META.t) =
-  let pkgs = META.flatten meta in
+let acknowledge_meta (meta : Meta.t) =
+  let pkgs = Meta.flatten meta in
   List.iter pkgs ~f:(fun (name, vars) ->
       let vars =
         List.fold_left vars ~init:String_map.empty ~f:(fun acc ((vname, _, _, _) as var) ->
             let rule = make_rule var in
             let rules =
-              match String_map.find acc vname with
+              match String_map.find vname acc with
               | exception Not_found -> []
               | rules -> rules
             in
@@ -89,12 +89,12 @@ let root_pkg s =
   | i -> String.sub s ~pos:0 ~len:i
 
 let rec get_pkg name =
-  match Hashtbl.find db pkg with
+  match Hashtbl.find db name with
   | exception Not_found ->
     let root = root_pkg name in
     let fn = !findlib_dir ^/ root ^/ "META" in
     if Sys.file_exists fn then begin
-      acknowledge_meta { name = root; entries = META.load fn };
+      acknowledge_meta { name = root; entries = Meta.load fn };
       get_pkg name
     end else
       raise (Package_not_found name)
@@ -111,12 +111,12 @@ let rec interpret_rules rules ~preds =
       | Add ->
         match interpret_rules rules ~preds with
         | None -> Some rule.value
-        | Some v -> Some (v ^ " " rule.value)
+        | Some v -> Some (v ^ " " ^ rule.value)
     else
       interpret_rules rules ~preds
 
 let get_var pkg ~preds var =
-  match String_map.find pkg.vars var with
+  match String_map.find var pkg.vars with
   | exception Not_found -> None
   | rules -> interpret_rules rules ~preds
 

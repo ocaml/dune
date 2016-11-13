@@ -25,8 +25,8 @@ rule token = parse
             Buffer.contents buf
           else
             match s.[i] with
-            | '\\' -> Buffer.add_char s.[i + 1]; loop (i + 2)
-            | _    -> Buffer.add_char s.[i    ]; loop (i + 1)
+            | '\\' -> Buffer.add_char buf s.[i + 1]; loop (i + 2)
+            | _    -> Buffer.add_char buf s.[i    ]; loop (i + 1)
         in
         String (loop 0) }
   | '-' { Minus }

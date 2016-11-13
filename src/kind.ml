@@ -45,6 +45,6 @@ let save kind ~filename x =
 
 let load kind ~filename =
   let sexp, _locs =
-    with_lexbuf_from_file filename ~f:Sexp_lexer.single lb
+    with_lexbuf_from_file filename ~f:Sexp_lexer.single
   in
   of_sexp kind sexp

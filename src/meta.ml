@@ -32,7 +32,7 @@ module Parse = struct
     | _ -> error lb "package name expected"
 
   let string lb =
-    match lb with
+    match next lb with
     | String s -> s
     | _ -> error lb "string expected"
 
@@ -76,8 +76,8 @@ module Parse = struct
     | Name "package" ->
       let name = package_name lb in
       lparen lb;
-      let entries = entries lb (depth + 1) [] in
-      entries lb depth (Package { name; entries } :: acc)
+      let sub_entries = entries lb (depth + 1) [] in
+      entries lb depth (Package { name; entries = sub_entries } :: acc)
     | Name var ->
       let preds, action =
         match next lb with
@@ -87,7 +87,7 @@ module Parse = struct
         | _          -> error lb "'=', '+=' or '(' expected"
       in
       let value = string lb in
-      Var (var, preds, action, value)
+      entries lb depth (Var (var, preds, action, value) :: acc)
     | _ ->
       error lb "'package' or variable name expected"
 end

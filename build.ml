@@ -162,7 +162,7 @@ let () =
     let src = "src" ^/ name ^ ".mll" in
     let dst = "src" ^/ name ^ ".ml"  in
     let x = Sys.file_exists dst in
-    let n = exec "%s %s" ocamllex src in
+    let n = exec "%s -q %s" ocamllex src in
     if n <> 0 then exit n;
     if not x then
       at_exit (fun () -> try Sys.remove dst with _ -> ()));

@@ -79,7 +79,7 @@ let acknowledge_meta (meta : Meta.t) =
       in
       Hashtbl.add db name { name; vars })
 
-let findlib_dir = ref ""
+let findlib_dir = Filename.dirname Bin.dir ^/ "lib"
 
 exception Package_not_found of string
 
@@ -92,13 +92,31 @@ let rec get_pkg name =
   match Hashtbl.find db name with
   | exception Not_found ->
     let root = root_pkg name in
-    let fn = !findlib_dir ^/ root ^/ "META" in
+    let fn = findlib_dir ^/ root ^/ "META" in
     if Sys.file_exists fn then begin
       acknowledge_meta { name = root; entries = Meta.load fn };
       get_pkg name
     end else
       raise (Package_not_found name)
   | pkg -> pkg
+
+let root_packages =
+  let v = lazy (
+    Sys.readdir findlib_dir
+    |> Array.to_list
+    |> List.filter ~f:(fun name ->
+        Sys.file_exists (findlib_dir ^/ name ^/ "META"))
+  ) in
+  fun () -> Lazy.force v
+
+let all_packages =
+  let v = lazy (
+    List.iter (root_packages ()) ~f:(fun pkg ->
+        ignore (get_pkg pkg : package));
+    Hashtbl.fold db ~init:[] ~f:(fun ~key:pkg ~data:_ acc -> pkg :: acc)
+    |> List.sort ~cmp:String.compare
+  ) in
+  fun () -> Lazy.force v
 
 let rec interpret_rules rules ~preds =
   match rules with

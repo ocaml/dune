@@ -1,5 +1,3 @@
-#load "str.cma";;
-
 open StdLabels
 open Printf
 
@@ -12,6 +10,7 @@ let modules =
   ; "Loc"
   ; "Meta_lexer"
   ; "Meta"
+  ; "Bin"
   ; "Findlib"
   ; "Sexp"
   ; "Sexp_lexer"
@@ -25,17 +24,29 @@ let modules =
 
 let lexers = [ "sexp_lexer"; "meta_lexer" ]
 
+let path_sep =
+  if Sys.win32 then
+    ';'
+  else
+    ':'
+;;
+
+let split_path s =
+  let rec loop i j =
+    if j = String.length s then
+      [String.sub s ~pos:i ~len:(j - i)]
+    else if s.[j] = path_sep then
+      String.sub s ~pos:i ~len:(j - i) :: loop (j + 1) (j + 1)
+    else
+      loop i (j + 1)
+  in
+  loop 0 0
+;;
+
 let path =
   match Sys.getenv "PATH" with
   | exception Not_found -> []
-  | s ->
-    let sep =
-      if Sys.win32 then
-        ";"
-      else
-        ":"
-    in
-    Str.split_delim (Str.regexp sep) s
+  | s -> split_path s
 ;;
 
 let exe = if Sys.win32 then ".exe" else ""

@@ -19,7 +19,7 @@ let modules =
   ; "Values"
   ; "Rule"
   ; "Jbuild_interpret"
-  ; "Jbuild"
+  ; "Main"
   ]
 
 let lexers = [ "sexp_lexer"; "meta_lexer" ]

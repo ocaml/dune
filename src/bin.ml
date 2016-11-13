@@ -48,6 +48,11 @@ let find_prog prog =
   in
   search path
 
+let locate prog =
+  match find_prog prog with
+  | None -> None
+  | Some (_, fn) -> Some fn
+
 let prog_not_found_in_path prog =
   Printf.eprintf "Program %s not found in PATH" prog;
   exit 2

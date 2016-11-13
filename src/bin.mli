@@ -8,3 +8,5 @@ val ocamlc : string
 val ocamlopt : string option
 val ocamldep : string
 val ocamllex : string
+
+val locate : string -> string option

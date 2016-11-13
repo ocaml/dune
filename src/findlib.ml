@@ -79,7 +79,16 @@ let acknowledge_meta (meta : Meta.t) =
       in
       Hashtbl.add db name { name; vars })
 
-let findlib_dir = Filename.dirname Bin.dir ^/ "lib"
+let findlib_dirs =
+  match Bin.locate "ocamlfind" with
+  | Some fn ->
+    ksprintf run_and_read_lines "%s printconf path" fn
+  | None ->
+    match Bin.locate "opam" with
+    | None ->
+      [Filename.dirname Bin.dir ^/ "lib"]
+    | Some fn ->
+      [run_and_read_line "%s config var root"]
 
 exception Package_not_found of string
 
@@ -88,24 +97,38 @@ let root_pkg s =
   | exception Not_found -> s
   | i -> String.sub s ~pos:0 ~len:i
 
+let load_meta root_name =
+  let rec loop dirs =
+    match dirs with
+    | [] -> raise (Package_not_found root_name)
+    | dir :: dirs ->
+      let fn = dir ^/ root_name ^/ "META" in
+      if Sys.file_exists fn then
+        acknowledge_meta
+          { name    = root_name
+          ; entries = Meta.load fn
+          }
+      else
+        loop dirs
+  in
+  loop findlib_dirs
+
 let rec get_pkg name =
   match Hashtbl.find db name with
   | exception Not_found ->
-    let root = root_pkg name in
-    let fn = findlib_dir ^/ root ^/ "META" in
-    if Sys.file_exists fn then begin
-      acknowledge_meta { name = root; entries = Meta.load fn };
-      get_pkg name
-    end else
-      raise (Package_not_found name)
+    load_meta (root_pkg name);
+    get_pkg name
   | pkg -> pkg
 
 let root_packages =
   let v = lazy (
-    Sys.readdir findlib_dir
-    |> Array.to_list
-    |> List.filter ~f:(fun name ->
-        Sys.file_exists (findlib_dir ^/ name ^/ "META"))
+    List.map findlib_dirs ~f:(fun dir ->
+        Sys.readdir dir
+        |> Array.to_list
+        |> List.filter ~f:(fun name ->
+            Sys.file_exists (dir ^/ name ^/ "META")))
+    |> List.concat
+    |> List.sort ~cmp:String.compare
   ) in
   fun () -> Lazy.force v
 

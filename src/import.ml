@@ -42,6 +42,7 @@ type ('a, 'b) eq =
 let (^/) a b = a ^ "/" ^ b
 
 let sprintf = Printf.sprintf
+let ksprintf = Printf.ksprintf
 
 let protectx x ~finally ~f =
   match f x with
@@ -62,10 +63,40 @@ let with_lexbuf_from_file fn ~f =
         };
       f lb)
 
-let lines_of_file fn =
+let input_lines =
   let rec loop ic acc =
     match input_line ic with
     | exception End_of_file -> List.rev acc
     | line -> loop ic (line :: acc)
   in
-  with_file_in fn ~f:(fun ic -> loop ic [])
+  fun ic -> loop ic []
+
+let lines_of_file fn = with_file_in fn ~f:input_lines
+
+exception Error of string
+let die fmt = ksprintf (fun msg -> raise (Error msg)) fmt
+
+let handle_process_status cmd (status : Unix.process_status) =
+  match status with
+  | WEXITED   0 -> ()
+  | WEXITED   n -> die "Command exited with code %d: %s"     n (Lazy.force cmd)
+  | WSIGNALED n -> die "Command got killed by signal %d: %s" n (Lazy.force cmd)
+  | WSTOPPED  _ -> assert false
+
+let with_process_in cmd ~f =
+  let ic = Unix.open_process_in cmd in
+  match f ic with
+  | exception e ->
+    ignore (Unix.close_process_in ic : Unix.process_status);
+    raise e
+  | y ->
+    handle_process_status (lazy cmd) (Unix.close_process_in ic);
+    y
+
+let run_and_read_lines cmd = with_process_in cmd ~f:input_lines
+
+let run_and_read_line cmd =
+  match run_and_read_lines cmd with
+  | []  -> die "Command returned no output: %s" cmd
+  | [x] -> x
+  | _   -> die "Command returned too many lines: %s" cmd

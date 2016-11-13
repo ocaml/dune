@@ -120,15 +120,8 @@ module Scheduler = struct
     | Some fn -> sprintf "%s > %s" s fn
 
   let process_done job status =
-    match status with
-    | Unix.WEXITED 0 -> Ivar.fill job.ivar ()
-    | _ ->
-      Printf.ksprintf failwith "Process \"%s\" exited with status %d"
-        (command_line job)
-        (match status with
-         | WEXITED n -> n
-         | WSIGNALED n -> 128 + n
-         | WSTOPPED _ -> assert false)
+    handle_process_status (lazy (command_line job)) status;
+    Ivar.fill job.ivar ()
 
   let running = Hashtbl.create 128
 

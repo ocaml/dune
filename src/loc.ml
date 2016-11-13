@@ -1,3 +1,5 @@
+open Import
+
 type t =
   { start : Lexing.position
   ; stop  : Lexing.position
@@ -11,7 +13,7 @@ let of_lexbuf lb =
 exception Error of t * string
 
 let fail t fmt =
-  Printf.ksprintf (fun msg -> raise (Error (t, msg))) fmt
+  ksprintf (fun msg -> raise (Error (t, msg))) fmt
 
 let fail_lex lb fmt =
   fail (of_lexbuf lb) fmt

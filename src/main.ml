@@ -7,7 +7,7 @@ let internal argv =
   | _ ->
     ()
 
-let () =
+let main () =
   let argv = Sys.argv in
   let argc = Array.length argv in
   let compact () =
@@ -19,3 +19,16 @@ let () =
     match argv.(1) with
     | "internal" -> internal (compact ())
     | _ -> ()
+
+let () =
+  try
+    main ()
+  with
+  | Loc.Error ({ start; stop }, msg) ->
+    let start_c = start.pos_cnum - start.pos_bol in
+    let stop_c  = stop.pos_cnum  - start.pos_bol in
+    Printf.eprintf
+      "File \"%s\", line %d, characters %d-%d:\n\
+       Error: %s\n%!"
+      start.pos_fname start.pos_lnum start_c stop_c msg
+

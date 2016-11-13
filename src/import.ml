@@ -52,7 +52,15 @@ let with_file_in fn ~f =
   protectx (open_in fn) ~finally:close_in ~f
 
 let with_lexbuf_from_file fn ~f =
-  with_file_in fn ~f:(fun ic -> f (Lexing.from_channel ic))
+  with_file_in fn ~f:(fun ic ->
+      let lb = Lexing.from_channel ic in
+      lb.lex_curr_p <-
+        { pos_fname = fn
+        ; pos_lnum  = 1
+        ; pos_bol   = 0
+        ; pos_cnum  = 0
+        };
+      f lb)
 
 let lines_of_file fn =
   let rec loop ic acc =

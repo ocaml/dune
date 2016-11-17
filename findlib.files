@@ -48,6 +48,7 @@ f tools/extract_args/extract_args.ml
 f tools/safe_camlp4
 f tools/make-package-macosx
 f tools/patch
+f tools/cmd_from_same_dir
 
 d site-lib-src
 d site-lib-src/bigarray

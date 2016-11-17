@@ -11,7 +11,7 @@ exception Silent_error;;
 type mode =
     M_use | M_query | M_install | M_remove | M_compiler of string | M_dep
   | M_printconf | M_list | M_browser | M_call of (string*string)
-  | M_doc | M_lint
+  | M_doc | M_lint | M_printppx
 ;;
 
 
@@ -202,6 +202,11 @@ let arg n =
 ;;
 
 
+let escape_if_needed s =
+  if String.contains s ' ' then "\"" ^ String.escaped s ^ "\"" else s
+;;
+
+
 let use_package prefix pkgnames =
   (* may raise No_such_package *)
   let pdirs =
@@ -345,8 +350,6 @@ type verbosity =
 
 
 let run_command ?filter verbose cmd args =
-  let escape_if_needed s =
-    if String.contains s ' ' then "\"" ^ String.escaped s ^ "\"" else s in
   let printable_cmd =
     cmd ^ " " ^ String.concat " " (List.map escape_if_needed args) in
   ( match verbose with
@@ -2454,6 +2457,34 @@ let lint () =
 ;;
 
 
+(** print ppx options *)
+let print_ppx () =
+
+  let packages = ref [] in
+  let predicates = ref [] in
+  let ppx_opts = ref [] in
+
+  let add_pred =
+    Arg.String (fun s -> predicates := !predicates @ (Fl_split.in_words s)) in
+  let add_ppx_opt =
+    Arg.String (fun s -> ppx_opts := !ppx_opts @ [s]) in
+
+  parse_args
+    [ "-predicates", add_pred,
+        " specifies comma-separated list of assumed predicates";
+      "-ppxopt", add_ppx_opt,
+        "<pkg>,<opts>  Append options <opts> to ppx invocation for package <pkg>";
+    ]
+    (fun p -> packages := !packages @ [p])
+"usage: ocamlfind printppx [options] package ...";
+
+  let ppx_commands =
+    process_ppx_spec !predicates !packages !ppx_opts
+  in
+  print_endline (String.concat " " (List.map escape_if_needed ppx_commands))
+;;
+
+
 let rec select_mode () =
   let k = !Arg.current in
   let m_string = try arg (k+1) with Not_found -> raise Usage in
@@ -2475,6 +2506,7 @@ let rec select_mode () =
     | ("printconf"|"-printconf")           -> incr Arg.current; M_printconf
     | ("list"|"-list")                     -> incr Arg.current; M_list
     | ("lint"|"-lint")                     -> incr Arg.current; M_lint
+    | ("printppx"|"-printppx")             -> incr Arg.current; M_printppx
     | "-toolchain" ->
 	let t = try arg (k+2) with Not_found -> raise Usage in
 	Findlib.init ~toolchain:t ();
@@ -2519,6 +2551,7 @@ let main() =
     | M_call(pkg,cmd)  -> ocamlcall pkg cmd
     | M_compiler which -> ocamlc which ()
     | M_lint           -> lint()
+    | M_printppx       -> print_ppx()
   with
     Usage ->
       prerr_endline "Usage: ocamlfind query        [-help | other options] <package_name> ...";
@@ -2535,6 +2568,7 @@ let main() =
       prerr_endline "   or: ocamlfind ocamldoc     [-help | other options] <file> ...";
       prerr_endline "   or: ocamlfind install      [-help | other options] <package_name> <file> ...";
       prerr_endline "   or: ocamlfind remove       [-help | other options] <package_name>";
+      prerr_endline "   or: ocamlfind printppx     [-help | other options] <package_name> ...";
       prerr_endline "   or: ocamlfind printconf    [-help] [variable]";
       prerr_endline "   or: ocamlfind lint         [-help] <file>";
       prerr_endline "   or: ocamlfind list";

@@ -28,6 +28,7 @@
    or: <link linkend="ocamlfind.remove">ocamlfind remove [-help | other options] <replaceable>package_name</replaceable></link>
    or: <link linkend="ocamlfind.list">ocamlfind lint <replaceable>META</replaceable></link>
    or: <link linkend="ocamlfind.list">ocamlfind list [-describe]</link>
+   or: <link linkend="ocamlfind.printppx">ocamlfind printppx [-help | other options] <replaceable>package_name</replaceable> ...</link>
    or: <link linkend="ocamlfind.printconf">ocamlfind printconf [ variable ]</link>
    or: <link linkend="ocamlfind.pkgcmd">ocamlfind <replaceable>package</replaceable>/<replaceable>command</replaceable> <replaceable>arg</replaceable> ...</link>
 
@@ -493,6 +494,13 @@ The options relevant for the preprocessor are the following:
 <varlistentry>
   <term>-ppopt <replaceable>camlp4-arg</replaceable></term>
   <listitem><para>This argument is passed to the camlp4 call.
+  </para></listitem>
+</varlistentry>
+<varlistentry>
+  <term>-ppxopt <replaceable>package</replaceable>,<replaceable>arg</replaceable></term>
+  <listitem><para>Add <replaceable>arg</replaceable> to the ppx
+      preprocessor invocation specified via the "ppx" property in
+      the META file of <replaceable>package</replaceable>.
   </para></listitem>
 </varlistentry>
 </variablelist>
@@ -1206,6 +1214,48 @@ ocamlfind list [-describe]
 <para>
 This command lists all packages in the search path. The option -describe
 outputs the package descriptions, too.
+</para>
+</refsect2>
+</refsect1>
+
+<!-- ********************************************************************** -->
+
+<refsect1>
+<title><anchor id="ocamlfind.printppx">
+  THE "printppx" SUBCOMMAND
+</title>
+
+<refsect2>
+<title>Synopsis</title>
+<programlisting>
+ocamlfind printppx
+          [ -predicates <replaceable>pred-name-list</replaceable> ]
+          [ -ppxopt <replaceable>package</replaceable>,<replaceable>arg</replaceable> ]
+          <replaceable>package</replaceable> ...
+</programlisting>
+</refsect2>
+
+<refsect2>
+<title>Description</title>
+<para>
+This command prints the ppx preprocessor options as they would
+occur in an OCaml compiler invocation for the packages listed in
+the command. The output includes one "-ppx" option for each
+preprocessor. The possible options have the same meaning as for
+"ocamlfind ocamlc". The option "-predicates" adds assumed
+predicates and
+"-ppxopt <replaceable>package</replaceable>,<replaceable>arg</replaceable>"
+adds "<replaceable>arg</replaceable>" to the ppx invocation of
+package <replaceable>package</replaceable>.
+</para>
+
+<para>
+The output of "ocamlfind printppx" will contain quotes
+"<literal>"</literal>" for ppx commands that contain
+space-separated arguments. In this case <literal>$(ocamlfind
+printppx ...)</literal> won't work as naively expected, because
+many shells (including bash and dash) perform field splitting on
+the result of command substitutions without honoring quotes.
 </para>
 </refsect2>
 </refsect1>

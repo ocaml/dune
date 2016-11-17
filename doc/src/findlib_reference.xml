@@ -106,7 +106,8 @@ FORMAT="LINESPECIFIC"
 >s</REPLACEABLE> |
                   -pp |
                   -descendants | -d |
-                  -recursive  | -r ] <REPLACEABLE
+                  -recursive  | -r
+                  -qe | -qo] <REPLACEABLE
 >package</REPLACEABLE> ...</PROGRAMLISTING></REFSECT2><REFSECT2
 ><TITLE
 >Description</TITLE><PARA
@@ -214,7 +215,15 @@ MOREINFO="NONE"
 it is not needed to set -predicates, except you need the archives (then add
 -predicates byte). This option implies <LITERAL
 MOREINFO="NONE"
->-recursive</LITERAL>.</PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2><REFSECT2
+>-recursive</LITERAL>.</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-qe</TERM><LISTITEM
+><PARA
+>Do not print most errors to stderr, just set the exit code</PARA></LISTITEM></VARLISTENTRY><VARLISTENTRY
+><TERM
+>-qo</TERM><LISTITEM
+><PARA
+>Do not print the regular output.</PARA></LISTITEM></VARLISTENTRY></VARIABLELIST></REFSECT2><REFSECT2
 ><TITLE
 >Placeholders meaningful in the -format option</TITLE><VARIABLELIST
 ><VARLISTENTRY

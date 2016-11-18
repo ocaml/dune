@@ -107,6 +107,10 @@ d site-lib-src/bytes
 f site-lib-src/bytes/META.in
 f site-lib-src/bytes/interfaces.in
 f site-lib-src/bytes/interfaces.out
+d site-lib-src/raw_spacetime
+d site-lib-src/raw_spacetime/interfaces.in
+d site-lib-src/raw_spacetime/META.in
+
 
 d src
 

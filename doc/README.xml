@@ -110,6 +110,10 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+     <p><em>1.7.1:</em> added missing file to tarball</p>
+    </li>
+
+    <li>
       <p><em>1.7.0:</em> New command "ocamlfind printppx" that outputs
       how the ppx preprocessor would be called (Hendrik Tews).</p>
       <p>Support for the raw_spacetime library that comes with

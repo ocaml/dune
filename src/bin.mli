@@ -1,12 +1,16 @@
 (** OCaml binaries *)
 
-(** Directory where the compiler and other tools are installed *)
-val dir : string
+(** Contents of [PATH] *)
+val path : Path.t list
 
-(** Tools *)
-val ocamlc : string
-val ocamlopt : string option
-val ocamldep : string
-val ocamllex : string
+val parse_path : string -> Path.t list
 
-val locate : string -> string option
+(** The opam tool *)
+val opam : Path.t option
+
+(** Look for a program in the PATH *)
+val which : ?path:Path.t list -> string -> Path.t option
+
+(** Return the .opt version of a tool if available. If the tool is not available at all in
+    the given directory, returns [None]. *)
+val best_prog : Path.t -> string -> Path.t option

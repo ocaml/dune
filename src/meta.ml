@@ -7,16 +7,21 @@ type t =
 
 and entry =
   | Comment of string
-  | Var     of var
+  | Rule    of rule
   | Package of t
 
-and var = string * predicate list * action * string
+and rule =
+  { var        : string
+  ; predicates : predicate list
+  ; action     : action
+  ; value      : string
+  }
 
 and action = Set | Add
 
 and predicate =
-  | P of string
-  | A of string
+  | Pos of string
+  | Neg of string
 
 module Parse = struct
   let error = Loc.fail_lex
@@ -50,14 +55,14 @@ module Parse = struct
   let rec predicates_and_action lb acc =
     match next lb with
     | Rparen -> (List.rev acc, action lb)
-    | Name n -> after_predicate lb (P n :: acc)
+    | Name n -> after_predicate lb (Pos n :: acc)
     | Minus  ->
       let n =
         match next lb with
         | Name p -> p
         | _      -> error lb "name expected"
       in
-      after_predicate lb (A n :: acc)
+      after_predicate lb (Neg n :: acc)
     | _          -> error lb "name, '-' or ')' expected"
 
   and after_predicate lb acc =
@@ -84,7 +89,7 @@ module Parse = struct
       let sub_entries = entries lb (depth + 1) [] in
       entries lb depth (Package { name; entries = sub_entries } :: acc)
     | Name var ->
-      let preds, action =
+      let predicates, action =
         match next lb with
         | Equal      -> ([], Set)
         | Plus_equal -> ([], Add)
@@ -92,7 +97,7 @@ module Parse = struct
         | _          -> error lb "'=', '+=' or '(' expected"
       in
       let value = string lb in
-      entries lb depth (Var (var, preds, action, value) :: acc)
+      entries lb depth (Rule { var; predicates; action; value } :: acc)
     | _ ->
       error lb "'package' or variable name expected"
 end
@@ -101,21 +106,116 @@ let load fn =
   with_lexbuf_from_file fn ~f:(fun lb ->
       Parse.entries lb 0 [])
 
-let flatten t =
-  let rec loop path acc_vars acc_pkgs entries =
-    match entries with
-    | [] -> (List.rev acc_vars, acc_pkgs)
-    | entry :: rest ->
+module Simplified = struct
+  module Rules = struct
+    type t =
+      { set_rules : rule list
+      ; add_rules : rule list
+      }
+  end
+
+  type t =
+    { name : string
+    ; vars : Rules.t String_map.t
+    ; subs : t list
+    }
+end
+
+let rec simplify t =
+  List.fold_right t.entries
+    ~init:
+      { name = t.name
+      ; vars = String_map.empty
+      ; subs = []
+      }
+    ~f:(fun entry (pkg : Simplified.t) ->
       match entry with
-      | Comment _ ->
-        loop path acc_vars acc_pkgs rest
-      | Var v ->
-        loop path (v :: acc_vars) acc_pkgs rest
-      | Package { name; entries } ->
-        let sub_path = sprintf "%s.%s" path name in
-        let sub_vars, acc_pkgs = loop sub_path [] acc_pkgs entries in
-        let acc_pkgs = (sub_path, sub_vars) :: acc_pkgs in
-        loop path acc_vars acc_pkgs rest
+      | Comment _ -> pkg
+      | Package sub ->
+        { pkg with subs = simplify sub :: pkg.subs }
+      | Rule rule ->
+        let rules =
+          String_map.find_default rule.var pkg.vars
+            ~default:{ set_rules = []; add_rules = [] }
+        in
+        let rules =
+          match rule.action with
+          | Set -> { rules with set_rules = rule :: rules.set_rules }
+          | Add -> { rules with add_rules = rule :: rules.add_rules }
+        in
+        { pkg with vars = String_map.add pkg.vars ~key:rule.var ~data:rules })
+
+let builtins =
+  let rule var predicates action value =
+    Rule { var; predicates; action; value }
   in
-  let vars, pkgs = loop t.name [] [] t.entries in
-  (t.name, vars) :: pkgs
+  let requires ?(preds=[]) pkgs =
+    rule "requires" preds Set (String.concat ~sep:" " pkgs)
+  in
+  let version       = rule "version"    []      Set "[distributed with Ocaml]"    in
+  let directory   s = rule "directory"  []      Set s                             in
+  let archive p s   = rule "archive"    [Pos p] Set s                             in
+  let plugin  p s   = rule "plugin"     [Pos p] Set s                             in
+  let archives name =
+    [ archive "byte"   (name ^ ".cma" )
+    ; archive "native" (name ^ ".cmxa")
+    ; plugin  "byte"   (name ^ ".cma" )
+    ; plugin  "native" (name ^ ".cmxs")
+    ]
+  in
+  let simple name ?dir ?(archive_name=name) deps =
+    let archives = archives archive_name in
+    { name
+    ; entries =
+        (requires deps ::
+         version       ::
+         match dir with
+         | None -> archives
+         | Some d -> directory d :: archives)
+    }
+  in
+  let compiler_libs =
+    let sub name deps =
+      Package (simple name deps ~archive_name:("ocaml" ^ name))
+    in
+    { name = "compiler-libs"
+    ; entries =
+        [ requires []
+        ; version
+        ; directory "+compiler-libs"
+        ; sub "common" []
+        ; sub "bytecomp" ["compiler-libs.common"  ]
+        ; sub "optcomp"  ["compiler-libs.common"  ]
+        ; sub "toplevel" ["compiler-libs.bytecomp"]
+        ]
+    }
+  in
+  let str = simple "str" [] ~dir:"+" in
+  let threads =
+    { name = "threads"
+    ; entries =
+        [ version
+        ; requires ~preds:[Pos "mt"; Pos "mt_vm"   ] ["threads.vm"]
+        ; requires ~preds:[Pos "mt"; Pos "mt_posix"] ["threads.posix"]
+        ; directory "+"
+        ; rule "type_of_threads" [] Set "posix"
+        ; rule "error" [Neg "mt"] Set "Missing -thread or -vmthread switch"
+        ; rule "error" [Neg "mt_vm"; Neg "mt_posix"] Set "Missing -thread or -vmthread switch"
+        ; Package (simple "vm" ["unix"] ~dir:"+vmthreads" ~archive_name:"threads")
+        ; Package (simple "posix" ["unix"] ~dir:"+threads" ~archive_name:"threads")
+        ]
+    }
+  in
+  let num =
+    { name = "num"
+    ; entries =
+        [ requires ["num.core"]
+        ; version
+        ; Package (simple "core" [] ~dir:"+" ~archive_name:"nums")
+        ]
+    }
+  in
+  List.map [ compiler_libs; str; threads; num ] ~f:(fun t -> t.name, t)
+  |> String_map.of_alist_exn
+
+let builtin name = String_map.find name builtins

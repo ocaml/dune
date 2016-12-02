@@ -17,3 +17,16 @@ let fail t fmt =
 
 let fail_lex lb fmt =
   fail (of_lexbuf lb) fmt
+
+let in_file fn =
+  let pos : Lexing.position =
+    { pos_fname = fn
+    ; pos_lnum  = 1
+    ; pos_cnum  = 0
+    ; pos_bol   = 0
+    }
+  in
+  { start = pos
+  ; stop = pos
+  }
+

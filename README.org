@@ -1,0 +1,121 @@
+* A fast, portable and opinionated build system
+
+Jbuilder is a build system that was designed to simplify the release
+of Jane Street packages. It should however cover the needs of a wide
+range of OCaml packages. It reads metadata from \"jbuild\" files
+following a very simple s-expression syntax.
+
+** Overview
+
+Jbuilder is fast, has very low-overhead and supports parallel builds
+on all platforms. It has no system dependencies: all you need to build
+jbuilder and packages using jbuilder is OCaml. You don't need
+=make= or =bash= as long as the packages themselves don't use =bash=
+explicitely.
+
+This hasn't been tested yet, but in theory one should be able to
+install OCaml on Windows with a binary installer and then use only the
+Windows Console to build Jbuilder and packages using Jbuilder.
+
+** Features
+
+*** Multi-package development
+
+Jbuilder supports multi-package development by simply dropping
+multiple repositories into the same directory. You just need to create
+an empty file =jbuild-workspace= to mark the root of your workspace.
+
+*** Multi-context builds
+
+Jbuilders supports multi-context builds, such as building against
+several opam roots/switches simultaneously. This helps maintaining
+packages across several versions of OCaml and gives cross-compilation
+for free; when you need a program to run on the host, you simply use
+the one from the corresponding host context.
+
+*** Defining several packages in one repository
+
+Jbuilder supports building several packages from the same
+repository. When building via opam, it is able to correctly use
+already installed libraries instead of the one present in the tarball.
+
+The magic invocation is =jbuilder build-package <package>= which starts
+by filtering out everything that is part of another opam package.
+
+*** Develop with jenga, release with jbuilder
+
+Jbuilder is intended as a fast release build system. Eventually we'll
+have jenga rules that are able to understand the jbuilder rules. This
+means that one will be able to use jenga as a confortable development
+build system that knows how to do polling builds or talk to emacs
+and use jbuilder to release packages with as few requirements as
+possible.
+
+** Status
+
+Jbuilder is still in its infancy and in active development. One vital
+thing that is still missing is a proper CLI. It is planned to add one
+by dropping a copy of [[http://erratique.ch/software/cmdliner][cmdliner]]
+inside jbuilder.
+
+Most of the core functionality is already there however. What you can do
+right now is write some jbuild files, and invoke jbuilder at the root
+of your project as follows:
+
+#+begin_src
+$ jbuilder <package>.install
+#+end_src
+
+Building the =.install= file will build all the things that need to be
+installed.
+
+** Roadmap
+
+Following is the current plan for the future of jbuild.
+
+*** CLI
+
+Add a proper [[http://erratique.ch/software/cmdliner][cmdliner]] based CLI.
+Jbuilder will include a copy of cmdliner to avoid the extra dependency.
+
+*** Documentation
+
+Document the usage and design of Jbuilder.
+
+*** Stable jbuild types
+
+Add a stable version of the jbuild format so that one can write
+=(jbuild_format 1)= inside jbuild files and be sure that they will
+work with future versions of jbuild.
+
+The standard jbuild format will evolve with the format used inside
+Jane Street so that it can be used to easily build Jane Street packages.
+
+*** Finding the project/workspace root
+
+Currently =jbuilder= assumes that the root of the project/workspace is
+where it is started. Eventually this will be changed as follows:
+
+- if there is a =jbuild-workspace= in a parent directory, it marks the root;
+- if not found, look for a =opam= or =package.opam= file in parent directories;
+- if not found, look for a =.git=, =.hg=, ... file in parent directories;
+- if not found, use the current directory as root.
+
+*** Cross-compilation
+
+Everything needed for cross-compilation is implemented. One
+essentially need to add a function =host_exe : Path.t -> Path.t=
+inside build contexts to make it all work, as well as a way to define
+the build contexts. These could be defined inside =jbuild-workspace=
+as follows:
+
+#+begin_src scheme
+(context
+ ((name   foo)
+  (switch 4.04.0)))
+
+(context
+ ((name   foo+mingw)
+  (switch 4.04.0+mingw)
+  (host   foo)))
+#+end_src

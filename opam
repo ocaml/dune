@@ -1,0 +1,33 @@
+opam-version: "1.2"
+maintainer: "opensource@janestreet.com"
+authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
+homepage: "https://github.com/janestreet/jbuilder"
+bug-reports: "https://github.com/janestreet/jbuilder/issues"
+dev-repo: "https://github.com/janestreet/jbuilder.git"
+license: "Apache-2.0"
+build: [
+  ["ocaml" "build.ml"]
+]
+depends: [
+]
+available: [ ocaml-version >= "4.03.0" ]
+descr: "
+Fast, portable and opinionated build system
+
+jbuilder is a build system that was designed to simplify the release
+of Jane Street packages. It reads metadata from \"jbuild\" files
+following a very simple s-expression syntax.
+
+jbuilder is fast, it has very low-overhead and support parallel builds
+on all platforms. It is no system dependencies, all you need to build
+jbuilder and packages using jbuilder is OCaml. You don't need or make
+or bash as long as the packages themselves don't use bash explicitely.
+
+jbuilder supports multi-package development by simply dropping multiple
+repositories into the same directory.
+
+It also supports multi-context builds, such as building against
+several opam roots/switches simultaneously. This helps maintaining
+packages across several versions of OCaml and gives cross-compilation
+for free.
+"

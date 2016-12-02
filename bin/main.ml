@@ -1,0 +1,1 @@
+let () = Jbuilder.Main.main ()

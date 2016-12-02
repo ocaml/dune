@@ -9,17 +9,41 @@ type t =
 
 and entry =
   | Comment of string
-  | Var     of var
+  | Rule    of rule
   | Package of t
 
-and var = string * predicate list * action * string
+and rule =
+  { var        : string
+  ; predicates : predicate list
+  ; action     : action
+  ; value      : string
+  }
 
 and action = Set | Add
 
 and predicate =
-  | P of string (** Present *)
-  | A of string (** Absent  *)
+  | Pos of string
+  | Neg of string
 
 val load : string -> entry list
 
-val flatten : t -> (string * var list) list
+module Simplified : sig
+  module Rules : sig
+    type t =
+      { set_rules : rule list
+      ; add_rules : rule list
+      }
+  end
+
+  type t =
+    { name : string
+    ; vars : Rules.t String_map.t
+    ; subs : t list
+    }
+end
+
+val simplify : t -> Simplified.t
+
+(** Builtin META files for libraries distributed with the compiler. For when ocamlfind is
+    not installed. *)
+val builtin : string -> t option

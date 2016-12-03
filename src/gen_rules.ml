@@ -591,6 +591,7 @@ module Gen(P : Params) = struct
              ; Dyn Lib.include_flags
              ; flags
              ; As extra_args
+             ; A "-no-alias-deps"
              ; A "-I"; Path dir
              ; (match alias_module with
                 | None -> S []
@@ -777,7 +778,7 @@ module Gen(P : Params) = struct
     build_modules ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
       build_module m
-        ~flags:(As ["-no-alias-deps"; "-w"; "-49"])
+        ~flags:(As ["-w"; "-49"])
         ~dir
         ~modules:(String_map.singleton m.name m)
         ~dep_graph:(Ml_kind.Dict.make_both (Build.return (String_map.singleton m.name [])))

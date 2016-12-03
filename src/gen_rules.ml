@@ -285,8 +285,8 @@ module Gen(P : Params) = struct
       List.filter_map (String_map.values modules) ~f:(fun m -> Module.file ~dir m ml_kind)
       |> List.map ~f:(fun fn ->
         match ml_kind, Filename.ext (Path.to_string fn) with
-        | Impl, Some "ml"  -> Arg_spec.Dep fn
-        | Intf, Some "mli" -> Dep fn
+        | Impl, Some ".ml"  -> Arg_spec.Dep fn
+        | Intf, Some ".mli" -> Dep fn
         | Impl, _ -> S [A "-impl"; Dep fn]
         | Intf, _ -> S [A "-intf"; Dep fn])
     in
@@ -329,7 +329,7 @@ module Gen(P : Params) = struct
     | Some (fn, ext) ->
       (* We need to to put the .pp before the .ml so that the compiler realises that
          [foo.pp.mli] is the interface for [foo.pp.ml] *)
-      fn ^ ".pp." ^ ext
+      fn ^ ".pp" ^ ext
 
   let pped_module ~dir (m : Module.t) ~f =
     let ml_pp_fname = pp_fname m.ml_fname in
@@ -535,17 +535,27 @@ module Gen(P : Params) = struct
       Option.iter (Module.cm_source ~dir m cm_kind) ~f:(fun src ->
         let ml_kind = Cm_kind.source cm_kind in
         let dst = Module.cm_file m ~dir cm_kind in
-        let extra_deps, extra_targets =
+        let extra_args, extra_deps, extra_targets =
           match cm_kind, m.mli_fname with
-          (* If there is no mli, [ocamlY -c file.ml] produces both the .cmY and .cmi. We
-             choose to use ocamlc to produce the cmi and to produce the cmx we have to wait
-             for the cmo to avoid race conditions. *)
-          | Cmo, None -> [], [Module.cm_file m ~dir Cmi]
-          | Cmx, None -> [Module.cm_file m ~dir Cmo], []
+          (* If there is no mli, [ocamlY -c file.ml] produces both the
+             .cmY and .cmi. We choose to use ocamlc to produce the cmi
+             and to produce the cmx we have to wait to avoid race
+             conditions. *)
+          | Cmo, None -> [], [], [Module.cm_file m ~dir Cmi]
+          | Cmx, None ->
+            (* Change [-intf-suffix] so that the compiler thinks the
+               cmi exists and reads it instead of re-creating it, which
+               could create a race condition. *)
+            ([ "-intf-suffix"
+             ; match Filename.ext m.ml_fname with
+             | None -> ""
+             | Some ext -> ext
+             ],
+             [Module.cm_file m ~dir Cmi], [])
           | Cmi, None -> assert false
-          | Cmi, Some _ -> [], []
+          | Cmi, Some _ -> [], [], []
           (* We need the .cmi to build either the .cmo or .cmx *)
-          | (Cmo | Cmx), Some _ -> [Module.cm_file m ~dir Cmi], []
+          | (Cmo | Cmx), Some _ -> [], [Module.cm_file m ~dir Cmi], []
         in
         let dep_graph = Ml_kind.Dict.get dep_graph ml_kind in
         let other_cm_files =
@@ -579,6 +589,7 @@ module Gen(P : Params) = struct
              ; cmt_args
              ; Dyn Lib.include_flags
              ; flags
+             ; As extra_args
              ; A "-I"; Path dir
              ; (match alias_module with
                 | None -> S []

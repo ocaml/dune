@@ -206,14 +206,14 @@ module Filename = struct
     | i ->
       Some
         (String.sub fn ~pos:0 ~len:i,
-         String.sub fn ~pos:(i + 1) ~len:(String.length fn - i - 1))
+         String.sub fn ~pos:i ~len:(String.length fn - i))
 
   let ext fn =
     match String.rindex fn '.' with
     | exception Not_found -> None
     | i ->
       Some
-        (String.sub fn ~pos:(i + 1) ~len:(String.length fn - i - 1))
+        (String.sub fn ~pos:i ~len:(String.length fn - i))
 end
 
 module Option = struct

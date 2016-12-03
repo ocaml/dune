@@ -444,6 +444,7 @@ module Gen(P : Params) = struct
                (Dep ppx_exe)
                [ Dyn (specific_args_for_ppx_rewriters ~dir)
                ; As flags
+               ; A "-dump-ast"
                ; A "-o"; Target dst
                ; Ml_kind.flag kind; Dep src
                ])

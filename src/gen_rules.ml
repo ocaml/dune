@@ -1151,11 +1151,23 @@ module Gen(P : Params) = struct
       | _  -> [dll ~dir lib]
     in
     List.concat
-      [ List.map files ~f:(fun src ->
-          { Install.Entry. src; dst = None; section = Lib })
-      ; List.map dlls  ~f:(fun src ->
-          { Install.Entry. src; dst = None; section = Stublibs })
+      [ List.map files ~f:(Install.Entry.make Lib     )
+      ; List.map dlls  ~f:(Install.Entry.make Stublibs)
       ]
+
+  let add_doc_file fn entries =
+    let suffixes = [""; ".md"; ".org"; ".txt"] in
+    match
+      List.find_map suffixes ~f:(fun suf ->
+          let path = Path.of_string (fn ^ suf) in
+          if Path.exists path then
+            Some path
+          else
+            None)
+    with
+    | None -> entries
+    | Some path ->
+      Install.Entry.make Doc path :: entries
 
   let install_file package =
     let entries =
@@ -1169,11 +1181,18 @@ module Gen(P : Params) = struct
     let entries =
       let meta = Path.of_string "META" in
       if Path.exists meta then
-        { Install.Entry.
-          src = meta
-        ; dst = None
-        ; section = Lib
-        } :: entries
+        Install.Entry.make Lib meta :: entries
+      else
+        entries
+    in
+    let entries =
+      List.fold_left ["README"; "LICENSE"] ~init:entries ~f:(fun acc fn ->
+          add_doc_file fn acc)
+    in
+    let entries =
+      let opam = Path.of_string "opam" in
+      if Path.exists opam then
+        Install.Entry.make Lib opam :: entries
       else
         entries
     in

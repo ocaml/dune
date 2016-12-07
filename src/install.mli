@@ -22,6 +22,8 @@ module Entry : sig
     ; dst     : string option
     ; section : Section.t
     }
+
+  val make : Section.t -> ?dst:string -> Path.t -> t
 end
 
 val files : Entry.t list -> Path.Set.t

@@ -51,6 +51,14 @@ module List = struct
   let partition_map l ~f =
     let l, r = rev_partition_map l ~f in
     (List.rev l, List.rev r)
+
+  let rec find_map l ~f =
+    match l with
+    | [] -> None
+    | x :: l ->
+      match f x with
+      | None -> find_map l ~f
+      | Some _ as res -> res
 end
 
 module Hashtbl = struct

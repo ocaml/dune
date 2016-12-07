@@ -38,6 +38,12 @@ module Entry = struct
     ; dst     : string option
     ; section : Section.t
     }
+
+  let make section ?dst src =
+    { src
+    ; dst
+    ; section
+    }
 end
 
 module SMap = Map.Make(Section)

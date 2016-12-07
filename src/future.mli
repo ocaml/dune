@@ -11,6 +11,8 @@ val both : 'a t -> 'b t -> ('a * 'b) t
 val all : 'a t list -> 'a list t
 val all_unit : unit t list -> unit t
 
+val with_exn_handler : (unit -> 'a) -> handler:(exn -> Printexc.raw_backtrace -> unit) -> 'a
+
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its termination *)
 val run
   :  ?dir:string

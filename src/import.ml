@@ -2,6 +2,8 @@ module Array   = StdLabels.Array
 module Bytes   = StdLabels.Bytes
 module Set     = MoreLabels.Set
 
+external reraise : exn -> _ = "%reraise"
+
 let open_in = open_in_bin
 let open_out = open_out_bin
 

@@ -1,5 +1,7 @@
 open Import
 
+type exn_handler = exn -> Printexc.raw_backtrace -> unit
+
 type 'a t = { mutable state : 'a state }
 
 and 'a state =
@@ -9,8 +11,10 @@ and 'a state =
 
 and 'a handlers =
   | Empty
-  | One    of ('a -> unit)
+  | One    of exn_handler * ('a -> unit)
   | Append of 'a handlers * 'a handlers
+
+let exn_handler = ref (fun exn _ -> reraise exn)
 
 let append h1 h2 =
   match h1, h2 with
@@ -25,15 +29,26 @@ let rec repr t =
 
 let run_handlers handlers x =
   let rec loop handlers acc =
-    match handlers, acc with
-    | Empty, [] -> ()
-    | Empty, h :: acc -> loop h acc
-    | One f, [] -> f x
-    | One f, h :: acc -> f x; loop h acc
-    | Append (h1, h2), _ -> loop h1 (h2 :: acc)
+    match handlers with
+    | Empty -> continue acc
+    | One (handler, f) ->
+      exn_handler := handler;
+      (try
+         f x
+       with exn ->
+         let bt = Printexc.get_raw_backtrace () in
+         handler exn bt);
+      continue acc
+    | Append (h1, h2) -> loop h1 (h2 :: acc)
+  and continue = function
+    | [] -> ()
+    | h :: acc -> loop h acc
   in
-  loop handlers []
-
+  protectx !exn_handler
+    ~finally:(fun saved ->
+        exn_handler := saved)
+    ~f:(fun _ ->
+        loop handlers [])
 
 let connect t1 t2 =
   let t1 = repr t1 and t2 = repr t2 in
@@ -64,12 +79,21 @@ let ( >>= ) t f =
   | Return v -> f v
   | Sleep handlers ->
     let res = sleeping () in
-    t.state <- Sleep (append handlers (One (fun x -> connect res (f x))));
+    t.state <- Sleep (append handlers (One (!exn_handler,
+                                            fun x -> connect res (f x))));
     res
   | Repr _ ->
     assert false
 
 let ( >>| ) t f = t >>= fun x -> return (f x)
+
+let with_exn_handler f ~handler =
+  protectx !exn_handler
+    ~finally:(fun saved ->
+        exn_handler := saved)
+    ~f:(fun _ ->
+        exn_handler := handler;
+        f ())
 
 let both a b =
   a >>= fun a ->
@@ -97,7 +121,7 @@ end
 let rec all = function
   | [] -> return []
   | x :: l ->
-    x >>= fun x ->
+    x     >>= fun x ->
     all l >>= fun l ->
     return (x :: l)
 

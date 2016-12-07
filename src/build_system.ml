@@ -77,8 +77,7 @@ module Build_error = struct
 
   exception E of t
 
-  let raise ~targeting exn =
-    let backtrace = Printexc.get_raw_backtrace () in
+  let raise ~targeting ~backtrace exn =
     let rec build_path acc targeting ~seen =
       assert (not (Pset.mem targeting seen));
       let seen = Pset.add targeting seen in
@@ -109,12 +108,11 @@ let wait_for_file fn ~targeting =
     | Not_started f ->
       file.rule.exec <- Starting { for_file = targeting };
       let future =
-        try
-          f ~targeting:fn
-        with
-        | Build_error.E _ as exn -> raise exn
-        | exn ->
-          Build_error.raise ~targeting:fn exn
+        with_exn_handler (fun () -> f ~targeting:fn)
+          ~handler:(fun exn backtrace ->
+              match exn with
+              | Build_error.E _ -> reraise exn
+              | exn -> Build_error.raise exn ~targeting:fn ~backtrace)
       in
       file.rule.exec <- Running { for_file = targeting; future };
       future

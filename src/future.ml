@@ -88,12 +88,15 @@ let ( >>= ) t f =
 let ( >>| ) t f = t >>= fun x -> return (f x)
 
 let with_exn_handler f ~handler =
-  protectx !exn_handler
-    ~finally:(fun saved ->
-        exn_handler := saved)
-    ~f:(fun _ ->
-        exn_handler := handler;
-        f ())
+  let saved = !exn_handler in
+  exn_handler := handler;
+  match f () with
+  | x -> exn_handler := saved; x
+  | exception exn ->
+    let bt = Printexc.get_raw_backtrace () in
+    exn_handler := saved;
+    handler exn bt;
+    reraise exn
 
 let both a b =
   a >>= fun a ->

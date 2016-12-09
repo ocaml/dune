@@ -655,7 +655,7 @@ module Gen(P : Params) = struct
         | _  ->
           let stubs_name = lib.name ^ "_stubs" in
           match mode with
-          | Byte -> ["-dllib"; stubs_name; "-cclib"; stubs_name]
+          | Byte -> ["-dllib"; "dll" ^ stubs_name; "-cclib"; stubs_name]
           | Native -> ["-cclib"; stubs_name]
       in
       BS.rule

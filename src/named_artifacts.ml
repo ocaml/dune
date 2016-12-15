@@ -34,6 +34,6 @@ let in_findlib t name =
     match String.lsplit2 name ~on:':' with
     | None -> invalid_arg "Named_artifacts.in_findlib"
     | Some (pkg, file) ->
-      let p = Path.relative (Findlib.find t.findlib pkg).dir file in
+      let p = Path.relative (Findlib.find_exn t.findlib pkg).dir file in
       Hashtbl.add t.artifacts ~key:name ~data:p;
       p

@@ -82,7 +82,16 @@ val echo : Path.t -> (string, unit) t
 
 val copy : src:Path.t -> dst:Path.t -> (unit, unit) t
 
-val record_lib_deps : dir:Path.t -> string list -> ('a, 'a) t
+type lib_dep_kind =
+  | Optional
+  | Required
+
+val record_lib_deps : dir:Path.t -> kind:lib_dep_kind -> string list -> ('a, 'a) t
+
+type lib_deps = lib_dep_kind String_map.t
+
+(**/**)
+
 
 module Repr : sig
   type ('a, 'b) t =
@@ -98,7 +107,9 @@ module Repr : sig
     | Paths_glob : Path.t * Re.re -> ('a, 'a) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
-    | Record_lib_deps : Path.t * String_set.t -> ('a, 'a) t
+    | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
 end
 
 val repr : ('a, 'b) t -> ('a, 'b) Repr.t
+
+val merge_lib_deps : lib_deps -> lib_deps -> lib_deps

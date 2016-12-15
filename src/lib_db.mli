@@ -9,4 +9,4 @@ val find : t -> string -> Lib.t
 val find_internal : t -> string -> Lib.Internal.t option
 val split : t -> string list -> Lib.Internal.t list * string list
 
-(*val top_closure : t -> string list -> Lib.t list*)
+val internal_libs_without_non_installable_optional_ones : t -> Lib.Internal.t list

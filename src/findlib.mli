@@ -24,7 +24,9 @@ type package =
   ; has_headers      : bool
   }
 
-val find : t -> string -> package
+val find_exn : t -> string -> package
+
+val available : t -> string -> bool
 
 val root_package_name : string -> string
 

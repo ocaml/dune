@@ -16,7 +16,7 @@ module Rule = struct
   type t =
     { deps         : Pset.t
     ; targets      : Pset.t
-    ; lib_deps     : String_set.t Pmap.t
+    ; lib_deps     : Build.lib_deps Pmap.t
     ; mutable exec : Exec_status.t
     }
 end
@@ -199,7 +199,7 @@ module Build_interpret = struct
     loop t Pset.empty
 
   let lib_deps =
-    let rec loop : type a b. (a, b) t -> String_set.t Pmap.t -> String_set.t Pmap.t
+    let rec loop : type a b. (a, b) t -> Build.lib_deps Pmap.t -> Build.lib_deps Pmap.t
       = fun t acc ->
         match t with
         | Arr _ -> acc
@@ -214,11 +214,11 @@ module Build_interpret = struct
         | Vpath _ -> acc
         | Paths_glob _ -> acc
         | Dyn_paths t -> loop t acc
-        | Record_lib_deps (dir, names) ->
+        | Record_lib_deps (dir, deps) ->
           let data =
             match Pmap.find dir acc with
-            | None -> names
-            | Some set -> String_set.union set names
+            | None -> deps
+            | Some others -> Build.merge_lib_deps deps others
           in
           Pmap.add acc ~key:dir ~data
     in
@@ -327,9 +327,13 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       Printf.eprintf "{%s} -> {%s}\n" (f deps) (f targets)
     else
       let lib_deps =
-        Pmap.fold lib_deps ~init:String_set.empty ~f:(fun ~key:_ ~data acc ->
-          String_set.union acc data)
-        |> String_set.elements
+        Pmap.fold lib_deps ~init:String_map.empty ~f:(fun ~key:_ ~data acc ->
+          Build.merge_lib_deps acc data)
+        |> String_map.bindings
+        |> List.map ~f:(fun (name, kind) ->
+          match (kind : Build.lib_dep_kind) with
+          | Required -> name
+          | Optional -> sprintf "%s (optional)" name)
         |> String.concat ~sep:", "
       in
       Printf.eprintf "{%s}, libs:{%s} -> {%s}\n" (f deps) lib_deps (f targets)
@@ -468,7 +472,7 @@ let all_lib_deps t targets =
         | None, None -> None
         | Some a, None -> Some a
         | None, Some b -> Some b
-        | Some a, Some b -> Some (String_set.union a b)))
+        | Some a, Some b -> Some (Build.merge_lib_deps a b)))
   | Error cycle ->
     die "dependency cycle detected:\n   %s"
       (List.map cycle ~f:(fun (path, _) -> Path.to_string path)

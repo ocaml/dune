@@ -4,7 +4,7 @@ open! Import
 
 val gen
   :  package:string
-  -> stanzas:(Path.t * Jbuild_types.Stanza.t list) list
+  -> stanzas:(Path.t * Jbuild_types.Stanza.t) list
   -> lib_deps:(dir:Path.t
                -> Jbuild_types.Stanza.t
                -> ('a, string list) Build.t)

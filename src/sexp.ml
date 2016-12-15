@@ -136,6 +136,7 @@ module Of_sexp = struct
     type 'a kind =
       | Field   : (sexp -> 'a) * 'a option -> 'a kind
       | Field_o : (sexp -> 'a) -> 'a option kind
+      | Field_b : bool kind
 
     type 'a t =
       { name : string
@@ -144,10 +145,12 @@ module Of_sexp = struct
 
     let field name ?default of_sexp = { name; kind = Field (of_sexp, default) }
     let field_o name of_sexp = { name; kind = Field_o of_sexp }
+    let field_b name = { name; kind = Field_b }
   end
 
   let field   = Field_spec.field
   let field_o = Field_spec.field_o
+  let field_b = Field_spec.field_b
 
   module Fields_spec = struct
     type ('a, 'b) t =
@@ -185,6 +188,11 @@ module Of_sexp = struct
     in
     fun entries name -> loop entries name 0 (Array.length entries)
 
+  type field_value =
+    | Unset
+    | Value of sexp
+    | Without_value
+
   let parse_field field_names field_values sexp =
     match sexp with
     | List [name_sexp; value_sexp] -> begin
@@ -193,8 +201,14 @@ module Of_sexp = struct
         | Atom name ->
           match binary_search field_names name with
           | Some (-1) -> () (* ignored field *)
-          | Some n -> field_values.(n) <- value_sexp
+          | Some n -> field_values.(n) <- Value value_sexp
           | None -> of_sexp_error (Printf.sprintf "Unknown field %s" name) name_sexp
+      end
+    | List [Atom name] -> begin
+        match binary_search field_names name with
+        | Some (-1) -> () (* ignored field *)
+        | Some n -> field_values.(n) <- Without_value
+        | None -> of_sexp_error (Printf.sprintf "Unknown field %s" name) sexp
       end
     | _ ->
       of_sexp_error "S-expression of the form (_ _) expected" sexp
@@ -206,23 +220,25 @@ module Of_sexp = struct
       parse_field field_names field_values sexp;
       parse_fields field_names field_values sexps
 
-  (* S-expression different from all others in the program, to act as a None value *)
-  let none_sexp = Atom Sys.executable_name
-
-  let parse_field_value : type a. sexp -> a Field_spec.t -> sexp -> a =
-    fun full_sexp spec sexp ->
+  let parse_field_value : type a. sexp -> a Field_spec.t -> field_value -> a =
+    fun full_sexp spec value ->
       let open Field_spec in
       let { name; kind } = spec in
-      match kind, (sexp == none_sexp) with
-      | Field (_, None), true ->
+      match kind, value with
+      | Field (_, None), Unset ->
         of_sexp_error (Printf.sprintf "field %s missing" name) full_sexp
-      | Field (_, Some default), true -> default
-      | Field (f, _), _ -> f sexp
-      | Field_o _, true -> None
-      | Field_o f, false -> Some (f sexp)
+      | Field (_, Some default), Unset -> default
+      | Field (f, _), Value sexp -> f sexp
+      | Field_o _, Unset -> None
+      | Field_o f, Value sexp -> Some (f sexp)
+      | Field_b, Unset -> false
+      | Field_b, Without_value -> true
+      | Field_b, Value sexp -> bool sexp
+      | _, Without_value ->
+        of_sexp_error (Printf.sprintf "field %s needs a value" name) full_sexp
 
   let rec parse_field_values
-    : type a b. sexp -> (a, b) Fields_spec.t -> a -> sexp array -> int -> b =
+    : type a b. sexp -> (a, b) Fields_spec.t -> a -> field_value array -> int -> b =
     fun full_sexp spec k values n ->
       let open Fields_spec in
       match spec with
@@ -243,7 +259,7 @@ module Of_sexp = struct
       match sexp with
       | Atom _ -> of_sexp_error "List expected" sexp
       | List sexps ->
-        let field_values = Array.make (Array.length names) none_sexp in
+        let field_values = Array.make (Array.length names) Unset in
         parse_fields names field_values sexps;
         parse_field_values sexp spec record_of_fields field_values 0
 

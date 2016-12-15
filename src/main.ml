@@ -37,7 +37,7 @@ let internal argv =
        in
        List.iter pkgs ~f:(fun pkg ->
          let ver =
-           match (Findlib.find findlib pkg).version with
+           match (Findlib.find_exn findlib pkg).version with
            | "" -> "n/a"
            | v  -> v
          in
@@ -46,24 +46,27 @@ let internal argv =
   | _ ->
     ()
 
-let setup () =
+let setup ?filter_out_optional_stanzas_with_missing_deps () =
   let { Jbuild_load. tree; stanzas; packages } = Jbuild_load.load () in
   Lazy.force Context.default >>= fun ctx ->
-  let rules = Gen_rules.gen ~context:ctx ~tree ~stanzas ~packages in
+  let rules =
+    Gen_rules.gen ~context:ctx ~tree ~stanzas ~packages
+      ?filter_out_optional_stanzas_with_missing_deps ()
+  in
   let bs = Build_system.create ~rules in
   return (bs, stanzas, ctx)
 
 let external_lib_deps ~packages =
   Future.Scheduler.go
-    (setup () >>| fun (bs, stanzas, _) ->
+    (setup () ~filter_out_optional_stanzas_with_missing_deps:false
+     >>| fun (bs, stanzas, _) ->
      Path.Map.map
        (Build_system.all_lib_deps bs
           (List.map packages ~f:(fun pkg ->
              Path.(relative root) (pkg ^ ".install"))))
-       ~f:(fun names ->
-         String_set.diff
-           names
-           (Jbuild_types.Stanza.lib_names stanzas)))
+       ~f:(fun deps ->
+         let internals = Jbuild_types.Stanza.lib_names stanzas in
+         String_map.filter deps ~f:(fun name _ -> not (String_set.mem name internals))))
 
 let external_lib_deps_cmd argv =
   let packages =
@@ -71,10 +74,13 @@ let external_lib_deps_cmd argv =
       common_args
   in
   let deps =
-    Path.Map.fold (external_lib_deps ~packages) ~init:String_set.empty
-      ~f:(fun ~key:_ ~data:deps acc -> String_set.union deps acc)
+    Path.Map.fold (external_lib_deps ~packages) ~init:String_map.empty
+      ~f:(fun ~key:_ ~data:deps acc -> Build.merge_lib_deps deps acc)
   in
-  String_set.iter deps ~f:(Printf.printf "%s\n")
+  String_map.iter deps ~f:(fun ~key:n ~data ->
+    match (data : Build.lib_dep_kind) with
+    | Required -> Printf.printf "%s\n" n
+    | Optional -> Printf.printf "%s (optional)\n" n)
 
 let main () =
   let argv = Sys.argv in

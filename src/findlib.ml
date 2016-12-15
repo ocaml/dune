@@ -365,23 +365,28 @@ let load_meta t root_name =
       end
     )
 
-let find t name =
+let find_exn t name =
   match Hashtbl.find t.packages name with
   | Some x -> x
   | None ->
     load_meta t (root_package_name name);
     match Hashtbl.find t.packages name with
     | Some x -> x
-    | None -> raise (Package_not_found name)
+    | None   -> raise (Package_not_found name)
+
+let available t name =
+  match find_exn t name with
+  | _ -> true
+  | exception (Package_not_found _) -> false
 
 let closure t names =
-  let pkgs = List.map names ~f:(find t) in
+  let pkgs = List.map names ~f:(find_exn t) in
   remove_dups_preserve_order
     (List.concat_map pkgs ~f:(fun pkg -> pkg.requires)
      @ pkgs)
 
 let closed_ppx_runtime_deps_of t names =
-  let pkgs = List.map names ~f:(find t) in
+  let pkgs = List.map names ~f:(find_exn t) in
   remove_dups_preserve_order
     (List.concat_map pkgs ~f:(fun pkg -> pkg.ppx_runtime_deps))
 
@@ -402,6 +407,6 @@ let root_packages t =
 
 let all_packages t =
   List.iter (root_packages t) ~f:(fun pkg ->
-    ignore (find t pkg : package));
+    ignore (find_exn t pkg : package));
   Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:pkg ~data:_ acc -> pkg :: acc)
   |> List.sort ~cmp:String.compare

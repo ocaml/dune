@@ -1,6 +1,6 @@
 (** Build rules *)
 
-open Import
+open! Import
 
 type t
 
@@ -22,4 +22,4 @@ val do_build_exn : t -> Path.t list -> unit Future.t
 
 (** Return all the library dependencies (as written by the user) needed to build these
     targets *)
-val all_lib_deps : t -> Path.t list -> String_set.t Path.Map.t
+val all_lib_deps : t -> Path.t list -> Build.lib_deps Path.Map.t

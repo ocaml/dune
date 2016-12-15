@@ -135,17 +135,16 @@ let gen_obj _pub_name (exes : Executables.t) ~lib_deps =
 
 let gen ~package ~stanzas ~lib_deps ~ppx_runtime_deps =
   let items =
-    List.concat_map stanzas ~f:(fun (dir, stanzas) ->
-      List.filter_map stanzas ~f:(fun stanza ->
-        match (stanza : Stanza.t) with
-        | Library ({ public_name = Some name; _ } as lib)
-          when Findlib.root_package_name name = package ->
-          Some (Lib (dir, Pub_name.parse name, lib))
-        | Executables ({ object_public_name = Some name; _ } as exes)
-          when Findlib.root_package_name name = package ->
-          Some (Obj (dir, Pub_name.parse name, exes))
-        | _ ->
-          None))
+    List.filter_map stanzas ~f:(fun (dir, stanza) ->
+      match (stanza : Stanza.t) with
+      | Library ({ public_name = Some name; _ } as lib)
+        when Findlib.root_package_name name = package ->
+        Some (Lib (dir, Pub_name.parse name, lib))
+      | Executables ({ object_public_name = Some name; _ } as exes)
+        when Findlib.root_package_name name = package ->
+        Some (Obj (dir, Pub_name.parse name, exes))
+      | _ ->
+        None)
   in
   Build.all
     (List.map items ~f:(function

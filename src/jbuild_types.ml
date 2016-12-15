@@ -336,6 +336,7 @@ module Library = struct
     ; js_of_ocaml           : Js_of_ocaml.t option
     ; virtual_deps          : string list
     ; wrapped               : bool
+    ; optional              : bool
     }
 
   let t =
@@ -364,11 +365,12 @@ module Library = struct
       ; field      "includes"              (list String_with_vars.t) ~default:[]
       ; field      "kind"                  Kind.t ~default:Kind.Normal
       ; field      "wrapped"               bool ~default:true
+      ; field_b    "optional"
       ]
       (fun name public_name synopsis public_headers libraries ppx_runtime_libraries
         modules c_flags cxx_flags c_names cxx_names library_flags cclibs preprocess
         preprocessor_deps self_build_stubs_archive js_of_ocaml virtual_deps modes
-        includes kind wrapped ->
+        includes kind wrapped optional ->
         { name
         ; public_name
         ; synopsis
@@ -391,6 +393,7 @@ module Library = struct
         ; js_of_ocaml
         ; virtual_deps
         ; wrapped
+        ; optional
         })
 
   let has_stubs t =

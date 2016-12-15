@@ -51,6 +51,7 @@ module Of_sexp : sig
 
   val field   : string -> ?default:'a -> 'a t -> 'a Field_spec.t
   val field_o : string -> 'a t -> 'a option Field_spec.t
+  val field_b : string -> bool Field_spec.t
 
   val record
     :  ?ignore:string list

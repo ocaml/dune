@@ -6,7 +6,7 @@ bug-reports: "https://github.com/janestreet/jbuilder/issues"
 dev-repo: "https://github.com/janestreet/jbuilder.git"
 license: "Apache-2.0"
 build: [
-  ["ocaml" "build.ml"]
+  ["ocaml" "build.ml" "build-package" "jbuilder" "-j" jobs]
 ]
 depends: [
 ]

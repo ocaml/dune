@@ -1,3 +1,4 @@
+#warnings "-40";;
 #load "unix.cma";;
 
 module Array = ArrayLabels
@@ -14,7 +15,27 @@ open Printf
 
 module String_set = Set.Make(String)
 
+(* Modules overriden to bootstrap faster *)
+let overridden =
+  String_set.of_list
+    [ "Re_automata"
+    ; "Re_cset"
+    ; "Re_fmt"
+    ; "Re"
+    ; "Glob_lexer"
+    ]
+
 let ( ^/ ) = Filename.concat
+
+let protectx x ~finally ~f =
+  match f x with
+  | y           -> finally x; y
+  | exception e -> finally x; raise e
+
+let starts_with s ~prefix =
+  let plen = String.length prefix in
+  let slen = String.length s in
+  slen >= plen && String.sub s ~pos:0 ~len:plen = prefix
 
 let exec fmt =
   ksprintf (fun cmd ->
@@ -56,7 +77,7 @@ let best_prog dir prog =
   let fn = dir ^/ prog ^ ".opt" ^ exe in
   if Sys.file_exists fn then
     Some fn
-    else
+  else
     let fn = dir ^/ prog ^ exe in
     if Sys.file_exists fn then
       Some fn
@@ -108,8 +129,13 @@ let modules =
       match ext with
       | "ml" | "mll" ->
         let base = String.sub fn ~pos:0 ~len:i in
-        if ext = "mll" then run_ocamllex base;
-        String.capitalize_ascii base :: acc
+        let mod_name = String.capitalize_ascii base in
+        if String_set.mem mod_name overridden then
+          acc
+        else begin
+          if ext = "mll" then run_ocamllex base;
+          String.capitalize_ascii base :: acc
+        end
       | _ ->
         acc)
   |> String_set.of_list
@@ -167,7 +193,7 @@ let topsort deps =
   let n = List.length deps in
   let deps_by_module = Hashtbl.create n in
   List.iter deps ~f:(fun (m, deps) ->
-      Hashtbl.add deps_by_module m deps);
+    Hashtbl.add deps_by_module m deps);
   let not_seen = ref (List.map deps ~f:fst |> String_set.of_list) in
   let res = ref [] in
   let rec loop m =
@@ -202,7 +228,7 @@ let read_file fn =
   close_in ic;
   data
 
-let generated_file = "jbuilder.ml"
+let generated_file = "boot.ml"
 
 let generate_file_with_all_the_sources () =
   let oc = open_out generated_file in
@@ -229,6 +255,21 @@ let generate_file_with_all_the_sources () =
     pos_in_generated_file := !pos_in_generated_file + newlines;
     pr "# %d %S" (!pos_in_generated_file + 1) generated_file
   in
+  let s = {|
+module Re = struct
+  type t = unit
+  type re = unit
+  let compile () = ()
+  let execp _ _ = false
+end
+
+module Glob_lexer = struct
+  let parse_string _ = Error (0, "globs are not available during bootstrap")
+end
+|}
+  in
+  output_string oc s;
+  pos_in_generated_file := !pos_in_generated_file + count_newlines s;
   pr "module Jbuilder = struct";
   List.iter modules ~f:(fun m ->
     let base = String.uncapitalize m in
@@ -259,18 +300,21 @@ let () =
     | Native -> "cmxa"
     | Byte   -> "cma"
   in
-  exit (exec "%s -w -40 -o jbuilder unix.%s %s" compiler lib_ext generated_file)
+  let n =
+    protectx ()
+      ~f:(fun () ->
+        exec "%s -w -40 -o boot.exe unix.%s %s" compiler lib_ext generated_file)
+      ~finally:(fun () ->
+        try
+          Array.iter (Sys.readdir ".") ~f:(fun fn ->
+            if fn <> "boot.exe" && starts_with fn ~prefix:"boot." then
+              Sys.remove fn)
+        with _ ->
+          ())
+  in
+  if n <> 0 then exit n
 
-(* Alternative:
-
-   {[
-     module Sys = struct
-       include Sys
-       let argv = [|"jbuilder"; "src/jbuilder.exe"|]
-     end;;
-
-     #warnings "-40";;
-     #use "jbuilder.ml";;
-   ]}
-*)
-
+let () =
+  exit
+    (exec "%s"
+       (String.concat ~sep:" " ("./boot.exe" :: (List.tl (Array.to_list Sys.argv)))))

@@ -2,3 +2,7 @@
  ((names (main))
   (libraries (unix jbuilder))
   (preprocess no_preprocessing)))
+
+(install
+ ((section bin)
+  (files ((main.exe as jbuilder)))))

@@ -1,4 +1,3 @@
 _build
 *.install
-jbuild
-jbuild.*
+boot.exe

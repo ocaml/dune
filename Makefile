@@ -2,7 +2,7 @@ NAME := jbuilder
 
 # Default rule
 default:
-	ocaml build.ml
+	ocaml build.ml build-package jbuilder
 
 install:
 	opam-installer -i --prefix $(PREFIX) jbuilder.install

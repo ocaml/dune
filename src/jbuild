@@ -1,7 +1,8 @@
 ;; This program must have no dependencies outside of the compiler
 ;; distribution as it is used to build all of Jane Street packages
 (library
- ((name jbuilder)
+ ((name        jbuilder)
+  (public_name jbuilder)
   (libraries (unix))
   (preprocess no_preprocessing)))
 

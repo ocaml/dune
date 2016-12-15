@@ -181,14 +181,14 @@ module String = struct
         []
       else
         match s.[i] with
-        | ',' | ' ' | '\t' -> skip_blanks (i + 1)
+        | ',' | ' ' | '\t' | '\n' -> skip_blanks (i + 1)
         | _ -> parse_word i (i + 1)
     and parse_word i j =
       if j = length s then
         [sub s ~pos:i ~len:(j - i)]
       else
         match s.[j] with
-        | ',' | ' ' | '\t' -> sub s ~pos:i ~len:(j - i) :: skip_blanks (j + 1)
+        | ',' | ' ' | '\t' | '\n' -> sub s ~pos:i ~len:(j - i) :: skip_blanks (j + 1)
         | _ -> parse_word i (j + 1)
     in
     skip_blanks 0
@@ -205,6 +205,17 @@ module String = struct
     match index s ch with
     | i -> Some i
     | exception Not_found -> None
+
+  let split s ~on =
+    let rec loop i j =
+      if j = length s then
+        [sub s ~pos:i ~len:(j - i)]
+      else if s.[j] = on then
+        sub s ~pos:i ~len:(j - i) :: loop (j + 1) (j + 1)
+      else
+        loop i (j + 1)
+    in
+    loop 0 0
 end
 
 module Filename = struct

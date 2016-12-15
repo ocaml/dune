@@ -18,5 +18,8 @@ val debug_run : bool ref
 (** Print dependency path in case of error *)
 val debug_dep_path : bool ref
 
+(** Debug the findlib implementation *)
+val debug_findlib : bool ref
+
 (** Compiler warnings *)
 val warnings : string ref

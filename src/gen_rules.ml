@@ -1,9 +1,8 @@
 open Import
 open Jbuild_types
+open Build.O
 
 module BS = Build_system
-module Build = BS.Build
-open Build.O
 
 (* +-----------------------------------------------------------------+
    | Utils                                                           |
@@ -44,6 +43,7 @@ let obj_name_of_basename fn =
 
 module type Params = sig
   val context  : Context.t
+  val tree     : Alias.tree
   val stanzas  : (Path.t * Jbuild_types.Stanza.t list) list
   val packages : string list
 end
@@ -69,56 +69,100 @@ module Gen(P : Params) = struct
 
   let ctx = P.context
 
-  include (
-  struct
-    let findlib = Findlib.create ctx
+  let findlib = Findlib.create ctx
 
-    module Lib_db = struct
-      open Lib_db
+  module Lib_db = struct
+    open Lib_db
 
-      let t = create findlib (List.map P.stanzas ~f:(fun d -> (d.ctx_dir, d.stanzas)))
+    let t = create findlib (List.map P.stanzas ~f:(fun d -> (d.ctx_dir, d.stanzas)))
 
-      let find name = find t name
+    let find name = Build.arr (fun () -> find t name)
 
-      let top_closure names =
-        let v = lazy (Lib_db.top_closure t names) in
-        Build.record_lib_deps names
-        >>>
-        (Build.arr (fun () -> Lazy.force v))
+    module Libs_vfile =
+      Vfile_kind.Make_full
+        (struct type t = Lib.t list end)
+        (struct
+          open Sexp.To_sexp
+          let t l = list string (List.map l ~f:Lib.best_name)
+        end)
+        (struct
+          open Sexp.Of_sexp
+          let t sexp = List.map (list string sexp) ~f:(Lib_db.find t)
+        end)
 
-      let top_closure_dyn =
-        Build.arr (Lib_db.top_closure t)
-    end
+    let vrequires ~dir ~item =
+      let fn = Path.relative dir (item ^ ".requires.sexp") in
+    Build.Vspec.T (fn, (module Libs_vfile))
 
-    module Named_artifacts = struct
-      open Named_artifacts
+    let load_requires ~dir ~item =
+      Build.vpath (vrequires ~dir ~item)
 
-      let t = create findlib (List.map P.stanzas ~f:(fun d -> (d.ctx_dir, d.stanzas)))
+    let vruntime_deps ~dir ~item =
+      let fn = Path.relative dir (item ^ ".runtime-deps.sexp") in
+    Build.Vspec.T (fn, (module Libs_vfile))
 
-      let binary name = Build.arr (fun _  -> binary t name)
-      let in_findlib name =
-        let pkg =
-          match String.lsplit2 name ~on:':' with
-          | None -> invalid_arg "Named_artifacts.in_findlib"
-          | Some (pkg, _) -> pkg
+    let load_runtime_deps ~dir ~item =
+      Build.vpath (vruntime_deps ~dir ~item)
+
+    let closure ~dir names =
+      let internals, externals = Lib_db.split t names in
+      Build.record_lib_deps ~dir names
+      >>>
+      Build.all
+        (List.map internals ~f:(fun ((dir, lib) : Lib.Internal.t) ->
+           load_requires ~dir ~item:lib.name))
+      >>^ (fun internal_deps ->
+        let externals =
+          List.map (Findlib.closure findlib externals) ~f:(fun pkg ->
+            Lib.External pkg)
         in
-        Build.record_lib_deps [pkg]
-        >>>
-        (Build.arr (fun () -> in_findlib t name))
-    end
-  end : sig
-    module Lib_db : sig
-      val find            : string -> Lib.t
-      val top_closure     : string list -> (unit, Lib.t list) Build.t
-      val top_closure_dyn : (string list, Lib.t list) Build.t
-    end
+        Lib.remove_dups_preserve_order
+          (List.concat (externals :: internal_deps) @
+           List.map internals ~f:(fun x -> Lib.Internal x)))
 
-    module Named_artifacts : sig
-      [@@@warning "-32"]
-      val binary     : string -> (unit, Path.t) Build.t
-      val in_findlib : string -> (unit, Path.t) Build.t
-    end
-  end)
+    let closed_ppx_runtime_deps_of ~dir names =
+      let internals, externals = Lib_db.split t names in
+      Build.record_lib_deps ~dir names
+      >>>
+      Build.all
+        (List.map internals ~f:(fun ((dir, lib) : Lib.Internal.t) ->
+           load_runtime_deps ~dir ~item:lib.name))
+      >>^ (fun libs ->
+        let externals =
+          List.map (Findlib.closed_ppx_runtime_deps_of findlib externals) ~f:(fun pkg ->
+            Lib.External pkg)
+        in
+        Lib.remove_dups_preserve_order (List.concat (externals :: libs)))
+
+    (* Hides [t] so that we don't resolve things statically *)
+    let t = ()
+    let _ = t
+  end
+
+  module Named_artifacts = struct
+    open Named_artifacts
+
+    let t = create findlib (List.map P.stanzas ~f:(fun d -> (d.ctx_dir, d.stanzas)))
+
+    let binary name = Build.arr (fun _  -> binary t name)
+    let in_findlib ~dir name =
+      let pkg =
+        match String.lsplit2 name ~on:':' with
+        | None -> invalid_arg "Named_artifacts.in_findlib"
+        | Some (pkg, _) -> pkg
+      in
+      Build.record_lib_deps ~dir [pkg]
+      >>>
+      (Build.arr (fun () -> in_findlib t name))
+
+    (* Hides [t] so that we don't resolve things statically *)
+    let t = ()
+    let _ = t
+  end
+
+  (* Hides [findlib] so that we don't resolve things statically *)
+  let findlib = ()
+  let _ = findlib
 
   module Build = struct
     include Build
@@ -139,6 +183,17 @@ module Gen(P : Params) = struct
         [ As ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd] ]
   end
 
+  module Alias = struct
+    include Alias
+
+    let store = Store.create ()
+    let _add_deps t deps = add_deps store t deps
+    let rules () = rules store P.tree
+  end
+
+  let all_rules = ref []
+  let add_rule rule = all_rules := rule :: !all_rules
+
   (* +-----------------------------------------------------------------+
      | Tools                                                           |
      +-----------------------------------------------------------------+ *)
@@ -150,6 +205,23 @@ module Gen(P : Params) = struct
      | User variables                                                  |
      +-----------------------------------------------------------------+ *)
 
+  let cxx_compiler, cxx_flags =
+    match String.split_words ctx.bytecomp_c_compiler with
+    | [] -> assert false
+    | prog :: flags ->
+      let comp =
+        if Filename.is_relative prog then
+          match Bin.which prog with
+          | None -> Path.of_string "g++"
+          | Some p -> p
+        else
+          Path.of_string prog
+      in
+      let flags =
+        List.filter flags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+      in
+      (comp, flags)
+
   (* Expand some $-vars within action strings of rules defined in jbuild files *)
   let dollar_var_map =
     let ocamlopt =
@@ -157,11 +229,16 @@ module Gen(P : Params) = struct
       | None -> Path.relative ctx.ocaml_bin "ocamlopt"
       | Some p -> p
     in
+    let make =
+      match Bin.make with
+      | None -> "make"
+      | Some p -> Path.to_string p
+    in
     [ "-verbose"       , "" (*"-verbose";*)
     ; "CPP"            , ctx.bytecomp_c_compiler ^ " -E"
     ; "PA_CPP"         , ctx.bytecomp_c_compiler ^ " -undef -traditional -x c -E"
     ; "CC"             , ctx.bytecomp_c_compiler
-    ; "CXX"            , ctx.bytecomp_c_compiler
+    ; "CXX"            , String.concat ~sep:" " (Path.to_string cxx_compiler :: cxx_flags)
     ; "ocaml_bin"      , Path.to_string ctx.ocaml_bin
     ; "OCAML"          , Path.to_string ctx.ocaml
     ; "OCAMLC"         , Path.to_string ctx.ocamlc
@@ -170,6 +247,7 @@ module Gen(P : Params) = struct
     ; "ocaml_where"    , Path.to_string ctx.stdlib_dir
     ; "ARCH_SIXTYFOUR" , string_of_bool ctx.arch_sixtyfour
     ; "PORTABLE_INT63" , "true"
+    ; "MAKE"           , make
     ] |> String_map.of_alist
     |> function
     | Ok x -> x
@@ -190,32 +268,30 @@ module Gen(P : Params) = struct
   module Dep_conf_interpret = struct
     include Dep_conf
 
-    type res =
-      | Path of Path.t
-      | Err of string
-
-    let to_path ~dir = function
-      | File  s -> Path (Path.relative dir (expand_vars ~dir s))
-      | Alias s -> Path (Alias.file (Alias.make ~dir (expand_vars ~dir s)))
-      | Glob_files _ ->
-        Err "glob_files not yet implemented"
-      | Files_recursively_in _ ->
-        Err "files_recursively_in not yet implemented"
-
-    let _dep ~dir t =
-      match to_path ~dir t with
-      | Path p -> Build.path p
-      | Err msg -> Build.arr (fun _ -> die "%s" msg)
+    let dep ~dir = function
+      | File  s -> Build.path (Path.relative dir (expand_vars ~dir s))
+      | Alias s -> Build.path (Alias.file (Alias.make ~dir (expand_vars ~dir s)))
+      | Glob_files s -> begin
+          let path = Path.relative dir (expand_vars ~dir s) in
+          let dir = Path.parent path in
+          let s = Path.basename path in
+          match Glob_lexer.parse_string s with
+          | Ok re ->
+            Build.paths_glob ~dir (Re.compile re)
+          | Error (_pos, msg) ->
+            die "invalid glob in %s/jbuild: %s" (Path.to_string dir) msg
+        end
+      | Files_recursively_in s ->
+        let path = Path.relative dir (expand_vars ~dir s) in
+        Build.files_recursively_in ~dir:path
 
     let dep_of_list ~dir ts =
       let rec loop acc = function
-        | [] -> Build.path_set acc
+        | [] -> acc
         | t :: ts ->
-          match to_path ~dir t with
-          | Path p -> loop (Path.Set.add p acc) ts
-          | Err msg -> Build.arr (fun _ -> die "%s" msg)
+          loop (acc >>> dep ~dir t) ts
       in
-      loop Path.Set.empty ts
+      loop (Build.return ()) ts
 
     let only_plain_file ~dir = function
       | File s -> Some (expand_vars ~dir s)
@@ -279,7 +355,7 @@ module Gen(P : Params) = struct
     let suffix = Ml_kind.suffix ml_kind in
     let vdepends =
       let fn = Path.relative dir (sprintf "%s.depends%s.sexp" item suffix) in
-      BS.Vspec.T (fn, (module Ocamldep_vfile))
+      Build.Vspec.T (fn, (module Ocamldep_vfile))
     in
     let files =
       List.filter_map (String_map.values modules) ~f:(fun m -> Module.file ~dir m ml_kind)
@@ -290,7 +366,7 @@ module Gen(P : Params) = struct
         | Impl, _ -> S [A "-impl"; Dep fn]
         | Intf, _ -> S [A "-intf"; Dep fn])
     in
-    BS.rule
+    add_rule
       (Build.run_capture_lines (Dep ctx.ocamldep) [A "-modules"; S files]
        >>^ parse_deps ~dir ~modules ~alias_module
        >>> Build.store_vfile vdepends);
@@ -347,6 +423,29 @@ module Gen(P : Params) = struct
 
   let ppx_drivers = Hashtbl.create 32
 
+  let build_ppx_driver ~dir ~target ~runner pp_names =
+    let mode = Mode.best ctx in
+    let compiler = Option.value_exn (Mode.compiler mode ctx) in
+    let libs =
+      Build.fanout
+        (Lib_db.closure ~dir ("ppx_driver" :: pp_names))
+        (Lib_db.find runner)
+      >>^ (fun (libs, runner) ->
+        let runner_name = Lib.best_name runner in
+        List.filter libs ~f:(fun lib ->
+          Lib.best_name lib <> runner_name)
+        @ [runner]
+      )
+    in
+    add_rule
+      (libs
+       >>>
+       Build.run (Dep compiler)
+         [ A "-o"; Target target
+         ; Dyn (Lib.link_flags ~mode)
+         ]);
+    libs
+
   let get_ppx_driver pps =
     let names =
       Pp_set.elements pps
@@ -356,37 +455,23 @@ module Gen(P : Params) = struct
     match Hashtbl.find ppx_drivers key with
     | Some x -> x
     | None ->
-      let mode = Mode.best ctx in
-      let compiler = Option.value_exn (Mode.compiler mode ctx) in
-      let libs =
-        Lib_db.top_closure ("ppx_driver" :: names)
-        >>>
-        Build.arr (fun libs ->
-          List.filter libs ~f:(fun lib ->
-            Lib.best_name lib <> "ppx_driver.runner")
-          @ [Lib_db.find "ppx_driver.runner"]
-        )
-      in
       let ppx_dir = Path.relative ctx.build_dir (sprintf ".ppx/%s" key) in
       let exe = Path.relative ppx_dir "ppx.exe" in
-      BS.rule
-        (libs
-         >>>
-         Build.run (Dep compiler)
-           [ A "-linkall"
-           ; A "-o"; Target exe
-           ; Dyn (Lib.link_flags ~mode)
-           ]);
+      let libs =
+        build_ppx_driver names ~dir:ppx_dir ~target:exe ~runner:"ppx_driver.runner"
+      in
       Hashtbl.add ppx_drivers ~key ~data:(exe, libs);
       (exe, libs)
 
-  let specific_args_for_ppx_rewriters ~dir (libs : Lib.t list) =
+  let specific_args_for_ppx_rewriters ~dir ~lib_name (libs : Lib.t list) =
     let uses_inline_test = ref false in
     let uses_inline_bench = ref false in
     let uses_here = ref false in
+    let uses_libname = ref false in
     List.iter libs ~f:(fun lib ->
       match Lib.best_name lib with
       | "ppx_here" | "ppx_assert" -> uses_here := true
+      | "ppx_inline_test.libname" -> uses_libname := true
       | "ppx_expect" -> uses_inline_test := true; uses_here := true
       | "ppx_inline_test" -> uses_inline_test := true
       | "ppx_bench" -> uses_inline_bench := true
@@ -395,6 +480,10 @@ module Gen(P : Params) = struct
       [ S (if !uses_here
            then [A "-dirname"; Path dir]
            else [])
+      ; S (match lib_name with
+          | Some name when !uses_libname ->
+            [ A "-inline-test-lib"; A name ]
+          | _ -> [])
       ; S (if !uses_inline_test(* && drop_test*)
            then [ A "-inline-test-drop-with-deadcode" ]
            else [])
@@ -405,17 +494,17 @@ module Gen(P : Params) = struct
 
   (* Generate rules to build the .pp files and return a new module map where all filenames
      point to the .pp files *)
-  let pped_modules ~dir ~modules ~preprocess ~preprocessor_deps =
+  let pped_modules ~dir ~modules ~preprocess ~preprocessor_deps ~lib_name =
     let preprocessor_deps = Dep_conf_interpret.dep_of_list ~dir preprocessor_deps in
     String_map.map modules ~f:(fun (m : Module.t) ->
       match Preprocess_map.find m.name preprocess with
       | No_preprocessing -> m
       | Metaquot ->
         pped_module m ~dir ~f:(fun kind src dst ->
-          BS.rule
+          add_rule
             (preprocessor_deps
              >>>
-             Build.fanout ppx_rewriter ppx_metaquot
+             Build.fanout (ppx_rewriter ~dir) (ppx_metaquot ~dir)
              >>>
              Build.run (Dyn fst)
                [ Dyn (fun (_, ppx_metaquot) -> Dep ppx_metaquot)
@@ -424,7 +513,7 @@ module Gen(P : Params) = struct
                ]))
       | Command cmd ->
         pped_module m ~dir ~f:(fun _kind src dst ->
-          BS.rule
+          add_rule
             (preprocessor_deps
              >>>
              Build.path src
@@ -435,14 +524,14 @@ module Gen(P : Params) = struct
       | Pps { pps; flags } ->
         let ppx_exe, libs = get_ppx_driver pps in
         pped_module m ~dir ~f:(fun kind src dst ->
-          BS.rule
+          add_rule
             (preprocessor_deps
              >>>
              libs
              >>>
              Build.run
                (Dep ppx_exe)
-               [ Dyn (specific_args_for_ppx_rewriters ~dir)
+               [ Dyn (specific_args_for_ppx_rewriters ~dir ~lib_name)
                ; As flags
                ; A "-dump-ast"
                ; A "-o"; Target dst
@@ -451,44 +540,37 @@ module Gen(P : Params) = struct
         )
     )
 
-  module Libs_vfile =
-    Vfile_kind.Make_full
-      (struct type t = Lib.t list end)
-      (struct
-        open Sexp.To_sexp
-        let t l = list string (List.map l ~f:Lib.best_name)
-      end)
-      (struct
-        open Sexp.Of_sexp
-        let t sexp = List.map (list string sexp) ~f:Lib_db.find
-      end)
-
-  let requires_including_runtime_deps ~dir ~item ~libraries ~ppx_runtime_libraries
-        ~preprocess =
+  let requires ~dir ~item ~libraries ~preprocess ~virtual_deps =
     let all_pps =
       Preprocess_map.pps preprocess
       |> Pp_set.elements
       |> List.map ~f:Pp.to_string
     in
-    let vrequires =
-      let fn = Path.relative dir (item ^ ".requires.sexp") in
-      BS.Vspec.T (fn, (module Libs_vfile))
-    in
-    BS.rule
-      (Build.record_lib_deps (libraries @ ppx_runtime_libraries)
+    let vrequires = Lib_db.vrequires ~dir ~item in
+    add_rule
+      (Build.record_lib_deps ~dir virtual_deps
        >>>
-       Lib_db.top_closure all_pps
+       Build.fanout
+         (Lib_db.closure ~dir libraries)
+         (Lib_db.closed_ppx_runtime_deps_of ~dir all_pps)
        >>>
-       Build.arr (fun pps_libs ->
-         String_set.elements
-           (String_set.union
-              (String_set.of_list libraries)
-              (Lib.ppx_runtime_libraries pps_libs)))
-       >>>
-       Lib_db.top_closure_dyn
+       Build.arr (fun (libs, rt_deps) ->
+         Lib.remove_dups_preserve_order (libs @ rt_deps))
        >>>
        Build.store_vfile vrequires);
     Build.vpath vrequires
+
+  let setup_runtime_deps ~dir ~item ~libraries ~ppx_runtime_libraries =
+    let vruntime_deps = Lib_db.vruntime_deps ~dir ~item in
+    add_rule
+      (Build.fanout
+         (Lib_db.closure ~dir ppx_runtime_libraries)
+         (Lib_db.closed_ppx_runtime_deps_of ~dir libraries)
+       >>>
+       Build.arr (fun (rt_deps, rt_deps_of_deps) ->
+         Lib.remove_dups_preserve_order (rt_deps @ rt_deps_of_deps))
+       >>>
+       Build.store_vfile vruntime_deps)
 
   (* +-----------------------------------------------------------------+
      | Ordered set lang evaluation                                     |
@@ -558,6 +640,11 @@ module Gen(P : Params) = struct
           (* We need the .cmi to build either the .cmo or .cmx *)
           | (Cmo | Cmx), Some _ -> [], [Module.cm_file m ~dir Cmi], []
         in
+        let extra_targets =
+          match cm_kind with
+          | Cmx -> Path.relative dir (m.obj_name ^ ctx.ext_obj) :: extra_targets
+          | Cmi | Cmo -> extra_targets
+        in
         let dep_graph = Ml_kind.Dict.get dep_graph ml_kind in
         let other_cm_files =
           Build.dyn_paths
@@ -579,7 +666,7 @@ module Gen(P : Params) = struct
             let fn = Option.value_exn (Module.cmt_file m ~dir ml_kind) in
             (fn :: extra_targets, A "-bin-annot")
         in
-        BS.rule
+        add_rule
           (Build.paths extra_deps >>>
            other_cm_files >>>
            requires >>>
@@ -650,16 +737,16 @@ module Gen(P : Params) = struct
       let target = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let dep_graph = Ml_kind.Dict.get dep_graph Impl in
       let stubs_flags =
-        match lib.c_names with
-        | [] -> []
-        | _  ->
+        if not (Library.has_stubs lib) then
+          []
+        else
           let stubs_name = lib.name ^ "_stubs" in
           match mode with
-          | Byte -> ["-dllib"; "dll" ^ stubs_name; "-cclib"; stubs_name]
-          | Native -> ["-cclib"; stubs_name]
+          | Byte -> ["-dllib"; "-l" ^ stubs_name; "-cclib"; "-l" ^ stubs_name]
+          | Native -> ["-cclib"; "-l" ^ stubs_name]
       in
-      BS.rule
-        (Build.fanout3
+      add_rule
+        (Build.fanout
            (dep_graph >>>
             Build.arr (fun dep_graph ->
               names_to_top_closed_cm_files
@@ -668,7 +755,6 @@ module Gen(P : Params) = struct
                 ~modules
                 ~mode
                 (String_map.keys modules)))
-           (expand_and_eval_set ~dir lib.library_flags ~standard:[])
            (expand_and_eval_set ~dir lib.cclibs        ~standard:[])
          >>>
          Build.run (Dep compiler)
@@ -679,24 +765,35 @@ module Gen(P : Params) = struct
            [ g ()
            ; A "-a"; A "-o"; Target target
            ; As stubs_flags
-           ; Dyn (fun (_, libflags, cclibs) ->
-               S [ As libflags
-                 ; S (List.map cclibs ~f:(fun flag ->
-                     Arg_spec.S [A "-cclib"; A flag]))])
-           ; Dyn (fun (cm_files, _, _) -> Deps cm_files)
+           ; Dyn (fun (_, cclibs) ->
+               S (List.map cclibs ~f:(fun flag ->
+                 Arg_spec.S [A "-cclib"; A ("-l" ^ flag)])))
+           ; As (List.map lib.library_flags ~f:(expand_vars ~dir))
+           ; As (match lib.kind with
+               | Normal -> []
+               | Ppx_type_conv_plugin | Ppx_rewriter -> ["-linkall"])
+           ; Dyn (fun (cm_files, _) -> Deps cm_files)
            ]))
 
   let mk_lib_cm_all (lib : Library.t) ~dir ~modules cm_kind =
     let deps = cm_files ~dir (String_map.values modules) ~cm_kind in
-    BS.rule (Build.paths deps >>>
+    add_rule (Build.paths deps >>>
             Build.return "" >>>
             Build.echo (lib_cm_all lib ~dir cm_kind))
 
-  let build_c_file (lib : Library.t) ~dir c_name =
+  let expand_includes ~dir includes =
+    Arg_spec.As (List.concat_map includes ~f:(fun s ->
+      ["-I"; expand_vars ~dir s]))
+
+  let build_c_file (lib : Library.t) ~dir ~requires ~h_files c_name =
     let src = Path.relative dir (c_name ^ ".c") in
     let dst = Path.relative dir (c_name ^ ctx.ext_obj) in
-    BS.rule
-      (expand_and_eval_set ~dir lib.c_flags ~standard:[]
+    add_rule
+      (Build.paths h_files
+       >>>
+       Build.fanout
+         (expand_and_eval_set ~dir lib.c_flags ~standard:[])
+         requires
        >>>
        Build.run
          (* We have to execute the rule in the library directory as the .o is produced in
@@ -704,10 +801,40 @@ module Gen(P : Params) = struct
          ~dir
          (Dep ctx.ocamlc)
          [ g ()
-         ; Dyn (fun c_flags ->
-             As (List.concat_map c_flags ~f:(fun f -> ["-ccopt"; f])))
+         ; expand_includes ~dir lib.includes
+         ; Dyn (fun (c_flags, libs) ->
+             S [ Lib.c_include_flags libs
+               ; As (List.concat_map c_flags ~f:(fun f -> ["-ccopt"; f]))
+               ])
          ; A "-o"; Target dst
          ; Dep src
+         ]);
+    dst
+
+  let build_cxx_file (lib : Library.t) ~dir ~requires ~h_files c_name =
+    let src = Path.relative dir (c_name ^ ".cpp") in
+    let dst = Path.relative dir (c_name ^ ctx.ext_obj) in
+    add_rule
+      (Build.paths h_files
+       >>>
+       Build.fanout
+         (expand_and_eval_set ~dir lib.cxx_flags ~standard:cxx_flags)
+         requires
+       >>>
+       Build.run
+         (* We have to execute the rule in the library directory as the .o is produced in
+            the current directory *)
+         ~dir
+         (Dep cxx_compiler)
+         [ g ()
+         ; S [A "-I"; Path ctx.stdlib_dir]
+         ; expand_includes ~dir lib.includes
+         ; Dyn (fun (c_flags, libs) ->
+             S [ Lib.c_include_flags libs
+               ; As c_flags
+               ])
+         ; A "-o"; Target dst
+         ; A "-c"; Dep src
          ]);
     dst
 
@@ -719,14 +846,15 @@ module Gen(P : Params) = struct
     let main_module_name = String.capitalize_ascii lib.name in
     let modules =
       String_map.map modules ~f:(fun (m : Module.t) ->
-        if m.name = main_module_name then
+        if not lib.wrapped || m.name = main_module_name then
           { m with obj_name = obj_name_of_basename m.ml_fname }
         else
           { m with obj_name = sprintf "%s__%s" lib.name m.name })
     in
     let alias_module =
-      if String_map.cardinal modules = 1 &&
-         String_map.mem main_module_name modules then
+      if not lib.wrapped ||
+         (String_map.cardinal modules = 1 &&
+          String_map.mem main_module_name modules) then
         None
       else
         let suf =
@@ -747,6 +875,7 @@ module Gen(P : Params) = struct
     let modules =
       pped_modules ~dir ~modules ~preprocess:lib.preprocess
         ~preprocessor_deps:lib.preprocessor_deps
+        ~lib_name:(Some lib.name)
     in
     let modules =
       match alias_module with
@@ -760,7 +889,7 @@ module Gen(P : Params) = struct
     let dep_graph = ocamldep_rules ~dir ~item:lib.name ~modules ~alias_module in
 
     Option.iter alias_module ~f:(fun m ->
-      BS.rule
+      add_rule
         (Build.return
            (String_map.values (String_map.remove m.name modules)
             |> List.map ~f:(fun (m : Module.t) ->
@@ -769,11 +898,14 @@ module Gen(P : Params) = struct
          >>> Build.echo (Path.relative dir m.ml_fname)));
 
     let requires =
-      requires_including_runtime_deps ~dir ~item:lib.name
+      requires ~dir ~item:lib.name
         ~libraries:lib.libraries
         ~preprocess:lib.preprocess
-        ~ppx_runtime_libraries:lib.ppx_runtime_libraries
+        ~virtual_deps:lib.virtual_deps
     in
+    setup_runtime_deps ~dir ~item:lib.name
+      ~libraries:lib.libraries
+      ~ppx_runtime_libraries:lib.ppx_runtime_libraries;
 
     build_modules ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
@@ -790,7 +922,7 @@ module Gen(P : Params) = struct
             Build.return [])
         ~alias_module:None);
 
-    if not (List.is_empty lib.c_names) then begin
+    if Library.has_stubs lib then begin
       let h_files =
         String_set.elements files
         |> List.filter_map ~f:(fun fn ->
@@ -799,19 +931,27 @@ module Gen(P : Params) = struct
           else
             None)
       in
-      let o_files = List.map lib.c_names ~f:(build_c_file lib ~dir) in
-      let targets = [ stubs_archive lib ~dir; dll lib ~dir ] in
-      BS.rule
-        (Build.paths h_files
-         >>>
-         Build.run
-           ~extra_targets:targets
-           (Dep ctx.ocamlmklib)
-           [ g ()
-           ; A "-o"
-           ; Path (Path.relative dir (sprintf "%s_stubs" lib.name))
-           ; Deps o_files
-           ]);
+      let o_files =
+        List.map lib.c_names   ~f:(build_c_file   lib ~dir ~requires ~h_files) @
+        List.map lib.cxx_names ~f:(build_cxx_file lib ~dir ~requires ~h_files)
+      in
+      match lib.self_build_stubs_archive with
+      | Some _ -> ()
+      | None ->
+        let targets = [ stubs_archive lib ~dir; dll lib ~dir ] in
+        add_rule
+          (expand_and_eval_set ~dir lib.cclibs ~standard:[]
+           >>>
+           Build.run
+             ~extra_targets:targets
+             (Dep ctx.ocamlmklib)
+             [ g ()
+             ; A "-o"
+             ; Path (Path.relative dir (sprintf "%s_stubs" lib.name))
+             ; Deps o_files
+             ; Dyn (fun cclibs ->
+                 As (List.map cclibs ~f:((^) "-l")))
+             ]);
     end;
 
     List.iter Cm_kind.all ~f:(mk_lib_cm_all lib ~dir ~modules);
@@ -822,7 +962,7 @@ module Gen(P : Params) = struct
     Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Native) in
       let dst = lib_archive lib ~dir ~ext:".cmxs" in
-      BS.rule
+      add_rule
         (Build.run
            (Dep ocamlopt)
            [ g ()
@@ -831,17 +971,27 @@ module Gen(P : Params) = struct
            ; A "-o"; Target dst
            ; Dep src
            ])
-    )
+    );
+
+    match lib.kind with
+    | Normal | Ppx_type_conv_plugin -> ()
+    | Ppx_rewriter ->
+      ignore
+        (build_ppx_driver [lib.name]
+           ~dir
+           ~target:(Path.relative dir "as-ppx.exe")
+           ~runner:"ppx_driver.runner_as_ppx"
+         : (unit, Lib.t list) Build.t)
 
   (* +-----------------------------------------------------------------+
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  let build_exe ~dir ~requires ~name ~mode ~modules ~dep_graph =
+  let build_exe ~dir ~requires ~name ~mode ~modules ~dep_graph ~link_flags =
     Option.iter (Mode.compiler mode ctx) ~f:(fun compiler ->
       let dep_graph = Ml_kind.Dict.get dep_graph Impl in
       let exe = Path.relative dir (name ^ Mode.exe_ext mode) in
-      BS.rule
+      add_rule
         (Build.fanout
            (requires
             >>> Build.dyn_paths (Build.arr (Lib.archive_files ~mode)))
@@ -858,6 +1008,7 @@ module Gen(P : Params) = struct
            (Dep compiler)
            [ g ()
            ; A "-o"; Target exe
+           ; As link_flags
            ; Dyn (fun (libs, _) -> Lib.link_flags libs ~mode)
            ; Dyn (fun (_, cm_files) -> Deps cm_files)
            ]))
@@ -875,16 +1026,16 @@ module Gen(P : Params) = struct
 *)
     let modules =
       pped_modules ~dir ~modules ~preprocess:exes.preprocess
-        ~preprocessor_deps:[]
+        ~preprocessor_deps:[] ~lib_name:None
     in
     let item = List.hd exes.names in
     let dep_graph = ocamldep_rules ~dir ~item ~modules ~alias_module:None in
 
     let requires =
-      requires_including_runtime_deps ~dir ~item
+      requires ~dir ~item
         ~libraries:exes.libraries
         ~preprocess:exes.preprocess
-        ~ppx_runtime_libraries:[]
+        ~virtual_deps:[]
     in
 
     build_modules ~dir ~dep_graph ~modules ~requires ~alias_module:None;
@@ -892,7 +1043,8 @@ module Gen(P : Params) = struct
     if exes.link_executables then
       List.iter exes.names ~f:(fun name ->
         List.iter Mode.all ~f:(fun mode ->
-          build_exe ~dir ~requires ~name ~mode ~modules ~dep_graph))
+          build_exe ~dir ~requires ~name ~mode ~modules ~dep_graph
+            ~link_flags:exes.link_flags))
 
 
   (* +-----------------------------------------------------------------+
@@ -914,12 +1066,12 @@ module Gen(P : Params) = struct
   end = struct
     module U = User_action.Unexpanded
 
-    let extract_artifacts t =
+    let extract_artifacts ~dir t =
       U.fold t ~init:String_map.empty ~f:(fun acc var ->
         let module N = Named_artifacts in
         match String.lsplit2 var ~on:':' with
-        | Some ("bin"     , s) -> String_map.add acc ~key:var ~data:(N.binary     s)
-        | Some ("findlib" , s) -> String_map.add acc ~key:var ~data:(N.in_findlib s)
+        | Some ("bin"     , s) -> String_map.add acc ~key:var ~data:(N.binary          s)
+        | Some ("findlib" , s) -> String_map.add acc ~key:var ~data:(N.in_findlib ~dir s)
         | _ -> acc)
 
     let expand t ~artifact_map ~dir ~targets ~deps =
@@ -943,7 +1095,7 @@ module Gen(P : Params) = struct
 
     let expand t ~dir ~targets ~deps =
       let deps = List.map deps ~f:(Dep_conf_interpret.only_plain_file ~dir) in
-      let needed_artifacts = extract_artifacts t in
+      let needed_artifacts = extract_artifacts ~dir t in
       if String_map.is_empty needed_artifacts then
         let s = expand t ~dir ~artifact_map:String_map.empty ~targets ~deps in
         Build.return s
@@ -972,7 +1124,7 @@ module Gen(P : Params) = struct
 
   let user_rule (rule : Rule.t) ~dir =
     let targets = List.map rule.targets ~f:(Path.relative dir) in
-    BS.rule
+    add_rule
       (Dep_conf_interpret.dep_of_list ~dir rule.deps
        >>>
        User_action_interpret.expand
@@ -994,7 +1146,7 @@ module Gen(P : Params) = struct
       let src = Path.relative dir (name ^ ".mll"   ) in
       let tmp = Path.relative dir (name ^ ".tmp.ml") in
       let dst = Path.relative dir (name ^ ".ml"    ) in
-      BS.rule
+      add_rule
         (Build.run (Dep ctx.ocamllex) [A "-q"; A "-o"; Path tmp; Dep src]
          >>>
          Build.create_file ~target:dst (fun () ->
@@ -1011,7 +1163,7 @@ module Gen(P : Params) = struct
       let tmpi = Path.relative dir (name ^ ".tmp.mli") in
       let dst  = Path.relative dir (name ^ ".ml"     ) in
       let dsti = Path.relative dir (name ^ ".mli"    ) in
-      BS.rule
+      add_rule
         (Build.run
            (Dep ctx.ocamlyacc)
            [ A "-b"
@@ -1079,12 +1231,69 @@ module Gen(P : Params) = struct
           })
 
   (* +-----------------------------------------------------------------+
+     | META                                                            |
+     +-----------------------------------------------------------------+ *)
+
+  let () =
+    List.iter P.packages ~f:(fun package ->
+      let meta_fn = "META." ^ package in
+      let meta_path = Path.relative ctx.build_dir meta_fn in
+      let templ_fn = meta_fn ^ ".template" in
+      let template =
+        if Sys.file_exists templ_fn then
+          Build.path (Path.(relative root) templ_fn)
+          >>^ fun () ->
+          lines_of_file templ_fn
+        else
+          Build.return ["# JBUILDER_GEN"]
+      in
+      let meta =
+        Gen_meta.gen ~package
+           ~stanzas:(List.map P.stanzas ~f:(fun { ctx_dir; stanzas; _ } ->
+             (ctx_dir, stanzas)))
+           ~lib_deps:(fun ~dir jbuild ->
+             match jbuild with
+             | Library lib ->
+               Lib_db.load_requires ~dir ~item:lib.name
+               >>^ List.map ~f:Lib.best_name
+             | Executables exes ->
+               let item = List.hd exes.names in
+               Lib_db.load_requires ~dir ~item
+               >>^ List.map ~f:Lib.best_name
+             | _ -> Build.return [])
+           ~ppx_runtime_deps:(fun ~dir jbuild ->
+             match jbuild with
+             | Library lib ->
+               Lib_db.load_runtime_deps ~dir ~item:lib.name
+               >>^ List.map ~f:Lib.best_name
+             | _ -> Build.return [])
+      in
+      add_rule
+        (Build.fanout meta template
+         >>>
+         Build.create_file ~target:meta_path (fun ((meta : Meta.t), template) ->
+           with_file_out (Path.to_string meta_path) ~f:(fun oc ->
+             let ppf = Format.formatter_of_out_channel oc in
+             Format.pp_open_vbox ppf 0;
+             List.iter template ~f:(fun s ->
+               if String.is_prefix s ~prefix:"#" then
+                 match
+                   String.split_words (String.sub s ~pos:1 ~len:(String.length s - 1))
+                 with
+                 | ["JBUILDER_GEN"] -> Format.fprintf ppf "%a@," Meta.pp meta.entries
+                 | _ -> Format.fprintf ppf "%s@," s
+               else
+                 Format.fprintf ppf "%s@," s);
+             Format.pp_close_box ppf ();
+             Format.pp_print_flush ppf ()))))
+
+  (* +-----------------------------------------------------------------+
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
 
   let rules { src_dir; ctx_dir; stanzas } =
-    let files = lazy (Path.readdir src_dir |> Array.to_list |> String_set.of_list) in
-    let all_modules = lazy (
+    let files = lazy (
+      let src_files = Path.readdir src_dir |> String_set.of_list in
       let files_produced_by_rules =
         List.concat_map stanzas ~f:(fun stanza ->
           match (stanza : Stanza.t) with
@@ -1095,18 +1304,21 @@ module Gen(P : Params) = struct
           | _ -> [])
         |> String_set.of_list
       in
+      String_set.union src_files files_produced_by_rules)
+    in
+    let all_modules = lazy (
       guess_modules ~dir:src_dir
-        ~files:(String_set.union (Lazy.force files) files_produced_by_rules))
+        ~files:(Lazy.force files))
     in
     List.iter stanzas ~f:(fun stanza ->
       let dir = ctx_dir in
       match (stanza : Stanza.t) with
-      | Library     lib  -> library_rules     lib  ~dir ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files)
-      | Executables exes -> executables_rules exes ~dir ~all_modules:(Lazy.force all_modules)
-      | Rule        rule -> user_rule         rule ~dir
-      | Ocamllex    conf -> ocamllex_rules    conf ~dir
-      | Ocamlyacc   conf -> ocamlyacc_rules   conf ~dir
-      | Provides _ | Other -> ())
+      | Library      lib  -> library_rules     lib  ~dir ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files)
+      | Executables  exes -> executables_rules exes ~dir ~all_modules:(Lazy.force all_modules)
+      | Rule         rule -> user_rule         rule ~dir
+      | Ocamllex     conf -> ocamllex_rules    conf ~dir
+      | Ocamlyacc    conf -> ocamlyacc_rules   conf ~dir
+      | Provides _ | Install _ | Other -> ())
 
   let () = List.iter P.stanzas ~f:rules
 
@@ -1114,7 +1326,10 @@ module Gen(P : Params) = struct
      | Installation                                                    |
      +-----------------------------------------------------------------+ *)
 
-  let lib_install_files ~dir (lib : Library.t) : Install.Entry.t list =
+  let lib_install_files ~dir (lib : Library.t) =
+    let byte   = List.mem Mode.Byte   ~set:lib.modes in
+    let native = List.mem Mode.Native ~set:lib.modes in
+    let if_ cond l = if cond then l else [] in
     let files =
       let modules =
         Hashtbl.find_exn modules_by_lib lib.name
@@ -1126,34 +1341,50 @@ module Gen(P : Params) = struct
       List.concat
         [ List.concat_map modules ~f:(fun m ->
             List.concat
-              [ [ Module.cm_file m ~dir Cmi
-                ; Module.cm_file m ~dir Cmx ]
+              [ [ Module.cm_file m ~dir Cmi ]
+              ; if_ native [ Module.cm_file m ~dir Cmx ]
               ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~dir)
               ; [ match Module.file m ~dir Intf with
                   | Some fn -> fn
                   | None    -> Path.relative dir m.ml_fname ]
               ])
-        ; [ lib_archive ~dir lib ~ext:".cma" ]
-        ; (match lib.c_names with
-           | [] -> []
-           | _  -> [ stubs_archive ~dir lib ])
-        ; (match ctx.ocamlopt with
+        ; if_ byte [ lib_archive ~dir lib ~ext:".cma" ]
+        ; if_ (Library.has_stubs lib) [ stubs_archive ~dir lib ]
+        ; if_ native
+            (match ctx.ocamlopt with
+             | None -> []
+             | Some _ ->
+               [ lib_archive ~dir lib ~ext:".cmxa"
+               ; lib_archive ~dir lib ~ext:ctx.ext_lib
+               ; lib_archive ~dir lib ~ext:".cmxs"
+               ])
+        ; (match lib.js_of_ocaml with
            | None -> []
-           | Some _ ->
-             [ lib_archive ~dir lib ~ext:".cmxa"
-             ; lib_archive ~dir lib ~ext:ctx.ext_lib
-             ])
+           | Some { javascript_files = l; _ } ->
+             List.map l ~f:(Path.relative dir))
+        ; List.map lib.public_headers ~f:(fun fn ->
+            Path.relative dir (fn ^ ".h"))
         ]
     in
-    let dlls =
-      match lib.c_names with
-      | [] -> []
-      | _  -> [dll ~dir lib]
+    let dlls  = if_ (byte && Library.has_stubs lib) [dll ~dir lib] in
+    let execs =
+      match lib.kind with
+      | Normal | Ppx_type_conv_plugin -> []
+      | Ppx_rewriter -> [Path.relative dir "as-ppx.exe"]
     in
     List.concat
       [ List.map files ~f:(Install.Entry.make Lib     )
+      ; List.map execs ~f:(Install.Entry.make Libexec )
       ; List.map dlls  ~f:(Install.Entry.make Stublibs)
       ]
+
+  let obj_install_files ~dir (exes : Executables.t) =
+    List.concat_map exes.names ~f:(fun name ->
+      [ Path.relative dir (name ^ ".cmo")
+      ; Path.relative dir (name ^ ".cmx")
+      ; Path.relative dir (name ^ ctx.ext_obj)
+      ])
+    |> List.map ~f:(Install.Entry.make Lib)
 
   let add_doc_file fn entries =
     let suffixes = [""; ".md"; ".org"; ".txt"] in
@@ -1176,14 +1407,17 @@ module Gen(P : Params) = struct
           | Library ({ public_name = Some name; _ } as lib)
             when Findlib.root_package_name name = package ->
             lib_install_files ~dir lib
+          | Executables ({ object_public_name = Some name; _ } as exes)
+            when Findlib.root_package_name name = package ->
+            obj_install_files ~dir exes
+          | Install { section; files; package = p } -> begin
+              match p with
+              | Some p when p <> package -> []
+              | _ ->
+                List.map files ~f:(fun { Install_conf. src; dst } ->
+                  Install.Entry.make section (Path.relative dir src) ?dst)
+            end
           | _ -> []))
-    in
-    let entries =
-      let meta = Path.of_string "META" in
-      if Path.exists meta then
-        Install.Entry.make Lib meta :: entries
-      else
-        entries
     in
     let entries =
       List.fold_left ["README"; "LICENSE"] ~init:entries ~f:(fun acc fn ->
@@ -1196,8 +1430,18 @@ module Gen(P : Params) = struct
       else
         entries
     in
+    let entries =
+      let meta_fn = "META." ^ package in
+      if Sys.file_exists meta_fn                 ||
+         Sys.file_exists (meta_fn ^ ".template") ||
+         List.exists entries ~f:(fun (e : Install.Entry.t) -> e.section = Lib) then
+        let meta = Path.relative ctx.build_dir meta_fn in
+        Install.Entry.make Lib meta ~dst:"META" :: entries
+      else
+        entries
+    in
     let fn = Path.relative ctx.build_dir (package ^ ".install") in
-    BS.rule
+    add_rule
       (Build.path_set (Install.files entries) >>>
        Build.create_file ~target:fn (fun () ->
          Install.write_install_file fn entries))
@@ -1208,17 +1452,19 @@ module Gen(P : Params) = struct
     if Path.basename ctx.build_dir = "default" then
       List.iter P.packages ~f:(fun pkg ->
         let fn = pkg ^ ".install" in
-        BS.copy_rule
-          ~src:(Path.relative ctx.build_dir fn)
-          ~dst:(Path.relative Path.root     fn))
+        add_rule
+          (Build.copy
+             ~src:(Path.relative ctx.build_dir fn)
+             ~dst:(Path.relative Path.root     fn)))
 end
 
-let gen ~context ~stanzas ~packages =
+let gen ~context ~tree ~stanzas ~packages =
   let module M =
     Gen(struct
       let context  = context
+      let tree     = tree
       let stanzas  = stanzas
       let packages = packages
     end)
   in
-  ()
+  M.Alias.rules () @ !M.all_rules

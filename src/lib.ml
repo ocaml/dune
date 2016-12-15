@@ -1,8 +1,12 @@
 open Import
 
+module Internal = struct
+  type t = Path.t * Jbuild_types.Library.t
+end
+
 module T = struct
   type t =
-    | Internal of Path.t * Jbuild_types.Library.t
+    | Internal of Internal.t
     | External of Findlib.package
 
   let best_name = function
@@ -14,11 +18,11 @@ end
 
 include T
 module Set = Set.Make(T)
-
+(*
 let deps = function
   | Internal (_, lib) -> lib.libraries
   | External pkg -> pkg.requires
-
+*)
 let dir = function
   | Internal (dir, _) -> dir
   | External pkg -> pkg.dir
@@ -27,6 +31,21 @@ let include_flags ts =
   let dirs =
     List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
       Path.Set.add (dir t) acc)
+  in
+  Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
+    [Arg_spec.A "-I"; Path dir]))
+
+let has_headers = function
+  | Internal (_, lib) -> lib.public_headers <> []
+  | External pkg -> pkg.has_headers
+
+let c_include_flags ts =
+  let dirs =
+    List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
+      if has_headers t then
+        Path.Set.add (dir t) acc
+      else
+        acc)
   in
   Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
     [Arg_spec.A "-I"; Path dir]))
@@ -53,7 +72,7 @@ let archive_files ts ~mode =
       List.map (Mode.Dict.get pkg.archives mode) ~f:(Path.relative pkg.dir)
     | Internal (dir, lib) ->
       [Path.relative dir (lib.name ^ Mode.compiled_lib_ext mode)])
-
+(*
 let ppx_runtime_libraries ts =
   List.fold_left ts ~init:String_set.empty ~f:(fun acc t ->
     match t with
@@ -61,3 +80,18 @@ let ppx_runtime_libraries ts =
       String_set.union acc (String_set.of_list lib.ppx_runtime_libraries)
     | External pkg ->
       String_set.union acc (String_set.of_list pkg.ppx_runtime_deps))
+*)
+
+let remove_dups_preserve_order libs =
+  let rec loop seen libs acc =
+    match libs with
+    | [] -> List.rev acc
+    | lib :: libs ->
+      let name = best_name lib in
+      if String_set.mem name seen then
+        loop seen libs acc
+      else
+        loop (String_set.add name seen) libs (lib :: acc)
+  in
+  loop String_set.empty libs []
+;;

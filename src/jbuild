@@ -5,4 +5,4 @@
   (libraries (unix))
   (preprocess no_preprocessing)))
 
-(ocamllex (sexp_lexer meta_lexer rewrite_generated_file))
+(ocamllex (sexp_lexer meta_lexer rewrite_generated_file glob_lexer))

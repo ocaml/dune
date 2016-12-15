@@ -4,6 +4,13 @@ type t = Byte | Native
 
 let all = [Byte; Native]
 
+let t =
+  let open Sexp.Of_sexp in
+  sum
+    [ cstr "byte"   [] Byte
+    ; cstr "native" [] Native
+    ]
+
 let choose byte native = function
   | Byte   -> byte
   | Native -> native

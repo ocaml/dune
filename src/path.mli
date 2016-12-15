@@ -37,6 +37,7 @@ val of_string : string -> t
 val to_string : t -> string
 
 val root : t
+val is_root : t -> bool
 
 val is_local : t -> bool
 
@@ -54,10 +55,11 @@ val basename : t -> string
 val parent : t -> t
 
 val extract_build_context : t -> (string * t) option
+val extract_build_context_dir : t -> (t * t) option
 val is_in_build_dir : t -> bool
 
 val exists : t -> bool
-val readdir : t -> string array
+val readdir : t -> string list
 val is_directory : t -> bool
 val rmdir : t -> unit
 val unlink : t -> unit

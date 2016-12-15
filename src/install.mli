@@ -14,6 +14,8 @@ module Section : sig
     | Stublibs
     | Man
     | Misc
+
+  val t : Sexp.t -> t
 end
 
 module Entry : sig

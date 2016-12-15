@@ -2,6 +2,8 @@ open! Import
 
 type t = Byte | Native
 
+val t : Sexp.t -> t
+
 val all : t list
 
 val compiled_unit_ext : t -> string

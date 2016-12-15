@@ -49,3 +49,8 @@ let which ?(path=path) prog =
   search path
 
 let opam = which "opam"
+
+let make =
+  match which "gmake" with
+  | None -> which "make"
+  | some -> some

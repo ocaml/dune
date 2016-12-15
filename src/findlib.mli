@@ -19,10 +19,14 @@ type package =
   ; description      : string
   ; archives         : string list Mode.Dict.t
   ; plugins          : string list Mode.Dict.t
-  ; requires         : string list
-  ; ppx_runtime_deps : string list
+  ; requires         : package list
+  ; ppx_runtime_deps : package list
+  ; has_headers      : bool
   }
 
 val find : t -> string -> package
 
 val root_package_name : string -> string
+
+val closure : t -> string list -> package list
+val closed_ppx_runtime_deps_of : t -> string list -> package list

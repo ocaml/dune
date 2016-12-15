@@ -71,7 +71,7 @@ module Pp = struct
       (* For compatibility with the old hardcoded ppx sets of Jane Street jenga rules *)
       | "BASE"        -> "ppx_base"
       | "JANE"        -> "ppx_jane"
-      | "JANE_KERNEL" -> "ppx_jane_kernel"
+      | "JANE_KERNEL" -> "ppx_jane.kernel"
       | s -> s
     in
     of_string s
@@ -283,30 +283,69 @@ let field_oslu name =
 let field_pp name =
   field name Preprocess_map.t ~default:Preprocess_map.default
 
+module Js_of_ocaml = struct
+  type t =
+    { flags            : string list
+    ; javascript_files : string list
+    }
+
+
+  let t =
+    record [ field "flags" (list string)            ~default:[]
+           ; field "javascript_files" (list string) ~default:[]
+           ]
+      (fun flags javascript_files ->
+         { flags; javascript_files })
+end
+
 module Library = struct
+  module Kind = struct
+    type t =
+      | Normal
+      | Ppx_type_conv_plugin
+      | Ppx_rewriter
+
+    let t =
+      sum
+        [ cstr "normal"               [] Normal
+        ; cstr "ppx_type_conv_plugin" [] Ppx_type_conv_plugin
+        ; cstr "ppx_rewriter"         [] Ppx_rewriter
+        ]
+  end
+
   type t =
     { name                  : string
     ; public_name           : string option
+    ; synopsis              : string option
+    ; public_headers        : string list
     ; libraries             : string list
     ; ppx_runtime_libraries : string list
+    ; modes                 : Mode.t list
+    ; kind                  : Kind.t
     ; modules               : Ordered_set_lang.t
     ; c_flags               : Ordered_set_lang.Unexpanded.t
     ; c_names               : string list
     ; cxx_flags             : Ordered_set_lang.Unexpanded.t
     ; cxx_names             : string list
-    ; library_flags         : Ordered_set_lang.Unexpanded.t
+    ; includes              : String_with_vars.t list
+    ; library_flags         : String_with_vars.t list
     ; cclibs                : Ordered_set_lang.Unexpanded.t
     ; preprocess            : Preprocess_map.t
     ; preprocessor_deps     : Dep_conf.t list
-    ; self_build_stubs_archive : string option;
+    ; self_build_stubs_archive : string option
+    ; js_of_ocaml           : Js_of_ocaml.t option
+    ; virtual_deps          : string list
+    ; wrapped               : bool
     }
 
   let t =
     record
       ~ignore:["js_of_ocaml"; "inline_tests"; "public_release"; "skip_from_default";
-               "extra_disabled_warnings"; "lint"; "includes"; "flags"]
+               "extra_disabled_warnings"; "lint"; "flags"]
       [ field      "name"                  library_name
       ; field_o    "public_name"           string
+      ; field_o    "synopsis"              string
+      ; field      "public_headers"        (list string) ~default:[]
       ; field      "libraries"             (list string) ~default:[]
       ; field      "ppx_runtime_libraries" (list string) ~default:[]
       ; field_modules
@@ -314,36 +353,57 @@ module Library = struct
       ; field_oslu "cxx_flags"
       ; field      "c_names"               (list string) ~default:[]
       ; field      "cxx_names"             (list string) ~default:[]
-      ; field_oslu "library_flags"
+      ; field      "library_flags"         (list String_with_vars.t) ~default:[]
       ; field_oslu "cclibs"
       ; field_pp   "preprocess"
       ; field      "preprocessor_deps"     (list Dep_conf.t) ~default:[]
       ; field      "self_build_stubs_archive" (option string) ~default:None
+      ; field_o    "js_of_ocaml"           Js_of_ocaml.t
+      ; field      "virtual_deps"          (list string) ~default:[]
+      ; field      "modes"                 (list Mode.t) ~default:Mode.all
+      ; field      "includes"              (list String_with_vars.t) ~default:[]
+      ; field      "kind"                  Kind.t ~default:Kind.Normal
+      ; field      "wrapped"               bool ~default:true
       ]
-      (fun name public_name libraries ppx_runtime_libraries modules c_flags cxx_flags
-        c_names cxx_names library_flags cclibs preprocess preprocessor_deps
-        self_build_stubs_archive ->
+      (fun name public_name synopsis public_headers libraries ppx_runtime_libraries
+        modules c_flags cxx_flags c_names cxx_names library_flags cclibs preprocess
+        preprocessor_deps self_build_stubs_archive js_of_ocaml virtual_deps modes
+        includes kind wrapped ->
         { name
         ; public_name
+        ; synopsis
+        ; public_headers
         ; libraries
         ; ppx_runtime_libraries
+        ; modes
+        ; kind
         ; modules
         ; c_names
         ; c_flags
         ; cxx_names
         ; cxx_flags
+        ; includes
         ; library_flags
         ; cclibs
         ; preprocess
         ; preprocessor_deps
         ; self_build_stubs_archive
+        ; js_of_ocaml
+        ; virtual_deps
+        ; wrapped
         })
+
+  let has_stubs t =
+    match t.c_names, t.cxx_names, t.self_build_stubs_archive with
+    | [], [], None -> false
+    | _            -> true
 end
 
 module Executables = struct
   type t =
     { names            : string list
     ; object_public_name : string option
+    ; synopsis         : string option
     ; link_executables : bool
     ; libraries        : string list
     ; link_flags       : string list
@@ -356,16 +416,18 @@ module Executables = struct
       ~ignore:["js_of_ocaml"; "only_shared_object"; "review_help"; "skip_from_default"]
       [ field     "names"            (list string)
       ; field_o   "object_public_name" string
+      ; field_o   "synopsis"              string
       ; field     "link_executables" bool ~default:true
       ; field     "libraries"        (list string) ~default:[]
       ; field     "link_flags"       (list string) ~default:[]
       ; field_modules
       ; field_pp  "preprocess"
       ]
-      (fun names object_public_name link_executables libraries link_flags modules
+      (fun names object_public_name synopsis link_executables libraries link_flags modules
         preprocess ->
          { names
          ; object_public_name
+         ; synopsis
          ; link_executables
          ; libraries
          ; link_flags
@@ -426,6 +488,40 @@ module Provides = struct
       of_sexp_error "[<name>] or [<name> (file <file>)] expected" sexp
 end
 
+module Install_conf = struct
+  type file =
+    { src : string
+    ; dst : string option
+    }
+
+  let file (sexp : Sexp.t) =
+    match sexp with
+    | Atom src                             -> { src; dst = None }
+    | List [Atom src; Atom "as"; Atom dst] -> { src; dst = Some dst }
+    | _ ->
+      of_sexp_error
+        "invalid format, <name> or (<name> as <install-as>) expected"
+        sexp
+
+  type t =
+    { section : Install.Section.t
+    ; files   : file list
+    ; package : string option
+    }
+
+  let t =
+    record
+      [ field   "section" Install.Section.t
+      ; field   "files"   (list file)
+      ; field_o "package" string
+      ]
+      (fun section files package ->
+         { section
+         ; files
+         ; package
+         })
+end
+
 module Stanza = struct
   type t =
     | Library     of Library.t
@@ -434,22 +530,23 @@ module Stanza = struct
     | Ocamllex    of Ocamllex.t
     | Ocamlyacc   of Ocamlyacc.t
     | Provides    of Provides.t
+    | Install     of Install_conf.t
     | Other
 
   let t =
     sum
-      [ cstr "library"     [Library.t]     (fun x -> Library     x)
-      ; cstr "executables" [Executables.t] (fun x -> Executables x)
-      ; cstr "rule"        [Rule.t]        (fun x -> Rule        x)
-      ; cstr "ocamllex"    [Ocamllex.t]    (fun x -> Ocamllex    x)
-      ; cstr "ocamlyacc"   [Ocamlyacc.t]   (fun x -> Ocamlyacc   x)
-      ; cstr "provides"    [Provides.t]    (fun x -> Provides    x)
-      ; cstr "alias"       [fun _ -> ()]   (fun _ -> Other        )
-      ; cstr "enforce_style" [fun _ -> ()]   (fun _ -> Other        )
+      [ cstr "library"     [Library.t]      (fun x -> Library     x)
+      ; cstr "executables" [Executables.t]  (fun x -> Executables x)
+      ; cstr "rule"        [Rule.t]         (fun x -> Rule        x)
+      ; cstr "ocamllex"    [Ocamllex.t]     (fun x -> Ocamllex    x)
+      ; cstr "ocamlyacc"   [Ocamlyacc.t]    (fun x -> Ocamlyacc   x)
+      ; cstr "provides"    [Provides.t]     (fun x -> Provides    x)
+      ; cstr "install"     [Install_conf.t] (fun x -> Install     x)
+      ; cstr "alias"                 [fun _ -> ()] (fun _ -> Other )
+      ; cstr "enforce_style"         [fun _ -> ()] (fun _ -> Other )
       ; cstr "toplevel_expect_tests" [fun _ -> ()] (fun _ -> Other)
-      ; cstr "install" [fun _ -> ()] (fun _ -> Other)
-      ; cstr "unified_tests" [fun _ -> ()] (fun _ -> Other)
-      ; cstr "embed" [fun _ -> ()] (fun _ -> Other)
+      ; cstr "unified_tests"         [fun _ -> ()] (fun _ -> Other)
+      ; cstr "embed"                 [fun _ -> ()] (fun _ -> Other)
       ]
 
   let lib_names ts =

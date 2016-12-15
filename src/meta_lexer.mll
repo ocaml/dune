@@ -9,6 +9,8 @@ type token =
   | Equal
   | Plus_equal
   | Eof
+
+let escaped_buf = Buffer.create 256
 }
 
 rule token = parse
@@ -17,18 +19,9 @@ rule token = parse
   | '\n' { Lexing.new_line lexbuf; token lexbuf }
 
   | ['A'-'Z' 'a'-'z' '0'-'9' '_' '.']+ as s { Name s }
-  | '"' ([^ '\\' '"']* ( '\\' ['\\' '"'] [^ '\\' '"']* )* as s) '"'
-      { let len = String.length s in
-        let buf = Buffer.create len in
-        let rec loop i =
-          if i = len then
-            Buffer.contents buf
-          else
-            match s.[i] with
-            | '\\' -> Buffer.add_char buf s.[i + 1]; loop (i + 2)
-            | _    -> Buffer.add_char buf s.[i    ]; loop (i + 1)
-        in
-        String (loop 0) }
+  | '"'
+      { Buffer.clear escaped_buf;
+        string escaped_buf lexbuf }
   | '-' { Minus }
   | '(' { Lparen }
   | ')' { Rparen }
@@ -37,3 +30,18 @@ rule token = parse
   | "+=" { Plus_equal }
   | eof { Eof }
   | _ { Loc.fail_lex lexbuf "invalid character" }
+
+and string buf = parse
+  | '"'
+      { String (Buffer.contents buf) }
+  | "\\\n"
+  | '\n'
+      { Lexing.new_line lexbuf;
+        Buffer.add_char buf '\n';
+        string buf lexbuf }
+  | '\\' (_ as c)
+  | (_ as c)
+      { Buffer.add_char buf c;
+        string buf lexbuf }
+  | eof
+      { Loc.fail_lex lexbuf "unterminated string" }

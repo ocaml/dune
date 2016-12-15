@@ -145,24 +145,23 @@ let rec simplify t =
         in
         { pkg with vars = String_map.add pkg.vars ~key:rule.var ~data:rules })
 
+let rule var predicates action value =
+  Rule { var; predicates; action; value }
+let requires ?(preds=[]) pkgs =
+  rule "requires" preds Set (String.concat ~sep:" " pkgs)
+let version     s = rule "version"    []      Set s
+let directory   s = rule "directory"  []      Set s
+let archive p s   = rule "archive"    [Pos p] Set s
+let plugin  p s   = rule "plugin"     [Pos p] Set s
+let archives name =
+  [ archive "byte"   (name ^ ".cma" )
+  ; archive "native" (name ^ ".cmxa")
+  ; plugin  "byte"   (name ^ ".cma" )
+  ; plugin  "native" (name ^ ".cmxs")
+  ]
+
 let builtins =
-  let rule var predicates action value =
-    Rule { var; predicates; action; value }
-  in
-  let requires ?(preds=[]) pkgs =
-    rule "requires" preds Set (String.concat ~sep:" " pkgs)
-  in
-  let version       = rule "version"    []      Set "[distributed with Ocaml]"    in
-  let directory   s = rule "directory"  []      Set s                             in
-  let archive p s   = rule "archive"    [Pos p] Set s                             in
-  let plugin  p s   = rule "plugin"     [Pos p] Set s                             in
-  let archives name =
-    [ archive "byte"   (name ^ ".cma" )
-    ; archive "native" (name ^ ".cmxa")
-    ; plugin  "byte"   (name ^ ".cma" )
-    ; plugin  "native" (name ^ ".cmxs")
-    ]
-  in
+  let version = version "[distributed with Ocaml]" in
   let simple name ?dir ?(archive_name=name) deps =
     let archives = archives archive_name in
     { name
@@ -218,4 +217,38 @@ let builtins =
   List.map [ compiler_libs; str; threads; num ] ~f:(fun t -> t.name, t)
   |> String_map.of_alist_exn
 
-let builtin name = String_map.find name builtins
+let string_of_action = function
+  | Set -> "="
+  | Add -> "+="
+
+let string_of_predicate = function
+  | Pos p -> p
+  | Neg p -> "-" ^ p
+
+let pp_list f ppf l =
+  match l with
+  | [] -> ()
+  | x :: l ->
+    f ppf x;
+    List.iter l ~f:(fun x ->
+      Format.pp_print_cut ppf ();
+      f ppf x)
+
+let rec pp ppf entries =
+  Format.fprintf ppf "@[<v>%a@]" (pp_list pp_entry) entries
+
+and pp_entry ppf entry =
+  let open Format in
+  match entry with
+  | Comment s ->
+    fprintf ppf "# %s" s
+  | Rule { var; predicates = []; action; value } ->
+    fprintf ppf "@[%s %s \"@[<hv>%a@]\"@]"
+      var (string_of_action action) pp_print_text value
+  | Rule { var; predicates; action; value } ->
+    fprintf ppf "@[%s(%s) %s \"@[<hv>%a@]\"@]"
+      var (String.concat ~sep:"," (List.map predicates ~f:string_of_predicate))
+      (string_of_action action) pp_print_text value
+  | Package { name; entries } ->
+    fprintf ppf "@[<v 2>package %S (@,%a@]@,)"
+      name pp entries

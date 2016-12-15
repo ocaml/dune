@@ -5,6 +5,7 @@ let common_args =
   [ "-j", Arg.Set_int Clflags.concurrency, "JOBS concurrency"
   ; "-drules", Arg.Set Clflags.debug_rules, " show rules"
   ; "-ddep-path", Arg.Set Clflags.debug_dep_path, " show depency path of errors"
+  ; "-dfindlib", Arg.Set Clflags.debug_findlib, " debug findlib stuff"
   ]
 
 let parse_args argv msg l =
@@ -45,32 +46,35 @@ let internal argv =
   | _ ->
     ()
 
-let setup ~packages =
-  let tree, stanzas = Jbuild_load.load () in
+let setup () =
+  let { Jbuild_load. tree; stanzas; packages } = Jbuild_load.load () in
   Lazy.force Context.default >>= fun ctx ->
-  Gen_rules.gen ~context:ctx ~stanzas ~packages;
-  Alias.setup_rules tree;
-  return (stanzas, ctx)
+  let rules = Gen_rules.gen ~context:ctx ~tree ~stanzas ~packages in
+  let bs = Build_system.create ~rules in
+  return (bs, stanzas, ctx)
 
 let external_lib_deps ~packages =
   Future.Scheduler.go
-    (setup ~packages >>= fun (stanzas, _) ->
-     let external_libs =
-       String_set.diff
-         (Build_system.all_lib_deps
-            (List.map packages ~f:(fun pkg ->
-               Path.(relative root) (pkg ^ ".install"))))
-         (Jbuild_types.Stanza.lib_names stanzas)
-     in
-     return (String_set.elements external_libs))
+    (setup () >>| fun (bs, stanzas, _) ->
+     Path.Map.map
+       (Build_system.all_lib_deps bs
+          (List.map packages ~f:(fun pkg ->
+             Path.(relative root) (pkg ^ ".install"))))
+       ~f:(fun names ->
+         String_set.diff
+           names
+           (Jbuild_types.Stanza.lib_names stanzas)))
 
 let external_lib_deps_cmd argv =
   let packages =
     parse_args argv "jbuild external-lib-deps PACKAGES"
       common_args
   in
-  let deps = external_lib_deps ~packages in
-  List.iter deps ~f:(Printf.printf "%s\n")
+  let deps =
+    Path.Map.fold (external_lib_deps ~packages) ~init:String_set.empty
+      ~f:(fun ~key:_ ~data:deps acc -> String_set.union deps acc)
+  in
+  String_set.iter deps ~f:(Printf.printf "%s\n")
 
 let main () =
   let argv = Sys.argv in
@@ -89,16 +93,16 @@ let main () =
           common_args
       in
       Future.Scheduler.go
-        (setup ~packages:[pkg] >>= fun _ ->
-         Build_system.do_build_exn [Path.(relative root) (pkg ^ ".install")])
+        (setup () >>= fun (bs, _, _) ->
+         Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])
     | "external-lib-deps" ->
       external_lib_deps_cmd (compact ())
     | _ ->
       let targets = parse_args argv "jbuild TARGETS" common_args in
       Future.Scheduler.go
-        (setup ~packages:[] >>= fun (_, ctx) ->
+        (setup () >>= fun (bs, _, ctx) ->
          let targets = List.map targets ~f:(Path.relative ctx.build_dir) in
-         Build_system.do_build_exn targets)
+         Build_system.do_build_exn bs targets)
 
 let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   match exn with
@@ -112,7 +116,7 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   | Fatal_error msg ->
     Format.fprintf ppf "%s\n" (String.capitalize msg)
   | Findlib.Package_not_found pkg ->
-    Format.fprintf ppf "Findlib package %s not found.\n" pkg
+    Format.fprintf ppf "Findlib package %S not found.\n" pkg
   | Code_error msg ->
     let bt = Printexc.raw_backtrace_to_string backtrace in
     Format.fprintf ppf "Internal error, please report upstream.\n\

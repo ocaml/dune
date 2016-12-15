@@ -98,18 +98,30 @@ let create ~(kind : Kind.t) ~path ~env =
   in
   let ocamlc_config_cmd = sprintf "%s -config" (Path.to_string ocamlc) in
   both
-    (match which "ocamlfind" with
-     | Some fn ->
-       Future.run_capture_lines ~env (Path.to_string fn) ["printconf"; "path"]
-       >>| List.map ~f:Path.absolute
-     | None ->
-       match Bin.opam with
-       | None ->
-         return [Path.relative (Path.parent dir) "lib"]
-       | Some fn ->
-         Future.run_capture_line ~env (Path.to_string fn)
-           ["config"; "var"; "lib"]
-         >>| fun s -> [Path.absolute s])
+    (both
+       (match Bin.opam with
+        | None ->
+          return []
+        | Some fn ->
+          Future.run_capture_line ~env (Path.to_string fn)
+            ["config"; "var"; "lib"]
+          >>| fun s -> [Path.absolute s])
+       (match which "ocamlfind" with
+        | None ->
+          return []
+        | Some fn ->
+          Future.run_capture_lines ~env (Path.to_string fn) ["printconf"; "path"]
+          >>| List.map ~f:Path.absolute)
+     >>| fun (a, b) ->
+     match a @ b with
+     | [] -> [Path.relative (Path.parent dir) "lib"]
+     | l  ->
+       List.fold_left l ~init:l ~f:(fun acc x ->
+         if List.mem x ~set:acc then
+           acc
+         else
+           x :: acc)
+       |> List.rev)
     (Future.run_capture_lines ~env (Path.to_string ocamlc) ["-config"])
   >>= fun (findlib_path, ocamlc_config) ->
   let ocamlc_config =

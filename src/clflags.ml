@@ -3,5 +3,6 @@ let concurrency = ref 4
 let g = ref true
 let debug_rules = ref false
 let debug_run = ref true
+let debug_findlib = ref false
 let warnings = ref "-40"
 let debug_dep_path = ref false

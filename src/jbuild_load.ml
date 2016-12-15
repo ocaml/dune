@@ -1,6 +1,12 @@
 open Import
 open Jbuild_types
 
+type conf =
+  { tree     : Alias.tree
+  ; stanzas  : (Path.t * Jbuild_types.Stanza.t list) list
+  ; packages : string list
+  }
+
 let load fn ~dir = (dir, Sexp_load.many fn Stanza.t)
 
 let always_ignore =
@@ -13,7 +19,7 @@ let always_ignore =
 
 let load () =
   let rec walk dir stanzas =
-    let files = Path.readdir dir |> Array.to_list |> String_set.of_list in
+    let files = Path.readdir dir |> String_set.of_list in
     let ignore_set =
       if String_set.mem "jbuild-ignore" files then
         String_set.union
@@ -30,7 +36,7 @@ let load () =
         else
           let fn = Path.relative dir fn in
           if Path.exists fn && Path.is_directory fn then
-            let child, stanzas = walk fn stanzas in
+            let child, stanzas, _ = walk fn stanzas in
             (child :: children, stanzas)
           else
             acc)
@@ -41,6 +47,16 @@ let load () =
       else
         stanzas
     in
-    (Alias.Node (dir, children), stanzas)
+    (Alias.Node (dir, children), stanzas, files)
   in
-  walk Path.root []
+  let tree, stanzas, files = walk Path.root [] in
+  let packages =
+    String_set.fold files ~init:[] ~f:(fun fn acc ->
+      match Filename.split_ext fn with
+      | Some (pkg, ".opam") -> pkg :: acc
+      | _ -> acc)
+  in
+  { tree
+  ; stanzas
+  ; packages
+  }

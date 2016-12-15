@@ -243,8 +243,20 @@ let extract_build_context t =
   else
     None
 
+let extract_build_context_dir t =
+  if is_local t && String.is_prefix t ~prefix:build_prefix then
+    let i = String.length build_prefix in
+    match String.index_from t i '/' with
+    | exception _ -> None
+    | j ->
+      Some
+        (String.sub t ~pos:0 ~len:j,
+         String.sub t ~pos:(j + 1) ~len:(String.length t - j - 1))
+  else
+    None
+
 let exists t = Sys.file_exists (to_string t)
-let readdir t = Sys.readdir (to_string t)
+let readdir t = Sys.readdir (to_string t) |> Array.to_list
 let is_directory t = Sys.is_directory (to_string t)
 let rmdir t = Unix.rmdir (to_string t)
 let unlink t = Sys.remove (to_string t)

@@ -190,6 +190,7 @@ let builtins =
     }
   in
   let str = simple "str" [] ~dir:"+" in
+  let unix = simple "unix" [] ~dir:"+" in
   let bigarray = simple "bigarray" ["unix"] ~dir:"+" in
   let threads =
     { name = "threads"
@@ -215,7 +216,7 @@ let builtins =
         ]
     }
   in
-  List.map [ compiler_libs; str; bigarray; threads; num ] ~f:(fun t -> t.name, t)
+  List.map [ compiler_libs; str; unix; bigarray; threads; num ] ~f:(fun t -> t.name, t)
   |> String_map.of_alist_exn
 
 let string_of_action = function

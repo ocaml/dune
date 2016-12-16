@@ -14,10 +14,33 @@ let g () =
   else
     []
 
-let ocaml_compile_flags () =
-  Arg_spec.As ("-w" :: !Clflags.warnings :: g ())
+module Ocaml_flags = struct
+  let default_ocamlc_flags   = g ()
+  let default_ocamlopt_flags = g ()
 
-let g () = Arg_spec.As (g ())
+  let default_flags = [ "-w"; !Clflags.warnings ]
+
+  type t =
+    { common   : string list
+    ; specific : string list Mode.Dict.t
+    }
+
+  let make ~flags ~ocamlc_flags ~ocamlopt_flags =
+    let eval = Ordered_set_lang.eval_with_standard in
+    { common   = eval flags ~standard:default_flags
+    ; specific =
+        { byte   = eval ocamlc_flags   ~standard:default_ocamlc_flags
+        ; native = eval ocamlopt_flags ~standard:default_ocamlopt_flags
+        }
+    }
+
+  let get t mode = Arg_spec.As (t.common @ Mode.Dict.get t.specific mode)
+
+  let get_for_cm t ~cm_kind = get t (Mode.of_cm_kind cm_kind)
+end
+
+let default_c_flags = g ()
+let default_cxx_flags = g ()
 
 let cm_files modules ~dir ~cm_kind =
   List.map modules ~f:(fun (m : Module.t) -> Module.cm_file m ~dir cm_kind)
@@ -617,7 +640,7 @@ module Gen(P : Params) = struct
         | Cmx ->
           [lib_cm_all ~dir lib Cmx])
 
-  let build_cm ?(flags=Arg_spec.S[]) ~cm_kind ~dep_graph ~requires
+  let build_cm ~flags ~cm_kind ~dep_graph ~requires
         ~(modules : Module.t String_map.t) ~dir ~alias_module (m : Module.t) =
     Option.iter (Cm_kind.compiler cm_kind ctx) ~f:(fun compiler ->
       Option.iter (Module.cm_source ~dir m cm_kind) ~f:(fun src ->
@@ -678,10 +701,9 @@ module Gen(P : Params) = struct
            Build.dyn_paths (Build.arr (lib_dependencies ~cm_kind)) >>>
            Build.run (Dep compiler)
              ~extra_targets
-             [ ocaml_compile_flags ()
+             [ Ocaml_flags.get_for_cm flags ~cm_kind
              ; cmt_args
              ; Dyn Lib.include_flags
-             ; flags
              ; As extra_args
              ; A "-no-alias-deps"
              ; A "-I"; Path dir
@@ -692,17 +714,17 @@ module Gen(P : Params) = struct
              ; A "-c"; Ml_kind.flag ml_kind; Dep src
              ])))
 
-  let build_module ?flags m ~dir ~dep_graph ~modules ~requires ~alias_module =
+  let build_module ~flags m ~dir ~dep_graph ~modules ~requires ~alias_module =
     List.iter Cm_kind.all ~f:(fun cm_kind ->
-      build_cm ?flags ~dir ~dep_graph ~modules m ~cm_kind ~requires ~alias_module)
+      build_cm ~flags ~dir ~dep_graph ~modules m ~cm_kind ~requires ~alias_module)
 
-  let build_modules ~dir ~dep_graph ~modules ~requires ~alias_module =
+  let build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module =
     String_map.iter
       (match alias_module with
        | None -> modules
        | Some (m : Module.t) -> String_map.remove m.name modules)
       ~f:(fun ~key:_ ~data:m ->
-        build_module m ~dir ~dep_graph ~modules ~requires ~alias_module)
+        build_module m ~flags ~dir ~dep_graph ~modules ~requires ~alias_module)
 
   (* +-----------------------------------------------------------------+
      | Interpretation of [modules] fields                              |
@@ -737,7 +759,7 @@ module Gen(P : Params) = struct
   let dll (lib : Library.t) ~dir =
     Path.relative dir (sprintf "dll%s_stubs%s" lib.name ctx.ext_dll)
 
-  let build_lib (lib : Library.t) ~dir ~mode ~modules ~dep_graph =
+  let build_lib (lib : Library.t) ~flags ~dir ~mode ~modules ~dep_graph =
     Option.iter (Mode.compiler mode ctx) ~f:(fun compiler ->
       let target = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let dep_graph = Ml_kind.Dict.get dep_graph Impl in
@@ -767,7 +789,7 @@ module Gen(P : Params) = struct
              match mode with
              | Byte -> []
              | Native -> [lib_archive lib ~dir ~ext:ctx.ext_lib])
-           [ g ()
+           [ Ocaml_flags.get flags mode
            ; A "-a"; A "-o"; Target target
            ; As stubs_flags
            ; Dyn (fun (_, cclibs) ->
@@ -797,7 +819,7 @@ module Gen(P : Params) = struct
       (Build.paths h_files
        >>>
        Build.fanout
-         (expand_and_eval_set ~dir lib.c_flags ~standard:[])
+         (expand_and_eval_set ~dir lib.c_flags ~standard:default_c_flags)
          requires
        >>>
        Build.run
@@ -805,7 +827,7 @@ module Gen(P : Params) = struct
             the current directory *)
          ~dir
          (Dep ctx.ocamlc)
-         [ g ()
+         [ As (g ())
          ; expand_includes ~dir lib.includes
          ; Dyn (fun (c_flags, libs) ->
              S [ Lib.c_include_flags libs
@@ -823,7 +845,7 @@ module Gen(P : Params) = struct
       (Build.paths h_files
        >>>
        Build.fanout
-         (expand_and_eval_set ~dir lib.cxx_flags ~standard:cxx_flags)
+         (expand_and_eval_set ~dir lib.cxx_flags ~standard:default_cxx_flags)
          requires
        >>>
        Build.run
@@ -831,12 +853,12 @@ module Gen(P : Params) = struct
             the current directory *)
          ~dir
          (Dep cxx_compiler)
-         [ g ()
-         ; S [A "-I"; Path ctx.stdlib_dir]
+         [ S [A "-I"; Path ctx.stdlib_dir]
          ; expand_includes ~dir lib.includes
-         ; Dyn (fun (c_flags, libs) ->
+         ; As cxx_flags
+         ; Dyn (fun (cxx_flags, libs) ->
              S [ Lib.c_include_flags libs
-               ; As c_flags
+               ; As cxx_flags
                ])
          ; A "-o"; Target dst
          ; A "-c"; Dep src
@@ -848,6 +870,12 @@ module Gen(P : Params) = struct
 
   let library_rules (lib : Library.t) ~dir ~all_modules ~files =
     let dep_kind = if lib.optional then Build.Optional else Required in
+    let flags =
+      Ocaml_flags.make
+        ~flags:lib.flags
+        ~ocamlc_flags:lib.ocamlc_flags
+        ~ocamlopt_flags:lib.ocamlopt_flags
+    in
     let modules = parse_modules ~dir ~all_modules ~modules_written_by_user:lib.modules in
     let main_module_name = String.capitalize_ascii lib.name in
     let modules =
@@ -913,10 +941,10 @@ module Gen(P : Params) = struct
       ~libraries:lib.libraries
       ~ppx_runtime_libraries:lib.ppx_runtime_libraries;
 
-    build_modules ~dir ~dep_graph ~modules ~requires ~alias_module;
+    build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
       build_module m
-        ~flags:(As ["-w"; "-49"])
+        ~flags:{ flags with common = "-w" :: "-49" :: flags.common }
         ~dir
         ~modules:(String_map.singleton m.name m)
         ~dep_graph:(Ml_kind.Dict.make_both (Build.return (String_map.singleton m.name [])))
@@ -951,7 +979,7 @@ module Gen(P : Params) = struct
            Build.run
              ~extra_targets:targets
              (Dep ctx.ocamlmklib)
-             [ g ()
+             [ As (g ())
              ; A "-o"
              ; Path (Path.relative dir (sprintf "%s_stubs" lib.name))
              ; Deps o_files
@@ -963,7 +991,7 @@ module Gen(P : Params) = struct
     List.iter Cm_kind.all ~f:(mk_lib_cm_all lib ~dir ~modules);
 
     List.iter Mode.all ~f:(fun mode ->
-      build_lib lib ~dir ~mode ~modules ~dep_graph);
+      build_lib lib ~flags ~dir ~mode ~modules ~dep_graph);
 
     Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Native) in
@@ -971,7 +999,7 @@ module Gen(P : Params) = struct
       add_rule
         (Build.run
            (Dep ocamlopt)
-           [ g ()
+           [ Ocaml_flags.get flags Native
            ; A "-shared"; A "-linkall"
            ; A "-I"; Path dir
            ; A "-o"; Target dst
@@ -994,7 +1022,7 @@ module Gen(P : Params) = struct
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  let build_exe ~dir ~requires ~name ~mode ~modules ~dep_graph ~link_flags =
+  let build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph ~link_flags =
     Option.iter (Mode.compiler mode ctx) ~f:(fun compiler ->
       let dep_graph = Ml_kind.Dict.get dep_graph Impl in
       let exe = Path.relative dir (name ^ Mode.exe_ext mode) in
@@ -1013,7 +1041,7 @@ module Gen(P : Params) = struct
          >>>
          Build.run
            (Dep compiler)
-           [ g ()
+           [ Ocaml_flags.get flags mode
            ; A "-o"; Target exe
            ; As link_flags
            ; Dyn (fun (libs, _) -> Lib.link_flags libs ~mode)
@@ -1022,6 +1050,12 @@ module Gen(P : Params) = struct
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules =
     let dep_kind = Build.Required in
+    let flags =
+      Ocaml_flags.make
+        ~flags:exes.flags
+        ~ocamlc_flags:exes.ocamlc_flags
+        ~ocamlopt_flags:exes.ocamlopt_flags
+    in
     let modules = parse_modules ~dir ~all_modules ~modules_written_by_user:exes.modules in
     let modules =
       String_map.map modules ~f:(fun (m : Module.t) ->
@@ -1046,12 +1080,12 @@ module Gen(P : Params) = struct
         ~virtual_deps:[]
     in
 
-    build_modules ~dir ~dep_graph ~modules ~requires ~alias_module:None;
+    build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module:None;
 
     if exes.link_executables then
       List.iter exes.names ~f:(fun name ->
         List.iter Mode.all ~f:(fun mode ->
-          build_exe ~dir ~requires ~name ~mode ~modules ~dep_graph
+          build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
             ~link_flags:exes.link_flags))
 
 

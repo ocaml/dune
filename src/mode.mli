@@ -12,6 +12,7 @@ val exe_ext : t -> string
 val compiler : t -> Context.t -> Path.t option
 
 val cm_kind : t -> Cm_kind.t
+val of_cm_kind : Cm_kind.t -> t
 
 val findlib_predicate : t -> string
 

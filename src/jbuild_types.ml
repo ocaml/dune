@@ -314,35 +314,38 @@ module Library = struct
   end
 
   type t =
-    { name                  : string
-    ; public_name           : string option
-    ; synopsis              : string option
-    ; public_headers        : string list
-    ; libraries             : string list
-    ; ppx_runtime_libraries : string list
-    ; modes                 : Mode.t list
-    ; kind                  : Kind.t
-    ; modules               : Ordered_set_lang.t
-    ; c_flags               : Ordered_set_lang.Unexpanded.t
-    ; c_names               : string list
-    ; cxx_flags             : Ordered_set_lang.Unexpanded.t
-    ; cxx_names             : string list
-    ; includes              : String_with_vars.t list
-    ; library_flags         : String_with_vars.t list
-    ; cclibs                : Ordered_set_lang.Unexpanded.t
-    ; preprocess            : Preprocess_map.t
-    ; preprocessor_deps     : Dep_conf.t list
+    { name                     : string
+    ; public_name              : string option
+    ; synopsis                 : string option
+    ; public_headers           : string list
+    ; libraries                : string list
+    ; ppx_runtime_libraries    : string list
+    ; modes                    : Mode.t list
+    ; kind                     : Kind.t
+    ; modules                  : Ordered_set_lang.t
+    ; c_flags                  : Ordered_set_lang.Unexpanded.t
+    ; c_names                  : string list
+    ; cxx_flags                : Ordered_set_lang.Unexpanded.t
+    ; cxx_names                : string list
+    ; includes                 : String_with_vars.t list
+    ; library_flags            : String_with_vars.t list
+    ; cclibs                   : Ordered_set_lang.Unexpanded.t
+    ; preprocess               : Preprocess_map.t
+    ; preprocessor_deps        : Dep_conf.t list
     ; self_build_stubs_archive : string option
-    ; js_of_ocaml           : Js_of_ocaml.t option
-    ; virtual_deps          : string list
-    ; wrapped               : bool
-    ; optional              : bool
+    ; js_of_ocaml              : Js_of_ocaml.t option
+    ; virtual_deps             : string list
+    ; wrapped                  : bool
+    ; optional                 : bool
+    ; flags                    : Ordered_set_lang.t
+    ; ocamlc_flags             : Ordered_set_lang.t
+    ; ocamlopt_flags           : Ordered_set_lang.t
     }
 
   let t =
     record
-      ~ignore:["js_of_ocaml"; "inline_tests"; "public_release"; "skip_from_default";
-               "extra_disabled_warnings"; "lint"; "flags"]
+      ~ignore:["inline_tests"; "skip_from_default";
+               "extra_disabled_warnings"; "lint"]
       [ field      "name"                  library_name
       ; field_o    "public_name"           string
       ; field_o    "synopsis"              string
@@ -366,11 +369,14 @@ module Library = struct
       ; field      "kind"                  Kind.t ~default:Kind.Normal
       ; field      "wrapped"               bool ~default:true
       ; field_b    "optional"
+      ; field_osl  "flags"
+      ; field_osl  "ocamlc_flags"
+      ; field_osl  "ocamlopt_flags"
       ]
       (fun name public_name synopsis public_headers libraries ppx_runtime_libraries
         modules c_flags cxx_flags c_names cxx_names library_flags cclibs preprocess
         preprocessor_deps self_build_stubs_archive js_of_ocaml virtual_deps modes
-        includes kind wrapped optional ->
+        includes kind wrapped optional flags ocamlc_flags ocamlopt_flags ->
         { name
         ; public_name
         ; synopsis
@@ -394,6 +400,9 @@ module Library = struct
         ; virtual_deps
         ; wrapped
         ; optional
+        ; flags
+        ; ocamlc_flags
+        ; ocamlopt_flags
         })
 
   let has_stubs t =
@@ -404,14 +413,17 @@ end
 
 module Executables = struct
   type t =
-    { names            : string list
+    { names              : string list
     ; object_public_name : string option
-    ; synopsis         : string option
-    ; link_executables : bool
-    ; libraries        : string list
-    ; link_flags       : string list
-    ; modules          : Ordered_set_lang.t
-    ; preprocess       : Preprocess_map.t
+    ; synopsis           : string option
+    ; link_executables   : bool
+    ; libraries          : string list
+    ; link_flags         : string list
+    ; modules            : Ordered_set_lang.t
+    ; preprocess         : Preprocess_map.t
+    ; flags              : Ordered_set_lang.t
+    ; ocamlc_flags       : Ordered_set_lang.t
+    ; ocamlopt_flags     : Ordered_set_lang.t
     }
 
   let t =
@@ -425,9 +437,12 @@ module Executables = struct
       ; field     "link_flags"       (list string) ~default:[]
       ; field_modules
       ; field_pp  "preprocess"
+      ; field_osl "flags"
+      ; field_osl "ocamlc_flags"
+      ; field_osl "ocamlopt_flags"
       ]
       (fun names object_public_name synopsis link_executables libraries link_flags modules
-        preprocess ->
+        preprocess flags ocamlc_flags ocamlopt_flags ->
          { names
          ; object_public_name
          ; synopsis
@@ -436,6 +451,9 @@ module Executables = struct
          ; link_flags
          ; modules
          ; preprocess
+         ; flags
+         ; ocamlc_flags
+         ; ocamlopt_flags
          })
 end
 

@@ -31,6 +31,10 @@ let best (ctx : Context.t) =
   | Some _ -> Native
   | None   -> Byte
 
+let of_cm_kind : Cm_kind.t -> t = function
+  | Cmi | Cmo -> Byte
+  | Cmx -> Native
+
 module Dict = struct
   type 'a t =
     { byte   : 'a

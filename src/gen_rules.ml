@@ -996,15 +996,25 @@ module Gen(P : Params) = struct
     Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Native) in
       let dst = lib_archive lib ~dir ~ext:".cmxs" in
-      add_rule
-        (Build.run
-           (Dep ocamlopt)
-           [ Ocaml_flags.get flags Native
-           ; A "-shared"; A "-linkall"
-           ; A "-I"; Path dir
-           ; A "-o"; Target dst
-           ; Dep src
-           ])
+      let build =
+        Build.run
+          (Dep ocamlopt)
+          [ Ocaml_flags.get flags Native
+          ; A "-shared"; A "-linkall"
+          ; A "-I"; Path dir
+          ; A "-o"; Target dst
+          ; Dep src
+          ]
+      in
+      let build =
+        if Library.has_stubs lib then
+          Build.path (stubs_archive ~dir lib)
+          >>>
+          build
+        else
+          build
+      in
+      add_rule build
     );
 
     match lib.kind with

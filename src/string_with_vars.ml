@@ -8,36 +8,52 @@ type item =
 
 type t = item list
 
-let syntax_of_opening = function
-  | '{' -> Braces
-  | '(' -> Parens
-  | _   -> assert false
+module Token = struct
+  type t =
+    | String of string
+    | Open   of var_syntax
+    | Close  of var_syntax
 
-let of_string s =
-  let len = String.length s in
-  let sub i j = String.sub s ~pos:i ~len:(j - i) in
-  let cons_text i j acc = if i = j then acc else Text (sub i j) :: acc in
-  let rec loop i j =
-    if j = len then
-      cons_text i j []
-    else
-      match s.[j] with
-      | '$' ->  begin
-          match
+  let tokenise s =
+    let len = String.length s in
+    let sub i j = String.sub s ~pos:i ~len:(j - i) in
+    let cons_str i j acc = if i = j then acc else String (sub i j) :: acc in
+    let rec loop i j =
+      if j = len
+      then cons_str i j []
+      else
+        match s.[j] with
+        | '}' -> cons_str i j (Close Braces :: loop (j + 1) (j + 1))
+        | ')' -> cons_str i j (Close Parens :: loop (j + 1) (j + 1))
+        | '$' -> begin
             match s.[j + 1] with
-            | '{' -> String.index_from s (j + 2) '}'
-            | '(' -> String.index_from s (j + 2) ')'
-            | _   -> raise Not_found
-          with
-          | exception Not_found -> loop i (j + 1)
-          | var_end ->
-            let var = sub (j + 2) var_end in
-            let syntax = syntax_of_opening s.[j + 1] in
-            cons_text i j (Var (syntax, var) :: loop (var_end + 1) (var_end + 1))
-        end
-      | _ -> loop i (j + 1)
-  in
-  loop 0 0
+            | '{' -> cons_str i j (Open Braces :: loop (j + 2) (j + 2))
+            | '(' -> cons_str i j (Open Parens :: loop (j + 2) (j + 2))
+            | _   -> loop i (j + 1)
+          end
+        | _ -> loop i (j + 1)
+    in
+    loop 0 0
+
+  let to_string = function
+    | String s     -> s
+    | Open  Braces -> "${"
+    | Open  Parens -> "$("
+    | Close Braces -> "}"
+    | Close Parens -> ")"
+end
+
+let rec of_tokens : Token.t list -> t = function
+  | [] -> []
+  | Open a :: String s :: Close b :: rest when a = b ->
+    Var (a, s) :: of_tokens rest
+  | token :: rest ->
+    let s = Token.to_string token in
+    match of_tokens rest with
+    | Text s' :: l -> Text (s ^ s') :: l
+    | l -> Text s :: l
+
+let of_string s = of_tokens (Token.tokenise s)
 
 let t sexp = of_string (Sexp.Of_sexp.string sexp)
 

@@ -329,7 +329,7 @@ module Library = struct
     ; cxx_names                : string list
     ; includes                 : String_with_vars.t list
     ; library_flags            : String_with_vars.t list
-    ; cclibs                   : Ordered_set_lang.Unexpanded.t
+    ; c_libraries              : Ordered_set_lang.Unexpanded.t
     ; preprocess               : Preprocess_map.t
     ; preprocessor_deps        : Dep_conf.t list
     ; self_build_stubs_archive : string option
@@ -358,7 +358,7 @@ module Library = struct
       ; field      "c_names"               (list string) ~default:[]
       ; field      "cxx_names"             (list string) ~default:[]
       ; field      "library_flags"         (list String_with_vars.t) ~default:[]
-      ; field_oslu "cclibs"
+      ; field_oslu "c_libraries"
       ; field_pp   "preprocess"
       ; field      "preprocessor_deps"     (list Dep_conf.t) ~default:[]
       ; field      "self_build_stubs_archive" (option string) ~default:None
@@ -374,7 +374,7 @@ module Library = struct
       ; field_osl  "ocamlopt_flags"
       ]
       (fun name public_name synopsis public_headers libraries ppx_runtime_libraries
-        modules c_flags cxx_flags c_names cxx_names library_flags cclibs preprocess
+        modules c_flags cxx_flags c_names cxx_names library_flags c_libraries preprocess
         preprocessor_deps self_build_stubs_archive js_of_ocaml virtual_deps modes
         includes kind wrapped optional flags ocamlc_flags ocamlopt_flags ->
         { name
@@ -392,7 +392,7 @@ module Library = struct
         ; cxx_flags
         ; includes
         ; library_flags
-        ; cclibs
+        ; c_libraries
         ; preprocess
         ; preprocessor_deps
         ; self_build_stubs_archive
@@ -465,7 +465,7 @@ module Rule = struct
     }
 
   let t =
-    record
+    record ~ignore:["sandbox"]
       [ field "targets" (list file_in_current_dir)
       ; field "deps"    (list Dep_conf.t)
       ; field "action"  User_action.Unexpanded.t

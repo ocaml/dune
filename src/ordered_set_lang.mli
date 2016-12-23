@@ -23,7 +23,7 @@ module Unexpanded : sig
   val files : t -> String_set.t
 
   (** Expand [t] using with the given file contents. [file_contents] is a map from
-      filenames to their parsed contents. Every [(< fn)] in [t] is replaced by [Map.find
-      files_contents fn]. *)
+      filenames to their parsed contents. Every [(:include fn)] in [t] is replaced by
+      [Map.find files_contents fn]. *)
   val expand : t -> files_contents:Sexp.t String_map.t -> expanded
 end with type expanded := t

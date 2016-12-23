@@ -63,7 +63,7 @@ module Unexpanded = struct
   let files t =
     let rec loop acc : t -> _ = function
       | Atom _ -> acc
-      | List [Atom "<"; Atom fn] -> String_set.add fn acc
+      | List [Atom ":include"; Atom fn] -> String_set.add fn acc
       | List l -> List.fold_left l ~init:acc ~f:loop
     in
     loop String_set.empty t
@@ -71,7 +71,7 @@ module Unexpanded = struct
   let rec expand (t : t) ~files_contents =
     match t with
     | Atom _ -> t
-    | List [Atom "<"; Atom fn] ->
+    | List [Atom ":include"; Atom fn] ->
       String_map.find_exn fn files_contents ~string_of_key:(sprintf "%S")
         ~desc:(fun _ -> "<filename to s-expression>")
     | List l -> List (List.map l ~f:(expand ~files_contents))

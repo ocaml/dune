@@ -782,7 +782,7 @@ module Gen(P : Params) = struct
                 ~modules
                 ~mode
                 (String_map.keys modules)))
-           (expand_and_eval_set ~dir lib.cclibs        ~standard:[])
+           (expand_and_eval_set ~dir lib.c_libraries ~standard:[])
          >>>
          Build.run (Dep compiler)
            ~extra_targets:(
@@ -974,7 +974,7 @@ module Gen(P : Params) = struct
       | None ->
         let targets = [ stubs_archive lib ~dir; dll lib ~dir ] in
         add_rule
-          (expand_and_eval_set ~dir lib.cclibs ~standard:[]
+          (expand_and_eval_set ~dir lib.c_libraries ~standard:[]
            >>>
            Build.run
              ~extra_targets:targets

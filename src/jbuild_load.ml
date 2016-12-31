@@ -2,61 +2,54 @@ open Import
 open Jbuild_types
 
 type conf =
-  { tree     : Alias.tree
-  ; stanzas  : (Path.t * Jbuild_types.Stanza.t list) list
-  ; packages : string list
+  { file_tree : File_tree.t
+  ; tree      : Alias.tree
+  ; stanzas   : (Path.t * Jbuild_types.Stanza.t list) list
+  ; packages  : string list
   }
 
 let load fn ~dir = (dir, Sexp_load.many fn Stanza.t)
 
-let always_ignore =
-  String_set.of_list
-    [ ""
-    ; "_build"
-    ; ".git"
-    ; ".hg"
-    ]
-
-let load () =
+let load ftree =
   let rec walk dir stanzas =
-    let files = Path.readdir dir |> String_set.of_list in
-    let ignore_set =
+    let path = File_tree.Dir.path dir in
+    let files = File_tree.Dir.files dir in
+    let sub_dirs = File_tree.Dir.sub_dirs dir in
+    let sub_dirs =
       if String_set.mem "jbuild-ignore" files then
-        String_set.union
-          (lines_of_file (Path.to_string (Path.relative dir "jbuild-ignore"))
-           |> String_set.of_list)
-          always_ignore
+        let ignore_set =
+          String_set.of_list
+            (lines_of_file (Path.to_string (Path.relative path "jbuild-ignore")))
+        in
+        String_map.filter sub_dirs ~f:(fun fn _ ->
+            not (String_set.mem fn ignore_set))
       else
-        always_ignore
+        sub_dirs
     in
     let children, stanzas =
-      String_set.fold files ~init:([], stanzas) ~f:(fun fn ((children, stanzas) as acc) ->
-        if String_set.mem fn ignore_set || fn.[0] = '.' then
-          acc
-        else
-          let fn = Path.relative dir fn in
-          if Path.exists fn && Path.is_directory fn then
-            let child, stanzas, _ = walk fn stanzas in
-            (child :: children, stanzas)
-          else
-            acc)
+      String_map.fold sub_dirs ~init:([], stanzas) ~f:(fun ~key:_ ~data:dir (children, stanzas) ->
+          let child, stanzas = walk dir stanzas in
+          (child :: children, stanzas))
     in
     let stanzas =
       if String_set.mem "jbuild" files then
-        load (Path.to_string (Path.relative dir "jbuild")) ~dir :: stanzas
+        load (Path.to_string (Path.relative path "jbuild")) ~dir:path :: stanzas
       else
         stanzas
     in
-    (Alias.Node (dir, children), stanzas, files)
+    (Alias.Node (path, children), stanzas)
   in
-  let tree, stanzas, files = walk Path.root [] in
+  let ftree = File_tree.load Path.root in
+  let root = File_tree.root ftree in
+  let tree, stanzas = walk root [] in
   let packages =
-    String_set.fold files ~init:[] ~f:(fun fn acc ->
+    String_set.fold (File_tree.Dir.files root) ~init:[] ~f:(fun fn acc ->
       match Filename.split_ext fn with
       | Some (pkg, ".opam") -> pkg :: acc
       | _ -> acc)
   in
-  { tree
+  { file_tree = ftree
+  ; tree
   ; stanzas
   ; packages
   }

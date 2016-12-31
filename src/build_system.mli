@@ -4,7 +4,7 @@ open! Import
 
 type t
 
-val create : rules:(unit, unit) Build.t list -> t
+val create : file_tree:File_tree.t -> rules:(unit, unit) Build.t list -> t
 
 module Build_error : sig
   type t

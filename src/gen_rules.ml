@@ -65,10 +65,11 @@ let obj_name_of_basename fn =
   | Some i -> String.sub fn ~pos:0 ~len:i
 
 module type Params = sig
-  val context  : Context.t
-  val tree     : Alias.tree
-  val stanzas  : (Path.t * Jbuild_types.Stanza.t list) list
-  val packages : string list
+  val context   : Context.t
+  val file_tree : File_tree.t
+  val tree      : Alias.tree
+  val stanzas   : (Path.t * Jbuild_types.Stanza.t list) list
+  val packages  : string list
   val filter_out_optional_stanzas_with_missing_deps : bool
 end
 
@@ -1363,7 +1364,11 @@ module Gen(P : Params) = struct
 
   let rules { src_dir; ctx_dir; stanzas } =
     let files = lazy (
-      let src_files = Path.readdir src_dir |> String_set.of_list in
+      let src_files =
+        match File_tree.find_dir P.file_tree src_dir with
+        | None -> String_set.empty
+        | Some dir -> File_tree.Dir.files dir
+      in
       let files_produced_by_rules =
         List.concat_map stanzas ~f:(fun stanza ->
           match (stanza : Stanza.t) with
@@ -1528,11 +1533,12 @@ module Gen(P : Params) = struct
              ~dst:(Path.relative Path.root     fn)))
 end
 
-let gen ~context ~tree ~stanzas ~packages
+let gen ~context ~file_tree ~tree ~stanzas ~packages
       ?(filter_out_optional_stanzas_with_missing_deps=true) () =
   let module M =
     Gen(struct
       let context  = context
+      let file_tree = file_tree
       let tree     = tree
       let stanzas  = stanzas
       let packages = packages

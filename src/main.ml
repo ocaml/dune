@@ -47,13 +47,13 @@ let internal argv =
     ()
 
 let setup ?filter_out_optional_stanzas_with_missing_deps () =
-  let { Jbuild_load. tree; stanzas; packages } = Jbuild_load.load () in
+  let { Jbuild_load. file_tree; tree; stanzas; packages } = Jbuild_load.load () in
   Lazy.force Context.default >>= fun ctx ->
   let rules =
-    Gen_rules.gen ~context:ctx ~tree ~stanzas ~packages
+    Gen_rules.gen ~context:ctx ~file_tree ~tree ~stanzas ~packages
       ?filter_out_optional_stanzas_with_missing_deps ()
   in
-  let bs = Build_system.create ~rules in
+  let bs = Build_system.create ~file_tree ~rules in
   return (bs, stanzas, ctx)
 
 let external_lib_deps ~packages =

@@ -168,31 +168,13 @@ module Build_interpret = struct
       | Fanout (a, b) -> loop a (loop b acc)
       | Paths fns -> Pset.union fns acc
       | Vpath (Vspec.T (fn, _)) -> Pset.add fn acc
-      | Paths_glob (dir, re) ->
-        let src_dir =
-          match Path.extract_build_context dir with
-          | None -> dir
-          | Some (_, dir) -> dir
-        in
-        let files =
-          Path.readdir src_dir
-          |> List.filter_map ~f:(fun fn ->
-            if Re.execp re fn then begin
-              let path = Path.relative src_dir fn in
-              if Path.is_directory path then
-                None
-              else
-                Some path
-            end else
-              None)
-          |> Pset.of_list
-        in
-        let files =
+      | Paths_glob (dir, re) -> begin
           match Pmap.find dir (Lazy.force all_targets_by_dir) with
-          | None -> files
-          | Some targets -> Pset.union files targets
-        in
-        Pset.union files acc
+          | None -> Pset.empty
+          | Some targets ->
+            Pset.filter targets ~f:(fun path ->
+                Re.execp re (Path.basename path))
+        end
       | Dyn_paths t -> loop t acc
       | Record_lib_deps _ -> acc
     in
@@ -357,33 +339,47 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     ; exec
     }
   in
-  create_file_specs t target_specs rule ~allow_override;
-  rule
+  create_file_specs t target_specs rule ~allow_override
 
-let copy_rules ~all_deps ~all_targets =
-  let contexts = Context.all () in
-  Pset.fold (Pset.union all_deps all_targets) ~init:[] ~f:(fun fn acc ->
-    match Path.extract_build_context fn with
-    | Some (name, src) ->
-      if String_map.mem name contexts &&
-         Path.exists src              &&
-         not (Pset.mem src all_targets) then
-        Build.copy ~src ~dst:fn :: acc
-      else
-        acc
-    | None ->
-      acc
-  )
+let setup_copy_rules t ~all_non_target_source_files ~all_targets_by_dir =
+  String_map.iter (Context.all ()) ~f:(fun ~key:_ ~data:(ctx : Context.t) ->
+    let ctx_dir = ctx.build_dir in
+    Pset.iter all_non_target_source_files ~f:(fun path ->
+      let build = Build.copy ~src:path ~dst:(Path.append ctx_dir path) in
+      (* We temporarily allow overrides while setting up copy rules
+         from the source directory so that artifact that are already
+         present in the source directory are not re-computed.
 
-let create ~rules =
+         This allows to keep generated files in tarballs. Maybe we
+         should allow it on a case-by-case basis though.  *)
+      compile_rule t (Pre_rule.make build)
+        ~all_targets_by_dir
+        ~allow_override:true))
+
+let create ~file_tree ~rules =
   let rules = List.map rules ~f:Pre_rule.make in
-  let all_targets =
+  let all_source_files =
+    File_tree.fold file_tree ~init:Pset.empty ~f:(fun dir acc ->
+        let path = File_tree.Dir.path dir in
+        Pset.union acc
+          (File_tree.Dir.files dir
+           |> String_set.elements
+           |> List.map ~f:(Path.relative path)
+           |> Pset.of_list))
+  in
+  let all_copy_targets =
+    String_map.fold (Context.all ()) ~init:Pset.empty ~f:(fun ~key:_ ~data:(ctx : Context.t) acc ->
+        Pset.union acc (Pset.elements all_source_files
+                        |> List.map ~f:(Path.append ctx.build_dir)
+                        |> Pset.of_list))
+  in
+  let all_other_targets =
     List.fold_left rules ~init:Pset.empty ~f:(fun acc { Pre_rule.targets; _ } ->
       List.fold_left targets ~init:acc ~f:(fun acc target ->
         Pset.add (Target.path target) acc))
   in
   let all_targets_by_dir = lazy (
-    Pset.elements all_targets
+    Pset.elements (Pset.union all_copy_targets all_other_targets)
     |> List.filter_map ~f:(fun path ->
       if Path.is_root path then
         None
@@ -393,25 +389,10 @@ let create ~rules =
     |> Pmap.map ~f:Pset.of_list
   ) in
   let t = { files = Hashtbl.create 1024 } in
-  let rules =
-    List.map rules ~f:(compile_rule t ~all_targets_by_dir ~allow_override:false)
-  in
-  let all_deps =
-    List.fold_left rules ~init:Pset.empty ~f:(fun acc { Rule.deps; _ } ->
-      Pset.union acc deps)
-  in
-  (* We temporarily allow overrides while setting up copy rules from the source directory
-     so that artifact that are already present in the source directory are not
-     re-computed.
-
-     This allows to keep generated files in tarballs. Maybe we should allow it on a
-     case-by-case basis though.
-  *)
-  List.iter (copy_rules ~all_deps ~all_targets)
-    ~f:(fun build ->
-      ignore (compile_rule t (Pre_rule.make build)
-                ~all_targets_by_dir:(lazy (assert false))
-                ~allow_override:true : Rule.t));
+  List.iter rules ~f:(compile_rule t ~all_targets_by_dir ~allow_override:false);
+  setup_copy_rules t ~all_targets_by_dir
+    ~all_non_target_source_files:
+      (Pset.diff all_source_files all_other_targets);
   t
 
 let remove_old_artifacts t =

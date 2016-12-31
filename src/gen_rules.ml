@@ -467,6 +467,8 @@ module Gen(P : Params) = struct
     add_rule
       (libs
        >>>
+       Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib))
+       >>>
        Build.run (Dep compiler)
          [ A "-o"; Target target
          ; Dyn (Lib.link_flags ~mode)
@@ -753,8 +755,8 @@ module Gen(P : Params) = struct
 
   let lib_archive (lib : Library.t) ~dir ~ext = Path.relative dir (lib.name ^ ext)
 
-  let stubs_archive (lib : Library.t) ~dir =
-    Path.relative dir (sprintf "lib%s_stubs%s" lib.name ctx.ext_lib)
+  let stubs_archive lib ~dir =
+    Library.stubs_archive lib ~dir ~ext_lib:ctx.ext_lib
 
   let dll (lib : Library.t) ~dir =
     Path.relative dir (sprintf "dll%s_stubs%s" lib.name ctx.ext_dll)
@@ -820,7 +822,9 @@ module Gen(P : Params) = struct
        >>>
        Build.fanout
          (expand_and_eval_set ~dir lib.c_flags ~standard:default_c_flags)
-         requires
+         (requires
+          >>>
+          Build.dyn_paths (Build.arr Lib.header_files))
        >>>
        Build.run
          (* We have to execute the rule in the library directory as the .o is produced in
@@ -1039,7 +1043,7 @@ module Gen(P : Params) = struct
       add_rule
         (Build.fanout
            (requires
-            >>> Build.dyn_paths (Build.arr (Lib.archive_files ~mode)))
+            >>> Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib)))
            (dep_graph
             >>> Build.arr (fun dep_graph ->
               names_to_top_closed_cm_files

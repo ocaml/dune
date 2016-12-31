@@ -27,6 +27,17 @@ let dir = function
   | Internal (dir, _) -> dir
   | External pkg -> pkg.dir
 
+let header_files ts =
+  List.fold_left ts ~init:[] ~f:(fun acc t ->
+      match t with
+      | External _ -> []
+      | Internal (dir, lib) ->
+        match lib.public_headers with
+        | [] -> acc
+        | l ->
+          List.fold_left l ~init:acc ~f:(fun acc fn ->
+              Path.relative dir (fn ^ ".h") :: acc))
+
 let include_flags ts =
   let dirs =
     List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
@@ -66,12 +77,18 @@ let link_flags ts ~mode =
        | Internal (dir, lib) ->
          Dep_rel (dir, lib.name ^ Mode.compiled_lib_ext mode)))
 
-let archive_files ts ~mode =
+let archive_files ts ~mode ~ext_lib =
   List.concat_map ts ~f:(function
     | External pkg ->
       List.map (Mode.Dict.get pkg.archives mode) ~f:(Path.relative pkg.dir)
     | Internal (dir, lib) ->
-      [Path.relative dir (lib.name ^ Mode.compiled_lib_ext mode)])
+      let l =
+        [Path.relative dir (lib.name ^ Mode.compiled_lib_ext mode)]
+      in
+      if Jbuild_types.Library.has_stubs lib then
+        Jbuild_types.Library.stubs_archive lib ~dir ~ext_lib :: l
+      else
+        l)
 (*
 let ppx_runtime_libraries ts =
   List.fold_left ts ~init:String_set.empty ~f:(fun acc t ->

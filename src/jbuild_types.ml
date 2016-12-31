@@ -409,6 +409,9 @@ module Library = struct
     match t.c_names, t.cxx_names, t.self_build_stubs_archive with
     | [], [], None -> false
     | _            -> true
+
+  let stubs_archive t ~dir ~ext_lib =
+    Path.relative dir (sprintf "lib%s_stubs%s" t.name ext_lib)
 end
 
 module Executables = struct

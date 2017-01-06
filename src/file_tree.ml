@@ -24,15 +24,6 @@ type t =
 
 let root t = t.root
 
-let always_ignore =
-  String_set.of_list
-    [ ""
-    ; "_build"
-    ; ".git"
-    ; ".hg"
-    ; "_darcs"
-    ]
-
 let ignore_file = function
   | ""
   | "_build"

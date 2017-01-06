@@ -785,7 +785,7 @@ module Gen(P : Params) = struct
                 ~modules
                 ~mode
                 (String_map.keys modules)))
-           (expand_and_eval_set ~dir lib.c_libraries ~standard:[])
+           (expand_and_eval_set ~dir lib.c_library_flags ~standard:[])
          >>>
          Build.run (Dep compiler)
            ~extra_targets:(
@@ -797,7 +797,7 @@ module Gen(P : Params) = struct
            ; As stubs_flags
            ; Dyn (fun (_, cclibs) ->
                S (List.map cclibs ~f:(fun flag ->
-                 Arg_spec.S [A "-cclib"; A ("-l" ^ flag)])))
+                 Arg_spec.S [A "-cclib"; A flag])))
            ; As (List.map lib.library_flags ~f:(expand_vars ~dir))
            ; As (match lib.kind with
                | Normal -> []
@@ -979,7 +979,7 @@ module Gen(P : Params) = struct
       | None ->
         let targets = [ stubs_archive lib ~dir; dll lib ~dir ] in
         add_rule
-          (expand_and_eval_set ~dir lib.c_libraries ~standard:[]
+          (expand_and_eval_set ~dir lib.c_library_flags ~standard:[]
            >>>
            Build.run
              ~extra_targets:targets
@@ -988,8 +988,7 @@ module Gen(P : Params) = struct
              ; A "-o"
              ; Path (Path.relative dir (sprintf "%s_stubs" lib.name))
              ; Deps o_files
-             ; Dyn (fun cclibs ->
-                 As (List.map cclibs ~f:((^) "-l")))
+             ; Dyn (fun cclibs -> As cclibs)
              ]);
     end;
 

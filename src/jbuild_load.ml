@@ -10,7 +10,7 @@ type conf =
 
 let load fn ~dir = (dir, Sexp_load.many fn Stanza.t)
 
-let load ftree =
+let load () =
   let rec walk dir stanzas =
     let path = File_tree.Dir.path dir in
     let files = File_tree.Dir.files dir in

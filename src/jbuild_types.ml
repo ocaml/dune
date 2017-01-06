@@ -329,7 +329,7 @@ module Library = struct
     ; cxx_names                : string list
     ; includes                 : String_with_vars.t list
     ; library_flags            : String_with_vars.t list
-    ; c_libraries              : Ordered_set_lang.Unexpanded.t
+    ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; preprocess               : Preprocess_map.t
     ; preprocessor_deps        : Dep_conf.t list
     ; self_build_stubs_archive : string option
@@ -358,7 +358,8 @@ module Library = struct
       ; field      "c_names"               (list string) ~default:[]
       ; field      "cxx_names"             (list string) ~default:[]
       ; field      "library_flags"         (list String_with_vars.t) ~default:[]
-      ; field_oslu "c_libraries"
+      ; field      "c_libraries"           (list string) ~default:[]
+      ; field_oslu "c_library_flags"
       ; field_pp   "preprocess"
       ; field      "preprocessor_deps"     (list Dep_conf.t) ~default:[]
       ; field      "self_build_stubs_archive" (option string) ~default:None
@@ -374,7 +375,8 @@ module Library = struct
       ; field_osl  "ocamlopt_flags"
       ]
       (fun name public_name synopsis public_headers libraries ppx_runtime_libraries
-        modules c_flags cxx_flags c_names cxx_names library_flags c_libraries preprocess
+        modules c_flags cxx_flags c_names cxx_names library_flags c_libraries
+        c_library_flags preprocess
         preprocessor_deps self_build_stubs_archive js_of_ocaml virtual_deps modes
         includes kind wrapped optional flags ocamlc_flags ocamlopt_flags ->
         { name
@@ -392,7 +394,11 @@ module Library = struct
         ; cxx_flags
         ; includes
         ; library_flags
-        ; c_libraries
+        ; c_library_flags =
+            Ordered_set_lang.Unexpanded.append
+              (Ordered_set_lang.Unexpanded.t
+                 (Sexp.To_sexp.(list string (List.map c_libraries ~f:((^) "-l")))))
+              c_library_flags
         ; preprocess
         ; preprocessor_deps
         ; self_build_stubs_archive

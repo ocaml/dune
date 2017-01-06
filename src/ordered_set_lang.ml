@@ -60,6 +60,8 @@ module Unexpanded = struct
   let t t = t
   let standard = standard
 
+  let append a b = Sexp.List [a; b]
+
   let files t =
     let rec loop acc : t -> _ = function
       | Atom _ -> acc

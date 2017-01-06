@@ -19,6 +19,8 @@ module Unexpanded : sig
   val t : Sexp.t -> t
   val standard : t
 
+  val append : t -> t -> t
+
   (** List of files needed to expand this set *)
   val files : t -> String_set.t
 

@@ -66,14 +66,6 @@ module Pp = struct
 
   let of_string s =
     assert (not (String.is_prefix s ~prefix:"-"));
-    let s =
-      match s with
-      (* For compatibility with the old hardcoded ppx sets of Jane Street jenga rules *)
-      | "BASE"        -> "ppx_base"
-      | "JANE"        -> "ppx_jane"
-      | "JANE_KERNEL" -> "ppx_jane.kernel"
-      | s -> s
-    in
     of_string s
 
   let t sexp =
@@ -247,7 +239,7 @@ module Preprocess_map = struct
     | For_all  pp  -> pp
     | Per_file map -> String_map.find_default module_name map ~default:No_preprocessing
 
-  let default = For_all (Pps { pps = Pp_set.singleton (Pp.of_string "JANE"); flags = [] })
+  let default = For_all (Pps { pps = Pp_set.singleton (Pp.of_string "ppx_jane"); flags = [] })
 
   let t sexp =
     match sexp with
@@ -317,7 +309,7 @@ module Library = struct
     { name                     : string
     ; public_name              : string option
     ; synopsis                 : string option
-    ; public_headers           : string list
+    ; install_c_headers        : string list
     ; libraries                : string list
     ; ppx_runtime_libraries    : string list
     ; modes                    : Mode.t list
@@ -349,7 +341,7 @@ module Library = struct
       [ field      "name"                  library_name
       ; field_o    "public_name"           string
       ; field_o    "synopsis"              string
-      ; field      "public_headers"        (list string) ~default:[]
+      ; field      "install_c_headers"     (list string) ~default:[]
       ; field      "libraries"             (list string) ~default:[]
       ; field      "ppx_runtime_libraries" (list string) ~default:[]
       ; field_modules
@@ -374,7 +366,7 @@ module Library = struct
       ; field_osl  "ocamlc_flags"
       ; field_osl  "ocamlopt_flags"
       ]
-      (fun name public_name synopsis public_headers libraries ppx_runtime_libraries
+      (fun name public_name synopsis install_c_headers libraries ppx_runtime_libraries
         modules c_flags cxx_flags c_names cxx_names library_flags c_libraries
         c_library_flags preprocess
         preprocessor_deps self_build_stubs_archive js_of_ocaml virtual_deps modes
@@ -382,7 +374,7 @@ module Library = struct
         { name
         ; public_name
         ; synopsis
-        ; public_headers
+        ; install_c_headers
         ; libraries
         ; ppx_runtime_libraries
         ; modes

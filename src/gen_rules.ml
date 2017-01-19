@@ -1436,7 +1436,7 @@ module Gen(P : Params) = struct
            | None -> []
            | Some { javascript_files = l; _ } ->
              List.map l ~f:(Path.relative dir))
-        ; List.map lib.public_headers ~f:(fun fn ->
+        ; List.map lib.install_c_headers ~f:(fun fn ->
             Path.relative dir (fn ^ ".h"))
         ]
     in

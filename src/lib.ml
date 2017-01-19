@@ -32,7 +32,7 @@ let header_files ts =
       match t with
       | External _ -> []
       | Internal (dir, lib) ->
-        match lib.public_headers with
+        match lib.install_c_headers with
         | [] -> acc
         | l ->
           List.fold_left l ~init:acc ~f:(fun acc fn ->
@@ -47,7 +47,7 @@ let include_flags ts =
     [Arg_spec.A "-I"; Path dir]))
 
 let has_headers = function
-  | Internal (_, lib) -> lib.public_headers <> []
+  | Internal (_, lib) -> lib.install_c_headers <> []
   | External pkg -> pkg.has_headers
 
 let c_include_flags ts =

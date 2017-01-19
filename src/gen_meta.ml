@@ -44,8 +44,6 @@ let rule var predicates action value =
   Rule { var; predicates; action; value }
 let requires ?(preds=[]) pkgs =
   rule "requires" preds Set (string_of_deps pkgs)
-let requires_add preds pkgs =
-  rule "requires" preds Add (string_of_deps pkgs)
 let ppx_runtime_deps ?(preds=[]) pkgs =
   rule "ppx_runtime_deps" preds Set (string_of_deps pkgs)
 let version     s = rule "version"     []      Set s
@@ -71,35 +69,44 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps =
       | Dot (p, "expander"   ) -> sprintf "Expander for %s"        (Pub_name.to_string p)
       | _ -> ""
   in
+  let preds =
+    match lib.kind with
+    | Normal -> []
+    | Ppx_rewriter | Ppx_type_conv_plugin -> [Pos "ppx_driver"]
+  in
   List.concat
     [ [ version "0.1.alpha1"
       ; description desc
+      ; requires ~preds lib_deps
       ]
-    ; (match lib.kind with
-       | Normal ->
-         [ requires lib_deps ]
-       | Ppx_rewriter | Ppx_type_conv_plugin ->
-         match ppx_rt_deps with
-         | [] ->
-           [ requires lib_deps ]
-         | _ ->
-           [ requires lib_deps
-           ; ppx_runtime_deps ppx_rt_deps
-           ; requires_add [Neg "ppx_driver"]                ppx_rt_deps
-           ; requires_add [Pos "ppx_driver"; Pos "toploop"] ppx_rt_deps
-           ])
-    ; archives lib.name
-        ~preds:(match lib.kind with
-          | Normal -> []
-          | Ppx_rewriter | Ppx_type_conv_plugin -> [Pos "ppx_driver"])
+    ; archives ~preds lib.name
     ; [ exists_if (lib.name ^ ".cma") ]
     ; (match lib.kind with
        | Normal -> []
-       | Ppx_rewriter ->
-         [ rule "ppx" [Neg "ppx_driver"; Neg "custom_ppx"] Set "./as-ppx.exe" ]
-       | Ppx_type_conv_plugin ->
-         [ rule "ppxopt" [Neg "ppx_driver"; Neg "custom_ppx"] Set
-             ("ppx_deriving,package:" ^ Pub_name.to_string pub_name)
+       | Ppx_rewriter | Ppx_type_conv_plugin ->
+         let sub_pkg_name = "deprecated-ppx-method" in
+         [ Comment "This is what jbuilder uses to find out the runtime dependencies of"
+         ; Comment "a preprocessor"
+         ; ppx_runtime_deps ppx_rt_deps
+         ; Comment "This line makes things transparent for people mixing preprocessors"
+         ; Comment "and normal dependencies"
+         ; requires ~preds:[Neg "ppx_driver"]
+             [Pub_name.to_string (Dot (pub_name, sub_pkg_name))]
+         ; Package
+             { name    = sub_pkg_name
+             ; entries =
+                 version "0.1.alpha1"                                              ::
+                 description "glue package for the deprecated method of using ppx" ::
+                 requires ppx_rt_deps                                              ::
+                 match lib.kind with
+                 | Normal -> assert false
+                 | Ppx_rewriter ->
+                   [ rule "ppx" [Neg "ppx_driver"; Neg "custom_ppx"] Set "./as-ppx.exe" ]
+                 | Ppx_type_conv_plugin ->
+                   [ rule "ppxopt" [Neg "ppx_driver"; Neg "custom_ppx"] Set
+                       ("ppx_deriving,package:" ^ Pub_name.to_string pub_name)
+                   ]
+             }
          ])
     ; (match lib.js_of_ocaml with
        | None | Some { javascript_files = []; _ } -> []

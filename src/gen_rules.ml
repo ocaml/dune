@@ -37,6 +37,10 @@ module Ocaml_flags = struct
   let get t mode = Arg_spec.As (t.common @ Mode.Dict.get t.specific mode)
 
   let get_for_cm t ~cm_kind = get t (Mode.of_cm_kind cm_kind)
+
+  let default =
+    let std = Ordered_set_lang.standard in
+    make ~flags:std ~ocamlc_flags:std ~ocamlopt_flags:std
 end
 
 let default_c_flags = g ()
@@ -948,6 +952,7 @@ module Gen(P : Params) = struct
 
     build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
+      let flags = Ocaml_flags.default in
       build_module m
         ~flags:{ flags with common = "-w" :: "-49" :: flags.common }
         ~dir
@@ -1096,11 +1101,10 @@ module Gen(P : Params) = struct
 
     build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module:None;
 
-    if exes.link_executables then
-      List.iter exes.names ~f:(fun name ->
-        List.iter Mode.all ~f:(fun mode ->
-          build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
-            ~link_flags:exes.link_flags))
+    List.iter exes.names ~f:(fun name ->
+      List.iter Mode.all ~f:(fun mode ->
+        build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
+          ~link_flags:exes.link_flags))
 
 
   (* +-----------------------------------------------------------------+

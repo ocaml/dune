@@ -133,38 +133,49 @@ module Gen(P : Params) = struct
     let load_runtime_deps ~dir ~item =
       Build.vpath (vruntime_deps ~dir ~item)
 
-    let closure ~dir ~dep_kind names =
-      let internals, externals = Lib_db.split t names in
-      Build.record_lib_deps ~dir ~kind:dep_kind names
-      >>>
-      Build.all
-        (List.map internals ~f:(fun ((dir, lib) : Lib.Internal.t) ->
-           load_requires ~dir ~item:lib.name))
-      >>^ (fun internal_deps ->
-        let externals =
-          List.map (Findlib.closure findlib externals) ~f:(fun pkg ->
-            Lib.External pkg)
-        in
-        Lib.remove_dups_preserve_order
-          (List.concat (externals :: internal_deps) @
-           List.map internals ~f:(fun x -> Lib.Internal x)))
+    let with_fail ~fail build =
+      match fail with
+      | None -> build
+      | Some f -> Build.fail f >>> build
 
-    let closed_ppx_runtime_deps_of ~dir ~dep_kind names =
-      let internals, externals = Lib_db.split t names in
-      Build.record_lib_deps ~dir ~kind:dep_kind names
-      >>>
-      Build.all
-        (List.map internals ~f:(fun ((dir, lib) : Lib.Internal.t) ->
-           load_runtime_deps ~dir ~item:lib.name))
-      >>^ (fun libs ->
-        let externals =
-          List.map (Findlib.closed_ppx_runtime_deps_of findlib externals) ~f:(fun pkg ->
-            Lib.External pkg)
-        in
-        Lib.remove_dups_preserve_order (List.concat (externals :: libs)))
+    let closure ~dir ~dep_kind lib_deps =
+      let internals, externals, fail = Lib_db.interpret_lib_deps t ~dir lib_deps in
+      with_fail ~fail
+        (Build.record_lib_deps ~dir ~kind:dep_kind lib_deps
+         >>>
+         Build.all
+           (List.map internals ~f:(fun ((dir, lib) : Lib.Internal.t) ->
+              load_requires ~dir ~item:lib.name))
+         >>^ (fun internal_deps ->
+           let externals =
+             List.map (Findlib.closure externals) ~f:(fun pkg ->
+               Lib.External pkg)
+           in
+           Lib.remove_dups_preserve_order
+             (List.concat (externals :: internal_deps) @
+              List.map internals ~f:(fun x -> Lib.Internal x))))
+
+    let closed_ppx_runtime_deps_of ~dir ~dep_kind lib_deps =
+      let internals, externals, fail = Lib_db.interpret_lib_deps t ~dir lib_deps in
+      with_fail ~fail
+        (Build.record_lib_deps ~dir ~kind:dep_kind lib_deps
+         >>>
+         Build.all
+           (List.map internals ~f:(fun ((dir, lib) : Lib.Internal.t) ->
+              load_runtime_deps ~dir ~item:lib.name))
+         >>^ (fun libs ->
+           let externals =
+             List.map (Findlib.closed_ppx_runtime_deps_of externals)
+               ~f:(fun pkg -> Lib.External pkg)
+           in
+           Lib.remove_dups_preserve_order (List.concat (externals :: libs))))
 
     let internal_libs_without_non_installable_optional_ones =
       internal_libs_without_non_installable_optional_ones t
+
+    let select_rules ~dir lib_deps =
+      List.map (Lib_db.resolve_selects t lib_deps) ~f:(fun (fn, code) ->
+        Build.return code >>> Build.echo (Path.relative dir fn))
 
     (* Hides [t] so that we don't resolve things statically *)
     let t = ()
@@ -183,7 +194,7 @@ module Gen(P : Params) = struct
         | None -> invalid_arg "Named_artifacts.in_findlib"
         | Some (pkg, _) -> pkg
       in
-      Build.record_lib_deps ~dir ~kind:dep_kind [pkg]
+      Build.record_lib_deps ~dir ~kind:dep_kind [Direct pkg]
       >>>
       (Build.arr (fun () -> in_findlib t name))
 
@@ -460,7 +471,8 @@ module Gen(P : Params) = struct
     let compiler = Option.value_exn (Mode.compiler mode ctx) in
     let libs =
       Build.fanout
-        (Lib_db.closure ~dir ~dep_kind ("ppx_driver" :: pp_names))
+        (Lib_db.closure ~dir ~dep_kind (Direct "ppx_driver" ::
+                                        List.map pp_names ~f:Lib_dep.direct))
         (Lib_db.find runner)
       >>^ (fun (libs, runner) ->
         let runner_name = Lib.best_name runner in
@@ -583,11 +595,12 @@ module Gen(P : Params) = struct
     in
     let vrequires = Lib_db.vrequires ~dir ~item in
     add_rule
-      (Build.record_lib_deps ~dir ~kind:dep_kind virtual_deps
+      (Build.record_lib_deps ~dir ~kind:dep_kind (List.map virtual_deps ~f:Lib_dep.direct)
        >>>
        Build.fanout
          (Lib_db.closure ~dir ~dep_kind libraries)
-         (Lib_db.closed_ppx_runtime_deps_of ~dir ~dep_kind all_pps)
+         (Lib_db.closed_ppx_runtime_deps_of ~dir ~dep_kind
+            (List.map all_pps ~f:Lib_dep.direct))
        >>>
        Build.arr (fun (libs, rt_deps) ->
          Lib.remove_dups_preserve_order (libs @ rt_deps))
@@ -599,7 +612,7 @@ module Gen(P : Params) = struct
     let vruntime_deps = Lib_db.vruntime_deps ~dir ~item in
     add_rule
       (Build.fanout
-         (Lib_db.closure ~dir ~dep_kind ppx_runtime_libraries)
+         (Lib_db.closure ~dir ~dep_kind (List.map ppx_runtime_libraries ~f:Lib_dep.direct))
          (Lib_db.closed_ppx_runtime_deps_of ~dir ~dep_kind libraries)
        >>>
        Build.arr (fun (rt_deps, rt_deps_of_deps) ->
@@ -949,6 +962,7 @@ module Gen(P : Params) = struct
     setup_runtime_deps ~dir ~dep_kind ~item:lib.name
       ~libraries:lib.libraries
       ~ppx_runtime_libraries:lib.ppx_runtime_libraries;
+    List.iter (Lib_db.select_rules ~dir lib.libraries) ~f:add_rule;
 
     build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
@@ -1098,6 +1112,7 @@ module Gen(P : Params) = struct
         ~preprocess:exes.preprocess
         ~virtual_deps:[]
     in
+    List.iter (Lib_db.select_rules ~dir exes.libraries) ~f:add_rule;
 
     build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module:None;
 
@@ -1379,6 +1394,10 @@ module Gen(P : Params) = struct
           | Ocamllex  conf -> List.map conf.names ~f:(fun name -> name ^ ".ml")
           | Ocamlyacc conf -> List.concat_map conf.names ~f:(fun name ->
             [ name ^ ".ml"; name ^ ".mli" ])
+          | Library { libraries; _ } | Executables { libraries; _ } ->
+            List.filter_map libraries ~f:(function
+              | Direct _ -> None
+              | Select s -> Some s.result_fn)
           | _ -> [])
         |> String_set.of_list
       in

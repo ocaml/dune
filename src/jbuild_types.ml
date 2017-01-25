@@ -290,6 +290,38 @@ module Js_of_ocaml = struct
          { flags; javascript_files })
 end
 
+module Lib_dep = struct
+  type choice =
+    { dep  : string
+    ; code : string
+    }
+
+  type t =
+    | Direct of string
+    | Select of { result_fn : string; choices : choice list }
+
+  let choice = function
+    | List [Atom dep; Atom code] -> { dep; code }
+    | sexp -> of_sexp_error "(<library-name> <code>) expected" sexp
+
+  let t = function
+    | Atom s ->
+      Direct s
+    | List (Atom "select" :: m :: Atom "from" :: libs) ->
+      Select { result_fn = file m
+             ; choices   = List.map libs ~f:choice
+             }
+    | sexp ->
+      of_sexp_error "<library> or (select <module> from <libraries...>) expected"
+        sexp
+
+  let to_lib_names = function
+    | Direct s -> [s]
+    | Select s -> (List.map s.choices ~f:(fun x -> x.dep))
+
+  let direct s = Direct s
+end
+
 module Library = struct
   module Kind = struct
     type t =
@@ -310,7 +342,7 @@ module Library = struct
     ; public_name              : string option
     ; synopsis                 : string option
     ; install_c_headers        : string list
-    ; libraries                : string list
+    ; libraries                : Lib_dep.t list
     ; ppx_runtime_libraries    : string list
     ; modes                    : Mode.t list
     ; kind                     : Kind.t
@@ -342,7 +374,7 @@ module Library = struct
       ; field_o    "public_name"           string
       ; field_o    "synopsis"              string
       ; field      "install_c_headers"     (list string) ~default:[]
-      ; field      "libraries"             (list string) ~default:[]
+      ; field      "libraries"             (list Lib_dep.t) ~default:[]
       ; field      "ppx_runtime_libraries" (list string) ~default:[]
       ; field_modules
       ; field_oslu "c_flags"
@@ -410,6 +442,9 @@ module Library = struct
 
   let stubs_archive t ~dir ~ext_lib =
     Path.relative dir (sprintf "lib%s_stubs%s" t.name ext_lib)
+
+  let all_lib_deps t =
+    List.map t.virtual_deps ~f:(fun s -> Lib_dep.Direct s) @ t.libraries
 end
 
 module Executables = struct
@@ -418,7 +453,7 @@ module Executables = struct
     ; object_public_name : string option
     ; synopsis           : string option
     ; link_executables   : bool
-    ; libraries          : string list
+    ; libraries          : Lib_dep.t list
     ; link_flags         : string list
     ; modules            : Ordered_set_lang.t
     ; preprocess         : Preprocess_map.t
@@ -434,7 +469,7 @@ module Executables = struct
       ; field_o   "object_public_name" string
       ; field_o   "synopsis"              string
       ; field     "link_executables" bool ~default:true
-      ; field     "libraries"        (list string) ~default:[]
+      ; field     "libraries"        (list Lib_dep.t) ~default:[]
       ; field     "link_flags"       (list string) ~default:[]
       ; field_modules
       ; field_pp  "preprocess"

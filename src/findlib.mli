@@ -30,5 +30,5 @@ val available : t -> string -> bool
 
 val root_package_name : string -> string
 
-val closure : t -> string list -> package list
-val closed_ppx_runtime_deps_of : t -> string list -> package list
+val closure : package list -> package list
+val closed_ppx_runtime_deps_of : package list -> package list

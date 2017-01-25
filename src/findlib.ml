@@ -130,10 +130,14 @@ type package =
   ; has_headers      : bool
   }
 
+type present_or_absent =
+  | Present of package
+  | Absent
+
 type t =
   { context     : Context.t
-  ; packages    : (string, package) Hashtbl.t
-  ; has_headers : (Path.t, bool   ) Hashtbl.t
+  ; packages    : (string, present_or_absent) Hashtbl.t
+  ; has_headers : (Path.t, bool             ) Hashtbl.t
   }
 
 let has_headers t ~dir =
@@ -309,8 +313,8 @@ let load_meta t root_name =
           let deps, missing_deps =
             List.partition_map deps ~f:(fun name ->
               match Hashtbl.find t.packages name with
-              | Some pkg -> Inl pkg
-              | None ->
+              | Some (Present pkg) -> Inl pkg
+              | None | Some Absent ->
                 match String_map.find name packages with
                 | None -> Inr (name, None)
                 | Some pkg ->
@@ -342,7 +346,7 @@ let load_meta t root_name =
             ; ppx_runtime_deps
             }
           in
-          Hashtbl.add t.packages ~key:pkg.name ~data:pkg
+          Hashtbl.add t.packages ~key:pkg.name ~data:(Present pkg)
         | _ ->
           let unknown_deps, hidden_deps =
             List.partition_map missing_deps ~f:(fun (name, pkg) ->
@@ -367,26 +371,30 @@ let load_meta t root_name =
 
 let find_exn t name =
   match Hashtbl.find t.packages name with
-  | Some x -> x
+  | Some (Present x) -> x
+  | Some Absent -> raise (Package_not_found name)
   | None ->
-    load_meta t (root_package_name name);
-    match Hashtbl.find t.packages name with
-    | Some x -> x
-    | None   -> raise (Package_not_found name)
+    match load_meta t (root_package_name name) with
+    | exception (Package_not_found _ as e) ->
+      Hashtbl.add t.packages ~key:name ~data:Absent;
+      raise e
+    | () ->
+      match Hashtbl.find t.packages name with
+      | Some (Present x) -> x
+      | Some Absent      -> raise (Package_not_found name)
+      | None             -> assert false
 
 let available t name =
   match find_exn t name with
   | _ -> true
   | exception (Package_not_found _) -> false
 
-let closure t names =
-  let pkgs = List.map names ~f:(find_exn t) in
+let closure pkgs =
   remove_dups_preserve_order
     (List.concat_map pkgs ~f:(fun pkg -> pkg.requires)
      @ pkgs)
 
-let closed_ppx_runtime_deps_of t names =
-  let pkgs = List.map names ~f:(find_exn t) in
+let closed_ppx_runtime_deps_of pkgs =
   remove_dups_preserve_order
     (List.concat_map pkgs ~f:(fun pkg -> pkg.ppx_runtime_deps))
 
@@ -408,5 +416,8 @@ let root_packages t =
 let all_packages t =
   List.iter (root_packages t) ~f:(fun pkg ->
     ignore (find_exn t pkg : package));
-  Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:pkg ~data:_ acc -> pkg :: acc)
+  Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:pkg ~data acc ->
+    match data with
+    | Present _ -> pkg :: acc
+    | Absent    -> acc)
   |> List.sort ~cmp:String.compare

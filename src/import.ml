@@ -61,6 +61,11 @@ module List = struct
       match f x with
       | None -> find_map l ~f
       | Some _ as res -> res
+
+  let rec find l ~f =
+    match l with
+    | [] -> None
+    | x :: l -> if f x then Some x else find l ~f
 end
 
 module Hashtbl = struct
@@ -340,3 +345,4 @@ end = struct
   let stage t = t
 end
 
+type fail = { fail : 'a. unit -> 'a }

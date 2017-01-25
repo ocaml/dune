@@ -177,6 +177,7 @@ module Build_interpret = struct
         end
       | Dyn_paths t -> loop t acc
       | Record_lib_deps _ -> acc
+      | Fail _ -> acc
     in
     loop t Pset.empty
 
@@ -203,6 +204,7 @@ module Build_interpret = struct
             | Some others -> Build.merge_lib_deps deps others
           in
           Pmap.add acc ~key:dir ~data
+        | Fail _ -> acc
     in
     fun t -> loop t Pmap.empty
 
@@ -223,6 +225,7 @@ module Build_interpret = struct
       | Paths_glob _ -> acc
       | Dyn_paths t -> loop t acc
       | Record_lib_deps _ -> acc
+      | Fail _ -> acc
     in
     fun t -> loop t []
 
@@ -264,6 +267,7 @@ module Build_interpret = struct
         all_unit (List.rev_map fns ~f:(wait_for_file bs ~targeting)) >>= fun () ->
         return x
       | Record_lib_deps _ -> return x
+      | Fail { fail } -> fail ()
     in
     exec t x
 end

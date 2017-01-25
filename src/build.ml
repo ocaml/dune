@@ -32,6 +32,7 @@ module Repr = struct
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
     | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
+    | Fail : fail -> ('a, 'a) t
 end
 include Repr
 let repr t = t
@@ -49,8 +50,14 @@ let merge_lib_deps a b =
 let arr f = Arr f
 let return x = Arr (fun () -> x)
 
-let record_lib_deps ~dir ~kind names =
-  Record_lib_deps (dir, String_map.of_alist_exn (List.map names ~f:(fun n -> (n, kind))))
+let record_lib_deps ~dir ~kind lib_deps =
+  Record_lib_deps
+    (dir,
+     List.concat_map lib_deps ~f:(function
+       | Jbuild_types.Lib_dep.Direct s -> [(s, kind)]
+       | Select { choices; _ } ->
+         List.map choices ~f:(fun c -> (c.Jbuild_types.Lib_dep.dep, Optional)))
+     |> String_map.of_alist_exn)
 
 module O = struct
   let ( >>> ) a b =
@@ -88,6 +95,8 @@ let path_set ps = Paths ps
 let paths_glob ~dir re = Paths_glob (dir, re)
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths t
+
+let fail x = Fail x
 
 let files_recursively_in ~dir =
   let ctx_dir, src_dir =

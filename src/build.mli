@@ -45,6 +45,9 @@ val vpath : 'a Vspec.t  -> (unit, 'a) t
 
 val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
 
+(** Always fail when executed. We pass a function rather than an exception to get a proper
+    backtrace *)
+val fail : fail -> ('a, 'a) t
 
 module Prog_spec : sig
   type 'a t =
@@ -86,7 +89,11 @@ type lib_dep_kind =
   | Optional
   | Required
 
-val record_lib_deps : dir:Path.t -> kind:lib_dep_kind -> string list -> ('a, 'a) t
+val record_lib_deps
+  :  dir:Path.t
+  -> kind:lib_dep_kind
+  -> Jbuild_types.Lib_dep.t list
+  -> ('a, 'a) t
 
 type lib_deps = lib_dep_kind String_map.t
 
@@ -108,6 +115,7 @@ module Repr : sig
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
     | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
+    | Fail : fail -> ('a, 'a) t
 end
 
 val repr : ('a, 'b) t -> ('a, 'b) Repr.t

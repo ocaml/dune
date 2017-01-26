@@ -291,9 +291,11 @@ module Js_of_ocaml = struct
 end
 
 module Lib_dep = struct
+  type literal = Pos of string | Neg of string
+
   type choice =
-    { dep  : string
-    ; code : string
+    { lits : literal list
+    ; file : string
     }
 
   type t =
@@ -301,8 +303,30 @@ module Lib_dep = struct
     | Select of { result_fn : string; choices : choice list }
 
   let choice = function
-    | List [Atom dep; Atom code] -> { dep; code }
+    | List l as sexp ->
+      let rec loop acc = function
+        | [Atom "->"; sexp] ->
+          { lits = List.rev acc
+          ; file = file sexp
+          }
+        | Atom "->" :: _ | List _ :: _ | [] ->
+          of_sexp_error "(<[!]libraries>... -> <file>) expected" sexp
+        | Atom s :: l ->
+          let len = String.length s in
+          if len > 0 && s.[0] = '!' then
+            let s = String.sub s ~pos:1 ~len:(len - 1) in
+            loop (Neg s :: acc) l
+          else
+            loop (Pos s :: acc) l
+      in
+      loop [] l
     | sexp -> of_sexp_error "(<library-name> <code>) expected" sexp
+
+  let sexp_of_choice { lits; file } =
+    List (List.fold_right lits ~init:[Atom "->"; Atom file] ~f:(fun lit acc ->
+      match lit with
+      | Pos s -> Atom s :: acc
+      | Neg s -> Atom ("!" ^ s) :: acc))
 
   let t = function
     | Atom s ->
@@ -317,7 +341,11 @@ module Lib_dep = struct
 
   let to_lib_names = function
     | Direct s -> [s]
-    | Select s -> (List.map s.choices ~f:(fun x -> x.dep))
+    | Select s ->
+      List.concat_map s.choices ~f:(fun x ->
+        List.map x.lits ~f:(function
+          | Pos x -> x
+          | Neg x -> x))
 
   let direct s = Direct s
 end

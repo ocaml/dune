@@ -56,7 +56,10 @@ let record_lib_deps ~dir ~kind lib_deps =
      List.concat_map lib_deps ~f:(function
        | Jbuild_types.Lib_dep.Direct s -> [(s, kind)]
        | Select { choices; _ } ->
-         List.map choices ~f:(fun c -> (c.Jbuild_types.Lib_dep.dep, Optional)))
+         List.concat_map choices ~f:(fun c ->
+           List.filter_map c.Jbuild_types.Lib_dep.lits ~f:(function
+             | Pos d -> Some (d, Optional)
+             | Neg _ -> None)))
      |> String_map.of_alist_exn)
 
 module O = struct

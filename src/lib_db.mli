@@ -18,7 +18,12 @@ val interpret_lib_deps
   -> Jbuild_types.Lib_dep.t list
   -> Lib.Internal.t list * Findlib.package list * fail option
 
+type resolved_select =
+  { src_fn : string
+  ; dst_fn : string
+  }
+
 val resolve_selects
   :  t
   -> Jbuild_types.Lib_dep.t list
-  -> (string * string) list
+  -> resolved_select list

@@ -174,8 +174,18 @@ module Gen(P : Params) = struct
       internal_libs_without_non_installable_optional_ones t
 
     let select_rules ~dir lib_deps =
-      List.map (Lib_db.resolve_selects t lib_deps) ~f:(fun (fn, code) ->
-        Build.return code >>> Build.echo (Path.relative dir fn))
+      List.map (Lib_db.resolve_selects t lib_deps) ~f:(fun { dst_fn; src_fn } ->
+        let src = Path.relative dir src_fn in
+        let dst = Path.relative dir dst_fn in
+        Build.path src
+        >>>
+        Build.create_files ~targets:[dst] (fun () ->
+          let src_fn = Path.to_string src in
+          let dst_fn = Path.to_string dst in
+          with_file_in src_fn ~f:(fun ic ->
+            with_file_out dst_fn ~f:(fun oc ->
+              Printf.fprintf oc "# 1 \"%s\"\n" src_fn;
+              copy_channels ic oc))))
 
     (* Hides [t] so that we don't resolve things statically *)
     let t = ()

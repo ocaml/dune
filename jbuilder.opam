@@ -8,8 +8,6 @@ license: "Apache-2.0"
 build: [
   ["ocaml" "build.ml" "build-package" "jbuilder" "-j" jobs]
 ]
-depends: [
-]
 available: [ ocaml-version >= "4.03.0" ]
 descr: "
 Fast, portable and opinionated build system

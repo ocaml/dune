@@ -38,11 +38,12 @@ let header_files ts =
           List.fold_left l ~init:acc ~f:(fun acc fn ->
               Path.relative dir (fn ^ ".h") :: acc))
 
+let include_paths ts =
+  List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
+    Path.Set.add (dir t) acc)
+
 let include_flags ts =
-  let dirs =
-    List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-      Path.Set.add (dir t) acc)
-  in
+  let dirs = include_paths ts in
   Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
     [Arg_spec.A "-I"; Path dir]))
 

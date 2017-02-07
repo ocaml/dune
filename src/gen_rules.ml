@@ -615,7 +615,17 @@ module Gen(P : Params) = struct
        Build.arr (fun (libs, rt_deps) ->
          Lib.remove_dups_preserve_order (libs @ rt_deps))
        >>>
-       Build.store_vfile vrequires);
+       Build.fanout
+         (Build.arr (fun libs ->
+          let paths = Lib.include_paths libs in
+          let concat =
+            String.concat ~sep:" " (List.map (Path.Set.elements paths) ~f:(fun path ->
+            Path.reach path ~from:dir ^ "\n"))
+          in
+          concat) >>> Build.echo (Path.relative dir ".merlin"))
+         (Build.store_vfile vrequires)
+       >>>
+       Build.arr (fun ((),()) -> ()));
     Build.vpath vrequires
 
   let setup_runtime_deps ~dir ~dep_kind ~item ~libraries ~ppx_runtime_libraries =

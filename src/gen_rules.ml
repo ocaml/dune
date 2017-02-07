@@ -970,30 +970,34 @@ module Gen(P : Params) = struct
         ~virtual_deps:lib.virtual_deps
     in
 
-    add_rule (
-      requires
-      >>>
-      Build.arr (fun libs ->
-        let source_dirs = ["S " ^ Path.reach dir ~from:dir] in
-        let build_dirs =
-          libs
-          |> Lib.include_paths
-          |> Path.Set.elements
-          |> List.map ~f:(fun path -> "B " ^ Path.reach path ~from:dir)
-        in
-        let build_dirs = ("B " ^ Path.reach dir ~from:Path.root) :: build_dirs in
-        let pkgs = List.map libs ~f:(fun lib -> "PKG " ^ Lib.best_name lib) in
-        let flgs = ["FLG -open " ^ String.capitalize_ascii lib.name] in
-        String.concat ~sep:"\n" (
-          source_dirs @
-          build_dirs @
-          pkgs @
-          flgs
+    begin match Path.extract_build_context dir with
+    | Some ("default", dir) ->
+      add_rule (
+        requires
+        >>>
+        Build.arr (fun libs ->
+          let source_dirs = ["S " ^ Path.reach dir ~from:dir] in
+          let build_dirs =
+            libs
+            |> Lib.include_paths
+            |> Path.Set.elements
+            |> List.map ~f:(fun path -> "B " ^ Path.reach path ~from:dir)
+          in
+          let build_dirs = ("B " ^ Path.reach dir ~from:Path.root) :: build_dirs in
+          let pkgs = List.map libs ~f:(fun lib -> "PKG " ^ Lib.best_name lib) in
+          let flgs = ["FLG -open " ^ String.capitalize_ascii lib.name] in
+          String.concat ~sep:"\n" (
+            source_dirs @
+            build_dirs @
+            pkgs @
+            flgs
+          )
         )
+        >>>
+        Build.echo (Path.relative dir ".merlin")
       )
-      >>>
-      Build.echo (Path.relative dir ".merlin")
-    );
+    | _ -> ()
+    end;
 
     setup_runtime_deps ~dir ~dep_kind ~item:lib.name
       ~libraries:lib.libraries

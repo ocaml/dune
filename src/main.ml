@@ -1,6 +1,8 @@
 open Import
 open Future
 
+let app_name = "jbuilder"
+
 let common_args =
   [ "-j", Arg.Set_int Clflags.concurrency, "JOBS concurrency"
   ; "-drules", Arg.Set Clflags.debug_rules, " show rules"
@@ -70,7 +72,7 @@ let external_lib_deps ~packages =
 
 let external_lib_deps_cmd argv =
   let packages =
-    parse_args argv "jbuild external-lib-deps PACKAGES"
+    parse_args argv (app_name ^ " external-lib-deps PACKAGES")
       common_args
   in
   let deps =
@@ -95,7 +97,7 @@ let main () =
     | "internal" -> internal (compact ())
     | "build-package" ->
       let pkg =
-        parse_args1 (compact ()) "jbuild build-package PACKAGE"
+        parse_args1 (compact ()) (app_name ^ " build-package PACKAGE")
           common_args
       in
       Future.Scheduler.go
@@ -104,7 +106,7 @@ let main () =
     | "external-lib-deps" ->
       external_lib_deps_cmd (compact ())
     | _ ->
-      let targets = parse_args argv "jbuild TARGETS" common_args in
+      let targets = parse_args argv (app_name ^ " TARGETS") common_args in
       Future.Scheduler.go
         (setup () >>= fun (bs, _, ctx) ->
          let targets = List.map targets ~f:(Path.relative ctx.build_dir) in

@@ -615,17 +615,7 @@ module Gen(P : Params) = struct
        Build.arr (fun (libs, rt_deps) ->
          Lib.remove_dups_preserve_order (libs @ rt_deps))
        >>>
-       Build.fanout
-         (Build.arr (fun libs ->
-          let paths = Lib.include_paths libs in
-          let concat =
-            String.concat ~sep:" " (List.map (Path.Set.elements paths) ~f:(fun path ->
-            Path.reach path ~from:dir ^ "\n"))
-          in
-          concat) >>> Build.echo (Path.relative dir ".merlin"))
-         (Build.store_vfile vrequires)
-       >>>
-       Build.arr (fun ((),()) -> ()));
+       Build.store_vfile vrequires);
     Build.vpath vrequires
 
   let setup_runtime_deps ~dir ~dep_kind ~item ~libraries ~ppx_runtime_libraries =
@@ -979,6 +969,26 @@ module Gen(P : Params) = struct
         ~preprocess:lib.preprocess
         ~virtual_deps:lib.virtual_deps
     in
+
+    add_rule (
+      requires
+      >>>
+      Build.arr (fun libs ->
+        let desc = List.map ~f:Lib.describe libs in
+        let paths = Lib.include_paths libs in
+        let concat =
+          String.concat ~sep:" " (List.map (Path.Set.elements paths) ~f:(fun path ->
+            Path.reach path ~from:dir ^ "\n"))
+          ^ "\n" ^
+          String.concat ~sep:" " desc
+          ^ "\n" ^
+          String.concat ~sep:" " (List.map ~f:Lib.best_name libs)
+        in
+        concat)
+      >>>
+      Build.echo (Path.relative dir ".merlin")
+    );
+
     setup_runtime_deps ~dir ~dep_kind ~item:lib.name
       ~libraries:lib.libraries
       ~ppx_runtime_libraries:lib.ppx_runtime_libraries;

@@ -974,17 +974,23 @@ module Gen(P : Params) = struct
       requires
       >>>
       Build.arr (fun libs ->
-        let desc = List.map ~f:Lib.describe libs in
-        let paths = Lib.include_paths libs in
-        let concat =
-          String.concat ~sep:" " (List.map (Path.Set.elements paths) ~f:(fun path ->
-            Path.reach path ~from:dir ^ "\n"))
-          ^ "\n" ^
-          String.concat ~sep:" " desc
-          ^ "\n" ^
-          String.concat ~sep:" " (List.map ~f:Lib.best_name libs)
+        let source_dirs = ["S " ^ Path.reach dir ~from:dir] in
+        let build_dirs =
+          libs
+          |> Lib.include_paths
+          |> Path.Set.elements
+          |> List.map ~f:(fun path -> "B " ^ Path.reach path ~from:dir)
         in
-        concat)
+        let build_dirs = ("B " ^ Path.reach dir ~from:Path.root) :: build_dirs in
+        let pkgs = List.map libs ~f:(fun lib -> "PKG " ^ Lib.best_name lib) in
+        let flgs = ["FLG -open " ^ String.capitalize_ascii lib.name] in
+        String.concat ~sep:"\n" (
+          source_dirs @
+          build_dirs @
+          pkgs @
+          flgs
+        )
+      )
       >>>
       Build.echo (Path.relative dir ".merlin")
     );

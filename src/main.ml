@@ -23,7 +23,7 @@ let parse_args1 argv msg l =
   match parse_args argv msg l with
   | [x] -> x
   | _ ->
-    Printf.eprintf "no enough arguments\nUsage: %s\n" msg;
+    Printf.eprintf "not enough arguments\nUsage: %s\n" msg;
     exit 2
 
 let internal argv =

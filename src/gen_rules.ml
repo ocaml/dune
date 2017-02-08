@@ -970,34 +970,37 @@ module Gen(P : Params) = struct
         ~virtual_deps:lib.virtual_deps
     in
 
-    begin match Path.extract_build_context dir with
-    | Some ("default", dir) ->
-      add_rule (
-        requires
-        >>>
-        Build.arr (fun libs ->
-          let source_dirs = ["S " ^ Path.reach dir ~from:dir] in
-          let build_dirs =
-            libs
-            |> Lib.include_paths
-            |> Path.Set.elements
-            |> List.map ~f:(fun path -> "B " ^ Path.reach path ~from:dir)
-          in
-          let build_dirs = ("B " ^ Path.reach dir ~from:Path.root) :: build_dirs in
-          let pkgs = List.map libs ~f:(fun lib -> "PKG " ^ Lib.best_name lib) in
-          let flgs = ["FLG -open " ^ String.capitalize_ascii lib.name] in
-          String.concat ~sep:"\n" (
-            source_dirs @
-            build_dirs @
-            pkgs @
-            flgs
+    (match Path.extract_build_context dir with
+      | Some ("default", remdir) ->
+        print_endline (sprintf "* * * dir = %s\n" (Path.to_string dir));
+        print_endline (sprintf "* * * relative_dir = %s\n" (Path.relative dir ".merlin" |> Path.to_string));
+        print_endline (Path.relative Path.root (Path.to_string remdir) |> Path.to_string);
+        print_endline (Path.to_string (Path.relative (Path.append Path.root remdir) ".merlin"));
+        add_rule (
+          requires
+          >>>
+          Build.arr (fun libs ->
+            let source_dirs = ["S " ^ Path.reach dir ~from:dir] in
+            let build_dirs =
+              libs
+              |> Lib.include_paths
+              |> Path.Set.elements
+              |> List.map ~f:(fun path -> "B " ^ Path.reach path ~from:dir)
+            in
+            let build_dirs = ("B " ^ Path.reach dir ~from:Path.root) :: build_dirs in
+            let pkgs = List.map libs ~f:(fun lib -> "PKG " ^ Lib.best_name lib) in
+            let flgs = ["FLG -open " ^ String.capitalize_ascii lib.name] in
+            String.concat ~sep:"\n" (
+              source_dirs @
+              build_dirs @
+              pkgs @
+              flgs
+            )
           )
+          >>>
+          Build.echo (Path.relative (Path.append Path.root remdir) ".merlin")
         )
-        >>>
-        Build.echo (Path.relative dir ".merlin")
-      )
-    | _ -> ()
-    end;
+      | _ -> ());
 
     setup_runtime_deps ~dir ~dep_kind ~item:lib.name
       ~libraries:lib.libraries

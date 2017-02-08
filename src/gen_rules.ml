@@ -970,12 +970,9 @@ module Gen(P : Params) = struct
         ~virtual_deps:lib.virtual_deps
     in
 
+    (* Add a rule to build .merlin files *)
     (match Path.extract_build_context dir with
-      | Some ("default", remdir) ->
-        print_endline (sprintf "* * * dir = %s\n" (Path.to_string dir));
-        print_endline (sprintf "* * * relative_dir = %s\n" (Path.relative dir ".merlin" |> Path.to_string));
-        print_endline (Path.relative Path.root (Path.to_string remdir) |> Path.to_string);
-        print_endline (Path.to_string (Path.relative (Path.append Path.root remdir) ".merlin"));
+      | Some ("default", remaindir) ->
         add_rule (
           requires
           >>>
@@ -985,9 +982,9 @@ module Gen(P : Params) = struct
               libs
               |> Lib.include_paths
               |> Path.Set.elements
-              |> List.map ~f:(fun path -> "B " ^ Path.reach path ~from:dir)
+              |> List.map ~f:(fun path -> "B " ^ Path.reach path ~from:remaindir)
             in
-            let build_dirs = ("B " ^ Path.reach dir ~from:Path.root) :: build_dirs in
+            let build_dirs = ("B " ^ Path.reach dir ~from:remaindir) :: build_dirs in
             let pkgs = List.map libs ~f:(fun lib -> "PKG " ^ Lib.best_name lib) in
             let flgs = ["FLG -open " ^ String.capitalize_ascii lib.name] in
             String.concat ~sep:"\n" (
@@ -998,7 +995,7 @@ module Gen(P : Params) = struct
             )
           )
           >>>
-          Build.echo (Path.relative (Path.append Path.root remdir) ".merlin")
+          Build.echo (Path.relative (Path.append Path.root remaindir) ".merlin")
         )
       | _ -> ());
 
@@ -1155,6 +1152,34 @@ module Gen(P : Params) = struct
         ~preprocess:exes.preprocess
         ~virtual_deps:[]
     in
+
+    (* Add a rule to build .merlin files *)
+    (match Path.extract_build_context dir with
+      | Some ("default", remaindir) ->
+        add_rule (
+          requires
+          >>>
+          Build.arr (fun libs ->
+            let source_dirs = ["S " ^ Path.reach dir ~from:dir] in
+            let build_dirs =
+              libs
+              |> Lib.include_paths
+              |> Path.Set.elements
+              |> List.map ~f:(fun path -> "B " ^ Path.reach path ~from:remaindir)
+            in
+            let build_dirs = ("B " ^ Path.reach dir ~from:remaindir) :: build_dirs in
+            let pkgs = List.map libs ~f:(fun lib -> "PKG " ^ Lib.best_name lib) in
+            String.concat ~sep:"\n" (
+              source_dirs @
+              build_dirs @
+              pkgs
+            )
+          )
+          >>>
+          Build.echo (Path.relative (Path.append Path.root remaindir) ".merlin")
+        )
+      | _ -> ());
+
     List.iter (Lib_db.select_rules ~dir exes.libraries) ~f:add_rule;
 
     build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module:None;

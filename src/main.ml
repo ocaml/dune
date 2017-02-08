@@ -105,6 +105,12 @@ let main () =
          Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])
     | "external-lib-deps" ->
       external_lib_deps_cmd (compact ())
+    | "from-root" ->
+      let targets = parse_args (compact ()) (app_name ^ " from-root TARGETS") common_args in
+      Future.Scheduler.go
+        (setup () >>= fun (bs, _, _) ->
+         let targets = List.map targets ~f:(Path.relative Path.root) in
+         Build_system.do_build_exn bs targets)
     | _ ->
       let targets = parse_args argv (app_name ^ " TARGETS") common_args in
       Future.Scheduler.go

@@ -986,7 +986,12 @@ module Gen(P : Params) = struct
             in
             let build_dirs = ("B " ^ Path.reach dir ~from:remaindir) :: build_dirs in
             let pkgs = List.map libs ~f:(fun lib -> "PKG " ^ Lib.best_name lib) in
-            let flgs = ["FLG -open " ^ String.capitalize_ascii lib.name] in
+            let flgs =
+              begin match lib.kind with
+              | Normal -> ["FLG -open " ^ String.capitalize_ascii lib.name]
+              | _ -> []
+              end
+            in
             String.concat ~sep:"\n" (
               source_dirs @
               build_dirs @

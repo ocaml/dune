@@ -4,8 +4,6 @@
    %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-open Result
-
 (** Command line arguments as terms. *)
 
 type 'a parser = string -> [ `Ok of 'a | `Error of string ]

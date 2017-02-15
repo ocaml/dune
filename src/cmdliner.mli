@@ -26,8 +26,6 @@
 
 (** {1:top Interface} *)
 
-open Result
-
 (** Man page specification.
 
     Man page generation is automatically handled by [Cmdliner],

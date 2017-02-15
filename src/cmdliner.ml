@@ -4,7 +4,7 @@
    %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-open Result
+type  ('a, 'b) stdlib_result = ('a, 'b) result
 
 module Manpage = Cmdliner_manpage
 module Arg = Cmdliner_arg
@@ -108,7 +108,7 @@ module Term = struct
     ('a, [ term_escape
          | `Exn of exn * Printexc.raw_backtrace
          | `Parse of string
-         | `Std_help of Manpage.format | `Std_version ]) Result.result
+         | `Std_help of Manpage.format | `Std_version ]) stdlib_result
 
   let run ~catch ei cl f = try (f ei cl :> 'a eval_result) with
   | exn when catch ->

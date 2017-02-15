@@ -4,8 +4,6 @@
    %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-open Result
-
 type term_escape =
   [ `Error of bool * string
   | `Help of Cmdliner_manpage.format * string option ]

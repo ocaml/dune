@@ -127,16 +127,11 @@ module Cli = struct
             $ Arg.(non_empty & pos_all string [] name_))
     , Term.info "build" ~doc)
 
-  let default =
-    let doc = "jbuilder" in
-    ( Term.(ret @@ const @@ `Help (`Pager, None))
-    , Term.info "jbuilder" ~doc)
-
   let all =
     [ internal ; build_package ; external_lib_deps ; build_targets ]
 
   let main () =
-    match Term.eval_choice default all with
+    match Term.eval_choice build_targets all with
     | `Error _ -> exit 1
     | _ -> exit 0
 end

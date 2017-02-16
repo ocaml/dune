@@ -607,6 +607,25 @@ module Install_conf = struct
          })
 end
 
+module Alias_conf = struct
+  type t =
+    { name  : string
+    ; deps  : Dep_conf.t list
+    ; action : User_action.Unexpanded.t option
+    }
+
+  let t =
+    record
+      [ field "name" string
+      ; field "deps" (list Dep_conf.t) ~default:[]
+      ; field "action" (option User_action.Unexpanded.t) ]
+      (fun name deps action ->
+         { name
+         ; deps
+         ; action
+         })
+end
+
 module Stanza = struct
   type t =
     | Library     of Library.t
@@ -616,6 +635,7 @@ module Stanza = struct
     | Ocamlyacc   of Ocamlyacc.t
     | Provides    of Provides.t
     | Install     of Install_conf.t
+    | Alias       of Alias_conf.t
     | Other
 
   let t =
@@ -627,7 +647,7 @@ module Stanza = struct
       ; cstr "ocamlyacc"   [Ocamlyacc.t]    (fun x -> Ocamlyacc   x)
       ; cstr "provides"    [Provides.t]     (fun x -> Provides    x)
       ; cstr "install"     [Install_conf.t] (fun x -> Install     x)
-      ; cstr "alias"                 [fun _ -> ()] (fun _ -> Other )
+      ; cstr "alias"       [Alias_conf.t]   (fun x -> Alias       x)
       ; cstr "enforce_style"         [fun _ -> ()] (fun _ -> Other )
       ; cstr "toplevel_expect_tests" [fun _ -> ()] (fun _ -> Other)
       ; cstr "unified_tests"         [fun _ -> ()] (fun _ -> Other)

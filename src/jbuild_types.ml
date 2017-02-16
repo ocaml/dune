@@ -147,6 +147,11 @@ invalid action, expected one of:
           }
       in
       loop String_map.empty dir t
+
+    let rec sexp_of_t f = function
+      | Run (a, xs) -> List (Atom "run" :: f a :: List.map f xs)
+      | Chdir (a, r) -> List [Atom "chdir" ; f a ; sexp_of_t f r]
+      | Setenv (k, v, r) -> List [Atom "setenv" ; f k ; f v ; sexp_of_t f r]
   end
 
   module T = struct
@@ -168,6 +173,10 @@ invalid action, expected one of:
       match t with
       | Bash x -> f init x
       | Shexp x -> Mini_shexp.fold x ~init ~f
+
+    let sexp_of_t f = function
+      | Bash a -> List [Atom "bash" ; f a]
+      | Shexp a -> List [Atom "shexp" ; Mini_shexp.sexp_of_t f a]
   end
 
   include T

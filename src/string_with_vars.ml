@@ -57,6 +57,18 @@ let of_string s = of_tokens (Token.tokenise s)
 
 let t sexp = of_string (Sexp.Of_sexp.string sexp)
 
+let sexp_of_var_syntax = function
+  | Parens -> Sexp.Atom "parens"
+  | Braces -> Sexp.Atom "braces"
+
+let sexp_of_item =
+  let open Sexp in function
+    | Text s -> List [Atom "text" ; Atom s]
+    | Var (vs, s) -> List [sexp_of_var_syntax vs ; Atom s]
+
+let sexp_of_t = Sexp.To_sexp.list sexp_of_item
+
+
 let fold t ~init ~f =
   List.fold_left t ~init ~f:(fun acc item ->
     match item with
@@ -80,6 +92,7 @@ let expand t ~f =
 module type Container = sig
   type 'a t
   val t : (Sexp.t -> 'a) -> Sexp.t -> 'a t
+  val sexp_of_t : ('a -> Sexp.t) -> 'a t -> Sexp.t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
   val fold : 'a t -> init:'b -> f:('b -> 'a -> 'b) -> 'b
@@ -88,6 +101,8 @@ end
 module Lift(M : Container) = struct
   type nonrec t = t M.t
   let t sexp = M.t t sexp
+
+  let sexp_of_t a = M.sexp_of_t sexp_of_t a
 
   let fold t ~init ~f =
     M.fold t ~init ~f:(fun acc x -> fold x ~init:acc ~f)

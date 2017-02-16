@@ -85,10 +85,10 @@ module Cli = struct
     let make concurrency debug_rules debug_dep_path debug_findlib =
       { concurrency ; debug_rules ; debug_dep_path ; debug_findlib } in
     let concurrency =
-      Arg.(value & opt int !Clflags.concurrency & info ["-j"]) in
-    let drules = Arg.(value & flag & info ["-drules"]) in
-    let ddep_path = Arg.(value & flag & info ["-ddep-path"]) in
-    let dfindlib = Arg.(value & flag & info ["-dfindlib"]) in
+      Arg.(value & opt int !Clflags.concurrency & info ["j"]) in
+    let drules = Arg.(value & flag & info ["drules"]) in
+    let ddep_path = Arg.(value & flag & info ["ddep-path"]) in
+    let dfindlib = Arg.(value & flag & info ["dfindlib"]) in
     Term.(const make $ concurrency $ drules $ ddep_path $ dfindlib)
 
   let build_package =

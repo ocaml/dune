@@ -81,14 +81,26 @@ module Cli = struct
     Clflags.debug_dep_path := c.debug_dep_path;
     Clflags.debug_findlib := c.debug_findlib
 
+  let copts_sect = "COMMON OPTIONS"
+  let help_secs =
+    [ `S copts_sect
+    ; `P "These options are common to all commands."
+    ; `S "MORE HELP"
+    ; `P "Use `$(mname) $(i,COMMAND) --help' for help on a single command."
+    ;`Noblank
+    ; `S "BUGS"
+    ; `P "Check bug reports at https://github.com/janestreet/jbuilder/issues"
+    ]
+
   let common =
     let make concurrency debug_rules debug_dep_path debug_findlib =
       { concurrency ; debug_rules ; debug_dep_path ; debug_findlib } in
+    let docs = copts_sect in
     let concurrency =
-      Arg.(value & opt int !Clflags.concurrency & info ["j"]) in
-    let drules = Arg.(value & flag & info ["drules"]) in
-    let ddep_path = Arg.(value & flag & info ["ddep-path"]) in
-    let dfindlib = Arg.(value & flag & info ["dfindlib"]) in
+      Arg.(value & opt int !Clflags.concurrency & info ["j"] ~docs) in
+    let drules = Arg.(value & flag & info ["drules"] ~docs) in
+    let ddep_path = Arg.(value & flag & info ["ddep-path"] ~docs) in
+    let dfindlib = Arg.(value & flag & info ["dfindlib"] ~docs) in
     Term.(const make $ concurrency $ drules $ ddep_path $ dfindlib)
 
   let build_package =
@@ -100,7 +112,7 @@ module Cli = struct
     ( Term.(const go
             $ common
             $ Arg.(required & pos 0 (some string) None name_))
-    , Term.info "build-package" ~doc)
+    , Term.info "build-package" ~doc ~man:help_secs)
 
   let external_lib_deps =
     let doc = "external-lib-deps" in
@@ -111,7 +123,7 @@ module Cli = struct
     ( Term.(const go
             $ common
             $ Arg.(non_empty & pos_all string [] name_))
-    , Term.info "external-lib-deps" ~doc)
+    , Term.info "external-lib-deps" ~doc ~man:help_secs)
 
   let build_targets =
     let doc = "build" in
@@ -125,7 +137,7 @@ module Cli = struct
     ( Term.(const go
             $ common
             $ Arg.(non_empty & pos_all string [] name_))
-    , Term.info "build" ~doc)
+    , Term.info "build" ~doc ~man:help_secs)
 
   let all =
     [ internal ; build_package ; external_lib_deps ; build_targets ]

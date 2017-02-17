@@ -4,6 +4,8 @@
    %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
+open Result
+
 (* A command line stores pre-parsed information about the command
    line's arguments in a more structured way. Given the
    Cmdliner_info.arg values mentioned in a term and Sys.argv

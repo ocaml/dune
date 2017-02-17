@@ -4,6 +4,9 @@
    %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
+open Result
+
+(** Terms *)
 
 type term_escape =
   [ `Error of bool * string

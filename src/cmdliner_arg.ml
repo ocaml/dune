@@ -4,6 +4,8 @@
    %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
+open Result
+
 let rev_compare n0 n1 = compare n1 n0
 
 (* Invalid_argument strings **)

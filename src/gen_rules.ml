@@ -138,6 +138,16 @@ module Gen(P : Params) = struct
       | None -> build
       | Some f -> Build.fail f >>> build
 
+    let interpret_lib_deps_names ~dir lib_deps =
+      let internals, externals, fail = Lib_db.interpret_lib_deps t ~dir lib_deps in
+      let intern = List.map internals ~f:(fun (path, lib) ->
+        path
+      ) in
+      let extern = List.map externals ~f:(fun pkg ->
+        pkg.Findlib.name
+      ) in
+      (intern, extern)
+
     let closure ~dir ~dep_kind lib_deps =
       let internals, externals, fail = Lib_db.interpret_lib_deps t ~dir lib_deps in
       with_fail ~fail
@@ -618,6 +628,41 @@ module Gen(P : Params) = struct
        Build.store_vfile vrequires);
     Build.vpath vrequires
 
+  let requires_and_dot_merlin ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps ~alias_module =
+    (* Compute requires *)
+    let requires = requires ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps in
+
+    (* Only generate .merlin file in default context *)
+    match Path.extract_build_context dir with
+    | Some ("default", remaindir) ->
+        let path = Path.relative remaindir ".merlin" in
+        add_rule (
+          let dot_merlin = ref [] in
+          let add_line s = dot_merlin := s :: !dot_merlin in
+          add_line "S .";
+          add_line ("B " ^ Path.reach dir ~from:remaindir);
+
+          (* Separate internal and external libraries *)
+          let internals, externals = Lib_db.interpret_lib_deps_names ~dir libraries in
+
+          List.iter internals ~f:(fun path ->
+            let path = Path.reach path ~from:remaindir in
+            add_line ("B " ^ path));
+
+          List.iter externals ~f:(fun pkg ->
+            add_line ("PKG " ^ pkg));
+
+          (match alias_module with
+          | Some (m : Module.t) -> add_line ("FLG -open " ^ m.name)
+          | None -> ());
+          Build.arr (fun () -> String.concat ~sep:"\n" !dot_merlin)
+          >>>
+          Build.echo path
+        );
+        Build.path path >>> requires
+    | _ ->
+      requires
+
   let setup_runtime_deps ~dir ~dep_kind ~item ~libraries ~ppx_runtime_libraries =
     let vruntime_deps = Lib_db.vruntime_deps ~dir ~item in
     add_rule
@@ -964,45 +1009,12 @@ module Gen(P : Params) = struct
          >>> Build.echo (Path.relative dir m.ml_fname)));
 
     let requires =
-      requires ~dir ~dep_kind ~item:lib.name
+      requires_and_dot_merlin ~dir ~dep_kind ~item:lib.name
         ~libraries:lib.libraries
         ~preprocess:lib.preprocess
         ~virtual_deps:lib.virtual_deps
+        ~alias_module
     in
-
-    (* Add a rule to build .merlin files *)
-    (match Path.extract_build_context dir with
-      | Some ("default", remaindir) ->
-        add_rule (
-          requires
-          >>>
-          Build.arr (fun libs ->
-            let source_dirs = ["S " ^ Path.reach dir ~from:dir] in
-            let build_dirs =
-              libs
-              |> Lib.include_paths
-              |> Path.Set.elements
-              |> List.map ~f:(fun path -> "B " ^ Path.reach path ~from:remaindir)
-            in
-            let build_dirs = ("B " ^ Path.reach dir ~from:remaindir) :: build_dirs in
-            let pkgs = List.map libs ~f:(fun lib -> "PKG " ^ Lib.best_name lib) in
-            let flgs =
-              begin match lib.kind with
-              | Normal -> ["FLG -open " ^ String.capitalize_ascii lib.name]
-              | _ -> []
-              end
-            in
-            String.concat ~sep:"\n" (
-              source_dirs @
-              build_dirs @
-              pkgs @
-              flgs
-            )
-          )
-          >>>
-          Build.echo (Path.relative (Path.append Path.root remaindir) ".merlin")
-        )
-      | _ -> ());
 
     setup_runtime_deps ~dir ~dep_kind ~item:lib.name
       ~libraries:lib.libraries
@@ -1152,38 +1164,12 @@ module Gen(P : Params) = struct
     let dep_graph = ocamldep_rules ~dir ~item ~modules ~alias_module:None in
 
     let requires =
-      requires ~dir ~dep_kind ~item
+      requires_and_dot_merlin ~dir ~dep_kind ~item
         ~libraries:exes.libraries
         ~preprocess:exes.preprocess
         ~virtual_deps:[]
+        ~alias_module:None
     in
-
-    (* Add a rule to build .merlin files *)
-    (match Path.extract_build_context dir with
-      | Some ("default", remaindir) ->
-        add_rule (
-          requires
-          >>>
-          Build.arr (fun libs ->
-            let source_dirs = ["S " ^ Path.reach dir ~from:dir] in
-            let build_dirs =
-              libs
-              |> Lib.include_paths
-              |> Path.Set.elements
-              |> List.map ~f:(fun path -> "B " ^ Path.reach path ~from:remaindir)
-            in
-            let build_dirs = ("B " ^ Path.reach dir ~from:remaindir) :: build_dirs in
-            let pkgs = List.map libs ~f:(fun lib -> "PKG " ^ Lib.best_name lib) in
-            String.concat ~sep:"\n" (
-              source_dirs @
-              build_dirs @
-              pkgs
-            )
-          )
-          >>>
-          Build.echo (Path.relative (Path.append Path.root remaindir) ".merlin")
-        )
-      | _ -> ());
 
     List.iter (Lib_db.select_rules ~dir exes.libraries) ~f:add_rule;
 

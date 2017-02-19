@@ -1,0 +1,4 @@
+PKG unix
+B ../_build/default/src
+B ../_build/default/bin
+S .

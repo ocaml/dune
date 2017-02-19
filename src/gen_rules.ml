@@ -138,7 +138,7 @@ module Gen(P : Params) = struct
       | None -> build
       | Some f -> Build.fail f >>> build
 
-    let interpret_lib_deps_names ~dir lib_deps =
+    let interpret_lib_deps_for_dot_merlin ~dir lib_deps =
       let internals, externals, fail = Lib_db.interpret_lib_deps t ~dir lib_deps in
       let intern = List.map internals ~f:(fun (path, lib) ->
         path
@@ -643,7 +643,7 @@ module Gen(P : Params) = struct
           add_line ("B " ^ Path.reach dir ~from:remaindir);
 
           (* Separate internal and external libraries *)
-          let internals, externals = Lib_db.interpret_lib_deps_names ~dir libraries in
+          let internals, externals = Lib_db.interpret_lib_deps_for_dot_merlin ~dir libraries in
 
           List.iter internals ~f:(fun path ->
             let path = Path.reach path ~from:remaindir in

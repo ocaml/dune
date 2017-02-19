@@ -1,4 +1,4 @@
-PKG unix
-B ../_build/default/src
-B ../_build/default/bin
 S .
+B ../_build/default/bin
+B ../_build/default/src
+PKG unix

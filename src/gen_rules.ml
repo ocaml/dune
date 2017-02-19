@@ -139,8 +139,8 @@ module Gen(P : Params) = struct
       | Some f -> Build.fail f >>> build
 
     let interpret_lib_deps_for_dot_merlin ~dir lib_deps =
-      let internals, externals, fail = Lib_db.interpret_lib_deps t ~dir lib_deps in
-      let intern = List.map internals ~f:(fun (path, lib) ->
+      let internals, externals, _ = Lib_db.interpret_lib_deps t ~dir lib_deps in
+      let intern = List.map internals ~f:(fun (path, _) ->
         path
       ) in
       let extern = List.map externals ~f:(fun pkg ->
@@ -655,7 +655,7 @@ module Gen(P : Params) = struct
           (match alias_module with
           | Some (m : Module.t) -> add_line ("FLG -open " ^ m.name)
           | None -> ());
-          Build.arr (fun () -> String.concat ~sep:"\n" !dot_merlin)
+          Build.arr (fun () -> String.concat ~sep:"\n" (List.rev !dot_merlin))
           >>>
           Build.echo path
         );

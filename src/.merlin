@@ -1,4 +1,4 @@
-FLG -open Jbuilder
-PKG unix
-B ../_build/default/src
 S .
+B ../_build/default/src
+PKG unix
+FLG -open Jbuilder

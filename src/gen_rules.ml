@@ -138,16 +138,6 @@ module Gen(P : Params) = struct
       | None -> build
       | Some f -> Build.fail f >>> build
 
-    let interpret_lib_deps_for_dot_merlin ~dir lib_deps =
-      let internals, externals, _ = Lib_db.interpret_lib_deps t ~dir lib_deps in
-      let intern = List.map internals ~f:(fun (path, _) ->
-        path
-      ) in
-      let extern = List.map externals ~f:(fun pkg ->
-        pkg.Findlib.name
-      ) in
-      (intern, extern)
-
     let closure ~dir ~dep_kind lib_deps =
       let internals, externals, fail = Lib_db.interpret_lib_deps t ~dir lib_deps in
       with_fail ~fail
@@ -637,25 +627,26 @@ module Gen(P : Params) = struct
     | Some ("default", remaindir) ->
         let path = Path.relative remaindir ".merlin" in
         add_rule (
-          let dot_merlin = ref [] in
-          let add_line s = dot_merlin := s :: !dot_merlin in
-          add_line "S .";
-          add_line ("B " ^ Path.reach dir ~from:remaindir);
-
-          (* Separate internal and external libraries *)
-          let internals, externals = Lib_db.interpret_lib_deps_for_dot_merlin ~dir libraries in
-
-          List.iter internals ~f:(fun path ->
-            let path = Path.reach path ~from:remaindir in
-            add_line ("B " ^ path));
-
-          List.iter externals ~f:(fun pkg ->
-            add_line ("PKG " ^ pkg));
-
-          (match alias_module with
-          | Some (m : Module.t) -> add_line ("FLG -open " ^ m.name)
-          | None -> ());
-          Build.arr (fun () -> String.concat ~sep:"\n" (List.rev !dot_merlin))
+          requires
+          >>>
+          Build.arr (fun (libs : Lib.t List.t) ->
+            List.partition_map libs ~f:(function
+              | Internal (path, _) ->
+                  let path = Path.reach path ~from:remaindir in
+                  Inl ("B " ^ path)
+              | External pkg ->
+                  Inr ("PKG " ^ pkg.name)))
+          >>>
+          Build.arr (fun (internals, externals) ->
+            let dot_merlin =
+              [ "S ." ; "B " ^ (Path.reach dir ~from:remaindir) ]
+              @ internals
+              @ externals
+              @ match alias_module with
+                | Some (m : Module.t) -> ["FLG -open " ^ m.name]
+                | None -> []
+            in
+            String.concat ~sep:"\n" dot_merlin)
           >>>
           Build.echo path
         );

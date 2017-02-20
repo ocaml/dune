@@ -1,31 +1,7 @@
 open Import
 open Future
 
-let common_args =
-  [ "-j", Arg.Set_int Clflags.concurrency, "JOBS concurrency"
-  ; "-drules", Arg.Set Clflags.debug_rules, " show rules"
-  ; "-ddep-path", Arg.Set Clflags.debug_dep_path, " show depency path of errors"
-  ; "-dfindlib", Arg.Set Clflags.debug_findlib, " debug findlib stuff"
-  ]
-
-let parse_args argv msg l =
-  let anons = ref [] in
-  try
-    Arg.parse_argv argv (Arg.align l) (fun x -> anons := x :: !anons) msg;
-    List.rev !anons
-  with
-  | Arg.Bad msg -> Printf.eprintf "%s" msg; exit 2
-  | Arg.Help msg -> Printf.printf "%s" msg; exit 0
-
-let parse_args1 argv msg l =
-  match parse_args argv msg l with
-  | [x] -> x
-  | _ ->
-    Printf.eprintf "no enough arguments\nUsage: %s\n" msg;
-    exit 2
-
-let internal argv =
-  match Array.to_list argv with
+let internal = function
   | [_; "findlib-packages"] ->
     Future.Scheduler.go
       (Lazy.force Context.default >>= fun ctx ->
@@ -68,11 +44,7 @@ let external_lib_deps ~packages =
          let internals = Jbuild_types.Stanza.lib_names stanzas in
          String_map.filter deps ~f:(fun name _ -> not (String_set.mem name internals))))
 
-let external_lib_deps_cmd argv =
-  let packages =
-    parse_args argv "jbuild external-lib-deps PACKAGES"
-      common_args
-  in
+let external_lib_deps_cmd packages =
   let deps =
     Path.Map.fold (external_lib_deps ~packages) ~init:String_map.empty
       ~f:(fun ~key:_ ~data:deps acc -> Build.merge_lib_deps deps acc)
@@ -82,33 +54,101 @@ let external_lib_deps_cmd argv =
     | Required -> Printf.printf "%s\n" n
     | Optional -> Printf.printf "%s (optional)\n" n)
 
-let main () =
-  let argv = Sys.argv in
-  let argc = Array.length argv in
-  let compact () =
-    Array.append
-      [|sprintf "%s %s" argv.(0) argv.(1)|]
-      (Array.sub argv ~pos:2 ~len:(argc - 2))
-  in
-  if argc >= 2 then
-    match argv.(1) with
-    | "internal" -> internal (compact ())
-    | "build-package" ->
-      let pkg =
-        parse_args1 (compact ()) "jbuild build-package PACKAGE"
-          common_args
-      in
-      Future.Scheduler.go
-        (setup () >>= fun (bs, _, _) ->
-         Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])
-    | "external-lib-deps" ->
-      external_lib_deps_cmd (compact ())
-    | _ ->
-      let targets = parse_args argv "jbuild TARGETS" common_args in
+let build_package pkg =
+  Future.Scheduler.go
+    (setup () >>= fun (bs, _, _) ->
+     Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])
+
+module Cli = struct
+  open Cmdliner
+
+  let internal =
+    let doc = "internal" in
+    let name_ = Arg.info [] in
+    ( Term.(const internal $ Arg.(non_empty & pos_all string [] name_))
+    , Term.info "internal" ~doc)
+
+  type common =
+    { concurrency: int
+    ; debug_rules: bool
+    ; debug_dep_path: bool
+    ; debug_findlib: bool
+    }
+
+  let set_common c =
+    Clflags.concurrency := c.concurrency;
+    Clflags.debug_rules := c.debug_rules;
+    Clflags.debug_dep_path := c.debug_dep_path;
+    Clflags.debug_findlib := c.debug_findlib
+
+  let copts_sect = "COMMON OPTIONS"
+  let help_secs =
+    [ `S copts_sect
+    ; `P "These options are common to all commands."
+    ; `S "MORE HELP"
+    ; `P "Use `$(mname) $(i,COMMAND) --help' for help on a single command."
+    ;`Noblank
+    ; `S "BUGS"
+    ; `P "Check bug reports at https://github.com/janestreet/jbuilder/issues"
+    ]
+
+  let common =
+    let make concurrency debug_rules debug_dep_path debug_findlib =
+      { concurrency ; debug_rules ; debug_dep_path ; debug_findlib } in
+    let docs = copts_sect in
+    let concurrency =
+      Arg.(value & opt int !Clflags.concurrency & info ["j"] ~docs) in
+    let drules = Arg.(value & flag & info ["drules"] ~docs) in
+    let ddep_path = Arg.(value & flag & info ["ddep-path"] ~docs) in
+    let dfindlib = Arg.(value & flag & info ["dfindlib"] ~docs) in
+    Term.(const make $ concurrency $ drules $ ddep_path $ dfindlib)
+
+  let build_package =
+    let doc = "build-package" in
+    let name_ = Arg.info [] in
+    let go common pkg =
+      set_common common;
+      build_package pkg in
+    ( Term.(const go
+            $ common
+            $ Arg.(required & pos 0 (some string) None name_))
+    , Term.info "build-package" ~doc ~man:help_secs)
+
+  let external_lib_deps =
+    let doc = "external-lib-deps" in
+    let name_ = Arg.info [] in
+    let go common packages =
+      set_common common;
+      external_lib_deps_cmd packages in
+    ( Term.(const go
+            $ common
+            $ Arg.(non_empty & pos_all string [] name_))
+    , Term.info "external-lib-deps" ~doc ~man:help_secs)
+
+  let build_targets =
+    let doc = "build" in
+    let name_ = Arg.info [] in
+    let go common targets =
+      set_common common;
       Future.Scheduler.go
         (setup () >>= fun (bs, _, ctx) ->
          let targets = List.map targets ~f:(Path.relative ctx.build_dir) in
-         Build_system.do_build_exn bs targets)
+         Build_system.do_build_exn bs targets) in
+    ( Term.(const go
+            $ common
+            $ Arg.(non_empty & pos_all string [] name_))
+    , Term.info "build" ~doc ~man:help_secs)
+
+  let all =
+    [ internal ; build_package ; external_lib_deps ; build_targets ]
+
+  let main () =
+    match Term.eval_choice build_targets all with
+    | `Error _ -> exit 1
+    | _ -> exit 0
+end
+
+let main = Cli.main
 
 let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   match exn with

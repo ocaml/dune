@@ -1227,14 +1227,20 @@ module Gen(P : Params) = struct
 
   let alias_rules (alias_conf : Alias_conf.t) ~dir =
     let digest =
-      let source =
+      let deps =
+        Sexp.To_sexp.list Dep_conf_interpret.sexp_of_t alias_conf.deps in
+      let action =
         match alias_conf.action with
-        | None -> ""
-        | Some a -> Sexp.to_string (User_action.Unexpanded.sexp_of_t a) in
-      Digest.to_hex (Digest.string source) in
-    let digest_path = Path.of_string (alias_conf.name ^ digest) in
-    let dummy = Build.touch digest_path in
+        | None -> Atom "none"
+        | Some a -> List [Atom "some" ; User_action.Unexpanded.sexp_of_t a] in
+      Sexp.List [deps ; action]
+      |> Sexp.to_string
+      |> Digest.string
+      |> Digest.to_hex in
     let alias = Alias.make alias_conf.name ~dir in
+    let digest_path =
+      Path.relative dir (Path.basename (Alias.file alias) ^ "-" ^ digest) in
+    let dummy = Build.touch digest_path in
     Alias._add_deps alias [digest_path];
     let deps =
       let deps = Dep_conf_interpret.dep_of_list ~dir alias_conf.deps in

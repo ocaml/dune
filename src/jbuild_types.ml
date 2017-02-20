@@ -214,6 +214,17 @@ module Dep_conf = struct
       match sexp with
       | Atom _ -> File (String_with_vars.t sexp)
       | List _ -> t sexp
+
+  open Sexp
+  let sexp_of_t = function
+    | File t ->
+      List [Atom "file" ; String_with_vars.sexp_of_t t]
+    | Alias t ->
+      List [Atom "alias" ; String_with_vars.sexp_of_t t]
+    | Glob_files t ->
+      List [Atom "glob_files" ; String_with_vars.sexp_of_t t]
+    | Files_recursively_in t ->
+      List [Atom "files_recursively_in" ; String_with_vars.sexp_of_t t]
 end
 
 module Preprocess = struct

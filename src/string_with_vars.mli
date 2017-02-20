@@ -7,6 +7,7 @@ open Import
 
 type t
 val t : Sexp.t -> t
+val sexp_of_t : t -> Sexp.t
 
 val of_string : string -> t
 

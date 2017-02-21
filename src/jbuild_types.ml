@@ -147,6 +147,11 @@ invalid action, expected one of:
           }
       in
       loop String_map.empty dir t
+
+    let rec sexp_of_t f = function
+      | Run (a, xs) -> List (Atom "run" :: f a :: List.map f xs)
+      | Chdir (a, r) -> List [Atom "chdir" ; f a ; sexp_of_t f r]
+      | Setenv (k, v, r) -> List [Atom "setenv" ; f k ; f v ; sexp_of_t f r]
   end
 
   module T = struct
@@ -168,6 +173,10 @@ invalid action, expected one of:
       match t with
       | Bash x -> f init x
       | Shexp x -> Mini_shexp.fold x ~init ~f
+
+    let sexp_of_t f = function
+      | Bash a -> List [Atom "bash" ; f a]
+      | Shexp a -> List [Atom "shexp" ; Mini_shexp.sexp_of_t f a]
   end
 
   include T
@@ -205,6 +214,17 @@ module Dep_conf = struct
       match sexp with
       | Atom _ -> File (String_with_vars.t sexp)
       | List _ -> t sexp
+
+  open Sexp
+  let sexp_of_t = function
+    | File t ->
+      List [Atom "file" ; String_with_vars.sexp_of_t t]
+    | Alias t ->
+      List [Atom "alias" ; String_with_vars.sexp_of_t t]
+    | Glob_files t ->
+      List [Atom "glob_files" ; String_with_vars.sexp_of_t t]
+    | Files_recursively_in t ->
+      List [Atom "files_recursively_in" ; String_with_vars.sexp_of_t t]
 end
 
 module Preprocess = struct
@@ -607,6 +627,25 @@ module Install_conf = struct
          })
 end
 
+module Alias_conf = struct
+  type t =
+    { name  : string
+    ; deps  : Dep_conf.t list
+    ; action : User_action.Unexpanded.t option
+    }
+
+  let t =
+    record
+      [ field "name" string
+      ; field "deps" (list Dep_conf.t) ~default:[]
+      ; field "action" (option User_action.Unexpanded.t) ]
+      (fun name deps action ->
+         { name
+         ; deps
+         ; action
+         })
+end
+
 module Stanza = struct
   type t =
     | Library     of Library.t
@@ -616,6 +655,7 @@ module Stanza = struct
     | Ocamlyacc   of Ocamlyacc.t
     | Provides    of Provides.t
     | Install     of Install_conf.t
+    | Alias       of Alias_conf.t
     | Other
 
   let t =
@@ -627,7 +667,7 @@ module Stanza = struct
       ; cstr "ocamlyacc"   [Ocamlyacc.t]    (fun x -> Ocamlyacc   x)
       ; cstr "provides"    [Provides.t]     (fun x -> Provides    x)
       ; cstr "install"     [Install_conf.t] (fun x -> Install     x)
-      ; cstr "alias"                 [fun _ -> ()] (fun _ -> Other )
+      ; cstr "alias"       [Alias_conf.t]   (fun x -> Alias       x)
       ; cstr "enforce_style"         [fun _ -> ()] (fun _ -> Other )
       ; cstr "toplevel_expect_tests" [fun _ -> ()] (fun _ -> Other)
       ; cstr "unified_tests"         [fun _ -> ()] (fun _ -> Other)

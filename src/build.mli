@@ -85,8 +85,6 @@ val echo : Path.t -> (string, unit) t
 
 val copy : src:Path.t -> dst:Path.t -> (unit, unit) t
 
-val touch : Path.t -> (unit, unit) t
-
 type lib_dep_kind =
   | Optional
   | Required

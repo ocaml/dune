@@ -1,3 +1,5 @@
+include Jbuilder_re
+
 module Array   = StdLabels.Array
 module Bytes   = StdLabels.Bytes
 module Set     = MoreLabels.Set

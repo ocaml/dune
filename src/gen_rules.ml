@@ -1225,38 +1225,6 @@ module Gen(P : Params) = struct
          ~dir
          ~targets)
 
-  let alias_rules (alias_conf : Alias_conf.t) ~dir =
-    let digest =
-      let deps =
-        Sexp.To_sexp.list Dep_conf_interpret.sexp_of_t alias_conf.deps in
-      let action =
-        match alias_conf.action with
-        | None -> Atom "none"
-        | Some a -> List [Atom "some" ; User_action.Unexpanded.sexp_of_t a] in
-      Sexp.List [deps ; action]
-      |> Sexp.to_string
-      |> Digest.string
-      |> Digest.to_hex in
-    let alias = Alias.make alias_conf.name ~dir in
-    let digest_path =
-      Path.relative dir (Path.basename (Alias.file alias) ^ "-" ^ digest) in
-    let dummy = Build.touch digest_path in
-    Alias._add_deps alias [digest_path];
-    let deps =
-      let deps = Dep_conf_interpret.dep_of_list ~dir alias_conf.deps in
-      match alias_conf.action with
-      | None -> deps
-      | Some action ->
-        deps
-        >>> User_action_interpret.expand
-          action
-          ~dir
-          ~dep_kind:Required
-          ~targets:[]
-          ~deps:alias_conf.deps
-        >>> User_action_interpret.run ~dir ~targets:[] in
-    add_rule (deps >>> dummy)
-
   (* +-----------------------------------------------------------------+
      | lex/yacc                                                        |
      +-----------------------------------------------------------------+ *)
@@ -1457,7 +1425,6 @@ module Gen(P : Params) = struct
       | Rule         rule -> user_rule         rule ~dir
       | Ocamllex     conf -> ocamllex_rules    conf ~dir
       | Ocamlyacc    conf -> ocamlyacc_rules   conf ~dir
-      | Alias        alias -> alias_rules alias ~dir
       | Provides _ | Install _ | Other -> ())
 
   let () = List.iter P.stanzas ~f:rules

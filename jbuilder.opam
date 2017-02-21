@@ -6,7 +6,7 @@ bug-reports: "https://github.com/janestreet/jbuilder/issues"
 dev-repo: "https://github.com/janestreet/jbuilder.git"
 license: "Apache-2.0"
 build: [
-  ["ocaml" "build.ml" "build-package" "jbuilder" "-j" jobs]
+["ocaml" "build.ml" "-j" jobs]
 ]
 available: [ ocaml-version >= "4.03.0" ]
 descr: "

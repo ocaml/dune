@@ -1,6 +1,6 @@
 (executables
  ((names (main))
-  (libraries (unix jbuilder))
+  (libraries (unix jbuilder jbuilder_cmdliner))
   (preprocess no_preprocessing)))
 
 (install

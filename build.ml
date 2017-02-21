@@ -18,11 +18,7 @@ module String_set = Set.Make(String)
 (* Modules overriden to bootstrap faster *)
 let overridden =
   String_set.of_list
-    [ "Re_automata"
-    ; "Re_cset"
-    ; "Re_fmt"
-    ; "Re"
-    ; "Glob_lexer"
+    [ "Glob_lexer"
     ]
 
 let ( ^/ ) = Filename.concat
@@ -256,11 +252,13 @@ let generate_file_with_all_the_sources () =
     pr "# %d %S" (!pos_in_generated_file + 1) generated_file
   in
   let s = {|
-module Re = struct
-  type t = unit
-  type re = unit
-  let compile () = ()
-  let execp _ _ = false
+module Jbuilder_re = struct
+  module Re = struct
+    type t = unit
+    type re = unit
+    let compile () = ()
+    let execp _ _ = false
+  end
 end
 
 module Glob_lexer = struct
@@ -270,7 +268,6 @@ end
   in
   output_string oc s;
   pos_in_generated_file := !pos_in_generated_file + count_newlines s;
-  pr "module Jbuilder = struct";
   List.iter modules ~f:(fun m ->
     let base = String.uncapitalize m in
     let mli = sprintf "src/%s.mli" base in
@@ -286,10 +283,7 @@ end
       dump ml;
       pr "end"
     end);
-  pr "end";
-  pr "module Main : sig end = struct";
-  dump "bin/main.ml";
-  pr "end";
+  output_string oc "let () = Main.bootstrap ()\n";
   close_out oc
 
 let () = generate_file_with_all_the_sources ()

@@ -7,7 +7,7 @@ This document describe the plan for the next releases of Jbuilder.
 Add a proper [[http://erratique.ch/software/cmdliner][cmdliner]] based CLI.
 Jbuilder will include a copy of cmdliner to avoid the extra dependency.
 
-- *20/02/2017*: This is now implemented thanks to Rudi Grinberg (#5)
+- *20/02/2017*: This is now implemented thanks to Rudi Grinberg ([[https://github.com/janestreet/jbuilder/pull/2][#5]])
 
 *** Improve the man pages
 
@@ -36,16 +36,16 @@ where it is started. Eventually this will be changed as follows:
 - if not found, look for a =.git=, =.hg=, ... file in parent directories;
 - if not found, use the current directory as root.
 
-** Generate .merlin files [[#1]]
+** Generate .merlin files [[https://github.com/janestreet/jbuilder/issues/1][#1]]
 
-- *08/02/2017*: Richard Davison is working on this (#2)
+- *08/02/2017*: Richard Davison is working on this [[https://github.com/janestreet/jbuilder/pull/2][#2]]
 
-** Running tests with jbuilder (#3)
+** Running tests with jbuilder [[https://github.com/janestreet/jbuilder/issues/3][#3]]
 
 Allow to define tests with =(alias ...)= stanzas and add =jbuilder
 runtest= to run them.
 
-- *21/02/2107*: Rudi Grinberg added support for aliases (#7)
+- *21/02/2107*: Rudi Grinberg added support for aliases ([[https://github.com/janestreet/jbuilder/pull/2][#7]])
 
 * After V1
 

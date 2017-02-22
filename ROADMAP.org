@@ -36,7 +36,7 @@ where it is started. Eventually this will be changed as follows:
 - if not found, look for a =.git=, =.hg=, ... file in parent directories;
 - if not found, use the current directory as root.
 
-** Generate .merlin files (#1)
+** Generate .merlin files [[#1]]
 
 - *08/02/2017*: Richard Davison is working on this (#2)
 

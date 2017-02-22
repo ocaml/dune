@@ -56,14 +56,12 @@ possible.
 
 ** Status
 
-Jbuilder is still in its infancy and in active development. One vital
-thing that is still missing is a proper CLI. It is planned to add one
-by dropping a copy of [[http://erratique.ch/software/cmdliner][cmdliner]]
-inside jbuilder.
+Jbuilder is still in its infancy and in active development. The CLI is
+still basic and not well documented.
 
-Most of the core functionality is already there however. What you can do
-right now is write some jbuild files, and invoke jbuilder at the root
-of your project as follows:
+However, most of the core functionality is already implemented. What
+you can do right now is write some jbuild files, and invoke jbuilder
+at the root of your project as follows:
 
 #+begin_src
 $ jbuilder <package>.install
@@ -74,51 +72,5 @@ installed.
 
 ** Roadmap
 
-Following is the current plan for the future of jbuild.
-
-*** CLI
-
-Add a proper [[http://erratique.ch/software/cmdliner][cmdliner]] based CLI.
-Jbuilder will include a copy of cmdliner to avoid the extra dependency.
-
-*** Documentation
-
-Document the usage and design of Jbuilder.
-
-*** Stable jbuild types
-
-Add a stable version of the jbuild format so that one can write
-=(jbuild_format 1)= inside jbuild files and be sure that they will
-work with future versions of jbuild.
-
-The standard jbuild format will evolve with the format used inside
-Jane Street so that it can be used to easily build Jane Street packages.
-
-*** Finding the project/workspace root
-
-Currently =jbuilder= assumes that the root of the project/workspace is
-where it is started. Eventually this will be changed as follows:
-
-- if there is a =jbuild-workspace= in a parent directory, it marks the root;
-- if not found, look for a =opam= or =package.opam= file in parent directories;
-- if not found, look for a =.git=, =.hg=, ... file in parent directories;
-- if not found, use the current directory as root.
-
-*** Cross-compilation
-
-Everything needed for cross-compilation is implemented. One
-essentially need to add a function =host_exe : Path.t -> Path.t=
-inside build contexts to make it all work, as well as a way to define
-the build contexts. These could be defined inside =jbuild-workspace=
-as follows:
-
-#+begin_src scheme
-(context
- ((name   foo)
-  (switch 4.04.0)))
-
-(context
- ((name   foo+mingw)
-  (switch 4.04.0+mingw)
-  (host   foo)))
-#+end_src
+See [[ROADMAP.org]] for the current plan. Help on any of these points is
+welcome!

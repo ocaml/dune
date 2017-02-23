@@ -1,8 +1,10 @@
 NAME := jbuilder
 
-# Default rule
-default:
-	ocaml build.ml
+default: boot.exe
+	./boot.exe -j 4
+
+boot.exe: bootstrap.ml
+	ocaml bootstrap.ml
 
 install:
 	opam-installer -i --prefix $(PREFIX) jbuilder.install

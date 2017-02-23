@@ -307,8 +307,3 @@ let () =
           ())
   in
   if n <> 0 then exit n
-
-let () =
-  exit
-    (exec "%s"
-       (String.concat ~sep:" " ("./boot.exe" :: (List.tl (Array.to_list Sys.argv)))))

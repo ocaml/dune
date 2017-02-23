@@ -1526,19 +1526,8 @@ module Gen(P : Params) = struct
       ])
     |> List.map ~f:(Install.Entry.make Lib)
 
-  let add_doc_file fn entries =
-    let suffixes = [""; ".md"; ".org"; ".txt"] in
-    match
-      List.find_map suffixes ~f:(fun suf ->
-          let path = Path.of_string (fn ^ suf) in
-          if Path.exists path then
-            Some path
-          else
-            None)
-    with
-    | None -> entries
-    | Some path ->
-      Install.Entry.make Doc path :: entries
+  let odig_doc_file_re =
+    Re.(compile (alt [str "README"; str "LICENSE"; str "CHANGE"; str "HISTORY"]))
 
   let install_file package =
     let entries =
@@ -1560,8 +1549,12 @@ module Gen(P : Params) = struct
         | _ -> [])
     in
     let entries =
-      List.fold_left ["README"; "LICENSE"] ~init:entries ~f:(fun acc fn ->
-        add_doc_file fn acc)
+      let root_listing = File_tree.Dir.files (File_tree.root P.file_tree) in
+      String_set.fold root_listing ~init:entries ~f:(fun fn acc ->
+        if Re.execp odig_doc_file_re fn then
+          Install.Entry.make Doc (Path.relative Path.root fn) :: acc
+        else
+          acc)
     in
     let entries =
       let opam = Path.of_string "opam" in

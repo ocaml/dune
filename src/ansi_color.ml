@@ -87,3 +87,23 @@ let colorize =
     let hash = Hashtbl.hash key in
     let fore, back = color_combos.(hash mod (Array.length color_combos)) in
     apply_string [Foreground fore; Background back] str
+
+let strip str =
+  let len = String.length str in
+  let buf = Buffer.create len in
+  let rec loop i =
+    if i = len then
+      Buffer.contents buf
+    else
+      match str.[i] with
+      | '\027' -> skip (i + 1)
+      | c      -> Buffer.add_char buf c; loop (i + 1)
+  and skip i =
+    if i = len then
+      Buffer.contents buf
+    else
+      match str.[i] with
+      | 'm' -> loop (i + 1)
+      | _   -> skip (i + 1)
+  in
+  loop 0

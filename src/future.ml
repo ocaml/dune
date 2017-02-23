@@ -192,47 +192,17 @@ let run_capture_line ?dir ?env prog args =
         cmdline (String.concat l ~sep:"\n")
 
 module Scheduler = struct
-  let quote s =
-    let len = String.length s in
-    if len = 0 then
-      Filename.quote s
-    else
-      let rec loop i =
-        if i = len then
-          s
-        else
-          match s.[i] with
-          | ' ' | '\"' -> Filename.quote s
-          | _ -> loop (i + 1)
-      in
-      loop 0
-
   let key_for_color prog =
     let s = Filename.basename prog in
     match String.lsplit2 s ~on:'.' with
     | None -> s
     | Some (s, _) -> s
 
-  let err_is_atty = lazy Unix.(isatty stderr)
-
-  let dumb_term =
-    match Sys.getenv "TERM" with
-    | exception Not_found -> true
-    | "dumb" -> true
-    | _ -> false
-
-  let command_line ?colorize { prog; args; dir; stdout_to; _ } =
-    let colorize =
-      match colorize with
-      | Some x -> x
-      | None -> not Sys.win32 && Lazy.force err_is_atty && not dumb_term
-    in
+  let command_line { prog; args; dir; stdout_to; _ } =
+    let quote = quote_for_shell in
     let prog =
       let s = quote prog in
-      if colorize then
-        Ansi_color.colorize ~key:(key_for_color prog) s
-      else
-        s
+      Ansi_color.colorize ~key:(key_for_color prog) s
     in
     let s = String.concat (prog :: List.map args ~f:quote) ~sep:" " in
     let s =
@@ -244,18 +214,69 @@ module Scheduler = struct
     | None -> s
     | Some dir -> sprintf "(cd %s && %s)" dir s
 
-  let handle_process_status cmd (status : Unix.process_status) =
-    match status with
-    | WEXITED   0 -> ()
-    | WEXITED   n -> die "Command exited with code %d: %s"     n (Lazy.force cmd)
-    | WSIGNALED n -> die "Command got killed by signal %d: %s" n (Lazy.force cmd)
-    | WSTOPPED  _ -> assert false
+  let strip_colors_for_stderr =
+    let strip = lazy (
+      Sys.win32                  ||
+      not (Unix.(isatty stderr)) ||
+      match Sys.getenv "TERM" with
+      | exception Not_found -> true
+      | "dumb" -> true
+      | _ -> false
+    ) in
+    fun s ->
+      if Lazy.force strip then Ansi_color.strip s else s
 
-  let process_done job status =
-    handle_process_status (lazy (command_line job)) status;
-    Ivar.fill job.ivar ()
+  type running_job =
+    { id              : int
+    ; job             : job
+    ; pid             : int
+    ; output_filename : string
+    ; (* for logs, with ansi colors code always included in the string *)
+      command_line    : string
+    ; log             : out_channel option
+    }
 
   let running = Hashtbl.create 128
+
+  let handle_process_status job (status : Unix.process_status) =
+    match status with
+    | WEXITED   0 -> ()
+    | WEXITED   n -> die "Command [%d] exited with code %d"     job.id n
+    | WSIGNALED n -> die "Command [%d] got killed by signal %d" job.id n
+    | WSTOPPED  _ -> assert false
+
+  let process_done ?(exiting=false) job (status : Unix.process_status) =
+    Hashtbl.remove running job.pid;
+    let output =
+      let s = read_file job.output_filename in
+      let len = String.length s in
+      if len > 0 && s.[len - 1] <> '\n' then
+        s ^ "\n"
+      else
+        s
+    in
+    Sys.remove job.output_filename;
+    Option.iter job.log ~f:(fun oc ->
+      Printf.fprintf oc "$ %s\n%s"
+        (Ansi_color.strip job.command_line)
+        (Ansi_color.strip output);
+      (match status with
+       | WEXITED   0 -> ()
+       | WEXITED   n -> Printf.fprintf oc "[%d]\n" n
+       | WSIGNALED n -> Printf.fprintf oc "[got signal %d]\n" n
+       | WSTOPPED  _ -> assert false);
+      flush oc
+    );
+    if not exiting then begin
+      if output <> "" then
+        Printf.eprintf "Output[%d]:\n%s%!" job.id output;
+      handle_process_status job status;
+      Ivar.fill job.job.ivar ()
+    end
+
+  let gen_id =
+    let next = ref (-1) in
+    fun () -> incr next; !next
 
   let rec wait_win32 () =
     let finished =
@@ -272,49 +293,60 @@ module Scheduler = struct
       wait_win32 ()
     | _ ->
       List.iter finished ~f:(fun (pid, job, status) ->
-        Hashtbl.remove running pid;
         process_done job status)
 
   let () =
     at_exit (fun () ->
       let pids =
-        Hashtbl.fold running ~init:[] ~f:(fun ~key:pid ~data:_ acc -> pid :: acc)
+        Hashtbl.fold running ~init:[] ~f:(fun ~key:_ ~data:job acc -> job :: acc)
       in
-      List.iter pids ~f:(fun pid ->
-        ignore (Unix.waitpid [] pid : _ * _);
-        Hashtbl.remove running pid))
+      List.iter pids ~f:(fun job ->
+        let _, status = Unix.waitpid [] job.pid in
+        process_done job status ~exiting:true))
 
-  let rec go t =
-    let cwd = Sys.getcwd () in
+  let rec go_rec cwd log t =
     match (repr t).state with
     | Return v -> v
     | _ ->
       while Hashtbl.length running < !Clflags.concurrency &&
             not (Queue.is_empty to_run) do
         let job = Queue.pop to_run in
+        let id = gen_id () in
+        let command_line = command_line job in
         if !Clflags.debug_run then
-          Printf.eprintf "Running: %s\n%!" (command_line job);
+          Printf.eprintf "Running[%d]: %s\n%!" id
+            (strip_colors_for_stderr command_line);
+        Option.iter job.dir ~f:(fun dir -> Sys.chdir dir);
+        let argv = Array.of_list (job.prog :: job.args) in
+        let output_filename = Filename.temp_file "jbuilder" ".output" in
+        let output_fd = Unix.openfile output_filename [O_WRONLY] 0 in
         let stdout, close_stdout =
           match job.stdout_to with
-          | None -> (Unix.stdout, false)
+          | None -> (output_fd, false)
           | Some fn ->
             let fd = Unix.openfile fn [O_WRONLY; O_CREAT; O_TRUNC] 0o666 in
             (fd, true)
         in
-        Option.iter job.dir ~f:(fun dir -> Sys.chdir dir);
-        let argv = Array.of_list (job.prog :: job.args) in
         let pid =
           match job.env with
           | None ->
             Unix.create_process job.prog argv
-              Unix.stdin stdout Unix.stderr
+              Unix.stdin stdout output_fd
           | Some env ->
             Unix.create_process_env job.prog argv env
-              Unix.stdin stdout Unix.stderr
+              Unix.stdin stdout output_fd
         in
+        Unix.close output_fd;
         if close_stdout then Unix.close stdout;
         Option.iter job.dir ~f:(fun _ -> Sys.chdir cwd);
-        Hashtbl.add running ~key:pid ~data:job
+        Hashtbl.add running ~key:pid
+          ~data:{ id
+                ; job
+                ; pid
+                ; output_filename
+                ; command_line
+                ; log
+                }
       done;
       if Sys.win32 then
         wait_win32 ()
@@ -324,8 +356,11 @@ module Scheduler = struct
           Hashtbl.find_exn running pid ~string_of_key:(sprintf "<pid:%d>")
             ~table_desc:(fun _ -> "<running-jobs>")
         in
-        Hashtbl.remove running pid;
         process_done job status
       end;
-      go t
+      go_rec cwd log t
+
+  let go ?log t =
+    let cwd = Sys.getcwd () in
+    go_rec cwd log t
 end

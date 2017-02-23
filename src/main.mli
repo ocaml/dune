@@ -4,7 +4,12 @@ val setup
   -> unit
   -> (Build_system.t * (Path.t * Jbuild_types.Stanza.t list) list * Context.t)
        Future.t
-val external_lib_deps : packages:string list -> Build.lib_deps Path.Map.t
+val external_lib_deps
+  : ?log:out_channel
+  -> packages:string list
+  -> Build.lib_deps Path.Map.t
 val report_error : ?map_fname:(string -> string) -> Format.formatter -> exn -> unit
 
 val bootstrap : unit -> unit
+
+val create_log : unit -> out_channel

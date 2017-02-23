@@ -348,3 +348,18 @@ end = struct
 end
 
 type fail = { fail : 'a. unit -> 'a }
+
+let quote_for_shell s =
+  let len = String.length s in
+  if len = 0 then
+    Filename.quote s
+  else
+    let rec loop i =
+      if i = len then
+        s
+      else
+        match s.[i] with
+        | ' ' | '\"' -> Filename.quote s
+        | _ -> loop (i + 1)
+    in
+    loop 0

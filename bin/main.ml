@@ -6,12 +6,14 @@ module Main = Jbuilder.Main
 
 let (>>=) = Future.(>>=)
 
+let create_log = Main.create_log
+
 (* TODO: rewrite this when command trees are supported.
 
    https://github.com/dbuenzli/cmdliner/issues/24 *)
 let internal = function
   | [_; "findlib-packages"] ->
-    Future.Scheduler.go
+    Future.Scheduler.go ~log:(create_log ())
       (Lazy.force Context.default >>= fun ctx ->
        let findlib = Findlib.create ctx in
        let pkgs = Findlib.all_packages findlib in
@@ -71,7 +73,7 @@ let common =
   Term.(const make $ concurrency $ drules $ ddep_path $ dfindlib)
 
 let build_package pkg =
-  Future.Scheduler.go
+  Future.Scheduler.go ~log:(create_log ())
     (Main.setup () >>= fun (bs, _, _) ->
      Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])
 
@@ -88,8 +90,9 @@ let build_package =
   , Term.info "build-package" ~doc ~man:help_secs)
 
 let external_lib_deps packages =
+  let log = create_log () in
   let deps =
-    Path.Map.fold (Main.external_lib_deps ~packages) ~init:String_map.empty
+    Path.Map.fold (Main.external_lib_deps ~log ~packages) ~init:String_map.empty
       ~f:(fun ~key:_ ~data:deps acc -> Build.merge_lib_deps deps acc)
   in
   String_map.iter deps ~f:(fun ~key:n ~data ->
@@ -136,7 +139,7 @@ let build_targets ~name =
   let name_ = Arg.info [] ~docv:"TARGET" in
   let go common targets =
     set_common common;
-    Future.Scheduler.go
+    Future.Scheduler.go ~log:(create_log ())
       (Main.setup () >>= fun (bs, _, ctx) ->
        let targets = resolve_targets bs ctx targets in
        Build_system.do_build_exn bs targets) in

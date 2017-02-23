@@ -43,5 +43,5 @@ val run_capture_lines
   -> string list t
 
 module Scheduler : sig
-  val go : 'a t -> 'a
+  val go : ?log:out_channel -> 'a t -> 'a
 end

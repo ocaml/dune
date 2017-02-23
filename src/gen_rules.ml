@@ -1587,7 +1587,9 @@ module Gen(P : Params) = struct
       else
         entries
     in
-    let fn = Path.relative ctx.build_dir (package ^ ".install") in
+    let fn =
+      Path.relative (Path.append ctx.build_dir package_path) (package ^ ".install")
+    in
     add_rule
       (Build.path_set (Install.files entries) >>>
        Build.create_file ~target:fn (fun () ->

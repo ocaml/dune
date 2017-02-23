@@ -2,6 +2,7 @@ open Jbuilder
 open Import
 open Jbuilder_cmdliner.Cmdliner
 
+module Suggest = Jbuilder_cmdliner.Cmdliner_suggest
 module Main = Jbuilder.Main
 
 let (>>=) = Future.(>>=)
@@ -74,8 +75,25 @@ let common =
 
 let build_package pkg =
   Future.Scheduler.go ~log:(create_log ())
-    (Main.setup () >>= fun (bs, _, _) ->
-     Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])
+    (Main.setup () >>= fun setup ->
+     match Main.package_install_file setup pkg with
+     | Ok path ->
+       Build_system.do_build_exn setup.build_system
+         [path]
+     | Error () ->
+       match Suggest.value pkg (String_map.keys setup.packages) with
+       | [] -> die "Unknown package %s!" pkg
+       | pkgs ->
+         let rec mk_hint = function
+           | [a; b] -> sprintf "%s or %s" a b
+           | [a] -> a
+           | a :: l -> sprintf "%s, %s" a (mk_hint l)
+           | [] -> ""
+         in
+         die "Unknown package %s!\nHint: did you mean %s?"
+           pkg
+           (mk_hint pkgs)
+    )
 
 let build_package =
   let doc = "build a package in release mode" in
@@ -112,7 +130,7 @@ let external_lib_deps =
           $ Arg.(non_empty & pos_all string [] name_))
   , Term.info "external-lib-deps" ~doc ~man:help_secs)
 
-let resolve_targets bs (ctx : Context.t) user_targets =
+let resolve_targets (setup : Main.setup)user_targets =
   match user_targets with
   | [] -> []
   | _ ->
@@ -122,9 +140,9 @@ let resolve_targets bs (ctx : Context.t) user_targets =
         if Path.is_in_build_dir path then
           path
         else if Path.is_local path &&
-                not (Build_system.is_target bs path) &&
+                not (Build_system.is_target setup.build_system path) &&
                 not (Path.exists path) then
-          Path.append ctx.build_dir path
+          Path.append setup.context.build_dir path
         else
           path)
     in
@@ -140,9 +158,9 @@ let build_targets ~name =
   let go common targets =
     set_common common;
     Future.Scheduler.go ~log:(create_log ())
-      (Main.setup () >>= fun (bs, _, ctx) ->
-       let targets = resolve_targets bs ctx targets in
-       Build_system.do_build_exn bs targets) in
+      (Main.setup () >>= fun setup ->
+       let targets = resolve_targets setup targets in
+       Build_system.do_build_exn setup.build_system targets) in
   ( Term.(const go
           $ common
           $ Arg.(non_empty & pos_all string [] name_))
@@ -154,7 +172,7 @@ let runtest =
   let go common dirs =
     set_common common;
     Future.Scheduler.go ~log:(create_log ())
-      (Main.setup () >>= fun (bs, _, ctx) ->
+      (Main.setup () >>= fun setup ->
        let dirs =
          match dirs with
          | [] -> [Path.root]
@@ -166,11 +184,11 @@ let runtest =
              if Path.is_in_build_dir dir then
                dir
              else
-               Path.append ctx.build_dir dir
+               Path.append setup.context.build_dir dir
            in
            Alias.file (Alias.runtest ~dir))
        in
-       Build_system.do_build_exn bs targets) in
+       Build_system.do_build_exn setup.build_system targets) in
   ( Term.(const go
           $ common
           $ Arg.(value & pos_all string [] name_))

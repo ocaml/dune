@@ -1,9 +1,19 @@
 open! Import
+
+type setup =
+  { build_system : Build_system.t
+  ; stanzas      : (Path.t * Jbuild_types.Stanza.t list) list
+  ; context      : Context.t
+  ; packages     : Path.t String_map.t
+  }
+
+(* Returns [Error ()] if [pkg] is unknown *)
+val package_install_file : setup -> string -> (Path.t, unit) result
+
 val setup
   :  ?filter_out_optional_stanzas_with_missing_deps:bool
   -> unit
-  -> (Build_system.t * (Path.t * Jbuild_types.Stanza.t list) list * Context.t)
-       Future.t
+  -> setup Future.t
 val external_lib_deps
   : ?log:out_channel
   -> packages:string list

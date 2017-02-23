@@ -1,24 +1,44 @@
 open Import
 open Future
 
+type setup =
+  { build_system : Build_system.t
+  ; stanzas      : (Path.t * Jbuild_types.Stanza.t list) list
+  ; context      : Context.t
+  ; packages     : Path.t String_map.t
+  }
+
+let package_install_file { packages; _ } pkg =
+  match String_map.find pkg packages with
+  | None -> Error ()
+  | Some path -> Ok (Path.relative path (pkg ^ ".install"))
+
 let setup ?filter_out_optional_stanzas_with_missing_deps () =
   let { Jbuild_load. file_tree; tree; stanzas; packages } = Jbuild_load.load () in
-  Lazy.force Context.default >>= fun ctx ->
+  Lazy.force Context.default >>= fun context ->
   let rules =
-    Gen_rules.gen ~context:ctx ~file_tree ~tree ~stanzas ~packages
+    Gen_rules.gen ~context ~file_tree ~tree ~stanzas ~packages
       ?filter_out_optional_stanzas_with_missing_deps ()
   in
-  let bs = Build_system.create ~file_tree ~rules in
-  return (bs, stanzas, ctx)
+  let build_system = Build_system.create ~file_tree ~rules in
+  return { build_system
+         ; stanzas
+         ; context
+         ; packages
+         }
 
 let external_lib_deps ?log ~packages =
   Future.Scheduler.go ?log
     (setup () ~filter_out_optional_stanzas_with_missing_deps:false
-     >>| fun (bs, stanzas, _) ->
+     >>| fun ({ build_system = bs; stanzas; _ } as setup) ->
+     let install_files =
+       List.map packages ~f:(fun pkg ->
+         match package_install_file setup pkg with
+         | Ok path -> path
+         | Error () -> die "Unknown package %S" pkg)
+     in
      Path.Map.map
-       (Build_system.all_lib_deps bs
-          (List.map packages ~f:(fun pkg ->
-             Path.(relative root) (pkg ^ ".install"))))
+       (Build_system.all_lib_deps bs install_files)
        ~f:(fun deps ->
          let internals = Jbuild_types.Stanza.lib_names stanzas in
          String_map.filter deps ~f:(fun name _ -> not (String_set.mem name internals))))
@@ -80,7 +100,7 @@ let bootstrap () =
     Arg.parse [ "-j", Set_int Clflags.concurrency, "JOBS concurrency" ]
       anon "Usage: boot.exe [-j JOBS]\nOptions are:";
     Future.Scheduler.go ~log:(create_log ())
-      (setup () >>= fun (bs, _, _) ->
+      (setup () >>= fun { build_system = bs; _ } ->
        Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])
   in
   try

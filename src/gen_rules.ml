@@ -73,7 +73,7 @@ module type Params = sig
   val file_tree : File_tree.t
   val tree      : Alias.tree
   val stanzas   : (Path.t * Jbuild_types.Stanza.t list) list
-  val packages  : string list
+  val packages  : Path.t String_map.t
   val filter_out_optional_stanzas_with_missing_deps : bool
 end
 
@@ -1367,15 +1367,17 @@ module Gen(P : Params) = struct
         List.map stanzas ~f:(fun s -> (ctx_dir, s)))
 
   let () =
-    List.iter P.packages ~f:(fun package ->
+    String_map.iter P.packages ~f:(fun ~key:package ~data:src_path ->
+      let path = Path.append ctx.build_dir src_path in
       let meta_fn = "META." ^ package in
-      let meta_path = Path.relative ctx.build_dir meta_fn in
-      let templ_fn = meta_fn ^ ".template" in
+      let meta_path = Path.relative path meta_fn in
       let template =
-        if Sys.file_exists templ_fn then
-          Build.path (Path.(relative root) templ_fn)
+        let templ_fn = meta_fn ^ ".template" in
+        let templ_path = Path.relative src_path templ_fn in
+        if File_tree.exists P.file_tree templ_path then
+          Build.path templ_path
           >>^ fun () ->
-          lines_of_file templ_fn
+          lines_of_file (Path.to_string templ_path)
         else
           Build.return ["# JBUILDER_GEN"]
       in
@@ -1543,7 +1545,7 @@ module Gen(P : Params) = struct
     List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY"]
       ~f:(fun prefix -> String.is_prefix fn ~prefix)
 
-  let install_file package =
+  let install_file package_path package =
     let entries =
       List.concat_map stanzas_to_consider_for_install ~f:(fun (dir, stanza) ->
         match stanza with
@@ -1576,18 +1578,15 @@ module Gen(P : Params) = struct
           acc)
     in
     let entries =
-      let opam = Path.of_string "opam" in
-      if Path.exists opam then
-        Install.Entry.make Lib opam :: entries
-      else
-        entries
+      let opam = Path.relative package_path (package ^ ".opam") in
+      Install.Entry.make Lib opam ~dst:"opam" :: entries
     in
     let entries =
       let meta_fn = "META." ^ package in
-      if Sys.file_exists meta_fn                 ||
-         Sys.file_exists (meta_fn ^ ".template") ||
+      if File_tree.file_exists P.file_tree package_path meta_fn ||
+         File_tree.file_exists P.file_tree package_path (meta_fn ^ ".template") ||
          List.exists entries ~f:(fun (e : Install.Entry.t) -> e.section = Lib) then
-        let meta = Path.relative ctx.build_dir meta_fn in
+        let meta = Path.append ctx.build_dir (Path.relative package_path meta_fn) in
         Install.Entry.make Lib meta ~dst:"META" :: entries
       else
         entries
@@ -1598,16 +1597,17 @@ module Gen(P : Params) = struct
        Build.create_file ~target:fn (fun () ->
          Install.write_install_file fn entries))
 
-  let () = List.iter P.packages ~f:install_file
+  let () = String_map.iter P.packages ~f:(fun ~key:package ~data:package_path ->
+    install_file package_path package)
 
   let () =
     if Path.basename ctx.build_dir = "default" then
-      List.iter P.packages ~f:(fun pkg ->
-        let fn = pkg ^ ".install" in
+      String_map.iter P.packages ~f:(fun ~key:pkg ~data:path ->
+        let install_file = Path.relative path (pkg ^ ".install") in
         add_rule
           (Build.copy
-             ~src:(Path.relative ctx.build_dir fn)
-             ~dst:(Path.relative Path.root     fn)))
+             ~src:(Path.append ctx.build_dir install_file)
+             ~dst:install_file))
 end
 
 let gen ~context ~file_tree ~tree ~stanzas ~packages

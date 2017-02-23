@@ -21,4 +21,4 @@ val rules
   :  Store.t
   -> prefix:Path.t
   -> tree:tree
-  -> (unit, unit) Build.t list
+  -> Build_interpret.Rule.t list

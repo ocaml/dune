@@ -244,8 +244,34 @@ module Gen(P : Params) = struct
     let rules () = rules store ~prefix:ctx.build_dir ~tree:P.tree
   end
 
+
   let all_rules = ref []
-  let add_rule rule = all_rules := rule :: !all_rules
+  let known_targets_by_dir_so_far = ref Path.Map.empty
+
+  let add_rule build =
+    let rule = Build_interpret.Rule.make build in
+    all_rules := rule :: !all_rules;
+    known_targets_by_dir_so_far :=
+      List.fold_left rule.targets ~init:!known_targets_by_dir_so_far ~f:(fun acc target ->
+        let path = Build_interpret.Target.path target in
+        let dir = Path.parent path in
+        let fn = Path.basename path in
+        let files =
+          match Path.Map.find dir acc with
+          | None -> String_set.singleton fn
+          | Some set -> String_set.add fn set
+        in
+        Path.Map.add acc ~key:dir ~data:files)
+
+  let sources_and_targets_known_so_far ~src_path =
+    let sources =
+      match File_tree.find_dir P.file_tree src_path with
+      | None -> String_set.empty
+      | Some dir -> File_tree.Dir.files dir
+    in
+    match Path.Map.find src_path !known_targets_by_dir_so_far with
+    | None -> sources
+    | Some set -> String_set.union sources set
 
   (* +-----------------------------------------------------------------+
      | Tools                                                           |
@@ -1351,76 +1377,6 @@ module Gen(P : Params) = struct
           })
 
   (* +-----------------------------------------------------------------+
-     | META                                                            |
-     +-----------------------------------------------------------------+ *)
-
-  let stanzas_to_consider_for_install =
-    if P.filter_out_optional_stanzas_with_missing_deps then
-      List.concat_map P.stanzas ~f:(fun { ctx_dir; stanzas; _ } ->
-        List.filter_map stanzas ~f:(function
-          | Library _ -> None
-          | stanza    -> Some (ctx_dir, stanza)))
-      @ List.map (Lib_db.internal_libs_without_non_installable_optional_ones)
-          ~f:(fun (dir, lib) -> (dir, Stanza.Library lib))
-    else
-      List.concat_map P.stanzas ~f:(fun { ctx_dir; stanzas; _ } ->
-        List.map stanzas ~f:(fun s -> (ctx_dir, s)))
-
-  let () =
-    String_map.iter P.packages ~f:(fun ~key:package ~data:src_path ->
-      let path = Path.append ctx.build_dir src_path in
-      let meta_fn = "META." ^ package in
-      let meta_path = Path.relative path meta_fn in
-      let template =
-        let templ_fn = meta_fn ^ ".template" in
-        let templ_path = Path.relative src_path templ_fn in
-        if File_tree.exists P.file_tree templ_path then
-          Build.path templ_path
-          >>^ fun () ->
-          lines_of_file (Path.to_string templ_path)
-        else
-          Build.return ["# JBUILDER_GEN"]
-      in
-      let meta =
-        Gen_meta.gen ~package
-           ~stanzas:stanzas_to_consider_for_install
-           ~lib_deps:(fun ~dir jbuild ->
-             match jbuild with
-             | Library lib ->
-               Lib_db.load_requires ~dir ~item:lib.name
-               >>^ List.map ~f:Lib.best_name
-             | Executables exes ->
-               let item = List.hd exes.names in
-               Lib_db.load_requires ~dir ~item
-               >>^ List.map ~f:Lib.best_name
-             | _ -> Build.return [])
-           ~ppx_runtime_deps:(fun ~dir jbuild ->
-             match jbuild with
-             | Library lib ->
-               Lib_db.load_runtime_deps ~dir ~item:lib.name
-               >>^ List.map ~f:Lib.best_name
-             | _ -> Build.return [])
-      in
-      add_rule
-        (Build.fanout meta template
-         >>>
-         Build.create_file ~target:meta_path (fun ((meta : Meta.t), template) ->
-           with_file_out (Path.to_string meta_path) ~f:(fun oc ->
-             let ppf = Format.formatter_of_out_channel oc in
-             Format.pp_open_vbox ppf 0;
-             List.iter template ~f:(fun s ->
-               if String.is_prefix s ~prefix:"#" then
-                 match
-                   String.split_words (String.sub s ~pos:1 ~len:(String.length s - 1))
-                 with
-                 | ["JBUILDER_GEN"] -> Format.fprintf ppf "%a@," Meta.pp meta.entries
-                 | _ -> Format.fprintf ppf "%s@," s
-               else
-                 Format.fprintf ppf "%s@," s);
-             Format.pp_close_box ppf ();
-             Format.pp_print_flush ppf ()))))
-
-  (* +-----------------------------------------------------------------+
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
 
@@ -1465,21 +1421,104 @@ module Gen(P : Params) = struct
   let () = List.iter P.stanzas ~f:rules
 
   (* +-----------------------------------------------------------------+
-     | Installation                                                    |
+     | META                                                            |
      +-----------------------------------------------------------------+ *)
 
-  let known_targets_by_dir_so_far =
-    List.fold_left !all_rules ~init:Path.Map.empty ~f:(fun acc rule ->
-      List.fold_left (Build_interpret.targets rule) ~init:acc ~f:(fun acc target ->
-        let path = Build_interpret.Target.path target in
-        let dir = Path.parent path in
-        let fn = Path.basename path in
-        let files =
-          match Path.Map.find dir acc with
-          | None -> String_set.singleton fn
-          | Some set -> String_set.add fn set
-        in
-        Path.Map.add acc ~key:dir ~data:files))
+  (* The rules for META files must come after the interpretation of the jbuild stanzas
+     since a user rule might generate a META.<package> file *)
+
+  let stanzas_to_consider_for_install =
+    if P.filter_out_optional_stanzas_with_missing_deps then
+      List.concat_map P.stanzas ~f:(fun { ctx_dir; stanzas; _ } ->
+        List.filter_map stanzas ~f:(function
+          | Library _ -> None
+          | stanza    -> Some (ctx_dir, stanza)))
+      @ List.map (Lib_db.internal_libs_without_non_installable_optional_ones)
+          ~f:(fun (dir, lib) -> (dir, Stanza.Library lib))
+    else
+      List.concat_map P.stanzas ~f:(fun { ctx_dir; stanzas; _ } ->
+        List.map stanzas ~f:(fun s -> (ctx_dir, s)))
+
+  (* META files that must be installed. Either because there is an explicit or user
+     generated one, or because *)
+  let packages_with_explicit_or_user_generated_meta =
+    String_map.bindings P.packages
+    |> List.filter_map ~f:(fun (package, src_path) ->
+      let path = Path.append ctx.build_dir src_path in
+      let meta_fn = "META." ^ package in
+      let meta_templ_fn = meta_fn ^ ".template" in
+
+      let has_meta, has_meta_tmpl =
+        let files = sources_and_targets_known_so_far ~src_path in
+        (String_set.mem meta_fn files,
+         String_set.mem meta_templ_fn files)
+      in
+
+      let meta_fn =
+        if has_meta then
+          meta_fn ^ ".from-jbuilder"
+        else
+          meta_fn
+      in
+      let meta_path = Path.relative path meta_fn in
+
+      let template =
+        if has_meta_tmpl then
+          let meta_templ_path = Path.relative src_path meta_templ_fn in
+          Build.path meta_templ_path
+          >>^ fun () ->
+          lines_of_file (Path.to_string meta_templ_path)
+        else
+          Build.return ["# JBUILDER_GEN"]
+      in
+      let meta =
+        Gen_meta.gen ~package
+          ~stanzas:stanzas_to_consider_for_install
+          ~lib_deps:(fun ~dir jbuild ->
+            match jbuild with
+            | Library lib ->
+              Lib_db.load_requires ~dir ~item:lib.name
+              >>^ List.map ~f:Lib.best_name
+            | Executables exes ->
+              let item = List.hd exes.names in
+              Lib_db.load_requires ~dir ~item
+              >>^ List.map ~f:Lib.best_name
+            | _ -> Build.return [])
+          ~ppx_runtime_deps:(fun ~dir jbuild ->
+            match jbuild with
+            | Library lib ->
+              Lib_db.load_runtime_deps ~dir ~item:lib.name
+              >>^ List.map ~f:Lib.best_name
+            | _ -> Build.return [])
+      in
+      add_rule
+        (Build.fanout meta template
+         >>>
+         Build.create_file ~target:meta_path (fun ((meta : Meta.t), template) ->
+           with_file_out (Path.to_string meta_path) ~f:(fun oc ->
+             let ppf = Format.formatter_of_out_channel oc in
+             Format.pp_open_vbox ppf 0;
+             List.iter template ~f:(fun s ->
+               if String.is_prefix s ~prefix:"#" then
+                 match
+                   String.split_words (String.sub s ~pos:1 ~len:(String.length s - 1))
+                 with
+                 | ["JBUILDER_GEN"] -> Format.fprintf ppf "%a@," Meta.pp meta.entries
+                 | _ -> Format.fprintf ppf "%s@," s
+               else
+                 Format.fprintf ppf "%s@," s);
+             Format.pp_close_box ppf ();
+             Format.pp_print_flush ppf ())));
+
+      if has_meta || has_meta_tmpl then
+        Some package
+      else
+        None)
+    |> String_set.of_list
+
+  (* +-----------------------------------------------------------------+
+     | Installation                                                    |
+     +-----------------------------------------------------------------+ *)
 
   let lib_install_files ~dir (lib : Library.t) =
     let byte   = List.mem Mode.Byte   ~set:lib.modes in
@@ -1561,13 +1600,8 @@ module Gen(P : Params) = struct
         | _ -> [])
     in
     let entries =
-      let root_listing = File_tree.Dir.files (File_tree.root P.file_tree) in
-      let root_targets =
-        match Path.Map.find ctx.build_dir known_targets_by_dir_so_far with
-        | None -> root_listing
-        | Some set -> String_set.union root_listing set
-      in
-      String_set.fold root_targets ~init:entries ~f:(fun fn acc ->
+      let files = sources_and_targets_known_so_far ~src_path:Path.root in
+      String_set.fold files ~init:entries ~f:(fun fn acc ->
         if is_odig_doc_file fn then
           Install.Entry.make Doc (Path.relative ctx.build_dir fn) :: acc
         else
@@ -1578,9 +1612,10 @@ module Gen(P : Params) = struct
       Install.Entry.make Lib opam ~dst:"opam" :: entries
     in
     let entries =
+      (* Install a META file if the user wrote one or setup a rule to generate one, or if
+         we have at least another file to install in the lib/ directory *)
       let meta_fn = "META." ^ package in
-      if File_tree.file_exists P.file_tree package_path meta_fn ||
-         File_tree.file_exists P.file_tree package_path (meta_fn ^ ".template") ||
+      if String_set.mem package packages_with_explicit_or_user_generated_meta ||
          List.exists entries ~f:(fun (e : Install.Entry.t) -> e.section = Lib) then
         let meta = Path.append ctx.build_dir (Path.relative package_path meta_fn) in
         Install.Entry.make Lib meta ~dst:"META" :: entries

@@ -8,4 +8,4 @@ val gen
   -> packages:Path.t String_map.t
   -> ?filter_out_optional_stanzas_with_missing_deps:bool (** default: true *)
   -> unit
-  -> (unit, unit) Build.t list
+  -> Build_interpret.Rule.t list

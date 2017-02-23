@@ -4,7 +4,7 @@ open! Import
 
 type t
 
-val create : file_tree:File_tree.t -> rules:(unit, unit) Build.t list -> t
+val create : file_tree:File_tree.t -> rules:Build_interpret.Rule.t list -> t
 
 val is_target : t -> Path.t -> bool
 

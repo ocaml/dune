@@ -200,17 +200,7 @@ let create_file_specs t targets rule ~allow_override =
     | Target.Vfile (Vspec.T (fn, kind)) ->
       add_spec t fn (File_spec.create rule (Sexp_file kind)) ~allow_override)
 
-module Pre_rule = struct
-  type t =
-    { build   : (unit, unit) Build.t
-    ; targets : Target.t list
-    }
-
-  let make build =
-    { build
-    ; targets = Build_interpret.targets build
-    }
-end
+module Pre_rule = Build_interpret.Rule
 
 let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
   let { Pre_rule. build; targets = target_specs } = pre_rule in
@@ -276,7 +266,6 @@ let setup_copy_rules t ~all_non_target_source_files ~all_targets_by_dir =
         ~allow_override:true))
 
 let create ~file_tree ~rules =
-  let rules = List.map rules ~f:Pre_rule.make in
   let all_source_files =
     File_tree.fold file_tree ~init:Pset.empty ~f:(fun dir acc ->
         let path = File_tree.Dir.path dir in

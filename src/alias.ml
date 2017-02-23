@@ -46,7 +46,8 @@ let rules store ~prefix ~tree =
   Hashtbl.fold store ~init:[] ~f:(fun ~key:alias ~data:deps acc ->
     let open Build.O in
     let rule =
-      Build.path_set !deps >>>
-      Build.touch alias
+      Build_interpret.Rule.make
+        (Build.path_set !deps >>>
+         Build.touch alias)
     in
     rule :: acc)

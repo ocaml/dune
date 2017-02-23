@@ -9,6 +9,15 @@ module Target : sig
   val paths : t list -> Path.Set.t
 end
 
+module Rule : sig
+  type t =
+    { build   : (unit, unit) Build.t
+    ; targets : Target.t list
+    }
+
+  val make : (unit, unit) Build.t -> t
+end
+
 val deps
   :  (_, _) Build.t
   -> all_targets_by_dir:Path.Set.t Path.Map.t Lazy.t

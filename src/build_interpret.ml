@@ -92,3 +92,15 @@ let targets =
     | Fail _ -> acc
   in
   fun t -> loop (Build.repr t) []
+
+module Rule = struct
+  type t =
+    { build   : (unit, unit) Build.t
+    ; targets : Target.t list
+    }
+
+  let make build =
+    { build
+    ; targets = targets build
+    }
+end

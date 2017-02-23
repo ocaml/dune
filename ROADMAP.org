@@ -76,3 +76,7 @@ Jbuilder. To do that we'll use Jbuilder as a library.
 ** odoc support
 
 Support generating documentation with [[https://github.com/ocaml-doc/odoc][odoc]].
+
+** Inline tests
+
+Setup automatic support of [[https://github.com/janestreet/ppx_inline_test][inline tests]] and [[https://github.com/janestreet/ppx_bench][inline benchmarks]].

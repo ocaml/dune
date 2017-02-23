@@ -1466,6 +1466,19 @@ module Gen(P : Params) = struct
      | Installation                                                    |
      +-----------------------------------------------------------------+ *)
 
+  let known_targets_by_dir_so_far =
+    List.fold_left !all_rules ~init:Path.Map.empty ~f:(fun acc rule ->
+      List.fold_left (Build_interpret.targets rule) ~init:acc ~f:(fun acc target ->
+        let path = Build_interpret.Target.path target in
+        let dir = Path.parent path in
+        let fn = Path.basename path in
+        let files =
+          match Path.Map.find dir acc with
+          | None -> String_set.singleton fn
+          | Some set -> String_set.add fn set
+        in
+        Path.Map.add acc ~key:dir ~data:files))
+
   let lib_install_files ~dir (lib : Library.t) =
     let byte   = List.mem Mode.Byte   ~set:lib.modes in
     let native = List.mem Mode.Native ~set:lib.modes in
@@ -1526,8 +1539,9 @@ module Gen(P : Params) = struct
       ])
     |> List.map ~f:(Install.Entry.make Lib)
 
-  let odig_doc_file_re =
-    Re.(compile (alt [str "README"; str "LICENSE"; str "CHANGE"; str "HISTORY"]))
+  let is_odig_doc_file fn =
+    List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY"]
+      ~f:(fun prefix -> String.is_prefix fn ~prefix)
 
   let install_file package =
     let entries =
@@ -1550,9 +1564,14 @@ module Gen(P : Params) = struct
     in
     let entries =
       let root_listing = File_tree.Dir.files (File_tree.root P.file_tree) in
-      String_set.fold root_listing ~init:entries ~f:(fun fn acc ->
-        if Re.execp odig_doc_file_re fn then
-          Install.Entry.make Doc (Path.relative Path.root fn) :: acc
+      let root_targets =
+        match Path.Map.find ctx.build_dir known_targets_by_dir_so_far with
+        | None -> root_listing
+        | Some set -> String_set.union root_listing set
+      in
+      String_set.fold root_targets ~init:entries ~f:(fun fn acc ->
+        if is_odig_doc_file fn then
+          Install.Entry.make Doc (Path.relative ctx.build_dir fn) :: acc
         else
           acc)
     in

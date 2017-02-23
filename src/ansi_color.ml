@@ -107,3 +107,27 @@ let strip str =
       | _   -> skip (i + 1)
   in
   loop 0
+
+let stderr_supports_colors = lazy(
+  not Sys.win32        &&
+  Unix.(isatty stderr) &&
+  match Sys.getenv "TERM" with
+  | exception Not_found -> false
+  | "dumb" -> false
+  | _ -> true
+)
+
+(* We redirect the output of all commands, so by default the compiler will disable
+   colors. Since we support colors in the output of commands, we force it via OCAMLPARAM
+   if stderr supports colors. *)
+let setup_env_for_ocaml_colors = lazy(
+  if Lazy.force stderr_supports_colors then begin
+    let value =
+      match Sys.getenv "OCAMLPARAM" with
+      | exception Not_found -> "color=always,_"
+      | s -> "color=always," ^ s
+    in
+    Unix.putenv "OCAMLPARAM" value
+  end
+)
+

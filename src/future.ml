@@ -214,17 +214,20 @@ module Scheduler = struct
     | None -> s
     | Some dir -> sprintf "(cd %s && %s)" dir s
 
-  let strip_colors_for_stderr =
-    let strip = lazy (
-      Sys.win32                  ||
-      not (Unix.(isatty stderr)) ||
-      match Sys.getenv "TERM" with
-      | exception Not_found -> true
-      | "dumb" -> true
-      | _ -> false
-    ) in
-    fun s ->
-      if Lazy.force strip then Ansi_color.strip s else s
+  let stderr_supports_colors = lazy(
+    not Sys.win32        &&
+    Unix.(isatty stderr) &&
+    match Sys.getenv "TERM" with
+    | exception Not_found -> false
+    | "dumb" -> false
+    | _ -> true
+  )
+
+  let strip_colors_for_stderr s =
+    if Lazy.force Ansi_color.stderr_supports_colors then
+      s
+    else
+      Ansi_color.strip s
 
   type running_job =
     { id              : int
@@ -375,6 +378,7 @@ module Scheduler = struct
       go_rec cwd log t
 
   let go ?log t =
+    Lazy.force Ansi_color.setup_env_for_ocaml_colors;
     let cwd = Sys.getcwd () in
     go_rec cwd log t
 end

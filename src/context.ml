@@ -210,7 +210,9 @@ let create ~(kind : Kind.t) ~path ~env =
   all_known := String_map.add !all_known ~key:name ~data:t;
   return t
 
-let initial_env = lazy (Unix.environment ())
+let initial_env = lazy (
+  Lazy.force Ansi_color.setup_env_for_ocaml_colors;
+  Unix.environment ())
 
 let default = lazy (
   let env = Lazy.force initial_env in

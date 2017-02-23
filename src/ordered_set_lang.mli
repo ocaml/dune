@@ -9,6 +9,7 @@ val t : Sexp.t -> t
 val eval_with_standard : t -> standard:string list -> string list
 val standard : t
 val is_standard : t -> bool
+val append : t -> t -> t
 
 (** Map non-variable atoms *)
 val map : t -> f:(string -> string) -> t

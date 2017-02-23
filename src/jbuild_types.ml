@@ -416,8 +416,7 @@ module Library = struct
 
   let t =
     record
-      ~ignore:["inline_tests"; "skip_from_default";
-               "extra_disabled_warnings"; "lint"]
+      ~ignore:["inline_tests"; "skip_from_default"; "lint"]
       [ field      "name"                  library_name
       ; field_o    "public_name"           string
       ; field_o    "synopsis"              string
@@ -445,12 +444,14 @@ module Library = struct
       ; field_osl  "flags"
       ; field_osl  "ocamlc_flags"
       ; field_osl  "ocamlopt_flags"
+      ; field      "extra_disabled_warnings" (list int) ~default:[]
       ]
       (fun name public_name synopsis install_c_headers libraries ppx_runtime_libraries
         modules c_flags cxx_flags c_names cxx_names library_flags c_libraries
         c_library_flags preprocess
         preprocessor_deps self_build_stubs_archive js_of_ocaml virtual_deps modes
-        includes kind wrapped optional flags ocamlc_flags ocamlopt_flags ->
+        includes kind wrapped optional flags ocamlc_flags ocamlopt_flags
+        extra_disabled_warnings ->
         { name
         ; public_name
         ; synopsis
@@ -478,7 +479,17 @@ module Library = struct
         ; virtual_deps
         ; wrapped
         ; optional
-        ; flags
+        ; flags =
+            if Ordered_set_lang.is_standard flags && extra_disabled_warnings <> [] then
+              Ordered_set_lang.append flags
+                (Ordered_set_lang.t
+                   (List [ Atom "-w"
+                         ; Atom
+                             (String.concat ~sep:""
+                                (List.map extra_disabled_warnings ~f:(sprintf "-%d")))
+                         ]))
+            else
+              flags
         ; ocamlc_flags
         ; ocamlopt_flags
         })

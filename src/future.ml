@@ -268,10 +268,24 @@ module Scheduler = struct
       flush oc
     );
     if not exiting then begin
-      if output <> "" then
-        Printf.eprintf "Output[%d]:\n%s%!" job.id output;
-      handle_process_status job status;
-      Ivar.fill job.job.ivar ()
+      match status with
+      | WEXITED 0 ->
+        if output <> "" then
+          Printf.eprintf "Output[%d]:\n%s%!" job.id output;
+        Ivar.fill job.job.ivar ()
+      | WEXITED n ->
+        Printf.eprintf "\nCommand [%d] exited with code %d:\n$ %s\n%s%!"
+          job.id n
+          (strip_colors_for_stderr job.command_line)
+          (strip_colors_for_stderr output);
+        die ""
+      | WSIGNALED n ->
+        Printf.eprintf "\nCommand [%d] got signal %d:\n$ %s\n%s%!"
+          job.id n
+          (strip_colors_for_stderr job.command_line)
+          (strip_colors_for_stderr output);
+        die ""
+      | WSTOPPED _ -> assert false
     end
 
   let gen_id =

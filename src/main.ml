@@ -32,6 +32,7 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
       "File \"%s\", line %d, characters %d-%d:\n\
        Error: %s\n"
       (map_fname start.pos_fname) start.pos_lnum start_c stop_c msg
+  | Fatal_error "" -> ()
   | Fatal_error msg ->
     Format.fprintf ppf "%s\n" (String.capitalize msg)
   | Findlib.Package_not_found pkg ->

@@ -153,7 +153,7 @@ let all =
 
 let () =
   try
-    match Term.eval_choice (build_targets ~name:"jbuilder") all with
+    match Term.eval_choice (build_targets ~name:"jbuilder") all ~catch:false with
     | `Error _ -> exit 1
     | _ -> exit 0
   with exn ->

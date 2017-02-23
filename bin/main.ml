@@ -88,7 +88,6 @@ let build_package =
           $ Arg.(required & pos 0 (some string) None name_))
   , Term.info "build-package" ~doc ~man:help_secs)
 
-
 let external_lib_deps packages =
   let deps =
     Path.Map.fold (Main.external_lib_deps ~packages) ~init:String_map.empty
@@ -111,6 +110,28 @@ let external_lib_deps =
           $ Arg.(non_empty & pos_all string [] name_))
   , Term.info "external-lib-deps" ~doc ~man:help_secs)
 
+let resolve_targets bs (ctx : Context.t) user_targets =
+  match user_targets with
+  | [] -> []
+  | _ ->
+    let user_targets = List.map user_targets ~f:(Path.relative Path.root) in
+    let real_targets =
+      List.map user_targets ~f:(fun path ->
+        if Path.is_in_build_dir path then
+          path
+        else if Path.is_local path &&
+                not (Build_system.is_target bs path) &&
+                not (Path.exists path) then
+          Path.append ctx.build_dir path
+        else
+          path)
+    in
+    Printf.printf "Building the following targets:\n";
+    List.iter real_targets ~f:(fun target ->
+      Printf.printf "- %s\n" (Path.to_string target));
+    flush stdout;
+    real_targets
+
 let build_targets =
   let doc = "build" in
   let name_ = Arg.info [] in
@@ -118,7 +139,7 @@ let build_targets =
     set_common common;
     Future.Scheduler.go
       (Main.setup () >>= fun (bs, _, ctx) ->
-       let targets = List.map targets ~f:(Path.relative ctx.build_dir) in
+       let targets = resolve_targets bs ctx targets in
        Build_system.do_build_exn bs targets) in
   ( Term.(const go
           $ common

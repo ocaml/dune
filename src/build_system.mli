@@ -6,6 +6,8 @@ type t
 
 val create : file_tree:File_tree.t -> rules:(unit, unit) Build.t list -> t
 
+val is_target : t -> Path.t -> bool
+
 module Build_error : sig
   type t
 

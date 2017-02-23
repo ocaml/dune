@@ -57,6 +57,8 @@ let find_file_exn t file =
   Hashtbl.find_exn t.files file ~string_of_key:(fun fn -> sprintf "%S" (Path.to_string fn))
     ~table_desc:(fun _ -> "<target to rule>")
 
+let is_target t file = Hashtbl.mem t.files file
+
 module Build_error = struct
   type t =
     { backtrace : Printexc.raw_backtrace

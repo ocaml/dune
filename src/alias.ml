@@ -31,21 +31,22 @@ let add_deps store t deps =
 
 type tree = Node of Path.t * tree list
 
-let rec setup_rec_aliases store (Node (dir, children)) =
-  List.map recursive_aliases ~f:(fun make_alias ->
-    let alias = make_alias ~dir in
-    List.iter children ~f:(fun child ->
-      let sub_aliases = setup_rec_aliases store child in
-      add_deps store alias sub_aliases);
-    alias)
+let rec setup_rec_alias store ~make_alias ~prefix ~tree:(Node (dir, children)) =
+  let alias = make_alias ~dir:(Path.append prefix dir) in
+  add_deps store alias (List.map children ~f:(fun child ->
+    setup_rec_alias store ~make_alias ~prefix ~tree:child));
+  alias
 
-let rules store tree =
-  ignore (setup_rec_aliases store tree : t list);
+let setup_rec_aliases store ~prefix ~tree =
+  List.iter recursive_aliases ~f:(fun make_alias ->
+    ignore (setup_rec_alias store ~make_alias ~prefix ~tree : t))
+
+let rules store ~prefix ~tree =
+  setup_rec_aliases store ~prefix ~tree;
   Hashtbl.fold store ~init:[] ~f:(fun ~key:alias ~data:deps acc ->
     let open Build.O in
     let rule =
       Build.path_set !deps >>>
-      Build.create_file ~target:alias (fun _ ->
-        close_out (open_out_bin (Path.to_string alias)))
+      Build.touch alias
     in
     rule :: acc)

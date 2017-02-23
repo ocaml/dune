@@ -17,4 +17,8 @@ val add_deps : Store.t -> t -> Path.t list -> unit
 
 type tree = Node of Path.t * tree list
 
-val rules : Store.t -> tree -> (unit, unit) Build.t list
+val rules
+  :  Store.t
+  -> prefix:Path.t
+  -> tree:tree
+  -> (unit, unit) Build.t list

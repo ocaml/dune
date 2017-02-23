@@ -240,8 +240,8 @@ module Gen(P : Params) = struct
     include Alias
 
     let store = Store.create ()
-    let _add_deps t deps = add_deps store t deps
-    let rules () = rules store P.tree
+    let add_deps t deps = add_deps store t deps
+    let rules () = rules store ~prefix:ctx.build_dir ~tree:P.tree
   end
 
   let all_rules = ref []
@@ -1241,7 +1241,7 @@ module Gen(P : Params) = struct
     let digest_path =
       Path.relative dir (Path.basename (Alias.file alias) ^ "-" ^ digest) in
     let dummy = Build.touch digest_path in
-    Alias._add_deps alias [digest_path];
+    Alias.add_deps alias [digest_path];
     let deps =
       let deps = Dep_conf_interpret.dep_of_list ~dir alias_conf.deps in
       match alias_conf.action with

@@ -1555,13 +1555,9 @@ module Gen(P : Params) = struct
         | Executables ({ object_public_name = Some name; _ } as exes)
           when Findlib.root_package_name name = package ->
           obj_install_files ~dir exes
-        | Install { section; files; package = p } -> begin
-            match p with
-            | Some p when p <> package -> []
-            | _ ->
-              List.map files ~f:(fun { Install_conf. src; dst } ->
-                Install.Entry.make section (Path.relative dir src) ?dst)
-          end
+        | Install { section; files; package = Some p } when p = package ->
+          List.map files ~f:(fun { Install_conf. src; dst } ->
+            Install.Entry.make section (Path.relative dir src) ?dst)
         | _ -> [])
     in
     let entries =

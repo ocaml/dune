@@ -2,8 +2,11 @@ open Jbuilder
 open Import
 open Jbuilder_cmdliner.Cmdliner
 
-module Suggest = Jbuilder_cmdliner.Cmdliner_suggest
 module Main = Jbuilder.Main
+
+(* Things in src/ don't depend on cmdliner to speed up the bootstrap, so we set this
+   reference here *)
+let () = suggest_function := Jbuilder_cmdliner.Cmdliner_suggest.value
 
 let (>>=) = Future.(>>=)
 
@@ -81,18 +84,7 @@ let build_package pkg =
        Build_system.do_build_exn setup.build_system
          [path]
      | Error () ->
-       match Suggest.value pkg (String_map.keys setup.packages) with
-       | [] -> die "Unknown package %s!" pkg
-       | pkgs ->
-         let rec mk_hint = function
-           | [a; b] -> sprintf "%s or %s" a b
-           | [a] -> a
-           | a :: l -> sprintf "%s, %s" a (mk_hint l)
-           | [] -> ""
-         in
-         die "Unknown package %s!\nHint: did you mean %s?"
-           pkg
-           (mk_hint pkgs)
+       die "Unknown package %s!%s" pkg (hint pkg (String_map.keys setup.packages))
     )
 
 let build_package =

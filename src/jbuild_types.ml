@@ -694,4 +694,54 @@ module Stanza = struct
              | None -> acc
              | Some n -> String_set.add n acc)
         | _ -> acc))
+
+  let resolve_packages ts ~dir ~visible_packages =
+    let error fmt =
+      die ("File \"%s\", line 1, characters 0-0:\n\
+            Error: " ^^ fmt)
+        (Path.to_string (Path.relative dir "jbuild"))
+    in
+    let known_packages () =
+      let visible_packages = String_map.bindings visible_packages in
+      let longest_pkg =
+        List.fold_left visible_packages ~init:0 ~f:(fun acc (pkg, _) ->
+          max (String.length pkg) acc)
+      in
+      String.concat ~sep:"\n"
+        (List.map visible_packages ~f:(fun (pkg, dir) ->
+           sprintf "- %-*s (because of %s)" longest_pkg pkg
+             (Path.to_string (Path.relative dir (pkg ^ ".opam")))))
+    in
+    let check pkg =
+      if not (String_map.mem pkg visible_packages) then
+        error "package %S is not visible here.\n\
+               The only packages I know of in %S are:\n\
+               %s%s"
+          pkg
+          (Path.to_string dir)
+          (known_packages ())
+          (hint pkg (String_map.keys visible_packages))
+    in
+    let default () =
+      match String_map.keys visible_packages with
+      | [pkg] -> pkg
+      | [] -> error "no packages are defined here"
+      | pkgs ->
+        error "there is more than one package visible here:\n\
+               %s\n\
+               You need to add a (package ...) field in your (install ...) stanzas"
+          (known_packages ())
+    in
+    List.map ts ~f:(fun stanza ->
+      match stanza with
+      | Library { public_name = Some name; _ }
+      | Executables { object_public_name = Some name; _ } ->
+        check (Findlib.root_package_name name);
+        stanza
+      | Install { package = Some pkg; _ } ->
+        check pkg;
+        stanza
+      | Install ({ package = None; _ } as install) ->
+        Install { install with package = Some (default ()) }
+      | _ -> stanza)
 end

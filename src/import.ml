@@ -363,3 +363,17 @@ let quote_for_shell s =
         | _ -> loop (i + 1)
     in
     loop 0
+
+let suggest_function : (string -> string list -> string list) ref = ref (fun _ _ -> [])
+
+let hint name candidates =
+  match !suggest_function name candidates with
+  | [] -> ""
+  | l ->
+    let rec mk_hint = function
+      | [a; b] -> sprintf "%s or %s" a b
+      | [a] -> a
+      | a :: l -> sprintf "%s, %s" a (mk_hint l)
+      | [] -> ""
+    in
+    sprintf "\nHint: did you mean %s?" (mk_hint l)

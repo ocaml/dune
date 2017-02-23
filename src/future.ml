@@ -215,11 +215,17 @@ module Scheduler = struct
 
   let err_is_atty = lazy Unix.(isatty stderr)
 
+  let dumb_term =
+    match Sys.getenv "TERM" with
+    | exception Not_found -> true
+    | "dumb" -> true
+    | _ -> false
+
   let command_line ?colorize { prog; args; dir; stdout_to; _ } =
     let colorize =
       match colorize with
       | Some x -> x
-      | None -> not Sys.win32 && Lazy.force err_is_atty
+      | None -> not Sys.win32 && Lazy.force err_is_atty && not dumb_term
     in
     let prog =
       let s = quote prog in

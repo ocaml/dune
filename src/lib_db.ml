@@ -25,7 +25,7 @@ module Local_closure = Top_closure.Make(String)(struct
     type t = Lib.Internal.t
     let key ((_, lib) : t) = lib.name
     let deps ((_, lib) : Lib.Internal.t) graph =
-      List.concat_map lib.libraries ~f:(fun dep ->
+      List.concat_map lib.buildable.libraries ~f:(fun dep ->
         List.filter_map (Lib_dep.to_lib_names dep) ~f:(find_internal graph))
   end)
 

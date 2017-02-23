@@ -25,7 +25,7 @@ module Ocaml_flags = struct
     ; specific : string list Mode.Dict.t
     }
 
-  let make ~flags ~ocamlc_flags ~ocamlopt_flags =
+  let make { Buildable. flags; ocamlc_flags; ocamlopt_flags; _ } =
     let eval = Ordered_set_lang.eval_with_standard in
     { common   = eval flags ~standard:default_flags
     ; specific =
@@ -38,9 +38,7 @@ module Ocaml_flags = struct
 
   let get_for_cm t ~cm_kind = get t (Mode.of_cm_kind cm_kind)
 
-  let default =
-    let std = Ordered_set_lang.standard in
-    make ~flags:std ~ocamlc_flags:std ~ocamlopt_flags:std
+  let default = make (Sexp.Of_sexp.record Buildable.t (List []))
 end
 
 let default_c_flags = g ()
@@ -928,13 +926,10 @@ module Gen(P : Params) = struct
 
   let library_rules (lib : Library.t) ~dir ~all_modules ~files =
     let dep_kind = if lib.optional then Build.Optional else Required in
-    let flags =
-      Ocaml_flags.make
-        ~flags:lib.flags
-        ~ocamlc_flags:lib.ocamlc_flags
-        ~ocamlopt_flags:lib.ocamlopt_flags
+    let flags = Ocaml_flags.make lib.buildable in
+    let modules =
+      parse_modules ~dir ~all_modules ~modules_written_by_user:lib.buildable.modules
     in
-    let modules = parse_modules ~dir ~all_modules ~modules_written_by_user:lib.modules in
     let main_module_name = String.capitalize_ascii lib.name in
     let modules =
       String_map.map modules ~f:(fun (m : Module.t) ->
@@ -965,8 +960,8 @@ module Gen(P : Params) = struct
     in
     (* Preprocess before adding the alias module as it doesn't need preprocessing *)
     let modules =
-      pped_modules ~dir ~dep_kind ~modules ~preprocess:lib.preprocess
-        ~preprocessor_deps:lib.preprocessor_deps
+      pped_modules ~dir ~dep_kind ~modules ~preprocess:lib.buildable.preprocess
+        ~preprocessor_deps:lib.buildable.preprocessor_deps
         ~lib_name:(Some lib.name)
     in
     let modules =
@@ -991,14 +986,14 @@ module Gen(P : Params) = struct
 
     let requires =
       requires ~dir ~dep_kind ~item:lib.name
-        ~libraries:lib.libraries
-        ~preprocess:lib.preprocess
+        ~libraries:lib.buildable.libraries
+        ~preprocess:lib.buildable.preprocess
         ~virtual_deps:lib.virtual_deps
     in
     setup_runtime_deps ~dir ~dep_kind ~item:lib.name
-      ~libraries:lib.libraries
+      ~libraries:lib.buildable.libraries
       ~ppx_runtime_libraries:lib.ppx_runtime_libraries;
-    List.iter (Lib_db.select_rules ~dir lib.libraries) ~f:add_rule;
+    List.iter (Lib_db.select_rules ~dir lib.buildable.libraries) ~f:add_rule;
 
     build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
@@ -1119,13 +1114,10 @@ module Gen(P : Params) = struct
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules =
     let dep_kind = Build.Required in
-    let flags =
-      Ocaml_flags.make
-        ~flags:exes.flags
-        ~ocamlc_flags:exes.ocamlc_flags
-        ~ocamlopt_flags:exes.ocamlopt_flags
+    let flags = Ocaml_flags.make exes.buildable in
+    let modules =
+      parse_modules ~dir ~all_modules ~modules_written_by_user:exes.buildable.modules
     in
-    let modules = parse_modules ~dir ~all_modules ~modules_written_by_user:exes.modules in
     let modules =
       String_map.map modules ~f:(fun (m : Module.t) ->
         { m with obj_name = obj_name_of_basename m.ml_fname })
@@ -1136,19 +1128,21 @@ module Gen(P : Params) = struct
           name (Path.to_string dir));
 *)
     let modules =
-      pped_modules ~dir ~dep_kind ~modules ~preprocess:exes.preprocess
-        ~preprocessor_deps:[] ~lib_name:None
+      pped_modules ~dir ~dep_kind ~modules
+        ~preprocess:exes.buildable.preprocess
+        ~preprocessor_deps:exes.buildable.preprocessor_deps
+        ~lib_name:None
     in
     let item = List.hd exes.names in
     let dep_graph = ocamldep_rules ~dir ~item ~modules ~alias_module:None in
 
     let requires =
       requires ~dir ~dep_kind ~item
-        ~libraries:exes.libraries
-        ~preprocess:exes.preprocess
+        ~libraries:exes.buildable.libraries
+        ~preprocess:exes.buildable.preprocess
         ~virtual_deps:[]
     in
-    List.iter (Lib_db.select_rules ~dir exes.libraries) ~f:add_rule;
+    List.iter (Lib_db.select_rules ~dir exes.buildable.libraries) ~f:add_rule;
 
     build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module:None;
 
@@ -1394,8 +1388,8 @@ module Gen(P : Params) = struct
           | Ocamllex  conf -> List.map conf.names ~f:(fun name -> name ^ ".ml")
           | Ocamlyacc conf -> List.concat_map conf.names ~f:(fun name ->
             [ name ^ ".ml"; name ^ ".mli" ])
-          | Library { libraries; _ } | Executables { libraries; _ } ->
-            List.filter_map libraries ~f:(function
+          | Library { buildable; _ } | Executables { buildable; _ } ->
+            List.filter_map buildable.libraries ~f:(function
               | Direct _ -> None
               | Select s -> Some s.result_fn)
           | _ -> [])

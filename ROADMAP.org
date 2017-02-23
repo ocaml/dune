@@ -40,12 +40,13 @@ where it is started. Eventually this will be changed as follows:
 
 - *08/02/2017*: Richard Davison is working on this [[https://github.com/janestreet/jbuilder/pull/2][#2]]
 
-** Running tests with jbuilder [[https://github.com/janestreet/jbuilder/issues/3][#3]]
+** +Running tests with jbuilder [[https://github.com/janestreet/jbuilder/issues/3][#3]]+
 
 Allow to define tests with =(alias ...)= stanzas and add =jbuilder
 runtest= to run them.
 
-- *21/02/2107*: Rudi Grinberg added support for aliases ([[https://github.com/janestreet/jbuilder/pull/2][#7]])
+- *21/02/2017*: Rudi Grinberg added support for aliases ([[https://github.com/janestreet/jbuilder/pull/2][#7]])
+- *23/02/2017*: Added a =runtest= subcommand
 
 * After V1
 

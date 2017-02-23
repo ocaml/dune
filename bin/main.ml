@@ -78,7 +78,7 @@ let build_package pkg =
 
 let build_package =
   let doc = "build-package" in
-  let name_ = Arg.info [] in
+  let name_ = Arg.info [] ~docv:"PACKAGE-NAME" in
   let go common pkg =
     set_common common;
     build_package pkg
@@ -100,7 +100,7 @@ let external_lib_deps packages =
 
 let external_lib_deps =
   let doc = "external-lib-deps" in
-  let name_ = Arg.info [] in
+  let name_ = Arg.info [] ~docv:"PACKAGE-NAME" in
   let go common packages =
     set_common common;
     external_lib_deps packages
@@ -134,7 +134,7 @@ let resolve_targets bs (ctx : Context.t) user_targets =
 
 let build_targets =
   let doc = "build" in
-  let name_ = Arg.info [] in
+  let name_ = Arg.info [] ~docv:"TARGET" in
   let go common targets =
     set_common common;
     Future.Scheduler.go

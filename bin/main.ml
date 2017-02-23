@@ -148,8 +148,41 @@ let build_targets ~name =
           $ Arg.(non_empty & pos_all string [] name_))
   , Term.info name ~doc ~man:help_secs)
 
+let runtest =
+  let doc = "run tests" in
+  let name_ = Arg.info [] ~docv:"DIR" in
+  let go common dirs =
+    set_common common;
+    Future.Scheduler.go ~log:(create_log ())
+      (Main.setup () >>= fun (bs, _, ctx) ->
+       let dirs =
+         match dirs with
+         | [] -> [Path.root]
+         | _  -> List.map dirs ~f:Path.(relative root)
+       in
+       let targets =
+         List.map dirs ~f:(fun dir ->
+           let dir =
+             if Path.is_in_build_dir dir then
+               dir
+             else
+               Path.append ctx.build_dir dir
+           in
+           Alias.file (Alias.runtest ~dir))
+       in
+       Build_system.do_build_exn bs targets) in
+  ( Term.(const go
+          $ common
+          $ Arg.(value & pos_all string [] name_))
+  , Term.info "runtest" ~doc ~man:help_secs)
+
 let all =
-  [ internal; build_package; external_lib_deps; build_targets ~name:"build" ]
+  [ internal
+  ; build_package
+  ; external_lib_deps
+  ; build_targets ~name:"build"
+  ; runtest
+  ]
 
 let () =
   try

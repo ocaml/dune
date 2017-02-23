@@ -31,7 +31,7 @@ let internal = function
     ()
 
 let internal =
-  let doc = "internal" in
+  let doc = "internal use only" in
   let name_ = Arg.info [] in
   ( Term.(const internal $ Arg.(non_empty & pos_all string [] name_))
   , Term.info "internal" ~doc)
@@ -55,7 +55,6 @@ let help_secs =
   ; `P "These options are common to all commands."
   ; `S "MORE HELP"
   ; `P "Use `$(mname) $(i,COMMAND) --help' for help on a single command."
-  ;`Noblank
   ; `S "BUGS"
   ; `P "Check bug reports at https://github.com/janestreet/jbuilder/issues"
   ]
@@ -77,7 +76,7 @@ let build_package pkg =
      Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])
 
 let build_package =
-  let doc = "build-package" in
+  let doc = "build a package in release mode" in
   let name_ = Arg.info [] ~docv:"PACKAGE-NAME" in
   let go common pkg =
     set_common common;
@@ -99,7 +98,7 @@ let external_lib_deps packages =
     | Optional -> Printf.printf "%s (optional)\n" n)
 
 let external_lib_deps =
-  let doc = "external-lib-deps" in
+  let doc = "print out external library dependencies" in
   let name_ = Arg.info [] ~docv:"PACKAGE-NAME" in
   let go common packages =
     set_common common;
@@ -132,8 +131,8 @@ let resolve_targets bs (ctx : Context.t) user_targets =
     flush stdout;
     real_targets
 
-let build_targets =
-  let doc = "build" in
+let build_targets ~name =
+  let doc = "build targets" in
   let name_ = Arg.info [] ~docv:"TARGET" in
   let go common targets =
     set_common common;
@@ -144,14 +143,14 @@ let build_targets =
   ( Term.(const go
           $ common
           $ Arg.(non_empty & pos_all string [] name_))
-  , Term.info "build" ~doc ~man:help_secs)
+  , Term.info name ~doc ~man:help_secs)
 
 let all =
-  [ internal; build_package; external_lib_deps; build_targets ]
+  [ internal; build_package; external_lib_deps; build_targets ~name:"build" ]
 
 let () =
   try
-    match Term.eval_choice build_targets all with
+    match Term.eval_choice (build_targets ~name:"jbuilder") all with
     | `Error _ -> exit 1
     | _ -> exit 0
   with exn ->

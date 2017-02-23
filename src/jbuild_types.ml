@@ -303,11 +303,10 @@ module Js_of_ocaml = struct
 
 
   let t =
-    record [ field "flags" (list string)            ~default:[]
-           ; field "javascript_files" (list string) ~default:[]
-           ]
-      (fun flags javascript_files ->
-         { flags; javascript_files })
+    record
+      (field "flags"            (list string) ~default:[] >>= fun flags ->
+       field "javascript_files" (list string) ~default:[] >>= fun javascript_files ->
+       return { flags; javascript_files })
 end
 
 module Lib_dep = struct
@@ -416,83 +415,77 @@ module Library = struct
 
   let t =
     record
-      ~ignore:["inline_tests"; "skip_from_default"; "lint"]
-      [ field      "name"                  library_name
-      ; field_o    "public_name"           string
-      ; field_o    "synopsis"              string
-      ; field      "install_c_headers"     (list string) ~default:[]
-      ; field      "libraries"             (list Lib_dep.t) ~default:[]
-      ; field      "ppx_runtime_libraries" (list string) ~default:[]
-      ; field_modules
-      ; field_oslu "c_flags"
-      ; field_oslu "cxx_flags"
-      ; field      "c_names"               (list string) ~default:[]
-      ; field      "cxx_names"             (list string) ~default:[]
-      ; field      "library_flags"         (list String_with_vars.t) ~default:[]
-      ; field      "c_libraries"           (list string) ~default:[]
-      ; field_oslu "c_library_flags"
-      ; field_pp   "preprocess"
-      ; field      "preprocessor_deps"     (list Dep_conf.t) ~default:[]
-      ; field      "self_build_stubs_archive" (option string) ~default:None
-      ; field_o    "js_of_ocaml"           Js_of_ocaml.t
-      ; field      "virtual_deps"          (list string) ~default:[]
-      ; field      "modes"                 (list Mode.t) ~default:Mode.all
-      ; field      "includes"              (list String_with_vars.t) ~default:[]
-      ; field      "kind"                  Kind.t ~default:Kind.Normal
-      ; field      "wrapped"               bool ~default:true
-      ; field_b    "optional"
-      ; field_osl  "flags"
-      ; field_osl  "ocamlc_flags"
-      ; field_osl  "ocamlopt_flags"
-      ; field      "extra_disabled_warnings" (list int) ~default:[]
-      ]
-      (fun name public_name synopsis install_c_headers libraries ppx_runtime_libraries
-        modules c_flags cxx_flags c_names cxx_names library_flags c_libraries
-        c_library_flags preprocess
-        preprocessor_deps self_build_stubs_archive js_of_ocaml virtual_deps modes
-        includes kind wrapped optional flags ocamlc_flags ocamlopt_flags
-        extra_disabled_warnings ->
-        { name
-        ; public_name
-        ; synopsis
-        ; install_c_headers
-        ; libraries
-        ; ppx_runtime_libraries
-        ; modes
-        ; kind
-        ; modules
-        ; c_names
-        ; c_flags
-        ; cxx_names
-        ; cxx_flags
-        ; includes
-        ; library_flags
-        ; c_library_flags =
-            Ordered_set_lang.Unexpanded.append
-              (Ordered_set_lang.Unexpanded.t
-                 (Sexp.To_sexp.(list string (List.map c_libraries ~f:((^) "-l")))))
-              c_library_flags
-        ; preprocess
-        ; preprocessor_deps
-        ; self_build_stubs_archive
-        ; js_of_ocaml
-        ; virtual_deps
-        ; wrapped
-        ; optional
-        ; flags =
-            if Ordered_set_lang.is_standard flags && extra_disabled_warnings <> [] then
-              Ordered_set_lang.append flags
-                (Ordered_set_lang.t
-                   (List [ Atom "-w"
-                         ; Atom
-                             (String.concat ~sep:""
-                                (List.map extra_disabled_warnings ~f:(sprintf "-%d")))
-                         ]))
-            else
-              flags
-        ; ocamlc_flags
-        ; ocamlopt_flags
-        })
+      (ignore_fields ["inline_tests"; "skip_from_default"; "lint"] >>= fun () ->
+       field "name" library_name                                      >>= fun name                     ->
+       field_o "public_name" string                                   >>= fun public_name              ->
+       field_o "synopsis" string                                      >>= fun synopsis                 ->
+       field "install_c_headers" (list string) ~default:[]            >>= fun install_c_headers        ->
+       field "libraries" (list Lib_dep.t) ~default:[]                 >>= fun libraries                ->
+       field "ppx_runtime_libraries" (list string) ~default:[]        >>= fun ppx_runtime_libraries    ->
+       field_modules                                                  >>= fun modules                  ->
+       field_oslu "c_flags"                                           >>= fun c_flags                  ->
+       field_oslu "cxx_flags"                                         >>= fun cxx_flags                ->
+       field "c_names" (list string) ~default:[]                      >>= fun c_names                  ->
+       field "cxx_names" (list string) ~default:[]                    >>= fun cxx_names                ->
+       field "library_flags" (list String_with_vars.t) ~default:[]    >>= fun library_flags            ->
+       field "c_libraries" (list string) ~default:[]                  >>= fun c_libraries              ->
+       field_oslu "c_library_flags"                                   >>= fun c_library_flags          ->
+       field_pp "preprocess"                                          >>= fun preprocess               ->
+       field "preprocessor_deps" (list Dep_conf.t) ~default:[]        >>= fun preprocessor_deps        ->
+       field "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
+       field_o "js_of_ocaml" Js_of_ocaml.t                            >>= fun js_of_ocaml              ->
+       field "virtual_deps" (list string) ~default:[]                 >>= fun virtual_deps             ->
+       field "modes" (list Mode.t) ~default:Mode.all                  >>= fun modes                    ->
+       field "includes" (list String_with_vars.t) ~default:[]         >>= fun includes                 ->
+       field "kind" Kind.t ~default:Kind.Normal                       >>= fun kind                     ->
+       field "wrapped" bool ~default:true                             >>= fun wrapped                  ->
+       field_b "optional"                                             >>= fun optional                 ->
+       field_osl "flags"                                              >>= fun flags                    ->
+       field_osl "ocamlc_flags"                                       >>= fun ocamlc_flags             ->
+       field_osl "ocamlopt_flags"                                     >>= fun ocamlopt_flags           ->
+       field "extra_disabled_warnings" (list int) ~default:[]         >>= fun extra_disabled_warnings  ->
+       return
+         { name
+         ; public_name
+         ; synopsis
+         ; install_c_headers
+         ; libraries
+         ; ppx_runtime_libraries
+         ; modes
+         ; kind
+         ; modules
+         ; c_names
+         ; c_flags
+         ; cxx_names
+         ; cxx_flags
+         ; includes
+         ; library_flags
+         ; c_library_flags =
+             Ordered_set_lang.Unexpanded.append
+               (Ordered_set_lang.Unexpanded.t
+                  (Sexp.To_sexp.(list string (List.map c_libraries ~f:((^) "-l")))))
+               c_library_flags
+         ; preprocess
+         ; preprocessor_deps
+         ; self_build_stubs_archive
+         ; js_of_ocaml
+         ; virtual_deps
+         ; wrapped
+         ; optional
+         ; flags =
+             if Ordered_set_lang.is_standard flags && extra_disabled_warnings <> [] then
+               Ordered_set_lang.append flags
+                 (Ordered_set_lang.t
+                    (List [ Atom "-w"
+                          ; Atom
+                              (String.concat ~sep:""
+                                 (List.map extra_disabled_warnings ~f:(sprintf "-%d")))
+                          ]))
+             else
+               flags
+         ; ocamlc_flags
+         ; ocamlopt_flags
+         })
 
   let has_stubs t =
     match t.c_names, t.cxx_names, t.self_build_stubs_archive with
@@ -523,21 +516,21 @@ module Executables = struct
 
   let t =
     record
-      ~ignore:["js_of_ocaml"; "only_shared_object"; "review_help"; "skip_from_default"]
-      [ field     "names"            (list string)
-      ; field_o   "object_public_name" string
-      ; field_o   "synopsis"              string
-      ; field     "link_executables" bool ~default:true
-      ; field     "libraries"        (list Lib_dep.t) ~default:[]
-      ; field     "link_flags"       (list string) ~default:[]
-      ; field_modules
-      ; field_pp  "preprocess"
-      ; field_osl "flags"
-      ; field_osl "ocamlc_flags"
-      ; field_osl "ocamlopt_flags"
-      ]
-      (fun names object_public_name synopsis link_executables libraries link_flags modules
-        preprocess flags ocamlc_flags ocamlopt_flags ->
+      (ignore_fields
+         ["js_of_ocaml"; "only_shared_object"; "review_help"; "skip_from_default"]
+       >>= fun () ->
+       field   "names"              (list string)      >>= fun names ->
+       field_o "object_public_name" string             >>= fun object_public_name ->
+       field_o "synopsis"           string             >>= fun synopsis ->
+       field   "link_executables"   bool ~default:true >>= fun link_executables ->
+       field   "libraries"          (list Lib_dep.t)   >>= fun libraries ->
+       field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
+       field_modules                                   >>= fun modules ->
+       field_pp "preprocess"                           >>= fun preprocess ->
+       field_osl "flags"                               >>= fun flags ->
+       field_osl "ocamlc_flags"                        >>= fun ocamlc_flags ->
+       field_osl "ocamlopt_flags"                      >>= fun ocamlopt_flags ->
+       return
          { names
          ; object_public_name
          ; synopsis
@@ -560,13 +553,12 @@ module Rule = struct
     }
 
   let t =
-    record ~ignore:["sandbox"]
-      [ field "targets" (list file_in_current_dir)
-      ; field "deps"    (list Dep_conf.t)
-      ; field "action"  User_action.Unexpanded.t
-      ]
-      (fun targets deps action ->
-         { targets; deps; action })
+    record
+      (ignore_fields ["sandbox"] >>= fun () ->
+       field "targets" (list file_in_current_dir) >>= fun targets ->
+       field "deps"    (list Dep_conf.t)          >>= fun deps ->
+       field "action"  User_action.Unexpanded.t   >>= fun action ->
+       return { targets; deps; action })
 end
 
 module Ocamllex = struct
@@ -627,11 +619,10 @@ module Install_conf = struct
 
   let t =
     record
-      [ field   "section" Install.Section.t
-      ; field   "files"   (list file)
-      ; field_o "package" string
-      ]
-      (fun section files package ->
+      (field   "section" Install.Section.t >>= fun section ->
+       field   "files"   (list file)       >>= fun files ->
+       field_o "package" string            >>= fun package ->
+       return
          { section
          ; files
          ; package
@@ -646,11 +637,12 @@ module Alias_conf = struct
     }
 
   let t =
-    record ~ignore:["sandbox"]
-      [ field "name" string
-      ; field "deps" (list Dep_conf.t) ~default:[]
-      ; field_o "action" User_action.Unexpanded.t ]
-      (fun name deps action ->
+    record
+      (ignore_fields ["sandbox"] >>= fun () ->
+       field "name" string                        >>= fun name ->
+       field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
+       field_o "action" User_action.Unexpanded.t  >>= fun action ->
+       return
          { name
          ; deps
          ; action

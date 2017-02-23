@@ -39,24 +39,18 @@ module To_sexp : Combinators with type 'a t = 'a -> t
 module Of_sexp : sig
   include Combinators with type 'a t = t -> 'a
 
-  module Field_spec : sig
-    type 'a t
-  end
+  (* Record parsing monad *)
+  type 'a record_parser
+  val return : 'a -> 'a record_parser
+  val ( >>= ) : 'a record_parser -> ('a -> 'b record_parser) -> 'b record_parser
 
-  module Fields_spec : sig
-    type ('a, 'b) t =
-      | [] : ('a, 'a) t
-      | ( :: ) : 'a Field_spec.t * ('b, 'c) t -> ('a -> 'b, 'c) t
-  end
+  val field   : string -> ?default:'a -> 'a t -> 'a record_parser
+  val field_o : string -> 'a t -> 'a option record_parser
+  val field_b : string -> bool record_parser
 
-  val field   : string -> ?default:'a -> 'a t -> 'a Field_spec.t
-  val field_o : string -> 'a t -> 'a option Field_spec.t
-  val field_b : string -> bool Field_spec.t
+  val ignore_fields : string list -> unit record_parser
 
-  val record
-    :  ?ignore:string list
-    -> ('record_of_fields, 'record) Fields_spec.t
-    -> 'record_of_fields -> 'record t
+  val record : 'a record_parser -> 'a t
 
   module Constructor_spec : sig
     type 'a t

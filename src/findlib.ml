@@ -382,7 +382,10 @@ let find_exn t name =
       match Hashtbl.find t.packages name with
       | Some (Present x) -> x
       | Some Absent      -> raise (Package_not_found name)
-      | None             -> assert false
+      | None             ->
+        code_errorf
+          "Package %S not in the package table after loading the appropriate META files"
+          name
 
 let available t name =
   match find_exn t name with

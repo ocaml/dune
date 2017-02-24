@@ -349,20 +349,24 @@ end
 
 type fail = { fail : 'a. unit -> 'a }
 
-let quote_for_shell s =
+let need_quoting s =
   let len = String.length s in
-  if len = 0 then
+  len = 0 ||
+  let rec loop i =
+    if i = len then
+      false
+    else
+      match s.[i] with
+      | ' ' | '\"' -> true
+      | _ -> loop (i + 1)
+  in
+  loop 0
+
+let quote_for_shell s =
+  if need_quoting s then
     Filename.quote s
   else
-    let rec loop i =
-      if i = len then
-        s
-      else
-        match s.[i] with
-        | ' ' | '\"' -> Filename.quote s
-        | _ -> loop (i + 1)
-    in
-    loop 0
+    s
 
 let suggest_function : (string -> string list -> string list) ref = ref (fun _ _ -> [])
 

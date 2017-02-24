@@ -198,12 +198,39 @@ module Scheduler = struct
     | None -> s
     | Some (s, _) -> s
 
+  let colorize_prog s =
+    let len = String.length s in
+    if len = 0 then
+      s
+    else begin
+      let rec find_prog_start i =
+        if i < 0 then
+          0
+        else
+          match s.[i] with
+          | '\\' | '/' -> (i + 1)
+          | _ -> find_prog_start (i - 1)
+      in
+      let prog_end =
+        match s.[len - 1] with
+        | '"' -> len - 1
+        | _   -> len
+      in
+      let prog_start = find_prog_start (prog_end - 1) in
+      let prog_end =
+        match String.index_from s prog_start '.' with
+        | exception _ -> prog_end
+        | i -> i
+      in
+      let before = String.sub s ~pos:0 ~len:prog_start in
+      let after = String.sub s ~pos:prog_end ~len:(len - prog_end) in
+      let key = String.sub s ~pos:prog_start ~len:(prog_end - prog_start) in
+      before ^ Ansi_color.colorize ~key key ^ after
+    end
+
   let command_line { prog; args; dir; stdout_to; _ } =
     let quote = quote_for_shell in
-    let prog =
-      let s = quote prog in
-      Ansi_color.colorize ~key:(key_for_color prog) s
-    in
+    let prog = colorize_prog (quote prog) in
     let s = String.concat (prog :: List.map args ~f:quote) ~sep:" " in
     let s =
       match stdout_to with

@@ -68,6 +68,12 @@ module List = struct
     match l with
     | [] -> None
     | x :: l -> if f x then Some x else find l ~f
+
+  let longest_map l ~f =
+    fold_left l ~init:0 ~f:(fun acc x ->
+      max acc (String.length (f x)))
+
+  let longest l = longest_map l ~f:(fun x -> x)
 end
 
 module Hashtbl = struct

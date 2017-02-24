@@ -21,6 +21,7 @@ type t =
   ; env                     : string array
   ; findlib_path            : Path.t list
   ; arch_sixtyfour          : bool
+  ; opam_var_cache : (string, string) Hashtbl.t
   ; version                 : string
   ; stdlib_dir              : Path.t
   ; ccomp_type              : string
@@ -64,7 +65,25 @@ let get_arch_sixtyfour stdlib_dir =
     | ["#define"; "ARCH_SIXTYFOUR"] -> true
     | _ -> false)
 
+let opam_config_var ~env ~cache var =
+  match Hashtbl.find cache var with
+  | Some _ as x -> return x
+  | None ->
+    match Bin.opam with
+    | None -> return None
+    | Some fn ->
+      Future.run_capture (Path.to_string fn) ~env ["config"; "var"; var]
+      >>| fun s ->
+      let s = String.trim s in
+      Hashtbl.add cache ~key:var ~data:s;
+      Some s
+
 let create ~(kind : Kind.t) ~path ~env =
+  let opam_var_cache = Hashtbl.create 128 in
+  (match kind with
+   | Opam { root; _ } ->
+     Hashtbl.add opam_var_cache ~key:"root" ~data:root
+   | Default -> ());
   let name =
     match kind with
     | Default -> "default"
@@ -99,13 +118,10 @@ let create ~(kind : Kind.t) ~path ~env =
   let ocamlc_config_cmd = sprintf "%s -config" (Path.to_string ocamlc) in
   both
     (both
-       (match Bin.opam with
-        | None ->
-          return []
-        | Some fn ->
-          Future.run_capture_line ~env (Path.to_string fn)
-            ["config"; "var"; "lib"]
-          >>| fun s -> [Path.absolute s])
+       (opam_config_var ~env ~cache:opam_var_cache "lib"
+        >>| function
+        | None -> []
+        | Some s -> [Path.absolute s])
        (match which "ocamlfind" with
         | None ->
           return []
@@ -172,6 +188,8 @@ let create ~(kind : Kind.t) ~path ~env =
     ; findlib_path
     ; arch_sixtyfour = get_arch_sixtyfour stdlib_dir
 
+    ; opam_var_cache
+
     ; stdlib_dir
     ; version                 = get       "version"
     ; ccomp_type              = get       "ccomp_type"
@@ -209,6 +227,8 @@ let create ~(kind : Kind.t) ~path ~env =
     die "context %s already exists" name;
   all_known := String_map.add !all_known ~key:name ~data:t;
   return t
+
+let opam_config_var t var = opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
 let initial_env = lazy (
   Lazy.force Ansi_color.setup_env_for_ocaml_colors;
@@ -269,3 +289,8 @@ let create_for_opam ?root ~switch () =
     create ~kind:(Opam { root; switch }) ~path ~env:(extend_env ~vars ~env)
 
 let which t s = Bin.which ~path:t.path s
+
+let install_prefix t =
+  opam_config_var t "prefix" >>| function
+  | Some x -> Path.absolute x
+  | None   -> Path.parent t.ocaml_bin

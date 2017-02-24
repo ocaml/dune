@@ -12,7 +12,10 @@
   You should now put =(jbuilder_version 1)= in a =jbuild= file at the
   root of your project to ensure forward compatibility
 
-- Added a =runtest= command
+- Added a few commands:
+  + =runtest=
+  + =install=
+  + =uninstall=
 
 - Added support for aliases
   (#7, Rudi Grinberg)

@@ -56,6 +56,8 @@ type t =
   ; (** Misc *)
     arch_sixtyfour : bool
 
+  ; opam_var_cache : (string, string) Hashtbl.t
+
   ; (** Output of [ocamlc -config] *)
     version                 : string
   ; stdlib_dir              : Path.t
@@ -100,3 +102,7 @@ val all : unit -> t String_map.t
 val which : t -> string -> Path.t option
 
 val extend_env : vars:string String_map.t -> env:string array -> string array
+
+val opam_config_var : t -> string -> string option Future.t
+
+val install_prefix : t -> Path.t Future.t

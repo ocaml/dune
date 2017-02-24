@@ -85,16 +85,17 @@ let common =
   let dev = Arg.(value & flag & info ["dev"] ~docs) in
   Term.(const make $ concurrency $ drules $ ddep_path $ dfindlib $ dev)
 
+let resolve_package_install setup pkg =
+  match Main.package_install_file setup pkg with
+  | Ok path -> path
+  | Error () ->
+    die "Unknown package %s!%s" pkg (hint pkg (String_map.keys setup.packages))
+
 let build_package pkg =
   Future.Scheduler.go ~log:(create_log ())
     (Main.setup () >>= fun setup ->
-     match Main.package_install_file setup pkg with
-     | Ok path ->
-       Build_system.do_build_exn setup.build_system
-         [path]
-     | Error () ->
-       die "Unknown package %s!%s" pkg (hint pkg (String_map.keys setup.packages))
-    )
+     Build_system.do_build_exn setup.build_system
+       [resolve_package_install setup pkg])
 
 let build_package =
   let doc = "build a package in release mode" in
@@ -207,11 +208,7 @@ let runtest =
     set_common common;
     Future.Scheduler.go ~log:(create_log ())
       (Main.setup () >>= fun setup ->
-       let dirs =
-         match dirs with
-         | [] -> [Path.root]
-         | _  -> List.map dirs ~f:Path.(relative root)
-       in
+       let dirs = List.map dirs ~f:Path.(relative root) in
        let targets =
          List.map dirs ~f:(fun dir ->
            let dir =
@@ -225,8 +222,66 @@ let runtest =
        Build_system.do_build_exn setup.build_system targets) in
   ( Term.(const go
           $ common
-          $ Arg.(value & pos_all string [] name_))
+          $ Arg.(value & pos_all string ["."] name_))
   , Term.info "runtest" ~doc ~man:help_secs)
+
+let opam_installer (setup : Main.setup) =
+  match Context.which setup.context "opam-installer" with
+  | None ->
+    die "\
+Sorry, you need the opam-installer tool to be able to install or
+uninstall packages.
+
+I couldn't find the opam-installer binary :-("
+  | Some fn -> fn
+
+let get_prefix (setup : Main.setup) ~from_command_line =
+  match from_command_line with
+  | Some p -> Future.return (Path.of_string p)
+  | None -> Context.install_prefix setup.context
+
+let install_uninstall ~what =
+  let doc = sprintf "%s packages" what in
+  let name_ = Arg.info [] ~docv:"PACKAGE" in
+  let go common prefix pkgs =
+    set_common common;
+    Future.Scheduler.go ~log:(create_log ())
+      (Main.setup () >>= fun setup ->
+       let opam_installer = opam_installer setup in
+       let install_files, missing_install_files =
+         List.partition_map pkgs ~f:(fun pkg ->
+           let fn = resolve_package_install setup pkg in
+           if Path.exists fn then
+             Inl fn
+           else
+             Inr pkg)
+       in
+       if missing_install_files <> [] then begin
+         die "The <package>.install files for these packages are missing:\n\
+              %s\n\
+              You need to run: jbuilder build %s"
+           (String.concat ~sep:"\n"
+              (List.map missing_install_files ~f:(sprintf "- %s")))
+           (String.concat ~sep:" " (List.map pkgs ~f:(sprintf "%s.install")))
+       end;
+       get_prefix setup ~from_command_line:prefix >>= fun prefix ->
+       Future.all_unit
+         (List.map install_files ~f:(fun path ->
+            Future.run (Path.to_string opam_installer)
+              [ sprintf "-%c" what.[0]
+              ; "--prefix"
+              ; Path.to_string prefix
+              ; Path.to_string path
+              ])))
+  in
+  ( Term.(const go
+          $ common
+          $ Arg.(value & opt (some dir) None & info ["prefix"])
+          $ Arg.(value & pos_all string [] name_))
+  , Term.info what ~doc ~man:help_secs)
+
+let install   = install_uninstall ~what:"install"
+let uninstall = install_uninstall ~what:"uninstall"
 
 let all =
   [ internal
@@ -234,6 +289,8 @@ let all =
   ; external_lib_deps
   ; build_targets ~name:"build"
   ; runtest
+  ; install
+  ; uninstall
   ]
 
 let () =

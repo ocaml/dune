@@ -160,7 +160,10 @@ let setup_env_for_ocaml_colors = lazy(
       | exception Not_found -> "color=always,_"
       | s -> "color=always," ^ s
     in
-    Unix.putenv "OCAMLPARAM" value
+    Unix.putenv "OCAMLPARAM" value;
+    match Sys.getenv "OPAMCOLOR" with
+    | exception Not_found -> Unix.putenv "OPAMCOLOR" "always"
+    | _ -> ()
   end
 )
 

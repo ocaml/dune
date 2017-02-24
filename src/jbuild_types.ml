@@ -817,10 +817,7 @@ module Stanza = struct
     in
     let known_packages () =
       let visible_packages = String_map.bindings visible_packages in
-      let longest_pkg =
-        List.fold_left visible_packages ~init:0 ~f:(fun acc (pkg, _) ->
-          max (String.length pkg) acc)
-      in
+      let longest_pkg = List.longest_map visible_packages ~f:fst in
       String.concat ~sep:"\n"
         (List.map visible_packages ~f:(fun (pkg, dir) ->
            sprintf "- %-*s (because of %s)" longest_pkg pkg

@@ -61,6 +61,13 @@ let rec to_string = function
   | Atom s -> if must_escape s then sprintf "%S" s else s
   | List l -> sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
 
+let code_error message vars =
+  code_errorf "%s"
+    (to_string
+       (List (Atom message
+              :: List.map vars ~f:(fun (name, value) ->
+                List [Atom name; value]))))
+
 module type Combinators = sig
   type 'a t
   val unit       : unit                      t

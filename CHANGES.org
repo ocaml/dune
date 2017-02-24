@@ -1,0 +1,27 @@
+* 1.0
+
+- Generate a log in =_build/log=
+
+- Improve the output of jbuilder, in particular don't mangle the
+  output of commands when using =-j N= with =N > 1=
+
+- Strengthen the scope of a package. Jbuilder knows about package =foo=
+  only in the sub-tree starting from where =foo.opam= lives
+
+- Versioned the jbuild format and added a first stable version.
+  You should now put =(jbuilder_version 1)= in a =jbuild= file at the
+  root of your project to ensure forward compatibility
+
+- Added a =runtest= command
+
+- Added support for aliases
+  (#7, Rudi Grinberg)
+
+- Added a manual
+
+- Switched the CLI to cmdliner and added a =build= command
+  (#5, Rudi Grinberg)
+
+* 0.1.alpha1 (04/12/2017)
+
+First release

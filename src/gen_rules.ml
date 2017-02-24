@@ -272,13 +272,6 @@ module Gen(P : Params) = struct
     | Some set -> String_set.union sources set
 
   (* +-----------------------------------------------------------------+
-     | Tools                                                           |
-     +-----------------------------------------------------------------+ *)
-
-  let ppx_metaquot = Named_artifacts.in_findlib "ppx_tools:ppx_metaquot"
-  let ppx_rewriter = Named_artifacts.in_findlib "ppx_tools:rewriter"
-
-  (* +-----------------------------------------------------------------+
      | User variables                                                  |
      +-----------------------------------------------------------------+ *)
 
@@ -580,18 +573,6 @@ module Gen(P : Params) = struct
     String_map.map modules ~f:(fun (m : Module.t) ->
       match Preprocess_map.find m.name preprocess with
       | No_preprocessing -> m
-      | Metaquot ->
-        pped_module m ~dir ~f:(fun kind src dst ->
-          add_rule
-            (preprocessor_deps
-             >>>
-             Build.fanout (ppx_rewriter ~dir ~dep_kind) (ppx_metaquot ~dir ~dep_kind)
-             >>>
-             Build.run (Dyn fst)
-               [ Dyn (fun (_, ppx_metaquot) -> Dep ppx_metaquot)
-               ; A "-o"; Target dst
-               ; Ml_kind.flag kind; Dep src
-               ]))
       | Command cmd ->
         pped_module m ~dir ~f:(fun _kind src dst ->
           add_rule

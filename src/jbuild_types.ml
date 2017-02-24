@@ -253,13 +253,11 @@ module Preprocess = struct
   type t =
     | No_preprocessing
     | Command of String_with_vars.t
-    | Metaquot
     | Pps of { pps : Pp_set.t; flags : string list }
 
   let t =
     sum
       [ cstr "no_preprocessing" [] No_preprocessing
-      ; cstr "metaquot"         [] Metaquot
       ; cstr "command"          [String_with_vars.t] (fun x -> Command x)
       ; cstr "pps"              [list Pp_or_flag.t] (fun l ->
           let pps, flags = Pp_or_flag.split l in

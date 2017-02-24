@@ -17,4 +17,7 @@ reinstall: uninstall reinstall
 clean:
 	rm -rf _build
 
-.PHONY: default install uninstall reinstall clean
+cinaps:
+	cinaps -i doc/jbuild
+
+.PHONY: default install uninstall reinstall clean cinaps

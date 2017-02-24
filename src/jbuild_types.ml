@@ -656,9 +656,9 @@ module Rule = struct
     }
 
   let common =
-    field "targets" (list file_in_current_dir) >>= fun targets ->
-    field "deps"    (list Dep_conf.t)          >>= fun deps ->
-    field "action"  User_action.Unexpanded.t   >>= fun action ->
+    field "targets" (list file_in_current_dir)    >>= fun targets ->
+    field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
+    field "action"  User_action.Unexpanded.t      >>= fun action ->
     return { targets; deps; action }
 
   let v1 = record common

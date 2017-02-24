@@ -176,7 +176,7 @@ let action ~targets =
     (fun { Action. prog; args; env; dir; stdout_to; touches } ->
        List.iter touches ~f:(fun fn ->
          close_out (open_out_bin (Path.to_string fn)));
-       let stdout_to = Option.map stdout_to ~f:(Path.reach ~from:dir) in
+       let stdout_to = Option.map stdout_to ~f:Path.to_string in
        Future.run ~dir:(Path.to_string dir) ~env ?stdout_to (Path.reach ~from:dir prog)
          args)
 

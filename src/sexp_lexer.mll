@@ -78,6 +78,8 @@ rule main stack = parse
     { Buffer.clear escaped_buf;
       scan_string escaped_buf (Lexing.lexeme_start_p lexbuf) stack lexbuf
     }
+  | "#|"
+    { block_comment 0 stack lexbuf }
   | unquoted* as s
     { new_sexp main (Sexp (Atom s, atom_loc lexbuf, stack)) lexbuf }
   | eof
@@ -86,6 +88,19 @@ rule main stack = parse
       | _     -> error lexbuf "unterminated s-expression" }
   | _
     { error lexbuf "syntax error" }
+
+and block_comment depth stack = parse
+  | "#|"
+    { block_comment (depth + 1) stack lexbuf }
+  | "|#"
+    { if depth = 0 then
+        main stack lexbuf
+      else
+        block_comment (depth - 1) stack lexbuf }
+  | _
+    { block_comment depth stack lexbuf }
+  | eof
+    { error lexbuf "unterminated block comment" }
 
 and scan_string buf start stack = parse
   | '"'

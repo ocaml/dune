@@ -340,7 +340,6 @@ module Scheduler = struct
         if !Clflags.debug_run then
           Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
             (Ansi_color.strip_colors_for_stderr command_line);
-        Option.iter job.dir ~f:(fun dir -> Sys.chdir dir);
         let argv = Array.of_list (job.prog :: job.args) in
         let output_filename = Filename.temp_file "jbuilder" ".output" in
         let output_fd = Unix.openfile output_filename [O_WRONLY] 0 in
@@ -351,6 +350,7 @@ module Scheduler = struct
             let fd = Unix.openfile fn [O_WRONLY; O_CREAT; O_TRUNC] 0o666 in
             (fd, true)
         in
+        Option.iter job.dir ~f:(fun dir -> Sys.chdir dir);
         let pid =
           match job.env with
           | None ->
@@ -360,9 +360,9 @@ module Scheduler = struct
             Unix.create_process_env job.prog argv env
               Unix.stdin stdout output_fd
         in
+        Option.iter job.dir ~f:(fun _ -> Sys.chdir cwd);
         Unix.close output_fd;
         if close_stdout then Unix.close stdout;
-        Option.iter job.dir ~f:(fun _ -> Sys.chdir cwd);
         Hashtbl.add running ~key:pid
           ~data:{ id
                 ; job

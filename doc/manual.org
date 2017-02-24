@@ -361,6 +361,12 @@ the current directory, you only need to list the entry point in
 and =<name>.bc= is a bytecode executable which requires =ocamlrun= to
 run.
 
+Note that in case native compilation is not available, =<name>.exe=
+will in fact be a custom byte-code executable. Custom in the sense of
+=ocamlc -custom=, meaning that it is a native executable that embeds
+the =ocamlrun= virtual machine as well as the byte code. As such you
+can always rely on =<name>.exe= begin available.
+
 =<optional-fields>= are:
 
 - =(libraries (<library-dependencies>))= is the same as the

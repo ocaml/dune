@@ -1087,30 +1087,35 @@ module Gen(P : Params) = struct
      +-----------------------------------------------------------------+ *)
 
   let build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph ~link_flags =
-    Option.iter (Mode.compiler mode ctx) ~f:(fun compiler ->
-      let dep_graph = Ml_kind.Dict.get dep_graph Impl in
-      let exe = Path.relative dir (name ^ Mode.exe_ext mode) in
-      add_rule
-        (Build.fanout
-           (requires
-            >>> Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib)))
-           (dep_graph
-            >>> Build.arr (fun dep_graph ->
-              names_to_top_closed_cm_files
-                ~dir
-                ~dep_graph
-                ~modules
-                ~mode
-                [String.capitalize name]))
-         >>>
-         Build.run
-           (Dep compiler)
-           [ Ocaml_flags.get flags mode
-           ; A "-o"; Target exe
-           ; As link_flags
-           ; Dyn (fun (libs, _) -> Lib.link_flags libs ~mode)
-           ; Dyn (fun (_, cm_files) -> Deps cm_files)
-           ]))
+    let ext_ext = Mode.exe_ext mode in
+    let mode, link_flags, compiler =
+      match Mode.compiler mode ctx with
+      | Some compiler -> (mode, link_flags, compiler)
+      | None          -> (Byte, "-custom" :: link_flags, ctx.ocamlc)
+    in
+    let dep_graph = Ml_kind.Dict.get dep_graph Impl in
+    let exe = Path.relative dir (name ^ exe_ext) in
+    add_rule
+      (Build.fanout
+         (requires
+          >>> Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib)))
+         (dep_graph
+          >>> Build.arr (fun dep_graph ->
+            names_to_top_closed_cm_files
+              ~dir
+              ~dep_graph
+              ~modules
+              ~mode
+              [String.capitalize name]))
+       >>>
+       Build.run
+         (Dep compiler)
+         [ Ocaml_flags.get flags mode
+         ; A "-o"; Target exe
+         ; As link_flags
+         ; Dyn (fun (libs, _) -> Lib.link_flags libs ~mode)
+         ; Dyn (fun (_, cm_files) -> Deps cm_files)
+         ])
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules =
     let dep_kind = Build.Required in
@@ -1150,7 +1155,6 @@ module Gen(P : Params) = struct
       List.iter Mode.all ~f:(fun mode ->
         build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
           ~link_flags:exes.link_flags))
-
 
   (* +-----------------------------------------------------------------+
      | User actions                                                    |

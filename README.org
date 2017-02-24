@@ -64,7 +64,7 @@ you can do right now is write some jbuild files, and invoke jbuilder
 at the root of your project as follows:
 
 #+begin_src
-$ jbuilder <package>.install
+$ jbuilder build <package>.install
 #+end_src
 
 Building the =.install= file will build all the things that need to be

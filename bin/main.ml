@@ -187,7 +187,7 @@ let resolve_targets (setup : Main.setup) user_targets =
       | File path -> path
       | Alias (_, alias) -> Alias.file alias)
 
-let build_targets ~name =
+let build_targets =
   let doc = "build targets" in
   let name_ = Arg.info [] ~docv:"TARGET" in
   let go common targets =
@@ -199,7 +199,7 @@ let build_targets ~name =
   ( Term.(const go
           $ common
           $ Arg.(non_empty & pos_all string [] name_))
-  , Term.info name ~doc ~man:help_secs)
+  , Term.info "build" ~doc ~man:help_secs)
 
 let runtest =
   let doc = "run tests" in
@@ -287,16 +287,21 @@ let all =
   [ internal
   ; build_package
   ; external_lib_deps
-  ; build_targets ~name:"build"
+  ; build_targets
   ; runtest
   ; install
   ; uninstall
   ]
 
+let default =
+  let doc = "fast, portable and opinionated build system for OCaml" in
+  ( Term.(ret @@ const @@ `Help (`Pager, None))
+  , Term.info "jbuilder" ~doc)
+
 let () =
   Ansi_color.setup_err_formatter_colors ();
   try
-    match Term.eval_choice (build_targets ~name:"jbuilder") all ~catch:false with
+    match Term.eval_choice default all ~catch:false with
     | `Error _ -> exit 1
     | _ -> exit 0
   with exn ->

@@ -1,5 +1,5 @@
 (library
  ((name        jbuilder_cmdliner)
   (public_name jbuilder.cmdliner)
-  (extra_disabled_warnings (3 6 27 32 33 35 50))
+  (flags (-w -3-6-27-32-33-35-50))
   (preprocess  no_preprocessing)))

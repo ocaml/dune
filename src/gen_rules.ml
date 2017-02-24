@@ -2,8 +2,6 @@ open Import
 open Jbuild_types
 open Build.O
 
-module BS = Build_system
-
 (* +-----------------------------------------------------------------+
    | Utils                                                           |
    +-----------------------------------------------------------------+ *)
@@ -15,10 +13,33 @@ let g () =
     []
 
 module Ocaml_flags = struct
-  let default_ocamlc_flags   = g ()
-  let default_ocamlopt_flags = g ()
+  let default_ocamlc_flags   = g
+  let default_ocamlopt_flags = g
 
-  let default_flags = [ "-w"; !Clflags.warnings ]
+  let dev_mode_warnings =
+    "@a" ^
+    String.concat ~sep:""
+      (List.map ~f:(sprintf "-%d")
+         [ 4
+         ; 29
+         ; 40
+         ; 41
+         ; 42
+         ; 44
+         ; 45
+         ; 48
+         ; 58
+         ; 59
+         ])
+
+  let default_flags () =
+    if !Clflags.dev_mode then
+      [ "-w"; dev_mode_warnings ^ !Clflags.warnings
+      ; "-strict-sequence"
+      ; "-strict-formats"
+      ]
+    else
+      [ "-w"; !Clflags.warnings ]
 
   type t =
     { common   : string list
@@ -27,10 +48,10 @@ module Ocaml_flags = struct
 
   let make { Buildable. flags; ocamlc_flags; ocamlopt_flags; _ } =
     let eval = Ordered_set_lang.eval_with_standard in
-    { common   = eval flags ~standard:default_flags
+    { common   = eval flags ~standard:(default_flags ())
     ; specific =
-        { byte   = eval ocamlc_flags   ~standard:default_ocamlc_flags
-        ; native = eval ocamlopt_flags ~standard:default_ocamlopt_flags
+        { byte   = eval ocamlc_flags   ~standard:(default_ocamlc_flags ())
+        ; native = eval ocamlopt_flags ~standard:(default_ocamlopt_flags ())
         }
     }
 
@@ -38,7 +59,13 @@ module Ocaml_flags = struct
 
   let get_for_cm t ~cm_kind = get t (Mode.of_cm_kind cm_kind)
 
-  let default = make (Sexp.Of_sexp.record Buildable.v1 (List []))
+  let default () =
+    { common = default_flags ()
+    ; specific =
+        { byte   = default_ocamlc_flags   ()
+        ; native = default_ocamlopt_flags ()
+        }
+    }
 end
 
 let default_c_flags = g ()
@@ -978,7 +1005,7 @@ module Gen(P : Params) = struct
 
     build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
-      let flags = Ocaml_flags.default in
+      let flags = Ocaml_flags.default () in
       build_module m
         ~flags:{ flags with common = "-w" :: "-49" :: flags.common }
         ~dir

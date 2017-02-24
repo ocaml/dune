@@ -185,9 +185,9 @@ module Of_sexp = struct
 
   let field name ?default value_of_sexp state =
     match Name_map.find name state.unparsed with
-    | Some { value = Some value } ->
+    | Some { value = Some value; _ } ->
       (value_of_sexp value, consume name state)
-    | Some { value = None } ->
+    | Some { value = None; _ } ->
       of_sexp_error  state.record (Printf.sprintf "field %s needs a value" name)
     | None ->
       match default with
@@ -197,17 +197,17 @@ module Of_sexp = struct
 
   let field_o name value_of_sexp state =
     match Name_map.find name state.unparsed with
-    | Some { value = Some value } ->
+    | Some { value = Some value; _ } ->
       (Some (value_of_sexp value), consume name state)
-    | Some { value = None } ->
+    | Some { value = None; _ } ->
       of_sexp_error state.record (Printf.sprintf "field %s needs a value" name)
     | None -> (None, add_known name state)
 
   let field_b name state =
     match Name_map.find name state.unparsed with
-    | Some { value = Some value } ->
+    | Some { value = Some value; _ } ->
       (bool value, consume name state)
-    | Some { value = None } ->
+    | Some { value = None; _ } ->
       (true, consume name state)
     | None ->
       (false, add_known name state)
@@ -273,8 +273,6 @@ module Of_sexp = struct
             ; args : ('a, 'b) Constructor_args_spec.t
             ; make : 'a
             } -> 'b t
-
-    let name (T t) = t.name
   end
 
   let cstr name args make =

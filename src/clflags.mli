@@ -23,3 +23,6 @@ val debug_findlib : bool ref
 
 (** Compiler warnings *)
 val warnings : string ref
+
+(** Whether we are compiling with extra warnings *)
+val dev_mode : bool ref

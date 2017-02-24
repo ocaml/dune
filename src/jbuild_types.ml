@@ -840,7 +840,7 @@ module Stanza = struct
       match String_map.keys visible_packages with
       | [pkg] -> pkg
       | [] -> error "no packages are defined here"
-      | pkgs ->
+      | _ :: _ :: _ ->
         error "there is more than one package visible here:\n\
                %s\n\
                You need to add a (package ...) field in your (install ...) stanzas"

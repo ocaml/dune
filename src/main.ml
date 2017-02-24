@@ -97,8 +97,11 @@ let bootstrap () =
   let pkg = "jbuilder" in
   let main () =
     let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
-    Arg.parse [ "-j", Set_int Clflags.concurrency, "JOBS concurrency" ]
-      anon "Usage: boot.exe [-j JOBS]\nOptions are:";
+    Arg.parse
+      [ "-j"   , Set_int Clflags.concurrency, "JOBS concurrency"
+      ; "--dev", Set Clflags.dev_mode       , " set development mode"
+      ]
+      anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
     Future.Scheduler.go ~log:(create_log ())
       (setup () >>= fun { build_system = bs; _ } ->
        Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])

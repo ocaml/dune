@@ -1,7 +1,7 @@
 NAME := jbuilder
 
 default: boot.exe
-	./boot.exe -j 4
+	./boot.exe -j 4 --dev
 
 boot.exe: bootstrap.ml
 	ocaml bootstrap.ml

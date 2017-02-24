@@ -192,12 +192,6 @@ let run_capture_line ?dir ?env prog args =
         cmdline (String.concat l ~sep:"\n")
 
 module Scheduler = struct
-  let key_for_color prog =
-    let s = Filename.basename prog in
-    match String.lsplit2 s ~on:'.' with
-    | None -> s
-    | Some (s, _) -> s
-
   let colorize_prog s =
     let len = String.length s in
     if len = 0 then
@@ -246,15 +240,6 @@ module Scheduler = struct
     match dir with
     | None -> s
     | Some dir -> sprintf "(cd %s && %s)" dir s
-
-  let stderr_supports_colors = lazy(
-    not Sys.win32        &&
-    Unix.(isatty stderr) &&
-    match Sys.getenv "TERM" with
-    | exception Not_found -> false
-    | "dumb" -> false
-    | _ -> true
-  )
 
   type running_job =
     { id              : int
@@ -322,7 +307,7 @@ module Scheduler = struct
       Hashtbl.fold running ~init:[] ~f:(fun ~key:pid ~data:job acc ->
         let pid, status = Unix.waitpid [WNOHANG] pid in
         if pid <> 0 then begin
-          (pid, job, status) :: acc
+          (job, status) :: acc
         end else
           acc)
     in
@@ -331,7 +316,7 @@ module Scheduler = struct
       Unix.sleepf 0.001;
       wait_win32 ()
     | _ ->
-      List.iter finished ~f:(fun (pid, job, status) ->
+      List.iter finished ~f:(fun (job, status) ->
         process_done job status)
 
   let () =

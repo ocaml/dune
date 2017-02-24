@@ -12,7 +12,7 @@ let load ~dir ~visible_packages ~version =
   let version, stanzas =
     Sexp_load.many (Path.relative dir "jbuild" |> Path.to_string)
       (fun sexps ->
-         let versions, stanzas =
+         let versions, sexps =
            List.partition_map sexps ~f:(function
              | List [Atom ("jbuilder_version" | "Jbuilder_version"); ver] as sexp ->
                Inl (Jbuilder_version.t ver, sexp)

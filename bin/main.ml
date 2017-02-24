@@ -47,13 +47,15 @@ type common =
   ; debug_rules: bool
   ; debug_dep_path: bool
   ; debug_findlib: bool
+  ; dev_mode: bool
   }
 
 let set_common c =
   Clflags.concurrency := c.concurrency;
   Clflags.debug_rules := c.debug_rules;
   Clflags.debug_dep_path := c.debug_dep_path;
-  Clflags.debug_findlib := c.debug_findlib
+  Clflags.debug_findlib := c.debug_findlib;
+  Clflags.dev_mode := c.dev_mode
 
 let copts_sect = "COMMON OPTIONS"
 let help_secs =
@@ -66,15 +68,22 @@ let help_secs =
   ]
 
 let common =
-  let make concurrency debug_rules debug_dep_path debug_findlib =
-    { concurrency ; debug_rules ; debug_dep_path ; debug_findlib } in
+  let make concurrency debug_rules debug_dep_path debug_findlib dev_mode =
+    { concurrency
+    ; debug_rules
+    ; debug_dep_path
+    ; debug_findlib
+    ; dev_mode
+    }
+  in
   let docs = copts_sect in
   let concurrency =
     Arg.(value & opt int !Clflags.concurrency & info ["j"] ~docs) in
   let drules = Arg.(value & flag & info ["drules"] ~docs) in
   let ddep_path = Arg.(value & flag & info ["ddep-path"] ~docs) in
   let dfindlib = Arg.(value & flag & info ["dfindlib"] ~docs) in
-  Term.(const make $ concurrency $ drules $ ddep_path $ dfindlib)
+  let dev = Arg.(value & flag & info ["dev"] ~docs) in
+  Term.(const make $ concurrency $ drules $ ddep_path $ dfindlib $ dev)
 
 let build_package pkg =
   Future.Scheduler.go ~log:(create_log ())

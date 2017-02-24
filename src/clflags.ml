@@ -6,3 +6,4 @@ let debug_run = ref true
 let debug_findlib = ref false
 let warnings = ref "-40"
 let debug_dep_path = ref false
+let dev_mode = ref false

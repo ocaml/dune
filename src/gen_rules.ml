@@ -1007,7 +1007,7 @@ module Gen(P : Params) = struct
     Option.iter alias_module ~f:(fun m ->
       let flags = Ocaml_flags.default () in
       build_module m
-        ~flags:{ flags with common = "-w" :: "-49" :: flags.common }
+        ~flags:{ flags with common = flags.common @ ["-w"; "-49"] }
         ~dir
         ~modules:(String_map.singleton m.name m)
         ~dep_graph:(Ml_kind.Dict.make_both (Build.return (String_map.singleton m.name [])))

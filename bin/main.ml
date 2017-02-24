@@ -131,27 +131,54 @@ let external_lib_deps =
           $ Arg.(non_empty & pos_all string [] name_))
   , Term.info "external-lib-deps" ~doc ~man:help_secs)
 
-let resolve_targets (setup : Main.setup)user_targets =
+type target =
+  | File  of Path.t
+  | Alias of Path.t * Alias.t
+
+let resolve_targets (setup : Main.setup) user_targets =
   match user_targets with
   | [] -> []
   | _ ->
-    let user_targets = List.map user_targets ~f:(Path.relative Path.root) in
-    let real_targets =
-      List.map user_targets ~f:(fun path ->
-        if Path.is_in_build_dir path then
-          path
-        else if Path.is_local path &&
-                not (Build_system.is_target setup.build_system path) &&
-                not (Path.exists path) then
-          Path.append setup.context.build_dir path
+    let targets =
+      List.map user_targets ~f:(fun s ->
+        if String.is_prefix s ~prefix:"@" then
+          let s = String.sub s ~pos:1 ~len:(String.length s - 1) in
+          let path = Path.relative Path.root s in
+          if Path.is_root path then
+            die "@ on the command line must be followed by a valid alias name"
+          else
+            let path =
+              if Path.is_in_build_dir path then
+                path
+              else
+                Path.append setup.context.build_dir path
+            in
+            let dir = Path.parent path in
+            let name = Path.basename path in
+            Alias (path, Alias.make ~dir name)
         else
-          path)
+          File (
+            let path = Path.relative Path.root s in
+            if Path.is_in_build_dir path then
+              path
+            else if Path.is_local path &&
+                    not (Build_system.is_target setup.build_system path) &&
+                    not (Path.exists path) then
+              Path.append setup.context.build_dir path
+            else
+              path
+          ))
     in
     Printf.printf "Building the following targets:\n";
-    List.iter real_targets ~f:(fun target ->
-      Printf.printf "- %s\n" (Path.to_string target));
+    List.iter targets ~f:(function
+      | File path ->
+        Printf.printf "- %s\n" (Path.to_string path)
+      | Alias (path, _) ->
+        Printf.printf "- alias %s\n" (Path.to_string path));
     flush stdout;
-    real_targets
+    List.map targets ~f:(function
+      | File path -> path
+      | Alias (_, alias) -> Alias.file alias)
 
 let build_targets ~name =
   let doc = "build targets" in

@@ -5,13 +5,13 @@ type setup =
   { build_system : Build_system.t
   ; stanzas      : (Path.t * Jbuild_types.Stanza.t list) list
   ; context      : Context.t
-  ; packages     : Path.t String_map.t
+  ; packages     : Package.t String_map.t
   }
 
 let package_install_file { packages; _ } pkg =
   match String_map.find pkg packages with
   | None -> Error ()
-  | Some path -> Ok (Path.relative path (pkg ^ ".install"))
+  | Some p -> Ok (Path.relative p.path (p.name ^ ".install"))
 
 let setup ?filter_out_optional_stanzas_with_missing_deps () =
   let { Jbuild_load. file_tree; tree; stanzas; packages } = Jbuild_load.load () in

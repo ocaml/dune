@@ -98,7 +98,7 @@ module type Params = sig
   val file_tree : File_tree.t
   val tree      : Alias.tree
   val stanzas   : (Path.t * Jbuild_types.Stanza.t list) list
-  val packages  : Path.t String_map.t
+  val packages  : Package.t String_map.t
   val filter_out_optional_stanzas_with_missing_deps : bool
 end
 
@@ -1465,14 +1465,14 @@ module Gen(P : Params) = struct
   (* META files that must be installed. Either because there is an explicit or user
      generated one, or because *)
   let packages_with_explicit_or_user_generated_meta =
-    String_map.bindings P.packages
-    |> List.filter_map ~f:(fun (package, src_path) ->
-      let path = Path.append ctx.build_dir src_path in
-      let meta_fn = "META." ^ package in
+    String_map.values P.packages
+    |> List.filter_map ~f:(fun (pkg : Package.t) ->
+      let path = Path.append ctx.build_dir pkg.path in
+      let meta_fn = "META." ^ pkg.name in
       let meta_templ_fn = meta_fn ^ ".template" in
 
+      let files = sources_and_targets_known_so_far ~src_path:pkg.path in
       let has_meta, has_meta_tmpl =
-        let files = sources_and_targets_known_so_far ~src_path in
         (String_set.mem meta_fn files,
          String_set.mem meta_templ_fn files)
       in
@@ -1485,9 +1485,24 @@ module Gen(P : Params) = struct
       in
       let meta_path = Path.relative path meta_fn in
 
+      let version =
+        match pkg.version_from_opam_file with
+        | Some s -> Gen_meta.This s
+        | None ->
+          let candicates =
+            [ pkg.name ^ ".version"
+            ; "version"
+            ; "VERSION"
+            ]
+          in
+          match List.find candicates ~f:(fun fn -> String_set.mem fn files) with
+          | None -> Na
+          | Some fn -> Load (Path.relative path fn)
+      in
+
       let template =
         if has_meta_tmpl then
-          let meta_templ_path = Path.relative src_path meta_templ_fn in
+          let meta_templ_path = Path.relative pkg.path meta_templ_fn in
           Build.path meta_templ_path
           >>^ fun () ->
           lines_of_file (Path.to_string meta_templ_path)
@@ -1495,24 +1510,31 @@ module Gen(P : Params) = struct
           Build.return ["# JBUILDER_GEN"]
       in
       let meta =
-        Gen_meta.gen ~package
+        Gen_meta.gen ~package:pkg.name
+          ~version
           ~stanzas:stanzas_to_consider_for_install
           ~lib_deps:(fun ~dir jbuild ->
             match jbuild with
             | Library lib ->
+              Build.arr ignore
+              >>>
               Lib_db.load_requires ~dir ~item:lib.name
               >>^ List.map ~f:Lib.best_name
             | Executables exes ->
               let item = List.hd exes.names in
+              Build.arr ignore
+              >>>
               Lib_db.load_requires ~dir ~item
               >>^ List.map ~f:Lib.best_name
-            | _ -> Build.return [])
+            | _ -> Build.arr (fun _ -> []))
           ~ppx_runtime_deps:(fun ~dir jbuild ->
             match jbuild with
             | Library lib ->
+              Build.arr ignore
+              >>>
               Lib_db.load_runtime_deps ~dir ~item:lib.name
               >>^ List.map ~f:Lib.best_name
-            | _ -> Build.return [])
+            | _ -> Build.arr (fun _ -> []))
       in
       add_rule
         (Build.fanout meta template
@@ -1534,7 +1556,7 @@ module Gen(P : Params) = struct
              Format.pp_print_flush ppf ())));
 
       if has_meta || has_meta_tmpl then
-        Some package
+        Some pkg.name
       else
         None)
     |> String_set.of_list
@@ -1653,14 +1675,14 @@ module Gen(P : Params) = struct
        Build.create_file ~target:fn (fun () ->
          Install.write_install_file fn entries))
 
-  let () = String_map.iter P.packages ~f:(fun ~key:package ~data:package_path ->
-    install_file package_path package)
+  let () = String_map.iter P.packages ~f:(fun ~key:_ ~data:pkg ->
+    install_file pkg.Package.path pkg.name)
 
   let () =
     let install_alias = Alias.make ~dir:ctx.build_dir "install" in
     let global_install_alias = Alias.make ~dir:Path.root "install" in
     let is_default = Path.basename ctx.build_dir = "default" in
-    String_map.iter P.packages ~f:(fun ~key:pkg ~data:path ->
+    String_map.iter P.packages ~f:(fun ~key:pkg ~data:{ Package.path; _ } ->
       let install_fn = pkg ^ ".install" in
       let in_source_dir = Path.relative path install_fn in
       let orig = Path.append ctx.build_dir in_source_dir in

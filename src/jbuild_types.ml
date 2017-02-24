@@ -828,17 +828,17 @@ module Stanza = struct
              | Some n -> String_set.add n acc)
         | _ -> acc))
 
-  let resolve_packages ts ~dir ~visible_packages =
+  let resolve_packages ts ~dir ~(visible_packages : Package.t String_map.t) =
     let error fmt =
       Loc.fail (Loc.in_file (Path.to_string (Path.relative dir "jbuild"))) fmt
     in
     let known_packages () =
-      let visible_packages = String_map.bindings visible_packages in
-      let longest_pkg = List.longest_map visible_packages ~f:fst in
+      let visible_packages = String_map.values visible_packages in
+      let longest_pkg = List.longest_map visible_packages ~f:(fun p -> p.name) in
       String.concat ~sep:"\n"
-        (List.map visible_packages ~f:(fun (pkg, dir) ->
-           sprintf "- %-*s (because of %s)" longest_pkg pkg
-             (Path.to_string (Path.relative dir (pkg ^ ".opam")))))
+        (List.map visible_packages ~f:(fun pkg ->
+           sprintf "- %-*s (because of %s)" longest_pkg pkg.Package.name
+             (Path.to_string (Path.relative pkg.path (pkg.name ^ ".opam")))))
     in
     let check pkg =
       if not (String_map.mem pkg visible_packages) then

@@ -46,7 +46,6 @@ let requires ?(preds=[]) pkgs =
   rule "requires" preds Set (string_of_deps pkgs)
 let ppx_runtime_deps ?(preds=[]) pkgs =
   rule "ppx_runtime_deps" preds Set (string_of_deps pkgs)
-let version     s = rule "version"     []      Set s
 let description s = rule "description" []      Set s
 let _directory   s = rule "directory"   []      Set s
 let archive preds s = rule "archive"   preds Set s
@@ -59,7 +58,7 @@ let archives ?(preds=[]) name =
   ]
 let exists_if fn = rule "exists_if" [] Set fn
 
-let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps =
+let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~version =
   let desc =
     match lib.synopsis with
     | Some s -> s
@@ -75,8 +74,8 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps =
     | Ppx_rewriter | Ppx_type_conv_plugin -> [Pos "ppx_driver"]
   in
   List.concat
-    [ [ version "0.1.alpha1"
-      ; description desc
+    [ version
+    ; [ description desc
       ; requires ~preds lib_deps
       ]
     ; archives ~preds lib.name
@@ -95,18 +94,21 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps =
          ; Package
              { name    = sub_pkg_name
              ; entries =
-                 version "0.1.alpha1"                                              ::
-                 description "glue package for the deprecated method of using ppx" ::
-                 requires ppx_rt_deps                                              ::
-                 match lib.kind with
-                 | Normal -> assert false
-                 | Ppx_rewriter ->
-                   [ rule "ppx" [Neg "ppx_driver"; Neg "custom_ppx"] Set "./as-ppx.exe" ]
-                 | Ppx_type_conv_plugin ->
-                   [ rule "requires" [Neg "ppx_driver"; Neg "custom_ppx"] Add
-                       "ppx_deriving"
-                   ; rule "ppxopt" [Neg "ppx_driver"; Neg "custom_ppx"] Set
-                       ("ppx_deriving,package:" ^ Pub_name.to_string pub_name)
+                 List.concat
+                   [ version
+                   ; [ description "glue package for the deprecated method of using ppx"
+                     ; requires ppx_rt_deps
+                     ]
+                   ; match lib.kind with
+                   | Normal -> assert false
+                   | Ppx_rewriter ->
+                     [ rule "ppx" [Neg "ppx_driver"; Neg "custom_ppx"] Set "./as-ppx.exe" ]
+                   | Ppx_type_conv_plugin ->
+                     [ rule "requires" [Neg "ppx_driver"; Neg "custom_ppx"] Add
+                         "ppx_deriving"
+                     ; rule "ppxopt" [Neg "ppx_driver"; Neg "custom_ppx"] Set
+                         ("ppx_deriving,package:" ^ Pub_name.to_string pub_name)
+                     ]
                    ]
              }
          ])
@@ -122,7 +124,7 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps =
       )
     ]
 
-let gen_obj _pub_name (exes : Executables.t) ~lib_deps =
+let gen_obj _pub_name (exes : Executables.t) ~lib_deps ~version =
   let desc =
     match exes.synopsis with
     | Some s -> s
@@ -134,15 +136,20 @@ let gen_obj _pub_name (exes : Executables.t) ~lib_deps =
   in
   let cmo_files = obj_files ~ext:".cmo" in
   let cmx_files = obj_files ~ext:".cmx" in
-  [ version "0.1.alpha1"
-  ; description desc
+  version @
+  [ description desc
   ; requires lib_deps
   ; archive [Pos "byte"  ] cmo_files
   ; archive [Pos "native"] cmx_files
   ; exists_if cmo_files
   ]
 
-let gen ~package ~stanzas ~lib_deps ~ppx_runtime_deps =
+type package_version =
+  | This of string
+  | Load of Path.t
+  | Na
+
+let gen ~package ~version ~stanzas ~lib_deps ~ppx_runtime_deps =
   let items =
     List.filter_map stanzas ~f:(fun (dir, stanza) ->
       match (stanza : Stanza.t) with
@@ -155,18 +162,34 @@ let gen ~package ~stanzas ~lib_deps ~ppx_runtime_deps =
       | _ ->
         None)
   in
+  (match version with
+   | This s -> Build.return [rule "version" [] Set s]
+   | Load p ->
+     Build.path p
+     >>^ fun () ->
+     let ver =
+       match lines_of_file (Path.to_string p) with
+       | ver :: _ -> ver
+       | _ -> ""
+     in
+     [rule "version" [] Set ver]
+   | Na -> Build.return [])
+  >>>
   Build.all
     (List.map items ~f:(function
        | Lib (dir, pub_name, lib) ->
-         Build.fanout
+         Build.fanout3
+           (Build.arr (fun x -> x))
            (lib_deps ~dir         (Stanza.Library lib))
            (ppx_runtime_deps ~dir (Stanza.Library lib))
-         >>^ fun (lib_deps, ppx_runtime_deps) ->
-         (pub_name, gen_lib pub_name lib ~lib_deps ~ppx_runtime_deps)
+         >>^ fun (version, lib_deps, ppx_runtime_deps) ->
+         (pub_name, gen_lib pub_name lib ~lib_deps ~ppx_runtime_deps ~version)
        | Obj (dir, pub_name, exes) ->
-         lib_deps ~dir (Stanza.Executables exes)
-         >>^ fun lib_deps ->
-         (pub_name, gen_obj pub_name exes ~lib_deps)))
+         Build.fanout
+           (Build.arr (fun x -> x))
+           (lib_deps ~dir (Stanza.Executables exes))
+         >>^ fun (version, lib_deps) ->
+         (pub_name, gen_obj pub_name exes ~lib_deps ~version)))
   >>^ fun pkgs ->
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->

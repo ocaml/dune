@@ -50,10 +50,12 @@ runtest= to run them.
 - *21/02/2017*: Rudi Grinberg added support for aliases ([[https://github.com/janestreet/jbuilder/pull/2][#7]])
 - *23/02/2017*: Added a =runtest= subcommand
 
-** Implement package version support
+** +Implement package version support+
 
 Implement finding the version of a package, as described in the
 documentation.
+
+- *24/02/2017*: Implemented
 
 * After V1
 

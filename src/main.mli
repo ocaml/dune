@@ -4,7 +4,7 @@ type setup =
   { build_system : Build_system.t
   ; stanzas      : (Path.t * Jbuild_types.Stanza.t list) list
   ; context      : Context.t
-  ; packages     : Path.t String_map.t
+  ; packages     : Package.t String_map.t
   }
 
 (* Returns [Error ()] if [pkg] is unknown *)

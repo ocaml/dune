@@ -798,6 +798,7 @@ The following constructions are available:
 - =(run <prog> <args>)= to execute a program
 - =(chdir <dir> <DSL>)= to change the current directory
 - =(setenv <var> <value> <DSL>)= to set an environment variable
+- =(with-stdout-to <file> <DSL>)= to redirect the output to a file
 * Usage
 
 TODO

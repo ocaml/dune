@@ -173,8 +173,12 @@ let action ~targets =
   dyn_paths (arr (fun a -> [a.Action.prog]))
   >>>
   prim ~targets
-    (fun { Action. prog; args; env; dir } ->
-       Future.run ~dir:(Path.to_string dir) ~env (Path.reach ~from:dir prog) args)
+    (fun { Action. prog; args; env; dir; stdout_to; touches } ->
+       List.iter touches ~f:(fun fn ->
+         close_out (open_out_bin (Path.to_string fn)));
+       let stdout_to = Option.map stdout_to ~f:(Path.reach ~from:dir) in
+       Future.run ~dir:(Path.to_string dir) ~env ?stdout_to (Path.reach ~from:dir prog)
+         args)
 
 let echo fn =
   create_file ~target:fn (fun data ->

@@ -10,6 +10,7 @@ open Sexp.Of_sexp
 
 type sexp = Sexp.t = Atom of string | List of sexp list
 let of_sexp_error = Sexp.of_sexp_error
+let of_sexp_errorf = Sexp.of_sexp_errorf
 
 module Jbuilder_version = struct
   type t =
@@ -26,7 +27,7 @@ module Jbuilder_version = struct
 end
 
 let invalid_module_name sexp =
-  of_sexp_error "invalid module name" sexp
+  of_sexp_error sexp "invalid module name"
 
 let module_name sexp =
   match string sexp with
@@ -41,7 +42,7 @@ let module_name sexp =
 let module_names sexp = String_set.of_list (list module_name sexp)
 
 let invalid_lib_name sexp =
-  of_sexp_error "invalid library name" sexp
+  of_sexp_error sexp "invalid library name"
 
 let library_name sexp =
   match string sexp with
@@ -56,16 +57,16 @@ let library_name sexp =
 let file sexp =
   match string sexp with
   | "." | ".." ->
-    Sexp.of_sexp_error "'.' and '..' are not valid filenames" sexp
+    of_sexp_error sexp "'.' and '..' are not valid filenames"
   | fn -> fn
 
 let file_in_current_dir sexp =
   match string sexp with
   | "." | ".." ->
-    Sexp.of_sexp_error "'.' and '..' are not valid filenames" sexp
+    of_sexp_error sexp "'.' and '..' are not valid filenames"
   | fn ->
     if Filename.dirname fn <> Filename.current_dir_name then
-      Sexp.of_sexp_error "file in current directory expected" sexp;
+      of_sexp_error sexp "file in current directory expected";
     fn
 
 module Raw_string () : sig
@@ -92,7 +93,7 @@ module Pp = struct
   let t sexp =
     let s = string sexp in
     if String.is_prefix s ~prefix:"-" then
-      of_sexp_error "flag not allowed here" sexp
+      of_sexp_error sexp "flag not allowed here"
     else
       of_string s
 
@@ -133,13 +134,13 @@ module User_action = struct
       | List [ Atom "chdir"; dir; arg ] -> Chdir (a dir, t a arg)
       | List [ Atom "setenv"; var; value; arg ] -> Setenv (a var, a value, t a arg)
       | _ ->
-        of_sexp_error "\
+        of_sexp_error sexp "\
 invalid action, expected one of:
 
   (run <prog> <args>)
   (chdir <dir> <action>)
   (setenv <var> <value> <action>)
-" sexp
+"
 
     let rec map t ~f =
       match t with
@@ -292,7 +293,7 @@ module Preprocess_map = struct
         |> function
         | Ok map -> Per_file map
         | Error (name, _, _) ->
-          Sexp.of_sexp_error (sprintf "module %s present in two different sets" name) sexp
+          of_sexp_error sexp (sprintf "module %s present in two different sets" name)
       end
     | sexp -> For_all (Preprocess.t sexp)
 
@@ -343,7 +344,7 @@ module Lib_dep = struct
           ; file = file sexp
           }
         | Atom "->" :: _ | List _ :: _ | [] ->
-          of_sexp_error "(<[!]libraries>... -> <file>) expected" sexp
+          of_sexp_error sexp "(<[!]libraries>... -> <file>) expected"
         | Atom s :: l ->
           let len = String.length s in
           if len > 0 && s.[0] = '!' then
@@ -353,7 +354,7 @@ module Lib_dep = struct
             loop (Pos s :: acc) l
       in
       loop [] l
-    | sexp -> of_sexp_error "(<library-name> <code>) expected" sexp
+    | sexp -> of_sexp_error sexp "(<library-name> <code>) expected"
 
   let sexp_of_choice { lits; file } =
     List (List.fold_right lits ~init:[Atom "->"; Atom file] ~f:(fun lit acc ->
@@ -369,8 +370,7 @@ module Lib_dep = struct
              ; choices   = List.map libs ~f:choice
              }
     | sexp ->
-      of_sexp_error "<library> or (select <module> from <libraries...>) expected"
-        sexp
+      of_sexp_error sexp "<library> or (select <module> from <libraries...>) expected"
 
   let to_lib_names = function
     | Direct s -> [s]
@@ -688,7 +688,7 @@ module Provides = struct
       ; file
       }
     | sexp ->
-      of_sexp_error "[<name>] or [<name> (file <file>)] expected" sexp
+      of_sexp_error sexp "[<name>] or [<name> (file <file>)] expected"
 
   let vjs = v1
 end
@@ -704,9 +704,8 @@ module Install_conf = struct
     | Atom src                             -> { src; dst = None }
     | List [Atom src; Atom "as"; Atom dst] -> { src; dst = Some dst }
     | _ ->
-      of_sexp_error
+      of_sexp_error sexp
         "invalid format, <name> or (<name> as <install-as>) expected"
-        sexp
 
   type t =
     { section : Install.Section.t

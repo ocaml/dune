@@ -23,7 +23,7 @@ let load ~dir ~visible_packages ~version =
            | [] -> version
            | [(v, _)] -> v
            | _ :: (_, sexp) :: _ ->
-             of_sexp_error "jbuilder_version specified too many times" sexp
+             of_sexp_error sexp "jbuilder_version specified too many times"
          in
          (version, List.filter_map sexps ~f:(Stanza.select version)))
   in

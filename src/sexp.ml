@@ -39,9 +39,10 @@ let locate_in_list ts ~sub ~locs =
 let locate t ~sub ~locs =
   locate_in_list [t] ~sub ~locs:[locs]
 
-exception Of_sexp_error of string * t
+exception Of_sexp_error of t * string
 
-let of_sexp_error msg t = raise (Of_sexp_error (msg, t))
+let of_sexp_error t msg = raise (Of_sexp_error (t, msg))
+let of_sexp_errorf t fmt = Printf.ksprintf (of_sexp_error t) fmt
 
 let must_escape str =
   let len = String.length str in
@@ -93,44 +94,44 @@ module Of_sexp = struct
 
   let unit = function
     | List [] -> ()
-    | sexp -> of_sexp_error "() expected" sexp
+    | sexp -> of_sexp_error sexp "() expected"
 
   let string = function
     | Atom s -> s
-    | List _ as sexp -> of_sexp_error "Atom expected" sexp
+    | List _ as sexp -> of_sexp_error sexp "Atom expected"
 
   let int sexp =
     let s = string sexp in
     try
       int_of_string s
     with _ ->
-      of_sexp_error "Integer expected" sexp
+      of_sexp_error sexp "Integer expected"
 
   let bool sexp =
     match string sexp with
     | "true" -> true
     | "false" -> false
-    | _ -> of_sexp_error "'true' or 'false' expected" sexp
+    | _ -> of_sexp_error sexp "'true' or 'false' expected"
 
   let pair fa fb = function
     | List [a; b] -> (fa a, fb b)
-    | sexp -> of_sexp_error "S-expression of the form (_ _) expected" sexp
+    | sexp -> of_sexp_error sexp "S-expression of the form (_ _) expected"
 
   let list f = function
-    | Atom _ as sexp -> of_sexp_error "List expected" sexp
+    | Atom _ as sexp -> of_sexp_error sexp "List expected"
     | List l -> List.map l ~f
 
   let option f = function
     | List [] -> None
     | List [x] -> Some (f x)
-    | sexp -> of_sexp_error "S-expression of the form () or (_) expected" sexp
+    | sexp -> of_sexp_error sexp "S-expression of the form () or (_) expected"
 
   let string_set sexp = String_set.of_list (list string sexp)
   let string_map f sexp =
     match String_map.of_alist (list (pair string f) sexp) with
     | Ok x -> x
     | Error (key, _v1, _v2) ->
-      of_sexp_error (sprintf "key %S present multiple times" key) sexp
+      of_sexp_error sexp (sprintf "key %S present multiple times" key)
 
   type unparsed_field =
     { value : sexp option
@@ -187,19 +188,19 @@ module Of_sexp = struct
     | Some { value = Some value } ->
       (value_of_sexp value, consume name state)
     | Some { value = None } ->
-      of_sexp_error (Printf.sprintf "field %s needs a value" name) state.record
+      of_sexp_error  state.record (Printf.sprintf "field %s needs a value" name)
     | None ->
       match default with
       | Some v -> (v, add_known name state)
       | None ->
-        of_sexp_error (Printf.sprintf "field %s missing" name) state.record
+        of_sexp_error state.record (Printf.sprintf "field %s missing" name)
 
   let field_o name value_of_sexp state =
     match Name_map.find name state.unparsed with
     | Some { value = Some value } ->
       (Some (value_of_sexp value), consume name state)
     | Some { value = None } ->
-      of_sexp_error (Printf.sprintf "field %s needs a value" name) state.record
+      of_sexp_error state.record (Printf.sprintf "field %s needs a value" name)
     | None -> (None, add_known name state)
 
   let field_b name state =
@@ -213,7 +214,7 @@ module Of_sexp = struct
 
   let make_record_parser_state sexp =
     match sexp with
-    | Atom _ -> of_sexp_error "List expected" sexp
+    | Atom _ -> of_sexp_error sexp "List expected"
     | List sexps ->
       let unparsed =
         List.fold_left sexps ~init:Name_map.empty ~f:(fun acc sexp ->
@@ -225,10 +226,10 @@ module Of_sexp = struct
               | Atom name ->
                 Name_map.add acc ~key:name ~data:{ value = Some value; entry = sexp }
               | List _ ->
-                of_sexp_error "Atom expected" name_sexp
+                of_sexp_error name_sexp "Atom expected"
             end
           | _ ->
-            of_sexp_error "S-expression of the form (_ _) expected" sexp)
+            of_sexp_error sexp "S-expression of the form (_ _) expected")
       in
       { record = sexp
       ; known  = []
@@ -247,9 +248,8 @@ module Of_sexp = struct
         | List (s :: _) -> s
         | _ -> assert false
       in
-      of_sexp_error
-        (Printf.sprintf "Unknown field %s%s" name
-           (hint name state.known)) name_sexp
+      of_sexp_errorf name_sexp
+        "Unknown field %s%s" name (hint name state.known)
 
   module Constructor_args_spec = struct
     type 'a conv = 'a t
@@ -261,8 +261,8 @@ module Of_sexp = struct
       = fun t sexp sexps f ->
         match t, sexps with
         | [], [] -> f
-        | _ :: _, [] -> of_sexp_error "not enough arguments" sexp
-        | [], _ :: _ -> of_sexp_error "too many arguments" sexp
+        | _ :: _, [] -> of_sexp_error sexp "not enough arguments"
+        | [], _ :: _ -> of_sexp_error sexp "too many arguments"
         | conv :: t, s :: sexps ->
           convert t sexp sexps (f (conv s))
   end
@@ -307,13 +307,12 @@ module Of_sexp = struct
     with
     | Some cstr -> cstr
     | None ->
-      of_sexp_error
-        (sprintf "Unknown constructor %s%s" name
-           (hint
-              (String.uncapitalize_ascii name)
-              (List.map cstrs ~f:(fun (Constructor_spec.T c) ->
-                 String.uncapitalize_ascii c.name)))
-        ) sexp
+      of_sexp_errorf sexp
+        "Unknown constructor %s%s" name
+        (hint
+           (String.uncapitalize_ascii name)
+           (List.map cstrs ~f:(fun (Constructor_spec.T c) ->
+              String.uncapitalize_ascii c.name)))
 
   let sum cstrs sexp =
     match sexp with
@@ -321,17 +320,17 @@ module Of_sexp = struct
         let (Constructor_spec.T c) = find_cstr cstrs sexp s in
         Constructor_args_spec.convert c.args sexp [] c.make
       end
-    | List [] -> of_sexp_error "non-empty list expected" sexp
+    | List [] -> of_sexp_error sexp "non-empty list expected"
     | List (name_sexp :: args) ->
       match name_sexp with
-      | List _ -> of_sexp_error "Atom expected" name_sexp
+      | List _ -> of_sexp_error name_sexp "Atom expected"
       | Atom s ->
         let (Constructor_spec.T c) = find_cstr cstrs sexp s in
         Constructor_args_spec.convert c.args sexp args c.make
 
   let enum cstrs sexp =
     match sexp with
-    | List _ -> of_sexp_error "Atom expected" sexp
+    | List _ -> of_sexp_error sexp "Atom expected"
     | Atom s ->
       match
         List.find cstrs ~f:(fun (name, _) ->
@@ -339,13 +338,12 @@ module Of_sexp = struct
       with
       | Some (_, value) -> value
       | None ->
-        of_sexp_error
-          (sprintf "Unknown value %s%s" s
-             (hint
-                (String.uncapitalize_ascii s)
-                (List.map cstrs ~f:(fun (name, _) ->
-                   String.uncapitalize_ascii name)))
-          ) sexp
+        of_sexp_errorf sexp
+          "Unknown value %s%s" s
+          (hint
+             (String.uncapitalize_ascii s)
+             (List.map cstrs ~f:(fun (name, _) ->
+                String.uncapitalize_ascii name)))
 end
 (*
 module Both = struct

@@ -108,3 +108,7 @@ We could also implements pipes (=(pipe <command1> <command2> ...)=) by
 using temporary files. Using proper pipes would complicate windows
 support and would make proper handling of =-j= hard. Using temporary
 files will be just fine.
+** User configuration file
+
+Load a configuration file from =~/.config/jbuilder/config.sexp= where
+the user can define preferences such as colors.

@@ -38,7 +38,7 @@ module Ocaml_flags = struct
 
   let get_for_cm t ~cm_kind = get t (Mode.of_cm_kind cm_kind)
 
-  let default = make (Sexp.Of_sexp.record Buildable.t (List []))
+  let default = make (Sexp.Of_sexp.record Buildable.v1 (List []))
 end
 
 let default_c_flags = g ()

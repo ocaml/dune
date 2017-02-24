@@ -9,7 +9,7 @@ type conf =
   }
 
 let load ~dir ~visible_packages =
-  let stanzas = Sexp_load.many (Path.relative dir "jbuild" |> Path.to_string) Stanza.t in
+  let stanzas = Sexp_load.many (Path.relative dir "jbuild" |> Path.to_string) Stanza.vjs in
   let stanzas = Stanza.resolve_packages stanzas ~dir ~visible_packages in
   (dir, stanzas)
 

@@ -1,6 +1,13 @@
 open Import
 open Sexp.Of_sexp
 
+(* This file defines the jbuild types as well as the S-expression syntax for the various
+   supported version of the specification.
+
+   [vN] is for the version [N] of the specification and [vjs] is for the rolling
+   [jane_street] version. When they are all the same, sexp parsers are just named [t].
+*)
+
 type sexp = Sexp.t = Atom of string | List of sexp list
 let of_sexp_error = Sexp.of_sexp_error
 
@@ -373,7 +380,7 @@ module Buildable = struct
     ; ocamlopt_flags           : Ordered_set_lang.t
     }
 
-  let t =
+  let common =
     field "preprocess" Preprocess_map.t ~default:Preprocess_map.default
     >>= fun preprocess ->
     field "preprocessor_deps" (list Dep_conf.t) ~default:[]
@@ -381,25 +388,11 @@ module Buildable = struct
     field "modules" (fun s -> Ordered_set_lang.(map (t s)) ~f:String.capitalize_ascii)
       ~default:Ordered_set_lang.standard
     >>= fun modules ->
-    field "extra_disabled_warnings" (list int) ~default:[]
-    >>= fun extra_disabled_warnings  ->
     field "libraries" (list Lib_dep.t) ~default:[]
     >>= fun libraries ->
     field_osl "flags"          >>= fun flags          ->
     field_osl "ocamlc_flags"   >>= fun ocamlc_flags   ->
     field_osl "ocamlopt_flags" >>= fun ocamlopt_flags ->
-    let flags =
-      if Ordered_set_lang.is_standard flags && extra_disabled_warnings <> [] then
-        Ordered_set_lang.append flags
-          (Ordered_set_lang.t
-             (List [ Atom "-w"
-                   ; Atom
-                       (String.concat ~sep:""
-                          (List.map extra_disabled_warnings ~f:(sprintf "-%d")))
-                   ]))
-      else
-        flags
-    in
     return
       { preprocess
       ; preprocessor_deps
@@ -409,6 +402,29 @@ module Buildable = struct
       ; ocamlc_flags
       ; ocamlopt_flags
       }
+
+  let v1 = common
+
+  let vjs =
+    common >>= fun t ->
+    field "extra_disabled_warnings" (list int) ~default:[]
+    >>= fun extra_disabled_warnings  ->
+    let t =
+      if Ordered_set_lang.is_standard t.flags && extra_disabled_warnings <> [] then
+        let flags =
+          Ordered_set_lang.append t.flags
+            (Ordered_set_lang.t
+               (List [ Atom "-w"
+                     ; Atom
+                         (String.concat ~sep:""
+                            (List.map extra_disabled_warnings ~f:(sprintf "-%d")))
+                     ]))
+        in
+        { t with flags }
+      else
+        t
+    in
+    return t
 end
 
 module Library = struct
@@ -449,10 +465,53 @@ module Library = struct
     ; buildable                : Buildable.t
     }
 
-  let t =
+  let v1 =
+    record
+      (Buildable.v1 >>= fun buildable ->
+       field      "name" library_name                                      >>= fun name                     ->
+       field_o    "public_name" string                                     >>= fun public_name              ->
+       field_o    "synopsis" string                                        >>= fun synopsis                 ->
+       field      "install_c_headers" (list string) ~default:[]            >>= fun install_c_headers        ->
+       field      "ppx_runtime_libraries" (list string) ~default:[]        >>= fun ppx_runtime_libraries    ->
+       field_oslu "c_flags"                                                >>= fun c_flags                  ->
+       field_oslu "cxx_flags"                                              >>= fun cxx_flags                ->
+       field      "c_names" (list string) ~default:[]                      >>= fun c_names                  ->
+       field      "cxx_names" (list string) ~default:[]                    >>= fun cxx_names                ->
+       field      "library_flags" (list String_with_vars.t) ~default:[]    >>= fun library_flags            ->
+       field_oslu "c_library_flags"                                        >>= fun c_library_flags          ->
+       field_o    "js_of_ocaml" Js_of_ocaml.t                              >>= fun js_of_ocaml              ->
+       field      "virtual_deps" (list string) ~default:[]                 >>= fun virtual_deps             ->
+       field      "modes" (list Mode.t) ~default:Mode.all                  >>= fun modes                    ->
+       field      "kind" Kind.t ~default:Kind.Normal                       >>= fun kind                     ->
+       field      "wrapped" bool ~default:true                             >>= fun wrapped                  ->
+       field_b    "optional"                                               >>= fun optional                 ->
+       return
+         { name
+         ; public_name
+         ; synopsis
+         ; install_c_headers
+         ; ppx_runtime_libraries
+         ; modes
+         ; kind
+         ; c_names
+         ; c_flags
+         ; cxx_names
+         ; cxx_flags
+         ; includes = []
+         ; library_flags
+         ; c_library_flags
+         ; self_build_stubs_archive = None
+         ; js_of_ocaml
+         ; virtual_deps
+         ; wrapped
+         ; optional
+         ; buildable
+         })
+
+  let vjs =
     record
       (ignore_fields ["inline_tests"; "skip_from_default"; "lint"] >>= fun () ->
-       Buildable.t >>= fun buildable ->
+       Buildable.vjs >>= fun buildable ->
        field      "name" library_name                                      >>= fun name                     ->
        field_o    "public_name" string                                     >>= fun public_name              ->
        field_o    "synopsis" string                                        >>= fun synopsis                 ->
@@ -522,12 +581,29 @@ module Executables = struct
     ; buildable          : Buildable.t
     }
 
-  let t =
+  let v1 =
+    record
+      (Buildable.v1 >>= fun buildable ->
+       field   "names"              (list string)      >>= fun names ->
+       field_o "object_public_name" string             >>= fun object_public_name ->
+       field_o "synopsis"           string             >>= fun synopsis ->
+       field   "link_executables"   bool ~default:true >>= fun link_executables ->
+       field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
+       return
+         { names
+         ; object_public_name
+         ; synopsis
+         ; link_executables
+         ; link_flags
+         ; buildable
+         })
+
+  let vjs =
     record
       (ignore_fields
          ["js_of_ocaml"; "only_shared_object"; "review_help"; "skip_from_default"]
        >>= fun () ->
-       Buildable.t >>= fun buildable ->
+       Buildable.vjs >>= fun buildable ->
        field   "names"              (list string)      >>= fun names ->
        field_o "object_public_name" string             >>= fun object_public_name ->
        field_o "synopsis"           string             >>= fun synopsis ->
@@ -550,25 +626,32 @@ module Rule = struct
     ; action  : User_action.Unexpanded.t
     }
 
-  let t =
+  let common =
+    field "targets" (list file_in_current_dir) >>= fun targets ->
+    field "deps"    (list Dep_conf.t)          >>= fun deps ->
+    field "action"  User_action.Unexpanded.t   >>= fun action ->
+    return { targets; deps; action }
+
+  let v1 = record common
+
+  let vjs =
     record
       (ignore_fields ["sandbox"] >>= fun () ->
-       field "targets" (list file_in_current_dir) >>= fun targets ->
-       field "deps"    (list Dep_conf.t)          >>= fun deps ->
-       field "action"  User_action.Unexpanded.t   >>= fun action ->
-       return { targets; deps; action })
+       common)
 end
 
 module Ocamllex = struct
   type t = { names : string list }
 
-  let t sexp = { names = list string sexp }
+  let v1 sexp = { names = list string sexp }
+  let vjs = v1
 end
 
 module Ocamlyacc = struct
   type t = { names : string list }
 
-  let t sexp = { names = list string sexp }
+  let v1 sexp = { names = list string sexp }
+  let vjs = v1
 end
 
 module Provides = struct
@@ -577,7 +660,7 @@ module Provides = struct
     ; file : string
     }
 
-  let t sexp =
+  let v1 sexp =
     match sexp with
     | Atom s ->
       { name = s
@@ -592,6 +675,8 @@ module Provides = struct
       }
     | sexp ->
       of_sexp_error "[<name>] or [<name> (file <file>)] expected" sexp
+
+  let vjs = v1
 end
 
 module Install_conf = struct
@@ -615,7 +700,7 @@ module Install_conf = struct
     ; package : string option
     }
 
-  let t =
+  let v1 =
     record
       (field   "section" Install.Section.t >>= fun section ->
        field   "files"   (list file)       >>= fun files ->
@@ -625,6 +710,8 @@ module Install_conf = struct
          ; files
          ; package
          })
+
+  let vjs = v1
 end
 
 module Alias_conf = struct
@@ -634,17 +721,22 @@ module Alias_conf = struct
     ; action : User_action.Unexpanded.t option
     }
 
-  let t =
+  let common =
+    field "name" string                        >>= fun name ->
+    field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
+    field_o "action" User_action.Unexpanded.t  >>= fun action ->
+    return
+      { name
+      ; deps
+      ; action
+      }
+
+  let v1 = record common
+
+  let vjs =
     record
       (ignore_fields ["sandbox"] >>= fun () ->
-       field "name" string                        >>= fun name ->
-       field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
-       field_o "action" User_action.Unexpanded.t  >>= fun action ->
-       return
-         { name
-         ; deps
-         ; action
-         })
+       common)
 end
 
 module Stanza = struct
@@ -659,16 +751,28 @@ module Stanza = struct
     | Alias       of Alias_conf.t
     | Other
 
-  let t =
+  let v1 =
     sum
-      [ cstr "library"     [Library.t]      (fun x -> Library     x)
-      ; cstr "executables" [Executables.t]  (fun x -> Executables x)
-      ; cstr "rule"        [Rule.t]         (fun x -> Rule        x)
-      ; cstr "ocamllex"    [Ocamllex.t]     (fun x -> Ocamllex    x)
-      ; cstr "ocamlyacc"   [Ocamlyacc.t]    (fun x -> Ocamlyacc   x)
-      ; cstr "provides"    [Provides.t]     (fun x -> Provides    x)
-      ; cstr "install"     [Install_conf.t] (fun x -> Install     x)
-      ; cstr "alias"       [Alias_conf.t]   (fun x -> Alias       x)
+      [ cstr "library"     [Library.v1]      (fun x -> Library     x)
+      ; cstr "executables" [Executables.v1]  (fun x -> Executables x)
+      ; cstr "rule"        [Rule.v1]         (fun x -> Rule        x)
+      ; cstr "ocamllex"    [Ocamllex.v1]     (fun x -> Ocamllex    x)
+      ; cstr "ocamlyacc"   [Ocamlyacc.v1]    (fun x -> Ocamlyacc   x)
+      ; cstr "provides"    [Provides.v1]     (fun x -> Provides    x)
+      ; cstr "install"     [Install_conf.v1] (fun x -> Install     x)
+      ; cstr "alias"       [Alias_conf.v1]   (fun x -> Alias       x)
+      ]
+
+  let vjs =
+    sum
+      [ cstr "library"     [Library.vjs]      (fun x -> Library     x)
+      ; cstr "executables" [Executables.vjs]  (fun x -> Executables x)
+      ; cstr "rule"        [Rule.vjs]         (fun x -> Rule        x)
+      ; cstr "ocamllex"    [Ocamllex.vjs]     (fun x -> Ocamllex    x)
+      ; cstr "ocamlyacc"   [Ocamlyacc.vjs]    (fun x -> Ocamlyacc   x)
+      ; cstr "provides"    [Provides.vjs]     (fun x -> Provides    x)
+      ; cstr "install"     [Install_conf.vjs] (fun x -> Install     x)
+      ; cstr "alias"       [Alias_conf.vjs]   (fun x -> Alias       x)
       ; cstr "enforce_style"         [fun _ -> ()] (fun _ -> Other )
       ; cstr "toplevel_expect_tests" [fun _ -> ()] (fun _ -> Other)
       ; cstr "unified_tests"         [fun _ -> ()] (fun _ -> Other)

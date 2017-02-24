@@ -376,6 +376,9 @@ run.
 - =(preprocess <preprocess-spec>)= is the same as the
   =(preprocess ...)= field of [[library][libraries]]
 
+- =(preprocessor_deps (<deps-conf list>))= is the same as the
+  =(preprocessor_deps ...)= field of [[library][libraries]]
+
 - =flags=, =ocamlc_flags= and =ocamlopt_flags=. See the
   [[OCaml flags][section about specifying OCaml flags]]
 

@@ -9,9 +9,6 @@ val create : Context.t -> t
 
 val context : t -> Context.t
 
-val root_packages : t -> string list
-val all_packages  : t -> string list
-
 type package =
   { name             : string
   ; dir              : Path.t
@@ -32,3 +29,6 @@ val root_package_name : string -> string
 
 val closure : package list -> package list
 val closed_ppx_runtime_deps_of : package list -> package list
+
+val root_packages : t -> string list
+val all_packages  : t -> package list

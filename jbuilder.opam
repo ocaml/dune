@@ -1,4 +1,5 @@
 opam-version: "1.2"
+version: "0.1.alpha1+dev"
 maintainer: "opensource@janestreet.com"
 authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
 homepage: "https://github.com/janestreet/jbuilder"
@@ -18,7 +19,7 @@ of Jane Street packages. It reads metadata from \"jbuild\" files
 following a very simple s-expression syntax.
 
 jbuilder is fast, it has very low-overhead and support parallel builds
-on all platforms. It is no system dependencies, all you need to build
+on all platforms. It has no system dependencies, all you need to build
 jbuilder and packages using jbuilder is OCaml. You don't need or make
 or bash as long as the packages themselves don't use bash explicitely.
 

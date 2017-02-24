@@ -12,48 +12,20 @@ let (>>=) = Future.(>>=)
 
 let create_log = Main.create_log
 
-(* TODO: rewrite this when command trees are supported.
-
-   https://github.com/dbuenzli/cmdliner/issues/24 *)
-let internal = function
-  | [_; "findlib-packages"] ->
-    Future.Scheduler.go ~log:(create_log ())
-      (Lazy.force Context.default >>= fun ctx ->
-       let findlib = Findlib.create ctx in
-       let pkgs = Findlib.all_packages findlib in
-       let max_len =
-         List.map pkgs ~f:String.length
-         |> List.fold_left ~init:0 ~f:max
-       in
-       List.iter pkgs ~f:(fun pkg ->
-         let ver =
-           match (Findlib.find_exn findlib pkg).version with
-           | "" -> "n/a"
-           | v  -> v
-         in
-         Printf.printf "%-*s (version: %s)\n" max_len pkg ver);
-       Future.return ())
-  | _ ->
-    ()
-
-let internal =
-  let doc = "internal use only" in
-  let name_ = Arg.info [] in
-  ( Term.(const internal $ Arg.(non_empty & pos_all string [] name_))
-  , Term.info "internal" ~doc)
-
 type common =
   { concurrency: int
   ; debug_rules: bool
   ; debug_dep_path: bool
   ; debug_findlib: bool
+  ; dev_mode: bool
   }
 
 let set_common c =
   Clflags.concurrency := c.concurrency;
   Clflags.debug_rules := c.debug_rules;
   Clflags.debug_dep_path := c.debug_dep_path;
-  Clflags.debug_findlib := c.debug_findlib
+  Clflags.debug_findlib := c.debug_findlib;
+  Clflags.dev_mode := c.dev_mode
 
 let copts_sect = "COMMON OPTIONS"
 let help_secs =
@@ -66,29 +38,60 @@ let help_secs =
   ]
 
 let common =
-  let make concurrency debug_rules debug_dep_path debug_findlib =
-    { concurrency ; debug_rules ; debug_dep_path ; debug_findlib } in
+  let make concurrency debug_rules debug_dep_path debug_findlib dev_mode =
+    { concurrency
+    ; debug_rules
+    ; debug_dep_path
+    ; debug_findlib
+    ; dev_mode
+    }
+  in
   let docs = copts_sect in
   let concurrency =
     Arg.(value & opt int !Clflags.concurrency & info ["j"] ~docs) in
   let drules = Arg.(value & flag & info ["drules"] ~docs) in
   let ddep_path = Arg.(value & flag & info ["ddep-path"] ~docs) in
   let dfindlib = Arg.(value & flag & info ["dfindlib"] ~docs) in
-  Term.(const make $ concurrency $ drules $ ddep_path $ dfindlib)
+  let dev = Arg.(value & flag & info ["dev"] ~docs) in
+  Term.(const make $ concurrency $ drules $ ddep_path $ dfindlib $ dev)
+
+let installed_libraries =
+  let doc = "Print out libraries installed on the system." in
+  let go common =
+    set_common common;
+    Future.Scheduler.go ~log:(create_log ())
+      (Lazy.force Context.default >>= fun ctx ->
+       let findlib = Findlib.create ctx in
+       let pkgs = Findlib.all_packages findlib in
+       let max_len = List.longest_map pkgs ~f:(fun p -> p.name) in
+       List.iter pkgs ~f:(fun pkg ->
+         let ver =
+           match pkg.Findlib.version with
+           | "" -> "n/a"
+           | v  -> v
+         in
+         Printf.printf "%-*s (version: %s)\n" max_len pkg.name ver);
+       Future.return ())
+  in
+  ( Term.(const go
+          $ common)
+  , Term.info "installed-libraries" ~doc
+  )
+
+let resolve_package_install setup pkg =
+  match Main.package_install_file setup pkg with
+  | Ok path -> path
+  | Error () ->
+    die "Unknown package %s!%s" pkg (hint pkg (String_map.keys setup.packages))
 
 let build_package pkg =
   Future.Scheduler.go ~log:(create_log ())
     (Main.setup () >>= fun setup ->
-     match Main.package_install_file setup pkg with
-     | Ok path ->
-       Build_system.do_build_exn setup.build_system
-         [path]
-     | Error () ->
-       die "Unknown package %s!%s" pkg (hint pkg (String_map.keys setup.packages))
-    )
+     Build_system.do_build_exn setup.build_system
+       [resolve_package_install setup pkg])
 
 let build_package =
-  let doc = "build a package in release mode" in
+  let doc = "Build a single package in release mode." in
   let name_ = Arg.info [] ~docv:"PACKAGE-NAME" in
   let go common pkg =
     set_common common;
@@ -102,7 +105,7 @@ let build_package =
 let external_lib_deps packages =
   let log = create_log () in
   let deps =
-    Path.Map.fold (Main.external_lib_deps ~log ~packages) ~init:String_map.empty
+    Path.Map.fold (Main.external_lib_deps ~log ~packages ()) ~init:String_map.empty
       ~f:(fun ~key:_ ~data:deps acc -> Build.merge_lib_deps deps acc)
   in
   String_map.iter deps ~f:(fun ~key:n ~data ->
@@ -111,7 +114,7 @@ let external_lib_deps packages =
     | Optional -> Printf.printf "%s (optional)\n" n)
 
 let external_lib_deps =
-  let doc = "print out external library dependencies" in
+  let doc = "Print out external library dependencies." in
   let name_ = Arg.info [] ~docv:"PACKAGE-NAME" in
   let go common packages =
     set_common common;
@@ -122,30 +125,63 @@ let external_lib_deps =
           $ Arg.(non_empty & pos_all string [] name_))
   , Term.info "external-lib-deps" ~doc ~man:help_secs)
 
-let resolve_targets (setup : Main.setup)user_targets =
+type target =
+  | File  of Path.t
+  | Alias of Path.t * Alias.t
+
+let aliases_in_source_tree =
+  String_set.of_list
+    [ "install"
+    ]
+
+let resolve_targets (setup : Main.setup) user_targets =
   match user_targets with
   | [] -> []
   | _ ->
-    let user_targets = List.map user_targets ~f:(Path.relative Path.root) in
-    let real_targets =
-      List.map user_targets ~f:(fun path ->
-        if Path.is_in_build_dir path then
-          path
-        else if Path.is_local path &&
-                not (Build_system.is_target setup.build_system path) &&
-                not (Path.exists path) then
-          Path.append setup.context.build_dir path
+    let targets =
+      List.map user_targets ~f:(fun s ->
+        if String.is_prefix s ~prefix:"@" then
+          let s = String.sub s ~pos:1 ~len:(String.length s - 1) in
+          let path = Path.relative Path.root s in
+          if Path.is_root path then
+            die "@ on the command line must be followed by a valid alias name"
+          else
+            let name = Path.basename path in
+            let path =
+              if Path.is_in_build_dir path ||
+                 String_set.mem name aliases_in_source_tree then
+                path
+              else
+                Path.append setup.context.build_dir path
+            in
+            let dir = Path.parent path in
+            Alias (path, Alias.make ~dir name)
         else
-          path)
+          File (
+            let path = Path.relative Path.root s in
+            if Path.is_in_build_dir path then
+              path
+            else if Path.is_local path &&
+                    not (Build_system.is_target setup.build_system path) &&
+                    not (Path.exists path) then
+              Path.append setup.context.build_dir path
+            else
+              path
+          ))
     in
     Printf.printf "Building the following targets:\n";
-    List.iter real_targets ~f:(fun target ->
-      Printf.printf "- %s\n" (Path.to_string target));
+    List.iter targets ~f:(function
+      | File path ->
+        Printf.printf "- %s\n" (Path.to_string path)
+      | Alias (path, _) ->
+        Printf.printf "- alias %s\n" (Path.to_string path));
     flush stdout;
-    real_targets
+    List.map targets ~f:(function
+      | File path -> path
+      | Alias (_, alias) -> Alias.file alias)
 
-let build_targets ~name =
-  let doc = "build targets" in
+let build_targets =
+  let doc = "Build targets." in
   let name_ = Arg.info [] ~docv:"TARGET" in
   let go common targets =
     set_common common;
@@ -156,20 +192,16 @@ let build_targets ~name =
   ( Term.(const go
           $ common
           $ Arg.(non_empty & pos_all string [] name_))
-  , Term.info name ~doc ~man:help_secs)
+  , Term.info "build" ~doc ~man:help_secs)
 
 let runtest =
-  let doc = "run tests" in
+  let doc = "Run tests." in
   let name_ = Arg.info [] ~docv:"DIR" in
   let go common dirs =
     set_common common;
     Future.Scheduler.go ~log:(create_log ())
       (Main.setup () >>= fun setup ->
-       let dirs =
-         match dirs with
-         | [] -> [Path.root]
-         | _  -> List.map dirs ~f:Path.(relative root)
-       in
+       let dirs = List.map dirs ~f:Path.(relative root) in
        let targets =
          List.map dirs ~f:(fun dir ->
            let dir =
@@ -183,20 +215,86 @@ let runtest =
        Build_system.do_build_exn setup.build_system targets) in
   ( Term.(const go
           $ common
-          $ Arg.(value & pos_all string [] name_))
+          $ Arg.(value & pos_all string ["."] name_))
   , Term.info "runtest" ~doc ~man:help_secs)
 
+let opam_installer (setup : Main.setup) =
+  match Context.which setup.context "opam-installer" with
+  | None ->
+    die "\
+Sorry, you need the opam-installer tool to be able to install or
+uninstall packages.
+
+I couldn't find the opam-installer binary :-("
+  | Some fn -> fn
+
+let get_prefix (setup : Main.setup) ~from_command_line =
+  match from_command_line with
+  | Some p -> Future.return (Path.of_string p)
+  | None -> Context.install_prefix setup.context
+
+let install_uninstall ~what =
+  let doc = sprintf "%s packages using opam-installer." (String.capitalize what) in
+  let name_ = Arg.info [] ~docv:"PACKAGE" in
+  let go common prefix pkgs =
+    set_common common;
+    Future.Scheduler.go ~log:(create_log ())
+      (Main.setup () >>= fun setup ->
+       let opam_installer = opam_installer setup in
+       let install_files, missing_install_files =
+         List.partition_map pkgs ~f:(fun pkg ->
+           let fn = resolve_package_install setup pkg in
+           if Path.exists fn then
+             Inl fn
+           else
+             Inr pkg)
+       in
+       if missing_install_files <> [] then begin
+         die "The <package>.install files for these packages are missing:\n\
+              %s\n\
+              You need to run: jbuilder build %s"
+           (String.concat ~sep:"\n"
+              (List.map missing_install_files ~f:(sprintf "- %s")))
+           (String.concat ~sep:" " (List.map pkgs ~f:(sprintf "%s.install")))
+       end;
+       get_prefix setup ~from_command_line:prefix >>= fun prefix ->
+       Future.all_unit
+         (List.map install_files ~f:(fun path ->
+            Future.run (Path.to_string opam_installer)
+              [ sprintf "-%c" what.[0]
+              ; "--prefix"
+              ; Path.to_string prefix
+              ; Path.to_string path
+              ])))
+  in
+  ( Term.(const go
+          $ common
+          $ Arg.(value & opt (some dir) None & info ["prefix"])
+          $ Arg.(value & pos_all string [] name_))
+  , Term.info what ~doc ~man:help_secs)
+
+let install   = install_uninstall ~what:"install"
+let uninstall = install_uninstall ~what:"uninstall"
+
 let all =
-  [ internal
+  [ installed_libraries
   ; build_package
   ; external_lib_deps
-  ; build_targets ~name:"build"
+  ; build_targets
   ; runtest
+  ; install
+  ; uninstall
   ]
 
+let default =
+  let doc = "fast, portable and opinionated build system for OCaml" in
+  ( Term.(ret @@ const @@ `Help (`Pager, None))
+  , Term.info "jbuilder" ~doc)
+
 let () =
+  Ansi_color.setup_err_formatter_colors ();
   try
-    match Term.eval_choice (build_targets ~name:"jbuilder") all ~catch:false with
+    match Term.eval_choice default all ~catch:false with
     | `Error _ -> exit 1
     | _ -> exit 0
   with exn ->

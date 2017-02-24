@@ -4,9 +4,12 @@ type t =
   | Atom of string
   | List of t list
 
-exception Of_sexp_error of string * t
+exception Of_sexp_error of t * string
 
-val of_sexp_error : string -> t -> _
+val of_sexp_error : t -> string -> _
+val of_sexp_errorf : t -> ('a, unit, string, 'b) format4 -> 'a
+
+val code_error : string -> (string * t) list -> _
 
 module Locs : sig
   type t =
@@ -68,4 +71,6 @@ module Of_sexp : sig
   val sum
     :  'a Constructor_spec.t list
     -> 'a t
+
+  val enum : (string * 'a) list -> 'a t
 end

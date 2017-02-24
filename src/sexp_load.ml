@@ -6,7 +6,7 @@ let single fn f =
   in
   try
     f sexp
-  with Sexp.Of_sexp_error (msg, sub) ->
+  with Sexp.Of_sexp_error (sub, msg) ->
     let loc =
       match Sexp.locate sexp ~sub ~locs with
       | None -> Loc.in_file fn
@@ -20,8 +20,8 @@ let many fn f =
     |> List.split
   in
   try
-    List.map sexps ~f
-  with Sexp.Of_sexp_error (msg, sub) ->
+    f sexps
+  with Sexp.Of_sexp_error (sub, msg) ->
     let loc =
       match Sexp.locate_in_list sexps ~sub ~locs with
       | None -> Loc.in_file fn

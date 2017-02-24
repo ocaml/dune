@@ -69,18 +69,20 @@ module Local = struct
       loop t [] len len
 
   let parent = function
-    | "" -> assert false
+    | "" ->
+      code_errorf "Path.Local.parent called on the root"
     | t ->
       match String.rindex_from t (String.length t - 1) '/' with
       | exception Not_found -> ""
       | i -> String.sub t ~pos:0 ~len:i
 
   let basename = function
-    | "" -> assert false
+    | "" ->
+      code_errorf "Path.Local.basename called on the root"
     | t ->
       let len = String.length t in
       match String.rindex_from t (len - 1) '/' with
-      | exception Not_found -> ""
+      | exception Not_found -> t
       | i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1)
 
   let relative initial_t path =
@@ -174,6 +176,8 @@ let to_string = function
   | "" -> "."
   | t  -> t
 
+let sexp_of_t t = Sexp.Atom (to_string t)
+
 let root = ""
 
 let relative t fn =
@@ -198,7 +202,11 @@ let absolute =
 let reach t ~from =
   match is_local t, is_local from with
   | false, _ -> t
-  | true, false -> assert false
+  | true, false ->
+    Sexp.code_error "Path.reach called with invalid combination"
+      [ "t"   , sexp_of_t t
+      ; "from", sexp_of_t from
+      ]
   | true, true -> Local.reach t ~from
 
 let descendant t ~of_ =
@@ -260,3 +268,5 @@ let readdir t = Sys.readdir (to_string t) |> Array.to_list
 let is_directory t = Sys.is_directory (to_string t)
 let rmdir t = Unix.rmdir (to_string t)
 let unlink t = Sys.remove (to_string t)
+
+let extend_basename t ~suffix = t ^ suffix

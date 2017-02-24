@@ -2,8 +2,6 @@ open Import
 open Jbuild_types
 open Build.O
 
-module BS = Build_system
-
 (* +-----------------------------------------------------------------+
    | Utils                                                           |
    +-----------------------------------------------------------------+ *)
@@ -15,10 +13,33 @@ let g () =
     []
 
 module Ocaml_flags = struct
-  let default_ocamlc_flags   = g ()
-  let default_ocamlopt_flags = g ()
+  let default_ocamlc_flags   = g
+  let default_ocamlopt_flags = g
 
-  let default_flags = [ "-w"; !Clflags.warnings ]
+  let dev_mode_warnings =
+    "@a" ^
+    String.concat ~sep:""
+      (List.map ~f:(sprintf "-%d")
+         [ 4
+         ; 29
+         ; 40
+         ; 41
+         ; 42
+         ; 44
+         ; 45
+         ; 48
+         ; 58
+         ; 59
+         ])
+
+  let default_flags () =
+    if !Clflags.dev_mode then
+      [ "-w"; dev_mode_warnings ^ !Clflags.warnings
+      ; "-strict-sequence"
+      ; "-strict-formats"
+      ]
+    else
+      [ "-w"; !Clflags.warnings ]
 
   type t =
     { common   : string list
@@ -27,10 +48,10 @@ module Ocaml_flags = struct
 
   let make { Buildable. flags; ocamlc_flags; ocamlopt_flags; _ } =
     let eval = Ordered_set_lang.eval_with_standard in
-    { common   = eval flags ~standard:default_flags
+    { common   = eval flags ~standard:(default_flags ())
     ; specific =
-        { byte   = eval ocamlc_flags   ~standard:default_ocamlc_flags
-        ; native = eval ocamlopt_flags ~standard:default_ocamlopt_flags
+        { byte   = eval ocamlc_flags   ~standard:(default_ocamlc_flags ())
+        ; native = eval ocamlopt_flags ~standard:(default_ocamlopt_flags ())
         }
     }
 
@@ -38,7 +59,13 @@ module Ocaml_flags = struct
 
   let get_for_cm t ~cm_kind = get t (Mode.of_cm_kind cm_kind)
 
-  let default = make (Sexp.Of_sexp.record Buildable.t (List []))
+  let default () =
+    { common = default_flags ()
+    ; specific =
+        { byte   = default_ocamlc_flags   ()
+        ; native = default_ocamlopt_flags ()
+        }
+    }
 end
 
 let default_c_flags = g ()
@@ -71,7 +98,7 @@ module type Params = sig
   val file_tree : File_tree.t
   val tree      : Alias.tree
   val stanzas   : (Path.t * Jbuild_types.Stanza.t list) list
-  val packages  : Path.t String_map.t
+  val packages  : Package.t String_map.t
   val filter_out_optional_stanzas_with_missing_deps : bool
 end
 
@@ -270,13 +297,6 @@ module Gen(P : Params) = struct
     match Path.Map.find src_path !known_targets_by_dir_so_far with
     | None -> sources
     | Some set -> String_set.union sources set
-
-  (* +-----------------------------------------------------------------+
-     | Tools                                                           |
-     +-----------------------------------------------------------------+ *)
-
-  let ppx_metaquot = Named_artifacts.in_findlib "ppx_tools:ppx_metaquot"
-  let ppx_rewriter = Named_artifacts.in_findlib "ppx_tools:rewriter"
 
   (* +-----------------------------------------------------------------+
      | User variables                                                  |
@@ -580,18 +600,6 @@ module Gen(P : Params) = struct
     String_map.map modules ~f:(fun (m : Module.t) ->
       match Preprocess_map.find m.name preprocess with
       | No_preprocessing -> m
-      | Metaquot ->
-        pped_module m ~dir ~f:(fun kind src dst ->
-          add_rule
-            (preprocessor_deps
-             >>>
-             Build.fanout (ppx_rewriter ~dir ~dep_kind) (ppx_metaquot ~dir ~dep_kind)
-             >>>
-             Build.run (Dyn fst)
-               [ Dyn (fun (_, ppx_metaquot) -> Dep ppx_metaquot)
-               ; A "-o"; Target dst
-               ; Ml_kind.flag kind; Dep src
-               ]))
       | Command cmd ->
         pped_module m ~dir ~f:(fun _kind src dst ->
           add_rule
@@ -1064,9 +1072,9 @@ module Gen(P : Params) = struct
 
     build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
-      let flags = Ocaml_flags.default in
+      let flags = Ocaml_flags.default () in
       build_module m
-        ~flags:{ flags with common = "-w" :: "-49" :: flags.common }
+        ~flags:{ flags with common = flags.common @ ["-w"; "-49"] }
         ~dir
         ~modules:(String_map.singleton m.name m)
         ~dep_graph:(Ml_kind.Dict.make_both (Build.return (String_map.singleton m.name [])))
@@ -1157,30 +1165,35 @@ module Gen(P : Params) = struct
      +-----------------------------------------------------------------+ *)
 
   let build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph ~link_flags =
-    Option.iter (Mode.compiler mode ctx) ~f:(fun compiler ->
-      let dep_graph = Ml_kind.Dict.get dep_graph Impl in
-      let exe = Path.relative dir (name ^ Mode.exe_ext mode) in
-      add_rule
-        (Build.fanout
-           (requires
-            >>> Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib)))
-           (dep_graph
-            >>> Build.arr (fun dep_graph ->
-              names_to_top_closed_cm_files
-                ~dir
-                ~dep_graph
-                ~modules
-                ~mode
-                [String.capitalize name]))
-         >>>
-         Build.run
-           (Dep compiler)
-           [ Ocaml_flags.get flags mode
-           ; A "-o"; Target exe
-           ; As link_flags
-           ; Dyn (fun (libs, _) -> Lib.link_flags libs ~mode)
-           ; Dyn (fun (_, cm_files) -> Deps cm_files)
-           ]))
+    let exe_ext = Mode.exe_ext mode in
+    let mode, link_flags, compiler =
+      match Mode.compiler mode ctx with
+      | Some compiler -> (mode, link_flags, compiler)
+      | None          -> (Byte, "-custom" :: link_flags, ctx.ocamlc)
+    in
+    let dep_graph = Ml_kind.Dict.get dep_graph Impl in
+    let exe = Path.relative dir (name ^ exe_ext) in
+    add_rule
+      (Build.fanout
+         (requires
+          >>> Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib)))
+         (dep_graph
+          >>> Build.arr (fun dep_graph ->
+            names_to_top_closed_cm_files
+              ~dir
+              ~dep_graph
+              ~modules
+              ~mode
+              [String.capitalize name]))
+       >>>
+       Build.run
+         (Dep compiler)
+         [ Ocaml_flags.get flags mode
+         ; A "-o"; Target exe
+         ; As link_flags
+         ; Dyn (fun (libs, _) -> Lib.link_flags libs ~mode)
+         ; Dyn (fun (_, cm_files) -> Deps cm_files)
+         ])
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules =
     let dep_kind = Build.Required in
@@ -1224,7 +1237,6 @@ module Gen(P : Params) = struct
 
     (requires, None)
 
-
   (* +-----------------------------------------------------------------+
      | User actions                                                    |
      +-----------------------------------------------------------------+ *)
@@ -1245,13 +1257,20 @@ module Gen(P : Params) = struct
   end = struct
     module U = User_action.Unexpanded
 
+    type artefact =
+      | Direct of Path.t
+      | Dyn    of (unit, Path.t) Build.t
+
     let extract_artifacts ~dir ~dep_kind t =
       U.fold t ~init:String_map.empty ~f:(fun acc var ->
         let module N = Named_artifacts in
         match String.lsplit2 var ~on:':' with
-        | Some ("bin", s) -> String_map.add acc ~key:var ~data:(N.binary s)
+        (* CR-someday jdimino: map the exe to the host exe here *)
+        | Some ("exe", s) ->
+          String_map.add acc ~key:var ~data:(Direct (Path.relative dir s))
+        | Some ("bin", s) -> String_map.add acc ~key:var ~data:(Dyn (N.binary s))
         | Some ("findlib" , s) ->
-          String_map.add acc ~key:var ~data:(N.in_findlib ~dir ~dep_kind s)
+          String_map.add acc ~key:var ~data:(Dyn (N.in_findlib ~dir ~dep_kind s))
         | _ -> acc)
 
     let expand t ~artifact_map ~dir ~targets ~deps =
@@ -1280,15 +1299,26 @@ module Gen(P : Params) = struct
         let s = expand t ~dir ~artifact_map:String_map.empty ~targets ~deps in
         Build.return s
       else begin
-        Build.all (List.map (String_map.bindings needed_artifacts) ~f:(fun (name, artifact) ->
-          artifact
-          >>>
-          Build.arr (fun path -> (name, path))))
+        let directs, dyns =
+          String_map.bindings needed_artifacts
+          |> List.partition_map ~f:(function
+            | (name, Direct x) -> Inl (name, x)
+            | (name, Dyn    x) -> Inr (name, x))
+        in
+        Build.fanout
+          (Build.paths (List.map directs ~f:snd))
+          (Build.all (List.map dyns ~f:(fun (name, artifact) ->
+             artifact
+             >>>
+             Build.arr (fun path -> (name, path)))))
+        >>^ snd
         >>>
         Build.dyn_paths (Build.arr (List.map ~f:snd))
         >>>
         Build.arr (fun artifacts ->
-          let artifact_map = String_map.of_alist_exn artifacts in
+          let artifact_map =
+            String_map.of_alist_exn (List.rev_append directs artifacts)
+          in
           expand t ~dir ~artifact_map ~targets ~deps)
       end
 
@@ -1331,8 +1361,7 @@ module Gen(P : Params) = struct
       |> Digest.string
       |> Digest.to_hex in
     let alias = Alias.make alias_conf.name ~dir in
-    let digest_path =
-      Path.relative dir (Path.basename (Alias.file alias) ^ "-" ^ digest) in
+    let digest_path = Path.extend_basename (Alias.file alias) ~suffix:("-" ^ digest) in
     let dummy = Build.touch digest_path in
     Alias.add_deps alias [digest_path];
     let deps =
@@ -1485,9 +1514,8 @@ module Gen(P : Params) = struct
       | Ocamllex     conf -> ocamllex_rules    conf ~dir
       | Ocamlyacc    conf -> ocamlyacc_rules   conf ~dir
       | Alias        alias -> alias_rules alias ~dir
-      | Provides _ | Install _ | Other -> ());
+      | Provides _ | Install _ -> ());
     merge_dot_merlin !merlin_deps ~dir:ctx_dir
-
 
   let () = List.iter P.stanzas ~f:rules
 
@@ -1513,14 +1541,14 @@ module Gen(P : Params) = struct
   (* META files that must be installed. Either because there is an explicit or user
      generated one, or because *)
   let packages_with_explicit_or_user_generated_meta =
-    String_map.bindings P.packages
-    |> List.filter_map ~f:(fun (package, src_path) ->
-      let path = Path.append ctx.build_dir src_path in
-      let meta_fn = "META." ^ package in
+    String_map.values P.packages
+    |> List.filter_map ~f:(fun (pkg : Package.t) ->
+      let path = Path.append ctx.build_dir pkg.path in
+      let meta_fn = "META." ^ pkg.name in
       let meta_templ_fn = meta_fn ^ ".template" in
 
+      let files = sources_and_targets_known_so_far ~src_path:pkg.path in
       let has_meta, has_meta_tmpl =
-        let files = sources_and_targets_known_so_far ~src_path in
         (String_set.mem meta_fn files,
          String_set.mem meta_templ_fn files)
       in
@@ -1533,9 +1561,24 @@ module Gen(P : Params) = struct
       in
       let meta_path = Path.relative path meta_fn in
 
+      let version =
+        match pkg.version_from_opam_file with
+        | Some s -> Gen_meta.This s
+        | None ->
+          let candicates =
+            [ pkg.name ^ ".version"
+            ; "version"
+            ; "VERSION"
+            ]
+          in
+          match List.find candicates ~f:(fun fn -> String_set.mem fn files) with
+          | None -> Na
+          | Some fn -> Load (Path.relative path fn)
+      in
+
       let template =
         if has_meta_tmpl then
-          let meta_templ_path = Path.relative src_path meta_templ_fn in
+          let meta_templ_path = Path.relative pkg.path meta_templ_fn in
           Build.path meta_templ_path
           >>^ fun () ->
           lines_of_file (Path.to_string meta_templ_path)
@@ -1543,24 +1586,31 @@ module Gen(P : Params) = struct
           Build.return ["# JBUILDER_GEN"]
       in
       let meta =
-        Gen_meta.gen ~package
+        Gen_meta.gen ~package:pkg.name
+          ~version
           ~stanzas:stanzas_to_consider_for_install
           ~lib_deps:(fun ~dir jbuild ->
             match jbuild with
             | Library lib ->
+              Build.arr ignore
+              >>>
               Lib_db.load_requires ~dir ~item:lib.name
               >>^ List.map ~f:Lib.best_name
             | Executables exes ->
               let item = List.hd exes.names in
+              Build.arr ignore
+              >>>
               Lib_db.load_requires ~dir ~item
               >>^ List.map ~f:Lib.best_name
-            | _ -> Build.return [])
+            | _ -> Build.arr (fun _ -> []))
           ~ppx_runtime_deps:(fun ~dir jbuild ->
             match jbuild with
             | Library lib ->
+              Build.arr ignore
+              >>>
               Lib_db.load_runtime_deps ~dir ~item:lib.name
               >>^ List.map ~f:Lib.best_name
-            | _ -> Build.return [])
+            | _ -> Build.arr (fun _ -> []))
       in
       add_rule
         (Build.fanout meta template
@@ -1582,7 +1632,7 @@ module Gen(P : Params) = struct
              Format.pp_print_flush ppf ())));
 
       if has_meta || has_meta_tmpl then
-        Some package
+        Some pkg.name
       else
         None)
     |> String_set.of_list
@@ -1701,17 +1751,29 @@ module Gen(P : Params) = struct
        Build.create_file ~target:fn (fun () ->
          Install.write_install_file fn entries))
 
-  let () = String_map.iter P.packages ~f:(fun ~key:package ~data:package_path ->
-    install_file package_path package)
+  let () = String_map.iter P.packages ~f:(fun ~key:_ ~data:pkg ->
+    install_file pkg.Package.path pkg.name)
 
   let () =
-    if Path.basename ctx.build_dir = "default" then
-      String_map.iter P.packages ~f:(fun ~key:pkg ~data:path ->
-        let install_file = Path.relative path (pkg ^ ".install") in
-        add_rule
-          (Build.copy
-             ~src:(Path.append ctx.build_dir install_file)
-             ~dst:install_file))
+    let install_alias = Alias.make ~dir:ctx.build_dir "install" in
+    let global_install_alias = Alias.make ~dir:Path.root "install" in
+    let is_default = Path.basename ctx.build_dir = "default" in
+    String_map.iter P.packages ~f:(fun ~key:pkg ~data:{ Package.path; _ } ->
+      let install_fn = pkg ^ ".install" in
+      let in_source_dir = Path.relative path install_fn in
+      let orig = Path.append ctx.build_dir in_source_dir in
+      let at_root_of_build_context = Path.relative ctx.build_dir install_fn in
+      if not (Path.is_root path) then
+        add_rule (Build.copy ~src:orig ~dst:at_root_of_build_context);
+      Alias.add_deps install_alias [at_root_of_build_context];
+
+      if is_default then begin
+        add_rule (Build.copy ~src:orig ~dst:in_source_dir);
+        let at_root = Path.relative Path.root install_fn in
+        if not (Path.is_root path) then
+          add_rule (Build.copy ~src:orig ~dst:at_root);
+        Alias.add_deps global_install_alias [at_root]
+      end)
 end
 
 let gen ~context ~file_tree ~tree ~stanzas ~packages

@@ -1,3 +1,96 @@
+;; When adding a command to jbuilder, add it to the [cmds] variable in
+;; this file and run "make cinaps"
+
 (install
  ((section doc)
   (files (manual.org))))
+
+#|(*$
+open StdLabels
+open Printf
+
+let cmds =
+  [ "build"
+  ; "build-package"
+  ; "external-lib-deps"
+  ; "install"
+  ; "installed-libraries"
+  ; "runtest"
+  ; "uninstall"
+  ]
+
+let cmds = ("", "") :: List.map cmds ~f:(fun x -> ("-" ^ x, x))
+
+let () =
+  print_endline ("|"^"#");
+  List.iter cmds ~f:(fun (suffix, cmd) ->
+    printf {|
+(rule
+ ((targets (jbuilder%s.1))
+  (action  (with-stdout-to ${@}
+            (run ${bin:jbuilder} %s --help=groff)))))
+|}
+     suffix cmd);
+  print_string ";; "
+*)|#
+
+(rule
+ ((targets (jbuilder.1))
+  (action  (with-stdout-to ${@}
+            (run ${bin:jbuilder}  --help=groff)))))
+
+(rule
+ ((targets (jbuilder-build.1))
+  (action  (with-stdout-to ${@}
+            (run ${bin:jbuilder} build --help=groff)))))
+
+(rule
+ ((targets (jbuilder-build-package.1))
+  (action  (with-stdout-to ${@}
+            (run ${bin:jbuilder} build-package --help=groff)))))
+
+(rule
+ ((targets (jbuilder-external-lib-deps.1))
+  (action  (with-stdout-to ${@}
+            (run ${bin:jbuilder} external-lib-deps --help=groff)))))
+
+(rule
+ ((targets (jbuilder-install.1))
+  (action  (with-stdout-to ${@}
+            (run ${bin:jbuilder} install --help=groff)))))
+
+(rule
+ ((targets (jbuilder-installed-libraries.1))
+  (action  (with-stdout-to ${@}
+            (run ${bin:jbuilder} installed-libraries --help=groff)))))
+
+(rule
+ ((targets (jbuilder-runtest.1))
+  (action  (with-stdout-to ${@}
+            (run ${bin:jbuilder} runtest --help=groff)))))
+
+(rule
+ ((targets (jbuilder-uninstall.1))
+  (action  (with-stdout-to ${@}
+            (run ${bin:jbuilder} uninstall --help=groff)))))
+;; (*$*)
+
+(install
+ ((section man)
+  (files (
+;; (*$List.iter cmds ~f:(fun (suf, _) -> printf "\n    jbuilder%s.1" suf); printf "\n;; "*)
+    jbuilder.1
+    jbuilder-build.1
+    jbuilder-build-package.1
+    jbuilder-external-lib-deps.1
+    jbuilder-install.1
+    jbuilder-installed-libraries.1
+    jbuilder-runtest.1
+    jbuilder-uninstall.1
+;; (*$*)
+    ))))
+
+(alias
+ ((name runtest)
+  (deps (jbuild))
+  (action (run ${bin:cinaps} ${<}))))

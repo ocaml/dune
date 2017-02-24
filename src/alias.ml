@@ -2,8 +2,14 @@ open! Import
 
 type t = Path.t
 
+let aliases_path = Path.(relative root) "_build/.aliases"
+
 let make name ~dir =
-  Path.relative dir (".jbuild-alias-" ^ name)
+  if not (Path.is_local dir) then
+    die "Aliases are only supported for local paths!\n\
+         Tried to reference alias %S in %s"
+      name (Path.to_string dir);
+  Path.append aliases_path (Path.relative dir name)
 
 let dep = Build.path
 

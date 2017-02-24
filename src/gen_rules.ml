@@ -1087,7 +1087,7 @@ module Gen(P : Params) = struct
      +-----------------------------------------------------------------+ *)
 
   let build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph ~link_flags =
-    let ext_ext = Mode.exe_ext mode in
+    let exe_ext = Mode.exe_ext mode in
     let mode, link_flags, compiler =
       match Mode.compiler mode ctx with
       | Some compiler -> (mode, link_flags, compiler)
@@ -1176,13 +1176,20 @@ module Gen(P : Params) = struct
   end = struct
     module U = User_action.Unexpanded
 
+    type artefact =
+      | Direct of Path.t
+      | Dyn    of (unit, Path.t) Build.t
+
     let extract_artifacts ~dir ~dep_kind t =
       U.fold t ~init:String_map.empty ~f:(fun acc var ->
         let module N = Named_artifacts in
         match String.lsplit2 var ~on:':' with
-        | Some ("bin", s) -> String_map.add acc ~key:var ~data:(N.binary s)
+        (* CR-someday jdimino: map the exe to the host exe here *)
+        | Some ("exe", s) ->
+          String_map.add acc ~key:var ~data:(Direct (Path.relative dir s))
+        | Some ("bin", s) -> String_map.add acc ~key:var ~data:(Dyn (N.binary s))
         | Some ("findlib" , s) ->
-          String_map.add acc ~key:var ~data:(N.in_findlib ~dir ~dep_kind s)
+          String_map.add acc ~key:var ~data:(Dyn (N.in_findlib ~dir ~dep_kind s))
         | _ -> acc)
 
     let expand t ~artifact_map ~dir ~targets ~deps =
@@ -1211,15 +1218,26 @@ module Gen(P : Params) = struct
         let s = expand t ~dir ~artifact_map:String_map.empty ~targets ~deps in
         Build.return s
       else begin
-        Build.all (List.map (String_map.bindings needed_artifacts) ~f:(fun (name, artifact) ->
-          artifact
-          >>>
-          Build.arr (fun path -> (name, path))))
+        let directs, dyns =
+          String_map.bindings needed_artifacts
+          |> List.partition_map ~f:(function
+            | (name, Direct x) -> Inl (name, x)
+            | (name, Dyn    x) -> Inr (name, x))
+        in
+        Build.fanout
+          (Build.paths (List.map directs ~f:snd))
+          (Build.all (List.map dyns ~f:(fun (name, artifact) ->
+             artifact
+             >>>
+             Build.arr (fun path -> (name, path)))))
+        >>^ snd
         >>>
         Build.dyn_paths (Build.arr (List.map ~f:snd))
         >>>
         Build.arr (fun artifacts ->
-          let artifact_map = String_map.of_alist_exn artifacts in
+          let artifact_map =
+            String_map.of_alist_exn (List.rev_append directs artifacts)
+          in
           expand t ~dir ~artifact_map ~targets ~deps)
       end
 

@@ -111,7 +111,7 @@ let build_package =
 let external_lib_deps packages =
   let log = create_log () in
   let deps =
-    Path.Map.fold (Main.external_lib_deps ~log ~packages) ~init:String_map.empty
+    Path.Map.fold (Main.external_lib_deps ~log ~packages ()) ~init:String_map.empty
       ~f:(fun ~key:_ ~data:deps acc -> Build.merge_lib_deps deps acc)
   in
   String_map.iter deps ~f:(fun ~key:n ~data ->

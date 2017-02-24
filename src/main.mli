@@ -17,6 +17,7 @@ val setup
 val external_lib_deps
   : ?log:out_channel
   -> packages:string list
+  -> unit
   -> Build.lib_deps Path.Map.t
 val report_error : ?map_fname:(string -> string) -> Format.formatter -> exn -> unit
 

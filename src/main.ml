@@ -27,7 +27,7 @@ let setup ?filter_out_optional_stanzas_with_missing_deps () =
          ; packages
          }
 
-let external_lib_deps ?log ~packages =
+let external_lib_deps ?log ~packages () =
   Future.Scheduler.go ?log
     (setup () ~filter_out_optional_stanzas_with_missing_deps:false
      >>| fun ({ build_system = bs; stanzas; _ } as setup) ->

@@ -16,6 +16,7 @@
   + =runtest=
   + =install=
   + =uninstall=
+  + =installed-libraries=
 
 - Added support for aliases
   (#7, Rudi Grinberg)

@@ -12,36 +12,6 @@ let (>>=) = Future.(>>=)
 
 let create_log = Main.create_log
 
-(* TODO: rewrite this when command trees are supported.
-
-   https://github.com/dbuenzli/cmdliner/issues/24 *)
-let internal = function
-  | [_; "findlib-packages"] ->
-    Future.Scheduler.go ~log:(create_log ())
-      (Lazy.force Context.default >>= fun ctx ->
-       let findlib = Findlib.create ctx in
-       let pkgs = Findlib.all_packages findlib in
-       let max_len =
-         List.map pkgs ~f:String.length
-         |> List.fold_left ~init:0 ~f:max
-       in
-       List.iter pkgs ~f:(fun pkg ->
-         let ver =
-           match (Findlib.find_exn findlib pkg).version with
-           | "" -> "n/a"
-           | v  -> v
-         in
-         Printf.printf "%-*s (version: %s)\n" max_len pkg ver);
-       Future.return ())
-  | _ ->
-    ()
-
-let internal =
-  let doc = "internal use only" in
-  let name_ = Arg.info [] in
-  ( Term.(const internal $ Arg.(non_empty & pos_all string [] name_))
-  , Term.info "internal" ~doc)
-
 type common =
   { concurrency: int
   ; debug_rules: bool
@@ -85,6 +55,29 @@ let common =
   let dev = Arg.(value & flag & info ["dev"] ~docs) in
   Term.(const make $ concurrency $ drules $ ddep_path $ dfindlib $ dev)
 
+let installed_libraries =
+  let doc = "Print out libraries installed on the system." in
+  let go common =
+    set_common common;
+    Future.Scheduler.go ~log:(create_log ())
+      (Lazy.force Context.default >>= fun ctx ->
+       let findlib = Findlib.create ctx in
+       let pkgs = Findlib.all_packages findlib in
+       let max_len = List.longest_map pkgs ~f:(fun p -> p.name) in
+       List.iter pkgs ~f:(fun pkg ->
+         let ver =
+           match pkg.Findlib.version with
+           | "" -> "n/a"
+           | v  -> v
+         in
+         Printf.printf "%-*s (version: %s)\n" max_len pkg.name ver);
+       Future.return ())
+  in
+  ( Term.(const go
+          $ common)
+  , Term.info "installed-libraries" ~doc
+  )
+
 let resolve_package_install setup pkg =
   match Main.package_install_file setup pkg with
   | Ok path -> path
@@ -98,7 +91,7 @@ let build_package pkg =
        [resolve_package_install setup pkg])
 
 let build_package =
-  let doc = "build a package in release mode" in
+  let doc = "Build a single package in release mode." in
   let name_ = Arg.info [] ~docv:"PACKAGE-NAME" in
   let go common pkg =
     set_common common;
@@ -121,7 +114,7 @@ let external_lib_deps packages =
     | Optional -> Printf.printf "%s (optional)\n" n)
 
 let external_lib_deps =
-  let doc = "print out external library dependencies" in
+  let doc = "Print out external library dependencies." in
   let name_ = Arg.info [] ~docv:"PACKAGE-NAME" in
   let go common packages =
     set_common common;
@@ -188,7 +181,7 @@ let resolve_targets (setup : Main.setup) user_targets =
       | Alias (_, alias) -> Alias.file alias)
 
 let build_targets =
-  let doc = "build targets" in
+  let doc = "Build targets." in
   let name_ = Arg.info [] ~docv:"TARGET" in
   let go common targets =
     set_common common;
@@ -202,7 +195,7 @@ let build_targets =
   , Term.info "build" ~doc ~man:help_secs)
 
 let runtest =
-  let doc = "run tests" in
+  let doc = "Run tests." in
   let name_ = Arg.info [] ~docv:"DIR" in
   let go common dirs =
     set_common common;
@@ -241,7 +234,7 @@ let get_prefix (setup : Main.setup) ~from_command_line =
   | None -> Context.install_prefix setup.context
 
 let install_uninstall ~what =
-  let doc = sprintf "%s packages" what in
+  let doc = sprintf "%s packages using opam-installer." (String.capitalize what) in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let go common prefix pkgs =
     set_common common;
@@ -284,7 +277,7 @@ let install   = install_uninstall ~what:"install"
 let uninstall = install_uninstall ~what:"uninstall"
 
 let all =
-  [ internal
+  [ installed_libraries
   ; build_package
   ; external_lib_deps
   ; build_targets

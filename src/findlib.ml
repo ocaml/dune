@@ -144,7 +144,12 @@ let has_headers t ~dir =
   match Hashtbl.find t.has_headers dir with
   | Some x -> x
   | None ->
-    let x = List.exists (Path.readdir dir) ~f:(fun fn -> Filename.check_suffix fn ".h") in
+    let x =
+      match Path.readdir dir with
+      | exception _ -> false
+      | files ->
+        List.exists files ~f:(fun fn -> Filename.check_suffix fn ".h")
+    in
     Hashtbl.add t.has_headers ~key:dir ~data:x;
     x
 
@@ -227,7 +232,8 @@ let root_package_name s =
   | Some i -> String.sub s ~pos:0 ~len:i
 
 let rec load_meta_rec t root_name ~packages =
-  if String_map.mem root_name packages then
+  if String_map.mem root_name packages ||
+     Hashtbl.mem t.packages root_name then
     packages
   else
     let rec loop dirs : Path.t * Meta.t =
@@ -419,8 +425,8 @@ let root_packages t =
 let all_packages t =
   List.iter (root_packages t) ~f:(fun pkg ->
     ignore (find_exn t pkg : package));
-  Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:pkg ~data acc ->
+  Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:_ ~data acc ->
     match data with
-    | Present _ -> pkg :: acc
+    | Present p -> p :: acc
     | Absent    -> acc)
-  |> List.sort ~cmp:String.compare
+  |> List.sort ~cmp:(fun a b -> String.compare a.name b.name)

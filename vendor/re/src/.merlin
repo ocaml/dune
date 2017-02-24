@@ -1,0 +1,3 @@
+S .
+B ../../../_build/default/vendor/re/src
+FLG -open Jbuilder_re

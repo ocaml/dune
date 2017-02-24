@@ -132,136 +132,124 @@ module Of_sexp = struct
     | Error (key, _v1, _v2) ->
       of_sexp_error (sprintf "key %S present multiple times" key) sexp
 
-  module Field_spec = struct
-    type 'a kind =
-      | Field   : (sexp -> 'a) * 'a option -> 'a kind
-      | Field_o : (sexp -> 'a) -> 'a option kind
-      | Field_b : bool kind
+  type unparsed_field =
+    { value : sexp option
+    ; entry : sexp
+    }
 
-    type 'a t =
-      { name : string
-      ; kind : 'a kind
+  module Name_map = Map.Make(struct
+      type t = string
+      let compare a b =
+        let alen = String.length a and blen = String.length b in
+        if alen < blen then
+          -1
+        else if alen > blen then
+          1
+        else
+          String.compare a b
+    end)
+
+  type record_parser_state =
+    { record   : sexp
+    ; unparsed : unparsed_field Name_map.t
+    ; known    : string list
+    }
+
+  type 'a record_parser = record_parser_state -> 'a * record_parser_state
+
+  let return x state = (x, state)
+  let (>>=) m f state =
+    let x, state = m state in
+    f x state
+
+  let consume name state =
+    { state with
+      unparsed = Name_map.remove name state.unparsed
+    ; known    = name :: state.known
+    }
+
+  let add_known name state =
+    { state with known = name :: state.known }
+
+  let ignore_fields names state =
+    let unparsed =
+      List.fold_left names ~init:state.unparsed ~f:(fun acc name ->
+        Name_map.remove name acc)
+    in
+    ((),
+     { state with
+       unparsed
+     ; known = List.rev_append names state.known
+     })
+
+  let field name ?default value_of_sexp state =
+    match Name_map.find name state.unparsed with
+    | Some { value = Some value } ->
+      (value_of_sexp value, consume name state)
+    | Some { value = None } ->
+      of_sexp_error (Printf.sprintf "field %s needs a value" name) state.record
+    | None ->
+      match default with
+      | Some v -> (v, add_known name state)
+      | None ->
+        of_sexp_error (Printf.sprintf "field %s missing" name) state.record
+
+  let field_o name value_of_sexp state =
+    match Name_map.find name state.unparsed with
+    | Some { value = Some value } ->
+      (Some (value_of_sexp value), consume name state)
+    | Some { value = None } ->
+      of_sexp_error (Printf.sprintf "field %s needs a value" name) state.record
+    | None -> (None, add_known name state)
+
+  let field_b name state =
+    match Name_map.find name state.unparsed with
+    | Some { value = Some value } ->
+      (bool value, consume name state)
+    | Some { value = None } ->
+      (true, consume name state)
+    | None ->
+      (false, add_known name state)
+
+  let make_record_parser_state sexp =
+    match sexp with
+    | Atom _ -> of_sexp_error "List expected" sexp
+    | List sexps ->
+      let unparsed =
+        List.fold_left sexps ~init:Name_map.empty ~f:(fun acc sexp ->
+          match sexp with
+          | List [Atom name] ->
+            Name_map.add acc ~key:name ~data:{ value = None; entry = sexp }
+          | List [name_sexp; value] -> begin
+              match name_sexp with
+              | Atom name ->
+                Name_map.add acc ~key:name ~data:{ value = Some value; entry = sexp }
+              | List _ ->
+                of_sexp_error "Atom expected" name_sexp
+            end
+          | _ ->
+            of_sexp_error "S-expression of the form (_ _) expected" sexp)
+      in
+      { record = sexp
+      ; known  = []
+      ; unparsed
       }
 
-    let field name ?default of_sexp = { name; kind = Field (of_sexp, default) }
-    let field_o name of_sexp = { name; kind = Field_o of_sexp }
-    let field_b name = { name; kind = Field_b }
-  end
-
-  let field   = Field_spec.field
-  let field_o = Field_spec.field_o
-  let field_b = Field_spec.field_b
-
-  module Fields_spec = struct
-    type ('a, 'b) t =
-      | [] : ('a, 'a) t
-      | ( :: ) : 'a Field_spec.t * ('b, 'c) t -> ('a -> 'b, 'c) t
-
-    let rec names : type a b. (a, b) t -> string list = function
-      | [] -> []
-      | { name; _ } :: t -> name :: names t
-  end
-
-  let compare_names a b =
-    let alen = String.length a and blen = String.length b in
-    if alen < blen then
-      -1
-    else if alen > blen then
-      1
+  let record parse sexp =
+    let state = make_record_parser_state sexp in
+    let v, state = parse state in
+    if Name_map.is_empty state.unparsed then
+      v
     else
-      String.compare a b
-
-  let binary_search =
-    let rec loop entries name a b =
-      if a >= b then
-        None
-      else
-        let c = (a + b) lsr 1 in
-        let name', position = entries.(c) in
-        let d = compare_names name name' in
-        if d < 0 then
-          loop entries name a c
-        else if d > 0 then
-          loop entries name (c + 1) b
-        else
-          Some position
-    in
-    fun entries name -> loop entries name 0 (Array.length entries)
-
-  type field_value =
-    | Unset
-    | Value of sexp
-    | Without_value
-
-  let parse_field field_names field_values sexp =
-    match sexp with
-    | List [name_sexp; value_sexp] -> begin
-        match name_sexp with
-        | List _ -> of_sexp_error "Atom expected" name_sexp
-        | Atom name ->
-          match binary_search field_names name with
-          | Some (-1) -> () (* ignored field *)
-          | Some n -> field_values.(n) <- Value value_sexp
-          | None -> of_sexp_error (Printf.sprintf "Unknown field %s" name) name_sexp
-      end
-    | List [Atom name] -> begin
-        match binary_search field_names name with
-        | Some (-1) -> () (* ignored field *)
-        | Some n -> field_values.(n) <- Without_value
-        | None -> of_sexp_error (Printf.sprintf "Unknown field %s" name) sexp
-      end
-    | _ ->
-      of_sexp_error "S-expression of the form (_ _) expected" sexp
-
-  let rec parse_fields field_names field_values sexps =
-    match sexps with
-    | [] -> ()
-    | sexp :: sexps ->
-      parse_field field_names field_values sexp;
-      parse_fields field_names field_values sexps
-
-  let parse_field_value : type a. sexp -> a Field_spec.t -> field_value -> a =
-    fun full_sexp spec value ->
-      let open Field_spec in
-      let { name; kind } = spec in
-      match kind, value with
-      | Field (_, None), Unset ->
-        of_sexp_error (Printf.sprintf "field %s missing" name) full_sexp
-      | Field (_, Some default), Unset -> default
-      | Field (f, _), Value sexp -> f sexp
-      | Field_o _, Unset -> None
-      | Field_o f, Value sexp -> Some (f sexp)
-      | Field_b, Unset -> false
-      | Field_b, Without_value -> true
-      | Field_b, Value sexp -> bool sexp
-      | _, Without_value ->
-        of_sexp_error (Printf.sprintf "field %s needs a value" name) full_sexp
-
-  let rec parse_field_values
-    : type a b. sexp -> (a, b) Fields_spec.t -> a -> field_value array -> int -> b =
-    fun full_sexp spec k values n ->
-      let open Fields_spec in
-      match spec with
-      | [] -> k
-      | field_spec :: spec ->
-        let v = parse_field_value full_sexp field_spec values.(n) in
-        parse_field_values full_sexp spec (k v) values (n + 1)
-
-  let record ?(ignore=[]) spec =
-    let names =
-      Fields_spec.names spec
-      |> List.mapi ~f:(fun i name -> (name, i))
-      |> List.rev_append (List.rev_map ignore ~f:(fun n -> (n, -1)))
-      |> List.sort ~cmp:(fun (a, _) (b, _) -> compare_names a b)
-      |> Array.of_list
-    in
-    fun record_of_fields sexp ->
-      match sexp with
-      | Atom _ -> of_sexp_error "List expected" sexp
-      | List sexps ->
-        let field_values = Array.make (Array.length names) Unset in
-        parse_fields names field_values sexps;
-        parse_field_values sexp spec record_of_fields field_values 0
+      let name, { entry; _ } = Name_map.choose state.unparsed in
+      let name_sexp =
+        match entry with
+        | List (s :: _) -> s
+        | _ -> assert false
+      in
+      of_sexp_error
+        (Printf.sprintf "Unknown field %s%s" name
+           (hint name state.known)) name_sexp
 
   module Constructor_args_spec = struct
     type 'a conv = 'a t
@@ -292,34 +280,54 @@ module Of_sexp = struct
   let cstr name args make =
     Constructor_spec.T { name; args; make }
 
-  let find_cstr names sexp s =
-    match binary_search names s with
-    | Some cstr -> cstr
-    | None -> of_sexp_error (sprintf "Unknown constructor %s" s) sexp
+  let equal_cstr_name a b =
+    let alen = String.length a and blen = String.length b in
+    if alen <> blen then
+      false
+    else if alen = 0 then
+      true
+    else
+      let is_cap s =
+        match s.[0] with
+        | 'A'..'Z' -> true
+        | _        -> false
+      in
+      match is_cap a, is_cap b with
+      | true, true | false, false ->
+        a = b
+      | true, false ->
+        a = String.capitalize_ascii b
+      | false, true ->
+        String.capitalize_ascii a = b
 
-  let sum cstrs =
-    let names =
-      List.concat_map cstrs ~f:(fun cstr ->
-        let name = Constructor_spec.name cstr in
-        [ String.capitalize_ascii   name, cstr
-        ; String.uncapitalize_ascii name, cstr
-        ])
-      |> List.sort ~cmp:(fun (a, _) (b, _) -> compare_names a b)
-      |> Array.of_list
-    in
-    fun sexp ->
-      match sexp with
-      | Atom s -> begin
-          let (Constructor_spec.T c) = find_cstr names sexp s in
-          Constructor_args_spec.convert c.args sexp [] c.make
-        end
-      | List [] -> of_sexp_error "non-empty list expected" sexp
-      | List (name_sexp :: args) ->
-        match name_sexp with
-        | List _ -> of_sexp_error "Atom expected" name_sexp
-        | Atom s ->
-          let (Constructor_spec.T c) = find_cstr names sexp s in
-          Constructor_args_spec.convert c.args sexp args c.make
+  let find_cstr cstrs sexp name =
+    match
+      List.find cstrs ~f:(fun (Constructor_spec.T cstr) ->
+        equal_cstr_name cstr.name name)
+    with
+    | Some cstr -> cstr
+    | None ->
+      of_sexp_error
+        (sprintf "Unknown constructor %s%s" name
+           (hint
+              (String.uncapitalize_ascii name)
+              (List.map cstrs ~f:(fun (Constructor_spec.T c) ->
+                 String.uncapitalize_ascii c.name)))
+        ) sexp
+
+  let sum cstrs sexp =
+    match sexp with
+    | Atom s -> begin
+        let (Constructor_spec.T c) = find_cstr cstrs sexp s in
+        Constructor_args_spec.convert c.args sexp [] c.make
+      end
+    | List [] -> of_sexp_error "non-empty list expected" sexp
+    | List (name_sexp :: args) ->
+      match name_sexp with
+      | List _ -> of_sexp_error "Atom expected" name_sexp
+      | Atom s ->
+        let (Constructor_spec.T c) = find_cstr cstrs sexp s in
+        Constructor_args_spec.convert c.args sexp args c.make
 end
 (*
 module Both = struct

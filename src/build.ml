@@ -184,3 +184,7 @@ let copy ~src ~dst =
   path src >>>
   create_file ~target:dst (fun () ->
     copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst))
+
+let touch target =
+  create_file ~target (fun _ ->
+    close_out (open_out_bin (Path.to_string target)))

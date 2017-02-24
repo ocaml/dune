@@ -1,0 +1,3 @@
+S .
+B ../../../_build/default/vendor/cmdliner/src
+FLG -open Jbuilder_cmdliner

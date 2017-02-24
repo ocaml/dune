@@ -87,3 +87,47 @@ let colorize =
     let hash = Hashtbl.hash key in
     let fore, back = color_combos.(hash mod (Array.length color_combos)) in
     apply_string [Foreground fore; Background back] str
+
+let strip str =
+  let len = String.length str in
+  let buf = Buffer.create len in
+  let rec loop i =
+    if i = len then
+      Buffer.contents buf
+    else
+      match str.[i] with
+      | '\027' -> skip (i + 1)
+      | c      -> Buffer.add_char buf c; loop (i + 1)
+  and skip i =
+    if i = len then
+      Buffer.contents buf
+    else
+      match str.[i] with
+      | 'm' -> loop (i + 1)
+      | _   -> skip (i + 1)
+  in
+  loop 0
+
+let stderr_supports_colors = lazy(
+  not Sys.win32        &&
+  Unix.(isatty stderr) &&
+  match Sys.getenv "TERM" with
+  | exception Not_found -> false
+  | "dumb" -> false
+  | _ -> true
+)
+
+(* We redirect the output of all commands, so by default the compiler will disable
+   colors. Since we support colors in the output of commands, we force it via OCAMLPARAM
+   if stderr supports colors. *)
+let setup_env_for_ocaml_colors = lazy(
+  if Lazy.force stderr_supports_colors then begin
+    let value =
+      match Sys.getenv "OCAMLPARAM" with
+      | exception Not_found -> "color=always,_"
+      | s -> "color=always," ^ s
+    in
+    Unix.putenv "OCAMLPARAM" value
+  end
+)
+

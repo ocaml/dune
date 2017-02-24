@@ -1,3 +1,5 @@
+include Jbuilder_re
+
 module Array   = StdLabels.Array
 module Bytes   = StdLabels.Bytes
 module Set     = MoreLabels.Set
@@ -346,3 +348,32 @@ end = struct
 end
 
 type fail = { fail : 'a. unit -> 'a }
+
+let quote_for_shell s =
+  let len = String.length s in
+  if len = 0 then
+    Filename.quote s
+  else
+    let rec loop i =
+      if i = len then
+        s
+      else
+        match s.[i] with
+        | ' ' | '\"' -> Filename.quote s
+        | _ -> loop (i + 1)
+    in
+    loop 0
+
+let suggest_function : (string -> string list -> string list) ref = ref (fun _ _ -> [])
+
+let hint name candidates =
+  match !suggest_function name candidates with
+  | [] -> ""
+  | l ->
+    let rec mk_hint = function
+      | [a; b] -> sprintf "%s or %s" a b
+      | [a] -> a
+      | a :: l -> sprintf "%s, %s" a (mk_hint l)
+      | [] -> ""
+    in
+    sprintf "\nHint: did you mean %s?" (mk_hint l)

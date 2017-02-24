@@ -25,7 +25,7 @@ module Ocaml_flags = struct
     ; specific : string list Mode.Dict.t
     }
 
-  let make ~flags ~ocamlc_flags ~ocamlopt_flags =
+  let make { Buildable. flags; ocamlc_flags; ocamlopt_flags; _ } =
     let eval = Ordered_set_lang.eval_with_standard in
     { common   = eval flags ~standard:default_flags
     ; specific =
@@ -38,9 +38,7 @@ module Ocaml_flags = struct
 
   let get_for_cm t ~cm_kind = get t (Mode.of_cm_kind cm_kind)
 
-  let default =
-    let std = Ordered_set_lang.standard in
-    make ~flags:std ~ocamlc_flags:std ~ocamlopt_flags:std
+  let default = make (Sexp.Of_sexp.record Buildable.t (List []))
 end
 
 let default_c_flags = g ()
@@ -73,7 +71,7 @@ module type Params = sig
   val file_tree : File_tree.t
   val tree      : Alias.tree
   val stanzas   : (Path.t * Jbuild_types.Stanza.t list) list
-  val packages  : string list
+  val packages  : Path.t String_map.t
   val filter_out_optional_stanzas_with_missing_deps : bool
 end
 
@@ -240,12 +238,38 @@ module Gen(P : Params) = struct
     include Alias
 
     let store = Store.create ()
-    let _add_deps t deps = add_deps store t deps
-    let rules () = rules store P.tree
+    let add_deps t deps = add_deps store t deps
+    let rules () = rules store ~prefix:ctx.build_dir ~tree:P.tree
   end
 
+
   let all_rules = ref []
-  let add_rule rule = all_rules := rule :: !all_rules
+  let known_targets_by_dir_so_far = ref Path.Map.empty
+
+  let add_rule build =
+    let rule = Build_interpret.Rule.make build in
+    all_rules := rule :: !all_rules;
+    known_targets_by_dir_so_far :=
+      List.fold_left rule.targets ~init:!known_targets_by_dir_so_far ~f:(fun acc target ->
+        let path = Build_interpret.Target.path target in
+        let dir = Path.parent path in
+        let fn = Path.basename path in
+        let files =
+          match Path.Map.find dir acc with
+          | None -> String_set.singleton fn
+          | Some set -> String_set.add fn set
+        in
+        Path.Map.add acc ~key:dir ~data:files)
+
+  let sources_and_targets_known_so_far ~src_path =
+    let sources =
+      match File_tree.find_dir P.file_tree src_path with
+      | None -> String_set.empty
+      | Some dir -> File_tree.Dir.files dir
+    in
+    match Path.Map.find src_path !known_targets_by_dir_so_far with
+    | None -> sources
+    | Some set -> String_set.union sources set
 
   (* +-----------------------------------------------------------------+
      | Tools                                                           |
@@ -938,13 +962,10 @@ module Gen(P : Params) = struct
 
   let library_rules (lib : Library.t) ~dir ~all_modules ~files =
     let dep_kind = if lib.optional then Build.Optional else Required in
-    let flags =
-      Ocaml_flags.make
-        ~flags:lib.flags
-        ~ocamlc_flags:lib.ocamlc_flags
-        ~ocamlopt_flags:lib.ocamlopt_flags
+    let flags = Ocaml_flags.make lib.buildable in
+    let modules =
+      parse_modules ~dir ~all_modules ~modules_written_by_user:lib.buildable.modules
     in
-    let modules = parse_modules ~dir ~all_modules ~modules_written_by_user:lib.modules in
     let main_module_name = String.capitalize_ascii lib.name in
     let modules =
       String_map.map modules ~f:(fun (m : Module.t) ->
@@ -975,8 +996,8 @@ module Gen(P : Params) = struct
     in
     (* Preprocess before adding the alias module as it doesn't need preprocessing *)
     let modules =
-      pped_modules ~dir ~dep_kind ~modules ~preprocess:lib.preprocess
-        ~preprocessor_deps:lib.preprocessor_deps
+      pped_modules ~dir ~dep_kind ~modules ~preprocess:lib.buildable.preprocess
+        ~preprocessor_deps:lib.buildable.preprocessor_deps
         ~lib_name:(Some lib.name)
     in
     let modules =
@@ -1001,16 +1022,16 @@ module Gen(P : Params) = struct
 
     let requires =
       requires_and_dot_merlin ~dir ~dep_kind ~item:lib.name
-        ~libraries:lib.libraries
-        ~preprocess:lib.preprocess
+        ~libraries:lib.buildable.libraries
+        ~preprocess:lib.buildable.preprocess
         ~virtual_deps:lib.virtual_deps
         ~alias_module
     in
 
     setup_runtime_deps ~dir ~dep_kind ~item:lib.name
-      ~libraries:lib.libraries
+      ~libraries:lib.buildable.libraries
       ~ppx_runtime_libraries:lib.ppx_runtime_libraries;
-    List.iter (Lib_db.select_rules ~dir lib.libraries) ~f:add_rule;
+    List.iter (Lib_db.select_rules ~dir lib.buildable.libraries) ~f:add_rule;
 
     build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
@@ -1131,13 +1152,10 @@ module Gen(P : Params) = struct
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules =
     let dep_kind = Build.Required in
-    let flags =
-      Ocaml_flags.make
-        ~flags:exes.flags
-        ~ocamlc_flags:exes.ocamlc_flags
-        ~ocamlopt_flags:exes.ocamlopt_flags
+    let flags = Ocaml_flags.make exes.buildable in
+    let modules =
+      parse_modules ~dir ~all_modules ~modules_written_by_user:exes.buildable.modules
     in
-    let modules = parse_modules ~dir ~all_modules ~modules_written_by_user:exes.modules in
     let modules =
       String_map.map modules ~f:(fun (m : Module.t) ->
         { m with obj_name = obj_name_of_basename m.ml_fname })
@@ -1148,21 +1166,23 @@ module Gen(P : Params) = struct
           name (Path.to_string dir));
 *)
     let modules =
-      pped_modules ~dir ~dep_kind ~modules ~preprocess:exes.preprocess
-        ~preprocessor_deps:[] ~lib_name:None
+      pped_modules ~dir ~dep_kind ~modules
+        ~preprocess:exes.buildable.preprocess
+        ~preprocessor_deps:exes.buildable.preprocessor_deps
+        ~lib_name:None
     in
     let item = List.hd exes.names in
     let dep_graph = ocamldep_rules ~dir ~item ~modules ~alias_module:None in
 
     let requires =
       requires_and_dot_merlin ~dir ~dep_kind ~item
-        ~libraries:exes.libraries
-        ~preprocess:exes.preprocess
+        ~libraries:exes.buildable.libraries
+        ~preprocess:exes.buildable.preprocess
         ~virtual_deps:[]
         ~alias_module:None
     in
 
-    List.iter (Lib_db.select_rules ~dir exes.libraries) ~f:add_rule;
+    List.iter (Lib_db.select_rules ~dir exes.buildable.libraries) ~f:add_rule;
 
     build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module:None;
 
@@ -1265,6 +1285,38 @@ module Gen(P : Params) = struct
          ~dir
          ~targets)
 
+  let alias_rules (alias_conf : Alias_conf.t) ~dir =
+    let digest =
+      let deps =
+        Sexp.To_sexp.list Dep_conf_interpret.sexp_of_t alias_conf.deps in
+      let action =
+        match alias_conf.action with
+        | None -> Atom "none"
+        | Some a -> List [Atom "some" ; User_action.Unexpanded.sexp_of_t a] in
+      Sexp.List [deps ; action]
+      |> Sexp.to_string
+      |> Digest.string
+      |> Digest.to_hex in
+    let alias = Alias.make alias_conf.name ~dir in
+    let digest_path =
+      Path.relative dir (Path.basename (Alias.file alias) ^ "-" ^ digest) in
+    let dummy = Build.touch digest_path in
+    Alias.add_deps alias [digest_path];
+    let deps =
+      let deps = Dep_conf_interpret.dep_of_list ~dir alias_conf.deps in
+      match alias_conf.action with
+      | None -> deps
+      | Some action ->
+        deps
+        >>> User_action_interpret.expand
+          action
+          ~dir
+          ~dep_kind:Required
+          ~targets:[]
+          ~deps:alias_conf.deps
+        >>> User_action_interpret.run ~dir ~targets:[] in
+    add_rule (deps >>> dummy)
+
   (* +-----------------------------------------------------------------+
      | lex/yacc                                                        |
      +-----------------------------------------------------------------+ *)
@@ -1359,74 +1411,6 @@ module Gen(P : Params) = struct
           })
 
   (* +-----------------------------------------------------------------+
-     | META                                                            |
-     +-----------------------------------------------------------------+ *)
-
-  let stanzas_to_consider_for_install =
-    if P.filter_out_optional_stanzas_with_missing_deps then
-      List.concat_map P.stanzas ~f:(fun { ctx_dir; stanzas; _ } ->
-        List.filter_map stanzas ~f:(function
-          | Library _ -> None
-          | stanza    -> Some (ctx_dir, stanza)))
-      @ List.map (Lib_db.internal_libs_without_non_installable_optional_ones)
-          ~f:(fun (dir, lib) -> (dir, Stanza.Library lib))
-    else
-      List.concat_map P.stanzas ~f:(fun { ctx_dir; stanzas; _ } ->
-        List.map stanzas ~f:(fun s -> (ctx_dir, s)))
-
-  let () =
-    List.iter P.packages ~f:(fun package ->
-      let meta_fn = "META." ^ package in
-      let meta_path = Path.relative ctx.build_dir meta_fn in
-      let templ_fn = meta_fn ^ ".template" in
-      let template =
-        if Sys.file_exists templ_fn then
-          Build.path (Path.(relative root) templ_fn)
-          >>^ fun () ->
-          lines_of_file templ_fn
-        else
-          Build.return ["# JBUILDER_GEN"]
-      in
-      let meta =
-        Gen_meta.gen ~package
-           ~stanzas:stanzas_to_consider_for_install
-           ~lib_deps:(fun ~dir jbuild ->
-             match jbuild with
-             | Library lib ->
-               Lib_db.load_requires ~dir ~item:lib.name
-               >>^ List.map ~f:Lib.best_name
-             | Executables exes ->
-               let item = List.hd exes.names in
-               Lib_db.load_requires ~dir ~item
-               >>^ List.map ~f:Lib.best_name
-             | _ -> Build.return [])
-           ~ppx_runtime_deps:(fun ~dir jbuild ->
-             match jbuild with
-             | Library lib ->
-               Lib_db.load_runtime_deps ~dir ~item:lib.name
-               >>^ List.map ~f:Lib.best_name
-             | _ -> Build.return [])
-      in
-      add_rule
-        (Build.fanout meta template
-         >>>
-         Build.create_file ~target:meta_path (fun ((meta : Meta.t), template) ->
-           with_file_out (Path.to_string meta_path) ~f:(fun oc ->
-             let ppf = Format.formatter_of_out_channel oc in
-             Format.pp_open_vbox ppf 0;
-             List.iter template ~f:(fun s ->
-               if String.is_prefix s ~prefix:"#" then
-                 match
-                   String.split_words (String.sub s ~pos:1 ~len:(String.length s - 1))
-                 with
-                 | ["JBUILDER_GEN"] -> Format.fprintf ppf "%a@," Meta.pp meta.entries
-                 | _ -> Format.fprintf ppf "%s@," s
-               else
-                 Format.fprintf ppf "%s@," s);
-             Format.pp_close_box ppf ();
-             Format.pp_print_flush ppf ()))))
-
-  (* +-----------------------------------------------------------------+
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
 
@@ -1444,8 +1428,8 @@ module Gen(P : Params) = struct
           | Ocamllex  conf -> List.map conf.names ~f:(fun name -> name ^ ".ml")
           | Ocamlyacc conf -> List.concat_map conf.names ~f:(fun name ->
             [ name ^ ".ml"; name ^ ".mli" ])
-          | Library { libraries; _ } | Executables { libraries; _ } ->
-            List.filter_map libraries ~f:(function
+          | Library { buildable; _ } | Executables { buildable; _ } ->
+            List.filter_map buildable.libraries ~f:(function
               | Direct _ -> None
               | Select s -> Some s.result_fn)
           | _ -> [])
@@ -1465,9 +1449,106 @@ module Gen(P : Params) = struct
       | Rule         rule -> user_rule         rule ~dir
       | Ocamllex     conf -> ocamllex_rules    conf ~dir
       | Ocamlyacc    conf -> ocamlyacc_rules   conf ~dir
+      | Alias        alias -> alias_rules alias ~dir
       | Provides _ | Install _ | Other -> ())
 
   let () = List.iter P.stanzas ~f:rules
+
+  (* +-----------------------------------------------------------------+
+     | META                                                            |
+     +-----------------------------------------------------------------+ *)
+
+  (* The rules for META files must come after the interpretation of the jbuild stanzas
+     since a user rule might generate a META.<package> file *)
+
+  let stanzas_to_consider_for_install =
+    if P.filter_out_optional_stanzas_with_missing_deps then
+      List.concat_map P.stanzas ~f:(fun { ctx_dir; stanzas; _ } ->
+        List.filter_map stanzas ~f:(function
+          | Library _ -> None
+          | stanza    -> Some (ctx_dir, stanza)))
+      @ List.map (Lib_db.internal_libs_without_non_installable_optional_ones)
+          ~f:(fun (dir, lib) -> (dir, Stanza.Library lib))
+    else
+      List.concat_map P.stanzas ~f:(fun { ctx_dir; stanzas; _ } ->
+        List.map stanzas ~f:(fun s -> (ctx_dir, s)))
+
+  (* META files that must be installed. Either because there is an explicit or user
+     generated one, or because *)
+  let packages_with_explicit_or_user_generated_meta =
+    String_map.bindings P.packages
+    |> List.filter_map ~f:(fun (package, src_path) ->
+      let path = Path.append ctx.build_dir src_path in
+      let meta_fn = "META." ^ package in
+      let meta_templ_fn = meta_fn ^ ".template" in
+
+      let has_meta, has_meta_tmpl =
+        let files = sources_and_targets_known_so_far ~src_path in
+        (String_set.mem meta_fn files,
+         String_set.mem meta_templ_fn files)
+      in
+
+      let meta_fn =
+        if has_meta then
+          meta_fn ^ ".from-jbuilder"
+        else
+          meta_fn
+      in
+      let meta_path = Path.relative path meta_fn in
+
+      let template =
+        if has_meta_tmpl then
+          let meta_templ_path = Path.relative src_path meta_templ_fn in
+          Build.path meta_templ_path
+          >>^ fun () ->
+          lines_of_file (Path.to_string meta_templ_path)
+        else
+          Build.return ["# JBUILDER_GEN"]
+      in
+      let meta =
+        Gen_meta.gen ~package
+          ~stanzas:stanzas_to_consider_for_install
+          ~lib_deps:(fun ~dir jbuild ->
+            match jbuild with
+            | Library lib ->
+              Lib_db.load_requires ~dir ~item:lib.name
+              >>^ List.map ~f:Lib.best_name
+            | Executables exes ->
+              let item = List.hd exes.names in
+              Lib_db.load_requires ~dir ~item
+              >>^ List.map ~f:Lib.best_name
+            | _ -> Build.return [])
+          ~ppx_runtime_deps:(fun ~dir jbuild ->
+            match jbuild with
+            | Library lib ->
+              Lib_db.load_runtime_deps ~dir ~item:lib.name
+              >>^ List.map ~f:Lib.best_name
+            | _ -> Build.return [])
+      in
+      add_rule
+        (Build.fanout meta template
+         >>>
+         Build.create_file ~target:meta_path (fun ((meta : Meta.t), template) ->
+           with_file_out (Path.to_string meta_path) ~f:(fun oc ->
+             let ppf = Format.formatter_of_out_channel oc in
+             Format.pp_open_vbox ppf 0;
+             List.iter template ~f:(fun s ->
+               if String.is_prefix s ~prefix:"#" then
+                 match
+                   String.split_words (String.sub s ~pos:1 ~len:(String.length s - 1))
+                 with
+                 | ["JBUILDER_GEN"] -> Format.fprintf ppf "%a@," Meta.pp meta.entries
+                 | _ -> Format.fprintf ppf "%s@," s
+               else
+                 Format.fprintf ppf "%s@," s);
+             Format.pp_close_box ppf ();
+             Format.pp_print_flush ppf ())));
+
+      if has_meta || has_meta_tmpl then
+        Some package
+      else
+        None)
+    |> String_set.of_list
 
   (* +-----------------------------------------------------------------+
      | Installation                                                    |
@@ -1533,21 +1614,11 @@ module Gen(P : Params) = struct
       ])
     |> List.map ~f:(Install.Entry.make Lib)
 
-  let add_doc_file fn entries =
-    let suffixes = [""; ".md"; ".org"; ".txt"] in
-    match
-      List.find_map suffixes ~f:(fun suf ->
-          let path = Path.of_string (fn ^ suf) in
-          if Path.exists path then
-            Some path
-          else
-            None)
-    with
-    | None -> entries
-    | Some path ->
-      Install.Entry.make Doc path :: entries
+  let is_odig_doc_file fn =
+    List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY"]
+      ~f:(fun prefix -> String.is_prefix fn ~prefix)
 
-  let install_file package =
+  let install_file package_path package =
     let entries =
       List.concat_map stanzas_to_consider_for_install ~f:(fun (dir, stanza) ->
         match stanza with
@@ -1557,52 +1628,53 @@ module Gen(P : Params) = struct
         | Executables ({ object_public_name = Some name; _ } as exes)
           when Findlib.root_package_name name = package ->
           obj_install_files ~dir exes
-        | Install { section; files; package = p } -> begin
-            match p with
-            | Some p when p <> package -> []
-            | _ ->
-              List.map files ~f:(fun { Install_conf. src; dst } ->
-                Install.Entry.make section (Path.relative dir src) ?dst)
-          end
+        | Install { section; files; package = Some p } when p = package ->
+          List.map files ~f:(fun { Install_conf. src; dst } ->
+            Install.Entry.make section (Path.relative dir src) ?dst)
         | _ -> [])
     in
     let entries =
-      List.fold_left ["README"; "LICENSE"] ~init:entries ~f:(fun acc fn ->
-        add_doc_file fn acc)
+      let files = sources_and_targets_known_so_far ~src_path:Path.root in
+      String_set.fold files ~init:entries ~f:(fun fn acc ->
+        if is_odig_doc_file fn then
+          Install.Entry.make Doc (Path.relative ctx.build_dir fn) :: acc
+        else
+          acc)
     in
     let entries =
-      let opam = Path.of_string "opam" in
-      if Path.exists opam then
-        Install.Entry.make Lib opam :: entries
-      else
-        entries
+      let opam = Path.relative package_path (package ^ ".opam") in
+      Install.Entry.make Lib opam ~dst:"opam" :: entries
     in
     let entries =
+      (* Install a META file if the user wrote one or setup a rule to generate one, or if
+         we have at least another file to install in the lib/ directory *)
       let meta_fn = "META." ^ package in
-      if Sys.file_exists meta_fn                 ||
-         Sys.file_exists (meta_fn ^ ".template") ||
+      if String_set.mem package packages_with_explicit_or_user_generated_meta ||
          List.exists entries ~f:(fun (e : Install.Entry.t) -> e.section = Lib) then
-        let meta = Path.relative ctx.build_dir meta_fn in
+        let meta = Path.append ctx.build_dir (Path.relative package_path meta_fn) in
         Install.Entry.make Lib meta ~dst:"META" :: entries
       else
         entries
     in
-    let fn = Path.relative ctx.build_dir (package ^ ".install") in
+    let fn =
+      Path.relative (Path.append ctx.build_dir package_path) (package ^ ".install")
+    in
     add_rule
       (Build.path_set (Install.files entries) >>>
        Build.create_file ~target:fn (fun () ->
          Install.write_install_file fn entries))
 
-  let () = List.iter P.packages ~f:install_file
+  let () = String_map.iter P.packages ~f:(fun ~key:package ~data:package_path ->
+    install_file package_path package)
 
   let () =
     if Path.basename ctx.build_dir = "default" then
-      List.iter P.packages ~f:(fun pkg ->
-        let fn = pkg ^ ".install" in
+      String_map.iter P.packages ~f:(fun ~key:pkg ~data:path ->
+        let install_file = Path.relative path (pkg ^ ".install") in
         add_rule
           (Build.copy
-             ~src:(Path.relative ctx.build_dir fn)
-             ~dst:(Path.relative Path.root     fn)))
+             ~src:(Path.append ctx.build_dir install_file)
+             ~dst:install_file))
 end
 
 let gen ~context ~file_tree ~tree ~stanzas ~packages

@@ -1,1 +1,1 @@
-val parse_string : string -> (Re.t, int * string) result
+val parse_string : string -> (Jbuilder_re.Re.t, int * string) result

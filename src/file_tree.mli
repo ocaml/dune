@@ -18,3 +18,6 @@ val fold : t -> init:'a -> f:(Dir.t -> 'a -> 'a) -> 'a
 val root : t -> Dir.t
 
 val find_dir : t -> Path.t -> Dir.t option
+
+val exists : t -> Path.t -> bool
+val file_exists : t -> Path.t -> string -> bool

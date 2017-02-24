@@ -65,3 +65,12 @@ let fold t ~init ~f =
 
 let find_dir t path =
   Path.Map.find path t.dirs
+
+let file_exists t path fn =
+  match Path.Map.find path t.dirs with
+  | None -> false
+  | Some { files; _ } -> String_set.mem fn files
+
+let exists t path =
+  Path.Map.mem path t.dirs ||
+  file_exists t (Path.parent path) (Path.basename path)

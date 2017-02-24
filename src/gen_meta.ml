@@ -103,7 +103,9 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps =
                  | Ppx_rewriter ->
                    [ rule "ppx" [Neg "ppx_driver"; Neg "custom_ppx"] Set "./as-ppx.exe" ]
                  | Ppx_type_conv_plugin ->
-                   [ rule "ppxopt" [Neg "ppx_driver"; Neg "custom_ppx"] Set
+                   [ rule "requires" [Neg "ppx_driver"; Neg "custom_ppx"] Add
+                       "ppx_deriving"
+                   ; rule "ppxopt" [Neg "ppx_driver"; Neg "custom_ppx"] Set
                        ("ppx_deriving,package:" ^ Pub_name.to_string pub_name)
                    ]
              }

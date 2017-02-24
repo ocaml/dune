@@ -1,154 +1,47 @@
 open Import
 open Future
 
-let internal = function
-  | [_; "findlib-packages"] ->
-    Future.Scheduler.go
-      (Lazy.force Context.default >>= fun ctx ->
-       let findlib = Findlib.create ctx in
-       let pkgs = Findlib.all_packages findlib in
-       let max_len =
-         List.map pkgs ~f:String.length
-         |> List.fold_left ~init:0 ~f:max
-       in
-       List.iter pkgs ~f:(fun pkg ->
-         let ver =
-           match (Findlib.find_exn findlib pkg).version with
-           | "" -> "n/a"
-           | v  -> v
-         in
-         Printf.printf "%-*s (version: %s)\n" max_len pkg ver);
-       return ())
-  | _ ->
-    ()
+type setup =
+  { build_system : Build_system.t
+  ; stanzas      : (Path.t * Jbuild_types.Stanza.t list) list
+  ; context      : Context.t
+  ; packages     : Path.t String_map.t
+  }
+
+let package_install_file { packages; _ } pkg =
+  match String_map.find pkg packages with
+  | None -> Error ()
+  | Some path -> Ok (Path.relative path (pkg ^ ".install"))
 
 let setup ?filter_out_optional_stanzas_with_missing_deps () =
   let { Jbuild_load. file_tree; tree; stanzas; packages } = Jbuild_load.load () in
-  Lazy.force Context.default >>= fun ctx ->
+  Lazy.force Context.default >>= fun context ->
   let rules =
-    Gen_rules.gen ~context:ctx ~file_tree ~tree ~stanzas ~packages
+    Gen_rules.gen ~context ~file_tree ~tree ~stanzas ~packages
       ?filter_out_optional_stanzas_with_missing_deps ()
   in
-  let bs = Build_system.create ~file_tree ~rules in
-  return (bs, stanzas, ctx)
+  let build_system = Build_system.create ~file_tree ~rules in
+  return { build_system
+         ; stanzas
+         ; context
+         ; packages
+         }
 
-let external_lib_deps ~packages =
-  Future.Scheduler.go
+let external_lib_deps ?log ~packages =
+  Future.Scheduler.go ?log
     (setup () ~filter_out_optional_stanzas_with_missing_deps:false
-     >>| fun (bs, stanzas, _) ->
+     >>| fun ({ build_system = bs; stanzas; _ } as setup) ->
+     let install_files =
+       List.map packages ~f:(fun pkg ->
+         match package_install_file setup pkg with
+         | Ok path -> path
+         | Error () -> die "Unknown package %S" pkg)
+     in
      Path.Map.map
-       (Build_system.all_lib_deps bs
-          (List.map packages ~f:(fun pkg ->
-             Path.(relative root) (pkg ^ ".install"))))
+       (Build_system.all_lib_deps bs install_files)
        ~f:(fun deps ->
          let internals = Jbuild_types.Stanza.lib_names stanzas in
          String_map.filter deps ~f:(fun name _ -> not (String_set.mem name internals))))
-
-let external_lib_deps_cmd packages =
-  let deps =
-    Path.Map.fold (external_lib_deps ~packages) ~init:String_map.empty
-      ~f:(fun ~key:_ ~data:deps acc -> Build.merge_lib_deps deps acc)
-  in
-  String_map.iter deps ~f:(fun ~key:n ~data ->
-    match (data : Build.lib_dep_kind) with
-    | Required -> Printf.printf "%s\n" n
-    | Optional -> Printf.printf "%s (optional)\n" n)
-
-let build_package pkg =
-  Future.Scheduler.go
-    (setup () >>= fun (bs, _, _) ->
-     Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])
-
-module Cli = struct
-  open Cmdliner
-
-  let internal =
-    let doc = "internal" in
-    let name_ = Arg.info [] in
-    ( Term.(const internal $ Arg.(non_empty & pos_all string [] name_))
-    , Term.info "internal" ~doc)
-
-  type common =
-    { concurrency: int
-    ; debug_rules: bool
-    ; debug_dep_path: bool
-    ; debug_findlib: bool
-    }
-
-  let set_common c =
-    Clflags.concurrency := c.concurrency;
-    Clflags.debug_rules := c.debug_rules;
-    Clflags.debug_dep_path := c.debug_dep_path;
-    Clflags.debug_findlib := c.debug_findlib
-
-  let copts_sect = "COMMON OPTIONS"
-  let help_secs =
-    [ `S copts_sect
-    ; `P "These options are common to all commands."
-    ; `S "MORE HELP"
-    ; `P "Use `$(mname) $(i,COMMAND) --help' for help on a single command."
-    ;`Noblank
-    ; `S "BUGS"
-    ; `P "Check bug reports at https://github.com/janestreet/jbuilder/issues"
-    ]
-
-  let common =
-    let make concurrency debug_rules debug_dep_path debug_findlib =
-      { concurrency ; debug_rules ; debug_dep_path ; debug_findlib } in
-    let docs = copts_sect in
-    let concurrency =
-      Arg.(value & opt int !Clflags.concurrency & info ["j"] ~docs) in
-    let drules = Arg.(value & flag & info ["drules"] ~docs) in
-    let ddep_path = Arg.(value & flag & info ["ddep-path"] ~docs) in
-    let dfindlib = Arg.(value & flag & info ["dfindlib"] ~docs) in
-    Term.(const make $ concurrency $ drules $ ddep_path $ dfindlib)
-
-  let build_package =
-    let doc = "build-package" in
-    let name_ = Arg.info [] in
-    let go common pkg =
-      set_common common;
-      build_package pkg in
-    ( Term.(const go
-            $ common
-            $ Arg.(required & pos 0 (some string) None name_))
-    , Term.info "build-package" ~doc ~man:help_secs)
-
-  let external_lib_deps =
-    let doc = "external-lib-deps" in
-    let name_ = Arg.info [] in
-    let go common packages =
-      set_common common;
-      external_lib_deps_cmd packages in
-    ( Term.(const go
-            $ common
-            $ Arg.(non_empty & pos_all string [] name_))
-    , Term.info "external-lib-deps" ~doc ~man:help_secs)
-
-  let build_targets =
-    let doc = "build" in
-    let name_ = Arg.info [] in
-    let go common targets =
-      set_common common;
-      Future.Scheduler.go
-        (setup () >>= fun (bs, _, ctx) ->
-         let targets = List.map targets ~f:(Path.relative ctx.build_dir) in
-         Build_system.do_build_exn bs targets) in
-    ( Term.(const go
-            $ common
-            $ Arg.(non_empty & pos_all string [] name_))
-    , Term.info "build" ~doc ~man:help_secs)
-
-  let all =
-    [ internal ; build_package ; external_lib_deps ; build_targets ]
-
-  let main () =
-    match Term.eval_choice build_targets all with
-    | `Error _ -> exit 1
-    | _ -> exit 0
-end
-
-let main = Cli.main
 
 let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   match exn with
@@ -159,6 +52,7 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
       "File \"%s\", line %d, characters %d-%d:\n\
        Error: %s\n"
       (map_fname start.pos_fname) start.pos_lnum start_c stop_c msg
+  | Fatal_error "" -> ()
   | Fatal_error msg ->
     Format.fprintf ppf "%s\n" (String.capitalize msg)
   | Findlib.Package_not_found pkg ->
@@ -190,7 +84,25 @@ let report_error ?map_fname ppf exn =
     let backtrace = Printexc.get_raw_backtrace () in
     report_error ?map_fname ppf exn ~backtrace
 
-let main () =
+let create_log () =
+  if not (Sys.file_exists "_build") then
+    Unix.mkdir "_build" 0o777;
+  let oc = open_out_bin "_build/log" in
+  Printf.fprintf oc "# %s\n%!"
+    (String.concat (List.map (Array.to_list Sys.argv) ~f:quote_for_shell) ~sep:" ");
+  oc
+
+(* Called by the script generated by ../build.ml *)
+let bootstrap () =
+  let pkg = "jbuilder" in
+  let main () =
+    let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
+    Arg.parse [ "-j", Set_int Clflags.concurrency, "JOBS concurrency" ]
+      anon "Usage: boot.exe [-j JOBS]\nOptions are:";
+    Future.Scheduler.go ~log:(create_log ())
+      (setup () >>= fun { build_system = bs; _ } ->
+       Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])
+  in
   try
     main ()
   with exn ->

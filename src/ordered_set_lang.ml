@@ -55,12 +55,14 @@ let rec map (t : t) ~f =
 
 let standard : t = Atom ":standard"
 
+let append a b = Sexp.List [a; b]
+
 module Unexpanded = struct
   type nonrec t = t
   let t t = t
   let standard = standard
 
-  let append a b = Sexp.List [a; b]
+  let append = append
 
   let files t =
     let rec loop acc : t -> _ = function

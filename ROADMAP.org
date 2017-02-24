@@ -83,3 +83,21 @@ Support generating documentation with [[https://github.com/ocaml-doc/odoc][odoc]
 ** Inline tests
 
 Setup automatic support of [[https://github.com/janestreet/ppx_inline_test][inline tests]] and [[https://github.com/janestreet/ppx_bench][inline benchmarks]].
+
+** Extend the action language
+
+Currently in =(action ...)= fields, when not using =bash= the language
+is very limited. It would be nice to add more commands that would
+guarantee portability and avoid the quoting nightmare of =bash=.
+
+FS commands should be straightfoward to implement:
+- =(copy <src> <dst>)=
+- =(mkdir <path>)=
+- ...
+
+Redirections to/from files are simple as well.
+
+We could also implements pipes (=(pipe <command1> <command2> ...)=) by
+using temporary files. Using proper pipes would complicate windows
+support and would make proper handling of =-j= hard. Using temporary
+files will be just fine.

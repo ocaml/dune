@@ -1288,8 +1288,7 @@ module Gen(P : Params) = struct
       |> Digest.string
       |> Digest.to_hex in
     let alias = Alias.make alias_conf.name ~dir in
-    let digest_path =
-      Path.relative dir (Path.basename (Alias.file alias) ^ "-" ^ digest) in
+    let digest_path = Path.extend_basename (Alias.file alias) ~suffix:("-" ^ digest) in
     let dummy = Build.touch digest_path in
     Alias.add_deps alias [digest_path];
     let deps =

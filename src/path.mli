@@ -54,6 +54,8 @@ val append : t -> t -> t
 val basename : t -> string
 val parent : t -> t
 
+val extend_basename : t -> suffix:string -> t
+
 val extract_build_context : t -> (string * t) option
 val extract_build_context_dir : t -> (t * t) option
 val is_in_build_dir : t -> bool

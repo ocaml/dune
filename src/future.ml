@@ -228,10 +228,16 @@ module Scheduler = struct
       before ^ Ansi_color.colorize ~key key ^ after
     end
 
+  let rec colorize_args = function
+    | [] -> []
+    | "-o" :: fn :: rest ->
+      "-o" :: Ansi_color.(apply_string output_filename) fn :: colorize_args rest
+    | x :: rest -> x :: colorize_args rest
+
   let command_line { prog; args; dir; stdout_to; _ } =
     let quote = quote_for_shell in
     let prog = colorize_prog (quote prog) in
-    let s = String.concat (prog :: List.map args ~f:quote) ~sep:" " in
+    let s = String.concat (prog :: colorize_args (List.map args ~f:quote)) ~sep:" " in
     let s =
       match stdout_to with
       | None -> s

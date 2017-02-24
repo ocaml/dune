@@ -3,16 +3,43 @@ open Import
 include struct
   [@@@warning "-37"]
   type color =
-    | Black | Red | Green | Yellow | Blue | Magenta | Cyan | White | Default
-    | Bright_black | Bright_red | Bright_green | Bright_yellow | Bright_blue
-    | Bright_magenta | Bright_cyan | Bright_white
+    | Black
+    | Red
+    | Green
+    | Yellow
+    | Blue
+    | Magenta
+    | Cyan
+    | White
+    | Default
+    | Bright_black
+    | Bright_red
+    | Bright_green
+    | Bright_yellow
+    | Bright_blue
+    | Bright_magenta
+    | Bright_cyan
+    | Bright_white
 
   type style =
-    | Reset | Bold | Underlined | Dim | Blink | Inverse | Hidden
-    | Bold_off | Underlined_off | Dim_off | Blink_off | Inverse_off | Hidden_off
+    | Reset
+    | Bold
+    | Underlined
+    | Dim
+    | Blink
+    | Inverse
+    | Hidden
+    | Bold_off
+    | Underlined_off
+    | Dim_off
+    | Blink_off
+    | Inverse_off
+    | Hidden_off
     | Foreground of color
     | Background of color
 end
+
+type styles = style list
 
 let ansi_code_of_style = function
   | Reset                     -> "0"
@@ -137,6 +164,15 @@ let setup_env_for_ocaml_colors = lazy(
   end
 )
 
+let styles_of_tag = function
+  | "loc" -> [Bold]
+  | "error" -> [Bold; Foreground Red]
+  | "warning" -> [Bold; Foreground Magenta]
+  | "kwd" -> [Bold; Foreground Blue]
+  | "id" -> [Bold; Foreground Yellow]
+  | "prompt" -> [Bold; Foreground Green]
+  | _ -> []
+
 let setup_err_formatter_colors () =
   let open Format in
   if Lazy.force stderr_supports_colors then begin
@@ -146,15 +182,8 @@ let setup_err_formatter_colors () =
     pp_set_formatter_tag_functions ppf
       { funcs with
         mark_close_tag = (fun _ -> ansi_escape_of_styles [Reset])
-      ; mark_open_tag = (fun tag ->
-        ansi_escape_of_styles
-          (match tag with
-           | "loc" -> [Bold]
-           | "error" -> [Bold; Foreground Red]
-           | "warning" -> [Bold; Foreground Magenta]
-           | "kwd" -> [Bold; Foreground Blue]
-           | "id" -> [Bold; Foreground Yellow]
-           | "prompt" -> [Bold; Foreground Green]
-           | _ -> []))
+      ; mark_open_tag = (fun tag -> ansi_escape_of_styles (styles_of_tag tag))
       }
   end
+
+let output_filename = [Bold; Foreground Green]

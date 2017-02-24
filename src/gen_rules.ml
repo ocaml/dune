@@ -1658,13 +1658,25 @@ module Gen(P : Params) = struct
     install_file package_path package)
 
   let () =
-    if Path.basename ctx.build_dir = "default" then
-      String_map.iter P.packages ~f:(fun ~key:pkg ~data:path ->
-        let install_file = Path.relative path (pkg ^ ".install") in
-        add_rule
-          (Build.copy
-             ~src:(Path.append ctx.build_dir install_file)
-             ~dst:install_file))
+    let install_alias = Alias.make ~dir:ctx.build_dir "install" in
+    let global_install_alias = Alias.make ~dir:Path.root "install" in
+    let is_default = Path.basename ctx.build_dir = "default" in
+    String_map.iter P.packages ~f:(fun ~key:pkg ~data:path ->
+      let install_fn = pkg ^ ".install" in
+      let in_source_dir = Path.relative path install_fn in
+      let orig = Path.append ctx.build_dir in_source_dir in
+      let at_root_of_build_context = Path.relative ctx.build_dir install_fn in
+      if not (Path.is_root path) then
+        add_rule (Build.copy ~src:orig ~dst:at_root_of_build_context);
+      Alias.add_deps install_alias [at_root_of_build_context];
+
+      if is_default then begin
+        add_rule (Build.copy ~src:orig ~dst:in_source_dir);
+        let at_root = Path.relative Path.root install_fn in
+        if not (Path.is_root path) then
+          add_rule (Build.copy ~src:orig ~dst:at_root);
+        Alias.add_deps global_install_alias [at_root]
+      end)
 end
 
 let gen ~context ~file_tree ~tree ~stanzas ~packages

@@ -130,7 +130,16 @@ Jbuilder doesn't read =<package>.opam= files, however when a
 =<package>.opam= is present, Jbuilder will knows that the package
 named =<package>= exists. It will know how to construct a
 =<package>.install= file in the same directory, to handle installation
-via [[https://opam.ocaml.org/][opam]].
+via [[https://opam.ocaml.org/][opam]]. In addition, Jbuilder will also know how to build
+=<package>.install= at the root of the workspace, for
+convenience. Jbuilder also defines the =install= alias, which depends
+on all the buildable =<package>.install= at the root of the
+workspace. So for instance to build everything that is installable in
+a workspace, run:
+
+#+begin_src
+$ jbuilder build @install
+#+end_src
 
 Declaring a package this way will allow you to add elements such as
 libraries, executables, documentations, ... to your package by

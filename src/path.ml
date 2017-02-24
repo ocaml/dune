@@ -80,7 +80,7 @@ module Local = struct
     | t ->
       let len = String.length t in
       match String.rindex_from t (len - 1) '/' with
-      | exception Not_found -> ""
+      | exception Not_found -> t
       | i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1)
 
   let relative initial_t path =

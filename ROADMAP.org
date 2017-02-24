@@ -20,11 +20,13 @@ Document the usage and design of Jbuilder.
 - *21/02/2017*: There is now a manual, it still needs a bit more about
   CLI usage
 
-** Stable jbuild types
+** +Stable jbuild types+
 
 Add a stable version of the jbuild format so that one can write
 =(jbuild_version 1)= inside jbuild files and be sure that they will
 work with future versions of jbuild.
+
+- *24/02/2017*: implemented
 
 ** Finding the project/workspace root
 

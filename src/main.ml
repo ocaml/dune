@@ -56,10 +56,10 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   | Fatal_error msg ->
     Format.fprintf ppf "%s\n" (String.capitalize msg)
   | Findlib.Package_not_found pkg ->
-    Format.fprintf ppf "Findlib package %S not found.\n" pkg
+    Format.fprintf ppf "@{<error>Findlib package %S not found.@}\n" pkg
   | Code_error msg ->
     let bt = Printexc.raw_backtrace_to_string backtrace in
-    Format.fprintf ppf "Internal error, please report upstream.\n\
+    Format.fprintf ppf "@{<error>Internal error, please report upstream.@}\n\
                         Description: %s\n\
                         Backtrace:\n\
                         %s" msg bt
@@ -69,7 +69,7 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
     if String.is_prefix s ~prefix:"File \"" then
       Format.fprintf ppf "%s\nBacktrace:\n%s" s bt
     else
-      Format.fprintf ppf "Error: exception %s\nBacktrace:\n%s" s bt
+      Format.fprintf ppf "@{<error>Error@}: exception %s\nBacktrace:\n%s" s bt
 
 let report_error ?map_fname ppf exn =
   match exn with

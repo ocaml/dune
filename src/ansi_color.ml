@@ -152,6 +152,9 @@ let setup_err_formatter_colors () =
            | "loc" -> [Bold]
            | "error" -> [Bold; Foreground Red]
            | "warning" -> [Bold; Foreground Magenta]
+           | "kwd" -> [Bold; Foreground Blue]
+           | "id" -> [Bold; Foreground Yellow]
+           | "prompt" -> [Bold; Foreground Green]
            | _ -> []))
       }
   end

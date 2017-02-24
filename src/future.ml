@@ -235,13 +235,6 @@ module Scheduler = struct
 
   let running = Hashtbl.create 128
 
-  let handle_process_status job (status : Unix.process_status) =
-    match status with
-    | WEXITED   0 -> ()
-    | WEXITED   n -> die "Command [%d] exited with code %d"     job.id n
-    | WSIGNALED n -> die "Command [%d] got killed by signal %d" job.id n
-    | WSTOPPED  _ -> assert false
-
   let process_done ?(exiting=false) job (status : Unix.process_status) =
     Hashtbl.remove running job.pid;
     let output =
@@ -271,13 +264,15 @@ module Scheduler = struct
           Printf.eprintf "Output[%d]:\n%s%!" job.id output;
         Ivar.fill job.job.ivar ()
       | WEXITED n ->
-        Printf.eprintf "\nCommand [%d] exited with code %d:\n$ %s\n%s%!"
+        Format.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] exited with code %d:\n\
+                        @{<prompt>$@} %s\n%s%!"
           job.id n
           (Ansi_color.strip_colors_for_stderr job.command_line)
           (Ansi_color.strip_colors_for_stderr output);
         die ""
       | WSIGNALED n ->
-        Printf.eprintf "\nCommand [%d] got signal %d:\n$ %s\n%s%!"
+        Printf.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] got signal %d:\n\
+                        @{<prompt>$@} %s\n%s%!"
           job.id n
           (Ansi_color.strip_colors_for_stderr job.command_line)
           (Ansi_color.strip_colors_for_stderr output);
@@ -325,7 +320,7 @@ module Scheduler = struct
         let id = gen_id () in
         let command_line = command_line job in
         if !Clflags.debug_run then
-          Printf.eprintf "Running[%d]: %s\n%!" id
+          Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
             (Ansi_color.strip_colors_for_stderr command_line);
         Option.iter job.dir ~f:(fun dir -> Sys.chdir dir);
         let argv = Array.of_list (job.prog :: job.args) in

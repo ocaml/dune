@@ -20,7 +20,7 @@ let many fn f =
     |> List.split
   in
   try
-    List.map sexps ~f
+    f sexps
   with Sexp.Of_sexp_error (msg, sub) ->
     let loc =
       match Sexp.locate_in_list sexps ~sub ~locs with

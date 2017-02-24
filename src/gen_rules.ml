@@ -1410,7 +1410,7 @@ module Gen(P : Params) = struct
       | Ocamllex     conf -> ocamllex_rules    conf ~dir
       | Ocamlyacc    conf -> ocamlyacc_rules   conf ~dir
       | Alias        alias -> alias_rules alias ~dir
-      | Provides _ | Install _ | Other -> ())
+      | Provides _ | Install _ -> ())
 
   let () = List.iter P.stanzas ~f:rules
 

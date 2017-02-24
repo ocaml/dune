@@ -328,6 +328,24 @@ module Of_sexp = struct
       | Atom s ->
         let (Constructor_spec.T c) = find_cstr cstrs sexp s in
         Constructor_args_spec.convert c.args sexp args c.make
+
+  let enum cstrs sexp =
+    match sexp with
+    | List _ -> of_sexp_error "Atom expected" sexp
+    | Atom s ->
+      match
+        List.find cstrs ~f:(fun (name, _) ->
+          equal_cstr_name name s)
+      with
+      | Some (_, value) -> value
+      | None ->
+        of_sexp_error
+          (sprintf "Unknown value %s%s" s
+             (hint
+                (String.uncapitalize_ascii s)
+                (List.map cstrs ~f:(fun (name, _) ->
+                   String.uncapitalize_ascii name)))
+          ) sexp
 end
 (*
 module Both = struct

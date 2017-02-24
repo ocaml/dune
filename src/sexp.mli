@@ -68,4 +68,6 @@ module Of_sexp : sig
   val sum
     :  'a Constructor_spec.t list
     -> 'a t
+
+  val enum : (string * 'a) list -> 'a t
 end

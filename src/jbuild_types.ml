@@ -11,6 +11,20 @@ open Sexp.Of_sexp
 type sexp = Sexp.t = Atom of string | List of sexp list
 let of_sexp_error = Sexp.of_sexp_error
 
+module Jbuilder_version = struct
+  type t =
+    | V1
+    | Vjs
+
+  let t =
+    enum
+      [ "1", V1
+      ; "jane_street", Vjs
+      ]
+
+  let latest_stable = V1
+end
+
 let invalid_module_name sexp =
   of_sexp_error "invalid module name" sexp
 
@@ -749,35 +763,46 @@ module Stanza = struct
     | Provides    of Provides.t
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
-    | Other
+
+  let cstr' name args f =
+    cstr name args (fun x -> Some (f x))
 
   let v1 =
     sum
-      [ cstr "library"     [Library.v1]      (fun x -> Library     x)
-      ; cstr "executables" [Executables.v1]  (fun x -> Executables x)
-      ; cstr "rule"        [Rule.v1]         (fun x -> Rule        x)
-      ; cstr "ocamllex"    [Ocamllex.v1]     (fun x -> Ocamllex    x)
-      ; cstr "ocamlyacc"   [Ocamlyacc.v1]    (fun x -> Ocamlyacc   x)
-      ; cstr "provides"    [Provides.v1]     (fun x -> Provides    x)
-      ; cstr "install"     [Install_conf.v1] (fun x -> Install     x)
-      ; cstr "alias"       [Alias_conf.v1]   (fun x -> Alias       x)
+      [ cstr' "library"     [Library.v1]      (fun x -> Library     x)
+      ; cstr' "executables" [Executables.v1]  (fun x -> Executables x)
+      ; cstr' "rule"        [Rule.v1]         (fun x -> Rule        x)
+      ; cstr' "ocamllex"    [Ocamllex.v1]     (fun x -> Ocamllex    x)
+      ; cstr' "ocamlyacc"   [Ocamlyacc.v1]    (fun x -> Ocamlyacc   x)
+      ; cstr' "provides"    [Provides.v1]     (fun x -> Provides    x)
+      ; cstr' "install"     [Install_conf.v1] (fun x -> Install     x)
+      ; cstr' "alias"       [Alias_conf.v1]   (fun x -> Alias       x)
+      (* Just for validation and error messages *)
+      ; cstr "jbuilder_version" [Jbuilder_version.t] (fun _ -> None)
       ]
 
   let vjs =
+    let ign name = cstr name [fun _ -> ()] (fun () -> None) in
     sum
-      [ cstr "library"     [Library.vjs]      (fun x -> Library     x)
-      ; cstr "executables" [Executables.vjs]  (fun x -> Executables x)
-      ; cstr "rule"        [Rule.vjs]         (fun x -> Rule        x)
-      ; cstr "ocamllex"    [Ocamllex.vjs]     (fun x -> Ocamllex    x)
-      ; cstr "ocamlyacc"   [Ocamlyacc.vjs]    (fun x -> Ocamlyacc   x)
-      ; cstr "provides"    [Provides.vjs]     (fun x -> Provides    x)
-      ; cstr "install"     [Install_conf.vjs] (fun x -> Install     x)
-      ; cstr "alias"       [Alias_conf.vjs]   (fun x -> Alias       x)
-      ; cstr "enforce_style"         [fun _ -> ()] (fun _ -> Other )
-      ; cstr "toplevel_expect_tests" [fun _ -> ()] (fun _ -> Other)
-      ; cstr "unified_tests"         [fun _ -> ()] (fun _ -> Other)
-      ; cstr "embed"                 [fun _ -> ()] (fun _ -> Other)
+      [ cstr' "library"     [Library.vjs]      (fun x -> Library     x)
+      ; cstr' "executables" [Executables.vjs]  (fun x -> Executables x)
+      ; cstr' "rule"        [Rule.vjs]         (fun x -> Rule        x)
+      ; cstr' "ocamllex"    [Ocamllex.vjs]     (fun x -> Ocamllex    x)
+      ; cstr' "ocamlyacc"   [Ocamlyacc.vjs]    (fun x -> Ocamlyacc   x)
+      ; cstr' "provides"    [Provides.vjs]     (fun x -> Provides    x)
+      ; cstr' "install"     [Install_conf.vjs] (fun x -> Install     x)
+      ; cstr' "alias"       [Alias_conf.vjs]   (fun x -> Alias       x)
+      ; ign "enforce_style"
+      ; ign "toplevel_expect_tests"
+      ; ign "unified_tests"
+      ; ign "embed"
+      (* Just for validation and error messages  *)
+      ; cstr "jbuilder_version" [Jbuilder_version.t] (fun _ -> None)
       ]
+
+  let select : Jbuilder_version.t -> Sexp.t -> t option = function
+    | V1  -> v1
+    | Vjs -> vjs
 
   let lib_names ts =
     List.fold_left ts ~init:String_set.empty ~f:(fun acc (_, stanzas) ->

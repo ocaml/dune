@@ -49,8 +49,8 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
     let start_c = start.pos_cnum - start.pos_bol in
     let stop_c  = stop.pos_cnum  - start.pos_bol in
     Format.fprintf ppf
-      "File \"%s\", line %d, characters %d-%d:\n\
-       Error: %s\n"
+      "@{<loc>File \"%s\", line %d, characters %d-%d:@}\n\
+       @{<error>Error@}: %s\n"
       (map_fname start.pos_fname) start.pos_lnum start_c stop_c msg
   | Fatal_error "" -> ()
   | Fatal_error msg ->

@@ -200,5 +200,6 @@ let () =
     | `Error _ -> exit 1
     | _ -> exit 0
   with exn ->
+    Ansi_color.setup_err_formatter_colors ();
     Format.eprintf "%a@?" (Main.report_error ?map_fname:None) exn;
     exit 1

@@ -223,12 +223,6 @@ module Scheduler = struct
     | _ -> true
   )
 
-  let strip_colors_for_stderr s =
-    if Lazy.force Ansi_color.stderr_supports_colors then
-      s
-    else
-      Ansi_color.strip s
-
   type running_job =
     { id              : int
     ; job             : job
@@ -279,14 +273,14 @@ module Scheduler = struct
       | WEXITED n ->
         Printf.eprintf "\nCommand [%d] exited with code %d:\n$ %s\n%s%!"
           job.id n
-          (strip_colors_for_stderr job.command_line)
-          (strip_colors_for_stderr output);
+          (Ansi_color.strip_colors_for_stderr job.command_line)
+          (Ansi_color.strip_colors_for_stderr output);
         die ""
       | WSIGNALED n ->
         Printf.eprintf "\nCommand [%d] got signal %d:\n$ %s\n%s%!"
           job.id n
-          (strip_colors_for_stderr job.command_line)
-          (strip_colors_for_stderr output);
+          (Ansi_color.strip_colors_for_stderr job.command_line)
+          (Ansi_color.strip_colors_for_stderr output);
         die ""
       | WSTOPPED _ -> assert false
     end
@@ -332,7 +326,7 @@ module Scheduler = struct
         let command_line = command_line job in
         if !Clflags.debug_run then
           Printf.eprintf "Running[%d]: %s\n%!" id
-            (strip_colors_for_stderr command_line);
+            (Ansi_color.strip_colors_for_stderr command_line);
         Option.iter job.dir ~f:(fun dir -> Sys.chdir dir);
         let argv = Array.of_list (job.prog :: job.args) in
         let output_filename = Filename.temp_file "jbuilder" ".output" in

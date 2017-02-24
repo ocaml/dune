@@ -813,9 +813,7 @@ module Stanza = struct
 
   let resolve_packages ts ~dir ~visible_packages =
     let error fmt =
-      die ("File \"%s\", line 1, characters 0-0:\n\
-            Error: " ^^ fmt)
-        (Path.to_string (Path.relative dir "jbuild"))
+      Loc.fail (Loc.in_file (Path.to_string (Path.relative dir "jbuild"))) fmt
     in
     let known_packages () =
       let visible_packages = String_map.bindings visible_packages in

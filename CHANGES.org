@@ -12,6 +12,8 @@
   You should now put =(jbuilder_version 1)= in a =jbuild= file at the
   root of your project to ensure forward compatibility
 
+- Generate meaningful versions in =META= files
+
 - Added a few commands:
   + =runtest=
   + =install=

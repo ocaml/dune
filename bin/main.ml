@@ -129,11 +129,6 @@ type target =
   | File  of Path.t
   | Alias of Path.t * Alias.t
 
-let aliases_in_source_tree =
-  String_set.of_list
-    [ "install"
-    ]
-
 let resolve_targets (setup : Main.setup) user_targets =
   match user_targets with
   | [] -> []
@@ -146,15 +141,8 @@ let resolve_targets (setup : Main.setup) user_targets =
           if Path.is_root path then
             die "@ on the command line must be followed by a valid alias name"
           else
-            let name = Path.basename path in
-            let path =
-              if Path.is_in_build_dir path ||
-                 String_set.mem name aliases_in_source_tree then
-                path
-              else
-                Path.append setup.context.build_dir path
-            in
             let dir = Path.parent path in
+            let name = Path.basename path in
             Alias (path, Alias.make ~dir name)
         else
           File (

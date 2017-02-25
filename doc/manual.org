@@ -130,12 +130,10 @@ Jbuilder doesn't read =<package>.opam= files, however when a
 =<package>.opam= is present, Jbuilder will knows that the package
 named =<package>= exists. It will know how to construct a
 =<package>.install= file in the same directory, to handle installation
-via [[https://opam.ocaml.org/][opam]]. In addition, Jbuilder will also know how to build
-=<package>.install= at the root of the workspace, for
-convenience. Jbuilder also defines the =install= alias, which depends
-on all the buildable =<package>.install= at the root of the
-workspace. So for instance to build everything that is installable in
-a workspace, run:
+via [[https://opam.ocaml.org/][opam]]. Jbuilder also defines the recursive =install= alias, which depends
+on all the buildable =<package>.install= files in the workspace. So
+for instance to build everything that is installable in a workspace,
+run at the root:
 
 #+begin_src
 $ jbuilder build @install

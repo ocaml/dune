@@ -96,10 +96,10 @@ let obj_name_of_basename fn =
 module type Params = sig
   val context   : Context.t
   val file_tree : File_tree.t
-  val tree      : Alias.tree
   val stanzas   : (Path.t * Jbuild_types.Stanza.t list) list
   val packages  : Package.t String_map.t
   val filter_out_optional_stanzas_with_missing_deps : bool
+  val alias_store : Alias.Store.t
 end
 
 module Gen(P : Params) = struct
@@ -264,11 +264,8 @@ module Gen(P : Params) = struct
   module Alias = struct
     include Alias
 
-    let store = Store.create ()
-    let add_deps t deps = add_deps store t deps
-    let rules () = rules store ~prefix:ctx.build_dir ~tree:P.tree
+    let add_deps t deps = add_deps P.alias_store t deps
   end
-
 
   let all_rules = ref []
   let known_targets_by_dir_so_far = ref Path.Map.empty
@@ -1679,38 +1676,40 @@ module Gen(P : Params) = struct
     install_file pkg.Package.path pkg.name)
 
   let () =
-    let install_alias = Alias.make ~dir:ctx.build_dir "install" in
-    let global_install_alias = Alias.make ~dir:Path.root "install" in
     let is_default = Path.basename ctx.build_dir = "default" in
-    String_map.iter P.packages ~f:(fun ~key:pkg ~data:{ Package.path; _ } ->
+    String_map.iter P.packages ~f:(fun ~key:pkg ~data:{ Package.path = src_path; _ } ->
       let install_fn = pkg ^ ".install" in
-      let in_source_dir = Path.relative path install_fn in
-      let orig = Path.append ctx.build_dir in_source_dir in
-      let at_root_of_build_context = Path.relative ctx.build_dir install_fn in
-      if not (Path.is_root path) then
-        add_rule (Build.copy ~src:orig ~dst:at_root_of_build_context);
-      Alias.add_deps install_alias [at_root_of_build_context];
+
+      let ctx_path = Path.append ctx.build_dir src_path in
+      let ctx_install_alias = Alias.install ~dir:ctx_path in
+      let ctx_install_file = Path.relative ctx_path install_fn in
+      Alias.add_deps ctx_install_alias [ctx_install_file];
 
       if is_default then begin
-        add_rule (Build.copy ~src:orig ~dst:in_source_dir);
-        let at_root = Path.relative Path.root install_fn in
-        if not (Path.is_root path) then
-          add_rule (Build.copy ~src:orig ~dst:at_root);
-        Alias.add_deps global_install_alias [at_root]
+        let src_install_alias = Alias.install ~dir:src_path in
+        let src_install_file = Path.relative src_path install_fn in
+        add_rule (Build.copy ~src:ctx_install_file ~dst:src_install_file);
+        Alias.add_deps src_install_alias [src_install_file]
       end)
 end
 
-let gen ~context ~file_tree ~tree ~stanzas ~packages
-      ?(filter_out_optional_stanzas_with_missing_deps=true) () =
-  let module M =
-    Gen(struct
-      let context  = context
-      let file_tree = file_tree
-      let tree     = tree
-      let stanzas  = stanzas
-      let packages = packages
-      let filter_out_optional_stanzas_with_missing_deps =
-        filter_out_optional_stanzas_with_missing_deps
-    end)
+let gen ~contexts ~file_tree ~tree ~stanzas ~packages
+    ?(filter_out_optional_stanzas_with_missing_deps=true) () =
+  let alias_store = Alias.Store.create () in
+  let rules =
+    List.concat_map contexts ~f:(fun context ->
+        let module M =
+          Gen(struct
+            let context  = context
+            let file_tree = file_tree
+            let stanzas  = stanzas
+            let packages = packages
+            let filter_out_optional_stanzas_with_missing_deps =
+              filter_out_optional_stanzas_with_missing_deps
+            let alias_store = alias_store
+          end)
+        in
+        !M.all_rules)
   in
-  M.Alias.rules () @ !M.all_rules
+  Alias.rules alias_store ~prefixes:(Path.root :: List.map contexts ~f:(fun c -> c.Context.build_dir)) ~tree
+  @ rules

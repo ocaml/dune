@@ -28,9 +28,8 @@ let setup ?filter_out_optional_stanzas_with_missing_deps () =
    | Some c -> return c)
   >>= fun default_context ->
   let rules =
-    List.concat_map contexts ~f:(fun context ->
-      Gen_rules.gen ~context ~file_tree ~tree ~stanzas ~packages
-        ?filter_out_optional_stanzas_with_missing_deps ())
+    Gen_rules.gen ~contexts ~file_tree ~tree ~stanzas ~packages
+      ?filter_out_optional_stanzas_with_missing_deps ()
   in
   let build_system = Build_system.create ~file_tree ~rules in
   return { build_system

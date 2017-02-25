@@ -56,6 +56,8 @@ type t =
   ; cmt_magic_number        : string
   }
 
+let compare a b = compare a.name b.name
+
 let all_known = ref String_map.empty
 let all () = !all_known
 

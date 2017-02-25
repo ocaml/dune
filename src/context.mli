@@ -93,6 +93,9 @@ type t =
   ; cmt_magic_number        : string
   }
 
+(** Compare the context names *)
+val compare : t -> t -> int
+
 val create_for_opam
   :  ?root:string
   -> switch:string

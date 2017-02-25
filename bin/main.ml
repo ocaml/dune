@@ -248,27 +248,32 @@ let install_uninstall ~what =
          | l  -> l
        in
        let install_files, missing_install_files =
-         List.partition_map pkgs ~f:(fun pkg ->
+         List.concat_map pkgs ~f:(fun pkg ->
            let fn = resolve_package_install setup pkg in
-           if Path.exists fn then
-             Inl fn
-           else
-             Inr pkg)
+           List.map setup.contexts ~f:(fun ctx ->
+             let fn = Path.append ctx.Context.build_dir fn in
+             if Path.exists fn then
+               Inl (ctx, fn)
+             else
+               Inr fn))
+         |> List.partition_map ~f:(fun x -> x)
        in
        if missing_install_files <> [] then begin
-         die "The <package>.install files for these packages are missing:\n\
+         die "The following <package>.install are missing:\n\
               %s\n\
-              You need to run: jbuilder build %s"
+              You need to run: jbuilder build @install"
            (String.concat ~sep:"\n"
-              (List.map missing_install_files ~f:(sprintf "- %s")))
-           (String.concat ~sep:" " (List.map pkgs ~f:(sprintf "%s.install")))
+              (List.map missing_install_files
+                 ~f:(fun p -> sprintf "- %s" (Path.to_string p))))
        end;
        (match setup.contexts, prefix with
         | _ :: _ :: _, Some _ ->
           die "Cannot specify --prefix when installing into multiple contexts!"
         | _ -> ());
+       let module CMap = Map.Make(Context) in
+       let install_files_by_context = CMap.of_alist_multi install_files |> CMap.bindings in
        Future.all_unit
-         (List.map setup.contexts ~f:(fun context ->
+         (List.map install_files_by_context ~f:(fun (context, install_files) ->
             get_prefix context ~from_command_line:prefix >>= fun prefix ->
             Future.all_unit
               (List.map install_files ~f:(fun path ->

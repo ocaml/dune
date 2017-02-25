@@ -189,15 +189,9 @@ let runtest =
     set_common common;
     Future.Scheduler.go ~log:(create_log ())
       (Main.setup () >>= fun setup ->
-       let dirs = List.map dirs ~f:Path.(relative root) in
        let targets =
          List.map dirs ~f:(fun dir ->
-           let dir =
-             if Path.is_in_build_dir dir then
-               dir
-             else
-               Path.append setup.context.build_dir dir
-           in
+           let dir = Path.(relative root) dir in
            Alias.file (Alias.runtest ~dir))
        in
        Build_system.do_build_exn setup.build_system targets) in

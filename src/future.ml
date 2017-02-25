@@ -279,7 +279,7 @@ module Scheduler = struct
       match status with
       | WEXITED 0 ->
         if output <> "" then
-          Printf.eprintf "Output[%d]:\n%s%!" job.id output;
+          Format.eprintf "@{<kwd>Output@}[@{<id>%d@}]:\n%s%!" job.id output;
         Ivar.fill job.job.ivar ()
       | WEXITED n ->
         Format.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] exited with code %d:\n\

@@ -1,9 +1,18 @@
 open Import
 
+module Jbuild : sig
+  type t =
+    { path             : Path.t
+    ; version          : Jbuild_types.Jbuilder_version.t
+    ; sexps            : Sexp.Ast.t list
+    ; visible_packages : Package.t String_map.t
+    }
+end
+
 type conf =
   { file_tree : File_tree.t
   ; tree      : Alias.tree
-  ; stanzas   : (Path.t * Jbuild_types.Stanza.t list) list
+  ; jbuilds   : Jbuild.t list
   ; packages  : Package.t String_map.t
   }
 

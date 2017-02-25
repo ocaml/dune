@@ -3,7 +3,7 @@ open Future
 
 type setup =
   { build_system : Build_system.t
-  ; stanzas      : (Path.t * Jbuild_types.Stanza.t list) list
+  ; jbuilds      : Jbuild_load.Jbuild.t list
   ; contexts     : Context.t list
   ; packages     : Package.t String_map.t
   }
@@ -14,7 +14,7 @@ let package_install_file { packages; _ } pkg =
   | Some p -> Ok (Path.relative p.path (p.name ^ ".install"))
 
 let setup ?filter_out_optional_stanzas_with_missing_deps ?workspace () =
-  let { Jbuild_load. file_tree; tree; stanzas; packages } = Jbuild_load.load () in
+  let conf = Jbuild_load.load () in
   let workspace =
     match workspace with
     | Some w -> w
@@ -31,20 +31,20 @@ let setup ?filter_out_optional_stanzas_with_missing_deps ?workspace () =
        Context.create_for_opam ~name ~switch ?root ()))
   >>= fun contexts ->
   let rules =
-    Gen_rules.gen ~contexts ~file_tree ~tree ~stanzas ~packages
-      ?filter_out_optional_stanzas_with_missing_deps ()
+    Gen_rules.gen conf ~contexts
+      ?filter_out_optional_stanzas_with_missing_deps
   in
-  let build_system = Build_system.create ~file_tree ~rules in
+  let build_system = Build_system.create ~file_tree:conf.file_tree ~rules in
   return { build_system
-         ; stanzas
+         ; jbuilds = conf.jbuilds
          ; contexts
-         ; packages
+         ; packages = conf.packages
          }
 
 let external_lib_deps ?log ~packages () =
   Future.Scheduler.go ?log
     (setup () ~filter_out_optional_stanzas_with_missing_deps:false
-     >>| fun ({ build_system = bs; stanzas; _ } as setup) ->
+     >>| fun ({ build_system = bs; jbuilds; _ } as setup) ->
      let install_files =
        List.map packages ~f:(fun pkg ->
          match package_install_file setup pkg with
@@ -54,6 +54,15 @@ let external_lib_deps ?log ~packages () =
      Path.Map.map
        (Build_system.all_lib_deps bs install_files)
        ~f:(fun deps ->
+         let stanzas =
+           List.map jbuilds ~f:(fun { Jbuild_load.Jbuild. path
+                                    ; version
+                                    ; sexps
+                                    ; _
+                                    } ->
+             (path,
+              List.filter_map sexps ~f:(Jbuild_types.Stanza.select version)))
+         in
          let internals = Jbuild_types.Stanza.lib_names stanzas in
          String_map.filter deps ~f:(fun name _ -> not (String_set.mem name internals))))
 

@@ -1,10 +1,19 @@
 open Import
 open Jbuild_types
 
+module Jbuild = struct
+  type t =
+    { path             : Path.t
+    ; version          : Jbuild_types.Jbuilder_version.t
+    ; sexps            : Sexp.Ast.t list
+    ; visible_packages : Package.t String_map.t
+    }
+end
+
 type conf =
   { file_tree : File_tree.t
   ; tree      : Alias.tree
-  ; stanzas   : (Path.t * Jbuild_types.Stanza.t list) list
+  ; jbuilds   : Jbuild.t list
   ; packages  : Package.t String_map.t
   }
 
@@ -23,11 +32,12 @@ let load ~dir ~visible_packages ~version =
     | _ :: (_, loc) :: _ ->
       Loc.fail loc "jbuilder_version specified too many times"
   in
-  let stanzas =
-    List.filter_map sexps ~f:(Stanza.select version)
-    |> Stanza.resolve_packages ~dir ~visible_packages
-  in
-  (version, stanzas)
+  { Jbuild.
+    path = dir
+  ; version
+  ; sexps
+  ; visible_packages
+  }
 
 let load () =
   let ftree = File_tree.load Path.root in
@@ -67,7 +77,7 @@ let load () =
     |> List.map ~f:(fun pkg -> (pkg.Package.path, pkg))
     |> Path.Map.of_alist_multi
   in
-  let rec walk dir stanzas visible_packages version =
+  let rec walk dir jbuilds visible_packages version =
     let path = File_tree.Dir.path dir in
     let files = File_tree.Dir.files dir in
     let sub_dirs = File_tree.Dir.sub_dirs dir in
@@ -78,12 +88,12 @@ let load () =
         List.fold_left pkgs ~init:visible_packages ~f:(fun acc pkg ->
           String_map.add acc ~key:pkg.Package.name ~data:pkg)
     in
-    let version, stanzas =
+    let version, jbuilds =
       if String_set.mem "jbuild" files then
-        let version, stanzas_here = load ~dir:path ~visible_packages ~version in
-        (version, (path, stanzas_here) :: stanzas)
+        let jbuild = load ~dir:path ~visible_packages ~version in
+        (jbuild.version, jbuild :: jbuilds)
       else
-        (version, stanzas)
+        (version, jbuilds)
     in
     let sub_dirs =
       if String_set.mem "jbuild-ignore" files then
@@ -96,18 +106,18 @@ let load () =
       else
         sub_dirs
     in
-    let children, stanzas =
-      String_map.fold sub_dirs ~init:([], stanzas)
-        ~f:(fun ~key:_ ~data:dir (children, stanzas) ->
-          let child, stanzas = walk dir stanzas visible_packages version in
-          (child :: children, stanzas))
+    let children, jbuilds =
+      String_map.fold sub_dirs ~init:([], jbuilds)
+        ~f:(fun ~key:_ ~data:dir (children, jbuilds) ->
+          let child, jbuilds = walk dir jbuilds visible_packages version in
+          (child :: children, jbuilds))
     in
-    (Alias.Node (path, children), stanzas)
+    (Alias.Node (path, children), jbuilds)
   in
   let root = File_tree.root ftree in
-  let tree, stanzas = walk root [] String_map.empty Jbuilder_version.latest_stable in
+  let tree, jbuilds = walk root [] String_map.empty Jbuilder_version.latest_stable in
   { file_tree = ftree
   ; tree
-  ; stanzas
+  ; jbuilds
   ; packages
   }

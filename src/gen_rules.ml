@@ -1778,23 +1778,33 @@ module Gen(P : Params) = struct
       end)
 end
 
-let gen ~contexts ~file_tree ~tree ~stanzas ~packages
-    ?(filter_out_optional_stanzas_with_missing_deps=true) () =
+let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true) conf =
+  let { Jbuild_load. file_tree; tree; jbuilds; packages } = conf in
   let alias_store = Alias.Store.create () in
   let rules =
     List.concat_map contexts ~f:(fun context ->
-        let module M =
-          Gen(struct
-            let context  = context
-            let file_tree = file_tree
-            let stanzas  = stanzas
-            let packages = packages
-            let filter_out_optional_stanzas_with_missing_deps =
-              filter_out_optional_stanzas_with_missing_deps
-            let alias_store = alias_store
-          end)
-        in
-        !M.all_rules)
+      let stanzas =
+        List.map jbuilds ~f:(fun { Jbuild_load.Jbuild. path
+                                 ; version
+                                 ; sexps
+                                 ; visible_packages
+                                 } ->
+          (path,
+           List.filter_map sexps ~f:(Stanza.select version)
+           |> Stanza.resolve_packages ~dir:path ~visible_packages))
+      in
+      let module M =
+        Gen(struct
+          let context  = context
+          let file_tree = file_tree
+          let stanzas  = stanzas
+          let packages = packages
+          let filter_out_optional_stanzas_with_missing_deps =
+            filter_out_optional_stanzas_with_missing_deps
+          let alias_store = alias_store
+        end)
+      in
+      !M.all_rules)
   in
   Alias.rules alias_store ~prefixes:(Path.root :: List.map contexts ~f:(fun c -> c.Context.build_dir)) ~tree
   @ rules

@@ -146,21 +146,33 @@ let resolve_targets (setup : Main.setup) user_targets =
             [Alias (path, Alias.make ~dir name)]
         else
           let path = Path.relative Path.root s in
-          if Path.is_in_build_dir path      ||
-             not (Path.is_local path)       ||
-             Path.exists path               ||
-             Build_system.is_target setup.build_system path then
+          let can't_build path =
+            die "Don't know how to build %s" (Path.to_string path)
+          in
+          if not (Path.is_local path) then
             [File path]
-          else
+          else if Path.is_in_build_dir path then begin
+            if Build_system.is_target setup.build_system path then
+              [File path]
+            else
+              can't_build path
+          end else
             match
-              List.filter_map setup.contexts ~f:(fun ctx ->
-                let path = Path.append ctx.Context.build_dir path in
-                if Build_system.is_target setup.build_system path then
-                  Some (File path)
-                else
-                  None)
+              let l =
+                List.filter_map setup.contexts ~f:(fun ctx ->
+                    let path = Path.append ctx.Context.build_dir path in
+                    if Build_system.is_target setup.build_system path then
+                      Some (File path)
+                    else
+                      None)
+              in
+              if Build_system.is_target setup.build_system path ||
+                 Path.exists path then
+                File path :: l
+              else
+                l
             with
-            | [] -> die "Don't know how to build %s" (Path.to_string path)
+            | [] -> can't_build path
             | l  -> l
         )
     in

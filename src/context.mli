@@ -92,7 +92,12 @@ type t =
   ; cmt_magic_number        : string
   }
 
-val create_for_opam : ?root:string -> switch:string -> unit -> t Future.t
+val create_for_opam
+  :  ?root:string
+  -> switch:string
+  -> name:string
+  -> unit
+  -> t Future.t
 
 val default : t Future.t Lazy.t
 

@@ -16,9 +16,20 @@ let package_install_file { packages; _ } pkg =
 let setup ?filter_out_optional_stanzas_with_missing_deps () =
   let { Jbuild_load. file_tree; tree; stanzas; packages } = Jbuild_load.load () in
   Lazy.force Context.default >>= fun context ->
+  (if Sys.file_exists "jbuild-workspace" then
+     Future.all
+       (List.map (Workspace.load "jbuild-workspace")
+          ~f:(fun { Workspace.Context. name; switch; root } ->
+            Context.create_for_opam ~name ~switch ?root ()))
+     >>= fun other_contexts ->
+     return (context :: other_contexts)
+   else
+     return [context])
+  >>= fun all_contexts ->
   let rules =
-    Gen_rules.gen ~context ~file_tree ~tree ~stanzas ~packages
-      ?filter_out_optional_stanzas_with_missing_deps ()
+    List.concat_map all_contexts ~f:(fun context ->
+      Gen_rules.gen ~context ~file_tree ~tree ~stanzas ~packages
+        ?filter_out_optional_stanzas_with_missing_deps ())
   in
   let build_system = Build_system.create ~file_tree ~rules in
   return { build_system

@@ -78,17 +78,12 @@ let opam_config_var ~env ~cache var =
       Hashtbl.add cache ~key:var ~data:s;
       Some s
 
-let create ~(kind : Kind.t) ~path ~env =
+let create ~(kind : Kind.t) ~path ~env ~name =
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
    | Opam { root; _ } ->
      Hashtbl.add opam_var_cache ~key:"root" ~data:root
    | Default -> ());
-  let name =
-    match kind with
-    | Default -> "default"
-    | Opam { switch; _ } -> switch
-  in
   let prog_not_found_in_path prog =
     die "Program %s not found in PATH (context: %s)" prog name
   in
@@ -110,10 +105,7 @@ let create ~(kind : Kind.t) ~path ~env =
     | Some fn -> fn
   in
   let build_dir =
-    match kind with
-    | Default -> Path.of_string "_build/default"
-    | Opam { root = _; switch } ->
-      Path.of_string (sprintf "_build/%s" switch)
+    Path.of_string (sprintf "_build/%s" name)
   in
   let ocamlc_config_cmd = sprintf "%s -config" (Path.to_string ocamlc) in
   both
@@ -246,7 +238,7 @@ let default = lazy (
       | _ -> find_path (i + 1)
   in
   let path = find_path 0 in
-  create ~kind:Default ~path ~env)
+  create ~kind:Default ~path ~env ~name:"default")
 
 let extend_env ~vars ~env =
   let imported =
@@ -263,7 +255,7 @@ let extend_env ~vars ~env =
     imported
   |> Array.of_list
 
-let create_for_opam ?root ~switch () =
+let create_for_opam ?root ~switch ~name () =
   match Bin.opam with
   | None -> die "Program opam not found in PATH"
   | Some fn ->
@@ -287,6 +279,7 @@ let create_for_opam ?root ~switch () =
     in
     let env = Lazy.force initial_env in
     create ~kind:(Opam { root; switch }) ~path ~env:(extend_env ~vars ~env)
+      ~name
 
 let which t s = Bin.which ~path:t.path s
 

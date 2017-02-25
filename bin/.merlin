@@ -1,6 +1,0 @@
-S .
-B ../_build/default/bin
-B ../_build/default/vendor/re/src
-B ../_build/default/src
-B ../_build/default/vendor/cmdliner/src
-PKG unix

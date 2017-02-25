@@ -657,20 +657,15 @@ module Gen(P : Params) = struct
         let path = Path.relative remaindir ".merlin" in
         add_rule (
           requires
-          >>>
-          Build.arr (fun libs_list ->
-            libs_list
-            |> List.map ~f:(fun (libs : Lib.t List.t) ->
-                List.partition_map libs ~f:(function
-                  | Internal (path, _) ->
-                      let path = Path.reach path ~from:remaindir in
-                      Inl ("B " ^ path)
-                  | External pkg ->
-                      Inr ("PKG " ^ pkg.name)))
-            |> List.fold_left ~init:([],[]) ~f:(fun (accl, accr) (l, r) ->
-                (accl @ l, accr @ r)))
-          >>>
-          Build.arr (fun (internals, externals) ->
+          >>^ (fun libs_list ->
+            List.concat libs_list
+            |> List.partition_map ~f:(function
+                | Lib.Internal (path, _) ->
+                    let path = Path.reach path ~from:remaindir in
+                    Inl ("B " ^ path)
+                | Lib.External pkg ->
+                    Inr ("PKG " ^ pkg.name)))
+          >>^ (fun (internals, externals) ->
             let dot_merlin =
               [ "S ." ; "B " ^ (Path.reach dir ~from:remaindir) ]
               @ internals
@@ -685,8 +680,7 @@ module Gen(P : Params) = struct
               |> String_set.elements
               |> List.sort ~cmp:String.compare
             in
-
-            String.concat ~sep:"\n" dot_merlin)
+            String.concat ~sep:"\n" dot_merlin ^ "\n")
           >>>
           Build.echo path
         )
@@ -1058,11 +1052,18 @@ module Gen(P : Params) = struct
             |> String.concat ~sep:"")
          >>> Build.echo (Path.relative dir m.ml_fname)));
 
-    let requires =
+    let real_requires =
       requires ~dir ~dep_kind ~item:lib.name
         ~libraries:lib.buildable.libraries
         ~preprocess:lib.buildable.preprocess
         ~virtual_deps:lib.virtual_deps
+    in
+
+    let requires = 
+      match Path.extract_build_context dir with
+      | Some ("default", remaindir) ->
+        Build.path (Path.relative remaindir ".merlin") >>> real_requires
+      | _ -> real_requires
     in
 
     setup_runtime_deps ~dir ~dep_kind ~item:lib.name
@@ -1158,7 +1159,7 @@ module Gen(P : Params) = struct
          : (unit, Lib.t list) Build.t)
     end;
 
-    (requires, alias_module)
+    (real_requires, alias_module)
 
   (* +-----------------------------------------------------------------+
      | Executables stuff                                               |
@@ -1219,11 +1220,19 @@ module Gen(P : Params) = struct
     let item = List.hd exes.names in
     let dep_graph = ocamldep_rules ~dir ~item ~modules ~alias_module:None in
 
-    let requires =
+    let real_requires =
       requires ~dir ~dep_kind ~item
         ~libraries:exes.buildable.libraries
         ~preprocess:exes.buildable.preprocess
         ~virtual_deps:[]
+    in
+
+    let requires =
+      match Path.extract_build_context dir with
+      | Some ("default", remaindir) ->
+        Build.path (Path.relative remaindir ".merlin") >>> real_requires
+      | _ ->
+        real_requires
     in
 
     List.iter (Lib_db.select_rules ~dir exes.buildable.libraries) ~f:add_rule;
@@ -1235,7 +1244,7 @@ module Gen(P : Params) = struct
         build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
           ~link_flags:exes.link_flags));
 
-    (requires, None)
+    (real_requires, None)
 
   (* +-----------------------------------------------------------------+
      | User actions                                                    |
@@ -1503,19 +1512,19 @@ module Gen(P : Params) = struct
       guess_modules ~dir:src_dir
         ~files:(Lazy.force files))
     in
-    let merlin_deps = ref [] in
-    let add_merlin_dep x = merlin_deps := x :: !merlin_deps in
-    List.iter stanzas ~f:(fun stanza ->
+    let some x = Some x in
+    let none () = None in
+    List.filter_map stanzas ~f:(fun stanza ->
       let dir = ctx_dir in
       match (stanza : Stanza.t) with
-      | Library      lib  -> library_rules     lib  ~dir ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files) |> add_merlin_dep
-      | Executables  exes -> executables_rules exes ~dir ~all_modules:(Lazy.force all_modules) |> add_merlin_dep
-      | Rule         rule -> user_rule         rule ~dir
-      | Ocamllex     conf -> ocamllex_rules    conf ~dir
-      | Ocamlyacc    conf -> ocamlyacc_rules   conf ~dir
-      | Alias        alias -> alias_rules alias ~dir
-      | Provides _ | Install _ -> ());
-    merge_dot_merlin !merlin_deps ~dir:ctx_dir
+      | Library      lib  -> library_rules     lib  ~dir ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files) |> some
+      | Executables  exes -> executables_rules exes ~dir ~all_modules:(Lazy.force all_modules) |> some
+      | Rule         rule -> user_rule         rule ~dir |> none
+      | Ocamllex     conf -> ocamllex_rules    conf ~dir |> none
+      | Ocamlyacc    conf -> ocamlyacc_rules   conf ~dir |> none
+      | Alias        alias -> alias_rules alias ~dir |> none
+      | Provides _ | Install _ -> () |> none)
+    |> merge_dot_merlin ~dir:ctx_dir
 
   let () = List.iter P.stanzas ~f:rules
 

@@ -1,5 +1,0 @@
-S .
-B ../_build/default/src
-B ../_build/default/vendor/re/src
-PKG unix
-FLG -open Jbuilder

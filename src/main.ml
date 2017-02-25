@@ -5,6 +5,7 @@ type setup =
   { build_system : Build_system.t
   ; stanzas      : (Path.t * Jbuild_types.Stanza.t list) list
   ; context      : Context.t
+  ; all_contexts : Context.t list
   ; packages     : Package.t String_map.t
   }
 
@@ -35,6 +36,7 @@ let setup ?filter_out_optional_stanzas_with_missing_deps () =
   return { build_system
          ; stanzas
          ; context = default_context
+         ; all_contexts = contexts
          ; packages
          }
 

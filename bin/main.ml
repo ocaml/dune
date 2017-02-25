@@ -206,8 +206,8 @@ let runtest =
           $ Arg.(value & pos_all string ["."] name_))
   , Term.info "runtest" ~doc ~man:help_secs)
 
-let opam_installer (setup : Main.setup) =
-  match Context.which setup.context "opam-installer" with
+let opam_installer () =
+  match Bin.which "opam-installer" with
   | None ->
     die "\
 Sorry, you need the opam-installer tool to be able to install or
@@ -216,19 +216,24 @@ uninstall packages.
 I couldn't find the opam-installer binary :-("
   | Some fn -> fn
 
-let get_prefix (setup : Main.setup) ~from_command_line =
+let get_prefix context ~from_command_line =
   match from_command_line with
   | Some p -> Future.return (Path.of_string p)
-  | None -> Context.install_prefix setup.context
+  | None -> Context.install_prefix context
 
 let install_uninstall ~what =
   let doc = sprintf "%s packages using opam-installer." (String.capitalize what) in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let go common prefix pkgs =
     set_common common;
+    let opam_installer = opam_installer () in
     Future.Scheduler.go ~log:(create_log ())
       (Main.setup () >>= fun setup ->
-       let opam_installer = opam_installer setup in
+       let pkgs =
+         match pkgs with
+         | [] -> String_map.keys setup.packages
+         | l  -> l
+       in
        let install_files, missing_install_files =
          List.partition_map pkgs ~f:(fun pkg ->
            let fn = resolve_package_install setup pkg in
@@ -245,15 +250,21 @@ let install_uninstall ~what =
               (List.map missing_install_files ~f:(sprintf "- %s")))
            (String.concat ~sep:" " (List.map pkgs ~f:(sprintf "%s.install")))
        end;
-       get_prefix setup ~from_command_line:prefix >>= fun prefix ->
+       (match setup.all_contexts, prefix with
+        | _ :: _ :: _, Some _ ->
+          die "Cannot specify --prefix when installing into multiple contexts!"
+        | _ -> ());
        Future.all_unit
-         (List.map install_files ~f:(fun path ->
-            Future.run (Path.to_string opam_installer)
-              [ sprintf "-%c" what.[0]
-              ; "--prefix"
-              ; Path.to_string prefix
-              ; Path.to_string path
-              ])))
+         (List.map setup.all_contexts ~f:(fun context ->
+            get_prefix context ~from_command_line:prefix >>= fun prefix ->
+            Future.all_unit
+              (List.map install_files ~f:(fun path ->
+                   Future.run (Path.to_string opam_installer)
+                     [ sprintf "-%c" what.[0]
+                     ; "--prefix"
+                     ; Path.to_string prefix
+                     ; Path.to_string path
+                     ])))))
   in
   ( Term.(const go
           $ common

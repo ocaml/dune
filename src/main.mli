@@ -4,6 +4,7 @@ type setup =
   { build_system   : Build_system.t
   ; stanzas        : (Path.t * Jbuild_types.Stanza.t list) list
   ; context        : Context.t
+  ; all_contexts   : Context.t list
   ; packages       : Package.t String_map.t
   }
 

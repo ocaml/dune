@@ -126,7 +126,7 @@ let wait_for_file t fn ~targeting =
             build_loop acc for_file
       in
       let loop = build_loop [fn] targeting in
-      die "Depency cycle between the following files:\n    %s"
+      die "Dependency cycle between the following files:\n    %s"
         (String.concat ~sep:"\n--> "
            (List.map loop ~f:Path.to_string))
 

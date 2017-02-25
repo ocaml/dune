@@ -1,6 +1,0 @@
-FLG -no-alias-deps -open Jbuilder -w -40
-B ./_build/default/bin
-B ./_build/default/src
-S .
-S ./bin
-S ./src

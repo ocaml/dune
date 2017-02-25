@@ -273,7 +273,6 @@ let create_for_opam ?root ~switch ~name () =
     >>= fun s ->
     let vars =
       Sexp_lexer.single (Lexing.from_string s)
-      |> fst
       |> Sexp.Of_sexp.(string_map string)
     in
     let path =

@@ -9,25 +9,24 @@ type conf =
   }
 
 let load ~dir ~visible_packages ~version =
-  let version, stanzas =
-    Sexp_load.many (Path.relative dir "jbuild" |> Path.to_string)
-      (fun sexps ->
-         let versions, sexps =
-           List.partition_map sexps ~f:(function
-             | List [Atom ("jbuilder_version" | "Jbuilder_version"); ver] as sexp ->
-               Inl (Jbuilder_version.t ver, sexp)
-             | sexp -> Inr sexp)
-         in
-         let version =
-           match versions with
-           | [] -> version
-           | [(v, _)] -> v
-           | _ :: (_, sexp) :: _ ->
-             of_sexp_error sexp "jbuilder_version specified too many times"
-         in
-         (version, List.filter_map sexps ~f:(Stanza.select version)))
+  let sexps = Sexp_load.many (Path.relative dir "jbuild" |> Path.to_string) in
+  let versions, sexps =
+    List.partition_map sexps ~f:(function
+      | List (loc, [Atom (_, ("jbuilder_version" | "Jbuilder_version")); ver]) ->
+        Inl (Jbuilder_version.t ver, loc)
+      | sexp -> Inr sexp)
   in
-  let stanzas = Stanza.resolve_packages stanzas ~dir ~visible_packages in
+  let version =
+    match versions with
+    | [] -> version
+    | [(v, _)] -> v
+    | _ :: (_, loc) :: _ ->
+      Loc.fail loc "jbuilder_version specified too many times"
+  in
+  let stanzas =
+    List.filter_map sexps ~f:(Stanza.select version)
+    |> Stanza.resolve_packages ~dir ~visible_packages
+  in
   (version, stanzas)
 
 let load () =

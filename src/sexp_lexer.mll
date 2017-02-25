@@ -2,32 +2,30 @@
 type stack =
   | Empty
   | Open of Lexing.position * stack
-  | Sexp of Sexp.t * Sexp.Locs.t * stack
+  | Sexp of Sexp.Ast.t * stack
 
 let error = Loc.fail_lex
 
 let make_list =
-  let rec loop lexbuf acc acc_locs = function
+  let rec loop lexbuf acc = function
     | Empty ->
       error lexbuf "right parenthesis without matching left parenthesis"
     | Open (start, stack) ->
-      Sexp (List acc,
-            List ({ start; stop = Lexing.lexeme_end_p lexbuf }, acc_locs),
+      Sexp (List ({ start; stop = Lexing.lexeme_end_p lexbuf }, acc),
             stack)
-    | Sexp (sexp, locs, stack) -> loop lexbuf (sexp :: acc) (locs :: acc_locs) stack
+    | Sexp (sexp, stack) -> loop lexbuf (sexp :: acc) stack
   in
-  fun lexbuf stack -> loop lexbuf [] [] stack
+  fun lexbuf stack -> loop lexbuf [] stack
 
 let new_sexp loop stack lexbuf =
   match stack with
-  | Sexp (sexp, locs, Empty) -> Some (sexp, locs)
+  | Sexp (sexp, Empty) -> Some sexp
   | _ -> loop stack lexbuf
 
-let atom_loc lexbuf : Sexp.Locs.t =
-  Atom
-    { start = Lexing.lexeme_start_p lexbuf
-    ; stop  = Lexing.lexeme_end_p   lexbuf
-    }
+let atom_loc lexbuf : Loc.t =
+  { start = Lexing.lexeme_start_p lexbuf
+  ; stop  = Lexing.lexeme_end_p   lexbuf
+  }
 
 let char_for_backslash = function
   | 'n' -> '\010'
@@ -81,7 +79,7 @@ rule main stack = parse
   | "#|"
     { block_comment 0 stack lexbuf }
   | unquoted* as s
-    { new_sexp main (Sexp (Atom s, atom_loc lexbuf, stack)) lexbuf }
+    { new_sexp main (Sexp (Atom (atom_loc lexbuf, s), stack)) lexbuf }
   | eof
     { match stack with
       | Empty -> None
@@ -105,8 +103,8 @@ and block_comment depth stack = parse
 and scan_string buf start stack = parse
   | '"'
       { new_sexp main
-          (Sexp (Atom (Buffer.contents buf),
-                 Atom { start; stop = Lexing.lexeme_end_p lexbuf },
+          (Sexp (Atom ({ start; stop = Lexing.lexeme_end_p lexbuf },
+                       Buffer.contents buf),
                  stack))
           lexbuf
       }

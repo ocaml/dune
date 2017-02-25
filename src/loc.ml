@@ -30,3 +30,4 @@ let in_file fn =
   ; stop = pos
   }
 
+let none = in_file "<none>"

@@ -91,7 +91,7 @@ let expand t ~f =
 
 module type Container = sig
   type 'a t
-  val t : (Sexp.t -> 'a) -> Sexp.t -> 'a t
+  val t : 'a Sexp.Of_sexp.t -> 'a t Sexp.Of_sexp.t
   val sexp_of_t : ('a -> Sexp.t) -> 'a t -> Sexp.t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t

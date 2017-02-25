@@ -11,3 +11,5 @@ val fail : t -> ('a, unit, string, _) format4 -> 'a
 val fail_lex : Lexing.lexbuf -> ('a, unit, string, _) format4 -> 'a
 
 val in_file : string -> t
+
+val none : t

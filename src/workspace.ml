@@ -1,10 +1,6 @@
 open Import
 open Sexp.Of_sexp
 
-type sexp = Sexp.t = Atom of string | List of sexp list
-let of_sexp_error = Sexp.of_sexp_error
-let of_sexp_errorf = Sexp.of_sexp_errorf
-
 module Context = struct
   module Opam = struct
     type t =
@@ -27,7 +23,7 @@ module Context = struct
   type t = Default | Opam of Opam.t
 
   let t = function
-    | Atom "default" -> Default
+    | Atom (_, "default") -> Default
     | sexp -> Opam (Opam.t sexp)
 
   let name = function
@@ -55,4 +51,4 @@ let t sexps =
     ctx :: acc)
   |> List.rev
 
-let load fn = Sexp_load.many fn t
+let load fn = t (Sexp_load.many fn)

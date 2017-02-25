@@ -15,7 +15,7 @@ module Section : sig
     | Man
     | Misc
 
-  val t : Sexp.t -> t
+  val t : t Sexp.Of_sexp.t
 end
 
 module Entry : sig

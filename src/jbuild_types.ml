@@ -8,10 +8,6 @@ open Sexp.Of_sexp
    [jane_street] version. When they are all the same, sexp parsers are just named [t].
 *)
 
-type sexp = Sexp.t = Atom of string | List of sexp list
-let of_sexp_error = Sexp.of_sexp_error
-let of_sexp_errorf = Sexp.of_sexp_errorf
-
 module Jbuilder_version = struct
   type t =
     | V1
@@ -73,7 +69,7 @@ module Raw_string () : sig
   type t = private string
   val to_string : t -> string
   val of_string : string -> t
-  val t : Sexp.t -> t
+  val t : t Sexp.Of_sexp.t
 end = struct
   type t = string
   let to_string t = t
@@ -130,20 +126,13 @@ module User_action = struct
       | With_stdout_to of 'a * 'a t
 
     let rec t a sexp =
-      match sexp with
-      | List (Atom "run" :: prog :: args) -> Run (a prog, List.map args ~f:a)
-      | List [ Atom "chdir"; dir; arg ] -> Chdir (a dir, t a arg)
-      | List [ Atom "setenv"; var; value; arg ] -> Setenv (a var, a value, t a arg)
-      | List [ Atom "with-stdout-to"; file; arg ] -> With_stdout_to (a file, t a arg)
-      | _ ->
-        of_sexp_error sexp "\
-invalid action, expected one of:
-
-  (run <prog> <args>)
-  (chdir <dir> <action>)
-  (setenv <var> <value> <action>)
-  (with-stdout-to <file> <action>)
-"
+      sum
+        [ cstr_rest "run" [a] a          (fun prog args -> Run (prog, args))
+        ; cstr "chdir" [a; t a]          (fun dn t -> Chdir (dn, t))
+        ; cstr "setenv" [a; a; t a]      (fun k v t -> Setenv (k, v, t))
+        ; cstr "with-stdout-to" [a; t a] (fun fn t -> With_stdout_to (fn, t))
+        ]
+        sexp
 
     let rec map t ~f =
       match t with
@@ -184,7 +173,7 @@ invalid action, expected one of:
       in
       loop String_map.empty dir [] t
 
-    let rec sexp_of_t f = function
+    let rec sexp_of_t f : _ -> Sexp.t = function
       | Run (a, xs) -> List (Atom "run" :: f a :: List.map xs ~f)
       | Chdir (a, r) -> List [Atom "chdir" ; f a ; sexp_of_t f r]
       | Setenv (k, v, r) -> List [Atom "setenv" ; f k ; f v ; sexp_of_t f r]
@@ -211,7 +200,7 @@ invalid action, expected one of:
       | Bash x -> f init x
       | Shexp x -> Mini_shexp.fold x ~init ~f
 
-    let sexp_of_t f = function
+    let sexp_of_t f : _ -> Sexp.t = function
       | Bash a -> List [Atom "bash" ; f a]
       | Shexp a -> List [Atom "shexp" ; Mini_shexp.sexp_of_t f a]
   end
@@ -296,11 +285,12 @@ module Preprocess_map = struct
     | For_all  pp  -> pp
     | Per_file map -> String_map.find_default module_name map ~default:No_preprocessing
 
-  let default = For_all (Pps { pps = Pp_set.singleton (Pp.of_string "ppx_jane"); flags = [] })
+  let default_v1 = For_all No_preprocessing
+  let default_vjs = For_all (Pps { pps = Pp_set.singleton (Pp.of_string "ppx_jane"); flags = [] })
 
   let t sexp =
     match sexp with
-    | List (Atom "per_file" :: rest) -> begin
+    | List (_, Atom (_, "per_file") :: rest) -> begin
         List.concat_map rest ~f:(fun sexp ->
           let pp, names = pair Preprocess.t module_names sexp in
           List.map (String_set.elements names) ~f:(fun name -> (name, pp)))
@@ -352,15 +342,15 @@ module Lib_dep = struct
     | Select of { result_fn : string; choices : choice list }
 
   let choice = function
-    | List l as sexp ->
+    | List (_, l) as sexp ->
       let rec loop acc = function
-        | [Atom "->"; sexp] ->
+        | [Atom (_, "->"); sexp] ->
           { lits = List.rev acc
           ; file = file sexp
           }
-        | Atom "->" :: _ | List _ :: _ | [] ->
+        | Atom (_, "->") :: _ | List _ :: _ | [] ->
           of_sexp_error sexp "(<[!]libraries>... -> <file>) expected"
-        | Atom s :: l ->
+        | Atom (_, s) :: l ->
           let len = String.length s in
           if len > 0 && s.[0] = '!' then
             let s = String.sub s ~pos:1 ~len:(len - 1) in
@@ -371,16 +361,17 @@ module Lib_dep = struct
       loop [] l
     | sexp -> of_sexp_error sexp "(<library-name> <code>) expected"
 
-  let sexp_of_choice { lits; file } =
-    List (List.fold_right lits ~init:[Atom "->"; Atom file] ~f:(fun lit acc ->
-      match lit with
-      | Pos s -> Atom s :: acc
-      | Neg s -> Atom ("!" ^ s) :: acc))
+  let sexp_of_choice { lits; file } : Sexp.t =
+    List (List.fold_right lits ~init:[Atom "->"; Atom file]
+       ~f:(fun lit acc : Sexp.t list ->
+            match lit with
+            | Pos s -> Atom s :: acc
+            | Neg s -> Atom ("!" ^ s) :: acc))
 
   let t = function
-    | Atom s ->
+    | Atom (_, s) ->
       Direct s
-    | List (Atom "select" :: m :: Atom "from" :: libs) ->
+    | List (_, Atom (_, "select") :: m :: Atom (_, "from") :: libs) ->
       Select { result_fn = file m
              ; choices   = List.map libs ~f:choice
              }
@@ -409,8 +400,8 @@ module Buildable = struct
     ; ocamlopt_flags           : Ordered_set_lang.t
     }
 
-  let common =
-    field "preprocess" Preprocess_map.t ~default:Preprocess_map.default
+  let common ~pp_default =
+    field "preprocess" Preprocess_map.t ~default:pp_default
     >>= fun preprocess ->
     field "preprocessor_deps" (list Dep_conf.t) ~default:[]
     >>= fun preprocessor_deps        ->
@@ -432,10 +423,10 @@ module Buildable = struct
       ; ocamlopt_flags
       }
 
-  let v1 = common
+  let v1 = common ~pp_default:Preprocess_map.default_v1
 
   let vjs =
-    common >>= fun t ->
+    common ~pp_default:Preprocess_map.default_vjs >>= fun t ->
     field "extra_disabled_warnings" (list int) ~default:[]
     >>= fun extra_disabled_warnings  ->
     let t =
@@ -443,11 +434,13 @@ module Buildable = struct
         let flags =
           Ordered_set_lang.append t.flags
             (Ordered_set_lang.t
-               (List [ Atom "-w"
-                     ; Atom
-                         (String.concat ~sep:""
-                            (List.map extra_disabled_warnings ~f:(sprintf "-%d")))
-                     ]))
+               (List (Loc.none,
+                      [ Atom (Loc.none, "-w")
+                      ; Atom
+                          (Loc.none,
+                           String.concat ~sep:""
+                             (List.map extra_disabled_warnings ~f:(sprintf "-%d")))
+                      ])))
         in
         { t with flags }
       else
@@ -578,7 +571,9 @@ module Library = struct
          ; c_library_flags =
              Ordered_set_lang.Unexpanded.append
                (Ordered_set_lang.Unexpanded.t
-                  (Sexp.To_sexp.(list string (List.map c_libraries ~f:((^) "-l")))))
+                  (List (Loc.none,
+                         List.map c_libraries ~f:(fun lib ->
+                             Atom (Loc.none, "-l" ^ lib)))))
                c_library_flags
          ; self_build_stubs_archive
          ; js_of_ocaml
@@ -691,14 +686,14 @@ module Provides = struct
 
   let v1 sexp =
     match sexp with
-    | Atom s ->
+    | Atom (_, s) ->
       { name = s
       ; file =
           match String.lsplit2 s ~on:':' with
           | None        -> s
           | Some (_, s) -> s
       }
-    | List [Atom s; List [Atom "file"; Atom file]] ->
+    | List (_, [Atom (_, s); List (_, [Atom (_, "file"); Atom (_, file)])]) ->
       { name = s
       ; file
       }
@@ -714,10 +709,11 @@ module Install_conf = struct
     ; dst : string option
     }
 
-  let file (sexp : Sexp.t) =
+  let file sexp =
     match sexp with
-    | Atom src                             -> { src; dst = None }
-    | List [Atom src; Atom "as"; Atom dst] -> { src; dst = Some dst }
+    | Atom (_, src) -> { src; dst = None }
+    | List (_, [Atom (_, src); Atom (_, "as"); Atom (_, dst)]) ->
+      { src; dst = Some dst }
     | _ ->
       of_sexp_error sexp
         "invalid format, <name> or (<name> as <install-as>) expected"
@@ -814,7 +810,7 @@ module Stanza = struct
       ; cstr "jbuilder_version" [Jbuilder_version.t] (fun _ -> None)
       ]
 
-  let select : Jbuilder_version.t -> Sexp.t -> t option = function
+  let select : Jbuilder_version.t -> t option Sexp.Of_sexp.t = function
     | V1  -> v1
     | Vjs -> vjs
 

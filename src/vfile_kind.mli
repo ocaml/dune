@@ -27,5 +27,5 @@ module Make
 module Make_full
     (T : sig type t end)
     (To_sexp : sig val t : T.t -> Sexp.t end)
-    (Of_sexp : sig val t : Sexp.t -> T.t end)
+    (Of_sexp : sig val t : Sexp.Ast.t -> T.t end)
   : S with type t = T.t

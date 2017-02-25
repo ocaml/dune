@@ -6,7 +6,7 @@
 open Import
 
 type t
-val t : Sexp.t -> t
+val t : t Sexp.Of_sexp.t
 val sexp_of_t : t -> Sexp.t
 
 val of_string : string -> t
@@ -19,7 +19,7 @@ val expand : t -> f:(string -> string option) -> string
 
 module type Container = sig
   type 'a t
-  val t : (Sexp.t -> 'a) -> Sexp.t -> 'a t
+  val t : 'a Sexp.Of_sexp.t -> 'a t Sexp.Of_sexp.t
   val sexp_of_t : ('a -> Sexp.t) -> 'a t -> Sexp.t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
@@ -28,7 +28,7 @@ end
 
 module Lift(M : Container) : sig
   type nonrec t = t M.t
-  val t : Sexp.t -> t
+  val t : t Sexp.Of_sexp.t
 
   val sexp_of_t : t -> Sexp.t
 

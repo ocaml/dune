@@ -1,4 +1,4 @@
 open! Import
 
-val single : string -> (Sexp.t -> 'a) -> 'a
-val many   : string -> (Sexp.t list -> 'a) -> 'a
+val single : string -> Sexp.Ast.t
+val many   : string -> Sexp.Ast.t list

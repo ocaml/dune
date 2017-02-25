@@ -4,23 +4,15 @@ type t =
   | Atom of string
   | List of t list
 
-exception Of_sexp_error of t * string
-
-val of_sexp_error : t -> string -> _
-val of_sexp_errorf : t -> ('a, unit, string, 'b) format4 -> 'a
-
-val code_error : string -> (string * t) list -> _
-
-module Locs : sig
+module Ast : sig
   type t =
-    | Atom of Loc.t
+    | Atom of Loc.t * string
     | List of Loc.t * t list
 
   val loc : t -> Loc.t
 end
 
-val locate         : t      -> sub:t -> locs:Locs.t      -> Loc.t option
-val locate_in_list : t list -> sub:t -> locs:Locs.t list -> Loc.t option
+val code_error : string -> (string * t) list -> _
 
 val to_string : t -> string
 
@@ -40,7 +32,14 @@ end
 module To_sexp : Combinators with type 'a t = 'a -> t
 
 module Of_sexp : sig
-  include Combinators with type 'a t = t -> 'a
+  type ast = Ast.t =
+    | Atom of Loc.t * string
+    | List of Loc.t * ast list
+
+  include Combinators with type 'a t = Ast.t -> 'a
+
+  val of_sexp_error  : Ast.t -> string -> _
+  val of_sexp_errorf : Ast.t -> ('a, unit, string, 'b) format4 -> 'a
 
   (* Record parsing monad *)
   type 'a record_parser
@@ -67,6 +66,12 @@ module Of_sexp : sig
   end with type 'a conv := 'a t
 
   val cstr : string -> ('a, 'b) Constructor_args_spec.t -> 'a -> 'b Constructor_spec.t
+  val cstr_rest
+    :  string
+    -> ('a, 'b list -> 'c) Constructor_args_spec.t
+    -> 'b t
+    -> 'a
+    -> 'c Constructor_spec.t
 
   val sum
     :  'a Constructor_spec.t list

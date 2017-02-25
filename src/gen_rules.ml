@@ -735,7 +735,7 @@ module Gen(P : Params) = struct
       Build.arr (fun () ->
         let files_contents =
           List.map2 files paths ~f:(fun fn path ->
-            (fn, Sexp_load.single (Path.to_string path) (fun x -> x)))
+            (fn, Sexp_load.single (Path.to_string path)))
           |> String_map.of_alist_exn
         in
         let set = Ordered_set_lang.Unexpanded.expand set ~files_contents in
@@ -1360,7 +1360,7 @@ module Gen(P : Params) = struct
         Sexp.To_sexp.list Dep_conf_interpret.sexp_of_t alias_conf.deps in
       let action =
         match alias_conf.action with
-        | None -> Atom "none"
+        | None -> Sexp.Atom "none"
         | Some a -> List [Atom "some" ; User_action.Unexpanded.sexp_of_t a] in
       Sexp.List [deps ; action]
       |> Sexp.to_string

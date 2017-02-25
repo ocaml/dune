@@ -45,7 +45,7 @@ let eq (type a) (type b)
 module Make_full
     (T : sig type t end)
     (To_sexp : sig val t : T.t -> Sexp.t end)
-    (Of_sexp : sig val t : Sexp.t -> T.t end)
+    (Of_sexp : sig val t : Sexp.Ast.t -> T.t end)
   : S with type t = T.t =
 struct
   type t = T.t
@@ -59,10 +59,7 @@ struct
     close_out oc
 
   let load ~filename =
-    let sexp, _locs =
-      with_lexbuf_from_file filename ~f:Sexp_lexer.single
-    in
-    Of_sexp.t sexp
+    Of_sexp.t (Sexp_load.single filename)
 end
 
 

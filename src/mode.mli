@@ -2,7 +2,7 @@ open! Import
 
 type t = Byte | Native
 
-val t : Sexp.t -> t
+val t : t Sexp.Of_sexp.t
 
 val all : t list
 

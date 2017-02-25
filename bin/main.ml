@@ -134,7 +134,7 @@ let resolve_targets (setup : Main.setup) user_targets =
   | [] -> []
   | _ ->
     let targets =
-      List.map user_targets ~f:(fun s ->
+      List.concat_map user_targets ~f:(fun s ->
         if String.is_prefix s ~prefix:"@" then
           let s = String.sub s ~pos:1 ~len:(String.length s - 1) in
           let path = Path.relative Path.root s in
@@ -143,19 +143,26 @@ let resolve_targets (setup : Main.setup) user_targets =
           else
             let dir = Path.parent path in
             let name = Path.basename path in
-            Alias (path, Alias.make ~dir name)
+            [Alias (path, Alias.make ~dir name)]
         else
-          File (
-            let path = Path.relative Path.root s in
-            if Path.is_in_build_dir path then
-              path
-            else if Path.is_local path &&
-                    not (Build_system.is_target setup.build_system path) &&
-                    not (Path.exists path) then
-              Path.append setup.context.build_dir path
-            else
-              path
-          ))
+          let path = Path.relative Path.root s in
+          if Path.is_in_build_dir path      ||
+             not (Path.is_local path)       ||
+             Path.exists path               ||
+             Build_system.is_target setup.build_system path then
+            [File path]
+          else
+            match
+              List.filter_map setup.all_contexts ~f:(fun ctx ->
+                let path = Path.append ctx.Context.build_dir path in
+                if Build_system.is_target setup.build_system path then
+                  Some (File path)
+                else
+                  None)
+            with
+            | [] -> die "Don't know how to build %s" (Path.to_string path)
+            | l  -> l
+        )
     in
     Printf.printf "Building the following targets:\n";
     List.iter targets ~f:(function

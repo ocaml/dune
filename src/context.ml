@@ -6,7 +6,8 @@ module Kind = struct
 end
 
 type t =
-  { kind                    : Kind.t
+  { name                    : string
+  ; kind                    : Kind.t
   ; for_host                : t option
   ; build_dir               : Path.t
   ; path                    : Path.t list
@@ -162,7 +163,8 @@ let create ~(kind : Kind.t) ~path ~env ~name =
   let get_path var = Path.absolute (get var) in
   let stdlib_dir = get_path "standard_library" in
   let t =
-    { kind
+    { name
+    ; kind
     ; for_host = None
     ; build_dir
     ; path

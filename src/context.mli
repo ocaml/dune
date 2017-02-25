@@ -25,7 +25,8 @@ module Kind : sig
 end
 
 type t =
-  { kind : Kind.t
+  { name : string
+  ; kind : Kind.t
 
   ; (** If this context is a cross-compilation context, you need another context for
         building tools used for the compilation that run on the host. *)

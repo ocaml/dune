@@ -33,7 +33,7 @@ let t sexps =
         sexp
     in
     begin match ctx.name with
-    | "default" | ".aliases" | "log" as s ->
+    | ".aliases" | "log" as s ->
       of_sexp_errorf sexp "%S is not allowed as a build context name" s
     | _ -> ()
     end;

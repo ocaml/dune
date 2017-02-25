@@ -1,11 +1,10 @@
 open! Import
 
 type setup =
-  { build_system   : Build_system.t
-  ; stanzas        : (Path.t * Jbuild_types.Stanza.t list) list
-  ; context        : Context.t
-  ; all_contexts   : Context.t list
-  ; packages       : Package.t String_map.t
+  { build_system : Build_system.t
+  ; stanzas      : (Path.t * Jbuild_types.Stanza.t list) list
+  ; contexts     : Context.t list
+  ; packages     : Package.t String_map.t
   }
 
 (* Returns [Error ()] if [pkg] is unknown *)
@@ -13,6 +12,7 @@ val package_install_file : setup -> string -> (Path.t, unit) result
 
 val setup
   :  ?filter_out_optional_stanzas_with_missing_deps:bool
+  -> ?workspace:Workspace.t
   -> unit
   -> setup Future.t
 val external_lib_deps

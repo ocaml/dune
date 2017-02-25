@@ -4,8 +4,7 @@ open Future
 type setup =
   { build_system : Build_system.t
   ; stanzas      : (Path.t * Jbuild_types.Stanza.t list) list
-  ; context      : Context.t
-  ; all_contexts : Context.t list
+  ; contexts     : Context.t list
   ; packages     : Package.t String_map.t
   }
 
@@ -14,20 +13,23 @@ let package_install_file { packages; _ } pkg =
   | None -> Error ()
   | Some p -> Ok (Path.relative p.path (p.name ^ ".install"))
 
-let setup ?filter_out_optional_stanzas_with_missing_deps () =
+let setup ?filter_out_optional_stanzas_with_missing_deps ?workspace () =
   let { Jbuild_load. file_tree; tree; stanzas; packages } = Jbuild_load.load () in
-  (if Sys.file_exists "jbuild-workspace" then
-     Future.all
-       (List.map (Workspace.load "jbuild-workspace")
-          ~f:(fun { Workspace.Context. name; switch; root } ->
-            Context.create_for_opam ~name ~switch ?root ()))
-   else
-     return [])
+  let workspace =
+    match workspace with
+    | Some w -> w
+    | None ->
+      if Sys.file_exists "jbuild-workspace" then
+        Workspace.load "jbuild-workspace"
+      else
+        [Default]
+  in
+  Future.all
+    (List.map workspace ~f:(function
+     | Workspace.Context.Default -> Lazy.force Context.default
+     | Opam { name; switch; root } ->
+       Context.create_for_opam ~name ~switch ?root ()))
   >>= fun contexts ->
-  (match List.find contexts ~f:(fun c -> c.name = "default") with
-   | None -> Lazy.force Context.default
-   | Some c -> return c)
-  >>= fun default_context ->
   let rules =
     Gen_rules.gen ~contexts ~file_tree ~tree ~stanzas ~packages
       ?filter_out_optional_stanzas_with_missing_deps ()
@@ -35,8 +37,7 @@ let setup ?filter_out_optional_stanzas_with_missing_deps () =
   let build_system = Build_system.create ~file_tree ~rules in
   return { build_system
          ; stanzas
-         ; context = default_context
-         ; all_contexts = contexts
+         ; contexts
          ; packages
          }
 
@@ -117,7 +118,7 @@ let bootstrap () =
       ]
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
     Future.Scheduler.go ~log:(create_log ())
-      (setup () >>= fun { build_system = bs; _ } ->
+      (setup ~workspace:[Default] () >>= fun { build_system = bs; _ } ->
        Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])
   in
   try

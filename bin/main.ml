@@ -153,7 +153,7 @@ let resolve_targets (setup : Main.setup) user_targets =
             [File path]
           else
             match
-              List.filter_map setup.all_contexts ~f:(fun ctx ->
+              List.filter_map setup.contexts ~f:(fun ctx ->
                 let path = Path.append ctx.Context.build_dir path in
                 if Build_system.is_target setup.build_system path then
                   Some (File path)
@@ -251,12 +251,12 @@ let install_uninstall ~what =
               (List.map missing_install_files ~f:(sprintf "- %s")))
            (String.concat ~sep:" " (List.map pkgs ~f:(sprintf "%s.install")))
        end;
-       (match setup.all_contexts, prefix with
+       (match setup.contexts, prefix with
         | _ :: _ :: _, Some _ ->
           die "Cannot specify --prefix when installing into multiple contexts!"
         | _ -> ());
        Future.all_unit
-         (List.map setup.all_contexts ~f:(fun context ->
+         (List.map setup.contexts ~f:(fun context ->
             get_prefix context ~from_command_line:prefix >>= fun prefix ->
             Future.all_unit
               (List.map install_files ~f:(fun path ->

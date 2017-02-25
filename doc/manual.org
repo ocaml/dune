@@ -74,7 +74,7 @@ format and the third one describes how to use the =jbuilder= command.
   =<root>/_build= directory. It contains all the build artifacts of
   the workspace built against a specific configuration. The is always
   a =default= build context, which correspond to the environemnt in
-  which Jbuilder is executed. Unless a =workspace.sexp= file exists in
+  which Jbuilder is executed. Unless a =jbuild-workspace= file exists in
   a parent directory and defines more build contexts, =default= is the
   only build context available
 

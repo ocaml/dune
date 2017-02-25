@@ -38,9 +38,9 @@ where it is started. Eventually this will be changed as follows:
 - if not found, look for a =.git=, =.hg=, ... file in parent directories;
 - if not found, use the current directory as root.
 
-** Generate .merlin files [[https://github.com/janestreet/jbuilder/issues/1][#1]]
+** +Generate .merlin files [[https://github.com/janestreet/jbuilder/issues/1][#1]]+
 
-- *08/02/2017*: Richard Davison is working on this [[https://github.com/janestreet/jbuilder/pull/2][#2]]
+- *25/02/2017*: Implemented by Richard Davison ([[https://github.com/janestreet/jbuilder/pull/2][#2]])
 
 ** +Running tests with jbuilder [[https://github.com/janestreet/jbuilder/issues/3][#3]]+
 

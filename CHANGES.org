@@ -28,6 +28,9 @@
 - Switched the CLI to cmdliner and added a =build= command
   (#5, Rudi Grinberg)
 
+- Automatically generate =.merlin= files
+  (#2, Richard Davison)
+
 - Added support for compiling against multiple opam switch
   simultaneously by writing a =jbuild-worspace= file
 

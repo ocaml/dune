@@ -2,12 +2,14 @@ open Import
 open Jbuild_types
 
 module Jbuilds = struct
+  type script =
+    { dir              : Path.t
+    ; visible_packages : Package.t String_map.t
+    }
+
   type one =
     | Literal of Path.t * Stanza.t list
-    | Script of
-        { dir              : Path.t
-        ; visible_packages : Package.t String_map.t
-        }
+    | Script of script
 
   type t = one list
 

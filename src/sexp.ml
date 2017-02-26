@@ -258,28 +258,33 @@ module Of_sexp = struct
   module Constructor_args_spec = struct
     type 'a conv = 'a t
     type ('a, 'b) t =
-      | [] : ('a, 'a) t
-      | ( :: ) : 'a conv * ('b, 'c) t -> ('a -> 'b, 'c) t
+      | Nil  : ('a, 'a) t
+      | Cons : 'a conv * ('b, 'c) t -> ('a -> 'b, 'c) t
 
     let rec convert : type a b c. (a, b) t -> (b, c) rest -> Ast.t -> Ast.t list -> a -> c
       = fun t rest sexp sexps f ->
         match t, rest, sexps with
-        | [], No_rest, [] -> f
-        | [], Many _ , [] -> f []
-        | _ :: _, _, [] -> of_sexp_error sexp "not enough arguments"
-        | [], No_rest, _ :: _ -> of_sexp_error sexp "too many arguments"
-        | [], Many conv, l -> f (List.map l ~f:conv)
-        | conv :: t, _, s :: sexps ->
+        | Nil, No_rest, [] -> f
+        | Nil, Many _ , [] -> f []
+        | Cons _, _, [] -> of_sexp_error sexp "not enough arguments"
+        | Nil, No_rest, _ :: _ -> of_sexp_error sexp "too many arguments"
+        | Nil, Many conv, l -> f (List.map l ~f:conv)
+        | Cons (conv, t), _, s :: sexps ->
           convert t rest sexp sexps (f (conv s))
   end
 
+  let nil = Constructor_args_spec.Nil
+  let ( @> ) a b = Constructor_args_spec.Cons (a, b)
+
   module Constructor_spec = struct
-    type 'a t =
-        T : { name : string
-            ; args : ('a, 'b) Constructor_args_spec.t
-            ; rest : ('b, 'c) rest
-            ; make : 'a
-            } -> 'c t
+    type ('a, 'b, 'c) unpacked =
+      { name : string
+      ; args : ('a, 'b) Constructor_args_spec.t
+      ; rest : ('b, 'c) rest
+      ; make : 'a
+      }
+
+    type 'a t = T : (_, _, 'a) unpacked -> 'a t
   end
 
   let cstr_rest name args rest make =

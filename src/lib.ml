@@ -71,10 +71,10 @@ let describe = function
 let link_flags ts ~mode =
   Arg_spec.S
     (include_flags ts ::
-     List.map ts ~f:(fun t : _ Arg_spec.t ->
+     List.map ts ~f:(fun t ->
        match t with
        | External pkg ->
-         Deps_rel (pkg.dir, Mode.Dict.get pkg.archives mode)
+         Arg_spec.Deps_rel (pkg.dir, Mode.Dict.get pkg.archives mode)
        | Internal (dir, lib) ->
          Dep_rel (dir, lib.name ^ Mode.compiled_lib_ext mode)))
 

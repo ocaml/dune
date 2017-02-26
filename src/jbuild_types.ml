@@ -127,10 +127,10 @@ module User_action = struct
 
     let rec t a sexp =
       sum
-        [ cstr_rest "run" [a] a          (fun prog args -> Run (prog, args))
-        ; cstr "chdir" [a; t a]          (fun dn t -> Chdir (dn, t))
-        ; cstr "setenv" [a; a; t a]      (fun k v t -> Setenv (k, v, t))
-        ; cstr "with-stdout-to" [a; t a] (fun fn t -> With_stdout_to (fn, t))
+        [ cstr_rest "run" (a @> nil) a             (fun prog args -> Run (prog, args))
+        ; cstr "chdir"    (a @> t a @> nil)        (fun dn t -> Chdir (dn, t))
+        ; cstr "setenv"   (a @> a @> t a @> nil)   (fun k v t -> Setenv (k, v, t))
+        ; cstr "with-stdout-to" (a @> t a @> nil)  (fun fn t -> With_stdout_to (fn, t))
         ]
         sexp
 
@@ -231,11 +231,14 @@ module Dep_conf = struct
 
   let t =
     let t =
+      let cstr name f =
+        cstr name (String_with_vars.t @> nil) f
+      in
       sum
-        [ cstr "file"                 [String_with_vars.t] (fun x -> File x)
-        ; cstr "alias"                [String_with_vars.t] (fun x -> Alias x)
-        ; cstr "glob_files"           [String_with_vars.t] (fun x -> Glob_files x)
-        ; cstr "files_recursively_in" [String_with_vars.t] (fun x -> Files_recursively_in x)
+        [ cstr "file"                 (fun x -> File x)
+        ; cstr "alias"                (fun x -> Alias x)
+        ; cstr "glob_files"           (fun x -> Glob_files x)
+        ; cstr "files_recursively_in" (fun x -> Files_recursively_in x)
         ]
     in
     fun sexp ->
@@ -256,16 +259,17 @@ module Dep_conf = struct
 end
 
 module Preprocess = struct
+  type pps = { pps : Pp_set.t; flags : string list }
   type t =
     | No_preprocessing
     | Command of String_with_vars.t
-    | Pps of { pps : Pp_set.t; flags : string list }
+    | Pps of pps
 
   let t =
     sum
-      [ cstr "no_preprocessing" [] No_preprocessing
-      ; cstr "command"          [String_with_vars.t] (fun x -> Command x)
-      ; cstr "pps"              [list Pp_or_flag.t] (fun l ->
+      [ cstr "no_preprocessing" nil No_preprocessing
+      ; cstr "command"          (String_with_vars.t @> nil) (fun x -> Command x)
+      ; cstr "pps"              (list Pp_or_flag.t  @> nil) (fun l ->
           let pps, flags = Pp_or_flag.split l in
           Pps { pps = Pp_set.of_list pps; flags })
       ]
@@ -337,9 +341,11 @@ module Lib_dep = struct
     ; file : string
     }
 
+  type select = { result_fn : string; choices : choice list }
+
   type t =
     | Direct of string
-    | Select of { result_fn : string; choices : choice list }
+    | Select of select
 
   let choice = function
     | List (_, l) as sexp ->
@@ -363,10 +369,10 @@ module Lib_dep = struct
 
   let sexp_of_choice { lits; file } : Sexp.t =
     List (List.fold_right lits ~init:[Atom "->"; Atom file]
-       ~f:(fun lit acc : Sexp.t list ->
+       ~f:(fun lit acc ->
             match lit with
-            | Pos s -> Atom s :: acc
-            | Neg s -> Atom ("!" ^ s) :: acc))
+            | Pos s -> Sexp.Atom s :: acc
+            | Neg s -> Sexp.Atom ("!" ^ s) :: acc))
 
   let t = function
     | Atom (_, s) ->
@@ -457,10 +463,10 @@ module Library = struct
       | Ppx_rewriter
 
     let t =
-      sum
-        [ cstr "normal"               [] Normal
-        ; cstr "ppx_type_conv_plugin" [] Ppx_type_conv_plugin
-        ; cstr "ppx_rewriter"         [] Ppx_rewriter
+      enum
+        [ "normal"               , Normal
+        ; "ppx_type_conv_plugin" , Ppx_type_conv_plugin
+        ; "ppx_rewriter"         , Ppx_rewriter
         ]
   end
 
@@ -779,36 +785,35 @@ module Stanza = struct
 
   let v1 =
     sum
-      [ cstr' "library"     [Library.v1]      (fun x -> Library     x)
-      ; cstr' "executables" [Executables.v1]  (fun x -> Executables x)
-      ; cstr' "rule"        [Rule.v1]         (fun x -> Rule        x)
-      ; cstr' "ocamllex"    [Ocamllex.v1]     (fun x -> Ocamllex    x)
-      ; cstr' "ocamlyacc"   [Ocamlyacc.v1]    (fun x -> Ocamlyacc   x)
-      ; cstr' "provides"    [Provides.v1]     (fun x -> Provides    x)
-      ; cstr' "install"     [Install_conf.v1] (fun x -> Install     x)
-      ; cstr' "alias"       [Alias_conf.v1]   (fun x -> Alias       x)
+      [ cstr' "library"     (Library.v1 @> nil)      (fun x -> Library     x)
+      ; cstr' "executables" (Executables.v1 @> nil)  (fun x -> Executables x)
+      ; cstr' "rule"        (Rule.v1 @> nil)         (fun x -> Rule        x)
+      ; cstr' "ocamllex"    (Ocamllex.v1 @> nil)     (fun x -> Ocamllex    x)
+      ; cstr' "ocamlyacc"   (Ocamlyacc.v1 @> nil)    (fun x -> Ocamlyacc   x)
+      ; cstr' "provides"    (Provides.v1 @> nil)     (fun x -> Provides    x)
+      ; cstr' "install"     (Install_conf.v1 @> nil) (fun x -> Install     x)
+      ; cstr' "alias"       (Alias_conf.v1 @> nil)   (fun x -> Alias       x)
       (* Just for validation and error messages *)
-      ; cstr "jbuild_version" [Jbuild_version.t] (fun _ -> None)
-      ; cstr "use_meta_lang"  []                 None
+      ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> None)
       ]
 
   let vjs =
-    let ign name = cstr name [fun _ -> ()] (fun () -> None) in
+    let ign name = cstr name ((fun _ -> ()) @> nil) (fun () -> None) in
     sum
-      [ cstr' "library"     [Library.vjs]      (fun x -> Library     x)
-      ; cstr' "executables" [Executables.vjs]  (fun x -> Executables x)
-      ; cstr' "rule"        [Rule.vjs]         (fun x -> Rule        x)
-      ; cstr' "ocamllex"    [Ocamllex.vjs]     (fun x -> Ocamllex    x)
-      ; cstr' "ocamlyacc"   [Ocamlyacc.vjs]    (fun x -> Ocamlyacc   x)
-      ; cstr' "provides"    [Provides.vjs]     (fun x -> Provides    x)
-      ; cstr' "install"     [Install_conf.vjs] (fun x -> Install     x)
-      ; cstr' "alias"       [Alias_conf.vjs]   (fun x -> Alias       x)
+      [ cstr' "library"     (Library.vjs @> nil)      (fun x -> Library     x)
+      ; cstr' "executables" (Executables.vjs @> nil)  (fun x -> Executables x)
+      ; cstr' "rule"        (Rule.vjs @> nil)         (fun x -> Rule        x)
+      ; cstr' "ocamllex"    (Ocamllex.vjs @> nil)     (fun x -> Ocamllex    x)
+      ; cstr' "ocamlyacc"   (Ocamlyacc.vjs @> nil)    (fun x -> Ocamlyacc   x)
+      ; cstr' "provides"    (Provides.vjs @> nil)     (fun x -> Provides    x)
+      ; cstr' "install"     (Install_conf.vjs @> nil) (fun x -> Install     x)
+      ; cstr' "alias"       (Alias_conf.vjs @> nil)   (fun x -> Alias       x)
       ; ign "enforce_style"
       ; ign "toplevel_expect_tests"
       ; ign "unified_tests"
       ; ign "embed"
       (* Just for validation and error messages  *)
-      ; cstr "jbuild_version" [Jbuild_version.t] (fun _ -> None)
+      ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> None)
       ]
 
   let select : Jbuild_version.t -> t option Sexp.Of_sexp.t = function

@@ -16,14 +16,16 @@ let ksprintf = Printf.ksprintf
 exception Code_error of string
 let code_errorf fmt = ksprintf (fun msg -> raise (Code_error msg)) fmt
 
+type ('a, 'b) result =
+  | Ok    of 'a
+  | Error of 'b
+
 type ('a, 'b) either =
   | Inl of 'a
   | Inr of 'b
 
 module List = struct
-  type 'a t = 'a list =
-    | []
-    | ( :: ) of 'a * 'a t
+  type 'a t = 'a list
 
   include ListLabels
 
@@ -193,8 +195,11 @@ module String = struct
     len >= suffix_len &&
     sub s ~pos:(len - suffix_len) ~len:suffix_len = suffix
 
-  let capitalize_ascii   = String.capitalize_ascii
-  let uncapitalize_ascii = String.uncapitalize_ascii
+  include struct
+    [@@@warning "-3"]
+    let capitalize_ascii   = String.capitalize
+    let uncapitalize_ascii = String.uncapitalize
+  end
 
   let split_words s =
     let rec skip_blanks i =

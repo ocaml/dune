@@ -313,7 +313,7 @@ module Scheduler = struct
     in
     match finished with
     | [] ->
-      Unix.sleepf 0.001;
+      ignore (Unix.select [] [] [] 0.001);
       wait_win32 ()
     | _ ->
       List.iter finished ~f:(fun (job, status) ->

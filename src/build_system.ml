@@ -6,10 +6,16 @@ module Pmap  = Path.Map
 module Vspec = Build.Vspec
 
 module Exec_status = struct
+  module Starting = struct
+    type t = { for_file : Path.t }
+  end
+  module Running = struct
+    type t = { for_file : Path.t; future : unit Future.t }
+  end
   type t =
     | Not_started of (targeting:Path.t -> unit Future.t)
-    | Starting of { for_file : Path.t }
-    | Running of { for_file : Path.t; future : unit Future.t }
+    | Starting of Starting.t
+    | Running  of Running.t
 end
 
 module Rule = struct

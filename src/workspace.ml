@@ -44,7 +44,7 @@ let t sexps =
     List.fold_left sexps ~init:(None, []) ~f:(fun (merlin_ctx, ctxs) sexp ->
       let ctx =
         sum
-          [ cstr "context" [Context.t] (fun x -> x) ]
+          [ cstr "context" (Context.t @> nil) (fun x -> x) ]
           sexp
       in
       let name = Context.name ctx in

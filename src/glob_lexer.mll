@@ -60,8 +60,8 @@ and char_set st = parse
   let parse_string s =
     let lb = Lexing.from_string s in
     match initial lb with
-    | re -> Ok re
+    | re -> Import.Ok re
     | exception Failure msg ->
-      Error (Lexing.lexeme_start lb, msg)
+      Import.Error (Lexing.lexeme_start lb, msg)
 }
 

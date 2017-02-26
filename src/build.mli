@@ -103,9 +103,13 @@ type lib_deps = lib_dep_kind String_map.t
 
 
 module Repr : sig
+  type ('a, 'b) prim =
+    { targets : Path.t list
+    ; exec    : 'a -> 'b Future.t
+    }
   type ('a, 'b) t =
     | Arr : ('a -> 'b) -> ('a, 'b) t
-    | Prim : { targets : Path.t list; exec : 'a -> 'b Future.t } -> ('a, 'b) t
+    | Prim : ('a, 'b) prim -> ('a, 'b) t
     | Store_vfile : 'a Vspec.t -> ('a, unit) t
     | Compose : ('a, 'b) t * ('b, 'c) t -> ('a, 'c) t
     | First : ('a, 'b) t -> ('a * 'c, 'b * 'c) t

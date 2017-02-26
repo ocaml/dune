@@ -21,7 +21,13 @@
 open! Import
 
 module Kind : sig
-  type t = Default | Opam of { root : string; switch : string }
+  module Opam : sig
+    type t =
+      { root   : string
+      ; switch : string
+      }
+  end
+  type t = Default | Opam of Opam.t
 end
 
 type t =

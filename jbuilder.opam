@@ -10,7 +10,7 @@ build: [
   ["ocaml" "bootstrap.ml"]
   ["./boot.exe" "-j" jobs]
 ]
-available: [ ocaml-version >= "4.03.0" ]
+available: [ ocaml-version >= "4.02.3" ]
 descr: "
 Fast, portable and opinionated build system
 

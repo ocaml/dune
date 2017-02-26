@@ -33,19 +33,19 @@ module Section = struct
 
   let t =
     let open Sexp.Of_sexp in
-    sum
-      [ cstr "lib"        [] Lib
-      ; cstr "libexec"    [] Libexec
-      ; cstr "bin"        [] Bin
-      ; cstr "sbin"       [] Sbin
-      ; cstr "toplevel"   [] Toplevel
-      ; cstr "share"      [] Share
-      ; cstr "share_root" [] Share_root
-      ; cstr "etc"        [] Etc
-      ; cstr "doc"        [] Doc
-      ; cstr "stublibs"   [] Stublibs
-      ; cstr "man"        [] Man
-      ; cstr "misc"       [] Misc
+    enum
+      [ "lib"        , Lib
+      ; "libexec"    , Libexec
+      ; "bin"        , Bin
+      ; "sbin"       , Sbin
+      ; "toplevel"   , Toplevel
+      ; "share"      , Share
+      ; "share_root" , Share_root
+      ; "etc"        , Etc
+      ; "doc"        , Doc
+      ; "stublibs"   , Stublibs
+      ; "man"        , Man
+      ; "misc"       , Misc
       ]
 end
 

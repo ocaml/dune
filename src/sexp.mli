@@ -65,11 +65,14 @@ module Of_sexp : sig
   end
 
   module Constructor_args_spec : sig
-    type 'a conv = 'a t
-    type ('a, 'b) t =
-      | [] : ('a, 'a) t
-      | ( :: ) : 'a conv * ('b, 'c) t -> ('a -> 'b, 'c) t
-  end with type 'a conv := 'a t
+    type ('a, 'b) t
+  end
+
+  val nil : ('a, 'a) Constructor_args_spec.t
+  val ( @> )
+    :  'a t
+    -> ('b, 'c) Constructor_args_spec.t
+    -> ('a -> 'b, 'c) Constructor_args_spec.t
 
   val cstr : string -> ('a, 'b) Constructor_args_spec.t -> 'a -> 'b Constructor_spec.t
   val cstr_rest

@@ -2,7 +2,13 @@ open Import
 open Future
 
 module Kind = struct
-  type t = Default | Opam of { root : string; switch : string }
+  module Opam = struct
+    type t =
+      { root   : string
+      ; switch : string
+      }
+  end
+  type t = Default | Opam of Opam.t
 end
 
 type t =
@@ -152,13 +158,17 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
     | Error (key, _, _) ->
       die "variable %S present twice in the output of `%s`" key ocamlc_config_cmd
   in
-  let get var =
+  let get ?default var =
     match String_map.find var ocamlc_config with
-    | None -> die "variable %S not found in the output of `%s`" var ocamlc_config_cmd
     | Some s -> s
+    | None ->
+      match default with
+      | Some x -> x
+      | None ->
+        die "variable %S not found in the output of `%s`" var ocamlc_config_cmd
   in
-  let get_bool var =
-    match get var with
+  let get_bool ?default var =
+    match get ?default:(Option.map default ~f:string_of_bool) var with
     | "true" -> true
     | "false" -> false
     | _ -> die "variable %S is neither 'true' neither 'false' in the output of `%s`"
@@ -210,7 +220,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
     ; default_executable_name = get       "default_executable_name"
     ; host                    = get       "host"
     ; target                  = get       "target"
-    ; flambda                 = get_bool  "flambda"
+    ; flambda                 = get_bool  "flambda" ~default:false
     ; exec_magic_number       = get       "exec_magic_number"
     ; cmi_magic_number        = get       "cmi_magic_number"
     ; cmo_magic_number        = get       "cmo_magic_number"

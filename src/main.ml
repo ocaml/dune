@@ -22,13 +22,14 @@ let setup ?filter_out_optional_stanzas_with_missing_deps ?workspace () =
       if Sys.file_exists "jbuild-workspace" then
         Workspace.load "jbuild-workspace"
       else
-        [Default]
+        { merlin_context = Some "default"; contexts = [Default] }
   in
   Future.all
-    (List.map workspace ~f:(function
-     | Workspace.Context.Default -> Lazy.force Context.default
-     | Opam { name; switch; root } ->
-       Context.create_for_opam ~name ~switch ?root ()))
+    (List.map workspace.contexts ~f:(function
+     | Workspace.Context.Default ->
+       Context.default ~merlin:(workspace.merlin_context = Some "default") ()
+     | Opam { name; switch; root; merlin } ->
+       Context.create_for_opam ~name ~switch ?root ~merlin ()))
   >>= fun contexts ->
   Gen_rules.gen conf ~contexts
     ?filter_out_optional_stanzas_with_missing_deps
@@ -124,7 +125,8 @@ let bootstrap () =
       ]
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
     Future.Scheduler.go ~log:(create_log ())
-      (setup ~workspace:[Default] () >>= fun { build_system = bs; _ } ->
+      (setup ~workspace:{ merlin_context = Some "default"; contexts = [Default] } ()
+       >>= fun { build_system = bs; _ } ->
        Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])
   in
   try

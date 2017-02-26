@@ -626,7 +626,7 @@ module Gen(P : Params) = struct
         )
     )
 
-  let requires ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
+  let real_requires ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
     let all_pps =
       Preprocess_map.pps preprocess
       |> Pp_set.elements
@@ -647,65 +647,65 @@ module Gen(P : Params) = struct
        Build.store_vfile vrequires);
     Build.vpath vrequires
 
+  let requires ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
+    let real_requires =
+      real_requires ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps
+    in
+    let requires =
+      if ctx.merlin then
+        match Path.extract_build_context dir with
+        | Some (_, remaindir) ->
+          Build.path (Path.relative remaindir ".merlin") >>> real_requires
+        | _ -> real_requires
+      else
+        real_requires
+    in
+    (requires, real_requires)
+
   let dot_merlin ~dir ~requires ~alias_modules =
-    (* Only generate .merlin file in default context *)
-    match Path.extract_build_context dir with
-    | Some ("default", remaindir) ->
+    if ctx.merlin then
+      match Path.extract_build_context dir with
+      | Some (_, remaindir) ->
         let path = Path.relative remaindir ".merlin" in
         add_rule (
           requires
-          >>^ (fun libs_list ->
-            List.concat libs_list
-            |> List.partition_map ~f:(function
-                | Lib.Internal (path, _) ->
+          >>^ (fun libs ->
+              let internals, externals =
+                List.partition_map libs ~f:(function
+                  | Lib.Internal (path, _) ->
                     let path = Path.reach path ~from:remaindir in
                     Inl ("B " ^ path)
-                | Lib.External pkg ->
-                    Inr ("PKG " ^ pkg.name)))
-          >>^ (fun (internals, externals) ->
-            let dot_merlin =
-              [ "S ." ; "B " ^ (Path.reach dir ~from:remaindir) ]
-              @ internals
-              @ externals
-              @ (List.filter_map alias_modules ~f:(fun x ->
-                  Option.map x ~f:(fun (m : Module.t) ->
-                    "FLG -open " ^ m.name)))
-            in
-            let dot_merlin =
+                  | Lib.External pkg ->
+                    Inr ("PKG " ^ pkg.name))
+              in
+              let dot_merlin =
+                [ "S ." ; "B " ^ (Path.reach dir ~from:remaindir) ]
+                @ internals
+                @ externals
+                @ List.map alias_modules ~f:(fun (m : Module.t) ->
+                    "FLG -open " ^ m.name)
+              in
               dot_merlin
               |> String_set.of_list
               |> String_set.elements
-              |> List.sort ~cmp:String.compare
-            in
-            String.concat ~sep:"\n" dot_merlin ^ "\n")
+              |> List.map ~f:(Printf.sprintf "%s\n")
+              |> String.concat ~sep:"")
           >>>
           Build.echo path
         )
-    | _ ->
-      ()
+      | _ ->
+        ()
 
   let merge_dot_merlin merlin_deps ~dir =
-    merlin_deps
-    |> List.fold_left ~init:None ~f:(fun acc (requires, alias_module) ->
-        match acc with
-        | None -> let requires = requires >>^ (fun x -> [x]) in
-          Some (requires, [alias_module])
-        | Some (acc_requires, acc_alias_modules) ->
-          let new_acc_requires =
-            let together = acc_requires &&& requires in
-            together
-            >>^ (fun (acc_requires, requires) ->
-            requires :: acc_requires)
-          in
-          let new_acc_alias_modules =
-            alias_module :: acc_alias_modules
-          in
-          Some (new_acc_requires, new_acc_alias_modules))
-    |> function
-      | Some (requires, alias_modules) ->
-        dot_merlin ~dir ~requires ~alias_modules
-      | None ->
-        ()
+    if ctx.merlin && merlin_deps <> [] then
+      let requires, alias_modules = List.split merlin_deps in
+      let alias_modules = List.filter_map alias_modules ~f:(fun x -> x) in
+      let requires =
+        Build.all requires
+        >>^ fun requires ->
+        Lib.remove_dups_preserve_order (List.concat requires)
+      in
+      dot_merlin ~dir ~requires ~alias_modules
 
   let setup_runtime_deps ~dir ~dep_kind ~item ~libraries ~ppx_runtime_libraries =
     let vruntime_deps = Lib_db.vruntime_deps ~dir ~item in
@@ -1049,18 +1049,11 @@ module Gen(P : Params) = struct
             |> String.concat ~sep:"")
          >>> Build.echo (Path.relative dir m.ml_fname)));
 
-    let real_requires =
+    let requires, real_requires =
       requires ~dir ~dep_kind ~item:lib.name
         ~libraries:lib.buildable.libraries
         ~preprocess:lib.buildable.preprocess
         ~virtual_deps:lib.virtual_deps
-    in
-
-    let requires = 
-      match Path.extract_build_context dir with
-      | Some ("default", remaindir) ->
-        Build.path (Path.relative remaindir ".merlin") >>> real_requires
-      | _ -> real_requires
     in
 
     setup_runtime_deps ~dir ~dep_kind ~item:lib.name
@@ -1217,19 +1210,11 @@ module Gen(P : Params) = struct
     let item = List.hd exes.names in
     let dep_graph = ocamldep_rules ~dir ~item ~modules ~alias_module:None in
 
-    let real_requires =
+    let requires, real_requires =
       requires ~dir ~dep_kind ~item
         ~libraries:exes.buildable.libraries
         ~preprocess:exes.buildable.preprocess
         ~virtual_deps:[]
-    in
-
-    let requires =
-      match Path.extract_build_context dir with
-      | Some ("default", remaindir) ->
-        Build.path (Path.relative remaindir ".merlin") >>> real_requires
-      | _ ->
-        real_requires
     in
 
     List.iter (Lib_db.select_rules ~dir exes.buildable.libraries) ~f:add_rule;

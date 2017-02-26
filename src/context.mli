@@ -28,6 +28,9 @@ type t =
   { name : string
   ; kind : Kind.t
 
+  ; (** [true] if this context is used for the .merlin files *)
+    merlin : bool
+
   ; (** If this context is a cross-compilation context, you need another context for
         building tools used for the compilation that run on the host. *)
     for_host : t option
@@ -101,10 +104,11 @@ val create_for_opam
   :  ?root:string
   -> switch:string
   -> name:string
+  -> ?merlin:bool
   -> unit
   -> t Future.t
 
-val default : t Future.t Lazy.t
+val default : ?merlin:bool -> unit -> t Future.t
 
 (** All contexts in use, by name *)
 val all : unit -> t String_map.t

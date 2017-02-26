@@ -8,6 +8,7 @@ end
 type t =
   { name                    : string
   ; kind                    : Kind.t
+  ; merlin                  : bool
   ; for_host                : t option
   ; build_dir               : Path.t
   ; path                    : Path.t list
@@ -82,7 +83,7 @@ let opam_config_var ~env ~cache var =
       Hashtbl.add cache ~key:var ~data:s;
       Some s
 
-let create ~(kind : Kind.t) ~path ~env ~name =
+let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
    | Opam { root; _ } ->
@@ -168,6 +169,7 @@ let create ~(kind : Kind.t) ~path ~env ~name =
   let t =
     { name
     ; kind
+    ; merlin
     ; for_host = None
     ; build_dir
     ; path
@@ -232,7 +234,7 @@ let initial_env = lazy (
   Lazy.force Ansi_color.setup_env_for_ocaml_colors;
   Unix.environment ())
 
-let default = lazy (
+let default ?(merlin=true) () =
   let env = Lazy.force initial_env in
   let rec find_path i =
     if i = Array.length env then
@@ -244,7 +246,7 @@ let default = lazy (
       | _ -> find_path (i + 1)
   in
   let path = find_path 0 in
-  create ~kind:Default ~path ~env ~name:"default")
+  create ~kind:Default ~path ~env ~name:"default" ~merlin
 
 let extend_env ~vars ~env =
   let imported =
@@ -261,7 +263,7 @@ let extend_env ~vars ~env =
     imported
   |> Array.of_list
 
-let create_for_opam ?root ~switch ~name () =
+let create_for_opam ?root ~switch ~name ?(merlin=false) () =
   match Bin.opam with
   | None -> die "Program opam not found in PATH"
   | Some fn ->
@@ -284,7 +286,7 @@ let create_for_opam ?root ~switch ~name () =
     in
     let env = Lazy.force initial_env in
     create ~kind:(Opam { root; switch }) ~path ~env:(extend_env ~vars ~env)
-      ~name
+      ~name ~merlin
 
 let which t s = Bin.which ~path:t.path s
 

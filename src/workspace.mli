@@ -8,12 +8,16 @@ module Context : sig
       { name   : string
       ; switch : string
       ; root   : string option
+      ; merlin : bool
       }
   end
 
   type t = Default | Opam of Opam.t
 end
 
-type t = Context.t list
+type t =
+  { merlin_context : string option
+  ; contexts       : Context.t list
+  }
 
 val load : string -> t

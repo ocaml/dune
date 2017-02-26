@@ -60,7 +60,7 @@ let installed_libraries =
   let go common =
     set_common common;
     Future.Scheduler.go ~log:(create_log ())
-      (Lazy.force Context.default >>= fun ctx ->
+      (Context.default () >>= fun ctx ->
        let findlib = Findlib.create ctx in
        let pkgs = Findlib.all_packages findlib in
        let max_len = List.longest_map pkgs ~f:(fun p -> p.name) in

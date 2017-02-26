@@ -1,12 +1,9 @@
 open Import
 
 module Jbuild : sig
-  type t =
-    { path             : Path.t
-    ; version          : Jbuild_types.Jbuilder_version.t
-    ; sexps            : Sexp.Ast.t list
-    ; visible_packages : Package.t String_map.t
-    }
+  type t
+
+  val eval : t -> context:Context.t -> Path.t * Jbuild_types.Stanzas.t
 end
 
 type conf =

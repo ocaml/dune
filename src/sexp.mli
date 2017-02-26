@@ -5,12 +5,18 @@ type t =
   | List of t list
 
 module Ast : sig
+  type sexp = t
   type t =
     | Atom of Loc.t * string
     | List of Loc.t * t list
 
   val loc : t -> Loc.t
-end
+
+  val remove_locs : t -> sexp
+  val to_string : t -> string
+end with type sexp := t
+
+val add_loc : t -> loc:Loc.t -> Ast.t
 
 val code_error : string -> (string * t) list -> _
 

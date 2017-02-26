@@ -1783,16 +1783,7 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true) conf =
   let alias_store = Alias.Store.create () in
   let rules =
     List.concat_map contexts ~f:(fun context ->
-      let stanzas =
-        List.map jbuilds ~f:(fun { Jbuild_load.Jbuild. path
-                                 ; version
-                                 ; sexps
-                                 ; visible_packages
-                                 } ->
-          (path,
-           List.filter_map sexps ~f:(Stanza.select version)
-           |> Stanza.resolve_packages ~dir:path ~visible_packages))
-      in
+      let stanzas = List.map jbuilds ~f:(Jbuild_load.Jbuild.eval ~context) in
       let module M =
         Gen(struct
           let context  = context

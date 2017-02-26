@@ -789,6 +789,7 @@ module Stanza = struct
       ; cstr' "alias"       [Alias_conf.v1]   (fun x -> Alias       x)
       (* Just for validation and error messages *)
       ; cstr "jbuilder_version" [Jbuilder_version.t] (fun _ -> None)
+      ; cstr "use_meta_lang"    []                   None
       ]
 
   let vjs =
@@ -823,6 +824,10 @@ module Stanza = struct
              | None -> acc
              | Some n -> String_set.add n acc)
         | _ -> acc))
+end
+
+module Stanzas = struct
+  type t = Stanza.t list
 
   let resolve_packages ts ~dir ~(visible_packages : Package.t String_map.t) =
     let error fmt =
@@ -856,7 +861,7 @@ module Stanza = struct
                You need to add a (package ...) field in your (install ...) stanzas"
           (known_packages ())
     in
-    List.map ts ~f:(fun stanza ->
+    List.map ts ~f:(fun (stanza : Stanza.t) ->
       match stanza with
       | Library { public_name = Some name; _ }
       | Executables { object_public_name = Some name; _ } ->
@@ -868,4 +873,8 @@ module Stanza = struct
       | Install ({ package = None; _ } as install) ->
         Install { install with package = Some (default ()) }
       | _ -> stanza)
+
+  let parse sexps ~dir ~visible_packages ~version =
+    List.filter_map sexps ~f:(Stanza.select version)
+    |> resolve_packages ~dir ~visible_packages
 end

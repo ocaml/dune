@@ -3,11 +3,24 @@ open Jbuild_types
 
 module Jbuild = struct
   type t =
-    { path             : Path.t
-    ; version          : Jbuild_types.Jbuilder_version.t
-    ; sexps            : Sexp.Ast.t list
-    ; visible_packages : Package.t String_map.t
-    }
+    | Constant of Path.t * Stanza.t list
+    | With_macros of
+        { path             : Path.t
+        ; version          : Jbuilder_version.t
+        ; sexps            : Sexp.Ast.t list
+        ; visible_packages : Package.t String_map.t
+        }
+
+  let eval jbuild ~context =
+    match jbuild with
+    | Constant (path, stanzas) -> (path, stanzas)
+    | With_macros { path
+                  ; version
+                  ; sexps
+                  ; visible_packages
+                  } ->
+      let sexps = Jbuild_meta_lang.expand ~context sexps in
+      (path, Stanzas.parse sexps ~dir:path ~visible_packages ~version)
 end
 
 type conf =
@@ -21,7 +34,7 @@ let load ~dir ~visible_packages ~version =
   let sexps = Sexp_load.many (Path.relative dir "jbuild" |> Path.to_string) in
   let versions, sexps =
     List.partition_map sexps ~f:(function
-      | List (loc, [Atom (_, ("jbuilder_version" | "Jbuilder_version")); ver]) ->
+      | List (loc, [Atom (_, "jbuilder_version"); ver]) ->
         Inl (Jbuilder_version.t ver, loc)
       | sexp -> Inr sexp)
   in
@@ -32,12 +45,24 @@ let load ~dir ~visible_packages ~version =
     | _ :: (_, loc) :: _ ->
       Loc.fail loc "jbuilder_version specified too many times"
   in
-  { Jbuild.
-    path = dir
-  ; version
-  ; sexps
-  ; visible_packages
-  }
+  let use_meta_lang, sexps =
+    List.partition_map sexps ~f:(function
+      | List (_, [Atom (_, "use_meta_lang")]) -> Inl ()
+      | sexp -> Inr sexp)
+  in
+  let jbuild =
+    match use_meta_lang with
+    | [] ->
+      Jbuild.Constant (dir, Stanzas.parse sexps ~dir ~visible_packages ~version)
+    | _ ->
+      With_macros
+        { path = dir
+        ; version
+        ; sexps
+        ; visible_packages
+        }
+  in
+  (version, jbuild)
 
 let load () =
   let ftree = File_tree.load Path.root in
@@ -90,8 +115,8 @@ let load () =
     in
     let version, jbuilds =
       if String_set.mem "jbuild" files then
-        let jbuild = load ~dir:path ~visible_packages ~version in
-        (jbuild.version, jbuild :: jbuilds)
+        let version, jbuild = load ~dir:path ~visible_packages ~version in
+        (version, jbuild :: jbuilds)
       else
         (version, jbuilds)
     in

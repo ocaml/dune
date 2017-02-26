@@ -44,7 +44,7 @@ let setup ?filter_out_optional_stanzas_with_missing_deps ?workspace () =
 let external_lib_deps ?log ~packages () =
   Future.Scheduler.go ?log
     (setup () ~filter_out_optional_stanzas_with_missing_deps:false
-     >>| fun ({ build_system = bs; jbuilds; _ } as setup) ->
+     >>| fun ({ build_system = bs; jbuilds; contexts; _ } as setup) ->
      let install_files =
        List.map packages ~f:(fun pkg ->
          match package_install_file setup pkg with
@@ -54,17 +54,15 @@ let external_lib_deps ?log ~packages () =
      Path.Map.map
        (Build_system.all_lib_deps bs install_files)
        ~f:(fun deps ->
-         let stanzas =
-           List.map jbuilds ~f:(fun { Jbuild_load.Jbuild. path
-                                    ; version
-                                    ; sexps
-                                    ; _
-                                    } ->
-             (path,
-              List.filter_map sexps ~f:(Jbuild_types.Stanza.select version)))
-         in
-         let internals = Jbuild_types.Stanza.lib_names stanzas in
-         String_map.filter deps ~f:(fun name _ -> not (String_set.mem name internals))))
+           let context =
+             match List.find contexts ~f:(fun c -> c.name = "default") with
+             | None -> die "You need to set a default context to use external-lib-deps"
+             | Some context -> context
+           in
+           let stanzas = List.map jbuilds ~f:(Jbuild_load.Jbuild.eval ~context) in
+           let internals = Jbuild_types.Stanza.lib_names stanzas in
+           String_map.filter deps ~f:(fun name _ ->
+             not (String_set.mem name internals))))
 
 let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   match exn with

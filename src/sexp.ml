@@ -4,15 +4,7 @@ type t =
   | Atom of string
   | List of t list
 
-module Ast = struct
-  type t =
-    | Atom of Loc.t * string
-    | List of Loc.t * t list
-
-  let loc = function
-    | Atom (loc, _) -> loc
-    | List (loc, _) -> loc
-end
+type sexp = t
 
 let must_escape str =
   let len = String.length str in
@@ -37,6 +29,28 @@ let code_error message vars =
        (List (Atom message
               :: List.map vars ~f:(fun (name, value) ->
                 List [Atom name; value]))))
+
+
+module Ast = struct
+  type t =
+    | Atom of Loc.t * string
+    | List of Loc.t * t list
+
+  let loc = function
+    | Atom (loc, _) -> loc
+    | List (loc, _) -> loc
+
+  let rec remove_locs : t -> sexp = function
+    | Atom (_, s) -> Atom s
+    | List (_, l) -> List (List.map l ~f:remove_locs)
+
+  let to_string t = to_string (remove_locs t)
+end
+
+let rec add_loc t ~loc : Ast.t =
+  match t with
+  | Atom s -> Atom (loc, s)
+  | List l -> List (loc, List.map l ~f:(add_loc ~loc))
 
 module type Combinators = sig
   type 'a t
@@ -122,17 +136,19 @@ module Of_sexp = struct
     ; entry : Ast.t
     }
 
-  module Name_map = Map.Make(struct
-      type t = string
-      let compare a b =
-        let alen = String.length a and blen = String.length b in
-        if alen < blen then
-          -1
-        else if alen > blen then
-          1
-        else
-          String.compare a b
-    end)
+  module Name = struct
+    type t = string
+    let compare a b =
+      let alen = String.length a and blen = String.length b in
+      if alen < blen then
+        -1
+      else if alen > blen then
+        1
+      else
+        String.compare a b
+  end
+
+  module Name_map = Map.Make(Name)
 
   type record_parser_state =
     { loc      : Loc.t
@@ -272,25 +288,7 @@ module Of_sexp = struct
   let cstr name args make =
     Constructor_spec.T { name; args; make; rest = No_rest }
 
-  let equal_cstr_name a b =
-    let alen = String.length a and blen = String.length b in
-    if alen <> blen then
-      false
-    else if alen = 0 then
-      true
-    else
-      let is_cap s =
-        match s.[0] with
-        | 'A'..'Z' -> true
-        | _        -> false
-      in
-      match is_cap a, is_cap b with
-      | true, true | false, false ->
-        a = b
-      | true, false ->
-        a = String.capitalize_ascii b
-      | false, true ->
-        String.capitalize_ascii a = b
+  let equal_cstr_name a b = Name.compare a b = 0
 
   let find_cstr cstrs sexp name =
     match

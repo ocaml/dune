@@ -1,6 +1,5 @@
 (jbuild_version 1)
 
 (library
- ((name        jbuilder_cmdliner)
-  (public_name jbuilder.cmdliner)
+ ((name jbuilder_cmdliner)
   (flags (-w -3-6-27-32-33-35-50))))

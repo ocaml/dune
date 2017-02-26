@@ -233,13 +233,13 @@ module Scheduler = struct
     let prog = colorize_prog (quote prog) in
     let s = String.concat (prog :: colorize_args (List.map args ~f:quote)) ~sep:" " in
     let s =
-      match stdout_to with
+      match dir with
       | None -> s
-      | Some fn -> sprintf "%s > %s" s fn
+      | Some dir -> sprintf "(cd %s && %s)" dir s
     in
-    match dir with
+    match stdout_to with
     | None -> s
-    | Some dir -> sprintf "(cd %s && %s)" dir s
+    | Some fn -> sprintf "%s > %s" s fn
 
   type running_job =
     { id              : int

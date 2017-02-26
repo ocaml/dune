@@ -514,6 +514,16 @@ else
     ldbm=""
 fi
 
+# num?
+
+if [ -f "${ocaml_core_stdlib}/num.cmi" ]; then
+    echo "num: found"
+    lnum="num num-top"
+else
+    echo "num: not present (normal since OCaml-4.05)"
+    lnum=""
+fi
+
 # bytes?
 
 if [ -f "${ocaml_core_stdlib}/bytes.cmi" ]; then
@@ -539,7 +549,7 @@ fi
 
 # Generate the META files now.
 
-l="$ldbm dynlink graphics num num-top str threads unix stdlib bigarray ocamldoc $llabltk $lcamlp4 $lobuild $lcomplibs $lbytes $lspacetime"
+l="$ldbm dynlink graphics $lnum num-top str threads unix stdlib bigarray ocamldoc $llabltk $lcamlp4 $lobuild $lcomplibs $lbytes $lspacetime"
 
 for dir in site-lib-src/*; do
     # We do not really know if $dir is a directory.

@@ -186,6 +186,14 @@ be automatically installed as well.
 its name. They are used to describe libraries, executables, tests, and
 everything Jbuilder needs to know about.
 
+*** OCaml syntax
+
+If a =jbuild= file starts with =(* -*- tuareg -*- *)=, then it is
+interpreted as an OCaml script that generated the =jbuild= file as
+described in the rest of this section. The code in the script will
+have access to a [[../plugin/jbuild_plugin.mli][Jbuild_plugin]] module containing details about the
+build context it is executed in.
+
 *** Specification
 
 =jbuild= files are composed of stanzas. For instance a typical

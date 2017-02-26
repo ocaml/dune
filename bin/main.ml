@@ -235,7 +235,9 @@ let get_prefix context ~from_command_line =
   | None -> Context.install_prefix context
 
 let install_uninstall ~what =
-  let doc = sprintf "%s packages using opam-installer." (String.capitalize what) in
+  let doc =
+    sprintf "%s packages using opam-installer." (String.capitalize_ascii what)
+  in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let go common prefix pkgs =
     set_common common;

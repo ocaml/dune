@@ -66,9 +66,6 @@ type t =
 
 let compare a b = compare a.name b.name
 
-let all_known = ref String_map.empty
-let all () = !all_known
-
 let get_arch_sixtyfour stdlib_dir =
   let config_h = Path.relative stdlib_dir "caml/config.h" in
   List.exists (lines_of_file (Path.to_string config_h)) ~f:(fun line ->
@@ -176,7 +173,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
   in
   let get_path var = Path.absolute (get var) in
   let stdlib_dir = get_path "standard_library" in
-  let t =
+  return
     { name
     ; kind
     ; merlin
@@ -232,11 +229,6 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
     ; cmxs_magic_number       = get       "cmxs_magic_number"
     ; cmt_magic_number        = get       "cmt_magic_number"
     }
-  in
-  if String_map.mem name !all_known then
-    die "context %s already exists" name;
-  all_known := String_map.add !all_known ~key:name ~data:t;
-  return t
 
 let opam_config_var t var = opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 

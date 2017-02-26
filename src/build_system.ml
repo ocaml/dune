@@ -56,7 +56,8 @@ end
 
 type t =
   { (* File specification by targets *)
-    files : (Path.t, File_spec.packed) Hashtbl.t
+    files    : (Path.t, File_spec.packed) Hashtbl.t
+  ; contexts : Context.t list
   }
 
 let find_file_exn t file =
@@ -257,7 +258,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
   create_file_specs t target_specs rule ~allow_override
 
 let setup_copy_rules t ~all_non_target_source_files ~all_targets_by_dir =
-  String_map.iter (Context.all ()) ~f:(fun ~key:_ ~data:(ctx : Context.t) ->
+  List.iter t.contexts ~f:(fun (ctx : Context.t) ->
     let ctx_dir = ctx.build_dir in
     Pset.iter all_non_target_source_files ~f:(fun path ->
       let ctx_path = Path.append ctx_dir path in
@@ -277,7 +278,7 @@ let setup_copy_rules t ~all_non_target_source_files ~all_targets_by_dir =
           ~all_targets_by_dir
           ~allow_override:true))
 
-let create ~file_tree ~rules =
+let create ~contexts ~file_tree ~rules =
   let all_source_files =
     File_tree.fold file_tree ~init:Pset.empty ~f:(fun dir acc ->
         let path = File_tree.Dir.path dir in
@@ -288,10 +289,10 @@ let create ~file_tree ~rules =
            |> Pset.of_list))
   in
   let all_copy_targets =
-    String_map.fold (Context.all ()) ~init:Pset.empty ~f:(fun ~key:_ ~data:(ctx : Context.t) acc ->
-        Pset.union acc (Pset.elements all_source_files
-                        |> List.map ~f:(Path.append ctx.build_dir)
-                        |> Pset.of_list))
+    List.fold_left contexts ~init:Pset.empty ~f:(fun acc (ctx : Context.t) ->
+      Pset.union acc (Pset.elements all_source_files
+                      |> List.map ~f:(Path.append ctx.build_dir)
+                      |> Pset.of_list))
   in
   let all_other_targets =
     List.fold_left rules ~init:Pset.empty ~f:(fun acc { Pre_rule.targets; _ } ->
@@ -308,7 +309,7 @@ let create ~file_tree ~rules =
     |> Pmap.of_alist_multi
     |> Pmap.map ~f:Pset.of_list
   ) in
-  let t = { files = Hashtbl.create 1024 } in
+  let t = { files = Hashtbl.create 1024; contexts } in
   List.iter rules ~f:(compile_rule t ~all_targets_by_dir ~allow_override:false);
   setup_copy_rules t ~all_targets_by_dir
     ~all_non_target_source_files:
@@ -335,7 +336,7 @@ let remove_old_artifacts t =
     if not keep then Path.rmdir dir;
     keep
   in
-  String_map.iter (Context.all ()) ~f:(fun ~key:_ ~data:(ctx : Context.t) ->
+  List.iter t.contexts ~f:(fun (ctx : Context.t) ->
     if Path.exists ctx.build_dir then
       ignore (walk ctx.build_dir : bool))
 

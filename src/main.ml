@@ -34,7 +34,7 @@ let setup ?filter_out_optional_stanzas_with_missing_deps ?workspace () =
   Gen_rules.gen conf ~contexts
     ?filter_out_optional_stanzas_with_missing_deps
   >>= fun rules ->
-  let build_system = Build_system.create ~file_tree:conf.file_tree ~rules in
+  let build_system = Build_system.create ~contexts ~file_tree:conf.file_tree ~rules in
   return { build_system
          ; jbuilds = conf.jbuilds
          ; contexts

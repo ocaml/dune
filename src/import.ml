@@ -90,6 +90,14 @@ module Hashtbl = struct
     match find t key with
     | exception Not_found -> None
     | x -> Some x
+
+  let find_or_add t key ~f =
+    match find t key with
+    | Some x -> x
+    | None ->
+      let x = f () in
+      add t ~key ~data:x;
+      x
 end
 
 module Map = struct
@@ -313,6 +321,8 @@ let read_file fn =
     really_input_string ic len)
 
 let lines_of_file fn = with_file_in fn ~f:input_lines
+
+let write_file fn data = with_file_out fn ~f:(fun oc -> output_string oc data)
 
 exception Fatal_error of string
 let die fmt = ksprintf (fun msg -> raise (Fatal_error msg)) fmt

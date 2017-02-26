@@ -1,4 +1,8 @@
 {
+type sexps_or_ocaml_script =
+  | Sexps of Sexp.Ast.t list
+  | Ocaml_script
+
 type stack =
   | Empty
   | Open of Lexing.position * stack
@@ -176,6 +180,10 @@ and trailing = parse
   | _
     { error lexbuf "garbage after s-expression" }
 
+and is_ocaml_script = parse
+  | "(* -*- tuareg -*- *)" { true  }
+  | ""                     { false }
+
 {
   let single lexbuf =
     match main Empty lexbuf with
@@ -189,4 +197,9 @@ and trailing = parse
       | Some sexp -> loop (sexp :: acc)
     in
     loop []
+
+  let many_or_ocaml_script lexbuf =
+    match is_ocaml_script lexbuf with
+    | true -> Ocaml_script
+    | false -> Sexps (many lexbuf)
 }

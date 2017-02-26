@@ -108,11 +108,8 @@ publication of Jane Street packages easier.
 
 Except for the special =jane_street= version, there is currently only
 one version available, but to be future proof, you should still
-specify it in your toplevel =jbuild= file. If no version is specified,
-the latest one will be used. Specifying a version in a =jbuild= file
-will affect the current file as well as the sub-tree where it is
-defined. As a result it is recommended to specify the version in the
-toplevel jbuild file of your project.
+specify it in your =jbuild= files. If no version is specified, the
+latest one will be used.
 
 ** Metadata format
 
@@ -208,11 +205,10 @@ everything Jbuilder needs to know about.
 The following sections describe the available stanzas and their
 meaning.
 
-**** jbuilder_version
+**** jbuid_verrsion
 
-=(jbuilder_version 1)= specifies that we are using the version 1 of
-the Jbuilder metadata format in this =jbuild= file and the sub-tree
-starting from this directory.
+=(jbuild_version 1)= specifies that we are using the version 1 of the
+Jbuilder metadata format in this =jbuild= file.
 
 **** library
 

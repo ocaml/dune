@@ -23,6 +23,7 @@ type t =
   ; findlib_path            : Path.t list
   ; arch_sixtyfour          : bool
   ; opam_var_cache : (string, string) Hashtbl.t
+  ; ocamlc_config           : (string * string) list
   ; version                 : string
   ; stdlib_dir              : Path.t
   ; ccomp_type              : string
@@ -187,6 +188,7 @@ let create ~(kind : Kind.t) ~path ~env ~name =
     ; opam_var_cache
 
     ; stdlib_dir
+    ; ocamlc_config = String_map.bindings ocamlc_config
     ; version                 = get       "version"
     ; ccomp_type              = get       "ccomp_type"
     ; bytecomp_c_compiler     = get       "bytecomp_c_compiler"

@@ -60,7 +60,8 @@ type t =
   ; opam_var_cache : (string, string) Hashtbl.t
 
   ; (** Output of [ocamlc -config] *)
-    version                 : string
+    ocamlc_config           : (string * string) list
+  ; version                 : string
   ; stdlib_dir              : Path.t
   ; ccomp_type              : string
   ; bytecomp_c_compiler     : string

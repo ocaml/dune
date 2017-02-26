@@ -41,11 +41,12 @@ let t sexps =
         sexp
     in
     let name = Context.name ctx in
-    begin match name with
-    | ".aliases" | "log" ->
-      of_sexp_errorf sexp "%S is not allowed as a build context name" name
-    | _ -> ()
-    end;
+    if name = "" ||
+       String.is_prefix name ~prefix:"." ||
+       name = "log" ||
+       String.contains name '/' ||
+       String.contains name '\\' then
+      of_sexp_errorf sexp "%S is not allowed as a build context name" name;
     if List.exists acc ~f:(fun c -> Context.name c = name) then
       of_sexp_errorf sexp "second definition of build context %S" name;
     ctx :: acc)

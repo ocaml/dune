@@ -1,40 +1,47 @@
-(use_meta_lang)
+(* -*- tuareg -*- *)
+
+open StdLabels
+
+let commands =
+  [ "build"
+  ; "build-package"
+  ; "external-lib-deps"
+  ; "install"
+  ; "installed-libraries"
+  ; "runtest"
+  ; "uninstall"
+  ]
+
+let jbuild =
+  String.concat ~sep:""
+    ({|
+(jbuild_version 1)
 
 (install
  ((section doc)
   (files (manual.org))))
 
-(:let :commands
-      (build
-       build-package
-       external-lib-deps
-       install
-       installed-libraries
-       runtest
-       uninstall))
-
-(:let-macro (:man-file :cmd)
-            (:concat "" (jbuilder- (:cmd) .1)))
-
 (rule
  ((targets (jbuilder.1))
   (action  (with-stdout-to ${@}
             (run ${bin:jbuilder} --help=groff)))))
-
-(:foreach :cmd (:commands)
- (rule
-  ((targets ((:man-file (:cmd))))
-   (action  (with-stdout-to ${@}
-                            (run ${bin:jbuilder} (:cmd) --help=groff))))))
-
+|} :: List.map commands ~f:(fun cmd ->
+        Printf.sprintf {|
+(rule
+ ((targets (jbuilder-%s.1))
+  (action  (with-stdout-to ${@}
+            (run ${bin:jbuilder} %s --help=groff)))))
+|} cmd cmd)
+  @ [ Printf.sprintf {|
 (install
  ((section man)
   (files (
     jbuilder.1
-    (:foreach :cmd (:commands) (:man-file (:cmd)))
+    %s
     ))))
+|} (String.concat ~sep:"\n    "
+      (List.map commands ~f:(Printf.sprintf "jbuilder-%s.1")))
+    ])
 
-(alias
- ((name runtest)
-  (deps (jbuild))
-  (action (run ${bin:cinaps} ${<}))))
+let () =
+  Jbuild_plugin.V1.send jbuild

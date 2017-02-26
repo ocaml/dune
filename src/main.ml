@@ -3,7 +3,7 @@ open Future
 
 type setup =
   { build_system : Build_system.t
-  ; jbuilds      : Jbuild_load.Jbuild.t list
+  ; jbuilds      : Jbuild_load.Jbuilds.t
   ; contexts     : Context.t list
   ; packages     : Package.t String_map.t
   }
@@ -30,10 +30,9 @@ let setup ?filter_out_optional_stanzas_with_missing_deps ?workspace () =
      | Opam { name; switch; root } ->
        Context.create_for_opam ~name ~switch ?root ()))
   >>= fun contexts ->
-  let rules =
-    Gen_rules.gen conf ~contexts
-      ?filter_out_optional_stanzas_with_missing_deps
-  in
+  Gen_rules.gen conf ~contexts
+    ?filter_out_optional_stanzas_with_missing_deps
+  >>= fun rules ->
   let build_system = Build_system.create ~file_tree:conf.file_tree ~rules in
   return { build_system
          ; jbuilds = conf.jbuilds
@@ -44,25 +43,25 @@ let setup ?filter_out_optional_stanzas_with_missing_deps ?workspace () =
 let external_lib_deps ?log ~packages () =
   Future.Scheduler.go ?log
     (setup () ~filter_out_optional_stanzas_with_missing_deps:false
-     >>| fun ({ build_system = bs; jbuilds; contexts; _ } as setup) ->
+     >>= fun ({ build_system = bs; jbuilds; contexts; _ } as setup) ->
      let install_files =
        List.map packages ~f:(fun pkg ->
          match package_install_file setup pkg with
          | Ok path -> path
          | Error () -> die "Unknown package %S" pkg)
      in
+     let context =
+       match List.find contexts ~f:(fun c -> c.name = "default") with
+       | None -> die "You need to set a default context to use external-lib-deps"
+       | Some context -> context
+     in
+     Jbuild_load.Jbuilds.eval ~context jbuilds
+     >>| fun stanzas ->
+     let internals = Jbuild_types.Stanza.lib_names stanzas in
      Path.Map.map
        (Build_system.all_lib_deps bs install_files)
-       ~f:(fun deps ->
-           let context =
-             match List.find contexts ~f:(fun c -> c.name = "default") with
-             | None -> die "You need to set a default context to use external-lib-deps"
-             | Some context -> context
-           in
-           let stanzas = List.map jbuilds ~f:(Jbuild_load.Jbuild.eval ~context) in
-           let internals = Jbuild_types.Stanza.lib_names stanzas in
-           String_map.filter deps ~f:(fun name _ ->
-             not (String_set.mem name internals))))
+       ~f:(String_map.filter ~f:(fun name _ ->
+           not (String_set.mem name internals))))
 
 let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   match exn with

@@ -1,4 +1,5 @@
+(jbuild_version 1)
+
 (library
  ((name        jbuilder_re)
-  (public_name jbuilder.re)
-  (preprocess  no_preprocessing)))
+  (public_name jbuilder.re)))

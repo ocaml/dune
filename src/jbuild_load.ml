@@ -1,68 +1,110 @@
 open Import
 open Jbuild_types
 
-module Jbuild = struct
-  type t =
-    | Constant of Path.t * Stanza.t list
-    | With_macros of
-        { path             : Path.t
-        ; version          : Jbuilder_version.t
-        ; sexps            : Sexp.Ast.t list
+module Jbuilds = struct
+  type one =
+    | Literal of Path.t * Stanza.t list
+    | Script of
+        { dir              : Path.t
         ; visible_packages : Package.t String_map.t
         }
 
-  let eval jbuild ~context =
-    match jbuild with
-    | Constant (path, stanzas) -> (path, stanzas)
-    | With_macros { path
-                  ; version
-                  ; sexps
-                  ; visible_packages
-                  } ->
-      let sexps = Jbuild_meta_lang.expand ~context sexps in
-      (path, Stanzas.parse sexps ~dir:path ~visible_packages ~version)
+  type t = one list
+
+  let generated_jbuilds_dir = Path.(relative root) "_build/.jbuilds"
+  let contexts_files_dir = Path.(relative root) "_build/.contexts"
+
+  let ensure_parent_dir_exists path =
+    match Path.kind path with
+    | Local path -> Path.Local.ensure_parent_directory_exists path
+    | External _ -> ()
+
+  let create_context_file (context : Context.t) =
+    let file = Path.relative contexts_files_dir (context.name ^ ".ml") in
+    ensure_parent_dir_exists file;
+    with_file_out (Path.to_string file) ~f:(fun oc ->
+      Printf.fprintf oc {|
+module Jbuild_plugin = struct
+  module V1 = struct
+    let context       = %S
+    let ocaml_version = %S
+
+    let ocamlc_config =
+      [ %s
+      ]
+
+    let send s =
+      let oc = open_out_bin Sys.argv.(1) in
+      output_string oc s;
+      close_out oc
+  end
+end
+|}
+        context.name
+        context.version
+        (String.concat ~sep:"\n      ; "
+           (let longest = List.longest_map context.ocamlc_config ~f:fst in
+            List.map context.ocamlc_config ~f:(fun (k, v) ->
+              Printf.sprintf "%-*S , %S" (longest + 2) k v))));
+    file
+
+  let eval jbuilds ~(context : Context.t) =
+    let open Future in
+    let context_files = Hashtbl.create 8 in
+    List.map jbuilds ~f:(function
+      | Literal (path, stanzas) ->
+        return (path, stanzas)
+      | Script { dir
+               ; visible_packages
+               } ->
+        let file = Path.relative dir "jbuild" in
+        let generated_jbuild =
+          Path.append (Path.relative generated_jbuilds_dir context.name) file
+        in
+        let wrapper = Path.extend_basename generated_jbuild ~suffix:".ml" in
+        ensure_parent_dir_exists generated_jbuild;
+        let context_file, context_file_contents =
+          Hashtbl.find_or_add context_files context.name ~f:(fun () ->
+            let file = create_context_file context in
+            (file, read_file (Path.to_string file)))
+        in
+        Printf.ksprintf (write_file (Path.to_string wrapper))
+          "# 1 %S\n\
+           %s\n\
+           # 1 %S\n\
+           %s"
+          (Path.to_string context_file)
+          context_file_contents
+          (Path.to_string file)
+          (read_file (Path.to_string file));
+        run ~dir:(Path.to_string dir) ~env:context.env
+          (Path.to_string context.Context.ocaml)
+          [ Path.reach ~from:dir wrapper
+          ; Path.reach ~from:dir generated_jbuild
+          ]
+        >>= fun () ->
+        let sexps = Sexp_load.many (Path.to_string generated_jbuild) in
+        return (dir, Stanzas.parse sexps ~dir ~visible_packages))
+    |> Future.all
 end
 
 type conf =
   { file_tree : File_tree.t
   ; tree      : Alias.tree
-  ; jbuilds   : Jbuild.t list
+  ; jbuilds   : Jbuilds.t
   ; packages  : Package.t String_map.t
   }
 
-let load ~dir ~visible_packages ~version =
-  let sexps = Sexp_load.many (Path.relative dir "jbuild" |> Path.to_string) in
-  let versions, sexps =
-    List.partition_map sexps ~f:(function
-      | List (loc, [Atom (_, "jbuilder_version"); ver]) ->
-        Inl (Jbuilder_version.t ver, loc)
-      | sexp -> Inr sexp)
-  in
-  let version =
-    match versions with
-    | [] -> version
-    | [(v, _)] -> v
-    | _ :: (_, loc) :: _ ->
-      Loc.fail loc "jbuilder_version specified too many times"
-  in
-  let use_meta_lang, sexps =
-    List.partition_map sexps ~f:(function
-      | List (_, [Atom (_, "use_meta_lang")]) -> Inl ()
-      | sexp -> Inr sexp)
-  in
-  let jbuild =
-    match use_meta_lang with
-    | [] ->
-      Jbuild.Constant (dir, Stanzas.parse sexps ~dir ~visible_packages ~version)
-    | _ ->
-      With_macros
-        { path = dir
-        ; version
-        ; sexps
-        ; visible_packages
-        }
-  in
-  (version, jbuild)
+let load ~dir ~visible_packages =
+  let file = Path.relative dir "jbuild" in
+  match Sexp_load.many_or_ocaml_script (Path.to_string file) with
+  | Sexps sexps ->
+    Jbuilds.Literal (dir, Stanzas.parse sexps ~dir ~visible_packages)
+  | Ocaml_script ->
+    Script
+      { dir
+      ; visible_packages
+      }
 
 let load () =
   let ftree = File_tree.load Path.root in
@@ -102,7 +144,7 @@ let load () =
     |> List.map ~f:(fun pkg -> (pkg.Package.path, pkg))
     |> Path.Map.of_alist_multi
   in
-  let rec walk dir jbuilds visible_packages version =
+  let rec walk dir jbuilds visible_packages =
     let path = File_tree.Dir.path dir in
     let files = File_tree.Dir.files dir in
     let sub_dirs = File_tree.Dir.sub_dirs dir in
@@ -113,12 +155,12 @@ let load () =
         List.fold_left pkgs ~init:visible_packages ~f:(fun acc pkg ->
           String_map.add acc ~key:pkg.Package.name ~data:pkg)
     in
-    let version, jbuilds =
+    let jbuilds =
       if String_set.mem "jbuild" files then
-        let version, jbuild = load ~dir:path ~visible_packages ~version in
-        (version, jbuild :: jbuilds)
+        let jbuild = load ~dir:path ~visible_packages in
+        jbuild :: jbuilds
       else
-        (version, jbuilds)
+        jbuilds
     in
     let sub_dirs =
       if String_set.mem "jbuild-ignore" files then
@@ -134,13 +176,13 @@ let load () =
     let children, jbuilds =
       String_map.fold sub_dirs ~init:([], jbuilds)
         ~f:(fun ~key:_ ~data:dir (children, jbuilds) ->
-          let child, jbuilds = walk dir jbuilds visible_packages version in
+          let child, jbuilds = walk dir jbuilds visible_packages in
           (child :: children, jbuilds))
     in
     (Alias.Node (path, children), jbuilds)
   in
   let root = File_tree.root ftree in
-  let tree, jbuilds = walk root [] String_map.empty Jbuilder_version.latest_stable in
+  let tree, jbuilds = walk root [] String_map.empty in
   { file_tree = ftree
   ; tree
   ; jbuilds

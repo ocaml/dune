@@ -8,7 +8,7 @@ open Sexp.Of_sexp
    [jane_street] version. When they are all the same, sexp parsers are just named [t].
 *)
 
-module Jbuilder_version = struct
+module Jbuild_version = struct
   type t =
     | V1
     | Vjs
@@ -788,8 +788,8 @@ module Stanza = struct
       ; cstr' "install"     [Install_conf.v1] (fun x -> Install     x)
       ; cstr' "alias"       [Alias_conf.v1]   (fun x -> Alias       x)
       (* Just for validation and error messages *)
-      ; cstr "jbuilder_version" [Jbuilder_version.t] (fun _ -> None)
-      ; cstr "use_meta_lang"    []                   None
+      ; cstr "jbuild_version" [Jbuild_version.t] (fun _ -> None)
+      ; cstr "use_meta_lang"  []                 None
       ]
 
   let vjs =
@@ -808,10 +808,10 @@ module Stanza = struct
       ; ign "unified_tests"
       ; ign "embed"
       (* Just for validation and error messages  *)
-      ; cstr "jbuilder_version" [Jbuilder_version.t] (fun _ -> None)
+      ; cstr "jbuild_version" [Jbuild_version.t] (fun _ -> None)
       ]
 
-  let select : Jbuilder_version.t -> t option Sexp.Of_sexp.t = function
+  let select : Jbuild_version.t -> t option Sexp.Of_sexp.t = function
     | V1  -> v1
     | Vjs -> vjs
 
@@ -874,7 +874,20 @@ module Stanzas = struct
         Install { install with package = Some (default ()) }
       | _ -> stanza)
 
-  let parse sexps ~dir ~visible_packages ~version =
+  let parse sexps ~dir ~visible_packages =
+    let versions, sexps =
+      List.partition_map sexps ~f:(function
+          | List (loc, [Atom (_, "jbuilder_version"); ver]) ->
+            Inl (Jbuild_version.t ver, loc)
+          | sexp -> Inr sexp)
+    in
+    let version =
+      match versions with
+      | [] -> Jbuild_version.latest_stable
+      | [(v, _)] -> v
+      | _ :: (_, loc) :: _ ->
+        Loc.fail loc "jbuilder_version specified too many times"
+    in
     List.filter_map sexps ~f:(Stanza.select version)
     |> resolve_packages ~dir ~visible_packages
 end

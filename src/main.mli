@@ -2,7 +2,7 @@ open! Import
 
 type setup =
   { build_system : Build_system.t
-  ; jbuilds      : Jbuild_load.Jbuild.t list
+  ; jbuilds      : Jbuild_load.Jbuilds.t
   ; contexts     : Context.t list
   ; packages     : Package.t String_map.t
   }

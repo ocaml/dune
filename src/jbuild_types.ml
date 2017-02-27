@@ -33,7 +33,7 @@ let module_name sexp =
     String.iter s ~f:(function
       | 'A'..'Z' | 'a'..'z' | '_' -> ()
       | _ -> invalid_module_name sexp);
-    String.capitalize s
+    String.capitalize_ascii s
 
 let module_names sexp = String_set.of_list (list module_name sexp)
 

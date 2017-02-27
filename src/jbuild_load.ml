@@ -79,7 +79,7 @@ end
           context_file_contents
           (Path.to_string file)
           (read_file (Path.to_string file));
-        run ~dir:(Path.to_string dir) ~env:context.env
+        Future.run Strict ~dir:(Path.to_string dir) ~env:context.env
           (Path.to_string context.Context.ocaml)
           [ Path.reach ~from:dir wrapper
           ; Path.reach ~from:dir generated_jbuild

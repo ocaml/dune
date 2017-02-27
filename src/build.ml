@@ -157,7 +157,7 @@ let run ?(dir=Path.root) ?stdout_to ?env ?(extra_targets=[]) prog args =
   prim ~targets
     (fun (prog, args) ->
        let stdout_to = Option.map stdout_to ~f:Path.to_string in
-       Future.run ~dir:(Path.to_string dir) ?stdout_to ?env
+       Future.run Strict ~dir:(Path.to_string dir) ?stdout_to ?env
          (Path.reach prog ~from:dir) args)
 
 let run_capture_gen ~f ?(dir=Path.root) ?env prog args =
@@ -166,7 +166,8 @@ let run_capture_gen ~f ?(dir=Path.root) ?env prog args =
   >>>
   prim ~targets
     (fun (prog, args) ->
-       f ?dir:(Some (Path.to_string dir)) ?env (Path.reach prog ~from:dir) args)
+       f ?dir:(Some (Path.to_string dir)) ?env
+         Future.Strict (Path.reach prog ~from:dir) args)
 
 let run_capture ?dir ?env prog args =
   run_capture_gen ~f:Future.run_capture ?dir ?env prog args
@@ -181,8 +182,8 @@ let action ~targets =
        List.iter touches ~f:(fun fn ->
          close_out (open_out_bin (Path.to_string fn)));
        let stdout_to = Option.map stdout_to ~f:Path.to_string in
-       Future.run ~dir:(Path.to_string dir) ~env ?stdout_to (Path.reach ~from:dir prog)
-         args)
+       Future.run Strict ~dir:(Path.to_string dir) ~env ?stdout_to
+         (Path.reach ~from:dir prog) args)
 
 let echo fn =
   create_file ~target:fn (fun data ->

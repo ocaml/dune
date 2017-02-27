@@ -75,7 +75,7 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
       (map_fname start.pos_fname) start.pos_lnum start_c stop_c msg
   | Fatal_error "" -> ()
   | Fatal_error msg ->
-    Format.fprintf ppf "%s\n" (String.capitalize msg)
+    Format.fprintf ppf "%s\n" (String.capitalize_ascii msg)
   | Findlib.Package_not_found pkg ->
     Format.fprintf ppf "@{<error>Findlib package %S not found.@}\n" pkg
   | Code_error msg ->

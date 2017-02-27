@@ -279,7 +279,7 @@ let install_uninstall ~what =
             get_prefix context ~from_command_line:prefix >>= fun prefix ->
             Future.all_unit
               (List.map install_files ~f:(fun path ->
-                   Future.run (Path.to_string opam_installer)
+                   Future.run Strict (Path.to_string opam_installer)
                      [ sprintf "-%c" what.[0]
                      ; "--prefix"
                      ; Path.to_string prefix

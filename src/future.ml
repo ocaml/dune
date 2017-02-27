@@ -134,62 +134,103 @@ let rec all_unit = function
     x >>= fun () ->
     all_unit l
 
+type ('a, 'b) failure_mode =
+  | Strict : ('a, 'a) failure_mode
+  | Accept : int list -> ('a, ('a, int) result) failure_mode
+
+let accepted_codes : type a b. (a, b) failure_mode -> int list = function
+  | Strict -> [0]
+  | Accept codes -> 0 :: codes
+
+let map_result
+  : type a b. (a, b) failure_mode -> int t -> f:(unit -> a) -> b t
+  = fun mode future ~f ->
+    match mode with
+    | Strict   -> future >>| fun _ -> f ()
+    | Accept _ ->
+      future >>| function
+      | 0 -> Ok (f ())
+      | n -> Error n
+
 type job =
   { prog      : string
   ; args      : string list
   ; dir       : string option
   ; stdout_to : string option
   ; env       : string array option
-  ; ivar      : unit Ivar.t
+  ; ivar      : int Ivar.t
+  ; ok_codes  : int list
   }
 
 let to_run : job Queue.t = Queue.create ()
 
-let run ?dir ?stdout_to ?env prog args =
+let run_internal ?dir ?stdout_to ?env fail_mode prog args =
   let dir =
     match dir with
     | Some "." -> None
     | _ -> dir
   in
   create (fun ivar ->
-    Queue.push { prog; args; dir; stdout_to; env; ivar } to_run)
+    Queue.push { prog
+               ; args
+               ; dir
+               ; stdout_to
+               ; env
+               ; ivar
+               ; ok_codes = accepted_codes fail_mode
+               } to_run)
 
-let tmp_files = ref String_set.empty
-let () =
-  at_exit (fun () ->
-    let fns = !tmp_files in
-    tmp_files := String_set.empty;
-    String_set.iter fns ~f:(fun fn ->
-      try Sys.remove fn with _ -> ()))
+let run ?dir ?stdout_to ?env fail_mode prog args =
+  map_result fail_mode (run_internal ?dir ?stdout_to ?env fail_mode prog args)
+    ~f:ignore
 
-let run_capture_gen ?dir ?env prog args ~f =
-  let fn = Filename.temp_file "jbuild" ".output" in
-  tmp_files := String_set.add fn !tmp_files;
-  run ?dir ~stdout_to:fn ?env prog args >>= fun () ->
-  let s = f fn in
-  Sys.remove fn;
-  tmp_files := String_set.remove fn !tmp_files;
-  return s
+module Temp = struct
+  let tmp_files = ref String_set.empty
+  let () =
+    at_exit (fun () ->
+      let fns = !tmp_files in
+      tmp_files := String_set.empty;
+      String_set.iter fns ~f:(fun fn ->
+        try Sys.remove fn with _ -> ()))
+
+  let create prefix suffix =
+    let fn = Filename.temp_file prefix suffix in
+    tmp_files := String_set.add fn !tmp_files;
+    fn
+
+  let destroy fn =
+    Sys.remove fn;
+    tmp_files := String_set.remove fn !tmp_files
+end
+
+let run_capture_gen ?dir ?env fail_mode prog args ~f =
+  let fn = Temp.create "jbuild" ".output" in
+  map_result fail_mode (run_internal ?dir ~stdout_to:fn ?env fail_mode prog args)
+    ~f:(fun () ->
+      let x = f fn in
+      Temp.destroy fn;
+      x)
 
 let run_capture       = run_capture_gen ~f:read_file
 let run_capture_lines = run_capture_gen ~f:lines_of_file
 
-let run_capture_line ?dir ?env prog args =
-  run_capture_lines ?dir ?env prog args >>| function
-  | [x] -> x
-  | l ->
-    let cmdline =
-      let s = String.concat (prog :: args) ~sep:" " in
-      match dir with
-      | None -> s
-      | Some dir -> sprintf "cd %s && %s" dir s
-    in
-    match l with
-    | [] ->
-      die "command returned nothing: %s" cmdline
-    | _ ->
-      die "command returned too many lines: %s\n%s"
-        cmdline (String.concat l ~sep:"\n")
+let run_capture_line ?dir ?env fail_mode prog args =
+  run_capture_gen ?dir ?env fail_mode prog args ~f:(fun fn ->
+    match lines_of_file fn with
+    | [x] -> x
+    | l ->
+      let cmdline =
+        let s = String.concat (prog :: args) ~sep:" " in
+        match dir with
+        | None -> s
+        | Some dir -> sprintf "cd %s && %s" dir s
+      in
+      match l with
+      | [] ->
+        die "command returned nothing: %s" cmdline
+      | _ ->
+        die "command returned too many lines: %s\n%s"
+          cmdline (String.concat l ~sep:"\n"))
 
 module Scheduler = struct
   let colorize_prog s =
@@ -302,7 +343,7 @@ module Scheduler = struct
       else
         s
     in
-    Sys.remove job.output_filename;
+    Temp.destroy job.output_filename;
     Option.iter job.log ~f:(fun oc ->
       Printf.fprintf oc "$ %s\n%s"
         (Ansi_color.strip job.command_line)
@@ -316,10 +357,14 @@ module Scheduler = struct
     );
     if not exiting then begin
       match status with
-      | WEXITED 0 ->
+      | WEXITED n when List.mem n ~set:job.job.ok_codes ->
         if output <> "" then
           Format.eprintf "@{<kwd>Output@}[@{<id>%d@}]:\n%s%!" job.id output;
-        Ivar.fill job.job.ivar ()
+        if n <> 0 then
+          Format.eprintf
+            "@{<warning>Warning@}: Command [@{<id>%d@}] exited with code %d, \
+             but I'm ignore it, hope that's OK.\n%!" job.id n;
+        Ivar.fill job.job.ivar n
       | WEXITED n ->
         Format.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] exited with code %d:\n\
                         @{<prompt>$@} %s\n%s%!"
@@ -380,7 +425,7 @@ module Scheduler = struct
           Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
             (Ansi_color.strip_colors_for_stderr command_line);
         let argv = Array.of_list (job.prog :: job.args) in
-        let output_filename = Filename.temp_file "jbuilder" ".output" in
+        let output_filename = Temp.create "jbuilder" ".output" in
         let output_fd = Unix.openfile output_filename [O_WRONLY] 0 in
         let stdout, close_stdout =
           match job.stdout_to with

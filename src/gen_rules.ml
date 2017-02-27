@@ -1175,7 +1175,7 @@ module Gen(P : Params) = struct
               ~dep_graph
               ~modules
               ~mode
-              [String.capitalize name]))
+              [String.capitalize_ascii name]))
        >>>
        Build.run
          (Dep compiler)

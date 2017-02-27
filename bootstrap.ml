@@ -7,8 +7,11 @@ module List  = ListLabels
 module String = struct
   include StringLabels
 
-  let capitalize_ascii = String.capitalize_ascii
-  let uncapitalize_ascii = String.uncapitalize_ascii
+  include struct
+    [@@@warning "-3"]
+    let capitalize_ascii   = String.capitalize
+    let uncapitalize_ascii = String.uncapitalize
+  end
 end
 
 open Printf
@@ -269,7 +272,7 @@ end
   output_string oc s;
   pos_in_generated_file := !pos_in_generated_file + count_newlines s;
   List.iter modules ~f:(fun m ->
-    let base = String.uncapitalize m in
+    let base = String.uncapitalize_ascii m in
     let mli = sprintf "src/%s.mli" base in
     let ml  = sprintf "src/%s.ml"  base in
     if Sys.file_exists mli then begin

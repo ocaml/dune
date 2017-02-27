@@ -80,7 +80,7 @@ let opam_config_var ~env ~cache var =
     match Bin.opam with
     | None -> return None
     | Some fn ->
-      Future.run_capture (Path.to_string fn) ~env ["config"; "var"; var]
+      Future.run_capture Strict (Path.to_string fn) ~env ["config"; "var"; var]
       >>| fun s ->
       let s = String.trim s in
       Hashtbl.add cache ~key:var ~data:s;
@@ -126,8 +126,11 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
         | None ->
           return []
         | Some fn ->
-          Future.run_capture_lines ~env (Path.to_string fn) ["printconf"; "path"]
-          >>| List.map ~f:Path.absolute)
+          Future.run_capture_lines ~env (Accept [127])
+            (Path.to_string fn) ["printconf"; "path"]
+          >>| function
+          | Ok lines -> List.map lines ~f:Path.absolute
+          | Error _  -> [])
      >>| fun (a, b) ->
      match a @ b with
      | [] -> [Path.relative (Path.parent dir) "lib"]
@@ -138,7 +141,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
          else
            x :: acc)
        |> List.rev)
-    (Future.run_capture_lines ~env (Path.to_string ocamlc) ["-config"])
+    (Future.run_capture_lines ~env Strict (Path.to_string ocamlc) ["-config"])
   >>= fun (findlib_path, ocamlc_config) ->
   let ocamlc_config =
     List.map ocamlc_config ~f:(fun line ->
@@ -272,9 +275,9 @@ let create_for_opam ?root ~switch ~name ?(merlin=false) () =
     (match root with
      | Some root -> return root
      | None ->
-       Future.run_capture_line (Path.to_string fn) ["config"; "var"; "root"])
+       Future.run_capture_line Strict (Path.to_string fn) ["config"; "var"; "root"])
     >>= fun root ->
-    Future.run_capture (Path.to_string fn)
+    Future.run_capture Strict (Path.to_string fn)
       ["config"; "env"; "--root"; root; "--switch"; switch; "--sexp"]
     >>= fun s ->
     let vars =

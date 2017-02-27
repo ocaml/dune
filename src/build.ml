@@ -221,11 +221,16 @@ module Shexp = struct
           if tail then close_out oc);
       return ()
     | Copy_and_add_line_directive (src, dst) ->
-      let src = Path.to_string (Path.relative dir src) in
-      let dst = Path.to_string (Path.relative dir dst) in
-      with_file_in src ~f:(fun ic ->
-        with_file_out dst ~f:(fun oc ->
-          Printf.fprintf oc "# 1 %S\n" src;
+      let src = Path.relative dir src in
+      let dst = Path.relative dir dst in
+      with_file_in (Path.to_string src) ~f:(fun ic ->
+        with_file_out (Path.to_string dst) ~f:(fun oc ->
+          let fn =
+            match Path.extract_build_context src with
+            | None -> src
+            | Some (_, rem) -> rem
+          in
+          Printf.fprintf oc "# 1 %S\n" (Path.to_string fn);
           copy_channels ic oc));
       return ()
 

@@ -284,6 +284,9 @@ module Option = struct
   let value_exn = function
     | Some x -> x
     | None -> assert false
+
+  let some_if cond x =
+    if cond then Some x else None
 end
 
 type ('a, 'b) eq = Eq : ('a, 'a) eq

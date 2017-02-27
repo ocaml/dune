@@ -152,11 +152,26 @@ let map_result
       | 0 -> Ok (f ())
       | n -> Error n
 
+type stdout_to =
+  | Terminal
+  | File        of string
+  | Opened_file of opened_file
+
+and opened_file =
+  { filename : string
+  ; desc     : opened_file_desc
+  ; tail     : bool
+  }
+
+and opened_file_desc =
+  | Fd      of Unix.file_descr
+  | Channel of out_channel
+
 type job =
   { prog      : string
   ; args      : string list
   ; dir       : string option
-  ; stdout_to : string option
+  ; stdout_to : stdout_to
   ; env       : string array option
   ; ivar      : int Ivar.t
   ; ok_codes  : int list
@@ -164,7 +179,7 @@ type job =
 
 let to_run : job Queue.t = Queue.create ()
 
-let run_internal ?dir ?stdout_to ?env fail_mode prog args =
+let run_internal ?dir ?(stdout_to=Terminal) ?env fail_mode prog args =
   let dir =
     match dir with
     | Some "." -> None
@@ -205,7 +220,7 @@ end
 
 let run_capture_gen ?dir ?env fail_mode prog args ~f =
   let fn = Temp.create "jbuild" ".output" in
-  map_result fail_mode (run_internal ?dir ~stdout_to:fn ?env fail_mode prog args)
+  map_result fail_mode (run_internal ?dir ~stdout_to:(File fn) ?env fail_mode prog args)
     ~f:(fun () ->
       let x = f fn in
       Temp.destroy fn;
@@ -279,8 +294,8 @@ module Scheduler = struct
       | Some dir -> sprintf "(cd %s && %s)" dir s
     in
     match stdout_to with
-    | None -> s
-    | Some fn -> sprintf "%s > %s" s fn
+    | Terminal -> s
+    | File fn | Opened_file { filename = fn; _ } -> sprintf "%s > %s" s fn
 
   type running_job =
     { id              : int
@@ -429,10 +444,17 @@ module Scheduler = struct
         let output_fd = Unix.openfile output_filename [O_WRONLY] 0 in
         let stdout, close_stdout =
           match job.stdout_to with
-          | None -> (output_fd, false)
-          | Some fn ->
+          | Terminal -> (output_fd, None)
+          | File fn ->
             let fd = Unix.openfile fn [O_WRONLY; O_CREAT; O_TRUNC] 0o666 in
-            (fd, true)
+            (fd, Some (Fd fd))
+          | Opened_file { desc; tail; _ } ->
+            let fd =
+              match desc with
+              | Fd      fd -> fd
+              | Channel oc -> flush oc; Unix.descr_of_out_channel oc
+            in
+            (fd, Option.some_if tail desc)
         in
         Option.iter job.dir ~f:(fun dir -> Sys.chdir dir);
         let pid =
@@ -446,7 +468,9 @@ module Scheduler = struct
         in
         Option.iter job.dir ~f:(fun _ -> Sys.chdir cwd);
         Unix.close output_fd;
-        if close_stdout then Unix.close stdout;
+        Option.iter close_stdout ~f:(function
+          | Fd      fd -> Unix.close fd
+          | Channel oc -> close_out  oc);
         Hashtbl.add running ~key:pid
           ~data:{ id
                 ; job

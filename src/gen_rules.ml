@@ -1232,21 +1232,21 @@ module Gen(P : Params) = struct
      | User actions                                                    |
      +-----------------------------------------------------------------+ *)
 
-  module User_action_interpret : sig
+  module Action_interpret : sig
     val expand
-      :  User_action.Unexpanded.t
+      :  Action.Unexpanded.t
       -> dir:Path.t
       -> dep_kind:Build.lib_dep_kind
       -> targets:string list
       -> deps:Dep_conf.t list
-      -> (unit, string User_action.t) Build.t
+      -> (unit, string Action.t) Build.t
 
     val run
       :  dir:Path.t
       -> targets:Path.t list
-      -> (string User_action.t, unit) Build.t
+      -> (string Action.t, unit) Build.t
   end = struct
-    module U = User_action.Unexpanded
+    module U = Action.Unexpanded
 
     type artefact =
       | Direct of Path.t
@@ -1314,9 +1314,7 @@ module Gen(P : Params) = struct
       end
 
     let run ~dir ~targets =
-      Build.arr (User_action.to_action ~dir ~env:ctx.env)
-      >>>
-      Build.action ~targets
+      Build.action ~dir ~env:ctx.env ~targets
   end
 
   (* +-----------------------------------------------------------------+
@@ -1328,14 +1326,14 @@ module Gen(P : Params) = struct
     add_rule
       (Dep_conf_interpret.dep_of_list ~dir rule.deps
        >>>
-       User_action_interpret.expand
+       Action_interpret.expand
          rule.action
          ~dir
          ~dep_kind:Required
          ~targets:rule.targets
          ~deps:rule.deps
        >>>
-       User_action_interpret.run
+       Action_interpret.run
          ~dir
          ~targets)
 
@@ -1346,7 +1344,7 @@ module Gen(P : Params) = struct
       let action =
         match alias_conf.action with
         | None -> Sexp.Atom "none"
-        | Some a -> List [Atom "some" ; User_action.Unexpanded.sexp_of_t a] in
+        | Some a -> List [Atom "some" ; Action.Unexpanded.sexp_of_t a] in
       Sexp.List [deps ; action]
       |> Sexp.to_string
       |> Digest.string
@@ -1361,13 +1359,13 @@ module Gen(P : Params) = struct
       | None -> deps
       | Some action ->
         deps
-        >>> User_action_interpret.expand
+        >>> Action_interpret.expand
           action
           ~dir
           ~dep_kind:Required
           ~targets:[]
           ~deps:alias_conf.deps
-        >>> User_action_interpret.run ~dir ~targets:[] in
+        >>> Action_interpret.run ~dir ~targets:[] in
     add_rule (deps >>> dummy)
 
   (* +-----------------------------------------------------------------+

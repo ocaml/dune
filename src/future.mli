@@ -23,10 +23,27 @@ type ('a, 'b) failure_mode =
   (** Accept the following non-zero exit codes, and return [Error code] if the process
       exists with one of these codes. *)
 
+(** Where to redirect standard output *)
+type stdout_to =
+  | Terminal
+  | File        of string
+  | Opened_file of opened_file
+
+and opened_file =
+  { filename : string
+  ; desc     : opened_file_desc
+  ; tail     : bool
+  (** If [true], the descriptor is closed after starting the command *)
+  }
+
+and opened_file_desc =
+  | Fd      of Unix.file_descr
+  | Channel of out_channel
+
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its termination *)
 val run
   :  ?dir:string
-  -> ?stdout_to:string
+  -> ?stdout_to:stdout_to
   -> ?env:string array
   -> (unit, 'a) failure_mode
   -> string

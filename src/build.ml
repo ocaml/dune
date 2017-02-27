@@ -156,8 +156,12 @@ let run ?(dir=Path.root) ?stdout_to ?env ?(extra_targets=[]) prog args =
   >>>
   prim ~targets
     (fun (prog, args) ->
-       let stdout_to = Option.map stdout_to ~f:Path.to_string in
-       Future.run Strict ~dir:(Path.to_string dir) ?stdout_to ?env
+       let stdout_to =
+         match stdout_to with
+         | None -> Future.Terminal
+         | Some path -> File (Path.to_string path)
+       in
+       Future.run Strict ~dir:(Path.to_string dir) ~stdout_to ?env
          (Path.reach prog ~from:dir) args)
 
 let run_capture_gen ~f ?(dir=Path.root) ?env prog args =
@@ -174,16 +178,80 @@ let run_capture ?dir ?env prog args =
 let run_capture_lines ?dir ?env prog args =
   run_capture_gen ~f:Future.run_capture_lines ?dir ?env prog args
 
-let action ~targets =
-  dyn_paths (arr (fun a -> [a.Action.prog]))
-  >>>
-  prim ~targets
-    (fun { Action. prog; args; env; dir; stdout_to; touches } ->
-       List.iter touches ~f:(fun fn ->
-         close_out (open_out_bin (Path.to_string fn)));
-       let stdout_to = Option.map stdout_to ~f:Path.to_string in
-       Future.run Strict ~dir:(Path.to_string dir) ~env ?stdout_to
-         (Path.reach ~from:dir prog) args)
+module Shexp = struct
+  open Future
+  open Action.Mini_shexp
+
+  let rec exec t ~dir ~env ~env_extra ~stdout_to ~tail =
+    match t with
+    | Run (prog, args) ->
+      let stdout_to : Future.stdout_to =
+        match stdout_to with
+        | None          -> Terminal
+        | Some (fn, oc) -> Opened_file { filename = fn; tail; desc = Channel oc }
+      in
+      let env = Context.extend_env ~vars:env_extra ~env in
+      Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to prog args
+    | Chdir (fn, t) ->
+      exec t ~env ~env_extra ~stdout_to ~tail ~dir:(Path.relative dir fn)
+    | Setenv (var, value, t) ->
+      exec t ~dir ~env ~stdout_to ~tail
+        ~env_extra:(String_map.add env_extra ~key:var ~data:value)
+    | With_stdout_to (fn, t) ->
+      if tail then Option.iter stdout_to ~f:(fun (_, oc) -> close_out oc);
+      let fn = Path.to_string (Path.relative dir fn) in
+      exec t ~dir ~env ~env_extra ~tail
+        ~stdout_to:(Some (fn, open_out_bin fn))
+    | Progn l ->
+      exec_list l ~dir ~env ~env_extra ~stdout_to ~tail
+    | Echo str ->
+      return
+        (match stdout_to with
+         | None -> print_string str; flush stdout
+         | Some (_, oc) ->
+           output_string oc str;
+           if tail then close_out oc)
+    | Cat fn ->
+      let fn = Path.to_string (Path.relative dir fn) in
+      with_file_in fn ~f:(fun ic ->
+        match stdout_to with
+        | None -> copy_channels ic stdout
+        | Some (_, oc) ->
+          copy_channels ic oc;
+          if tail then close_out oc);
+      return ()
+    | Copy_and_add_line_directive (src, dst) ->
+      let src = Path.to_string (Path.relative dir src) in
+      let dst = Path.to_string (Path.relative dir dst) in
+      with_file_in src ~f:(fun ic ->
+        with_file_out dst ~f:(fun oc ->
+          Printf.fprintf oc "# 1 %S\n" src;
+          copy_channels ic oc));
+      return ()
+
+  and exec_list l ~dir ~env ~env_extra ~stdout_to ~tail =
+    match l with
+    | [] ->
+      if tail then Option.iter stdout_to ~f:(fun (_, oc) -> close_out oc);
+      Future.return ()
+    | [t] ->
+      exec t ~dir ~env ~env_extra ~stdout_to ~tail
+    | t :: rest ->
+      exec t ~dir ~env ~env_extra ~stdout_to ~tail:false >>= fun () ->
+      exec_list rest ~dir ~env ~env_extra ~stdout_to ~tail
+
+  let exec t ~dir ~env =
+    exec t ~dir ~env ~env_extra:String_map.empty ~stdout_to:None ~tail:true
+end
+
+let action ~dir ~env ~targets =
+  prim ~targets (fun action ->
+    match (action : string Action.t) with
+    | Bash cmd ->
+      Future.run Strict ~dir:(Path.to_string dir) ~env
+        "/bin/bash" ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
+    | Shexp shexp ->
+      Shexp.exec ~dir ~env shexp)
 
 let echo fn =
   create_file ~target:fn (fun data ->
@@ -196,4 +264,6 @@ let copy ~src ~dst =
 
 let touch target =
   create_file ~target (fun _ ->
-    close_out (open_out_bin (Path.to_string target)))
+    Unix.close
+      (Unix.openfile (Path.to_string target)
+         [O_CREAT; O_TRUNC; O_WRONLY] 0o666))

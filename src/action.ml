@@ -7,6 +7,10 @@ module Mini_shexp = struct
     | Chdir          of 'a * 'a t
     | Setenv         of 'a * 'a * 'a t
     | With_stdout_to of 'a * 'a t
+    | Progn          of 'a t list
+    | Echo           of 'a
+    | Cat            of 'a
+    | Copy_and_add_line_directive of 'a * 'a
 
   let rec t a sexp =
     sum
@@ -14,6 +18,13 @@ module Mini_shexp = struct
       ; cstr "chdir"    (a @> t a @> nil)        (fun dn t -> Chdir (dn, t))
       ; cstr "setenv"   (a @> a @> t a @> nil)   (fun k v t -> Setenv (k, v, t))
       ; cstr "with-stdout-to" (a @> t a @> nil)  (fun fn t -> With_stdout_to (fn, t))
+      ; cstr_rest "progn"      nil (t a)         (fun l -> Progn l)
+      ; cstr "echo"           (a @> nil)         (fun x -> Echo x)
+      ; cstr "cat"            (a @> nil)         (fun x -> Cat x)
+      ; cstr "copy" (a @> a @> nil) (fun src dst ->
+          With_stdout_to (dst, Cat src))
+      ; cstr "copy-and-add-line-directive" (a @> a @> nil) (fun src dst ->
+          Copy_and_add_line_directive (src, dst))
       ]
       sexp
 
@@ -23,6 +34,10 @@ module Mini_shexp = struct
     | Chdir (fn, t) -> Chdir (f fn, map t ~f)
     | Setenv (var, value, t) -> Setenv (f var, f value, map t ~f)
     | With_stdout_to (fn, t) -> With_stdout_to (f fn, map t ~f)
+    | Progn l -> Progn (List.map l ~f:(map ~f))
+    | Echo x -> Echo (f x)
+    | Cat x -> Cat (f x)
+    | Copy_and_add_line_directive (x, y) -> Copy_and_add_line_directive (f x, f y)
 
   let rec fold t ~init:acc ~f =
     match t with
@@ -30,37 +45,21 @@ module Mini_shexp = struct
     | Chdir (fn, t) -> fold t ~init:(f acc fn) ~f
     | Setenv (var, value, t) -> fold t ~init:(f (f acc var) value) ~f
     | With_stdout_to (fn, t) -> fold t ~init:(f acc fn) ~f
-
-  let to_action ~dir ~env (t : string t) =
-    let rec loop vars dir stdouts = function
-      | Chdir (fn, t) ->
-        loop vars (Path.relative dir fn) stdouts t
-      | Setenv (var, value, t) ->
-        loop (String_map.add vars ~key:var ~data:value) dir stdouts t
-      | With_stdout_to (fn, t) ->
-        loop vars dir (Path.relative dir fn :: stdouts) t
-      | Run (prog, args) ->
-        let stdout_to, touches =
-          match stdouts with
-          | [] -> None, []
-          | p :: rest -> (Some p, rest)
-        in
-        { Action.
-          prog = Path.relative dir prog
-        ; args = args
-        ; dir
-        ; env = Context.extend_env ~vars ~env
-        ; stdout_to
-        ; touches
-        }
-    in
-    loop String_map.empty dir [] t
+    | Progn l -> List.fold_left l ~init:acc ~f:(fun init t -> fold t ~init ~f)
+    | Echo x -> f acc x
+    | Cat x -> f acc x
+    | Copy_and_add_line_directive (x, y) -> f (f acc x) y
 
   let rec sexp_of_t f : _ -> Sexp.t = function
     | Run (a, xs) -> List (Atom "run" :: f a :: List.map xs ~f)
     | Chdir (a, r) -> List [Atom "chdir" ; f a ; sexp_of_t f r]
     | Setenv (k, v, r) -> List [Atom "setenv" ; f k ; f v ; sexp_of_t f r]
     | With_stdout_to (fn, r) -> List [Atom "with-stdout-to"; f fn; sexp_of_t f r]
+    | Progn l -> List (Atom "progn" :: List.map l ~f:(sexp_of_t f))
+    | Echo x -> List [Atom "echo"; f x]
+    | Cat x -> List [Atom "cat"; f x]
+    | Copy_and_add_line_directive (x, y) ->
+      List [Atom "copy-and-add-line-directive"; f x; f y]
 end
 
 module T = struct
@@ -91,15 +90,3 @@ end
 include T
 
 module Unexpanded = String_with_vars.Lift(T)
-
-let to_action ~dir ~env = function
-  | Shexp shexp -> Mini_shexp.to_action ~dir ~env shexp
-  | Bash cmd ->
-    { Action.
-      prog = Path.absolute "/bin/bash"
-    ; args = ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
-    ; env
-    ; dir
-    ; stdout_to = None
-    ; touches = []
-    }

@@ -253,6 +253,45 @@ module Scheduler = struct
 
   let running = Hashtbl.create 128
 
+  let signal_name =
+    let table =
+      let open Sys in
+      [ sigabrt   , "ABRT"
+      ; sigalrm   , "ALRM"
+      ; sigfpe    , "FPE"
+      ; sighup    , "HUP"
+      ; sigill    , "ILL"
+      ; sigint    , "INT"
+      ; sigkill   , "KILL"
+      ; sigpipe   , "PIPE"
+      ; sigquit   , "QUIT"
+      ; sigsegv   , "SEGV"
+      ; sigterm   , "TERM"
+      ; sigusr1   , "USR1"
+      ; sigusr2   , "USR2"
+      ; sigchld   , "CHLD"
+      ; sigcont   , "CONT"
+      ; sigstop   , "STOP"
+      ; sigtstp   , "TSTP"
+      ; sigttin   , "TTIN"
+      ; sigttou   , "TTOU"
+      ; sigvtalrm , "VTALRM"
+      ; sigprof   , "PROF"
+      (* These ones are only available in OCaml >= 4.03 *)
+      ; -22       , "BUS"
+      ; -23       , "POLL"
+      ; -24       , "SYS"
+      ; -25       , "TRAP"
+      ; -26       , "URG"
+      ; -27       , "XCPU"
+      ; -28       , "XFSZ"
+      ]
+    in
+    fun n ->
+      match List.assoc n table with
+      | exception Not_found -> sprintf "%d\n" n
+      | s -> s
+
   let process_done ?(exiting=false) job (status : Unix.process_status) =
     Hashtbl.remove running job.pid;
     let output =
@@ -271,7 +310,7 @@ module Scheduler = struct
       (match status with
        | WEXITED   0 -> ()
        | WEXITED   n -> Printf.fprintf oc "[%d]\n" n
-       | WSIGNALED n -> Printf.fprintf oc "[got signal %d]\n" n
+       | WSIGNALED n -> Printf.fprintf oc "[got signal %s]\n" (signal_name n)
        | WSTOPPED  _ -> assert false);
       flush oc
     );
@@ -289,9 +328,9 @@ module Scheduler = struct
           (Ansi_color.strip_colors_for_stderr output);
         die ""
       | WSIGNALED n ->
-        Printf.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] got signal %d:\n\
+        Printf.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] got signal %s:\n\
                         @{<prompt>$@} %s\n%s%!"
-          job.id n
+          job.id (signal_name n)
           (Ansi_color.strip_colors_for_stderr job.command_line)
           (Ansi_color.strip_colors_for_stderr output);
         die ""

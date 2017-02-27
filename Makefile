@@ -1,3 +1,4 @@
+INSTALL_ARGS := $(if $(PREFIX),--prefix $(PREFIX),)
 BIN := ./_build/default/bin/main.exe
 
 default: boot.exe
@@ -7,10 +8,10 @@ boot.exe: bootstrap.ml
 	ocaml bootstrap.ml
 
 install:
-	$(BIN) install
+	$(BIN) install $(INSTALL_ARGS)
 
 uninstall:
-	$(BIN) uninstall
+	$(BIN) uninstall $(INSTALL_ARGS)
 
 reinstall: uninstall reinstall
 

@@ -389,9 +389,8 @@ let find_exn t name =
       | Some (Present x) -> x
       | Some Absent      -> raise (Package_not_found name)
       | None             ->
-        code_errorf
-          "Package %S not in the package table after loading the appropriate META files"
-          name
+        Hashtbl.add t.packages ~key:name ~data:Absent;
+        raise (Package_not_found name)
 
 let available t name =
   match find_exn t name with

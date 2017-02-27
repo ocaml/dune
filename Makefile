@@ -15,6 +15,9 @@ uninstall:
 
 reinstall: uninstall reinstall
 
+all-supported-ocaml-versions:
+	$(BIN) build @install --workspace jbuild-workspace.dev
+
 clean:
 	rm -rf _build
 

@@ -13,14 +13,15 @@ let package_install_file { packages; _ } pkg =
   | None -> Error ()
   | Some p -> Ok (Path.relative p.path (p.name ^ ".install"))
 
-let setup ?filter_out_optional_stanzas_with_missing_deps ?workspace () =
+let setup ?filter_out_optional_stanzas_with_missing_deps
+      ?workspace ?(workspace_file="jbuild-workspace") () =
   let conf = Jbuild_load.load () in
   let workspace =
     match workspace with
     | Some w -> w
     | None ->
-      if Sys.file_exists "jbuild-workspace" then
-        Workspace.load "jbuild-workspace"
+      if Sys.file_exists workspace_file then
+        Workspace.load workspace_file
       else
         { merlin_context = Some "default"; contexts = [Default] }
   in

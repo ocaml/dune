@@ -2,22 +2,19 @@ open Jbuilder
 open Import
 open Jbuilder_cmdliner.Cmdliner
 
-module Main = Jbuilder.Main
-
 (* Things in src/ don't depend on cmdliner to speed up the bootstrap, so we set this
    reference here *)
 let () = suggest_function := Jbuilder_cmdliner.Cmdliner_suggest.value
 
 let (>>=) = Future.(>>=)
 
-let create_log = Main.create_log
-
 type common =
-  { concurrency: int
-  ; debug_rules: bool
-  ; debug_dep_path: bool
-  ; debug_findlib: bool
-  ; dev_mode: bool
+  { concurrency    : int
+  ; debug_rules    : bool
+  ; debug_dep_path : bool
+  ; debug_findlib  : bool
+  ; dev_mode       : bool
+  ; workspace_file : string option
   }
 
 let set_common c =
@@ -26,6 +23,15 @@ let set_common c =
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.dev_mode := c.dev_mode
+
+module Main = struct
+  include Jbuilder.Main
+
+  let setup common =
+    setup ?workspace_file:common.workspace_file ()
+end
+
+let create_log = Main.create_log
 
 let copts_sect = "COMMON OPTIONS"
 let help_secs =
@@ -38,12 +44,13 @@ let help_secs =
   ]
 
 let common =
-  let make concurrency debug_rules debug_dep_path debug_findlib dev_mode =
+  let make concurrency debug_rules debug_dep_path debug_findlib dev_mode workspace_file =
     { concurrency
     ; debug_rules
     ; debug_dep_path
     ; debug_findlib
     ; dev_mode
+    ; workspace_file
     }
   in
   let docs = copts_sect in
@@ -53,7 +60,20 @@ let common =
   let ddep_path = Arg.(value & flag & info ["ddep-path"] ~docs) in
   let dfindlib = Arg.(value & flag & info ["dfindlib"] ~docs) in
   let dev = Arg.(value & flag & info ["dev"] ~docs) in
-  Term.(const make $ concurrency $ drules $ ddep_path $ dfindlib $ dev)
+  let workspace_file =
+    Arg.(value
+         & opt (some file) None
+         & info ["workspace"] ~docs
+             ~doc:"Use this specific workspace file instead of looking it up")
+  in
+  Term.(const make
+        $ concurrency
+        $ drules
+        $ ddep_path
+        $ dfindlib
+        $ dev
+        $ workspace_file
+       )
 
 let installed_libraries =
   let doc = "Print out libraries installed on the system." in
@@ -84,9 +104,9 @@ let resolve_package_install setup pkg =
   | Error () ->
     die "Unknown package %s!%s" pkg (hint pkg (String_map.keys setup.packages))
 
-let build_package pkg =
+let build_package common pkg =
   Future.Scheduler.go ~log:(create_log ())
-    (Main.setup () >>= fun setup ->
+    (Main.setup common >>= fun setup ->
      Build_system.do_build_exn setup.build_system
        [resolve_package_install setup pkg])
 
@@ -95,7 +115,7 @@ let build_package =
   let name_ = Arg.info [] ~docv:"PACKAGE-NAME" in
   let go common pkg =
     set_common common;
-    build_package pkg
+    build_package common pkg
   in
   ( Term.(const go
           $ common
@@ -193,7 +213,7 @@ let build_targets =
   let go common targets =
     set_common common;
     Future.Scheduler.go ~log:(create_log ())
-      (Main.setup () >>= fun setup ->
+      (Main.setup common >>= fun setup ->
        let targets = resolve_targets setup targets in
        Build_system.do_build_exn setup.build_system targets) in
   ( Term.(const go
@@ -207,7 +227,7 @@ let runtest =
   let go common dirs =
     set_common common;
     Future.Scheduler.go ~log:(create_log ())
-      (Main.setup () >>= fun setup ->
+      (Main.setup common >>= fun setup ->
        let targets =
          List.map dirs ~f:(fun dir ->
            let dir = Path.(relative root) dir in
@@ -243,7 +263,7 @@ let install_uninstall ~what =
     set_common common;
     let opam_installer = opam_installer () in
     Future.Scheduler.go ~log:(create_log ())
-      (Main.setup () >>= fun setup ->
+      (Main.setup common >>= fun setup ->
        let pkgs =
          match pkgs with
          | [] -> String_map.keys setup.packages

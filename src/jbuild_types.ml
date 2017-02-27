@@ -882,7 +882,7 @@ module Stanzas = struct
   let parse sexps ~dir ~visible_packages =
     let versions, sexps =
       List.partition_map sexps ~f:(function
-          | List (loc, [Atom (_, "jbuilder_version"); ver]) ->
+          | List (loc, [Atom (_, "jbuild_version"); ver]) ->
             Inl (Jbuild_version.t ver, loc)
           | sexp -> Inr sexp)
     in
@@ -891,7 +891,7 @@ module Stanzas = struct
       | [] -> Jbuild_version.latest_stable
       | [(v, _)] -> v
       | _ :: (_, loc) :: _ ->
-        Loc.fail loc "jbuilder_version specified too many times"
+        Loc.fail loc "jbuild_version specified too many times"
     in
     List.filter_map sexps ~f:(Stanza.select version)
     |> resolve_packages ~dir ~visible_packages

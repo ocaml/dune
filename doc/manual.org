@@ -189,10 +189,33 @@ everything Jbuilder needs to know about.
 *** OCaml syntax
 
 If a =jbuild= file starts with =(* -*- tuareg -*- *)=, then it is
-interpreted as an OCaml script that generated the =jbuild= file as
+interpreted as an OCaml script that generates the =jbuild= file as
 described in the rest of this section. The code in the script will
 have access to a [[../plugin/jbuild_plugin.mli][Jbuild_plugin]] module containing details about the
 build context it is executed in.
+
+The script can use the directive =#require= to access libraries:
+
+#+begin_src ocaml
+#require "base,re";;
+#+end_src
+
+Note that any library required by a =jbuild= file must be part of the
+installed world. This mean that your project won't be compilable in
+the same workspace as the required library, unless the library has
+been previously installed.
+
+If you don't like the S-expression syntax, then this method gives you
+a way to use whatever else you want. For instance you could have an
+API to describe your project in OCaml directly:
+
+#+begin_src ocaml
+(* -*- tuareg -*- *)
+#require "my_jbuild_api";;
+include My_jbuild_api.Make(Jbuild_plugin);;
+
+library "foo" ~modules:["plop"; "bidule"];;
+#+end_src
 
 *** Specification
 

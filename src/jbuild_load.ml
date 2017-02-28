@@ -34,6 +34,7 @@ module Jbuilds = struct
     let plugin_contents = read_file plugin in
     with_file_out (Path.to_string wrapper) ~f:(fun oc ->
       Printf.fprintf oc {|
+let () = Hashtbl.add Toploop.directive_table "require" (Toploop.Directive_string ignore)
 module Jbuild_plugin = struct
   module V1 = struct
     let context       = %S
@@ -75,12 +76,43 @@ end
         in
         let wrapper = Path.extend_basename generated_jbuild ~suffix:".ml" in
         ensure_parent_dir_exists generated_jbuild;
-        let _requires =
+        let requires =
           create_plugin_wrapper context ~exec_dir:dir ~plugin:file ~wrapper ~target:generated_jbuild
         in
+        let pkgs =
+          List.map requires ~f:(Findlib.find_exn context.findlib)
+          |> Findlib.closure
+        in
+        let includes =
+          List.fold_left pkgs ~init:Path.Set.empty ~f:(fun acc pkg ->
+            Path.Set.add pkg.Findlib.dir acc)
+          |> Path.Set.elements
+          |> List.concat_map ~f:(fun path ->
+              [ "-I"; Path.to_string path ])
+        in
+        let cmas =
+          List.concat_map pkgs ~f:(fun pkg -> pkg.archives.byte)
+        in
+        let args =
+          List.concat
+            [ [ "-I"; "+compiler-libs" ]
+            ; includes
+            ; cmas
+            ; [ Path.reach ~from:dir wrapper ]
+            ]
+        in
+        (* CR-someday jdimino: if we want to allow plugins to use findlib:
+           {[
+             let args =
+               match context.toplevel_path with
+               | None -> args
+               | Some path -> "-I" :: Path.reach ~from:dir path :: args
+             in
+           ]}
+        *)
         Future.run Strict ~dir:(Path.to_string dir) ~env:context.env
-          (Path.to_string context.Context.ocaml)
-          [ Path.reach ~from:dir wrapper ]
+          (Path.to_string context.ocaml)
+          args
         >>= fun () ->
         let sexps = Sexp_load.many (Path.to_string generated_jbuild) in
         return (dir, Stanzas.parse sexps ~dir ~visible_packages))

@@ -18,6 +18,7 @@ type t =
   ; for_host                : t option
   ; build_dir               : Path.t
   ; path                    : Path.t list
+  ; toplevel_path           : Path.t option
   ; ocaml_bin               : Path.t
   ; ocaml                   : Path.t
   ; ocamlc                  : Path.t
@@ -85,6 +86,21 @@ let opam_config_var ~env ~cache var =
       let s = String.trim s in
       Hashtbl.add cache ~key:var ~data:s;
       Some s
+
+let get_env env var =
+  let prefix = var ^ "=" in
+  let rec loop i =
+    if i = Array.length env then
+      None
+    else
+      let entry = env.(i) in
+      if String.is_prefix entry ~prefix then
+        let len_p = String.length prefix in
+        Some (String.sub entry ~pos:len_p ~len:(String.length entry - len_p))
+      else
+        loop (i + 1)
+  in
+  loop 0
 
 let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
   let opam_var_cache = Hashtbl.create 128 in
@@ -183,6 +199,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
     ; for_host = None
     ; build_dir
     ; path
+    ; toplevel_path = Option.map (get_env env "OCAML_TOPLEVEL_PATH") ~f:Path.of_string
 
     ; ocaml_bin  = dir
     ; ocaml      = Path.relative dir "ocaml"

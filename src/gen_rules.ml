@@ -1231,11 +1231,10 @@ module Gen(P : Params) = struct
       String_map.map modules ~f:(fun (m : Module.t) ->
         { m with obj_name = obj_name_of_basename m.ml_fname })
     in
-(*    List.iter exes.names ~f:(fun name ->
+    List.iter exes.names ~f:(fun name ->
       if not (String_map.mem (String.capitalize name) modules) then
         die "executable %s in %s doesn't have a corresponding .ml file"
           name (Path.to_string dir));
-*)
     let modules =
       pped_modules ~dir ~dep_kind ~modules
         ~preprocess:exes.buildable.preprocess

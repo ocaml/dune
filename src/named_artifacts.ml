@@ -2,12 +2,12 @@ open Import
 open Jbuild_types
 
 type t =
-  { context   : Context.t
+  { path      : Path.t list
   ; findlib   : Findlib.t
   ; artifacts : (string, Path.t) Hashtbl.t
   }
 
-let create context findlib stanzas =
+let create ~path findlib stanzas =
   let artifacts : (string, Path.t) Hashtbl.t = Hashtbl.create 1024 in
   List.iter stanzas ~f:(fun (dir, stanzas) ->
     List.iter stanzas ~f:(fun stanza ->
@@ -15,13 +15,13 @@ let create context findlib stanzas =
       | Provides { name; file } ->
         Hashtbl.add artifacts ~key:name ~data:(Path.relative dir file)
       | _ -> ()));
-  { context; findlib; artifacts }
+  { path; findlib; artifacts }
 
 let binary t name =
   match Hashtbl.find t.artifacts name with
   | Some p -> p
   | None ->
-    match Context.which t.context name with
+    match Bin.which ~path:t.path name with
     | Some p ->
       Hashtbl.add t.artifacts ~key:name ~data:p;
       p

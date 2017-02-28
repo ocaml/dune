@@ -7,7 +7,7 @@ open! Import
 
 type t
 
-val create : Context.t -> Findlib.t -> (Path.t * Jbuild_types.Stanza.t list) list -> t
+val create : path:Path.t list -> Findlib.t -> (Path.t * Jbuild_types.Stanza.t list) list -> t
 
 (** In the three following functions, the string argument matches the first argument of
     the [(provides ...)] stanza in the jbuild. *)

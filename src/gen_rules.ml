@@ -243,7 +243,7 @@ module Gen(P : Params) = struct
   module Named_artifacts = struct
     open Named_artifacts
 
-    let t = create ctx findlib (List.map P.stanzas ~f:(fun d -> (d.ctx_dir, d.stanzas)))
+    let t = create ~path:ctx.path findlib (List.map P.stanzas ~f:(fun d -> (d.ctx_dir, d.stanzas)))
 
     let binary name = Build.arr (fun _  -> binary t name)
     let in_findlib ~dir ~dep_kind name =

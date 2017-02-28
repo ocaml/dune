@@ -1270,20 +1270,25 @@ module Gen(P : Params) = struct
      +-----------------------------------------------------------------+ *)
 
   module Action_interpret : sig
+    type expander
+
     val expand
       :  Action.Unexpanded.t
       -> dir:Path.t
       -> dep_kind:Build.lib_dep_kind
-      -> targets:string list
+      -> targets:Path.t list
       -> deps:Dep_conf.t list
-      -> (unit, string Action.t) Build.t
+      -> (unit, expander) Build.t
 
     val run
-      :  dir:Path.t
+      :  Action.Unexpanded.t
+      -> dir:Path.t
       -> targets:Path.t list
-      -> (string Action.t, unit) Build.t
+      -> (expander, unit) Build.t
   end = struct
     module U = Action.Unexpanded
+
+    type expander = dir:Path.t -> String_with_vars.t -> string
 
     type artefact =
       | Direct of Path.t
@@ -1301,31 +1306,36 @@ module Gen(P : Params) = struct
           String_map.add acc ~key:var ~data:(Dyn (N.in_findlib ~dir ~dep_kind s))
         | _ -> acc)
 
-    let expand t ~artifact_map ~dir ~targets ~deps =
-      let dep_exn name = function
-        | Some dep -> dep
+    let expand_string_with_vars ~artifact_map ~targets ~deps : expander =
+      let dep_exn ~dir name = function
+        | Some dep -> Path.reach ~from:dir dep
         | None -> die "cannot use ${%s} with files_recursively_in" name
       in
-      let lookup var_name =
+      let lookup ~dir var_name =
         match String_map.find var_name artifact_map with
         | Some path -> Some (Path.reach ~from:dir path)
         | None ->
           match var_name with
-          | "@" -> Some (String.concat ~sep:" " targets)
-          | "<" -> Some (match deps with [] -> "" | dep1::_ -> dep_exn var_name dep1)
+          | "@" -> Some (String.concat ~sep:" " (List.map targets ~f:(Path.reach ~from:dir)))
+          | "<" -> Some (match deps with [] -> "" | dep1::_ -> dep_exn ~dir var_name dep1)
           | "^" ->
-            let deps = List.map deps ~f:(dep_exn var_name) in
+            let deps = List.map deps ~f:(dep_exn ~dir var_name) in
             Some (String.concat ~sep:" " deps)
           | _ -> root_var_lookup ~dir var_name
       in
-      U.expand t ~f:lookup
+      fun ~dir str ->
+        String_with_vars.expand str ~f:(lookup ~dir)
 
     let expand t ~dir ~dep_kind ~targets ~deps =
-      let deps = List.map deps ~f:(Dep_conf_interpret.only_plain_file ~dir) in
+      let deps =
+        List.map deps ~f:(fun dep ->
+          Option.map (Dep_conf_interpret.only_plain_file ~dir dep)
+            ~f:(Path.relative dir))
+      in
       let needed_artifacts = extract_artifacts ~dir ~dep_kind t in
       if String_map.is_empty needed_artifacts then
-        let s = expand t ~dir ~artifact_map:String_map.empty ~targets ~deps in
-        Build.return s
+        let expand = expand_string_with_vars ~artifact_map:String_map.empty ~targets ~deps in
+        Build.return expand
       else begin
         let directs, dyns =
           String_map.bindings needed_artifacts
@@ -1347,11 +1357,11 @@ module Gen(P : Params) = struct
           let artifact_map =
             String_map.of_alist_exn (List.rev_append directs artifacts)
           in
-          expand t ~dir ~artifact_map ~targets ~deps)
+          expand_string_with_vars ~artifact_map ~targets ~deps)
       end
 
-    let run ~dir ~targets =
-      Build.action ~dir ~env:ctx.env ~targets
+    let run action ~dir ~targets =
+      Build.action action ~dir ~env:ctx.env ~targets
   end
 
   (* +-----------------------------------------------------------------+
@@ -1367,10 +1377,11 @@ module Gen(P : Params) = struct
          rule.action
          ~dir
          ~dep_kind:Required
-         ~targets:rule.targets
+         ~targets
          ~deps:rule.deps
        >>>
        Action_interpret.run
+         rule.action
          ~dir
          ~targets)
 
@@ -1402,7 +1413,7 @@ module Gen(P : Params) = struct
           ~dep_kind:Required
           ~targets:[]
           ~deps:alias_conf.deps
-        >>> Action_interpret.run ~dir ~targets:[] in
+        >>> Action_interpret.run action ~dir ~targets:[] in
     add_rule (deps >>> dummy)
 
   (* +-----------------------------------------------------------------+

@@ -182,29 +182,39 @@ module Shexp = struct
   open Future
   open Action.Mini_shexp
 
-  let rec exec t ~dir ~env ~env_extra ~stdout_to ~tail =
+  let run ~dir ~env ~env_extra ~stdout_to ~tail prog args =
+    let stdout_to : Future.stdout_to =
+      match stdout_to with
+      | None          -> Terminal
+      | Some (fn, oc) -> Opened_file { filename = fn; tail; desc = Channel oc }
+    in
+    let env = Context.extend_env ~vars:env_extra ~env in
+    Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to prog args
+
+  let rec exec t ~dir ~env ~env_extra ~stdout_to ~tail ~f =
     match t with
     | Run (prog, args) ->
-      let stdout_to : Future.stdout_to =
-        match stdout_to with
-        | None          -> Terminal
-        | Some (fn, oc) -> Opened_file { filename = fn; tail; desc = Channel oc }
-      in
-      let env = Context.extend_env ~vars:env_extra ~env in
-      Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to prog args
+      let prog = f ~dir prog in
+      let args = List.map args ~f:(f ~dir) in
+      run ~dir ~env ~env_extra ~stdout_to ~tail prog args
     | Chdir (fn, t) ->
-      exec t ~env ~env_extra ~stdout_to ~tail ~dir:(Path.relative dir fn)
+      let fn = f ~dir fn in
+      exec t ~env ~env_extra ~stdout_to ~tail ~dir:(Path.relative dir fn) ~f
     | Setenv (var, value, t) ->
-      exec t ~dir ~env ~stdout_to ~tail
+      let var = f ~dir var in
+      let value = f ~dir value in
+      exec t ~dir ~env ~stdout_to ~tail ~f
         ~env_extra:(String_map.add env_extra ~key:var ~data:value)
     | With_stdout_to (fn, t) ->
+      let fn = f ~dir fn in
       if tail then Option.iter stdout_to ~f:(fun (_, oc) -> close_out oc);
       let fn = Path.to_string (Path.relative dir fn) in
-      exec t ~dir ~env ~env_extra ~tail
+      exec t ~dir ~env ~env_extra ~tail ~f
         ~stdout_to:(Some (fn, open_out_bin fn))
     | Progn l ->
-      exec_list l ~dir ~env ~env_extra ~stdout_to ~tail
+      exec_list l ~dir ~env ~env_extra ~stdout_to ~tail ~f
     | Echo str ->
+      let str = f ~dir str in
       return
         (match stdout_to with
          | None -> print_string str; flush stdout
@@ -212,6 +222,7 @@ module Shexp = struct
            output_string oc str;
            if tail then close_out oc)
     | Cat fn ->
+      let fn = f ~dir fn in
       let fn = Path.to_string (Path.relative dir fn) in
       with_file_in fn ~f:(fun ic ->
         match stdout_to with
@@ -221,8 +232,8 @@ module Shexp = struct
           if tail then close_out oc);
       return ()
     | Copy_and_add_line_directive (src, dst) ->
-      let src = Path.relative dir src in
-      let dst = Path.relative dir dst in
+      let src = Path.relative dir (f ~dir src) in
+      let dst = Path.relative dir (f ~dir dst) in
       with_file_in (Path.to_string src) ~f:(fun ic ->
         with_file_out (Path.to_string dst) ~f:(fun oc ->
           let fn =
@@ -234,38 +245,39 @@ module Shexp = struct
           copy_channels ic oc));
       return ()
     | System cmd ->
+      let cmd = f ~dir cmd in
       let path, arg, err =
         Utils.system_shell ~needed_to:"interpret (system ...) actions"
       in
       match err with
       | Some err -> err.fail ()
       | None ->
-        exec ~dir ~env ~env_extra ~stdout_to ~tail
-          (Run (Path.to_string path, [arg; cmd]))
+        run ~dir ~env ~env_extra ~stdout_to ~tail
+          (Path.to_string path) [arg; cmd]
 
-  and exec_list l ~dir ~env ~env_extra ~stdout_to ~tail =
+  and exec_list l ~dir ~env ~env_extra ~stdout_to ~tail ~f =
     match l with
     | [] ->
       if tail then Option.iter stdout_to ~f:(fun (_, oc) -> close_out oc);
       Future.return ()
     | [t] ->
-      exec t ~dir ~env ~env_extra ~stdout_to ~tail
+      exec t ~dir ~env ~env_extra ~stdout_to ~tail ~f
     | t :: rest ->
-      exec t ~dir ~env ~env_extra ~stdout_to ~tail:false >>= fun () ->
-      exec_list rest ~dir ~env ~env_extra ~stdout_to ~tail
+      exec t ~dir ~env ~env_extra ~stdout_to ~tail:false ~f >>= fun () ->
+      exec_list rest ~dir ~env ~env_extra ~stdout_to ~tail ~f
 
-  let exec t ~dir ~env =
-    exec t ~dir ~env ~env_extra:String_map.empty ~stdout_to:None ~tail:true
+  let exec t ~dir ~env ~f =
+    exec t ~dir ~env ~env_extra:String_map.empty ~stdout_to:None ~tail:true ~f
 end
 
-let action ~dir ~env ~targets =
-  prim ~targets (fun action ->
-    match (action : string Action.t) with
+let action action ~dir ~env ~targets =
+  prim ~targets (fun f ->
+    match (action : _ Action.t) with
     | Bash cmd ->
       Future.run Strict ~dir:(Path.to_string dir) ~env
-        "/bin/bash" ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
+        "/bin/bash" ["-e"; "-u"; "-o"; "pipefail"; "-c"; f ~dir cmd]
     | Shexp shexp ->
-      Shexp.exec ~dir ~env shexp)
+      Shexp.exec ~dir ~env ~f shexp)
 
 let echo fn =
   create_file ~target:fn (fun data ->

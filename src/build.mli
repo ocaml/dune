@@ -79,10 +79,11 @@ val run_capture_lines
   -> ('a, string list) t
 
 val action
-  :  dir:Path.t
+  :  'a Action.t
+  -> dir:Path.t
   -> env:string array
   -> targets:Path.t list
-  -> (string Action.t, unit) t
+  -> (dir:Path.t -> 'a -> string, unit) t
 
 (** Create a file with the given contents. *)
 val echo : Path.t -> (string, unit) t

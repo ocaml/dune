@@ -1463,9 +1463,14 @@ module Gen(P : Params) = struct
           let mli_fname = Option.value_exn mli_fname in
           let ml_fname = String.sub mli_fname ~pos:0 ~len:(String.length mli_fname - 1) in
           Format.eprintf
-            "@{<warning>Warning@}: module %s in %s doesn't have a corresponding\
-             .ml file.\n\
-             I'm setting up a rule for copying %s to %s.\n"
+            "@{<warning>Warning@}: Module %s in %s doesn't have a \
+             corresponding .ml file.\n\
+             Modules without an implementation are not recommended, \
+             see this discussion:\n\
+             \n\
+            \  https://github.com/janestreet/jbuilder/issues/9\n\
+             \n\
+             In the meantime I'm setting up a rule for copying %s to %s.\n"
             name (Path.to_string dir)
             mli_fname ml_fname;
           let dir = Path.append ctx.build_dir dir in

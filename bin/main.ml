@@ -101,7 +101,7 @@ let help_secs =
 
 let common =
   let make concurrency debug_rules debug_dep_path debug_findlib dev_mode
-      workspace_file root =
+        workspace_file root =
     let root, to_cwd =
       match root with
       | Some dn -> (dn, [])
@@ -119,25 +119,53 @@ let common =
   in
   let docs = copts_sect in
   let concurrency =
-    Arg.(value & opt int !Clflags.concurrency & info ["j"] ~docs) in
-  let drules = Arg.(value & flag & info ["drules"] ~docs) in
-  let ddep_path = Arg.(value & flag & info ["ddep-path"] ~docs) in
-  let dfindlib = Arg.(value & flag & info ["dfindlib"] ~docs) in
-  let dev = Arg.(value & flag & info ["dev"] ~docs) in
+    Arg.(value
+         & opt int !Clflags.concurrency
+         & info ["j"] ~docs ~docv:"JOBS"
+             ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|}
+        )
+  in
+  let drules =
+    Arg.(value
+         & flag
+         & info ["debug-rules"] ~docs
+             ~doc:"Print all internal rules."
+        )
+  in
+  let ddep_path =
+    Arg.(value
+         & flag
+         & info ["debug-depency-path"] ~docs
+             ~doc:{|In case of error, print the dependency path from
+                    the targets on the command line to the rule that failed.
+                  |})
+  in
+  let dfindlib =
+    Arg.(value
+         & flag
+         & info ["debug-findlib"] ~docs
+             ~doc:{|Debug the findlib sub-system.|})
+  in
+  let dev =
+    Arg.(value
+         & flag
+         & info ["dev"] ~docs
+             ~doc:{|Use stricter compilation flags by default.|})
+  in
   let workspace_file =
     Arg.(value
          & opt (some file) None
-         & info ["workspace"] ~docs
+         & info ["workspace"] ~docs ~docv:"FILE"
              ~doc:"Use this specific workspace file instead of looking it up.")
   in
   let root =
     Arg.(value
          & opt (some dir) None
-         & info ["root"] ~docs
-           ~doc:"Use this directory as workspace root instead of guessing it.\n\
-                 Note that this option doesn't change the interpretation of \
-                 targets given on the command line.\n\
-                 It is only intended for scripts.")
+         & info ["root"] ~docs ~docv:"DIR"
+             ~doc:{|Use this directory as workspace root instead of guessing it.
+                   Note that this option doesn't change the interpretation of
+                   targets given on the command line. It is only intended
+                    for scripts.|})
   in
   Term.(const make
         $ concurrency
@@ -186,6 +214,17 @@ let build_package common pkg =
 
 let build_package =
   let doc = "Build a single package in release mode." in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|This command is meant to be used in $(i,<package>.opam) files.
+           It builds the given package as if all the definitions in
+           the source tree that are for another package didn't existed.
+         |}
+    ; `P {|More precisely, this is what you should use in your $(i,<package>.opam) file:|}
+    ; `Pre {|  build: ["jbuilder" "build-package" "<package>" "-j" jobs|}
+    ; `Blocks help_secs
+    ]
+  in
   let name_ = Arg.info [] ~docv:"PACKAGE-NAME" in
   let go common pkg =
     set_common common;
@@ -194,7 +233,7 @@ let build_package =
   ( Term.(const go
           $ common
           $ Arg.(required & pos 0 (some string) None name_))
-  , Term.info "build-package" ~doc ~man:help_secs)
+  , Term.info "build-package" ~doc ~man)
 
 let external_lib_deps packages =
   let log = create_log () in
@@ -209,6 +248,14 @@ let external_lib_deps packages =
 
 let external_lib_deps =
   let doc = "Print out external library dependencies." in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|Print out the external libraries needed to build the given packages.|}
+    ; `P {|The output should be included in what is written in
+           your $(i,<package>.opam) file.|}
+    ; `Blocks help_secs
+    ]
+  in
   let name_ = Arg.info [] ~docv:"PACKAGE-NAME" in
   let go common packages =
     set_common common;
@@ -217,7 +264,7 @@ let external_lib_deps =
   ( Term.(const go
           $ common
           $ Arg.(non_empty & pos_all string [] name_))
-  , Term.info "external-lib-deps" ~doc ~man:help_secs)
+  , Term.info "external-lib-deps" ~doc ~man)
 
 type target =
   | File  of Path.t
@@ -282,7 +329,13 @@ let resolve_targets common (setup : Main.setup) user_targets =
       | Alias (_, alias) -> Alias.file alias)
 
 let build_targets =
-  let doc = "Build targets." in
+  let doc = "Build the given targets." in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|Targets starting with a $(b,@) are interpreted as aliases.|}
+    ; `Blocks help_secs
+    ]
+  in
   let name_ = Arg.info [] ~docv:"TARGET" in
   let go common targets =
     set_common common;
@@ -293,10 +346,17 @@ let build_targets =
   ( Term.(const go
           $ common
           $ Arg.(non_empty & pos_all string [] name_))
-  , Term.info "build" ~doc ~man:help_secs)
+  , Term.info "build" ~doc ~man)
 
 let runtest =
   let doc = "Run tests." in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|This is a short-hand for calling:|}
+    ; `Pre {|  jbuilder build @runtest|}
+    ; `Blocks help_secs
+    ]
+  in
   let name_ = Arg.info [] ~docv:"DIR" in
   let go common dirs =
     set_common common;
@@ -311,7 +371,7 @@ let runtest =
   ( Term.(const go
           $ common
           $ Arg.(value & pos_all string ["."] name_))
-  , Term.info "runtest" ~doc ~man:help_secs)
+  , Term.info "runtest" ~doc ~man)
 
 let opam_installer () =
   match Bin.which "opam-installer" with
@@ -400,9 +460,25 @@ let all =
   ]
 
 let default =
-  let doc = "fast, portable and opinionated build system for OCaml" in
-  ( Term.(ret @@ const @@ `Help (`Pager, None))
-  , Term.info "jbuilder" ~doc)
+  let doc = "composable build system for OCaml" in
+  ( Term.(ret (const (fun _ -> `Help (`Pager, None)) $ common))
+  , Term.info "jbuilder" ~doc
+      ~man:
+        [ `S "DESCRIPTION"
+        ; `P {|Jbuilder is a build system designed for OCaml projects only. It
+               focuses on providing the user with a consistent experience and takes
+               care of most of the low-level details of OCaml compilation. All you
+               have to do is provide a description of your project and Jbuilder will
+               do the rest.
+             |}
+        ; `P {|The scheme it implements is inspired from the one used inside Jane
+               Street and adapted to the open source world. It has matured over a
+               long time and is used daily by hundred of developpers, which means
+               that it is highly tested and productive.
+             |}
+        ; `Blocks help_secs
+        ]
+  )
 
 let () =
   Ansi_color.setup_err_formatter_colors ();

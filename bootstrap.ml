@@ -291,6 +291,16 @@ end
 
 let () = generate_file_with_all_the_sources ()
 
+let cleanup ~keep_ml_file =
+  try
+    Array.iter (Sys.readdir ".") ~f:(fun fn ->
+      if fn <> "boot.exe" &&
+         starts_with fn ~prefix:"boot." &&
+         (fn <> "boot.ml" || not keep_ml_file) then
+        Sys.remove fn)
+  with _ ->
+    ()
+
 let () =
   let lib_ext =
     match mode with
@@ -298,15 +308,9 @@ let () =
     | Byte   -> "cma"
   in
   let n =
-    protectx ()
-      ~f:(fun () ->
-        exec "%s -w -40 -o boot.exe unix.%s %s" compiler lib_ext generated_file)
-      ~finally:(fun () ->
-        try
-          Array.iter (Sys.readdir ".") ~f:(fun fn ->
-            if fn <> "boot.exe" && starts_with fn ~prefix:"boot." then
-              Sys.remove fn)
-        with _ ->
-          ())
+    match exec "%s -w -40 -o boot.exe unix.%s %s" compiler lib_ext generated_file with
+    | n -> n
+    | exception e -> cleanup ~keep_ml_file:true; raise e
   in
+  cleanup ~keep_ml_file:(n <> 0);
   if n <> 0 then exit n

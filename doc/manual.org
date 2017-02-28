@@ -708,6 +708,13 @@ Jbuilder accept three kinds of pre-processing:
 Note that in any cases, files are pre-processed only once. Jbuilder
 doesn't use the =-pp= or =-ppx= of the various OCaml tools.
 
+However, in the case of =(command <shell-command>)=, the shell command
+is still interpreted in the same way as if it was passed to the =-pp=
+option. In particular it is executed using the system shell (=sh= or
+=cmd= depending on the OS). Note that you shouldn't make assumption
+about where the command is run from, this is an implementation detail
+of Jbuilder and might change in the Future.
+
 =<ppx-rewriters-and-flags>= is expected to be a list where each
 element is either a command line flag if starting with a =-= or the
 name of a library implementing an OCaml AST rewriter. These must be
@@ -809,8 +816,9 @@ of these two forms:
 - using a small DSL, that is interpreted by jbuilder directly and
   doesn't require an external shell
 
-In both case, each atom in the argument supports [[Variables expansion][variables
-expansion]]. Moreover, you don't need to specify dependencies
+In both case, all atoms in the argument of this field supports
+[[Variables
+ expansion][variables expansion]]. Moreover, you don't need to specify dependencies
 explicitely for the special =${exe:...}=, =${bin:...}= or
 =${findlib:...}= forms, these are recognized automatically by
 Jbuilder.
@@ -831,8 +839,9 @@ The following constructions are available:
 - =(echo <string>)= to output a string on stdout
 - =(cat <file>)= to print the contents of a file to stdout
 - =(copy <src> <dst>)= to copy a file
-- =(copy-and-add-line-directive <src> <dst>)= to copy a file and add a
-  line directive at the beginning
+- =(copy-and-add-line-directive <src> <dst>)= to copy a file and add a line directive at the beginning
+- =(system <cmd>)= to execute a command using the system shell: =sh=
+  on Unix and =cmd= on Windows
 
 * Usage
 

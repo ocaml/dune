@@ -282,6 +282,16 @@ module Gen(P : Params) = struct
     let bash ?dir ?stdout_to ?env ?extra_targets cmd =
       run (Dep (Path.absolute "/bin/bash")) ?dir ?stdout_to ?env ?extra_targets
         [ As ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd] ]
+
+    let system ?dir ?stdout_to ?env ?extra_targets cmd ~needed_to =
+      let path, arg, fail = Utils.system_shell ~needed_to in
+      let build =
+        run (Dep path) ?dir ?stdout_to ?env ?extra_targets
+          [ As [arg; cmd] ]
+      in
+      match fail with
+      | None -> build
+      | Some fail -> Build.fail fail >>> build
   end
 
   module Alias = struct
@@ -622,12 +632,14 @@ module Gen(P : Params) = struct
       | No_preprocessing -> m
       | Command cmd ->
         pped_module m ~dir ~f:(fun _kind src dst ->
+          let dir = ctx.build_dir in
           add_rule
             (preprocessor_deps
              >>>
              Build.path src
              >>>
-             Build.bash ~stdout_to:dst ~dir
+             Build.system ~stdout_to:dst ~dir
+               ~needed_to:"run preprocessor commands"
                (sprintf "%s %s" (expand_vars ~dir cmd)
                   (Filename.quote (Path.reach src ~from:dir)))))
       | Pps { pps; flags } ->
@@ -1400,7 +1412,8 @@ module Gen(P : Params) = struct
       let src = Path.relative dir (name ^ ".mll"   ) in
       let dst = Path.relative dir (name ^ ".ml"    ) in
       add_rule
-        (Build.run (Dep ctx.ocamllex) [A "-q"; A "-o"; Target dst; Dep src]))
+        (Build.run ~dir:ctx.build_dir (Dep ctx.ocamllex)
+           [A "-q"; A "-o"; Target dst; Dep src]))
 
   let ocamlyacc_rules (conf : Ocamlyacc.t) ~dir =
     List.iter conf.names ~f:(fun name ->
@@ -1408,7 +1421,7 @@ module Gen(P : Params) = struct
       let dst  = Path.relative dir (name ^ ".ml"     ) in
       let dsti = Path.relative dir (name ^ ".mli"    ) in
       add_rule
-        (Build.run ~extra_targets:[dst; dsti]
+        (Build.run ~extra_targets:[dst; dsti] ~dir:ctx.build_dir
            (Dep ctx.ocamlyacc)
            [ Dep src ]))
 

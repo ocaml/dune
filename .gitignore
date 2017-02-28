@@ -2,3 +2,4 @@ _build
 *.install
 boot.exe
 .merlin
+boot.ml

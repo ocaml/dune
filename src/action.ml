@@ -11,6 +11,7 @@ module Mini_shexp = struct
     | Echo           of 'a
     | Cat            of 'a
     | Copy_and_add_line_directive of 'a * 'a
+    | System         of 'a
 
   let rec t a sexp =
     sum
@@ -25,6 +26,7 @@ module Mini_shexp = struct
           With_stdout_to (dst, Cat src))
       ; cstr "copy-and-add-line-directive" (a @> a @> nil) (fun src dst ->
           Copy_and_add_line_directive (src, dst))
+      ; cstr "system" (a @> nil) (fun cmd -> System cmd)
       ]
       sexp
 
@@ -38,6 +40,7 @@ module Mini_shexp = struct
     | Echo x -> Echo (f x)
     | Cat x -> Cat (f x)
     | Copy_and_add_line_directive (x, y) -> Copy_and_add_line_directive (f x, f y)
+    | System x -> System (f x)
 
   let rec fold t ~init:acc ~f =
     match t with
@@ -49,6 +52,7 @@ module Mini_shexp = struct
     | Echo x -> f acc x
     | Cat x -> f acc x
     | Copy_and_add_line_directive (x, y) -> f (f acc x) y
+    | System x -> f acc x
 
   let rec sexp_of_t f : _ -> Sexp.t = function
     | Run (a, xs) -> List (Atom "run" :: f a :: List.map xs ~f)
@@ -60,6 +64,7 @@ module Mini_shexp = struct
     | Cat x -> List [Atom "cat"; f x]
     | Copy_and_add_line_directive (x, y) ->
       List [Atom "copy-and-add-line-directive"; f x; f y]
+    | System x -> List [Atom "system"; f x]
 end
 
 module T = struct

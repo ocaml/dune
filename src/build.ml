@@ -233,6 +233,15 @@ module Shexp = struct
           Printf.fprintf oc "# 1 %S\n" (Path.to_string fn);
           copy_channels ic oc));
       return ()
+    | System cmd ->
+      let path, arg, err =
+        Utils.system_shell ~needed_to:"interpret (system ...) actions"
+      in
+      match err with
+      | Some err -> err.fail ()
+      | None ->
+        exec ~dir ~env ~env_extra ~stdout_to ~tail
+          (Run (Path.to_string path, [arg; cmd]))
 
   and exec_list l ~dir ~env ~env_extra ~stdout_to ~tail =
     match l with

@@ -123,7 +123,30 @@ module Gen(P : Params) = struct
 
   let ctx = P.context
 
-  let findlib = Findlib.create ctx
+  let findlib = ctx.findlib
+
+  module Mode = struct
+    include Mode
+
+    let choose byte native = function
+      | Byte   -> byte
+      | Native -> native
+
+    let compiler t = choose (Some ctx.ocamlc) ctx.ocamlopt t
+
+    let best =
+      match ctx.ocamlopt with
+      | Some _ -> Native
+      | None   -> Byte
+  end
+
+  module Cm_kind = struct
+    include Cm_kind
+
+    let compiler = function
+      | Cmi | Cmo -> Some ctx.ocamlc
+      | Cmx -> ctx.ocamlopt
+  end
 
   module Lib_db = struct
     open Lib_db
@@ -220,7 +243,7 @@ module Gen(P : Params) = struct
   module Named_artifacts = struct
     open Named_artifacts
 
-    let t = create findlib (List.map P.stanzas ~f:(fun d -> (d.ctx_dir, d.stanzas)))
+    let t = create ctx findlib (List.map P.stanzas ~f:(fun d -> (d.ctx_dir, d.stanzas)))
 
     let binary name = Build.arr (fun _  -> binary t name)
     let in_findlib ~dir ~dep_kind name =
@@ -518,8 +541,8 @@ module Gen(P : Params) = struct
   let ppx_drivers = Hashtbl.create 32
 
   let build_ppx_driver ~dir ~dep_kind ~target ~runner pp_names =
-    let mode = Mode.best ctx in
-    let compiler = Option.value_exn (Mode.compiler mode ctx) in
+    let mode = Mode.best in
+    let compiler = Option.value_exn (Mode.compiler mode) in
     let libs =
       Build.fanout
         (Lib_db.closure ~dir ~dep_kind (Direct "ppx_driver" ::
@@ -761,7 +784,7 @@ module Gen(P : Params) = struct
 
   let build_cm ~flags ~cm_kind ~dep_graph ~requires
         ~(modules : Module.t String_map.t) ~dir ~alias_module (m : Module.t) =
-    Option.iter (Cm_kind.compiler cm_kind ctx) ~f:(fun compiler ->
+    Option.iter (Cm_kind.compiler cm_kind) ~f:(fun compiler ->
       Option.iter (Module.cm_source ~dir m cm_kind) ~f:(fun src ->
         let ml_kind = Cm_kind.source cm_kind in
         let dst = Module.cm_file m ~dir cm_kind in
@@ -879,7 +902,7 @@ module Gen(P : Params) = struct
     Path.relative dir (sprintf "dll%s_stubs%s" lib.name ctx.ext_dll)
 
   let build_lib (lib : Library.t) ~flags ~dir ~mode ~modules ~dep_graph =
-    Option.iter (Mode.compiler mode ctx) ~f:(fun compiler ->
+    Option.iter (Mode.compiler mode) ~f:(fun compiler ->
       let target = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let dep_graph = Ml_kind.Dict.get dep_graph Impl in
       let stubs_flags =
@@ -1158,7 +1181,7 @@ module Gen(P : Params) = struct
   let build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph ~link_flags =
     let exe_ext = Mode.exe_ext mode in
     let mode, link_flags, compiler =
-      match Mode.compiler mode ctx with
+      match Mode.compiler mode with
       | Some compiler -> (mode, link_flags, compiler)
       | None          -> (Byte, "-custom" :: link_flags, ctx.ocamlc)
     in

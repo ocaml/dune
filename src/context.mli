@@ -60,8 +60,7 @@ type t =
   ; (** Environment variables *)
     env : string array
 
-  ; (** Where to look for META files *)
-    findlib_path : Path.t list
+  ; findlib : Findlib.t
 
   ; (** Misc *)
     arch_sixtyfour : bool

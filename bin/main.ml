@@ -81,7 +81,7 @@ let installed_libraries =
     set_common common;
     Future.Scheduler.go ~log:(create_log ())
       (Context.default () >>= fun ctx ->
-       let findlib = Findlib.create ctx in
+       let findlib = ctx.findlib in
        let pkgs = Findlib.all_packages findlib in
        let max_len = List.longest_map pkgs ~f:(fun p -> p.name) in
        List.iter pkgs ~f:(fun pkg ->

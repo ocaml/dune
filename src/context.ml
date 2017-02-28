@@ -27,9 +27,9 @@ type t =
   ; ocamlyacc               : Path.t
   ; ocamlmklib              : Path.t
   ; env                     : string array
-  ; findlib_path            : Path.t list
+  ; findlib                 : Findlib.t
   ; arch_sixtyfour          : bool
-  ; opam_var_cache : (string, string) Hashtbl.t
+  ; opam_var_cache          : (string, string) Hashtbl.t
   ; ocamlc_config           : (string * string) list
   ; version                 : string
   ; stdlib_dir              : Path.t
@@ -194,7 +194,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
     ; ocamlmklib = get_prog  "ocamlmklib"
 
     ; env
-    ; findlib_path
+    ; findlib = Findlib.create ~stdlib_dir ~path:findlib_path
     ; arch_sixtyfour = get_arch_sixtyfour stdlib_dir
 
     ; opam_var_cache

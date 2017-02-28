@@ -20,9 +20,19 @@ module Jbuilds = struct
     | Local path -> Path.Local.ensure_parent_directory_exists path
     | External _ -> ()
 
+  let extract_requires str =
+    List.fold_left (String.split str ~on:'\n') ~init:String_set.empty ~f:(fun acc line ->
+      match Scanf.sscanf line "#require %S" (fun x -> x) with
+      | exception _ -> acc
+      | s ->
+        String_set.union acc
+          (String_set.of_list (String.split s ~on:',')))
+    |> String_set.elements
+
   let create_plugin_wrapper (context : Context.t) ~exec_dir ~plugin ~wrapper ~target =
+    let plugin = Path.to_string plugin in
+    let plugin_contents = read_file plugin in
     with_file_out (Path.to_string wrapper) ~f:(fun oc ->
-      let plugin = Path.to_string plugin in
       Printf.fprintf oc {|
 module Jbuild_plugin = struct
   module V1 = struct
@@ -48,7 +58,8 @@ end
             List.map context.ocamlc_config ~f:(fun (k, v) ->
                 Printf.sprintf "%-*S , %S" (longest + 2) k v)))
         (Path.reach ~from:exec_dir target)
-        plugin (read_file plugin))
+        plugin plugin_contents);
+    extract_requires plugin_contents
 
   let eval jbuilds ~(context : Context.t) =
     let open Future in
@@ -64,7 +75,9 @@ end
         in
         let wrapper = Path.extend_basename generated_jbuild ~suffix:".ml" in
         ensure_parent_dir_exists generated_jbuild;
-        create_plugin_wrapper context ~exec_dir:dir ~plugin:file ~wrapper ~target:generated_jbuild;
+        let _requires =
+          create_plugin_wrapper context ~exec_dir:dir ~plugin:file ~wrapper ~target:generated_jbuild
+        in
         Future.run Strict ~dir:(Path.to_string dir) ~env:context.env
           (Path.to_string context.Context.ocaml)
           [ Path.reach ~from:dir wrapper ]

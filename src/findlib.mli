@@ -5,9 +5,10 @@ exception Package_not_found of string
 (** Findlib database *)
 type t
 
-val create : Context.t -> t
-
-val context : t -> Context.t
+val create
+  :  stdlib_dir:Path.t
+  -> path:Path.t list
+  -> t
 
 type package =
   { name             : string

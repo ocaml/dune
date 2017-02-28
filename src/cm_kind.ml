@@ -9,7 +9,4 @@ let choose cmi cmo cmx = function
 
 let ext = choose ".cmi" ".cmo" ".cmx"
 
-let compiler t (ctx : Context.t) =
-  choose (Some ctx.ocamlc) (Some ctx.ocamlc) ctx.ocamlopt t
-
 let source = choose Ml_kind.Intf Impl Impl

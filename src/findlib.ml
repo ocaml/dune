@@ -135,9 +135,17 @@ type present_or_absent =
   | Absent
 
 type t =
-  { context     : Context.t
+  { stdlib_dir  : Path.t
+  ; path        : Path.t list
   ; packages    : (string, present_or_absent) Hashtbl.t
   ; has_headers : (Path.t, bool             ) Hashtbl.t
+  }
+
+let create ~stdlib_dir ~path =
+  { stdlib_dir
+  ; path
+  ; packages    = Hashtbl.create 1024
+  ; has_headers = Hashtbl.create 1024
   }
 
 let has_headers t ~dir =
@@ -152,14 +160,6 @@ let has_headers t ~dir =
     in
     Hashtbl.add t.has_headers ~key:dir ~data:x;
     x
-
-let context t = t.context
-
-let create context =
-  { context
-  ; packages    = Hashtbl.create 1024
-  ; has_headers = Hashtbl.create 1024
-  }
 
 module Pkg_step1 = struct
   type t =
@@ -176,7 +176,7 @@ let parse_package t ~name ~parent_dir ~vars =
     if pkg_dir = "" then
       parent_dir
     else if pkg_dir.[0] = '+' || pkg_dir.[0] = '^' then
-      Path.relative t.context.stdlib_dir
+      Path.relative t.stdlib_dir
         (String.sub pkg_dir ~pos:1 ~len:(String.length pkg_dir - 1))
     else if Filename.is_relative pkg_dir then
       Path.relative parent_dir pkg_dir
@@ -250,10 +250,10 @@ let rec load_meta_rec t root_name ~packages =
           loop dirs
       | [] ->
         match String_map.find root_name Meta.builtins with
-        | Some meta -> (t.context.stdlib_dir, meta)
+        | Some meta -> (t.stdlib_dir, meta)
         | None -> raise (Package_not_found root_name)
     in
-    let dir, meta = loop t.context.findlib_path in
+    let dir, meta = loop t.path in
     let new_packages = parse_meta t ~dir meta in
     let packages =
       List.fold_left new_packages ~init:packages ~f:(fun acc (pkg : Pkg_step1.t) ->
@@ -408,7 +408,7 @@ let closed_ppx_runtime_deps_of pkgs =
 
 let root_packages t =
   let pkgs =
-    List.concat_map t.context.findlib_path ~f:(fun dir ->
+    List.concat_map t.path ~f:(fun dir ->
       Sys.readdir (Path.to_string dir)
       |> Array.to_list
       |> List.filter ~f:(fun name ->

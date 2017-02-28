@@ -9,14 +9,11 @@ val all : t list
 val compiled_unit_ext : t -> string
 val compiled_lib_ext : t -> string
 val exe_ext : t -> string
-val compiler : t -> Context.t -> Path.t option
 
 val cm_kind : t -> Cm_kind.t
 val of_cm_kind : Cm_kind.t -> t
 
 val findlib_predicate : t -> string
-
-val best : Context.t -> t
 
 module Dict : sig
   type mode = t

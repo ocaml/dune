@@ -14,17 +14,15 @@ module Jbuilds = struct
   type t = one list
 
   let generated_jbuilds_dir = Path.(relative root) "_build/.jbuilds"
-  let contexts_files_dir = Path.(relative root) "_build/.contexts"
 
   let ensure_parent_dir_exists path =
     match Path.kind path with
     | Local path -> Path.Local.ensure_parent_directory_exists path
     | External _ -> ()
 
-  let create_context_file (context : Context.t) =
-    let file = Path.relative contexts_files_dir (context.name ^ ".ml") in
-    ensure_parent_dir_exists file;
-    with_file_out (Path.to_string file) ~f:(fun oc ->
+  let create_plugin_wrapper (context : Context.t) ~exec_dir ~plugin ~wrapper ~target =
+    with_file_out (Path.to_string wrapper) ~f:(fun oc ->
+      let plugin = Path.to_string plugin in
       Printf.fprintf oc {|
 module Jbuild_plugin = struct
   module V1 = struct
@@ -36,23 +34,24 @@ module Jbuild_plugin = struct
       ]
 
     let send s =
-      let oc = open_out_bin Sys.argv.(1) in
+      let oc = open_out_bin %S in
       output_string oc s;
       close_out oc
   end
 end
-|}
+# 1 %S
+%s|}
         context.name
         context.version
         (String.concat ~sep:"\n      ; "
            (let longest = List.longest_map context.ocamlc_config ~f:fst in
             List.map context.ocamlc_config ~f:(fun (k, v) ->
-              Printf.sprintf "%-*S , %S" (longest + 2) k v))));
-    file
+                Printf.sprintf "%-*S , %S" (longest + 2) k v)))
+        (Path.reach ~from:exec_dir target)
+        plugin (read_file plugin))
 
   let eval jbuilds ~(context : Context.t) =
     let open Future in
-    let context_files = Hashtbl.create 8 in
     List.map jbuilds ~f:(function
       | Literal (path, stanzas) ->
         return (path, stanzas)
@@ -65,25 +64,10 @@ end
         in
         let wrapper = Path.extend_basename generated_jbuild ~suffix:".ml" in
         ensure_parent_dir_exists generated_jbuild;
-        let context_file, context_file_contents =
-          Hashtbl.find_or_add context_files context.name ~f:(fun () ->
-            let file = create_context_file context in
-            (file, read_file (Path.to_string file)))
-        in
-        Printf.ksprintf (write_file (Path.to_string wrapper))
-          "# 1 %S\n\
-           %s\n\
-           # 1 %S\n\
-           %s"
-          (Path.to_string context_file)
-          context_file_contents
-          (Path.to_string file)
-          (read_file (Path.to_string file));
+        create_plugin_wrapper context ~exec_dir:dir ~plugin:file ~wrapper ~target:generated_jbuild;
         Future.run Strict ~dir:(Path.to_string dir) ~env:context.env
           (Path.to_string context.Context.ocaml)
-          [ Path.reach ~from:dir wrapper
-          ; Path.reach ~from:dir generated_jbuild
-          ]
+          [ Path.reach ~from:dir wrapper ]
         >>= fun () ->
         let sexps = Sexp_load.many (Path.to_string generated_jbuild) in
         return (dir, Stanzas.parse sexps ~dir ~visible_packages))

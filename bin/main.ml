@@ -15,14 +15,21 @@ type common =
   ; debug_findlib  : bool
   ; dev_mode       : bool
   ; workspace_file : string option
+  ; root           : string
+  ; target_prefix  : string
   }
+
+let prefix_target common s = common.target_prefix ^ s
 
 let set_common c =
   Clflags.concurrency := c.concurrency;
   Clflags.debug_rules := c.debug_rules;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
-  Clflags.dev_mode := c.dev_mode
+  Clflags.dev_mode := c.dev_mode;
+  Printf.eprintf "Workspace root: %s\n" c.root;
+  if c.root <> Filename.current_dir_name then
+    Sys.chdir c.root
 
 module Main = struct
   include Jbuilder.Main
@@ -32,6 +39,55 @@ module Main = struct
 end
 
 let create_log = Main.create_log
+
+type ('a, 'b) walk_result =
+  | Cont of 'a
+  | Stop of 'b
+
+let rec walk_parents dir ~init ~f =
+  match f init dir with
+  | Stop x -> Stop x
+  | Cont x ->
+    let parent = Filename.dirname dir in
+    if parent = dir then
+      Cont x
+    else
+      walk_parents parent ~init:x ~f
+
+let find_root () =
+  let cwd = Sys.getcwd () in
+  let rec loop counter ~candidates ~to_cwd dir =
+    let files = Sys.readdir dir |> Array.to_list |> String_set.of_list in
+    if String_set.mem "jbuild-workspace" files then
+      cont counter ~candidates:((0, dir, to_cwd) :: candidates) dir ~to_cwd
+    else if String_set.exists files ~f:(fun fn ->
+        String.is_suffix fn ~suffix:".install") then
+      cont counter ~candidates:((1, dir, to_cwd) :: candidates) dir ~to_cwd
+    else if String_set.mem ".git" files || String_set.mem ".hg" files then
+      cont counter ~candidates:((2, dir, to_cwd) :: candidates) dir ~to_cwd
+    else
+      cont counter ~candidates dir ~to_cwd
+  and cont counter ~candidates ~to_cwd dir =
+    if counter > String.length cwd then
+      candidates
+    else
+      let parent = Filename.dirname dir in
+      if parent = dir then
+        candidates
+      else
+        let base = Filename.basename dir in
+        loop (counter + 1) parent ~candidates ~to_cwd:(base :: to_cwd)
+  in
+  match loop 0 ~candidates:[] ~to_cwd:[] cwd with
+  | [] -> (cwd, [])
+  | l ->
+    let lowest_priority =
+      List.fold_left l ~init:max_int ~f:(fun acc (prio, _, _) ->
+        min acc prio)
+    in
+    match List.find l ~f:(fun (prio, _, _) -> prio = lowest_priority) with
+    | None -> assert false
+    | Some (_, dir, to_cwd) -> (dir, to_cwd)
 
 let copts_sect = "COMMON OPTIONS"
 let help_secs =
@@ -44,13 +100,21 @@ let help_secs =
   ]
 
 let common =
-  let make concurrency debug_rules debug_dep_path debug_findlib dev_mode workspace_file =
+  let make concurrency debug_rules debug_dep_path debug_findlib dev_mode
+      workspace_file root =
+    let root, to_cwd =
+      match root with
+      | Some dn -> (dn, [])
+      | None -> find_root ()
+    in
     { concurrency
     ; debug_rules
     ; debug_dep_path
     ; debug_findlib
     ; dev_mode
     ; workspace_file
+    ; root
+    ; target_prefix = String.concat ~sep:"" (List.map to_cwd ~f:(sprintf "%s/"))
     }
   in
   let docs = copts_sect in
@@ -64,7 +128,16 @@ let common =
     Arg.(value
          & opt (some file) None
          & info ["workspace"] ~docs
-             ~doc:"Use this specific workspace file instead of looking it up")
+             ~doc:"Use this specific workspace file instead of looking it up.")
+  in
+  let root =
+    Arg.(value
+         & opt (some dir) None
+         & info ["root"] ~docs
+           ~doc:"Use this directory as workspace root instead of guessing it.\n\
+                 Note that this option doesn't change the interpretation of \
+                 targets given on the command line.\n\
+                 It is only intended for scripts.")
   in
   Term.(const make
         $ concurrency
@@ -73,6 +146,7 @@ let common =
         $ dfindlib
         $ dev
         $ workspace_file
+        $ root
        )
 
 let installed_libraries =
@@ -149,7 +223,7 @@ type target =
   | File  of Path.t
   | Alias of Path.t * Alias.t
 
-let resolve_targets (setup : Main.setup) user_targets =
+let resolve_targets common (setup : Main.setup) user_targets =
   match user_targets with
   | [] -> []
   | _ ->
@@ -157,7 +231,7 @@ let resolve_targets (setup : Main.setup) user_targets =
       List.concat_map user_targets ~f:(fun s ->
         if String.is_prefix s ~prefix:"@" then
           let s = String.sub s ~pos:1 ~len:(String.length s - 1) in
-          let path = Path.relative Path.root s in
+          let path = Path.relative Path.root (prefix_target common s) in
           if Path.is_root path then
             die "@ on the command line must be followed by a valid alias name"
           else
@@ -165,7 +239,7 @@ let resolve_targets (setup : Main.setup) user_targets =
             let name = Path.basename path in
             [Alias (path, Alias.make ~dir name)]
         else
-          let path = Path.relative Path.root s in
+          let path = Path.relative Path.root (prefix_target common s) in
           let can't_build path =
             die "Don't know how to build %s" (Path.to_string path)
           in
@@ -214,7 +288,7 @@ let build_targets =
     set_common common;
     Future.Scheduler.go ~log:(create_log ())
       (Main.setup common >>= fun setup ->
-       let targets = resolve_targets setup targets in
+       let targets = resolve_targets common setup targets in
        Build_system.do_build_exn setup.build_system targets) in
   ( Term.(const go
           $ common
@@ -230,7 +304,7 @@ let runtest =
       (Main.setup common >>= fun setup ->
        let targets =
          List.map dirs ~f:(fun dir ->
-           let dir = Path.(relative root) dir in
+           let dir = Path.(relative root) (prefix_target common dir) in
            Alias.file (Alias.runtest ~dir))
        in
        Build_system.do_build_exn setup.build_system targets) in

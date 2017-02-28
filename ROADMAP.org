@@ -28,7 +28,7 @@ work with future versions of jbuild.
 
 - *24/02/2017*: implemented
 
-** Finding the project/workspace root
+** +Finding the project/workspace root+
 
 Currently =jbuilder= assumes that the root of the project/workspace is
 where it is started. Eventually this will be changed as follows:
@@ -37,6 +37,8 @@ where it is started. Eventually this will be changed as follows:
 - if not found, look for a =opam= or =package.opam= file in parent directories;
 - if not found, look for a =.git=, =.hg=, ... file in parent directories;
 - if not found, use the current directory as root.
+
+- *28/02/2017*: Implemented
 
 ** +Generate .merlin files [[https://github.com/janestreet/jbuilder/issues/1][#1]]+
 

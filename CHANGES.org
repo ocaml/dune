@@ -34,6 +34,9 @@
 - Added support for compiling against multiple opam switch
   simultaneously by writing a =jbuild-worspace= file
 
+- Search the root according to the rules described in the manual
+  instead of always using the current directory
+
 * 0.1.alpha1 (04/12/2017)
 
 First release

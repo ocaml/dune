@@ -5,4 +5,4 @@
   (public_name jbuilder)
   (libraries   (unix jbuilder_re))))
 
-(ocamllex (sexp_lexer meta_lexer rewrite_generated_file glob_lexer))
+(ocamllex (sexp_lexer meta_lexer glob_lexer))

@@ -1398,48 +1398,19 @@ module Gen(P : Params) = struct
   let ocamllex_rules (conf : Ocamllex.t) ~dir =
     List.iter conf.names ~f:(fun name ->
       let src = Path.relative dir (name ^ ".mll"   ) in
-      let tmp = Path.relative dir (name ^ ".tmp.ml") in
       let dst = Path.relative dir (name ^ ".ml"    ) in
       add_rule
-        (Build.run (Dep ctx.ocamllex) [A "-q"; A "-o"; Path tmp; Dep src]
-         >>>
-         Build.create_file ~target:dst (fun () ->
-           let repl = Path.to_string (Path.append ctx.build_dir dst) in
-           let tmp = Path.to_string tmp in
-           let dst = Path.to_string dst in
-           Rewrite_generated_file.rewrite ~src:tmp ~dst ~repl;
-           Sys.remove tmp)))
+        (Build.run (Dep ctx.ocamllex) [A "-q"; A "-o"; Target dst; Dep src]))
 
   let ocamlyacc_rules (conf : Ocamlyacc.t) ~dir =
     List.iter conf.names ~f:(fun name ->
       let src  = Path.relative dir (name ^ ".mly"    ) in
-      let tmp  = Path.relative dir (name ^ ".tmp.ml" ) in
-      let tmpi = Path.relative dir (name ^ ".tmp.mli") in
       let dst  = Path.relative dir (name ^ ".ml"     ) in
       let dsti = Path.relative dir (name ^ ".mli"    ) in
       add_rule
-        (Build.run
+        (Build.run ~extra_targets:[dst; dsti]
            (Dep ctx.ocamlyacc)
-           [ A "-b"
-           ; Path (Path.relative dir (name ^ ".tmp"))
-           ; Dep src
-           ]
-         >>>
-         Build.create_files ~targets:[dst; dsti] (fun () ->
-           let repl = Path.to_string (Path.append ctx.build_dir dst) in
-           let tmp = Path.to_string tmp in
-           let dst = Path.to_string dst in
-           Rewrite_generated_file.rewrite ~src:tmp ~dst ~repl;
-           Sys.remove tmp;
-
-           let repli = Path.to_string (Path.append ctx.build_dir dsti) in
-           let tmpi = Path.to_string tmpi in
-           let dsti = Path.to_string dsti in
-           with_file_in tmpi ~f:(fun ic ->
-             with_file_out dsti ~f:(fun oc ->
-               Printf.fprintf oc "# 1 \"%s\"\n" repli;
-               copy_channels ic oc));
-           Sys.remove tmpi)))
+           [ Dep src ]))
 
   (* +-----------------------------------------------------------------+
      | Modules listing                                                 |

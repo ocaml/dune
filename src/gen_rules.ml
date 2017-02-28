@@ -1435,11 +1435,12 @@ module Gen(P : Params) = struct
     let ml_files, mli_files =
       String_set.elements files
       |> List.filter_map ~f:(fun fn ->
-        if Filename.check_suffix fn ".ml" then
+        match String.lsplit2 fn ~on:'.' with
+        | Some (_, "ml") ->
           Some (Inl fn)
-        else if Filename.check_suffix fn ".mli" then
+        | Some (_, "mli") ->
           Some (Inr fn)
-        else
+        | _ ->
           None)
       |> List.partition_map ~f:(fun x -> x)
     in

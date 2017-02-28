@@ -1,76 +1,141 @@
-* A fast, portable and opinionated build system
+* JBUILDER - A composable build system for OCaml
 
-Jbuilder is a build system that was designed to simplify the release
-of Jane Street packages. It should however cover the needs of a wide
-range of OCaml packages. It reads metadata from =jbuild= files
-following a very simple s-expression syntax.
+Jbuilder is a build system designed for OCaml projects only. It
+focuses on providing the user with a consistent experience and takes
+care of most of the low-level details of OCaml compilation. All you
+have to do is provide a description of your project and Jbuilder will
+do the rest.
+
+The scheme it implements is inspired from the one used inside Jane
+Street and adapted to the open source world. It has matured over a
+long time and is used daily by hundred of developpers, which means
+that it is highly tested and productive.
 
 Jbuilder comes with a [[./doc/manual.org][manual]]. If you want to get started without
-reading too much, look at the [[./doc/quick-start.org][quick start guide]].
+reading too much, you can look at the [[./doc/quick-start.org][quick start guide]].
 
 ** Overview
 
-Jbuilder is fast, has very low-overhead and supports parallel builds
-on all platforms. It has no system dependencies: all you need to build
-jbuilder and packages using jbuilder is OCaml. You don't need
+Jbuilder reads project metadata from =jbuild= files, which are either
+static files in a simple S-expression syntax or OCaml scripts. It uses
+this information to setup build rules, generate configuration files
+for development tools such as [[https://github.com/ocaml/merlin][merlin]], handle installation, etc...
+
+Jbuilder itself is fast, has very low-overhead and supports parallel
+builds on all platforms. It has no system dependencies: all you need
+to build jbuilder and packages using jbuilder is OCaml. You don't need
 =make= or =bash= as long as the packages themselves don't use =bash=
 explicitely.
 
-This hasn't been tested yet, but in theory one should be able to
-install OCaml on Windows with a binary installer and then use only the
-Windows Console to build Jbuilder and packages using Jbuilder.
+Especially, one should be able to install OCaml on Windows with a
+binary installer and then use only the Windows Console to build
+Jbuilder and packages using Jbuilder. Although this hasn't been tested
+yet.
 
-** Features
+** Strengths
 
-*** Multi-package development
+*** Composable
 
-Jbuilder supports multi-package development by simply dropping
-multiple repositories into the same directory. You just need to create
-an empty file =jbuild-workspace= to mark the root of your workspace.
+Take n repositories that use Jbuilder, arrange them in any way on the
+file system and the result is still a single repository that Jbuilder
+knows how to build at once.
 
-*** Multi-context builds
+This make simultaneous development on multiple packages trivial.
 
-Jbuilders supports multi-context builds, such as building against
-several opam roots/switches simultaneously. This helps maintaining
-packages across several versions of OCaml and gives cross-compilation
-for free; when you need a program to run on the host, you simply use
-the one from the corresponding host context.
+*** Gracefully handles multi-package repositories
 
-*** Defining several packages in one repository
+Jbuilder knows how to handle repositories containing several
+packages. When building via [[https://opam.ocaml.org/][opam]], it is able to correctly use
+libraries that were previously installed even if they are already
+present in the source tree.
 
-Jbuilder supports building several packages from the same
-repository. When building via opam, it is able to correctly use
-already installed libraries instead of the one present in the tarball.
+The magic invocation is =jbuilder build-package <package-name>=.
 
-The magic invocation is =jbuilder build-package <package>= which starts
-by filtering out everything that is part of another opam package.
+*** Building against several configurations at once
 
-*** Develop with jenga, release with jbuilder
+Jbuilder is able to build a given source code repository against
+several configurations simultaneously. This helps maintaining packages
+across several versions of OCaml as you can tests them all at once
+without hassle.
 
-Jbuilder is intended as a fast release build system. Eventually we'll
-have jenga rules that are able to understand the jbuilder rules. This
-means that one will be able to use jenga as a confortable development
-build system that knows how to do polling builds or talk to emacs
-and use jbuilder to release packages with as few requirements as
-possible.
+This feature should make cross-compilation easy, see details in the
+[[ROADMAP.org][roadmap]].
+
+This feature requires [[https://opam.ocaml.org/][opam]].
+
+*** Jenga bridge
+
+[[https://github.com/janestreet/jenga][Jenga]] is another build system for OCaml that has more advanced
+features such as polling or much better editor integration. Jenga is
+more powerful and more complex and as a result as much more
+dependencies.  It is planned to implement a small bridge between the
+two so that a Jbuilder project can build with Jenga using this bridge.
 
 ** Status
 
-Jbuilder is still in its infancy and in active development. The CLI is
-still basic and not well documented.
-
-However, most of the core functionality is already implemented. What
-you can do right now is write some jbuild files, and invoke jbuilder
-at the root of your project as follows:
-
-#+begin_src
-$ jbuilder build <package>.install
-#+end_src
-
-Building the =.install= file will build all the things that need to be
-installed.
+Most of the work to reach v1 has been done. It will be released after
+a bit more testing.
 
 ** Roadmap
 
 See [[ROADMAP.org]] for the current plan. Help on any of these points is
 welcome!
+
+** Implementation details
+
+This section is for people who want to work on Jbuilder itself.
+
+*** Bootstrap
+
+In order to build itself, Jbuilder uses an OCaml script ([[bootstrap.ml]])
+that dumps most of the sources of Jbuilder into a single =boot.ml=
+file. This file is built using =ocamlopt= or =ocamlc= and used to
+build everything else.
+
+*** OCaml compatibility test
+
+Install opam switches for all the entries in the [[jbuild-workspace.dev]]
+file and run:
+
+#+begin_src sh
+$ make all-supported-ocaml-versions
+#+end_src
+
+*** Repository organization
+
+- =vendor/= contains dependencies of Jbuilder, that have been vendored
+- =plugin/= contains the API given to =jbuild= files that are OCaml
+  scripts
+- =src/= contains the core of =Jbuilder=, as a library so that it can
+  be used to implement the Jenga bridge later
+- =bin/= contains the command line interface
+- =doc/= contains the manual and rules to generate the manual pages
+
+*** Design
+
+Jbuilder was initially designed to sort out the public release of Jane
+Street packages which became incredibly complicated over time. It is
+still successfully used for this purpose.
+
+One necessary feature to achieve this is the ability to precisely
+report the external dependencies necesseray to build a given set of
+targets without running any command, just by looking at the source
+tree. This is used to automatically generate the =<package>.opam=
+files for all Jane Street packages.
+
+To implement this, the build rules are described using a build arrow,
+which is defined in [[src/build.mli][src/build]]. In the end it makes the development
+of the internal rules of Jbuilder very composable and quite pleasant.
+
+To deal with process multi-plexing, Jbuilder uses a simplified
+Lwt/Async like monad, implemented in [[src/future.mli][src/future]].
+
+**** Code flow
+
+- [[src/jbuild_types.ml][src/jbuild_types]] contains the internal representation of =jbuild=
+  files and the parsing code
+- [[src/jbuild_load.ml][src/jbuild_load]] contains the code to scan a source tree and build
+  the internal database by reading the =jbuild= files
+- [[src/gen_rules.ml][src/gen_rules]] contains all the build rules of Jbuilder
+- [[src/build_system.ml][src/build_system]] contains a trivial implementation of a Build
+  system. This is what Jenga will provide when implementing the bridge

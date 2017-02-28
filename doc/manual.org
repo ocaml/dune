@@ -211,10 +211,11 @@ API to describe your project in OCaml directly:
 
 #+begin_src ocaml
 (* -*- tuareg -*- *)
-#require "my_jbuild_api";;
-include My_jbuild_api.Make(Jbuild_plugin);;
+#require "my_jbuild_api"
+open My_jbuild_api
 
-library "foo" ~modules:["plop"; "bidule"];;
+let () =
+  library "foo" ~modules:["plop"; "bidule"]
 #+end_src
 
 *** Specification

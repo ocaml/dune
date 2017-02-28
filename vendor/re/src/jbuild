@@ -2,4 +2,5 @@
 
 (library
  ((name        jbuilder_re)
-  (public_name jbuilder.re)))
+  (public_name jbuilder.re)
+  (synopsis    "Internal Jbuilder library, do not use!")))

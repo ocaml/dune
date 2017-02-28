@@ -114,3 +114,5 @@ files will be just fine.
 
 Load a configuration file from =~/.config/jbuilder/config.sexp= where
 the user can define preferences such as colors.
+** Code improvements
+*** Delete the global variables in Clflags

@@ -729,15 +729,16 @@ end
 module Stanzas = struct
   type t = Stanza.t list
 
-  let resolve_packages ts ~dir ~(visible_packages : Package.t String_map.t) =
+  let resolve_packages ts ~dir
+        ~(visible_packages : Package.t String_map.t)
+        ~(closest_packages : Package.t list) =
     let error fmt =
       Loc.fail (Loc.in_file (Path.to_string (Path.relative dir "jbuild"))) fmt
     in
-    let known_packages () =
-      let visible_packages = String_map.values visible_packages in
-      let longest_pkg = List.longest_map visible_packages ~f:(fun p -> p.name) in
+    let package_listing packages =
+      let longest_pkg = List.longest_map packages ~f:(fun p -> p.Package.name) in
       String.concat ~sep:"\n"
-        (List.map visible_packages ~f:(fun pkg ->
+        (List.map packages ~f:(fun pkg ->
            sprintf "- %-*s (because of %s)" longest_pkg pkg.Package.name
              (Path.to_string (Path.relative pkg.path (pkg.name ^ ".opam")))))
     in
@@ -748,18 +749,19 @@ module Stanzas = struct
                %s%s"
           pkg
           (Path.to_string dir)
-          (known_packages ())
+          (package_listing (String_map.values visible_packages))
           (hint pkg (String_map.keys visible_packages))
     in
     let default () =
-      match String_map.keys visible_packages with
+      match closest_packages with
       | [pkg] -> pkg
       | [] -> error "no packages are defined here"
       | _ :: _ :: _ ->
-        error "there is more than one package visible here:\n\
+        error "I can't determine automatically which package your (install ...) \
+               stanzas are for in this directory. I have the choice between these ones:\n\
                %s\n\
                You need to add a (package ...) field in your (install ...) stanzas"
-          (known_packages ())
+          (package_listing closest_packages)
     in
     List.map ts ~f:(fun (stanza : Stanza.t) ->
       match stanza with
@@ -771,7 +773,7 @@ module Stanzas = struct
         check pkg;
         stanza
       | Install ({ package = None; _ } as install) ->
-        Install { install with package = Some (default ()) }
+        Install { install with package = Some (default ()).name }
       | _ -> stanza)
 
   let parse sexps ~dir ~visible_packages =

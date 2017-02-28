@@ -5,6 +5,7 @@ module Jbuilds = struct
   type script =
     { dir              : Path.t
     ; visible_packages : Package.t String_map.t
+    ; closest_packages : Package.t list
     }
 
   type one =
@@ -69,6 +70,7 @@ end
         return (path, stanzas)
       | Script { dir
                ; visible_packages
+               ; closest_packages
                } ->
         let file = Path.relative dir "jbuild" in
         let generated_jbuild =
@@ -77,7 +79,8 @@ end
         let wrapper = Path.extend_basename generated_jbuild ~suffix:".ml" in
         ensure_parent_dir_exists generated_jbuild;
         let requires =
-          create_plugin_wrapper context ~exec_dir:dir ~plugin:file ~wrapper ~target:generated_jbuild
+          create_plugin_wrapper context ~exec_dir:dir ~plugin:file ~wrapper
+            ~target:generated_jbuild
         in
         let pkgs =
           List.map requires ~f:(Findlib.find_exn context.findlib)
@@ -115,7 +118,7 @@ end
           args
         >>= fun () ->
         let sexps = Sexp_load.many (Path.to_string generated_jbuild) in
-        return (dir, Stanzas.parse sexps ~dir ~visible_packages))
+        return (dir, Stanzas.parse sexps ~dir ~visible_packages ~closest_packages))
     |> Future.all
 end
 
@@ -126,15 +129,16 @@ type conf =
   ; packages  : Package.t String_map.t
   }
 
-let load ~dir ~visible_packages =
+let load ~dir ~visible_packages ~closest_packages =
   let file = Path.relative dir "jbuild" in
   match Sexp_load.many_or_ocaml_script (Path.to_string file) with
   | Sexps sexps ->
-    Jbuilds.Literal (dir, Stanzas.parse sexps ~dir ~visible_packages)
+    Jbuilds.Literal (dir, Stanzas.parse sexps ~dir ~visible_packages ~closest_packages)
   | Ocaml_script ->
     Script
       { dir
       ; visible_packages
+      ; closest_packages
       }
 
 let load () =
@@ -175,20 +179,21 @@ let load () =
     |> List.map ~f:(fun pkg -> (pkg.Package.path, pkg))
     |> Path.Map.of_alist_multi
   in
-  let rec walk dir jbuilds visible_packages =
+  let rec walk dir jbuilds visible_packages closest_packages =
     let path = File_tree.Dir.path dir in
     let files = File_tree.Dir.files dir in
     let sub_dirs = File_tree.Dir.sub_dirs dir in
-    let visible_packages =
+    let visible_packages, closest_packages =
       match Path.Map.find path packages_per_dir with
-      | None -> visible_packages
+      | None -> (visible_packages, closest_packages)
       | Some pkgs ->
-        List.fold_left pkgs ~init:visible_packages ~f:(fun acc pkg ->
-          String_map.add acc ~key:pkg.Package.name ~data:pkg)
+        (List.fold_left pkgs ~init:visible_packages ~f:(fun acc pkg ->
+           String_map.add acc ~key:pkg.Package.name ~data:pkg),
+         pkgs)
     in
     let jbuilds =
       if String_set.mem "jbuild" files then
-        let jbuild = load ~dir:path ~visible_packages in
+        let jbuild = load ~dir:path ~visible_packages ~closest_packages in
         jbuild :: jbuilds
       else
         jbuilds
@@ -207,13 +212,13 @@ let load () =
     let children, jbuilds =
       String_map.fold sub_dirs ~init:([], jbuilds)
         ~f:(fun ~key:_ ~data:dir (children, jbuilds) ->
-          let child, jbuilds = walk dir jbuilds visible_packages in
+          let child, jbuilds = walk dir jbuilds visible_packages closest_packages in
           (child :: children, jbuilds))
     in
     (Alias.Node (path, children), jbuilds)
   in
   let root = File_tree.root ftree in
-  let tree, jbuilds = walk root [] String_map.empty in
+  let tree, jbuilds = walk root [] String_map.empty [] in
   { file_tree = ftree
   ; tree
   ; jbuilds

@@ -39,7 +39,8 @@ it from the crowd:
   a great choice for multi-project development
 
 - cross-platform: as long as your code is portable, Jbuilder will be
-  able to cross-compile it automatically
+  able to cross-compile it (note that Jbuilder is designed internally
+  to make this easy but the actual support is not implemented yet)
 
 - release directly from any revision: Jbuilder needs no setup
   stage. To release your project, you can simply point to a specific
@@ -55,7 +56,7 @@ format and the third one describes how to use the =jbuilder= command.
 - *package*: a package is a set of libraries, executables, ... that
   are built and installed as one by opam
 
-- *project*: project is a source tree, maybe containing one or more
+- *project*: a project is a source tree, maybe containing one or more
   packages
 
 - *root*: the root is the directory from where Jbuilder can build
@@ -72,31 +73,34 @@ format and the third one describes how to use the =jbuilder= command.
 
 - *build context*: a build context is a subdirectory of the
   =<root>/_build= directory. It contains all the build artifacts of
-  the workspace built against a specific configuration. The is always
-  a =default= build context, which correspond to the environemnt in
-  which Jbuilder is executed. Unless a =jbuild-workspace= file exists in
-  a parent directory and defines more build contexts, =default= is the
-  only build context available
+  the workspace built against a specific configuration. Without
+  specific configuration from the user, there is always a =default=
+  build context, which correspond to the environemnt in which Jbuilder
+  is executed. Build contexts can be specified by writing a
+  [[jbuild-workspace]] file
+
+- *build context root*: the root of a build context named =foo= is
+  =<root>/_build/<foo>=
 
 - *alias*: an alias is a build target that doesn't produce any file
   and has configurable dependencies. Alias are per-directory and some
   are recursive; asking an alias to be built in a given directrory
   will trigger the construction of the alias in all children
-  directories recursively. The most interesting one is =runtest=,
-  which will run user defined tests
+  directories recursively. The most interesting ones are:
+  + =runtest= which runs user defined tests
+  + =install= which depends on everything that should be installed
 
 * Jbuilder project layout and metadata specification
 
 A typical jbuilder project will have one or more =<package>.opam= file
-at toplevel as well as =jbuild= files at toplevel and wherever
-interesting things are: libraries, executables, tests, documents to
-install, etc...
+at toplevel as well as =jbuild= files wherever interesting things are:
+libraries, executables, tests, documents to install, etc...
 
 It is recommemded to organize your project so that you have exactly
 one library per directory. You can have several executables in the
 same directory, as long as they share the same build configuration.
 
-The rest of these section describe the format of Jbuilder metadata
+The rest of these sections describe the format of Jbuilder metadata
 files.
 
 Note that the Jbuilder metadata format is versionned in order to
@@ -113,24 +117,23 @@ latest one will be used.
 
 ** Metadata format
 
-All configuration files read by Jbuilder are using S-expression
+Most configuration files read by Jbuilder are using the S-expression
 syntax, which is very simple. Everything is either an atom or a
 list. The exact specification of S-expressions is described in the
 documentation of the [[https://github.com/janestreet/parsexp][parsexp]] library.
 
-Note that the format is completely static. If you have a pattern
-that's repeated a lot, you can use [[https://github.com/janestreet/cinaps][cinaps]] to generate the boilerplate.
+Note that the format is completely static. However you can do
+meta-programming on jbuilds files by writing them in [[OCaml syntax]].
 
 ** <package>.opam files
 
-Jbuilder doesn't read =<package>.opam= files, however when a
-=<package>.opam= is present, Jbuilder will knows that the package
-named =<package>= exists. It will know how to construct a
-=<package>.install= file in the same directory, to handle installation
-via [[https://opam.ocaml.org/][opam]]. Jbuilder also defines the recursive =install= alias, which depends
-on all the buildable =<package>.install= files in the workspace. So
-for instance to build everything that is installable in a workspace,
-run at the root:
+When a =<package>.opam= file is present, Jbuilder will knows that the
+package named =<package>= exists. It will know how to construct a
+=<package>.install= file in the same directory to handle installation
+via [[https://opam.ocaml.org/][opam]]. Jbuilder also defines the recursive =install= alias, which
+depends on all the buildable =<package>.install= files in the
+workspace. So for instance to build everything that is installable in
+a workspace, run at the root:
 
 #+begin_src
 $ jbuilder build @install
@@ -148,14 +151,13 @@ this is where =opam pin ...= will look for them.
 
 *** Package version
 
-Note that when installing a package, Jbuilder will write down the
-version of the package in the installation directory. While Jbuilder
-makes no use of it at the moment, it can be use by external tools such
-as [[http://projects.camlcity.org/projects/findlib.html][ocamlfind]].
+Note that Jbuilder will try to determine the version number of
+packages defined in the workspace. While Jbuilder itself makes no use
+of version numbers, it can be use by external tools such as [[http://projects.camlcity.org/projects/findlib.html][ocamlfind]].
 
 Jbuilder determines the version of a package by first looking in the
-=<package>.opam= contains a =version= variable. If not, it will try to
-read the first line of a version file in the same directory as the
+=<package>.opam= for a =version= variable. If not found, it will try
+to read the first line of a version file in the same directory as the
 =<package>.opam= file. The version file is any file whose name is, in
 order in which they are looked for:
 
@@ -163,12 +165,9 @@ order in which they are looked for:
 - =version=
 - =VERSION=
 
-The version file can be generated by a rule.
+The version file can be generated by a user rule.
 
-Note that it is not mandatory to specify a version number and if
-Jbuilder cannot determine the package version, then it just won't
-assign one. Managing versions should be left to package managers
-anyway.
+If the version can't be determined, Jbuilder just won't assign one.
 
 *** Odig conventions
 
@@ -177,8 +176,8 @@ README*, CHANGE*, HISTORY* and LICENSE* files in the same directory as
 the =<package>.opam= file to a location where odig will find them.
 
 Note that this include files present in the source tree as well as
-generated files. So for instance a changelog generated by a rule will
-be automatically installed as well.
+generated files. So for instance a changelog generated by a user rule
+will be automatically installed as well.
 
 ** jbuild
 
@@ -201,9 +200,7 @@ The script can use the directive =#require= to access libraries:
 #+end_src
 
 Note that any library required by a =jbuild= file must be part of the
-installed world. This mean that your project won't be compilable in
-the same workspace as the required library, unless the library has
-been previously installed.
+installed world.
 
 If you don't like the S-expression syntax, then this method gives you
 a way to use whatever else you want. For instance you could have an
@@ -217,6 +214,10 @@ open My_jbuild_api
 let () =
   library "foo" ~modules:["plop"; "bidule"]
 #+end_src
+
+Currently the =Jbuild_plugin= module is only available inside
+plugins. It is however planned to make it a proper library, see [[../ROADMAP.org][the
+roadmap]] for details.
 
 *** Specification
 
@@ -273,7 +274,7 @@ the library and you are free to expose only the modules you want.
   field, the library will not be installed by Jbuilder. The public
   name must start by the package name it is part of and optionally
   followed by a dot and anything else you want. The package name must
-  be one of the package that Jbuilder knows about, as determined by
+  be one of the packages that Jbuilder knows about, as determined by
   the [[package.opam][<package>.opam files]]
 
 - =(synopsis <string>)= should give a one-line description of the
@@ -305,7 +306,7 @@ the library and you are free to expose only the modules you want.
   toplevel namespace will make your library unusable with other
   libraries if there is a module name clash. This option is only
   intended for libraries that manually prefix all their modules by the
-  library name
+  library name and to ease porting of existing projects to Jbuilder
 
 - =(preprocess <preprocess-spec>)= specifies how to pre-process files
   if needed. The default is =no_processing=. Other options are
@@ -327,7 +328,7 @@ the library and you are free to expose only the modules you want.
 
 - =(cxx_names (<names>))= is the same as =c_names= but for C++ stubs
 
-- =(install_c_headers (<names>))= if your libraries has public C
+- =(install_c_headers (<names>))=, if your libraries has public C
   header files that must be installed, you must list them in this
   field, with the =.h= extension
 
@@ -340,9 +341,9 @@ the library and you are free to expose only the modules you want.
   =ppx_type_conv_plugin= and must be set when the library is intended
   to be used as a ppx rewriter or a =[@@deriving ...]= plugin
 
-- =(ppx_runtime_libraries (<library-names>))= when the library is a
-  ppx rewriter or a =[@@deriving ...]= plugin and has runtime
-  dependencies, you can specify them here
+- =(ppx_runtime_libraries (<library-names>))= is for when the library
+  is a ppx rewriter or a =[@@deriving ...]= plugin and has runtime
+  dependencies. You need to specify these runtime dependencies them here
 
 - =(virtual_deps (<opam-packages>)=. Sometimes opam packages enable a
   specific feature only if another package is installed. This is for
@@ -359,7 +360,7 @@ the library and you are free to expose only the modules you want.
   to =ocamlc= and =ocamlopt= when building the library archive
   files. You can use this to specify =-linkall= for
   instance. =<flags>= is a list of strings supporting [[Variables expansion][variables
-  expansion]].
+  expansion]]
 
 - =(c_flags <flags>)= specifies the compilation flags for C stubs,
   using the [[Ordered set language][ordered set language]]. This field supports =(:include ...)=
@@ -403,7 +404,7 @@ Note that in case native compilation is not available, =<name>.exe=
 will in fact be a custom byte-code executable. Custom in the sense of
 =ocamlc -custom=, meaning that it is a native executable that embeds
 the =ocamlrun= virtual machine as well as the byte code. As such you
-can always rely on =<name>.exe= begin available.
+can always rely on =<name>.exe= being available.
 
 =<optional-fields>= are:
 
@@ -428,9 +429,9 @@ can always rely on =<name>.exe= begin available.
 
 **** rule
 
-The =rule= stanza is used to create custom rules. It tells Jbuilder
-how to generate a specific set of files from a specific set of
-dependencies.
+The =rule= stanza is used to create custom user rules. It tells
+Jbuilder how to generate a specific set of files from a specific set
+of dependencies.
 
 The syntax is as follow:
 
@@ -472,7 +473,6 @@ dependencies. See the [[User actions][actions section]] for more details.
    (deps    (<name>.mly))
    (action  (run ocamlyacc ${<}))))
 #+end_src
-
 
 **** alias
 
@@ -516,7 +516,7 @@ See the [[runtest][section about running tests]] for details.
 The =provides= stanza allows you to globally name a file, either a
 source file or a target. This is especially important for build tools;
 by using the =provides= mechanism, you don't need to know whether the
-binary is in the tree or installed.
+binary is in the workspace or installed.
 
 The syntax is as follow:
 
@@ -546,7 +546,7 @@ in points to using the special forms =${bin:<name>}= or
 Note that any file referred by a =provides= stanza should probably be
 installed as well, using an [[install]] stanza. If the file is meant to be
 installed in a library directory, then its name should be of the form
-=<public-library-name>:<file>=. It is meant to be installed in the
+=<public-library-name>:<file>=. If it is meant to be installed in the
 =bin= directory, then its name should be the program name.
 
 **** install
@@ -597,7 +597,7 @@ manual. The following sections are available:
 
 ***** Ordered set language
 
-A few fields takes as argument a ordered set and can be specified
+A few fields takes as argument am ordered set and can be specified
 using a small DSL.
 
 This DSL is interpreted by jbuilder into an ordered set of strings

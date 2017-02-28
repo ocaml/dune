@@ -301,22 +301,25 @@ module Gen(P : Params) = struct
   end
 
   let all_rules = ref []
-  let known_targets_by_dir_so_far = ref Path.Map.empty
+  let known_targets_by_src_dir_so_far = ref Path.Map.empty
 
   let add_rule build =
     let rule = Build_interpret.Rule.make build in
     all_rules := rule :: !all_rules;
-    known_targets_by_dir_so_far :=
-      List.fold_left rule.targets ~init:!known_targets_by_dir_so_far ~f:(fun acc target ->
-        let path = Build_interpret.Target.path target in
-        let dir = Path.parent path in
-        let fn = Path.basename path in
-        let files =
-          match Path.Map.find dir acc with
-          | None -> String_set.singleton fn
-          | Some set -> String_set.add fn set
-        in
-        Path.Map.add acc ~key:dir ~data:files)
+    known_targets_by_src_dir_so_far :=
+      List.fold_left rule.targets ~init:!known_targets_by_src_dir_so_far
+        ~f:(fun acc target ->
+          match Path.extract_build_context (Build_interpret.Target.path target) with
+          | None -> acc
+          | Some (_, path) ->
+            let dir = Path.parent path in
+            let fn = Path.basename path in
+            let files =
+              match Path.Map.find dir acc with
+              | None -> String_set.singleton fn
+              | Some set -> String_set.add fn set
+            in
+            Path.Map.add acc ~key:dir ~data:files)
 
   let sources_and_targets_known_so_far ~src_path =
     let sources =
@@ -324,7 +327,7 @@ module Gen(P : Params) = struct
       | None -> String_set.empty
       | Some dir -> File_tree.Dir.files dir
     in
-    match Path.Map.find src_path !known_targets_by_dir_so_far with
+    match Path.Map.find src_path !known_targets_by_src_dir_so_far with
     | None -> sources
     | Some set -> String_set.union sources set
 
@@ -1454,62 +1457,74 @@ module Gen(P : Params) = struct
     let impls = parse_one_set ml_files  in
     let intfs = parse_one_set mli_files in
     String_map.merge impls intfs ~f:(fun name ml_fname mli_fname ->
-      match ml_fname with
-      | None ->
-        die "module %s in %s doesn't have a corresponding .ml file"
-          name (Path.to_string dir)
-      | Some ml_fname ->
-        Some
-          { Module.
-            name
-          ; ml_fname  = ml_fname
-          ; mli_fname = mli_fname
-          ; obj_name  = ""
-          })
+      let ml_fname =
+        match ml_fname with
+        | None ->
+          let mli_fname = Option.value_exn mli_fname in
+          let ml_fname = String.sub mli_fname ~pos:0 ~len:(String.length mli_fname - 1) in
+          Format.eprintf
+            "@{<warning>Warning@}: module %s in %s doesn't have a corresponding\
+             .ml file.\n\
+             I'm setting up a rule for copying %s to %s.\n"
+            name (Path.to_string dir)
+            mli_fname ml_fname;
+          let dir = Path.append ctx.build_dir dir in
+          add_rule
+            (Build.copy
+               ~src:(Path.relative dir mli_fname)
+               ~dst:(Path.relative dir ml_fname));
+          ml_fname
+        | Some ml_fname -> ml_fname
+      in
+      Some
+        { Module.
+          name
+        ; ml_fname  = ml_fname
+        ; mli_fname = mli_fname
+        ; obj_name  = ""
+        })
 
   (* +-----------------------------------------------------------------+
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
 
   let rules { src_dir; ctx_dir; stanzas } =
+    (* Interpret user rules and other simple stanzas first in order to populate the known
+       target table, which is needed for guessing the list of modules. *)
+    List.iter stanzas ~f:(fun stanza ->
+      let dir = ctx_dir in
+      match (stanza : Stanza.t) with
+      | Rule         rule -> user_rule         rule ~dir
+      | Ocamllex     conf -> ocamllex_rules    conf ~dir
+      | Ocamlyacc    conf -> ocamlyacc_rules   conf ~dir
+      | Alias        alias -> alias_rules alias ~dir
+      | Library _ | Executables _ | Provides _ | Install _ -> ());
     let files = lazy (
-      let src_files =
-        match File_tree.find_dir P.file_tree src_dir with
-        | None -> String_set.empty
-        | Some dir -> File_tree.Dir.files dir
-      in
-      let files_produced_by_rules =
-        List.concat_map stanzas ~f:(fun stanza ->
-          match (stanza : Stanza.t) with
-          | Rule      rule -> rule.targets
-          | Ocamllex  conf -> List.map conf.names ~f:(fun name -> name ^ ".ml")
-          | Ocamlyacc conf -> List.concat_map conf.names ~f:(fun name ->
-            [ name ^ ".ml"; name ^ ".mli" ])
-          | Library { buildable; _ } | Executables { buildable; _ } ->
-            List.filter_map buildable.libraries ~f:(function
-              | Direct _ -> None
-              | Select s -> Some s.result_fn)
-          | _ -> [])
-        |> String_set.of_list
-      in
-      String_set.union src_files files_produced_by_rules)
-    in
+      let files = sources_and_targets_known_so_far ~src_path:src_dir in
+      (* Manually add files generated by the (select ...) dependencies since we haven't
+         interpreted libraries and executables yet. *)
+      List.fold_left stanzas ~init:files ~f:(fun acc stanza ->
+        match (stanza : Stanza.t) with
+        | Library { buildable; _ } | Executables { buildable; _ } ->
+          List.fold_left buildable.libraries ~init:acc ~f:(fun acc dep ->
+            match (dep : Jbuild_types.Lib_dep.t) with
+            | Direct _ -> acc
+            | Select s -> String_set.add s.result_fn acc)
+        | _ -> acc)
+    ) in
     let all_modules = lazy (
       guess_modules ~dir:src_dir
         ~files:(Lazy.force files))
     in
-    let some x = Some x in
-    let none () = None in
     List.filter_map stanzas ~f:(fun stanza ->
       let dir = ctx_dir in
       match (stanza : Stanza.t) with
-      | Library      lib  -> library_rules     lib  ~dir ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files) |> some
-      | Executables  exes -> executables_rules exes ~dir ~all_modules:(Lazy.force all_modules) |> some
-      | Rule         rule -> user_rule         rule ~dir |> none
-      | Ocamllex     conf -> ocamllex_rules    conf ~dir |> none
-      | Ocamlyacc    conf -> ocamlyacc_rules   conf ~dir |> none
-      | Alias        alias -> alias_rules alias ~dir |> none
-      | Provides _ | Install _ -> () |> none)
+      | Library lib  ->
+        Some (library_rules lib ~dir
+                ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files))
+      | Executables  exes ->
+        Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules))
+      | _ -> None)
     |> merge_dot_merlin ~dir:ctx_dir
 
   let () = List.iter P.stanzas ~f:rules

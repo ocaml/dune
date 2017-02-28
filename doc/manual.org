@@ -628,7 +628,7 @@ that are expanded by Jbuilder.
 
 Jbuilder supports the following variables:
 
-- =ROOT= is the relative path to the root of the workspace
+- =ROOT= is the relative path to the root of the build context
 - =CC= is the C compiler command line being used in the current build
   context
 - =CXX= is the C++ compiler command line being used in the current

@@ -385,7 +385,7 @@ module Gen(P : Params) = struct
 
   let root_var_lookup ~dir var_name =
     match var_name with
-    | "ROOT" -> Some (Path.reach ~from:dir Path.root)
+    | "ROOT" -> Some (Path.reach ~from:dir ctx.build_dir)
     | _ -> String_map.find var_name dollar_var_map
 
   let expand_vars ~dir s =

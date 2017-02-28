@@ -65,6 +65,32 @@ directory. Outside of the library, module =Foo= will be accessible as
 You can them use this library in any other directory by adding =mylib=
 to the =(libraries ...)= field.
 
+* Using cppo
+
+Add this field to your =library= or =executables= stanzas:
+
+#+begin_src scheme
+  (preprocess (command "cppo -V OCAML:${ocaml_version}"))
+#+end_src
+
+Additionnaly, if you are include a =config.h= file, you need to
+declare the dependency to this file via:
+
+#+begin_src scheme
+  (preprocessor_deps (config.h))
+#+end_src
+
+** Using the .cppo.ml style like the ocamlbuild plugin
+
+Write this in your jbuild:
+
+#+begin_src scheme
+(rule
+ ((targets (foo.ml))
+  (deps    (foo.cppo.ml <other files that foo.ml includes>))
+  (rule    (run cppo ${<} -o ${@}))))
+#+end_src
+
 * Defining a library with C stubs
 
 Assuming you have a file called =mystubs.c=, that you need to pass

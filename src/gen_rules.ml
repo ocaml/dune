@@ -1789,12 +1789,27 @@ module Gen(P : Params) = struct
       end)
 end
 
-let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true) conf =
+let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
+      ?only_package conf =
   let open Future in
   let { Jbuild_load. file_tree; tree; jbuilds; packages } = conf in
   let alias_store = Alias.Store.create () in
   List.map contexts ~f:(fun context ->
     Jbuild_load.Jbuilds.eval ~context jbuilds >>| fun stanzas ->
+    let stanzas =
+      match only_package with
+      | None -> stanzas
+      | Some pkg ->
+        List.map stanzas ~f:(fun (dir, stanzas) ->
+          (dir,
+           List.filter stanzas ~f:(fun stanza ->
+             match (stanza : Stanza.t) with
+             | Library { public_name = Some name; _ }
+             | Executables { object_public_name = Some name; _ } ->
+               Findlib.root_package_name name = pkg
+             | Install { package = Some name; _ } -> name = pkg
+             | _ -> true)))
+    in
     let module M =
       Gen(struct
         let context  = context

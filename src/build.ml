@@ -301,12 +301,14 @@ let symlink ~src ~dst =
           Path.reach ~from:(Path.parent dst) src
       in
       let dst = Path.to_string dst in
-      begin
-        match Unix.lstat dst with
-        | exception _ -> ()
-        | _ -> Sys.remove dst
-      end;
-      Unix.symlink src dst)
+      match Unix.readlink dst with
+      | target ->
+        if target <> src then begin
+          Unix.unlink dst;
+          Unix.symlink src dst
+        end
+      | exception _ ->
+        Unix.symlink src dst)
 
 let touch target =
   create_file ~target (fun _ ->

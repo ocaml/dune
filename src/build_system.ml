@@ -322,13 +322,17 @@ let remove_old_artifacts t =
       Path.readdir dir
       |> List.filter ~f:(fun fn ->
         let fn = Path.relative dir fn in
-        if Path.is_directory fn then
+        match Unix.lstat (Path.to_string fn) with
+        | { st_kind = S_DIR; _ } ->
           walk fn
-        else begin
+        | exception _ ->
           let keep = Hashtbl.mem t.files fn in
           if not keep then Path.unlink fn;
           keep
-        end)
+        | _ ->
+          let keep = Hashtbl.mem t.files fn in
+          if not keep then Path.unlink fn;
+          keep)
       |> function
       | [] -> false
       | _  -> true

@@ -267,6 +267,6 @@ let exists t = Sys.file_exists (to_string t)
 let readdir t = Sys.readdir (to_string t) |> Array.to_list
 let is_directory t = Sys.is_directory (to_string t)
 let rmdir t = Unix.rmdir (to_string t)
-let unlink t = Sys.remove (to_string t)
+let unlink t = Unix.unlink (to_string t)
 
 let extend_basename t ~suffix = t ^ suffix

@@ -34,8 +34,8 @@ let set_common c =
 module Main = struct
   include Jbuilder.Main
 
-  let setup common =
-    setup ?workspace_file:common.workspace_file ()
+  let setup ?only_package common =
+    setup ?workspace_file:common.workspace_file ?only_package ()
 end
 
 let create_log = Main.create_log
@@ -208,7 +208,7 @@ let resolve_package_install setup pkg =
 
 let build_package common pkg =
   Future.Scheduler.go ~log:(create_log ())
-    (Main.setup common >>= fun setup ->
+    (Main.setup common ~only_package:pkg >>= fun setup ->
      Build_system.do_build_exn setup.build_system
        [resolve_package_install setup pkg])
 

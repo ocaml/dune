@@ -14,6 +14,7 @@ val setup
   :  ?filter_out_optional_stanzas_with_missing_deps:bool
   -> ?workspace:Workspace.t
   -> ?workspace_file:string
+  -> ?only_package:string
   -> unit
   -> setup Future.t
 val external_lib_deps

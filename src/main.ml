@@ -14,7 +14,8 @@ let package_install_file { packages; _ } pkg =
   | Some p -> Ok (Path.relative p.path (p.name ^ ".install"))
 
 let setup ?filter_out_optional_stanzas_with_missing_deps
-      ?workspace ?(workspace_file="jbuild-workspace") () =
+      ?workspace ?(workspace_file="jbuild-workspace")
+      ?only_package () =
   let conf = Jbuild_load.load () in
   let workspace =
     match workspace with
@@ -33,6 +34,7 @@ let setup ?filter_out_optional_stanzas_with_missing_deps
        Context.create_for_opam ~name ~switch ?root ~merlin ()))
   >>= fun contexts ->
   Gen_rules.gen conf ~contexts
+    ?only_package
     ?filter_out_optional_stanzas_with_missing_deps
   >>= fun rules ->
   let build_system = Build_system.create ~contexts ~file_tree:conf.file_tree ~rules in

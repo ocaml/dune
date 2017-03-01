@@ -336,9 +336,13 @@ let remove_old_artifacts t =
     if not keep then Path.rmdir dir;
     keep
   in
+  let walk dir =
+    if Path.exists dir then ignore (walk dir : bool)
+  in
   List.iter t.contexts ~f:(fun (ctx : Context.t) ->
-    if Path.exists ctx.build_dir then
-      ignore (walk ctx.build_dir : bool))
+    walk ctx.build_dir;
+    walk (Config.local_install_dir ~context:ctx.name);
+  )
 
 let do_build_exn t targets =
   remove_old_artifacts t;

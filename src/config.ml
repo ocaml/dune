@@ -1,7 +1,7 @@
 open! Import
 
 let local_install_dir =
-  let dir = Path.(relative root) "_build/install" in
+  let dir = Path.(relative root) "_jbuild/install" in
   fun ~context -> Path.relative dir context
 
 let local_install_bin_dir ~context =

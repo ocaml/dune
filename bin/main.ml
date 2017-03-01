@@ -138,7 +138,7 @@ let common =
   let ddep_path =
     Arg.(value
          & flag
-         & info ["debug-depency-path"] ~docs
+         & info ["debug-dependency-path"] ~docs
              ~doc:{|In case of error, print the dependency path from
                     the targets on the command line to the rule that failed.
                   |})

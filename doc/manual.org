@@ -14,14 +14,14 @@ order to encourage a consistent development style.
 
 This scheme is inspired from the one used inside Jane Street and
 adapted to the opam world. It has matured over a long time and is used
-daily by hundred of developpers, which means that it is highly tested
+daily by hundred of developers, which means that it is highly tested
 and productive.
 
 When using Jbuilder, you give very little and high-level information
 to the build system, which in turns takes care of all the low-level
 details, from the compilation of your libraries, executables and
 documentation to the installation, setting up of tests, setting up of
-the devepment tools such as merlin, etc...
+the development tools such as merlin, etc...
 
 In addition to the normal features one would expect from a build
 system for OCaml, Jbuilder provides a few additional ones that detach
@@ -75,7 +75,7 @@ format and the third one describes how to use the =jbuilder= command.
   =<root>/_build= directory. It contains all the build artifacts of
   the workspace built against a specific configuration. Without
   specific configuration from the user, there is always a =default=
-  build context, which correspond to the environemnt in which Jbuilder
+  build context, which correspond to the environment in which Jbuilder
   is executed. Build contexts can be specified by writing a
   [[jbuild-workspace]] file
 
@@ -84,7 +84,7 @@ format and the third one describes how to use the =jbuilder= command.
 
 - *alias*: an alias is a build target that doesn't produce any file
   and has configurable dependencies. Alias are per-directory and some
-  are recursive; asking an alias to be built in a given directrory
+  are recursive; asking an alias to be built in a given directory
   will trigger the construction of the alias in all children
   directories recursively. The most interesting ones are:
   + =runtest= which runs user defined tests
@@ -96,15 +96,17 @@ A typical jbuilder project will have one or more =<package>.opam= file
 at toplevel as well as =jbuild= files wherever interesting things are:
 libraries, executables, tests, documents to install, etc...
 
-It is recommemded to organize your project so that you have exactly
-one library per directory. You can have several executables in the
-same directory, as long as they share the same build configuration.
+It is recommended to organize your project so that you have exactly one library
+per directory. You can have several executables in the same directory, as long
+as they share the same build configuration. If you'd like to have multiple
+executables with different configurations in the same directory, you will have
+to make an explicit module list for every executable using =modules=.
 
 The rest of these sections describe the format of Jbuilder metadata
 files.
 
-Note that the Jbuilder metadata format is versionned in order to
-ensure forward compatibilty. Jane Street packages use a special
+Note that the Jbuilder metadata format is versioned in order to
+ensure forward compatibility. Jane Street packages use a special
 =jane_street= version which correspond to a rolling and unstable
 version that follows the internal Jane Street development. You
 shouldn't use this in your project, it is only intended to make the
@@ -238,7 +240,7 @@ roadmap]] for details.
 The following sections describe the available stanzas and their
 meaning.
 
-**** jbuid_verrsion
+**** jbuid_version
 
 =(jbuild_version 1)= specifies that we are using the version 1 of the
 Jbuilder metadata format in this =jbuild= file.
@@ -269,7 +271,7 @@ the library and you are free to expose only the modules you want.
 =<optional-fields>= are:
 
 - =(public_name <name>)= this is the name under which the library can
-  be refered as a dependency when it is not part of the current
+  be referred as a dependency when it is not part of the current
   workspace, i.e. when it is installed. Without a =(public_name ...)=
   field, the library will not be installed by Jbuilder. The public
   name must start by the package name it is part of and optionally
@@ -289,7 +291,7 @@ the library and you are free to expose only the modules you want.
   need to start with a uppercase letter. For instance to exclude module
   =Foo=: =(modules (:standard \ foo))=
 
-- =(libraries (<library-dependencies>))= is used to specifiy the
+- =(libraries (<library-dependencies>))= is used to specify the
   dependencies of the library. In here you should put library
   names. For library that are present in the workspace, you can use
   either the real name or the public name. For libraries that are part
@@ -301,7 +303,7 @@ the library and you are free to expose only the modules you want.
 - =(wrapped <boolean>)= specifies whether the modules of the library
   should be available only through of the toplevel library module, or
   should all be exposed at toplevel. The default is =true= and it is
-  highly recommed to keep it this way. Because OCaml toplevel modules
+  highly recommended to keep it this way. Because OCaml toplevel modules
   must all be unique when linking an executables, polluting the
   toplevel namespace will make your library unusable with other
   libraries if there is a module name clash. This option is only
@@ -383,7 +385,7 @@ with [[https://github.com/janestreet/configurator][configurator]] by using =(c_f
 **** executables
 
 The =executables= stanza must be used to describe sets of
-executables. The format of executables stanzas is as follow:
+executables. The format of executables stanzas is as follows:
 
 #+begin_src scheme
 (executables
@@ -482,7 +484,7 @@ an action to run to construct the alias.
 The syntax is as follow:
 
 #+begin_src scheme
-(rule
+(alias
   ((name    <alias-name>)
    (deps    (<deps-conf list>))
    <optional-fields>
@@ -503,7 +505,7 @@ The syntax is as follow:
 The typical use of the =alias= stanza is to define tests:
 
 #+begin_src scheme
-(rule
+(alias
   ((name   runtest)
    (deps   (my-test-program.exe))
    (action "./${<} blah")))
@@ -524,7 +526,7 @@ The syntax is as follow:
 (provides (<name> (file <filename>)))
 #+end_src
 
-=<name>= is the name under which the artefact can be refered and
+=<name>= is the name under which the artifact can be referred and
 =<filename>= is the file it resolves to. When =<filename>= can be
 guessed from the =<name>=, you can use the following shorter syntax:
 
@@ -640,7 +642,7 @@ Jbuilder supports the following variables:
 - =ocaml_version= is the version of the compiler used in the current
   build context
 - =ocaml_where= is the output of =ocamlc -where=
-- =ARCH_SIXTYFOUR= is =true= if using a compiler targetting a 64 bit
+- =ARCH_SIXTYFOUR= is =true= if using a compiler targeting a 64 bit
   architecture and =false= otherwise
 
 In addition, =(action ...)= fields support the following special variables:
@@ -652,7 +654,7 @@ In addition, =(action ...)= fields support the following special variables:
   which case it will expand to =<path>= from the host build context
 - =bin:<program>= expands to a path to =program=. If =program= is
   provided by a jbuild in the workspace (see [[provides][provides stanzas]]), the
-  locally built binarry will be used, otherwise it will be searched in
+  locally built binary will be used, otherwise it will be searched in
   the =PATH= of the current build context
 - =findlib:<public-library-name>:<file>= expands to a path to file
   =<file>= of library =<public-library-name>=. If
@@ -685,7 +687,7 @@ Select forms are specified as follow:
 - =<library-name>=, which will evaluate to true if =<library-name>= is
   available, either in the worksapce either in the installed world
 - =!<library-name>=, which will evaluate to true if =<library-name>=
-  is not availale in the workspace or in the installed world
+  is not available in the workspace or in the installed world
 
 When evaluating a select form, Jbuilder will create
 =<target-filename>= by copying the file given by the first
@@ -757,7 +759,7 @@ For instance:
 
 ***** Dependency specification
 
-Dependecies in =jbuild= files can be specified using one of the
+Dependencies in =jbuild= files can be specified using one of the
 following syntax:
 
 - =(file <filename>)= or simply =<filename>=: depend on this file
@@ -830,7 +832,7 @@ of these two forms:
 In both case, all atoms in the argument of this field supports
 [[Variables
  expansion][variables expansion]]. Moreover, you don't need to specify dependencies
-explicitely for the special =${exe:...}=, =${bin:...}= or
+explicitly for the special =${exe:...}=, =${bin:...}= or
 =${findlib:...}= forms, these are recognized automatically by
 Jbuilder.
 

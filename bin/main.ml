@@ -449,6 +449,60 @@ let install_uninstall ~what =
 let install   = install_uninstall ~what:"install"
 let uninstall = install_uninstall ~what:"uninstall"
 
+let exec =
+  let doc =
+    "Execute a command in a similar environment as if installation was performed."
+  in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|$(b,jbuilder exec -- COMMAND) should behave in the same way as if you do:|}
+    ; `Pre "  \\$ jbuilder install\n\
+           \  \\$ COMMAND"
+    ; `P {|In particular if you run $(b,jbuilder exec ocaml), you will have access
+           to the libraries defined in the workspace using your usual directives
+           ($(b,#require) for instance)|}
+    ; `Blocks help_secs
+    ]
+  in
+  let go common context prog args =
+    set_common common;
+    Future.Scheduler.go ~log:(create_log ())
+      (Main.setup common >>= fun setup ->
+       let context =
+         match List.find setup.contexts ~f:(fun c -> c.name = context) with
+         | Some ctx -> ctx
+         | None ->
+           Format.eprintf "@{<Error>Error@}: Context %S not found!@." context;
+           die ""
+       in
+       match Context.which context prog with
+       | None ->
+         Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
+         die ""
+       | Some real_prog ->
+         let real_prog = Path.to_string real_prog     in
+         let env       = Context.env_for_exec context in
+         if Sys.win32 then
+           Future.run ~env Strict real_prog (prog :: args)
+         else
+           Unix.execve real_prog (Array.of_list (prog :: args)) env
+      )
+  in
+  ( Term.(const go
+          $ common
+          $ Arg.(value
+                 & opt string "default"
+                 & info ["context"] ~docv:"CONTEXT"
+                     ~doc:{|Run the command in this build context.|}
+                )
+          $ Arg.(required
+                 & pos 0 (some string) None (Arg.info [] ~docv:"PROG"))
+          $ Arg.(value
+                 & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
+         )
+  , Term.info "exec" ~doc ~man)
+
+
 let all =
   [ installed_libraries
   ; build_package
@@ -457,6 +511,7 @@ let all =
   ; runtest
   ; install
   ; uninstall
+  ; exec
   ]
 
 let default =

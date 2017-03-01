@@ -19,6 +19,8 @@
   + =install=
   + =uninstall=
   + =installed-libraries=
+  + =exec=: execute a command in an environment similar to what you
+    would get after =jbuilder install=
 
 - Added support for aliases
   (#7, Rudi Grinberg)

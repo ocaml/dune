@@ -323,3 +323,24 @@ let install_prefix t =
   opam_config_var t "prefix" >>| function
   | Some x -> Path.absolute x
   | None   -> Path.parent t.ocaml_bin
+
+
+(* CR-someday jdimino: maybe we should just do this for [t.env] directly? *)
+let env_for_exec t =
+  let sep = if Sys.win32 then ';' else ':' in
+  let cwd = Sys.getcwd () in
+  let extend_var var v =
+    let v = Filename.concat cwd (Path.to_string v) in
+    match get_env t.env var with
+    | None -> (var, v)
+    | Some prev -> (var, sprintf "%s%c%s" v sep prev)
+  in
+  let vars =
+    [ extend_var "CAML_LD_LIBRARY_PATH" (Config.local_install_dir ~context:t.name)
+    ; extend_var "OCAMLPATH"            (Path.relative
+                                           (Config.local_install_dir ~context:t.name)
+                                           "lib")
+    ; extend_var "PATH"                 (Config.local_install_bin_dir ~context:t.name)
+    ]
+  in
+  extend_env ~env:t.env ~vars:(String_map.of_alist_exn vars)

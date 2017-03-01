@@ -127,3 +127,5 @@ val extend_env : vars:string String_map.t -> env:string array -> string array
 val opam_config_var : t -> string -> string option Future.t
 
 val install_prefix : t -> Path.t Future.t
+
+val env_for_exec : t -> string array

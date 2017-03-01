@@ -116,6 +116,22 @@ Load a configuration file from =~/.config/jbuilder/config.sexp= where
 the user can define preferences such as colors.
 ** Code improvements
 *** Delete the global variables in Clflags
+*** Improve the Action.Unexpanded.t
+
+=String_with_vars.t= should take a type parameter and we would have:
+
+#+begin_src
+type variable =
+  | Plain of string
+  | Bin of string
+  | Lib of string * string
+  | ...
+type user_action =  variable Action.Unexpanded.t
+#+end_src
+
+This would allow to report parsing errors immediately and at the right
+location.
+
 *** Consolidate the S-expression parser
 
 It doesn't follow the specification given in the readme of

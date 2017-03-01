@@ -3,7 +3,7 @@ open Future
 
 type setup =
   { build_system : Build_system.t
-  ; jbuilds      : Jbuild_load.Jbuilds.t
+  ; stanzas      : (Path.t * Jbuild_types.Stanzas.t) list String_map.t
   ; contexts     : Context.t list
   ; packages     : Package.t String_map.t
   }
@@ -36,10 +36,10 @@ let setup ?filter_out_optional_stanzas_with_missing_deps
   Gen_rules.gen conf ~contexts
     ?only_package
     ?filter_out_optional_stanzas_with_missing_deps
-  >>= fun rules ->
+  >>= fun (rules, stanzas) ->
   let build_system = Build_system.create ~contexts ~file_tree:conf.file_tree ~rules in
   return { build_system
-         ; jbuilds = conf.jbuilds
+         ; stanzas
          ; contexts
          ; packages = conf.packages
          }
@@ -47,24 +47,20 @@ let setup ?filter_out_optional_stanzas_with_missing_deps
 let external_lib_deps ?log ~packages () =
   Future.Scheduler.go ?log
     (setup () ~filter_out_optional_stanzas_with_missing_deps:false
-     >>= fun ({ build_system = bs; jbuilds; contexts; _ } as setup) ->
+     >>| fun setup ->
      let install_files =
        List.map packages ~f:(fun pkg ->
          match package_install_file setup pkg with
          | Ok path -> path
          | Error () -> die "Unknown package %S" pkg)
      in
-     let context =
-       match List.find contexts ~f:(fun c -> c.name = "default") with
-       | None -> die "You need to set a default context to use external-lib-deps"
-       | Some context -> context
-     in
-     Jbuild_load.Jbuilds.eval ~context jbuilds
-     >>| fun stanzas ->
-     let internals = Jbuild_types.Stanza.lib_names stanzas in
-     Path.Map.map
-       (Build_system.all_lib_deps bs install_files)
-       ~f:(String_map.filter ~f:(fun name _ ->
+     match String_map.find "default" setup.stanzas with
+     | None -> die "You need to set a default context to use external-lib-deps"
+     | Some stanzas ->
+       let internals = Jbuild_types.Stanza.lib_names stanzas in
+       Path.Map.map
+         (Build_system.all_lib_deps setup.build_system install_files)
+         ~f:(String_map.filter ~f:(fun name _ ->
            not (String_set.mem name internals))))
 
 let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
@@ -80,7 +76,10 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   | Fatal_error msg ->
     Format.fprintf ppf "%s\n" (String.capitalize_ascii msg)
   | Findlib.Package_not_found pkg ->
-    Format.fprintf ppf "@{<error>Findlib package %S not found.@}\n" pkg
+    Format.fprintf ppf
+      "@{<error>Error@}: Findlib package %S not found.\n\
+       Hint: try 'jbuilder external-lib-deps --missing'\n"
+      pkg
   | Code_error msg ->
     let bt = Printexc.raw_backtrace_to_string backtrace in
     Format.fprintf ppf "@{<error>Internal error, please report upstream.@}\n\

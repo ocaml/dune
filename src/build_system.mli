@@ -29,3 +29,7 @@ val do_build_exn : t -> Path.t list -> unit Future.t
 (** Return all the library dependencies (as written by the user) needed to build these
     targets *)
 val all_lib_deps : t -> Path.t list -> Build.lib_deps Path.Map.t
+
+(** Return all the library dependencies required to build these targets, by context
+    name *)
+val all_lib_deps_by_context : t -> Path.t list -> Build.lib_deps String_map.t

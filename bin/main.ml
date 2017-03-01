@@ -38,6 +38,9 @@ module Main = struct
     setup ?workspace_file:common.workspace_file ?only_package ()
 end
 
+let do_build (setup : Main.setup) targets =
+  Build_system.do_build_exn setup.build_system targets
+
 let create_log = Main.create_log
 
 type ('a, 'b) walk_result =
@@ -209,8 +212,7 @@ let resolve_package_install setup pkg =
 let build_package common pkg =
   Future.Scheduler.go ~log:(create_log ())
     (Main.setup common ~only_package:pkg >>= fun setup ->
-     Build_system.do_build_exn setup.build_system
-       [resolve_package_install setup pkg])
+     do_build setup [resolve_package_install setup pkg])
 
 let build_package =
   let doc = "Build a single package in release mode." in
@@ -234,37 +236,6 @@ let build_package =
           $ common
           $ Arg.(required & pos 0 (some string) None name_))
   , Term.info "build-package" ~doc ~man)
-
-let external_lib_deps packages =
-  let log = create_log () in
-  let deps =
-    Path.Map.fold (Main.external_lib_deps ~log ~packages ()) ~init:String_map.empty
-      ~f:(fun ~key:_ ~data:deps acc -> Build.merge_lib_deps deps acc)
-  in
-  String_map.iter deps ~f:(fun ~key:n ~data ->
-    match (data : Build.lib_dep_kind) with
-    | Required -> Printf.printf "%s\n" n
-    | Optional -> Printf.printf "%s (optional)\n" n)
-
-let external_lib_deps =
-  let doc = "Print out external library dependencies." in
-  let man =
-    [ `S "DESCRIPTION"
-    ; `P {|Print out the external libraries needed to build the given packages.|}
-    ; `P {|The output should be included in what is written in
-           your $(i,<package>.opam) file.|}
-    ; `Blocks help_secs
-    ]
-  in
-  let name_ = Arg.info [] ~docv:"PACKAGE-NAME" in
-  let go common packages =
-    set_common common;
-    external_lib_deps packages
-  in
-  ( Term.(const go
-          $ common
-          $ Arg.(non_empty & pos_all string [] name_))
-  , Term.info "external-lib-deps" ~doc ~man)
 
 type target =
   | File  of Path.t
@@ -317,7 +288,7 @@ let resolve_targets common (setup : Main.setup) user_targets =
             | l  -> l
         )
     in
-    Printf.printf "Building the following targets:\n";
+    Printf.printf "Actual targets:\n";
     List.iter targets ~f:(function
       | File path ->
         Printf.printf "- %s\n" (Path.to_string path)
@@ -342,7 +313,7 @@ let build_targets =
     Future.Scheduler.go ~log:(create_log ())
       (Main.setup common >>= fun setup ->
        let targets = resolve_targets common setup targets in
-       Build_system.do_build_exn setup.build_system targets) in
+       do_build setup targets) in
   ( Term.(const go
           $ common
           $ Arg.(non_empty & pos_all string [] name_))
@@ -367,11 +338,91 @@ let runtest =
            let dir = Path.(relative root) (prefix_target common dir) in
            Alias.file (Alias.runtest ~dir))
        in
-       Build_system.do_build_exn setup.build_system targets) in
+       do_build setup targets) in
   ( Term.(const go
           $ common
           $ Arg.(value & pos_all string ["."] name_))
   , Term.info "runtest" ~doc ~man)
+
+let external_lib_deps =
+  let doc = "Print out external libraries needed to build the given targets." in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|Print out the external libraries needed to build the given targets.|}
+    ; `P {|The output of $(b,jbuild external-lib-deps @install) should be included
+           in what is written in your $(i,<package>.opam) file.|}
+    ; `Blocks help_secs
+    ]
+  in
+  let go common only_missing targets =
+    set_common common;
+    Future.Scheduler.go ~log:(create_log ())
+      (Main.setup common >>= fun setup ->
+       let targets = resolve_targets common setup targets in
+       let failure =
+         String_map.fold ~init:false
+           (Build_system.all_lib_deps_by_context setup.build_system targets)
+           ~f:(fun ~key:context_name ~data:lib_deps acc ->
+             let internals =
+               Jbuild_types.Stanza.lib_names
+                 (match String_map.find context_name setup.Main.stanzas with
+                  | None -> assert false
+                  | Some x -> x)
+             in
+             let externals =
+               String_map.filter lib_deps ~f:(fun name _ ->
+                 not (String_set.mem name internals))
+             in
+             if only_missing then begin
+               let context =
+                 match List.find setup.contexts ~f:(fun c -> c.name = context_name) with
+                 | None -> assert false
+                 | Some c -> c
+               in
+               let missing =
+                 String_map.filter externals ~f:(fun name _ ->
+                   not (Findlib.available context.findlib name))
+               in
+               if String_map.is_empty missing then
+                 acc
+               else begin
+                 Format.eprintf
+                   "@{<error>Error@}: The following required libraries are missing \
+                    in the %s context:\n\
+                    %s@."
+                   context_name
+                   (String_map.keys missing
+                    |> List.map ~f:(sprintf "- %s")
+                    |> String.concat ~sep:"\n");
+                 true
+               end
+             end else begin
+               Printf.printf
+                 "These are the external library dependencies in the %s context:\n\
+                  %s\n%!"
+                 context_name
+                 (String_map.bindings externals
+                  |> List.map ~f:(fun (name, kind) ->
+                    match (kind : Build.lib_dep_kind) with
+                    | Optional -> sprintf "- %s (optional)" name
+                    | Required -> sprintf "- %s" name)
+                  |> String.concat ~sep:"\n");
+               acc
+             end)
+       in
+       if failure then die "";
+       Future.return ())
+  in
+  ( Term.(const go
+          $ common
+          $ Arg.(value
+                 & flag
+                 & info ["missing"]
+                     ~doc:{|Only print out missing dependencies|})
+          $ Arg.(non_empty
+                 & pos_all string []
+                 & Arg.info [] ~docv:"TARGET"))
+  , Term.info "external-lib-deps" ~doc ~man)
 
 let opam_installer () =
   match Bin.which "opam-installer" with

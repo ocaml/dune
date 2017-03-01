@@ -1837,8 +1837,11 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
         let alias_store = alias_store
       end)
     in
-    !M.all_rules)
+    (!M.all_rules, (context.name, stanzas)))
   |> Future.all
-  >>| fun rules ->
-  Alias.rules alias_store ~prefixes:(Path.root :: List.map contexts ~f:(fun c -> c.Context.build_dir)) ~tree
-  @ List.concat rules
+  >>| fun l ->
+  let rules, context_names_and_stanzas = List.split l in
+  (Alias.rules alias_store
+     ~prefixes:(Path.root :: List.map contexts ~f:(fun c -> c.Context.build_dir)) ~tree
+   @ List.concat rules,
+   String_map.of_alist_exn context_names_and_stanzas)

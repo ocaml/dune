@@ -373,17 +373,31 @@ module File_closure =
       let deps (_, rule) bs = rules_for_files bs (Pset.elements rule.Rule.deps)
     end)
 
-let all_lib_deps t targets =
+let rules_for_targets t targets =
   match File_closure.top_closure t (rules_for_files t targets) with
-  | Ok l ->
-    List.fold_left l ~init:Pmap.empty ~f:(fun acc (_, rule) ->
+  | Ok l -> l
+  | Error cycle ->
+    die "dependency cycle detected:\n   %s"
+      (List.map cycle ~f:(fun (path, _) -> Path.to_string path)
+       |> String.concat ~sep:"\n-> ")
+
+let all_lib_deps t targets =
+  List.fold_left (rules_for_targets t targets) ~init:Pmap.empty
+    ~f:(fun acc (_, rule) ->
       Pmap.merge acc rule.Rule.lib_deps ~f:(fun _ a b ->
         match a, b with
         | None, None -> None
         | Some a, None -> Some a
         | None, Some b -> Some b
         | Some a, Some b -> Some (Build.merge_lib_deps a b)))
-  | Error cycle ->
-    die "dependency cycle detected:\n   %s"
-      (List.map cycle ~f:(fun (path, _) -> Path.to_string path)
-       |> String.concat ~sep:"\n-> ")
+
+let all_lib_deps_by_context t targets =
+  List.fold_left (rules_for_targets t targets) ~init:[] ~f:(fun acc (_, rule) ->
+    Path.Map.fold rule.Rule.lib_deps ~init:acc ~f:(fun ~key:path ~data:lib_deps acc ->
+      match Path.extract_build_context path with
+      | None -> acc
+      | Some (context, _) -> (context, lib_deps) :: acc))
+  |> String_map.of_alist_multi
+  |> String_map.map ~f:(function
+    | [] -> String_map.empty
+    | x :: l -> List.fold_left l ~init:x ~f:Build.merge_lib_deps)

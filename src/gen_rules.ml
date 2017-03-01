@@ -1714,10 +1714,12 @@ module Gen(P : Params) = struct
 
   let local_install_rules (entries : Install.Entry.t list) ~package =
     let install_dir = Config.local_install_dir ~context:ctx.name in
-    List.iter entries ~f:(fun entry ->
-      let dst = Install.Entry.relative_installed_path entry ~package in
-      add_rule
-        (Build.symlink ~src:entry.src ~dst:(Path.append install_dir dst)))
+    List.map entries ~f:(fun entry ->
+      let dst =
+        Path.append install_dir (Install.Entry.relative_installed_path entry ~package)
+      in
+      add_rule (Build.symlink ~src:entry.src ~dst);
+      { entry with src = dst })
 
   let install_file package_path package =
     let entries =
@@ -1760,7 +1762,7 @@ module Gen(P : Params) = struct
     let fn =
       Path.relative (Path.append ctx.build_dir package_path) (package ^ ".install")
     in
-    local_install_rules entries ~package;
+    let entries = local_install_rules entries ~package in
     add_rule
       (Build.path_set (Install.files entries) >>>
        Build.create_file ~target:fn (fun () ->

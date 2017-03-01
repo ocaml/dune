@@ -1649,8 +1649,8 @@ module Gen(P : Params) = struct
      +-----------------------------------------------------------------+ *)
 
   let lib_install_files ~dir ~sub_dir (lib : Library.t) =
-    let make_lib_entry fn =
-      Install.Entry.make Lib fn
+    let make_entry section fn =
+      Install.Entry.make section fn
         ?dst:(Option.map sub_dir ~f:(fun d -> sprintf "%s/%s" d (Path.basename fn)))
     in
     let byte   = List.mem Mode.Byte   ~set:lib.modes in
@@ -1699,8 +1699,8 @@ module Gen(P : Params) = struct
       | Ppx_rewriter -> [Path.relative dir "as-ppx.exe"]
     in
     List.concat
-      [ List.map files ~f:make_lib_entry
-      ; List.map execs ~f:(Install.Entry.make Libexec )
+      [ List.map files ~f:(make_entry Lib    )
+      ; List.map execs ~f:(make_entry Libexec)
       ; List.map dlls  ~f:(Install.Entry.make Stublibs)
       ]
 

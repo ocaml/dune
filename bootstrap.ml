@@ -265,7 +265,7 @@ module Jbuilder_re = struct
 end
 
 module Glob_lexer = struct
-  let parse_string _ = Error (0, "globs are not available during bootstrap")
+  let parse_string _ = failwith "globs are not available during bootstrap"
 end
 |}
   in

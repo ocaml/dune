@@ -99,7 +99,7 @@ Currently in =(action ...)= fields, when not using =bash= the language
 is very limited. It would be nice to add more commands that would
 guarantee portability and avoid the quoting nightmare of =bash=.
 
-FS commands should be straightfoward to implement:
+FS commands should be straight foward to implement:
 - =(copy <src> <dst>)=
 - =(mkdir <path>)=
 - ...

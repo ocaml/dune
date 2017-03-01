@@ -234,7 +234,7 @@ let parent t =
   else
     Filename.dirname t
 
-let build_prefix = "_jbuild/"
+let build_prefix = "_build/"
 
 let is_in_build_dir t =
   String.is_prefix t ~prefix:build_prefix

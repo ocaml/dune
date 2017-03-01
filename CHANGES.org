@@ -1,6 +1,6 @@
 * 1.0
 
-- Generate a log in =_jbuild/log=
+- Generate a log in =_build/log=
 
 - Improve the output of jbuilder, in particular don't mangle the
   output of commands when using =-j N= with =N > 1=

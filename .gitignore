@@ -1,4 +1,4 @@
-_jbuild
+_build
 *.install
 boot.exe
 .merlin

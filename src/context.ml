@@ -134,7 +134,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
     | Some fn -> fn
   in
   let build_dir =
-    Path.of_string (sprintf "_jbuild/%s" name)
+    Path.of_string (sprintf "_build/%s" name)
   in
   let ocamlc_config_cmd = sprintf "%s -config" (Path.to_string ocamlc) in
   both

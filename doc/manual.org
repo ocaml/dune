@@ -72,7 +72,7 @@ format and the third one describes how to use the =jbuilder= command.
   takes for granted and doesn't know how to build
 
 - *build context*: a build context is a subdirectory of the
-  =<root>/_jbuild= directory. It contains all the build artifacts of
+  =<root>/_build= directory. It contains all the build artifacts of
   the workspace built against a specific configuration. Without
   specific configuration from the user, there is always a =default=
   build context, which correspond to the environment in which Jbuilder
@@ -80,7 +80,7 @@ format and the third one describes how to use the =jbuilder= command.
   [[jbuild-workspace]] file
 
 - *build context root*: the root of a build context named =foo= is
-  =<root>/_jbuild/<foo>=
+  =<root>/_build/<foo>=
 
 - *alias*: an alias is a build target that doesn't produce any file
   and has configurable dependencies. Alias are per-directory and some

@@ -21,7 +21,7 @@ And build it with:
 jbuilder hello_world.exe
 #+end_src
 
-The executable will be built as =_jbuild/default/hello_world.exe=
+The executable will be built as =_build/default/hello_world.exe=
 
 * Building a hello world program using Lwt
 
@@ -45,7 +45,7 @@ And build it with:
 jbuilder hello_world.exe
 #+end_src
 
-The executable will be built as =_jbuild/default/hello_world.exe=
+The executable will be built as =_build/default/hello_world.exe=
 
 * Defining a library using Lwt and ocaml-re
 

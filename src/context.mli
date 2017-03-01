@@ -8,10 +8,10 @@
 
     - opam switch contexts, where one opam switch correspond to one context
 
-    each context is built into a sub-directory of "_jbuild":
+    each context is built into a sub-directory of "_build":
 
-    - _jbuild/default for the default context
-    - _jbuild/<switch> for other contexts
+    - _build/default for the default context
+    - _build/<switch> for other contexts
 
     jbuild is able to build simultaneously against several contexts. In particular this
     allow for simple cross-compilation: when an executable running on the host is needed,
@@ -41,7 +41,7 @@ type t =
         building tools used for the compilation that run on the host. *)
     for_host : t option
 
-  ; (** Directory where artifact are stored, for instance "_jbuild/default" *)
+  ; (** Directory where artifact are stored, for instance "_build/default" *)
     build_dir : Path.t
 
   ; (** [PATH] *)

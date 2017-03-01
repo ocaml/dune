@@ -14,7 +14,7 @@ module Jbuilds = struct
 
   type t = one list
 
-  let generated_jbuilds_dir = Path.(relative root) "_jbuild/.jbuilds"
+  let generated_jbuilds_dir = Path.(relative root) "_build/.jbuilds"
 
   let ensure_parent_dir_exists path =
     match Path.kind path with

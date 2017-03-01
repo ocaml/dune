@@ -1061,6 +1061,17 @@ module Gen(P : Params) = struct
           ; obj_name  = lib.name ^ suf
           }
     in
+    (* Add the modules before preprocessing, otherwise the install rules are going to pick
+       up the pre-processed modules *)
+    Hashtbl.add modules_by_lib
+      ~key:lib.name
+      ~data:(
+        let modules =
+          match alias_module with
+          | None -> modules
+          | Some m -> String_map.add modules ~key:m.name ~data:m
+        in
+        String_map.values modules);
     (* Preprocess before adding the alias module as it doesn't need preprocessing *)
     let modules =
       pped_modules ~dir ~dep_kind ~modules ~preprocess:lib.buildable.preprocess
@@ -1072,9 +1083,6 @@ module Gen(P : Params) = struct
       | None -> modules
       | Some m -> String_map.add modules ~key:m.name ~data:m
     in
-    Hashtbl.add modules_by_lib
-      ~key:lib.name
-      ~data:(String_map.values modules);
 
     let dep_graph = ocamldep_rules ~dir ~item:lib.name ~modules ~alias_module in
 

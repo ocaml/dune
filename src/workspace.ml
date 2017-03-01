@@ -51,6 +51,7 @@ let t sexps =
       if name = "" ||
          String.is_prefix name ~prefix:"." ||
          name = "log" ||
+         name = "install" ||
          String.contains name '/' ||
          String.contains name '\\' then
         of_sexp_errorf sexp "%S is not allowed as a build context name" name;

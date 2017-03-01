@@ -240,21 +240,21 @@ module Gen(P : Params) = struct
     let _ = t
   end
 
-  module Named_artifacts = struct
-    open Named_artifacts
+  module Artifacts = struct
+    open Artifacts
 
-    let t = create ~path:ctx.path findlib (List.map P.stanzas ~f:(fun d -> (d.ctx_dir, d.stanzas)))
+    let t = create ctx (List.map P.stanzas ~f:(fun d -> (d.ctx_dir, d.stanzas)))
 
-    let binary name = Build.arr (fun _  -> binary t name)
-    let in_findlib ~dir ~dep_kind name =
-      let pkg =
+    let binary name = binary t name
+    let file_of_lib ?use_provides ~dir name =
+      let lib, file =
         match String.lsplit2 name ~on:':' with
-        | None -> invalid_arg "Named_artifacts.in_findlib"
-        | Some (pkg, _) -> pkg
+        | None ->
+          Loc.fail (Loc.in_file (Path.to_string (Path.relative dir "jbuild")))
+            "invalid ${lib:...} form: %s" name
+        | Some x -> x
       in
-      Build.record_lib_deps ~dir ~kind:dep_kind [Direct pkg]
-      >>>
-      (Build.arr (fun () -> in_findlib t name))
+      (lib, file_of_lib t ~lib ~file ?use_provides)
 
     (* Hides [t] so that we don't resolve things statically *)
     let t = ()
@@ -1270,53 +1270,78 @@ module Gen(P : Params) = struct
      +-----------------------------------------------------------------+ *)
 
   module Action_interpret : sig
-    type expander
-
-    val expand
+    val run
       :  Action.Unexpanded.t
       -> dir:Path.t
       -> dep_kind:Build.lib_dep_kind
       -> targets:Path.t list
       -> deps:Dep_conf.t list
-      -> (unit, expander) Build.t
-
-    val run
-      :  Action.Unexpanded.t
-      -> dir:Path.t
-      -> targets:Path.t list
-      -> (expander, unit) Build.t
+      -> (unit, unit) Build.t
   end = struct
     module U = Action.Unexpanded
 
-    type expander = dir:Path.t -> String_with_vars.t -> string
+    type resolved_forms =
+      { (* Mapping from ${...} forms to their resolutions *)
+        artifacts : Path.t String_map.t
+      ; (* Failed resolutions *)
+        failures  : fail list
+      ; (* All "name" for ${lib:name:...} forms *)
+        lib_deps  : String_set.t
+      }
 
-    type artefact =
-      | Direct of Path.t
-      | Dyn    of (unit, Path.t) Build.t
+    let add_artifact ?lib_dep acc ~var result =
+      let lib_deps =
+        match lib_dep with
+        | None -> acc.lib_deps
+        | Some lib -> String_set.add lib acc.lib_deps
+      in
+      match result with
+      | Ok path ->
+        { acc with
+          artifacts = String_map.add acc.artifacts ~key:var ~data:path
+        ; lib_deps
+        }
+      | Error fail ->
+        { acc with
+          failures = fail :: acc.failures
+        ; lib_deps
+        }
 
-    let extract_artifacts ~dir ~dep_kind t =
-      U.fold t ~init:String_map.empty ~f:(fun acc var ->
-        let module N = Named_artifacts in
+    let extract_artifacts ~dir t =
+      let init =
+        { artifacts = String_map.empty
+        ; failures  = []
+        ; lib_deps  = String_set.empty
+        }
+      in
+      U.fold t ~init ~f:(fun acc var ->
+        let module A = Artifacts in
         match String.lsplit2 var ~on:':' with
-        (* CR-someday jdimino: map the exe to the host exe here *)
-        | Some ("exe", s) ->
-          String_map.add acc ~key:var ~data:(Direct (Path.relative dir s))
-        | Some ("bin", s) -> String_map.add acc ~key:var ~data:(Dyn (N.binary s))
+        | Some ("exe"     , s) -> add_artifact acc ~var (Ok (Path.relative dir s))
+        | Some ("path"    , s) -> add_artifact acc ~var (Ok (Path.relative dir s))
+        | Some ("bin"     , s) -> add_artifact acc ~var (A.binary s)
+        | Some ("lib"     , s)
+        | Some ("libexec" , s) ->
+          let lib_dep, res = A.file_of_lib ~dir s in
+          add_artifact acc ~var ~lib_dep res
+        (* CR-someday jdimino: allow this only for (jbuild_version jane_street) *)
         | Some ("findlib" , s) ->
-          String_map.add acc ~key:var ~data:(Dyn (N.in_findlib ~dir ~dep_kind s))
+          let lib_dep, res = A.file_of_lib ~dir s ~use_provides:true in
+          add_artifact acc ~var ~lib_dep res
         | _ -> acc)
 
-    let expand_string_with_vars ~artifact_map ~targets ~deps : expander =
+    let expand_string_with_vars ~artifacts ~targets ~deps =
       let dep_exn ~dir name = function
         | Some dep -> Path.reach ~from:dir dep
         | None -> die "cannot use ${%s} with files_recursively_in" name
       in
       let lookup ~dir var_name =
-        match String_map.find var_name artifact_map with
+        match String_map.find var_name artifacts with
         | Some path -> Some (Path.reach ~from:dir path)
         | None ->
           match var_name with
-          | "@" -> Some (String.concat ~sep:" " (List.map targets ~f:(Path.reach ~from:dir)))
+          | "@" -> Some (String.concat ~sep:" "
+                           (List.map targets ~f:(Path.reach ~from:dir)))
           | "<" -> Some (match deps with [] -> "" | dep1::_ -> dep_exn ~dir var_name dep1)
           | "^" ->
             let deps = List.map deps ~f:(dep_exn ~dir var_name) in
@@ -1326,42 +1351,26 @@ module Gen(P : Params) = struct
       fun ~dir str ->
         String_with_vars.expand str ~f:(lookup ~dir)
 
-    let expand t ~dir ~dep_kind ~targets ~deps =
+    let run t ~dir ~dep_kind ~targets ~deps =
       let deps =
         List.map deps ~f:(fun dep ->
           Option.map (Dep_conf_interpret.only_plain_file ~dir dep)
             ~f:(Path.relative dir))
       in
-      let needed_artifacts = extract_artifacts ~dir ~dep_kind t in
-      if String_map.is_empty needed_artifacts then
-        let expand = expand_string_with_vars ~artifact_map:String_map.empty ~targets ~deps in
-        Build.return expand
-      else begin
-        let directs, dyns =
-          String_map.bindings needed_artifacts
-          |> List.partition_map ~f:(function
-            | (name, Direct x) -> Inl (name, x)
-            | (name, Dyn    x) -> Inr (name, x))
-        in
-        Build.fanout
-          (Build.paths (List.map directs ~f:snd))
-          (Build.all (List.map dyns ~f:(fun (name, artifact) ->
-             artifact
-             >>>
-             Build.arr (fun path -> (name, path)))))
-        >>^ snd
+      let forms = extract_artifacts ~dir t in
+      let build =
+        Build.record_lib_deps ~dir ~kind:dep_kind
+          (String_set.elements forms.lib_deps
+           |> List.map ~f:(fun s -> Lib_dep.Direct s))
         >>>
-        Build.dyn_paths (Build.arr (List.map ~f:snd))
+        Build.paths (String_map.values forms.artifacts)
         >>>
-        Build.arr (fun artifacts ->
-          let artifact_map =
-            String_map.of_alist_exn (List.rev_append directs artifacts)
-          in
-          expand_string_with_vars ~artifact_map ~targets ~deps)
-      end
-
-    let run action ~dir ~targets =
-      Build.action action ~dir ~env:ctx.env ~targets
+        Build.action t ~dir ~env:ctx.env ~targets
+          ~expand:(expand_string_with_vars ~artifacts:forms.artifacts ~targets ~deps)
+      in
+      match forms.failures with
+      | [] -> build
+      | fail :: _ -> Build.fail fail >>> build
   end
 
   (* +-----------------------------------------------------------------+
@@ -1373,17 +1382,12 @@ module Gen(P : Params) = struct
     add_rule
       (Dep_conf_interpret.dep_of_list ~dir rule.deps
        >>>
-       Action_interpret.expand
+       Action_interpret.run
          rule.action
          ~dir
          ~dep_kind:Required
          ~targets
-         ~deps:rule.deps
-       >>>
-       Action_interpret.run
-         rule.action
-         ~dir
-         ~targets)
+         ~deps:rule.deps)
 
   let alias_rules (alias_conf : Alias_conf.t) ~dir =
     let digest =
@@ -1407,13 +1411,13 @@ module Gen(P : Params) = struct
       | None -> deps
       | Some action ->
         deps
-        >>> Action_interpret.expand
+        >>> Action_interpret.run
           action
           ~dir
           ~dep_kind:Required
           ~targets:[]
           ~deps:alias_conf.deps
-        >>> Action_interpret.run action ~dir ~targets:[] in
+    in
     add_rule (deps >>> dummy)
 
   (* +-----------------------------------------------------------------+
@@ -1708,6 +1712,13 @@ module Gen(P : Params) = struct
     List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY"]
       ~f:(fun prefix -> String.is_prefix fn ~prefix)
 
+  let local_install_rules (entries : Install.Entry.t list) ~package =
+    let install_dir = Config.local_install_dir ~context:ctx.name in
+    List.iter entries ~f:(fun entry ->
+      let dst = Install.Entry.relative_installed_path entry ~package in
+      add_rule
+        (Build.symlink ~src:entry.src ~dst:(Path.append install_dir dst)))
+
   let install_file package_path package =
     let entries =
       List.concat_map stanzas_to_consider_for_install ~f:(fun (dir, stanza) ->
@@ -1749,6 +1760,7 @@ module Gen(P : Params) = struct
     let fn =
       Path.relative (Path.append ctx.build_dir package_path) (package ^ ".install")
     in
+    local_install_rules entries ~package;
     add_rule
       (Build.path_set (Install.files entries) >>>
        Build.create_file ~target:fn (fun () ->

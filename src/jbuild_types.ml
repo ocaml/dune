@@ -701,7 +701,6 @@ module Stanza = struct
       ; cstr "rule"        (Rule.v1 @> nil)         (fun x -> [Rule        x])
       ; cstr "ocamllex"    (list string @> nil)     (fun x -> rules (Rule.ocamllex_v1 x))
       ; cstr "ocamlyacc"   (list string @> nil)     (fun x -> rules (Rule.ocamlyacc_v1 x))
-      ; cstr "provides"    (Provides.v1 @> nil)     (fun x -> [Provides    x])
       ; cstr "install"     (Install_conf.v1 @> nil) (fun x -> [Install     x])
       ; cstr "alias"       (Alias_conf.v1 @> nil)   (fun x -> [Alias       x])
       (* Just for validation and error messages *)

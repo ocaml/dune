@@ -26,6 +26,8 @@ module Entry : sig
     }
 
   val make : Section.t -> ?dst:string -> Path.t -> t
+
+  val relative_installed_path : t -> package:string -> Path.t
 end
 
 val files : Entry.t list -> Path.Set.t

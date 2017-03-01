@@ -97,7 +97,7 @@ module Hashtbl = struct
     match find t key with
     | Some x -> x
     | None ->
-      let x = f () in
+      let x = f key in
       add t ~key ~data:x;
       x
 end
@@ -221,6 +221,14 @@ module String = struct
 
   let lsplit2 s ~on =
     match index s on with
+    | exception Not_found -> None
+    | i ->
+      Some
+        (sub s ~pos:0 ~len:i,
+         sub s ~pos:(i + 1) ~len:(String.length s - i - 1))
+
+  let rsplit2 s ~on =
+    match rindex s on with
     | exception Not_found -> None
     | i ->
       Some

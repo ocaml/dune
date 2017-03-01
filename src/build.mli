@@ -83,12 +83,15 @@ val action
   -> dir:Path.t
   -> env:string array
   -> targets:Path.t list
-  -> (dir:Path.t -> 'a -> string, unit) t
+  -> expand:(dir:Path.t -> 'a -> string)
+  -> (unit, unit) t
 
 (** Create a file with the given contents. *)
 val echo : Path.t -> (string, unit) t
 
 val copy : src:Path.t -> dst:Path.t -> (unit, unit) t
+
+val symlink : src:Path.t -> dst:Path.t -> (unit, unit) t
 
 val touch : Path.t -> (unit, unit) t
 

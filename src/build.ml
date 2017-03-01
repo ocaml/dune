@@ -270,8 +270,8 @@ module Shexp = struct
     exec t ~dir ~env ~env_extra:String_map.empty ~stdout_to:None ~tail:true ~f
 end
 
-let action action ~dir ~env ~targets =
-  prim ~targets (fun f ->
+let action action ~dir ~env ~targets ~expand:f =
+  prim ~targets (fun () ->
     match (action : _ Action.t) with
     | Bash cmd ->
       Future.run Strict ~dir:(Path.to_string dir) ~env
@@ -287,6 +287,14 @@ let copy ~src ~dst =
   path src >>>
   create_file ~target:dst (fun () ->
     copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst))
+
+let symlink ~src ~dst =
+  if Sys.win32 then
+    copy ~src ~dst
+  else
+    path src >>>
+    create_file ~target:dst (fun () ->
+      Unix.symlink (Path.to_string src) (Path.to_string dst))
 
 let touch target =
   create_file ~target (fun _ ->

@@ -513,44 +513,6 @@ The typical use of the =alias= stanza is to define tests:
 
 See the [[runtest][section about running tests]] for details.
 
-**** provides
-
-The =provides= stanza allows you to globally name a file, either a
-source file or a target. This is especially important for build tools;
-by using the =provides= mechanism, you don't need to know whether the
-binary is in the workspace or installed.
-
-The syntax is as follow:
-
-#+begin_src scheme
-(provides (<name> (file <filename>)))
-#+end_src
-
-=<name>= is the name under which the artifact can be referred and
-=<filename>= is the file it resolves to. When =<filename>= can be
-guessed from the =<name>=, you can use the following shorter syntax:
-
-#+begin_src scheme
-(provides <name>)
-#+end_src
-
-In this case, the file name is guessed as follow:
-
-- if =<name>= contains a =:=, the file name is anything that comes
-  after the first =:=
-- otherwise it is the same as =<name>=
-
-Once you have written a =provides= stanza, you can refer to the file
-in points to using the special forms =${bin:<name>}= or
-=${findlib:<library>:<file>}= inside =(action ...)= fields. See the
-[[Variables expansion][section about variables expansion]] for details.
-
-Note that any file referred by a =provides= stanza should probably be
-installed as well, using an [[install]] stanza. If the file is meant to be
-installed in a library directory, then its name should be of the form
-=<public-library-name>:<file>=. If it is meant to be installed in the
-=bin= directory, then its name should be the program name.
-
 **** install
 
 The =install= stanza is what lets you describe what Jbuilder should
@@ -650,20 +612,24 @@ In addition, =(action ...)= fields support the following special variables:
 - =@= expands to the list of target, separated by spaces
 - =<= expands to the first dependency, or the empty string if there are no dependencies
 - =^= expands to the list of dependencies, separated by spaces
-- =exe:<path>= expands to =<path>=, except when cross-compiling, in
+- =path:<path>= expands to =<path>=
+- =exe:<path>= is the same as =<path>=, except when cross-compiling, in
   which case it will expand to =<path>= from the host build context
 - =bin:<program>= expands to a path to =program=. If =program= is
-  provided by a jbuild in the workspace (see [[provides][provides stanzas]]), the
+  installed by a package in the workspace (see [[install][install stanzas]]), the
   locally built binary will be used, otherwise it will be searched in
   the =PATH= of the current build context
-- =findlib:<public-library-name>:<file>= expands to a path to file
+- =lib:<public-library-name>:<file>= expands to a path to file
   =<file>= of library =<public-library-name>=. If
   =<public-library-name>= is available in the current workspace, the
   local file will be used, otherwise the one from the installed world
   will be used
+- =libexec:<public-library-name>:<file>= is the same as =lib:...=
+  except when cross-compiling, in which case it will expand to the
+  file from the host build context
 
-The last two forms of variable are what allows you to write custom
-rules that work transparently whether things are installed or not.
+The =${<kind>:...}= forms are what allows you to write custom rules
+that work transparently whether things are installed or not.
 
 ***** Alternative dependencies
 
@@ -832,9 +798,8 @@ of these two forms:
 In both case, all atoms in the argument of this field supports
 [[Variables
  expansion][variables expansion]]. Moreover, you don't need to specify dependencies
-explicitly for the special =${exe:...}=, =${bin:...}= or
-=${findlib:...}= forms, these are recognized automatically by
-Jbuilder.
+explicitly for the special =${<kind>:...}= forms, these are recognized
+automatically handled by Jbuilder.
 
 The DSL is preferable in general as it will make your package more
 portable. It is currently quite limited, so the recommendation is to

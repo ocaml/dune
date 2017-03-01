@@ -63,6 +63,7 @@ type t =
   ; ast_intf_magic_number   : string
   ; cmxs_magic_number       : string
   ; cmt_magic_number        : string
+  ; which_cache             : (string, Path.t option) Hashtbl.t
   }
 
 let compare a b = compare a.name b.name
@@ -102,6 +103,9 @@ let get_env env var =
   in
   loop 0
 
+let which ~cache ~path x =
+  Hashtbl.find_or_add cache x ~f:(Bin.which ~path)
+
 let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
@@ -111,7 +115,8 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
   let prog_not_found_in_path prog =
     die "Program %s not found in PATH (context: %s)" prog name
   in
-  let which x = Bin.which ~path x in
+  let which_cache = Hashtbl.create 128 in
+  let which x = which ~cache:which_cache ~path x in
   let ocamlc =
     match which "ocamlc" with
     | None -> prog_not_found_in_path "ocamlc"
@@ -248,6 +253,8 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
     ; ast_intf_magic_number   = get       "ast_intf_magic_number"
     ; cmxs_magic_number       = get       "cmxs_magic_number"
     ; cmt_magic_number        = get       "cmt_magic_number"
+
+    ; which_cache
     }
 
 let opam_config_var t var = opam_config_var ~env:t.env ~cache:t.opam_var_cache var
@@ -310,7 +317,7 @@ let create_for_opam ?root ~switch ~name ?(merlin=false) () =
     create ~kind:(Opam { root; switch }) ~path ~env:(extend_env ~vars ~env)
       ~name ~merlin
 
-let which t s = Bin.which ~path:t.path s
+let which t s = which ~cache:t.which_cache ~path:t.path s
 
 let install_prefix t =
   opam_config_var t "prefix" >>| function

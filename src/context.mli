@@ -103,6 +103,8 @@ type t =
   ; ast_intf_magic_number   : string
   ; cmxs_magic_number       : string
   ; cmt_magic_number        : string
+
+  ; which_cache             : (string, Path.t option) Hashtbl.t
   }
 
 (** Compare the context names *)

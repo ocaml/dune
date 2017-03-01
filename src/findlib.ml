@@ -392,6 +392,11 @@ let find_exn t name =
         Hashtbl.add t.packages ~key:name ~data:Absent;
         raise (Package_not_found name)
 
+let find t name =
+  match find_exn t name with
+  | exception (Package_not_found _) -> None
+  | x -> Some x
+
 let available t name =
   match find_exn t name with
   | _ -> true

@@ -22,6 +22,7 @@ type package =
   ; has_headers      : bool
   }
 
+val find     : t -> string -> package option
 val find_exn : t -> string -> package
 
 val available : t -> string -> bool

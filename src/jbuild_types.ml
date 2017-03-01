@@ -563,20 +563,39 @@ module Rule = struct
     record
       (ignore_fields ["sandbox"] >>= fun () ->
        common)
-end
 
-module Ocamllex = struct
-  type t = { names : string list }
+  let ocamllex_v1 names =
+    let str s = String_with_vars.of_string s in
+    List.map names ~f:(fun name ->
+      let src = name ^ ".mll" in
+      let dst = name ^ ".ml"  in
+      { targets = [dst]
+      ; deps    = [File (str src)]
+      ; action  =
+          Shexp
+            (Chdir
+               (str "${ROOT}",
+                Run (str "${bin:ocamllex}",
+                     [str "-q"; str "-o"; str dst; str src])))
+      })
 
-  let v1 sexp = { names = list string sexp }
-  let vjs = v1
-end
+  let ocamllex_vjs = ocamllex_v1
 
-module Ocamlyacc = struct
-  type t = { names : string list }
+  let ocamlyacc_v1 names =
+    let str s = String_with_vars.of_string s in
+    List.map names ~f:(fun name ->
+      let src = name ^ ".mll" in
+      { targets = [name ^ ".ml"; name ^ ".mli"]
+      ; deps    = [File (str src)]
+      ; action  =
+          Shexp
+            (Chdir
+               (str "${ROOT}",
+                Run (str "${bin:ocamlyacc}",
+                     [str src])))
+      })
 
-  let v1 sexp = { names = list string sexp }
-  let vjs = v1
+  let ocamlyacc_vjs = ocamlyacc_v1
 end
 
 module Provides = struct
@@ -669,49 +688,46 @@ module Stanza = struct
     | Library     of Library.t
     | Executables of Executables.t
     | Rule        of Rule.t
-    | Ocamllex    of Ocamllex.t
-    | Ocamlyacc   of Ocamlyacc.t
     | Provides    of Provides.t
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
 
-  let cstr' name args f =
-    cstr name args (fun x -> Some (f x))
+  let rules l = List.map l ~f:(fun x -> Rule x)
 
   let v1 =
     sum
-      [ cstr' "library"     (Library.v1 @> nil)      (fun x -> Library     x)
-      ; cstr' "executables" (Executables.v1 @> nil)  (fun x -> Executables x)
-      ; cstr' "rule"        (Rule.v1 @> nil)         (fun x -> Rule        x)
-      ; cstr' "ocamllex"    (Ocamllex.v1 @> nil)     (fun x -> Ocamllex    x)
-      ; cstr' "ocamlyacc"   (Ocamlyacc.v1 @> nil)    (fun x -> Ocamlyacc   x)
-      ; cstr' "provides"    (Provides.v1 @> nil)     (fun x -> Provides    x)
-      ; cstr' "install"     (Install_conf.v1 @> nil) (fun x -> Install     x)
-      ; cstr' "alias"       (Alias_conf.v1 @> nil)   (fun x -> Alias       x)
+      [ cstr "library"     (Library.v1 @> nil)      (fun x -> [Library     x])
+      ; cstr "executables" (Executables.v1 @> nil)  (fun x -> [Executables x])
+      ; cstr "rule"        (Rule.v1 @> nil)         (fun x -> [Rule        x])
+      ; cstr "ocamllex"    (list string @> nil)     (fun x -> rules (Rule.ocamllex_v1 x))
+      ; cstr "ocamlyacc"   (list string @> nil)     (fun x -> rules (Rule.ocamlyacc_v1 x))
+      ; cstr "provides"    (Provides.v1 @> nil)     (fun x -> [Provides    x])
+      ; cstr "install"     (Install_conf.v1 @> nil) (fun x -> [Install     x])
+      ; cstr "alias"       (Alias_conf.v1 @> nil)   (fun x -> [Alias       x])
       (* Just for validation and error messages *)
-      ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> None)
+      ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]
 
   let vjs =
-    let ign name = cstr name ((fun _ -> ()) @> nil) (fun () -> None) in
+    let ign name = cstr name ((fun _ -> ()) @> nil) (fun () -> []) in
     sum
-      [ cstr' "library"     (Library.vjs @> nil)      (fun x -> Library     x)
-      ; cstr' "executables" (Executables.vjs @> nil)  (fun x -> Executables x)
-      ; cstr' "rule"        (Rule.vjs @> nil)         (fun x -> Rule        x)
-      ; cstr' "ocamllex"    (Ocamllex.vjs @> nil)     (fun x -> Ocamllex    x)
-      ; cstr' "ocamlyacc"   (Ocamlyacc.vjs @> nil)    (fun x -> Ocamlyacc   x)
-      ; cstr' "provides"    (Provides.vjs @> nil)     (fun x -> Provides    x)
-      ; cstr' "install"     (Install_conf.vjs @> nil) (fun x -> Install     x)
-      ; cstr' "alias"       (Alias_conf.vjs @> nil)   (fun x -> Alias       x)
+      [ cstr "library"     (Library.vjs @> nil)      (fun x -> [Library     x])
+      ; cstr "executables" (Executables.vjs @> nil)  (fun x -> [Executables x])
+      ; cstr "rule"        (Rule.vjs @> nil)         (fun x -> [Rule        x])
+      ; cstr "ocamllex"    (list string @> nil)      (fun x -> rules (Rule.ocamllex_vjs x))
+      ; cstr "ocamlyacc"   (list string @> nil)      (fun x -> rules (Rule.ocamlyacc_vjs x))
+      ; cstr "provides"    (Provides.vjs @> nil)     (fun x -> [Provides    x])
+      ; cstr "install"     (Install_conf.vjs @> nil) (fun x -> [Install     x])
+      ; cstr "alias"       (Alias_conf.vjs @> nil)   (fun x -> [Alias       x])
       ; ign "enforce_style"
       ; ign "toplevel_expect_tests"
       ; ign "unified_tests"
       ; ign "embed"
       (* Just for validation and error messages  *)
-      ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> None)
+      ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]
 
-  let select : Jbuild_version.t -> t option Sexp.Of_sexp.t = function
+  let select : Jbuild_version.t -> t list Sexp.Of_sexp.t = function
     | V1  -> v1
     | Vjs -> vjs
 
@@ -790,6 +806,6 @@ module Stanzas = struct
       | _ :: (_, loc) :: _ ->
         Loc.fail loc "jbuild_version specified too many times"
     in
-    List.filter_map sexps ~f:(Stanza.select version)
+    List.concat_map sexps ~f:(Stanza.select version)
     |> resolve_packages ~dir ~visible_packages
 end

@@ -1417,28 +1417,6 @@ module Gen(P : Params) = struct
     add_rule (deps >>> dummy)
 
   (* +-----------------------------------------------------------------+
-     | lex/yacc                                                        |
-     +-----------------------------------------------------------------+ *)
-
-  let ocamllex_rules (conf : Ocamllex.t) ~dir =
-    List.iter conf.names ~f:(fun name ->
-      let src = Path.relative dir (name ^ ".mll"   ) in
-      let dst = Path.relative dir (name ^ ".ml"    ) in
-      add_rule
-        (Build.run ~dir:ctx.build_dir (Dep ctx.ocamllex)
-           [A "-q"; A "-o"; Target dst; Dep src]))
-
-  let ocamlyacc_rules (conf : Ocamlyacc.t) ~dir =
-    List.iter conf.names ~f:(fun name ->
-      let src  = Path.relative dir (name ^ ".mly"    ) in
-      let dst  = Path.relative dir (name ^ ".ml"     ) in
-      let dsti = Path.relative dir (name ^ ".mli"    ) in
-      add_rule
-        (Build.run ~extra_targets:[dst; dsti] ~dir:ctx.build_dir
-           (Dep ctx.ocamlyacc)
-           [ Dep src ]))
-
-  (* +-----------------------------------------------------------------+
      | Modules listing                                                 |
      +-----------------------------------------------------------------+ *)
 
@@ -1512,8 +1490,6 @@ module Gen(P : Params) = struct
       let dir = ctx_dir in
       match (stanza : Stanza.t) with
       | Rule         rule -> user_rule         rule ~dir
-      | Ocamllex     conf -> ocamllex_rules    conf ~dir
-      | Ocamlyacc    conf -> ocamlyacc_rules   conf ~dir
       | Alias        alias -> alias_rules alias ~dir
       | Library _ | Executables _ | Provides _ | Install _ -> ());
     let files = lazy (

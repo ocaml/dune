@@ -462,7 +462,7 @@ dependencies. See the [[User actions][actions section]] for more details.
 (rule
   ((targets (<name>.ml))
    (deps    (<name>.mll))
-   (action  (chdir ${ROOT} (run ocamllex ${<})))))
+   (action  (chdir ${ROOT} (run ${bin:ocamllex} -q -o ${<})))))
 #+end_src
 
 **** ocamlyacc
@@ -473,7 +473,7 @@ dependencies. See the [[User actions][actions section]] for more details.
 (rule
   ((targets (<name>.ml <name>.mli))
    (deps    (<name>.mly))
-   (action  (chdir ${ROOT} (run ocamlyacc ${<})))))
+   (action  (chdir ${ROOT} (run ${bin:ocamlyacc} ${<})))))
 #+end_src
 
 **** alias

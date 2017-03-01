@@ -341,6 +341,7 @@ let env_for_exec t =
                                            (Config.local_install_dir ~context:t.name)
                                            "lib")
     ; extend_var "PATH"                 (Config.local_install_bin_dir ~context:t.name)
+    ; extend_var "MANPATH"              (Config.local_install_man_dir ~context:t.name)
     ]
   in
   extend_env ~env:t.env ~vars:(String_map.of_alist_exn vars)

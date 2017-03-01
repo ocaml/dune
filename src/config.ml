@@ -7,6 +7,9 @@ let local_install_dir =
 let local_install_bin_dir ~context =
   Path.relative (local_install_dir ~context) "bin"
 
+let local_install_man_dir ~context =
+  Path.relative (local_install_dir ~context) "bin"
+
 let local_install_lib_dir ~context ~package =
   Path.relative
     (Path.relative (local_install_dir ~context) "lib")

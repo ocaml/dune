@@ -603,7 +603,7 @@ module Rule = struct
   let ocamlyacc_v1 names =
     let str s = String_with_vars.of_string s in
     List.map names ~f:(fun name ->
-      let src = name ^ ".mll" in
+      let src = name ^ ".mly" in
       { targets = [name ^ ".ml"; name ^ ".mli"]
       ; deps    = [File (str src)]
       ; action  =

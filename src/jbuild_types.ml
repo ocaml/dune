@@ -576,7 +576,7 @@ module Rule = struct
             (Chdir
                (str "${ROOT}",
                 Run (str "${bin:ocamllex}",
-                     [str "-q"; str "-o"; str dst; str src])))
+                     [str "-q"; str "-o"; str "${@}"; str "${<}"])))
       })
 
   let ocamllex_vjs = ocamllex_v1
@@ -592,7 +592,7 @@ module Rule = struct
             (Chdir
                (str "${ROOT}",
                 Run (str "${bin:ocamlyacc}",
-                     [str src])))
+                     [str "${<}"])))
       })
 
   let ocamlyacc_vjs = ocamlyacc_v1

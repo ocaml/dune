@@ -85,6 +85,9 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
                         Description: %s\n\
                         Backtrace:\n\
                         %s" msg bt
+  | Unix.Unix_error (err, func, fname) ->
+    Format.fprintf ppf "@{<error>Error@}: %s: %s: %s\n"
+      func fname (Unix.error_message err)
   | _ ->
     let s = Printexc.to_string exn in
     let bt = Printexc.raw_backtrace_to_string backtrace in
@@ -121,8 +124,9 @@ let bootstrap () =
   let main () =
     let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
     Arg.parse
-      [ "-j"   , Set_int Clflags.concurrency, "JOBS concurrency"
-      ; "--dev", Set Clflags.dev_mode       , " set development mode"
+      [ "-j"           , Set_int Clflags.concurrency, "JOBS concurrency"
+      ; "--dev"        , Set Clflags.dev_mode       , " set development mode"
+      ; "--debug-rules", Set Clflags.debug_rules    , " print out rules"
       ]
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
     Future.Scheduler.go ~log:(create_log ())

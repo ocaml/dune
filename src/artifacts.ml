@@ -44,7 +44,7 @@ let create context stanzas =
 
 let binary t name =
   if String_set.mem name t.local_bins then
-    Ok (Path.relative (Config.local_install_dir ~context:t.context.name) name)
+    Ok (Path.relative (Config.local_install_bin_dir ~context:t.context.name) name)
   else
     match String_map.find name t.provides with
     | Some p -> Ok p
@@ -60,8 +60,8 @@ let binary t name =
 let file_of_lib ?(use_provides=false) t ~lib ~file =
   if String_set.mem lib t.local_libs then
     let lib_install_dir =
-      Path.relative (Config.local_install_dir ~context:t.context.name)
-        (Findlib.root_package_name lib)
+      Config.local_install_lib_dir ~context:t.context.name
+        ~package:(Findlib.root_package_name lib)
     in
     Ok (Path.relative lib_install_dir file)
   else

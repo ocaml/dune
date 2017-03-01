@@ -3,8 +3,6 @@
   (libraries (unix jbuilder jbuilder_cmdliner))
   (preprocess no_preprocessing)))
 
-(provides (jbuilder (file main.exe)))
-
 (install
  ((section bin)
   (files ((main.exe as jbuilder)))))

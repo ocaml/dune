@@ -1,8 +1,3 @@
-(** [Named_artifact] provides a way to reference artifacts in jbuild rules without having
-    to hardcode their exact locations. These named artifacts will be looked up
-    appropriately (in the tree, or for the public release, possibly in the PATH or in
-    findlib). *)
-
 open! Import
 
 type t

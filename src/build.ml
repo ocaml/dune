@@ -294,7 +294,19 @@ let symlink ~src ~dst =
   else
     path src >>>
     create_file ~target:dst (fun () ->
-      Unix.symlink (Path.to_string src) (Path.to_string dst))
+      let src =
+        if Path.is_root dst then
+          Path.to_string src
+        else
+          Path.reach ~from:(Path.parent dst) src
+      in
+      let dst = Path.to_string dst in
+      begin
+        match Unix.lstat dst with
+        | exception _ -> ()
+        | _ -> Sys.remove dst
+      end;
+      Unix.symlink src dst)
 
 let touch target =
   create_file ~target (fun _ ->

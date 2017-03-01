@@ -350,6 +350,25 @@ module Buildable = struct
     return t
 end
 
+module Public_lib = struct
+  type t =
+    { name    : string (* Full public name *)
+    ; package : string (* Package it is part of *)
+    ; sub_dir : string option (* Subdirectory inside the installation directory *)
+    }
+
+  let of_public_name s =
+    match String.split s ~on:'.' with
+    | [] -> assert false
+    | pkg :: rest ->
+      { package = pkg
+      ; sub_dir = if rest = [] then None else Some (String.concat rest ~sep:"/")
+      ; name    = s
+      }
+
+  let t sexp = of_public_name (string sexp)
+end
+
 module Library = struct
   module Kind = struct
     type t =
@@ -367,7 +386,7 @@ module Library = struct
 
   type t =
     { name                     : string
-    ; public_name              : string option
+    ; public                   : Public_lib.t option
     ; synopsis                 : string option
     ; install_c_headers        : string list
     ; ppx_runtime_libraries    : string list
@@ -392,7 +411,7 @@ module Library = struct
     record
       (Buildable.v1 >>= fun buildable ->
        field      "name" library_name                                      >>= fun name                     ->
-       field_o    "public_name" string                                     >>= fun public_name              ->
+       field_o    "public_name" Public_lib.t                               >>= fun public              ->
        field_o    "synopsis" string                                        >>= fun synopsis                 ->
        field      "install_c_headers" (list string) ~default:[]            >>= fun install_c_headers        ->
        field      "ppx_runtime_libraries" (list string) ~default:[]        >>= fun ppx_runtime_libraries    ->
@@ -410,7 +429,7 @@ module Library = struct
        field_b    "optional"                                               >>= fun optional                 ->
        return
          { name
-         ; public_name
+         ; public
          ; synopsis
          ; install_c_headers
          ; ppx_runtime_libraries
@@ -436,7 +455,7 @@ module Library = struct
       (ignore_fields ["inline_tests"; "skip_from_default"; "lint"] >>= fun () ->
        Buildable.vjs >>= fun buildable ->
        field      "name" library_name                                      >>= fun name                     ->
-       field_o    "public_name" string                                     >>= fun public_name              ->
+       field_o    "public_name" Public_lib.t                               >>= fun public              ->
        field_o    "synopsis" string                                        >>= fun synopsis                 ->
        field      "install_c_headers" (list string) ~default:[]            >>= fun install_c_headers        ->
        field      "ppx_runtime_libraries" (list string) ~default:[]        >>= fun ppx_runtime_libraries    ->
@@ -457,7 +476,7 @@ module Library = struct
        field_b    "optional"                                               >>= fun optional                 ->
        return
          { name
-         ; public_name
+         ; public
          ; synopsis
          ; install_c_headers
          ; ppx_runtime_libraries
@@ -499,7 +518,7 @@ end
 module Executables = struct
   type t =
     { names              : string list
-    ; object_public_name : string option
+    ; object_public      : Public_lib.t option
     ; synopsis           : string option
     ; link_executables   : bool
     ; link_flags         : string list
@@ -510,13 +529,13 @@ module Executables = struct
     record
       (Buildable.v1 >>= fun buildable ->
        field   "names"              (list string)      >>= fun names ->
-       field_o "object_public_name" string             >>= fun object_public_name ->
+       field_o "object_public_name" Public_lib.t       >>= fun object_public ->
        field_o "synopsis"           string             >>= fun synopsis ->
        field   "link_executables"   bool ~default:true >>= fun link_executables ->
        field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
        return
          { names
-         ; object_public_name
+         ; object_public
          ; synopsis
          ; link_executables
          ; link_flags
@@ -530,13 +549,13 @@ module Executables = struct
        >>= fun () ->
        Buildable.vjs >>= fun buildable ->
        field   "names"              (list string)      >>= fun names ->
-       field_o "object_public_name" string             >>= fun object_public_name ->
+       field_o "object_public_name" Public_lib.t       >>= fun object_public ->
        field_o "synopsis"           string             >>= fun synopsis ->
        field   "link_executables"   bool ~default:true >>= fun link_executables ->
        field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
        return
          { names
-         ; object_public_name
+         ; object_public
          ; synopsis
          ; link_executables
          ; link_flags
@@ -735,9 +754,9 @@ module Stanza = struct
       List.fold_left stanzas ~init:acc ~f:(fun acc -> function
         | Library lib ->
           String_set.add lib.name
-            (match lib.public_name with
+            (match lib.public with
              | None -> acc
-             | Some n -> String_set.add n acc)
+             | Some { name; _ } -> String_set.add name acc)
         | _ -> acc))
 end
 
@@ -780,8 +799,8 @@ module Stanzas = struct
     in
     List.map ts ~f:(fun (stanza : Stanza.t) ->
       match stanza with
-      | Library { public_name = Some name; _ }
-      | Executables { object_public_name = Some name; _ } ->
+      | Library { public = Some { name; _ }; _ }
+      | Executables { object_public = Some { name; _ }; _ } ->
         check (Findlib.root_package_name name);
         stanza
       | Install { package = Some pkg; _ } ->

@@ -47,7 +47,7 @@ let requires ?(preds=[]) pkgs =
 let ppx_runtime_deps ?(preds=[]) pkgs =
   rule "ppx_runtime_deps" preds Set (string_of_deps pkgs)
 let description s = rule "description" []      Set s
-let _directory   s = rule "directory"   []      Set s
+let directory   s = rule "directory"   []      Set s
 let archive preds s = rule "archive"   preds Set s
 let plugin preds  s = rule "plugin"    preds Set s
 let archives ?(preds=[]) name =
@@ -153,11 +153,11 @@ let gen ~package ~version ~stanzas ~lib_deps ~ppx_runtime_deps =
   let items =
     List.filter_map stanzas ~f:(fun (dir, stanza) ->
       match (stanza : Stanza.t) with
-      | Library ({ public_name = Some name; _ } as lib)
-        when Findlib.root_package_name name = package ->
+      | Library ({ public = Some { name; package = p; _ }; _ } as lib)
+        when p = package ->
         Some (Lib (dir, Pub_name.parse name, lib))
-      | Executables ({ object_public_name = Some name; _ } as exes)
-        when Findlib.root_package_name name = package ->
+      | Executables ({ object_public = Some { name; package = p; _ }; _ } as exes)
+        when p = package ->
         Some (Obj (dir, Pub_name.parse name, exes))
       | _ ->
         None)
@@ -208,7 +208,11 @@ let gen ~package ~version ~stanzas ~lib_deps ~ppx_runtime_deps =
     let subs =
       String_map.of_alist_multi sub_pkgs
       |> String_map.bindings
-      |> List.map ~f:(fun (name, pkgs) -> Package (loop name pkgs))
+      |> List.map ~f:(fun (name, pkgs) ->
+        let pkg = loop name pkgs in
+        Package { pkg with
+                  entries = directory name :: pkg.entries
+                })
     in
     { name
     ; entries = entries @ subs

@@ -5,12 +5,12 @@ type t =
   { context    : Context.t
   ; provides   : Path.t String_map.t
   ; local_bins : String_set.t
-  ; local_libs : String_set.t
+  ; local_libs : Public_lib.t String_map.t
   }
 
 let create context stanzas =
   let local_bins, local_libs, provides =
-    List.fold_left stanzas ~init:(String_set.empty, String_set.empty, String_map.empty)
+    List.fold_left stanzas ~init:(String_set.empty, String_map.empty, String_map.empty)
       ~f:(fun acc (dir, stanzas) ->
         List.fold_left stanzas ~init:acc
           ~f:(fun (local_bins, local_libs, provides) stanza ->
@@ -20,18 +20,20 @@ let create context stanzas =
                local_libs,
                String_map.add provides ~key:name ~data:(Path.relative dir file))
             | Install { section = Bin; files; _ } ->
-              (List.fold_left files ~init:local_bins ~f:(fun acc { Install_conf. src; dst } ->
-                let name =
-                  match dst with
-                  | Some s -> s
-                  | None -> Filename.basename src
-                in
-                String_set.add name acc),
+              (List.fold_left files ~init:local_bins
+                 ~f:(fun acc { Install_conf. src; dst } ->
+                   let name =
+                     match dst with
+                     | Some s -> s
+                     | None -> Filename.basename src
+                   in
+                   String_set.add name acc),
                local_libs,
                provides)
-            | Library { public_name = Some name; _ } ->
+            | Library { public = Some pub; _ }
+            | Executables { object_public = Some pub; _ } ->
               (local_bins,
-               String_set.add name local_libs,
+               String_map.add local_libs ~key:pub.name ~data:pub,
                provides)
             | _ ->
               (local_bins, local_libs, provides)))
@@ -58,13 +60,18 @@ let binary t name =
           }
 
 let file_of_lib ?(use_provides=false) t ~lib ~file =
-  if String_set.mem lib t.local_libs then
+  match String_map.find lib t.local_libs with
+  | Some { package; sub_dir; _ } ->
     let lib_install_dir =
-      Config.local_install_lib_dir ~context:t.context.name
-        ~package:(Findlib.root_package_name lib)
+      Config.local_install_lib_dir ~context:t.context.name ~package
+    in
+    let lib_install_dir =
+      match sub_dir with
+      | None -> lib_install_dir
+      | Some dir -> Path.relative lib_install_dir dir
     in
     Ok (Path.relative lib_install_dir file)
-  else
+  | None ->
     match Findlib.find t.context.findlib lib with
     | Some pkg ->
       Ok (Path.relative pkg.dir file)

@@ -79,7 +79,7 @@ let create findlib stanzas =
       | Library lib ->
         let data = Lib.Internal (dir, lib) in
         Hashtbl.add libs ~key:lib.name ~data;
-        Option.iter lib.public_name ~f:(fun name ->
+        Option.iter lib.public ~f:(fun { name; _ } ->
           Hashtbl.add libs ~key:name ~data)
       | _ -> ()));
   let t = { findlib; libs; instalable_internal_libs = String_map.empty } in

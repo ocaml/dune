@@ -1648,7 +1648,11 @@ module Gen(P : Params) = struct
      | Installation                                                    |
      +-----------------------------------------------------------------+ *)
 
-  let lib_install_files ~dir (lib : Library.t) =
+  let lib_install_files ~dir ~sub_dir (lib : Library.t) =
+    let make_lib_entry fn =
+      Install.Entry.make Lib fn
+        ?dst:(Option.map sub_dir ~f:(fun d -> sprintf "%s/%s" d (Path.basename fn)))
+    in
     let byte   = List.mem Mode.Byte   ~set:lib.modes in
     let native = List.mem Mode.Native ~set:lib.modes in
     let if_ cond l = if cond then l else [] in
@@ -1695,18 +1699,22 @@ module Gen(P : Params) = struct
       | Ppx_rewriter -> [Path.relative dir "as-ppx.exe"]
     in
     List.concat
-      [ List.map files ~f:(Install.Entry.make Lib     )
+      [ List.map files ~f:make_lib_entry
       ; List.map execs ~f:(Install.Entry.make Libexec )
       ; List.map dlls  ~f:(Install.Entry.make Stublibs)
       ]
 
-  let obj_install_files ~dir (exes : Executables.t) =
+  let obj_install_files ~dir ~sub_dir (exes : Executables.t) =
+    let make_entry fn =
+      Install.Entry.make Lib fn
+        ?dst:(Option.map sub_dir ~f:(fun d -> sprintf "%s/%s" d (Path.basename fn)))
+    in
     List.concat_map exes.names ~f:(fun name ->
       [ Path.relative dir (name ^ ".cmo")
       ; Path.relative dir (name ^ ".cmx")
       ; Path.relative dir (name ^ ctx.ext_obj)
       ])
-    |> List.map ~f:(Install.Entry.make Lib)
+    |> List.map ~f:make_entry
 
   let is_odig_doc_file fn =
     List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY"]
@@ -1725,12 +1733,12 @@ module Gen(P : Params) = struct
     let entries =
       List.concat_map stanzas_to_consider_for_install ~f:(fun (dir, stanza) ->
         match stanza with
-        | Library ({ public_name = Some name; _ } as lib)
-          when Findlib.root_package_name name = package ->
-          lib_install_files ~dir lib
-        | Executables ({ object_public_name = Some name; _ } as exes)
-          when Findlib.root_package_name name = package ->
-          obj_install_files ~dir exes
+        | Library ({ public = Some { package = p; sub_dir; _ }; _ } as lib)
+          when p = package ->
+          lib_install_files ~dir ~sub_dir lib
+        | Executables ({ object_public = Some { package = p; sub_dir; _ }; _ } as exes)
+          when p = package ->
+          obj_install_files ~dir ~sub_dir exes
         | Install { section; files; package = Some p } when p = package ->
           List.map files ~f:(fun { Install_conf. src; dst } ->
             Install.Entry.make section (Path.relative dir src) ?dst)
@@ -1804,9 +1812,9 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
           (dir,
            List.filter stanzas ~f:(fun stanza ->
              match (stanza : Stanza.t) with
-             | Library { public_name = Some name; _ }
-             | Executables { object_public_name = Some name; _ } ->
-               Findlib.root_package_name name = pkg
+             | Library { public = Some { package; _ }; _ }
+             | Executables { object_public = Some { package; _ }; _ } ->
+               package = pkg
              | Install { package = Some name; _ } -> name = pkg
              | _ -> true)))
     in

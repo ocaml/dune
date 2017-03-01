@@ -11,7 +11,10 @@ module T = struct
 
   let best_name = function
     | External pkg -> pkg.name
-    | Internal (_, lib) -> Option.value lib.public_name ~default:lib.name
+    | Internal (_, lib) ->
+      match lib.public with
+      | Some p -> p.name
+      | None -> lib.name
 
   let compare a b = String.compare (best_name a) (best_name b)
 end
@@ -64,7 +67,10 @@ let c_include_flags ts =
 
 let describe = function
   | Internal (_, lib) ->
-    sprintf "%s (local)" (Option.value lib.public_name ~default:lib.name)
+    sprintf "%s (local)"
+      (match lib.public with
+       | Some p -> p.name
+       | None -> lib.name)
   | External pkg ->
     sprintf "%s (external)" pkg.name
 

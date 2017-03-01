@@ -150,7 +150,7 @@ let load () =
         match Filename.split_ext fn with
         | Some (pkg, ".opam") ->
           let version_from_opam_file =
-            let lines = lines_of_file fn in
+            let lines = lines_of_file (Path.relative path fn |> Path.to_string) in
             List.find_map lines ~f:(fun s ->
               try
                 Scanf.sscanf s "version: %S" (fun x -> Some x)

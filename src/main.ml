@@ -112,9 +112,9 @@ let report_error ?map_fname ppf exn =
     report_error ?map_fname ppf exn ~backtrace
 
 let create_log () =
-  if not (Sys.file_exists "_build") then
-    Unix.mkdir "_build" 0o777;
-  let oc = open_out_bin "_build/log" in
+  if not (Sys.file_exists "_jbuild") then
+    Unix.mkdir "_jbuild" 0o777;
+  let oc = open_out_bin "_jbuild/log" in
   Printf.fprintf oc "# %s\n%!"
     (String.concat (List.map (Array.to_list Sys.argv) ~f:quote_for_shell) ~sep:" ");
   oc

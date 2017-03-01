@@ -27,6 +27,7 @@ let root t = t.root
 let ignore_file = function
   | ""
   | "_build"
+  | "_jbuild"
   | ".git"
   | ".hg"
   | "_darcs"

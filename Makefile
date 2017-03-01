@@ -1,5 +1,5 @@
 INSTALL_ARGS := $(if $(PREFIX),--prefix $(PREFIX),)
-BIN := ./_build/default/bin/main.exe
+BIN := ./_jbuild/default/bin/main.exe
 
 default: boot.exe
 	./boot.exe -j 4 --dev
@@ -19,6 +19,6 @@ all-supported-ocaml-versions:
 	$(BIN) build @install --workspace jbuild-workspace.dev --root .
 
 clean:
-	rm -rf _build
+	rm -rf _jbuild
 
 .PHONY: default install uninstall reinstall clean

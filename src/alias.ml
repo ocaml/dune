@@ -15,7 +15,7 @@ type t =
   ; file : Path.t
   }
 
-let aliases_path = Path.(relative root) "_build/.aliases"
+let aliases_path = Path.(relative root) "_jbuild/.aliases"
 
 let of_path path =
   if not (Path.is_local path) then
@@ -78,7 +78,7 @@ let rules store ~prefixes ~tree =
   List.iter prefixes ~f:(fun prefix ->
     setup_rec_aliases store ~prefix ~tree);
 
-  (* For each alias @_build/blah/../x, add a dependency: @../x --> @_build/blah/../x *)
+  (* For each alias @_jbuild/blah/../x, add a dependency: @../x --> @_jbuild/blah/../x *)
   Hashtbl.fold store ~init:[] ~f:(fun ~key:_ ~data:{ Store. alias; _ } acc ->
     match Path.extract_build_context (Name.path alias.name) with
     | None -> acc

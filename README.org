@@ -14,6 +14,8 @@ that it is highly tested and productive.
 Jbuilder comes with a [[./doc/manual.org][manual]]. If you want to get started without
 reading too much, you can look at the [[./doc/quick-start.org][quick start guide]].
 
+[[https://travis-ci.org/janestreet/jbuilder][https://travis-ci.org/janestreet/jbuilder.png?branch=master]]
+
 ** Overview
 
 Jbuilder reads project metadata from =jbuild= files, which are either

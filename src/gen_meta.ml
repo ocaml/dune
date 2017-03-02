@@ -33,9 +33,7 @@ module Pub_name = struct
   let to_string t = String.concat ~sep:"." (to_list t)
 end
 
-type item =
-  | Lib of Path.t * Pub_name.t * Library.t
-  | Obj of Path.t * Pub_name.t * Executables.t
+type item = Lib of Path.t * Pub_name.t * Library.t
 
 let string_of_deps l =
   String.concat (List.sort l ~cmp:String.compare) ~sep:" "
@@ -124,26 +122,6 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~
       )
     ]
 
-let gen_obj _pub_name (exes : Executables.t) ~lib_deps ~version =
-  let desc =
-    match exes.synopsis with
-    | Some s -> s
-    | None -> ""
-  in
-  let obj_files ~ext =
-    List.map exes.names ~f:(fun name -> name ^ ext)
-    |> String.concat ~sep:" "
-  in
-  let cmo_files = obj_files ~ext:".cmo" in
-  let cmx_files = obj_files ~ext:".cmx" in
-  version @
-  [ description desc
-  ; requires lib_deps
-  ; archive [Pos "byte"  ] cmo_files
-  ; archive [Pos "native"] cmx_files
-  ; exists_if cmo_files
-  ]
-
 type package_version =
   | This of string
   | Load of Path.t
@@ -156,9 +134,6 @@ let gen ~package ~version ~stanzas ~lib_deps ~ppx_runtime_deps =
       | Library ({ public = Some { name; package = p; _ }; _ } as lib)
         when p = package ->
         Some (Lib (dir, Pub_name.parse name, lib))
-      | Executables ({ object_public = Some { name; package = p; _ }; _ } as exes)
-        when p = package ->
-        Some (Obj (dir, Pub_name.parse name, exes))
       | _ ->
         None)
   in
@@ -176,20 +151,14 @@ let gen ~package ~version ~stanzas ~lib_deps ~ppx_runtime_deps =
    | Na -> Build.return [])
   >>>
   Build.all
-    (List.map items ~f:(function
-       | Lib (dir, pub_name, lib) ->
+    (List.map items ~f:(fun (Lib (dir, pub_name, lib)) ->
          Build.fanout3
            (Build.arr (fun x -> x))
            (lib_deps ~dir         (Stanza.Library lib))
            (ppx_runtime_deps ~dir (Stanza.Library lib))
          >>^ fun (version, lib_deps, ppx_runtime_deps) ->
-         (pub_name, gen_lib pub_name lib ~lib_deps ~ppx_runtime_deps ~version)
-       | Obj (dir, pub_name, exes) ->
-         Build.fanout
-           (Build.arr (fun x -> x))
-           (lib_deps ~dir (Stanza.Executables exes))
-         >>^ fun (version, lib_deps) ->
-         (pub_name, gen_obj pub_name exes ~lib_deps ~version)))
+         (pub_name,
+          gen_lib pub_name lib ~lib_deps ~ppx_runtime_deps ~version)))
   >>^ fun pkgs ->
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->

@@ -1712,18 +1712,6 @@ module Gen(P : Params) = struct
       ; List.map dlls  ~f:(Install.Entry.make Stublibs)
       ]
 
-  let obj_install_files ~dir ~sub_dir (exes : Executables.t) =
-    let make_entry fn =
-      Install.Entry.make Lib fn
-        ?dst:(Option.map sub_dir ~f:(fun d -> sprintf "%s/%s" d (Path.basename fn)))
-    in
-    List.concat_map exes.names ~f:(fun name ->
-      [ Path.relative dir (name ^ ".cmo")
-      ; Path.relative dir (name ^ ".cmx")
-      ; Path.relative dir (name ^ ctx.ext_obj)
-      ])
-    |> List.map ~f:make_entry
-
   let is_odig_doc_file fn =
     List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY"]
       ~f:(fun prefix -> String.is_prefix fn ~prefix)
@@ -1744,9 +1732,6 @@ module Gen(P : Params) = struct
         | Library ({ public = Some { package = p; sub_dir; _ }; _ } as lib)
           when p = package ->
           lib_install_files ~dir ~sub_dir lib
-        | Executables ({ object_public = Some { package = p; sub_dir; _ }; _ } as exes)
-          when p = package ->
-          obj_install_files ~dir ~sub_dir exes
         | Install { section; files; package = Some p } when p = package ->
           List.map files ~f:(fun { Install_conf. src; dst } ->
             Install.Entry.make section (Path.relative dir src) ?dst)
@@ -1820,8 +1805,7 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
           (dir,
            List.filter stanzas ~f:(fun stanza ->
              match (stanza : Stanza.t) with
-             | Library { public = Some { package; _ }; _ }
-             | Executables { object_public = Some { package; _ }; _ } ->
+             | Library { public = Some { package; _ }; _ } ->
                package = pkg
              | Install { package = Some name; _ } -> name = pkg
              | _ -> true)))

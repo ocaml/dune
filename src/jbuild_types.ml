@@ -517,26 +517,20 @@ end
 
 module Executables = struct
   type t =
-    { names              : string list
-    ; object_public      : Public_lib.t option
-    ; synopsis           : string option
-    ; link_executables   : bool
-    ; link_flags         : string list
-    ; buildable          : Buildable.t
+    { names            : string list
+    ; link_executables : bool
+    ; link_flags       : string list
+    ; buildable        : Buildable.t
     }
 
   let v1 =
     record
       (Buildable.v1 >>= fun buildable ->
        field   "names"              (list string)      >>= fun names ->
-       field_o "object_public_name" Public_lib.t       >>= fun object_public ->
-       field_o "synopsis"           string             >>= fun synopsis ->
        field   "link_executables"   bool ~default:true >>= fun link_executables ->
        field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
        return
          { names
-         ; object_public
-         ; synopsis
          ; link_executables
          ; link_flags
          ; buildable
@@ -549,14 +543,10 @@ module Executables = struct
        >>= fun () ->
        Buildable.vjs >>= fun buildable ->
        field   "names"              (list string)      >>= fun names ->
-       field_o "object_public_name" Public_lib.t       >>= fun object_public ->
-       field_o "synopsis"           string             >>= fun synopsis ->
        field   "link_executables"   bool ~default:true >>= fun link_executables ->
        field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
        return
          { names
-         ; object_public
-         ; synopsis
          ; link_executables
          ; link_flags
          ; buildable
@@ -799,9 +789,8 @@ module Stanzas = struct
     in
     List.map ts ~f:(fun (stanza : Stanza.t) ->
       match stanza with
-      | Library { public = Some { name; _ }; _ }
-      | Executables { object_public = Some { name; _ }; _ } ->
-        check (Findlib.root_package_name name);
+      | Library { public = Some { package; _ }; _ } ->
+        check package;
         stanza
       | Install { package = Some pkg; _ } ->
         check pkg;

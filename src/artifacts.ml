@@ -30,8 +30,7 @@ let create context stanzas =
                    String_set.add name acc),
                local_libs,
                provides)
-            | Library { public = Some pub; _ }
-            | Executables { object_public = Some pub; _ } ->
+            | Library { public = Some pub; _ } ->
               (local_bins,
                String_map.add local_libs ~key:pub.name ~data:pub,
                provides)

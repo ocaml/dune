@@ -691,10 +691,9 @@ libraries as Jbuilder always build a single ppx driver in order to
 speed up compilation.
 
 Currently Jbuilder only knows how to buid [[https://github.com/janestreet/ppx_driver][ppx_driver]] based drivers, so
-using =(pps (...))= will force a dependency on ppx_driver. You are
-however free to use ppx rewriters that are not based on ppx_driver in
-this list, since ppx_driver is able to import rewriters that where not
-designed for ppx_driver.
+using =(pps (...))= will force a dependency on ppx_driver. See [[https://github.com/janestreet/jbuilder/issues/14][this
+ticket]] for a discussion about adding support for ppx rewriters not
+based on ppx_driver.
 
 ****** Per module pre-processing specification
 

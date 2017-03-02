@@ -22,7 +22,9 @@ module Rule = struct
   type t =
     { deps         : Pset.t
     ; targets      : Pset.t
-    ; lib_deps     : Build.lib_deps Pmap.t
+    ; (* Keep the arrow around so that we can do more query, such as for finding external
+         library dependencies *)
+      build        : (unit, unit) Build.t
     ; mutable exec : Exec_status.t
     }
 end
@@ -213,7 +215,6 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
   let { Pre_rule. build; targets = target_specs } = pre_rule in
   let deps = Build_interpret.deps build ~all_targets_by_dir in
   let targets = Target.paths target_specs in
-  let lib_deps = Build_interpret.lib_deps build in
 
   if !Clflags.debug_rules then begin
     let f set =
@@ -221,6 +222,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       |> List.map ~f:Path.to_string
       |> String.concat ~sep:", "
     in
+    let lib_deps = Build_interpret.lib_deps build in
     if Pmap.is_empty lib_deps then
       Printf.eprintf "{%s} -> {%s}\n" (f deps) (f targets)
     else
@@ -251,7 +253,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     { Rule.
       deps    = deps
     ; targets = targets
-    ; lib_deps
+    ; build
     ; exec
     }
   in
@@ -384,7 +386,8 @@ let rules_for_targets t targets =
 let all_lib_deps t targets =
   List.fold_left (rules_for_targets t targets) ~init:Pmap.empty
     ~f:(fun acc (_, rule) ->
-      Pmap.merge acc rule.Rule.lib_deps ~f:(fun _ a b ->
+      let lib_deps = Build_interpret.lib_deps rule.Rule.build in
+      Pmap.merge acc lib_deps ~f:(fun _ a b ->
         match a, b with
         | None, None -> None
         | Some a, None -> Some a
@@ -393,7 +396,8 @@ let all_lib_deps t targets =
 
 let all_lib_deps_by_context t targets =
   List.fold_left (rules_for_targets t targets) ~init:[] ~f:(fun acc (_, rule) ->
-    Path.Map.fold rule.Rule.lib_deps ~init:acc ~f:(fun ~key:path ~data:lib_deps acc ->
+    let lib_deps = Build_interpret.lib_deps rule.Rule.build in
+    Path.Map.fold lib_deps ~init:acc ~f:(fun ~key:path ~data:lib_deps acc ->
       match Path.extract_build_context path with
       | None -> acc
       | Some (context, _) -> (context, lib_deps) :: acc))

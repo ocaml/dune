@@ -62,7 +62,8 @@ format and the third one describes how to use the =jbuilder= command.
 - *root*: the root is the directory from where Jbuilder can build
   things. Jbuilder knows how to build target that are descendant of
   the root. Anything outside of the tree starting from the root is
-  considered part of the *installed world*
+  considered part of the *installed world*. How the root is determined
+  is explained in [[Finding the root][this section]].
 
 - *workspace*: a workspace is the sub-tree starting from the root. It
   can contain any number of projects that will be built simultaneously
@@ -875,9 +876,44 @@ the root of your project. What you should write instead is:
   (action  (chdir ${ROOT} (ocamllex -o ${@} ${<})))))
 #+end_src
 
+** jbuild-ignore
+
+By default Jbuilder traverses the whole source tree. To ignore a
+sub-tree, simply write a =jbuild-ignore= file in the parent directory
+containing the name of the sub-directories to ignore.
+
+So for instance, if you write =foo= in =src/jbuild-ignore=, then
+=src/foo= won't be traversed and any =jbuild= file it contains will be
+ignored.
+
+=jbuild-ignore= files contain a list of directory names, one per
+line.
+
 * Usage
 
-TODO
+This section describe usage of Jbuilder from the shell.
+
+** Finding the root
+
+The root of the current workspace is determined by looking up specific
+files/directories in the current directory and parent directories.
+
+More precisely, consider the current directory and all its
+ancestors. For instance if you are in =/home/me/code/myproject/src=,
+then this is this set:
+
+- =/home/me/code/myproject/src=
+- =/home/me/code/myproject=
+- =/home/me/code=
+- =/home/me=
+- =/home=
+- =/=
+
+Jbuilder looks for the following entries in all these directories:
+
+1. jbuild-workspace
+2. any file ending with =.install=
+3. =.git= or =.hg=
 
 * Advanced topics
 

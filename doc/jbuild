@@ -4,7 +4,6 @@ open StdLabels
 
 let commands =
   [ "build"
-  ; "build-package"
   ; "external-lib-deps"
   ; "install"
   ; "installed-libraries"

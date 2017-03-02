@@ -179,14 +179,14 @@ let styles_of_tag = function
 let setup_err_formatter_colors () =
   let open Format in
   if Lazy.force stderr_supports_colors then begin
-    let ppf = err_formatter in
-    let funcs = pp_get_formatter_tag_functions ppf () in
-    pp_set_mark_tags ppf true;
-    pp_set_formatter_tag_functions ppf
-      { funcs with
-        mark_close_tag = (fun _ -> ansi_escape_of_styles [Reset])
-      ; mark_open_tag = (fun tag -> ansi_escape_of_styles (styles_of_tag tag))
-      }
+    List.iter [err_formatter; die_ppf] ~f:(fun ppf ->
+      let funcs = pp_get_formatter_tag_functions ppf () in
+      pp_set_mark_tags ppf true;
+      pp_set_formatter_tag_functions ppf
+        { funcs with
+          mark_close_tag = (fun _ -> ansi_escape_of_styles [Reset])
+        ; mark_open_tag = (fun tag -> ansi_escape_of_styles (styles_of_tag tag))
+        })
   end
 
 let output_filename = [Bold; Foreground Green]

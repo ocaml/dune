@@ -51,7 +51,11 @@ packages. When building via [[https://opam.ocaml.org/][opam]], it is able to cor
 libraries that were previously installed even if they are already
 present in the source tree.
 
-The magic invocation is =jbuilder build-package <package-name>=.
+The magic invocation is:
+
+#+begin_src sh
+$ jbuilder build --only-packages <package-name> @install
+#+end_src
 
 *** Building against several configurations at once
 

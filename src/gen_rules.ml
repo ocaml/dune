@@ -1806,7 +1806,7 @@ module Gen(P : Params) = struct
 end
 
 let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
-      ?only_package conf =
+      ?only_packages conf =
   let open Future in
   let { Jbuild_load. file_tree; tree; jbuilds; packages } = conf in
   let module Common = struct
@@ -1816,23 +1816,28 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
         ~f:(fun ~key:_ ~data:{ Package. path; _ } acc ->
           Path.Set.add path acc)
     let file_tree = file_tree
-    let packages = packages
+    let packages =
+      match only_packages with
+      | None -> packages
+      | Some pkgs ->
+        String_map.filter packages ~f:(fun _ { Package.name; _ } ->
+          String_set.mem name pkgs)
     let filter_out_optional_stanzas_with_missing_deps =
       filter_out_optional_stanzas_with_missing_deps
   end in
   List.map contexts ~f:(fun context ->
     Jbuild_load.Jbuilds.eval ~context jbuilds >>| fun stanzas ->
     let stanzas =
-      match only_package with
+      match only_packages with
       | None -> stanzas
-      | Some pkg ->
+      | Some pkgs ->
         List.map stanzas ~f:(fun (dir, stanzas) ->
           (dir,
            List.filter stanzas ~f:(fun stanza ->
              match (stanza : Stanza.t) with
-             | Library { public = Some { package; _ }; _ } ->
-               package = pkg
-             | Install { package = Some name; _ } -> name = pkg
+             | Library { public = Some { package; _ }; _ }
+             | Install { package = Some package; _ } ->
+               String_set.mem package pkgs
              | _ -> true)))
     in
     let module M =

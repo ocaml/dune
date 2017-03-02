@@ -1021,6 +1021,34 @@ So for instance:
   =foo= build context
 - =jbuilder build @runtest= will run the tests for all build contexts
 
+** Restricting the set of packages
+
+You can restrict the set of packages from your workspace that Jbuilder
+can see with the =--only-packages= option:
+
+#+begin_src sh
+$ jbuilder build --only-packages pkg1,pkg2,... @install
+#+end_src
+
+This option acts as if you went through all the jbuild files and
+commented out the stanzas refering to a package that is not in the
+list given to =jbuilder=.
+
+** Invocation from opam
+
+You should set the =build:= field of your =<package>.opam= file as
+follow:
+
+#+begin_src
+build: [["jbuilder" "build" "--only-packages" "<package>" "--root" "." "-j" jobs @install]]
+#+end_src
+
+This has the following effects:
+- it tells jbuilder to build everything that is installable and to
+  ignore packages other than =<package>= defined in your project
+- it sets the root to prevent jbuilder from looking it up
+- it uses whatever concurrency option opam provides
+
 ** Workspace configuration
 
 By default, a workspace has only one build context named =default=

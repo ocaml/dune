@@ -15,8 +15,14 @@ let package_install_file { packages; _ } pkg =
 
 let setup ?filter_out_optional_stanzas_with_missing_deps
       ?workspace ?(workspace_file="jbuild-workspace")
-      ?only_package () =
+      ?only_packages () =
   let conf = Jbuild_load.load () in
+  Option.iter only_packages ~f:(fun set ->
+    String_set.iter set ~f:(fun pkg ->
+      if not (String_map.mem pkg conf.packages) then
+        die "@{<error>Error@}: I don't know about package %s \
+             (passed through --only-packages)%s"
+          pkg (hint pkg (String_map.keys conf.packages))));
   let workspace =
     match workspace with
     | Some w -> w
@@ -34,7 +40,7 @@ let setup ?filter_out_optional_stanzas_with_missing_deps
        Context.create_for_opam ~name ~switch ?root ~merlin ()))
   >>= fun contexts ->
   Gen_rules.gen conf ~contexts
-    ?only_package
+    ?only_packages
     ?filter_out_optional_stanzas_with_missing_deps
   >>= fun (rules, stanzas) ->
   let build_system = Build_system.create ~contexts ~file_tree:conf.file_tree ~rules in

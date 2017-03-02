@@ -341,7 +341,16 @@ let lines_of_file fn = with_file_in fn ~f:input_lines
 let write_file fn data = with_file_out fn ~f:(fun oc -> output_string oc data)
 
 exception Fatal_error of string
-let die fmt = ksprintf (fun msg -> raise (Fatal_error msg)) fmt
+let die_buf = Buffer.create 128
+let die_ppf (* Referenced in Ansi_color *) = Format.formatter_of_buffer die_buf
+let die fmt =
+  Format.kfprintf
+    (fun ppf ->
+       Format.pp_print_flush ppf ();
+       let s = Buffer.contents die_buf in
+       Buffer.clear die_buf;
+       raise (Fatal_error s))
+    die_ppf fmt
 
 let warn fmt =
   ksprintf (fun msg ->

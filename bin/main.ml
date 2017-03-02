@@ -17,6 +17,7 @@ type common =
   ; workspace_file : string option
   ; root           : string
   ; target_prefix  : string
+  ; only_packages  : String_set.t option
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -34,8 +35,10 @@ let set_common c =
 module Main = struct
   include Jbuilder.Main
 
-  let setup ?only_package ?filter_out_optional_stanzas_with_missing_deps common =
-    setup ?workspace_file:common.workspace_file ?only_package
+  let setup ?filter_out_optional_stanzas_with_missing_deps common =
+    setup
+      ?workspace_file:common.workspace_file
+      ?only_packages:common.only_packages
       ?filter_out_optional_stanzas_with_missing_deps ()
 end
 
@@ -104,8 +107,16 @@ let help_secs =
   ]
 
 let common =
-  let make concurrency debug_rules debug_dep_path debug_findlib dev_mode
-        workspace_file root =
+  let make
+        concurrency
+        only_packages
+        debug_rules
+        debug_dep_path
+        debug_findlib
+        dev_mode
+        workspace_file
+        root
+    =
     let root, to_cwd =
       match root with
       | Some dn -> (dn, [])
@@ -119,6 +130,9 @@ let common =
     ; workspace_file
     ; root
     ; target_prefix = String.concat ~sep:"" (List.map to_cwd ~f:(sprintf "%s/"))
+    ; only_packages =
+        Option.map only_packages
+          ~f:(fun s -> String_set.of_list (String.split s ~on:','))
     }
   in
   let docs = copts_sect in
@@ -127,6 +141,16 @@ let common =
          & opt int !Clflags.concurrency
          & info ["j"] ~docs ~docv:"JOBS"
              ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|}
+        )
+  in
+  let only_packages =
+    Arg.(value
+         & opt (some string) None
+         & info ["only-packages"] ~docs ~docv:"PACKAGES"
+             ~doc:{|Ignore stanzas referring to a package that is not in $(b,PACKAGES).
+                    $(b,PACKAGES) is a coma-separated list of package name. You need to
+                    use this option in your $(i,<package>.opam) file if your project
+                    contains several packages.|}
         )
   in
   let drules =
@@ -173,6 +197,7 @@ let common =
   in
   Term.(const make
         $ concurrency
+        $ only_packages
         $ drules
         $ ddep_path
         $ dfindlib
@@ -209,34 +234,6 @@ let resolve_package_install setup pkg =
   | Ok path -> path
   | Error () ->
     die "Unknown package %s!%s" pkg (hint pkg (String_map.keys setup.packages))
-
-let build_package common pkg =
-  Future.Scheduler.go ~log:(create_log ())
-    (Main.setup common ~only_package:pkg >>= fun setup ->
-     do_build setup [resolve_package_install setup pkg])
-
-let build_package =
-  let doc = "Build a single package in release mode." in
-  let man =
-    [ `S "DESCRIPTION"
-    ; `P {|This command is meant to be used in $(i,<package>.opam) files.
-           It builds the given package as if all the definitions in
-           the source tree that are for another package didn't existed.
-         |}
-    ; `P {|More precisely, this is what you should use in your $(i,<package>.opam) file:|}
-    ; `Pre {|  build: ["jbuilder" "build-package" "<package>" "-j" jobs|}
-    ; `Blocks help_secs
-    ]
-  in
-  let name_ = Arg.info [] ~docv:"PACKAGE-NAME" in
-  let go common pkg =
-    set_common common;
-    build_package common pkg
-  in
-  ( Term.(const go
-          $ common
-          $ Arg.(required & pos 0 (some string) None name_))
-  , Term.info "build-package" ~doc ~man)
 
 type target =
   | File  of Path.t
@@ -558,7 +555,6 @@ let exec =
 
 let all =
   [ installed_libraries
-  ; build_package
   ; external_lib_deps
   ; build_targets
   ; runtest

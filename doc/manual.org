@@ -787,8 +787,15 @@ as follow:
 
 ***** User actions
 
-=(action ...)= fields describe user actions. The argument can use one
-of these two forms:
+=(action ...)= fields describe user actions.
+
+User actions are always run from the same sub-directory of the current
+build context as the jbuild they are defined in. So for instance an
+action defined in =src/foo/jbuild= will be run from
+=_build/<context>/src/foo=.
+
+The argument of an =(action ...)= field can use one of these two
+forms:
 
 - a simple string, in which case it is passed to =bash=
 - using a small DSL, that is interpreted by jbuilder directly and
@@ -819,6 +826,54 @@ The following constructions are available:
 - =(copy-and-add-line-directive <src> <dst>)= to copy a file and add a line directive at the beginning
 - =(system <cmd>)= to execute a command using the system shell: =sh=
   on Unix and =cmd= on Windows
+
+Note: expansion of the special =${<kind>:...}= is done relative to the
+current working directory of the part of the DSL being executed. So
+for instance if you have this action in a =src/foo/jbuild=:
+
+#+begin_src scheme
+  (action (chdir ../../.. (echo ${path:jbuild})))
+#+end_src
+
+Then =${path:jbuild}= will expand to =src/foo/jbuild=. When you run
+various tools, they often use the filename given on the command line
+in error messages. As a result, if you execute the command from the
+original directory, it will only see the basename.
+
+To understand why this is important, let's consider this jbuild living
+in =src/foo=:
+
+#+begin_src
+(rule
+ ((targets (blah.ml))
+  (deps    (blah.mll))
+  (action  (ocamllex -o ${@} ${<}))))
+#+end_src
+
+Here the command that will be executed is:
+
+#+begin_src sh
+ocamllex -o blah.ml blah.mll
+#+end_src
+
+And it will be executed in =_build/<context>/src/foo=. As a result, if
+there is an error in the generated =blah.ml= file it will be reported
+as:
+
+#+begin_src
+File "blah.ml", line 42, characters 5-10:
+Error: ...
+#+end_src
+
+Which can be a problem as you editor might think that =blah.ml= is at
+the root of your project. What you should write instead is:
+
+#+begin_src
+(rule
+ ((targets (blah.ml))
+  (deps    (blah.mll))
+  (action  (chdir ${ROOT} (ocamllex -o ${@} ${<})))))
+#+end_src
 
 * Usage
 

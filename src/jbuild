@@ -2,7 +2,7 @@
 
 (library
  ((name        jbuilder)
-  (public_name jbuilder)
+;;  (public_name jbuilder)
   (libraries   (unix jbuilder_re))
   (synopsis    "Internal Jbuilder library, do not use!")))
 

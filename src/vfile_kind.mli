@@ -11,8 +11,8 @@ module type S = sig
 
   val id : t Id.t
 
-  val load : filename:string -> t
-  val save : filename:string -> t -> unit
+  val load : Path.t -> t
+  val save : Path.t -> t -> unit
 end
 
 type 'a t = (module S with type t = 'a)
@@ -26,6 +26,6 @@ module Make
 
 module Make_full
     (T : sig type t end)
-    (To_sexp : sig val t : T.t -> Sexp.t end)
-    (Of_sexp : sig val t : Sexp.Ast.t -> T.t end)
+    (To_sexp : sig val t : Path.t -> T.t -> Sexp.t end)
+    (Of_sexp : sig val t : Path.t -> Sexp.Ast.t -> T.t end)
   : S with type t = T.t

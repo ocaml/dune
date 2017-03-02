@@ -34,8 +34,9 @@ let set_common c =
 module Main = struct
   include Jbuilder.Main
 
-  let setup ?only_package common =
-    setup ?workspace_file:common.workspace_file ?only_package ()
+  let setup ?only_package ?filter_out_optional_stanzas_with_missing_deps common =
+    setup ?workspace_file:common.workspace_file ?only_package
+      ?filter_out_optional_stanzas_with_missing_deps ()
 end
 
 let do_build (setup : Main.setup) targets =
@@ -357,7 +358,8 @@ let external_lib_deps =
   let go common only_missing targets =
     set_common common;
     Future.Scheduler.go ~log:(create_log ())
-      (Main.setup common >>= fun setup ->
+      (Main.setup common ~filter_out_optional_stanzas_with_missing_deps:false
+       >>= fun setup ->
        let targets = resolve_targets common setup targets in
        let failure =
          String_map.fold ~init:false

@@ -31,8 +31,8 @@ module type S = sig
 
   val id : t Id.t
 
-  val load : filename:string -> t
-  val save : filename:string -> t -> unit
+  val load : Path.t -> t
+  val save : Path.t -> t -> unit
 end
 
 type 'a t = (module S with type t = 'a)
@@ -44,22 +44,22 @@ let eq (type a) (type b)
 
 module Make_full
     (T : sig type t end)
-    (To_sexp : sig val t : T.t -> Sexp.t end)
-    (Of_sexp : sig val t : Sexp.Ast.t -> T.t end)
+    (To_sexp : sig val t : Path.t -> T.t -> Sexp.t end)
+    (Of_sexp : sig val t : Path.t -> Sexp.Ast.t -> T.t end)
   : S with type t = T.t =
 struct
   type t = T.t
 
   let id = Id.create ()
 
-  let save ~filename x =
-    let s = To_sexp.t x |> Sexp.to_string in
-    let oc = open_out filename in
+  let save path x =
+    let s = To_sexp.t path x |> Sexp.to_string in
+    let oc = open_out (Path.to_string path) in
     output_string oc s;
     close_out oc
 
-  let load ~filename =
-    Of_sexp.t (Sexp_load.single filename)
+  let load path =
+    Of_sexp.t path (Sexp_load.single (Path.to_string path))
 end
 
 
@@ -68,8 +68,14 @@ module Make
     (F : functor (C : Sexp.Combinators) -> sig val t : T.t C.t end)
   : S with type t = T.t =
 struct
-  module Of_sexp = F(Sexp.Of_sexp)
-  module To_sexp = F(Sexp.To_sexp)
+  module Of_sexp = struct
+    include F(Sexp.Of_sexp)
+    let t _ sexp = t sexp
+  end
+  module To_sexp = struct
+    include F(Sexp.To_sexp)
+    let t _ x = t x
+  end
 
   include Make_full(T)(To_sexp)(Of_sexp)
 end

@@ -4,11 +4,13 @@ open Import
 
 type t
 
-val create : Findlib.t -> (Path.t * Jbuild_types.Stanza.t list) list -> t
+val create
+  :  Findlib.t
+  -> dirs_with_dot_opam_files:Path.Set.t
+  -> (Path.t * Jbuild_types.Library.t) list
+  -> t
 
-val find : t -> string -> Lib.t
-
-val find_internal : t -> string -> Lib.Internal.t option
+val find : t -> from:Path.t -> string -> Lib.t
 
 val internal_libs_without_non_installable_optional_ones : t -> Lib.Internal.t list
 
@@ -25,5 +27,6 @@ type resolved_select =
 
 val resolve_selects
   :  t
+  -> from:Path.t
   -> Jbuild_types.Lib_dep.t list
   -> resolved_select list

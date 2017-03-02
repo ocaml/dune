@@ -149,7 +149,7 @@ let get_file : type a. t -> Path.t -> a File_kind.t -> a File_spec.t = fun t fn 
     file
 
 let save_vfile (type a) (module K : Vfile_kind.S with type t = a) fn x =
-  K.save x ~filename:(Path.to_string fn)
+  K.save fn x
 
 module Build_exec = struct
   open Build.Repr

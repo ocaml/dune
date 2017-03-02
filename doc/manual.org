@@ -293,13 +293,8 @@ the library and you are free to expose only the modules you want.
   =Foo=: =(modules (:standard \ foo))=
 
 - =(libraries (<library-dependencies>))= is used to specify the
-  dependencies of the library. In here you should put library
-  names. For library that are present in the workspace, you can use
-  either the real name or the public name. For libraries that are part
-  of the installed world, you need to use the public name. For
-  instance: =(libraries (base re))=. In addition to direct
-  dependencies you can specify alternative dependencies. This is
-  described in the [[Alternative dependencies][alternative dependencies section]]
+  dependencies of the library. See the [[Library dependencies][section about library
+  dependencies]] for more details
 
 - =(wrapped <boolean>)= specifies whether the modules of the library
   should be available only through of the toplevel library module, or
@@ -411,8 +406,9 @@ can always rely on =<name>.exe= being available.
 
 =<optional-fields>= are:
 
-- =(libraries (<library-dependencies>))= is the same as the
-  =(libraries ...)= field of [[library][libraries]]
+- =(libraries (<library-dependencies>))= specifies the library
+  dependencies. See the [[Library dependencies][section about library dependencies]] for more
+  details
 
 - =(modules <modules>)= specifies which modules in the current
   directory Jbuilder should consider when building
@@ -632,7 +628,42 @@ In addition, =(action ...)= fields support the following special variables:
 The =${<kind>:...}= forms are what allows you to write custom rules
 that work transparently whether things are installed or not.
 
-***** Alternative dependencies
+***** Library dependencies
+
+Dependencies on libraries are specified using =(libraries ...)= fields
+in =library= and =executables= stanzas.
+
+For library that are present in the workspace, you can use either the
+real name (with some restrictions, see below) or the public name. For
+libraries that are part of the installed world, you need to use the
+public name. For instance: =(libraries (base re))=.
+
+When resolving libraries, libraries that are part of the workspace are
+always prefered to ones that are part of the installed world.
+
+****** Scope of internal library names
+
+The scope of internal library names is not the whole workspace. It is
+restricted to the sub-tree starting from the closest parent containing
+a =<package>.opam= file. Moreover, a sub-tree containing
+=<package>.opam= doesn' t inherit the internal names available in its
+parent scope.
+
+The idea behing this rule is that public library names must be
+universally unique, but internal ones don't need to. In particular you
+might have private libraries that are only used for tests or building
+an executable.
+
+As a result, when you create a workspace including several projects
+there might be a name clash between internal library names.
+
+This scoping rule ensure that this won't be a problem.
+
+****** Alternative dependencies
+
+In addition to direct dependencies you can specify alternative
+dependencies. This is described in the [[Alternative dependencies][alternative dependencies
+section]]
 
 It is sometimes the case that one wants to not depend on a specific
 library, but instead on whatever is already installed. For instance to

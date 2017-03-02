@@ -96,10 +96,11 @@ let obj_name_of_basename fn =
 module type Params = sig
   val context   : Context.t
   val file_tree : File_tree.t
-  val stanzas   : (Path.t * Jbuild_types.Stanza.t list) list
+  val stanzas   : (Path.t * Stanza.t list) list
   val packages  : Package.t String_map.t
   val filter_out_optional_stanzas_with_missing_deps : bool
   val alias_store : Alias.Store.t
+  val dirs_with_dot_opam_files : Path.Set.t
 end
 
 module Gen(P : Params) = struct
@@ -119,6 +120,16 @@ module Gen(P : Params) = struct
           ; ctx_dir = Path.append context.build_dir dir
           ; stanzas
           })
+
+    let internal_libraries =
+      List.concat_map stanzas ~f:(fun { ctx_dir;  stanzas; _ } ->
+        List.filter_map stanzas ~f:(fun stanza ->
+          match (stanza : Stanza.t) with
+          | Library lib -> Some (ctx_dir, lib)
+          | _ -> None))
+
+    let dirs_with_dot_opam_files =
+      Path.Set.map dirs_with_dot_opam_files ~f:(Path.append context.build_dir)
   end
 
   let ctx = P.context
@@ -151,32 +162,35 @@ module Gen(P : Params) = struct
   module Lib_db = struct
     open Lib_db
 
-    let t = create findlib (List.map P.stanzas ~f:(fun d -> (d.ctx_dir, d.stanzas)))
+    let t =
+      create findlib P.internal_libraries
+        ~dirs_with_dot_opam_files:P.dirs_with_dot_opam_files
 
-    let find name = Build.arr (fun () -> find t name)
+    let find ~from name = Build.arr (fun () -> find t ~from name)
 
     module Libs_vfile =
       Vfile_kind.Make_full
         (struct type t = Lib.t list end)
         (struct
           open Sexp.To_sexp
-          let t l = list string (List.map l ~f:Lib.best_name)
+          let t _dir l = list string (List.map l ~f:Lib.best_name)
         end)
         (struct
           open Sexp.Of_sexp
-          let t sexp = List.map (list string sexp) ~f:(Lib_db.find t)
+          let t dir sexp =
+            List.map (list string sexp) ~f:(Lib_db.find t ~from:dir)
         end)
 
     let vrequires ~dir ~item =
       let fn = Path.relative dir (item ^ ".requires.sexp") in
-    Build.Vspec.T (fn, (module Libs_vfile))
+      Build.Vspec.T (fn, (module Libs_vfile))
 
     let load_requires ~dir ~item =
       Build.vpath (vrequires ~dir ~item)
 
     let vruntime_deps ~dir ~item =
       let fn = Path.relative dir (item ^ ".runtime-deps.sexp") in
-    Build.Vspec.T (fn, (module Libs_vfile))
+      Build.Vspec.T (fn, (module Libs_vfile))
 
     let load_runtime_deps ~dir ~item =
       Build.vpath (vruntime_deps ~dir ~item)
@@ -222,7 +236,7 @@ module Gen(P : Params) = struct
       internal_libs_without_non_installable_optional_ones t
 
     let select_rules ~dir lib_deps =
-      List.map (Lib_db.resolve_selects t lib_deps) ~f:(fun { dst_fn; src_fn } ->
+      List.map (Lib_db.resolve_selects t ~from:dir lib_deps) ~f:(fun { dst_fn; src_fn } ->
         let src = Path.relative dir src_fn in
         let dst = Path.relative dir dst_fn in
         Build.path src
@@ -560,7 +574,7 @@ module Gen(P : Params) = struct
       Build.fanout
         (Lib_db.closure ~dir ~dep_kind (Direct "ppx_driver" ::
                                         List.map pp_names ~f:Lib_dep.direct))
-        (Lib_db.find runner)
+        (Lib_db.find runner ~from:dir)
       >>^ (fun (libs, runner) ->
         let runner_name = Lib.best_name runner in
         List.filter libs ~f:(fun lib ->
@@ -579,7 +593,7 @@ module Gen(P : Params) = struct
          ]);
     libs
 
-  let get_ppx_driver pps ~dep_kind =
+  let get_ppx_driver pps ~dir ~dep_kind =
     let names =
       Pp_set.elements pps
       |> List.map ~f:Pp.to_string
@@ -588,10 +602,9 @@ module Gen(P : Params) = struct
     match Hashtbl.find ppx_drivers key with
     | Some x -> x
     | None ->
-      let ppx_dir = Path.relative ctx.build_dir (sprintf ".ppx/%s" key) in
-      let exe = Path.relative ppx_dir "ppx.exe" in
+      let exe = Path.relative ctx.build_dir (sprintf ".ppx/%s/ppx.exe" key) in
       let libs =
-        build_ppx_driver names ~dir:ppx_dir ~dep_kind ~target:exe
+        build_ppx_driver names ~dir ~dep_kind ~target:exe
           ~runner:"ppx_driver.runner"
       in
       Hashtbl.add ppx_drivers ~key ~data:(exe, libs);
@@ -646,7 +659,7 @@ module Gen(P : Params) = struct
                (sprintf "%s %s" (expand_vars ~dir cmd)
                   (Filename.quote (Path.reach src ~from:dir)))))
       | Pps { pps; flags } ->
-        let ppx_exe, libs = get_ppx_driver pps ~dep_kind in
+        let ppx_exe, libs = get_ppx_driver pps ~dir ~dep_kind in
         pped_module m ~dir ~f:(fun kind src dst ->
           add_rule
             (preprocessor_deps
@@ -1794,7 +1807,17 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
       ?only_package conf =
   let open Future in
   let { Jbuild_load. file_tree; tree; jbuilds; packages } = conf in
-  let alias_store = Alias.Store.create () in
+  let module Common = struct
+    let alias_store = Alias.Store.create ()
+    let dirs_with_dot_opam_files =
+      String_map.fold packages ~init:Path.Set.empty
+        ~f:(fun ~key:_ ~data:{ Package. path; _ } acc ->
+          Path.Set.add path acc)
+    let file_tree = file_tree
+    let packages = packages
+    let filter_out_optional_stanzas_with_missing_deps =
+      filter_out_optional_stanzas_with_missing_deps
+  end in
   List.map contexts ~f:(fun context ->
     Jbuild_load.Jbuilds.eval ~context jbuilds >>| fun stanzas ->
     let stanzas =
@@ -1812,20 +1835,16 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
     in
     let module M =
       Gen(struct
-        let context  = context
-        let file_tree = file_tree
-        let stanzas  = stanzas
-        let packages = packages
-        let filter_out_optional_stanzas_with_missing_deps =
-          filter_out_optional_stanzas_with_missing_deps
-        let alias_store = alias_store
+        let context = context
+        let stanzas = stanzas
+        include Common
       end)
     in
     (!M.all_rules, (context.name, stanzas)))
   |> Future.all
   >>| fun l ->
   let rules, context_names_and_stanzas = List.split l in
-  (Alias.rules alias_store
+  (Alias.rules Common.alias_store
      ~prefixes:(Path.root :: List.map contexts ~f:(fun c -> c.Context.build_dir)) ~tree
    @ List.concat rules,
    String_map.of_alist_exn context_names_and_stanzas)

@@ -336,7 +336,9 @@ let env_for_exec t =
     | Some prev -> (var, sprintf "%s%c%s" v sep prev)
   in
   let vars =
-    [ extend_var "CAML_LD_LIBRARY_PATH" (Config.local_install_dir ~context:t.name)
+    [ extend_var "CAML_LD_LIBRARY_PATH" (Path.relative
+                                           (Config.local_install_dir ~context:t.name)
+                                           "lib/stublibs")
     ; extend_var "OCAMLPATH"            (Path.relative
                                            (Config.local_install_dir ~context:t.name)
                                            "lib")

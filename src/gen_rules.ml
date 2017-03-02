@@ -129,7 +129,9 @@ module Gen(P : Params) = struct
           | _ -> None))
 
     let dirs_with_dot_opam_files =
-      Path.Set.map dirs_with_dot_opam_files ~f:(Path.append context.build_dir)
+      Path.Set.elements dirs_with_dot_opam_files
+      |> List.map ~f:(Path.append context.build_dir)
+      |> Path.Set.of_list
   end
 
   let ctx = P.context

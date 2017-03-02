@@ -174,24 +174,16 @@ module Preprocess = struct
     | _ -> Pp_set.empty
 end
 
-module Preprocess_map = struct
-  type t =
-    | For_all  of Preprocess.t
-    | Per_file of Preprocess.t String_map.t
+module Per_file = struct
+  type 'a t =
+    | For_all  of 'a
+    | Per_file of 'a String_map.t
 
-  let find module_name t =
-    match t with
-    | For_all  pp  -> pp
-    | Per_file map -> String_map.find_default module_name map ~default:No_preprocessing
-
-  let default_v1 = For_all No_preprocessing
-  let default_vjs = For_all (Pps { pps = Pp_set.singleton (Pp.of_string "ppx_jane"); flags = [] })
-
-  let t sexp =
+  let t a sexp =
     match sexp with
     | List (_, Atom (_, "per_file") :: rest) -> begin
         List.concat_map rest ~f:(fun sexp ->
-          let pp, names = pair Preprocess.t module_names sexp in
+          let pp, names = pair a module_names sexp in
           List.map (String_set.elements names) ~f:(fun name -> (name, pp)))
         |> String_map.of_alist
         |> function
@@ -199,13 +191,36 @@ module Preprocess_map = struct
         | Error (name, _, _) ->
           of_sexp_error sexp (sprintf "module %s present in two different sets" name)
       end
-    | sexp -> For_all (Preprocess.t sexp)
+    | sexp -> For_all (a sexp)
+end
 
-  let pps = function
+module Preprocess_map = struct
+  type t = Preprocess.t Per_file.t
+  let t = Per_file.t Preprocess.t
+
+  let find module_name (t : t) =
+    match t with
+    | For_all  pp  -> pp
+    | Per_file map -> String_map.find_default module_name map ~default:No_preprocessing
+
+  let default : t = For_all No_preprocessing
+
+  let pps : t -> _ = function
     | For_all pp -> Preprocess.pp_set pp
     | Per_file map ->
       String_map.fold map ~init:Pp_set.empty ~f:(fun ~key:_ ~data:pp acc ->
         Pp_set.union acc (Preprocess.pp_set pp))
+end
+
+module Lint = struct
+  type t = Pps of Preprocess.pps
+
+  let t =
+    sum
+      [ cstr "pps" (list Pp_or_flag.t  @> nil) (fun l ->
+          let pps, flags = Pp_or_flag.split l in
+          Pps { pps = Pp_set.of_list pps; flags })
+      ]
 end
 
 let field_osl name =
@@ -296,16 +311,19 @@ module Buildable = struct
     ; libraries                : Lib_dep.t list
     ; preprocess               : Preprocess_map.t
     ; preprocessor_deps        : Dep_conf.t list
+    ; lint                     : Lint.t Per_file.t option
     ; flags                    : Ordered_set_lang.t
     ; ocamlc_flags             : Ordered_set_lang.t
     ; ocamlopt_flags           : Ordered_set_lang.t
     }
 
-  let common ~pp_default =
-    field "preprocess" Preprocess_map.t ~default:pp_default
+  let common =
+    field "preprocess" Preprocess_map.t ~default:Preprocess_map.default
     >>= fun preprocess ->
     field "preprocessor_deps" (list Dep_conf.t) ~default:[]
-    >>= fun preprocessor_deps        ->
+    >>= fun preprocessor_deps ->
+    field_o "lint" (Per_file.t Lint.t)
+    >>= fun lint ->
     field "modules" (fun s -> Ordered_set_lang.(map (t s)) ~f:String.capitalize_ascii)
       ~default:Ordered_set_lang.standard
     >>= fun modules ->
@@ -317,6 +335,7 @@ module Buildable = struct
     return
       { preprocess
       ; preprocessor_deps
+      ; lint
       ; modules
       ; libraries
       ; flags
@@ -324,30 +343,8 @@ module Buildable = struct
       ; ocamlopt_flags
       }
 
-  let v1 = common ~pp_default:Preprocess_map.default_v1
-
-  let vjs =
-    common ~pp_default:Preprocess_map.default_vjs >>= fun t ->
-    field "extra_disabled_warnings" (list int) ~default:[]
-    >>= fun extra_disabled_warnings  ->
-    let t =
-      if Ordered_set_lang.is_standard t.flags && extra_disabled_warnings <> [] then
-        let flags =
-          Ordered_set_lang.append t.flags
-            (Ordered_set_lang.t
-               (List (Loc.none,
-                      [ Atom (Loc.none, "-w")
-                      ; Atom
-                          (Loc.none,
-                           String.concat ~sep:""
-                             (List.map extra_disabled_warnings ~f:(sprintf "-%d")))
-                      ])))
-        in
-        { t with flags }
-      else
-        t
-    in
-    return t
+  let v1 = common
+  let vjs = v1
 end
 
 module Public_lib = struct
@@ -452,7 +449,7 @@ module Library = struct
 
   let vjs =
     record
-      (ignore_fields ["inline_tests"; "skip_from_default"; "lint"] >>= fun () ->
+      (ignore_fields [] >>= fun () ->
        Buildable.vjs >>= fun buildable ->
        field      "name" library_name                                      >>= fun name                     ->
        field_o    "public_name" Public_lib.t                               >>= fun public              ->
@@ -464,7 +461,6 @@ module Library = struct
        field      "c_names" (list string) ~default:[]                      >>= fun c_names                  ->
        field      "cxx_names" (list string) ~default:[]                    >>= fun cxx_names                ->
        field      "library_flags" (list String_with_vars.t) ~default:[]    >>= fun library_flags            ->
-       field      "c_libraries" (list string) ~default:[]                  >>= fun c_libraries              ->
        field_oslu "c_library_flags"                                        >>= fun c_library_flags          ->
        field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
        field_o    "js_of_ocaml" Js_of_ocaml.t                              >>= fun js_of_ocaml              ->
@@ -488,13 +484,7 @@ module Library = struct
          ; cxx_flags
          ; includes
          ; library_flags
-         ; c_library_flags =
-             Ordered_set_lang.Unexpanded.append
-               (Ordered_set_lang.Unexpanded.t
-                  (List (Loc.none,
-                         List.map c_libraries ~f:(fun lib ->
-                             Atom (Loc.none, "-l" ^ lib)))))
-               c_library_flags
+         ; c_library_flags
          ; self_build_stubs_archive
          ; js_of_ocaml
          ; virtual_deps
@@ -538,8 +528,7 @@ module Executables = struct
 
   let vjs =
     record
-      (ignore_fields
-         ["js_of_ocaml"; "only_shared_object"; "review_help"; "skip_from_default"]
+      (ignore_fields []
        >>= fun () ->
        Buildable.vjs >>= fun buildable ->
        field   "names"              (list string)      >>= fun names ->
@@ -570,7 +559,7 @@ module Rule = struct
 
   let vjs =
     record
-      (ignore_fields ["sandbox"] >>= fun () ->
+      (ignore_fields [] >>= fun () ->
        common)
 
   let ocamllex_v1 names =
@@ -688,7 +677,7 @@ module Alias_conf = struct
 
   let vjs =
     record
-      (ignore_fields ["sandbox"] >>= fun () ->
+      (ignore_fields [] >>= fun () ->
        common)
 end
 

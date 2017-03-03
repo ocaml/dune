@@ -254,6 +254,9 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     >>= fun () ->
     Build_exec.exec t build () ~targeting
     >>= fun action ->
+    if !Clflags.debug_actions then
+      Format.eprintf "@{<debug>Action@}: %s@."
+        (Sexp.to_string (Action.sexp_of_t action));
     Action.exec action
   ) in
   let rule =

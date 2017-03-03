@@ -168,13 +168,14 @@ let setup_env_for_ocaml_colors = lazy(
 )
 
 let styles_of_tag = function
-  | "loc" -> [Bold]
-  | "error" -> [Bold; Foreground Red]
+  | "loc"     -> [Bold]
+  | "error"   -> [Bold; Foreground Red]
   | "warning" -> [Bold; Foreground Magenta]
-  | "kwd" -> [Bold; Foreground Blue]
-  | "id" -> [Bold; Foreground Yellow]
-  | "prompt" -> [Bold; Foreground Green]
-  | _ -> []
+  | "kwd"     -> [Bold; Foreground Blue]
+  | "id"      -> [Bold; Foreground Yellow]
+  | "prompt"  -> [Bold; Foreground Green]
+  | "debug"   -> [Underlined; Foreground Bright_cyan]
+  | _         -> []
 
 let setup_err_formatter_colors () =
   let open Format in

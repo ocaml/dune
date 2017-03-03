@@ -60,6 +60,7 @@ module type Combinators = sig
   val bool       : bool                      t
   val pair       : 'a t -> 'b t -> ('a * 'b) t
   val list       : 'a t -> 'a list           t
+  val array      : 'a t -> 'a array          t
   val option     : 'a t -> 'a option         t
   val string_set : String_set.t              t
   val string_map : 'a t -> 'a String_map.t   t
@@ -73,6 +74,7 @@ module To_sexp = struct
   let bool b = Atom (string_of_bool b)
   let pair fa fb (a, b) = List [fa a; fb b]
   let list f l = List (List.map l ~f)
+  let array f a = list f (Array.to_list a)
   let option f = function
     | None -> List []
     | Some x -> List [f x]
@@ -118,6 +120,8 @@ module Of_sexp = struct
   let list f = function
     | Atom _ as sexp -> of_sexp_error sexp "List expected"
     | List (_, l) -> List.map l ~f
+
+  let array f sexp = Array.of_list (list f sexp)
 
   let option f = function
     | List (_, []) -> None

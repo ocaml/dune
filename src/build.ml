@@ -209,6 +209,34 @@ module Shexp = struct
           copy_channels ic oc;
           if tail then close_out oc);
       return ()
+    | Copy (src, dst) ->
+      let src = Path.relative dir src in
+      let dst = Path.relative dir dst in
+      copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst);
+      return ()
+    | Symlink (src, dst) ->
+      let src = Path.relative dir src in
+      let dst = Path.relative dir dst in
+      if Sys.win32 then
+        copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst)
+      else begin
+        let src =
+          if Path.is_root dst then
+            Path.to_string src
+          else
+            Path.reach ~from:(Path.parent dst) src
+        in
+        let dst = Path.to_string dst in
+        match Unix.readlink dst with
+        | target ->
+          if target <> src then begin
+            Unix.unlink dst;
+            Unix.symlink src dst
+          end
+        | exception _ ->
+          Unix.symlink src dst
+      end;
+      return ()
     | Copy_and_add_line_directive (src, dst) ->
       let src = Path.relative dir src in
       let dst = Path.relative dir dst in
@@ -249,7 +277,7 @@ end
 
 let action action ~dir ~env ~targets =
   prim ~targets (fun () ->
-    match (action : _ Action.t) with
+    match (action : _ Action.Desc.t) with
     | Bash cmd ->
       Future.run Strict ~dir:(Path.to_string dir) ~env
         "/bin/bash" ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]

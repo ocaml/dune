@@ -1295,14 +1295,14 @@ module Gen(P : Params) = struct
 
   module Action_interpret : sig
     val run
-      :  Action.Unexpanded.t
+      :  Action.Desc.Unexpanded.t
       -> dir:Path.t
       -> dep_kind:Build.lib_dep_kind
       -> targets:Path.t list
       -> deps:Dep_conf.t list
       -> (unit, unit) Build.t
   end = struct
-    module U = Action.Unexpanded
+    module U = Action.Desc.Unexpanded
 
     type resolved_forms =
       { (* Mapping from ${...} forms to their resolutions *)
@@ -1380,7 +1380,7 @@ module Gen(P : Params) = struct
       in
       let forms = extract_artifacts ~dir t in
       let t =
-        Action.Unexpanded.expand dir t
+        U.expand dir t
           ~f:(expand_string_with_vars ~artifacts:forms.artifacts ~targets ~deps)
       in
       let build =
@@ -1420,7 +1420,7 @@ module Gen(P : Params) = struct
       let action =
         match alias_conf.action with
         | None -> Sexp.Atom "none"
-        | Some a -> List [Atom "some" ; Action.Unexpanded.sexp_of_t a] in
+        | Some a -> List [Atom "some" ; Action.Desc.Unexpanded.sexp_of_t a] in
       Sexp.List [deps ; action]
       |> Sexp.to_string
       |> Digest.string

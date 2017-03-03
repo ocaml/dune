@@ -189,7 +189,7 @@ let relative t fn =
     | _   , false -> fn
     | false, true -> External.relative t fn
 
-let of_string t = relative "" t
+let of_string t =  relative "" t
 
 let absolute =
   let initial_dir = Sys.getcwd () in

@@ -65,7 +65,7 @@ val run
   -> ('a, unit) t
 
 val action
-  :  string Action.t
+  :  string Action.Desc.t
   -> dir:Path.t
   -> env:string array
   -> targets:Path.t list

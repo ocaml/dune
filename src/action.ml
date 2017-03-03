@@ -10,6 +10,8 @@ module Mini_shexp = struct
     | Progn          of 'a t list
     | Echo           of 'a
     | Cat            of 'a
+    | Copy           of 'a * 'a
+    | Symlink        of 'a * 'a
     | Copy_and_add_line_directive of 'a * 'a
     | System         of 'a
 
@@ -22,8 +24,11 @@ module Mini_shexp = struct
       ; cstr_rest "progn"      nil (t a)         (fun l -> Progn l)
       ; cstr "echo"           (a @> nil)         (fun x -> Echo x)
       ; cstr "cat"            (a @> nil)         (fun x -> Cat x)
-      ; cstr "copy" (a @> a @> nil) (fun src dst ->
-          With_stdout_to (dst, Cat src))
+      ; cstr "copy" (a @> a @> nil)              (fun src dst -> Copy (src, dst))
+      (*
+         (* We don't expose symlink to the user yet since this might complicate things *)
+         ; cstr "symlink" (a @> a @> nil) (fun src dst -> Symlink (dst, Cat src))
+      *)
       ; cstr "copy-and-add-line-directive" (a @> a @> nil) (fun src dst ->
           Copy_and_add_line_directive (src, dst))
       ; cstr "system" (a @> nil) (fun cmd -> System cmd)
@@ -45,6 +50,10 @@ module Mini_shexp = struct
     | Progn l -> Progn (List.map l ~f:(fun t -> expand dir t ~f))
     | Echo x -> Echo (f dir x)
     | Cat x -> Cat (f dir x)
+    | Copy (x, y) ->
+      Copy (f dir x, f dir y)
+    | Symlink (x, y) ->
+      Symlink (f dir x, f dir y)
     | Copy_and_add_line_directive (x, y) ->
       Copy_and_add_line_directive (f dir x, f dir y)
     | System x -> System (f dir x)
@@ -58,6 +67,8 @@ module Mini_shexp = struct
     | Progn l -> List.fold_left l ~init:acc ~f:(fun init t -> fold t ~init ~f)
     | Echo x -> f acc x
     | Cat x -> f acc x
+    | Copy (x, y) -> f (f acc x) y
+    | Symlink (x, y) -> f (f acc x) y
     | Copy_and_add_line_directive (x, y) -> f (f acc x) y
     | System x -> f acc x
 
@@ -69,38 +80,58 @@ module Mini_shexp = struct
     | Progn l -> List (Atom "progn" :: List.map l ~f:(sexp_of_t f))
     | Echo x -> List [Atom "echo"; f x]
     | Cat x -> List [Atom "cat"; f x]
+    | Copy (x, y) ->
+      List [Atom "copy"; f x; f y]
+    | Symlink (x, y) ->
+      List [Atom "symlink"; f x; f y]
     | Copy_and_add_line_directive (x, y) ->
       List [Atom "copy-and-add-line-directive"; f x; f y]
     | System x -> List [Atom "system"; f x]
 end
 
-module T = struct
-  type 'a t =
-    | Bash of 'a
-    | Shexp of 'a Mini_shexp.t
+module Desc = struct
+  module T = struct
+    type 'a t =
+      | Bash of 'a
+      | Shexp of 'a Mini_shexp.t
 
-  let t a sexp =
-    match sexp with
-    | Atom _ -> Bash  (a              sexp)
-    | List _ -> Shexp (Mini_shexp.t a sexp)
+    let t a sexp =
+      match sexp with
+      | Atom _ -> Bash  (a              sexp)
+      | List _ -> Shexp (Mini_shexp.t a sexp)
 
-  type context = Path.t
+    type context = Path.t
 
-  let expand dir t ~f =
-    match t with
-    | Bash x -> Bash (f dir x)
-    | Shexp x -> Shexp (Mini_shexp.expand dir x ~f)
+    let expand dir t ~f =
+      match t with
+      | Bash x -> Bash (f dir x)
+      | Shexp x -> Shexp (Mini_shexp.expand dir x ~f)
 
-  let fold t ~init ~f =
-    match t with
-    | Bash x -> f init x
-    | Shexp x -> Mini_shexp.fold x ~init ~f
+    let fold t ~init ~f =
+      match t with
+      | Bash x -> f init x
+      | Shexp x -> Mini_shexp.fold x ~init ~f
 
-  let sexp_of_t f : _ -> Sexp.t = function
-    | Bash a -> List [Atom "bash" ; f a]
-    | Shexp a -> List [Atom "shexp" ; Mini_shexp.sexp_of_t f a]
+    let sexp_of_t f : _ -> Sexp.t = function
+      | Bash a -> List [Atom "bash" ; f a]
+      | Shexp a -> List [Atom "shexp" ; Mini_shexp.sexp_of_t f a]
+  end
+
+  include T
+
+  module Unexpanded = String_with_vars.Lift(T)
 end
 
-include T
+type t =
+  { env    : string array
+  ; dir    : Path.t
+  ; action : string Desc.t
+  }
 
-module Unexpanded = String_with_vars.Lift(T)
+let sexp_of_t { env; dir; action } =
+  let open Sexp.To_sexp in
+  Sexp.List
+    [ List [ Atom "env"   ; array string env             ]
+    ; List [ Atom "dir"   ; string (Path.to_string dir)  ]
+    ; List [ Atom "action"; Desc.sexp_of_t string action ]
+    ]

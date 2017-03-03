@@ -546,13 +546,13 @@ module Rule = struct
   type t =
     { targets : string list (** List of files in the current directory *)
     ; deps    : Dep_conf.t list
-    ; action  : Action.Unexpanded.t
+    ; action  : User_action.Unexpanded.t
     }
 
   let common =
     field "targets" (list file_in_current_dir)    >>= fun targets ->
     field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
-    field "action"  Action.Unexpanded.t           >>= fun action ->
+    field "action"  User_action.Unexpanded.t           >>= fun action ->
     return { targets; deps; action }
 
   let v1 = record common
@@ -660,13 +660,13 @@ module Alias_conf = struct
   type t =
     { name  : string
     ; deps  : Dep_conf.t list
-    ; action : Action.Unexpanded.t option
+    ; action : User_action.Unexpanded.t option
     }
 
   let common =
     field "name" string                        >>= fun name ->
     field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
-    field_o "action" Action.Unexpanded.t  >>= fun action ->
+    field_o "action" User_action.Unexpanded.t  >>= fun action ->
     return
       { name
       ; deps

@@ -289,12 +289,6 @@ module Gen(P : Params) = struct
     let run ?(dir=ctx.build_dir) ?stdout_to ?(env=ctx.env) ?extra_targets prog args =
       Build.run ~dir ?stdout_to ~env ?extra_targets prog args
 
-    let run_capture ?(dir=ctx.build_dir) ?(env=ctx.env) prog args =
-      Build.run_capture ~dir ~env prog args
-
-    let run_capture_lines ?(dir=ctx.build_dir) ?(env=ctx.env) prog args =
-      Build.run_capture_lines ~dir ~env prog args
-
     let bash ?dir ?stdout_to ?env ?extra_targets cmd =
       run (Dep (Path.absolute "/bin/bash")) ?dir ?stdout_to ?env ?extra_targets
         [ As ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd] ]
@@ -512,9 +506,16 @@ module Gen(P : Params) = struct
         | Impl, _ -> S [A "-impl"; Dep fn]
         | Intf, _ -> S [A "-intf"; Dep fn])
     in
+    let ocamldep_output =
+      Path.relative dir (sprintf "%s.depends%s.ocamldep-output" item suffix)
+    in
     add_rule
-      (Build.run_capture_lines (Dep ctx.ocamldep) [A "-modules"; S files]
-       >>^ parse_deps ~dir ~modules ~alias_module
+      (Build.run (Dep ctx.ocamldep) [A "-modules"; S files] ~stdout_to:ocamldep_output);
+    add_rule
+      (Build.path ocamldep_output
+       >>^ (fun () ->
+         parse_deps ~dir ~modules ~alias_module
+           (lines_of_file (Path.to_string ocamldep_output)))
        >>> Build.store_vfile vdepends);
     Build.vpath vdepends
 
@@ -1292,16 +1293,16 @@ module Gen(P : Params) = struct
      | User actions                                                    |
      +-----------------------------------------------------------------+ *)
 
-  module Action_interpret : sig
+  module User_action_interpret : sig
     val run
-      :  Action.Unexpanded.t
+      :  User_action.Unexpanded.t
       -> dir:Path.t
       -> dep_kind:Build.lib_dep_kind
       -> targets:Path.t list
       -> deps:Dep_conf.t list
       -> (unit, unit) Build.t
   end = struct
-    module U = Action.Unexpanded
+    module U = User_action.Unexpanded
 
     type resolved_forms =
       { (* Mapping from ${...} forms to their resolutions *)
@@ -1388,7 +1389,7 @@ module Gen(P : Params) = struct
         >>>
         Build.paths (String_map.values forms.artifacts)
         >>>
-        Build.action t ~dir ~env:ctx.env ~targets
+        Build.user_action t ~dir ~env:ctx.env ~targets
           ~expand:(expand_string_with_vars ~artifacts:forms.artifacts ~targets ~deps)
       in
       match forms.failures with
@@ -1405,7 +1406,7 @@ module Gen(P : Params) = struct
     add_rule
       (Dep_conf_interpret.dep_of_list ~dir rule.deps
        >>>
-       Action_interpret.run
+       User_action_interpret.run
          rule.action
          ~dir
          ~dep_kind:Required
@@ -1419,7 +1420,7 @@ module Gen(P : Params) = struct
       let action =
         match alias_conf.action with
         | None -> Sexp.Atom "none"
-        | Some a -> List [Atom "some" ; Action.Unexpanded.sexp_of_t a] in
+        | Some a -> List [Atom "some" ; User_action.Unexpanded.sexp_of_t a] in
       Sexp.List [deps ; action]
       |> Sexp.to_string
       |> Digest.string
@@ -1434,7 +1435,7 @@ module Gen(P : Params) = struct
       | None -> deps
       | Some action ->
         deps
-        >>> Action_interpret.run
+        >>> User_action_interpret.run
           action
           ~dir
           ~dep_kind:Required

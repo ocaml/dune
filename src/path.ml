@@ -270,3 +270,25 @@ let rmdir t = Unix.rmdir (to_string t)
 let unlink t = Unix.unlink (to_string t)
 
 let extend_basename t ~suffix = t ^ suffix
+
+let insert_after_build_dir_exn =
+  let error a b =
+    Sexp.code_error
+      "Path.insert_after_build_dir_exn"
+      [ "path"  , Atom a
+      ; "insert", Atom b
+      ]
+  in
+  fun a b ->
+    if not (is_local a && is_local b) then error a b;
+    match String.lsplit2 a ~on:'/' with
+    | Some ("_build", rest) ->
+      if is_root b then
+        a
+      else
+        sprintf "_build/%s/%s" b rest
+    | _ ->
+      error a b
+
+
+

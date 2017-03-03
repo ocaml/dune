@@ -64,22 +64,8 @@ val run
   -> 'a Arg_spec.t list
   -> ('a, unit) t
 
-val run_capture
-  :  ?dir:Path.t
-  -> ?env:string array
-  -> 'a Prog_spec.t
-  -> 'a Arg_spec.t list
-  -> ('a, string) t
-
-val run_capture_lines
-  :  ?dir:Path.t
-  -> ?env:string array
-  -> 'a Prog_spec.t
-  -> 'a Arg_spec.t list
-  -> ('a, string list) t
-
-val action
-  :  'a Action.t
+val user_action
+  :  'a User_action.t
   -> dir:Path.t
   -> env:string array
   -> targets:Path.t list

@@ -60,6 +60,8 @@ val extract_build_context : t -> (string * t) option
 val extract_build_context_dir : t -> (t * t) option
 val is_in_build_dir : t -> bool
 
+val insert_after_build_dir_exn : t -> t -> t
+
 val exists : t -> bool
 val readdir : t -> string list
 val is_directory : t -> bool

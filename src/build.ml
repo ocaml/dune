@@ -164,23 +164,9 @@ let run ?(dir=Path.root) ?stdout_to ?env ?(extra_targets=[]) prog args =
        Future.run Strict ~dir:(Path.to_string dir) ~stdout_to ?env
          (Path.reach prog ~from:dir) args)
 
-let run_capture_gen ~f ?(dir=Path.root) ?env prog args =
-  let targets = Arg_spec.add_targets args [] in
-  prog_and_args ~dir prog args
-  >>>
-  prim ~targets
-    (fun (prog, args) ->
-       f ?dir:(Some (Path.to_string dir)) ?env
-         Future.Strict (Path.reach prog ~from:dir) args)
-
-let run_capture ?dir ?env prog args =
-  run_capture_gen ~f:Future.run_capture ?dir ?env prog args
-let run_capture_lines ?dir ?env prog args =
-  run_capture_gen ~f:Future.run_capture_lines ?dir ?env prog args
-
 module Shexp = struct
   open Future
-  open Action.Mini_shexp
+  open User_action.Mini_shexp
 
   let run ~dir ~env ~env_extra ~stdout_to ~tail prog args =
     let stdout_to : Future.stdout_to =
@@ -270,9 +256,9 @@ module Shexp = struct
     exec t ~dir ~env ~env_extra:String_map.empty ~stdout_to:None ~tail:true ~f
 end
 
-let action action ~dir ~env ~targets ~expand:f =
+let user_action action ~dir ~env ~targets ~expand:f =
   prim ~targets (fun () ->
-    match (action : _ Action.t) with
+    match (action : _ User_action.t) with
     | Bash cmd ->
       Future.run Strict ~dir:(Path.to_string dir) ~env
         "/bin/bash" ["-e"; "-u"; "-o"; "pipefail"; "-c"; f ~dir cmd]

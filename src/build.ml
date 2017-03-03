@@ -163,7 +163,7 @@ let action ?(dir=Path.root) ?context ~targets action =
   { Action. context; dir; action }
 
 let echo fn s =
-  action ~targets:[fn] (With_stdout_to (fn, Echo s))
+  action ~targets:[fn] (Write_file (fn, s))
 
 let echo_dyn fn =
   Targets [fn]
@@ -171,7 +171,7 @@ let echo_dyn fn =
   { Action.
     context = None
   ; dir     = Path.root
-  ; action  = With_stdout_to (fn, Echo s)
+  ; action  = Write_file (fn, s)
   }
 
 let copy ~src ~dst =

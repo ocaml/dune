@@ -80,6 +80,8 @@ module To_sexp = struct
     | Some x -> List [f x]
   let string_set set = list string (String_set.elements set)
   let string_map f map = list (pair string f) (String_map.bindings map)
+  let record l =
+    List (List.map l ~f:(fun (n, v) -> List [Atom n; v]))
 end
 
 module Of_sexp = struct

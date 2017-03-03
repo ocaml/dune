@@ -45,6 +45,7 @@ module Mini_shexp = struct
       | Copy_and_add_line_directive of 'path * 'path
       | System         of 'a
       | Bash           of 'a
+      | Write_file     of 'path * 'a
 
     let rec t a p sexp =
       sum
@@ -85,6 +86,7 @@ module Mini_shexp = struct
         List [Atom "copy-and-add-line-directive"; g x; g y]
       | System x -> List [Atom "system"; f x]
       | Bash   x -> List [Atom "bash"; f x]
+      | Write_file (x, y) -> List [Atom "write-file"; g x; f y]
 
     let rec fold t ~init:acc ~f =
       match t with
@@ -101,6 +103,7 @@ module Mini_shexp = struct
       | Copy_and_add_line_directive (x, y) -> f (f acc x) y
       | System x -> f acc x
       | Bash x -> f acc x
+      | Write_file (x, y) -> f (f acc x) y
   end
   open Ast
 
@@ -148,6 +151,7 @@ module Mini_shexp = struct
         Copy_and_add_line_directive (expand_path ~dir ~f x, expand_path ~dir ~f y)
       | System x -> System (expand_str ~dir ~f x)
       | Bash x -> Bash (expand_str ~dir ~f x)
+      | Write_file (x, y) -> Write_file (expand_path ~dir ~f x, expand_str ~dir ~f y)
   end
 
   open Future
@@ -246,6 +250,13 @@ module Mini_shexp = struct
       run ~dir ~env ~env_extra ~stdout_to ~tail
         (Path.absolute "/bin/bash")
         ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
+    | Write_file (fn, s) ->
+      let fn = Path.to_string fn in
+      if Sys.file_exists fn && read_file fn = s then
+        ()
+      else
+        write_file fn s;
+      return ()
 
   and exec_list l ~dir ~env ~env_extra ~stdout_to ~tail =
     match l with
@@ -301,3 +312,10 @@ let exec { action; dir; context } =
   in
   Mini_shexp.exec action ~dir ~env ~env_extra:String_map.empty
     ~stdout_to:None ~tail:true
+
+type for_hash = string option * Path.t * Mini_shexp.t
+
+let for_hash { context; dir; action } =
+  (Option.map context ~f:(fun c -> c.name),
+   dir,
+   action)

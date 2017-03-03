@@ -20,10 +20,10 @@ end
 
 module Rule = struct
   type t =
-    { deps         : Pset.t
-    ; targets      : Pset.t
-    ; build        : (unit, Action.t) Build.t
-    ; mutable exec : Exec_status.t
+    { deps           : Pset.t
+    ; targets        : Pset.t
+    ; build          : (unit, Action.t) Build.t
+    ; mutable exec   : Exec_status.t
     }
 end
 
@@ -56,9 +56,31 @@ end
 
 type t =
   { (* File specification by targets *)
-    files    : (Path.t, File_spec.packed) Hashtbl.t
-  ; contexts : Context.t list
+    files      : (Path.t, File_spec.packed) Hashtbl.t
+  ; contexts   : Context.t list
+  ; (* Table from target to digest of [(deps, targets, action)] *)
+    trace      : (Path.t, Digest.t) Hashtbl.t
+  ; timestamps : (Path.t, float) Hashtbl.t
   }
+
+let timestamp t fn ~default =
+  match Hashtbl.find t.timestamps fn with
+  | Some ts -> ts
+  | None ->
+    match Unix.lstat (Path.to_string fn) with
+    | exception _ -> default
+    | stat        ->
+      let ts = stat.st_mtime in
+      Hashtbl.add t.timestamps ~key:fn ~data:ts;
+      ts
+
+let min_timestamp t fns =
+  List.fold_left fns ~init:max_float
+    ~f:(fun acc fn -> min acc (timestamp t fn ~default:0.))
+
+let max_timestamp t fns =
+  List.fold_left fns ~init:0.
+    ~f:(fun acc fn -> max acc (timestamp t fn ~default:max_float))
 
 let find_file_exn t file =
   Hashtbl.find_exn t.files file ~string_of_key:(fun fn -> sprintf "%S" (Path.to_string fn))
@@ -146,20 +168,14 @@ let get_file : type a. t -> Path.t -> a File_kind.t -> a File_spec.t = fun t fn 
     let Eq = File_kind.eq_exn kind file.kind in
     file
 
-let save_vfile (type a) (module K : Vfile_kind.S with type t = a) fn x =
-  K.save fn x
+let vfile_to_string (type a) (module K : Vfile_kind.S with type t = a) fn x =
+  K.to_string fn x
 
 module Build_exec = struct
   open Build.Repr
 
-  let nop =
-    { Action.
-      context = None
-    ; dir     = Path.root
-    ; action  = Progn []
-    }
-
-  let exec bs t x ~targeting =
+  let exec bs t x ~static_deps ~targeting =
+    let all_deps = ref static_deps in
     let rec exec
       : type a b. (a, b) t -> a -> b Future.t = fun t x ->
       let return = Future.return in
@@ -170,8 +186,12 @@ module Build_exec = struct
         let file = get_file bs fn (Sexp_file kind) in
         assert (file.data = None);
         file.data <- Some x;
-        save_vfile kind fn x;
-        Future.return nop
+        Future.return
+          { Action.
+            context = None
+          ; dir     = Path.root
+          ; action  = Write_file (fn, vfile_to_string kind fn x)
+          }
       | Compose (a, b) ->
         exec a x >>= exec b
       | First t ->
@@ -194,12 +214,14 @@ module Build_exec = struct
         return (Option.value_exn file.data)
       | Dyn_paths t ->
         exec t x >>= fun fns ->
+        all_deps := Pset.union !all_deps (Pset.of_list fns);
         all_unit (List.rev_map fns ~f:(wait_for_file bs ~targeting)) >>= fun () ->
         return x
       | Record_lib_deps _ -> return x
       | Fail { fail } -> fail ()
     in
-    exec (Build.repr t) x
+    exec (Build.repr t) x >>| fun action ->
+    (action, !all_deps)
 end
 
 let add_spec t fn spec ~allow_override =
@@ -252,12 +274,31 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     all_unit
       (Pset.fold deps ~init:[] ~f:(fun fn acc -> wait_for_file t fn ~targeting :: acc))
     >>= fun () ->
-    Build_exec.exec t build () ~targeting
-    >>= fun action ->
+    Build_exec.exec t build () ~targeting ~static_deps:deps
+    >>= fun (action, all_deps) ->
     if !Clflags.debug_actions then
       Format.eprintf "@{<debug>Action@}: %s@."
         (Sexp.to_string (Action.sexp_of_t action));
-    Action.exec action
+    let all_deps = Pset.elements all_deps in
+    let targets  = Pset.elements targets  in
+    let hash =
+      let trace = (all_deps, targets, Action.for_hash action) in
+      Digest.string (Marshal.to_string trace [])
+    in
+    let rule_changed =
+      List.fold_left targets ~init:false ~f:(fun acc fn ->
+        match Hashtbl.find t.trace fn with
+        | None ->
+          Hashtbl.add t.trace ~key:fn ~data:hash;
+          true
+        | Some prev_hash ->
+          Hashtbl.replace t.trace ~key:fn ~data:hash;
+          acc || prev_hash <> hash)
+    in
+    if rule_changed || min_timestamp t targets < max_timestamp t all_deps then
+      Action.exec action
+    else
+      return ()
   ) in
   let rule =
     { Rule.
@@ -290,6 +331,36 @@ let setup_copy_rules t ~all_non_target_source_files ~all_targets_by_dir =
           ~all_targets_by_dir
           ~allow_override:true))
 
+module Trace = struct
+  type t = (Path.t, Digest.t) Hashtbl.t
+
+  let file = "_build/.db"
+
+  let dump (trace : t) =
+    let sexp =
+      Sexp.List (
+        Hashtbl.fold trace ~init:Pmap.empty ~f:(fun ~key ~data acc ->
+          Pmap.add acc ~key ~data)
+        |> Path.Map.bindings
+        |> List.map ~f:(fun (path, hash) ->
+          Sexp.List [ Atom (Path.to_string path); Atom (Digest.to_hex hash) ]))
+    in
+    write_file file (Sexp.to_string sexp)
+
+  let load () =
+    let trace = Hashtbl.create 1024 in
+    if Sys.file_exists file then begin
+      let sexp = Sexp_load.single file in
+      let bindings =
+        let open Sexp.Of_sexp in
+        list (pair Path.t (fun s -> Digest.from_hex (string s))) sexp
+      in
+      List.iter bindings ~f:(fun (path, hash) ->
+        Hashtbl.add trace ~key:path ~data:hash);
+    end;
+    trace
+end
+
 let create ~contexts ~file_tree ~rules =
   let all_source_files =
     File_tree.fold file_tree ~init:Pset.empty ~f:(fun dir acc ->
@@ -321,11 +392,17 @@ let create ~contexts ~file_tree ~rules =
     |> Pmap.of_alist_multi
     |> Pmap.map ~f:Pset.of_list
   ) in
-  let t = { files = Hashtbl.create 1024; contexts } in
+  let t =
+    { contexts
+    ; files      = Hashtbl.create 1024
+    ; trace      = Trace.load ()
+    ; timestamps = Hashtbl.create 1024
+    } in
   List.iter rules ~f:(compile_rule t ~all_targets_by_dir ~allow_override:false);
   setup_copy_rules t ~all_targets_by_dir
     ~all_non_target_source_files:
       (Pset.diff all_source_files all_other_targets);
+  at_exit (fun () -> Trace.dump t.trace);
   t
 
 let remove_old_artifacts t =

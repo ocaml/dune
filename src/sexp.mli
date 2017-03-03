@@ -36,7 +36,12 @@ module type Combinators = sig
   val string_map : 'a t -> 'a String_map.t   t
 end
 
-module To_sexp : Combinators with type 'a t = 'a -> t
+module To_sexp : sig
+  type sexp = t
+  include Combinators with type 'a t = 'a -> t
+
+  val record : (string * sexp) list -> sexp
+end with type sexp := t
 
 module Of_sexp : sig
   type ast = Ast.t =

@@ -32,7 +32,7 @@ module type S = sig
   val id : t Id.t
 
   val load : Path.t -> t
-  val save : Path.t -> t -> unit
+  val to_string : Path.t -> t -> string
 end
 
 type 'a t = (module S with type t = 'a)
@@ -52,11 +52,7 @@ struct
 
   let id = Id.create ()
 
-  let save path x =
-    let s = To_sexp.t path x |> Sexp.to_string in
-    let oc = open_out (Path.to_string path) in
-    output_string oc s;
-    close_out oc
+  let to_string path x = To_sexp.t path x |> Sexp.to_string
 
   let load path =
     Of_sexp.t path (Sexp_load.single (Path.to_string path))

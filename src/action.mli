@@ -22,6 +22,7 @@ module Mini_shexp : sig
       | Copy_and_add_line_directive of 'path * 'path
       | System         of 'a
       | Bash           of 'a
+      | Write_file     of 'path * 'a
     val t : 'a Sexp.Of_sexp.t -> 'b Sexp.Of_sexp.t -> ('a, 'b) t Sexp.Of_sexp.t
     val sexp_of_t : 'a Sexp.To_sexp.t -> 'b Sexp.To_sexp.t -> ('a, 'b) t Sexp.To_sexp.t
   end
@@ -49,3 +50,6 @@ type t =
 val t : Context.t String_map.t -> t Sexp.Of_sexp.t
 val sexp_of_t : t Sexp.To_sexp.t
 val exec : t -> unit Future.t
+
+type for_hash
+val for_hash : t -> for_hash

@@ -12,6 +12,9 @@ val g : bool ref
 (** Print rules *)
 val debug_rules : bool ref
 
+(** Print actions *)
+val debug_actions : bool ref
+
 (** Print executed commands *)
 val debug_run : bool ref
 

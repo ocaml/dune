@@ -8,14 +8,11 @@ val arr : ('a -> 'b) -> ('a, 'b) t
 
 val return : 'a -> (unit, 'a) t
 
-val create_file : target:Path.t -> ('a -> 'b) -> ('a, 'b) t
-val create_files : targets:Path.t list -> ('a -> 'b) -> ('a, 'b) t
-
 module Vspec : sig
   type 'a t = T : Path.t * 'a Vfile_kind.t -> 'a t
 end
 
-val store_vfile : 'a Vspec.t -> ('a, unit) t
+val store_vfile : 'a Vspec.t -> ('a, Action.t) t
 
 module O : sig
   val ( >>> ) : ('a, 'b) t -> ('b, 'c) t -> ('a, 'c) t
@@ -58,42 +55,30 @@ end
 val run
   :  ?dir:Path.t
   -> ?stdout_to:Path.t
-  -> ?env:string array
+  -> ?context:Context.t
   -> ?extra_targets:Path.t list
   -> 'a Prog_spec.t
   -> 'a Arg_spec.t list
-  -> ('a, unit) t
-
-val run_capture
-  :  ?dir:Path.t
-  -> ?env:string array
-  -> 'a Prog_spec.t
-  -> 'a Arg_spec.t list
-  -> ('a, string) t
-
-val run_capture_lines
-  :  ?dir:Path.t
-  -> ?env:string array
-  -> 'a Prog_spec.t
-  -> 'a Arg_spec.t list
-  -> ('a, string list) t
+  -> ('a, Action.t) t
 
 val action
-  :  'a Action.t
-  -> dir:Path.t
-  -> env:string array
+  :  ?dir:Path.t
+  -> ?context:Context.t
   -> targets:Path.t list
-  -> expand:(dir:Path.t -> 'a -> string)
-  -> (unit, unit) t
+  -> Action.Mini_shexp.t
+  -> (unit, Action.t) t
 
 (** Create a file with the given contents. *)
-val echo : Path.t -> (string, unit) t
+val echo : Path.t -> string -> (unit, Action.t) t
+val echo_dyn : Path.t -> (string, Action.t) t
 
-val copy : src:Path.t -> dst:Path.t -> (unit, unit) t
+val copy : src:Path.t -> dst:Path.t -> (unit, Action.t) t
 
-val symlink : src:Path.t -> dst:Path.t -> (unit, unit) t
+val symlink : src:Path.t -> dst:Path.t -> (unit, Action.t) t
 
-val touch : Path.t -> (unit, unit) t
+val create_file : Path.t -> (unit, Action.t) t
+
+val and_create_file : Path.t -> (Action.t, Action.t) t
 
 type lib_dep_kind =
   | Optional
@@ -111,14 +96,10 @@ type lib_deps = lib_dep_kind String_map.t
 
 
 module Repr : sig
-  type ('a, 'b) prim =
-    { targets : Path.t list
-    ; exec    : 'a -> 'b Future.t
-    }
   type ('a, 'b) t =
     | Arr : ('a -> 'b) -> ('a, 'b) t
-    | Prim : ('a, 'b) prim -> ('a, 'b) t
-    | Store_vfile : 'a Vspec.t -> ('a, unit) t
+    | Targets : Path.t list -> ('a, 'a) t
+    | Store_vfile : 'a Vspec.t -> ('a, Action.t) t
     | Compose : ('a, 'b) t * ('b, 'c) t -> ('a, 'c) t
     | First : ('a, 'b) t -> ('a * 'c, 'b * 'c) t
     | Second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t

@@ -11,11 +11,11 @@ end
 
 module Rule : sig
   type t =
-    { build   : (unit, unit) Build.t
+    { build   : (unit, Action.t) Build.t
     ; targets : Target.t list
     }
 
-  val make : (unit, unit) Build.t -> t
+  val make : (unit, Action.t) Build.t -> t
 end
 
 val deps

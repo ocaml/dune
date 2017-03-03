@@ -546,13 +546,13 @@ module Rule = struct
   type t =
     { targets : string list (** List of files in the current directory *)
     ; deps    : Dep_conf.t list
-    ; action  : Action.Unexpanded.t
+    ; action  : Action.Mini_shexp.Unexpanded.t
     }
 
   let common =
     field "targets" (list file_in_current_dir)    >>= fun targets ->
     field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
-    field "action"  Action.Unexpanded.t           >>= fun action ->
+    field "action"  Action.Mini_shexp.Unexpanded.t      >>= fun action ->
     return { targets; deps; action }
 
   let v1 = record common
@@ -570,11 +570,10 @@ module Rule = struct
       { targets = [dst]
       ; deps    = [File (str src)]
       ; action  =
-          Shexp
-            (Chdir
-               (str "${ROOT}",
-                Run (str "${bin:ocamllex}",
-                     [str "-q"; str "-o"; str "${@}"; str "${<}"])))
+          Chdir
+            (str "${ROOT}",
+             Run (str "${bin:ocamllex}",
+                  [str "-q"; str "-o"; str "${@}"; str "${<}"]))
       })
 
   let ocamllex_vjs = ocamllex_v1
@@ -586,11 +585,10 @@ module Rule = struct
       { targets = [name ^ ".ml"; name ^ ".mli"]
       ; deps    = [File (str src)]
       ; action  =
-          Shexp
-            (Chdir
-               (str "${ROOT}",
-                Run (str "${bin:ocamlyacc}",
-                     [str "${<}"])))
+          Chdir
+            (str "${ROOT}",
+             Run (str "${bin:ocamlyacc}",
+                  [str "${<}"]))
       })
 
   let ocamlyacc_vjs = ocamlyacc_v1
@@ -660,13 +658,13 @@ module Alias_conf = struct
   type t =
     { name  : string
     ; deps  : Dep_conf.t list
-    ; action : Action.Unexpanded.t option
+    ; action : Action.Mini_shexp.Unexpanded.t option
     }
 
   let common =
     field "name" string                        >>= fun name ->
     field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
-    field_o "action" Action.Unexpanded.t  >>= fun action ->
+    field_o "action" Action.Mini_shexp.Unexpanded.t  >>= fun action ->
     return
       { name
       ; deps

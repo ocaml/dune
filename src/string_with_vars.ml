@@ -57,6 +57,12 @@ let of_string s = of_tokens (Token.tokenise s)
 
 let t sexp = of_string (Sexp.Of_sexp.string sexp)
 
+let raw s = [Text s]
+
+let just_a_var = function
+  | [Var (_, s)] -> Some s
+  | _ -> None
+
 let sexp_of_var_syntax = function
   | Parens -> Sexp.Atom "parens"
   | Braces -> Sexp.Atom "braces"
@@ -88,25 +94,16 @@ let expand t ~f =
         | Parens -> sprintf "$(%s)" v
         | Braces -> sprintf "${%s}" v)
   |> String.concat ~sep:""
-
-module type Container = sig
-  type 'a t
-  val t : 'a Sexp.Of_sexp.t -> 'a t Sexp.Of_sexp.t
-  val sexp_of_t : ('a -> Sexp.t) -> 'a t -> Sexp.t
-
-  val map : 'a t -> f:('a -> 'b) -> 'b t
-  val fold : 'a t -> init:'b -> f:('b -> 'a -> 'b) -> 'b
-end
-
-module Lift(M : Container) = struct
-  type nonrec t = t M.t
-  let t sexp = M.t t sexp
-
-  let sexp_of_t a = M.sexp_of_t sexp_of_t a
-
-  let fold t ~init ~f =
-    M.fold t ~init ~f:(fun acc x -> fold x ~init:acc ~f)
-
-  let expand t ~f = M.map t ~f:(expand ~f)
-end
-
+(*
+let expand_with_context context t ~f =
+  List.map t ~f:(function
+    | Text s -> s
+    | Var (syntax, v) ->
+      match f context v with
+      | Some x -> x
+      | None ->
+        match syntax with
+        | Parens -> sprintf "$(%s)" v
+        | Braces -> sprintf "${%s}" v)
+  |> String.concat ~sep:""
+*)

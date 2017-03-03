@@ -826,24 +826,17 @@ build context as the jbuild they are defined in. So for instance an
 action defined in =src/foo/jbuild= will be run from
 =_build/<context>/src/foo=.
 
-The argument of an =(action ...)= field can use one of these two
-forms:
+The argument of =(action ...)= fields is a small DSL that is
+interpreted by jbuilder directly and doesn't require an external
+shell. All atoms in the DSL support [[Variables expansion][variables expansion]]. Moreover, you
+don't need to specify dependencies explicitly for the special
+=${<kind>:...}= forms, these are recognized and automatically handled
+by Jbuilder.
 
-- a simple string, in which case it is passed to =bash=
-- using a small DSL, that is interpreted by jbuilder directly and
-  doesn't require an external shell
-
-In both case, all atoms in the argument of this field supports
-[[Variables
- expansion][variables expansion]]. Moreover, you don't need to specify dependencies
-explicitly for the special =${<kind>:...}= forms, these are recognized
-automatically handled by Jbuilder.
-
-The DSL is preferable in general as it will make your package more
-portable. It is currently quite limited, so the recommendation is to
-write a small OCaml program and use the DSL to invoke it. You can use
-[[https://github.com/janestreet/shexp][shexp]] to write portable scripts or [[https://github.com/janestreet/configurator][configurator]] for configuration
-related tasks.
+The DSL is currently quite limited, so if you want to do something
+complicated it is recommended to write a small OCaml program and use
+the DSL to invoke it. You can use [[https://github.com/janestreet/shexp][shexp]] to write portable scripts or
+[[https://github.com/janestreet/configurator][configurator]] for configuration related tasks.
 
 The following constructions are available:
 
@@ -858,6 +851,8 @@ The following constructions are available:
 - =(copy-and-add-line-directive <src> <dst>)= to copy a file and add a line directive at the beginning
 - =(system <cmd>)= to execute a command using the system shell: =sh=
   on Unix and =cmd= on Windows
+- =(bash <cmd>)= to execute a command using =/bin/bash=. This is
+  obviously not very portable
 
 Note: expansion of the special =${<kind>:...}= is done relative to the
 current working directory of the part of the DSL being executed. So
@@ -879,7 +874,7 @@ in =src/foo=:
 (rule
  ((targets (blah.ml))
   (deps    (blah.mll))
-  (action  (ocamllex -o ${@} ${<}))))
+  (action  (run ocamllex -o ${@} ${<}))))
 #+end_src
 
 Here the command that will be executed is:
@@ -904,7 +899,7 @@ the root of your project. What you should write instead is:
 (rule
  ((targets (blah.ml))
   (deps    (blah.mll))
-  (action  (chdir ${ROOT} (ocamllex -o ${@} ${<})))))
+  (action  (chdir ${ROOT} (run ocamllex -o ${@} ${<})))))
 #+end_src
 
 ** jbuild-ignore

@@ -5,6 +5,8 @@
 - Improve the output of jbuilder, in particular don't mangle the
   output of commands when using =-j N= with =N > 1=
 
+- Support incremental compilation
+
 - Strengthen the scope of a package. Jbuilder knows about package =foo=
   only in the sub-tree starting from where =foo.opam= lives
 

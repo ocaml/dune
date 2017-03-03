@@ -11,6 +11,7 @@ let (>>=) = Future.(>>=)
 type common =
   { concurrency    : int
   ; debug_rules    : bool
+  ; debug_actions  : bool
   ; debug_dep_path : bool
   ; debug_findlib  : bool
   ; dev_mode       : bool
@@ -25,6 +26,7 @@ let prefix_target common s = common.target_prefix ^ s
 let set_common c =
   Clflags.concurrency := c.concurrency;
   Clflags.debug_rules := c.debug_rules;
+  Clflags.debug_actions := c.debug_actions;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.dev_mode := c.dev_mode;
@@ -111,6 +113,7 @@ let common =
         concurrency
         only_packages
         debug_rules
+        debug_actions
         debug_dep_path
         debug_findlib
         dev_mode
@@ -124,6 +127,7 @@ let common =
     in
     { concurrency
     ; debug_rules
+    ; debug_actions
     ; debug_dep_path
     ; debug_findlib
     ; dev_mode
@@ -158,6 +162,13 @@ let common =
          & flag
          & info ["debug-rules"] ~docs
              ~doc:"Print all internal rules."
+        )
+  in
+  let dactions =
+    Arg.(value
+         & flag
+         & info ["debug-actions"] ~docs
+             ~doc:"Print out internal actions."
         )
   in
   let ddep_path =
@@ -199,6 +210,7 @@ let common =
         $ concurrency
         $ only_packages
         $ drules
+        $ dactions
         $ ddep_path
         $ dfindlib
         $ dev

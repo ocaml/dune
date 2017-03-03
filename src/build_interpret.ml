@@ -23,7 +23,7 @@ let deps t ~all_targets_by_dir =
   let rec loop : type a b. (a, b) t -> Pset.t -> Pset.t = fun t acc ->
     match t with
     | Arr _ -> acc
-    | Prim _ -> acc
+    | Targets _ -> acc
     | Store_vfile _ -> acc
     | Compose (a, b) -> loop a (loop b acc)
     | First t -> loop t acc
@@ -50,7 +50,7 @@ let lib_deps =
     = fun t acc ->
       match t with
       | Arr _ -> acc
-      | Prim _ -> acc
+      | Targets _ -> acc
       | Store_vfile _ -> acc
       | Compose (a, b) -> loop a (loop b acc)
       | First t -> loop t acc
@@ -76,7 +76,7 @@ let targets =
   let rec loop : type a b. (a, b) t -> Target.t list -> Target.t list = fun t acc ->
     match t with
     | Arr _ -> acc
-    | Prim { targets; _ } ->
+    | Targets targets ->
       List.fold_left targets ~init:acc ~f:(fun acc fn -> Target.Normal fn :: acc)
     | Store_vfile spec -> Vfile spec :: acc
     | Compose (a, b) -> loop a (loop b acc)
@@ -95,7 +95,7 @@ let targets =
 
 module Rule = struct
   type t =
-    { build   : (unit, unit) Build.t
+    { build   : (unit, Action.t) Build.t
     ; targets : Target.t list
     }
 

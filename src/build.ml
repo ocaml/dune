@@ -18,14 +18,10 @@ type lib_dep_kind =
 type lib_deps = lib_dep_kind String_map.t
 
 module Repr = struct
-  type ('a, 'b) prim =
-    { targets : Path.t list
-    ; exec    : 'a -> 'b Future.t
-    }
   type ('a, 'b) t =
     | Arr : ('a -> 'b) -> ('a, 'b) t
-    | Prim : ('a, 'b) prim -> ('a, 'b) t
-    | Store_vfile : 'a Vspec.t -> ('a, unit) t
+    | Targets : Path.t list -> ('a, 'a) t
+    | Store_vfile : 'a Vspec.t -> ('a, Action.t) t
     | Compose : ('a, 'b) t * ('b, 'c) t -> ('a, 'c) t
     | First : ('a, 'b) t -> ('a * 'c, 'b * 'c) t
     | Second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t
@@ -121,13 +117,6 @@ let files_recursively_in ~dir =
   in
   path_set (loop src_dir Pset.empty)
 
-let prim ~targets exec = Prim { targets; exec }
-
-let create_files ~targets exec =
-  prim ~targets (fun x -> Future.return (exec x))
-let create_file ~target exec =
-  create_files ~targets:[target] exec
-
 let store_vfile spec = Store_vfile spec
 
 let get_prog (prog : _ Prog_spec.t) =
@@ -145,7 +134,7 @@ let prog_and_args ~dir prog args =
     >>>
     arr fst))
 
-let run ?(dir=Path.root) ?stdout_to ?env ?(extra_targets=[]) prog args =
+let run ?(dir=Path.root) ?stdout_to ?context ?(extra_targets=[]) prog args =
   let extra_targets =
     match stdout_to with
     | None -> extra_targets
@@ -154,164 +143,50 @@ let run ?(dir=Path.root) ?stdout_to ?env ?(extra_targets=[]) prog args =
   let targets = Arg_spec.add_targets args extra_targets in
   prog_and_args ~dir prog args
   >>>
-  prim ~targets
-    (fun (prog, args) ->
-       let stdout_to =
-         match stdout_to with
-         | None -> Future.Terminal
-         | Some path -> File (Path.to_string path)
-       in
-       Future.run Strict ~dir:(Path.to_string dir) ~stdout_to ?env
-         (Path.reach prog ~from:dir) args)
-
-let run_capture_gen ~f ?(dir=Path.root) ?env prog args =
-  let targets = Arg_spec.add_targets args [] in
-  prog_and_args ~dir prog args
-  >>>
-  prim ~targets
-    (fun (prog, args) ->
-       f ?dir:(Some (Path.to_string dir)) ?env
-         Future.Strict (Path.reach prog ~from:dir) args)
-
-let run_capture ?dir ?env prog args =
-  run_capture_gen ~f:Future.run_capture ?dir ?env prog args
-let run_capture_lines ?dir ?env prog args =
-  run_capture_gen ~f:Future.run_capture_lines ?dir ?env prog args
-
-module Shexp = struct
-  open Future
-  open Action.Mini_shexp
-
-  let run ~dir ~env ~env_extra ~stdout_to ~tail prog args =
-    let stdout_to : Future.stdout_to =
+  Targets targets
+  >>^  (fun (prog, args) ->
+    let action : Action.Mini_shexp.t = Run (prog, args) in
+    let action =
       match stdout_to with
-      | None          -> Terminal
-      | Some (fn, oc) -> Opened_file { filename = fn; tail; desc = Channel oc }
+      | None      -> action
+      | Some path -> With_stdout_to (path, action)
     in
-    let env = Context.extend_env ~vars:env_extra ~env in
-    Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to prog args
+    { Action.
+      dir
+    ; context
+    ; action
+    })
 
-  let rec exec t ~dir ~env ~env_extra ~stdout_to ~tail ~f =
-    match t with
-    | Run (prog, args) ->
-      let prog = f ~dir prog in
-      let args = List.map args ~f:(f ~dir) in
-      run ~dir ~env ~env_extra ~stdout_to ~tail prog args
-    | Chdir (fn, t) ->
-      let fn = f ~dir fn in
-      exec t ~env ~env_extra ~stdout_to ~tail ~dir:(Path.relative dir fn) ~f
-    | Setenv (var, value, t) ->
-      let var = f ~dir var in
-      let value = f ~dir value in
-      exec t ~dir ~env ~stdout_to ~tail ~f
-        ~env_extra:(String_map.add env_extra ~key:var ~data:value)
-    | With_stdout_to (fn, t) ->
-      let fn = f ~dir fn in
-      if tail then Option.iter stdout_to ~f:(fun (_, oc) -> close_out oc);
-      let fn = Path.to_string (Path.relative dir fn) in
-      exec t ~dir ~env ~env_extra ~tail ~f
-        ~stdout_to:(Some (fn, open_out_bin fn))
-    | Progn l ->
-      exec_list l ~dir ~env ~env_extra ~stdout_to ~tail ~f
-    | Echo str ->
-      let str = f ~dir str in
-      return
-        (match stdout_to with
-         | None -> print_string str; flush stdout
-         | Some (_, oc) ->
-           output_string oc str;
-           if tail then close_out oc)
-    | Cat fn ->
-      let fn = f ~dir fn in
-      let fn = Path.to_string (Path.relative dir fn) in
-      with_file_in fn ~f:(fun ic ->
-        match stdout_to with
-        | None -> copy_channels ic stdout
-        | Some (_, oc) ->
-          copy_channels ic oc;
-          if tail then close_out oc);
-      return ()
-    | Copy_and_add_line_directive (src, dst) ->
-      let src = Path.relative dir (f ~dir src) in
-      let dst = Path.relative dir (f ~dir dst) in
-      with_file_in (Path.to_string src) ~f:(fun ic ->
-        with_file_out (Path.to_string dst) ~f:(fun oc ->
-          let fn =
-            match Path.extract_build_context src with
-            | None -> src
-            | Some (_, rem) -> rem
-          in
-          Printf.fprintf oc "# 1 %S\n" (Path.to_string fn);
-          copy_channels ic oc));
-      return ()
-    | System cmd ->
-      let cmd = f ~dir cmd in
-      let path, arg, err =
-        Utils.system_shell ~needed_to:"interpret (system ...) actions"
-      in
-      match err with
-      | Some err -> err.fail ()
-      | None ->
-        run ~dir ~env ~env_extra ~stdout_to ~tail
-          (Path.to_string path) [arg; cmd]
+let action ?(dir=Path.root) ?context ~targets action =
+  Targets targets
+  >>^ fun () ->
+  { Action. context; dir; action }
 
-  and exec_list l ~dir ~env ~env_extra ~stdout_to ~tail ~f =
-    match l with
-    | [] ->
-      if tail then Option.iter stdout_to ~f:(fun (_, oc) -> close_out oc);
-      Future.return ()
-    | [t] ->
-      exec t ~dir ~env ~env_extra ~stdout_to ~tail ~f
-    | t :: rest ->
-      exec t ~dir ~env ~env_extra ~stdout_to ~tail:false ~f >>= fun () ->
-      exec_list rest ~dir ~env ~env_extra ~stdout_to ~tail ~f
+let echo fn s =
+  action ~targets:[fn] (Write_file (fn, s))
 
-  let exec t ~dir ~env ~f =
-    exec t ~dir ~env ~env_extra:String_map.empty ~stdout_to:None ~tail:true ~f
-end
-
-let action action ~dir ~env ~targets ~expand:f =
-  prim ~targets (fun () ->
-    match (action : _ Action.t) with
-    | Bash cmd ->
-      Future.run Strict ~dir:(Path.to_string dir) ~env
-        "/bin/bash" ["-e"; "-u"; "-o"; "pipefail"; "-c"; f ~dir cmd]
-    | Shexp shexp ->
-      Shexp.exec ~dir ~env ~f shexp)
-
-let echo fn =
-  create_file ~target:fn (fun data ->
-    with_file_out (Path.to_string fn) ~f:(fun oc -> output_string oc data))
+let echo_dyn fn =
+  Targets [fn]
+  >>^ fun s ->
+  { Action.
+    context = None
+  ; dir     = Path.root
+  ; action  = Write_file (fn, s)
+  }
 
 let copy ~src ~dst =
   path src >>>
-  create_file ~target:dst (fun () ->
-    copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst))
+  action ~targets:[dst] (Copy (src, dst))
 
 let symlink ~src ~dst =
-  if Sys.win32 then
-    copy ~src ~dst
-  else
-    path src >>>
-    create_file ~target:dst (fun () ->
-      let src =
-        if Path.is_root dst then
-          Path.to_string src
-        else
-          Path.reach ~from:(Path.parent dst) src
-      in
-      let dst = Path.to_string dst in
-      match Unix.readlink dst with
-      | target ->
-        if target <> src then begin
-          Unix.unlink dst;
-          Unix.symlink src dst
-        end
-      | exception _ ->
-        Unix.symlink src dst)
+  path src >>>
+  action ~targets:[dst] (Symlink (src, dst))
 
-let touch target =
-  create_file ~target (fun _ ->
-    Unix.close
-      (Unix.openfile (Path.to_string target)
-         [O_CREAT; O_TRUNC; O_WRONLY] 0o666))
+let create_file fn =
+  action ~targets:[fn] (Create_file fn)
+
+let and_create_file fn =
+  arr (fun (action : Action.t) ->
+    { action with
+      action = Progn [action.action; Create_file fn]
+    })

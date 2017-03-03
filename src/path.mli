@@ -26,6 +26,9 @@ end
 
 type t
 
+val t : t Sexp.Of_sexp.t
+val sexp_of_t : t Sexp.To_sexp.t
+
 val compare : t -> t -> int
 
 module Set : Set.S with type elt = t
@@ -46,6 +49,7 @@ val relative : t -> string -> t
 val absolute : string -> t
 
 val reach : t -> from:t -> string
+val reach_for_running : t -> from:t -> string
 
 val descendant : t -> of_:t -> t option
 
@@ -59,6 +63,8 @@ val extend_basename : t -> suffix:string -> t
 val extract_build_context : t -> (string * t) option
 val extract_build_context_dir : t -> (t * t) option
 val is_in_build_dir : t -> bool
+
+val insert_after_build_dir_exn : t -> t -> t
 
 val exists : t -> bool
 val readdir : t -> string list

@@ -104,6 +104,51 @@ module Local = struct
     in
     loop initial_t (explode_path path)
 
+  let is_canonicalized =
+    let rec before_slash s i =
+      if i < 0 then
+        false
+      else
+        match s.[i] with
+        | '/' -> false
+        | '.' -> before_dot_slash s (i - 1)
+        | _   -> in_component     s (i - 1)
+    and before_dot_slash s i =
+      if i < 0 then
+        false
+      else
+        match s.[i] with
+        | '/' -> false
+        | '.' -> before_dot_dot_slash s (i - 1)
+        | _   -> in_component         s (i - 1)
+    and before_dot_dot_slash s i =
+      if i < 0 then
+        false
+      else
+        match s.[i] with
+        | '/' -> false
+        | _   -> in_component s (i - 1)
+    and in_component s i =
+      if i < 0 then
+        true
+      else
+        match s.[i] with
+        | '/' -> before_slash s (i - 1)
+        | _   -> in_component s (i - 1)
+    in
+    fun s ->
+      let len = String.length s in
+      if len = 0 then
+        true
+      else
+        before_slash s (len - 1)
+
+  let of_string s =
+    if is_canonicalized s then
+      s
+    else
+      relative "" s
+
   let rec mkdir_p = function
     | "" -> ()
     | t ->
@@ -176,8 +221,6 @@ let to_string = function
   | "" -> "."
   | t  -> t
 
-let sexp_of_t t = Sexp.Atom (to_string t)
-
 let root = ""
 
 let relative t fn =
@@ -189,7 +232,16 @@ let relative t fn =
     | _   , false -> fn
     | false, true -> External.relative t fn
 
-let of_string t = relative "" t
+let of_string = function
+  | "" -> ""
+  | s  ->
+    if Filename.is_relative s then
+      Local.of_string s
+    else
+      s
+
+let t sexp = of_string (Sexp.Of_sexp.string sexp)
+let sexp_of_t t = Sexp.Atom (to_string t)
 
 let absolute =
   let initial_dir = Sys.getcwd () in
@@ -208,6 +260,21 @@ let reach t ~from =
       ; "from", sexp_of_t from
       ]
   | true, true -> Local.reach t ~from
+
+let reach_for_running t ~from =
+  match is_local t, is_local from with
+  | false, _ -> t
+  | true, false ->
+    Sexp.code_error "Path.reach_for_running called with invalid combination"
+      [ "t"   , sexp_of_t t
+      ; "from", sexp_of_t from
+      ]
+  | true, true ->
+    let s = Local.reach t ~from in
+    if String.is_prefix s ~prefix:"../" then
+      s
+    else
+      "./" ^ s
 
 let descendant t ~of_ =
   if is_local t && is_local of_ then
@@ -270,3 +337,22 @@ let rmdir t = Unix.rmdir (to_string t)
 let unlink t = Unix.unlink (to_string t)
 
 let extend_basename t ~suffix = t ^ suffix
+
+let insert_after_build_dir_exn =
+  let error a b =
+    Sexp.code_error
+      "Path.insert_after_build_dir_exn"
+      [ "path"  , Atom a
+      ; "insert", Atom b
+      ]
+  in
+  fun a b ->
+    if not (is_local a && is_local b) then error a b;
+    match String.lsplit2 a ~on:'/' with
+    | Some ("_build", rest) ->
+      if is_root b then
+        a
+      else
+        sprintf "_build/%s/%s" b rest
+    | _ ->
+      error a b

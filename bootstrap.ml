@@ -99,12 +99,12 @@ let get_prog dir prog =
   | Some fn -> fn
 
 let bin_dir, mode, compiler =
-  match find_prog "ocamlopt" with
-  | Some (bin_dir, prog) -> (bin_dir, Native, prog)
-  | None ->
-    match find_prog "ocamlc" with
-    | Some (bin_dir, prog) -> (bin_dir, Byte, prog)
-    | None -> prog_not_found "ocamlc"
+  match find_prog "ocamlc" with
+  | None -> prog_not_found "ocamlc"
+  | Some (bin_dir, prog) ->
+    match best_prog bin_dir "ocamlopt" with
+    | Some prog -> (bin_dir, Native, prog)
+    | None -> (bin_dir, Byte, prog)
 
 let ocamllex = get_prog bin_dir "ocamllex"
 let ocamldep = get_prog bin_dir "ocamldep"

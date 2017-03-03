@@ -65,14 +65,7 @@ val action
   :  ?dir:Path.t
   -> ?context:Context.t
   -> targets:Path.t list
-  -> Action.Desc.t
-  -> (unit, Action.t) t
-
-val shexp
-  :  ?dir:Path.t
-  -> ?context:Context.t
-  -> targets:Path.t list
-  -> (string, Path.t) Action.Mini_shexp.t
+  -> Action.Mini_shexp.t
   -> (unit, Action.t) t
 
 (** Create a file with the given contents. *)

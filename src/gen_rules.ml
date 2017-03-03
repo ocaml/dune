@@ -241,7 +241,7 @@ module Gen(P : Params) = struct
       List.map (Lib_db.resolve_selects t ~from:dir lib_deps) ~f:(fun { dst_fn; src_fn } ->
         let src = Path.relative dir src_fn in
         let dst = Path.relative dir dst_fn in
-        Build.shexp ~targets:[dst]
+        Build.action ~targets:[dst]
           (Copy_and_add_line_directive (src, dst)))
 
     (* Hides [t] so that we don't resolve things statically *)
@@ -299,11 +299,8 @@ module Gen(P : Params) = struct
     let action ?dir ~targets action =
       Build.action ?dir ~context:ctx ~targets action
 
-    let shexp ?dir ~targets shexp =
-      Build.shexp ?dir ~context:ctx ~targets shexp
-
-    let shexp_context_independent ?dir ~targets shexp =
-      Build.shexp ?dir ~targets shexp
+    let action_context_independent ?dir ~targets shexp =
+      Build.action ?dir ~targets shexp
   end
 
   module Alias = struct
@@ -1296,14 +1293,14 @@ module Gen(P : Params) = struct
 
   module Action_interpret : sig
     val run
-      :  Action.Desc.Unexpanded.t
+      :  Action.Mini_shexp.Unexpanded.t
       -> dir:Path.t
       -> dep_kind:Build.lib_dep_kind
       -> targets:Path.t list
       -> deps:Dep_conf.t list
       -> (unit, Action.t) Build.t
   end = struct
-    module U = Action.Desc.Unexpanded
+    module U = Action.Mini_shexp.Unexpanded
 
     type resolved_forms =
       { (* Mapping from ${...} forms to their resolutions *)
@@ -1425,7 +1422,7 @@ module Gen(P : Params) = struct
       let action =
         match alias_conf.action with
         | None -> Sexp.Atom "none"
-        | Some a -> List [Atom "some" ; Action.Desc.Unexpanded.sexp_of_t a] in
+        | Some a -> List [Atom "some" ; Action.Mini_shexp.Unexpanded.sexp_of_t a] in
       Sexp.List [deps ; action]
       |> Sexp.to_string
       |> Digest.string

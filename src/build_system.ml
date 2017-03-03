@@ -156,7 +156,7 @@ module Build_exec = struct
     { Action.
       context = None
     ; dir     = Path.root
-    ; action  = Shexp (Progn [])
+    ; action  = Progn []
     }
 
   let exec bs t x ~targeting =

@@ -7,30 +7,21 @@ type var_expansion =
   | Str   of string
 
 module Mini_shexp : sig
-  type ('a, 'path) t =
-    | Run            of 'path * 'a list
-    | Chdir          of 'path * ('a, 'path) t
-    | Setenv         of 'a * 'a * ('a, 'path) t
-    | With_stdout_to of 'path * ('a, 'path) t
-    | Progn          of ('a, 'path) t list
-    | Echo           of 'a
-    | Create_file    of 'path
-    | Cat            of 'path
-    | Copy           of 'path * 'path
-    | Symlink        of 'path * 'path
-    | Copy_and_add_line_directive of 'path * 'path
-    | System         of 'a
-
-  val t : 'a Sexp.Of_sexp.t -> 'b Sexp.Of_sexp.t -> ('a, 'b) t Sexp.Of_sexp.t
-  val sexp_of_t : 'a Sexp.To_sexp.t -> 'b Sexp.To_sexp.t -> ('a, 'b) t Sexp.To_sexp.t
-end
-
-module Desc : sig
   module Ast : sig
     type ('a, 'path) t =
-      | Bash  of 'a
-      | Shexp of ('a, 'path) Mini_shexp.t
-
+      | Run            of 'path * 'a list
+      | Chdir          of 'path * ('a, 'path) t
+      | Setenv         of 'a * 'a * ('a, 'path) t
+      | With_stdout_to of 'path * ('a, 'path) t
+      | Progn          of ('a, 'path) t list
+      | Echo           of 'a
+      | Create_file    of 'path
+      | Cat            of 'path
+      | Copy           of 'path * 'path
+      | Symlink        of 'path * 'path
+      | Copy_and_add_line_directive of 'path * 'path
+      | System         of 'a
+      | Bash           of 'a
     val t : 'a Sexp.Of_sexp.t -> 'b Sexp.Of_sexp.t -> ('a, 'b) t Sexp.Of_sexp.t
     val sexp_of_t : 'a Sexp.To_sexp.t -> 'b Sexp.To_sexp.t -> ('a, 'b) t Sexp.To_sexp.t
   end
@@ -52,7 +43,7 @@ end
 type t =
   { context : Context.t option
   ; dir     : Path.t
-  ; action  : Desc.t
+  ; action  : Mini_shexp.t
   }
 
 val t : Context.t String_map.t -> t Sexp.Of_sexp.t

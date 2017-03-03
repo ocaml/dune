@@ -57,6 +57,8 @@ let of_string s = of_tokens (Token.tokenise s)
 
 let t sexp = of_string (Sexp.Of_sexp.string sexp)
 
+let raw s = [Text s]
+
 let just_a_var = function
   | [Var (_, s)] -> Some s
   | _ -> None

@@ -145,7 +145,7 @@ let run ?(dir=Path.root) ?stdout_to ?context ?(extra_targets=[]) prog args =
   >>>
   Targets targets
   >>^  (fun (prog, args) ->
-    let action : (_, _) Action.Mini_shexp.t = Run (prog, args) in
+    let action : Action.Mini_shexp.t = Run (prog, args) in
     let action =
       match stdout_to with
       | None      -> action
@@ -154,7 +154,7 @@ let run ?(dir=Path.root) ?stdout_to ?context ?(extra_targets=[]) prog args =
     { Action.
       dir
     ; context
-    ; action = Shexp action
+    ; action
     })
 
 let action ?(dir=Path.root) ?context ~targets action =
@@ -162,11 +162,8 @@ let action ?(dir=Path.root) ?context ~targets action =
   >>^ fun () ->
   { Action. context; dir; action }
 
-let shexp ?dir ?context ~targets shexp =
-  action ?dir ?context ~targets (Shexp shexp)
-
 let echo fn s =
-  shexp ~targets:[fn] (With_stdout_to (fn, Echo s))
+  action ~targets:[fn] (With_stdout_to (fn, Echo s))
 
 let echo_dyn fn =
   Targets [fn]
@@ -174,28 +171,22 @@ let echo_dyn fn =
   { Action.
     context = None
   ; dir     = Path.root
-  ; action  = Shexp (With_stdout_to (fn, Echo s))
+  ; action  = With_stdout_to (fn, Echo s)
   }
 
 let copy ~src ~dst =
   path src >>>
-  shexp ~targets:[dst] (Copy (src, dst))
+  action ~targets:[dst] (Copy (src, dst))
 
 let symlink ~src ~dst =
   path src >>>
-  shexp ~targets:[dst] (Symlink (src, dst))
+  action ~targets:[dst] (Symlink (src, dst))
 
 let create_file fn =
-  shexp ~targets:[fn] (Create_file fn)
+  action ~targets:[fn] (Create_file fn)
 
 let and_create_file fn =
   arr (fun (action : Action.t) ->
     { action with
-      action =
-        match action.action with
-        | Bash cmd ->
-          let fn = quote_for_shell (Path.to_string fn) in
-          Bash (sprintf "(%s); rm -f %s; touch %s" cmd fn fn)
-        | Shexp shexp ->
-          Shexp (Progn [shexp; Create_file fn])
+      action = Progn [action.action; Create_file fn]
     })

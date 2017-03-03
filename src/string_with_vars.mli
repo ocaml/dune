@@ -10,6 +10,7 @@ val t : t Sexp.Of_sexp.t
 val sexp_of_t : t -> Sexp.t
 
 val of_string : string -> t
+val raw : string -> t
 
 val just_a_var : t -> string option
 

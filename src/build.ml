@@ -177,30 +177,23 @@ module Shexp = struct
     let env = Context.extend_env ~vars:env_extra ~env in
     Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to prog args
 
-  let rec exec t ~dir ~env ~env_extra ~stdout_to ~tail ~f =
+  let rec exec t ~dir ~env ~env_extra ~stdout_to ~tail =
     match t with
     | Run (prog, args) ->
-      let prog = f ~dir prog in
-      let args = List.map args ~f:(f ~dir) in
       run ~dir ~env ~env_extra ~stdout_to ~tail prog args
     | Chdir (fn, t) ->
-      let fn = f ~dir fn in
-      exec t ~env ~env_extra ~stdout_to ~tail ~dir:(Path.relative dir fn) ~f
+      exec t ~env ~env_extra ~stdout_to ~tail ~dir:(Path.relative dir fn)
     | Setenv (var, value, t) ->
-      let var = f ~dir var in
-      let value = f ~dir value in
-      exec t ~dir ~env ~stdout_to ~tail ~f
+      exec t ~dir ~env ~stdout_to ~tail
         ~env_extra:(String_map.add env_extra ~key:var ~data:value)
     | With_stdout_to (fn, t) ->
-      let fn = f ~dir fn in
       if tail then Option.iter stdout_to ~f:(fun (_, oc) -> close_out oc);
       let fn = Path.to_string (Path.relative dir fn) in
-      exec t ~dir ~env ~env_extra ~tail ~f
+      exec t ~dir ~env ~env_extra ~tail
         ~stdout_to:(Some (fn, open_out_bin fn))
     | Progn l ->
-      exec_list l ~dir ~env ~env_extra ~stdout_to ~tail ~f
+      exec_list l ~dir ~env ~env_extra ~stdout_to ~tail
     | Echo str ->
-      let str = f ~dir str in
       return
         (match stdout_to with
          | None -> print_string str; flush stdout
@@ -208,7 +201,6 @@ module Shexp = struct
            output_string oc str;
            if tail then close_out oc)
     | Cat fn ->
-      let fn = f ~dir fn in
       let fn = Path.to_string (Path.relative dir fn) in
       with_file_in fn ~f:(fun ic ->
         match stdout_to with
@@ -218,8 +210,8 @@ module Shexp = struct
           if tail then close_out oc);
       return ()
     | Copy_and_add_line_directive (src, dst) ->
-      let src = Path.relative dir (f ~dir src) in
-      let dst = Path.relative dir (f ~dir dst) in
+      let src = Path.relative dir src in
+      let dst = Path.relative dir dst in
       with_file_in (Path.to_string src) ~f:(fun ic ->
         with_file_out (Path.to_string dst) ~f:(fun oc ->
           let fn =
@@ -231,7 +223,6 @@ module Shexp = struct
           copy_channels ic oc));
       return ()
     | System cmd ->
-      let cmd = f ~dir cmd in
       let path, arg, err =
         Utils.system_shell ~needed_to:"interpret (system ...) actions"
       in
@@ -241,29 +232,29 @@ module Shexp = struct
         run ~dir ~env ~env_extra ~stdout_to ~tail
           (Path.to_string path) [arg; cmd]
 
-  and exec_list l ~dir ~env ~env_extra ~stdout_to ~tail ~f =
+  and exec_list l ~dir ~env ~env_extra ~stdout_to ~tail =
     match l with
     | [] ->
       if tail then Option.iter stdout_to ~f:(fun (_, oc) -> close_out oc);
       Future.return ()
     | [t] ->
-      exec t ~dir ~env ~env_extra ~stdout_to ~tail ~f
+      exec t ~dir ~env ~env_extra ~stdout_to ~tail
     | t :: rest ->
-      exec t ~dir ~env ~env_extra ~stdout_to ~tail:false ~f >>= fun () ->
-      exec_list rest ~dir ~env ~env_extra ~stdout_to ~tail ~f
+      exec t ~dir ~env ~env_extra ~stdout_to ~tail:false >>= fun () ->
+      exec_list rest ~dir ~env ~env_extra ~stdout_to ~tail
 
-  let exec t ~dir ~env ~f =
-    exec t ~dir ~env ~env_extra:String_map.empty ~stdout_to:None ~tail:true ~f
+  let exec t ~dir ~env =
+    exec t ~dir ~env ~env_extra:String_map.empty ~stdout_to:None ~tail:true
 end
 
-let user_action action ~dir ~env ~targets ~expand:f =
+let user_action action ~dir ~env ~targets =
   prim ~targets (fun () ->
     match (action : _ User_action.t) with
     | Bash cmd ->
       Future.run Strict ~dir:(Path.to_string dir) ~env
-        "/bin/bash" ["-e"; "-u"; "-o"; "pipefail"; "-c"; f ~dir cmd]
+        "/bin/bash" ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
     | Shexp shexp ->
-      Shexp.exec ~dir ~env ~f shexp)
+      Shexp.exec ~dir ~env shexp)
 
 let echo fn =
   create_file ~target:fn (fun data ->

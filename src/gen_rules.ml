@@ -1354,12 +1354,12 @@ module Gen(P : Params) = struct
           add_artifact acc ~var ~lib_dep res
         | _ -> acc)
 
-    let expand_string_with_vars ~artifacts ~targets ~deps =
+    let expand_string_with_vars =
       let dep_exn ~dir name = function
         | Some dep -> Path.reach ~from:dir dep
         | None -> die "cannot use ${%s} with files_recursively_in" name
       in
-      let lookup ~dir var_name =
+      fun  ~artifacts ~targets ~deps dir var_name ->
         match String_map.find var_name artifacts with
         | Some path -> Some (Path.reach ~from:dir path)
         | None ->
@@ -1371,9 +1371,6 @@ module Gen(P : Params) = struct
             let deps = List.map deps ~f:(dep_exn ~dir var_name) in
             Some (String.concat ~sep:" " deps)
           | _ -> root_var_lookup ~dir var_name
-      in
-      fun ~dir str ->
-        String_with_vars.expand str ~f:(lookup ~dir)
 
     let run t ~dir ~dep_kind ~targets ~deps =
       let deps =
@@ -1382,6 +1379,10 @@ module Gen(P : Params) = struct
             ~f:(Path.relative dir))
       in
       let forms = extract_artifacts ~dir t in
+      let t =
+        User_action.Unexpanded.expand dir t
+          ~f:(expand_string_with_vars ~artifacts:forms.artifacts ~targets ~deps)
+      in
       let build =
         Build.record_lib_deps ~dir ~kind:dep_kind
           (String_set.elements forms.lib_deps
@@ -1390,7 +1391,6 @@ module Gen(P : Params) = struct
         Build.paths (String_map.values forms.artifacts)
         >>>
         Build.user_action t ~dir ~env:ctx.env ~targets
-          ~expand:(expand_string_with_vars ~artifacts:forms.artifacts ~targets ~deps)
       in
       match forms.failures with
       | [] -> build

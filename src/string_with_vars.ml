@@ -89,12 +89,25 @@ let expand t ~f =
         | Braces -> sprintf "${%s}" v)
   |> String.concat ~sep:""
 
+let expand_with_context context t ~f =
+  List.map t ~f:(function
+    | Text s -> s
+    | Var (syntax, v) ->
+      match f context v with
+      | Some x -> x
+      | None ->
+        match syntax with
+        | Parens -> sprintf "$(%s)" v
+        | Braces -> sprintf "${%s}" v)
+  |> String.concat ~sep:""
+
 module type Container = sig
   type 'a t
   val t : 'a Sexp.Of_sexp.t -> 'a t Sexp.Of_sexp.t
   val sexp_of_t : ('a -> Sexp.t) -> 'a t -> Sexp.t
 
-  val map : 'a t -> f:('a -> 'b) -> 'b t
+  type context
+  val expand : context -> 'a t -> f:(context -> 'a -> string) -> string t
   val fold : 'a t -> init:'b -> f:('b -> 'a -> 'b) -> 'b
 end
 
@@ -107,6 +120,7 @@ module Lift(M : Container) = struct
   let fold t ~init ~f =
     M.fold t ~init ~f:(fun acc x -> fold x ~init:acc ~f)
 
-  let expand t ~f = M.map t ~f:(expand ~f)
+  let expand context (t : t) ~f =
+    M.expand context t ~f:(expand_with_context ~f)
 end
 

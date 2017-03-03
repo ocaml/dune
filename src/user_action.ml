@@ -30,17 +30,24 @@ module Mini_shexp = struct
       ]
       sexp
 
-  let rec map t ~f =
+  let rec expand dir t ~f =
     match t with
-    | Run (prog, args) -> Run (f prog, List.map args ~f)
-    | Chdir (fn, t) -> Chdir (f fn, map t ~f)
-    | Setenv (var, value, t) -> Setenv (f var, f value, map t ~f)
-    | With_stdout_to (fn, t) -> With_stdout_to (f fn, map t ~f)
-    | Progn l -> Progn (List.map l ~f:(map ~f))
-    | Echo x -> Echo (f x)
-    | Cat x -> Cat (f x)
-    | Copy_and_add_line_directive (x, y) -> Copy_and_add_line_directive (f x, f y)
-    | System x -> System (f x)
+    | Run (prog, args) ->
+      Run (f dir prog,
+           List.map args ~f:(fun arg -> f dir arg))
+    | Chdir (fn, t) ->
+      let fn = f dir fn in
+      Chdir (fn, expand (Path.relative dir fn) t ~f)
+    | Setenv (var, value, t) ->
+      Setenv (f dir var, f dir value, expand dir t ~f)
+    | With_stdout_to (fn, t) ->
+      With_stdout_to (f dir fn, expand dir t ~f)
+    | Progn l -> Progn (List.map l ~f:(fun t -> expand dir t ~f))
+    | Echo x -> Echo (f dir x)
+    | Cat x -> Cat (f dir x)
+    | Copy_and_add_line_directive (x, y) ->
+      Copy_and_add_line_directive (f dir x, f dir y)
+    | System x -> System (f dir x)
 
   let rec fold t ~init:acc ~f =
     match t with
@@ -77,10 +84,12 @@ module T = struct
     | Atom _ -> Bash  (a              sexp)
     | List _ -> Shexp (Mini_shexp.t a sexp)
 
-  let map t ~f =
+  type context = Path.t
+
+  let expand dir t ~f =
     match t with
-    | Bash x -> Bash (f x)
-    | Shexp x -> Shexp (Mini_shexp.map x ~f)
+    | Bash x -> Bash (f dir x)
+    | Shexp x -> Shexp (Mini_shexp.expand dir x ~f)
 
   let fold t ~init ~f =
     match t with

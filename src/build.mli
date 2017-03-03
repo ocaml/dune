@@ -65,11 +65,10 @@ val run
   -> ('a, unit) t
 
 val user_action
-  :  'a User_action.t
+  :  string User_action.t
   -> dir:Path.t
   -> env:string array
   -> targets:Path.t list
-  -> expand:(dir:Path.t -> 'a -> string)
   -> (unit, unit) t
 
 (** Create a file with the given contents. *)

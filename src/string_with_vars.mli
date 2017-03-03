@@ -22,7 +22,8 @@ module type Container = sig
   val t : 'a Sexp.Of_sexp.t -> 'a t Sexp.Of_sexp.t
   val sexp_of_t : ('a -> Sexp.t) -> 'a t -> Sexp.t
 
-  val map : 'a t -> f:('a -> 'b) -> 'b t
+  type context
+  val expand : context -> 'a t -> f:(context -> 'a -> string) -> string t
   val fold : 'a t -> init:'b -> f:('b -> 'a -> 'b) -> 'b
 end
 
@@ -34,5 +35,9 @@ module Lift(M : Container) : sig
 
   val fold : t -> init:'a -> f:('a -> string -> 'a) -> 'a
 
-  val expand : t -> f:(string -> string option) -> string M.t
+  val expand
+    :  M.context
+    -> t
+    -> f:(M.context -> string -> string option)
+    -> string M.t
 end

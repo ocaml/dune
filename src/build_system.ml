@@ -295,9 +295,10 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
           Hashtbl.replace t.trace ~key:fn ~data:hash;
           acc || prev_hash <> hash)
     in
-    if rule_changed || min_timestamp t targets < max_timestamp t all_deps then
+    if rule_changed || min_timestamp t targets < max_timestamp t all_deps then begin
+      List.iter targets ~f:(Hashtbl.remove t.timestamps);
       Action.exec action
-    else
+    end else
       return ()
   ) in
   let rule =

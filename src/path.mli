@@ -49,6 +49,7 @@ val relative : t -> string -> t
 val absolute : string -> t
 
 val reach : t -> from:t -> string
+val reach_for_running : t -> from:t -> string
 
 val descendant : t -> of_:t -> t option
 

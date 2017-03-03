@@ -160,7 +160,7 @@ module Mini_shexp = struct
     in
     let env = Context.extend_env ~vars:env_extra ~env in
     Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to
-      (Path.reach ~from:dir prog) args
+      (Path.reach_for_running ~from:dir prog) args
 
   let rec exec t ~dir ~env ~env_extra ~stdout_to ~tail =
     match t with

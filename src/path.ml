@@ -261,6 +261,21 @@ let reach t ~from =
       ]
   | true, true -> Local.reach t ~from
 
+let reach_for_running t ~from =
+  match is_local t, is_local from with
+  | false, _ -> t
+  | true, false ->
+    Sexp.code_error "Path.reach_for_running called with invalid combination"
+      [ "t"   , sexp_of_t t
+      ; "from", sexp_of_t from
+      ]
+  | true, true ->
+    let s = Local.reach t ~from in
+    if String.is_prefix s ~prefix:"../" then
+      s
+    else
+      "./" ^ s
+
 let descendant t ~of_ =
   if is_local t && is_local of_ then
     Local.descendant t ~of_

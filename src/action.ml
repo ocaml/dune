@@ -75,6 +75,7 @@ module T = struct
   let t a sexp =
     match sexp with
     | Atom _ -> Bash  (a              sexp)
+    | List (_, [ Atom (_, "bash"); x ]) -> Bash (a x)
     | List _ -> Shexp (Mini_shexp.t a sexp)
 
   let map t ~f =

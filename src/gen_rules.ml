@@ -1293,16 +1293,16 @@ module Gen(P : Params) = struct
      | User actions                                                    |
      +-----------------------------------------------------------------+ *)
 
-  module User_action_interpret : sig
+  module Action_interpret : sig
     val run
-      :  User_action.Unexpanded.t
+      :  Action.Unexpanded.t
       -> dir:Path.t
       -> dep_kind:Build.lib_dep_kind
       -> targets:Path.t list
       -> deps:Dep_conf.t list
       -> (unit, unit) Build.t
   end = struct
-    module U = User_action.Unexpanded
+    module U = Action.Unexpanded
 
     type resolved_forms =
       { (* Mapping from ${...} forms to their resolutions *)
@@ -1380,7 +1380,7 @@ module Gen(P : Params) = struct
       in
       let forms = extract_artifacts ~dir t in
       let t =
-        User_action.Unexpanded.expand dir t
+        Action.Unexpanded.expand dir t
           ~f:(expand_string_with_vars ~artifacts:forms.artifacts ~targets ~deps)
       in
       let build =
@@ -1390,7 +1390,7 @@ module Gen(P : Params) = struct
         >>>
         Build.paths (String_map.values forms.artifacts)
         >>>
-        Build.user_action t ~dir ~env:ctx.env ~targets
+        Build.action t ~dir ~env:ctx.env ~targets
       in
       match forms.failures with
       | [] -> build
@@ -1406,7 +1406,7 @@ module Gen(P : Params) = struct
     add_rule
       (Dep_conf_interpret.dep_of_list ~dir rule.deps
        >>>
-       User_action_interpret.run
+       Action_interpret.run
          rule.action
          ~dir
          ~dep_kind:Required
@@ -1420,7 +1420,7 @@ module Gen(P : Params) = struct
       let action =
         match alias_conf.action with
         | None -> Sexp.Atom "none"
-        | Some a -> List [Atom "some" ; User_action.Unexpanded.sexp_of_t a] in
+        | Some a -> List [Atom "some" ; Action.Unexpanded.sexp_of_t a] in
       Sexp.List [deps ; action]
       |> Sexp.to_string
       |> Digest.string
@@ -1435,7 +1435,7 @@ module Gen(P : Params) = struct
       | None -> deps
       | Some action ->
         deps
-        >>> User_action_interpret.run
+        >>> Action_interpret.run
           action
           ~dir
           ~dep_kind:Required

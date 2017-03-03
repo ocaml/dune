@@ -64,8 +64,8 @@ val run
   -> 'a Arg_spec.t list
   -> ('a, unit) t
 
-val user_action
-  :  string User_action.t
+val action
+  :  string Action.t
   -> dir:Path.t
   -> env:string array
   -> targets:Path.t list

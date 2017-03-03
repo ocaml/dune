@@ -166,7 +166,7 @@ let run ?(dir=Path.root) ?stdout_to ?env ?(extra_targets=[]) prog args =
 
 module Shexp = struct
   open Future
-  open User_action.Mini_shexp
+  open Action.Mini_shexp
 
   let run ~dir ~env ~env_extra ~stdout_to ~tail prog args =
     let stdout_to : Future.stdout_to =
@@ -247,9 +247,9 @@ module Shexp = struct
     exec t ~dir ~env ~env_extra:String_map.empty ~stdout_to:None ~tail:true
 end
 
-let user_action action ~dir ~env ~targets =
+let action action ~dir ~env ~targets =
   prim ~targets (fun () ->
-    match (action : _ User_action.t) with
+    match (action : _ Action.t) with
     | Bash cmd ->
       Future.run Strict ~dir:(Path.to_string dir) ~env
         "/bin/bash" ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]

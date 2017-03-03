@@ -241,6 +241,8 @@ module Gen(P : Params) = struct
       List.map (Lib_db.resolve_selects t ~from:dir lib_deps) ~f:(fun { dst_fn; src_fn } ->
         let src = Path.relative dir src_fn in
         let dst = Path.relative dir dst_fn in
+        Build.path src
+        >>>
         Build.action ~targets:[dst]
           (Copy_and_add_line_directive (src, dst)))
 

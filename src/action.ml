@@ -110,8 +110,14 @@ module Mini_shexp = struct
 
   module Unexpanded = struct
     type t = (String_with_vars.t, String_with_vars.t) Ast.t
-    let t = Ast.t String_with_vars.t String_with_vars.t
     let sexp_of_t = Ast.sexp_of_t String_with_vars.sexp_of_t String_with_vars.sexp_of_t
+
+    let t sexp =
+      match sexp with
+      | Atom _ ->
+        of_sexp_errorf sexp
+          "if you meant for this to be executed with bash, write (bash \"...\") instead"
+      | List _ -> Ast.t String_with_vars.t String_with_vars.t sexp
 
     let fold_vars t ~init ~f =
       Ast.fold t ~init ~f:(fun acc pat ->

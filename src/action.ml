@@ -63,6 +63,7 @@ module Mini_shexp = struct
         ; cstr "copy-and-add-line-directive" (p @> p @> nil) (fun src dst ->
             Copy_and_add_line_directive (src, dst))
         ; cstr "system" (a @> nil) (fun cmd -> System cmd)
+        ; cstr "bash"   (a @> nil) (fun cmd -> Bash   cmd)
         ]
         sexp
 
@@ -108,13 +109,8 @@ module Mini_shexp = struct
 
   module Unexpanded = struct
     type t = (String_with_vars.t, String_with_vars.t) Ast.t
-
+    let t = Ast.t String_with_vars.t String_with_vars.t sexp
     let sexp_of_t = Ast.sexp_of_t String_with_vars.sexp_of_t String_with_vars.sexp_of_t
-
-    let t sexp =
-      match sexp with
-      | Atom _ -> Bash (String_with_vars.t sexp)
-      | List _ -> Ast.t String_with_vars.t String_with_vars.t sexp
 
     let fold_vars t ~init ~f =
       Ast.fold t ~init ~f:(fun acc pat ->

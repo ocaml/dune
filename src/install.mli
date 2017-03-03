@@ -31,4 +31,4 @@ module Entry : sig
 end
 
 val files : Entry.t list -> Path.Set.t
-val write_install_file : Path.t -> Entry.t list -> unit
+val gen_install_file : Entry.t list -> string

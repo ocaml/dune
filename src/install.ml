@@ -119,14 +119,15 @@ let group entries =
   |> SMap.of_alist_multi
   |> SMap.bindings
 
-let write_install_file file entries =
-  with_file_out (Path.to_string file) ~f:(fun oc ->
-    let pr fmt = Printf.fprintf oc (fmt ^^ "\n") in
-    List.iter (group entries) ~f:(fun (section, entries) ->
-      pr "%s: [" (Section.to_string section);
+let gen_install_file entries =
+  let buf = Buffer.create 4096 in
+  let pr fmt = Printf.bprintf buf (fmt ^^ "\n") in
+  List.iter (group entries) ~f:(fun (section, entries) ->
+    pr "%s: [" (Section.to_string section);
       List.iter entries ~f:(fun (e : Entry.t) ->
         let src = Path.to_string e.src in
         match e.dst with
         | None     -> pr "  %S"      src
         | Some dst -> pr "  %S {%S}" src dst);
-      pr "]"))
+    pr "]");
+  Buffer.contents buf

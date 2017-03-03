@@ -91,6 +91,6 @@ let rules store ~prefixes ~tree =
     let rule =
       Build_interpret.Rule.make
         (Build.path_set deps >>>
-         Build.touch alias.file)
+         Build.create_file alias.file)
     in
     rule :: acc)

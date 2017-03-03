@@ -22,9 +22,7 @@ module Rule = struct
   type t =
     { deps         : Pset.t
     ; targets      : Pset.t
-    ; (* Keep the arrow around so that we can do more query, such as for finding external
-         library dependencies *)
-      build        : (unit, unit) Build.t
+    ; build        : (unit, Action.t) Build.t
     ; mutable exec : Exec_status.t
     }
 end
@@ -154,19 +152,26 @@ let save_vfile (type a) (module K : Vfile_kind.S with type t = a) fn x =
 module Build_exec = struct
   open Build.Repr
 
+  let nop =
+    { Action.
+      context = None
+    ; dir     = Path.root
+    ; action  = Shexp (Progn [])
+    }
+
   let exec bs t x ~targeting =
     let rec exec
       : type a b. (a, b) t -> a -> b Future.t = fun t x ->
       let return = Future.return in
       match t with
       | Arr f -> return (f x)
-      | Prim { exec; _ } -> exec x
+      | Targets _ -> return x
       | Store_vfile (Vspec.T (fn, kind)) ->
         let file = get_file bs fn (Sexp_file kind) in
         assert (file.data = None);
         file.data <- Some x;
         save_vfile kind fn x;
-        Future.return ()
+        Future.return nop
       | Compose (a, b) ->
         exec a x >>= exec b
       | First t ->
@@ -248,6 +253,8 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       (Pset.fold deps ~init:[] ~f:(fun fn acc -> wait_for_file t fn ~targeting :: acc))
     >>= fun () ->
     Build_exec.exec t build () ~targeting
+    >>= fun action ->
+    Action.exec action
   ) in
   let rule =
     { Rule.

@@ -129,3 +129,5 @@ val opam_config_var : t -> string -> string option Future.t
 val install_prefix : t -> Path.t Future.t
 
 val env_for_exec : t -> string array
+
+val initial_env : string array Lazy.t

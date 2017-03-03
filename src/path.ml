@@ -104,6 +104,51 @@ module Local = struct
     in
     loop initial_t (explode_path path)
 
+  let is_canonicalized =
+    let rec before_slash s i =
+      if i < 0 then
+        false
+      else
+        match s.[i] with
+        | '/' -> false
+        | '.' -> before_dot_slash s (i - 1)
+        | _   -> in_component     s (i - 1)
+    and before_dot_slash s i =
+      if i < 0 then
+        false
+      else
+        match s.[i] with
+        | '/' -> false
+        | '.' -> before_dot_dot_slash s (i - 1)
+        | _   -> in_component         s (i - 1)
+    and before_dot_dot_slash s i =
+      if i < 0 then
+        false
+      else
+        match s.[i] with
+        | '/' -> false
+        | _   -> in_component s (i - 1)
+    and in_component s i =
+      if i < 0 then
+        true
+      else
+        match s.[i] with
+        | '/' -> before_slash s (i - 1)
+        | _   -> in_component s (i - 1)
+    in
+    fun s ->
+      let len = String.length s in
+      if len = 0 then
+        true
+      else
+        before_slash s (len - 1)
+
+  let of_string s =
+    if is_canonicalized s then
+      s
+    else
+      relative "" s
+
   let rec mkdir_p = function
     | "" -> ()
     | t ->
@@ -176,8 +221,6 @@ let to_string = function
   | "" -> "."
   | t  -> t
 
-let sexp_of_t t = Sexp.Atom (to_string t)
-
 let root = ""
 
 let relative t fn =
@@ -189,7 +232,16 @@ let relative t fn =
     | _   , false -> fn
     | false, true -> External.relative t fn
 
-let of_string t =  relative "" t
+let of_string = function
+  | "" -> ""
+  | s  ->
+    if Filename.is_relative s then
+      Local.of_string s
+    else
+      s
+
+let t sexp = of_string (Sexp.Of_sexp.string sexp)
+let sexp_of_t t = Sexp.Atom (to_string t)
 
 let absolute =
   let initial_dir = Sys.getcwd () in
@@ -289,6 +341,3 @@ let insert_after_build_dir_exn =
         sprintf "_build/%s/%s" b rest
     | _ ->
       error a b
-
-
-

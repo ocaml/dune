@@ -241,15 +241,8 @@ module Gen(P : Params) = struct
       List.map (Lib_db.resolve_selects t ~from:dir lib_deps) ~f:(fun { dst_fn; src_fn } ->
         let src = Path.relative dir src_fn in
         let dst = Path.relative dir dst_fn in
-        Build.path src
-        >>>
-        Build.create_files ~targets:[dst] (fun () ->
-          let src_fn = Path.to_string src in
-          let dst_fn = Path.to_string dst in
-          with_file_in src_fn ~f:(fun ic ->
-            with_file_out dst_fn ~f:(fun oc ->
-              Printf.fprintf oc "# 1 \"%s\"\n" src_fn;
-              copy_channels ic oc))))
+        Build.shexp ~targets:[dst]
+          (Copy_and_add_line_directive (src, dst)))
 
     (* Hides [t] so that we don't resolve things statically *)
     let t = ()
@@ -286,22 +279,31 @@ module Gen(P : Params) = struct
 
     [@@@warning "-32"]
 
-    let run ?(dir=ctx.build_dir) ?stdout_to ?(env=ctx.env) ?extra_targets prog args =
-      Build.run ~dir ?stdout_to ~env ?extra_targets prog args
+    let run ?(dir=ctx.build_dir) ?stdout_to ?extra_targets prog args =
+      Build.run ~dir ?stdout_to ~context:ctx ?extra_targets prog args
 
-    let bash ?dir ?stdout_to ?env ?extra_targets cmd =
-      run (Dep (Path.absolute "/bin/bash")) ?dir ?stdout_to ?env ?extra_targets
+    let bash ?dir ?stdout_to ?extra_targets cmd =
+      run (Dep (Path.absolute "/bin/bash")) ?dir ?stdout_to ?extra_targets
         [ As ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd] ]
 
-    let system ?dir ?stdout_to ?env ?extra_targets cmd ~needed_to =
+    let system ?dir ?stdout_to ?extra_targets cmd ~needed_to =
       let path, arg, fail = Utils.system_shell ~needed_to in
       let build =
-        run (Dep path) ?dir ?stdout_to ?env ?extra_targets
+        run (Dep path) ?dir ?stdout_to ?extra_targets
           [ As [arg; cmd] ]
       in
       match fail with
       | None -> build
       | Some fail -> Build.fail fail >>> build
+
+    let action ?dir ~targets action =
+      Build.action ?dir ~context:ctx ~targets action
+
+    let shexp ?dir ~targets shexp =
+      Build.shexp ?dir ~context:ctx ~targets shexp
+
+    let shexp_context_independent ?dir ~targets shexp =
+      Build.shexp ?dir ~targets shexp
   end
 
   module Alias = struct
@@ -745,7 +747,7 @@ module Gen(P : Params) = struct
               |> List.map ~f:(Printf.sprintf "%s\n")
               |> String.concat ~sep:"")
           >>>
-          Build.echo path
+          Build.echo_dyn path
         )
       | _ ->
         ()
@@ -978,8 +980,7 @@ module Gen(P : Params) = struct
   let mk_lib_cm_all (lib : Library.t) ~dir ~modules cm_kind =
     let deps = cm_files ~dir (String_map.values modules) ~cm_kind in
     add_rule (Build.paths deps >>>
-            Build.return "" >>>
-            Build.echo (lib_cm_all lib ~dir cm_kind))
+              Build.create_file (lib_cm_all lib ~dir cm_kind))
 
   let expand_includes ~dir includes =
     Arg_spec.As (List.concat_map includes ~f:(fun s ->
@@ -1109,7 +1110,7 @@ module Gen(P : Params) = struct
             |> List.map ~f:(fun (m : Module.t) ->
               sprintf "module %s = %s\n" m.name (Module.real_unit_name m))
             |> String.concat ~sep:"")
-         >>> Build.echo (Path.relative dir m.ml_fname)));
+         >>> Build.echo_dyn (Path.relative dir m.ml_fname)));
 
     let requires, real_requires =
       requires ~dir ~dep_kind ~item:lib.name
@@ -1300,7 +1301,7 @@ module Gen(P : Params) = struct
       -> dep_kind:Build.lib_dep_kind
       -> targets:Path.t list
       -> deps:Dep_conf.t list
-      -> (unit, unit) Build.t
+      -> (unit, Action.t) Build.t
   end = struct
     module U = Action.Desc.Unexpanded
 
@@ -1338,7 +1339,7 @@ module Gen(P : Params) = struct
         ; lib_deps  = String_set.empty
         }
       in
-      U.fold t ~init ~f:(fun acc var ->
+      U.fold_vars t ~init ~f:(fun acc var ->
         let module A = Artifacts in
         match String.lsplit2 var ~on:':' with
         | Some ("exe"     , s) -> add_artifact acc ~var (Ok (Path.relative dir s))
@@ -1354,23 +1355,27 @@ module Gen(P : Params) = struct
           add_artifact acc ~var ~lib_dep res
         | _ -> acc)
 
-    let expand_string_with_vars =
-      let dep_exn ~dir name = function
-        | Some dep -> Path.reach ~from:dir dep
+    let expand_var =
+      let dep_exn name = function
+        | Some dep -> dep
         | None -> die "cannot use ${%s} with files_recursively_in" name
       in
-      fun  ~artifacts ~targets ~deps dir var_name ->
+      fun ~artifacts ~targets ~deps var_name ->
         match String_map.find var_name artifacts with
-        | Some path -> Some (Path.reach ~from:dir path)
+        | Some path -> Action.Path path
         | None ->
           match var_name with
-          | "@" -> Some (String.concat ~sep:" "
-                           (List.map targets ~f:(Path.reach ~from:dir)))
-          | "<" -> Some (match deps with [] -> "" | dep1::_ -> dep_exn ~dir var_name dep1)
+          | "@" -> Paths targets
+          | "<" -> (match deps with
+            | []        -> Str ""
+            | dep1 :: _ -> Path (dep_exn var_name dep1))
           | "^" ->
-            let deps = List.map deps ~f:(dep_exn ~dir var_name) in
-            Some (String.concat ~sep:" " deps)
-          | _ -> root_var_lookup ~dir var_name
+            Paths (List.map deps ~f:(dep_exn var_name))
+          | "ROOT" -> Path Path.root
+          | _ ->
+            match String_map.find var_name dollar_var_map with
+            | Some s -> Str s
+            | _ -> Not_found
 
     let run t ~dir ~dep_kind ~targets ~deps =
       let deps =
@@ -1381,7 +1386,7 @@ module Gen(P : Params) = struct
       let forms = extract_artifacts ~dir t in
       let t =
         U.expand dir t
-          ~f:(expand_string_with_vars ~artifacts:forms.artifacts ~targets ~deps)
+          ~f:(expand_var ~artifacts:forms.artifacts ~targets ~deps)
       in
       let build =
         Build.record_lib_deps ~dir ~kind:dep_kind
@@ -1390,7 +1395,7 @@ module Gen(P : Params) = struct
         >>>
         Build.paths (String_map.values forms.artifacts)
         >>>
-        Build.action t ~dir ~env:ctx.env ~targets
+        Build.action t ~dir ~targets
       in
       match forms.failures with
       | [] -> build
@@ -1427,22 +1432,24 @@ module Gen(P : Params) = struct
       |> Digest.to_hex in
     let alias = Alias.make alias_conf.name ~dir in
     let digest_path = Path.extend_basename (Alias.file alias) ~suffix:("-" ^ digest) in
-    let dummy = Build.touch digest_path in
     Alias.add_deps alias [digest_path];
-    let deps =
-      let deps = Dep_conf_interpret.dep_of_list ~dir alias_conf.deps in
-      match alias_conf.action with
-      | None -> deps
-      | Some action ->
-        deps
-        >>> Action_interpret.run
-          action
-          ~dir
-          ~dep_kind:Required
-          ~targets:[]
-          ~deps:alias_conf.deps
-    in
-    add_rule (deps >>> dummy)
+    let deps = Dep_conf_interpret.dep_of_list ~dir alias_conf.deps in
+    add_rule
+      (match alias_conf.action with
+       | None ->
+         deps
+         >>>
+         Build.create_file digest_path
+       | Some action ->
+         deps
+         >>> Action_interpret.run
+               action
+               ~dir
+               ~dep_kind:Required
+               ~targets:[]
+               ~deps:alias_conf.deps
+         >>>
+         Build.and_create_file digest_path)
 
   (* +-----------------------------------------------------------------+
      | Modules listing                                                 |
@@ -1517,7 +1524,7 @@ module Gen(P : Params) = struct
     List.iter stanzas ~f:(fun stanza ->
       let dir = ctx_dir in
       match (stanza : Stanza.t) with
-      | Rule         rule -> user_rule         rule ~dir
+      | Rule         rule  -> user_rule   rule  ~dir
       | Alias        alias -> alias_rules alias ~dir
       | Library _ | Executables _ | Provides _ | Install _ -> ());
     let files = lazy (
@@ -1645,22 +1652,24 @@ module Gen(P : Params) = struct
       in
       add_rule
         (Build.fanout meta template
+         >>^ (fun ((meta : Meta.t), template) ->
+           let buf = Buffer.create 1024 in
+           let ppf = Format.formatter_of_buffer buf in
+           Format.pp_open_vbox ppf 0;
+           List.iter template ~f:(fun s ->
+             if String.is_prefix s ~prefix:"#" then
+               match
+                 String.split_words (String.sub s ~pos:1 ~len:(String.length s - 1))
+               with
+               | ["JBUILDER_GEN"] -> Format.fprintf ppf "%a@," Meta.pp meta.entries
+               | _ -> Format.fprintf ppf "%s@," s
+             else
+               Format.fprintf ppf "%s@," s);
+           Format.pp_close_box ppf ();
+           Format.pp_print_flush ppf ();
+           Buffer.contents buf)
          >>>
-         Build.create_file ~target:meta_path (fun ((meta : Meta.t), template) ->
-           with_file_out (Path.to_string meta_path) ~f:(fun oc ->
-             let ppf = Format.formatter_of_out_channel oc in
-             Format.pp_open_vbox ppf 0;
-             List.iter template ~f:(fun s ->
-               if String.is_prefix s ~prefix:"#" then
-                 match
-                   String.split_words (String.sub s ~pos:1 ~len:(String.length s - 1))
-                 with
-                 | ["JBUILDER_GEN"] -> Format.fprintf ppf "%a@," Meta.pp meta.entries
-                 | _ -> Format.fprintf ppf "%s@," s
-               else
-                 Format.fprintf ppf "%s@," s);
-             Format.pp_close_box ppf ();
-             Format.pp_print_flush ppf ())));
+         Build.echo_dyn meta_path);
 
       if has_meta || has_meta_tmpl then
         Some pkg.name
@@ -1781,9 +1790,11 @@ module Gen(P : Params) = struct
     in
     let entries = local_install_rules entries ~package in
     add_rule
-      (Build.path_set (Install.files entries) >>>
-       Build.create_file ~target:fn (fun () ->
-         Install.write_install_file fn entries))
+      (Build.path_set (Install.files entries)
+       >>^ (fun () ->
+         Install.gen_install_file entries)
+       >>>
+       Build.echo_dyn fn)
 
   let () = String_map.iter P.packages ~f:(fun ~key:_ ~data:pkg ->
     install_file pkg.Package.path pkg.name)

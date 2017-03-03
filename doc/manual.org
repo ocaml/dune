@@ -1040,7 +1040,7 @@ You should set the =build:= field of your =<package>.opam= file as
 follow:
 
 #+begin_src
-build: [["jbuilder" "build" "--only-packages" "<package>" "--root" "." "-j" jobs @install]]
+build: [["jbuilder" "build" "--only-packages" "<package>" "--root" "." "-j" jobs "@install"]]
 #+end_src
 
 This has the following effects:

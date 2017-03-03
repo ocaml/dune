@@ -21,12 +21,13 @@ let expand_path ~dir ~f template =
   | Some v ->
     match f v with
     | Not_found -> expand_str ~dir ~f template |> Path.relative dir
-    | Path p -> p
+    | Path p
+    | Paths [p] -> p
     | Str s -> Path.relative dir s
     | Paths l ->
       List.map l ~f:(Path.reach ~from:dir)
       |> String.concat ~sep:" "
-      |> Path.of_string
+      |> Path.relative dir
 
 module Mini_shexp = struct
   module Ast = struct
@@ -109,7 +110,7 @@ module Mini_shexp = struct
 
   module Unexpanded = struct
     type t = (String_with_vars.t, String_with_vars.t) Ast.t
-    let t = Ast.t String_with_vars.t String_with_vars.t sexp
+    let t = Ast.t String_with_vars.t String_with_vars.t
     let sexp_of_t = Ast.sexp_of_t String_with_vars.sexp_of_t String_with_vars.sexp_of_t
 
     let fold_vars t ~init ~f =

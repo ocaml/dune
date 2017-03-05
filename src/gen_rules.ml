@@ -733,10 +733,17 @@ end of your list of preprocessors. Consult the manual for more details."
     in
     let requires =
       if ctx.merlin then
-        match Path.extract_build_context dir with
-        | Some (_, remaindir) ->
-          Build.path (Path.relative remaindir ".merlin") >>> real_requires
-        | _ -> real_requires
+        (* We don't depend on the dot_merlin directly, otherwise
+           everytime it changes we would have to rebuild everything.
+
+           .merlin-exists depends on the .merlin and is an empty
+           file. Depending on it forces the generation of the .merlin
+           but not recompilation when it changes. Maybe one day we
+           should add [Build.path_exists] to do the same in
+           general. *)
+        Build.path (Path.relative dir ".merlin-exists")
+        >>>
+        real_requires
       else
         real_requires
     in
@@ -773,6 +780,10 @@ end of your list of preprocessors. Consult the manual for more details."
         match Path.extract_build_context dir with
         | Some (_, remaindir) ->
           let path = Path.relative remaindir ".merlin" in
+          add_rule
+            (Build.path path
+             >>>
+             Build.echo (Path.relative dir ".merlin-exists") "");
           add_rule (
             Build.fanout requires (ppx_flags ~dir ~src_dir:remaindir t)
             >>^ (fun (libs, ppx_flags) ->

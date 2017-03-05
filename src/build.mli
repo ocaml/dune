@@ -71,7 +71,8 @@ val action
   -> Action.Mini_shexp.t
   -> (unit, Action.t) t
 
-(** Create a file with the given contents. *)
+(** Create a file with the given contents. Do not ovewrite the file if
+    it hasn't changed. *)
 val echo : Path.t -> string -> (unit, Action.t) t
 val echo_dyn : Path.t -> (string, Action.t) t
 

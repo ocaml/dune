@@ -42,6 +42,9 @@ val vpath : 'a Vspec.t  -> (unit, 'a) t
 
 val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
 
+val contents : Path.t -> ('a, string) t
+val lines_of : Path.t -> ('a, string list) t
+
 (** Always fail when executed. We pass a function rather than an exception to get a proper
     backtrace *)
 val fail : fail -> ('a, 'a) t
@@ -107,6 +110,8 @@ module Repr : sig
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Path.Set.t -> ('a, 'a) t
     | Paths_glob : Path.t * Re.re -> ('a, 'a) t
+    | Contents : Path.t -> ('a, string) t
+    | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
     | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t

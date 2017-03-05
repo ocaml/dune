@@ -40,6 +40,8 @@ let deps t ~all_targets_by_dir =
             Re.execp re (Path.basename path))
       end
     | Dyn_paths t -> loop t acc
+    | Contents p -> Pset.add p acc
+    | Lines_of p -> Pset.add p acc
     | Record_lib_deps _ -> acc
     | Fail _ -> acc
   in
@@ -61,6 +63,8 @@ let lib_deps =
       | Vpath _ -> acc
       | Paths_glob _ -> acc
       | Dyn_paths t -> loop t acc
+      | Contents _ -> acc
+      | Lines_of _ -> acc
       | Record_lib_deps (dir, deps) ->
         let data =
           match Pmap.find dir acc with
@@ -88,6 +92,8 @@ let targets =
     | Vpath _ -> acc
     | Paths_glob _ -> acc
     | Dyn_paths t -> loop t acc
+    | Contents _ -> acc
+    | Lines_of _ -> acc
     | Record_lib_deps _ -> acc
     | Fail _ -> acc
   in

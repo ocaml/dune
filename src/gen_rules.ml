@@ -511,10 +511,8 @@ module Gen(P : Params) = struct
     add_rule
       (Build.run (Dep ctx.ocamldep) [A "-modules"; S files] ~stdout_to:ocamldep_output);
     add_rule
-      (Build.path ocamldep_output
-       >>^ (fun () ->
-         parse_deps ~dir ~modules ~alias_module
-           (lines_of_file (Path.to_string ocamldep_output)))
+      (Build.lines_of ocamldep_output
+       >>^ parse_deps ~dir ~modules ~alias_module
        >>> Build.store_vfile vdepends);
     Build.vpath vdepends
 
@@ -1652,9 +1650,7 @@ end of your list of preprocessors. Consult the manual for more details."
       let template =
         if has_meta_tmpl then
           let meta_templ_path = Path.relative pkg.path meta_templ_fn in
-          Build.path meta_templ_path
-          >>^ fun () ->
-          lines_of_file (Path.to_string meta_templ_path)
+          Build.lines_of meta_templ_path
         else
           Build.return ["# JBUILDER_GEN"]
       in

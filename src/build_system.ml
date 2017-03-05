@@ -209,6 +209,8 @@ module Build_exec = struct
         both (exec a x) (exec b x)
       | Paths _ -> return x
       | Paths_glob _ -> return x
+      | Contents p -> return (read_file (Path.to_string p))
+      | Lines_of p -> return (lines_of_file (Path.to_string p))
       | Vpath (Vspec.T (fn, kind)) ->
         let file : b File_spec.t = get_file bs fn (Sexp_file kind) in
         return (Option.value_exn file.data)

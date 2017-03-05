@@ -29,6 +29,8 @@ module Repr = struct
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Pset.t -> ('a, 'a) t
     | Paths_glob : Path.t * Re.re -> ('a, 'a) t
+    | Contents : Path.t -> ('a, string) t
+    | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
     | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
@@ -98,6 +100,9 @@ let path_set ps = Paths ps
 let paths_glob ~dir re = Paths_glob (dir, re)
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths t
+
+let contents p = Contents p
+let lines_of p = Lines_of p
 
 let fail x = Fail x
 

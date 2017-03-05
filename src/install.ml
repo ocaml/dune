@@ -64,7 +64,7 @@ module Entry = struct
 
   module Paths = struct
     let lib         = Path.(relative root) "lib"
-    let libexec     = Path.(relative root) "libexec"
+    let libexec     = Path.(relative root) "lib"
     let bin         = Path.(relative root) "bin"
     let sbin        = Path.(relative root) "sbin"
     let toplevel    = Path.(relative root) "lib/toplevel"

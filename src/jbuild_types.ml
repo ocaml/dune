@@ -371,14 +371,14 @@ module Library = struct
   module Kind = struct
     type t =
       | Normal
-      | Ppx_type_conv_plugin
+      | Ppx_deriver
       | Ppx_rewriter
 
     let t =
       enum
-        [ "normal"               , Normal
-        ; "ppx_type_conv_plugin" , Ppx_type_conv_plugin
-        ; "ppx_rewriter"         , Ppx_rewriter
+        [ "normal"       , Normal
+        ; "ppx_deriver"  , Ppx_deriver
+        ; "ppx_rewriter" , Ppx_rewriter
         ]
   end
 

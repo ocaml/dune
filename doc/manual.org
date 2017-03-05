@@ -335,9 +335,11 @@ the library and you are free to expose only the modules you want.
   OCaml toplevel
 
 - =(kind <kind>)= is the kind of the library. The default is =normal=,
-  other available choices are =ppx_rewriter= and
-  =ppx_type_conv_plugin= and must be set when the library is intended
-  to be used as a ppx rewriter or a =[@@deriving ...]= plugin
+  other available choices are =ppx_rewriter= and =ppx_deriver= and
+  must be set when the library is intended to be used as a ppx
+  rewriter or a =[@@deriving ...]= plugin. The reason why
+  =ppx_rewriter= and =ppx_deriver= are split is historical and
+  hopefully we won't need two options soon
 
 - =(ppx_runtime_libraries (<library-names>))= is for when the library
   is a ppx rewriter or a =[@@deriving ...]= plugin and has runtime

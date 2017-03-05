@@ -69,7 +69,7 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~
   let preds =
     match lib.kind with
     | Normal -> []
-    | Ppx_rewriter | Ppx_type_conv_plugin -> [Pos "ppx_driver"]
+    | Ppx_rewriter | Ppx_deriver -> [Pos "ppx_driver"]
   in
   List.concat
     [ version
@@ -80,7 +80,7 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~
     ; [ exists_if (lib.name ^ ".cma") ]
     ; (match lib.kind with
        | Normal -> []
-       | Ppx_rewriter | Ppx_type_conv_plugin ->
+       | Ppx_rewriter | Ppx_deriver ->
          let sub_pkg_name = "deprecated-ppx-method" in
          [ Comment "This is what jbuilder uses to find out the runtime dependencies of"
          ; Comment "a preprocessor"
@@ -101,7 +101,7 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~
                    | Normal -> assert false
                    | Ppx_rewriter ->
                      [ rule "ppx" [Neg "ppx_driver"; Neg "custom_ppx"] Set "./as-ppx.exe --as-ppx" ]
-                   | Ppx_type_conv_plugin ->
+                   | Ppx_deriver ->
                      [ rule "requires" [Neg "ppx_driver"; Neg "custom_ppx"] Add
                          "ppx_deriving"
                      ; rule "ppxopt" [Neg "ppx_driver"; Neg "custom_ppx"] Set

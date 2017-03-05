@@ -174,56 +174,55 @@ let vfile_to_string (type a) (module K : Vfile_kind.S with type t = a) fn x =
 module Build_exec = struct
   open Build.Repr
 
-  let exec bs t x ~static_deps ~targeting =
-    let all_deps = ref static_deps in
+  let exec bs t x =
+    let dyn_deps = ref Pset.empty in
     let rec exec
-      : type a b. (a, b) t -> a -> b Future.t = fun t x ->
-      let return = Future.return in
+      : type a b. (a, b) t -> a -> b = fun t x ->
       match t with
-      | Arr f -> return (f x)
-      | Targets _ -> return x
+      | Arr f -> f x
+      | Targets _ -> x
       | Store_vfile (Vspec.T (fn, kind)) ->
         let file = get_file bs fn (Sexp_file kind) in
         assert (file.data = None);
         file.data <- Some x;
-        Future.return
-          { Action.
-            context = None
-          ; dir     = Path.root
-          ; action  = Write_file (fn, vfile_to_string kind fn x)
-          }
+        { Action.
+          context = None
+        ; dir     = Path.root
+        ; action  = Write_file (fn, vfile_to_string kind fn x)
+        }
       | Compose (a, b) ->
-        exec a x >>= exec b
+        exec a x |> exec b
       | First t ->
         let x, y = x in
-        exec t x >>= fun x ->
-        return (x, y)
+        (exec t x, y)
       | Second t ->
         let x, y = x in
-        exec t y >>= fun y ->
-        return (x, y)
+        (x, exec t y)
       | Split (a, b) ->
         let x, y = x in
-        both (exec a x) (exec b y)
+        let x = exec a x in
+        let y = exec b y in
+        (x, y)
       | Fanout (a, b) ->
-        both (exec a x) (exec b x)
-      | Paths _ -> return x
-      | Paths_glob _ -> return x
-      | Contents p -> return (read_file (Path.to_string p))
-      | Lines_of p -> return (lines_of_file (Path.to_string p))
+        let a = exec a x in
+        let b = exec b x in
+        (a, b)
+      | Paths _ -> x
+      | Paths_glob _ -> x
+      | Contents p -> read_file (Path.to_string p)
+      | Lines_of p -> lines_of_file (Path.to_string p)
       | Vpath (Vspec.T (fn, kind)) ->
         let file : b File_spec.t = get_file bs fn (Sexp_file kind) in
-        return (Option.value_exn file.data)
+        Option.value_exn file.data
       | Dyn_paths t ->
-        exec t x >>= fun fns ->
-        all_deps := Pset.union !all_deps (Pset.of_list fns);
-        all_unit (List.rev_map fns ~f:(wait_for_file bs ~targeting)) >>= fun () ->
-        return x
-      | Record_lib_deps _ -> return x
+        let fns = exec t x in
+        dyn_deps := Pset.union !dyn_deps (Pset.of_list fns);
+        x
+      | Record_lib_deps _ -> x
       | Fail { fail } -> fail ()
     in
-    exec (Build.repr t) x >>| fun action ->
-    (action, !all_deps)
+    let action = exec (Build.repr t) x in
+    (action, !dyn_deps)
 end
 
 let add_spec t fn spec ~allow_override =
@@ -255,6 +254,10 @@ let refresh_targets_timestamps_after_rule_execution t targets =
       (Pset.elements missing
        |> List.map ~f:(fun fn -> sprintf "- %s" (Path.to_string fn))
        |> String.concat ~sep:"\n")
+
+let wait_for_deps t deps ~targeting =
+  all_unit
+    (Pset.fold deps ~init:[] ~f:(fun fn acc -> wait_for_file t fn ~targeting :: acc))
 
 let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
   let { Pre_rule. build; targets = target_specs } = pre_rule in
@@ -289,11 +292,12 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       match Path.kind fn with
       | Local local -> Path.Local.ensure_parent_directory_exists local
       | External _ -> ());
-    all_unit
-      (Pset.fold deps ~init:[] ~f:(fun fn acc -> wait_for_file t fn ~targeting :: acc))
+    wait_for_deps t deps ~targeting
     >>= fun () ->
-    Build_exec.exec t build () ~targeting ~static_deps:deps
-    >>= fun (action, all_deps) ->
+    let action, dyn_deps = Build_exec.exec t build () in
+    wait_for_deps t ~targeting (Pset.diff dyn_deps deps)
+    >>= fun () ->
+    let all_deps = Pset.union deps dyn_deps in
     if !Clflags.debug_actions then
       Format.eprintf "@{<debug>Action@}: %s@."
         (Sexp.to_string (Action.sexp_of_t action));

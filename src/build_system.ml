@@ -246,7 +246,7 @@ let refresh_targets_timestamps_after_rule_execution t targets =
       | exception _ -> Pset.add fn acc
       | stat ->
         let ts = stat.st_mtime in
-        Hashtbl.add t.timestamps ~key:fn ~data:ts;
+        Hashtbl.replace t.timestamps ~key:fn ~data:ts;
         acc)
   in
   if not (Pset.is_empty missing) then
@@ -318,7 +318,15 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
           acc || prev_hash <> hash)
     in
     if rule_changed || min_timestamp t targets < max_timestamp t all_deps then begin
-      List.iter targets ~f:Path.unlink_no_err;
+      (* CR-someday jdimino: we should remove the targets to be sure
+         the action re-generate them, however it breaks incrementality
+         regarding [Write_file ...] actions, since they end up
+         systematically re-creating the file:
+
+         {[
+           List.iter targets ~f:Path.unlink_no_err;
+         ]}
+      *)
       Action.exec action >>| fun () ->
       refresh_targets_timestamps_after_rule_execution t targets
     end else

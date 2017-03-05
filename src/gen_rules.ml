@@ -716,7 +716,7 @@ end of your list of preprocessors. Consult the manual for more details."
     in
     (requires, real_requires)
 
-  let dot_merlin ~dir ~requires ~alias_modules =
+  let dot_merlin ~dir ~requires ~alias_modules ~flags =
     if ctx.merlin then
       match Path.extract_build_context dir with
       | Some (_, remaindir) ->
@@ -732,12 +732,23 @@ end of your list of preprocessors. Consult the manual for more details."
                   | Lib.External pkg ->
                     Inr ("PKG " ^ pkg.name))
               in
+              let flags =
+                match
+                  List.fold_left alias_modules ~init:flags ~f:(fun acc m ->
+                    "-open" :: m.Module.name :: acc)
+                with
+                | [] -> []
+                | l  -> ["FLG " ^ String.concat ~sep:" " l]
+              in
               let dot_merlin =
-                [ "S ." ; "B " ^ (Path.reach dir ~from:remaindir) ]
-                @ internals
-                @ externals
-                @ List.map alias_modules ~f:(fun (m : Module.t) ->
-                    "FLG -open " ^ m.name)
+                List.concat
+                  [ [ "S ."
+                    ; "B " ^ (Path.reach dir ~from:remaindir)
+                    ]
+                  ; internals
+                  ; externals
+                  ; flags
+                  ]
               in
               dot_merlin
               |> String_set.of_list
@@ -752,14 +763,24 @@ end of your list of preprocessors. Consult the manual for more details."
 
   let merge_dot_merlin merlin_deps ~dir =
     if ctx.merlin && merlin_deps <> [] then
-      let requires, alias_modules = List.split merlin_deps in
+      let flags, requires, alias_modules =
+        List.fold_left merlin_deps ~init:([], [], [])
+          ~f:(fun (a1, b1, c1) (a2, b2, c2) ->
+            (a2 :: a1,
+             b2 :: b1,
+             c2 :: c1))
+      in
       let alias_modules = List.filter_map alias_modules ~f:(fun x -> x) in
       let requires =
         Build.all requires
         >>^ fun requires ->
         Lib.remove_dups_preserve_order (List.concat requires)
       in
-      dot_merlin ~dir ~requires ~alias_modules
+      let flags =
+        List.concat_map flags ~f:(fun flags ->
+          flags.Ocaml_flags.common)
+      in
+      dot_merlin ~dir ~requires ~alias_modules ~flags
 
   let setup_runtime_deps ~dir ~dep_kind ~item ~libraries ~ppx_runtime_libraries =
     let vruntime_deps = Lib_db.vruntime_deps ~dir ~item in
@@ -1210,7 +1231,7 @@ end of your list of preprocessors. Consult the manual for more details."
          : (unit, Lib.t list) Build.t)
     end;
 
-    (real_requires, alias_module)
+    (flags, real_requires, alias_module)
 
   (* +-----------------------------------------------------------------+
      | Executables stuff                                               |
@@ -1286,7 +1307,7 @@ end of your list of preprocessors. Consult the manual for more details."
         build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
           ~link_flags:exes.link_flags));
 
-    (real_requires, None)
+    (flags, real_requires, None)
 
   (* +-----------------------------------------------------------------+
      | User actions                                                    |

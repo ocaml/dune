@@ -168,8 +168,6 @@ module Gen(P : Params) = struct
       create findlib P.internal_libraries
         ~dirs_with_dot_opam_files:P.dirs_with_dot_opam_files
 
-    let find ~from name = Build.arr (fun () -> find t ~from name)
-
     module Libs_vfile =
       Vfile_kind.Make_full
         (struct type t = Lib.t list end)
@@ -571,20 +569,11 @@ module Gen(P : Params) = struct
 
   let ppx_drivers = Hashtbl.create 32
 
-  let build_ppx_driver ~dir ~dep_kind ~target ~runner pp_names =
+  let build_ppx_driver ~dir ~dep_kind ~target pp_names =
     let mode = Mode.best in
     let compiler = Option.value_exn (Mode.compiler mode) in
     let libs =
-      Build.fanout
-        (Lib_db.closure ~dir ~dep_kind (Direct "ppx_driver" ::
-                                        List.map pp_names ~f:Lib_dep.direct))
-        (Lib_db.find runner ~from:dir)
-      >>^ (fun (libs, runner) ->
-        let runner_name = Lib.best_name runner in
-        List.filter libs ~f:(fun lib ->
-          Lib.best_name lib <> runner_name)
-        @ [runner]
-      )
+      Lib_db.closure ~dir ~dep_kind (List.map pp_names ~f:Lib_dep.direct)
     in
     add_rule
       (libs
@@ -597,19 +586,17 @@ module Gen(P : Params) = struct
          ]);
     libs
 
+  let ppx_dir = Path.of_string (sprintf "_build/.ppx/%s" ctx.name)
+
   let get_ppx_driver pps ~dir ~dep_kind =
-    let names =
-      Pp_set.elements pps
-      |> List.map ~f:Pp.to_string
-    in
-    let key = String.concat names ~sep:"+" in
+    let names = List.map pps ~f:Pp.to_string in
+    let key = String.concat (List.sort names ~cmp:String.compare) ~sep:"+" in
     match Hashtbl.find ppx_drivers key with
     | Some x -> x
     | None ->
-      let exe = Path.relative ctx.build_dir (sprintf ".ppx/%s/ppx.exe" key) in
+      let exe = Path.relative ppx_dir (sprintf "%s/ppx.exe" key) in
       let libs =
         build_ppx_driver names ~dir ~dep_kind ~target:exe
-          ~runner:"ppx_driver.runner"
       in
       Hashtbl.add ppx_drivers ~key ~data:(exe, libs);
       (exe, libs)
@@ -683,9 +670,7 @@ module Gen(P : Params) = struct
 
   let real_requires ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
     let all_pps =
-      Preprocess_map.pps preprocess
-      |> Pp_set.elements
-      |> List.map ~f:Pp.to_string
+      List.map (Preprocess_map.pps preprocess) ~f:Pp.to_string
     in
     let vrequires = Lib_db.vrequires ~dir ~item in
     add_rule
@@ -1203,11 +1188,10 @@ module Gen(P : Params) = struct
     | Normal | Ppx_type_conv_plugin -> ()
     | Ppx_rewriter ->
       ignore
-        (build_ppx_driver [lib.name]
+        (build_ppx_driver [lib.name; "ppx_driver.runner_as_ppx"]
            ~dir
            ~dep_kind
            ~target:(Path.relative dir "as-ppx.exe")
-           ~runner:"ppx_driver.runner_as_ppx"
          : (unit, Lib.t list) Build.t)
     end;
 

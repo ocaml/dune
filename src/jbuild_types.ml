@@ -96,8 +96,6 @@ module Pp = struct
   let compare : t -> t -> int = Pervasives.compare
 end
 
-module Pp_set = Set.Make(Pp)
-
 module Pp_or_flag = struct
   type t =
     | PP of Pp.t
@@ -154,7 +152,7 @@ module Dep_conf = struct
 end
 
 module Preprocess = struct
-  type pps = { pps : Pp_set.t; flags : string list }
+  type pps = { pps : Pp.t list; flags : string list }
   type t =
     | No_preprocessing
     | Command of String_with_vars.t
@@ -166,12 +164,12 @@ module Preprocess = struct
       ; cstr "command"          (String_with_vars.t @> nil) (fun x -> Command x)
       ; cstr "pps"              (list Pp_or_flag.t  @> nil) (fun l ->
           let pps, flags = Pp_or_flag.split l in
-          Pps { pps = Pp_set.of_list pps; flags })
+          Pps { pps; flags })
       ]
 
-  let pp_set = function
+  let pps = function
     | Pps { pps; _ } -> pps
-    | _ -> Pp_set.empty
+    | _ -> []
 end
 
 module Per_file = struct
@@ -205,11 +203,14 @@ module Preprocess_map = struct
 
   let default : t = For_all No_preprocessing
 
+  module Pp_set = Set.Make(Pp)
+
   let pps : t -> _ = function
-    | For_all pp -> Preprocess.pp_set pp
+    | For_all pp -> Preprocess.pps pp
     | Per_file map ->
       String_map.fold map ~init:Pp_set.empty ~f:(fun ~key:_ ~data:pp acc ->
-        Pp_set.union acc (Preprocess.pp_set pp))
+        Pp_set.union acc (Pp_set.of_list (Preprocess.pps pp)))
+      |> Pp_set.elements
 end
 
 module Lint = struct
@@ -219,7 +220,7 @@ module Lint = struct
     sum
       [ cstr "pps" (list Pp_or_flag.t  @> nil) (fun l ->
           let pps, flags = Pp_or_flag.split l in
-          Pps { pps = Pp_set.of_list pps; flags })
+          Pps { pps; flags })
       ]
 end
 

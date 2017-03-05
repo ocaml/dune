@@ -718,14 +718,46 @@ of Jbuilder and might change in the Future.
 
 =<ppx-rewriters-and-flags>= is expected to be a list where each
 element is either a command line flag if starting with a =-= or the
-name of a library implementing an OCaml AST rewriter. These must be
-libraries as Jbuilder always build a single ppx driver in order to
-speed up compilation.
+name of a library. Libraries listed here should typically be libraries
+implementing an OCaml AST rewriter and registering themselves as such.
 
-Currently Jbuilder only knows how to buid [[https://github.com/janestreet/ppx_driver][ppx_driver]] based drivers, so
-using =(pps (...))= will force a dependency on ppx_driver. See [[https://github.com/janestreet/jbuilder/issues/14][this
-ticket]] for a discussion about adding support for ppx rewriters not
-based on ppx_driver.
+Jbuilder will build a single executable by linking all these lbraries
+and their dependencies. As such, the last library listed should
+typically be a /runner/, i.e. a small library that executes all the
+rewriting registered by the previous libraries on the AST given as
+input. Note that it is important that such a runner library is built
+with =(library_flag (-linkall))=, otherwise the OCaml compiler will
+drop it as it will think that it is unused.
+
+For instance, to use [[https://github.com/janestreet/ppx_driver][ppx_driver]] based ppx rewriters, you need to put
+=ppx_driver.runner= as the last element:
+
+#+begin_src scheme
+  (preprocess (pps (ppx_sexp_conv ppx_bin_prot ppx_driver.runner)))
+#+end_src
+
+There is currently no driver that can be used for ppx rewriters that
+are not based on ppx driver. See [[https://github.com/janestreet/jbuilder/issues/14][this ticket]] for more details.
+
+****** Driver expectation
+
+Jbuilder will invoke the executable resulting from linking the
+libraries given in the =(pps ...)= form as follow:
+
+#+begin_src sh
+ppx.exe <flags-written-by-user> --dump-ast -o <output-file> <source-file>
+#+end_src
+
+Where =<source-file>= is either a =.ml= or =.mli= file. The command is
+expected to write a binary OCaml AST in =<output-file>=.
+
+Additionally, it is expected that if the executable is invoked with
+=--as-ppx= as its first argument, then it will behave as a standard
+ppx rewirter as passed to =-ppx= option of OCaml. This is for two
+reason:
+
+- to improve interoperability with build systems that Jbuilder
+- so that it can be used with merlin
 
 ****** Per module pre-processing specification
 

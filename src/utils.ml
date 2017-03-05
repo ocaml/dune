@@ -16,5 +16,5 @@ let system_shell =
        arg,
        Some { fail = fun () ->
          die "I need %s to %s but I couldn't find it :(\n\
-              Who doesn't have %s%s??!"
+              Who doesn't have %s%s?!"
            cmd needed_to cmd os })

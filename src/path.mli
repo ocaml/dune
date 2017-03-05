@@ -71,3 +71,4 @@ val readdir : t -> string list
 val is_directory : t -> bool
 val rmdir : t -> unit
 val unlink : t -> unit
+val unlink_no_err : t -> unit

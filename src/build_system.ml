@@ -238,6 +238,22 @@ let create_file_specs t targets rule ~allow_override =
 
 module Pre_rule = Build_interpret.Rule
 
+let refresh_targets_timestamps_after_rule_execution t targets =
+  let missing =
+    List.fold_left targets ~init:Pset.empty ~f:(fun acc fn ->
+      match Unix.lstat (Path.to_string fn) with
+      | exception _ -> Pset.add fn acc
+      | stat ->
+        let ts = stat.st_mtime in
+        Hashtbl.add t.timestamps ~key:fn ~data:ts;
+        acc)
+  in
+  if not (Pset.is_empty missing) then
+    die "@{<error>Error@}: Rule failed to generate the following targets:\n%s"
+      (Pset.elements missing
+       |> List.map ~f:(fun fn -> sprintf "- %s" (Path.to_string fn))
+       |> String.concat ~sep:"\n")
+
 let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
   let { Pre_rule. build; targets = target_specs } = pre_rule in
   let deps = Build_interpret.deps build ~all_targets_by_dir in
@@ -296,8 +312,9 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
           acc || prev_hash <> hash)
     in
     if rule_changed || min_timestamp t targets < max_timestamp t all_deps then begin
-      List.iter targets ~f:(Hashtbl.remove t.timestamps);
-      Action.exec action
+      List.iter targets ~f:Path.unlink_no_err;
+      Action.exec action >>| fun () ->
+      refresh_targets_timestamps_after_rule_execution t targets
     end else
       return ()
   ) in

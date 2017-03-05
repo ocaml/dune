@@ -346,6 +346,11 @@ module Buildable = struct
 
   let v1 = common
   let vjs = v1
+
+  let single_preprocess t =
+    match t.preprocess with
+    | For_all pp -> pp
+    | Per_file _ -> No_preprocessing
 end
 
 module Public_lib = struct

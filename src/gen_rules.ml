@@ -742,14 +742,40 @@ end of your list of preprocessors. Consult the manual for more details."
     in
     (requires, real_requires)
 
-  let dot_merlin ~dir ~requires ~alias_modules ~flags =
-    if ctx.merlin then
-      match Path.extract_build_context dir with
-      | Some (_, remaindir) ->
-        let path = Path.relative remaindir ".merlin" in
-        add_rule (
-          requires
-          >>^ (fun libs ->
+  module Merlin = struct
+    type t =
+      { requires   : (unit, Lib.t list) Build.t
+      ; flags      : string list
+      ; preprocess : Preprocess.t
+      ; libname    : string option
+      }
+
+    let ppx_flags ~dir ~src_dir { preprocess; libname; _ } =
+      match preprocess with
+      | Pps { pps; flags } ->
+        let exe, libs = get_ppx_driver pps ~dir ~dep_kind:Optional in
+        libs >>^ fun libs ->
+        let specific_flags, _ =
+          Arg_spec.expand ~dir:src_dir
+            [specific_args_for_ppx_rewriters ~dir ~lib_name:libname libs]
+            ()
+        in
+        let command =
+          List.map (Path.reach exe ~from:src_dir :: "--as-ppx" :: specific_flags @ flags)
+            ~f:quote_for_shell
+          |> String.concat ~sep:" "
+        in
+        [sprintf "FLG -ppx \"%s\"" command]
+      | _ -> Build.return []
+
+    let dot_merlin ~dir ({ requires; flags; _ } as t) =
+      if ctx.merlin then
+        match Path.extract_build_context dir with
+        | Some (_, remaindir) ->
+          let path = Path.relative remaindir ".merlin" in
+          add_rule (
+            Build.fanout requires (ppx_flags ~dir ~src_dir:remaindir t)
+            >>^ (fun (libs, ppx_flags) ->
               let internals, externals =
                 List.partition_map libs ~f:(function
                   | Lib.Internal (path, _) ->
@@ -759,12 +785,9 @@ end of your list of preprocessors. Consult the manual for more details."
                     Inr ("PKG " ^ pkg.name))
               in
               let flags =
-                match
-                  List.fold_left alias_modules ~init:flags ~f:(fun acc m ->
-                    "-open" :: m.Module.name :: acc)
-                with
+                match flags with
                 | [] -> []
-                | l  -> ["FLG " ^ String.concat ~sep:" " l]
+                | _  -> ["FLG " ^ String.concat flags ~sep:" "]
               in
               let dot_merlin =
                 List.concat
@@ -774,6 +797,7 @@ end of your list of preprocessors. Consult the manual for more details."
                   ; internals
                   ; externals
                   ; flags
+                  ; ppx_flags
                   ]
               in
               dot_merlin
@@ -781,32 +805,35 @@ end of your list of preprocessors. Consult the manual for more details."
               |> String_set.elements
               |> List.map ~f:(Printf.sprintf "%s\n")
               |> String.concat ~sep:"")
-          >>>
-          Build.echo_dyn path
-        )
-      | _ ->
-        ()
+            >>>
+            Build.echo_dyn path
+          )
+        | _ ->
+          ()
 
-  let merge_dot_merlin merlin_deps ~dir =
-    if ctx.merlin && merlin_deps <> [] then
-      let flags, requires, alias_modules =
-        List.fold_left merlin_deps ~init:([], [], [])
-          ~f:(fun (a1, b1, c1) (a2, b2, c2) ->
-            (a2 :: a1,
-             b2 :: b1,
-             c2 :: c1))
-      in
-      let alias_modules = List.filter_map alias_modules ~f:(fun x -> x) in
-      let requires =
-        Build.all requires
-        >>^ fun requires ->
-        Lib.remove_dups_preserve_order (List.concat requires)
-      in
-      let flags =
-        List.concat_map flags ~f:(fun flags ->
-          flags.Ocaml_flags.common)
-      in
-      dot_merlin ~dir ~requires ~alias_modules ~flags
+    let merge_two a b =
+      { requires =
+          (Build.fanout a.requires b.requires
+           >>^ fun (x, y) ->
+           Lib.remove_dups_preserve_order (x @ y))
+      ; flags = a.flags @ b.flags
+      ; preprocess =
+          if a.preprocess = b.preprocess then
+            a.preprocess
+          else
+            No_preprocessing
+      ; libname =
+          match a.libname with
+          | Some _ as x -> x
+          | None -> b.libname
+      }
+
+    let gen ~dir ts =
+      if ctx.merlin then
+        match ts with
+        | [] -> ()
+        | t :: ts -> dot_merlin ~dir (List.fold_left ts ~init:t ~f:merge_two)
+  end
 
   let setup_runtime_deps ~dir ~dep_kind ~item ~libraries ~ppx_runtime_libraries =
     let vruntime_deps = Lib_db.vruntime_deps ~dir ~item in
@@ -1245,7 +1272,17 @@ end of your list of preprocessors. Consult the manual for more details."
       add_rule build
     );
 
-    (flags, real_requires, alias_module)
+    let flags =
+      match alias_module with
+      | None -> flags.common
+      | Some m -> "-open" :: m.name :: flags.common
+    in
+    { Merlin.
+      requires = real_requires
+    ; flags
+    ; preprocess = Buildable.single_preprocess lib.buildable
+    ; libname = Some lib.name
+    }
 
   (* +-----------------------------------------------------------------+
      | Executables stuff                                               |
@@ -1321,7 +1358,12 @@ end of your list of preprocessors. Consult the manual for more details."
         build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
           ~link_flags:exes.link_flags));
 
-    (flags, real_requires, None)
+    { Merlin.
+      requires   = real_requires
+    ; flags      = flags.common
+    ; preprocess = Buildable.single_preprocess exes.buildable
+    ; libname    = None
+    }
 
   (* +-----------------------------------------------------------------+
      | User actions                                                    |
@@ -1586,7 +1628,7 @@ end of your list of preprocessors. Consult the manual for more details."
       | Executables  exes ->
         Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules))
       | _ -> None)
-    |> merge_dot_merlin ~dir:ctx_dir
+    |> Merlin.gen ~dir:ctx_dir
 
   let () = List.iter P.stanzas ~f:rules
 

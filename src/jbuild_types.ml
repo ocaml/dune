@@ -160,14 +160,14 @@ module Preprocess = struct
   type pps = { pps : Pp.t list; flags : string list }
   type t =
     | No_preprocessing
-    | Command of String_with_vars.t
-    | Pps of pps
+    | Action of Action.Mini_shexp.Unexpanded.t
+    | Pps    of pps
 
   let t =
     sum
       [ cstr "no_preprocessing" nil No_preprocessing
-      ; cstr "command"          (String_with_vars.t @> nil) (fun x -> Command x)
-      ; cstr "pps"              (list Pp_or_flags.t @> nil) (fun l ->
+      ; cstr "action" (Action.Mini_shexp.Unexpanded.t @> nil) (fun x -> Action x)
+      ; cstr "pps" (list Pp_or_flags.t @> nil) (fun l ->
           let pps, flags = Pp_or_flags.split l in
           Pps { pps; flags })
       ]

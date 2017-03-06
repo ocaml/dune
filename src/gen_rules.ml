@@ -435,10 +435,12 @@ module Gen(P : Params) = struct
       loop (Build.return ()) ts
 
     let only_plain_file ~dir = function
-      | File s -> Some (expand_vars ~dir s)
+      | File s -> Some (Path.relative dir (expand_vars ~dir s))
       | Alias _ -> None
       | Glob_files _ -> None
       | Files_recursively_in _ -> None
+
+    let only_plain_files ~dir ts = List.map ts ~f:(only_plain_file ~dir)
   end
 
   (* +-----------------------------------------------------------------+
@@ -538,12 +540,126 @@ module Gen(P : Params) = struct
     |> modules_of_names ~dir ~modules
     |> cm_files ~dir ~cm_kind:(Mode.cm_kind mode)
 
-  (* +-----------------------------------------------------------------+
-     | Preprocessing stuff                                             |
-     +-----------------------------------------------------------------+ *)
 
   let ocamldep_rules ~dir ~item ~modules ~alias_module =
     Ml_kind.Dict.of_func (ocamldep_rules ~dir ~item ~modules ~alias_module)
+
+  (* +-----------------------------------------------------------------+
+     | User actions                                                    |
+     +-----------------------------------------------------------------+ *)
+
+  module Action_interpret : sig
+    val run
+      :  Action.Mini_shexp.Unexpanded.t
+      -> dir:Path.t
+      -> dep_kind:Build.lib_dep_kind
+      -> targets:Path.t list
+      -> deps:Path.t option list
+      -> (unit, Action.t) Build.t
+  end = struct
+    module U = Action.Mini_shexp.Unexpanded
+
+    type resolved_forms =
+      { (* Mapping from ${...} forms to their resolutions *)
+        artifacts : Path.t String_map.t
+      ; (* Failed resolutions *)
+        failures  : fail list
+      ; (* All "name" for ${lib:name:...} forms *)
+        lib_deps  : String_set.t
+      }
+
+    let add_artifact ?lib_dep acc ~var result =
+      let lib_deps =
+        match lib_dep with
+        | None -> acc.lib_deps
+        | Some lib -> String_set.add lib acc.lib_deps
+      in
+      match result with
+      | Ok path ->
+        { acc with
+          artifacts = String_map.add acc.artifacts ~key:var ~data:path
+        ; lib_deps
+        }
+      | Error fail ->
+        { acc with
+          failures = fail :: acc.failures
+        ; lib_deps
+        }
+
+    let extract_artifacts ~dir t =
+      let init =
+        { artifacts = String_map.empty
+        ; failures  = []
+        ; lib_deps  = String_set.empty
+        }
+      in
+      U.fold_vars t ~init ~f:(fun acc var ->
+        let module A = Artifacts in
+        match String.lsplit2 var ~on:':' with
+        | Some ("exe"     , s) -> add_artifact acc ~var (Ok (Path.relative dir s))
+        | Some ("path"    , s) -> add_artifact acc ~var (Ok (Path.relative dir s))
+        | Some ("bin"     , s) -> add_artifact acc ~var (A.binary s)
+        | Some ("lib"     , s)
+        | Some ("libexec" , s) ->
+          let lib_dep, res = A.file_of_lib ~dir s in
+          add_artifact acc ~var ~lib_dep res
+        (* CR-someday jdimino: allow this only for (jbuild_version jane_street) *)
+        | Some ("findlib" , s) ->
+          let lib_dep, res = A.file_of_lib ~dir s ~use_provides:true in
+          add_artifact acc ~var ~lib_dep res
+        | _ -> acc)
+
+    let expand_var =
+      let dep_exn name = function
+        | Some dep -> dep
+        | None -> die "cannot use ${%s} with files_recursively_in" name
+      in
+      fun ~artifacts ~targets ~deps var_name ->
+        match String_map.find var_name artifacts with
+        | Some path -> Action.Path path
+        | None ->
+          match var_name with
+          | "@" -> Paths targets
+          | "<" -> (match deps with
+            | []        -> Str ""
+            | dep1 :: _ -> Path (dep_exn var_name dep1))
+          | "^" ->
+            Paths (List.map deps ~f:(dep_exn var_name))
+          | "ROOT" -> Path Path.root
+          | _ ->
+            match String_map.find var_name dollar_var_map with
+            | Some s -> Str s
+            | _ -> Not_found
+
+    let run t ~dir ~dep_kind ~targets ~deps =
+      let forms = extract_artifacts ~dir t in
+      let build =
+        match
+          U.expand ctx dir t
+            ~f:(expand_var ~artifacts:forms.artifacts ~targets ~deps)
+        with
+        | t ->
+          Build.paths (String_map.values forms.artifacts)
+          >>>
+          Build.action t ~dir ~targets
+        | exception e ->
+          Build.fail { fail = fun () -> raise e }
+      in
+      let build =
+        Build.record_lib_deps ~dir ~kind:dep_kind
+          (String_set.elements forms.lib_deps
+           |> List.map ~f:(fun s -> Lib_dep.Direct s))
+        >>>
+        build
+      in
+      match forms.failures with
+      | [] -> build
+      | fail :: _ -> Build.fail fail >>> build
+  end
+
+  (* +-----------------------------------------------------------------+
+     | Preprocessing stuff                                             |
+     +-----------------------------------------------------------------+ *)
 
   let pp_fname fn =
     match Filename.split_ext fn with
@@ -683,6 +799,8 @@ module Gen(P : Params) = struct
            else [])
       ]
 
+  let target = String_with_vars.of_string "${@}"
+
   (* Generate rules to build the .pp files and return a new module map where all filenames
      point to the .pp files *)
   let pped_modules ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name =
@@ -690,18 +808,19 @@ module Gen(P : Params) = struct
     String_map.map modules ~f:(fun (m : Module.t) ->
       match Preprocess_map.find m.name preprocess with
       | No_preprocessing -> m
-      | Command cmd ->
+      | Action action ->
         pped_module m ~dir ~f:(fun _kind src dst ->
-          let dir = ctx.build_dir in
           add_rule
             (preprocessor_deps
              >>>
              Build.path src
              >>>
-             Build.system ~stdout_to:dst ~dir
-               ~needed_to:"run preprocessor commands"
-               (sprintf "%s %s" (expand_vars ~dir cmd)
-                  (Filename.quote (Path.reach src ~from:dir)))))
+             Action_interpret.run
+               (With_stdout_to (target, action))
+               ~dir:ctx.build_dir
+               ~dep_kind
+               ~targets:[dst]
+               ~deps:[Some src]))
       | Pps { pps; flags } ->
         let ppx_exe, libs = get_ppx_driver pps ~dir ~dep_kind in
         pped_module m ~dir ~f:(fun kind src dst ->
@@ -796,7 +915,7 @@ module Gen(P : Params) = struct
           add_rule
             (Build.path path
              >>>
-             Build.echo (Path.relative dir ".merlin-exists") "");
+             Build.update_file (Path.relative dir ".merlin-exists") "");
           add_rule (
             Build.fanout requires (ppx_flags ~dir ~src_dir:remaindir t)
             >>^ (fun (libs, ppx_flags) ->
@@ -830,7 +949,7 @@ module Gen(P : Params) = struct
               |> List.map ~f:(Printf.sprintf "%s\n")
               |> String.concat ~sep:"")
             >>>
-            Build.echo_dyn path
+            Build.update_file_dyn path
           )
         | _ ->
           ()
@@ -1206,7 +1325,7 @@ module Gen(P : Params) = struct
             |> List.map ~f:(fun (m : Module.t) ->
               sprintf "module %s = %s\n" m.name (Module.real_unit_name m))
             |> String.concat ~sep:"")
-         >>> Build.echo_dyn (Path.relative dir m.ml_fname)));
+         >>> Build.update_file_dyn (Path.relative dir m.ml_fname)));
 
     let requires, real_requires =
       requires ~dir ~dep_kind ~item:lib.name
@@ -1390,124 +1509,6 @@ module Gen(P : Params) = struct
     }
 
   (* +-----------------------------------------------------------------+
-     | User actions                                                    |
-     +-----------------------------------------------------------------+ *)
-
-  module Action_interpret : sig
-    val run
-      :  Action.Mini_shexp.Unexpanded.t
-      -> dir:Path.t
-      -> dep_kind:Build.lib_dep_kind
-      -> targets:Path.t list
-      -> deps:Dep_conf.t list
-      -> (unit, Action.t) Build.t
-  end = struct
-    module U = Action.Mini_shexp.Unexpanded
-
-    type resolved_forms =
-      { (* Mapping from ${...} forms to their resolutions *)
-        artifacts : Path.t String_map.t
-      ; (* Failed resolutions *)
-        failures  : fail list
-      ; (* All "name" for ${lib:name:...} forms *)
-        lib_deps  : String_set.t
-      }
-
-    let add_artifact ?lib_dep acc ~var result =
-      let lib_deps =
-        match lib_dep with
-        | None -> acc.lib_deps
-        | Some lib -> String_set.add lib acc.lib_deps
-      in
-      match result with
-      | Ok path ->
-        { acc with
-          artifacts = String_map.add acc.artifacts ~key:var ~data:path
-        ; lib_deps
-        }
-      | Error fail ->
-        { acc with
-          failures = fail :: acc.failures
-        ; lib_deps
-        }
-
-    let extract_artifacts ~dir t =
-      let init =
-        { artifacts = String_map.empty
-        ; failures  = []
-        ; lib_deps  = String_set.empty
-        }
-      in
-      U.fold_vars t ~init ~f:(fun acc var ->
-        let module A = Artifacts in
-        match String.lsplit2 var ~on:':' with
-        | Some ("exe"     , s) -> add_artifact acc ~var (Ok (Path.relative dir s))
-        | Some ("path"    , s) -> add_artifact acc ~var (Ok (Path.relative dir s))
-        | Some ("bin"     , s) -> add_artifact acc ~var (A.binary s)
-        | Some ("lib"     , s)
-        | Some ("libexec" , s) ->
-          let lib_dep, res = A.file_of_lib ~dir s in
-          add_artifact acc ~var ~lib_dep res
-        (* CR-someday jdimino: allow this only for (jbuild_version jane_street) *)
-        | Some ("findlib" , s) ->
-          let lib_dep, res = A.file_of_lib ~dir s ~use_provides:true in
-          add_artifact acc ~var ~lib_dep res
-        | _ -> acc)
-
-    let expand_var =
-      let dep_exn name = function
-        | Some dep -> dep
-        | None -> die "cannot use ${%s} with files_recursively_in" name
-      in
-      fun ~artifacts ~targets ~deps var_name ->
-        match String_map.find var_name artifacts with
-        | Some path -> Action.Path path
-        | None ->
-          match var_name with
-          | "@" -> Paths targets
-          | "<" -> (match deps with
-            | []        -> Str ""
-            | dep1 :: _ -> Path (dep_exn var_name dep1))
-          | "^" ->
-            Paths (List.map deps ~f:(dep_exn var_name))
-          | "ROOT" -> Path Path.root
-          | _ ->
-            match String_map.find var_name dollar_var_map with
-            | Some s -> Str s
-            | _ -> Not_found
-
-    let run t ~dir ~dep_kind ~targets ~deps =
-      let deps =
-        List.map deps ~f:(fun dep ->
-          Option.map (Dep_conf_interpret.only_plain_file ~dir dep)
-            ~f:(Path.relative dir))
-      in
-      let forms = extract_artifacts ~dir t in
-      let build =
-        match
-          U.expand ctx dir t
-            ~f:(expand_var ~artifacts:forms.artifacts ~targets ~deps)
-        with
-        | t ->
-          Build.paths (String_map.values forms.artifacts)
-          >>>
-          Build.action t ~dir ~targets
-        | exception e ->
-          Build.fail { fail = fun () -> raise e }
-      in
-      let build =
-        Build.record_lib_deps ~dir ~kind:dep_kind
-          (String_set.elements forms.lib_deps
-           |> List.map ~f:(fun s -> Lib_dep.Direct s))
-        >>>
-        build
-      in
-      match forms.failures with
-      | [] -> build
-      | fail :: _ -> Build.fail fail >>> build
-  end
-
-  (* +-----------------------------------------------------------------+
      | User rules                                                      |
      +-----------------------------------------------------------------+ *)
 
@@ -1521,7 +1522,7 @@ module Gen(P : Params) = struct
          ~dir
          ~dep_kind:Required
          ~targets
-         ~deps:rule.deps)
+         ~deps:(Dep_conf_interpret.only_plain_files ~dir rule.deps))
 
   let alias_rules (alias_conf : Alias_conf.t) ~dir =
     let digest =
@@ -1552,7 +1553,7 @@ module Gen(P : Params) = struct
                ~dir
                ~dep_kind:Required
                ~targets:[]
-               ~deps:alias_conf.deps
+               ~deps:(Dep_conf_interpret.only_plain_files ~dir alias_conf.deps)
          >>>
          Build.and_create_file digest_path)
 
@@ -1772,7 +1773,7 @@ module Gen(P : Params) = struct
            Format.pp_print_flush ppf ();
            Buffer.contents buf)
          >>>
-         Build.echo_dyn meta_path);
+         Build.update_file_dyn meta_path);
 
       if has_meta || has_meta_tmpl then
         Some pkg.name
@@ -1913,7 +1914,7 @@ module Gen(P : Params) = struct
        >>^ (fun () ->
          Install.gen_install_file entries)
        >>>
-       Build.echo_dyn fn)
+       Build.update_file_dyn fn)
 
   let () = String_map.iter P.packages ~f:(fun ~key:_ ~data:pkg ->
     install_file pkg.Package.path pkg.name)

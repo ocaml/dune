@@ -167,16 +167,16 @@ let action ?(dir=Path.root) ?context ~targets action =
   >>^ fun () ->
   { Action. context; dir; action }
 
-let echo fn s =
-  action ~targets:[fn] (Write_file (fn, s))
+let update_file fn s =
+  action ~targets:[fn] (Update_file (fn, s))
 
-let echo_dyn fn =
+let update_file_dyn fn =
   Targets [fn]
   >>^ fun s ->
   { Action.
     context = None
   ; dir     = Path.root
-  ; action  = Write_file (fn, s)
+  ; action  = Update_file (fn, s)
   }
 
 let copy ~src ~dst =

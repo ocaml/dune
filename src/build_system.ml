@@ -195,7 +195,7 @@ module Build_exec = struct
         { Action.
           context = None
         ; dir     = Path.root
-        ; action  = Write_file (fn, vfile_to_string kind fn x)
+        ; action  = Update_file (fn, vfile_to_string kind fn x)
         }
       | Compose (a, b) ->
         exec a x |> exec b

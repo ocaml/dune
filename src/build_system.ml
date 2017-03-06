@@ -384,7 +384,8 @@ module Trace = struct
         |> List.map ~f:(fun (path, hash) ->
           Sexp.List [ Atom (Path.to_string path); Atom (Digest.to_hex hash) ]))
     in
-    write_file file (Sexp.to_string sexp)
+    if Sys.file_exists "_build" then
+      write_file file (Sexp.to_string sexp)
 
   let load () =
     let trace = Hashtbl.create 1024 in

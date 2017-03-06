@@ -96,23 +96,28 @@ module Pp = struct
   let compare : t -> t -> int = Pervasives.compare
 end
 
-module Pp_or_flag = struct
+module Pp_or_flags = struct
   type t =
     | PP of Pp.t
-    | Flag of string
+    | Flags of string list
 
   let of_string s =
     if String.is_prefix s ~prefix:"-" then
-      Flag s
+      Flags [s]
     else
       PP (Pp.of_string s)
 
-  let t sexp = of_string (string sexp)
+  let t = function
+    | Atom (_, s) -> of_string s
+    | List (_, l) -> Flags (List.map l ~f:string)
 
   let split l =
-    List.partition_map l ~f:(function
-      | PP pp  -> Inl pp
-      | Flag s -> Inr s)
+    let pps, flags =
+      List.partition_map l ~f:(function
+        | PP pp  -> Inl pp
+        | Flags s -> Inr s)
+    in
+    (pps, List.concat flags)
 end
 
 module Dep_conf = struct
@@ -162,8 +167,8 @@ module Preprocess = struct
     sum
       [ cstr "no_preprocessing" nil No_preprocessing
       ; cstr "command"          (String_with_vars.t @> nil) (fun x -> Command x)
-      ; cstr "pps"              (list Pp_or_flag.t  @> nil) (fun l ->
-          let pps, flags = Pp_or_flag.split l in
+      ; cstr "pps"              (list Pp_or_flags.t @> nil) (fun l ->
+          let pps, flags = Pp_or_flags.split l in
           Pps { pps; flags })
       ]
 
@@ -218,8 +223,8 @@ module Lint = struct
 
   let t =
     sum
-      [ cstr "pps" (list Pp_or_flag.t  @> nil) (fun l ->
-          let pps, flags = Pp_or_flag.split l in
+      [ cstr "pps" (list Pp_or_flags.t @> nil) (fun l ->
+          let pps, flags = Pp_or_flags.split l in
           Pps { pps; flags })
       ]
 end

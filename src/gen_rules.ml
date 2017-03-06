@@ -775,6 +775,7 @@ module Gen(P : Params) = struct
     let uses_inline_bench = ref false in
     let uses_here = ref false in
     let uses_libname = ref false in
+    let uses_ppx_driver = ref false in
     List.iter libs ~f:(fun lib ->
       match Lib.best_name lib with
       | "ppx_here" | "ppx_assert" -> uses_here := true
@@ -782,6 +783,7 @@ module Gen(P : Params) = struct
       | "ppx_expect" -> uses_inline_test := true; uses_here := true
       | "ppx_inline_test" -> uses_inline_test := true
       | "ppx_bench" -> uses_inline_bench := true
+      | "ppx_driver.runner" -> uses_ppx_driver := true
       | _ -> ());
     Arg_spec.S
       [ S (if !uses_here
@@ -796,6 +798,9 @@ module Gen(P : Params) = struct
            else [])
       ; S (if !uses_inline_bench (*&& drop_bench*)
            then [ A "-bench-drop-with-deadcode" ]
+           else [])
+      ; S (if !uses_ppx_driver
+           then [ A "-embed-errors"; A "false" ]
            else [])
       ]
 

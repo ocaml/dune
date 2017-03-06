@@ -702,23 +702,35 @@ Jbuilder accept three kinds of pre-processing:
 
 - =no_preprocessing=, meaning that files are given as it to the
   compiler, this is the default
-- =(command <shell-command>)= to pre-process files using the given
-  shell command. The input file is given as an extra argument and the
-  command is expected to output the result on its standard output
+- =(action <action>)= to pre-process files using the given action
 - =(pps (<ppx-rewriters-and-flags>))= to pre-process files using the
   given list of ppx rewriters
 
 Note that in any cases, files are pre-processed only once. Jbuilder
 doesn't use the =-pp= or =-ppx= of the various OCaml tools.
 
-However, in the case of =(command <shell-command>)=, the shell command
-is still interpreted in the same way as if it was passed to the =-pp=
-option. In particular it is executed using the system shell (=sh= or
-=cmd= depending on the OS). Note that you shouldn't make assumption
-about where the command is run from, this is an implementation detail
-of Jbuilder and might change in the Future. Eventually Jbuilder will
-support =(action <action>)= using the same DSL as described in the
-[[User actions][user actions section]].
+****** Preprocessing with actions
+
+=<action>= uses the same DSL as described in the [[User actions][user actions section]],
+and for the same reason given in that section, it will be executed
+from the root of the current build context. It is expected to be an
+action that read the file given as only dependency and outputs the
+preprocessed file on its standard output.
+
+More precisely, =(preprocess (action <action>))= acts as if you had
+setup a rule for every file of the form:
+
+#+begin_src scheme
+(rule
+ ((targets (file.pp.ml))
+  (deps    (file.ml))
+  (action  (with-stdout-to ${@} (chdir ${ROOT} <action>)))))
+#+end_src
+
+The equivalent of a =-pp <command>= option passed to the OCaml
+compiler is =(system "<command> ${<}")=.
+
+****** Preprocessing with ppx rewriters
 
 =<ppx-rewriters-and-flags>= is expected to be a list where each
 element is either a command line flag if starting with a =-= or the

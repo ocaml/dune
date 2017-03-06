@@ -155,7 +155,3 @@ between =jbuild_plugin= and =jbuilder=.
 
 Note that =doc/jbuild= is an OCaml script. To simplify the bootstrap,
 we should just convert it back to a static =jbuild= file.
-** Support =(preprocess (action <DSL>))=
-
-Support specifying preprocessor commands using the action DSL, for
-improved portability.

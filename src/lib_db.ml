@@ -24,13 +24,18 @@ let find_by_internal_name t ~from name =
   let scope = internal_name_scope t ~dir:from in
   String_map.find name !scope
 
-let find t ~from name =
+let find_exn t ~from name =
   match find_by_internal_name t ~from name with
   | Some x -> Lib.Internal x
   | None ->
     Hashtbl.find_or_add t.by_public_name name
       ~f:(fun name ->
         External (Findlib.find_exn t.findlib name))
+
+let find t ~from name =
+  match find_exn t ~from name with
+  | exception _ -> None
+  | x -> Some x
 
 let find_internal t ~from name =
   match find_by_internal_name t ~from name with
@@ -111,18 +116,18 @@ let interpret_lib_deps t ~dir lib_deps =
   let libs, failures =
     List.partition_map lib_deps ~f:(function
       | Lib_dep.Direct name -> begin
-          match find t ~from:dir name with
+          match find_exn t ~from:dir name with
           | x -> Inl [x]
           | exception e ->
             (* Call [find] again to get a proper backtrace *)
-            Inr { fail = fun () -> ignore (find t ~from:dir name : Lib.t); raise e }
+            Inr { fail = fun () -> ignore (find_exn t ~from:dir name : Lib.t); raise e }
         end
       | Select { result_fn; choices } ->
         match
           List.find_map choices ~f:(fun { lits; _ } ->
             match
               List.filter_map lits ~f:(function
-                | Pos s -> Some (find t ~from:dir s)
+                | Pos s -> Some (find_exn t ~from:dir s)
                 | Neg s ->
                   if lib_is_installable t ~from:dir s then
                     raise Exit

@@ -716,50 +716,37 @@ is still interpreted in the same way as if it was passed to the =-pp=
 option. In particular it is executed using the system shell (=sh= or
 =cmd= depending on the OS). Note that you shouldn't make assumption
 about where the command is run from, this is an implementation detail
-of Jbuilder and might change in the Future.
+of Jbuilder and might change in the Future. Eventually Jbuilder will
+support =(action <action>)= using the same DSL as described in the
+[[User actions][user actions section]].
 
 =<ppx-rewriters-and-flags>= is expected to be a list where each
 element is either a command line flag if starting with a =-= or the
-name of a library. Libraries listed here should typically be libraries
-implementing an OCaml AST rewriter and registering themselves as such.
-
-Jbuilder will build a single executable by linking all these lbraries
-and their dependencies. As such, the last library listed should
-typically be a /runner/, i.e. a small library that executes all the
-rewriting registered by the previous libraries on the AST given as
-input. Note that it is important that such a runner library is built
-with =(library_flag (-linkall))=, otherwise the OCaml compiler will
-drop it as it will think that it is unused.
-
-For instance, to use [[https://github.com/janestreet/ppx_driver][ppx_driver]] based ppx rewriters, you need to put
-=ppx_driver.runner= as the last element:
+name of a library. Additionnally, any sub-list will be treated as a
+list of command line arguments. So for instance from the following
+=preprocess= field:
 
 #+begin_src scheme
-  (preprocess (pps (ppx_sexp_conv ppx_bin_prot ppx_driver.runner)))
+  (preprocess (pps (ppx1 -foo ppx2 (-bar 42))))
 #+end_src
 
-There is currently no driver that can be used for ppx rewriters that
-are not based on ppx driver. See [[https://github.com/janestreet/jbuilder/issues/14][this ticket]] for more details.
+The list of libraries will be =ppx1= and =ppx2= and the command line
+arguments will be: =-foo -bar 42=.
 
-****** Driver expectation
+Libraries listed here should be libraries implementing an OCaml AST
+rewriter and registering themselves using the
+[[https://github.com/let-def/ocaml-migrate-parsetree][ocaml-migrate-parsetree.driver API]].
 
-Jbuilder will invoke the executable resulting from linking the
-libraries given in the =(pps ...)= form as follow:
+Jbuilder will build a single executable by linking all these lbraries
+and their dependencies. Note that it is important that all these
+libraries are linked with =-linkall=. Jbuilder automatically uses
+=-linkall= when the =(kind ...)= field is set to =ppx_rewriter= or
+=ppx_deriver=.
 
-#+begin_src sh
-ppx.exe <flags-written-by-user> --dump-ast -o <output-file> <source-file>
-#+end_src
-
-Where =<source-file>= is either a =.ml= or =.mli= file. The command is
-expected to write a binary OCaml AST in =<output-file>=.
-
-Additionally, it is expected that if the executable is invoked with
-=--as-ppx= as its first argument, then it will behave as a standard
-ppx rewirter as passed to =-ppx= option of OCaml. This is for two
-reason:
-
-- to improve interoperability with build systems that Jbuilder
-- so that it can be used with merlin
+It is guaranteed that the last library in the list will be linked
+last. You can use this feature to use a custom ppx driver. By default
+Jbuilder will use =ocaml-migrate-parsetree.driver-main=. See the
+ [[Using a custom ppx driver][section about using a custom ppx driver]] for more details.
 
 ****** Per module pre-processing specification
 
@@ -1164,3 +1151,36 @@ Additionally, Jbuilder provides a simpler mechanism for this scheme:
 just write or generate a =META.<package>.template= file containing a
 line of the form =# JBUILDER_GEN=. Jbuilder will automatically insert
 its generated =META= contents in place of this line.
+
+** Using a custom ppx driver
+
+You can use a custom ppx driver by putting it as the last library in
+=(pps ...)= forms. An example of alternative driver is [[https://github.com/janestreet/ppx_driver][ppx_driver]]. To
+use it instead of =ocaml-migrate-parsetree.driver-main=, simply write
+=ppx_driver.runner= as the last library:
+
+#+begin_src scheme
+  (preprocess (pps (ppx_sexp_conv ppx_bin_prot ppx_driver.runner)))
+#+end_src
+
+****** Driver expectation
+
+Jbuilder will invoke the executable resulting from linking the
+libraries given in the =(pps ...)= form as follow:
+
+#+begin_src sh
+ppx.exe <flags-written-by-user> --dump-ast -o <output-file> [--impl|--intf] <source-file>
+#+end_src
+
+Where =<source-file>= is either an implementation (=.ml=) or interface
+(=.mli=) OCaml source file. The command is expected to write a binary
+OCaml AST in =<output-file>=.
+
+Additionally, it is expected that if the executable is invoked with
+=--as-ppx= as its first argument, then it will behave as a standard
+ppx rewirter as passed to =-ppx= option of OCaml. This is for two
+reason:
+
+- to improve interoperability with build systems that Jbuilder
+- so that it can be used with merlin
+

@@ -47,7 +47,7 @@ val lines_of : Path.t -> ('a, string list) t
 
 (** Always fail when executed. We pass a function rather than an exception to get a proper
     backtrace *)
-val fail : fail -> (_, _) t
+val fail : ?targets:Path.t list -> fail -> (_, _) t
 
 module Prog_spec : sig
   type 'a t =

@@ -104,7 +104,10 @@ let dyn_paths t = Dyn_paths t
 let contents p = Contents p
 let lines_of p = Lines_of p
 
-let fail x = Fail x
+let fail ?targets x =
+  match targets with
+  | None -> Fail x
+  | Some l -> Targets l >>> Fail x
 
 let files_recursively_in ~dir =
   let ctx_dir, src_dir =

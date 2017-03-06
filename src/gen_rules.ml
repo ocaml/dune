@@ -643,7 +643,7 @@ module Gen(P : Params) = struct
           >>>
           Build.action t ~dir ~targets
         | exception e ->
-          Build.fail { fail = fun () -> raise e }
+          Build.fail ~targets { fail = fun () -> raise e }
       in
       let build =
         Build.record_lib_deps ~dir ~kind:dep_kind
@@ -799,7 +799,8 @@ module Gen(P : Params) = struct
            else [])
       ]
 
-  let target = String_with_vars.of_string "${@}"
+  let target_var = String_with_vars.of_string "${@}"
+  let root_var   = String_with_vars.of_string "${ROOT}"
 
   (* Generate rules to build the .pp files and return a new module map where all filenames
      point to the .pp files *)
@@ -816,8 +817,11 @@ module Gen(P : Params) = struct
              Build.path src
              >>>
              Action_interpret.run
-               (With_stdout_to (target, action))
-               ~dir:ctx.build_dir
+               (With_stdout_to
+                  (target_var,
+                   Chdir (root_var,
+                          action)))
+               ~dir
                ~dep_kind
                ~targets:[dst]
                ~deps:[Some src]))

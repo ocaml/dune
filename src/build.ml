@@ -191,10 +191,11 @@ let create_file fn =
   action ~targets:[fn] (Create_file fn)
 
 let and_create_file fn =
-  arr (fun (action : Action.t) ->
-    { action with
-      action = Progn [action.action; Create_file fn]
-    })
+  Targets [fn]
+  >>^ fun (action : Action.t) ->
+  { action with
+    action = Progn [action.action; Create_file fn]
+  }
 
 (*
    {[

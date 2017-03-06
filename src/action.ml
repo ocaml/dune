@@ -29,6 +29,29 @@ let expand_path ~dir ~f template =
       |> String.concat ~sep:" "
       |> Path.relative dir
 
+let expand_prog ctx ~dir ~f template =
+  let resolve s =
+    if String.contains s '/' then
+      Path.relative dir s
+    else
+      match Context.which ctx s with
+      | Some p -> p
+      | None ->
+        die "@{<error>Error@}: Program %s not found in PATH (context: %s)" s ctx.name
+  in
+  match String_with_vars.just_a_var template with
+  | None -> resolve (expand_str ~dir ~f template)
+  | Some v ->
+    match f v with
+    | Not_found -> resolve (expand_str ~dir ~f template)
+    | Path p
+    | Paths [p] -> p
+    | Str s -> resolve s
+    | Paths l ->
+      List.map l ~f:(Path.reach ~from:dir)
+      |> String.concat ~sep:" "
+      |> resolve
+
 module Mini_shexp = struct
   module Ast = struct
     type ('a, 'path) t =
@@ -126,20 +149,20 @@ module Mini_shexp = struct
       Ast.fold t ~init ~f:(fun acc pat ->
         String_with_vars.fold ~init:acc pat ~f)
 
-    let rec expand dir t ~f : (string, Path.t) Ast.t =
+    let rec expand ctx dir t ~f : (string, Path.t) Ast.t =
       match t with
       | Run (prog, args) ->
-        Run (expand_path ~dir ~f prog,
+        Run (expand_prog ctx ~dir ~f prog,
              List.map args ~f:(fun arg -> expand_str ~dir ~f arg))
       | Chdir (fn, t) ->
         let fn = expand_path ~dir ~f fn in
-        Chdir (fn, expand fn t ~f)
+        Chdir (fn, expand ctx fn t ~f)
       | Setenv (var, value, t) ->
         Setenv (expand_str ~dir ~f var, expand_str ~dir ~f value,
-                expand dir t ~f)
+                expand ctx dir t ~f)
       | With_stdout_to (fn, t) ->
-        With_stdout_to (expand_path ~dir ~f fn, expand dir t ~f)
-      | Progn l -> Progn (List.map l ~f:(fun t -> expand dir t ~f))
+        With_stdout_to (expand_path ~dir ~f fn, expand ctx dir t ~f)
+      | Progn l -> Progn (List.map l ~f:(fun t -> expand ctx dir t ~f))
       | Echo x -> Echo (expand_str ~dir ~f x)
       | Cat x -> Cat (expand_path ~dir ~f x)
       | Create_file x -> Create_file (expand_path ~dir ~f x)

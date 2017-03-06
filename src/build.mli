@@ -47,7 +47,7 @@ val lines_of : Path.t -> ('a, string list) t
 
 (** Always fail when executed. We pass a function rather than an exception to get a proper
     backtrace *)
-val fail : fail -> ('a, 'a) t
+val fail : fail -> (_, _) t
 
 module Prog_spec : sig
   type 'a t =
@@ -116,7 +116,7 @@ module Repr : sig
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
     | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
-    | Fail : fail -> ('a, 'a) t
+    | Fail : fail -> (_, _) t
 end
 
 val repr : ('a, 'b) t -> ('a, 'b) Repr.t

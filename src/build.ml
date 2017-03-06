@@ -34,7 +34,7 @@ module Repr = struct
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
     | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
-    | Fail : fail -> ('a, 'a) t
+    | Fail : fail -> (_, _) t
 end
 include Repr
 let repr t = t

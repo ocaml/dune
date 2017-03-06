@@ -37,7 +37,7 @@ module Mini_shexp : sig
     val t : t Sexp.Of_sexp.t
     val sexp_of_t : t Sexp.To_sexp.t
     val fold_vars : t -> init:'a -> f:('a -> string -> 'a) -> 'a
-    val expand : Path.t -> t -> f:(string -> var_expansion) -> desc
+    val expand : Context.t -> Path.t -> t -> f:(string -> var_expansion) -> desc
   end with type desc := t
 end
 

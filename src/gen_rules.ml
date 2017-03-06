@@ -1483,18 +1483,24 @@ module Gen(P : Params) = struct
             ~f:(Path.relative dir))
       in
       let forms = extract_artifacts ~dir t in
-      let t =
-        U.expand dir t
-          ~f:(expand_var ~artifacts:forms.artifacts ~targets ~deps)
+      let build =
+        match
+          U.expand ctx dir t
+            ~f:(expand_var ~artifacts:forms.artifacts ~targets ~deps)
+        with
+        | t ->
+          Build.paths (String_map.values forms.artifacts)
+          >>>
+          Build.action t ~dir ~targets
+        | exception e ->
+          Build.fail { fail = fun () -> raise e }
       in
       let build =
         Build.record_lib_deps ~dir ~kind:dep_kind
           (String_set.elements forms.lib_deps
            |> List.map ~f:(fun s -> Lib_dep.Direct s))
         >>>
-        Build.paths (String_map.values forms.artifacts)
-        >>>
-        Build.action t ~dir ~targets
+        build
       in
       match forms.failures with
       | [] -> build

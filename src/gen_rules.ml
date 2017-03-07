@@ -770,7 +770,7 @@ module Gen(P : Params) = struct
       Hashtbl.add ppx_drivers ~key ~data:(exe, libs);
       (exe, libs)
 
-  let specific_args_for_ppx_rewriters ~dir ~lib_name (libs : Lib.t list) =
+  let specific_args_for_ppx_rewriters ~dir ~lib_name ~for_merlin (libs : Lib.t list) =
     let uses_inline_test = ref false in
     let uses_inline_bench = ref false in
     let uses_here = ref false in
@@ -799,7 +799,7 @@ module Gen(P : Params) = struct
       ; S (if !uses_inline_bench (*&& drop_bench*)
            then [ A "-bench-drop-with-deadcode" ]
            else [])
-      ; S (if !uses_ppx_driver
+      ; S (if !uses_ppx_driver && not for_merlin
            then [ A "-embed-errors"; A "false" ]
            else [])
       ]
@@ -840,7 +840,7 @@ module Gen(P : Params) = struct
              >>>
              Build.run
                (Dep ppx_exe)
-               [ Dyn (specific_args_for_ppx_rewriters ~dir ~lib_name)
+               [ Dyn (specific_args_for_ppx_rewriters ~dir ~lib_name ~for_merlin:false)
                ; As flags
                ; A "--dump-ast"
                ; A "-o"; Target dst
@@ -905,7 +905,7 @@ module Gen(P : Params) = struct
         libs >>^ fun libs ->
         let specific_flags, _ =
           Arg_spec.expand ~dir:src_dir
-            [specific_args_for_ppx_rewriters ~dir ~lib_name:libname libs]
+            [specific_args_for_ppx_rewriters ~dir ~lib_name:libname libs ~for_merlin:true]
             ()
         in
         let command =

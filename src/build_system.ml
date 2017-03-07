@@ -266,6 +266,16 @@ let wait_for_deps t deps ~targeting =
   all_unit
     (Pset.fold deps ~init:[] ~f:(fun fn acc -> wait_for_file t fn ~targeting :: acc))
 
+(* This contains the targets of the actions that are being executed. On exit, we need to
+   delete them as they might contain garbage *)
+let pending_targets = ref Pset.empty
+
+let () =
+  Future.Scheduler.at_exit_after_waiting_for_commands (fun () ->
+    let fns = !pending_targets in
+    pending_targets := Pset.empty;
+    Pset.iter fns ~f:Path.unlink_no_err)
+
 let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
   let { Pre_rule. build; targets = target_specs } = pre_rule in
   let deps = Build_interpret.deps build ~all_targets_by_dir in
@@ -308,14 +318,14 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     if !Clflags.debug_actions then
       Format.eprintf "@{<debug>Action@}: %s@."
         (Sexp.to_string (Action.sexp_of_t action));
-    let all_deps = Pset.elements all_deps in
-    let targets  = Pset.elements targets  in
+    let all_deps_as_list = Pset.elements all_deps in
+    let targets_as_list  = Pset.elements targets  in
     let hash =
-      let trace = (all_deps, targets, Action.for_hash action) in
+      let trace = (all_deps_as_list, targets_as_list, Action.for_hash action) in
       Digest.string (Marshal.to_string trace [])
     in
     let rule_changed =
-      List.fold_left targets ~init:false ~f:(fun acc fn ->
+      List.fold_left targets_as_list ~init:false ~f:(fun acc fn ->
         match Hashtbl.find t.trace fn with
         | None ->
           Hashtbl.add t.trace ~key:fn ~data:hash;
@@ -324,19 +334,20 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
           Hashtbl.replace t.trace ~key:fn ~data:hash;
           acc || prev_hash <> hash)
     in
-    if rule_changed || min_timestamp t targets < max_timestamp t all_deps then begin
-      (* CR-someday jdimino: we should remove the targets to be sure
-         the action re-generate them, however it breaks incrementality
-         regarding [Write_file ...] actions, since they end up
-         systematically re-creating the file:
-
-         {[
-           List.iter targets ~f:Path.unlink_no_err;
-         ]}
-      *)
+    if rule_changed ||
+       min_timestamp t targets_as_list < max_timestamp t all_deps_as_list then (
+      (* Do not remove files that are just updated, otherwise this would break incremental
+         compilation *)
+      let targets_to_remove =
+        Pset.diff targets (Action.Mini_shexp.updated_files action.action)
+      in
+      Pset.iter targets_to_remove ~f:Path.unlink_no_err;
+      pending_targets := Pset.union targets_to_remove !pending_targets;
       Action.exec action >>| fun () ->
-      refresh_targets_timestamps_after_rule_execution t targets
-    end else
+      (* All went well, these targets are no longer pending *)
+      pending_targets := Pset.diff !pending_targets targets_to_remove;
+      refresh_targets_timestamps_after_rule_execution t targets_as_list
+    ) else
       return ()
   ) in
   let rule =

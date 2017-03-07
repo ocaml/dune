@@ -418,22 +418,33 @@ module Scheduler = struct
       List.iter finished ~f:(fun (job, status) ->
         process_done job status)
 
+  let at_exit_handlers = Queue.create ()
+  let at_exit_after_waiting_for_commands f = Queue.push f at_exit_handlers
+  let exec_at_exit_handlers () =
+    while not (Queue.is_empty at_exit_handlers) do
+      Queue.pop at_exit_handlers ()
+    done
+
+  let wait_for_unfinished_jobs () =
+    let jobs =
+      Hashtbl.fold running ~init:[] ~f:(fun ~key:_ ~data:job acc -> job :: acc)
+    in
+    match jobs with
+    | [] -> ()
+    | first :: others ->
+      Format.eprintf "\nWaiting for the following jobs to finish: %t@."
+        (fun ppf ->
+           Format.fprintf ppf "[@{<id>%d@}]" first.id;
+           List.iter others ~f:(fun job ->
+             Format.fprintf ppf ", [@{<id>%d@}]" job.id));
+      List.iter jobs ~f:(fun job ->
+        let _, status = Unix.waitpid [] job.pid in
+        process_done job status ~exiting:true)
+
   let () =
     at_exit (fun () ->
-      let jobs =
-        Hashtbl.fold running ~init:[] ~f:(fun ~key:_ ~data:job acc -> job :: acc)
-      in
-      match jobs with
-      | [] -> ()
-      | first :: others ->
-        Format.eprintf "\nWaiting for the following jobs to finish: %t@."
-          (fun ppf ->
-             Format.fprintf ppf "[@{<id>%d@}]" first.id;
-             List.iter others ~f:(fun job ->
-               Format.fprintf ppf ", [@{<id>%d@}]" job.id));
-        List.iter jobs ~f:(fun job ->
-          let _, status = Unix.waitpid [] job.pid in
-          process_done job status ~exiting:true))
+      wait_for_unfinished_jobs ();
+      exec_at_exit_handlers ())
 
   let rec go_rec cwd log t =
     match (repr t).state with

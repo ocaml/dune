@@ -134,6 +134,26 @@ module Mini_shexp = struct
   let t = Ast.t string Path.t
   let sexp_of_t = Ast.sexp_of_t Sexp.To_sexp.string Path.sexp_of_t
 
+  let updated_files =
+    let rec loop acc t =
+      match t with
+      | Update_file (fn, _) -> Path.Set.add fn acc
+      | Chdir (_, t)
+      | Setenv (_, _, t)
+      | With_stdout_to (_, t) -> loop acc t
+      | Progn l -> List.fold_left l ~init:acc ~f:loop
+      | Run _ -> acc
+      | Echo _
+      | Cat _
+      | Create_file _
+      | Copy _
+      | Symlink _
+      | Copy_and_add_line_directive _
+      | System _
+      | Bash _ -> acc
+    in
+    fun t -> loop Path.Set.empty t
+
   module Unexpanded = struct
     type t = (String_with_vars.t, String_with_vars.t) Ast.t
     let sexp_of_t = Ast.sexp_of_t String_with_vars.sexp_of_t String_with_vars.sexp_of_t

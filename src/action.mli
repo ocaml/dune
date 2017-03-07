@@ -31,6 +31,9 @@ module Mini_shexp : sig
   val t : t Sexp.Of_sexp.t
   val sexp_of_t : t Sexp.To_sexp.t
 
+  (** Return the list of files under an [Update_file] *)
+  val updated_files : t -> Path.Set.t
+
   module Unexpanded : sig
     type desc = t
     type t = (String_with_vars.t, String_with_vars.t) Ast.t

@@ -420,12 +420,20 @@ module Scheduler = struct
 
   let () =
     at_exit (fun () ->
-      let pids =
+      let jobs =
         Hashtbl.fold running ~init:[] ~f:(fun ~key:_ ~data:job acc -> job :: acc)
       in
-      List.iter pids ~f:(fun job ->
-        let _, status = Unix.waitpid [] job.pid in
-        process_done job status ~exiting:true))
+      match jobs with
+      | [] -> ()
+      | first :: others ->
+        Format.eprintf "\nWaiting for the following jobs to finish: %t@."
+          (fun ppf ->
+             Format.fprintf ppf "[@{<id>%d@}]" first.id;
+             List.iter others ~f:(fun job ->
+               Format.fprintf ppf ", [@{<id>%d@}]" job.id));
+        List.iter jobs ~f:(fun job ->
+          let _, status = Unix.waitpid [] job.pid in
+          process_done job status ~exiting:true))
 
   let rec go_rec cwd log t =
     match (repr t).state with

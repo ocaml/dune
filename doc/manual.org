@@ -375,6 +375,12 @@ the library and you are free to expose only the modules you want.
   =bar=, you should typically write =-lbar= here, or whatever flags
   are necessary to to link against this library.
 
+- =(self_build_stubs_archive <c-libname>)= indicates to Jbuilder that
+  the library has stubs, but that the stubs are built manually. The
+  aim of the field is to embed a library written in foreign language
+  and/or building with another build system. It is not for casual
+  uses, see the [[https://github.com/janestreet/re2][re2 library]] for an example of use
+
 Note that when binding C libraries, Jbuilder doesn't provide special
 support for tools such as =pkg-config=, however it integrates easily
 with [[https://github.com/janestreet/configurator][configurator]] by using =(c_flags (:include ...))= and

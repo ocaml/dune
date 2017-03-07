@@ -435,6 +435,7 @@ module Library = struct
        field      "kind" Kind.t ~default:Kind.Normal                       >>= fun kind                     ->
        field      "wrapped" bool ~default:true                             >>= fun wrapped                  ->
        field_b    "optional"                                               >>= fun optional                 ->
+       field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
        return
          { name
          ; public
@@ -450,7 +451,7 @@ module Library = struct
          ; includes = []
          ; library_flags
          ; c_library_flags
-         ; self_build_stubs_archive = None
+         ; self_build_stubs_archive
          ; js_of_ocaml
          ; virtual_deps
          ; wrapped

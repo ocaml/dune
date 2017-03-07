@@ -80,6 +80,14 @@ as follows:
   (host   foo)))
 #+end_src
 
+** Topkg integration
+
+It would be nice to integrate with [[http://erratique.ch/software/topkg][topkg]]. Some of the features
+overlap, and for instance there doesn't seem to be much point in using
+topkg to generate the .install or invoke jbuilder since jbuilder
+already handles that well. However, the other features available
+through the =topkg= command line tool would be good to have.
+
 ** Jenga bridge
 
 Implement a jenga plugin that can read the same jbuild files as

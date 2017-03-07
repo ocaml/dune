@@ -715,7 +715,14 @@ module Gen(P : Params) = struct
             else
               Inl lib)
         in
-        libs @ drivers
+        let user_driver, migrate_driver =
+          List.partition_map drivers ~f:(fun lib ->
+            if Lib.best_name lib = migrate_driver_main then
+              Inr lib
+            else
+              Inl lib)
+        in
+        libs @ user_driver @ migrate_driver
     in
     (* Provide a better error for migrate_driver_main given that this is an implicit
        dependency *)

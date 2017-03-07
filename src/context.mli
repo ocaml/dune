@@ -70,6 +70,9 @@ type t =
 
   ; opam_var_cache : (string, string) Hashtbl.t
 
+  ; (** Native dynlink *)
+    natdynlink_supported : bool
+
   ; (** Output of [ocamlc -config] *)
     ocamlc_config           : (string * string) list
   ; version                 : string

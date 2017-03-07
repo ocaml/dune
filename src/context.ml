@@ -31,6 +31,7 @@ type t =
   ; findlib                 : Findlib.t
   ; arch_sixtyfour          : bool
   ; opam_var_cache          : (string, string) Hashtbl.t
+  ; natdynlink_supported    : bool
   ; ocamlc_config           : (string * string) list
   ; version                 : string
   ; stdlib_dir              : Path.t
@@ -197,6 +198,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
   in
   let get_path var = Path.absolute (get var) in
   let stdlib_dir = get_path "standard_library" in
+  let natdynlink_supported = Path.exists (Path.relative stdlib_dir "dynlink.cmxa") in
   return
     { name
     ; kind
@@ -220,6 +222,8 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
     ; arch_sixtyfour = get_arch_sixtyfour stdlib_dir
 
     ; opam_var_cache
+
+    ; natdynlink_supported
 
     ; stdlib_dir
     ; ocamlc_config = String_map.bindings ocamlc_config

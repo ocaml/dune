@@ -1407,29 +1407,30 @@ module Gen(P : Params) = struct
     List.iter Mode.all ~f:(fun mode ->
       build_lib lib ~flags ~dir ~mode ~modules ~dep_graph);
 
-    Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
-      let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Native) in
-      let dst = lib_archive lib ~dir ~ext:".cmxs" in
-      let build =
-        Build.run
-          (Dep ocamlopt)
-          [ Ocaml_flags.get flags Native
-          ; A "-shared"; A "-linkall"
-          ; A "-I"; Path dir
-          ; A "-o"; Target dst
-          ; Dep src
-          ]
-      in
-      let build =
-        if Library.has_stubs lib then
-          Build.path (stubs_archive ~dir lib)
-          >>>
-          build
-        else
-          build
-      in
-      add_rule build
-    );
+    if ctx.natdynlink_supported then
+      Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
+        let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Native) in
+        let dst = lib_archive lib ~dir ~ext:".cmxs" in
+        let build =
+          Build.run
+            (Dep ocamlopt)
+            [ Ocaml_flags.get flags Native
+            ; A "-shared"; A "-linkall"
+            ; A "-I"; Path dir
+            ; A "-o"; Target dst
+            ; Dep src
+            ]
+        in
+        let build =
+          if Library.has_stubs lib then
+            Build.path (stubs_archive ~dir lib)
+            >>>
+            build
+          else
+            build
+        in
+        add_rule build
+      );
 
     let flags =
       match alias_module with
@@ -1833,10 +1834,16 @@ module Gen(P : Params) = struct
             (match ctx.ocamlopt with
              | None -> []
              | Some _ ->
-               [ lib_archive ~dir lib ~ext:".cmxa"
-               ; lib_archive ~dir lib ~ext:ctx.ext_lib
-               ; lib_archive ~dir lib ~ext:".cmxs"
-               ])
+               let files =
+                 [ lib_archive ~dir lib ~ext:".cmxa"
+                 ; lib_archive ~dir lib ~ext:ctx.ext_lib
+                 ]
+               in
+               if ctx.natdynlink_supported then
+                 files @ [ lib_archive ~dir lib ~ext:".cmxs" ]
+               else
+                 files
+            )
         ; (match lib.js_of_ocaml with
            | None -> []
            | Some { javascript_files = l; _ } ->

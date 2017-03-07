@@ -1,20 +1,11 @@
-* 1.0
+* 1.0+beta1 (07/03/2017)
 
-- Generate a log in =_build/log=
-
-- Improve the output of jbuilder, in particular don't mangle the
-  output of commands when using =-j N= with =N > 1=
+- Added a manual
 
 - Support incremental compilation
 
-- Strengthen the scope of a package. Jbuilder knows about package =foo=
-  only in the sub-tree starting from where =foo.opam= lives
-
-- Versioned the jbuild format and added a first stable version.
-  You should now put =(jbuilder_version 1)= in a =jbuild= file at the
-  root of your project to ensure forward compatibility
-
-- Generate meaningful versions in =META= files
+- Switched the CLI to cmdliner and added a =build= command
+  (#5, Rudi Grinberg)
 
 - Added a few commands:
   + =runtest=
@@ -24,23 +15,52 @@
   + =exec=: execute a command in an environment similar to what you
     would get after =jbuilder install=
 
-- Added support for aliases
-  (#7, Rudi Grinberg)
-
-- Added a manual
-
-- Switched the CLI to cmdliner and added a =build= command
-  (#5, Rudi Grinberg)
+- Removed the =build-package= command in favor of a =--only-packages=
+  option that is common to all commands
 
 - Automatically generate =.merlin= files
   (#2, Richard Davison)
 
+- Improve the output of jbuilder, in particular don't mangle the
+  output of commands when using =-j N= with =N > 1=
+
+- Generate a log in =_build/log=
+
+- Versioned the jbuild format and added a first stable version.
+  You should now put =(jbuilder_version 1)= in a =jbuild= file at the
+  root of your project to ensure forward compatibility
+
+- Switch from =ppx_driver= to =ocaml-migrate-parsetree.driver=. In
+  order to use ppx rewriters with Jbuilder, they need to use
+  =ocaml-migrate-parsetree.driver=
+
+- Added support for aliases
+  (#7, Rudi Grinberg)
+
 - Added support for compiling against multiple opam switch
   simultaneously by writing a =jbuild-worspace= file
+
+- Added support for OCaml 4.02.3
+
+- Added support for architectures that don't have natdynlink
 
 - Search the root according to the rules described in the manual
   instead of always using the current directory
 
-* 0.1.alpha1 (04/12/2017)
+- extended the action language to support common actions without using
+  a shell:
+  + =(with-stdout-to <file> <DSL>)=
+  + =(copy <src> <dst>)=
+  ...
+
+- Removed all implicit uses of bash or the system shell. Now one has
+  to write explicitely =(bash "...")= or =(system "...")=
+
+- Generate meaningful versions in =META= files
+
+- Strengthen the scope of a package. Jbuilder knows about package
+  =foo= only in the sub-tree starting from where =foo.opam= lives
+
+* 0.1.alpha1 (04/12/2016)
 
 First release

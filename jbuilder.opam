@@ -1,5 +1,5 @@
 opam-version: "1.2"
-version: "0.1.alpha1+dev"
+version: "1.0+beta1"
 maintainer: "opensource@janestreet.com"
 authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
 homepage: "https://github.com/janestreet/jbuilder"

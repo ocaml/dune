@@ -625,7 +625,7 @@ module Gen(P : Params) = struct
             | dep1 :: _ -> Path (dep_exn var_name dep1))
           | "^" ->
             Paths (List.map deps ~f:(dep_exn var_name))
-          | "ROOT" -> Path Path.root
+          | "ROOT" -> Path ctx.build_dir
           | _ ->
             match String_map.find var_name dollar_var_map with
             | Some s -> Str s

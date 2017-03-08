@@ -985,7 +985,7 @@ Jbuilder looks for the following entries in all these directories, in
 order of precedences:
 
 1. =jbuild-workspace=
-2. any file ending with =.install=
+2. any file ending with =.opam=
 3. =.git= or =.hg=
 
 The first entry to match in this list will determine the root. If this

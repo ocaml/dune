@@ -388,7 +388,7 @@ module Scheduler = struct
           (Ansi_color.strip_colors_for_stderr output);
         die ""
       | WSIGNALED n ->
-        Printf.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] got signal %s:\n\
+        Format.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] got signal %s:\n\
                         @{<prompt>$@} %s\n%s%!"
           job.id (signal_name n)
           (Ansi_color.strip_colors_for_stderr job.command_line)

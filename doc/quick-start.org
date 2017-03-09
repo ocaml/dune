@@ -18,7 +18,7 @@ print_endline "Hello, world!"
 And build it with:
 
 #+begin_src sh
-jbuilder hello_world.exe
+jbuilder build hello_world.exe
 #+end_src
 
 The executable will be built as =_build/default/hello_world.exe=
@@ -42,7 +42,7 @@ Lwt_main.run (Lwt_io.printf "Hello, world!\n")
 And build it with:
 
 #+begin_src sh
-jbuilder hello_world.exe
+jbuilder build hello_world.exe
 #+end_src
 
 The executable will be built as =_build/default/hello_world.exe=

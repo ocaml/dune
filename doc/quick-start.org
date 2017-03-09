@@ -70,7 +70,7 @@ to the =(libraries ...)= field.
 Add this field to your =library= or =executables= stanzas:
 
 #+begin_src scheme
-  (preprocess (command "cppo -V OCAML:${ocaml_version}"))
+  (preprocess (action (run ${bin:cppo} -V OCAML:${ocaml_version} ${<})))
 #+end_src
 
 Additionnaly, if you are include a =config.h= file, you need to
@@ -88,7 +88,7 @@ Write this in your jbuild:
 (rule
  ((targets (foo.ml))
   (deps    (foo.cppo.ml <other files that foo.ml includes>))
-  (rule    (run cppo ${<} -o ${@}))))
+  (rule    (run ${bin:cppo} ${<} -o ${@}))))
 #+end_src
 
 * Defining a library with C stubs

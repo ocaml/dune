@@ -152,6 +152,9 @@ only declare parts of the packages in this subtree. Typically your
 =<package>.opam= files should be at the root of your project, since
 this is where =opam pin ...= will look for them.
 
+Note that =<package>= must be non empty, so in particular =.opam=
+files are ignored.
+
 *** Package version
 
 Note that Jbuilder will try to determine the version number of
@@ -985,7 +988,7 @@ Jbuilder looks for the following entries in all these directories, in
 order of precedences:
 
 1. =jbuild-workspace=
-2. any file ending with =.opam=
+2. any file ending with =.opam=, except =.opam= itself
 3. =.git= or =.hg=
 
 The first entry to match in this list will determine the root. If this

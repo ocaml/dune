@@ -1,4 +1,4 @@
-* 1.0+beta2 (07/03/2017)
+* 1.0+beta2 (10/03/2017)
 
 - Simplified the rules for finding the root of the workspace as the
   old ones were often picking up the home directory. New rules are:

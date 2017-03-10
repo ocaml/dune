@@ -253,6 +253,27 @@ module String = struct
         loop i (j + 1)
     in
     loop 0 0
+
+  let split_lines s =
+    let rec loop ~last_is_cr i j =
+      if j = length s then (
+        if j = i || (j = i + 1 && last_is_cr) then
+          []
+        else
+          [sub s ~pos:i ~len:(j - i)]
+      ) else
+        match s.[j] with
+        | '\r' -> loop ~last_is_cr:true i (j + 1)
+        | '\n' ->
+          let line =
+            let len = if last_is_cr then j - i - 1 else j - i in
+            sub s ~pos:i ~len
+          in
+          line :: loop (j + 1) (j + 1) ~last_is_cr:false
+        | _ ->
+          loop i (j + 1) ~last_is_cr:false
+    in
+    loop 0 0 ~last_is_cr:false
 end
 
 module Filename = struct

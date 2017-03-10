@@ -304,49 +304,10 @@ module Scheduler = struct
     ; output_filename : string
     ; (* for logs, with ansi colors code always included in the string *)
       command_line    : string
-    ; log             : out_channel option
+    ; log             : Log.t
     }
 
   let running = Hashtbl.create 128
-
-  let signal_name =
-    let table =
-      let open Sys in
-      [ sigabrt   , "ABRT"
-      ; sigalrm   , "ALRM"
-      ; sigfpe    , "FPE"
-      ; sighup    , "HUP"
-      ; sigill    , "ILL"
-      ; sigint    , "INT"
-      ; sigkill   , "KILL"
-      ; sigpipe   , "PIPE"
-      ; sigquit   , "QUIT"
-      ; sigsegv   , "SEGV"
-      ; sigterm   , "TERM"
-      ; sigusr1   , "USR1"
-      ; sigusr2   , "USR2"
-      ; sigchld   , "CHLD"
-      ; sigcont   , "CONT"
-      ; sigstop   , "STOP"
-      ; sigtstp   , "TSTP"
-      ; sigttin   , "TTIN"
-      ; sigttou   , "TTOU"
-      ; sigvtalrm , "VTALRM"
-      ; sigprof   , "PROF"
-      (* These ones are only available in OCaml >= 4.03 *)
-      ; -22       , "BUS"
-      ; -23       , "POLL"
-      ; -24       , "SYS"
-      ; -25       , "TRAP"
-      ; -26       , "URG"
-      ; -27       , "XCPU"
-      ; -28       , "XFSZ"
-      ]
-    in
-    fun n ->
-      match List.assoc n table with
-      | exception Not_found -> sprintf "%d\n" n
-      | s -> s
 
   let process_done ?(exiting=false) job (status : Unix.process_status) =
     Hashtbl.remove running job.pid;
@@ -359,17 +320,10 @@ module Scheduler = struct
         s
     in
     Temp.destroy job.output_filename;
-    Option.iter job.log ~f:(fun oc ->
-      Printf.fprintf oc "$ %s\n%s"
-        (Ansi_color.strip job.command_line)
-        (Ansi_color.strip output);
-      (match status with
-       | WEXITED   0 -> ()
-       | WEXITED   n -> Printf.fprintf oc "[%d]\n" n
-       | WSIGNALED n -> Printf.fprintf oc "[got signal %s]\n" (signal_name n)
-       | WSTOPPED  _ -> assert false);
-      flush oc
-    );
+    Log.command job.log
+      ~command_line:job.command_line
+      ~output:output
+      ~exit_status:status;
     if not exiting then begin
       match status with
       | WEXITED n when List.mem n ~set:job.job.ok_codes ->
@@ -390,7 +344,7 @@ module Scheduler = struct
       | WSIGNALED n ->
         Format.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] got signal %s:\n\
                         @{<prompt>$@} %s\n%s%!"
-          job.id (signal_name n)
+          job.id (Utils.signal_name n)
           (Ansi_color.strip_colors_for_stderr job.command_line)
           (Ansi_color.strip_colors_for_stderr output);
         die ""
@@ -511,7 +465,7 @@ module Scheduler = struct
       end;
       go_rec cwd log t
 
-  let go ?log t =
+  let go ?(log=Log.no_log) t =
     Lazy.force Ansi_color.setup_env_for_ocaml_colors;
     let cwd = Sys.getcwd () in
     go_rec cwd log t

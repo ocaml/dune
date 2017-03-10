@@ -23,6 +23,26 @@ let rec to_string = function
   | Atom s -> if must_escape s then sprintf "%S" s else s
   | List l -> sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
 
+let rec pp ppf = function
+  | Atom s ->
+    if must_escape s then
+      Format.fprintf ppf "%S" s
+    else
+      Format.pp_print_string ppf s
+  | List [] ->
+    Format.pp_print_string ppf "()"
+  | List (first :: rest) ->
+    Format.pp_open_box ppf 1;
+    Format.pp_print_string ppf "(";
+    Format.pp_open_hvbox ppf 0;
+    pp ppf first;
+    List.iter rest ~f:(fun sexp ->
+      Format.pp_print_space ppf ();
+      pp ppf sexp);
+    Format.pp_close_box ppf ();
+    Format.pp_print_string ppf ")";
+    Format.pp_close_box ppf ()
+
 let code_error message vars =
   code_errorf "%s"
     (to_string

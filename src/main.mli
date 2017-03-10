@@ -12,19 +12,18 @@ type setup =
 val package_install_file : setup -> string -> (Path.t, unit) result
 
 val setup
-  :  ?filter_out_optional_stanzas_with_missing_deps:bool
+  :  ?log:Log.t
+  -> ?filter_out_optional_stanzas_with_missing_deps:bool
   -> ?workspace:Workspace.t
   -> ?workspace_file:string
   -> ?only_packages:String_set.t
   -> unit
   -> setup Future.t
 val external_lib_deps
-  : ?log:out_channel
+  : ?log:Log.t
   -> packages:string list
   -> unit
   -> Build.lib_deps Path.Map.t
 val report_error : ?map_fname:(string -> string) -> Format.formatter -> exn -> unit
 
 val bootstrap : unit -> unit
-
-val create_log : unit -> out_channel

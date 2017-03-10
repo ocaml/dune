@@ -1599,7 +1599,7 @@ module Gen(P : Params) = struct
       |> function
       | Ok x -> x
       | Error (name, f1, f2) ->
-        die "too many for module %s in %s: %s and %s"
+        die "too many files for module %s in %s: %s and %s"
           name (Path.to_string dir) f1 f2
     in
     let impls = parse_one_set ml_files  in

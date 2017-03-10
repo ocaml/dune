@@ -74,7 +74,7 @@ val run_capture_lines
   -> 'a t
 
 module Scheduler : sig
-  val go : ?log:out_channel -> 'a t -> 'a
+  val go : ?log:Log.t -> 'a t -> 'a
 
   (** Executes [f] before exiting, after all pending commands have finished *)
   val at_exit_after_waiting_for_commands : (unit -> unit) -> unit

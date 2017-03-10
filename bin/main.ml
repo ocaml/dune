@@ -37,8 +37,9 @@ let set_common c =
 module Main = struct
   include Jbuilder.Main
 
-  let setup ?filter_out_optional_stanzas_with_missing_deps common =
+  let setup ~log ?filter_out_optional_stanzas_with_missing_deps common =
     setup
+      ~log
       ?workspace_file:common.workspace_file
       ?only_packages:common.only_packages
       ?filter_out_optional_stanzas_with_missing_deps ()
@@ -46,8 +47,6 @@ end
 
 let do_build (setup : Main.setup) targets =
   Build_system.do_build_exn setup.build_system targets
-
-let create_log = Main.create_log
 
 type ('a, 'b) walk_result =
   | Cont of 'a
@@ -220,7 +219,7 @@ let installed_libraries =
   let doc = "Print out libraries installed on the system." in
   let go common =
     set_common common;
-    Future.Scheduler.go ~log:(create_log ())
+    Future.Scheduler.go ~log:(Log.create ())
       (Context.default () >>= fun ctx ->
        let findlib = ctx.findlib in
        let pkgs = Findlib.all_packages findlib in
@@ -318,8 +317,9 @@ let build_targets =
   let name_ = Arg.info [] ~docv:"TARGET" in
   let go common targets =
     set_common common;
-    Future.Scheduler.go ~log:(create_log ())
-      (Main.setup common >>= fun setup ->
+    let log = Log.create () in
+    Future.Scheduler.go ~log
+      (Main.setup ~log common >>= fun setup ->
        let targets = resolve_targets common setup targets in
        do_build setup targets) in
   ( Term.(const go
@@ -339,8 +339,9 @@ let runtest =
   let name_ = Arg.info [] ~docv:"DIR" in
   let go common dirs =
     set_common common;
-    Future.Scheduler.go ~log:(create_log ())
-      (Main.setup common >>= fun setup ->
+    let log = Log.create () in
+    Future.Scheduler.go ~log
+      (Main.setup ~log common >>= fun setup ->
        let targets =
          List.map dirs ~f:(fun dir ->
            let dir = Path.(relative root) (prefix_target common dir) in
@@ -364,8 +365,9 @@ let external_lib_deps =
   in
   let go common only_missing targets =
     set_common common;
-    Future.Scheduler.go ~log:(create_log ())
-      (Main.setup common ~filter_out_optional_stanzas_with_missing_deps:false
+    let log = Log.create () in
+    Future.Scheduler.go ~log
+      (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
        >>= fun setup ->
        let targets = resolve_targets common setup targets in
        let failure =
@@ -456,8 +458,9 @@ let install_uninstall ~what =
   let go common prefix pkgs =
     set_common common;
     let opam_installer = opam_installer () in
-    Future.Scheduler.go ~log:(create_log ())
-      (Main.setup common >>= fun setup ->
+    let log = Log.create () in
+    Future.Scheduler.go ~log
+      (Main.setup ~log common >>= fun setup ->
        let pkgs =
          match pkgs with
          | [] -> String_map.keys setup.packages
@@ -526,8 +529,9 @@ let exec =
   in
   let go common context prog args =
     set_common common;
-    Future.Scheduler.go ~log:(create_log ())
-      (Main.setup common >>= fun setup ->
+    let log = Log.create () in
+    Future.Scheduler.go ~log
+      (Main.setup ~log common >>= fun setup ->
        let context =
          match List.find setup.contexts ~f:(fun c -> c.name = context) with
          | Some ctx -> ctx

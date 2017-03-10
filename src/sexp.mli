@@ -22,6 +22,8 @@ val code_error : string -> (string * t) list -> _
 
 val to_string : t -> string
 
+val pp : Format.formatter -> t -> unit
+
 module type Combinators = sig
   type 'a t
   val unit       : unit                      t

@@ -10,6 +10,8 @@ val create
   -> path:Path.t list
   -> t
 
+val path : t -> Path.t list
+
 type package =
   { name             : string
   ; dir              : Path.t

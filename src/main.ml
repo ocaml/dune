@@ -88,7 +88,8 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
       pkg
   | Code_error msg ->
     let bt = Printexc.raw_backtrace_to_string backtrace in
-    Format.fprintf ppf "@{<error>Internal error, please report upstream (include the contents of _build/log.@}\n\
+    Format.fprintf ppf "@{<error>Internal error, please report upstream \
+                        including the contents of _build/log.@}\n\
                         Description: %s\n\
                         Backtrace:\n\
                         %s" msg bt

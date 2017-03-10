@@ -63,6 +63,9 @@ type t =
   ; (** Environment variables *)
     env : string array
 
+  ; (** Diff between the base environment and [env] *)
+    env_extra : string String_map.t
+
   ; findlib : Findlib.t
 
   ; (** Misc *)
@@ -109,6 +112,8 @@ type t =
 
   ; which_cache             : (string, Path.t option) Hashtbl.t
   }
+
+val sexp_of_t : t -> Sexp.t
 
 (** Compare the context names *)
 val compare : t -> t -> int

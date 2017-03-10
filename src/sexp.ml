@@ -64,6 +64,7 @@ module type Combinators = sig
   val option     : 'a t -> 'a option         t
   val string_set : String_set.t              t
   val string_map : 'a t -> 'a String_map.t   t
+  val string_hashtbl : 'a t -> (string, 'a) Hashtbl.t t
 end
 
 module To_sexp = struct
@@ -82,6 +83,10 @@ module To_sexp = struct
   let string_map f map = list (pair string f) (String_map.bindings map)
   let record l =
     List (List.map l ~f:(fun (n, v) -> List [Atom n; v]))
+  let string_hashtbl f h =
+    string_map f
+      (Hashtbl.fold h ~init:String_map.empty ~f:(fun ~key ~data acc ->
+         String_map.add acc ~key ~data))
 end
 
 module Of_sexp = struct
@@ -136,6 +141,13 @@ module Of_sexp = struct
     | Ok x -> x
     | Error (key, _v1, _v2) ->
       of_sexp_error sexp (sprintf "key %S present multiple times" key)
+
+  let string_hashtbl f sexp =
+    let map = string_map f sexp in
+    let tbl = Hashtbl.create (String_map.cardinal map + 32) in
+    String_map.iter map ~f:(fun ~key ~data ->
+      Hashtbl.add tbl ~key ~data);
+    tbl
 
   type unparsed_field =
     { value : Ast.t option

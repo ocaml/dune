@@ -9,6 +9,13 @@ module Kind = struct
       }
   end
   type t = Default | Opam of Opam.t
+
+  let sexp_of_t : t -> Sexp.t = function
+    | Default -> Atom "default"
+    | Opam o  ->
+      Sexp.To_sexp.(record [ "root"  , string o.root
+                           ; "switch", string o.switch
+                           ])
 end
 
 type t =
@@ -28,6 +35,7 @@ type t =
   ; ocamlyacc               : Path.t
   ; ocamlmklib              : Path.t
   ; env                     : string array
+  ; env_extra               : string String_map.t
   ; findlib                 : Findlib.t
   ; arch_sixtyfour          : bool
   ; opam_var_cache          : (string, string) Hashtbl.t
@@ -66,6 +74,33 @@ type t =
   ; cmt_magic_number        : string
   ; which_cache             : (string, Path.t option) Hashtbl.t
   }
+
+let sexp_of_t t =
+  let open Sexp.To_sexp in
+  let path = Path.sexp_of_t in
+  record
+    [ "name", string t.name
+    ; "kind", Kind.sexp_of_t t.kind
+    ; "merlin", bool t.merlin
+    ; "for_host", option string (Option.map t.for_host ~f:(fun t -> t.name))
+    ; "build_dir", path t.build_dir
+    ; "toplevel_path", option path t.toplevel_path
+    ; "ocaml_bin", path t.ocaml_bin
+    ; "ocaml", path t.ocaml
+    ; "ocamlc", path t.ocamlc
+    ; "ocamlopt", option path t.ocamlopt
+    ; "ocamldep", path t.ocamldep
+    ; "ocamllex", path t.ocamllex
+    ; "ocamlyacc", path t.ocamlyacc
+    ; "ocamlmklib", path t.ocamlmklib
+    ; "env", string_map string t.env_extra
+    ; "findlib_path", list path (Findlib.path t.findlib)
+    ; "arch_sixtyfour", bool t.arch_sixtyfour
+    ; "natdynlink_supported", bool t.natdynlink_supported
+    ; "opam_vars", string_hashtbl string t.opam_var_cache
+    ; "ocamlc_config", list (pair string string) t.ocamlc_config
+    ; "which", string_hashtbl (option path) t.which_cache
+    ]
 
 let compare a b = compare a.name b.name
 
@@ -107,7 +142,26 @@ let get_env env var =
 let which ~cache ~path x =
   Hashtbl.find_or_add cache x ~f:(Bin.which ~path)
 
-let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
+let extend_env ~vars ~env =
+  if String_map.is_empty vars then
+    env
+  else
+    let imported =
+      Array.to_list env
+      |> List.filter ~f:(fun s ->
+        match String.index s '=' with
+        | None -> true
+        | Some i ->
+          let key = String.sub s ~pos:0 ~len:i in
+          not (String_map.mem key vars))
+    in
+    List.rev_append
+      (List.map (String_map.bindings vars) ~f:(fun (k, v) -> sprintf "%s=%s" k v))
+      imported
+    |> Array.of_list
+
+let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin =
+  let env = extend_env ~env:base_env ~vars:env_extra in
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
    | Opam { root; _ } ->
@@ -218,6 +272,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
     ; ocamlmklib = get_prog  "ocamlmklib"
 
     ; env
+    ; env_extra
     ; findlib = Findlib.create ~stdlib_dir ~path:findlib_path
     ; arch_sixtyfour = get_arch_sixtyfour stdlib_dir
 
@@ -279,22 +334,8 @@ let default ?(merlin=true) () =
       | _ -> find_path (i + 1)
   in
   let path = find_path 0 in
-  create ~kind:Default ~path ~env ~name:"default" ~merlin
-
-let extend_env ~vars ~env =
-  let imported =
-    Array.to_list env
-    |> List.filter ~f:(fun s ->
-      match String.index s '=' with
-      | None -> true
-      | Some i ->
-        let key = String.sub s ~pos:0 ~len:i in
-        not (String_map.mem key vars))
-  in
-  List.rev_append
-    (List.map (String_map.bindings vars) ~f:(fun (k, v) -> sprintf "%s=%s" k v))
-    imported
-  |> Array.of_list
+  create ~kind:Default ~path ~base_env:env ~env_extra:String_map.empty
+    ~name:"default" ~merlin
 
 let create_for_opam ?root ~switch ~name ?(merlin=false) () =
   match Bin.opam with
@@ -318,7 +359,7 @@ let create_for_opam ?root ~switch ~name ?(merlin=false) () =
       | Some s -> Bin.parse_path s
     in
     let env = Lazy.force initial_env in
-    create ~kind:(Opam { root; switch }) ~path ~env:(extend_env ~vars ~env)
+    create ~kind:(Opam { root; switch }) ~path ~base_env:env ~env_extra:vars
       ~name ~merlin
 
 let which t s = which ~cache:t.which_cache ~path:t.path s

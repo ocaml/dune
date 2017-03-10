@@ -141,6 +141,8 @@ type t =
   ; has_headers : (Path.t, bool             ) Hashtbl.t
   }
 
+let path t = t.path
+
 let create ~stdlib_dir ~path =
   { stdlib_dir
   ; path

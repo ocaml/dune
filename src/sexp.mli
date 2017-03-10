@@ -34,6 +34,7 @@ module type Combinators = sig
   val option     : 'a t -> 'a option         t
   val string_set : String_set.t              t
   val string_map : 'a t -> 'a String_map.t   t
+  val string_hashtbl : 'a t -> (string, 'a) Hashtbl.t t
 end
 
 module To_sexp : sig

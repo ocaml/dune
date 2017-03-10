@@ -16,6 +16,8 @@ let rec internal_name_scope t ~dir =
   match Hashtbl.find t.by_internal_name dir with
   | Some scope -> scope
   | None ->
+    (* [create] ensures that [Hashtbl.find t.by_internal_name Path.root] is [Some _] so
+       this [Path.parent dir] is never called with [Path.root] *)
     let scope = internal_name_scope t ~dir:(Path.parent dir) in
     Hashtbl.add t.by_internal_name ~key:dir ~data:scope;
     scope
@@ -98,8 +100,9 @@ let create findlib ~dirs_with_dot_opam_files internal_libraries =
     ; instalable_internal_libs = String_map.empty
     }
   in
-  (* Initializes the scopes *)
-  Path.Set.iter dirs_with_dot_opam_files ~f:(fun dir ->
+  (* Initializes the scopes, including [Path.root] so that when there are no <pkg>.opam
+     files in parent directories, the scope is the whole workspace. *)
+  Path.Set.iter (Path.add Path.root dirs_with_dot_opam_files) ~f:(fun dir ->
     Hashtbl.add t.by_internal_name ~key:dir
       ~data:(ref String_map.empty));
   List.iter internal_libraries ~f:(fun ((dir, lib) as internal) ->

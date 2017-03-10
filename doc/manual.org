@@ -656,9 +656,9 @@ always prefered to ones that are part of the installed world.
 
 The scope of internal library names is not the whole workspace. It is
 restricted to the sub-tree starting from the closest parent containing
-a =<package>.opam= file. Moreover, a sub-tree containing
-=<package>.opam= doesn' t inherit the internal names available in its
-parent scope.
+a =<package>.opam= file, or the whole workspace if no such directory
+exist. Moreover, a sub-tree containing =<package>.opam= doesn' t
+inherit the internal names available in its parent scope.
 
 The idea behing this rule is that public library names must be
 universally unique, but internal ones don't need to. In particular you

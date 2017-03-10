@@ -6,6 +6,9 @@ module Set     = MoreLabels.Set
 
 external reraise : exn -> _ = "%reraise"
 
+(* To make bug reports usable *)
+let () = Printexc.record_backtrace true
+
 let open_in = open_in_bin
 let open_out = open_out_bin
 

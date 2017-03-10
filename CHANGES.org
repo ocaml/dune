@@ -1,11 +1,16 @@
 * 1.0+beta2 (07/03/2017)
 
 - Simplified the rules for finding the root of the workspace as the
-  old ones were often picking up the home directory
+  old ones were often picking up the home directory. New rules are:
+  + look for a =jbuild-workspace= file in parent directories
+  + look for a =jbuild-workspace*= file in parent directories
+  + use the current directory
 
 - Fixed the expansion of =${ROOT}= in actions
 
 - Install =quick-start.org= in the documentation directory
+
+- Add a few more things in the log file to help debugging
 
 * 1.0+beta1 (07/03/2017)
 

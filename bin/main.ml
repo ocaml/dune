@@ -353,6 +353,14 @@ let runtest =
           $ Arg.(value & pos_all string ["."] name_))
   , Term.info "runtest" ~doc ~man)
 
+let format_external_libs libs =
+  String_map.bindings libs
+  |> List.map ~f:(fun (name, kind) ->
+    match (kind : Build.lib_dep_kind) with
+    | Optional -> sprintf "- %s (optional)" name
+    | Required -> sprintf "- %s" name)
+  |> String.concat ~sep:"\n"
+
 let external_lib_deps =
   let doc = "Print out external libraries needed to build the given targets." in
   let man =
@@ -402,9 +410,7 @@ let external_lib_deps =
                     in the %s context:\n\
                     %s@."
                    context_name
-                   (String_map.keys missing
-                    |> List.map ~f:(sprintf "- %s")
-                    |> String.concat ~sep:"\n");
+                   (format_external_libs missing);
                  true
                end
              end else begin
@@ -412,12 +418,7 @@ let external_lib_deps =
                  "These are the external library dependencies in the %s context:\n\
                   %s\n%!"
                  context_name
-                 (String_map.bindings externals
-                  |> List.map ~f:(fun (name, kind) ->
-                    match (kind : Build.lib_dep_kind) with
-                    | Optional -> sprintf "- %s (optional)" name
-                    | Required -> sprintf "- %s" name)
-                  |> String.concat ~sep:"\n");
+                 (format_external_libs externals);
                acc
              end)
        in

@@ -70,10 +70,8 @@ let find_root () =
     if String_set.mem "jbuild-workspace" files then
       cont counter ~candidates:((0, dir, to_cwd) :: candidates) dir ~to_cwd
     else if String_set.exists files ~f:(fun fn ->
-        String.is_suffix fn ~suffix:".opam" && fn <> ".opam") then
+        String.is_prefix fn ~prefix:"jbuild-workspace") then
       cont counter ~candidates:((1, dir, to_cwd) :: candidates) dir ~to_cwd
-    else if String_set.mem ".git" files || String_set.mem ".hg" files then
-      cont counter ~candidates:((2, dir, to_cwd) :: candidates) dir ~to_cwd
     else
       cont counter ~candidates dir ~to_cwd
   and cont counter ~candidates ~to_cwd dir =

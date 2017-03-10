@@ -963,8 +963,10 @@ This section describe usage of Jbuilder from the shell.
 
 ** Finding the root
 
-The root of the current workspace is determined by looking up specific
-files/directories in the current directory and parent
+*** jbuild-workspace
+
+The root of the current workspace is determined by looking up a
+=jbuild-workspace= file in the current directory and parent
 directories. =jbuilder= prints out the root when starting:
 
 #+begin_src sh
@@ -973,28 +975,49 @@ Workspace root: /usr/local/home/jdimino/workspaces/public-jane/+share+
 ...
 #+end_src
 
-More precisely, consider the current directory and all its
-ancestors. For instance if you are in =/home/me/code/myproject/src=,
-then this is this set:
+More precisely, it will choose the outermost ancestor directory
+containing a =jbuild-workspace= file as root. For instance if you are
+in =/home/me/code/myproject/src=, then jbuilder will look for all
+these files in order:
 
-- =/home/me/code/myproject/src=
-- =/home/me/code/myproject=
-- =/home/me/code=
-- =/home/me=
-- =/home=
-- =/=
+- =/jbuild-workspace=
+- =/home/jbuild-workspace=
+- =/home/me/jbuild-workspace=
+- =/home/me/code/jbuild-workspace=
+- =/home/me/code/myproject/jbuild-workspace=
+- =/home/me/code/myproject/src/jbuild-workspace=
 
-Jbuilder looks for the following entries in all these directories, in
-order of precedences:
+The first entry to match in this list will determine the root.  In
+practice this means that if you nest your workspaces, Jbuilder will
+always use the outermost one.
 
-1. =jbuild-workspace=
-2. any file ending with =.opam=, except =.opam= itself
-3. =.git= or =.hg=
+In addition to determining the root, =jbuilder= will read this file as
+to setup the configuration of the workspace unless the =--workspace=
+command line option is used. See the [[Workspace configuration][section about workspace
+configuration]] for the syntax of this file.
 
-The first entry to match in this list will determine the root. If this
-entry is present in several of the looked up directories, the one with
-the smallest name will be used. In practice this means that if you
-nest your workspaces, Jbuilder will always use the toplevel one.
+*** jbuild-workspace*
+
+In addition to the previous rule, if no =jbuild-workspace= file is
+found, =jbuilder= will look for any file whose name starts with
+=jbuild-workspace= in ancestor directories. For instance
+=jbuild-workspace.dev=. If such a file is found, it will mark the root
+of the workspace. =jbuilder= will however not read its contents.
+
+The rationale for this rule is that it is good practice to have a
+=jbuild-workspace.dev= file at the root of your project.
+
+For quick experiments, simply do this to mark the root:
+
+#+begin_src sh
+$ touch jbuild-workspace.here
+#+end_src
+
+*** Current directory
+
+If none of the two previous rules appies, i.e. no ancestor directories
+have a file whose name starts with =jbuild-workspace=, then the
+current directory will be used as root.
 
 *** Forcing the root (for scripts)
 

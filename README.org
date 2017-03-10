@@ -79,8 +79,8 @@ two so that a Jbuilder project can build with Jenga using this bridge.
 
 ** Status
 
-Jbuilder is now in 1.0+beta1. Once a bit more testing has been done,
-it will be released in 1.0.
+Jbuilder is now in beta testing stage. Once a bit more testing has
+been done, it will be released in 1.0.
 
 ** Roadmap
 

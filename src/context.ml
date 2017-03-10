@@ -206,7 +206,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin =
     ; for_host = None
     ; build_dir
     ; path
-    ; toplevel_path = Option.map (get_env env "OCAML_TOPLEVEL_PATH") ~f:Path.of_string
+    ; toplevel_path = Option.map (get_env env "OCAML_TOPLEVEL_PATH") ~f:Path.absolute
 
     ; ocaml_bin  = dir
     ; ocaml      = Path.relative dir "ocaml"

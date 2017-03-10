@@ -102,7 +102,7 @@ let create findlib ~dirs_with_dot_opam_files internal_libraries =
   in
   (* Initializes the scopes, including [Path.root] so that when there are no <pkg>.opam
      files in parent directories, the scope is the whole workspace. *)
-  Path.Set.iter (Path.add Path.root dirs_with_dot_opam_files) ~f:(fun dir ->
+  Path.Set.iter (Path.Set.add Path.root dirs_with_dot_opam_files) ~f:(fun dir ->
     Hashtbl.add t.by_internal_name ~key:dir
       ~data:(ref String_map.empty));
   List.iter internal_libraries ~f:(fun ((dir, lib) as internal) ->

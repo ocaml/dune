@@ -211,7 +211,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin =
      match a @ b with
      | [] -> [Path.relative (Path.parent dir) "lib"]
      | l  ->
-       List.fold_left l ~init:l ~f:(fun acc x ->
+       List.fold_left l ~init:[] ~f:(fun acc x ->
          if List.mem x ~set:acc then
            acc
          else

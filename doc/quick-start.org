@@ -180,7 +180,7 @@ Write this in your =jbuild= file:
 
 #+begin_src scheme
 (alias
- ((name    (runtest))
+ ((name    runtest)
   (deps    (my-test-program.exe))
   (action  (run ${<}))))
 #+end_src

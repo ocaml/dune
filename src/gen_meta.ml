@@ -100,7 +100,8 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~
                    ; match lib.kind with
                    | Normal -> assert false
                    | Ppx_rewriter ->
-                     [ rule "ppx" [Neg "ppx_driver"; Neg "custom_ppx"] Set "./as-ppx.exe --as-ppx" ]
+                     [ rule "ppx" [Neg "ppx_driver"; Neg "custom_ppx"]
+                         Set "./ppx.exe --as-ppx" ]
                    | Ppx_deriver ->
                      [ rule "requires" [Neg "ppx_driver"; Neg "custom_ppx"] Add
                          "ppx_deriving"

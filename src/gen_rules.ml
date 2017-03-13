@@ -1341,8 +1341,11 @@ module Gen(P : Params) = struct
         (Build.return
            (String_map.values (String_map.remove m.name modules)
             |> List.map ~f:(fun (m : Module.t) ->
-              sprintf "module %s = %s\n" m.name (Module.real_unit_name m))
-            |> String.concat ~sep:"")
+              sprintf "(* @canonical %s.%s *)\n\
+                       module %s = %s\n"
+                main_module_name m.name
+                m.name (Module.real_unit_name m))
+            |> String.concat ~sep:"\n")
          >>> Build.update_file_dyn (Path.relative dir m.ml_fname)));
 
     let requires, real_requires =

@@ -34,10 +34,11 @@ let deps t ~all_targets_by_dir =
     | Vpath (Vspec.T (fn, _)) -> Pset.add fn acc
     | Paths_glob (dir, re) -> begin
         match Pmap.find dir (Lazy.force all_targets_by_dir) with
-        | None -> Pset.empty
+        | None -> acc
         | Some targets ->
           Pset.filter targets ~f:(fun path ->
             Re.execp re (Path.basename path))
+          |> Pset.union acc
       end
     | Dyn_paths t -> loop t acc
     | Contents p -> Pset.add p acc

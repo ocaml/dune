@@ -8,11 +8,17 @@ type var_expansion =
 
 module Mini_shexp : sig
   module Ast : sig
+    type outputs =
+      | Stdout
+      | Stderr
+      | Outputs (** Both Stdout and Stderr *)
+
     type ('a, 'path) t =
       | Run            of 'path * 'a list
       | Chdir          of 'path * ('a, 'path) t
       | Setenv         of 'a * 'a * ('a, 'path) t
-      | With_stdout_to of 'path * ('a, 'path) t
+      | Redirect       of outputs * 'path * ('a, 'path) t
+      | Ignore         of outputs * ('a, 'path) t
       | Progn          of ('a, 'path) t list
       | Echo           of 'a
       | Create_file    of 'path

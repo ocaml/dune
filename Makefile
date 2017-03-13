@@ -15,10 +15,13 @@ uninstall:
 
 reinstall: uninstall reinstall
 
+test:
+	$(BIN) runtest
+
 all-supported-ocaml-versions:
-	$(BIN) build @install --workspace jbuild-workspace.dev --root .
+	$(BIN) build @install @runtest --workspace jbuild-workspace.dev --root .
 
 clean:
 	rm -rf _build
 
-.PHONY: default install uninstall reinstall clean
+.PHONY: default install uninstall reinstall clean test

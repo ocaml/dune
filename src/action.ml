@@ -54,11 +54,22 @@ let expand_prog ctx ~dir ~f template =
 
 module Mini_shexp = struct
   module Ast = struct
+    type outputs =
+      | Stdout
+      | Stderr
+      | Outputs (* Both Stdout and Stderr *)
+
+    let string_of_outputs = function
+      | Stdout -> "stdout"
+      | Stderr -> "stderr"
+      | Outputs -> "outputs"
+
     type ('a, 'path) t =
       | Run            of 'path * 'a list
       | Chdir          of 'path * ('a, 'path) t
       | Setenv         of 'a * 'a * ('a, 'path) t
-      | With_stdout_to of 'path * ('a, 'path) t
+      | Redirect       of outputs * 'path * ('a, 'path) t
+      | Ignore         of outputs * ('a, 'path) t
       | Progn          of ('a, 'path) t list
       | Echo           of 'a
       | Create_file    of 'path
@@ -75,7 +86,12 @@ module Mini_shexp = struct
         [ cstr_rest "run" (p @> nil) a             (fun prog args -> Run (prog, args))
         ; cstr "chdir"    (p @> t a p @> nil)        (fun dn t -> Chdir (dn, t))
         ; cstr "setenv"   (a @> a @> t a p @> nil)   (fun k v t -> Setenv (k, v, t))
-        ; cstr "with-stdout-to" (p @> t a p @> nil)  (fun fn t -> With_stdout_to (fn, t))
+        ; cstr "with-stdout-to"  (p @> t a p @> nil) (fun fn t -> Redirect (Stdout, fn, t))
+        ; cstr "with-stderr-to"  (p @> t a p @> nil) (fun fn t -> Redirect (Stderr, fn, t))
+        ; cstr "with-outputs-to" (p @> t a p @> nil) (fun fn t -> Redirect (Outputs, fn, t))
+        ; cstr "ignore-stdout"   (t a p @> nil)      (fun t -> Ignore (Stdout, t))
+        ; cstr "ignore-stderr"   (t a p @> nil)      (fun t -> Ignore (Stderr, t))
+        ; cstr "ignore-outputs"  (t a p @> nil)      (fun t -> Ignore (Outputs, t))
         ; cstr_rest "progn"      nil (t a p)         (fun l -> Progn l)
         ; cstr "echo"           (a @> nil)         (fun x -> Echo x)
         ; cstr "cat"            (p @> nil)         (fun x -> Cat x)
@@ -96,7 +112,15 @@ module Mini_shexp = struct
       | Run (a, xs) -> List (Atom "run" :: g a :: List.map xs ~f)
       | Chdir (a, r) -> List [Atom "chdir" ; g a ; sexp_of_t f g r]
       | Setenv (k, v, r) -> List [Atom "setenv" ; f k ; f v ; sexp_of_t f g r]
-      | With_stdout_to (fn, r) -> List [Atom "with-stdout-to"; g fn; sexp_of_t f g r]
+      | Redirect (outputs, fn, r) ->
+        List [ Atom (sprintf "with-%s-to" (string_of_outputs outputs))
+             ; g fn
+             ; sexp_of_t f g r
+             ]
+      | Ignore (outputs, r) ->
+        List [ Atom (sprintf "ignore-%s" (string_of_outputs outputs))
+             ; sexp_of_t f g r
+             ]
       | Progn l -> List (Atom "progn" :: List.map l ~f:(sexp_of_t f g))
       | Echo x -> List [Atom "echo"; f x]
       | Cat x -> List [Atom "cat"; g x]
@@ -116,7 +140,8 @@ module Mini_shexp = struct
       | Run (prog, args) -> List.fold_left args ~init:(f acc prog) ~f
       | Chdir (fn, t) -> fold t ~init:(f acc fn) ~f
       | Setenv (var, value, t) -> fold t ~init:(f (f acc var) value) ~f
-      | With_stdout_to (fn, t) -> fold t ~init:(f acc fn) ~f
+      | Redirect (_, fn, t) -> fold t ~init:(f acc fn) ~f
+      | Ignore (_, t) -> fold t ~init:acc ~f
       | Progn l -> List.fold_left l ~init:acc ~f:(fun init t -> fold t ~init ~f)
       | Echo x -> f acc x
       | Cat x -> f acc x
@@ -140,7 +165,8 @@ module Mini_shexp = struct
       | Update_file (fn, _) -> Path.Set.add fn acc
       | Chdir (_, t)
       | Setenv (_, _, t)
-      | With_stdout_to (_, t) -> loop acc t
+      | Redirect (_, _, t)
+      | Ignore (_, t) -> loop acc t
       | Progn l -> List.fold_left l ~init:acc ~f:loop
       | Run _ -> acc
       | Echo _
@@ -180,8 +206,10 @@ module Mini_shexp = struct
       | Setenv (var, value, t) ->
         Setenv (expand_str ~dir ~f var, expand_str ~dir ~f value,
                 expand ctx dir t ~f)
-      | With_stdout_to (fn, t) ->
-        With_stdout_to (expand_path ~dir ~f fn, expand ctx dir t ~f)
+      | Redirect (outputs, fn, t) ->
+        Redirect (outputs, expand_path ~dir ~f fn, expand ctx dir t ~f)
+      | Ignore (outputs, t) ->
+        Ignore (outputs, expand ctx dir t ~f)
       | Progn l -> Progn (List.map l ~f:(fun t -> expand ctx dir t ~f))
       | Echo x -> Echo (expand_str ~dir ~f x)
       | Cat x -> Cat (expand_path ~dir ~f x)
@@ -199,46 +227,45 @@ module Mini_shexp = struct
 
   open Future
 
-  let run ~dir ~env ~env_extra ~stdout_to ~tail prog args =
-    let stdout_to : Future.stdout_to =
-      match stdout_to with
-      | None          -> Terminal
-      | Some (fn, oc) -> Opened_file { filename = fn; tail; desc = Channel oc }
-    in
+  let get_std_output : _ -> Future.std_output_to = function
+    | None          -> Terminal
+    | Some (fn, oc) -> Opened_file { filename = fn; tail = false; desc = Channel oc }
+
+  let run ~dir ~env ~env_extra ~stdout_to ~stderr_to prog args =
+    let stdout_to = get_std_output stdout_to in
+    let stderr_to = get_std_output stderr_to in
     let env = Context.extend_env ~vars:env_extra ~env in
-    Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to
+    Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to ~stderr_to
       (Path.reach_for_running ~from:dir prog) args
 
-  let rec exec t ~dir ~env ~env_extra ~stdout_to ~tail =
+  let rec exec t ~dir ~env ~env_extra ~stdout_to ~stderr_to =
     match t with
     | Run (prog, args) ->
-      run ~dir ~env ~env_extra ~stdout_to ~tail prog args
+      run ~dir ~env ~env_extra ~stdout_to ~stderr_to prog args
     | Chdir (dir, t) ->
-      exec t ~env ~env_extra ~stdout_to ~tail ~dir
+      exec t ~env ~env_extra ~stdout_to ~stderr_to ~dir
     | Setenv (var, value, t) ->
-      exec t ~dir ~env ~stdout_to ~tail
+      exec t ~dir ~env ~stdout_to ~stderr_to
         ~env_extra:(String_map.add env_extra ~key:var ~data:value)
-    | With_stdout_to (fn, t) ->
-      if tail then Option.iter stdout_to ~f:(fun (_, oc) -> close_out oc);
-      let fn = Path.to_string fn in
-      exec t ~dir ~env ~env_extra ~tail
-        ~stdout_to:(Some (fn, open_out_bin fn))
+    | Redirect (outputs, fn, t) ->
+      redirect outputs fn t ~dir ~env ~env_extra ~stdout_to ~stderr_to
+    | Ignore (outputs, t) ->
+      redirect outputs Config.dev_null t ~dir ~env ~env_extra ~stdout_to ~stderr_to
     | Progn l ->
-      exec_list l ~dir ~env ~env_extra ~stdout_to ~tail
+      exec_list l ~dir ~env ~env_extra ~stdout_to ~stderr_to
     | Echo str ->
       return
         (match stdout_to with
          | None -> print_string str; flush stdout
-         | Some (_, oc) ->
-           output_string oc str;
-           if tail then close_out oc)
+         | Some (_, oc) -> output_string oc str)
     | Cat fn ->
       with_file_in (Path.to_string fn) ~f:(fun ic ->
-        match stdout_to with
-        | None -> copy_channels ic stdout
-        | Some (_, oc) ->
-          copy_channels ic oc;
-          if tail then close_out oc);
+        let oc =
+          match stdout_to with
+          | None -> stdout
+          | Some (_, oc) -> oc
+        in
+        copy_channels ic oc);
       return ()
     | Create_file fn ->
       let fn = Path.to_string fn in
@@ -287,10 +314,10 @@ module Mini_shexp = struct
       match err with
       | Some err -> err.fail ()
       | None ->
-        run ~dir ~env ~env_extra ~stdout_to ~tail path [arg; cmd]
+        run ~dir ~env ~env_extra ~stdout_to ~stderr_to path [arg; cmd]
       end
     | Bash cmd ->
-      run ~dir ~env ~env_extra ~stdout_to ~tail
+      run ~dir ~env ~env_extra ~stdout_to ~stderr_to
         (Path.absolute "/bin/bash")
         ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
     | Update_file (fn, s) ->
@@ -301,16 +328,28 @@ module Mini_shexp = struct
         write_file fn s;
       return ()
 
-  and exec_list l ~dir ~env ~env_extra ~stdout_to ~tail =
+  and redirect outputs fn t ~dir ~env ~env_extra ~stdout_to ~stderr_to =
+    let fn = Path.to_string fn in
+    let oc = open_out_bin fn in
+    let out = Some (fn, oc) in
+    let stdout_to, stderr_to =
+      match outputs with
+      | Stdout -> (out, stderr_to)
+      | Stderr -> (stdout_to, out)
+      | Outputs -> (out, out)
+    in
+    exec t ~dir ~env ~env_extra ~stdout_to ~stderr_to >>| fun () ->
+    close_out oc
+
+  and exec_list l ~dir ~env ~env_extra ~stdout_to ~stderr_to =
     match l with
     | [] ->
-      if tail then Option.iter stdout_to ~f:(fun (_, oc) -> close_out oc);
       Future.return ()
     | [t] ->
-      exec t ~dir ~env ~env_extra ~stdout_to ~tail
+      exec t ~dir ~env ~env_extra ~stdout_to ~stderr_to
     | t :: rest ->
-      exec t ~dir ~env ~env_extra ~stdout_to ~tail:false >>= fun () ->
-      exec_list rest ~dir ~env ~env_extra ~stdout_to ~tail
+      exec t ~dir ~env ~env_extra ~stdout_to ~stderr_to >>= fun () ->
+      exec_list rest ~dir ~env ~env_extra ~stdout_to ~stderr_to
 end
 
 type t =
@@ -354,7 +393,7 @@ let exec { action; dir; context } =
     | Some c -> c.env
   in
   Mini_shexp.exec action ~dir ~env ~env_extra:String_map.empty
-    ~stdout_to:None ~tail:true
+    ~stdout_to:None ~stderr_to:None
 
 type for_hash = string option * Path.t * Mini_shexp.t
 

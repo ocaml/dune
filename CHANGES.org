@@ -12,6 +12,13 @@
 
 - Add a few more things in the log file to help debugging
 
+- Added a few forms to the DSL:
+  + =with-{stderr,outputs}-to=
+  + =ignore-{stdout,stderr,outputs}=
+
+- Added =${null}= which expands to =/dev/null= on Unix and =NUL= on
+  Windows
+
 * 1.0+beta1 (07/03/2017)
 
 - Added a manual

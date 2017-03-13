@@ -24,7 +24,7 @@ type ('a, 'b) failure_mode =
       exists with one of these codes. *)
 
 (** Where to redirect standard output *)
-type stdout_to =
+type std_output_to =
   | Terminal
   | File        of string
   | Opened_file of opened_file
@@ -43,7 +43,8 @@ and opened_file_desc =
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its termination *)
 val run
   :  ?dir:string
-  -> ?stdout_to:stdout_to
+  -> ?stdout_to:std_output_to
+  -> ?stderr_to:std_output_to
   -> ?env:string array
   -> (unit, 'a) failure_mode
   -> string

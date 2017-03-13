@@ -389,6 +389,7 @@ module Gen(P : Params) = struct
     ; "ARCH_SIXTYFOUR" , string_of_bool ctx.arch_sixtyfour
     ; "PORTABLE_INT63" , "true"
     ; "MAKE"           , make
+    ; "null"           , Path.to_string Config.dev_null
     ] |> String_map.of_alist
     |> function
     | Ok x -> x
@@ -829,8 +830,9 @@ module Gen(P : Params) = struct
              Build.path src
              >>>
              Action_interpret.run
-               (With_stdout_to
-                  (target_var,
+               (Redirect
+                  (Stdout,
+                   target_var,
                    Chdir (root_var,
                           action)))
                ~dir

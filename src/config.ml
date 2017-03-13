@@ -14,3 +14,5 @@ let local_install_lib_dir ~context ~package =
   Path.relative
     (Path.relative (local_install_dir ~context) "lib")
     package
+
+let dev_null = Path.of_string (if Sys.win32 then "nul" else "/dev/null")

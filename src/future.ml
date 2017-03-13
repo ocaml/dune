@@ -152,7 +152,7 @@ let map_result
       | 0 -> Ok (f ())
       | n -> Error n
 
-type stdout_to =
+type std_output_to =
   | Terminal
   | File        of string
   | Opened_file of opened_file
@@ -171,7 +171,8 @@ type job =
   { prog      : string
   ; args      : string list
   ; dir       : string option
-  ; stdout_to : stdout_to
+  ; stdout_to : std_output_to
+  ; stderr_to : std_output_to
   ; env       : string array option
   ; ivar      : int Ivar.t
   ; ok_codes  : int list
@@ -179,7 +180,7 @@ type job =
 
 let to_run : job Queue.t = Queue.create ()
 
-let run_internal ?dir ?(stdout_to=Terminal) ?env fail_mode prog args =
+let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env fail_mode prog args =
   let dir =
     match dir with
     | Some "." -> None
@@ -190,13 +191,14 @@ let run_internal ?dir ?(stdout_to=Terminal) ?env fail_mode prog args =
                ; args
                ; dir
                ; stdout_to
+               ; stderr_to
                ; env
                ; ivar
                ; ok_codes = accepted_codes fail_mode
                } to_run)
 
-let run ?dir ?stdout_to ?env fail_mode prog args =
-  map_result fail_mode (run_internal ?dir ?stdout_to ?env fail_mode prog args)
+let run ?dir ?stdout_to ?stderr_to ?env fail_mode prog args =
+  map_result fail_mode (run_internal ?dir ?stdout_to ?stderr_to ?env fail_mode prog args)
     ~f:ignore
 
 module Temp = struct
@@ -284,7 +286,7 @@ module Scheduler = struct
       "-o" :: Ansi_color.(apply_string output_filename) fn :: colorize_args rest
     | x :: rest -> x :: colorize_args rest
 
-  let command_line { prog; args; dir; stdout_to; _ } =
+  let command_line { prog; args; dir; stdout_to; stderr_to; _ } =
     let quote = quote_for_shell in
     let prog = colorize_prog (quote prog) in
     let s = String.concat (prog :: colorize_args (List.map args ~f:quote)) ~sep:" " in
@@ -293,15 +295,25 @@ module Scheduler = struct
       | None -> s
       | Some dir -> sprintf "(cd %s && %s)" dir s
     in
-    match stdout_to with
-    | Terminal -> s
-    | File fn | Opened_file { filename = fn; _ } -> sprintf "%s > %s" s fn
+    match stdout_to, stderr_to with
+    | (File fn1 | Opened_file { filename = fn1; _ }),
+      (File fn2 | Opened_file { filename = fn2; _ }) when fn1 = fn2 ->
+      sprintf "%s &> %s" s fn1
+    | _ ->
+      let s =
+        match stdout_to with
+        | Terminal -> s
+        | File fn | Opened_file { filename = fn; _ } -> sprintf "%s > %s" s fn
+      in
+      match stderr_to with
+      | Terminal -> s
+      | File fn | Opened_file { filename = fn; _ } -> sprintf "%s 2> %s" s fn
 
   type running_job =
     { id              : int
     ; job             : job
     ; pid             : int
-    ; output_filename : string
+    ; output_filename : string option
     ; (* for logs, with ansi colors code always included in the string *)
       command_line    : string
     ; log             : Log.t
@@ -312,14 +324,17 @@ module Scheduler = struct
   let process_done ?(exiting=false) job (status : Unix.process_status) =
     Hashtbl.remove running job.pid;
     let output =
-      let s = read_file job.output_filename in
-      let len = String.length s in
-      if len > 0 && s.[len - 1] <> '\n' then
-        s ^ "\n"
-      else
-        s
+      match job.output_filename with
+      | None -> ""
+      | Some fn ->
+        let s = read_file fn in
+        Temp.destroy fn;
+        let len = String.length s in
+        if len > 0 && s.[len - 1] <> '\n' then
+          s ^ "\n"
+        else
+          s
     in
-    Temp.destroy job.output_filename;
     Log.command job.log
       ~command_line:job.command_line
       ~output:output
@@ -400,6 +415,24 @@ module Scheduler = struct
       wait_for_unfinished_jobs ();
       exec_at_exit_handlers ())
 
+  let get_std_output ~default = function
+    | Terminal -> (default, None)
+    | File fn ->
+      let fd = Unix.openfile fn [O_WRONLY; O_CREAT; O_TRUNC] 0o666 in
+      (fd, Some (Fd fd))
+    | Opened_file { desc; tail; _ } ->
+      let fd =
+        match desc with
+        | Fd      fd -> fd
+        | Channel oc -> flush oc; Unix.descr_of_out_channel oc
+      in
+      (fd, Option.some_if tail desc)
+
+  let close_std_output = function
+    | None -> ()
+    | Some (Fd      fd) -> Unix.close fd
+    | Some (Channel oc) -> close_out  oc
+
   let rec go_rec cwd log t =
     match (repr t).state with
     | Return v -> v
@@ -413,37 +446,30 @@ module Scheduler = struct
           Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
             (Ansi_color.strip_colors_for_stderr command_line);
         let argv = Array.of_list (job.prog :: job.args) in
-        let output_filename = Temp.create "jbuilder" ".output" in
-        let output_fd = Unix.openfile output_filename [O_WRONLY] 0 in
-        let stdout, close_stdout =
-          match job.stdout_to with
-          | Terminal -> (output_fd, None)
-          | File fn ->
-            let fd = Unix.openfile fn [O_WRONLY; O_CREAT; O_TRUNC] 0o666 in
-            (fd, Some (Fd fd))
-          | Opened_file { desc; tail; _ } ->
-            let fd =
-              match desc with
-              | Fd      fd -> fd
-              | Channel oc -> flush oc; Unix.descr_of_out_channel oc
-            in
-            (fd, Option.some_if tail desc)
+        let output_filename, output_fd =
+          match job.stdout_to, job.stderr_to with
+          | Terminal, _ | _, Terminal ->
+            let fn = Temp.create "jbuilder" ".output" in
+            (Some fn, Unix.openfile fn [O_WRONLY] 0)
+          | _ ->
+            (None, Unix.stdin)
         in
+        let stdout, close_stdout = get_std_output job.stdout_to ~default:output_fd in
+        let stderr, close_stderr = get_std_output job.stderr_to ~default:output_fd in
         Option.iter job.dir ~f:(fun dir -> Sys.chdir dir);
         let pid =
           match job.env with
           | None ->
             Unix.create_process job.prog argv
-              Unix.stdin stdout output_fd
+              Unix.stdin stdout stderr
           | Some env ->
             Unix.create_process_env job.prog argv env
-              Unix.stdin stdout output_fd
+              Unix.stdin stdout stderr
         in
         Option.iter job.dir ~f:(fun _ -> Sys.chdir cwd);
-        Unix.close output_fd;
-        Option.iter close_stdout ~f:(function
-          | Fd      fd -> Unix.close fd
-          | Channel oc -> close_out  oc);
+        if Option.is_some output_filename then Unix.close output_fd;
+        close_std_output close_stdout;
+        close_std_output close_stderr;
         Hashtbl.add running ~key:pid
           ~data:{ id
                 ; job

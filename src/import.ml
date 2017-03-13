@@ -319,6 +319,14 @@ module Option = struct
 
   let some_if cond x =
     if cond then Some x else None
+
+  let is_some = function
+    | None   -> false
+    | Some _ -> true
+
+  let is_none = function
+    | None   -> true
+    | Some _ -> false
 end
 
 type ('a, 'b) eq = Eq : ('a, 'a) eq

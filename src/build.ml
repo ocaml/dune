@@ -157,7 +157,7 @@ let run ?(dir=Path.root) ?stdout_to ?context ?(extra_targets=[]) prog args =
     let action =
       match stdout_to with
       | None      -> action
-      | Some path -> With_stdout_to (path, action)
+      | Some path -> Redirect (Stdout, path, action)
     in
     { Action.
       dir

@@ -83,11 +83,21 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   | Fatal_error "" -> ()
   | Fatal_error msg ->
     Format.fprintf ppf "%s\n" (String.capitalize_ascii msg)
-  | Findlib.Package_not_found pkg ->
+  | Findlib.Package_not_found { package; required_by } ->
     Format.fprintf ppf
-      "@{<error>Error@}: Findlib package %S not found.\n\
-       Hint: try 'jbuilder external-lib-deps --missing'\n"
-      pkg
+      "@{<error>Error@}: Findlib package %S not found.\n" package;
+    List.iter required_by ~f:(Format.fprintf ppf "-> required by %S\n");
+    let cmdline_suggestion =
+      (* CR-someday jdimino: this is ugly *)
+      match Array.to_list Sys.argv with
+      | prog :: "build" :: args ->
+        prog :: "external-lib-deps" :: "--missing" :: args
+      | _ ->
+        ["jbuilder"; "external-lib-deps"; "--missing"]
+    in
+    Format.fprintf ppf
+      "Hint: try: %s\n"
+      (List.map cmdline_suggestion ~f:quote_for_shell |> String.concat ~sep:" ")
   | Code_error msg ->
     let bt = Printexc.raw_backtrace_to_string backtrace in
     Format.fprintf ppf "@{<error>Internal error, please report upstream \

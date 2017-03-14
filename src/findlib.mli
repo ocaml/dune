@@ -1,6 +1,13 @@
 (** Findlib database *)
 
-exception Package_not_found of string
+module Package_not_found : sig
+  type t =
+    { package     : string
+    ; required_by : string list
+    }
+end
+
+exception Package_not_found of Package_not_found.t
 
 (** Findlib database *)
 type t

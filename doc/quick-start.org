@@ -5,6 +5,8 @@ This document gives simple usage examples of Jbuilder.
 In a directory of your choice, write this =jbuild= file:
 
 #+begin_src scheme
+(jbuild_version 1)
+
 (executables
  ((names (hello_world))))
 #+end_src
@@ -28,6 +30,8 @@ The executable will be built as =_build/default/hello_world.exe=
 In a directory of your choice, write this =jbuild= file:
 
 #+begin_src scheme
+(jbuild_version 1)
+
 (executables
  ((names (hello_world))
   (libraries (lwt.unix))))
@@ -52,6 +56,8 @@ The executable will be built as =_build/default/hello_world.exe=
 Write this jbuild:
 
 #+begin_src scheme
+(jbuild_version 1)
+
 (library
  ((name        mylib)
   (public_name mylib)
@@ -98,6 +104,8 @@ Assuming you have a file called =mystubs.c=, that you need to pass
 jbuild:
 
 #+begin_src scheme
+(jbuild_version 1)
+
 (library
  ((name            mylib)
   (public_name     mylib)
@@ -113,6 +121,8 @@ Same context as before, but using =pkg-config= to query the
 compilation and link flags. Write this jbuild:
 
 #+begin_src scheme
+(jbuild_version 1)
+
 (library
  ((name            mylib)
   (public_name     mylib)
@@ -131,6 +141,8 @@ compilation and link flags. Write this jbuild:
 Then create a =config= subdirectory and write this =jbuild=:
 
 #+begin_src scheme
+(jbuild_version 1)
+
 (executables
  ((names (discover))
   (libraries (base stdio configurator))))
@@ -168,6 +180,8 @@ let () =
 To generate a file =foo.ml= using a program from another directory:
 
 #+begin_src scheme
+(jbuild_version 1)
+
 (rule
  ((targets (foo.ml))
   (deps    (../generator/gen.exe))
@@ -179,6 +193,8 @@ To generate a file =foo.ml= using a program from another directory:
 Write this in your =jbuild= file:
 
 #+begin_src scheme
+(jbuild_version 1)
+
 (alias
  ((name    runtest)
   (deps    (my-test-program.exe))

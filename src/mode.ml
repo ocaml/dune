@@ -75,4 +75,56 @@ module Dict = struct
       if t.byte   then f Byte;
       if t.native then f Native
   end
+
+  module Binary_Kind_Set = struct
+    type binary_kind =
+      | Executable
+      | Object
+      | Shared_object
+
+    let binary_kind =
+      let open Sexp.Of_sexp in
+      enum
+        [ "executable"    , Executable
+        ; "object"        , Object
+        ; "shared_object" , Shared_object
+        ]
+
+    type nonrec t = binary_kind list t
+
+    let default =
+      { byte   = [Executable]
+      ; native = [Executable]
+      }
+
+    let all_binary_kind = [Executable; Object; Shared_object]
+    let all =
+      { byte   = all_binary_kind
+      ; native = all_binary_kind
+      }
+
+    let to_list t =
+      (List.map t.native ~f:(fun x -> Native,x)) @
+      (List.map t.byte ~f:(fun x -> Byte,x))
+
+    let of_list l =
+      let byte, native = List.partition_map ~f:(fun (m,x) -> if m=Byte then Inr x else Inl x) l in
+      { byte
+      ; native
+      }
+
+    let t : t Sexp.Of_sexp.t = fun sexp -> of_list (Sexp.Of_sexp.list (Sexp.Of_sexp.pair t binary_kind) sexp)
+
+    let is_empty t = t.byte = [] && t.native = []
+
+    let iter t ~f =
+      List.iter ~f (to_list t)
+
+    let best_executable_mode t =
+      if List.mem ~set:t.native Executable then Some Native
+      else if List.mem ~set:t.byte Executable then Some Byte
+      else None
+  end
+
+
 end

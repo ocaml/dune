@@ -1,0 +1,17 @@
+(alias (
+   (name all)
+   (deps (test.exe test.bc test.exe.o test.so stub))
+))
+
+(executable (
+   (name test)
+   (modes ((byte executable)(native executable)
+           (byte object)(native object)
+           (byte shared_object)(native shared_object)))
+))
+
+(rule (
+   (targets (stub))
+   (deps (stub.c test.exe.o test.so))
+   (action (run cc -o stub -I ${ocaml_where} -I . -ltest stub.c))
+))

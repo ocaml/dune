@@ -632,11 +632,12 @@ module Install_conf = struct
 end
 
 module Executables = struct
+
   type t =
     { names            : string list
     ; link_executables : bool
     ; link_flags       : string list
-    ; modes            : Mode.Dict.Set.t
+    ; modes            : Mode.Dict.Binary_Kind_Set.t
     ; buildable        : Buildable.t
     }
 
@@ -644,9 +645,10 @@ module Executables = struct
     Buildable.v1 >>= fun buildable ->
     field   "link_executables"   bool ~default:true >>= fun link_executables ->
     field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
-    map_validate (field "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all)
+    map_validate (field "modes" Mode.Dict.Binary_Kind_Set.t
+                    ~default:Mode.Dict.Binary_Kind_Set.default)
       ~f:(fun modes ->
-        if Mode.Dict.Set.is_empty modes then
+        if Mode.Dict.Binary_Kind_Set.is_empty modes then
           Error "No compilation mode defined."
         else
           Ok modes)
@@ -660,13 +662,16 @@ module Executables = struct
       }
     in
     let to_install =
-      let ext = if modes.native then ".exe" else ".bc" in
-      List.map2 names public_names
-        ~f:(fun name pub ->
-          match pub with
-          | None -> None
-          | Some pub -> Some ({ Install_conf. src = name ^ ext; dst = Some pub }))
-      |> List.filter_map ~f:(fun x -> x)
+      match Mode.Dict.Binary_Kind_Set.best_executable_mode t.modes with
+      | None -> []
+      | Some best_mode ->
+        let ext = if best_mode = Native then ".exe" else ".bc" in
+        List.map2 names public_names
+          ~f:(fun name pub ->
+            match pub with
+            | None -> None
+            | Some pub -> Some ({ Install_conf. src = name ^ ext; dst = Some pub }))
+        |> List.filter_map ~f:(fun x -> x)
     in
     match to_install with
     | [] ->

@@ -412,16 +412,27 @@ module Gen(P : Params) = struct
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  let build_exe ~js_of_ocaml ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
+  let build_exe ~js_of_ocaml ~flags ~dir ~requires ~name ~mode ~binary_kind ~modules ~dep_graph
         ~link_flags ~force_custom_bytecode =
-    let exe_ext = Mode.exe_ext mode in
     let mode, link_flags, compiler =
       match force_custom_bytecode, Context.compiler ctx mode with
       | false, Some compiler -> (mode, link_flags, compiler)
       | _                    -> (Byte, "-custom" :: link_flags, ctx.ocamlc)
     in
     let dep_graph = Ml_kind.Dict.get dep_graph Impl in
-    let exe = Path.relative dir (name ^ exe_ext) in
+    let extension=
+      match binary_kind with
+      | Mode.Dict.Binary_Kind_Set.Executable -> Mode.exe_ext mode
+      | Object -> (Mode.exe_ext mode) ^ ".o"
+      | Shared_object -> (if mode = Byte then ".bc" else "") ^ ctx.ext_dll
+    in
+    let specific_flags =
+      match binary_kind with
+      | Mode.Dict.Binary_Kind_Set.Executable -> []
+      | Object -> ["-output-complete-obj"]
+      | Shared_object ->  ["-output-complete-obj";"-runtime-variant";"_pic"]
+    in
+    let target = Path.relative dir (name ^ extension) in
     let libs_and_cm =
       Build.fanout
         (requires
@@ -440,13 +451,14 @@ module Gen(P : Params) = struct
        Build.run ~context:ctx
          (Dep compiler)
          [ Ocaml_flags.get flags mode
-         ; A "-o"; Target exe
+         ; As specific_flags
+         ; A "-o"; Target target
          ; As link_flags
          ; Dyn (fun (libs, _) -> Lib.link_flags libs ~mode)
          ; Dyn (fun (_, cm_files) -> Deps cm_files)
          ]);
-    if mode = Mode.Byte then
-      let rules = Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe in
+    if mode = Byte && binary_kind = Mode.Dict.Binary_Kind_Set.Executable then
+      let rules = Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:target in
       SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm >>> r))
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules ~scope =
@@ -492,10 +504,12 @@ module Gen(P : Params) = struct
       ~requires ~alias_module:None;
 
     List.iter exes.names ~f:(fun name ->
-      List.iter Mode.all ~f:(fun mode ->
-        build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~dir ~requires ~name
-          ~mode ~modules ~dep_graph ~link_flags:exes.link_flags
-          ~force_custom_bytecode:(mode = Native && not exes.modes.native)));
+      List.iter (Mode.Dict.Binary_Kind_Set.to_list exes.modes)
+        ~f:(fun (mode,binary_kind) ->
+          build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~dir ~requires ~name
+            ~mode ~binary_kind ~modules ~dep_graph ~link_flags:exes.link_flags
+            ~force_custom_bytecode:false (* mode = Native && not exes.modes.native *)));
+
     { Merlin.
       requires   = real_requires
     ; flags      = flags.common

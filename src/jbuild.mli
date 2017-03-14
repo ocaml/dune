@@ -171,7 +171,7 @@ module Executables : sig
     { names            : string list
     ; link_executables : bool
     ; link_flags       : string list
-    ; modes            : Mode.Dict.Set.t
+    ; modes            : Mode.Dict.Binary_Kind_Set.t
     ; buildable        : Buildable.t
     }
 end

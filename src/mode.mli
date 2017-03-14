@@ -30,6 +30,7 @@ module Dict : sig
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
   module Set : sig
+
     type nonrec t = bool t
     val t : t Sexp.Of_sexp.t
     val all : t
@@ -38,4 +39,24 @@ module Dict : sig
     val of_list : mode list -> t
     val iter : t -> f:(mode -> unit) -> unit
   end
+
+  module Binary_Kind_Set : sig
+
+    type binary_kind =
+      | Executable
+      | Object
+      | Shared_object
+
+    type nonrec t = binary_kind list t
+    val t : t Sexp.Of_sexp.t
+    val default : t
+    val all : t
+    val is_empty : t -> bool
+    val to_list : t -> (mode * binary_kind) list
+    val of_list : (mode * binary_kind) list -> t
+    val iter : t -> f:((mode * binary_kind) -> unit) -> unit
+    val best_executable_mode : t -> mode option
+  end
+
+
 end with type mode := t

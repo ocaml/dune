@@ -104,3 +104,12 @@
   (deps ((alias sleep5)
          (alias sleep4-and-fail)
          (alias sleep1-and-fail)))))
+
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in workspaces/output_obj)))
+  (action
+   (chdir workspaces/output_obj
+    (run ${exe:run.exe} --
+     ${bin:jbuilder} build -j1 --root . @all )))))

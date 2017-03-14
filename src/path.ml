@@ -307,30 +307,30 @@ let is_in_build_dir t =
   String.is_prefix t ~prefix:build_prefix
 
 let extract_build_context t =
-  if is_local t && String.is_prefix t ~prefix:build_prefix then
+  if String.is_prefix t ~prefix:build_prefix then
     let i = String.length build_prefix in
-    let j =
-      match String.index_from t i '/' with
-      | exception _ -> String.length t
-      | j -> j
-    in
-    Some
-      (String.sub t ~pos:i ~len:(j - i),
-       String.sub t ~pos:(j + 1) ~len:(String.length t - j - 1))
+    match String.index_from t i '/' with
+    | exception _ ->
+      Some
+      (String.sub t ~pos:i ~len:(String.length t - i),
+       "")
+    | j ->
+      Some
+        (String.sub t ~pos:i ~len:(j - i),
+         String.sub t ~pos:(j + 1) ~len:(String.length t - j - 1))
   else
     None
 
 let extract_build_context_dir t =
-  if is_local t && String.is_prefix t ~prefix:build_prefix then
+  if String.is_prefix t ~prefix:build_prefix then
     let i = String.length build_prefix in
-    let j =
-      match String.index_from t i '/' with
-      | exception _ -> String.length t
-      | j -> j
-    in
-    Some
-      (String.sub t ~pos:0 ~len:j,
-       String.sub t ~pos:(j + 1) ~len:(String.length t - j - 1))
+    match String.index_from t i '/' with
+    | exception _ ->
+      Some (t, "")
+    | j ->
+      Some
+        (String.sub t ~pos:0 ~len:j,
+         String.sub t ~pos:(j + 1) ~len:(String.length t - j - 1))
   else
     None
 

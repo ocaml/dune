@@ -74,3 +74,12 @@ let file_exists t path fn =
 let exists t path =
   Path.Map.mem path t.dirs ||
   file_exists t (Path.parent path) (Path.basename path)
+
+let files_recursively_in t ?(prefix_with=Path.root) path =
+  match find_dir t path with
+  | None -> Path.Set.empty
+  | Some dir ->
+    Dir.fold dir ~init:Path.Set.empty ~f:(fun dir acc ->
+      let path = Path.append prefix_with (Dir.path dir) in
+      String_set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->
+        Path.Set.add (Path.relative path fn) acc))

@@ -37,7 +37,7 @@ val path  : Path.t      -> ('a, 'a) t
 val paths : Path.t list -> ('a, 'a) t
 val path_set : Path.Set.t -> ('a, 'a) t
 val paths_glob : dir:Path.t -> Re.re -> ('a, 'a) t
-val files_recursively_in : dir:Path.t -> ('a, 'a) t
+val files_recursively_in : dir:Path.t -> file_tree:File_tree.t -> ('a, 'a) t
 val vpath : 'a Vspec.t  -> (unit, 'a) t
 
 val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t

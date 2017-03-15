@@ -21,3 +21,5 @@ val find_dir : t -> Path.t -> Dir.t option
 
 val exists : t -> Path.t -> bool
 val file_exists : t -> Path.t -> string -> bool
+
+val files_recursively_in : t -> ?prefix_with:Path.t -> Path.t -> Path.Set.t

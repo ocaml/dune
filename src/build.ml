@@ -109,21 +109,13 @@ let fail ?targets x =
   | None -> Fail x
   | Some l -> Targets l >>> Fail x
 
-let files_recursively_in ~dir =
-  let ctx_dir, src_dir =
+let files_recursively_in ~dir ~file_tree =
+  let prefix_with, dir =
     match Path.extract_build_context_dir dir with
     | None -> (Path.root, dir)
     | Some (ctx_dir, src_dir) -> (ctx_dir, src_dir)
   in
-  let rec loop dir acc =
-    List.fold_left (Path.readdir dir) ~init:acc ~f:(fun acc fn ->
-      let path = Path.relative dir fn in
-      if Path.is_directory path then
-        loop path acc
-      else
-        Pset.add (Path.append ctx_dir path) acc)
-  in
-  path_set (loop src_dir Pset.empty)
+  path_set (File_tree.files_recursively_in file_tree dir ~prefix_with)
 
 let store_vfile spec = Store_vfile spec
 

@@ -425,7 +425,7 @@ module Gen(P : Params) = struct
         end
       | Files_recursively_in s ->
         let path = Path.relative dir (expand_vars ~dir s) in
-        Build.files_recursively_in ~dir:path
+        Build.files_recursively_in ~dir:path ~file_tree:P.file_tree
 
     let dep_of_list ~dir ts =
       let rec loop acc = function

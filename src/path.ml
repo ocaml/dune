@@ -312,8 +312,8 @@ let extract_build_context t =
     match String.index_from t i '/' with
     | exception _ ->
       Some
-      (String.sub t ~pos:i ~len:(String.length t - i),
-       "")
+        (String.sub t ~pos:i ~len:(String.length t - i),
+         "")
     | j ->
       Some
         (String.sub t ~pos:i ~len:(j - i),

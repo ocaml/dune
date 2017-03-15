@@ -1341,7 +1341,7 @@ module Gen(P : Params) = struct
         (Build.return
            (String_map.values (String_map.remove m.name modules)
             |> List.map ~f:(fun (m : Module.t) ->
-              sprintf "(* @canonical %s.%s *)\n\
+              sprintf "(** @canonical %s.%s *)\n\
                        module %s = %s\n"
                 main_module_name m.name
                 m.name (Module.real_unit_name m))

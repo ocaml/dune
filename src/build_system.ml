@@ -473,12 +473,13 @@ end
 let create ~contexts ~file_tree ~rules =
   let all_source_files =
     File_tree.fold file_tree ~init:Pset.empty ~f:(fun dir acc ->
-        let path = File_tree.Dir.path dir in
-        Pset.union acc
-          (File_tree.Dir.files dir
-           |> String_set.elements
-           |> List.map ~f:(Path.relative path)
-           |> Pset.of_list))
+      let path = File_tree.Dir.path dir in
+      Cont
+        (Pset.union acc
+           (File_tree.Dir.files dir
+            |> String_set.elements
+            |> List.map ~f:(Path.relative path)
+            |> Pset.of_list)))
   in
   let all_copy_targets =
     List.fold_left contexts ~init:Pset.empty ~f:(fun acc (ctx : Context.t) ->

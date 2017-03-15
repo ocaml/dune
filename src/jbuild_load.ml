@@ -144,16 +144,18 @@ let load ~dir ~visible_packages ~closest_packages =
 
 let load () =
   let ftree = File_tree.load Path.root in
-  let packages =
-    File_tree.fold ftree ~init:[] ~f:(fun dir acc ->
+  let packages, ignored_subtrees =
+    File_tree.fold ftree ~init:([], Path.Set.empty) ~f:(fun dir (pkgs, ignored) ->
       let path = File_tree.Dir.path dir in
-      String_set.fold (File_tree.Dir.files dir) ~init:acc ~f:(fun fn acc ->
-        match Filename.split_ext fn with
-        | Some (pkg, ".opam") when pkg <> "" ->
-          let version_from_opam_file =
-            let lines = lines_of_file (Path.relative path fn |> Path.to_string) in
-            List.find_map lines ~f:(fun s ->
-              try
+      let files = File_tree.Dir.files dir in
+      let pkgs =
+        String_set.fold files ~init:pkgs ~f:(fun fn acc ->
+          match Filename.split_ext fn with
+          | Some (pkg, ".opam") when pkg <> "" ->
+            let version_from_opam_file =
+              let lines = lines_of_file (Path.relative path fn |> Path.to_string) in
+              List.find_map lines ~f:(fun s ->
+                try
                 Scanf.sscanf s "version: %S" (fun x -> Some x)
               with _ ->
                 None)
@@ -163,8 +165,23 @@ let load () =
            ; path
            ; version_from_opam_file
            }) :: acc
-        | _ -> acc))
-    |> String_map.of_alist_multi
+          | _ -> acc)
+      in
+      if String_set.mem "jbuild-ignore" files then
+        let ignore_set =
+          String_set.of_list
+            (lines_of_file (Path.to_string (Path.relative path "jbuild-ignore")))
+        in
+        Dont_recurse_in
+          (ignore_set,
+           (pkgs,
+            String_set.fold ignore_set ~init:ignored ~f:(fun fn acc ->
+              Path.Set.add (Path.relative path fn) acc)))
+      else
+        Cont (pkgs, ignored))
+  in
+  let packages =
+    String_map.of_alist_multi packages
     |> String_map.mapi ~f:(fun name pkgs ->
       match pkgs with
       | [pkg] -> pkg
@@ -201,12 +218,8 @@ let load () =
     in
     let sub_dirs =
       if String_set.mem "jbuild-ignore" files then
-        let ignore_set =
-          String_set.of_list
-            (lines_of_file (Path.to_string (Path.relative path "jbuild-ignore")))
-        in
-        String_map.filter sub_dirs ~f:(fun fn _ ->
-          not (String_set.mem fn ignore_set))
+        String_map.filter sub_dirs ~f:(fun _ dir ->
+          not (Path.Set.mem (File_tree.Dir.path dir) ignored_subtrees))
       else
         sub_dirs
     in

@@ -13,7 +13,11 @@ type t
 
 val load : Path.t -> t
 
-val fold : t -> init:'a -> f:(Dir.t -> 'a -> 'a) -> 'a
+type 'a fold_callback_result =
+  | Cont            of 'a
+  | Dont_recurse_in of String_set.t * 'a
+
+val fold : t -> init:'a -> f:(Dir.t -> 'a -> 'a fold_callback_result) -> 'a
 
 val root : t -> Dir.t
 

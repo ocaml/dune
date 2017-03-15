@@ -54,7 +54,9 @@ module Local_closure = Top_closure.Make(String)(struct
     let key ((_, lib) : t) = lib.name
     let deps ((dir, lib) : Lib.Internal.t) graph =
       List.concat_map lib.buildable.libraries ~f:(fun dep ->
-        List.filter_map (Lib_dep.to_lib_names dep) ~f:(find_internal ~from:dir graph))
+        List.filter_map (Lib_dep.to_lib_names dep) ~f:(find_internal ~from:dir graph)) @
+      List.filter_map lib.ppx_runtime_libraries ~f:(fun dep ->
+        find_internal ~from:dir graph dep)
   end)
 
 let top_sort_internals t ~internal_libraries =
@@ -84,7 +86,9 @@ let compute_instalable_internal_libs t ~internal_libraries =
   List.fold_left (top_sort_internals t ~internal_libraries) ~init:t
     ~f:(fun t (dir, lib) ->
       if not lib.Library.optional ||
-         List.for_all (Library.all_lib_deps lib) ~f:(dep_is_installable t ~from:dir) then
+         (List.for_all (Library.all_lib_deps lib) ~f:(dep_is_installable t ~from:dir) &&
+          List.for_all lib.ppx_runtime_libraries  ~f:(lib_is_installable t ~from:dir))
+      then
         { t with
           instalable_internal_libs =
             String_map.add t.instalable_internal_libs

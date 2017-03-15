@@ -1,5 +1,9 @@
 open! Import
 
+type 'a fold_callback_result =
+  | Cont            of 'a
+  | Dont_recurse_in of String_set.t * 'a
+
 module Dir = struct
   type t =
     { path     : Path.t
@@ -12,9 +16,16 @@ module Dir = struct
   let sub_dirs t = t.sub_dirs
 
   let rec fold t ~init ~f =
-    let init = f t init in
-    String_map.fold t.sub_dirs ~init ~f:(fun ~key:_ ~data:t acc ->
+    match f t init with
+    | Cont init ->
+      String_map.fold t.sub_dirs ~init ~f:(fun ~key:_ ~data:t acc ->
         fold t ~init:acc ~f)
+    | Dont_recurse_in (forbidden, init) ->
+      String_map.fold t.sub_dirs ~init ~f:(fun ~key:sub_dir ~data:t acc ->
+        if String_set.mem sub_dir forbidden then
+          acc
+        else
+          fold t ~init:acc ~f)
 end
 
 type t =
@@ -54,14 +65,13 @@ let load path =
   let root = walk path in
   let dirs =
     Dir.fold root ~init:Path.Map.empty ~f:(fun dir acc ->
-      Path.Map.add acc ~key:dir.path ~data:dir)
+      Cont (Path.Map.add acc ~key:dir.path ~data:dir))
   in
   { root
   ; dirs
   }
 
-let fold t ~init ~f =
-  Path.Map.fold t.dirs ~init ~f:(fun ~key:_ ~data:dir acc -> f dir acc)
+let fold t ~init ~f = Dir.fold t.root ~init ~f
 
 let find_dir t path =
   Path.Map.find path t.dirs
@@ -81,5 +91,6 @@ let files_recursively_in t ?(prefix_with=Path.root) path =
   | Some dir ->
     Dir.fold dir ~init:Path.Set.empty ~f:(fun dir acc ->
       let path = Path.append prefix_with (Dir.path dir) in
-      String_set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->
-        Path.Set.add (Path.relative path fn) acc))
+      Cont
+        (String_set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->
+           Path.Set.add (Path.relative path fn) acc)))

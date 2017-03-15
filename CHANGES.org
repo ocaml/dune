@@ -28,6 +28,8 @@
 
 - Fix the generated =ppx(...)= line in =META= files
 
+- Fix =(optional)= when a ppx runtime dependency is not available
+
 * 1.0+beta2 (10/03/2017)
 
 - Simplified the rules for finding the root of the workspace as the

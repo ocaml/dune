@@ -1,4 +1,4 @@
-* 1.0+beta3
+* 1.0+beta3 (15/03/2017)
 
 - Print optional dependencies as optional in the output of =jbuilder
   external-lib-deps --missing=
@@ -14,6 +14,8 @@
 
 - Improve the error reported when an installed package depends on a
   library that is not installed
+
+- Documented =(files_recursively_in ...)=
 
 - Added black box tests
 

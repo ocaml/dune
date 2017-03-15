@@ -137,8 +137,6 @@ module Package_not_found = struct
     }
 end
 
-exception Package_not_found of Package_not_found.t
-
 type present_or_absent =
   | Present of package
   | Absent  of Package_not_found.t
@@ -248,21 +246,22 @@ let rec load_meta_rec t ~fq_name ~packages ~required_by =
      Hashtbl.mem t.packages root_name then
     packages
   else
-    let rec loop dirs : Path.t * Meta.t =
+    (* Search for a <package>/META file in the findlib search path *)
+    let rec loop dirs : (Path.t * Meta.t) option =
       match dirs with
       | dir :: dirs ->
         let dir = Path.relative dir root_name in
         let fn = Path.relative dir "META" in
         if Path.exists fn then
-          (dir,
-           { name    = root_name
-           ; entries = Meta.load (Path.to_string fn)
-           })
+          Some (dir,
+                { name    = root_name
+                ; entries = Meta.load (Path.to_string fn)
+                })
         else
           loop dirs
       | [] ->
         match String_map.find root_name Meta.builtins with
-        | Some meta -> (t.stdlib_dir, meta)
+        | Some meta -> Some (t.stdlib_dir, meta)
         | None ->
           let required_by =
             if root_name = fq_name then
@@ -270,30 +269,34 @@ let rec load_meta_rec t ~fq_name ~packages ~required_by =
             else
               fq_name :: required_by
           in
-          raise (Package_not_found { package = root_name
-                                   ; required_by
-                                   })
+          Hashtbl.add t.packages ~key:root_name
+            ~data:(Absent { package = root_name
+                          ; required_by
+                          });
+          None
     in
-    let dir, meta = loop t.path in
-    let new_packages = parse_meta t ~dir ~required_by meta in
-    let packages =
-      List.fold_left new_packages ~init:packages ~f:(fun acc (pkg : Pkg_step1.t) ->
-        String_map.add acc ~key:pkg.package.name ~data:pkg)
-    in
-    let deps =
-      List.fold_left new_packages ~init:String_map.empty
-        ~f:(fun acc (pkg : Pkg_step1.t) ->
-          if pkg.exists then
-            let add_deps acc deps =
-              List.fold_left deps ~init:acc ~f:(fun acc dep ->
-                String_map.add acc ~key:dep ~data:pkg.package.name)
-            in
-            add_deps (add_deps acc pkg.requires) pkg.ppx_runtime_deps
-          else
-            acc)
-    in
-    String_map.fold deps ~init:packages ~f:(fun ~key:dep ~data:package packages ->
-      load_meta_rec t ~fq_name:dep ~packages ~required_by:(package :: required_by))
+    match loop t.path with
+    | None -> packages
+    | Some (dir, meta) ->
+      let new_packages = parse_meta t ~dir ~required_by meta in
+      let packages =
+        List.fold_left new_packages ~init:packages ~f:(fun acc (pkg : Pkg_step1.t) ->
+          String_map.add acc ~key:pkg.package.name ~data:pkg)
+      in
+      let deps =
+        List.fold_left new_packages ~init:String_map.empty
+          ~f:(fun acc (pkg : Pkg_step1.t) ->
+            if pkg.exists then
+              let add_deps acc deps =
+                List.fold_left deps ~init:acc ~f:(fun acc dep ->
+                  String_map.add acc ~key:dep ~data:pkg.package.name)
+              in
+              add_deps (add_deps acc pkg.requires) pkg.ppx_runtime_deps
+            else
+              acc)
+      in
+      String_map.fold deps ~init:packages ~f:(fun ~key:dep ~data:package packages ->
+        load_meta_rec t ~fq_name:dep ~packages ~required_by:(package :: required_by))
 
 module Local_closure =
   Top_closure.Make
@@ -379,9 +382,10 @@ let load_meta t ~fq_name ~required_by =
           in
           match unknown_deps with
           | name :: _ ->
-            raise (Package_not_found { package     = name
-                                     ; required_by = pkg.package.name :: pkg.required_by
-                                     })
+            Hashtbl.add t.packages ~key:name
+              ~data:(Absent { package     = name
+                            ; required_by = pkg.package.name :: pkg.required_by
+                            })
           | [] ->
             (* We can be in this case for ctypes.foreign for instance *)
             if !Clflags.debug_findlib then
@@ -395,29 +399,27 @@ let load_meta t ~fq_name ~required_by =
       end
     )
 
+exception Package_not_found of Package_not_found.t
+
 let find_exn t ~required_by name =
   match Hashtbl.find t.packages name with
   | Some (Present x) -> x
   | Some (Absent pnf) -> raise (Package_not_found pnf)
   | None ->
-    match load_meta t ~fq_name:name ~required_by with
-    | exception (Package_not_found pnf as e) ->
+    load_meta t ~fq_name:name ~required_by;
+    match Hashtbl.find t.packages name with
+    | Some (Present x) -> x
+    | Some (Absent pnf) ->
+      raise (Package_not_found pnf)
+    | None ->
+      let pnf =
+        { Package_not_found.
+          package     = name
+        ; required_by
+        }
+      in
       Hashtbl.add t.packages ~key:name ~data:(Absent pnf);
-      raise e
-    | () ->
-      match Hashtbl.find t.packages name with
-      | Some (Present x) -> x
-      | Some (Absent pnf) ->
-        raise (Package_not_found pnf)
-      | None ->
-        let pnf =
-          { Package_not_found.
-            package     = name
-          ; required_by
-          }
-        in
-        Hashtbl.add t.packages ~key:name ~data:(Absent pnf);
-        raise (Package_not_found pnf)
+      raise (Package_not_found pnf)
 
 let find t ~required_by name =
   match find_exn t ~required_by name with

@@ -9,21 +9,21 @@
   (deps ((files_recursively_in workspaces/redirections)))
   (action
    (chdir workspaces/redirections
-    (run ${exe:run.exe} ${bin:jbuilder} runtest --root .)))))
+    (run ${exe:run.exe} -- ${bin:jbuilder} runtest --root .)))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in workspaces/github20)))
   (action
    (chdir workspaces/github20
-    (run ${exe:run.exe} ${bin:jbuilder} build .merlin --root .)))))
+    (run ${exe:run.exe} -- ${bin:jbuilder} build .merlin --root .)))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in workspaces/github24)))
   (action
    (chdir workspaces/github24
-    (run ${exe:run.exe} ${bin:jbuilder}
+    (run ${exe:run.exe} -- ${bin:jbuilder}
      build @install --root . --debug-dependency-path)))))
 
 ;; This test define an installed "plop" with a "plop.ca-marche-pas"
@@ -39,5 +39,11 @@
   (action
    (chdir workspaces/github25/root
     (setenv OCAMLPATH ../findlib-packages
-     (run ${exe:run.exe} ${bin:jbuilder} build @install --root .))))))
+     (progn
+      (run ${exe:run.exe} -log log1 --
+       ${bin:jbuilder} build @install --root . --only hello)
+      (run ${exe:run.exe} -log log2 -inverse --
+       ${bin:jbuilder} build @install --root . --only pas-de-bol
+       )))))))
+
 

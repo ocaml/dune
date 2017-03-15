@@ -34,7 +34,7 @@ type package =
 val find     : t -> required_by:string list -> string -> package option
 val find_exn : t -> required_by:string list -> string -> package
 
-val available : t -> string -> bool
+val available : t -> required_by:string list -> string -> bool
 
 val root_package_name : string -> string
 

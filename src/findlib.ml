@@ -424,9 +424,9 @@ let find t ~required_by name =
   | exception (Package_not_found _) -> None
   | x -> Some x
 
-let available t name =
-  match find_exn t name with
-  | _ -> true
+let available t ~required_by name =
+  match find_exn t name ~required_by with
+  | (_ : package) -> true
   | exception (Package_not_found _) -> false
 
 let closure pkgs =

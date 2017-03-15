@@ -70,7 +70,7 @@ let top_sort_internals t ~internal_libraries =
 let lib_is_installable t ~from name =
   match find_internal t ~from name with
   | Some (_, lib) -> String_map.mem lib.name t.instalable_internal_libs
-  | None -> Findlib.available t.findlib name
+  | None -> Findlib.available t.findlib name ~required_by:[Utils.jbuild_name_in ~dir:from]
 
 let choice_is_possible t ~from { Lib_dep. lits; _ } =
   List.for_all lits ~f:(function

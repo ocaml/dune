@@ -77,6 +77,7 @@ module type Combinators = sig
   val unit       : unit                      t
   val string     : string                    t
   val int        : int                       t
+  val float      : float                     t
   val bool       : bool                      t
   val pair       : 'a t -> 'b t -> ('a * 'b) t
   val list       : 'a t -> 'a list           t
@@ -92,6 +93,7 @@ module To_sexp = struct
   let unit () = List []
   let string s = Atom s
   let int n = Atom (string_of_int n)
+  let float f = Atom (string_of_float f)
   let bool b = Atom (string_of_bool b)
   let pair fa fb (a, b) = List [fa a; fb b]
   let list f l = List (List.map l ~f)
@@ -133,6 +135,13 @@ module Of_sexp = struct
       int_of_string s
     with _ ->
       of_sexp_error sexp "Integer expected"
+
+  let float sexp =
+    let s = string sexp in
+    try
+      float_of_string s
+    with _ ->
+      of_sexp_error sexp "Float expected"
 
   let bool sexp =
     match string sexp with

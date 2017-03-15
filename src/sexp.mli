@@ -29,6 +29,7 @@ module type Combinators = sig
   val unit       : unit                      t
   val string     : string                    t
   val int        : int                       t
+  val float      : float                     t
   val bool       : bool                      t
   val pair       : 'a t -> 'b t -> ('a * 'b) t
   val list       : 'a t -> 'a list           t

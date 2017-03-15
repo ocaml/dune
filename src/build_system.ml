@@ -63,24 +63,48 @@ type t =
   ; timestamps : (Path.t, float) Hashtbl.t
   }
 
-let timestamp t fn ~default =
+let timestamp t fn =
   match Hashtbl.find t.timestamps fn with
-  | Some ts -> ts
+  | Some _ as x -> x
   | None ->
     match Unix.lstat (Path.to_string fn) with
-    | exception _ -> default
+    | exception _ -> None
     | stat        ->
       let ts = stat.st_mtime in
       Hashtbl.add t.timestamps ~key:fn ~data:ts;
-      ts
+      Some ts
 
-let min_timestamp t fns =
-  List.fold_left fns ~init:max_float
-    ~f:(fun acc fn -> min acc (timestamp t fn ~default:0.))
+type limit_timestamp =
+  { missing_files : bool
+  ; limit         : float option
+  }
 
-let max_timestamp t fns =
-  List.fold_left fns ~init:0.
-    ~f:(fun acc fn -> max acc (timestamp t fn ~default:max_float))
+let sexp_of_limit_timestamp lt =
+  Sexp.To_sexp.(record
+                  [ "missing_files" , bool lt.missing_files
+                  ; "limit"         , option float lt.limit
+                  ])
+
+let merge_timestamp t fns ~merge =
+  let init =
+    { missing_files = false
+    ; limit         = None
+    }
+  in
+  List.fold_left fns ~init
+    ~f:(fun acc fn ->
+      match timestamp t fn with
+      | None    -> { acc with missing_files = true }
+      | Some ts ->
+        { acc with
+          limit =
+            match acc.limit with
+            | None -> Some ts
+            | Some ts' -> Some (merge ts ts')
+        })
+
+let min_timestamp t fns = merge_timestamp t fns ~merge:min
+let max_timestamp t fns = merge_timestamp t fns ~merge:max
 
 let find_file_exn t file =
   Hashtbl.find_exn t.files file ~string_of_key:(fun fn -> sprintf "%S" (Path.to_string fn))
@@ -334,8 +358,31 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
           Hashtbl.replace t.trace ~key:fn ~data:hash;
           acc || prev_hash <> hash)
     in
+    let targets_min_ts = min_timestamp t targets_as_list  in
+    let deps_max_ts    = max_timestamp t all_deps_as_list in
     if rule_changed ||
-       min_timestamp t targets_as_list < max_timestamp t all_deps_as_list then (
+       match deps_max_ts, targets_min_ts with
+       | _, { missing_files = true; _ } ->
+         (* Missing targets -> rebuild *)
+         true
+       | _, { missing_files = false; limit = None } ->
+         (* CR-someday jdimino: no target, this should be a user error *)
+         true
+       | { missing_files = true; _ }, _ ->
+         Sexp.code_error
+           "Dependencies missing after waiting for them"
+           [ "all_deps", Sexp.To_sexp.list Path.sexp_of_t all_deps_as_list ]
+       | { limit = None; missing_files = false },
+         { missing_files = false; _ } ->
+         (* No dependencies, no need to do anything if the rule hasn't changed and targets
+            are here. *)
+         false
+       | { limit = Some deps_max; missing_files = false },
+         { limit = Some targets_min; missing_files = false } ->
+         targets_min < deps_max
+    then (
+      if !Clflags.debug_actions then
+        Format.eprintf "@{<debug>Action@}: -> running action@.";
       (* Do not remove files that are just updated, otherwise this would break incremental
          compilation *)
       let targets_to_remove =
@@ -347,8 +394,19 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       (* All went well, these targets are no longer pending *)
       pending_targets := Pset.diff !pending_targets targets_to_remove;
       refresh_targets_timestamps_after_rule_execution t targets_as_list
-    ) else
+    ) else (
+      if !Clflags.debug_actions then
+        Format.eprintf
+          "@{<debug>Action@}: -> not running action as targets are up-to-date@\n\
+           @{<debug>Action@}: -> @[%a@]@."
+          Sexp.pp
+          (Sexp.To_sexp.(record
+                           [ "rule_changed"   , bool rule_changed
+                           ; "targets_min_ts" , sexp_of_limit_timestamp targets_min_ts
+                           ; "deps_max_ts"    , sexp_of_limit_timestamp deps_max_ts
+                           ]));
       return ()
+    )
   ) in
   let rule =
     { Rule.

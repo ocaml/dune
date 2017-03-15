@@ -807,6 +807,8 @@ following syntax:
   for instance: =(alias src/runtest)=
 - =(glob_files <glob>)=: depend on all files matched by =<glob>=, see
   the [[Glob][glob section]] for details
+- =(files_recursively_in <dir>)=: depend on all files in the sub-tree
+  with root =<dir>=
 
 In all these cases, the argument supports [[Variables expansion][variables expansion]].
 

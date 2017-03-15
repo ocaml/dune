@@ -17,3 +17,10 @@
   (action
    (chdir workspaces/github20
     (run ${exe:run.exe} ${bin:jbuilder} build .merlin --root .)))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in workspaces/github24)))
+  (action
+   (chdir workspaces/github24
+    (run ${exe:run.exe} ${bin:jbuilder} build @install --root .)))))

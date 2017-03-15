@@ -9,22 +9,22 @@
   (deps ((files_recursively_in workspaces/redirections)))
   (action
    (chdir workspaces/redirections
-    (run ${exe:run.exe} -- ${bin:jbuilder} runtest --root .)))))
+    (run ${exe:run.exe} -- ${bin:jbuilder} runtest -j1 --root .)))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in workspaces/github20)))
   (action
    (chdir workspaces/github20
-    (run ${exe:run.exe} -- ${bin:jbuilder} build .merlin --root .)))))
+    (run ${exe:run.exe} -- ${bin:jbuilder} build -j1 .merlin --root .)))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in workspaces/github24)))
   (action
    (chdir workspaces/github24
-    (run ${exe:run.exe} -- ${bin:jbuilder}
-     build @install --root . --debug-dependency-path)))))
+    (run ${exe:run.exe} --
+     ${bin:jbuilder} build -j1 @install --root . --debug-dependency-path)))))
 
 ;; This test define an installed "plop" with a "plop.ca-marche-pas"
 ;; sub-package which depend on a library that doesn't exist.
@@ -41,9 +41,9 @@
     (setenv OCAMLPATH ../findlib-packages
      (progn
       (run ${exe:run.exe} -log log1 --
-       ${bin:jbuilder} build @install --root . --only hello)
+       ${bin:jbuilder} build -j1 @install --root . --only hello)
       (run ${exe:run.exe} -log log2 -inverse --
-       ${bin:jbuilder} build @install --root . --only pas-de-bol
+       ${bin:jbuilder} build -j1 @install --root . --only pas-de-bol
        )))))))
 
 

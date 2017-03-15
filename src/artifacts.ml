@@ -87,7 +87,8 @@ let file_of_lib ?(use_provides=false) t ~from ~lib ~file =
       | None ->
         Error
           { fail = fun () ->
-              die
-                "Library %s not found in the tree or in the installed world"
-                lib
+              ignore (Findlib.find_exn t.context.findlib lib
+                        ~required_by:[Utils.jbuild_name_in ~dir:from]
+                      : Findlib.package);
+              assert false
           }

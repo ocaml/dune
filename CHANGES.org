@@ -21,7 +21,7 @@
   =<package>.opam= file
 
 - Fixed a bug where =.merlin= files where not generated at the root of
-  the workspace
+  the workspace (#20)
 
 - Fix a bug where a =(glob_files ...)= would cause other dependencies
   to be ignored
@@ -29,6 +29,10 @@
 - Fix the generated =ppx(...)= line in =META= files
 
 - Fix =(optional)= when a ppx runtime dependency is not available
+  (#24)
+
+- Do not crash when an installed package that we don't need has
+  missing dependencies (#25)
 
 * 1.0+beta2 (10/03/2017)
 

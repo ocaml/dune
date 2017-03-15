@@ -242,7 +242,8 @@ let root_package_name s =
   | None -> s
   | Some i -> String.sub s ~pos:0 ~len:i
 
-let rec load_meta_rec t root_name ~packages ~required_by =
+let rec load_meta_rec t ~fq_name ~packages ~required_by =
+  let root_name = root_package_name fq_name in
   if String_map.mem root_name packages ||
      Hashtbl.mem t.packages root_name then
     packages
@@ -263,6 +264,12 @@ let rec load_meta_rec t root_name ~packages ~required_by =
         match String_map.find root_name Meta.builtins with
         | Some meta -> (t.stdlib_dir, meta)
         | None ->
+          let required_by =
+            if root_name = fq_name then
+              required_by
+            else
+              fq_name :: required_by
+          in
           raise (Package_not_found { package = root_name
                                    ; required_by
                                    })
@@ -277,17 +284,16 @@ let rec load_meta_rec t root_name ~packages ~required_by =
       List.fold_left new_packages ~init:String_map.empty
         ~f:(fun acc (pkg : Pkg_step1.t) ->
           if pkg.exists then
-            let add_roots acc deps =
+            let add_deps acc deps =
               List.fold_left deps ~init:acc ~f:(fun acc dep ->
-                String_map.add acc ~key:(root_package_name dep)
-                  ~data:pkg.package.name)
+                String_map.add acc ~key:dep ~data:pkg.package.name)
             in
-            add_roots (add_roots acc pkg.requires) pkg.ppx_runtime_deps
+            add_deps (add_deps acc pkg.requires) pkg.ppx_runtime_deps
           else
             acc)
     in
     String_map.fold deps ~init:packages ~f:(fun ~key:dep ~data:package packages ->
-      load_meta_rec t dep ~packages ~required_by:(package :: required_by))
+      load_meta_rec t ~fq_name:dep ~packages ~required_by:(package :: required_by))
 
 module Local_closure =
   Top_closure.Make
@@ -316,8 +322,8 @@ let remove_dups_preserve_order pkgs =
   loop String_set.empty pkgs []
 ;;
 
-let load_meta t root_name ~required_by =
-  let packages = load_meta_rec t root_name ~packages:String_map.empty ~required_by in
+let load_meta t ~fq_name ~required_by =
+  let packages = load_meta_rec t ~fq_name ~packages:String_map.empty ~required_by in
   match Local_closure.top_closure packages (String_map.values packages) with
   | Error cycle ->
     die "dependency cycle detected between external findlib packages:\n   %s"
@@ -389,12 +395,12 @@ let load_meta t root_name ~required_by =
       end
     )
 
-let find_exn t name =
+let find_exn t ~required_by name =
   match Hashtbl.find t.packages name with
   | Some (Present x) -> x
   | Some (Absent pnf) -> raise (Package_not_found pnf)
   | None ->
-    match load_meta t (root_package_name name) ~required_by:[] with
+    match load_meta t ~fq_name:name ~required_by with
     | exception (Package_not_found pnf as e) ->
       Hashtbl.add t.packages ~key:name ~data:(Absent pnf);
       raise e
@@ -407,14 +413,14 @@ let find_exn t name =
         let pnf =
           { Package_not_found.
             package     = name
-          ; required_by = []
+          ; required_by
           }
         in
         Hashtbl.add t.packages ~key:name ~data:(Absent pnf);
         raise (Package_not_found pnf)
 
-let find t name =
-  match find_exn t name with
+let find t ~required_by name =
+  match find_exn t ~required_by name with
   | exception (Package_not_found _) -> None
   | x -> Some x
 
@@ -449,7 +455,7 @@ let root_packages t =
 
 let all_packages t =
   List.iter (root_packages t) ~f:(fun pkg ->
-    ignore (find_exn t pkg : package));
+    ignore (find_exn t pkg ~required_by:[] : package));
   Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:_ ~data acc ->
     match data with
     | Present p -> p :: acc

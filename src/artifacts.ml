@@ -58,7 +58,7 @@ let binary t name =
               die "Program %s not found in the tree or in the PATH" name
           }
 
-let file_of_lib ?(use_provides=false) t ~lib ~file =
+let file_of_lib ?(use_provides=false) t ~from ~lib ~file =
   match String_map.find lib t.local_libs with
   | Some { package; sub_dir; _ } ->
     let lib_install_dir =
@@ -71,7 +71,9 @@ let file_of_lib ?(use_provides=false) t ~lib ~file =
     in
     Ok (Path.relative lib_install_dir file)
   | None ->
-    match Findlib.find t.context.findlib lib with
+    match
+      Findlib.find t.context.findlib lib ~required_by:[Utils.jbuild_name_in ~dir:from]
+    with
     | Some pkg ->
       Ok (Path.relative pkg.dir file)
     | None ->
@@ -85,5 +87,7 @@ let file_of_lib ?(use_provides=false) t ~lib ~file =
       | None ->
         Error
           { fail = fun () ->
-              die "Library %s not found in the tree or in the PATH" lib
+              die
+                "Library %s not found in the tree or in the installed world"
+                lib
           }

@@ -265,7 +265,7 @@ module Gen(P : Params) = struct
             "invalid ${lib:...} form: %s" name
         | Some x -> x
       in
-      (lib, file_of_lib t ~lib ~file ?use_provides)
+      (lib, file_of_lib t ~from:dir ~lib ~file ?use_provides)
 
     (* Hides [t] so that we don't resolve things statically *)
     let t = ()

@@ -32,7 +32,8 @@ let find_exn t ~from name =
   | None ->
     Hashtbl.find_or_add t.by_public_name name
       ~f:(fun name ->
-        External (Findlib.find_exn t.findlib name))
+        External (Findlib.find_exn t.findlib name
+                    ~required_by:[Utils.jbuild_name_in ~dir:from]))
 
 let find t ~from name =
   match find_exn t ~from name with

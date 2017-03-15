@@ -8,3 +8,6 @@ val system_shell : needed_to:string -> Path.t * string * fail option
 
 (** Convert a signal number to a name: INT, TERM, ... *)
 val signal_name : int -> string
+
+(** Return the path to the jbuild file in this directory as a string. *)
+val jbuild_name_in : dir:Path.t -> string

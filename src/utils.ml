@@ -57,3 +57,12 @@ let signal_name =
     match List.assoc n table with
     | exception Not_found -> sprintf "%d\n" n
     | s -> s
+
+let jbuild_name_in ~dir =
+  match Path.extract_build_context dir with
+  | None ->
+    Path.to_string (Path.relative dir "jbuild")
+  | Some (ctx_name, dir) ->
+    sprintf "%s (context %s)"
+      (Path.to_string (Path.relative dir "jbuild"))
+      ctx_name

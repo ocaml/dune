@@ -83,7 +83,8 @@ end
             ~target:generated_jbuild
         in
         let pkgs =
-          List.map requires ~f:(Findlib.find_exn context.findlib)
+          List.map requires ~f:(Findlib.find_exn context.findlib
+                                  ~required_by:[Utils.jbuild_name_in ~dir:dir])
           |> Findlib.closure
         in
         let includes =

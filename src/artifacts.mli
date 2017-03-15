@@ -11,6 +11,7 @@ val binary : t -> string -> (Path.t, fail) result
 val file_of_lib
   :  ?use_provides:bool
   -> t
+  -> from:Path.t
   -> lib:string
   -> file:string
   -> (Path.t, fail) result

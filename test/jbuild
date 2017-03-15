@@ -25,3 +25,19 @@
    (chdir workspaces/github24
     (run ${exe:run.exe} ${bin:jbuilder}
      build @install --root . --debug-dependency-path)))))
+
+;; This test define an installed "plop" with a "plop.ca-marche-pas"
+;; sub-package which depend on a library that doesn't exist.
+;;
+;; The build itself uses only "plop.ca-marche", which doesn't have this
+;; problem. So jbuilder shouldn't crash because of "plop.ca-marche-pas"
+;;
+;; We need ocamlfind to run this test
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in workspaces/github25)))
+  (action
+   (chdir workspaces/github25/root
+    (setenv OCAMLPATH ../findlib-packages
+     (run ${exe:run.exe} ${bin:jbuilder} build @install --root .))))))
+

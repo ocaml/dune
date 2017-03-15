@@ -1,0 +1,4 @@
+(library
+ ((name hello)
+  (public_name hello)
+  (libraries (plop.ca-marche))))

@@ -124,7 +124,7 @@ let report_error ?map_fname ppf exn =
     if !Clflags.debug_dep_path then
       Format.fprintf ppf "Dependency path:\n    %s\n"
         (String.concat ~sep:"\n--> "
-           (List.map (E.dependency_path err) ~f:Path.to_string))
+           (List.map (E.dependency_path err) ~f:Utils.describe_target))
   | exn ->
     let backtrace = Printexc.get_raw_backtrace () in
     report_error ?map_fname ppf exn ~backtrace

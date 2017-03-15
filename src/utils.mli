@@ -11,3 +11,6 @@ val signal_name : int -> string
 
 (** Return the path to the jbuild file in this directory as a string. *)
 val jbuild_name_in : dir:Path.t -> string
+
+(** Nice description of a target *)
+val describe_target : Path.t -> string

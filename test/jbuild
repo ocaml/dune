@@ -23,4 +23,5 @@
   (deps ((files_recursively_in workspaces/github24)))
   (action
    (chdir workspaces/github24
-    (run ${exe:run.exe} ${bin:jbuilder} build @install --root .)))))
+    (run ${exe:run.exe} ${bin:jbuilder}
+     build @install --root . --debug-dependency-path)))))

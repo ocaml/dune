@@ -66,3 +66,10 @@ let jbuild_name_in ~dir =
     sprintf "%s (context %s)"
       (Path.to_string (Path.relative dir "jbuild"))
       ctx_name
+
+let describe_target fn =
+  match Path.extract_build_context fn with
+  | Some (".aliases", dir) ->
+    sprintf "alias %s" (Path.to_string dir)
+  | _ ->
+    Path.to_string fn

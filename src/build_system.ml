@@ -142,18 +142,11 @@ module Build_error = struct
     raise (E { backtrace; dep_path; exn })
 end
 
-let describe_target fn =
-  match Path.extract_build_context fn with
-  | Some (".aliases", dir) ->
-    sprintf "alias %s" (Path.to_string dir)
-  | _ ->
-    Path.to_string fn
-
 let wait_for_file t fn ~targeting =
   match Hashtbl.find t.files fn with
   | None ->
     if Path.is_in_build_dir fn then
-      die "no rule found for %s" (describe_target fn)
+      die "no rule found for %s" (Utils.describe_target fn)
     else if Path.exists fn then
       return ()
     else

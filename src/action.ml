@@ -133,7 +133,7 @@ module Mini_shexp = struct
         List [Atom "copy-and-add-line-directive"; g x; g y]
       | System x -> List [Atom "system"; f x]
       | Bash   x -> List [Atom "bash"; f x]
-      | Update_file (x, y) -> List [Atom "write-file"; g x; f y]
+      | Update_file (x, y) -> List [Atom "update-file"; g x; f y]
 
     let rec fold t ~init:acc ~f =
       match t with

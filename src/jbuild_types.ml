@@ -766,19 +766,32 @@ module Stanzas = struct
              (Path.to_string (Path.relative pkg.path (pkg.name ^ ".opam")))))
     in
     let check pkg =
-      if not (String_map.mem pkg visible_packages) then
-        error "package %S is not visible here.\n\
-               The only packages I know of in %S are:\n\
-               %s%s"
-          pkg
-          (Path.to_string dir)
-          (package_listing (String_map.values visible_packages))
-          (hint pkg (String_map.keys visible_packages))
+      if not (String_map.mem pkg visible_packages) then (
+        if String_map.is_empty visible_packages then
+          error "package %S is not visible here.\n\
+                 In fact I know of no packages here, \
+                 in order for me to know that package\n\
+                 %S exist, you need to add a %S file at the root of your project."
+            pkg pkg (pkg ^ ".opam")
+        else
+          error "package %S is not visible here.\n\
+                 The only packages I know of in %S are:\n\
+                 %s%s"
+            pkg
+            (Path.to_string dir)
+            (package_listing (String_map.values visible_packages))
+            (hint pkg (String_map.keys visible_packages))
+      )
     in
     let default () =
       match closest_packages with
       | [pkg] -> pkg
-      | [] -> error "no packages are defined here"
+      | [] ->
+        error "no packages are defined here.\n\
+               What do you want me to do with this (install ...) stanzas?.\n\
+               You need to add a <package>.opam file at the root \
+               of your project so that\n\
+               I know that you want to install things as part of pacakge <package>."
       | _ :: _ :: _ ->
         error "I can't determine automatically which package your (install ...) \
                stanzas are for in this directory. I have the choice between these ones:\n\

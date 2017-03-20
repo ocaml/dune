@@ -1,4 +1,4 @@
-* 1.0+beta4
+* 1.0+beta4 (20/03/2017)
 
 - Improve error messages about invalid/missing pkg.opam files
 

@@ -1,3 +1,9 @@
+* 1.0+beta4
+
+- Improve error messages about invalid/missing pkg.opam files
+
+- Ignore all errors while running =ocamlfind printconf path=
+
 * 1.0+beta3 (15/03/2017)
 
 - Print optional dependencies as optional in the output of =jbuilder

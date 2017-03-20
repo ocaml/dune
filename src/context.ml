@@ -202,7 +202,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin =
         | None ->
           return []
         | Some fn ->
-          Future.run_capture_lines ~env (Accept [127])
+          Future.run_capture_lines ~env (Accept All)
             (Path.to_string fn) ["printconf"; "path"]
           >>| function
           | Ok lines -> List.map lines ~f:Path.absolute

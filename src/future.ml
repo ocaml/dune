@@ -134,13 +134,23 @@ let rec all_unit = function
     x >>= fun () ->
     all_unit l
 
+type accepted_codes =
+  | These of int list
+  | All
+
+let code_is_ok accepted_codes n =
+  match accepted_codes with
+  | These set -> List.mem n ~set
+  | All -> true
+
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
-  | Accept : int list -> ('a, ('a, int) result) failure_mode
+  | Accept : accepted_codes -> ('a, ('a, int) result) failure_mode
 
-let accepted_codes : type a b. (a, b) failure_mode -> int list = function
-  | Strict -> [0]
-  | Accept codes -> 0 :: codes
+let accepted_codes : type a b. (a, b) failure_mode -> accepted_codes = function
+  | Strict -> These [0]
+  | Accept (These codes) -> These (0 :: codes)
+  | Accept All -> All
 
 let map_result
   : type a b. (a, b) failure_mode -> int t -> f:(unit -> a) -> b t
@@ -175,7 +185,7 @@ type job =
   ; stderr_to : std_output_to
   ; env       : string array option
   ; ivar      : int Ivar.t
-  ; ok_codes  : int list
+  ; ok_codes  : accepted_codes
   }
 
 let to_run : job Queue.t = Queue.create ()
@@ -341,7 +351,7 @@ module Scheduler = struct
       ~exit_status:status;
     if not exiting then begin
       match status with
-      | WEXITED n when List.mem n ~set:job.job.ok_codes ->
+      | WEXITED n when code_is_ok job.job.ok_codes n ->
         if output <> "" then
           Format.eprintf "@{<kwd>Output@}[@{<id>%d@}]:\n%s%!" job.id output;
         if n <> 0 then

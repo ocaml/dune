@@ -2,5 +2,5 @@
 (context ((switch 4.02.3)))
 (context ((switch 4.03.0)))
 (context ((switch 4.04.0)))
-(context ((switch 4.05.0+beta2)))
+(context ((switch 4.05.0+beta3)))
 (context ((switch 4.06.0+trunk)))

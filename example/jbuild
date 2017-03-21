@@ -1,0 +1,27 @@
+(* -*- tuareg -*- *)
+
+module J = Jbuild_plugin.V1
+
+let example_dir = "sample-projects"
+
+let buf = Buffer.create 1024
+let () = Buffer.add_string buf "(jbuild_version 1)\n"
+
+let gen_example example =
+  let dir = Printf.sprintf "%s/%s" example_dir example in
+  Printf.bprintf buf {|
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in %s)))
+  (action
+   (chdir %s
+    (run ${exe:../test/run.exe} -- ${bin:jbuilder} build -j1 --root . @install)))))
+|}
+    dir dir
+
+let () =
+  Array.iter gen_example (Sys.readdir "sample-projects")
+
+let () = J.send (Buffer.contents buf)
+
+

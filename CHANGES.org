@@ -6,6 +6,8 @@
 - Better error message when a jbuild file in OCaml syntax forgets to
   call =Jbuild_plugin.V*.send=
 
+- Added examples of use
+
 * 1.0+beta4 (20/03/2017)
 
 - Improve error messages about invalid/missing pkg.opam files

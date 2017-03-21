@@ -118,6 +118,10 @@ end
           (Path.to_string context.ocaml)
           args
         >>= fun () ->
+        if not (Path.exists generated_jbuild) then
+          die "@{<error>Error:@} %s failed to produce a valid jbuild file.\n\
+               Did you forgot to call [Jbuild_plugin.V*.send]?"
+            (Path.to_string file);
         let sexps = Sexp_load.many (Path.to_string generated_jbuild) in
         return (dir, Stanzas.parse sexps ~dir ~visible_packages ~closest_packages))
     |> Future.all

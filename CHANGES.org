@@ -1,3 +1,11 @@
+* 1.0+beta5
+
+- When =ocamlfind= is present in the =PATH=, do not attempt to call
+  =opam config var lib=
+
+- Better error message when a jbuild file in OCaml syntax forgets to
+  call =Jbuild_plugin.V*.send=
+
 * 1.0+beta4 (20/03/2017)
 
 - Improve error messages about invalid/missing pkg.opam files

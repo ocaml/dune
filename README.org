@@ -14,6 +14,8 @@ that it is highly tested and productive.
 Jbuilder comes with a [[./doc/manual.org][manual]]. If you want to get started without
 reading too much, you can look at the [[./doc/quick-start.org][quick start guide]].
 
+The [[example]] directory contains examples of projects using jbuilder.
+
 [[https://travis-ci.org/janestreet/jbuilder][https://travis-ci.org/janestreet/jbuilder.png?branch=master]]
 
 ** Overview
@@ -86,6 +88,23 @@ been done, it will be released in 1.0.
 
 See [[ROADMAP.org]] for the current plan. Help on any of these points is
 welcome!
+
+** FAQ
+
+*** Why do many Jbuilder projects contain a Makefile?
+
+Many Jbuilder project contain a toplevel =Makefile=. It is often only
+there only for convenience, for the following reasons:
+
+1. there are many different build systems out there, all with a
+   different CLI. If you have been hacking for a long time, the one
+   true invokation you know is =make && make install=, possibly
+   preceded by =./configure=
+
+2. you often have a few common operations that are not part of the
+   build and =make <blah>= is a good way to provide them
+
+3. =make= is shorter to type than =jbuilder build @install=
 
 ** Implementation details
 

@@ -192,31 +192,26 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin =
     Path.of_string (sprintf "_build/%s" name)
   in
   let ocamlc_config_cmd = sprintf "%s -config" (Path.to_string ocamlc) in
+  let findlib_path =
+    (* If ocamlfind is present, it has precedence over everything else. *)
+    match which "ocamlfind" with
+    | Some fn ->
+      (Future.run_capture_lines ~env Strict
+         (Path.to_string fn) ["printconf"; "path"]
+       >>| List.map ~f:Path.absolute)
+    | None ->
+      (* If there no ocamlfind in the PATH, check if we have opam and assume a standard
+         opam setup *)
+      opam_config_var ~env ~cache:opam_var_cache "lib"
+      >>| function
+      | Some s -> [Path.absolute s]
+      | None ->
+        (* If neither opam neither ocamlfind are present, assume that libraries are in
+           [dir ^ "/../lib"] *)
+        [Path.relative (Path.parent dir) "lib"]
+  in
   both
-    (both
-       (opam_config_var ~env ~cache:opam_var_cache "lib"
-        >>| function
-        | None -> []
-        | Some s -> [Path.absolute s])
-       (match which "ocamlfind" with
-        | None ->
-          return []
-        | Some fn ->
-          Future.run_capture_lines ~env (Accept All)
-            (Path.to_string fn) ["printconf"; "path"]
-          >>| function
-          | Ok lines -> List.map lines ~f:Path.absolute
-          | Error _  -> [])
-     >>| fun (a, b) ->
-     match a @ b with
-     | [] -> [Path.relative (Path.parent dir) "lib"]
-     | l  ->
-       List.fold_left l ~init:[] ~f:(fun acc x ->
-         if List.mem x ~set:acc then
-           acc
-         else
-           x :: acc)
-       |> List.rev)
+    findlib_path
     (Future.run_capture_lines ~env Strict (Path.to_string ocamlc) ["-config"])
   >>= fun (findlib_path, ocamlc_config) ->
   let ocamlc_config =

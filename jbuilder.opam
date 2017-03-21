@@ -10,6 +10,12 @@ build: [
   ["ocaml" "bootstrap.ml"]
   ["./boot.exe" "-j" jobs]
 ]
+depopts: [
+  # This dependency is here just to prevent a race condition
+  # as jbuilder calls `ocamlfind printconf path`
+  # when ocamlfind is present in the PATH
+  "ocamlfind" {build}
+]
 available: [ ocaml-version >= "4.02.3" ]
 
 # CR-soon jdimino: uncomment this when opam 2 is the norm:

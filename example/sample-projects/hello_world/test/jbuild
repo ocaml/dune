@@ -1,0 +1,9 @@
+(jbuild_version 1)
+
+(rule
+ ((targets (hello_world.output))
+  (action (with-stdout-to ${@} (run ${bin:hello_world})))))
+
+(alias
+ ((name runtest)
+  (action (run diff -u ${path:hello_world.expected} ${path:hello_world.output}))))

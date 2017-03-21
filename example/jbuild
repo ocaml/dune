@@ -15,7 +15,7 @@ let gen_example example =
   (deps ((files_recursively_in %s)))
   (action
    (chdir %s
-    (run ${exe:../test/run.exe} -- ${bin:jbuilder} build -j1 --root . @install)))))
+    (run ${exe:../test/run.exe} -- ${bin:jbuilder} build -j1 --root . @install @runtest)))))
 |}
     dir dir
 

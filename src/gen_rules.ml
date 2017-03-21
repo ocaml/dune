@@ -762,12 +762,12 @@ module Gen(P : Params) = struct
            let uses_ppx_driver   = ref false in
            List.iter libs ~f:(fun lib ->
            match Lib.best_name lib with
-           | "ppx_here" | "ppx_assert" -> uses_here := true
-           | "ppx_inline_test.libname" -> uses_libname := true
-           | "ppx_expect" -> uses_inline_test := true; uses_here := true
-           | "ppx_inline_test" -> uses_inline_test := true
-           | "ppx_bench" -> uses_inline_bench := true
-           | "ppx_driver.runner" -> uses_ppx_driver := true
+           | "ppx_here.expander"       -> uses_here         := true
+           | "ppx_inline_test.libname" -> uses_libname      := true
+           | "ppx_expect"              -> uses_inline_test  := true
+           | "ppx_inline_test"         -> uses_inline_test  := true
+           | "ppx_bench"               -> uses_inline_bench := true
+           | "ppx_driver.runner"       -> uses_ppx_driver   := true
            | _ -> ());
          { uses_inline_test  = !uses_inline_test
          ; uses_inline_bench = !uses_inline_bench

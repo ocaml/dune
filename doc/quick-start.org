@@ -1,4 +1,5 @@
-This document gives simple usage examples of Jbuilder.
+This document gives simple usage examples of Jbuilder. You can also
+look at [[../example]] for complete examples of projects using Jbuilder.
 
 * Building a hello world program
 

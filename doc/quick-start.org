@@ -94,7 +94,7 @@ Write this in your jbuild:
 (rule
  ((targets (foo.ml))
   (deps    (foo.cppo.ml <other files that foo.ml includes>))
-  (rule    (run ${bin:cppo} ${<} -o ${@}))))
+  (action  (run ${bin:cppo} ${<} -o ${@}))))
 #+end_src
 
 * Defining a library with C stubs

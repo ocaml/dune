@@ -515,8 +515,7 @@ The typical use of the =alias= stanza is to define tests:
 #+begin_src scheme
 (alias
   ((name   runtest)
-   (deps   (my-test-program.exe))
-   (action "./${<} blah")))
+   (action (run ${exe:my-test-program.exe} blah))))
 #+end_src
 
 See the [[runtest][section about running tests]] for details.
@@ -1195,7 +1194,10 @@ write:
 (rule
  ((targets (META.foo))
   (deps    (META.foo.from-jbuilder))
-  (action  "{ cat ${<}; echo blah } > ${@}")))
+  (action  (with-stdout-to ${@}
+            (progn
+             (cat ${<})
+             (echo blah))))))
 #+end_src
 
 Additionally, Jbuilder provides a simpler mechanism for this scheme:

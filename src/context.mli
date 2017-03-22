@@ -126,7 +126,10 @@ val create_for_opam
   -> unit
   -> t Future.t
 
-val default : ?merlin:bool -> unit -> t Future.t
+(** If [use_findlib] is [false], don't try to guess the library search path with opam or
+    ocamlfind. This is only for building jbuilder itself, so that its build is completely
+    independent of the user setup. *)
+val default : ?merlin:bool -> ?use_findlib:bool -> unit -> t Future.t
 
 val which : t -> string -> Path.t option
 

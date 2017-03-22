@@ -15,6 +15,7 @@ let package_install_file { packages; _ } pkg =
 
 let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
       ?workspace ?(workspace_file="jbuild-workspace")
+      ?(use_findlib=true)
       ?only_packages () =
   let conf = Jbuild_load.load () in
   Option.iter only_packages ~f:(fun set ->
@@ -35,7 +36,8 @@ let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
   Future.all
     (List.map workspace.contexts ~f:(function
      | Workspace.Context.Default ->
-       Context.default ~merlin:(workspace.merlin_context = Some "default") ()
+       Context.default ~merlin:(workspace.merlin_context = Some "default")
+         ~use_findlib ()
      | Opam { name; switch; root; merlin } ->
        Context.create_for_opam ~name ~switch ?root ~merlin ()))
   >>= fun contexts ->
@@ -143,7 +145,8 @@ let bootstrap () =
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
     let log = Log.create () in
     Future.Scheduler.go ~log
-      (setup ~log ~workspace:{ merlin_context = Some "default"; contexts = [Default] } ()
+      (setup ~log ~workspace:{ merlin_context = Some "default"; contexts = [Default] }
+         ~use_findlib:false ()
        >>= fun { build_system = bs; _ } ->
        Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])
   in
@@ -152,3 +155,5 @@ let bootstrap () =
   with exn ->
     Format.eprintf "%a@?" (report_error ?map_fname:None) exn;
     exit 1
+
+let setup = setup ~use_findlib:true

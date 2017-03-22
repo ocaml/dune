@@ -160,7 +160,7 @@ let extend_env ~vars ~env =
       imported
     |> Array.of_list
 
-let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin =
+let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findlib =
   let env = extend_env ~env:base_env ~vars:env_extra in
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
@@ -193,22 +193,25 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin =
   in
   let ocamlc_config_cmd = sprintf "%s -config" (Path.to_string ocamlc) in
   let findlib_path =
-    (* If ocamlfind is present, it has precedence over everything else. *)
-    match which "ocamlfind" with
-    | Some fn ->
-      (Future.run_capture_lines ~env Strict
-         (Path.to_string fn) ["printconf"; "path"]
-       >>| List.map ~f:Path.absolute)
-    | None ->
-      (* If there no ocamlfind in the PATH, check if we have opam and assume a standard
-         opam setup *)
-      opam_config_var ~env ~cache:opam_var_cache "lib"
-      >>| function
-      | Some s -> [Path.absolute s]
+    if use_findlib then
+      (* If ocamlfind is present, it has precedence over everything else. *)
+      match which "ocamlfind" with
+      | Some fn ->
+        (Future.run_capture_lines ~env Strict
+           (Path.to_string fn) ["printconf"; "path"]
+         >>| List.map ~f:Path.absolute)
       | None ->
-        (* If neither opam neither ocamlfind are present, assume that libraries are in
-           [dir ^ "/../lib"] *)
-        [Path.relative (Path.parent dir) "lib"]
+        (* If there no ocamlfind in the PATH, check if we have opam and assume a standard
+           opam setup *)
+        opam_config_var ~env ~cache:opam_var_cache "lib"
+        >>| function
+        | Some s -> [Path.absolute s]
+        | None ->
+          (* If neither opam neither ocamlfind are present, assume that libraries are in
+             [dir ^ "/../lib"] *)
+          [Path.relative (Path.parent dir) "lib"]
+    else
+      return []
   in
   both
     findlib_path
@@ -317,7 +320,7 @@ let initial_env = lazy (
   Lazy.force Ansi_color.setup_env_for_ocaml_colors;
   Unix.environment ())
 
-let default ?(merlin=true) () =
+let default ?(merlin=true) ?(use_findlib=true) () =
   let env = Lazy.force initial_env in
   let rec find_path i =
     if i = Array.length env then
@@ -330,7 +333,7 @@ let default ?(merlin=true) () =
   in
   let path = find_path 0 in
   create ~kind:Default ~path ~base_env:env ~env_extra:String_map.empty
-    ~name:"default" ~merlin
+    ~name:"default" ~merlin ~use_findlib
 
 let create_for_opam ?root ~switch ~name ?(merlin=false) () =
   match Bin.opam with
@@ -355,7 +358,7 @@ let create_for_opam ?root ~switch ~name ?(merlin=false) () =
     in
     let env = Lazy.force initial_env in
     create ~kind:(Opam { root; switch }) ~path ~base_env:env ~env_extra:vars
-      ~name ~merlin
+      ~name ~merlin ~use_findlib:true
 
 let which t s = which ~cache:t.which_cache ~path:t.path s
 

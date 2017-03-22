@@ -1,7 +1,10 @@
-* 1.0+beta5
+* 1.0+beta5 (22/03/2017)
 
 - When =ocamlfind= is present in the =PATH=, do not attempt to call
   =opam config var lib=
+
+- Make sure the build of jbuilder itself never calls =ocamlfind= or
+  =opam=
 
 - Better error message when a jbuild file in OCaml syntax forgets to
   call =Jbuild_plugin.V*.send=

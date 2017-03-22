@@ -66,6 +66,8 @@ module Of_sexp : sig
   val field_o : string -> 'a t -> 'a option record_parser
   val field_b : string -> bool record_parser
 
+  val map_validate : 'a record_parser -> f:('a -> ('b, string) result) -> 'b record_parser
+
   val ignore_fields : string list -> unit record_parser
 
   val record : 'a record_parser -> 'a t

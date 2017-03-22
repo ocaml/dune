@@ -389,25 +389,25 @@ support for tools such as =pkg-config=, however it integrates easily
 with [[https://github.com/janestreet/configurator][configurator]] by using =(c_flags (:include ...))= and
 =(c_library_flags (:include ...))=.
 
-**** executables
+**** executable
 
-The =executables= stanza must be used to describe sets of
-executables. The format of executables stanzas is as follows:
+The =executable= stanza must be used to describe an executable. The
+format of executables stanzas is as follows:
 
 #+begin_src scheme
-(executables
-  ((names (<entry point names>))
+(executable
+  ((name <name>)
    <optional-fields>
   ))
 #+end_src
 
-=<entry point names>= is a list of module names that contain the main
-entry point of each executables. There can be additional modules in
-the current directory, you only need to list the entry point in
-=(names ...)=. For every =<name>=, Jbuilder will know how to build
-=<name>.exe= and =<name>.bc=. =<name>.exe= is a native code executable
-and =<name>.bc= is a bytecode executable which requires =ocamlrun= to
-run.
+=<entry point name>= is a module name that contain the main entry
+point of the executable. There can be additional modules in the
+current directory, you only need to specify the entry point. Given an
+=executable= stanza with =(name <name>)=, Jbuilder will know how to
+build =<name>.exe= and =<name>.bc=. =<name>.exe= is a native code
+executable and =<name>.bc= is a bytecode executable which requires
+=ocamlrun= to run.
 
 Note that in case native compilation is not available, =<name>.exe=
 will in fact be a custom byte-code executable. Custom in the sense of
@@ -417,14 +417,26 @@ can always rely on =<name>.exe= being available.
 
 =<optional-fields>= are:
 
+- =(public_name <public-name>)= specify that the executable should be
+  installed under that name. It is the same as adding the following
+  stanza to your =jbuild= file:
+  #+begin_src scheme
+  (install
+   ((section bin)
+    (files ((<name>.exe as <public-name>)))))
+  #+end_src
+
+- =(package <package>)= if there is a =(public_name ...)= field, this
+  specifies the package the executables are part of
+
 - =(libraries (<library-dependencies>))= specifies the library
   dependencies. See the [[Library dependencies][section about library dependencies]] for more
   details
 
 - =(modules <modules>)= specifies which modules in the current
-  directory Jbuilder should consider when building
-  executables. Modules not listed here will be ignored and cannot be
-  used inside executables described by the current stanza. It is
+  directory Jbuilder should consider when building this
+  executable. Modules not listed here will be ignored and cannot be
+  used inside the executable described by the current stanza. It is
   interpreted in the same way as the =(modules ...)= field of
   [[library][libraries]]
 
@@ -436,6 +448,24 @@ can always rely on =<name>.exe= being available.
 
 - =flags=, =ocamlc_flags= and =ocamlopt_flags=. See the
   [[OCaml flags][section about specifying OCaml flags]]
+
+**** executables
+
+The =executables= stanza is the same as the =executable= stanza,
+except that it is used to describe several executables sharing the
+same configuration.
+
+It shares the same fields as the =executable= stanza, except that
+instead of =(name ...)= and =(public_name ...)= you must use:
+
+- =(names (<names>))= where =<names>= is a list of entry point
+  names. As for =executable= you only need to specify the modules
+  containing the entry point of each executable
+
+- =(public_names (<names>))= describes under what name each executable
+  should be installed. The List of names must be of the same length as
+  the list in the =(names ...)= field. Moreover you can use =-= for
+  executables that shouldn't be installed
 
 **** rule
 

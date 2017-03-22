@@ -230,6 +230,30 @@ module Of_sexp = struct
      ; known = List.rev_append names state.known
      })
 
+  let map_validate parse ~f state =
+    let x, state' = parse state in
+    match f x with
+    | Ok x -> x, state'
+    | Error msg ->
+      let parsed =
+        Name_map.merge state.unparsed state'.unparsed ~f:(fun _key before after ->
+          match before, after with
+          | Some _, None -> before
+          | _ -> None)
+      in
+      let loc =
+        match
+          Name_map.values parsed
+          |> List.map ~f:(fun f -> Ast.loc f.entry)
+          |> List.sort ~cmp:(fun a b -> compare a.Loc.start.pos_cnum b.start.pos_cnum)
+        with
+        | [] -> state.loc
+        | first :: l ->
+          let last = List.fold_left l ~init:first ~f:(fun _ x -> x) in
+          { first with stop = last.stop }
+      in
+      Loc.fail loc "%s" msg
+
   let field name ?default value_of_sexp state =
     match Name_map.find name state.unparsed with
     | Some { value = Some value; _ } ->

@@ -517,6 +517,41 @@ module Library = struct
     List.map t.virtual_deps ~f:(fun s -> Lib_dep.Direct s) @ t.buildable.libraries
 end
 
+module Install_conf = struct
+  type file =
+    { src : string
+    ; dst : string option
+    }
+
+  let file sexp =
+    match sexp with
+    | Atom (_, src) -> { src; dst = None }
+    | List (_, [Atom (_, src); Atom (_, "as"); Atom (_, dst)]) ->
+      { src; dst = Some dst }
+    | _ ->
+      of_sexp_error sexp
+        "invalid format, <name> or (<name> as <install-as>) expected"
+
+  type t =
+    { section : Install.Section.t
+    ; files   : file list
+    ; package : string option
+    }
+
+  let v1 =
+    record
+      (field   "section" Install.Section.t >>= fun section ->
+       field   "files"   (list file)       >>= fun files ->
+       field_o "package" string            >>= fun package ->
+       return
+         { section
+         ; files
+         ; package
+         })
+
+  let vjs = v1
+end
+
 module Executables = struct
   type t =
     { names            : string list
@@ -525,18 +560,55 @@ module Executables = struct
     ; buildable        : Buildable.t
     }
 
-  let v1 =
+  let common_v1 names public_names =
+    Buildable.v1 >>= fun buildable ->
+    field   "link_executables"   bool ~default:true >>= fun link_executables ->
+    field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
+    field_o "package"            string >>= fun package ->
+    let t =
+      { names
+      ; link_executables
+      ; link_flags
+      ; buildable
+      }
+    in
+    let to_install =
+      List.map2 names public_names
+        ~f:(fun name pub ->
+          match pub with
+          | None -> None
+          | Some pub -> Some ({ Install_conf. src = name ^ ".exe"; dst = Some pub }))
+      |> List.filter_map ~f:(fun x -> x)
+    in
+    match to_install with
+    | [] -> return (t, None)
+    | files ->
+      return (t, Some { Install_conf. section = Bin; files; package })
+
+  let public_name sexp =
+    match string sexp with
+    | "-" -> None
+    | s   -> Some s
+
+  let v1_multi =
     record
-      (Buildable.v1 >>= fun buildable ->
-       field   "names"              (list string)      >>= fun names ->
-       field   "link_executables"   bool ~default:true >>= fun link_executables ->
-       field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
-       return
-         { names
-         ; link_executables
-         ; link_flags
-         ; buildable
-         })
+      (field "names" (list string) >>= fun names ->
+       map_validate (field_o "public_names" (list public_name)) ~f:(function
+         | None -> Ok (List.map names ~f:(fun _ -> None))
+         | Some public_names ->
+           if List.length public_names = List.length names then
+             Ok public_names
+           else
+             Error "The list of public names must be of the same \
+                    length as the list of names")
+       >>= fun public_names ->
+       common_v1 names public_names)
+
+  let v1_single =
+    record
+      (field   "name" string        >>= fun name ->
+       field_o "public_name" string >>= fun public_name ->
+       common_v1 [name] [public_name])
 
   let vjs =
     record
@@ -631,41 +703,6 @@ module Provides = struct
   let vjs = v1
 end
 
-module Install_conf = struct
-  type file =
-    { src : string
-    ; dst : string option
-    }
-
-  let file sexp =
-    match sexp with
-    | Atom (_, src) -> { src; dst = None }
-    | List (_, [Atom (_, src); Atom (_, "as"); Atom (_, dst)]) ->
-      { src; dst = Some dst }
-    | _ ->
-      of_sexp_error sexp
-        "invalid format, <name> or (<name> as <install-as>) expected"
-
-  type t =
-    { section : Install.Section.t
-    ; files   : file list
-    ; package : string option
-    }
-
-  let v1 =
-    record
-      (field   "section" Install.Section.t >>= fun section ->
-       field   "files"   (list file)       >>= fun files ->
-       field_o "package" string            >>= fun package ->
-       return
-         { section
-         ; files
-         ; package
-         })
-
-  let vjs = v1
-end
-
 module Alias_conf = struct
   type t =
     { name  : string
@@ -702,10 +739,16 @@ module Stanza = struct
 
   let rules l = List.map l ~f:(fun x -> Rule x)
 
+  let execs (exe, install) =
+    match install with
+    | None -> [Executables exe]
+    | Some i -> [Executables exe; Install i]
+
   let v1 =
     sum
       [ cstr "library"     (Library.v1 @> nil)      (fun x -> [Library     x])
-      ; cstr "executables" (Executables.v1 @> nil)  (fun x -> [Executables x])
+      ; cstr "executable"  (Executables.v1_single @> nil) execs
+      ; cstr "executables" (Executables.v1_multi  @> nil) execs
       ; cstr "rule"        (Rule.v1 @> nil)         (fun x -> [Rule        x])
       ; cstr "ocamllex"    (list string @> nil)     (fun x -> rules (Rule.ocamllex_v1 x))
       ; cstr "ocamlyacc"   (list string @> nil)     (fun x -> rules (Rule.ocamlyacc_v1 x))

@@ -284,20 +284,6 @@ module Gen(P : Params) = struct
     let run ?(dir=ctx.build_dir) ?stdout_to ?extra_targets prog args =
       Build.run ~dir ?stdout_to ~context:ctx ?extra_targets prog args
 
-    let bash ?dir ?stdout_to ?extra_targets cmd =
-      run (Dep (Path.absolute "/bin/bash")) ?dir ?stdout_to ?extra_targets
-        [ As ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd] ]
-
-    let system ?dir ?stdout_to ?extra_targets cmd ~needed_to =
-      let path, arg, fail = Utils.system_shell ~needed_to in
-      let build =
-        run (Dep path) ?dir ?stdout_to ?extra_targets
-          [ As [arg; cmd] ]
-      in
-      match fail with
-      | None -> build
-      | Some fail -> Build.fail fail >>> build
-
     let action ?dir ~targets action =
       Build.action ?dir ~context:ctx ~targets action
 

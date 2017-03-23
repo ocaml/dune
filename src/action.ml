@@ -318,8 +318,8 @@ module Mini_shexp = struct
       end
     | Bash cmd ->
       run ~dir ~env ~env_extra ~stdout_to ~stderr_to
-        (Path.absolute "/bin/bash")
-        ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
+        (Path.absolute "/usr/bin/env")
+        ["bash"; "-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
     | Update_file (fn, s) ->
       let fn = Path.to_string fn in
       if Sys.file_exists fn && read_file fn = s then

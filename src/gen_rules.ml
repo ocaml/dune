@@ -285,8 +285,8 @@ module Gen(P : Params) = struct
       Build.run ~dir ?stdout_to ~context:ctx ?extra_targets prog args
 
     let bash ?dir ?stdout_to ?extra_targets cmd =
-      run (Dep (Path.absolute "/bin/bash")) ?dir ?stdout_to ?extra_targets
-        [ As ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd] ]
+      run (Dep (Path.absolute "/usr/bin/env")) ?dir ?stdout_to ?extra_targets
+        [ As ["bash"; "-e"; "-u"; "-o"; "pipefail"; "-c"; cmd] ]
 
     let system ?dir ?stdout_to ?extra_targets cmd ~needed_to =
       let path, arg, fail = Utils.system_shell ~needed_to in

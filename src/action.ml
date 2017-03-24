@@ -307,18 +307,14 @@ module Mini_shexp = struct
           Printf.fprintf oc "# 1 %S\n" (Path.to_string fn);
           copy_channels ic oc));
       return ()
-    | System cmd -> begin
-      let path, arg, err =
-        Utils.system_shell ~needed_to:"interpret (system ...) actions"
+    | System cmd ->
+      let path, arg =
+        Utils.system_shell_exn ~needed_to:"interpret (system ...) actions"
       in
-      match err with
-      | Some err -> err.fail ()
-      | None ->
-        run ~dir ~env ~env_extra ~stdout_to ~stderr_to path [arg; cmd]
-      end
+      run ~dir ~env ~env_extra ~stdout_to ~stderr_to path [arg; cmd]
     | Bash cmd ->
       run ~dir ~env ~env_extra ~stdout_to ~stderr_to
-        (Path.absolute "/bin/bash")
+        (Utils.bash_exn ~needed_to:"interpret (bash ...) actions")
         ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
     | Update_file (fn, s) ->
       let fn = Path.to_string fn in

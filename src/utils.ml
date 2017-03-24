@@ -1,6 +1,6 @@
 open Import
 
-let system_shell =
+let system_shell_exn =
   let cmd, arg, os =
     if Sys.win32 then
       ("cmd", "/c", "on Windows")
@@ -10,14 +10,20 @@ let system_shell =
   let bin = lazy (Bin.which cmd) in
   fun ~needed_to ->
     match Lazy.force bin with
-    | Some path -> (path, arg, None)
+    | Some path -> (path, arg)
     | None ->
-      (Path.absolute ("/" ^ cmd),
-       arg,
-       Some { fail = fun () ->
-         die "I need %s to %s but I couldn't find it :(\n\
-              Who doesn't have %s%s?!"
-           cmd needed_to cmd os })
+      die "I need %s to %s but I couldn't find it :(\n\
+           Who doesn't have %s%s?!"
+        cmd needed_to cmd os
+
+let bash_exn =
+  let bin = lazy (Bin.which "bash") in
+  fun ~needed_to ->
+    match Lazy.force bin with
+    | Some path -> path
+    | None ->
+      die "I need bash to %s but I couldn't find it :("
+        needed_to
 
 let signal_name =
   let table =

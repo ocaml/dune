@@ -1,10 +1,13 @@
 (** Utilities that can't go in [Import] *)
 
-open Import
+open! Import
 
-(** Return the absolute path to the shell, the argument to pass it (-c or /c) and a
-    failure in case the shell can't be found. *)
-val system_shell : needed_to:string -> Path.t * string * fail option
+(** Return the absolute path to the shell and the argument to pass it (-c or /c). Raise in
+    case in cannot be found. *)
+val system_shell_exn : needed_to:string -> Path.t * string
+
+(** Same as [system_shell_exn] but for bash *)
+val bash_exn : needed_to:string -> Path.t
 
 (** Convert a signal number to a name: INT, TERM, ... *)
 val signal_name : int -> string

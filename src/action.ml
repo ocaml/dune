@@ -65,7 +65,7 @@ module Mini_shexp = struct
       | Outputs -> "outputs"
 
     type ('a, 'path) t =
-      | Run            of 'path * 'a list
+      | Run            of 'path * 'a list * string option
       | Chdir          of 'path * ('a, 'path) t
       | Setenv         of 'a * 'a * ('a, 'path) t
       | Redirect       of outputs * 'path * ('a, 'path) t
@@ -83,7 +83,7 @@ module Mini_shexp = struct
 
     let rec t a p sexp =
       sum
-        [ cstr_rest "run" (p @> nil) a             (fun prog args -> Run (prog, args))
+        [ cstr_rest "run" (p @> nil) a             (fun prog args -> Run (prog, args, None))
         ; cstr "chdir"    (p @> t a p @> nil)        (fun dn t -> Chdir (dn, t))
         ; cstr "setenv"   (a @> a @> t a p @> nil)   (fun k v t -> Setenv (k, v, t))
         ; cstr "with-stdout-to"  (p @> t a p @> nil) (fun fn t -> Redirect (Stdout, fn, t))
@@ -109,7 +109,7 @@ module Mini_shexp = struct
         sexp
 
     let rec sexp_of_t f g : _ -> Sexp.t = function
-      | Run (a, xs) -> List (Atom "run" :: g a :: List.map xs ~f)
+      | Run (a, xs, _) -> List (Atom "run" :: g a :: List.map xs ~f)
       | Chdir (a, r) -> List [Atom "chdir" ; g a ; sexp_of_t f g r]
       | Setenv (k, v, r) -> List [Atom "setenv" ; f k ; f v ; sexp_of_t f g r]
       | Redirect (outputs, fn, r) ->
@@ -137,7 +137,7 @@ module Mini_shexp = struct
 
     let rec fold t ~init:acc ~f =
       match t with
-      | Run (prog, args) -> List.fold_left args ~init:(f acc prog) ~f
+      | Run (prog, args, _) -> List.fold_left args ~init:(f acc prog) ~f
       | Chdir (fn, t) -> fold t ~init:(f acc fn) ~f
       | Setenv (var, value, t) -> fold t ~init:(f (f acc var) value) ~f
       | Redirect (_, fn, t) -> fold t ~init:(f acc fn) ~f
@@ -197,9 +197,10 @@ module Mini_shexp = struct
 
     let rec expand ctx dir t ~f : (string, Path.t) Ast.t =
       match t with
-      | Run (prog, args) ->
+      | Run (prog, args, descr) ->
         Run (expand_prog ctx ~dir ~f prog,
-             List.map args ~f:(fun arg -> expand_str ~dir ~f arg))
+             List.map args ~f:(fun arg -> expand_str ~dir ~f arg),
+             descr)
       | Chdir (fn, t) ->
         let fn = expand_path ~dir ~f fn in
         Chdir (fn, expand ctx fn t ~f)
@@ -231,17 +232,17 @@ module Mini_shexp = struct
     | None          -> Terminal
     | Some (fn, oc) -> Opened_file { filename = fn; tail = false; desc = Channel oc }
 
-  let run ~dir ~env ~env_extra ~stdout_to ~stderr_to prog args =
+  let run ~dir ~env ~env_extra ~stdout_to ~stderr_to ?descr prog args =
     let stdout_to = get_std_output stdout_to in
     let stderr_to = get_std_output stderr_to in
     let env = Context.extend_env ~vars:env_extra ~env in
-    Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to ~stderr_to
+    Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to ~stderr_to ?descr
       (Path.reach_for_running ~from:dir prog) args
 
   let rec exec t ~dir ~env ~env_extra ~stdout_to ~stderr_to =
     match t with
-    | Run (prog, args) ->
-      run ~dir ~env ~env_extra ~stdout_to ~stderr_to prog args
+    | Run (prog, args, descr) ->
+      run ~dir ~env ~env_extra ~stdout_to ~stderr_to ?descr prog args
     | Chdir (dir, t) ->
       exec t ~env ~env_extra ~stdout_to ~stderr_to ~dir
     | Setenv (var, value, t) ->

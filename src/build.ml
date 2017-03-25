@@ -134,7 +134,7 @@ let prog_and_args ~dir prog args =
     >>>
     arr fst))
 
-let run ?(dir=Path.root) ?stdout_to ?context ?(extra_targets=[]) prog args =
+let run ?(dir=Path.root) ?stdout_to ?context ?(extra_targets=[]) ?descr prog args =
   let extra_targets =
     match stdout_to with
     | None -> extra_targets
@@ -145,7 +145,7 @@ let run ?(dir=Path.root) ?stdout_to ?context ?(extra_targets=[]) prog args =
   >>>
   Targets targets
   >>^  (fun (prog, args) ->
-    let action : Action.Mini_shexp.t = Run (prog, args) in
+    let action : Action.Mini_shexp.t = Run (prog, args, descr) in
     let action =
       match stdout_to with
       | None      -> action

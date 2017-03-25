@@ -281,8 +281,8 @@ module Gen(P : Params) = struct
 
     [@@@warning "-32"]
 
-    let run ?(dir=ctx.build_dir) ?stdout_to ?extra_targets prog args =
-      Build.run ~dir ?stdout_to ~context:ctx ?extra_targets prog args
+    let run ?(dir=ctx.build_dir) ?stdout_to ?extra_targets ?descr prog args =
+      Build.run ~dir ?stdout_to ~context:ctx ?extra_targets ?descr prog args
 
     let action ?dir ~targets action =
       Build.action ?dir ~context:ctx ~targets action
@@ -500,7 +500,11 @@ module Gen(P : Params) = struct
       Path.relative dir (sprintf "%s.depends%s.ocamldep-output" item suffix)
     in
     add_rule
-      (Build.run (Dep ctx.ocamldep) [A "-modules"; S files] ~stdout_to:ocamldep_output);
+      (Build.run (Dep ctx.ocamldep) [A "-modules"; S files] ~stdout_to:ocamldep_output
+         ~descr:(Format.sprintf "Generate dependencies for %s of %s."
+                   (match ml_kind with Impl -> "modules" | Intf -> "interfaces")
+                   (String.concat ~sep:", " (String_map.keys modules)))
+      );
     add_rule
       (Build.lines_of ocamldep_output
        >>^ parse_deps ~dir ~modules ~alias_module
@@ -1177,6 +1181,7 @@ module Gen(P : Params) = struct
            Build.dyn_paths (Build.arr (lib_dependencies ~cm_kind)) >>>
            Build.run (Dep compiler)
              ~extra_targets
+             ~descr:(Format.sprintf "Compiling %s" m.Module.name)
              [ Ocaml_flags.get_for_cm flags ~cm_kind
              ; cmt_args
              ; Dyn Lib.include_flags

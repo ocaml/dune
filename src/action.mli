@@ -14,7 +14,7 @@ module Mini_shexp : sig
       | Outputs (** Both Stdout and Stderr *)
 
     type ('a, 'path) t =
-      | Run            of 'path * 'a list
+      | Run            of 'path * 'a list * string option
       | Chdir          of 'path * ('a, 'path) t
       | Setenv         of 'a * 'a * ('a, 'path) t
       | Redirect       of outputs * 'path * ('a, 'path) t

@@ -16,7 +16,7 @@ val debug_rules : bool ref
 val debug_actions : bool ref
 
 (** Print executed commands *)
-val debug_run : bool ref
+val debug_run : [`Quiet | `Normal | `Debug] ref
 
 (** Print dependency path in case of error *)
 val debug_dep_path : bool ref

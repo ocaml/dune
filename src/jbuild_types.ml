@@ -657,7 +657,9 @@ module Rule = struct
           Chdir
             (str "${ROOT}",
              Run (str "${bin:ocamllex}",
-                  [str "-q"; str "-o"; str "${@}"; str "${<}"]))
+                  [str "-q"; str "-o"; str "${@}"; str "${<}"],
+                  Some ("Generation of lexer " ^ name))
+            )
       })
 
   let ocamllex_vjs = ocamllex_v1
@@ -672,7 +674,9 @@ module Rule = struct
           Chdir
             (str "${ROOT}",
              Run (str "${bin:ocamlyacc}",
-                  [str "${<}"]))
+                  [str "${<}"],
+                  Some ("Generation of parser " ^ name))
+            )
       })
 
   let ocamlyacc_vjs = ocamlyacc_v1

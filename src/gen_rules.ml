@@ -1266,6 +1266,7 @@ module Gen(P : Params) = struct
            (expand_and_eval_set ~dir lib.c_library_flags ~standard:[])
          >>>
          Build.run (Dep compiler)
+           ~descr:(Format.sprintf "Build ocaml library %s" lib.name)
            ~extra_targets:(
              match mode with
              | Byte -> []
@@ -1308,6 +1309,7 @@ module Gen(P : Params) = struct
          (* We have to execute the rule in the library directory as the .o is produced in
             the current directory *)
          ~dir
+         ~descr:(Printf.sprintf "Compile c file %s." lib.name)
          (Dep ctx.ocamlc)
          [ As (g ())
          ; expand_includes ~dir lib.includes
@@ -1334,6 +1336,7 @@ module Gen(P : Params) = struct
          (* We have to execute the rule in the library directory as the .o is produced in
             the current directory *)
          ~dir
+         ~descr:(Printf.sprintf "Build c++ file %s." lib.name)
          (Dep cxx_compiler)
          [ S [A "-I"; Path ctx.stdlib_dir]
          ; expand_includes ~dir lib.includes

@@ -152,6 +152,22 @@ module Mini_shexp = struct
       | System x -> f acc x
       | Bash x -> f acc x
       | Update_file (x, y) -> f (f acc x) y
+
+    let map f t =
+      match t with
+      | Chdir (fn, t) -> Chdir(fn, f t)
+      | Setenv(var, value, t) -> Setenv(var, value, f t)
+      | Redirect(a,fn,t) -> Redirect(a,fn,f t)
+      | Ignore(a,t) -> Ignore(a, f t)
+      | Progn l -> Progn (List.map ~f l)
+      | Run _ | Echo _ | Cat _ | Create_file _ | Copy _ | Symlink _ | Copy_and_add_line_directive _
+      | System _ | Bash _ | Update_file _ -> t
+
+    let rec update_description t s =
+      match t with
+      | Run(prog, args, _) -> Run(prog,args,Some s)
+      | _ -> map (fun t -> update_description t s) t
+
   end
   open Ast
 

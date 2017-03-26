@@ -31,6 +31,9 @@ module Mini_shexp : sig
       | Update_file    of 'path * 'a
     val t : 'a Sexp.Of_sexp.t -> 'b Sexp.Of_sexp.t -> ('a, 'b) t Sexp.Of_sexp.t
     val sexp_of_t : 'a Sexp.To_sexp.t -> 'b Sexp.To_sexp.t -> ('a, 'b) t Sexp.To_sexp.t
+
+    val update_description: ('a, 'path) t -> string -> ('a, 'path) t
+    (** Change the description of all the run action *)
   end
 
   type t = (string, Path.t) Ast.t

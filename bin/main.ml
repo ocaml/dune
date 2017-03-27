@@ -269,7 +269,7 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
           let s = String.sub s ~pos:1 ~len:(String.length s - 1) in
           let path = Path.relative Path.root (prefix_target common s) in
           if Path.is_root path then
-            die "@ on the command line must be followed by a valid alias name"
+            die "@@ on the command line must be followed by a valid alias name"
           else
             let dir = Path.parent path in
             let name = Path.basename path in

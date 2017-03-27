@@ -479,7 +479,8 @@ The syntax is as follow:
 (rule
   ((targets (<filenames>))
    (deps    (<deps-conf list>))
-   (action  <action>)))
+   (action  <action>)
+   (description <string>)))
 #+end_src
 
 =<filenames>= is a list of file names. Note that currently Jbuilder
@@ -491,6 +492,9 @@ only support user rules with targets in the current directory.
 
 =<action>= is the action to run to produce the targets from the
 dependencies. See the [[User actions][actions section]] for more details.
+
+=<description>= is the description of the rule used in normal output
+=--debug-run normal=.
 
 **** ocamllex
 

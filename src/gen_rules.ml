@@ -1181,7 +1181,11 @@ module Gen(P : Params) = struct
            Build.dyn_paths (Build.arr (lib_dependencies ~cm_kind)) >>>
            Build.run (Dep compiler)
              ~extra_targets
-             ~descr:(Format.sprintf "Compiling %s" m.Module.name)
+             ~descr:(Format.sprintf "Compiling %s %s"
+                       (match cm_kind with | Cmx -> "native module"
+                                           | Cmo -> "bytecode module"
+                                           | Cmi -> "interface of")
+                       m.Module.name)
              [ Ocaml_flags.get_for_cm flags ~cm_kind
              ; cmt_args
              ; Dyn Lib.include_flags
@@ -1552,6 +1556,8 @@ module Gen(P : Params) = struct
               [String.capitalize_ascii name]))
        >>>
        Build.run
+         ~descr:(Printf.sprintf "Building %s executable in %s mode"
+                   name (Mode.to_string mode))
          (Dep compiler)
          [ Ocaml_flags.get flags mode
          ; A "-o"; Target exe

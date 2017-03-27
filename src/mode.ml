@@ -15,6 +15,8 @@ let choose byte native = function
   | Byte   -> byte
   | Native -> native
 
+let to_string = choose "byte" "native"
+
 let compiled_unit_ext = choose ".cmo" ".cmx"
 let compiled_lib_ext = choose ".cma" ".cmxa"
 

@@ -153,14 +153,8 @@ let strip_colors_for_stderr s =
 (* We redirect the output of all commands, so by default the compiler will disable
    colors. Since we support colors in the output of commands, we force it via OCAMLPARAM
    if stderr supports colors. *)
-let setup_env_for_ocaml_colors = lazy(
+let setup_env_for_opam_colors = lazy(
   if Lazy.force stderr_supports_colors then begin
-    let value =
-      match Sys.getenv "OCAMLPARAM" with
-      | exception Not_found -> "color=always,_"
-      | s -> "color=always," ^ s
-    in
-    Unix.putenv "OCAMLPARAM" value;
     match Sys.getenv "OPAMCOLOR" with
     | exception Not_found -> Unix.putenv "OPAMCOLOR" "always"
     | _ -> ()

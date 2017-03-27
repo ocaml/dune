@@ -15,6 +15,7 @@ type common =
   ; debug_dep_path : bool
   ; debug_findlib  : bool
   ; dev_mode       : bool
+  ; verbose        : bool
   ; workspace_file : string option
   ; root           : string
   ; target_prefix  : string
@@ -30,7 +31,9 @@ let set_common c =
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.dev_mode := c.dev_mode;
-  Printf.eprintf "Workspace root: %s\n" c.root;
+  Clflags.verbose := c.verbose;
+  if !Clflags.verbose then
+    Printf.eprintf "Workspace root: %s\n" c.root;
   if c.root <> Filename.current_dir_name then
     Sys.chdir c.root
 
@@ -114,6 +117,7 @@ let common =
         debug_dep_path
         debug_findlib
         dev_mode
+        verbose
         workspace_file
         root
     =
@@ -128,6 +132,7 @@ let common =
     ; debug_dep_path
     ; debug_findlib
     ; dev_mode
+    ; verbose
     ; workspace_file
     ; root
     ; target_prefix = String.concat ~sep:"" (List.map to_cwd ~f:(sprintf "%s/"))
@@ -188,6 +193,12 @@ let common =
          & info ["dev"] ~docs
              ~doc:{|Use stricter compilation flags by default.|})
   in
+  let verbose =
+    Arg.(value
+         & flag
+         & info ["verbose"] ~docs
+             ~doc:"Print detailed information about commands being run")
+  in
   let workspace_file =
     Arg.(value
          & opt (some file) None
@@ -211,6 +222,7 @@ let common =
         $ ddep_path
         $ dfindlib
         $ dev
+        $ verbose
         $ workspace_file
         $ root
        )
@@ -295,13 +307,15 @@ let resolve_targets common (setup : Main.setup) user_targets =
             | l  -> l
         )
     in
-    Printf.printf "Actual targets:\n";
-    List.iter targets ~f:(function
-      | File path ->
-        Printf.printf "- %s\n" (Path.to_string path)
-      | Alias (path, _) ->
-        Printf.printf "- alias %s\n" (Path.to_string path));
-    flush stdout;
+    if !Clflags.verbose then begin
+      Printf.printf "Actual targets:\n";
+      List.iter targets ~f:(function
+        | File path ->
+          Printf.printf "- %s\n" (Path.to_string path)
+        | Alias (path, _) ->
+          Printf.printf "- alias %s\n" (Path.to_string path));
+      flush stdout;
+    end;
     List.map targets ~f:(function
       | File path -> path
       | Alias (_, alias) -> Alias.file alias)
@@ -497,7 +511,8 @@ let install_uninstall ~what =
             get_prefix context ~from_command_line:prefix >>= fun prefix ->
             Future.all_unit
               (List.map install_files ~f:(fun path ->
-                   Future.run Strict (Path.to_string opam_installer)
+                   let purpose = Future.Build_job (install_files, context.build_dir, context.name) in
+                   Future.run ~purpose Strict (Path.to_string opam_installer)
                      [ sprintf "-%c" what.[0]
                      ; "--prefix"
                      ; Path.to_string prefix

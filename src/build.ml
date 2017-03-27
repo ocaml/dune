@@ -155,12 +155,13 @@ let run ?(dir=Path.root) ?stdout_to ?context ?(extra_targets=[]) prog args =
       dir
     ; context
     ; action
+    ; targets
     })
 
 let action ?(dir=Path.root) ?context ~targets action =
   Targets targets
   >>^ fun () ->
-  { Action. context; dir; action }
+  { Action. context; dir; action; targets  }
 
 let update_file fn s =
   action ~targets:[fn] (Update_file (fn, s))
@@ -172,6 +173,7 @@ let update_file_dyn fn =
     context = None
   ; dir     = Path.root
   ; action  = Update_file (fn, s)
+  ; targets = [fn]
   }
 
 let copy ~src ~dst =

@@ -15,8 +15,8 @@ val debug_rules : bool ref
 (** Print actions *)
 val debug_actions : bool ref
 
-(** Print executed commands *)
-val debug_run : bool ref
+(** Print executed commands verbosely *)
+val verbose : bool ref
 
 (** Print dependency path in case of error *)
 val debug_dep_path : bool ref

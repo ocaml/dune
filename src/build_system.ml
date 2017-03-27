@@ -213,6 +213,7 @@ module Build_exec = struct
           context = None
         ; dir     = Path.root
         ; action  = Update_file (fn, vfile_to_string kind fn x)
+        ; targets = [fn]
         }
       | Compose (a, b) ->
         exec a x |> exec b

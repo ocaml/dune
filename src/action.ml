@@ -231,28 +231,28 @@ module Mini_shexp = struct
     | None          -> Terminal
     | Some (fn, oc) -> Opened_file { filename = fn; tail = false; desc = Channel oc }
 
-  let run ~dir ~env ~env_extra ~stdout_to ~stderr_to prog args =
+  let run ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to prog args =
     let stdout_to = get_std_output stdout_to in
     let stderr_to = get_std_output stderr_to in
     let env = Context.extend_env ~vars:env_extra ~env in
-    Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to ~stderr_to
+    Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to ~stderr_to ~purpose
       (Path.reach_for_running ~from:dir prog) args
 
-  let rec exec t ~dir ~env ~env_extra ~stdout_to ~stderr_to =
+  let rec exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
     match t with
     | Run (prog, args) ->
-      run ~dir ~env ~env_extra ~stdout_to ~stderr_to prog args
+      run ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to prog args
     | Chdir (dir, t) ->
-      exec t ~env ~env_extra ~stdout_to ~stderr_to ~dir
+      exec t ~purpose ~env ~env_extra ~stdout_to ~stderr_to ~dir
     | Setenv (var, value, t) ->
-      exec t ~dir ~env ~stdout_to ~stderr_to
+      exec t ~purpose ~dir ~env ~stdout_to ~stderr_to
         ~env_extra:(String_map.add env_extra ~key:var ~data:value)
     | Redirect (outputs, fn, t) ->
-      redirect outputs fn t ~dir ~env ~env_extra ~stdout_to ~stderr_to
+      redirect ~purpose outputs fn t ~dir ~env ~env_extra ~stdout_to ~stderr_to
     | Ignore (outputs, t) ->
-      redirect outputs Config.dev_null t ~dir ~env ~env_extra ~stdout_to ~stderr_to
+      redirect ~purpose outputs Config.dev_null t ~dir ~env ~env_extra ~stdout_to ~stderr_to
     | Progn l ->
-      exec_list l ~dir ~env ~env_extra ~stdout_to ~stderr_to
+      exec_list l ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to
     | Echo str ->
       return
         (match stdout_to with
@@ -311,9 +311,9 @@ module Mini_shexp = struct
       let path, arg =
         Utils.system_shell_exn ~needed_to:"interpret (system ...) actions"
       in
-      run ~dir ~env ~env_extra ~stdout_to ~stderr_to path [arg; cmd]
+      run ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to path [arg; cmd]
     | Bash cmd ->
-      run ~dir ~env ~env_extra ~stdout_to ~stderr_to
+      run ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to
         (Utils.bash_exn ~needed_to:"interpret (bash ...) actions")
         ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
     | Update_file (fn, s) ->
@@ -324,7 +324,7 @@ module Mini_shexp = struct
         write_file fn s;
       return ()
 
-  and redirect outputs fn t ~dir ~env ~env_extra ~stdout_to ~stderr_to =
+  and redirect outputs fn t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
     let fn = Path.to_string fn in
     let oc = open_out_bin fn in
     let out = Some (fn, oc) in
@@ -334,27 +334,28 @@ module Mini_shexp = struct
       | Stderr -> (stdout_to, out)
       | Outputs -> (out, out)
     in
-    exec t ~dir ~env ~env_extra ~stdout_to ~stderr_to >>| fun () ->
+    exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to >>| fun () ->
     close_out oc
 
-  and exec_list l ~dir ~env ~env_extra ~stdout_to ~stderr_to =
+  and exec_list l ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
     match l with
     | [] ->
       Future.return ()
     | [t] ->
-      exec t ~dir ~env ~env_extra ~stdout_to ~stderr_to
+      exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to
     | t :: rest ->
-      exec t ~dir ~env ~env_extra ~stdout_to ~stderr_to >>= fun () ->
-      exec_list rest ~dir ~env ~env_extra ~stdout_to ~stderr_to
+      exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to >>= fun () ->
+      exec_list rest ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to
 end
 
 type t =
   { context : Context.t option
   ; dir     : Path.t
   ; action  : Mini_shexp.t
+  ; targets : Path.t list
   }
 
-let t contexts sexp =
+let t ~targets contexts sexp =
   let open Sexp.Of_sexp in
   let context sexp =
     let name = string sexp in
@@ -366,10 +367,10 @@ let t contexts sexp =
     (field_o "context" context      >>= fun context ->
      field   "dir"     Path.t       >>= fun dir ->
      field   "action"  Mini_shexp.t >>= fun action ->
-     return { context; dir; action })
+     return { context; dir; action; targets })
     sexp
 
-let sexp_of_t { context; dir; action } =
+let sexp_of_t { context; dir; action ; _} =
   let fields : Sexp.t list =
     [ List [ Atom "dir"    ; Path.sexp_of_t dir          ]
     ; List [ Atom "action" ; Mini_shexp.sexp_of_t action ]
@@ -382,18 +383,21 @@ let sexp_of_t { context; dir; action } =
   in
   Sexp.List fields
 
-let exec { action; dir; context } =
+let exec { action; dir; context; targets } =
   let env =
     match context with
     | None -> Lazy.force Context.initial_env
     | Some c -> c.env
   in
-  Mini_shexp.exec action ~dir ~env ~env_extra:String_map.empty
+  let purpose = match context with
+    | Some ctx -> Future.Build_job (targets, ctx.build_dir, ctx.name)
+    | None -> Future.Build_job (targets, Path.of_string "", "default") in
+  Mini_shexp.exec action ~purpose ~dir ~env ~env_extra:String_map.empty
     ~stdout_to:None ~stderr_to:None
 
 type for_hash = string option * Path.t * Mini_shexp.t
 
-let for_hash { context; dir; action } =
+let for_hash { context; dir; action; _ } =
   (Option.map context ~f:(fun c -> c.name),
    dir,
    action)

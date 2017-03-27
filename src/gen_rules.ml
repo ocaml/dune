@@ -766,18 +766,21 @@ module Gen(P : Params) = struct
       Build.vpath file
 
     let specific_args_for_ppx_rewriters t ~dir ~lib_name ~for_merlin =
-      Arg_spec.S
-        [ S (if t.uses_here
-             then [A "-dirname"; Path dir]
-             else [])
-        ; S (match lib_name with
-            | Some name when t.uses_libname ->
-              [ A "-inline-test-lib"; A name ]
-            | _ -> [])
-        ; S (if t.uses_ppx_driver && not for_merlin
-             then [ A "-embed-errors"; A "false" ]
-             else [])
-        ]
+      if t.uses_ppx_driver then
+        Arg_spec.S
+          [ S (if t.uses_here
+               then [A "-dirname"; Path dir]
+               else [])
+          ; S (match lib_name with
+              | Some name when t.uses_libname ->
+                [ A "-inline-test-lib"; A name ]
+              | _ -> [])
+          ; S (if not for_merlin
+               then [ A "-embed-errors"; A "false" ]
+               else [])
+          ]
+      else
+        Arg_spec.S []
   end
 
   let ppx_drivers = Hashtbl.create 32

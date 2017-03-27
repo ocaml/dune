@@ -678,6 +678,59 @@ module Rule = struct
   let ocamlyacc_vjs = ocamlyacc_v1
 end
 
+module Menhir = struct
+  type t =
+    { base : string option
+    ; flags : String_with_vars.t list
+    ; modules: string list
+    }
+
+  let v1 =
+    record
+      (field_o "base" string >>= fun base ->
+       field "flags" (list String_with_vars.t) ~default:[] >>= fun flags ->
+       field "modules" (list string) >>= fun modules ->
+       return
+         { base
+         ; flags
+         ; modules
+         }
+      )
+
+  let v1_to_rule t =
+    let str s = String_with_vars.of_string s in
+    let targets n = [n ^ ".ml"; n ^ ".mli"] in
+    match t.base with
+    | None ->
+      List.map t.modules ~f:(fun name ->
+        let src = name ^ ".mly" in
+        { Rule.
+          targets = targets name
+        ; deps    = [Dep_conf.File (str src)]
+        ; action  =
+            Chdir
+              (str "${ROOT}",
+               Run (str "${bin:menhir}",
+                    t.flags @ [str "${<}"]))
+        })
+    | Some base ->
+      let mly m = str (m ^ ".mly") in
+      [{ Rule.
+         targets = targets base
+       ; deps    = List.map ~f:(fun m -> Dep_conf.File (mly m)) t.modules
+       ; action  =
+           Chdir
+             (str "${ROOT}",
+              Run (str "${bin:menhir}",
+                   [ str "--base"
+                   ; str base
+                   ]
+                   @ t.flags
+                   @ (List.map ~f:mly t.modules))
+             )
+       }]
+end
+
 module Provides = struct
   type t =
     { name : string
@@ -752,6 +805,7 @@ module Stanza = struct
       ; cstr "rule"        (Rule.v1 @> nil)         (fun x -> [Rule        x])
       ; cstr "ocamllex"    (list string @> nil)     (fun x -> rules (Rule.ocamllex_v1 x))
       ; cstr "ocamlyacc"   (list string @> nil)     (fun x -> rules (Rule.ocamlyacc_v1 x))
+      ; cstr "menhir"      (Menhir.v1 @> nil)       (fun x -> rules (Menhir.v1_to_rule x))
       ; cstr "install"     (Install_conf.v1 @> nil) (fun x -> [Install     x])
       ; cstr "alias"       (Alias_conf.v1 @> nil)   (fun x -> [Alias       x])
       (* Just for validation and error messages *)

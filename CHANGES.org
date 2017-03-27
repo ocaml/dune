@@ -6,6 +6,10 @@
   (<names))= to =executable/executables= stanzas to make it easier to
   install executables (#33)
 
+- Fix a bug when using specific rewriters that jbuilder knows about
+  without =ppx_driver.runner= (#37). These problem should go away soon
+  when we start using =--cookie=
+
 * 1.0+beta5 (22/03/2017)
 
 - When =ocamlfind= is present in the =PATH=, do not attempt to call

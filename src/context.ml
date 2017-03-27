@@ -251,6 +251,23 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
   let get_path var = Path.absolute (get var) in
   let stdlib_dir = get_path "standard_library" in
   let natdynlink_supported = Path.exists (Path.relative stdlib_dir "dynlink.cmxa") in
+  let version = get "version" in
+  let env,env_extra =
+    (* We redirect the output of all commands, so by default the compiler will disable
+       colors. Since we support colors in the output of commands, we force it via OCAMLPARAM
+       if stderr supports colors. *)
+    let ocaml_version = Scanf.sscanf version "%u.%u.%u" (fun a b c -> a, b, c) in
+    if Lazy.force Ansi_color.stderr_supports_colors && ocaml_version > (4, 02, 3) then
+      let value =
+        match get_env env "OCAMLPARAM" with
+        | None -> "color=always,_"
+        | Some s -> "color=always," ^ s
+      in
+      extend_env ~env ~vars:((String_map.singleton "OCAMLPARAM" value)),
+      (String_map.add ~key:"OCAMLPARAM" ~data:value env_extra)
+    else
+      env,env_extra
+  in
   return
     { name
     ; kind
@@ -280,7 +297,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
 
     ; stdlib_dir
     ; ocamlc_config = String_map.bindings ocamlc_config
-    ; version                 = get       "version"
+    ; version
     ; ccomp_type              = get       "ccomp_type"
     ; bytecomp_c_compiler     = get       "bytecomp_c_compiler"
     ; bytecomp_c_libraries    = get       "bytecomp_c_libraries"
@@ -317,7 +334,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
 let opam_config_var t var = opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
 let initial_env = lazy (
-  Lazy.force Ansi_color.setup_env_for_ocaml_colors;
+  Lazy.force Ansi_color.setup_env_for_opam_colors;
   Unix.environment ())
 
 let default ?(merlin=true) ?(use_findlib=true) () =

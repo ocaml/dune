@@ -502,7 +502,7 @@ module Scheduler = struct
       go_rec cwd log t
 
   let go ?(log=Log.no_log) t =
-    Lazy.force Ansi_color.setup_env_for_ocaml_colors;
+    Lazy.force Ansi_color.setup_env_for_opam_colors;
     let cwd = Sys.getcwd () in
     go_rec cwd log t
 end

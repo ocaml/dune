@@ -23,14 +23,18 @@ let jbuild =
 (rule
  ((targets (jbuilder.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} --help=groff)))))
+            (run ${bin:jbuilder} --help=groff)))
+  (description ("Generating man pages for jbuilder main command"))
+))
 |} :: List.map commands ~f:(fun cmd ->
         Printf.sprintf {|
 (rule
  ((targets (jbuilder-%s.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} %s --help=groff)))))
-|} cmd cmd)
+            (run ${bin:jbuilder} %s --help=groff)))
+  (description ("Generating man pages for jbuilder sub-command %s"))
+))
+|} cmd cmd cmd)
   @ [ Printf.sprintf {|
 (install
  ((section man)

@@ -60,8 +60,22 @@ val parent : t -> t
 
 val extend_basename : t -> suffix:string -> t
 
+(** Extract the build context from a path. For instance, representing paths as strings:
+
+    {[
+      extract_build_context "_build/blah/foo/bar" = Some ("blah", "foo/bar")
+    ]}
+*)
 val extract_build_context : t -> (string * t) option
+
+(** Same as [extract_build_context] but return the build context as a path:
+
+    {[
+      extract_build_context "_build/blah/foo/bar" = Some ("_build/blah", "foo/bar")
+    ]}
+*)
 val extract_build_context_dir : t -> (t * t) option
+
 val is_in_build_dir : t -> bool
 
 val insert_after_build_dir_exn : t -> t -> t

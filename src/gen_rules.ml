@@ -1270,7 +1270,7 @@ module Gen(P : Params) = struct
            (expand_and_eval_set ~dir lib.c_library_flags ~standard:[])
          >>>
          Build.run (Dep compiler)
-           ~descr:(Format.sprintf "Build ocaml library %s" lib.name)
+           ~descr:(Format.sprintf "Building ocaml library %s" lib.name)
            ~extra_targets:(
              match mode with
              | Byte -> []

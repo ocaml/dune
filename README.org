@@ -25,11 +25,11 @@ static files in a simple S-expression syntax or OCaml scripts. It uses
 this information to setup build rules, generate configuration files
 for development tools such as [[https://github.com/ocaml/merlin][merlin]], handle installation, etc...
 
-Jbuilder itself is fast, has very low-overhead and supports parallel
+Jbuilder itself is fast, has very low overhead and supports parallel
 builds on all platforms. It has no system dependencies: all you need
 to build jbuilder and packages using jbuilder is OCaml. You don't need
 =make= or =bash= as long as the packages themselves don't use =bash=
-explicitely.
+explicitly.
 
 Especially, one should be able to install OCaml on Windows with a
 binary installer and then use only the Windows Console to build
@@ -98,7 +98,7 @@ there only for convenience, for the following reasons:
 
 1. there are many different build systems out there, all with a
    different CLI. If you have been hacking for a long time, the one
-   true invokation you know is =make && make install=, possibly
+   true invocation you know is =make && make install=, possibly
    preceded by =./configure=
 
 2. you often have a few common operations that are not part of the
@@ -109,7 +109,7 @@ there only for convenience, for the following reasons:
 *** How to add a configure step to a jbuilder project?
 
 [[example/sample-projects/with-configure-step]] shows one way to do it
-that preserve composability; i.e. it doesn't require to manually run
+that preserves composability; i.e. it doesn't require to manually run
 all =./configure= script when working on multiple projects at the same
 time.
 
@@ -150,7 +150,7 @@ Street packages which became incredibly complicated over time. It is
 still successfully used for this purpose.
 
 One necessary feature to achieve this is the ability to precisely
-report the external dependencies necesseray to build a given set of
+report the external dependencies necessary to build a given set of
 targets without running any command, just by looking at the source
 tree. This is used to automatically generate the =<package>.opam=
 files for all Jane Street packages.
@@ -159,8 +159,8 @@ To implement this, the build rules are described using a build arrow,
 which is defined in [[src/build.mli][src/build]]. In the end it makes the development
 of the internal rules of Jbuilder very composable and quite pleasant.
 
-To deal with process multi-plexing, Jbuilder uses a simplified
-Lwt/Async like monad, implemented in [[src/future.mli][src/future]].
+To deal with process multiplexing, Jbuilder uses a simplified
+Lwt/Async-like monad, implemented in [[src/future.mli][src/future]].
 
 **** Code flow
 

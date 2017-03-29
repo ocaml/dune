@@ -3,3 +3,4 @@ _build
 boot.exe
 .merlin
 boot.ml
+*.corrected

@@ -1,4 +1,4 @@
-* 1.0+beta6
+* 1.0+beta6 (29/03/2017)
 
 - Add an =(executable ...)= stanza for single executables (#33)
 

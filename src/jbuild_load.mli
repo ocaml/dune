@@ -13,4 +13,4 @@ type conf =
   ; packages  : Package.t String_map.t
   }
 
-val load : unit -> conf
+val load : ?extra_ignored_subtrees:Path.Set.t -> unit -> conf

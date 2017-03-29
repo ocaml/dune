@@ -146,10 +146,10 @@ let load ~dir ~visible_packages ~closest_packages =
       ; closest_packages
       }
 
-let load () =
+let load ?(extra_ignored_subtrees=Path.Set.empty) () =
   let ftree = File_tree.load Path.root in
   let packages, ignored_subtrees =
-    File_tree.fold ftree ~init:([], Path.Set.empty) ~f:(fun dir (pkgs, ignored) ->
+    File_tree.fold ftree ~init:([], extra_ignored_subtrees) ~f:(fun dir (pkgs, ignored) ->
       let path = File_tree.Dir.path dir in
       let files = File_tree.Dir.files dir in
       let pkgs =
@@ -220,18 +220,14 @@ let load () =
       else
         jbuilds
     in
-    let sub_dirs =
-      if String_set.mem "jbuild-ignore" files then
-        String_map.filter sub_dirs ~f:(fun _ dir ->
-          not (Path.Set.mem (File_tree.Dir.path dir) ignored_subtrees))
-      else
-        sub_dirs
-    in
     let children, jbuilds =
       String_map.fold sub_dirs ~init:([], jbuilds)
         ~f:(fun ~key:_ ~data:dir (children, jbuilds) ->
-          let child, jbuilds = walk dir jbuilds visible_packages closest_packages in
-          (child :: children, jbuilds))
+          if Path.Set.mem (File_tree.Dir.path dir) ignored_subtrees then
+            (children, jbuilds)
+          else
+            let child, jbuilds = walk dir jbuilds visible_packages closest_packages in
+            (child :: children, jbuilds))
     in
     (Alias.Node (path, children), jbuilds)
   in

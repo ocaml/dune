@@ -10,6 +10,11 @@
   without =ppx_driver.runner= (#37). These problem should go away soon
   when we start using =--cookie=
 
+- Fix the interpretation of META files when there is more than one
+  applicable assignment. Before this fix, the one with the lowest
+  number of formal predicates was selected instead of the one with the
+  biggest number of formal predicates
+
 * 1.0+beta5 (22/03/2017)
 
 - When =ocamlfind= is present in the =PATH=, do not attempt to call

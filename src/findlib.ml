@@ -70,9 +70,9 @@ end
 
 (* Set of rules for a given variable of a package *)
 module Rules = struct
-  (* To implement the algorithm described in [1], [set_rules] is sorted by number of format
-     predicates, then according to the order of the META file. [add_rules] are in the same
-     order as in the META file.
+  (* To implement the algorithm described in [1], [set_rules] is sorted by decreasing
+     number of formal predicates, then according to the order of the META
+     file. [add_rules] are in the same order as in the META file.
 
      [1] http://projects.camlcity.org/projects/dl/findlib-1.6.3/doc/ref-html/r729.html *)
   type t =
@@ -101,7 +101,7 @@ module Rules = struct
     let set_rules =
       List.map rules.set_rules ~f:Rule.make
       |> List.stable_sort ~cmp:(fun a b ->
-        compare (Rule.formal_predicates_count a) (Rule.formal_predicates_count b))
+        compare (Rule.formal_predicates_count b) (Rule.formal_predicates_count a))
     in
     { add_rules; set_rules }
 end

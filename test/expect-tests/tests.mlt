@@ -3,6 +3,7 @@
 #warnings "-40";;
 
 open Jbuilder
+open Import
 
 let print_pkg ppf pkg =
   Format.fprintf ppf "<package:%s>" pkg.Findlib.name
@@ -35,5 +36,26 @@ val pkg : Jbuilder.Findlib.package = <package:foo>
 pkg.requires;;
 
 [%%expect{|
-- : Jbuilder.Findlib.package list = [<package:bar>]
+- : Jbuilder.Findlib.package list = [<package:baz>]
+|}]
+
+(* +-----------------------------------------------------------------+
+   | Meta parsing/simplification                                     |
+   +-----------------------------------------------------------------+ *)
+
+open Meta
+
+let meta =
+  { name = "foo"
+  ; entries = Meta.load "test/expect-tests/findlib-db/foo/META"
+  }
+
+[%%expect{|
+val meta : Jbuilder.Meta.t =
+  {name = "foo";
+   entries =
+    [Rule {var = "requires"; predicates = []; action = Set; value = "bar"};
+     Rule
+      {var = "requires"; predicates = [Pos "ppx_driver"]; action = Set;
+       value = "baz"}]}
 |}]

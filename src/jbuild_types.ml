@@ -637,7 +637,11 @@ module Rule = struct
     field "targets" (list file_in_current_dir)    >>= fun targets ->
     field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
     field "action"  Action.Mini_shexp.Unexpanded.t      >>= fun action ->
-    return { targets; deps; action }
+    field "description"   (option string) ~default:None >>= fun descr ->
+    return { targets; deps;
+             action = match descr with
+               | None -> action
+               | Some descr -> Action.Mini_shexp.Ast.update_description action descr }
 
   let v1 = record common
 
@@ -657,7 +661,9 @@ module Rule = struct
           Chdir
             (str "${ROOT}",
              Run (str "${bin:ocamllex}",
-                  [str "-q"; str "-o"; str "${@}"; str "${<}"]))
+                  [str "-q"; str "-o"; str "${@}"; str "${<}"],
+                  Some ("Generation of lexer " ^ name))
+            )
       })
 
   let ocamllex_vjs = ocamllex_v1
@@ -672,7 +678,9 @@ module Rule = struct
           Chdir
             (str "${ROOT}",
              Run (str "${bin:ocamlyacc}",
-                  [str "${<}"]))
+                  [str "${<}"],
+                  Some ("Generation of parser " ^ name))
+            )
       })
 
   let ocamlyacc_vjs = ocamlyacc_v1

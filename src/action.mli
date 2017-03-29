@@ -14,7 +14,7 @@ module Mini_shexp : sig
       | Outputs (** Both Stdout and Stderr *)
 
     type ('a, 'path) t =
-      | Run            of 'path * 'a list
+      | Run            of 'path * 'a list * string option
       | Chdir          of 'path * ('a, 'path) t
       | Setenv         of 'a * 'a * ('a, 'path) t
       | Redirect       of outputs * 'path * ('a, 'path) t
@@ -31,6 +31,9 @@ module Mini_shexp : sig
       | Update_file    of 'path * 'a
     val t : 'a Sexp.Of_sexp.t -> 'b Sexp.Of_sexp.t -> ('a, 'b) t Sexp.Of_sexp.t
     val sexp_of_t : 'a Sexp.To_sexp.t -> 'b Sexp.To_sexp.t -> ('a, 'b) t Sexp.To_sexp.t
+
+    val update_description: ('a, 'path) t -> string -> ('a, 'path) t
+    (** Change the description of all the run action *)
   end
 
   type t = (string, Path.t) Ast.t

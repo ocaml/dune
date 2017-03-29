@@ -197,7 +197,9 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
       (* If ocamlfind is present, it has precedence over everything else. *)
       match which "ocamlfind" with
       | Some fn ->
-        (Future.run_capture_lines ~env Strict
+        (Future.run_capture_lines
+           ~descr:("Get ocamlfind configuration.")
+           ~env Strict
            (Path.to_string fn) ["printconf"; "path"]
          >>| List.map ~f:Path.absolute)
       | None ->
@@ -215,7 +217,9 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
   in
   both
     findlib_path
-    (Future.run_capture_lines ~env Strict (Path.to_string ocamlc) ["-config"])
+    (Future.run_capture_lines
+       ~descr:"Get ocamlc configuration."
+       ~env Strict (Path.to_string ocamlc) ["-config"])
   >>= fun (findlib_path, ocamlc_config) ->
   let ocamlc_config =
     List.map ocamlc_config ~f:(fun line ->

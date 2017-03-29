@@ -60,6 +60,7 @@ val run
   -> ?stdout_to:Path.t
   -> ?context:Context.t
   -> ?extra_targets:Path.t list
+  -> ?descr:string
   -> 'a Prog_spec.t
   -> 'a Arg_spec.t list
   -> ('a, Action.t) t

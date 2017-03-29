@@ -3,6 +3,7 @@ open! Import
 type t = Byte | Native
 
 val t : t Sexp.Of_sexp.t
+val to_string: t -> string
 
 val all : t list
 

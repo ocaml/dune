@@ -50,6 +50,7 @@ val run
   -> ?stdout_to:std_output_to
   -> ?stderr_to:std_output_to
   -> ?env:string array
+  -> ?descr:string
   -> (unit, 'a) failure_mode
   -> string
   -> string list
@@ -59,6 +60,7 @@ val run
 val run_capture
   :  ?dir:string
   -> ?env:string array
+  -> ?descr:string
   -> (string, 'a) failure_mode
   -> string
   -> string list
@@ -66,6 +68,7 @@ val run_capture
 val run_capture_line
   :  ?dir:string
   -> ?env:string array
+  -> ?descr:string
   -> (string, 'a) failure_mode
   -> string
   -> string list
@@ -73,6 +76,7 @@ val run_capture_line
 val run_capture_lines
   :  ?dir:string
   -> ?env:string array
+  -> ?descr:string
   -> (string list, 'a) failure_mode
   -> string
   -> string list

@@ -186,11 +186,12 @@ type job =
   ; env       : string array option
   ; ivar      : int Ivar.t
   ; ok_codes  : accepted_codes
+  ; descr     : string option
   }
 
 let to_run : job Queue.t = Queue.create ()
 
-let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env fail_mode prog args =
+let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ?descr fail_mode prog args =
   let dir =
     match dir with
     | Some "." -> None
@@ -205,10 +206,11 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env fail_mode
                ; env
                ; ivar
                ; ok_codes = accepted_codes fail_mode
+               ; descr
                } to_run)
 
-let run ?dir ?stdout_to ?stderr_to ?env fail_mode prog args =
-  map_result fail_mode (run_internal ?dir ?stdout_to ?stderr_to ?env fail_mode prog args)
+let run ?dir ?stdout_to ?stderr_to ?env ?descr fail_mode prog args =
+  map_result fail_mode (run_internal ?dir ?stdout_to ?stderr_to ?env ?descr fail_mode prog args)
     ~f:ignore
 
 module Temp = struct
@@ -230,9 +232,9 @@ module Temp = struct
     tmp_files := String_set.remove fn !tmp_files
 end
 
-let run_capture_gen ?dir ?env fail_mode prog args ~f =
+let run_capture_gen ?dir ?env ?descr fail_mode prog args ~f =
   let fn = Temp.create "jbuild" ".output" in
-  map_result fail_mode (run_internal ?dir ~stdout_to:(File fn) ?env fail_mode prog args)
+  map_result fail_mode (run_internal ?dir ~stdout_to:(File fn) ?env ?descr fail_mode prog args)
     ~f:(fun () ->
       let x = f fn in
       Temp.destroy fn;
@@ -241,8 +243,8 @@ let run_capture_gen ?dir ?env fail_mode prog args ~f =
 let run_capture       = run_capture_gen ~f:read_file
 let run_capture_lines = run_capture_gen ~f:lines_of_file
 
-let run_capture_line ?dir ?env fail_mode prog args =
-  run_capture_gen ?dir ?env fail_mode prog args ~f:(fun fn ->
+let run_capture_line ?dir ?env ?descr fail_mode prog args =
+  run_capture_gen ?dir ?env ?descr fail_mode prog args ~f:(fun fn ->
     match lines_of_file fn with
     | [x] -> x
     | l ->
@@ -452,9 +454,13 @@ module Scheduler = struct
         let job = Queue.pop to_run in
         let id = gen_id () in
         let command_line = command_line job in
-        if !Clflags.debug_run then
-          Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
-            (Ansi_color.strip_colors_for_stderr command_line);
+        let print = Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id in
+        begin match job.descr, !Clflags.debug_run with
+        | _, `Quiet -> ()
+        | _, `Debug | None, _  ->
+          print (Ansi_color.strip_colors_for_stderr command_line)
+        | Some descr, `Normal -> print descr
+        end;
         let argv = Array.of_list (job.prog :: job.args) in
         let output_filename, output_fd =
           match job.stdout_to, job.stderr_to with

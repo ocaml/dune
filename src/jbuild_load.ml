@@ -115,6 +115,8 @@ end
            ]}
         *)
         Future.run Strict ~dir:(Path.to_string dir) ~env:context.env
+          ~descr:(Printf.sprintf "Generating configuration from jbuild.ml in %s"
+                    (Path.to_string dir))
           (Path.to_string context.ocaml)
           args
         >>= fun () ->

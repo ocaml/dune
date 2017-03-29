@@ -14,6 +14,7 @@ type common =
   ; debug_actions  : bool
   ; debug_dep_path : bool
   ; debug_findlib  : bool
+  ; debug_run      : [`Quiet | `Debug | `Normal]
   ; dev_mode       : bool
   ; workspace_file : string option
   ; root           : string
@@ -29,6 +30,7 @@ let set_common c =
   Clflags.debug_actions := c.debug_actions;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
+  Clflags.debug_run := c.debug_run;
   Clflags.dev_mode := c.dev_mode;
   Printf.eprintf "Workspace root: %s\n" c.root;
   if c.root <> Filename.current_dir_name then
@@ -113,6 +115,7 @@ let common =
         debug_actions
         debug_dep_path
         debug_findlib
+        debug_run
         dev_mode
         workspace_file
         root
@@ -127,6 +130,7 @@ let common =
     ; debug_actions
     ; debug_dep_path
     ; debug_findlib
+    ; debug_run
     ; dev_mode
     ; workspace_file
     ; root
@@ -182,6 +186,12 @@ let common =
          & info ["debug-findlib"] ~docs
              ~doc:{|Debug the findlib sub-system.|})
   in
+  let drun =
+    Arg.(value
+         & opt ~vopt:`Debug (enum ["debug",`Debug;"quiet",`Quiet;"normal",`Normal]) `Normal
+         & info ["debug-run"] ~docs
+             ~doc:{|Set the verbosity when running commands.|})
+  in
   let dev =
     Arg.(value
          & flag
@@ -210,6 +220,7 @@ let common =
         $ dactions
         $ ddep_path
         $ dfindlib
+        $ drun
         $ dev
         $ workspace_file
         $ root

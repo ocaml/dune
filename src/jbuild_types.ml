@@ -687,7 +687,7 @@ module Menhir = struct
 
   let v1 =
     record
-      (field_o "base" string >>= fun base ->
+      (field_o "merge_into" string >>= fun base ->
        field "flags" (list String_with_vars.t) ~default:[] >>= fun flags ->
        field "modules" (list string) >>= fun modules ->
        return

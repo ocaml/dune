@@ -6,7 +6,7 @@
  ((modules (test_menhir1))))
 
 (menhir
- ((base test_base)
+ ((merge_into test_base)
   (flags (--explain))
   (modules (tokens parser))))
 

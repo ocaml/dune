@@ -177,6 +177,11 @@ and opened_file_desc =
   | Fd      of Unix.file_descr
   | Channel of out_channel
 
+(** Why a Future.t was run *)
+type purpose =
+  | Internal_job
+  | Build_job of Path.t list
+
 type job =
   { prog      : string
   ; args      : string list
@@ -186,11 +191,12 @@ type job =
   ; env       : string array option
   ; ivar      : int Ivar.t
   ; ok_codes  : accepted_codes
+  ; purpose   : purpose
   }
 
 let to_run : job Queue.t = Queue.create ()
 
-let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env fail_mode prog args =
+let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose fail_mode prog args =
   let dir =
     match dir with
     | Some "." -> None
@@ -205,10 +211,11 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env fail_mode
                ; env
                ; ivar
                ; ok_codes = accepted_codes fail_mode
+               ; purpose
                } to_run)
 
-let run ?dir ?stdout_to ?stderr_to ?env fail_mode prog args =
-  map_result fail_mode (run_internal ?dir ?stdout_to ?stderr_to ?env fail_mode prog args)
+let run ?dir ?stdout_to ?stderr_to ?env ?(purpose=Internal_job) fail_mode prog args =
+  map_result fail_mode (run_internal ?dir ?stdout_to ?stderr_to ?env ~purpose fail_mode prog args)
     ~f:ignore
 
 module Temp = struct
@@ -230,9 +237,9 @@ module Temp = struct
     tmp_files := String_set.remove fn !tmp_files
 end
 
-let run_capture_gen ?dir ?env fail_mode prog args ~f =
+let run_capture_gen ?dir ?env ?(purpose=Internal_job) fail_mode prog args ~f =
   let fn = Temp.create "jbuild" ".output" in
-  map_result fail_mode (run_internal ?dir ~stdout_to:(File fn) ?env fail_mode prog args)
+  map_result fail_mode (run_internal ?dir ~stdout_to:(File fn) ?env ~purpose fail_mode prog args)
     ~f:(fun () ->
       let x = f fn in
       Temp.destroy fn;
@@ -241,8 +248,8 @@ let run_capture_gen ?dir ?env fail_mode prog args ~f =
 let run_capture       = run_capture_gen ~f:read_file
 let run_capture_lines = run_capture_gen ~f:lines_of_file
 
-let run_capture_line ?dir ?env fail_mode prog args =
-  run_capture_gen ?dir ?env fail_mode prog args ~f:(fun fn ->
+let run_capture_line ?dir ?env ?(purpose=Internal_job) fail_mode prog args =
+  run_capture_gen ?dir ?env ~purpose fail_mode prog args ~f:(fun fn ->
     match lines_of_file fn with
     | [x] -> x
     | l ->
@@ -260,10 +267,10 @@ let run_capture_line ?dir ?env fail_mode prog args =
           cmdline (String.concat l ~sep:"\n"))
 
 module Scheduler = struct
-  let colorize_prog s =
+  let split_prog s =
     let len = String.length s in
     if len = 0 then
-      s
+      "", "", ""
     else begin
       let rec find_prog_start i =
         if i < 0 then
@@ -286,9 +293,17 @@ module Scheduler = struct
       in
       let before = String.sub s ~pos:0 ~len:prog_start in
       let after = String.sub s ~pos:prog_end ~len:(len - prog_end) in
-      let key = String.sub s ~pos:prog_start ~len:(prog_end - prog_start) in
-      before ^ Ansi_color.colorize ~key key ^ after
+      let prog = String.sub s ~pos:prog_start ~len:(prog_end - prog_start) in
+      before, prog, after
     end
+
+  let colorize_prog s =
+    let len = String.length s in
+    if len = 0 then
+      s
+    else
+      let before, prog, after = split_prog s in
+      before ^ Ansi_color.colorize ~key:prog prog ^ after
 
   let rec colorize_args = function
     | [] -> []
@@ -318,6 +333,75 @@ module Scheduler = struct
       match stderr_to with
       | Terminal -> s
       | File fn | Opened_file { filename = fn; _ } -> sprintf "%s 2> %s" s fn
+
+  let pp_purpose ppf = function
+  | Internal_job ->
+     Format.fprintf ppf "(internal)"
+  | Build_job targets ->
+     let rec split_paths targets_acc ctxs_acc = function
+       | [] -> List.rev targets_acc, String_set.(elements (of_list ctxs_acc))
+       | path :: rest ->
+          match Path.extract_build_context path with
+          | None ->
+             split_paths (Path.to_string path :: targets_acc) ctxs_acc rest
+          | Some ("default", filename) ->
+             split_paths (Path.to_string filename :: targets_acc) ctxs_acc rest
+          | Some (".aliases", filename) ->
+             let ctxs_acc, filename = match Path.extract_build_context filename with
+               | None -> ctxs_acc, Path.to_string filename
+               | Some (ctx, fn) ->
+                  let strip_digest fn =
+                    let fn = Path.to_string fn in
+                    match String.rsplit2 fn ~on:'-' with
+                    | None -> fn
+                    | Some (name, digest) ->
+                       match Digest.from_hex digest with
+                       | _ -> name
+                       | exception (Invalid_argument _) -> fn in
+                  let ctxs_acc =
+                    if ctx = "default" then ctxs_acc else ctx :: ctxs_acc in
+                  ctxs_acc, strip_digest fn in
+             split_paths (("alias " ^ filename) :: targets_acc) ctxs_acc rest
+          | Some (ctx, filename) ->
+             split_paths (Path.to_string filename :: targets_acc) (ctx :: ctxs_acc) rest in
+     let target_names, contexts = split_paths [] [] targets in
+     let rec group_by_ext = function
+       | [] -> []
+       | x :: xs ->
+          let eq_ext a b =
+            let chop s =
+              try Filename.chop_extension s with Invalid_argument _ -> s in
+            chop a = chop b in
+          let (similar, rest) = List.partition ~f:(eq_ext x) xs in
+          (x :: similar) :: group_by_ext rest in
+     let pp_ext ppf filename =
+       let ext = match Filename.ext filename with
+         | Some s when s.[0] = '.' ->
+            String.sub ~pos:1 ~len:(String.length s - 1) s
+         | Some s -> s
+         | None -> "" in
+       Format.fprintf ppf "%s" ext in
+     let pp_comma ppf () = Format.fprintf ppf "," in
+     let pp_group ppf = function
+       | [] -> assert false
+       | [s] -> Format.fprintf ppf "%s" s
+       | (x :: _) as group ->
+          Format.fprintf ppf "%s.{%a}"
+            (Filename.chop_extension x)
+            (Format.pp_print_list ~pp_sep:pp_comma pp_ext)
+            group in
+     let pp_contexts ppf = function
+       | [] -> ()
+       | ctxs ->
+          Format.fprintf ppf " @{<details>[%a]@}"
+            (Format.pp_print_list ~pp_sep:pp_comma
+               (fun ppf s -> Format.fprintf ppf "%s" s))
+            ctxs in
+     Format.fprintf ppf "%a%a"
+       (Format.pp_print_list ~pp_sep:pp_comma pp_group)
+       (group_by_ext target_names)
+       pp_contexts
+       contexts;
 
   type running_job =
     { id              : int
@@ -350,30 +434,53 @@ module Scheduler = struct
       ~output:output
       ~exit_status:status;
     if not exiting then begin
+      let _, progname, _ = split_prog job.job.prog in
       match status with
       | WEXITED n when code_is_ok job.job.ok_codes n ->
-        if output <> "" then
-          Format.eprintf "@{<kwd>Output@}[@{<id>%d@}]:\n%s%!" job.id output;
-        if n <> 0 then
-          Format.eprintf
-            "@{<warning>Warning@}: Command [@{<id>%d@}] exited with code %d, \
-             but I'm ignore it, hope that's OK.\n%!" job.id n;
+        if !Clflags.verbose then begin
+          if output <> "" then
+            Format.eprintf "@{<kwd>Output@}[@{<id>%d@}]:\n%s%!" job.id output;
+          if n <> 0 then
+            Format.eprintf
+              "@{<warning>Warning@}: Command [@{<id>%d@}] exited with code %d, \
+               but I'm ignore it, hope that's OK.\n%!" job.id n;
+        end else if output <> "" || job.job.purpose <> Internal_job then begin
+          Format.eprintf "@{<ok>%12s@} %a@." progname pp_purpose job.job.purpose;
+          Format.eprintf "%s%!" output;
+        end;
         Ivar.fill job.job.ivar n
       | WEXITED n ->
-        Format.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] exited with code %d:\n\
-                        @{<prompt>$@} %s\n%s%!"
-          job.id n
-          (Ansi_color.strip_colors_for_stderr job.command_line)
-          (Ansi_color.strip_colors_for_stderr output);
+        if !Clflags.verbose then begin
+          Format.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] exited with code %d:\n\
+                          @{<prompt>$@} %s\n%s%!"
+            job.id n
+            (Ansi_color.strip_colors_for_stderr job.command_line)
+            (Ansi_color.strip_colors_for_stderr output)
+        end else begin
+          Format.eprintf "@{<error>%12s@} %a @{<error>(exit %d)@}@."
+                         progname pp_purpose job.job.purpose n;
+          Format.eprintf "@{<details>%s@}@."
+                         (Ansi_color.strip job.command_line);
+          Format.eprintf "%s%!" output;
+        end;
         die ""
       | WSIGNALED n ->
-        Format.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] got signal %s:\n\
-                        @{<prompt>$@} %s\n%s%!"
-          job.id (Utils.signal_name n)
-          (Ansi_color.strip_colors_for_stderr job.command_line)
-          (Ansi_color.strip_colors_for_stderr output);
+        if !Clflags.verbose then begin
+          Format.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] got signal %s:\n\
+                          @{<prompt>$@} %s\n%s%!"
+            job.id (Utils.signal_name n)
+            (Ansi_color.strip_colors_for_stderr job.command_line)
+            (Ansi_color.strip_colors_for_stderr output);
+        end else begin
+          Format.eprintf "@{<error>%12s@} %a @{<error>(got signal %s)@}@."
+                         progname pp_purpose job.job.purpose (Utils.signal_name n);
+          Format.eprintf "@{<details>%s@}@."
+                         (Ansi_color.strip job.command_line);
+          Format.eprintf "%s%!" output;
+        end;
         die ""
-      | WSTOPPED _ -> assert false
+      | WSTOPPED _ -> assert false;
+
     end
 
   let gen_id =
@@ -408,17 +515,36 @@ module Scheduler = struct
     let jobs =
       Hashtbl.fold running ~init:[] ~f:(fun ~key:_ ~data:job acc -> job :: acc)
     in
-    match jobs with
-    | [] -> ()
-    | first :: others ->
-      Format.eprintf "\nWaiting for the following jobs to finish: %t@."
-        (fun ppf ->
-           Format.fprintf ppf "[@{<id>%d@}]" first.id;
-           List.iter others ~f:(fun job ->
-             Format.fprintf ppf ", [@{<id>%d@}]" job.id));
-      List.iter jobs ~f:(fun job ->
-        let _, status = Unix.waitpid [] job.pid in
-        process_done job status ~exiting:true)
+    let rec wait_for_jobs msg_time jobs = match jobs with
+      | [] -> ()
+      | job :: jobs when msg_time > 0. ->
+         let pid, status = Unix.waitpid [WNOHANG] job.pid in
+         if pid <> 0 then begin
+           process_done job status ~exiting:true;
+           wait_for_jobs msg_time jobs
+         end else begin
+           let dt = 0.05 in
+           let _ = Unix.select [] [] [] dt in
+           wait_for_jobs (msg_time -. dt) (job :: jobs)
+         end
+      | jobs ->
+         if !Clflags.verbose then begin
+           let pp_job ppf job =
+             let (_, name, _) = split_prog job.job.prog in
+             Format.fprintf ppf "%s [@{<id>%d@}]" name job.id in
+           Format.eprintf "\nWaiting for the following jobs to finish: %a@."
+             (Format.pp_print_list ~pp_sep:(fun ppf () -> Format.fprintf ppf ", ") pp_job)
+             jobs;
+         end else begin
+           let n = List.length jobs in
+           Format.eprintf "\nWaiting for %d %s to finish.@."
+             n
+             (if n = 1 then "job" else "jobs")
+         end;
+         List.iter jobs ~f:(fun job ->
+           let _, status = Unix.waitpid [] job.pid in
+           process_done job status ~exiting:true) in
+    wait_for_jobs 0.5 jobs
 
   let () =
     at_exit (fun () ->
@@ -452,7 +578,7 @@ module Scheduler = struct
         let job = Queue.pop to_run in
         let id = gen_id () in
         let command_line = command_line job in
-        if !Clflags.debug_run then
+        if !Clflags.verbose then
           Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
             (Ansi_color.strip_colors_for_stderr command_line);
         let argv = Array.of_list (job.prog :: job.args) in
@@ -503,6 +629,7 @@ module Scheduler = struct
 
   let go ?(log=Log.no_log) t =
     Lazy.force Ansi_color.setup_env_for_opam_colors;
+    Log.info log ("Workspace root: " ^ !Clflags.workspace_root);
     let cwd = Sys.getcwd () in
     go_rec cwd log t
 end

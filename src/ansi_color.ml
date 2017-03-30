@@ -168,6 +168,8 @@ let styles_of_tag = function
   | "kwd"     -> [Bold; Foreground Blue]
   | "id"      -> [Bold; Foreground Yellow]
   | "prompt"  -> [Bold; Foreground Green]
+  | "details" -> [Dim; Foreground White]
+  | "ok"      -> [Dim; Foreground Green]
   | "debug"   -> [Underlined; Foreground Bright_cyan]
   | _         -> []
 

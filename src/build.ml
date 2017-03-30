@@ -160,7 +160,7 @@ let run ?(dir=Path.root) ?stdout_to ?context ?(extra_targets=[]) prog args =
 let action ?(dir=Path.root) ?context ~targets action =
   Targets targets
   >>^ fun () ->
-  { Action. context; dir; action }
+  { Action. context; dir; action  }
 
 let update_file fn s =
   action ~targets:[fn] (Update_file (fn, s))

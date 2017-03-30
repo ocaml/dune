@@ -44,12 +44,18 @@ and opened_file_desc =
   | Fd      of Unix.file_descr
   | Channel of out_channel
 
+(** Why a Future.t was run *)
+type purpose =
+  | Internal_job
+  | Build_job of Path.t list
+
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its termination *)
 val run
   :  ?dir:string
   -> ?stdout_to:std_output_to
   -> ?stderr_to:std_output_to
   -> ?env:string array
+  -> ?purpose:purpose
   -> (unit, 'a) failure_mode
   -> string
   -> string list
@@ -59,6 +65,7 @@ val run
 val run_capture
   :  ?dir:string
   -> ?env:string array
+  -> ?purpose:purpose
   -> (string, 'a) failure_mode
   -> string
   -> string list
@@ -66,6 +73,7 @@ val run_capture
 val run_capture_line
   :  ?dir:string
   -> ?env:string array
+  -> ?purpose:purpose
   -> (string, 'a) failure_mode
   -> string
   -> string list
@@ -73,6 +81,7 @@ val run_capture_line
 val run_capture_lines
   :  ?dir:string
   -> ?env:string array
+  -> ?purpose:purpose
   -> (string list, 'a) failure_mode
   -> string
   -> string list

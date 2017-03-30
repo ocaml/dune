@@ -392,8 +392,11 @@ module Scheduler = struct
          let rec group_by_ext = function
            | [] -> []
            | x :: xs ->
-              let (similar, rest) = List.partition ~f:(fun x' ->
-                  Filename.chop_extension x = Filename.chop_extension x') xs in
+              let eq_ext a b =
+                let chop s =
+                  try Filename.chop_extension s with Invalid_argument _ -> s in
+                chop a = chop b in
+              let (similar, rest) = List.partition ~f:(eq_ext x) xs in
               (x :: similar) :: group_by_ext rest in
          let pp_ext ppf filename =
            let ext = match Filename.ext filename with

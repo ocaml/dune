@@ -515,19 +515,36 @@ module Scheduler = struct
     let jobs =
       Hashtbl.fold running ~init:[] ~f:(fun ~key:_ ~data:job acc -> job :: acc)
     in
-    match jobs with
-    | [] -> ()
-    | first :: others ->
-      if !Clflags.verbose then begin
-        Format.eprintf "\nWaiting for the following jobs to finish: %t@."
-          (fun ppf ->
-             Format.fprintf ppf "[@{<id>%d@}]" first.id;
-             List.iter others ~f:(fun job ->
-               Format.fprintf ppf ", [@{<id>%d@}]" job.id))
-      end;
-      List.iter jobs ~f:(fun job ->
-        let _, status = Unix.waitpid [] job.pid in
-        process_done job status ~exiting:true)
+    let rec wait_for_jobs msg_time jobs = match jobs with
+      | [] -> ()
+      | job :: jobs when msg_time > 0. ->
+         let pid, status = Unix.waitpid [WNOHANG] job.pid in
+         if pid <> 0 then begin
+           process_done job status ~exiting:true;
+           wait_for_jobs msg_time jobs
+         end else begin
+           let dt = 0.05 in
+           let _ = Unix.select [] [] [] dt in
+           wait_for_jobs (msg_time -. dt) (job :: jobs)
+         end
+      | jobs ->
+         if !Clflags.verbose then begin
+           let pp_job ppf job =
+             let (_, name, _) = split_prog job.job.prog in
+             Format.fprintf ppf "%s [@{<id>%d@}]" name job.id in
+           Format.eprintf "\nWaiting for the following jobs to finish: %a@."
+             (Format.pp_print_list ~pp_sep:(fun ppf () -> Format.fprintf ppf ", ") pp_job)
+             jobs;
+         end else begin
+           let n = List.length jobs in
+           Format.eprintf "\nWaiting for %d %s to finish.@."
+             n
+             (if n = 1 then "job" else "jobs")
+         end;
+         List.iter jobs ~f:(fun job ->
+           let _, status = Unix.waitpid [] job.pid in
+           process_done job status ~exiting:true) in
+    wait_for_jobs 0.5 jobs
 
   let () =
     at_exit (fun () ->

@@ -47,3 +47,19 @@
        )))))))
 
 
+;; execute this to check the behavior when background jobs take time to finish:
+;;
+;; $ ./_build/default/bin/main.exe build @test/fail-with-background-jobs-running
+;;
+(alias
+ ((name   sleep5)
+  (action (system "sleep 5"))))
+
+(alias
+ ((name   sleep1-and-fail)
+  (action (system "sleep 1; exit 1"))))
+
+(alias
+ ((name fail-with-background-jobs-running)
+  (deps ((alias sleep5)
+         (alias sleep1-and-fail)))))

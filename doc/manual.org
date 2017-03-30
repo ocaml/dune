@@ -547,7 +547,7 @@ The typical use of the =alias= stanza is to define tests:
    (action (run ${exe:my-test-program.exe} blah))))
 #+end_src
 
-See the [[runtest][section about running tests]] for details.
+See the [[Running tests][section about running tests]] for details.
 
 **** install
 
@@ -1115,6 +1115,20 @@ So for instance:
 - =jbuilder build @_build/foo/runtest= will run the tests only for the
   =foo= build context
 - =jbuilder build @runtest= will run the tests for all build contexts
+
+** Running tests
+
+There are two ways to run tests:
+
+- =jbuilder build @runtest=
+- =jbuilder runtest=
+
+The two commands are equivalent. They will run all the tests defined
+in the current directory and its children recursively. You can also
+run the tests in a specific sub-directory and its children by using:
+
+- =jbuilder build @foo/bar/runtest=
+- =jbuidler runtest foo/bar=
 
 ** Restricting the set of packages
 

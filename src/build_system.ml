@@ -213,7 +213,6 @@ module Build_exec = struct
           context = None
         ; dir     = Path.root
         ; action  = Update_file (fn, vfile_to_string kind fn x)
-        ; targets = [fn]
         }
       | Compose (a, b) ->
         exec a x |> exec b
@@ -384,7 +383,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       in
       Pset.iter targets_to_remove ~f:Path.unlink_no_err;
       pending_targets := Pset.union targets_to_remove !pending_targets;
-      Action.exec action >>| fun () ->
+      Action.exec ~targets action >>| fun () ->
       (* All went well, these targets are no longer pending *)
       pending_targets := Pset.diff !pending_targets targets_to_remove;
       refresh_targets_timestamps_after_rule_execution t targets_as_list

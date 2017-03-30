@@ -177,12 +177,16 @@ and opened_file_desc =
   | Fd      of Unix.file_descr
   | Channel of out_channel
 
+type build_job_desc =
+  { targets : Path.t list
+  ; build_dir : Path.t
+  ; context_name : string
+  }
+
+(** Why a Future.t was run *)
 type purpose =
   | Internal_job
-  | Build_job of
-      Path.t list (* targets *)
-    * Path.t      (* build directory *)
-    * string      (* context name *)
+  | Build_job of build_job_desc
 
 type job =
   { prog      : string
@@ -370,7 +374,7 @@ module Scheduler = struct
       let pp_purpose ppf = function
       | Internal_job ->
          Format.fprintf ppf "(internal)"
-      | Build_job (targets, build_dir, context_name) ->
+      | Build_job {targets; build_dir; context_name} ->
          let strip_prefix path =
            let s = Path.to_string path in
            let dir = Path.to_string build_dir in

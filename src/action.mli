@@ -54,12 +54,11 @@ type t =
   { context : Context.t option
   ; dir     : Path.t
   ; action  : Mini_shexp.t
-  ; targets : Path.t list
   }
 
-val t : targets:(Path.t list) -> Context.t String_map.t -> t Sexp.Of_sexp.t
+val t : Context.t String_map.t -> t Sexp.Of_sexp.t
 val sexp_of_t : t Sexp.To_sexp.t
-val exec : t -> unit Future.t
+val exec : targets:Path.Set.t -> t -> unit Future.t
 
 type for_hash
 val for_hash : t -> for_hash

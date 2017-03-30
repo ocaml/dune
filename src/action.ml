@@ -352,10 +352,9 @@ type t =
   { context : Context.t option
   ; dir     : Path.t
   ; action  : Mini_shexp.t
-  ; targets : Path.t list
   }
 
-let t ~targets contexts sexp =
+let t contexts sexp =
   let open Sexp.Of_sexp in
   let context sexp =
     let name = string sexp in
@@ -367,10 +366,10 @@ let t ~targets contexts sexp =
     (field_o "context" context      >>= fun context ->
      field   "dir"     Path.t       >>= fun dir ->
      field   "action"  Mini_shexp.t >>= fun action ->
-     return { context; dir; action; targets })
+     return { context; dir; action })
     sexp
 
-let sexp_of_t { context; dir; action ; _} =
+let sexp_of_t { context; dir; action } =
   let fields : Sexp.t list =
     [ List [ Atom "dir"    ; Path.sexp_of_t dir          ]
     ; List [ Atom "action" ; Mini_shexp.sexp_of_t action ]
@@ -383,15 +382,16 @@ let sexp_of_t { context; dir; action ; _} =
   in
   Sexp.List fields
 
-let exec { action; dir; context; targets } =
+let exec ~targets { action; dir; context } =
   let env =
     match context with
     | None -> Lazy.force Context.initial_env
     | Some c -> c.env
   in
+  let targets = Path.Set.elements targets in
   let purpose = match context with
-    | Some ctx -> Future.Build_job (targets, ctx.build_dir, ctx.name)
-    | None -> Future.Build_job (targets, Path.of_string "", "default") in
+    | Some ctx -> Future.Build_job { targets; build_dir = ctx.build_dir; context_name = ctx.name }
+    | None -> Future.Build_job { targets; build_dir = Path.of_string ""; context_name = "default" } in
   Mini_shexp.exec action ~purpose ~dir ~env ~env_extra:String_map.empty
     ~stdout_to:None ~stderr_to:None
 

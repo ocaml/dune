@@ -340,6 +340,57 @@ module Scheduler = struct
       | Terminal -> s
       | File fn | Opened_file { filename = fn; _ } -> sprintf "%s 2> %s" s fn
 
+  let pp_purpose ppf = function
+  | Internal_job ->
+     Format.fprintf ppf "(internal)"
+  | Build_job {targets; build_dir; context_name} ->
+     let strip_prefix path =
+       let s = Path.to_string path in
+       let dir = Path.to_string build_dir in
+       let dir =
+         if dir.[String.length dir - 1] = '/' then
+           dir
+         else
+           dir ^ "/" in
+       let dirlen = String.length dir in
+       if String.length s > dirlen &&
+         String.sub ~pos:0 ~len:dirlen s = dir then
+         String.sub ~pos:dirlen ~len:(String.length s - dirlen) s
+       else
+         s in
+     let rec group_by_ext = function
+       | [] -> []
+       | x :: xs ->
+          let eq_ext a b =
+            let chop s =
+              try Filename.chop_extension s with Invalid_argument _ -> s in
+            chop a = chop b in
+          let (similar, rest) = List.partition ~f:(eq_ext x) xs in
+          (x :: similar) :: group_by_ext rest in
+     let pp_ext ppf filename =
+       let ext = match Filename.ext filename with
+         | Some s when s.[0] = '.' ->
+            String.sub ~pos:1 ~len:(String.length s - 1) s
+         | Some s -> s
+         | None -> "" in
+       Format.fprintf ppf "%s" ext in
+     let pp_comma ppf () = Format.fprintf ppf "," in
+     let pp_group ppf = function
+       | [] -> assert false
+       | [s] -> Format.fprintf ppf "%s" s
+       | (x :: _) as group ->
+          Format.fprintf ppf "%s.{%a}"
+            (Filename.chop_extension x)
+            (Format.pp_print_list ~pp_sep:pp_comma pp_ext)
+            group in
+     targets
+     |> List.map ~f:strip_prefix
+     |> group_by_ext
+     |> Format.pp_print_list ~pp_sep:pp_comma pp_group ppf;
+     match context_name with
+     | "default" -> ()
+     | name -> Format.fprintf ppf " @{<details>[%s]@}" name
+
   type running_job =
     { id              : int
     ; job             : job
@@ -371,56 +422,6 @@ module Scheduler = struct
       ~output:output
       ~exit_status:status;
     if not exiting then begin
-      let pp_purpose ppf = function
-      | Internal_job ->
-         Format.fprintf ppf "(internal)"
-      | Build_job {targets; build_dir; context_name} ->
-         let strip_prefix path =
-           let s = Path.to_string path in
-           let dir = Path.to_string build_dir in
-           let dir =
-             if dir.[String.length dir - 1] = '/' then
-               dir
-             else
-               dir ^ "/" in
-           let dirlen = String.length dir in
-           if String.length s > dirlen &&
-             String.sub ~pos:0 ~len:dirlen s = dir then
-             String.sub ~pos:dirlen ~len:(String.length s - dirlen) s
-           else
-             s in
-         let rec group_by_ext = function
-           | [] -> []
-           | x :: xs ->
-              let eq_ext a b =
-                let chop s =
-                  try Filename.chop_extension s with Invalid_argument _ -> s in
-                chop a = chop b in
-              let (similar, rest) = List.partition ~f:(eq_ext x) xs in
-              (x :: similar) :: group_by_ext rest in
-         let pp_ext ppf filename =
-           let ext = match Filename.ext filename with
-             | Some s when s.[0] = '.' ->
-                String.sub ~pos:1 ~len:(String.length s - 1) s
-             | Some s -> s
-             | None -> "" in
-           Format.fprintf ppf "%s" ext in
-         let pp_comma ppf () = Format.fprintf ppf "," in
-         let pp_group ppf = function
-           | [] -> assert false
-           | [s] -> Format.fprintf ppf "%s" s
-           | (x :: _) as group ->
-              Format.fprintf ppf "%s.{%a}"
-                (Filename.chop_extension x)
-                (Format.pp_print_list ~pp_sep:pp_comma pp_ext)
-                group in
-         targets
-         |> List.map ~f:strip_prefix
-         |> group_by_ext
-         |> Format.pp_print_list ~pp_sep:pp_comma pp_group ppf;
-         match context_name with
-         | "default" -> ()
-         | name -> Format.fprintf ppf " @{<details>[%s]@}" name in
       let _, progname, _ = split_prog job.job.prog in
       match status with
       | WEXITED n when code_is_ok job.job.ok_codes n ->

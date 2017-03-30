@@ -44,16 +44,10 @@ and opened_file_desc =
   | Fd      of Unix.file_descr
   | Channel of out_channel
 
-type build_job_desc =
-  { targets : Path.t list
-  ; build_dir : Path.t
-  ; context_name : string
-  }
-
 (** Why a Future.t was run *)
 type purpose =
   | Internal_job
-  | Build_job of build_job_desc
+  | Build_job of Path.t list
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its termination *)
 val run

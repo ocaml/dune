@@ -177,16 +177,10 @@ and opened_file_desc =
   | Fd      of Unix.file_descr
   | Channel of out_channel
 
-type build_job_desc =
-  { targets : Path.t list
-  ; build_dir : Path.t
-  ; context_name : string
-  }
-
 (** Why a Future.t was run *)
 type purpose =
   | Internal_job
-  | Build_job of build_job_desc
+  | Build_job of Path.t list
 
 type job =
   { prog      : string
@@ -343,21 +337,34 @@ module Scheduler = struct
   let pp_purpose ppf = function
   | Internal_job ->
      Format.fprintf ppf "(internal)"
-  | Build_job {targets; build_dir; context_name} ->
-     let strip_prefix path =
-       let s = Path.to_string path in
-       let dir = Path.to_string build_dir in
-       let dir =
-         if dir.[String.length dir - 1] = '/' then
-           dir
-         else
-           dir ^ "/" in
-       let dirlen = String.length dir in
-       if String.length s > dirlen &&
-         String.sub ~pos:0 ~len:dirlen s = dir then
-         String.sub ~pos:dirlen ~len:(String.length s - dirlen) s
-       else
-         s in
+  | Build_job targets ->
+     let rec split_paths targets_acc ctxs_acc = function
+       | [] -> List.rev targets_acc, List.sort_uniq ~cmp:compare ctxs_acc
+       | path :: rest ->
+          match Path.extract_build_context path with
+          | None ->
+             split_paths (Path.to_string path :: targets_acc) ctxs_acc rest
+          | Some ("default", filename) ->
+             split_paths (Path.to_string filename :: targets_acc) ctxs_acc rest
+          | Some (".aliases", filename) ->
+             let ctxs_acc, filename = match Path.extract_build_context filename with
+               | None -> ctxs_acc, Path.to_string filename
+               | Some (ctx, fn) ->
+                  let strip_digest fn =
+                    let fn = Path.to_string fn in
+                    match String.rsplit2 fn ~on:'-' with
+                    | None -> fn
+                    | Some (name, digest) ->
+                       match Digest.from_hex digest with
+                       | _ -> name
+                       | exception (Invalid_argument _) -> fn in
+                  let ctxs_acc =
+                    if ctx = "default" then ctxs_acc else ctx :: ctxs_acc in
+                  ctxs_acc, strip_digest fn in
+             split_paths (("alias " ^ filename) :: targets_acc) ctxs_acc rest
+          | Some (ctx, filename) ->
+             split_paths (Path.to_string filename :: targets_acc) (ctx :: ctxs_acc) rest in
+     let target_names, contexts = split_paths [] [] targets in
      let rec group_by_ext = function
        | [] -> []
        | x :: xs ->
@@ -383,13 +390,18 @@ module Scheduler = struct
             (Filename.chop_extension x)
             (Format.pp_print_list ~pp_sep:pp_comma pp_ext)
             group in
-     targets
-     |> List.map ~f:strip_prefix
-     |> group_by_ext
-     |> Format.pp_print_list ~pp_sep:pp_comma pp_group ppf;
-     match context_name with
-     | "default" -> ()
-     | name -> Format.fprintf ppf " @{<details>[%s]@}" name
+     let pp_contexts ppf = function
+       | [] -> ()
+       | ctxs ->
+          Format.fprintf ppf " @{<details>[%a]@}"
+            (Format.pp_print_list ~pp_sep:pp_comma
+               (fun ppf s -> Format.fprintf ppf "%s" s))
+            ctxs in
+     Format.fprintf ppf "%a%a"
+       (Format.pp_print_list ~pp_sep:pp_comma pp_group)
+       (group_by_ext target_names)
+       pp_contexts
+       contexts;
 
   type running_job =
     { id              : int

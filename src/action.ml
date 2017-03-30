@@ -389,9 +389,7 @@ let exec ~targets { action; dir; context } =
     | Some c -> c.env
   in
   let targets = Path.Set.elements targets in
-  let purpose = match context with
-    | Some ctx -> Future.Build_job { targets; build_dir = ctx.build_dir; context_name = ctx.name }
-    | None -> Future.Build_job { targets; build_dir = Path.of_string ""; context_name = "default" } in
+  let purpose = Future.Build_job targets in
   Mini_shexp.exec action ~purpose ~dir ~env ~env_extra:String_map.empty
     ~stdout_to:None ~stderr_to:None
 

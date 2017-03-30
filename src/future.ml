@@ -457,7 +457,7 @@ module Scheduler = struct
             (Ansi_color.strip_colors_for_stderr job.command_line)
             (Ansi_color.strip_colors_for_stderr output)
         end else begin
-          Format.eprintf "@{<error>%14s@} %a @{<error>(exit %d)@}@."
+          Format.eprintf "@{<error>%12s@} %a @{<error>(exit %d)@}@."
                          progname pp_purpose job.job.purpose n;
           Format.eprintf "@{<details>%s@}@."
                          (Ansi_color.strip job.command_line);
@@ -472,7 +472,7 @@ module Scheduler = struct
             (Ansi_color.strip_colors_for_stderr job.command_line)
             (Ansi_color.strip_colors_for_stderr output);
         end else begin
-          Format.eprintf "@{<error>%14s@} %a @{<error>(got signal %s)@}@."
+          Format.eprintf "@{<error>%12s@} %a @{<error>(got signal %s)@}@."
                          progname pp_purpose job.job.purpose (Utils.signal_name n);
           Format.eprintf "@{<details>%s@}@."
                          (Ansi_color.strip job.command_line);

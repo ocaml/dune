@@ -21,10 +21,13 @@ let create () =
   Some { oc; buf; ppf }
 
 let info_internal { oc; _ } str =
-  List.iter (String.split_lines str) ~f:(function
-    | "" -> output_string oc "#\n"
-    | s  -> Printf.fprintf oc "# %s\n" s);
-  flush oc
+  let write oc =
+    List.iter (String.split_lines str) ~f:(function
+      | "" -> output_string oc "#\n"
+      | s  -> Printf.fprintf oc "# %s\n" s);
+    flush oc in
+  write oc;
+  if !Clflags.verbose then write stderr
 
 let info t str =
   match t with

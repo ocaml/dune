@@ -8,3 +8,4 @@ let debug_findlib = ref false
 let warnings = ref "-40"
 let debug_dep_path = ref false
 let dev_mode = ref false
+let workspace_root = ref "."

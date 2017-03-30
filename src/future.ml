@@ -592,6 +592,7 @@ module Scheduler = struct
 
   let go ?(log=Log.no_log) t =
     Lazy.force Ansi_color.setup_env_for_opam_colors;
+    Log.info log ("Workspace root: " ^ !Clflags.workspace_root);
     let cwd = Sys.getcwd () in
     go_rec cwd log t
 end

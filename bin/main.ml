@@ -32,8 +32,7 @@ let set_common c =
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.dev_mode := c.dev_mode;
   Clflags.verbose := c.verbose;
-  if !Clflags.verbose then
-    Printf.eprintf "Workspace root: %s\n" c.root;
+  Clflags.workspace_root := c.root;
   if c.root <> Filename.current_dir_name then
     Sys.chdir c.root
 
@@ -260,7 +259,7 @@ type target =
   | File  of Path.t
   | Alias of Path.t * Alias.t
 
-let resolve_targets common (setup : Main.setup) user_targets =
+let resolve_targets ~log common (setup : Main.setup) user_targets =
   match user_targets with
   | [] -> []
   | _ ->
@@ -308,12 +307,12 @@ let resolve_targets common (setup : Main.setup) user_targets =
         )
     in
     if !Clflags.verbose then begin
-      Printf.printf "Actual targets:\n";
+      Log.info log "Actual targets:";
       List.iter targets ~f:(function
         | File path ->
-          Printf.printf "- %s\n" (Path.to_string path)
+          Log.info log @@ "- " ^ (Path.to_string path)
         | Alias (path, _) ->
-          Printf.printf "- alias %s\n" (Path.to_string path));
+          Log.info log @@ "- alias " ^ (Path.to_string path));
       flush stdout;
     end;
     List.map targets ~f:(function
@@ -334,7 +333,7 @@ let build_targets =
     let log = Log.create () in
     Future.Scheduler.go ~log
       (Main.setup ~log common >>= fun setup ->
-       let targets = resolve_targets common setup targets in
+       let targets = resolve_targets ~log common setup targets in
        do_build setup targets) in
   ( Term.(const go
           $ common
@@ -391,7 +390,7 @@ let external_lib_deps =
     Future.Scheduler.go ~log
       (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
        >>= fun setup ->
-       let targets = resolve_targets common setup targets in
+       let targets = resolve_targets ~log common setup targets in
        let failure =
          String_map.fold ~init:false
            (Build_system.all_lib_deps_by_context setup.build_system targets)

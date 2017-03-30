@@ -339,7 +339,7 @@ module Scheduler = struct
      Format.fprintf ppf "(internal)"
   | Build_job targets ->
      let rec split_paths targets_acc ctxs_acc = function
-       | [] -> List.rev targets_acc, List.sort_uniq ~cmp:compare ctxs_acc
+       | [] -> List.rev targets_acc, String_set.(elements (of_list ctxs_acc))
        | path :: rest ->
           match Path.extract_build_context path with
           | None ->

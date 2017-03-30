@@ -320,7 +320,7 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
       | Alias (_, alias) -> Alias.file alias)
 
 let build_targets =
-  let doc = "Build the given targets." in
+  let doc = "Build the given targets, or all installable targets if none are given." in
   let man =
     [ `S "DESCRIPTION"
     ; `P {|Targets starting with a $(b,@) are interpreted as aliases.|}
@@ -337,7 +337,7 @@ let build_targets =
        do_build setup targets) in
   ( Term.(const go
           $ common
-          $ Arg.(non_empty & pos_all string [] name_))
+          $ Arg.(value & pos_all string ["@install"] name_))
   , Term.info "build" ~doc ~man)
 
 let runtest =

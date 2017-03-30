@@ -327,6 +327,95 @@ let build_targets =
           $ Arg.(non_empty & pos_all string [] name_))
   , Term.info "build" ~doc ~man)
 
+let rec mkdir_p fname =
+  try
+    Unix.mkdir fname 0o777
+  with
+  | Unix.Unix_error (EEXIST, _, _) -> ()
+  | Unix.Unix_error (ENOENT, _, _) as e ->
+    let parent = Filename.dirname fname in
+    if parent = fname then
+      raise e
+    else begin
+      mkdir_p parent;
+      Unix.mkdir fname 0o777
+    end
+
+let vendor =
+  let doc = "Vendor the dependencies of the given targets." in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|Create a directory structure that is a stripped down version
+           of the workspace. It contains the minimum needed to build the
+           given targets from scratch.
+         |}
+    ; `P {|Note that this doesn't include external dependencies.|}
+    ; `Blocks help_secs
+    ]
+  in
+  let go common dest_dir targets =
+    let dest_dir =
+      if Filename.is_relative dest_dir then
+        Filename.concat (Sys.getcwd ()) dest_dir
+      else
+        dest_dir
+    in
+    set_common common;
+    let log = Log.create () in
+    Future.Scheduler.go ~log
+      (Main.setup ~log common >>= fun setup ->
+       let targets = resolve_targets common setup targets in
+       Build_system.transitive_deps_exn setup.build_system targets >>= fun deps ->
+       let module S = Path.Set in
+       let source_deps =
+         S.filter deps ~f:(fun path ->
+           Path.is_local path && not (Path.is_in_build_dir path))
+       in
+       let sub_dirs =
+         S.fold deps ~init:S.empty ~f:(fun path acc ->
+           match Path.extract_build_context path with
+           | Some (_, path) when not (Path.is_root path) ->
+             S.add (Path.parent path) acc
+           | _ -> acc)
+       in
+       let opams =
+         String_map.fold setup.packages ~init:S.empty ~f:(fun ~key:_ ~data:pkg acc ->
+           S.add (Path.relative pkg.Package.path (sprintf "%s.opam" pkg.name)) acc)
+       in
+       let files_in_sub_dirs ~fname =
+         S.fold sub_dirs ~init:S.empty ~f:(fun dir acc ->
+           if File_tree.file_exists setup.file_tree dir fname then
+             S.add (Path.relative dir fname) acc
+           else
+             acc)
+       in
+       let source_deps =
+         S.union
+           (S.union
+              source_deps
+              opams)
+           (S.union
+              (files_in_sub_dirs ~fname:"jbuild")
+              (files_in_sub_dirs ~fname:"jbuild-ignore"))
+       in
+       mkdir_p dest_dir;
+       S.iter source_deps ~f:(fun src ->
+         let src = Path.to_string src in
+         let dst = Filename.concat dest_dir src in
+         mkdir_p (Filename.dirname dst);
+         copy_file ~src ~dst);
+       Future.return ()
+      )
+  in
+  ( Term.(const go
+          $ common
+          $ Arg.(required
+                 & opt (some string) None
+                 & info ["dest-dir"] ~docv:"DIR"
+                     ~doc:"Destination directory.")
+          $ Arg.(non_empty & pos_all string [] & Arg.info [] ~docv:"TARGET"))
+  , Term.info "vendor" ~doc ~man)
+
 let runtest =
   let doc = "Run tests." in
   let man =
@@ -576,6 +665,7 @@ let all =
   ; install
   ; uninstall
   ; exec
+  ; vendor
   ]
 
 let default =

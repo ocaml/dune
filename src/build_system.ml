@@ -293,6 +293,12 @@ let () =
     pending_targets := Pset.empty;
     Pset.iter fns ~f:Path.unlink_no_err)
 
+let collecting_deps = ref false
+let all_deps = ref Pset.empty
+let collect_deps deps =
+  if !collecting_deps then
+    all_deps := Pset.union !all_deps deps
+
 let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
   let { Pre_rule. build; targets = target_specs } = pre_rule in
   let deps = Build_interpret.deps build ~all_targets_by_dir in
@@ -332,6 +338,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     wait_for_deps t ~targeting (Pset.diff dyn_deps deps)
     >>= fun () ->
     let all_deps = Pset.union deps dyn_deps in
+    collect_deps all_deps;
     if !Clflags.debug_actions then
       Format.eprintf "@{<debug>Action@}: %s@."
         (Sexp.to_string (Action.sexp_of_t action));
@@ -549,6 +556,14 @@ let do_build t targets =
     Ok (do_build_exn t targets)
   with Build_error.E e ->
     Error e
+
+let transitive_deps_exn t targets =
+  collecting_deps := true;
+  do_build_exn t targets >>= fun () ->
+  let deps = !all_deps in
+  collecting_deps := false;
+  all_deps := Pset.empty;
+  return deps
 
 let rules_for_files t paths =
   List.filter_map paths ~f:(fun path ->

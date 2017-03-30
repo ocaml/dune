@@ -26,6 +26,9 @@ end
 val do_build     : t -> Path.t list -> (unit Future.t, Build_error.t) result
 val do_build_exn : t -> Path.t list -> unit Future.t
 
+(** Returns the set of transitive dependencies required to build the given targets. *)
+val transitive_deps_exn : t -> Path.t list -> Path.Set.t Future.t
+
 (** Return all the library dependencies (as written by the user) needed to build these
     targets *)
 val all_lib_deps : t -> Path.t list -> Build.lib_deps Path.Map.t

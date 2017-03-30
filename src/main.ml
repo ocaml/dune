@@ -6,6 +6,7 @@ type setup =
   ; stanzas      : (Path.t * Jbuild_types.Stanzas.t) list String_map.t
   ; contexts     : Context.t list
   ; packages     : Package.t String_map.t
+  ; file_tree    : File_tree.t
   }
 
 let package_install_file { packages; _ } pkg =
@@ -54,6 +55,7 @@ let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
          ; stanzas
          ; contexts
          ; packages = conf.packages
+         ; file_tree = conf.file_tree
          }
 
 let external_lib_deps ?log ~packages () =

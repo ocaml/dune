@@ -38,6 +38,7 @@ module Ocaml_flags = struct
       ; "-strict-sequence"
       ; "-strict-formats"
       ; "-short-paths"
+      ; "-keep-locs"
       ]
     else
       [ "-w"; !Clflags.warnings ]

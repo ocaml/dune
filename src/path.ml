@@ -373,3 +373,20 @@ let insert_after_build_dir_exn =
         sprintf "_build/%s/%s" b rest
     | _ ->
       error a b
+
+let rm_rf =
+  let rec loop dir =
+    Array.iter (Sys.readdir dir) ~f:(fun fn ->
+      let fn = Filename.concat dir fn in
+      match Unix.lstat fn with
+      | { st_kind = S_DIR; _ } ->
+        loop fn;
+        Unix.rmdir fn
+      | _ ->
+        Unix.unlink fn)
+  in
+  fun t ->
+    let fn = to_string t in
+    match Unix.lstat fn with
+    | exception Unix.Unix_error(ENOENT, _, _) -> ()
+    | _ -> loop fn

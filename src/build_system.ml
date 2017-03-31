@@ -306,11 +306,6 @@ let make_local_dirs t paths ~map_path =
     | _ -> ())
 
 let sandbox_dir = Path.of_string "_build/.sandbox"
-let sandboxed path =
-  if Path.is_local path then
-    Path.append sandbox_dir path
-  else
-    path
 
 let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
   let { Pre_rule. build; targets = target_specs; sandbox } = pre_rule in
@@ -357,6 +352,12 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       let trace = (all_deps_as_list, targets_as_list, Action.for_hash action) in
       Digest.string (Marshal.to_string trace [])
     in
+    let sandbox_dir =
+      if sandbox then
+        Some (Path.relative sandbox_dir (Digest.to_hex hash))
+      else
+        None
+    in
     let rule_changed =
       List.fold_left targets_as_list ~init:false ~f:(fun acc fn ->
         match Hashtbl.find t.trace fn with
@@ -400,17 +401,26 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       Pset.iter targets_to_remove ~f:Path.unlink_no_err;
       pending_targets := Pset.union targets_to_remove !pending_targets;
       let action =
-        if sandbox then begin
+        match sandbox_dir with
+        | Some sandbox_dir ->
+          Path.rm_rf sandbox_dir;
+          let sandboxed path =
+            if Path.is_local path then
+              Path.append sandbox_dir path
+            else
+              path
+          in
           make_local_dirs t all_deps ~map_path:sandboxed;
           make_local_dirs t targets  ~map_path:sandboxed;
           Action.sandbox action
             ~sandboxed
             ~deps:all_deps_as_list
             ~targets:targets_as_list
-        end else
+        | None ->
           action
       in
       Action.exec ~targets action >>| fun () ->
+      Option.iter sandbox_dir ~f:Path.rm_rf;
       (* All went well, these targets are no longer pending *)
       pending_targets := Pset.diff !pending_targets targets_to_remove;
       refresh_targets_timestamps_after_rule_execution t targets_as_list

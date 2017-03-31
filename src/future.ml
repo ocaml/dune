@@ -387,7 +387,7 @@ module Scheduler = struct
        | [s] -> Format.fprintf ppf "%s" s
        | (x :: _) as group ->
           Format.fprintf ppf "%s.{%a}"
-            (Filename.chop_extension x)
+            (Filename.remove_extension x)
             (Format.pp_print_list ~pp_sep:pp_comma pp_ext)
             group in
      let pp_contexts ppf = function

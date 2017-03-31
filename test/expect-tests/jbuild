@@ -15,3 +15,10 @@
          (glob_files ${ROOT}/vendor/re/*.cmi)
          (files_recursively_in findlib-db)))
   (action (chdir ${ROOT} (run ${exe:expect_test.bc} ${<})))))
+
+(alias
+ ((name runtest)
+  (deps (filename.mlt
+         (glob_files ${ROOT}/src/*.cmi)
+         (glob_files ${ROOT}/vendor/re/*.cmi)))
+  (action (chdir ${ROOT} (run ${exe:expect_test.bc} ${<})))))

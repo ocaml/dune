@@ -154,8 +154,8 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) () =
       let files = File_tree.Dir.files dir in
       let pkgs =
         String_set.fold files ~init:pkgs ~f:(fun fn acc ->
-          match Filename.split_ext fn with
-          | Some (pkg, ".opam") when pkg <> "" ->
+          match Filename.split_extension fn with
+          | (pkg, ".opam") when pkg <> "" ->
             let version_from_opam_file =
               let lines = lines_of_file (Path.relative path fn |> Path.to_string) in
               List.find_map lines ~f:(fun s ->

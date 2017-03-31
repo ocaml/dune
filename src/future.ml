@@ -375,11 +375,11 @@ module Scheduler = struct
           let (similar, rest) = List.partition ~f:(eq_ext x) xs in
           (x :: similar) :: group_by_ext rest in
      let pp_ext ppf filename =
-       let ext = match Filename.ext filename with
-         | Some s when s.[0] = '.' ->
-            String.sub ~pos:1 ~len:(String.length s - 1) s
-         | Some s -> s
-         | None -> "" in
+       let ext =
+         match Filename.extension filename with
+         | "" -> ""
+         | s -> String.sub ~pos:1 ~len:(String.length s - 1) s
+       in
        Format.fprintf ppf "%s" ext in
      let pp_comma ppf () = Format.fprintf ppf "," in
      let pp_group ppf = function

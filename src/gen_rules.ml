@@ -492,9 +492,9 @@ module Gen(P : Params) = struct
     let files =
       List.filter_map (String_map.values modules) ~f:(fun m -> Module.file ~dir m ml_kind)
       |> List.map ~f:(fun fn ->
-        match ml_kind, Filename.ext (Path.to_string fn) with
-        | Impl, Some ".ml"  -> Arg_spec.Dep fn
-        | Intf, Some ".mli" -> Dep fn
+        match ml_kind, Filename.extension (Path.to_string fn) with
+        | Impl, ".ml"  -> Arg_spec.Dep fn
+        | Intf, ".mli" -> Dep fn
         | Impl, _ -> S [A "-impl"; Dep fn]
         | Intf, _ -> S [A "-intf"; Dep fn])
     in
@@ -651,12 +651,10 @@ module Gen(P : Params) = struct
      +-----------------------------------------------------------------+ *)
 
   let pp_fname fn =
-    match Filename.split_ext fn with
-    | None -> fn ^ ".pp"
-    | Some (fn, ext) ->
-      (* We need to to put the .pp before the .ml so that the compiler realises that
-         [foo.pp.mli] is the interface for [foo.pp.ml] *)
-      fn ^ ".pp" ^ ext
+    let fn, ext = Filename.split_extension fn in
+    (* We need to to put the .pp before the .ml so that the compiler realises that
+       [foo.pp.mli] is the interface for [foo.pp.ml] *)
+    fn ^ ".pp" ^ ext
 
   let pped_module ~dir (m : Module.t) ~f =
     let ml_pp_fname = pp_fname m.ml_fname in
@@ -1136,9 +1134,7 @@ module Gen(P : Params) = struct
                cmi exists and reads it instead of re-creating it, which
                could create a race condition. *)
             ([ "-intf-suffix"
-             ; match Filename.ext m.ml_fname with
-             | None -> ""
-             | Some ext -> ext
+             ; Filename.extension m.ml_fname
              ],
              [Module.cm_file m ~dir Cmi], [])
           | Cmi, None -> assert false

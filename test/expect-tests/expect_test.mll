@@ -107,7 +107,7 @@ let main () =
 
   let corrected_fn = fn ^ ".corrected" in
   (* Temporary hack: *)
-  (* Sys.chdir "../.."; *)
+  if Filename.basename (Sys.getcwd ()) = "default" then Sys.chdir "../..";
   if txt <> res then begin
     let oc = open_out_bin corrected_fn in
     output_string oc res;

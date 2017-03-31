@@ -17,3 +17,6 @@ val jbuild_name_in : dir:Path.t -> string
 
 (** Nice description of a target *)
 val describe_target : Path.t -> string
+
+(** Raise an error about a program not found in the PATH *)
+val program_not_found : ?context:string -> string -> _

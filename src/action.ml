@@ -36,8 +36,7 @@ let expand_prog ctx ~dir ~f template =
     else
       match Context.which ctx s with
       | Some p -> p
-      | None ->
-        die "@{<error>Error@}: Program %s not found in PATH (context: %s)" s ctx.name
+      | None -> Utils.program_not_found ~context:ctx.name s
   in
   match String_with_vars.just_a_var template with
   | None -> resolve (expand_str ~dir ~f template)

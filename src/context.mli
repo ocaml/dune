@@ -81,9 +81,10 @@ type t =
   ; version                 : string
   ; stdlib_dir              : Path.t
   ; ccomp_type              : string
-  ; bytecomp_c_compiler     : string
+  ; c_compiler              : string
+  ; ocamlc_cflags           : string
+  ; ocamlopt_cflags         : string
   ; bytecomp_c_libraries    : string
-  ; native_c_compiler       : string
   ; native_c_libraries      : string
   ; native_pack_linker      : string
   ; ranlib                  : string

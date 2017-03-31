@@ -79,3 +79,9 @@ let describe_target fn =
     sprintf "alias %s" (Path.to_string dir)
   | _ ->
     Path.to_string fn
+
+let program_not_found ?context prog =
+  die "@{<error>Error@}: Program %s not found in PATH%s" prog
+    (match context with
+     | None -> ""
+     | Some name -> sprintf " (context: %s)" name)

@@ -44,9 +44,10 @@ type t =
   ; version                 : string
   ; stdlib_dir              : Path.t
   ; ccomp_type              : string
-  ; bytecomp_c_compiler     : string
+  ; c_compiler              : string
+  ; ocamlc_cflags           : string
+  ; ocamlopt_cflags         : string
   ; bytecomp_c_libraries    : string
-  ; native_c_compiler       : string
   ; native_c_libraries      : string
   ; native_pack_linker      : string
   ; ranlib                  : string
@@ -107,7 +108,7 @@ let compare a b = compare a.name b.name
 let get_arch_sixtyfour stdlib_dir =
   let config_h = Path.relative stdlib_dir "caml/config.h" in
   List.exists (lines_of_file (Path.to_string config_h)) ~f:(fun line ->
-    match String.split_words line with
+    match String.extract_blank_separated_words line with
     | ["#define"; "ARCH_SIXTYFOUR"] -> true
     | _ -> false)
 
@@ -168,7 +169,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
      Hashtbl.add opam_var_cache ~key:"root" ~data:root
    | Default -> ());
   let prog_not_found_in_path prog =
-    die "Program %s not found in PATH (context: %s)" prog name
+    Utils.program_not_found prog ~context:name
   in
   let which_cache = Hashtbl.create 128 in
   let which x = which ~cache:which_cache ~path x in
@@ -232,8 +233,9 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
     | Error (key, _, _) ->
       die "variable %S present twice in the output of `%s`" key ocamlc_config_cmd
   in
+  let get_opt var = String_map.find var ocamlc_config in
   let get ?default var =
-    match String_map.find var ocamlc_config with
+    match get_opt var with
     | Some s -> s
     | None ->
       match default with
@@ -268,6 +270,29 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
     else
       env,env_extra
   in
+  let c_compiler, ocamlc_cflags, ocamlopt_cflags =
+    match get_opt "c_compiler" with
+    | Some c_compiler -> (* >= 4.06 *)
+      (c_compiler, get "ocamlc_cflags", get "ocamlopt_cflags")
+    | None ->
+      let split_prog s =
+        let len = String.length s in
+        let rec loop i =
+          if i = len then
+            (s, "")
+          else
+            match s.[i] with
+            | ' ' | '\t' ->
+              (String.sub s ~pos:0 ~len:i,
+               String.sub s ~pos:i ~len:(len - i))
+            | _ -> loop (i + 1)
+        in
+        loop 0
+      in
+      let c_compiler, ocamlc_cflags = split_prog (get "bytecomp_c_compiler") in
+      let _, ocamlopt_cflags = split_prog (get "native_c_compiler") in
+      (c_compiler, ocamlc_cflags, ocamlopt_cflags)
+  in
   return
     { name
     ; kind
@@ -299,9 +324,10 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
     ; ocamlc_config = String_map.bindings ocamlc_config
     ; version
     ; ccomp_type              = get       "ccomp_type"
-    ; bytecomp_c_compiler     = get       "bytecomp_c_compiler"
+    ; c_compiler
+    ; ocamlc_cflags
+    ; ocamlopt_cflags
     ; bytecomp_c_libraries    = get       "bytecomp_c_libraries"
-    ; native_c_compiler       = get       "native_c_compiler"
     ; native_c_libraries      = get       "native_c_libraries"
     ; native_pack_linker      = get       "native_pack_linker"
     ; ranlib                  = get       "ranlib"
@@ -354,7 +380,7 @@ let default ?(merlin=true) ?(use_findlib=true) () =
 
 let create_for_opam ?root ~switch ~name ?(merlin=false) () =
   match Bin.opam with
-  | None -> die "Program opam not found in PATH"
+  | None -> Utils.program_not_found "opam"
   | Some fn ->
     (match root with
      | Some root -> return root

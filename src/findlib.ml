@@ -115,7 +115,7 @@ module Vars = struct
     | None -> ""
     | Some rules -> Rules.interpret rules ~preds
 
-  let get_words t var preds = String.split_words (get t var preds)
+  let get_words t var preds = String.extract_comma_space_separated_words (get t var preds)
 end
 
 type package =

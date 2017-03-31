@@ -334,22 +334,14 @@ module Gen(P : Params) = struct
      | User variables                                                  |
      +-----------------------------------------------------------------+ *)
 
-  let cxx_compiler, cxx_flags =
-    match String.split_words ctx.bytecomp_c_compiler with
-    | [] -> assert false
-    | prog :: flags ->
-      let comp =
-        if Filename.is_relative prog then
-          match Bin.which prog with
-          | None -> Path.of_string "g++"
-          | Some p -> p
-        else
-          Path.of_string prog
-      in
-      let flags =
-        List.filter flags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
-      in
-      (comp, flags)
+  let cxx_flags =
+    String.extract_blank_separated_words ctx.ocamlc_cflags
+    |> List.filter ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+
+  let cxx_compiler =
+    lazy (match Context.which ctx ctx.c_compiler with
+      | Some path -> Build.Prog_spec.Dep path
+      | None -> Dyn (fun _ -> Utils.program_not_found ctx.c_compiler))
 
   (* Expand some $-vars within action strings of rules defined in jbuild files *)
   let dollar_var_map =
@@ -364,10 +356,11 @@ module Gen(P : Params) = struct
       | Some p -> Path.to_string p
     in
     [ "-verbose"       , "" (*"-verbose";*)
-    ; "CPP"            , ctx.bytecomp_c_compiler ^ " -E"
-    ; "PA_CPP"         , ctx.bytecomp_c_compiler ^ " -undef -traditional -x c -E"
-    ; "CC"             , ctx.bytecomp_c_compiler
-    ; "CXX"            , String.concat ~sep:" " (Path.to_string cxx_compiler :: cxx_flags)
+    ; "CPP"            , sprintf "%s %s -E" ctx.c_compiler ctx.ocamlc_cflags
+    ; "PA_CPP"         , sprintf "%s %s -undef -traditional -x c -E" ctx.c_compiler
+                           ctx.ocamlc_cflags
+    ; "CC"             , sprintf "%s %s" ctx.c_compiler ctx.ocamlc_cflags
+    ; "CXX"            , String.concat ~sep:" " (ctx.c_compiler :: cxx_flags)
     ; "ocaml_bin"      , Path.to_string ctx.ocaml_bin
     ; "OCAML"          , Path.to_string ctx.ocaml
     ; "OCAMLC"         , Path.to_string ctx.ocamlc
@@ -454,8 +447,8 @@ module Gen(P : Params) = struct
           String.capitalize_ascii module_basename
         in
         let deps =
-          String.split_words (String.sub line ~pos:(i + 1)
-                                ~len:(String.length line - (i + 1)))
+          String.extract_blank_separated_words (String.sub line ~pos:(i + 1)
+                                                  ~len:(String.length line - (i + 1)))
           |> List.filter ~f:(fun m -> m <> unit && String_map.mem m modules)
         in
         let deps =
@@ -1327,7 +1320,7 @@ module Gen(P : Params) = struct
          (* We have to execute the rule in the library directory as the .o is produced in
             the current directory *)
          ~dir
-         (Dep cxx_compiler)
+         (Lazy.force cxx_compiler)
          [ S [A "-I"; Path ctx.stdlib_dir]
          ; expand_includes ~dir lib.includes
          ; As cxx_flags
@@ -1858,7 +1851,8 @@ module Gen(P : Params) = struct
            List.iter template ~f:(fun s ->
              if String.is_prefix s ~prefix:"#" then
                match
-                 String.split_words (String.sub s ~pos:1 ~len:(String.length s - 1))
+                 String.extract_blank_separated_words
+                   (String.sub s ~pos:1 ~len:(String.length s - 1))
                with
                | ["JBUILDER_GEN"] -> Format.fprintf ppf "%a@," Meta.pp meta.entries
                | _ -> Format.fprintf ppf "%s@," s

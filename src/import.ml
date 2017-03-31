@@ -205,23 +205,33 @@ module String = struct
     let uncapitalize_ascii = String.uncapitalize
   end
 
-  let split_words s =
+  let extract_words s ~is_word_char =
     let rec skip_blanks i =
       if i = length s then
         []
+      else if is_word_char s.[i] then
+        parse_word i (i + 1)
       else
-        match s.[i] with
-        | ',' | ' ' | '\t' | '\n' -> skip_blanks (i + 1)
-        | _ -> parse_word i (i + 1)
+        skip_blanks (i + 1)
     and parse_word i j =
       if j = length s then
         [sub s ~pos:i ~len:(j - i)]
+      else if is_word_char s.[j] then
+        parse_word i (j + 1)
       else
-        match s.[j] with
-        | ',' | ' ' | '\t' | '\n' -> sub s ~pos:i ~len:(j - i) :: skip_blanks (j + 1)
-        | _ -> parse_word i (j + 1)
+        sub s ~pos:i ~len:(j - i) :: skip_blanks (j + 1)
     in
     skip_blanks 0
+
+  let extract_comma_space_separated_words s =
+    extract_words s ~is_word_char:(function
+      | ',' | ' ' | '\t' | '\n' -> false
+      | _ -> true)
+
+  let extract_blank_separated_words s =
+    extract_words s ~is_word_char:(function
+      | ' ' | '\t' -> false
+      | _ -> true)
 
   let lsplit2 s ~on =
     match index s on with

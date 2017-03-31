@@ -29,6 +29,7 @@ module Mini_shexp : sig
       | System         of 'a
       | Bash           of 'a
       | Update_file    of 'path * 'a
+      | Rename         of 'path * 'path
     val t : 'a Sexp.Of_sexp.t -> 'b Sexp.Of_sexp.t -> ('a, 'b) t Sexp.Of_sexp.t
     val sexp_of_t : 'a Sexp.To_sexp.t -> 'b Sexp.To_sexp.t -> ('a, 'b) t Sexp.To_sexp.t
   end
@@ -59,6 +60,14 @@ type t =
 val t : Context.t String_map.t -> t Sexp.Of_sexp.t
 val sexp_of_t : t Sexp.To_sexp.t
 val exec : targets:Path.Set.t -> t -> unit Future.t
+
+(* Return a sandboxed version of an action *)
+val sandbox
+  :  t
+  -> sandboxed:(Path.t -> Path.t)
+  -> deps:Path.t list
+  -> targets:Path.t list
+  -> t
 
 type for_hash
 val for_hash : t -> for_hash

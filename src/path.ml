@@ -49,9 +49,17 @@ module Local = struct
 
   let root = ""
 
+  let is_root = function
+    | "" -> true
+    | _  -> false
+
   let to_string = function
     | "" -> "."
     | t  -> t
+
+  let compare = String.compare
+
+  module Set = String_set
 
   let to_list =
     let rec loop t acc i j =

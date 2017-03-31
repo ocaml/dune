@@ -104,10 +104,12 @@ module Rule = struct
   type t =
     { build   : (unit, Action.t) Build.t
     ; targets : Target.t list
+    ; sandbox : bool
     }
 
-  let make build =
+  let make ?(sandbox=false) build =
     { build
     ; targets = targets build
+    ; sandbox
     }
 end

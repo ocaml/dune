@@ -61,6 +61,7 @@ type t =
   ; (* Table from target to digest of [(deps, targets, action)] *)
     trace      : (Path.t, Digest.t) Hashtbl.t
   ; timestamps : (Path.t, float) Hashtbl.t
+  ; mutable local_mkdirs : Path.Local.Set.t
   }
 
 let timestamp t fn =
@@ -293,8 +294,22 @@ let () =
     pending_targets := Pset.empty;
     Pset.iter fns ~f:Path.unlink_no_err)
 
+let make_local_dirs t paths ~map_path =
+  Pset.iter paths ~f:(fun path ->
+    match Path.kind (map_path path) with
+    | Local path when not (Path.Local.is_root path) ->
+      let parent = Path.Local.parent path in
+      if not (Path.Local.Set.mem parent t.local_mkdirs) then begin
+        Path.Local.mkdir_p parent;
+        t.local_mkdirs <- Path.Local.Set.add parent t.local_mkdirs
+      end
+    | _ -> ())
+
+let sandbox_dir = Path.of_string "_build/.sandbox"
+let sandboxed path = Path.append sandbox_dir path
+
 let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
-  let { Pre_rule. build; targets = target_specs } = pre_rule in
+  let { Pre_rule. build; targets = target_specs; sandbox } = pre_rule in
   let deps = Build_interpret.deps build ~all_targets_by_dir in
   let targets = Target.paths target_specs in
 
@@ -322,10 +337,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
   end;
 
   let exec = Exec_status.Not_started (fun ~targeting ->
-    Pset.iter targets ~f:(fun fn ->
-      match Path.kind fn with
-      | Local local -> Path.Local.ensure_parent_directory_exists local
-      | External _ -> ());
+    make_local_dirs t targets ~map_path:(fun x -> x);
     wait_for_deps t deps ~targeting
     >>= fun () ->
     let action, dyn_deps = Build_exec.exec t build () in
@@ -383,6 +395,17 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       in
       Pset.iter targets_to_remove ~f:Path.unlink_no_err;
       pending_targets := Pset.union targets_to_remove !pending_targets;
+      let action =
+        if sandbox then begin
+          make_local_dirs t all_deps ~map_path:sandboxed;
+          make_local_dirs t targets  ~map_path:sandboxed;
+          Action.sandbox action
+            ~sandboxed
+            ~deps:all_deps_as_list
+            ~targets:targets_as_list
+        end else
+          action
+      in
       Action.exec ~targets action >>| fun () ->
       (* All went well, these targets are no longer pending *)
       pending_targets := Pset.diff !pending_targets targets_to_remove;
@@ -500,6 +523,7 @@ let create ~contexts ~file_tree ~rules =
     ; files      = Hashtbl.create 1024
     ; trace      = Trace.load ()
     ; timestamps = Hashtbl.create 1024
+    ; local_mkdirs = Path.Local.Set.empty
     } in
   List.iter rules ~f:(compile_rule t ~all_targets_by_dir ~allow_override:false);
   setup_copy_rules t ~all_targets_by_dir

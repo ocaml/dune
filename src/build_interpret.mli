@@ -13,9 +13,10 @@ module Rule : sig
   type t =
     { build   : (unit, Action.t) Build.t
     ; targets : Target.t list
+    ; sandbox : bool
     }
 
-  val make : (unit, Action.t) Build.t -> t
+  val make : ?sandbox:bool -> (unit, Action.t) Build.t -> t
 end
 
 val deps

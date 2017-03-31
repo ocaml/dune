@@ -80,6 +80,7 @@ module Mini_shexp = struct
       | System         of 'a
       | Bash           of 'a
       | Update_file     of 'path * 'a
+      | Rename         of 'path * 'path
 
     let rec t a p sexp =
       sum
@@ -134,6 +135,7 @@ module Mini_shexp = struct
       | System x -> List [Atom "system"; f x]
       | Bash   x -> List [Atom "bash"; f x]
       | Update_file (x, y) -> List [Atom "update-file"; g x; f y]
+      | Rename (x, y) -> List [Atom "rename"; g x; g y]
 
     let rec fold t ~init:acc ~f =
       match t with
@@ -152,6 +154,35 @@ module Mini_shexp = struct
       | System x -> f acc x
       | Bash x -> f acc x
       | Update_file (x, y) -> f (f acc x) y
+      | Rename (x, y) -> f (f acc x) y
+
+    let rec map
+      : 'a 'b 'c 'd. ('a, 'b) t -> f1:('a -> 'c) -> f2:('b -> 'd) -> ('c, 'd) t
+      = fun t ~f1 ~f2 ->
+        match t with
+        | Run (prog, args) ->
+          Run (f2 prog, List.map args ~f:f1)
+        | Chdir (fn, t) ->
+          Chdir (f2 fn, map t ~f1 ~f2)
+        | Setenv (var, value, t) ->
+          Setenv (f1 var, f1 value, map t ~f1 ~f2)
+        | Redirect (outputs, fn, t) ->
+          Redirect (outputs, f2 fn, map t ~f1 ~f2)
+        | Ignore (outputs, t) ->
+          Ignore (outputs, map t ~f1 ~f2)
+        | Progn l -> Progn (List.map l ~f:(fun t -> map t ~f1 ~f2))
+        | Echo x -> Echo (f1 x)
+        | Cat x -> Cat (f2 x)
+        | Create_file x -> Create_file (f2 x)
+        | Copy (x, y) -> Copy (f2 x, f2 y)
+        | Symlink (x, y) ->
+          Symlink (f2 x, f2 y)
+        | Copy_and_add_line_directive (x, y) ->
+          Copy_and_add_line_directive (f2 x, f2 y)
+        | System x -> System (f1 x)
+        | Bash x -> Bash (f1 x)
+        | Update_file (x, y) -> Update_file (f2 x, f1 y)
+        | Rename (x, y) -> Rename (f2 x, f2 y)
   end
   open Ast
 
@@ -176,7 +207,8 @@ module Mini_shexp = struct
       | Symlink _
       | Copy_and_add_line_directive _
       | System _
-      | Bash _ -> acc
+      | Bash _
+      | Rename _ -> acc
     in
     fun t -> loop Path.Set.empty t
 
@@ -223,6 +255,8 @@ module Mini_shexp = struct
       | System x -> System (expand_str ~dir ~f x)
       | Bash x -> Bash (expand_str ~dir ~f x)
       | Update_file (x, y) -> Update_file (expand_path ~dir ~f x, expand_str ~dir ~f y)
+      | Rename (x, y) ->
+        Rename (expand_path ~dir ~f x, expand_path ~dir ~f y)
   end
 
   open Future
@@ -323,6 +357,9 @@ module Mini_shexp = struct
       else
         write_file fn s;
       return ()
+    | Rename (src, dst) ->
+      Unix.rename (Path.to_string src) (Path.to_string dst);
+      return ()
 
   and redirect outputs fn t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
     let fn = Path.to_string fn in
@@ -392,6 +429,17 @@ let exec ~targets { action; dir; context } =
   let purpose = Future.Build_job targets in
   Mini_shexp.exec action ~purpose ~dir ~env ~env_extra:String_map.empty
     ~stdout_to:None ~stderr_to:None
+
+let sandbox t ~sandboxed ~deps ~targets =
+  let action =
+    let module M = Mini_shexp.Ast in
+    M.Progn
+      [ M.Progn (List.map deps ~f:(fun path -> M.Symlink (path, sandboxed path)))
+      ; M.map t.action ~f1:(fun x -> x) ~f2:sandboxed
+      ; M.Progn (List.map targets ~f:(fun path -> M.Rename (sandboxed path, path)))
+      ]
+  in
+  { t with action }
 
 type for_hash = string option * Path.t * Mini_shexp.t
 

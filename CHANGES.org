@@ -8,6 +8,10 @@
 - Make =@install= the default target when no targets are specified
   (Stephen Dolan, #47)
 
+- Add internal support for sandboxing actions and sandbox the build of
+  the alias module with 4.02 to workaround the compiler trying to read
+  the cmi of the aliased modules
+
 * 1.0+beta6 (29/03/2017)
 
 - Add an =(executable ...)= stanza for single executables (#33)

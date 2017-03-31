@@ -365,41 +365,33 @@ module Scheduler = struct
           | Some (ctx, filename) ->
              split_paths (Path.to_string filename :: targets_acc) (ctx :: ctxs_acc) rest in
      let target_names, contexts = split_paths [] [] targets in
-     let rec group_by_ext = function
-       | [] -> []
-       | x :: xs ->
-          let eq_ext a b =
-            let chop s =
-              try Filename.chop_extension s with Invalid_argument _ -> s in
-            chop a = chop b in
-          let (similar, rest) = List.partition ~f:(eq_ext x) xs in
-          (x :: similar) :: group_by_ext rest in
-     let pp_ext ppf filename =
-       let ext =
-         match Filename.extension filename with
-         | "" -> ""
-         | s -> String.sub ~pos:1 ~len:(String.length s - 1) s
-       in
-       Format.fprintf ppf "%s" ext in
+     let target_names_grouped_by_prefix =
+       List.map target_names ~f:Filename.split_extension_after_dot
+       |> String_map.of_alist_multi
+       |> String_map.bindings
+     in
      let pp_comma ppf () = Format.fprintf ppf "," in
-     let pp_group ppf = function
+     let pp_group ppf (prefix, suffixes) =
+       match suffixes with
        | [] -> assert false
-       | [s] -> Format.fprintf ppf "%s" s
-       | (x :: _) as group ->
-          Format.fprintf ppf "%s.{%a}"
-            (Filename.chop_extension x)
-            (Format.pp_print_list ~pp_sep:pp_comma pp_ext)
-            group in
+       | [suffix] -> Format.fprintf ppf "%s%s" prefix suffix
+       | _ ->
+         Format.fprintf ppf "%s{%a}"
+           prefix
+           (Format.pp_print_list ~pp_sep:pp_comma Format.pp_print_string)
+           suffixes
+     in
      let pp_contexts ppf = function
        | [] -> ()
        | ctxs ->
-          Format.fprintf ppf " @{<details>[%a]@}"
-            (Format.pp_print_list ~pp_sep:pp_comma
-               (fun ppf s -> Format.fprintf ppf "%s" s))
-            ctxs in
+         Format.fprintf ppf " @{<details>[%a]@}"
+           (Format.pp_print_list ~pp_sep:pp_comma
+              (fun ppf s -> Format.fprintf ppf "%s" s))
+           ctxs
+     in
      Format.fprintf ppf "%a%a"
        (Format.pp_print_list ~pp_sep:pp_comma pp_group)
-       (group_by_ext target_names)
+       target_names_grouped_by_prefix
        pp_contexts
        contexts;
 

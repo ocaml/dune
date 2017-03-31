@@ -165,6 +165,7 @@ module Map = struct
       | Error _ -> invalid_arg "Map.of_alist_exn"
 
     let of_alist_multi l =
+      let l = List.rev l in
       List.fold_left l ~init:empty ~f:(fun acc (key, data) ->
         add_multi acc ~key ~data)
 
@@ -317,6 +318,15 @@ module Filename = struct
     let i = extension_start fn in
     (String.sub fn ~pos:0 ~len:i,
      String.sub fn ~pos:i ~len:(String.length fn - i))
+
+  let split_extension_after_dot fn =
+    let i = extension_start fn + 1 in
+    let len = String.length fn in
+    if i > len then
+      (fn, "")
+    else
+      (String.sub fn ~pos:0 ~len:i,
+       String.sub fn ~pos:i ~len:(String.length fn - i))
 
   let extension fn =
     let i = extension_start fn in

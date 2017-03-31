@@ -5,6 +5,9 @@
 
 - Various documentation fixes (Adrien Guatto, #41)
 
+- Make =@install= the default target when no targets are specified
+  (Stephen Dolan, #47)
+
 * 1.0+beta6 (29/03/2017)
 
 - Add an =(executable ...)= stanza for single executables (#33)

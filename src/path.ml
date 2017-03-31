@@ -291,7 +291,11 @@ let descendant t ~of_ =
     None
 
 let append a b =
-  assert (is_local b);
+  if not (is_local b) then
+    Sexp.code_error "Path.append called with non-local second path"
+      [ "a", sexp_of_t a
+      ; "b", sexp_of_t b
+      ];
   if is_local a then
     Local.append a b
   else

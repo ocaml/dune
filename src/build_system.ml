@@ -306,7 +306,11 @@ let make_local_dirs t paths ~map_path =
     | _ -> ())
 
 let sandbox_dir = Path.of_string "_build/.sandbox"
-let sandboxed path = Path.append sandbox_dir path
+let sandboxed path =
+  if Path.is_local path then
+    Path.append sandbox_dir path
+  else
+    path
 
 let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
   let { Pre_rule. build; targets = target_specs; sandbox } = pre_rule in

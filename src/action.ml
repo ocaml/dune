@@ -434,12 +434,23 @@ let sandbox t ~sandboxed ~deps ~targets =
   let action =
     let module M = Mini_shexp.Ast in
     M.Progn
-      [ M.Progn (List.map deps ~f:(fun path -> M.Symlink (path, sandboxed path)))
+      [ M.Progn (List.filter_map deps ~f:(fun path ->
+          if Path.is_local path then
+            Some (M.Symlink (path, sandboxed path))
+          else
+            None))
       ; M.map t.action ~f1:(fun x -> x) ~f2:sandboxed
-      ; M.Progn (List.map targets ~f:(fun path -> M.Rename (sandboxed path, path)))
+      ; M.Progn (List.filter_map targets ~f:(fun path ->
+          if Path.is_local path then
+            Some (M.Rename (sandboxed path, path))
+          else
+            None))
       ]
   in
-  { t with action }
+  { t with
+    action
+  ; dir = sandboxed t.dir
+  }
 
 type for_hash = string option * Path.t * Mini_shexp.t
 

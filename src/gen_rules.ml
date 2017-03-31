@@ -302,8 +302,8 @@ module Gen(P : Params) = struct
   let all_rules = ref []
   let known_targets_by_src_dir_so_far = ref Path.Map.empty
 
-  let add_rule build =
-    let rule = Build_interpret.Rule.make build in
+  let add_rule ?sandbox build =
+    let rule = Build_interpret.Rule.make ?sandbox build in
     all_rules := rule :: !all_rules;
     known_targets_by_src_dir_so_far :=
       List.fold_left rule.targets ~init:!known_targets_by_src_dir_so_far
@@ -1116,7 +1116,7 @@ module Gen(P : Params) = struct
         | Cmx ->
           [lib_cm_all ~dir lib Cmx])
 
-  let build_cm ~flags ~cm_kind ~dep_graph ~requires
+  let build_cm ?sandbox ~flags ~cm_kind ~dep_graph ~requires
         ~(modules : Module.t String_map.t) ~dir ~alias_module (m : Module.t) =
     Option.iter (Cm_kind.compiler cm_kind) ~f:(fun compiler ->
       Option.iter (Module.cm_source ~dir m cm_kind) ~f:(fun src ->
@@ -1168,7 +1168,7 @@ module Gen(P : Params) = struct
             let fn = Option.value_exn (Module.cmt_file m ~dir ml_kind) in
             (fn :: extra_targets, A "-bin-annot")
         in
-        add_rule
+        add_rule ?sandbox
           (Build.paths extra_deps >>>
            other_cm_files >>>
            requires >>>
@@ -1188,9 +1188,9 @@ module Gen(P : Params) = struct
              ; A "-c"; Ml_kind.flag ml_kind; Dep src
              ])))
 
-  let build_module ~flags m ~dir ~dep_graph ~modules ~requires ~alias_module =
+  let build_module ?sandbox ~flags m ~dir ~dep_graph ~modules ~requires ~alias_module =
     List.iter Cm_kind.all ~f:(fun cm_kind ->
-      build_cm ~flags ~dir ~dep_graph ~modules m ~cm_kind ~requires ~alias_module)
+      build_cm ?sandbox ~flags ~dir ~dep_graph ~modules m ~cm_kind ~requires ~alias_module)
 
   let build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module =
     String_map.iter
@@ -1343,6 +1343,12 @@ module Gen(P : Params) = struct
   (* Hack for the install file *)
   let modules_by_lib : (string, Module.t list) Hashtbl.t = Hashtbl.create 32
 
+  (* In 4.02, the compiler reads the cmi for module alias even with [-w -49
+     -no-alias-deps], so we must sandbox the build of the alias module since the modules
+     it references are built after. *)
+  let alias_module_build_sandbox = Scanf.sscanf ctx.version "%u.%u"
+     (fun a b -> a, b) <= (4, 02)
+
   let library_rules (lib : Library.t) ~dir ~all_modules ~files =
     let dep_kind = if lib.optional then Build.Optional else Required in
     let flags = Ocaml_flags.make lib.buildable in
@@ -1430,6 +1436,7 @@ module Gen(P : Params) = struct
     Option.iter alias_module ~f:(fun m ->
       let flags = Ocaml_flags.default () in
       build_module m
+        ~sandbox:alias_module_build_sandbox
         ~flags:{ flags with common = flags.common @ ["-w"; "-49"] }
         ~dir
         ~modules:(String_map.singleton m.name m)

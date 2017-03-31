@@ -392,7 +392,22 @@ let create_for_opam ?root ~switch ~name ?(merlin=false) () =
     >>= fun s ->
     let vars =
       Sexp_lexer.single (Lexing.from_string s)
-      |> Sexp.Of_sexp.(string_map string)
+      |> Sexp.Of_sexp.(list (pair string string))
+      |> String_map.of_alist_multi
+      |> String_map.mapi ~f:(fun var values ->
+        match List.rev values with
+        | [] -> assert false
+        | [x] -> x
+        | x :: _ ->
+          Format.eprintf
+            "@{<warning>Warning@}: variable %S present multiple times in the output of:\n\
+             @{<details>%s@}@."
+            var
+            (String.concat ~sep:" "
+               (List.map ~f:quote_for_shell
+                  [Path.to_string fn; "config"; "env"; "--root"; root;
+                   "--switch"; switch; "--sexp"]));
+          x)
     in
     let path =
       match String_map.find "PATH" vars with

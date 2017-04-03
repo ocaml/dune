@@ -501,7 +501,6 @@ dependencies. See the [[User actions][actions section]] for more details.
    (deps    (<name>.mll))
    (action  (chdir ${ROOT} (run ${bin:ocamllex} -q -o ${<})))))
 #+end_src
-
 **** ocamlyacc
 
 =(ocamlyacc (<names>))= is essentially a shorthand for:
@@ -511,6 +510,32 @@ dependencies. See the [[User actions][actions section]] for more details.
   ((targets (<name>.ml <name>.mli))
    (deps    (<name>.mly))
    (action  (chdir ${ROOT} (run ${bin:ocamlyacc} ${<})))))
+#+end_src
+
+**** menhir
+
+The basic form for defining menhir parsers (analogous to ocamlyacc):
+
+#+begin_src scheme
+(menhir
+ ((modules (<parser1> <parser2> ...))))
+#+end_src
+
+Modular parsers (--base flag) can be defined by adding the =merge_into= option.
+With this option, a single parser named =base_name= is generated.
+
+#+begin_src scheme
+(menhir
+ ((merge_into <base_name>)
+  (modules (<parser1> <parser2> ...))))
+#+end_src
+
+Extra flags can be passed to menhir using the =flags= option:
+
+#+begin_src scheme
+(menhir
+ ((flags (<option1> <option2> ...))
+  (modules (<parser1> <parser2> ...))))
 #+end_src
 
 **** alias

@@ -26,6 +26,14 @@
     (run ${exe:run.exe} --
      ${bin:jbuilder} build -j1 @install --root . --debug-dependency-path)))))
 
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in workspaces/menhir)))
+  (action
+   (chdir workspaces/menhir
+    (run ${exe:run.exe} --
+     ${bin:jbuilder} build -j1 test.exe --root . --debug-dependency-path)))))
+
 ;; This test define an installed "plop" with a "plop.ca-marche-pas"
 ;; sub-package which depend on a library that doesn't exist.
 ;;

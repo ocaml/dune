@@ -514,15 +514,16 @@ dependencies. See the [[User actions][actions section]] for more details.
 
 **** menhir
 
-The basic form for defining menhir parsers (analogous to ocamlyacc):
+The basic form for defining menhir parsers (analogous to ocamlyacc) is:
 
 #+begin_src scheme
 (menhir
  ((modules (<parser1> <parser2> ...))))
 #+end_src
 
-Modular parsers (--base flag) can be defined by adding the =merge_into= option.
-With this option, a single parser named =base_name= is generated.
+Modular parsers can be defined by adding a =merge_into= field. This
+correspond to the =--base= command line option of =menhir=.  With this
+option, a single parser named =base_name= is generated.
 
 #+begin_src scheme
 (menhir
@@ -530,7 +531,7 @@ With this option, a single parser named =base_name= is generated.
   (modules (<parser1> <parser2> ...))))
 #+end_src
 
-Extra flags can be passed to menhir using the =flags= option:
+Extra flags can be passed to menhir using the =flags= flag:
 
 #+begin_src scheme
 (menhir

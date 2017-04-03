@@ -521,7 +521,8 @@ The basic form for defining menhir parsers (analogous to ocamlyacc):
  ((modules (<parser1> <parser2> ...))))
 #+end_src
 
-Modular parsers (--base flag) can be defined by adding the `merge_into` option:
+Modular parsers (--base flag) can be defined by adding the =merge_into= option.
+With this option, a single parser named =base_name= is generated.
 
 #+begin_src scheme
 (menhir
@@ -529,7 +530,7 @@ Modular parsers (--base flag) can be defined by adding the `merge_into` option:
   (modules (<parser1> <parser2> ...))))
 #+end_src
 
-Extra parsers can be passed to menhir using the `flags` option:
+Extra flags can be passed to menhir using the =flags= option:
 
 #+begin_src scheme
 (menhir

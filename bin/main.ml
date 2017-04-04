@@ -110,7 +110,6 @@ let help_secs =
 let common =
   let make
         concurrency
-        only_packages
         debug_rules
         debug_actions
         debug_dep_path
@@ -118,7 +117,7 @@ let common =
         dev_mode
         verbose
         workspace_file
-        root
+        (root, only_packages)
     =
     let root, to_cwd =
       match root with
@@ -209,13 +208,42 @@ let common =
          & opt (some dir) None
          & info ["root"] ~docs ~docv:"DIR"
              ~doc:{|Use this directory as workspace root instead of guessing it.
-                   Note that this option doesn't change the interpretation of
-                   targets given on the command line. It is only intended
+                    Note that this option doesn't change the interpretation of
+                    targets given on the command line. It is only intended
                     for scripts.|})
+  in
+  let for_release = "for-release-of-packages" in
+  let frop =
+    Arg.(value
+         & opt (some string) None
+         & info ["p"; for_release] ~docs ~docv:"PACKAGES"
+             ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE).|})
+  in
+  let root_and_only_packages =
+    let merge root only_packages release =
+      match release, root, only_packages with
+      | Some _, Some _, _ ->
+        `Error (true,
+                sprintf
+                  "Cannot use %s and --root simultaneously"
+                  for_release)
+      | Some _, _, Some _ ->
+        `Error (true,
+                sprintf
+                  "Cannot use %s and --only-packages simultaneously"
+                  for_release)
+      | Some pkgs, None, None ->
+        `Ok (Some ".", Some pkgs)
+      | None, _, _ ->
+        `Ok (root, only_packages)
+    in
+    Term.(ret (const merge
+               $ root
+               $ only_packages
+               $ frop))
   in
   Term.(const make
         $ concurrency
-        $ only_packages
         $ drules
         $ dactions
         $ ddep_path
@@ -223,7 +251,7 @@ let common =
         $ dev
         $ verbose
         $ workspace_file
-        $ root
+        $ root_and_only_packages
        )
 
 let installed_libraries =

@@ -24,7 +24,7 @@ let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
     String_set.iter set ~f:(fun pkg ->
       if not (String_map.mem pkg conf.packages) then
         die "@{<error>Error@}: I don't know about package %s \
-             (passed through --only-packages)%s"
+             (passed through --only-packages/--release)%s"
           pkg (hint pkg (String_map.keys conf.packages))));
   let workspace =
     match workspace with

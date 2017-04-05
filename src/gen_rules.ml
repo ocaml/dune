@@ -1458,19 +1458,34 @@ module Gen(P : Params) = struct
       match lib.self_build_stubs_archive with
       | Some _ -> ()
       | None ->
-        let targets = [ stubs_archive lib ~dir; dll lib ~dir ] in
-        add_rule
-          (expand_and_eval_set ~dir lib.c_library_flags ~standard:[]
-           >>>
-           Build.run
-             ~extra_targets:targets
-             (Dep ctx.ocamlmklib)
-             [ As (g ())
-             ; A "-o"
-             ; Path (Path.relative dir (sprintf "%s_stubs" lib.name))
-             ; Deps o_files
-             ; Dyn (fun cclibs -> As cclibs)
-             ]);
+        let ocamlmklib ~sandbox ~custom ~targets =
+          add_rule ~sandbox
+            (expand_and_eval_set ~dir lib.c_library_flags ~standard:[]
+             >>>
+             Build.run
+               ~extra_targets:targets
+               (Dep ctx.ocamlmklib)
+               [ As (g ())
+               ; if custom then A "-custom" else As []
+               ; A "-o"
+               ; Path (Path.relative dir (sprintf "%s_stubs" lib.name))
+               ; Deps o_files
+               ; Dyn (fun cclibs -> As cclibs)
+               ])
+        in
+        let static = stubs_archive lib ~dir in
+        let dynamic = dll lib ~dir in
+        if List.mem Mode.Native ~set:lib.modes &&
+           List.mem Mode.Byte   ~set:lib.modes then begin
+          (* If we build for both modes, use a single invocation to build both the static
+             and dynamic libraries *)
+          ocamlmklib ~sandbox:false ~custom:false ~targets:[static; dynamic]
+        end else begin
+          ocamlmklib ~sandbox:false ~custom:true ~targets:[static];
+          (* We can't tell ocamlmklib to build only the dll, so we sandbox the action to
+             avoid overriding the static archive *)
+          ocamlmklib ~sandbox:true ~custom:false ~targets:[dynamic]
+        end
     end;
 
     List.iter Cm_kind.all ~f:(mk_lib_cm_all lib ~dir ~modules);

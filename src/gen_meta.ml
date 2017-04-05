@@ -54,7 +54,6 @@ let archives ?(preds=[]) name =
   ; plugin  (preds @ [Pos "byte"  ]) (name ^ ".cma" )
   ; plugin  (preds @ [Pos "native"]) (name ^ ".cmxs")
   ]
-let exists_if fn = rule "exists_if" [] Set fn
 
 let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~version =
   let desc =
@@ -77,7 +76,6 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~
       ; requires ~preds lib_deps
       ]
     ; archives ~preds lib.name
-    ; [ exists_if (lib.name ^ ".cma") ]
     ; (match lib.kind with
        | Normal -> []
        | Ppx_rewriter | Ppx_deriver ->

@@ -1109,7 +1109,7 @@ module Gen(P : Params) = struct
         | Cmx ->
           [lib_cm_all ~dir lib Cmx])
 
-  let build_cm ?sandbox ~flags ~cm_kind ~dep_graph ~requires
+  let build_cm ?sandbox ~dynlink ~flags ~cm_kind ~dep_graph ~requires
         ~(modules : Module.t String_map.t) ~dir ~alias_module (m : Module.t) =
     Option.iter (Cm_kind.compiler cm_kind) ~f:(fun compiler ->
       Option.iter (Module.cm_source ~dir m cm_kind) ~f:(fun src ->
@@ -1172,6 +1172,7 @@ module Gen(P : Params) = struct
              ; cmt_args
              ; Dyn Lib.include_flags
              ; As extra_args
+             ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"
              ; A "-no-alias-deps"
              ; A "-I"; Path dir
              ; (match alias_module with
@@ -1181,17 +1182,19 @@ module Gen(P : Params) = struct
              ; A "-c"; Ml_kind.flag ml_kind; Dep src
              ])))
 
-  let build_module ?sandbox ~flags m ~dir ~dep_graph ~modules ~requires ~alias_module =
+  let build_module ?sandbox ~dynlink ~flags m ~dir ~dep_graph ~modules ~requires
+        ~alias_module =
     List.iter Cm_kind.all ~f:(fun cm_kind ->
-      build_cm ?sandbox ~flags ~dir ~dep_graph ~modules m ~cm_kind ~requires ~alias_module)
+      build_cm ?sandbox ~dynlink ~flags ~dir ~dep_graph ~modules m ~cm_kind ~requires
+        ~alias_module)
 
-  let build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module =
+  let build_modules ~dynlink ~flags ~dir ~dep_graph ~modules ~requires ~alias_module =
     String_map.iter
       (match alias_module with
        | None -> modules
        | Some (m : Module.t) -> String_map.remove m.name modules)
       ~f:(fun ~key:_ ~data:m ->
-        build_module m ~flags ~dir ~dep_graph ~modules ~requires ~alias_module)
+        build_module m ~dynlink ~flags ~dir ~dep_graph ~modules ~requires ~alias_module)
 
   (* +-----------------------------------------------------------------+
      | Interpretation of [modules] fields                              |
@@ -1425,10 +1428,12 @@ module Gen(P : Params) = struct
       ~ppx_runtime_libraries:lib.ppx_runtime_libraries;
     List.iter (Lib_db.select_rules ~dir lib.buildable.libraries) ~f:add_rule;
 
-    build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
+    let dynlink = lib.dynlink in
+    build_modules ~dynlink ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
       let flags = Ocaml_flags.default () in
       build_module m
+        ~dynlink
         ~sandbox:alias_module_build_sandbox
         ~flags:{ flags with common = flags.common @ ["-w"; "-49"] }
         ~dir
@@ -1476,9 +1481,11 @@ module Gen(P : Params) = struct
         let static = stubs_archive lib ~dir in
         let dynamic = dll lib ~dir in
         if List.mem Mode.Native ~set:lib.modes &&
-           List.mem Mode.Byte   ~set:lib.modes then begin
-          (* If we build for both modes, use a single invocation to build both the static
-             and dynamic libraries *)
+           List.mem Mode.Byte   ~set:lib.modes &&
+           lib.dynlink
+        then begin
+          (* If we build for both modes and support dynlink, use a single invocation to
+             build both the static and dynamic libraries *)
           ocamlmklib ~sandbox:false ~custom:false ~targets:[static; dynamic]
         end else begin
           ocamlmklib ~sandbox:false ~custom:true ~targets:[static];
@@ -1597,7 +1604,9 @@ module Gen(P : Params) = struct
 
     List.iter (Lib_db.select_rules ~dir exes.buildable.libraries) ~f:add_rule;
 
-    build_modules ~flags ~dir ~dep_graph ~modules ~requires ~alias_module:None;
+    (* CR-someday jdimino: this should probably say [~dynlink:false] *)
+    build_modules ~dynlink:true ~flags ~dir ~dep_graph ~modules ~requires
+      ~alias_module:None;
 
     List.iter exes.names ~f:(fun name ->
       List.iter Mode.all ~f:(fun mode ->
@@ -1926,7 +1935,7 @@ module Gen(P : Params) = struct
                  ; lib_archive ~dir lib ~ext:ctx.ext_lib
                  ]
                in
-               if ctx.natdynlink_supported then
+               if ctx.natdynlink_supported && lib.dynlink then
                  files @ [ lib_archive ~dir lib ~ext:".cmxs" ]
                else
                  files
@@ -1939,7 +1948,7 @@ module Gen(P : Params) = struct
             Path.relative dir (fn ^ ".h"))
         ]
     in
-    let dlls  = if_ (byte && Library.has_stubs lib) [dll ~dir lib] in
+    let dlls  = if_ (byte && Library.has_stubs lib && lib.dynlink) [dll ~dir lib] in
     let execs =
       match lib.kind with
       | Normal | Ppx_deriver -> []

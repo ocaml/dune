@@ -413,6 +413,7 @@ module Library = struct
     ; wrapped                  : bool
     ; optional                 : bool
     ; buildable                : Buildable.t
+    ; dynlink                  : bool
     }
 
   let v1 =
@@ -436,6 +437,7 @@ module Library = struct
        field      "wrapped" bool ~default:true                             >>= fun wrapped                  ->
        field_b    "optional"                                               >>= fun optional                 ->
        field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
+       field_b    "no_dynlink"                                             >>= fun no_dynlink               ->
        return
          { name
          ; public
@@ -457,6 +459,7 @@ module Library = struct
          ; wrapped
          ; optional
          ; buildable
+         ; dynlink = not no_dynlink
          })
 
   let vjs =
@@ -503,6 +506,7 @@ module Library = struct
          ; wrapped
          ; optional
          ; buildable
+         ; dynlink = true
          })
 
   let has_stubs t =

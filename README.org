@@ -113,6 +113,23 @@ that preserves composability; i.e. it doesn't require to manually run
 all =./configure= script when working on multiple projects at the same
 time.
 
+** Known bugs
+
+*** Optional libraries inside a multilib directory
+
+[[https://github.com/janestreet/jbuilder/issues/51]]
+
+If a directory contains several libraries and some are marked as
+optional (by adding =(optional)= in the =(library ...)= stanza), then
+the dependencies will still be required to perform the build.
+
+This could be sorted out with some refactoring, but there is a simple
+workaround, so it is low-priority.
+
+**** Workaround
+
+Put each optional library in a separate directory.
+
 ** Implementation details
 
 This section is for people who want to work on Jbuilder itself.

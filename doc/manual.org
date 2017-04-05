@@ -337,6 +337,9 @@ the library and you are free to expose only the modules you want.
   built by default. This is only useful when writing libraries for the
   OCaml toplevel
 
+- =(no_dynlink)= is to disable dynamic linking of the library. This is
+  for advanced use only, by default you shouldn't set this option
+
 - =(kind <kind>)= is the kind of the library. The default is =normal=,
   other available choices are =ppx_rewriter= and =ppx_deriver= and
   must be set when the library is intended to be used as a ppx

@@ -244,7 +244,7 @@ roadmap]] for details.
 The following sections describe the available stanzas and their
 meaning.
 
-**** jbuid_version
+**** jbuild_version
 
 =(jbuild_version 1)= specifies that we are using the version 1 of the
 Jbuilder metadata format in this =jbuild= file.

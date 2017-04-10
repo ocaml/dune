@@ -582,7 +582,8 @@ let exec =
            Format.eprintf "@{<Error>Error@}: Context %S not found!@." context;
            die ""
        in
-       match Context.which context prog with
+       let path = Config.local_install_bin_dir ~context:context.name :: context.path in
+       match Bin.which ~path prog with
        | None ->
          Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
          die ""

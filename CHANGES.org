@@ -22,6 +22,10 @@
   the jbuilder invocation in opam files and make it more future proof
   (#52)
 
+- Fix the lookup of the executable in =jbuilder exec foo=. Before,
+  even if =foo= was to be installed, the freshly built version wasn't
+  selected
+
 * 1.0+beta6 (29/03/2017)
 
 - Add an =(executable ...)= stanza for single executables (#33)

@@ -15,6 +15,9 @@
   the alias module with 4.02 to workaround the compiler trying to read
   the cmi of the aliased modules
 
+- Allow to disable dynlink support for libraries via =(no_dynlink)=
+  (#55)
+
 * 1.0+beta6 (29/03/2017)
 
 - Add an =(executable ...)= stanza for single executables (#33)

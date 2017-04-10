@@ -18,6 +18,10 @@
 - Allow to disable dynlink support for libraries via =(no_dynlink)=
   (#55)
 
+- Add a -p/--for-release-of-packages command line argument to simplify
+  the jbuilder invocation in opam files and make it more future proof
+  (#52)
+
 * 1.0+beta6 (29/03/2017)
 
 - Add an =(executable ...)= stanza for single executables (#33)

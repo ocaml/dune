@@ -14,8 +14,6 @@ let flag t = choose (Arg_spec.A "-impl") (A "-intf") t
 
 let ppx_driver_flag t = choose (Arg_spec.A "--impl") (A "--intf") t
 
-let ext = choose ".ml" ".mli"
-
 module Dict = struct
   type 'a t =
     { impl : 'a

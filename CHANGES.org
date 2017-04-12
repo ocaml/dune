@@ -1,4 +1,4 @@
-* next
+* 1.0+beta7 (12/04/2017)
 
 - Make the output quieter by default and add a =--verbose= argument
   (Stephen Dolan, #40)
@@ -25,6 +25,9 @@
 - Fix the lookup of the executable in =jbuilder exec foo=. Before,
   even if =foo= was to be installed, the freshly built version wasn't
   selected
+
+- Don't generate a =exists_if ...= lines in META files. These are
+  useless sine the META files are auto-generated
 
 * 1.0+beta6 (29/03/2017)
 

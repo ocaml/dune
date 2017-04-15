@@ -1567,19 +1567,18 @@ module Gen(P : Params) = struct
      | Modules listing                                                 |
      +-----------------------------------------------------------------+ *)
 
+  let split_to_modules =
+    String_set.fold ~init:([], [], [], []) ~f:(fun f (ml, mli, re, rei) ->
+      match Filename.extension f with
+      | "ml" -> (f :: ml, mli, re, rei)
+      | "mli" -> (ml, f :: mli, re, rei)
+      | "re" -> (ml, mli, f :: re, rei)
+      | "rei" -> (ml, mli, rei, f :: rei)
+      | "" -> (ml, mli, re, rei)
+      | _ -> assert false)
+
   let guess_modules ~dir ~files =
-    let ml_files, mli_files =
-      String_set.elements files
-      |> List.filter_map ~f:(fun fn ->
-        match String.lsplit2 fn ~on:'.' with
-        | Some (_, "ml") ->
-          Some (Inl fn)
-        | Some (_, "mli") ->
-          Some (Inr fn)
-        | _ ->
-          None)
-      |> List.partition_map ~f:(fun x -> x)
-    in
+    let ml_files, mli_files, _re_files, _rei_files = split_to_modules files in
     let parse_one_set files =
       List.map files ~f:(fun fn ->
         (String.capitalize_ascii (Filename.chop_extension fn),

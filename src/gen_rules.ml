@@ -774,11 +774,43 @@ module Gen(P : Params) = struct
     | None -> []
     | Some name -> ["--cookie"; sprintf "library-name=%S" name]
 
+  (* Generate rules for the reason modules in [modules] and return a list
+     a new list of modules with only OCaml sources *)
+  let reason_rules ~dir ~modules =
+    let rule re =
+      let ml = Module.ocaml_of_reason re in
+      let refmt =
+        match Context.which ctx "refmt" with
+        | None -> die "refmt not found. Fix with $ opam install reason"
+        | Some refmt -> refmt in
+      let rule src target =
+        let src_path = Path.relative dir src in
+        Build.run (Dep refmt)
+          [ A "--print"
+          ; A "binary"
+          ; Dep src_path ]
+          ~stdout_to:(Path.relative dir target) in
+      let ml_rule = rule re.ml_fname ml.ml_fname in
+      match Option.both re.mli_fname ml.mli_fname with
+      | None -> [ml_rule]
+      | Some (s, t) -> [rule s t ; ml_rule]
+    in
+    String_map.map ~f:(fun (m : Module.t) ->
+      if m.reason then (
+        List.iter ~f:add_rule (rule m);
+        Module.ocaml_of_reason m
+      ) else (
+        m
+      )
+    ) modules
+
   (* Generate rules to build the .pp files and return a new module map where all filenames
      point to the .pp files *)
   let pped_modules ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name =
+    let modules = reason_rules ~dir ~modules in
     let preprocessor_deps = Dep_conf_interpret.dep_of_list ~dir preprocessor_deps in
     String_map.map modules ~f:(fun (m : Module.t) ->
+      assert (not m.reason);
       match Preprocess_map.find m.name preprocess with
       | No_preprocessing -> m
       | Action action ->
@@ -1265,13 +1297,9 @@ module Gen(P : Params) = struct
           else
             ""
         in
-        Some
-          { Module.
-            name      = main_module_name ^ suf
-          ; ml_fname  = lib.name ^ suf ^ ".ml-gen"
-          ; mli_fname = None
-          ; obj_name  = lib.name ^ suf
-          }
+        Some (Module.create ~name:(main_module_name ^ suf)
+                ~ml_fname:(lib.name ^ suf ^ ".ml-gen")
+                ~obj_name:(lib.name ^ suf) ())
     in
     (* Add the modules before preprocessing, otherwise the install rules are going to pick
        up the pre-processed modules *)
@@ -1570,15 +1598,15 @@ module Gen(P : Params) = struct
   let split_to_modules =
     String_set.fold ~init:([], [], [], []) ~f:(fun f (ml, mli, re, rei) ->
       match Filename.extension f with
-      | "ml" -> (f :: ml, mli, re, rei)
-      | "mli" -> (ml, f :: mli, re, rei)
-      | "re" -> (ml, mli, f :: re, rei)
-      | "rei" -> (ml, mli, rei, f :: rei)
+      | ".ml" -> (f :: ml, mli, re, rei)
+      | ".mli" -> (ml, f :: mli, re, rei)
+      | ".re" -> (ml, mli, f :: re, rei)
+      | ".rei" -> (ml, mli, rei, f :: rei)
       | "" -> (ml, mli, re, rei)
-      | _ -> assert false)
+      | f -> invalid_arg ("Unexpected extension from: " ^ f))
 
   let guess_modules ~dir ~files =
-    let ml_files, mli_files, _re_files, _rei_files = split_to_modules files in
+    let ml_files, mli_files, re_files, rei_files = split_to_modules files in
     let parse_one_set files =
       List.map files ~f:(fun fn ->
         (String.capitalize_ascii (Filename.chop_extension fn),
@@ -1590,40 +1618,72 @@ module Gen(P : Params) = struct
         die "too many files for module %s in %s: %s and %s"
           name (Path.to_string dir) f1 f2
     in
-    let impls = parse_one_set ml_files  in
-    let intfs = parse_one_set mli_files in
-    String_map.merge impls intfs ~f:(fun name ml_fname mli_fname ->
-      let ml_fname =
-        match ml_fname with
-        | None ->
-          let mli_fname = Option.value_exn mli_fname in
-          let ml_fname = String.sub mli_fname ~pos:0 ~len:(String.length mli_fname - 1) in
-          Format.eprintf
-            "@{<warning>Warning@}: Module %s in %s doesn't have a \
-             corresponding .ml file.\n\
-             Modules without an implementation are not recommended, \
-             see this discussion:\n\
-             \n\
-            \  https://github.com/janestreet/jbuilder/issues/9\n\
-             \n\
-             In the meantime I'm setting up a rule for copying %s to %s.\n"
-            name (Path.to_string dir)
-            mli_fname ml_fname;
-          let dir = Path.append ctx.build_dir dir in
-          add_rule
-            (Build.copy
-               ~src:(Path.relative dir mli_fname)
-               ~dst:(Path.relative dir ml_fname));
-          ml_fname
-        | Some ml_fname -> ml_fname
-      in
-      Some
-        { Module.
-          name
-        ; ml_fname  = ml_fname
-        ; mli_fname = mli_fname
-        ; obj_name  = ""
-        })
+    let ml_impls = parse_one_set ml_files  in
+    let ml_intfs = parse_one_set mli_files in
+    let re_impls = parse_one_set re_files  in
+    let re_intfs = parse_one_set rei_files in
+    let to_module impls intfs =
+      String_map.merge impls intfs ~f:(fun name ml_fname mli_fname ->
+        let ml_fname =
+          match ml_fname with
+          | None ->
+            let mli_fname = Option.value_exn mli_fname in
+            let ml_fname = String.sub mli_fname ~pos:0 ~len:(String.length mli_fname - 1) in
+            Format.eprintf
+              "@{<warning>Warning@}: Module %s in %s doesn't have a \
+               corresponding .ml file.\n\
+               Modules without an implementation are not recommended, \
+               see this discussion:\n\
+               \n\
+              \  https://github.com/janestreet/jbuilder/issues/9\n\
+               \n\
+               In the meantime I'm setting up a rule for copying %s to %s.\n"
+              name (Path.to_string dir)
+              mli_fname ml_fname;
+            let dir = Path.append ctx.build_dir dir in
+            add_rule
+              (Build.copy
+                 ~src:(Path.relative dir mli_fname)
+                 ~dst:(Path.relative dir ml_fname));
+            ml_fname
+          | Some ml_fname -> ml_fname
+        in
+        Some (Module.create ~name ~ml_fname ?mli_fname ())
+      ) in
+    let ml_modules = to_module ml_impls ml_intfs in
+    let reason_modules = to_module re_impls re_intfs in
+    let ml_re_collisions =
+      String_map.merge ml_modules reason_modules ~f:(fun _ m r ->
+        match m, r with
+        | Some m, Some r -> Some (m, r)
+        | Some _, None
+        | None, Some _ -> None
+        | None, None -> assert false
+      ) in
+    if String_map.is_empty ml_re_collisions then
+      String_map.merge ml_modules reason_modules ~f:(fun _ m r ->
+        match m, r with
+        | Some m, None
+        | None, Some m -> Some m
+        | None, None
+        | Some _, Some _ -> assert false
+      )
+    else
+      die "The following modules have both reason and ocaml sources:@.%a"
+        (Format.pp_print_list
+           (fun fmt (k, (m, r)) ->
+              let files =
+                List.filter_map ~f:(fun o -> o)
+                  [ Some m.Module.ml_fname
+                  ; m.mli_fname
+                  ; Some r.Module.ml_fname
+                  ; r.mli_fname] in
+              Format.fprintf fmt "%s: %a" k
+                (Format.pp_print_list
+                   ~pp_sep:(fun fmt () -> Format.fprintf fmt ",@ ")
+                   Format.pp_print_string) files
+           )
+        ) (String_map.bindings ml_re_collisions)
 
   (* +-----------------------------------------------------------------+
      | Stanza                                                          |

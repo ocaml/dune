@@ -4,9 +4,11 @@ type t =
   { name      : string (** Name of the module. This is always the basename of the filename
                            without the extension. *)
   ; ml_fname  : string
-  ; mli_fname : string option (** Object name. It is different from [name] for wrapped
-                                  modules. *)
-  ; obj_name  : string
+  ; mli_fname : string option
+
+  ; obj_name  : string (** Object name. It is different from [name] for wrapped
+                           modules. *)
+  ; reason    : bool   (** Whether this a reason source*)
   }
 
 (** Real unit name once wrapped. This is always a valid module name. *)
@@ -16,3 +18,11 @@ val file      : t -> dir:Path.t -> Ml_kind.t -> Path.t option
 val cm_source : t -> dir:Path.t -> Cm_kind.t -> Path.t option
 val cm_file   : t -> dir:Path.t -> Cm_kind.t -> Path.t
 val cmt_file  : t -> dir:Path.t -> Ml_kind.t -> Path.t option
+
+val create
+  : ?obj_name:string
+  -> ?mli_fname:string
+  -> name:string
+  -> ml_fname:string
+  -> unit -> t
+val ocaml_of_reason : t -> t

@@ -155,6 +155,25 @@ module Mini_shexp = struct
       | Update_file (x, y) -> f (f acc x) y
       | Rename (x, y) -> f (f acc x) y
 
+    let fold_one_step t ~init:acc ~f =
+      match t with
+      | Chdir (_, t)
+      | Setenv (_, _, t)
+      | Redirect (_, _, t)
+      | Ignore (_, t) -> f acc t
+      | Progn l -> List.fold_left l ~init:acc ~f
+      | Run _
+      | Echo _
+      | Cat _
+      | Create_file _
+      | Copy _
+      | Symlink _
+      | Copy_and_add_line_directive _
+      | System _
+      | Bash _
+      | Update_file _
+      | Rename _ -> acc
+
     let rec map
       : 'a 'b 'c 'd. ('a, 'b) t -> f1:('a -> 'c) -> f2:('b -> 'd) -> ('c, 'd) t
       = fun t ~f1 ~f2 ->
@@ -191,23 +210,12 @@ module Mini_shexp = struct
 
   let updated_files =
     let rec loop acc t =
-      match t with
-      | Update_file (fn, _) -> Path.Set.add fn acc
-      | Chdir (_, t)
-      | Setenv (_, _, t)
-      | Redirect (_, _, t)
-      | Ignore (_, t) -> loop acc t
-      | Progn l -> List.fold_left l ~init:acc ~f:loop
-      | Run _ -> acc
-      | Echo _
-      | Cat _
-      | Create_file _
-      | Copy _
-      | Symlink _
-      | Copy_and_add_line_directive _
-      | System _
-      | Bash _
-      | Rename _ -> acc
+      let acc =
+        match t with
+        | Update_file (fn, _) -> Path.Set.add fn acc
+        | _ -> acc
+      in
+      Ast.fold_one_step t ~init:acc ~f:loop
     in
     fun t -> loop Path.Set.empty t
 

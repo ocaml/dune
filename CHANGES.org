@@ -3,6 +3,8 @@
 - Added =${lib-available:<library-name>}= which expands to =true= or
   =false= with the same semantic as literals in =(select ...)= stanzas
 
+- Fix: make sure the action working directory exist before running it
+
 * 1.0+beta7 (12/04/2017)
 
 - Make the output quieter by default and add a =--verbose= argument

@@ -675,119 +675,6 @@ module Gen(P : Params) = struct
     ; mli_fname = mli_pp_fname
     }
 
-  module Ppx_info : sig
-    type t =
-      { uses_inline_test  : bool
-      ; uses_inline_bench : bool
-      ; uses_here         : bool
-      ; uses_libname      : bool
-      ; uses_ppx_driver   : bool
-      }
-
-    val make_info_file
-      :  ppx_dir:Path.t
-      -> libs:(unit, Lib.t list) Build.t
-      -> (unit, t) Build.t
-
-
-    val specific_args_for_ppx_rewriters
-      :  t
-      -> dir:Path.t
-      -> lib_name:string option
-      -> for_merlin:bool
-      -> _ Arg_spec.t
-  end = struct
-    type t =
-      { uses_inline_test  : bool
-      ; uses_inline_bench : bool
-      ; uses_here         : bool
-      ; uses_libname      : bool
-      ; uses_ppx_driver   : bool
-      }
-
-    module Vfile =
-      Vfile_kind.Make_full
-        (struct type nonrec t = t end)
-        (struct
-          open Sexp.To_sexp
-          let t _dir t =
-            record
-              [ "uses_inline_test" , bool t.uses_inline_test
-              ; "uses_inline_bench", bool t.uses_inline_bench
-              ; "uses_here"        , bool t.uses_here
-              ; "uses_libname"     , bool t.uses_libname
-              ; "uses_ppx_driver"  , bool t.uses_ppx_driver
-              ]
-        end)
-        (struct
-          open Sexp.Of_sexp
-          let t _dir sexp =
-            record
-              (field "uses_inline_test"  bool >>= fun uses_inline_test ->
-               field "uses_inline_bench" bool >>= fun uses_inline_bench ->
-               field "uses_here"         bool >>= fun uses_here ->
-               field "uses_libname"      bool >>= fun uses_libname ->
-               field "uses_ppx_driver"   bool >>= fun uses_ppx_driver ->
-               return
-                 { uses_inline_test
-                 ; uses_inline_bench
-                 ; uses_here
-                 ; uses_libname
-                 ; uses_ppx_driver
-                 })
-              sexp
-        end)
-
-    let info_file ~ppx_dir =
-      Build.Vspec.T (Path.relative ppx_dir "info.sexp",
-                     (module Vfile))
-
-    let make_info_file ~ppx_dir ~libs =
-      let file = info_file ~ppx_dir in
-      add_rule
-        (libs >>^ (fun libs ->
-           let uses_inline_test  = ref false in
-           let uses_inline_bench = ref false in
-           let uses_here         = ref false in
-           let uses_libname      = ref false in
-           let uses_ppx_driver   = ref false in
-           List.iter libs ~f:(fun lib ->
-           match Lib.best_name lib with
-           | "ppx_here.expander"       -> uses_here         := true
-           | "ppx_inline_test.libname" -> uses_libname      := true
-           | "ppx_expect"              -> uses_inline_test  := true
-           | "ppx_inline_test"         -> uses_inline_test  := true
-           | "ppx_bench"               -> uses_inline_bench := true
-           | "ppx_driver.runner"       -> uses_ppx_driver   := true
-           | _ -> ());
-         { uses_inline_test  = !uses_inline_test
-         ; uses_inline_bench = !uses_inline_bench
-         ; uses_here         = !uses_here
-         ; uses_libname      = !uses_libname
-         ; uses_ppx_driver   = !uses_ppx_driver
-         })
-         >>>
-         Build.store_vfile file);
-      Build.vpath file
-
-    let specific_args_for_ppx_rewriters t ~dir ~lib_name ~for_merlin =
-      if t.uses_ppx_driver then
-        Arg_spec.S
-          [ S (if t.uses_here
-               then [A "-dirname"; Path dir]
-               else [])
-          ; S (match lib_name with
-              | Some name when t.uses_libname ->
-                [ A "-inline-test-lib"; A name ]
-              | _ -> [])
-          ; S (if not for_merlin
-               then [ A "-embed-errors"; A "false" ]
-               else [])
-          ]
-      else
-        Arg_spec.S []
-  end
-
   let ppx_drivers = Hashtbl.create 32
 
   let migrate_driver_main = "ocaml-migrate-parsetree.driver-main"
@@ -854,8 +741,7 @@ module Gen(P : Params) = struct
        Build.run (Dep compiler)
          [ A "-o" ; Target target
          ; Dyn (Lib.link_flags ~mode)
-         ]);
-    libs
+         ])
 
   let ppx_dir = Path.of_string (sprintf "_build/.ppx/%s" ctx.name)
 
@@ -876,15 +762,17 @@ module Gen(P : Params) = struct
     | None ->
       let ppx_dir = Path.relative ppx_dir key in
       let exe = Path.relative ppx_dir "ppx.exe" in
-      let libs =
-        build_ppx_driver names ~dir ~dep_kind ~target:exe ~driver
-      in
-      let info = Ppx_info.make_info_file ~ppx_dir ~libs in
-      Hashtbl.add ppx_drivers ~key ~data:(exe, libs, info);
-      (exe, libs, info)
+      build_ppx_driver names ~dir ~dep_kind ~target:exe ~driver;
+      Hashtbl.add ppx_drivers ~key ~data:exe;
+      exe
 
   let target_var = String_with_vars.of_string "${@}"
   let root_var   = String_with_vars.of_string "${ROOT}"
+
+  let cookie_library_name lib_name =
+    match lib_name with
+    | None -> []
+    | Some name -> ["--cookie"; sprintf "library-name=%S" name]
 
   (* Generate rules to build the .pp files and return a new module map where all filenames
      point to the .pp files *)
@@ -911,19 +799,16 @@ module Gen(P : Params) = struct
                ~targets:[dst]
                ~deps:[Some src]))
       | Pps { pps; flags } ->
-        let ppx_exe, _, info = get_ppx_driver pps ~dir ~dep_kind in
+        let ppx_exe = get_ppx_driver pps ~dir ~dep_kind in
         pped_module m ~dir ~f:(fun kind src dst ->
           add_rule
             (preprocessor_deps
              >>>
-             info
-             >>>
              Build.run
                (Dep ppx_exe)
-               [ Dyn (Ppx_info.specific_args_for_ppx_rewriters ~dir ~lib_name
-                        ~for_merlin:false)
-               ; As flags
+               [ As flags
                ; A "--dump-ast"
+               ; As (cookie_library_name lib_name)
                ; A "-o"; Target dst
                ; Ml_kind.ppx_driver_flag kind; Dep src
                ])
@@ -982,21 +867,17 @@ module Gen(P : Params) = struct
     let ppx_flags ~dir ~src_dir { preprocess; libname; _ } =
       match preprocess with
       | Pps { pps; flags } ->
-        let exe, _, info = get_ppx_driver pps ~dir ~dep_kind:Optional in
-        info >>^ fun info ->
-        let specific_flags, _ =
-          Arg_spec.expand ~dir:src_dir
-            [Ppx_info.specific_args_for_ppx_rewriters info ~dir ~lib_name:libname
-               ~for_merlin:true]
-            ()
-        in
+        let exe = get_ppx_driver pps ~dir ~dep_kind:Optional in
         let command =
-          List.map (Path.reach exe ~from:src_dir :: "--as-ppx" :: specific_flags @ flags)
+          List.map (Path.reach exe ~from:src_dir
+                    :: "--as-ppx"
+                    :: cookie_library_name libname
+                    @ flags)
             ~f:quote_for_shell
           |> String.concat ~sep:" "
         in
         [sprintf "FLG -ppx \"%s\"" command]
-      | _ -> Build.return []
+      | _ -> []
 
     let dot_merlin ~dir ({ requires; flags; _ } as t) =
       if ctx.merlin then
@@ -1008,8 +889,9 @@ module Gen(P : Params) = struct
              >>>
              Build.update_file (Path.relative dir ".merlin-exists") "");
           add_rule (
-            Build.fanout requires (ppx_flags ~dir ~src_dir:remaindir t)
-            >>^ (fun (libs, ppx_flags) ->
+            requires
+            >>^ (fun libs ->
+              let ppx_flags = ppx_flags ~dir ~src_dir:remaindir t in
               let internals, externals =
                 List.partition_map libs ~f:(function
                   | Lib.Internal (path, _) ->
@@ -1976,7 +1858,7 @@ module Gen(P : Params) = struct
           else
             pps
         in
-        let ppx_exe, _, _ =
+        let ppx_exe =
           get_ppx_driver pps
             ~dir ~dep_kind:(if lib.optional then Build.Optional else Required)
         in

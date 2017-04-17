@@ -1,4 +1,4 @@
-* next
+* 1.0+beta8
 
 - Added =${lib-available:<library-name>}= which expands to =true= or
   =false= with the same semantic as literals in =(select ...)= stanzas

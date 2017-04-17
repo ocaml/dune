@@ -239,6 +239,8 @@ module Gen(P : Params) = struct
     let internal_libs_without_non_installable_optional_ones =
       internal_libs_without_non_installable_optional_ones t
 
+    let lib_is_available ~from name = lib_is_available t ~from name
+
     let select_rules ~dir lib_deps =
       List.map (Lib_db.resolve_selects t ~from:dir lib_deps) ~f:(fun { dst_fn; src_fn } ->
         let src = Path.relative dir src_fn in
@@ -543,18 +545,18 @@ module Gen(P : Params) = struct
 
     type resolved_forms =
       { (* Mapping from ${...} forms to their resolutions *)
-        artifacts : Path.t String_map.t
+        artifacts : Action.var_expansion String_map.t
       ; (* Failed resolutions *)
         failures  : fail list
-      ; (* All "name" for ${lib:name:...} forms *)
-        lib_deps  : String_set.t
+      ; (* All "name" for ${lib:name:...}/${lib-available:name} forms *)
+        lib_deps  : Build.lib_deps
       }
 
     let add_artifact ?lib_dep acc ~var result =
       let lib_deps =
         match lib_dep with
         | None -> acc.lib_deps
-        | Some lib -> String_set.add lib acc.lib_deps
+        | Some (lib, kind) -> String_map.add acc.lib_deps ~key:lib ~data:kind
       in
       match result with
       | Ok path ->
@@ -568,27 +570,34 @@ module Gen(P : Params) = struct
         ; lib_deps
         }
 
-    let extract_artifacts ~dir t =
+    let map_result = function
+      | Ok x -> Ok (Action.Path x)
+      | Error _ as e -> e
+
+    let extract_artifacts ~dir ~dep_kind t =
       let init =
         { artifacts = String_map.empty
         ; failures  = []
-        ; lib_deps  = String_set.empty
+        ; lib_deps  = String_map.empty
         }
       in
       U.fold_vars t ~init ~f:(fun acc var ->
         let module A = Artifacts in
         match String.lsplit2 var ~on:':' with
-        | Some ("exe"     , s) -> add_artifact acc ~var (Ok (Path.relative dir s))
-        | Some ("path"    , s) -> add_artifact acc ~var (Ok (Path.relative dir s))
-        | Some ("bin"     , s) -> add_artifact acc ~var (A.binary s)
+        | Some ("exe"     , s) -> add_artifact acc ~var (Ok (Path (Path.relative dir s)))
+        | Some ("path"    , s) -> add_artifact acc ~var (Ok (Path (Path.relative dir s)))
+        | Some ("bin"     , s) -> add_artifact acc ~var (A.binary s |> map_result)
         | Some ("lib"     , s)
         | Some ("libexec" , s) ->
           let lib_dep, res = A.file_of_lib ~dir s in
-          add_artifact acc ~var ~lib_dep res
+          add_artifact acc ~var ~lib_dep:(lib_dep, dep_kind) (map_result res)
+        | Some ("lib-available", lib) ->
+          add_artifact acc ~var ~lib_dep:(lib, Optional)
+            (Ok (Str (string_of_bool (Lib_db.lib_is_available ~from:dir lib))))
         (* CR-someday jdimino: allow this only for (jbuild_version jane_street) *)
         | Some ("findlib" , s) ->
           let lib_dep, res = A.file_of_lib ~dir s ~use_provides:true in
-          add_artifact acc ~var ~lib_dep res
+          add_artifact acc ~var ~lib_dep:(lib_dep, Required) (map_result res)
         | _ -> acc)
 
     let expand_var =
@@ -598,10 +607,10 @@ module Gen(P : Params) = struct
       in
       fun ~artifacts ~targets ~deps var_name ->
         match String_map.find var_name artifacts with
-        | Some path -> Action.Path path
+        | Some exp -> exp
         | None ->
           match var_name with
-          | "@" -> Paths targets
+          | "@" -> Action.Paths targets
           | "<" -> (match deps with
             | []        -> Str ""
             | dep1 :: _ -> Path (dep_exn var_name dep1))
@@ -614,23 +623,27 @@ module Gen(P : Params) = struct
             | _ -> Not_found
 
     let run t ~dir ~dep_kind ~targets ~deps =
-      let forms = extract_artifacts ~dir t in
+      let forms = extract_artifacts ~dir ~dep_kind t in
       let build =
         match
           U.expand ctx dir t
             ~f:(expand_var ~artifacts:forms.artifacts ~targets ~deps)
         with
         | t ->
-          Build.paths (String_map.values forms.artifacts)
+          Build.path_set
+            (String_map.fold forms.artifacts ~init:Path.Set.empty
+               ~f:(fun ~key:_ ~data:exp acc ->
+                 match exp with
+                 | Action.Path p -> Path.Set.add p acc
+                 | Paths ps -> Path.Set.union acc (Path.Set.of_list ps)
+                 | Not_found | Str _ -> acc))
           >>>
           Build.action t ~dir ~targets
         | exception e ->
           Build.fail ~targets { fail = fun () -> raise e }
       in
       let build =
-        Build.record_lib_deps ~dir ~kind:dep_kind
-          (String_set.elements forms.lib_deps
-           |> List.map ~f:(fun s -> Lib_dep.Direct s))
+        Build.record_lib_deps_simple ~dir forms.lib_deps
         >>>
         build
       in

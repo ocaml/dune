@@ -67,27 +67,27 @@ let top_sort_internals t ~internal_libraries =
       (List.map cycle ~f:(fun lib -> Lib.describe (Internal lib))
        |> String.concat ~sep:"\n-> ")
 
-let lib_is_installable t ~from name =
+let lib_is_available t ~from name =
   match find_internal t ~from name with
   | Some (_, lib) -> String_map.mem lib.name t.instalable_internal_libs
   | None -> Findlib.available t.findlib name ~required_by:[Utils.jbuild_name_in ~dir:from]
 
 let choice_is_possible t ~from { Lib_dep. lits; _ } =
   List.for_all lits ~f:(function
-    | Lib_dep.Pos name ->      lib_is_installable t ~from name
-    | Lib_dep.Neg name -> not (lib_is_installable t ~from name))
+    | Lib_dep.Pos name ->      lib_is_available t ~from name
+    | Lib_dep.Neg name -> not (lib_is_available t ~from name))
 
-let dep_is_installable t ~from dep =
+let dep_is_available t ~from dep =
   match (dep : Lib_dep.t) with
-  | Direct s -> lib_is_installable t ~from s
+  | Direct s -> lib_is_available t ~from s
   | Select { choices; _ } -> List.exists choices ~f:(choice_is_possible t ~from)
 
 let compute_instalable_internal_libs t ~internal_libraries =
   List.fold_left (top_sort_internals t ~internal_libraries) ~init:t
     ~f:(fun t (dir, lib) ->
       if not lib.Library.optional ||
-         (List.for_all (Library.all_lib_deps lib) ~f:(dep_is_installable t ~from:dir) &&
-          List.for_all lib.ppx_runtime_libraries  ~f:(lib_is_installable t ~from:dir))
+         (List.for_all (Library.all_lib_deps lib) ~f:(dep_is_available t ~from:dir) &&
+          List.for_all lib.ppx_runtime_libraries  ~f:(lib_is_available t ~from:dir))
       then
         { t with
           instalable_internal_libs =
@@ -137,7 +137,7 @@ let interpret_lib_deps t ~dir lib_deps =
               List.filter_map lits ~f:(function
                 | Pos s -> Some (find_exn t ~from:dir s)
                 | Neg s ->
-                  if lib_is_installable t ~from:dir s then
+                  if lib_is_available t ~from:dir s then
                     raise Exit
                   else
                     None)

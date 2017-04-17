@@ -96,6 +96,8 @@ val record_lib_deps
 
 type lib_deps = lib_dep_kind String_map.t
 
+val record_lib_deps_simple : dir:Path.t -> lib_deps -> ('a, 'a) t
+
 (**/**)
 
 

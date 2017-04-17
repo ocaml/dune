@@ -31,3 +31,5 @@ val resolve_selects
   -> from:Path.t
   -> Jbuild_types.Lib_dep.t list
   -> resolved_select list
+
+val lib_is_available : t -> from:Path.t -> string -> bool

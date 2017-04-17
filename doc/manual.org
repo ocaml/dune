@@ -693,6 +693,12 @@ In addition, =(action ...)= fields support the following special variables:
 - =libexec:<public-library-name>:<file>= is the same as =lib:...=
   except when cross-compiling, in which case it will expand to the
   file from the host build context
+- =lib-available:<library-name>= expands to =true= or =false=
+  depending on wether the library is available or not. A library is
+  available iff at least one of the following condition holds:
+  + it is part the installed worlds
+  + it is available locally and is not optional
+  + it is available locally and all its library dependencies are available
 
 The =${<kind>:...}= forms are what allows you to write custom rules
 that work transparently whether things are installed or not.

@@ -54,6 +54,13 @@
        ${bin:jbuilder} build -j1 @install --root . --only pas-de-bol
        )))))))
 
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in workspaces/lib-available)))
+  (action
+   (chdir workspaces/lib-available
+    (run ${exe:run.exe} --
+     ${bin:jbuilder} build -j1 @runtest --root . --debug-dependency-path)))))
 
 ;; execute this to check the behavior when background jobs take time to finish:
 ;;

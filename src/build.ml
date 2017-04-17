@@ -52,6 +52,9 @@ let merge_lib_deps a b =
 let arr f = Arr f
 let return x = Arr (fun () -> x)
 
+let record_lib_deps_simple ~dir lib_deps =
+  Record_lib_deps (dir, lib_deps)
+
 let record_lib_deps ~dir ~kind lib_deps =
   Record_lib_deps
     (dir,

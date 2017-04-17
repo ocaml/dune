@@ -6,6 +6,8 @@
 - Remove hard-coded knowledge of a few specific ppx rewriters to ease
   maintenance moving forward
 
+- Pass the library name to ppx rewriters via the =library-name= cookie
+
 - Fix: make sure the action working directory exist before running it
 
 * 1.0+beta7 (12/04/2017)

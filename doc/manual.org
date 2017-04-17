@@ -1303,7 +1303,8 @@ Jbuilder will invoke the executable resulting from linking the
 libraries given in the =(pps ...)= form as follows:
 
 #+begin_src sh
-ppx.exe <flags-written-by-user> --dump-ast -o <output-file> [--impl|--intf] <source-file>
+ppx.exe <flags-written-by-user> --dump-ast -o <output-file> \
+  [--cookie library-name="<name>"] [--impl|--intf] <source-file>
 #+end_src
 
 Where =<source-file>= is either an implementation (=.ml=) or interface

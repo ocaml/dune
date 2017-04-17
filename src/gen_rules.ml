@@ -370,7 +370,6 @@ module Gen(P : Params) = struct
     ; "ocaml_version"  , ctx.version
     ; "ocaml_where"    , Path.to_string ctx.stdlib_dir
     ; "ARCH_SIXTYFOUR" , string_of_bool ctx.arch_sixtyfour
-    ; "PORTABLE_INT63" , "true"
     ; "MAKE"           , make
     ; "null"           , Path.to_string Config.dev_null
     ] |> String_map.of_alist

@@ -776,45 +776,40 @@ module Gen(P : Params) = struct
 
   (* Generate rules for the reason modules in [modules] and return a list
      a new list of modules with only OCaml sources *)
-  let reason_rules ~dir ~modules =
-    let setup_rules re =
-      let ml = Module.ocaml_of_reason re in
-      let refmt =
-        match Context.which ctx "refmt" with
-        | None ->
-          Build.Prog_spec.Dyn (fun _ ->
-            Utils.program_not_found ~context:ctx.name ~hint:"opam install reason" "refmt")
-        | Some refmt ->
-          Build.Prog_spec.Dep refmt in
-      let rule src target =
-        let src_path = Path.relative dir src in
-        Build.run refmt
-          [ A "--print"
-          ; A "binary"
-          ; Dep src_path ]
-          ~stdout_to:(Path.relative dir target) in
-      let ml_rule = rule re.impl_fname ml.impl_fname in
-      add_rule (ml_rule);
-      match Option.both re.intf_fname ml.intf_fname with
-      | None -> ()
-      | Some (s, t) -> add_rule (rule s t)
-    in
-    String_map.map ~f:(fun (m : Module.t) ->
-      if m.reason then (
-        setup_rules m;
-        Module.ocaml_of_reason m
-      ) else (
-        m
-      )
-    ) modules
+  let reason_rules ~dir re =
+    let ml = Module.ocaml_of_reason re in
+    let refmt =
+      match Context.which ctx "refmt" with
+      | None ->
+        Build.Prog_spec.Dyn (fun _ ->
+          Utils.program_not_found ~context:ctx.name ~hint:"opam install reason" "refmt")
+      | Some refmt ->
+        Build.Prog_spec.Dep refmt in
+    let rule src target =
+      let src_path = Path.relative dir src in
+      Build.run refmt
+        [ A "--print"
+        ; A "binary"
+        ; Dep src_path ]
+        ~stdout_to:(Path.relative dir target) in
+    let ml_rule = rule re.impl_fname ml.impl_fname in
+    add_rule (ml_rule);
+    match Option.both re.intf_fname ml.intf_fname with
+    | None -> ()
+    | Some (s, t) -> add_rule (rule s t)
 
   (* Generate rules to build the .pp files and return a new module map where all filenames
      point to the .pp files *)
   let pped_modules ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name =
-    let modules = reason_rules ~dir ~modules in
     let preprocessor_deps = Dep_conf_interpret.dep_of_list ~dir preprocessor_deps in
     String_map.map modules ~f:(fun (m : Module.t) ->
-      assert (not m.reason);
+      let m =
+        if m.reason then (
+          reason_rules ~dir m;
+          Module.ocaml_of_reason m
+        ) else
+          m
+      in
       match Preprocess_map.find m.name preprocess with
       | No_preprocessing -> m
       | Action action ->

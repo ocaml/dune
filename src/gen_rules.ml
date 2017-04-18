@@ -777,7 +777,7 @@ module Gen(P : Params) = struct
   (* Generate rules for the reason modules in [modules] and return a list
      a new list of modules with only OCaml sources *)
   let reason_rules ~dir ~modules =
-    let rule re =
+    let setup_rules re =
       let ml = Module.ocaml_of_reason re in
       let refmt =
         match Context.which ctx "refmt" with
@@ -791,13 +791,14 @@ module Gen(P : Params) = struct
           ; Dep src_path ]
           ~stdout_to:(Path.relative dir target) in
       let ml_rule = rule re.impl_fname ml.impl_fname in
+      add_rule (ml_rule);
       match Option.both re.intf_fname ml.intf_fname with
-      | None -> [ml_rule]
-      | Some (s, t) -> [rule s t ; ml_rule]
+      | None -> ()
+      | Some (s, t) -> add_rule (rule s t)
     in
     String_map.map ~f:(fun (m : Module.t) ->
       if m.reason then (
-        List.iter ~f:add_rule (rule m);
+        setup_rules m;
         Module.ocaml_of_reason m
       ) else (
         m

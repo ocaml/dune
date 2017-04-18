@@ -1596,13 +1596,14 @@ module Gen(P : Params) = struct
 
   let split_to_modules =
     String_set.fold ~init:([], [], [], []) ~f:(fun f (ml, mli, re, rei) ->
-      match Filename.extension f with
-      | ".ml" -> (f :: ml, mli, re, rei)
-      | ".mli" -> (ml, f :: mli, re, rei)
-      | ".re" -> (ml, mli, f :: re, rei)
-      | ".rei" -> (ml, mli, rei, f :: rei)
-      | "" -> (ml, mli, re, rei)
-      | f -> invalid_arg ("Unexpected extension from: " ^ f))
+      (* we aren't using Filename.extension because we want to handle
+         filenames such as foo.cppo.ml *)
+      match String.lsplit2 f ~on:'.' with
+      | Some (_, ".ml") -> (f :: ml, mli, re, rei)
+      | Some (_, ".mli") -> (ml, f :: mli, re, rei)
+      | Some (_, ".re") -> (ml, mli, f :: re, rei)
+      | Some (_, ".rei") -> (ml, mli, rei, f :: rei)
+      | _ -> (ml, mli, re, rei))
 
   let guess_modules ~dir ~files =
     let ml_files, mli_files, re_files, rei_files = split_to_modules files in

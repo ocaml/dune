@@ -3,8 +3,8 @@ open! Import
 type t =
   { name      : string (** Name of the module. This is always the basename of the filename
                            without the extension. *)
-  ; ml_fname  : string
-  ; mli_fname : string option
+  ; impl_fname : string
+  ; intf_fname : string option
 
   ; obj_name  : string (** Object name. It is different from [name] for wrapped
                            modules. *)
@@ -21,8 +21,8 @@ val cmt_file  : t -> dir:Path.t -> Ml_kind.t -> Path.t option
 
 val create
   : ?obj_name:string
-  -> ?mli_fname:string
+  -> ?intf_fname:string
   -> name:string
-  -> ml_fname:string
+  -> impl_fname:string
   -> unit -> t
 val ocaml_of_reason : t -> t

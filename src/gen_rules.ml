@@ -781,12 +781,14 @@ module Gen(P : Params) = struct
       let ml = Module.ocaml_of_reason re in
       let refmt =
         match Context.which ctx "refmt" with
-        | None -> Utils.program_not_found ~context:ctx.name
-                    ~hint:"opam install reason" "refmt"
-        | Some refmt -> refmt in
+        | None ->
+          Build.Prog_spec.Dyn (fun _ ->
+            Utils.program_not_found ~context:ctx.name ~hint:"opam install reason" "refmt")
+        | Some refmt ->
+          Build.Prog_spec.Dep refmt in
       let rule src target =
         let src_path = Path.relative dir src in
-        Build.run (Dep refmt)
+        Build.run refmt
           [ A "--print"
           ; A "binary"
           ; Dep src_path ]

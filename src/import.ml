@@ -375,6 +375,11 @@ module Option = struct
   let is_none = function
     | None   -> true
     | Some _ -> false
+
+  let both x y =
+    match x, y with
+    | Some x, Some y -> Some (x, y)
+    | _ -> None
 end
 
 type ('a, 'b) eq = Eq : ('a, 'a) eq

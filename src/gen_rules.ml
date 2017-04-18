@@ -781,7 +781,8 @@ module Gen(P : Params) = struct
       let ml = Module.ocaml_of_reason re in
       let refmt =
         match Context.which ctx "refmt" with
-        | None -> die "refmt not found. Fix with $ opam install reason"
+        | None -> Utils.program_not_found ~context:ctx.name
+                    ~hint:"opam install reason" "refmt"
         | Some refmt -> refmt in
       let rule src target =
         let src_path = Path.relative dir src in

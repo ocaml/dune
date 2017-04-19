@@ -778,12 +778,11 @@ module Gen(P : Params) = struct
      a new module with only OCaml sources *)
   let setup_reason_rules ~dir (m : Module.t) =
     let refmt =
-      match Context.which ctx "refmt" with
-      | None ->
+      match Artifacts.binary "refmt" with
+      | Error _ ->
         Build.Prog_spec.Dyn (fun _ ->
           Utils.program_not_found ~context:ctx.name ~hint:"opam install reason" "refmt")
-      | Some refmt ->
-        Build.Prog_spec.Dep refmt in
+      | Ok p -> Build.Prog_spec.Dep p in
     let rule src target =
       let src_path = Path.relative dir src in
       Build.run refmt

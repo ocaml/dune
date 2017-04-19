@@ -19,10 +19,4 @@ val cm_source : t -> dir:Path.t -> Cm_kind.t -> Path.t option
 val cm_file   : t -> dir:Path.t -> Cm_kind.t -> Path.t
 val cmt_file  : t -> dir:Path.t -> Ml_kind.t -> Path.t option
 
-val create
-  : ?obj_name:string
-  -> ?intf_fname:string
-  -> name:string
-  -> impl_fname:string
-  -> unit -> t
 val ocaml_of_reason : t -> t

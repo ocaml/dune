@@ -1296,9 +1296,13 @@ module Gen(P : Params) = struct
           else
             ""
         in
-        Some (Module.create ~name:(main_module_name ^ suf)
-                ~impl_fname:(lib.name ^ suf ^ ".ml-gen")
-                ~obj_name:(lib.name ^ suf) ())
+        Some
+          { Module.name = main_module_name ^ suf
+          ; impl_fname = lib.name ^ suf ^ ".ml-gen"
+          ; intf_fname = None
+          ; obj_name = lib.name ^ suf
+          ; reason = false
+          }
     in
     (* Add the modules before preprocessing, otherwise the install rules are going to pick
        up the pre-processed modules *)
@@ -1646,7 +1650,12 @@ module Gen(P : Params) = struct
           impl_fname
         | Some impl_fname -> impl_fname
       in
-      Some (Module.create ~name ~impl_fname ?intf_fname ())
+      Some
+        { Module.name
+        ; impl_fname
+        ; intf_fname
+        ; reason = false
+        ; obj_name = "" }
     )
 
   (* +-----------------------------------------------------------------+

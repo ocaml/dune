@@ -1151,6 +1151,24 @@ So for instance:
   =foo= build context
 - =jbuilder build @runtest= will run the tests for all build contexts
 
+** Finding external libraries
+
+When a library is not available in the workspace, jbuilder will look
+it up in the installed world, and expect it to be already compiled.
+
+It looks up external libraries using a specific list of search
+pathes. A list of search pathes is specific to a given build context
+and is determined as follow:
+
+1. if the =ocamlfind= is present in the =PATH= of the context, use
+   each line in the output of =ocamlfind printconf path= as a search
+   path
+2. otherwise, if =opam= is present in the =PATH=, use the outout of
+   =opam config var lib=
+3. otherwise, take the directory where =ocamlc= was found, and append
+   =../lib= to it. For instance if =ocamlc= is found in =/usr/bin=,
+   use =/usr/lib=
+
 ** Running tests
 
 There are two ways to run tests:
@@ -1208,6 +1226,47 @@ your =<package>.opam= file:
 #+begin_src
 build-test: [["jbuilder" "runtest" "-p" name "-j" jobs]]
 #+end_src
+
+** Installation
+
+Installing a package means copying the build artifacts from the build
+directory to the installed word.
+
+When installing via opam, you don't need to worry about this step:
+jbuilder generates a =<package>.install= file that opam will
+automatically read to handle installation.
+
+However, when not using opam or doing local development, you can use
+jbuilder to install the artifacts by hands. To do that, use the
+=install= command:
+
+#+begin_src
+$ jbuilder install [PACKAGE]...
+#+end_src
+
+without an argument, it will install all the packages available in the
+workspace. With a specific list of packages, it will only install
+these packages. If several build contexts are configured, the
+installation will be performed for all of them.
+
+Note that =jbuilder install= is a thin wrapper around the
+=opam-installer= tool, so you will need to install this tool in order
+to be able to use =jbuilder install=.
+
+*** Destination
+
+The place where the build artifacts are copied, usually referred as
+*prefix*, is determined as follow for a given build context:
+
+1. if an explicit =--prefix <path>= argument is passed, use this path
+2. if =opam= is present in the =PATH=, use the output of =opam config
+   var prefix=
+3. otherwise, take the directory where =ocamlc= was found, and append
+   =../lib= to it. For instance if =ocamlc= is found in =/usr/bin=,
+   use =/usr=
+
+Note that =--prefix= is only supported if a single build context is in
+use.
 
 ** Workspace configuration
 

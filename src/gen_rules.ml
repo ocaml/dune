@@ -662,17 +662,17 @@ module Gen(P : Params) = struct
     fn ^ ".pp" ^ ext
 
   let pped_module ~dir (m : Module.t) ~f =
-    let ml_pp_fname = pp_fname m.impl_fname in
-    f Ml_kind.Impl (Path.relative dir m.impl_fname) (Path.relative dir ml_pp_fname);
-    let mli_pp_fname =
-      Option.map m.intf_fname ~f:(fun fname ->
-        let pp_fname = pp_fname fname in
-        f Intf (Path.relative dir fname) (Path.relative dir pp_fname);
-        pp_fname)
+    let ml_pp_fname = pp_fname m.impl.name in
+    f Ml_kind.Impl (Path.relative dir m.impl.name) (Path.relative dir ml_pp_fname);
+    let intf =
+      Option.map m.intf ~f:(fun intf ->
+        let pp_fname = pp_fname intf.name in
+        f Intf (Path.relative dir intf.name) (Path.relative dir pp_fname);
+        {intf with name = pp_fname})
     in
     { m with
-      impl_fname  = ml_pp_fname
-    ; intf_fname = mli_pp_fname
+      impl = { m.impl with name = ml_pp_fname }
+    ; intf
     }
 
   let ppx_drivers = Hashtbl.create 32
@@ -792,24 +792,17 @@ module Gen(P : Params) = struct
         ; A "binary"
         ; Dep src_path ]
         ~stdout_to:(Path.relative dir target) in
-    let ml_rule = rule re.impl_fname ml.impl_fname in
+    let ml_rule = rule re.impl.name ml.impl.name in
     add_rule (ml_rule);
-    match Option.both re.intf_fname ml.intf_fname with
+    match Option.both re.intf ml.intf with
     | None -> ()
-    | Some (s, t) -> add_rule (rule s t)
+    | Some (s, t) -> add_rule (rule s.name t.name)
 
   (* Generate rules to build the .pp files and return a new module map where all filenames
      point to the .pp files *)
   let pped_modules ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name =
     let preprocessor_deps = Dep_conf_interpret.dep_of_list ~dir preprocessor_deps in
     String_map.map modules ~f:(fun (m : Module.t) ->
-      let m =
-        if m.reason then (
-          reason_rules ~dir m;
-          Module.ocaml_of_reason m
-        ) else
-          m
-      in
       match Preprocess_map.find m.name preprocess with
       | No_preprocessing -> m
       | Action action ->
@@ -1041,7 +1034,7 @@ module Gen(P : Params) = struct
         let ml_kind = Cm_kind.source cm_kind in
         let dst = Module.cm_file m ~dir cm_kind in
         let extra_args, extra_deps, extra_targets =
-          match cm_kind, m.intf_fname with
+          match cm_kind, m.intf with
           (* If there is no mli, [ocamlY -c file.ml] produces both the
              .cmY and .cmi. We choose to use ocamlc to produce the cmi
              and to produce the cmx we have to wait to avoid race
@@ -1052,7 +1045,7 @@ module Gen(P : Params) = struct
                cmi exists and reads it instead of re-creating it, which
                could create a race condition. *)
             ([ "-intf-suffix"
-             ; Filename.extension m.impl_fname
+             ; Filename.extension m.impl.name
              ],
              [Module.cm_file m ~dir Cmi], [])
           | Cmi, None -> assert false
@@ -1280,7 +1273,7 @@ module Gen(P : Params) = struct
     let modules =
       String_map.map modules ~f:(fun (m : Module.t) ->
         if not lib.wrapped || m.name = main_module_name then
-          { m with obj_name = obj_name_of_basename m.impl_fname }
+          { m with obj_name = obj_name_of_basename m.impl.name }
         else
           { m with obj_name = sprintf "%s__%s" lib.name m.name })
     in
@@ -1298,10 +1291,9 @@ module Gen(P : Params) = struct
         in
         Some
           { Module.name = main_module_name ^ suf
-          ; impl_fname = lib.name ^ suf ^ ".ml-gen"
-          ; intf_fname = None
+          ; impl = { name = lib.name ^ suf ^ ".ml-gen" ; syntax = OCaml }
+          ; intf = None
           ; obj_name = lib.name ^ suf
-          ; reason = false
           }
     in
     (* Add the modules before preprocessing, otherwise the install rules are going to pick
@@ -1339,7 +1331,7 @@ module Gen(P : Params) = struct
                 main_module_name m.name
                 m.name (Module.real_unit_name m))
             |> String.concat ~sep:"\n")
-         >>> Build.update_file_dyn (Path.relative dir m.impl_fname)));
+         >>> Build.update_file_dyn (Path.relative dir m.impl.name)));
 
     let requires, real_requires =
       requires ~dir ~dep_kind ~item:lib.name
@@ -1505,7 +1497,7 @@ module Gen(P : Params) = struct
     in
     let modules =
       String_map.map modules ~f:(fun (m : Module.t) ->
-        { m with obj_name = obj_name_of_basename m.impl_fname })
+        { m with obj_name = obj_name_of_basename m.impl.name })
     in
     List.iter exes.names ~f:(fun name ->
       if not (String_map.mem (String.capitalize name) modules) then
@@ -1605,56 +1597,55 @@ module Gen(P : Params) = struct
         (* we aren't using Filename.extension because we want to handle
            filenames such as foo.cppo.ml *)
         match String.lsplit2 fn ~on:'.' with
-        | Some (_, "ml") -> Some (Inl (`OCaml, fn))
-        | Some (_, "re") -> Some (Inl (`Reason, fn))
-        | Some (_, "mli") -> Some (Inr (`OCaml, fn))
-        | Some (_, "rei") -> Some (Inr (`Reason, fn))
+        | Some (_, "ml") -> Some (Inl { Module.File.syntax=OCaml ; name=fn })
+        | Some (_, "re") -> Some (Inl { Module.File.syntax=Reason ; name=fn })
+        | Some (_, "mli") -> Some (Inr { Module.File.syntax=OCaml ; name=fn })
+        | Some (_, "rei") -> Some (Inr { Module.File.syntax=Reason ; name=fn })
         | _ -> None)
       |> List.partition_map ~f:(fun x -> x) in
     let parse_one_set files =
-      List.map files ~f:(fun (syn, fn) ->
-        (String.capitalize_ascii (Filename.chop_extension fn), (syn, fn)))
+      List.map files ~f:(fun (f : Module.File.t) ->
+        (String.capitalize_ascii (Filename.chop_extension f.name), f))
       |> String_map.of_alist
       |> function
       | Ok x -> x
-      | Error (name, (_, f1), (_, f2)) ->
+      | Error (name, f1, f2) ->
         die "too many files for module %s in %s: %s and %s"
-          name (Path.to_string dir) f1 f2
+          name (Path.to_string dir) f1.name f2.name
     in
     let impls = parse_one_set impl_files in
     let intfs = parse_one_set intf_files in
+    let setup_intf_only name (intf : Module.File.t) =
+      let impl_fname = String.sub intf.name ~pos:0 ~len:(String.length intf.name - 1) in
+      Format.eprintf
+        "@{<warning>Warning@}: Module %s in %s doesn't have a \
+         corresponding .%s file.\n\
+         Modules without an implementation are not recommended, \
+         see this discussion:\n\
+         \n\
+        \  https://github.com/janestreet/jbuilder/issues/9\n\
+         \n\
+         In the meantime I'm setting up a rule for copying %s to %s.\n"
+        name (Path.to_string dir)
+        (match intf.syntax with
+         | OCaml -> "ml"
+         | Reason -> "re")
+        intf.name impl_fname;
+      let dir = Path.append ctx.build_dir dir in
+      add_rule
+        (Build.copy
+           ~src:(Path.relative dir intf.name)
+           ~dst:(Path.relative dir impl_fname));
+      { intf with name = impl_fname } in
     String_map.merge impls intfs ~f:(fun name impl intf ->
-      let impl_fname = Option.map ~f:snd impl in
-      let intf_fname = Option.map ~f:snd intf in
-      let impl_fname =
-        match impl_fname with
-        | None ->
-          let intf_fname = Option.value_exn intf_fname in
-          let impl_fname = String.sub intf_fname ~pos:0 ~len:(String.length intf_fname - 1) in
-          Format.eprintf
-            "@{<warning>Warning@}: Module %s in %s doesn't have a \
-             corresponding .ml file.\n\
-             Modules without an implementation are not recommended, \
-             see this discussion:\n\
-             \n\
-            \  https://github.com/janestreet/jbuilder/issues/9\n\
-             \n\
-             In the meantime I'm setting up a rule for copying %s to %s.\n"
-            name (Path.to_string dir)
-            intf_fname impl_fname;
-          let dir = Path.append ctx.build_dir dir in
-          add_rule
-            (Build.copy
-               ~src:(Path.relative dir intf_fname)
-               ~dst:(Path.relative dir impl_fname));
-          impl_fname
-        | Some impl_fname -> impl_fname
-      in
+      let impl =
+        match impl with
+        | None -> setup_intf_only name (Option.value_exn intf)
+        | Some i -> i in
       Some
         { Module.name
-        ; impl_fname
-        ; intf_fname
-        ; reason = false
+        ; impl
+        ; intf
         ; obj_name = "" }
     )
 
@@ -1848,7 +1839,7 @@ module Gen(P : Params) = struct
               ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~dir)
               ; [ match Module.file m ~dir Intf with
                   | Some fn -> fn
-                  | None    -> Path.relative dir m.impl_fname ]
+                  | None    -> Path.relative dir m.impl.name ]
               ])
         ; if_ byte [ lib_archive ~dir lib ~ext:".cma" ]
         ; if_ (Library.has_stubs lib) [ stubs_archive ~dir lib ]

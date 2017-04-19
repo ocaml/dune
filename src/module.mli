@@ -1,14 +1,24 @@
 open! Import
 
+module Syntax : sig
+  type t = OCaml | Reason
+end
+
+module File : sig
+  type t =
+    { name : string
+    ; syntax: Syntax.t
+    }
+end
+
 type t =
   { name      : string (** Name of the module. This is always the basename of the filename
                            without the extension. *)
-  ; impl_fname : string
-  ; intf_fname : string option
+  ; impl      : File.t
+  ; intf      : File.t option
 
   ; obj_name  : string (** Object name. It is different from [name] for wrapped
                            modules. *)
-  ; reason    : bool   (** Whether this a reason source*)
   }
 
 (** Real unit name once wrapped. This is always a valid module name. *)

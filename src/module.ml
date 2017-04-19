@@ -9,6 +9,19 @@ module File = struct
     { name : string
     ; syntax : Syntax.t
     }
+
+  let to_ocaml t =
+    match t.syntax with
+    | OCaml -> code_errorf "to_ocaml: can only convert reason Files" ()
+    | Reason ->
+      { syntax = OCaml
+      ; name =
+          t.name ^
+          (match Filename.extension t.name with
+           | ".re" -> ".ml"
+           | ".rei" -> ".mli"
+           | e -> code_errorf "to_ocaml: unrecognized extension %s" e ())
+      }
 end
 
 type t =

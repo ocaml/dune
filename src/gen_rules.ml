@@ -774,10 +774,9 @@ module Gen(P : Params) = struct
     | None -> []
     | Some name -> ["--cookie"; sprintf "library-name=%S" name]
 
-  (* Generate rules for the reason modules in [modules] and return a list
-     a new list of modules with only OCaml sources *)
-  let reason_rules ~dir re =
-    let ml = Module.ocaml_of_reason re in
+  (* Generate rules for the reason modules in [modules] and return a
+     a new module with only OCaml sources *)
+  let setup_reason_rules ~dir (m : Module.t) =
     let refmt =
       match Context.which ctx "refmt" with
       | None ->
@@ -792,17 +791,29 @@ module Gen(P : Params) = struct
         ; A "binary"
         ; Dep src_path ]
         ~stdout_to:(Path.relative dir target) in
-    let ml_rule = rule re.impl.name ml.impl.name in
-    add_rule (ml_rule);
-    match Option.both re.intf ml.intf with
-    | None -> ()
-    | Some (s, t) -> add_rule (rule s.name t.name)
+    let impl =
+      match m.impl.syntax with
+      | OCaml -> m.impl
+      | Reason ->
+        let ml = Module.File.to_ocaml m.impl in
+        add_rule (rule m.impl.name ml.name);
+        ml in
+    let intf =
+      Option.map m.intf ~f:(fun f ->
+        match f.syntax with
+        | OCaml -> f
+        | Reason ->
+          let mli = Module.File.to_ocaml f in
+          add_rule (rule f.name mli.name);
+          mli) in
+    { m with impl ; intf }
 
   (* Generate rules to build the .pp files and return a new module map where all filenames
      point to the .pp files *)
   let pped_modules ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name =
     let preprocessor_deps = Dep_conf_interpret.dep_of_list ~dir preprocessor_deps in
     String_map.map modules ~f:(fun (m : Module.t) ->
+      let m = setup_reason_rules ~dir m in
       match Preprocess_map.find m.name preprocess with
       | No_preprocessing -> m
       | Action action ->

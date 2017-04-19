@@ -9,6 +9,8 @@ module File : sig
     { name : string
     ; syntax: Syntax.t
     }
+
+  val to_ocaml : t -> t
 end
 
 type t =

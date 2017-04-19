@@ -1594,96 +1594,60 @@ module Gen(P : Params) = struct
      | Modules listing                                                 |
      +-----------------------------------------------------------------+ *)
 
-  let split_to_modules =
-    String_set.fold ~init:([], [], [], []) ~f:(fun f (ml, mli, re, rei) ->
-      (* we aren't using Filename.extension because we want to handle
-         filenames such as foo.cppo.ml *)
-      match String.lsplit2 f ~on:'.' with
-      | Some (_, ".ml") -> (f :: ml, mli, re, rei)
-      | Some (_, ".mli") -> (ml, f :: mli, re, rei)
-      | Some (_, ".re") -> (ml, mli, f :: re, rei)
-      | Some (_, ".rei") -> (ml, mli, rei, f :: rei)
-      | _ -> (ml, mli, re, rei))
-
   let guess_modules ~dir ~files =
-    let ml_files, mli_files, re_files, rei_files = split_to_modules files in
+    let impl_files, intf_files =
+      String_set.elements files
+      |> List.filter_map ~f:(fun fn ->
+        (* we aren't using Filename.extension because we want to handle
+           filenames such as foo.cppo.ml *)
+        match String.lsplit2 fn ~on:'.' with
+        | Some (_, "ml") -> Some (Inl (`OCaml, fn))
+        | Some (_, "re") -> Some (Inl (`Reason, fn))
+        | Some (_, "mli") -> Some (Inr (`OCaml, fn))
+        | Some (_, "rei") -> Some (Inr (`Reason, fn))
+        | _ -> None)
+      |> List.partition_map ~f:(fun x -> x) in
     let parse_one_set files =
-      List.map files ~f:(fun fn ->
-        (String.capitalize_ascii (Filename.chop_extension fn),
-         fn))
+      List.map files ~f:(fun (syn, fn) ->
+        (String.capitalize_ascii (Filename.chop_extension fn), (syn, fn)))
       |> String_map.of_alist
       |> function
       | Ok x -> x
-      | Error (name, f1, f2) ->
+      | Error (name, (_, f1), (_, f2)) ->
         die "too many files for module %s in %s: %s and %s"
           name (Path.to_string dir) f1 f2
     in
-    let ml_impls = parse_one_set ml_files  in
-    let ml_intfs = parse_one_set mli_files in
-    let re_impls = parse_one_set re_files  in
-    let re_intfs = parse_one_set rei_files in
-    let to_module impls intfs =
-      String_map.merge impls intfs ~f:(fun name impl_fname intf_fname ->
-        let impl_fname =
-          match impl_fname with
-          | None ->
-            let intf_fname = Option.value_exn intf_fname in
-            let impl_fname = String.sub intf_fname ~pos:0 ~len:(String.length intf_fname - 1) in
-            Format.eprintf
-              "@{<warning>Warning@}: Module %s in %s doesn't have a \
-               corresponding .ml file.\n\
-               Modules without an implementation are not recommended, \
-               see this discussion:\n\
-               \n\
-              \  https://github.com/janestreet/jbuilder/issues/9\n\
-               \n\
-               In the meantime I'm setting up a rule for copying %s to %s.\n"
-              name (Path.to_string dir)
-              intf_fname impl_fname;
-            let dir = Path.append ctx.build_dir dir in
-            add_rule
-              (Build.copy
-                 ~src:(Path.relative dir intf_fname)
-                 ~dst:(Path.relative dir impl_fname));
-            impl_fname
-          | Some impl_fname -> impl_fname
-        in
-        Some (Module.create ~name ~impl_fname ?intf_fname ())
-      ) in
-    let ml_modules = to_module ml_impls ml_intfs in
-    let reason_modules = to_module re_impls re_intfs in
-    let ml_re_collisions =
-      String_map.merge ml_modules reason_modules ~f:(fun _ m r ->
-        match m, r with
-        | Some m, Some r -> Some (m, r)
-        | Some _, None
-        | None, Some _ -> None
-        | None, None -> assert false
-      ) in
-    if String_map.is_empty ml_re_collisions then
-      String_map.merge ml_modules reason_modules ~f:(fun _ m r ->
-        match m, r with
-        | Some m, None
-        | None, Some m -> Some m
-        | None, None
-        | Some _, Some _ -> assert false
-      )
-    else
-      die "The following modules have both reason and ocaml sources:@.%a"
-        (Format.pp_print_list
-           (fun fmt (k, (m, r)) ->
-              let files =
-                List.filter_map ~f:(fun o -> o)
-                  [ Some m.Module.impl_fname
-                  ; m.intf_fname
-                  ; Some r.Module.impl_fname
-                  ; r.intf_fname] in
-              Format.fprintf fmt "%s: %a" k
-                (Format.pp_print_list
-                   ~pp_sep:(fun fmt () -> Format.fprintf fmt ",@ ")
-                   Format.pp_print_string) files
-           )
-        ) (String_map.bindings ml_re_collisions)
+    let impls = parse_one_set impl_files in
+    let intfs = parse_one_set intf_files in
+    String_map.merge impls intfs ~f:(fun name impl intf ->
+      let impl_fname = Option.map ~f:snd impl in
+      let intf_fname = Option.map ~f:snd intf in
+      let impl_fname =
+        match impl_fname with
+        | None ->
+          let intf_fname = Option.value_exn intf_fname in
+          let impl_fname = String.sub intf_fname ~pos:0 ~len:(String.length intf_fname - 1) in
+          Format.eprintf
+            "@{<warning>Warning@}: Module %s in %s doesn't have a \
+             corresponding .ml file.\n\
+             Modules without an implementation are not recommended, \
+             see this discussion:\n\
+             \n\
+            \  https://github.com/janestreet/jbuilder/issues/9\n\
+             \n\
+             In the meantime I'm setting up a rule for copying %s to %s.\n"
+            name (Path.to_string dir)
+            intf_fname impl_fname;
+          let dir = Path.append ctx.build_dir dir in
+          add_rule
+            (Build.copy
+               ~src:(Path.relative dir intf_fname)
+               ~dst:(Path.relative dir impl_fname));
+          impl_fname
+        | Some impl_fname -> impl_fname
+      in
+      Some (Module.create ~name ~impl_fname ?intf_fname ())
+    )
 
   (* +-----------------------------------------------------------------+
      | Stanza                                                          |

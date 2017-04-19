@@ -46,6 +46,3 @@ let cmt_file t ~dir (kind : Ml_kind.t) =
   match kind with
   | Impl -> Some (Path.relative dir (t.obj_name ^ ".cmt"))
   | Intf -> Option.map t.intf ~f:(fun _ -> Path.relative dir (t.obj_name ^ ".cmti"))
-
-let ocaml_of_reason _t =
-  failwith ""

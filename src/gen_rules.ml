@@ -662,17 +662,17 @@ module Gen(P : Params) = struct
     fn ^ ".pp" ^ ext
 
   let pped_module ~dir (m : Module.t) ~f =
-    let ml_pp_fname = pp_fname m.ml_fname in
-    f Ml_kind.Impl (Path.relative dir m.ml_fname) (Path.relative dir ml_pp_fname);
-    let mli_pp_fname =
-      Option.map m.mli_fname ~f:(fun fname ->
-        let pp_fname = pp_fname fname in
-        f Intf (Path.relative dir fname) (Path.relative dir pp_fname);
-        pp_fname)
+    let ml_pp_fname = pp_fname m.impl.name in
+    f Ml_kind.Impl (Path.relative dir m.impl.name) (Path.relative dir ml_pp_fname);
+    let intf =
+      Option.map m.intf ~f:(fun intf ->
+        let pp_fname = pp_fname intf.name in
+        f Intf (Path.relative dir intf.name) (Path.relative dir pp_fname);
+        {intf with name = pp_fname})
     in
     { m with
-      ml_fname  = ml_pp_fname
-    ; mli_fname = mli_pp_fname
+      impl = { m.impl with name = ml_pp_fname }
+    ; intf
     }
 
   let ppx_drivers = Hashtbl.create 32
@@ -774,11 +774,45 @@ module Gen(P : Params) = struct
     | None -> []
     | Some name -> ["--cookie"; sprintf "library-name=%S" name]
 
+  (* Generate rules for the reason modules in [modules] and return a
+     a new module with only OCaml sources *)
+  let setup_reason_rules ~dir (m : Module.t) =
+    let refmt =
+      match Artifacts.binary "refmt" with
+      | Error _ ->
+        Build.Prog_spec.Dyn (fun _ ->
+          Utils.program_not_found ~context:ctx.name ~hint:"opam install reason" "refmt")
+      | Ok p -> Build.Prog_spec.Dep p in
+    let rule src target =
+      let src_path = Path.relative dir src in
+      Build.run refmt
+        [ A "--print"
+        ; A "binary"
+        ; Dep src_path ]
+        ~stdout_to:(Path.relative dir target) in
+    let impl =
+      match m.impl.syntax with
+      | OCaml -> m.impl
+      | Reason ->
+        let ml = Module.File.to_ocaml m.impl in
+        add_rule (rule m.impl.name ml.name);
+        ml in
+    let intf =
+      Option.map m.intf ~f:(fun f ->
+        match f.syntax with
+        | OCaml -> f
+        | Reason ->
+          let mli = Module.File.to_ocaml f in
+          add_rule (rule f.name mli.name);
+          mli) in
+    { m with impl ; intf }
+
   (* Generate rules to build the .pp files and return a new module map where all filenames
      point to the .pp files *)
   let pped_modules ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name =
     let preprocessor_deps = Dep_conf_interpret.dep_of_list ~dir preprocessor_deps in
     String_map.map modules ~f:(fun (m : Module.t) ->
+      let m = setup_reason_rules ~dir m in
       match Preprocess_map.find m.name preprocess with
       | No_preprocessing -> m
       | Action action ->
@@ -1010,7 +1044,7 @@ module Gen(P : Params) = struct
         let ml_kind = Cm_kind.source cm_kind in
         let dst = Module.cm_file m ~dir cm_kind in
         let extra_args, extra_deps, extra_targets =
-          match cm_kind, m.mli_fname with
+          match cm_kind, m.intf with
           (* If there is no mli, [ocamlY -c file.ml] produces both the
              .cmY and .cmi. We choose to use ocamlc to produce the cmi
              and to produce the cmx we have to wait to avoid race
@@ -1021,7 +1055,7 @@ module Gen(P : Params) = struct
                cmi exists and reads it instead of re-creating it, which
                could create a race condition. *)
             ([ "-intf-suffix"
-             ; Filename.extension m.ml_fname
+             ; Filename.extension m.impl.name
              ],
              [Module.cm_file m ~dir Cmi], [])
           | Cmi, None -> assert false
@@ -1249,7 +1283,7 @@ module Gen(P : Params) = struct
     let modules =
       String_map.map modules ~f:(fun (m : Module.t) ->
         if not lib.wrapped || m.name = main_module_name then
-          { m with obj_name = obj_name_of_basename m.ml_fname }
+          { m with obj_name = obj_name_of_basename m.impl.name }
         else
           { m with obj_name = sprintf "%s__%s" lib.name m.name })
     in
@@ -1266,11 +1300,10 @@ module Gen(P : Params) = struct
             ""
         in
         Some
-          { Module.
-            name      = main_module_name ^ suf
-          ; ml_fname  = lib.name ^ suf ^ ".ml-gen"
-          ; mli_fname = None
-          ; obj_name  = lib.name ^ suf
+          { Module.name = main_module_name ^ suf
+          ; impl = { name = lib.name ^ suf ^ ".ml-gen" ; syntax = OCaml }
+          ; intf = None
+          ; obj_name = lib.name ^ suf
           }
     in
     (* Add the modules before preprocessing, otherwise the install rules are going to pick
@@ -1308,7 +1341,7 @@ module Gen(P : Params) = struct
                 main_module_name m.name
                 m.name (Module.real_unit_name m))
             |> String.concat ~sep:"\n")
-         >>> Build.update_file_dyn (Path.relative dir m.ml_fname)));
+         >>> Build.update_file_dyn (Path.relative dir m.impl.name)));
 
     let requires, real_requires =
       requires ~dir ~dep_kind ~item:lib.name
@@ -1474,7 +1507,7 @@ module Gen(P : Params) = struct
     in
     let modules =
       String_map.map modules ~f:(fun (m : Module.t) ->
-        { m with obj_name = obj_name_of_basename m.ml_fname })
+        { m with obj_name = obj_name_of_basename m.impl.name })
     in
     List.iter exes.names ~f:(fun name ->
       if not (String_map.mem (String.capitalize name) modules) then
@@ -1568,63 +1601,63 @@ module Gen(P : Params) = struct
      +-----------------------------------------------------------------+ *)
 
   let guess_modules ~dir ~files =
-    let ml_files, mli_files =
+    let impl_files, intf_files =
       String_set.elements files
       |> List.filter_map ~f:(fun fn ->
+        (* we aren't using Filename.extension because we want to handle
+           filenames such as foo.cppo.ml *)
         match String.lsplit2 fn ~on:'.' with
-        | Some (_, "ml") ->
-          Some (Inl fn)
-        | Some (_, "mli") ->
-          Some (Inr fn)
-        | _ ->
-          None)
-      |> List.partition_map ~f:(fun x -> x)
-    in
+        | Some (_, "ml") -> Some (Inl { Module.File.syntax=OCaml ; name=fn })
+        | Some (_, "re") -> Some (Inl { Module.File.syntax=Reason ; name=fn })
+        | Some (_, "mli") -> Some (Inr { Module.File.syntax=OCaml ; name=fn })
+        | Some (_, "rei") -> Some (Inr { Module.File.syntax=Reason ; name=fn })
+        | _ -> None)
+      |> List.partition_map ~f:(fun x -> x) in
     let parse_one_set files =
-      List.map files ~f:(fun fn ->
-        (String.capitalize_ascii (Filename.chop_extension fn),
-         fn))
+      List.map files ~f:(fun (f : Module.File.t) ->
+        (String.capitalize_ascii (Filename.chop_extension f.name), f))
       |> String_map.of_alist
       |> function
       | Ok x -> x
       | Error (name, f1, f2) ->
         die "too many files for module %s in %s: %s and %s"
-          name (Path.to_string dir) f1 f2
+          name (Path.to_string dir) f1.name f2.name
     in
-    let impls = parse_one_set ml_files  in
-    let intfs = parse_one_set mli_files in
-    String_map.merge impls intfs ~f:(fun name ml_fname mli_fname ->
-      let ml_fname =
-        match ml_fname with
-        | None ->
-          let mli_fname = Option.value_exn mli_fname in
-          let ml_fname = String.sub mli_fname ~pos:0 ~len:(String.length mli_fname - 1) in
-          Format.eprintf
-            "@{<warning>Warning@}: Module %s in %s doesn't have a \
-             corresponding .ml file.\n\
-             Modules without an implementation are not recommended, \
-             see this discussion:\n\
-             \n\
-            \  https://github.com/janestreet/jbuilder/issues/9\n\
-             \n\
-             In the meantime I'm setting up a rule for copying %s to %s.\n"
-            name (Path.to_string dir)
-            mli_fname ml_fname;
-          let dir = Path.append ctx.build_dir dir in
-          add_rule
-            (Build.copy
-               ~src:(Path.relative dir mli_fname)
-               ~dst:(Path.relative dir ml_fname));
-          ml_fname
-        | Some ml_fname -> ml_fname
-      in
+    let impls = parse_one_set impl_files in
+    let intfs = parse_one_set intf_files in
+    let setup_intf_only name (intf : Module.File.t) =
+      let impl_fname = String.sub intf.name ~pos:0 ~len:(String.length intf.name - 1) in
+      Format.eprintf
+        "@{<warning>Warning@}: Module %s in %s doesn't have a \
+         corresponding .%s file.\n\
+         Modules without an implementation are not recommended, \
+         see this discussion:\n\
+         \n\
+        \  https://github.com/janestreet/jbuilder/issues/9\n\
+         \n\
+         In the meantime I'm setting up a rule for copying %s to %s.\n"
+        name (Path.to_string dir)
+        (match intf.syntax with
+         | OCaml -> "ml"
+         | Reason -> "re")
+        intf.name impl_fname;
+      let dir = Path.append ctx.build_dir dir in
+      add_rule
+        (Build.copy
+           ~src:(Path.relative dir intf.name)
+           ~dst:(Path.relative dir impl_fname));
+      { intf with name = impl_fname } in
+    String_map.merge impls intfs ~f:(fun name impl intf ->
+      let impl =
+        match impl with
+        | None -> setup_intf_only name (Option.value_exn intf)
+        | Some i -> i in
       Some
-        { Module.
-          name
-        ; ml_fname  = ml_fname
-        ; mli_fname = mli_fname
-        ; obj_name  = ""
-        })
+        { Module.name
+        ; impl
+        ; intf
+        ; obj_name = "" }
+    )
 
   (* +-----------------------------------------------------------------+
      | Stanza                                                          |
@@ -1816,7 +1849,7 @@ module Gen(P : Params) = struct
               ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~dir)
               ; [ match Module.file m ~dir Intf with
                   | Some fn -> fn
-                  | None    -> Path.relative dir m.ml_fname ]
+                  | None    -> Path.relative dir m.impl.name ]
               ])
         ; if_ byte [ lib_archive ~dir lib ~ext:".cma" ]
         ; if_ (Library.has_stubs lib) [ stubs_archive ~dir lib ]

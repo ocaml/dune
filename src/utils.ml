@@ -80,8 +80,12 @@ let describe_target fn =
   | _ ->
     Path.to_string fn
 
-let program_not_found ?context prog =
-  die "@{<error>Error@}: Program %s not found in PATH%s" prog
+let program_not_found ?context ?hint prog =
+  die "@{<error>Error@}: Program %s not found in PATH%s%a" prog
     (match context with
      | None -> ""
      | Some name -> sprintf " (context: %s)" name)
+    (fun fmt -> function
+       | None -> ()
+       | Some h -> Format.fprintf fmt "@ Hint: %s" h)
+    hint

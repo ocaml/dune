@@ -1,4 +1,8 @@
-* 1.0+beta8
+* next
+
+- Add support for building Reason projects (Rudi Grinberg, #58)
+
+* 1.0+beta8 (17/04/2017)
 
 - Added =${lib-available:<library-name>}= which expands to =true= or
   =false= with the same semantic as literals in =(select ...)= stanzas

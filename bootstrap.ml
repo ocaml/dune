@@ -166,6 +166,7 @@ let read_deps files =
     print_endline cmd;
     Unix.open_process_in cmd
   in
+  set_binary_mode_in ic false;
   let rec loop acc =
     match input_line ic with
     | exception End_of_file ->
@@ -222,7 +223,7 @@ let count_newlines s =
   !newlines
 
 let read_file fn =
-  let ic = open_in fn in
+  let ic = open_in_bin fn in
   let data = really_input_string ic (in_channel_length ic) in
   close_in ic;
   data
@@ -230,7 +231,7 @@ let read_file fn =
 let generated_file = "boot.ml"
 
 let generate_file_with_all_the_sources () =
-  let oc = open_out generated_file in
+  let oc = open_out_bin generated_file in
   let pos_in_generated_file = ref 1 in
   let pr fmt =
     ksprintf (fun s ->

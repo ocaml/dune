@@ -9,9 +9,6 @@ external reraise : exn -> _ = "%reraise"
 (* To make bug reports usable *)
 let () = Printexc.record_backtrace true
 
-let open_in = open_in_bin
-let open_out = open_out_bin
-
 let sprintf = Printf.sprintf
 let ksprintf = Printf.ksprintf
 
@@ -391,11 +388,13 @@ let protectx x ~finally ~f =
   | y           -> finally x; y
   | exception e -> finally x; raise e
 
-let with_file_in fn ~f =
-  protectx (open_in fn) ~finally:close_in ~f
+let with_file_in ?(binary=true) fn ~f =
+  protectx ((if binary then open_in_bin else open_in) fn)
+    ~finally:close_in ~f
 
-let with_file_out fn ~f =
-  protectx (open_out fn) ~finally:close_out ~f
+let with_file_out ?(binary=true)fn ~f =
+  protectx ((if binary then open_out_bin else open_out) fn)
+    ~finally:close_out ~f
 
 let with_lexbuf_from_file fn ~f =
   with_file_in fn ~f:(fun ic ->
@@ -412,16 +411,17 @@ let input_lines =
   let rec loop ic acc =
     match input_line ic with
     | exception End_of_file -> List.rev acc
-    | line -> loop ic (line :: acc)
+    | line ->
+       loop ic (line :: acc)
   in
   fun ic -> loop ic []
 
 let read_file fn =
-  protectx (open_in fn) ~finally:close_in ~f:(fun ic ->
+  protectx (open_in_bin fn) ~finally:close_in ~f:(fun ic ->
     let len = in_channel_length ic in
     really_input_string ic len)
 
-let lines_of_file fn = with_file_in fn ~f:input_lines
+let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false
 
 let write_file fn data = with_file_out fn ~f:(fun oc -> output_string oc data)
 

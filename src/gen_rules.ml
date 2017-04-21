@@ -1510,7 +1510,7 @@ module Gen(P : Params) = struct
         { m with obj_name = obj_name_of_basename m.impl.name })
     in
     List.iter exes.names ~f:(fun name ->
-      if not (String_map.mem (String.capitalize name) modules) then
+      if not (String_map.mem (String.capitalize_ascii name) modules) then
         die "executable %s in %s doesn't have a corresponding .ml file"
           name (Path.to_string dir));
     let modules =

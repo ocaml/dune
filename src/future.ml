@@ -484,7 +484,7 @@ module Scheduler = struct
       Hashtbl.fold running ~init:[] ~f:(fun ~key:pid ~data:job acc ->
         let pid, status = Unix.waitpid [WNOHANG] pid in
         if pid <> 0 then begin
-          (job, status) :: acc
+            (job, status) :: acc
         end else
           acc)
     in
@@ -546,7 +546,7 @@ module Scheduler = struct
   let get_std_output ~default = function
     | Terminal -> (default, None)
     | File fn ->
-      let fd = Unix.openfile fn [O_WRONLY; O_CREAT; O_TRUNC] 0o666 in
+      let fd = Unix.openfile fn [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666 in
       (fd, Some (Fd fd))
     | Opened_file { desc; tail; _ } ->
       let fd =
@@ -578,7 +578,7 @@ module Scheduler = struct
           match job.stdout_to, job.stderr_to with
           | Terminal, _ | _, Terminal ->
             let fn = Temp.create "jbuilder" ".output" in
-            (Some fn, Unix.openfile fn [O_WRONLY] 0)
+            (Some fn, Unix.openfile fn [O_WRONLY; O_SHARE_DELETE] 0)
           | _ ->
             (None, Unix.stdin)
         in

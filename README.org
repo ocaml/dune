@@ -79,6 +79,40 @@ more powerful and more complex and as a result as much more
 dependencies.  It is planned to implement a small bridge between the
 two so that a Jbuilder project can build with Jenga using this bridge.
 
+** Requirements
+
+Jbuilder requires OCaml version 4.02.3 or greater.
+
+** Installation
+
+The recommended way to install jbuilder is via the [[https://opam.ocaml.org][opam package manager]]:
+
+#+begin_src sh
+$ opam install jbuilder
+#+end_src
+
+You can also build it manually with:
+
+#+begin_src sh
+$ make
+$ make install
+#+end_src
+
+Note however that =make install= requires the =opam-installer= tool.
+
+If you do not have =make=, you can do the following:
+
+#+begin_src sh
+$ ocaml bootstrap.ml
+$ ./boot.exe
+$ ./_build/default/bin/main.exe install
+#+end_src
+
+** Support
+
+If you have questions about jbuilder, you can send an email to
+ocaml-core@googlegroups.com or [[https://github.com/janestreet/jbuilder/issues][open a ticket on github]].
+
 ** Status
 
 Jbuilder is now in beta testing stage. Once a bit more testing has

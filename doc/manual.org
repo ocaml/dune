@@ -359,6 +359,8 @@ the library and you are free to expose only the modules you want.
   need to do so unless you use Jbuilder to synthesize the =depends=
   and =depopts= sections of your opam file
 
+- =js_of_ocaml=. See the [[Js_of_ocaml][section about js_of_ocaml]]
+
 - =flags=, =ocamlc_flags= and =ocamlopt_flags=. See the
   [[OCaml flags][section about specifying OCaml flags]]
 
@@ -447,6 +449,8 @@ can always rely on =<name>.exe= being available.
 
 - =(preprocessor_deps (<deps-conf list>))= is the same as the
   =(preprocessor_deps ...)= field of [[library][libraries]]
+
+- =js_of_ocaml=. See the [[Js_of_ocaml][section about js_of_ocaml]]
 
 - =flags=, =ocamlc_flags= and =ocamlopt_flags=. See the
   [[OCaml flags][section about specifying OCaml flags]]
@@ -842,8 +846,8 @@ syntax:
 
 #+begin_src scheme
 (preprocess (per_file
-               (<spec1> (<module-list1))
-               (<spec2> (<module-list2))
+               (<spec1> (<module-list1>))
+               (<spec2> (<module-list2>))
                ...))
 #+end_src
 
@@ -924,6 +928,20 @@ as follows:
 #+begin_src
   (flags (:standard <my options>))
 #+end_src
+
+***** Js_of_ocaml
+In =library= and =executables= stanzas, you can specify Js_of_ocaml
+options using =(js_of_ocaml (<js_of_ocaml-options>))=.
+
+=<js_of_ocaml-options>= are all optional:
+- =(flags <flags>)= to specify flags passed to =js_of_ocaml=
+- =(javascript_files (<files-list>))= to specify js_of_ocaml
+  JavaScript runtime files.
+  
+=<flags>= is specified in the [[Ordered set language][ordered set language]].
+
+The default value for =(flags ...)= depends on whether =--dev= is passed to
+Jbuilder. =--dev= will enable sourcemap and the pretty JavaScript output.
 
 ***** User actions
 
@@ -1390,4 +1408,3 @@ reason:
 
 - to improve interoperability with build systems that Jbuilder
 - so that it can be used with merlin
-

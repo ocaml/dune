@@ -90,6 +90,16 @@ let program_not_found ?context ?hint prog =
        | Some h -> Format.fprintf fmt "@ Hint: %s" h)
     hint
 
+let library_not_found ?context ?hint lib =
+  die "@{<error>Error@}: Library %s not found%s%a" lib
+    (match context with
+     | None -> ""
+     | Some name -> sprintf " (context: %s)" name)
+    (fun fmt -> function
+       | None -> ()
+       | Some h -> Format.fprintf fmt "@ Hint: %s" h)
+    hint
+
 let g () =
   if !Clflags.g then
     ["-g"]

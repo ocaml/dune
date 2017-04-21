@@ -236,17 +236,21 @@ let field_oslu name =
   field name Ordered_set_lang.Unexpanded.t ~default:Ordered_set_lang.Unexpanded.standard
 
 module Js_of_ocaml = struct
+
   type t =
-    { flags            : string list
+    { flags            : Ordered_set_lang.t
     ; javascript_files : string list
     }
 
-
   let t =
     record
-      (field "flags"            (list string) ~default:[] >>= fun flags ->
-       field "javascript_files" (list string) ~default:[] >>= fun javascript_files ->
+      (field_osl "flags"                                      >>= fun flags ->
+       field     "javascript_files" (list string) ~default:[] >>= fun javascript_files ->
        return { flags; javascript_files })
+
+  let default =
+    { flags = Ordered_set_lang.standard
+    ; javascript_files = [] }
 end
 
 module Lib_dep = struct
@@ -450,7 +454,7 @@ module Library = struct
     ; library_flags            : String_with_vars.t list
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
-    ; js_of_ocaml              : Js_of_ocaml.t option
+    ; js_of_ocaml              : Js_of_ocaml.t
     ; virtual_deps             : string list
     ; wrapped                  : bool
     ; optional                 : bool
@@ -461,25 +465,25 @@ module Library = struct
   let v1 =
     record
       (Buildable.v1 >>= fun buildable ->
-       field      "name" library_name                                      >>= fun name                     ->
-       field_o    "public_name" Public_lib.t                               >>= fun public              ->
-       field_o    "synopsis" string                                        >>= fun synopsis                 ->
-       field      "install_c_headers" (list string) ~default:[]            >>= fun install_c_headers        ->
-       field      "ppx_runtime_libraries" (list string) ~default:[]        >>= fun ppx_runtime_libraries    ->
-       field_oslu "c_flags"                                                >>= fun c_flags                  ->
-       field_oslu "cxx_flags"                                              >>= fun cxx_flags                ->
-       field      "c_names" (list string) ~default:[]                      >>= fun c_names                  ->
-       field      "cxx_names" (list string) ~default:[]                    >>= fun cxx_names                ->
-       field      "library_flags" (list String_with_vars.t) ~default:[]    >>= fun library_flags            ->
-       field_oslu "c_library_flags"                                        >>= fun c_library_flags          ->
-       field_o    "js_of_ocaml" Js_of_ocaml.t                              >>= fun js_of_ocaml              ->
-       field      "virtual_deps" (list string) ~default:[]                 >>= fun virtual_deps             ->
-       field      "modes" (list Mode.t) ~default:Mode.all                  >>= fun modes                    ->
-       field      "kind" Kind.t ~default:Kind.Normal                       >>= fun kind                     ->
-       field      "wrapped" bool ~default:true                             >>= fun wrapped                  ->
-       field_b    "optional"                                               >>= fun optional                 ->
-       field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
-       field_b    "no_dynlink"                                             >>= fun no_dynlink               ->
+       field      "name" library_name                                        >>= fun name                     ->
+       field_o    "public_name" Public_lib.t                                 >>= fun public                   ->
+       field_o    "synopsis" string                                          >>= fun synopsis                 ->
+       field      "install_c_headers" (list string) ~default:[]              >>= fun install_c_headers        ->
+       field      "ppx_runtime_libraries" (list string) ~default:[]          >>= fun ppx_runtime_libraries    ->
+       field_oslu "c_flags"                                                  >>= fun c_flags                  ->
+       field_oslu "cxx_flags"                                                >>= fun cxx_flags                ->
+       field      "c_names" (list string) ~default:[]                        >>= fun c_names                  ->
+       field      "cxx_names" (list string) ~default:[]                      >>= fun cxx_names                ->
+       field      "library_flags" (list String_with_vars.t) ~default:[]      >>= fun library_flags            ->
+       field_oslu "c_library_flags"                                          >>= fun c_library_flags          ->
+       field      "js_of_ocaml" (Js_of_ocaml.t) ~default:Js_of_ocaml.default >>= fun js_of_ocaml              ->
+       field      "virtual_deps" (list string) ~default:[]                   >>= fun virtual_deps             ->
+       field      "modes" (list Mode.t) ~default:Mode.all                    >>= fun modes                    ->
+       field      "kind" Kind.t ~default:Kind.Normal                         >>= fun kind                     ->
+       field      "wrapped" bool ~default:true                               >>= fun wrapped                  ->
+       field_b    "optional"                                                 >>= fun optional                 ->
+       field      "self_build_stubs_archive" (option string) ~default:None   >>= fun self_build_stubs_archive ->
+       field_b    "no_dynlink"                                               >>= fun no_dynlink               ->
        return
          { name
          ; public
@@ -509,7 +513,7 @@ module Library = struct
       (ignore_fields [] >>= fun () ->
        Buildable.vjs >>= fun buildable ->
        field      "name" library_name                                      >>= fun name                     ->
-       field_o    "public_name" Public_lib.t                               >>= fun public              ->
+       field_o    "public_name" Public_lib.t                               >>= fun public                   ->
        field_o    "synopsis" string                                        >>= fun synopsis                 ->
        field      "install_c_headers" (list string) ~default:[]            >>= fun install_c_headers        ->
        field      "ppx_runtime_libraries" (list string) ~default:[]        >>= fun ppx_runtime_libraries    ->
@@ -520,7 +524,7 @@ module Library = struct
        field      "library_flags" (list String_with_vars.t) ~default:[]    >>= fun library_flags            ->
        field_oslu "c_library_flags"                                        >>= fun c_library_flags          ->
        field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
-       field_o    "js_of_ocaml" Js_of_ocaml.t                              >>= fun js_of_ocaml              ->
+       field      "js_of_ocaml" Js_of_ocaml.t ~default:Js_of_ocaml.default >>= fun js_of_ocaml              ->
        field      "virtual_deps" (list string) ~default:[]                 >>= fun virtual_deps             ->
        field      "modes" (list Mode.t) ~default:Mode.all                  >>= fun modes                    ->
        field      "includes" (list String_with_vars.t) ~default:[]         >>= fun includes                 ->
@@ -604,6 +608,7 @@ module Executables = struct
     ; link_executables : bool
     ; link_flags       : string list
     ; buildable        : Buildable.t
+    ; js_of_ocaml      : Js_of_ocaml.t
     }
 
   let common_v1 names public_names =
@@ -611,11 +616,13 @@ module Executables = struct
     field   "link_executables"   bool ~default:true >>= fun link_executables ->
     field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
     field_o "package"            string >>= fun package ->
+    field   "js_of_ocaml" Js_of_ocaml.t ~default:Js_of_ocaml.default >>= fun js_of_ocaml ->
     let t =
       { names
       ; link_executables
       ; link_flags
       ; buildable
+      ; js_of_ocaml
       }
     in
     let to_install =
@@ -661,14 +668,16 @@ module Executables = struct
       (ignore_fields []
        >>= fun () ->
        Buildable.vjs >>= fun buildable ->
-       field   "names"              (list string)      >>= fun names ->
-       field   "link_executables"   bool ~default:true >>= fun link_executables ->
-       field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
+       field "names"              (list string)      >>= fun names ->
+       field "link_executables"   bool ~default:true >>= fun link_executables ->
+       field "link_flags"         (list string) ~default:[] >>= fun link_flags ->
+       field "js_of_ocaml"        Js_of_ocaml.t ~default:Js_of_ocaml.default >>= fun js_of_ocaml ->
        return
          { names
          ; link_executables
          ; link_flags
          ; buildable
+         ; js_of_ocaml
          })
 end
 

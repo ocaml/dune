@@ -179,6 +179,9 @@ let add_rule t ?sandbox build =
           in
           Path.Map.add acc ~key:dir ~data:files)
 
+let add_rules t ?sandbox builds =
+  List.iter builds ~f:(add_rule t ?sandbox)
+
 let sources_and_targets_known_so_far t ~src_path =
   let sources =
     match File_tree.find_dir t.file_tree src_path with

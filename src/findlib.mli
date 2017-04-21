@@ -39,6 +39,7 @@ type package =
   ; description      : string
   ; archives         : string list Mode.Dict.t
   ; plugins          : string list Mode.Dict.t
+  ; jsoo_runtime     : string list
   ; requires         : package list
   ; ppx_runtime_deps : package list
   ; has_headers      : bool
@@ -66,3 +67,5 @@ val closed_ppx_runtime_deps_of
 
 val root_packages : t -> string list
 val all_packages  : t -> package list
+
+val stdlib_with_archives : t -> package

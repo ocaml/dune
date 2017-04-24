@@ -17,6 +17,7 @@ reading too much, you can look at the [[./doc/quick-start.org][quick start guide
 The [[example]] directory contains examples of projects using jbuilder.
 
 [[https://travis-ci.org/janestreet/jbuilder][https://travis-ci.org/janestreet/jbuilder.png?branch=master]]
+#+html: <a href="https://ci.appveyor.com/project/diml/jbuilder/branch/master"><img src="https://ci.appveyor.com/api/projects/status/bn3kcxx648jt6dyt?svg=true"/></a>
 
 ** Overview
 

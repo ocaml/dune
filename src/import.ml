@@ -200,6 +200,8 @@ module String = struct
     [@@@warning "-3"]
     let capitalize_ascii   = String.capitalize
     let uncapitalize_ascii = String.uncapitalize
+    let uppercase_ascii    = String.uppercase
+    let lowercase_ascii    = String.lowercase
   end
 
   let extract_words s ~is_word_char =

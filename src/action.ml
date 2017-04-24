@@ -1,6 +1,8 @@
 open Import
 open Sexp.Of_sexp
 
+module Env_var_map = Context.Env_var_map
+
 type var_expansion =
   | Not_found
   | Path  of Path.t
@@ -287,7 +289,7 @@ module Mini_shexp = struct
       exec t ~purpose ~env ~env_extra ~stdout_to ~stderr_to ~dir
     | Setenv (var, value, t) ->
       exec t ~purpose ~dir ~env ~stdout_to ~stderr_to
-        ~env_extra:(String_map.add env_extra ~key:var ~data:value)
+        ~env_extra:(Env_var_map.add env_extra ~key:var ~data:value)
     | Redirect (outputs, fn, t) ->
       redirect ~purpose outputs fn t ~dir ~env ~env_extra ~stdout_to ~stderr_to
     | Ignore (outputs, t) ->
@@ -434,7 +436,7 @@ let exec ~targets { action; dir; context } =
   in
   let targets = Path.Set.elements targets in
   let purpose = Future.Build_job targets in
-  Mini_shexp.exec action ~purpose ~dir ~env ~env_extra:String_map.empty
+  Mini_shexp.exec action ~purpose ~dir ~env ~env_extra:Env_var_map.empty
     ~stdout_to:None ~stderr_to:None
 
 let sandbox t ~sandboxed ~deps ~targets =

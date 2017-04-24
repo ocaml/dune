@@ -30,6 +30,13 @@ module Kind : sig
   type t = Default | Opam of Opam.t
 end
 
+module Env_var : sig
+  type t = string
+  val compare : t -> t -> int
+end
+
+module Env_var_map : Map.S with type key := Env_var.t
+
 type t =
   { name : string
   ; kind : Kind.t
@@ -64,7 +71,7 @@ type t =
     env : string array
 
   ; (** Diff between the base environment and [env] *)
-    env_extra : string String_map.t
+    env_extra : string Env_var_map.t
 
   ; findlib : Findlib.t
 
@@ -134,7 +141,7 @@ val default : ?merlin:bool -> ?use_findlib:bool -> unit -> t Future.t
 
 val which : t -> string -> Path.t option
 
-val extend_env : vars:string String_map.t -> env:string array -> string array
+val extend_env : vars:string Env_var_map.t -> env:string array -> string array
 
 val opam_config_var : t -> string -> string option Future.t
 

@@ -32,10 +32,9 @@ to build jbuilder and packages using jbuilder is OCaml. You don't need
 =make= or =bash= as long as the packages themselves don't use =bash=
 explicitly.
 
-Especially, one should be able to install OCaml on Windows with a
-binary installer and then use only the Windows Console to build
-Jbuilder and packages using Jbuilder. Although this hasn't been tested
-yet.
+Especially, one can install OCaml on Windows with a binary installer
+and then use only the Windows Console to build Jbuilder and packages
+using Jbuilder.
 
 ** Strengths
 

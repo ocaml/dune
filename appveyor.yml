@@ -7,7 +7,7 @@ install:
 build_script:
   - cd "%APPVEYOR_BUILD_FOLDER%"
   - ocaml bootstrap.ml
-  - ./boot.exe
+  - boot.exe
 
 artifacts:
   - path: _build/log

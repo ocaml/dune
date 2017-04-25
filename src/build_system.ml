@@ -64,6 +64,9 @@ type t =
   ; mutable local_mkdirs : Path.Local.Set.t
   }
 
+
+let all_targets t = Hashtbl.fold t.files ~init:[] ~f:(fun ~key ~data:_ acc -> key :: acc)
+
 let timestamp t fn =
   match Hashtbl.find t.timestamps fn with
   | Some _ as x -> x

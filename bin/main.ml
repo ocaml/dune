@@ -287,6 +287,31 @@ type target =
   | File  of Path.t
   | Alias of Path.t * Alias.t
 
+let target_hint (setup : Main.setup) path =
+  assert (Path.is_local path);
+  let sub_dir = Path.parent path in
+  let candidates = Build_system.all_targets setup.build_system in
+  let candidates =
+    if Path.is_in_build_dir path then
+      candidates
+    else
+      List.map candidates ~f:(fun path ->
+        match Path.extract_build_context path with
+        | None -> path
+        | Some (_, path) -> path)
+  in
+  let candidates =
+    (* Only suggest hints for the basename, otherwise it's slow when there are lots of
+       files *)
+    List.filter_map candidates ~f:(fun path ->
+      if Path.parent path = sub_dir then
+        Some (Path.to_string path)
+      else
+        None)
+  in
+  let candidates = String_set.of_list candidates |> String_set.elements in
+  hint (Path.to_string path) candidates
+
 let resolve_targets ~log common (setup : Main.setup) user_targets =
   match user_targets with
   | [] -> []
@@ -305,7 +330,8 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
         else
           let path = Path.relative Path.root (prefix_target common s) in
           let can't_build path =
-            die "Don't know how to build %s" (Path.to_string path)
+            die "Don't know how to build %s%s" (Path.to_string path)
+              (target_hint setup path)
           in
           if not (Path.is_local path) then
             [File path]

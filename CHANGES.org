@@ -2,6 +2,9 @@
 
 - Add support for building Reason projects (Rudi Grinberg, #58)
 
+- Hint for mistyped targets. Only suggest correction on the basename
+  for now, otherwise it's slow when the workspace is big
+
 * 1.0+beta8 (17/04/2017)
 
 - Added =${lib-available:<library-name>}= which expands to =true= or

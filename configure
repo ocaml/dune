@@ -119,6 +119,7 @@ with_topfind=1
 with_camlp4=1
 custom=-custom
 system=""
+sh=""
 
 while [ "$#" != "0" ]; do
     case "$1" in
@@ -244,6 +245,13 @@ case "$system" in
     win32) use_cygpath=1;;
     win64) use_cygpath=1;;
 esac
+
+######################################################################
+# check for presence of /bin/sh
+
+if [ ! -f /bin/sh ]; then
+    sh=sh
+fi
 
 ######################################################################
 # Find out standard library location
@@ -633,6 +641,7 @@ echo "HAVE_NATDYNLINK=${have_natdynlink}" >>Makefile.config
 echo "VERSION=${version}" >>Makefile.config
 echo "ENABLE_TOPFIND_PPXOPT=${enable_topfind_ppxopt}" >>Makefile.config
 echo "SYSTEM=${system}" >>Makefile.config
+echo "SH=${sh}" >>Makefile.config
 if [ "$mingw_lib" != "" ]; then
     echo "OCAMLC_FLAGS=-I \"${mingw_lib}\"" >>Makefile.config
     echo "OCAMLOPT_FLAGS=-I \"${mingw_lib}\"" >>Makefile.config

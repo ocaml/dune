@@ -250,14 +250,17 @@ module Js_of_ocaml = struct
 end
 
 module Lib_dep = struct
-  type literal = Pos of string | Neg of string
-
   type choice =
-    { lits : literal list
-    ; file : string
+    { required  : String_set.t
+    ; forbidden : String_set.t
+    ; file      : string
     }
 
-  type select = { result_fn : string; choices : choice list }
+  type select =
+    { result_fn : string
+    ; choices   : choice list
+    ; loc       : Loc.t (* For error messages *)
+    }
 
   type t =
     | Direct of string
@@ -265,10 +268,16 @@ module Lib_dep = struct
 
   let choice = function
     | List (_, l) as sexp ->
-      let rec loop acc = function
-        | [Atom (_, "->"); sexp] ->
-          { lits = List.rev acc
-          ; file = file sexp
+      let rec loop required forbidden = function
+        | [Atom (_, "->"); fsexp] ->
+          let common = String_set.inter required forbidden in
+          if not (String_set.is_empty common) then
+            of_sexp_errorf sexp
+              "library %S is both required and forbidden in this clause"
+              (String_set.choose common);
+          { required
+          ; forbidden
+          ; file = file fsexp
           }
         | Atom (_, "->") :: _ | List _ :: _ | [] ->
           of_sexp_error sexp "(<[!]libraries>... -> <file>) expected"
@@ -276,26 +285,20 @@ module Lib_dep = struct
           let len = String.length s in
           if len > 0 && s.[0] = '!' then
             let s = String.sub s ~pos:1 ~len:(len - 1) in
-            loop (Neg s :: acc) l
+            loop required (String_set.add s forbidden) l
           else
-            loop (Pos s :: acc) l
+            loop (String_set.add s required) forbidden l
       in
-      loop [] l
+      loop String_set.empty String_set.empty l
     | sexp -> of_sexp_error sexp "(<library-name> <code>) expected"
-
-  let sexp_of_choice { lits; file } : Sexp.t =
-    List (List.fold_right lits ~init:[Atom "->"; Atom file]
-       ~f:(fun lit acc ->
-            match lit with
-            | Pos s -> Sexp.Atom s :: acc
-            | Neg s -> Sexp.Atom ("!" ^ s) :: acc))
 
   let t = function
     | Atom (_, s) ->
       Direct s
-    | List (_, Atom (_, "select") :: m :: Atom (_, "from") :: libs) ->
+    | List (loc, Atom (_, "select") :: m :: Atom (_, "from") :: libs) ->
       Select { result_fn = file m
              ; choices   = List.map libs ~f:choice
+             ; loc
              }
     | sexp ->
       of_sexp_error sexp "<library> or (select <module> from <libraries...>) expected"
@@ -303,10 +306,9 @@ module Lib_dep = struct
   let to_lib_names = function
     | Direct s -> [s]
     | Select s ->
-      List.concat_map s.choices ~f:(fun x ->
-        List.map x.lits ~f:(function
-          | Pos x -> x
-          | Neg x -> x))
+      List.fold_left s.choices ~init:String_set.empty ~f:(fun acc x ->
+        String_set.union acc (String_set.union x.required x.forbidden))
+      |> String_set.elements
 
   let direct s = Direct s
 end

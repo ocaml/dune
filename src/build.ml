@@ -64,9 +64,8 @@ let record_lib_deps ~dir ~kind lib_deps =
        | Jbuild_types.Lib_dep.Direct s -> [(s, kind)]
        | Select { choices; _ } ->
          List.concat_map choices ~f:(fun c ->
-           List.filter_map c.Jbuild_types.Lib_dep.lits ~f:(function
-             | Pos d -> Some (d, Optional)
-             | Neg _ -> None)))
+           String_set.elements c.Jbuild_types.Lib_dep.required
+           |> List.map ~f:(fun d -> (d, Optional))))
      |> String_map.of_alist_reduce ~f:merge_lib_dep_kind)
 
 module O = struct

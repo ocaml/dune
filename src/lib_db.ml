@@ -72,10 +72,9 @@ let lib_is_available t ~from name =
   | Some (_, lib) -> String_map.mem lib.name t.instalable_internal_libs
   | None -> Findlib.available t.findlib name ~required_by:[Utils.jbuild_name_in ~dir:from]
 
-let choice_is_possible t ~from { Lib_dep. lits; _ } =
-  List.for_all lits ~f:(function
-    | Lib_dep.Pos name ->      lib_is_available t ~from name
-    | Lib_dep.Neg name -> not (lib_is_available t ~from name))
+let choice_is_possible t ~from { Lib_dep.required; forbidden; _ } =
+  String_set.for_all required  ~f:(fun name ->      lib_is_available t ~from name ) &&
+  String_set.for_all forbidden ~f:(fun name -> not (lib_is_available t ~from name))
 
 let dep_is_available t ~from dep =
   match (dep : Lib_dep.t) with
@@ -130,33 +129,22 @@ let interpret_lib_deps t ~dir lib_deps =
             (* Call [find] again to get a proper backtrace *)
             Inr { fail = fun () -> ignore (find_exn t ~from:dir name : Lib.t); raise e }
         end
-      | Select { result_fn; choices } ->
+      | Select { choices; loc; _ } ->
         match
-          List.find_map choices ~f:(fun { lits; _ } ->
-            match
-              List.filter_map lits ~f:(function
-                | Pos s -> Some (find_exn t ~from:dir s)
-                | Neg s ->
-                  if lib_is_available t ~from:dir s then
-                    raise Exit
-                  else
-                    None)
-            with
-            | l           -> Some l
-            | exception _ -> None)
+          List.find_map choices ~f:(fun { required; forbidden; _ } ->
+            if String_set.exists forbidden ~f:(lib_is_available t ~from:dir) then
+              None
+            else
+              match
+                List.map (String_set.elements required) ~f:(find_exn t ~from:dir)
+              with
+              | l           -> Some l
+              | exception _ -> None)
         with
         | Some l -> Inl l
         | None ->
           Inr { fail = fun () ->
-            die "\
-No solution found for the following form in %s:
-  (select %s from
-    %s)"
-              (Path.to_string dir)
-              result_fn
-              (String.concat ~sep:"\n    "
-                 (List.map choices ~f:(fun c ->
-                    Sexp.to_string (Lib_dep.sexp_of_choice c))))
+            Loc.fail loc "No solution found for this select form"
           })
   in
   let internals, externals =
@@ -177,7 +165,7 @@ type resolved_select =
 let resolve_selects t ~from lib_deps =
   List.filter_map lib_deps ~f:(function
     | Lib_dep.Direct _ -> None
-    | Select { result_fn; choices } ->
+    | Select { result_fn; choices; _ } ->
       let src_fn =
         match List.find choices ~f:(choice_is_possible t ~from) with
         | Some c -> c.file

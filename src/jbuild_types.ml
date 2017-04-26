@@ -313,6 +313,46 @@ module Lib_dep = struct
   let direct s = Direct s
 end
 
+module Lib_deps = struct
+  type t = Lib_dep.t list
+
+  type kind =
+    | Required
+    | Optional
+    | Forbidden
+
+  let t sexp =
+    let t = list Lib_dep.t sexp in
+    let add kind name acc =
+      match String_map.find name acc with
+      | None -> String_map.add acc ~key:name ~data:kind
+      | Some kind' ->
+        match kind, kind' with
+        | Required, Required ->
+          of_sexp_errorf sexp "library %S is present twice" name
+        | (Optional|Forbidden), (Optional|Forbidden) ->
+          acc
+        | Optional, Required | Required, Optional ->
+          of_sexp_errorf sexp
+            "library %S is present both as an optional and required dependency"
+            name
+        | Forbidden, Required | Required, Forbidden ->
+          of_sexp_errorf sexp
+            "library %S is present both as a forbidden and required dependency"
+            name
+    in
+    ignore (
+      List.fold_left t ~init:String_map.empty ~f:(fun acc x ->
+        match x with
+        | Lib_dep.Direct s -> add Required s acc
+        | Select { choices; _ } ->
+          List.fold_left choices ~init:acc ~f:(fun acc c ->
+            let acc = String_set.fold c.Lib_dep.required ~init:acc ~f:(add Optional) in
+            String_set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
+      : kind String_map.t);
+    t
+end
+
 module Buildable = struct
   type t =
     { modules                  : Ordered_set_lang.t
@@ -335,7 +375,7 @@ module Buildable = struct
     field "modules" (fun s -> Ordered_set_lang.(map (t s)) ~f:String.capitalize_ascii)
       ~default:Ordered_set_lang.standard
     >>= fun modules ->
-    field "libraries" (list Lib_dep.t) ~default:[]
+    field "libraries" Lib_deps.t ~default:[]
     >>= fun libraries ->
     field_osl "flags"          >>= fun flags          ->
     field_osl "ocamlc_flags"   >>= fun ocamlc_flags   ->

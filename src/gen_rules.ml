@@ -204,6 +204,8 @@ module Gen(P : Params) = struct
       | None -> build
       | Some f -> Build.fail f >>> build
 
+    let local_public_libs = Lib_db.local_public_libs t
+
     let closure ~dir ~dep_kind lib_deps =
       let internals, externals, fail = Lib_db.interpret_lib_deps t ~dir lib_deps in
       with_fail ~fail
@@ -214,8 +216,10 @@ module Gen(P : Params) = struct
               load_requires ~dir ~item:lib.name))
          >>^ (fun internal_deps ->
            let externals =
-             List.map (Findlib.closure externals) ~f:(fun pkg ->
-               Lib.External pkg)
+             Findlib.closure externals
+               ~required_by:dir
+               ~local_public_libs
+             |> List.map ~f:(fun pkg -> Lib.External pkg)
            in
            Lib.remove_dups_preserve_order
              (List.concat (externals :: internal_deps) @
@@ -231,8 +235,10 @@ module Gen(P : Params) = struct
               load_runtime_deps ~dir ~item:lib.name))
          >>^ (fun libs ->
            let externals =
-             List.map (Findlib.closed_ppx_runtime_deps_of externals)
-               ~f:(fun pkg -> Lib.External pkg)
+             Findlib.closed_ppx_runtime_deps_of externals
+               ~required_by:dir
+               ~local_public_libs
+             |> List.map ~f:(fun pkg -> Lib.External pkg)
            in
            Lib.remove_dups_preserve_order (List.concat (externals :: libs))))
 

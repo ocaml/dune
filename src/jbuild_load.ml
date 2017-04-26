@@ -85,7 +85,7 @@ end
         let pkgs =
           List.map requires ~f:(Findlib.find_exn context.findlib
                                   ~required_by:[Utils.jbuild_name_in ~dir:dir])
-          |> Findlib.closure
+          |> Findlib.closure ~required_by:dir ~local_public_libs:String_map.empty
         in
         let includes =
           List.fold_left pkgs ~init:Path.Set.empty ~f:(fun acc pkg ->

@@ -10,7 +10,10 @@ type t =
   ; (* This is to filter out libraries that are not installable because of missing
        dependencies *)
     instalable_internal_libs : Lib.Internal.t String_map.t
+  ; local_public_libs        : Path.t String_map.t
   }
+
+let local_public_libs t = t.local_public_libs
 
 let rec internal_name_scope t ~dir =
   match Hashtbl.find t.by_internal_name dir with
@@ -97,11 +100,18 @@ let compute_instalable_internal_libs t ~internal_libraries =
         t)
 
 let create findlib ~dirs_with_dot_opam_files internal_libraries =
+  let local_public_libs =
+    List.fold_left internal_libraries ~init:String_map.empty ~f:(fun acc (dir, lib) ->
+      match lib.Library.public with
+      | None -> acc
+      | Some { name; _ } -> String_map.add acc ~key:name ~data:dir)
+  in
   let t =
     { findlib
     ; by_public_name   = Hashtbl.create 1024
     ; by_internal_name = Hashtbl.create 1024
     ; instalable_internal_libs = String_map.empty
+    ; local_public_libs
     }
   in
   (* Initializes the scopes, including [Path.root] so that when there are no <pkg>.opam

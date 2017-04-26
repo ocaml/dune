@@ -33,3 +33,6 @@ val resolve_selects
   -> resolved_select list
 
 val lib_is_available : t -> from:Path.t -> string -> bool
+
+(** For [Findlib.closure] *)
+val local_public_libs : t -> Path.t String_map.t

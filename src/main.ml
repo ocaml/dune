@@ -89,7 +89,7 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
     Format.fprintf ppf "%s\n" (String.capitalize_ascii msg)
   | Findlib.Package_not_found { package; required_by } ->
     Format.fprintf ppf
-      "@{<error>Error@}: Findlib package %S not found.\n" package;
+      "@{<error>Error@}: External library %S not found.\n" package;
     List.iter required_by ~f:(Format.fprintf ppf "-> required by %S\n");
     let cmdline_suggestion =
       (* CR-someday jdimino: this is ugly *)
@@ -102,6 +102,19 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
     Format.fprintf ppf
       "Hint: try: %s\n"
       (List.map cmdline_suggestion ~f:quote_for_shell |> String.concat ~sep:" ")
+  | Findlib.External_dep_conflicts_with_local_lib
+      { package; required_by; required_locally_in; defined_locally_in } ->
+    Format.fprintf ppf
+      "@{<error>Error@}: Conflict between internal and external version of library %S:\n\
+       - it is defined locally in %s\n\
+       - it is required by external library %S\n\
+       - external library %S is required in %s\n\
+       This cannot work.\n"
+      package
+      (Path.to_string defined_locally_in)
+      required_by
+      required_by
+      (Utils.jbuild_name_in ~dir:required_locally_in)
   | Code_error msg ->
     let bt = Printexc.raw_backtrace_to_string backtrace in
     Format.fprintf ppf "@{<error>Internal error, please report upstream \

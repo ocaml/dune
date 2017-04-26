@@ -431,14 +431,41 @@ let available t ~required_by name =
   | (_ : package) -> true
   | exception (Package_not_found _) -> false
 
-let closure pkgs =
+module External_dep_conflicts_with_local_lib = struct
+  type t =
+    { package             : string
+    ; required_by         : string
+    ; required_locally_in : Path.t
+    ; defined_locally_in  : Path.t
+    }
+end
+
+exception External_dep_conflicts_with_local_lib of External_dep_conflicts_with_local_lib.t
+
+let check_deps_consistency ~required_by ~local_public_libs pkg requires =
+  List.iter requires ~f:(fun pkg' ->
+    match String_map.find pkg'.name local_public_libs with
+    | None -> ()
+    | Some path ->
+      raise (External_dep_conflicts_with_local_lib
+               { package             = pkg'.name
+               ; required_by         = pkg.name
+               ; required_locally_in = required_by
+               ; defined_locally_in  = path
+               }))
+
+let closure ~required_by ~local_public_libs pkgs =
   remove_dups_preserve_order
-    (List.concat_map pkgs ~f:(fun pkg -> pkg.requires)
+    (List.concat_map pkgs ~f:(fun pkg ->
+       check_deps_consistency ~required_by ~local_public_libs pkg pkg.requires;
+       pkg.requires)
      @ pkgs)
 
-let closed_ppx_runtime_deps_of pkgs =
+let closed_ppx_runtime_deps_of ~required_by ~local_public_libs pkgs =
   remove_dups_preserve_order
-    (List.concat_map pkgs ~f:(fun pkg -> pkg.ppx_runtime_deps))
+    (List.concat_map pkgs ~f:(fun pkg ->
+       check_deps_consistency ~required_by ~local_public_libs pkg pkg.ppx_runtime_deps;
+       pkg.ppx_runtime_deps))
 
 let root_packages t =
   let pkgs =

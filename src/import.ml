@@ -166,7 +166,7 @@ module Map = struct
     let of_alist_exn l =
       match of_alist l with
       | Ok x -> x
-      | Error _ -> invalid_arg "Map.of_alist_exn"
+      | Error _ -> code_errorf "Map.of_alist_exn got duplicated key"
 
     let of_alist_multi l =
       let l = List.rev l in

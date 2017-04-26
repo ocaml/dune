@@ -1,13 +1,19 @@
 # specifications for "findlib":
 description = "Package manager"
-requires = ""
+requires = "findlib.internal"
+requires(toploop) += "findlib.top"
+requires(create_toploop) += "findlib.top"
 version = "@VERSION@"
-archive(byte) = "findlib.cma"
-archive(byte,toploop) = "findlib.cma findlib_top.cma"
-archive(byte,create_toploop) = "findlib.cma findlib_top.cma"
-archive(native) = "findlib.cmxa"
-plugin(byte) = "findlib.cma"
-plugin(native) = "findlib.cmxs"
+
+package "internal" (
+  version = "@VERSION@"
+  description = "Package manager"
+  requires = ""
+  archive(byte) = "findlib.cma"
+  archive(native) = "findlib.cmxa"
+  plugin(byte) = "findlib.cma"
+  plugin(native) = "findlib.cmxs"
+)
 
 package "dynload" (
   version = "@VERSION@"
@@ -19,4 +25,11 @@ package "dynload" (
   plugin(byte) = "findlib_dynload.cma"
   plugin(native) = "findlib_dynload.cmxs"
   linkopts = "-linkall"
+)
+
+package "top" (
+  version = "@VERSION@"
+  description = "Package manager toplevel support"
+  requires = "findlib.internal"
+  archive(byte) = "findlib_top.cma"
 )

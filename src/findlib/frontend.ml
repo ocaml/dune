@@ -25,6 +25,11 @@ and modifier =
   | Plus
 ;;
 
+let sys_error code arg =
+  if arg = "" then
+    Sys_error (Unix.error_message code)
+  else
+    Sys_error (arg ^ ": " ^ Unix.error_message code)
 
 
 let slashify s =
@@ -1859,14 +1864,27 @@ let find_owned_files pkg dir =
 	 else
 	   file ^ ".owner" in
        (List.mem owner_file files) && (
-	 let f = open_in (Filename.concat dir owner_file) in
-	 try
-	   let line = input_line f in
-	   let is_my_file = (line = pkg) in
-	   close_in f;
-	   is_my_file
-	 with
-	     exc -> close_in f; raise exc
+         try
+           let fd =
+             Unix.openfile (Filename.concat dir owner_file) [Unix.O_RDONLY] 0 in
+           let f =
+             Unix.in_channel_of_descr fd in
+           try
+             let line = input_line f in
+             let is_my_file = (line = pkg) in
+             close_in f;
+             is_my_file
+           with
+             | End_of_file -> close_in f; false
+             | exc -> close_in f; raise exc
+         with
+           | Unix.Unix_error(Unix.ENOENT,_,_) ->
+               (* the owner file might have been removed by a package
+                  removal that is being done in parallel
+                *)
+               false
+           | Unix.Unix_error(code, _, arg) ->
+               raise(sys_error code arg)
        )
     )
     files
@@ -2118,7 +2136,7 @@ let install_package () =
   (* Create the package directory: *)
   install_create_directory !pkgname pkgdir;
 
-  (* Now copy the files into the package directory: *)
+  (* Now copy the files into the package directory (except META): *)
   List.iter
     (fun p ->
        try
@@ -2134,38 +2152,6 @@ let install_package () =
 	   Skip_file -> ()
     )
     pkgdir_list;
-
-  (* Now write the META file: *)
-  let write_meta append_directory dir name =
-    (* If there are patches, write the patched META, else copy the file: *)
-    if !patches = [] then
-      copy_file 
-	~rename:(fun _ -> name)
-        ?append:(if append_directory then
-		   Some("\ndirectory=\"" ^ pkgdir ^ 
-			  "\" # auto-added by ocamlfind\n")
-		 else
-		   None)
-	meta_name
-	dir
-    else (
-      let p = Filename.concat dir name in
-      let patched_pkg = patch_pkg pkgdir meta_pkg !patches in
-      let out = open_out p in
-        Fl_metascanner.print out patched_pkg;
-      if append_directory then
-	output_string out ("\ndirectory=\"" ^ pkgdir ^ 
-			     "\" # auto-added by ocamlfind\n");
-      close_out out;
-      prerr_endline ("Installed " ^ p);
-    )
-  in
-  if not !add_files then (
-    if has_metadir then
-      write_meta true !metadir meta_dot_pkg
-    else
-      write_meta false pkgdir "META";
-  );
 
   (* Copy the DLLs into the libexec directory if necessary *)
   if have_libexec then begin
@@ -2208,6 +2194,38 @@ let install_package () =
     if not (List.exists check_dir lines) then
       prerr_endline("ocamlfind: [WARNING] You have installed DLLs but the directory " ^ dlldir_norm ^ " is not mentioned in ld.conf");
   end;
+
+  (* Finally, write the META file: *)
+  let write_meta append_directory dir name =
+    (* If there are patches, write the patched META, else copy the file: *)
+    if !patches = [] then
+      copy_file 
+	~rename:(fun _ -> name)
+        ?append:(if append_directory then
+		   Some("\ndirectory=\"" ^ pkgdir ^ 
+			  "\" # auto-added by ocamlfind\n")
+		 else
+		   None)
+	meta_name
+	dir
+    else (
+      let p = Filename.concat dir name in
+      let patched_pkg = patch_pkg pkgdir meta_pkg !patches in
+      let out = open_out p in
+        Fl_metascanner.print out patched_pkg;
+      if append_directory then
+	output_string out ("\ndirectory=\"" ^ pkgdir ^ 
+			     "\" # auto-added by ocamlfind\n");
+      close_out out;
+      prerr_endline ("Installed " ^ p);
+    )
+  in
+  if not !add_files then (
+    if has_metadir then
+      write_meta true !metadir meta_dot_pkg
+    else
+      write_meta false pkgdir "META";
+  );
 
   (* Check if there is a postinstall script: *)
   let postinstall = Filename.concat !destdir "postinstall" in
@@ -2277,57 +2295,80 @@ let remove_package () =
 	Unix.Unix_error(_,_,_) -> ()    (* ignore, it's only a warning *)
   end;
 
+  (* First remove the META file. If it is already gone, assume that a
+     parallel running removal removed it already.
+   *)
+
   (* If there is a metadir, remove the META file from it: *)
-  if has_metadir then begin
-    let f = Filename.concat !metadir meta_dot_pkg in
-    if Sys.file_exists f then begin
-      Sys.remove f;
-      prerr_endline ("Removed " ^ f);
+  let meta_removal_ok =
+    if has_metadir then (
+      let f = Filename.concat !metadir meta_dot_pkg in
+      try
+        Unix.unlink f;
+        prerr_endline ("Removed " ^ f);
+        true
+      with
+        | Unix.Unix_error(Unix.ENOENT,_,_) ->
+            prerr_endline ("ocamlfind: [WARNING] No such file: " ^ f);
+            false
+        | Unix.Unix_error(code, _, arg) ->
+            raise(sys_error code arg)
+    ) else
+      let f = Filename.concat pkgdir "META" in
+      try
+        Unix.unlink f;
+        prerr_endline ("Removed " ^ f);
+        true
+      with
+        | Unix.Unix_error(Unix.ENOENT,_,_) ->
+            prerr_endline ("ocamlfind: [WARNING] No such file: " ^ f);
+            false
+        | Unix.Unix_error(code, _, arg) ->
+            raise(sys_error code arg) in
+
+  if meta_removal_ok then (
+
+    (* Remove files from libexec directory: *)
+    if have_libexec then begin
+      let dll_files = find_owned_files !pkgname dlldir in
+      List.iter
+        (fun file ->
+           let absfile = Filename.concat dlldir file in
+           Sys.remove absfile;
+           prerr_endline ("Removed " ^ absfile)
+        )
+        dll_files
+    end;
+
+    (* Remove the files from the package directory: *)
+    if Sys.file_exists pkgdir then begin
+      let files = Sys.readdir pkgdir in
+      Array.iter (fun f -> Sys.remove (Filename.concat pkgdir f)) files;
+      Unix.rmdir pkgdir;
+      prerr_endline ("Removed " ^ pkgdir)
     end
     else
-      prerr_endline ("ocamlfind: [WARNING] No such file: " ^ f)
-  end;
+      prerr_endline("ocamlfind: [WARNING] No such directory: " ^ pkgdir);
 
-  (* Remove files from libexec directory: *)
-  if have_libexec then begin
-    let dll_files = find_owned_files !pkgname dlldir in
-    List.iter
-      (fun file ->
-	 let absfile = Filename.concat dlldir file in
-	 Sys.remove absfile;
-	 prerr_endline ("Removed " ^ absfile)
-      )
-      dll_files
-  end;
+    (* Modify ld.conf *)
+    if !ldconf <> "ignore" then begin
+      if Sys.file_exists !ldconf then
+        begin
+          let lines = read_ldconf !ldconf in
+          let d = Fl_split.norm_dir pkgdir in
+          let exists = List.exists (fun p -> Fl_split.norm_dir p = d) lines in
+          if exists then begin
+            let lines' = List.filter (fun p -> Fl_split.norm_dir p <> d) lines in
+            write_ldconf !ldconf lines' []
+          end
+        end
+    end;
 
-  (* Remove the files from the package directory: *)
-  if Sys.file_exists pkgdir then begin
-    let files = Sys.readdir pkgdir in
-    Array.iter (fun f -> Sys.remove (Filename.concat pkgdir f)) files;
-    Unix.rmdir pkgdir;
-    prerr_endline ("Removed " ^ pkgdir)
-  end
-  else
-    prerr_endline("ocamlfind: [WARNING] No such directory: " ^ pkgdir);
-
-  (* Modify ld.conf *)
-  if !ldconf <> "ignore" then begin
-    if Sys.file_exists !ldconf then
-      begin
-	let lines = read_ldconf !ldconf in
-	let d = Fl_split.norm_dir pkgdir in
-	let exists = List.exists (fun p -> Fl_split.norm_dir p = d) lines in
-	if exists then begin
-	  let lines' = List.filter (fun p -> Fl_split.norm_dir p <> d) lines in
-	  write_ldconf !ldconf lines' []
-	end
-      end
-  end;
-
-  (* Check if there is a postremove script: *)
-  let postremove = Filename.concat !destdir "postremove" in
-  if Sys.file_exists postremove then
-    run_command Verbose postremove [ slashify !destdir; !pkgname ]
+    (* Check if there is a postremove script: *)
+    let postremove = Filename.concat !destdir "postremove" in
+    if Sys.file_exists postremove then
+      run_command Verbose postremove [ slashify !destdir; !pkgname ]
+  )
 ;;
 
 
@@ -2445,7 +2486,7 @@ let lint () =
     (fun s -> if Sys.file_exists s
       then Queue.add s meta_files
       else raise(Arg.Bad (Printf.sprintf "%s: file doesn't exists" s)))
-    "usage: ocamlfind ocamldoc <options> <files>...";
+    "usage: ocamlfind lint <options> <files>...";
 
   let error =
     Queue.fold (fun error file ->

@@ -2,6 +2,16 @@ This document describe the plan for the next releases of Jbuilder.
 
 * V1
 
+Jbuilder is currently being tested for various packages. Once we are
+confident there is enough for most OCaml packages, the version 1.0
+will be released and the version 1 of the jbuild specification will be
+frozen. Additions to the spec will go into version 1.1 of the spec and
+breaking changes will go into version 2.
+
+However, until version 1.0 of Jbuilder is released, breaking changes
+to the jbuild specification are not accepted in order to allow
+packages depending on jbuilder to be released.
+
 ** +CLI+
 
 Add a proper [[http://erratique.ch/software/cmdliner][cmdliner]] based CLI.
@@ -59,6 +69,18 @@ Implement finding the version of a package, as described in the
 documentation.
 
 - *24/02/2017*: Implemented
+
+** Add a =(package ...)= field to alias stanzas
+
+So that we can filter tests when using =-p pkg=
+
+** Integrate rules for =-output-complete-obj=
+
+https://github.com/janestreet/jbuilder/pull/23
+
+** Integrate rules for js_of_ocaml
+
+https://github.com/janestreet/jbuilder/pull/60
 
 * After V1
 

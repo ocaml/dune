@@ -118,6 +118,7 @@ module Map = struct
     val of_alist : (key * 'a) list -> ('a t, key * 'a * 'a) result
     val of_alist_exn : (key * 'a) list -> 'a t
     val of_alist_multi : (key * 'a) list -> 'a list t
+    val of_alist_reduce : (key * 'a) list -> f:('a -> 'a -> 'a) -> 'a t
     val keys : 'a t -> key list
     val values : 'a t -> 'a list
   end
@@ -155,6 +156,12 @@ module Map = struct
             Error (key, data, find_exn key t)
           else
             Ok (add t ~key ~data))
+
+    let of_alist_reduce l ~f =
+      List.fold_left l ~init:empty ~f:(fun acc (key, data) ->
+        match find key acc with
+        | None -> add acc ~key ~data
+        | Some x -> add acc ~key ~data:(f x data))
 
     let of_alist_exn l =
       match of_alist l with

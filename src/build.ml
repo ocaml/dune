@@ -17,6 +17,11 @@ type lib_dep_kind =
   | Required
 type lib_deps = lib_dep_kind String_map.t
 
+let merge_lib_dep_kind a b =
+  match a, b with
+  | Optional, Optional -> Optional
+  | _ -> Required
+
 module Repr = struct
   type ('a, 'b) t =
     | Arr : ('a -> 'b) -> ('a, 'b) t
@@ -44,10 +49,7 @@ let merge_lib_deps a b =
     match a, b with
     | None, None -> None
     | x, None | None, x -> x
-    | Some a, Some b ->
-      Some (match a, b with
-        | Optional, Optional -> Optional
-        | _ -> Required))
+    | Some a, Some b -> Some (merge_lib_dep_kind a b))
 
 let arr f = Arr f
 let return x = Arr (fun () -> x)
@@ -65,7 +67,7 @@ let record_lib_deps ~dir ~kind lib_deps =
            List.filter_map c.Jbuild_types.Lib_dep.lits ~f:(function
              | Pos d -> Some (d, Optional)
              | Neg _ -> None)))
-     |> String_map.of_alist_exn)
+     |> String_map.of_alist_reduce ~f:merge_lib_dep_kind)
 
 module O = struct
   let ( >>> ) a b =

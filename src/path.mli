@@ -83,6 +83,9 @@ val extract_build_context : t -> (string * t) option
 *)
 val extract_build_context_dir : t -> (t * t) option
 
+(** Drop the "_build/blah" prefix *)
+val drop_build_context : t -> t
+
 val is_in_build_dir : t -> bool
 
 val insert_after_build_dir_exn : t -> t -> t

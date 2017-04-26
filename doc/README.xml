@@ -110,6 +110,18 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>1.7.2:</em> Trying to protect against failures when
+      several package installs are done in parallel.</p>
+
+      <p>New subpackage "findlib.top" for the toploop (Jeremie Dimino).</p>
+
+      <p>The "num" library is now optional.</p>
+
+      <p>Shell scripts are started via "sh" command when there is no
+      /bin/sh (ygrek)</p>
+    </li>
+      
+    <li>
      <p><em>1.7.1:</em> added missing file to tarball</p>
     </li>
 

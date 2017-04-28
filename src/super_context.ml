@@ -259,3 +259,41 @@ module Libs = struct
          Build.action_context_independent ~targets:[dst]
            (Copy_and_add_line_directive (src, dst))))
 end
+
+module Deps = struct
+  open Build.O
+  open Dep_conf
+
+  let dep t ~dir = function
+    | File  s -> Build.path (Path.relative dir (expand_vars t ~dir s))
+    | Alias s -> Build.path (Alias.file (Alias.make ~dir (expand_vars t ~dir s)))
+    | Glob_files s -> begin
+        let path = Path.relative dir (expand_vars t ~dir s) in
+        let dir = Path.parent path in
+        let s = Path.basename path in
+        match Glob_lexer.parse_string s with
+        | Ok re ->
+          Build.paths_glob ~dir (Re.compile re)
+        | Error (_pos, msg) ->
+          die "invalid glob in %s/jbuild: %s" (Path.to_string dir) msg
+      end
+    | Files_recursively_in s ->
+      let path = Path.relative dir (expand_vars t ~dir s) in
+      Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
+
+  let interpret t ~dir l =
+    let rec loop acc = function
+      | [] -> acc
+      | d :: l ->
+        loop (acc >>> dep t ~dir d) l
+    in
+    loop (Build.return ()) l
+
+  let only_plain_file t ~dir = function
+    | File s -> Some (Path.relative dir (expand_vars t ~dir s))
+    | Alias _ -> None
+    | Glob_files _ -> None
+    | Files_recursively_in _ -> None
+
+  let only_plain_files t ~dir l = List.map l ~f:(only_plain_file t ~dir)
+end

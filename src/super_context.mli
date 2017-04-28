@@ -72,3 +72,12 @@ module Libs : sig
 
   val add_select_rules : t -> dir:Path.t -> Lib_deps.t -> unit
 end
+
+(** Interpret dependencies written in jbuild files *)
+module Deps : sig
+  val interpret : t -> dir:Path.t -> Dep_conf.t list -> (unit, unit) Build.t
+
+  (** Interpret plain dependencies, replacing other (glob_files, files_recursively_in,
+      ...) by None *)
+  val only_plain_files : t -> dir:Path.t -> Dep_conf.t list -> Path.t option list
+end

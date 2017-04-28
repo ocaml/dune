@@ -17,52 +17,6 @@ module Gen(P : Params) = struct
   let ctx = SC.context sctx
 
   (* +-----------------------------------------------------------------+
-     | User variables                                                  |
-     +-----------------------------------------------------------------+ *)
-
-
-  (* +-----------------------------------------------------------------+
-     | User deps                                                       |
-     +-----------------------------------------------------------------+ *)
-
-  module Dep_conf_interpret = struct
-    include Dep_conf
-
-    let dep ~dir = function
-      | File  s -> Build.path (Path.relative dir (SC.expand_vars sctx ~dir s))
-      | Alias s -> Build.path (Alias.file (Alias.make ~dir (SC.expand_vars sctx ~dir s)))
-      | Glob_files s -> begin
-          let path = Path.relative dir (SC.expand_vars sctx ~dir s) in
-          let dir = Path.parent path in
-          let s = Path.basename path in
-          match Glob_lexer.parse_string s with
-          | Ok re ->
-            Build.paths_glob ~dir (Re.compile re)
-          | Error (_pos, msg) ->
-            die "invalid glob in %s/jbuild: %s" (Path.to_string dir) msg
-        end
-      | Files_recursively_in s ->
-        let path = Path.relative dir (SC.expand_vars sctx ~dir s) in
-        Build.files_recursively_in ~dir:path ~file_tree:(SC.file_tree sctx)
-
-    let dep_of_list ~dir ts =
-      let rec loop acc = function
-        | [] -> acc
-        | t :: ts ->
-          loop (acc >>> dep ~dir t) ts
-      in
-      loop (Build.return ()) ts
-
-    let only_plain_file ~dir = function
-      | File s -> Some (Path.relative dir (SC.expand_vars sctx ~dir s))
-      | Alias _ -> None
-      | Glob_files _ -> None
-      | Files_recursively_in _ -> None
-
-    let only_plain_files ~dir ts = List.map ts ~f:(only_plain_file ~dir)
-  end
-
-  (* +-----------------------------------------------------------------+
      | ocamldep stuff                                                  |
      +-----------------------------------------------------------------+ *)
 
@@ -450,7 +404,7 @@ module Gen(P : Params) = struct
   (* Generate rules to build the .pp files and return a new module map where all filenames
      point to the .pp files *)
   let pped_modules ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name =
-    let preprocessor_deps = Dep_conf_interpret.dep_of_list ~dir preprocessor_deps in
+    let preprocessor_deps = SC.Deps.interpret sctx ~dir preprocessor_deps in
     String_map.map modules ~f:(fun (m : Module.t) ->
       let m = setup_reason_rules ~dir m in
       match Preprocess_map.find m.name preprocess with
@@ -1198,19 +1152,19 @@ module Gen(P : Params) = struct
   let user_rule (rule : Rule.t) ~dir =
     let targets = List.map rule.targets ~f:(Path.relative dir) in
     SC.add_rule sctx
-      (Dep_conf_interpret.dep_of_list ~dir rule.deps
+      (SC.Deps.interpret sctx ~dir rule.deps
        >>>
        Action_interpret.run
          rule.action
          ~dir
          ~dep_kind:Required
          ~targets
-         ~deps:(Dep_conf_interpret.only_plain_files ~dir rule.deps))
+         ~deps:(SC.Deps.only_plain_files sctx ~dir rule.deps))
 
   let alias_rules (alias_conf : Alias_conf.t) ~dir =
     let digest =
       let deps =
-        Sexp.To_sexp.list Dep_conf_interpret.sexp_of_t alias_conf.deps in
+        Sexp.To_sexp.list Dep_conf.sexp_of_t alias_conf.deps in
       let action =
         match alias_conf.action with
         | None -> Sexp.Atom "none"
@@ -1222,7 +1176,7 @@ module Gen(P : Params) = struct
     let alias = Alias.make alias_conf.name ~dir in
     let digest_path = Path.extend_basename (Alias.file alias) ~suffix:("-" ^ digest) in
     Alias.add_deps (SC.aliases sctx) alias [digest_path];
-    let deps = Dep_conf_interpret.dep_of_list ~dir alias_conf.deps in
+    let deps = SC.Deps.interpret sctx ~dir alias_conf.deps in
     SC.add_rule sctx
       (match alias_conf.action with
        | None ->
@@ -1236,7 +1190,7 @@ module Gen(P : Params) = struct
                ~dir
                ~dep_kind:Required
                ~targets:[]
-               ~deps:(Dep_conf_interpret.only_plain_files ~dir alias_conf.deps)
+               ~deps:(SC.Deps.only_plain_files sctx ~dir alias_conf.deps)
          >>>
          Build.and_create_file digest_path)
 

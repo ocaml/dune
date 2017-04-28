@@ -89,3 +89,9 @@ let program_not_found ?context ?hint prog =
        | None -> ()
        | Some h -> Format.fprintf fmt "@ Hint: %s" h)
     hint
+
+let g () =
+  if !Clflags.g then
+    ["-g"]
+  else
+    []

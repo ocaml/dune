@@ -20,3 +20,6 @@ val describe_target : Path.t -> string
 
 (** Raise an error about a program not found in the PATH *)
 val program_not_found : ?context:string -> ?hint:string -> string -> _
+
+(** [\["-g"\]] if [!Clflags.g] and [\[\]] otherwise *)
+val g : unit -> string list

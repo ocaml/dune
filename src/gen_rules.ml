@@ -6,76 +6,6 @@ open Build.O
    | Utils                                                           |
    +-----------------------------------------------------------------+ *)
 
-let g () =
-  if !Clflags.g then
-    ["-g"]
-  else
-    []
-
-module Ocaml_flags = struct
-  let default_ocamlc_flags   = g
-  let default_ocamlopt_flags = g
-
-  let dev_mode_warnings =
-    "@a" ^
-    String.concat ~sep:""
-      (List.map ~f:(sprintf "-%d")
-         [ 4
-         ; 29
-         ; 40
-         ; 41
-         ; 42
-         ; 44
-         ; 45
-         ; 48
-         ; 58
-         ; 59
-         ])
-
-  let default_flags () =
-    if !Clflags.dev_mode then
-      [ "-w"; dev_mode_warnings ^ !Clflags.warnings
-      ; "-strict-sequence"
-      ; "-strict-formats"
-      ; "-short-paths"
-      ; "-keep-locs"
-      ]
-    else
-      [ "-w"; !Clflags.warnings ]
-
-  type t =
-    { common   : string list
-    ; specific : string list Mode.Dict.t
-    }
-
-  let make { Buildable. flags; ocamlc_flags; ocamlopt_flags; _ } =
-    let eval = Ordered_set_lang.eval_with_standard in
-    { common   = eval flags ~standard:(default_flags ())
-    ; specific =
-        { byte   = eval ocamlc_flags   ~standard:(default_ocamlc_flags ())
-        ; native = eval ocamlopt_flags ~standard:(default_ocamlopt_flags ())
-        }
-    }
-
-  let get t mode = Arg_spec.As (t.common @ Mode.Dict.get t.specific mode)
-
-  let get_for_cm t ~cm_kind = get t (Mode.of_cm_kind cm_kind)
-
-  let default () =
-    { common = default_flags ()
-    ; specific =
-        { byte   = default_ocamlc_flags   ()
-        ; native = default_ocamlopt_flags ()
-        }
-    }
-end
-
-let default_c_flags = g ()
-let default_cxx_flags = g ()
-
-let cm_files modules ~dir ~cm_kind =
-  List.map modules ~f:(fun (m : Module.t) -> Module.cm_file m ~dir cm_kind)
-
 let find_module ~dir modules name =
   String_map.find_exn name modules
     ~string_of_key:(sprintf "%S")
@@ -293,9 +223,10 @@ module Gen(P : Params) = struct
         (String.concat cycle ~sep:"\n-> ")
 
   let names_to_top_closed_cm_files ~dir ~dep_graph ~modules ~mode names =
+    let cm_kind = Mode.cm_kind mode in
     dep_closure ~dir dep_graph names
     |> modules_of_names ~dir ~modules
-    |> cm_files ~dir ~cm_kind:(Mode.cm_kind mode)
+    |> List.map ~f:(fun m -> Module.cm_file m ~dir cm_kind)
 
 
   let ocamldep_rules ~dir ~item ~modules ~alias_module =
@@ -978,9 +909,12 @@ module Gen(P : Params) = struct
            ]))
 
   let mk_lib_cm_all (lib : Library.t) ~dir ~modules cm_kind =
-    let deps = cm_files ~dir (String_map.values modules) ~cm_kind in
+    let deps =
+      String_map.fold modules ~init:[] ~f:(fun ~key:_ ~data:m acc ->
+        Module.cm_file m ~dir cm_kind :: acc)
+    in
     SC.add_rule sctx (Build.paths deps >>>
-              Build.create_file (lib_cm_all lib ~dir cm_kind))
+                      Build.create_file (lib_cm_all lib ~dir cm_kind))
 
   let expand_includes ~dir includes =
     Arg_spec.As (List.concat_map includes ~f:(fun s ->
@@ -993,7 +927,7 @@ module Gen(P : Params) = struct
       (Build.paths h_files
        >>>
        Build.fanout
-         (expand_and_eval_set ~dir lib.c_flags ~standard:default_c_flags)
+         (expand_and_eval_set ~dir lib.c_flags ~standard:(Utils.g ()))
          (requires
           >>>
           Build.dyn_paths (Build.arr Lib.header_files))
@@ -1003,7 +937,7 @@ module Gen(P : Params) = struct
             the current directory *)
          ~dir
          (Dep ctx.ocamlc)
-         [ As (g ())
+         [ As (Utils.g ())
          ; expand_includes ~dir lib.includes
          ; Dyn (fun (c_flags, libs) ->
              S [ Lib.c_include_flags libs
@@ -1021,7 +955,7 @@ module Gen(P : Params) = struct
       (Build.paths h_files
        >>>
        Build.fanout
-         (expand_and_eval_set ~dir lib.cxx_flags ~standard:default_cxx_flags)
+         (expand_and_eval_set ~dir lib.cxx_flags ~standard:(Utils.g ()))
          requires
        >>>
        Build.run ~context:ctx
@@ -1174,7 +1108,7 @@ module Gen(P : Params) = struct
              Build.run ~context:ctx
                ~extra_targets:targets
                (Dep ctx.ocamlmklib)
-               [ As (g ())
+               [ As (Utils.g ())
                ; if custom then A "-custom" else As []
                ; A "-o"
                ; Path (Path.relative dir (sprintf "%s_stubs" lib.name))

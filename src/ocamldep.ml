@@ -3,6 +3,8 @@ open Build.O
 
 module SC = Super_context
 
+type dep_graph = (unit, string list String_map.t) Build.t Ml_kind.Dict.t
+
 let parse_deps ~dir lines ~modules ~alias_module =
   List.map lines ~f:(fun line ->
     match String.index line ':' with

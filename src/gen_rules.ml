@@ -17,108 +17,6 @@ module Gen(P : Params) = struct
   let ctx = SC.context sctx
 
   (* +-----------------------------------------------------------------+
-     | ocamldep stuff                                                  |
-     +-----------------------------------------------------------------+ *)
-
-  let parse_deps ~dir lines ~modules ~alias_module =
-    List.map lines ~f:(fun line ->
-      match String.index line ':' with
-      | None -> die "`ocamldep` in %s returned invalid line: %S" (Path.to_string dir) line
-      | Some i ->
-        let unit =
-          let basename =
-            String.sub line ~pos:0 ~len:i
-            |> Filename.basename
-          in
-          let module_basename =
-            match String.index basename '.' with
-            | None -> basename
-            | Some i -> String.sub basename ~pos:0 ~len:i
-          in
-          String.capitalize_ascii module_basename
-        in
-        let deps =
-          String.extract_blank_separated_words (String.sub line ~pos:(i + 1)
-                                                  ~len:(String.length line - (i + 1)))
-          |> List.filter ~f:(fun m -> m <> unit && String_map.mem m modules)
-        in
-        let deps =
-          match alias_module with
-          | None -> deps
-          | Some (m : Module.t) -> m.name :: deps
-        in
-        (unit, deps))
-    |> String_map.of_alist
-    |> function
-    | Ok x -> begin
-        match alias_module with
-        | None -> x
-        | Some m -> String_map.add x ~key:m.name ~data:[]
-      end
-    | Error (unit, _, _) ->
-      die
-        "`ocamldep` in %s returned %s several times" (Path.to_string dir) unit
-
-  module Ocamldep_vfile =
-    Vfile_kind.Make
-      (struct type t = string list String_map.t end)
-      (functor (C : Sexp.Combinators) -> struct
-        open C
-        let t = string_map (list string)
-      end)
-
-  let ocamldep_rules ~ml_kind ~dir ~item ~modules ~alias_module =
-    let suffix = Ml_kind.suffix ml_kind in
-    let vdepends =
-      let fn = Path.relative dir (sprintf "%s.depends%s.sexp" item suffix) in
-      Build.Vspec.T (fn, (module Ocamldep_vfile))
-    in
-    let files =
-      List.filter_map (String_map.values modules) ~f:(fun m -> Module.file ~dir m ml_kind)
-      |> List.map ~f:(fun fn ->
-        match ml_kind, Filename.extension (Path.to_string fn) with
-        | Impl, ".ml"  -> Arg_spec.Dep fn
-        | Intf, ".mli" -> Dep fn
-        | Impl, _ -> S [A "-impl"; Dep fn]
-        | Intf, _ -> S [A "-intf"; Dep fn])
-    in
-    let ocamldep_output =
-      Path.relative dir (sprintf "%s.depends%s.ocamldep-output" item suffix)
-    in
-    SC.add_rule sctx
-      (Build.run ~context:ctx (Dep ctx.ocamldep) [A "-modules"; S files]
-         ~stdout_to:ocamldep_output);
-    SC.add_rule sctx
-      (Build.lines_of ocamldep_output
-       >>^ parse_deps ~dir ~modules ~alias_module
-       >>> Build.store_vfile vdepends);
-    Build.vpath vdepends
-
-  module Dep_closure =
-    Top_closure.Make(String)(struct
-      type t = string
-      type graph = Path.t * t list String_map.t
-      let key t = t
-      let deps t (dir, map) = Utils.find_deps ~dir map t
-    end)
-
-  let dep_closure ~dir dep_graph names =
-    match Dep_closure.top_closure (dir, dep_graph) names with
-    | Ok names -> names
-    | Error cycle ->
-      die "dependency cycle between modules in %s:\n   %s" (Path.to_string dir)
-        (String.concat cycle ~sep:"\n-> ")
-
-  let names_to_top_closed_cm_files ~dir ~dep_graph ~modules ~mode names =
-    let cm_kind = Mode.cm_kind mode in
-    List.map (dep_closure ~dir dep_graph names) ~f:(fun name ->
-      let m = Utils.find_module ~dir modules name in
-      Module.cm_file m ~dir cm_kind)
-
-  let ocamldep_rules ~dir ~item ~modules ~alias_module =
-    Ml_kind.Dict.of_func (ocamldep_rules ~dir ~item ~modules ~alias_module)
-
-  (* +-----------------------------------------------------------------+
      | User actions                                                    |
      +-----------------------------------------------------------------+ *)
 
@@ -769,7 +667,7 @@ module Gen(P : Params) = struct
         (Build.fanout
            (dep_graph >>>
             Build.arr (fun dep_graph ->
-              names_to_top_closed_cm_files
+              Ocamldep.names_to_top_closed_cm_files
                 ~dir
                 ~dep_graph
                 ~modules
@@ -927,7 +825,7 @@ module Gen(P : Params) = struct
       | Some m -> String_map.add modules ~key:m.name ~data:m
     in
 
-    let dep_graph = ocamldep_rules ~dir ~item:lib.name ~modules ~alias_module in
+    let dep_graph = Ocamldep.rules sctx ~dir ~item:lib.name ~modules ~alias_module in
 
     Option.iter alias_module ~f:(fun m ->
       SC.add_rule sctx
@@ -1081,7 +979,7 @@ module Gen(P : Params) = struct
           >>> Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib)))
          (dep_graph
           >>> Build.arr (fun dep_graph ->
-            names_to_top_closed_cm_files
+            Ocamldep.names_to_top_closed_cm_files
               ~dir
               ~dep_graph
               ~modules
@@ -1118,7 +1016,7 @@ module Gen(P : Params) = struct
         ~lib_name:None
     in
     let item = List.hd exes.names in
-    let dep_graph = ocamldep_rules ~dir ~item ~modules ~alias_module:None in
+    let dep_graph = Ocamldep.rules sctx ~dir ~item ~modules ~alias_module:None in
 
     let requires, real_requires =
       requires ~dir ~dep_kind ~item

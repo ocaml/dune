@@ -262,6 +262,58 @@ module Libs = struct
          >>>
          Build.action_context_independent ~targets:[dst]
            (Copy_and_add_line_directive (src, dst))))
+
+  let real_requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
+    let all_pps =
+      List.map (Preprocess_map.pps preprocess) ~f:Pp.to_string
+    in
+    let vrequires = vrequires t ~dir ~item in
+    add_rule t
+      (Build.record_lib_deps ~dir ~kind:dep_kind (List.map virtual_deps ~f:Lib_dep.direct)
+       >>>
+       Build.fanout
+         (closure t ~dir ~dep_kind libraries)
+         (closed_ppx_runtime_deps_of t ~dir ~dep_kind
+            (List.map all_pps ~f:Lib_dep.direct))
+       >>>
+       Build.arr (fun (libs, rt_deps) ->
+         Lib.remove_dups_preserve_order (libs @ rt_deps))
+       >>>
+       Build.store_vfile vrequires);
+    Build.vpath vrequires
+
+  let requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
+    let real_requires =
+      real_requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps
+    in
+    let requires =
+      if t.context.merlin then
+        (* We don't depend on the dot_merlin directly, otherwise everytime it changes we
+           would have to rebuild everything.
+
+           .merlin-exists depends on the .merlin and is an empty file. Depending on it
+           forces the generation of the .merlin but not recompilation when it
+           changes. Maybe one day we should add [Build.path_exists] to do the same in
+           general. *)
+        Build.path (Path.relative dir ".merlin-exists")
+        >>>
+        real_requires
+      else
+        real_requires
+    in
+    (requires, real_requires)
+
+  let setup_runtime_deps t ~dir ~dep_kind ~item ~libraries ~ppx_runtime_libraries =
+    let vruntime_deps = vruntime_deps t ~dir ~item in
+    add_rule t
+      (Build.fanout
+         (closure t ~dir ~dep_kind (List.map ppx_runtime_libraries ~f:Lib_dep.direct))
+         (closed_ppx_runtime_deps_of t ~dir ~dep_kind libraries)
+       >>>
+       Build.arr (fun (rt_deps, rt_deps_of_deps) ->
+         Lib.remove_dups_preserve_order (rt_deps @ rt_deps_of_deps))
+       >>>
+       Build.store_vfile vruntime_deps)
 end
 
 module Deps = struct

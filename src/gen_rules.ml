@@ -16,47 +16,6 @@ module Gen(P : Params) = struct
 
   let ctx = SC.context sctx
 
-  let real_requires ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
-    let all_pps =
-      List.map (Preprocess_map.pps preprocess) ~f:Pp.to_string
-    in
-    let vrequires = SC.Libs.vrequires sctx ~dir ~item in
-    SC.add_rule sctx
-      (Build.record_lib_deps ~dir ~kind:dep_kind (List.map virtual_deps ~f:Lib_dep.direct)
-       >>>
-       Build.fanout
-         (SC.Libs.closure sctx ~dir ~dep_kind libraries)
-         (SC.Libs.closed_ppx_runtime_deps_of sctx ~dir ~dep_kind
-            (List.map all_pps ~f:Lib_dep.direct))
-       >>>
-       Build.arr (fun (libs, rt_deps) ->
-         Lib.remove_dups_preserve_order (libs @ rt_deps))
-       >>>
-       Build.store_vfile vrequires);
-    Build.vpath vrequires
-
-  let requires ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
-    let real_requires =
-      real_requires ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps
-    in
-    let requires =
-      if ctx.merlin then
-        (* We don't depend on the dot_merlin directly, otherwise
-           everytime it changes we would have to rebuild everything.
-
-           .merlin-exists depends on the .merlin and is an empty
-           file. Depending on it forces the generation of the .merlin
-           but not recompilation when it changes. Maybe one day we
-           should add [Build.path_exists] to do the same in
-           general. *)
-        Build.path (Path.relative dir ".merlin-exists")
-        >>>
-        real_requires
-      else
-        real_requires
-    in
-    (requires, real_requires)
-
   module Merlin = struct
     type t =
       { requires   : (unit, Lib.t list) Build.t
@@ -151,18 +110,6 @@ module Gen(P : Params) = struct
         | [] -> ()
         | t :: ts -> dot_merlin ~dir (List.fold_left ts ~init:t ~f:merge_two)
   end
-
-  let setup_runtime_deps ~dir ~dep_kind ~item ~libraries ~ppx_runtime_libraries =
-    let vruntime_deps = SC.Libs.vruntime_deps sctx ~dir ~item in
-    SC.add_rule sctx
-      (Build.fanout
-         (SC.Libs.closure sctx ~dir ~dep_kind (List.map ppx_runtime_libraries ~f:Lib_dep.direct))
-         (SC.Libs.closed_ppx_runtime_deps_of sctx ~dir ~dep_kind libraries)
-       >>>
-       Build.arr (fun (rt_deps, rt_deps_of_deps) ->
-         Lib.remove_dups_preserve_order (rt_deps @ rt_deps_of_deps))
-       >>>
-       Build.store_vfile vruntime_deps)
 
   (* +-----------------------------------------------------------------+
      | Ordered set lang evaluation                                     |
@@ -515,13 +462,13 @@ module Gen(P : Params) = struct
          >>> Build.update_file_dyn (Path.relative dir m.impl.name)));
 
     let requires, real_requires =
-      requires ~dir ~dep_kind ~item:lib.name
+      SC.Libs.requires sctx ~dir ~dep_kind ~item:lib.name
         ~libraries:lib.buildable.libraries
         ~preprocess:lib.buildable.preprocess
         ~virtual_deps:lib.virtual_deps
     in
 
-    setup_runtime_deps ~dir ~dep_kind ~item:lib.name
+    SC.Libs.setup_runtime_deps sctx ~dir ~dep_kind ~item:lib.name
       ~libraries:lib.buildable.libraries
       ~ppx_runtime_libraries:lib.ppx_runtime_libraries;
     SC.Libs.add_select_rules sctx ~dir lib.buildable.libraries;
@@ -694,7 +641,7 @@ module Gen(P : Params) = struct
     let dep_graph = Ocamldep.rules sctx ~dir ~item ~modules ~alias_module:None in
 
     let requires, real_requires =
-      requires ~dir ~dep_kind ~item
+      SC.Libs.requires sctx ~dir ~dep_kind ~item
         ~libraries:exes.buildable.libraries
         ~preprocess:exes.buildable.preprocess
         ~virtual_deps:[]

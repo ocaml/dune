@@ -48,29 +48,37 @@ val sources_and_targets_known_so_far : t -> src_path:Path.t -> String_set.t
 
 module Libs : sig
   val find : t -> from:Path.t -> string -> Lib.t option
-  val vrequires : t -> dir:Path.t -> item:string ->  Lib.t list Build.Vspec.t
-  val load_requires : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t
 
-  val vruntime_deps : t -> dir:Path.t -> item:string ->  Lib.t list Build.Vspec.t
+  val load_requires     : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t
   val load_runtime_deps : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t
-
-  val closure
-    :  t
-    -> dir:Path.t
-    -> dep_kind:Build.lib_dep_kind
-    -> Lib_deps.t
-    -> (unit, Lib.t list) Build.t
-
-  val closed_ppx_runtime_deps_of
-    :  t
-    -> dir:Path.t
-    -> dep_kind:Build.lib_dep_kind
-    -> Lib_deps.t
-    -> (unit, Lib.t list) Build.t
 
   val lib_is_available : t -> from:Path.t -> string -> bool
 
+  (** Add rules for (select ...) forms *)
   val add_select_rules : t -> dir:Path.t -> Lib_deps.t -> unit
+
+  (** Returns the closed list of dependencies for a dependency list in a stanza. The
+      second arrow is the same as the first one but with an added dependency on the
+      .merlin. *)
+  val requires
+    :  t
+    -> dir:Path.t
+    -> dep_kind:Build.lib_dep_kind
+    -> item:string (** Library name or first exe name *)
+    -> libraries:Lib_deps.t
+    -> preprocess:Preprocess_map.t
+    -> virtual_deps:string list
+    -> (unit, Lib.t list) Build.t * (unit, Lib.t list) Build.t
+
+  (** Setup the rules for ppx runtime dependencies *)
+  val setup_runtime_deps
+    :  t
+    -> dir:Path.t
+    -> dep_kind:Build.lib_dep_kind
+    -> item:string (** Library name or first exe name *)
+    -> libraries:Lib_deps.t
+    -> ppx_runtime_libraries:string list
+    -> unit
 end
 
 (** Interpret dependencies written in jbuild files *)

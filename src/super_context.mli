@@ -81,3 +81,15 @@ module Deps : sig
       ...) by None *)
   val only_plain_files : t -> dir:Path.t -> Dep_conf.t list -> Path.t option list
 end
+
+(** Interpret action written in jbuild files *)
+module Action : sig
+  val run
+    :  t
+    -> Action.Mini_shexp.Unexpanded.t
+    -> dir:Path.t
+    -> dep_kind:Build.lib_dep_kind
+    -> targets:Path.t list
+    -> deps:Path.t option list
+    -> (unit, Action.t) Build.t
+end

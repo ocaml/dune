@@ -297,3 +297,119 @@ module Deps = struct
 
   let only_plain_files t ~dir l = List.map l ~f:(only_plain_file t ~dir)
 end
+
+module Action = struct
+  open Build.O
+  module U = Action.Mini_shexp.Unexpanded
+
+  type resolved_forms =
+    { (* Mapping from ${...} forms to their resolutions *)
+      artifacts : Action.var_expansion String_map.t
+    ; (* Failed resolutions *)
+      failures  : fail list
+    ; (* All "name" for ${lib:name:...}/${lib-available:name} forms *)
+      lib_deps  : Build.lib_deps
+    }
+
+  let add_artifact ?lib_dep acc ~var result =
+    let lib_deps =
+      match lib_dep with
+      | None -> acc.lib_deps
+      | Some (lib, kind) -> String_map.add acc.lib_deps ~key:lib ~data:kind
+    in
+    match result with
+    | Ok path ->
+      { acc with
+        artifacts = String_map.add acc.artifacts ~key:var ~data:path
+      ; lib_deps
+      }
+    | Error fail ->
+      { acc with
+        failures = fail :: acc.failures
+      ; lib_deps
+      }
+
+  let map_result = function
+    | Ok x -> Ok (Action.Path x)
+    | Error _ as e -> e
+
+  let extract_artifacts sctx ~dir ~dep_kind t =
+    let init =
+      { artifacts = String_map.empty
+      ; failures  = []
+      ; lib_deps  = String_map.empty
+      }
+    in
+    U.fold_vars t ~init ~f:(fun acc var ->
+      let module A = Artifacts in
+      match String.lsplit2 var ~on:':' with
+      | Some ("exe"     , s) -> add_artifact acc ~var (Ok (Path (Path.relative dir s)))
+      | Some ("path"    , s) -> add_artifact acc ~var (Ok (Path (Path.relative dir s)))
+      | Some ("bin"     , s) ->
+        add_artifact acc ~var (A.binary (artifacts sctx) s |> map_result)
+      | Some ("lib"     , s)
+      | Some ("libexec" , s) ->
+        let lib_dep, res = A.file_of_lib (artifacts sctx) ~from:dir s in
+        add_artifact acc ~var ~lib_dep:(lib_dep, dep_kind) (map_result res)
+      | Some ("lib-available", lib) ->
+        add_artifact acc ~var ~lib_dep:(lib, Optional)
+          (Ok (Str (string_of_bool (Libs.lib_is_available sctx ~from:dir lib))))
+      (* CR-someday jdimino: allow this only for (jbuild_version jane_street) *)
+      | Some ("findlib" , s) ->
+        let lib_dep, res =
+          A.file_of_lib (artifacts sctx) ~from:dir s ~use_provides:true
+        in
+        add_artifact acc ~var ~lib_dep:(lib_dep, Required) (map_result res)
+      | _ -> acc)
+
+  let expand_var =
+    let dep_exn name = function
+      | Some dep -> dep
+      | None -> die "cannot use ${%s} with files_recursively_in" name
+    in
+    fun sctx ~artifacts ~targets ~deps var_name ->
+      match String_map.find var_name artifacts with
+      | Some exp -> exp
+      | None ->
+        match var_name with
+        | "@" -> Action.Paths targets
+        | "<" -> (match deps with
+          | []        -> Str ""
+          | dep1 :: _ -> Path (dep_exn var_name dep1))
+        | "^" ->
+          Paths (List.map deps ~f:(dep_exn var_name))
+        | "ROOT" -> Path sctx.context.build_dir
+        | var ->
+          match expand_var_no_root sctx var with
+          | Some s -> Str s
+          | None -> Not_found
+
+  let run sctx t ~dir ~dep_kind ~targets ~deps =
+    let forms = extract_artifacts sctx ~dir ~dep_kind t in
+    let build =
+      match
+        U.expand sctx.context dir t
+          ~f:(expand_var sctx ~artifacts:forms.artifacts ~targets ~deps)
+      with
+      | t ->
+        Build.path_set
+          (String_map.fold forms.artifacts ~init:Path.Set.empty
+             ~f:(fun ~key:_ ~data:exp acc ->
+               match exp with
+               | Action.Path p -> Path.Set.add p acc
+               | Paths ps -> Path.Set.union acc (Path.Set.of_list ps)
+               | Not_found | Str _ -> acc))
+        >>>
+        Build.action t ~context:sctx.context ~dir ~targets
+      | exception e ->
+        Build.fail ~targets { fail = fun () -> raise e }
+    in
+    let build =
+      Build.record_lib_deps_simple ~dir forms.lib_deps
+      >>>
+      build
+    in
+    match forms.failures with
+    | [] -> build
+    | fail :: _ -> Build.fail fail >>> build
+end

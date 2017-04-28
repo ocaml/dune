@@ -56,17 +56,23 @@ module Prog_spec : sig
 end
 
 val run
-  :  ?dir:Path.t
+  :  context:Context.t
+  -> ?dir:Path.t (* default: context.build_dir *)
   -> ?stdout_to:Path.t
-  -> ?context:Context.t
   -> ?extra_targets:Path.t list
   -> 'a Prog_spec.t
   -> 'a Arg_spec.t list
   -> ('a, Action.t) t
 
 val action
-  :  ?dir:Path.t
-  -> ?context:Context.t
+  :  context:Context.t
+  -> ?dir:Path.t (* default: context.build_dir *)
+  -> targets:Path.t list
+  -> Action.Mini_shexp.t
+  -> (unit, Action.t) t
+
+val action_context_independent
+  :  ?dir:Path.t (* default: Path.root *)
   -> targets:Path.t list
   -> Action.Mini_shexp.t
   -> (unit, Action.t) t

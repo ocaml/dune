@@ -1,4 +1,7 @@
-(** Where libraries are *)
+(** Where libraries are
+
+    This module is used to implement [Super_context.Libs].
+*)
 
 open Import
 

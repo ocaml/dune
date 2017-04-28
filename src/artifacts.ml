@@ -92,3 +92,13 @@ let file_of_lib ?(use_provides=false) t ~from ~lib ~file =
                       : Findlib.package);
               assert false
           }
+
+let file_of_lib t ?use_provides ~from name =
+  let lib, file =
+    match String.lsplit2 name ~on:':' with
+    | None ->
+      Loc.fail (Loc.in_file (Path.to_string (Path.relative from "jbuild")))
+            "invalid ${lib:...} form: %s" name
+    | Some x -> x
+  in
+  (lib, file_of_lib t ~from ~lib ~file ?use_provides)

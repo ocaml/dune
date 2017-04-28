@@ -138,7 +138,8 @@ let prog_and_args ~dir prog args =
     >>>
     arr fst))
 
-let run ?(dir=Path.root) ?stdout_to ?context ?(extra_targets=[]) prog args =
+let run ~context ?(dir=context.Context.build_dir) ?stdout_to ?(extra_targets=[])
+      prog args =
   let extra_targets =
     match stdout_to with
     | None -> extra_targets
@@ -157,17 +158,22 @@ let run ?(dir=Path.root) ?stdout_to ?context ?(extra_targets=[]) prog args =
     in
     { Action.
       dir
-    ; context
+    ; context = Some context
     ; action
     })
 
-let action ?(dir=Path.root) ?context ~targets action =
+let action ~context ?(dir=context.Context.build_dir) ~targets action =
   Targets targets
   >>^ fun () ->
-  { Action. context; dir; action  }
+  { Action. context = Some context; dir; action  }
+
+let action_context_independent ?(dir=Path.root) ~targets action =
+  Targets targets
+  >>^ fun () ->
+  { Action. context = None; dir; action  }
 
 let update_file fn s =
-  action ~targets:[fn] (Update_file (fn, s))
+  action_context_independent ~targets:[fn] (Update_file (fn, s))
 
 let update_file_dyn fn =
   Targets [fn]
@@ -180,14 +186,14 @@ let update_file_dyn fn =
 
 let copy ~src ~dst =
   path src >>>
-  action ~targets:[dst] (Copy (src, dst))
+  action_context_independent ~targets:[dst] (Copy (src, dst))
 
 let symlink ~src ~dst =
   path src >>>
-  action ~targets:[dst] (Symlink (src, dst))
+  action_context_independent ~targets:[dst] (Symlink (src, dst))
 
 let create_file fn =
-  action ~targets:[fn] (Create_file fn)
+  action_context_independent ~targets:[fn] (Create_file fn)
 
 let and_create_file fn =
   Targets [fn]

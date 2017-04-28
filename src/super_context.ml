@@ -667,3 +667,22 @@ module PP = struct
         )
     )
 end
+
+let expand_and_eval_set ~dir set ~standard =
+  let open Build.O in
+  match Ordered_set_lang.Unexpanded.files set |> String_set.elements with
+  | [] ->
+    let set = Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty in
+    Build.return (Ordered_set_lang.eval_with_standard set ~standard)
+  | files ->
+    let paths = List.map files ~f:(Path.relative dir) in
+    Build.paths paths
+    >>>
+    Build.arr (fun () ->
+      let files_contents =
+        List.map2 files paths ~f:(fun fn path ->
+          (fn, Sexp_load.single (Path.to_string path)))
+        |> String_map.of_alist_exn
+      in
+      let set = Ordered_set_lang.Unexpanded.expand set ~files_contents in
+      Ordered_set_lang.eval_with_standard set ~standard)

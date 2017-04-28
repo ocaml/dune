@@ -127,3 +127,9 @@ module PP : sig
       [None] *)
   val cookie_library_name : string option -> string list
 end
+
+val expand_and_eval_set
+  :  dir:Path.t
+  -> Ordered_set_lang.Unexpanded.t
+  -> standard:string list
+  -> (unit, string list) Build.t

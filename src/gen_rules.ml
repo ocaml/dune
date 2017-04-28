@@ -17,28 +17,6 @@ module Gen(P : Params) = struct
   let ctx = SC.context sctx
 
   (* +-----------------------------------------------------------------+
-     | Ordered set lang evaluation                                     |
-     +-----------------------------------------------------------------+ *)
-
-  let expand_and_eval_set ~dir set ~standard =
-    match Ordered_set_lang.Unexpanded.files set |> String_set.elements with
-    | [] ->
-      let set = Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty in
-      Build.return (Ordered_set_lang.eval_with_standard set ~standard)
-    | files ->
-      let paths = List.map files ~f:(Path.relative dir) in
-      Build.paths paths
-      >>>
-      Build.arr (fun () ->
-        let files_contents =
-          List.map2 files paths ~f:(fun fn path ->
-            (fn, Sexp_load.single (Path.to_string path)))
-          |> String_map.of_alist_exn
-        in
-        let set = Ordered_set_lang.Unexpanded.expand set ~files_contents in
-        Ordered_set_lang.eval_with_standard set ~standard)
-
-  (* +-----------------------------------------------------------------+
      | ml/mli compilation                                              |
      +-----------------------------------------------------------------+ *)
 
@@ -200,7 +178,7 @@ module Gen(P : Params) = struct
                 ~modules
                 ~mode
                 (String_map.keys modules)))
-           (expand_and_eval_set ~dir lib.c_library_flags ~standard:[])
+           (SC.expand_and_eval_set ~dir lib.c_library_flags ~standard:[])
          >>>
          Build.run ~context:ctx (Dep compiler)
            ~extra_targets:(
@@ -239,7 +217,7 @@ module Gen(P : Params) = struct
       (Build.paths h_files
        >>>
        Build.fanout
-         (expand_and_eval_set ~dir lib.c_flags ~standard:(Utils.g ()))
+         (SC.expand_and_eval_set ~dir lib.c_flags ~standard:(Utils.g ()))
          (requires
           >>>
           Build.dyn_paths (Build.arr Lib.header_files))
@@ -267,7 +245,7 @@ module Gen(P : Params) = struct
       (Build.paths h_files
        >>>
        Build.fanout
-         (expand_and_eval_set ~dir lib.cxx_flags ~standard:(Utils.g ()))
+         (SC.expand_and_eval_set ~dir lib.cxx_flags ~standard:(Utils.g ()))
          requires
        >>>
        Build.run ~context:ctx
@@ -415,7 +393,7 @@ module Gen(P : Params) = struct
       | None ->
         let ocamlmklib ~sandbox ~custom ~targets =
           SC.add_rule sctx ~sandbox
-            (expand_and_eval_set ~dir lib.c_library_flags ~standard:[]
+            (SC.expand_and_eval_set ~dir lib.c_library_flags ~standard:[]
              >>>
              Build.run ~context:ctx
                ~extra_targets:targets

@@ -6,25 +6,6 @@ open Build.O
    | Utils                                                           |
    +-----------------------------------------------------------------+ *)
 
-let find_module ~dir modules name =
-  String_map.find_exn name modules
-    ~string_of_key:(sprintf "%S")
-    ~desc:(fun _ ->
-      sprintf "<module name to module info in %s>" (Path.to_string dir))
-
-let find_deps ~dir dep_graph name =
-  String_map.find_exn name dep_graph
-    ~string_of_key:(sprintf "%S")
-    ~desc:(fun _ -> sprintf "<dependency graph in %s>" (Path.to_string dir))
-
-let modules_of_names ~dir ~modules names =
-  List.map names ~f:(find_module ~dir modules)
-
-let obj_name_of_basename fn =
-  match String.index fn '.' with
-  | None -> fn
-  | Some i -> String.sub fn ~pos:0 ~len:i
-
 module type Params = sig
   val sctx : Super_context.t
 end
@@ -212,7 +193,7 @@ module Gen(P : Params) = struct
       type t = string
       type graph = Path.t * t list String_map.t
       let key t = t
-      let deps t (dir, map) = find_deps ~dir map t
+      let deps t (dir, map) = Utils.find_deps ~dir map t
     end)
 
   let dep_closure ~dir dep_graph names =
@@ -224,10 +205,9 @@ module Gen(P : Params) = struct
 
   let names_to_top_closed_cm_files ~dir ~dep_graph ~modules ~mode names =
     let cm_kind = Mode.cm_kind mode in
-    dep_closure ~dir dep_graph names
-    |> modules_of_names ~dir ~modules
-    |> List.map ~f:(fun m -> Module.cm_file m ~dir cm_kind)
-
+    List.map (dep_closure ~dir dep_graph names) ~f:(fun name ->
+      let m = Utils.find_module ~dir modules name in
+      Module.cm_file m ~dir cm_kind)
 
   let ocamldep_rules ~dir ~item ~modules ~alias_module =
     Ml_kind.Dict.of_func (ocamldep_rules ~dir ~item ~modules ~alias_module)
@@ -781,7 +761,8 @@ module Gen(P : Params) = struct
           Build.dyn_paths
             (dep_graph >>^ (fun dep_graph ->
                let deps =
-                 List.map (find_deps ~dir dep_graph m.name) ~f:(find_module ~dir modules)
+                 List.map (Utils.find_deps ~dir dep_graph m.name)
+                   ~f:(Utils.find_module ~dir modules)
                in
                List.concat_map
                  deps
@@ -994,7 +975,7 @@ module Gen(P : Params) = struct
     let modules =
       String_map.map modules ~f:(fun (m : Module.t) ->
         if not lib.wrapped || m.name = main_module_name then
-          { m with obj_name = obj_name_of_basename m.impl.name }
+          { m with obj_name = Utils.obj_name_of_basename m.impl.name }
         else
           { m with obj_name = sprintf "%s__%s" lib.name m.name })
     in
@@ -1218,7 +1199,7 @@ module Gen(P : Params) = struct
     in
     let modules =
       String_map.map modules ~f:(fun (m : Module.t) ->
-        { m with obj_name = obj_name_of_basename m.impl.name })
+        { m with obj_name = Utils.obj_name_of_basename m.impl.name })
     in
     List.iter exes.names ~f:(fun name ->
       if not (String_map.mem (String.capitalize_ascii name) modules) then

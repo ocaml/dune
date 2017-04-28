@@ -807,16 +807,19 @@ module Alias_conf = struct
     { name  : string
     ; deps  : Dep_conf.t list
     ; action : Action.Mini_shexp.Unexpanded.t option
+    ; package : string option
     }
 
   let common =
-    field "name" string                        >>= fun name ->
-    field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
+    field "name" string                              >>= fun name ->
+    field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
+    field_o "package" string                         >>= fun package ->
     field_o "action" Action.Mini_shexp.Unexpanded.t  >>= fun action ->
     return
       { name
       ; deps
       ; action
+      ; package
       }
 
   let v1 = record common

@@ -899,6 +899,7 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
            List.filter stanzas ~f:(fun stanza ->
              match (stanza : Stanza.t) with
              | Library { public = Some { package; _ }; _ }
+             | Alias { package = Some package ;  _ }
              | Install { package = Some package; _ } ->
                String_set.mem package pkgs
              | _ -> true)))

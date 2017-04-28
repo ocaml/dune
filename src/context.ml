@@ -452,3 +452,13 @@ let env_for_exec t =
     ]
   in
   extend_env ~env:t.env ~vars:(Env_var_map.of_alist_exn vars)
+
+let compiler t (mode : Mode.t) =
+  match mode with
+  | Byte   -> Some t.ocamlc
+  | Native -> t.ocamlopt
+
+let best_mode t : Mode.t =
+  match t.ocamlopt with
+  | Some _ -> Native
+  | None   -> Byte

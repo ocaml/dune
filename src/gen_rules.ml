@@ -140,29 +140,6 @@ module Gen(P : Params) = struct
 
   let findlib = ctx.findlib
 
-  module Mode = struct
-    include Mode
-
-    let choose byte native = function
-      | Byte   -> byte
-      | Native -> native
-
-    let compiler t = choose (Some ctx.ocamlc) ctx.ocamlopt t
-
-    let best =
-      match ctx.ocamlopt with
-      | Some _ -> Native
-      | None   -> Byte
-  end
-
-  module Cm_kind = struct
-    include Cm_kind
-
-    let compiler = function
-      | Cmi | Cmo -> Some ctx.ocamlc
-      | Cmx -> ctx.ocamlopt
-  end
-
   module Lib_db = struct
     open Lib_db
 
@@ -686,8 +663,8 @@ module Gen(P : Params) = struct
   let migrate_driver_main = "ocaml-migrate-parsetree.driver-main"
 
   let build_ppx_driver ~dir ~dep_kind ~target pp_names ~driver =
-    let mode = Mode.best in
-    let compiler = Option.value_exn (Mode.compiler mode) in
+    let mode = Context.best_mode ctx in
+    let compiler = Option.value_exn (Context.compiler ctx mode) in
     let pp_names = pp_names @ [migrate_driver_main] in
     let libs =
       Lib_db.closure ~dir ~dep_kind (List.map pp_names ~f:Lib_dep.direct)
@@ -1045,7 +1022,7 @@ module Gen(P : Params) = struct
 
   let build_cm ?sandbox ~dynlink ~flags ~cm_kind ~dep_graph ~requires
         ~(modules : Module.t String_map.t) ~dir ~alias_module (m : Module.t) =
-    Option.iter (Cm_kind.compiler cm_kind) ~f:(fun compiler ->
+    Option.iter (Mode.of_cm_kind cm_kind |> Context.compiler ctx) ~f:(fun compiler ->
       Option.iter (Module.cm_source ~dir m cm_kind) ~f:(fun src ->
         let ml_kind = Cm_kind.source cm_kind in
         let dst = Module.cm_file m ~dir cm_kind in
@@ -1164,7 +1141,7 @@ module Gen(P : Params) = struct
     Path.relative dir (sprintf "dll%s_stubs%s" lib.name ctx.ext_dll)
 
   let build_lib (lib : Library.t) ~flags ~dir ~mode ~modules ~dep_graph =
-    Option.iter (Mode.compiler mode) ~f:(fun compiler ->
+    Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let dep_graph = Ml_kind.Dict.get dep_graph Impl in
       let stubs_flags =
@@ -1477,7 +1454,7 @@ module Gen(P : Params) = struct
   let build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph ~link_flags =
     let exe_ext = Mode.exe_ext mode in
     let mode, link_flags, compiler =
-      match Mode.compiler mode with
+      match Context.compiler ctx mode with
       | Some compiler -> (mode, link_flags, compiler)
       | None          -> (Byte, "-custom" :: link_flags, ctx.ocamlc)
     in

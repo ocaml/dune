@@ -150,3 +150,9 @@ val install_prefix : t -> Path.t Future.t
 val env_for_exec : t -> string array
 
 val initial_env : string array Lazy.t
+
+(** Return the compiler needed for this compilation mode *)
+val compiler : t -> Mode.t -> Path.t option
+
+(** The best compilation mode for this context *)
+val best_mode : t -> Mode.t

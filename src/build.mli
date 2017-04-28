@@ -53,6 +53,8 @@ module Prog_spec : sig
   type 'a t =
     | Dep of Path.t
     | Dyn of ('a -> Path.t)
+
+  val of_prog_name : Context.t -> string -> 'a t
 end
 
 val run

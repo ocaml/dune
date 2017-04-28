@@ -21,6 +21,8 @@ type t =
   ; stanzas_to_consider_for_install         : (Path.t * Stanza.t) list
   ; mutable known_targets_by_src_dir_so_far : String_set.t Path.Map.t
   ; libs_vfile                              : (module Vfile_kind.S with type t = Lib.t list)
+  ; cxx_flags                               : string list
+  ; vars                                   : string String_map.t
   }
 
 let context t = t.context
@@ -31,6 +33,14 @@ let artifacts t = t.artifacts
 let file_tree t = t.file_tree
 let rules t = t.rules
 let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
+let cxx_flags t = t.cxx_flags
+
+let expand_var_no_root t var = String_map.find var t.vars
+
+let expand_vars t ~dir s =
+  String_with_vars.expand s ~f:(function
+  | "ROOT" -> Some (Path.reach ~from:dir t.context.build_dir)
+  | var -> String_map.find var t.vars)
 
 let create
       ~(context:Context.t)
@@ -96,6 +106,42 @@ let create
     Artifacts.create context (List.map stanzas ~f:(fun (d : Dir_with_jbuild.t) ->
       (d.ctx_dir, d.stanzas)))
   in
+  let cxx_flags =
+    String.extract_blank_separated_words context.ocamlc_cflags
+    |> List.filter ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+  in
+  let vars =
+    let ocamlopt =
+      match context.ocamlopt with
+      | None -> Path.relative context.ocaml_bin "ocamlopt"
+      | Some p -> p
+    in
+    let make =
+      match Bin.make with
+      | None   -> "make"
+      | Some p -> Path.to_string p
+    in
+    [ "-verbose"       , "" (*"-verbose";*)
+    ; "CPP"            , sprintf "%s %s -E" context.c_compiler context.ocamlc_cflags
+    ; "PA_CPP"         , sprintf "%s %s -undef -traditional -x c -E" context.c_compiler
+                           context.ocamlc_cflags
+    ; "CC"             , sprintf "%s %s" context.c_compiler context.ocamlc_cflags
+    ; "CXX"            , String.concat ~sep:" " (context.c_compiler :: cxx_flags)
+    ; "ocaml_bin"      , Path.to_string context.ocaml_bin
+    ; "OCAML"          , Path.to_string context.ocaml
+    ; "OCAMLC"         , Path.to_string context.ocamlc
+    ; "OCAMLOPT"       , Path.to_string ocamlopt
+    ; "ocaml_version"  , context.version
+    ; "ocaml_where"    , Path.to_string context.stdlib_dir
+    ; "ARCH_SIXTYFOUR" , string_of_bool context.arch_sixtyfour
+    ; "MAKE"           , make
+    ; "null"           , Path.to_string Config.dev_null
+    ]
+    |> String_map.of_alist
+    |> function
+    | Ok x -> x
+    | Error _ -> assert false
+  in
   { context
   ; libs
   ; stanzas
@@ -107,6 +153,8 @@ let create
   ; known_targets_by_src_dir_so_far = Path.Map.empty
   ; libs_vfile = (module Libs_vfile)
   ; artifacts
+  ; cxx_flags
+  ; vars
   }
 
 let add_rule t ?sandbox build =

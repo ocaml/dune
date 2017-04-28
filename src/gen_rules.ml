@@ -20,54 +20,6 @@ module Gen(P : Params) = struct
      | User variables                                                  |
      +-----------------------------------------------------------------+ *)
 
-  let cxx_flags =
-    String.extract_blank_separated_words ctx.ocamlc_cflags
-    |> List.filter ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
-
-  let cxx_compiler =
-    lazy (match Context.which ctx ctx.c_compiler with
-      | Some path -> Build.Prog_spec.Dep path
-      | None -> Dyn (fun _ -> Utils.program_not_found ctx.c_compiler))
-
-  (* Expand some $-vars within action strings of rules defined in jbuild files *)
-  let dollar_var_map =
-    let ocamlopt =
-      match ctx.ocamlopt with
-      | None -> Path.relative ctx.ocaml_bin "ocamlopt"
-      | Some p -> p
-    in
-    let make =
-      match Bin.make with
-      | None -> "make"
-      | Some p -> Path.to_string p
-    in
-    [ "-verbose"       , "" (*"-verbose";*)
-    ; "CPP"            , sprintf "%s %s -E" ctx.c_compiler ctx.ocamlc_cflags
-    ; "PA_CPP"         , sprintf "%s %s -undef -traditional -x c -E" ctx.c_compiler
-                           ctx.ocamlc_cflags
-    ; "CC"             , sprintf "%s %s" ctx.c_compiler ctx.ocamlc_cflags
-    ; "CXX"            , String.concat ~sep:" " (ctx.c_compiler :: cxx_flags)
-    ; "ocaml_bin"      , Path.to_string ctx.ocaml_bin
-    ; "OCAML"          , Path.to_string ctx.ocaml
-    ; "OCAMLC"         , Path.to_string ctx.ocamlc
-    ; "OCAMLOPT"       , Path.to_string ocamlopt
-    ; "ocaml_version"  , ctx.version
-    ; "ocaml_where"    , Path.to_string ctx.stdlib_dir
-    ; "ARCH_SIXTYFOUR" , string_of_bool ctx.arch_sixtyfour
-    ; "MAKE"           , make
-    ; "null"           , Path.to_string Config.dev_null
-    ] |> String_map.of_alist
-    |> function
-    | Ok x -> x
-    | Error _ -> assert false
-
-  let root_var_lookup ~dir var_name =
-    match var_name with
-    | "ROOT" -> Some (Path.reach ~from:dir ctx.build_dir)
-    | _ -> String_map.find var_name dollar_var_map
-
-  let expand_vars ~dir s =
-    String_with_vars.expand s ~f:(root_var_lookup ~dir)
 
   (* +-----------------------------------------------------------------+
      | User deps                                                       |
@@ -77,10 +29,10 @@ module Gen(P : Params) = struct
     include Dep_conf
 
     let dep ~dir = function
-      | File  s -> Build.path (Path.relative dir (expand_vars ~dir s))
-      | Alias s -> Build.path (Alias.file (Alias.make ~dir (expand_vars ~dir s)))
+      | File  s -> Build.path (Path.relative dir (SC.expand_vars sctx ~dir s))
+      | Alias s -> Build.path (Alias.file (Alias.make ~dir (SC.expand_vars sctx ~dir s)))
       | Glob_files s -> begin
-          let path = Path.relative dir (expand_vars ~dir s) in
+          let path = Path.relative dir (SC.expand_vars sctx ~dir s) in
           let dir = Path.parent path in
           let s = Path.basename path in
           match Glob_lexer.parse_string s with
@@ -90,7 +42,7 @@ module Gen(P : Params) = struct
             die "invalid glob in %s/jbuild: %s" (Path.to_string dir) msg
         end
       | Files_recursively_in s ->
-        let path = Path.relative dir (expand_vars ~dir s) in
+        let path = Path.relative dir (SC.expand_vars sctx ~dir s) in
         Build.files_recursively_in ~dir:path ~file_tree:(SC.file_tree sctx)
 
     let dep_of_list ~dir ts =
@@ -102,7 +54,7 @@ module Gen(P : Params) = struct
       loop (Build.return ()) ts
 
     let only_plain_file ~dir = function
-      | File s -> Some (Path.relative dir (expand_vars ~dir s))
+      | File s -> Some (Path.relative dir (SC.expand_vars sctx ~dir s))
       | Alias _ -> None
       | Glob_files _ -> None
       | Files_recursively_in _ -> None
@@ -304,10 +256,10 @@ module Gen(P : Params) = struct
           | "^" ->
             Paths (List.map deps ~f:(dep_exn var_name))
           | "ROOT" -> Path ctx.build_dir
-          | _ ->
-            match String_map.find var_name dollar_var_map with
+          | var ->
+            match SC.expand_var_no_root sctx var with
             | Some s -> Str s
-            | _ -> Not_found
+            | None -> Not_found
 
     let run t ~dir ~dep_kind ~targets ~deps =
       let forms = extract_artifacts ~dir ~dep_kind t in
@@ -882,7 +834,7 @@ module Gen(P : Params) = struct
            ; Dyn (fun (_, cclibs) ->
                S (List.map cclibs ~f:(fun flag ->
                  Arg_spec.S [A "-cclib"; A flag])))
-           ; As (List.map lib.library_flags ~f:(expand_vars ~dir))
+           ; As (List.map lib.library_flags ~f:(SC.expand_vars sctx ~dir))
            ; As (match lib.kind with
                | Normal -> []
                | Ppx_deriver | Ppx_rewriter -> ["-linkall"])
@@ -899,7 +851,7 @@ module Gen(P : Params) = struct
 
   let expand_includes ~dir includes =
     Arg_spec.As (List.concat_map includes ~f:(fun s ->
-      ["-I"; expand_vars ~dir s]))
+      ["-I"; SC.expand_vars sctx ~dir s]))
 
   let build_c_file (lib : Library.t) ~dir ~requires ~h_files c_name =
     let src = Path.relative dir (c_name ^ ".c") in
@@ -943,10 +895,10 @@ module Gen(P : Params) = struct
          (* We have to execute the rule in the library directory as the .o is produced in
             the current directory *)
          ~dir
-         (Lazy.force cxx_compiler)
+         (Build.Prog_spec.of_prog_name ctx ctx.c_compiler)
          [ S [A "-I"; Path ctx.stdlib_dir]
          ; expand_includes ~dir lib.includes
-         ; As cxx_flags
+         ; As (SC.cxx_flags sctx)
          ; Dyn (fun (cxx_flags, libs) ->
              S [ Lib.c_include_flags libs
                ; As cxx_flags

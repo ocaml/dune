@@ -10,6 +10,14 @@ module Prog_spec = struct
   type 'a t =
     | Dep of Path.t
     | Dyn of ('a -> Path.t)
+
+  let of_prog_name ctx s =
+    if Filename.is_relative s then
+      Dep (Path.absolute s)
+    else
+      match Context.which ctx s with
+      | Some path -> Dep path
+      | None -> Dyn (fun _ -> Utils.program_not_found s)
 end
 
 type lib_dep_kind =

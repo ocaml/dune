@@ -93,3 +93,29 @@ module Action : sig
     -> deps:Path.t option list
     -> (unit, Action.t) Build.t
 end
+
+(** Preprocessing stuff *)
+module PP : sig
+  (** Setup pre-processing rules and return the list of pre-processed modules *)
+  val pped_modules
+    :  t
+    -> dir:Path.t
+    -> dep_kind:Build.lib_dep_kind
+    -> modules:Module.t String_map.t
+    -> preprocess:Preprocess_map.t
+    -> preprocessor_deps:Dep_conf.t list
+    -> lib_name:string option
+    -> Module.t String_map.t
+
+  (** Get a path to a cached ppx driver *)
+  val get_ppx_driver
+    :  t
+    -> Pp.t list
+    -> dir:Path.t
+    -> dep_kind:Build.lib_dep_kind
+    -> Path.t
+
+  (** [cookie_library_name lib_name] is ["--cookie"; lib_name] if [lib_name] is not
+      [None] *)
+  val cookie_library_name : string option -> string list
+end

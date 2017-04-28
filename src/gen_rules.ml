@@ -16,204 +16,6 @@ module Gen(P : Params) = struct
 
   let ctx = SC.context sctx
 
-  (* +-----------------------------------------------------------------+
-     | Preprocessing stuff                                             |
-     +-----------------------------------------------------------------+ *)
-
-  let pp_fname fn =
-    let fn, ext = Filename.split_extension fn in
-    (* We need to to put the .pp before the .ml so that the compiler realises that
-       [foo.pp.mli] is the interface for [foo.pp.ml] *)
-    fn ^ ".pp" ^ ext
-
-  let pped_module ~dir (m : Module.t) ~f =
-    let ml_pp_fname = pp_fname m.impl.name in
-    f Ml_kind.Impl (Path.relative dir m.impl.name) (Path.relative dir ml_pp_fname);
-    let intf =
-      Option.map m.intf ~f:(fun intf ->
-        let pp_fname = pp_fname intf.name in
-        f Intf (Path.relative dir intf.name) (Path.relative dir pp_fname);
-        {intf with name = pp_fname})
-    in
-    { m with
-      impl = { m.impl with name = ml_pp_fname }
-    ; intf
-    }
-
-  let ppx_drivers = Hashtbl.create 32
-
-  let migrate_driver_main = "ocaml-migrate-parsetree.driver-main"
-
-  let build_ppx_driver ~dir ~dep_kind ~target pp_names ~driver =
-    let mode = Context.best_mode ctx in
-    let compiler = Option.value_exn (Context.compiler ctx mode) in
-    let pp_names = pp_names @ [migrate_driver_main] in
-    let libs =
-      SC.Libs.closure sctx ~dir ~dep_kind (List.map pp_names ~f:Lib_dep.direct)
-    in
-    let libs =
-      (* Put the driver back at the end, just before migrate_driver_main *)
-      match driver with
-      | None -> libs
-      | Some driver ->
-        libs >>^ fun libs ->
-        let is_driver name = name = driver || name = migrate_driver_main in
-        let libs, drivers =
-          List.partition_map libs ~f:(fun lib ->
-            if (match lib with
-              | External pkg -> is_driver pkg.name
-              | Internal (_, lib) ->
-                is_driver lib.name ||
-                match lib.public with
-                | None -> false
-                | Some { name; _ } -> is_driver name)
-            then
-              Inr lib
-            else
-              Inl lib)
-        in
-        let user_driver, migrate_driver =
-          List.partition_map drivers ~f:(fun lib ->
-            if Lib.best_name lib = migrate_driver_main then
-              Inr lib
-            else
-              Inl lib)
-        in
-        libs @ user_driver @ migrate_driver
-    in
-    (* Provide a better error for migrate_driver_main given that this is an implicit
-       dependency *)
-    let libs =
-      match SC.Libs.find sctx ~from:dir migrate_driver_main with
-      | None ->
-        Build.fail { fail = fun () ->
-          die "@{<error>Error@}: I couldn't find '%s'.\n\
-               I need this library in order to use ppx rewriters.\n\
-               See the manual for details.\n\
-               Hint: opam install ocaml-migrate-parsetree"
-            migrate_driver_main
-        }
-        >>>
-        libs
-      | Some _ ->
-        libs
-    in
-    SC.add_rule sctx
-      (libs
-       >>>
-       Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib))
-       >>>
-       Build.run ~context:ctx (Dep compiler)
-         [ A "-o" ; Target target
-         ; Dyn (Lib.link_flags ~mode)
-         ])
-
-  let ppx_dir = Path.of_string (sprintf "_build/.ppx/%s" ctx.name)
-
-  let get_ppx_driver pps ~dir ~dep_kind =
-    let driver, names =
-      match List.rev_map pps ~f:Pp.to_string with
-      | [] -> (None, [])
-      | driver :: rest ->
-        (Some driver, List.sort rest ~cmp:String.compare @ [driver])
-    in
-    let key =
-      match names with
-      | [] -> "+none+"
-      | _  -> String.concat names ~sep:"+"
-    in
-    match Hashtbl.find ppx_drivers key with
-    | Some x -> x
-    | None ->
-      let ppx_dir = Path.relative ppx_dir key in
-      let exe = Path.relative ppx_dir "ppx.exe" in
-      build_ppx_driver names ~dir ~dep_kind ~target:exe ~driver;
-      Hashtbl.add ppx_drivers ~key ~data:exe;
-      exe
-
-  let target_var = String_with_vars.of_string "${@}"
-  let root_var   = String_with_vars.of_string "${ROOT}"
-
-  let cookie_library_name lib_name =
-    match lib_name with
-    | None -> []
-    | Some name -> ["--cookie"; sprintf "library-name=%S" name]
-
-  (* Generate rules for the reason modules in [modules] and return a
-     a new module with only OCaml sources *)
-  let setup_reason_rules ~dir (m : Module.t) =
-    let refmt =
-      match Artifacts.binary (SC.artifacts sctx) "refmt" with
-      | Error _ ->
-        Build.Prog_spec.Dyn (fun _ ->
-          Utils.program_not_found ~context:ctx.name ~hint:"opam install reason" "refmt")
-      | Ok p -> Build.Prog_spec.Dep p in
-    let rule src target =
-      let src_path = Path.relative dir src in
-      Build.run ~context:ctx refmt
-        [ A "--print"
-        ; A "binary"
-        ; Dep src_path ]
-        ~stdout_to:(Path.relative dir target) in
-    let impl =
-      match m.impl.syntax with
-      | OCaml -> m.impl
-      | Reason ->
-        let ml = Module.File.to_ocaml m.impl in
-        SC.add_rule sctx (rule m.impl.name ml.name);
-        ml in
-    let intf =
-      Option.map m.intf ~f:(fun f ->
-        match f.syntax with
-        | OCaml -> f
-        | Reason ->
-          let mli = Module.File.to_ocaml f in
-          SC.add_rule sctx (rule f.name mli.name);
-          mli) in
-    { m with impl ; intf }
-
-  (* Generate rules to build the .pp files and return a new module map where all filenames
-     point to the .pp files *)
-  let pped_modules ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name =
-    let preprocessor_deps = SC.Deps.interpret sctx ~dir preprocessor_deps in
-    String_map.map modules ~f:(fun (m : Module.t) ->
-      let m = setup_reason_rules ~dir m in
-      match Preprocess_map.find m.name preprocess with
-      | No_preprocessing -> m
-      | Action action ->
-        pped_module m ~dir ~f:(fun _kind src dst ->
-          SC.add_rule sctx
-            (preprocessor_deps
-             >>>
-             Build.path src
-             >>>
-             SC.Action.run sctx
-               (Redirect
-                  (Stdout,
-                   target_var,
-                   Chdir (root_var,
-                          action)))
-               ~dir
-               ~dep_kind
-               ~targets:[dst]
-               ~deps:[Some src]))
-      | Pps { pps; flags } ->
-        let ppx_exe = get_ppx_driver pps ~dir ~dep_kind in
-        pped_module m ~dir ~f:(fun kind src dst ->
-          SC.add_rule sctx
-            (preprocessor_deps
-             >>>
-             Build.run ~context:ctx
-               (Dep ppx_exe)
-               [ As flags
-               ; A "--dump-ast"
-               ; As (cookie_library_name lib_name)
-               ; A "-o"; Target dst
-               ; Ml_kind.ppx_driver_flag kind; Dep src
-               ])
-        )
-    )
-
   let real_requires ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
     let all_pps =
       List.map (Preprocess_map.pps preprocess) ~f:Pp.to_string
@@ -266,11 +68,11 @@ module Gen(P : Params) = struct
     let ppx_flags ~dir ~src_dir { preprocess; libname; _ } =
       match preprocess with
       | Pps { pps; flags } ->
-        let exe = get_ppx_driver pps ~dir ~dep_kind:Optional in
+        let exe = SC.PP.get_ppx_driver sctx pps ~dir ~dep_kind:Optional in
         let command =
           List.map (Path.reach exe ~from:src_dir
                     :: "--as-ppx"
-                    :: cookie_library_name libname
+                    :: SC.PP.cookie_library_name libname
                     @ flags)
             ~f:quote_for_shell
           |> String.concat ~sep:" "
@@ -688,7 +490,7 @@ module Gen(P : Params) = struct
         String_map.values modules);
     (* Preprocess before adding the alias module as it doesn't need preprocessing *)
     let modules =
-      pped_modules ~dir ~dep_kind ~modules ~preprocess:lib.buildable.preprocess
+      SC.PP.pped_modules sctx ~dir ~dep_kind ~modules ~preprocess:lib.buildable.preprocess
         ~preprocessor_deps:lib.buildable.preprocessor_deps
         ~lib_name:(Some lib.name)
     in
@@ -883,7 +685,7 @@ module Gen(P : Params) = struct
         die "executable %s in %s doesn't have a corresponding .ml file"
           name (Path.to_string dir));
     let modules =
-      pped_modules ~dir ~dep_kind ~modules
+      SC.PP.pped_modules sctx ~dir ~dep_kind ~modules
         ~preprocess:exes.buildable.preprocess
         ~preprocessor_deps:exes.buildable.preprocessor_deps
         ~lib_name:None
@@ -1251,7 +1053,7 @@ module Gen(P : Params) = struct
             pps
         in
         let ppx_exe =
-          get_ppx_driver pps
+          SC.PP.get_ppx_driver sctx pps
             ~dir ~dep_kind:(if lib.optional then Build.Optional else Required)
         in
         [ppx_exe]

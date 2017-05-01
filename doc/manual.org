@@ -568,6 +568,11 @@ The syntax is as follows:
 - =<action>=, an action to run when constructing the alias. See the
   [[User actions][actions section]] for more details.
 
+- =(package <name>)=. If there are no ambiguities, you can omit this
+  field. Otherwise you need it to specify which package this alias is a part of.
+  The package is not ambiguous when the first parent directory to contain a
+  =<package>.opam= file contains exactly one =<package>.opam= file
+
 The typical use of the =alias= stanza is to define tests:
 
 #+begin_src scheme

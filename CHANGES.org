@@ -5,6 +5,16 @@
 - Hint for mistyped targets. Only suggest correction on the basename
   for now, otherwise it's slow when the workspace is big
 
+- Add a =(package ...)= field for aliases, so that one can restrict
+  tests to a specific package (Rudi Grinberg, #64)
+
+- Fix a couple of bugs on Windows and add AppVeyor CI
+
+- Better error message in case a chain of dependencies /crosses/ the
+  installed world
+
+- Better error messages for invalid dependency list in jbuild files
+
 * 1.0+beta8 (17/04/2017)
 
 - Added =${lib-available:<library-name>}= which expands to =true= or

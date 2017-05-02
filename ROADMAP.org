@@ -70,9 +70,11 @@ documentation.
 
 - *24/02/2017*: Implemented
 
-** Add a =(package ...)= field to alias stanzas
+** +Add a =(package ...)= field to alias stanzas+
 
 So that we can filter tests when using =-p pkg=
+
+- *05/02/2017*: Rudi Grinberg added this ([[https://github.com/janestreet/jbuilder/pull/64][#64]])
 
 ** Integrate rules for =-output-complete-obj=
 

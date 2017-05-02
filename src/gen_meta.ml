@@ -109,7 +109,7 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~
                    ]
              }
          ])
-    ; (match lib.js_of_ocaml with
+    ; (match lib.buildable.js_of_ocaml with
        | { javascript_files = []; _ } -> []
        | { javascript_files = l ; _ } ->
          let root = Pub_name.root pub_name in

@@ -102,7 +102,7 @@ let jsoo_runtime_files ts =
     | External pkg ->
       List.map pkg.jsoo_runtime ~f:(Path.relative pkg.dir)
     | Internal (dir, lib) ->
-      List.map lib.js_of_ocaml.javascript_files ~f:(Path.relative dir))
+      List.map lib.buildable.js_of_ocaml.javascript_files ~f:(Path.relative dir))
 (*
 let ppx_runtime_libraries ts =
   List.fold_left ts ~init:String_set.empty ~f:(fun acc t ->

@@ -254,7 +254,7 @@ module Gen(P : Params) = struct
     SC.Libs.add_select_rules sctx ~dir lib.buildable.libraries;
 
     let dynlink = lib.dynlink in
-    let js_of_ocaml = lib.js_of_ocaml in
+    let js_of_ocaml = lib.buildable.js_of_ocaml in
     Module_compilation.build_modules sctx
       ~js_of_ocaml ~dynlink ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
@@ -330,7 +330,7 @@ module Gen(P : Params) = struct
     (* Build *.cma.js *)
     SC.add_rules sctx (
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
-      Js_of_ocaml_rules.build_cm sctx ~dir ~js_of_ocaml:lib.js_of_ocaml ~src);
+      Js_of_ocaml_rules.build_cm sctx ~dir ~js_of_ocaml:lib.buildable.js_of_ocaml ~src);
 
     if ctx.natdynlink_supported then
       Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
@@ -442,14 +442,15 @@ module Gen(P : Params) = struct
     SC.Libs.add_select_rules sctx ~dir exes.buildable.libraries;
 
     (* CR-someday jdimino: this should probably say [~dynlink:false] *)
-    Module_compilation.build_modules sctx ~js_of_ocaml:exes.js_of_ocaml
-    ~dynlink:true ~flags ~dir ~dep_graph ~modules
+    Module_compilation.build_modules sctx
+      ~js_of_ocaml:exes.buildable.js_of_ocaml
+      ~dynlink:true ~flags ~dir ~dep_graph ~modules
       ~requires ~alias_module:None;
 
     List.iter exes.names ~f:(fun name ->
       List.iter Mode.all ~f:(fun mode ->
-        build_exe ~js_of_ocaml:exes.js_of_ocaml ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
-          ~link_flags:exes.link_flags));
+        build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~dir ~requires ~name
+          ~mode ~modules ~dep_graph ~link_flags:exes.link_flags));
     { Merlin.
       requires   = real_requires
     ; flags      = flags.common
@@ -769,7 +770,7 @@ module Gen(P : Params) = struct
                else
                  files
             )
-        ; List.map lib.js_of_ocaml.javascript_files ~f:(Path.relative dir)
+        ; List.map lib.buildable.js_of_ocaml.javascript_files ~f:(Path.relative dir)
         ; List.map lib.install_c_headers ~f:(fun fn ->
             Path.relative dir (fn ^ ".h"))
         ]

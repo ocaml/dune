@@ -559,7 +559,7 @@ The syntax is as follows:
 
 =<name>= is an alias name such as =runtest=.
 
-=<deps-conf list>= specifies the dependencies of the rule. See the
+=<deps-conf list>= specifies the dependencies of the alias. See the
 [[Dependency
  specification][dependency specification section]] for more details.
 
@@ -568,10 +568,10 @@ The syntax is as follows:
 - =<action>=, an action to run when constructing the alias. See the
   [[User actions][actions section]] for more details.
 
-- =(package <name>)=. If there are no ambiguities, you can omit this
-  field. Otherwise you need it to specify which package this alias is a part of.
-  The package is not ambiguous when the first parent directory to contain a
-  =<package>.opam= file contains exactly one =<package>.opam= file
+- =(package <name>)= indicates that this alias stanza is part of
+  package =<name>= and should be filtered out if =<name>= is filtered
+  out from the command line, either with =--only-packages <pkgs>= or
+  =-p <pkgs>=
 
 The typical use of the =alias= stanza is to define tests:
 
@@ -582,6 +582,11 @@ The typical use of the =alias= stanza is to define tests:
 #+end_src
 
 See the [[Running tests][section about running tests]] for details.
+
+Note that if your project contains several packages and you run test
+the tests from the opam file using a =build-test= field, then all your
+=runtest= alias stanzas should have a =(package ...)= field in order
+to partition the set of tests.
 
 **** install
 

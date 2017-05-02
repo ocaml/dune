@@ -110,12 +110,15 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~
              }
          ])
     ; (match lib.js_of_ocaml with
-       | None | Some { javascript_files = []; _ } -> []
-       | Some { javascript_files = l; _ } ->
+       | { javascript_files = []; _ } -> []
+       | { javascript_files = l ; _ } ->
          let root = Pub_name.root pub_name in
          [ rule "linkopts" [Pos "javascript"] Set
              (List.map l ~f:(fun fn ->
                 sprintf "+%s/%s" root (Filename.basename fn))
+              |> String.concat ~sep:" ")
+         ; rule "jsoo_runtime" [] Set
+             (List.map l ~f:Filename.basename
               |> String.concat ~sep:" ")
          ]
       )

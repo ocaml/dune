@@ -96,6 +96,13 @@ let archive_files ts ~mode ~ext_lib =
         Jbuild_types.Library.stubs_archive lib ~dir ~ext_lib :: l
       else
         l)
+
+let jsoo_runtime_files ts =
+  List.concat_map ts ~f:(function
+    | External pkg ->
+      List.map pkg.jsoo_runtime ~f:(Path.relative pkg.dir)
+    | Internal (dir, lib) ->
+      List.map lib.js_of_ocaml.javascript_files ~f:(Path.relative dir))
 (*
 let ppx_runtime_libraries ts =
   List.fold_left ts ~init:String_set.empty ~f:(fun acc t ->

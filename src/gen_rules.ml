@@ -252,11 +252,13 @@ module Gen(P : Params) = struct
     SC.Libs.add_select_rules sctx ~dir lib.buildable.libraries;
 
     let dynlink = lib.dynlink in
+    let js_of_ocaml = lib.js_of_ocaml in
     Module_compilation.build_modules sctx
-      ~dynlink ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
+      ~js_of_ocaml ~dynlink ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
       let flags = Ocaml_flags.default () in
       Module_compilation.build_module sctx m
+         ~js_of_ocaml
         ~dynlink
         ~sandbox:alias_module_build_sandbox
         ~flags:{ flags with common = flags.common @ ["-w"; "-49"] }
@@ -323,6 +325,10 @@ module Gen(P : Params) = struct
 
     List.iter Mode.all ~f:(fun mode ->
       build_lib lib ~flags ~dir ~mode ~modules ~dep_graph);
+    (* Build *.cma.js *)
+    SC.add_rules sctx (
+      let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
+      Js_of_ocaml_rules.build_cm ~sctx ~dir ~js_of_ocaml:lib.js_of_ocaml ~src);
 
     if ctx.natdynlink_supported then
       Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
@@ -365,7 +371,7 @@ module Gen(P : Params) = struct
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  let build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph ~link_flags =
+  let build_exe ~js_of_ocaml ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph ~link_flags =
     let exe_ext = Mode.exe_ext mode in
     let mode, link_flags, compiler =
       match Context.compiler ctx mode with
@@ -374,19 +380,21 @@ module Gen(P : Params) = struct
     in
     let dep_graph = Ml_kind.Dict.get dep_graph Impl in
     let exe = Path.relative dir (name ^ exe_ext) in
+    let libs_and_cm =
+      Build.fanout
+        (requires
+         >>> Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib)))
+        (dep_graph
+         >>> Build.arr (fun dep_graph ->
+           Ocamldep.names_to_top_closed_cm_files
+             ~dir
+             ~dep_graph
+             ~modules
+             ~mode
+             [String.capitalize_ascii name]))
+    in
     SC.add_rule sctx
-      (Build.fanout
-         (requires
-          >>> Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib)))
-         (dep_graph
-          >>> Build.arr (fun dep_graph ->
-            Ocamldep.names_to_top_closed_cm_files
-              ~dir
-              ~dep_graph
-              ~modules
-              ~mode
-              [String.capitalize_ascii name]))
-       >>>
+      (libs_and_cm >>>
        Build.run ~context:ctx
          (Dep compiler)
          [ Ocaml_flags.get flags mode
@@ -394,7 +402,10 @@ module Gen(P : Params) = struct
          ; As link_flags
          ; Dyn (fun (libs, _) -> Lib.link_flags libs ~mode)
          ; Dyn (fun (_, cm_files) -> Deps cm_files)
-         ])
+         ]);
+    if mode = Mode.Byte then
+      let rules = Js_of_ocaml_rules.build_exe ~sctx ~dir ~js_of_ocaml ~src:exe in
+      SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm >>> r))
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules =
     let dep_kind = Build.Required in
@@ -429,14 +440,14 @@ module Gen(P : Params) = struct
     SC.Libs.add_select_rules sctx ~dir exes.buildable.libraries;
 
     (* CR-someday jdimino: this should probably say [~dynlink:false] *)
-    Module_compilation.build_modules sctx ~dynlink:true ~flags ~dir ~dep_graph ~modules
+    Module_compilation.build_modules sctx ~js_of_ocaml:exes.js_of_ocaml
+    ~dynlink:true ~flags ~dir ~dep_graph ~modules
       ~requires ~alias_module:None;
 
     List.iter exes.names ~f:(fun name ->
       List.iter Mode.all ~f:(fun mode ->
-        build_exe ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
+        build_exe ~js_of_ocaml:exes.js_of_ocaml ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
           ~link_flags:exes.link_flags));
-
     { Merlin.
       requires   = real_requires
     ; flags      = flags.common
@@ -600,7 +611,7 @@ module Gen(P : Params) = struct
     |> Merlin.add_rules sctx ~dir:ctx_dir
 
   let () = List.iter (SC.stanzas sctx) ~f:rules
-
+  let () = SC.add_rules sctx (Js_of_ocaml_rules.setup_findlib ~sctx)
   (* +-----------------------------------------------------------------+
      | META                                                            |
      +-----------------------------------------------------------------+ *)
@@ -754,10 +765,7 @@ module Gen(P : Params) = struct
                else
                  files
             )
-        ; (match lib.js_of_ocaml with
-           | None -> []
-           | Some { javascript_files = l; _ } ->
-             List.map l ~f:(Path.relative dir))
+        ; List.map lib.js_of_ocaml.javascript_files ~f:(Path.relative dir)
         ; List.map lib.install_c_headers ~f:(fun fn ->
             Path.relative dir (fn ^ ".h"))
         ]

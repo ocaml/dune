@@ -125,6 +125,7 @@ type package =
   ; description      : string
   ; archives         : string list Mode.Dict.t
   ; plugins          : string list Mode.Dict.t
+  ; jsoo_runtime     : string list
   ; requires         : package list
   ; ppx_runtime_deps : package list
   ; has_headers      : bool
@@ -197,6 +198,7 @@ let parse_package t ~name ~parent_dir ~vars ~required_by =
     Mode.Dict.of_func (fun ~mode ->
       Vars.get_words vars var (Mode.findlib_predicate mode :: preds))
   in
+  let jsoo_runtime = Vars.get_words vars "jsoo_runtime" [] in
   let preds = ["ppx_driver"; "mt"; "mt_posix"] in
   let pkg =
     { name
@@ -205,6 +207,7 @@ let parse_package t ~name ~parent_dir ~vars ~required_by =
     ; version     = Vars.get vars "version" []
     ; description = Vars.get vars "description" []
     ; archives    = archives "archive" preds
+    ; jsoo_runtime
     ; plugins     = Mode.Dict.map2 ~f:(@)
                       (archives "archive" ("plugin" :: preds))
                       (archives "plugin" preds)
@@ -490,3 +493,12 @@ let all_packages t =
     | Present p -> p :: acc
     | Absent  _ -> acc)
   |> List.sort ~cmp:(fun a b -> String.compare a.name b.name)
+
+
+let stdlib_with_archives t =
+  let x = find_exn t ~required_by:[] "stdlib" in
+  let archives =
+    { Mode.Dict.byte   = "stdlib.cma"  :: x.archives.byte
+    ; Mode.Dict.native = "stdlib.cmxa" :: x.archives.native }
+  in
+  { x with archives }

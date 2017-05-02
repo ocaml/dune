@@ -940,14 +940,17 @@ as follows:
 #+end_src
 
 ***** Js_of_ocaml
+
 In =library= and =executables= stanzas, you can specify Js_of_ocaml
 options using =(js_of_ocaml (<js_of_ocaml-options>))=.
 
 =<js_of_ocaml-options>= are all optional:
+
 - =(flags <flags>)= to specify flags passed to =js_of_ocaml=
+
 - =(javascript_files (<files-list>))= to specify js_of_ocaml
   JavaScript runtime files.
-  
+
 =<flags>= is specified in the [[Ordered set language][ordered set language]].
 
 The default value for =(flags ...)= depends on whether =--dev= is passed to

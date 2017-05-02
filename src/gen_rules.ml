@@ -147,7 +147,9 @@ module Gen(P : Params) = struct
          (* We have to execute the rule in the library directory as the .o is produced in
             the current directory *)
          ~dir
-         (Build.Prog_spec.of_prog_name ctx ctx.c_compiler)
+         (SC.resolve_program sctx ctx.c_compiler
+            (* The C compiler surely is not in the tree *)
+            ~in_the_tree:false)
          [ S [A "-I"; Path ctx.stdlib_dir]
          ; expand_includes ~dir lib.includes
          ; As (SC.cxx_flags sctx)
@@ -328,7 +330,7 @@ module Gen(P : Params) = struct
     (* Build *.cma.js *)
     SC.add_rules sctx (
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
-      Js_of_ocaml_rules.build_cm ~sctx ~dir ~js_of_ocaml:lib.js_of_ocaml ~src);
+      Js_of_ocaml_rules.build_cm sctx ~dir ~js_of_ocaml:lib.js_of_ocaml ~src);
 
     if ctx.natdynlink_supported then
       Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
@@ -404,7 +406,7 @@ module Gen(P : Params) = struct
          ; Dyn (fun (_, cm_files) -> Deps cm_files)
          ]);
     if mode = Mode.Byte then
-      let rules = Js_of_ocaml_rules.build_exe ~sctx ~dir ~js_of_ocaml ~src:exe in
+      let rules = Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe in
       SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm >>> r))
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules =
@@ -611,7 +613,9 @@ module Gen(P : Params) = struct
     |> Merlin.add_rules sctx ~dir:ctx_dir
 
   let () = List.iter (SC.stanzas sctx) ~f:rules
-  let () = SC.add_rules sctx (Js_of_ocaml_rules.setup_findlib ~sctx)
+  let () =
+    SC.add_rules sctx (Js_of_ocaml_rules.setup_separate_compilation_rules sctx)
+
   (* +-----------------------------------------------------------------+
      | META                                                            |
      +-----------------------------------------------------------------+ *)

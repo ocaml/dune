@@ -1,8 +1,10 @@
 open Import
-module C = Super_context
+
+module SC = Super_context
+
 let separate_compilation_enabled () = !Clflags.dev_mode
 
-let pretty () = if !Clflags.dev_mode then ["--pretty"] else []
+let pretty    () = if !Clflags.dev_mode then ["--pretty"           ] else []
 let sourcemap () = if !Clflags.dev_mode then ["--source-map-inline"] else []
 
 let standard () = pretty () @ sourcemap ()
@@ -15,25 +17,20 @@ let in_build_dir ~ctx =
 
 let runtime_file ~sctx ~dir fname =
   let _lib, file =
-    Artifacts.file_of_lib (C.artifacts sctx) ~from:dir ~use_provides:false
+    Artifacts.file_of_lib (SC.artifacts sctx) ~from:dir ~use_provides:false
       (sprintf "js_of_ocaml-compiler:%s" fname)
   in
   match file with
   | Error _ ->
     Arg_spec.Dyn (fun _ ->
-      Utils.library_not_found ~context:(C.context sctx).name ~hint:install_jsoo_hint "js_of_ocaml-compiler")
+      Utils.library_not_found ~context:(SC.context sctx).name ~hint:install_jsoo_hint
+        "js_of_ocaml-compiler")
   | Ok f -> Arg_spec.Dep f
 
-let prog_spec ~sctx ~hint bin =  match Artifacts.binary (C.artifacts sctx) bin with
-  | Error _ ->
-    Build.Prog_spec.Dyn (fun _ ->
-      Utils.program_not_found ~context:(C.context sctx).name ~hint bin)
-  | Ok p -> Build.Prog_spec.Dep p
-
 let js_of_ocaml_rule ~sctx ~dir ~flags ~spec ~target =
-  let jsoo = prog_spec ~sctx ~hint:install_jsoo_hint "js_of_ocaml" in
+  let jsoo = SC.resolve_program sctx ~hint:install_jsoo_hint "js_of_ocaml" in
   let runtime = runtime_file ~sctx ~dir "runtime.js" in
-  Build.run ~context:(C.context sctx) ~dir
+  Build.run ~context:(SC.context sctx) ~dir
     jsoo
     [ Arg_spec.As flags
     ; Arg_spec.A "-o"; Target target
@@ -64,7 +61,7 @@ let exe_rule ~sctx ~dir ~flags ~javascript_files ~src ~target =
   js_of_ocaml_rule ~sctx ~dir ~flags ~spec ~target
 
 let link_rule ~sctx ~dir ~runtime ~target =
-  let ctx = C.context sctx in
+  let ctx = SC.context sctx in
   let get_all (libs,cm) =
     (* Special case for the stdlib because it is not referenced in the META *)
     let stdlib = Lib.External (Findlib.stdlib_with_archives ctx.findlib) in
@@ -77,11 +74,13 @@ let link_rule ~sctx ~dir ~runtime ~target =
           [ Path.relative dir (sprintf "%s.cma.js" lib.name) ]
       )
     in
-    let all_other_modules = List.map cm ~f:(fun m -> Path.extend_basename m ~suffix:".js") in
+    let all_other_modules =
+      List.map cm ~f:(fun m -> Path.extend_basename m ~suffix:".js")
+    in
     Arg_spec.Deps (List.concat [all_libs;all_other_modules])
   in
-  let jsoo_link = prog_spec ~sctx ~hint:install_jsoo_hint "jsoo_link" in
-  Build.run ~context:(C.context sctx) ~dir
+  let jsoo_link = SC.resolve_program sctx ~hint:install_jsoo_hint "jsoo_link" in
+  Build.run ~context:(SC.context sctx) ~dir
     jsoo_link
     [ Arg_spec.A "-o"; Target target
     ; Arg_spec.Dep runtime
@@ -89,7 +88,7 @@ let link_rule ~sctx ~dir ~runtime ~target =
     ; Arg_spec.Dyn get_all
     ]
 
-let build_cm ~sctx ~dir ~js_of_ocaml ~src =
+let build_cm sctx ~dir ~js_of_ocaml ~src =
   if separate_compilation_enabled ()
   then let target = Path.extend_basename src ~suffix:".js" in
     let spec = Arg_spec.Dep src in
@@ -101,10 +100,10 @@ let build_cm ~sctx ~dir ~js_of_ocaml ~src =
     [ js_of_ocaml_rule ~sctx ~dir ~flags ~spec ~target ]
   else []
 
-let setup_findlib ~sctx =
+let setup_separate_compilation_rules sctx =
   if separate_compilation_enabled ()
   then
-    let ctx = C.context sctx in
+    let ctx = SC.context sctx in
     let all_pkg =
       List.map
         (Findlib.all_packages ctx.findlib)
@@ -130,7 +129,7 @@ let setup_findlib ~sctx =
         ))
   else []
 
-let build_exe ~sctx ~dir ~js_of_ocaml ~src =
+let build_exe sctx ~dir ~js_of_ocaml ~src =
   let {Jbuild_types.Js_of_ocaml.javascript_files; flags} = js_of_ocaml in
   let javascript_files = List.map javascript_files ~f:(Path.relative dir) in
   let mk_target ext = Path.extend_basename src ~suffix:ext in
@@ -138,7 +137,8 @@ let build_exe ~sctx ~dir ~js_of_ocaml ~src =
   let standalone_runtime = mk_target ".runtime.js" in
   if separate_compilation_enabled () then
     [ link_rule ~sctx ~dir ~runtime:standalone_runtime ~target
-    ; standalone_runtime_rule ~sctx ~dir ~flags ~javascript_files ~target:standalone_runtime
+    ; standalone_runtime_rule ~sctx ~dir ~flags ~javascript_files
+        ~target:standalone_runtime
     ]
   else
     [ exe_rule ~sctx ~dir ~flags ~javascript_files ~src ~target ]

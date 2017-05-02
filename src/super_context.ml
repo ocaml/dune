@@ -44,6 +44,11 @@ let expand_vars t ~dir s =
   | "ROOT" -> Some (Path.reach ~from:dir t.context.build_dir)
   | var -> String_map.find var t.vars)
 
+let resolve_program t ?hint ?(in_the_tree=true) bin =
+  match Artifacts.binary t.artifacts ?hint ~in_the_tree bin with
+  | Error fail -> Build.Prog_spec.Dyn (fun _ -> fail.fail ())
+  | Ok    path -> Build.Prog_spec.Dep path
+
 let create
       ~(context:Context.t)
       ~aliases
@@ -598,12 +603,7 @@ module PP = struct
      a new module with only OCaml sources *)
   let setup_reason_rules sctx ~dir (m : Module.t) =
     let ctx = sctx.context in
-    let refmt =
-      match Artifacts.binary (artifacts sctx) "refmt" with
-      | Error _ ->
-        Build.Prog_spec.Dyn (fun _ ->
-          Utils.program_not_found ~context:ctx.name ~hint:"opam install reason" "refmt")
-      | Ok p -> Build.Prog_spec.Dep p in
+    let refmt = resolve_program sctx "refmt" ~hint:"opam install reason" in
     let rule src target =
       let src_path = Path.relative dir src in
       Build.run ~context:ctx refmt

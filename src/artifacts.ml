@@ -43,20 +43,38 @@ let create context stanzas =
   ; local_libs
   }
 
-let binary t name =
-  if String_set.mem name t.local_bins then
-    Ok (Path.relative (Config.local_install_bin_dir ~context:t.context.name) name)
-  else
-    match String_map.find name t.provides with
-    | Some p -> Ok p
-    | None ->
-      match Context.which t.context name with
+let binary t ?hint ?(in_the_tree=true) name =
+  if not (Filename.is_relative name) then
+    Ok (Path.absolute name)
+  else if in_the_tree then begin
+    if String_set.mem name t.local_bins then
+      Ok (Path.relative (Config.local_install_bin_dir ~context:t.context.name) name)
+    else
+      match String_map.find name t.provides with
       | Some p -> Ok p
       | None ->
-        Error
-          { fail = fun () ->
-              die "Program %s not found in the tree or in the PATH" name
-          }
+        match Context.which t.context name with
+        | Some p -> Ok p
+        | None ->
+          Error
+            { fail = fun () ->
+                Utils.program_not_found name
+                  ~context:t.context.name
+                  ?hint
+                  ~in_the_tree:true
+            }
+  end else begin
+    match Context.which t.context name with
+    | Some p -> Ok p
+    | None ->
+      Error
+        { fail = fun () ->
+            Utils.program_not_found name
+              ~context:t.context.name
+              ?hint
+              ~in_the_tree:false
+        }
+  end
 
 let file_of_lib ?(use_provides=false) t ~from ~lib ~file =
   match String_map.find lib t.local_libs with

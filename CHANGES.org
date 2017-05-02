@@ -1,6 +1,7 @@
 * next
 
 - Add support for building Reason projects (Rudi Grinberg, #58)
+
 - Add support for building javascript with js_of_ocaml (Hugo Heuzard, #60)
 
 - Hint for mistyped targets. Only suggest correction on the basename

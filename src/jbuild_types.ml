@@ -5,7 +5,7 @@ open Sexp.Of_sexp
    supported version of the specification.
 
    [vN] is for the version [N] of the specification and [vjs] is for the rolling
-   [jane_street] version. When they are all the same, sexp parsers are just named [t].
+   [jane_street] version, when needed.
 *)
 
 module Jbuild_version = struct
@@ -370,7 +370,7 @@ module Buildable = struct
     ; js_of_ocaml              : Js_of_ocaml.t
     }
 
-  let common =
+  let v1 =
     field "preprocess" Preprocess_map.t ~default:Preprocess_map.default
     >>= fun preprocess ->
     field "preprocessor_deps" (list Dep_conf.t) ~default:[]
@@ -397,9 +397,6 @@ module Buildable = struct
       ; ocamlopt_flags
       ; js_of_ocaml
       }
-
-  let v1 = common
-  let vjs = v1
 
   let single_preprocess t =
     match t.preprocess with
@@ -508,51 +505,6 @@ module Library = struct
          ; dynlink = not no_dynlink
          })
 
-  let vjs =
-    record
-      (ignore_fields [] >>= fun () ->
-       Buildable.vjs >>= fun buildable ->
-       field      "name" library_name                                      >>= fun name                     ->
-       field_o    "public_name" Public_lib.t                               >>= fun public                   ->
-       field_o    "synopsis" string                                        >>= fun synopsis                 ->
-       field      "install_c_headers" (list string) ~default:[]            >>= fun install_c_headers        ->
-       field      "ppx_runtime_libraries" (list string) ~default:[]        >>= fun ppx_runtime_libraries    ->
-       field_oslu "c_flags"                                                >>= fun c_flags                  ->
-       field_oslu "cxx_flags"                                              >>= fun cxx_flags                ->
-       field      "c_names" (list string) ~default:[]                      >>= fun c_names                  ->
-       field      "cxx_names" (list string) ~default:[]                    >>= fun cxx_names                ->
-       field      "library_flags" (list String_with_vars.t) ~default:[]    >>= fun library_flags            ->
-       field_oslu "c_library_flags"                                        >>= fun c_library_flags          ->
-       field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
-       field      "virtual_deps" (list string) ~default:[]                 >>= fun virtual_deps             ->
-       field      "modes" (list Mode.t) ~default:Mode.all                  >>= fun modes                    ->
-       field      "includes" (list String_with_vars.t) ~default:[]         >>= fun includes                 ->
-       field      "kind" Kind.t ~default:Kind.Normal                       >>= fun kind                     ->
-       field      "wrapped" bool ~default:true                             >>= fun wrapped                  ->
-       field_b    "optional"                                               >>= fun optional                 ->
-       return
-         { name
-         ; public
-         ; synopsis
-         ; install_c_headers
-         ; ppx_runtime_libraries
-         ; modes
-         ; kind
-         ; c_names
-         ; c_flags
-         ; cxx_names
-         ; cxx_flags
-         ; includes
-         ; library_flags
-         ; c_library_flags
-         ; self_build_stubs_archive
-         ; virtual_deps
-         ; wrapped
-         ; optional
-         ; buildable
-         ; dynlink = true
-         })
-
   let has_stubs t =
     match t.c_names, t.cxx_names, t.self_build_stubs_archive with
     | [], [], None -> false
@@ -596,8 +548,6 @@ module Install_conf = struct
          ; files
          ; package
          })
-
-  let vjs = v1
 end
 
 module Executables = struct
@@ -657,21 +607,6 @@ module Executables = struct
       (field   "name" string        >>= fun name ->
        field_o "public_name" string >>= fun public_name ->
        common_v1 [name] [public_name])
-
-  let vjs =
-    record
-      (ignore_fields []
-       >>= fun () ->
-       Buildable.vjs >>= fun buildable ->
-       field "names"              (list string)      >>= fun names ->
-       field "link_executables"   bool ~default:true >>= fun link_executables ->
-       field "link_flags"         (list string) ~default:[] >>= fun link_flags ->
-       return
-         { names
-         ; link_executables
-         ; link_flags
-         ; buildable
-         })
 end
 
 module Rule = struct
@@ -681,18 +616,12 @@ module Rule = struct
     ; action  : Action.Mini_shexp.Unexpanded.t
     }
 
-  let common =
-    field "targets" (list file_in_current_dir)    >>= fun targets ->
-    field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
-    field "action"  Action.Mini_shexp.Unexpanded.t      >>= fun action ->
-    return { targets; deps; action }
-
-  let v1 = record common
-
-  let vjs =
+  let v1 =
     record
-      (ignore_fields [] >>= fun () ->
-       common)
+      (field "targets" (list file_in_current_dir)    >>= fun targets ->
+       field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
+       field "action"  Action.Mini_shexp.Unexpanded.t      >>= fun action ->
+       return { targets; deps; action })
 
   let ocamllex_v1 names =
     let str s = String_with_vars.of_string s in
@@ -708,8 +637,6 @@ module Rule = struct
                   [str "-q"; str "-o"; str "${@}"; str "${<}"]))
       })
 
-  let ocamllex_vjs = ocamllex_v1
-
   let ocamlyacc_v1 names =
     let str s = String_with_vars.of_string s in
     List.map names ~f:(fun name ->
@@ -722,8 +649,6 @@ module Rule = struct
              Run (str "${bin:ocamlyacc}",
                   [str "${<}"]))
       })
-
-  let ocamlyacc_vjs = ocamlyacc_v1
 end
 
 module Menhir = struct
@@ -800,8 +725,6 @@ module Provides = struct
       }
     | sexp ->
       of_sexp_error sexp "[<name>] or [<name> (file <file>)] expected"
-
-  let vjs = v1
 end
 
 module Alias_conf = struct
@@ -812,24 +735,18 @@ module Alias_conf = struct
     ; package : string option
     }
 
-  let common =
-    field "name" string                              >>= fun name ->
-    field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
-    field_o "package" string                         >>= fun package ->
-    field_o "action" Action.Mini_shexp.Unexpanded.t  >>= fun action ->
-    return
-      { name
-      ; deps
-      ; action
-      ; package
-      }
-
-  let v1 = record common
-
-  let vjs =
+  let v1 =
     record
-      (ignore_fields [] >>= fun () ->
-       common)
+      (field "name" string                              >>= fun name ->
+       field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
+       field_o "package" string                         >>= fun package ->
+       field_o "action" Action.Mini_shexp.Unexpanded.t  >>= fun action ->
+       return
+         { name
+         ; deps
+         ; action
+         ; package
+         })
 end
 
 module Stanza = struct
@@ -863,28 +780,9 @@ module Stanza = struct
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]
 
-  let vjs =
-    let ign name = cstr name ((fun _ -> ()) @> nil) (fun () -> []) in
-    sum
-      [ cstr "library"     (Library.vjs @> nil)      (fun x -> [Library     x])
-      ; cstr "executables" (Executables.vjs @> nil)  (fun x -> [Executables x])
-      ; cstr "rule"        (Rule.vjs @> nil)         (fun x -> [Rule        x])
-      ; cstr "ocamllex"    (list string @> nil)      (fun x -> rules (Rule.ocamllex_vjs x))
-      ; cstr "ocamlyacc"   (list string @> nil)      (fun x -> rules (Rule.ocamlyacc_vjs x))
-      ; cstr "provides"    (Provides.vjs @> nil)     (fun x -> [Provides    x])
-      ; cstr "install"     (Install_conf.vjs @> nil) (fun x -> [Install     x])
-      ; cstr "alias"       (Alias_conf.vjs @> nil)   (fun x -> [Alias       x])
-      ; ign "enforce_style"
-      ; ign "toplevel_expect_tests"
-      ; ign "unified_tests"
-      ; ign "embed"
-      (* Just for validation and error messages  *)
-      ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
-      ]
-
   let select : Jbuild_version.t -> t list Sexp.Of_sexp.t = function
     | V1  -> v1
-    | Vjs -> vjs
+    | Vjs -> v1
 
   let lib_names ts =
     List.fold_left ts ~init:String_set.empty ~f:(fun acc (_, stanzas) ->

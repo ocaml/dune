@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   %%NAME%% %%VERSION%%
+   cmdliner v1.0.0
   ---------------------------------------------------------------------------*)
 
 (** Declarative definition of command line interfaces.
@@ -22,7 +22,7 @@
     use. Open the module to use it, it defines only three modules in
     your scope.
 
-    {e %%VERSION%% — {{:%%PKG_HOMEPAGE%% }homepage}} *)
+    {e v1.0.0 — {{:http://erratique.ch/software/cmdliner }homepage}} *)
 
 (** {1:top Interface} *)
 
@@ -76,15 +76,14 @@ module Manpage : sig
   (** The type for a man page. A title and the page text as a list of blocks. *)
 
   type xref =
-    [ `Main | `Cmd of string | `Tool of string | `Page of int * string ]
+    [ `Main | `Cmd of string | `Tool of string | `Page of string * int ]
   (** The type for man page cross-references.
       {ul
       {- [`Main] refers to the man page of the program itself.}
       {- [`Cmd cmd] refers to the man page of the program's [cmd]
          command (which must exist).}
       {- [`Tool bin] refers to the command line tool named [bin].}
-      {- [`Page (sec, name)] refers to the man page [name] of section
-         [sec].}} *)
+      {- [`Page (name, sec)] refers to the man page [name(sec)].}} *)
 
   (** {1:standard_sections Standard section names and content}
 
@@ -223,16 +222,6 @@ module Term : sig
       {- [`Help (format, name)], the evaluation fails and [Cmdliner] prints the
          term's man page in the given [format] (or the man page for a
          specific [name] term in case of multiple term evaluation).}}   *)
-
-  val ret_of_result : ?usage:bool -> ('a, [`Msg of string]) result -> 'a ret
-  (** [ret_of_result ~usage r] is
-      {ul
-      {- [`Ok v] if [r] is [Ok v].}
-      {- [`Error (usage, e)] if [r] is [Error (`Msg e)], [usage] defaults
-         to [false]}} *)
-
-  val ret_result : ?usage:bool -> ('a, [`Msg of string]) result t -> 'a ret t
-  (** [ret_result ~usage r] is [app (const @@ ret_of_result ~usage) r]. *)
 
   val term_result : ?usage:bool -> ('a, [`Msg of string]) result t -> 'a t
   (** [term_result ~usage t] evaluates to
@@ -425,17 +414,22 @@ module Term : sig
 
       {b Note.} If you are using the following functions to handle
       the evaluation result of a term you should add {!default_exits} to
-      the term's information {{!info}[~exits]} argument. *)
+      the term's information {{!info}[~exits]} argument.
+
+      {b WARNING.} You should avoid status codes strictly greater than 125
+      as those may be used by
+      {{:https://www.gnu.org/software/bash/manual/html_node/Exit-Status.html}
+       some} shells. *)
 
   val exit_status_success : int
   (** [exit_status_success] is 0, the exit status for success. *)
 
   val exit_status_cli_error : int
-  (** [exit_status_cli_error] is 125, an exit status for command line
+  (** [exit_status_cli_error] is 124, an exit status for command line
       parsing errors. *)
 
   val exit_status_internal_error : int
-  (** [exit_status_internal_error] is 124, an exit status for unexpected
+  (** [exit_status_internal_error] is 125, an exit status for unexpected
       internal errors. *)
 
   val exit_status_of_result : ?term_err:int -> 'a result -> int
@@ -444,17 +438,12 @@ module Term : sig
       {ul
       {- {!exit_status_success} if [r] is one of [`Ok _], [`Version], [`Help]}
       {- [term_err] if [r] is [`Error `Term], [term_err] defaults to [1].}
-      {- {!exit_status_internal_error} if [r] is [`Error `Exn]}
-      {- {!exit_status_cli_error} if [r] is [`Error `Parse]}} *)
+      {- {!exit_status_cli_error} if [r] is [`Error `Parse]}
+      {- {!exit_status_internal_error} if [r] is [`Error `Exn]}} *)
 
   val exit_status_of_status_result : ?term_err:int -> int result -> int
   (** [exit_status_of_status_result] is like {!exit_status_of_result}
-      except for [`Ok n] where [n] is used as the status exit code.
-
-      {b WARNING.} You should avoid status codes strictly greater than 125
-      as those may be used by
-      {{:https://www.gnu.org/software/bash/manual/html_node/Exit-Status.html}
-       some} shells. *)
+      except for [`Ok n] where [n] is used as the status exit code. *)
 
   val exit : ?term_err:int -> 'a result -> unit
   (** [exit ~term_err r] is
@@ -484,7 +473,8 @@ module Arg : sig
   type 'a parser = string -> [ `Ok of 'a | `Error of string ]
   (** The type for argument parsers.
 
-      @deprecated Use a parser with [('a, [ `Msg of string]) result] results. *)
+      @deprecated Use a parser with [('a, [ `Msg of string]) result] results
+      and {!conv}. *)
 
   type 'a printer = Format.formatter -> 'a -> unit
   (** The type for converted argument printers. *)
@@ -500,7 +490,6 @@ module Arg : sig
   (** @deprecated Use the {!type:conv} type via the {!val:conv} and {!pconv}
       functions. *)
 
-(*
   val conv :
     ?docv:string -> (string -> ('a, [`Msg of string]) result) * 'a printer ->
     'a conv
@@ -509,7 +498,6 @@ module Arg : sig
       [print]. [docv] is a documentation meta-variable used in the
       documentation to stand for the argument value, defaults to
       ["VALUE"]. *)
-*)
 
   val pconv :
     ?docv:string -> 'a parser * 'a printer -> 'a conv
@@ -533,7 +521,7 @@ module Arg : sig
     (string -> ('a, [`Msg of string]) result)
   (** [parser_of_kind_of_string ~kind kind_of_string] is an argument
       parser using the [kind_of_string] function for parsing and [kind]
-      to report errors (e.g. could be "an integer" for an [int] parser.). *)
+      to report errors (e.g. could be ["an integer"] for an [int] parser.). *)
 
   val some : ?none:string -> 'a conv -> 'a option conv
   (** [some none c] is like the converter [c] except it returns
@@ -586,10 +574,10 @@ module Arg : sig
          The {{!doclang}documentation language} can be used and
          the following variables are recognized:
          {ul
-         {- ["$(docv)"] the value of [docv] (see below)}
+         {- ["$(docv)"] the value of [docv] (see below).}
          {- ["$(opt)"], one of the options of [names], preference
             is given to a long one.}
-         {- ["$(env)", the environment var specified by [env] (if any)]}}
+         {- ["$(env)"], the environment var specified by [env] (if any).}}
          {{!doc_helpers}These functions} can help with formatting argument
          values.}
       {- [docv] is for positional and non-flag optional arguments.
@@ -853,7 +841,7 @@ let () = Term.exit @@ Term.eval (revolt_t, Term.info "revolt")
 ]}
 
 This defines a command line program named ["revolt"], without command
-line arguments arguments, that just prints ["Revolt!"] on [stdout].
+line arguments, that just prints ["Revolt!"] on [stdout].
 
 {[
 > ./revolt
@@ -971,9 +959,9 @@ EXIT STATUS
 
        0   on success.
 
-       124 on unexpected internal errors (bugs).
+       124 on command line parsing errors.
 
-       125 on command line parsing errors.
+       125 on unexpected internal errors (bugs).
 
 ENVIRONMENT
        These environment variables affect the execution of chorus:
@@ -1039,8 +1027,8 @@ populated for you:
 {- {{!Manpage.s_synopsis}[SYNOPSIS]} section.}}
 
 The various [doc] documentation strings specified by the term's
-subterms and additional metadata get integrated at the end of the
-documentation section name [docs] they respecively mention, in the
+subterms and additional metadata get inserted at the end of the
+documentation section name [docs] they respectively mention, in the
 following order:
 
 {ol
@@ -1052,18 +1040,18 @@ following order:
 {- Environment variables, see {!Arg.env_var} and {!Term.env_info}.}}
 
 If a [docs] section name is mentioned and does not exist in the term's
-manual, an empty section is created for it, to which the [doc] strings
-are intergrated, possibly prefixed by boilerplate text (e.g. for
+manual, an empty section is created for it, after which the [doc] strings
+are inserted, possibly prefixed by boilerplate text (e.g. for
 {!Manpage.s_environment} and {!Manpage.s_exit_status}).
 
 If the created section is:
 {ul
 {- {{!Manpage.standard_sections}standard}, it
     is inserted at the right place in the order specified
-    {{!Manpage.standard_sections}here}, but after possible non-standard
-    section explicitely specified by the term as the latter get the order number
-    of the last previously specified standard section or the order of
-    {!Manpage.s_synopsis} if there is no such section.}
+    {{!Manpage.standard_sections}here}, but after a possible non-standard
+    section explicitely specified by the term since the latter get the
+    order number of the last previously specified standard section
+    or the order of {!Manpage.s_synopsis} if there is no such section.}
 {-  non-standard, it is inserted before the {!Manpage.s_commands}
     section or the first subsequent existing standard section if it
     doesn't exist. Taking advantage of this behaviour is discouraged,
@@ -1265,7 +1253,7 @@ let cmd =
     `S Manpage.s_see_also; `P "$(b,rmdir)(1), $(b,unlink)(2)" ]
   in
   Term.(const rm $ prompt $ recursive $ files),
-  Term.info "rm" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
+  Term.info "rm" ~version:"v1.0.0" ~doc ~exits:Term.default_exits ~man
 
 let () = Term.(exit @@ eval cmd)
 ]}
@@ -1335,7 +1323,7 @@ let cmd =
       `P "Email them to <hehey at example.org>."; ]
   in
   Term.(ret (const cp $ verbose $ recurse $ force $ srcs $ dest)),
-  Term.info "cp" ~version:"%%VERSION%%" ~doc ~exits ~man ~man_xrefs
+  Term.info "cp" ~version:"v1.0.0" ~doc ~exits ~man ~man_xrefs
 
 let () = Term.(exit @@ eval cmd)
 ]}
@@ -1609,7 +1597,7 @@ let default_cmd =
   let exits = Term.default_exits in
   let man = help_secs in
   Term.(ret (const (fun _ -> `Help (`Pager, None)) $ copts_t)),
-  Term.info "darcs" ~version:"%%VERSION%%" ~doc ~sdocs ~exits ~man
+  Term.info "darcs" ~version:"v1.0.0" ~doc ~sdocs ~exits ~man
 
 let cmds = [initialize_cmd; record_cmd; help_cmd]
 

@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   %%NAME%% %%VERSION%%
+   cmdliner v1.0.0
   ---------------------------------------------------------------------------*)
 
 open Result
@@ -17,7 +17,7 @@ type title = string * int * string * string * string
 type t = title * block list
 
 type xref =
-  [ `Main | `Cmd of string | `Tool of string | `Page of int * string ]
+  [ `Main | `Cmd of string | `Tool of string | `Page of string * int ]
 
 (* Standard sections *)
 

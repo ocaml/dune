@@ -127,20 +127,20 @@ end
 type 'a gen = unit -> 'a option
 
 val all :
-  ?pos:int ->    (* Default: 0 *)
+  ?pos:int ->    (** Default: 0 *)
   ?len:int ->
   re -> string -> Group.t list
 (** Repeatedly calls {!exec} on the given string, starting at given
     position and length.*)
 
 val all_gen :
-  ?pos:int ->    (* Default: 0 *)
+  ?pos:int ->    (** Default: 0 *)
   ?len:int ->
   re -> string -> Group.t gen
 (** Same as {!all} but returns a generator *)
 
 val matches :
-  ?pos:int ->    (* Default: 0 *)
+  ?pos:int ->    (** Default: 0 *)
   ?len:int ->
   re -> string -> string list
 (** Same as {!all}, but extracts the matched substring rather than
@@ -148,13 +148,13 @@ val matches :
     strings *)
 
 val matches_gen :
-  ?pos:int ->    (* Default: 0 *)
+  ?pos:int ->    (** Default: 0 *)
   ?len:int ->
   re -> string -> string gen
 (** Same as {!matches}, but returns a generator. *)
 
 val split :
-  ?pos:int ->    (* Default: 0 *)
+  ?pos:int ->    (** Default: 0 *)
   ?len:int ->
   re -> string -> string list
 (** [split re s] splits [s] into chunks separated by [re]. It yields
@@ -162,7 +162,7 @@ val split :
     this can be used with a whitespace-matching re such as ["[\t ]+"]. *)
 
 val split_gen :
-  ?pos:int ->    (* Default: 0 *)
+  ?pos:int ->    (** Default: 0 *)
   ?len:int ->
   re -> string -> string gen
 
@@ -172,34 +172,34 @@ type split_token =
   ]
 
 val split_full :
-  ?pos:int ->    (* Default: 0 *)
+  ?pos:int ->    (** Default: 0 *)
   ?len:int ->
   re -> string -> split_token list
 
 val split_full_gen :
-  ?pos:int ->    (* Default: 0 *)
+  ?pos:int ->    (** Default: 0 *)
   ?len:int ->
   re -> string -> split_token gen
 
 val replace :
-  ?pos:int ->    (* Default: 0 *)
+  ?pos:int ->    (** Default: 0 *)
   ?len:int ->
-  ?all:bool ->   (* Default: true. Otherwise only replace first occurrence *)
-  re ->          (* matched groups *)
+  ?all:bool ->   (** Default: true. Otherwise only replace first occurrence *)
+  re ->          (** matched groups *)
   f:(Group.t -> string) ->  (* how to replace *)
-  string ->     (* string to replace in *)
+  string ->     (** string to replace in *)
   string
 (** [replace ~all re ~f s] iterates on [s], and replaces every occurrence
     of [re] with [f substring] where [substring] is the current match.
     If [all = false], then only the first occurrence of [re] is replaced. *)
 
 val replace_string :
-  ?pos:int ->    (* Default: 0 *)
+  ?pos:int ->    (** Default: 0 *)
   ?len:int ->
-  ?all:bool ->   (* Default: true. Otherwise only replace first occurrence *)
-  re ->          (* matched groups *)
-  by:string ->   (* replacement string *)
-  string ->      (* string to replace in *)
+  ?all:bool ->   (** Default: true. Otherwise only replace first occurrence *)
+  re ->          (** matched groups *)
+  by:string ->   (** replacement string *)
+  string ->      (** string to replace in *)
   string
 (** [replace_string ~all re ~by s] iterates on [s], and replaces every
     occurrence of [re] with [by]. If [all = false], then only the first

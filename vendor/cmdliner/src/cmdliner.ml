@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2011 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   %%NAME%% %%VERSION%%
+   cmdliner v1.0.0
   ---------------------------------------------------------------------------*)
 
 open Result
@@ -30,12 +30,6 @@ module Term = struct
     | Ok (`Help _ as help) -> Error help
     | Error _ as e -> e
 
-  let ret_of_result ?(usage = false) = function
-  | Ok v -> `Ok v
-  | Error (`Msg e) -> `Error (usage, e)
-
-  let ret_result ?usage t = app (const @@ ret_of_result ?usage) t
-
   let term_result ?(usage = false) (al, v) =
     al, fun ei cl -> match v ei cl with
     | Ok (Ok _ as ok) -> ok
@@ -63,13 +57,12 @@ module Term = struct
   let exit_info = Cmdliner_info.exit
 
   let exit_status_success = 0
-  let exit_status_internal_error = 124
-  let exit_status_cli_error = 125
+  let exit_status_cli_error = 124
+  let exit_status_internal_error = 125
   let default_error_exits =
-    [ exit_info exit_status_internal_error
-        ~doc:"on unexpected internal errors (bugs).";
-      exit_info exit_status_cli_error
-        ~doc:"on command line parsing errors."; ]
+    [ exit_info exit_status_cli_error ~doc:"on command line parsing errors.";
+      exit_info exit_status_internal_error
+        ~doc:"on unexpected internal errors (bugs)."; ]
 
   let default_exits =
     (exit_info exit_status_success ~doc:"on success.") :: default_error_exits

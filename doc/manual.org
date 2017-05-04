@@ -409,9 +409,10 @@ format of executable stanzas is as follows:
 =<name>= is a module name that contains the main entry point of the
 executable. There can be additional modules in the current directory,
 you only need to specify the entry point. Given an =executable= stanza
-with =(name <name>)=, Jbuilder will know how to build =<name>.exe= and
-=<name>.bc=. =<name>.exe= is a native code executable and =<name>.bc=
-is a bytecode executable which requires =ocamlrun= to run.
+with =(name <name>)=, Jbuilder will know how to build =<name>.exe=,
+=<name>.bc= and =<name>.bc.js=. =<name>.exe= is a native code executable, =<name>.bc=
+is a bytecode executable which requires =ocamlrun= to run and =<name>.bc.js=
+is a JavaScript generated using js_of_ocaml.
 
 Note that in case native compilation is not available, =<name>.exe=
 will in fact be a custom byte-code executable. Custom in the sense of

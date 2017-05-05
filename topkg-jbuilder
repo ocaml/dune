@@ -1,0 +1,57 @@
+(* -*- tuareg -*- *)
+#use "topfind"
+#require "topkg"
+
+open Topkg
+
+module Pkg = struct
+  include Pkg
+
+  let build
+        ?(cmd=fun c os _files ->
+          let jbuilder = Conf.tool "jbuilder" os in
+          OS.Cmd.run @@ Cmd.(jbuilder % "build" % "-p" % Conf.pkg_name c))
+        ?(clean=fun os ~build_dir ->
+          let rm = Conf.tool "rm" os in
+          let find = Conf.tool "find" os in
+          OS.Cmd.run @@ Cmd.(rm % "-rf" % build_dir) >>= fun () ->
+          OS.Cmd.run @@ Cmd.(find % "." % "-name" % ".merlin" % "-delete"))
+    =
+    Pkg.build ~cmd ~clean
+
+  let opam_files () =
+    Sys.readdir "."
+    |> Array.to_list
+    |> List.filter (String.is_suffix ~affix:".opam")
+    |> List.map (Pkg.opam_file ~lint_deps_excluding:None)
+
+  let describe
+    ?delegate
+    ?readmes
+    ?licenses
+    ?change_logs
+    ?(metas=[])
+    ?(opams=opam_files ())
+    ?lint_files
+    ?lint_custom
+    ?distrib
+    ?publish
+    ?(build=build ())
+    name
+    =
+    describe
+      ?delegate
+      ?readmes
+      ?licenses
+      ?change_logs
+      ~metas
+      ~opams
+      ?lint_files
+      ?lint_custom
+      ?distrib
+      ?publish
+      ~build
+      name
+    @@ fun c ->
+    Ok [ (*Pkg.test "jbuilder" ~auto:false ~args:Cmd.(empty % "runtest" % "-p" % Conf.pkg_name c)*) ]
+end

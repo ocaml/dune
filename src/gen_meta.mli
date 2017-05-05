@@ -2,14 +2,9 @@
 
 open! Import
 
-type package_version =
-  | This of string
-  | Load of Path.t
-  | Na
-
 val gen
   :  package:string
-  -> version:package_version
+  -> version:(unit, string option) Build.t
   -> stanzas:(Path.t * Jbuild_types.Stanza.t) list
   -> lib_deps:(dir:Path.t
                -> Jbuild_types.Stanza.t

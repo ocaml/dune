@@ -703,7 +703,7 @@ module Rule = struct
        return { targets; deps; action })
 
   let ocamllex_v1 names =
-    let str s = String_with_vars.of_string s in
+    let str s = String_with_vars.of_string s ~loc:Loc.none in
     List.map names ~f:(fun name ->
       let src = name ^ ".mll" in
       let dst = name ^ ".ml"  in
@@ -717,7 +717,7 @@ module Rule = struct
       })
 
   let ocamlyacc_v1 names =
-    let str s = String_with_vars.of_string s in
+    let str s = String_with_vars.of_string s ~loc:Loc.none in
     List.map names ~f:(fun name ->
       let src = name ^ ".mly" in
       { targets = [name ^ ".ml"; name ^ ".mli"]
@@ -750,7 +750,7 @@ module Menhir = struct
       )
 
   let v1_to_rule t =
-    let str s = String_with_vars.of_string s in
+    let str s = String_with_vars.of_string s ~loc:Loc.none in
     let targets n = [n ^ ".ml"; n ^ ".mli"] in
     match t.base with
     | None ->

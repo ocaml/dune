@@ -6,7 +6,10 @@ type item =
   | Text of string
   | Var of var_syntax * string
 
-type t = item list
+type t =
+  { items : item list
+  ; loc   : Loc.t
+  }
 
 module Token = struct
   type t =
@@ -43,7 +46,7 @@ module Token = struct
     | Close Parens -> ")"
 end
 
-let rec of_tokens : Token.t list -> t = function
+let rec of_tokens : Token.t list -> item list = function
   | [] -> []
   | Open a :: String s :: Close b :: rest when a = b ->
     Var (a, s) :: of_tokens rest
@@ -53,13 +56,19 @@ let rec of_tokens : Token.t list -> t = function
     | Text s' :: l -> Text (s ^ s') :: l
     | l -> Text s :: l
 
-let of_string s = of_tokens (Token.tokenise s)
+let of_string ~loc s =
+  { items = of_tokens (Token.tokenise s)
+  ; loc
+  }
 
-let t sexp = of_string (Sexp.Of_sexp.string sexp)
+let t sexp = of_string ~loc:(Sexp.Ast.loc sexp) (Sexp.Of_sexp.string sexp)
 
-let raw s = [Text s]
+let loc t = t.loc
 
-let just_a_var = function
+let raw ~loc s = { loc; items = [Text s]}
+
+let just_a_var t =
+  match t.items with
   | [Var (_, s)] -> Some s
   | _ -> None
 
@@ -72,19 +81,19 @@ let sexp_of_item =
     | Text s -> List [Atom "text" ; Atom s]
     | Var (vs, s) -> List [sexp_of_var_syntax vs ; Atom s]
 
-let sexp_of_t = Sexp.To_sexp.list sexp_of_item
+let sexp_of_t t = Sexp.To_sexp.list sexp_of_item t.items
 
 
 let fold t ~init ~f =
-  List.fold_left t ~init ~f:(fun acc item ->
+  List.fold_left t.items ~init ~f:(fun acc item ->
     match item with
     | Text _ -> acc
-    | Var (_, v) -> f acc v)
+    | Var (_, v) -> f acc t.loc v)
 
-let vars t = fold t ~init:String_set.empty ~f:(fun acc x -> String_set.add x acc)
+let vars t = fold t ~init:String_set.empty ~f:(fun acc _ x -> String_set.add x acc)
 
 let expand t ~f =
-  List.map t ~f:(function
+  List.map t.items ~f:(function
     | Text s -> s
     | Var (syntax, v) ->
       match f v with
@@ -94,16 +103,3 @@ let expand t ~f =
         | Parens -> sprintf "$(%s)" v
         | Braces -> sprintf "${%s}" v)
   |> String.concat ~sep:""
-(*
-let expand_with_context context t ~f =
-  List.map t ~f:(function
-    | Text s -> s
-    | Var (syntax, v) ->
-      match f context v with
-      | Some x -> x
-      | None ->
-        match syntax with
-        | Parens -> sprintf "$(%s)" v
-        | Braces -> sprintf "${%s}" v)
-  |> String.concat ~sep:""
-*)

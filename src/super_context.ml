@@ -364,6 +364,29 @@ module Deps = struct
   let only_plain_files t ~dir l = List.map l ~f:(only_plain_file t ~dir)
 end
 
+module Pkg_version = struct
+  open Build.O
+
+  module V = Vfile_kind.Make(struct type t = string option end)
+      (functor (C : Sexp.Combinators) -> struct
+        let t = C.option C.string
+      end)
+
+  let spec sctx (p : Package.t) =
+    let fn =
+      Path.relative (Path.append sctx.context.build_dir p.path)
+        (sprintf "%s.version.sexp" p.name)
+    in
+    Build.Vspec.T (fn, (module V))
+
+  let read sctx p = Build.vpath (spec sctx p)
+
+  let set sctx p get =
+    let spec = spec sctx p in
+    add_rule sctx (get >>> Build.store_vfile spec);
+    Build.vpath spec
+end
+
 module Action = struct
   open Build.O
   module U = Action.Mini_shexp.Unexpanded
@@ -375,6 +398,7 @@ module Action = struct
       failures  : fail list
     ; (* All "name" for ${lib:name:...}/${lib-available:name} forms *)
       lib_deps  : Build.lib_deps
+    ; vdeps     : (unit, Action.var_expansion) Build.t String_map.t
     }
 
   let add_artifact ?lib_dep acc ~var result =
@@ -399,14 +423,15 @@ module Action = struct
     | Ok x -> Ok (Action.Path x)
     | Error _ as e -> e
 
-  let extract_artifacts sctx ~dir ~dep_kind t =
+  let extract_artifacts sctx ~dir ~dep_kind ~package_context t =
     let init =
       { artifacts = String_map.empty
       ; failures  = []
       ; lib_deps  = String_map.empty
+      ; vdeps     = String_map.empty
       }
     in
-    U.fold_vars t ~init ~f:(fun acc var ->
+    U.fold_vars t ~init ~f:(fun acc loc var ->
       let module A = Artifacts in
       match String.lsplit2 var ~on:':' with
       | Some ("exe"     , s) -> add_artifact acc ~var (Ok (Path (Path.relative dir s)))
@@ -426,6 +451,18 @@ module Action = struct
           A.file_of_lib (artifacts sctx) ~from:dir s ~use_provides:true
         in
         add_artifact acc ~var ~lib_dep:(lib_dep, Required) (map_result res)
+      | Some ("version", s) -> begin
+          match Pkgs.resolve package_context s with
+          | Ok p ->
+            let x =
+              Pkg_version.read sctx p >>^ function
+              | None -> Action.Str ""
+              | Some s -> Str s
+            in
+            { acc with vdeps = String_map.add acc.vdeps ~key:var ~data:x }
+          | Error s ->
+            { acc with failures = { fail = fun () -> Loc.fail loc "%s" s } :: acc.failures }
+        end
       | _ -> acc)
 
   let expand_var =
@@ -450,30 +487,30 @@ module Action = struct
           | Some s -> Str s
           | None -> Not_found
 
-  let run sctx t ~dir ~dep_kind ~targets ~deps =
-    let forms = extract_artifacts sctx ~dir ~dep_kind t in
-    let build =
-      match
-        U.expand sctx.context dir t
-          ~f:(expand_var sctx ~artifacts:forms.artifacts ~targets ~deps)
-      with
-      | t ->
-        Build.path_set
-          (String_map.fold forms.artifacts ~init:Path.Set.empty
-             ~f:(fun ~key:_ ~data:exp acc ->
-               match exp with
-               | Action.Path p -> Path.Set.add p acc
-               | Paths ps -> Path.Set.union acc (Path.Set.of_list ps)
-               | Not_found | Str _ -> acc))
-        >>>
-        Build.action t ~context:sctx.context ~dir ~targets
-      | exception e ->
-        Build.fail ~targets { fail = fun () -> raise e }
-    in
+  let run sctx t ~dir ~dep_kind ~targets ~deps ~package_context =
+    let forms = extract_artifacts sctx ~dir ~dep_kind ~package_context t in
     let build =
       Build.record_lib_deps_simple ~dir forms.lib_deps
       >>>
-      build
+      Build.path_set
+        (String_map.fold forms.artifacts ~init:Path.Set.empty
+           ~f:(fun ~key:_ ~data:exp acc ->
+             match exp with
+             | Action.Path p -> Path.Set.add p acc
+             | Paths ps -> Path.Set.union acc (Path.Set.of_list ps)
+             | Not_found | Str _ -> acc))
+      >>>
+      let vdeps = String_map.bindings forms.vdeps in
+      Build.all (List.map vdeps ~f:snd)
+      >>^ (fun vals ->
+        let artifacts =
+          List.fold_left2 vdeps vals ~init:forms.artifacts ~f:(fun acc (var, _) value ->
+            String_map.add acc ~key:var ~data:value)
+        in
+        U.expand sctx.context dir t
+          ~f:(expand_var sctx ~artifacts ~targets ~deps))
+      >>>
+      Build.action_dyn () ~context:sctx.context ~dir ~targets
     in
     match forms.failures with
     | [] -> build
@@ -593,8 +630,8 @@ module PP = struct
       Hashtbl.add ppx_drivers ~key ~data:exe;
       exe
 
-  let target_var = String_with_vars.of_string "${@}"
-  let root_var   = String_with_vars.of_string "${ROOT}"
+  let target_var = String_with_vars.of_string "${@}" ~loc:Loc.none
+  let root_var   = String_with_vars.of_string "${ROOT}" ~loc:Loc.none
 
   let cookie_library_name lib_name =
     match lib_name with
@@ -632,7 +669,8 @@ module PP = struct
 
   (* Generate rules to build the .pp files and return a new module map where all filenames
      point to the .pp files *)
-  let pped_modules sctx ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name =
+  let pped_modules sctx ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name
+        ~package_context =
     let preprocessor_deps = Deps.interpret sctx ~dir preprocessor_deps in
     String_map.map modules ~f:(fun (m : Module.t) ->
       let m = setup_reason_rules sctx ~dir m in
@@ -654,7 +692,8 @@ module PP = struct
                ~dir
                ~dep_kind
                ~targets:[dst]
-               ~deps:[Some src]))
+               ~deps:[Some src]
+               ~package_context))
       | Pps { pps; flags } ->
         let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in
         pped_module m ~dir ~f:(fun kind src dst ->

@@ -167,6 +167,11 @@ let action ~context ?(dir=context.Context.build_dir) ~targets action =
   >>^ fun () ->
   { Action. context = Some context; dir; action  }
 
+let action_dyn ~context ?(dir=context.Context.build_dir) ~targets () =
+  Targets targets
+  >>^ fun action ->
+  { Action. context = Some context; dir; action  }
+
 let action_context_independent ?(dir=Path.root) ~targets action =
   Targets targets
   >>^ fun () ->

@@ -714,6 +714,9 @@ In addition, =(action ...)= fields support the following special variables:
   + it is part the installed worlds
   + it is available locally and is not optional
   + it is available locally and all its library dependencies are available
+- =version:<package>= expands to the version of the given
+  package. Note that this is only supported for packages that are
+  being defined in the current scope
 
 The =${<kind>:...}= forms are what allows you to write custom rules
 that work transparently whether things are installed or not.

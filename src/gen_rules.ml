@@ -171,7 +171,7 @@ module Gen(P : Params) = struct
   let alias_module_build_sandbox = Scanf.sscanf ctx.version "%u.%u"
      (fun a b -> a, b) <= (4, 02)
 
-  let library_rules (lib : Library.t) ~dir ~all_modules ~files =
+  let library_rules (lib : Library.t) ~dir ~all_modules ~files ~package_context =
     let dep_kind = if lib.optional then Build.Optional else Required in
     let flags = Ocaml_flags.make lib.buildable in
     let modules =
@@ -220,6 +220,7 @@ module Gen(P : Params) = struct
       SC.PP.pped_modules sctx ~dir ~dep_kind ~modules ~preprocess:lib.buildable.preprocess
         ~preprocessor_deps:lib.buildable.preprocessor_deps
         ~lib_name:(Some lib.name)
+        ~package_context
     in
     let modules =
       match alias_module with
@@ -409,7 +410,7 @@ module Gen(P : Params) = struct
       let rules = Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe in
       SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm >>> r))
 
-  let executables_rules (exes : Executables.t) ~dir ~all_modules =
+  let executables_rules (exes : Executables.t) ~dir ~all_modules ~package_context =
     let dep_kind = Build.Required in
     let flags = Ocaml_flags.make exes.buildable in
     let modules =
@@ -428,6 +429,7 @@ module Gen(P : Params) = struct
         ~preprocess:exes.buildable.preprocess
         ~preprocessor_deps:exes.buildable.preprocessor_deps
         ~lib_name:None
+         ~package_context
     in
     let item = List.hd exes.names in
     let dep_graph = Ocamldep.rules sctx ~dir ~item ~modules ~alias_module:None in
@@ -462,7 +464,7 @@ module Gen(P : Params) = struct
      | User rules                                                      |
      +-----------------------------------------------------------------+ *)
 
-  let user_rule (rule : Rule.t) ~dir =
+  let user_rule (rule : Rule.t) ~dir ~package_context =
     let targets = List.map rule.targets ~f:(Path.relative dir) in
     SC.add_rule sctx
       (SC.Deps.interpret sctx ~dir rule.deps
@@ -473,9 +475,10 @@ module Gen(P : Params) = struct
          ~dir
          ~dep_kind:Required
          ~targets
-         ~deps:(SC.Deps.only_plain_files sctx ~dir rule.deps))
+         ~deps:(SC.Deps.only_plain_files sctx ~dir rule.deps)
+         ~package_context)
 
-  let alias_rules (alias_conf : Alias_conf.t) ~dir =
+  let alias_rules (alias_conf : Alias_conf.t) ~dir ~package_context =
     let digest =
       let deps =
         Sexp.To_sexp.list Dep_conf.sexp_of_t alias_conf.deps in
@@ -506,6 +509,7 @@ module Gen(P : Params) = struct
                ~dep_kind:Required
                ~targets:[]
                ~deps:(SC.Deps.only_plain_files sctx ~dir alias_conf.deps)
+               ~package_context
          >>>
          Build.and_create_file digest_path)
 
@@ -576,14 +580,14 @@ module Gen(P : Params) = struct
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
 
-  let rules { SC.Dir_with_jbuild. src_dir; ctx_dir; stanzas; pkgs = _ } =
+  let rules { SC.Dir_with_jbuild. src_dir; ctx_dir; stanzas; pkgs = package_context } =
     (* Interpret user rules and other simple stanzas first in order to populate the known
        target table, which is needed for guessing the list of modules. *)
     List.iter stanzas ~f:(fun stanza ->
       let dir = ctx_dir in
       match (stanza : Stanza.t) with
-      | Rule         rule  -> user_rule   rule  ~dir
-      | Alias        alias -> alias_rules alias ~dir
+      | Rule         rule  -> user_rule   rule  ~dir ~package_context
+      | Alias        alias -> alias_rules alias ~dir ~package_context
       | Library _ | Executables _ | Provides _ | Install _ -> ());
     let files = lazy (
       let files = SC.sources_and_targets_known_so_far sctx ~src_path:src_dir in
@@ -607,9 +611,11 @@ module Gen(P : Params) = struct
       match (stanza : Stanza.t) with
       | Library lib  ->
         Some (library_rules lib ~dir
-                ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files))
+                ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files)
+                ~package_context)
       | Executables  exes ->
-        Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules))
+        Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules)
+                ~package_context)
       | _ -> None)
     |> Merlin.add_rules sctx ~dir:ctx_dir
 
@@ -648,18 +654,27 @@ module Gen(P : Params) = struct
       let meta_path = Path.relative path meta_fn in
 
       let version =
-        match pkg.version_from_opam_file with
-        | Some s -> Gen_meta.This s
-        | None ->
-          let candicates =
-            [ pkg.name ^ ".version"
-            ; "version"
-            ; "VERSION"
-            ]
-          in
-          match List.find candicates ~f:(fun fn -> String_set.mem fn files) with
-          | None -> Na
-          | Some fn -> Load (Path.relative path fn)
+        let get =
+          match pkg.version_from_opam_file with
+          | Some s -> Build.return (Some s)
+          | None ->
+            let candicates =
+              [ pkg.name ^ ".version"
+              ; "version"
+              ; "VERSION"
+              ]
+            in
+            match List.find candicates ~f:(fun fn -> String_set.mem fn files) with
+            | None -> Build.return None
+            | Some fn ->
+              let p = Path.relative path fn in
+              Build.path p
+              >>^ fun () ->
+              match lines_of_file (Path.to_string p) with
+              | ver :: _ -> Some ver
+              | _ -> Some ""
+        in
+        Super_context.Pkg_version.set sctx pkg get
       in
 
       let template =

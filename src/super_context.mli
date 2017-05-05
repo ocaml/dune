@@ -115,6 +115,7 @@ module Action : sig
     -> dep_kind:Build.lib_dep_kind
     -> targets:Path.t list
     -> deps:Path.t option list
+    -> package_context:Pkgs.t
     -> (unit, Action.t) Build.t
 end
 
@@ -129,6 +130,7 @@ module PP : sig
     -> preprocess:Preprocess_map.t
     -> preprocessor_deps:Dep_conf.t list
     -> lib_name:string option
+    -> package_context:Pkgs.t
     -> Module.t String_map.t
 
   (** Get a path to a cached ppx driver *)
@@ -149,3 +151,7 @@ val expand_and_eval_set
   -> Ordered_set_lang.Unexpanded.t
   -> standard:string list
   -> (unit, string list) Build.t
+
+module Pkg_version : sig
+  val set : t -> Package.t -> (unit, string option) Build.t -> (unit, string option) Build.t
+end

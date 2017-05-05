@@ -124,11 +124,6 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~
       )
     ]
 
-type package_version =
-  | This of string
-  | Load of Path.t
-  | Na
-
 let gen ~package ~version ~stanzas ~lib_deps ~ppx_runtime_deps =
   let items =
     List.filter_map stanzas ~f:(fun (dir, stanza) ->
@@ -139,18 +134,9 @@ let gen ~package ~version ~stanzas ~lib_deps ~ppx_runtime_deps =
       | _ ->
         None)
   in
-  (match version with
-   | This s -> Build.return [rule "version" [] Set s]
-   | Load p ->
-     Build.path p
-     >>^ fun () ->
-     let ver =
-       match lines_of_file (Path.to_string p) with
-       | ver :: _ -> ver
-       | _ -> ""
-     in
-     [rule "version" [] Set ver]
-   | Na -> Build.return [])
+  (version >>^ function
+   | None -> []
+   | Some s -> [rule "version" [] Set s])
   >>>
   Build.all
     (List.map items ~f:(fun (Lib (dir, pub_name, lib)) ->

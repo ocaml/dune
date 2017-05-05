@@ -71,6 +71,13 @@ val action
   -> Action.Mini_shexp.t
   -> (unit, Action.t) t
 
+val action_dyn
+  :  context:Context.t
+  -> ?dir:Path.t (* default: context.build_dir *)
+  -> targets:Path.t list
+  -> unit
+  -> (Action.Mini_shexp.t, Action.t) t
+
 val action_context_independent
   :  ?dir:Path.t (* default: Path.root *)
   -> targets:Path.t list

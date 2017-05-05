@@ -862,22 +862,12 @@ module Stanza = struct
   let select : Jbuild_version.t -> Pkgs.t -> t list Sexp.Of_sexp.t = function
     | V1  -> v1
     | Vjs -> v1
-
-  let lib_names ts =
-    List.fold_left ts ~init:String_set.empty ~f:(fun acc (_, stanzas) ->
-      List.fold_left stanzas ~init:acc ~f:(fun acc -> function
-        | Library lib ->
-          String_set.add lib.name
-            (match lib.public with
-             | None -> acc
-             | Some { name; _ } -> String_set.add name acc)
-        | _ -> acc))
 end
 
 module Stanzas = struct
   type t = Stanza.t list
 
-  let parse sexps ~visible_packages ~closest_packages =
+  let parse pkgs sexps =
     let versions, sexps =
       List.partition_map sexps ~f:(function
           | List (loc, [Atom (_, "jbuild_version"); ver]) ->
@@ -891,6 +881,15 @@ module Stanzas = struct
       | _ :: (_, loc) :: _ ->
         Loc.fail loc "jbuild_version specified too many times"
     in
-    let pkgs = { Pkgs. visible_packages; closest_packages } in
     List.concat_map sexps ~f:(Stanza.select version pkgs)
+
+  let lib_names ts =
+    List.fold_left ts ~init:String_set.empty ~f:(fun acc (_, _, stanzas) ->
+      List.fold_left stanzas ~init:acc ~f:(fun acc -> function
+        | Stanza.Library lib ->
+          String_set.add lib.name
+            (match lib.public with
+             | None -> acc
+             | Some { name; _ } -> String_set.add name acc)
+        | _ -> acc))
 end

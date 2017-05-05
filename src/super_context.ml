@@ -6,6 +6,7 @@ module Dir_with_jbuild = struct
     { src_dir : Path.t
     ; ctx_dir : Path.t
     ; stanzas : Stanzas.t
+    ; pkgs    : Pkgs.t
     }
 end
 
@@ -60,11 +61,12 @@ let create
   =
   let stanzas =
     List.map stanzas
-      ~f:(fun (dir, stanzas) ->
+      ~f:(fun (dir, pkgs, stanzas) ->
         { Dir_with_jbuild.
           src_dir = dir
         ; ctx_dir = Path.append context.build_dir dir
-          ; stanzas
+        ; stanzas
+        ; pkgs
         })
   in
   let internal_libraries =

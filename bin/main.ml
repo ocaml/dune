@@ -450,7 +450,7 @@ let external_lib_deps =
            (Build_system.all_lib_deps_by_context setup.build_system targets)
            ~f:(fun ~key:context_name ~data:lib_deps acc ->
              let internals =
-               Jbuild_types.Stanza.lib_names
+               Jbuild_types.Stanzas.lib_names
                  (match String_map.find context_name setup.Main.stanzas with
                   | None -> assert false
                   | Some x -> x)

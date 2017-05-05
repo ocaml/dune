@@ -576,7 +576,7 @@ module Gen(P : Params) = struct
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
 
-  let rules { SC.Dir_with_jbuild. src_dir; ctx_dir; stanzas } =
+  let rules { SC.Dir_with_jbuild. src_dir; ctx_dir; stanzas; pkgs = _ } =
     (* Interpret user rules and other simple stanzas first in order to populate the known
        target table, which is needed for guessing the list of modules. *)
     List.iter stanzas ~f:(fun stanza ->
@@ -907,8 +907,9 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
       match only_packages with
       | None -> stanzas
       | Some pkgs ->
-        List.map stanzas ~f:(fun (dir, stanzas) ->
+        List.map stanzas ~f:(fun (dir, pkgs_ctx, stanzas) ->
           (dir,
+           pkgs_ctx,
            List.filter stanzas ~f:(fun stanza ->
              match (stanza : Stanza.t) with
              | Library { public = Some { package; _ }; _ }

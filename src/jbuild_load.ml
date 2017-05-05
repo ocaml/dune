@@ -3,13 +3,12 @@ open Jbuild_types
 
 module Jbuilds = struct
   type script =
-    { dir              : Path.t
-    ; visible_packages : Package.t String_map.t
-    ; closest_packages : Package.t list
+    { dir  : Path.t
+    ; pkgs : Pkgs.t
     }
 
   type one =
-    | Literal of Path.t * Stanza.t list
+    | Literal of (Path.t * Pkgs.t * Stanza.t list)
     | Script of script
 
   type t = one list
@@ -66,12 +65,8 @@ end
   let eval jbuilds ~(context : Context.t) =
     let open Future in
     List.map jbuilds ~f:(function
-      | Literal (path, stanzas) ->
-        return (path, stanzas)
-      | Script { dir
-               ; visible_packages
-               ; closest_packages
-               } ->
+      | Literal x -> return x
+      | Script { dir; pkgs = pkgs_ctx } ->
         let file = Path.relative dir "jbuild" in
         let generated_jbuild =
           Path.append (Path.relative generated_jbuilds_dir context.name) file
@@ -123,7 +118,7 @@ end
                Did you forgot to call [Jbuild_plugin.V*.send]?"
             (Path.to_string file);
         let sexps = Sexp_load.many (Path.to_string generated_jbuild) in
-        return (dir, Stanzas.parse sexps ~visible_packages ~closest_packages))
+        return (dir, pkgs_ctx, Stanzas.parse pkgs_ctx sexps))
     |> Future.all
 end
 
@@ -136,15 +131,12 @@ type conf =
 
 let load ~dir ~visible_packages ~closest_packages =
   let file = Path.relative dir "jbuild" in
+  let pkgs = { Pkgs. visible_packages; closest_packages } in
   match Sexp_load.many_or_ocaml_script (Path.to_string file) with
   | Sexps sexps ->
-    Jbuilds.Literal (dir, Stanzas.parse sexps ~visible_packages ~closest_packages)
+    Jbuilds.Literal (dir, pkgs, Stanzas.parse pkgs sexps)
   | Ocaml_script ->
-    Script
-      { dir
-      ; visible_packages
-      ; closest_packages
-      }
+    Script { dir; pkgs }
 
 let load ?(extra_ignored_subtrees=Path.Set.empty) () =
   let ftree = File_tree.load Path.root in

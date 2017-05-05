@@ -3,7 +3,7 @@ open Future
 
 type setup =
   { build_system : Build_system.t
-  ; stanzas      : (Path.t * Jbuild_types.Stanzas.t) list String_map.t
+  ; stanzas      : (Path.t * Jbuild_types.Pkgs.t * Jbuild_types.Stanzas.t) list String_map.t
   ; contexts     : Context.t list
   ; packages     : Package.t String_map.t
   }
@@ -69,7 +69,7 @@ let external_lib_deps ?log ~packages () =
      match String_map.find "default" setup.stanzas with
      | None -> die "You need to set a default context to use external-lib-deps"
      | Some stanzas ->
-       let internals = Jbuild_types.Stanza.lib_names stanzas in
+       let internals = Jbuild_types.Stanzas.lib_names stanzas in
        Path.Map.map
          (Build_system.all_lib_deps setup.build_system install_files)
          ~f:(String_map.filter ~f:(fun name _ ->

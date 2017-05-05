@@ -65,6 +65,71 @@ let file_in_current_dir sexp =
       of_sexp_error sexp "file in current directory expected";
     fn
 
+module Pkgs = struct
+  type t =
+    { visible_packages : Package.t String_map.t
+    ; closest_packages : Package.t list
+    }
+
+  let package_listing packages =
+    let longest_pkg = List.longest_map packages ~f:(fun p -> p.Package.name) in
+    String.concat ~sep:"\n"
+      (List.map packages ~f:(fun pkg ->
+         sprintf "- %-*s (because of %s)" longest_pkg pkg.Package.name
+           (Path.to_string (Path.relative pkg.path (pkg.name ^ ".opam")))))
+
+  let default t =
+    match t.closest_packages with
+    | [pkg] -> Ok pkg
+    | [] ->
+      Error
+        "no packages are defined here.\n\
+         What do you want me to do with this (install ...) stanzas?.\n\
+         You need to add a <package>.opam file at the root \
+         of your project so that\n\
+         I know that you want to install things as part of pacakge <package>."
+    | _ :: _ :: _ ->
+      Error
+        (sprintf
+           "I can't determine automatically which package this (install ...) \
+            stanza is for. I have the choice between these ones:\n\
+            %s\n\
+            You need to add a (package ...) field in this (install ...) stanza"
+           (package_listing t.closest_packages))
+
+  let resolve t name =
+    match String_map.find name t.visible_packages with
+    | Some pkg ->
+      Ok pkg
+    | None ->
+      if String_map.is_empty t.visible_packages then
+        Error (sprintf
+                 "package %S is not visible here.\n\
+                  In fact I know of no packages here, \
+                  in order for me to know that package\n\
+                  %S exist, you need to add a %S file at the root of your project."
+                 name name (name ^ ".opam"))
+      else
+        Error (sprintf
+                 "package %S is not visible here.\n\
+                  The only packages I know of in this directory are:\n\
+                  %s%s"
+                 name
+                 (package_listing (String_map.values t.visible_packages))
+                 (hint name (String_map.keys t.visible_packages)))
+
+  let package t sexp =
+    match resolve t (string sexp) with
+    | Ok p -> p
+    | Error s -> Loc.fail (Sexp.Ast.loc sexp) "%s" s
+
+  let package_field t =
+    map_validate (field_o "package" string) ~f:(function
+      | None -> default t
+      | Some name -> resolve t name)
+end
+
+
 module Raw_string () : sig
   type t = private string
   val to_string : t -> string
@@ -407,20 +472,25 @@ end
 module Public_lib = struct
   type t =
     { name    : string (* Full public name *)
-    ; package : string (* Package it is part of *)
+    ; package : Package.t (* Package it is part of *)
     ; sub_dir : string option (* Subdirectory inside the installation directory *)
     }
 
-  let of_public_name s =
-    match String.split s ~on:'.' with
-    | [] -> assert false
-    | pkg :: rest ->
-      { package = pkg
-      ; sub_dir = if rest = [] then None else Some (String.concat rest ~sep:"/")
-      ; name    = s
-      }
-
-  let t sexp = of_public_name (string sexp)
+  let public_name_field pkgs =
+    map_validate (field_o "public_name" string) ~f:(function
+      | None -> Ok None
+      | Some s ->
+        match String.split s ~on:'.' with
+        | [] -> assert false
+        | pkg :: rest ->
+          match Pkgs.resolve pkgs pkg with
+          | Ok pkg ->
+            Ok (Some
+                  { package = pkg
+                  ; sub_dir = if rest = [] then None else Some (String.concat rest ~sep:"/")
+                  ; name    = s
+                  })
+          | Error _ as e -> e)
 end
 
 module Library = struct
@@ -461,11 +531,11 @@ module Library = struct
     ; dynlink                  : bool
     }
 
-  let v1 =
+  let v1 pkgs =
     record
       (Buildable.v1 >>= fun buildable ->
        field      "name" library_name                                        >>= fun name                     ->
-       field_o    "public_name" Public_lib.t                                 >>= fun public                   ->
+       Public_lib.public_name_field pkgs                                     >>= fun public                   ->
        field_o    "synopsis" string                                          >>= fun synopsis                 ->
        field      "install_c_headers" (list string) ~default:[]              >>= fun install_c_headers        ->
        field      "ppx_runtime_libraries" (list string) ~default:[]          >>= fun ppx_runtime_libraries    ->
@@ -535,14 +605,14 @@ module Install_conf = struct
   type t =
     { section : Install.Section.t
     ; files   : file list
-    ; package : string option
+    ; package : Package.t
     }
 
-  let v1 =
+  let v1 pkgs =
     record
       (field   "section" Install.Section.t >>= fun section ->
        field   "files"   (list file)       >>= fun files ->
-       field_o "package" string            >>= fun package ->
+       Pkgs.package_field pkgs             >>= fun package ->
        return
          { section
          ; files
@@ -558,11 +628,10 @@ module Executables = struct
     ; buildable        : Buildable.t
     }
 
-  let common_v1 names public_names =
+  let common_v1 pkgs names public_names ~multi =
     Buildable.v1 >>= fun buildable ->
     field   "link_executables"   bool ~default:true >>= fun link_executables ->
     field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
-    field_o "package"            string >>= fun package ->
     let t =
       { names
       ; link_executables
@@ -579,8 +648,18 @@ module Executables = struct
       |> List.filter_map ~f:(fun x -> x)
     in
     match to_install with
-    | [] -> return (t, None)
+    | [] ->
+      map_validate (field_o "package" string) ~f:(function
+        | None -> Ok ()
+        | Some _ ->
+          Error
+            (sprintf
+               "this field is useless without a (public_name%s ...) field"
+               (if multi then "s" else "")))
+      >>= fun () ->
+      return (t, None)
     | files ->
+      Pkgs.package_field pkgs >>= fun package ->
       return (t, Some { Install_conf. section = Bin; files; package })
 
   let public_name sexp =
@@ -588,7 +667,7 @@ module Executables = struct
     | "-" -> None
     | s   -> Some s
 
-  let v1_multi =
+  let v1_multi pkgs =
     record
       (field "names" (list string) >>= fun names ->
        map_validate (field_o "public_names" (list public_name)) ~f:(function
@@ -600,13 +679,13 @@ module Executables = struct
              Error "The list of public names must be of the same \
                     length as the list of names")
        >>= fun public_names ->
-       common_v1 names public_names)
+       common_v1 pkgs names public_names ~multi:true)
 
-  let v1_single =
+  let v1_single pkgs =
     record
       (field   "name" string        >>= fun name ->
        field_o "public_name" string >>= fun public_name ->
-       common_v1 [name] [public_name])
+       common_v1 pkgs [name] [public_name] ~multi:false)
 end
 
 module Rule = struct
@@ -732,14 +811,14 @@ module Alias_conf = struct
     { name  : string
     ; deps  : Dep_conf.t list
     ; action : Action.Mini_shexp.Unexpanded.t option
-    ; package : string option
+    ; package : Package.t option
     }
 
-  let v1 =
+  let v1 pkgs =
     record
       (field "name" string                              >>= fun name ->
        field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
-       field_o "package" string                         >>= fun package ->
+       field_o "package" (Pkgs.package pkgs)            >>= fun package ->
        field_o "action" Action.Mini_shexp.Unexpanded.t  >>= fun action ->
        return
          { name
@@ -765,22 +844,22 @@ module Stanza = struct
     | None -> [Executables exe]
     | Some i -> [Executables exe; Install i]
 
-  let v1 =
+  let v1 pkgs =
     sum
-      [ cstr "library"     (Library.v1 @> nil)      (fun x -> [Library     x])
-      ; cstr "executable"  (Executables.v1_single @> nil) execs
-      ; cstr "executables" (Executables.v1_multi  @> nil) execs
-      ; cstr "rule"        (Rule.v1 @> nil)         (fun x -> [Rule        x])
-      ; cstr "ocamllex"    (list string @> nil)     (fun x -> rules (Rule.ocamllex_v1 x))
-      ; cstr "ocamlyacc"   (list string @> nil)     (fun x -> rules (Rule.ocamlyacc_v1 x))
-      ; cstr "menhir"      (Menhir.v1 @> nil)       (fun x -> rules (Menhir.v1_to_rule x))
-      ; cstr "install"     (Install_conf.v1 @> nil) (fun x -> [Install     x])
-      ; cstr "alias"       (Alias_conf.v1 @> nil)   (fun x -> [Alias       x])
+      [ cstr "library"     (Library.v1 pkgs @> nil)      (fun x -> [Library     x])
+      ; cstr "executable"  (Executables.v1_single pkgs @> nil) execs
+      ; cstr "executables" (Executables.v1_multi  pkgs @> nil) execs
+      ; cstr "rule"        (Rule.v1 @> nil)              (fun x -> [Rule        x])
+      ; cstr "ocamllex"    (list string @> nil)          (fun x -> rules (Rule.ocamllex_v1 x))
+      ; cstr "ocamlyacc"   (list string @> nil)          (fun x -> rules (Rule.ocamlyacc_v1 x))
+      ; cstr "menhir"      (Menhir.v1 @> nil)            (fun x -> rules (Menhir.v1_to_rule x))
+      ; cstr "install"     (Install_conf.v1 pkgs @> nil) (fun x -> [Install     x])
+      ; cstr "alias"       (Alias_conf.v1 pkgs @> nil)   (fun x -> [Alias       x])
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]
 
-  let select : Jbuild_version.t -> t list Sexp.Of_sexp.t = function
+  let select : Jbuild_version.t -> Pkgs.t -> t list Sexp.Of_sexp.t = function
     | V1  -> v1
     | Vjs -> v1
 
@@ -798,66 +877,7 @@ end
 module Stanzas = struct
   type t = Stanza.t list
 
-  let resolve_packages ts ~dir
-        ~(visible_packages : Package.t String_map.t)
-        ~(closest_packages : Package.t list) =
-    let error fmt =
-      Loc.fail (Loc.in_file (Path.to_string (Path.relative dir "jbuild"))) fmt
-    in
-    let package_listing packages =
-      let longest_pkg = List.longest_map packages ~f:(fun p -> p.Package.name) in
-      String.concat ~sep:"\n"
-        (List.map packages ~f:(fun pkg ->
-           sprintf "- %-*s (because of %s)" longest_pkg pkg.Package.name
-             (Path.to_string (Path.relative pkg.path (pkg.name ^ ".opam")))))
-    in
-    let check pkg =
-      if not (String_map.mem pkg visible_packages) then (
-        if String_map.is_empty visible_packages then
-          error "package %S is not visible here.\n\
-                 In fact I know of no packages here, \
-                 in order for me to know that package\n\
-                 %S exist, you need to add a %S file at the root of your project."
-            pkg pkg (pkg ^ ".opam")
-        else
-          error "package %S is not visible here.\n\
-                 The only packages I know of in %S are:\n\
-                 %s%s"
-            pkg
-            (Path.to_string dir)
-            (package_listing (String_map.values visible_packages))
-            (hint pkg (String_map.keys visible_packages))
-      )
-    in
-    let default () =
-      match closest_packages with
-      | [pkg] -> pkg
-      | [] ->
-        error "no packages are defined here.\n\
-               What do you want me to do with this (install ...) stanzas?.\n\
-               You need to add a <package>.opam file at the root \
-               of your project so that\n\
-               I know that you want to install things as part of pacakge <package>."
-      | _ :: _ :: _ ->
-        error "I can't determine automatically which package your (install ...) \
-               stanzas are for in this directory. I have the choice between these ones:\n\
-               %s\n\
-               You need to add a (package ...) field in your (install ...) stanzas"
-          (package_listing closest_packages)
-    in
-    List.map ts ~f:(fun (stanza : Stanza.t) ->
-      match stanza with
-      | Library { public = Some { package; _ }; _ } ->
-        check package;
-        stanza
-      | Install { package = Some pkg; _ } ->
-        check pkg;
-        stanza
-      | Install ({ package = None; _ } as install) ->
-        Install { install with package = Some (default ()).name }
-      | _ -> stanza)
-
-  let parse sexps ~dir ~visible_packages =
+  let parse sexps ~visible_packages ~closest_packages =
     let versions, sexps =
       List.partition_map sexps ~f:(function
           | List (loc, [Atom (_, "jbuild_version"); ver]) ->
@@ -871,6 +891,6 @@ module Stanzas = struct
       | _ :: (_, loc) :: _ ->
         Loc.fail loc "jbuild_version specified too many times"
     in
-    List.concat_map sexps ~f:(Stanza.select version)
-    |> resolve_packages ~dir ~visible_packages
+    let pkgs = { Pkgs. visible_packages; closest_packages } in
+    List.concat_map sexps ~f:(Stanza.select version pkgs)
 end

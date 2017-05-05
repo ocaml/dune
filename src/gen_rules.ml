@@ -821,9 +821,9 @@ module Gen(P : Params) = struct
       List.concat_map (SC.stanzas_to_consider_for_install sctx) ~f:(fun (dir, stanza) ->
         match stanza with
         | Library ({ public = Some { package = p; sub_dir; _ }; _ } as lib)
-          when p = package ->
+          when p.name = package ->
           lib_install_files ~dir ~sub_dir lib
-        | Install { section; files; package = Some p } when p = package ->
+        | Install { section; files; package = p } when p.name = package ->
           List.map files ~f:(fun { Install_conf. src; dst } ->
             Install.Entry.make section (Path.relative dir src) ?dst)
         | _ -> [])
@@ -913,8 +913,8 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
              match (stanza : Stanza.t) with
              | Library { public = Some { package; _ }; _ }
              | Alias { package = Some package ;  _ }
-             | Install { package = Some package; _ } ->
-               String_set.mem package pkgs
+             | Install { package; _ } ->
+               String_set.mem package.name pkgs
              | _ -> true)))
     in
     let sctx =

@@ -123,7 +123,7 @@ end
                Did you forgot to call [Jbuild_plugin.V*.send]?"
             (Path.to_string file);
         let sexps = Sexp_load.many (Path.to_string generated_jbuild) in
-        return (dir, Stanzas.parse sexps ~dir ~visible_packages ~closest_packages))
+        return (dir, Stanzas.parse sexps ~visible_packages ~closest_packages))
     |> Future.all
 end
 
@@ -138,7 +138,7 @@ let load ~dir ~visible_packages ~closest_packages =
   let file = Path.relative dir "jbuild" in
   match Sexp_load.many_or_ocaml_script (Path.to_string file) with
   | Sexps sexps ->
-    Jbuilds.Literal (dir, Stanzas.parse sexps ~dir ~visible_packages ~closest_packages)
+    Jbuilds.Literal (dir, Stanzas.parse sexps ~visible_packages ~closest_packages)
   | Ocaml_script ->
     Script
       { dir

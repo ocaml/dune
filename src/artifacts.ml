@@ -80,7 +80,7 @@ let file_of_lib ?(use_provides=false) t ~from ~lib ~file =
   match String_map.find lib t.local_libs with
   | Some { package; sub_dir; _ } ->
     let lib_install_dir =
-      Config.local_install_lib_dir ~context:t.context.name ~package
+      Config.local_install_lib_dir ~context:t.context.name ~package:package.name
     in
     let lib_install_dir =
       match sub_dir with

@@ -134,7 +134,7 @@ let gen ~package ~version ~stanzas ~lib_deps ~ppx_runtime_deps =
     List.filter_map stanzas ~f:(fun (dir, stanza) ->
       match (stanza : Stanza.t) with
       | Library ({ public = Some { name; package = p; _ }; _ } as lib)
-        when p = package ->
+        when p.name = package ->
         Some (Lib (dir, Pub_name.parse name, lib))
       | _ ->
         None)

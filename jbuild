@@ -1,0 +1,5 @@
+(jbuild_version 1)
+
+(install
+ ((section toplevel)
+  (files   (topkg-jbuilder))))

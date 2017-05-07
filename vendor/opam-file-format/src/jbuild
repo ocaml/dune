@@ -1,0 +1,12 @@
+(jbuild_version 1)
+
+(library
+ ((name jbuilder_opam_file_format)))
+
+(ocamllex (opamLexer))
+(ocamlyacc (opamBaseParser))
+
+(rule
+ ((targets (opamParserTypes.ml))
+  (deps    (opamParserTypes.mli))
+  (action  (copy-and-add-line-directive ${<} ${@}))))

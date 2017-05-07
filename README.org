@@ -1,4 +1,5 @@
 * JBUILDER - A composable build system for OCaml and Reason
+%%VERSION%%
 
 Jbuilder is a build system designed for OCaml/Reason projects only. It
 focuses on providing the user with a consistent experience and takes

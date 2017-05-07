@@ -129,7 +129,14 @@ let subst_string s ~map =
     Some (Buffer.contents buf)
 
 let subst_file fn ~map =
-  match read_file fn |> subst_string ~map with
+  let s = read_file fn in
+  let s =
+    if String.is_suffix fn ~suffix:".opam" then
+      "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s
+    else
+      s
+  in
+  match subst_string s ~map with
   | None -> ()
   | Some s -> write_file fn s
 

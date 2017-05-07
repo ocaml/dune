@@ -1127,7 +1127,7 @@ current directory will be used as root.
 *** Forcing the root (for scripts)
 
 You can pass the =--root= option to =jbuilder= to select the root
-explicitely. This option is intended for scripts to disable the
+explicitly. This option is intended for scripts to disable the
 automatic lookup.
 
 Notet that when using the =--root= option, targets given on the

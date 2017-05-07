@@ -159,11 +159,15 @@ let bootstrap () =
   let pkg = "jbuilder" in
   let main () =
     let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
+    let subst () =
+      Future.Scheduler.go (Watermarks.subst ~package:"jbuilder")
+    in
     Arg.parse
       [ "-j"           , Set_int Clflags.concurrency, "JOBS concurrency"
       ; "--dev"        , Set Clflags.dev_mode       , " set development mode"
       ; "--debug-rules", Set Clflags.debug_rules    , " print out rules"
       ; "--verbose"    , Set Clflags.verbose        , " print detailed information about commands being run"
+      ; "--subst"      , Unit subst                 , " substitute watermarks in source files"
       ]
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
     let log = Log.create () in

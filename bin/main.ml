@@ -646,7 +646,7 @@ let subst =
            what topkg does in the default configuration.|}
     ; `P {|If you use topkg to handle the releases of your project, then you
            should add this line to the $(b,build:) instructions in your opam file:|}
-    ; `Pre {|  ["jbuilder" "subst" name]|}
+    ; `Pre {|  ["jbuilder" "subst" name] {pinned}|}
     ; `Blocks help_secs
     ]
   in

@@ -636,6 +636,30 @@ let exec =
          )
   , Term.info "exec" ~doc ~man)
 
+let subst =
+  let doc =
+    "Substitute watermarks in source files."
+  in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|Substitute %%ID%% strings in source files, in a similar fashion to
+           what topkg does in the default configuration.|}
+    ; `P {|If you use topkg to handle the releases of your project, then you
+           should add this line to the $(b,build:) instructions in your opam file:|}
+    ; `Pre {|  ["jbuilder" "subst" name]|}
+    ; `Blocks help_secs
+    ]
+  in
+  let go common package =
+    set_common common;
+    Future.Scheduler.go (Watermarks.subst ~package)
+  in
+  ( Term.(const go
+          $ common
+          $ Arg.(required
+                 & pos 0 (some string) None (Arg.info [] ~docv:"PACKAGE"))
+         )
+  , Term.info "subst" ~doc ~man)
 
 let all =
   [ installed_libraries
@@ -645,6 +669,7 @@ let all =
   ; install
   ; uninstall
   ; exec
+  ; subst
   ]
 
 let default =

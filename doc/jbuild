@@ -9,6 +9,8 @@ let commands =
   ; "installed-libraries"
   ; "runtest"
   ; "uninstall"
+  ; "exec"
+  ; "subst"
   ]
 
 let jbuild =

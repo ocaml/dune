@@ -143,7 +143,7 @@ let subst_git ~package =
   in
   Future.both
     (Future.both
-       (Future.run_capture Strict git ["describe"; "--always"; "--dirty"; rev])
+       (Future.run_capture Strict git ["describe"; "--always"; "--dirty"])
        (Future.run_capture Strict git ["rev-parse"; rev]))
     (Future.run_capture_lines Strict git ["ls-tree"; "-r"; "--name-only"; rev])
   >>= fun ((git_describe, git_commit), files) ->

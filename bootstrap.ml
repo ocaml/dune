@@ -265,6 +265,32 @@ module Jbuilder_re = struct
   end
 end
 
+module Jbuilder_opam_file_format = struct
+  module OpamParserTypes = struct
+    type value =
+      | String of unit * string
+      | List of unit * value list
+      | Other
+
+    type opamfile_item =
+      | Variable of unit * string * value
+      | Other
+
+    type opamfile =
+      { file_contents : opamfile_item list
+      ; file_name     : string
+      }
+  end
+  module OpamParser = struct
+    open OpamParserTypes
+    let file fn =
+      assert (fn = "jbuilder.opam");
+      { file_contents = []
+      ; file_name     = fn
+      }
+  end
+end
+
 module Glob_lexer = struct
   let parse_string _ = failwith "globs are not available during bootstrap"
 end

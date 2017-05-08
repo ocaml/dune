@@ -650,14 +650,16 @@ let subst =
     ; `Blocks help_secs
     ]
   in
-  let go common package =
+  let go common name =
     set_common common;
-    Future.Scheduler.go (Watermarks.subst ~package)
+    Future.Scheduler.go (Watermarks.subst ?name ())
   in
   ( Term.(const go
           $ common
-          $ Arg.(required
-                 & pos 0 (some string) None (Arg.info [] ~docv:"PACKAGE"))
+          $ Arg.(value
+                 & opt (some string) None
+                 & info ["n"; "name"] ~docv:"NAME"
+                     ~doc:"Use this package name instead of detecting it.")
          )
   , Term.info "subst" ~doc ~man)
 

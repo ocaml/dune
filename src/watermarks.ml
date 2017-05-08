@@ -20,38 +20,47 @@ let is_a_source_file fn =
   | ".woff" -> false
   | _ -> true
 
-let make_watermark_map ~package ~opam_file ~git_describe ~git_commit =
+let make_watermark_map ~name ~version ~commit =
+  let opam_file = OpamParser.file (name ^ ".opam") in
   let version_num =
-    if String.is_prefix git_describe ~prefix:"v" then
-      String.sub git_describe ~pos:1 ~len:(String.length git_describe - 1)
+    if String.is_prefix version ~prefix:"v" then
+      String.sub version ~pos:1 ~len:(String.length version - 1)
     else
-      git_describe
+      version
   in
   let opam_var name sep =
     match
-      List.find_map opam_file.OpamParserTypes.file_contents
+      List.find_map opam_file.file_contents
         ~f:(function
           | Variable (_, var, value) when name = var ->
             Some value
           | _ -> None)
     with
-    | None -> sprintf "<variable %S not found in opam file>" name
+    | None -> Error (sprintf "variable %S not found in opam file" name)
     | Some value ->
-      let err = sprintf "<invalid value for variable %S in opam file>" name in
+      let err = Error (sprintf "invalid value for variable %S in opam file" name) in
       match value with
-      | String (_, s) -> s
-      | List (_, l) ->
-        List.map l ~f:(function
-          | OpamParserTypes.String (_, s) -> s
-          | _ -> err)
-        |> String.concat ~sep
+      | String (_, s) -> Ok s
+      | List (_, l) -> begin
+          match
+            List.fold_left l ~init:(Ok []) ~f:(fun acc v ->
+              match acc with
+              | Error _ -> acc
+              | Ok l ->
+                match v with
+                | OpamParserTypes.String (_, s) -> Ok (s :: l)
+                | _ -> err)
+          with
+          | Error _ as e -> e
+          | Ok l -> Ok (String.concat ~sep (List.rev l))
+        end
       | _ -> err
   in
   String_map.of_alist_exn
-    [ "NAME"           , package
-    ; "VERSION"        , git_describe
-    ; "VERSION_NUM"    , version_num
-    ; "VCS_COMMIT_ID"  , git_commit
+    [ "NAME"           , Ok name
+    ; "VERSION"        , Ok version
+    ; "VERSION_NUM"    , Ok version_num
+    ; "VCS_COMMIT_ID"  , Ok commit
     ; "PKG_MAINTAINER" , opam_var "maintainer"  ", "
     ; "PKG_AUTHORS"    , opam_var "authors"     ", "
     ; "PKG_HOMEPAGE"   , opam_var "homepage"    " "
@@ -61,9 +70,28 @@ let make_watermark_map ~package ~opam_file ~git_describe ~git_commit =
     ; "PKG_REPO"       , opam_var "dev-repo"    " "
     ]
 
-let subst_string s ~map =
+let subst_string s ~fname ~map =
   let len = String.length s in
   let longest_var = List.longest (String_map.keys map) in
+  let loc_of_offset ~ofs ~len =
+    let rec loop lnum bol i =
+      if i = ofs then
+        let pos =
+          { Lexing.
+            pos_fname = fname
+          ; pos_cnum  = i
+          ; pos_lnum  = lnum
+          ; pos_bol   = bol
+          }
+        in
+        { Loc.start = pos; stop  = { pos with pos_cnum = pos.pos_cnum + len } }
+      else
+        match s.[i] with
+        | '\n' -> loop (lnum + 1) (i + 1) (i + 1)
+        | _    -> loop lnum bol (i + 1)
+    in
+    loop 1 0 0
+  in
   let rec loop i acc =
     if i = len then
       acc
@@ -105,9 +133,12 @@ let subst_string s ~map =
           let var = String.sub s ~pos:(start + 2) ~len:(i - start - 3) in
           match String_map.find var map with
           | None -> in_var ~start:(i - 1) (i + 1) acc
-          | Some repl ->
+          | Some (Ok repl) ->
             let acc = (start, i + 1, repl) :: acc in
             loop (i + 1) acc
+          | Some (Error msg) ->
+            let loc = loc_of_offset ~ofs:start ~len:(i + 1 - start) in
+            Loc.fail loc "%s" msg
         end
       | _ -> loop (i + 1) acc
   in
@@ -131,17 +162,49 @@ let subst_string s ~map =
 let subst_file fn ~map =
   let s = read_file fn in
   let s =
-    if String.is_suffix fn ~suffix:".opam" then
+    if Filename.dirname fn = "." && String.is_suffix fn ~suffix:".opam" then
       "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s
     else
       s
   in
-  match subst_string s ~map with
+  match subst_string s ~map ~fname:fn with
   | None -> ()
   | Some s -> write_file fn s
 
-let subst_git ~package =
-  let opam_file = OpamParser.file (package ^ ".opam") in
+let get_name ~files ?name () =
+  let package_names =
+    List.filter_map files ~f:(fun fn ->
+      if Filename.dirname fn = "." then
+        match Filename.split_extension fn with
+        | s, ".opam" -> Some s
+        | _ -> None
+      else
+        None)
+  in
+  if package_names = [] then die "@{<error>Error@}: no <package>.opam files found.";
+  match name with
+  | Some name ->
+    if List.mem name ~set:package_names then
+      die "@{<error>Error@}: file %s.opam doesn't exist." name;
+    name
+  | None ->
+    let shortest =
+      match package_names with
+      | [] -> assert false
+      | first :: rest ->
+        List.fold_left rest ~init:first ~f:(fun acc s ->
+          if String.length s < String.length acc then
+            s
+          else
+            acc)
+    in
+    if List.for_all package_names ~f:(String.is_prefix ~prefix:shortest) then
+      shortest
+    else
+      die "@{<error>Error@}: cannot determine name automatically.\n\
+           You must pass a [--name] command line argument."
+
+let subst_git ?name () =
   let rev = "HEAD" in
   let git =
     match Bin.which "git" with
@@ -153,17 +216,18 @@ let subst_git ~package =
        (Future.run_capture Strict git ["describe"; "--always"; "--dirty"])
        (Future.run_capture Strict git ["rev-parse"; rev]))
     (Future.run_capture_lines Strict git ["ls-tree"; "-r"; "--name-only"; rev])
-  >>= fun ((git_describe, git_commit), files) ->
-  let git_describe = String.trim git_describe in
-  let git_commit = String.trim git_commit in
-  let watermarks = make_watermark_map ~package ~opam_file ~git_describe ~git_commit in
+  >>= fun ((version, commit), files) ->
+  let version = String.trim version in
+  let commit  = String.trim commit  in
+  let name = get_name ~files ?name () in
+  let watermarks = make_watermark_map ~name ~version ~commit in
   List.iter files ~f:(fun fn ->
     if is_a_source_file fn then
       subst_file fn ~map:watermarks);
   Future.return ()
 
-let subst ~package =
+let subst ?name () =
   if Sys.file_exists ".git" then
-    subst_git ~package
+    subst_git ?name ()
   else
     Future.return ()

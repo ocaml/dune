@@ -4,4 +4,4 @@
 
     This is only used when a package is pinned. *)
 
-val subst : package:string -> unit Future.t
+val subst : ?name:string -> unit -> unit Future.t

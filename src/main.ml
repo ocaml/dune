@@ -160,7 +160,7 @@ let bootstrap () =
   let main () =
     let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
     let subst () =
-      Future.Scheduler.go (Watermarks.subst ~package:"jbuilder");
+      Future.Scheduler.go (Watermarks.subst () ~name:"jbuilder");
       exit 0
     in
     Arg.parse

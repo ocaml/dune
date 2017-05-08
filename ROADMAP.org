@@ -80,9 +80,25 @@ So that we can filter tests when using =-p pkg=
 
 https://github.com/janestreet/jbuilder/pull/23
 
-** Integrate rules for js_of_ocaml
+** +Integrate rules for js_of_ocaml+
 
 https://github.com/janestreet/jbuilder/pull/60
+
+- *02/05/2017*: Merged
+
+** +Topkg integration+
+
+It would be nice to integrate with [[http://erratique.ch/software/topkg][topkg]]. Some of the features
+overlap, and for instance there doesn't seem to be much point in using
+topkg to generate the .install or invoke jbuilder since jbuilder
+already handles that well. However, the other features available
+through the =topkg= command line tool would be good to have.
+
+- *08/05/2017*: Made topkg and jbuilder work together with [[https://github.com/diml/topkg-jbuilder][topkg-jbuilder]]
+
+** odoc support
+
+Support generating documentation with [[https://github.com/ocaml-doc/odoc][odoc]].
 
 * After V1
 
@@ -105,22 +121,10 @@ as follows:
   (host   foo)))
 #+end_src
 
-** Topkg integration
-
-It would be nice to integrate with [[http://erratique.ch/software/topkg][topkg]]. Some of the features
-overlap, and for instance there doesn't seem to be much point in using
-topkg to generate the .install or invoke jbuilder since jbuilder
-already handles that well. However, the other features available
-through the =topkg= command line tool would be good to have.
-
 ** Jenga bridge
 
 Implement a jenga plugin that can read the same jbuild files as
 Jbuilder. To do that we'll use Jbuilder as a library.
-
-** odoc support
-
-Support generating documentation with [[https://github.com/ocaml-doc/odoc][odoc]].
 
 ** Inline tests
 

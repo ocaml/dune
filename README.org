@@ -148,6 +148,10 @@ that preserves composability; i.e. it doesn't require to manually run
 all =./configure= script when working on multiple projects at the same
 time.
 
+*** Can I use topkg with jbuilder?
+
+Yes, have a look at the [[https://github.com/diml/topkg-jbuilder][topkg-jbuilder]] project for more details.
+
 ** Known bugs
 
 *** Optional libraries inside a multilib directory

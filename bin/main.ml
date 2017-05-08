@@ -677,7 +677,7 @@ let all =
 let default =
   let doc = "composable build system for OCaml" in
   ( Term.(ret (const (fun _ -> `Help (`Pager, None)) $ common))
-  , Term.info "jbuilder" ~doc
+  , Term.info "jbuilder" ~doc ~version:"%%VERSION%%"
       ~man:
         [ `S "DESCRIPTION"
         ; `P {|Jbuilder is a build system designed for OCaml projects only. It

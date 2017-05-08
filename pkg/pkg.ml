@@ -1,7 +1,9 @@
-#!/usr/bin/env ocaml
-#use "./topkg-jbuilder"
+#use "topfind"
+#require "topkg-jbuilder"
+
+open Topkg
 
 let () =
-  Pkg.describe "jbuilder"
+  Topkg_jbuilder.describe ()
     ~readmes: [ Pkg.std_file "README.org"     ]
     ~licenses:[ Pkg.std_file "LICENSE.txt"    ]

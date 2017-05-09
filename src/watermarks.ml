@@ -204,6 +204,19 @@ let get_name ~files ?name () =
       die "@{<error>Error@}: cannot determine name automatically.\n\
            You must pass a [--name] command line argument."
 
+let ocaml = lazy (
+  match Bin.which "ocaml" with
+  | None -> Utils.program_not_found "ocaml"
+  | Some p -> Path.to_string p
+)
+
+let run_hook ~files hook =
+  let fn = sprintf "pkg/%s_hook.ml" hook in
+  if List.mem fn ~set:files then
+    Future.run Strict (Lazy.force ocaml) [fn]
+  else
+    Future.return ()
+
 let subst_git ?name () =
   let rev = "HEAD" in
   let git =
@@ -217,6 +230,8 @@ let subst_git ?name () =
        (Future.run_capture Strict git ["rev-parse"; rev]))
     (Future.run_capture_lines Strict git ["ls-tree"; "-r"; "--name-only"; rev])
   >>= fun ((version, commit), files) ->
+  run_hook "pre_subst" ~files
+  >>= fun () ->
   let version = String.trim version in
   let commit  = String.trim commit  in
   let name = get_name ~files ?name () in
@@ -224,7 +239,7 @@ let subst_git ?name () =
   List.iter files ~f:(fun fn ->
     if is_a_source_file fn then
       subst_file fn ~map:watermarks);
-  Future.return ()
+  run_hook "post_subst" ~files
 
 let subst ?name () =
   if Sys.file_exists ".git" then

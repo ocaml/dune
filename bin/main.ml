@@ -647,18 +647,6 @@ let subst =
     ; `P {|If you use topkg to handle the releases of your project, then you
            should add this line to the $(b,build:) instructions in your opam file:|}
     ; `Pre {|  ["jbuilder" "subst" name] {pinned}|}
-    ; `S "HOOKS"
-    ; `I ("pre_subst",
-          {|If a a file $(b,pkg/pre_subst_hook.ml) exists, it is evaluated before
-            performing the expansion.|})
-    ; `I ("post_subst",
-          {|If a a file $(b,pkg/post_subst_hook.ml) exists, it is evaluated after
-            performing the expansion.|})
-    ; `P ({|A typical example of $(b,pre_subst) hook is a script that adds %%|} ^
-          {|VERSION%%
-            to the README, so that the version is present in releases and you
-            don't get the variable unexpanded on github.
-            Jbuilder itself does this.|})
     ; `Blocks help_secs
     ]
   in

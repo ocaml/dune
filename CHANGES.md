@@ -3,8 +3,10 @@
 
 - Add support for building Reason projects (Rudi Grinberg, #58)
 
-- Add support for building javascript with js~ofocaml~ (Hugo Heuzard,
+- Add support for building javascript with js-of-ocaml (Hugo Heuzard,
   #60)
+
+- Better support for topkg release workflow
 
 - Hint for mistyped targets. Only suggest correction on the basename
   for now, otherwise it's slow when the workspace is big

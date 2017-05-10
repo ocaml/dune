@@ -156,9 +156,9 @@ let strip_colors_for_stderr s =
 let setup_env_for_colors = lazy(
   if Lazy.force stderr_supports_colors then begin
     let set var value =
-      match Sys.getenv  with
+      match Sys.getenv var with
       | exception Not_found -> Unix.putenv var value
-      | _ -> ()
+      | (_ : string) -> ()
     in
     set "OPAMCOLOR" "always";
     set "OCAML_COLOR" "always";

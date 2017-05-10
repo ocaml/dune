@@ -264,11 +264,13 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
   let natdynlink_supported = Path.exists (Path.relative stdlib_dir "dynlink.cmxa") in
   let version = get "version" in
   let env,env_extra =
-    (* We redirect the output of all commands, so by default the compiler will disable
-       colors. Since we support colors in the output of commands, we force it via OCAMLPARAM
-       if stderr supports colors. *)
-    let ocaml_version = Scanf.sscanf version "%u.%u.%u" (fun a b c -> a, b, c) in
-    if Lazy.force Ansi_color.stderr_supports_colors && ocaml_version > (4, 02, 3) then
+    (* See comment in ansi_color.ml for setup_env_for_colors. For OCaml < 4.05,
+       OCAML_COLOR is not supported so we use OCAMLPARAM. OCaml 4.02 doesn't support
+       'color' in OCAMLPARAM, so we just don't force colors with 4.02. *)
+    let ocaml_version = Scanf.sscanf version "%u.%u" (fun a b -> a, b) in
+    if Lazy.force Ansi_color.stderr_supports_colors
+    && ocaml_version > (4, 02)
+    && ocaml_version < (4, 05) then
       let value =
         match get_env env "OCAMLPARAM" with
         | None -> "color=always,_"
@@ -369,7 +371,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
 let opam_config_var t var = opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
 let initial_env = lazy (
-  Lazy.force Ansi_color.setup_env_for_opam_colors;
+  Lazy.force Ansi_color.setup_env_for_colors;
   Unix.environment ())
 
 let default ?(merlin=true) ?(use_findlib=true) () =

@@ -365,6 +365,9 @@ module Gen(P : Params) = struct
         SC.add_rule sctx build
       );
 
+    (* Odoc *)
+    Odoc.setup_library_rules sctx lib ~dir ~requires ~modules ~dep_graph;
+
     let flags =
       match alias_module with
       | None -> flags.common
@@ -629,6 +632,7 @@ module Gen(P : Params) = struct
   let () = List.iter (SC.stanzas sctx) ~f:rules
   let () =
     SC.add_rules sctx (Js_of_ocaml_rules.setup_separate_compilation_rules sctx)
+  let () = Odoc.setup_css_rule sctx
 
   (* +-----------------------------------------------------------------+
      | META                                                            |

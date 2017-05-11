@@ -504,6 +504,10 @@ only support user rules with targets in the current directory.
 =<action>= is the action to run to produce the targets from the
 dependencies. See the [[User actions][actions section]] for more details.
 
+Note that contrary to makefiles or other build systems, user rules
+currently don't support patterns, such as a rule to produce =%.y= from
+=%.x= for any given =%=. This might be supported in the future.
+
 **** ocamllex
 
 =(ocamllex (<names>))= is essentially a shorthand for:

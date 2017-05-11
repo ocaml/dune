@@ -44,11 +44,13 @@ let file_with_digest_suffix t ~digest =
 let default = make "DEFAULT"
 let runtest = make "runtest"
 let install = make "install"
+let doc     = make "doc"
 
 let recursive_aliases =
   [ default
   ; runtest
   ; install
+  ; doc
   ]
 
 module Store = struct

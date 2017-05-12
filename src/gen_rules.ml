@@ -489,9 +489,9 @@ module Gen(P : Params) = struct
       Sexp.List [deps ; action]
       |> Sexp.to_string
       |> Digest.string
-      |> Digest.to_hex in
+    in
     let alias = Alias.make alias_conf.name ~dir in
-    let digest_path = Path.extend_basename (Alias.file alias) ~suffix:("-" ^ digest) in
+    let digest_path = Alias.file_with_digest_suffix alias ~digest in
     Alias.add_deps (SC.aliases sctx) alias [digest_path];
     let deps = SC.Deps.interpret sctx ~dir alias_conf.deps in
     SC.add_rule sctx

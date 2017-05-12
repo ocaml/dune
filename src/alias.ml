@@ -17,13 +17,15 @@ type t =
 
 let aliases_path = Path.(relative root) "_build/.aliases"
 
+let suffix = "-" ^ String.make 32 '0'
+
 let of_path path =
   if not (Path.is_local path) then
     die "Aliases are only supported for local paths!\n\
          Tried to reference alias %S"
       (Path.to_string path);
   { name = Name.make path
-  ; file = Path.append aliases_path path
+  ; file = Path.extend_basename (Path.append aliases_path path) ~suffix
   }
 
 let make name ~dir = of_path (Path.relative dir name)
@@ -31,6 +33,13 @@ let make name ~dir = of_path (Path.relative dir name)
 let dep t = Build.path t.file
 
 let file t = t.file
+
+let file_with_digest_suffix t ~digest =
+  let dir = Path.parent t.file in
+  let base = Path.basename t.file in
+  let len = String.length base in
+  Path.relative dir
+    (String.sub base ~pos:0 ~len:(len - 32) ^ Digest.to_hex digest)
 
 let default = make "DEFAULT"
 let runtest = make "runtest"

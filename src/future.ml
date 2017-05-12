@@ -335,65 +335,66 @@ module Scheduler = struct
       | File fn | Opened_file { filename = fn; _ } -> sprintf "%s 2> %s" s fn
 
   let pp_purpose ppf = function
-  | Internal_job ->
-     Format.fprintf ppf "(internal)"
-  | Build_job targets ->
-     let rec split_paths targets_acc ctxs_acc = function
-       | [] -> List.rev targets_acc, String_set.(elements (of_list ctxs_acc))
-       | path :: rest ->
+    | Internal_job ->
+      Format.fprintf ppf "(internal)"
+    | Build_job targets ->
+      let rec split_paths targets_acc ctxs_acc = function
+        | [] -> List.rev targets_acc, String_set.(elements (of_list ctxs_acc))
+        | path :: rest ->
           match Path.extract_build_context path with
           | None ->
-             split_paths (Path.to_string path :: targets_acc) ctxs_acc rest
+            split_paths (Path.to_string path :: targets_acc) ctxs_acc rest
           | Some ("default", filename) ->
-             split_paths (Path.to_string filename :: targets_acc) ctxs_acc rest
+            split_paths (Path.to_string filename :: targets_acc) ctxs_acc rest
           | Some (".aliases", filename) ->
-             let ctxs_acc, filename = match Path.extract_build_context filename with
-               | None -> ctxs_acc, Path.to_string filename
-               | Some (ctx, fn) ->
-                  let strip_digest fn =
-                    let fn = Path.to_string fn in
-                    match String.rsplit2 fn ~on:'-' with
-                    | None -> fn
-                    | Some (name, digest) ->
-                       match Digest.from_hex digest with
-                       | _ -> name
-                       | exception (Invalid_argument _) -> fn in
-                  let ctxs_acc =
-                    if ctx = "default" then ctxs_acc else ctx :: ctxs_acc in
-                  ctxs_acc, strip_digest fn in
-             split_paths (("alias " ^ filename) :: targets_acc) ctxs_acc rest
+            let ctxs_acc, filename =
+              match Path.extract_build_context filename with
+              | None -> ctxs_acc, Path.to_string filename
+              | Some (ctx, fn) ->
+                let strip_digest fn =
+                  let fn = Path.to_string fn in
+                  match String.rsplit2 fn ~on:'-' with
+                  | None -> assert false
+                  | Some (name, digest) ->
+                    assert (String.length digest = 32);
+                    name
+                in
+                let ctxs_acc =
+                  if ctx = "default" then ctxs_acc else ctx :: ctxs_acc in
+                ctxs_acc, strip_digest fn in
+            split_paths (("alias " ^ filename) :: targets_acc) ctxs_acc rest
           | Some (ctx, filename) ->
-             split_paths (Path.to_string filename :: targets_acc) (ctx :: ctxs_acc) rest in
-     let target_names, contexts = split_paths [] [] targets in
-     let target_names_grouped_by_prefix =
-       List.map target_names ~f:Filename.split_extension_after_dot
-       |> String_map.of_alist_multi
-       |> String_map.bindings
-     in
-     let pp_comma ppf () = Format.fprintf ppf "," in
-     let pp_group ppf (prefix, suffixes) =
-       match suffixes with
-       | [] -> assert false
-       | [suffix] -> Format.fprintf ppf "%s%s" prefix suffix
-       | _ ->
-         Format.fprintf ppf "%s{%a}"
-           prefix
-           (Format.pp_print_list ~pp_sep:pp_comma Format.pp_print_string)
-           suffixes
-     in
-     let pp_contexts ppf = function
-       | [] -> ()
-       | ctxs ->
-         Format.fprintf ppf " @{<details>[%a]@}"
-           (Format.pp_print_list ~pp_sep:pp_comma
-              (fun ppf s -> Format.fprintf ppf "%s" s))
-           ctxs
-     in
-     Format.fprintf ppf "%a%a"
-       (Format.pp_print_list ~pp_sep:pp_comma pp_group)
-       target_names_grouped_by_prefix
-       pp_contexts
-       contexts;
+            split_paths (Path.to_string filename :: targets_acc) (ctx :: ctxs_acc) rest in
+      let target_names, contexts = split_paths [] [] targets in
+      let target_names_grouped_by_prefix =
+        List.map target_names ~f:Filename.split_extension_after_dot
+        |> String_map.of_alist_multi
+        |> String_map.bindings
+      in
+      let pp_comma ppf () = Format.fprintf ppf "," in
+      let pp_group ppf (prefix, suffixes) =
+        match suffixes with
+        | [] -> assert false
+        | [suffix] -> Format.fprintf ppf "%s%s" prefix suffix
+        | _ ->
+          Format.fprintf ppf "%s{%a}"
+            prefix
+            (Format.pp_print_list ~pp_sep:pp_comma Format.pp_print_string)
+            suffixes
+      in
+      let pp_contexts ppf = function
+        | [] -> ()
+        | ctxs ->
+          Format.fprintf ppf " @{<details>[%a]@}"
+            (Format.pp_print_list ~pp_sep:pp_comma
+               (fun ppf s -> Format.fprintf ppf "%s" s))
+            ctxs
+      in
+      Format.fprintf ppf "%a%a"
+        (Format.pp_print_list ~pp_sep:pp_comma pp_group)
+        target_names_grouped_by_prefix
+        pp_contexts
+        contexts;
 
   type running_job =
     { id              : int

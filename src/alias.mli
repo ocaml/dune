@@ -11,6 +11,8 @@ val lib_cm_all : dir:Path.t -> string -> Cm_kind.t -> t
 val dep : t -> ('a, 'a) Build.t
 val file : t -> Path.t
 
+val file_with_digest_suffix : t -> digest:Digest.t -> Path.t
+
 module Store : sig
   type t
   val create : unit -> t

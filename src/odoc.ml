@@ -63,6 +63,53 @@ let to_html sctx (m : Module.t) odoc_file ~doc_dir ~odoc ~dir ~includes
        ]);
   html_file
 
+let lib_index sctx ~odoc ~dir ~(lib : Library.t) ~lib_public_name ~doc_dir ~modules
+      ~includes =
+  let context = SC.context sctx in
+  let generated_index_mld = dir ++ sprintf "%s-generated.mld" lib.name in
+  let source_index_mld = dir ++ sprintf "%s.mld" lib.name in
+  let header = {|{%html:<nav><a href="..">Up</a></nav>%}|} in
+  SC.add_rule sctx
+    (Build.if_file_exists source_index_mld
+       ~then_:(Build.contents source_index_mld
+               >>^ fun s -> sprintf "%s\n%s" header s)
+       ~else_:(Build.arr (fun () ->
+         (if lib.wrapped then
+            sprintf
+              "%s\n\
+               {1 Library %s}\n\
+               The entry point for this library is module {!module:%s}."
+              header
+              lib_public_name
+              (String.capitalize lib.name)
+          else
+            sprintf
+              "%s\n\
+               {1 Library %s}\n\
+               This library exposes the following toplevel modules: {!modules:%s}."
+              header
+              lib_public_name
+              (String_map.keys modules |> String.concat ~sep:" "))))
+     >>>
+     Build.update_file_dyn generated_index_mld);
+  let html_file =
+    doc_dir ++ lib_public_name ++ "index.html"
+  in
+  SC.add_rule sctx
+    (Alias.dep (Alias.lib_odoc_all ~dir lib.name)
+     >>>
+     includes
+     >>>
+     Build.run ~context ~dir odoc ~extra_targets:[html_file]
+       [ A "html"
+       ; Dyn (fun x -> x)
+       ; A "-I"; Path dir
+       ; A "-o"; Path doc_dir
+       ; A "--index-for"; A lib_public_name
+       ; Dep generated_index_mld
+       ]);
+  html_file
+
 let doc_dir = Path.of_string "_build/doc"
 
 let css_file sctx =
@@ -91,28 +138,36 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
       Build.dyn_paths (Build.arr lib_dependencies)
       >>^ Lib.include_flags
     in
-    let odoc_files =
+    let modules_and_odoc_files =
       List.map (String_map.values modules)
         ~f:(compile_module sctx ~odoc ~dir ~includes ~dep_graph ~modules
               ~lib_public_name:public.name)
     in
     let aliases = SC.aliases sctx in
     Alias.add_deps aliases (Alias.lib_odoc_all ~dir lib.name)
-      (List.map odoc_files ~f:snd);
+      (List.map modules_and_odoc_files ~f:snd);
     let doc_dir = doc_dir ++ context.name in
-    let odoc_files =
+    let modules_and_odoc_files =
       if lib.wrapped then
         let main_module_name = String.capitalize_ascii lib.name in
-        List.filter odoc_files ~f:(fun (m, _) -> m.Module.name = main_module_name)
+        List.filter modules_and_odoc_files
+          ~f:(fun (m, _) -> m.Module.name = main_module_name)
       else
-        odoc_files
+        modules_and_odoc_files
     in
     let html_files =
-      List.map odoc_files ~f:(fun (m, odoc_file) ->
+      List.map modules_and_odoc_files ~f:(fun (m, odoc_file) ->
         to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~dep_graph ~modules
           ~lib_public_name:public.name)
     in
-    Alias.add_deps aliases (Alias.doc ~dir) (css_file sctx :: html_files))
+    let lib_index_html =
+      lib_index sctx ~dir ~lib ~lib_public_name:public.name ~doc_dir
+        ~modules ~includes ~odoc
+    in
+    Alias.add_deps aliases (Alias.doc ~dir)
+      (css_file sctx
+       :: lib_index_html
+       :: html_files))
 
 let setup_css_rule sctx =
   let context = SC.context sctx in
@@ -123,4 +178,3 @@ let setup_css_rule sctx =
        ~extra_targets:[doc_dir ++ "odoc.css"]
        (get_odoc sctx)
        [ A "css"; A "-o"; Path doc_dir ]);
-

@@ -342,11 +342,7 @@ module Mini_shexp = struct
     | Copy_and_add_line_directive (src, dst) ->
       with_file_in (Path.to_string src) ~f:(fun ic ->
         with_file_out (Path.to_string dst) ~f:(fun oc ->
-          let fn =
-            match Path.extract_build_context src with
-            | None -> src
-            | Some (_, rem) -> rem
-          in
+          let fn = Path.drop_build_context src in
           Printf.fprintf oc "# 1 %S\n" (Path.to_string fn);
           copy_channels ic oc));
       return ()

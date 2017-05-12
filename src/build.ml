@@ -34,12 +34,23 @@ module Repr = struct
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Pset.t -> ('a, 'a) t
     | Paths_glob : Path.t * Re.re -> ('a, 'a) t
+    (* The reference gets decided in Build_interpret.deps *)
+    | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
     | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
     | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t
+
+  and ('a, 'b) if_file_exists_state =
+    | Undecided of ('a, 'b) t * ('a, 'b) t
+    | Decided   of bool * ('a, 'b) t
+
+  let get_if_file_exists_exn state =
+    match !state with
+    | Decided (_, t) -> t
+    | Undecided _ -> code_errorf "Build.get_if_file_exists_exn: got undecided"
 end
 include Repr
 let repr t = t
@@ -107,6 +118,19 @@ let dyn_paths t = Dyn_paths t
 
 let contents p = Contents p
 let lines_of p = Lines_of p
+
+let if_file_exists p ~then_ ~else_ =
+  If_file_exists (p, ref (Undecided (then_, else_)))
+
+let file_exists p =
+  if_file_exists p
+    ~then_:(arr (fun _ -> true))
+    ~else_:(arr (fun _ -> false))
+
+let file_exists_opt p t =
+  if_file_exists p
+    ~then_:(t >>^ fun x -> Some x)
+    ~else_:(arr (fun _ -> None))
 
 let fail ?targets x =
   match targets with

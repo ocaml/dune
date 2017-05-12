@@ -248,6 +248,8 @@ module Build_exec = struct
         x
       | Record_lib_deps _ -> x
       | Fail { fail } -> fail ()
+      | If_file_exists (_, state) ->
+        exec (get_if_file_exists_exn state) x
     in
     let action = exec (Build.repr t) x in
     (action, !dyn_deps)

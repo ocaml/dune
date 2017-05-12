@@ -639,7 +639,9 @@ module Gen(P : Params) = struct
       let meta_fn = "META." ^ pkg.name in
       let meta_templ_fn = meta_fn ^ ".template" in
 
-      let files = SC.sources_and_targets_known_so_far sctx ~src_path:pkg.path in
+      let files =
+        SC.sources_and_targets_known_so_far sctx ~src_path:pkg.path
+      in
       let has_meta, has_meta_tmpl =
         (String_set.mem meta_fn files,
          String_set.mem meta_templ_fn files)

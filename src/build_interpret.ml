@@ -40,6 +40,23 @@ let deps t ~all_targets_by_dir =
             Re.execp re (Path.basename path))
           |> Pset.union acc
       end
+    | If_file_exists (p, state) -> begin
+        match !state with
+        | Decided (exists, t) -> loop t (if exists then Pset.add p acc else acc)
+        | Undecided (then_, else_) ->
+          let dir = Path.parent p in
+          let targets =
+            Option.value (Pmap.find dir (Lazy.force all_targets_by_dir))
+              ~default:Pset.empty
+          in
+          if Pset.mem p targets then begin
+            state := Decided (true, then_);
+            loop then_ (Pset.add p acc)
+          end else begin
+            state := Decided (false, else_);
+            loop else_ acc
+          end
+      end
     | Dyn_paths t -> loop t acc
     | Contents p -> Pset.add p acc
     | Lines_of p -> Pset.add p acc
@@ -74,6 +91,8 @@ let lib_deps =
         in
         Pmap.add acc ~key:dir ~data
       | Fail _ -> acc
+      | If_file_exists (_, state) ->
+        loop (get_if_file_exists_exn state) acc
   in
   fun t -> loop (Build.repr t) Pmap.empty
 
@@ -97,6 +116,16 @@ let targets =
     | Lines_of _ -> acc
     | Record_lib_deps _ -> acc
     | Fail _ -> acc
+    | If_file_exists (_, state) -> begin
+        match !state with
+        | Decided _ -> code_errorf "Build_interpret.targets got decided if_file_exists"
+        | Undecided (a, b) ->
+          match loop a [], loop b [] with
+          | [], [] -> acc
+          | _ ->
+            code_errorf "Build_interpret.targets: cannot have targets \
+                         under a [if_file_exists]"
+      end
   in
   fun t -> loop (Build.repr t) []
 

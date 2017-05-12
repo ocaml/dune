@@ -45,6 +45,22 @@ val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
 val contents : Path.t -> ('a, string) t
 val lines_of : Path.t -> ('a, string list) t
 
+(** Evaluates to [true] if the file is present on the file system or is the target of a
+    rule. *)
+val file_exists : Path.t -> ('a, bool)  t
+
+(** [if_file_exists p ~then ~else] is an arrow that behaves like [then_] if [file_exists
+    p] evaluates to [true], and [else_] otherwise. *)
+val if_file_exists : Path.t -> then_:('a, 'b) t -> else_:('a, 'b) t -> ('a, 'b) t
+
+(** [file_exists_opt p t] is:
+
+    {[
+      if_file_exists p ~then_:(t >>^ fun x -> Some x) ~else_:(arr (fun _ -> None))
+    ]}
+*)
+val file_exists_opt : Path.t -> ('a, 'b) t -> ('a, 'b option) t
+
 (** Always fail when executed. We pass a function rather than an exception to get a proper
     backtrace *)
 val fail : ?targets:Path.t list -> fail -> (_, _) t
@@ -126,12 +142,19 @@ module Repr : sig
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Path.Set.t -> ('a, 'a) t
     | Paths_glob : Path.t * Re.re -> ('a, 'a) t
+    | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
     | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
     | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t
+
+  and ('a, 'b) if_file_exists_state =
+    | Undecided of ('a, 'b) t * ('a, 'b) t
+    | Decided   of bool * ('a, 'b) t
+
+  val get_if_file_exists_exn : ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
 end
 
 val repr : ('a, 'b) t -> ('a, 'b) Repr.t

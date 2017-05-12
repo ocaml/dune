@@ -37,6 +37,7 @@ let root t = t.root
 
 let ignore_file = function
   | ""
+  | "_opam"
   | "_build"
   | ".git"
   | ".hg"

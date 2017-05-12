@@ -44,13 +44,13 @@ let compile_module sctx (m : Module.t) ~odoc ~dir ~includes ~dep_graph ~modules
   (m, odoc_file)
 
 let to_html sctx (m : Module.t) odoc_file ~doc_dir ~odoc ~dir ~includes
-      ~dep_graph ~modules ~lib_public_name =
+      ~lib_public_name ~(lib : Library.t) =
   let context = SC.context sctx in
   let html_file =
-    doc_dir ++ lib_public_name ++ m.name ++ "index.html"
+    doc_dir ++ lib_public_name ++ String.capitalize m.obj_name ++ "index.html"
   in
   SC.add_rule sctx
-    (module_deps m ~dir ~dep_graph ~modules
+    (Alias.dep (Alias.lib_odoc_all ~dir lib.name)
      >>>
      includes
      >>>
@@ -147,6 +147,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
     Alias.add_deps aliases (Alias.lib_odoc_all ~dir lib.name)
       (List.map modules_and_odoc_files ~f:snd);
     let doc_dir = doc_dir ++ context.name in
+    (*
     let modules_and_odoc_files =
       if lib.wrapped then
         let main_module_name = String.capitalize_ascii lib.name in
@@ -154,10 +155,10 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
           ~f:(fun (m, _) -> m.Module.name = main_module_name)
       else
         modules_and_odoc_files
-    in
+       in*)
     let html_files =
       List.map modules_and_odoc_files ~f:(fun (m, odoc_file) ->
-        to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~dep_graph ~modules
+        to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~lib
           ~lib_public_name:public.name)
     in
     let lib_index_html =

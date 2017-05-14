@@ -3,35 +3,18 @@ open Build.Repr
 
 module Pset = Path.Set
 module Pmap = Path.Map
-module Vspec = Build.Vspec
-
-module Target = struct
-  type t =
-    | Normal of Path.t
-    | Vfile : _ Vspec.t -> t
-
-  let path = function
-    | Normal p -> p
-    | Vfile (Vspec.T (p, _)) -> p
-
-  let paths ts =
-    List.fold_left ts ~init:Pset.empty ~f:(fun acc t ->
-      Pset.add (path t) acc)
-end
 
 let deps t ~all_targets_by_dir =
   let rec loop : type a b. (a, b) t -> Pset.t -> Pset.t = fun t acc ->
     match t with
     | Arr _ -> acc
     | Targets _ -> acc
-    | Store_vfile _ -> acc
     | Compose (a, b) -> loop a (loop b acc)
     | First t -> loop t acc
     | Second t -> loop t acc
     | Split (a, b) -> loop a (loop b acc)
     | Fanout (a, b) -> loop a (loop b acc)
     | Paths fns -> Pset.union fns acc
-    | Vpath (Vspec.T (fn, _)) -> Pset.add fn acc
     | Paths_glob (dir, re) -> begin
         match Pmap.find dir (Lazy.force all_targets_by_dir) with
         | None -> acc
@@ -72,14 +55,12 @@ let lib_deps =
       match t with
       | Arr _ -> acc
       | Targets _ -> acc
-      | Store_vfile _ -> acc
       | Compose (a, b) -> loop a (loop b acc)
       | First t -> loop t acc
       | Second t -> loop t acc
       | Split (a, b) -> loop a (loop b acc)
       | Fanout (a, b) -> loop a (loop b acc)
       | Paths _ -> acc
-      | Vpath _ -> acc
       | Paths_glob _ -> acc
       | Dyn_paths t -> loop t acc
       | Contents _ -> acc
@@ -99,19 +80,16 @@ let lib_deps =
   fun t -> loop (Build.repr t) Pmap.empty
 
 let targets =
-  let rec loop : type a b. (a, b) t -> Target.t list -> Target.t list = fun t acc ->
+  let rec loop : type a b. (a, b) t -> Pset.t -> Pset.t = fun t acc ->
     match t with
     | Arr _ -> acc
-    | Targets targets ->
-      List.fold_left targets ~init:acc ~f:(fun acc fn -> Target.Normal fn :: acc)
-    | Store_vfile spec -> Vfile spec :: acc
+    | Targets targets -> Pset.union acc targets
     | Compose (a, b) -> loop a (loop b acc)
     | First t -> loop t acc
     | Second t -> loop t acc
     | Split (a, b) -> loop a (loop b acc)
     | Fanout (a, b) -> loop a (loop b acc)
     | Paths _ -> acc
-    | Vpath _ -> acc
     | Paths_glob _ -> acc
     | Dyn_paths t -> loop t acc
     | Contents _ -> acc
@@ -122,20 +100,20 @@ let targets =
         match !state with
         | Decided _ -> code_errorf "Build_interpret.targets got decided if_file_exists"
         | Undecided (a, b) ->
-          match loop a [], loop b [] with
-          | [], [] -> acc
-          | _ ->
+          if Pset.is_empty (loop a Pset.empty) && Pset.is_empty (loop b Pset.empty) then
+            acc
+          else
             code_errorf "Build_interpret.targets: cannot have targets \
                          under a [if_file_exists]"
       end
     | Memo m -> loop m.t acc
   in
-  fun t -> loop (Build.repr t) []
+  fun t -> loop (Build.repr t) Pset.empty
 
 module Rule = struct
   type t =
     { build   : (unit, Action.t) Build.t
-    ; targets : Target.t list
+    ; targets : Path.Set.t
     ; sandbox : bool
     }
 

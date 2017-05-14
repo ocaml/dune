@@ -1,18 +1,9 @@
 open! Import
 
-module Target : sig
-  type t =
-    | Normal of Path.t
-    | Vfile : _ Build.Vspec.t -> t
-
-  val path : t -> Path.t
-  val paths : t list -> Path.Set.t
-end
-
 module Rule : sig
   type t =
     { build   : (unit, Action.t) Build.t
-    ; targets : Target.t list
+    ; targets : Path.Set.t
     ; sandbox : bool
     }
 
@@ -30,4 +21,4 @@ val lib_deps
 
 val targets
   :  (_, _) Build.t
-  -> Target.t list
+  -> Path.Set.t

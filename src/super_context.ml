@@ -21,7 +21,6 @@ type t =
   ; mutable rules                           : Build_interpret.Rule.t list
   ; stanzas_to_consider_for_install         : (Path.t * Stanza.t) list
   ; mutable known_targets_by_src_dir_so_far : String_set.t Path.Map.t
-  ; libs_vfile                              : (module Vfile_kind.S with type t = Lib.t list)
   ; cxx_flags                               : string list
   ; vars                                    : string String_map.t
   ; ppx_dir                                 : Path.t
@@ -98,19 +97,6 @@ let create
       List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; _ } ->
         List.map stanzas ~f:(fun s -> (ctx_dir, s)))
   in
-  let module Libs_vfile =
-    Vfile_kind.Make_full
-      (struct type t = Lib.t list end)
-      (struct
-        open Sexp.To_sexp
-        let t _dir l = list string (List.map l ~f:Lib.best_name)
-      end)
-      (struct
-        open Sexp.Of_sexp
-        let t dir sexp =
-          List.map (list string sexp) ~f:(Lib_db.find_exn libs ~from:dir)
-      end)
-  in
   let artifacts =
     Artifacts.create context (List.map stanzas ~f:(fun (d : Dir_with_jbuild.t) ->
       (d.ctx_dir, d.stanzas)))
@@ -160,7 +146,6 @@ let create
   ; rules = []
   ; stanzas_to_consider_for_install
   ; known_targets_by_src_dir_so_far = Path.Map.empty
-  ; libs_vfile = (module Libs_vfile)
   ; artifacts
   ; cxx_flags
   ; vars
@@ -172,9 +157,9 @@ let add_rule t ?sandbox build =
   let rule = Build_interpret.Rule.make ?sandbox build in
   t.rules <- rule :: t.rules;
   t.known_targets_by_src_dir_so_far <-
-    List.fold_left rule.targets ~init:t.known_targets_by_src_dir_so_far
-      ~f:(fun acc target ->
-        match Path.extract_build_context (Build_interpret.Target.path target) with
+    Path.Set.fold rule.targets ~init:t.known_targets_by_src_dir_so_far
+      ~f:(fun path acc ->
+        match Path.extract_build_context path with
         | None -> acc
         | Some (_, path) ->
           let dir = Path.parent path in
@@ -206,19 +191,22 @@ module Libs = struct
 
   let find t ~from name = find t.libs ~from name
 
-  let vrequires t ~dir ~item =
-    let fn = Path.relative dir (item ^ ".requires.sexp") in
-    Build.Vspec.T (fn, t.libs_vfile)
+  let requires_file ~dir ~item =
+    Path.relative dir (item ^ ".requires.sexp")
+
+  let load_deps t ~dir fn =
+    Build.read_sexp fn (fun sexp ->
+      Sexp.Of_sexp.(list string) sexp
+      |> List.map ~f:(fun name -> Lib_db.find_exn t.libs ~from:dir name))
 
   let load_requires t ~dir ~item =
-    Build.vpath (vrequires t ~dir ~item)
+    load_deps t ~dir (requires_file ~dir ~item)
 
-  let vruntime_deps t ~dir ~item =
-    let fn = Path.relative dir (item ^ ".runtime-deps.sexp") in
-    Build.Vspec.T (fn, t.libs_vfile)
+  let runtime_deps_file ~dir ~item =
+    Path.relative dir (item ^ ".runtime-deps.sexp")
 
   let load_runtime_deps t ~dir ~item =
-    Build.vpath (vruntime_deps t ~dir ~item)
+    load_deps t ~dir (runtime_deps_file ~dir ~item)
 
   let with_fail ~fail build =
     match fail with
@@ -273,11 +261,14 @@ module Libs = struct
          Build.action_context_independent ~targets:[dst]
            (Copy_and_add_line_directive (src, dst))))
 
+  let write_deps fn =
+    Build.write_sexp fn (fun l -> Sexp.To_sexp.(list string) (List.map l ~f:Lib.best_name))
+
   let real_requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
     let all_pps =
       List.map (Preprocess_map.pps preprocess) ~f:Pp.to_string
     in
-    let vrequires = vrequires t ~dir ~item in
+    let requires_file = requires_file ~dir ~item in
     add_rule t
       (Build.record_lib_deps ~dir ~kind:dep_kind (List.map virtual_deps ~f:Lib_dep.direct)
        >>>
@@ -289,8 +280,8 @@ module Libs = struct
        Build.arr (fun (libs, rt_deps) ->
          Lib.remove_dups_preserve_order (libs @ rt_deps))
        >>>
-       Build.store_vfile vrequires);
-    Build.vpath vrequires
+      write_deps requires_file);
+    load_deps t ~dir requires_file
 
   let requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
     let real_requires =
@@ -314,7 +305,7 @@ module Libs = struct
     (requires, real_requires)
 
   let setup_runtime_deps t ~dir ~dep_kind ~item ~libraries ~ppx_runtime_libraries =
-    let vruntime_deps = vruntime_deps t ~dir ~item in
+    let runtime_deps_file = runtime_deps_file ~dir ~item in
     add_rule t
       (Build.fanout
          (closure t ~dir ~dep_kind (List.map ppx_runtime_libraries ~f:Lib_dep.direct))
@@ -323,7 +314,7 @@ module Libs = struct
        Build.arr (fun (rt_deps, rt_deps_of_deps) ->
          Lib.remove_dups_preserve_order (rt_deps @ rt_deps_of_deps))
        >>>
-       Build.store_vfile vruntime_deps)
+       write_deps runtime_deps_file)
 end
 
 module Deps = struct
@@ -367,24 +358,16 @@ end
 module Pkg_version = struct
   open Build.O
 
-  module V = Vfile_kind.Make(struct type t = string option end)
-      (functor (C : Sexp.Combinators) -> struct
-        let t = C.option C.string
-      end)
+  let spec_file sctx (p : Package.t) =
+    Path.relative (Path.append sctx.context.build_dir p.path)
+      (sprintf "%s.version.sexp" p.name)
 
-  let spec sctx (p : Package.t) =
-    let fn =
-      Path.relative (Path.append sctx.context.build_dir p.path)
-        (sprintf "%s.version.sexp" p.name)
-    in
-    Build.Vspec.T (fn, (module V))
-
-  let read sctx p = Build.vpath (spec sctx p)
+  let read sctx p = Build.read_sexp (spec_file sctx p) Sexp.Of_sexp.(option string)
 
   let set sctx p get =
-    let spec = spec sctx p in
-    add_rule sctx (get >>> Build.store_vfile spec);
-    Build.vpath spec
+    let fn = spec_file sctx p in
+    add_rule sctx (get >>> Build.write_sexp fn Sexp.To_sexp.(option string));
+    Build.read_sexp fn Sexp.Of_sexp.(option string)
 end
 
 module Action = struct

@@ -2,10 +2,6 @@ open Import
 
 module Pset = Path.Set
 
-module Vspec = struct
-  type 'a t = T : Path.t * 'a Vfile_kind.t -> 'a t
-end
-
 module Prog_spec = struct
   type 'a t =
     | Dep of Path.t
@@ -25,8 +21,7 @@ let merge_lib_dep_kind a b =
 module Repr = struct
   type ('a, 'b) t =
     | Arr : ('a -> 'b) -> ('a, 'b) t
-    | Targets : Path.t list -> ('a, 'a) t
-    | Store_vfile : 'a Vspec.t -> ('a, Action.t) t
+    | Targets : Path.Set.t -> ('a, 'a) t
     | Compose : ('a, 'b) t * ('b, 'c) t -> ('a, 'c) t
     | First : ('a, 'b) t -> ('a * 'c, 'b * 'c) t
     | Second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t
@@ -38,7 +33,6 @@ module Repr = struct
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
     | Lines_of : Path.t -> ('a, string list) t
-    | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
     | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t
@@ -125,7 +119,6 @@ let path p = Paths (Pset.singleton p)
 let paths ps = Paths (Pset.of_list ps)
 let path_set ps = Paths ps
 let paths_glob ~dir re = Paths_glob (dir, re)
-let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths t
 
 let contents p = Contents p
@@ -147,10 +140,23 @@ let file_exists_opt p t =
 let fail ?targets x =
   match targets with
   | None -> Fail x
-  | Some l -> Targets l >>> Fail x
+  | Some l -> Targets (Pset.of_list l) >>> Fail x
 
-let memoize name t =
+let memoize ~name t =
   Memo { name; t; state = Unevaluated }
+
+let read_sexp path of_sexp =
+  memoize ~name:(Path.to_string path)
+    (contents path
+     >>^ fun s ->
+     let lb = Lexing.from_string s in
+      lb.lex_curr_p <-
+        { pos_fname = Path.to_string path
+        ; pos_lnum  = 1
+        ; pos_bol   = 0
+        ; pos_cnum  = 0
+        };
+      of_sexp (Sexp_lexer.single lb))
 
 let files_recursively_in ~dir ~file_tree =
   let prefix_with, dir =
@@ -159,8 +165,6 @@ let files_recursively_in ~dir ~file_tree =
     | Some (ctx_dir, src_dir) -> (ctx_dir, src_dir)
   in
   path_set (File_tree.files_recursively_in file_tree dir ~prefix_with)
-
-let store_vfile spec = Store_vfile spec
 
 let get_prog (prog : _ Prog_spec.t) =
   match prog with
@@ -187,7 +191,7 @@ let run ~context ?(dir=context.Context.build_dir) ?stdout_to ?(extra_targets=[])
   let targets = Arg_spec.add_targets args extra_targets in
   prog_and_args ~dir prog args
   >>>
-  Targets targets
+  Targets (Pset.of_list targets)
   >>^  (fun (prog, args) ->
     let action : Action.Mini_shexp.t = Run (prog, args) in
     let action =
@@ -202,17 +206,17 @@ let run ~context ?(dir=context.Context.build_dir) ?stdout_to ?(extra_targets=[])
     })
 
 let action ~context ?(dir=context.Context.build_dir) ~targets action =
-  Targets targets
+  Targets (Pset.of_list targets)
   >>^ fun () ->
   { Action. context = Some context; dir; action  }
 
 let action_dyn ~context ?(dir=context.Context.build_dir) ~targets () =
-  Targets targets
+  Targets (Pset.of_list targets)
   >>^ fun action ->
   { Action. context = Some context; dir; action  }
 
 let action_context_independent ?(dir=Path.root) ~targets action =
-  Targets targets
+  Targets (Pset.of_list targets)
   >>^ fun () ->
   { Action. context = None; dir; action  }
 
@@ -220,13 +224,18 @@ let update_file fn s =
   action_context_independent ~targets:[fn] (Update_file (fn, s))
 
 let update_file_dyn fn =
-  Targets [fn]
+  Targets (Pset.singleton fn)
   >>^ fun s ->
   { Action.
     context = None
   ; dir     = Path.root
   ; action  = Update_file (fn, s)
   }
+
+let write_sexp path to_sexp =
+  arr (fun x -> Sexp.to_string (to_sexp x))
+  >>>
+  update_file_dyn path
 
 let copy ~src ~dst =
   path src >>>
@@ -240,7 +249,7 @@ let create_file fn =
   action_context_independent ~targets:[fn] (Create_file fn)
 
 let and_create_file fn =
-  Targets [fn]
+  Targets (Pset.singleton fn)
   >>^ fun (action : Action.t) ->
   { action with
     action = Progn [action.action; Create_file fn]

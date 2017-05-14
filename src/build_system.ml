@@ -3,7 +3,6 @@ open Future
 
 module Pset  = Path.Set
 module Pmap  = Path.Map
-module Vspec = Build.Vspec
 
 module Exec_status = struct
   module Starting = struct
@@ -27,36 +26,9 @@ module Rule = struct
     }
 end
 
-module File_kind = struct
-  type 'a t =
-    | Ignore_contents : unit t
-    | Sexp_file       : 'a Vfile_kind.t -> 'a t
-
-  let eq : type a b. a t -> b t -> (a, b) eq option = fun a b ->
-    match a, b with
-    | Ignore_contents, Ignore_contents -> Some Eq
-    | Sexp_file a    , Sexp_file b     -> Vfile_kind.eq a b
-    | _                                -> None
-
-  let eq_exn a b = Option.value_exn (eq a b)
-end
-
-module File_spec = struct
-  type 'a t =
-    { rule         : Rule.t (* Rule which produces it *)
-    ; mutable kind : 'a File_kind.t
-    ; mutable data : 'a option
-    }
-
-  type packed = T : _ t -> packed
-
-  let create rule kind =
-    T { rule; kind; data = None }
-end
-
 type t =
   { (* File specification by targets *)
-    files      : (Path.t, File_spec.packed) Hashtbl.t
+    files      : (Path.t, Rule.t) Hashtbl.t
   ; contexts   : Context.t list
   ; (* Table from target to digest of [(deps, targets, action)] *)
     trace      : (Path.t, Digest.t) Hashtbl.t
@@ -133,8 +105,8 @@ module Build_error = struct
     let rec build_path acc targeting ~seen =
       assert (not (Pset.mem targeting seen));
       let seen = Pset.add targeting seen in
-      let (File_spec.T file) = find_file_exn t targeting in
-      match file.rule.exec with
+      let rule = find_file_exn t targeting in
+      match rule.exec with
       | Not_started _ -> assert false
       | Running { for_file; _ } | Starting { for_file } ->
         if for_file = targeting then
@@ -155,10 +127,10 @@ let wait_for_file t fn ~targeting =
       return ()
     else
       die "file unavailable: %s" (Path.to_string fn)
-  | Some (File_spec.T file) ->
-    match file.rule.exec with
+  | Some rule ->
+    match rule.exec with
     | Not_started f ->
-      file.rule.exec <- Starting { for_file = targeting };
+      rule.exec <- Starting { for_file = targeting };
       let future =
         with_exn_handler (fun () -> f ~targeting:fn)
           ~handler:(fun exn backtrace ->
@@ -166,7 +138,7 @@ let wait_for_file t fn ~targeting =
               | Build_error.E _ -> reraise exn
               | exn -> Build_error.raise t exn ~targeting:fn ~backtrace)
       in
-      file.rule.exec <- Running { for_file = targeting; future };
+      rule.exec <- Running { for_file = targeting; future };
       future
     | Running { future; _ } -> future
     | Starting _ ->
@@ -176,8 +148,8 @@ let wait_for_file t fn ~targeting =
         if fn = targeting then
           acc
         else
-          let (File_spec.T file) = find_file_exn t targeting in
-          match file.rule.exec with
+          let rule = find_file_exn t targeting in
+          match rule.exec with
           | Not_started _ | Running _ -> assert false
           | Starting { for_file } ->
             build_loop acc for_file
@@ -187,37 +159,16 @@ let wait_for_file t fn ~targeting =
         (String.concat ~sep:"\n--> "
            (List.map loop ~f:Path.to_string))
 
-module Target = Build_interpret.Target
-
-let get_file : type a. t -> Path.t -> a File_kind.t -> a File_spec.t = fun t fn kind ->
-  match Hashtbl.find t.files fn with
-  | None -> die "no rule found for %s" (Path.to_string fn)
-  | Some (File_spec.T file) ->
-    let Eq = File_kind.eq_exn kind file.kind in
-    file
-
-let vfile_to_string (type a) (module K : Vfile_kind.S with type t = a) fn x =
-  K.to_string fn x
-
 module Build_exec = struct
   open Build.Repr
 
-  let exec bs t x =
+  let exec t x =
     let dyn_deps = ref Pset.empty in
     let rec exec
       : type a b. (a, b) t -> a -> b = fun t x ->
       match t with
       | Arr f -> f x
       | Targets _ -> x
-      | Store_vfile (Vspec.T (fn, kind)) ->
-        let file = get_file bs fn (Sexp_file kind) in
-        assert (file.data = None);
-        file.data <- Some x;
-        { Action.
-          context = None
-        ; dir     = Path.root
-        ; action  = Update_file (fn, vfile_to_string kind fn x)
-        }
       | Compose (a, b) ->
         exec a x |> exec b
       | First t ->
@@ -239,9 +190,6 @@ module Build_exec = struct
       | Paths_glob _ -> x
       | Contents p -> read_file (Path.to_string p)
       | Lines_of p -> lines_of_file (Path.to_string p)
-      | Vpath (Vspec.T (fn, kind)) ->
-        let file : b File_spec.t = get_file bs fn (Sexp_file kind) in
-        Option.value_exn file.data
       | Dyn_paths t ->
         let fns = exec t x in
         dyn_deps := Pset.union !dyn_deps (Pset.of_list fns);
@@ -265,17 +213,13 @@ module Build_exec = struct
     (action, !dyn_deps)
 end
 
-let add_spec t fn spec ~allow_override =
+let add_rule t fn rule ~allow_override =
   if not allow_override && Hashtbl.mem t.files fn then
     die "multiple rules generated for %s" (Path.to_string fn);
-  Hashtbl.add t.files ~key:fn ~data:spec
+  Hashtbl.add t.files ~key:fn ~data:rule
 
-let create_file_specs t targets rule ~allow_override =
-  List.iter targets ~f:(function
-    | Target.Normal fn ->
-      add_spec t fn (File_spec.create rule Ignore_contents) ~allow_override
-    | Target.Vfile (Vspec.T (fn, kind)) ->
-      add_spec t fn (File_spec.create rule (Sexp_file kind)) ~allow_override)
+let create_file_rules t targets rule ~allow_override =
+  Pset.iter targets ~f:(fun fn -> add_rule t fn rule ~allow_override)
 
 module Pre_rule = Build_interpret.Rule
 
@@ -332,9 +276,8 @@ let make_local_parent_dirs t paths ~map_path =
 let sandbox_dir = Path.of_string "_build/.sandbox"
 
 let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
-  let { Pre_rule. build; targets = target_specs; sandbox } = pre_rule in
+  let { Pre_rule. build; targets; sandbox } = pre_rule in
   let deps = Build_interpret.deps build ~all_targets_by_dir in
-  let targets = Target.paths target_specs in
 
   if !Clflags.debug_rules then begin
     let f set =
@@ -363,7 +306,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     make_local_parent_dirs t targets ~map_path:(fun x -> x);
     wait_for_deps t deps ~targeting
     >>= fun () ->
-    let action, dyn_deps = Build_exec.exec t build () in
+    let action, dyn_deps = Build_exec.exec build () in
     wait_for_deps t ~targeting (Pset.diff dyn_deps deps)
     >>= fun () ->
     let all_deps = Pset.union deps dyn_deps in
@@ -471,7 +414,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     ; exec
     }
   in
-  create_file_specs t target_specs rule ~allow_override
+  create_file_rules t targets rule ~allow_override
 
 let setup_copy_rules t ~all_non_target_source_files ~all_targets_by_dir =
   List.iter t.contexts ~f:(fun (ctx : Context.t) ->
@@ -544,8 +487,7 @@ let create ~contexts ~file_tree ~rules =
   in
   let all_other_targets =
     List.fold_left rules ~init:Pset.empty ~f:(fun acc { Pre_rule.targets; _ } ->
-      List.fold_left targets ~init:acc ~f:(fun acc target ->
-        Pset.add (Target.path target) acc))
+      Pset.union acc targets)
   in
   let all_targets_by_dir = lazy (
     Pset.elements (Pset.union all_copy_targets all_other_targets)
@@ -617,7 +559,7 @@ let rules_for_files t paths =
   List.filter_map paths ~f:(fun path ->
     match Hashtbl.find t.files path with
     | None -> None
-    | Some (File_spec.T { rule; _ }) -> Some (path, rule))
+    | Some rule -> Some (path, rule))
 
 module File_closure =
   Top_closure.Make(Path)

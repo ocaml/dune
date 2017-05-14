@@ -44,19 +44,10 @@ let parse_deps ~dir lines ~modules ~alias_module =
     die
       "`ocamldep` in %s returned %s several times" (Path.to_string dir) unit
 
-module Ocamldep_vfile =
-  Vfile_kind.Make
-    (struct type t = string list String_map.t end)
-    (functor (C : Sexp.Combinators) -> struct
-      open C
-      let t = string_map (list string)
-    end)
-
 let rules sctx ~ml_kind ~dir ~item ~modules ~alias_module =
   let suffix = Ml_kind.suffix ml_kind in
-  let vdepends =
-    let fn = Path.relative dir (sprintf "%s.depends%s.sexp" item suffix) in
-    Build.Vspec.T (fn, (module Ocamldep_vfile))
+  let depends_file =
+    Path.relative dir (sprintf "%s.depends%s.sexp" item suffix)
   in
   let files =
     List.filter_map (String_map.values modules) ~f:(fun m -> Module.file ~dir m ml_kind)
@@ -77,8 +68,8 @@ let rules sctx ~ml_kind ~dir ~item ~modules ~alias_module =
   SC.add_rule sctx
     (Build.lines_of ocamldep_output
      >>^ parse_deps ~dir ~modules ~alias_module
-     >>> Build.store_vfile vdepends);
-  Build.vpath vdepends
+     >>> Build.write_sexp depends_file Sexp.To_sexp.(string_map (list string)));
+  Build.read_sexp depends_file Sexp.Of_sexp.(string_map (list string))
 
 module Dep_closure =
   Top_closure.Make(String)(struct

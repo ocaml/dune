@@ -10,7 +10,6 @@ type 'a t =
   | Deps     of Path.t list
   | Dep_rel  of Path.t * string
   | Deps_rel of Path.t * string list
-  | Target   of Path.t
   | Path     of Path.t
   | Paths    of Path.t list
   | Dyn      of ('a -> nothing t)
@@ -26,13 +25,6 @@ let rec add_deps ts set =
         Pset.add (Path.relative dir fn) set)
     | S ts -> add_deps ts set
     | _ -> set)
-
-let rec add_targets ts acc =
-  List.fold_left ts ~init:acc ~f:(fun acc t ->
-    match t with
-    | Target fn  -> fn :: acc
-    | S ts -> add_targets ts acc
-    | _ -> acc)
 
 let expand ~dir ts x =
   let dyn_deps = ref Path.Set.empty in
@@ -57,7 +49,6 @@ let expand ~dir ts x =
     | Paths fns ->
       List.map fns ~f:(Path.reach ~from:dir)
     | S ts -> List.concat_map ts ~f:loop_dyn
-    | Target _ -> die "Target not allowed under Dyn"
     | Dyn _ -> assert false
   in
   let rec loop = function
@@ -68,7 +59,6 @@ let expand ~dir ts x =
     | (Dep fn | Path fn) -> [Path.reach fn ~from:dir]
     | (Deps fns | Paths fns) -> List.map fns ~f:(Path.reach ~from:dir)
     | S ts -> List.concat_map ts ~f:loop
-    | Target fn -> [Path.reach fn ~from:dir]
     | Dyn f -> loop_dyn (f x)
   in
   let l = List.concat_map ts ~f:loop in

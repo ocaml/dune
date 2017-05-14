@@ -59,7 +59,7 @@ val file_exists_opt : Path.t -> ('a, 'b) t -> ('a, 'b option) t
 
 (** Always fail when executed. We pass a function rather than an exception to get a proper
     backtrace *)
-val fail : ?targets:Path.t list -> fail -> (_, _) t
+val fail : fail -> (_, _) t
 
 (** [memoize ~name t] is an arrow that behaves like [t] except that its
     result is computed only once. *)
@@ -75,7 +75,6 @@ val run
   :  context:Context.t
   -> ?dir:Path.t (* default: context.build_dir *)
   -> ?stdout_to:Path.t
-  -> ?extra_targets:Path.t list
   -> 'a Prog_spec.t
   -> 'a Arg_spec.t list
   -> ('a, Action.t) t
@@ -83,20 +82,17 @@ val run
 val action
   :  context:Context.t
   -> ?dir:Path.t (* default: context.build_dir *)
-  -> targets:Path.t list
   -> Action.Mini_shexp.t
   -> (unit, Action.t) t
 
 val action_dyn
   :  context:Context.t
   -> ?dir:Path.t (* default: context.build_dir *)
-  -> targets:Path.t list
   -> unit
   -> (Action.Mini_shexp.t, Action.t) t
 
 val action_context_independent
   :  ?dir:Path.t (* default: Path.root *)
-  -> targets:Path.t list
   -> Action.Mini_shexp.t
   -> (unit, Action.t) t
 
@@ -133,7 +129,6 @@ val record_lib_deps_simple : dir:Path.t -> lib_deps -> ('a, 'a) t
 module Repr : sig
   type ('a, 'b) t =
     | Arr : ('a -> 'b) -> ('a, 'b) t
-    | Targets : Path.Set.t -> ('a, 'a) t
     | Compose : ('a, 'b) t * ('b, 'c) t -> ('a, 'c) t
     | First : ('a, 'b) t -> ('a * 'c, 'b * 'c) t
     | Second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t

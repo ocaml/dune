@@ -30,11 +30,12 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
     match Path.extract_build_context dir with
     | Some (_, remaindir) ->
       let path = Path.relative remaindir ".merlin" in
-      SC.add_rule sctx
+      let merlin_exists = Path.relative dir ".merlin-exists" in
+      SC.add_rule sctx ~targets:[merlin_exists]
         (Build.path path
          >>>
-         Build.update_file (Path.relative dir ".merlin-exists") "");
-      SC.add_rule sctx (
+         Build.update_file merlin_exists "");
+      SC.add_rule sctx ~targets:[path] (
         requires
         >>^ (fun libs ->
           let ppx_flags = ppx_flags sctx ~dir ~src_dir:remaindir t in

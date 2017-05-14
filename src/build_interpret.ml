@@ -8,7 +8,6 @@ let deps t ~all_targets_by_dir =
   let rec loop : type a b. (a, b) t -> Pset.t -> Pset.t = fun t acc ->
     match t with
     | Arr _ -> acc
-    | Targets _ -> acc
     | Compose (a, b) -> loop a (loop b acc)
     | First t -> loop t acc
     | Second t -> loop t acc
@@ -54,7 +53,6 @@ let lib_deps =
     = fun t acc ->
       match t with
       | Arr _ -> acc
-      | Targets _ -> acc
       | Compose (a, b) -> loop a (loop b acc)
       | First t -> loop t acc
       | Second t -> loop t acc
@@ -79,37 +77,6 @@ let lib_deps =
   in
   fun t -> loop (Build.repr t) Pmap.empty
 
-let targets =
-  let rec loop : type a b. (a, b) t -> Pset.t -> Pset.t = fun t acc ->
-    match t with
-    | Arr _ -> acc
-    | Targets targets -> Pset.union acc targets
-    | Compose (a, b) -> loop a (loop b acc)
-    | First t -> loop t acc
-    | Second t -> loop t acc
-    | Split (a, b) -> loop a (loop b acc)
-    | Fanout (a, b) -> loop a (loop b acc)
-    | Paths _ -> acc
-    | Paths_glob _ -> acc
-    | Dyn_paths t -> loop t acc
-    | Contents _ -> acc
-    | Lines_of _ -> acc
-    | Record_lib_deps _ -> acc
-    | Fail _ -> acc
-    | If_file_exists (_, state) -> begin
-        match !state with
-        | Decided _ -> code_errorf "Build_interpret.targets got decided if_file_exists"
-        | Undecided (a, b) ->
-          if Pset.is_empty (loop a Pset.empty) && Pset.is_empty (loop b Pset.empty) then
-            acc
-          else
-            code_errorf "Build_interpret.targets: cannot have targets \
-                         under a [if_file_exists]"
-      end
-    | Memo m -> loop m.t acc
-  in
-  fun t -> loop (Build.repr t) Pset.empty
-
 module Rule = struct
   type t =
     { build   : (unit, Action.t) Build.t
@@ -117,9 +84,9 @@ module Rule = struct
     ; sandbox : bool
     }
 
-  let make ?(sandbox=false) build =
+  let make ?(sandbox=false) ~targets build =
     { build
-    ; targets = targets build
+    ; targets = Path.Set.of_list targets
     ; sandbox
     }
 end

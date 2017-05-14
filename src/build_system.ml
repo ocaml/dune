@@ -168,7 +168,6 @@ module Build_exec = struct
       : type a b. (a, b) t -> a -> b = fun t x ->
       match t with
       | Arr f -> f x
-      | Targets _ -> x
       | Compose (a, b) ->
         exec a x |> exec b
       | First t ->
@@ -433,7 +432,7 @@ let setup_copy_rules t ~all_non_target_source_files ~all_targets_by_dir =
 
            This allows to keep generated files in tarballs. Maybe we
            should allow it on a case-by-case basis though.  *)
-        compile_rule t (Pre_rule.make build)
+        compile_rule t (Pre_rule.make build ~targets:[ctx_path])
           ~all_targets_by_dir
           ~allow_override:true))
 

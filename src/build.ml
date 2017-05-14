@@ -21,7 +21,6 @@ let merge_lib_dep_kind a b =
 module Repr = struct
   type ('a, 'b) t =
     | Arr : ('a -> 'b) -> ('a, 'b) t
-    | Targets : Path.Set.t -> ('a, 'a) t
     | Compose : ('a, 'b) t * ('b, 'c) t -> ('a, 'c) t
     | First : ('a, 'b) t -> ('a * 'c, 'b * 'c) t
     | Second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t
@@ -137,10 +136,7 @@ let file_exists_opt p t =
     ~then_:(t >>^ fun x -> Some x)
     ~else_:(arr (fun _ -> None))
 
-let fail ?targets x =
-  match targets with
-  | None -> Fail x
-  | Some l -> Targets (Pset.of_list l) >>> Fail x
+let fail x = Fail x
 
 let memoize ~name t =
   Memo { name; t; state = Unevaluated }
@@ -181,17 +177,9 @@ let prog_and_args ~dir prog args =
     >>>
     arr fst))
 
-let run ~context ?(dir=context.Context.build_dir) ?stdout_to ?(extra_targets=[])
+let run ~context ?(dir=context.Context.build_dir) ?stdout_to
       prog args =
-  let extra_targets =
-    match stdout_to with
-    | None -> extra_targets
-    | Some fn -> fn :: extra_targets
-  in
-  let targets = Arg_spec.add_targets args extra_targets in
   prog_and_args ~dir prog args
-  >>>
-  Targets (Pset.of_list targets)
   >>^  (fun (prog, args) ->
     let action : Action.Mini_shexp.t = Run (prog, args) in
     let action =
@@ -205,32 +193,26 @@ let run ~context ?(dir=context.Context.build_dir) ?stdout_to ?(extra_targets=[])
     ; action
     })
 
-let action ~context ?(dir=context.Context.build_dir) ~targets action =
-  Targets (Pset.of_list targets)
-  >>^ fun () ->
-  { Action. context = Some context; dir; action  }
+let action ~context ?(dir=context.Context.build_dir) action =
+  return { Action. context = Some context; dir; action  }
 
-let action_dyn ~context ?(dir=context.Context.build_dir) ~targets () =
-  Targets (Pset.of_list targets)
-  >>^ fun action ->
-  { Action. context = Some context; dir; action  }
+let action_dyn ~context ?(dir=context.Context.build_dir) () =
+  arr (fun action ->
+    { Action. context = Some context; dir; action  })
 
-let action_context_independent ?(dir=Path.root) ~targets action =
-  Targets (Pset.of_list targets)
-  >>^ fun () ->
-  { Action. context = None; dir; action  }
+let action_context_independent ?(dir=Path.root) action =
+  return { Action. context = None; dir; action  }
 
 let update_file fn s =
-  action_context_independent ~targets:[fn] (Update_file (fn, s))
+  action_context_independent (Update_file (fn, s))
 
 let update_file_dyn fn =
-  Targets (Pset.singleton fn)
-  >>^ fun s ->
-  { Action.
-    context = None
-  ; dir     = Path.root
-  ; action  = Update_file (fn, s)
-  }
+  arr (fun s ->
+    { Action.
+      context = None
+    ; dir     = Path.root
+    ; action  = Update_file (fn, s)
+    })
 
 let write_sexp path to_sexp =
   arr (fun x -> Sexp.to_string (to_sexp x))
@@ -239,21 +221,20 @@ let write_sexp path to_sexp =
 
 let copy ~src ~dst =
   path src >>>
-  action_context_independent ~targets:[dst] (Copy (src, dst))
+  action_context_independent (Copy (src, dst))
 
 let symlink ~src ~dst =
   path src >>>
-  action_context_independent ~targets:[dst] (Symlink (src, dst))
+  action_context_independent (Symlink (src, dst))
 
 let create_file fn =
-  action_context_independent ~targets:[fn] (Create_file fn)
+  action_context_independent (Create_file fn)
 
 let and_create_file fn =
-  Targets (Pset.singleton fn)
-  >>^ fun (action : Action.t) ->
-  { action with
-    action = Progn [action.action; Create_file fn]
-  }
+  arr (fun (action : Action.t) ->
+    { action with
+      action = Progn [action.action; Create_file fn]
+    })
 
 (*
    {[

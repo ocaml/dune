@@ -7,7 +7,7 @@ module Rule : sig
     ; sandbox : bool
     }
 
-  val make : ?sandbox:bool -> (unit, Action.t) Build.t -> t
+  val make : ?sandbox:bool -> targets:Path.t list -> (unit, Action.t) Build.t -> t
 end
 
 val deps
@@ -18,7 +18,3 @@ val deps
 val lib_deps
   :  (_, _) Build.t
   -> Build.lib_deps Path.Map.t
-
-val targets
-  :  (_, _) Build.t
-  -> Path.Set.t

@@ -101,7 +101,7 @@ let rules store ~prefixes ~tree =
   Hashtbl.fold store ~init:[] ~f:(fun ~key:_ ~data:{ Store. alias; deps } acc ->
     let open Build.O in
     let rule =
-      Build_interpret.Rule.make
+      Build_interpret.Rule.make ~targets:[alias.file]
         (Build.path_set deps >>>
          Build.create_file alias.file)
     in

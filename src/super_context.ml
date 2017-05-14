@@ -153,8 +153,8 @@ let create
   ; ppx_dir = Path.of_string (sprintf "_build/.ppx/%s" context.name)
   }
 
-let add_rule t ?sandbox build =
-  let rule = Build_interpret.Rule.make ?sandbox build in
+let add_rule t ?sandbox ~targets build =
+  let rule = Build_interpret.Rule.make ?sandbox ~targets build in
   t.rules <- rule :: t.rules;
   t.known_targets_by_src_dir_so_far <-
     Path.Set.fold rule.targets ~init:t.known_targets_by_src_dir_so_far
@@ -170,9 +170,6 @@ let add_rule t ?sandbox build =
             | Some set -> String_set.add fn set
           in
           Path.Map.add acc ~key:dir ~data:files)
-
-let add_rules t ?sandbox builds =
-  List.iter builds ~f:(add_rule t ?sandbox)
 
 let sources_and_targets_known_so_far t ~src_path =
   let sources =
@@ -255,10 +252,10 @@ module Libs = struct
     List.iter (Lib_db.resolve_selects t.libs ~from:dir lib_deps) ~f:(fun { dst_fn; src_fn } ->
       let src = Path.relative dir src_fn in
       let dst = Path.relative dir dst_fn in
-      add_rule t
+      add_rule t ~targets:[dst]
         (Build.path src
          >>>
-         Build.action_context_independent ~targets:[dst]
+         Build.action_context_independent
            (Copy_and_add_line_directive (src, dst))))
 
   let write_deps fn =
@@ -269,7 +266,7 @@ module Libs = struct
       List.map (Preprocess_map.pps preprocess) ~f:Pp.to_string
     in
     let requires_file = requires_file ~dir ~item in
-    add_rule t
+    add_rule t ~targets:[requires_file]
       (Build.record_lib_deps ~dir ~kind:dep_kind (List.map virtual_deps ~f:Lib_dep.direct)
        >>>
        Build.fanout
@@ -280,7 +277,7 @@ module Libs = struct
        Build.arr (fun (libs, rt_deps) ->
          Lib.remove_dups_preserve_order (libs @ rt_deps))
        >>>
-      write_deps requires_file);
+       write_deps requires_file);
     load_deps t ~dir requires_file
 
   let requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
@@ -306,7 +303,7 @@ module Libs = struct
 
   let setup_runtime_deps t ~dir ~dep_kind ~item ~libraries ~ppx_runtime_libraries =
     let runtime_deps_file = runtime_deps_file ~dir ~item in
-    add_rule t
+    add_rule t ~targets:[runtime_deps_file]
       (Build.fanout
          (closure t ~dir ~dep_kind (List.map ppx_runtime_libraries ~f:Lib_dep.direct))
          (closed_ppx_runtime_deps_of t ~dir ~dep_kind libraries)
@@ -366,7 +363,8 @@ module Pkg_version = struct
 
   let set sctx p get =
     let fn = spec_file sctx p in
-    add_rule sctx (get >>> Build.write_sexp fn Sexp.To_sexp.(option string));
+    add_rule sctx ~targets:[fn]
+      (get >>> Build.write_sexp fn Sexp.To_sexp.(option string));
     Build.read_sexp fn Sexp.Of_sexp.(option string)
 end
 
@@ -493,7 +491,7 @@ module Action = struct
         U.expand sctx.context dir t
           ~f:(expand_var sctx ~artifacts ~targets ~deps))
       >>>
-      Build.action_dyn () ~context:sctx.context ~dir ~targets
+      Build.action_dyn () ~context:sctx.context ~dir
     in
     match forms.failures with
     | [] -> build
@@ -582,13 +580,13 @@ module PP = struct
       | Some _ ->
         libs
     in
-    add_rule sctx
+    add_rule sctx ~targets:[target]
       (libs
        >>>
        Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib))
        >>>
        Build.run ~context:ctx (Dep compiler)
-         [ A "-o" ; Target target
+         [ A "-o" ; Path target
          ; Dyn (Lib.link_flags ~mode)
          ])
 
@@ -626,32 +624,37 @@ module PP = struct
   let setup_reason_rules sctx ~dir (m : Module.t) =
     let ctx = sctx.context in
     let refmt = resolve_program sctx "refmt" ~hint:"opam install reason" in
-    let rule src target =
+    let refmt src target =
       let src_path = Path.relative dir src in
-      Build.run ~context:ctx refmt
-        [ A "--print"
-        ; A "binary"
-        ; Dep src_path ]
-        ~stdout_to:(Path.relative dir target) in
+      let target = Path.relative dir target in
+      add_rule sctx ~targets:[target]
+        (Build.run ~context:ctx refmt
+           [ A "--print"
+           ; A "binary"
+           ; Dep src_path ]
+           ~stdout_to:target)
+    in
     let impl =
       match m.impl.syntax with
       | OCaml -> m.impl
       | Reason ->
         let ml = Module.File.to_ocaml m.impl in
-        add_rule sctx (rule m.impl.name ml.name);
-        ml in
+        refmt m.impl.name ml.name;
+        ml
+    in
     let intf =
       Option.map m.intf ~f:(fun f ->
         match f.syntax with
         | OCaml -> f
         | Reason ->
           let mli = Module.File.to_ocaml f in
-          add_rule sctx (rule f.name mli.name);
-          mli) in
+          refmt f.name mli.name;
+          mli)
+    in
     { m with impl ; intf }
 
-  (* Generate rules to build the .pp files and return a new module map where all filenames
-     point to the .pp files *)
+  (* Generate rules to build the .pp files and return a new module map
+     where all filenames point to the .pp files *)
   let pped_modules sctx ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name
         ~package_context =
     let preprocessor_deps = Deps.interpret sctx ~dir preprocessor_deps in
@@ -661,7 +664,7 @@ module PP = struct
       | No_preprocessing -> m
       | Action action ->
         pped_module m ~dir ~f:(fun _kind src dst ->
-          add_rule sctx
+          add_rule sctx ~targets:[dst]
             (preprocessor_deps
              >>>
              Build.path src
@@ -680,7 +683,7 @@ module PP = struct
       | Pps { pps; flags } ->
         let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in
         pped_module m ~dir ~f:(fun kind src dst ->
-          add_rule sctx
+          add_rule sctx ~targets:[dst]
             (preprocessor_deps
              >>>
              Build.run ~context:sctx.context
@@ -688,7 +691,7 @@ module PP = struct
                [ As flags
                ; A "--dump-ast"
                ; As (cookie_library_name lib_name)
-               ; A "-o"; Target dst
+               ; A "-o"; Path dst
                ; Ml_kind.ppx_driver_flag kind; Dep src
                ])
         )

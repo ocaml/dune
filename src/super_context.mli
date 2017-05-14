@@ -42,8 +42,7 @@ val cxx_flags : t -> string list
 val expand_var_no_root : t -> string -> string option
 val expand_vars : t -> dir:Path.t -> String_with_vars.t -> string
 
-val add_rule : t -> ?sandbox:bool -> (unit, Action.t) Build.t -> unit
-val add_rules : t -> ?sandbox:bool -> (unit, Action.t) Build.t list -> unit
+val add_rule : t -> ?sandbox:bool -> targets:Path.t list -> (unit, Action.t) Build.t -> unit
 val rules : t -> Build_interpret.Rule.t list
 
 val sources_and_targets_known_so_far : t -> src_path:Path.t -> String_set.t

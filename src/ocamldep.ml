@@ -46,9 +46,6 @@ let parse_deps ~dir lines ~modules ~alias_module =
 
 let rules sctx ~ml_kind ~dir ~item ~modules ~alias_module =
   let suffix = Ml_kind.suffix ml_kind in
-  let depends_file =
-    Path.relative dir (sprintf "%s.depends%s.sexp" item suffix)
-  in
   let files =
     List.filter_map (String_map.values modules) ~f:(fun m -> Module.file ~dir m ml_kind)
     |> List.map ~f:(fun fn ->
@@ -65,11 +62,9 @@ let rules sctx ~ml_kind ~dir ~item ~modules ~alias_module =
   SC.add_rule sctx
     (Build.run ~context:ctx (Dep ctx.ocamldep) [A "-modules"; S files]
        ~stdout_to:ocamldep_output);
-  SC.add_rule sctx
+  Build.memoize ~name:(Path.to_string ocamldep_output)
     (Build.lines_of ocamldep_output
-     >>^ parse_deps ~dir ~modules ~alias_module
-     >>> Build.write_sexp depends_file Sexp.To_sexp.(string_map (list string)));
-  Build.read_sexp depends_file Sexp.Of_sexp.(string_map (list string))
+     >>^ parse_deps ~dir ~modules ~alias_module)
 
 module Dep_closure =
   Top_closure.Make(String)(struct

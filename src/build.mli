@@ -65,6 +65,10 @@ val file_exists_opt : Path.t -> ('a, 'b) t -> ('a, 'b option) t
     backtrace *)
 val fail : ?targets:Path.t list -> fail -> (_, _) t
 
+(** [memoize name t] is an arrow that behaves like [t] except that its
+    result is computed only once. *)
+val memoize : string -> (unit, 'a) t -> (unit, 'a) t
+
 module Prog_spec : sig
   type 'a t =
     | Dep of Path.t
@@ -149,6 +153,18 @@ module Repr : sig
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
     | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t
+    | Memo : 'a memo -> (unit, 'a) t
+
+  and 'a memo =
+    { name          : string
+    ; t             : (unit, 'a) t
+    ; mutable state : 'a memo_state
+    }
+
+  and 'a memo_state =
+    | Unevaluated
+    | Evaluating
+    | Evaluated of 'a
 
   and ('a, 'b) if_file_exists_state =
     | Undecided of ('a, 'b) t * ('a, 'b) t

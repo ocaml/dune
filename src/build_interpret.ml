@@ -62,6 +62,7 @@ let deps t ~all_targets_by_dir =
     | Lines_of p -> Pset.add p acc
     | Record_lib_deps _ -> acc
     | Fail _ -> acc
+    | Memo m -> loop m.t acc
   in
   loop (Build.repr t) Pset.empty
 
@@ -93,6 +94,7 @@ let lib_deps =
       | Fail _ -> acc
       | If_file_exists (_, state) ->
         loop (get_if_file_exists_exn state) acc
+      | Memo m -> loop m.t acc
   in
   fun t -> loop (Build.repr t) Pmap.empty
 
@@ -126,6 +128,7 @@ let targets =
             code_errorf "Build_interpret.targets: cannot have targets \
                          under a [if_file_exists]"
       end
+    | Memo m -> loop m.t acc
   in
   fun t -> loop (Build.repr t) []
 

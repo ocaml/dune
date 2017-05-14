@@ -250,6 +250,16 @@ module Build_exec = struct
       | Fail { fail } -> fail ()
       | If_file_exists (_, state) ->
         exec (get_if_file_exists_exn state) x
+      | Memo m ->
+        match m.state with
+        | Evaluated x -> x
+        | Evaluating ->
+          die "Dependency cycle evaluating memoized build arrow %s" m.name
+        | Unevaluated ->
+          m.state <- Evaluating;
+          let x = exec m.t x in
+          m.state <- Evaluated x;
+          x
     in
     let action = exec (Build.repr t) x in
     (action, !dyn_deps)

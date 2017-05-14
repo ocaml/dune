@@ -42,6 +42,18 @@ module Repr = struct
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
     | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t
+    | Memo : 'a memo -> (unit, 'a) t
+
+  and 'a memo =
+    { name          : string
+    ; t             : (unit, 'a) t
+    ; mutable state : 'a memo_state
+    }
+
+  and 'a memo_state =
+    | Unevaluated
+    | Evaluating
+    | Evaluated of 'a
 
   and ('a, 'b) if_file_exists_state =
     | Undecided of ('a, 'b) t * ('a, 'b) t
@@ -136,6 +148,9 @@ let fail ?targets x =
   match targets with
   | None -> Fail x
   | Some l -> Targets l >>> Fail x
+
+let memoize name t =
+  Memo { name; t; state = Unevaluated }
 
 let files_recursively_in ~dir ~file_tree =
   let prefix_with, dir =

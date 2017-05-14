@@ -17,6 +17,7 @@ let dev_mode_warnings =
        ; 48
        ; 58
        ; 59
+       ; 60
        ])
 
 let default_flags () =

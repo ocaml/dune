@@ -12,6 +12,12 @@ In a directory of your choice, write this =jbuild= file:
  ((names (hello_world))))
 #+end_src
 
+add a workspace file 
+
+#+begin_src scheme
+echo '(context ((switch 4.03.0)))' > jbuild-workspace
+#+end_src
+
 This =hello_world.ml= file:
 
 #+begin_src ocaml

@@ -121,15 +121,16 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
   Option.iter lib.public ~f:(fun public ->
     let context = SC.context sctx in
     let dep_graph =
-      (* Use the dependency graph given by ocamldep. However, when a module has no .mli,
-         use the dependencies for the .ml *)
-      Build.fanout dep_graph.intf dep_graph.impl
-      >>^ fun (intf, impl) ->
-      String_map.merge intf impl ~f:(fun _ intf impl ->
-        match intf, impl with
-        | Some _, _    -> intf
-        | None, Some _ -> impl
-        | None, None -> assert false)
+      Build.memoize "odoc deps"
+        ((* Use the dependency graph given by ocamldep. However, when a module has no
+            .mli, use the dependencies for the .ml *)
+          Build.fanout dep_graph.intf dep_graph.impl
+          >>^ fun (intf, impl) ->
+          String_map.merge intf impl ~f:(fun _ intf impl ->
+            match intf, impl with
+            | Some _, _    -> intf
+            | None, Some _ -> impl
+            | None, None -> assert false))
     in
     let odoc = get_odoc sctx in
     let includes =

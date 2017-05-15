@@ -19,16 +19,18 @@ module Rule : sig
   val make : ?sandbox:bool -> (unit, Action.t) Build.t -> t
 end
 
-(* must be called first *)
-val rule_deps
-  :  (_, _) Build.t
-  -> all_targets_by_dir:Path.Set.t Path.Map.t Lazy.t
-  -> Path.Set.t
+module Static_deps : sig
+  type t =
+    { rule_deps   : Path.Set.t
+    ; action_deps : Path.Set.t
+    }
+end
 
-val static_action_deps
+(* must be called first *)
+val static_deps
   :  (_, _) Build.t
   -> all_targets_by_dir:Path.Set.t Path.Map.t Lazy.t
-  -> Path.Set.t
+  -> Static_deps.t
 
 val lib_deps
   :  (_, _) Build.t

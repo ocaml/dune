@@ -339,8 +339,11 @@ let sandbox_dir = Path.of_string "_build/.sandbox"
 let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
   let { Pre_rule. build; targets = target_specs; sandbox } = pre_rule in
   let targets = Target.paths target_specs in
-  let rule_deps = Build_interpret.rule_deps build ~all_targets_by_dir in
-  let static_deps = Build_interpret.static_action_deps build ~all_targets_by_dir in
+  let { Build_interpret.Static_deps.
+        rule_deps
+      ; action_deps = static_deps
+      } = Build_interpret.static_deps build ~all_targets_by_dir
+  in
 
   if !Clflags.debug_rules then begin
     let f set =

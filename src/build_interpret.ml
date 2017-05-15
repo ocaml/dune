@@ -19,8 +19,15 @@ module Target = struct
       Pset.add (path t) acc)
 end
 
-let rule_deps t ~all_targets_by_dir =
-  let rec loop : type a b. (a, b) t -> Pset.t -> Pset.t = fun t acc ->
+module Static_deps = struct
+  type t =
+    { rule_deps   : Path.Set.t
+    ; action_deps : Path.Set.t
+    }
+end
+
+let static_deps t ~all_targets_by_dir =
+  let rec loop : type a b. (a, b) t -> Static_deps.t -> Static_deps.t = fun t acc ->
     match t with
     | Arr _ -> acc
     | Targets _ -> acc
@@ -30,8 +37,18 @@ let rule_deps t ~all_targets_by_dir =
     | Second t -> loop t acc
     | Split (a, b) -> loop a (loop b acc)
     | Fanout (a, b) -> loop a (loop b acc)
-    | Paths _ -> acc
-    | Paths_glob _ -> acc
+    | Paths fns -> { acc with action_deps = Pset.union fns acc.action_deps }
+    | Paths_glob (dir, re) -> begin
+        match Pmap.find dir (Lazy.force all_targets_by_dir) with
+        | None -> acc
+        | Some targets ->
+          let action_deps =
+            Pset.filter targets ~f:(fun path ->
+              Re.execp re (Path.basename path))
+            |> Pset.union acc.action_deps
+          in
+          { acc with action_deps }
+      end
     | If_file_exists (p, state) -> begin
         match !state with
         | Decided (_, t) -> loop t acc
@@ -50,45 +67,14 @@ let rule_deps t ~all_targets_by_dir =
           end
       end
     | Dyn_paths t -> loop t acc
-    | Vpath (Vspec.T (p, _)) -> Pset.add p acc
-    | Contents p -> Pset.add p acc
-    | Lines_of p -> Pset.add p acc
+    | Vpath (Vspec.T (p, _)) -> { acc with rule_deps = Pset.add p acc.rule_deps }
+    | Contents p -> { acc with rule_deps = Pset.add p acc.rule_deps }
+    | Lines_of p -> { acc with rule_deps = Pset.add p acc.rule_deps }
     | Record_lib_deps _ -> acc
     | Fail _ -> acc
     | Memo m -> loop m.t acc
   in
-  loop (Build.repr t) Pset.empty
-
-let static_action_deps t ~all_targets_by_dir =
-  let rec loop : type a b. (a, b) t -> Pset.t -> Pset.t = fun t acc ->
-    match t with
-    | Arr _ -> acc
-    | Targets _ -> acc
-    | Compose (a, b) -> loop a (loop b acc)
-    | First t -> loop t acc
-    | Second t -> loop t acc
-    | Split (a, b) -> loop a (loop b acc)
-    | Fanout (a, b) -> loop a (loop b acc)
-    | Paths fns -> Pset.union fns acc
-    | Paths_glob (dir, re) -> begin
-        match Pmap.find dir (Lazy.force all_targets_by_dir) with
-        | None -> acc
-        | Some targets ->
-          Pset.filter targets ~f:(fun path ->
-            Re.execp re (Path.basename path))
-          |> Pset.union acc
-      end
-    | Vpath _ -> acc
-    | If_file_exists (_, state) -> loop (get_if_file_exists_exn state) acc
-    | Dyn_paths t -> loop t acc
-    | Contents _ -> acc
-    | Lines_of _ -> acc
-    | Record_lib_deps _ -> acc
-    | Fail _ -> acc
-    | Memo m -> loop m.t acc
-    | Store_vfile _ -> acc
-  in
-  loop (Build.repr t) Pset.empty
+  loop (Build.repr t) { rule_deps = Pset.empty; action_deps = Pset.empty }
 
 let lib_deps =
   let rec loop : type a b. (a, b) t -> Build.lib_deps Pmap.t -> Build.lib_deps Pmap.t

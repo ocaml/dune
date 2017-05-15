@@ -19,7 +19,8 @@ end
 
 module Rule = struct
   type t =
-    { deps           : Pset.t
+    { rule_deps      : Pset.t
+    ; static_deps    : Pset.t
     ; targets        : Pset.t
     ; build          : (unit, Action.t) Build.t
     ; mutable exec   : Exec_status.t
@@ -276,7 +277,8 @@ let sandbox_dir = Path.of_string "_build/.sandbox"
 
 let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
   let { Pre_rule. build; targets; sandbox } = pre_rule in
-  let deps = Build_interpret.deps build ~all_targets_by_dir in
+  let rule_deps = Build_interpret.rule_deps build ~all_targets_by_dir in
+  let static_deps = Build_interpret.static_action_deps build ~all_targets_by_dir in
 
   if !Clflags.debug_rules then begin
     let f set =
@@ -284,6 +286,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       |> List.map ~f:Path.to_string
       |> String.concat ~sep:", "
     in
+    let deps = Pset.union rule_deps static_deps in
     let lib_deps = Build_interpret.lib_deps build in
     if Pmap.is_empty lib_deps then
       Printf.eprintf "{%s} -> {%s}\n" (f deps) (f targets)
@@ -303,12 +306,16 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
 
   let exec = Exec_status.Not_started (fun ~targeting ->
     make_local_parent_dirs t targets ~map_path:(fun x -> x);
-    wait_for_deps t deps ~targeting
-    >>= fun () ->
-    let action, dyn_deps = Build_exec.exec build () in
-    wait_for_deps t ~targeting (Pset.diff dyn_deps deps)
-    >>= fun () ->
-    let all_deps = Pset.union deps dyn_deps in
+    Future.both
+      (wait_for_deps t static_deps ~targeting)
+      (wait_for_deps t rule_deps ~targeting
+       >>= fun () ->
+       let action, dyn_deps = Build_exec.exec build () in
+       wait_for_deps t ~targeting (Pset.diff dyn_deps static_deps)
+       >>| fun () ->
+       (action, dyn_deps))
+    >>= fun ((), (action, dyn_deps)) ->
+    let all_deps = Pset.union static_deps dyn_deps in
     if !Clflags.debug_actions then
       Format.eprintf "@{<debug>Action@}: %s@."
         (Sexp.to_string (Action.sexp_of_t action));
@@ -407,8 +414,9 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
   ) in
   let rule =
     { Rule.
-      deps    = deps
-    ; targets = targets
+      static_deps
+    ; rule_deps
+    ; targets
     ; build
     ; exec
     }
@@ -566,7 +574,8 @@ module File_closure =
       type graph = t
       type t = Path.t * Rule.t
       let key (path, _) = path
-      let deps (_, rule) bs = rules_for_files bs (Pset.elements rule.Rule.deps)
+      let deps (_, rule) bs =
+        rules_for_files bs (Pset.elements (Pset.union rule.Rule.static_deps rule.Rule.rule_deps))
     end)
 
 let rules_for_targets t targets =

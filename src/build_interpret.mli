@@ -10,7 +10,13 @@ module Rule : sig
   val make : ?sandbox:bool -> targets:Path.t list -> (unit, Action.t) Build.t -> t
 end
 
-val deps
+(* must be called first *)
+val rule_deps
+  :  (_, _) Build.t
+  -> all_targets_by_dir:Path.Set.t Path.Map.t Lazy.t
+  -> Path.Set.t
+
+val static_action_deps
   :  (_, _) Build.t
   -> all_targets_by_dir:Path.Set.t Path.Map.t Lazy.t
   -> Path.Set.t

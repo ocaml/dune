@@ -11,8 +11,8 @@ Street and adapted to the open source world. It has matured over a
 long time and is used daily by hundred of developpers, which means
 that it is highly tested and productive.
 
-Jbuilder comes with a [[./doc/manual.org][manual]]. If you want to get started without
-reading too much, you can look at the [[./doc/quick-start.org][quick start guide]].
+Jbuilder comes with a [[http://jbuilder.readthedocs.io/en/latest/][manual]]. If you want to get started without
+reading too much, you can look at the [[http://jbuilder.readthedocs.io/en/latest/quick-start.html][quick start guide]].
 
 The [[example]] directory contains examples of projects using jbuilder.
 

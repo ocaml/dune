@@ -18,10 +18,6 @@ let jbuild =
     ({|
 (jbuild_version 1)
 
-(install
- ((section doc)
-  (files (manual.org quick-start.org))))
-
 (rule
  ((targets (jbuilder.1))
   (action  (with-stdout-to ${@}

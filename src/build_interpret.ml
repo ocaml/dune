@@ -3,11 +3,28 @@ open Build.Repr
 
 module Pset = Path.Set
 module Pmap = Path.Map
+module Vspec = Build.Vspec
+
+module Target = struct
+  type t =
+    | Normal of Path.t
+    | Vfile : _ Vspec.t -> t
+
+  let path = function
+    | Normal p -> p
+    | Vfile (Vspec.T (p, _)) -> p
+
+  let paths ts =
+    List.fold_left ts ~init:Pset.empty ~f:(fun acc t ->
+      Pset.add (path t) acc)
+end
 
 let rule_deps t ~all_targets_by_dir =
   let rec loop : type a b. (a, b) t -> Pset.t -> Pset.t = fun t acc ->
     match t with
     | Arr _ -> acc
+    | Targets _ -> acc
+    | Store_vfile _ -> acc
     | Compose (a, b) -> loop a (loop b acc)
     | First t -> loop t acc
     | Second t -> loop t acc
@@ -33,6 +50,7 @@ let rule_deps t ~all_targets_by_dir =
           end
       end
     | Dyn_paths t -> loop t acc
+    | Vpath (Vspec.T (p, _)) -> Pset.add p acc
     | Contents p -> Pset.add p acc
     | Lines_of p -> Pset.add p acc
     | Record_lib_deps _ -> acc
@@ -45,6 +63,7 @@ let static_action_deps t ~all_targets_by_dir =
   let rec loop : type a b. (a, b) t -> Pset.t -> Pset.t = fun t acc ->
     match t with
     | Arr _ -> acc
+    | Targets _ -> acc
     | Compose (a, b) -> loop a (loop b acc)
     | First t -> loop t acc
     | Second t -> loop t acc
@@ -59,6 +78,7 @@ let static_action_deps t ~all_targets_by_dir =
             Re.execp re (Path.basename path))
           |> Pset.union acc
       end
+    | Vpath _ -> acc
     | If_file_exists (_, state) -> loop (get_if_file_exists_exn state) acc
     | Dyn_paths t -> loop t acc
     | Contents _ -> acc
@@ -66,6 +86,7 @@ let static_action_deps t ~all_targets_by_dir =
     | Record_lib_deps _ -> acc
     | Fail _ -> acc
     | Memo m -> loop m.t acc
+    | Store_vfile _ -> acc
   in
   loop (Build.repr t) Pset.empty
 
@@ -74,12 +95,15 @@ let lib_deps =
     = fun t acc ->
       match t with
       | Arr _ -> acc
+      | Targets _ -> acc
+      | Store_vfile _ -> acc
       | Compose (a, b) -> loop a (loop b acc)
       | First t -> loop t acc
       | Second t -> loop t acc
       | Split (a, b) -> loop a (loop b acc)
       | Fanout (a, b) -> loop a (loop b acc)
       | Paths _ -> acc
+      | Vpath _ -> acc
       | Paths_glob _ -> acc
       | Dyn_paths t -> loop t acc
       | Contents _ -> acc
@@ -98,16 +122,50 @@ let lib_deps =
   in
   fun t -> loop (Build.repr t) Pmap.empty
 
+let targets =
+  let rec loop : type a b. (a, b) t -> Target.t list -> Target.t list = fun t acc ->
+    match t with
+    | Arr _ -> acc
+    | Targets targets ->
+      List.fold_left targets ~init:acc ~f:(fun acc fn -> Target.Normal fn :: acc)
+    | Store_vfile spec -> Vfile spec :: acc
+    | Compose (a, b) -> loop a (loop b acc)
+    | First t -> loop t acc
+    | Second t -> loop t acc
+    | Split (a, b) -> loop a (loop b acc)
+    | Fanout (a, b) -> loop a (loop b acc)
+    | Paths _ -> acc
+    | Vpath _ -> acc
+    | Paths_glob _ -> acc
+    | Dyn_paths t -> loop t acc
+    | Contents _ -> acc
+    | Lines_of _ -> acc
+    | Record_lib_deps _ -> acc
+    | Fail _ -> acc
+    | If_file_exists (_, state) -> begin
+        match !state with
+        | Decided _ -> code_errorf "Build_interpret.targets got decided if_file_exists"
+        | Undecided (a, b) ->
+          match loop a [], loop b [] with
+          | [], [] -> acc
+          | _ ->
+            code_errorf "Build_interpret.targets: cannot have targets \
+                         under a [if_file_exists]"
+      end
+    | Memo m -> loop m.t acc
+  in
+  fun t -> loop (Build.repr t) []
+
 module Rule = struct
   type t =
     { build   : (unit, Action.t) Build.t
-    ; targets : Path.Set.t
+    ; targets : Target.t list
     ; sandbox : bool
     }
 
-  let make ?(sandbox=false) ~targets build =
+  let make ?(sandbox=false) build =
     { build
-    ; targets = Path.Set.of_list targets
+    ; targets = targets build
     ; sandbox
     }
 end

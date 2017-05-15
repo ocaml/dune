@@ -8,6 +8,12 @@ val arr : ('a -> 'b) -> ('a, 'b) t
 
 val return : 'a -> (unit, 'a) t
 
+module Vspec : sig
+  type 'a t = T : Path.t * 'a Vfile_kind.t -> 'a t
+end
+
+val store_vfile : 'a Vspec.t -> ('a, Action.t) t
+
 module O : sig
   val ( >>> ) : ('a, 'b) t -> ('b, 'c) t -> ('a, 'c) t
   val ( ^>> ) : ('a -> 'b) -> ('b, 'c) t -> ('a, 'c) t
@@ -32,9 +38,7 @@ val paths : Path.t list -> ('a, 'a) t
 val path_set : Path.Set.t -> ('a, 'a) t
 val paths_glob : dir:Path.t -> Re.re -> ('a, 'a) t
 val files_recursively_in : dir:Path.t -> file_tree:File_tree.t -> ('a, 'a) t
-
-val read_sexp : Path.t -> 'a Sexp.Of_sexp.t -> (unit, 'a) t
-val write_sexp : Path.t -> 'a Sexp.To_sexp.t ->  ('a, Action.t) t
+val vpath : 'a Vspec.t  -> (unit, 'a) t
 
 val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
 
@@ -59,11 +63,11 @@ val file_exists_opt : Path.t -> ('a, 'b) t -> ('a, 'b option) t
 
 (** Always fail when executed. We pass a function rather than an exception to get a proper
     backtrace *)
-val fail : fail -> (_, _) t
+val fail : ?targets:Path.t list -> fail -> (_, _) t
 
-(** [memoize ~name t] is an arrow that behaves like [t] except that its
+(** [memoize name t] is an arrow that behaves like [t] except that its
     result is computed only once. *)
-val memoize : name:string -> (unit, 'a) t -> (unit, 'a) t
+val memoize : string -> (unit, 'a) t -> (unit, 'a) t
 
 module Prog_spec : sig
   type 'a t =
@@ -75,6 +79,7 @@ val run
   :  context:Context.t
   -> ?dir:Path.t (* default: context.build_dir *)
   -> ?stdout_to:Path.t
+  -> ?extra_targets:Path.t list
   -> 'a Prog_spec.t
   -> 'a Arg_spec.t list
   -> ('a, Action.t) t
@@ -82,17 +87,20 @@ val run
 val action
   :  context:Context.t
   -> ?dir:Path.t (* default: context.build_dir *)
+  -> targets:Path.t list
   -> Action.Mini_shexp.t
   -> (unit, Action.t) t
 
 val action_dyn
   :  context:Context.t
   -> ?dir:Path.t (* default: context.build_dir *)
+  -> targets:Path.t list
   -> unit
   -> (Action.Mini_shexp.t, Action.t) t
 
 val action_context_independent
   :  ?dir:Path.t (* default: Path.root *)
+  -> targets:Path.t list
   -> Action.Mini_shexp.t
   -> (unit, Action.t) t
 
@@ -129,6 +137,8 @@ val record_lib_deps_simple : dir:Path.t -> lib_deps -> ('a, 'a) t
 module Repr : sig
   type ('a, 'b) t =
     | Arr : ('a -> 'b) -> ('a, 'b) t
+    | Targets : Path.t list -> ('a, 'a) t
+    | Store_vfile : 'a Vspec.t -> ('a, Action.t) t
     | Compose : ('a, 'b) t * ('b, 'c) t -> ('a, 'c) t
     | First : ('a, 'b) t -> ('a * 'c, 'b * 'c) t
     | Second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t
@@ -139,6 +149,7 @@ module Repr : sig
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
     | Lines_of : Path.t -> ('a, string list) t
+    | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
     | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t

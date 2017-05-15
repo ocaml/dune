@@ -71,12 +71,13 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~(dep_graph:Ocamldep.dep_gra
           let fn = Option.value_exn (Module.cmt_file m ~dir ml_kind) in
           (fn :: extra_targets, A "-bin-annot")
       in
-      SC.add_rule sctx ?sandbox ~targets:(dst :: extra_targets)
+      SC.add_rule sctx ?sandbox
         (Build.paths extra_deps >>>
          other_cm_files >>>
          requires >>>
          Build.dyn_paths (Build.arr (lib_dependencies ~cm_kind)) >>>
          Build.run ~context:ctx (Dep compiler)
+           ~extra_targets
            [ Ocaml_flags.get_for_cm flags ~cm_kind
            ; cmt_args
            ; Dyn Lib.include_flags
@@ -87,7 +88,7 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~(dep_graph:Ocamldep.dep_gra
            ; (match alias_module with
               | None -> S []
               | Some (m : Module.t) -> As ["-open"; m.name])
-           ; A "-o"; Path dst
+           ; A "-o"; Target dst
            ; A "-c"; Ml_kind.flag ml_kind; Dep src
            ])))
 
@@ -98,7 +99,7 @@ let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~dir ~dep_graph ~m
       ~alias_module);
   (* Build *.cmo.js *)
   let src = Module.cm_file m ~dir Cm_kind.Cmo in
-  Js_of_ocaml_rules.build_cm sctx ~dir ~js_of_ocaml ~src
+  SC.add_rules sctx (Js_of_ocaml_rules.build_cm sctx ~dir ~js_of_ocaml ~src)
 
 let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~dir ~dep_graph ~modules ~requires ~alias_module =
   String_map.iter

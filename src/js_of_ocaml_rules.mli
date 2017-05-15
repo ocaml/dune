@@ -7,17 +7,17 @@ val build_cm
   -> dir:Path.t
   -> js_of_ocaml:Js_of_ocaml.t
   -> src:Path.t
-  -> unit
+  -> (unit, Action.t) Build.t list
 
 val build_exe
   :  Super_context.t
   -> dir:Path.t
   -> js_of_ocaml:Js_of_ocaml.t
   -> src:Path.t
-  -> requires:(unit, Lib.t list) Build.t
-  -> top_closed_cm_files:(unit, Path.t list) Build.t
-  -> unit
+  -> (Lib.t list * Path.t list, Action.t) Build.t list
 
-val setup_separate_compilation_rules : Super_context.t -> unit
+val setup_separate_compilation_rules
+  :  Super_context.t
+  -> (unit, Action.t) Build.t list
 
 

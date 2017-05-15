@@ -1,13 +1,22 @@
 open! Import
 
+module Target : sig
+  type t =
+    | Normal of Path.t
+    | Vfile : _ Build.Vspec.t -> t
+
+  val path : t -> Path.t
+  val paths : t list -> Path.Set.t
+end
+
 module Rule : sig
   type t =
     { build   : (unit, Action.t) Build.t
-    ; targets : Path.Set.t
+    ; targets : Target.t list
     ; sandbox : bool
     }
 
-  val make : ?sandbox:bool -> targets:Path.t list -> (unit, Action.t) Build.t -> t
+  val make : ?sandbox:bool -> (unit, Action.t) Build.t -> t
 end
 
 (* must be called first *)
@@ -24,3 +33,7 @@ val static_action_deps
 val lib_deps
   :  (_, _) Build.t
   -> Build.lib_deps Path.Map.t
+
+val targets
+  :  (_, _) Build.t
+  -> Target.t list

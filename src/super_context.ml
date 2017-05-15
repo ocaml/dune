@@ -21,6 +21,7 @@ type t =
   ; mutable rules                           : Build_interpret.Rule.t list
   ; stanzas_to_consider_for_install         : (Path.t * Stanza.t) list
   ; mutable known_targets_by_src_dir_so_far : String_set.t Path.Map.t
+  ; libs_vfile                              : (module Vfile_kind.S with type t = Lib.t list)
   ; cxx_flags                               : string list
   ; vars                                    : string String_map.t
   ; ppx_dir                                 : Path.t
@@ -97,6 +98,19 @@ let create
       List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; _ } ->
         List.map stanzas ~f:(fun s -> (ctx_dir, s)))
   in
+  let module Libs_vfile =
+    Vfile_kind.Make_full
+      (struct type t = Lib.t list end)
+      (struct
+        open Sexp.To_sexp
+        let t _dir l = list string (List.map l ~f:Lib.best_name)
+      end)
+      (struct
+        open Sexp.Of_sexp
+        let t dir sexp =
+          List.map (list string sexp) ~f:(Lib_db.find_exn libs ~from:dir)
+      end)
+  in
   let artifacts =
     Artifacts.create context (List.map stanzas ~f:(fun (d : Dir_with_jbuild.t) ->
       (d.ctx_dir, d.stanzas)))
@@ -146,6 +160,7 @@ let create
   ; rules = []
   ; stanzas_to_consider_for_install
   ; known_targets_by_src_dir_so_far = Path.Map.empty
+  ; libs_vfile = (module Libs_vfile)
   ; artifacts
   ; cxx_flags
   ; vars
@@ -153,13 +168,13 @@ let create
   ; ppx_dir = Path.of_string (sprintf "_build/.ppx/%s" context.name)
   }
 
-let add_rule t ?sandbox ~targets build =
-  let rule = Build_interpret.Rule.make ?sandbox ~targets build in
+let add_rule t ?sandbox build =
+  let rule = Build_interpret.Rule.make ?sandbox build in
   t.rules <- rule :: t.rules;
   t.known_targets_by_src_dir_so_far <-
-    Path.Set.fold rule.targets ~init:t.known_targets_by_src_dir_so_far
-      ~f:(fun path acc ->
-        match Path.extract_build_context path with
+    List.fold_left rule.targets ~init:t.known_targets_by_src_dir_so_far
+      ~f:(fun acc target ->
+        match Path.extract_build_context (Build_interpret.Target.path target) with
         | None -> acc
         | Some (_, path) ->
           let dir = Path.parent path in
@@ -170,6 +185,9 @@ let add_rule t ?sandbox ~targets build =
             | Some set -> String_set.add fn set
           in
           Path.Map.add acc ~key:dir ~data:files)
+
+let add_rules t ?sandbox builds =
+  List.iter builds ~f:(add_rule t ?sandbox)
 
 let sources_and_targets_known_so_far t ~src_path =
   let sources =
@@ -188,22 +206,19 @@ module Libs = struct
 
   let find t ~from name = find t.libs ~from name
 
-  let requires_file ~dir ~item =
-    Path.relative dir (item ^ ".requires.sexp")
-
-  let load_deps t ~dir fn =
-    Build.read_sexp fn (fun sexp ->
-      Sexp.Of_sexp.(list string) sexp
-      |> List.map ~f:(fun name -> Lib_db.find_exn t.libs ~from:dir name))
+  let vrequires t ~dir ~item =
+    let fn = Path.relative dir (item ^ ".requires.sexp") in
+    Build.Vspec.T (fn, t.libs_vfile)
 
   let load_requires t ~dir ~item =
-    load_deps t ~dir (requires_file ~dir ~item)
+    Build.vpath (vrequires t ~dir ~item)
 
-  let runtime_deps_file ~dir ~item =
-    Path.relative dir (item ^ ".runtime-deps.sexp")
+  let vruntime_deps t ~dir ~item =
+    let fn = Path.relative dir (item ^ ".runtime-deps.sexp") in
+    Build.Vspec.T (fn, t.libs_vfile)
 
   let load_runtime_deps t ~dir ~item =
-    load_deps t ~dir (runtime_deps_file ~dir ~item)
+    Build.vpath (vruntime_deps t ~dir ~item)
 
   let with_fail ~fail build =
     match fail with
@@ -252,21 +267,18 @@ module Libs = struct
     List.iter (Lib_db.resolve_selects t.libs ~from:dir lib_deps) ~f:(fun { dst_fn; src_fn } ->
       let src = Path.relative dir src_fn in
       let dst = Path.relative dir dst_fn in
-      add_rule t ~targets:[dst]
+      add_rule t
         (Build.path src
          >>>
-         Build.action_context_independent
+         Build.action_context_independent ~targets:[dst]
            (Copy_and_add_line_directive (src, dst))))
-
-  let write_deps fn =
-    Build.write_sexp fn (fun l -> Sexp.To_sexp.(list string) (List.map l ~f:Lib.best_name))
 
   let real_requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
     let all_pps =
       List.map (Preprocess_map.pps preprocess) ~f:Pp.to_string
     in
-    let requires_file = requires_file ~dir ~item in
-    add_rule t ~targets:[requires_file]
+    let vrequires = vrequires t ~dir ~item in
+    add_rule t
       (Build.record_lib_deps ~dir ~kind:dep_kind (List.map virtual_deps ~f:Lib_dep.direct)
        >>>
        Build.fanout
@@ -277,8 +289,8 @@ module Libs = struct
        Build.arr (fun (libs, rt_deps) ->
          Lib.remove_dups_preserve_order (libs @ rt_deps))
        >>>
-       write_deps requires_file);
-    load_deps t ~dir requires_file
+       Build.store_vfile vrequires);
+    Build.vpath vrequires
 
   let requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
     let real_requires =
@@ -302,8 +314,8 @@ module Libs = struct
     (requires, real_requires)
 
   let setup_runtime_deps t ~dir ~dep_kind ~item ~libraries ~ppx_runtime_libraries =
-    let runtime_deps_file = runtime_deps_file ~dir ~item in
-    add_rule t ~targets:[runtime_deps_file]
+    let vruntime_deps = vruntime_deps t ~dir ~item in
+    add_rule t
       (Build.fanout
          (closure t ~dir ~dep_kind (List.map ppx_runtime_libraries ~f:Lib_dep.direct))
          (closed_ppx_runtime_deps_of t ~dir ~dep_kind libraries)
@@ -311,7 +323,7 @@ module Libs = struct
        Build.arr (fun (rt_deps, rt_deps_of_deps) ->
          Lib.remove_dups_preserve_order (rt_deps @ rt_deps_of_deps))
        >>>
-       write_deps runtime_deps_file)
+       Build.store_vfile vruntime_deps)
 end
 
 module Deps = struct
@@ -355,17 +367,24 @@ end
 module Pkg_version = struct
   open Build.O
 
-  let spec_file sctx (p : Package.t) =
-    Path.relative (Path.append sctx.context.build_dir p.path)
-      (sprintf "%s.version.sexp" p.name)
+  module V = Vfile_kind.Make(struct type t = string option end)
+      (functor (C : Sexp.Combinators) -> struct
+        let t = C.option C.string
+      end)
 
-  let read sctx p = Build.read_sexp (spec_file sctx p) Sexp.Of_sexp.(option string)
+  let spec sctx (p : Package.t) =
+    let fn =
+      Path.relative (Path.append sctx.context.build_dir p.path)
+        (sprintf "%s.version.sexp" p.name)
+    in
+    Build.Vspec.T (fn, (module V))
+
+  let read sctx p = Build.vpath (spec sctx p)
 
   let set sctx p get =
-    let fn = spec_file sctx p in
-    add_rule sctx ~targets:[fn]
-      (get >>> Build.write_sexp fn Sexp.To_sexp.(option string));
-    Build.read_sexp fn Sexp.Of_sexp.(option string)
+    let spec = spec sctx p in
+    add_rule sctx (get >>> Build.store_vfile spec);
+    Build.vpath spec
 end
 
 module Action = struct
@@ -491,7 +510,7 @@ module Action = struct
         U.expand sctx.context dir t
           ~f:(expand_var sctx ~artifacts ~targets ~deps))
       >>>
-      Build.action_dyn () ~context:sctx.context ~dir
+      Build.action_dyn () ~context:sctx.context ~dir ~targets
     in
     match forms.failures with
     | [] -> build
@@ -580,13 +599,13 @@ module PP = struct
       | Some _ ->
         libs
     in
-    add_rule sctx ~targets:[target]
+    add_rule sctx
       (libs
        >>>
        Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib))
        >>>
        Build.run ~context:ctx (Dep compiler)
-         [ A "-o" ; Path target
+         [ A "-o" ; Target target
          ; Dyn (Lib.link_flags ~mode)
          ])
 
@@ -624,37 +643,32 @@ module PP = struct
   let setup_reason_rules sctx ~dir (m : Module.t) =
     let ctx = sctx.context in
     let refmt = resolve_program sctx "refmt" ~hint:"opam install reason" in
-    let refmt src target =
+    let rule src target =
       let src_path = Path.relative dir src in
-      let target = Path.relative dir target in
-      add_rule sctx ~targets:[target]
-        (Build.run ~context:ctx refmt
-           [ A "--print"
-           ; A "binary"
-           ; Dep src_path ]
-           ~stdout_to:target)
-    in
+      Build.run ~context:ctx refmt
+        [ A "--print"
+        ; A "binary"
+        ; Dep src_path ]
+        ~stdout_to:(Path.relative dir target) in
     let impl =
       match m.impl.syntax with
       | OCaml -> m.impl
       | Reason ->
         let ml = Module.File.to_ocaml m.impl in
-        refmt m.impl.name ml.name;
-        ml
-    in
+        add_rule sctx (rule m.impl.name ml.name);
+        ml in
     let intf =
       Option.map m.intf ~f:(fun f ->
         match f.syntax with
         | OCaml -> f
         | Reason ->
           let mli = Module.File.to_ocaml f in
-          refmt f.name mli.name;
-          mli)
-    in
+          add_rule sctx (rule f.name mli.name);
+          mli) in
     { m with impl ; intf }
 
-  (* Generate rules to build the .pp files and return a new module map
-     where all filenames point to the .pp files *)
+  (* Generate rules to build the .pp files and return a new module map where all filenames
+     point to the .pp files *)
   let pped_modules sctx ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name
         ~package_context =
     let preprocessor_deps = Deps.interpret sctx ~dir preprocessor_deps in
@@ -664,7 +678,7 @@ module PP = struct
       | No_preprocessing -> m
       | Action action ->
         pped_module m ~dir ~f:(fun _kind src dst ->
-          add_rule sctx ~targets:[dst]
+          add_rule sctx
             (preprocessor_deps
              >>>
              Build.path src
@@ -683,7 +697,7 @@ module PP = struct
       | Pps { pps; flags } ->
         let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in
         pped_module m ~dir ~f:(fun kind src dst ->
-          add_rule sctx ~targets:[dst]
+          add_rule sctx
             (preprocessor_deps
              >>>
              Build.run ~context:sctx.context
@@ -691,7 +705,7 @@ module PP = struct
                [ As flags
                ; A "--dump-ast"
                ; As (cookie_library_name lib_name)
-               ; A "-o"; Path dst
+               ; A "-o"; Target dst
                ; Ml_kind.ppx_driver_flag kind; Dep src
                ])
         )

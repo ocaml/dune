@@ -63,11 +63,6 @@ module Gen(P : Params) = struct
           | Native -> ["-cclib"; "-l" ^ stubs_name]
       in
       SC.add_rule sctx
-        ~targets:
-          (target
-           :: match mode with
-           | Byte -> []
-           | Native -> [lib_archive lib ~dir ~ext:ctx.ext_lib])
         (Build.fanout
            (dep_graph >>>
             Build.arr (fun dep_graph ->
@@ -80,8 +75,12 @@ module Gen(P : Params) = struct
            (SC.expand_and_eval_set ~dir lib.c_library_flags ~standard:[])
          >>>
          Build.run ~context:ctx (Dep compiler)
+           ~extra_targets:(
+             match mode with
+             | Byte -> []
+             | Native -> [lib_archive lib ~dir ~ext:ctx.ext_lib])
            [ Ocaml_flags.get flags mode
-           ; A "-a"; A "-o"; Path target
+           ; A "-a"; A "-o"; Target target
            ; As stubs_flags
            ; Dyn (fun (_, cclibs) ->
                S (List.map cclibs ~f:(fun flag ->
@@ -109,7 +108,7 @@ module Gen(P : Params) = struct
   let build_c_file (lib : Library.t) ~dir ~requires ~h_files c_name =
     let src = Path.relative dir (c_name ^ ".c") in
     let dst = Path.relative dir (c_name ^ ctx.ext_obj) in
-    SC.add_rule sctx ~targets:[dst]
+    SC.add_rule sctx
       (Build.paths h_files
        >>>
        Build.fanout
@@ -129,7 +128,7 @@ module Gen(P : Params) = struct
              S [ Lib.c_include_flags libs
                ; As (List.concat_map c_flags ~f:(fun f -> ["-ccopt"; f]))
                ])
-         ; A "-o"; Path dst
+         ; A "-o"; Target dst
          ; Dep src
          ]);
     dst
@@ -137,7 +136,7 @@ module Gen(P : Params) = struct
   let build_cxx_file (lib : Library.t) ~dir ~requires ~h_files c_name =
     let src = Path.relative dir (c_name ^ ".cpp") in
     let dst = Path.relative dir (c_name ^ ctx.ext_obj) in
-    SC.add_rule sctx ~targets:[dst]
+    SC.add_rule sctx
       (Build.paths h_files
        >>>
        Build.fanout
@@ -158,7 +157,7 @@ module Gen(P : Params) = struct
              S [ Lib.c_include_flags libs
                ; As cxx_flags
                ])
-         ; A "-o"; Path dst
+         ; A "-o"; Target dst
          ; A "-c"; Dep src
          ]);
     dst
@@ -232,8 +231,7 @@ module Gen(P : Params) = struct
     let dep_graph = Ocamldep.rules sctx ~dir ~item:lib.name ~modules ~alias_module in
 
     Option.iter alias_module ~f:(fun m ->
-      let target = Path.relative dir m.impl.name in
-      SC.add_rule sctx ~targets:[target]
+      SC.add_rule sctx
         (Build.return
            (String_map.values (String_map.remove m.name modules)
             |> List.map ~f:(fun (m : Module.t) ->
@@ -242,7 +240,7 @@ module Gen(P : Params) = struct
                 main_module_name m.name
                 m.name (Module.real_unit_name m))
             |> String.concat ~sep:"\n")
-         >>> Build.update_file_dyn target));
+         >>> Build.update_file_dyn (Path.relative dir m.impl.name)));
 
     let requires, real_requires =
       SC.Libs.requires sctx ~dir ~dep_kind ~item:lib.name
@@ -295,10 +293,11 @@ module Gen(P : Params) = struct
       | Some _ -> ()
       | None ->
         let ocamlmklib ~sandbox ~custom ~targets =
-          SC.add_rule sctx ~sandbox ~targets
+          SC.add_rule sctx ~sandbox
             (SC.expand_and_eval_set ~dir lib.c_library_flags ~standard:[]
              >>>
              Build.run ~context:ctx
+               ~extra_targets:targets
                (Dep ctx.ocamlmklib)
                [ As (Utils.g ())
                ; if custom then A "-custom" else As []
@@ -330,8 +329,9 @@ module Gen(P : Params) = struct
     List.iter Mode.all ~f:(fun mode ->
       build_lib lib ~flags ~dir ~mode ~modules ~dep_graph);
     (* Build *.cma.js *)
-    (let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
-     Js_of_ocaml_rules.build_cm sctx ~dir ~src ~js_of_ocaml:lib.buildable.js_of_ocaml);
+    SC.add_rules sctx (
+      let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
+      Js_of_ocaml_rules.build_cm sctx ~dir ~js_of_ocaml:lib.buildable.js_of_ocaml ~src);
 
     if ctx.natdynlink_supported then
       Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
@@ -343,7 +343,7 @@ module Gen(P : Params) = struct
             [ Ocaml_flags.get flags Native
             ; A "-shared"; A "-linkall"
             ; A "-I"; Path dir
-            ; A "-o"; Path dst
+            ; A "-o"; Target dst
             ; Dep src
             ]
         in
@@ -355,7 +355,7 @@ module Gen(P : Params) = struct
           else
             build
         in
-        SC.add_rule sctx build ~targets:[dst]
+        SC.add_rule sctx build
       );
 
     let flags =
@@ -383,33 +383,32 @@ module Gen(P : Params) = struct
     in
     let dep_graph = Ml_kind.Dict.get dep_graph Impl in
     let exe = Path.relative dir (name ^ exe_ext) in
-    let top_closed_cm_files =
-      dep_graph
-      >>^ fun dep_graph ->
-      Ocamldep.names_to_top_closed_cm_files
-        ~dir
-        ~dep_graph
-        ~modules
-        ~mode
-        [String.capitalize_ascii name]
-    in
-    SC.add_rule sctx ~targets:[exe]
-      (Build.fanout
+    let libs_and_cm =
+      Build.fanout
         (requires
          >>> Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib)))
-        top_closed_cm_files
-       >>>
+        (dep_graph
+         >>> Build.arr (fun dep_graph ->
+           Ocamldep.names_to_top_closed_cm_files
+             ~dir
+             ~dep_graph
+             ~modules
+             ~mode
+             [String.capitalize_ascii name]))
+    in
+    SC.add_rule sctx
+      (libs_and_cm >>>
        Build.run ~context:ctx
          (Dep compiler)
          [ Ocaml_flags.get flags mode
-         ; A "-o"; Path exe
+         ; A "-o"; Target exe
          ; As link_flags
          ; Dyn (fun (libs, _) -> Lib.link_flags libs ~mode)
          ; Dyn (fun (_, cm_files) -> Deps cm_files)
          ]);
     if mode = Mode.Byte then
-      Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe
-        ~requires ~top_closed_cm_files
+      let rules = Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe in
+      SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm >>> r))
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules ~package_context =
     let dep_kind = Build.Required in
@@ -467,7 +466,7 @@ module Gen(P : Params) = struct
 
   let user_rule (rule : Rule.t) ~dir ~package_context =
     let targets = List.map rule.targets ~f:(Path.relative dir) in
-    SC.add_rule sctx ~targets
+    SC.add_rule sctx
       (SC.Deps.interpret sctx ~dir rule.deps
        >>>
        SC.Action.run
@@ -495,7 +494,7 @@ module Gen(P : Params) = struct
     let digest_path = Alias.file_with_digest_suffix alias ~digest in
     Alias.add_deps (SC.aliases sctx) alias [digest_path];
     let deps = SC.Deps.interpret sctx ~dir alias_conf.deps in
-    SC.add_rule sctx ~targets:[digest_path]
+    SC.add_rule sctx
       (match alias_conf.action with
        | None ->
          deps
@@ -503,15 +502,14 @@ module Gen(P : Params) = struct
          Build.create_file digest_path
        | Some action ->
          deps
-         >>>
-         SC.Action.run
-           sctx
-           action
-           ~dir
-           ~dep_kind:Required
-           ~deps:(SC.Deps.only_plain_files sctx ~dir alias_conf.deps)
-           ~targets:[]
-           ~package_context
+         >>> SC.Action.run
+               sctx
+               action
+               ~dir
+               ~dep_kind:Required
+               ~targets:[]
+               ~deps:(SC.Deps.only_plain_files sctx ~dir alias_conf.deps)
+               ~package_context
          >>>
          Build.and_create_file digest_path)
 
@@ -561,9 +559,10 @@ module Gen(P : Params) = struct
          | Reason -> "re")
         intf.name impl_fname;
       let dir = Path.append ctx.build_dir dir in
-      let src = Path.relative dir intf.name in
-      let dst = Path.relative dir impl_fname in
-      SC.add_rule sctx ~targets:[dst] (Build.copy ~src ~dst);
+      SC.add_rule sctx
+        (Build.copy
+           ~src:(Path.relative dir intf.name)
+           ~dst:(Path.relative dir impl_fname));
       { intf with name = impl_fname } in
     String_map.merge impls intfs ~f:(fun name impl intf ->
       let impl =
@@ -621,7 +620,8 @@ module Gen(P : Params) = struct
     |> Merlin.add_rules sctx ~dir:ctx_dir
 
   let () = List.iter (SC.stanzas sctx) ~f:rules
-  let () = Js_of_ocaml_rules.setup_separate_compilation_rules sctx
+  let () =
+    SC.add_rules sctx (Js_of_ocaml_rules.setup_separate_compilation_rules sctx)
 
   (* +-----------------------------------------------------------------+
      | META                                                            |
@@ -713,7 +713,7 @@ module Gen(P : Params) = struct
               >>^ List.map ~f:Lib.best_name
             | _ -> Build.arr (fun _ -> []))
       in
-      SC.add_rule sctx ~targets:[meta_path]
+      SC.add_rule sctx
         (Build.fanout meta template
          >>^ (fun ((meta : Meta.t), template) ->
            let buf = Buffer.create 1024 in
@@ -830,7 +830,7 @@ module Gen(P : Params) = struct
       let dst =
         Path.append install_dir (Install.Entry.relative_installed_path entry ~package)
       in
-      SC.add_rule ~targets:[dst] sctx (Build.symlink ~src:entry.src ~dst);
+      SC.add_rule sctx (Build.symlink ~src:entry.src ~dst);
       { entry with src = dst })
 
   let install_file package_path package =
@@ -872,7 +872,7 @@ module Gen(P : Params) = struct
       Path.relative (Path.append ctx.build_dir package_path) (package ^ ".install")
     in
     let entries = local_install_rules entries ~package in
-    SC.add_rule sctx ~targets:[fn]
+    SC.add_rule sctx
       (Build.path_set (Install.files entries)
        >>^ (fun () ->
          Install.gen_install_file entries)
@@ -896,8 +896,7 @@ module Gen(P : Params) = struct
         if is_default then begin
           let src_install_alias = Alias.install ~dir:src_path in
           let src_install_file = Path.relative src_path install_fn in
-          SC.add_rule sctx ~targets:[src_install_file]
-            (Build.copy ~src:ctx_install_file ~dst:src_install_file);
+          SC.add_rule sctx (Build.copy ~src:ctx_install_file ~dst:src_install_file);
           Alias.add_deps (SC.aliases sctx) src_install_alias [src_install_file]
         end)
 end

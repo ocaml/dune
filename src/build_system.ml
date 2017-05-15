@@ -204,9 +204,8 @@ module Build_exec = struct
   open Build.Repr
 
   let exec bs t x =
-    let dyn_deps = ref Pset.empty in
     let rec exec
-      : type a b. (a, b) t -> a -> b = fun t x ->
+      : type a b. Pset.t ref -> (a, b) t -> a -> b = fun dyn_deps t x ->
       match t with
       | Arr f -> f x
       | Targets _ -> x
@@ -220,21 +219,21 @@ module Build_exec = struct
         ; action  = Update_file (fn, vfile_to_string kind fn x)
         }
       | Compose (a, b) ->
-        exec a x |> exec b
+        exec dyn_deps a x |> exec dyn_deps b
       | First t ->
         let x, y = x in
-        (exec t x, y)
+        (exec dyn_deps t x, y)
       | Second t ->
         let x, y = x in
-        (x, exec t y)
+        (x, exec dyn_deps t y)
       | Split (a, b) ->
         let x, y = x in
-        let x = exec a x in
-        let y = exec b y in
+        let x = exec dyn_deps a x in
+        let y = exec dyn_deps b y in
         (x, y)
       | Fanout (a, b) ->
-        let a = exec a x in
-        let b = exec b x in
+        let a = exec dyn_deps a x in
+        let b = exec dyn_deps b x in
         (a, b)
       | Paths _ -> x
       | Paths_glob _ -> x
@@ -244,25 +243,30 @@ module Build_exec = struct
         let file : b File_spec.t = get_file bs fn (Sexp_file kind) in
         Option.value_exn file.data
       | Dyn_paths t ->
-        let fns = exec t x in
+        let fns = exec dyn_deps t x in
         dyn_deps := Pset.union !dyn_deps (Pset.of_list fns);
         x
       | Record_lib_deps _ -> x
       | Fail { fail } -> fail ()
       | If_file_exists (_, state) ->
-        exec (get_if_file_exists_exn state) x
+        exec dyn_deps (get_if_file_exists_exn state) x
       | Memo m ->
         match m.state with
-        | Evaluated x -> x
+        | Evaluated (x, deps) ->
+          dyn_deps := Pset.union !dyn_deps deps;
+          x
         | Evaluating ->
           die "Dependency cycle evaluating memoized build arrow %s" m.name
         | Unevaluated ->
           m.state <- Evaluating;
-          let x = exec m.t x in
-          m.state <- Evaluated x;
+          let dyn_deps' = ref Pset.empty in
+          let x = exec dyn_deps' m.t x in
+          m.state <- Evaluated (x, !dyn_deps');
+          dyn_deps := Pset.union !dyn_deps !dyn_deps';
           x
     in
-    let action = exec (Build.repr t) x in
+    let dyn_deps = ref Pset.empty in
+    let action = exec dyn_deps (Build.repr t) x in
     (action, !dyn_deps)
 end
 

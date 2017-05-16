@@ -281,13 +281,17 @@ module Jbuilder_opam_file_format = struct
       ; file_name     : string
       }
   end
-  module OpamParser = struct
+  module OpamBaseParser = struct
     open OpamParserTypes
-    let file fn =
+    let main _lex _lexbuf fn =
       assert (fn = "jbuilder.opam");
       { file_contents = []
       ; file_name     = fn
       }
+  end
+  module OpamLexer = struct
+    exception Error of string
+    let token _ = assert false
   end
 end
 

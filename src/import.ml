@@ -407,14 +407,14 @@ let with_file_out ?(binary=true)fn ~f =
 
 let with_lexbuf_from_file fn ~f =
   with_file_in fn ~f:(fun ic ->
-      let lb = Lexing.from_channel ic in
-      lb.lex_curr_p <-
-        { pos_fname = fn
-        ; pos_lnum  = 1
-        ; pos_bol   = 0
-        ; pos_cnum  = 0
-        };
-      f lb)
+    let lb = Lexing.from_channel ic in
+    lb.lex_curr_p <-
+      { pos_fname = fn
+      ; pos_lnum  = 1
+      ; pos_bol   = 0
+      ; pos_cnum  = 0
+      };
+    f lb)
 
 let input_lines =
   let rec loop ic acc =

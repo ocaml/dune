@@ -21,7 +21,7 @@ let is_a_source_file fn =
   | _ -> true
 
 let make_watermark_map ~name ~version ~commit =
-  let opam_file = OpamParser.file (name ^ ".opam") in
+  let opam_file = Opam_file.load (name ^ ".opam") in
   let version_num =
     if String.is_prefix version ~prefix:"v" then
       String.sub version ~pos:1 ~len:(String.length version - 1)
@@ -29,13 +29,7 @@ let make_watermark_map ~name ~version ~commit =
       version
   in
   let opam_var name sep =
-    match
-      List.find_map opam_file.file_contents
-        ~f:(function
-          | Variable (_, var, value) when name = var ->
-            Some value
-          | _ -> None)
-    with
+    match Opam_file.get_field opam_file name with
     | None -> Error (sprintf "variable %S not found in opam file" name)
     | Some value ->
       let err = Error (sprintf "invalid value for variable %S in opam file" name) in

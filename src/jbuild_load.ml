@@ -149,18 +149,16 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) () =
           match Filename.split_extension fn with
           | (pkg, ".opam") when pkg <> "" ->
             let version_from_opam_file =
-              let lines = lines_of_file (Path.relative path fn |> Path.to_string) in
-              List.find_map lines ~f:(fun s ->
-                try
-                Scanf.sscanf s "version: %S" (fun x -> Some x)
-              with _ ->
-                None)
-          in
-          (pkg,
-           { Package. name = pkg
-           ; path
-           ; version_from_opam_file
-           }) :: acc
+              let opam = Opam_file.load (Path.relative path fn |> Path.to_string) in
+              match Opam_file.get_field opam "version" with
+              | Some (String (_, s)) -> Some s
+              | _ -> None
+            in
+            (pkg,
+             { Package. name = pkg
+             ; path
+             ; version_from_opam_file
+             }) :: acc
           | _ -> acc)
       in
       if String_set.mem "jbuild-ignore" files then

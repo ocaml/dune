@@ -487,13 +487,12 @@ let root_packages t =
 
 let all_packages t =
   List.iter (root_packages t) ~f:(fun pkg ->
-    ignore (find_exn t pkg ~required_by:[] : package));
+    ignore (find t pkg ~required_by:[] : package option));
   Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:_ ~data acc ->
     match data with
     | Present p -> p :: acc
     | Absent  _ -> acc)
   |> List.sort ~cmp:(fun a b -> String.compare a.name b.name)
-
 
 let stdlib_with_archives t =
   let x = find_exn t ~required_by:[] "stdlib" in

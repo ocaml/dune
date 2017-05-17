@@ -54,6 +54,8 @@ struct
       ; cstr_loc "copy-and-add-line-directive" (path @> path @> nil) (fun loc src dst ->
           Loc.warn loc "copy-and-add-line-directive is deprecated, use copy# instead";
           Copy_and_add_line_directive (src, dst))
+      ; cstr "copy#" (path @> path @> nil) (fun src dst ->
+          Copy_and_add_line_directive (src, dst))
       ; cstr "system" (string @> nil) (fun cmd -> System cmd)
       ; cstr "bash"   (string @> nil) (fun cmd -> Bash   cmd)
       ; cstr "write-file" (path @> string @> nil) (fun fn s -> Write_file (fn, s))

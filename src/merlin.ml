@@ -9,6 +9,7 @@ type t =
   ; flags      : (unit, string list) Build.t
   ; preprocess : Jbuild.Preprocess.t
   ; libname    : string option
+  ; source_dirs: Path.Set.t
   }
 
 (* This must be forced after we change the cwd to the workspace root *)
@@ -55,6 +56,12 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
               internals, ("PKG " ^ pkg.name) :: externals
           )
         in
+        let source_dirs =
+          Path.Set.fold t.source_dirs ~init:[] ~f:(fun path acc ->
+            let path = Path.reach path ~from:remaindir in
+            ("S " ^ path)::acc
+          )
+        in
         let flags =
           match flags with
           | [] -> []
@@ -65,6 +72,7 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
         let dot_merlin =
           List.concat
             [ [ "B " ^ (Path.reach dir ~from:remaindir) ]
+            ; source_dirs
             ; internals
             ; externals
             ; flags
@@ -94,9 +102,10 @@ let merge_two a b =
       else
         No_preprocessing
   ; libname =
-      match a.libname with
-      | Some _ as x -> x
-      | None -> b.libname
+      (match a.libname with
+       | Some _ as x -> x
+       | None -> b.libname)
+  ; source_dirs = Path.Set.union a.source_dirs b.source_dirs
   }
 
 let merge_all = function

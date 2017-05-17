@@ -222,6 +222,13 @@ module Alias_conf : sig
     }
 end
 
+module Copy_files : sig
+  type t =
+    { add_line_directive : bool
+    ; glob : String_with_vars.t
+    }
+end
+
 module Stanza : sig
   type t =
     | Library     of Library.t
@@ -230,6 +237,7 @@ module Stanza : sig
     | Provides    of Provides.t
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
+    | Copy_files  of Copy_files.t
 end
 
 module Stanzas : sig

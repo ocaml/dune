@@ -37,6 +37,7 @@ val t : t Sexp.Of_sexp.t
 val sexp_of_t : t Sexp.To_sexp.t
 
 val compare : t -> t -> int
+(** a directory is smaller than its descendants *)
 
 module Set : Set.S with type elt = t
 module Map : Map.S with type key = t

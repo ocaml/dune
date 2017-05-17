@@ -886,6 +886,14 @@ module Alias_conf = struct
          })
 end
 
+module Copy_files = struct
+  type t = { add_line_directive : bool
+           ; glob : String_with_vars.t
+           }
+
+  let v1 = String_with_vars.t
+end
+
 module Stanza = struct
   type t =
     | Library     of Library.t
@@ -894,6 +902,7 @@ module Stanza = struct
     | Provides    of Provides.t
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
+    | Copy_files  of Copy_files.t
 
   let rules l = List.map l ~f:(fun x -> Rule x)
 
@@ -913,6 +922,10 @@ module Stanza = struct
       ; cstr_loc "menhir"    (Menhir.v1   @> nil) (fun loc x -> rules (Menhir.v1_to_rule loc x))
       ; cstr "install"     (Install_conf.v1 pkgs @> nil) (fun x -> [Install     x])
       ; cstr "alias"       (Alias_conf.v1 pkgs @> nil)   (fun x -> [Alias       x])
+      ; cstr "copy_files" (Copy_files.v1 @> nil)
+          (fun glob -> [Copy_files {add_line_directive = false; glob}])
+      ; cstr "copy_files#" (Copy_files.v1 @> nil)
+          (fun glob -> [Copy_files {add_line_directive = true; glob}])
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]

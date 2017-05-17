@@ -511,6 +511,22 @@ stanza, if the source file has extension ``.exe`` or ``.bc``, then
 Jbuilder implicitly adds the ``.exe`` extension to the destination, if
 not already present.
 
+copy_files
+----------
+
+The ``copy_files`` and ``copy_files#`` stanzas allow to specify that
+files from another directory could be copied if needed to the current
+directory.
+
+The syntax is as follows:
+
+.. code:: scheme
+
+    (copy_files <glob>)
+
+``<glob>`` represents the set of files to copy, see the :ref:`glob
+<glob>` for details.
+
 Common items
 ============
 

@@ -5,6 +5,7 @@ type t =
   ; flags      : (unit, string list) Build.t
   ; preprocess : Jbuild.Preprocess.t
   ; libname    : string option
+  ; source_dirs: Path.Set.t
   }
 
 val merge_all : t list -> t option

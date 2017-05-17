@@ -64,3 +64,10 @@
   (action
    (chdir test-cases/lib-available
     (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/copy_files)))
+  (action
+   (chdir test-cases/copy_files
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))

@@ -21,6 +21,11 @@
 
 - Better error messages for invalid dependency list in jbuild files
 
+- Better error messages when a findlib package is unavailable
+
+- Add `jbuilder installed-libraries --not-available` explaining why
+  some libraries are not available
+
 1.0+beta8 (17/04/2017)
 ----------------------
 

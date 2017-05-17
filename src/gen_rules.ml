@@ -79,7 +79,7 @@ module Gen(P : Params) = struct
              match mode with
              | Byte -> []
              | Native -> [lib_archive lib ~dir ~ext:ctx.ext_lib])
-           [ Ocaml_flags.get flags mode
+           [ Ocaml_flags.get ~target:(Path.basename target) flags mode
            ; A "-a"; A "-o"; Target target
            ; As stubs_flags
            ; Dyn (fun (_, cclibs) ->
@@ -259,12 +259,18 @@ module Gen(P : Params) = struct
     Module_compilation.build_modules sctx
       ~js_of_ocaml ~dynlink ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
-      let flags = Ocaml_flags.default () in
+      let flags =
+        let (>>|) = Per_file.(>>|) in
+        Ocaml_flags.default ()
+        |> fun flags -> { 
+          flags with common = (flags.common >>| fun common -> common @ ["-w"; "-49"]) 
+          }
+      in
       Module_compilation.build_module sctx m
          ~js_of_ocaml
         ~dynlink
         ~sandbox:alias_module_build_sandbox
-        ~flags:{ flags with common = flags.common @ ["-w"; "-49"] }
+        ~flags
         ~dir
         ~modules:(String_map.singleton m.name m)
         ~dep_graph:(Ml_kind.Dict.make_both (Build.return (String_map.singleton m.name [])))
@@ -340,7 +346,7 @@ module Gen(P : Params) = struct
         let build =
           Build.run ~context:ctx
             (Dep ocamlopt)
-            [ Ocaml_flags.get flags Native
+            [ Ocaml_flags.get ~target:(Path.basename src) flags Native
             ; A "-shared"; A "-linkall"
             ; A "-I"; Path dir
             ; A "-o"; Target dst
@@ -361,11 +367,14 @@ module Gen(P : Params) = struct
     let flags =
       match alias_module with
       | None -> flags.common
-      | Some m -> "-open" :: m.name :: flags.common
+      | Some m -> 
+        let (>>|) = Per_file.(>>|) in
+        flags.common
+        >>| fun common -> "-open" :: m.name :: common
     in
     { Merlin.
       requires = real_requires
-    ; flags
+    ; flags = Per_file.get ~target:lib.name ~default:[] flags
     ; preprocess = Buildable.single_preprocess lib.buildable
     ; libname = Some lib.name
     }
@@ -400,7 +409,7 @@ module Gen(P : Params) = struct
       (libs_and_cm >>>
        Build.run ~context:ctx
          (Dep compiler)
-         [ Ocaml_flags.get flags mode
+         [ Ocaml_flags.get ~target:(Path.basename exe) flags mode
          ; A "-o"; Target exe
          ; As link_flags
          ; Dyn (fun (libs, _) -> Lib.link_flags libs ~mode)
@@ -455,7 +464,7 @@ module Gen(P : Params) = struct
           ~mode ~modules ~dep_graph ~link_flags:exes.link_flags));
     { Merlin.
       requires   = real_requires
-    ; flags      = flags.common
+    ; flags      = Per_file.get ~target:item ~default:[] flags.common
     ; preprocess = Buildable.single_preprocess exes.buildable
     ; libname    = None
     }

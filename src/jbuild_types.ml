@@ -1,5 +1,6 @@
 open Import
 open Sexp.Of_sexp
+open Jbuild_helpers
 
 (* This file defines the jbuild types as well as the S-expression syntax for the various
    supported version of the specification.
@@ -21,49 +22,6 @@ module Jbuild_version = struct
 
   let latest_stable = V1
 end
-
-let invalid_module_name sexp =
-  of_sexp_error sexp "invalid module name"
-
-let module_name sexp =
-  match string sexp with
-  | "" -> invalid_module_name sexp
-  | s ->
-    if s.[0] = '_' then invalid_module_name sexp;
-    String.iter s ~f:(function
-      | 'A'..'Z' | 'a'..'z' | '_' -> ()
-      | _ -> invalid_module_name sexp);
-    String.capitalize_ascii s
-
-let module_names sexp = String_set.of_list (list module_name sexp)
-
-let invalid_lib_name sexp =
-  of_sexp_error sexp "invalid library name"
-
-let library_name sexp =
-  match string sexp with
-  | "" -> invalid_lib_name sexp
-  | s ->
-    if s.[0] = '.' then invalid_lib_name sexp;
-    String.iter s ~f:(function
-      | 'A'..'Z' | 'a'..'z' | '_' | '.' | '0'..'9' -> ()
-      | _ -> invalid_lib_name sexp);
-    s
-
-let file sexp =
-  match string sexp with
-  | "." | ".." ->
-    of_sexp_error sexp "'.' and '..' are not valid filenames"
-  | fn -> fn
-
-let file_in_current_dir sexp =
-  match string sexp with
-  | "." | ".." ->
-    of_sexp_error sexp "'.' and '..' are not valid filenames"
-  | fn ->
-    if Filename.dirname fn <> Filename.current_dir_name then
-      of_sexp_error sexp "file in current directory expected";
-    fn
 
 module Pkgs = struct
   type t =
@@ -242,26 +200,6 @@ module Preprocess = struct
     | _ -> []
 end
 
-module Per_file = struct
-  type 'a t =
-    | For_all  of 'a
-    | Per_file of 'a String_map.t
-
-  let t a sexp =
-    match sexp with
-    | List (_, Atom (_, "per_file") :: rest) -> begin
-        List.concat_map rest ~f:(fun sexp ->
-          let pp, names = pair a module_names sexp in
-          List.map (String_set.elements names) ~f:(fun name -> (name, pp)))
-        |> String_map.of_alist
-        |> function
-        | Ok map -> Per_file map
-        | Error (name, _, _) ->
-          of_sexp_error sexp (sprintf "module %s present in two different sets" name)
-      end
-    | sexp -> For_all (a sexp)
-end
-
 module Preprocess_map = struct
   type t = Preprocess.t Per_file.t
   let t = Per_file.t Preprocess.t
@@ -300,21 +238,27 @@ let field_osl name =
 let field_oslu name =
   field name Ordered_set_lang.Unexpanded.t ~default:Ordered_set_lang.Unexpanded.standard
 
+let field_oslpf name =
+  field name (Per_file.t Ordered_set_lang.t) ~default:(Per_file.pure Ordered_set_lang.standard)
+
+let field_oslupf name =
+  field name (Per_file.t Ordered_set_lang.Unexpanded.t) ~default:(Per_file.pure Ordered_set_lang.Unexpanded.standard)
+
 module Js_of_ocaml = struct
 
   type t =
-    { flags            : Ordered_set_lang.t
+    { flags            : Ordered_set_lang.t Per_file.t
     ; javascript_files : string list
     }
 
   let t =
     record
-      (field_osl "flags"                                      >>= fun flags ->
-       field     "javascript_files" (list string) ~default:[] >>= fun javascript_files ->
+      (field_oslpf "flags"                                      >>= fun flags ->
+       field       "javascript_files" (list string) ~default:[] >>= fun javascript_files ->
        return { flags; javascript_files })
 
   let default =
-    { flags = Ordered_set_lang.standard
+    { flags = Per_file.pure Ordered_set_lang.standard
     ; javascript_files = [] }
 end
 
@@ -429,9 +373,9 @@ module Buildable = struct
     ; preprocess               : Preprocess_map.t
     ; preprocessor_deps        : Dep_conf.t list
     ; lint                     : Lint.t Per_file.t option
-    ; flags                    : Ordered_set_lang.t
-    ; ocamlc_flags             : Ordered_set_lang.t
-    ; ocamlopt_flags           : Ordered_set_lang.t
+    ; flags                    : Ordered_set_lang.t Per_file.t
+    ; ocamlc_flags             : Ordered_set_lang.t Per_file.t
+    ; ocamlopt_flags           : Ordered_set_lang.t Per_file.t
     ; js_of_ocaml              : Js_of_ocaml.t
     }
 
@@ -447,9 +391,9 @@ module Buildable = struct
     >>= fun modules ->
     field "libraries" Lib_deps.t ~default:[]
     >>= fun libraries ->
-    field_osl "flags"          >>= fun flags          ->
-    field_osl "ocamlc_flags"   >>= fun ocamlc_flags   ->
-    field_osl "ocamlopt_flags" >>= fun ocamlopt_flags ->
+    field_oslpf "flags"          >>= fun flags          ->
+    field_oslpf "ocamlc_flags"   >>= fun ocamlc_flags   ->
+    field_oslpf "ocamlopt_flags" >>= fun ocamlopt_flags ->
     field "js_of_ocaml" (Js_of_ocaml.t) ~default:Js_of_ocaml.default >>= fun js_of_ocaml ->
     return
       { preprocess

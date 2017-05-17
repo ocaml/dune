@@ -77,7 +77,7 @@ The library will be composed of all the modules in the same directory.
 Outside of the library, module ``Foo`` will be accessible as
 ``Mylib.Foo``, unless you write an explicit ``mylib.ml`` file.
 
-You can them use this library in any other directory by adding ``mylib``
+You can then use this library in any other directory by adding ``mylib``
 to the ``(libraries ...)`` field.
 
 Using cppo

@@ -108,15 +108,8 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
       let deps = Findlib.Package_not_available.top_closure deps in
       let longest = List.longest_map deps ~f:(fun na -> na.package) in
       List.iter deps ~f:(fun (na : Findlib.Package_not_available.t) ->
-        match na.reason with
-        | Not_found ->
-          Format.fprintf ppf "- %-*s -> not found\n" longest na.package
-        | Hidden ->
-          Format.fprintf ppf "- %-*s -> hidden (unsatisfied 'exist_if')\n"
-            longest na.package
-        | Dependencies_unavailable _ ->
-          Format.fprintf ppf "- %s%-*s -> unavailable dependencies\n"
-            na.package longest "")
+        Format.fprintf ppf "- %-*s -> %a@\n" longest na.package
+          Findlib.Package_not_available.explain na.reason)
     end;
     let cmdline_suggestion =
       (* CR-someday jdimino: this is ugly *)

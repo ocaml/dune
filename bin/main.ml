@@ -256,24 +256,39 @@ let common =
 
 let installed_libraries =
   let doc = "Print out libraries installed on the system." in
-  let go common =
+  let go common na =
     set_common common;
     Future.Scheduler.go ~log:(Log.create ())
       (Context.default () >>= fun ctx ->
        let findlib = ctx.findlib in
-       let pkgs = Findlib.all_packages findlib in
-       let max_len = List.longest_map pkgs ~f:(fun p -> p.name) in
-       List.iter pkgs ~f:(fun pkg ->
-         let ver =
-           match pkg.Findlib.version with
-           | "" -> "n/a"
-           | v  -> v
-         in
-         Printf.printf "%-*s (version: %s)\n" max_len pkg.name ver);
-       Future.return ())
+       if na then begin
+         let pkgs = Findlib.all_unavailable_packages findlib in
+         let longest = List.longest_map pkgs ~f:(fun na -> na.package) in
+         let ppf = Format.std_formatter in
+         List.iter pkgs ~f:(fun (na : Findlib.Package_not_available.t) ->
+           Format.fprintf ppf "%-*s -> %a@\n" longest na.package
+             Findlib.Package_not_available.explain na.reason);
+         Format.pp_print_flush ppf ();
+         Future.return ()
+       end else begin
+         let pkgs = Findlib.all_packages findlib in
+         let max_len = List.longest_map pkgs ~f:(fun p -> p.name) in
+         List.iter pkgs ~f:(fun pkg ->
+           let ver =
+             match pkg.Findlib.version with
+             | "" -> "n/a"
+             | v  -> v
+           in
+           Printf.printf "%-*s (version: %s)\n" max_len pkg.name ver);
+         Future.return ()
+       end)
   in
   ( Term.(const go
-          $ common)
+          $ common
+          $ Arg.(value
+                 & flag
+                 & info ["na"; "not-available"]
+                     ~doc:"List libraries that are not available and explain why"))
   , Term.info "installed-libraries" ~doc
   )
 

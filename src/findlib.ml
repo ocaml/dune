@@ -177,6 +177,23 @@ module Package_not_available = struct
         (all_names ts
          |> List.map ~f:(sprintf "- %s")
          |> String.concat ~sep:"\n")
+
+  let explain ppf reason =
+    match reason with
+    | Not_found ->
+      Format.fprintf ppf "not found"
+    | Hidden ->
+      Format.fprintf ppf "hidden (unsatisfied 'exist_if')"
+    | Dependencies_unavailable deps ->
+      Format.fprintf ppf
+        "@[<2>unavailable dependencies:@ %t@]"
+        (fun ppf ->
+           match deps with
+           | [] -> ()
+           | t :: rest ->
+             Format.fprintf ppf "%s" t.package;
+             List.iter rest ~f:(fun t ->
+               Format.fprintf ppf ",@ %s" t.package))
 end
 
 type present_or_not_available =
@@ -532,9 +549,19 @@ let all_packages t =
     ignore (find t pkg ~required_by:[] : package option));
   Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:_ ~data acc ->
     match data with
-    | Present p -> p :: acc
+    | Present       p -> p :: acc
     | Not_available _ -> acc)
   |> List.sort ~cmp:(fun a b -> String.compare a.name b.name)
+
+let all_unavailable_packages t =
+  List.iter (root_packages t) ~f:(fun pkg ->
+    ignore (find t pkg ~required_by:[] : package option));
+  Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:_ ~data acc ->
+    match data with
+    | Present       _ -> acc
+    | Not_available n -> n :: acc)
+  |> List.sort ~cmp:(fun a b ->
+    String.compare a.Package_not_available.package b.package)
 
 let stdlib_with_archives t =
   let x = find_exn t ~required_by:[] "stdlib" in

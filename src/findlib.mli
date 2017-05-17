@@ -17,6 +17,9 @@ module Package_not_available : sig
     (** At least one dependency is unavailable *)
 
   val top_closure : t list -> t list
+
+  (** Explain why a package is not available *)
+  val explain : Format.formatter -> reason -> unit
 end
 
 exception Package_not_available of Package_not_available.t
@@ -77,5 +80,6 @@ val closed_ppx_runtime_deps_of
 
 val root_packages : t -> string list
 val all_packages  : t -> package list
+val all_unavailable_packages : t -> Package_not_available.t list
 
 val stdlib_with_archives : t -> package

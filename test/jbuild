@@ -55,6 +55,14 @@
     (run ${exe:run.exe} --
      ${bin:jbuilder} build -j1 test.exe --root . --debug-dependency-path)))))
 
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in workspaces/copy_files)))
+  (action
+   (chdir workspaces/copy_files
+    (run ${exe:run.exe} --
+     ${bin:jbuilder} build -j1 test.exe .merlin --root . --debug-dependency-path)))))
+
 ;; This test define an installed "plop" with a "plop.ca-marche-pas"
 ;; sub-package which depend on a library that doesn't exist.
 ;;

@@ -178,7 +178,7 @@ let get_name ~files ?name () =
   if package_names = [] then die "@{<error>Error@}: no <package>.opam files found.";
   match name with
   | Some name ->
-    if List.mem name ~set:package_names then
+    if not (List.mem name ~set:package_names) then
       die "@{<error>Error@}: file %s.opam doesn't exist." name;
     name
   | None ->

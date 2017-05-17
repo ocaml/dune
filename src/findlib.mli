@@ -2,14 +2,24 @@
 
 open Import
 
-module Package_not_found : sig
+module Package_not_available : sig
   type t =
     { package     : string
     ; required_by : string list
+    ; reason      : reason
     }
+
+  and reason =
+    | Not_found
+    | Hidden
+    (** exist_if not satisfied *)
+    | Dependencies_unavailable of t list
+    (** At least one dependency is unavailable *)
+
+  val top_closure : t list -> t list
 end
 
-exception Package_not_found of Package_not_found.t
+exception Package_not_available of Package_not_available.t
 
 module External_dep_conflicts_with_local_lib : sig
   type t =

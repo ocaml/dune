@@ -87,10 +87,37 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   | Fatal_error "" -> ()
   | Fatal_error msg ->
     Format.fprintf ppf "%s\n" (String.capitalize_ascii msg)
-  | Findlib.Package_not_found { package; required_by } ->
+  | Findlib.Package_not_available { package; required_by; reason } ->
     Format.fprintf ppf
-      "@{<error>Error@}: External library %S not found.\n" package;
+      "@{<error>Error@}: External library %S %s.\n" package
+      (match reason with
+       | Not_found -> "not found"
+       | Hidden    -> "is hidden"
+       | _         -> "is unavailable");
     List.iter required_by ~f:(Format.fprintf ppf "-> required by %S\n");
+    begin match reason with
+    | Not_found -> ()
+    | Hidden ->
+      Format.fprintf ppf
+        "External library %S is hidden because its 'exist_if' \
+         clause is not satisfied.\n" package
+    | Dependencies_unavailable deps ->
+      Format.fprintf ppf
+        "External library %S is not available because it depends on the \
+         following libraries that are not available:\n" package;
+      let deps = Findlib.Package_not_available.top_closure deps in
+      let longest = List.longest_map deps ~f:(fun na -> na.package) in
+      List.iter deps ~f:(fun (na : Findlib.Package_not_available.t) ->
+        match na.reason with
+        | Not_found ->
+          Format.fprintf ppf "- %-*s -> not found\n" longest na.package
+        | Hidden ->
+          Format.fprintf ppf "- %-*s -> hidden (unsatisfied 'exist_if')\n"
+            longest na.package
+        | Dependencies_unavailable _ ->
+          Format.fprintf ppf "- %s%-*s -> unavailable dependencies\n"
+            na.package longest "")
+    end;
     let cmdline_suggestion =
       (* CR-someday jdimino: this is ugly *)
       match Array.to_list Sys.argv with

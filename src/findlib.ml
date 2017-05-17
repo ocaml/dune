@@ -131,22 +131,63 @@ type package =
   ; has_headers      : bool
   }
 
-module Package_not_found = struct
+module Package_not_available = struct
   type t =
     { package     : string
     ; required_by : string list
+    ; reason      : reason
     }
+
+  and reason =
+    | Not_found
+    | Hidden
+    | Dependencies_unavailable of t list
+
+  module Closure =
+    Top_closure.Make
+      (String)
+      (struct
+        type graph = unit
+        type nonrec t = t
+        let key t = t.package
+        let deps t () =
+          match t.reason with
+          | Not_found | Hidden -> []
+          | Dependencies_unavailable l -> l
+      end)
+
+  let all_names ts =
+    let rec loop acc ts =
+      List.fold_left ts ~init:acc ~f:(fun acc t ->
+        if String_set.mem t.package acc then
+          acc
+        else
+          let acc = String_set.add t.package acc in
+          match t.reason with
+          | Not_found | Hidden -> acc
+          | Dependencies_unavailable ts -> loop acc ts)
+    in
+    loop String_set.empty ts |> String_set.elements
+
+  let top_closure ts =
+    match Closure.top_closure () ts with
+    | Ok ts   -> ts
+    | Error _ ->
+      code_errorf "Findlib.Package_not_available.top_sort got a cycle:\n%s"
+        (all_names ts
+         |> List.map ~f:(sprintf "- %s")
+         |> String.concat ~sep:"\n")
 end
 
-type present_or_absent =
-  | Present of package
-  | Absent  of Package_not_found.t
+type present_or_not_available =
+  | Present       of package
+  | Not_available of Package_not_available.t
 
 type t =
   { stdlib_dir  : Path.t
   ; path        : Path.t list
-  ; packages    : (string, present_or_absent) Hashtbl.t
-  ; has_headers : (Path.t, bool             ) Hashtbl.t
+  ; packages    : (string, present_or_not_available) Hashtbl.t
+  ; has_headers : (Path.t, bool                    ) Hashtbl.t
   }
 
 let path t = t.path
@@ -273,9 +314,10 @@ let rec load_meta_rec t ~fq_name ~packages ~required_by =
               fq_name :: required_by
           in
           Hashtbl.add t.packages ~key:root_name
-            ~data:(Absent { package = root_name
-                          ; required_by
-                          });
+            ~data:(Not_available { package = root_name
+                                 ; required_by
+                                 ; reason = Not_found
+                                 });
           None
     in
     match loop t.path with
@@ -337,102 +379,102 @@ let load_meta t ~fq_name ~required_by =
        |> String.concat ~sep:"\n-> ")
   | Ok ordering ->
     List.iter ordering ~f:(fun (pkg : Pkg_step1.t) ->
-      if not pkg.exists then begin
-        if !Clflags.debug_findlib then
-          Printf.eprintf "findlib: package %S is hidden\n"
-            pkg.package.name
-      end else begin
-        let resolve_deps deps missing_deps_acc =
-          let deps, missing_deps =
-            List.partition_map deps ~f:(fun name ->
-              match Hashtbl.find t.packages name with
-              | Some (Present pkg) -> Inl pkg
-              | None | Some (Absent _) -> Inr name)
-          in
-          (deps, missing_deps @ missing_deps_acc)
-        in
-        let requires, missing_deps = resolve_deps pkg.requires [] in
-        let ppx_runtime_deps, missing_deps =
-          resolve_deps pkg.ppx_runtime_deps missing_deps
-        in
-        match missing_deps with
-        | [] ->
-          let requires =
-            remove_dups_preserve_order
-              (List.concat_map requires ~f:(fun pkg -> pkg.requires) @ requires)
-          in
-          let ppx_runtime_deps =
-            remove_dups_preserve_order
-              (List.concat
-                 [ List.concat_map ppx_runtime_deps ~f:(fun pkg -> pkg.requires)
-                 ; ppx_runtime_deps
-                 ; List.concat_map requires ~f:(fun pkg -> pkg.ppx_runtime_deps)
-                 ])
-          in
-          let pkg =
-            { pkg.package with
-              requires
-            ; ppx_runtime_deps
+      let status =
+        if not pkg.exists then begin
+          if !Clflags.debug_findlib then
+            Printf.eprintf "findlib: package %S is hidden\n"
+              pkg.package.name;
+          Not_available
+            { package     = pkg.package.name
+            ; required_by = pkg.required_by
+            ; reason      = Hidden
             }
+        end else begin
+          let resolve_deps deps missing_deps_acc =
+            let deps, missing_deps =
+              List.partition_map deps ~f:(fun name ->
+                match Hashtbl.find t.packages name with
+                | Some (Present pkg) -> Inl pkg
+                | Some (Not_available na) -> Inr na
+                | None ->
+                  let na : Package_not_available.t =
+                    { package     = name
+                    ; required_by = pkg.package.name :: pkg.required_by
+                    ; reason      = Not_found
+                    }
+                  in
+                  Hashtbl.add t.packages ~key:name ~data:(Not_available na);
+                  Inr na)
+            in
+            (deps, missing_deps @ missing_deps_acc)
           in
-          Hashtbl.add t.packages ~key:pkg.name ~data:(Present pkg)
-        | _ ->
-          let unknown_deps, hidden_deps =
-            List.partition_map missing_deps ~f:(fun name ->
-              match String_map.find name packages with
-              | None -> Inl name
-              | Some pkg -> Inr pkg)
+          let requires, missing_deps = resolve_deps pkg.requires [] in
+          let ppx_runtime_deps, missing_deps =
+            resolve_deps pkg.ppx_runtime_deps missing_deps
           in
-          match unknown_deps with
-          | name :: _ ->
-            Hashtbl.add t.packages ~key:name
-              ~data:(Absent { package     = name
-                            ; required_by = pkg.package.name :: pkg.required_by
-                            })
+          match missing_deps with
           | [] ->
-            (* We can be in this case for ctypes.foreign for instance *)
-            if !Clflags.debug_findlib then
-              Printf.eprintf "findlib: skipping %S has it has hidden dependencies: %s\n"
-                pkg.package.name
-                (String.concat ~sep:", "
-                   (List.map hidden_deps
-                      ~f:(fun (pkg : Pkg_step1.t) -> pkg.package.name)));
-            assert (List.for_all hidden_deps
-                      ~f:(fun (pkg : Pkg_step1.t) -> not pkg.exists))
-      end
+            let requires =
+              remove_dups_preserve_order
+                (List.concat_map requires ~f:(fun pkg -> pkg.requires) @ requires)
+            in
+            let ppx_runtime_deps =
+              remove_dups_preserve_order
+                (List.concat
+                   [ List.concat_map ppx_runtime_deps ~f:(fun pkg -> pkg.requires)
+                   ; ppx_runtime_deps
+                   ; List.concat_map requires ~f:(fun pkg -> pkg.ppx_runtime_deps)
+                   ])
+            in
+            let pkg =
+              { pkg.package with
+                requires
+              ; ppx_runtime_deps
+              }
+            in
+            Present pkg
+          | _ ->
+            Not_available
+              { package     = pkg.package.name
+              ; required_by = pkg.required_by
+              ; reason      = Dependencies_unavailable missing_deps
+              }
+        end
+      in
+      Hashtbl.add t.packages ~key:pkg.package.name ~data:status
     )
 
-exception Package_not_found of Package_not_found.t
+exception Package_not_available of Package_not_available.t
 
 let find_exn t ~required_by name =
   match Hashtbl.find t.packages name with
   | Some (Present x) -> x
-  | Some (Absent pnf) -> raise (Package_not_found pnf)
+  | Some (Not_available na) -> raise (Package_not_available na)
   | None ->
     load_meta t ~fq_name:name ~required_by;
     match Hashtbl.find t.packages name with
     | Some (Present x) -> x
-    | Some (Absent pnf) ->
-      raise (Package_not_found pnf)
+    | Some (Not_available pnf) ->
+      raise (Package_not_available pnf)
     | None ->
-      let pnf =
-        { Package_not_found.
-          package     = name
+      let na : Package_not_available.t =
+        { package = name
         ; required_by
+        ; reason = Not_found
         }
       in
-      Hashtbl.add t.packages ~key:name ~data:(Absent pnf);
-      raise (Package_not_found pnf)
+      Hashtbl.add t.packages ~key:name ~data:(Not_available na);
+      raise (Package_not_available na)
 
 let find t ~required_by name =
   match find_exn t ~required_by name with
-  | exception (Package_not_found _) -> None
+  | exception (Package_not_available _) -> None
   | x -> Some x
 
 let available t ~required_by name =
   match find_exn t name ~required_by with
   | (_ : package) -> true
-  | exception (Package_not_found _) -> false
+  | exception (Package_not_available _) -> false
 
 module External_dep_conflicts_with_local_lib = struct
   type t =
@@ -491,7 +533,7 @@ let all_packages t =
   Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:_ ~data acc ->
     match data with
     | Present p -> p :: acc
-    | Absent  _ -> acc)
+    | Not_available _ -> acc)
   |> List.sort ~cmp:(fun a b -> String.compare a.name b.name)
 
 let stdlib_with_archives t =

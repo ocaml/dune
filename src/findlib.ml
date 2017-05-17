@@ -311,15 +311,23 @@ let rec load_meta_rec t ~fq_name ~packages ~required_by =
     let rec loop dirs : (Path.t * Meta.t) option =
       match dirs with
       | dir :: dirs ->
-        let dir = Path.relative dir root_name in
-        let fn = Path.relative dir "META" in
+        let sub_dir = Path.relative dir root_name in
+        let fn = Path.relative sub_dir "META" in
         if Path.exists fn then
-          Some (dir,
+          Some (sub_dir,
                 { name    = root_name
                 ; entries = Meta.load (Path.to_string fn)
                 })
         else
-          loop dirs
+          (* Alternative layout *)
+          let fn = Path.relative dir ("META." ^ root_name) in
+          if Path.exists fn then
+            Some (dir,
+                  { name    = root_name
+                  ; entries = Meta.load (Path.to_string fn)
+                  })
+          else
+            loop dirs
       | [] ->
         match String_map.find root_name Meta.builtins with
         | Some meta -> Some (t.stdlib_dir, meta)

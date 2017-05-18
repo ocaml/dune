@@ -490,9 +490,18 @@ let external_lib_deps =
                  Format.eprintf
                    "@{<error>Error@}: The following required libraries are missing \
                     in the %s context:\n\
-                    %s@."
+                    %s\n\
+                    Hint: try: opam install %s@."
                    context_name
-                   (format_external_libs missing);
+                   (format_external_libs missing)
+                   (String_map.bindings missing
+                    |> List.filter_map ~f:(fun (name, kind) ->
+                      match (kind : Build.lib_dep_kind) with
+                      | Optional -> None
+                      | Required -> Some (Findlib.root_package_name name))
+                    |> String_set.of_list
+                    |> String_set.elements
+                    |> String.concat ~sep:" ");
                  true
                end
              end else begin

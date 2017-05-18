@@ -27,4 +27,7 @@ clean:
 extract-makefile:
 	$(BIN) extract-makefile -o Makefile.extracted @install
 
-.PHONY: default install uninstall reinstall clean test
+doc:
+	cd doc && sphinx-build . _build
+
+.PHONY: default install uninstall reinstall clean test doc

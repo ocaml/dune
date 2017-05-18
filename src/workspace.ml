@@ -78,4 +78,4 @@ let t sexps =
   ; contexts       = List.rev contexts
   }
 
-let load fn = t (Sexp_load.many fn)
+let load fn = t (Sexp_lexer.Load.many fn)

@@ -31,8 +31,8 @@ module Jbuilds = struct
 
   let create_plugin_wrapper (context : Context.t) ~exec_dir ~plugin ~wrapper ~target =
     let plugin = Path.to_string plugin in
-    let plugin_contents = read_file plugin in
-    with_file_out (Path.to_string wrapper) ~f:(fun oc ->
+    let plugin_contents = Io.read_file plugin in
+    Io.with_file_out (Path.to_string wrapper) ~f:(fun oc ->
       Printf.fprintf oc {|
 let () = Hashtbl.add Toploop.directive_table "require" (Toploop.Directive_string ignore)
 module Jbuild_plugin = struct
@@ -117,7 +117,7 @@ end
           die "@{<error>Error:@} %s failed to produce a valid jbuild file.\n\
                Did you forgot to call [Jbuild_plugin.V*.send]?"
             (Path.to_string file);
-        let sexps = Sexp_load.many (Path.to_string generated_jbuild) in
+        let sexps = Sexp_lexer.Load.many (Path.to_string generated_jbuild) in
         return (dir, pkgs_ctx, Stanzas.parse pkgs_ctx sexps))
     |> Future.all
 end
@@ -132,7 +132,7 @@ type conf =
 let load ~dir ~visible_packages ~closest_packages =
   let file = Path.relative dir "jbuild" in
   let pkgs = { Pkgs. visible_packages; closest_packages } in
-  match Sexp_load.many_or_ocaml_script (Path.to_string file) with
+  match Sexp_lexer.Load.many_or_ocaml_script (Path.to_string file) with
   | Sexps sexps ->
     Jbuilds.Literal (dir, pkgs, Stanzas.parse pkgs sexps)
   | Ocaml_script ->
@@ -164,7 +164,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) () =
       if String_set.mem "jbuild-ignore" files then
         let ignore_set =
           String_set.of_list
-            (lines_of_file (Path.to_string (Path.relative path "jbuild-ignore")))
+            (Io.lines_of_file (Path.to_string (Path.relative path "jbuild-ignore")))
         in
         Dont_recurse_in
           (ignore_set,

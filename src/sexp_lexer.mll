@@ -202,4 +202,15 @@ and is_ocaml_script = parse
     match is_ocaml_script lexbuf with
     | true -> Ocaml_script
     | false -> Sexps (many lexbuf)
+
+  module Load = struct
+    let single fn =
+      Io.with_lexbuf_from_file fn ~f:single
+
+    let many fn =
+      Io.with_lexbuf_from_file fn ~f:many
+
+    let many_or_ocaml_script fn =
+      Io.with_lexbuf_from_file fn ~f:many_or_ocaml_script
+  end
 }

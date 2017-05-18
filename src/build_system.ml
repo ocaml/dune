@@ -237,8 +237,8 @@ module Build_exec = struct
         (a, b)
       | Paths _ -> x
       | Paths_glob _ -> x
-      | Contents p -> read_file (Path.to_string p)
-      | Lines_of p -> lines_of_file (Path.to_string p)
+      | Contents p -> Io.read_file (Path.to_string p)
+      | Lines_of p -> Io.lines_of_file (Path.to_string p)
       | Vpath (Vspec.T (fn, kind)) ->
         let file : b File_spec.t = get_file bs fn (Sexp_file kind) in
         Option.value_exn file.data
@@ -524,12 +524,12 @@ module Trace = struct
           Sexp.List [ Atom (Path.to_string path); Atom (Digest.to_hex hash) ]))
     in
     if Sys.file_exists "_build" then
-      write_file file (Sexp.to_string sexp)
+      Io.write_file file (Sexp.to_string sexp)
 
   let load () =
     let trace = Hashtbl.create 1024 in
     if Sys.file_exists file then begin
-      let sexp = Sexp_load.single file in
+      let sexp = Sexp_lexer.Load.single file in
       let bindings =
         let open Sexp.Of_sexp in
         list (pair Path.t (fun s -> Digest.from_hex (string s))) sexp

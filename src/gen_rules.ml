@@ -1,6 +1,7 @@
 open Import
 open Jbuild_types
 open Build.O
+open! No_io
 
 (* +-----------------------------------------------------------------+
    | Utils                                                           |
@@ -666,21 +667,22 @@ module Gen(P : Params) = struct
           match pkg.version_from_opam_file with
           | Some s -> Build.return (Some s)
           | None ->
-            let candicates =
+            let rec loop = function
+              | [] -> Build.return None
+              | candidate :: rest ->
+                let p = Path.relative path candidate in
+                Build.if_file_exists p
+                  ~then_:(Build.lines_of p
+                          >>^ function
+                          | ver :: _ -> Some ver
+                          | _ -> Some "")
+                  ~else_:(loop rest)
+            in
+            loop
               [ pkg.name ^ ".version"
               ; "version"
               ; "VERSION"
               ]
-            in
-            match List.find candicates ~f:(fun fn -> String_set.mem fn files) with
-            | None -> Build.return None
-            | Some fn ->
-              let p = Path.relative path fn in
-              Build.path p
-              >>^ fun () ->
-              match lines_of_file (Path.to_string p) with
-              | ver :: _ -> Some ver
-              | _ -> Some ""
         in
         Super_context.Pkg_version.set sctx pkg get
       in

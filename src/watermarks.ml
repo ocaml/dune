@@ -154,7 +154,7 @@ let subst_string s ~fname ~map =
     Some (Buffer.contents buf)
 
 let subst_file fn ~map =
-  let s = read_file fn in
+  let s = Io.read_file fn in
   let s =
     if Filename.dirname fn = "." && String.is_suffix fn ~suffix:".opam" then
       "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s
@@ -163,7 +163,7 @@ let subst_file fn ~map =
   in
   match subst_string s ~map ~fname:fn with
   | None -> ()
-  | Some s -> write_file fn s
+  | Some s -> Io.write_file fn s
 
 let get_name ~files ?name () =
   let package_names =

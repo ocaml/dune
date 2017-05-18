@@ -103,7 +103,7 @@ module Parse = struct
 end
 
 let load fn =
-  with_lexbuf_from_file fn ~f:(fun lb ->
+  Io.with_lexbuf_from_file fn ~f:(fun lb ->
       Parse.entries lb 0 [])
 
 module Simplified = struct

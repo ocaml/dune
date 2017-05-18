@@ -5,7 +5,7 @@ open OpamParserTypes
 type t = opamfile
 
 let load fn =
-  with_lexbuf_from_file fn ~f:(fun lb ->
+  Io.with_lexbuf_from_file fn ~f:(fun lb ->
     try
       OpamBaseParser.main OpamLexer.token lb fn
     with

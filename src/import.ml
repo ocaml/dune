@@ -397,43 +397,6 @@ let protectx x ~finally ~f =
   | y           -> finally x; y
   | exception e -> finally x; raise e
 
-let with_file_in ?(binary=true) fn ~f =
-  protectx ((if binary then open_in_bin else open_in) fn)
-    ~finally:close_in ~f
-
-let with_file_out ?(binary=true)fn ~f =
-  protectx ((if binary then open_out_bin else open_out) fn)
-    ~finally:close_out ~f
-
-let with_lexbuf_from_file fn ~f =
-  with_file_in fn ~f:(fun ic ->
-    let lb = Lexing.from_channel ic in
-    lb.lex_curr_p <-
-      { pos_fname = fn
-      ; pos_lnum  = 1
-      ; pos_bol   = 0
-      ; pos_cnum  = 0
-      };
-    f lb)
-
-let input_lines =
-  let rec loop ic acc =
-    match input_line ic with
-    | exception End_of_file -> List.rev acc
-    | line ->
-       loop ic (line :: acc)
-  in
-  fun ic -> loop ic []
-
-let read_file fn =
-  protectx (open_in_bin fn) ~finally:close_in ~f:(fun ic ->
-    let len = in_channel_length ic in
-    really_input_string ic len)
-
-let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false
-
-let write_file fn data = with_file_out fn ~f:(fun oc -> output_string oc data)
-
 exception Fatal_error of string
 let die_buf = Buffer.create 128
 let die_ppf (* Referenced in Ansi_color *) = Format.formatter_of_buffer die_buf
@@ -450,27 +413,6 @@ let warn fmt =
   ksprintf (fun msg ->
     prerr_endline ("Warning: jbuild: " ^ msg))
     fmt
-
-let copy_channels =
-  let buf_len = 65536 in
-  let buf = Bytes.create buf_len in
-  let rec loop ic oc =
-    match input ic buf 0 buf_len with
-    | 0 -> ()
-    | n -> output oc buf 0 n; loop ic oc
-  in
-  loop
-
-let copy_file ~src ~dst =
-  with_file_in src ~f:(fun ic ->
-    let perm = (Unix.fstat (Unix.descr_of_in_channel ic)).st_perm in
-    protectx (open_out_gen
-                [Open_wronly; Open_creat; Open_trunc; Open_binary]
-                perm
-                dst)
-      ~finally:close_out
-      ~f:(fun oc ->
-        copy_channels ic oc))
 
 module Staged : sig
   type +'a t
@@ -516,3 +458,17 @@ let hint name candidates =
       | [] -> ""
     in
     sprintf "\nHint: did you mean %s?" (mk_hint l)
+
+(* Disable file operations to force to use the IO module *)
+let open_in      = `Use_Io
+let open_in_bin  = `Use_Io
+let open_in_gen  = `Use_Io
+let open_out     = `Use_Io
+let open_out_bin = `Use_Io
+let open_out_gen = `Use_Io
+
+(* We open this module at the top of module generating rules, to make sure they don't do
+   Io manually *)
+module No_io = struct
+  module Io = struct end
+end

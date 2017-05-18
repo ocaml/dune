@@ -1,4 +1,5 @@
 open Import
+open! No_io
 
 module SC = Super_context
 

@@ -302,13 +302,13 @@ module Mini_shexp = struct
          | None -> print_string str; flush stdout
          | Some (_, oc) -> output_string oc str)
     | Cat fn ->
-      with_file_in (Path.to_string fn) ~f:(fun ic ->
+      Io.with_file_in (Path.to_string fn) ~f:(fun ic ->
         let oc =
           match stdout_to with
           | None -> stdout
           | Some (_, oc) -> oc
         in
-        copy_channels ic oc);
+        Io.copy_channels ic oc);
       return ()
     | Create_file fn ->
       let fn = Path.to_string fn in
@@ -316,11 +316,11 @@ module Mini_shexp = struct
       Unix.close (Unix.openfile fn [O_CREAT; O_TRUNC; O_WRONLY] 0o666);
       return ()
     | Copy (src, dst) ->
-      copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst);
+      Io.copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst);
       return ()
     | Symlink (src, dst) ->
       if Sys.win32 then
-        copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst)
+        Io.copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst)
       else begin
         let src =
           if Path.is_root dst then
@@ -340,11 +340,11 @@ module Mini_shexp = struct
       end;
       return ()
     | Copy_and_add_line_directive (src, dst) ->
-      with_file_in (Path.to_string src) ~f:(fun ic ->
-        with_file_out (Path.to_string dst) ~f:(fun oc ->
+      Io.with_file_in (Path.to_string src) ~f:(fun ic ->
+        Io.with_file_out (Path.to_string dst) ~f:(fun oc ->
           let fn = Path.drop_build_context src in
           Printf.fprintf oc "# 1 %S\n" (Path.to_string fn);
-          copy_channels ic oc));
+          Io.copy_channels ic oc));
       return ()
     | System cmd ->
       let path, arg =
@@ -357,10 +357,10 @@ module Mini_shexp = struct
         ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
     | Update_file (fn, s) ->
       let fn = Path.to_string fn in
-      if Sys.file_exists fn && read_file fn = s then
+      if Sys.file_exists fn && Io.read_file fn = s then
         ()
       else
-        write_file fn s;
+        Io.write_file fn s;
       return ()
     | Rename (src, dst) ->
       Unix.rename (Path.to_string src) (Path.to_string dst);
@@ -368,7 +368,7 @@ module Mini_shexp = struct
 
   and redirect outputs fn t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
     let fn = Path.to_string fn in
-    let oc = open_out_bin fn in
+    let oc = Io.open_out fn in
     let out = Some (fn, oc) in
     let stdout_to, stderr_to =
       match outputs with

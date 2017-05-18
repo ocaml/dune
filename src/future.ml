@@ -245,12 +245,12 @@ let run_capture_gen ?dir ?env ?(purpose=Internal_job) fail_mode prog args ~f =
       Temp.destroy fn;
       x)
 
-let run_capture       = run_capture_gen ~f:read_file
-let run_capture_lines = run_capture_gen ~f:lines_of_file
+let run_capture       = run_capture_gen ~f:Io.read_file
+let run_capture_lines = run_capture_gen ~f:Io.lines_of_file
 
 let run_capture_line ?dir ?env ?(purpose=Internal_job) fail_mode prog args =
   run_capture_gen ?dir ?env ~purpose fail_mode prog args ~f:(fun fn ->
-    match lines_of_file fn with
+    match Io.lines_of_file fn with
     | [x] -> x
     | l ->
       let cmdline =
@@ -414,7 +414,7 @@ module Scheduler = struct
       match job.output_filename with
       | None -> ""
       | Some fn ->
-        let s = read_file fn in
+        let s = Io.read_file fn in
         Temp.destroy fn;
         let len = String.length s in
         if len > 0 && s.[len - 1] <> '\n' then

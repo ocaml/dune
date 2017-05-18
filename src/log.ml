@@ -13,7 +13,7 @@ let no_log = None
 let create () =
   if not (Sys.file_exists "_build") then
     Unix.mkdir "_build" 0o777;
-  let oc = open_out_bin "_build/log" in
+  let oc = Io.open_out "_build/log" in
   Printf.fprintf oc "# %s\n%!"
     (String.concat (List.map (Array.to_list Sys.argv) ~f:quote_for_shell) ~sep:" ");
   let buf = Buffer.create 1024 in

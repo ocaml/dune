@@ -4,8 +4,12 @@ Usage
 
 This section describe usage of Jbuilder from the shell.
 
+.. _finding-root:
+
 Finding the root
 ================
+
+.. _jbuild-workspace:
 
 jbuild-workspace
 ----------------
@@ -36,10 +40,10 @@ The first entry to match in this list will determine the root. In
 practice this means that if you nest your workspaces, Jbuilder will
 always use the outermost one.
 
-In addition to determining the root, ``jbuilder`` will read this file as
-to setup the configuration of the workspace unless the ``--workspace``
-command line option is used. See the *section about workspace
-configuration* for the syntax of this file.
+In addition to determining the root, ``jbuilder`` will read this file as to
+setup the configuration of the workspace unless the ``--workspace`` command line
+option is used. See the section `Workspace configuration`_ for the syntax of
+this file.
 
 jbuild-workspace\*
 ------------------
@@ -151,6 +155,8 @@ determined as follow:
 #. otherwise, take the directory where ``ocamlc`` was found, and append
    ``../lib`` to it. For instance if ``ocamlc`` is found in
    ``/usr/bin``, use ``/usr/lib``
+
+.. _running-tests:
 
 Running tests
 -------------
@@ -335,8 +341,10 @@ It supports two modes of compilation:
 The separate compilation mode will be selected when passing ``--dev`` to
 jbuilder. There is currently no other way to control this behaviour.
 
-See the *section about js_of_ocalm* for passing custom flags to the js_of_ocaml
-compiler
+See the section about :ref:`jbuild-jsoo` for passing custom flags to the
+js_of_ocaml compiler
+
+.. _using-topkg:
 
 Using topkg with jbuilder
 =========================

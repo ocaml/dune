@@ -37,7 +37,9 @@ documentation of the `parsexp <https://github.com/janestreet/parsexp>`__
 library.
 
 Note that the format is completely static. However you can do
-meta-programming on jbuilds files by writing them in *OCaml syntax*.
+meta-programming on jbuilds files by writing them in :ref:`ocaml-syntax`.
+
+.. _opam-files:
 
 <package>.opam files
 ====================
@@ -92,7 +94,7 @@ If the version can't be determined, Jbuilder just won't assign one.
 Note that if you are using `Topkg <https://github.com/dbuenzli/topkg>`__
 as well in your project, you shouldn't manually set a version in your
 ``<package>.opam`` file or write/generate on of the file listed above.
-See *the section about using topkg with jbuilder* for more details.
+See the section about :ref:`using-topkg` for more details.
 
 Odig conventions
 ----------------

@@ -53,5 +53,11 @@ module Rule : sig
     }
 end
 
-(** Build and the rules needed to build these targets *)
-val build_rules : t -> Path.t list -> Rule.t list Future.t
+(** Return the list of rules used to build the given targets. If
+    [recursive] is [true], return all the rules needed to build the
+    given targets and their transitive dependencies. *)
+val build_rules
+  :  t
+  -> ?recursive:bool (* default false *)
+  -> Path.t list
+  -> Rule.t list Future.t

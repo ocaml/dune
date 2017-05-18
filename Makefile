@@ -24,9 +24,6 @@ all-supported-ocaml-versions:
 clean:
 	rm -rf _build
 
-extract-makefile:
-	$(BIN) extract-makefile -o Makefile.extracted @install
-
 doc:
 	cd doc && sphinx-build . _build
 

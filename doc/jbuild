@@ -11,7 +11,7 @@ let commands =
   ; "uninstall"
   ; "exec"
   ; "subst"
-  ; "extract-makefile"
+  ; "rules"
   ]
 
 let jbuild =

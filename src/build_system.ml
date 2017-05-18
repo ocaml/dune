@@ -738,7 +738,7 @@ module Rule_closure =
         rules_for_files graph (Pset.elements t.deps)
     end)
 
-let build_rules t targets =
+let build_rules t ?(recursive=false) targets =
   let rules_seen = ref Id_set.empty in
   let rules = ref [] in
   let rec loop fn =
@@ -763,7 +763,10 @@ let build_rules t targets =
         in
         rules := rule :: !rules;
         rule >>= fun rule ->
-        Future.all_unit (List.map (Pset.elements rule.deps) ~f:loop)
+        if recursive then
+          Future.all_unit (List.map (Pset.elements rule.deps) ~f:loop)
+        else
+          return ()
       end
   in
   Future.all_unit (List.map targets ~f:loop)

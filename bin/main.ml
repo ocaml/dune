@@ -513,15 +513,26 @@ let external_lib_deps =
                  & Arg.info [] ~docv:"TARGET"))
   , Term.info "external-lib-deps" ~doc ~man)
 
-let extract_makefile =
-  let doc = "Extract a makefile that can build the given targets." in
+let rules =
+  let doc = "Dump internal rules." in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|Extract a makefile that can build the given targets.|}
+    ; `P {|Dump Jbuilder internal rules for the given targets.
+           If no targets are given, dump all the internal rules.|}
+    ; `P {|By default the output is a list of S-expressions,
+           one S-expression per rule. Each S-expression is of the form:|}
+    ; `Pre "  ((deps    (<dependencies>))\n\
+           \   (targets (<targets>))\n\
+           \   (context <context-name>)\n\
+           \   (action  <action>))"
+    ; `P {|$(b,<context-name>) is the context is which the action is executed.
+           It is omitted if the action is independant from the context.|}
+    ; `P {|$(b,<action>) is the action following the same syntax as user actions,
+           as described in the manual.|}
     ; `Blocks help_secs
     ]
   in
-  let go common out targets =
+  let go common out recursive makefile_syntax targets =
     set_common common;
     let log = Log.create () in
     Future.Scheduler.go ~log
@@ -532,31 +543,66 @@ let extract_makefile =
          | [] -> Build_system.all_targets setup.build_system
          | _  -> resolve_targets ~log common setup targets
        in
-       Build_system.build_rules setup.build_system targets >>= fun rules ->
-       Io.with_file_out out ~f:(fun oc ->
+       Build_system.build_rules setup.build_system targets ~recursive >>= fun rules ->
+       let print oc =
          let ppf = Format.formatter_of_out_channel oc in
-         List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
-           Format.fprintf ppf "%s:%s\n\t%s\n\n"
-             (Path.Set.elements rule.targets
-              |> List.map ~f:Path.to_string
-              |> String.concat ~sep:" ")
-             (Path.Set.elements rule.deps
-              |> List.map ~f:(fun p -> " " ^ Path.to_string p)
-              |> String.concat ~sep:"")
-             (Action.sexp_of_t rule.action |> Sexp.to_string));
-         Format.pp_print_flush ppf ());
-       Future.return ())
+         let get_action (rule : Build_system.Rule.t) =
+           if Path.is_root rule.action.dir then
+             rule.action.action
+           else
+             Chdir (rule.action.dir, rule.action.action)
+         in
+         if makefile_syntax then begin
+           List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
+             Format.fprintf ppf "%s:%s\n\t%s\n\n"
+               (Path.Set.elements rule.targets
+                |> List.map ~f:Path.to_string
+                |> String.concat ~sep:" ")
+               (Path.Set.elements rule.deps
+                |> List.map ~f:(fun p -> " " ^ Path.to_string p)
+                |> String.concat ~sep:"")
+               (Action.Mini_shexp.sexp_of_t (get_action rule) |> Sexp.to_string))
+         end else begin
+           List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
+             let sexp =
+               let paths ps = Sexp.To_sexp.list Path.sexp_of_t (Path.Set.elements ps) in
+               Sexp.To_sexp.record (
+                 List.concat
+                   [ [ "deps"   , paths rule.deps
+                     ; "targets", paths rule.targets ]
+                   ; (match rule.action.context with
+                      | None -> []
+                      | Some c -> ["context", Atom c.name])
+                   ; [ "action" , Action.Mini_shexp.sexp_of_t (get_action rule) ]
+                   ])
+             in
+             Format.fprintf ppf "%s\n" (Sexp.to_string sexp))
+         end;
+         Format.pp_print_flush ppf ();
+         Future.return ()
+       in
+       match out with
+       | None -> print stdout
+       | Some fn -> Io.with_file_out fn ~f:print)
   in
   ( Term.(const go
           $ common
-          $ Arg.(required
+          $ Arg.(value
                  & opt (some string) None
                  & info ["o"] ~docv:"FILE"
-                     ~doc:"Output file.")
+                     ~doc:"Output to a file instead of stdout.")
+          $ Arg.(value
+                 & flag
+                 & info ["r"; "recursive"]
+                     ~doc:"Print all rules needed to build the transitive dependencies of the given targets.")
+          $ Arg.(value
+                 & flag
+                 & info ["m"; "makefile"]
+                     ~doc:"Output the rules in Makefile syntax.")
           $ Arg.(value
                  & pos_all string []
                  & Arg.info [] ~docv:"TARGET"))
-  , Term.info "extract-makefile" ~doc ~man)
+  , Term.info "rules" ~doc ~man)
 
 let opam_installer () =
   match Bin.which "opam-installer" with
@@ -727,7 +773,7 @@ let all =
   ; uninstall
   ; exec
   ; subst
-  ; extract_makefile
+  ; rules
   ]
 
 let default =

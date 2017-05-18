@@ -24,4 +24,7 @@ all-supported-ocaml-versions:
 clean:
 	rm -rf _build
 
+extract-makefile:
+	$(BIN) extract-makefile -o Makefile.extracted @install
+
 .PHONY: default install uninstall reinstall clean test

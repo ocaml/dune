@@ -36,3 +36,22 @@ val all_lib_deps_by_context : t -> Path.t list -> Build.lib_deps String_map.t
 
 (** List of all buildable targets *)
 val all_targets : t -> Path.t list
+
+(** A fully built rule *)
+module Rule : sig
+  module Id : sig
+    type t
+    val to_int : t -> int
+    val compare : t -> t -> int
+  end
+
+  type t =
+    { id      : Id.t
+    ; deps    : Path.Set.t
+    ; targets : Path.Set.t
+    ; action  : Action.t
+    }
+end
+
+(** Build and the rules needed to build these targets *)
+val build_rules : t -> Path.t list -> Rule.t list Future.t

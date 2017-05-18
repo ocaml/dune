@@ -50,20 +50,6 @@ end
 let do_build (setup : Main.setup) targets =
   Build_system.do_build_exn setup.build_system targets
 
-type ('a, 'b) walk_result =
-  | Cont of 'a
-  | Stop of 'b
-
-let rec walk_parents dir ~init ~f =
-  match f init dir with
-  | Stop x -> Stop x
-  | Cont x ->
-    let parent = Filename.dirname dir in
-    if parent = dir then
-      Cont x
-    else
-      walk_parents parent ~init:x ~f
-
 let find_root () =
   let cwd = Sys.getcwd () in
   let rec loop counter ~candidates ~to_cwd dir =
@@ -527,6 +513,51 @@ let external_lib_deps =
                  & Arg.info [] ~docv:"TARGET"))
   , Term.info "external-lib-deps" ~doc ~man)
 
+let extract_makefile =
+  let doc = "Extract a makefile that can build the given targets." in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|Extract a makefile that can build the given targets.|}
+    ; `Blocks help_secs
+    ]
+  in
+  let go common out targets =
+    set_common common;
+    let log = Log.create () in
+    Future.Scheduler.go ~log
+      (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
+       >>= fun setup ->
+       let targets =
+         match targets with
+         | [] -> Build_system.all_targets setup.build_system
+         | _  -> resolve_targets ~log common setup targets
+       in
+       Build_system.build_rules setup.build_system targets >>= fun rules ->
+       Io.with_file_out out ~f:(fun oc ->
+         let ppf = Format.formatter_of_out_channel oc in
+         List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
+           Format.fprintf ppf "%s:%s\n\t%s\n\n"
+             (Path.Set.elements rule.targets
+              |> List.map ~f:Path.to_string
+              |> String.concat ~sep:" ")
+             (Path.Set.elements rule.deps
+              |> List.map ~f:(fun p -> " " ^ Path.to_string p)
+              |> String.concat ~sep:"")
+             (Action.sexp_of_t rule.action |> Sexp.to_string));
+         Format.pp_print_flush ppf ());
+       Future.return ())
+  in
+  ( Term.(const go
+          $ common
+          $ Arg.(required
+                 & opt (some string) None
+                 & info ["o"] ~docv:"FILE"
+                     ~doc:"Output file.")
+          $ Arg.(value
+                 & pos_all string []
+                 & Arg.info [] ~docv:"TARGET"))
+  , Term.info "extract-makefile" ~doc ~man)
+
 let opam_installer () =
   match Bin.which "opam-installer" with
   | None ->
@@ -696,6 +727,7 @@ let all =
   ; uninstall
   ; exec
   ; subst
+  ; extract_makefile
   ]
 
 let default =

@@ -18,14 +18,34 @@ module Exec_status = struct
     | Running  of Running.t
 end
 
-module Rule = struct
+module Internal_rule = struct
+  module Id : sig
+    type t
+    val to_int : t -> int
+    val compare : t -> t -> int
+    val gen : unit -> t
+  end = struct
+    type t = int
+    let to_int x = x
+    let compare (x : int) y = compare x y
+
+    let counter = ref 0
+    let gen () =
+      let n = !counter in
+      counter := n + 1;
+      n
+  end
+
   type t =
-    { rule_deps      : Pset.t
+    { id             : Id.t
+    ; rule_deps      : Pset.t
     ; static_deps    : Pset.t
     ; targets        : Pset.t
     ; build          : (unit, Action.t) Build.t
     ; mutable exec   : Exec_status.t
     }
+
+  let compare a b = Id.compare a.id b.id
 end
 
 module File_kind = struct
@@ -44,7 +64,7 @@ end
 
 module File_spec = struct
   type 'a t =
-    { rule         : Rule.t (* Rule which produces it *)
+    { rule         : Internal_rule.t (* Rule which produces it *)
     ; mutable kind : 'a File_kind.t
     ; mutable data : 'a option
     }
@@ -478,8 +498,9 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     )
   ) in
   let rule =
-    { Rule.
-      static_deps
+    { Internal_rule.
+      id = Internal_rule.Id.gen ()
+    ; static_deps
     ; rule_deps
     ; targets
     ; build
@@ -628,34 +649,43 @@ let do_build t targets =
   with Build_error.E e ->
     Error e
 
+module Ir_set = Set.Make(Internal_rule)
+
 let rules_for_files t paths =
   List.filter_map paths ~f:(fun path ->
     match Hashtbl.find t.files path with
     | None -> None
-    | Some (File_spec.T { rule; _ }) -> Some (path, rule))
+    | Some (File_spec.T { rule; _ }) -> Some rule)
+  |> Ir_set.of_list
+  |> Ir_set.elements
 
-module File_closure =
-  Top_closure.Make(Path)
+module Ir_closure =
+  Top_closure.Make(Internal_rule.Id)
     (struct
       type graph = t
-      type t = Path.t * Rule.t
-      let key (path, _) = path
-      let deps (_, rule) bs =
-        rules_for_files bs (Pset.elements (Pset.union rule.Rule.static_deps rule.Rule.rule_deps))
+      type t = Internal_rule.t
+      let key (t : t) = t.id
+      let deps (t : t) bs =
+        rules_for_files bs
+          (Pset.elements
+             (Pset.union
+                t.static_deps
+                t.rule_deps))
     end)
 
 let rules_for_targets t targets =
-  match File_closure.top_closure t (rules_for_files t targets) with
+  match Ir_closure.top_closure t (rules_for_files t targets) with
   | Ok l -> l
   | Error cycle ->
     die "dependency cycle detected:\n   %s"
-      (List.map cycle ~f:(fun (path, _) -> Path.to_string path)
+      (List.map cycle ~f:(fun rule ->
+         Path.to_string (Pset.choose rule.Internal_rule.targets))
        |> String.concat ~sep:"\n-> ")
 
 let all_lib_deps t targets =
   List.fold_left (rules_for_targets t targets) ~init:Pmap.empty
-    ~f:(fun acc (_, rule) ->
-      let lib_deps = Build_interpret.lib_deps rule.Rule.build in
+    ~f:(fun acc rule ->
+      let lib_deps = Build_interpret.lib_deps rule.Internal_rule.build in
       Pmap.merge acc lib_deps ~f:(fun _ a b ->
         match a, b with
         | None, None -> None
@@ -664,8 +694,8 @@ let all_lib_deps t targets =
         | Some a, Some b -> Some (Build.merge_lib_deps a b)))
 
 let all_lib_deps_by_context t targets =
-  List.fold_left (rules_for_targets t targets) ~init:[] ~f:(fun acc (_, rule) ->
-    let lib_deps = Build_interpret.lib_deps rule.Rule.build in
+  List.fold_left (rules_for_targets t targets) ~init:[] ~f:(fun acc rule ->
+    let lib_deps = Build_interpret.lib_deps rule.Internal_rule.build in
     Path.Map.fold lib_deps ~init:acc ~f:(fun ~key:path ~data:lib_deps acc ->
       match Path.extract_build_context path with
       | None -> acc
@@ -674,3 +704,80 @@ let all_lib_deps_by_context t targets =
   |> String_map.map ~f:(function
     | [] -> String_map.empty
     | x :: l -> List.fold_left l ~init:x ~f:Build.merge_lib_deps)
+
+module Rule = struct
+  module Id = Internal_rule.Id
+
+  type t =
+    { id      : Id.t
+    ; deps    : Path.Set.t
+    ; targets : Path.Set.t
+    ; action  : Action.t
+    }
+
+  let compare a b = Id.compare a.id b.id
+end
+
+module Rule_set = Set.Make(Rule)
+module Id_set = Set.Make(Rule.Id)
+
+let rules_for_files rules paths =
+  List.fold_left paths ~init:Rule_set.empty ~f:(fun acc path ->
+    match Pmap.find path rules with
+    | None -> acc
+    | Some rule -> Rule_set.add rule acc)
+  |> Rule_set.elements
+
+module Rule_closure =
+  Top_closure.Make(Rule.Id)
+    (struct
+      type graph = Rule.t Pmap.t
+      type t = Rule.t
+      let key (t : t) = t.id
+      let deps (t : t) (graph : graph) =
+        rules_for_files graph (Pset.elements t.deps)
+    end)
+
+let build_rules t targets =
+  let rules_seen = ref Id_set.empty in
+  let rules = ref [] in
+  let rec loop fn =
+    match Hashtbl.find t.files fn with
+    | None -> return ()
+    | Some (File_spec.T { rule = ir; _ }) ->
+      if Id_set.mem ir.id !rules_seen then
+        return ()
+      else begin
+        rules_seen := Id_set.add ir.id !rules_seen;
+        let rule =
+          wait_for_deps t ir.rule_deps ~targeting:fn
+          >>= fun () ->
+          let action, dyn_deps = Build_exec.exec t ir.build () in
+          return
+            { Rule.
+              id      = ir.id
+            ; deps    = Pset.union ir.static_deps dyn_deps
+            ; targets = ir.targets
+            ; action  = action
+            }
+        in
+        rules := rule :: !rules;
+        rule >>= fun rule ->
+        Future.all_unit (List.map (Pset.elements rule.deps) ~f:loop)
+      end
+  in
+  Future.all_unit (List.map targets ~f:loop)
+  >>= fun () ->
+  Future.all !rules
+  >>| fun rules ->
+  let rules =
+    List.fold_left rules ~init:Pmap.empty ~f:(fun acc (r : Rule.t) ->
+      Pset.fold r.targets ~init:acc ~f:(fun fn acc ->
+        Pmap.add acc ~key:fn ~data:r))
+  in
+  match Rule_closure.top_closure rules (rules_for_files rules targets) with
+  | Ok l -> l
+  | Error cycle ->
+    die "dependency cycle detected:\n   %s"
+      (List.map cycle ~f:(fun rule -> Path.to_string (Pset.choose rule.Rule.targets))
+       |> String.concat ~sep:"\n-> ")

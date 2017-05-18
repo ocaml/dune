@@ -77,13 +77,13 @@ let external_lib_deps ?log ~packages () =
 
 let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   match exn with
-  | Loc.Error ({ start; stop }, msg) ->
-    let start_c = start.pos_cnum - start.pos_bol in
-    let stop_c  = stop.pos_cnum  - start.pos_bol in
-    Format.fprintf ppf
-      "@{<loc>File \"%s\", line %d, characters %d-%d:@}\n\
-       @{<error>Error@}: %s\n"
-      (map_fname start.pos_fname) start.pos_lnum start_c stop_c msg
+  | Loc.Error (loc, msg) ->
+    let loc =
+      { loc with
+        start = { loc.start with pos_fname = map_fname loc.start.pos_fname }
+      }
+    in
+    Format.fprintf ppf "%a@{<error>Error@}: %s\n" Loc.print loc msg
   | Fatal_error "" -> ()
   | Fatal_error msg ->
     Format.fprintf ppf "%s\n" (String.capitalize_ascii msg)

@@ -649,15 +649,12 @@ module Executables = struct
     in
     match to_install with
     | [] ->
-      map_validate (field_o "package" string) ~f:(function
-        | None -> Ok ()
-        | Some _ ->
-          Error
-            (sprintf
-               "this field is useless without a (public_name%s ...) field"
-               (if multi then "s" else "")))
-      >>= fun () ->
-      return (t, None)
+      (field_o "package" Sexp.Ast.loc >>= function
+       | None -> return (t, None)
+       | Some loc ->
+         Loc.warn loc "This field is useless without a (public_name%s ...) field."
+           (if multi then "s" else "");
+         return (t, None))
     | files ->
       Pkgs.package_field pkgs >>= fun package ->
       return (t, Some { Install_conf. section = Bin; files; package })

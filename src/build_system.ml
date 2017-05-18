@@ -223,6 +223,9 @@ let vfile_to_string (type a) (module K : Vfile_kind.S with type t = a) fn x =
 module Build_exec = struct
   open Build.Repr
 
+  (* [build_rules] might execute arrows twice *)
+  let assert_exec_only_once = ref true
+
   let exec bs t x =
     let rec exec
       : type a b. Pset.t ref -> (a, b) t -> a -> b = fun dyn_deps t x ->
@@ -231,7 +234,7 @@ module Build_exec = struct
       | Targets _ -> x
       | Store_vfile (Vspec.T (fn, kind)) ->
         let file = get_file bs fn (Sexp_file kind) in
-        assert (file.data = None);
+        assert (not !assert_exec_only_once || file.data = None);
         file.data <- Some x;
         { Action.
           context = None
@@ -739,6 +742,7 @@ module Rule_closure =
     end)
 
 let build_rules t ?(recursive=false) targets =
+  Build_exec.assert_exec_only_once := false;
   let rules_seen = ref Id_set.empty in
   let rules = ref [] in
   let rec loop fn =

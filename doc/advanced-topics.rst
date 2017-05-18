@@ -37,6 +37,8 @@ just write or generate a ``META.<package>.template`` file containing a
 line of the form ``# JBUILDER_GEN``. Jbuilder will automatically insert
 its generated ``META`` contents in place of this line.
 
+.. _custom-driver:
+
 Using a custom ppx driver
 =========================
 

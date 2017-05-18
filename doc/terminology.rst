@@ -12,7 +12,7 @@ Terminology
    things. Jbuilder knows how to build targets that are descendents of
    the root. Anything outside of the tree starting from the root is
    considered part of the **installed world**. How the root is
-   determined is explained in *this section*.
+   determined is explained in :ref:`finding-root`.
 
 -  **workspace**: the workspace is the subtree starting from the root.
    It can contain any number of projects that will be built
@@ -27,7 +27,7 @@ Terminology
    specific configuration from the user, there is always a ``default``
    build context, which corresponds to the environment in which Jbuilder
    is executed. Build contexts can be specified by writing a
-   *jbuild-workspace* file
+   :ref:`jbuild-workspace` file
 
 -  **build context root**: the root of a build context named ``foo`` is
    ``<root>/_build/<foo>``

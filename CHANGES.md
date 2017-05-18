@@ -26,6 +26,10 @@
 - Add `jbuilder installed-libraries --not-available` explaining why
   some libraries are not available
 
+- jbuilder now records dependencies on files of external
+  libraries. This mean that when you upgrade a library, jbuilder will
+  know what need to be rebuilt.
+
 1.0+beta8 (17/04/2017)
 ----------------------
 

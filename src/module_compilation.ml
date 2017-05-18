@@ -1,21 +1,7 @@
 open Import
-open Jbuild_types
 open Build.O
 
 module SC = Super_context
-
-let lib_cm_all ~dir (lib : Library.t) cm_kind =
-  Alias.file (Alias.lib_cm_all ~dir lib.name cm_kind)
-
-let lib_dependencies (libs : Lib.t list) ~(cm_kind : Cm_kind.t) =
-  List.concat_map libs ~f:(function
-    | External _ -> []
-    | Internal (dir, lib) ->
-      match cm_kind with
-      | Cmi | Cmo ->
-        [lib_cm_all ~dir lib Cmi]
-      | Cmx ->
-        [lib_cm_all ~dir lib Cmx])
 
 let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~(dep_graph:Ocamldep.dep_graph)
       ~requires ~(modules : Module.t String_map.t) ~dir ~alias_module (m : Module.t) =
@@ -75,7 +61,6 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~(dep_graph:Ocamldep.dep_gra
         (Build.paths extra_deps >>>
          other_cm_files >>>
          requires >>>
-         Build.dyn_paths (Build.arr (lib_dependencies ~cm_kind)) >>>
          Build.run ~context:ctx (Dep compiler)
            ~extra_targets
            [ Ocaml_flags.get_for_cm flags ~cm_kind
@@ -92,16 +77,35 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~(dep_graph:Ocamldep.dep_gra
            ; A "-c"; Ml_kind.flag ml_kind; Dep src
            ])))
 
-let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~dir ~dep_graph ~modules ~requires
-      ~alias_module =
+let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~dir ~dep_graph
+      ~modules ~requires ~alias_module =
   List.iter Cm_kind.all ~f:(fun cm_kind ->
-    build_cm sctx ?sandbox ~dynlink ~flags ~dir ~dep_graph ~modules m ~cm_kind ~requires
-      ~alias_module);
+    let requires = Cm_kind.Dict.get requires cm_kind in
+    build_cm sctx ?sandbox ~dynlink ~flags ~dir ~dep_graph ~modules m ~cm_kind
+      ~requires ~alias_module);
   (* Build *.cmo.js *)
   let src = Module.cm_file m ~dir Cm_kind.Cmo in
   SC.add_rules sctx (Js_of_ocaml_rules.build_cm sctx ~dir ~js_of_ocaml ~src)
 
 let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~dir ~dep_graph ~modules ~requires ~alias_module =
+  let cmi_requires =
+    Build.memoize "cmi library dependencies"
+      (requires
+       >>>
+       SC.Libs.file_deps sctx ~ext:".cmi")
+  in
+  let cmi_and_cmx_requires =
+    Build.memoize "cmi and cmx library dependencies"
+      (requires
+       >>>
+       SC.Libs.file_deps sctx ~ext:".cmi-and-.cmx")
+  in
+  let requires : _ Cm_kind.Dict.t =
+    { cmi = cmi_requires
+    ; cmo = cmi_requires
+    ; cmx = cmi_and_cmx_requires
+    }
+  in
   String_map.iter
     (match alias_module with
      | None -> modules

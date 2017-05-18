@@ -95,6 +95,19 @@ module Libs : sig
     -> libraries:Lib_deps.t
     -> ppx_runtime_libraries:string list
     -> unit
+
+  (** [file_deps ~ext] is an arrow that record dependencies on all the files with
+      extension [ext] of the libraries given as input. *)
+  val file_deps : t -> ext:string -> (Lib.t list, Lib.t list) Build.t
+
+  (** Setup the alias that depends on all files with a given extension for a library *)
+  val setup_file_deps_alias : t -> Lib.Internal.t -> ext:string -> Path.t list -> unit
+
+  (** Setup an alias that depend on all files with the given extensions.
+
+      To depend on this alias, use [~ext:"ext1-and-ext2-...-extn"]
+  *)
+  val setup_file_deps_group_alias : t -> Lib.Internal.t -> exts:string list -> unit
 end
 
 (** Interpret dependencies written in jbuild files *)

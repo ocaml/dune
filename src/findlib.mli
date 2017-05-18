@@ -55,7 +55,6 @@ type package =
   ; jsoo_runtime     : string list
   ; requires         : package list
   ; ppx_runtime_deps : package list
-  ; has_headers      : bool
   }
 
 val find     : t -> required_by:string list -> string -> package option

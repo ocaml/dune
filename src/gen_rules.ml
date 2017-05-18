@@ -92,15 +92,6 @@ module Gen(P : Params) = struct
            ; Dyn (fun (cm_files, _) -> Deps cm_files)
            ]))
 
-  let mk_lib_cm_all (lib : Library.t) ~dir ~modules cm_kind =
-    let deps =
-      String_map.fold modules ~init:[] ~f:(fun ~key:_ ~data:m acc ->
-        Module.cm_file m ~dir cm_kind :: acc)
-    in
-    Alias.add_deps (SC.aliases sctx)
-      (Alias.lib_cm_all ~dir lib.name cm_kind)
-      deps
-
   let expand_includes ~dir includes =
     Arg_spec.As (List.concat_map includes ~f:(fun s ->
       ["-I"; SC.expand_vars sctx ~dir s]))
@@ -113,9 +104,7 @@ module Gen(P : Params) = struct
        >>>
        Build.fanout
          (SC.expand_and_eval_set ~dir lib.c_flags ~standard:(Utils.g ()))
-         (requires
-          >>>
-          Build.dyn_paths (Build.arr Lib.header_files))
+         requires
        >>>
        Build.run ~context:ctx
          (* We have to execute the rule in the library directory as the .o is produced in
@@ -269,11 +258,14 @@ module Gen(P : Params) = struct
         ~modules:(String_map.singleton m.name m)
         ~dep_graph:(Ml_kind.Dict.make_both (Build.return (String_map.singleton m.name [])))
         ~requires:(
-          if String_map.is_empty modules then
-            (* Just so that we setup lib dependencies for empty libraries *)
-            requires
-          else
-            Build.return [])
+          let requires =
+            if String_map.is_empty modules then
+              (* Just so that we setup lib dependencies for empty libraries *)
+              requires
+            else
+              Build.return []
+          in
+          Cm_kind.Dict.of_func (fun ~cm_kind:_ -> requires))
         ~alias_module:None);
 
     if Library.has_stubs lib then begin
@@ -286,6 +278,10 @@ module Gen(P : Params) = struct
             None)
       in
       let o_files =
+        let requires =
+          Build.memoize "header files"
+            (requires >>> SC.Libs.file_deps sctx ~ext:".h")
+        in
         List.map lib.c_names   ~f:(build_c_file   lib ~dir ~requires ~h_files) @
         List.map lib.cxx_names ~f:(build_cxx_file lib ~dir ~requires ~h_files)
       in
@@ -324,7 +320,17 @@ module Gen(P : Params) = struct
         end
     end;
 
-    List.iter Cm_kind.all ~f:(mk_lib_cm_all lib ~dir ~modules);
+    List.iter Cm_kind.all ~f:(fun cm_kind ->
+      let files =
+        String_map.fold modules ~init:[] ~f:(fun ~key:_ ~data:m acc ->
+          Module.cm_file m ~dir cm_kind :: acc)
+      in
+      SC.Libs.setup_file_deps_alias sctx (dir, lib) ~ext:(Cm_kind.ext cm_kind)
+        files);
+    SC.Libs.setup_file_deps_group_alias sctx (dir, lib) ~exts:[".cmi"; ".cmx"];
+    SC.Libs.setup_file_deps_alias sctx (dir, lib) ~ext:".h"
+      (List.map lib.install_c_headers ~f:(fun header ->
+         Path.relative dir (header ^ ".h")));
 
     List.iter Mode.all ~f:(fun mode ->
       build_lib lib ~flags ~dir ~mode ~modules ~dep_graph);

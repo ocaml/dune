@@ -10,6 +10,33 @@ module Dir_with_jbuild = struct
     }
 end
 
+module External_dir = struct
+  (* Files in the directory, grouped by extension *)
+  type t = Path.t list String_map.t
+
+  let create ~dir : t =
+    match Path.readdir dir with
+    | exception _ -> String_map.empty
+    | files ->
+      List.map files ~f:(fun fn -> Filename.extension fn, Path.relative dir fn)
+      |> String_map.of_alist_multi
+  (* CR-someday jdimino: when we can have dynamic targets:
+
+     {[
+       |> String_map.mapi ~f:(fun ext files ->
+         lazy (
+           let alias =
+             Alias.make ~dir:Path.root (sprintf "external-files-%s%s" hash ext)
+           in
+           Alias.add_deps aliases alias files;
+           alias
+         ))
+     ]}
+  *)
+
+  let files t ~ext = String_map.find_default ext t ~default:[]
+end
+
 type t =
   { context                                 : Context.t
   ; libs                                    : Lib_db.t
@@ -26,6 +53,7 @@ type t =
   ; vars                                    : string String_map.t
   ; ppx_dir                                 : Path.t
   ; ppx_drivers                             : (string, Path.t) Hashtbl.t
+  ; external_dirs                           : (Path.t, External_dir.t) Hashtbl.t
   }
 
 let context t = t.context
@@ -39,6 +67,10 @@ let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
 let cxx_flags t = t.cxx_flags
 
 let expand_var_no_root t var = String_map.find var t.vars
+
+let get_external_dir t ~dir =
+  Hashtbl.find_or_add t.external_dirs dir ~f:(fun dir ->
+    External_dir.create ~dir)
 
 let expand_vars t ~dir s =
   String_with_vars.expand s ~f:(function
@@ -166,6 +198,7 @@ let create
   ; vars
   ; ppx_drivers = Hashtbl.create 32
   ; ppx_dir = Path.of_string (sprintf "_build/.ppx/%s" context.name)
+  ; external_dirs = Hashtbl.create 1024
   }
 
 let add_rule t ?sandbox build =
@@ -324,6 +357,29 @@ module Libs = struct
          Lib.remove_dups_preserve_order (rt_deps @ rt_deps_of_deps))
        >>>
        Build.store_vfile vruntime_deps)
+
+  let lib_files_alias ((dir, lib) : Lib.Internal.t) ~ext =
+    Alias.make (sprintf "lib-%s%s-all" lib.name ext) ~dir
+
+  let setup_file_deps_alias t lib ~ext files =
+    Alias.add_deps t.aliases (lib_files_alias lib ~ext) files
+
+  let setup_file_deps_group_alias t lib ~exts =
+    setup_file_deps_alias t lib
+      ~ext:(String.concat exts ~sep:"-and-")
+      (List.map exts ~f:(fun ext -> Alias.file (lib_files_alias lib ~ext)))
+
+  let file_deps t ~ext =
+    Build.dyn_paths (Build.arr (fun libs ->
+      List.fold_left libs ~init:[] ~f:(fun acc (lib : Lib.t) ->
+        match lib with
+        | External pkg -> begin
+            List.rev_append
+              (External_dir.files (get_external_dir t ~dir:pkg.dir) ~ext)
+              acc
+          end
+        | Internal lib ->
+          Alias.file (lib_files_alias lib ~ext) :: acc)))
 end
 
 module Deps = struct

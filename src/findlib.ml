@@ -128,7 +128,6 @@ type package =
   ; jsoo_runtime     : string list
   ; requires         : package list
   ; ppx_runtime_deps : package list
-  ; has_headers      : bool
   }
 
 module Package_not_available = struct
@@ -201,10 +200,9 @@ type present_or_not_available =
   | Not_available of Package_not_available.t
 
 type t =
-  { stdlib_dir  : Path.t
-  ; path        : Path.t list
-  ; packages    : (string, present_or_not_available) Hashtbl.t
-  ; has_headers : (Path.t, bool                    ) Hashtbl.t
+  { stdlib_dir    : Path.t
+  ; path          : Path.t list
+  ; packages      : (string, present_or_not_available) Hashtbl.t
   }
 
 let path t = t.path
@@ -212,22 +210,8 @@ let path t = t.path
 let create ~stdlib_dir ~path =
   { stdlib_dir
   ; path
-  ; packages    = Hashtbl.create 1024
-  ; has_headers = Hashtbl.create 1024
+  ; packages      = Hashtbl.create 1024
   }
-
-let has_headers t ~dir =
-  match Hashtbl.find t.has_headers dir with
-  | Some x -> x
-  | None ->
-    let x =
-      match Path.readdir dir with
-      | exception _ -> false
-      | files ->
-        List.exists files ~f:(fun fn -> Filename.check_suffix fn ".h")
-    in
-    Hashtbl.add t.has_headers ~key:dir ~data:x;
-    x
 
 module Pkg_step1 = struct
   type t =
@@ -261,14 +245,13 @@ let parse_package t ~name ~parent_dir ~vars ~required_by =
   let pkg =
     { name
     ; dir
-    ; has_headers = has_headers t ~dir
     ; version     = Vars.get vars "version" []
     ; description = Vars.get vars "description" []
     ; archives    = archives "archive" preds
     ; jsoo_runtime
     ; plugins     = Mode.Dict.map2 ~f:(@)
-                      (archives "archive" ("plugin" :: preds))
-                      (archives "plugin" preds)
+                       (archives "archive" ("plugin" :: preds))
+                       (archives "plugin" preds)
     ; requires    = []
     ; ppx_runtime_deps = []
     }

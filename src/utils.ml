@@ -75,8 +75,16 @@ let jbuild_name_in ~dir =
 
 let describe_target fn =
   match Path.extract_build_context fn with
-  | Some (".aliases", dir) ->
-    sprintf "alias %s" (Path.to_string dir)
+  | Some (".aliases", fn) ->
+    let name =
+      let fn = Path.to_string fn in
+      match String.rsplit2 fn ~on:'-' with
+      | None -> assert false
+      | Some (name, digest) ->
+        assert (String.length digest = 32);
+        name
+    in
+    sprintf "alias %s" name
   | _ ->
     Path.to_string fn
 

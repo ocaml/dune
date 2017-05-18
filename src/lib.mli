@@ -12,8 +12,6 @@ module Set : Set.S with type elt := t
 
 (*val deps : t -> string list*)
 
-val header_files : t list -> Path.t list
-
 val include_paths : t list -> Path.Set.t
 
 val include_flags : t list -> _ Arg_spec.t

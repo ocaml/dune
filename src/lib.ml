@@ -21,25 +21,10 @@ end
 
 include T
 module Set = Set.Make(T)
-(*
-let deps = function
-  | Internal (_, lib) -> lib.libraries
-  | External pkg -> pkg.requires
-*)
+
 let dir = function
   | Internal (dir, _) -> dir
   | External pkg -> pkg.dir
-
-let header_files ts =
-  List.fold_left ts ~init:[] ~f:(fun acc t ->
-      match t with
-      | External _ -> []
-      | Internal (dir, lib) ->
-        match lib.install_c_headers with
-        | [] -> acc
-        | l ->
-          List.fold_left l ~init:acc ~f:(fun acc fn ->
-              Path.relative dir (fn ^ ".h") :: acc))
 
 let include_paths ts =
   List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
@@ -50,17 +35,10 @@ let include_flags ts =
   Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
     [Arg_spec.A "-I"; Path dir]))
 
-let has_headers = function
-  | Internal (_, lib) -> lib.install_c_headers <> []
-  | External pkg -> pkg.has_headers
-
 let c_include_flags ts =
   let dirs =
     List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-      if has_headers t then
-        Path.Set.add (dir t) acc
-      else
-        acc)
+      Path.Set.add (dir t) acc)
   in
   Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
     [Arg_spec.A "-I"; Path dir]))

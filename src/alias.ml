@@ -45,9 +45,6 @@ let default = make "DEFAULT"
 let runtest = make "runtest"
 let install = make "install"
 
-let lib_cm_all ~dir lib_name cm_kind =
-  make (sprintf "%s%s-all" lib_name (Cm_kind.ext cm_kind)) ~dir
-
 let recursive_aliases =
   [ default
   ; runtest

@@ -6,8 +6,6 @@ val default : dir:Path.t -> t
 val runtest : dir:Path.t -> t
 val install : dir:Path.t -> t
 
-val lib_cm_all : dir:Path.t -> string -> Cm_kind.t -> t
-
 val dep : t -> ('a, 'a) Build.t
 val file : t -> Path.t
 

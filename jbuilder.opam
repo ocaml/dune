@@ -3,7 +3,7 @@ maintainer: "opensource@janestreet.com"
 authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
 homepage: "https://github.com/janestreet/jbuilder"
 bug-reports: "https://github.com/janestreet/jbuilder/issues"
-dev-repo: "git+https://github.com/janestreet/jbuilder.git"
+dev-repo: "https://github.com/janestreet/jbuilder.git"
 license: "Apache-2.0"
 build: [
   ["ocaml" "bootstrap.ml"]

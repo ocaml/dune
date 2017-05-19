@@ -63,8 +63,6 @@ type t =
   ; ocamlc     : Path.t
   ; ocamlopt   : Path.t option
   ; ocamldep   : Path.t
-  ; ocamllex   : Path.t
-  ; ocamlyacc  : Path.t
   ; ocamlmklib : Path.t
 
   ; (** Environment variables *)

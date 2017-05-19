@@ -42,8 +42,6 @@ type t =
   ; ocamlc                  : Path.t
   ; ocamlopt                : Path.t option
   ; ocamldep                : Path.t
-  ; ocamllex                : Path.t
-  ; ocamlyacc               : Path.t
   ; ocamlmklib              : Path.t
   ; env                     : string array
   ; env_extra               : string Env_var_map.t
@@ -102,8 +100,6 @@ let sexp_of_t t =
     ; "ocamlc", path t.ocamlc
     ; "ocamlopt", option path t.ocamlopt
     ; "ocamldep", path t.ocamldep
-    ; "ocamllex", path t.ocamllex
-    ; "ocamlyacc", path t.ocamlyacc
     ; "ocamlmklib", path t.ocamlmklib
     ; "env", list (pair string string) (Env_var_map.bindings t.env_extra)
     ; "findlib_path", list path (Findlib.path t.findlib)
@@ -317,8 +313,6 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
     ; ocaml      = Path.relative dir "ocaml"
     ; ocamlc
     ; ocamlopt   = best_prog "ocamlopt"
-    ; ocamllex   = get_prog  "ocamllex"
-    ; ocamlyacc  = get_prog  "ocamlyacc"
     ; ocamldep   = get_prog  "ocamldep"
     ; ocamlmklib = get_prog  "ocamlmklib"
 

@@ -56,6 +56,9 @@
 
 - Fix the hint for `jbuilder external-lib-deps` (#72)
 
+- Do not require `ocamllex` and `ocamlyacc` to be at the same location
+  as `ocamlc` (#75)
+
 1.0+beta8 (17/04/2017)
 ----------------------
 

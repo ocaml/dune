@@ -35,25 +35,24 @@ type t =
 
 let root t = t.root
 
-let ignore_file = function
-  | ""
-  | "_opam"
-  | "_build"
-  | ".git"
-  | ".hg"
-  | "_darcs"
-  | "." -> true
-  | fn -> fn.[0] = '.' && fn.[1] = '#'
+let ignore_file fn ~is_directory =
+  fn = "" || fn = "." ||
+  (is_directory && (fn.[0] = '.' || fn.[0] = '_')) ||
+  (fn.[0] = '.' && fn.[1] = '#')
 
 let load path =
   let rec walk path : Dir.t =
     let files, sub_dirs =
       Path.readdir path
-      |> List.filter ~f:(fun fn ->
-          not (ignore_file fn))
-      |> List.partition_map ~f:(fun fn ->
-          let path = Path.relative path fn in
-          if Path.exists path && Path.is_directory path then
+      |> List.filter_map ~f:(fun fn ->
+        let path = Path.relative path fn in
+        let is_directory = Path.exists path && Path.is_directory path in
+        if ignore_file fn ~is_directory then
+          None
+        else
+          Some (fn, path, is_directory))
+      |> List.partition_map ~f:(fun (fn, path, is_directory)  ->
+          if is_directory then
             Inr (fn, walk path)
           else
             Inl fn)

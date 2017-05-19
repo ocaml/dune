@@ -111,9 +111,14 @@ will be automatically installed as well.
 jbuild-ignore
 =============
 
-By default Jbuilder traverses the whole source tree. To ignore a
-subtree, simply write a ``jbuild-ignore`` file in the parent directory
-containing the name of the sub-directories to ignore.
+By default Jbuilder traverses the whole source tree, ignoring the
+following files and directories:
+
+- any file that start with ``.#``
+- any directory that start with either ``.`` or ``_``
+
+To ignore a subtree, simply write a ``jbuild-ignore`` file in the
+parent directory containing the name of the sub-directories to ignore.
 
 So for instance, if you write ``foo`` in ``src/jbuild-ignore``, then
 ``src/foo`` won't be traversed and any ``jbuild`` file it contains will

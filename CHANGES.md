@@ -6,7 +6,12 @@
 - Add support for building javascript with js-of-ocaml (Hugo Heuzard,
   #60)
 
-- Better support for topkg release workflow
+- Better support for topkg release workflow. See
+  [topkg-jbuilder](https://github.com/diml/topkg-jbuilder) for more
+  details
+
+- Port the manual to rst and setup a jbuilder project on
+  readthedocs.org (Rudi Grinberg, #78)
 
 - Hint for mistyped targets. Only suggest correction on the basename
   for now, otherwise it's slow when the workspace is big
@@ -14,14 +19,24 @@
 - Add a `(package ...)` field for aliases, so that one can restrict
   tests to a specific package (Rudi Grinberg, #64)
 
-- Fix a couple of bugs on Windows and add AppVeyor CI
+- Fix a couple of bugs on Windows:
+  + fix parsing of end of lines in some cases
+  + do not take the case into account when comparing environment
+    variable names
+
+- Add AppVeyor CI
 
 - Better error message in case a chain of dependencies *crosses* the
   installed world
 
 - Better error messages for invalid dependency list in jbuild files
 
-- Better error messages when a findlib package is unavailable
+- Severel improvements/fixes regarding the handling of findlib packages:
+  + Better error messages when a findlib package is unavailable
+  + Don't crash when an installed findlib package has missing
+    dependencies
+  + Handle the findlib alternative directory layout which is still
+    used by a few packages
 
 - Add `jbuilder installed-libraries --not-available` explaining why
   some libraries are not available
@@ -32,6 +47,12 @@
 
 - Add a `jbuilder rules` subcommand to dump internal compilation
   rules, mostly for debugging purposes
+
+- Ignore all directories starting with a `.` or `_`. This seems to be
+  a common pattern:
+  - `.git`, `.hg`, `_darcs`
+  - `_build`
+  - `_opam` (opam 2 local switches)
 
 1.0+beta8 (17/04/2017)
 ----------------------

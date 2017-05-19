@@ -1,5 +1,5 @@
-1.0+beta9 (in development)
---------------------------
+1.0+beta9 (19/05/2017)
+----------------------
 
 - Add support for building Reason projects (Rudi Grinberg, #58)
 

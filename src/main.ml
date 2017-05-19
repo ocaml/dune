@@ -111,17 +111,10 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
         Format.fprintf ppf "- %-*s -> %a@\n" longest na.package
           Findlib.Package_not_available.explain na.reason)
     end;
-    let cmdline_suggestion =
-      (* CR-someday jdimino: this is ugly *)
-      match Array.to_list Sys.argv with
-      | prog :: "build" :: args ->
-        prog :: "external-lib-deps" :: "--missing" :: args
-      | _ ->
-        ["jbuilder"; "external-lib-deps"; "--missing"]
-    in
     Format.fprintf ppf
       "Hint: try: %s\n"
-      (List.map cmdline_suggestion ~f:quote_for_shell |> String.concat ~sep:" ")
+      (List.map !Clflags.external_lib_deps_hint ~f:quote_for_shell
+       |> String.concat ~sep:" ")
   | Findlib.External_dep_conflicts_with_local_lib
       { package; required_by; required_locally_in; defined_locally_in } ->
     Format.fprintf ppf

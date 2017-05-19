@@ -54,6 +54,8 @@
   - `_build`
   - `_opam` (opam 2 local switches)
 
+- Fix the hint for `jbuilder external-lib-deps` (#72)
+
 1.0+beta8 (17/04/2017)
 ----------------------
 

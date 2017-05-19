@@ -13,7 +13,7 @@ let standard () = pretty () @ sourcemap ()
 let install_jsoo_hint = "opam install js_of_ocaml-compiler"
 
 let in_build_dir ~ctx =
-  let init = Path.of_string (sprintf "_build/.js/%s" ctx.Context.name) in
+  let init = Path.relative ctx.Context.build_dir ".js" in
   List.fold_left ~init ~f:Path.relative
 
 let runtime_file ~sctx ~dir fname =

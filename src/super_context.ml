@@ -197,7 +197,7 @@ let create
   ; cxx_flags
   ; vars
   ; ppx_drivers = Hashtbl.create 32
-  ; ppx_dir = Path.of_string (sprintf "_build/.ppx/%s" context.name)
+  ; ppx_dir = Path.relative context.build_dir ".ppx"
   ; external_dirs = Hashtbl.create 1024
   }
 

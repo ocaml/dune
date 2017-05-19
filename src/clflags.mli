@@ -26,3 +26,6 @@ val dev_mode : bool ref
 
 (** The path to the workspace root *)
 val workspace_root : string ref
+
+(** The command line for "Hint: try: jbuilder external-lib-deps ..." *)
+val external_lib_deps_hint : string list ref

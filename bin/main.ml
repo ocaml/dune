@@ -18,11 +18,13 @@ type common =
   ; root           : string
   ; target_prefix  : string
   ; only_packages  : String_set.t option
+  ; (* Original arguments for the external-lib-deps hint *)
+    orig_args      : string list
   }
 
 let prefix_target common s = common.target_prefix ^ s
 
-let set_common c =
+let set_common c ~targets =
   Clflags.concurrency := c.concurrency;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
@@ -30,7 +32,13 @@ let set_common c =
   Clflags.verbose := c.verbose;
   Clflags.workspace_root := c.root;
   if c.root <> Filename.current_dir_name then
-    Sys.chdir c.root
+    Sys.chdir c.root;
+  Clflags.external_lib_deps_hint :=
+    List.concat
+      [ ["jbuilder"; "external-lib-deps"; "--missing"]
+      ; c.orig_args
+      ; targets
+      ]
 
 module Main = struct
   include Jbuilder.Main
@@ -90,6 +98,11 @@ let help_secs =
   ]
 
 let common =
+  let dump_opt name value =
+    match value with
+    | None -> []
+    | Some s -> [name; s]
+  in
   let make
         concurrency
         debug_dep_path
@@ -97,12 +110,19 @@ let common =
         dev_mode
         verbose
         workspace_file
-        (root, only_packages)
+        (root, only_packages, orig)
     =
     let root, to_cwd =
       match root with
       | Some dn -> (dn, [])
       | None -> find_root ()
+    in
+    let orig_args =
+      List.concat
+        [ if dev_mode then ["--dev"] else []
+        ; dump_opt "--workspace" workspace_file
+        ; orig
+        ]
     in
     { concurrency
     ; debug_dep_path
@@ -111,6 +131,7 @@ let common =
     ; verbose
     ; workspace_file
     ; root
+    ; orig_args
     ; target_prefix = String.concat ~sep:"" (List.map to_cwd ~f:(sprintf "%s/"))
     ; only_packages =
         Option.map only_packages
@@ -197,9 +218,13 @@ let common =
                   "Cannot use %s and --only-packages simultaneously"
                   for_release)
       | Some pkgs, None, None ->
-        `Ok (Some ".", Some pkgs)
+        `Ok (Some ".", Some pkgs, ["-p"; pkgs])
       | None, _, _ ->
-        `Ok (root, only_packages)
+        `Ok (root, only_packages,
+             List.concat
+               [ dump_opt "--root" root
+               ; dump_opt "--only-packages" only_packages
+               ])
     in
     Term.(ret (const merge
                $ root
@@ -219,7 +244,7 @@ let common =
 let installed_libraries =
   let doc = "Print out libraries installed on the system." in
   let go common na =
-    set_common common;
+    set_common common ~targets:[];
     Future.Scheduler.go ~log:(Log.create ())
       (Context.default () >>= fun ctx ->
        let findlib = ctx.findlib in
@@ -360,7 +385,7 @@ let build_targets =
   in
   let name_ = Arg.info [] ~docv:"TARGET" in
   let go common targets =
-    set_common common;
+    set_common common ~targets;
     let log = Log.create () in
     Future.Scheduler.go ~log
       (Main.setup ~log common >>= fun setup ->
@@ -382,7 +407,11 @@ let runtest =
   in
   let name_ = Arg.info [] ~docv:"DIR" in
   let go common dirs =
-    set_common common;
+    set_common common
+      ~targets:(List.map dirs ~f:(function
+        | "" | "." -> "@runtest"
+        | dir when dir.[String.length dir - 1] = '/' -> sprintf "@%sruntest" dir
+        | dir -> sprintf "@%s/runtest" dir));
     let log = Log.create () in
     Future.Scheduler.go ~log
       (Main.setup ~log common >>= fun setup ->
@@ -416,7 +445,7 @@ let external_lib_deps =
     ]
   in
   let go common only_missing targets =
-    set_common common;
+    set_common common ~targets:[];
     let log = Log.create () in
     Future.Scheduler.go ~log
       (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
@@ -509,7 +538,7 @@ let rules =
     ]
   in
   let go common out recursive makefile_syntax targets =
-    set_common common;
+    set_common common ~targets;
     let log = Log.create () in
     Future.Scheduler.go ~log
       (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
@@ -603,7 +632,7 @@ let install_uninstall ~what =
   in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let go common prefix pkgs =
-    set_common common;
+    set_common common ~targets:[];
     let opam_installer = opam_installer () in
     let log = Log.create () in
     Future.Scheduler.go ~log
@@ -676,7 +705,7 @@ let exec =
     ]
   in
   let go common context prog args =
-    set_common common;
+    set_common common ~targets:[];
     let log = Log.create () in
     Future.Scheduler.go ~log
       (Main.setup ~log common >>= fun setup ->
@@ -730,7 +759,7 @@ let subst =
     ]
   in
   let go common name =
-    set_common common;
+    set_common common ~targets:[];
     Future.Scheduler.go (Watermarks.subst ?name ())
   in
   ( Term.(const go

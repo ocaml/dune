@@ -75,6 +75,7 @@ let rec pp_split_strings ppf = function
 type formatter_state =
   | In_atom
   | In_makefile_action
+  | In_makefile_stuff
 
 let prepare_formatter ppf =
   let state = ref [] in
@@ -86,9 +87,10 @@ let prepare_formatter ppf =
       mark_open_tag  = (function
         | "atom" -> state := In_atom :: !state; ""
         | "makefile-action" -> state := In_makefile_action :: !state; ""
+        | "makefile-stuff" -> state := In_makefile_stuff :: !state; ""
         | s -> tfuncs.mark_open_tag s)
     ; mark_close_tag = (function
-        | "atom" | "makefile-action" -> state := List.tl !state; ""
+        | "atom" | "makefile-action" | "makefile-stuff" -> state := List.tl !state; ""
         | s -> tfuncs.mark_close_tag s)
     };
   Format.pp_set_formatter_out_functions ppf
@@ -101,6 +103,8 @@ let prepare_formatter ppf =
           ofuncs.out_string "\\\n" 0 2
         | [In_makefile_action] ->
           ofuncs.out_string " \\\n\t" 0 4
+        | [In_makefile_stuff] ->
+          ofuncs.out_string " \\\n" 0 3
         | [] ->
           ofuncs.out_string "\n" 0 1
         | _ -> assert false)

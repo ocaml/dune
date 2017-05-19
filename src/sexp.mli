@@ -29,7 +29,8 @@ val pp : Format.formatter -> t -> unit
 val pp_split_strings : Format.formatter -> t -> unit
 
 (** Prepare a formatter for [pp_split_strings]. Additionaly the
-    formatter escape newlines when the tag "makefile-action" is active. *)
+    formatter escape newlines when the tags "makefile-action" or
+    "makefile-stuff" are active. *)
 val prepare_formatter : Format.formatter -> unit
 
 module type Combinators = sig

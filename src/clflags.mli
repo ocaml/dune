@@ -9,12 +9,6 @@ val concurrency : int ref
 (** [-g] *)
 val g : bool ref
 
-(** Print rules *)
-val debug_rules : bool ref
-
-(** Print actions *)
-val debug_actions : bool ref
-
 (** Print executed commands verbosely *)
 val verbose : bool ref
 

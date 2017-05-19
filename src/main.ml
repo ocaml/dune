@@ -186,7 +186,6 @@ let bootstrap () =
     Arg.parse
       [ "-j"           , Set_int Clflags.concurrency, "JOBS concurrency"
       ; "--dev"        , Set Clflags.dev_mode       , " set development mode"
-      ; "--debug-rules", Set Clflags.debug_rules    , " print out rules"
       ; "--verbose"    , Set Clflags.verbose        , " print detailed information about commands being run"
       ; "--subst"      , Unit subst                 , " substitute watermarks in source files"
       ]

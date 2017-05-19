@@ -104,12 +104,6 @@ type limit_timestamp =
   ; limit         : float option
   }
 
-let sexp_of_limit_timestamp lt =
-  Sexp.To_sexp.(record
-                  [ "missing_files" , bool lt.missing_files
-                  ; "limit"         , option float lt.limit
-                  ])
-
 let merge_timestamp t fns ~merge =
   let init =
     { missing_files = false
@@ -368,30 +362,6 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       } = Build_interpret.static_deps build ~all_targets_by_dir
   in
 
-  if !Clflags.debug_rules then begin
-    let f set =
-      Pset.elements set
-      |> List.map ~f:Path.to_string
-      |> String.concat ~sep:", "
-    in
-    let deps = Pset.union rule_deps static_deps in
-    let lib_deps = Build_interpret.lib_deps build in
-    if Pmap.is_empty lib_deps then
-      Printf.eprintf "{%s} -> {%s}\n" (f deps) (f targets)
-    else
-      let lib_deps =
-        Pmap.fold lib_deps ~init:String_map.empty ~f:(fun ~key:_ ~data acc ->
-          Build.merge_lib_deps acc data)
-        |> String_map.bindings
-        |> List.map ~f:(fun (name, kind) ->
-          match (kind : Build.lib_dep_kind) with
-          | Required -> name
-          | Optional -> sprintf "%s (optional)" name)
-        |> String.concat ~sep:", "
-      in
-      Printf.eprintf "{%s}, libs:{%s} -> {%s}\n" (f deps) lib_deps (f targets)
-  end;
-
   let exec = Exec_status.Not_started (fun ~targeting ->
     make_local_parent_dirs t targets ~map_path:(fun x -> x);
     Future.both
@@ -404,9 +374,6 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
        (action, dyn_deps))
     >>= fun ((), (action, dyn_deps)) ->
     let all_deps = Pset.union static_deps dyn_deps in
-    if !Clflags.debug_actions then
-      Format.eprintf "@{<debug>Action@}: %s@."
-        (Sexp.to_string (Action.sexp_of_t action));
     let all_deps_as_list = Pset.elements all_deps in
     let targets_as_list  = Pset.elements targets  in
     let hash =
@@ -452,8 +419,6 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
          { limit = Some targets_min; missing_files = false } ->
          targets_min < deps_max
     then (
-      if !Clflags.debug_actions then
-        Format.eprintf "@{<debug>Action@}: -> running action@.";
       (* Do not remove files that are just updated, otherwise this would break incremental
          compilation *)
       let targets_to_remove =
@@ -486,19 +451,8 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       (* All went well, these targets are no longer pending *)
       pending_targets := Pset.diff !pending_targets targets_to_remove;
       refresh_targets_timestamps_after_rule_execution t targets_as_list
-    ) else (
-      if !Clflags.debug_actions then
-        Format.eprintf
-          "@{<debug>Action@}: -> not running action as targets are up-to-date@\n\
-           @{<debug>Action@}: -> @[%a@]@."
-          Sexp.pp
-          (Sexp.To_sexp.(record
-                           [ "rule_changed"   , bool rule_changed
-                           ; "targets_min_ts" , sexp_of_limit_timestamp targets_min_ts
-                           ; "deps_max_ts"    , sexp_of_limit_timestamp deps_max_ts
-                           ]));
+    ) else
       return ()
-    )
   ) in
   let rule =
     { Internal_rule.

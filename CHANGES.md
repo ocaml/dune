@@ -30,6 +30,9 @@
   libraries. This mean that when you upgrade a library, jbuilder will
   know what need to be rebuilt.
 
+- Add a `jbuilder rules` subcommand to dump internal compilation
+  rules, mostly for debugging purposes
+
 1.0+beta8 (17/04/2017)
 ----------------------
 

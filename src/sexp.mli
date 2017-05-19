@@ -24,6 +24,14 @@ val to_string : t -> string
 
 val pp : Format.formatter -> t -> unit
 
+(** Same as [pp], but split long strings. The formatter must have been
+    prepared with [prepare_formatter]. *)
+val pp_split_strings : Format.formatter -> t -> unit
+
+(** Prepare a formatter for [pp_split_strings]. Additionaly the
+    formatter escape newlines when the tag "makefile-action" is active. *)
+val prepare_formatter : Format.formatter -> unit
+
 module type Combinators = sig
   type 'a t
   val unit       : unit                      t

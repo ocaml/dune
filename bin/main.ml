@@ -552,16 +552,18 @@ let rules =
            else
              Chdir (rule.action.dir, rule.action.action)
          in
+         Sexp.prepare_formatter ppf;
+         Format.pp_open_vbox ppf 0;
          if makefile_syntax then begin
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
-             Format.fprintf ppf "%s:%s\n\t%s\n\n"
+             Format.fprintf ppf "%s:%s@\n@<0>\t@{<makefile-action>%a@}@,@,"
                (Path.Set.elements rule.targets
                 |> List.map ~f:Path.to_string
                 |> String.concat ~sep:" ")
                (Path.Set.elements rule.deps
                 |> List.map ~f:(fun p -> " " ^ Path.to_string p)
                 |> String.concat ~sep:"")
-               (Action.Mini_shexp.sexp_of_t (get_action rule) |> Sexp.to_string))
+               Sexp.pp_split_strings (Action.Mini_shexp.sexp_of_t (get_action rule)))
          end else begin
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
              let sexp =
@@ -576,7 +578,7 @@ let rules =
                    ; [ "action" , Action.Mini_shexp.sexp_of_t (get_action rule) ]
                    ])
              in
-             Format.fprintf ppf "%s\n" (Sexp.to_string sexp))
+             Format.fprintf ppf "%a@," Sexp.pp_split_strings sexp)
          end;
          Format.pp_print_flush ppf ();
          Future.return ()

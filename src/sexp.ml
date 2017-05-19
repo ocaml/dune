@@ -43,6 +43,74 @@ let rec pp ppf = function
     Format.pp_print_string ppf ")";
     Format.pp_close_box ppf ()
 
+let rec pp_split_strings ppf = function
+  | Atom s ->
+    if must_escape s then begin
+      if String.contains s '\n' then begin
+        match String.split s ~on:'\n' with
+        | [] -> Format.fprintf ppf "%S" s
+        | first :: rest ->
+          Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (String.escaped first);
+          List.iter rest ~f:(fun s ->
+            Format.fprintf ppf "@,\\n%s" (String.escaped s));
+          Format.fprintf ppf "@}\"@]"
+      end else
+        Format.fprintf ppf "%S" s
+    end else
+      Format.pp_print_string ppf s
+  | List [] ->
+    Format.pp_print_string ppf "()"
+  | List (first :: rest) ->
+    Format.pp_open_box ppf 1;
+    Format.pp_print_string ppf "(";
+    Format.pp_open_hvbox ppf 0;
+    pp_split_strings ppf first;
+    List.iter rest ~f:(fun sexp ->
+      Format.pp_print_space ppf ();
+      pp_split_strings ppf sexp);
+    Format.pp_close_box ppf ();
+    Format.pp_print_string ppf ")";
+    Format.pp_close_box ppf ()
+
+type formatter_state =
+  | In_atom
+  | In_makefile_action
+
+let prepare_formatter ppf =
+  let state = ref [] in
+  Format.pp_set_mark_tags ppf true;
+  let ofuncs = Format.pp_get_formatter_out_functions ppf () in
+  let tfuncs = Format.pp_get_formatter_tag_functions ppf () in
+  Format.pp_set_formatter_tag_functions ppf
+    { tfuncs with
+      mark_open_tag  = (function
+        | "atom" -> state := In_atom :: !state; ""
+        | "makefile-action" -> state := In_makefile_action :: !state; ""
+        | s -> tfuncs.mark_open_tag s)
+    ; mark_close_tag = (function
+        | "atom" | "makefile-action" -> state := List.tl !state; ""
+        | s -> tfuncs.mark_close_tag s)
+    };
+  Format.pp_set_formatter_out_functions ppf
+    { ofuncs with
+      out_newline = (fun () ->
+        match !state with
+        | [In_atom; In_makefile_action] ->
+          ofuncs.out_string "\\\n\t" 0 3
+        | [In_atom] ->
+          ofuncs.out_string "\\\n" 0 2
+        | [In_makefile_action] ->
+          ofuncs.out_string " \\\n\t" 0 4
+        | [] ->
+          ofuncs.out_string "\n" 0 1
+        | _ -> assert false)
+    ; out_spaces = (fun n ->
+        ofuncs.out_spaces
+          (match !state with
+           | In_atom :: _ -> max 0 (n - 2)
+           | _ -> n))
+    }
+
 let code_error message vars =
   code_errorf "%s"
     (to_string

@@ -426,6 +426,20 @@ let runtest =
           $ Arg.(value & pos_all string ["."] name_))
   , Term.info "runtest" ~doc ~man)
 
+let clean =
+  let doc = "Clean the project." in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|Removes files added by jbuilder including _build and .merlin|}
+    ; `Blocks help_secs
+    ]
+  in
+  let go common = let _ = common in Printf.printf "Added clean CLI command\n" in
+  let log = Log.create () in let _ = log in
+  ( Term.(const go
+          $ common)
+  , Term.info "clean" ~doc ~man)
+
 let format_external_libs libs =
   String_map.bindings libs
   |> List.map ~f:(fun (name, kind) ->
@@ -776,6 +790,7 @@ let all =
   ; external_lib_deps
   ; build_targets
   ; runtest
+  ; clean
   ; install
   ; uninstall
   ; exec

@@ -406,7 +406,7 @@ let runtest =
     ]
   in
   let name_ = Arg.info [] ~docv:"DIR" in
-  let go common dirs =
+  let go common force dirs =
     set_common common
       ~targets:(List.map dirs ~f:(function
         | "" | "." -> "@runtest"
@@ -420,9 +420,12 @@ let runtest =
            let dir = Path.(relative root) (prefix_target common dir) in
            Alias.file (Alias.runtest ~dir))
        in
+       if force then
+         List.iter ~f:(fun p -> if Path.exists p then Path.unlink p) targets;
        do_build setup targets) in
   ( Term.(const go
           $ common
+          $ Arg.(value & flag & info ["force"] ~doc:{|Force rerunning of tests.|})
           $ Arg.(value & pos_all string ["."] name_))
   , Term.info "runtest" ~doc ~man)
 

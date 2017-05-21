@@ -47,7 +47,7 @@ In a directory of your choice, write this ``jbuild`` file:
 
 This ``hello_world.ml`` file:
 
-.. code:: scheme
+.. code:: ocaml
 
     Lwt_main.run (Lwt_io.printf "Hello, world!\n")
 

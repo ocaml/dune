@@ -76,6 +76,8 @@ Write this jbuild:
      
 This ``hello_world.ml`` file:
 
+.. code:: ocaml
+
     open Core
     
     let () =

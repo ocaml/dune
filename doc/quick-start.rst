@@ -59,6 +59,37 @@ And build it with:
 
 The executable will be built as ``_build/default/hello_world.exe``
 
+Building a hello world program using Core and Jane Street PPXs
+==============================================================
+
+Write this jbuild:
+
+.. code:: scheme
+
+    (jbuild_version 1)
+    
+    (executables
+     ((names (hello_world))
+      (libraries (core))
+      (preprocess (pps (ppx_jane ppx_driver.runner)))
+     )
+     
+This ``hello_world.ml`` file:
+
+    open Core
+    
+    let () =
+      Sexp.to_string_hum [%sexp ([3;4;5] : int list)]
+      |> print_endline
+
+And build it with:
+
+.. code:: bash
+
+    jbuilder build hello_world.exe
+
+The executable will be built as ``_build/default/hello_world.exe``
+
 Defining a library using Lwt and ocaml-re
 =========================================
 

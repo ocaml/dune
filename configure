@@ -7,7 +7,7 @@
 
 #set -x
 
-version="1.7.1"
+version="1.7.2"
 
 # Remember the old IFS value:
 oldifs="$IFS"
@@ -528,7 +528,7 @@ if [ -f "${ocaml_core_stdlib}/num.cmi" ]; then
     echo "num: found"
     lnum="num num-top"
 else
-    echo "num: not present (normal since OCaml-4.05)"
+    echo "num: not present"
     lnum=""
 fi
 

@@ -9,13 +9,35 @@ module Exec_status = struct
   module Starting = struct
     type t = { for_file : Path.t }
   end
+  module Evaluating_rule = struct
+    type t =
+      { for_file        : Path.t
+      ; rule_evaluation : (Action.t * Pset.t) Future.t
+      ; exec_rule       : targeting:Path.t
+          -> (Action.t * Pset.t) Future.t -> unit Future.t
+      }
+  end
   module Running = struct
-    type t = { for_file : Path.t; future : unit Future.t }
+    type t =
+      { for_file        : Path.t
+      ; (* Future that only waits for the evaluation of the rule to terminate. It holds
+           the computed action and dynamic dependencies. *)
+        rule_evaluation : (Action.t * Pset.t) Future.t
+      ; (* Future that waits for the rule's action to terminate *)
+        rule_execution  : unit Future.t
+      }
+  end
+  module Not_started = struct
+    type t =
+      { eval_rule : targeting:Path.t -> (Action.t * Pset.t) Future.t
+      ; exec_rule : targeting:Path.t -> (Action.t * Pset.t) Future.t -> unit Future.t
+      }
   end
   type t =
-    | Not_started of (targeting:Path.t -> unit Future.t)
-    | Starting of Starting.t
-    | Running  of Running.t
+    | Not_started     of Not_started.t
+    | Starting        of Starting.t
+    | Evaluating_rule of Evaluating_rule.t
+    | Running         of Running.t
 end
 
 module Internal_rule = struct
@@ -151,7 +173,8 @@ module Build_error = struct
       let (File_spec.T file) = find_file_exn t targeting in
       match file.rule.exec with
       | Not_started _ -> assert false
-      | Running { for_file; _ } | Starting { for_file } ->
+      | Running { for_file; _ } | Starting { for_file }
+      | Evaluating_rule { for_file; _ } ->
         if for_file = targeting then
           acc
         else
@@ -160,6 +183,13 @@ module Build_error = struct
     let dep_path = build_path [targeting] targeting ~seen:Pset.empty in
     raise (E { backtrace; dep_path; exn })
 end
+
+let wrap_build_errors t ~f ~targeting =
+  with_exn_handler (fun () -> f ~targeting)
+    ~handler:(fun exn backtrace ->
+      match exn with
+      | Build_error.E _ -> reraise exn
+      | exn -> Build_error.raise t exn ~targeting ~backtrace)
 
 let wait_for_file t fn ~targeting =
   match Hashtbl.find t.files fn with
@@ -172,18 +202,32 @@ let wait_for_file t fn ~targeting =
       die "file unavailable: %s" (Path.to_string fn)
   | Some (File_spec.T file) ->
     match file.rule.exec with
-    | Not_started f ->
+    | Not_started { eval_rule; exec_rule } ->
       file.rule.exec <- Starting { for_file = targeting };
-      let future =
-        with_exn_handler (fun () -> f ~targeting:fn)
-          ~handler:(fun exn backtrace ->
-              match exn with
-              | Build_error.E _ -> reraise exn
-              | exn -> Build_error.raise t exn ~targeting:fn ~backtrace)
+      let rule_evaluation =
+        wrap_build_errors t ~targeting:fn ~f:eval_rule
       in
-      file.rule.exec <- Running { for_file = targeting; future };
-      future
-    | Running { future; _ } -> future
+      let rule_execution =
+        wrap_build_errors t ~targeting:fn ~f:(exec_rule rule_evaluation)
+      in
+      file.rule.exec <-
+        Running { for_file = targeting
+                ; rule_evaluation
+                ; rule_execution
+                };
+      rule_execution
+    | Running { rule_execution; _ } -> rule_execution
+    | Evaluating_rule { for_file; rule_evaluation; exec_rule } ->
+      file.rule.exec <- Starting { for_file = targeting };
+      let rule_execution =
+        wrap_build_errors t ~targeting:fn ~f:(exec_rule rule_evaluation)
+      in
+      file.rule.exec <-
+        Running { for_file
+                ; rule_evaluation
+                ; rule_execution
+                };
+      rule_execution
     | Starting _ ->
       (* Recursive deps! *)
       let rec build_loop acc targeting =
@@ -193,7 +237,7 @@ let wait_for_file t fn ~targeting =
         else
           let (File_spec.T file) = find_file_exn t targeting in
           match file.rule.exec with
-          | Not_started _ | Running _ -> assert false
+          | Not_started _ | Running _ | Evaluating_rule _ -> assert false
           | Starting { for_file } ->
             build_loop acc for_file
       in
@@ -217,9 +261,6 @@ let vfile_to_string (type a) (module K : Vfile_kind.S with type t = a) fn x =
 module Build_exec = struct
   open Build.Repr
 
-  (* [build_rules] might execute arrows twice *)
-  let assert_exec_only_once = ref true
-
   let exec bs t x =
     let rec exec
       : type a b. Pset.t ref -> (a, b) t -> a -> b = fun dyn_deps t x ->
@@ -228,7 +269,6 @@ module Build_exec = struct
       | Targets _ -> x
       | Store_vfile (Vspec.T (fn, kind)) ->
         let file = get_file bs fn (Sexp_file kind) in
-        assert (not !assert_exec_only_once || file.data = None);
         file.data <- Some x;
         { Action.
           context = None
@@ -362,13 +402,16 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       } = Build_interpret.static_deps build ~all_targets_by_dir
   in
 
-  let exec = Exec_status.Not_started (fun ~targeting ->
+  let eval_rule ~targeting =
+    wait_for_deps t rule_deps ~targeting
+    >>| fun () ->
+    Build_exec.exec t build ()
+  in
+  let exec_rule ~targeting rule_evaluation =
     make_local_parent_dirs t targets ~map_path:(fun x -> x);
     Future.both
       (wait_for_deps t static_deps ~targeting)
-      (wait_for_deps t rule_deps ~targeting
-       >>= fun () ->
-       let action, dyn_deps = Build_exec.exec t build () in
+      (rule_evaluation >>= fun (action, dyn_deps) ->
        wait_for_deps t ~targeting (Pset.diff dyn_deps static_deps)
        >>| fun () ->
        (action, dyn_deps))
@@ -453,7 +496,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       refresh_targets_timestamps_after_rule_execution t targets_as_list
     ) else
       return ()
-  ) in
+  in
   let rule =
     { Internal_rule.
       id = Internal_rule.Id.gen ()
@@ -461,7 +504,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     ; rule_deps
     ; targets
     ; build
-    ; exec
+    ; exec = Not_started { eval_rule; exec_rule }
     }
   in
   create_file_specs t target_specs rule ~allow_override
@@ -696,7 +739,6 @@ module Rule_closure =
     end)
 
 let build_rules t ?(recursive=false) targets =
-  Build_exec.assert_exec_only_once := false;
   let rules_seen = ref Id_set.empty in
   let rules = ref [] in
   let rec loop fn =
@@ -708,16 +750,30 @@ let build_rules t ?(recursive=false) targets =
       else begin
         rules_seen := Id_set.add ir.id !rules_seen;
         let rule =
-          wait_for_deps t ir.rule_deps ~targeting:fn
-          >>= fun () ->
-          let action, dyn_deps = Build_exec.exec t ir.build () in
-          return
+          let make_rule rule_evaluation =
+            rule_evaluation >>| fun (action, dyn_deps) ->
             { Rule.
               id      = ir.id
             ; deps    = Pset.union ir.static_deps dyn_deps
             ; targets = ir.targets
             ; action  = action
             }
+          in
+          match ir.exec with
+          | Starting _ -> assert false (* guarded by [rules_seen] *)
+          | Running { rule_evaluation; _ } | Evaluating_rule { rule_evaluation; _ } ->
+            make_rule rule_evaluation
+          | Not_started { eval_rule; exec_rule } ->
+            ir.exec <- Starting { for_file = fn };
+            let rule_evaluation =
+              wrap_build_errors t ~targeting:fn ~f:eval_rule
+            in
+            ir.exec <-
+              Evaluating_rule { for_file = fn
+                              ; rule_evaluation
+                              ; exec_rule
+                              };
+            make_rule rule_evaluation
         in
         rules := rule :: !rules;
         rule >>= fun rule ->

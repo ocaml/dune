@@ -1,3 +1,10 @@
+1.0+beta10 (in development)
+---------------------------
+
+- Fix a bug where `jbuild rules` would crash instead of reporting a
+  proper build error
+
+
 1.0+beta9 (19/05/2017)
 ----------------------
 

@@ -100,6 +100,9 @@ module Libs : sig
       extension [ext] of the libraries given as input. *)
   val file_deps : t -> ext:string -> (Lib.t list, Lib.t list) Build.t
 
+  (** Same as [file_deps] but for a single known library *)
+  val static_file_deps : ext:string -> Lib.Internal.t -> ('a, 'a) Build.t
+
   (** Setup the alias that depends on all files with a given extension for a library *)
   val setup_file_deps_alias : t -> Lib.Internal.t -> ext:string -> Path.t list -> unit
 

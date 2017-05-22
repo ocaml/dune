@@ -7,14 +7,7 @@ module SC = Super_context
 let ( ++ ) = Path.relative
 
 let get_odoc sctx = SC.resolve_program sctx "odoc" ~hint:"opam install odoc"
-
-let lib_odoc_all ~dir (lib : Library.t)  =
-  Alias.file (Alias.lib_odoc_all ~dir lib.name)
-
-let lib_dependencies (libs : Lib.t list) =
-  List.filter_map libs ~f:(function
-    | External _ -> None
-    | Internal (dir, lib) -> Some (lib_odoc_all ~dir lib))
+let odoc_ext = ".odoc"
 
 let module_deps (m : Module.t) ~dir ~dep_graph ~modules =
   Build.dyn_paths
@@ -50,7 +43,7 @@ let to_html sctx (m : Module.t) odoc_file ~doc_dir ~odoc ~dir ~includes
     doc_dir ++ lib_public_name ++ String.capitalize m.obj_name ++ "index.html"
   in
   SC.add_rule sctx
-    (Alias.dep (Alias.lib_odoc_all ~dir lib.name)
+    (SC.Libs.static_file_deps (dir, lib) ~ext:odoc_ext
      >>>
      includes
      >>>
@@ -96,7 +89,7 @@ let lib_index sctx ~odoc ~dir ~(lib : Library.t) ~lib_public_name ~doc_dir ~modu
     doc_dir ++ lib_public_name ++ "index.html"
   in
   SC.add_rule sctx
-    (Alias.dep (Alias.lib_odoc_all ~dir lib.name)
+    (SC.Libs.static_file_deps (dir, lib) ~ext:odoc_ext
      >>>
      includes
      >>>
@@ -110,11 +103,9 @@ let lib_index sctx ~odoc ~dir ~(lib : Library.t) ~lib_public_name ~doc_dir ~modu
        ]);
   html_file
 
-let doc_dir = Path.of_string "_build/doc"
+let doc_dir ~context = Path.relative context.Context.build_dir "_doc"
 
-let css_file sctx =
-  let context = SC.context sctx in
-  doc_dir ++ context.name ++ "odoc.css"
+let css_file ~doc_dir = doc_dir ++ "odoc.css"
 
 let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
       ~(dep_graph:Ocamldep.dep_graph) =
@@ -136,7 +127,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
     let includes =
       requires
       >>>
-      Build.dyn_paths (Build.arr lib_dependencies)
+      SC.Libs.file_deps sctx ~ext:odoc_ext
       >>^ Lib.include_flags
     in
     let modules_and_odoc_files =
@@ -144,10 +135,9 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
         ~f:(compile_module sctx ~odoc ~dir ~includes ~dep_graph ~modules
               ~lib_public_name:public.name)
     in
-    let aliases = SC.aliases sctx in
-    Alias.add_deps aliases (Alias.lib_odoc_all ~dir lib.name)
+    SC.Libs.setup_file_deps_alias sctx ~ext:odoc_ext (dir, lib)
       (List.map modules_and_odoc_files ~f:snd);
-    let doc_dir = doc_dir ++ context.name in
+    let doc_dir = doc_dir ~context in
     (*
     let modules_and_odoc_files =
       if lib.wrapped then
@@ -166,17 +156,17 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
       lib_index sctx ~dir ~lib ~lib_public_name:public.name ~doc_dir
         ~modules ~includes ~odoc
     in
-    Alias.add_deps aliases (Alias.doc ~dir)
-      (css_file sctx
+    Alias.add_deps (SC.aliases sctx) (Alias.doc ~dir)
+      (css_file ~doc_dir
        :: lib_index_html
        :: html_files))
 
 let setup_css_rule sctx =
   let context = SC.context sctx in
-  let doc_dir = doc_dir ++ context.name in
+  let doc_dir = doc_dir ~context in
   SC.add_rule sctx
     (Build.run ~context
        ~dir:context.build_dir
-       ~extra_targets:[doc_dir ++ "odoc.css"]
+       ~extra_targets:[css_file ~doc_dir]
        (get_odoc sctx)
        [ A "css"; A "-o"; Path doc_dir ]);

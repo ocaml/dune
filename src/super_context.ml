@@ -380,6 +380,9 @@ module Libs = struct
           end
         | Internal lib ->
           Alias.file (lib_files_alias lib ~ext) :: acc)))
+
+  let static_file_deps ~ext lib =
+    Alias.dep (lib_files_alias lib ~ext)
 end
 
 module Deps = struct

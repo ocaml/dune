@@ -2,7 +2,7 @@
 
 (ocamllex (lexer1))
 
-(copy_files_and_add_lines_directives lexers/*)
+(copy_files# lexers/*)
 
 (executables
  ((names (test))))

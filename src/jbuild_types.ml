@@ -976,6 +976,8 @@ module Stanza = struct
           (fun glob -> [Copy_files {add_line_directive = false; glob}])
       ; cstr "copy_files_and_add_lines_directives" (Copy_files.v1 @> nil)
           (fun glob -> [Copy_files {add_line_directive = true; glob}])
+      ; cstr "copy_files#" (Copy_files.v1 @> nil)
+          (fun glob -> [Copy_files {add_line_directive = true; glob}])
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]

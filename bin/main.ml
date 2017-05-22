@@ -434,10 +434,26 @@ let clean =
     ; `Blocks help_secs
     ]
   in
-  let go common = let _ = common in Printf.printf "Added clean CLI command\n" in
-  let log = Log.create () in let _ = log in
-  ( Term.(const go
-          $ common)
+  let go common =
+    set_common common ~targets:[];
+    let log = Log.create () in
+    Future.Scheduler.go ~log
+      begin
+        (* Attach this first before we run anything else *)
+        at_exit (fun () ->
+          let build_dir = Path.(append root (Path.of_string "_build")) in
+          Path.rm_rf build_dir);
+        Main.setup common ~log ~filter_out_optional_stanzas_with_missing_deps:false
+        >>= fun setup ->
+        (* Unlink everything internal that has leaked outside of _build *)
+        setup.build_system
+        |> Build_system.all_targets
+        |> List.filter ~f:(fun p -> not (Path.is_in_build_dir p))
+        |> List.iter ~f:(fun target -> Path.unlink_no_err target);
+        Future.return ()
+     end
+  in
+  ( Term.(const go $ common)
   , Term.info "clean" ~doc ~man)
 
 let format_external_libs libs =

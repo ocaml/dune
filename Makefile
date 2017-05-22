@@ -22,7 +22,8 @@ all-supported-ocaml-versions:
 	$(BIN) build @install @runtest --workspace jbuild-workspace.dev --root .
 
 clean:
-	rm -rf _build
+	-$(BIN) clean
+	-rm -f ./boot.exe
 
 doc:
 	cd doc && sphinx-build . _build

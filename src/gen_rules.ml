@@ -686,7 +686,12 @@ module Gen(P : Params) = struct
     in
     Merlin.add_rules sctx ~dir:ctx_dir (merlin_info @ merlin_info')
 
-  let () = List.iter (SC.stanzas sctx) ~f:rules
+  let () =
+    (* Goes first in subdirectories *)
+    let subtree_smaller x y =
+      - (Path.compare x.SC.Dir_with_jbuild.src_dir  y.SC.Dir_with_jbuild.src_dir) in
+    let stanzas = List.sort ~cmp:subtree_smaller (SC.stanzas sctx) in
+    List.iter stanzas ~f:rules
   let () =
     SC.add_rules sctx (Js_of_ocaml_rules.setup_separate_compilation_rules sctx)
   let () = Odoc.setup_css_rule sctx

@@ -4,6 +4,8 @@
 - Fix a bug where `jbuild rules` would crash instead of reporting a
   proper build error
 
+- Don't use unix in the bootstrap script, to avoid surprises with
+  Cygwin
 
 1.0+beta9 (19/05/2017)
 ----------------------

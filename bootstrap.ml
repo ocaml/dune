@@ -168,16 +168,16 @@ let read_lines fn =
   lines
 
 let read_deps files =
-  let tmp_fn = Filename.temp_file "jbuilder-ocamldep-output" ".txt" in
-  at_exit (fun () -> Sys.remove tmp_fn);
+  let out_fn = "boot-depends.txt" in
+  at_exit (fun () -> Sys.remove out_fn);
   let n =
     exec "%s -modules %s > %s"
-      (Filename.quote ocamldep)
-      (String.concat ~sep:" " (List.map files ~f:Filename.quote))
-      (Filename.quote tmp_fn)
+      ocamldep
+      (String.concat ~sep:" " files)
+      out_fn
   in
   if n <> 0 then exit n;
-  List.map (read_lines tmp_fn) ~f:(fun line ->
+  List.map (read_lines out_fn) ~f:(fun line ->
     let i = String.index line ':' in
     let unit =
       String.sub line ~pos:0 ~len:i

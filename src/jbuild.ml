@@ -638,7 +638,25 @@ module Executables = struct
     ; link_flags       : string list
     ; modes            : Mode.Dict.Set.t
     ; buildable        : Buildable.t
+    ; deps_ordering    : (string * string) list
     }
+
+  let deps_ordering libs sexp =
+    let deps_ordering = list (pair string string) sexp in
+    let libs = List.fold_left libs ~init:String_set.empty ~f:(fun acc ->
+      function
+      | Lib_dep.Direct d -> String_set.add d acc
+      | Select _ -> acc
+    ) in
+    List.iter deps_ordering ~f:(fun (a,b) ->
+      let check c =
+        if not (String_set.mem c libs) then
+          Loc.fail (Sexp.Ast.loc sexp)
+            "The library %s does not appear directly (not in select) in the libraries field"
+            c
+      in
+      check a; check b);
+    deps_ordering
 
   let common_v1 pkgs names public_names ~multi =
     Buildable.v1 >>= fun buildable ->
@@ -651,12 +669,14 @@ module Executables = struct
         else
           Ok modes)
     >>= fun modes ->
+    field   "dependencies_ordering"  (deps_ordering buildable.libraries) ~default:[] >>= fun deps_ordering ->
     let t =
       { names
       ; link_executables
       ; link_flags
       ; modes
       ; buildable
+      ; deps_ordering
       }
     in
     let to_install =

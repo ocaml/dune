@@ -83,6 +83,7 @@ module Libs : sig
     -> libraries:Lib_deps.t
     -> preprocess:Preprocess_map.t
     -> virtual_deps:string list
+    -> deps_ordering: (string * string) list
     -> (unit, Lib.t list) Build.t * (unit, Lib.t list) Build.t
 
   (** Setup the rules for ppx runtime dependencies *)

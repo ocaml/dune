@@ -279,8 +279,17 @@ module Libs = struct
       let deps = Lib.Map.find_default ~default:[]
     end)
 
-  let closure t ~dir ~dep_kind lib_deps =
+  let closure t ~dir ~dep_kind ~deps_ordering lib_deps =
     let internals, externals, fail = Lib_db.interpret_lib_deps t.libs ~dir lib_deps in
+    let add_deps, fail' =
+      List.partition_map deps_ordering
+        ~f:(fun (dep,pkg) ->
+          match Lib_db.find_fail t.libs ~from:dir pkg, Lib_db.find_fail t.libs ~from:dir dep with
+          | Ok pkg, Ok dep -> Inl(pkg,dep)
+          | Error f, _ | _, Error f -> Inr(f)
+        )
+    in
+    let fail = if fail = None then List.hd_opt fail' else fail in
     with_fail ~fail
       (Build.record_lib_deps ~dir ~kind:dep_kind lib_deps
        >>>
@@ -301,6 +310,11 @@ module Libs = struct
          in
          let graph =
            Lib.Map.of_alist_exn (internal_deps @ externals_deps)
+         in
+         let graph =
+           List.fold_left add_deps ~init:graph
+             ~f:(fun acc (pkg,dep) ->
+               Lib.Map.add_multi acc ~key:pkg ~data:dep)
          in
          let res =
            Closure.top_closure graph
@@ -344,7 +358,7 @@ module Libs = struct
          Build.action ~targets:[dst]
            (Copy_and_add_line_directive (src, dst))))
 
-  let real_requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
+  let real_requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps ~deps_ordering =
     let all_pps =
       List.map (Preprocess_map.pps preprocess) ~f:Pp.to_string
     in
@@ -353,7 +367,7 @@ module Libs = struct
       (Build.record_lib_deps ~dir ~kind:dep_kind (List.map virtual_deps ~f:Lib_dep.direct)
        >>>
        Build.fanout
-         (closure t ~dir ~dep_kind libraries)
+         (closure t ~dir ~dep_kind ~deps_ordering libraries)
          (closed_ppx_runtime_deps_of t ~dir ~dep_kind
             (List.map all_pps ~f:Lib_dep.direct))
        >>>
@@ -363,9 +377,9 @@ module Libs = struct
        Build.store_vfile vrequires);
     Build.vpath vrequires
 
-  let requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
+  let requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps ~deps_ordering =
     let real_requires =
-      real_requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps
+      real_requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps ~deps_ordering
     in
     let requires =
       if t.context.merlin then
@@ -388,7 +402,8 @@ module Libs = struct
     let vruntime_deps = vruntime_deps t ~dir ~item in
     add_rule t
       (Build.fanout
-         (closure t ~dir ~dep_kind (List.map ppx_runtime_libraries ~f:Lib_dep.direct))
+         (closure t ~dir ~dep_kind ~deps_ordering:[]
+            (List.map ppx_runtime_libraries ~f:Lib_dep.direct))
          (closed_ppx_runtime_deps_of t ~dir ~dep_kind libraries)
        >>>
        Build.arr (fun (rt_deps, rt_deps_of_deps) ->
@@ -756,6 +771,7 @@ module PP = struct
     let pp_names = pp_names @ [migrate_driver_main] in
     let libs =
       Libs.closure sctx ~dir ~dep_kind (List.map pp_names ~f:Lib_dep.direct)
+        ~deps_ordering:[]
     in
     let libs =
       (* Put the driver back at the end, just before migrate_driver_main *)

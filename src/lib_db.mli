@@ -15,6 +15,7 @@ val create
 
 val find     : t -> from:Path.t -> string -> Lib.t option
 val find_exn : t -> from:Path.t -> string -> Lib.t
+val find_fail : t -> from:Path.t -> string -> (Lib.t,fail) result
 
 val internal_libs_without_non_installable_optional_ones : t -> Lib.Internal.t list
 

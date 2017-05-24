@@ -43,6 +43,14 @@ let find t ~from name =
   | exception _ -> None
   | x -> Some x
 
+let find_fail t ~from name =
+  match find_exn t ~from name with
+  | exception e ->
+    (* Call [find] again to get a proper backtrace *)
+    Error { fail = fun () -> ignore (find_exn t ~from name : Lib.t); raise e }
+  | x -> Ok x
+
+
 let find_internal t ~from name =
   match find_by_internal_name t ~from name with
   | Some _ as some -> some
@@ -133,11 +141,9 @@ let interpret_lib_deps t ~dir lib_deps =
   let libs, failures =
     List.partition_map lib_deps ~f:(function
       | Lib_dep.Direct name -> begin
-          match find_exn t ~from:dir name with
-          | x -> Inl [x]
-          | exception e ->
-            (* Call [find] again to get a proper backtrace *)
-            Inr { fail = fun () -> ignore (find_exn t ~from:dir name : Lib.t); raise e }
+          match find_fail t ~from:dir name with
+          | Ok x -> Inl [x]
+          | Error e -> Inr e
         end
       | Select { choices; loc; _ } ->
         match
@@ -162,10 +168,7 @@ let interpret_lib_deps t ~dir lib_deps =
       | Internal x -> Inl x
       | External x -> Inr x)
   in
-  (internals, externals,
-   match failures with
-   | [] -> None
-   | f :: _ -> Some f)
+  (internals, externals, List.hd_opt failures)
 
 type resolved_select =
   { src_fn : string

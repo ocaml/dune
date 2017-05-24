@@ -122,7 +122,7 @@ Add this field to your ``library`` or ``executables`` stanzas:
 
     (preprocess (action (run ${bin:cppo} -V OCAML:${ocaml_version} ${<})))
 
-Additionnaly, if you are include a ``config.h`` file, you need to
+Additionally, if you are include a ``config.h`` file, you need to
 declare the dependency to this file via:
 
 .. code:: scheme

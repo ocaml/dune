@@ -430,7 +430,7 @@ let clean =
   let doc = "Clean the project." in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|Removes files added by jbuilder including _build and .merlin|}
+    ; `P {|Removes files added by jbuilder such as _build, .install, and .merlin|}
     ; `Blocks help_secs
     ]
   in

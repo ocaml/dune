@@ -845,10 +845,20 @@ Add it to your jbuild file to remove this warning.
             sprintf "<module table for context %s>"
               (Path.to_string ctx.build_dir))
       in
+      let public_interface =
+        Ordered_set_lang.eval_with_standard lib.public_interfaces
+          ~standard:(List.map modules ~f:(fun s -> s.Module.name))
+        |> String_set.of_list
+      in
       List.concat
         [ List.concat_map modules ~f:(fun m ->
+            let intf =
+              if String_set.mem m.Module.name public_interface
+              then [ Module.cm_file m ~dir Cmi ]
+              else []
+            in
             List.concat
-              [ [ Module.cm_file m ~dir Cmi ]
+              [ intf
               ; if_ native [ Module.cm_file m ~dir Cmx ]
               ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~dir)
               ; [ match Module.file m ~dir Intf with

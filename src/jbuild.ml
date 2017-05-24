@@ -541,6 +541,7 @@ module Library = struct
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
+    ; public_interfaces     : Ordered_set_lang.t
     }
 
   let v1 pkgs =
@@ -564,6 +565,7 @@ module Library = struct
        field_b    "optional"                                                 >>= fun optional                 ->
        field      "self_build_stubs_archive" (option string) ~default:None   >>= fun self_build_stubs_archive ->
        field_b    "no_dynlink"                                               >>= fun no_dynlink               ->
+       field_osl  "public_interfaces"                                        >>= fun public_interfaces        ->
        return
          { name
          ; public
@@ -584,6 +586,7 @@ module Library = struct
          ; optional
          ; buildable
          ; dynlink = not no_dynlink
+         ; public_interfaces
          })
 
   let has_stubs t =

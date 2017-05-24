@@ -436,22 +436,18 @@ let clean =
   in
   let go common =
     set_common common ~targets:[];
-    let log = Log.create () in
-    Future.Scheduler.go ~log
+    Build_system.load_trace ()
+    |> function
+    | None ->
+      Format.eprintf
+        "@{<error>Error@}: Missing trace file: _build/.db\n\
+         Hint: Is the _build directory corrupt? Try rebuilding? @."
+    | Some trace ->
       begin
-        (* Attach this first before we run anything else *)
-        at_exit (fun () ->
-          let build_dir = Path.(append root (Path.of_string "_build")) in
-          Path.rm_rf build_dir);
-        Main.setup common ~log ~filter_out_optional_stanzas_with_missing_deps:false
-        >>= fun setup ->
-        (* Unlink everything internal that has leaked outside of _build *)
-        setup.build_system
-        |> Build_system.all_targets
-        |> List.filter ~f:(fun p -> not (Path.is_in_build_dir p))
-        |> List.iter ~f:(fun target -> Path.unlink_no_err target);
-        Future.return ()
-     end
+        Hashtbl.iter trace ~f:(fun ~key ~data:(_) -> Path.unlink key);
+        Path.(rm_rf (append root (of_string "_build")))
+      end
+
   in
   ( Term.(const go $ common)
   , Term.info "clean" ~doc ~man)

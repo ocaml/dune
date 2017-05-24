@@ -61,3 +61,7 @@ val build_rules
   -> ?recursive:bool (* default false *)
   -> Path.t list
   -> Rule.t list Future.t
+
+val load_trace
+  :  unit
+  -> (Path.t, string) Hashtbl.t option

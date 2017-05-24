@@ -518,6 +518,8 @@ module Trace = struct
     trace
 end
 
+let load_trace () = Option.some_if (Sys.file_exists Trace.file) (Trace.load ())
+
 let create ~contexts ~file_tree ~rules =
   let all_source_files =
     File_tree.fold file_tree ~init:Pset.empty ~f:(fun dir acc ->

@@ -118,7 +118,8 @@ val symlink : src:Path.t -> dst:Path.t -> (unit, Action.t) t
 
 val create_file : Path.t -> (unit, Action.t) t
 
-val and_create_file : Path.t -> (Action.t, Action.t) t
+(** Merge a list of actions *)
+val progn : ('a, Action.t) t list -> ('a, Action.t) t
 
 type lib_dep_kind =
   | Optional

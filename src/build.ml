@@ -208,25 +208,29 @@ let run ~context ?(dir=context.Context.build_dir) ?stdout_to ?(extra_targets=[])
       | Some path -> Redirect (Stdout, path, action)
     in
     { Action.
-      dir
-    ; context = Some context
-    ; action
+      context = Some context
+    ; action  = Chdir (dir, action)
     })
 
 let action ~context ?(dir=context.Context.build_dir) ~targets action =
   Targets targets
   >>^ fun () ->
-  { Action. context = Some context; dir; action  }
+  { Action. context = Some context; action = Chdir (dir, action)  }
 
 let action_dyn ~context ?(dir=context.Context.build_dir) ~targets () =
   Targets targets
   >>^ fun action ->
-  { Action. context = Some context; dir; action  }
+  { Action. context = Some context; action = Chdir (dir, action)  }
 
-let action_context_independent ?(dir=Path.root) ~targets action =
+let action_context_independent ?dir ~targets action =
+  let action : Action.Mini_shexp.t =
+    match dir with
+    | None -> action
+    | Some dir -> Chdir (dir, action)
+  in
   Targets targets
   >>^ fun () ->
-  { Action. context = None; dir; action  }
+  { Action. context = None; action  }
 
 let update_file fn s =
   action_context_independent ~targets:[fn] (Update_file (fn, s))
@@ -236,7 +240,6 @@ let update_file_dyn fn =
   >>^ fun s ->
   { Action.
     context = None
-  ; dir     = Path.root
   ; action  = Update_file (fn, s)
   }
 
@@ -258,21 +261,14 @@ let progn ts =
     | [] ->
       { Action.
         context
-      ; dir     = Path.root
       ; action  = Progn (List.rev acc)
       }
-    | { Action. context = context'; dir; action } :: rest ->
+    | { Action. context = context'; action } :: rest ->
       let context =
         match context, context' with
         | None, c | c, None -> c
         | Some c1, Some c2 when c1.name = c2.name -> context
         | _ -> raise Exit
-      in
-      let action =
-        if dir = Path.root then
-          action
-        else
-          Chdir (dir, action)
       in
       loop context (action :: acc) rest
   in

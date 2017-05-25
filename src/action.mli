@@ -41,6 +41,9 @@ module Mini_shexp : sig
   (** Return the list of files under an [Update_file] *)
   val updated_files : t -> Path.Set.t
 
+  (** Return the list of directories the action chdirs to *)
+  val chdirs : t -> Path.Set.t
+
   module Unexpanded : sig
     type desc = t
     type t = (String_with_vars.t, String_with_vars.t) Ast.t
@@ -53,7 +56,6 @@ end
 
 type t =
   { context : Context.t option
-  ; dir     : Path.t
   ; action  : Mini_shexp.t
   }
 

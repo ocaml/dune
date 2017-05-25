@@ -574,12 +574,6 @@ let rules =
        Build_system.build_rules setup.build_system targets ~recursive >>= fun rules ->
        let print oc =
          let ppf = Format.formatter_of_out_channel oc in
-         let get_action (rule : Build_system.Rule.t) =
-           if Path.is_root rule.action.dir then
-             rule.action.action
-           else
-             Chdir (rule.action.dir, rule.action.action)
-         in
          Sexp.prepare_formatter ppf;
          Format.pp_open_vbox ppf 0;
          if makefile_syntax then begin
@@ -591,7 +585,7 @@ let rules =
                (fun ppf ->
                   Path.Set.iter rule.deps ~f:(fun dep ->
                     Format.fprintf ppf "@ %s" (Path.to_string dep)))
-               Sexp.pp_split_strings (Action.Mini_shexp.sexp_of_t (get_action rule)))
+               Sexp.pp_split_strings (Action.Mini_shexp.sexp_of_t rule.action.action))
          end else begin
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
              let sexp =
@@ -603,7 +597,7 @@ let rules =
                    ; (match rule.action.context with
                       | None -> []
                       | Some c -> ["context", Atom c.name])
-                   ; [ "action" , Action.Mini_shexp.sexp_of_t (get_action rule) ]
+                   ; [ "action" , Action.Mini_shexp.sexp_of_t rule.action.action ]
                    ])
              in
              Format.fprintf ppf "%a@," Sexp.pp_split_strings sexp)

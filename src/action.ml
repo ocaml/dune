@@ -221,6 +221,17 @@ module Mini_shexp = struct
     in
     fun t -> loop Path.Set.empty t
 
+  let chdirs =
+    let rec loop acc t =
+      let acc =
+        match t with
+        | Chdir (dir, _) -> Path.Set.add dir acc
+        | _ -> acc
+      in
+      Ast.fold_one_step t ~init:acc ~f:loop
+    in
+    fun t -> loop Path.Set.empty t
+
   module Unexpanded = struct
     type t = (String_with_vars.t, String_with_vars.t) Ast.t
     let sexp_of_t = Ast.sexp_of_t String_with_vars.sexp_of_t String_with_vars.sexp_of_t
@@ -392,7 +403,6 @@ end
 
 type t =
   { context : Context.t option
-  ; dir     : Path.t
   ; action  : Mini_shexp.t
   }
 
@@ -406,15 +416,13 @@ let t contexts sexp =
   in
   record
     (field_o "context" context      >>= fun context ->
-     field   "dir"     Path.t       >>= fun dir ->
      field   "action"  Mini_shexp.t >>= fun action ->
-     return { context; dir; action })
+     return { context; action })
     sexp
 
-let sexp_of_t { context; dir; action } =
+let sexp_of_t { context; action } =
   let fields : Sexp.t list =
-    [ List [ Atom "dir"    ; Path.sexp_of_t dir          ]
-    ; List [ Atom "action" ; Mini_shexp.sexp_of_t action ]
+    [ List [ Atom "action" ; Mini_shexp.sexp_of_t action ]
     ]
   in
   let fields =
@@ -424,7 +432,7 @@ let sexp_of_t { context; dir; action } =
   in
   Sexp.List fields
 
-let exec ~targets { action; dir; context } =
+let exec ~targets { action; context } =
   let env =
     match context with
     | None -> Lazy.force Context.initial_env
@@ -432,7 +440,7 @@ let exec ~targets { action; dir; context } =
   in
   let targets = Path.Set.elements targets in
   let purpose = Future.Build_job targets in
-  Mini_shexp.exec action ~purpose ~dir ~env ~env_extra:Env_var_map.empty
+  Mini_shexp.exec action ~purpose ~dir:Path.root ~env ~env_extra:Env_var_map.empty
     ~stdout_to:None ~stderr_to:None
 
 let sandbox t ~sandboxed ~deps ~targets =
@@ -452,14 +460,9 @@ let sandbox t ~sandboxed ~deps ~targets =
             None))
       ]
   in
-  { t with
-    action
-  ; dir = sandboxed t.dir
-  }
+  { t with action }
 
-type for_hash = string option * Path.t * Mini_shexp.t
+type for_hash = string option * Mini_shexp.t
 
-let for_hash { context; dir; action; _ } =
-  (Option.map context ~f:(fun c -> c.name),
-   dir,
-   action)
+let for_hash { context; action } =
+  (Option.map context ~f:(fun c -> c.name), action)

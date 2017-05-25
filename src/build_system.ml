@@ -272,7 +272,6 @@ module Build_exec = struct
         file.data <- Some x;
         { Action.
           context = None
-        ; dir     = Path.root
         ; action  = Update_file (fn, vfile_to_string kind fn x)
         }
       | Compose (a, b) ->
@@ -371,14 +370,15 @@ let () =
     pending_targets := Pset.empty;
     Pset.iter fns ~f:Path.unlink_no_err)
 
-let make_local_dir t path =
-  match Path.kind path with
-  | Local path ->
-    if not (Path.Local.Set.mem path t.local_mkdirs) then begin
-      Path.Local.mkdir_p path;
-      t.local_mkdirs <- Path.Local.Set.add path t.local_mkdirs
-    end
-  | _ -> ()
+let make_local_dirs t paths =
+  Pset.iter paths ~f:(fun path ->
+    match Path.kind path with
+    | Local path ->
+      if not (Path.Local.Set.mem path t.local_mkdirs) then begin
+        Path.Local.mkdir_p path;
+        t.local_mkdirs <- Path.Local.Set.add path t.local_mkdirs
+      end
+    | _ -> ())
 
 let make_local_parent_dirs t paths ~map_path =
   Pset.iter paths ~f:(fun path ->
@@ -488,7 +488,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
         | None ->
           action
       in
-      make_local_dir t action.dir;
+      make_local_dirs t (Action.Mini_shexp.chdirs action.action);
       Action.exec ~targets action >>| fun () ->
       Option.iter sandbox_dir ~f:Path.rm_rf;
       (* All went well, these targets are no longer pending *)

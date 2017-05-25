@@ -39,21 +39,24 @@ let compile_module sctx (m : Module.t) ~odoc ~dir ~includes ~dep_graph ~modules
 let to_html sctx (m : Module.t) odoc_file ~doc_dir ~odoc ~dir ~includes
       ~lib_public_name ~(lib : Library.t) =
   let context = SC.context sctx in
-  let html_file =
-    doc_dir ++ lib_public_name ++ String.capitalize m.obj_name ++ "index.html"
-  in
+  let html_dir = doc_dir ++ lib_public_name ++ String.capitalize m.obj_name in
+  let html_file = html_dir ++ "index.html" in
   SC.add_rule sctx
     (SC.Libs.static_file_deps (dir, lib) ~ext:odoc_ext
      >>>
      includes
      >>>
-     Build.run ~context ~dir odoc ~extra_targets:[html_file]
-       [ A "html"
-       ; Dyn (fun x -> x)
-       ; A "-I"; Path dir
-       ; A "-o"; Path doc_dir
-       ; Dep odoc_file
-       ]);
+     Build.progn
+       [ Build.run ~context ~dir odoc ~extra_targets:[html_file]
+           [ A "html"
+           ; Dyn (fun x -> x)
+           ; A "-I"; Path dir
+           ; A "-o"; Path doc_dir
+           ; Dep odoc_file
+           ]
+       ; Build.create_file (html_dir ++ Config.jbuilder_keep_fname)
+       ]
+    );
   html_file
 
 let lib_index sctx ~odoc ~dir ~(lib : Library.t) ~lib_public_name ~doc_dir ~modules

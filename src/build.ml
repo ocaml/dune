@@ -229,7 +229,7 @@ let action_context_independent ?dir ~targets action =
     | Some dir -> Chdir (dir, action)
   in
   Targets targets
-  >>^ fun () ->
+  >>^ fun _ ->
   { Action. context = None; action  }
 
 let update_file fn s =

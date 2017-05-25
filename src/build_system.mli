@@ -62,6 +62,6 @@ val build_rules
   -> Path.t list
   -> Rule.t list Future.t
 
-val load_trace
+val all_targets_ever_built
   :  unit
-  -> (Path.t, string) Hashtbl.t option
+  -> Path.t list

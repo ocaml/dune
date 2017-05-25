@@ -430,24 +430,16 @@ let clean =
   let doc = "Clean the project." in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|Removes files added by jbuilder such as _build, .install, and .merlin|}
+    ; `P {|Removes files added by jbuilder such as _build, <package>.install, and .merlin|}
     ; `Blocks help_secs
     ]
   in
   let go common =
-    set_common common ~targets:[];
-    Build_system.load_trace ()
-    |> function
-    | None ->
-      Format.eprintf
-        "@{<error>Error@}: Missing trace file: _build/.db\n\
-         Hint: Is the _build directory corrupt? Try rebuilding? @."
-    | Some trace ->
-      begin
-        Hashtbl.iter trace ~f:(fun ~key ~data:(_) -> Path.unlink key);
-        Path.(rm_rf (append root (of_string "_build")))
-      end
-
+    begin
+      set_common common ~targets:[];
+      Build_system.all_targets_ever_built () |> List.iter ~f:Path.unlink_no_err;
+      Path.(rm_rf (append root (of_string "_build")))
+    end
   in
   ( Term.(const go $ common)
   , Term.info "clean" ~doc ~man)

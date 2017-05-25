@@ -518,7 +518,12 @@ module Trace = struct
     trace
 end
 
-let load_trace () = Option.some_if (Sys.file_exists Trace.file) (Trace.load ())
+let all_targets_ever_built () =
+  if Sys.file_exists Trace.file then
+    let trace = Trace.load () in
+    Hashtbl.fold trace ~init:[] ~f:(fun ~key ~data:_ acc -> key :: acc)
+  else
+    []
 
 let create ~contexts ~file_tree ~rules =
   let all_source_files =

@@ -512,7 +512,9 @@ module Gen(P : Params) = struct
          Build.create_file digest_path
        | Some action ->
          deps
-         >>> SC.Action.run
+         >>>
+         Build.progn
+           [ SC.Action.run
                sctx
                action
                ~dir
@@ -520,8 +522,8 @@ module Gen(P : Params) = struct
                ~targets:[]
                ~deps:(SC.Deps.only_plain_files sctx ~dir alias_conf.deps)
                ~package_context
-         >>>
-         Build.and_create_file digest_path)
+           ; Build.create_file digest_path
+           ])
 
   (* +-----------------------------------------------------------------+
      | Modules listing                                                 |

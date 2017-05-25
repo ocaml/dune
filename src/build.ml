@@ -251,38 +251,33 @@ let symlink ~src ~dst =
 let create_file fn =
   action_context_independent ~targets:[fn] (Create_file fn)
 
-let and_create_file fn =
-  Targets [fn]
-  >>^ fun (action : Action.t) ->
-  { action with
-    action = Progn [action.action; Create_file fn]
-  }
-
-(*
-   {[
-     let progn ts =
-       all ts >>^ fun (actions : Action.t list) ->
-       match actions with
-       | [] ->
-         { Action.
-           context = None
-         ; dir     = Path.root
-         ; action  = Progn []
-         }
-       | first :: rest ->
-         let rest =
-           List.map rest ~f:(fun a ->
-             (match first.context, a.context with
-              | None, None -> ()
-              | Some c1, Some c2 when c1.name = c2.name -> ()
-              | _ ->
-                Sexp.code_error "Build.progn"
-                  [ "actions", Sexp.To_sexp.list Action.sexp_of_t actions ]);
-             if first.dir = a.dir then
-               a.action
-             else
-               Chdir (a.dir, a.action))
-         in
-         { first with action = Progn (first :: rest) }
-   ]}
-*)
+let progn ts =
+  all ts >>^ fun (actions : Action.t list) ->
+  let rec loop context acc actions =
+    match actions with
+    | [] ->
+      { Action.
+        context
+      ; dir     = Path.root
+      ; action  = Progn (List.rev acc)
+      }
+    | { Action. context = context'; dir; action } :: rest ->
+      let context =
+        match context, context' with
+        | None, c | c, None -> c
+        | Some c1, Some c2 when c1.name = c2.name -> context
+        | _ -> raise Exit
+      in
+      let action =
+        if dir = Path.root then
+          action
+        else
+          Chdir (dir, action)
+      in
+      loop context (action :: acc) rest
+  in
+  try
+    loop None [] actions
+  with Exit ->
+    Sexp.code_error "Build.progn"
+      [ "actions", Sexp.To_sexp.list Action.sexp_of_t actions ]

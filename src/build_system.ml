@@ -617,23 +617,27 @@ let create ~contexts ~file_tree ~rules =
 let remove_old_artifacts t =
   let rec walk dir =
     let keep =
-      Path.readdir dir
-      |> List.filter ~f:(fun fn ->
-        let fn = Path.relative dir fn in
-        match Unix.lstat (Path.to_string fn) with
-        | { st_kind = S_DIR; _ } ->
-          walk fn
-        | exception _ ->
-          let keep = Hashtbl.mem t.files fn in
-          if not keep then Path.unlink fn;
-          keep
-        | _ ->
-          let keep = Hashtbl.mem t.files fn in
-          if not keep then Path.unlink fn;
-          keep)
-      |> function
-      | [] -> false
-      | _  -> true
+      if Hashtbl.mem t.files (Path.relative dir Config.jbuilder_keep_fname) then
+        true
+      else begin
+        Path.readdir dir
+        |> List.filter ~f:(fun fn ->
+            let fn = Path.relative dir fn in
+            match Unix.lstat (Path.to_string fn) with
+            | { st_kind = S_DIR; _ } ->
+              walk fn
+            | exception _ ->
+              let keep = Hashtbl.mem t.files fn in
+              if not keep then Path.unlink fn;
+              keep
+            | _ ->
+              let keep = Hashtbl.mem t.files fn in
+              if not keep then Path.unlink fn;
+              keep)
+        |> function
+        | [] -> false
+        | _  -> true
+      end
     in
     if not keep then Path.rmdir dir;
     keep

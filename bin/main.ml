@@ -151,9 +151,11 @@ let common =
          & opt (some string) None
          & info ["only-packages"] ~docs ~docv:"PACKAGES"
              ~doc:{|Ignore stanzas referring to a package that is not in $(b,PACKAGES).
-                    $(b,PACKAGES) is a coma-separated list of package name. You need to
-                    use this option in your $(i,<package>.opam) file if your project
-                    contains several packages.|}
+                    $(b,PACKAGES) is a coma-separated list of package name.
+                    Note that this has the same effect as deleting the relevant stanzas
+                    from jbuild files. It is mostly meant for releases.
+                    During development, it is likely that what you want instead is to
+                    build a particular $(b,<package>.install) target.|}
         )
   in
   let ddep_path =
@@ -202,7 +204,10 @@ let common =
     Arg.(value
          & opt (some string) None
          & info ["p"; for_release] ~docs ~docv:"PACKAGES"
-             ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE).|})
+             ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE). You must use
+                    this option in your $(i,<package>.opam) files, in order to build
+                    only what's necessary when your project contains multiple packages
+                    as well as getting reproducible builds.|})
   in
   let root_and_only_packages =
     let merge root only_packages release =

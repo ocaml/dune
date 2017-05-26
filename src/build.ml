@@ -254,6 +254,10 @@ let symlink ~src ~dst =
 let create_file fn =
   action_context_independent ~targets:[fn] (Create_file fn)
 
+let remove_tree dir =
+  arr (fun _ ->
+    { Action. context = None; action = Remove_tree dir })
+
 let progn ts =
   all ts >>^ fun (actions : Action.t list) ->
   let rec loop context acc actions =

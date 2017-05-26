@@ -17,6 +17,11 @@ open Printf
 
 module String_set = Set.Make(String)
 
+let () =
+  match Sys.getenv "OCAMLPARAM" with
+  | s -> Printf.eprintf "OCAMLPARAM is set to %S\n%!" s
+  | exception Not_found -> ()
+
 (* Modules overriden to bootstrap faster *)
 let overridden =
   String_set.of_list

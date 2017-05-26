@@ -43,9 +43,10 @@ let set_common c ~targets =
 module Main = struct
   include Jbuilder.Main
 
-  let setup ~log ?filter_out_optional_stanzas_with_missing_deps common =
+  let setup ~log ?force_runtest ?filter_out_optional_stanzas_with_missing_deps common =
     setup
       ~log
+      ?force_runtest
       ?workspace_file:common.workspace_file
       ?only_packages:common.only_packages
       ?filter_out_optional_stanzas_with_missing_deps ()
@@ -406,7 +407,7 @@ let runtest =
     ]
   in
   let name_ = Arg.info [] ~docv:"DIR" in
-  let go common force dirs =
+  let go common force_runtest dirs =
     set_common common
       ~targets:(List.map dirs ~f:(function
         | "" | "." -> "@runtest"
@@ -414,14 +415,12 @@ let runtest =
         | dir -> sprintf "@%s/runtest" dir));
     let log = Log.create () in
     Future.Scheduler.go ~log
-      (Main.setup ~log common >>= fun setup ->
+      (Main.setup ~log ~force_runtest common >>= fun setup ->
        let targets =
          List.map dirs ~f:(fun dir ->
            let dir = Path.(relative root) (prefix_target common dir) in
            Alias.file (Alias.runtest ~dir))
        in
-       if force then
-         List.iter ~f:(fun p -> if Path.exists p then Path.unlink p) targets;
        do_build setup targets) in
   ( Term.(const go
           $ common

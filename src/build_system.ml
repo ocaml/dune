@@ -82,6 +82,7 @@ type t =
   ; (* Table from target to digest of [(deps, targets, action)] *)
     trace      : (Path.t, Digest.t) Hashtbl.t
   ; timestamps : (Path.t, float) Hashtbl.t
+  ; force_runtest : bool
   ; mutable local_mkdirs : Path.Local.Set.t
   }
 
@@ -398,7 +399,15 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     in
     let targets_min_ts = min_timestamp t targets_as_list  in
     let deps_max_ts    = max_timestamp t all_deps_as_list in
-    if rule_changed ||
+    let is_runtest ps  =
+      let is_runtest p =
+        match Path.extract_build_context p with
+        | Some (".aliases", _) -> true
+        | _                    -> false
+      in
+      Pset.for_all ~f:is_runtest ps
+    in
+    if rule_changed || (t.force_runtest && is_runtest targets) ||
        match deps_max_ts, targets_min_ts with
        | _, { missing_files = true; _ } ->
          (* Missing targets -> rebuild *)
@@ -518,7 +527,7 @@ module Trace = struct
     trace
 end
 
-let create ~contexts ~file_tree ~rules =
+let create ~force_runtest ~contexts ~file_tree ~rules =
   let all_source_files =
     File_tree.fold file_tree ~init:Pset.empty ~f:(fun dir acc ->
       let path = File_tree.Dir.path dir in
@@ -556,6 +565,7 @@ let create ~contexts ~file_tree ~rules =
     ; trace      = Trace.load ()
     ; timestamps = Hashtbl.create 1024
     ; local_mkdirs = Path.Local.Set.empty
+    ; force_runtest = force_runtest
     } in
   List.iter rules ~f:(compile_rule t ~all_targets_by_dir ~allow_override:false);
   setup_copy_rules t ~all_targets_by_dir

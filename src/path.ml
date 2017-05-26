@@ -384,11 +384,9 @@ let rm_rf =
     Array.iter (Sys.readdir dir) ~f:(fun fn ->
       let fn = Filename.concat dir fn in
       match Unix.lstat fn with
-      | { st_kind = S_DIR; _ } ->
-        loop fn;
-        Unix.rmdir fn
-      | _ ->
-        Unix.unlink fn)
+      | { st_kind = S_DIR; _ } -> loop fn
+      | _                      -> Unix.unlink fn);
+    Unix.rmdir dir
   in
   fun t ->
     let fn = to_string t in

@@ -47,7 +47,8 @@ let to_html sctx (m : Module.t) odoc_file ~doc_dir ~odoc ~dir ~includes
      includes
      >>>
      Build.progn
-       [ Build.run ~context ~dir odoc ~extra_targets:[html_file]
+       [ Build.remove_tree html_dir
+       ; Build.run ~context ~dir odoc ~extra_targets:[html_file]
            [ A "html"
            ; Dyn (fun x -> x)
            ; A "-I"; Path dir

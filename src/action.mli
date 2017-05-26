@@ -30,6 +30,7 @@ module Mini_shexp : sig
       | Bash           of 'a
       | Update_file    of 'path * 'a
       | Rename         of 'path * 'path
+      | Remove_tree    of 'path
     val t : 'a Sexp.Of_sexp.t -> 'b Sexp.Of_sexp.t -> ('a, 'b) t Sexp.Of_sexp.t
     val sexp_of_t : 'a Sexp.To_sexp.t -> 'b Sexp.To_sexp.t -> ('a, 'b) t Sexp.To_sexp.t
   end

@@ -80,8 +80,9 @@ module Mini_shexp = struct
       | Copy_and_add_line_directive of 'path * 'path
       | System         of 'a
       | Bash           of 'a
-      | Update_file     of 'path * 'a
+      | Update_file    of 'path * 'a
       | Rename         of 'path * 'path
+      | Remove_tree    of 'path
 
     let rec t a p sexp =
       sum
@@ -137,6 +138,7 @@ module Mini_shexp = struct
       | Bash   x -> List [Atom "bash"; f x]
       | Update_file (x, y) -> List [Atom "update-file"; g x; f y]
       | Rename (x, y) -> List [Atom "rename"; g x; g y]
+      | Remove_tree x -> List [Atom "remove-tree"; g x]
 
     let rec fold t ~init:acc ~f =
       match t with
@@ -156,6 +158,7 @@ module Mini_shexp = struct
       | Bash x -> f acc x
       | Update_file (x, y) -> f (f acc x) y
       | Rename (x, y) -> f (f acc x) y
+      | Remove_tree x -> f acc x
 
     let fold_one_step t ~init:acc ~f =
       match t with
@@ -174,7 +177,8 @@ module Mini_shexp = struct
       | System _
       | Bash _
       | Update_file _
-      | Rename _ -> acc
+      | Rename _
+      | Remove_tree _ -> acc
 
     let rec map
       : 'a 'b 'c 'd. ('a, 'b) t -> f1:('a -> 'c) -> f2:('b -> 'd) -> ('c, 'd) t
@@ -203,6 +207,7 @@ module Mini_shexp = struct
         | Bash x -> Bash (f1 x)
         | Update_file (x, y) -> Update_file (f2 x, f1 y)
         | Rename (x, y) -> Rename (f2 x, f2 y)
+        | Remove_tree x -> Remove_tree (f2 x)
   end
   open Ast
 
@@ -277,6 +282,8 @@ module Mini_shexp = struct
       | Update_file (x, y) -> Update_file (expand_path ~dir ~f x, expand_str ~dir ~f y)
       | Rename (x, y) ->
         Rename (expand_path ~dir ~f x, expand_path ~dir ~f y)
+      | Remove_tree x ->
+        Remove_tree (expand_path ~dir ~f x)
   end
 
   open Future
@@ -375,6 +382,9 @@ module Mini_shexp = struct
       return ()
     | Rename (src, dst) ->
       Unix.rename (Path.to_string src) (Path.to_string dst);
+      return ()
+    | Remove_tree path ->
+      Path.rm_rf path;
       return ()
 
   and redirect outputs fn t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =

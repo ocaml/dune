@@ -21,6 +21,10 @@ end
 
 include T
 module Set = Set.Make(T)
+module Map = Map.Make(T)
+
+let mk_internal i = Internal i
+let mk_external i = External i
 
 let dir = function
   | Internal (dir, _) -> dir

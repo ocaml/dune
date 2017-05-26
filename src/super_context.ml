@@ -271,25 +271,50 @@ module Libs = struct
     | None -> build
     | Some f -> Build.fail f >>> build
 
+
+  module Closure = Top_closure.Make(Lib)(struct
+      type t = Lib.t
+      let key k = k
+      type graph = Lib.t list Lib.Map.t
+      let deps = Lib.Map.find_default ~default:[]
+    end)
+
   let closure t ~dir ~dep_kind lib_deps =
     let internals, externals, fail = Lib_db.interpret_lib_deps t.libs ~dir lib_deps in
     with_fail ~fail
       (Build.record_lib_deps ~dir ~kind:dep_kind lib_deps
        >>>
        Build.all
-         (List.map internals ~f:(fun ((dir, lib) : Lib.Internal.t) ->
-            load_requires t ~dir ~item:lib.name))
+         (List.map internals ~f:(fun ((dir, lib) as li : Lib.Internal.t) ->
+            load_requires t ~dir ~item:lib.name
+            >>^ fun internal_dep ->
+            (Lib.Internal li,internal_dep)
+          ))
        >>^ (fun internal_deps ->
-         let externals =
-           Findlib.closure externals
-             ~required_by:dir
-             ~local_public_libs:(local_public_libs t.libs)
-           |> List.map ~f:(fun pkg -> Lib.External pkg)
+         let externals_deps =
+           List.map externals ~f:(fun pkg ->
+             (Lib.External pkg,
+              Findlib.requires pkg
+                ~required_by:dir
+                ~local_public_libs:(local_public_libs t.libs)
+              |> List.map ~f:Lib.mk_external))
          in
-         Lib.remove_dups_preserve_order
-           (List.concat (externals :: internal_deps) @
-            List.map internals ~f:(fun x -> Lib.Internal x))))
-
+         let graph =
+           Lib.Map.of_alist_exn (internal_deps @ externals_deps)
+         in
+         let res =
+           Closure.top_closure graph
+             (List.map ~f:Lib.mk_internal internals @
+              List.map ~f:Lib.mk_external externals) in
+         (match res with
+          | Ok deps -> deps
+          | Error cycle ->
+            die "dependency cycle between modules in %s:\n   %s"
+              (Path.to_string dir)
+              (String.concat (List.map ~f:Lib.describe cycle) ~sep:"\n-> ")
+         )
+       )
+      )
   let closed_ppx_runtime_deps_of t ~dir ~dep_kind lib_deps =
     let internals, externals, fail = Lib_db.interpret_lib_deps t.libs ~dir lib_deps in
     with_fail ~fail

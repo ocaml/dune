@@ -491,54 +491,53 @@ module Scheduler = struct
       ~command_line:job.command_line
       ~output:output
       ~exit_status:status;
-    if not exiting then begin
-      let _, progname, _ = split_prog job.job.prog in
-      match status with
-      | WEXITED n when code_is_ok job.job.ok_codes n ->
-        if !Clflags.verbose then begin
-          if output <> "" then
-            Format.eprintf "@{<kwd>Output@}[@{<id>%d@}]:\n%s%!" job.id output;
-          if n <> 0 then
-            Format.eprintf
-              "@{<warning>Warning@}: Command [@{<id>%d@}] exited with code %d, \
-               but I'm ignore it, hope that's OK.\n%!" job.id n;
-        end else if output <> "" || job.job.purpose <> Internal_job then begin
+    let _, progname, _ = split_prog job.job.prog in
+    match status with
+    | WEXITED n when code_is_ok job.job.ok_codes n ->
+      if !Clflags.verbose then begin
+        if output <> "" then
+          Format.eprintf "@{<kwd>Output@}[@{<id>%d@}]:\n%s%!" job.id output;
+        if n <> 0 then
+          Format.eprintf
+            "@{<warning>Warning@}: Command [@{<id>%d@}] exited with code %d, \
+             but I'm ignore it, hope that's OK.\n%!" job.id n;
+      end else if not exiting && (output <> "" || job.job.purpose <> Internal_job) then
+        begin
           Format.eprintf "@{<ok>%12s@} %a@." progname pp_purpose job.job.purpose;
           Format.eprintf "%s%!" output;
         end;
-        Ivar.fill job.job.ivar n
-      | WEXITED n ->
-        if !Clflags.verbose then begin
-          Format.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] exited with code %d:\n\
-                          @{<prompt>$@} %s\n%s%!"
-            job.id n
-            (Ansi_color.strip_colors_for_stderr job.command_line)
-            (Ansi_color.strip_colors_for_stderr output)
-        end else begin
-          Format.eprintf "@{<error>%12s@} %a @{<error>(exit %d)@}@."
-                         progname pp_purpose job.job.purpose n;
-          Format.eprintf "@{<details>%s@}@."
-                         (Ansi_color.strip job.command_line);
-          Format.eprintf "%s%!" output;
-        end;
-        die ""
-      | WSIGNALED n ->
-        if !Clflags.verbose then begin
-          Format.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] got signal %s:\n\
-                          @{<prompt>$@} %s\n%s%!"
-            job.id (Utils.signal_name n)
-            (Ansi_color.strip_colors_for_stderr job.command_line)
-            (Ansi_color.strip_colors_for_stderr output);
-        end else begin
-          Format.eprintf "@{<error>%12s@} %a @{<error>(got signal %s)@}@."
-                         progname pp_purpose job.job.purpose (Utils.signal_name n);
-          Format.eprintf "@{<details>%s@}@."
-                         (Ansi_color.strip job.command_line);
-          Format.eprintf "%s%!" output;
-        end;
-        die ""
-      | WSTOPPED _ -> assert false;
-    end
+      if not exiting then Ivar.fill job.job.ivar n
+    | WEXITED n ->
+      if !Clflags.verbose then begin
+        Format.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] exited with code %d:\n\
+                        @{<prompt>$@} %s\n%s%!"
+          job.id n
+          (Ansi_color.strip_colors_for_stderr job.command_line)
+          (Ansi_color.strip_colors_for_stderr output)
+      end else begin
+        Format.eprintf "@{<error>%12s@} %a @{<error>(exit %d)@}@."
+          progname pp_purpose job.job.purpose n;
+        Format.eprintf "@{<details>%s@}@."
+          (Ansi_color.strip job.command_line);
+        Format.eprintf "%s%!" output;
+      end;
+      if not exiting then die ""
+    | WSIGNALED n ->
+      if !Clflags.verbose then begin
+        Format.eprintf "\n@{<kwd>Command@} [@{<id>%d@}] got signal %s:\n\
+                        @{<prompt>$@} %s\n%s%!"
+          job.id (Utils.signal_name n)
+          (Ansi_color.strip_colors_for_stderr job.command_line)
+          (Ansi_color.strip_colors_for_stderr output);
+      end else begin
+        Format.eprintf "@{<error>%12s@} %a @{<error>(got signal %s)@}@."
+          progname pp_purpose job.job.purpose (Utils.signal_name n);
+        Format.eprintf "@{<details>%s@}@."
+          (Ansi_color.strip job.command_line);
+        Format.eprintf "%s%!" output;
+      end;
+      if not exiting then die ""
+    | WSTOPPED _ -> assert false
 
   let gen_id =
     let next = ref (-1) in

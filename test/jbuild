@@ -89,6 +89,11 @@
   (action (system "sleep 1; exit 1"))))
 
 (alias
+ ((name   sleep4-and-fail)
+  (action (system "sleep 4; exit 1"))))
+
+(alias
  ((name fail-with-background-jobs-running)
   (deps ((alias sleep5)
+         (alias sleep4-and-fail)
          (alias sleep1-and-fail)))))

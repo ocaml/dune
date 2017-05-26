@@ -40,3 +40,5 @@ Terminology
 
    -  ``runtest`` which runs user defined tests
    -  ``install`` which depends on everything that should be installed
+   -  ``doc``     which depends on the generated HTML
+      documentation. See :ref:`apidoc` for details

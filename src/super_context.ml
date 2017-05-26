@@ -596,8 +596,6 @@ module PP = struct
     ; intf
     }
 
-  let ppx_drivers = Hashtbl.create 32
-
   let migrate_driver_main = "ocaml-migrate-parsetree.driver-main"
 
   let build_ppx_driver sctx ~dir ~dep_kind ~target pp_names ~driver =
@@ -677,13 +675,13 @@ module PP = struct
       | [] -> "+none+"
       | _  -> String.concat names ~sep:"+"
     in
-    match Hashtbl.find ppx_drivers key with
+    match Hashtbl.find sctx.ppx_drivers key with
     | Some x -> x
     | None ->
       let ppx_dir = Path.relative sctx.ppx_dir key in
       let exe = Path.relative ppx_dir "ppx.exe" in
       build_ppx_driver sctx names ~dir ~dep_kind ~target:exe ~driver;
-      Hashtbl.add ppx_drivers ~key ~data:exe;
+      Hashtbl.add sctx.ppx_drivers ~key ~data:exe;
       exe
 
   let target_var = String_with_vars.of_string "${@}" ~loc:Loc.none

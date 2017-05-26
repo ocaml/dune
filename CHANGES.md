@@ -9,6 +9,9 @@
 - Don't use unix in the bootstrap script, to avoid surprises with
   Cygwin
 
+- Fix a race condition in future causing jbuilder to crash on Windows
+  in some cases (#101)
+
 1.0+beta9 (19/05/2017)
 ----------------------
 

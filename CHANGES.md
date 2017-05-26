@@ -1,6 +1,8 @@
 1.0+beta10 (in development)
 ---------------------------
 
+- Add a `clean` subcommand (Richard Davison, #89)
+
 - Fix a bug where `jbuild rules` would crash instead of reporting a
   proper build error
 

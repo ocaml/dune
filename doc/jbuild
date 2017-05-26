@@ -8,6 +8,7 @@ let commands =
   ; "install"
   ; "installed-libraries"
   ; "runtest"
+  ; "clean"
   ; "uninstall"
   ; "exec"
   ; "subst"

@@ -561,6 +561,13 @@ module Trace = struct
     trace
 end
 
+let all_targets_ever_built () =
+  if Sys.file_exists Trace.file then
+    let trace = Trace.load () in
+    Hashtbl.fold trace ~init:[] ~f:(fun ~key ~data:_ acc -> key :: acc)
+  else
+    []
+
 let create ~contexts ~file_tree ~rules =
   let all_source_files =
     File_tree.fold file_tree ~init:Pset.empty ~f:(fun dir acc ->

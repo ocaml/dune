@@ -61,3 +61,7 @@ val build_rules
   -> ?recursive:bool (* default false *)
   -> Path.t list
   -> Rule.t list Future.t
+
+val all_targets_ever_built
+  :  unit
+  -> Path.t list

@@ -1,6 +1,6 @@
 open Import
 
-(** In the current worksapce (anything under the current project root) *)
+(** In the current workspace (anything under the current project root) *)
 module Local : sig
   type t
 

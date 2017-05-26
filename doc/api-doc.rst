@@ -14,11 +14,11 @@ Generated pages
 ===============
 
 Jbuilder stores the generated HTML pages in
-``_build/<context>/_doc`. It creates one sub-directory per public
+``_build/<context>/_doc``. It creates one sub-directory per public
 library and generates an ``index.html`` file in each sub-directory.
 
 The documentation is never installed on the system by Jbuilder. It is
-meant to be read locally while developping and then published on the
+meant to be read locally while developing and then published on the
 www when releasing packages.
 
 Building the documentation

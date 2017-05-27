@@ -80,7 +80,7 @@ end
 
 val run
   :  context:Context.t
-  -> ?dir:Path.t (* default: context.build_dir *)
+  -> ?dir:Path.t (* default: [context.build_dir] *)
   -> ?stdout_to:Path.t
   -> ?extra_targets:Path.t list
   -> 'a Prog_spec.t
@@ -88,24 +88,16 @@ val run
   -> ('a, Action.t) t
 
 val action
-  :  context:Context.t
-  -> ?dir:Path.t (* default: context.build_dir *)
+  :  ?dir:Path.t
   -> targets:Path.t list
-  -> Action.Mini_shexp.t
-  -> (unit, Action.t) t
+  -> Action.t
+  -> (_, Action.t) t
 
 val action_dyn
-  :  context:Context.t
-  -> ?dir:Path.t (* default: context.build_dir *)
+  :  ?dir:Path.t
   -> targets:Path.t list
   -> unit
-  -> (Action.Mini_shexp.t, Action.t) t
-
-val action_context_independent
-  :  ?dir:Path.t (* default: Path.root *)
-  -> targets:Path.t list
-  -> Action.Mini_shexp.t
-  -> (unit, Action.t) t
+  -> (Action.t, Action.t) t
 
 (** Create a file with the given contents. Do not ovewrite the file if
     it hasn't changed. *)

@@ -49,6 +49,7 @@ module Rule : sig
     { id      : Id.t
     ; deps    : Path.Set.t
     ; targets : Path.Set.t
+    ; context : Context.t option
     ; action  : Action.t
     }
 end

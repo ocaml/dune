@@ -144,13 +144,15 @@ let targets =
 
 module Rule = struct
   type t =
-    { build   : (unit, Action.t) Build.t
+    { context : Context.t option
+    ; build   : (unit, Action.t) Build.t
     ; targets : Target.t list
     ; sandbox : bool
     }
 
-  let make ?(sandbox=false) build =
-    { build
+  let make ?(sandbox=false) ?context build =
+    { context
+    ; build
     ; targets = targets build
     ; sandbox
     }

@@ -585,7 +585,7 @@ let rules =
                (fun ppf ->
                   Path.Set.iter rule.deps ~f:(fun dep ->
                     Format.fprintf ppf "@ %s" (Path.to_string dep)))
-               Sexp.pp_split_strings (Action.Mini_shexp.sexp_of_t rule.action.action))
+               Sexp.pp_split_strings (Action.sexp_of_t rule.action))
          end else begin
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
              let sexp =
@@ -594,10 +594,10 @@ let rules =
                  List.concat
                    [ [ "deps"   , paths rule.deps
                      ; "targets", paths rule.targets ]
-                   ; (match rule.action.context with
+                   ; (match rule.context with
                       | None -> []
                       | Some c -> ["context", Atom c.name])
-                   ; [ "action" , Action.Mini_shexp.sexp_of_t rule.action.action ]
+                   ; [ "action" , Action.sexp_of_t rule.action ]
                    ])
              in
              Format.fprintf ppf "%a@," Sexp.pp_split_strings sexp)

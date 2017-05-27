@@ -495,7 +495,8 @@ module Gen(P : Params) = struct
       let action =
         match alias_conf.action with
         | None -> Sexp.Atom "none"
-        | Some a -> List [Atom "some" ; Action.Mini_shexp.Unexpanded.sexp_of_t a] in
+        | Some a -> List [Atom "some" ; Action.Unexpanded.sexp_of_t a]
+      in
       Sexp.List [deps ; action]
       |> Sexp.to_string
       |> Digest.string

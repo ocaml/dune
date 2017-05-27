@@ -63,6 +63,7 @@ module Internal_rule = struct
     ; rule_deps      : Pset.t
     ; static_deps    : Pset.t
     ; targets        : Pset.t
+    ; context        : Context.t option
     ; build          : (unit, Action.t) Build.t
     ; mutable exec   : Exec_status.t
     }
@@ -270,10 +271,7 @@ module Build_exec = struct
       | Store_vfile (Vspec.T (fn, kind)) ->
         let file = get_file bs fn (Sexp_file kind) in
         file.data <- Some x;
-        { Action.
-          context = None
-        ; action  = Update_file (fn, vfile_to_string kind fn x)
-        }
+        Update_file (fn, vfile_to_string kind fn x)
       | Compose (a, b) ->
         exec dyn_deps a x |> exec dyn_deps b
       | First t ->
@@ -394,7 +392,7 @@ let make_local_parent_dirs t paths ~map_path =
 let sandbox_dir = Path.of_string "_build/.sandbox"
 
 let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
-  let { Pre_rule. build; targets = target_specs; sandbox } = pre_rule in
+  let { Pre_rule. context; build; targets = target_specs; sandbox } = pre_rule in
   let targets = Target.paths target_specs in
   let { Build_interpret.Static_deps.
         rule_deps
@@ -420,7 +418,12 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     let all_deps_as_list = Pset.elements all_deps in
     let targets_as_list  = Pset.elements targets  in
     let hash =
-      let trace = (all_deps_as_list, targets_as_list, Action.for_hash action) in
+      let trace =
+        (all_deps_as_list,
+         targets_as_list,
+         Option.map context ~f:(fun c -> c.name),
+         action)
+      in
       Digest.string (Marshal.to_string trace [])
     in
     let sandbox_dir =
@@ -465,7 +468,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       (* Do not remove files that are just updated, otherwise this would break incremental
          compilation *)
       let targets_to_remove =
-        Pset.diff targets (Action.Mini_shexp.updated_files action.action)
+        Pset.diff targets (Action.updated_files action)
       in
       Pset.iter targets_to_remove ~f:Path.unlink_no_err;
       pending_targets := Pset.union targets_to_remove !pending_targets;
@@ -488,7 +491,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
         | None ->
           action
       in
-      make_local_dirs t (Action.Mini_shexp.chdirs action.action);
+      make_local_dirs t (Action.chdirs action);
       Action.exec ~targets action >>| fun () ->
       Option.iter sandbox_dir ~f:Path.rm_rf;
       (* All went well, these targets are no longer pending *)
@@ -504,6 +507,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     ; rule_deps
     ; targets
     ; build
+    ; context
     ; exec = Not_started { eval_rule; exec_rule }
     }
   in
@@ -723,6 +727,7 @@ module Rule = struct
     { id      : Id.t
     ; deps    : Path.Set.t
     ; targets : Path.Set.t
+    ; context : Context.t option
     ; action  : Action.t
     }
 
@@ -767,6 +772,7 @@ let build_rules t ?(recursive=false) targets =
               id      = ir.id
             ; deps    = Pset.union ir.static_deps dyn_deps
             ; targets = ir.targets
+            ; context = ir.context
             ; action  = action
             }
           in

@@ -11,12 +11,13 @@ end
 
 module Rule : sig
   type t =
-    { build   : (unit, Action.t) Build.t
+    { context : Context.t option
+    ; build   : (unit, Action.t) Build.t
     ; targets : Target.t list
     ; sandbox : bool
     }
 
-  val make : ?sandbox:bool -> (unit, Action.t) Build.t -> t
+  val make : ?sandbox:bool -> ?context:Context.t -> (unit, Action.t) Build.t -> t
 end
 
 module Static_deps : sig

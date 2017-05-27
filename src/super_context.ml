@@ -54,6 +54,7 @@ type t =
   ; ppx_dir                                 : Path.t
   ; ppx_drivers                             : (string, Path.t) Hashtbl.t
   ; external_dirs                           : (Path.t, External_dir.t) Hashtbl.t
+  ; chdir                                   : (Action.t, Action.t) Build.t
   }
 
 let context t = t.context
@@ -199,10 +200,15 @@ let create
   ; ppx_drivers = Hashtbl.create 32
   ; ppx_dir = Path.relative context.build_dir ".ppx"
   ; external_dirs = Hashtbl.create 1024
+  ; chdir = Build.arr (fun (action : Action.t) ->
+      match action with
+      | Chdir _ -> action
+      | _ -> Chdir (context.build_dir, action))
   }
 
 let add_rule t ?sandbox build =
-  let rule = Build_interpret.Rule.make ?sandbox build in
+  let build = Build.O.(>>>) build t.chdir in
+  let rule = Build_interpret.Rule.make ?sandbox ~context:t.context build in
   t.rules <- rule :: t.rules;
   t.known_targets_by_src_dir_so_far <-
     List.fold_left rule.targets ~init:t.known_targets_by_src_dir_so_far
@@ -303,7 +309,7 @@ module Libs = struct
       add_rule t
         (Build.path src
          >>>
-         Build.action_context_independent ~targets:[dst]
+         Build.action ~targets:[dst]
            (Copy_and_add_line_directive (src, dst))))
 
   let real_requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
@@ -448,7 +454,7 @@ end
 
 module Action = struct
   open Build.O
-  module U = Action.Mini_shexp.Unexpanded
+  module U = Action.Unexpanded
 
   type resolved_forms =
     { (* Mapping from ${...} forms to their resolutions *)
@@ -569,7 +575,7 @@ module Action = struct
         U.expand sctx.context dir t
           ~f:(expand_var sctx ~artifacts ~targets ~deps))
       >>>
-      Build.action_dyn () ~context:sctx.context ~dir ~targets
+      Build.action_dyn () ~dir ~targets
     in
     match forms.failures with
     | [] -> build

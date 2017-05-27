@@ -179,7 +179,7 @@ let get_prog (prog : _ Prog_spec.t) =
   | Dep p -> path p >>> arr (fun _ -> p)
   | Dyn f -> arr f >>> dyn_paths (arr (fun x -> [x]))
 
-let prog_and_args ~dir prog args =
+let prog_and_args ?(dir=Path.root) prog args =
   Paths (Arg_spec.add_deps args Pset.empty)
   >>>
   (get_prog prog &&&
@@ -201,83 +201,50 @@ let run ~context ?(dir=context.Context.build_dir) ?stdout_to ?(extra_targets=[])
   >>>
   Targets targets
   >>^  (fun (prog, args) ->
-    let action : Action.Mini_shexp.t = Run (prog, args) in
+    let action : Action.t = Run (prog, args) in
     let action =
       match stdout_to with
       | None      -> action
       | Some path -> Redirect (Stdout, path, action)
     in
-    { Action.
-      context = Some context
-    ; action  = Chdir (dir, action)
-    })
+    Action.Ast.Chdir (dir, action))
 
-let action ~context ?(dir=context.Context.build_dir) ~targets action =
-  Targets targets
-  >>^ fun () ->
-  { Action. context = Some context; action = Chdir (dir, action)  }
-
-let action_dyn ~context ?(dir=context.Context.build_dir) ~targets () =
-  Targets targets
-  >>^ fun action ->
-  { Action. context = Some context; action = Chdir (dir, action)  }
-
-let action_context_independent ?dir ~targets action =
-  let action : Action.Mini_shexp.t =
-    match dir with
-    | None -> action
-    | Some dir -> Chdir (dir, action)
-  in
+let action ?dir ~targets action =
   Targets targets
   >>^ fun _ ->
-  { Action. context = None; action  }
+  match dir with
+  | None -> action
+  | Some dir -> Action.Ast.Chdir (dir, action)
+
+let action_dyn ?dir ~targets () =
+  Targets targets
+  >>^ fun action ->
+  match dir with
+  | None -> action
+  | Some dir -> Action.Ast.Chdir (dir, action)
 
 let update_file fn s =
-  action_context_independent ~targets:[fn] (Update_file (fn, s))
+  action ~targets:[fn] (Update_file (fn, s))
 
 let update_file_dyn fn =
   Targets [fn]
   >>^ fun s ->
-  { Action.
-    context = None
-  ; action  = Update_file (fn, s)
-  }
+  Action.Ast.Update_file (fn, s)
 
 let copy ~src ~dst =
   path src >>>
-  action_context_independent ~targets:[dst] (Copy (src, dst))
+  action ~targets:[dst] (Copy (src, dst))
 
 let symlink ~src ~dst =
   path src >>>
-  action_context_independent ~targets:[dst] (Symlink (src, dst))
+  action ~targets:[dst] (Symlink (src, dst))
 
 let create_file fn =
-  action_context_independent ~targets:[fn] (Create_file fn)
+  action ~targets:[fn] (Create_file fn)
 
 let remove_tree dir =
-  arr (fun _ ->
-    { Action. context = None; action = Remove_tree dir })
+  arr (fun _ -> Action.Ast.Remove_tree dir)
 
 let progn ts =
-  all ts >>^ fun (actions : Action.t list) ->
-  let rec loop context acc actions =
-    match actions with
-    | [] ->
-      { Action.
-        context
-      ; action  = Progn (List.rev acc)
-      }
-    | { Action. context = context'; action } :: rest ->
-      let context =
-        match context, context' with
-        | None, c | c, None -> c
-        | Some c1, Some c2 when c1.name = c2.name -> context
-        | _ -> raise Exit
-      in
-      loop context (action :: acc) rest
-  in
-  try
-    loop None [] actions
-  with Exit ->
-    Sexp.code_error "Build.progn"
-      [ "actions", Sexp.To_sexp.list Action.sexp_of_t actions ]
+  all ts >>^ fun actions ->
+  Action.Ast.Progn actions

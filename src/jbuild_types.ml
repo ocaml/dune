@@ -225,13 +225,13 @@ module Preprocess = struct
   type pps = { pps : Pp.t list; flags : string list }
   type t =
     | No_preprocessing
-    | Action of Action.Mini_shexp.Unexpanded.t
+    | Action of Action.Unexpanded.t
     | Pps    of pps
 
   let t =
     sum
       [ cstr "no_preprocessing" nil No_preprocessing
-      ; cstr "action" (Action.Mini_shexp.Unexpanded.t @> nil) (fun x -> Action x)
+      ; cstr "action" (Action.Unexpanded.t @> nil) (fun x -> Action x)
       ; cstr "pps" (list Pp_or_flags.t @> nil) (fun l ->
           let pps, flags = Pp_or_flags.split l in
           Pps { pps; flags })
@@ -689,14 +689,14 @@ module Rule = struct
   type t =
     { targets : string list (** List of files in the current directory *)
     ; deps    : Dep_conf.t list
-    ; action  : Action.Mini_shexp.Unexpanded.t
+    ; action  : Action.Unexpanded.t
     }
 
   let v1 =
     record
       (field "targets" (list file_in_current_dir)    >>= fun targets ->
        field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
-       field "action"  Action.Mini_shexp.Unexpanded.t      >>= fun action ->
+       field "action"  Action.Unexpanded.t           >>= fun action ->
        return { targets; deps; action })
 
   let ocamllex_v1 names =
@@ -807,7 +807,7 @@ module Alias_conf = struct
   type t =
     { name  : string
     ; deps  : Dep_conf.t list
-    ; action : Action.Mini_shexp.Unexpanded.t option
+    ; action : Action.Unexpanded.t option
     ; package : Package.t option
     }
 
@@ -816,7 +816,7 @@ module Alias_conf = struct
       (field "name" string                              >>= fun name ->
        field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
        field_o "package" (Pkgs.package pkgs)            >>= fun package ->
-       field_o "action" Action.Mini_shexp.Unexpanded.t  >>= fun action ->
+       field_o "action" Action.Unexpanded.t  >>= fun action ->
        return
          { name
          ; deps

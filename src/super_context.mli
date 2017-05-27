@@ -126,7 +126,7 @@ end
 module Action : sig
   val run
     :  t
-    -> Action.Mini_shexp.Unexpanded.t
+    -> Action.Unexpanded.t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
     -> targets:Path.t list

@@ -416,20 +416,6 @@ type t =
   ; action  : Mini_shexp.t
   }
 
-let t contexts sexp =
-  let open Sexp.Of_sexp in
-  let context sexp =
-    let name = string sexp in
-    match String_map.find name contexts with
-    | None   -> of_sexp_errorf sexp "Context %s not found" name
-    | Some c -> c
-  in
-  record
-    (field_o "context" context      >>= fun context ->
-     field   "action"  Mini_shexp.t >>= fun action ->
-     return { context; action })
-    sexp
-
 let sexp_of_t { context; action } =
   let fields : Sexp.t list =
     [ List [ Atom "action" ; Mini_shexp.sexp_of_t action ]

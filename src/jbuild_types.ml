@@ -837,6 +837,57 @@ module Alias_conf = struct
          })
 end
 
+module Foreach = struct
+  let rec pattern = function
+    | List (_, l) -> Sexp.List (List.map l ~f:pattern)
+    | Atom (loc, s) ->
+      match String_with_vars.of_string ~loc s |> String_with_vars.just_a_var with
+      | None ->
+        Loc.fail loc "atom of the form ${...} expected"
+      | Some v -> Atom v
+
+  let pattern sexp = (Sexp.Ast.loc sexp, pattern sexp)
+
+  let values = list (fun x -> x)
+
+  let rec pattern_match env (patt : Sexp.t) (value : Sexp.Ast.t) =
+    match patt with
+    | Atom p -> begin
+        match value with
+        | List (loc, _) -> Loc.fail loc "atom expected"
+        | Atom (_, s) -> (p, s) :: env
+      end
+    | List p ->
+      match value with
+      | Atom (loc, _) -> Loc.fail loc "list expected"
+      | List (loc, l) ->
+        if List.length l <> List.length p then
+          Loc.fail loc "list of length %d expected" (List.length p)
+        else
+          List.fold_left2 p l ~init:env ~f:pattern_match
+
+  let rec expand_sexp f = function
+    | List (loc, l) -> List (loc, expand_sexps f l)
+    | Atom (loc, s) ->
+      Atom (loc,
+            String_with_vars.of_string ~loc s
+            |> String_with_vars.expand ~f)
+
+  and expand_sexps f = function
+    | [] -> []
+    | sexp :: sexps -> expand_sexp f sexp :: expand_sexps f sexps
+
+  let expand (loc, pat) vals sexps =
+    List.concat_map vals ~f:(fun value ->
+      let env =
+        match String_map.of_alist (pattern_match [] pat value) with
+        | Ok env -> env
+        | Error (dup, _, _) ->
+          Loc.fail loc "variable %s appears twice in this pattern" dup
+      in
+      expand_sexps (fun v -> String_map.find v env) sexps)
+end
+
 module Stanza = struct
   type t =
     | Library     of Library.t
@@ -854,7 +905,7 @@ module Stanza = struct
     | None -> [Executables exe]
     | Some i -> [Executables exe; Install i]
 
-  let v1 pkgs =
+  let rec v1 pkgs =
     sum
       [ cstr "library"     (Library.v1 pkgs @> nil)      (fun x -> [Library     x])
       ; cstr "executable"  (Executables.v1_single pkgs @> nil) execs
@@ -866,6 +917,10 @@ module Stanza = struct
       ; cstr "install"     (Install_conf.v1 pkgs @> nil) (fun x -> [Install     x])
       ; cstr "alias"       (Alias_conf.v1 pkgs @> nil)   (fun x -> [Alias       x])
       ; cstr "do"          (Do.v1 @> nil)                (fun x -> [Do          x])
+      ; cstr_rest "foreach"  (Foreach.pattern @> Foreach.values @> nil) (fun x -> x)
+          (fun pat vals sexps ->
+             let sexps = Foreach.expand pat vals sexps in
+             List.concat_map sexps ~f:(v1 pkgs))
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]

@@ -122,6 +122,15 @@ module Deps : sig
   val only_plain_files : t -> dir:Path.t -> Dep_conf.t list -> Path.t option list
 end
 
+(** Interpret "do" actions, for which targes are inferred *)
+module Do_action : sig
+  val run
+    :  t
+    -> Action.Unexpanded.t
+    -> dir:Path.t
+    -> (unit, Action.t) Build.t
+end
+
 (** Interpret action written in jbuild files *)
 module Action : sig
   val run

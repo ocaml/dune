@@ -727,6 +727,18 @@ module Rule = struct
       })
 end
 
+module Do = struct
+  type t =
+    { loc    : Loc.t
+    ; action : Action.Unexpanded.t
+    }
+
+  let v1 sexp =
+    { loc = Sexp.Ast.loc sexp
+    ; action = Action.Unexpanded.t sexp
+    }
+end
+
 module Menhir = struct
   type t =
     { base : string option
@@ -830,6 +842,7 @@ module Stanza = struct
     | Library     of Library.t
     | Executables of Executables.t
     | Rule        of Rule.t
+    | Do          of Do.t
     | Provides    of Provides.t
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
@@ -852,6 +865,7 @@ module Stanza = struct
       ; cstr "menhir"      (Menhir.v1 @> nil)            (fun x -> rules (Menhir.v1_to_rule x))
       ; cstr "install"     (Install_conf.v1 pkgs @> nil) (fun x -> [Install     x])
       ; cstr "alias"       (Alias_conf.v1 pkgs @> nil)   (fun x -> [Alias       x])
+      ; cstr "do"          (Do.v1 @> nil)                (fun x -> [Do          x])
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]

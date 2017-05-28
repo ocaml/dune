@@ -452,6 +452,25 @@ module Pkg_version = struct
     Build.vpath spec
 end
 
+module Do_action = struct
+  open Build.O
+  module U = Action.Unexpanded
+
+  let run t action ~dir =
+    let action =
+      Action.Unexpanded.expand t.context dir action ~f:(function
+        | "ROOT" -> Path t.context.build_dir
+        | var ->
+          match expand_var_no_root t var with
+          | Some s -> Str s
+          | None -> Not_found)
+    in
+    let { Action.Infer.Outcome.deps; targets } = Action.Infer.infer action in
+    Build.path_set deps
+    >>>
+    Build.action ~dir ~targets:(Path.Set.elements targets) action
+end
+
 module Action = struct
   open Build.O
   module U = Action.Unexpanded

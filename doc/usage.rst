@@ -171,7 +171,7 @@ the current directory and its children recursively. You can also run the
 tests in a specific sub-directory and its children by using:
 
 -  ``jbuilder build @foo/bar/runtest``
--  ``jbuidler runtest foo/bar``
+-  ``jbuilder runtest foo/bar``
 
 Restricting the set of packages
 ===============================

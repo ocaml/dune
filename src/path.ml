@@ -192,6 +192,15 @@ module Local = struct
       else
         None
 
+  let is_descendant t ~of_ =
+    match of_ with
+    | "" -> true
+    | _ ->
+      let of_len = String.length of_ in
+      let t_len = String.length t in
+      (t_len = of_len && t = of_) ||
+      (t_len >= of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_)
+
   let reach t ~from =
     let rec loop t from =
       match t, from with
@@ -289,6 +298,12 @@ let descendant t ~of_ =
     Local.descendant t ~of_
   else
     None
+
+let is_descendant t ~of_ =
+  if is_local t && is_local of_ then
+    Local.is_descendant t ~of_
+  else
+    false
 
 let append a b =
   if not (is_local b) then

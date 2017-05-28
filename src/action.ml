@@ -444,3 +444,48 @@ let sandbox t ~sandboxed ~deps ~targets =
         else
           None))
     ]
+
+module Infer = struct
+  module S = Path.Set
+  module Outcome = struct
+    type t =
+      { deps    : S.t
+      ; targets : S.t
+      }
+  end
+  open Outcome
+
+  let ( +@ ) acc fn = { acc with targets = S.add fn acc.targets }
+  let ( +< ) acc fn =
+    if S.mem fn acc.targets then
+      acc
+    else
+      { acc with deps = S.add fn acc.deps }
+  let ( -@ ) acc fn = { acc with targets = S.remove fn acc.targets }
+
+  let rec infer acc t =
+    match t with
+    | Run (prog, _)       -> acc +< prog
+    | Redirect (_, fn, t) -> infer (acc +@ fn) t
+    | Cat fn              -> acc +< fn
+    | Create_file fn      -> acc +@ fn
+    | Update_file (fn, _) -> acc +@ fn
+    | Rename (src, dst)   -> acc +< src +@ dst -@ src
+    | Copy (src, dst)
+    | Copy_and_add_line_directive (src, dst)
+    | Symlink (src, dst) -> acc +< src +@ dst
+    | Chdir (_, t)
+    | Setenv (_, _, t)
+    | Ignore (_, t) -> infer acc t
+    | Progn l -> List.fold_left l ~init:acc ~f:infer
+    | Echo _
+    | System _
+    | Bash _ -> acc
+    | Remove_tree dir ->
+      { acc with targets = S.filter acc.targets ~f:(fun fn ->
+          not (Path.is_descendant fn ~of_:dir))
+      }
+
+  let infer t =
+    infer { deps = S.empty; targets = S.empty } t
+end

@@ -1,0 +1,38 @@
+(* -*- tuareg -*- *)
+
+#warnings "-40";;
+
+open Jbuilder;;
+open Import;;
+open Action.Infer.Outcome;;
+
+let p = Path.of_string;;
+let infer a =
+  let x = Action.Infer.infer a in
+  (List.map (Path.Set.elements x.deps) ~f:Path.to_string,
+   List.map (Path.Set.elements x.targets) ~f:Path.to_string)
+[%%expect{|
+val p : string -> Jbuilder.Path.t = <fun>
+val infer : Jbuilder__Action.t -> string list * string list = <fun>
+|}]
+
+infer (Copy (p "a", p "b"));;
+[%%expect{|
+- : string list * string list = (["a"], ["b"])
+|}]
+
+infer (Progn
+         [ Copy (p "a", p "b")
+         ; Copy (p "b", p "c")
+         ]);;
+[%%expect{|
+- : string list * string list = (["a"], ["b"; "c"])
+|}]
+
+infer (Progn
+         [ Copy (p "a", p "b")
+         ; Rename (p "b", p "c")
+         ]);;
+[%%expect{|
+- : string list * string list = (["a"], ["c"])
+|}]

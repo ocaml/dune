@@ -29,3 +29,10 @@
          (glob_files ${ROOT}/src/*.cmi)
          (glob_files ${ROOT}/vendor/re/*.cmi)))
   (action (chdir ${ROOT} (run ${exe:expect_test.bc} ${<})))))
+
+(alias
+ ((name runtest)
+  (deps (action.mlt
+         (glob_files ${ROOT}/src/*.cmi)
+         (glob_files ${ROOT}/vendor/re/*.cmi)))
+  (action (chdir ${ROOT} (run ${exe:expect_test.bc} ${<})))))

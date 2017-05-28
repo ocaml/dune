@@ -59,6 +59,7 @@ val reach : t -> from:t -> string
 val reach_for_running : t -> from:t -> string
 
 val descendant : t -> of_:t -> t option
+val is_descendant : t -> of_:t -> bool
 
 val append : t -> t -> t
 

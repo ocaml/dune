@@ -21,6 +21,18 @@ val updated_files : t -> Path.Set.t
 (** Return the list of directories the action chdirs to *)
 val chdirs : t -> Path.Set.t
 
+(** Infer dependencies and targets *)
+module Infer : sig
+  module Outcome : sig
+    type t =
+      { deps    : Path.Set.t
+      ; targets : Path.Set.t
+      }
+  end
+
+  val infer : t -> Outcome.t
+end
+
 module Unexpanded : sig
   type action = t
 

@@ -53,91 +53,120 @@ let expand_prog ctx ~dir ~f template =
       |> String.concat ~sep:" "
       |> resolve
 
-module Ast = struct
-  type outputs =
-    | Stdout
-    | Stderr
-    | Outputs (* Both Stdout and Stderr *)
+module Outputs = struct
+  include Action_intf.Outputs
 
-  let string_of_outputs = function
+  let to_string = function
     | Stdout -> "stdout"
     | Stderr -> "stderr"
     | Outputs -> "outputs"
+end
 
-  type ('a, 'path) t =
-    | Run            of 'path * 'a list
-    | Chdir          of 'path * ('a, 'path) t
-    | Setenv         of 'a * 'a * ('a, 'path) t
-    | Redirect       of outputs * 'path * ('a, 'path) t
-    | Ignore         of outputs * ('a, 'path) t
-    | Progn          of ('a, 'path) t list
-    | Echo           of 'a
-    | Create_file    of 'path
-    | Cat            of 'path
-    | Copy           of 'path * 'path
-    | Symlink        of 'path * 'path
-    | Copy_and_add_line_directive of 'path * 'path
-    | System         of 'a
-    | Bash           of 'a
-    | Update_file    of 'path * 'a
-    | Rename         of 'path * 'path
-    | Remove_tree    of 'path
+module type Sexpable = sig
+  type t
+  val t : t Sexp.Of_sexp.t
+  val sexp_of_t : t Sexp.To_sexp.t
+end
 
-  let rec t a p sexp =
+module Make_ast
+    (Path   : Sexpable)
+    (String : Sexpable)
+    (Ast : Action_intf.Ast
+     with type path   := Path.t
+     with type string := String.t) =
+struct
+  include Ast
+
+  let rec t sexp =
+    let path = Path.t and string = String.t in
     sum
-      [ cstr_rest "run" (p @> nil) a             (fun prog args -> Run (prog, args))
-      ; cstr "chdir"    (p @> t a p @> nil)        (fun dn t -> Chdir (dn, t))
-      ; cstr "setenv"   (a @> a @> t a p @> nil)   (fun k v t -> Setenv (k, v, t))
-      ; cstr "with-stdout-to"  (p @> t a p @> nil) (fun fn t -> Redirect (Stdout, fn, t))
-      ; cstr "with-stderr-to"  (p @> t a p @> nil) (fun fn t -> Redirect (Stderr, fn, t))
-      ; cstr "with-outputs-to" (p @> t a p @> nil) (fun fn t -> Redirect (Outputs, fn, t))
-      ; cstr "ignore-stdout"   (t a p @> nil)      (fun t -> Ignore (Stdout, t))
-      ; cstr "ignore-stderr"   (t a p @> nil)      (fun t -> Ignore (Stderr, t))
-      ; cstr "ignore-outputs"  (t a p @> nil)      (fun t -> Ignore (Outputs, t))
-      ; cstr_rest "progn"      nil (t a p)         (fun l -> Progn l)
-      ; cstr "echo"           (a @> nil)         (fun x -> Echo x)
-      ; cstr "cat"            (p @> nil)         (fun x -> Cat x)
-      ; cstr "create-file"    (p @> nil)         (fun x -> Create_file x)
-      ; cstr "copy" (p @> p @> nil)              (fun src dst -> Copy (src, dst))
+      [ cstr_rest "run" (path @> nil) string             (fun prog args -> Run (prog, args))
+      ; cstr "chdir"    (path @> t @> nil)        (fun dn t -> Chdir (dn, t))
+      ; cstr "setenv"   (string @> string @> t @> nil)   (fun k v t -> Setenv (k, v, t))
+      ; cstr "with-stdout-to"  (path @> t @> nil) (fun fn t -> Redirect (Stdout, fn, t))
+      ; cstr "with-stderr-to"  (path @> t @> nil) (fun fn t -> Redirect (Stderr, fn, t))
+      ; cstr "with-outputs-to" (path @> t @> nil) (fun fn t -> Redirect (Outputs, fn, t))
+      ; cstr "ignore-stdout"   (t @> nil)      (fun t -> Ignore (Stdout, t))
+      ; cstr "ignore-stderr"   (t @> nil)      (fun t -> Ignore (Stderr, t))
+      ; cstr "ignore-outputs"  (t @> nil)      (fun t -> Ignore (Outputs, t))
+      ; cstr_rest "progn"      nil t         (fun l -> Progn l)
+      ; cstr "echo"           (string @> nil)         (fun x -> Echo x)
+      ; cstr "cat"            (path @> nil)         (fun x -> Cat x)
+      ; cstr "create-file"    (path @> nil)         (fun x -> Create_file x)
+      ; cstr "copy" (path @> path @> nil)              (fun src dst -> Copy (src, dst))
       (*
          (* We don't expose symlink to the user yet since this might complicate things *)
          ; cstr "symlink" (a @> a @> nil) (fun src dst -> Symlink (dst, Cat src))
       *)
-      ; cstr "copy-and-add-line-directive" (p @> p @> nil) (fun src dst ->
+      ; cstr "copy-and-add-line-directive" (path @> path @> nil) (fun src dst ->
           Copy_and_add_line_directive (src, dst))
-      ; cstr "system" (a @> nil) (fun cmd -> System cmd)
-      ; cstr "bash"   (a @> nil) (fun cmd -> Bash   cmd)
+      ; cstr "system" (string @> nil) (fun cmd -> System cmd)
+      ; cstr "bash"   (string @> nil) (fun cmd -> Bash   cmd)
       ]
       sexp
 
-  let rec sexp_of_t f g : _ -> Sexp.t = function
-    | Run (a, xs) -> List (Atom "run" :: g a :: List.map xs ~f)
-    | Chdir (a, r) -> List [Atom "chdir" ; g a ; sexp_of_t f g r]
-    | Setenv (k, v, r) -> List [Atom "setenv" ; f k ; f v ; sexp_of_t f g r]
+  let rec sexp_of_t : _ -> Sexp.t =
+    let path = Path.sexp_of_t and string = String.sexp_of_t in
+    function
+    | Run (a, xs) -> List (Atom "run" :: path a :: List.map xs ~f:string)
+    | Chdir (a, r) -> List [Atom "chdir" ; path a ; sexp_of_t r]
+    | Setenv (k, v, r) -> List [Atom "setenv" ; string k ; string v ; sexp_of_t r]
     | Redirect (outputs, fn, r) ->
-      List [ Atom (sprintf "with-%s-to" (string_of_outputs outputs))
-           ; g fn
-           ; sexp_of_t f g r
+      List [ Atom (sprintf "with-%s-to" (Outputs.to_string outputs))
+           ; path fn
+           ; sexp_of_t r
            ]
     | Ignore (outputs, r) ->
-      List [ Atom (sprintf "ignore-%s" (string_of_outputs outputs))
-           ; sexp_of_t f g r
+      List [ Atom (sprintf "ignore-%s" (Outputs.to_string outputs))
+           ; sexp_of_t r
            ]
-    | Progn l -> List (Atom "progn" :: List.map l ~f:(sexp_of_t f g))
-    | Echo x -> List [Atom "echo"; f x]
-    | Cat x -> List [Atom "cat"; g x]
-    | Create_file x -> List [Atom "create-file"; g x]
+    | Progn l -> List (Atom "progn" :: List.map l ~f:sexp_of_t)
+    | Echo x -> List [Atom "echo"; string x]
+    | Cat x -> List [Atom "cat"; path x]
+    | Create_file x -> List [Atom "create-file"; path x]
     | Copy (x, y) ->
-      List [Atom "copy"; g x; g y]
+      List [Atom "copy"; path x; path y]
     | Symlink (x, y) ->
-      List [Atom "symlink"; g x; g y]
+      List [Atom "symlink"; path x; path y]
     | Copy_and_add_line_directive (x, y) ->
-      List [Atom "copy-and-add-line-directive"; g x; g y]
-    | System x -> List [Atom "system"; f x]
-    | Bash   x -> List [Atom "bash"; f x]
-    | Update_file (x, y) -> List [Atom "update-file"; g x; f y]
-    | Rename (x, y) -> List [Atom "rename"; g x; g y]
-    | Remove_tree x -> List [Atom "remove-tree"; g x]
+      List [Atom "copy-and-add-line-directive"; path x; path y]
+    | System x -> List [Atom "system"; string x]
+    | Bash   x -> List [Atom "bash"; string x]
+    | Update_file (x, y) -> List [Atom "update-file"; path x; string y]
+    | Rename (x, y) -> List [Atom "rename"; path x; path y]
+    | Remove_tree x -> List [Atom "remove-tree"; path x]
+end
+
+module type Ast = Action_intf.Ast
+  with type path   := Path.t
+  with type string := String.t
+module rec Ast : Ast = Ast
+
+include Make_ast
+    (Path)
+    (struct
+      type t = string
+      let t = Sexp.Of_sexp.string
+      let sexp_of_t = Sexp.To_sexp.string
+    end)
+    (Ast)
+
+type action = t
+
+module Unexpanded = struct
+  module type Ast = Action_intf.Ast
+    with type path   := String_with_vars.t
+    with type string := String_with_vars.t
+  module rec Ast : Ast = Ast
+
+  include Make_ast(String_with_vars)(String_with_vars)(Ast)
+
+  let t sexp =
+    match sexp with
+    | Atom _ ->
+      of_sexp_errorf sexp
+        "if you meant for this to be executed with bash, write (bash \"...\") instead"
+    | List _ -> t sexp
 
   let rec fold t ~init:acc ~f =
     match t with
@@ -159,99 +188,11 @@ module Ast = struct
     | Rename (x, y) -> f (f acc x) y
     | Remove_tree x -> f acc x
 
-  let fold_one_step t ~init:acc ~f =
-    match t with
-    | Chdir (_, t)
-    | Setenv (_, _, t)
-    | Redirect (_, _, t)
-    | Ignore (_, t) -> f acc t
-    | Progn l -> List.fold_left l ~init:acc ~f
-    | Run _
-    | Echo _
-    | Cat _
-    | Create_file _
-    | Copy _
-    | Symlink _
-    | Copy_and_add_line_directive _
-    | System _
-    | Bash _
-    | Update_file _
-    | Rename _
-    | Remove_tree _ -> acc
-
-  let rec map
-    : 'a 'b 'c 'd. ('a, 'b) t -> f1:('a -> 'c) -> f2:('b -> 'd) -> ('c, 'd) t
-    = fun t ~f1 ~f2 ->
-      match t with
-      | Run (prog, args) ->
-        Run (f2 prog, List.map args ~f:f1)
-      | Chdir (fn, t) ->
-        Chdir (f2 fn, map t ~f1 ~f2)
-      | Setenv (var, value, t) ->
-        Setenv (f1 var, f1 value, map t ~f1 ~f2)
-      | Redirect (outputs, fn, t) ->
-        Redirect (outputs, f2 fn, map t ~f1 ~f2)
-      | Ignore (outputs, t) ->
-        Ignore (outputs, map t ~f1 ~f2)
-      | Progn l -> Progn (List.map l ~f:(fun t -> map t ~f1 ~f2))
-      | Echo x -> Echo (f1 x)
-      | Cat x -> Cat (f2 x)
-      | Create_file x -> Create_file (f2 x)
-      | Copy (x, y) -> Copy (f2 x, f2 y)
-      | Symlink (x, y) ->
-        Symlink (f2 x, f2 y)
-      | Copy_and_add_line_directive (x, y) ->
-        Copy_and_add_line_directive (f2 x, f2 y)
-      | System x -> System (f1 x)
-      | Bash x -> Bash (f1 x)
-      | Update_file (x, y) -> Update_file (f2 x, f1 y)
-      | Rename (x, y) -> Rename (f2 x, f2 y)
-      | Remove_tree x -> Remove_tree (f2 x)
-end
-open Ast
-
-type t = (string, Path.t) Ast.t
-let t = Ast.t string Path.t
-let sexp_of_t = Ast.sexp_of_t Sexp.To_sexp.string Path.sexp_of_t
-
-let updated_files =
-  let rec loop acc t =
-    let acc =
-      match t with
-      | Update_file (fn, _) -> Path.Set.add fn acc
-      | _ -> acc
-    in
-    Ast.fold_one_step t ~init:acc ~f:loop
-  in
-  fun t -> loop Path.Set.empty t
-
-let chdirs =
-  let rec loop acc t =
-    let acc =
-      match t with
-      | Chdir (dir, _) -> Path.Set.add dir acc
-      | _ -> acc
-    in
-    Ast.fold_one_step t ~init:acc ~f:loop
-  in
-  fun t -> loop Path.Set.empty t
-
-module Unexpanded = struct
-  type t = (String_with_vars.t, String_with_vars.t) Ast.t
-  let sexp_of_t = Ast.sexp_of_t String_with_vars.sexp_of_t String_with_vars.sexp_of_t
-
-  let t sexp =
-    match sexp with
-    | Atom _ ->
-      of_sexp_errorf sexp
-        "if you meant for this to be executed with bash, write (bash \"...\") instead"
-    | List _ -> Ast.t String_with_vars.t String_with_vars.t sexp
-
   let fold_vars t ~init ~f =
-    Ast.fold t ~init ~f:(fun acc pat ->
+    fold t ~init ~f:(fun acc pat ->
       String_with_vars.fold ~init:acc pat ~f)
 
-  let rec expand ctx dir t ~f : (string, Path.t) Ast.t =
+  let rec expand ctx dir t ~f : action =
     match t with
     | Run (prog, args) ->
       Run (expand_prog ctx ~dir ~f prog,
@@ -284,6 +225,75 @@ module Unexpanded = struct
     | Remove_tree x ->
       Remove_tree (expand_path ~dir ~f x)
 end
+
+let fold_one_step t ~init:acc ~f =
+  match t with
+  | Chdir (_, t)
+  | Setenv (_, _, t)
+  | Redirect (_, _, t)
+  | Ignore (_, t) -> f acc t
+  | Progn l -> List.fold_left l ~init:acc ~f
+  | Run _
+  | Echo _
+  | Cat _
+  | Create_file _
+  | Copy _
+  | Symlink _
+  | Copy_and_add_line_directive _
+  | System _
+  | Bash _
+  | Update_file _
+  | Rename _
+  | Remove_tree _ -> acc
+
+let rec map t ~fs ~fp =
+    match t with
+    | Run (prog, args) ->
+      Run (fp prog, List.map args ~f:fs)
+    | Chdir (fn, t) ->
+      Chdir (fp fn, map t ~fs ~fp)
+    | Setenv (var, value, t) ->
+      Setenv (fs var, fs value, map t ~fs ~fp)
+    | Redirect (outputs, fn, t) ->
+      Redirect (outputs, fp fn, map t ~fs ~fp)
+    | Ignore (outputs, t) ->
+      Ignore (outputs, map t ~fs ~fp)
+    | Progn l -> Progn (List.map l ~f:(fun t -> map t ~fs ~fp))
+    | Echo x -> Echo (fs x)
+    | Cat x -> Cat (fp x)
+    | Create_file x -> Create_file (fp x)
+    | Copy (x, y) -> Copy (fp x, fp y)
+    | Symlink (x, y) ->
+      Symlink (fp x, fp y)
+    | Copy_and_add_line_directive (x, y) ->
+      Copy_and_add_line_directive (fp x, fp y)
+    | System x -> System (fs x)
+    | Bash x -> Bash (fs x)
+    | Update_file (x, y) -> Update_file (fp x, fs y)
+    | Rename (x, y) -> Rename (fp x, fp y)
+    | Remove_tree x -> Remove_tree (fp x)
+
+let updated_files =
+  let rec loop acc t =
+    let acc =
+      match t with
+      | Update_file (fn, _) -> Path.Set.add fn acc
+      | _ -> acc
+    in
+    fold_one_step t ~init:acc ~f:loop
+  in
+  fun t -> loop Path.Set.empty t
+
+let chdirs =
+  let rec loop acc t =
+    let acc =
+      match t with
+      | Chdir (dir, _) -> Path.Set.add dir acc
+      | _ -> acc
+    in
+    fold_one_step t ~init:acc ~f:loop
+  in
+  fun t -> loop Path.Set.empty t
 
 open Future
 
@@ -421,14 +431,14 @@ let exec ~targets ?context t =
     ~stdout_to:None ~stderr_to:None
 
 let sandbox t ~sandboxed ~deps ~targets =
-  Ast.Progn
-    [ Ast.Progn (List.filter_map deps ~f:(fun path ->
+  Progn
+    [ Progn (List.filter_map deps ~f:(fun path ->
         if Path.is_local path then
           Some (Ast.Symlink (path, sandboxed path))
         else
           None))
-    ; Ast.map t ~f1:(fun x -> x) ~f2:sandboxed
-    ; Ast.Progn (List.filter_map targets ~f:(fun path ->
+    ; map t ~fs:(fun x -> x) ~fp:sandboxed
+    ; Progn (List.filter_map targets ~f:(fun path ->
         if Path.is_local path then
           Some (Ast.Rename (sandboxed path, path))
         else

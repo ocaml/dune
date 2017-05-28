@@ -6,36 +6,12 @@ type var_expansion =
   | Paths of Path.t list
   | Str   of string
 
-module Ast : sig
-  type outputs =
-    | Stdout
-    | Stderr
-    | Outputs (** Both Stdout and Stderr *)
+module Outputs : module type of struct include Action_intf.Outputs end
 
-  type ('a, 'path) t =
-    | Run            of 'path * 'a list
-    | Chdir          of 'path * ('a, 'path) t
-    | Setenv         of 'a * 'a * ('a, 'path) t
-    | Redirect       of outputs * 'path * ('a, 'path) t
-    | Ignore         of outputs * ('a, 'path) t
-    | Progn          of ('a, 'path) t list
-    | Echo           of 'a
-    | Create_file    of 'path
-    | Cat            of 'path
-    | Copy           of 'path * 'path
-    | Symlink        of 'path * 'path
-    | Copy_and_add_line_directive of 'path * 'path
-    | System         of 'a
-    | Bash           of 'a
-    | Update_file    of 'path * 'a
-    | Rename         of 'path * 'path
-    | Remove_tree    of 'path
+include Action_intf.Ast
+  with type path   := Path.t
+  with type string := string
 
-  val t : 'a Sexp.Of_sexp.t -> 'b Sexp.Of_sexp.t -> ('a, 'b) t Sexp.Of_sexp.t
-  val sexp_of_t : 'a Sexp.To_sexp.t -> 'b Sexp.To_sexp.t -> ('a, 'b) t Sexp.To_sexp.t
-end
-
-type t = (string, Path.t) Ast.t
 val t : t Sexp.Of_sexp.t
 val sexp_of_t : t Sexp.To_sexp.t
 
@@ -46,13 +22,17 @@ val updated_files : t -> Path.Set.t
 val chdirs : t -> Path.Set.t
 
 module Unexpanded : sig
-  type desc = t
-  type t = (String_with_vars.t, String_with_vars.t) Ast.t
+  type action = t
+
+  include Action_intf.Ast
+    with type path   := String_with_vars.t
+    with type string := String_with_vars.t
+
   val t : t Sexp.Of_sexp.t
   val sexp_of_t : t Sexp.To_sexp.t
   val fold_vars : t -> init:'a -> f:('a -> Loc.t -> string -> 'a) -> 'a
-  val expand : Context.t -> Path.t -> t -> f:(string -> var_expansion) -> desc
-end with type desc := t
+  val expand : Context.t -> Path.t -> t -> f:(string -> var_expansion) -> action
+end with type action := t
 
 val exec : targets:Path.Set.t -> ?context:Context.t -> t -> unit Future.t
 

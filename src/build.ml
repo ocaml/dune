@@ -207,21 +207,21 @@ let run ~context ?(dir=context.Context.build_dir) ?stdout_to ?(extra_targets=[])
       | None      -> action
       | Some path -> Redirect (Stdout, path, action)
     in
-    Action.Ast.Chdir (dir, action))
+    Action.Chdir (dir, action))
 
 let action ?dir ~targets action =
   Targets targets
   >>^ fun _ ->
   match dir with
   | None -> action
-  | Some dir -> Action.Ast.Chdir (dir, action)
+  | Some dir -> Action.Chdir (dir, action)
 
 let action_dyn ?dir ~targets () =
   Targets targets
   >>^ fun action ->
   match dir with
   | None -> action
-  | Some dir -> Action.Ast.Chdir (dir, action)
+  | Some dir -> Action.Chdir (dir, action)
 
 let update_file fn s =
   action ~targets:[fn] (Update_file (fn, s))
@@ -229,7 +229,7 @@ let update_file fn s =
 let update_file_dyn fn =
   Targets [fn]
   >>^ fun s ->
-  Action.Ast.Update_file (fn, s)
+  Action.Update_file (fn, s)
 
 let copy ~src ~dst =
   path src >>>
@@ -243,8 +243,8 @@ let create_file fn =
   action ~targets:[fn] (Create_file fn)
 
 let remove_tree dir =
-  arr (fun _ -> Action.Ast.Remove_tree dir)
+  arr (fun _ -> Action.Remove_tree dir)
 
 let progn ts =
   all ts >>^ fun actions ->
-  Action.Ast.Progn actions
+  Action.Progn actions

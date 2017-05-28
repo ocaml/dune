@@ -27,7 +27,5 @@ module type Ast = sig
     | Update_file    of path * string
     | Rename         of path * path
     | Remove_tree    of path
-    | Try_run        of path * string list * t
-    | Located_error  of path * int * int * int * string
 end
 

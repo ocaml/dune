@@ -737,6 +737,22 @@ module Do = struct
     { loc = Sexp.Ast.loc sexp
     ; action = Action.Unexpanded.t sexp
     }
+
+  let ml_of_mli names =
+    List.map names ~f:(fun (loc, name) ->
+      let strf fmt = Printf.ksprintf (String_with_vars.of_string ~loc) fmt in
+      let m = String.capitalize_ascii name in
+      { loc
+      ; action =
+          Redirect
+            (Stdout,
+             strf "%s.ml" name,
+             Progn
+               [ Echo (strf "[@@@warning \"-a\"]\nmodule rec %s : sig\n" m)
+               ; Cat  (strf "%s.mli" name)
+               ; Echo (strf "\nend = %s\ninclude %s\n" m m)
+               ])
+      })
 end
 
 module Menhir = struct
@@ -921,6 +937,8 @@ module Stanza = struct
           (fun pat vals sexps ->
              let sexps = Foreach.expand pat vals sexps in
              List.concat_map sexps ~f:(v1 pkgs))
+      ; cstr "ml_of_mli" (list (located string) @> nil)
+          (fun x -> List.map (Do.ml_of_mli x) ~f:(fun x -> Do x))
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]

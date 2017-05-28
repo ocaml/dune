@@ -190,6 +190,9 @@ module Of_sexp = struct
 
   type 'a t = ast -> 'a
 
+  let located f sexp =
+    (Ast.loc sexp, f sexp)
+
   let of_sexp_error sexp str = raise (Loc.Error (Ast.loc sexp, str))
   let of_sexp_errorf sexp fmt = ksprintf (of_sexp_error sexp) fmt
 

@@ -66,6 +66,8 @@ module Of_sexp : sig
   val of_sexp_error  : Ast.t -> string -> _
   val of_sexp_errorf : Ast.t -> ('a, unit, string, 'b) format4 -> 'a
 
+  val located : 'a t -> (Loc.t * 'a) t
+
   (* Record parsing monad *)
   type 'a record_parser
   val return : 'a -> 'a record_parser

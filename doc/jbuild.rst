@@ -336,7 +336,37 @@ Extra flags can be passed to menhir using the ``flags`` flag:
     (menhir
      ((flags (<option1> <option2> ...))
       (modules (<parser1> <parser2> ...))))
-         
+
+ml_of_mli, re_of_rei
+--------------------
+
+``(ml_of_mli (<names>))`` produces rules that generate ``.ml`` files
+from ``.mli`` files, using a hack based on recursive
+modules. ``re_of_rei`` is the equivalent fot reason files.
+
+More precisely, given a stanza ``(ml_of_mli (foo))`` the following
+``.ml`` file is generated:
+
+.. code:: ocaml
+
+    [@@@warning "-a"]
+    module rec Foo : sig
+    (* contents of foo.mli *)
+    end = Foo
+
+If you have a ``.mli`` file containing only type declarations, this
+allows you to automatically produce the corresponding
+implementation.
+
+Note that if the ``.mli`` file does contain a value declaration, the
+compilation of the generated ``.ml`` file will fail with an error
+about recursive module. In particular declaring an exception or
+extension constructor implicitely declares a value. The error won't be
+precide because the compiler doesn't support checking that a mli file
+doesn't contain value declaration. See ``this ticket
+<https://github.com/janestreet/jbuilder/issues/9>``__ for a discussion
+about these issues.
+
 alias
 -----
 

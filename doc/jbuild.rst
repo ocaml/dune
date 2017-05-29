@@ -200,9 +200,12 @@ JavaScript generated using js_of_ocaml.
 
 Note that in case native compilation is not available, ``<name>.exe``
 will in fact be a custom byte-code executable. Custom in the sense of
-``ocamlc -custom``, meaning that it is a native executable that
-embeds the ``ocamlrun`` virtual machine as well as the byte code. As
-such you can always rely on ``<name>.exe`` being available.
+``ocamlc -custom``, meaning that it is a native executable that embeds
+the ``ocamlrun`` virtual machine as well as the byte code. As such you
+can always rely on ``<name>.exe`` being available.
+
+Native compilation is considered not available when there is no
+``ocamlopt`` binary at the same place as where ``ocamlc`` was found.
 
 ``<optional-fields>`` are:
 

@@ -74,3 +74,30 @@ reason:
 
 -  to improve interoperability with build systems that Jbuilder
 -  so that it can be used with merlin
+
+Findlib integration and limitations
+===================================
+
+Jbuilder uses ``META`` files to support external libraries. However, it
+doesn't export the full power of findlib to the user, and especially
+it doesn't let the user specify *predicates*.
+
+The reason for this limitation is that so far they haven't been
+needed, and adding full support for them would complicate things quite
+a lot. In particular, complex ``META`` files are often hand-written and
+the various features they offer are only available once the package is
+installed, which goes against the root ideas jbuilder is built on.
+
+In practice, jbuilder interpret ``META`` files assuming the following
+set of predicates:
+
+- ``mt``: what this means is that using a library that can be used
+  with or without threads with jbuilder will force the threaded
+  version
+
+- ``mt_posix``: forces the use of posix threads rather than VM
+  threads. VM threadws are deprecated and are likely to go away soon
+
+- ``ppx_driver``: when a library acts differently depending on whether
+  it is linked as part of a driver or meant to add a ``-ppx`` argument
+  to the compiler, choose the former behavior

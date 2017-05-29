@@ -15,8 +15,8 @@ In a directory of your choice, write this ``jbuild`` file:
 
     (jbuild_version 1)
 
-    (executables
-     ((names (hello_world))))
+    (executable
+     ((name hello_world)))
 
 This ``hello_world.ml`` file:
 
@@ -41,8 +41,8 @@ In a directory of your choice, write this ``jbuild`` file:
 
     (jbuild_version 1)
 
-    (executables
-     ((names (hello_world))
+    (executable
+     ((name hello_world)
       (libraries (lwt.unix))))
 
 This ``hello_world.ml`` file:
@@ -67,19 +67,19 @@ Write this jbuild:
 .. code:: scheme
 
     (jbuild_version 1)
-    
-    (executables
-     ((names (hello_world))
+
+    (executable
+     ((name hello_world)
       (libraries (core))
       (preprocess (pps (ppx_jane)))
      )
-     
+
 This ``hello_world.ml`` file:
 
 .. code:: ocaml
 
     open Core
-    
+
     let () =
       Sexp.to_string_hum [%sexp ([3;4;5] : int list)]
       |> print_endline
@@ -116,7 +116,7 @@ to the ``(libraries ...)`` field.
 Using cppo
 ==========
 
-Add this field to your ``library`` or ``executables`` stanzas:
+Add this field to your ``library`` or ``executable`` stanzas:
 
 .. code:: scheme
 
@@ -190,8 +190,8 @@ Then create a ``config`` subdirectory and write this ``jbuild``:
 
     (jbuild_version 1)
 
-    (executables
-     ((names (discover))
+    (executable
+     ((name discover)
       (libraries (base stdio configurator))))
 
 as well as this ``discover.ml`` file:

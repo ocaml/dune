@@ -512,7 +512,7 @@ module Library = struct
     ; synopsis                 : string option
     ; install_c_headers        : string list
     ; ppx_runtime_libraries    : string list
-    ; modes                    : Mode.t list
+    ; modes                    : Mode.Dict.Set.t
     ; kind                     : Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
     ; c_names                  : string list
@@ -544,7 +544,7 @@ module Library = struct
        field      "library_flags" (list String_with_vars.t) ~default:[]      >>= fun library_flags            ->
        field_oslu "c_library_flags"                                          >>= fun c_library_flags          ->
        field      "virtual_deps" (list string) ~default:[]                   >>= fun virtual_deps             ->
-       field      "modes" (list Mode.t) ~default:Mode.all                    >>= fun modes                    ->
+       field      "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all         >>= fun modes                    ->
        field      "kind" Kind.t ~default:Kind.Normal                         >>= fun kind                     ->
        field      "wrapped" bool ~default:true                               >>= fun wrapped                  ->
        field_b    "optional"                                                 >>= fun optional                 ->
@@ -623,6 +623,7 @@ module Executables = struct
     { names            : string list
     ; link_executables : bool
     ; link_flags       : string list
+    ; modes            : Mode.Dict.Set.t
     ; buildable        : Buildable.t
     }
 
@@ -630,19 +631,28 @@ module Executables = struct
     Buildable.v1 >>= fun buildable ->
     field   "link_executables"   bool ~default:true >>= fun link_executables ->
     field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
+    map_validate (field "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all)
+      ~f:(fun modes ->
+        if Mode.Dict.Set.is_empty modes then
+          Error "No compilation mode defined."
+        else
+          Ok modes)
+    >>= fun modes ->
     let t =
       { names
       ; link_executables
       ; link_flags
+      ; modes
       ; buildable
       }
     in
     let to_install =
+      let ext = if modes.native then ".exe" else ".bc" in
       List.map2 names public_names
         ~f:(fun name pub ->
           match pub with
           | None -> None
-          | Some pub -> Some ({ Install_conf. src = name ^ ".exe"; dst = Some pub }))
+          | Some pub -> Some ({ Install_conf. src = name ^ ext; dst = Some pub }))
       |> List.filter_map ~f:(fun x -> x)
     in
     match to_install with

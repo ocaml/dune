@@ -306,8 +306,8 @@ module Gen(P : Params) = struct
         in
         let static = stubs_archive lib ~dir in
         let dynamic = dll lib ~dir in
-        if List.mem Mode.Native ~set:lib.modes &&
-           List.mem Mode.Byte   ~set:lib.modes &&
+        if lib.modes.native &&
+           lib.modes.byte   &&
            lib.dynlink
         then begin
           (* If we build for both modes and support dynlink, use a single invocation to
@@ -384,12 +384,13 @@ module Gen(P : Params) = struct
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  let build_exe ~js_of_ocaml ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph ~link_flags =
+  let build_exe ~js_of_ocaml ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
+        ~link_flags ~force_custom_bytecode =
     let exe_ext = Mode.exe_ext mode in
     let mode, link_flags, compiler =
-      match Context.compiler ctx mode with
-      | Some compiler -> (mode, link_flags, compiler)
-      | None          -> (Byte, "-custom" :: link_flags, ctx.ocamlc)
+      match force_custom_bytecode, Context.compiler ctx mode with
+      | false, Some compiler -> (mode, link_flags, compiler)
+      | _                    -> (Byte, "-custom" :: link_flags, ctx.ocamlc)
     in
     let dep_graph = Ml_kind.Dict.get dep_graph Impl in
     let exe = Path.relative dir (name ^ exe_ext) in
@@ -462,7 +463,8 @@ module Gen(P : Params) = struct
     List.iter exes.names ~f:(fun name ->
       List.iter Mode.all ~f:(fun mode ->
         build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~dir ~requires ~name
-          ~mode ~modules ~dep_graph ~link_flags:exes.link_flags));
+          ~mode ~modules ~dep_graph ~link_flags:exes.link_flags
+          ~force_custom_bytecode:(mode = Native && not exes.modes.native)));
     { Merlin.
       requires   = real_requires
     ; flags      = flags.common
@@ -770,8 +772,7 @@ module Gen(P : Params) = struct
       Install.Entry.make section fn
         ?dst:(Option.map sub_dir ~f:(fun d -> sprintf "%s/%s" d (Path.basename fn)))
     in
-    let byte   = List.mem Mode.Byte   ~set:lib.modes in
-    let native = List.mem Mode.Native ~set:lib.modes in
+    let { Mode.Dict. byte; native } = lib.modes in
     let if_ cond l = if cond then l else [] in
     let files =
       let modules =

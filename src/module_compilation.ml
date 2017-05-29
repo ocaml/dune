@@ -88,7 +88,8 @@ let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~dir ~dep_graph
   let src = Module.cm_file m ~dir Cm_kind.Cmo in
   SC.add_rules sctx (Js_of_ocaml_rules.build_cm sctx ~dir ~js_of_ocaml ~src)
 
-let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~dir ~dep_graph ~modules ~requires ~alias_module =
+let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~dir ~dep_graph ~modules ~requires
+      ~alias_module =
   let cmi_requires =
     Build.memoize "cmi library dependencies"
       (requires

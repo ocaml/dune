@@ -205,10 +205,11 @@ the ``ocamlrun`` virtual machine as well as the byte code. As such you
 can always rely on ``<name>.exe`` being available.
 
 Native compilation is considered not available when there is no
-``ocamlopt`` binary at the same place as where ``ocamlc`` was found.
+``ocamlopt`` binary at the same place as where ``ocamlc`` was found,
+or when there is a ``(modes (...))`` field not listing ``native``.
 
 ``<optional-fields>`` are:
-
+0
 -  ``(public_name <public-name>)`` specifies that the executable
    should be installed under that name. It is the same as adding the
    following stanza to your ``jbuild`` file:
@@ -230,6 +231,11 @@ Native compilation is considered not available when there is no
    here will be ignored and cannot be used inside the executable described by
    the current stanza. It is interpreted in the same way as the ``(modules
    ...)`` field of `library`_
+
+- ``(modes (<modes>))`` modes (``byte`` and ``native``) which should be built by
+   default. If the stanza has a ``(public_name ...)`` field and
+   ``native`` is not listed here, the byte-code version will be
+   installed instead.
 
 - ``(preprocess <preprocess-spec>)`` is the same as the ``(preprocess ...)``
    field of `library`_

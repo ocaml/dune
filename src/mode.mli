@@ -28,4 +28,14 @@ module Dict : sig
   val of_func : (mode:mode -> 'a) -> 'a t
 
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
+
+  module Set : sig
+    type nonrec t = bool t
+    val t : t Sexp.Of_sexp.t
+    val all : t
+    val is_empty : t -> bool
+    val to_list : t -> mode list
+    val of_list : mode list -> t
+    val iter : t -> f:(mode -> unit) -> unit
+  end
 end with type mode := t

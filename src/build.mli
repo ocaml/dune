@@ -110,6 +110,7 @@ val symlink : src:Path.t -> dst:Path.t -> (unit, Action.t) t
 
 val create_file : Path.t -> (_, Action.t) t
 val remove_tree : Path.t -> (_, Action.t) t
+val mkdir : Path.t -> (_, Action.t) t
 
 (** Merge a list of actions *)
 val progn : ('a, Action.t) t list -> ('a, Action.t) t

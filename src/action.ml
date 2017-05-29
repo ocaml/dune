@@ -135,6 +135,7 @@ struct
     | Update_file (x, y) -> List [Atom "update-file"; path x; string y]
     | Rename (x, y) -> List [Atom "rename"; path x; path y]
     | Remove_tree x -> List [Atom "remove-tree"; path x]
+    | Mkdir x       -> List [Atom "mkdir"; path x]
 end
 
 module type Ast = Action_intf.Ast
@@ -186,7 +187,8 @@ module Unexpanded = struct
     | Bash x -> f acc x
     | Update_file (x, y) -> f (f acc x) y
     | Rename (x, y) -> f (f acc x) y
-    | Remove_tree x -> f acc x
+    | Remove_tree x
+    | Mkdir x -> f acc x
 
   let fold_vars t ~init ~f =
     fold t ~init ~f:(fun acc pat ->
@@ -224,6 +226,8 @@ module Unexpanded = struct
       Rename (expand_path ~dir ~f x, expand_path ~dir ~f y)
     | Remove_tree x ->
       Remove_tree (expand_path ~dir ~f x)
+    | Mkdir x ->
+      Mkdir (expand_path ~dir ~f x)
 end
 
 let fold_one_step t ~init:acc ~f =
@@ -244,7 +248,8 @@ let fold_one_step t ~init:acc ~f =
   | Bash _
   | Update_file _
   | Rename _
-  | Remove_tree _ -> acc
+  | Remove_tree _
+  | Mkdir _ -> acc
 
 let rec map t ~fs ~fp =
     match t with
@@ -272,6 +277,7 @@ let rec map t ~fs ~fp =
     | Update_file (x, y) -> Update_file (fp x, fs y)
     | Rename (x, y) -> Rename (fp x, fp y)
     | Remove_tree x -> Remove_tree (fp x)
+    | Mkdir x -> Mkdir (fp x)
 
 let updated_files =
   let rec loop acc t =
@@ -395,6 +401,16 @@ let rec exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
   | Remove_tree path ->
     Path.rm_rf path;
     return ()
+  | Mkdir path ->
+    (match Path.kind path with
+     | External _ ->
+       (* CR-someday jdimino: we need to keep locations here *)
+       die "(mkdir ...) is not supported for paths outside of the workspace:\n\
+           \  %a\n"
+         Sexp.pp (List [Atom "mkdir"; Path.sexp_of_t path])
+     | Local path ->
+       Path.Local.mkdir_p path);
+    return ()
 
 and redirect outputs fn t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
   let fn = Path.to_string fn in
@@ -485,6 +501,7 @@ module Infer = struct
       { acc with targets = S.filter acc.targets ~f:(fun fn ->
           not (Path.is_descendant fn ~of_:dir))
       }
+    | Mkdir _ -> acc
 
   let infer t =
     infer { deps = S.empty; targets = S.empty } t

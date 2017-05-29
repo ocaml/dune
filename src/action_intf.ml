@@ -27,5 +27,6 @@ module type Ast = sig
     | Update_file    of path * string
     | Rename         of path * path
     | Remove_tree    of path
+    | Mkdir          of path
 end
 

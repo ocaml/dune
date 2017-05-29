@@ -245,6 +245,9 @@ let create_file fn =
 let remove_tree dir =
   arr (fun _ -> Action.Remove_tree dir)
 
+let mkdir dir =
+  arr (fun _ -> Action.Mkdir dir)
+
 let progn ts =
   all ts >>^ fun actions ->
   Action.Progn actions

@@ -9,17 +9,18 @@ let () = suggest_function := Jbuilder_cmdliner.Cmdliner_suggest.value
 let (>>=) = Future.(>>=)
 
 type common =
-  { concurrency    : int
-  ; debug_dep_path : bool
-  ; debug_findlib  : bool
-  ; dev_mode       : bool
-  ; verbose        : bool
-  ; workspace_file : string option
-  ; root           : string
-  ; target_prefix  : string
-  ; only_packages  : String_set.t option
+  { concurrency     : int
+  ; debug_dep_path  : bool
+  ; debug_findlib   : bool
+  ; dev_mode        : bool
+  ; verbose         : bool
+  ; workspace_file  : string option
+  ; root            : string
+  ; target_prefix   : string
+  ; only_packages   : String_set.t option
+  ; capture_outputs : bool
   ; (* Original arguments for the external-lib-deps hint *)
-    orig_args      : string list
+    orig_args       : string list
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -30,6 +31,7 @@ let set_common c ~targets =
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.dev_mode := c.dev_mode;
   Clflags.verbose := c.verbose;
+  Clflags.capture_outputs := c.capture_outputs;
   Clflags.workspace_root := c.root;
   if c.root <> Filename.current_dir_name then
     Sys.chdir c.root;
@@ -109,6 +111,7 @@ let common =
         debug_findlib
         dev_mode
         verbose
+        no_buffer
         workspace_file
         (root, only_packages, orig)
     =
@@ -129,6 +132,7 @@ let common =
     ; debug_findlib
     ; dev_mode
     ; verbose
+    ; capture_outputs = not no_buffer
     ; workspace_file
     ; root
     ; orig_args
@@ -183,6 +187,23 @@ let common =
          & flag
          & info ["verbose"] ~docs
              ~doc:"Print detailed information about commands being run")
+  in
+  let no_buffer =
+    Arg.(value
+         & flag
+         & info ["no-buffer"] ~docs ~docv:"DIR"
+             ~doc:{|Do not buffer the output of commands executed by jbuilder.
+                    By default jbuilder buffers the output of subcommands, in order
+                    to prevent interleaving when multiple commands are executed
+                    in parallel. However, this can be an issue when debugging
+                    long running tests. With $(b,--no-buffer), commands have direct
+                    access to the terminal. Note that as a result their output won't
+                    be captured in the log file.
+
+                    You should use this option in conjunction with $(b,-j 1),
+                    to avoid interleaving. Additionally you should use
+                    $(b,--verbose) as well, to make sure that commands are printed
+                    before they are being executed.|})
   in
   let workspace_file =
     Arg.(value
@@ -242,6 +263,7 @@ let common =
         $ dfindlib
         $ dev
         $ verbose
+        $ no_buffer
         $ workspace_file
         $ root_and_only_packages
        )

@@ -619,16 +619,17 @@ module Scheduler = struct
           Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
             (Ansi_color.strip_colors_for_stderr command_line);
         let argv = Array.of_list (job.prog :: job.args) in
-        let output_filename, output_fd =
+        let output_filename, stdout_fd, stderr_fd, to_close =
           match job.stdout_to, job.stderr_to with
-          | Terminal, _ | _, Terminal ->
+          | (Terminal, _ | _, Terminal) when !Clflags.capture_outputs ->
             let fn = Temp.create "jbuilder" ".output" in
-            (Some fn, Unix.openfile fn [O_WRONLY; O_SHARE_DELETE] 0)
+            let fd = Unix.openfile fn [O_WRONLY; O_SHARE_DELETE] 0 in
+            (Some fn, fd, fd, Some fd)
           | _ ->
-            (None, Unix.stdin)
+            (None, Unix.stdout, Unix.stderr, None)
         in
-        let stdout, close_stdout = get_std_output job.stdout_to ~default:output_fd in
-        let stderr, close_stderr = get_std_output job.stderr_to ~default:output_fd in
+        let stdout, close_stdout = get_std_output job.stdout_to ~default:stdout_fd in
+        let stderr, close_stderr = get_std_output job.stderr_to ~default:stderr_fd in
         Option.iter job.dir ~f:(fun dir -> Sys.chdir dir);
         let pid =
           match job.env with
@@ -640,7 +641,7 @@ module Scheduler = struct
               Unix.stdin stdout stderr
         in
         Option.iter job.dir ~f:(fun _ -> Sys.chdir cwd);
-        if Option.is_some output_filename then Unix.close output_fd;
+        Option.iter to_close ~f:Unix.close;
         close_std_output close_stdout;
         close_std_output close_stderr;
         Running_jobs.add

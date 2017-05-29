@@ -154,7 +154,7 @@ let strip_colors_for_stderr s =
    colors. Since we support colors in the output of commands, we force it via specific
    environment variables if stderr supports colors. *)
 let setup_env_for_colors = lazy(
-  if Lazy.force stderr_supports_colors then begin
+  if !Clflags.capture_outputs && Lazy.force stderr_supports_colors then begin
     let set var value =
       match Sys.getenv var with
       | exception Not_found -> Unix.putenv var value

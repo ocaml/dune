@@ -16,16 +16,9 @@ executable using ``modules``.
 The next sections describe the format of Jbuilder metadata files.
 
 Note that the Jbuilder metadata format is versioned in order to ensure
-forward compatibility. Jane Street packages use a special
-``jane_street`` version which correspond to a rolling and unstable
-version that follows the internal Jane Street development. You shouldn't
-use this in your project, it is only intended to make the publication of
-Jane Street packages easier.
-
-Except for the special ``jane_street`` version, there is currently only
-one version available, but to be future proof, you should still specify
-it in your ``jbuild`` files. If no version is specified, the latest one
-will be used.
+forward compatibility. There is currently only one version available,
+but to be future proof, you should still specify it in your ``jbuild``
+files. If no version is specified, the latest one will be used.
 
 Metadata format
 ===============

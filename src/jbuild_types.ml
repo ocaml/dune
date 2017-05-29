@@ -11,12 +11,10 @@ open Sexp.Of_sexp
 module Jbuild_version = struct
   type t =
     | V1
-    | Vjs
 
   let t =
     enum
       [ "1", V1
-      ; "jane_street", Vjs
       ]
 
   let latest_stable = V1
@@ -945,7 +943,6 @@ module Stanza = struct
 
   let select : Jbuild_version.t -> Pkgs.t -> t list Sexp.Of_sexp.t = function
     | V1  -> v1
-    | Vjs -> v1
 end
 
 module Stanzas = struct

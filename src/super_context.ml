@@ -550,13 +550,14 @@ module Action = struct
       | Some exp -> exp
       | None ->
         match var_name with
-        | "@" -> Action.Paths targets
+        | "@" -> Action.Paths (targets, Concat)
+        | "!@" -> Action.Paths (targets, Split)
         | "<" ->
           (match deps with
            | []       -> Str "" (* CR-someday jdimino: this should be an error *)
            | dep :: _ -> Path dep)
-        | "^" ->
-          Paths deps
+        | "^" -> Paths (deps, Concat)
+        | "!^" -> Paths (deps, Split)
         | "ROOT" -> Path sctx.context.build_dir
         | var ->
           match expand_var_no_root sctx var with
@@ -574,7 +575,7 @@ module Action = struct
            ~f:(fun ~key:_ ~data:exp acc ->
              match exp with
              | Action.Path p -> Path.Set.add p acc
-             | Paths ps -> Path.Set.union acc (Path.Set.of_list ps)
+             | Paths (ps, _) -> Path.Set.union acc (Path.Set.of_list ps)
              | Not_found | Str _ -> acc))
       >>>
       Build.arr (fun paths -> ((), paths))

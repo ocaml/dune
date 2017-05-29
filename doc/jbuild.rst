@@ -523,9 +523,11 @@ Jbuilder supports the following variables:
 In addition, ``(action ...)`` fields support the following special variables:
 
 - ``@`` expands to the list of target, separated by spaces
+- ``!@`` same as ``@`` but with a split semantic (see below)
 - ``<`` expands to the first dependency, or the empty string if there are no
    dependencies
 -  ``^`` expands to the list of dependencies, separated by spaces
+- ``!^`` same as ``^`` but with a split semantic (see below)
 -  ``path:<path>`` expands to ``<path>``
 - ``exe:<path>`` is the same as ``<path>``, except when cross-compiling, in
    which case it will expand to ``<path>`` from the host build context
@@ -557,6 +559,39 @@ The ``${<kind>:...}`` forms are what allows you to write custom rules that work
 transparently whether things are installed or not.
 
 Note that aliases are ignored by both ``${<}`` and ``${^}``.
+
+Moreover ``${^}`` and ``${@}`` will always expand to a single
+string. For instance in:
+
+.. code:: scheme
+
+    (run foo ${^})
+
+even if there are two dependencies ``a`` and ``b``, the produced
+command will be equivalent to the shell command:
+
+.. code:: shell
+
+    $ foo "a b"
+
+In order to *split* them, you can use ``${!^}`` and ``${!@}``. These
+two forms are only available in ``(run ...)`` forms and can only be
+used as a whole atom, i.e. they can't be used inside a quoted
+atom. Replacing ``${^}`` by ``${!^}`` in the previous example would
+produce a command equivalent to this shell command:
+
+.. code:: shell
+
+    $ foo "a" "b"
+
+You can also use ``${!^}`` as program name, for instance:
+
+.. code:: scheme
+
+    (rule
+     ((targets (result.txt))
+      (deps    (foo.exe (glob_files *.txt)))
+      (action  (run ${!^}))))
 
 Library dependencies
 --------------------

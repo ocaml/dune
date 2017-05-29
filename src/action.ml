@@ -3,10 +3,12 @@ open Sexp.Of_sexp
 
 module Env_var_map = Context.Env_var_map
 
+type split_or_concat = Split | Concat
+
 type var_expansion =
   | Not_found
   | Path  of Path.t
-  | Paths of Path.t list
+  | Paths of Path.t list * split_or_concat
   | Str   of string
 
 let expand_str ~dir ~f template =
@@ -14,8 +16,20 @@ let expand_str ~dir ~f template =
     match f var with
     | Not_found -> None
     | Path path -> Some (Path.reach ~from:dir path)
-    | Paths l -> Some (List.map l ~f:(Path.reach ~from:dir) |> String.concat ~sep:" ")
+    | Paths (l, _) -> Some (List.map l ~f:(Path.reach ~from:dir) |> String.concat ~sep:" ")
     | Str s -> Some s)
+
+let expand_str_split ~dir ~f template =
+  match String_with_vars.just_a_var template with
+  | None -> [expand_str ~dir ~f template]
+  | Some var ->
+    match f var with
+    | Not_found -> [expand_str ~dir ~f template]
+    | Path path -> [Path.reach ~from:dir path]
+    | Str s     -> [s]
+    | Paths (l, Concat) ->
+      [List.map l ~f:(Path.reach ~from:dir) |> String.concat ~sep:" "]
+    | Paths (l, Split) -> List.map l ~f:(Path.reach ~from:dir)
 
 let expand_path ~dir ~f template =
   match String_with_vars.just_a_var template with
@@ -24,9 +38,9 @@ let expand_path ~dir ~f template =
     match f v with
     | Not_found -> expand_str ~dir ~f template |> Path.relative dir
     | Path p
-    | Paths [p] -> p
+    | Paths ([p], _) -> p
     | Str s -> Path.relative dir s
-    | Paths l ->
+    | Paths (l, _) ->
       List.map l ~f:(Path.reach ~from:dir)
       |> String.concat ~sep:" "
       |> Path.relative dir
@@ -41,17 +55,19 @@ let expand_prog ctx ~dir ~f template =
       | None -> Utils.program_not_found ~context:ctx.name s
   in
   match String_with_vars.just_a_var template with
-  | None -> resolve (expand_str ~dir ~f template)
+  | None -> (resolve (expand_str ~dir ~f template), [])
   | Some v ->
     match f v with
-    | Not_found -> resolve (expand_str ~dir ~f template)
+    | Not_found -> (resolve (expand_str ~dir ~f template), [])
     | Path p
-    | Paths [p] -> p
-    | Str s -> resolve s
-    | Paths l ->
-      List.map l ~f:(Path.reach ~from:dir)
-      |> String.concat ~sep:" "
-      |> resolve
+    | Paths ([p], _) -> (p, [])
+    | Str s -> (resolve s, [])
+    | Paths (p :: args, Split) -> (p, List.map args ~f:(Path.reach ~from:dir))
+    | Paths (l, _) ->
+      (List.map l ~f:(Path.reach ~from:dir)
+       |> String.concat ~sep:" "
+       |> resolve,
+       [])
 
 module Outputs = struct
   include Action_intf.Outputs
@@ -197,8 +213,9 @@ module Unexpanded = struct
   let rec expand ctx dir t ~f : action =
     match t with
     | Run (prog, args) ->
-      Run (expand_prog ctx ~dir ~f prog,
-           List.map args ~f:(fun arg -> expand_str ~dir ~f arg))
+      let prog, more_args = expand_prog ctx ~dir ~f prog in
+      Run (prog,
+           more_args @ List.concat_map args ~f:(expand_str_split ~dir ~f))
     | Chdir (fn, t) ->
       let fn = expand_path ~dir ~f fn in
       Chdir (fn, expand ctx fn t ~f)

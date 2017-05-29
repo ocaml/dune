@@ -1,9 +1,11 @@
 open! Import
 
+type split_or_concat = Split | Concat
+
 type var_expansion =
   | Not_found
   | Path  of Path.t
-  | Paths of Path.t list
+  | Paths of Path.t list * split_or_concat
   | Str   of string
 
 module Outputs : module type of struct include Action_intf.Outputs end

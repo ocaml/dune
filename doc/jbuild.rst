@@ -556,6 +556,8 @@ In addition, ``(action ...)`` fields support the following special variables:
 The ``${<kind>:...}`` forms are what allows you to write custom rules that work
 transparently whether things are installed or not.
 
+Note that aliases are ignored by both ``${<}`` and ``${^}``.
+
 Library dependencies
 --------------------
 

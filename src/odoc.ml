@@ -48,6 +48,8 @@ let to_html sctx (m : Module.t) odoc_file ~doc_dir ~odoc ~dir ~includes
      >>>
      Build.progn
        [ Build.remove_tree html_dir
+       ; Build.action (* CR-someday jdimino: this is a mkdir ... *)
+           (Chdir (html_dir, Progn [])) ~targets:[]
        ; Build.run ~context ~dir odoc ~extra_targets:[html_file]
            [ A "html"
            ; Dyn (fun x -> x)

@@ -143,6 +143,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
     SC.Libs.setup_file_deps_alias sctx ~ext:odoc_ext (dir, lib)
       (List.map modules_and_odoc_files ~f:snd);
     let doc_dir = doc_dir ~context in
+    (*
     let modules_and_odoc_files =
       if lib.wrapped then
         let main_module_name = String.capitalize_ascii lib.name in
@@ -150,7 +151,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
           ~f:(fun (m, _) -> m.Module.name = main_module_name)
       else
         modules_and_odoc_files
-    in
+       in*)
     let html_files =
       List.map modules_and_odoc_files ~f:(fun (m, odoc_file) ->
         to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~lib

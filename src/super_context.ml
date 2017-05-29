@@ -396,8 +396,14 @@ module Deps = struct
   open Dep_conf
 
   let dep t ~dir = function
-    | File  s -> Build.path (Path.relative dir (expand_vars t ~dir s))
-    | Alias s -> Build.path (Alias.file (Alias.make ~dir (expand_vars t ~dir s)))
+    | File  s ->
+      let path = Path.relative dir (expand_vars t ~dir s) in
+      Build.path path
+      >>^ fun _ -> [path]
+    | Alias s ->
+      let path = Alias.file (Alias.make ~dir (expand_vars t ~dir s)) in
+      Build.path path
+      >>^ fun _ -> []
     | Glob_files s -> begin
         let path = Path.relative dir (expand_vars t ~dir s) in
         let dir = Path.parent path in
@@ -411,22 +417,11 @@ module Deps = struct
     | Files_recursively_in s ->
       let path = Path.relative dir (expand_vars t ~dir s) in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
+      >>^ Path.Set.elements
 
   let interpret t ~dir l =
-    let rec loop acc = function
-      | [] -> acc
-      | d :: l ->
-        loop (acc >>> dep t ~dir d) l
-    in
-    loop (Build.return ()) l
-
-  let only_plain_file t ~dir = function
-    | File s -> Some (Path.relative dir (expand_vars t ~dir s))
-    | Alias _ -> None
-    | Glob_files _ -> None
-    | Files_recursively_in _ -> None
-
-  let only_plain_files t ~dir l = List.map l ~f:(only_plain_file t ~dir)
+    Build.all (List.map l ~f:(dep t ~dir))
+    >>^ List.concat
 end
 
 module Pkg_version = struct
@@ -550,28 +545,26 @@ module Action = struct
       | _ -> acc)
 
   let expand_var =
-    let dep_exn name = function
-      | Some dep -> dep
-      | None -> die "cannot use ${%s} with files_recursively_in" name
-    in
     fun sctx ~artifacts ~targets ~deps var_name ->
       match String_map.find var_name artifacts with
       | Some exp -> exp
       | None ->
         match var_name with
         | "@" -> Action.Paths targets
-        | "<" -> (match deps with
-          | []        -> Str ""
-          | dep1 :: _ -> Path (dep_exn var_name dep1))
+        | "<" ->
+          (match deps with
+           | []       -> Str "" (* CR-someday jdimino: this should be an error *)
+           | dep :: _ -> Path dep)
         | "^" ->
-          Paths (List.map deps ~f:(dep_exn var_name))
+          Paths deps
         | "ROOT" -> Path sctx.context.build_dir
         | var ->
           match expand_var_no_root sctx var with
           | Some s -> Str s
           | None -> Not_found
 
-  let run sctx t ~dir ~dep_kind ~targets ~deps ~package_context =
+  let run sctx t ~dir ~dep_kind ~targets ~package_context
+    : (Path.t list, Action.t) Build.t =
     let forms = extract_artifacts sctx ~dir ~dep_kind ~package_context t in
     let build =
       Build.record_lib_deps_simple ~dir forms.lib_deps
@@ -584,9 +577,11 @@ module Action = struct
              | Paths ps -> Path.Set.union acc (Path.Set.of_list ps)
              | Not_found | Str _ -> acc))
       >>>
+      Build.arr (fun paths -> ((), paths))
+      >>>
       let vdeps = String_map.bindings forms.vdeps in
-      Build.all (List.map vdeps ~f:snd)
-      >>^ (fun vals ->
+      Build.first (Build.all (List.map vdeps ~f:snd))
+      >>^ (fun (vals, deps) ->
         let artifacts =
           List.fold_left2 vdeps vals ~init:forms.artifacts ~f:(fun acc (var, _) value ->
             String_map.add acc ~key:var ~data:value)
@@ -753,7 +748,10 @@ module PP = struct
      point to the .pp files *)
   let pped_modules sctx ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name
         ~package_context =
-    let preprocessor_deps = Deps.interpret sctx ~dir preprocessor_deps in
+    let preprocessor_deps =
+      Build.memoize "preprocessor deps"
+        (Deps.interpret sctx ~dir preprocessor_deps)
+    in
     String_map.map modules ~f:(fun (m : Module.t) ->
       let m = setup_reason_rules sctx ~dir m in
       match Preprocess_map.find m.name preprocess with
@@ -774,7 +772,6 @@ module PP = struct
                ~dir
                ~dep_kind
                ~targets:[dst]
-               ~deps:[Some src]
                ~package_context))
       | Pps { pps; flags } ->
         let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in

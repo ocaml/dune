@@ -290,7 +290,7 @@ module Build_exec = struct
         let b = exec dyn_deps b x in
         (a, b)
       | Paths _ -> x
-      | Paths_glob _ -> x
+      | Paths_glob state -> get_glob_result_exn state
       | Contents p -> Io.read_file (Path.to_string p)
       | Lines_of p -> Io.lines_of_file (Path.to_string p)
       | Vpath (Vspec.T (fn, kind)) ->

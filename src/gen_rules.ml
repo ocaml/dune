@@ -491,7 +491,6 @@ module Gen(P : Params) = struct
          ~dir
          ~dep_kind:Required
          ~targets
-         ~deps:(SC.Deps.only_plain_files sctx ~dir rule.deps)
          ~package_context)
 
   let alias_rules (alias_conf : Alias_conf.t) ~dir ~package_context =
@@ -527,7 +526,6 @@ module Gen(P : Params) = struct
                ~dir
                ~dep_kind:Required
                ~targets:[]
-               ~deps:(SC.Deps.only_plain_files sctx ~dir alias_conf.deps)
                ~package_context
            ; Build.create_file digest_path
            ])

@@ -115,11 +115,8 @@ end
 
 (** Interpret dependencies written in jbuild files *)
 module Deps : sig
-  val interpret : t -> dir:Path.t -> Dep_conf.t list -> (unit, unit) Build.t
-
-  (** Interpret plain dependencies, replacing other (glob_files, files_recursively_in,
-      ...) by None *)
-  val only_plain_files : t -> dir:Path.t -> Dep_conf.t list -> Path.t option list
+  (** Evaluates to the actual list of dependencies, ignoring aliases *)
+  val interpret : t -> dir:Path.t -> Dep_conf.t list -> (unit, Path.t list) Build.t
 end
 
 (** Interpret "do" actions, for which targes are inferred *)
@@ -133,15 +130,15 @@ end
 
 (** Interpret action written in jbuild files *)
 module Action : sig
+  (** The arrow takes as input the list of actual dependencies *)
   val run
     :  t
     -> Action.Unexpanded.t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
     -> targets:Path.t list
-    -> deps:Path.t option list
     -> package_context:Pkgs.t
-    -> (unit, Action.t) Build.t
+    -> (Path.t list, Action.t) Build.t
 end
 
 (** Preprocessing stuff *)

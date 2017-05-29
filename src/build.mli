@@ -36,8 +36,8 @@ val all : ('a, 'b) t list -> ('a, 'b list) t
 val path  : Path.t      -> ('a, 'a) t
 val paths : Path.t list -> ('a, 'a) t
 val path_set : Path.Set.t -> ('a, 'a) t
-val paths_glob : dir:Path.t -> Re.re -> ('a, 'a) t
-val files_recursively_in : dir:Path.t -> file_tree:File_tree.t -> ('a, 'a) t
+val paths_glob : dir:Path.t -> Re.re -> ('a, Path.t list) t
+val files_recursively_in : dir:Path.t -> file_tree:File_tree.t -> ('a, Path.Set.t) t
 val vpath : 'a Vspec.t  -> (unit, 'a) t
 
 val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
@@ -143,7 +143,7 @@ module Repr : sig
     | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Path.Set.t -> ('a, 'a) t
-    | Paths_glob : Path.t * Re.re -> ('a, 'a) t
+    | Paths_glob : glob_state ref -> ('a, Path.t list) t
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
     | Lines_of : Path.t -> ('a, string list) t
@@ -168,7 +168,12 @@ module Repr : sig
     | Undecided of ('a, 'b) t * ('a, 'b) t
     | Decided   of bool * ('a, 'b) t
 
+  and glob_state =
+    | G_unevaluated of Path.t * Re.re
+    | G_evaluated   of Path.t list
+
   val get_if_file_exists_exn : ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
+  val get_glob_result_exn : glob_state ref -> Path.t list
 end
 
 val repr : ('a, 'b) t -> ('a, 'b) Repr.t

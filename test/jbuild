@@ -13,6 +13,13 @@
 
 (alias
  ((name runtest)
+  (deps ((files_recursively_in workspaces/globs)))
+  (action
+   (chdir workspaces/globs
+    (run ${exe:run.exe} -- ${bin:jbuilder} runtest -j1 --root .)))))
+
+(alias
+ ((name runtest)
   (deps ((files_recursively_in workspaces/github20)))
   (action
    (chdir workspaces/github20

@@ -33,7 +33,7 @@ module Repr = struct
     | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Pset.t -> ('a, 'a) t
-    | Paths_glob : Path.t * Re.re -> ('a, 'a) t
+    | Paths_glob : glob_state ref -> ('a, Path.t list) t
     (* The reference gets decided in Build_interpret.deps *)
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
@@ -59,10 +59,19 @@ module Repr = struct
     | Undecided of ('a, 'b) t * ('a, 'b) t
     | Decided   of bool * ('a, 'b) t
 
+  and glob_state =
+    | G_unevaluated of Path.t * Re.re
+    | G_evaluated   of Path.t list
+
   let get_if_file_exists_exn state =
     match !state with
     | Decided (_, t) -> t
     | Undecided _ -> code_errorf "Build.get_if_file_exists_exn: got undecided"
+
+  let get_glob_result_exn state =
+    match !state with
+    | G_evaluated l -> l
+    | G_unevaluated _ -> code_errorf "Build.get_glob_result_exn: got unevaluated"
 end
 include Repr
 let repr t = t
@@ -124,7 +133,7 @@ let rec all = function
 let path p = Paths (Pset.singleton p)
 let paths ps = Paths (Pset.of_list ps)
 let path_set ps = Paths ps
-let paths_glob ~dir re = Paths_glob (dir, re)
+let paths_glob ~dir re = Paths_glob (ref (G_unevaluated (dir, re)))
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths t
 
@@ -170,7 +179,8 @@ let files_recursively_in ~dir ~file_tree =
     | None -> (Path.root, dir)
     | Some (ctx_dir, src_dir) -> (ctx_dir, src_dir)
   in
-  path_set (File_tree.files_recursively_in file_tree dir ~prefix_with)
+  let paths = File_tree.files_recursively_in file_tree dir ~prefix_with in
+  path_set paths >>^ fun _ -> paths
 
 let store_vfile spec = Store_vfile spec
 

@@ -15,6 +15,7 @@ In a directory of your choice, write this ``jbuild`` file:
 
     (jbuild_version 1)
 
+    ;; This declare the hello_world executable implemented by hello_world.ml
     (executable
      ((name hello_world)))
 

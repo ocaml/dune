@@ -256,3 +256,28 @@ And run the tests with:
 .. code:: bash
 
     jbuilder runtest
+
+Building a custom toplevel
+==========================
+
+A toplevel is simply an executable calling ``Topmain.main ()`` and
+linked with the compiler libraries and ``-linkall``. Moreover,
+currently toplevels can only be built in bytecode.
+
+As a result, write this in your ``jbuild`` file:
+
+.. code:: scheme
+
+    (jbuild_version 1)
+
+    (executable
+     ((name       mytoplevel)
+      (libraries  (compiler-libs.toplevel mylib))
+      (link_flags (-linkall))
+      (modes      (byte))))
+
+And write this in ``mytoplevel.ml``
+
+.. code:: ocaml
+
+    let () = Topmain.main ()

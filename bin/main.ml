@@ -9,18 +9,19 @@ let () = suggest_function := Jbuilder_cmdliner.Cmdliner_suggest.value
 let (>>=) = Future.(>>=)
 
 type common =
-  { concurrency     : int
-  ; debug_dep_path  : bool
-  ; debug_findlib   : bool
-  ; dev_mode        : bool
-  ; verbose         : bool
-  ; workspace_file  : string option
-  ; root            : string
-  ; target_prefix   : string
-  ; only_packages   : String_set.t option
-  ; capture_outputs : bool
+  { concurrency      : int
+  ; debug_dep_path   : bool
+  ; debug_findlib    : bool
+  ; debug_backtraces : bool
+  ; dev_mode         : bool
+  ; verbose          : bool
+  ; workspace_file   : string option
+  ; root             : string
+  ; target_prefix    : string
+  ; only_packages    : String_set.t option
+  ; capture_outputs  : bool
   ; (* Original arguments for the external-lib-deps hint *)
-    orig_args       : string list
+    orig_args        : string list
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -29,6 +30,7 @@ let set_common c ~targets =
   Clflags.concurrency := c.concurrency;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
+  Clflags.debug_backtraces := c.debug_backtraces;
   Clflags.dev_mode := c.dev_mode;
   Clflags.verbose := c.verbose;
   Clflags.capture_outputs := c.capture_outputs;
@@ -109,6 +111,7 @@ let common =
         concurrency
         debug_dep_path
         debug_findlib
+        debug_backtraces
         dev_mode
         verbose
         no_buffer
@@ -130,6 +133,7 @@ let common =
     { concurrency
     ; debug_dep_path
     ; debug_findlib
+    ; debug_backtraces
     ; dev_mode
     ; verbose
     ; capture_outputs = not no_buffer
@@ -175,6 +179,12 @@ let common =
          & flag
          & info ["debug-findlib"] ~docs
              ~doc:{|Debug the findlib sub-system.|})
+  in
+  let dbacktraces =
+    Arg.(value
+         & flag
+         & info ["debug-backtraces"] ~docs
+             ~doc:{|Always print exception backtraces.|})
   in
   let dev =
     Arg.(value
@@ -261,6 +271,7 @@ let common =
         $ concurrency
         $ ddep_path
         $ dfindlib
+        $ dbacktraces
         $ dev
         $ verbose
         $ no_buffer

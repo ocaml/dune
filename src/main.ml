@@ -75,6 +75,7 @@ let external_lib_deps ?log ~packages () =
          ~f:(String_map.filter ~f:(fun name _ ->
            not (String_set.mem name internals))))
 
+(* Return [true] if the backtrace was printed *)
 let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   match exn with
   | Loc.Error (loc, msg) ->
@@ -83,10 +84,12 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
         start = { loc.start with pos_fname = map_fname loc.start.pos_fname }
       }
     in
-    Format.fprintf ppf "%a@{<error>Error@}: %s\n" Loc.print loc msg
-  | Fatal_error "" -> ()
+    Format.fprintf ppf "%a@{<error>Error@}: %s\n" Loc.print loc msg;
+    false
+  | Fatal_error "" -> false
   | Fatal_error msg ->
-    Format.fprintf ppf "%s\n" (String.capitalize_ascii msg)
+    Format.fprintf ppf "%s\n" (String.capitalize_ascii msg);
+    false
   | Findlib.Package_not_available { package; required_by; reason } ->
     Format.fprintf ppf
       "@{<error>Error@}: External library %S %s.\n" package
@@ -114,7 +117,8 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
     Format.fprintf ppf
       "Hint: try: %s\n"
       (List.map !Clflags.external_lib_deps_hint ~f:quote_for_shell
-       |> String.concat ~sep:" ")
+       |> String.concat ~sep:" ");
+    false
   | Findlib.External_dep_conflicts_with_local_lib
       { package; required_by; required_locally_in; defined_locally_in } ->
     Format.fprintf ppf
@@ -127,37 +131,53 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
       (Utils.jbuild_name_in ~dir:(Path.drop_build_context defined_locally_in))
       required_by
       required_by
-      (Utils.jbuild_name_in ~dir:required_locally_in)
+      (Utils.jbuild_name_in ~dir:required_locally_in);
+    false
   | Code_error msg ->
     let bt = Printexc.raw_backtrace_to_string backtrace in
     Format.fprintf ppf "@{<error>Internal error, please report upstream \
                         including the contents of _build/log.@}\n\
                         Description: %s\n\
                         Backtrace:\n\
-                        %s" msg bt
+                        %s" msg bt;
+    true
   | Unix.Unix_error (err, func, fname) ->
     Format.fprintf ppf "@{<error>Error@}: %s: %s: %s\n"
-      func fname (Unix.error_message err)
+      func fname (Unix.error_message err);
+    false
   | _ ->
     let s = Printexc.to_string exn in
     let bt = Printexc.raw_backtrace_to_string backtrace in
     if String.is_prefix s ~prefix:"File \"" then
       Format.fprintf ppf "%s\nBacktrace:\n%s" s bt
     else
-      Format.fprintf ppf "@{<error>Error@}: exception %s\nBacktrace:\n%s" s bt
+      Format.fprintf ppf "@{<error>Error@}: exception %s\nBacktrace:\n%s" s bt;
+    true
 
 let report_error ?map_fname ppf exn =
-  match exn with
-  | Build_system.Build_error.E err ->
-    let module E = Build_system.Build_error in
-    report_error ?map_fname ppf (E.exn err) ~backtrace:(E.backtrace err);
-    if !Clflags.debug_dep_path then
-      Format.fprintf ppf "Dependency path:\n    %s\n"
-        (String.concat ~sep:"\n--> "
-           (List.map (E.dependency_path err) ~f:Utils.describe_target))
-  | exn ->
-    let backtrace = Printexc.get_raw_backtrace () in
-    report_error ?map_fname ppf exn ~backtrace
+  match
+    match exn with
+    | Build_system.Build_error.E err ->
+      let module E = Build_system.Build_error in
+      let backtrace = E.backtrace err in
+      let bt_printed =
+        report_error ?map_fname ppf (E.exn err) ~backtrace:(E.backtrace err)
+      in
+      if !Clflags.debug_dep_path then
+        Format.fprintf ppf "Dependency path:\n    %s\n"
+          (String.concat ~sep:"\n--> "
+             (List.map (E.dependency_path err) ~f:Utils.describe_target));
+      Option.some_if (not bt_printed) backtrace
+    | exn ->
+      let backtrace = Printexc.get_raw_backtrace () in
+      let bt_printed =
+        report_error ?map_fname ppf exn ~backtrace
+      in
+      Option.some_if (not bt_printed) backtrace
+  with
+  | Some bt when !Clflags.debug_backtraces ->
+    Format.fprintf ppf "Backtrace:\n%s" (Printexc.raw_backtrace_to_string bt)
+  | _ -> ()
 
 let ignored_during_bootstrap =
   Path.Set.of_list

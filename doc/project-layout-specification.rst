@@ -20,6 +20,8 @@ forward compatibility. There is currently only one version available,
 but to be future proof, you should still specify it in your ``jbuild``
 files. If no version is specified, the latest one will be used.
 
+.. _metadata-format:
+
 Metadata format
 ===============
 
@@ -28,6 +30,22 @@ syntax, which is very simple. Everything is either an atom or a list.
 The exact specification of S-expressions is described in the
 documentation of the `parsexp <https://github.com/janestreet/parsexp>`__
 library.
+
+In a nutshell, the syntax is as follow:
+
+- atoms that do no contain special characters are simply written as
+  it. For instance: ``foo``, ``bar`` are valid atomic S-expressions
+
+- atoms containing special characters or spaces must be quoted using
+  the syntax ``"..."``: ``"foo bar\n"``
+
+- lists are formed by surrounding a sequence of S-expressions separated
+  by spaces with parentheses: ``(a b (c d))``
+
+- single-line comments are introduced with the ``;`` character and may
+  appear anywhere except in the middle of a quoted atom
+
+- block comment are enclosed by ``#|`` and ``|#`` and can be nested
 
 Note that the format is completely static. However you can do
 meta-programming on jbuilds files by writing them in :ref:`ocaml-syntax`.

@@ -6,8 +6,8 @@ jbuild specification
 its name. They are used to describe libraries, executables, tests, and
 everything Jbuilder needs to know about.
 
-Single-line comments are introduced with the ``;`` character and may appear
-anywhere except in the middle of a string literal.
+The syntax of ``jbuild`` files is described in
+:ref:``metadata-format`` section.
 
 Stanzas
 =======

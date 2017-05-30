@@ -34,7 +34,11 @@ val updated_files : t -> Path.Set.t
 (** Return the list of directories the action chdirs to *)
 val chdirs : t -> Path.Set.t
 
-(** Infer dependencies and targets *)
+(** Infer dependencies and targets.
+
+    This currently doesn't support well (rename ...) and (remove-tree ...). However these
+    are not exposed in the DSL.
+*)
 module Infer : sig
   module Outcome : sig
     type t =

@@ -553,12 +553,7 @@ module Infer = struct
   open Outcome
 
   let ( +@ ) acc fn = { acc with targets = S.add fn acc.targets }
-  let ( +< ) acc fn =
-    if S.mem fn acc.targets then
-      acc
-    else
-      { acc with deps = S.add fn acc.deps }
-  let ( -@ ) acc fn = { acc with targets = S.remove fn acc.targets }
+  let ( +< ) acc fn = { acc with deps    = S.add fn acc.deps    }
 
   let rec infer acc t =
     match t with
@@ -568,7 +563,7 @@ module Infer = struct
     | Cat fn               -> acc +< fn
     | Create_file fn       -> acc +@ fn
     | Update_file (fn, _)  -> acc +@ fn
-    | Rename (src, dst)    -> acc +< src +@ dst -@ src
+    | Rename (src, dst)    -> acc +< src +@ dst
     | Copy (src, dst)
     | Copy_and_add_line_directive (src, dst)
     | Symlink (src, dst) -> acc +< src +@ dst
@@ -578,13 +573,17 @@ module Infer = struct
     | Progn l -> List.fold_left l ~init:acc ~f:infer
     | Echo _
     | System _
-    | Bash _ -> acc
-    | Remove_tree dir ->
-      { acc with targets = S.filter acc.targets ~f:(fun fn ->
-          not (Path.is_descendant fn ~of_:dir))
-      }
+    | Bash _
+    | Remove_tree _
     | Mkdir _ -> acc
 
   let infer t =
-    infer { deps = S.empty; targets = S.empty } t
+    let { deps; targets } = infer { deps = S.empty; targets = S.empty } t in
+    (* A file can be inferred as both a dependency and a target, for instance:
+
+       {[
+         (progn (copy a b) (copy b c))
+       ]}
+    *)
+    { deps = S.diff deps targets; targets }
 end

@@ -140,6 +140,11 @@ let dyn_paths t = Dyn_paths t
 let contents p = Contents p
 let lines_of p = Lines_of p
 
+let strings p =
+  lines_of p
+  >>^ fun l ->
+  List.map l ~f:Scanf.unescaped
+
 let read_sexp p =
   contents p
   >>^ fun s ->

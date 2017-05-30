@@ -1,12 +1,16 @@
 open! Import
 
-type split_or_concat = Split | Concat
+module Var_expansion : sig
+  module Concat_or_split : sig
+    type t =
+      | Concat (* default *)
+      | Split  (* ${!...} *)
+  end
 
-type var_expansion =
-  | Not_found
-  | Path  of Path.t
-  | Paths of Path.t list * split_or_concat
-  | Str   of string
+  type t =
+    | Paths   of Path.t list * Concat_or_split.t
+    | Strings of string list * Concat_or_split.t
+end
 
 module Outputs : module type of struct include Action_intf.Outputs end
 
@@ -45,7 +49,7 @@ module Unexpanded : sig
   val t : t Sexp.Of_sexp.t
   val sexp_of_t : t Sexp.To_sexp.t
   val fold_vars : t -> init:'a -> f:('a -> Loc.t -> string -> 'a) -> 'a
-  val expand : Context.t -> Path.t -> t -> f:(string -> var_expansion) -> action
+  val expand : Context.t -> Path.t -> t -> f:(string -> Var_expansion.t option) -> action
 end with type action := t
 
 val exec : targets:Path.Set.t -> ?context:Context.t -> t -> unit Future.t

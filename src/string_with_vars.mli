@@ -12,6 +12,7 @@ val sexp_of_t : t -> Sexp.t
 val loc : t -> Loc.t
 
 val of_string : loc:Loc.t -> string -> t
+val to_string : t -> string
 val raw : loc:Loc.t -> string -> t
 
 val just_a_var : t -> string option

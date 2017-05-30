@@ -92,14 +92,26 @@ let fold t ~init ~f =
 
 let vars t = fold t ~init:String_set.empty ~f:(fun acc _ x -> String_set.add x acc)
 
+let string_of_var syntax v =
+  match syntax with
+  | Parens -> sprintf "$(%s)" v
+  | Braces -> sprintf "${%s}" v
+
 let expand t ~f =
   List.map t.items ~f:(function
     | Text s -> s
     | Var (syntax, v) ->
       match f v with
       | Some x -> x
-      | None ->
-        match syntax with
-        | Parens -> sprintf "$(%s)" v
-        | Braces -> sprintf "${%s}" v)
+      | None -> string_of_var syntax v)
   |> String.concat ~sep:""
+
+let to_string t =
+  match t.items with
+  (* [to_string is only called from action.ml, always on [t]s of this form *)
+  | [Var (syntax, v)] -> string_of_var syntax v
+  | items ->
+    List.map items ~f:(function
+      | Text s -> s
+      | Var (syntax, v) -> string_of_var syntax v)
+    |> String.concat ~sep:""

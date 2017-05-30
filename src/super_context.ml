@@ -447,18 +447,27 @@ module Pkg_version = struct
     Build.vpath spec
 end
 
+let parse_bang var : Action.Var_expansion.Concat_or_split.t * string =
+  let len = String.length var in
+  if len > 0 && var.[0] = '!' then
+    (Split, String.sub var ~pos:1 ~len:(len - 1))
+  else
+    (Concat, var)
+
 module Do_action = struct
   open Build.O
   module U = Action.Unexpanded
 
   let run t action ~dir =
     let action =
-      Action.Unexpanded.expand t.context dir action ~f:(function
-        | "ROOT" -> Path t.context.build_dir
+      Action.Unexpanded.expand t.context dir action ~f:(fun var ->
+        let cos, var = parse_bang var in
+        match var with
+        | "ROOT" -> Some (Paths ([t.context.build_dir], cos))
         | var ->
           match expand_var_no_root t var with
-          | Some s -> Str s
-          | None -> Not_found)
+          | Some s -> Some (Strings ([s], cos))
+          | None -> None)
     in
     let { Action.Infer.Outcome.deps; targets } = Action.Infer.infer action in
     Build.path_set deps
@@ -472,15 +481,15 @@ module Action = struct
 
   type resolved_forms =
     { (* Mapping from ${...} forms to their resolutions *)
-      artifacts : Action.var_expansion String_map.t
+      artifacts : Action.Var_expansion.t String_map.t
     ; (* Failed resolutions *)
       failures  : fail list
     ; (* All "name" for ${lib:name:...}/${lib-available:name} forms *)
       lib_deps  : Build.lib_deps
-    ; vdeps     : (unit, Action.var_expansion) Build.t String_map.t
+    ; vdeps     : (unit, Action.Var_expansion.t) Build.t String_map.t
     }
 
-  let add_artifact ?lib_dep acc ~var result =
+  let add_artifact ?lib_dep acc ~key result =
     let lib_deps =
       match lib_dep with
       | None -> acc.lib_deps
@@ -489,7 +498,7 @@ module Action = struct
     match result with
     | Ok path ->
       { acc with
-        artifacts = String_map.add acc.artifacts ~key:var ~data:path
+        artifacts = String_map.add acc.artifacts ~key ~data:path
       ; lib_deps
       }
     | Error fail ->
@@ -498,8 +507,11 @@ module Action = struct
       ; lib_deps
       }
 
+  let ok_path   x = Ok (Action.Var_expansion.Paths   ([x], Concat))
+  let ok_string x = Ok (Action.Var_expansion.Strings ([x], Concat))
+
   let map_result = function
-    | Ok x -> Ok (Action.Path x)
+    | Ok x -> ok_path x
     | Error _ as e -> e
 
   let extract_artifacts sctx ~dir ~dep_kind ~package_context t =
@@ -510,59 +522,89 @@ module Action = struct
       ; vdeps     = String_map.empty
       }
     in
-    U.fold_vars t ~init ~f:(fun acc loc var ->
+    U.fold_vars t ~init ~f:(fun acc loc key ->
       let module A = Artifacts in
+      let open Action.Var_expansion in
+      let cos, var = parse_bang key in
       match String.lsplit2 var ~on:':' with
-      | Some ("exe"     , s) -> add_artifact acc ~var (Ok (Path (Path.relative dir s)))
-      | Some ("path"    , s) -> add_artifact acc ~var (Ok (Path (Path.relative dir s)))
+      | Some ("exe"     , s) -> add_artifact acc ~key (ok_path (Path.relative dir s))
+      | Some ("path"    , s) -> add_artifact acc ~key (ok_path (Path.relative dir s))
       | Some ("bin"     , s) ->
-        add_artifact acc ~var (A.binary (artifacts sctx) s |> map_result)
+        add_artifact acc ~key (A.binary (artifacts sctx) s |> map_result)
       | Some ("lib"     , s)
       | Some ("libexec" , s) ->
         let lib_dep, res = A.file_of_lib (artifacts sctx) ~from:dir s in
-        add_artifact acc ~var ~lib_dep:(lib_dep, dep_kind) (map_result res)
+        add_artifact acc ~key ~lib_dep:(lib_dep, dep_kind) (map_result res)
       | Some ("lib-available", lib) ->
-        add_artifact acc ~var ~lib_dep:(lib, Optional)
-          (Ok (Str (string_of_bool (Libs.lib_is_available sctx ~from:dir lib))))
+        add_artifact acc ~key ~lib_dep:(lib, Optional)
+          (ok_string (string_of_bool (Libs.lib_is_available sctx ~from:dir lib)))
       (* CR-someday jdimino: allow this only for (jbuild_version jane_street) *)
       | Some ("findlib" , s) ->
         let lib_dep, res =
           A.file_of_lib (artifacts sctx) ~from:dir s ~use_provides:true
         in
-        add_artifact acc ~var ~lib_dep:(lib_dep, Required) (map_result res)
+        add_artifact acc ~key ~lib_dep:(lib_dep, Required) (map_result res)
       | Some ("version", s) -> begin
           match Pkgs.resolve package_context s with
           | Ok p ->
             let x =
               Pkg_version.read sctx p >>^ function
-              | None -> Action.Str ""
-              | Some s -> Str s
+              | None   -> Strings ([""], Concat)
+              | Some s -> Strings ([s],  Concat)
             in
-            { acc with vdeps = String_map.add acc.vdeps ~key:var ~data:x }
+            { acc with vdeps = String_map.add acc.vdeps ~key ~data:x }
           | Error s ->
             { acc with failures = { fail = fun () -> Loc.fail loc "%s" s } :: acc.failures }
+        end
+      | Some ("read", s) -> begin
+          let path = Path.relative dir s in
+          let data =
+            Build.contents path
+            >>^ fun s -> Strings ([s], cos)
+          in
+          {acc with vdeps = String_map.add acc.vdeps ~key ~data }
+        end
+      | Some ("read-lines", s) -> begin
+          let path = Path.relative dir s in
+          let data =
+            Build.lines_of path
+            >>^ fun l -> Strings (l, cos)
+          in
+          {acc with vdeps = String_map.add acc.vdeps ~key ~data }
+        end
+      | Some ("read-strings", s) -> begin
+          let path = Path.relative dir s in
+          let data =
+            Build.strings path
+            >>^ fun l -> Strings (l, cos)
+          in
+          {acc with vdeps = String_map.add acc.vdeps ~key ~data }
         end
       | _ -> acc)
 
   let expand_var =
     fun sctx ~artifacts ~targets ~deps var_name ->
+      let open Action.Var_expansion in
+      let cos, var_name = parse_bang var_name in
       match String_map.find var_name artifacts with
-      | Some exp -> exp
+      | Some _ as opt -> opt
       | None ->
         match var_name with
-        | "@" -> Action.Paths (targets, Concat)
-        | "!@" -> Action.Paths (targets, Split)
+        | "@"  -> Some (Paths (targets, cos))
         | "<" ->
-          (match deps with
-           | []       -> Str "" (* CR-someday jdimino: this should be an error *)
-           | dep :: _ -> Path dep)
-        | "^" -> Paths (deps, Concat)
-        | "!^" -> Paths (deps, Split)
-        | "ROOT" -> Path sctx.context.build_dir
+          Some
+            (match deps with
+             | [] ->
+               (* CR-someday jdimino: this should be an error *)
+               Strings ([""], cos)
+             | dep :: _ ->
+               Paths ([dep], cos))
+        | "^" -> Some (Paths (deps, cos))
+        | "ROOT" -> Some (Paths ([sctx.context.build_dir], cos))
         | var ->
           match expand_var_no_root sctx var with
-          | Some s -> Str s
-          | None -> Not_found
+          | Some s -> Some (Strings ([s], cos))
+          | None -> None
 
   let run sctx t ~dir ~dep_kind ~targets ~package_context
     : (Path.t list, Action.t) Build.t =
@@ -574,9 +616,9 @@ module Action = struct
         (String_map.fold forms.artifacts ~init:Path.Set.empty
            ~f:(fun ~key:_ ~data:exp acc ->
              match exp with
-             | Action.Path p -> Path.Set.add p acc
-             | Paths (ps, _) -> Path.Set.union acc (Path.Set.of_list ps)
-             | Not_found | Str _ -> acc))
+             | Action.Var_expansion.Paths (ps, _) ->
+               Path.Set.union acc (Path.Set.of_list ps)
+             | Strings _ -> acc))
       >>>
       Build.arr (fun paths -> ((), paths))
       >>>

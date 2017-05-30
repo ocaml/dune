@@ -45,6 +45,9 @@ val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
 val contents : Path.t -> ('a, string) t
 val lines_of : Path.t -> ('a, string list) t
 
+(** Read lines from a file, unescaping each line using the OCaml conventions *)
+val strings : Path.t -> ('a, string list) t
+
 (** Load an S-expression from a file *)
 val read_sexp : Path.t -> (unit, Sexp.Ast.t) t
 

@@ -3,71 +3,99 @@ open Sexp.Of_sexp
 
 module Env_var_map = Context.Env_var_map
 
-type split_or_concat = Split | Concat
+module Var_expansion = struct
+  module Concat_or_split = struct
+    type t =
+      | Concat (* default *)
+      | Split  (* ${!...} *)
+  end
 
-type var_expansion =
-  | Not_found
-  | Path  of Path.t
-  | Paths of Path.t list * split_or_concat
-  | Str   of string
+  open Concat_or_split
 
-let expand_str ~dir ~f template =
-  String_with_vars.expand template ~f:(fun var ->
-    match f var with
-    | Not_found -> None
-    | Path path -> Some (Path.reach ~from:dir path)
-    | Paths (l, _) -> Some (List.map l ~f:(Path.reach ~from:dir) |> String.concat ~sep:" ")
-    | Str s -> Some s)
+  type t =
+    | Paths   of Path.t list * Concat_or_split.t
+    | Strings of string list * Concat_or_split.t
 
-let expand_str_split ~dir ~f template =
-  match String_with_vars.just_a_var template with
-  | None -> [expand_str ~dir ~f template]
-  | Some var ->
-    match f var with
-    | Not_found -> [expand_str ~dir ~f template]
-    | Path path -> [Path.reach ~from:dir path]
-    | Str s     -> [s]
-    | Paths (l, Concat) ->
-      [List.map l ~f:(Path.reach ~from:dir) |> String.concat ~sep:" "]
-    | Paths (l, Split) -> List.map l ~f:(Path.reach ~from:dir)
+  let concat = function
+    | [s] -> s
+    | l -> String.concat ~sep:" " l
 
-let expand_path ~dir ~f template =
-  match String_with_vars.just_a_var template with
-  | None -> expand_str ~dir ~f template |> Path.relative dir
-  | Some v ->
-    match f v with
-    | Not_found -> expand_str ~dir ~f template |> Path.relative dir
-    | Path p
-    | Paths ([p], _) -> p
-    | Str s -> Path.relative dir s
-    | Paths (l, _) ->
-      List.map l ~f:(Path.reach ~from:dir)
-      |> String.concat ~sep:" "
-      |> Path.relative dir
+  let string_of_path ~dir p = Path.reach ~from:dir p
+  let path_of_string ~dir s = Path.relative dir s
 
-let expand_prog ctx ~dir ~f template =
-  let resolve s =
-    if String.contains s '/' then
-      Path.relative dir s
-    else
-      match Context.which ctx s with
-      | Some p -> p
-      | None -> Utils.program_not_found ~context:ctx.name s
-  in
-  match String_with_vars.just_a_var template with
-  | None -> (resolve (expand_str ~dir ~f template), [])
-  | Some v ->
-    match f v with
-    | Not_found -> (resolve (expand_str ~dir ~f template), [])
-    | Path p
-    | Paths ([p], _) -> (p, [])
-    | Str s -> (resolve s, [])
-    | Paths (p :: args, Split) -> (p, List.map args ~f:(Path.reach ~from:dir))
-    | Paths (l, _) ->
-      (List.map l ~f:(Path.reach ~from:dir)
-       |> String.concat ~sep:" "
-       |> resolve,
-       [])
+  let to_strings ~dir = function
+    | Strings (l, Split ) -> l
+    | Strings (l, Concat) -> [concat l]
+    | Paths   (l, Split ) -> List.map l ~f:(string_of_path ~dir)
+    | Paths   (l, Concat) -> [concat (List.map l ~f:(string_of_path ~dir))]
+
+  let to_string ~dir = function
+    | Strings (_, Split) | Paths (_, Split) -> assert false
+    | Strings (l, Concat) -> concat l
+    | Paths   (l, Concat) -> concat (List.map l ~f:(string_of_path ~dir))
+
+  let to_path ~dir = function
+    | Strings (_, Split) | Paths (_, Split) -> assert false
+    | Strings (l, Concat) -> path_of_string ~dir (concat l)
+    | Paths ([p], Concat) -> p
+    | Paths (l,   Concat) ->
+      path_of_string ~dir (concat (List.map l ~f:(string_of_path ~dir)))
+end
+
+module Expand = struct
+  module V = Var_expansion
+  module SW = String_with_vars
+
+  let string ~dir ~f template =
+    SW.expand template ~f:(fun var ->
+      match f var with
+      | None   -> None
+      | Some e -> Some (V.to_string ~dir e))
+
+  let expand ~generic ~special ~dir ~f template =
+    match SW.just_a_var template with
+    | None -> generic ~dir (string ~dir ~f template)
+    | Some var ->
+      match f var with
+      | None   -> generic ~dir (SW.to_string template)
+      | Some e -> special ~dir e
+
+  let strings ~dir ~f template =
+    expand ~dir ~f template
+      ~generic:(fun ~dir:_ x -> [x])
+      ~special:V.to_strings
+
+  let path ~dir ~f template =
+    expand ~dir ~f template
+      ~generic:V.path_of_string
+      ~special:V.to_path
+
+  let prog_and_args ctx ~dir ~f template =
+    let resolve s =
+      if String.contains s '/' then
+        Path.relative dir s
+      else
+        match Context.which ctx s with
+        | Some p -> p
+        | None -> Utils.program_not_found ~context:ctx.name s
+    in
+    expand ~dir ~f template
+      ~generic:(fun ~dir:_ s -> (resolve s, []))
+      ~special:(fun ~dir exp ->
+        match exp with
+        | Paths   ([p], _) -> (p        , [])
+        | Strings ([s], _) -> (resolve s, [])
+        | Paths ([], _) | Strings ([], _) -> (resolve "", [])
+        | Paths (l, Concat) ->
+          (V.path_of_string ~dir (V.concat (List.map l ~f:(V.string_of_path ~dir))),
+           [])
+        | Strings (l, Concat) ->
+          (resolve (V.concat l), l)
+        | Paths (p :: l, Split) ->
+          (p, List.map l ~f:(V.string_of_path ~dir))
+        | Strings (s :: l, Split) ->
+          (resolve s, l))
+end
 
 module Outputs = struct
   include Action_intf.Outputs
@@ -213,38 +241,38 @@ module Unexpanded = struct
   let rec expand ctx dir t ~f : action =
     match t with
     | Run (prog, args) ->
-      let prog, more_args = expand_prog ctx ~dir ~f prog in
+      let prog, more_args = Expand.prog_and_args ctx ~dir ~f prog in
       Run (prog,
-           more_args @ List.concat_map args ~f:(expand_str_split ~dir ~f))
+           more_args @ List.concat_map args ~f:(Expand.strings ~dir ~f))
     | Chdir (fn, t) ->
-      let fn = expand_path ~dir ~f fn in
+      let fn = Expand.path ~dir ~f fn in
       Chdir (fn, expand ctx fn t ~f)
     | Setenv (var, value, t) ->
-      Setenv (expand_str ~dir ~f var, expand_str ~dir ~f value,
+      Setenv (Expand.string ~dir ~f var, Expand.string ~dir ~f value,
               expand ctx dir t ~f)
     | Redirect (outputs, fn, t) ->
-      Redirect (outputs, expand_path ~dir ~f fn, expand ctx dir t ~f)
+      Redirect (outputs, Expand.path ~dir ~f fn, expand ctx dir t ~f)
     | Ignore (outputs, t) ->
       Ignore (outputs, expand ctx dir t ~f)
     | Progn l -> Progn (List.map l ~f:(fun t -> expand ctx dir t ~f))
-    | Echo x -> Echo (expand_str ~dir ~f x)
-    | Cat x -> Cat (expand_path ~dir ~f x)
-    | Create_file x -> Create_file (expand_path ~dir ~f x)
+    | Echo x -> Echo (Expand.string ~dir ~f x)
+    | Cat x -> Cat (Expand.path ~dir ~f x)
+    | Create_file x -> Create_file (Expand.path ~dir ~f x)
     | Copy (x, y) ->
-      Copy (expand_path ~dir ~f x, expand_path ~dir ~f y)
+      Copy (Expand.path ~dir ~f x, Expand.path ~dir ~f y)
     | Symlink (x, y) ->
-      Symlink (expand_path ~dir ~f x, expand_path ~dir ~f y)
+      Symlink (Expand.path ~dir ~f x, Expand.path ~dir ~f y)
     | Copy_and_add_line_directive (x, y) ->
-      Copy_and_add_line_directive (expand_path ~dir ~f x, expand_path ~dir ~f y)
-    | System x -> System (expand_str ~dir ~f x)
-    | Bash x -> Bash (expand_str ~dir ~f x)
-    | Update_file (x, y) -> Update_file (expand_path ~dir ~f x, expand_str ~dir ~f y)
+      Copy_and_add_line_directive (Expand.path ~dir ~f x, Expand.path ~dir ~f y)
+    | System x -> System (Expand.string ~dir ~f x)
+    | Bash x -> Bash (Expand.string ~dir ~f x)
+    | Update_file (x, y) -> Update_file (Expand.path ~dir ~f x, Expand.string ~dir ~f y)
     | Rename (x, y) ->
-      Rename (expand_path ~dir ~f x, expand_path ~dir ~f y)
+      Rename (Expand.path ~dir ~f x, Expand.path ~dir ~f y)
     | Remove_tree x ->
-      Remove_tree (expand_path ~dir ~f x)
+      Remove_tree (Expand.path ~dir ~f x)
     | Mkdir x ->
-      Mkdir (expand_path ~dir ~f x)
+      Mkdir (Expand.path ~dir ~f x)
 end
 
 let fold_one_step t ~init:acc ~f =

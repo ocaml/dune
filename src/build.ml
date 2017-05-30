@@ -215,8 +215,8 @@ let run ~context ?(dir=context.Context.build_dir) ?stdout_to ?(extra_targets=[])
   prog_and_args ~dir prog args
   >>>
   Targets targets
-  >>^  (fun (prog, args) ->
-    let action : Action.t = Run (prog, args) in
+  >>^ (fun (prog, args) ->
+    let action : Action.t = Run (This prog, args) in
     let action =
       match stdout_to with
       | None      -> action

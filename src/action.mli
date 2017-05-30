@@ -14,9 +14,16 @@ end
 
 module Outputs : module type of struct include Action_intf.Outputs end
 
+module Program : sig
+  type t =
+    | This      of Path.t
+    | Not_found of string
+end
+
 include Action_intf.Ast
-  with type path   := Path.t
-  with type string := string
+  with type program := Program.t
+  with type path    := Path.t
+  with type string  := string
 
 val t : t Sexp.Of_sexp.t
 val sexp_of_t : t Sexp.To_sexp.t
@@ -43,8 +50,9 @@ module Unexpanded : sig
   type action = t
 
   include Action_intf.Ast
-    with type path   := String_with_vars.t
-    with type string := String_with_vars.t
+    with type program := String_with_vars.t
+    with type path    := String_with_vars.t
+    with type string  := String_with_vars.t
 
   val t : t Sexp.Of_sexp.t
   val sexp_of_t : t Sexp.To_sexp.t

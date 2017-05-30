@@ -3,6 +3,24 @@ open Sexp.Of_sexp
 
 module Env_var_map = Context.Env_var_map
 
+module Program = struct
+  type t =
+    | This      of Path.t
+    | Not_found of string
+
+  let sexp_of_t = function
+    | This      p -> Path.sexp_of_t p
+    | Not_found s -> List [Atom "not_found"; Atom s]
+
+  let t sexp =
+    match sexp with
+    | Atom _ -> This (Path.t sexp)
+    | List (_, [Atom (_, "not_found"); Atom (_, s)]) -> Not_found s
+    | _ ->
+      Loc.fail (Sexp.Ast.loc sexp)
+        "S-expression of the form <atom> or (not_found <atom>) expected"
+end
+
 module Var_expansion = struct
   module Concat_or_split = struct
     type t =
@@ -73,26 +91,27 @@ module Expand = struct
   let prog_and_args ctx ~dir ~f template =
     let resolve s =
       if String.contains s '/' then
-        Path.relative dir s
+        Program.This (Path.relative dir s)
       else
         match Context.which ctx s with
-        | Some p -> p
-        | None -> Utils.program_not_found ~context:ctx.name s
+        | Some p -> Program.This p
+        | None -> Not_found s
     in
     expand ~dir ~f template
       ~generic:(fun ~dir:_ s -> (resolve s, []))
       ~special:(fun ~dir exp ->
         match exp with
-        | Paths   ([p], _) -> (p        , [])
+        | Paths   ([p], _) -> (This p   , [])
         | Strings ([s], _) -> (resolve s, [])
         | Paths ([], _) | Strings ([], _) -> (resolve "", [])
         | Paths (l, Concat) ->
-          (V.path_of_string ~dir (V.concat (List.map l ~f:(V.string_of_path ~dir))),
+          (Program.This
+             (V.path_of_string ~dir (V.concat (List.map l ~f:(V.string_of_path ~dir)))),
            [])
         | Strings (l, Concat) ->
           (resolve (V.concat l), l)
         | Paths (p :: l, Split) ->
-          (p, List.map l ~f:(V.string_of_path ~dir))
+          (This p, List.map l ~f:(V.string_of_path ~dir))
         | Strings (s :: l, Split) ->
           (resolve s, l))
 end
@@ -113,18 +132,20 @@ module type Sexpable = sig
 end
 
 module Make_ast
-    (Path   : Sexpable)
-    (String : Sexpable)
+    (Program : Sexpable)
+    (Path    : Sexpable)
+    (String  : Sexpable)
     (Ast : Action_intf.Ast
-     with type path   := Path.t
-     with type string := String.t) =
+     with type program := Program.t
+     with type path    := Path.t
+     with type string  := String.t) =
 struct
   include Ast
 
   let rec t sexp =
     let path = Path.t and string = String.t in
     sum
-      [ cstr_rest "run" (path @> nil) string             (fun prog args -> Run (prog, args))
+      [ cstr_rest "run" (Program.t @> nil) string (fun prog args -> Run (prog, args))
       ; cstr "chdir"    (path @> t @> nil)        (fun dn t -> Chdir (dn, t))
       ; cstr "setenv"   (string @> string @> t @> nil)   (fun k v t -> Setenv (k, v, t))
       ; cstr "with-stdout-to"  (path @> t @> nil) (fun fn t -> Redirect (Stdout, fn, t))
@@ -152,7 +173,7 @@ struct
   let rec sexp_of_t : _ -> Sexp.t =
     let path = Path.sexp_of_t and string = String.sexp_of_t in
     function
-    | Run (a, xs) -> List (Atom "run" :: path a :: List.map xs ~f:string)
+    | Run (a, xs) -> List (Atom "run" :: Program.sexp_of_t a :: List.map xs ~f:string)
     | Chdir (a, r) -> List [Atom "chdir" ; path a ; sexp_of_t r]
     | Setenv (k, v, r) -> List [Atom "setenv" ; string k ; string v ; sexp_of_t r]
     | Redirect (outputs, fn, r) ->
@@ -183,11 +204,13 @@ struct
 end
 
 module type Ast = Action_intf.Ast
-  with type path   := Path.t
-  with type string := String.t
+  with type program := Program.t
+  with type path    := Path.t
+  with type string  := String.t
 module rec Ast : Ast = Ast
 
 include Make_ast
+    (Program)
     (Path)
     (struct
       type t = string
@@ -200,11 +223,12 @@ type action = t
 
 module Unexpanded = struct
   module type Ast = Action_intf.Ast
-    with type path   := String_with_vars.t
-    with type string := String_with_vars.t
+    with type program := String_with_vars.t
+    with type path    := String_with_vars.t
+    with type string  := String_with_vars.t
   module rec Ast : Ast = Ast
 
-  include Make_ast(String_with_vars)(String_with_vars)(Ast)
+  include Make_ast(String_with_vars)(String_with_vars)(String_with_vars)(Ast)
 
   let t sexp =
     match sexp with
@@ -298,8 +322,10 @@ let fold_one_step t ~init:acc ~f =
 
 let rec map t ~fs ~fp =
     match t with
-    | Run (prog, args) ->
-      Run (fp prog, List.map args ~f:fs)
+    | Run (This prog, args) ->
+      Run (This (fp prog), List.map args ~f:fs)
+    | Run (Not_found _ as nf, args) ->
+      Run (nf, List.map args ~f:fs)
     | Chdir (fn, t) ->
       Chdir (fp fn, map t ~fs ~fp)
     | Setenv (var, value, t) ->
@@ -352,28 +378,37 @@ let get_std_output : _ -> Future.std_output_to = function
   | None          -> Terminal
   | Some (fn, oc) -> Opened_file { filename = fn; tail = false; desc = Channel oc }
 
-let run ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to prog args =
+type exec_context =
+  { context : Context.t option
+  ; purpose : Future.purpose
+  ; env     : string array
+  }
+
+let run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
   let stdout_to = get_std_output stdout_to in
   let stderr_to = get_std_output stderr_to in
-  let env = Context.extend_env ~vars:env_extra ~env in
-  Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to ~stderr_to ~purpose
+  let env = Context.extend_env ~vars:env_extra ~env:ectx.env in
+  Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to ~stderr_to
+    ~purpose:ectx.purpose
     (Path.reach_for_running ~from:dir prog) args
 
-let rec exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
+let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   match t with
-  | Run (prog, args) ->
-    run ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to prog args
+  | Run (This prog, args) ->
+    run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args
+  | Run (Not_found prog, _) ->
+    Utils.program_not_found prog ?context:(Option.map ectx.context ~f:(fun c -> c.name))
   | Chdir (dir, t) ->
-    exec t ~purpose ~env ~env_extra ~stdout_to ~stderr_to ~dir
+    exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
   | Setenv (var, value, t) ->
-    exec t ~purpose ~dir ~env ~stdout_to ~stderr_to
+    exec t ~ectx ~dir ~stdout_to ~stderr_to
       ~env_extra:(Env_var_map.add env_extra ~key:var ~data:value)
   | Redirect (outputs, fn, t) ->
-    redirect ~purpose outputs fn t ~dir ~env ~env_extra ~stdout_to ~stderr_to
+    redirect ~ectx ~dir outputs fn t ~env_extra ~stdout_to ~stderr_to
   | Ignore (outputs, t) ->
-    redirect ~purpose outputs Config.dev_null t ~dir ~env ~env_extra ~stdout_to ~stderr_to
+    redirect ~ectx ~dir outputs Config.dev_null t ~env_extra ~stdout_to ~stderr_to
   | Progn l ->
-    exec_list l ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to
+    exec_list l ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
   | Echo str ->
     return
       (match stdout_to with
@@ -428,9 +463,9 @@ let rec exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
     let path, arg =
       Utils.system_shell_exn ~needed_to:"interpret (system ...) actions"
     in
-    run ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to path [arg; cmd]
+    run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to path [arg; cmd]
   | Bash cmd ->
-    run ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to
+    run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
       (Utils.bash_exn ~needed_to:"interpret (bash ...) actions")
       ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
   | Update_file (fn, s) ->
@@ -457,7 +492,7 @@ let rec exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
        Path.Local.mkdir_p path);
     return ()
 
-and redirect outputs fn t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
+and redirect outputs fn t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   let fn = Path.to_string fn in
   let oc = Io.open_out fn in
   let out = Some (fn, oc) in
@@ -467,18 +502,18 @@ and redirect outputs fn t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
     | Stderr -> (stdout_to, out)
     | Outputs -> (out, out)
   in
-  exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to >>| fun () ->
+  exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to >>| fun () ->
   close_out oc
 
-and exec_list l ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
+and exec_list l ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   match l with
   | [] ->
     Future.return ()
   | [t] ->
-    exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to
+    exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
   | t :: rest ->
-    exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to >>= fun () ->
-    exec_list rest ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to
+    exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to >>= fun () ->
+    exec_list rest ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
 
 let exec ~targets ?context t =
   let env =
@@ -488,7 +523,8 @@ let exec ~targets ?context t =
   in
   let targets = Path.Set.elements targets in
   let purpose = Future.Build_job targets in
-  exec t ~purpose ~dir:Path.root ~env ~env_extra:Env_var_map.empty
+  let ectx = { purpose; context; env } in
+  exec t ~ectx ~dir:Path.root ~env_extra:Env_var_map.empty
     ~stdout_to:None ~stderr_to:None
 
 let sandbox t ~sandboxed ~deps ~targets =
@@ -526,12 +562,13 @@ module Infer = struct
 
   let rec infer acc t =
     match t with
-    | Run (prog, _)       -> acc +< prog
-    | Redirect (_, fn, t) -> infer (acc +@ fn) t
-    | Cat fn              -> acc +< fn
-    | Create_file fn      -> acc +@ fn
-    | Update_file (fn, _) -> acc +@ fn
-    | Rename (src, dst)   -> acc +< src +@ dst -@ src
+    | Run (This prog, _)   -> acc +< prog
+    | Run (Not_found _, _) -> acc
+    | Redirect (_, fn, t)  -> infer (acc +@ fn) t
+    | Cat fn               -> acc +< fn
+    | Create_file fn       -> acc +@ fn
+    | Update_file (fn, _)  -> acc +@ fn
+    | Rename (src, dst)    -> acc +< src +@ dst -@ src
     | Copy (src, dst)
     | Copy_and_add_line_directive (src, dst)
     | Symlink (src, dst) -> acc +< src +@ dst

@@ -6,11 +6,12 @@ module Outputs = struct
 end
 
 module type Ast = sig
+  type program
   type path
   type string
 
   type t =
-    | Run            of path * string list
+    | Run            of program * string list
     | Chdir          of path * t
     | Setenv         of string * string * t
     | Redirect       of Outputs.t * path * t

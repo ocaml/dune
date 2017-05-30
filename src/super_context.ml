@@ -163,6 +163,18 @@ let create
       | None   -> "make"
       | Some p -> Path.to_string p
     in
+    let (ocaml_release, ocaml_patch, ocaml_revision) =
+      let last_dot = String.rindex context.version '.' in
+      let len = String.length context.version in
+      let plus = String.index context.version '+' in
+      let f ~len n =
+        let pos = succ n in
+        String.sub context.version ~pos ~len:(len - pos)
+      in
+      String.sub context.version ~pos:0 ~len:last_dot,
+      Option.value_map plus ~default:"" ~f:(f ~len),
+      f ~len:(Option.value plus ~default:len) last_dot
+    in
     [ "-verbose"       , "" (*"-verbose";*)
     ; "CPP"            , sprintf "%s %s -E" context.c_compiler context.ocamlc_cflags
     ; "PA_CPP"         , sprintf "%s %s -undef -traditional -x c -E" context.c_compiler
@@ -174,6 +186,9 @@ let create
     ; "OCAMLC"         , Path.to_string context.ocamlc
     ; "OCAMLOPT"       , Path.to_string ocamlopt
     ; "ocaml_version"  , context.version
+    ; "ocaml_release"  , ocaml_release
+    ; "ocaml_patch"    , ocaml_patch
+    ; "ocaml_revision" , ocaml_revision
     ; "ocaml_where"    , Path.to_string context.stdlib_dir
     ; "ARCH_SIXTYFOUR" , string_of_bool context.arch_sixtyfour
     ; "MAKE"           , make

@@ -529,6 +529,12 @@ Jbuilder supports the following variables:
 -  ``OCAMLOPT`` is the ``ocamlopt`` binary
 -  ``ocaml_version`` is the version of the compiler used in the
    current build context
+-  ``ocaml_release`` is the major and minor version of the compiler used in the
+   current build context (e.g. ``4.04``)
+-  ``ocaml_patch`` is the additional-info portion of the version string of the
+   compiler used in the current build context (e.g. ``dev8-2017-03-20``)
+-  ``ocaml_revision`` is the patch-level/revision number of the compiler used in
+   the current build context (e.g. ``1`` for ``4.04.1``)
 -  ``ocaml_where`` is the output of ``ocamlc -where``
 -  ``ARCH_SIXTYFOUR`` is ``true`` if using a compiler targeting a
    64 bit architecture and ``false`` otherwise

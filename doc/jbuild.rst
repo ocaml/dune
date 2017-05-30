@@ -431,8 +431,9 @@ install
 The ``install`` stanza is what lets you describe what Jbuilder should install,
 either when running ``jbuilder install`` or through opam.
 
-Libraries don't need an ``install`` stanza to be installed, just a
-``public_name`` field. Everything else needs an ``install`` stanza.
+Libraries and executables don't need an ``install`` stanza to be
+installed, just a ``public_name`` field. Everything else needs an
+``install`` stanza.
 
 The syntax is as follows:
 
@@ -460,7 +461,20 @@ manual. The following sections are available:
 -  ``man``
 -  ``misc``
 
-=<files>= is the list of files to install.
+``<files>`` is the list of files to install. Each element in the list
+must be either a literal filename or a S-expression of the form:
+
+.. code:: scheme
+
+    (<filename> as <destination>)
+
+where ``<destination>`` describe how the file will be installed. For
+instance, to install a file ``mylib.el`` as
+``emacs/site-lisp/mylib.el`` in the ``share_root`` section:
+
+    (install
+      ((section share_root)
+       (files   ((mylib.el as emacs/site-lisp/mylib.el)))))
 
 ``<optional-fields>`` are:
 

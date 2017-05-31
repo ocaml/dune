@@ -860,18 +860,7 @@ module Gen(P : Params) = struct
       SC.add_rule sctx (Build.symlink ~src:entry.src ~dst);
       { entry with src = dst })
 
-  let install_file package_path package =
-    let entries =
-      List.concat_map (SC.stanzas_to_consider_for_install sctx) ~f:(fun (dir, stanza) ->
-        match stanza with
-        | Library ({ public = Some { package = p; sub_dir; _ }; _ } as lib)
-          when p.name = package ->
-          lib_install_files ~dir ~sub_dir lib
-        | Install { section; files; package = p } when p.name = package ->
-          List.map files ~f:(fun { Install_conf. src; dst } ->
-            Install.Entry.make section (Path.relative dir src) ?dst)
-        | _ -> [])
-    in
+  let install_file package_path package entries =
     let entries =
       let files = SC.sources_and_targets_known_so_far sctx ~src_path:Path.root in
       String_set.fold files ~init:entries ~f:(fun fn acc ->
@@ -906,8 +895,23 @@ module Gen(P : Params) = struct
        >>>
        Build.update_file_dyn fn)
 
-  let () = String_map.iter (SC.packages sctx) ~f:(fun ~key:_ ~data:pkg ->
-    install_file pkg.Package.path pkg.name)
+  let () =
+    let entries_per_package =
+      List.concat_map (SC.stanzas_to_consider_for_install sctx)
+        ~f:(fun (dir, stanza) ->
+          match stanza with
+          | Library ({ public = Some { package; sub_dir; _ }; _ } as lib) ->
+            List.map (lib_install_files ~dir ~sub_dir lib) ~f:(fun x ->
+              package.name, x)
+          | Install { section; files; package}->
+            List.map files ~f:(fun { Install_conf. src; dst } ->
+              (package.name, Install.Entry.make section (Path.relative dir src) ?dst))
+          | _ -> [])
+      |> String_map.of_alist_multi
+    in
+    String_map.iter (SC.packages sctx) ~f:(fun ~key:_ ~data:(pkg : Package.t) ->
+      let stanzas = String_map.find_default pkg.name entries_per_package ~default:[] in
+      install_file pkg.path pkg.name stanzas)
 
   let () =
     let is_default = Path.basename ctx.build_dir = "default" in

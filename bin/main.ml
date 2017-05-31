@@ -775,7 +775,7 @@ let exec =
          let real_prog = Path.to_string real_prog     in
          let env       = Context.env_for_exec context in
          if Sys.win32 then
-           Future.run ~env Strict real_prog (prog :: args)
+           Future.run ~env Strict real_prog args
          else
            Unix.execve real_prog (Array.of_list (prog :: args)) env
       )

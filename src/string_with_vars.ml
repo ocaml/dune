@@ -119,7 +119,7 @@ let expand t ~f =
 let concat_rev = function
   | [] -> ""
   | [s] -> s
-  | l -> String.concat (List.rev l) ~sep:" "
+  | l -> String.concat (List.rev l) ~sep:""
 
 let partial_expand t ~f =
   let commit_text acc_text acc =

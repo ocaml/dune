@@ -820,6 +820,7 @@ module PP = struct
             (preprocessor_deps
              >>>
              Build.path src
+             >>^ (fun _ -> [src])
              >>>
              Action.run sctx
                (Redirect

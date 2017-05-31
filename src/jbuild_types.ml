@@ -140,8 +140,6 @@ end = struct
   let t = string
 end
 
-module Raw_command = Raw_string ()
-
 module Pp = struct
   include Raw_string ()
 

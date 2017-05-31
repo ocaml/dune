@@ -297,6 +297,45 @@ currently don't support patterns, such as a rule to produce ``%.y``
 from ``%.x`` for any given ``%``. This might be supported in the
 future.
 
+do (inferred rules)
+-------------------
+
+When using the action DSL (see `User actions`_), it is most of the
+time obvious what are the dependencies and targets.
+
+For instance:
+
+.. code:: scheme
+
+    (rule
+      ((targets (b)
+       (deps    (a)
+       (action  (copy ${<} ${@}))))))
+
+In this example it is obvious by inspecting the action what the
+dependencies and targets are. For this reason Jbuilder provides a
+simpler way to define rules where Jbuilder infers dependencies and
+targets for you. This is available through the ``do`` stanza:
+
+.. code:: scheme
+
+    (do <action>)
+
+For instance:
+
+.. code:: scheme
+
+    (do (copy a b))
+
+Note that in Jbuilder, targets must always be known
+statically. Especially, this mean that Jbuilder must be able to
+statically determine all targets. For instance, this ``(do ...)``
+stanza is rejected by Jbuilder:
+
+.. code:: scheme
+
+    (do (copy a b.${read:file}))
+
 ocamllex
 --------
 

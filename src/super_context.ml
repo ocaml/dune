@@ -613,6 +613,14 @@ module Action = struct
         { deps; targets = Pset.union targets targets_written_by_user }
     in
     let targets = Pset.elements targets in
+    List.iter targets ~f:(fun target ->
+      if Path.parent target <> dir then
+        Loc.fail (Loc.in_file (Utils.jbuild_name_in ~dir))
+          "A rule in this jbuild has targets in a different directory \
+           than the current one, this is not allowed by Jbuilder at the moment:\n%s"
+          (List.map targets ~f:(fun target ->
+             sprintf "- %s" (Utils.describe_target target))
+           |> String.concat ~sep:"\n"));
     let build =
       Build.record_lib_deps_simple ~dir forms.lib_deps
       >>>

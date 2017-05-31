@@ -210,6 +210,13 @@ module Unexpanded = struct
         "if you meant for this to be executed with bash, write (bash \"...\") instead"
     | List _ -> t sexp
 
+  let check_mkdir loc path =
+    if not (Path.is_local path) then
+      Loc.fail loc
+        "(mkdir ...) is not supported for paths outside of the workspace:\n\
+        \  %a\n"
+        Sexp.pp (List [Atom "mkdir"; Path.sexp_of_t path])
+
   module Partial = struct
     module type Past = Action_intf.Ast
       with type program = (Program.t, String_with_vars.t) either
@@ -292,7 +299,12 @@ module Unexpanded = struct
       | Remove_tree x ->
         Remove_tree (E.path ~dir ~f x)
       | Mkdir x ->
-        Mkdir (E.path ~dir ~f x)
+        match x with
+        | Inl path -> Mkdir path
+        | Inr tmpl ->
+          let path = E.path ~dir ~f x in
+          check_mkdir (SW.loc tmpl) path;
+          Mkdir path
   end
 
   module E = struct
@@ -435,7 +447,11 @@ module Unexpanded = struct
     | Remove_tree x ->
       Remove_tree (E.path ~dir ~f x)
     | Mkdir x ->
-      Mkdir (E.path ~dir ~f x)
+      let res = E.path ~dir ~f x in
+      (match res with
+       | Inl path -> check_mkdir (SW.loc x) path
+       | Inr _    -> ());
+      Mkdir res
 end
 
 let fold_one_step t ~init:acc ~f =
@@ -623,10 +639,10 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   | Mkdir path ->
     (match Path.kind path with
      | External _ ->
-       (* CR-someday jdimino: we need to keep locations here *)
-       die "(mkdir ...) is not supported for paths outside of the workspace:\n\
-           \  %a\n"
-         Sexp.pp (List [Atom "mkdir"; Path.sexp_of_t path])
+       (* Internally we make sure never to do that, and [Unexpanded.*expand] check that *)
+       Sexp.code_error
+         "(mkdir ...) is not supported for paths outside of the workspace"
+         [ "mkdir", Path.sexp_of_t path ]
      | Local path ->
        Path.Local.mkdir_p path);
     return ()
@@ -760,7 +776,7 @@ module Infer = struct
   let ( +@? ) acc fn =
     match fn with
     | Inl fn -> { acc with targets = S.add fn acc.targets }
-    | Inr _  -> die "cannot determine target"
+    | Inr sw -> Loc.fail (SW.loc sw) "Cannot determine this target statically."
 
   let rec partial_with_all_targets acc (t : Unexpanded.Partial.t) =
     match t with

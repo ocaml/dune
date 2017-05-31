@@ -16,9 +16,12 @@ val to_string : t -> string
 val raw : loc:Loc.t -> string -> t
 
 val just_a_var : t -> string option
+val just_text : t -> string option
 
 val vars : t -> String_set.t
 
 val fold : t -> init:'a -> f:('a -> Loc.t -> string -> 'a) -> 'a
+val iter : t -> f:(Loc.t -> string -> unit) -> unit
 
-val expand : t -> f:(string -> string option) -> string
+val expand : t -> f:(Loc.t -> string -> string option) -> string
+val partial_expand : t -> f:(Loc.t -> string -> string option) -> (string, t) either

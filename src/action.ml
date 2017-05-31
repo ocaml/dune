@@ -9,7 +9,7 @@ module Program = struct
     | Not_found of string
 
   let sexp_of_t = function
-    | This      p -> Path.sexp_of_t p
+    | This p -> Path.sexp_of_t p
     | Not_found s -> List [Atom "not_found"; Atom s]
 
   let t sexp =
@@ -19,6 +19,16 @@ module Program = struct
     | _ ->
       Loc.fail (Sexp.Ast.loc sexp)
         "S-expression of the form <atom> or (not_found <atom>) expected"
+
+  let resolve ctx ~dir s =
+    if s = "" then
+      Not_found ""
+    else if String.contains s '/' then
+      This (Path.relative dir s)
+    else
+      match Context.which ctx s with
+      | Some p -> This p
+      | None -> Not_found s
 end
 
 module Var_expansion = struct
@@ -58,63 +68,28 @@ module Var_expansion = struct
     | Paths ([p], Concat) -> p
     | Paths (l,   Concat) ->
       path_of_string ~dir (concat (List.map l ~f:(string_of_path ~dir)))
+
+  let to_prog_and_args ctx ~dir exp : Program.t * string list =
+    let resolve = Program.resolve in
+    match exp with
+    | Paths   ([p], _) -> (This p, [])
+    | Strings ([s], _) -> (resolve ctx ~dir s, [])
+    | Paths ([], _) | Strings ([], _) -> (Not_found "", [])
+    | Paths (l, Concat) ->
+      (This
+         (path_of_string ~dir
+            (concat (List.map l ~f:(string_of_path ~dir)))),
+       [])
+    | Strings (l, Concat) ->
+      (resolve ~dir ctx (concat l), l)
+    | Paths (p :: l, Split) ->
+      (This p, List.map l ~f:(string_of_path ~dir))
+    | Strings (s :: l, Split) ->
+      (resolve ~dir ctx s, l)
 end
 
-module Expand = struct
-  module V = Var_expansion
-  module SW = String_with_vars
-
-  let string ~dir ~f template =
-    SW.expand template ~f:(fun var ->
-      match f var with
-      | None   -> None
-      | Some e -> Some (V.to_string ~dir e))
-
-  let expand ~generic ~special ~dir ~f template =
-    match SW.just_a_var template with
-    | None -> generic ~dir (string ~dir ~f template)
-    | Some var ->
-      match f var with
-      | None   -> generic ~dir (SW.to_string template)
-      | Some e -> special ~dir e
-
-  let strings ~dir ~f template =
-    expand ~dir ~f template
-      ~generic:(fun ~dir:_ x -> [x])
-      ~special:V.to_strings
-
-  let path ~dir ~f template =
-    expand ~dir ~f template
-      ~generic:V.path_of_string
-      ~special:V.to_path
-
-  let prog_and_args ctx ~dir ~f template =
-    let resolve s =
-      if String.contains s '/' then
-        Program.This (Path.relative dir s)
-      else
-        match Context.which ctx s with
-        | Some p -> Program.This p
-        | None -> Not_found s
-    in
-    expand ~dir ~f template
-      ~generic:(fun ~dir:_ s -> (resolve s, []))
-      ~special:(fun ~dir exp ->
-        match exp with
-        | Paths   ([p], _) -> (This p   , [])
-        | Strings ([s], _) -> (resolve s, [])
-        | Paths ([], _) | Strings ([], _) -> (resolve "", [])
-        | Paths (l, Concat) ->
-          (Program.This
-             (V.path_of_string ~dir (V.concat (List.map l ~f:(V.string_of_path ~dir)))),
-           [])
-        | Strings (l, Concat) ->
-          (resolve (V.concat l), l)
-        | Paths (p :: l, Split) ->
-          (This p, List.map l ~f:(V.string_of_path ~dir))
-        | Strings (s :: l, Split) ->
-          (resolve s, l))
-end
+module VE = Var_expansion
+module SW = String_with_vars
 
 module Outputs = struct
   include Action_intf.Outputs
@@ -204,9 +179,9 @@ struct
 end
 
 module type Ast = Action_intf.Ast
-  with type program := Program.t
-  with type path    := Path.t
-  with type string  := String.t
+  with type program = Program.t
+  with type path    = Path.t
+  with type string  = String.t
 module rec Ast : Ast = Ast
 
 include Make_ast
@@ -219,16 +194,14 @@ include Make_ast
     end)
     (Ast)
 
-type action = t
-
 module Unexpanded = struct
-  module type Ast = Action_intf.Ast
-    with type program := String_with_vars.t
-    with type path    := String_with_vars.t
-    with type string  := String_with_vars.t
-  module rec Ast : Ast = Ast
+  module type Uast = Action_intf.Ast
+    with type program = String_with_vars.t
+    with type path    = String_with_vars.t
+    with type string  = String_with_vars.t
+  module rec Uast : Uast = Uast
 
-  include Make_ast(String_with_vars)(String_with_vars)(String_with_vars)(Ast)
+  include Make_ast(String_with_vars)(String_with_vars)(String_with_vars)(Uast)
 
   let t sexp =
     match sexp with
@@ -237,66 +210,232 @@ module Unexpanded = struct
         "if you meant for this to be executed with bash, write (bash \"...\") instead"
     | List _ -> t sexp
 
-  let rec fold t ~init:acc ~f =
-    match t with
-    | Run (prog, args) -> List.fold_left args ~init:(f acc prog) ~f
-    | Chdir (fn, t) -> fold t ~init:(f acc fn) ~f
-    | Setenv (var, value, t) -> fold t ~init:(f (f acc var) value) ~f
-    | Redirect (_, fn, t) -> fold t ~init:(f acc fn) ~f
-    | Ignore (_, t) -> fold t ~init:acc ~f
-    | Progn l -> List.fold_left l ~init:acc ~f:(fun init t -> fold t ~init ~f)
-    | Echo x -> f acc x
-    | Cat x -> f acc x
-    | Create_file x -> f acc x
-    | Copy (x, y) -> f (f acc x) y
-    | Symlink (x, y) -> f (f acc x) y
-    | Copy_and_add_line_directive (x, y) -> f (f acc x) y
-    | System x -> f acc x
-    | Bash x -> f acc x
-    | Update_file (x, y) -> f (f acc x) y
-    | Rename (x, y) -> f (f acc x) y
-    | Remove_tree x
-    | Mkdir x -> f acc x
+  module Partial = struct
+    module type Past = Action_intf.Ast
+      with type program = (Program.t, String_with_vars.t) either
+      with type path    = (Path.t   , String_with_vars.t) either
+      with type string  = (string   , String_with_vars.t) either
+    module rec Past : Past = Past
 
-  let fold_vars t ~init ~f =
-    fold t ~init ~f:(fun acc pat ->
-      String_with_vars.fold ~init:acc pat ~f)
+    include Past
 
-  let rec expand ctx dir t ~f : action =
+    module E = struct
+      let string ~dir ~f = function
+        | Inl x -> x
+        | Inr template ->
+          SW.expand template ~f:(fun loc var ->
+            match f loc var with
+            | None   -> None
+            | Some e -> Some (VE.to_string ~dir e))
+
+      let expand ~generic ~special ~map ~dir ~f = function
+        | Inl x -> map x
+        | Inr template as x ->
+          match SW.just_a_var template with
+          | None -> generic ~dir (string ~dir ~f x)
+          | Some var ->
+            match f (SW.loc template) var with
+            | None   -> generic ~dir (SW.to_string template)
+            | Some e -> special ~dir e
+      [@@inlined always]
+
+      let strings ~dir ~f x =
+        expand ~dir ~f x
+          ~generic:(fun ~dir:_ x -> [x])
+          ~special:VE.to_strings
+          ~map:(fun x -> [x])
+
+      let path ~dir ~f x =
+        expand ~dir ~f x
+          ~generic:VE.path_of_string
+          ~special:VE.to_path
+          ~map:(fun x -> x)
+
+      let prog_and_args ctx ~dir ~f x =
+        expand ~dir ~f x
+          ~generic:(fun ~dir:_ s -> (Program.resolve ctx ~dir s, []))
+          ~special:(VE.to_prog_and_args ctx)
+          ~map:(fun x -> (x, []))
+    end
+
+    let rec expand ctx dir t ~f : Ast.t =
+      match t with
+      | Run (prog, args) ->
+        let args = List.concat_map args ~f:(E.strings ~dir ~f) in
+        let prog, more_args = E.prog_and_args ctx ~dir ~f prog in
+        Run (prog, more_args @ args)
+      | Chdir (fn, t) ->
+        let fn = E.path ~dir ~f fn in
+        Chdir (fn, expand ctx fn t ~f)
+      | Setenv (var, value, t) ->
+        Setenv (E.string ~dir ~f var, E.string ~dir ~f value,
+                expand ctx dir t ~f)
+      | Redirect (outputs, fn, t) ->
+        Redirect (outputs, E.path ~dir ~f fn, expand ctx dir t ~f)
+      | Ignore (outputs, t) ->
+        Ignore (outputs, expand ctx dir t ~f)
+      | Progn l -> Progn (List.map l ~f:(fun t -> expand ctx dir t ~f))
+      | Echo x -> Echo (E.string ~dir ~f x)
+      | Cat x -> Cat (E.path ~dir ~f x)
+      | Create_file x -> Create_file (E.path ~dir ~f x)
+      | Copy (x, y) ->
+        Copy (E.path ~dir ~f x, E.path ~dir ~f y)
+      | Symlink (x, y) ->
+        Symlink (E.path ~dir ~f x, E.path ~dir ~f y)
+      | Copy_and_add_line_directive (x, y) ->
+        Copy_and_add_line_directive (E.path ~dir ~f x, E.path ~dir ~f y)
+      | System x -> System (E.string ~dir ~f x)
+      | Bash x -> Bash (E.string ~dir ~f x)
+      | Update_file (x, y) -> Update_file (E.path ~dir ~f x, E.string ~dir ~f y)
+      | Rename (x, y) ->
+        Rename (E.path ~dir ~f x, E.path ~dir ~f y)
+      | Remove_tree x ->
+        Remove_tree (E.path ~dir ~f x)
+      | Mkdir x ->
+        Mkdir (E.path ~dir ~f x)
+  end
+
+  module E = struct
+    let string ~dir ~f template =
+      SW.partial_expand template ~f:(fun loc var ->
+        match f loc var with
+        | None   -> None
+        | Some e -> Some (VE.to_string ~dir e))
+
+    let expand ~generic ~special ~dir ~f template =
+      match SW.just_a_var template with
+      | None -> begin
+          match string ~dir ~f template with
+          | Inl x -> Inl (generic ~dir x)
+          | Inr _ as x -> x
+        end
+      | Some var ->
+        match f (SW.loc template) var with
+        | None   -> Inr template
+        | Some e -> Inl (special ~dir e)
+
+    let strings ~dir ~f x =
+      expand ~dir ~f x
+        ~generic:(fun ~dir:_ x -> [x])
+        ~special:VE.to_strings
+
+    let path ~dir ~f x =
+      expand ~dir ~f x
+        ~generic:VE.path_of_string
+        ~special:VE.to_path
+
+    let prog_and_args ctx ~dir ~f x =
+      expand ~dir ~f x
+        ~generic:(fun ~dir s -> (Program.resolve ctx ~dir s, []))
+        ~special:(VE.to_prog_and_args ctx)
+
+    let simple x =
+      match SW.just_text x with
+      | Some s -> Inl s
+      | None   -> Inr x
+  end
+
+  (* Like [partial_expand] except we keep everything as a template. This is for when we
+     can't determine a chdir statically *)
+  let rec simple_expand t ~f : Partial.t =
     match t with
     | Run (prog, args) ->
-      let prog, more_args = Expand.prog_and_args ctx ~dir ~f prog in
-      Run (prog,
-           more_args @ List.concat_map args ~f:(Expand.strings ~dir ~f))
+      SW.iter prog ~f;
+      List.iter args ~f:(SW.iter ~f);
+      Run (Inr prog, List.map args ~f:E.simple)
     | Chdir (fn, t) ->
-      let fn = Expand.path ~dir ~f fn in
-      Chdir (fn, expand ctx fn t ~f)
+      SW.iter fn ~f;
+      Chdir (Inr fn, simple_expand t ~f)
     | Setenv (var, value, t) ->
-      Setenv (Expand.string ~dir ~f var, Expand.string ~dir ~f value,
-              expand ctx dir t ~f)
+      SW.iter var ~f;
+      SW.iter value ~f;
+      Setenv (E.simple var, E.simple value, simple_expand t  ~f)
     | Redirect (outputs, fn, t) ->
-      Redirect (outputs, Expand.path ~dir ~f fn, expand ctx dir t ~f)
+      SW.iter fn ~f;
+      Redirect (outputs, Inr fn, simple_expand t ~f)
     | Ignore (outputs, t) ->
-      Ignore (outputs, expand ctx dir t ~f)
-    | Progn l -> Progn (List.map l ~f:(fun t -> expand ctx dir t ~f))
-    | Echo x -> Echo (Expand.string ~dir ~f x)
-    | Cat x -> Cat (Expand.path ~dir ~f x)
-    | Create_file x -> Create_file (Expand.path ~dir ~f x)
+      Ignore (outputs, simple_expand t ~f)
+    | Progn l -> Progn (List.map l ~f:(simple_expand ~f))
+    | Echo x -> SW.iter x ~f; Echo (E.simple x)
+    | Cat x -> SW.iter x ~f; Cat (Inr x)
+    | Create_file x -> SW.iter x ~f; Create_file (Inr x)
     | Copy (x, y) ->
-      Copy (Expand.path ~dir ~f x, Expand.path ~dir ~f y)
-    | Symlink (x, y) ->
-      Symlink (Expand.path ~dir ~f x, Expand.path ~dir ~f y)
+      SW.iter x ~f;
+      SW.iter y ~f;
+      Copy (Inr x, Inr y)
     | Copy_and_add_line_directive (x, y) ->
-      Copy_and_add_line_directive (Expand.path ~dir ~f x, Expand.path ~dir ~f y)
-    | System x -> System (Expand.string ~dir ~f x)
-    | Bash x -> Bash (Expand.string ~dir ~f x)
-    | Update_file (x, y) -> Update_file (Expand.path ~dir ~f x, Expand.string ~dir ~f y)
+      SW.iter x ~f;
+      SW.iter y ~f;
+      Copy_and_add_line_directive (Inr x, Inr y)
+    | Symlink (x, y) ->
+      SW.iter x ~f;
+      SW.iter y ~f;
+      Symlink (Inr x, Inr y)
     | Rename (x, y) ->
-      Rename (Expand.path ~dir ~f x, Expand.path ~dir ~f y)
+      SW.iter x ~f;
+      SW.iter y ~f;
+      Rename (Inr x, Inr y)
+    | System x -> SW.iter x ~f; System (E.simple x)
+    | Bash x -> SW.iter x ~f; Bash (E.simple x)
+    | Update_file (x, y) ->
+      SW.iter x ~f;
+      SW.iter y ~f;
+      Update_file (Inr x, E.simple y)
+    | Remove_tree x -> SW.iter x ~f; Remove_tree (Inr x)
+    | Mkdir x -> SW.iter x ~f; Mkdir (Inr x)
+
+  let rec partial_expand ctx dir t ~f : Partial.t =
+    match t with
+    | Run (prog, args) ->
+      let args =
+        List.concat_map args ~f:(fun arg ->
+          match E.strings ~dir ~f arg with
+          | Inl args -> List.map args ~f:(fun x -> Inl x)
+          | Inr _ as x -> [x])
+      in
+      begin
+        match E.prog_and_args ctx ~dir ~f prog with
+        | Inl (prog, more_args) ->
+          let more_args = List.map more_args ~f:(fun x -> Inl x) in
+          Run (Inl prog, more_args @ args)
+        | Inr _ as prog ->
+          Run (prog, args)
+      end
+    | Chdir (fn, t) -> begin
+        let res = E.path ~dir ~f fn in
+        match res with
+        | Inl dir ->
+          Chdir (res, partial_expand ctx dir t ~f)
+        | Inr _ ->
+          let f loc x = ignore (f loc x : _ option) in
+          Chdir (res, simple_expand t ~f)
+      end
+    | Setenv (var, value, t) ->
+      Setenv (E.string ~dir ~f var, E.string ~dir ~f value,
+              partial_expand ctx dir t ~f)
+    | Redirect (outputs, fn, t) ->
+      Redirect (outputs, E.path ~dir ~f fn, partial_expand ctx dir t ~f)
+    | Ignore (outputs, t) ->
+      Ignore (outputs, partial_expand ctx dir t ~f)
+    | Progn l -> Progn (List.map l ~f:(fun t -> partial_expand ctx dir t ~f))
+    | Echo x -> Echo (E.string ~dir ~f x)
+    | Cat x -> Cat (E.path ~dir ~f x)
+    | Create_file x -> Create_file (E.path ~dir ~f x)
+    | Copy (x, y) ->
+      Copy (E.path ~dir ~f x, E.path ~dir ~f y)
+    | Symlink (x, y) ->
+      Symlink (E.path ~dir ~f x, E.path ~dir ~f y)
+    | Copy_and_add_line_directive (x, y) ->
+      Copy_and_add_line_directive (E.path ~dir ~f x, E.path ~dir ~f y)
+    | System x -> System (E.string ~dir ~f x)
+    | Bash x -> Bash (E.string ~dir ~f x)
+    | Update_file (x, y) -> Update_file (E.path ~dir ~f x, E.string ~dir ~f y)
+    | Rename (x, y) ->
+      Rename (E.path ~dir ~f x, E.path ~dir ~f y)
     | Remove_tree x ->
-      Remove_tree (Expand.path ~dir ~f x)
+      Remove_tree (E.path ~dir ~f x)
     | Mkdir x ->
-      Mkdir (Expand.path ~dir ~f x)
+      Mkdir (E.path ~dir ~f x)
 end
 
 let fold_one_step t ~init:acc ~f =
@@ -585,5 +724,73 @@ module Infer = struct
          (progn (copy a b) (copy b c))
        ]}
     *)
+    { deps = S.diff deps targets; targets }
+
+  let ( +@? ) acc fn =
+    match fn with
+    | Inl fn -> { acc with targets = S.add fn acc.targets }
+    | Inr _  -> acc
+  let ( +<? ) acc fn =
+    match fn with
+    | Inl fn -> { acc with deps    = S.add fn acc.deps    }
+    | Inr _  -> acc
+
+  let rec partial acc (t : Unexpanded.Partial.t) =
+    match t with
+    | Run (Inl (This prog), _)   -> acc +< prog
+    | Run (_, _) -> acc
+    | Redirect (_, fn, t)  -> partial (acc +@? fn) t
+    | Cat fn               -> acc +<? fn
+    | Create_file fn       -> acc +@? fn
+    | Update_file (fn, _)  -> acc +@? fn
+    | Rename (src, dst)    -> acc +<? src +@? dst
+    | Copy (src, dst)
+    | Copy_and_add_line_directive (src, dst)
+    | Symlink (src, dst) -> acc +<? src +@? dst
+    | Chdir (_, t)
+    | Setenv (_, _, t)
+    | Ignore (_, t) -> partial acc t
+    | Progn l -> List.fold_left l ~init:acc ~f:partial
+    | Echo _
+    | System _
+    | Bash _
+    | Remove_tree _
+    | Mkdir _ -> acc
+
+  let ( +@? ) acc fn =
+    match fn with
+    | Inl fn -> { acc with targets = S.add fn acc.targets }
+    | Inr _  -> die "cannot determine target"
+
+  let rec partial_with_all_targets acc (t : Unexpanded.Partial.t) =
+    match t with
+    | Run (Inl (This prog), _)   -> acc +< prog
+    | Run (_, _) -> acc
+    | Redirect (_, fn, t)  -> partial_with_all_targets (acc +@? fn) t
+    | Cat fn               -> acc +<? fn
+    | Create_file fn       -> acc +@? fn
+    | Update_file (fn, _)  -> acc +@? fn
+    | Rename (src, dst)    -> acc +<? src +@? dst
+    | Copy (src, dst)
+    | Copy_and_add_line_directive (src, dst)
+    | Symlink (src, dst) -> acc +<? src +@? dst
+    | Chdir (_, t)
+    | Setenv (_, _, t)
+    | Ignore (_, t) -> partial_with_all_targets acc t
+    | Progn l -> List.fold_left l ~init:acc ~f:partial_with_all_targets
+    | Echo _
+    | System _
+    | Bash _
+    | Remove_tree _
+    | Mkdir _ -> acc
+
+  let partial ~all_targets t =
+    let acc = { deps = S.empty; targets = S.empty } in
+    let { deps; targets } =
+      if all_targets then
+        partial_with_all_targets acc t
+      else
+        partial acc t
+    in
     { deps = S.diff deps targets; targets }
 end

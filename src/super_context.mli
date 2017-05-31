@@ -119,24 +119,19 @@ module Deps : sig
   val interpret : t -> dir:Path.t -> Dep_conf.t list -> (unit, Path.t list) Build.t
 end
 
-(** Interpret "do" actions, for which targes are inferred *)
-module Do_action : sig
-  val run
-    :  t
-    -> Action.Unexpanded.t
-    -> dir:Path.t
-    -> (unit, Action.t) Build.t
-end
-
 (** Interpret action written in jbuild files *)
 module Action : sig
+  type targets =
+    | Static of Path.t list
+    | Infer
+
   (** The arrow takes as input the list of actual dependencies *)
   val run
     :  t
     -> Action.Unexpanded.t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
-    -> targets:Path.t list
+    -> targets:targets
     -> package_context:Pkgs.t
     -> (Path.t list, Action.t) Build.t
 end

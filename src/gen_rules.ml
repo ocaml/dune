@@ -476,9 +476,17 @@ module Gen(P : Params) = struct
      | User rules                                                      |
      +-----------------------------------------------------------------+ *)
 
-  let do_rule (conf : Do.t) ~dir =
+  let do_rule (conf : Do.t) ~dir ~package_context =
     SC.add_rule sctx
-      (SC.Do_action.run sctx conf.action ~dir)
+      (Build.return []
+       >>>
+       SC.Action.run
+         sctx
+         conf.action
+         ~dir
+         ~dep_kind:Required
+         ~targets:Infer
+         ~package_context)
 
   let user_rule (rule : Rule.t) ~dir ~package_context =
     let targets = List.map rule.targets ~f:(Path.relative dir) in
@@ -490,7 +498,7 @@ module Gen(P : Params) = struct
          rule.action
          ~dir
          ~dep_kind:Required
-         ~targets
+         ~targets:(Static targets)
          ~package_context)
 
   let alias_rules (alias_conf : Alias_conf.t) ~dir ~package_context =
@@ -525,7 +533,7 @@ module Gen(P : Params) = struct
                action
                ~dir
                ~dep_kind:Required
-               ~targets:[]
+               ~targets:(Static [])
                ~package_context
            ; Build.create_file digest_path
            ])
@@ -604,7 +612,7 @@ module Gen(P : Params) = struct
       let dir = ctx_dir in
       match (stanza : Stanza.t) with
       | Rule         rule  -> user_rule   rule  ~dir ~package_context
-      | Do           conf  -> do_rule     conf  ~dir
+      | Do           conf  -> do_rule     conf  ~dir ~package_context
       | Alias        alias -> alias_rules alias ~dir ~package_context
       | Library _ | Executables _ | Provides _ | Install _ -> ());
     let files = lazy (

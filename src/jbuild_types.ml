@@ -909,7 +909,7 @@ module Foreach = struct
         | Error (dup, _, _) ->
           Loc.fail loc "variable %s appears twice in this pattern" dup
       in
-      expand_sexps (fun v -> String_map.find v env) sexps)
+      expand_sexps (fun _loc v -> String_map.find v env) sexps)
 end
 
 module Stanza = struct

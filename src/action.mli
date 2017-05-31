@@ -34,6 +34,49 @@ val updated_files : t -> Path.Set.t
 (** Return the list of directories the action chdirs to *)
 val chdirs : t -> Path.Set.t
 
+module Unexpanded : sig
+  type action = t
+
+  include Action_intf.Ast
+    with type program := String_with_vars.t
+    with type path    := String_with_vars.t
+    with type string  := String_with_vars.t
+
+  val t : t Sexp.Of_sexp.t
+  val sexp_of_t : t Sexp.To_sexp.t
+
+  module Partial : sig
+    include Action_intf.Ast
+      with type program = (Program.t, String_with_vars.t) either
+      with type path    = (Path.t   , String_with_vars.t) either
+      with type string  = (string   , String_with_vars.t) either
+
+    val expand
+      :  Context.t
+      -> Path.t
+      -> t
+      -> f:(Loc.t -> String.t -> Var_expansion.t option)
+      -> action
+  end
+
+  val partial_expand
+    :  Context.t
+    -> Path.t
+    -> t
+    -> f:(Loc.t -> string -> Var_expansion.t option)
+    -> Partial.t
+end with type action := t
+
+val exec : targets:Path.Set.t -> ?context:Context.t -> t -> unit Future.t
+
+(* Return a sandboxed version of an action *)
+val sandbox
+  :  t
+  -> sandboxed:(Path.t -> Path.t)
+  -> deps:Path.t list
+  -> targets:Path.t list
+  -> t
+
 (** Infer dependencies and targets.
 
     This currently doesn't support well (rename ...) and (remove-tree ...). However these
@@ -48,28 +91,7 @@ module Infer : sig
   end
 
   val infer : t -> Outcome.t
+
+  (** If [all_targets] is [true] and a target cannot be determined statically, fail *)
+  val partial : all_targets:bool -> Unexpanded.Partial.t -> Outcome.t
 end
-
-module Unexpanded : sig
-  type action = t
-
-  include Action_intf.Ast
-    with type program := String_with_vars.t
-    with type path    := String_with_vars.t
-    with type string  := String_with_vars.t
-
-  val t : t Sexp.Of_sexp.t
-  val sexp_of_t : t Sexp.To_sexp.t
-  val fold_vars : t -> init:'a -> f:('a -> Loc.t -> string -> 'a) -> 'a
-  val expand : Context.t -> Path.t -> t -> f:(string -> Var_expansion.t option) -> action
-end with type action := t
-
-val exec : targets:Path.Set.t -> ?context:Context.t -> t -> unit Future.t
-
-(* Return a sandboxed version of an action *)
-val sandbox
-  :  t
-  -> sandboxed:(Path.t -> Path.t)
-  -> deps:Path.t list
-  -> targets:Path.t list
-  -> t

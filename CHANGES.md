@@ -3,14 +3,47 @@
 
 - Add a `clean` subcommand (Richard Davison, #89)
 
-- Fix a bug where `jbuild rules` would crash instead of reporting a
-  proper build error
+- Add support for generating API documentation with odoc (#74)
 
 - Don't use unix in the bootstrap script, to avoid surprises with
   Cygwin
 
+- Improve the behavior of `jbuilder exec` on Windows
+
+- Add a `--no-buffer` option to see the output of commands in
+  real-time. Should only be used with `-j1`
+
+- Inside user actions, `${^}` now includes files matches by
+  `(glob_files ...)` or `(file_recursively_in ...)`
+
+- When the dependencies and targets of a rule can be inferred
+  automatically, you no longer need to write them: `(rule (copy a b))`
+
+- Inside `(run ...)`, `${xxx}` forms that expands to lists can now be
+  split across multiple arguments by adding a `!`: `${!xxx}`. For
+  instance: `(run foo ${!^})`
+
+- Add support for using the contents of a file inside an action:
+  - `${read:<file>}`
+  - `${read-lines:<file>}`
+  - `${read-strings:<file>}` (same as `read-lines` but lines are
+    escaped using OCaml convention)
+
+- When exiting prematurely because of a failure, if there are other
+  background processes running and they fail, print these failures
+
+- Better support for mli only modules. To support a module without a
+  `.ml` file, one must now write `(mli_of_ml (foo))`. This rule is
+  still added automatically with a warning for backward compatibility
+
+- Fix a bug where `jbuild rules` would crash instead of reporting a
+  proper build error
+
 - Fix a race condition in future.ml causing jbuilder to crash on
   Windows in some cases (#101)
+
+- Fix a bug causing ppx rewriter to not work properly when using
+  multiple build contexts (#100)
 
 - Fix .merlin generation: projects in the same workspace are added to
   merlin's source path, so "locate" works on them.

@@ -822,8 +822,8 @@ doesn't use the ``-pp`` or ``-ppx`` of the various OCaml tools.
    .. code:: scheme
 
        (preprocess (per_file
-                      ((command "./pp.sh X=1" (foo bar)))
-                      ((command "./pp.sh X=2" (baz)))))
+                      (((action (run ./pp.sh X=1 ${<})) (foo bar)))
+                      (((action (run ./pp.sh X=2 ${<})) (baz)))))
 
 Dependency specification
 ------------------------

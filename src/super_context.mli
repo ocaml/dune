@@ -39,7 +39,6 @@ val artifacts : t -> Artifacts.t
 val stanzas_to_consider_for_install : t -> (Path.t * Stanza.t) list
 val cxx_flags : t -> string list
 
-val expand_var_no_root : t -> string -> string option
 val expand_vars : t -> dir:Path.t -> String_with_vars.t -> string
 
 val add_rule : t -> ?sandbox:bool -> (unit, Action.t) Build.t -> unit

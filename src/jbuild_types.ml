@@ -692,25 +692,38 @@ module Executables = struct
 end
 
 module Rule = struct
+  module Targets = struct
+    type t =
+      | Static of string list (* List of files in the current directory *)
+      | Infer
+  end
+
   type t =
-    { targets : string list (** List of files in the current directory *)
+    { targets : Targets.t
     ; deps    : Dep_conf.t list
     ; action  : Action.Unexpanded.t
     }
 
-  let v1 =
-    record
-      (field "targets" (list file_in_current_dir)    >>= fun targets ->
-       field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
-       field "action"  Action.Unexpanded.t           >>= fun action ->
-       return { targets; deps; action })
+  let v1 = function
+    | List (_, [sexp]) ->
+      { targets = Infer
+      ; deps    = []
+      ; action  = Action.Unexpanded.t sexp
+      }
+    | sexp ->
+      record
+        (field "targets" (list file_in_current_dir)    >>= fun targets ->
+         field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
+         field "action"  Action.Unexpanded.t           >>= fun action ->
+         return { targets = Static targets; deps; action })
+        sexp
 
   let ocamllex_v1 names =
     let str s = String_with_vars.of_string s ~loc:Loc.none in
     List.map names ~f:(fun name ->
       let src = name ^ ".mll" in
       let dst = name ^ ".ml"  in
-      { targets = [dst]
+      { targets = Static [dst]
       ; deps    = [File (str src)]
       ; action  =
           Chdir
@@ -723,7 +736,7 @@ module Rule = struct
     let str s = String_with_vars.of_string s ~loc:Loc.none in
     List.map names ~f:(fun name ->
       let src = name ^ ".mly" in
-      { targets = [name ^ ".ml"; name ^ ".mli"]
+      { targets = Static [name ^ ".ml"; name ^ ".mli"]
       ; deps    = [File (str src)]
       ; action  =
           Chdir
@@ -731,25 +744,14 @@ module Rule = struct
              Run (str "${bin:ocamlyacc}",
                   [str "${<}"]))
       })
-end
-
-module Do = struct
-  type t =
-    { loc    : Loc.t
-    ; action : Action.Unexpanded.t
-    }
-
-  let v1 sexp =
-    { loc = Sexp.Ast.loc sexp
-    ; action = Action.Unexpanded.t sexp
-    }
 
   let ml_of_mli names =
     List.map names ~f:(fun (loc, name) ->
       let strf fmt = Printf.ksprintf (String_with_vars.of_string ~loc) fmt in
       let m = String.capitalize_ascii name in
-      { loc
-      ; action =
+      { targets = Infer
+      ; deps    = []
+      ; action  =
           Redirect
             (Stdout,
              strf "%s.ml" name,
@@ -788,7 +790,7 @@ module Menhir = struct
       List.map t.modules ~f:(fun name ->
         let src = name ^ ".mly" in
         { Rule.
-          targets = targets name
+          targets = Static (targets name)
         ; deps    = [Dep_conf.File (str src)]
         ; action  =
             Chdir
@@ -799,7 +801,7 @@ module Menhir = struct
     | Some base ->
       let mly m = str (m ^ ".mly") in
       [{ Rule.
-         targets = targets base
+         targets = Static (targets base)
        ; deps    = List.map ~f:(fun m -> Dep_conf.File (mly m)) t.modules
        ; action  =
            Chdir
@@ -915,7 +917,6 @@ module Stanza = struct
     | Library     of Library.t
     | Executables of Executables.t
     | Rule        of Rule.t
-    | Do          of Do.t
     | Provides    of Provides.t
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
@@ -938,13 +939,11 @@ module Stanza = struct
       ; cstr "menhir"      (Menhir.v1 @> nil)            (fun x -> rules (Menhir.v1_to_rule x))
       ; cstr "install"     (Install_conf.v1 pkgs @> nil) (fun x -> [Install     x])
       ; cstr "alias"       (Alias_conf.v1 pkgs @> nil)   (fun x -> [Alias       x])
-      ; cstr "do"          (Do.v1 @> nil)                (fun x -> [Do          x])
       ; cstr_rest "foreach"  (Foreach.pattern @> Foreach.values @> nil) (fun x -> x)
           (fun pat vals sexps ->
              let sexps = Foreach.expand pat vals sexps in
              List.concat_map sexps ~f:(v1 pkgs))
-      ; cstr "ml_of_mli" (list (located string) @> nil)
-          (fun x -> List.map (Do.ml_of_mli x) ~f:(fun x -> Do x))
+      ; cstr "ml_of_mli" (list (located string) @> nil) (fun x -> rules (Rule.ml_of_mli x))
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]

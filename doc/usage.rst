@@ -15,8 +15,8 @@ jbuild-workspace
 ----------------
 
 The root of the current workspace is determined by looking up a
-``jbuild-workspace`` file in the current directory and parent
-directories. ``jbuilder`` prints out the root when starting:
+``jbuild-workspace`` file in the current directory and parent directories.
+``jbuilder`` prints out the root when starting:
 
 .. code:: bash
 
@@ -24,10 +24,10 @@ directories. ``jbuilder`` prints out the root when starting:
     Workspace root: /usr/local/home/jdimino/workspaces/public-jane/+share+
     ...
 
-More precisely, it will choose the outermost ancestor directory
-containing a ``jbuild-workspace`` file as root. For instance if you are
-in ``/home/me/code/myproject/src``, then jbuilder will look for all
-these files in order:
+More precisely, it will choose the outermost ancestor directory containing a
+``jbuild-workspace`` file as root. For instance if you are in
+``/home/me/code/myproject/src``, then jbuilder will look for all these files in
+order:
 
 -  ``/jbuild-workspace``
 -  ``/home/jbuild-workspace``
@@ -48,11 +48,11 @@ this file.
 jbuild-workspace\*
 ------------------
 
-In addition to the previous rule, if no ``jbuild-workspace`` file is
-found, ``jbuilder`` will look for any file whose name starts with
-``jbuild-workspace`` in ancestor directories. For instance
-``jbuild-workspace.dev``. If such a file is found, it will mark the root
-of the workspace. ``jbuilder`` will however not read its contents.
+In addition to the previous rule, if no ``jbuild-workspace`` file is found,
+``jbuilder`` will look for any file whose name starts with ``jbuild-workspace``
+in ancestor directories. For instance ``jbuild-workspace.dev``. If such a file
+is found, it will mark the root of the workspace. ``jbuilder`` will however not
+read its contents.
 
 The rationale for this rule is that it is good practice to have a
 ``jbuild-workspace.dev`` file at the root of your project.
@@ -74,12 +74,11 @@ Forcing the root (for scripts)
 ------------------------------
 
 You can pass the ``--root`` option to ``jbuilder`` to select the root
-explicitly. This option is intended for scripts to disable the automatic
-lookup.
+explicitly. This option is intended for scripts to disable the automatic lookup.
 
-Notet that when using the ``--root`` option, targets given on the
-command line will be interpreted relative to the given root, not
-relative to the current directory as this is normally the case.
+Note that when using the ``--root`` option, targets given on the command line
+will be interpreted relative to the given root, not relative to the current
+directory as this is normally the case.
 
 Interpretation of targets
 =========================
@@ -90,27 +89,26 @@ the command line.
 Resolution
 ----------
 
-Most targets that Jbuilder knows how to build lives in the ``_build``
-directory, except for a few:
+Most targets that Jbuilder knows how to build lives in the ``_build`` directory,
+except for a few:
 
 = ``.merlin`` files
 
--  ``<package>.install`` files; for the ``default`` context Jbuilder
-   knows how generate the install file both in ``_build/default`` and in
-   the source tree so that ``opam`` can find it
+- ``<package>.install`` files; for the ``default`` context Jbuilder knows how
+   generate the install file both in ``_build/default`` and in the source tree
+   so that ``opam`` can find it
 
-As a result, if you want to ask ``jbuilder`` to produce a particular
-``.exe`` file you would have to type:
+As a result, if you want to ask ``jbuilder`` to produce a particular ``.exe``
+file you would have to type:
 
 .. code:: bash
 
     $ jbuilder build _build/default/bin/prog.exe
 
-However, for convenience when a target on the command line doesn't start
-with ``_build``, ``jbuilder`` will expand it to the corresponding target
-in all the build contexts where it knows how to build it. It prints out
-the actual set of targets when starting so that you know what is
-happening:
+However, for convenience when a target on the command line doesn't start with
+``_build``, ``jbuilder`` will expand it to the corresponding target in all the
+build contexts where it knows how to build it. It prints out the actual set of
+targets when starting so that you know what is happening:
 
 .. code:: bash
 
@@ -147,14 +145,13 @@ It looks up external libraries using a specific list of search pathes. A
 list of search pathes is specific to a given build context and is
 determined as follow:
 
-#. if the ``ocamlfind`` is present in the ``PATH`` of the context, use
-   each line in the output of ``ocamlfind printconf path`` as a search
-   path
-#. otherwise, if ``opam`` is present in the ``PATH``, use the outout of
-   ``opam config var lib``
+#. if the ``ocamlfind`` is present in the ``PATH`` of the context, use each line
+   in the output of ``ocamlfind printconf path`` as a search path
+#. otherwise, if ``opam`` is present in the ``PATH``, use the outout of ``opam
+   config var lib``
 #. otherwise, take the directory where ``ocamlc`` was found, and append
-   ``../lib`` to it. For instance if ``ocamlc`` is found in
-   ``/usr/bin``, use ``/usr/lib``
+   ``../lib`` to it. For instance if ``ocamlc`` is found in ``/usr/bin``, use
+   ``/usr/lib``
 
 .. _running-tests:
 

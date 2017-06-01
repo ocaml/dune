@@ -757,28 +757,35 @@ let exec =
   let go common context prog args =
     set_common common ~targets:[];
     let log = Log.create () in
-    Future.Scheduler.go ~log
-      (Main.setup ~log common >>= fun setup ->
-       let context =
-         match List.find setup.contexts ~f:(fun c -> c.name = context) with
-         | Some ctx -> ctx
-         | None ->
-           Format.eprintf "@{<Error>Error@}: Context %S not found!@." context;
-           die ""
-       in
-       let path = Config.local_install_bin_dir ~context:context.name :: context.path in
-       match Bin.which ~path prog with
-       | None ->
-         Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
-         die ""
-       | Some real_prog ->
-         let real_prog = Path.to_string real_prog     in
-         let env       = Context.env_for_exec context in
-         if Sys.win32 then
-           Future.run ~env Strict real_prog (prog :: args)
-         else
-           Unix.execve real_prog (Array.of_list (prog :: args)) env
-      )
+    let setup = Future.Scheduler.go ~log (Main.setup ~log common) in
+    let context =
+      match List.find setup.contexts ~f:(fun c -> c.name = context) with
+      | Some ctx -> ctx
+      | None ->
+        Format.eprintf "@{<Error>Error@}: Context %S not found!@." context;
+        die ""
+    in
+    let path = Config.local_install_bin_dir ~context:context.name :: context.path in
+    match Bin.which ~path prog with
+    | None ->
+      Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
+      die ""
+    | Some real_prog ->
+      let real_prog = Path.to_string real_prog     in
+      let env       = Context.env_for_exec context in
+      let argv      = Array.of_list (prog :: args) in
+      if Sys.win32 then
+        let pid =
+          Unix.create_process_env real_prog argv env
+            Unix.stdin Unix.stdout Unix.stderr
+        in
+        match snd (Unix.waitpid [] pid) with
+        | WEXITED   0 -> ()
+        | WEXITED   n -> exit n
+        | WSIGNALED _ -> exit 255
+        | WSTOPPED  _ -> assert false
+      else
+        Unix.execve real_prog argv env
   in
   ( Term.(const go
           $ common

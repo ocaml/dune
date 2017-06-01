@@ -140,6 +140,11 @@ let dyn_paths t = Dyn_paths t
 let contents p = Contents p
 let lines_of p = Lines_of p
 
+let strings p =
+  lines_of p
+  >>^ fun l ->
+  List.map l ~f:Scanf.unescaped
+
 let read_sexp p =
   contents p
   >>^ fun s ->
@@ -210,8 +215,8 @@ let run ~context ?(dir=context.Context.build_dir) ?stdout_to ?(extra_targets=[])
   prog_and_args ~dir prog args
   >>>
   Targets targets
-  >>^  (fun (prog, args) ->
-    let action : Action.t = Run (prog, args) in
+  >>^ (fun (prog, args) ->
+    let action : Action.t = Run (This prog, args) in
     let action =
       match stdout_to with
       | None      -> action

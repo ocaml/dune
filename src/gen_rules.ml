@@ -476,9 +476,17 @@ module Gen(P : Params) = struct
      | User rules                                                      |
      +-----------------------------------------------------------------+ *)
 
-  let do_rule (conf : Do.t) ~dir =
+  let do_rule (conf : Do.t) ~dir ~package_context =
     SC.add_rule sctx
-      (SC.Do_action.run sctx conf.action ~dir)
+      (Build.return []
+       >>>
+       SC.Action.run
+         sctx
+         conf.action
+         ~dir
+         ~dep_kind:Required
+         ~targets:Infer
+         ~package_context)
 
   let user_rule (rule : Rule.t) ~dir ~package_context =
     let targets = List.map rule.targets ~f:(Path.relative dir) in
@@ -490,7 +498,7 @@ module Gen(P : Params) = struct
          rule.action
          ~dir
          ~dep_kind:Required
-         ~targets
+         ~targets:(Static targets)
          ~package_context)
 
   let alias_rules (alias_conf : Alias_conf.t) ~dir ~package_context =
@@ -525,7 +533,7 @@ module Gen(P : Params) = struct
                action
                ~dir
                ~dep_kind:Required
-               ~targets:[]
+               ~targets:(Static [])
                ~package_context
            ; Build.create_file digest_path
            ])
@@ -604,7 +612,7 @@ module Gen(P : Params) = struct
       let dir = ctx_dir in
       match (stanza : Stanza.t) with
       | Rule         rule  -> user_rule   rule  ~dir ~package_context
-      | Do           conf  -> do_rule     conf  ~dir
+      | Do           conf  -> do_rule     conf  ~dir ~package_context
       | Alias        alias -> alias_rules alias ~dir ~package_context
       | Library _ | Executables _ | Provides _ | Install _ -> ());
     let files = lazy (
@@ -852,18 +860,7 @@ module Gen(P : Params) = struct
       SC.add_rule sctx (Build.symlink ~src:entry.src ~dst);
       { entry with src = dst })
 
-  let install_file package_path package =
-    let entries =
-      List.concat_map (SC.stanzas_to_consider_for_install sctx) ~f:(fun (dir, stanza) ->
-        match stanza with
-        | Library ({ public = Some { package = p; sub_dir; _ }; _ } as lib)
-          when p.name = package ->
-          lib_install_files ~dir ~sub_dir lib
-        | Install { section; files; package = p } when p.name = package ->
-          List.map files ~f:(fun { Install_conf. src; dst } ->
-            Install.Entry.make section (Path.relative dir src) ?dst)
-        | _ -> [])
-    in
+  let install_file package_path package entries =
     let entries =
       let files = SC.sources_and_targets_known_so_far sctx ~src_path:Path.root in
       String_set.fold files ~init:entries ~f:(fun fn acc ->
@@ -898,8 +895,23 @@ module Gen(P : Params) = struct
        >>>
        Build.update_file_dyn fn)
 
-  let () = String_map.iter (SC.packages sctx) ~f:(fun ~key:_ ~data:pkg ->
-    install_file pkg.Package.path pkg.name)
+  let () =
+    let entries_per_package =
+      List.concat_map (SC.stanzas_to_consider_for_install sctx)
+        ~f:(fun (dir, stanza) ->
+          match stanza with
+          | Library ({ public = Some { package; sub_dir; _ }; _ } as lib) ->
+            List.map (lib_install_files ~dir ~sub_dir lib) ~f:(fun x ->
+              package.name, x)
+          | Install { section; files; package}->
+            List.map files ~f:(fun { Install_conf. src; dst } ->
+              (package.name, Install.Entry.make section (Path.relative dir src) ?dst))
+          | _ -> [])
+      |> String_map.of_alist_multi
+    in
+    String_map.iter (SC.packages sctx) ~f:(fun ~key:_ ~data:(pkg : Package.t) ->
+      let stanzas = String_map.find_default pkg.name entries_per_package ~default:[] in
+      install_file pkg.path pkg.name stanzas)
 
   let () =
     let is_default = Path.basename ctx.build_dir = "default" in

@@ -3,71 +3,93 @@ open Sexp.Of_sexp
 
 module Env_var_map = Context.Env_var_map
 
-type split_or_concat = Split | Concat
+module Program = struct
+  type t =
+    | This      of Path.t
+    | Not_found of string
 
-type var_expansion =
-  | Not_found
-  | Path  of Path.t
-  | Paths of Path.t list * split_or_concat
-  | Str   of string
+  let sexp_of_t = function
+    | This p -> Path.sexp_of_t p
+    | Not_found s -> List [Atom "not_found"; Atom s]
 
-let expand_str ~dir ~f template =
-  String_with_vars.expand template ~f:(fun var ->
-    match f var with
-    | Not_found -> None
-    | Path path -> Some (Path.reach ~from:dir path)
-    | Paths (l, _) -> Some (List.map l ~f:(Path.reach ~from:dir) |> String.concat ~sep:" ")
-    | Str s -> Some s)
+  let t sexp =
+    match sexp with
+    | Atom _ -> This (Path.t sexp)
+    | List (_, [Atom (_, "not_found"); Atom (_, s)]) -> Not_found s
+    | _ ->
+      Loc.fail (Sexp.Ast.loc sexp)
+        "S-expression of the form <atom> or (not_found <atom>) expected"
 
-let expand_str_split ~dir ~f template =
-  match String_with_vars.just_a_var template with
-  | None -> [expand_str ~dir ~f template]
-  | Some var ->
-    match f var with
-    | Not_found -> [expand_str ~dir ~f template]
-    | Path path -> [Path.reach ~from:dir path]
-    | Str s     -> [s]
-    | Paths (l, Concat) ->
-      [List.map l ~f:(Path.reach ~from:dir) |> String.concat ~sep:" "]
-    | Paths (l, Split) -> List.map l ~f:(Path.reach ~from:dir)
-
-let expand_path ~dir ~f template =
-  match String_with_vars.just_a_var template with
-  | None -> expand_str ~dir ~f template |> Path.relative dir
-  | Some v ->
-    match f v with
-    | Not_found -> expand_str ~dir ~f template |> Path.relative dir
-    | Path p
-    | Paths ([p], _) -> p
-    | Str s -> Path.relative dir s
-    | Paths (l, _) ->
-      List.map l ~f:(Path.reach ~from:dir)
-      |> String.concat ~sep:" "
-      |> Path.relative dir
-
-let expand_prog ctx ~dir ~f template =
-  let resolve s =
-    if String.contains s '/' then
-      Path.relative dir s
+  let resolve ctx ~dir s =
+    if s = "" then
+      Not_found ""
+    else if String.contains s '/' then
+      This (Path.relative dir s)
     else
       match Context.which ctx s with
-      | Some p -> p
-      | None -> Utils.program_not_found ~context:ctx.name s
-  in
-  match String_with_vars.just_a_var template with
-  | None -> (resolve (expand_str ~dir ~f template), [])
-  | Some v ->
-    match f v with
-    | Not_found -> (resolve (expand_str ~dir ~f template), [])
-    | Path p
-    | Paths ([p], _) -> (p, [])
-    | Str s -> (resolve s, [])
-    | Paths (p :: args, Split) -> (p, List.map args ~f:(Path.reach ~from:dir))
-    | Paths (l, _) ->
-      (List.map l ~f:(Path.reach ~from:dir)
-       |> String.concat ~sep:" "
-       |> resolve,
+      | Some p -> This p
+      | None -> Not_found s
+end
+
+module Var_expansion = struct
+  module Concat_or_split = struct
+    type t =
+      | Concat (* default *)
+      | Split  (* ${!...} *)
+  end
+
+  open Concat_or_split
+
+  type t =
+    | Paths   of Path.t list * Concat_or_split.t
+    | Strings of string list * Concat_or_split.t
+
+  let concat = function
+    | [s] -> s
+    | l -> String.concat ~sep:" " l
+
+  let string_of_path ~dir p = Path.reach ~from:dir p
+  let path_of_string ~dir s = Path.relative dir s
+
+  let to_strings ~dir = function
+    | Strings (l, Split ) -> l
+    | Strings (l, Concat) -> [concat l]
+    | Paths   (l, Split ) -> List.map l ~f:(string_of_path ~dir)
+    | Paths   (l, Concat) -> [concat (List.map l ~f:(string_of_path ~dir))]
+
+  let to_string ~dir = function
+    | Strings (_, Split) | Paths (_, Split) -> assert false
+    | Strings (l, Concat) -> concat l
+    | Paths   (l, Concat) -> concat (List.map l ~f:(string_of_path ~dir))
+
+  let to_path ~dir = function
+    | Strings (_, Split) | Paths (_, Split) -> assert false
+    | Strings (l, Concat) -> path_of_string ~dir (concat l)
+    | Paths ([p], Concat) -> p
+    | Paths (l,   Concat) ->
+      path_of_string ~dir (concat (List.map l ~f:(string_of_path ~dir)))
+
+  let to_prog_and_args ctx ~dir exp : Program.t * string list =
+    let resolve = Program.resolve in
+    match exp with
+    | Paths   ([p], _) -> (This p, [])
+    | Strings ([s], _) -> (resolve ctx ~dir s, [])
+    | Paths ([], _) | Strings ([], _) -> (Not_found "", [])
+    | Paths (l, Concat) ->
+      (This
+         (path_of_string ~dir
+            (concat (List.map l ~f:(string_of_path ~dir)))),
        [])
+    | Strings (l, Concat) ->
+      (resolve ~dir ctx (concat l), l)
+    | Paths (p :: l, Split) ->
+      (This p, List.map l ~f:(string_of_path ~dir))
+    | Strings (s :: l, Split) ->
+      (resolve ~dir ctx s, l)
+end
+
+module VE = Var_expansion
+module SW = String_with_vars
 
 module Outputs = struct
   include Action_intf.Outputs
@@ -85,18 +107,20 @@ module type Sexpable = sig
 end
 
 module Make_ast
-    (Path   : Sexpable)
-    (String : Sexpable)
+    (Program : Sexpable)
+    (Path    : Sexpable)
+    (String  : Sexpable)
     (Ast : Action_intf.Ast
-     with type path   := Path.t
-     with type string := String.t) =
+     with type program := Program.t
+     with type path    := Path.t
+     with type string  := String.t) =
 struct
   include Ast
 
   let rec t sexp =
     let path = Path.t and string = String.t in
     sum
-      [ cstr_rest "run" (path @> nil) string             (fun prog args -> Run (prog, args))
+      [ cstr_rest "run" (Program.t @> nil) string (fun prog args -> Run (prog, args))
       ; cstr "chdir"    (path @> t @> nil)        (fun dn t -> Chdir (dn, t))
       ; cstr "setenv"   (string @> string @> t @> nil)   (fun k v t -> Setenv (k, v, t))
       ; cstr "with-stdout-to"  (path @> t @> nil) (fun fn t -> Redirect (Stdout, fn, t))
@@ -124,7 +148,7 @@ struct
   let rec sexp_of_t : _ -> Sexp.t =
     let path = Path.sexp_of_t and string = String.sexp_of_t in
     function
-    | Run (a, xs) -> List (Atom "run" :: path a :: List.map xs ~f:string)
+    | Run (a, xs) -> List (Atom "run" :: Program.sexp_of_t a :: List.map xs ~f:string)
     | Chdir (a, r) -> List [Atom "chdir" ; path a ; sexp_of_t r]
     | Setenv (k, v, r) -> List [Atom "setenv" ; string k ; string v ; sexp_of_t r]
     | Redirect (outputs, fn, r) ->
@@ -155,11 +179,13 @@ struct
 end
 
 module type Ast = Action_intf.Ast
-  with type path   := Path.t
-  with type string := String.t
+  with type program = Program.t
+  with type path    = Path.t
+  with type string  = String.t
 module rec Ast : Ast = Ast
 
 include Make_ast
+    (Program)
     (Path)
     (struct
       type t = string
@@ -168,15 +194,14 @@ include Make_ast
     end)
     (Ast)
 
-type action = t
-
 module Unexpanded = struct
-  module type Ast = Action_intf.Ast
-    with type path   := String_with_vars.t
-    with type string := String_with_vars.t
-  module rec Ast : Ast = Ast
+  module type Uast = Action_intf.Ast
+    with type program = String_with_vars.t
+    with type path    = String_with_vars.t
+    with type string  = String_with_vars.t
+  module rec Uast : Uast = Uast
 
-  include Make_ast(String_with_vars)(String_with_vars)(Ast)
+  include Make_ast(String_with_vars)(String_with_vars)(String_with_vars)(Uast)
 
   let t sexp =
     match sexp with
@@ -185,66 +210,248 @@ module Unexpanded = struct
         "if you meant for this to be executed with bash, write (bash \"...\") instead"
     | List _ -> t sexp
 
-  let rec fold t ~init:acc ~f =
-    match t with
-    | Run (prog, args) -> List.fold_left args ~init:(f acc prog) ~f
-    | Chdir (fn, t) -> fold t ~init:(f acc fn) ~f
-    | Setenv (var, value, t) -> fold t ~init:(f (f acc var) value) ~f
-    | Redirect (_, fn, t) -> fold t ~init:(f acc fn) ~f
-    | Ignore (_, t) -> fold t ~init:acc ~f
-    | Progn l -> List.fold_left l ~init:acc ~f:(fun init t -> fold t ~init ~f)
-    | Echo x -> f acc x
-    | Cat x -> f acc x
-    | Create_file x -> f acc x
-    | Copy (x, y) -> f (f acc x) y
-    | Symlink (x, y) -> f (f acc x) y
-    | Copy_and_add_line_directive (x, y) -> f (f acc x) y
-    | System x -> f acc x
-    | Bash x -> f acc x
-    | Update_file (x, y) -> f (f acc x) y
-    | Rename (x, y) -> f (f acc x) y
-    | Remove_tree x
-    | Mkdir x -> f acc x
+  let check_mkdir loc path =
+    if not (Path.is_local path) then
+      Loc.fail loc
+        "(mkdir ...) is not supported for paths outside of the workspace:\n\
+        \  %a\n"
+        Sexp.pp (List [Atom "mkdir"; Path.sexp_of_t path])
 
-  let fold_vars t ~init ~f =
-    fold t ~init ~f:(fun acc pat ->
-      String_with_vars.fold ~init:acc pat ~f)
+  module Partial = struct
+    module type Past = Action_intf.Ast
+      with type program = (Program.t, String_with_vars.t) either
+      with type path    = (Path.t   , String_with_vars.t) either
+      with type string  = (string   , String_with_vars.t) either
+    module rec Past : Past = Past
 
-  let rec expand ctx dir t ~f : action =
+    include Past
+
+    module E = struct
+      let string ~dir ~f = function
+        | Inl x -> x
+        | Inr template ->
+          SW.expand template ~f:(fun loc var ->
+            match f loc var with
+            | None   -> None
+            | Some e -> Some (VE.to_string ~dir e))
+
+      let expand ~generic ~special ~map ~dir ~f = function
+        | Inl x -> map x
+        | Inr template as x ->
+          match SW.just_a_var template with
+          | None -> generic ~dir (string ~dir ~f x)
+          | Some var ->
+            match f (SW.loc template) var with
+            | None   -> generic ~dir (SW.to_string template)
+            | Some e -> special ~dir e
+      [@@inlined always]
+
+      let strings ~dir ~f x =
+        expand ~dir ~f x
+          ~generic:(fun ~dir:_ x -> [x])
+          ~special:VE.to_strings
+          ~map:(fun x -> [x])
+
+      let path ~dir ~f x =
+        expand ~dir ~f x
+          ~generic:VE.path_of_string
+          ~special:VE.to_path
+          ~map:(fun x -> x)
+
+      let prog_and_args ctx ~dir ~f x =
+        expand ~dir ~f x
+          ~generic:(fun ~dir:_ s -> (Program.resolve ctx ~dir s, []))
+          ~special:(VE.to_prog_and_args ctx)
+          ~map:(fun x -> (x, []))
+    end
+
+    let rec expand ctx dir t ~f : Ast.t =
+      match t with
+      | Run (prog, args) ->
+        let args = List.concat_map args ~f:(E.strings ~dir ~f) in
+        let prog, more_args = E.prog_and_args ctx ~dir ~f prog in
+        Run (prog, more_args @ args)
+      | Chdir (fn, t) ->
+        let fn = E.path ~dir ~f fn in
+        Chdir (fn, expand ctx fn t ~f)
+      | Setenv (var, value, t) ->
+        Setenv (E.string ~dir ~f var, E.string ~dir ~f value,
+                expand ctx dir t ~f)
+      | Redirect (outputs, fn, t) ->
+        Redirect (outputs, E.path ~dir ~f fn, expand ctx dir t ~f)
+      | Ignore (outputs, t) ->
+        Ignore (outputs, expand ctx dir t ~f)
+      | Progn l -> Progn (List.map l ~f:(fun t -> expand ctx dir t ~f))
+      | Echo x -> Echo (E.string ~dir ~f x)
+      | Cat x -> Cat (E.path ~dir ~f x)
+      | Create_file x -> Create_file (E.path ~dir ~f x)
+      | Copy (x, y) ->
+        Copy (E.path ~dir ~f x, E.path ~dir ~f y)
+      | Symlink (x, y) ->
+        Symlink (E.path ~dir ~f x, E.path ~dir ~f y)
+      | Copy_and_add_line_directive (x, y) ->
+        Copy_and_add_line_directive (E.path ~dir ~f x, E.path ~dir ~f y)
+      | System x -> System (E.string ~dir ~f x)
+      | Bash x -> Bash (E.string ~dir ~f x)
+      | Update_file (x, y) -> Update_file (E.path ~dir ~f x, E.string ~dir ~f y)
+      | Rename (x, y) ->
+        Rename (E.path ~dir ~f x, E.path ~dir ~f y)
+      | Remove_tree x ->
+        Remove_tree (E.path ~dir ~f x)
+      | Mkdir x ->
+        match x with
+        | Inl path -> Mkdir path
+        | Inr tmpl ->
+          let path = E.path ~dir ~f x in
+          check_mkdir (SW.loc tmpl) path;
+          Mkdir path
+  end
+
+  module E = struct
+    let string ~dir ~f template =
+      SW.partial_expand template ~f:(fun loc var ->
+        match f loc var with
+        | None   -> None
+        | Some e -> Some (VE.to_string ~dir e))
+
+    let expand ~generic ~special ~dir ~f template =
+      match SW.just_a_var template with
+      | None -> begin
+          match string ~dir ~f template with
+          | Inl x -> Inl (generic ~dir x)
+          | Inr _ as x -> x
+        end
+      | Some var ->
+        match f (SW.loc template) var with
+        | None   -> Inr template
+        | Some e -> Inl (special ~dir e)
+
+    let strings ~dir ~f x =
+      expand ~dir ~f x
+        ~generic:(fun ~dir:_ x -> [x])
+        ~special:VE.to_strings
+
+    let path ~dir ~f x =
+      expand ~dir ~f x
+        ~generic:VE.path_of_string
+        ~special:VE.to_path
+
+    let prog_and_args ctx ~dir ~f x =
+      expand ~dir ~f x
+        ~generic:(fun ~dir s -> (Program.resolve ctx ~dir s, []))
+        ~special:(VE.to_prog_and_args ctx)
+
+    let simple x =
+      match SW.just_text x with
+      | Some s -> Inl s
+      | None   -> Inr x
+  end
+
+  (* Like [partial_expand] except we keep everything as a template. This is for when we
+     can't determine a chdir statically *)
+  let rec simple_expand t ~f : Partial.t =
     match t with
     | Run (prog, args) ->
-      let prog, more_args = expand_prog ctx ~dir ~f prog in
-      Run (prog,
-           more_args @ List.concat_map args ~f:(expand_str_split ~dir ~f))
+      SW.iter prog ~f;
+      List.iter args ~f:(SW.iter ~f);
+      Run (Inr prog, List.map args ~f:E.simple)
     | Chdir (fn, t) ->
-      let fn = expand_path ~dir ~f fn in
-      Chdir (fn, expand ctx fn t ~f)
+      SW.iter fn ~f;
+      Chdir (Inr fn, simple_expand t ~f)
     | Setenv (var, value, t) ->
-      Setenv (expand_str ~dir ~f var, expand_str ~dir ~f value,
-              expand ctx dir t ~f)
+      SW.iter var ~f;
+      SW.iter value ~f;
+      Setenv (E.simple var, E.simple value, simple_expand t  ~f)
     | Redirect (outputs, fn, t) ->
-      Redirect (outputs, expand_path ~dir ~f fn, expand ctx dir t ~f)
+      SW.iter fn ~f;
+      Redirect (outputs, Inr fn, simple_expand t ~f)
     | Ignore (outputs, t) ->
-      Ignore (outputs, expand ctx dir t ~f)
-    | Progn l -> Progn (List.map l ~f:(fun t -> expand ctx dir t ~f))
-    | Echo x -> Echo (expand_str ~dir ~f x)
-    | Cat x -> Cat (expand_path ~dir ~f x)
-    | Create_file x -> Create_file (expand_path ~dir ~f x)
+      Ignore (outputs, simple_expand t ~f)
+    | Progn l -> Progn (List.map l ~f:(simple_expand ~f))
+    | Echo x -> SW.iter x ~f; Echo (E.simple x)
+    | Cat x -> SW.iter x ~f; Cat (Inr x)
+    | Create_file x -> SW.iter x ~f; Create_file (Inr x)
     | Copy (x, y) ->
-      Copy (expand_path ~dir ~f x, expand_path ~dir ~f y)
-    | Symlink (x, y) ->
-      Symlink (expand_path ~dir ~f x, expand_path ~dir ~f y)
+      SW.iter x ~f;
+      SW.iter y ~f;
+      Copy (Inr x, Inr y)
     | Copy_and_add_line_directive (x, y) ->
-      Copy_and_add_line_directive (expand_path ~dir ~f x, expand_path ~dir ~f y)
-    | System x -> System (expand_str ~dir ~f x)
-    | Bash x -> Bash (expand_str ~dir ~f x)
-    | Update_file (x, y) -> Update_file (expand_path ~dir ~f x, expand_str ~dir ~f y)
+      SW.iter x ~f;
+      SW.iter y ~f;
+      Copy_and_add_line_directive (Inr x, Inr y)
+    | Symlink (x, y) ->
+      SW.iter x ~f;
+      SW.iter y ~f;
+      Symlink (Inr x, Inr y)
     | Rename (x, y) ->
-      Rename (expand_path ~dir ~f x, expand_path ~dir ~f y)
+      SW.iter x ~f;
+      SW.iter y ~f;
+      Rename (Inr x, Inr y)
+    | System x -> SW.iter x ~f; System (E.simple x)
+    | Bash x -> SW.iter x ~f; Bash (E.simple x)
+    | Update_file (x, y) ->
+      SW.iter x ~f;
+      SW.iter y ~f;
+      Update_file (Inr x, E.simple y)
+    | Remove_tree x -> SW.iter x ~f; Remove_tree (Inr x)
+    | Mkdir x -> SW.iter x ~f; Mkdir (Inr x)
+
+  let rec partial_expand ctx dir t ~f : Partial.t =
+    match t with
+    | Run (prog, args) ->
+      let args =
+        List.concat_map args ~f:(fun arg ->
+          match E.strings ~dir ~f arg with
+          | Inl args -> List.map args ~f:(fun x -> Inl x)
+          | Inr _ as x -> [x])
+      in
+      begin
+        match E.prog_and_args ctx ~dir ~f prog with
+        | Inl (prog, more_args) ->
+          let more_args = List.map more_args ~f:(fun x -> Inl x) in
+          Run (Inl prog, more_args @ args)
+        | Inr _ as prog ->
+          Run (prog, args)
+      end
+    | Chdir (fn, t) -> begin
+        let res = E.path ~dir ~f fn in
+        match res with
+        | Inl dir ->
+          Chdir (res, partial_expand ctx dir t ~f)
+        | Inr _ ->
+          let f loc x = ignore (f loc x : _ option) in
+          Chdir (res, simple_expand t ~f)
+      end
+    | Setenv (var, value, t) ->
+      Setenv (E.string ~dir ~f var, E.string ~dir ~f value,
+              partial_expand ctx dir t ~f)
+    | Redirect (outputs, fn, t) ->
+      Redirect (outputs, E.path ~dir ~f fn, partial_expand ctx dir t ~f)
+    | Ignore (outputs, t) ->
+      Ignore (outputs, partial_expand ctx dir t ~f)
+    | Progn l -> Progn (List.map l ~f:(fun t -> partial_expand ctx dir t ~f))
+    | Echo x -> Echo (E.string ~dir ~f x)
+    | Cat x -> Cat (E.path ~dir ~f x)
+    | Create_file x -> Create_file (E.path ~dir ~f x)
+    | Copy (x, y) ->
+      Copy (E.path ~dir ~f x, E.path ~dir ~f y)
+    | Symlink (x, y) ->
+      Symlink (E.path ~dir ~f x, E.path ~dir ~f y)
+    | Copy_and_add_line_directive (x, y) ->
+      Copy_and_add_line_directive (E.path ~dir ~f x, E.path ~dir ~f y)
+    | System x -> System (E.string ~dir ~f x)
+    | Bash x -> Bash (E.string ~dir ~f x)
+    | Update_file (x, y) -> Update_file (E.path ~dir ~f x, E.string ~dir ~f y)
+    | Rename (x, y) ->
+      Rename (E.path ~dir ~f x, E.path ~dir ~f y)
     | Remove_tree x ->
-      Remove_tree (expand_path ~dir ~f x)
+      Remove_tree (E.path ~dir ~f x)
     | Mkdir x ->
-      Mkdir (expand_path ~dir ~f x)
+      let res = E.path ~dir ~f x in
+      (match res with
+       | Inl path -> check_mkdir (SW.loc x) path
+       | Inr _    -> ());
+      Mkdir res
 end
 
 let fold_one_step t ~init:acc ~f =
@@ -270,8 +477,10 @@ let fold_one_step t ~init:acc ~f =
 
 let rec map t ~fs ~fp =
     match t with
-    | Run (prog, args) ->
-      Run (fp prog, List.map args ~f:fs)
+    | Run (This prog, args) ->
+      Run (This (fp prog), List.map args ~f:fs)
+    | Run (Not_found _ as nf, args) ->
+      Run (nf, List.map args ~f:fs)
     | Chdir (fn, t) ->
       Chdir (fp fn, map t ~fs ~fp)
     | Setenv (var, value, t) ->
@@ -324,28 +533,37 @@ let get_std_output : _ -> Future.std_output_to = function
   | None          -> Terminal
   | Some (fn, oc) -> Opened_file { filename = fn; tail = false; desc = Channel oc }
 
-let run ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to prog args =
+type exec_context =
+  { context : Context.t option
+  ; purpose : Future.purpose
+  ; env     : string array
+  }
+
+let run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
   let stdout_to = get_std_output stdout_to in
   let stderr_to = get_std_output stderr_to in
-  let env = Context.extend_env ~vars:env_extra ~env in
-  Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to ~stderr_to ~purpose
+  let env = Context.extend_env ~vars:env_extra ~env:ectx.env in
+  Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to ~stderr_to
+    ~purpose:ectx.purpose
     (Path.reach_for_running ~from:dir prog) args
 
-let rec exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
+let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   match t with
-  | Run (prog, args) ->
-    run ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to prog args
+  | Run (This prog, args) ->
+    run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args
+  | Run (Not_found prog, _) ->
+    Utils.program_not_found prog ?context:(Option.map ectx.context ~f:(fun c -> c.name))
   | Chdir (dir, t) ->
-    exec t ~purpose ~env ~env_extra ~stdout_to ~stderr_to ~dir
+    exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
   | Setenv (var, value, t) ->
-    exec t ~purpose ~dir ~env ~stdout_to ~stderr_to
+    exec t ~ectx ~dir ~stdout_to ~stderr_to
       ~env_extra:(Env_var_map.add env_extra ~key:var ~data:value)
   | Redirect (outputs, fn, t) ->
-    redirect ~purpose outputs fn t ~dir ~env ~env_extra ~stdout_to ~stderr_to
+    redirect ~ectx ~dir outputs fn t ~env_extra ~stdout_to ~stderr_to
   | Ignore (outputs, t) ->
-    redirect ~purpose outputs Config.dev_null t ~dir ~env ~env_extra ~stdout_to ~stderr_to
+    redirect ~ectx ~dir outputs Config.dev_null t ~env_extra ~stdout_to ~stderr_to
   | Progn l ->
-    exec_list l ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to
+    exec_list l ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
   | Echo str ->
     return
       (match stdout_to with
@@ -400,9 +618,9 @@ let rec exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
     let path, arg =
       Utils.system_shell_exn ~needed_to:"interpret (system ...) actions"
     in
-    run ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to path [arg; cmd]
+    run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to path [arg; cmd]
   | Bash cmd ->
-    run ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to
+    run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
       (Utils.bash_exn ~needed_to:"interpret (bash ...) actions")
       ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
   | Update_file (fn, s) ->
@@ -421,15 +639,15 @@ let rec exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
   | Mkdir path ->
     (match Path.kind path with
      | External _ ->
-       (* CR-someday jdimino: we need to keep locations here *)
-       die "(mkdir ...) is not supported for paths outside of the workspace:\n\
-           \  %a\n"
-         Sexp.pp (List [Atom "mkdir"; Path.sexp_of_t path])
+       (* Internally we make sure never to do that, and [Unexpanded.*expand] check that *)
+       Sexp.code_error
+         "(mkdir ...) is not supported for paths outside of the workspace"
+         [ "mkdir", Path.sexp_of_t path ]
      | Local path ->
        Path.Local.mkdir_p path);
     return ()
 
-and redirect outputs fn t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
+and redirect outputs fn t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   let fn = Path.to_string fn in
   let oc = Io.open_out fn in
   let out = Some (fn, oc) in
@@ -439,18 +657,18 @@ and redirect outputs fn t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
     | Stderr -> (stdout_to, out)
     | Outputs -> (out, out)
   in
-  exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to >>| fun () ->
+  exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to >>| fun () ->
   close_out oc
 
-and exec_list l ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to =
+and exec_list l ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   match l with
   | [] ->
     Future.return ()
   | [t] ->
-    exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to
+    exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
   | t :: rest ->
-    exec t ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to >>= fun () ->
-    exec_list rest ~purpose ~dir ~env ~env_extra ~stdout_to ~stderr_to
+    exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to >>= fun () ->
+    exec_list rest ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
 
 let exec ~targets ?context t =
   let env =
@@ -460,7 +678,8 @@ let exec ~targets ?context t =
   in
   let targets = Path.Set.elements targets in
   let purpose = Future.Build_job targets in
-  exec t ~purpose ~dir:Path.root ~env ~env_extra:Env_var_map.empty
+  let ectx = { purpose; context; env } in
+  exec t ~ectx ~dir:Path.root ~env_extra:Env_var_map.empty
     ~stdout_to:None ~stderr_to:None
 
 let sandbox t ~sandboxed ~deps ~targets =
@@ -489,21 +708,17 @@ module Infer = struct
   open Outcome
 
   let ( +@ ) acc fn = { acc with targets = S.add fn acc.targets }
-  let ( +< ) acc fn =
-    if S.mem fn acc.targets then
-      acc
-    else
-      { acc with deps = S.add fn acc.deps }
-  let ( -@ ) acc fn = { acc with targets = S.remove fn acc.targets }
+  let ( +< ) acc fn = { acc with deps    = S.add fn acc.deps    }
 
   let rec infer acc t =
     match t with
-    | Run (prog, _)       -> acc +< prog
-    | Redirect (_, fn, t) -> infer (acc +@ fn) t
-    | Cat fn              -> acc +< fn
-    | Create_file fn      -> acc +@ fn
-    | Update_file (fn, _) -> acc +@ fn
-    | Rename (src, dst)   -> acc +< src +@ dst -@ src
+    | Run (This prog, _)   -> acc +< prog
+    | Run (Not_found _, _) -> acc
+    | Redirect (_, fn, t)  -> infer (acc +@ fn) t
+    | Cat fn               -> acc +< fn
+    | Create_file fn       -> acc +@ fn
+    | Update_file (fn, _)  -> acc +@ fn
+    | Rename (src, dst)    -> acc +< src +@ dst
     | Copy (src, dst)
     | Copy_and_add_line_directive (src, dst)
     | Symlink (src, dst) -> acc +< src +@ dst
@@ -513,13 +728,85 @@ module Infer = struct
     | Progn l -> List.fold_left l ~init:acc ~f:infer
     | Echo _
     | System _
-    | Bash _ -> acc
-    | Remove_tree dir ->
-      { acc with targets = S.filter acc.targets ~f:(fun fn ->
-          not (Path.is_descendant fn ~of_:dir))
-      }
+    | Bash _
+    | Remove_tree _
     | Mkdir _ -> acc
 
   let infer t =
-    infer { deps = S.empty; targets = S.empty } t
+    let { deps; targets } = infer { deps = S.empty; targets = S.empty } t in
+    (* A file can be inferred as both a dependency and a target, for instance:
+
+       {[
+         (progn (copy a b) (copy b c))
+       ]}
+    *)
+    { deps = S.diff deps targets; targets }
+
+  let ( +@? ) acc fn =
+    match fn with
+    | Inl fn -> { acc with targets = S.add fn acc.targets }
+    | Inr _  -> acc
+  let ( +<? ) acc fn =
+    match fn with
+    | Inl fn -> { acc with deps    = S.add fn acc.deps    }
+    | Inr _  -> acc
+
+  let rec partial acc (t : Unexpanded.Partial.t) =
+    match t with
+    | Run (Inl (This prog), _)   -> acc +< prog
+    | Run (_, _) -> acc
+    | Redirect (_, fn, t)  -> partial (acc +@? fn) t
+    | Cat fn               -> acc +<? fn
+    | Create_file fn       -> acc +@? fn
+    | Update_file (fn, _)  -> acc +@? fn
+    | Rename (src, dst)    -> acc +<? src +@? dst
+    | Copy (src, dst)
+    | Copy_and_add_line_directive (src, dst)
+    | Symlink (src, dst) -> acc +<? src +@? dst
+    | Chdir (_, t)
+    | Setenv (_, _, t)
+    | Ignore (_, t) -> partial acc t
+    | Progn l -> List.fold_left l ~init:acc ~f:partial
+    | Echo _
+    | System _
+    | Bash _
+    | Remove_tree _
+    | Mkdir _ -> acc
+
+  let ( +@? ) acc fn =
+    match fn with
+    | Inl fn -> { acc with targets = S.add fn acc.targets }
+    | Inr sw -> Loc.fail (SW.loc sw) "Cannot determine this target statically."
+
+  let rec partial_with_all_targets acc (t : Unexpanded.Partial.t) =
+    match t with
+    | Run (Inl (This prog), _)   -> acc +< prog
+    | Run (_, _) -> acc
+    | Redirect (_, fn, t)  -> partial_with_all_targets (acc +@? fn) t
+    | Cat fn               -> acc +<? fn
+    | Create_file fn       -> acc +@? fn
+    | Update_file (fn, _)  -> acc +@? fn
+    | Rename (src, dst)    -> acc +<? src +@? dst
+    | Copy (src, dst)
+    | Copy_and_add_line_directive (src, dst)
+    | Symlink (src, dst) -> acc +<? src +@? dst
+    | Chdir (_, t)
+    | Setenv (_, _, t)
+    | Ignore (_, t) -> partial_with_all_targets acc t
+    | Progn l -> List.fold_left l ~init:acc ~f:partial_with_all_targets
+    | Echo _
+    | System _
+    | Bash _
+    | Remove_tree _
+    | Mkdir _ -> acc
+
+  let partial ~all_targets t =
+    let acc = { deps = S.empty; targets = S.empty } in
+    let { deps; targets } =
+      if all_targets then
+        partial_with_all_targets acc t
+      else
+        partial acc t
+    in
+    { deps = S.diff deps targets; targets }
 end

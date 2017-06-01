@@ -806,12 +806,44 @@ let subst =
     "Substitute watermarks in source files."
   in
   let man =
+    let var name desc =
+      `Blocks [`Noblank; `P ("- $(b,%%" ^ name ^ "%%), " ^ desc) ]
+    in
+    let opam field =
+      var ("PKG_" ^ String.uppercase_ascii field)
+        ("contents of the $(b," ^ field ^ ":) field from the opam file")
+    in
     [ `S "DESCRIPTION"
-    ; `P {|Substitute %%ID%% strings in source files, in a similar fashion to
+    ; `P {|Substitute $(b,%%ID%%) strings in source files, in a similar fashion to
            what topkg does in the default configuration.|}
-    ; `P {|If you use topkg to handle the releases of your project, then you
-           should add this line to the $(b,build:) instructions in your opam file:|}
-    ; `Pre {|  ["jbuilder" "subst" name] {pinned}|}
+    ; `P {|This command is only meant to be called when a user pins a package to
+           its development version. Especially it replaces $(b,%%VERSION%%) strings
+           by the version obtained from the vcs. Currently only git is supported and
+           the version is obtained from the output of:|}
+    ; `Pre {|  \$ git describe --always --dirty|}
+    ; `P {|$(b,jbuilder subst) substitutes the variables that topkg substitutes with
+           the defatult configuration:|}
+    ; var "NAME" "the name of the package"
+    ; var "VERSION" "output of $(b,git describe --always --dirty)"
+    ; var "VERSION_NUM" "same as $(b,%%VERSION%%) but with a potential leading \
+                         'v' or 'V' dropped"
+    ; var "VCS_COMMIT_ID" "commit hash from the vcs"
+    ; opam "maintainer"
+    ; opam "authors"
+    ; opam "homepage"
+    ; opam "issues"
+    ; opam "doc"
+    ; opam "license"
+    ; opam "repo"
+    ; `P {|It is not possible to customize this list. If you wish to do so you need to
+           configure topkg instead and use it to perform the substitution.|}
+    ; `P {|Note that the expansion of $(b,%%NAME%%) is guessed using the following
+           heuristic: if all the $(b,<package>.opam) files in the current directory are
+           prefixed by the shortest package name, this prefix is used. Otherwise you must
+           specify a name with the $(b,-n) command line option.|}
+    ; `P {|In order to call $(b,jbuilder subst) when your package is pinned, add this line
+           to the $(b,build:) field of your opam file:|}
+    ; `Pre {|  ["jbuilder" "subst"] {pinned}|}
     ; `Blocks help_secs
     ]
   in

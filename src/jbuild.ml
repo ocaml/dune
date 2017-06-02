@@ -428,6 +428,8 @@ module Buildable = struct
     >>= fun preprocess ->
     field "preprocessor_deps" (list Dep_conf.t) ~default:[]
     >>= fun preprocessor_deps ->
+    (* CR-someday jdimino: remove this. There are still a few Jane Street packages using
+       this *)
     field_o "lint" (Per_file.t Lint.t)
     >>= fun _lint ->
     field "modules" (fun s -> Ordered_set_lang.(map (t s)) ~f:String.capitalize_ascii)
@@ -507,7 +509,6 @@ module Library = struct
     ; c_names                  : string list
     ; cxx_flags                : Ordered_set_lang.Unexpanded.t
     ; cxx_names                : string list
-    ; includes                 : String_with_vars.t list
     ; library_flags            : String_with_vars.t list
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
@@ -551,7 +552,6 @@ module Library = struct
          ; c_flags
          ; cxx_names
          ; cxx_flags
-         ; includes = []
          ; library_flags
          ; c_library_flags
          ; self_build_stubs_archive

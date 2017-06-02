@@ -522,7 +522,7 @@ module Action = struct
         (* CR-someday jdimino: allow this only for (jbuild_version jane_street) *)
         | Some ("findlib" , s) ->
           let lib_dep, res =
-            A.file_of_lib (artifacts sctx) ~from:dir s ~use_provides:true
+            A.file_of_lib (artifacts sctx) ~from:dir s
           in
           add_artifact acc ~key ~lib_dep:(lib_dep, Required) (map_result res)
         | Some ("version", s) -> begin

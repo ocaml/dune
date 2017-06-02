@@ -16,15 +16,13 @@ val binary
   -> string
   -> (Path.t, fail) result
 
-(** [file_of_lib ?use_provides t ~from name] a named artifact that is looked up in the
-    given library.
+(** [file_of_lib t ~from name] a named artifact that is looked up in the given library.
 
     [name] is expected to be of the form "<lib>:<file>". Raises immediately if it is not
     the case. Returns "<lib>" as well as the resolved artifact.
 *)
 val file_of_lib
   :  t
-  -> ?use_provides:bool
   -> from:Path.t
   -> string
   -> string * (Path.t, fail) result

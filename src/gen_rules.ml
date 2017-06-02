@@ -93,10 +93,6 @@ module Gen(P : Params) = struct
            ; Dyn (fun (cm_files, _) -> Deps cm_files)
            ]))
 
-  let expand_includes ~dir includes =
-    Arg_spec.As (List.concat_map includes ~f:(fun s ->
-      ["-I"; SC.expand_vars sctx ~dir s]))
-
   let build_c_file (lib : Library.t) ~dir ~requires ~h_files c_name =
     let src = Path.relative dir (c_name ^ ".c") in
     let dst = Path.relative dir (c_name ^ ctx.ext_obj) in
@@ -113,7 +109,6 @@ module Gen(P : Params) = struct
          ~dir
          (Dep ctx.ocamlc)
          [ As (Utils.g ())
-         ; expand_includes ~dir lib.includes
          ; Dyn (fun (c_flags, libs) ->
              S [ Lib.c_include_flags libs
                ; As (List.concat_map c_flags ~f:(fun f -> ["-ccopt"; f]))
@@ -141,7 +136,6 @@ module Gen(P : Params) = struct
             (* The C compiler surely is not in the tree *)
             ~in_the_tree:false)
          [ S [A "-I"; Path ctx.stdlib_dir]
-         ; expand_includes ~dir lib.includes
          ; As (SC.cxx_flags sctx)
          ; Dyn (fun (cxx_flags, libs) ->
              S [ Lib.c_include_flags libs

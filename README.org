@@ -151,7 +151,7 @@ time.
 
 Yes, have a look at the [[https://github.com/diml/topkg-jbuilder][topkg-jbuilder]] project for more details.
 
-** Known bugs
+** Known issues
 
 *** Optional libraries inside a multilib directory
 
@@ -167,6 +167,50 @@ workaround, so it is low-priority.
 **** Workaround
 
 Put each optional library in a separate directory.
+
+*** mli only modules
+
+https://github.com/janestreet/jbuilder/issues/9
+
+Due to the low-level details of OCaml compilation, it is currently
+possible to write a module that has only a =.mli= and no =.ml=
+file. This works as long as the mli contains only type declarations.
+
+This is not a properly supported feature of the compiler, and in
+particular it is not possible to alias such modules or use them as the
+argument of a functor. Moreover, if you do write a value declaration,
+or even just define an exception in the =.mli=, then you won't get an
+error until the point where you link an executable using this module.
+
+For these reason, mli only modules are not recommended by Jbuilder
+until the compiler support them properly.
+
+**** Workaround
+
+As long as a module type contains no value declaration, it is possible
+to turn in to an implementation by using a recursive module:
+
+#+begin_src ocaml
+module rec M : sig
+  type t = A | B
+end = M
+include M
+#+end_Src
+
+So if you have a module without a =.ml= file, simply generate a =.ml=
+from the =.mli= using this trick. For instance you can add the
+following rule into your jbuild file:
+
+#+begin_src scheme
+(rule (with-output-to foo.ml
+       (progn
+        (echo "module rec HACK : sig\n")
+        (cat foo.mli)
+        (echo "\nend = HACK\ninclue HACK\n"))))
+#+end_src
+
+In fact, jbuilder will automatically add this rule if you have a
+module without imlpementation. However it will print a warning.
 
 ** Implementation details
 

@@ -69,6 +69,11 @@ module Pkgs = struct
     ; closest_packages : Package.t list
     }
 
+  let empty =
+    { visible_packages = String_map.empty
+    ; closest_packages = []
+    }
+
   let package_listing packages =
     let longest_pkg = List.longest_map packages ~f:(fun p -> p.Package.name) in
     String.concat ~sep:"\n"
@@ -704,13 +709,14 @@ module Rule = struct
     ; action  : Action.Unexpanded.t
     }
 
-  let v1 = function
-    | List (_, [sexp]) ->
+  let v1 sexp =
+    match sexp with
+    | List (_, (Atom _ :: _)) ->
       { targets = Infer
       ; deps    = []
       ; action  = Action.Unexpanded.t sexp
       }
-    | sexp ->
+    | _ ->
       record
         (field "targets" (list file_in_current_dir)    >>= fun targets ->
          field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
@@ -743,40 +749,6 @@ module Rule = struct
             (str "${ROOT}",
              Run (str "${bin:ocamlyacc}",
                   [str "${<}"]))
-      })
-
-  let ml_of_mli names =
-    List.map names ~f:(fun (loc, name) ->
-      let strf fmt = Printf.ksprintf (String_with_vars.of_string ~loc) fmt in
-      let m = String.capitalize_ascii name in
-      { targets = Infer
-      ; deps    = []
-      ; action  =
-          Redirect
-            (Stdout,
-             strf "%s.ml" name,
-             Progn
-               [ Echo (strf "[@@@warning \"-a\"]\nmodule rec %s : sig\n" m)
-               ; Cat  (strf "%s.mli" name)
-               ; Echo (strf "\nend = %s\ninclude %s\n" m m)
-               ])
-      })
-
-  let re_of_rei names =
-    List.map names ~f:(fun (loc, name) ->
-      let strf fmt = Printf.ksprintf (String_with_vars.of_string ~loc) fmt in
-      let m = String.capitalize_ascii name in
-      { targets = Infer
-      ; deps    = []
-      ; action  =
-          Redirect
-            (Stdout,
-             strf "%s.ml" name,
-             Progn
-               [ Echo (strf "[@@@warning \"-a\"]\nmodule type %s = {\n" m)
-               ; Cat  (strf "%s.mli" name)
-               ; Echo (strf "\nend\nmodule rec %s : %s = %s = %s\ninclude %s\n" m m m m m)
-               ])
       })
 end
 
@@ -960,8 +932,6 @@ module Stanza = struct
           (fun pat vals sexps ->
              let sexps = Foreach.expand pat vals sexps in
              List.concat_map sexps ~f:(v1 pkgs))
-      ; cstr "ml_of_mli" (list (located string) @> nil) (fun x -> rules (Rule.ml_of_mli x))
-      ; cstr "re_of_rei" (list (located string) @> nil) (fun x -> rules (Rule.re_of_rei x))
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]

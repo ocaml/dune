@@ -534,6 +534,33 @@ module Gen(P : Params) = struct
      | Modules listing                                                 |
      +-----------------------------------------------------------------+ *)
 
+  let ml_of_mli : _ format =
+{|(with-stdout-to %s
+       (progn
+        (echo "module rec HACK : sig\n")
+        (cat %s)
+        (echo "\nend = HACK\ninclude HACK\n")))|}
+
+  let re_of_rei : _ format =
+{|(with-stdout-to %s
+       (progn
+        (echo "module type HACK = {\n")
+        (cat %s)
+        (echo "\n};\nmodule rec HACK : HACK = HACK;\ninclude HACK;\n")))|}
+
+  let no_impl_warning : _ format =
+    {|@{<warning>Warning@}: Module %s in %s doesn't have a corresponding .%s file.
+Modules without an implementation are not recommended, see this discussion:
+
+  https://github.com/janestreet/jbuilder/issues/9
+
+In the meantime I'm implicitely adding this rule:
+
+(rule %s)
+
+Add it to your jbuild file to remove this warning.
+|}
+
   let guess_modules ~dir ~files =
     let impl_files, intf_files =
       String_set.elements files
@@ -561,25 +588,33 @@ module Gen(P : Params) = struct
     let intfs = parse_one_set intf_files in
     let setup_intf_only name (intf : Module.File.t) =
       let impl_fname = String.sub intf.name ~pos:0 ~len:(String.length intf.name - 1) in
-      Format.eprintf
-        "@{<warning>Warning@}: Module %s in %s doesn't have a \
-         corresponding .%s file.\n\
-         Modules without an implementation are not recommended, \
-         see this discussion:\n\
-         \n\
-        \  https://github.com/janestreet/jbuilder/issues/9\n\
-         \n\
-         In the meantime I'm setting up a rule for copying %s to %s.\n"
+      let action_str =
+        sprintf
+          (match intf.syntax with
+           | OCaml  -> ml_of_mli
+           | Reason -> re_of_rei)
+          impl_fname intf.name
+      in
+      Format.eprintf no_impl_warning
         name (Path.to_string dir)
         (match intf.syntax with
-         | OCaml -> "ml"
+         | OCaml  -> "ml"
          | Reason -> "re")
-        intf.name impl_fname;
+        action_str;
       let dir = Path.append ctx.build_dir dir in
+      let action =
+        Lexing.from_string action_str
+        |> Sexp_lexer.single
+        |> Action.Unexpanded.t
+      in
       SC.add_rule sctx
-        (Build.copy
-           ~src:(Path.relative dir intf.name)
-           ~dst:(Path.relative dir impl_fname));
+        (Build.return []
+         >>>
+         SC.Action.run sctx action
+           ~dir
+           ~dep_kind:Required
+           ~targets:Infer
+           ~package_context:Pkgs.empty);
       { intf with name = impl_fname } in
     String_map.merge impls intfs ~f:(fun name impl intf ->
       let impl =

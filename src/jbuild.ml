@@ -133,33 +133,21 @@ module Pkgs = struct
 end
 
 
-module Raw_string () : sig
-  type t = private string
-  val to_string : t -> string
+module Pp : sig
+  type t
   val of_string : string -> t
-  val t : t Sexp.Of_sexp.t
+  val to_string : t -> string
+  val compare : t -> t -> int
 end = struct
   type t = string
-  let to_string t = t
-  let of_string t = t
-  let t = string
-end
-
-module Pp = struct
-  include Raw_string ()
 
   let of_string s =
     assert (not (String.is_prefix s ~prefix:"-"));
-    of_string s
+    s
 
-  let t sexp =
-    let s = string sexp in
-    if String.is_prefix s ~prefix:"-" then
-      of_sexp_error sexp "flag not allowed here"
-    else
-      of_string s
+  let to_string t = t
 
-  let compare : t -> t -> int = Pervasives.compare
+  let compare = String.compare
 end
 
 module Pp_or_flags = struct
@@ -429,7 +417,6 @@ module Buildable = struct
     ; libraries                : Lib_dep.t list
     ; preprocess               : Preprocess_map.t
     ; preprocessor_deps        : Dep_conf.t list
-    ; lint                     : Lint.t Per_file.t option
     ; flags                    : Ordered_set_lang.t
     ; ocamlc_flags             : Ordered_set_lang.t
     ; ocamlopt_flags           : Ordered_set_lang.t
@@ -442,7 +429,7 @@ module Buildable = struct
     field "preprocessor_deps" (list Dep_conf.t) ~default:[]
     >>= fun preprocessor_deps ->
     field_o "lint" (Per_file.t Lint.t)
-    >>= fun lint ->
+    >>= fun _lint ->
     field "modules" (fun s -> Ordered_set_lang.(map (t s)) ~f:String.capitalize_ascii)
       ~default:Ordered_set_lang.standard
     >>= fun modules ->
@@ -455,7 +442,6 @@ module Buildable = struct
     return
       { preprocess
       ; preprocessor_deps
-      ; lint
       ; modules
       ; libraries
       ; flags
@@ -472,9 +458,9 @@ end
 
 module Public_lib = struct
   type t =
-    { name    : string (* Full public name *)
-    ; package : Package.t (* Package it is part of *)
-    ; sub_dir : string option (* Subdirectory inside the installation directory *)
+    { name    : string
+    ; package : Package.t
+    ; sub_dir : string option
     }
 
   let public_name_field pkgs =
@@ -811,7 +797,7 @@ module Provides = struct
     ; file : string
     }
 
-  let v1 sexp =
+(*  let v1 sexp =
     match sexp with
     | Atom (_, s) ->
       { name = s
@@ -825,7 +811,7 @@ module Provides = struct
       ; file
       }
     | sexp ->
-      of_sexp_error sexp "[<name>] or [<name> (file <file>)] expected"
+    of_sexp_error sexp "[<name>] or [<name> (file <file>)] expected"*)
 end
 
 module Alias_conf = struct
@@ -923,7 +909,7 @@ module Stanza = struct
       ; cstr "executable"  (Executables.v1_single pkgs @> nil) execs
       ; cstr "executables" (Executables.v1_multi  pkgs @> nil) execs
       ; cstr "rule"        (Rule.v1 @> nil)              (fun x -> [Rule        x])
-      ; cstr "ocamllex"    (list string @> nil)          (fun x -> rules (Rule.ocamllex_v1 x))
+      ; cstr "ocamllex"    (list string @> nil)          (fun x -> rules (Rule.ocamllex_v1  x))
       ; cstr "ocamlyacc"   (list string @> nil)          (fun x -> rules (Rule.ocamlyacc_v1 x))
       ; cstr "menhir"      (Menhir.v1 @> nil)            (fun x -> rules (Menhir.v1_to_rule x))
       ; cstr "install"     (Install_conf.v1 pkgs @> nil) (fun x -> [Install     x])

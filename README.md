@@ -292,10 +292,10 @@ Lwt/Async-like monad, implemented in [src/future.mli]().
 
 #### Code flow
 
-- [src/jbuild_types.ml]() contains the internal representation of =jbuild=
+- [src/jbuild.mli]() contains the internal representation of `jbuild`
   files and the parsing code
-- [src/jbuild_load.ml]() contains the code to scan a source tree and
+- [src/jbuild_load.mli]() contains the code to scan a source tree and
   build the internal database by reading the =jbuild= files
-- [src/gen_rules.ml]() contains all the build rules of Jbuilder
-- [src/build_system.ml]() contains a trivial implementation of a Build
+- [src/gen_rules.mli]() contains all the build rules of Jbuilder
+- [src/build_system.mli]() contains a trivial implementation of a Build
   system. This is what Jenga will provide when implementing the bridge

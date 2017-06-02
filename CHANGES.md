@@ -13,6 +13,9 @@
 - Add a `--no-buffer` option to see the output of commands in
   real-time. Should only be used with `-j1`
 
+- Deprecate `per_file` in preprocessing specifications and
+  rename it `per_module`
+
 - Inside user actions, `${^}` now includes files matches by
   `(glob_files ...)` or `(file_recursively_in ...)`
 
@@ -31,10 +34,6 @@
 
 - When exiting prematurely because of a failure, if there are other
   background processes running and they fail, print these failures
-
-- Better support for mli only modules. To support a module without a
-  `.ml` file, one must now write `(mli_of_ml (foo))`. This rule is
-  still added automatically with a warning for backward compatibility
 
 - Fix a bug where `jbuild rules` would crash instead of reporting a
   proper build error

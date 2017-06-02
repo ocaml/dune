@@ -32,27 +32,36 @@ let default_flags () =
     [ "-w"; !Clflags.warnings ]
 
 type t =
-  { common   : string list
-  ; specific : string list Mode.Dict.t
+  { common   : string list Per_file.t
+  ; specific : string list Per_file.t Mode.Dict.t
   }
 
 let make { Jbuild_types.Buildable. flags; ocamlc_flags; ocamlopt_flags; _ } =
+  let (>>|) = Per_file.(>>|) in
   let eval = Ordered_set_lang.eval_with_standard in
-  { common   = eval flags ~standard:(default_flags ())
+  { common   = flags >>| eval ~standard:(default_flags ())
   ; specific =
-      { byte   = eval ocamlc_flags   ~standard:(default_ocamlc_flags ())
-      ; native = eval ocamlopt_flags ~standard:(default_ocamlopt_flags ())
+      { byte   = ocamlc_flags >>| eval ~standard:(default_ocamlc_flags ())
+      ; native = ocamlopt_flags >>| eval ~standard:(default_ocamlopt_flags ())
       }
   }
 
-let get t mode = Arg_spec.As (t.common @ Mode.Dict.get t.specific mode)
+let get t mode ~target =
+  let _get = Per_file.get ~target ~default:[] in
+  Arg_spec.As (_get t.common @ _get (Mode.Dict.get t.specific mode))
 
-let get_for_cm t ~cm_kind = get t (Mode.of_cm_kind cm_kind)
+let get_all_forall t mode = 
+  let common   = Per_file.get_forall t.common in
+  let specific = Per_file.get_forall (Mode.Dict.get t.specific mode) in
+  Arg_spec.As (common @ specific)
+
+let get_for_cm t ~target ~cm_kind = get t (Mode.of_cm_kind cm_kind) target
 
 let default () =
-  { common = default_flags ()
+  let open Per_file in
+  { common = forall_of (default_flags ())
   ; specific =
-      { byte   = default_ocamlc_flags   ()
-      ; native = default_ocamlopt_flags ()
+      { byte   = forall_of (default_ocamlc_flags ())
+      ; native = forall_of (default_ocamlopt_flags ())
       }
   }

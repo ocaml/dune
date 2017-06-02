@@ -510,6 +510,23 @@ instance, to install a file ``mylib.el`` as
   package is not ambiguous when the first parent directory to contain a
   ``<package>.opam`` file contains exactly one ``<package>.opam`` file
 
+copy_files
+----------
+
+The ``copy_files`` and ``copy_files_and_add_lines_directives`` stanzas
+allow to specify that files from another directory could be copied if
+needed to the current directory. The stanza ``copy_files#`` can be
+used as a shorthand for ``copy_files_and_add_lines_directives``.
+
+The syntax is as follows:
+
+.. code:: scheme
+
+    (copy_files <glob>)
+
+``<glob>`` represents the set of files to copy, see the :ref:`glob
+<glob>` for details.
+
 Common items
 ============
 
@@ -933,7 +950,8 @@ The following constructions are available:
 - ``(cat <file>)`` to print the contents of a file to stdout
 - ``(copy <src> <dst>)`` to copy a file
 - ``(copy-and-add-line-directive <src> <dst>)`` to copy a file and add a line
-  directive at the beginning
+  directive at the beginning. ``copy#`` can be used as a shorthand
+  for ``copy-and-add-line-directive``
 - ``(system <cmd>)`` to execute a command using the system shell: ``sh`` on Unix
   and ``cmd`` on Windows
 - ``(bash <cmd>)`` to execute a command using ``/bin/bash``. This is obviously

@@ -9,6 +9,7 @@ type t =
   ; flags      : string list
   ; preprocess : Jbuild_types.Preprocess.t
   ; libname    : string option
+  ; source_dirs: Path.Set.t
   }
 
 let ppx_flags sctx ~dir ~src_dir { preprocess; libname; _ } =
@@ -53,6 +54,12 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
                 internals, ("PKG " ^ pkg.name) :: externals
             )
           in
+          let source_dirs =
+            Path.Set.fold t.source_dirs ~init:[] ~f:(fun path acc ->
+              let path = Path.reach path ~from:remaindir in
+              ("S " ^ path)::acc
+            )
+          in
           let flags =
             match flags with
             | [] -> []
@@ -61,6 +68,7 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
           let dot_merlin =
             List.concat
               [ [ "B " ^ (Path.reach dir ~from:remaindir) ]
+              ; source_dirs
               ; internals
               ; externals
               ; flags
@@ -90,9 +98,10 @@ let merge_two a b =
       else
         No_preprocessing
   ; libname =
-      match a.libname with
-      | Some _ as x -> x
-      | None -> b.libname
+      (match a.libname with
+       | Some _ as x -> x
+       | None -> b.libname)
+  ; source_dirs = Path.Set.union a.source_dirs b.source_dirs
   }
 
 let add_rules sctx ~dir ts =

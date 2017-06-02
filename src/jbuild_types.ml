@@ -929,6 +929,15 @@ module Foreach = struct
       expand_sexps (fun _loc v -> String_map.find v env) sexps)
 end
 
+module Copy_files = struct
+  type t = { add_line_directive : bool
+           ; glob : String_with_vars.t
+           }
+
+  let v1 = String_with_vars.t
+end
+
+
 module Stanza = struct
   type t =
     | Library     of Library.t
@@ -937,6 +946,7 @@ module Stanza = struct
     | Provides    of Provides.t
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
+    | Copy_files of Copy_files.t
 
   let rules l = List.map l ~f:(fun x -> Rule x)
 
@@ -962,6 +972,12 @@ module Stanza = struct
              List.concat_map sexps ~f:(v1 pkgs))
       ; cstr "ml_of_mli" (list (located string) @> nil) (fun x -> rules (Rule.ml_of_mli x))
       ; cstr "re_of_rei" (list (located string) @> nil) (fun x -> rules (Rule.re_of_rei x))
+      ; cstr "copy_files" (Copy_files.v1 @> nil)
+          (fun glob -> [Copy_files {add_line_directive = false; glob}])
+      ; cstr "copy_files_and_add_lines_directives" (Copy_files.v1 @> nil)
+          (fun glob -> [Copy_files {add_line_directive = true; glob}])
+      ; cstr "copy_files#" (Copy_files.v1 @> nil)
+          (fun glob -> [Copy_files {add_line_directive = true; glob}])
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]

@@ -140,6 +140,8 @@ struct
       *)
       ; cstr "copy-and-add-line-directive" (path @> path @> nil) (fun src dst ->
           Copy_and_add_line_directive (src, dst))
+      ; cstr "copy#" (path @> path @> nil) (fun src dst ->
+          Copy_and_add_line_directive (src, dst))
       ; cstr "system" (string @> nil) (fun cmd -> System cmd)
       ; cstr "bash"   (string @> nil) (fun cmd -> Bash   cmd)
       ]

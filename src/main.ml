@@ -76,7 +76,7 @@ let external_lib_deps ?log ~packages () =
            not (String_set.mem name internals))))
 
 (* Return [true] if the backtrace was printed *)
-let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
+let rec report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   match exn with
   | Loc.Error (loc, msg) ->
     let loc =
@@ -90,6 +90,11 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   | Fatal_error msg ->
     Format.fprintf ppf "%s\n" (String.capitalize_ascii msg);
     false
+  | Loc.Localized(loc,exn) ->
+    Loc.print ppf loc;
+    let b = report_error ~map_fname ppf exn ~backtrace in
+    Format.fprintf ppf "\n";
+    b
   | Findlib.Package_not_available { package; required_by; reason } ->
     Format.fprintf ppf
       "@{<error>Error@}: External library %S %s.\n" package

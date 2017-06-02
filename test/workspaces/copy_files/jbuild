@@ -1,0 +1,6 @@
+(jbuild_version 1)
+
+(copy_files# lexers/*.ml{,i})
+
+(executables
+ ((names (test))))

@@ -79,7 +79,7 @@ module Gen(P : Params) = struct
              match mode with
              | Byte -> []
              | Native -> [lib_archive lib ~dir ~ext:ctx.ext_lib])
-           [ Ocaml_flags.get ~target:(Path.basename target) flags mode
+           [ Ocaml_flags.get_all_forall flags mode
            ; A "-a"; A "-o"; Target target
            ; As stubs_flags
            ; Dyn (fun (_, cclibs) ->
@@ -362,15 +362,14 @@ module Gen(P : Params) = struct
       match alias_module with
       | None -> flags.common
       | Some m -> 
-        let (>>|) = Per_file.(>>|) in
-        flags.common
-        >>| fun common -> "-open" :: m.name :: common
+        Per_file.map flags.common
+        ~f:(fun common -> "-open" :: m.name :: common)
     in
     { Merlin.
-      requires = real_requires
-    ; flags = Per_file.get ~target:lib.name ~default:[] flags
+      requires   = real_requires
+    ; flags      = Per_file.get_forall flags
     ; preprocess = Buildable.single_preprocess lib.buildable
-    ; libname = Some lib.name
+    ; libname    = Some lib.name
     }
 
   (* +-----------------------------------------------------------------+
@@ -458,7 +457,7 @@ module Gen(P : Params) = struct
           ~mode ~modules ~dep_graph ~link_flags:exes.link_flags));
     { Merlin.
       requires   = real_requires
-    ; flags      = Per_file.get ~target:item ~default:[] flags.common
+    ; flags      = Per_file.get_forall flags.common
     ; preprocess = Buildable.single_preprocess exes.buildable
     ; libname    = None
     }

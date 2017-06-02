@@ -50,13 +50,18 @@ let get t mode ~target =
   let _get = Per_file.get ~target ~default:[] in
   Arg_spec.As (_get t.common @ _get (Mode.Dict.get t.specific mode))
 
+let get_all_forall t mode = 
+  let common   = Per_file.get_forall t.common in
+  let specific = Per_file.get_forall (Mode.Dict.get t.specific mode) in
+  Arg_spec.As (common @ specific)
+
 let get_for_cm t ~target ~cm_kind = get t (Mode.of_cm_kind cm_kind) target
 
 let default () =
   let open Per_file in
-  { common = as_forall (default_flags ())
+  { common = forall_of (default_flags ())
   ; specific =
-      { byte   = as_forall (default_ocamlc_flags ())
-      ; native = as_forall (default_ocamlopt_flags ())
+      { byte   = forall_of (default_ocamlc_flags ())
+      ; native = forall_of (default_ocamlopt_flags ())
       }
   }

@@ -20,7 +20,11 @@ let t a sexp =
     end
   | sexp -> For_all (a sexp)
 
-let as_forall a = For_all a
+let forall_of a = For_all a
+
+let of_forall_exn = function
+  | For_all a  -> a
+  | Per_file _ -> failwith "per_file unsupported in this stanza"
 
 let map per_file ~f = 
   match per_file with
@@ -35,3 +39,7 @@ let get per_file ~target ~default =
     match per_file with
     | For_all a -> a
     | Per_file a_map -> String_map.find_default ~default target a_map 
+
+let get_forall = function
+  | For_all a  -> a
+  | Per_file _ -> []

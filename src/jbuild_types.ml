@@ -239,10 +239,10 @@ let field_oslu name =
   field name Ordered_set_lang.Unexpanded.t ~default:Ordered_set_lang.Unexpanded.standard
 
 let field_oslpf name =
-  field name (Per_file.t Ordered_set_lang.t) ~default:(Per_file.as_forall Ordered_set_lang.standard)
+  field name (Per_file.t Ordered_set_lang.t) ~default:(Per_file.forall_of Ordered_set_lang.standard)
 
 let field_oslupf name =
-  field name (Per_file.t Ordered_set_lang.Unexpanded.t) ~default:(Per_file.as_forall Ordered_set_lang.Unexpanded.standard)
+  field name (Per_file.t Ordered_set_lang.Unexpanded.t) ~default:(Per_file.forall_of Ordered_set_lang.Unexpanded.standard)
 
 module Js_of_ocaml = struct
 

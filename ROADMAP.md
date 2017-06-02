@@ -77,10 +77,6 @@ So that we can filter tests when using `-p pkg`
 
 - *05/02/2017*: Rudi Grinberg added this ([[https://github.com/janestreet/jbuilder/pull/64][#64]])
 
-## Integrate rules for `-output-complete-obj`
-
-#23
-
 ## ~~Integrate rules for js_of_ocaml~~
 
 #60
@@ -105,6 +101,10 @@ Support generating documentation with
 [odoc](https://github.com/ocaml-doc/odoc)
 
 # After V1
+
+## Integrate rules for `-output-complete-obj`
+
+#23
 
 ## Cross-compilation
 

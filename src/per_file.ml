@@ -20,16 +20,16 @@ let t a sexp =
     end
   | sexp -> For_all (a sexp)
 
-let pure a = For_all a
+let as_forall a = For_all a
 
-let fmap per_file f = 
+let map per_file ~f = 
   match per_file with
   | For_all a ->
     For_all (f a)
   | Per_file a_map ->
     Per_file (String_map.map a_map ~f)
 
-let (>>|) = fmap
+let (>>|) = map
 
 let get per_file ~target ~default =
     match per_file with

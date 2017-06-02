@@ -32,7 +32,7 @@ let js_of_ocaml_rule ~sctx ~dir ~flags ~spec ~target =
   let runtime = runtime_file ~sctx ~dir "runtime.js" in
   Build.run ~context:(SC.context sctx) ~dir
     jsoo
-    [ Arg_spec.As (Per_file.get ~target:(Path.basename target) ~default:[] flags)
+    [ Arg_spec.As flags
     ; Arg_spec.A "-o"; Target target
     ; Arg_spec.A "--no-runtime"; runtime
     ; spec
@@ -45,12 +45,8 @@ let standalone_runtime_rule ~sctx ~dir ~flags ~javascript_files ~target =
       ; Arg_spec.Deps javascript_files
       ]
   in
-  let flags = 
-    let (>>|) = Per_file.(>>|) in
-    flags
-    >>| Ordered_set_lang.eval_with_standard ~standard:(standard ())
-    >>| fun flags -> "--runtime-only" :: flags
-  in
+  let flags = Ordered_set_lang.eval_with_standard flags ~standard:(standard ()) in
+  let flags = "--runtime-only" :: flags in
   js_of_ocaml_rule ~sctx ~dir ~flags ~target ~spec
 
 let exe_rule ~sctx ~dir ~flags ~javascript_files ~src ~target =
@@ -61,10 +57,7 @@ let exe_rule ~sctx ~dir ~flags ~javascript_files ~src ~target =
       ; Arg_spec.Dep src
       ]
   in
-  let flags =
-    let (>>|) = Per_file.(>>|) in
-    flags >>| Ordered_set_lang.eval_with_standard ~standard:(standard ())
-  in
+  let flags = Ordered_set_lang.eval_with_standard flags ~standard:(standard ()) in
   js_of_ocaml_rule ~sctx ~dir ~flags ~spec ~target
 
 let link_rule ~sctx ~dir ~runtime ~target =
@@ -100,9 +93,9 @@ let build_cm sctx ~dir ~js_of_ocaml ~src =
   then let target = Path.extend_basename src ~suffix:".js" in
     let spec = Arg_spec.Dep src in
     let flags =
-      let (>>|) = Per_file.(>>|) in
-      js_of_ocaml.Jbuild_types.Js_of_ocaml.flags
-      >>| Ordered_set_lang.eval_with_standard ~standard:(standard ())
+      Ordered_set_lang.eval_with_standard
+        js_of_ocaml.Jbuild_types.Js_of_ocaml.flags
+        ~standard:(standard ())
     in
     [ js_of_ocaml_rule ~sctx ~dir ~flags ~spec ~target ]
   else []
@@ -131,7 +124,7 @@ let setup_separate_compilation_rules sctx =
           let target = in_build_dir ~ctx [ pkg_name; sprintf "%s.js" name] in
           let dir = in_build_dir ~ctx [ pkg_name ] in
           let spec = Arg_spec.Dep src in
-          let flags = Per_file.pure (standard ()) in
+          let flags = standard () in
           js_of_ocaml_rule ~sctx ~dir ~flags ~spec ~target
         ))
   else []

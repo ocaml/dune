@@ -239,26 +239,26 @@ let field_oslu name =
   field name Ordered_set_lang.Unexpanded.t ~default:Ordered_set_lang.Unexpanded.standard
 
 let field_oslpf name =
-  field name (Per_file.t Ordered_set_lang.t) ~default:(Per_file.pure Ordered_set_lang.standard)
+  field name (Per_file.t Ordered_set_lang.t) ~default:(Per_file.as_forall Ordered_set_lang.standard)
 
 let field_oslupf name =
-  field name (Per_file.t Ordered_set_lang.Unexpanded.t) ~default:(Per_file.pure Ordered_set_lang.Unexpanded.standard)
+  field name (Per_file.t Ordered_set_lang.Unexpanded.t) ~default:(Per_file.as_forall Ordered_set_lang.Unexpanded.standard)
 
 module Js_of_ocaml = struct
 
   type t =
-    { flags            : Ordered_set_lang.t Per_file.t
+    { flags            : Ordered_set_lang.t
     ; javascript_files : string list
     }
 
   let t =
     record
-      (field_oslpf "flags"                                      >>= fun flags ->
-       field       "javascript_files" (list string) ~default:[] >>= fun javascript_files ->
+      (field_osl "flags"                                      >>= fun flags ->
+       field     "javascript_files" (list string) ~default:[] >>= fun javascript_files ->
        return { flags; javascript_files })
 
   let default =
-    { flags = Per_file.pure Ordered_set_lang.standard
+    { flags = Ordered_set_lang.standard
     ; javascript_files = [] }
 end
 

@@ -259,18 +259,12 @@ module Gen(P : Params) = struct
     Module_compilation.build_modules sctx
       ~js_of_ocaml ~dynlink ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
-      let flags =
-        let (>>|) = Per_file.(>>|) in
-        Ocaml_flags.default ()
-        |> fun flags -> { 
-          flags with common = (flags.common >>| fun common -> common @ ["-w"; "-49"]) 
-          }
-      in
+      let flags = Ocaml_flags.default () in
       Module_compilation.build_module sctx m
          ~js_of_ocaml
         ~dynlink
         ~sandbox:alias_module_build_sandbox
-        ~flags
+        ~flags:{ flags with common = Per_file.map flags.common ~f:(fun common -> common @ ["-w"; "-49"]) }
         ~dir
         ~modules:(String_map.singleton m.name m)
         ~dep_graph:(Ml_kind.Dict.make_both (Build.return (String_map.singleton m.name [])))

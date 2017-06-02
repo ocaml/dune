@@ -53,10 +53,10 @@ let get t mode ~target =
 let get_for_cm t ~target ~cm_kind = get t (Mode.of_cm_kind cm_kind) target
 
 let default () =
-  let pure = Per_file.pure in
-  { common = pure (default_flags ())
+  let open Per_file in
+  { common = as_forall (default_flags ())
   ; specific =
-      { byte   = pure (default_ocamlc_flags ())
-      ; native = pure (default_ocamlopt_flags ())
+      { byte   = as_forall (default_ocamlc_flags ())
+      ; native = as_forall (default_ocamlopt_flags ())
       }
   }

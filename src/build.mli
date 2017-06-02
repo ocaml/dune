@@ -108,6 +108,7 @@ val update_file : Path.t -> string -> (unit, Action.t) t
 val update_file_dyn : Path.t -> (string, Action.t) t
 
 val copy : src:Path.t -> dst:Path.t -> (unit, Action.t) t
+val copy_and_add_line_directive : src:Path.t -> dst:Path.t -> (unit, Action.t) t
 
 val symlink : src:Path.t -> dst:Path.t -> (unit, Action.t) t
 

@@ -1,8 +1,6 @@
 (jbuild_version 1)
 
-(ocamllex (lexer1))
-
-(copy_files# lexers/*)
+(copy_files# lexers/*.ml{,i})
 
 (executables
  ((names (test))))

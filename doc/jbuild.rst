@@ -513,10 +513,10 @@ instance, to install a file ``mylib.el`` as
 copy_files
 ----------
 
-The ``copy_files`` and ``copy_files_and_add_lines_directives`` stanza
-allows to specify that files in another directory could be copied to
-the current directory. The stanza ``copy_files#`` is a shortcut for
-``copy_files_and_add_lines_directives``.
+The ``copy_files`` and ``copy_files_and_add_lines_directives`` stanzas
+allow to specify that files from another directory could be copied if
+needed to the current directory. The stanza ``copy_files#`` can be
+used as a shorthand for ``copy_files_and_add_lines_directives``.
 
 The syntax is as follows:
 
@@ -524,8 +524,8 @@ The syntax is as follows:
 
     (copy_files <glob>)
 
-``<glob>`` represent the set of files matched, see the :ref:`glob
-<glob>` for details
+``<glob>`` represents the set of files to copy, see the :ref:`glob
+<glob>` for details.
 
 Common items
 ============
@@ -950,8 +950,8 @@ The following constructions are available:
 - ``(cat <file>)`` to print the contents of a file to stdout
 - ``(copy <src> <dst>)`` to copy a file
 - ``(copy-and-add-line-directive <src> <dst>)`` to copy a file and add a line
-  directive at the beginning. ``(copy# <src> <dst>)`` is an available
-  shortcut
+  directive at the beginning. ``copy#`` can be used as a shorthand
+  for ``copy-and-add-line-directive``
 - ``(system <cmd>)`` to execute a command using the system shell: ``sh`` on Unix
   and ``cmd`` on Windows
 - ``(bash <cmd>)`` to execute a command using ``/bin/bash``. This is obviously

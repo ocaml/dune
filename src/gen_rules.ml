@@ -533,8 +533,14 @@ module Gen(P : Params) = struct
            ])
 
   let copy_files_rules (def: Copy_files.t) ~src_dir ~dir ~package_context:_ =
-    let src_glob = SC.expand_vars sctx ~dir def.glob in
-    let glob_in_src = Path.relative src_dir src_glob in
+    let glob_in_src =
+      let src_glob = SC.expand_vars sctx ~dir def.glob in
+      Loc.localize
+        (String_with_vars.loc def.glob)
+        (fun () -> Path.relative src_dir src_glob) in
+    if Option.is_none (Path.descendant glob_in_src ~of_:src_dir)
+    then Loc.fail (String_with_vars.loc def.glob) "%s is not a sub-directory of %s"
+    (Path.to_string glob_in_src) (Path.to_string src_dir);
     let glob = Path.basename glob_in_src in
     let src_in_src = Path.parent glob_in_src in
     let re = match Glob_lexer.parse_string glob with
@@ -544,28 +550,19 @@ module Gen(P : Params) = struct
       die "invalid glob in %s/jbuild: %s" (Path.to_string src_dir) msg
     in
     (* add rules *)
-    let modules = SC.sources_and_targets_known_so_far sctx ~src_path:src_in_src in
+    let files = SC.sources_and_targets_known_so_far sctx ~src_path:src_in_src in
     let src_in_build = Path.append ctx.build_dir src_in_src in
-    String_set.iter modules ~f:(fun basename ->
+    String_set.iter files ~f:(fun basename ->
       let matches = Re.execp re basename in
       if matches then
         let file_src = Path.relative src_in_build basename in
         let file_dst = Path.relative dir basename in
         SC.add_rule sctx
-          (Build.path file_src
-           >>>
-           let action =
-             if def.add_line_directive
-             then Action.Mini_shexp.Ast.Copy_and_add_line_directive
-                    (file_src,file_dst)
-             else Action.Mini_shexp.Ast.Copy (file_src,file_dst)
-           in
-           (Build.action 
-              action
-              ~dir
-              ~targets:[file_dst]
-              ~context:ctx)
-          )
+          ((if def.add_line_directive
+            then Build.copy_and_add_line_directive
+            else Build.copy)
+             ~src:file_src
+             ~dst:file_dst)
     );
     { Merlin.requires = Build.return []
     ; flags    = []
@@ -689,7 +686,7 @@ module Gen(P : Params) = struct
   let () =
     (* Goes first in subdirectories *)
     let subtree_smaller x y =
-      - (Path.compare x.SC.Dir_with_jbuild.src_dir  y.SC.Dir_with_jbuild.src_dir) in
+      Path.compare y.SC.Dir_with_jbuild.src_dir x.SC.Dir_with_jbuild.src_dir in
     let stanzas = List.sort ~cmp:subtree_smaller (SC.stanzas sctx) in
     List.iter stanzas ~f:rules
   let () =

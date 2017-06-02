@@ -84,7 +84,7 @@ across several versions of OCaml as you can tests them all at once
 without hassle.
 
 This feature should make cross-compilation easy, see details in the
-[roadmap](ROADMAP.org).
+[roadmap](ROADMAP.md).
 
 This feature requires [opam][opam].
 
@@ -144,7 +144,7 @@ been done, it will be released in 1.0.
 Roadmap
 -------
 
-See [the roadmap](ROADMAP.org) for the current plan. Help on any of
+See [the roadmap](ROADMAP.md) for the current plan. Help on any of
 these points is welcome!
 
 FAQ

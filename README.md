@@ -1,4 +1,5 @@
-* JBUILDER - A composable build system for OCaml and Reason
+Jbuilder - A composable build system
+====================================
 
 Jbuilder is a build system designed for OCaml/Reason projects only. It
 focuses on providing the user with a consistent experience and takes
@@ -11,34 +12,50 @@ Street and adapted to the open source world. It has matured over a
 long time and is used daily by hundred of developpers, which means
 that it is highly tested and productive.
 
-Jbuilder comes with a [[http://jbuilder.readthedocs.io/en/latest/][manual]]. If you want to get started without
-reading too much, you can look at the [[http://jbuilder.readthedocs.io/en/latest/quick-start.html][quick start guide]].
+Jbuilder comes with a [manual][manual]. If you want to get started
+without reading too much, you can look at the
+[quick start guide][quick-start].
 
-The [[example]] directory contains examples of projects using jbuilder.
+The [example]() directory contains examples of projects using
+jbuilder.
 
-[[https://travis-ci.org/janestreet/jbuilder][https://travis-ci.org/janestreet/jbuilder.png?branch=master]]
-#+html: <a href="https://ci.appveyor.com/project/diml/jbuilder/branch/master"><img src="https://ci.appveyor.com/api/projects/status/bn3kcxx648jt6dyt?svg=true"/></a>
+[![Travis status][travis-img]][travis] [![AppVeyor status][appveyor-img]][appveyor]
 
-** Overview
+[manual]:         http://jbuilder.readthedocs.io/en/latest/
+[quick-start]:    http://jbuilder.readthedocs.io/en/latest/quick-start.html
+[travis]:         https://travis-ci.org/janestreet/jbuilder
+[travis-img]:     https://travis-ci.org/janestreet/jbuilder.png?branch=master
+[appveyor]:       https://ci.appveyor.com/project/diml/jbuilder/branch/master
+[appveyor-img]:   https://ci.appveyor.com/api/projects/status/bn3kcxx648jt6dyt?svg=true
+[merlin]:         https://github.com/ocaml/merlin
+[opam]:           https://opam.ocaml.org
+[jenga]:          https://github.com/janestreet/jenga
+[issues]:         https://github.com/janestreet/jbuilder/issues
+[topkg-jbuilder]: https://github.com/diml/topkg-jbuilder
 
-Jbuilder reads project metadata from =jbuild= files, which are either
+Overview
+--------
+
+Jbuilder reads project metadata from `jbuild` files, which are either
 static files in a simple S-expression syntax or OCaml scripts. It uses
 this information to setup build rules, generate configuration files
-for development tools such as [[https://github.com/ocaml/merlin][merlin]], handle installation, etc...
+for development tools such as [merlin][merlin], handle installation,
+etc...
 
 Jbuilder itself is fast, has very low overhead and supports parallel
 builds on all platforms. It has no system dependencies: all you need
 to build jbuilder and packages using jbuilder is OCaml. You don't need
-=make= or =bash= as long as the packages themselves don't use =bash=
+`make` or `bash` as long as the packages themselves don't use `bash`
 explicitly.
 
 Especially, one can install OCaml on Windows with a binary installer
 and then use only the Windows Console to build Jbuilder and packages
 using Jbuilder.
 
-** Strengths
+Strengths
+---------
 
-*** Composable
+### Composable
 
 Take n repositories that use Jbuilder, arrange them in any way on the
 file system and the result is still a single repository that Jbuilder
@@ -46,20 +63,20 @@ knows how to build at once.
 
 This make simultaneous development on multiple packages trivial.
 
-*** Gracefully handles multi-package repositories
+### Gracefully handles multi-package repositories
 
 Jbuilder knows how to handle repositories containing several
-packages. When building via [[https://opam.ocaml.org/][opam]], it is able to correctly use
+packages. When building via [opam][opam], it is able to correctly use
 libraries that were previously installed even if they are already
 present in the source tree.
 
 The magic invocation is:
 
-#+begin_src sh
+```sh
 $ jbuilder build --only-packages <package-name> @install
-#+end_src
+```
 
-*** Building against several configurations at once
+### Building against several configurations at once
 
 Jbuilder is able to build a given source code repository against
 several configurations simultaneously. This helps maintaining packages
@@ -67,172 +84,183 @@ across several versions of OCaml as you can tests them all at once
 without hassle.
 
 This feature should make cross-compilation easy, see details in the
-[[ROADMAP.org][roadmap]].
+[roadmap](ROADMAP.org).
 
-This feature requires [[https://opam.ocaml.org/][opam]].
+This feature requires [opam][opam].
 
-*** Jenga bridge
+### Jenga bridge
 
-[[https://github.com/janestreet/jenga][Jenga]] is another build system for OCaml that has more advanced
-features such as polling or much better editor integration. Jenga is
-more powerful and more complex and as a result as much more
-dependencies.  It is planned to implement a small bridge between the
-two so that a Jbuilder project can build with Jenga using this bridge.
+[Jenga][jenga] is another build system for OCaml that has more
+advanced features such as polling or much better editor
+integration. Jenga is more powerful and more complex and as a result
+as much more dependencies.  It is planned to implement a small bridge
+between the two so that a Jbuilder project can build with Jenga using
+this bridge.
 
-** Requirements
+Requirements
+------------
 
 Jbuilder requires OCaml version 4.02.3 or greater.
 
-** Installation
+nstallation
+-----------
 
-The recommended way to install jbuilder is via the [[https://opam.ocaml.org][opam package manager]]:
+The recommended way to install jbuilder is via the
+[opam package manager][opam]:
 
-#+begin_src sh
+```sh
 $ opam install jbuilder
-#+end_src
+```
 
 You can also build it manually with:
 
-#+begin_src sh
+```sh
 $ make
 $ make install
-#+end_src
+```
 
-Note however that =make install= requires the =opam-installer= tool.
+Note however that `make install` requires the `opam-installer` tool.
 
-If you do not have =make=, you can do the following:
+If you do not have `make`, you can do the following:
 
-#+begin_src sh
+```sh
 $ ocaml bootstrap.ml
 $ ./boot.exe
 $ ./_build/default/bin/main.exe install
-#+end_src
+```
 
-** Support
+Support
+-------
 
 If you have questions about jbuilder, you can send an email to
-ocaml-core@googlegroups.com or [[https://github.com/janestreet/jbuilder/issues][open a ticket on github]].
+ocaml-core@googlegroups.com or [open a ticket on github][issues].
 
-** Status
+Status
+------
 
 Jbuilder is now in beta testing stage. Once a bit more testing has
 been done, it will be released in 1.0.
 
-** Roadmap
+Roadmap
+-------
 
-See [[ROADMAP.org]] for the current plan. Help on any of these points is
-welcome!
+See [the roadmap](ROADMAP.org) for the current plan. Help on any of
+these points is welcome!
 
-** FAQ
+FAQ
+---
 
-*** Why do many Jbuilder projects contain a Makefile?
+### Why do many Jbuilder projects contain a Makefile?
 
-Many Jbuilder project contain a toplevel =Makefile=. It is often only
+Many Jbuilder project contain a toplevel `Makefile`. It is often only
 there only for convenience, for the following reasons:
 
 1. there are many different build systems out there, all with a
    different CLI. If you have been hacking for a long time, the one
-   true invocation you know is =make && make install=, possibly
-   preceded by =./configure=
+   true invocation you know is `make && make install`, possibly
+   preceded by `./configure`
 
 2. you often have a few common operations that are not part of the
-   build and =make <blah>= is a good way to provide them
+   build and `make <blah>` is a good way to provide them
 
-3. =make= is shorter to type than =jbuilder build @install=
+3. `make` is shorter to type than `jbuilder build @install`
 
-*** How to add a configure step to a jbuilder project?
+### How to add a configure step to a jbuilder project?
 
-[[example/sample-projects/with-configure-step]] shows one way to do it
+[example/sample-projects/with-configure-step]() shows one way to do it
 that preserves composability; i.e. it doesn't require to manually run
-all =./configure= script when working on multiple projects at the same
+all `./configure` script when working on multiple projects at the same
 time.
 
-*** Can I use topkg with jbuilder?
+### Can I use topkg with jbuilder?
 
-Yes, have a look at the [[https://github.com/diml/topkg-jbuilder][topkg-jbuilder]] project for more details.
+Yes, have a look at the [topkg-jbuilder][topkg-jbuilder] project for
+more details.
 
-** Known issues
+Known issues
+------------
 
-*** Optional libraries inside a multilib directory
+### Optional libraries inside a multilib directory
 
-[[https://github.com/janestreet/jbuilder/issues/51]]
+https://github.com/janestreet/jbuilder/issues/51
 
 If a directory contains several libraries and some are marked as
-optional (by adding =(optional)= in the =(library ...)= stanza), then
+optional (by adding `(optional)` in the `(library ...)` stanza), then
 the dependencies will still be required to perform the build.
 
 This could be sorted out with some refactoring, but there is a simple
 workaround, so it is low-priority.
 
-**** Workaround
+#### Workaround
 
 Put each optional library in a separate directory.
 
-*** mli only modules
+### mli only modules
 
 https://github.com/janestreet/jbuilder/issues/9
 
 Due to the low-level details of OCaml compilation, it is currently
-possible to write a module that has only a =.mli= and no =.ml=
+possible to write a module that has only a `.mli` and no `.ml`
 file. This works as long as the mli contains only type declarations.
 
 This is not a properly supported feature of the compiler, and in
 particular it is not possible to alias such modules or use them as the
 argument of a functor. Moreover, if you do write a value declaration,
-or even just define an exception in the =.mli=, then you won't get an
+or even just define an exception in the `.mli`, then you won't get an
 error until the point where you link an executable using this module.
 
 For these reason, mli only modules are not recommended by Jbuilder
 until the compiler support them properly.
 
-**** Workaround
+#### Workaround
 
 As long as a module type contains no value declaration, it is possible
 to turn in to an implementation by using a recursive module:
 
-#+begin_src ocaml
+```ocaml
 module rec M : sig
   type t = A | B
 end = M
 include M
-#+end_Src
+```
 
-So if you have a module without a =.ml= file, simply generate a =.ml=
-from the =.mli= using this trick. For instance you can add the
+So if you have a module without a `.ml` file, simply generate a `.ml`
+from the `.mli` using this trick. For instance you can add the
 following rule into your jbuild file:
 
-#+begin_src scheme
+```scheme
 (rule (with-output-to foo.ml
        (progn
         (echo "module rec HACK : sig\n")
         (cat foo.mli)
         (echo "\nend = HACK\ninclue HACK\n"))))
-#+end_src
+```
 
 In fact, jbuilder will automatically add this rule if you have a
 module without imlpementation. However it will print a warning.
 
-** Implementation details
+Implementation details
+----------------------
 
 This section is for people who want to work on Jbuilder itself.
 
-*** Bootstrap
+### Bootstrap
 
-In order to build itself, Jbuilder uses an OCaml script ([[bootstrap.ml]])
-that dumps most of the sources of Jbuilder into a single =boot.ml=
-file. This file is built using =ocamlopt= or =ocamlc= and used to
-build everything else.
+In order to build itself, Jbuilder uses an OCaml script
+([bootstrap.ml]()) that dumps most of the sources of Jbuilder into a
+single =boot.ml= file. This file is built using =ocamlopt= or =ocamlc=
+and used to build everything else.
 
-*** OCaml compatibility test
+### OCaml compatibility test
 
-Install opam switches for all the entries in the [[jbuild-workspace.dev]]
-file and run:
+Install opam switches for all the entries in the
+[jbuild-workspace.dev]() file and run:
 
-#+begin_src sh
+```sh
 $ make all-supported-ocaml-versions
-#+end_src
+```
 
-*** Repository organization
+### Repository organization
 
 - =vendor/= contains dependencies of Jbuilder, that have been vendored
 - =plugin/= contains the API given to =jbuild= files that are OCaml
@@ -242,7 +270,7 @@ $ make all-supported-ocaml-versions
 - =bin/= contains the command line interface
 - =doc/= contains the manual and rules to generate the manual pages
 
-*** Design
+### Design
 
 Jbuilder was initially designed to sort out the public release of Jane
 Street packages which became incredibly complicated over time. It is
@@ -255,18 +283,19 @@ tree. This is used to automatically generate the =<package>.opam=
 files for all Jane Street packages.
 
 To implement this, the build rules are described using a build arrow,
-which is defined in [[src/build.mli][src/build]]. In the end it makes the development
-of the internal rules of Jbuilder very composable and quite pleasant.
+which is defined in [src/build.mli](). In the end it makes the
+development of the internal rules of Jbuilder very composable and
+quite pleasant.
 
 To deal with process multiplexing, Jbuilder uses a simplified
-Lwt/Async-like monad, implemented in [[src/future.mli][src/future]].
+Lwt/Async-like monad, implemented in [src/future.mli]().
 
-**** Code flow
+#### Code flow
 
-- [[src/jbuild_types.ml][src/jbuild_types]] contains the internal representation of =jbuild=
+- [src/jbuild_types.ml]() contains the internal representation of =jbuild=
   files and the parsing code
-- [[src/jbuild_load.ml][src/jbuild_load]] contains the code to scan a source tree and build
-  the internal database by reading the =jbuild= files
-- [[src/gen_rules.ml][src/gen_rules]] contains all the build rules of Jbuilder
-- [[src/build_system.ml][src/build_system]] contains a trivial implementation of a Build
+- [src/jbuild_load.ml]() contains the code to scan a source tree and
+  build the internal database by reading the =jbuild= files
+- [src/gen_rules.ml]() contains all the build rules of Jbuilder
+- [src/build_system.ml]() contains a trivial implementation of a Build
   system. This is what Jenga will provide when implementing the bridge

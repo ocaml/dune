@@ -351,5 +351,83 @@ However it doesn't provides helpers for distributing it. It is
 recommemded to use `Topkg <https://github.com/dbuenzli/topkg>`__ for
 this purpose.
 
-The `topkg-jbuilder <https://github.com/diml/topkg-jbuilder>`__ project
-provides helpers for using Topkg in a Jbuilder project.
+The `topkg-jbuilder <https://github.com/diml/topkg-jbuilder>`__
+project provides helpers for using Topkg in a Jbuilder project. In
+particular, as long as your project uses the common defaults, just
+write this ``pkg/pkg.ml`` file and you are all set:
+
+.. code:: ocaml
+
+    #use "topfind"
+    #require "topkg-jbuilder.auto"
+
+It is planned that this file won't be necessary at all soon and topkg
+will work out of the box on jbuilder projects.
+
+The common defaults are that your projects include the following
+files:
+
+- ``README.md``
+- ``CHANGES.md``
+- ``LICENSE.md``
+
+And that if your project contains several packages, then all the
+package names must be prefixed by the shortest one.
+
+Watermarking
+~~~~~~~~~~~~
+
+One of the feature topkg provides is watermarking; it replaces various
+strings of the form ``%%ID%%`` in all files of your project before
+creating a release tarball or when the package is pinned by the user
+using opam.
+
+This is especially interesting for the ``%%VERSION%%`` string, which
+gets replaced by the version obtained from the vcs. For instance if
+you are using git, topkg invokes this command to find out the version:
+
+.. code:: bash
+
+    $ git describe --always --dirty
+    1.0+beta9-79-g29e9b37
+
+Projects using jbuilder usually only need topkg for creating and
+publishing releases. However they might still want to substitute the
+watermarks when the package is pinned by the user. To help with this,
+jbuilder provides the ``subst`` sub-command.
+
+jbuilder subst
+~~~~~~~~~~~~~~
+
+``jbuilder subst`` performs the same substitution ``topkg`` does with
+the default configuration. i.e. calling ``jbuilder subst`` at the root
+of your project will rewrite in place all the files in your project.
+
+More precisely, it replaces all the following strings in source files:
+
+- ``%%NAME%%``, the name of the project
+- ``%%VERSION%%``, output of ``git describe --always --dirty``
+- ``%%VERSION_NUM%%``, same as ``%%VERSION%%`` but with a potential leading
+  ``v`` or ``V`` dropped
+- ``%%VCS_COMMIT_ID%%``, commit hash from the vcs
+- ``%%PKG_MAINTAINER%%``, contents of the ``maintainer`` field from the
+  opam file
+- ``%%PKG_AUTHORS%%``, contents of the ``authors`` field from the opam file
+- ``%%PKG_HOMEPAGE%%``, contents of the ``homepage`` field from the opam file
+- ``%%PKG_ISSUES%%``, contents of the ``issues`` field from the opam file
+- ``%%PKG_DOC%%``, contents of the ``doc`` field from the opam file
+- ``%%PKG_LICENSE%%``, contents of the ``license`` field from the opam file
+- ``%%PKG_REPO%%``, contents of the ``repo`` field from the opam file
+
+Note that if your project contains several packages, ``%%NAME%%`` will
+be replaced by the shorted package name as long as it is a prefix of
+all the package names. If your package names don't follow this rule,
+you need to specify the name explicitly via the ``-n`` flag:
+
+.. code:: bash
+
+    $ jbuilder subst -n myproject
+
+Finally, note that jbuilder doesn't allow you to customize the list of
+substituted watermarks. If you which to do so, you need to configure
+topkg and use it instead of ``jbuilder subst``.

@@ -6,7 +6,7 @@
 *)
 
 open Import
-open Jbuild_types
+open Jbuild
 
 (** A directory with a jbuild *)
 module Dir_with_jbuild : sig

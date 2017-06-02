@@ -1,7 +1,7 @@
 open Import
 
 module Internal : sig
-  type t = Path.t * Jbuild_types.Library.t
+  type t = Path.t * Jbuild.Library.t
 end
 
 type t =

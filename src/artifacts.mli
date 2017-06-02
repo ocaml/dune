@@ -2,7 +2,7 @@ open! Import
 
 type t
 
-val create : Context.t -> (Path.t * Jbuild_types.Stanza.t list) list -> t
+val create : Context.t -> (Path.t * Jbuild.Stanza.t list) list -> t
 
 (** A named artifact that is looked up in the PATH if not found in the tree or
     [in_the_tree] is [false].

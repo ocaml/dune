@@ -125,7 +125,7 @@ type lib_dep_kind =
 val record_lib_deps
   :  dir:Path.t
   -> kind:lib_dep_kind
-  -> Jbuild_types.Lib_dep.t list
+  -> Jbuild.Lib_dep.t list
   -> ('a, 'a) t
 
 type lib_deps = lib_dep_kind String_map.t

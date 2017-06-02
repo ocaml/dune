@@ -95,7 +95,7 @@ let build_cm sctx ~dir ~js_of_ocaml ~src =
     let spec = Arg_spec.Dep src in
     let flags =
       Ordered_set_lang.eval_with_standard
-        js_of_ocaml.Jbuild_types.Js_of_ocaml.flags
+        js_of_ocaml.Jbuild.Js_of_ocaml.flags
         ~standard:(standard ())
     in
     [ js_of_ocaml_rule ~sctx ~dir ~flags ~spec ~target ]
@@ -131,7 +131,7 @@ let setup_separate_compilation_rules sctx =
   else []
 
 let build_exe sctx ~dir ~js_of_ocaml ~src =
-  let {Jbuild_types.Js_of_ocaml.javascript_files; flags} = js_of_ocaml in
+  let {Jbuild.Js_of_ocaml.javascript_files; flags} = js_of_ocaml in
   let javascript_files = List.map javascript_files ~f:(Path.relative dir) in
   let mk_target ext = Path.extend_basename src ~suffix:ext in
   let target = mk_target ".js" in

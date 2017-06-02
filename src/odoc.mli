@@ -1,7 +1,7 @@
 (** Odoc rules *)
 
 open Import
-open Jbuild_types
+open Jbuild
 
 val setup_library_rules
   :  Super_context.t

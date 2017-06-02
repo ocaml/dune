@@ -1,5 +1,5 @@
 open Import
-open Jbuild_types
+open Jbuild
 
 module Pset = Path.Set
 

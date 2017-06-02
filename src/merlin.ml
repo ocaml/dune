@@ -7,7 +7,7 @@ module SC = Super_context
 type t =
   { requires   : (unit, Lib.t list) Build.t
   ; flags      : string list
-  ; preprocess : Jbuild_types.Preprocess.t
+  ; preprocess : Jbuild.Preprocess.t
   ; libname    : string option
   }
 

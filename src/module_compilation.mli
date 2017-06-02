@@ -10,7 +10,7 @@ val build_module
   :  Super_context.t
   -> ?sandbox:bool
   -> dynlink:bool
-  -> js_of_ocaml:Jbuild_types.Js_of_ocaml.t
+  -> js_of_ocaml:Jbuild.Js_of_ocaml.t
   -> flags:Ocaml_flags.t
   -> Module.t
   -> dir:Path.t
@@ -24,7 +24,7 @@ val build_module
 val build_modules
   :  Super_context.t
   -> dynlink:bool
-  -> js_of_ocaml:Jbuild_types.Js_of_ocaml.t
+  -> js_of_ocaml:Jbuild.Js_of_ocaml.t
   -> flags:Ocaml_flags.t
   -> dir:Path.t
   -> dep_graph:Ocamldep.dep_graph

@@ -1,5 +1,5 @@
 open Import
-open Jbuild_types
+open Jbuild
 open Build.O
 
 module SC = Super_context

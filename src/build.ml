@@ -93,10 +93,10 @@ let record_lib_deps ~dir ~kind lib_deps =
   Record_lib_deps
     (dir,
      List.concat_map lib_deps ~f:(function
-       | Jbuild_types.Lib_dep.Direct s -> [(s, kind)]
+       | Jbuild.Lib_dep.Direct s -> [(s, kind)]
        | Select { choices; _ } ->
          List.concat_map choices ~f:(fun c ->
-           String_set.elements c.Jbuild_types.Lib_dep.required
+           String_set.elements c.Jbuild.Lib_dep.required
            |> List.map ~f:(fun d -> (d, Optional))))
      |> String_map.of_alist_reduce ~f:merge_lib_dep_kind)
 

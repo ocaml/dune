@@ -1,5 +1,5 @@
 open Import
-open Jbuild_types
+open Jbuild
 open Build.O
 open! No_io
 
@@ -649,7 +649,7 @@ Add it to your jbuild file to remove this warning.
         match (stanza : Stanza.t) with
         | Library { buildable; _ } | Executables { buildable; _ } ->
           List.fold_left buildable.libraries ~init:acc ~f:(fun acc dep ->
-            match (dep : Jbuild_types.Lib_dep.t) with
+            match (dep : Jbuild.Lib_dep.t) with
             | Direct _ -> acc
             | Select s -> String_set.add s.result_fn acc)
         | _ -> acc)

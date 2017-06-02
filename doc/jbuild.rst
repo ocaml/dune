@@ -764,23 +764,28 @@ module-by-module basis by using the following syntax:
 
  .. code:: scheme
 
-    (preprocess (per_file
+    (preprocess (per_module
                    (<spec1> (<module-list1>))
                    (<spec2> (<module-list2>))
                    ...))
 
-Where ``<spec1>``, ``<spec2>``, ... are preprocessing specifications and
-``<module-list1>``, ``<module-list2>``, ... are list of module names. It is
-currently not possible to distinguish between .ml/.mli files, however it
-wouldn't be hard to support if needed.
+Where ``<spec1>``, ``<spec2>``, ... are preprocessing specifications
+and ``<module-list1>``, ``<module-list2>``, ... are list of module
+names.
 
 For instance:
 
  .. code:: scheme
 
-    (preprocess (per_file
+    (preprocess (per_module
                    (((action (run ./pp.sh X=1 ${<})) (foo bar)))
                    (((action (run ./pp.sh X=2 ${<})) (baz)))))
+
+Note the beta versions of Jbuilder used ``per_file`` instead of
+``per_module``, which was obviously the wrong name. ``per_file`` is
+still accepted for backward compatibility but deprecated. It will be
+re-purposed in the future to allow to distinguish between .ml and .mli
+files.
 
 Dependency specification
 ------------------------

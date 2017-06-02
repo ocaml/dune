@@ -231,20 +231,25 @@ module Preprocess = struct
     | _ -> []
 end
 
-module Per_file = struct
+module Per_module = struct
   type 'a t =
-    | For_all  of 'a
-    | Per_file of 'a String_map.t
+    | For_all    of 'a
+    | Per_module of 'a String_map.t
 
   let t a sexp =
     match sexp with
-    | List (_, Atom (_, "per_file") :: rest) -> begin
+    | List (_, Atom (loc, ("per_module" | "per_file" as kwd)) :: rest) -> begin
+        if kwd = "per_file" then
+          Loc.warn loc
+            "'per_file' was renamed 'per_module'. 'per_file' will be re-purposed \
+             in a future version and will take a list of  file names rather \
+             than module names.";
         List.concat_map rest ~f:(fun sexp ->
           let pp, names = pair a module_names sexp in
           List.map (String_set.elements names) ~f:(fun name -> (name, pp)))
         |> String_map.of_alist
         |> function
-        | Ok map -> Per_file map
+        | Ok map -> Per_module map
         | Error (name, _, _) ->
           of_sexp_error sexp (sprintf "module %s present in two different sets" name)
       end
@@ -252,13 +257,13 @@ module Per_file = struct
 end
 
 module Preprocess_map = struct
-  type t = Preprocess.t Per_file.t
-  let t = Per_file.t Preprocess.t
+  type t = Preprocess.t Per_module.t
+  let t = Per_module.t Preprocess.t
 
   let find module_name (t : t) =
     match t with
-    | For_all  pp  -> pp
-    | Per_file map -> String_map.find_default module_name map ~default:No_preprocessing
+    | For_all pp -> pp
+    | Per_module map -> String_map.find_default module_name map ~default:No_preprocessing
 
   let default : t = For_all No_preprocessing
 
@@ -266,7 +271,7 @@ module Preprocess_map = struct
 
   let pps : t -> _ = function
     | For_all pp -> Preprocess.pps pp
-    | Per_file map ->
+    | Per_module map ->
       String_map.fold map ~init:Pp_set.empty ~f:(fun ~key:_ ~data:pp acc ->
         Pp_set.union acc (Pp_set.of_list (Preprocess.pps pp)))
       |> Pp_set.elements
@@ -430,7 +435,7 @@ module Buildable = struct
     >>= fun preprocessor_deps ->
     (* CR-someday jdimino: remove this. There are still a few Jane Street packages using
        this *)
-    field_o "lint" (Per_file.t Lint.t)
+    field_o "lint" (Per_module.t Lint.t)
     >>= fun _lint ->
     field "modules" (fun s -> Ordered_set_lang.(map (t s)) ~f:String.capitalize_ascii)
       ~default:Ordered_set_lang.standard
@@ -455,7 +460,7 @@ module Buildable = struct
   let single_preprocess t =
     match t.preprocess with
     | For_all pp -> pp
-    | Per_file _ -> No_preprocessing
+    | Per_module _ -> No_preprocessing
 end
 
 module Public_lib = struct

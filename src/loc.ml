@@ -25,6 +25,15 @@ let fail t fmt =
 let fail_lex lb fmt =
   fail (of_lexbuf lb) fmt
 
+exception Localized of t * exn
+
+let localize t f =
+  try
+    f ()
+  with exn ->
+    (* when available use raise_with_backtrace *)
+    raise (Localized(t,exn))
+
 let in_file fn =
   let pos : Lexing.position =
     { pos_fname = fn

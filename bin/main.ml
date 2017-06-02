@@ -159,7 +159,7 @@ let common =
          & opt (some string) None
          & info ["only-packages"] ~docs ~docv:"PACKAGES"
              ~doc:{|Ignore stanzas referring to a package that is not in $(b,PACKAGES).
-                    $(b,PACKAGES) is a coma-separated list of package name.
+                    $(b,PACKAGES) is a comma-separated list of package names.
                     Note that this has the same effect as deleting the relevant stanzas
                     from jbuild files. It is mostly meant for releases.
                     During development, it is likely that what you want instead is to

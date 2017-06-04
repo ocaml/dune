@@ -38,11 +38,13 @@ DYNLOAD_OBJECTS  = fl_dynload.cmo
 DYNLOAD_XOBJECTS = $(DYNLOAD_OBJECTS:.cmo=.cmx)
 
 
-all: ocamlfind$(EXEC_SUFFIX) findlib.cma findlib_top.cma topfind num_top.cma \
+all: ocamlfind$(EXEC_SUFFIX) findlib.cma findlib_top.cma topfind $(NUMTOP) \
      findlib_dynload.cma
 
 opt: ocamlfind_opt$(EXEC_SUFFIX) findlib.cmxa findlib_top.cmxa topfind \
      findlib_dynload.cmxa
+
+num-top: num_top.cma
 
 ocamlfind$(EXEC_SUFFIX): findlib.cma $(OCAMLFIND_OBJECTS)
 	$(OCAMLC) $(CUSTOM) -o ocamlfind$(EXEC_SUFFIX) -g findlib.cma unix.cma \

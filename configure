@@ -527,9 +527,11 @@ fi
 if [ -f "${ocaml_core_stdlib}/num.cmi" ]; then
     echo "num: found"
     lnum="num num-top"
+    numtop="num-top"
 else
-    echo "num: not present"
+    echo "num: not present (normal since OCaml-4.06)"
     lnum=""
+    numtop=""
 fi
 
 # bytes?
@@ -641,6 +643,7 @@ echo "HAVE_NATDYNLINK=${have_natdynlink}" >>Makefile.config
 echo "VERSION=${version}" >>Makefile.config
 echo "ENABLE_TOPFIND_PPXOPT=${enable_topfind_ppxopt}" >>Makefile.config
 echo "SYSTEM=${system}" >>Makefile.config
+echo "NUMTOP=${numtop}" >>Makefile.config
 echo "SH=${sh}" >>Makefile.config
 if [ "$mingw_lib" != "" ]; then
     echo "OCAMLC_FLAGS=-I \"${mingw_lib}\"" >>Makefile.config

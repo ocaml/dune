@@ -22,7 +22,7 @@ install:
 	$(MAKE) install-config
 	for p in $(PARTS); do ( cd src/$$p; $(MAKE) install ); done
 	$(MAKE) install-meta
-	cd src/findlib; $(MAKE) install-num-top
+	test -z "$(NUMTOP)" || { cd src/findlib; $(MAKE) install-num-top; }
 	if [ $(INSTALL_CAMLP4) -eq 1 ]; then \
 		cp tools/safe_camlp4 "$(prefix)$(OCAMLFIND_BIN)"; \
 	fi

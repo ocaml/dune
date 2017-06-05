@@ -639,24 +639,6 @@ are part of the installed world, you need to use the public name. For instance:
 When resolving libraries, libraries that are part of the workspace are always
 prefered to ones that are part of the installed world.
 
-Scope of internal library names
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The scope of internal library names is not the whole workspace. It is restricted
-to the subtree starting from the closest parent containing a ``<package>.opam``
-file, or the whole workspace if no such directory exist. Moreover, a subtree
-containing ``<package>.opam`` doesn' t inherit the internal names available in
-its parent scope.
-
-The idea behing this rule is that public library names must be universally
-unique, but internal ones don't need to. In particular you might have private
-libraries that are only used for tests or building an executable.
-
-As a result, when you create a workspace including several projects there might
-be a name clash between internal library names.
-
-This scoping rule ensure that this won't be a problem.
-
 .. _alternative-deps:
 
 Alternative dependencies

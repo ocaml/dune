@@ -71,14 +71,32 @@ Declaring a package this way will allow you to add elements such as
 libraries, executables, documentations, ... to your package by declaring
 them in ``jbuild`` files.
 
-Jbuilder will only register the existence of ``<package>`` in the
-subtree starting where the ``<package>.opam`` file lives, so you can
-only declare parts of the packages in this subtree. Typically your
+Such elements can only be declared in the scope defined by the
+corresponding ``<package>.opam`` file. Typically your
 ``<package>.opam`` files should be at the root of your project, since
 this is where ``opam pin ...`` will look for them.
 
 Note that ``<package>`` must be non empty, so in particular ``.opam``
 files are ignored.
+
+.. _scopes:
+
+Scopes
+------
+
+Any directory containing at least one ``<package>.opam`` file defines
+a scope. This scope is the sub-tree starting from this directory,
+excluding any other scopes rooted in sub-direcotries.
+
+Typically, any given project will define a single scope. Libraries and
+executables that are not meant to be installed will be visible inside
+this scope only.
+
+Because scopes are exclusive, if you whish to include the dependencies
+of the project you are currently working on into your workspace, you
+may copy them in a ``vendor`` directory, or any other name of your
+choice. Jbuilder will look for them there rather than in the installed
+world and there will be no overlap between the various scopes.
 
 Package version
 ---------------

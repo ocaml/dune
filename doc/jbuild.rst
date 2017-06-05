@@ -487,6 +487,18 @@ instance, to install a file ``mylib.el`` as
   package is not ambiguous when the first parent directory to contain a
   ``<package>.opam`` file contains exactly one ``<package>.opam`` file
 
+Handling of the .exe extension on Windows
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Under Microsoft Windows, executables must be suffixed with
+``.exe``. Jbuilder tries to make sure that executables are always
+installed with this extension on Windows.
+
+More precisely, when installing a file via an ``(install ...)``
+stanza, if the source file has extension ``.exe`` or ``.bc``, then
+Jbuilder implicitly adds the ``.exe`` extension to the destination, if
+not already present.
+
 Common items
 ============
 

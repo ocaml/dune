@@ -7,11 +7,11 @@ type t =
   ; local_libs : Public_lib.t String_map.t
   }
 
-let create context stanzas =
+let create context l ~f =
   let local_bins, local_libs =
-    List.fold_left stanzas ~init:(String_set.empty, String_map.empty)
-      ~f:(fun acc (_dir, stanzas) ->
-        List.fold_left stanzas ~init:acc
+    List.fold_left l ~init:(String_set.empty, String_map.empty)
+      ~f:(fun acc x ->
+        List.fold_left (f x) ~init:acc
           ~f:(fun (local_bins, local_libs) stanza ->
             match (stanza : Stanza.t) with
             | Install { section = Bin; files; _ } ->

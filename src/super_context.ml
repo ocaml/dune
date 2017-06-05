@@ -147,8 +147,8 @@ let create
       end)
   in
   let artifacts =
-    Artifacts.create context (List.map stanzas ~f:(fun (d : Dir_with_jbuild.t) ->
-      (d.ctx_dir, d.stanzas)))
+    Artifacts.create context stanzas ~f:(fun (d : Dir_with_jbuild.t) ->
+      d.stanzas)
   in
   let cxx_flags =
     String.extract_blank_separated_words context.ocamlc_cflags

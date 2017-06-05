@@ -568,7 +568,8 @@ module Action = struct
     in
     (t, acc)
 
-  let expand_step2 sctx ~dir ~artifacts ~targets ~deps t =
+  let expand_step2 sctx ~dir ~artifacts
+        ~targets_written_by_user ~deps_written_by_user t =
     let open Action.Var_expansion in
     U.Partial.expand sctx.context dir t ~f:(fun _loc key ->
       match String_map.find key artifacts with
@@ -576,40 +577,49 @@ module Action = struct
       | None ->
         let cos, var = parse_bang key in
         match var with
-        | "@"  -> Some (Paths (targets, cos))
+        | "@" -> Some (Paths (targets_written_by_user, cos))
         | "<" ->
           Some
-            (match deps with
+            (match deps_written_by_user with
              | [] ->
                (* CR-someday jdimino: this should be an error *)
                Strings ([""], cos)
              | dep :: _ ->
                Paths ([dep], cos))
-        | "^" -> Some (Paths (deps, cos))
+        | "^" -> Some (Paths (deps_written_by_user, cos))
         | "ROOT" -> Some (Paths ([sctx.context.build_dir], cos))
         | var ->
           match expand_var_no_root sctx var with
           | Some s -> Some (Strings ([s], cos))
           | None -> None)
 
-  let run sctx t ~dir ~dep_kind ~targets ~scope
+  let run sctx t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
     : (Path.t list, Action.t) Build.t =
     let t, forms = expand_step1 sctx ~dir ~dep_kind ~scope t in
     let { Action.Infer.Outcome. deps; targets } =
-      match targets with
+      match targets_written_by_user with
       | Infer -> Action.Infer.partial t ~all_targets:true
       | Static targets_written_by_user ->
         let targets_written_by_user = Pset.of_list targets_written_by_user in
         let { Action.Infer.Outcome. deps; targets } =
           Action.Infer.partial t ~all_targets:false
         in
-        let missing = Pset.diff targets targets_written_by_user in
-        if not (Pset.is_empty missing) then
-          Loc.warn (Loc.in_file (Utils.jbuild_name_in ~dir))
-            "Missing targets in user action:\n%s"
-            (List.map (Pset.elements missing) ~f:(fun target ->
-               sprintf "- %s" (Utils.describe_target target))
-             |> String.concat ~sep:"\n");
+        (* CR-someday jdimino: should this be an error or not?
+
+           It's likely that what we get here is what the user thinks of as temporary
+           files, even though they might conflict with actual targets. We need to tell
+           jbuilder about such things, so that it can report better errors.
+
+           {[
+             let missing = Pset.diff targets targets_written_by_user in
+             if not (Pset.is_empty missing) then
+               Loc.warn (Loc.in_file (Utils.jbuild_name_in ~dir))
+                 "Missing targets in user action:\n%s"
+                 (List.map (Pset.elements missing) ~f:(fun target ->
+                    sprintf "- %s" (Utils.describe_target target))
+                  |> String.concat ~sep:"\n");
+           ]}
+        *)
         { deps; targets = Pset.union targets targets_written_by_user }
     in
     let targets = Pset.elements targets in
@@ -638,12 +648,17 @@ module Action = struct
       >>>
       let vdeps = String_map.bindings forms.vdeps in
       Build.first (Build.all (List.map vdeps ~f:snd))
-      >>^ (fun (vals, deps) ->
+      >>^ (fun (vals, deps_written_by_user) ->
         let artifacts =
           List.fold_left2 vdeps vals ~init:forms.artifacts ~f:(fun acc (var, _) value ->
             String_map.add acc ~key:var ~data:value)
         in
-        expand_step2 sctx ~dir ~artifacts ~targets ~deps t
+        expand_step2 sctx ~dir ~artifacts
+          ~targets_written_by_user:
+            (match targets_written_by_user with
+             | Infer    -> []
+             | Static l -> l)
+          ~deps_written_by_user t
         (* CR-someday jdimino: we could infer again to find more dependencies/check
            targets again *))
       >>>

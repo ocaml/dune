@@ -660,9 +660,9 @@ Select forms are specified as follows:
 .. code:: scheme
 
     (select <target-filename> from
-      ((<literals> -> <filename>)
-       (<literals> -> <filename>)
-       ...))
+      (<literals> -> <filename>)
+      (<literals> -> <filename>)
+       ...)
 
 ``<literals>`` are lists of literals, where each literal is one of:
 

@@ -35,12 +35,18 @@ let create context l ~f =
   ; local_libs
   }
 
+let in_local_bin t name =
+  Path.relative (Config.local_install_bin_dir ~context:t.context.name) name
+
 let binary t ?hint ?(in_the_tree=true) name =
   if not (Filename.is_relative name) then
     Ok (Path.absolute name)
   else if in_the_tree then begin
-    if String_set.mem name t.local_bins then
-      Ok (Path.relative (Config.local_install_bin_dir ~context:t.context.name) name)
+    let name_exe = if Sys.win32 then name ^ ".exe" else name in
+    if String_set.mem name_exe t.local_bins then
+      Ok (in_local_bin t name_exe)
+    else if Sys.win32 && String_set.mem name t.local_bins then
+      Ok (in_local_bin t name)
     else
       match Context.which t.context name with
       | Some p -> Ok p
@@ -92,12 +98,11 @@ let file_of_lib t ~from ~lib ~file =
             assert false
         }
 
-let file_of_lib t ~from name =
+let file_of_lib t ~loc ~from name =
   let lib, file =
     match String.lsplit2 name ~on:':' with
     | None ->
-      Loc.fail (Loc.in_file (Path.to_string (Path.relative from "jbuild")))
-            "invalid ${lib:...} form: %s" name
+      Loc.fail loc "invalid ${lib:...} form: %s" name
     | Some x -> x
   in
   (lib, file_of_lib t ~from ~lib ~file)

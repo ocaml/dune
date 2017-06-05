@@ -474,11 +474,13 @@ module Action = struct
     ; mutable vdeps     : (unit, Action.Var_expansion.t) Build.t String_map.t
     }
 
+  let add_lib_dep acc lib kind =
+    acc.lib_deps <- String_map.add acc.lib_deps ~key:lib ~data:kind
+
   let add_artifact ?lib_dep acc ~key result =
     (match lib_dep with
      | None -> ()
-     | Some (lib, kind) ->
-       acc.lib_deps <- String_map.add acc.lib_deps ~key:lib ~data:kind);
+     | Some (lib, kind) -> add_lib_dep acc lib kind);
     match result with
     | Ok exp ->
       acc.artifacts <- String_map.add acc.artifacts ~key ~data:exp;
@@ -487,7 +489,8 @@ module Action = struct
       acc.failures <- fail :: acc.failures;
       None
 
-  let ok_path   x = Ok (Action.Var_expansion.Paths   ([x], Concat))
+  let path_exp path = (Action.Var_expansion.Paths ([path], Concat))
+  let ok_path   x = Ok (path_exp x)
   let ok_string x = Ok (Action.Var_expansion.Strings ([x], Concat))
 
   let map_result = function
@@ -512,17 +515,39 @@ module Action = struct
         | Some ("path"    , s) -> add_artifact acc ~key (ok_path (Path.relative dir s))
         | Some ("bin"     , s) ->
           add_artifact acc ~key (A.binary (artifacts sctx) s |> map_result)
-        | Some ("lib"     , s)
-        | Some ("libexec" , s) ->
-          let lib_dep, res = A.file_of_lib (artifacts sctx) ~from:dir s in
+        | Some ("lib"     , s) ->
+          let lib_dep, res = A.file_of_lib (artifacts sctx) ~loc ~from:dir s in
           add_artifact acc ~key ~lib_dep:(lib_dep, dep_kind) (map_result res)
+        | Some ("libexec" , s) -> begin
+            let lib_dep, res = A.file_of_lib (artifacts sctx) ~loc ~from:dir s in
+            add_lib_dep acc lib_dep dep_kind;
+            match res with
+            | Error e ->
+              acc.failures <- e :: acc.failures;
+              None
+            | Ok path ->
+              if not Sys.win32 || Filename.extension s = ".exe" then begin
+                let exp = path_exp path in
+                acc.artifacts <- String_map.add acc.artifacts ~key ~data:exp;
+                Some exp
+              end else begin
+                let path_exe = Path.extend_basename path ~suffix:".exe" in
+                let dep =
+                  Build.if_file_exists path_exe
+                    ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
+                    ~else_:(Build.path path     >>^ fun _ -> path_exp path)
+                in
+                acc.vdeps <- String_map.add acc.vdeps ~key ~data:dep;
+                None
+              end
+          end
         | Some ("lib-available", lib) ->
           add_artifact acc ~key ~lib_dep:(lib, Optional)
             (ok_string (string_of_bool (Libs.lib_is_available sctx ~from:dir lib)))
         (* CR-someday jdimino: allow this only for (jbuild_version jane_street) *)
         | Some ("findlib" , s) ->
           let lib_dep, res =
-            A.file_of_lib (artifacts sctx) ~from:dir s
+            A.file_of_lib (artifacts sctx) ~loc ~from:dir s
           in
           add_artifact acc ~key ~lib_dep:(lib_dep, Required) (map_result res)
         | Some ("version", s) -> begin

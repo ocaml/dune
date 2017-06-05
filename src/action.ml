@@ -479,34 +479,34 @@ let fold_one_step t ~init:acc ~f =
   | Mkdir _ -> acc
 
 let rec map t ~fs ~fp =
-    match t with
-    | Run (This prog, args) ->
-      Run (This (fp prog), List.map args ~f:fs)
-    | Run (Not_found _ as nf, args) ->
-      Run (nf, List.map args ~f:fs)
-    | Chdir (fn, t) ->
-      Chdir (fp fn, map t ~fs ~fp)
-    | Setenv (var, value, t) ->
-      Setenv (fs var, fs value, map t ~fs ~fp)
-    | Redirect (outputs, fn, t) ->
-      Redirect (outputs, fp fn, map t ~fs ~fp)
-    | Ignore (outputs, t) ->
-      Ignore (outputs, map t ~fs ~fp)
-    | Progn l -> Progn (List.map l ~f:(fun t -> map t ~fs ~fp))
-    | Echo x -> Echo (fs x)
-    | Cat x -> Cat (fp x)
-    | Create_file x -> Create_file (fp x)
-    | Copy (x, y) -> Copy (fp x, fp y)
-    | Symlink (x, y) ->
-      Symlink (fp x, fp y)
-    | Copy_and_add_line_directive (x, y) ->
-      Copy_and_add_line_directive (fp x, fp y)
-    | System x -> System (fs x)
-    | Bash x -> Bash (fs x)
-    | Update_file (x, y) -> Update_file (fp x, fs y)
-    | Rename (x, y) -> Rename (fp x, fp y)
-    | Remove_tree x -> Remove_tree (fp x)
-    | Mkdir x -> Mkdir (fp x)
+  match t with
+  | Run (This prog, args) ->
+    Run (This (fp prog), List.map args ~f:fs)
+  | Run (Not_found _ as nf, args) ->
+    Run (nf, List.map args ~f:fs)
+  | Chdir (fn, t) ->
+    Chdir (fp fn, map t ~fs ~fp)
+  | Setenv (var, value, t) ->
+    Setenv (fs var, fs value, map t ~fs ~fp)
+  | Redirect (outputs, fn, t) ->
+    Redirect (outputs, fp fn, map t ~fs ~fp)
+  | Ignore (outputs, t) ->
+    Ignore (outputs, map t ~fs ~fp)
+  | Progn l -> Progn (List.map l ~f:(fun t -> map t ~fs ~fp))
+  | Echo x -> Echo (fs x)
+  | Cat x -> Cat (fp x)
+  | Create_file x -> Create_file (fp x)
+  | Copy (x, y) -> Copy (fp x, fp y)
+  | Symlink (x, y) ->
+    Symlink (fp x, fp y)
+  | Copy_and_add_line_directive (x, y) ->
+    Copy_and_add_line_directive (fp x, fp y)
+  | System x -> System (fs x)
+  | Bash x -> Bash (fs x)
+  | Update_file (x, y) -> Update_file (fp x, fs y)
+  | Rename (x, y) -> Rename (fp x, fp y)
+  | Remove_tree x -> Remove_tree (fp x)
+  | Mkdir x -> Mkdir (fp x)
 
 let updated_files =
   let rec loop acc t =

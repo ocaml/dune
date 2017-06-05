@@ -27,6 +27,7 @@ val binary
 *)
 val file_of_lib
   :  t
+  -> loc:Loc.t
   -> from:Path.t
   -> string
   -> string * (Path.t, fail) result

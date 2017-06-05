@@ -459,3 +459,9 @@ let best_mode t : Mode.t =
   match t.ocamlopt with
   | Some _ -> Native
   | None   -> Byte
+
+let cc_g (ctx : t) =
+  if !Clflags.g && ctx.ccomp_type <> "msvc" then
+    ["-g"]
+  else
+    []

@@ -100,7 +100,7 @@ module Gen(P : Params) = struct
       (Build.paths h_files
        >>>
        Build.fanout
-         (SC.expand_and_eval_set ~dir lib.c_flags ~standard:(Utils.g ()))
+         (SC.expand_and_eval_set ~dir lib.c_flags ~standard:(Context.cc_g ctx))
          requires
        >>>
        Build.run ~context:ctx
@@ -125,7 +125,7 @@ module Gen(P : Params) = struct
       (Build.paths h_files
        >>>
        Build.fanout
-         (SC.expand_and_eval_set ~dir lib.cxx_flags ~standard:(Utils.g ()))
+         (SC.expand_and_eval_set ~dir lib.cxx_flags ~standard:(Context.cc_g ctx))
          requires
        >>>
        Build.run ~context:ctx

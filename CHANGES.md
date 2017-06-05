@@ -18,6 +18,8 @@
 
 - Deprecate `copy-and-add-line-directive` and rename it `copy#`
 
+- Properly define and implement scopes
+
 - Inside user actions, `${^}` now includes files matches by
   `(glob_files ...)` or `(file_recursively_in ...)`
 

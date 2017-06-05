@@ -63,16 +63,29 @@ let file_in_current_dir sexp =
       of_sexp_error sexp "file in current directory expected";
     fn
 
-module Pkgs = struct
+module Scope = struct
   type t =
-    { visible_packages : Package.t String_map.t
-    ; closest_packages : Package.t list
+    { name     : string option
+    ; packages : Package.t String_map.t
     }
 
   let empty =
-    { visible_packages = String_map.empty
-    ; closest_packages = []
+    { name     = None
+    ; packages = String_map.empty
     }
+
+  let make = function
+    | [] -> empty
+    | pkg :: rest as pkgs ->
+      let name =
+        List.fold_left rest ~init:pkg.Package.name ~f:(fun acc pkg ->
+          min acc pkg.Package.name)
+      in
+      { name = Some name
+      ; packages =
+          String_map.of_alist_exn (List.map pkgs ~f:(fun pkg ->
+            pkg.Package.name, pkg))
+      }
 
   let package_listing packages =
     let longest_pkg = List.longest_map packages ~f:(fun p -> p.Package.name) in
@@ -82,11 +95,11 @@ module Pkgs = struct
            (Path.to_string (Path.relative pkg.path (pkg.name ^ ".opam")))))
 
   let default t =
-    match t.closest_packages with
+    match String_map.values t.packages with
     | [pkg] -> Ok pkg
     | [] ->
       Error
-        "no packages are defined here.\n\
+        "The current scope defines no packages.\n\
          What do you want me to do with this (install ...) stanzas?.\n\
          You need to add a <package>.opam file at the root \
          of your project so that\n\
@@ -98,28 +111,29 @@ module Pkgs = struct
             stanza is for. I have the choice between these ones:\n\
             %s\n\
             You need to add a (package ...) field in this (install ...) stanza"
-           (package_listing t.closest_packages))
+           (package_listing (String_map.values t.packages)))
 
   let resolve t name =
-    match String_map.find name t.visible_packages with
+    match String_map.find name t.packages with
     | Some pkg ->
       Ok pkg
     | None ->
-      if String_map.is_empty t.visible_packages then
+      if String_map.is_empty t.packages then
         Error (sprintf
-                 "package %S is not visible here.\n\
-                  In fact I know of no packages here, \
-                  in order for me to know that package\n\
-                  %S exist, you need to add a %S file at the root of your project."
-                 name name (name ^ ".opam"))
+                 "You cannot declare items to be installed without \
+                  adding a <package>.opam file at the root of your project.\n\
+                  To declare elements to be installed as part of package %S, \
+                  add a %S file at the root of your project."
+                 name (name ^ ".opam"))
       else
         Error (sprintf
-                 "package %S is not visible here.\n\
-                  The only packages I know of in this directory are:\n\
+                 "The current scope doesn't define package %S.\n\
+                  The only packages for which you can declare \
+                  elements to be installed in this directory are:\n\
                   %s%s"
                  name
-                 (package_listing (String_map.values t.visible_packages))
-                 (hint name (String_map.keys t.visible_packages)))
+                 (package_listing (String_map.values t.packages))
+                 (hint name (String_map.keys t.packages)))
 
   let package t sexp =
     match resolve t (string sexp) with
@@ -477,7 +491,7 @@ module Public_lib = struct
         match String.split s ~on:'.' with
         | [] -> assert false
         | pkg :: rest ->
-          match Pkgs.resolve pkgs pkg with
+          match Scope.resolve pkgs pkg with
           | Ok pkg ->
             Ok (Some
                   { package = pkg
@@ -604,7 +618,7 @@ module Install_conf = struct
     record
       (field   "section" Install.Section.t >>= fun section ->
        field   "files"   (list file)       >>= fun files ->
-       Pkgs.package_field pkgs             >>= fun package ->
+       Scope.package_field pkgs             >>= fun package ->
        return
          { section
          ; files
@@ -658,7 +672,7 @@ module Executables = struct
            (if multi then "s" else "");
          return (t, None))
     | files ->
-      Pkgs.package_field pkgs >>= fun package ->
+      Scope.package_field pkgs >>= fun package ->
       return (t, Some { Install_conf. section = Bin; files; package })
 
   let public_name sexp =
@@ -831,7 +845,7 @@ module Alias_conf = struct
     record
       (field "name" string                              >>= fun name ->
        field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
-       field_o "package" (Pkgs.package pkgs)            >>= fun package ->
+       field_o "package" (Scope.package pkgs)            >>= fun package ->
        field_o "action" Action.Unexpanded.t  >>= fun action ->
        return
          { name
@@ -872,7 +886,7 @@ module Stanza = struct
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]
 
-  let select : Jbuild_version.t -> Pkgs.t -> t list Sexp.Of_sexp.t = function
+  let select : Jbuild_version.t -> Scope.t -> t list Sexp.Of_sexp.t = function
     | V1  -> v1
 end
 

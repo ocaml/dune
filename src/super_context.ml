@@ -8,7 +8,7 @@ module Dir_with_jbuild = struct
     { src_dir : Path.t
     ; ctx_dir : Path.t
     ; stanzas : Stanzas.t
-    ; pkgs    : Pkgs.t
+    ; scope   : Scope.t
     }
 end
 
@@ -96,12 +96,12 @@ let create
   =
   let stanzas =
     List.map stanzas
-      ~f:(fun (dir, pkgs, stanzas) ->
+      ~f:(fun (dir, scope, stanzas) ->
         { Dir_with_jbuild.
           src_dir = dir
         ; ctx_dir = Path.append context.build_dir dir
         ; stanzas
-        ; pkgs
+        ; scope
         })
   in
   let internal_libraries =
@@ -494,7 +494,7 @@ module Action = struct
     | Ok x -> ok_path x
     | Error _ as e -> e
 
-  let expand_step1 sctx ~dir ~dep_kind ~package_context t =
+  let expand_step1 sctx ~dir ~dep_kind ~scope t =
     let acc =
       { artifacts = String_map.empty
       ; failures  = []
@@ -526,7 +526,7 @@ module Action = struct
           in
           add_artifact acc ~key ~lib_dep:(lib_dep, Required) (map_result res)
         | Some ("version", s) -> begin
-            match Pkgs.resolve package_context s with
+            match Scope.resolve scope s with
             | Ok p ->
               let x =
                 Pkg_version.read sctx p >>^ function
@@ -592,9 +592,9 @@ module Action = struct
           | Some s -> Some (Strings ([s], cos))
           | None -> None)
 
-  let run sctx t ~dir ~dep_kind ~targets ~package_context
+  let run sctx t ~dir ~dep_kind ~targets ~scope
     : (Path.t list, Action.t) Build.t =
-    let t, forms = expand_step1 sctx ~dir ~dep_kind ~package_context t in
+    let t, forms = expand_step1 sctx ~dir ~dep_kind ~scope t in
     let { Action.Infer.Outcome. deps; targets } =
       match targets with
       | Infer -> Action.Infer.partial t ~all_targets:true
@@ -805,7 +805,7 @@ module PP = struct
   (* Generate rules to build the .pp files and return a new module map where all filenames
      point to the .pp files *)
   let pped_modules sctx ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name
-        ~package_context =
+        ~scope =
     let preprocessor_deps =
       Build.memoize "preprocessor deps"
         (Deps.interpret sctx ~dir preprocessor_deps)
@@ -831,7 +831,7 @@ module PP = struct
                ~dir
                ~dep_kind
                ~targets:(Static [dst])
-               ~package_context))
+               ~scope))
       | Pps { pps; flags } ->
         let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in
         pped_module m ~dir ~f:(fun kind src dst ->

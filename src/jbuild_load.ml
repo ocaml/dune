@@ -3,12 +3,12 @@ open Jbuild
 
 module Jbuilds = struct
   type script =
-    { dir  : Path.t
-    ; pkgs : Pkgs.t
+    { dir   : Path.t
+    ; scope : Scope.t
     }
 
   type one =
-    | Literal of (Path.t * Pkgs.t * Stanza.t list)
+    | Literal of (Path.t * Scope.t * Stanza.t list)
     | Script of script
 
   type t = one list
@@ -66,7 +66,7 @@ end
     let open Future in
     List.map jbuilds ~f:(function
       | Literal x -> return x
-      | Script { dir; pkgs = pkgs_ctx } ->
+      | Script { dir; scope } ->
         let file = Path.relative dir "jbuild" in
         let generated_jbuild =
           Path.append (Path.relative generated_jbuilds_dir context.name) file
@@ -118,7 +118,7 @@ end
                Did you forgot to call [Jbuild_plugin.V*.send]?"
             (Path.to_string file);
         let sexps = Sexp_lexer.Load.many (Path.to_string generated_jbuild) in
-        return (dir, pkgs_ctx, Stanzas.parse pkgs_ctx sexps))
+        return (dir, scope, Stanzas.parse scope sexps))
     |> Future.all
 end
 
@@ -129,14 +129,13 @@ type conf =
   ; packages  : Package.t String_map.t
   }
 
-let load ~dir ~visible_packages ~closest_packages =
+let load ~dir ~scope =
   let file = Path.relative dir "jbuild" in
-  let pkgs = { Pkgs. visible_packages; closest_packages } in
   match Sexp_lexer.Load.many_or_ocaml_script (Path.to_string file) with
   | Sexps sexps ->
-    Jbuilds.Literal (dir, pkgs, Stanzas.parse pkgs sexps)
+    Jbuilds.Literal (dir, scope, Stanzas.parse scope sexps)
   | Ocaml_script ->
-    Script { dir; pkgs }
+    Script { dir; scope }
 
 let load ?(extra_ignored_subtrees=Path.Set.empty) () =
   let ftree = File_tree.load Path.root in
@@ -186,26 +185,20 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) () =
              (List.map pkgs ~f:(fun pkg ->
                 sprintf "- %s.opam" (Path.to_string pkg.Package.path)))))
   in
-  let packages_per_dir =
+  let scopes =
     String_map.values packages
     |> List.map ~f:(fun pkg -> (pkg.Package.path, pkg))
     |> Path.Map.of_alist_multi
+    |> Path.Map.map ~f:Scope.make
   in
-  let rec walk dir jbuilds visible_packages closest_packages =
+  let rec walk dir jbuilds scope =
     let path = File_tree.Dir.path dir in
     let files = File_tree.Dir.files dir in
     let sub_dirs = File_tree.Dir.sub_dirs dir in
-    let visible_packages, closest_packages =
-      match Path.Map.find path packages_per_dir with
-      | None -> (visible_packages, closest_packages)
-      | Some pkgs ->
-        (List.fold_left pkgs ~init:visible_packages ~f:(fun acc pkg ->
-           String_map.add acc ~key:pkg.Package.name ~data:pkg),
-         pkgs)
-    in
+    let scope = Path.Map.find_default path scopes ~default:scope in
     let jbuilds =
       if String_set.mem "jbuild" files then
-        let jbuild = load ~dir:path ~visible_packages ~closest_packages in
+        let jbuild = load ~dir:path ~scope in
         jbuild :: jbuilds
       else
         jbuilds
@@ -216,13 +209,13 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) () =
           if Path.Set.mem (File_tree.Dir.path dir) ignored_subtrees then
             (children, jbuilds)
           else
-            let child, jbuilds = walk dir jbuilds visible_packages closest_packages in
+            let child, jbuilds = walk dir jbuilds scope in
             (child :: children, jbuilds))
     in
     (Alias.Node (path, children), jbuilds)
   in
   let root = File_tree.root ftree in
-  let tree, jbuilds = walk root [] String_map.empty [] in
+  let tree, jbuilds = walk root [] Scope.empty in
   { file_tree = ftree
   ; tree
   ; jbuilds

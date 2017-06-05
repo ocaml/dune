@@ -155,7 +155,7 @@ module Gen(P : Params) = struct
   let alias_module_build_sandbox = Scanf.sscanf ctx.version "%u.%u"
      (fun a b -> a, b) <= (4, 02)
 
-  let library_rules (lib : Library.t) ~dir ~all_modules ~files ~package_context =
+  let library_rules (lib : Library.t) ~dir ~all_modules ~files ~scope =
     let dep_kind = if lib.optional then Build.Optional else Required in
     let flags = Ocaml_flags.make lib.buildable in
     let modules =
@@ -204,7 +204,7 @@ module Gen(P : Params) = struct
       SC.PP.pped_modules sctx ~dir ~dep_kind ~modules ~preprocess:lib.buildable.preprocess
         ~preprocessor_deps:lib.buildable.preprocessor_deps
         ~lib_name:(Some lib.name)
-        ~package_context
+        ~scope
     in
     let modules =
       match alias_module with
@@ -415,7 +415,7 @@ module Gen(P : Params) = struct
       let rules = Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe in
       SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm >>> r))
 
-  let executables_rules (exes : Executables.t) ~dir ~all_modules ~package_context =
+  let executables_rules (exes : Executables.t) ~dir ~all_modules ~scope =
     let dep_kind = Build.Required in
     let flags = Ocaml_flags.make exes.buildable in
     let modules =
@@ -434,7 +434,7 @@ module Gen(P : Params) = struct
         ~preprocess:exes.buildable.preprocess
         ~preprocessor_deps:exes.buildable.preprocessor_deps
         ~lib_name:None
-         ~package_context
+        ~scope
     in
     let item = List.hd exes.names in
     let dep_graph = Ocamldep.rules sctx ~dir ~item ~modules ~alias_module:None in
@@ -470,7 +470,7 @@ module Gen(P : Params) = struct
      | User rules                                                      |
      +-----------------------------------------------------------------+ *)
 
-  let user_rule (rule : Rule.t) ~dir ~package_context =
+  let user_rule (rule : Rule.t) ~dir ~scope =
     let targets : SC.Action.targets =
       match rule.targets with
       | Infer -> Infer
@@ -485,9 +485,9 @@ module Gen(P : Params) = struct
          ~dir
          ~dep_kind:Required
          ~targets
-         ~package_context)
+         ~scope)
 
-  let alias_rules (alias_conf : Alias_conf.t) ~dir ~package_context =
+  let alias_rules (alias_conf : Alias_conf.t) ~dir ~scope =
     let digest =
       let deps =
         Sexp.To_sexp.list Dep_conf.sexp_of_t alias_conf.deps in
@@ -520,7 +520,7 @@ module Gen(P : Params) = struct
                ~dir
                ~dep_kind:Required
                ~targets:(Static [])
-               ~package_context
+               ~scope
            ; Build.create_file digest_path
            ])
 
@@ -608,7 +608,7 @@ Add it to your jbuild file to remove this warning.
            ~dir
            ~dep_kind:Required
            ~targets:Infer
-           ~package_context:Pkgs.empty);
+           ~scope:Scope.empty);
       { intf with name = impl_fname } in
     String_map.merge impls intfs ~f:(fun name impl intf ->
       let impl =
@@ -626,14 +626,14 @@ Add it to your jbuild file to remove this warning.
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
 
-  let rules { SC.Dir_with_jbuild. src_dir; ctx_dir; stanzas; pkgs = package_context } =
+  let rules { SC.Dir_with_jbuild. src_dir; ctx_dir; stanzas; scope } =
     (* Interpret user rules and other simple stanzas first in order to populate the known
        target table, which is needed for guessing the list of modules. *)
     List.iter stanzas ~f:(fun stanza ->
       let dir = ctx_dir in
       match (stanza : Stanza.t) with
-      | Rule         rule  -> user_rule   rule  ~dir ~package_context
-      | Alias        alias -> alias_rules alias ~dir ~package_context
+      | Rule         rule  -> user_rule   rule  ~dir ~scope
+      | Alias        alias -> alias_rules alias ~dir ~scope
       | Library _ | Executables _ | Provides _ | Install _ -> ());
     let files = lazy (
       let files = SC.sources_and_targets_known_so_far sctx ~src_path:src_dir in
@@ -658,10 +658,10 @@ Add it to your jbuild file to remove this warning.
       | Library lib  ->
         Some (library_rules lib ~dir
                 ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files)
-                ~package_context)
+                ~scope)
       | Executables  exes ->
         Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules)
-                ~package_context)
+                ~scope)
       | _ -> None)
     |> Merlin.add_rules sctx ~dir:ctx_dir
 

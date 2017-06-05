@@ -14,7 +14,7 @@ module Dir_with_jbuild : sig
     { src_dir : Path.t
     ; ctx_dir : Path.t (** [_build/context-name/src_dir] *)
     ; stanzas : Stanzas.t
-    ; pkgs    : Pkgs.t
+    ; scope   : Scope.t
     }
 end
 
@@ -26,7 +26,7 @@ val create
   -> dirs_with_dot_opam_files:Path.Set.t
   -> file_tree:File_tree.t
   -> packages:Package.t String_map.t
-  -> stanzas:(Path.t * Pkgs.t * Stanzas.t) list
+  -> stanzas:(Path.t * Scope.t * Stanzas.t) list
   -> filter_out_optional_stanzas_with_missing_deps:bool
   -> t
 
@@ -131,7 +131,7 @@ module Action : sig
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
     -> targets:targets
-    -> package_context:Pkgs.t
+    -> scope:Scope.t
     -> (Path.t list, Action.t) Build.t
 end
 
@@ -146,7 +146,7 @@ module PP : sig
     -> preprocess:Preprocess_map.t
     -> preprocessor_deps:Dep_conf.t list
     -> lib_name:string option
-    -> package_context:Pkgs.t
+    -> scope:Scope.t
     -> Module.t String_map.t
 
   (** Get a path to a cached ppx driver *)

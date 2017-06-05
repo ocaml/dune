@@ -9,12 +9,14 @@ module Jbuild_version : sig
   val latest_stable : t
 end
 
-(** Packages visible in a given directory *)
-module Pkgs : sig
+module Scope : sig
   type t =
-    { visible_packages : Package.t String_map.t
-    ; closest_packages : Package.t list
+    { name     : string option (** First package name in alphabetical order.  [None] for
+                                   the global scope. *)
+    ; packages : Package.t String_map.t
     }
+
+  val make : Package.t list -> t
 
   val empty : t
 
@@ -216,6 +218,6 @@ end
 module Stanzas : sig
   type t = Stanza.t list
 
-  val parse : Pkgs.t -> Sexp.Ast.t list -> t
+  val parse : Scope.t -> Sexp.Ast.t list -> t
   val lib_names : (_ * _ * t) list -> String_set.t
 end

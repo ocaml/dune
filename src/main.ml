@@ -3,7 +3,7 @@ open Future
 
 type setup =
   { build_system : Build_system.t
-  ; stanzas      : (Path.t * Jbuild.Pkgs.t * Jbuild.Stanzas.t) list String_map.t
+  ; stanzas      : (Path.t * Jbuild.Scope.t * Jbuild.Stanzas.t) list String_map.t
   ; contexts     : Context.t list
   ; packages     : Package.t String_map.t
   }

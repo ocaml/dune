@@ -138,7 +138,10 @@ struct
          (* We don't expose symlink to the user yet since this might complicate things *)
          ; cstr "symlink" (a @> a @> nil) (fun src dst -> Symlink (dst, Cat src))
       *)
-      ; cstr "copy-and-add-line-directive" (path @> path @> nil) (fun src dst ->
+      ; cstr "copy#" (path @> path @> nil) (fun src dst ->
+          Copy_and_add_line_directive (src, dst))
+      ; cstr_loc "copy-and-add-line-directive" (path @> path @> nil) (fun loc src dst ->
+          Loc.warn loc "copy-and-add-line-directive is deprecated, use copy# instead";
           Copy_and_add_line_directive (src, dst))
       ; cstr "system" (string @> nil) (fun cmd -> System cmd)
       ; cstr "bash"   (string @> nil) (fun cmd -> Bash   cmd)
@@ -169,7 +172,7 @@ struct
     | Symlink (x, y) ->
       List [Atom "symlink"; path x; path y]
     | Copy_and_add_line_directive (x, y) ->
-      List [Atom "copy-and-add-line-directive"; path x; path y]
+      List [Atom "copy#"; path x; path y]
     | System x -> List [Atom "system"; string x]
     | Bash   x -> List [Atom "bash"; string x]
     | Update_file (x, y) -> List [Atom "update-file"; path x; string y]

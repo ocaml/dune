@@ -914,12 +914,29 @@ The following constructions are available:
 - ``(echo <string>)`` to output a string on stdout
 - ``(cat <file>)`` to print the contents of a file to stdout
 - ``(copy <src> <dst>)`` to copy a file
-- ``(copy-and-add-line-directive <src> <dst>)`` to copy a file and add a line
-  directive at the beginning
+- ``(copy# <src> <dst>)`` to copy a file and add a line directive at
+  the beginning
 - ``(system <cmd>)`` to execute a command using the system shell: ``sh`` on Unix
   and ``cmd`` on Windows
 - ``(bash <cmd>)`` to execute a command using ``/bin/bash``. This is obviously
   not very portable
+
+As mentioned ``copy#`` inserts a line directive at the beginning of
+the destination file. More precisely, it inserts the following line:
+
+.. code:: ocaml
+
+    # 1 "<source file name>"
+
+Most languages recognize such lines and update their current location,
+in order to report errors in the original file rather than the
+copy. This is important as the copy exists only under the ``_build``
+directory and in order for editors to jump to errors when parsing the
+output of the build system, errors must point to files that exist in
+the source tree. In the beta versions of jbuilder, ``copy#`` was
+called ``copy-and-add-line-directive``. However, most of time one
+wants this behavior rather than a bare copy, so it was renamed to
+something shorter.
 
 Note: expansion of the special ``${<kind>:...}`` is done relative to the current
 working directory of the part of the DSL being executed. So for instance if you

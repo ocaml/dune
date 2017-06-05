@@ -427,17 +427,22 @@ module Of_sexp = struct
       { name : string
       ; args : ('a, 'b) Constructor_args_spec.t
       ; rest : ('b, 'c) rest
-      ; make : 'a
+      ; make : Loc.t -> 'a
       }
 
     type 'a t = T : (_, _, 'a) unpacked -> 'a t
   end
 
-  let cstr_rest name args rest make =
+  let cstr_loc name args make =
+    Constructor_spec.T { name; args; make; rest = No_rest }
+  let cstr_rest_loc name args rest make =
     Constructor_spec.T { name; args; make; rest = Many rest }
 
   let cstr name args make =
-    Constructor_spec.T { name; args; make; rest = No_rest }
+    cstr_loc name args (fun _ -> make)
+
+  let cstr_rest name args rest make =
+    cstr_rest_loc name args rest (fun _ -> make)
 
   let equal_cstr_name a b = Name.compare a b = 0
 
@@ -457,17 +462,17 @@ module Of_sexp = struct
 
   let sum cstrs sexp =
     match sexp with
-    | Atom (_, s) -> begin
+    | Atom (loc, s) -> begin
         let (Constructor_spec.T c) = find_cstr cstrs sexp s in
-        Constructor_args_spec.convert c.args c.rest sexp [] c.make
+        Constructor_args_spec.convert c.args c.rest sexp [] (c.make loc)
       end
     | List (_, []) -> of_sexp_error sexp "non-empty list expected"
-    | List (_, name_sexp :: args) ->
+    | List (loc, name_sexp :: args) ->
       match name_sexp with
       | List _ -> of_sexp_error name_sexp "Atom expected"
       | Atom (_, s) ->
         let (Constructor_spec.T c) = find_cstr cstrs sexp s in
-        Constructor_args_spec.convert c.args c.rest sexp args c.make
+        Constructor_args_spec.convert c.args c.rest sexp args (c.make loc)
 
   let enum cstrs sexp =
     match sexp with

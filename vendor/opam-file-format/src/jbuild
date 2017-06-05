@@ -9,4 +9,4 @@
 (rule
  ((targets (opamParserTypes.ml))
   (deps    (opamParserTypes.mli))
-  (action  (copy-and-add-line-directive ${<} ${@}))))
+  (action  (copy# ${<} ${@}))))

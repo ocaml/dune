@@ -16,6 +16,8 @@
 - Deprecate `per_file` in preprocessing specifications and
   rename it `per_module`
 
+- Deprecate `copy-and-add-line-directive` and rename it `copy#`
+
 - Inside user actions, `${^}` now includes files matches by
   `(glob_files ...)` or `(file_recursively_in ...)`
 

@@ -105,6 +105,19 @@ module Of_sexp : sig
     -> 'a
     -> 'c Constructor_spec.t
 
+  val cstr_loc
+    :  string
+    -> ('a, 'b) Constructor_args_spec.t
+    -> (Loc.t -> 'a)
+    -> 'b Constructor_spec.t
+
+  val cstr_rest_loc
+    :  string
+    -> ('a, 'b list -> 'c) Constructor_args_spec.t
+    -> 'b t
+    -> (Loc.t -> 'a)
+    -> 'c Constructor_spec.t
+
   val sum
     :  'a Constructor_spec.t list
     -> 'a t

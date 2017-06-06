@@ -382,7 +382,7 @@ strings of the form ``%%ID%%`` in all files of your project before
 creating a release tarball or when the package is pinned by the user
 using opam.
 
-This is especially interesting for the ``%%VERSION%%`` string, which
+This is especially interesting for the ``VERSION`` watermark, which
 gets replaced by the version obtained from the vcs. For instance if
 you are using git, topkg invokes this command to find out the version:
 
@@ -403,23 +403,24 @@ jbuilder subst
 the default configuration. i.e. calling ``jbuilder subst`` at the root
 of your project will rewrite in place all the files in your project.
 
-More precisely, it replaces all the following strings in source files:
+More precisely, it replaces all the following watermarks in source
+files:
 
-- ``%%NAME%%``, the name of the project
-- ``%%VERSION%%``, output of ``git describe --always --dirty``
-- ``%%VERSION_NUM%%``, same as ``%%VERSION%%`` but with a potential leading
+- ``NAME``, the name of the project
+- ``VERSION``, output of ``git describe --always --dirty``
+- ``VERSION_NUM``, same as ``VERSION`` but with a potential leading
   ``v`` or ``V`` dropped
-- ``%%VCS_COMMIT_ID%%``, commit hash from the vcs
-- ``%%PKG_MAINTAINER%%``, contents of the ``maintainer`` field from the
+- ``VCS_COMMIT_ID``, commit hash from the vcs
+- ``PKG_MAINTAINER``, contents of the ``maintainer`` field from the
   opam file
-- ``%%PKG_AUTHORS%%``, contents of the ``authors`` field from the opam file
-- ``%%PKG_HOMEPAGE%%``, contents of the ``homepage`` field from the opam file
-- ``%%PKG_ISSUES%%``, contents of the ``issues`` field from the opam file
-- ``%%PKG_DOC%%``, contents of the ``doc`` field from the opam file
-- ``%%PKG_LICENSE%%``, contents of the ``license`` field from the opam file
-- ``%%PKG_REPO%%``, contents of the ``repo`` field from the opam file
+- ``PKG_AUTHORS``, contents of the ``authors`` field from the opam file
+- ``PKG_HOMEPAGE``, contents of the ``homepage`` field from the opam file
+- ``PKG_ISSUES``, contents of the ``issues`` field from the opam file
+- ``PKG_DOC``, contents of the ``doc`` field from the opam file
+- ``PKG_LICENSE``, contents of the ``license`` field from the opam file
+- ``PKG_REPO``, contents of the ``repo`` field from the opam file
 
-Note that if your project contains several packages, ``%%NAME%%`` will
+Note that if your project contains several packages, ``NAME`` will
 be replaced by the shorted package name as long as it is a prefix of
 all the package names. If your package names don't follow this rule,
 you need to specify the name explicitly via the ``-n`` flag:

@@ -203,6 +203,7 @@ let bootstrap () =
       ; "--subst"      , Unit subst                 , " substitute watermarks in source files"
       ]
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
+    Clflags.debug_dep_path := true;
     let log = Log.create () in
     Future.Scheduler.go ~log
       (setup ~log ~workspace:{ merlin_context = Some "default"; contexts = [Default] }

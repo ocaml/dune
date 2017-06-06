@@ -658,9 +658,13 @@ module Action = struct
             (match targets_written_by_user with
              | Infer    -> []
              | Static l -> l)
-          ~deps_written_by_user t
-        (* CR-someday jdimino: we could infer again to find more dependencies/check
-           targets again *))
+          ~deps_written_by_user t)
+      >>>
+      Build.dyn_paths (Build.arr (fun action ->
+        let { Action.Infer.Outcome.deps; targets = _ } =
+          Action.Infer.infer action
+        in
+        Pset.elements deps))
       >>>
       Build.action_dyn () ~dir ~targets
     in

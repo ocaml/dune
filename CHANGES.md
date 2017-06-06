@@ -18,6 +18,11 @@
 
 - Deprecate `copy-and-add-line-directive` and rename it `copy#`
 
+- Remove the ability to load arbitrary libraries in jbuild file in
+  OCaml syntax. Only `unix` is supported since a few released packages
+  are using it. The OCaml syntax might eventually be replaced by a
+  simpler mechanism that plays better with incremental builds
+
 - Properly define and implement scopes
 
 - Inside user actions, `${^}` now includes files matches by

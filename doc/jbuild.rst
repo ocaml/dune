@@ -979,28 +979,8 @@ in the rest of this section. The code in the script will have access to a
 <https://github.com/janestreet/jbuilder/blob/master/plugin/jbuild_plugin.mli>`__
 module containing details about the build context it is executed in.
 
-The script can use the directive ``#require`` to access libraries:
-
-.. code:: ocaml
-
-    #require "base,re";;
-
-Note that any library required by a ``jbuild`` file must be part of the
-installed world.
-
-If you don't like the S-expression syntax, then this method gives you a way to
-use whatever else you want. For instance you could have an API to describe your
-project in OCaml directly:
-
-.. code:: ocaml
-
-    (* -*- tuareg -*- *)
-    #require "my_jbuild_api"
-    open My_jbuild_api
-
-    let () =
-      library "foo" ~modules:["plop"; "bidule"]
-
-Currently the ``Jbuild_plugin`` module is only available inside plugins. It is
-however planned to make it a proper library, see `the roadmap
-<../ROADMAP.org>`__ for details.
+The OCaml syntax gives you an escape hatch for when the S-expression
+syntax is not enough. It is not clear whether the OCaml syntax will be
+supported in the long term as it doesn't work well with incremental
+builds. It is possible that it will be replaced by just an ``include``
+stanza where one can include a generated file.

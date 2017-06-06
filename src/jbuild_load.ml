@@ -20,14 +20,35 @@ module Jbuilds = struct
     | Local path -> Path.Local.ensure_parent_directory_exists path
     | External _ -> ()
 
-  let extract_requires str =
-    List.fold_left (String.split str ~on:'\n') ~init:String_set.empty ~f:(fun acc line ->
-      match Scanf.sscanf line "#require %S" (fun x -> x) with
-      | exception _ -> acc
-      | s ->
-        String_set.union acc
-          (String_set.of_list (String.split s ~on:',')))
-    |> String_set.elements
+  let extract_requires ~fname str =
+    let rec loop n lines acc =
+      match lines with
+      | [] -> acc
+      | line :: lines ->
+        let acc =
+          match Scanf.sscanf line "#require %S" (fun x -> x) with
+          | exception _ -> acc
+          | s ->
+            match String.split s ~on:',' with
+            | [] -> acc
+            | ["unix"] as l -> l
+            | _ ->
+              let start =
+                { Lexing.
+                  pos_fname = fname
+                ; pos_lnum  = n
+                ; pos_cnum  = 0
+                ; pos_bol   = 0
+                }
+              in
+              Loc.fail
+                { start; stop = { start with pos_cnum = String.length line } }
+                "Using libraries other that \"unix\" is not supported.\n\
+                 See the manual for details.";
+        in
+        loop (n + 1) lines acc
+    in
+    loop 1 (String.split str ~on:'\n') []
 
   let create_plugin_wrapper (context : Context.t) ~exec_dir ~plugin ~wrapper ~target =
     let plugin = Path.to_string plugin in
@@ -60,7 +81,7 @@ end
                 Printf.sprintf "%-*S , %S" (longest + 2) k v)))
         (Path.reach ~from:exec_dir target)
         plugin plugin_contents);
-    extract_requires plugin_contents
+    extract_requires ~fname:plugin plugin_contents
 
   let eval jbuilds ~(context : Context.t) =
     let open Future in

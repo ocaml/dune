@@ -17,3 +17,5 @@ val add_deps    : _ t list -> Path.Set.t -> Path.Set.t
 val add_targets : _ t list -> Path.t list -> Path.t list
 val expand      : dir:Path.t -> 'a t list -> 'a -> string list * Path.Set.t
 
+(** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
+val quote_args : string -> string list -> _ t

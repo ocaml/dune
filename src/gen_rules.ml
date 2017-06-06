@@ -83,9 +83,7 @@ module Gen(P : Params) = struct
            [ Ocaml_flags.get flags mode
            ; A "-a"; A "-o"; Target target
            ; As stubs_flags
-           ; Dyn (fun (_, cclibs) ->
-               S (List.map cclibs ~f:(fun flag ->
-                 Arg_spec.S [A "-cclib"; A flag])))
+           ; Dyn (fun (_, cclibs) -> Arg_spec.quote_args "-cclib" cclibs)
            ; As (List.map lib.library_flags ~f:(SC.expand_vars sctx ~dir))
            ; As (match lib.kind with
                | Normal -> []
@@ -111,7 +109,7 @@ module Gen(P : Params) = struct
          [ As (Utils.g ())
          ; Dyn (fun (c_flags, libs) ->
              S [ Lib.c_include_flags libs
-               ; As (List.concat_map c_flags ~f:(fun f -> ["-ccopt"; f]))
+               ; Arg_spec.quote_args "-ccopt" c_flags
                ])
          ; A "-o"; Target dst
          ; Dep src
@@ -295,7 +293,13 @@ module Gen(P : Params) = struct
                ; A "-o"
                ; Path (Path.relative dir (sprintf "%s_stubs" lib.name))
                ; Deps o_files
-               ; Dyn (fun cclibs -> As cclibs)
+               ; Dyn (fun cclibs ->
+                   (* https://github.com/janestreet/jbuilder/issues/119 *)
+                   if ctx.ccomp_type = "msvc" then
+                     Arg_spec.quote_args "-ldopt" cclibs
+                   else
+                     As cclibs
+                 )
                ])
         in
         let static = stubs_archive lib ~dir in

@@ -52,19 +52,19 @@ module Gen(P : Params) = struct
 
   let msvc_hack_cclibs cclibs =
     let f lib =
-      if String.is_prefix lib "-l" then
-        String.sub lib 2 (String.length lib - 2) ^ ".lib"
+      if String.is_prefix lib ~prefix:"-l" then
+        String.sub lib ~pos:2 ~len:(String.length lib - 2) ^ ".lib"
       else
         lib
     in
-    let cclibs = List.map f cclibs in
+    let cclibs = List.map cclibs ~f in
     let f lib =
-      if String.is_prefix lib "-l" then
-        String.sub lib 2 (String.length lib - 2)
+      if String.is_prefix lib ~prefix:"-l" then
+        String.sub lib ~pos:2 ~len:(String.length lib - 2)
       else
         lib
     in
-    List.map f cclibs
+    List.map cclibs ~f
 
   let build_lib (lib : Library.t) ~flags ~dir ~mode ~modules ~dep_graph =
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
@@ -79,7 +79,7 @@ module Gen(P : Params) = struct
           | Byte -> ["-dllib"; "-l" ^ stubs_name; "-cclib"; "-l" ^ stubs_name]
           | Native -> ["-cclib"; "-l" ^ stubs_name]
       in
-      let f =
+      let map_cclibs =
         (* https://github.com/janestreet/jbuilder/issues/119 *)
         if ctx.ccomp_type = "msvc" then
           msvc_hack_cclibs
@@ -106,7 +106,7 @@ module Gen(P : Params) = struct
            [ Ocaml_flags.get flags mode
            ; A "-a"; A "-o"; Target target
            ; As stubs_flags
-           ; Dyn (fun (_, cclibs) -> Arg_spec.quote_args "-cclib" (f cclibs))
+           ; Dyn (fun (_, cclibs) -> Arg_spec.quote_args "-cclib" (map_cclibs cclibs))
            ; As (List.map lib.library_flags ~f:(SC.expand_vars sctx ~dir))
            ; As (match lib.kind with
                | Normal -> []

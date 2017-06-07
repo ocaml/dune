@@ -50,6 +50,22 @@ module Gen(P : Params) = struct
   let dll (lib : Library.t) ~dir =
     Path.relative dir (sprintf "dll%s_stubs%s" lib.name ctx.ext_dll)
 
+  let msvc_hack_cclibs cclibs =
+    let f lib =
+      if String.is_prefix lib "-l" then
+        String.sub lib 2 (String.length lib - 2) ^ ".lib"
+      else
+        lib
+    in
+    let cclibs = List.map f cclibs in
+    let f lib =
+      if String.is_prefix lib "-l" then
+        String.sub lib 2 (String.length lib - 2)
+      else
+        lib
+    in
+    List.map f cclibs
+
   let build_lib (lib : Library.t) ~flags ~dir ~mode ~modules ~dep_graph =
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
@@ -62,6 +78,13 @@ module Gen(P : Params) = struct
           match mode with
           | Byte -> ["-dllib"; "-l" ^ stubs_name; "-cclib"; "-l" ^ stubs_name]
           | Native -> ["-cclib"; "-l" ^ stubs_name]
+      in
+      let f =
+        (* https://github.com/janestreet/jbuilder/issues/119 *)
+        if ctx.ccomp_type = "msvc" then
+          msvc_hack_cclibs
+        else
+          fun x -> x
       in
       SC.add_rule sctx
         (Build.fanout
@@ -83,7 +106,7 @@ module Gen(P : Params) = struct
            [ Ocaml_flags.get flags mode
            ; A "-a"; A "-o"; Target target
            ; As stubs_flags
-           ; Dyn (fun (_, cclibs) -> Arg_spec.quote_args "-cclib" cclibs)
+           ; Dyn (fun (_, cclibs) -> Arg_spec.quote_args "-cclib" (f cclibs))
            ; As (List.map lib.library_flags ~f:(SC.expand_vars sctx ~dir))
            ; As (match lib.kind with
                | Normal -> []
@@ -296,6 +319,7 @@ module Gen(P : Params) = struct
                ; Dyn (fun cclibs ->
                    (* https://github.com/janestreet/jbuilder/issues/119 *)
                    if ctx.ccomp_type = "msvc" then
+                     let cclibs = msvc_hack_cclibs cclibs in
                      Arg_spec.quote_args "-ldopt" cclibs
                    else
                      As cclibs

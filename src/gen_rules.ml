@@ -559,14 +559,14 @@ module Gen(P : Params) = struct
   let ml_of_mli : _ format =
 {|(with-stdout-to %s
        (progn
-        (echo "[@@@warning "-a"]\nmodule rec HACK : sig\n")
+        (echo "[@@@warning \"-a\"]\nmodule rec HACK : sig\n")
         (cat %s)
         (echo "\nend = HACK\ninclude HACK\n")))|}
 
   let re_of_rei : _ format =
 {|(with-stdout-to %s
        (progn
-        (echo "[@@@warning "-a"];\nmodule type HACK = {\n")
+        (echo "[@@@warning \"-a\"];\nmodule type HACK = {\n")
         (cat %s)
         (echo "\n};\nmodule rec HACK : HACK = HACK;\ninclude HACK;\n")))|}
 

@@ -44,6 +44,9 @@
 - When exiting prematurely because of a failure, if there are other
   background processes running and they fail, print these failures
 
+- With msvc, `-lfoo` is transparently replaced by `foo.lib` (David
+  Allsopp, #127)
+
 - Fix a bug where `jbuild rules` would crash instead of reporting a
   proper build error
 

@@ -2,15 +2,7 @@ This document describe the plan for the next releases of Jbuilder.
 
 # V1
 
-Jbuilder is currently being tested for various packages. Once we are
-confident there is enough for most OCaml packages, the version 1.0
-will be released and the version 1 of the jbuild specification will be
-frozen. Additions to the spec will go into version 1.1 of the spec and
-breaking changes will go into version 2.
-
-However, until version 1.0 of Jbuilder is released, breaking changes
-to the jbuild specification are not accepted in order to allow
-packages depending on jbuilder to be released.
+Jbuilder is currently in feature freeze. V1 should be released soon.
 
 ## ~~CLI~~
 

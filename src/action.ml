@@ -343,61 +343,7 @@ module Unexpanded = struct
       expand ~dir ~f x
         ~generic:(fun ~dir s -> (Program.resolve ctx ~dir s, []))
         ~special:(VE.to_prog_and_args ctx)
-
-    let simple x =
-      match SW.just_text x with
-      | Some s -> Inl s
-      | None   -> Inr x
   end
-
-  (* Like [partial_expand] except we keep everything as a template. This is for when we
-     can't determine a chdir statically *)
-  let rec simple_expand t ~f : Partial.t =
-    match t with
-    | Run (prog, args) ->
-      SW.iter prog ~f;
-      List.iter args ~f:(SW.iter ~f);
-      Run (Inr prog, List.map args ~f:E.simple)
-    | Chdir (fn, t) ->
-      SW.iter fn ~f;
-      Chdir (Inr fn, simple_expand t ~f)
-    | Setenv (var, value, t) ->
-      SW.iter var ~f;
-      SW.iter value ~f;
-      Setenv (E.simple var, E.simple value, simple_expand t  ~f)
-    | Redirect (outputs, fn, t) ->
-      SW.iter fn ~f;
-      Redirect (outputs, Inr fn, simple_expand t ~f)
-    | Ignore (outputs, t) ->
-      Ignore (outputs, simple_expand t ~f)
-    | Progn l -> Progn (List.map l ~f:(simple_expand ~f))
-    | Echo x -> SW.iter x ~f; Echo (E.simple x)
-    | Cat x -> SW.iter x ~f; Cat (Inr x)
-    | Create_file x -> SW.iter x ~f; Create_file (Inr x)
-    | Copy (x, y) ->
-      SW.iter x ~f;
-      SW.iter y ~f;
-      Copy (Inr x, Inr y)
-    | Copy_and_add_line_directive (x, y) ->
-      SW.iter x ~f;
-      SW.iter y ~f;
-      Copy_and_add_line_directive (Inr x, Inr y)
-    | Symlink (x, y) ->
-      SW.iter x ~f;
-      SW.iter y ~f;
-      Symlink (Inr x, Inr y)
-    | Rename (x, y) ->
-      SW.iter x ~f;
-      SW.iter y ~f;
-      Rename (Inr x, Inr y)
-    | System x -> SW.iter x ~f; System (E.simple x)
-    | Bash x -> SW.iter x ~f; Bash (E.simple x)
-    | Update_file (x, y) ->
-      SW.iter x ~f;
-      SW.iter y ~f;
-      Update_file (Inr x, E.simple y)
-    | Remove_tree x -> SW.iter x ~f; Remove_tree (Inr x)
-    | Mkdir x -> SW.iter x ~f; Mkdir (Inr x)
 
   let rec partial_expand ctx dir t ~f : Partial.t =
     match t with
@@ -421,9 +367,11 @@ module Unexpanded = struct
         match res with
         | Inl dir ->
           Chdir (res, partial_expand ctx dir t ~f)
-        | Inr _ ->
-          let f loc x = ignore (f loc x : _ option) in
-          Chdir (res, simple_expand t ~f)
+        | Inr fn ->
+          let loc = SW.loc fn in
+          Loc.fail loc
+            "This directory cannot be evaluated statically.\n\
+             This is not allowed by jbuilder"
       end
     | Setenv (var, value, t) ->
       Setenv (E.string ~dir ~f var, E.string ~dir ~f value,

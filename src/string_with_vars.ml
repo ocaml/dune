@@ -72,11 +72,6 @@ let just_a_var t =
   | [Var (_, s)] -> Some s
   | _ -> None
 
-let just_text t =
-  match t.items with
-  | [Text s] -> Some s
-  | _ -> None
-
 let sexp_of_var_syntax = function
   | Parens -> Sexp.Atom "parens"
   | Braces -> Sexp.Atom "braces"

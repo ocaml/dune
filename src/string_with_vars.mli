@@ -16,7 +16,6 @@ val to_string : t -> string
 val raw : loc:Loc.t -> string -> t
 
 val just_a_var : t -> string option
-val just_text : t -> string option
 
 val vars : t -> String_set.t
 

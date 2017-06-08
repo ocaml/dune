@@ -1,4 +1,5 @@
 ;; Test for ${^} with globs in rules
+
 (rule
  ((targets (result expected))
   (deps    (jbuild (glob_files *.txt)))
@@ -22,3 +23,12 @@
  ((name   runtest)
   (deps   (result2 expected2))
   (action (run diff -u result2 expected2))))
+
+;; Test inferred rules
+
+(rule (copy jbuild jbuild-plop))
+
+(alias
+ ((name   runtest)
+  (deps   (jbuild jbuild-plop))
+  (action (run diff -u ${!^}))))

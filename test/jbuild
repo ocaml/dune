@@ -13,9 +13,9 @@
 
 (alias
  ((name runtest)
-  (deps ((files_recursively_in workspaces/globs)))
+  (deps ((files_recursively_in workspaces/misc)))
   (action
-   (chdir workspaces/globs
+   (chdir workspaces/misc
     (run ${exe:run.exe} -- ${bin:jbuilder} runtest -j1 --root .)))))
 
 (alias

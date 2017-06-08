@@ -590,9 +590,12 @@ module Action = struct
             acc.vdeps <- String_map.add acc.vdeps ~key ~data
           end; None
         | _ ->
-          match expand_var_no_root sctx var with
-          | Some s -> Some (Strings ([s], cos))
-          | None -> None)
+          match var with
+          | "ROOT" -> Some (Paths ([Path.root], cos))
+          | _ ->
+            match expand_var_no_root sctx var with
+            | Some s -> Some (Strings ([s], cos))
+            | None -> None)
     in
     (t, acc)
 

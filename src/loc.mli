@@ -12,6 +12,9 @@ val fail_lex : Lexing.lexbuf -> ('a, Format.formatter, unit, 'b) format4 -> 'a
 
 val in_file : string -> t
 
+(** To be used with [__POS__] *)
+val of_pos : (string * int * int * int) -> t
+
 val none : t
 
 (** Prints "File ..., line ..., characters ...:\n" *)

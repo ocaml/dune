@@ -37,6 +37,18 @@ let in_file fn =
   ; stop = pos
   }
 
+let of_pos (fname, lnum, cnum, enum) =
+  let pos : Lexing.position =
+    { pos_fname = fname
+    ; pos_lnum  = lnum
+    ; pos_cnum  = cnum
+    ; pos_bol   = 0
+    }
+  in
+  { start = pos
+  ; stop  = { pos with pos_cnum = enum }
+  }
+
 let none = in_file "<none>"
 
 let print ppf { start; stop } =

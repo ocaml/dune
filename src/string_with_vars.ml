@@ -65,7 +65,9 @@ let t sexp = of_string ~loc:(Sexp.Ast.loc sexp) (Sexp.Of_sexp.string sexp)
 
 let loc t = t.loc
 
-let raw ~loc s = { loc; items = [Text s]}
+let virt pos s = of_string ~loc:(Loc.of_pos pos) s
+let virt_var  pos s = { loc = Loc.of_pos pos; items = [Var (Braces, s)] }
+let virt_text pos s = { loc = Loc.of_pos pos; items = [Text s] }
 
 let just_a_var t =
   match t.items with

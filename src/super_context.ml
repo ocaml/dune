@@ -818,8 +818,8 @@ module PP = struct
       Hashtbl.add sctx.ppx_drivers ~key ~data:exe;
       exe
 
-  let target_var = String_with_vars.of_string "${@}" ~loc:Loc.none
-  let root_var   = String_with_vars.of_string "${ROOT}" ~loc:Loc.none
+  let target_var = String_with_vars.virt_var __POS__ "@"
+  let root_var   = String_with_vars.virt_var __POS__ "ROOT"
 
   let cookie_library_name lib_name =
     match lib_name with

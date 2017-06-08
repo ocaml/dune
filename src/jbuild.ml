@@ -730,79 +730,83 @@ module Rule = struct
         sexp
 
   let ocamllex_v1 names =
-    let str s = String_with_vars.of_string s ~loc:Loc.none in
+    let module S = String_with_vars in
     List.map names ~f:(fun name ->
       let src = name ^ ".mll" in
       let dst = name ^ ".ml"  in
       { targets = Static [dst]
-      ; deps    = [File (str src)]
+      ; deps    = [File (S.virt_text __POS__ src)]
       ; action  =
           Chdir
-            (str "${ROOT}",
-             Run (str "${bin:ocamllex}",
-                  [str "-q"; str "-o"; str "${@}"; str "${<}"]))
+            (S.virt_var __POS__ "ROOT",
+             Run (S.virt_text __POS__ "ocamllex",
+                  [ S.virt_text __POS__ "-q"
+                  ; S.virt_text __POS__ "-o"
+                  ; S.virt_var __POS__ "@"
+                  ; S.virt_var __POS__"<"
+                  ]))
       })
 
   let ocamlyacc_v1 names =
-    let str s = String_with_vars.of_string s ~loc:Loc.none in
+    let module S = String_with_vars in
     List.map names ~f:(fun name ->
       let src = name ^ ".mly" in
       { targets = Static [name ^ ".ml"; name ^ ".mli"]
-      ; deps    = [File (str src)]
+      ; deps    = [File (S.virt_text __POS__ src)]
       ; action  =
           Chdir
-            (str "${ROOT}",
-             Run (str "${bin:ocamlyacc}",
-                  [str "${<}"]))
+            (S.virt_var __POS__ "ROOT",
+             Run (S.virt_text __POS__ "ocamlyacc",
+                  [S.virt_var __POS__ "<"]))
       })
 end
 
 module Menhir = struct
   type t =
-    { base : string option
-    ; flags : String_with_vars.t list
-    ; modules: string list
+    { merge_into : string option
+    ; flags      : String_with_vars.t list
+    ; modules    : string list
     }
 
   let v1 =
     record
-      (field_o "merge_into" string >>= fun base ->
+      (field_o "merge_into" string >>= fun merge_into ->
        field "flags" (list String_with_vars.t) ~default:[] >>= fun flags ->
        field "modules" (list string) >>= fun modules ->
        return
-         { base
+         { merge_into
          ; flags
          ; modules
          }
       )
 
   let v1_to_rule t =
-    let str s = String_with_vars.of_string s ~loc:Loc.none in
+    let module S = String_with_vars in
     let targets n = [n ^ ".ml"; n ^ ".mli"] in
-    match t.base with
+    match t.merge_into with
     | None ->
       List.map t.modules ~f:(fun name ->
         let src = name ^ ".mly" in
         { Rule.
           targets = Static (targets name)
-        ; deps    = [Dep_conf.File (str src)]
+        ; deps    = [Dep_conf.File (S.virt_text __POS__ src)]
         ; action  =
             Chdir
-              (str "${ROOT}",
-               Run (str "${bin:menhir}",
-                    t.flags @ [str "${<}"]))
+              (S.virt_var __POS__ "ROOT",
+               Run (S.virt_text __POS__ "menhir",
+                    t.flags @ [S.virt_var __POS__ "<"]))
         })
-    | Some base ->
-      let mly m = str (m ^ ".mly") in
+    | Some merge_into ->
+      let mly m = S.virt_text __POS__ (m ^ ".mly") in
       [{ Rule.
-         targets = Static (targets base)
+         targets = Static (targets merge_into)
        ; deps    = List.map ~f:(fun m -> Dep_conf.File (mly m)) t.modules
        ; action  =
            Chdir
-             (str "${ROOT}",
-              Run (str "${bin:menhir}",
-                   [ str "--base"
-                   ; str base
+             (S.virt_var __POS__ "ROOT",
+              Run (S.virt_text __POS__ "menhir",
+                   [ S.virt_text __POS__ "--base"
+                   ; S.virt_text __POS__ merge_into
                    ]
                    @ t.flags
                    @ (List.map ~f:mly t.modules))

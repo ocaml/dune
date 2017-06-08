@@ -55,7 +55,13 @@ module Jbuilds = struct
     let plugin_contents = Io.read_file plugin in
     Io.with_file_out (Path.to_string wrapper) ~f:(fun oc ->
       Printf.fprintf oc {|
-let () = Hashtbl.add Toploop.directive_table "require" (Toploop.Directive_string ignore)
+let () =
+  Hashtbl.add Toploop.directive_table "require" (Toploop.Directive_string ignore);
+  Hashtbl.add Toploop.directive_table "use" (Toploop.Directive_string (fun _ ->
+    failwith "#use is not allowed inside jbuild in OCaml syntax"));
+  Hashtbl.add Toploop.directive_table "use_mod" (Toploop.Directive_string (fun _ ->
+    failwith "#use is not allowed inside jbuild in OCaml syntax"))
+
 module Jbuild_plugin = struct
   module V1 = struct
     let context       = %S

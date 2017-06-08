@@ -1001,3 +1001,5 @@ syntax is not enough. It is not clear whether the OCaml syntax will be
 supported in the long term as it doesn't work well with incremental
 builds. It is possible that it will be replaced by just an ``include``
 stanza where one can include a generated file.
+
+Consequently **you must not** build complex systems based on it.

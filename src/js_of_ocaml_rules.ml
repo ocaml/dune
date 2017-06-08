@@ -18,7 +18,7 @@ let in_build_dir ~ctx =
 
 let runtime_file ~sctx ~dir fname =
   let _lib, file =
-    Artifacts.file_of_lib (SC.artifacts sctx) ~from:dir
+    Artifacts.file_of_lib (SC.artifacts sctx) ~loc:Loc.none ~from:dir
       (sprintf "js_of_ocaml-compiler:%s" fname)
   in
   match file with

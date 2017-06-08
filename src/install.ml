@@ -57,10 +57,30 @@ module Entry = struct
     }
 
   let make section ?dst src =
+    let dst =
+      if Sys.win32 then
+        let src_base = Path.basename src in
+        let dst' =
+          match dst with
+          | None -> src_base
+          | Some s -> s
+        in
+        match Filename.extension src_base with
+        | ".exe" | ".bc" ->
+          if Filename.extension dst' <> ".exe" then
+            Some (dst' ^ ".exe")
+          else
+            dst
+        | _ -> dst
+      else
+        dst
+    in
     { src
     ; dst
     ; section
     }
+
+  let set_src t src = { t with src }
 
   module Paths = struct
     let lib         = Path.(relative root) "lib"

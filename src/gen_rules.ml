@@ -906,7 +906,7 @@ Add it to your jbuild file to remove this warning.
         Path.append install_dir (Install.Entry.relative_installed_path entry ~package)
       in
       SC.add_rule sctx (Build.symlink ~src:entry.src ~dst);
-      { entry with src = dst })
+      Install.Entry.set_src entry dst)
 
   let install_file package_path package entries =
     let entries =

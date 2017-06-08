@@ -47,6 +47,9 @@
 - With msvc, `-lfoo` is transparently replaced by `foo.lib` (David
   Allsopp, #127)
 
+- Automatically add the `.exe` when installing executables on Windows
+  (#123)
+
 - Fix a bug where `jbuild rules` would crash instead of reporting a
   proper build error
 

@@ -586,7 +586,7 @@ module Action = struct
           end
         | _ ->
           match var with
-          | "ROOT" -> Some (path_exp Path.root)
+          | "ROOT" -> Some (path_exp sctx.context.build_dir)
           | "@" -> begin
               match targets_written_by_user with
               | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."

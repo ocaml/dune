@@ -1,5 +1,5 @@
-1.0+beta10 (in development)
----------------------------
+1.0+beta10 (08/06/2017)
+-----------------------
 
 - Add a `clean` subcommand (Richard Davison, #89)
 

@@ -1,3 +1,9 @@
+1.0.0 (coming soon)
+-------------------
+
+- Fix the error message when there are more than one `<package>.opam`
+  file for a given pacakge
+
 1.0+beta10 (08/06/2017)
 -----------------------
 

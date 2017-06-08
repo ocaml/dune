@@ -210,7 +210,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) () =
           name
           (String.concat ~sep:"\n"
              (List.map pkgs ~f:(fun pkg ->
-                sprintf "- %s.opam" (Path.to_string pkg.Package.path)))))
+                sprintf "- %s" (Path.to_string (Package.opam_file pkg))))))
   in
   let scopes =
     String_map.values packages

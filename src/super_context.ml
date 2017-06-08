@@ -80,8 +80,11 @@ let expand_vars t ~dir s =
   | "ROOT" -> Some (Path.reach ~from:dir t.context.build_dir)
   | var -> String_map.find var t.vars)
 
-let resolve_program t ?hint ?(in_the_tree=true) bin =
-  match Artifacts.binary t.artifacts ?hint ~in_the_tree bin with
+let resolve_program_internal t ?hint ?(in_the_tree=true) bin =
+  Artifacts.binary t.artifacts ?hint ~in_the_tree bin
+
+let resolve_program t ?hint ?in_the_tree bin =
+  match resolve_program_internal t ?hint ?in_the_tree bin with
   | Error fail -> Build.Prog_spec.Dyn (fun _ -> fail.fail ())
   | Ok    path -> Build.Prog_spec.Dep path
 
@@ -506,7 +509,7 @@ module Action = struct
       }
     in
     let t =
-      U.partial_expand sctx.context dir t ~f:(fun loc key ->
+      U.partial_expand dir t ~f:(fun loc key ->
         let module A = Artifacts in
         let open Action.Var_expansion in
         let cos, var = parse_bang key in
@@ -596,7 +599,7 @@ module Action = struct
   let expand_step2 sctx ~dir ~artifacts
         ~targets_written_by_user ~deps_written_by_user t =
     let open Action.Var_expansion in
-    U.Partial.expand sctx.context dir t ~f:(fun _loc key ->
+    U.Partial.expand dir t ~f:(fun _loc key ->
       match String_map.find key artifacts with
       | Some _ as opt -> opt
       | None ->
@@ -678,12 +681,18 @@ module Action = struct
           List.fold_left2 vdeps vals ~init:forms.artifacts ~f:(fun acc (var, _) value ->
             String_map.add acc ~key:var ~data:value)
         in
-        expand_step2 sctx ~dir ~artifacts
-          ~targets_written_by_user:
-            (match targets_written_by_user with
-             | Infer    -> []
-             | Static l -> l)
-          ~deps_written_by_user t)
+        let unresolved =
+          expand_step2 sctx ~dir ~artifacts
+            ~targets_written_by_user:
+              (match targets_written_by_user with
+               | Infer    -> []
+               | Static l -> l)
+            ~deps_written_by_user t
+        in
+        Action.Unresolved.resolve unresolved ~f:(fun prog ->
+          match resolve_program_internal sctx prog with
+          | Ok path    -> path
+          | Error fail -> fail.fail ()))
       >>>
       Build.dyn_paths (Build.arr (fun action ->
         let { Action.Infer.Outcome.deps; targets = _ } =

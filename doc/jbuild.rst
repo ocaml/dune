@@ -558,10 +558,13 @@ In addition, ``(action ...)`` fields support the following special variables:
 -  ``path:<path>`` expands to ``<path>``
 - ``exe:<path>`` is the same as ``<path>``, except when cross-compiling, in
   which case it will expand to ``<path>`` from the host build context
-- ``bin:<program>`` expands to a path to ``program``. If ``program`` is
-  installed by a package in the workspace (see `install`_ stanzas), the locally
-  built binary will be used, otherwise it will be searched in the ``PATH`` of
-  the current build context
+- ``bin:<program>`` expands to a path to ``program``. If ``program``
+  is installed by a package in the workspace (see `install`_ stanzas),
+  the locally built binary will be used, otherwise it will be searched
+  in the ``PATH`` of the current build context. Note that ``(run
+  ${bin:program} ...)`` and ``(run program ...)`` behave in the same
+  way. ``${bin:...}`` is only necessary when you are using ``(bash
+  ...)`` or ``(system ...)``
 - ``lib:<public-library-name>:<file>`` expands to a path to file ``<file>`` of
   library ``<public-library-name>``. If ``<public-library-name>`` is available
   in the current workspace, the local file will be used, otherwise the one from
@@ -896,7 +899,9 @@ configuration related tasks.
 
 The following constructions are available:
 
-- ``(run <prog> <args>)`` to execute a program
+- ``(run <prog> <args>)`` to execute a program. ``<prog>`` is resolved
+  locally if it is available in the current workspace, otherwise it is
+  resolved using the ``PATH``
 - ``(chdir <dir> <DSL>)`` to change the current directory
 - ``(setenv <var> <value> <DSL>)`` to set an environment variable
 - ``(with-<outputs>-to <file> <DSL>)`` to redirect the output to a file, where

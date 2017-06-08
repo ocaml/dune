@@ -14,14 +14,8 @@ end
 
 module Outputs : module type of struct include Action_intf.Outputs end
 
-module Program : sig
-  type t =
-    | This      of Path.t
-    | Not_found of string
-end
-
 include Action_intf.Ast
-  with type program := Program.t
+  with type program := Path.t
   with type path    := Path.t
   with type string  := string
 
@@ -34,9 +28,25 @@ val updated_files : t -> Path.Set.t
 (** Return the list of directories the action chdirs to *)
 val chdirs : t -> Path.Set.t
 
-module Unexpanded : sig
+(** Ast where programs are not yet looked up in the PATH *)
+module Unresolved : sig
   type action = t
 
+  module Program : sig
+    type t =
+      | This   of Path.t
+      | Search of string
+  end
+
+  include Action_intf.Ast
+    with type program := Program.t
+    with type path    := Path.t
+    with type string  := string
+
+  val resolve : t -> f:(string -> Path.t) -> action
+end with type action := t
+
+module Unexpanded : sig
   include Action_intf.Ast
     with type program := String_with_vars.t
     with type path    := String_with_vars.t
@@ -47,25 +57,23 @@ module Unexpanded : sig
 
   module Partial : sig
     include Action_intf.Ast
-      with type program = (Program.t, String_with_vars.t) either
-      with type path    = (Path.t   , String_with_vars.t) either
-      with type string  = (string   , String_with_vars.t) either
+      with type program = (Unresolved.Program.t, String_with_vars.t) either
+      with type path    = (Path.t              , String_with_vars.t) either
+      with type string  = (string              , String_with_vars.t) either
 
     val expand
-      :  Context.t
-      -> Path.t
+      :  Path.t
       -> t
       -> f:(Loc.t -> String.t -> Var_expansion.t option)
-      -> action
+      -> Unresolved.t
   end
 
   val partial_expand
-    :  Context.t
-    -> Path.t
+    :  Path.t
     -> t
     -> f:(Loc.t -> string -> Var_expansion.t option)
     -> Partial.t
-end with type action := t
+end
 
 val exec : targets:Path.Set.t -> ?context:Context.t -> t -> unit Future.t
 

@@ -3,94 +3,6 @@ open Sexp.Of_sexp
 
 module Env_var_map = Context.Env_var_map
 
-module Program = struct
-  type t =
-    | This      of Path.t
-    | Not_found of string
-
-  let sexp_of_t = function
-    | This p -> Path.sexp_of_t p
-    | Not_found s -> List [Atom "not_found"; Atom s]
-
-  let t sexp =
-    match sexp with
-    | Atom _ -> This (Path.t sexp)
-    | List (_, [Atom (_, "not_found"); Atom (_, s)]) -> Not_found s
-    | _ ->
-      Loc.fail (Sexp.Ast.loc sexp)
-        "S-expression of the form <atom> or (not_found <atom>) expected"
-
-  let resolve ctx ~dir s =
-    if s = "" then
-      Not_found ""
-    else if String.contains s '/' then
-      This (Path.relative dir s)
-    else
-      match Context.which ctx s with
-      | Some p -> This p
-      | None -> Not_found s
-end
-
-module Var_expansion = struct
-  module Concat_or_split = struct
-    type t =
-      | Concat (* default *)
-      | Split  (* ${!...} *)
-  end
-
-  open Concat_or_split
-
-  type t =
-    | Paths   of Path.t list * Concat_or_split.t
-    | Strings of string list * Concat_or_split.t
-
-  let concat = function
-    | [s] -> s
-    | l -> String.concat ~sep:" " l
-
-  let string_of_path ~dir p = Path.reach ~from:dir p
-  let path_of_string ~dir s = Path.relative dir s
-
-  let to_strings ~dir = function
-    | Strings (l, Split ) -> l
-    | Strings (l, Concat) -> [concat l]
-    | Paths   (l, Split ) -> List.map l ~f:(string_of_path ~dir)
-    | Paths   (l, Concat) -> [concat (List.map l ~f:(string_of_path ~dir))]
-
-  let to_string ~dir = function
-    | Strings (_, Split) | Paths (_, Split) -> assert false
-    | Strings (l, Concat) -> concat l
-    | Paths   (l, Concat) -> concat (List.map l ~f:(string_of_path ~dir))
-
-  let to_path ~dir = function
-    | Strings (_, Split) | Paths (_, Split) -> assert false
-    | Strings (l, Concat) -> path_of_string ~dir (concat l)
-    | Paths ([p], Concat) -> p
-    | Paths (l,   Concat) ->
-      path_of_string ~dir (concat (List.map l ~f:(string_of_path ~dir)))
-
-  let to_prog_and_args ctx ~dir exp : Program.t * string list =
-    let resolve = Program.resolve in
-    match exp with
-    | Paths   ([p], _) -> (This p, [])
-    | Strings ([s], _) -> (resolve ctx ~dir s, [])
-    | Paths ([], _) | Strings ([], _) -> (Not_found "", [])
-    | Paths (l, Concat) ->
-      (This
-         (path_of_string ~dir
-            (concat (List.map l ~f:(string_of_path ~dir)))),
-       [])
-    | Strings (l, Concat) ->
-      (resolve ~dir ctx (concat l), l)
-    | Paths (p :: l, Split) ->
-      (This p, List.map l ~f:(string_of_path ~dir))
-    | Strings (s :: l, Split) ->
-      (resolve ~dir ctx s, l)
-end
-
-module VE = Var_expansion
-module SW = String_with_vars
-
 module Outputs = struct
   include Action_intf.Outputs
 
@@ -181,14 +93,47 @@ struct
     | Mkdir x       -> List [Atom "mkdir"; path x]
 end
 
+module Make_mapper
+    (Src : Action_intf.Ast)
+    (Dst : Action_intf.Ast)
+= struct
+  let rec map (t : Src.t) ~f_program ~f_string ~f_path : Dst.t =
+    match t with
+    | Run (prog, args) ->
+      Run (f_program prog, List.map args ~f:f_string)
+    | Chdir (fn, t) ->
+      Chdir (f_path fn, map t ~f_program ~f_string ~f_path)
+    | Setenv (var, value, t) ->
+      Setenv (f_string var, f_string value, map t ~f_program ~f_string ~f_path)
+    | Redirect (outputs, fn, t) ->
+      Redirect (outputs, f_path fn, map t ~f_program ~f_string ~f_path)
+    | Ignore (outputs, t) ->
+      Ignore (outputs, map t ~f_program ~f_string ~f_path)
+    | Progn l -> Progn (List.map l ~f:(fun t -> map t ~f_program ~f_string ~f_path))
+    | Echo x -> Echo (f_string x)
+    | Cat x -> Cat (f_path x)
+    | Create_file x -> Create_file (f_path x)
+    | Copy (x, y) -> Copy (f_path x, f_path y)
+    | Symlink (x, y) ->
+      Symlink (f_path x, f_path y)
+    | Copy_and_add_line_directive (x, y) ->
+      Copy_and_add_line_directive (f_path x, f_path y)
+    | System x -> System (f_string x)
+    | Bash x -> Bash (f_string x)
+    | Update_file (x, y) -> Update_file (f_path x, f_string y)
+    | Rename (x, y) -> Rename (f_path x, f_path y)
+    | Remove_tree x -> Remove_tree (f_path x)
+    | Mkdir x -> Mkdir (f_path x)
+end
+
 module type Ast = Action_intf.Ast
-  with type program = Program.t
+  with type program = Path.t
   with type path    = Path.t
   with type string  = String.t
 module rec Ast : Ast = Ast
 
 include Make_ast
-    (Program)
+    (Path)
     (Path)
     (struct
       type t = string
@@ -196,6 +141,95 @@ include Make_ast
       let sexp_of_t = Sexp.To_sexp.string
     end)
     (Ast)
+
+module Unresolved = struct
+  module Program = struct
+    type t =
+      | This   of Path.t
+      | Search of string
+
+    let of_string ~dir s =
+      if String.contains s '/' then
+        This (Path.relative dir s)
+      else
+        Search s
+  end
+
+  module type Uast = Action_intf.Ast
+    with type program = Program.t
+    with type path    = Path.t
+    with type string  = String.t
+  module rec Uast : Uast = Uast
+  include Uast
+
+  include Make_mapper(Uast)(Ast)
+
+  let resolve t ~f =
+    map t ~f_path:(fun x -> x) ~f_string:(fun x -> x)
+      ~f_program:(function
+        | This p -> p
+        | Search s -> f s)
+end
+
+module Var_expansion = struct
+  module Concat_or_split = struct
+    type t =
+      | Concat (* default *)
+      | Split  (* ${!...} *)
+  end
+
+  open Concat_or_split
+
+  type t =
+    | Paths   of Path.t list * Concat_or_split.t
+    | Strings of string list * Concat_or_split.t
+
+  let concat = function
+    | [s] -> s
+    | l -> String.concat ~sep:" " l
+
+  let string_of_path ~dir p = Path.reach ~from:dir p
+  let path_of_string ~dir s = Path.relative dir s
+
+  let to_strings ~dir = function
+    | Strings (l, Split ) -> l
+    | Strings (l, Concat) -> [concat l]
+    | Paths   (l, Split ) -> List.map l ~f:(string_of_path ~dir)
+    | Paths   (l, Concat) -> [concat (List.map l ~f:(string_of_path ~dir))]
+
+  let to_string ~dir = function
+    | Strings (_, Split) | Paths (_, Split) -> assert false
+    | Strings (l, Concat) -> concat l
+    | Paths   (l, Concat) -> concat (List.map l ~f:(string_of_path ~dir))
+
+  let to_path ~dir = function
+    | Strings (_, Split) | Paths (_, Split) -> assert false
+    | Strings (l, Concat) -> path_of_string ~dir (concat l)
+    | Paths ([p], Concat) -> p
+    | Paths (l,   Concat) ->
+      path_of_string ~dir (concat (List.map l ~f:(string_of_path ~dir)))
+
+  let to_prog_and_args ~dir exp : Unresolved.Program.t * string list =
+    let module P = Unresolved.Program in
+    match exp with
+    | Paths   ([p], _) -> (This p, [])
+    | Strings ([s], _) -> (P.of_string ~dir s, [])
+    | Paths ([], _) | Strings ([], _) -> (Search "", [])
+    | Paths (l, Concat) ->
+      (This
+         (path_of_string ~dir
+            (concat (List.map l ~f:(string_of_path ~dir)))),
+       [])
+    | Strings (l, Concat) ->
+      (P.of_string ~dir (concat l), l)
+    | Paths (p :: l, Split) ->
+      (This p, List.map l ~f:(string_of_path ~dir))
+    | Strings (s :: l, Split) ->
+      (P.of_string ~dir s, l)
+end
+
+module VE = Var_expansion
+module SW = String_with_vars
 
 module Unexpanded = struct
   module type Uast = Action_intf.Ast
@@ -221,6 +255,8 @@ module Unexpanded = struct
         Sexp.pp (List [Atom "mkdir"; Path.sexp_of_t path])
 
   module Partial = struct
+    module Program = Unresolved.Program
+
     module type Past = Action_intf.Ast
       with type program = (Program.t, String_with_vars.t) either
       with type path    = (Path.t   , String_with_vars.t) either
@@ -261,30 +297,30 @@ module Unexpanded = struct
           ~special:VE.to_path
           ~map:(fun x -> x)
 
-      let prog_and_args ctx ~dir ~f x =
+      let prog_and_args ~dir ~f x =
         expand ~dir ~f x
-          ~generic:(fun ~dir:_ s -> (Program.resolve ctx ~dir s, []))
-          ~special:(VE.to_prog_and_args ctx)
+          ~generic:(fun ~dir:_ s -> (Program.of_string ~dir s, []))
+          ~special:VE.to_prog_and_args
           ~map:(fun x -> (x, []))
     end
 
-    let rec expand ctx dir t ~f : Ast.t =
+    let rec expand dir t ~f : Unresolved.t =
       match t with
       | Run (prog, args) ->
         let args = List.concat_map args ~f:(E.strings ~dir ~f) in
-        let prog, more_args = E.prog_and_args ctx ~dir ~f prog in
+        let prog, more_args = E.prog_and_args ~dir ~f prog in
         Run (prog, more_args @ args)
       | Chdir (fn, t) ->
         let fn = E.path ~dir ~f fn in
-        Chdir (fn, expand ctx fn t ~f)
+        Chdir (fn, expand fn t ~f)
       | Setenv (var, value, t) ->
         Setenv (E.string ~dir ~f var, E.string ~dir ~f value,
-                expand ctx dir t ~f)
+                expand dir t ~f)
       | Redirect (outputs, fn, t) ->
-        Redirect (outputs, E.path ~dir ~f fn, expand ctx dir t ~f)
+        Redirect (outputs, E.path ~dir ~f fn, expand dir t ~f)
       | Ignore (outputs, t) ->
-        Ignore (outputs, expand ctx dir t ~f)
-      | Progn l -> Progn (List.map l ~f:(fun t -> expand ctx dir t ~f))
+        Ignore (outputs, expand dir t ~f)
+      | Progn l -> Progn (List.map l ~f:(fun t -> expand dir t ~f))
       | Echo x -> Echo (E.string ~dir ~f x)
       | Cat x -> Cat (E.path ~dir ~f x)
       | Create_file x -> Create_file (E.path ~dir ~f x)
@@ -339,13 +375,13 @@ module Unexpanded = struct
         ~generic:VE.path_of_string
         ~special:VE.to_path
 
-    let prog_and_args ctx ~dir ~f x =
+    let prog_and_args ~dir ~f x =
       expand ~dir ~f x
-        ~generic:(fun ~dir s -> (Program.resolve ctx ~dir s, []))
-        ~special:(VE.to_prog_and_args ctx)
+        ~generic:(fun ~dir s -> (Unresolved.Program.of_string ~dir s, []))
+        ~special:VE.to_prog_and_args
   end
 
-  let rec partial_expand ctx dir t ~f : Partial.t =
+  let rec partial_expand dir t ~f : Partial.t =
     match t with
     | Run (prog, args) ->
       let args =
@@ -355,7 +391,7 @@ module Unexpanded = struct
           | Inr _ as x -> [x])
       in
       begin
-        match E.prog_and_args ctx ~dir ~f prog with
+        match E.prog_and_args ~dir ~f prog with
         | Inl (prog, more_args) ->
           let more_args = List.map more_args ~f:(fun x -> Inl x) in
           Run (Inl prog, more_args @ args)
@@ -366,7 +402,7 @@ module Unexpanded = struct
         let res = E.path ~dir ~f fn in
         match res with
         | Inl dir ->
-          Chdir (res, partial_expand ctx dir t ~f)
+          Chdir (res, partial_expand dir t ~f)
         | Inr fn ->
           let loc = SW.loc fn in
           Loc.fail loc
@@ -375,12 +411,12 @@ module Unexpanded = struct
       end
     | Setenv (var, value, t) ->
       Setenv (E.string ~dir ~f var, E.string ~dir ~f value,
-              partial_expand ctx dir t ~f)
+              partial_expand dir t ~f)
     | Redirect (outputs, fn, t) ->
-      Redirect (outputs, E.path ~dir ~f fn, partial_expand ctx dir t ~f)
+      Redirect (outputs, E.path ~dir ~f fn, partial_expand dir t ~f)
     | Ignore (outputs, t) ->
-      Ignore (outputs, partial_expand ctx dir t ~f)
-    | Progn l -> Progn (List.map l ~f:(fun t -> partial_expand ctx dir t ~f))
+      Ignore (outputs, partial_expand dir t ~f)
+    | Progn l -> Progn (List.map l ~f:(fun t -> partial_expand dir t ~f))
     | Echo x -> Echo (E.string ~dir ~f x)
     | Cat x -> Cat (E.path ~dir ~f x)
     | Create_file x -> Create_file (E.path ~dir ~f x)
@@ -426,35 +462,7 @@ let fold_one_step t ~init:acc ~f =
   | Remove_tree _
   | Mkdir _ -> acc
 
-let rec map t ~fs ~fp =
-  match t with
-  | Run (This prog, args) ->
-    Run (This (fp prog), List.map args ~f:fs)
-  | Run (Not_found _ as nf, args) ->
-    Run (nf, List.map args ~f:fs)
-  | Chdir (fn, t) ->
-    Chdir (fp fn, map t ~fs ~fp)
-  | Setenv (var, value, t) ->
-    Setenv (fs var, fs value, map t ~fs ~fp)
-  | Redirect (outputs, fn, t) ->
-    Redirect (outputs, fp fn, map t ~fs ~fp)
-  | Ignore (outputs, t) ->
-    Ignore (outputs, map t ~fs ~fp)
-  | Progn l -> Progn (List.map l ~f:(fun t -> map t ~fs ~fp))
-  | Echo x -> Echo (fs x)
-  | Cat x -> Cat (fp x)
-  | Create_file x -> Create_file (fp x)
-  | Copy (x, y) -> Copy (fp x, fp y)
-  | Symlink (x, y) ->
-    Symlink (fp x, fp y)
-  | Copy_and_add_line_directive (x, y) ->
-    Copy_and_add_line_directive (fp x, fp y)
-  | System x -> System (fs x)
-  | Bash x -> Bash (fs x)
-  | Update_file (x, y) -> Update_file (fp x, fs y)
-  | Rename (x, y) -> Rename (fp x, fp y)
-  | Remove_tree x -> Remove_tree (fp x)
-  | Mkdir x -> Mkdir (fp x)
+include Make_mapper(Ast)(Ast)
 
 let updated_files =
   let rec loop acc t =
@@ -500,10 +508,8 @@ let run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
 
 let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   match t with
-  | Run (This prog, args) ->
+  | Run (prog, args) ->
     run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args
-  | Run (Not_found prog, _) ->
-    Utils.program_not_found prog ?context:(Option.map ectx.context ~f:(fun c -> c.name))
   | Chdir (dir, t) ->
     exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
   | Setenv (var, value, t) ->
@@ -640,7 +646,7 @@ let sandbox t ~sandboxed ~deps ~targets =
           Some (Ast.Symlink (path, sandboxed path))
         else
           None))
-    ; map t ~fs:(fun x -> x) ~fp:sandboxed
+    ; map t ~f_string:(fun x -> x) ~f_path:sandboxed ~f_program:sandboxed
     ; Progn (List.filter_map targets ~f:(fun path ->
         if Path.is_local path then
           Some (Ast.Rename (sandboxed path, path))
@@ -663,8 +669,7 @@ module Infer = struct
 
   let rec infer acc t =
     match t with
-    | Run (This prog, _)   -> acc +< prog
-    | Run (Not_found _, _) -> acc
+    | Run (prog, _)        -> acc +< prog
     | Redirect (_, fn, t)  -> infer (acc +@ fn) t
     | Cat fn               -> acc +< fn
     | Create_file fn       -> acc +@ fn

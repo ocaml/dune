@@ -50,6 +50,10 @@
 - Automatically add the `.exe` when installing executables on Windows
   (#123)
 
+- `(run <prog> ...)` now resolves `<prog>` locally if
+  possible. i.e. `(run ${bin:prog} ...)` and `(run prog ...)` behave
+  the same. This seems like the right default
+
 - Fix a bug where `jbuild rules` would crash instead of reporting a
   proper build error
 

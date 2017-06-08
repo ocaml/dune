@@ -8,7 +8,7 @@ license: "Apache-2.0"
 build: [
   ["ocaml" "bootstrap.ml"]
   ["./boot.exe" "--subst"] {pinned}
-  ["./boot.exe" "-j" jobs]
+  ["./boot.exe" "-j" jobs "--dev" {pinned & ocaml-version >= "4.03.0"}]
 ]
 depends: [
   # ocamlfind is not mandatory to build packages using

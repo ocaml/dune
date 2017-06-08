@@ -468,44 +468,41 @@ module Action = struct
     | Infer
 
   type resolved_forms =
-    { (* Mapping from ${...} forms to their resolutions *)
-      mutable artifacts : Action.Var_expansion.t String_map.t
-    ; (* Failed resolutions *)
+    { (* Failed resolutions *)
       mutable failures  : fail list
     ; (* All "name" for ${lib:name:...}/${lib-available:name} forms *)
       mutable lib_deps  : Build.lib_deps
-    ; mutable vdeps     : (unit, Action.Var_expansion.t) Build.t String_map.t
+    ; (* Static deps from ${...} variables. For instance ${exe:...} *)
+      mutable sdeps     : Pset.t
+    ; (* Dynamic deps from ${...} variables. For instance ${read:...} *)
+      mutable ddeps     : (unit, Action.Var_expansion.t) Build.t String_map.t
     }
 
   let add_lib_dep acc lib kind =
     acc.lib_deps <- String_map.add acc.lib_deps ~key:lib ~data:kind
 
-  let add_artifact ?lib_dep acc ~key result =
-    (match lib_dep with
-     | None -> ()
-     | Some (lib, kind) -> add_lib_dep acc lib kind);
-    match result with
-    | Ok exp ->
-      acc.artifacts <- String_map.add acc.artifacts ~key ~data:exp;
-      Some exp
-    | Error fail ->
-      acc.failures <- fail :: acc.failures;
-      None
+  let add_fail acc fail =
+    acc.failures <- fail :: acc.failures;
+    None
 
-  let path_exp path = (Action.Var_expansion.Paths ([path], Concat))
-  let ok_path   x = Ok (path_exp x)
-  let ok_string x = Ok (Action.Var_expansion.Strings ([x], Concat))
+  let add_ddep acc ~key dep =
+    acc.ddeps <- String_map.add acc.ddeps ~key ~data:dep;
+    None
 
-  let map_result = function
-    | Ok x -> ok_path x
-    | Error _ as e -> e
+  let path_exp path = Action.Var_expansion.Paths   ([path], Concat)
+  let str_exp  path = Action.Var_expansion.Strings ([path], Concat)
 
-  let expand_step1 sctx ~dir ~dep_kind ~scope t =
+  (* Static expansion that creates a dependency on the expanded path *)
+  let static_dep_exp acc path =
+    acc.sdeps <- Pset.add path acc.sdeps;
+    Some (path_exp path)
+
+  let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user t =
     let acc =
-      { artifacts = String_map.empty
-      ; failures  = []
+      { failures  = []
       ; lib_deps  = String_map.empty
-      ; vdeps     = String_map.empty
+      ; sdeps     = Pset.empty
+      ; ddeps     = String_map.empty
       }
     in
     let t =
@@ -514,25 +511,30 @@ module Action = struct
         let open Action.Var_expansion in
         let cos, var = parse_bang key in
         match String.lsplit2 var ~on:':' with
-        | Some ("exe"     , s) -> add_artifact acc ~key (ok_path (Path.relative dir s))
-        | Some ("path"    , s) -> add_artifact acc ~key (ok_path (Path.relative dir s))
-        | Some ("bin"     , s) ->
-          add_artifact acc ~key (A.binary (artifacts sctx) s |> map_result)
-        | Some ("lib"     , s) ->
-          let lib_dep, res = A.file_of_lib (artifacts sctx) ~loc ~from:dir s in
-          add_artifact acc ~key ~lib_dep:(lib_dep, dep_kind) (map_result res)
+        | Some ("exe"     , s) -> static_dep_exp acc (Path.relative dir s)
+        | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
+        | Some ("bin"     , s) -> begin
+            match A.binary (artifacts sctx) s with
+            | Ok path -> static_dep_exp acc path
+            | Error fail -> add_fail acc fail
+          end
+        (* "findlib" for compatibility with Jane Street packages which are not yet updated
+           to convert "findlib" to "lib" *)
+        | Some (("lib"|"findlib"), s) -> begin
+            let lib_dep, res = A.file_of_lib (artifacts sctx) ~loc ~from:dir s in
+            add_lib_dep acc lib_dep dep_kind;
+            match res with
+            | Ok path -> static_dep_exp acc path
+            | Error fail -> add_fail acc fail
+          end
         | Some ("libexec" , s) -> begin
             let lib_dep, res = A.file_of_lib (artifacts sctx) ~loc ~from:dir s in
             add_lib_dep acc lib_dep dep_kind;
             match res with
-            | Error e ->
-              acc.failures <- e :: acc.failures;
-              None
+            | Error fail -> add_fail acc fail
             | Ok path ->
               if not Sys.win32 || Filename.extension s = ".exe" then begin
-                let exp = path_exp path in
-                acc.artifacts <- String_map.add acc.artifacts ~key ~data:exp;
-                Some exp
+                static_dep_exp acc path
               end else begin
                 let path_exe = Path.extend_basename path ~suffix:".exe" in
                 let dep =
@@ -540,19 +542,12 @@ module Action = struct
                     ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
                     ~else_:(Build.path path     >>^ fun _ -> path_exp path)
                 in
-                acc.vdeps <- String_map.add acc.vdeps ~key ~data:dep;
-                None
+                add_ddep acc ~key dep
               end
           end
         | Some ("lib-available", lib) ->
-          add_artifact acc ~key ~lib_dep:(lib, Optional)
-            (ok_string (string_of_bool (Libs.lib_is_available sctx ~from:dir lib)))
-        (* CR-someday jdimino: allow this only for (jbuild_version jane_street) *)
-        | Some ("findlib" , s) ->
-          let lib_dep, res =
-            A.file_of_lib (artifacts sctx) ~loc ~from:dir s
-          in
-          add_artifact acc ~key ~lib_dep:(lib_dep, Required) (map_result res)
+          add_lib_dep acc lib Optional;
+          Some (str_exp (string_of_bool (Libs.lib_is_available sctx ~from:dir lib)))
         | Some ("version", s) -> begin
             match Scope.resolve scope s with
             | Ok p ->
@@ -561,54 +556,57 @@ module Action = struct
                 | None   -> Strings ([""], Concat)
                 | Some s -> Strings ([s],  Concat)
               in
-              acc.vdeps <- String_map.add acc.vdeps ~key ~data:x;
+              add_ddep acc ~key x
             | Error s ->
-              acc.failures <- { fail = fun () -> Loc.fail loc "%s" s } :: acc.failures
-          end; None
+              add_fail acc { fail = fun () -> Loc.fail loc "%s" s }
+          end
         | Some ("read", s) -> begin
             let path = Path.relative dir s in
             let data =
               Build.contents path
               >>^ fun s -> Strings ([s], cos)
             in
-            acc.vdeps <- String_map.add acc.vdeps ~key ~data
-          end; None
+            add_ddep acc ~key data
+          end
         | Some ("read-lines", s) -> begin
             let path = Path.relative dir s in
             let data =
               Build.lines_of path
               >>^ fun l -> Strings (l, cos)
             in
-            acc.vdeps <- String_map.add acc.vdeps ~key ~data
-          end; None
+            add_ddep acc ~key data
+          end
         | Some ("read-strings", s) -> begin
             let path = Path.relative dir s in
             let data =
               Build.strings path
               >>^ fun l -> Strings (l, cos)
             in
-            acc.vdeps <- String_map.add acc.vdeps ~key ~data
-          end; None
+            add_ddep acc ~key data
+          end
         | _ ->
           match var with
-          | "ROOT" -> Some (Paths ([Path.root], cos))
+          | "ROOT" -> Some (path_exp Path.root)
+          | "@" -> begin
+              match targets_written_by_user with
+              | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
+              | Static l -> Some (Paths (l, cos))
+            end
           | _ ->
             match expand_var_no_root sctx var with
-            | Some s -> Some (Strings ([s], cos))
+            | Some s -> Some (str_exp s)
             | None -> None)
     in
     (t, acc)
 
-  let expand_step2 sctx ~dir ~artifacts
-        ~targets_written_by_user ~deps_written_by_user t =
+  let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user t =
     let open Action.Var_expansion in
     U.Partial.expand dir t ~f:(fun _loc key ->
-      match String_map.find key artifacts with
+      match String_map.find key dynamic_expansions with
       | Some _ as opt -> opt
       | None ->
         let cos, var = parse_bang key in
         match var with
-        | "@" -> Some (Paths (targets_written_by_user, cos))
         | "<" ->
           Some
             (match deps_written_by_user with
@@ -618,15 +616,14 @@ module Action = struct
              | dep :: _ ->
                Paths ([dep], cos))
         | "^" -> Some (Paths (deps_written_by_user, cos))
-        | "ROOT" -> Some (Paths ([sctx.context.build_dir], cos))
-        | var ->
-          match expand_var_no_root sctx var with
-          | Some s -> Some (Strings ([s], cos))
-          | None -> None)
+        | _ -> None)
 
   let run sctx t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
     : (Path.t list, Action.t) Build.t =
-    let t, forms = expand_step1 sctx ~dir ~dep_kind ~scope t in
+    let t, forms =
+      expand_step1 sctx t ~dir ~dep_kind ~scope
+        ~targets_written_by_user
+    in
     let { Action.Infer.Outcome. deps; targets } =
       match targets_written_by_user with
       | Infer -> Action.Infer.partial t ~all_targets:true
@@ -667,30 +664,19 @@ module Action = struct
       >>>
       Build.path_set deps
       >>>
-      Build.path_set
-        (String_map.fold forms.artifacts ~init:Pset.empty
-           ~f:(fun ~key:_ ~data:exp acc ->
-             match exp with
-             | Action.Var_expansion.Paths (ps, _) ->
-               Pset.union acc (Pset.of_list ps)
-             | Strings _ -> acc))
+      Build.path_set forms.sdeps
       >>>
       Build.arr (fun paths -> ((), paths))
       >>>
-      let vdeps = String_map.bindings forms.vdeps in
-      Build.first (Build.all (List.map vdeps ~f:snd))
+      let ddeps = String_map.bindings forms.ddeps in
+      Build.first (Build.all (List.map ddeps ~f:snd))
       >>^ (fun (vals, deps_written_by_user) ->
-        let artifacts =
-          List.fold_left2 vdeps vals ~init:forms.artifacts ~f:(fun acc (var, _) value ->
+        let dynamic_expansions =
+          List.fold_left2 ddeps vals ~init:String_map.empty ~f:(fun acc (var, _) value ->
             String_map.add acc ~key:var ~data:value)
         in
         let unresolved =
-          expand_step2 sctx ~dir ~artifacts
-            ~targets_written_by_user:
-              (match targets_written_by_user with
-               | Infer    -> []
-               | Static l -> l)
-            ~deps_written_by_user t
+          expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user
         in
         Action.Unresolved.resolve unresolved ~f:(fun prog ->
           match resolve_program_internal sctx prog with

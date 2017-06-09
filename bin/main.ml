@@ -533,7 +533,8 @@ let external_lib_deps =
                in
                if String_map.is_empty missing then
                  acc
-               else if String_map.is_empty missing then begin
+               else if String_map.for_all missing ~f:(fun _ kind -> kind = Build.Optional)
+               then begin
                  Format.eprintf
                    "@{<error>Error@}: The following libraries are missing \
                     in the %s context:\n\

@@ -4,6 +4,10 @@
 - Fix the error message when there are more than one `<package>.opam`
   file for a given pacakge
 
+- Report an error when in a wrapped library, a module that is not the
+  toplevel module depends on the toplevel module. This doesn't make as
+  such a module would in theory be inaccessible from the outside
+
 1.0+beta10 (08/06/2017)
 -----------------------
 

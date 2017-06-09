@@ -233,7 +233,13 @@ module Gen(P : Params) = struct
       | Some m -> String_map.add modules ~key:m.name ~data:m
     in
 
-    let dep_graph = Ocamldep.rules sctx ~dir ~item:lib.name ~modules ~alias_module in
+    let dep_graph =
+      Ocamldep.rules sctx ~dir ~item:lib.name ~modules ~alias_module
+        ~lib_interface_module:(if lib.wrapped then
+                                 String_map.find main_module_name modules
+                               else
+                                 None)
+    in
 
     Option.iter alias_module ~f:(fun m ->
       SC.add_rule sctx
@@ -465,7 +471,10 @@ module Gen(P : Params) = struct
         ~scope
     in
     let item = List.hd exes.names in
-    let dep_graph = Ocamldep.rules sctx ~dir ~item ~modules ~alias_module:None in
+    let dep_graph =
+      Ocamldep.rules sctx ~dir ~item ~modules ~alias_module:None
+        ~lib_interface_module:None
+    in
 
     let requires, real_requires =
       SC.Libs.requires sctx ~dir ~dep_kind ~item

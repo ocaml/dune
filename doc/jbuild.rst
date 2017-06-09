@@ -533,7 +533,14 @@ expanded by Jbuilder.
 
 Jbuilder supports the following variables:
 
--  ``ROOT`` is the relative path to the root of the build context
+-  ``ROOT`` is the relative path to the root of the build
+   context. Note that ``ROOT`` depends on the worksace
+   configuration. As such you shouldn't use ``ROOT`` to denote the
+   root of your project. Use ``SCOPE_ROOT`` instead for this purpose
+-  ``SCOPE_ROOT`` is the root of the current scope. It is typically
+   the toplevel directory of your project and as long as you have at
+   least one ``<package>.opam`` file there, ``SCOPE_ROOT`` is
+   independant of the workspace configuration
 -  ``CC`` is the C compiler command line being used in the current
    build context
 -  ``CXX`` is the C++ compiler command line being used in the

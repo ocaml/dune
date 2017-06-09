@@ -1,3 +1,5 @@
+(jbuild_version 1)
+
 ;; Test for ${^} with globs in rules
 
 (rule
@@ -32,3 +34,7 @@
  ((name   runtest)
   (deps   (jbuild jbuild-plop))
   (action (run diff -u ${!^}))))
+
+;; For some tests in subdirs
+
+(rule (with-stdout-to 023e1a58-4d08-11e7-a041-aa000008c8a6 (echo "plop")))

@@ -66,7 +66,7 @@ module Gen(P : Params) = struct
     in
     List.map cclibs ~f
 
-  let build_lib (lib : Library.t) ~flags ~dir ~mode ~modules ~dep_graph =
+  let build_lib (lib : Library.t) ~scope ~flags ~dir ~mode ~modules ~dep_graph =
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let dep_graph = Ml_kind.Dict.get dep_graph Impl in
@@ -107,7 +107,7 @@ module Gen(P : Params) = struct
            ; A "-a"; A "-o"; Target target
            ; As stubs_flags
            ; Dyn (fun (_, cclibs) -> Arg_spec.quote_args "-cclib" (map_cclibs cclibs))
-           ; As (List.map lib.library_flags ~f:(SC.expand_vars sctx ~dir))
+           ; As (List.map lib.library_flags ~f:(SC.expand_vars sctx ~scope ~dir))
            ; As (match lib.kind with
                | Normal -> []
                | Ppx_deriver | Ppx_rewriter -> ["-linkall"])
@@ -362,7 +362,7 @@ module Gen(P : Params) = struct
          Path.relative dir (header ^ ".h")));
 
     List.iter Mode.all ~f:(fun mode ->
-      build_lib lib ~flags ~dir ~mode ~modules ~dep_graph);
+      build_lib lib ~scope ~flags ~dir ~mode ~modules ~dep_graph);
     (* Build *.cma.js *)
     SC.add_rules sctx (
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
@@ -514,7 +514,7 @@ module Gen(P : Params) = struct
       | Static fns -> Static (List.map fns ~f:(Path.relative dir))
     in
     SC.add_rule sctx
-      (SC.Deps.interpret sctx ~dir rule.deps
+      (SC.Deps.interpret sctx ~scope ~dir rule.deps
        >>>
        SC.Action.run
          sctx
@@ -540,7 +540,7 @@ module Gen(P : Params) = struct
     let alias = Alias.make alias_conf.name ~dir in
     let digest_path = Alias.file_with_digest_suffix alias ~digest in
     Alias.add_deps (SC.aliases sctx) alias [digest_path];
-    let deps = SC.Deps.interpret sctx ~dir alias_conf.deps in
+    let deps = SC.Deps.interpret sctx ~scope ~dir alias_conf.deps in
     SC.add_rule sctx
       (match alias_conf.action with
        | None ->

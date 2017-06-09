@@ -67,11 +67,13 @@ module Scope = struct
   type t =
     { name     : string option
     ; packages : Package.t String_map.t
+    ; root     : Path.t
     }
 
   let empty =
     { name     = None
     ; packages = String_map.empty
+    ; root     = Path.root
     }
 
   let make = function
@@ -81,10 +83,13 @@ module Scope = struct
         List.fold_left rest ~init:pkg.Package.name ~f:(fun acc pkg ->
           min acc pkg.Package.name)
       in
+      let root = pkg.path in
+      List.iter rest ~f:(fun pkg -> assert (pkg.Package.path = root));
       { name = Some name
       ; packages =
           String_map.of_alist_exn (List.map pkgs ~f:(fun pkg ->
             pkg.Package.name, pkg))
+      ; root
       }
 
   let package_listing packages =

@@ -1,0 +1,5 @@
+(jbuild_version 1)
+
+(alias
+ ((name runtest)
+  (deps (${SCOPE_ROOT}/023e1a58-4d08-11e7-a041-aa000008c8a6))))

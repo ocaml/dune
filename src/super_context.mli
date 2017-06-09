@@ -39,7 +39,7 @@ val artifacts : t -> Artifacts.t
 val stanzas_to_consider_for_install : t -> (Path.t * Stanza.t) list
 val cxx_flags : t -> string list
 
-val expand_vars : t -> dir:Path.t -> String_with_vars.t -> string
+val expand_vars : t -> scope:Scope.t -> dir:Path.t -> String_with_vars.t -> string
 
 val add_rule : t -> ?sandbox:bool -> (unit, Action.t) Build.t -> unit
 val add_rules : t -> ?sandbox:bool -> (unit, Action.t) Build.t list -> unit
@@ -115,7 +115,12 @@ end
 (** Interpret dependencies written in jbuild files *)
 module Deps : sig
   (** Evaluates to the actual list of dependencies, ignoring aliases *)
-  val interpret : t -> dir:Path.t -> Dep_conf.t list -> (unit, Path.t list) Build.t
+  val interpret
+    :  t
+    -> scope:Scope.t
+    -> dir:Path.t
+    -> Dep_conf.t list
+    -> (unit, Path.t list) Build.t
 end
 
 (** Interpret action written in jbuild files *)

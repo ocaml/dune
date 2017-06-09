@@ -8,6 +8,9 @@
   toplevel module depends on the toplevel module. This doesn't make as
   such a module would in theory be inaccessible from the outside
 
+- Add `${SCOPE_ROOT}` pointing to the root of the current scope, to
+  fix some misuses of `${ROOT}`
+
 1.0+beta10 (08/06/2017)
 -----------------------
 

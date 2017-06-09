@@ -14,6 +14,7 @@ module Scope : sig
     { name     : string option (** First package name in alphabetical order.  [None] for
                                    the global scope. *)
     ; packages : Package.t String_map.t
+    ; root     : Path.t
     }
 
   val make : Package.t list -> t

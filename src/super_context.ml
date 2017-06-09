@@ -75,9 +75,11 @@ let get_external_dir t ~dir =
   Hashtbl.find_or_add t.external_dirs dir ~f:(fun dir ->
     External_dir.create ~dir)
 
-let expand_vars t ~dir s =
+let expand_vars t ~scope ~dir s =
   String_with_vars.expand s ~f:(fun _loc -> function
   | "ROOT" -> Some (Path.reach ~from:dir t.context.build_dir)
+  | "SCOPE_ROOT" ->
+    Some (Path.reach ~from:dir (Path.append t.context.build_dir scope.Scope.root))
   | var -> String_map.find var t.vars)
 
 let resolve_program_internal t ?hint ?(in_the_tree=true) bin =
@@ -400,17 +402,17 @@ module Deps = struct
   open Build.O
   open Dep_conf
 
-  let dep t ~dir = function
+  let dep t ~scope ~dir = function
     | File  s ->
-      let path = Path.relative dir (expand_vars t ~dir s) in
+      let path = Path.relative dir (expand_vars t ~scope ~dir s) in
       Build.path path
       >>^ fun _ -> [path]
     | Alias s ->
-      let path = Alias.file (Alias.make ~dir (expand_vars t ~dir s)) in
+      let path = Alias.file (Alias.make ~dir (expand_vars t ~scope ~dir s)) in
       Build.path path
       >>^ fun _ -> []
     | Glob_files s -> begin
-        let path = Path.relative dir (expand_vars t ~dir s) in
+        let path = Path.relative dir (expand_vars t ~scope ~dir s) in
         let dir = Path.parent path in
         let s = Path.basename path in
         match Glob_lexer.parse_string s with
@@ -420,12 +422,12 @@ module Deps = struct
           die "invalid glob in %s/jbuild: %s" (Path.to_string dir) msg
       end
     | Files_recursively_in s ->
-      let path = Path.relative dir (expand_vars t ~dir s) in
+      let path = Path.relative dir (expand_vars t ~scope ~dir s) in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
       >>^ Pset.elements
 
-  let interpret t ~dir l =
-    Build.all (List.map l ~f:(dep t ~dir))
+  let interpret t ~scope ~dir l =
+    Build.all (List.map l ~f:(dep t ~scope ~dir))
     >>^ List.concat
 end
 
@@ -587,6 +589,7 @@ module Action = struct
         | _ ->
           match var with
           | "ROOT" -> Some (path_exp sctx.context.build_dir)
+          | "SCOPE_ROOT" -> Some (path_exp (Path.append sctx.context.build_dir scope.root))
           | "@" -> begin
               match targets_written_by_user with
               | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
@@ -850,7 +853,7 @@ module PP = struct
         ~scope =
     let preprocessor_deps =
       Build.memoize "preprocessor deps"
-        (Deps.interpret sctx ~dir preprocessor_deps)
+        (Deps.interpret sctx ~scope ~dir preprocessor_deps)
     in
     String_map.map modules ~f:(fun (m : Module.t) ->
       let m = setup_reason_rules sctx ~dir m in

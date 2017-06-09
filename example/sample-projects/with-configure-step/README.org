@@ -28,7 +28,7 @@ Technically this is how it works:
 
 Now in order to support (2) and (3), we setup the following rules in
 the toplevel =jbuild=:
-- a rule to procude =config= by copying =config.default=
+- a rule to produce =config= by copying =config.default=
 - a rule to produce =config.full= by running =real_configure.ml=
 
 The reason it all work as described is because if Jbuilder knows how

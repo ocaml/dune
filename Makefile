@@ -16,10 +16,10 @@ uninstall:
 reinstall: uninstall reinstall
 
 test:
-	$(BIN) runtest
+	$(BIN) runtest --dev
 
 all-supported-ocaml-versions:
-	$(BIN) build @install @runtest --workspace jbuild-workspace.dev --root .
+	$(BIN) build --dev @install @runtest --workspace jbuild-workspace.dev --root .
 
 clean:
 	$(BIN) clean

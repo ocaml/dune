@@ -1,6 +1,5 @@
 {
 open StdLabels
-open Printf
 }
 
 rule code txt start = parse

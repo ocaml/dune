@@ -533,9 +533,17 @@ let external_lib_deps =
                in
                if String_map.is_empty missing then
                  acc
-               else begin
+               else if String_map.is_empty missing then begin
                  Format.eprintf
-                   "@{<error>Error@}: The following required libraries are missing \
+                   "@{<error>Error@}: The following libraries are missing \
+                    in the %s context:\n\
+                    %s@."
+                   context_name
+                   (format_external_libs missing);
+                 false
+               end else begin
+                 Format.eprintf
+                   "@{<error>Error@}: The following libraries are missing \
                     in the %s context:\n\
                     %s\n\
                     Hint: try: opam install %s@."

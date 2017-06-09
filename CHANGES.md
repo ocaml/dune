@@ -11,6 +11,8 @@
 - Add `${SCOPE_ROOT}` pointing to the root of the current scope, to
   fix some misuses of `${ROOT}`
 
+- Fix useless hint when all missing dependencies are optional (#137)
+
 1.0+beta10 (08/06/2017)
 -----------------------
 

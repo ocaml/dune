@@ -233,7 +233,7 @@ module Temp = struct
     fn
 
   let destroy fn =
-    Sys.force_remove fn;
+    (try Sys.force_remove fn with Sys_error _ -> ());
     tmp_files := String_set.remove fn !tmp_files
 end
 

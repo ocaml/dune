@@ -311,7 +311,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
     ; toplevel_path = Option.map (get_env env "OCAML_TOPLEVEL_PATH") ~f:Path.absolute
 
     ; ocaml_bin  = dir
-    ; ocaml      = Path.relative dir "ocaml"
+    ; ocaml      = Path.relative dir ("ocaml" ^ Bin.exe)
     ; ocamlc
     ; ocamlopt   = best_prog "ocamlopt"
     ; ocamldep   = get_prog  "ocamldep"

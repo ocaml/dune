@@ -537,7 +537,7 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
     return ()
   | Create_file fn ->
     let fn = Path.to_string fn in
-    if Sys.file_exists fn then Sys.remove fn;
+    if Sys.file_exists fn then Sys.force_remove fn;
     Unix.close (Unix.openfile fn [O_CREAT; O_TRUNC; O_WRONLY] 0o666);
     return ()
   | Copy (src, dst) ->

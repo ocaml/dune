@@ -8,6 +8,9 @@ val parse_path : string -> Path.t list
 (** The opam tool *)
 val opam : Path.t option
 
+(** Extension to append to executable filenames *)
+val exe : string
+
 (** Look for a program in the PATH *)
 val which : ?path:Path.t list -> string -> Path.t option
 

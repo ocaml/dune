@@ -16,13 +16,14 @@ Jbuilder comes with a [manual][manual]. If you want to get started
 without reading too much, you can look at the
 [quick start guide][quick-start].
 
-The [example]() directory contains examples of projects using
+The [example][example] directory contains examples of projects using
 jbuilder.
 
 [![Travis status][travis-img]][travis] [![AppVeyor status][appveyor-img]][appveyor]
 
 [manual]:         http://jbuilder.readthedocs.io/en/latest/
 [quick-start]:    http://jbuilder.readthedocs.io/en/latest/quick-start.html
+[example]:        https://github.com/janestreet/jbuilder/tree/master/example
 [travis]:         https://travis-ci.org/janestreet/jbuilder
 [travis-img]:     https://travis-ci.org/janestreet/jbuilder.png?branch=master
 [appveyor]:       https://ci.appveyor.com/project/diml/jbuilder/branch/master

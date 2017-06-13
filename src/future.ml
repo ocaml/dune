@@ -225,7 +225,7 @@ module Temp = struct
       let fns = !tmp_files in
       tmp_files := String_set.empty;
       String_set.iter fns ~f:(fun fn ->
-        try Sys.remove fn with _ -> ()))
+        try Sys.force_remove fn with _ -> ()))
 
   let create prefix suffix =
     let fn = Filename.temp_file prefix suffix in
@@ -233,7 +233,7 @@ module Temp = struct
     fn
 
   let destroy fn =
-    Sys.remove fn;
+    Sys.force_remove fn;
     tmp_files := String_set.remove fn !tmp_files
 end
 

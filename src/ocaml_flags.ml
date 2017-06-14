@@ -56,3 +56,9 @@ let default () =
       ; native = default_ocamlopt_flags ()
       }
   }
+
+let append_common t flags = {t with common = t.common @ flags}
+
+let prepend_common flags t = {t with common = flags @ t.common}
+
+let common t = t.common

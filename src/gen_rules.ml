@@ -275,7 +275,7 @@ module Gen(P : Params) = struct
          ~js_of_ocaml
         ~dynlink
         ~sandbox:alias_module_build_sandbox
-        ~flags:{ flags with common = flags.common @ ["-w"; "-49"] }
+        ~flags:(Ocaml_flags.append_common flags ["-w"; "-49"])
         ~dir
         ~modules:(String_map.singleton m.name m)
         ~dep_graph:(Ml_kind.Dict.make_both (Build.return (String_map.singleton m.name [])))
@@ -398,8 +398,8 @@ module Gen(P : Params) = struct
 
     let flags =
       match alias_module with
-      | None -> flags.common
-      | Some m -> "-open" :: m.name :: flags.common
+      | None -> Ocaml_flags.common flags
+      | Some m -> Ocaml_flags.prepend_common ["-open"; m.name] flags |> Ocaml_flags.common
     in
     { Merlin.
       requires = real_requires
@@ -498,7 +498,7 @@ module Gen(P : Params) = struct
           ~force_custom_bytecode:(mode = Native && not exes.modes.native)));
     { Merlin.
       requires   = real_requires
-    ; flags      = flags.common
+    ; flags      = Ocaml_flags.common flags
     ; preprocess = Buildable.single_preprocess exes.buildable
     ; libname    = None
     }

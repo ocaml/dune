@@ -108,7 +108,7 @@ module Scope = struct
          What do you want me to do with this (install ...) stanzas?.\n\
          You need to add a <package>.opam file at the root \
          of your project so that\n\
-         I know that you want to install things as part of pacakge <package>."
+         I know that you want to install things as part of package <package>."
     | _ :: _ :: _ ->
       Error
         (sprintf

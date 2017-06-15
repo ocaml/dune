@@ -61,12 +61,13 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~(dep_graph:Ocamldep.dep_gra
       SC.add_rule sctx ?sandbox
         (Build.paths extra_deps >>>
          other_cm_files >>>
-         requires >>>
+         requires &&&
+         Ocaml_flags.get_for_cm flags ~cm_kind >>>
          Build.run ~context:ctx (Dep compiler)
            ~extra_targets
-           [ Ocaml_flags.get_for_cm flags ~cm_kind
+           [ Dyn (fun (_, ocaml_flags) -> As ocaml_flags)
            ; cmt_args
-           ; Dyn Lib.include_flags
+           ; Dyn (fun (libs, _) -> Lib.include_flags libs)
            ; As extra_args
            ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"
            ; A "-no-alias-deps"

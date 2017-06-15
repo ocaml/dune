@@ -87,7 +87,7 @@ module Gen(P : Params) = struct
           fun x -> x
       in
       SC.add_rule sctx
-        (Build.fanout
+        (Build.fanout3
            (dep_graph >>>
             Build.arr (fun dep_graph ->
               Ocamldep.names_to_top_closed_cm_files
@@ -97,21 +97,22 @@ module Gen(P : Params) = struct
                 ~mode
                 (String_map.keys modules)))
            (SC.expand_and_eval_set ~dir lib.c_library_flags ~standard:[])
+           (Ocaml_flags.get flags mode)
          >>>
          Build.run ~context:ctx (Dep compiler)
            ~extra_targets:(
              match mode with
              | Byte -> []
              | Native -> [lib_archive lib ~dir ~ext:ctx.ext_lib])
-           [ Ocaml_flags.get flags mode
+           [ Dyn (fun (_, _, flags) -> As flags)
            ; A "-a"; A "-o"; Target target
            ; As stubs_flags
-           ; Dyn (fun (_, cclibs) -> Arg_spec.quote_args "-cclib" (map_cclibs cclibs))
+           ; Dyn (fun (_, cclibs, _) -> Arg_spec.quote_args "-cclib" (map_cclibs cclibs))
            ; As (List.map lib.library_flags ~f:(SC.expand_vars sctx ~scope ~dir))
            ; As (match lib.kind with
                | Normal -> []
                | Ppx_deriver | Ppx_rewriter -> ["-linkall"])
-           ; Dyn (fun (cm_files, _) -> Deps cm_files)
+           ; Dyn (fun (cm_files, _, _) -> Deps cm_files)
            ]))
 
   let build_c_file (lib : Library.t) ~dir ~requires ~h_files c_name =
@@ -178,7 +179,7 @@ module Gen(P : Params) = struct
 
   let library_rules (lib : Library.t) ~dir ~all_modules ~files ~scope =
     let dep_kind = if lib.optional then Build.Optional else Required in
-    let flags = Ocaml_flags.make lib.buildable in
+    let flags = Ocaml_flags.make lib.buildable ~dir in
     let modules =
       parse_modules ~dir ~all_modules ~modules_written_by_user:lib.buildable.modules
     in
@@ -373,9 +374,11 @@ module Gen(P : Params) = struct
         let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Native) in
         let dst = lib_archive lib ~dir ~ext:".cmxs" in
         let build =
+          Ocaml_flags.get flags Native
+          >>>
           Build.run ~context:ctx
             (Dep ocamlopt)
-            [ Ocaml_flags.get flags Native
+            [ Dyn (fun flags -> As flags)
             ; A "-shared"; A "-linkall"
             ; A "-I"; Path dir
             ; A "-o"; Target dst
@@ -436,14 +439,17 @@ module Gen(P : Params) = struct
              [String.capitalize_ascii name]))
     in
     SC.add_rule sctx
-      (libs_and_cm >>>
+      (libs_and_cm
+       &&&
+       (Ocaml_flags.get flags mode)
+       >>>
        Build.run ~context:ctx
          (Dep compiler)
-         [ Ocaml_flags.get flags mode
+         [ Dyn (fun (_, flags) -> As flags)
          ; A "-o"; Target exe
          ; As link_flags
-         ; Dyn (fun (libs, _) -> Lib.link_flags libs ~mode)
-         ; Dyn (fun (_, cm_files) -> Deps cm_files)
+         ; Dyn (fun ((libs, _), _) -> Lib.link_flags libs ~mode)
+         ; Dyn (fun ((_, cm_files), _) -> Deps cm_files)
          ]);
     if mode = Mode.Byte then
       let rules = Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe in
@@ -451,7 +457,7 @@ module Gen(P : Params) = struct
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules ~scope =
     let dep_kind = Build.Required in
-    let flags = Ocaml_flags.make exes.buildable in
+    let flags = Ocaml_flags.make exes.buildable ~dir in
     let modules =
       parse_modules ~dir ~all_modules ~modules_written_by_user:exes.buildable.modules
     in

@@ -2,7 +2,7 @@
 
 type t =
   { requires   : (unit, Lib.t list) Build.t
-  ; flags      : string list
+  ; flags      : (unit, string list) Build.t
   ; preprocess : Jbuild.Preprocess.t
   ; libname    : string option
   }

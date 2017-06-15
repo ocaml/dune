@@ -444,9 +444,9 @@ module Buildable = struct
     ; libraries                : Lib_dep.t list
     ; preprocess               : Preprocess_map.t
     ; preprocessor_deps        : Dep_conf.t list
-    ; flags                    : Ordered_set_lang.t
-    ; ocamlc_flags             : Ordered_set_lang.t
-    ; ocamlopt_flags           : Ordered_set_lang.t
+    ; flags                    : Ordered_set_lang.Unexpanded.t
+    ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
+    ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
     ; js_of_ocaml              : Js_of_ocaml.t
     }
 
@@ -464,9 +464,9 @@ module Buildable = struct
     >>= fun modules ->
     field "libraries" Lib_deps.t ~default:[]
     >>= fun libraries ->
-    field_osl "flags"          >>= fun flags          ->
-    field_osl "ocamlc_flags"   >>= fun ocamlc_flags   ->
-    field_osl "ocamlopt_flags" >>= fun ocamlopt_flags ->
+    field_oslu "flags"          >>= fun flags          ->
+    field_oslu "ocamlc_flags"   >>= fun ocamlc_flags   ->
+    field_oslu "ocamlopt_flags" >>= fun ocamlopt_flags ->
     field "js_of_ocaml" (Js_of_ocaml.t) ~default:Js_of_ocaml.default >>= fun js_of_ocaml ->
     return
       { preprocess

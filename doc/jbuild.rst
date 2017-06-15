@@ -854,6 +854,7 @@ flags using the following fields:
 - ``(ocamlopt_flags <flags>)`` to specify flags passed to ``ocamlopt`` only
 
 For all these fields, ``<flags>`` is specified in the `Ordered set language`_.
+These fields all support ``(:include ...)`` forms.
 
 The default value for ``(flags ...)`` includes some ``-w`` options to set
 warnings. The exact set depends on whether ``--dev`` is passed to Jbuilder. As a

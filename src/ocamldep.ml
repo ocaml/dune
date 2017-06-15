@@ -30,7 +30,12 @@ let parse_deps ~dir lines ~modules ~alias_module ~lib_interface_module =
       (match lib_interface_module with
        | None -> ()
        | Some (m : Module.t) ->
-         if unit <> m.name && List.mem m.name ~set:deps then
+         let is_alias_module =
+           match alias_module with
+           | None -> false
+           | Some (m : Module.t) -> unit = m.name
+         in
+         if unit <> m.name && not is_alias_module && List.mem m.name ~set:deps then
            die "Module %s in directory %s depends on %s.\n\
                 This doesn't make sense to me.\n\
                 \n\

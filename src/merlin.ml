@@ -6,7 +6,7 @@ module SC = Super_context
 
 type t =
   { requires   : (unit, Lib.t list) Build.t
-  ; flags      : string list
+  ; flags      : (unit, string list) Build.t
   ; preprocess : Jbuild.Preprocess.t
   ; libname    : string option
   }
@@ -38,8 +38,8 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
        >>>
        Build.update_file (Path.relative dir ".merlin-exists") "");
     SC.add_rule sctx (
-      requires
-      >>^ (fun libs ->
+      requires &&& flags
+      >>^ (fun (libs, flags) ->
         let ppx_flags = ppx_flags sctx ~dir ~src_dir:remaindir t in
         let internals, externals =
           List.fold_left libs ~init:([], []) ~f:(fun (internals, externals) ->
@@ -87,7 +87,7 @@ let merge_two a b =
       (Build.fanout a.requires b.requires
        >>^ fun (x, y) ->
        Lib.remove_dups_preserve_order (x @ y))
-  ; flags = a.flags @ b.flags
+  ; flags = a.flags &&& b.flags >>^ (fun (a, b) -> a @ b)
   ; preprocess =
       if a.preprocess = b.preprocess then
         a.preprocess

@@ -100,9 +100,9 @@ module Buildable : sig
     ; libraries                : Lib_dep.t list
     ; preprocess               : Preprocess_map.t
     ; preprocessor_deps        : Dep_conf.t list
-    ; flags                    : Ordered_set_lang.t
-    ; ocamlc_flags             : Ordered_set_lang.t
-    ; ocamlopt_flags           : Ordered_set_lang.t
+    ; flags                    : Ordered_set_lang.Unexpanded.t
+    ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
+    ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
     ; js_of_ocaml              : Js_of_ocaml.t
     }
 

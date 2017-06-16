@@ -226,6 +226,9 @@ binary at the same place as where ``ocamlc`` was found, or when there is a
 - ``(libraries (<library-dependencies>))`` specifies the library dependencies.
   See the section about `Library dependencies`_ for more details
 
+- ``(link_flags <flags>)`` specifies additional flags to pass to the linker.
+  This field supports ``(:include ...)`` forms
+
 - ``(modules <modules>)`` specifies which modules in the current directory
   Jbuilder should consider when building this executable. Modules not listed
   here will be ignored and cannot be used inside the executable described by

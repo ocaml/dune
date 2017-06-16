@@ -635,15 +635,15 @@ module Executables = struct
   type t =
     { names            : string list
     ; link_executables : bool
-    ; link_flags       : string list
+    ; link_flags       : Ordered_set_lang.Unexpanded.t
     ; modes            : Mode.Dict.Set.t
     ; buildable        : Buildable.t
     }
 
   let common_v1 pkgs names public_names ~multi =
     Buildable.v1 >>= fun buildable ->
-    field   "link_executables"   bool ~default:true >>= fun link_executables ->
-    field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
+    field      "link_executables"   bool ~default:true >>= fun link_executables ->
+    field_oslu "link_flags"                            >>= fun link_flags ->
     map_validate (field "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all)
       ~f:(fun modes ->
         if Mode.Dict.Set.is_empty modes then

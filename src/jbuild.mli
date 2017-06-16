@@ -170,7 +170,7 @@ module Executables : sig
   type t =
     { names            : string list
     ; link_executables : bool
-    ; link_flags       : string list
+    ; link_flags       : Ordered_set_lang.Unexpanded.t
     ; modes            : Mode.Dict.Set.t
     ; buildable        : Buildable.t
     }

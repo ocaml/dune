@@ -271,7 +271,7 @@ can define more contexts by writing a ``jbuild-workspace`` file.
 You can point ``jbuilder`` to an explicit ``jbuild-workspace`` file with
 the ``--workspace`` option. For instance it is good practice to write a
 ``jbuild-workspace.dev`` in your project with all the version of OCaml
-your projects support. This way developpers can tests that the code
+your projects support. This way developers can tests that the code
 builds with all version of OCaml by simply running:
 
 .. code:: bash

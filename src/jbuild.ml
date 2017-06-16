@@ -310,27 +310,24 @@ module Lint = struct
       ]
 end
 
-let field_osl name =
-  field name Ordered_set_lang.t ~default:Ordered_set_lang.standard
-
 let field_oslu name =
   field name Ordered_set_lang.Unexpanded.t ~default:Ordered_set_lang.Unexpanded.standard
 
 module Js_of_ocaml = struct
 
   type t =
-    { flags            : Ordered_set_lang.t
+    { flags            : Ordered_set_lang.Unexpanded.t
     ; javascript_files : string list
     }
 
   let t =
     record
-      (field_osl "flags"                                      >>= fun flags ->
+      (field_oslu "flags"                                     >>= fun flags ->
        field     "javascript_files" (list string) ~default:[] >>= fun javascript_files ->
        return { flags; javascript_files })
 
   let default =
-    { flags = Ordered_set_lang.standard
+    { flags = Ordered_set_lang.Unexpanded.standard
     ; javascript_files = [] }
 end
 

@@ -1,5 +1,6 @@
 open Import
 open! No_io
+open Build.O
 
 module SC = Super_context
 
@@ -33,37 +34,36 @@ let js_of_ocaml_rule ~sctx ~dir ~flags ~spec ~target =
   let runtime = runtime_file ~sctx ~dir "runtime.js" in
   Build.run ~context:(SC.context sctx) ~dir
     jsoo
-    [ Arg_spec.As flags
+    [ Arg_spec.Dyn flags
     ; Arg_spec.A "-o"; Target target
     ; Arg_spec.A "--no-runtime"; runtime
     ; spec
     ]
 
-let standalone_runtime_rule ~sctx ~dir ~flags ~javascript_files ~target =
+let standalone_runtime_rule ~sctx ~dir ~javascript_files ~target =
   let spec =
     Arg_spec.S
-      [ Arg_spec.Dyn (fun (libs,_) -> Arg_spec.Deps (Lib.jsoo_runtime_files libs))
+      [ Arg_spec.Dyn (fun ((libs,_),_) -> Arg_spec.Deps (Lib.jsoo_runtime_files libs))
       ; Arg_spec.Deps javascript_files
       ]
   in
-  let flags = Ordered_set_lang.eval_with_standard flags ~standard:(standard ()) in
-  let flags = "--runtime-only" :: flags in
-  js_of_ocaml_rule ~sctx ~dir ~flags ~target ~spec
+  Build.arr (fun (libs_and_cm,flags) -> (libs_and_cm, "--runtime-only" :: flags))
+  >>>
+  js_of_ocaml_rule ~sctx ~dir ~flags:(fun (_,flags) -> As flags) ~target ~spec
 
-let exe_rule ~sctx ~dir ~flags ~javascript_files ~src ~target =
+let exe_rule ~sctx ~dir ~javascript_files ~src ~target =
   let spec =
     Arg_spec.S
-      [ Arg_spec.Dyn (fun (libs,_) -> Arg_spec.Deps (Lib.jsoo_runtime_files libs))
+      [ Arg_spec.Dyn (fun ((libs,_),_) -> Arg_spec.Deps (Lib.jsoo_runtime_files libs))
       ; Arg_spec.Deps javascript_files
       ; Arg_spec.Dep src
       ]
   in
-  let flags = Ordered_set_lang.eval_with_standard flags ~standard:(standard ()) in
-  js_of_ocaml_rule ~sctx ~dir ~flags ~spec ~target
+  js_of_ocaml_rule ~sctx ~dir ~flags:(fun (_,flags) -> As flags) ~spec ~target
 
 let link_rule ~sctx ~dir ~runtime ~target =
   let ctx = SC.context sctx in
-  let get_all (libs,cm) =
+  let get_all ((libs,cm),_) =
     (* Special case for the stdlib because it is not referenced in the META *)
     let stdlib = Lib.External (Findlib.stdlib_with_archives ctx.findlib) in
     let all_libs =
@@ -94,11 +94,12 @@ let build_cm sctx ~dir ~js_of_ocaml ~src =
   then let target = Path.extend_basename src ~suffix:".js" in
     let spec = Arg_spec.Dep src in
     let flags =
-      Ordered_set_lang.eval_with_standard
-        js_of_ocaml.Jbuild.Js_of_ocaml.flags
+      SC.expand_and_eval_set ~dir js_of_ocaml.Jbuild.Js_of_ocaml.flags
         ~standard:(standard ())
     in
-    [ js_of_ocaml_rule ~sctx ~dir ~flags ~spec ~target ]
+    [ flags
+      >>>
+      js_of_ocaml_rule ~sctx ~dir ~flags:(fun flags -> As flags) ~spec ~target ]
   else []
 
 let setup_separate_compilation_rules sctx =
@@ -126,21 +127,22 @@ let setup_separate_compilation_rules sctx =
           let target = in_build_dir ~ctx [ pkg_name; sprintf "%s.js" name] in
           let dir = in_build_dir ~ctx [ pkg_name ] in
           let spec = Arg_spec.Dep src in
-          let flags = standard () in
-          js_of_ocaml_rule ~sctx ~dir ~flags ~spec ~target
+          Build.return (standard ())
+          >>>
+          js_of_ocaml_rule ~sctx ~dir ~flags:(fun flags -> As flags) ~spec ~target
         ))
   else []
 
 let build_exe sctx ~dir ~js_of_ocaml ~src =
-  let {Jbuild.Js_of_ocaml.javascript_files; flags} = js_of_ocaml in
+  let {Jbuild.Js_of_ocaml.javascript_files; _} = js_of_ocaml in
   let javascript_files = List.map javascript_files ~f:(Path.relative dir) in
   let mk_target ext = Path.extend_basename src ~suffix:ext in
   let target = mk_target ".js" in
   let standalone_runtime = mk_target ".runtime.js" in
   if separate_compilation_enabled () then
     [ link_rule ~sctx ~dir ~runtime:standalone_runtime ~target
-    ; standalone_runtime_rule ~sctx ~dir ~flags ~javascript_files
+    ; standalone_runtime_rule ~sctx ~dir ~javascript_files
         ~target:standalone_runtime
     ]
   else
-    [ exe_rule ~sctx ~dir ~flags ~javascript_files ~src ~target ]
+    [ exe_rule ~sctx ~dir ~javascript_files ~src ~target ]

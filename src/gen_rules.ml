@@ -453,7 +453,12 @@ module Gen(P : Params) = struct
          ]);
     if mode = Mode.Byte then
       let rules = Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe in
-      SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm >>> r))
+      let libs_and_cm_and_flags =
+        libs_and_cm
+        &&&
+        SC.expand_and_eval_set ~dir js_of_ocaml.flags ~standard:(Js_of_ocaml_rules.standard ())
+      in
+      SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm_and_flags >>> r))
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules ~scope =
     let dep_kind = Build.Required in

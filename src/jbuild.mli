@@ -54,7 +54,7 @@ end
 
 module Js_of_ocaml : sig
   type t =
-    { flags            : Ordered_set_lang.t
+    { flags            : Ordered_set_lang.Unexpanded.t
     ; javascript_files : string list
     }
 end

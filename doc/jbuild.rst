@@ -874,7 +874,8 @@ using ``(js_of_ocaml (<js_of_ocaml-options>))``.
 
 ``<js_of_ocaml-options>`` are all optional:
 
-- ``(flags <flags>)`` to specify flags passed to ``js_of_ocaml``
+- ``(flags <flags>)`` to specify flags passed to ``js_of_ocaml``. This field
+  supports ``(:include ...)`` forms
 
 - ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
   runtime files.

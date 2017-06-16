@@ -418,10 +418,10 @@ module Gen(P : Params) = struct
   let build_exe ~js_of_ocaml ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
         ~link_flags ~force_custom_bytecode =
     let exe_ext = Mode.exe_ext mode in
-    let mode, link_flags, compiler =
+    let mode, link_custom, compiler =
       match force_custom_bytecode, Context.compiler ctx mode with
-      | false, Some compiler -> (mode, link_flags, compiler)
-      | _                    -> (Byte, "-custom" :: link_flags, ctx.ocamlc)
+      | false, Some compiler -> (mode, [], compiler)
+      | _                    -> (Byte, ["-custom"], ctx.ocamlc)
     in
     let dep_graph = Ml_kind.Dict.get dep_graph Impl in
     let exe = Path.relative dir (name ^ exe_ext) in
@@ -441,13 +441,15 @@ module Gen(P : Params) = struct
     SC.add_rule sctx
       (libs_and_cm
        &&&
+       Build.fanout
        (Ocaml_flags.get flags mode)
+       (SC.expand_and_eval_set ~dir link_flags ~standard:[])
        >>>
        Build.run ~context:ctx
          (Dep compiler)
-         [ Dyn (fun (_, flags) -> As flags)
+         [ Dyn (fun (_, (flags,_)) -> As flags)
          ; A "-o"; Target exe
-         ; As link_flags
+         ; Dyn (fun (_, (_, link_flags)) -> As (link_custom @ link_flags))
          ; Dyn (fun ((libs, _), _) -> Lib.link_flags libs ~mode)
          ; Dyn (fun ((_, cm_files), _) -> Deps cm_files)
          ]);

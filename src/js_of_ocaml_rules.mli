@@ -14,10 +14,10 @@ val build_exe
   -> dir:Path.t
   -> js_of_ocaml:Js_of_ocaml.t
   -> src:Path.t
-  -> (Lib.t list * Path.t list, Action.t) Build.t list
+  -> ((Lib.t list * Path.t list) * string list, Action.t) Build.t list
 
 val setup_separate_compilation_rules
   :  Super_context.t
   -> (unit, Action.t) Build.t list
 
-
+val standard : unit -> string list

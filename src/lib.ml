@@ -1,7 +1,7 @@
 open Import
 
 module Internal = struct
-  type t = Path.t * Jbuild_types.Library.t
+  type t = Path.t * Jbuild.Library.t
 end
 
 module T = struct
@@ -70,8 +70,8 @@ let archive_files ts ~mode ~ext_lib =
       let l =
         [Path.relative dir (lib.name ^ Mode.compiled_lib_ext mode)]
       in
-      if Jbuild_types.Library.has_stubs lib then
-        Jbuild_types.Library.stubs_archive lib ~dir ~ext_lib :: l
+      if Jbuild.Library.has_stubs lib then
+        Jbuild.Library.stubs_archive lib ~dir ~ext_lib :: l
       else
         l)
 

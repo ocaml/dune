@@ -5,7 +5,7 @@ type t =
   ; specific : string list Mode.Dict.t
   }
 
-val make : Jbuild_types.Buildable.t -> t
+val make : Jbuild.Buildable.t -> t
 
 val default : unit -> t
 

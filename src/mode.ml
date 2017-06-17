@@ -47,4 +47,32 @@ module Dict = struct
     { byte   = f a.byte   b.byte
     ; native = f a.native b.native
     }
+
+  module Set = struct
+    type nonrec t = bool t
+
+    let all =
+      { byte   = true
+      ; native = true
+      }
+
+    let to_list t =
+      let l = [] in
+      let l = if t.native then Native :: l else l in
+      let l = if t.byte   then Byte   :: l else l in
+      l
+
+    let of_list l =
+      { byte   = List.mem Byte   ~set:l
+      ; native = List.mem Native ~set:l
+      }
+
+    let t sexp = of_list (Sexp.Of_sexp.list t sexp)
+
+    let is_empty t = not (t.byte || t.native)
+
+    let iter t ~f =
+      if t.byte   then f Byte;
+      if t.native then f Native
+  end
 end

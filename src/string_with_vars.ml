@@ -65,7 +65,9 @@ let t sexp = of_string ~loc:(Sexp.Ast.loc sexp) (Sexp.Of_sexp.string sexp)
 
 let loc t = t.loc
 
-let raw ~loc s = { loc; items = [Text s]}
+let virt pos s = of_string ~loc:(Loc.of_pos pos) s
+let virt_var  pos s = { loc = Loc.of_pos pos; items = [Var (Braces, s)] }
+let virt_text pos s = { loc = Loc.of_pos pos; items = [Text s] }
 
 let just_a_var t =
   match t.items with
@@ -90,16 +92,58 @@ let fold t ~init ~f =
     | Text _ -> acc
     | Var (_, v) -> f acc t.loc v)
 
+let iter t ~f =
+  List.iter t.items ~f:(function
+    | Text _ -> ()
+    | Var (_, v) -> f t.loc v)
+
 let vars t = fold t ~init:String_set.empty ~f:(fun acc _ x -> String_set.add x acc)
+
+let string_of_var syntax v =
+  match syntax with
+  | Parens -> sprintf "$(%s)" v
+  | Braces -> sprintf "${%s}" v
 
 let expand t ~f =
   List.map t.items ~f:(function
     | Text s -> s
     | Var (syntax, v) ->
-      match f v with
+      match f t.loc v with
       | Some x -> x
-      | None ->
-        match syntax with
-        | Parens -> sprintf "$(%s)" v
-        | Braces -> sprintf "${%s}" v)
+      | None -> string_of_var syntax v)
   |> String.concat ~sep:""
+
+let concat_rev = function
+  | [] -> ""
+  | [s] -> s
+  | l -> String.concat (List.rev l) ~sep:""
+
+let partial_expand t ~f =
+  let commit_text acc_text acc =
+    let s = concat_rev acc_text in
+    if s = "" then acc else Text s :: acc
+  in
+  let rec loop acc_text acc items =
+    match items with
+    | [] -> begin
+        match acc with
+        | [] -> Inl (concat_rev acc_text)
+        | _  -> Inr { t with items = List.rev (commit_text acc_text acc) }
+      end
+    | Text s :: items -> loop (s :: acc_text) acc items
+    | Var (_, v) as it :: items ->
+      match f t.loc v with
+      | None -> loop [] (it :: commit_text acc_text acc) items
+      | Some s -> loop (s :: acc_text) acc items
+  in
+  loop [] [] t.items
+
+let to_string t =
+  match t.items with
+  (* [to_string is only called from action.ml, always on [t]s of this form *)
+  | [Var (syntax, v)] -> string_of_var syntax v
+  | items ->
+    List.map items ~f:(function
+      | Text s -> s
+      | Var (syntax, v) -> string_of_var syntax v)
+    |> String.concat ~sep:""

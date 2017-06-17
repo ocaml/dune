@@ -1,12 +1,14 @@
 open Import
-open Jbuild_types
+open Jbuild
+
+module Pset = Path.Set
 
 module Dir_with_jbuild = struct
   type t =
     { src_dir : Path.t
     ; ctx_dir : Path.t
     ; stanzas : Stanzas.t
-    ; pkgs    : Pkgs.t
+    ; scope   : Scope.t
     }
 end
 
@@ -54,6 +56,7 @@ type t =
   ; ppx_dir                                 : Path.t
   ; ppx_drivers                             : (string, Path.t) Hashtbl.t
   ; external_dirs                           : (Path.t, External_dir.t) Hashtbl.t
+  ; chdir                                   : (Action.t, Action.t) Build.t
   }
 
 let context t = t.context
@@ -72,13 +75,18 @@ let get_external_dir t ~dir =
   Hashtbl.find_or_add t.external_dirs dir ~f:(fun dir ->
     External_dir.create ~dir)
 
-let expand_vars t ~dir s =
-  String_with_vars.expand s ~f:(function
+let expand_vars t ~scope ~dir s =
+  String_with_vars.expand s ~f:(fun _loc -> function
   | "ROOT" -> Some (Path.reach ~from:dir t.context.build_dir)
+  | "SCOPE_ROOT" ->
+    Some (Path.reach ~from:dir (Path.append t.context.build_dir scope.Scope.root))
   | var -> String_map.find var t.vars)
 
-let resolve_program t ?hint ?(in_the_tree=true) bin =
-  match Artifacts.binary t.artifacts ?hint ~in_the_tree bin with
+let resolve_program_internal t ?hint ?(in_the_tree=true) bin =
+  Artifacts.binary t.artifacts ?hint ~in_the_tree bin
+
+let resolve_program t ?hint ?in_the_tree bin =
+  match resolve_program_internal t ?hint ?in_the_tree bin with
   | Error fail -> Build.Prog_spec.Dyn (fun _ -> fail.fail ())
   | Ok    path -> Build.Prog_spec.Dep path
 
@@ -93,12 +101,12 @@ let create
   =
   let stanzas =
     List.map stanzas
-      ~f:(fun (dir, pkgs, stanzas) ->
+      ~f:(fun (dir, scope, stanzas) ->
         { Dir_with_jbuild.
           src_dir = dir
         ; ctx_dir = Path.append context.build_dir dir
         ; stanzas
-        ; pkgs
+        ; scope
         })
   in
   let internal_libraries =
@@ -109,9 +117,9 @@ let create
         | _ -> None))
   in
   let dirs_with_dot_opam_files =
-    Path.Set.elements dirs_with_dot_opam_files
+    Pset.elements dirs_with_dot_opam_files
     |> List.map ~f:(Path.append context.build_dir)
-    |> Path.Set.of_list
+    |> Pset.of_list
   in
   let libs =
     Lib_db.create context.findlib internal_libraries
@@ -144,8 +152,8 @@ let create
       end)
   in
   let artifacts =
-    Artifacts.create context (List.map stanzas ~f:(fun (d : Dir_with_jbuild.t) ->
-      (d.ctx_dir, d.stanzas)))
+    Artifacts.create context stanzas ~f:(fun (d : Dir_with_jbuild.t) ->
+      d.stanzas)
   in
   let cxx_flags =
     String.extract_blank_separated_words context.ocamlc_cflags
@@ -199,10 +207,15 @@ let create
   ; ppx_drivers = Hashtbl.create 32
   ; ppx_dir = Path.relative context.build_dir ".ppx"
   ; external_dirs = Hashtbl.create 1024
+  ; chdir = Build.arr (fun (action : Action.t) ->
+      match action with
+      | Chdir _ -> action
+      | _ -> Chdir (context.build_dir, action))
   }
 
 let add_rule t ?sandbox build =
-  let rule = Build_interpret.Rule.make ?sandbox build in
+  let build = Build.O.(>>>) build t.chdir in
+  let rule = Build_interpret.Rule.make ?sandbox ~context:t.context build in
   t.rules <- rule :: t.rules;
   t.known_targets_by_src_dir_so_far <-
     List.fold_left rule.targets ~init:t.known_targets_by_src_dir_so_far
@@ -303,7 +316,7 @@ module Libs = struct
       add_rule t
         (Build.path src
          >>>
-         Build.action_context_independent ~targets:[dst]
+         Build.action ~targets:[dst]
            (Copy_and_add_line_directive (src, dst))))
 
   let real_requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
@@ -380,17 +393,26 @@ module Libs = struct
           end
         | Internal lib ->
           Alias.file (lib_files_alias lib ~ext) :: acc)))
+
+  let static_file_deps ~ext lib =
+    Alias.dep (lib_files_alias lib ~ext)
 end
 
 module Deps = struct
   open Build.O
   open Dep_conf
 
-  let dep t ~dir = function
-    | File  s -> Build.path (Path.relative dir (expand_vars t ~dir s))
-    | Alias s -> Build.path (Alias.file (Alias.make ~dir (expand_vars t ~dir s)))
+  let dep t ~scope ~dir = function
+    | File  s ->
+      let path = Path.relative dir (expand_vars t ~scope ~dir s) in
+      Build.path path
+      >>^ fun _ -> [path]
+    | Alias s ->
+      let path = Alias.file (Alias.make ~dir (expand_vars t ~scope ~dir s)) in
+      Build.path path
+      >>^ fun _ -> []
     | Glob_files s -> begin
-        let path = Path.relative dir (expand_vars t ~dir s) in
+        let path = Path.relative dir (expand_vars t ~scope ~dir s) in
         let dir = Path.parent path in
         let s = Path.basename path in
         match Glob_lexer.parse_string s with
@@ -400,24 +422,13 @@ module Deps = struct
           die "invalid glob in %s/jbuild: %s" (Path.to_string dir) msg
       end
     | Files_recursively_in s ->
-      let path = Path.relative dir (expand_vars t ~dir s) in
+      let path = Path.relative dir (expand_vars t ~scope ~dir s) in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
+      >>^ Pset.elements
 
-  let interpret t ~dir l =
-    let rec loop acc = function
-      | [] -> acc
-      | d :: l ->
-        loop (acc >>> dep t ~dir d) l
-    in
-    loop (Build.return ()) l
-
-  let only_plain_file t ~dir = function
-    | File s -> Some (Path.relative dir (expand_vars t ~dir s))
-    | Alias _ -> None
-    | Glob_files _ -> None
-    | Files_recursively_in _ -> None
-
-  let only_plain_files t ~dir l = List.map l ~f:(only_plain_file t ~dir)
+  let interpret t ~scope ~dir l =
+    Build.all (List.map l ~f:(dep t ~scope ~dir))
+    >>^ List.concat
 end
 
 module Pkg_version = struct
@@ -443,130 +454,245 @@ module Pkg_version = struct
     Build.vpath spec
 end
 
+let parse_bang var : Action.Var_expansion.Concat_or_split.t * string =
+  let len = String.length var in
+  if len > 0 && var.[0] = '!' then
+    (Split, String.sub var ~pos:1 ~len:(len - 1))
+  else
+    (Concat, var)
+
 module Action = struct
   open Build.O
-  module U = Action.Mini_shexp.Unexpanded
+  module U = Action.Unexpanded
+
+  type targets =
+    | Static of Path.t list
+    | Infer
 
   type resolved_forms =
-    { (* Mapping from ${...} forms to their resolutions *)
-      artifacts : Action.var_expansion String_map.t
-    ; (* Failed resolutions *)
-      failures  : fail list
+    { (* Failed resolutions *)
+      mutable failures  : fail list
     ; (* All "name" for ${lib:name:...}/${lib-available:name} forms *)
-      lib_deps  : Build.lib_deps
-    ; vdeps     : (unit, Action.var_expansion) Build.t String_map.t
+      mutable lib_deps  : Build.lib_deps
+    ; (* Static deps from ${...} variables. For instance ${exe:...} *)
+      mutable sdeps     : Pset.t
+    ; (* Dynamic deps from ${...} variables. For instance ${read:...} *)
+      mutable ddeps     : (unit, Action.Var_expansion.t) Build.t String_map.t
     }
 
-  let add_artifact ?lib_dep acc ~var result =
-    let lib_deps =
-      match lib_dep with
-      | None -> acc.lib_deps
-      | Some (lib, kind) -> String_map.add acc.lib_deps ~key:lib ~data:kind
-    in
-    match result with
-    | Ok path ->
-      { acc with
-        artifacts = String_map.add acc.artifacts ~key:var ~data:path
-      ; lib_deps
-      }
-    | Error fail ->
-      { acc with
-        failures = fail :: acc.failures
-      ; lib_deps
-      }
+  let add_lib_dep acc lib kind =
+    acc.lib_deps <- String_map.add acc.lib_deps ~key:lib ~data:kind
 
-  let map_result = function
-    | Ok x -> Ok (Action.Path x)
-    | Error _ as e -> e
+  let add_fail acc fail =
+    acc.failures <- fail :: acc.failures;
+    None
 
-  let extract_artifacts sctx ~dir ~dep_kind ~package_context t =
-    let init =
-      { artifacts = String_map.empty
-      ; failures  = []
+  let add_ddep acc ~key dep =
+    acc.ddeps <- String_map.add acc.ddeps ~key ~data:dep;
+    None
+
+  let path_exp path = Action.Var_expansion.Paths   ([path], Concat)
+  let str_exp  path = Action.Var_expansion.Strings ([path], Concat)
+
+  (* Static expansion that creates a dependency on the expanded path *)
+  let static_dep_exp acc path =
+    acc.sdeps <- Pset.add path acc.sdeps;
+    Some (path_exp path)
+
+  let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user t =
+    let acc =
+      { failures  = []
       ; lib_deps  = String_map.empty
-      ; vdeps     = String_map.empty
+      ; sdeps     = Pset.empty
+      ; ddeps     = String_map.empty
       }
     in
-    U.fold_vars t ~init ~f:(fun acc loc var ->
-      let module A = Artifacts in
-      match String.lsplit2 var ~on:':' with
-      | Some ("exe"     , s) -> add_artifact acc ~var (Ok (Path (Path.relative dir s)))
-      | Some ("path"    , s) -> add_artifact acc ~var (Ok (Path (Path.relative dir s)))
-      | Some ("bin"     , s) ->
-        add_artifact acc ~var (A.binary (artifacts sctx) s |> map_result)
-      | Some ("lib"     , s)
-      | Some ("libexec" , s) ->
-        let lib_dep, res = A.file_of_lib (artifacts sctx) ~from:dir s in
-        add_artifact acc ~var ~lib_dep:(lib_dep, dep_kind) (map_result res)
-      | Some ("lib-available", lib) ->
-        add_artifact acc ~var ~lib_dep:(lib, Optional)
-          (Ok (Str (string_of_bool (Libs.lib_is_available sctx ~from:dir lib))))
-      (* CR-someday jdimino: allow this only for (jbuild_version jane_street) *)
-      | Some ("findlib" , s) ->
-        let lib_dep, res =
-          A.file_of_lib (artifacts sctx) ~from:dir s ~use_provides:true
-        in
-        add_artifact acc ~var ~lib_dep:(lib_dep, Required) (map_result res)
-      | Some ("version", s) -> begin
-          match Pkgs.resolve package_context s with
-          | Ok p ->
-            let x =
-              Pkg_version.read sctx p >>^ function
-              | None -> Action.Str ""
-              | Some s -> Str s
+    let t =
+      U.partial_expand dir t ~f:(fun loc key ->
+        let module A = Artifacts in
+        let open Action.Var_expansion in
+        let cos, var = parse_bang key in
+        match String.lsplit2 var ~on:':' with
+        | Some ("exe"     , s) -> static_dep_exp acc (Path.relative dir s)
+        | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
+        | Some ("bin"     , s) -> begin
+            match A.binary (artifacts sctx) s with
+            | Ok path -> static_dep_exp acc path
+            | Error fail -> add_fail acc fail
+          end
+        (* "findlib" for compatibility with Jane Street packages which are not yet updated
+           to convert "findlib" to "lib" *)
+        | Some (("lib"|"findlib"), s) -> begin
+            let lib_dep, res = A.file_of_lib (artifacts sctx) ~loc ~from:dir s in
+            add_lib_dep acc lib_dep dep_kind;
+            match res with
+            | Ok path -> static_dep_exp acc path
+            | Error fail -> add_fail acc fail
+          end
+        | Some ("libexec" , s) -> begin
+            let lib_dep, res = A.file_of_lib (artifacts sctx) ~loc ~from:dir s in
+            add_lib_dep acc lib_dep dep_kind;
+            match res with
+            | Error fail -> add_fail acc fail
+            | Ok path ->
+              if not Sys.win32 || Filename.extension s = ".exe" then begin
+                static_dep_exp acc path
+              end else begin
+                let path_exe = Path.extend_basename path ~suffix:".exe" in
+                let dep =
+                  Build.if_file_exists path_exe
+                    ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
+                    ~else_:(Build.path path     >>^ fun _ -> path_exp path)
+                in
+                add_ddep acc ~key dep
+              end
+          end
+        | Some ("lib-available", lib) ->
+          add_lib_dep acc lib Optional;
+          Some (str_exp (string_of_bool (Libs.lib_is_available sctx ~from:dir lib)))
+        | Some ("version", s) -> begin
+            match Scope.resolve scope s with
+            | Ok p ->
+              let x =
+                Pkg_version.read sctx p >>^ function
+                | None   -> Strings ([""], Concat)
+                | Some s -> Strings ([s],  Concat)
+              in
+              add_ddep acc ~key x
+            | Error s ->
+              add_fail acc { fail = fun () -> Loc.fail loc "%s" s }
+          end
+        | Some ("read", s) -> begin
+            let path = Path.relative dir s in
+            let data =
+              Build.contents path
+              >>^ fun s -> Strings ([s], cos)
             in
-            { acc with vdeps = String_map.add acc.vdeps ~key:var ~data:x }
-          | Error s ->
-            { acc with failures = { fail = fun () -> Loc.fail loc "%s" s } :: acc.failures }
-        end
-      | _ -> acc)
-
-  let expand_var =
-    let dep_exn name = function
-      | Some dep -> dep
-      | None -> die "cannot use ${%s} with files_recursively_in" name
+            add_ddep acc ~key data
+          end
+        | Some ("read-lines", s) -> begin
+            let path = Path.relative dir s in
+            let data =
+              Build.lines_of path
+              >>^ fun l -> Strings (l, cos)
+            in
+            add_ddep acc ~key data
+          end
+        | Some ("read-strings", s) -> begin
+            let path = Path.relative dir s in
+            let data =
+              Build.strings path
+              >>^ fun l -> Strings (l, cos)
+            in
+            add_ddep acc ~key data
+          end
+        | _ ->
+          match var with
+          | "ROOT" -> Some (path_exp sctx.context.build_dir)
+          | "SCOPE_ROOT" -> Some (path_exp (Path.append sctx.context.build_dir scope.root))
+          | "@" -> begin
+              match targets_written_by_user with
+              | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
+              | Static l -> Some (Paths (l, cos))
+            end
+          | _ ->
+            match expand_var_no_root sctx var with
+            | Some s -> Some (str_exp s)
+            | None -> None)
     in
-    fun sctx ~artifacts ~targets ~deps var_name ->
-      match String_map.find var_name artifacts with
-      | Some exp -> exp
-      | None ->
-        match var_name with
-        | "@" -> Action.Paths targets
-        | "<" -> (match deps with
-          | []        -> Str ""
-          | dep1 :: _ -> Path (dep_exn var_name dep1))
-        | "^" ->
-          Paths (List.map deps ~f:(dep_exn var_name))
-        | "ROOT" -> Path sctx.context.build_dir
-        | var ->
-          match expand_var_no_root sctx var with
-          | Some s -> Str s
-          | None -> Not_found
+    (t, acc)
 
-  let run sctx t ~dir ~dep_kind ~targets ~deps ~package_context =
-    let forms = extract_artifacts sctx ~dir ~dep_kind ~package_context t in
+  let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user t =
+    let open Action.Var_expansion in
+    U.Partial.expand dir t ~f:(fun _loc key ->
+      match String_map.find key dynamic_expansions with
+      | Some _ as opt -> opt
+      | None ->
+        let cos, var = parse_bang key in
+        match var with
+        | "<" ->
+          Some
+            (match deps_written_by_user with
+             | [] ->
+               (* CR-someday jdimino: this should be an error *)
+               Strings ([""], cos)
+             | dep :: _ ->
+               Paths ([dep], cos))
+        | "^" -> Some (Paths (deps_written_by_user, cos))
+        | _ -> None)
+
+  let run sctx t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
+    : (Path.t list, Action.t) Build.t =
+    let t, forms =
+      expand_step1 sctx t ~dir ~dep_kind ~scope
+        ~targets_written_by_user
+    in
+    let { Action.Infer.Outcome. deps; targets } =
+      match targets_written_by_user with
+      | Infer -> Action.Infer.partial t ~all_targets:true
+      | Static targets_written_by_user ->
+        let targets_written_by_user = Pset.of_list targets_written_by_user in
+        let { Action.Infer.Outcome. deps; targets } =
+          Action.Infer.partial t ~all_targets:false
+        in
+        (* CR-someday jdimino: should this be an error or not?
+
+           It's likely that what we get here is what the user thinks of as temporary
+           files, even though they might conflict with actual targets. We need to tell
+           jbuilder about such things, so that it can report better errors.
+
+           {[
+             let missing = Pset.diff targets targets_written_by_user in
+             if not (Pset.is_empty missing) then
+               Loc.warn (Loc.in_file (Utils.jbuild_name_in ~dir))
+                 "Missing targets in user action:\n%s"
+                 (List.map (Pset.elements missing) ~f:(fun target ->
+                    sprintf "- %s" (Utils.describe_target target))
+                  |> String.concat ~sep:"\n");
+           ]}
+        *)
+        { deps; targets = Pset.union targets targets_written_by_user }
+    in
+    let targets = Pset.elements targets in
+    List.iter targets ~f:(fun target ->
+      if Path.parent target <> dir then
+        Loc.fail (Loc.in_file (Utils.jbuild_name_in ~dir))
+          "A rule in this jbuild has targets in a different directory \
+           than the current one, this is not allowed by Jbuilder at the moment:\n%s"
+          (List.map targets ~f:(fun target ->
+             sprintf "- %s" (Utils.describe_target target))
+           |> String.concat ~sep:"\n"));
     let build =
       Build.record_lib_deps_simple ~dir forms.lib_deps
       >>>
-      Build.path_set
-        (String_map.fold forms.artifacts ~init:Path.Set.empty
-           ~f:(fun ~key:_ ~data:exp acc ->
-             match exp with
-             | Action.Path p -> Path.Set.add p acc
-             | Paths ps -> Path.Set.union acc (Path.Set.of_list ps)
-             | Not_found | Str _ -> acc))
+      Build.path_set deps
       >>>
-      let vdeps = String_map.bindings forms.vdeps in
-      Build.all (List.map vdeps ~f:snd)
-      >>^ (fun vals ->
-        let artifacts =
-          List.fold_left2 vdeps vals ~init:forms.artifacts ~f:(fun acc (var, _) value ->
+      Build.path_set forms.sdeps
+      >>>
+      Build.arr (fun paths -> ((), paths))
+      >>>
+      let ddeps = String_map.bindings forms.ddeps in
+      Build.first (Build.all (List.map ddeps ~f:snd))
+      >>^ (fun (vals, deps_written_by_user) ->
+        let dynamic_expansions =
+          List.fold_left2 ddeps vals ~init:String_map.empty ~f:(fun acc (var, _) value ->
             String_map.add acc ~key:var ~data:value)
         in
-        U.expand sctx.context dir t
-          ~f:(expand_var sctx ~artifacts ~targets ~deps))
+        let unresolved =
+          expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user
+        in
+        Action.Unresolved.resolve unresolved ~f:(fun prog ->
+          match resolve_program_internal sctx prog with
+          | Ok path    -> path
+          | Error fail -> fail.fail ()))
       >>>
-      Build.action_dyn () ~context:sctx.context ~dir ~targets
+      Build.dyn_paths (Build.arr (fun action ->
+        let { Action.Infer.Outcome.deps; targets = _ } =
+          Action.Infer.infer action
+        in
+        Pset.elements deps))
+      >>>
+      Build.action_dyn () ~dir ~targets
     in
     match forms.failures with
     | [] -> build
@@ -595,8 +721,6 @@ module PP = struct
       impl = { m.impl with name = ml_pp_fname }
     ; intf
     }
-
-  let ppx_drivers = Hashtbl.create 32
 
   let migrate_driver_main = "ocaml-migrate-parsetree.driver-main"
 
@@ -677,17 +801,17 @@ module PP = struct
       | [] -> "+none+"
       | _  -> String.concat names ~sep:"+"
     in
-    match Hashtbl.find ppx_drivers key with
+    match Hashtbl.find sctx.ppx_drivers key with
     | Some x -> x
     | None ->
       let ppx_dir = Path.relative sctx.ppx_dir key in
       let exe = Path.relative ppx_dir "ppx.exe" in
       build_ppx_driver sctx names ~dir ~dep_kind ~target:exe ~driver;
-      Hashtbl.add ppx_drivers ~key ~data:exe;
+      Hashtbl.add sctx.ppx_drivers ~key ~data:exe;
       exe
 
-  let target_var = String_with_vars.of_string "${@}" ~loc:Loc.none
-  let root_var   = String_with_vars.of_string "${ROOT}" ~loc:Loc.none
+  let target_var = String_with_vars.virt_var __POS__ "@"
+  let root_var   = String_with_vars.virt_var __POS__ "ROOT"
 
   let cookie_library_name lib_name =
     match lib_name with
@@ -726,8 +850,11 @@ module PP = struct
   (* Generate rules to build the .pp files and return a new module map where all filenames
      point to the .pp files *)
   let pped_modules sctx ~dir ~dep_kind ~modules ~preprocess ~preprocessor_deps ~lib_name
-        ~package_context =
-    let preprocessor_deps = Deps.interpret sctx ~dir preprocessor_deps in
+        ~scope =
+    let preprocessor_deps =
+      Build.memoize "preprocessor deps"
+        (Deps.interpret sctx ~scope ~dir preprocessor_deps)
+    in
     String_map.map modules ~f:(fun (m : Module.t) ->
       let m = setup_reason_rules sctx ~dir m in
       match Preprocess_map.find m.name preprocess with
@@ -738,6 +865,7 @@ module PP = struct
             (preprocessor_deps
              >>>
              Build.path src
+             >>^ (fun _ -> [src])
              >>>
              Action.run sctx
                (Redirect
@@ -747,9 +875,8 @@ module PP = struct
                           action)))
                ~dir
                ~dep_kind
-               ~targets:[dst]
-               ~deps:[Some src]
-               ~package_context))
+               ~targets:(Static [dst])
+               ~scope))
       | Pps { pps; flags } ->
         let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in
         pped_module m ~dir ~f:(fun kind src dst ->

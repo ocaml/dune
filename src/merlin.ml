@@ -7,7 +7,7 @@ module SC = Super_context
 type t =
   { requires   : (unit, Lib.t list) Build.t
   ; flags      : string list
-  ; preprocess : Jbuild_types.Preprocess.t
+  ; preprocess : Jbuild.Preprocess.t
   ; libname    : string option
   }
 
@@ -40,12 +40,18 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
         >>^ (fun libs ->
           let ppx_flags = ppx_flags sctx ~dir ~src_dir:remaindir t in
           let internals, externals =
-            List.partition_map libs ~f:(function
+            List.fold_left libs ~init:([], []) ~f:(fun (internals, externals) ->
+              function
               | Lib.Internal (path, _) ->
-                let path = Path.reach path ~from:remaindir in
-                Inl ("B " ^ path)
+                let spath =
+                  Path.drop_build_context path
+                  |> Path.reach ~from:remaindir
+                in
+                let bpath = Path.reach path ~from:remaindir in
+                ("S " ^ spath) :: ("B " ^ bpath) :: internals, externals
               | Lib.External pkg ->
-                Inr ("PKG " ^ pkg.name))
+                internals, ("PKG " ^ pkg.name) :: externals
+            )
           in
           let flags =
             match flags with
@@ -54,9 +60,7 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
           in
           let dot_merlin =
             List.concat
-              [ [ "S ."
-                ; "B " ^ (Path.reach dir ~from:remaindir)
-                ]
+              [ [ "B " ^ (Path.reach dir ~from:remaindir) ]
               ; internals
               ; externals
               ; flags

@@ -1,3 +1,86 @@
+1.0.0 (coming soon)
+-------------------
+
+- Fix the error message when there are more than one `<package>.opam`
+  file for a given pacakge
+
+- Report an error when in a wrapped library, a module that is not the
+  toplevel module depends on the toplevel module. This doesn't make as
+  such a module would in theory be inaccessible from the outside
+
+- Add `${SCOPE_ROOT}` pointing to the root of the current scope, to
+  fix some misuses of `${ROOT}`
+
+- Fix useless hint when all missing dependencies are optional (#137)
+
+1.0+beta10 (08/06/2017)
+-----------------------
+
+- Add a `clean` subcommand (Richard Davison, #89)
+
+- Add support for generating API documentation with odoc (#74)
+
+- Don't use unix in the bootstrap script, to avoid surprises with
+  Cygwin
+
+- Improve the behavior of `jbuilder exec` on Windows
+
+- Add a `--no-buffer` option to see the output of commands in
+  real-time. Should only be used with `-j1`
+
+- Deprecate `per_file` in preprocessing specifications and
+  rename it `per_module`
+
+- Deprecate `copy-and-add-line-directive` and rename it `copy#`
+
+- Remove the ability to load arbitrary libraries in jbuild file in
+  OCaml syntax. Only `unix` is supported since a few released packages
+  are using it. The OCaml syntax might eventually be replaced by a
+  simpler mechanism that plays better with incremental builds
+
+- Properly define and implement scopes
+
+- Inside user actions, `${^}` now includes files matches by
+  `(glob_files ...)` or `(file_recursively_in ...)`
+
+- When the dependencies and targets of a rule can be inferred
+  automatically, you no longer need to write them: `(rule (copy a b))`
+
+- Inside `(run ...)`, `${xxx}` forms that expands to lists can now be
+  split across multiple arguments by adding a `!`: `${!xxx}`. For
+  instance: `(run foo ${!^})`
+
+- Add support for using the contents of a file inside an action:
+  - `${read:<file>}`
+  - `${read-lines:<file>}`
+  - `${read-strings:<file>}` (same as `read-lines` but lines are
+    escaped using OCaml convention)
+
+- When exiting prematurely because of a failure, if there are other
+  background processes running and they fail, print these failures
+
+- With msvc, `-lfoo` is transparently replaced by `foo.lib` (David
+  Allsopp, #127)
+
+- Automatically add the `.exe` when installing executables on Windows
+  (#123)
+
+- `(run <prog> ...)` now resolves `<prog>` locally if
+  possible. i.e. `(run ${bin:prog} ...)` and `(run prog ...)` behave
+  the same. This seems like the right default
+
+- Fix a bug where `jbuild rules` would crash instead of reporting a
+  proper build error
+
+- Fix a race condition in future.ml causing jbuilder to crash on
+  Windows in some cases (#101)
+
+- Fix a bug causing ppx rewriter to not work properly when using
+  multiple build contexts (#100)
+
+- Fix .merlin generation: projects in the same workspace are added to
+  merlin's source path, so "locate" works on them.
+
 1.0+beta9 (19/05/2017)
 ----------------------
 

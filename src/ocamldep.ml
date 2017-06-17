@@ -5,7 +5,7 @@ module SC = Super_context
 
 type dep_graph = (unit, string list String_map.t) Build.t Ml_kind.Dict.t
 
-let parse_deps ~dir lines ~modules ~alias_module =
+let parse_deps ~dir lines ~modules ~alias_module ~lib_interface_module =
   List.map lines ~f:(fun line ->
     match String.index line ':' with
     | None -> die "`ocamldep` in %s returned invalid line: %S" (Path.to_string dir) line
@@ -27,6 +27,22 @@ let parse_deps ~dir lines ~modules ~alias_module =
                                                 ~len:(String.length line - (i + 1)))
         |> List.filter ~f:(fun m -> m <> unit && String_map.mem m modules)
       in
+      (match lib_interface_module with
+       | None -> ()
+       | Some (m : Module.t) ->
+         let is_alias_module =
+           match alias_module with
+           | None -> false
+           | Some (m : Module.t) -> unit = m.name
+         in
+         if unit <> m.name && not is_alias_module && List.mem m.name ~set:deps then
+           die "Module %s in directory %s depends on %s.\n\
+                This doesn't make sense to me.\n\
+                \n\
+                %s is the main module of the library and is the only module exposed \n\
+                outside of the library. Consequently it should be the one dependending \n\
+                on all the other modules in the library."
+             unit (Path.to_string dir) m.name m.name);
       let deps =
         match alias_module with
         | None -> deps
@@ -44,7 +60,7 @@ let parse_deps ~dir lines ~modules ~alias_module =
     die
       "`ocamldep` in %s returned %s several times" (Path.to_string dir) unit
 
-let rules sctx ~ml_kind ~dir ~item ~modules ~alias_module =
+let rules sctx ~ml_kind ~dir ~item ~modules ~alias_module ~lib_interface_module =
   let suffix = Ml_kind.suffix ml_kind in
   let files =
     List.filter_map (String_map.values modules) ~f:(fun m -> Module.file ~dir m ml_kind)
@@ -64,7 +80,7 @@ let rules sctx ~ml_kind ~dir ~item ~modules ~alias_module =
        ~stdout_to:ocamldep_output);
   Build.memoize (Path.to_string ocamldep_output)
     (Build.lines_of ocamldep_output
-     >>^ parse_deps ~dir ~modules ~alias_module)
+     >>^ parse_deps ~dir ~modules ~alias_module ~lib_interface_module)
 
 module Dep_closure =
   Top_closure.Make(String)(struct
@@ -87,5 +103,5 @@ let names_to_top_closed_cm_files ~dir ~dep_graph ~modules ~mode names =
     let m = Utils.find_module ~dir modules name in
     Module.cm_file m ~dir cm_kind)
 
-let rules sctx ~dir ~item ~modules ~alias_module =
-  Ml_kind.Dict.of_func (rules sctx ~dir ~item ~modules ~alias_module)
+let rules sctx ~dir ~item ~modules ~alias_module ~lib_interface_module =
+  Ml_kind.Dict.of_func (rules sctx ~dir ~item ~modules ~alias_module ~lib_interface_module)

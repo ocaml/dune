@@ -192,6 +192,15 @@ module Local = struct
       else
         None
 
+  let is_descendant t ~of_ =
+    match of_ with
+    | "" -> true
+    | _ ->
+      let of_len = String.length of_ in
+      let t_len = String.length t in
+      (t_len = of_len && t = of_) ||
+      (t_len >= of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_)
+
   let reach t ~from =
     let rec loop t from =
       match t, from with
@@ -290,6 +299,12 @@ let descendant t ~of_ =
   else
     None
 
+let is_descendant t ~of_ =
+  if is_local t && is_local of_ then
+    Local.is_descendant t ~of_
+  else
+    false
+
 let append a b =
   if not (is_local b) then
     Sexp.code_error "Path.append called with non-local second path"
@@ -384,11 +399,9 @@ let rm_rf =
     Array.iter (Sys.readdir dir) ~f:(fun fn ->
       let fn = Filename.concat dir fn in
       match Unix.lstat fn with
-      | { st_kind = S_DIR; _ } ->
-        loop fn;
-        Unix.rmdir fn
-      | _ ->
-        Unix.unlink fn)
+      | { st_kind = S_DIR; _ } -> loop fn
+      | _                      -> Unix.unlink fn);
+    Unix.rmdir dir
   in
   fun t ->
     let fn = to_string t in

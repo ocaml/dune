@@ -19,13 +19,14 @@ module Section : sig
 end
 
 module Entry : sig
-  type t =
+  type t = private
     { src     : Path.t
     ; dst     : string option
     ; section : Section.t
     }
 
   val make : Section.t -> ?dst:string -> Path.t -> t
+  val set_src : t -> Path.t -> t
 
   val relative_installed_path : t -> package:string -> Path.t
 end

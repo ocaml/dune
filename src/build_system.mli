@@ -50,6 +50,7 @@ module Rule : sig
     { id      : Id.t
     ; deps    : Path.Set.t
     ; targets : Path.Set.t
+    ; context : Context.t option
     ; action  : Action.t
     }
 end
@@ -62,3 +63,7 @@ val build_rules
   -> ?recursive:bool (* default false *)
   -> Path.t list
   -> Rule.t list Future.t
+
+val all_targets_ever_built
+  :  unit
+  -> Path.t list

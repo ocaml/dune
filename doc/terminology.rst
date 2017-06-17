@@ -21,6 +21,17 @@ Terminology
 -  **installed world**: anything outside of the workspace, that Jbuilder
    takes for granted and doesn't know how to build
 
+-  **installation**: this is the action of copying build artifacts or
+   other files from the ``<root>/_build`` directory to the installed
+   world
+
+-  **scope**: a scope determines where private items are
+   visible. Private items include libraries or binaries that will not
+   be installed. In Jbuilder, scopes are sub-trees rooted where at
+   least one ``<package>.opam`` file is present. Moreover, scopes are
+   exclusive. Typically every project defines a single scope. See
+   :ref:`scopes` for more details
+
 -  **build context**: a build context is a subdirectory of the
    ``<root>/_build`` directory. It contains all the build artifacts of
    the workspace built against a specific configuration. Without
@@ -40,3 +51,5 @@ Terminology
 
    -  ``runtest`` which runs user defined tests
    -  ``install`` which depends on everything that should be installed
+   -  ``doc``     which depends on the generated HTML
+      documentation. See :ref:`apidoc` for details

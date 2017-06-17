@@ -29,3 +29,9 @@ val workspace_root : string ref
 
 (** The command line for "Hint: try: jbuilder external-lib-deps ..." *)
 val external_lib_deps_hint : string list ref
+
+(** Capture the output of sub-commands *)
+val capture_outputs : bool ref
+
+(** Always print backtraces, to help debugging jbuilder itself *)
+val debug_backtraces : bool ref

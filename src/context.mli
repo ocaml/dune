@@ -154,3 +154,6 @@ val compiler : t -> Mode.t -> Path.t option
 
 (** The best compilation mode for this context *)
 val best_mode : t -> Mode.t
+
+(** [\["-g"\]] if [!Clflags.g] and [\[\]] otherwise *)
+val cc_g : t -> string list

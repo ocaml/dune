@@ -10,7 +10,7 @@ type t
 val create
   :  Findlib.t
   -> dirs_with_dot_opam_files:Path.Set.t
-  -> (Path.t * Jbuild_types.Library.t) list
+  -> (Path.t * Jbuild.Library.t) list
   -> t
 
 val find     : t -> from:Path.t -> string -> Lib.t option
@@ -21,7 +21,7 @@ val internal_libs_without_non_installable_optional_ones : t -> Lib.Internal.t li
 val interpret_lib_deps
   :  t
   -> dir:Path.t
-  -> Jbuild_types.Lib_dep.t list
+  -> Jbuild.Lib_dep.t list
   -> Lib.Internal.t list * Findlib.package list * fail option
 
 type resolved_select =
@@ -32,7 +32,7 @@ type resolved_select =
 val resolve_selects
   :  t
   -> from:Path.t
-  -> Jbuild_types.Lib_dep.t list
+  -> Jbuild.Lib_dep.t list
   -> resolved_select list
 
 val lib_is_available : t -> from:Path.t -> string -> bool

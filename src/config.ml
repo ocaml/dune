@@ -16,3 +16,5 @@ let local_install_lib_dir ~context ~package =
     package
 
 let dev_null = Path.of_string (if Sys.win32 then "nul" else "/dev/null")
+
+let jbuilder_keep_fname = ".jbuilder-keep"

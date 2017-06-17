@@ -16,16 +16,11 @@ executable using ``modules``.
 The next sections describe the format of Jbuilder metadata files.
 
 Note that the Jbuilder metadata format is versioned in order to ensure
-forward compatibility. Jane Street packages use a special
-``jane_street`` version which correspond to a rolling and unstable
-version that follows the internal Jane Street development. You shouldn't
-use this in your project, it is only intended to make the publication of
-Jane Street packages easier.
+forward compatibility. There is currently only one version available,
+but to be future proof, you should still specify it in your ``jbuild``
+files. If no version is specified, the latest one will be used.
 
-Except for the special ``jane_street`` version, there is currently only
-one version available, but to be future proof, you should still specify
-it in your ``jbuild`` files. If no version is specified, the latest one
-will be used.
+.. _metadata-format:
 
 Metadata format
 ===============
@@ -35,6 +30,22 @@ syntax, which is very simple. Everything is either an atom or a list.
 The exact specification of S-expressions is described in the
 documentation of the `parsexp <https://github.com/janestreet/parsexp>`__
 library.
+
+In a nutshell, the syntax is as follow:
+
+- atoms that do no contain special characters are simply written as
+  it. For instance: ``foo``, ``bar`` are valid atomic S-expressions
+
+- atoms containing special characters or spaces must be quoted using
+  the syntax ``"..."``: ``"foo bar\n"``
+
+- lists are formed by surrounding a sequence of S-expressions separated
+  by spaces with parentheses: ``(a b (c d))``
+
+- single-line comments are introduced with the ``;`` character and may
+  appear anywhere except in the middle of a quoted atom
+
+- block comment are enclosed by ``#|`` and ``|#`` and can be nested
 
 Note that the format is completely static. However you can do
 meta-programming on jbuilds files by writing them in :ref:`ocaml-syntax`.
@@ -60,14 +71,32 @@ Declaring a package this way will allow you to add elements such as
 libraries, executables, documentations, ... to your package by declaring
 them in ``jbuild`` files.
 
-Jbuilder will only register the existence of ``<package>`` in the
-subtree starting where the ``<package>.opam`` file lives, so you can
-only declare parts of the packages in this subtree. Typically your
+Such elements can only be declared in the scope defined by the
+corresponding ``<package>.opam`` file. Typically your
 ``<package>.opam`` files should be at the root of your project, since
 this is where ``opam pin ...`` will look for them.
 
 Note that ``<package>`` must be non empty, so in particular ``.opam``
 files are ignored.
+
+.. _scopes:
+
+Scopes
+------
+
+Any directory containing at least one ``<package>.opam`` file defines
+a scope. This scope is the sub-tree starting from this directory,
+excluding any other scopes rooted in sub-direcotries.
+
+Typically, any given project will define a single scope. Libraries and
+executables that are not meant to be installed will be visible inside
+this scope only.
+
+Because scopes are exclusive, if you whish to include the dependencies
+of the project you are currently working on into your workspace, you
+may copy them in a ``vendor`` directory, or any other name of your
+choice. Jbuilder will look for them there rather than in the installed
+world and there will be no overlap between the various scopes.
 
 Package version
 ---------------

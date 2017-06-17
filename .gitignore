@@ -4,3 +4,5 @@ boot.exe
 .merlin
 boot.ml
 *.corrected
+*.swp
+*.swo

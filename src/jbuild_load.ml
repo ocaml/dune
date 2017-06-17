@@ -1,14 +1,14 @@
 open Import
-open Jbuild_types
+open Jbuild
 
 module Jbuilds = struct
   type script =
-    { dir  : Path.t
-    ; pkgs : Pkgs.t
+    { dir   : Path.t
+    ; scope : Scope.t
     }
 
   type one =
-    | Literal of (Path.t * Pkgs.t * Stanza.t list)
+    | Literal of (Path.t * Scope.t * Stanza.t list)
     | Script of script
 
   type t = one list
@@ -20,21 +20,48 @@ module Jbuilds = struct
     | Local path -> Path.Local.ensure_parent_directory_exists path
     | External _ -> ()
 
-  let extract_requires str =
-    List.fold_left (String.split str ~on:'\n') ~init:String_set.empty ~f:(fun acc line ->
-      match Scanf.sscanf line "#require %S" (fun x -> x) with
-      | exception _ -> acc
-      | s ->
-        String_set.union acc
-          (String_set.of_list (String.split s ~on:',')))
-    |> String_set.elements
+  let extract_requires ~fname str =
+    let rec loop n lines acc =
+      match lines with
+      | [] -> acc
+      | line :: lines ->
+        let acc =
+          match Scanf.sscanf line "#require %S" (fun x -> x) with
+          | exception _ -> acc
+          | s ->
+            match String.split s ~on:',' with
+            | [] -> acc
+            | ["unix"] as l -> l
+            | _ ->
+              let start =
+                { Lexing.
+                  pos_fname = fname
+                ; pos_lnum  = n
+                ; pos_cnum  = 0
+                ; pos_bol   = 0
+                }
+              in
+              Loc.fail
+                { start; stop = { start with pos_cnum = String.length line } }
+                "Using libraries other that \"unix\" is not supported.\n\
+                 See the manual for details.";
+        in
+        loop (n + 1) lines acc
+    in
+    loop 1 (String.split str ~on:'\n') []
 
   let create_plugin_wrapper (context : Context.t) ~exec_dir ~plugin ~wrapper ~target =
     let plugin = Path.to_string plugin in
     let plugin_contents = Io.read_file plugin in
     Io.with_file_out (Path.to_string wrapper) ~f:(fun oc ->
       Printf.fprintf oc {|
-let () = Hashtbl.add Toploop.directive_table "require" (Toploop.Directive_string ignore)
+let () =
+  Hashtbl.add Toploop.directive_table "require" (Toploop.Directive_string ignore);
+  Hashtbl.add Toploop.directive_table "use" (Toploop.Directive_string (fun _ ->
+    failwith "#use is not allowed inside jbuild in OCaml syntax"));
+  Hashtbl.add Toploop.directive_table "use_mod" (Toploop.Directive_string (fun _ ->
+    failwith "#use is not allowed inside jbuild in OCaml syntax"))
+
 module Jbuild_plugin = struct
   module V1 = struct
     let context       = %S
@@ -60,13 +87,13 @@ end
                 Printf.sprintf "%-*S , %S" (longest + 2) k v)))
         (Path.reach ~from:exec_dir target)
         plugin plugin_contents);
-    extract_requires plugin_contents
+    extract_requires ~fname:plugin plugin_contents
 
   let eval jbuilds ~(context : Context.t) =
     let open Future in
     List.map jbuilds ~f:(function
       | Literal x -> return x
-      | Script { dir; pkgs = pkgs_ctx } ->
+      | Script { dir; scope } ->
         let file = Path.relative dir "jbuild" in
         let generated_jbuild =
           Path.append (Path.relative generated_jbuilds_dir context.name) file
@@ -118,7 +145,7 @@ end
                Did you forgot to call [Jbuild_plugin.V*.send]?"
             (Path.to_string file);
         let sexps = Sexp_lexer.Load.many (Path.to_string generated_jbuild) in
-        return (dir, pkgs_ctx, Stanzas.parse pkgs_ctx sexps))
+        return (dir, scope, Stanzas.parse scope sexps))
     |> Future.all
 end
 
@@ -129,14 +156,13 @@ type conf =
   ; packages  : Package.t String_map.t
   }
 
-let load ~dir ~visible_packages ~closest_packages =
+let load ~dir ~scope =
   let file = Path.relative dir "jbuild" in
-  let pkgs = { Pkgs. visible_packages; closest_packages } in
   match Sexp_lexer.Load.many_or_ocaml_script (Path.to_string file) with
   | Sexps sexps ->
-    Jbuilds.Literal (dir, pkgs, Stanzas.parse pkgs sexps)
+    Jbuilds.Literal (dir, scope, Stanzas.parse scope sexps)
   | Ocaml_script ->
-    Script { dir; pkgs }
+    Script { dir; scope }
 
 let load ?(extra_ignored_subtrees=Path.Set.empty) () =
   let ftree = File_tree.load Path.root in
@@ -184,28 +210,22 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) () =
           name
           (String.concat ~sep:"\n"
              (List.map pkgs ~f:(fun pkg ->
-                sprintf "- %s.opam" (Path.to_string pkg.Package.path)))))
+                sprintf "- %s" (Path.to_string (Package.opam_file pkg))))))
   in
-  let packages_per_dir =
+  let scopes =
     String_map.values packages
     |> List.map ~f:(fun pkg -> (pkg.Package.path, pkg))
     |> Path.Map.of_alist_multi
+    |> Path.Map.map ~f:Scope.make
   in
-  let rec walk dir jbuilds visible_packages closest_packages =
+  let rec walk dir jbuilds scope =
     let path = File_tree.Dir.path dir in
     let files = File_tree.Dir.files dir in
     let sub_dirs = File_tree.Dir.sub_dirs dir in
-    let visible_packages, closest_packages =
-      match Path.Map.find path packages_per_dir with
-      | None -> (visible_packages, closest_packages)
-      | Some pkgs ->
-        (List.fold_left pkgs ~init:visible_packages ~f:(fun acc pkg ->
-           String_map.add acc ~key:pkg.Package.name ~data:pkg),
-         pkgs)
-    in
+    let scope = Path.Map.find_default path scopes ~default:scope in
     let jbuilds =
       if String_set.mem "jbuild" files then
-        let jbuild = load ~dir:path ~visible_packages ~closest_packages in
+        let jbuild = load ~dir:path ~scope in
         jbuild :: jbuilds
       else
         jbuilds
@@ -216,13 +236,13 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) () =
           if Path.Set.mem (File_tree.Dir.path dir) ignored_subtrees then
             (children, jbuilds)
           else
-            let child, jbuilds = walk dir jbuilds visible_packages closest_packages in
+            let child, jbuilds = walk dir jbuilds scope in
             (child :: children, jbuilds))
     in
     (Alias.Node (path, children), jbuilds)
   in
   let root = File_tree.root ftree in
-  let tree, jbuilds = walk root [] String_map.empty [] in
+  let tree, jbuilds = walk root [] Scope.empty in
   { file_tree = ftree
   ; tree
   ; jbuilds

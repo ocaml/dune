@@ -9,17 +9,19 @@ let () = suggest_function := Jbuilder_cmdliner.Cmdliner_suggest.value
 let (>>=) = Future.(>>=)
 
 type common =
-  { concurrency    : int
-  ; debug_dep_path : bool
-  ; debug_findlib  : bool
-  ; dev_mode       : bool
-  ; verbose        : bool
-  ; workspace_file : string option
-  ; root           : string
-  ; target_prefix  : string
-  ; only_packages  : String_set.t option
+  { concurrency      : int
+  ; debug_dep_path   : bool
+  ; debug_findlib    : bool
+  ; debug_backtraces : bool
+  ; dev_mode         : bool
+  ; verbose          : bool
+  ; workspace_file   : string option
+  ; root             : string
+  ; target_prefix    : string
+  ; only_packages    : String_set.t option
+  ; capture_outputs  : bool
   ; (* Original arguments for the external-lib-deps hint *)
-    orig_args      : string list
+    orig_args        : string list
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -28,8 +30,10 @@ let set_common c ~targets =
   Clflags.concurrency := c.concurrency;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
+  Clflags.debug_backtraces := c.debug_backtraces;
   Clflags.dev_mode := c.dev_mode;
   Clflags.verbose := c.verbose;
+  Clflags.capture_outputs := c.capture_outputs;
   Clflags.workspace_root := c.root;
   if c.root <> Filename.current_dir_name then
     Sys.chdir c.root;
@@ -108,8 +112,10 @@ let common =
         concurrency
         debug_dep_path
         debug_findlib
+        debug_backtraces
         dev_mode
         verbose
+        no_buffer
         workspace_file
         (root, only_packages, orig)
     =
@@ -128,8 +134,10 @@ let common =
     { concurrency
     ; debug_dep_path
     ; debug_findlib
+    ; debug_backtraces
     ; dev_mode
     ; verbose
+    ; capture_outputs = not no_buffer
     ; workspace_file
     ; root
     ; orig_args
@@ -152,9 +160,11 @@ let common =
          & opt (some string) None
          & info ["only-packages"] ~docs ~docv:"PACKAGES"
              ~doc:{|Ignore stanzas referring to a package that is not in $(b,PACKAGES).
-                    $(b,PACKAGES) is a coma-separated list of package name. You need to
-                    use this option in your $(i,<package>.opam) file if your project
-                    contains several packages.|}
+                    $(b,PACKAGES) is a comma-separated list of package names.
+                    Note that this has the same effect as deleting the relevant stanzas
+                    from jbuild files. It is mostly meant for releases.
+                    During development, it is likely that what you want instead is to
+                    build a particular $(b,<package>.install) target.|}
         )
   in
   let ddep_path =
@@ -171,6 +181,12 @@ let common =
          & info ["debug-findlib"] ~docs
              ~doc:{|Debug the findlib sub-system.|})
   in
+  let dbacktraces =
+    Arg.(value
+         & flag
+         & info ["debug-backtraces"] ~docs
+             ~doc:{|Always print exception backtraces.|})
+  in
   let dev =
     Arg.(value
          & flag
@@ -182,6 +198,23 @@ let common =
          & flag
          & info ["verbose"] ~docs
              ~doc:"Print detailed information about commands being run")
+  in
+  let no_buffer =
+    Arg.(value
+         & flag
+         & info ["no-buffer"] ~docs ~docv:"DIR"
+             ~doc:{|Do not buffer the output of commands executed by jbuilder.
+                    By default jbuilder buffers the output of subcommands, in order
+                    to prevent interleaving when multiple commands are executed
+                    in parallel. However, this can be an issue when debugging
+                    long running tests. With $(b,--no-buffer), commands have direct
+                    access to the terminal. Note that as a result their output won't
+                    be captured in the log file.
+
+                    You should use this option in conjunction with $(b,-j 1),
+                    to avoid interleaving. Additionally you should use
+                    $(b,--verbose) as well, to make sure that commands are printed
+                    before they are being executed.|})
   in
   let workspace_file =
     Arg.(value
@@ -203,7 +236,10 @@ let common =
     Arg.(value
          & opt (some string) None
          & info ["p"; for_release] ~docs ~docv:"PACKAGES"
-             ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE).|})
+             ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE). You must use
+                    this option in your $(i,<package>.opam) files, in order to build
+                    only what's necessary when your project contains multiple packages
+                    as well as getting reproducible builds.|})
   in
   let root_and_only_packages =
     let merge root only_packages release =
@@ -236,8 +272,10 @@ let common =
         $ concurrency
         $ ddep_path
         $ dfindlib
+        $ dbacktraces
         $ dev
         $ verbose
+        $ no_buffer
         $ workspace_file
         $ root_and_only_packages
        )
@@ -428,6 +466,24 @@ let runtest =
           $ Arg.(value & pos_all string ["."] name_))
   , Term.info "runtest" ~doc ~man)
 
+let clean =
+  let doc = "Clean the project." in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|Removes files added by jbuilder such as _build, <package>.install, and .merlin|}
+    ; `Blocks help_secs
+    ]
+  in
+  let go common =
+    begin
+      set_common common ~targets:[];
+      Build_system.all_targets_ever_built () |> List.iter ~f:Path.unlink_no_err;
+      Path.(rm_rf (append root (of_string "_build")))
+    end
+  in
+  ( Term.(const go $ common)
+  , Term.info "clean" ~doc ~man)
+
 let format_external_libs libs =
   String_map.bindings libs
   |> List.map ~f:(fun (name, kind) ->
@@ -458,7 +514,7 @@ let external_lib_deps =
            (Build_system.all_lib_deps_by_context setup.build_system targets)
            ~f:(fun ~key:context_name ~data:lib_deps acc ->
              let internals =
-               Jbuild_types.Stanzas.lib_names
+               Jbuild.Stanzas.lib_names
                  (match String_map.find context_name setup.Main.stanzas with
                   | None -> assert false
                   | Some x -> x)
@@ -479,9 +535,18 @@ let external_lib_deps =
                in
                if String_map.is_empty missing then
                  acc
-               else begin
+               else if String_map.for_all missing ~f:(fun _ kind -> kind = Build.Optional)
+               then begin
                  Format.eprintf
-                   "@{<error>Error@}: The following required libraries are missing \
+                   "@{<error>Error@}: The following libraries are missing \
+                    in the %s context:\n\
+                    %s@."
+                   context_name
+                   (format_external_libs missing);
+                 false
+               end else begin
+                 Format.eprintf
+                   "@{<error>Error@}: The following libraries are missing \
                     in the %s context:\n\
                     %s\n\
                     Hint: try: opam install %s@."
@@ -553,12 +618,6 @@ let rules =
        Build_system.build_rules setup.build_system targets ~recursive >>= fun rules ->
        let print oc =
          let ppf = Format.formatter_of_out_channel oc in
-         let get_action (rule : Build_system.Rule.t) =
-           if Path.is_root rule.action.dir then
-             rule.action.action
-           else
-             Chdir (rule.action.dir, rule.action.action)
-         in
          Sexp.prepare_formatter ppf;
          Format.pp_open_vbox ppf 0;
          if makefile_syntax then begin
@@ -570,7 +629,7 @@ let rules =
                (fun ppf ->
                   Path.Set.iter rule.deps ~f:(fun dep ->
                     Format.fprintf ppf "@ %s" (Path.to_string dep)))
-               Sexp.pp_split_strings (Action.Mini_shexp.sexp_of_t (get_action rule)))
+               Sexp.pp_split_strings (Action.sexp_of_t rule.action))
          end else begin
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
              let sexp =
@@ -579,10 +638,10 @@ let rules =
                  List.concat
                    [ [ "deps"   , paths rule.deps
                      ; "targets", paths rule.targets ]
-                   ; (match rule.action.context with
+                   ; (match rule.context with
                       | None -> []
                       | Some c -> ["context", Atom c.name])
-                   ; [ "action" , Action.Mini_shexp.sexp_of_t (get_action rule) ]
+                   ; [ "action" , Action.sexp_of_t rule.action ]
                    ])
              in
              Format.fprintf ppf "%a@," Sexp.pp_split_strings sexp)
@@ -709,28 +768,35 @@ let exec =
   let go common context prog args =
     set_common common ~targets:[];
     let log = Log.create () in
-    Future.Scheduler.go ~log
-      (Main.setup ~log common >>= fun setup ->
-       let context =
-         match List.find setup.contexts ~f:(fun c -> c.name = context) with
-         | Some ctx -> ctx
-         | None ->
-           Format.eprintf "@{<Error>Error@}: Context %S not found!@." context;
-           die ""
-       in
-       let path = Config.local_install_bin_dir ~context:context.name :: context.path in
-       match Bin.which ~path prog with
-       | None ->
-         Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
-         die ""
-       | Some real_prog ->
-         let real_prog = Path.to_string real_prog     in
-         let env       = Context.env_for_exec context in
-         if Sys.win32 then
-           Future.run ~env Strict real_prog (prog :: args)
-         else
-           Unix.execve real_prog (Array.of_list (prog :: args)) env
-      )
+    let setup = Future.Scheduler.go ~log (Main.setup ~log common) in
+    let context =
+      match List.find setup.contexts ~f:(fun c -> c.name = context) with
+      | Some ctx -> ctx
+      | None ->
+        Format.eprintf "@{<Error>Error@}: Context %S not found!@." context;
+        die ""
+    in
+    let path = Config.local_install_bin_dir ~context:context.name :: context.path in
+    match Bin.which ~path prog with
+    | None ->
+      Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
+      die ""
+    | Some real_prog ->
+      let real_prog = Path.to_string real_prog     in
+      let env       = Context.env_for_exec context in
+      let argv      = Array.of_list (prog :: args) in
+      if Sys.win32 then
+        let pid =
+          Unix.create_process_env real_prog argv env
+            Unix.stdin Unix.stdout Unix.stderr
+        in
+        match snd (Unix.waitpid [] pid) with
+        | WEXITED   0 -> ()
+        | WEXITED   n -> exit n
+        | WSIGNALED _ -> exit 255
+        | WSTOPPED  _ -> assert false
+      else
+        Unix.execve real_prog argv env
   in
   ( Term.(const go
           $ common
@@ -751,12 +817,44 @@ let subst =
     "Substitute watermarks in source files."
   in
   let man =
+    let var name desc =
+      `Blocks [`Noblank; `P ("- $(b,%%" ^ name ^ "%%), " ^ desc) ]
+    in
+    let opam field =
+      var ("PKG_" ^ String.uppercase_ascii field)
+        ("contents of the $(b," ^ field ^ ":) field from the opam file")
+    in
     [ `S "DESCRIPTION"
-    ; `P {|Substitute %%ID%% strings in source files, in a similar fashion to
+    ; `P {|Substitute $(b,%%ID%%) strings in source files, in a similar fashion to
            what topkg does in the default configuration.|}
-    ; `P {|If you use topkg to handle the releases of your project, then you
-           should add this line to the $(b,build:) instructions in your opam file:|}
-    ; `Pre {|  ["jbuilder" "subst" name] {pinned}|}
+    ; `P {|This command is only meant to be called when a user pins a package to
+           its development version. Especially it replaces $(b,%%VERSION%%) strings
+           by the version obtained from the vcs. Currently only git is supported and
+           the version is obtained from the output of:|}
+    ; `Pre {|  \$ git describe --always --dirty|}
+    ; `P {|$(b,jbuilder subst) substitutes the variables that topkg substitutes with
+           the defatult configuration:|}
+    ; var "NAME" "the name of the package"
+    ; var "VERSION" "output of $(b,git describe --always --dirty)"
+    ; var "VERSION_NUM" "same as $(b,%%VERSION%%) but with a potential leading \
+                         'v' or 'V' dropped"
+    ; var "VCS_COMMIT_ID" "commit hash from the vcs"
+    ; opam "maintainer"
+    ; opam "authors"
+    ; opam "homepage"
+    ; opam "issues"
+    ; opam "doc"
+    ; opam "license"
+    ; opam "repo"
+    ; `P {|It is not possible to customize this list. If you wish to do so you need to
+           configure topkg instead and use it to perform the substitution.|}
+    ; `P {|Note that the expansion of $(b,%%NAME%%) is guessed using the following
+           heuristic: if all the $(b,<package>.opam) files in the current directory are
+           prefixed by the shortest package name, this prefix is used. Otherwise you must
+           specify a name with the $(b,-n) command line option.|}
+    ; `P {|In order to call $(b,jbuilder subst) when your package is pinned, add this line
+           to the $(b,build:) field of your opam file:|}
+    ; `Pre {|  ["jbuilder" "subst"] {pinned}|}
     ; `Blocks help_secs
     ]
   in
@@ -778,6 +876,7 @@ let all =
   ; external_lib_deps
   ; build_targets
   ; runtest
+  ; clean
   ; install
   ; uninstall
   ; exec

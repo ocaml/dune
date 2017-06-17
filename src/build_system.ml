@@ -9,13 +9,35 @@ module Exec_status = struct
   module Starting = struct
     type t = { for_file : Path.t }
   end
+  module Evaluating_rule = struct
+    type t =
+      { for_file        : Path.t
+      ; rule_evaluation : (Action.t * Pset.t) Future.t
+      ; exec_rule       : targeting:Path.t
+          -> (Action.t * Pset.t) Future.t -> unit Future.t
+      }
+  end
   module Running = struct
-    type t = { for_file : Path.t; future : unit Future.t }
+    type t =
+      { for_file        : Path.t
+      ; (* Future that only waits for the evaluation of the rule to terminate. It holds
+           the computed action and dynamic dependencies. *)
+        rule_evaluation : (Action.t * Pset.t) Future.t
+      ; (* Future that waits for the rule's action to terminate *)
+        rule_execution  : unit Future.t
+      }
+  end
+  module Not_started = struct
+    type t =
+      { eval_rule : targeting:Path.t -> (Action.t * Pset.t) Future.t
+      ; exec_rule : targeting:Path.t -> (Action.t * Pset.t) Future.t -> unit Future.t
+      }
   end
   type t =
-    | Not_started of (targeting:Path.t -> unit Future.t)
-    | Starting of Starting.t
-    | Running  of Running.t
+    | Not_started     of Not_started.t
+    | Starting        of Starting.t
+    | Evaluating_rule of Evaluating_rule.t
+    | Running         of Running.t
 end
 
 module Internal_rule = struct
@@ -41,6 +63,7 @@ module Internal_rule = struct
     ; rule_deps      : Pset.t
     ; static_deps    : Pset.t
     ; targets        : Pset.t
+    ; context        : Context.t option
     ; build          : (unit, Action.t) Build.t
     ; mutable exec   : Exec_status.t
     }
@@ -152,7 +175,8 @@ module Build_error = struct
       let (File_spec.T file) = find_file_exn t targeting in
       match file.rule.exec with
       | Not_started _ -> assert false
-      | Running { for_file; _ } | Starting { for_file } ->
+      | Running { for_file; _ } | Starting { for_file }
+      | Evaluating_rule { for_file; _ } ->
         if for_file = targeting then
           acc
         else
@@ -161,6 +185,13 @@ module Build_error = struct
     let dep_path = build_path [targeting] targeting ~seen:Pset.empty in
     raise (E { backtrace; dep_path; exn })
 end
+
+let wrap_build_errors t ~f ~targeting =
+  with_exn_handler (fun () -> f ~targeting)
+    ~handler:(fun exn backtrace ->
+      match exn with
+      | Build_error.E _ -> reraise exn
+      | exn -> Build_error.raise t exn ~targeting ~backtrace)
 
 let wait_for_file t fn ~targeting =
   match Hashtbl.find t.files fn with
@@ -173,18 +204,32 @@ let wait_for_file t fn ~targeting =
       die "file unavailable: %s" (Path.to_string fn)
   | Some (File_spec.T file) ->
     match file.rule.exec with
-    | Not_started f ->
+    | Not_started { eval_rule; exec_rule } ->
       file.rule.exec <- Starting { for_file = targeting };
-      let future =
-        with_exn_handler (fun () -> f ~targeting:fn)
-          ~handler:(fun exn backtrace ->
-              match exn with
-              | Build_error.E _ -> reraise exn
-              | exn -> Build_error.raise t exn ~targeting:fn ~backtrace)
+      let rule_evaluation =
+        wrap_build_errors t ~targeting:fn ~f:eval_rule
       in
-      file.rule.exec <- Running { for_file = targeting; future };
-      future
-    | Running { future; _ } -> future
+      let rule_execution =
+        wrap_build_errors t ~targeting:fn ~f:(exec_rule rule_evaluation)
+      in
+      file.rule.exec <-
+        Running { for_file = targeting
+                ; rule_evaluation
+                ; rule_execution
+                };
+      rule_execution
+    | Running { rule_execution; _ } -> rule_execution
+    | Evaluating_rule { for_file; rule_evaluation; exec_rule } ->
+      file.rule.exec <- Starting { for_file = targeting };
+      let rule_execution =
+        wrap_build_errors t ~targeting:fn ~f:(exec_rule rule_evaluation)
+      in
+      file.rule.exec <-
+        Running { for_file
+                ; rule_evaluation
+                ; rule_execution
+                };
+      rule_execution
     | Starting _ ->
       (* Recursive deps! *)
       let rec build_loop acc targeting =
@@ -194,7 +239,7 @@ let wait_for_file t fn ~targeting =
         else
           let (File_spec.T file) = find_file_exn t targeting in
           match file.rule.exec with
-          | Not_started _ | Running _ -> assert false
+          | Not_started _ | Running _ | Evaluating_rule _ -> assert false
           | Starting { for_file } ->
             build_loop acc for_file
       in
@@ -218,9 +263,6 @@ let vfile_to_string (type a) (module K : Vfile_kind.S with type t = a) fn x =
 module Build_exec = struct
   open Build.Repr
 
-  (* [build_rules] might execute arrows twice *)
-  let assert_exec_only_once = ref true
-
   let exec bs t x =
     let rec exec
       : type a b. Pset.t ref -> (a, b) t -> a -> b = fun dyn_deps t x ->
@@ -229,13 +271,8 @@ module Build_exec = struct
       | Targets _ -> x
       | Store_vfile (Vspec.T (fn, kind)) ->
         let file = get_file bs fn (Sexp_file kind) in
-        assert (not !assert_exec_only_once || file.data = None);
         file.data <- Some x;
-        { Action.
-          context = None
-        ; dir     = Path.root
-        ; action  = Update_file (fn, vfile_to_string kind fn x)
-        }
+        Update_file (fn, vfile_to_string kind fn x)
       | Compose (a, b) ->
         exec dyn_deps a x |> exec dyn_deps b
       | First t ->
@@ -254,7 +291,7 @@ module Build_exec = struct
         let b = exec dyn_deps b x in
         (a, b)
       | Paths _ -> x
-      | Paths_glob _ -> x
+      | Paths_glob state -> get_glob_result_exn state
       | Contents p -> Io.read_file (Path.to_string p)
       | Lines_of p -> Io.lines_of_file (Path.to_string p)
       | Vpath (Vspec.T (fn, kind)) ->
@@ -332,14 +369,15 @@ let () =
     pending_targets := Pset.empty;
     Pset.iter fns ~f:Path.unlink_no_err)
 
-let make_local_dir t path =
-  match Path.kind path with
-  | Local path ->
-    if not (Path.Local.Set.mem path t.local_mkdirs) then begin
-      Path.Local.mkdir_p path;
-      t.local_mkdirs <- Path.Local.Set.add path t.local_mkdirs
-    end
-  | _ -> ()
+let make_local_dirs t paths =
+  Pset.iter paths ~f:(fun path ->
+    match Path.kind path with
+    | Local path ->
+      if not (Path.Local.Set.mem path t.local_mkdirs) then begin
+        Path.Local.mkdir_p path;
+        t.local_mkdirs <- Path.Local.Set.add path t.local_mkdirs
+      end
+    | _ -> ())
 
 let make_local_parent_dirs t paths ~map_path =
   Pset.iter paths ~f:(fun path ->
@@ -355,7 +393,7 @@ let make_local_parent_dirs t paths ~map_path =
 let sandbox_dir = Path.of_string "_build/.sandbox"
 
 let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
-  let { Pre_rule. build; targets = target_specs; sandbox } = pre_rule in
+  let { Pre_rule. context; build; targets = target_specs; sandbox } = pre_rule in
   let targets = Target.paths target_specs in
   let { Build_interpret.Static_deps.
         rule_deps
@@ -363,13 +401,16 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       } = Build_interpret.static_deps build ~all_targets_by_dir
   in
 
-  let exec = Exec_status.Not_started (fun ~targeting ->
+  let eval_rule ~targeting =
+    wait_for_deps t rule_deps ~targeting
+    >>| fun () ->
+    Build_exec.exec t build ()
+  in
+  let exec_rule ~targeting rule_evaluation =
     make_local_parent_dirs t targets ~map_path:(fun x -> x);
     Future.both
       (wait_for_deps t static_deps ~targeting)
-      (wait_for_deps t rule_deps ~targeting
-       >>= fun () ->
-       let action, dyn_deps = Build_exec.exec t build () in
+      (rule_evaluation >>= fun (action, dyn_deps) ->
        wait_for_deps t ~targeting (Pset.diff dyn_deps static_deps)
        >>| fun () ->
        (action, dyn_deps))
@@ -378,7 +419,12 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     let all_deps_as_list = Pset.elements all_deps in
     let targets_as_list  = Pset.elements targets  in
     let hash =
-      let trace = (all_deps_as_list, targets_as_list, Action.for_hash action) in
+      let trace =
+        (all_deps_as_list,
+         targets_as_list,
+         Option.map context ~f:(fun c -> c.name),
+         action)
+      in
       Digest.string (Marshal.to_string trace [])
     in
     let sandbox_dir =
@@ -431,7 +477,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       (* Do not remove files that are just updated, otherwise this would break incremental
          compilation *)
       let targets_to_remove =
-        Pset.diff targets (Action.Mini_shexp.updated_files action.action)
+        Pset.diff targets (Action.updated_files action)
       in
       Pset.iter targets_to_remove ~f:Path.unlink_no_err;
       pending_targets := Pset.union targets_to_remove !pending_targets;
@@ -454,7 +500,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
         | None ->
           action
       in
-      make_local_dir t action.dir;
+      make_local_dirs t (Action.chdirs action);
       Action.exec ~targets action >>| fun () ->
       Option.iter sandbox_dir ~f:Path.rm_rf;
       (* All went well, these targets are no longer pending *)
@@ -462,7 +508,7 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
       refresh_targets_timestamps_after_rule_execution t targets_as_list
     ) else
       return ()
-  ) in
+  in
   let rule =
     { Internal_rule.
       id = Internal_rule.Id.gen ()
@@ -470,7 +516,8 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
     ; rule_deps
     ; targets
     ; build
-    ; exec
+    ; context
+    ; exec = Not_started { eval_rule; exec_rule }
     }
   in
   create_file_specs t target_specs rule ~allow_override
@@ -527,6 +574,13 @@ module Trace = struct
     trace
 end
 
+let all_targets_ever_built () =
+  if Sys.file_exists Trace.file then
+    let trace = Trace.load () in
+    Hashtbl.fold trace ~init:[] ~f:(fun ~key ~data:_ acc -> key :: acc)
+  else
+    []
+
 let create ~force_runtest ~contexts ~file_tree ~rules =
   let all_source_files =
     File_tree.fold file_tree ~init:Pset.empty ~f:(fun dir acc ->
@@ -577,23 +631,27 @@ let create ~force_runtest ~contexts ~file_tree ~rules =
 let remove_old_artifacts t =
   let rec walk dir =
     let keep =
-      Path.readdir dir
-      |> List.filter ~f:(fun fn ->
-        let fn = Path.relative dir fn in
-        match Unix.lstat (Path.to_string fn) with
-        | { st_kind = S_DIR; _ } ->
-          walk fn
-        | exception _ ->
-          let keep = Hashtbl.mem t.files fn in
-          if not keep then Path.unlink fn;
-          keep
-        | _ ->
-          let keep = Hashtbl.mem t.files fn in
-          if not keep then Path.unlink fn;
-          keep)
-      |> function
-      | [] -> false
-      | _  -> true
+      if Hashtbl.mem t.files (Path.relative dir Config.jbuilder_keep_fname) then
+        true
+      else begin
+        Path.readdir dir
+        |> List.filter ~f:(fun fn ->
+            let fn = Path.relative dir fn in
+            match Unix.lstat (Path.to_string fn) with
+            | { st_kind = S_DIR; _ } ->
+              walk fn
+            | exception _ ->
+              let keep = Hashtbl.mem t.files fn in
+              if not keep then Path.unlink fn;
+              keep
+            | _ ->
+              let keep = Hashtbl.mem t.files fn in
+              if not keep then Path.unlink fn;
+              keep)
+        |> function
+        | [] -> false
+        | _  -> true
+      end
     in
     if not keep then Path.rmdir dir;
     keep
@@ -679,6 +737,7 @@ module Rule = struct
     { id      : Id.t
     ; deps    : Path.Set.t
     ; targets : Path.Set.t
+    ; context : Context.t option
     ; action  : Action.t
     }
 
@@ -706,7 +765,6 @@ module Rule_closure =
     end)
 
 let build_rules t ?(recursive=false) targets =
-  Build_exec.assert_exec_only_once := false;
   let rules_seen = ref Id_set.empty in
   let rules = ref [] in
   let rec loop fn =
@@ -718,16 +776,31 @@ let build_rules t ?(recursive=false) targets =
       else begin
         rules_seen := Id_set.add ir.id !rules_seen;
         let rule =
-          wait_for_deps t ir.rule_deps ~targeting:fn
-          >>= fun () ->
-          let action, dyn_deps = Build_exec.exec t ir.build () in
-          return
+          let make_rule rule_evaluation =
+            rule_evaluation >>| fun (action, dyn_deps) ->
             { Rule.
               id      = ir.id
             ; deps    = Pset.union ir.static_deps dyn_deps
             ; targets = ir.targets
+            ; context = ir.context
             ; action  = action
             }
+          in
+          match ir.exec with
+          | Starting _ -> assert false (* guarded by [rules_seen] *)
+          | Running { rule_evaluation; _ } | Evaluating_rule { rule_evaluation; _ } ->
+            make_rule rule_evaluation
+          | Not_started { eval_rule; exec_rule } ->
+            ir.exec <- Starting { for_file = fn };
+            let rule_evaluation =
+              wrap_build_errors t ~targeting:fn ~f:eval_rule
+            in
+            ir.exec <-
+              Evaluating_rule { for_file = fn
+                              ; rule_evaluation
+                              ; exec_rule
+                              };
+            make_rule rule_evaluation
         in
         rules := rule :: !rules;
         rule >>= fun rule ->

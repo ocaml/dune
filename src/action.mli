@@ -1,65 +1,81 @@
 open! Import
 
-type var_expansion =
-  | Not_found
-  | Path  of Path.t
-  | Paths of Path.t list
-  | Str   of string
-
-module Mini_shexp : sig
-  module Ast : sig
-    type outputs =
-      | Stdout
-      | Stderr
-      | Outputs (** Both Stdout and Stderr *)
-
-    type ('a, 'path) t =
-      | Run            of 'path * 'a list
-      | Chdir          of 'path * ('a, 'path) t
-      | Setenv         of 'a * 'a * ('a, 'path) t
-      | Redirect       of outputs * 'path * ('a, 'path) t
-      | Ignore         of outputs * ('a, 'path) t
-      | Progn          of ('a, 'path) t list
-      | Echo           of 'a
-      | Create_file    of 'path
-      | Cat            of 'path
-      | Copy           of 'path * 'path
-      | Symlink        of 'path * 'path
-      | Copy_and_add_line_directive of 'path * 'path
-      | System         of 'a
-      | Bash           of 'a
-      | Update_file    of 'path * 'a
-      | Rename         of 'path * 'path
-    val t : 'a Sexp.Of_sexp.t -> 'b Sexp.Of_sexp.t -> ('a, 'b) t Sexp.Of_sexp.t
-    val sexp_of_t : 'a Sexp.To_sexp.t -> 'b Sexp.To_sexp.t -> ('a, 'b) t Sexp.To_sexp.t
+module Var_expansion : sig
+  module Concat_or_split : sig
+    type t =
+      | Concat (* default *)
+      | Split  (* ${!...} *)
   end
 
-  type t = (string, Path.t) Ast.t
+  type t =
+    | Paths   of Path.t list * Concat_or_split.t
+    | Strings of string list * Concat_or_split.t
+end
+
+module Outputs : module type of struct include Action_intf.Outputs end
+
+include Action_intf.Ast
+  with type program := Path.t
+  with type path    := Path.t
+  with type string  := string
+
+val t : t Sexp.Of_sexp.t
+val sexp_of_t : t Sexp.To_sexp.t
+
+(** Return the list of files under an [Update_file] *)
+val updated_files : t -> Path.Set.t
+
+(** Return the list of directories the action chdirs to *)
+val chdirs : t -> Path.Set.t
+
+(** Ast where programs are not yet looked up in the PATH *)
+module Unresolved : sig
+  type action = t
+
+  module Program : sig
+    type t =
+      | This   of Path.t
+      | Search of string
+  end
+
+  include Action_intf.Ast
+    with type program := Program.t
+    with type path    := Path.t
+    with type string  := string
+
+  val resolve : t -> f:(string -> Path.t) -> action
+end with type action := t
+
+module Unexpanded : sig
+  include Action_intf.Ast
+    with type program := String_with_vars.t
+    with type path    := String_with_vars.t
+    with type string  := String_with_vars.t
+
   val t : t Sexp.Of_sexp.t
   val sexp_of_t : t Sexp.To_sexp.t
 
-  (** Return the list of files under an [Update_file] *)
-  val updated_files : t -> Path.Set.t
+  module Partial : sig
+    include Action_intf.Ast
+      with type program = (Unresolved.Program.t, String_with_vars.t) either
+      with type path    = (Path.t              , String_with_vars.t) either
+      with type string  = (string              , String_with_vars.t) either
 
-  module Unexpanded : sig
-    type desc = t
-    type t = (String_with_vars.t, String_with_vars.t) Ast.t
-    val t : t Sexp.Of_sexp.t
-    val sexp_of_t : t Sexp.To_sexp.t
-    val fold_vars : t -> init:'a -> f:('a -> Loc.t -> string -> 'a) -> 'a
-    val expand : Context.t -> Path.t -> t -> f:(string -> var_expansion) -> desc
-  end with type desc := t
+    val expand
+      :  Path.t
+      -> t
+      -> f:(Loc.t -> String.t -> Var_expansion.t option)
+      -> Unresolved.t
+  end
+
+  val partial_expand
+    :  Path.t
+    -> t
+    -> f:(Loc.t -> string -> Var_expansion.t option)
+    -> Partial.t
 end
 
-type t =
-  { context : Context.t option
-  ; dir     : Path.t
-  ; action  : Mini_shexp.t
-  }
-
-val t : Context.t String_map.t -> t Sexp.Of_sexp.t
-val sexp_of_t : t Sexp.To_sexp.t
-val exec : targets:Path.Set.t -> t -> unit Future.t
+val exec : targets:Path.Set.t -> ?context:Context.t -> t -> unit Future.t
 
 (* Return a sandboxed version of an action *)
 val sandbox
@@ -69,5 +85,21 @@ val sandbox
   -> targets:Path.t list
   -> t
 
-type for_hash
-val for_hash : t -> for_hash
+(** Infer dependencies and targets.
+
+    This currently doesn't support well (rename ...) and (remove-tree ...). However these
+    are not exposed in the DSL.
+*)
+module Infer : sig
+  module Outcome : sig
+    type t =
+      { deps    : Path.Set.t
+      ; targets : Path.Set.t
+      }
+  end
+
+  val infer : t -> Outcome.t
+
+  (** If [all_targets] is [true] and a target cannot be determined statically, fail *)
+  val partial : all_targets:bool -> Unexpanded.Partial.t -> Outcome.t
+end

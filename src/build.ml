@@ -33,7 +33,7 @@ module Repr = struct
     | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Pset.t -> ('a, 'a) t
-    | Paths_glob : Path.t * Re.re -> ('a, 'a) t
+    | Paths_glob : glob_state ref -> ('a, Path.t list) t
     (* The reference gets decided in Build_interpret.deps *)
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
@@ -59,10 +59,19 @@ module Repr = struct
     | Undecided of ('a, 'b) t * ('a, 'b) t
     | Decided   of bool * ('a, 'b) t
 
+  and glob_state =
+    | G_unevaluated of Path.t * Re.re
+    | G_evaluated   of Path.t list
+
   let get_if_file_exists_exn state =
     match !state with
     | Decided (_, t) -> t
     | Undecided _ -> code_errorf "Build.get_if_file_exists_exn: got undecided"
+
+  let get_glob_result_exn state =
+    match !state with
+    | G_evaluated l -> l
+    | G_unevaluated _ -> code_errorf "Build.get_glob_result_exn: got unevaluated"
 end
 include Repr
 let repr t = t
@@ -84,10 +93,10 @@ let record_lib_deps ~dir ~kind lib_deps =
   Record_lib_deps
     (dir,
      List.concat_map lib_deps ~f:(function
-       | Jbuild_types.Lib_dep.Direct s -> [(s, kind)]
+       | Jbuild.Lib_dep.Direct s -> [(s, kind)]
        | Select { choices; _ } ->
          List.concat_map choices ~f:(fun c ->
-           String_set.elements c.Jbuild_types.Lib_dep.required
+           String_set.elements c.Jbuild.Lib_dep.required
            |> List.map ~f:(fun d -> (d, Optional))))
      |> String_map.of_alist_reduce ~f:merge_lib_dep_kind)
 
@@ -124,12 +133,17 @@ let rec all = function
 let path p = Paths (Pset.singleton p)
 let paths ps = Paths (Pset.of_list ps)
 let path_set ps = Paths ps
-let paths_glob ~dir re = Paths_glob (dir, re)
+let paths_glob ~dir re = Paths_glob (ref (G_unevaluated (dir, re)))
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths t
 
 let contents p = Contents p
 let lines_of p = Lines_of p
+
+let strings p =
+  lines_of p
+  >>^ fun l ->
+  List.map l ~f:Scanf.unescaped
 
 let read_sexp p =
   contents p
@@ -170,7 +184,8 @@ let files_recursively_in ~dir ~file_tree =
     | None -> (Path.root, dir)
     | Some (ctx_dir, src_dir) -> (ctx_dir, src_dir)
   in
-  path_set (File_tree.files_recursively_in file_tree dir ~prefix_with)
+  let paths = File_tree.files_recursively_in file_tree dir ~prefix_with in
+  path_set paths >>^ fun _ -> paths
 
 let store_vfile spec = Store_vfile spec
 
@@ -179,7 +194,7 @@ let get_prog (prog : _ Prog_spec.t) =
   | Dep p -> path p >>> arr (fun _ -> p)
   | Dyn f -> arr f >>> dyn_paths (arr (fun x -> [x]))
 
-let prog_and_args ~dir prog args =
+let prog_and_args ?(dir=Path.root) prog args =
   Paths (Arg_spec.add_deps args Pset.empty)
   >>>
   (get_prog prog &&&
@@ -200,89 +215,54 @@ let run ~context ?(dir=context.Context.build_dir) ?stdout_to ?(extra_targets=[])
   prog_and_args ~dir prog args
   >>>
   Targets targets
-  >>^  (fun (prog, args) ->
-    let action : Action.Mini_shexp.t = Run (prog, args) in
+  >>^ (fun (prog, args) ->
+    let action : Action.t = Run (prog, args) in
     let action =
       match stdout_to with
       | None      -> action
       | Some path -> Redirect (Stdout, path, action)
     in
-    { Action.
-      dir
-    ; context = Some context
-    ; action
-    })
+    Action.Chdir (dir, action))
 
-let action ~context ?(dir=context.Context.build_dir) ~targets action =
+let action ?dir ~targets action =
   Targets targets
-  >>^ fun () ->
-  { Action. context = Some context; dir; action  }
+  >>^ fun _ ->
+  match dir with
+  | None -> action
+  | Some dir -> Action.Chdir (dir, action)
 
-let action_dyn ~context ?(dir=context.Context.build_dir) ~targets () =
+let action_dyn ?dir ~targets () =
   Targets targets
   >>^ fun action ->
-  { Action. context = Some context; dir; action  }
-
-let action_context_independent ?(dir=Path.root) ~targets action =
-  Targets targets
-  >>^ fun () ->
-  { Action. context = None; dir; action  }
+  match dir with
+  | None -> action
+  | Some dir -> Action.Chdir (dir, action)
 
 let update_file fn s =
-  action_context_independent ~targets:[fn] (Update_file (fn, s))
+  action ~targets:[fn] (Update_file (fn, s))
 
 let update_file_dyn fn =
   Targets [fn]
   >>^ fun s ->
-  { Action.
-    context = None
-  ; dir     = Path.root
-  ; action  = Update_file (fn, s)
-  }
+  Action.Update_file (fn, s)
 
 let copy ~src ~dst =
   path src >>>
-  action_context_independent ~targets:[dst] (Copy (src, dst))
+  action ~targets:[dst] (Copy (src, dst))
 
 let symlink ~src ~dst =
   path src >>>
-  action_context_independent ~targets:[dst] (Symlink (src, dst))
+  action ~targets:[dst] (Symlink (src, dst))
 
 let create_file fn =
-  action_context_independent ~targets:[fn] (Create_file fn)
+  action ~targets:[fn] (Create_file fn)
 
-let and_create_file fn =
-  Targets [fn]
-  >>^ fun (action : Action.t) ->
-  { action with
-    action = Progn [action.action; Create_file fn]
-  }
+let remove_tree dir =
+  arr (fun _ -> Action.Remove_tree dir)
 
-(*
-   {[
-     let progn ts =
-       all ts >>^ fun (actions : Action.t list) ->
-       match actions with
-       | [] ->
-         { Action.
-           context = None
-         ; dir     = Path.root
-         ; action  = Progn []
-         }
-       | first :: rest ->
-         let rest =
-           List.map rest ~f:(fun a ->
-             (match first.context, a.context with
-              | None, None -> ()
-              | Some c1, Some c2 when c1.name = c2.name -> ()
-              | _ ->
-                Sexp.code_error "Build.progn"
-                  [ "actions", Sexp.To_sexp.list Action.sexp_of_t actions ]);
-             if first.dir = a.dir then
-               a.action
-             else
-               Chdir (a.dir, a.action))
-         in
-         { first with action = Progn (first :: rest) }
-   ]}
-*)
+let mkdir dir =
+  arr (fun _ -> Action.Mkdir dir)
+
+let progn ts =
+  all ts >>^ fun actions ->
+  Action.Progn actions

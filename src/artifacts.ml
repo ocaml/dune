@@ -1,24 +1,20 @@
 open Import
-open Jbuild_types
+open Jbuild
 
 type t =
   { context    : Context.t
-  ; provides   : Path.t String_map.t
-  ; local_bins : String_set.t
+  ; local_bins : Path.t String_map.t
   ; local_libs : Public_lib.t String_map.t
   }
 
-let create context stanzas =
-  let local_bins, local_libs, provides =
-    List.fold_left stanzas ~init:(String_set.empty, String_map.empty, String_map.empty)
-      ~f:(fun acc (dir, stanzas) ->
-        List.fold_left stanzas ~init:acc
-          ~f:(fun (local_bins, local_libs, provides) stanza ->
+let create (context : Context.t) l ~f =
+  let bin_dir = Config.local_install_bin_dir ~context:context.name in
+  let local_bins, local_libs =
+    List.fold_left l ~init:(String_map.empty, String_map.empty)
+      ~f:(fun acc x ->
+        List.fold_left (f x) ~init:acc
+          ~f:(fun (local_bins, local_libs) stanza ->
             match (stanza : Stanza.t) with
-            | Provides { name; file } ->
-              (local_bins,
-               local_libs,
-               String_map.add provides ~key:name ~data:(Path.relative dir file))
             | Install { section = Bin; files; _ } ->
               (List.fold_left files ~init:local_bins
                  ~f:(fun acc { Install_conf. src; dst } ->
@@ -27,18 +23,36 @@ let create context stanzas =
                      | Some s -> s
                      | None -> Filename.basename src
                    in
-                   String_set.add name acc),
-               local_libs,
-               provides)
+                   let key =
+                     if Sys.win32 && Filename.extension name = ".exe" then
+                       String.sub name ~pos:0 ~len:(String.length name - 4)
+                     else
+                       name
+                   in
+                   let in_bin_dir =
+                     let fn =
+                       if Sys.win32 then
+                         match Filename.extension src with
+                         | ".exe" | ".bc" ->
+                           if Filename.extension name <> ".exe" then
+                             name ^ ".exe"
+                           else
+                             name
+                         | _ -> name
+                       else
+                         name
+                     in
+                     Path.relative bin_dir fn
+                   in
+                   String_map.add acc ~key ~data:in_bin_dir),
+               local_libs)
             | Library { public = Some pub; _ } ->
               (local_bins,
-               String_map.add local_libs ~key:pub.name ~data:pub,
-               provides)
+               String_map.add local_libs ~key:pub.name ~data:pub)
             | _ ->
-              (local_bins, local_libs, provides)))
+              (local_bins, local_libs)))
   in
   { context
-  ; provides
   ; local_bins
   ; local_libs
   }
@@ -47,22 +61,19 @@ let binary t ?hint ?(in_the_tree=true) name =
   if not (Filename.is_relative name) then
     Ok (Path.absolute name)
   else if in_the_tree then begin
-    if String_set.mem name t.local_bins then
-      Ok (Path.relative (Config.local_install_bin_dir ~context:t.context.name) name)
-    else
-      match String_map.find name t.provides with
+    match String_map.find name t.local_bins with
+    | Some path -> Ok path
+    | None ->
+      match Context.which t.context name with
       | Some p -> Ok p
       | None ->
-        match Context.which t.context name with
-        | Some p -> Ok p
-        | None ->
-          Error
-            { fail = fun () ->
-                Utils.program_not_found name
-                  ~context:t.context.name
-                  ?hint
-                  ~in_the_tree:true
-            }
+        Error
+          { fail = fun () ->
+              Utils.program_not_found name
+                ~context:t.context.name
+                ?hint
+                ~in_the_tree:true
+          }
   end else begin
     match Context.which t.context name with
     | Some p -> Ok p
@@ -76,7 +87,7 @@ let binary t ?hint ?(in_the_tree=true) name =
         }
   end
 
-let file_of_lib ?(use_provides=false) t ~from ~lib ~file =
+let file_of_lib t ~from ~lib ~file =
   match String_map.find lib t.local_libs with
   | Some { package; sub_dir; _ } ->
     let lib_install_dir =
@@ -95,28 +106,19 @@ let file_of_lib ?(use_provides=false) t ~from ~lib ~file =
     | Some pkg ->
       Ok (Path.relative pkg.dir file)
     | None ->
-      match
-        if use_provides then
-          String_map.find (sprintf "%s:%s" lib file) t.provides
-        else
-          None
-      with
-      | Some p -> Ok p
-      | None ->
-        Error
-          { fail = fun () ->
-              ignore (Findlib.find_exn t.context.findlib lib
-                        ~required_by:[Utils.jbuild_name_in ~dir:from]
-                      : Findlib.package);
-              assert false
-          }
+      Error
+        { fail = fun () ->
+            ignore (Findlib.find_exn t.context.findlib lib
+                      ~required_by:[Utils.jbuild_name_in ~dir:from]
+                    : Findlib.package);
+            assert false
+        }
 
-let file_of_lib t ?use_provides ~from name =
+let file_of_lib t ~loc ~from name =
   let lib, file =
     match String.lsplit2 name ~on:':' with
     | None ->
-      Loc.fail (Loc.in_file (Path.to_string (Path.relative from "jbuild")))
-            "invalid ${lib:...} form: %s" name
+      Loc.fail loc "invalid ${lib:...} form: %s" name
     | Some x -> x
   in
-  (lib, file_of_lib t ~from ~lib ~file ?use_provides)
+  (lib, file_of_lib t ~from ~lib ~file)

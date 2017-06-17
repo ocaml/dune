@@ -6,7 +6,7 @@
 *)
 
 open Import
-open Jbuild_types
+open Jbuild
 
 (** A directory with a jbuild *)
 module Dir_with_jbuild : sig
@@ -14,7 +14,7 @@ module Dir_with_jbuild : sig
     { src_dir : Path.t
     ; ctx_dir : Path.t (** [_build/context-name/src_dir] *)
     ; stanzas : Stanzas.t
-    ; pkgs    : Pkgs.t
+    ; scope   : Scope.t
     }
 end
 
@@ -26,7 +26,7 @@ val create
   -> dirs_with_dot_opam_files:Path.Set.t
   -> file_tree:File_tree.t
   -> packages:Package.t String_map.t
-  -> stanzas:(Path.t * Pkgs.t * Stanzas.t) list
+  -> stanzas:(Path.t * Scope.t * Stanzas.t) list
   -> filter_out_optional_stanzas_with_missing_deps:bool
   -> t
 
@@ -39,8 +39,7 @@ val artifacts : t -> Artifacts.t
 val stanzas_to_consider_for_install : t -> (Path.t * Stanza.t) list
 val cxx_flags : t -> string list
 
-val expand_var_no_root : t -> string -> string option
-val expand_vars : t -> dir:Path.t -> String_with_vars.t -> string
+val expand_vars : t -> scope:Scope.t -> dir:Path.t -> String_with_vars.t -> string
 
 val add_rule : t -> ?sandbox:bool -> (unit, Action.t) Build.t -> unit
 val add_rules : t -> ?sandbox:bool -> (unit, Action.t) Build.t list -> unit
@@ -100,6 +99,9 @@ module Libs : sig
       extension [ext] of the libraries given as input. *)
   val file_deps : t -> ext:string -> (Lib.t list, Lib.t list) Build.t
 
+  (** Same as [file_deps] but for a single known library *)
+  val static_file_deps : ext:string -> Lib.Internal.t -> ('a, 'a) Build.t
+
   (** Setup the alias that depends on all files with a given extension for a library *)
   val setup_file_deps_alias : t -> Lib.Internal.t -> ext:string -> Path.t list -> unit
 
@@ -112,24 +114,30 @@ end
 
 (** Interpret dependencies written in jbuild files *)
 module Deps : sig
-  val interpret : t -> dir:Path.t -> Dep_conf.t list -> (unit, unit) Build.t
-
-  (** Interpret plain dependencies, replacing other (glob_files, files_recursively_in,
-      ...) by None *)
-  val only_plain_files : t -> dir:Path.t -> Dep_conf.t list -> Path.t option list
+  (** Evaluates to the actual list of dependencies, ignoring aliases *)
+  val interpret
+    :  t
+    -> scope:Scope.t
+    -> dir:Path.t
+    -> Dep_conf.t list
+    -> (unit, Path.t list) Build.t
 end
 
 (** Interpret action written in jbuild files *)
 module Action : sig
+  type targets =
+    | Static of Path.t list
+    | Infer
+
+  (** The arrow takes as input the list of actual dependencies *)
   val run
     :  t
-    -> Action.Mini_shexp.Unexpanded.t
+    -> Action.Unexpanded.t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
-    -> targets:Path.t list
-    -> deps:Path.t option list
-    -> package_context:Pkgs.t
-    -> (unit, Action.t) Build.t
+    -> targets:targets
+    -> scope:Scope.t
+    -> (Path.t list, Action.t) Build.t
 end
 
 (** Preprocessing stuff *)
@@ -143,7 +151,7 @@ module PP : sig
     -> preprocess:Preprocess_map.t
     -> preprocessor_deps:Dep_conf.t list
     -> lib_name:string option
-    -> package_context:Pkgs.t
+    -> scope:Scope.t
     -> Module.t String_map.t
 
   (** Get a path to a cached ppx driver *)

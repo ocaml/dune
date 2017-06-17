@@ -15,8 +15,9 @@ In a directory of your choice, write this ``jbuild`` file:
 
     (jbuild_version 1)
 
-    (executables
-     ((names (hello_world))))
+    ;; This declare the hello_world executable implemented by hello_world.ml
+    (executable
+     ((name hello_world)))
 
 This ``hello_world.ml`` file:
 
@@ -41,15 +42,48 @@ In a directory of your choice, write this ``jbuild`` file:
 
     (jbuild_version 1)
 
-    (executables
-     ((names (hello_world))
+    (executable
+     ((name hello_world)
       (libraries (lwt.unix))))
 
 This ``hello_world.ml`` file:
 
-.. code:: scheme
+.. code:: ocaml
 
     Lwt_main.run (Lwt_io.printf "Hello, world!\n")
+
+And build it with:
+
+.. code:: bash
+
+    jbuilder build hello_world.exe
+
+The executable will be built as ``_build/default/hello_world.exe``
+
+Building a hello world program using Core and Jane Street PPXs
+==============================================================
+
+Write this jbuild:
+
+.. code:: scheme
+
+    (jbuild_version 1)
+
+    (executable
+     ((name hello_world)
+      (libraries (core))
+      (preprocess (pps (ppx_jane)))
+     )
+
+This ``hello_world.ml`` file:
+
+.. code:: ocaml
+
+    open Core
+
+    let () =
+      Sexp.to_string_hum [%sexp ([3;4;5] : int list)]
+      |> print_endline
 
 And build it with:
 
@@ -83,13 +117,13 @@ to the ``(libraries ...)`` field.
 Using cppo
 ==========
 
-Add this field to your ``library`` or ``executables`` stanzas:
+Add this field to your ``library`` or ``executable`` stanzas:
 
 .. code:: scheme
 
     (preprocess (action (run ${bin:cppo} -V OCAML:${ocaml_version} ${<})))
 
-Additionnaly, if you are include a ``config.h`` file, you need to
+Additionally, if you are include a ``config.h`` file, you need to
 declare the dependency to this file via:
 
 .. code:: scheme
@@ -157,8 +191,8 @@ Then create a ``config`` subdirectory and write this ``jbuild``:
 
     (jbuild_version 1)
 
-    (executables
-     ((names (discover))
+    (executable
+     ((name discover)
       (libraries (base stdio configurator))))
 
 as well as this ``discover.ml`` file:
@@ -222,3 +256,28 @@ And run the tests with:
 .. code:: bash
 
     jbuilder runtest
+
+Building a custom toplevel
+==========================
+
+A toplevel is simply an executable calling ``Topmain.main ()`` and
+linked with the compiler libraries and ``-linkall``. Moreover,
+currently toplevels can only be built in bytecode.
+
+As a result, write this in your ``jbuild`` file:
+
+.. code:: scheme
+
+    (jbuild_version 1)
+
+    (executable
+     ((name       mytoplevel)
+      (libraries  (compiler-libs.toplevel mylib))
+      (link_flags (-linkall))
+      (modes      (byte))))
+
+And write this in ``mytoplevel.ml``
+
+.. code:: ocaml
+
+    let () = Topmain.main ()

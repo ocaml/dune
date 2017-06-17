@@ -36,7 +36,7 @@ type t =
   ; specific : string list Mode.Dict.t
   }
 
-let make { Jbuild_types.Buildable. flags; ocamlc_flags; ocamlopt_flags; _ } =
+let make { Jbuild.Buildable. flags; ocamlc_flags; ocamlopt_flags; _ } =
   let eval = Ordered_set_lang.eval_with_standard in
   { common   = eval flags ~standard:(default_flags ())
   ; specific =

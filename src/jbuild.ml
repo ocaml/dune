@@ -11,12 +11,10 @@ open Sexp.Of_sexp
 module Jbuild_version = struct
   type t =
     | V1
-    | Vjs
 
   let t =
     enum
       [ "1", V1
-      ; "jane_street", Vjs
       ]
 
   let latest_stable = V1
@@ -65,11 +63,34 @@ let file_in_current_dir sexp =
       of_sexp_error sexp "file in current directory expected";
     fn
 
-module Pkgs = struct
+module Scope = struct
   type t =
-    { visible_packages : Package.t String_map.t
-    ; closest_packages : Package.t list
+    { name     : string option
+    ; packages : Package.t String_map.t
+    ; root     : Path.t
     }
+
+  let empty =
+    { name     = None
+    ; packages = String_map.empty
+    ; root     = Path.root
+    }
+
+  let make = function
+    | [] -> empty
+    | pkg :: rest as pkgs ->
+      let name =
+        List.fold_left rest ~init:pkg.Package.name ~f:(fun acc pkg ->
+          min acc pkg.Package.name)
+      in
+      let root = pkg.path in
+      List.iter rest ~f:(fun pkg -> assert (pkg.Package.path = root));
+      { name = Some name
+      ; packages =
+          String_map.of_alist_exn (List.map pkgs ~f:(fun pkg ->
+            pkg.Package.name, pkg))
+      ; root
+      }
 
   let package_listing packages =
     let longest_pkg = List.longest_map packages ~f:(fun p -> p.Package.name) in
@@ -79,15 +100,15 @@ module Pkgs = struct
            (Path.to_string (Path.relative pkg.path (pkg.name ^ ".opam")))))
 
   let default t =
-    match t.closest_packages with
+    match String_map.values t.packages with
     | [pkg] -> Ok pkg
     | [] ->
       Error
-        "no packages are defined here.\n\
+        "The current scope defines no packages.\n\
          What do you want me to do with this (install ...) stanzas?.\n\
          You need to add a <package>.opam file at the root \
          of your project so that\n\
-         I know that you want to install things as part of pacakge <package>."
+         I know that you want to install things as part of package <package>."
     | _ :: _ :: _ ->
       Error
         (sprintf
@@ -95,28 +116,29 @@ module Pkgs = struct
             stanza is for. I have the choice between these ones:\n\
             %s\n\
             You need to add a (package ...) field in this (install ...) stanza"
-           (package_listing t.closest_packages))
+           (package_listing (String_map.values t.packages)))
 
   let resolve t name =
-    match String_map.find name t.visible_packages with
+    match String_map.find name t.packages with
     | Some pkg ->
       Ok pkg
     | None ->
-      if String_map.is_empty t.visible_packages then
+      if String_map.is_empty t.packages then
         Error (sprintf
-                 "package %S is not visible here.\n\
-                  In fact I know of no packages here, \
-                  in order for me to know that package\n\
-                  %S exist, you need to add a %S file at the root of your project."
-                 name name (name ^ ".opam"))
+                 "You cannot declare items to be installed without \
+                  adding a <package>.opam file at the root of your project.\n\
+                  To declare elements to be installed as part of package %S, \
+                  add a %S file at the root of your project."
+                 name (name ^ ".opam"))
       else
         Error (sprintf
-                 "package %S is not visible here.\n\
-                  The only packages I know of in this directory are:\n\
+                 "The current scope doesn't define package %S.\n\
+                  The only packages for which you can declare \
+                  elements to be installed in this directory are:\n\
                   %s%s"
                  name
-                 (package_listing (String_map.values t.visible_packages))
-                 (hint name (String_map.keys t.visible_packages)))
+                 (package_listing (String_map.values t.packages))
+                 (hint name (String_map.keys t.packages)))
 
   let package t sexp =
     match resolve t (string sexp) with
@@ -130,35 +152,21 @@ module Pkgs = struct
 end
 
 
-module Raw_string () : sig
-  type t = private string
-  val to_string : t -> string
+module Pp : sig
+  type t
   val of_string : string -> t
-  val t : t Sexp.Of_sexp.t
+  val to_string : t -> string
+  val compare : t -> t -> int
 end = struct
   type t = string
-  let to_string t = t
-  let of_string t = t
-  let t = string
-end
-
-module Raw_command = Raw_string ()
-
-module Pp = struct
-  include Raw_string ()
 
   let of_string s =
     assert (not (String.is_prefix s ~prefix:"-"));
-    of_string s
+    s
 
-  let t sexp =
-    let s = string sexp in
-    if String.is_prefix s ~prefix:"-" then
-      of_sexp_error sexp "flag not allowed here"
-    else
-      of_string s
+  let to_string t = t
 
-  let compare : t -> t -> int = Pervasives.compare
+  let compare = String.compare
 end
 
 module Pp_or_flags = struct
@@ -225,13 +233,13 @@ module Preprocess = struct
   type pps = { pps : Pp.t list; flags : string list }
   type t =
     | No_preprocessing
-    | Action of Action.Mini_shexp.Unexpanded.t
+    | Action of Action.Unexpanded.t
     | Pps    of pps
 
   let t =
     sum
       [ cstr "no_preprocessing" nil No_preprocessing
-      ; cstr "action" (Action.Mini_shexp.Unexpanded.t @> nil) (fun x -> Action x)
+      ; cstr "action" (Action.Unexpanded.t @> nil) (fun x -> Action x)
       ; cstr "pps" (list Pp_or_flags.t @> nil) (fun l ->
           let pps, flags = Pp_or_flags.split l in
           Pps { pps; flags })
@@ -242,20 +250,25 @@ module Preprocess = struct
     | _ -> []
 end
 
-module Per_file = struct
+module Per_module = struct
   type 'a t =
-    | For_all  of 'a
-    | Per_file of 'a String_map.t
+    | For_all    of 'a
+    | Per_module of 'a String_map.t
 
   let t a sexp =
     match sexp with
-    | List (_, Atom (_, "per_file") :: rest) -> begin
+    | List (_, Atom (loc, ("per_module" | "per_file" as kwd)) :: rest) -> begin
+        if kwd = "per_file" then
+          Loc.warn loc
+            "'per_file' was renamed 'per_module'. 'per_file' will be re-purposed \
+             in a future version and will take a list of  file names rather \
+             than module names.";
         List.concat_map rest ~f:(fun sexp ->
           let pp, names = pair a module_names sexp in
           List.map (String_set.elements names) ~f:(fun name -> (name, pp)))
         |> String_map.of_alist
         |> function
-        | Ok map -> Per_file map
+        | Ok map -> Per_module map
         | Error (name, _, _) ->
           of_sexp_error sexp (sprintf "module %s present in two different sets" name)
       end
@@ -263,13 +276,13 @@ module Per_file = struct
 end
 
 module Preprocess_map = struct
-  type t = Preprocess.t Per_file.t
-  let t = Per_file.t Preprocess.t
+  type t = Preprocess.t Per_module.t
+  let t = Per_module.t Preprocess.t
 
   let find module_name (t : t) =
     match t with
-    | For_all  pp  -> pp
-    | Per_file map -> String_map.find_default module_name map ~default:No_preprocessing
+    | For_all pp -> pp
+    | Per_module map -> String_map.find_default module_name map ~default:No_preprocessing
 
   let default : t = For_all No_preprocessing
 
@@ -277,7 +290,7 @@ module Preprocess_map = struct
 
   let pps : t -> _ = function
     | For_all pp -> Preprocess.pps pp
-    | Per_file map ->
+    | Per_module map ->
       String_map.fold map ~init:Pp_set.empty ~f:(fun ~key:_ ~data:pp acc ->
         Pp_set.union acc (Pp_set.of_list (Preprocess.pps pp)))
       |> Pp_set.elements
@@ -428,7 +441,6 @@ module Buildable = struct
     ; libraries                : Lib_dep.t list
     ; preprocess               : Preprocess_map.t
     ; preprocessor_deps        : Dep_conf.t list
-    ; lint                     : Lint.t Per_file.t option
     ; flags                    : Ordered_set_lang.t
     ; ocamlc_flags             : Ordered_set_lang.t
     ; ocamlopt_flags           : Ordered_set_lang.t
@@ -440,8 +452,10 @@ module Buildable = struct
     >>= fun preprocess ->
     field "preprocessor_deps" (list Dep_conf.t) ~default:[]
     >>= fun preprocessor_deps ->
-    field_o "lint" (Per_file.t Lint.t)
-    >>= fun lint ->
+    (* CR-someday jdimino: remove this. There are still a few Jane Street packages using
+       this *)
+    field_o "lint" (Per_module.t Lint.t)
+    >>= fun _lint ->
     field "modules" (fun s -> Ordered_set_lang.(map (t s)) ~f:String.capitalize_ascii)
       ~default:Ordered_set_lang.standard
     >>= fun modules ->
@@ -454,7 +468,6 @@ module Buildable = struct
     return
       { preprocess
       ; preprocessor_deps
-      ; lint
       ; modules
       ; libraries
       ; flags
@@ -466,14 +479,14 @@ module Buildable = struct
   let single_preprocess t =
     match t.preprocess with
     | For_all pp -> pp
-    | Per_file _ -> No_preprocessing
+    | Per_module _ -> No_preprocessing
 end
 
 module Public_lib = struct
   type t =
-    { name    : string (* Full public name *)
-    ; package : Package.t (* Package it is part of *)
-    ; sub_dir : string option (* Subdirectory inside the installation directory *)
+    { name    : string
+    ; package : Package.t
+    ; sub_dir : string option
     }
 
   let public_name_field pkgs =
@@ -483,7 +496,7 @@ module Public_lib = struct
         match String.split s ~on:'.' with
         | [] -> assert false
         | pkg :: rest ->
-          match Pkgs.resolve pkgs pkg with
+          match Scope.resolve pkgs pkg with
           | Ok pkg ->
             Ok (Some
                   { package = pkg
@@ -514,13 +527,12 @@ module Library = struct
     ; synopsis                 : string option
     ; install_c_headers        : string list
     ; ppx_runtime_libraries    : string list
-    ; modes                    : Mode.t list
+    ; modes                    : Mode.Dict.Set.t
     ; kind                     : Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
     ; c_names                  : string list
     ; cxx_flags                : Ordered_set_lang.Unexpanded.t
     ; cxx_names                : string list
-    ; includes                 : String_with_vars.t list
     ; library_flags            : String_with_vars.t list
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
@@ -546,7 +558,7 @@ module Library = struct
        field      "library_flags" (list String_with_vars.t) ~default:[]      >>= fun library_flags            ->
        field_oslu "c_library_flags"                                          >>= fun c_library_flags          ->
        field      "virtual_deps" (list string) ~default:[]                   >>= fun virtual_deps             ->
-       field      "modes" (list Mode.t) ~default:Mode.all                    >>= fun modes                    ->
+       field      "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all         >>= fun modes                    ->
        field      "kind" Kind.t ~default:Kind.Normal                         >>= fun kind                     ->
        field      "wrapped" bool ~default:true                               >>= fun wrapped                  ->
        field_b    "optional"                                                 >>= fun optional                 ->
@@ -564,7 +576,6 @@ module Library = struct
          ; c_flags
          ; cxx_names
          ; cxx_flags
-         ; includes = []
          ; library_flags
          ; c_library_flags
          ; self_build_stubs_archive
@@ -612,7 +623,7 @@ module Install_conf = struct
     record
       (field   "section" Install.Section.t >>= fun section ->
        field   "files"   (list file)       >>= fun files ->
-       Pkgs.package_field pkgs             >>= fun package ->
+       Scope.package_field pkgs             >>= fun package ->
        return
          { section
          ; files
@@ -625,6 +636,7 @@ module Executables = struct
     { names            : string list
     ; link_executables : bool
     ; link_flags       : string list
+    ; modes            : Mode.Dict.Set.t
     ; buildable        : Buildable.t
     }
 
@@ -632,19 +644,28 @@ module Executables = struct
     Buildable.v1 >>= fun buildable ->
     field   "link_executables"   bool ~default:true >>= fun link_executables ->
     field   "link_flags"         (list string) ~default:[] >>= fun link_flags ->
+    map_validate (field "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all)
+      ~f:(fun modes ->
+        if Mode.Dict.Set.is_empty modes then
+          Error "No compilation mode defined."
+        else
+          Ok modes)
+    >>= fun modes ->
     let t =
       { names
       ; link_executables
       ; link_flags
+      ; modes
       ; buildable
       }
     in
     let to_install =
+      let ext = if modes.native then ".exe" else ".bc" in
       List.map2 names public_names
         ~f:(fun name pub ->
           match pub with
           | None -> None
-          | Some pub -> Some ({ Install_conf. src = name ^ ".exe"; dst = Some pub }))
+          | Some pub -> Some ({ Install_conf. src = name ^ ext; dst = Some pub }))
       |> List.filter_map ~f:(fun x -> x)
     in
     match to_install with
@@ -656,7 +677,7 @@ module Executables = struct
            (if multi then "s" else "");
          return (t, None))
     | files ->
-      Pkgs.package_field pkgs >>= fun package ->
+      Scope.package_field pkgs >>= fun package ->
       return (t, Some { Install_conf. section = Bin; files; package })
 
   let public_name sexp =
@@ -686,93 +707,111 @@ module Executables = struct
 end
 
 module Rule = struct
+  module Targets = struct
+    type t =
+      | Static of string list (* List of files in the current directory *)
+      | Infer
+  end
+
   type t =
-    { targets : string list (** List of files in the current directory *)
+    { targets : Targets.t
     ; deps    : Dep_conf.t list
-    ; action  : Action.Mini_shexp.Unexpanded.t
+    ; action  : Action.Unexpanded.t
     }
 
-  let v1 =
-    record
-      (field "targets" (list file_in_current_dir)    >>= fun targets ->
-       field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
-       field "action"  Action.Mini_shexp.Unexpanded.t      >>= fun action ->
-       return { targets; deps; action })
+  let v1 sexp =
+    match sexp with
+    | List (_, (Atom _ :: _)) ->
+      { targets = Infer
+      ; deps    = []
+      ; action  = Action.Unexpanded.t sexp
+      }
+    | _ ->
+      record
+        (field "targets" (list file_in_current_dir)    >>= fun targets ->
+         field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
+         field "action"  Action.Unexpanded.t           >>= fun action ->
+         return { targets = Static targets; deps; action })
+        sexp
 
   let ocamllex_v1 names =
-    let str s = String_with_vars.of_string s ~loc:Loc.none in
+    let module S = String_with_vars in
     List.map names ~f:(fun name ->
       let src = name ^ ".mll" in
       let dst = name ^ ".ml"  in
-      { targets = [dst]
-      ; deps    = [File (str src)]
+      { targets = Static [dst]
+      ; deps    = [File (S.virt_text __POS__ src)]
       ; action  =
           Chdir
-            (str "${ROOT}",
-             Run (str "${bin:ocamllex}",
-                  [str "-q"; str "-o"; str "${@}"; str "${<}"]))
+            (S.virt_var __POS__ "ROOT",
+             Run (S.virt_text __POS__ "ocamllex",
+                  [ S.virt_text __POS__ "-q"
+                  ; S.virt_text __POS__ "-o"
+                  ; S.virt_var __POS__ "@"
+                  ; S.virt_var __POS__"<"
+                  ]))
       })
 
   let ocamlyacc_v1 names =
-    let str s = String_with_vars.of_string s ~loc:Loc.none in
+    let module S = String_with_vars in
     List.map names ~f:(fun name ->
       let src = name ^ ".mly" in
-      { targets = [name ^ ".ml"; name ^ ".mli"]
-      ; deps    = [File (str src)]
+      { targets = Static [name ^ ".ml"; name ^ ".mli"]
+      ; deps    = [File (S.virt_text __POS__ src)]
       ; action  =
           Chdir
-            (str "${ROOT}",
-             Run (str "${bin:ocamlyacc}",
-                  [str "${<}"]))
+            (S.virt_var __POS__ "ROOT",
+             Run (S.virt_text __POS__ "ocamlyacc",
+                  [S.virt_var __POS__ "<"]))
       })
 end
 
 module Menhir = struct
   type t =
-    { base : string option
-    ; flags : String_with_vars.t list
-    ; modules: string list
+    { merge_into : string option
+    ; flags      : String_with_vars.t list
+    ; modules    : string list
     }
 
   let v1 =
     record
-      (field_o "merge_into" string >>= fun base ->
+      (field_o "merge_into" string >>= fun merge_into ->
        field "flags" (list String_with_vars.t) ~default:[] >>= fun flags ->
        field "modules" (list string) >>= fun modules ->
        return
-         { base
+         { merge_into
          ; flags
          ; modules
          }
       )
 
   let v1_to_rule t =
-    let str s = String_with_vars.of_string s ~loc:Loc.none in
+    let module S = String_with_vars in
     let targets n = [n ^ ".ml"; n ^ ".mli"] in
-    match t.base with
+    match t.merge_into with
     | None ->
       List.map t.modules ~f:(fun name ->
         let src = name ^ ".mly" in
         { Rule.
-          targets = targets name
-        ; deps    = [Dep_conf.File (str src)]
+          targets = Static (targets name)
+        ; deps    = [Dep_conf.File (S.virt_text __POS__ src)]
         ; action  =
             Chdir
-              (str "${ROOT}",
-               Run (str "${bin:menhir}",
-                    t.flags @ [str "${<}"]))
+              (S.virt_var __POS__ "ROOT",
+               Run (S.virt_text __POS__ "menhir",
+                    t.flags @ [S.virt_var __POS__ "<"]))
         })
-    | Some base ->
-      let mly m = str (m ^ ".mly") in
+    | Some merge_into ->
+      let mly m = S.virt_text __POS__ (m ^ ".mly") in
       [{ Rule.
-         targets = targets base
+         targets = Static (targets merge_into)
        ; deps    = List.map ~f:(fun m -> Dep_conf.File (mly m)) t.modules
        ; action  =
            Chdir
-             (str "${ROOT}",
-              Run (str "${bin:menhir}",
-                   [ str "--base"
-                   ; str base
+             (S.virt_var __POS__ "ROOT",
+              Run (S.virt_text __POS__ "menhir",
+                   [ S.virt_text __POS__ "--base"
+                   ; S.virt_text __POS__ merge_into
                    ]
                    @ t.flags
                    @ (List.map ~f:mly t.modules))
@@ -786,7 +825,7 @@ module Provides = struct
     ; file : string
     }
 
-  let v1 sexp =
+(*  let v1 sexp =
     match sexp with
     | Atom (_, s) ->
       { name = s
@@ -800,14 +839,14 @@ module Provides = struct
       ; file
       }
     | sexp ->
-      of_sexp_error sexp "[<name>] or [<name> (file <file>)] expected"
+    of_sexp_error sexp "[<name>] or [<name> (file <file>)] expected"*)
 end
 
 module Alias_conf = struct
   type t =
     { name  : string
     ; deps  : Dep_conf.t list
-    ; action : Action.Mini_shexp.Unexpanded.t option
+    ; action : Action.Unexpanded.t option
     ; package : Package.t option
     }
 
@@ -815,8 +854,8 @@ module Alias_conf = struct
     record
       (field "name" string                              >>= fun name ->
        field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
-       field_o "package" (Pkgs.package pkgs)            >>= fun package ->
-       field_o "action" Action.Mini_shexp.Unexpanded.t  >>= fun action ->
+       field_o "package" (Scope.package pkgs)            >>= fun package ->
+       field_o "action" Action.Unexpanded.t  >>= fun action ->
        return
          { name
          ; deps
@@ -847,7 +886,7 @@ module Stanza = struct
       ; cstr "executable"  (Executables.v1_single pkgs @> nil) execs
       ; cstr "executables" (Executables.v1_multi  pkgs @> nil) execs
       ; cstr "rule"        (Rule.v1 @> nil)              (fun x -> [Rule        x])
-      ; cstr "ocamllex"    (list string @> nil)          (fun x -> rules (Rule.ocamllex_v1 x))
+      ; cstr "ocamllex"    (list string @> nil)          (fun x -> rules (Rule.ocamllex_v1  x))
       ; cstr "ocamlyacc"   (list string @> nil)          (fun x -> rules (Rule.ocamlyacc_v1 x))
       ; cstr "menhir"      (Menhir.v1 @> nil)            (fun x -> rules (Menhir.v1_to_rule x))
       ; cstr "install"     (Install_conf.v1 pkgs @> nil) (fun x -> [Install     x])
@@ -856,9 +895,8 @@ module Stanza = struct
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]
 
-  let select : Jbuild_version.t -> Pkgs.t -> t list Sexp.Of_sexp.t = function
+  let select : Jbuild_version.t -> Scope.t -> t list Sexp.Of_sexp.t = function
     | V1  -> v1
-    | Vjs -> v1
 end
 
 module Stanzas = struct

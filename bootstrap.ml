@@ -1,5 +1,4 @@
 #warnings "-40";;
-#load "unix.cma";;
 
 module Array = ArrayLabels
 module List  = ListLabels
@@ -17,6 +16,11 @@ end
 open Printf
 
 module String_set = Set.Make(String)
+
+let () =
+  match Sys.getenv "OCAMLPARAM" with
+  | s -> Printf.eprintf "OCAMLPARAM is set to %S\n%!" s
+  | exception Not_found -> ()
 
 (* Modules overriden to bootstrap faster *)
 let overridden =
@@ -157,37 +161,41 @@ let split_words s =
   in
   skip_blanks 0
 
+let read_lines fn =
+  let ic = open_in fn in
+  let rec loop ic acc =
+    match try Some (input_line ic) with End_of_file -> None with
+    | Some line -> loop ic (line :: acc)
+    | None -> List.rev acc
+  in
+  let lines = loop ic [] in
+  close_in ic;
+  lines
+
 let read_deps files =
-  let ic =
-    let cmd =
-      sprintf "%s -modules %s"
-        ocamldep (String.concat ~sep:" " files)
+  let out_fn = "boot-depends.txt" in
+  at_exit (fun () -> Sys.remove out_fn);
+  let n =
+    exec "%s -modules %s > %s"
+      ocamldep
+      (String.concat ~sep:" " files)
+      out_fn
+  in
+  if n <> 0 then exit n;
+  List.map (read_lines out_fn) ~f:(fun line ->
+    let i = String.index line ':' in
+    let unit =
+      String.sub line ~pos:0 ~len:i
+      |> Filename.basename
+      |> Filename.chop_extension
+      |> String.capitalize_ascii
     in
-    print_endline cmd;
-    Unix.open_process_in cmd
-  in
-  set_binary_mode_in ic false;
-  let rec loop acc =
-    match input_line ic with
-    | exception End_of_file ->
-      ignore (Unix.close_process_in ic);
-      acc
-    | line ->
-      let i = String.index line ':' in
-      let unit =
-        String.sub line ~pos:0 ~len:i
-        |> Filename.basename
-        |> Filename.chop_extension
-        |> String.capitalize_ascii
-      in
-      let deps =
-        split_words (String.sub line ~pos:(i + 1)
-                       ~len:(String.length line - (i + 1)))
-        |> List.filter ~f:(fun m -> String_set.mem m modules)
-      in
-      loop ((unit, deps) :: acc)
-  in
-  loop []
+    let deps =
+      split_words (String.sub line ~pos:(i + 1)
+                     ~len:(String.length line - (i + 1)))
+      |> List.filter ~f:(fun m -> String_set.mem m modules)
+    in
+    (unit, deps))
 
 let topsort deps =
   let n = List.length deps in

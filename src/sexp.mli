@@ -66,6 +66,8 @@ module Of_sexp : sig
   val of_sexp_error  : Ast.t -> string -> _
   val of_sexp_errorf : Ast.t -> ('a, unit, string, 'b) format4 -> 'a
 
+  val located : 'a t -> (Loc.t * 'a) t
+
   (* Record parsing monad *)
   type 'a record_parser
   val return : 'a -> 'a record_parser
@@ -101,6 +103,19 @@ module Of_sexp : sig
     -> ('a, 'b list -> 'c) Constructor_args_spec.t
     -> 'b t
     -> 'a
+    -> 'c Constructor_spec.t
+
+  val cstr_loc
+    :  string
+    -> ('a, 'b) Constructor_args_spec.t
+    -> (Loc.t -> 'a)
+    -> 'b Constructor_spec.t
+
+  val cstr_rest_loc
+    :  string
+    -> ('a, 'b list -> 'c) Constructor_args_spec.t
+    -> 'b t
+    -> (Loc.t -> 'a)
     -> 'c Constructor_spec.t
 
   val sum

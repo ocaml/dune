@@ -264,7 +264,8 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
        OCAML_COLOR is not supported so we use OCAMLPARAM. OCaml 4.02 doesn't support
        'color' in OCAMLPARAM, so we just don't force colors with 4.02. *)
     let ocaml_version = Scanf.sscanf version "%u.%u" (fun a b -> a, b) in
-    if Lazy.force Ansi_color.stderr_supports_colors
+    if !Clflags.capture_outputs
+    && Lazy.force Ansi_color.stderr_supports_colors
     && ocaml_version > (4, 02)
     && ocaml_version < (4, 05) then
       let value =
@@ -310,7 +311,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
     ; toplevel_path = Option.map (get_env env "OCAML_TOPLEVEL_PATH") ~f:Path.absolute
 
     ; ocaml_bin  = dir
-    ; ocaml      = Path.relative dir "ocaml"
+    ; ocaml      = Path.relative dir ("ocaml" ^ Bin.exe)
     ; ocamlc
     ; ocamlopt   = best_prog "ocamlopt"
     ; ocamldep   = get_prog  "ocamldep"
@@ -458,3 +459,9 @@ let best_mode t : Mode.t =
   match t.ocamlopt with
   | Some _ -> Native
   | None   -> Byte
+
+let cc_g (ctx : t) =
+  if !Clflags.g && ctx.ccomp_type <> "msvc" then
+    ["-g"]
+  else
+    []

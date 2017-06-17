@@ -36,14 +36,17 @@ val all : ('a, 'b) t list -> ('a, 'b list) t
 val path  : Path.t      -> ('a, 'a) t
 val paths : Path.t list -> ('a, 'a) t
 val path_set : Path.Set.t -> ('a, 'a) t
-val paths_glob : dir:Path.t -> Re.re -> ('a, 'a) t
-val files_recursively_in : dir:Path.t -> file_tree:File_tree.t -> ('a, 'a) t
+val paths_glob : dir:Path.t -> Re.re -> ('a, Path.t list) t
+val files_recursively_in : dir:Path.t -> file_tree:File_tree.t -> ('a, Path.Set.t) t
 val vpath : 'a Vspec.t  -> (unit, 'a) t
 
 val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
 
 val contents : Path.t -> ('a, string) t
 val lines_of : Path.t -> ('a, string list) t
+
+(** Read lines from a file, unescaping each line using the OCaml conventions *)
+val strings : Path.t -> ('a, string list) t
 
 (** Load an S-expression from a file *)
 val read_sexp : Path.t -> (unit, Sexp.Ast.t) t
@@ -80,7 +83,7 @@ end
 
 val run
   :  context:Context.t
-  -> ?dir:Path.t (* default: context.build_dir *)
+  -> ?dir:Path.t (* default: [context.build_dir] *)
   -> ?stdout_to:Path.t
   -> ?extra_targets:Path.t list
   -> 'a Prog_spec.t
@@ -88,24 +91,16 @@ val run
   -> ('a, Action.t) t
 
 val action
-  :  context:Context.t
-  -> ?dir:Path.t (* default: context.build_dir *)
+  :  ?dir:Path.t
   -> targets:Path.t list
-  -> Action.Mini_shexp.t
-  -> (unit, Action.t) t
+  -> Action.t
+  -> (_, Action.t) t
 
 val action_dyn
-  :  context:Context.t
-  -> ?dir:Path.t (* default: context.build_dir *)
+  :  ?dir:Path.t
   -> targets:Path.t list
   -> unit
-  -> (Action.Mini_shexp.t, Action.t) t
-
-val action_context_independent
-  :  ?dir:Path.t (* default: Path.root *)
-  -> targets:Path.t list
-  -> Action.Mini_shexp.t
-  -> (unit, Action.t) t
+  -> (Action.t, Action.t) t
 
 (** Create a file with the given contents. Do not ovewrite the file if
     it hasn't changed. *)
@@ -116,9 +111,12 @@ val copy : src:Path.t -> dst:Path.t -> (unit, Action.t) t
 
 val symlink : src:Path.t -> dst:Path.t -> (unit, Action.t) t
 
-val create_file : Path.t -> (unit, Action.t) t
+val create_file : Path.t -> (_, Action.t) t
+val remove_tree : Path.t -> (_, Action.t) t
+val mkdir : Path.t -> (_, Action.t) t
 
-val and_create_file : Path.t -> (Action.t, Action.t) t
+(** Merge a list of actions *)
+val progn : ('a, Action.t) t list -> ('a, Action.t) t
 
 type lib_dep_kind =
   | Optional
@@ -127,7 +125,7 @@ type lib_dep_kind =
 val record_lib_deps
   :  dir:Path.t
   -> kind:lib_dep_kind
-  -> Jbuild_types.Lib_dep.t list
+  -> Jbuild.Lib_dep.t list
   -> ('a, 'a) t
 
 type lib_deps = lib_dep_kind String_map.t
@@ -148,7 +146,7 @@ module Repr : sig
     | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Path.Set.t -> ('a, 'a) t
-    | Paths_glob : Path.t * Re.re -> ('a, 'a) t
+    | Paths_glob : glob_state ref -> ('a, Path.t list) t
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
     | Lines_of : Path.t -> ('a, string list) t
@@ -173,7 +171,12 @@ module Repr : sig
     | Undecided of ('a, 'b) t * ('a, 'b) t
     | Decided   of bool * ('a, 'b) t
 
+  and glob_state =
+    | G_unevaluated of Path.t * Re.re
+    | G_evaluated   of Path.t list
+
   val get_if_file_exists_exn : ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
+  val get_glob_result_exn : glob_state ref -> Path.t list
 end
 
 val repr : ('a, 'b) t -> ('a, 'b) Repr.t

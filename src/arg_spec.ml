@@ -73,3 +73,10 @@ let expand ~dir ts x =
   in
   let l = List.concat_map ts ~f:loop in
   (l, !dyn_deps)
+
+let quote_args =
+  let rec loop quote = function
+    | [] -> []
+    | arg :: args -> quote :: arg :: loop quote args
+  in
+  fun quote args -> As (loop quote args)

@@ -38,16 +38,21 @@ let static_deps t ~all_targets_by_dir =
     | Split (a, b) -> loop a (loop b acc)
     | Fanout (a, b) -> loop a (loop b acc)
     | Paths fns -> { acc with action_deps = Pset.union fns acc.action_deps }
-    | Paths_glob (dir, re) -> begin
-        match Pmap.find dir (Lazy.force all_targets_by_dir) with
-        | None -> acc
-        | Some targets ->
-          let action_deps =
-            Pset.filter targets ~f:(fun path ->
-              Re.execp re (Path.basename path))
-            |> Pset.union acc.action_deps
-          in
-          { acc with action_deps }
+    | Paths_glob state -> begin
+        match !state with
+        | G_evaluated l ->
+          { acc with action_deps = Pset.union acc.action_deps (Pset.of_list l) }
+        | G_unevaluated (dir, re) ->
+          match Pmap.find dir (Lazy.force all_targets_by_dir) with
+          | None -> acc
+          | Some targets ->
+            let result =
+              Pset.filter targets ~f:(fun path ->
+                Re.execp re (Path.basename path))
+            in
+            state := G_evaluated (Pset.elements result);
+            let action_deps = Pset.union result acc.action_deps in
+            { acc with action_deps }
       end
     | If_file_exists (p, state) -> begin
         match !state with
@@ -144,13 +149,15 @@ let targets =
 
 module Rule = struct
   type t =
-    { build   : (unit, Action.t) Build.t
+    { context : Context.t option
+    ; build   : (unit, Action.t) Build.t
     ; targets : Target.t list
     ; sandbox : bool
     }
 
-  let make ?(sandbox=false) build =
-    { build
+  let make ?(sandbox=false) ?context build =
+    { context
+    ; build
     ; targets = targets build
     ; sandbox
     }

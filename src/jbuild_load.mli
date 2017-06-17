@@ -1,10 +1,10 @@
 open Import
-open Jbuild_types
+open Jbuild
 
 module Jbuilds : sig
   type t
 
-  val eval : t -> context:Context.t -> (Path.t * Pkgs.t * Stanzas.t) list Future.t
+  val eval : t -> context:Context.t -> (Path.t * Scope.t * Stanzas.t) list Future.t
 end
 
 type conf =

@@ -1,6 +1,6 @@
 (** Generate rules for js_of_ocaml *)
 
-open Jbuild_types
+open Jbuild
 
 val build_cm
   :  Super_context.t

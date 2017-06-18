@@ -13,9 +13,9 @@ hundred of developers, which means that it is highly tested and
 productive.
 
 When using Jbuilder, you give very little and high-level information to
-the build system, which in turns takes care of all the low-level
+the build system, which in turn takes care of all the low-level
 details, from the compilation of your libraries, executables and
-documentation to the installation, setting up of tests, setting up of
+documentation, to the installation, setting up of tests, setting up of
 the development tools such as merlin, etc.
 
 In addition to the normal features one would expect from a build system
@@ -23,14 +23,14 @@ for OCaml, Jbuilder provides a few additional ones that detach it from
 the crowd:
 
 -  you never need to tell Jbuilder where things such as libraries are.
-   Jbuilder will always discover it automatically. In particular this
-   mean that when you want to re-organize your project you need to do no
+   Jbuilder will always discover them automatically. In particular, this
+   means that when you want to re-organize your project you need to do no
    more than rename your directories, Jbuilder will do the rest
 
 -  things always work the same whether your dependencies are local or
-   installed on the system. In particular this mean that you can always
+   installed on the system. In particular, this means that you can always
    drop in the source for a dependency of your project in your working
-   copy and Jbuilder will start using immediately. This makes Jbuilder a
+   copy and Jbuilder will start using it immediately. This makes Jbuilder a
    great choice for multi-project development
 
 -  cross-platform: as long as your code is portable, Jbuilder will be

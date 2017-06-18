@@ -29,7 +29,7 @@ Terminology
    visible. Private items include libraries or binaries that will not
    be installed. In Jbuilder, scopes are sub-trees rooted where at
    least one ``<package>.opam`` file is present. Moreover, scopes are
-   exclusive. Typically every project defines a single scope. See
+   exclusive. Typically, every project defines a single scope. See
    :ref:`scopes` for more details
 
 -  **build context**: a build context is a subdirectory of the

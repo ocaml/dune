@@ -444,16 +444,18 @@ let compile_rule t ~all_targets_by_dir ?(allow_override=false) pre_rule =
           acc || prev_hash <> hash)
     in
     let targets_min_ts = min_timestamp t targets_as_list  in
-    let deps_max_ts    = max_timestamp t all_deps_as_list in
-    let is_runtest ps  =
-      let is_runtest p =
-        match Path.extract_build_context p with
-        | Some (".aliases", _) -> true
-        | _                    -> false
-      in
-      Pset.for_all ~f:is_runtest ps
+    let deps_max_ts = max_timestamp t all_deps_as_list in
+    let is_runtest =
+      Pset.for_all targets ~f:(fun target ->
+        match Path.extract_build_context target with
+        | Some (".aliases", target) ->
+            (target
+            |> Path.basename
+            |> String.is_prefix ~prefix:"runtest-")
+        | _ -> false
+      )
     in
-    if rule_changed || (t.force_runtest && is_runtest targets) ||
+    if rule_changed || (t.force_runtest && is_runtest) ||
        match deps_max_ts, targets_min_ts with
        | _, { missing_files = true; _ } ->
          (* Missing targets -> rebuild *)

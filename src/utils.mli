@@ -22,7 +22,7 @@ val describe_target : Path.t -> string
     assume that the program was looked up in the tree as well. *)
 val program_not_found
   :  ?context:string
-  -> ?in_the_tree:bool (** default: false *)
+  -> ?in_the_tree:bool (* default: false *)
   -> ?hint:string
   -> string
   -> _

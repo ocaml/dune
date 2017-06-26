@@ -79,7 +79,7 @@ module Libs : sig
     :  t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
-    -> item:string (** Library name or first exe name *)
+    -> item:string (* Library name or first exe name *)
     -> libraries:Lib_deps.t
     -> preprocess:Preprocess_map.t
     -> virtual_deps:string list
@@ -90,7 +90,7 @@ module Libs : sig
     :  t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
-    -> item:string (** Library name or first exe name *)
+    -> item:string (* Library name or first exe name *)
     -> libraries:Lib_deps.t
     -> ppx_runtime_libraries:string list
     -> unit

@@ -1,6 +1,7 @@
 open! Import
 
-module Name : sig
+(** Fully qualified name *)
+module Fq_name : sig
   type t
   val make : Path.t -> t
   val path : t -> Path.t
@@ -11,7 +12,7 @@ end = struct
 end
 
 type t =
-  { name : Name.t
+  { name : Fq_name.t
   ; file : Path.t
   }
 
@@ -24,11 +25,16 @@ let of_path path =
     die "Aliases are only supported for local paths!\n\
          Tried to reference alias %S"
       (Path.to_string path);
-  { name = Name.make path
+  { name = Fq_name.make path
   ; file = Path.extend_basename (Path.append aliases_path path) ~suffix
   }
 
-let make name ~dir = of_path (Path.relative dir name)
+let name t = Path.basename (Fq_name.path t.name)
+let dir  t = Path.parent   (Fq_name.path t.name)
+
+let make name ~dir =
+  assert (not (String.contains name '/'));
+  of_path (Path.relative dir name)
 
 let dep t = Build.path t.file
 
@@ -40,6 +46,31 @@ let file_with_digest_suffix t ~digest =
   let len = String.length base in
   Path.relative dir
     (String.sub base ~pos:0 ~len:(len - 32) ^ Digest.to_hex digest)
+
+let of_file fn =
+  match Path.extract_build_context fn with
+  | Some (".aliases", fn) -> begin
+      let dir  = Path.parent   fn in
+      let name = Path.basename fn in
+      match String.rsplit2 name ~on:'-' with
+      | None -> assert false
+      | Some (name, digest) ->
+        assert (String.length digest = 32);
+        Some (make name ~dir)
+    end
+  | _ -> None
+
+let name_of_file fn =
+  match Path.extract_build_context fn with
+  | Some (".aliases", fn) -> begin
+      let name = Path.basename fn in
+      match String.rsplit2 name ~on:'-' with
+      | None -> assert false
+      | Some (name, digest) ->
+        assert (String.length digest = 32);
+        Some name
+    end
+  | _ -> None
 
 let default = make "DEFAULT"
 let runtest = make "runtest"
@@ -58,7 +89,7 @@ module Store = struct
     { alias : t
     ; mutable deps : Path.Set.t
     }
-  type t = (Name.t, entry) Hashtbl.t
+  type t = (Fq_name.t, entry) Hashtbl.t
 
   let create () = Hashtbl.create 1024
 end
@@ -91,7 +122,7 @@ let rules store ~prefixes ~tree =
 
   (* For each alias @_build/blah/../x, add a dependency: @../x --> @_build/blah/../x *)
   Hashtbl.fold store ~init:[] ~f:(fun ~key:_ ~data:{ Store. alias; _ } acc ->
-    match Path.extract_build_context (Name.path alias.name) with
+    match Path.extract_build_context (Fq_name.path alias.name) with
     | None -> acc
     | Some (_, in_src) -> (of_path in_src, alias) :: acc)
   |> List.iter ~f:(fun (in_src, in_build_dir) ->

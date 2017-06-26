@@ -238,6 +238,9 @@ let to_string = function
   | "" -> "."
   | t  -> t
 
+let to_string_maybe_quoted t =
+  maybe_quoted (to_string t)
+
 let root = ""
 
 let relative t fn =

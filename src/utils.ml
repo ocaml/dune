@@ -67,10 +67,10 @@ let signal_name =
 let jbuild_name_in ~dir =
   match Path.extract_build_context dir with
   | None ->
-    Path.to_string (Path.relative dir "jbuild")
+    Path.to_string_maybe_quoted (Path.relative dir "jbuild")
   | Some (ctx_name, dir) ->
     sprintf "%s (context %s)"
-      (Path.to_string (Path.relative dir "jbuild"))
+      (Path.to_string_maybe_quoted (Path.relative dir "jbuild"))
       ctx_name
 
 let describe_target fn =
@@ -84,12 +84,12 @@ let describe_target fn =
         assert (String.length digest = 32);
         name
     in
-    sprintf "alias %s" name
+    sprintf "alias %s" (maybe_quoted name)
   | _ ->
-    Path.to_string fn
+    Path.to_string_maybe_quoted fn
 
 let program_not_found ?context ?(in_the_tree=false) ?hint prog =
-  die "@{<error>Error@}: Program %s not found in%s PATH%s%a" prog
+  die "@{<error>Error@}: Program %s not found in%s PATH%s%a" (maybe_quoted prog)
     (if in_the_tree then
        " the tree or in"
      else
@@ -103,7 +103,7 @@ let program_not_found ?context ?(in_the_tree=false) ?hint prog =
     hint
 
 let library_not_found ?context ?hint lib =
-  die "@{<error>Error@}: Library %s not found%s%a" lib
+  die "@{<error>Error@}: Library %s not found%s%a" (maybe_quoted lib)
     (match context with
      | None -> ""
      | Some name -> sprintf " (context: %s)" name)
@@ -122,12 +122,14 @@ let find_module ~dir modules name =
   String_map.find_exn name modules
     ~string_of_key:(sprintf "%S")
     ~desc:(fun _ ->
-      sprintf "<module name to module info in %s>" (Path.to_string dir))
+      sprintf "<module name to module info in %s>"
+        (Path.to_string_maybe_quoted dir))
 
 let find_deps ~dir dep_graph name =
   String_map.find_exn name dep_graph
     ~string_of_key:(sprintf "%S")
-    ~desc:(fun _ -> sprintf "<dependency graph in %s>" (Path.to_string dir))
+    ~desc:(fun _ -> sprintf "<dependency graph in %s>"
+                      (Path.to_string_maybe_quoted dir))
 
 let obj_name_of_basename fn =
   match String.index fn '.' with

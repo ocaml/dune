@@ -46,6 +46,9 @@ val kind : t -> Kind.t
 val of_string : string -> t
 val to_string : t -> string
 
+(** [to_string_maybe_quoted t] is [maybe_quoted (to_string t)] *)
+val to_string_maybe_quoted : t -> string
+
 val root : t
 val is_root : t -> bool
 

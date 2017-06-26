@@ -413,13 +413,13 @@ module Deps = struct
       >>^ fun _ -> []
     | Glob_files s -> begin
         let path = Path.relative dir (expand_vars t ~scope ~dir s) in
-        let dir = Path.parent path in
-        let s = Path.basename path in
-        match Glob_lexer.parse_string s with
+        match Glob_lexer.parse_string (Path.basename path) with
         | Ok re ->
+          let dir = Path.parent path in
           Build.paths_glob ~dir (Re.compile re)
         | Error (_pos, msg) ->
-          die "invalid glob in %s/jbuild: %s" (Path.to_string dir) msg
+          let loc = String_with_vars.loc s in
+          Loc.fail loc "invalid glob: %s" msg
       end
     | Files_recursively_in s ->
       let path = Path.relative dir (expand_vars t ~scope ~dir s) in

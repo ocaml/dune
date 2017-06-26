@@ -475,6 +475,16 @@ let hint name candidates =
     in
     sprintf "\nHint: did you mean %s?" (mk_hint l)
 
+
+(* [maybe_quoted s] is [s] if [s] doesn't need escaping according to OCaml lexing
+   conventions and [sprintf "%S" s] otherwise. *)
+let maybe_quoted s =
+  let escaped = String.escaped s in
+  if s == escaped || s = escaped then
+    s
+  else
+    sprintf {|"%s"|} escaped
+
 (* Disable file operations to force to use the IO module *)
 let open_in      = `Use_Io
 let open_in_bin  = `Use_Io

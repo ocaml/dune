@@ -990,7 +990,7 @@ Add it to your jbuild file to remove this warning.
 end
 
 let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
-      ?only_packages ?enable_optional_pps conf =
+      ?only_packages ?(enable_optional_pps=String_set.empty) conf =
   let open Future in
   let { Jbuild_load. file_tree; tree; jbuilds; packages } = conf in
   let aliases = Alias.Store.create () in
@@ -1024,11 +1024,10 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
              | _ -> true)))
     in
     let stanzas =
-      let spec = Option.value ~default:String_set.empty enable_optional_pps in
       let filter_pps b =
         { b with
           Buildable.preprocess =
-            Preprocess_map.filter_optional spec b.Buildable.preprocess
+            Preprocess_map.filter_optional ~enabled:enable_optional_pps b.Buildable.preprocess
         }
       in
       List.map stanzas ~f:(fun (dir, pkgs_ctx, stanzas) ->

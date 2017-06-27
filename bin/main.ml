@@ -173,10 +173,9 @@ let common =
   let enable_optional_pps =
     Arg.(value
          & opt (some (list string)) None
-         & info ["enable-optional-pps"] ~docs ~docv:"PACKAGES"
-             ~doc:{|Enable ppx preprocessor $(b,PACKAGES) specified as optional
-                    in jbuild files.  $(b,PACKAGES) is a comma-separated list of
-                    package names.|})
+         & info ["enable-optional-pps"] ~docs ~docv:"PPX-REWRITERS"
+             ~doc:{|Enable ppx preprocessors specified as optional in jbuild files.
+                    $(b,PPX-REWRITERS) is a comma-separated list of package names.|})
   in
   let ddep_path =
     Arg.(value

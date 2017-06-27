@@ -53,7 +53,7 @@ module Preprocess_map : sig
   val pps : t -> Pp.t list
 
   (* filter out optional pps which have not been enabled *)
-  val filter_optional : String_set.t -> t -> t
+  val filter_optional : enabled:String_set.t -> t -> t
 end
 
 module Js_of_ocaml : sig

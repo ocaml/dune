@@ -159,18 +159,19 @@ module Pp : sig
   val is_optional : t -> bool
   val compare : t -> t -> int
 end = struct
-  type t = string * bool
+  type t = { name : string; optional : bool }
 
   let of_string s =
     assert (not (String.is_prefix s ~prefix:"-"));
     if String.is_prefix s ~prefix:"?" then
-      (String.sub s ~pos:1 ~len:(String.length s - 1)), true
-    else s, false
+      { name = String.sub s ~pos:1 ~len:(String.length s - 1); optional = true }
+    else 
+      { name = s; optional = false }
 
-  let to_string (name,_) = name
-  let is_optional (_,opt) = opt
+  let to_string pp = pp.name
+  let is_optional pp = pp.optional
 
-  let compare (a,_) (b,_) = String.compare a b
+  let compare a b = String.compare a.name b.name
 end
 
 module Pp_or_flags = struct
@@ -253,9 +254,9 @@ module Preprocess = struct
     | Pps { pps; _ } -> pps
     | _ -> []
 
-  let filter_optional spec pp =
+  let filter_optional ~enabled pp =
     let disable_optional pp =
-      if Pp.is_optional pp && not (String_set.mem (Pp.to_string pp) spec) then None
+      if Pp.is_optional pp && not (String_set.mem (Pp.to_string pp) enabled) then None
       else Some(pp)
     in
     match pp with
@@ -311,12 +312,12 @@ module Preprocess_map = struct
         Pp_set.union acc (Pp_set.of_list (Preprocess.pps pp)))
       |> Pp_set.elements
 
-  let filter_optional spec t =
+  let filter_optional ~enabled t =
     match t with
     | Per_module.For_all pp ->
-      Per_module.For_all (Preprocess.filter_optional spec pp)
+      Per_module.For_all (Preprocess.filter_optional ~enabled pp)
     | Per_module.Per_module map ->
-      Per_module.Per_module (String_map.map ~f:(Preprocess.filter_optional spec) map)
+      Per_module.Per_module (String_map.map ~f:(Preprocess.filter_optional ~enabled) map)
 end
 
 module Lint = struct

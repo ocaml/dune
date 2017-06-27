@@ -1,0 +1,55 @@
+(jbuild_version 1)
+
+(ocamllex (lexer1 lexer2))
+
+(library
+ ((name tool_config)
+  (public_name tool.config)
+  (modules (config))))
+
+(library (
+  (name tool_gui)
+  (public_name tool.gui)
+  (flags (-open Tool_config))
+  (modules (gui))
+  (libraries (tool.config))
+))
+
+(library (
+ (name tool_boot)
+ (public_name tool.boot)
+ (flags (-open Tool_config))
+ (modules (boot))
+ (libraries (tool.config))
+))
+
+(rule (
+  (targets (empty_file.ml))
+  (action (with-stdout-to ${@} (echo "")))
+))
+
+(rule (
+  (targets (empty_file_gui.ml))
+  (deps (empty_file.ml))
+  (action (copy# ${<} ${@}))
+))
+
+
+(executable (
+  (name empty_file)
+  (public_name tool)
+  (modules (empty_file))
+  (flags (-linkall))
+  (libraries (tool.boot))
+  (package tool)
+))
+
+(executable (
+  (name empty_file_gui)
+  (public_name tool-gui)
+  (modules (empty_file_gui))
+  (flags (-linkall))
+  (libraries (tool.gui tool.boot))
+  (dependencies_ordering ((tool.gui tool.boot)))
+  (package tool)
+))

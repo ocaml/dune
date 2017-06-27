@@ -104,3 +104,15 @@
   (deps ((alias sleep5)
          (alias sleep4-and-fail)
          (alias sleep1-and-fail)))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in workspaces/dependencies_ordering)))
+  (action
+   (chdir workspaces/dependencies_ordering
+    (progn
+      (run ${exe:run.exe} -log log.build --
+     ${bin:jbuilder} build -j1 @install --root . --debug-dependency-path)
+     (run ${exe:run.exe} -log log.exec-tool -- ${bin:jbuilder} exec --root . tool -- cmdline)
+     (run ${exe:run.exe} -log log.exec-tool-gui -- ${bin:jbuilder} exec  --root . tool-gui -- gui))
+  ))))

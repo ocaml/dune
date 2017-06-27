@@ -18,6 +18,7 @@ val setup
   -> ?workspace:Workspace.t
   -> ?workspace_file:string
   -> ?only_packages:String_set.t
+  -> ?enable_optional_pps:String_set.t
   -> unit
   -> setup Future.t
 val external_lib_deps

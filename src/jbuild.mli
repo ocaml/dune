@@ -29,6 +29,7 @@ module Pp : sig
   type t
   val of_string : string -> t
   val to_string : t -> string
+  val is_optional : t -> bool
 end
 
 module Preprocess : sig
@@ -50,6 +51,9 @@ module Preprocess_map : sig
   val find : string -> t -> Preprocess.t
 
   val pps : t -> Pp.t list
+
+  (* filter out optional pps which have not been enabled *)
+  val filter_optional : String_set.t -> t -> t
 end
 
 module Js_of_ocaml : sig

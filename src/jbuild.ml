@@ -156,17 +156,21 @@ module Pp : sig
   type t
   val of_string : string -> t
   val to_string : t -> string
+  val is_optional : t -> bool
   val compare : t -> t -> int
 end = struct
-  type t = string
+  type t = string * bool
 
   let of_string s =
     assert (not (String.is_prefix s ~prefix:"-"));
-    s
+    if String.is_prefix s ~prefix:"?" then
+      (String.sub s ~pos:1 ~len:(String.length s - 1)), true
+    else s, false
 
-  let to_string t = t
+  let to_string (name,_) = name
+  let is_optional (_,opt) = opt
 
-  let compare = String.compare
+  let compare (a,_) (b,_) = String.compare a b
 end
 
 module Pp_or_flags = struct
@@ -248,6 +252,18 @@ module Preprocess = struct
   let pps = function
     | Pps { pps; _ } -> pps
     | _ -> []
+
+  let filter_optional spec pp =
+    let disable_optional pp =
+      if Pp.is_optional pp && not (String_set.mem (Pp.to_string pp) spec) then None
+      else Some(pp)
+    in
+    match pp with
+    | Pps { pps; flags } ->
+      let pps = List.filter_map pps ~f:disable_optional in
+      if pps = [] then No_preprocessing
+      else Pps { pps; flags }
+    | _ -> pp
 end
 
 module Per_module = struct
@@ -294,6 +310,13 @@ module Preprocess_map = struct
       String_map.fold map ~init:Pp_set.empty ~f:(fun ~key:_ ~data:pp acc ->
         Pp_set.union acc (Pp_set.of_list (Preprocess.pps pp)))
       |> Pp_set.elements
+
+  let filter_optional spec t =
+    match t with
+    | Per_module.For_all pp ->
+      Per_module.For_all (Preprocess.filter_optional spec pp)
+    | Per_module.Per_module map ->
+      Per_module.Per_module (String_map.map ~f:(Preprocess.filter_optional spec) map)
 end
 
 module Lint = struct

@@ -877,7 +877,9 @@ module PP = struct
                ~dep_kind
                ~targets:(Static [dst])
                ~scope))
-      | Pps { pps; flags } ->
+      | Pps _ as pps ->
+        let flags = Preprocess.flags pps in
+        let pps = Preprocess.pps pps in
         let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in
         pped_module m ~dir ~f:(fun kind src dst ->
           add_rule sctx

@@ -33,15 +33,16 @@ module Pp : sig
 end
 
 module Preprocess : sig
-  type pps =
-    { pps   : Pp.t list
-    ; flags : string list
-    }
+  type pp
+  type pps
 
   type t =
     | No_preprocessing
     | Action of Action.Unexpanded.t
     | Pps    of pps
+
+  val pps : t -> Pp.t list
+  val flags : t -> string list
 end
 
 module Preprocess_map : sig

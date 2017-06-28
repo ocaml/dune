@@ -190,12 +190,20 @@ module Pp_or_flags = struct
     | List (_, l) -> Flags (List.map l ~f:string)
 
   let split l =
-    let pps, flags =
-      List.partition_map l ~f:(function
-        | PP pp  -> Inl pp
-        | Flags s -> Inr s)
+    let rec flags fs = function (* collect flags together *)
+      | Flags f :: t -> flags (f :: fs) t
+      | rest -> (List.concat @@ List.rev @@ fs), rest
     in
-    (pps, List.concat flags)
+    let rec pps = function
+      | [] -> []
+      | (Flags _ :: _) as fs -> (* starts with flags (no pp) *)
+        let fs, ps = flags [] fs in
+        (None,fs) :: pps ps
+      | PP pp :: t -> (* get pp + associated flags *)
+        let fs, ps = flags [] t in
+        (Some(pp), fs) :: pps ps
+    in
+    pps l
 end
 
 module Dep_conf = struct
@@ -235,7 +243,8 @@ module Dep_conf = struct
 end
 
 module Preprocess = struct
-  type pps = { pps : Pp.t list; flags : string list }
+  type pp = { pps : Pp.t option; flags : string list }
+  type pps = pp list
   type t =
     | No_preprocessing
     | Action of Action.Unexpanded.t
@@ -246,24 +255,30 @@ module Preprocess = struct
       [ cstr "no_preprocessing" nil No_preprocessing
       ; cstr "action" (Action.Unexpanded.t @> nil) (fun x -> Action x)
       ; cstr "pps" (list Pp_or_flags.t @> nil) (fun l ->
-          let pps, flags = Pp_or_flags.split l in
-          Pps { pps; flags })
+          let pps_and_flags = Pp_or_flags.split l in
+          Pps (List.map pps_and_flags ~f:(fun (pps, flags) -> { pps; flags })))
       ]
 
   let pps = function
-    | Pps { pps; _ } -> pps
+    | Pps pps -> List.filter_map pps ~f:(fun pps -> pps.pps)
+    | _ -> []
+
+  let flags = function
+    | Pps pps -> List.concat @@ List.map pps ~f:(fun pps -> pps.flags)
     | _ -> []
 
   let filter_optional ~enabled pp =
-    let disable_optional pp =
-      if Pp.is_optional pp && not (String_set.mem (Pp.to_string pp) enabled) then None
-      else Some(pp)
+    let disable_optional pps =
+      match pps with
+      | { pps=Some(pp); _ } when Pp.is_optional pp &&
+                            not (String_set.mem (Pp.to_string pp) enabled) -> None
+      | _ -> Some(pps)
     in
     match pp with
-    | Pps { pps; flags } ->
+    | Pps pps ->
       let pps = List.filter_map pps ~f:disable_optional in
       if pps = [] then No_preprocessing
-      else Pps { pps; flags }
+      else Pps pps
     | _ -> pp
 end
 
@@ -326,8 +341,8 @@ module Lint = struct
   let t =
     sum
       [ cstr "pps" (list Pp_or_flags.t @> nil) (fun l ->
-          let pps, flags = Pp_or_flags.split l in
-          Pps { pps; flags })
+          let pps_and_flags = Pp_or_flags.split l in
+          Pps (List.map pps_and_flags ~f:(fun (pps, flags) -> { Preprocess. pps; flags })))
       ]
 end
 

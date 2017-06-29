@@ -27,56 +27,55 @@ let ppx_flags sctx ~dir ~src_dir { preprocess; libname; _ } =
   | _ -> []
 
 let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
-  if (SC.context sctx).merlin then
-    match Path.extract_build_context dir with
-    | Some (_, remaindir) ->
-      let path = Path.relative remaindir ".merlin" in
-      SC.add_rule sctx
-        (Build.path path
-         >>>
-         Build.update_file (Path.relative dir ".merlin-exists") "");
-      SC.add_rule sctx (
-        requires
-        >>^ (fun libs ->
-          let ppx_flags = ppx_flags sctx ~dir ~src_dir:remaindir t in
-          let internals, externals =
-            List.fold_left libs ~init:([], []) ~f:(fun (internals, externals) ->
-              function
-              | Lib.Internal (path, _) ->
-                let spath =
-                  Path.drop_build_context path
-                  |> Path.reach ~from:remaindir
-                in
-                let bpath = Path.reach path ~from:remaindir in
-                ("S " ^ spath) :: ("B " ^ bpath) :: internals, externals
-              | Lib.External pkg ->
-                internals, ("PKG " ^ pkg.name) :: externals
-            )
-          in
-          let flags =
-            match flags with
-            | [] -> []
-            | _  -> ["FLG " ^ String.concat flags ~sep:" "]
-          in
-          let dot_merlin =
-            List.concat
-              [ [ "B " ^ (Path.reach dir ~from:remaindir) ]
-              ; internals
-              ; externals
-              ; flags
-              ; ppx_flags
-              ]
-          in
-          dot_merlin
-          |> String_set.of_list
-          |> String_set.elements
-          |> List.map ~f:(Printf.sprintf "%s\n")
-          |> String.concat ~sep:"")
-        >>>
-        Build.update_file_dyn path
-      )
-    | _ ->
-      ()
+  match Path.extract_build_context dir with
+  | Some (_, remaindir) ->
+    let path = Path.relative remaindir ".merlin" in
+    SC.add_rule sctx
+      (Build.path path
+       >>>
+       Build.update_file (Path.relative dir ".merlin-exists") "");
+    SC.add_rule sctx (
+      requires
+      >>^ (fun libs ->
+        let ppx_flags = ppx_flags sctx ~dir ~src_dir:remaindir t in
+        let internals, externals =
+          List.fold_left libs ~init:([], []) ~f:(fun (internals, externals) ->
+            function
+            | Lib.Internal (path, _) ->
+              let spath =
+                Path.drop_build_context path
+                |> Path.reach ~from:remaindir
+              in
+              let bpath = Path.reach path ~from:remaindir in
+              ("S " ^ spath) :: ("B " ^ bpath) :: internals, externals
+            | Lib.External pkg ->
+              internals, ("PKG " ^ pkg.name) :: externals
+          )
+        in
+        let flags =
+          match flags with
+          | [] -> []
+          | _  -> ["FLG " ^ String.concat flags ~sep:" "]
+        in
+        let dot_merlin =
+          List.concat
+            [ [ "B " ^ (Path.reach dir ~from:remaindir) ]
+            ; internals
+            ; externals
+            ; flags
+            ; ppx_flags
+            ]
+        in
+        dot_merlin
+        |> String_set.of_list
+        |> String_set.elements
+        |> List.map ~f:(Printf.sprintf "%s\n")
+        |> String.concat ~sep:"")
+      >>>
+      Build.update_file_dyn path
+    )
+  | _ ->
+    ()
 
 let merge_two a b =
   { requires =

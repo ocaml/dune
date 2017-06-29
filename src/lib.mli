@@ -8,7 +8,13 @@ type t =
   | Internal of Internal.t
   | External of Findlib.package
 
+val compare: t -> t -> int
+
 module Set : Set.S with type elt := t
+module Map : Map.S with type key := t
+
+val mk_internal: Internal.t -> t
+val mk_external: Findlib.package -> t
 
 (*val deps : t -> string list*)
 

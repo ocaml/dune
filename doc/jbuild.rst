@@ -226,6 +226,15 @@ binary at the same place as where ``ocamlc`` was found, or when there is a
 - ``(libraries (<library-dependencies>))`` specifies the library dependencies.
   See the section about `Library dependencies`_ for more details
 
+- ``(dependencies_ordering ((<librarie> <librarie>) ...)`` each pair
+  specifies that the first library must be linked before the second
+  one. Both libraries must already appear directly (not in a select)
+  in the ``libraries`` field. It can be used for fixing missing
+  dependencies in external libraries. More interrestingly it could be
+  used to make sure that the initialization of a library will be
+  executed before the initialisation of another one because of some
+  side effects.
+
 - ``(modules <modules>)`` specifies which modules in the current directory
   Jbuilder should consider when building this executable. Modules not listed
   here will be ignored and cannot be used inside the executable described by

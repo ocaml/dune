@@ -258,6 +258,7 @@ module Gen(P : Params) = struct
         ~libraries:lib.buildable.libraries
         ~preprocess:lib.buildable.preprocess
         ~virtual_deps:lib.virtual_deps
+        ~deps_ordering:[]
     in
 
     SC.Libs.setup_runtime_deps sctx ~dir ~dep_kind ~item:lib.name
@@ -481,6 +482,7 @@ module Gen(P : Params) = struct
         ~libraries:exes.buildable.libraries
         ~preprocess:exes.buildable.preprocess
         ~virtual_deps:[]
+        ~deps_ordering:exes.deps_ordering
     in
 
     SC.Libs.add_select_rules sctx ~dir exes.buildable.libraries;

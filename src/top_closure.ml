@@ -37,4 +37,19 @@ module Make(Key : Set.OrderedType)(Elt : Elt with type key := Key.t) = struct
     match iter_elts elements ~temporarily_marked:Set.empty with
     | Ok () -> Ok (List.rev !res)
     | Error elts -> Error elts
+
+
+  let accessibles graph elements =
+    let rec aux (visited,acc) e =
+      let key = Elt.key e in
+      if Set.mem key visited then (visited,acc)
+      else
+        let visited = Set.add key visited in
+        let acc = e::acc in
+        let l = Elt.deps e graph in
+        List.fold_left ~f:aux ~init:(visited,acc) l
+    in
+    let _,acc = List.fold_left ~f:aux ~init:(Set.empty,[]) elements in
+    acc
+
 end

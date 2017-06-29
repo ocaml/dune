@@ -76,6 +76,11 @@ val closed_ppx_runtime_deps_of
   -> local_public_libs:Path.t String_map.t
   -> package list
   -> package list
+val requires
+  :  required_by:Path.t
+  -> local_public_libs:Path.t String_map.t
+  -> package
+  -> package list
 
 val root_packages : t -> string list
 val all_packages  : t -> package list

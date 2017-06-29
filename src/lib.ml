@@ -1,7 +1,18 @@
 open Import
 
 module Internal = struct
-  type t = Path.t * Jbuild.Library.t
+  module T = struct
+    type t = Path.t * Jbuild.Library.t
+    let best_name ((_, lib):t) =
+      match lib.public with
+      | Some p -> p.name
+      | None -> lib.name
+
+    let compare a b = String.compare (best_name a) (best_name b)
+  end
+  include T
+  module Set = Set.Make(T)
+  module Map = Map.Make(T)
 end
 
 module T = struct
@@ -11,16 +22,17 @@ module T = struct
 
   let best_name = function
     | External pkg -> pkg.name
-    | Internal (_, lib) ->
-      match lib.public with
-      | Some p -> p.name
-      | None -> lib.name
+    | Internal lib -> Internal.best_name lib
 
   let compare a b = String.compare (best_name a) (best_name b)
 end
 
 include T
 module Set = Set.Make(T)
+module Map = Map.Make(T)
+
+let mk_internal i = Internal i
+let mk_external i = External i
 
 let dir = function
   | Internal (dir, _) -> dir

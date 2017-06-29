@@ -11,4 +11,6 @@ end
 module Make(Key : Set.OrderedType)(Elt : Elt with type key := Key.t) : sig
   (** Returns [Error cycle] in case the graph is not a DAG *)
   val top_closure : Elt.graph -> Elt.t list -> (Elt.t list, Elt.t list) result
+
+  val accessibles : Elt.graph -> Elt.t list -> Elt.t list
 end

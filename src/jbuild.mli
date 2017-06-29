@@ -173,6 +173,7 @@ module Executables : sig
     ; link_flags       : string list
     ; modes            : Mode.Dict.Set.t
     ; buildable        : Buildable.t
+    ; deps_ordering    : (string * string) list
     }
 end
 

@@ -46,6 +46,9 @@ end
 module Preprocess_map : sig
   type t
 
+  val no_preprocessing : t
+  val default : t
+
   (** [find module_name] find the preprocessing specification for a given module *)
   val find : string -> t -> Preprocess.t
 
@@ -57,6 +60,8 @@ module Js_of_ocaml : sig
     { flags            : Ordered_set_lang.Unexpanded.t
     ; javascript_files : string list
     }
+
+  val default : t
 end
 
 module Lib_dep : sig

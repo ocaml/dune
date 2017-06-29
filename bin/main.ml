@@ -7,6 +7,7 @@ open Jbuilder_cmdliner.Cmdliner
 let () = suggest_function := Jbuilder_cmdliner.Cmdliner_suggest.value
 
 let (>>=) = Future.(>>=)
+let (>>|) = Future.(>>|)
 
 type common =
   { concurrency      : int
@@ -901,6 +902,41 @@ let subst =
          )
   , Term.info "subst" ~doc ~man)
 
+let utop =
+  let doc = "Load library in utop" in
+  let man = [ (* TODO *) ] in
+  let go common (lib_name : string) =
+    (* we don't know what the targets are without setting up the rules first and
+       looking up where the utop exe's are located *)
+    set_common common ~targets:[];
+    let log = Log.create () in
+    let utop_path =
+      Future.Scheduler.go ~log
+        (Main.setup ~log common >>= fun setup ->
+         let utop_target =
+           let stanzas = Option.value_exn (String_map.find "default" setup.stanzas) in
+           match Utop.target stanzas lib_name with
+           | None -> die "library %s not in workspace" lib_name
+           | Some p -> p
+         in
+         let targets = resolve_targets ~log common setup [Path.to_string utop_target] in
+         do_build setup targets >>| fun () ->
+         let default_context =
+           setup.contexts 
+           |> List.find ~f:(fun c ->
+             match c.Context.kind with
+             | Default -> true
+             | Opam _ -> false)
+           |> Option.value_exn in
+         Path.append default_context.build_dir utop_target) in
+    Unix.execv (Path.to_string utop_path) [||]
+  in
+  let name_ = Arg.info [] ~docv:"LIBRARY" in
+  ( Term.(const go
+          $ common
+          $ Arg.(required & pos 0 (some string) None name_))
+  , Term.info "utop" ~doc ~man)
+
 let all =
   [ installed_libraries
   ; external_lib_deps
@@ -912,6 +948,7 @@ let all =
   ; exec
   ; subst
   ; rules
+  ; utop
   ]
 
 let default =

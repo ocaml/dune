@@ -715,7 +715,13 @@ Add it to your jbuild file to remove this warning.
         Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules)
                 ~scope)
       | _ -> None)
-    |> Merlin.add_rules sctx ~dir:ctx_dir
+    |> Merlin.add_rules sctx ~dir:ctx_dir;
+    Utop.add_rules sctx ~dir:ctx_dir stanzas
+    |> Option.iter ~f:(fun (stanza, all_modules) ->
+      (* there's no need to generate a .merlin file for this exe *)
+      ignore (executables_rules stanza ~dir:ctx_dir ~all_modules ~scope)
+    )
+  ;;
 
   let () = List.iter (SC.stanzas sctx) ~f:rules
   let () =

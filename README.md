@@ -94,7 +94,7 @@ This feature requires [opam][opam].
 [Jenga][jenga] is another build system for OCaml that has more
 advanced features such as polling or much better editor
 integration. Jenga is more powerful and more complex and as a result
-as much more dependencies.  It is planned to implement a small bridge
+has many more dependencies.  It is planned to implement a small bridge
 between the two so that a Jbuilder project can build with Jenga using
 this bridge.
 
@@ -154,7 +154,7 @@ FAQ
 ### Why do many Jbuilder projects contain a Makefile?
 
 Many Jbuilder project contain a toplevel `Makefile`. It is often only
-there only for convenience, for the following reasons:
+there for convenience, for the following reasons:
 
 1. there are many different build systems out there, all with a
    different CLI. If you have been hacking for a long time, the one

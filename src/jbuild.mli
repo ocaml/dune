@@ -138,7 +138,7 @@ module Library : sig
     ; c_names                  : string list
     ; cxx_flags                : Ordered_set_lang.Unexpanded.t
     ; cxx_names                : string list
-    ; library_flags            : String_with_vars.t list
+    ; library_flags            : Ordered_set_lang.Unexpanded.t
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
     ; virtual_deps             : string list

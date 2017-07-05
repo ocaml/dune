@@ -27,6 +27,6 @@ module Unexpanded : sig
 
   (** Expand [t] using with the given file contents. [file_contents] is a map from
       filenames to their parsed contents. Every [(:include fn)] in [t] is replaced by
-      [Map.find files_contents fn]. *)
-  val expand : t -> files_contents:Sexp.Ast.t String_map.t -> expanded
+      [Map.find files_contents fn]. Every element is converted to a string using [f]. *)
+  val expand : t -> files_contents:Sexp.Ast.t String_map.t -> f:(Sexp.Ast.t -> string) -> expanded
 end with type expanded := t

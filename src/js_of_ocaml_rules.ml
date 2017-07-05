@@ -89,12 +89,12 @@ let link_rule ~sctx ~dir ~runtime ~target =
     ; Arg_spec.Dyn get_all
     ]
 
-let build_cm sctx ~dir ~js_of_ocaml ~src =
+let build_cm sctx ~scope ~dir ~js_of_ocaml ~src =
   if separate_compilation_enabled ()
   then let target = Path.extend_basename src ~suffix:".js" in
     let spec = Arg_spec.Dep src in
     let flags =
-      SC.expand_and_eval_set ~dir js_of_ocaml.Jbuild.Js_of_ocaml.flags
+      SC.expand_and_eval_set sctx ~scope ~dir js_of_ocaml.Jbuild.Js_of_ocaml.flags
         ~standard:(standard ())
     in
     [ flags

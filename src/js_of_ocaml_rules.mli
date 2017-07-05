@@ -4,6 +4,7 @@ open Jbuild
 
 val build_cm
   :  Super_context.t
+  -> scope:Scope.t
   -> dir:Path.t
   -> js_of_ocaml:Js_of_ocaml.t
   -> src:Path.t

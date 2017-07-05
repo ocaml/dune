@@ -37,8 +37,8 @@ type t =
   ; specific   : (unit, string list) Build.t Mode.Dict.t
   }
 
-let make { Jbuild.Buildable. flags; ocamlc_flags; ocamlopt_flags; _ } ~dir =
-  let eval = Super_context.expand_and_eval_set ~dir in
+let make { Jbuild.Buildable. flags; ocamlc_flags; ocamlopt_flags; _ } ctx ~scope ~dir =
+  let eval = Super_context.expand_and_eval_set ctx ~scope ~dir in
   { common   = Build.memoize "common flags" (eval flags ~standard:(default_flags ()))
   ; specific =
       { byte   = Build.memoize "ocamlc flags" (eval ocamlc_flags   ~standard:(default_ocamlc_flags ()))

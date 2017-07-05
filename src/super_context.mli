@@ -168,7 +168,9 @@ module PP : sig
 end
 
 val expand_and_eval_set
-  :  dir:Path.t
+  :  t
+  -> scope:Scope.t
+  -> dir:Path.t
   -> Ordered_set_lang.Unexpanded.t
   -> standard:string list
   -> (unit, string list) Build.t

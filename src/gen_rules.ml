@@ -96,7 +96,7 @@ module Gen(P : Params) = struct
                 ~modules
                 ~mode
                 (String_map.keys modules)))
-           (SC.expand_and_eval_set ~dir lib.c_library_flags ~standard:[])
+           (SC.expand_and_eval_set sctx ~scope ~dir lib.c_library_flags ~standard:[])
            (Ocaml_flags.get flags mode)
          >>>
          Build.run ~context:ctx (Dep compiler)
@@ -115,14 +115,14 @@ module Gen(P : Params) = struct
            ; Dyn (fun (cm_files, _, _) -> Deps cm_files)
            ]))
 
-  let build_c_file (lib : Library.t) ~dir ~requires ~h_files c_name =
+  let build_c_file (lib : Library.t) ~scope ~dir ~requires ~h_files c_name =
     let src = Path.relative dir (c_name ^ ".c") in
     let dst = Path.relative dir (c_name ^ ctx.ext_obj) in
     SC.add_rule sctx
       (Build.paths h_files
        >>>
        Build.fanout
-         (SC.expand_and_eval_set ~dir lib.c_flags ~standard:(Context.cc_g ctx))
+         (SC.expand_and_eval_set sctx ~scope ~dir lib.c_flags ~standard:(Context.cc_g ctx))
          requires
        >>>
        Build.run ~context:ctx
@@ -140,14 +140,14 @@ module Gen(P : Params) = struct
          ]);
     dst
 
-  let build_cxx_file (lib : Library.t) ~dir ~requires ~h_files c_name =
+  let build_cxx_file (lib : Library.t) ~scope ~dir ~requires ~h_files c_name =
     let src = Path.relative dir (c_name ^ ".cpp") in
     let dst = Path.relative dir (c_name ^ ctx.ext_obj) in
     SC.add_rule sctx
       (Build.paths h_files
        >>>
        Build.fanout
-         (SC.expand_and_eval_set ~dir lib.cxx_flags ~standard:(Context.cc_g ctx))
+         (SC.expand_and_eval_set sctx ~scope ~dir lib.cxx_flags ~standard:(Context.cc_g ctx))
          requires
        >>>
        Build.run ~context:ctx
@@ -179,7 +179,7 @@ module Gen(P : Params) = struct
 
   let library_rules (lib : Library.t) ~dir ~all_modules ~files ~scope =
     let dep_kind = if lib.optional then Build.Optional else Required in
-    let flags = Ocaml_flags.make lib.buildable ~dir in
+    let flags = Ocaml_flags.make lib.buildable sctx ~scope ~dir in
     let modules =
       parse_modules ~dir ~all_modules ~modules_written_by_user:lib.buildable.modules
     in
@@ -269,7 +269,7 @@ module Gen(P : Params) = struct
     let dynlink = lib.dynlink in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
     Module_compilation.build_modules sctx
-      ~js_of_ocaml ~dynlink ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
+      ~js_of_ocaml ~dynlink ~flags ~scope ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
       let flags = Ocaml_flags.default () in
       Module_compilation.build_module sctx m
@@ -277,6 +277,7 @@ module Gen(P : Params) = struct
         ~dynlink
         ~sandbox:alias_module_build_sandbox
         ~flags:(Ocaml_flags.append_common flags ["-w"; "-49"])
+        ~scope
         ~dir
         ~modules:(String_map.singleton m.name m)
         ~dep_graph:(Ml_kind.Dict.make_both (Build.return (String_map.singleton m.name [])))
@@ -305,15 +306,15 @@ module Gen(P : Params) = struct
           Build.memoize "header files"
             (requires >>> SC.Libs.file_deps sctx ~ext:".h")
         in
-        List.map lib.c_names   ~f:(build_c_file   lib ~dir ~requires ~h_files) @
-        List.map lib.cxx_names ~f:(build_cxx_file lib ~dir ~requires ~h_files)
+        List.map lib.c_names   ~f:(build_c_file   lib ~scope ~dir ~requires ~h_files) @
+        List.map lib.cxx_names ~f:(build_cxx_file lib ~scope ~dir ~requires ~h_files)
       in
       match lib.self_build_stubs_archive with
       | Some _ -> ()
       | None ->
         let ocamlmklib ~sandbox ~custom ~targets =
           SC.add_rule sctx ~sandbox
-            (SC.expand_and_eval_set ~dir lib.c_library_flags ~standard:[]
+            (SC.expand_and_eval_set sctx ~scope ~dir lib.c_library_flags ~standard:[]
              >>>
              Build.run ~context:ctx
                ~extra_targets:targets
@@ -367,7 +368,7 @@ module Gen(P : Params) = struct
     (* Build *.cma.js *)
     SC.add_rules sctx (
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
-      Js_of_ocaml_rules.build_cm sctx ~dir ~js_of_ocaml:lib.buildable.js_of_ocaml ~src);
+      Js_of_ocaml_rules.build_cm sctx ~scope ~dir ~js_of_ocaml:lib.buildable.js_of_ocaml ~src);
 
     if ctx.natdynlink_supported then
       Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
@@ -415,7 +416,7 @@ module Gen(P : Params) = struct
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  let build_exe ~js_of_ocaml ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
+  let build_exe ~js_of_ocaml ~flags ~scope ~dir ~requires ~name ~mode ~modules ~dep_graph
         ~link_flags ~force_custom_bytecode =
     let exe_ext = Mode.exe_ext mode in
     let mode, link_custom, compiler =
@@ -443,7 +444,7 @@ module Gen(P : Params) = struct
        &&&
        Build.fanout
        (Ocaml_flags.get flags mode)
-       (SC.expand_and_eval_set ~dir link_flags ~standard:[])
+       (SC.expand_and_eval_set sctx ~scope ~dir link_flags ~standard:[])
        >>>
        Build.run ~context:ctx
          (Dep compiler)
@@ -458,13 +459,13 @@ module Gen(P : Params) = struct
       let libs_and_cm_and_flags =
         libs_and_cm
         &&&
-        SC.expand_and_eval_set ~dir js_of_ocaml.flags ~standard:(Js_of_ocaml_rules.standard ())
+        SC.expand_and_eval_set sctx ~scope ~dir js_of_ocaml.flags ~standard:(Js_of_ocaml_rules.standard ())
       in
       SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm_and_flags >>> r))
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules ~scope =
     let dep_kind = Build.Required in
-    let flags = Ocaml_flags.make exes.buildable ~dir in
+    let flags = Ocaml_flags.make exes.buildable sctx ~scope ~dir in
     let modules =
       parse_modules ~dir ~all_modules ~modules_written_by_user:exes.buildable.modules
     in
@@ -501,12 +502,12 @@ module Gen(P : Params) = struct
     (* CR-someday jdimino: this should probably say [~dynlink:false] *)
     Module_compilation.build_modules sctx
       ~js_of_ocaml:exes.buildable.js_of_ocaml
-      ~dynlink:true ~flags ~dir ~dep_graph ~modules
+      ~dynlink:true ~flags ~scope ~dir ~dep_graph ~modules
       ~requires ~alias_module:None;
 
     List.iter exes.names ~f:(fun name ->
       List.iter Mode.all ~f:(fun mode ->
-        build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~dir ~requires ~name
+        build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~scope ~dir ~requires ~name
           ~mode ~modules ~dep_graph ~link_flags:exes.link_flags
           ~force_custom_bytecode:(mode = Native && not exes.modes.native)));
     { Merlin.

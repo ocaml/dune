@@ -9,20 +9,20 @@ module Ast = struct
     | Special : Loc.t * string -> ('a, _) t
     | Union : ('a, 'b) t list -> ('a, 'b) t
     | Diff : ('a, 'b) t * ('a, 'b) t -> ('a, 'b) t
-    | Include : 'a -> ('a, unexpanded) t
+    | Include : string -> ('a, unexpanded) t
 end
 
 type t = (string, Ast.expanded) Ast.t
 
-let t t : t =
+let parse_general t ~f =
   let rec of_sexp : Sexp.Ast.t -> _ = function
     | Atom (loc, "\\") -> Loc.fail loc "unexpected \\"
-    | Atom (_, "") -> Ast.Element ""
-    | Atom (loc, s) ->
+    | Atom (_, "") as t -> Ast.Element (f t)
+    | Atom (loc, s) as t ->
       if s.[0] = ':' then
         Special (loc, String.sub s ~pos:1 ~len:(String.length s - 1))
       else
-        Element s
+        Element (f t)
     | List (_, sexps) -> of_sexps [] sexps
   and of_sexps acc = function
     | Atom (_, "\\") :: sexps -> Diff (Union (List.rev acc), of_sexps [] sexps)
@@ -31,6 +31,8 @@ let t t : t =
     | [] -> Union (List.rev acc)
   in
   of_sexp t
+
+let t t : t = parse_general t ~f:(function Atom (_, s) -> s | List _ -> assert false)
 
 let eval t ~special_values =
   let rec of_ast (t : t) =
@@ -74,22 +76,21 @@ let standard = Ast.Special (Loc.none, "standard")
 let append a b = Ast.Union [a; b]
 
 module Unexpanded = struct
-  type t = (string, Ast.unexpanded) Ast.t
-  let parse_expanded = t
-  let t t' =
-    let rec map (t : (string, Ast.expanded) Ast.t) =
+  type t = (Sexp.Ast.t, Ast.unexpanded) Ast.t
+  let t t =
+    let rec map (t : (Sexp.Ast.t, Ast.expanded) Ast.t) =
       let open Ast in
       match t with
       | Element s -> Element s
       | Special (l, s) -> Special (l, s)
       | Union [Special (_, "include"); Element fn] ->
-          Include fn
+          Include (Sexp.Of_sexp.string fn)
       | Union l ->
           Union (List.map l ~f:map)
       | Diff (l, r) ->
           Diff (map l, map r)
     in
-    t t' |> map
+    parse_general t ~f:(fun x -> x) |> map
 
   let standard = standard
 
@@ -110,16 +111,16 @@ module Unexpanded = struct
     in
     loop String_set.empty t
 
-  let rec expand (t : t) ~files_contents : (string, Ast.expanded) Ast.t =
+  let rec expand (t : t) ~files_contents ~f : (string, Ast.expanded) Ast.t =
     let open Ast in
     match t with
-    | Element s -> Element s
+    | Element s -> Element (f s)
     | Special (l, s) -> Special (l, s)
     | Include fn ->
-        parse_expanded (String_map.find_exn fn files_contents ~string_of_key:(sprintf "%S")
-          ~desc:(fun _ -> "<filename to s-expression>"))
+        parse_general (String_map.find_exn fn files_contents ~string_of_key:(sprintf "%S")
+          ~desc:(fun _ -> "<filename to s-expression>")) ~f
     | Union l ->
-        Union (List.map l ~f:(expand ~files_contents))
+        Union (List.map l ~f:(expand ~files_contents ~f))
     | Diff (l, r) ->
-        Diff (expand l ~files_contents, expand r ~files_contents)
+        Diff (expand l ~files_contents ~f, expand r ~files_contents ~f)
 end

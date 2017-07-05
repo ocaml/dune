@@ -79,7 +79,7 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~(dep_graph:Ocamldep.dep_gra
            ; A "-c"; Ml_kind.flag ml_kind; Dep src
            ])))
 
-let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~dir ~dep_graph
+let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~scope ~dir ~dep_graph
       ~modules ~requires ~alias_module =
   List.iter Cm_kind.all ~f:(fun cm_kind ->
     let requires = Cm_kind.Dict.get requires cm_kind in
@@ -87,9 +87,9 @@ let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~dir ~dep_graph
       ~requires ~alias_module);
   (* Build *.cmo.js *)
   let src = Module.cm_file m ~dir Cm_kind.Cmo in
-  SC.add_rules sctx (Js_of_ocaml_rules.build_cm sctx ~dir ~js_of_ocaml ~src)
+  SC.add_rules sctx (Js_of_ocaml_rules.build_cm sctx ~scope ~dir ~js_of_ocaml ~src)
 
-let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~dir ~dep_graph ~modules ~requires
+let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~scope ~dir ~dep_graph ~modules ~requires
       ~alias_module =
   let cmi_requires =
     Build.memoize "cmi library dependencies"
@@ -114,5 +114,5 @@ let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~dir ~dep_graph ~modules ~re
      | None -> modules
      | Some (m : Module.t) -> String_map.remove m.name modules)
     ~f:(fun ~key:_ ~data:m ->
-      build_module sctx m ~dynlink ~js_of_ocaml ~flags ~dir ~dep_graph ~modules ~requires
+      build_module sctx m ~dynlink ~js_of_ocaml ~flags ~scope ~dir ~dep_graph ~modules ~requires
         ~alias_module)

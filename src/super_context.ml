@@ -895,16 +895,17 @@ module PP = struct
     )
 end
 
-let expand_and_eval_set ~dir set ~standard =
+let expand_and_eval_set t ~scope ~dir set ~standard =
   let open Build.O in
+  let f sexp = expand_vars t ~scope ~dir (String_with_vars.t sexp) in
   match Ordered_set_lang.Unexpanded.files set |> String_set.elements with
   | [] ->
-    let set = Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty in
+    let set = Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f in
     Build.return (Ordered_set_lang.eval_with_standard set ~standard)
   | files ->
     let paths = List.map files ~f:(Path.relative dir) in
     Build.all (List.map paths ~f:Build.read_sexp)
     >>^ fun sexps ->
     let files_contents = List.combine files sexps |> String_map.of_alist_exn in
-    let set = Ordered_set_lang.Unexpanded.expand set ~files_contents in
+    let set = Ordered_set_lang.Unexpanded.expand set ~files_contents ~f in
     Ordered_set_lang.eval_with_standard set ~standard

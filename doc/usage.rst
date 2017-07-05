@@ -248,17 +248,27 @@ to be able to use ``jbuilder install``.
 Destination
 -----------
 
-The place where the build artifacts are copied, usually referred as
+The place where the build artifacts (except ocaml libraries) are copied, usually referred as
 **prefix**, is determined as follow for a given build context:
 
 #. if an explicit ``--prefix <path>`` argument is passed, use this path
 #. if ``opam`` is present in the ``PATH``, use the output of ``opam config var
    prefix``
-#. otherwise, take the directory where ``ocamlc`` was found, and append
-   ``../lib`` to it. For instance if ``ocamlc`` is found in ``/usr/bin``, use
-   ``/usr``
+#. otherwise, take the parent of the directory where ``ocamlc`` was found.
 
-Note that ``--prefix`` is only supported if a single build context is in
+The ocaml libraries build artifacts are copied, referred as
+**libdir**, is determined as follow for a given build context:
+
+#. if an explicit ``--libdir <path>`` argument is passed, use this path
+#. if ``ocamlfind`` is present in the ``PATH``, use the output of
+   ``ocamlfind printconf destdir``
+#. if ``opam`` is present in the ``PATH``, use the output of ``opam config var
+   lib``
+#. otherwise, take the directory of the ocaml standard library
+
+
+
+Note that ``--prefix`` and ``--libdir`` are only supported if a single build context is in
 use.
 
 Workspace configuration

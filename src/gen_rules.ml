@@ -87,7 +87,7 @@ module Gen(P : Params) = struct
           fun x -> x
       in
       SC.add_rule sctx
-        (Build.fanout3
+        (Build.fanout4
            (dep_graph >>>
             Build.arr (fun dep_graph ->
               Ocamldep.names_to_top_closed_cm_files
@@ -98,21 +98,22 @@ module Gen(P : Params) = struct
                 (String_map.keys modules)))
            (SC.expand_and_eval_set sctx ~scope ~dir lib.c_library_flags ~standard:[])
            (Ocaml_flags.get flags mode)
+           (SC.expand_and_eval_set sctx ~scope ~dir lib.library_flags ~standard:[])
          >>>
          Build.run ~context:ctx (Dep compiler)
            ~extra_targets:(
              match mode with
              | Byte -> []
              | Native -> [lib_archive lib ~dir ~ext:ctx.ext_lib])
-           [ Dyn (fun (_, _, flags) -> As flags)
+           [ Dyn (fun (_, _, flags, _) -> As flags)
            ; A "-a"; A "-o"; Target target
            ; As stubs_flags
-           ; Dyn (fun (_, cclibs, _) -> Arg_spec.quote_args "-cclib" (map_cclibs cclibs))
-           ; As (List.map lib.library_flags ~f:(SC.expand_vars sctx ~scope ~dir))
+           ; Dyn (fun (_, cclibs, _, _) -> Arg_spec.quote_args "-cclib" (map_cclibs cclibs))
+           ; Dyn (fun (_, _, _, library_flags) -> As library_flags)
            ; As (match lib.kind with
                | Normal -> []
                | Ppx_deriver | Ppx_rewriter -> ["-linkall"])
-           ; Dyn (fun (cm_files, _, _) -> Deps cm_files)
+           ; Dyn (fun (cm_files, _, _, _) -> Deps cm_files)
            ]))
 
   let build_c_file (lib : Library.t) ~scope ~dir ~requires ~h_files c_name =

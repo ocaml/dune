@@ -30,6 +30,7 @@ val second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t
     The default definition may be overridden with a more efficient version if desired. *)
 val fanout  : ('a, 'b) t -> ('a, 'c) t -> ('a, 'b * 'c) t
 val fanout3 : ('a, 'b) t -> ('a, 'c) t -> ('a, 'd) t ->  ('a, 'b * 'c * 'd) t
+val fanout4 : ('a, 'b) t -> ('a, 'c) t -> ('a, 'd) t -> ('a, 'e) t -> ('a, 'b * 'c * 'd * 'e) t
 
 val all : ('a, 'b) t list -> ('a, 'b list) t
 

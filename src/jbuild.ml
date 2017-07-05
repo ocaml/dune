@@ -533,7 +533,7 @@ module Library = struct
     ; c_names                  : string list
     ; cxx_flags                : Ordered_set_lang.Unexpanded.t
     ; cxx_names                : string list
-    ; library_flags            : String_with_vars.t list
+    ; library_flags            : Ordered_set_lang.Unexpanded.t
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
     ; virtual_deps             : string list
@@ -555,7 +555,7 @@ module Library = struct
        field_oslu "cxx_flags"                                                >>= fun cxx_flags                ->
        field      "c_names" (list string) ~default:[]                        >>= fun c_names                  ->
        field      "cxx_names" (list string) ~default:[]                      >>= fun cxx_names                ->
-       field      "library_flags" (list String_with_vars.t) ~default:[]      >>= fun library_flags            ->
+       field_oslu "library_flags"                                            >>= fun library_flags            ->
        field_oslu "c_library_flags"                                          >>= fun c_library_flags          ->
        field      "virtual_deps" (list string) ~default:[]                   >>= fun virtual_deps             ->
        field      "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all         >>= fun modes                    ->

@@ -122,6 +122,11 @@ let fanout3 a b c =
   (a &&& (b &&& c))
   >>>
   arr (fun (a, (b, c)) -> (a, b, c))
+let fanout4 a b c d =
+  let open O in
+  (a &&& (b &&& (c &&& d)))
+  >>>
+  arr (fun (a, (b, (c, d))) -> (a, b, c, d))
 
 let rec all = function
   | [] -> arr (fun _ -> [])

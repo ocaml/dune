@@ -126,11 +126,13 @@ let opam_config_var ~env ~cache var =
     match Bin.opam with
     | None -> return None
     | Some fn ->
-      Future.run_capture Strict (Path.to_string fn) ~env ["config"; "var"; var]
-      >>| fun s ->
-      let s = String.trim s in
-      Hashtbl.add cache ~key:var ~data:s;
-      Some s
+      Future.run_capture (Accept All) (Path.to_string fn) ~env ["config"; "var"; var]
+      >>| function
+      | Ok s ->
+        let s = String.trim s in
+        Hashtbl.add cache ~key:var ~data:s;
+        Some s
+      | Error _ -> None
 
 let get_env env var =
   let rec loop i =

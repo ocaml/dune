@@ -236,9 +236,17 @@ let parse_package t ~name ~parent_dir ~vars ~required_by =
     else
       Path.absolute pkg_dir
   in
+  let expand_paths =
+    let dir = Path.to_string dir in
+    fun archive ->
+      if String.is_prefix (Filename.extension archive) ~prefix:".cm" then
+        archive
+      else
+        Filename.concat dir archive
+  in
   let archives var preds =
     Mode.Dict.of_func (fun ~mode ->
-      Vars.get_words vars var (Mode.findlib_predicate mode :: preds))
+      Vars.get_words vars var (Mode.findlib_predicate mode :: preds) |> List.map ~f:expand_paths)
   in
   let jsoo_runtime = Vars.get_words vars "jsoo_runtime" [] in
   let preds = ["ppx_driver"; "mt"; "mt_posix"] in

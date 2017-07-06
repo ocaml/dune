@@ -22,7 +22,7 @@ module Env_var = struct
   type t = string
   let compare a b =
     if Sys.win32 then
-      String.compare (String.lowercase a) (String.lowercase b)
+      String.compare (String.lowercase_ascii a) (String.lowercase_ascii b)
     else
       String.compare a b
 end

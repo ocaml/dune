@@ -1,14 +1,20 @@
 language: c
-sudo: required
-install: wget https://raw.githubusercontent.com/ocaml/ocaml-ci-scripts/master/.travis-opam.sh
-script: bash -ex .travis-opam.sh
+sudo: false
+
+cache:
+  directories:
+  - $HOME/ocaml
+
+install: bash -ex .travis-ci.sh prepare
+script: bash -ex .travis-ci.sh build
 env:
   global:
   - PACKAGE=jbuilder
   matrix:
-  - OCAML_VERSION=4.02
-  - OCAML_VERSION=4.03
-  - OCAML_VERSION=4.04
+  - OCAML_VERSION=4.02 OCAML_RELEASE=3
+  - OCAML_VERSION=4.03 OCAML_RELEASE=0
+  - OCAML_VERSION=4.04 OCAML_RELEASE=2
+  - OCAML_VERSION=4.05 OCAML_RELEASE=0+rc1
 os:
   - linux
   - osx

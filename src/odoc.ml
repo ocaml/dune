@@ -39,7 +39,7 @@ let compile_module sctx (m : Module.t) ~odoc ~dir ~includes ~dep_graph ~modules
 let to_html sctx (m : Module.t) odoc_file ~doc_dir ~odoc ~dir ~includes
       ~lib_public_name ~(lib : Library.t) =
   let context = SC.context sctx in
-  let html_dir = doc_dir ++ lib_public_name ++ String.capitalize m.obj_name in
+  let html_dir = doc_dir ++ lib_public_name ++ String.capitalize_ascii m.obj_name in
   let html_file = html_dir ++ "index.html" in
   SC.add_rule sctx
     (SC.Libs.static_file_deps (dir, lib) ~ext:odoc_ext
@@ -79,7 +79,7 @@ let lib_index sctx ~odoc ~dir ~(lib : Library.t) ~lib_public_name ~doc_dir ~modu
                The entry point for this library is module {!module:%s}."
               header
               lib_public_name
-              (String.capitalize lib.name)
+              (String.capitalize_ascii lib.name)
           else
             sprintf
               "%s\n\

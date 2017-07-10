@@ -704,22 +704,26 @@ Add it to your jbuild file to remove this warning.
       guess_modules ~dir:src_dir
         ~files:(Lazy.force files))
     in
-    List.filter_map stanzas ~f:(fun stanza ->
-      let dir = ctx_dir in
-      match (stanza : Stanza.t) with
-      | Library lib  ->
-        Some (library_rules lib ~dir
-                ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files)
-                ~scope)
-      | Executables  exes ->
-        Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules)
-                ~scope)
-      | _ -> None)
-    |> Merlin.add_rules sctx ~dir:ctx_dir;
-    Utop.add_rules sctx ~dir:ctx_dir stanzas
-    |> Option.iter ~f:(fun (stanza, all_modules) ->
+    let lib_requires =
+      let merlin =
+        List.filter_map stanzas ~f:(fun stanza ->
+          let dir = ctx_dir in
+          match (stanza : Stanza.t) with
+          | Library lib  ->
+            Some (library_rules lib ~dir
+                    ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files)
+                    ~scope)
+          | Executables  exes ->
+            Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules)
+                    ~scope)
+          | _ -> None)
+        |> Merlin.merge_all in
+      Option.iter merlin ~f:(Merlin.add_rules sctx ~dir:ctx_dir);
+      Option.map merlin ~f:(fun m -> m.Merlin.requires) in
+    Option.iter (Utop.exe_stanzas stanzas) ~f:(fun (exe, all_modules) ->
+      Utop.add_module_rules sctx ~dir:ctx_dir (Option.value_exn lib_requires);
       (* there's no need to generate a .merlin file for this exe *)
-      ignore (executables_rules stanza ~dir:ctx_dir ~all_modules ~scope)
+      ignore (executables_rules exe ~dir:ctx_dir ~all_modules ~scope)
     )
   ;;
 

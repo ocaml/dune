@@ -99,8 +99,10 @@ let merge_two a b =
       | None -> b.libname
   }
 
-let add_rules sctx ~dir ts =
+let merge_all = function
+  | [] -> None
+  | init::ts -> Some (List.fold_left ~init ~f:merge_two ts)
+
+let add_rules sctx ~dir merlin =
   if (SC.context sctx).merlin then
-    match ts with
-    | [] -> ()
-    | t :: ts -> dot_merlin sctx ~dir (List.fold_left ts ~init:t ~f:merge_two)
+    dot_merlin sctx ~dir merlin

@@ -7,6 +7,9 @@ type t =
   ; libname    : string option
   }
 
-(** Add rules for generating the .merlin in a directory *)
-val add_rules : Super_context.t -> dir:Path.t -> t list -> unit
+val merge_all : t list -> t option
+
+(** Add rules for generating the .merlin in a directory and return
+    the final .merlin used *)
+val add_rules : Super_context.t -> dir:Path.t -> t -> unit
 

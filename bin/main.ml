@@ -909,28 +909,31 @@ let utop =
     (* we don't know what the targets are without setting up the rules first and
        looking up where the utop exe's are located *)
     set_common common ~targets:[];
+    (* We must wait for other exit hooks to finish before forking. This is
+       necessary to make sure the trace file is dumped before we fork. *)
+    let utop_path = ref None in
+    at_exit (fun () -> Option.iter !utop_path ~f:(fun p ->
+      Unix.execv (Path.to_string p) [||]
+    ));
     let log = Log.create () in
-    let utop_path =
-      Future.Scheduler.go ~log
-        (Main.setup ~log common >>= fun setup ->
-         let utop_target =
-           let stanzas = Option.value_exn (String_map.find "default" setup.stanzas) in
-           match Utop.target stanzas lib_name with
-           | None -> die "library %s not in workspace" lib_name
-           | Some p -> p
-         in
-         let targets = resolve_targets ~log common setup [Path.to_string utop_target] in
-         do_build setup targets >>| fun () ->
-         let default_context =
-           setup.contexts 
-           |> List.find ~f:(fun c ->
-             match c.Context.kind with
-             | Default -> true
-             | Opam _ -> false)
-           |> Option.value_exn in
-         Path.append default_context.build_dir utop_target) in
-    Unix.execv (Path.to_string utop_path) [||]
-  in
+    Future.Scheduler.go ~log
+      (Main.setup ~log common >>= fun setup ->
+       let utop_target =
+         let stanzas = Option.value_exn (String_map.find "default" setup.stanzas) in
+         match Utop.target stanzas lib_name with
+         | None -> die "library %s not in workspace" lib_name
+         | Some p -> p
+       in
+       let targets = resolve_targets ~log common setup [Path.to_string utop_target] in
+       do_build setup targets >>| fun () ->
+       let default_context =
+         setup.contexts 
+         |> List.find ~f:(fun c ->
+           match c.Context.kind with
+           | Default -> true
+           | Opam _ -> false)
+         |> Option.value_exn in
+       utop_path := Some (Path.append default_context.build_dir utop_target)) in
   let name_ = Arg.info [] ~docv:"LIBRARY" in
   ( Term.(const go
           $ common

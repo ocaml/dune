@@ -70,6 +70,9 @@ module Scope = struct
     ; root     : Path.t
     }
 
+  let compare t1 t2 = Path.compare t1.root t2.root
+  let name t = Option.value ~default:"[root]" t.name
+
   let empty =
     { name     = None
     ; packages = String_map.empty
@@ -523,6 +526,7 @@ module Library = struct
 
   type t =
     { name                     : string
+    ; scope                    : Scope.t
     ; public                   : Public_lib.t option
     ; synopsis                 : string option
     ; install_c_headers        : string list
@@ -568,6 +572,7 @@ module Library = struct
        field_osl  "public_interfaces"                                        >>= fun public_interfaces        ->
        return
          { name
+         ; scope = pkgs
          ; public
          ; synopsis
          ; install_c_headers

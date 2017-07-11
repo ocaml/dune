@@ -17,6 +17,10 @@ module Scope : sig
     ; root     : Path.t
     }
 
+  val compare : t -> t -> int
+  val name: t -> string
+  (** Pretty name *)
+
   val make : Package.t list -> t
 
   val empty : t
@@ -128,6 +132,7 @@ module Library : sig
 
   type t =
     { name                     : string
+    ; scope                    : Scope.t
     ; public                   : Public_lib.t option
     ; synopsis                 : string option
     ; install_c_headers        : string list
@@ -146,6 +151,7 @@ module Library : sig
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
+    ; public_interfaces     : Ordered_set_lang.t
     }
 
   val has_stubs : t -> bool

@@ -22,23 +22,35 @@ end
 include T
 module Set = Set.Make(T)
 
-let dir = function
-  | Internal (dir, _) -> dir
+let dir ~context ~scope = function
+  | Internal (dir, lib) ->
+    if Jbuild.Scope.compare scope lib.scope = 0 then
+      dir
+    else begin
+      match lib.public, lib.scope.name with
+      | Some {sub_dir;_}, Some scope_name ->
+        let install_dir = Config.local_install_dir ~context in
+        Path.relative
+          (Path.append install_dir (Install.lib_install_path ~package:scope_name))
+          (Option.value ~default:"" sub_dir)
+      | _ -> die "The non public library %s is accessed in %s outside its scope." lib.name
+               (Jbuild.Scope.name scope)
+    end
   | External pkg -> pkg.dir
 
-let include_paths ts =
+let include_paths ~context ~scope ts =
   List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-    Path.Set.add (dir t) acc)
+    Path.Set.add (dir ~context ~scope t) acc)
 
-let include_flags ts =
-  let dirs = include_paths ts in
+let include_flags ~context ~scope ts =
+  let dirs = include_paths ~context ~scope ts in
   Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
     [Arg_spec.A "-I"; Path dir]))
 
-let c_include_flags ts =
+let c_include_flags ~context ~scope ts =
   let dirs =
     List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-      Path.Set.add (dir t) acc)
+      Path.Set.add (dir ~context ~scope t) acc)
   in
   Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
     [Arg_spec.A "-I"; Path dir]))
@@ -52,9 +64,9 @@ let describe = function
   | External pkg ->
     sprintf "%s (external)" pkg.name
 
-let link_flags ts ~mode =
+let link_flags ~context ~scope ts ~mode =
   Arg_spec.S
-    (include_flags ts ::
+    (include_flags ~context ~scope ts ::
      List.map ts ~f:(fun t ->
        match t with
        | External pkg ->

@@ -83,4 +83,6 @@ let target stanzas lib_name =
       | Jbuild.Stanza.Library l -> Lib.best_name (Lib.Internal (p, l)) = lib_name
       | _ -> false)
     |> Option.map ~f:(fun _ -> p))
-  |> Option.map ~f:(fun p -> Path.relative p "uutop.bc")
+  |> Option.map ~f:(fun p ->
+    Path.relative p exe_name
+    |> Path.extend_basename ~suffix:(Mode.exe_ext Mode.Byte))

@@ -23,7 +23,7 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~(dep_graph:Ocamldep.dep_gra
              cmi exists and reads it instead of re-creating it, which
              could create a race condition. *)
           ([ "-intf-suffix"
-           ; Filename.extension m.impl.name
+           ; Filename.greedy_extension m.impl.name
            ],
            [Module.cm_file m ~dir Cmi], [])
         | Cmi, None -> assert false

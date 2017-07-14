@@ -21,8 +21,8 @@ jbuilder.
 
 [![Travis status][travis-img]][travis] [![AppVeyor status][appveyor-img]][appveyor]
 
-[manual]:         http://jbuilder.readthedocs.io/en/latest/
-[quick-start]:    http://jbuilder.readthedocs.io/en/latest/quick-start.html
+[manual]:         https://jbuilder.readthedocs.io/en/latest/
+[quick-start]:    https://jbuilder.readthedocs.io/en/latest/quick-start.html
 [example]:        https://github.com/janestreet/jbuilder/tree/master/example
 [travis]:         https://travis-ci.org/janestreet/jbuilder
 [travis-img]:     https://travis-ci.org/janestreet/jbuilder.png?branch=master

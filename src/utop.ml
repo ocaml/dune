@@ -8,15 +8,15 @@ let module_name = String.capitalize_ascii exe_name
 let module_filename = exe_name ^ ".ml"
 
 let pp_ml fmt include_dirs =
-  let pp_include fmt l =
-    let pp_sep fmt () = Format.fprintf fmt "@.;@ " in
+  let pp_include fmt =
+    let pp_sep fmt () = Format.fprintf fmt "@ ; " in
     Format.pp_print_list ~pp_sep (fun fmt p ->
       Format.fprintf fmt {|"%s"|} (Path.to_string p)
-    ) fmt l
+    ) fmt
   in
-  Format.fprintf fmt "Clflags.include_dirs := [@[<2>@.%a@.];@."
+  Format.fprintf fmt "@[<v 2>Clflags.include_dirs :=@ [ %a@ ]@];@."
     pp_include include_dirs;
-  Format.fprintf fmt "UTop_main.main ();@."
+  Format.fprintf fmt "@.UTop_main.main ();@."
 
 let add_module_rules sctx ~dir lib_requires =
   let path = Path.relative dir module_filename in

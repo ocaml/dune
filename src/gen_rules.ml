@@ -727,9 +727,10 @@ Add it to your jbuild file to remove this warning.
       SC.stanzas sctx
       |> List.concat_map ~f:(fun x -> x.SC.Dir_with_jbuild.stanzas) in
     Option.iter (Utop.exe_stanzas stanzas) ~f:(fun (exe, all_modules) ->
-      Utop.add_module_rules sctx ~dir:ctx_dir (Option.value_exn lib_requires);
-      let merlin = executables_rules exe ~dir:ctx_dir ~all_modules ~scope in
-      Merlin.add_rules sctx ~dir:ctx_dir merlin)
+      let dir = Utop.src_dir ctx_dir in
+      Utop.add_module_rules sctx ~dir (Option.value_exn lib_requires);
+      let merlin = executables_rules exe ~dir ~all_modules ~scope in
+      Merlin.add_rules sctx ~dir merlin)
 
   let () =
     let stanzas = SC.stanzas sctx in

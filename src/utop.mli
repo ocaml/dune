@@ -10,4 +10,6 @@ val add_module_rules
   -> (unit, Lib.t list) Build.t
   -> unit
 
+val src_dir : Path.t -> Path.t
+
 val target : Context.t -> Path.t

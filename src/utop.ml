@@ -75,6 +75,8 @@ let exe_stanzas stanzas =
         ] in
     Some (utop_of_libs libs, all_modules)
 
+let src_dir p = Path.relative p ".utop"
+
 let target context =
-  Path.relative context.Context.build_dir exe_name
+  Path.relative (src_dir context.Context.build_dir) exe_name
   |> Path.extend_basename ~suffix:(Mode.exe_ext Mode.Byte)

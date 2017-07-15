@@ -10,7 +10,4 @@ val add_module_rules
   -> (unit, Lib.t list) Build.t
   -> unit
 
-val target
-  : (Path.t * Jbuild.Scope.t * Jbuild.Stanzas.t) list
-  -> string
-  -> Path.t option
+val target : Context.t -> Path.t

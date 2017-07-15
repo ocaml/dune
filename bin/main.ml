@@ -905,7 +905,7 @@ let subst =
 let utop =
   let doc = "Load library in utop" in
   let man = [ (* TODO *) ] in
-  let go common (lib_name : string) =
+  let go common =
     (* we don't know what the targets are without setting up the rules first and
        looking up where the utop exe's are located *)
     set_common common ~targets:[];
@@ -919,25 +919,18 @@ let utop =
     Future.Scheduler.go ~log
       (Main.setup ~log common >>= fun setup ->
        let utop_target =
-         let stanzas = Option.value_exn (String_map.find "default" setup.stanzas) in
-         match Utop.target stanzas lib_name with
-         | None -> die "library %s not in workspace" lib_name
-         | Some p -> p
-       in
+         let default_context =
+           setup.contexts
+           |> List.find ~f:(fun c ->
+             match c.Context.kind with
+             | Default -> true
+             | Opam _ -> false)
+           |> Option.value_exn in
+         Utop.target default_context in
        let targets = resolve_targets ~log common setup [Path.to_string utop_target] in
        do_build setup targets >>| fun () ->
-       let default_context =
-         setup.contexts 
-         |> List.find ~f:(fun c ->
-           match c.Context.kind with
-           | Default -> true
-           | Opam _ -> false)
-         |> Option.value_exn in
-       utop_path := Some (Path.append default_context.build_dir utop_target)) in
-  let name_ = Arg.info [] ~docv:"LIBRARY" in
-  ( Term.(const go
-          $ common
-          $ Arg.(required & pos 0 (some string) None name_))
+       utop_path := Some utop_target) in
+  ( Term.(const go $ common)
   , Term.info "utop" ~doc ~man)
 
 let all =

@@ -704,30 +704,45 @@ Add it to your jbuild file to remove this warning.
       guess_modules ~dir:src_dir
         ~files:(Lazy.force files))
     in
-    let lib_requires =
-      let merlin =
-        List.filter_map stanzas ~f:(fun stanza ->
-          let dir = ctx_dir in
-          match (stanza : Stanza.t) with
-          | Library lib  ->
-            Some (library_rules lib ~dir
-                    ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files)
-                    ~scope)
-          | Executables  exes ->
-            Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules)
-                    ~scope)
-          | _ -> None)
-        |> Merlin.merge_all in
-      Option.iter merlin ~f:(Merlin.add_rules sctx ~dir:ctx_dir);
-      Option.map merlin ~f:(fun m -> m.Merlin.requires) in
-    Option.iter (Utop.exe_stanzas stanzas) ~f:(fun (exe, all_modules) ->
-      Utop.add_module_rules sctx ~dir:ctx_dir (Option.value_exn lib_requires);
-      (* there's no need to generate a .merlin file for this exe *)
-      ignore (executables_rules exe ~dir:ctx_dir ~all_modules ~scope)
-    )
+    let merlin =
+      List.filter_map stanzas ~f:(fun stanza ->
+        let dir = ctx_dir in
+        match (stanza : Stanza.t) with
+        | Library lib  ->
+          Some (library_rules lib ~dir
+                  ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files)
+                  ~scope)
+        | Executables  exes ->
+          Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules)
+                  ~scope)
+        | _ -> None)
+      |> Merlin.merge_all in
+    Option.iter merlin ~f:(Merlin.add_rules sctx ~dir:ctx_dir);
+    Option.map merlin ~f:(fun m -> m.Merlin.requires)
   ;;
 
-  let () = List.iter (SC.stanzas sctx) ~f:rules
+  let utop_rules lib_requires =
+    let ctx_dir = (SC.context sctx).build_dir in
+    let scope = Scope.empty in
+    let stanzas =
+      SC.stanzas sctx
+      |> List.concat_map ~f:(fun x -> x.SC.Dir_with_jbuild.stanzas) in
+    Option.iter (Utop.exe_stanzas stanzas) ~f:(fun (exe, all_modules) ->
+      Utop.add_module_rules sctx ~dir:ctx_dir (Option.value_exn lib_requires);
+      let merlin = executables_rules exe ~dir:ctx_dir ~all_modules ~scope in
+      Merlin.add_rules sctx ~dir:ctx_dir merlin
+    )
+
+  let () =
+    let stanzas = SC.stanzas sctx in
+    let lib_requires = List.fold_left stanzas ~init:None ~f:(fun r st ->
+      match rules st, r with
+      | None, r
+      | r, None -> r
+      | Some r, Some r' ->
+        Some (Build.fanout r r' >>^ fun (x, y) -> Lib.remove_dups_preserve_order (x @ y)))
+    in
+    utop_rules  lib_requires
   let () =
     SC.add_rules sctx (Js_of_ocaml_rules.setup_separate_compilation_rules sctx)
   let () = Odoc.setup_css_rule sctx

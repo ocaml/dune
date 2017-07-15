@@ -75,14 +75,6 @@ let exe_stanzas stanzas =
         ] in
     Some (utop_of_libs libs, all_modules)
 
-let target stanzas lib_name =
-  stanzas
-  |> List.find_map ~f:(fun (p, _, stanzas) ->
-    stanzas
-    |> List.find ~f:(function
-      | Jbuild.Stanza.Library l -> Lib.best_name (Lib.Internal (p, l)) = lib_name
-      | _ -> false)
-    |> Option.map ~f:(fun _ -> p))
-  |> Option.map ~f:(fun p ->
-    Path.relative p exe_name
-    |> Path.extend_basename ~suffix:(Mode.exe_ext Mode.Byte))
+let target context =
+  Path.relative context.Context.build_dir exe_name
+  |> Path.extend_basename ~suffix:(Mode.exe_ext Mode.Byte)

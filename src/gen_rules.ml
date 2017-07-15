@@ -708,18 +708,17 @@ Add it to your jbuild file to remove this warning.
       List.filter_map stanzas ~f:(fun stanza ->
         let dir = ctx_dir in
         match (stanza : Stanza.t) with
-        | Library lib  ->
+        | Library lib ->
           Some (library_rules lib ~dir
                   ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files)
                   ~scope)
-        | Executables  exes ->
+        | Executables exes ->
           Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules)
                   ~scope)
         | _ -> None)
       |> Merlin.merge_all in
     Option.iter merlin ~f:(Merlin.add_rules sctx ~dir:ctx_dir);
     Option.map merlin ~f:(fun m -> m.Merlin.requires)
-  ;;
 
   let utop_rules lib_requires =
     let ctx_dir = (SC.context sctx).build_dir in
@@ -730,8 +729,7 @@ Add it to your jbuild file to remove this warning.
     Option.iter (Utop.exe_stanzas stanzas) ~f:(fun (exe, all_modules) ->
       Utop.add_module_rules sctx ~dir:ctx_dir (Option.value_exn lib_requires);
       let merlin = executables_rules exe ~dir:ctx_dir ~all_modules ~scope in
-      Merlin.add_rules sctx ~dir:ctx_dir merlin
-    )
+      Merlin.add_rules sctx ~dir:ctx_dir merlin)
 
   let () =
     let stanzas = SC.stanzas sctx in
@@ -742,7 +740,7 @@ Add it to your jbuild file to remove this warning.
       | Some r, Some r' ->
         Some (Build.fanout r r' >>^ fun (x, y) -> Lib.remove_dups_preserve_order (x @ y)))
     in
-    utop_rules  lib_requires
+    utop_rules lib_requires
   let () =
     SC.add_rules sctx (Js_of_ocaml_rules.setup_separate_compilation_rules sctx)
   let () = Odoc.setup_css_rule sctx

@@ -73,7 +73,7 @@ Write this jbuild:
      ((name hello_world)
       (libraries (core))
       (preprocess (pps (ppx_jane)))
-     )
+     ))
 
 This ``hello_world.ml`` file:
 

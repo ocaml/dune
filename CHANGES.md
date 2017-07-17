@@ -13,6 +13,9 @@
 
 - Fix useless hint when all missing dependencies are optional (#137)
 
+- Fix a bug preventing one from generating `META.pkg.template` with a
+  custom rule (#190)
+
 1.0+beta10 (08/06/2017)
 -----------------------
 

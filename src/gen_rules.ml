@@ -766,7 +766,7 @@ Add it to your jbuild file to remove this warning.
 
       let template =
         if has_meta_tmpl then
-          let meta_templ_path = Path.relative pkg.path meta_templ_fn in
+          let meta_templ_path = Path.relative path meta_templ_fn in
           Build.lines_of meta_templ_path
         else
           Build.return ["# JBUILDER_GEN"]

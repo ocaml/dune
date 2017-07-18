@@ -116,11 +116,13 @@ $ opam install jbuilder
 You can also build it manually with:
 
 ```sh
-$ make
+$ make release
 $ make install
 ```
 
-Note however that `make install` requires the `opam-installer` tool.
+Note however that `make install` requires the `opam-installer`
+tool. Running simply `make` will build jbuilder using the development
+settings.
 
 If you do not have `make`, you can do the following:
 

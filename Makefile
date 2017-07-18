@@ -4,6 +4,9 @@ BIN := ./_build/default/bin/main.exe
 default: boot.exe
 	./boot.exe -j 4 --dev
 
+release: boot.exe
+	./boot.exe -j 4
+
 boot.exe: bootstrap.ml
 	ocaml bootstrap.ml
 

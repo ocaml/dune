@@ -16,11 +16,12 @@ module File = struct
     | Reason ->
       { syntax = OCaml
       ; name =
-          t.name ^
+          let base, ext = Filename.split_extension t.name in
+          base ^ ".re" ^
           (match Filename.extension t.name with
            | ".re" -> ".ml"
            | ".rei" -> ".mli"
-           | e -> code_errorf "to_ocaml: unrecognized extension %s" e ())
+           | _ -> code_errorf "to_ocaml: unrecognized extension %s" ext ())
       }
 end
 

@@ -16,6 +16,9 @@
 - Fix a bug preventing one from generating `META.pkg.template` with a
   custom rule (#190)
 
+- Fix compilation of reason projects: .rei files where ignored and
+  caused the build to fail (#184)
+
 1.0+beta10 (08/06/2017)
 -----------------------
 

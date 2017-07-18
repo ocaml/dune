@@ -363,6 +363,13 @@ module Filename = struct
   let extension fn =
     let i = extension_start fn in
     String.sub fn ~pos:i ~len:(String.length fn - i)
+
+  (* test.x.y.z -> .x.y.z *)
+  let rec greedy_extension fn =
+    match split_extension fn with
+    | _, "" -> ""
+    | (f, e) when extension f = "" -> e
+    | (f, e) -> greedy_extension f ^ "." ^ e
 end
 
 module Option = struct

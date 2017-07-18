@@ -6,8 +6,8 @@
 ))
 
 (library (
-   (name mylib_see_private)
-   (public_name mylib.see_private)
+   (name mylib2_see_private)
+   (public_name mylib2.see_private)
    (modules (see_private))
    (libraries (mylib))
 ))

@@ -27,13 +27,13 @@ let dir ~context ~scope = function
     if Jbuild.Scope.compare scope lib.scope = 0 then
       dir
     else begin
-      match lib.public, lib.scope.name with
-      | Some {sub_dir;_}, Some scope_name ->
+      match lib.public with
+      | Some {sub_dir;package; _} ->
         let install_dir = Config.local_install_dir ~context in
         Path.relative
-          (Path.append install_dir (Install.lib_install_path ~package:scope_name))
+          (Path.append install_dir (Install.lib_install_path ~package))
           (Option.value ~default:"" sub_dir)
-      | _ -> die "The non public library %s is accessed in %s outside its scope." lib.name
+      | _ -> code_errorf "The non public library %s is accessed in %s outside its scope." lib.name
                (Jbuild.Scope.name scope)
     end
   | External pkg -> pkg.dir

@@ -81,9 +81,11 @@ modules you want.
   letter. For instance to exclude module ``Foo``: ``(modules (:standard \
   foo))``
 
-- ``(public_interfaces <modules>)`` specifies the interfaces `.cmi` of which
-  modules are installed. ``<public_interfaces>`` uses the same
-  `Ordered set language` than ``<modules>``.
+- ``(public_interfaces <modules>)`` specifies the modules that are
+  user of the library can see. Modules that are not part of this list
+  will only be visible in the same scope as where the library is
+  defined. ``<public_interfaces>`` uses the same `Ordered set
+  language` than ``<modules>``.
 
 - ``(libraries (<library-dependencies>))`` is used to specify the dependencies
   of the library. See the section about `Library dependencies`_ for more details

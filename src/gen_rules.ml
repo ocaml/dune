@@ -718,30 +718,19 @@ Add it to your jbuild file to remove this warning.
         | _ -> None)
       |> Merlin.merge_all in
     Option.iter merlin ~f:(Merlin.add_rules sctx ~dir:ctx_dir);
-    Option.map merlin ~f:(fun m -> m.Merlin.requires)
-
-  let utop_rules lib_requires =
-    let ctx_dir = (SC.context sctx).build_dir in
-    let scope = Scope.empty in
-    let stanzas =
-      SC.stanzas sctx
-      |> List.concat_map ~f:(fun x -> x.SC.Dir_with_jbuild.stanzas) in
     Option.iter (Utop.exe_stanzas stanzas) ~f:(fun (exe, all_modules) ->
       let dir = Utop.src_dir ctx_dir in
-      Utop.add_module_rules sctx ~dir (Option.value_exn lib_requires);
-      let merlin = executables_rules exe ~dir ~all_modules ~scope in
-      Merlin.add_rules sctx ~dir merlin)
+      let merlin' = executables_rules exe ~dir ~all_modules ~scope in
+      Merlin.add_rules sctx ~dir merlin';
+      (* so that our uutop.ml module depends on the libraries that in our
+         current jbuild dir. We could also just pass the current jbuild dir
+         explicitly *)
+      let lib_requires =
+        (Merlin.merge_two (Option.value_exn merlin) merlin').requires in
+      Utop.add_module_rules sctx ~dir lib_requires;
+    )
 
-  let () =
-    let stanzas = SC.stanzas sctx in
-    let lib_requires = List.fold_left stanzas ~init:None ~f:(fun r st ->
-      match rules st, r with
-      | None, r
-      | r, None -> r
-      | Some r, Some r' ->
-        Some (Build.fanout r r' >>^ fun (x, y) -> Lib.remove_dups_preserve_order (x @ y)))
-    in
-    utop_rules lib_requires
+  let () = List.iter (SC.stanzas sctx) ~f:rules
   let () =
     SC.add_rules sctx (Js_of_ocaml_rules.setup_separate_compilation_rules sctx)
   let () = Odoc.setup_css_rule sctx

@@ -905,7 +905,7 @@ let subst =
 let utop =
   let doc = "Load library in utop" in
   let man = [ (* TODO *) ] in
-  let go common =
+  let go common dir =
     (* we don't know what the targets are without setting up the rules first and
        looking up where the utop exe's are located *)
     set_common common ~targets:[];
@@ -926,12 +926,15 @@ let utop =
              | Default -> true
              | Opam _ -> false)
            |> Option.value_exn in
-         Utop.target default_context in
+         Utop.target default_context (Path.of_string dir) in
        let targets = resolve_targets ~log common setup [Path.to_string utop_target] in
        do_build setup targets >>| fun () ->
        utop_path := Some utop_target) in
-  ( Term.(const go $ common)
-  , Term.info "utop" ~doc ~man)
+  let name_ = Arg.info [] ~docv:"PATH" in
+  ( Term.(const go
+          $ common
+          $ Arg.(required & pos 0 (some string) None name_))
+  , Term.info "utop" ~doc ~man )
 
 let all =
   [ installed_libraries

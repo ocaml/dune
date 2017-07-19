@@ -23,7 +23,7 @@ let add_module_rules sctx ~dir lib_requires =
   let utop_ml =
     lib_requires
     >>^ (fun libs ->
-      let include_paths = dir :: (Path.Set.elements (Lib.include_paths libs)) in
+      let include_paths = Path.Set.elements (Lib.include_paths libs) in
       let b = Buffer.create 64 in
       let fmt = Format.formatter_of_buffer b in
       pp_ml fmt include_paths;
@@ -77,6 +77,7 @@ let exe_stanzas stanzas =
 
 let src_dir p = Path.relative p ".utop"
 
-let target context =
-  Path.relative (src_dir context.Context.build_dir) exe_name
+let target context jbuild_p =
+  let utop_dir = Path.append context.Context.build_dir (src_dir jbuild_p) in
+  Path.relative utop_dir exe_name
   |> Path.extend_basename ~suffix:(Mode.exe_ext Mode.Byte)

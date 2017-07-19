@@ -7,6 +7,8 @@ type t =
   ; libname    : string option
   }
 
+val merge_two : t -> t -> t
+
 val merge_all : t list -> t option
 
 (** Add rules for generating the .merlin in a directory and return

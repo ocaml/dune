@@ -905,14 +905,15 @@ let subst =
 let utop =
   let doc = "Load library in utop" in
   let man = [ (* TODO *) ] in
-  let go common dir =
+  let go common dir args =
     let utop_target = dir |> Path.of_string |> Utop.target |> Path.to_string in
     set_common common ~targets:[utop_target];
     (* We must wait for other exit hooks to finish before forking. This is
        necessary to make sure the trace file is dumped before we fork. *)
     let utop_path = ref None in
     at_exit (fun () -> Option.iter !utop_path ~f:(fun p ->
-      Unix.execv (Path.to_string p) [||]
+      let p = Path.to_string p in
+      Unix.execv p (Array.of_list (p :: args))
     ));
     let log = Log.create () in
     Future.Scheduler.go ~log
@@ -923,7 +924,8 @@ let utop =
   let name_ = Arg.info [] ~docv:"PATH" in
   ( Term.(const go
           $ common
-          $ Arg.(value & pos 0 dir "" name_))
+          $ Arg.(value & pos 0 dir "" name_)
+          $ Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")))
   , Term.info "utop" ~doc ~man )
 
 let all =

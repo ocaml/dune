@@ -12,4 +12,4 @@ val add_module_rules
 
 val src_dir : Path.t -> Path.t
 
-val target : Context.t -> Path.t -> Path.t
+val target : Path.t -> Path.t

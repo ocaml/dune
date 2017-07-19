@@ -77,7 +77,6 @@ let exe_stanzas stanzas =
 
 let src_dir p = Path.relative p ".utop"
 
-let target context jbuild_p =
-  let utop_dir = Path.append context.Context.build_dir (src_dir jbuild_p) in
-  Path.relative utop_dir exe_name
+let target jbuild_p =
+  Path.relative (src_dir jbuild_p) exe_name
   |> Path.extend_basename ~suffix:(Mode.exe_ext Mode.Byte)

@@ -128,6 +128,8 @@ module Entry = struct
     Path.relative main_dir dst
 end
 
+let lib_install_path ~package = Path.relative Entry.Paths.lib package.Package.name
+
 module SMap = Map.Make(Section)
 
 let files entries =

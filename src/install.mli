@@ -33,3 +33,5 @@ end
 
 val files : Entry.t list -> Path.Set.t
 val gen_install_file : Entry.t list -> string
+
+val lib_install_path: package:Package.t -> Path.t

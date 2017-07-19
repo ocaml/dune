@@ -1,0 +1,13 @@
+(library (
+   (name mylib)
+   (public_name mylib)
+   (modules (good bad))
+   (public_interfaces (:standard \ Bad))
+))
+
+(library (
+   (name mylib2_see_private)
+   (public_name mylib2.see_private)
+   (modules (see_private))
+   (libraries (mylib))
+))

@@ -11,10 +11,10 @@ type t =
   ; libname    : string option
   }
 
-let ppx_flags sctx ~dir ~src_dir { preprocess; libname; _ } =
+let ppx_flags sctx ~scope ~dir ~src_dir { preprocess; libname; _ } =
   match preprocess with
   | Pps { pps; flags } ->
-    let exe = SC.PP.get_ppx_driver sctx pps ~dir ~dep_kind:Optional in
+    let exe = SC.PP.get_ppx_driver sctx pps ~scope ~dir ~dep_kind:Optional in
     let command =
       List.map (Path.reach exe ~from:src_dir
                 :: "--as-ppx"
@@ -26,7 +26,7 @@ let ppx_flags sctx ~dir ~src_dir { preprocess; libname; _ } =
     [sprintf "FLG -ppx \"%s\"" command]
   | _ -> []
 
-let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
+let dot_merlin sctx ~scope ~dir ({ requires; flags; _ } as t) =
   match Path.extract_build_context dir with
   | Some (_, remaindir) ->
     let path = Path.relative remaindir ".merlin" in
@@ -37,7 +37,7 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
     SC.add_rule sctx (
       requires
       >>^ (fun libs ->
-        let ppx_flags = ppx_flags sctx ~dir ~src_dir:remaindir t in
+        let ppx_flags = ppx_flags sctx ~scope ~dir ~src_dir:remaindir t in
         let internals, externals =
           List.fold_left libs ~init:([], []) ~f:(fun (internals, externals) ->
             function
@@ -94,8 +94,8 @@ let merge_two a b =
       | None -> b.libname
   }
 
-let add_rules sctx ~dir ts =
+let add_rules sctx ~scope ~dir ts =
   if (SC.context sctx).merlin then
     match ts with
     | [] -> ()
-    | t :: ts -> dot_merlin sctx ~dir (List.fold_left ts ~init:t ~f:merge_two)
+    | t :: ts -> dot_merlin sctx ~scope ~dir (List.fold_left ts ~init:t ~f:merge_two)

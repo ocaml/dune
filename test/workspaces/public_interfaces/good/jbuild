@@ -1,0 +1,5 @@
+(library (
+   (name good)
+   (public_name good)
+   (libraries (mylib mylib2.see_private))
+))

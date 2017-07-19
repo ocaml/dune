@@ -12,13 +12,22 @@ module Set : Set.S with type elt := t
 
 (*val deps : t -> string list*)
 
-val include_paths : t list -> Path.Set.t
+val include_paths :
+  context:string -> scope:Jbuild.Scope.t ->
+  t list -> Path.Set.t
+(** The scope given is the current one *)
 
-val include_flags : t list -> _ Arg_spec.t
+val include_flags :
+  context:string -> scope:Jbuild.Scope.t ->
+  t list -> _ Arg_spec.t
 
-val c_include_flags : t list -> _ Arg_spec.t
+val c_include_flags :
+  context:string -> scope:Jbuild.Scope.t ->
+  t list -> _ Arg_spec.t
 
-val link_flags : t list -> mode:Mode.t -> _ Arg_spec.t
+val link_flags :
+  context:string -> scope:Jbuild.Scope.t ->
+  t list -> mode:Mode.t -> _ Arg_spec.t
 
 val archive_files : t list -> mode:Mode.t -> ext_lib:string -> Path.t list
 

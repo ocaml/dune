@@ -66,7 +66,7 @@ module Gen(P : Params) = struct
     in
     List.map cclibs ~f
 
-  let build_lib (lib : Library.t) ~scope ~flags ~dir ~mode ~modules ~dep_graph =
+  let build_lib (lib : Library.t) ~flags ~dir ~mode ~modules ~dep_graph =
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let dep_graph = Ml_kind.Dict.get dep_graph Impl in
@@ -107,7 +107,7 @@ module Gen(P : Params) = struct
            ; A "-a"; A "-o"; Target target
            ; As stubs_flags
            ; Dyn (fun (_, cclibs) -> Arg_spec.quote_args "-cclib" (map_cclibs cclibs))
-           ; As (List.map lib.library_flags ~f:(SC.expand_vars sctx ~scope ~dir))
+           ; As (List.map lib.library_flags ~f:(SC.expand_vars sctx ~scope:lib.scope ~dir))
            ; As (match lib.kind with
                | Normal -> []
                | Ppx_deriver | Ppx_rewriter -> ["-linkall"])
@@ -131,7 +131,7 @@ module Gen(P : Params) = struct
          (Dep ctx.ocamlc)
          [ As (Utils.g ())
          ; Dyn (fun (c_flags, libs) ->
-             S [ Lib.c_include_flags libs
+             S [ Lib.c_include_flags ~context:ctx.name ~scope:lib.scope libs
                ; Arg_spec.quote_args "-ccopt" c_flags
                ])
          ; A "-o"; Target dst
@@ -159,7 +159,7 @@ module Gen(P : Params) = struct
          [ S [A "-I"; Path ctx.stdlib_dir]
          ; As (SC.cxx_flags sctx)
          ; Dyn (fun (cxx_flags, libs) ->
-             S [ Lib.c_include_flags libs
+             S [ Lib.c_include_flags ~context:ctx.name ~scope:lib.scope libs
                ; As cxx_flags
                ])
          ; A "-o"; Target dst
@@ -176,7 +176,7 @@ module Gen(P : Params) = struct
   let alias_module_build_sandbox = Scanf.sscanf ctx.version "%u.%u"
      (fun a b -> a, b) <= (4, 02)
 
-  let library_rules (lib : Library.t) ~dir ~all_modules ~files ~scope =
+  let library_rules (lib : Library.t) ~dir ~all_modules ~files =
     let dep_kind = if lib.optional then Build.Optional else Required in
     let flags = Ocaml_flags.make lib.buildable in
     let modules =
@@ -225,7 +225,7 @@ module Gen(P : Params) = struct
       SC.PP.pped_modules sctx ~dir ~dep_kind ~modules ~preprocess:lib.buildable.preprocess
         ~preprocessor_deps:lib.buildable.preprocessor_deps
         ~lib_name:(Some lib.name)
-        ~scope
+        ~scope:lib.scope
     in
     let modules =
       match alias_module with
@@ -268,7 +268,7 @@ module Gen(P : Params) = struct
     let dynlink = lib.dynlink in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
     Module_compilation.build_modules sctx
-      ~js_of_ocaml ~dynlink ~flags ~dir ~dep_graph ~modules ~requires ~alias_module;
+      ~js_of_ocaml ~dynlink ~flags ~scope:lib.scope ~dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
       let flags = Ocaml_flags.default () in
       Module_compilation.build_module sctx m
@@ -276,6 +276,7 @@ module Gen(P : Params) = struct
         ~dynlink
         ~sandbox:alias_module_build_sandbox
         ~flags:{ flags with common = flags.common @ ["-w"; "-49"] }
+        ~scope:lib.scope
         ~dir
         ~modules:(String_map.singleton m.name m)
         ~dep_graph:(Ml_kind.Dict.make_both (Build.return (String_map.singleton m.name [])))
@@ -362,7 +363,7 @@ module Gen(P : Params) = struct
          Path.relative dir (header ^ ".h")));
 
     List.iter Mode.all ~f:(fun mode ->
-      build_lib lib ~scope ~flags ~dir ~mode ~modules ~dep_graph);
+      build_lib lib ~flags ~dir ~mode ~modules ~dep_graph);
     (* Build *.cma.js *)
     SC.add_rules sctx (
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
@@ -412,7 +413,7 @@ module Gen(P : Params) = struct
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  let build_exe ~js_of_ocaml ~flags ~dir ~requires ~name ~mode ~modules ~dep_graph
+  let build_exe ~js_of_ocaml ~flags ~scope ~dir ~requires ~name ~mode ~modules ~dep_graph
         ~link_flags ~force_custom_bytecode =
     let exe_ext = Mode.exe_ext mode in
     let mode, link_flags, compiler =
@@ -442,7 +443,7 @@ module Gen(P : Params) = struct
          [ Ocaml_flags.get flags mode
          ; A "-o"; Target exe
          ; As link_flags
-         ; Dyn (fun (libs, _) -> Lib.link_flags libs ~mode)
+         ; Dyn (fun (libs, _) -> Lib.link_flags libs ~context:ctx.name ~scope ~mode)
          ; Dyn (fun (_, cm_files) -> Deps cm_files)
          ]);
     if mode = Mode.Byte then
@@ -488,12 +489,12 @@ module Gen(P : Params) = struct
     (* CR-someday jdimino: this should probably say [~dynlink:false] *)
     Module_compilation.build_modules sctx
       ~js_of_ocaml:exes.buildable.js_of_ocaml
-      ~dynlink:true ~flags ~dir ~dep_graph ~modules
+      ~dynlink:true ~flags ~scope ~dir ~dep_graph ~modules
       ~requires ~alias_module:None;
 
     List.iter exes.names ~f:(fun name ->
       List.iter Mode.all ~f:(fun mode ->
-        build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~dir ~requires ~name
+        build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~scope ~dir ~requires ~name
           ~mode ~modules ~dep_graph ~link_flags:exes.link_flags
           ~force_custom_bytecode:(mode = Native && not exes.modes.native)));
     { Merlin.
@@ -694,13 +695,12 @@ Add it to your jbuild file to remove this warning.
       match (stanza : Stanza.t) with
       | Library lib  ->
         Some (library_rules lib ~dir
-                ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files)
-                ~scope)
+                ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files))
       | Executables  exes ->
         Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules)
                 ~scope)
       | _ -> None)
-    |> Merlin.add_rules sctx ~dir:ctx_dir
+    |> Merlin.add_rules sctx ~scope ~dir:ctx_dir
 
   let () = List.iter (SC.stanzas sctx) ~f:rules
   let () =
@@ -845,10 +845,20 @@ Add it to your jbuild file to remove this warning.
             sprintf "<module table for context %s>"
               (Path.to_string ctx.build_dir))
       in
+      let public_interfaces =
+        Ordered_set_lang.eval_with_standard lib.public_interfaces
+          ~standard:(List.map modules ~f:(fun s -> s.Module.name))
+        |> String_set.of_list
+      in
       List.concat
         [ List.concat_map modules ~f:(fun m ->
+            let intf =
+              if String_set.mem m.Module.name public_interfaces
+              then [ Module.cm_file m ~dir Cmi ]
+              else []
+            in
             List.concat
-              [ [ Module.cm_file m ~dir Cmi ]
+              [ intf
               ; if_ native [ Module.cm_file m ~dir Cmx ]
               ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~dir)
               ; [ match Module.file m ~dir Intf with
@@ -894,7 +904,7 @@ Add it to your jbuild file to remove this warning.
         in
         let ppx_exe =
           SC.PP.get_ppx_driver sctx pps
-            ~dir ~dep_kind:(if lib.optional then Build.Optional else Required)
+            ~scope:lib.scope ~dir ~dep_kind:(if lib.optional then Build.Optional else Required)
         in
         [ppx_exe]
     in

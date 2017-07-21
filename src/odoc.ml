@@ -130,10 +130,11 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
     in
     let odoc = get_odoc sctx in
     let includes =
-      requires
-      >>>
-      SC.Libs.file_deps sctx ~ext:odoc_ext
-      >>^ Lib.include_flags ~context:context.name ~scope:lib.scope
+      Build.memoize "includes"
+        (requires
+         >>>
+         SC.Libs.file_deps sctx ~ext:odoc_ext
+         >>^ Lib.include_flags ~context:context.name ~scope:lib.scope)
     in
     let modules_and_odoc_files =
       List.map (String_map.values modules)

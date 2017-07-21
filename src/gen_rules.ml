@@ -492,7 +492,7 @@ module Gen(P : Params) = struct
       ~requires ~alias_module:None;
 
     List.iter exes.names ~f:(fun name ->
-      List.iter Mode.all ~f:(fun mode ->
+      List.iter (Mode.Dict.Set.to_list exes.modes) ~f:(fun mode ->
         build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~dir ~requires ~name
           ~mode ~modules ~dep_graph ~link_flags:exes.link_flags
           ~force_custom_bytecode:(mode = Native && not exes.modes.native)));

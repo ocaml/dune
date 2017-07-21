@@ -786,7 +786,7 @@ module PP = struct
        >>>
        Build.run ~context:ctx (Dep compiler)
          [ A "-o" ; Target target
-         ; Dyn (Lib.link_flags ~context:ctx.name ~source_dir:Internal ~mode)
+         ; Dyn (Lib.link_flags ~mode)
          ])
 
   let get_ppx_driver sctx pps ~dir ~dep_kind =

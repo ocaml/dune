@@ -70,9 +70,6 @@ module Scope = struct
     ; root     : Path.t
     }
 
-  let compare t1 t2 = Path.compare t1.root t2.root
-  let name t = Option.value ~default:"[root]" t.name
-
   let empty =
     { name     = None
     ; packages = String_map.empty
@@ -526,7 +523,6 @@ module Library = struct
 
   type t =
     { name                     : string
-    ; scope                    : Scope.t
     ; public                   : Public_lib.t option
     ; synopsis                 : string option
     ; install_c_headers        : string list
@@ -545,7 +541,6 @@ module Library = struct
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
-    ; public_interfaces        : Ordered_set_lang.t
     }
 
   let v1 pkgs =
@@ -569,15 +564,8 @@ module Library = struct
        field_b    "optional"                                                 >>= fun optional                 ->
        field      "self_build_stubs_archive" (option string) ~default:None   >>= fun self_build_stubs_archive ->
        field_b    "no_dynlink"                                               >>= fun no_dynlink               ->
-       map_validate (field_o "public_interfaces" Ordered_set_lang.t) ~f:(fun public_interfaces ->
-         match public_interfaces, public with
-         | Some _, None ->
-           Error "Field 'public_interfaces' is not allowed for private libraries."
-         | _ -> Ok public_interfaces)
-       >>= fun public_interfaces ->
        return
          { name
-         ; scope = pkgs
          ; public
          ; synopsis
          ; install_c_headers
@@ -596,8 +584,6 @@ module Library = struct
          ; optional
          ; buildable
          ; dynlink = not no_dynlink
-         ; public_interfaces =
-             Option.value public_interfaces ~default:Ordered_set_lang.standard
          })
 
   let has_stubs t =

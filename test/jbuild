@@ -104,15 +104,3 @@
   (deps ((alias sleep5)
          (alias sleep4-and-fail)
          (alias sleep1-and-fail)))))
-
-(alias
- ((name runtest)
-  (deps ((files_recursively_in workspaces/public_interfaces)))
-  (action
-   (chdir workspaces/public_interfaces
-     (progn
-      (run ${exe:run.exe} -log log1 --
-       ${bin:jbuilder} build --verbose -j1 @install --root . --only good,mylib,mylib2)
-      (run ${exe:run.exe} -log log2 -inverse --
-       ${bin:jbuilder} build -j1 @install --root . --only bad,mylib,mylib2
-       ))))))

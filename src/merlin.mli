@@ -9,3 +9,4 @@ type t =
 
 (** Add rules for generating the .merlin in a directory *)
 val add_rules : Super_context.t -> dir:Path.t -> t list -> unit
+

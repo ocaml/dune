@@ -66,7 +66,7 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~(dep_graph:Ocamldep.dep_gra
            ~extra_targets
            [ Ocaml_flags.get_for_cm flags ~cm_kind
            ; cmt_args
-           ; Dyn (Lib.include_flags ~context:ctx.name ~source_dir:Install)
+           ; Dyn Lib.include_flags
            ; As extra_args
            ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"
            ; A "-no-alias-deps"

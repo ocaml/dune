@@ -1,5 +1,0 @@
-(library (
-   (name bad)
-   (public_name bad)
-   (libraries (mylib))
-))

@@ -134,7 +134,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
         (requires
          >>>
          SC.Libs.file_deps sctx ~ext:odoc_ext
-         >>^ Lib.include_flags ~context:context.name ~source_dir:Internal)
+         >>^ Lib.include_flags)
     in
     let modules_and_odoc_files =
       List.map (String_map.values modules)

@@ -22,39 +22,23 @@ end
 include T
 module Set = Set.Make(T)
 
-module Source_dir = struct
-  type t =
-    | Internal
-    | Install
-end
-
-let dir ~context ~source_dir = function
-  | Internal (dir, lib) -> begin
-      match lib.public, (source_dir : Source_dir.t) with
-      | None, _ | _, Internal ->
-        dir
-      | Some { package; sub_dir; _ }, Install ->
-        let install_dir = Config.local_install_dir ~context in
-        let dir =  Path.append install_dir (Install.lib_install_path ~package) in
-        match sub_dir with
-        | None -> dir
-        | Some x -> Path.relative dir x
-    end
+let dir = function
+  | Internal (dir, _) -> dir
   | External pkg -> pkg.dir
 
-let include_paths ~context ~source_dir ts =
+let include_paths ts =
   List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-    Path.Set.add (dir ~context ~source_dir t) acc)
+    Path.Set.add (dir t) acc)
 
-let include_flags ~context ~source_dir ts =
-  let dirs = include_paths ~context ~source_dir ts in
+let include_flags ts =
+  let dirs = include_paths ts in
   Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
     [Arg_spec.A "-I"; Path dir]))
 
-let c_include_flags ~context ~source_dir ts =
+let c_include_flags ts =
   let dirs =
     List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-      Path.Set.add (dir ~context ~source_dir t) acc)
+      Path.Set.add (dir t) acc)
   in
   Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
     [Arg_spec.A "-I"; Path dir]))
@@ -68,9 +52,9 @@ let describe = function
   | External pkg ->
     sprintf "%s (external)" pkg.name
 
-let link_flags ~context ~source_dir ts ~mode =
+let link_flags ts ~mode =
   Arg_spec.S
-    (include_flags ~context ~source_dir ts ::
+    (include_flags ts ::
      List.map ts ~f:(fun t ->
        match t with
        | External pkg ->

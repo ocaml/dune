@@ -1,11 +1,6 @@
 1.0.0 (coming soon)
 -------------------
 
-- Add a field `public_interfaces` to libraries. It lists the modules
-  that are accessible outside of the scope where the libraries is
-  defined, for instance when the library is installed (Francois Bobot,
-  #106)
-
 - Fix the error message when there are more than one `<package>.opam`
   file for a given pacakge
 

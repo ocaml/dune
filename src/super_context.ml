@@ -724,7 +724,7 @@ module PP = struct
 
   let migrate_driver_main = "ocaml-migrate-parsetree.driver-main"
 
-  let build_ppx_driver sctx ~scope ~dir ~dep_kind ~target pp_names ~driver =
+  let build_ppx_driver sctx ~dir ~dep_kind ~target pp_names ~driver =
     let ctx = sctx.context in
     let mode = Context.best_mode ctx in
     let compiler = Option.value_exn (Context.compiler ctx mode) in
@@ -786,10 +786,10 @@ module PP = struct
        >>>
        Build.run ~context:ctx (Dep compiler)
          [ A "-o" ; Target target
-         ; Dyn (Lib.link_flags ~context:ctx.name ~scope ~mode)
+         ; Dyn (Lib.link_flags ~context:ctx.name ~source_dir:Internal ~mode)
          ])
 
-  let get_ppx_driver sctx pps ~scope ~dir ~dep_kind =
+  let get_ppx_driver sctx pps ~dir ~dep_kind =
     let driver, names =
       match List.rev_map pps ~f:Pp.to_string with
       | [] -> (None, [])
@@ -806,7 +806,7 @@ module PP = struct
     | None ->
       let ppx_dir = Path.relative sctx.ppx_dir key in
       let exe = Path.relative ppx_dir "ppx.exe" in
-      build_ppx_driver sctx names ~scope ~dir ~dep_kind ~target:exe ~driver;
+      build_ppx_driver sctx names ~dir ~dep_kind ~target:exe ~driver;
       Hashtbl.add sctx.ppx_drivers ~key ~data:exe;
       exe
 
@@ -878,7 +878,7 @@ module PP = struct
                ~targets:(Static [dst])
                ~scope))
       | Pps { pps; flags } ->
-        let ppx_exe = get_ppx_driver sctx pps ~scope ~dir ~dep_kind in
+        let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in
         pped_module m ~dir ~f:(fun kind src dst ->
           add_rule sctx
             (preprocessor_deps

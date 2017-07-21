@@ -82,10 +82,10 @@ modules you want.
   foo))``
 
 - ``(public_interfaces <modules>)`` specifies the modules that are
-  user of the library can see. Modules that are not part of this list
-  will only be visible in the same scope as where the library is
-  defined. ``<public_interfaces>`` uses the same `Ordered set
-  language` than ``<modules>``.
+  visible to users of the library. Modules that are not part of this
+  list will only be visible inside the library itself.
+  ``<public_interfaces>`` uses the same `Ordered set language` than
+  ``<modules>`` and is currently only allowed for public libraries.
 
 - ``(libraries (<library-dependencies>))`` is used to specify the dependencies
   of the library. See the section about `Library dependencies`_ for more details

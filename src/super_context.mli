@@ -158,7 +158,6 @@ module PP : sig
   val get_ppx_driver
     :  t
     -> Pp.t list
-    -> scope:Scope.t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
     -> Path.t

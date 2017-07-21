@@ -12,28 +12,35 @@ module Set : Set.S with type elt := t
 
 (*val deps : t -> string list*)
 
+module Source_dir : sig
+  (** Which include directory to use for internal public libraries *)
+  type t =
+    | Internal (** use the directory from "_build/<context>" *)
+    | Install  (** use the directory from "_build/install/<context>" *)
+end
+
 (** The scope given is the current one *)
 val include_paths
   :  context:string
-  -> scope:Jbuild.Scope.t
+  -> source_dir:Source_dir.t
   -> t list
   -> Path.Set.t
 
 val include_flags
   :  context:string
-  -> scope:Jbuild.Scope.t
+  -> source_dir:Source_dir.t
   -> t list
   -> _ Arg_spec.t
 
 val c_include_flags
   :  context:string
-  -> scope:Jbuild.Scope.t
+  -> source_dir:Source_dir.t
   -> t list
   -> _ Arg_spec.t
 
 val link_flags
   :  context:string
-  -> scope:Jbuild.Scope.t
+  -> source_dir:Source_dir.t
   -> t list
   -> mode:Mode.t
   -> _ Arg_spec.t

@@ -545,7 +545,7 @@ module Library = struct
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
-    ; public_interfaces     : Ordered_set_lang.t
+    ; public_interfaces        : Ordered_set_lang.t
     }
 
   let v1 pkgs =
@@ -569,7 +569,12 @@ module Library = struct
        field_b    "optional"                                                 >>= fun optional                 ->
        field      "self_build_stubs_archive" (option string) ~default:None   >>= fun self_build_stubs_archive ->
        field_b    "no_dynlink"                                               >>= fun no_dynlink               ->
-       field_osl  "public_interfaces"                                        >>= fun public_interfaces        ->
+       map_validate (field_o "public_interfaces" Ordered_set_lang.t) ~f:(fun public_interfaces ->
+         match public_interfaces, public with
+         | Some _, None ->
+           Error "Field 'public_interfaces' is not allowed for private libraries."
+         | _ -> Ok public_interfaces)
+       >>= fun public_interfaces ->
        return
          { name
          ; scope = pkgs
@@ -591,7 +596,8 @@ module Library = struct
          ; optional
          ; buildable
          ; dynlink = not no_dynlink
-         ; public_interfaces
+         ; public_interfaces =
+             Option.value public_interfaces ~default:Ordered_set_lang.standard
          })
 
   let has_stubs t =

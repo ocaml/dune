@@ -22,36 +22,39 @@ end
 include T
 module Set = Set.Make(T)
 
-let dir ~context ~scope = function
-  | Internal (dir, lib) ->
-    if Jbuild.Scope.compare scope lib.scope = 0 then
-      dir
-    else begin
-      match lib.public with
-      | Some {sub_dir; package; _} ->
+module Source_dir = struct
+  type t =
+    | Internal
+    | Install
+end
+
+let dir ~context ~source_dir = function
+  | Internal (dir, lib) -> begin
+      match lib.public, (source_dir : Source_dir.t) with
+      | None, _ | _, Internal ->
+        dir
+      | Some { package; sub_dir; _ }, Install ->
         let install_dir = Config.local_install_dir ~context in
-        Path.relative
-          (Path.append install_dir (Install.lib_install_path ~package))
-          (Option.value ~default:"" sub_dir)
-      | _ ->
-        code_errorf "The non public library %s is accessed in %s outside its scope."
-          lib.name (Jbuild.Scope.name scope)
+        let dir =  Path.append install_dir (Install.lib_install_path ~package) in
+        match sub_dir with
+        | None -> dir
+        | Some x -> Path.relative dir x
     end
   | External pkg -> pkg.dir
 
-let include_paths ~context ~scope ts =
+let include_paths ~context ~source_dir ts =
   List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-    Path.Set.add (dir ~context ~scope t) acc)
+    Path.Set.add (dir ~context ~source_dir t) acc)
 
-let include_flags ~context ~scope ts =
-  let dirs = include_paths ~context ~scope ts in
+let include_flags ~context ~source_dir ts =
+  let dirs = include_paths ~context ~source_dir ts in
   Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
     [Arg_spec.A "-I"; Path dir]))
 
-let c_include_flags ~context ~scope ts =
+let c_include_flags ~context ~source_dir ts =
   let dirs =
     List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-      Path.Set.add (dir ~context ~scope t) acc)
+      Path.Set.add (dir ~context ~source_dir t) acc)
   in
   Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
     [Arg_spec.A "-I"; Path dir]))
@@ -65,9 +68,9 @@ let describe = function
   | External pkg ->
     sprintf "%s (external)" pkg.name
 
-let link_flags ~context ~scope ts ~mode =
+let link_flags ~context ~source_dir ts ~mode =
   Arg_spec.S
-    (include_flags ~context ~scope ts ::
+    (include_flags ~context ~source_dir ts ::
      List.map ts ~f:(fun t ->
        match t with
        | External pkg ->

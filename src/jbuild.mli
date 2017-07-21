@@ -151,7 +151,7 @@ module Library : sig
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
-    ; public_interfaces     : Ordered_set_lang.t
+    ; public_interfaces        : Ordered_set_lang.t
     }
 
   val has_stubs : t -> bool

@@ -4,6 +4,10 @@
 - Fix the quoting of `FLG` lines in generated `.merlin` files (#200,
   Marcello Seri)
 
+- Use the full path of archive files when linking. Before jbuilder
+  would do: `-I <path> file.cmxa`, now it does `-I <path>
+  <path>/file.cmxa`. Fixes #118 and #177
+
 1.0+beta11 (21/07/2017)
 -----------------------
 

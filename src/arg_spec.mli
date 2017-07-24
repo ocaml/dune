@@ -6,8 +6,6 @@ type 'a t =
   | S        of 'a t list
   | Dep      of Path.t (** A path that is a dependency *)
   | Deps     of Path.t list
-  | Dep_rel  of Path.t * string
-  | Deps_rel of Path.t * string list
   | Target   of Path.t
   | Path     of Path.t
   | Paths    of Path.t list

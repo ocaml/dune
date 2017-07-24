@@ -69,8 +69,8 @@ let link_rule ~sctx ~dir ~runtime ~target =
     let all_libs =
       List.concat_map (stdlib :: libs) ~f:(function
         | Lib.External pkg ->
-          List.map (Mode.Dict.get pkg.archives Mode.Byte) ~f:(fun name ->
-            in_build_dir ~ctx [pkg.name; sprintf "%s.js" name])
+          List.map (Mode.Dict.get pkg.archives Mode.Byte) ~f:(fun fn ->
+            in_build_dir ~ctx [pkg.name; sprintf "%s.js" (Path.basename fn)])
         | Lib.Internal (dir, lib) ->
           [ Path.relative dir (sprintf "%s.cma.js" lib.name) ]
       )
@@ -120,7 +120,8 @@ let setup_separate_compilation_rules sctx =
     in
     List.concat_map all_pkg
       ~f:(fun (pkg_name,pkg_dir,archives) ->
-        List.map archives ~f:(fun name ->
+        List.map archives ~f:(fun fn ->
+          let name = Path.basename fn in
           let src = Path.relative pkg_dir name in
           let target = in_build_dir ~ctx [ pkg_name; sprintf "%s.js" name] in
           let dir = in_build_dir ~ctx [ pkg_name ] in

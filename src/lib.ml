@@ -58,14 +58,14 @@ let link_flags ts ~mode =
      List.map ts ~f:(fun t ->
        match t with
        | External pkg ->
-         Arg_spec.Deps_rel (pkg.dir, Mode.Dict.get pkg.archives mode)
+         Arg_spec.Deps (Mode.Dict.get pkg.archives mode)
        | Internal (dir, lib) ->
-         Dep_rel (dir, lib.name ^ Mode.compiled_lib_ext mode)))
+         Dep (Path.relative dir (lib.name ^ Mode.compiled_lib_ext mode))))
 
 let archive_files ts ~mode ~ext_lib =
   List.concat_map ts ~f:(function
     | External pkg ->
-      List.map (Mode.Dict.get pkg.archives mode) ~f:(Path.relative pkg.dir)
+      Mode.Dict.get pkg.archives mode
     | Internal (dir, lib) ->
       let l =
         [Path.relative dir (lib.name ^ Mode.compiled_lib_ext mode)]

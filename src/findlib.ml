@@ -123,8 +123,8 @@ type package =
   ; dir              : Path.t
   ; version          : string
   ; description      : string
-  ; archives         : string list Mode.Dict.t
-  ; plugins          : string list Mode.Dict.t
+  ; archives         : Path.t list Mode.Dict.t
+  ; plugins          : Path.t list Mode.Dict.t
   ; jsoo_runtime     : string list
   ; requires         : package list
   ; ppx_runtime_deps : package list
@@ -238,7 +238,8 @@ let parse_package t ~name ~parent_dir ~vars ~required_by =
   in
   let archives var preds =
     Mode.Dict.of_func (fun ~mode ->
-      Vars.get_words vars var (Mode.findlib_predicate mode :: preds))
+      List.map (Vars.get_words vars var (Mode.findlib_predicate mode :: preds))
+        ~f:(Path.relative dir))
   in
   let jsoo_runtime = Vars.get_words vars "jsoo_runtime" [] in
   let preds = ["ppx_driver"; "mt"; "mt_posix"] in
@@ -557,7 +558,8 @@ let all_unavailable_packages t =
 let stdlib_with_archives t =
   let x = find_exn t ~required_by:[] "stdlib" in
   let archives =
-    { Mode.Dict.byte   = "stdlib.cma"  :: x.archives.byte
-    ; Mode.Dict.native = "stdlib.cmxa" :: x.archives.native }
+    { Mode.Dict.byte   = Path.relative x.dir "stdlib.cma"  :: x.archives.byte
+    ; Mode.Dict.native = Path.relative x.dir "stdlib.cmxa" :: x.archives.native
+    }
   in
   { x with archives }

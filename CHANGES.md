@@ -1,3 +1,8 @@
+1.0.0 (comming soon)
+--------------------
+
+- Fix the quoting of `FLG` lines in generated `.merlin` files
+
 1.0+beta11 (21/07/2017)
 -----------------------
 

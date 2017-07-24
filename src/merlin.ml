@@ -23,7 +23,7 @@ let ppx_flags sctx ~dir ~src_dir { preprocess; libname; _ } =
         ~f:quote_for_shell
       |> String.concat ~sep:" "
     in
-    [sprintf "FLG -ppx \"%s\"" command]
+    [sprintf "FLG -ppx %s" (Filename.quote command)]
   | _ -> []
 
 let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =

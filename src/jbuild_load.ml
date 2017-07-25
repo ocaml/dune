@@ -123,7 +123,7 @@ end
           List.concat
             [ [ "-I"; "+compiler-libs" ]
             ; includes
-            ; cmas
+            ; List.map cmas ~f:(Path.reach ~from:dir)
             ; [ Path.reach ~from:dir wrapper ]
             ]
         in

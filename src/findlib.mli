@@ -50,8 +50,8 @@ type package =
   ; dir              : Path.t
   ; version          : string
   ; description      : string
-  ; archives         : string list Mode.Dict.t
-  ; plugins          : string list Mode.Dict.t
+  ; archives         : Path.t list Mode.Dict.t
+  ; plugins          : Path.t list Mode.Dict.t
   ; jsoo_runtime     : string list
   ; requires         : package list
   ; ppx_runtime_deps : package list

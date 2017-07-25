@@ -8,6 +8,12 @@
   would do: `-I <path> file.cmxa`, now it does `-I <path>
   <path>/file.cmxa`. Fixes #118 and #177
 
+- Allow to use `jbuilder install` in contexts other than opam; if
+  `ocamlfind` is present in the `PATH` and the user didn't pass
+  `--prefix` or `--libdir` explicitly, use the output of `ocamlfind
+  printconf destdir` as destination directory for library files (#179,
+  Francois Bobot)
+
 1.0+beta11 (21/07/2017)
 -----------------------
 

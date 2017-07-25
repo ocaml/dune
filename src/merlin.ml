@@ -55,7 +55,9 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
         let flags =
           match flags with
           | [] -> []
-          | _  -> ["FLG " ^ String.concat flags ~sep:" "]
+          | _  ->
+            let escaped_flags = List.map ~f:quote_for_shell flags in
+            ["FLG " ^ String.concat escaped_flags ~sep:" "]
         in
         let dot_merlin =
           List.concat

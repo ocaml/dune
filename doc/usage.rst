@@ -248,29 +248,38 @@ to be able to use ``jbuilder install``.
 Destination
 -----------
 
-The place where the build artifacts (except library files) are copied, usually referred as
+The place where the build artifacts are copied, usually referred as
 **prefix**, is determined as follow for a given build context:
 
 #. if an explicit ``--prefix <path>`` argument is passed, use this path
-#. if ``opam`` is present in the ``PATH``, use the output of ``opam config var
-   prefix``
+#. if ``opam`` is present in the ``PATH`` and is configured, use the
+   output of ``opam config var prefix``
 #. otherwise, take the parent of the directory where ``ocamlc`` was found.
 
-The place where the library files are copied, referred as
-**libdir**, is determined as follow for a given build context:
+As an exception to this rule, library files might be copied to a
+different location. The reason for this is that they often need to be
+copied to a particular location for the various build system used in
+OCaml projects to find them and this location might be different from
+``<prefix>/lib`` on some systems.
 
-#. if an explicit ``--libdir <path>`` argument is passed, use this path
-#. if an explicit ``--prefix <path>`` argument is passed, use ``<path>/lib``
-#. if ``ocamlfind`` is present in the ``PATH``, use the output of
-   ``ocamlfind printconf destdir``
-#. if ``opam`` is present in the ``PATH``, use the output of ``opam config var
-   lib``
-#. otherwise, take the directory of the ocaml standard library
+Historically, the location where to store OCaml library files was
+configured through `findlib
+<http://projects.camlcity.org/projects/findlib.html>`__ and the
+``ocamlfind`` command line tool was used to both install these files
+and locate them. Many Linux distributions or other packaging systems
+are using this mechanism to setup where OCaml library files should be
+copied.
 
+As a result, if none of ``--libdir`` and ``--prefix`` is passed to
+``jbuilder install`` and ``ocamlfind`` is present in the ``PATH``,
+then library files will be copied to the directory reported by
+``ocamlfind printconf destdir``. This ensures that ``jbuilder
+install`` can be used without opam. When using opam, ``ocamlfind`` is
+configured to point to the opam directory, so this rule makes no
+difference.
 
-
-Note that ``--prefix`` and ``--libdir`` are only supported if a single build context is in
-use.
+Note that ``--prefix`` and ``--libdir`` are only supported if a single
+build context is in use.
 
 Workspace configuration
 =======================

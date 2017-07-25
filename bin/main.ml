@@ -685,13 +685,10 @@ let get_prefix context ~from_command_line =
   | Some p -> Future.return (Path.of_string p)
   | None -> Context.install_prefix context
 
-let get_libdir context ~libdir_from_command_line ~prefix_from_command_line =
+let get_libdir context ~libdir_from_command_line =
   match libdir_from_command_line with
-  | Some p -> Future.return (Path.of_string p)
-  | None ->
-    match prefix_from_command_line with
-    | Some p -> Future.return (Path.relative (Path.of_string p) "lib")
-    | None -> Context.install_ocaml_libdir context
+  | Some p -> Future.return (Some (Path.of_string p))
+  | None -> Context.install_ocaml_libdir context
 
 let install_uninstall ~what =
   let doc =
@@ -730,25 +727,32 @@ let install_uninstall ~what =
        end;
        (match setup.contexts, prefix_from_command_line, libdir_from_command_line with
         | _ :: _ :: _, Some _, _ | _ :: _ :: _, _, Some _ ->
-          die "Cannot specify --prefix or --libdir when installing into multiple contexts!"
+          die "Cannot specify --prefix or --libdir when installing \
+               into multiple contexts!"
         | _ -> ());
        let module CMap = Map.Make(Context) in
-       let install_files_by_context = CMap.of_alist_multi install_files |> CMap.bindings in
+       let install_files_by_context =
+         CMap.of_alist_multi install_files |> CMap.bindings
+       in
        Future.all_unit
          (List.map install_files_by_context ~f:(fun (context, install_files) ->
-            get_prefix context ~from_command_line:prefix_from_command_line >>= fun prefix ->
-            get_libdir context ~libdir_from_command_line ~prefix_from_command_line >>= fun libdir ->
+            get_prefix context ~from_command_line:prefix_from_command_line
+            >>= fun prefix ->
+            get_libdir context ~libdir_from_command_line
+            >>= fun libdir ->
             Future.all_unit
               (List.map install_files ~f:(fun path ->
-                   let purpose = Future.Build_job install_files in
-                   Future.run ~purpose Strict (Path.to_string opam_installer)
-                     [ sprintf "-%c" what.[0]
-                     ; "--prefix"
-                     ; Path.to_string prefix
-                     ; "--libdir"
-                     ; Path.to_string libdir
-                     ; Path.to_string path
-                     ])))))
+                 let purpose = Future.Build_job install_files in
+                 Future.run ~purpose Strict (Path.to_string opam_installer)
+                   ([ sprintf "-%c" what.[0]
+                    ; Path.to_string path
+                    ; "--prefix"
+                    ; Path.to_string prefix
+                    ] @
+                    match libdir with
+                    | None -> []
+                    | Some p -> [ "--libdir"; Path.to_string p ]
+                   ))))))
   in
   ( Term.(const go
           $ common

@@ -11,7 +11,19 @@
 ))
 
 (rule (
-   (targets (stub))
-   (deps (stub.c test.exe.o test.so))
-   (action (run cc -o stub -I ${ocaml_where} -I . -ltest stub.c))
+   (targets (stub_native))
+   (deps (stub.c test.exe.o))
+   (action (run cc -o stub -I ${ocaml_where} -I . test.exe.o -lm -ldl stub.c))
+))
+
+(rule (
+   (targets (stub_byte))
+   (deps (stub.c test.bc.o))
+   (action (run cc -o stub -I ${ocaml_where} -I . test.bc.o -lm -ldl stub.c))
+))
+
+(install (
+  (section bin)
+  (files (stub_native stub_byte))
+  (package stub)
 ))

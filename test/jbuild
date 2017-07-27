@@ -111,5 +111,10 @@
   (deps ((files_recursively_in workspaces/output_obj)))
   (action
    (chdir workspaces/output_obj
-    (run ${exe:run.exe} --
-     ${bin:jbuilder} build -j1 --root . @all )))))
+    (progn
+      (run ${exe:run.exe} -log log1 -- ${bin:jbuilder} build -j1 --root . --only stub )
+      (run ${exe:run.exe} -log log_native2 -- ${bin:jbuilder} exec -j1 --root . stub_native true )
+      (run ${exe:run.exe} -log log_native3 -inverse -- ${bin:jbuilder} exec -j1 --root . stub_native fail )
+      (run ${exe:run.exe} -log log_byte2 -- ${bin:jbuilder} exec -j1 --root . stub_byte true )
+      (run ${exe:run.exe} -log log_byte3 -inverse -- ${bin:jbuilder} exec -j1 --root . stub_byte fail )
+      )))))

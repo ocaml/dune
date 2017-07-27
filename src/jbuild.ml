@@ -32,7 +32,7 @@ let module_name sexp =
      | 'A'..'Z' | 'a'..'z' -> ()
      | _ -> invalid_module_name name sexp);
     String.iter s ~f:(function
-      | 'A'..'Z' | 'a'..'z' | '0'..'9' | '_' -> ()
+      | 'A'..'Z' | 'a'..'z' | '0'..'9' | '\'' | '_' -> ()
       | _ -> invalid_module_name name sexp);
     String.capitalize_ascii s
 

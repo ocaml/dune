@@ -756,8 +756,24 @@ let install_uninstall ~what =
   in
   ( Term.(const go
           $ common
-          $ Arg.(value & opt (some dir) None & info ["prefix"])
-          $ Arg.(value & opt (some dir) None & info ["libdir"])
+          $ Arg.(value
+                 & opt (some dir) None
+                 & info ["destdir"; "prefix"]
+                     ~docv:"PREFIX"
+                     ~doc:"Directory where files are copied. For instance binaries \
+                           are copied into $(i,\\$prefix/bin), library files into \
+                           $(i,\\$prefix/lib), etc... If defaults to the current opam \
+                           prefix if opam is available and configured, otherwise it uses \
+                           the same prefix as the ocaml compiler.")
+          $ Arg.(value
+                 & opt (some dir) None
+                 & info ["libdir"]
+                     ~docv:"PATH"
+                     ~doc:"Directory where library files are copied, relative to \
+                           $(b,prefix) or absolute. If $(b,--prefix) \
+                           is specified the default is $(i,\\$prefix/lib), otherwise \
+                           it is the output of $(b,ocamlfind printconf destdir)"
+                )
           $ Arg.(value & pos_all string [] name_))
   , Term.info what ~doc ~man:help_secs)
 

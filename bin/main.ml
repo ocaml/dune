@@ -762,7 +762,7 @@ let install_uninstall ~what =
                      ~docv:"PREFIX"
                      ~doc:"Directory where files are copied. For instance binaries \
                            are copied into $(i,\\$prefix/bin), library files into \
-                           $(i,\\$prefix/lib), etc... If defaults to the current opam \
+                           $(i,\\$prefix/lib), etc... It defaults to the current opam \
                            prefix if opam is available and configured, otherwise it uses \
                            the same prefix as the ocaml compiler.")
           $ Arg.(value

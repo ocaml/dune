@@ -8,6 +8,10 @@
   would do: `-I <path> file.cmxa`, now it does `-I <path>
   <path>/file.cmxa`. Fixes #118 and #177
 
+- Use an absolute path for ppx drivers in `.merlin` files. Merlin
+  <3.0.0 used to run ppx commands from the directory where the
+  `.merlin` was present but this is no longer the case
+
 - Allow to use `jbuilder install` in contexts other than opam; if
   `ocamlfind` is present in the `PATH` and the user didn't pass
   `--prefix` or `--libdir` explicitly, use the output of `ocamlfind

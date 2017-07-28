@@ -126,11 +126,13 @@ let opam_config_var ~env ~cache var =
     match Bin.opam with
     | None -> return None
     | Some fn ->
-      Future.run_capture Strict (Path.to_string fn) ~env ["config"; "var"; var]
-      >>| fun s ->
-      let s = String.trim s in
-      Hashtbl.add cache ~key:var ~data:s;
-      Some s
+      Future.run_capture (Accept All) (Path.to_string fn) ~env ["config"; "var"; var]
+      >>| function
+      | Ok s ->
+        let s = String.trim s in
+        Hashtbl.add cache ~key:var ~data:s;
+        Some s
+      | Error _ -> None
 
 let get_env env var =
   let rec loop i =
@@ -207,13 +209,13 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
            (Path.to_string fn) ["printconf"; "path"]
          >>| List.map ~f:Path.absolute)
       | None ->
-        (* If there no ocamlfind in the PATH, check if we have opam and assume a standard
-           opam setup *)
+        (* If there no ocamlfind in the PATH, check if we have opam and assume a stan opam
+           setup *)
         opam_config_var ~env ~cache:opam_var_cache "lib"
         >>| function
         | Some s -> [Path.absolute s]
         | None ->
-          (* If neither opam neither ocamlfind are present, assume that libraries are in
+          (* If neither opam neither ocamlfind are present, assume that libraries are
              [dir ^ "/../lib"] *)
           [Path.relative (Path.parent dir) "lib"]
     else
@@ -426,6 +428,16 @@ let install_prefix t =
   | Some x -> Path.absolute x
   | None   -> Path.parent t.ocaml_bin
 
+let install_ocaml_libdir t =
+  (* If ocamlfind is present, it has precedence over everything else. *)
+  match which t "ocamlfind" with
+  | Some fn ->
+    (Future.run_capture_line ~env:t.env Strict
+       (Path.to_string fn) ["printconf"; "destdir"]
+     >>| fun s ->
+     Some (Path.absolute s))
+  | None ->
+    return None
 
 (* CR-someday jdimino: maybe we should just do this for [t.env] directly? *)
 let env_for_exec t =

@@ -12,6 +12,12 @@
   <3.0.0 used to run ppx commands from the directory where the
   `.merlin` was present but this is no longer the case
 
+- Allow to use `jbuilder install` in contexts other than opam; if
+  `ocamlfind` is present in the `PATH` and the user didn't pass
+  `--prefix` or `--libdir` explicitly, use the output of `ocamlfind
+  printconf destdir` as destination directory for library files (#179,
+  Francois Bobot)
+
 1.0+beta11 (21/07/2017)
 -----------------------
 

@@ -685,12 +685,17 @@ let get_prefix context ~from_command_line =
   | Some p -> Future.return (Path.of_string p)
   | None -> Context.install_prefix context
 
+let get_libdir context ~libdir_from_command_line =
+  match libdir_from_command_line with
+  | Some p -> Future.return (Some (Path.of_string p))
+  | None -> Context.install_ocaml_libdir context
+
 let install_uninstall ~what =
   let doc =
     sprintf "%s packages using opam-installer." (String.capitalize_ascii what)
   in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
-  let go common prefix pkgs =
+  let go common prefix_from_command_line libdir_from_command_line pkgs =
     set_common common ~targets:[];
     let opam_installer = opam_installer () in
     let log = Log.create () in
@@ -720,28 +725,55 @@ let install_uninstall ~what =
               (List.map missing_install_files
                  ~f:(fun p -> sprintf "- %s" (Path.to_string p))))
        end;
-       (match setup.contexts, prefix with
-        | _ :: _ :: _, Some _ ->
-          die "Cannot specify --prefix when installing into multiple contexts!"
+       (match setup.contexts, prefix_from_command_line, libdir_from_command_line with
+        | _ :: _ :: _, Some _, _ | _ :: _ :: _, _, Some _ ->
+          die "Cannot specify --prefix or --libdir when installing \
+               into multiple contexts!"
         | _ -> ());
        let module CMap = Map.Make(Context) in
-       let install_files_by_context = CMap.of_alist_multi install_files |> CMap.bindings in
+       let install_files_by_context =
+         CMap.of_alist_multi install_files |> CMap.bindings
+       in
        Future.all_unit
          (List.map install_files_by_context ~f:(fun (context, install_files) ->
-            get_prefix context ~from_command_line:prefix >>= fun prefix ->
+            get_prefix context ~from_command_line:prefix_from_command_line
+            >>= fun prefix ->
+            get_libdir context ~libdir_from_command_line
+            >>= fun libdir ->
             Future.all_unit
               (List.map install_files ~f:(fun path ->
-                   let purpose = Future.Build_job install_files in
-                   Future.run ~purpose Strict (Path.to_string opam_installer)
-                     [ sprintf "-%c" what.[0]
-                     ; "--prefix"
-                     ; Path.to_string prefix
-                     ; Path.to_string path
-                     ])))))
+                 let purpose = Future.Build_job install_files in
+                 Future.run ~purpose Strict (Path.to_string opam_installer)
+                   ([ sprintf "-%c" what.[0]
+                    ; Path.to_string path
+                    ; "--prefix"
+                    ; Path.to_string prefix
+                    ] @
+                    match libdir with
+                    | None -> []
+                    | Some p -> [ "--libdir"; Path.to_string p ]
+                   ))))))
   in
   ( Term.(const go
           $ common
-          $ Arg.(value & opt (some dir) None & info ["prefix"])
+          $ Arg.(value
+                 & opt (some dir) None
+                 & info ["destdir"; "prefix"]
+                     ~docv:"PREFIX"
+                     ~doc:"Directory where files are copied. For instance binaries \
+                           are copied into $(i,\\$prefix/bin), library files into \
+                           $(i,\\$prefix/lib), etc... It defaults to the current opam \
+                           prefix if opam is available and configured, otherwise it uses \
+                           the same prefix as the ocaml compiler.")
+          $ Arg.(value
+                 & opt (some dir) None
+                 & info ["libdir"]
+                     ~docv:"PATH"
+                     ~doc:"Directory where library files are copied, relative to \
+                           $(b,prefix) or absolute. If $(b,--prefix) \
+                           is specified the default is $(i,\\$prefix/lib), otherwise \
+                           it is the output of $(b,ocamlfind printconf destdir)"
+                )
           $ Arg.(value & pos_all string [] name_))
   , Term.info what ~doc ~man:help_secs)
 

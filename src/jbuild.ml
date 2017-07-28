@@ -20,17 +20,20 @@ module Jbuild_version = struct
   let latest_stable = V1
 end
 
-let invalid_module_name sexp =
-  of_sexp_error sexp "invalid module name"
+let invalid_module_name name sexp =
+  of_sexp_error sexp (sprintf "invalid module name: %S" name)
 
 let module_name sexp =
-  match string sexp with
-  | "" -> invalid_module_name sexp
+  let name = string sexp in
+  match name with
+  | "" -> invalid_module_name name sexp
   | s ->
-    if s.[0] = '_' then invalid_module_name sexp;
+    (match s.[0] with
+     | 'A'..'Z' | 'a'..'z' -> ()
+     | _ -> invalid_module_name name sexp);
     String.iter s ~f:(function
-      | 'A'..'Z' | 'a'..'z' | '_' -> ()
-      | _ -> invalid_module_name sexp);
+      | 'A'..'Z' | 'a'..'z' | '0'..'9' | '\'' | '_' -> ()
+      | _ -> invalid_module_name name sexp);
     String.capitalize_ascii s
 
 let module_names sexp = String_set.of_list (list module_name sexp)

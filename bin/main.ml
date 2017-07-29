@@ -908,19 +908,17 @@ let utop =
   let go common dir args =
     let utop_target = dir |> Path.of_string |> Utop.utop_exe |> Path.to_string in
     set_common common ~targets:[utop_target];
-    (* We must wait for other exit hooks to finish before forking. This is
-       necessary to make sure the trace file is dumped before we fork. *)
-    let utop_path = ref None in
-    at_exit (fun () -> Option.iter !utop_path ~f:(fun p ->
-      let p = Path.to_string p in
-      Unix.execv p (Array.of_list (p :: args))
-    ));
     let log = Log.create () in
-    Future.Scheduler.go ~log
-      (Main.setup ~log common >>= fun setup ->
-       let targets = resolve_targets ~log common setup [utop_target] in
-       do_build setup targets >>| fun () ->
-       utop_path := Some (List.hd targets)) in
+    let utop_path =
+      Future.Scheduler.go ~log
+        (Main.setup ~log common >>= fun setup ->
+         let targets = resolve_targets ~log common setup [utop_target] in
+         do_build setup targets >>| (fun () ->
+           Build_system.dump_trace setup.build_system;
+           targets))
+      |> List.hd |> Path.to_string in
+    Unix.execv utop_path (Array.of_list (utop_path :: args))
+  in
   let name_ = Arg.info [] ~docv:"PATH" in
   ( Term.(const go
           $ common

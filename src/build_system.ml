@@ -572,6 +572,8 @@ let all_targets_ever_built () =
   else
     []
 
+let dump_trace t = Trace.dump t.trace
+
 let create ~contexts ~file_tree ~rules =
   let all_source_files =
     File_tree.fold file_tree ~init:Pset.empty ~f:(fun dir acc ->
@@ -615,7 +617,7 @@ let create ~contexts ~file_tree ~rules =
   setup_copy_rules t ~all_targets_by_dir
     ~all_non_target_source_files:
       (Pset.diff all_source_files all_other_targets);
-  at_exit (fun () -> Trace.dump t.trace);
+  at_exit (fun () -> dump_trace t);
   t
 
 let remove_old_artifacts t =
@@ -815,3 +817,6 @@ let build_rules t ?(recursive=false) targets =
     die "dependency cycle detected:\n   %s"
       (List.map cycle ~f:(fun rule -> Path.to_string (Pset.choose rule.Rule.targets))
        |> String.concat ~sep:"\n-> ")
+
+let dump_trace t =
+  Trace.dump t.trace

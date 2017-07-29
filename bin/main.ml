@@ -906,7 +906,7 @@ let utop =
   let doc = "Load library in utop" in
   let man = [ (* TODO *) ] in
   let go common dir args =
-    let utop_target = dir |> Path.of_string |> Utop.target |> Path.to_string in
+    let utop_target = dir |> Path.of_string |> Utop.utop_exe |> Path.to_string in
     set_common common ~targets:[utop_target];
     (* We must wait for other exit hooks to finish before forking. This is
        necessary to make sure the trace file is dumped before we fork. *)

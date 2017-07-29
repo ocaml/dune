@@ -75,8 +75,8 @@ let exe_stanzas stanzas =
         ] in
     Some (utop_of_libs libs, all_modules)
 
-let src_dir p = Path.relative p ".utop"
+let utop_exe_dir ~dir = Path.relative dir ".utop"
 
-let target jbuild_p =
-  Path.relative (src_dir jbuild_p) exe_name
+let utop_exe dir =
+  Path.relative (utop_exe_dir ~dir) exe_name
   |> Path.extend_basename ~suffix:(Mode.exe_ext Mode.Byte)

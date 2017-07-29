@@ -10,6 +10,6 @@ val add_module_rules
   -> (unit, Lib.t list) Build.t
   -> unit
 
-val src_dir : Path.t -> Path.t
+val utop_exe_dir : dir:Path.t -> Path.t
 
-val target : Path.t -> Path.t
+val utop_exe : Path.t -> Path.t

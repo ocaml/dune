@@ -719,8 +719,7 @@ Add it to your jbuild file to remove this warning.
       |> Merlin.merge_all in
     Option.iter merlin ~f:(Merlin.add_rules sctx ~dir:ctx_dir);
     Option.iter (Utop.exe_stanzas stanzas) ~f:(fun (exe, all_modules) ->
-      let dir = Utop.src_dir ctx_dir in
-      let merlin' = executables_rules exe ~dir ~all_modules ~scope in
+      let dir = Utop.utop_exe_dir ~dir:ctx_dir in let merlin' = executables_rules exe ~dir ~all_modules ~scope in
       Merlin.add_rules sctx ~dir merlin';
       (* so that our uutop.ml module depends on the libraries that in our
          current jbuild dir. We could also just pass the current jbuild dir

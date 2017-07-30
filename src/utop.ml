@@ -3,7 +3,7 @@ open Jbuild
 open Build.O
 open! No_io
 
-let exe_name = "uutop"
+let exe_name = "utop"
 let module_name = String.capitalize_ascii exe_name
 let module_filename = exe_name ^ ".ml"
 

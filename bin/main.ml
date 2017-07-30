@@ -905,24 +905,50 @@ let subst =
 let utop =
   let doc = "Load library in utop" in
   let man = [ (* TODO *) ] in
-  let go common dir args =
+  let go common dir ctx_name args =
     let utop_target = dir |> Path.of_string |> Utop.utop_exe |> Path.to_string in
     set_common common ~targets:[utop_target];
     let log = Log.create () in
-    let utop_path =
-      Future.Scheduler.go ~log
-        (Main.setup ~log common >>= fun setup ->
-         let targets = resolve_targets ~log common setup [utop_target] in
-         do_build setup targets >>| (fun () ->
-           Build_system.dump_trace setup.build_system;
-           targets))
-      |> List.hd |> Path.to_string in
-    Unix.execv utop_path (Array.of_list (utop_path :: args))
+    let (build_system, context, utop_path) =
+      (Main.setup ~log common >>= fun setup ->
+       let context =
+         match ctx_name, setup.contexts with
+         | None, [c] -> c
+         | None, [] -> die "No contexts discovered"
+         | None, ctxs ->
+           die "Specify a --context argument to disambiguate contexts.\
+                @.Available contexts: %s"
+             (ctxs
+             |> List.map ~f:(fun c -> c.Context.name)
+             |> String.concat ~sep:",")
+         | Some name, ctxs ->
+           begin match List.find ctxs ~f:(fun ctx -> ctx.Context.name = name) with
+           | None -> die "Context %s doesn't exist" name
+           | Some c -> c
+           end in
+       let target =
+         match resolve_targets ~log common setup [utop_target] with
+         | [] -> die "no libraries defined in %s" dir
+         | [target] -> target
+         | targets ->
+           match List.find targets ~f:(Path.is_descendant
+                                         ~of_:context.Context.build_dir) with
+           | Some s -> s
+           | None -> die "Couldn't find target for %s in context %s" dir
+                       context.Context.name in
+       do_build setup [target] >>| fun () ->
+       (setup.build_system, context, Path.to_string target)
+      ) |> Future.Scheduler.go ~log in
+    Build_system.dump_trace build_system;
+    Unix.execve utop_path (Array.of_list (utop_path :: args))
+      (Context.env_for_exec context)
   in
   let name_ = Arg.info [] ~docv:"PATH" in
   ( Term.(const go
           $ common
           $ Arg.(value & pos 0 dir "" name_)
+          $ Arg.(value & opt (some string) None &
+                 info ["context"] ~doc:{|Select context where to build/run utop.|})
           $ Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")))
   , Term.info "utop" ~doc ~man )
 

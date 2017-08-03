@@ -912,17 +912,7 @@ let utop =
     let log = Log.create () in
     let (build_system, context, utop_path) =
       (Main.setup ~log common >>= fun setup ->
-       let context =
-         match ctx_name, setup.contexts with
-         | None, [c] -> c
-         | None, [] -> die "No contexts discovered"
-         | None, ctxs ->
-           die "Specify a --context argument to disambiguate contexts.\
-                @.Available contexts: %s"
-             (ctxs
-             |> List.map ~f:(fun c -> c.Context.name)
-             |> String.concat ~sep:",")
-         | Some name, _ -> Main.find_context_exn setup ~name in
+       let context = Main.find_context_exn setup ~name:ctx_name in
        let setup = { setup with contexts = [context] } in
        let target =
          match resolve_targets ~log common setup [utop_target] with
@@ -941,8 +931,10 @@ let utop =
   ( Term.(const go
           $ common
           $ Arg.(value & pos 0 dir "" name_)
-          $ Arg.(value & opt (some string) None &
-                 info ["context"] ~doc:{|Select context where to build/run utop.|})
+          $ Arg.(value
+                 & opt string "default"
+                 & info ["context"] ~docv:"CONTEXT"
+                     ~doc:{|Select context where to build/run utop.|})
           $ Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")))
   , Term.info "utop" ~doc ~man )
 

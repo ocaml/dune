@@ -45,6 +45,20 @@ let set_common c ~targets =
       ; targets
       ]
 
+let execve =
+  if Sys.win32 then
+    fun prog argv env ->
+      let pid = Unix.create_process_env prog argv env
+                  Unix.stdin Unix.stdout Unix.stderr
+      in
+      match snd (Unix.waitpid [] pid) with
+      | WEXITED   0 -> ()
+      | WEXITED   n -> exit n
+      | WSIGNALED _ -> exit 255
+      | WSTOPPED  _ -> assert false
+  else
+    Unix.execve
+
 module Main = struct
   include Jbuilder.Main
 
@@ -816,18 +830,7 @@ let exec =
       let real_prog = Path.to_string real_prog     in
       let env       = Context.env_for_exec context in
       let argv      = Array.of_list (prog :: args) in
-      if Sys.win32 then
-        let pid =
-          Unix.create_process_env real_prog argv env
-            Unix.stdin Unix.stdout Unix.stderr
-        in
-        match snd (Unix.waitpid [] pid) with
-        | WEXITED   0 -> ()
-        | WEXITED   n -> exit n
-        | WSIGNALED _ -> exit 255
-        | WSTOPPED  _ -> assert false
-      else
-        Unix.execve real_prog argv env
+      execve real_prog argv env
   in
   ( Term.(const go
           $ common
@@ -940,7 +943,7 @@ let utop =
        (setup.build_system, context, Path.to_string target)
       ) |> Future.Scheduler.go ~log in
     Build_system.dump_trace build_system;
-    Unix.execve utop_path (Array.of_list (utop_path :: args))
+    execve utop_path (Array.of_list (utop_path :: args))
       (Context.env_for_exec context)
   in
   let name_ = Arg.info [] ~docv:"PATH" in

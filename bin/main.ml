@@ -795,6 +795,11 @@ let install_uninstall ~what =
 let install   = install_uninstall ~what:"install"
 let uninstall = install_uninstall ~what:"uninstall"
 
+let context_arg ~doc =
+  Arg.(value
+       & opt string "default"
+       & info ["context"] ~docv:"CONTEXT" ~doc)
+
 let exec =
   let doc =
     "Execute a command in a similar environment as if installation was performed."
@@ -828,11 +833,7 @@ let exec =
   in
   ( Term.(const go
           $ common
-          $ Arg.(value
-                 & opt string "default"
-                 & info ["context"] ~docv:"CONTEXT"
-                     ~doc:{|Run the command in this build context.|}
-                )
+          $ context_arg ~doc:{|Run the command in this build context.|}
           $ Arg.(required
                  & pos 0 (some string) None (Arg.info [] ~docv:"PROG"))
           $ Arg.(value
@@ -931,10 +932,7 @@ let utop =
   ( Term.(const go
           $ common
           $ Arg.(value & pos 0 dir "" name_)
-          $ Arg.(value
-                 & opt string "default"
-                 & info ["context"] ~docv:"CONTEXT"
-                     ~doc:{|Select context where to build/run utop.|})
+          $ context_arg ~doc:{|Select context where to build/run utop.|}
           $ Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")))
   , Term.info "utop" ~doc ~man )
 

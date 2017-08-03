@@ -919,16 +919,13 @@ let utop =
              |> List.map ~f:(fun c -> c.Context.name)
              |> String.concat ~sep:",")
          | Some name, _ -> Main.find_context_exn setup ~name in
+       let setup = { setup with contexts = [context] } in
        let target =
          match resolve_targets ~log common setup [utop_target] with
          | [] -> die "no libraries defined in %s" dir
          | [target] -> target
-         | targets ->
-           match List.find targets ~f:(Path.is_descendant
-                                         ~of_:context.Context.build_dir) with
-           | Some s -> s
-           | None -> die "Couldn't find target for %s in context %s" dir
-                       context.Context.name in
+         | _::_::_ -> assert false
+       in
        do_build setup [target] >>| fun () ->
        (setup.build_system, context, Path.to_string target)
       ) |> Future.Scheduler.go ~log in

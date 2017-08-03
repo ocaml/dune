@@ -35,7 +35,9 @@ let add_module_rules sctx ~dir lib_requires =
 let utop_of_libs (libs : Library.t list) =
   { Executables.names = [exe_name]
   ; link_executables = true
-  ; link_flags = ["-linkall"]
+  ; link_flags = Ordered_set_lang.Unexpanded.t (
+      Sexp.add_loc ~loc:Loc.none (List [Atom "-linkall"])
+    )
   ; modes = Mode.Dict.Set.of_list [Mode.Byte]
   ; buildable =
       { Buildable.modules =
@@ -45,9 +47,9 @@ let utop_of_libs (libs : Library.t list) =
             Lib_dep.direct lib.Library.name))
       ; preprocess = Preprocess_map.no_preprocessing
       ; preprocessor_deps = []
-      ; flags = Ordered_set_lang.standard
-      ; ocamlc_flags = Ordered_set_lang.standard
-      ; ocamlopt_flags = Ordered_set_lang.standard
+      ; flags = Ordered_set_lang.Unexpanded.standard
+      ; ocamlc_flags = Ordered_set_lang.Unexpanded.standard
+      ; ocamlopt_flags = Ordered_set_lang.Unexpanded.standard
       ; js_of_ocaml = Js_of_ocaml.default
       }
   }

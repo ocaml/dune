@@ -18,6 +18,9 @@
   printconf destdir` as destination directory for library files (#179,
   Francois Bobot)
 
+- Allow `(:include ...)` forms in all `*flags` fields (#153, David
+  Allsopp)
+
 1.0+beta11 (21/07/2017)
 -----------------------
 

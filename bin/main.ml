@@ -814,13 +814,7 @@ let exec =
     set_common common ~targets:[];
     let log = Log.create () in
     let setup = Future.Scheduler.go ~log (Main.setup ~log common) in
-    let context =
-      match List.find setup.contexts ~f:(fun c -> c.name = context) with
-      | Some ctx -> ctx
-      | None ->
-        Format.eprintf "@{<Error>Error@}: Context %S not found!@." context;
-        die ""
-    in
+    let context = Main.find_context_exn setup ~name:context in
     let path = Config.local_install_bin_dir ~context:context.name :: context.path in
     match Bin.which ~path prog with
     | None ->
@@ -924,11 +918,7 @@ let utop =
              (ctxs
              |> List.map ~f:(fun c -> c.Context.name)
              |> String.concat ~sep:",")
-         | Some name, ctxs ->
-           begin match List.find ctxs ~f:(fun ctx -> ctx.Context.name = name) with
-           | None -> die "Context %s doesn't exist" name
-           | Some c -> c
-           end in
+         | Some name, _ -> Main.find_context_exn setup ~name in
        let target =
          match resolve_targets ~log common setup [utop_target] with
          | [] -> die "no libraries defined in %s" dir

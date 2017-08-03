@@ -901,7 +901,11 @@ let subst =
 
 let utop =
   let doc = "Load library in utop" in
-  let man = [ (* TODO *) ] in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|$(b,jbuilder utop DIR) build and run utop toplevel with libraries defined in DIR|}
+    ; `Blocks help_secs
+    ] in
   let go common dir ctx_name args =
     let utop_target = dir |> Path.of_string |> Utop.utop_exe |> Path.to_string in
     set_common common ~targets:[utop_target];

@@ -13,7 +13,7 @@ let package_install_file { packages; _ } pkg =
   | None -> Error ()
   | Some p -> Ok (Path.relative p.path (p.name ^ ".install"))
 
-let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
+let setup ?(log=Log.no_log) ?(force_runtest=false) ?filter_out_optional_stanzas_with_missing_deps
       ?workspace ?(workspace_file="jbuild-workspace")
       ?(use_findlib=true)
       ?only_packages
@@ -49,7 +49,7 @@ let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
     ?only_packages
     ?filter_out_optional_stanzas_with_missing_deps
   >>= fun (rules, stanzas) ->
-  let build_system = Build_system.create ~contexts ~file_tree:conf.file_tree ~rules in
+  let build_system = Build_system.create ~force_runtest ~contexts ~file_tree:conf.file_tree ~rules in
   return { build_system
          ; stanzas
          ; contexts

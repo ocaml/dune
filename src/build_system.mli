@@ -5,7 +5,8 @@ open! Import
 type t
 
 val create
-  :  contexts:Context.t list
+  :  force_runtest:bool
+  -> contexts:Context.t list
   -> file_tree:File_tree.t
   -> rules:Build_interpret.Rule.t list
   -> t

@@ -817,6 +817,3 @@ let build_rules t ?(recursive=false) targets =
     die "dependency cycle detected:\n   %s"
       (List.map cycle ~f:(fun rule -> Path.to_string (Pset.choose rule.Rule.targets))
        |> String.concat ~sep:"\n-> ")
-
-let dump_trace t =
-  Trace.dump t.trace

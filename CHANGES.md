@@ -21,6 +21,10 @@
 - Allow `(:include ...)` forms in all `*flags` fields (#153, David
   Allsopp)
 
+- Add a `utop` subsommand. Running `jbuilder utop` in a directory
+  builds and executes a custom `utop` toplevel with all libraries
+  defined in the current directory (#183, Rudi Grinberg)
+
 1.0+beta11 (21/07/2017)
 -----------------------
 

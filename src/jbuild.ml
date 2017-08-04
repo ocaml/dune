@@ -282,6 +282,8 @@ module Preprocess_map = struct
   type t = Preprocess.t Per_module.t
   let t = Per_module.t Preprocess.t
 
+  let no_preprocessing = Per_module.For_all Preprocess.No_preprocessing
+
   let find module_name (t : t) =
     match t with
     | For_all pp -> pp

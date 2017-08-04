@@ -707,15 +707,20 @@ Add it to your jbuild file to remove this warning.
     List.filter_map stanzas ~f:(fun stanza ->
       let dir = ctx_dir in
       match (stanza : Stanza.t) with
-      | Library lib  ->
-        Some (library_rules lib ~dir
-                ~all_modules:(Lazy.force all_modules) ~files:(Lazy.force files)
-                ~scope)
-      | Executables  exes ->
-        Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules)
-                ~scope)
+      | Library lib ->
+        Some (library_rules lib ~dir ~all_modules:(Lazy.force all_modules)
+                ~files:(Lazy.force files) ~scope)
+      | Executables exes ->
+        Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules) ~scope)
       | _ -> None)
-    |> Merlin.add_rules sctx ~dir:ctx_dir
+    |> Merlin.merge_all
+    |> Option.iter ~f:(Merlin.add_rules sctx ~dir:ctx_dir);
+    Option.iter (Utop.exe_stanzas stanzas) ~f:(fun (exe, all_modules) ->
+      let dir = Utop.utop_exe_dir ~dir:ctx_dir in
+      let merlin = executables_rules exe ~dir ~all_modules ~scope in
+      Merlin.add_rules sctx ~dir merlin;
+      Utop.add_module_rules sctx ~dir merlin.requires;
+    )
 
   let () = List.iter (SC.stanzas sctx) ~f:rules
   let () =

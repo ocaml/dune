@@ -66,3 +66,5 @@ val build_rules
 val all_targets_ever_built
   :  unit
   -> Path.t list
+
+val dump_trace : t -> unit

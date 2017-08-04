@@ -220,3 +220,10 @@ let bootstrap () =
     exit 1
 
 let setup = setup ~use_findlib:true ~extra_ignored_subtrees:Path.Set.empty
+
+let find_context_exn t ~name =
+  match List.find t.contexts ~f:(fun c -> c.name = name) with
+  | Some ctx -> ctx
+  | None ->
+    Format.eprintf "@{<Error>Error@}: Context %S not found!@." name;
+    die ""

@@ -7,6 +7,7 @@ open Jbuilder_cmdliner.Cmdliner
 let () = suggest_function := Jbuilder_cmdliner.Cmdliner_suggest.value
 
 let (>>=) = Future.(>>=)
+let (>>|) = Future.(>>|)
 
 type common =
   { concurrency      : int
@@ -43,6 +44,20 @@ let set_common c ~targets =
       ; c.orig_args
       ; targets
       ]
+
+let execve =
+  if Sys.win32 then
+    fun prog argv env ->
+      let pid = Unix.create_process_env prog argv env
+                  Unix.stdin Unix.stdout Unix.stderr
+      in
+      match snd (Unix.waitpid [] pid) with
+      | WEXITED   0 -> ()
+      | WEXITED   n -> exit n
+      | WSIGNALED _ -> exit 255
+      | WSTOPPED  _ -> assert false
+  else
+    Unix.execve
 
 module Main = struct
   include Jbuilder.Main
@@ -780,6 +795,11 @@ let install_uninstall ~what =
 let install   = install_uninstall ~what:"install"
 let uninstall = install_uninstall ~what:"uninstall"
 
+let context_arg ~doc =
+  Arg.(value
+       & opt string "default"
+       & info ["context"] ~docv:"CONTEXT" ~doc)
+
 let exec =
   let doc =
     "Execute a command in a similar environment as if installation was performed."
@@ -799,13 +819,7 @@ let exec =
     set_common common ~targets:[];
     let log = Log.create () in
     let setup = Future.Scheduler.go ~log (Main.setup ~log common) in
-    let context =
-      match List.find setup.contexts ~f:(fun c -> c.name = context) with
-      | Some ctx -> ctx
-      | None ->
-        Format.eprintf "@{<Error>Error@}: Context %S not found!@." context;
-        die ""
-    in
+    let context = Main.find_context_exn setup ~name:context in
     let path = Config.local_install_bin_dir ~context:context.name :: context.path in
     match Bin.which ~path prog with
     | None ->
@@ -815,26 +829,11 @@ let exec =
       let real_prog = Path.to_string real_prog     in
       let env       = Context.env_for_exec context in
       let argv      = Array.of_list (prog :: args) in
-      if Sys.win32 then
-        let pid =
-          Unix.create_process_env real_prog argv env
-            Unix.stdin Unix.stdout Unix.stderr
-        in
-        match snd (Unix.waitpid [] pid) with
-        | WEXITED   0 -> ()
-        | WEXITED   n -> exit n
-        | WSIGNALED _ -> exit 255
-        | WSTOPPED  _ -> assert false
-      else
-        Unix.execve real_prog argv env
+      execve real_prog argv env
   in
   ( Term.(const go
           $ common
-          $ Arg.(value
-                 & opt string "default"
-                 & info ["context"] ~docv:"CONTEXT"
-                     ~doc:{|Run the command in this build context.|}
-                )
+          $ context_arg ~doc:{|Run the command in this build context.|}
           $ Arg.(required
                  & pos 0 (some string) None (Arg.info [] ~docv:"PROG"))
           $ Arg.(value
@@ -901,6 +900,42 @@ let subst =
          )
   , Term.info "subst" ~doc ~man)
 
+let utop =
+  let doc = "Load library in utop" in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|$(b,jbuilder utop DIR) build and run utop toplevel with libraries defined in DIR|}
+    ; `Blocks help_secs
+    ] in
+  let go common dir ctx_name args =
+    let utop_target = dir |> Path.of_string |> Utop.utop_exe |> Path.to_string in
+    set_common common ~targets:[utop_target];
+    let log = Log.create () in
+    let (build_system, context, utop_path) =
+      (Main.setup ~log common >>= fun setup ->
+       let context = Main.find_context_exn setup ~name:ctx_name in
+       let setup = { setup with contexts = [context] } in
+       let target =
+         match resolve_targets ~log common setup [utop_target] with
+         | [] -> die "no libraries defined in %s" dir
+         | [target] -> target
+         | _::_::_ -> assert false
+       in
+       do_build setup [target] >>| fun () ->
+       (setup.build_system, context, Path.to_string target)
+      ) |> Future.Scheduler.go ~log in
+    Build_system.dump_trace build_system;
+    execve utop_path (Array.of_list (utop_path :: args))
+      (Context.env_for_exec context)
+  in
+  let name_ = Arg.info [] ~docv:"PATH" in
+  ( Term.(const go
+          $ common
+          $ Arg.(value & pos 0 dir "" name_)
+          $ context_arg ~doc:{|Select context where to build/run utop.|}
+          $ Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")))
+  , Term.info "utop" ~doc ~man )
+
 let all =
   [ installed_libraries
   ; external_lib_deps
@@ -912,6 +947,7 @@ let all =
   ; exec
   ; subst
   ; rules
+  ; utop
   ]
 
 let default =

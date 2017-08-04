@@ -91,6 +91,7 @@ struct
     | Rename (x, y) -> List [Atom "rename"; path x; path y]
     | Remove_tree x -> List [Atom "remove-tree"; path x]
     | Mkdir x       -> List [Atom "mkdir"; path x]
+    | Digest_files paths -> List [Atom "digest-files"; List (List.map paths ~f:path)]
 end
 
 module Make_mapper
@@ -124,6 +125,7 @@ module Make_mapper
     | Rename (x, y) -> Rename (f_path x, f_path y)
     | Remove_tree x -> Remove_tree (f_path x)
     | Mkdir x -> Mkdir (f_path x)
+    | Digest_files x -> Digest_files (List.map x ~f:f_path)
 end
 
 module type Ast = Action_intf.Ast
@@ -337,13 +339,16 @@ module Unexpanded = struct
         Rename (E.path ~dir ~f x, E.path ~dir ~f y)
       | Remove_tree x ->
         Remove_tree (E.path ~dir ~f x)
-      | Mkdir x ->
+      | Mkdir x -> begin
         match x with
         | Inl path -> Mkdir path
         | Inr tmpl ->
           let path = E.path ~dir ~f x in
           check_mkdir (SW.loc tmpl) path;
           Mkdir path
+      end
+      | Digest_files x ->
+        Digest_files (List.map x ~f:(E.path ~dir ~f))
   end
 
   module E = struct
@@ -439,6 +444,8 @@ module Unexpanded = struct
        | Inl path -> check_mkdir (SW.loc x) path
        | Inr _    -> ());
       Mkdir res
+    | Digest_files x ->
+      Digest_files (List.map x ~f:(E.path ~dir ~f))
 end
 
 let fold_one_step t ~init:acc ~f =
@@ -460,7 +467,8 @@ let fold_one_step t ~init:acc ~f =
   | Update_file _
   | Rename _
   | Remove_tree _
-  | Mkdir _ -> acc
+  | Mkdir _
+  | Digest_files _ -> acc
 
 include Make_mapper(Ast)(Ast)
 
@@ -506,6 +514,12 @@ let run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
     ~purpose:ectx.purpose
     (Path.reach_for_running ~from:dir prog) args
 
+let exec_echo stdout_to str =
+  return
+    (match stdout_to with
+     | None -> print_string str; flush stdout
+     | Some (_, oc) -> output_string oc str)
+
 let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   match t with
   | Run (prog, args) ->
@@ -521,11 +535,7 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
     redirect ~ectx ~dir outputs Config.dev_null t ~env_extra ~stdout_to ~stderr_to
   | Progn l ->
     exec_list l ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
-  | Echo str ->
-    return
-      (match stdout_to with
-       | None -> print_string str; flush stdout
-       | Some (_, oc) -> output_string oc str)
+  | Echo str -> exec_echo stdout_to str
   | Cat fn ->
     Io.with_file_in (Path.to_string fn) ~f:(fun ic ->
       let oc =
@@ -603,6 +613,16 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
      | Local path ->
        Path.Local.mkdir_p path);
     return ()
+  | Digest_files paths ->
+    let s =
+      let data =
+        List.map paths ~f:(fun fn ->
+          (fn, Utils.Cached_digest.file fn))
+      in
+      Digest.string
+        (Marshal.to_string data [])
+    in
+    exec_echo stdout_to s
 
 and redirect outputs fn t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   let fn = Path.to_string fn in
@@ -682,6 +702,7 @@ module Infer = struct
     | Setenv (_, _, t)
     | Ignore (_, t) -> infer acc t
     | Progn l -> List.fold_left l ~init:acc ~f:infer
+    | Digest_files l -> List.fold_left l ~init:acc ~f:(+<)
     | Echo _
     | System _
     | Bash _
@@ -723,6 +744,7 @@ module Infer = struct
     | Setenv (_, _, t)
     | Ignore (_, t) -> partial acc t
     | Progn l -> List.fold_left l ~init:acc ~f:partial
+    | Digest_files l -> List.fold_left l ~init:acc ~f:(+<?)
     | Echo _
     | System _
     | Bash _
@@ -750,6 +772,7 @@ module Infer = struct
     | Setenv (_, _, t)
     | Ignore (_, t) -> partial_with_all_targets acc t
     | Progn l -> List.fold_left l ~init:acc ~f:partial_with_all_targets
+    | Digest_files l -> List.fold_left l ~init:acc ~f:(+<?)
     | Echo _
     | System _
     | Bash _

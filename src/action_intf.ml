@@ -29,5 +29,6 @@ module type Ast = sig
     | Rename         of path * path
     | Remove_tree    of path
     | Mkdir          of path
+    | Digest_files   of path list
 end
 

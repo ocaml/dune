@@ -152,6 +152,7 @@ module type Combinators = sig
   val float      : float                     t
   val bool       : bool                      t
   val pair       : 'a t -> 'b t -> ('a * 'b) t
+  val triple     : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
   val list       : 'a t -> 'a list           t
   val array      : 'a t -> 'a array          t
   val option     : 'a t -> 'a option         t
@@ -168,6 +169,7 @@ module To_sexp = struct
   let float f = Atom (string_of_float f)
   let bool b = Atom (string_of_bool b)
   let pair fa fb (a, b) = List [fa a; fb b]
+  let triple fa fb fc (a, b, c) = List [fa a; fb b; fc c]
   let list f l = List (List.map l ~f)
   let array f a = list f (Array.to_list a)
   let option f = function
@@ -227,6 +229,10 @@ module Of_sexp = struct
   let pair fa fb = function
     | List (_, [a; b]) -> (fa a, fb b)
     | sexp -> of_sexp_error sexp "S-expression of the form (_ _) expected"
+
+  let triple fa fb fc = function
+    | List (_, [a; b; c]) -> (fa a, fb b, fc c)
+    | sexp -> of_sexp_error sexp "S-expression of the form (_ _ _) expected"
 
   let list f = function
     | Atom _ as sexp -> of_sexp_error sexp "List expected"

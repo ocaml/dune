@@ -133,6 +133,10 @@ let rules store ~prefixes ~tree =
     let rule =
       Build_interpret.Rule.make
         (Build.path_set deps >>>
-         Build.create_file alias.file)
+         Build.action ~targets:[alias.file]
+           (Redirect (Stdout,
+                      alias.file,
+                      Digest_files
+                        (Path.Set.elements deps))))
     in
     rule :: acc)

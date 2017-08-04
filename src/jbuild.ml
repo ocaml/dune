@@ -260,12 +260,7 @@ module Per_module = struct
 
   let t a sexp =
     match sexp with
-    | List (_, Atom (loc, ("per_module" | "per_file" as kwd)) :: rest) -> begin
-        if kwd = "per_file" then
-          Loc.warn loc
-            "'per_file' was renamed 'per_module'. 'per_file' will be re-purposed \
-             in a future version and will take a list of  file names rather \
-             than module names.";
+    | List (_, Atom (_, "per_module") :: rest) -> begin
         List.concat_map rest ~f:(fun sexp ->
           let pp, names = pair a module_names sexp in
           List.map (String_set.elements names) ~f:(fun name -> (name, pp)))

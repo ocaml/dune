@@ -793,12 +793,6 @@ For instance:
                    (((action (run ./pp.sh X=1 ${<})) (foo bar)))
                    (((action (run ./pp.sh X=2 ${<})) (baz)))))
 
-Note the beta versions of Jbuilder used ``per_file`` instead of
-``per_module``, which was obviously the wrong name. ``per_file`` is
-still accepted for backward compatibility but deprecated. It will be
-re-purposed in the future to allow to distinguish between .ml and .mli
-files.
-
 Dependency specification
 ------------------------
 

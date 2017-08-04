@@ -25,6 +25,10 @@
   builds and executes a custom `utop` toplevel with all libraries
   defined in the current directory (#183, Rudi Grinberg)
 
+- Do not accept `per_file` anymore in `preprocess` field. `per_file`
+  was renamed `per_module` and it is planned to reuse `per_file` for
+  another purpose
+
 1.0+beta11 (21/07/2017)
 -----------------------
 

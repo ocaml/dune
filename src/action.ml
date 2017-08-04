@@ -44,7 +44,6 @@ struct
       ; cstr_rest "progn"      nil t         (fun l -> Progn l)
       ; cstr "echo"           (string @> nil)         (fun x -> Echo x)
       ; cstr "cat"            (path @> nil)         (fun x -> Cat x)
-      ; cstr "create-file"    (path @> nil)         (fun x -> Create_file x)
       ; cstr "copy" (path @> path @> nil)              (fun src dst -> Copy (src, dst))
       (*
          (* We don't expose symlink to the user yet since this might complicate things *)
@@ -78,7 +77,6 @@ struct
     | Progn l -> List (Atom "progn" :: List.map l ~f:sexp_of_t)
     | Echo x -> List [Atom "echo"; string x]
     | Cat x -> List [Atom "cat"; path x]
-    | Create_file x -> List [Atom "create-file"; path x]
     | Copy (x, y) ->
       List [Atom "copy"; path x; path y]
     | Symlink (x, y) ->
@@ -113,7 +111,6 @@ module Make_mapper
     | Progn l -> Progn (List.map l ~f:(fun t -> map t ~f_program ~f_string ~f_path))
     | Echo x -> Echo (f_string x)
     | Cat x -> Cat (f_path x)
-    | Create_file x -> Create_file (f_path x)
     | Copy (x, y) -> Copy (f_path x, f_path y)
     | Symlink (x, y) ->
       Symlink (f_path x, f_path y)
@@ -325,7 +322,6 @@ module Unexpanded = struct
       | Progn l -> Progn (List.map l ~f:(fun t -> expand dir t ~f))
       | Echo x -> Echo (E.string ~dir ~f x)
       | Cat x -> Cat (E.path ~dir ~f x)
-      | Create_file x -> Create_file (E.path ~dir ~f x)
       | Copy (x, y) ->
         Copy (E.path ~dir ~f x, E.path ~dir ~f y)
       | Symlink (x, y) ->
@@ -424,7 +420,6 @@ module Unexpanded = struct
     | Progn l -> Progn (List.map l ~f:(fun t -> partial_expand dir t ~f))
     | Echo x -> Echo (E.string ~dir ~f x)
     | Cat x -> Cat (E.path ~dir ~f x)
-    | Create_file x -> Create_file (E.path ~dir ~f x)
     | Copy (x, y) ->
       Copy (E.path ~dir ~f x, E.path ~dir ~f y)
     | Symlink (x, y) ->
@@ -458,7 +453,6 @@ let fold_one_step t ~init:acc ~f =
   | Run _
   | Echo _
   | Cat _
-  | Create_file _
   | Copy _
   | Symlink _
   | Copy_and_add_line_directive _
@@ -544,11 +538,6 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
         | Some (_, oc) -> oc
       in
       Io.copy_channels ic oc);
-    return ()
-  | Create_file fn ->
-    let fn = Path.to_string fn in
-    if Sys.file_exists fn then Sys.force_remove fn;
-    Unix.close (Unix.openfile fn [O_CREAT; O_TRUNC; O_WRONLY] 0o666);
     return ()
   | Copy (src, dst) ->
     Io.copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst);
@@ -692,7 +681,6 @@ module Infer = struct
     | Run (prog, _)        -> acc +< prog
     | Redirect (_, fn, t)  -> infer (acc +@ fn) t
     | Cat fn               -> acc +< fn
-    | Create_file fn       -> acc +@ fn
     | Update_file (fn, _)  -> acc +@ fn
     | Rename (src, dst)    -> acc +< src +@ dst
     | Copy (src, dst)
@@ -734,7 +722,6 @@ module Infer = struct
     | Run (_, _) -> acc
     | Redirect (_, fn, t)  -> partial (acc +@? fn) t
     | Cat fn               -> acc +<? fn
-    | Create_file fn       -> acc +@? fn
     | Update_file (fn, _)  -> acc +@? fn
     | Rename (src, dst)    -> acc +<? src +@? dst
     | Copy (src, dst)
@@ -762,7 +749,6 @@ module Infer = struct
     | Run (_, _) -> acc
     | Redirect (_, fn, t)  -> partial_with_all_targets (acc +@? fn) t
     | Cat fn               -> acc +<? fn
-    | Create_file fn       -> acc +@? fn
     | Update_file (fn, _)  -> acc +@? fn
     | Rename (src, dst)    -> acc +<? src +@? dst
     | Copy (src, dst)

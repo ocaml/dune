@@ -18,7 +18,6 @@ module type Ast = sig
     | Ignore         of Outputs.t * t
     | Progn          of t list
     | Echo           of string
-    | Create_file    of path
     | Cat            of path
     | Copy           of path * path
     | Symlink        of path * path

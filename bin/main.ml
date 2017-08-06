@@ -964,7 +964,7 @@ let default =
              |}
         ; `P {|The scheme it implements is inspired from the one used inside Jane
                Street and adapted to the open source world. It has matured over a
-               long time and is used daily by hundred of developpers, which means
+               long time and is used daily by hundreds of developers, which means
                that it is highly tested and productive.
              |}
         ; `Blocks help_secs

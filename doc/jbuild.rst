@@ -656,10 +656,11 @@ Library dependencies
 Dependencies on libraries are specified using ``(libraries ...)`` fields in
 ``library`` and ``executables`` stanzas.
 
-For libraries that are present in the workspace, you can use either the real
-name (with some restrictions, see below) or the public name. For libraries that
-are part of the installed world, you need to use the public name. For instance:
-``(libraries (base re))``.
+For libraries defined in the current scope, you can use either the
+real name or the public name. For libraries that are part of the
+installed world, or for libraries that are part of the current
+workspace but in another scope, you need to use the public name. For
+instance: ``(libraries (base re))``.
 
 When resolving libraries, libraries that are part of the workspace are always
 prefered to ones that are part of the installed world.

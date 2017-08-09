@@ -38,7 +38,7 @@ let utop_of_libs (libs : Library.t list) =
   ; link_flags = Ordered_set_lang.Unexpanded.t (
       Sexp.add_loc ~loc:Loc.none
         (List [ Atom "-linkall"
-              ; Atom "-w"
+              ; Atom "-warn-error"
               ; Atom "-31" ])
     )
   ; modes = Mode.Dict.Set.of_list [Mode.Byte]

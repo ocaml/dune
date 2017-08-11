@@ -1,0 +1,66 @@
+(jbuild_version 1)
+
+(executable
+ ((name cram)
+  (libraries (test_common jbuilder))))
+
+(ocamllex (cram))
+
+(alias
+ ((name   runtest)
+  (deps   ((files_recursively_in test-cases/redirections)))
+  (action
+   (chdir test-cases/redirections
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/misc)))
+  (action
+   (chdir test-cases/misc
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/github20)))
+  (action
+   (chdir test-cases/github20
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest-js)
+  (deps ((files_recursively_in test-cases/js_of_ocaml)))
+  (action
+   (chdir test-cases/js_of_ocaml
+    (setenv JBUILDER ${bin:jbuilder}
+     (setenv NODE ${bin:node}
+      (run ${exe:cram.exe} run.t)))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/github24)))
+  (action
+   (chdir test-cases/github24
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/menhir)))
+  (action
+   (chdir test-cases/menhir
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/github25)))
+  (action
+   (chdir test-cases/github25/root
+    (setenv OCAMLPATH ../findlib-packages
+     (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t)))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/lib-available)))
+  (action
+   (chdir test-cases/lib-available
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))

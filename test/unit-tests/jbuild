@@ -1,0 +1,38 @@
+(jbuild_version 1)
+
+(executable
+ ((name expect_test)
+  (modules (expect_test))
+  (link_flags (-linkall))
+  (libraries (unix jbuilder compiler-libs.toplevel test_common))))
+
+(ocamllex (expect_test))
+
+(alias
+ ((name runtest)
+  (deps (tests.mlt
+         (glob_files ${SCOPE_ROOT}/src/*.cmi)
+         (glob_files ${SCOPE_ROOT}/vendor/re/*.cmi)
+         (files_recursively_in findlib-db)))
+  (action (chdir ${SCOPE_ROOT} (run ${exe:expect_test.bc} ${<})))))
+
+(alias
+ ((name runtest)
+  (deps (filename.mlt
+         (glob_files ${SCOPE_ROOT}/src/*.cmi)
+         (glob_files ${SCOPE_ROOT}/vendor/re/*.cmi)))
+  (action (chdir ${SCOPE_ROOT} (run ${exe:expect_test.bc} ${<})))))
+
+(alias
+ ((name runtest)
+  (deps (import_dot_map.mlt
+         (glob_files ${SCOPE_ROOT}/src/*.cmi)
+         (glob_files ${SCOPE_ROOT}/vendor/re/*.cmi)))
+  (action (chdir ${SCOPE_ROOT} (run ${exe:expect_test.bc} ${<})))))
+
+(alias
+ ((name runtest)
+  (deps (action.mlt
+         (glob_files ${SCOPE_ROOT}/src/*.cmi)
+         (glob_files ${SCOPE_ROOT}/vendor/re/*.cmi)))
+  (action (chdir ${SCOPE_ROOT} (run ${exe:expect_test.bc} ${<})))))

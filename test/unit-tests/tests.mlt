@@ -19,14 +19,14 @@ let findlib =
   let cwd = Path.absolute (Sys.getcwd ()) in
     Findlib.create
     ~stdlib_dir:cwd
-    ~path:[Path.relative cwd "test/expect-tests/findlib-db"]
+    ~path:[Path.relative cwd "test/unit-tests/findlib-db"]
 ;;
 
 [%%expect{|
 val findlib : Jbuilder.Findlib.t = <abstr>
 |}]
 
-let pkg = Findlib.find_exn findlib ~required_by:[] "foo"
+let pkg = Findlib.find_exn findlib ~required_by:[] "foo";;
 
 [%%expect{|
 val pkg : Jbuilder.Findlib.package = <package:foo>
@@ -47,7 +47,7 @@ open Meta
 
 let meta =
   { name = "foo"
-  ; entries = Meta.load "test/expect-tests/findlib-db/foo/META"
+  ; entries = Meta.load "test/unit-tests/findlib-db/foo/META"
   }
 
 [%%expect{|

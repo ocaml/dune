@@ -1,7 +1,8 @@
 (jbuild_version 1)
 
 (rule
- ((targets (config))
+ ((fallback)
+  (targets (config))
   (deps    (config.defaults))
   (action  (copy ${<} ${@}))))
 

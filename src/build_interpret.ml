@@ -149,16 +149,20 @@ let targets =
 
 module Rule = struct
   type t =
-    { context : Context.t option
-    ; build   : (unit, Action.t) Build.t
-    ; targets : Target.t list
-    ; sandbox : bool
+    { context  : Context.t option
+    ; build    : (unit, Action.t) Build.t
+    ; targets  : Target.t list
+    ; sandbox  : bool
+    ; fallback : bool
+    ; loc      : Loc.t option
     }
 
-  let make ?(sandbox=false) ?context build =
+  let make ?(sandbox=false) ?(fallback=false) ?context ?loc build =
     { context
     ; build
     ; targets = targets build
     ; sandbox
+    ; fallback
+    ; loc
     }
 end

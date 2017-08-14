@@ -213,9 +213,9 @@ let create
       | _ -> Chdir (context.build_dir, action))
   }
 
-let add_rule t ?sandbox build =
+let add_rule t ?sandbox ?fallback ?loc build =
   let build = Build.O.(>>>) build t.chdir in
-  let rule = Build_interpret.Rule.make ?sandbox ~context:t.context build in
+  let rule = Build_interpret.Rule.make ?sandbox ?fallback ?loc ~context:t.context build in
   t.rules <- rule :: t.rules;
   t.known_targets_by_src_dir_so_far <-
     List.fold_left rule.targets ~init:t.known_targets_by_src_dir_so_far
@@ -232,8 +232,8 @@ let add_rule t ?sandbox build =
           in
           Path.Map.add acc ~key:dir ~data:files)
 
-let add_rules t ?sandbox builds =
-  List.iter builds ~f:(add_rule t ?sandbox)
+let add_rules t ?sandbox ?fallback builds =
+  List.iter builds ~f:(add_rule t ?sandbox ?fallback)
 
 let sources_and_targets_known_so_far t ~src_path =
   let sources =

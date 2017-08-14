@@ -528,7 +528,7 @@ module Gen(P : Params) = struct
       | Infer -> Infer
       | Static fns -> Static (List.map fns ~f:(Path.relative dir))
     in
-    SC.add_rule sctx
+    SC.add_rule sctx ~fallback:rule.fallback ~loc:rule.loc
       (SC.Deps.interpret sctx ~scope ~dir rule.deps
        >>>
        SC.Action.run

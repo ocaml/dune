@@ -711,27 +711,37 @@ module Rule = struct
   end
 
   type t =
-    { targets : Targets.t
-    ; deps    : Dep_conf.t list
-    ; action  : Action.Unexpanded.t
+    { targets  : Targets.t
+    ; deps     : Dep_conf.t list
+    ; action   : Action.Unexpanded.t
+    ; fallback : bool
+    ; loc      : Loc.t
     }
 
   let v1 sexp =
     match sexp with
     | List (_, (Atom _ :: _)) ->
-      { targets = Infer
-      ; deps    = []
-      ; action  = Action.Unexpanded.t sexp
+      { targets  = Infer
+      ; deps     = []
+      ; action   = Action.Unexpanded.t sexp
+      ; fallback = false
+      ; loc = Loc.none
       }
     | _ ->
       record
         (field "targets" (list file_in_current_dir)    >>= fun targets ->
          field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
          field "action"  Action.Unexpanded.t           >>= fun action ->
-         return { targets = Static targets; deps; action })
+         field_b "fallback" >>= fun fallback ->
+         return { targets = Static targets
+                ; deps
+                ; action
+                ; fallback
+                ; loc = Loc.none
+                })
         sexp
 
-  let ocamllex_v1 names =
+  let ocamllex_v1 loc names =
     let module S = String_with_vars in
     List.map names ~f:(fun name ->
       let src = name ^ ".mll" in
@@ -747,9 +757,11 @@ module Rule = struct
                   ; S.virt_var __POS__ "@"
                   ; S.virt_var __POS__"<"
                   ]))
+      ; fallback = false
+      ; loc
       })
 
-  let ocamlyacc_v1 names =
+  let ocamlyacc_v1 loc names =
     let module S = String_with_vars in
     List.map names ~f:(fun name ->
       let src = name ^ ".mly" in
@@ -760,6 +772,8 @@ module Rule = struct
             (S.virt_var __POS__ "ROOT",
              Run (S.virt_text __POS__ "ocamlyacc",
                   [S.virt_var __POS__ "<"]))
+      ; fallback = false
+      ; loc
       })
 end
 
@@ -782,7 +796,7 @@ module Menhir = struct
          }
       )
 
-  let v1_to_rule t =
+  let v1_to_rule loc t =
     let module S = String_with_vars in
     let targets n = [n ^ ".ml"; n ^ ".mli"] in
     match t.merge_into with
@@ -797,7 +811,9 @@ module Menhir = struct
               (S.virt_var __POS__ "ROOT",
                Run (S.virt_text __POS__ "menhir",
                     t.flags @ [S.virt_var __POS__ "<"]))
-        })
+       ; fallback = false
+       ; loc
+       })
     | Some merge_into ->
       let mly m = S.virt_text __POS__ (m ^ ".mly") in
       [{ Rule.
@@ -813,6 +829,8 @@ module Menhir = struct
                    @ t.flags
                    @ (List.map ~f:mly t.modules))
              )
+       ; fallback = false
+       ; loc
        }]
 end
 
@@ -882,10 +900,10 @@ module Stanza = struct
       [ cstr "library"     (Library.v1 pkgs @> nil)      (fun x -> [Library     x])
       ; cstr "executable"  (Executables.v1_single pkgs @> nil) execs
       ; cstr "executables" (Executables.v1_multi  pkgs @> nil) execs
-      ; cstr "rule"        (Rule.v1 @> nil)              (fun x -> [Rule        x])
-      ; cstr "ocamllex"    (list string @> nil)          (fun x -> rules (Rule.ocamllex_v1  x))
-      ; cstr "ocamlyacc"   (list string @> nil)          (fun x -> rules (Rule.ocamlyacc_v1 x))
-      ; cstr "menhir"      (Menhir.v1 @> nil)            (fun x -> rules (Menhir.v1_to_rule x))
+      ; cstr_loc "rule"      (Rule.v1     @> nil) (fun loc x -> [Rule { x with loc }])
+      ; cstr_loc "ocamllex"  (list string @> nil) (fun loc x -> rules (Rule.ocamllex_v1  loc x))
+      ; cstr_loc "ocamlyacc" (list string @> nil) (fun loc x -> rules (Rule.ocamlyacc_v1 loc x))
+      ; cstr_loc "menhir"    (Menhir.v1   @> nil) (fun loc x -> rules (Menhir.v1_to_rule loc x))
       ; cstr "install"     (Install_conf.v1 pkgs @> nil) (fun x -> [Install     x])
       ; cstr "alias"       (Alias_conf.v1 pkgs @> nil)   (fun x -> [Alias       x])
       (* Just for validation and error messages *)

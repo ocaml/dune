@@ -189,9 +189,11 @@ module Rule : sig
   end
 
   type t =
-    { targets : Targets.t
-    ; deps    : Dep_conf.t list
-    ; action  : Action.Unexpanded.t
+    { targets  : Targets.t
+    ; deps     : Dep_conf.t list
+    ; action   : Action.Unexpanded.t
+    ; fallback : bool
+    ; loc      : Loc.t
     }
 end
 

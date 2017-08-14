@@ -41,8 +41,19 @@ val cxx_flags : t -> string list
 
 val expand_vars : t -> scope:Scope.t -> dir:Path.t -> String_with_vars.t -> string
 
-val add_rule : t -> ?sandbox:bool -> (unit, Action.t) Build.t -> unit
-val add_rules : t -> ?sandbox:bool -> (unit, Action.t) Build.t list -> unit
+val add_rule
+  :  t
+  -> ?sandbox:bool
+  -> ?fallback:bool
+  -> ?loc:Loc.t
+  -> (unit, Action.t) Build.t
+  -> unit
+val add_rules
+  :  t
+  -> ?sandbox:bool
+  -> ?fallback:bool
+  -> (unit, Action.t) Build.t list
+  -> unit
 val rules : t -> Build_interpret.Rule.t list
 
 val sources_and_targets_known_so_far : t -> src_path:Path.t -> String_set.t

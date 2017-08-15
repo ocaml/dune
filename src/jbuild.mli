@@ -188,10 +188,21 @@ module Rule : sig
       | Infer
   end
 
+  module Fallback : sig
+    type t =
+      | Yes
+      | No
+      | Not_possible
+      (** It is not possible to add a [(fallback)] field to the rule. For instance for
+          [ocamllex], ... *)
+  end
+
   type t =
-    { targets : Targets.t
-    ; deps    : Dep_conf.t list
-    ; action  : Action.Unexpanded.t
+    { targets  : Targets.t
+    ; deps     : Dep_conf.t list
+    ; action   : Action.Unexpanded.t
+    ; fallback : Fallback.t
+    ; loc      : Loc.t
     }
 end
 

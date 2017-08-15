@@ -191,6 +191,10 @@ module String_map = Map.Make(String)
 module String = struct
   include StringLabels
 
+  let break s ~pos =
+    (sub s ~pos:0 ~len:pos,
+     sub s ~pos ~len:(String.length s - pos))
+
   let is_prefix s ~prefix =
     let len = length s in
     let prefix_len = length prefix in

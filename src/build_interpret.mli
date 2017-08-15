@@ -15,13 +15,13 @@ module Rule : sig
     ; build    : (unit, Action.t) Build.t
     ; targets  : Target.t list
     ; sandbox  : bool
-    ; fallback : bool
+    ; fallback : Jbuild.Rule.Fallback.t
     ; loc      : Loc.t option
     }
 
   val make
     :  ?sandbox:bool
-    -> ?fallback:bool
+    -> ?fallback:Jbuild.Rule.Fallback.t
     -> ?context:Context.t
     -> ?loc:Loc.t
     -> (unit, Action.t) Build.t

@@ -232,8 +232,8 @@ let add_rule t ?sandbox ?fallback ?loc build =
           in
           Path.Map.add acc ~key:dir ~data:files)
 
-let add_rules t ?sandbox ?fallback builds =
-  List.iter builds ~f:(add_rule t ?sandbox ?fallback)
+let add_rules t ?sandbox builds =
+  List.iter builds ~f:(add_rule t ?sandbox)
 
 let sources_and_targets_known_so_far t ~src_path =
   let sources =

@@ -710,11 +710,18 @@ module Rule = struct
       | Infer
   end
 
+  module Fallback = struct
+    type t =
+      | Yes
+      | No
+      | Not_possible
+  end
+
   type t =
     { targets  : Targets.t
     ; deps     : Dep_conf.t list
     ; action   : Action.Unexpanded.t
-    ; fallback : bool
+    ; fallback : Fallback.t
     ; loc      : Loc.t
     }
 
@@ -724,7 +731,7 @@ module Rule = struct
       { targets  = Infer
       ; deps     = []
       ; action   = Action.Unexpanded.t sexp
-      ; fallback = false
+      ; fallback = No
       ; loc = Loc.none
       }
     | _ ->
@@ -736,7 +743,7 @@ module Rule = struct
          return { targets = Static targets
                 ; deps
                 ; action
-                ; fallback
+                ; fallback = if fallback then Yes else No
                 ; loc = Loc.none
                 })
         sexp
@@ -757,7 +764,7 @@ module Rule = struct
                   ; S.virt_var __POS__ "@"
                   ; S.virt_var __POS__"<"
                   ]))
-      ; fallback = false
+      ; fallback = Not_possible
       ; loc
       })
 
@@ -772,7 +779,7 @@ module Rule = struct
             (S.virt_var __POS__ "ROOT",
              Run (S.virt_text __POS__ "ocamlyacc",
                   [S.virt_var __POS__ "<"]))
-      ; fallback = false
+      ; fallback = Not_possible
       ; loc
       })
 end
@@ -811,7 +818,7 @@ module Menhir = struct
               (S.virt_var __POS__ "ROOT",
                Run (S.virt_text __POS__ "menhir",
                     t.flags @ [S.virt_var __POS__ "<"]))
-       ; fallback = false
+       ; fallback = Not_possible
        ; loc
        })
     | Some merge_into ->
@@ -829,7 +836,7 @@ module Menhir = struct
                    @ t.flags
                    @ (List.map ~f:mly t.modules))
              )
-       ; fallback = false
+       ; fallback = Not_possible
        ; loc
        }]
 end

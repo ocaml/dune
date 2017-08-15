@@ -44,14 +44,13 @@ val expand_vars : t -> scope:Scope.t -> dir:Path.t -> String_with_vars.t -> stri
 val add_rule
   :  t
   -> ?sandbox:bool
-  -> ?fallback:bool
+  -> ?fallback:Jbuild.Rule.Fallback.t
   -> ?loc:Loc.t
   -> (unit, Action.t) Build.t
   -> unit
 val add_rules
   :  t
   -> ?sandbox:bool
-  -> ?fallback:bool
   -> (unit, Action.t) Build.t list
   -> unit
 val rules : t -> Build_interpret.Rule.t list

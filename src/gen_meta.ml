@@ -79,36 +79,33 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~
     ; (match lib.kind with
        | Normal -> []
        | Ppx_rewriter | Ppx_deriver ->
-         let sub_pkg_name = "deprecated-ppx-method" in
-         [ Comment "This is what jbuilder uses to find out the runtime dependencies of"
-         ; Comment "a preprocessor"
-         ; ppx_runtime_deps ppx_rt_deps
-         ; Comment "This line makes things transparent for people mixing preprocessors"
-         ; Comment "and normal dependencies"
-         ; requires ~preds:[Neg "ppx_driver"]
-             [Pub_name.to_string (Dot (pub_name, sub_pkg_name))]
-         ; Package
-             { name    = sub_pkg_name
-             ; entries =
-                 List.concat
-                   [ version
-                   ; [ description "glue package for the deprecated method of using ppx"
-                     ; requires ppx_rt_deps
-                     ]
-                   ; match lib.kind with
-                   | Normal -> assert false
-                   | Ppx_rewriter ->
-                     [ rule "ppx" [Neg "ppx_driver"; Neg "custom_ppx"]
-                         Set "./ppx.exe --as-ppx" ]
-                   | Ppx_deriver ->
-                     [ rule "requires" [Neg "ppx_driver"; Neg "custom_ppx"] Add
-                         "ppx_deriving"
-                     ; rule "ppxopt" [Neg "ppx_driver"; Neg "custom_ppx"] Set
-                         ("ppx_deriving,package:" ^ Pub_name.to_string pub_name)
-                     ]
-                   ]
-             }
-         ])
+         let no_ppx_driver = Neg "ppx_driver" and no_custom_ppx = Neg "custom_ppx" in
+         List.concat
+           [ [ Comment "This is what jbuilder uses to find out the runtime \
+                        dependencies of"
+             ; Comment "a preprocessor"
+             ; ppx_runtime_deps ppx_rt_deps
+             ]
+
+           (* Deprecated ppx method support *)
+           ; [ Comment "This line makes things transparent for people mixing \
+                        preprocessors"
+             ; Comment "and normal dependencies"
+             ; requires ~preds:[no_ppx_driver] ppx_rt_deps
+             ]
+           ; match lib.kind with
+           | Normal -> assert false
+           | Ppx_rewriter ->
+             [ rule "ppx" [no_ppx_driver; no_custom_ppx]
+                 Set "./ppx.exe --as-ppx" ]
+           | Ppx_deriver ->
+             [ rule "requires" [no_ppx_driver; no_custom_ppx] Add
+                 "ppx_deriving"
+             ; rule "ppxopt" [no_ppx_driver; no_custom_ppx] Set
+                 ("ppx_deriving,package:" ^ Pub_name.to_string pub_name)
+             ]
+           ]
+      )
     ; (match lib.buildable.js_of_ocaml with
        | { javascript_files = []; _ } -> []
        | { javascript_files = l ; _ } ->

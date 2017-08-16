@@ -6,3 +6,6 @@ boot.ml
 *.corrected
 *.swp
 *.swo
+bootstrap.cmi
+bootstrap.cmo
+bootstrap.exe

@@ -26,7 +26,7 @@ all-supported-ocaml-versions:
 
 clean:
 	$(BIN) clean
-	rm -f ./boot.exe
+	rm -f ./boot.exe $(wildcard ./bootstrap.cmi ./bootstrap.cmo ./bootstrap.exe)
 
 doc:
 	cd doc && sphinx-build . _build

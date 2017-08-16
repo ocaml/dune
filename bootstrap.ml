@@ -1,4 +1,4 @@
-#warnings "-40";;
+[@@@ocaml.warning "-40"]
 
 module Array = ArrayLabels
 module List  = ListLabels

@@ -37,6 +37,12 @@
 - Get rid of the `deprecated-ppx-method` findlib package for ppx
   rewriters (#222, fixes #163)
 
+- Use digests (MD5) of files contents to detect changes rather than
+  just looking at the timestamps. We still use timestamps to avoid
+  recomputing digests. The performance difference is negligible and we
+  avoid more useless recompilations, especially when switching branches
+  for instance (#209, fixes #158)
+
 1.0+beta11 (21/07/2017)
 -----------------------
 

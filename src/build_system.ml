@@ -253,7 +253,7 @@ module Build_exec = struct
       | Store_vfile (Vspec.T (fn, kind)) ->
         let file = get_file bs fn (Sexp_file kind) in
         file.data <- Some x;
-        Update_file (fn, vfile_to_string kind fn x)
+        Write_file (fn, vfile_to_string kind fn x)
       | Compose (a, b) ->
         exec dyn_deps a x |> exec dyn_deps b
       | First t ->

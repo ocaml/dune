@@ -103,10 +103,9 @@ val action_dyn
   -> unit
   -> (Action.t, Action.t) t
 
-(** Create a file with the given contents. Do not ovewrite the file if
-    it hasn't changed. *)
-val update_file : Path.t -> string -> (unit, Action.t) t
-val update_file_dyn : Path.t -> (string, Action.t) t
+(** Create a file with the given contents. *)
+val write_file : Path.t -> string -> (unit, Action.t) t
+val write_file_dyn : Path.t -> (string, Action.t) t
 
 val copy : src:Path.t -> dst:Path.t -> (unit, Action.t) t
 

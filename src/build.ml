@@ -243,13 +243,13 @@ let action_dyn ?dir ~targets () =
   | None -> action
   | Some dir -> Action.Chdir (dir, action)
 
-let update_file fn s =
-  action ~targets:[fn] (Update_file (fn, s))
+let write_file fn s =
+  action ~targets:[fn] (Write_file (fn, s))
 
-let update_file_dyn fn =
+let write_file_dyn fn =
   Targets [fn]
   >>^ fun s ->
-  Action.Update_file (fn, s)
+  Action.Write_file (fn, s)
 
 let copy ~src ~dst =
   path src >>>

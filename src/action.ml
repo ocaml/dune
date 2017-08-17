@@ -56,6 +56,7 @@ struct
           Copy_and_add_line_directive (src, dst))
       ; cstr "system" (string @> nil) (fun cmd -> System cmd)
       ; cstr "bash"   (string @> nil) (fun cmd -> Bash   cmd)
+      ; cstr "write-file" (path @> string @> nil) (fun fn s -> Write_file (fn, s))
       ]
       sexp
 
@@ -85,7 +86,7 @@ struct
       List [Atom "copy#"; path x; path y]
     | System x -> List [Atom "system"; string x]
     | Bash   x -> List [Atom "bash"; string x]
-    | Update_file (x, y) -> List [Atom "update-file"; path x; string y]
+    | Write_file (x, y) -> List [Atom "write-file"; path x; string y]
     | Rename (x, y) -> List [Atom "rename"; path x; path y]
     | Remove_tree x -> List [Atom "remove-tree"; path x]
     | Mkdir x       -> List [Atom "mkdir"; path x]
@@ -118,7 +119,7 @@ module Make_mapper
       Copy_and_add_line_directive (f_path x, f_path y)
     | System x -> System (f_string x)
     | Bash x -> Bash (f_string x)
-    | Update_file (x, y) -> Update_file (f_path x, f_string y)
+    | Write_file (x, y) -> Write_file (f_path x, f_string y)
     | Rename (x, y) -> Rename (f_path x, f_path y)
     | Remove_tree x -> Remove_tree (f_path x)
     | Mkdir x -> Mkdir (f_path x)
@@ -330,7 +331,7 @@ module Unexpanded = struct
         Copy_and_add_line_directive (E.path ~dir ~f x, E.path ~dir ~f y)
       | System x -> System (E.string ~dir ~f x)
       | Bash x -> Bash (E.string ~dir ~f x)
-      | Update_file (x, y) -> Update_file (E.path ~dir ~f x, E.string ~dir ~f y)
+      | Write_file (x, y) -> Write_file (E.path ~dir ~f x, E.string ~dir ~f y)
       | Rename (x, y) ->
         Rename (E.path ~dir ~f x, E.path ~dir ~f y)
       | Remove_tree x ->
@@ -428,7 +429,7 @@ module Unexpanded = struct
       Copy_and_add_line_directive (E.path ~dir ~f x, E.path ~dir ~f y)
     | System x -> System (E.string ~dir ~f x)
     | Bash x -> Bash (E.string ~dir ~f x)
-    | Update_file (x, y) -> Update_file (E.path ~dir ~f x, E.string ~dir ~f y)
+    | Write_file (x, y) -> Write_file (E.path ~dir ~f x, E.string ~dir ~f y)
     | Rename (x, y) ->
       Rename (E.path ~dir ~f x, E.path ~dir ~f y)
     | Remove_tree x ->
@@ -458,7 +459,7 @@ let fold_one_step t ~init:acc ~f =
   | Copy_and_add_line_directive _
   | System _
   | Bash _
-  | Update_file _
+  | Write_file _
   | Rename _
   | Remove_tree _
   | Mkdir _
@@ -470,7 +471,7 @@ let updated_files =
   let rec loop acc t =
     let acc =
       match t with
-      | Update_file (fn, _) -> Path.Set.add fn acc
+      | Write_file (fn, _) -> Path.Set.add fn acc
       | _ -> acc
     in
     fold_one_step t ~init:acc ~f:loop
@@ -523,6 +524,9 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   | Setenv (var, value, t) ->
     exec t ~ectx ~dir ~stdout_to ~stderr_to
       ~env_extra:(Env_var_map.add env_extra ~key:var ~data:value)
+  | Redirect (Stdout, fn, Echo s) ->
+    Io.write_file (Path.to_string fn) s;
+    return ()
   | Redirect (outputs, fn, t) ->
     redirect ~ectx ~dir outputs fn t ~env_extra ~stdout_to ~stderr_to
   | Ignore (outputs, t) ->
@@ -579,12 +583,8 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
     run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
       (Utils.bash_exn ~needed_to:"interpret (bash ...) actions")
       ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
-  | Update_file (fn, s) ->
-    let fn = Path.to_string fn in
-    if Sys.file_exists fn && Io.read_file fn = s then
-      ()
-    else
-      Io.write_file fn s;
+  | Write_file (fn, s) ->
+    Io.write_file (Path.to_string fn) s;
     return ()
   | Rename (src, dst) ->
     Unix.rename (Path.to_string src) (Path.to_string dst);
@@ -681,7 +681,7 @@ module Infer = struct
     | Run (prog, _)        -> acc +< prog
     | Redirect (_, fn, t)  -> infer (acc +@ fn) t
     | Cat fn               -> acc +< fn
-    | Update_file (fn, _)  -> acc +@ fn
+    | Write_file (fn, _)  -> acc +@ fn
     | Rename (src, dst)    -> acc +< src +@ dst
     | Copy (src, dst)
     | Copy_and_add_line_directive (src, dst)
@@ -722,7 +722,7 @@ module Infer = struct
     | Run (_, _) -> acc
     | Redirect (_, fn, t)  -> partial (acc +@? fn) t
     | Cat fn               -> acc +<? fn
-    | Update_file (fn, _)  -> acc +@? fn
+    | Write_file (fn, _)  -> acc +@? fn
     | Rename (src, dst)    -> acc +<? src +@? dst
     | Copy (src, dst)
     | Copy_and_add_line_directive (src, dst)
@@ -749,7 +749,7 @@ module Infer = struct
     | Run (_, _) -> acc
     | Redirect (_, fn, t)  -> partial_with_all_targets (acc +@? fn) t
     | Cat fn               -> acc +<? fn
-    | Update_file (fn, _)  -> acc +@? fn
+    | Write_file (fn, _)  -> acc +@? fn
     | Rename (src, dst)    -> acc +<? src +@? dst
     | Copy (src, dst)
     | Copy_and_add_line_directive (src, dst)

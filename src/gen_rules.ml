@@ -253,7 +253,7 @@ module Gen(P : Params) = struct
                 main_module_name m.name
                 m.name (Module.real_unit_name m))
             |> String.concat ~sep:"\n")
-         >>> Build.update_file_dyn (Path.relative dir m.impl.name)));
+         >>> Build.write_file_dyn (Path.relative dir m.impl.name)));
 
     let requires, real_requires =
       SC.Libs.requires sctx ~dir ~dep_kind ~item:lib.name
@@ -838,7 +838,7 @@ Add it to your jbuild file to remove this warning.
            Format.pp_print_flush ppf ();
            Buffer.contents buf)
          >>>
-         Build.update_file_dyn meta_path);
+         Build.write_file_dyn meta_path);
 
       if has_meta || has_meta_tmpl then
         Some pkg.name
@@ -970,7 +970,7 @@ Add it to your jbuild file to remove this warning.
        >>^ (fun () ->
          Install.gen_install_file entries)
        >>>
-       Build.update_file_dyn fn)
+       Build.write_file_dyn fn)
 
   let () =
     let entries_per_package =

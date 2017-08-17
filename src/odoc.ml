@@ -89,7 +89,7 @@ let lib_index sctx ~odoc ~dir ~(lib : Library.t) ~lib_public_name ~doc_dir ~modu
               lib_public_name
               (String_map.keys modules |> String.concat ~sep:" "))))
      >>>
-     Build.update_file_dyn generated_index_mld);
+     Build.write_file_dyn generated_index_mld);
   let html_file =
     doc_dir ++ lib_public_name ++ "index.html"
   in

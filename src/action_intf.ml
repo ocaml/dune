@@ -24,7 +24,7 @@ module type Ast = sig
     | Copy_and_add_line_directive of path * path
     | System         of string
     | Bash           of string
-    | Update_file    of path * string
+    | Write_file     of path * string
     | Rename         of path * path
     | Remove_tree    of path
     | Mkdir          of path

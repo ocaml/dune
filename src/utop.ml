@@ -29,7 +29,7 @@ let add_module_rules sctx ~dir lib_requires =
       pp_ml fmt include_paths;
       Format.pp_print_flush fmt ();
       Buffer.contents b)
-    >>> Build.update_file_dyn path in
+    >>> Build.write_file_dyn path in
   Super_context.add_rule sctx utop_ml
 
 let utop_of_libs (libs : Library.t list) =

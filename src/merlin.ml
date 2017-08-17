@@ -36,7 +36,7 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
     SC.add_rule sctx
       (Build.path path
        >>>
-       Build.update_file (Path.relative dir ".merlin-exists") "");
+       Build.write_file (Path.relative dir ".merlin-exists") "");
     SC.add_rule sctx (
       requires &&& flags
       >>^ (fun (libs, flags) ->
@@ -77,7 +77,7 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
         |> List.map ~f:(Printf.sprintf "%s\n")
         |> String.concat ~sep:"")
       >>>
-      Build.update_file_dyn path
+      Build.write_file_dyn path
     )
   | _ ->
     ()

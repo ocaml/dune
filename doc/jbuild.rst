@@ -927,6 +927,7 @@ The following constructions are available:
   ``<outputs>`` is one of: ``stdout``, ``stderr`` or ``outputs``
 - ``(progn <DSL>...)`` to execute several commands in sequence
 - ``(echo <string>)`` to output a string on stdout
+- ``(write-file <file> <string>)`` writes ``<string>`` to ``<file>``
 - ``(cat <file>)`` to print the contents of a file to stdout
 - ``(copy <src> <dst>)`` to copy a file
 - ``(copy# <src> <dst>)`` to copy a file and add a line directive at

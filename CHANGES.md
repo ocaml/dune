@@ -34,6 +34,9 @@
   to add a field `(fallback)` to custom rules to keep the current
   behavior (#218)
 
+- Get rid of the `deprecated-ppx-method` findlib package for ppx
+  rewriters (#222, fixes #163)
+
 1.0+beta11 (21/07/2017)
 -----------------------
 

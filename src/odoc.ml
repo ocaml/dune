@@ -112,6 +112,8 @@ let doc_dir ~context = Path.relative context.Context.build_dir "_doc"
 
 let css_file ~doc_dir = doc_dir ++ "odoc.css"
 
+let toplevel_index ~doc_dir = doc_dir ++ "index.html"
+
 let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
       ~(dep_graph:Ocamldep.dep_graph) =
   Option.iter lib.public ~f:(fun public ->
@@ -164,6 +166,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
     in
     Alias.add_deps (SC.aliases sctx) (Alias.doc ~dir)
       (css_file ~doc_dir
+       :: toplevel_index ~doc_dir
        :: lib_index_html
        :: html_files))
 
@@ -175,4 +178,42 @@ let setup_css_rule sctx =
        ~dir:context.build_dir
        ~extra_targets:[css_file ~doc_dir]
        (get_odoc sctx)
-       [ A "css"; A "-o"; Path doc_dir ]);
+       [ A "css"; A "-o"; Path doc_dir ])
+
+let sp = Printf.sprintf
+
+let setup_toplevel_index_rule sctx =
+  let packages =
+    String_map.fold ~f:(fun ~key ~data pkgs ->
+      let name = sp {|<a href="%s/index.html">%s</a>|} key key in
+      let pkg = match data.Package.version_from_opam_file with
+        | None   -> name
+        | Some v -> sp {|%s <span class="version">%s</span>|} name v
+      in
+      sp "<li>%s</li>" pkg :: pkgs
+    ) ~init:[] (SC.packages sctx)
+    |> List.rev
+  in
+  let packages = String.concat ~sep:"\n    " packages in
+  let html =
+    sp {|<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>index</title>
+    <link rel="stylesheet" href="./odoc.css"/>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  </head>
+  <body>
+    <div class="by-name">
+    <h2>OCaml package documentation</h2>
+    <ol>
+    %s
+    </ol>
+ </body>
+ </html>
+|} packages
+  in
+  let context = SC.context sctx in
+  let doc_dir = doc_dir ~context in
+  SC.add_rule sctx @@ Build.write_file (toplevel_index ~doc_dir) html

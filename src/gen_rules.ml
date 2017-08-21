@@ -726,6 +726,7 @@ Add it to your jbuild file to remove this warning.
   let () =
     SC.add_rules sctx (Js_of_ocaml_rules.setup_separate_compilation_rules sctx)
   let () = Odoc.setup_css_rule sctx
+  let () = Odoc.setup_toplevel_index_rule sctx
 
   (* +-----------------------------------------------------------------+
      | META                                                            |

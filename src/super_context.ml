@@ -902,8 +902,8 @@ end
 
 let expand_and_eval_set t ~scope ~dir set ~standard =
   let open Build.O in
-  let f sexp = expand_vars t ~scope ~dir (String_with_vars.t sexp) in
-  match Ordered_set_lang.Unexpanded.files set |> String_set.elements with
+  let f = expand_vars t ~scope ~dir in
+  match Ordered_set_lang.Unexpanded.files set ~f |> String_set.elements with
   | [] ->
     let set = Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f in
     Build.return (Ordered_set_lang.eval_with_standard set ~standard)

@@ -391,6 +391,11 @@ module Option = struct
     | Some x -> x
     | None -> assert false
 
+  let value_map o ~default ~f =
+    match o with
+    | Some x -> f x
+    | None   -> default
+
   let some_if cond x =
     if cond then Some x else None
 

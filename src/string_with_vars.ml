@@ -28,7 +28,7 @@ module Token = struct
         match s.[j] with
         | '}' -> cons_str i j (Close Braces :: loop (j + 1) (j + 1))
         | ')' -> cons_str i j (Close Parens :: loop (j + 1) (j + 1))
-        | '$' -> begin
+        | '$' when j + 1 < len -> begin
             match s.[j + 1] with
             | '{' -> cons_str i j (Open Braces :: loop (j + 2) (j + 2))
             | '(' -> cons_str i j (Open Parens :: loop (j + 2) (j + 2))

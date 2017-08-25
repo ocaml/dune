@@ -82,9 +82,12 @@ module Unexpanded = struct
       let open Ast in
       match t with
       | Element s -> Element s
-      | Special (l, s) -> Special (l, s)
       | Union [Special (_, "include"); Element fn] ->
           Include (Sexp.Of_sexp.string fn)
+      | Union [Special (loc, "include"); _]
+      | Special (loc, "include") ->
+          Loc.fail loc "(:include expects a single element (do you need to quote the filename?)"
+      | Special (l, s) -> Special (l, s)
       | Union l ->
           Union (List.map l ~f:map)
       | Diff (l, r) ->

@@ -384,6 +384,8 @@ module Gen(P : Params) = struct
         let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Native) in
         let dst = lib_archive lib ~dir ~ext:".cmxs" in
         let build =
+          Build.dyn_paths (Build.arr (fun () -> [lib_archive lib ~dir ~ext:ctx.ext_lib]))
+          >>>
           Ocaml_flags.get flags Native
           >>>
           Build.run ~context:ctx

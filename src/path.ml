@@ -411,3 +411,7 @@ let rm_rf =
     match Unix.lstat fn with
     | exception Unix.Unix_error(ENOENT, _, _) -> ()
     | _ -> loop fn
+
+let change_extension ~ext t =
+  let t = try Filename.chop_extension t with Not_found -> t in
+  t ^ ext

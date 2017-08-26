@@ -86,6 +86,12 @@ module Gen(P : Params) = struct
         else
           fun x -> x
       in
+      let objs (cm, _, _, _) =
+        if mode = Mode.Byte then
+          []
+        else
+          List.map ~f:(Path.change_extension ~ext:ctx.ext_obj) cm
+      in
       SC.add_rule sctx
         (Build.fanout4
            (dep_graph >>>
@@ -99,6 +105,8 @@ module Gen(P : Params) = struct
            (SC.expand_and_eval_set sctx ~scope ~dir lib.c_library_flags ~standard:[])
            (Ocaml_flags.get flags mode)
            (SC.expand_and_eval_set sctx ~scope ~dir lib.library_flags ~standard:[])
+         >>>
+         Build.dyn_paths (Build.arr objs)
          >>>
          Build.run ~context:ctx (Dep compiler)
            ~extra_targets:(

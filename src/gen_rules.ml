@@ -450,11 +450,18 @@ module Gen(P : Params) = struct
              ~mode
              [String.capitalize_ascii name]))
     in
-    let objs (_, cm) =
+    let objs (libs, cm) =
       if mode = Mode.Byte then
         []
       else
-        List.map ~f:(Path.change_extension ~ext:ctx.ext_obj) cm
+        let libs =
+          let f = function
+          | Lib.Internal (dir, lib) -> Some (Path.relative dir (lib.name ^ ctx.ext_lib))
+          | External _ -> None
+          in
+          List.filter_map ~f libs
+        in
+        libs @ List.map ~f:(Path.change_extension ~ext:ctx.ext_obj) cm
     in
     SC.add_rule sctx
       ((libs_and_cm >>> Build.dyn_paths (Build.arr objs))

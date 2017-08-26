@@ -440,8 +440,14 @@ module Gen(P : Params) = struct
              ~mode
              [String.capitalize_ascii name]))
     in
+    let objs (_, cm) =
+      if mode = Mode.Byte then
+        []
+      else
+        List.map ~f:(Path.change_extension ~ext:ctx.ext_obj) cm
+    in
     SC.add_rule sctx
-      (libs_and_cm
+      ((libs_and_cm >>> Build.dyn_paths (Build.arr objs))
        &&&
        Build.fanout
        (Ocaml_flags.get flags mode)

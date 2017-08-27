@@ -17,19 +17,28 @@ case "$TARGET" in
       ./configure -prefix ~/ocaml
       make world.opt
       make install
-      cd ..
+      cd ../..
       rm -rf src
       echo "$OCAML_VERSION.$OCAML_RELEASE" > ~/ocaml/cached-version
     fi
     echo -en "travis_fold:end:ocaml\r"
     if [ $WITH_OPAM -eq 1 ] ; then
       echo -en "travis_fold:start:opam.init\r"
-      sudo add-apt-repository --yes ppa:avsm/ocaml42+opam12
-      sudo apt-get update -qq
-      sudo apt-get -yq --no-install-suggests --no-install-recommends --force-yes install opam
-      if [ ! -e ~/.opam/lock -o "$OPAM_RESET" = "1" ] ; then
+      if [ ! -e ~/ocaml/bin/opam -o ! -e ~/.opam/lock -o "$OPAM_RESET" = "1" ] ; then
+        mkdir ~/ocaml/src
+        cd ~/ocaml/src
+        wget https://github.com/ocaml/opam/releases/download/1.2.2/opam-full-1.2.2.tar.gz
+        tar -xzf opam-full-1.2.2.tar.gz
+        cd opam-full-1.2.2
+        ./configure --prefix=/home/travis/ocaml
+        make lib-ext
+        make all
+        make install
+        cd ../..
+        rm -rf src
         rm -rf ~/.opam
         opam init --yes
+        eval $(opam config env)
         opam install menhir ocaml-migrate-parsetree js_of_ocaml-ppx --yes
         opam remove jbuilder `opam list --depends-on jbuilder --installed --short` --yes
       fi

@@ -38,4 +38,7 @@ matrix:
   - os: linux
     env: OCAML_VERSION=4.05 OCAML_RELEASE=0 WITH_OPAM=1
     stage: Test
-    sudo: required
+    addons:
+      apt:
+        packages:
+        - aspcud

@@ -24,13 +24,19 @@ case "$TARGET" in
     echo -en "travis_fold:end:ocaml\r"
     if [ $WITH_OPAM -eq 1 ] ; then
       echo -en "travis_fold:start:opam.init\r"
+      if [ "$TRAVIS_OS_NAME" = "osx" ] ; then
+        brew install aspcud
+        PREFIX=/Users/travis
+      else
+        PREFIX=/home/travis
+      fi
       if [ ! -e ~/ocaml/bin/opam -o ! -e ~/.opam/lock -o "$OPAM_RESET" = "1" ] ; then
         mkdir ~/ocaml/src
         cd ~/ocaml/src
         wget https://github.com/ocaml/opam/releases/download/1.2.2/opam-full-1.2.2.tar.gz
         tar -xzf opam-full-1.2.2.tar.gz
         cd opam-full-1.2.2
-        ./configure --prefix=/home/travis/ocaml
+        ./configure --prefix=$PREFIX/ocaml
         make lib-ext
         make all
         make install

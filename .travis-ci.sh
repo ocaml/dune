@@ -6,6 +6,7 @@ TARGET="$1"; shift
 
 case "$TARGET" in
   prepare)
+    echo -en "travis_fold:start:ocaml\r"
     if [ ! -e ~/ocaml/cached-version -o "$(cat ~/ocaml/cached-version)" != "$OCAML_VERSION.$OCAML_RELEASE" ] ; then
       rm -rf ~/ocaml
       mkdir -p ~/ocaml/src
@@ -20,11 +21,47 @@ case "$TARGET" in
       rm -rf src
       echo "$OCAML_VERSION.$OCAML_RELEASE" > ~/ocaml/cached-version
     fi
+    echo -en "travis_fold:end:ocaml\r"
+    if [ $WITH_OPAM -eq 1 ] ; then
+      echo -en "travis_fold:start:opam.init\r"
+      sudo add-apt-repository --yes ppa:avsm/ocaml42+opam12
+      sudo apt-get update -qq
+      sudo apt-get -yq --no-install-suggests --no-install-recommends --force-yes install opam
+      if [ ! -e ~/.opam/lock -o "$OPAM_RESET" = "1" ] ; then
+        rm -rf ~/.opam
+        opam init --yes
+        opam install menhir ocaml-migrate-parsetree js_of_ocaml-ppx --yes
+        opam remove jbuilder `opam list --depends-on jbuilder --installed --short` --yes
+      fi
+      cp -a ~/.opam ~/.opam-start
+      echo -en "travis_fold:end:opam.init\r"
+    fi
   ;;
   build)
+    if [ $WITH_OPAM -eq 1 ] ; then
+      echo -en "travis_fold:start:opam.deps\r"
+      eval $(opam config env)
+      opam list
+      opam pin add jbuilder . --no-action --yes
+      opam install ocaml-migrate-parsetree js_of_ocaml-ppx --yes
+      echo -en "travis_fold:end:opam.deps\r"
+    fi
+    echo -en "travis_fold:start:jbuilder.bootstrap\r"
     ocaml bootstrap.ml
+    echo -en "travis_fold:end:jbuilder.bootstrap\r"
     ./boot.exe --subst
+    echo -en "travis_fold:start:jbuilder.boot\r"
     ./boot.exe --dev
+    echo -en "travis_fold:end:jbuilder.boot\r"
+    if [ $WITH_OPAM -eq 1 ] ; then
+      _build/install/default/bin/jbuilder runtest && \
+      _build/install/default/bin/jbuilder build @test/blackbox-tests/runtest-js && \
+      ! _build/install/default/bin/jbuilder build @test/fail-with-background-jobs-running
+      RESULT=$?
+      rm -rf ~/.opam
+      mv ~/.opam-start ~/.opam
+      exit $RESULT
+    fi
   ;;
   *)
     echo "bad command $TARGET">&2; exit 1

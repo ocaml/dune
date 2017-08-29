@@ -588,18 +588,27 @@ module Scheduler = struct
       wait_for_unfinished_jobs ();
       exec_at_exit_handlers ())
 
+  let ocaml_version = Scanf.sscanf Sys.ocaml_version "%u.%u" (fun a b -> a, b)
+
   let get_std_output ~default = function
     | Terminal -> (default, None)
     | File fn ->
       let fd = Unix.openfile fn [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666 in
       (fd, Some (Fd fd))
     | Opened_file { desc; tail; _ } ->
-      let fd =
-        match desc with
-        | Fd      fd -> fd
-        | Channel oc -> flush oc; Unix.descr_of_out_channel oc
-      in
-      (fd, Option.some_if tail desc)
+      match desc with
+      | Fd      fd -> (fd, Option.some_if tail desc)
+      | Channel oc ->
+        flush oc;
+        let fd = Unix.descr_of_out_channel oc in
+        if Sys.win32 = false || ocaml_version >= (4,5) then
+          (fd, Option.some_if tail desc)
+        else begin
+          let fd' = Unix.dup fd in
+          if tail then
+            close_out oc;
+          fd', Some (Fd fd')
+        end
 
   let close_std_output = function
     | None -> ()

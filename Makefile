@@ -1,6 +1,8 @@
 INSTALL_ARGS := $(if $(PREFIX),--prefix $(PREFIX),)
 BIN := ./_build/default/bin/main.exe
 
+-include Makefile.dev
+
 default: boot.exe
 	./boot.exe -j 4 --dev
 

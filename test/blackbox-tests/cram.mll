@@ -24,15 +24,21 @@ rule file = parse
       let items = file lexbuf in
       let temp_file = Filename.temp_file "jbuilder-test" ".output" in
       at_exit (fun () -> Sys.remove temp_file);
-      let temp_file_quote = Filename.quote temp_file in
       let buf = Buffer.create (String.length file_contents + 1024) in
       List.iter items ~f:(function
         | Output _ -> ()
         | Comment s -> Buffer.add_string buf s; Buffer.add_char buf '\n'
         | Command s ->
           Printf.bprintf buf "  $ %s\n" s;
+          let fd = Unix.openfile temp_file [O_WRONLY] 0 in
+          let pid =
+            Unix.create_process "sh" [|"sh"; "-c"; s|] Unix.stdin fd fd
+          in
+          Unix.close fd;
           let n =
-            Printf.ksprintf Sys.command "%s > %s 2> %s" s temp_file_quote temp_file_quote
+            match snd (Unix.waitpid [] pid) with
+            | WEXITED n -> n
+            | _ -> 255
           in
           List.iter (Io.lines_of_file temp_file) ~f:(fun line ->
             Printf.bprintf buf "  %s\n" line);

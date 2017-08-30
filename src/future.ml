@@ -588,8 +588,6 @@ module Scheduler = struct
       wait_for_unfinished_jobs ();
       exec_at_exit_handlers ())
 
-  let ocaml_version = Scanf.sscanf Sys.ocaml_version "%u.%u" (fun a b -> a, b)
-
   let get_std_output ~default = function
     | Terminal -> (default, None)
     | File fn ->
@@ -601,7 +599,9 @@ module Scheduler = struct
       | Channel oc ->
         flush oc;
         let fd = Unix.descr_of_out_channel oc in
-        if Sys.win32 = false || ocaml_version >= (4,5) then
+        (* Since OCaml 4.05.0 HANDLES passed to CreateProcess are
+           duplicated by default. *)
+        if Sys.(win32 = false || (ocaml_major,ocaml_minor) >= (4,5)) then
           (fd, Option.some_if tail desc)
         else begin
           let fd' = Unix.dup fd in

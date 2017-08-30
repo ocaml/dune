@@ -2,48 +2,49 @@ open Import
 
 module P = Pervasives
 
-module W32_io = struct
+module Win32_io = struct
 
   (* Pervasives.open* support neither O_CLOEXEC nor O_SHARE_DELETE *)
 
-  let trans accu = function
-  |	Open_rdonly -> Unix.O_RDONLY::accu
-  |	Open_wronly -> Unix.O_WRONLY::accu
-  |	Open_creat -> Unix.O_CREAT::accu
-  |	Open_trunc -> Unix.O_TRUNC::accu
-  |	Open_excl -> Unix.O_EXCL::accu
-  |	Open_nonblock -> Unix.O_NONBLOCK::accu
-  |	Open_append
-  |	Open_binary
-  |	Open_text -> accu
-
-  let sys_exn e fln =
-    let msg = fln ^ ":" ^ Unix.error_message e in
+  let sys_exn e fn =
+    let msg = fn ^ ":" ^ Unix.error_message e in
     raise (Sys_error msg)
 
-  let eclose ecode fd fln =
+  let eclose ecode fd fn =
     (try Unix.close fd with Unix.Unix_error _ -> ());
-    sys_exn ecode fln
+    sys_exn ecode fn
 
-  let open_gen mode perm fln =
+  let open_gen mode perm fn =
     let init = [Unix.O_SHARE_DELETE ; Unix.O_CLOEXEC] in
+    let trans acc = function
+    |	Open_rdonly -> Unix.O_RDONLY::acc
+    |	Open_wronly -> Unix.O_WRONLY::acc
+    |	Open_creat -> Unix.O_CREAT::acc
+    |	Open_trunc -> Unix.O_TRUNC::acc
+    |	Open_excl -> Unix.O_EXCL::acc
+    |	Open_nonblock -> Unix.O_NONBLOCK::acc
+    |	Open_append (* lseek must be used, if the HANDLE might be passed
+                     to a child process. The not implemented support of
+                     Unix.O_APPEND (FILE_APPEND_DATA) would probably not work
+                     in this case anyway *)
+    |	Open_binary (* Open_binary/Open_text are handled in open_(in|out)_gen *)
+    |	Open_text -> acc in
     let m = List.fold_left ~f:trans ~init mode in
-    match Unix.openfile fln m perm with
-    | exception (Unix.Unix_error(x,_,_)) -> sys_exn x fln
+    match Unix.openfile fn m perm with
+    | exception (Unix.Unix_error(x,_,_)) -> sys_exn x fn
     | fd ->
       if List.mem Open_append ~set:mode then (
         try
-          let _ : int = Unix.lseek fd 0 Unix.SEEK_END in
-          ()
+          ignore (Unix.lseek fd 0 Unix.SEEK_END : int)
         with
-        | Unix.Unix_error(e,_,_) -> eclose e fd fln
+        | Unix.Unix_error(e,_,_) -> eclose e fd fn
       );
       fd
 
-  let open_out_gen mode perm fln =
-    let fd = open_gen mode perm fln in
+  let open_out_gen mode perm fn =
+    let fd = open_gen mode perm fn in
     match Unix.out_channel_of_descr fd with
-    | exception (Unix.Unix_error(e,_,_)) -> eclose e fd fln
+    | exception (Unix.Unix_error(e,_,_)) -> eclose e fd fn
     | oc ->
       if List.mem Open_text ~set:mode then (
         try
@@ -59,10 +60,10 @@ module W32_io = struct
   let open_out_bin name =
     open_out_gen [Open_wronly; Open_creat; Open_trunc; Open_binary] 0o666 name
 
-  let open_in_gen mode perm fln =
-    let fd = open_gen mode perm fln in
+  let open_in_gen mode perm fn =
+    let fd = open_gen mode perm fn in
     match Unix.in_channel_of_descr fd with
-    | exception (Unix.Unix_error(e,_,_)) -> eclose e fd fln
+    | exception (Unix.Unix_error(e,_,_)) -> eclose e fd fn
     | ic ->
       if List.mem Open_text ~set:mode then (
         try
@@ -81,7 +82,7 @@ end
 
 let open_in,open_in_bin,open_out,open_out_bin =
   if Sys.win32 then
-    W32_io.(open_in,open_in_bin,open_out,open_out_bin)
+    Win32_io.(open_in,open_in_bin,open_out,open_out_bin)
   else
     P.(open_in,open_in_bin,open_out,open_out_bin)
 

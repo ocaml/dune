@@ -311,6 +311,9 @@ module Sys = struct
           remove fn
     else
       remove
+
+  let ocaml_major,ocaml_minor =
+    Scanf.sscanf ocaml_version "%u.%u" (fun a b -> a, b)
 end
 
 module Filename = struct

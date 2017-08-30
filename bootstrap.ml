@@ -11,22 +11,26 @@ module String = struct
     let capitalize_ascii   = String.capitalize
     let uncapitalize_ascii = String.uncapitalize
   end
+
+  let break s ~pos =
+    (sub s ~pos:0 ~len:pos,
+     sub s ~pos ~len:(String.length s - pos))
 end
+
+let dirs =
+  [ "vendor/boot"
+  ; "src"
+  ]
 
 open Printf
 
 module String_set = Set.Make(String)
+module String_map = Map.Make(String)
 
 let () =
   match Sys.getenv "OCAMLPARAM" with
   | s -> Printf.eprintf "OCAMLPARAM is set to %S\n%!" s
   | exception Not_found -> ()
-
-(* Modules overriden to bootstrap faster *)
-let overridden =
-  String_set.of_list
-    [ "Glob_lexer"
-    ]
 
 let ( ^/ ) = Filename.concat
 
@@ -113,35 +117,69 @@ let bin_dir, mode, compiler =
 let ocamllex = get_prog bin_dir "ocamllex"
 let ocamldep = get_prog bin_dir "ocamldep"
 
-let run_ocamllex name =
-  let src = "src" ^/ name ^ ".mll" in
-  let dst = "src" ^/ name ^ ".ml"  in
+let run_ocamllex src =
+  let dst = String.sub src ~pos:0 ~len:(String.length src - 1) in
   let x = Sys.file_exists dst in
   let n = exec "%s -q %s" ocamllex src in
   if n <> 0 then exit n;
   if not x then
-    at_exit (fun () -> try Sys.remove dst with _ -> ())
+    at_exit (fun () -> try Sys.remove dst with _ -> ());
+  dst
 
+type module_files =
+  { impl : string
+  ; intf : string option
+  }
+
+(* Map from module names to ml/mli filenames *)
 let modules =
-  Sys.readdir "src"
-  |> Array.fold_left ~init:[] ~f:(fun acc fn ->
-    match String.rindex fn '.' with
-    | exception Not_found -> acc
-    | i ->
-      let ext = String.sub fn ~pos:(i + 1) ~len:(String.length fn - i - 1) in
-      match ext with
-      | "ml" | "mll" ->
-        let base = String.sub fn ~pos:0 ~len:i in
-        let mod_name = String.capitalize_ascii base in
-        if String_set.mem mod_name overridden then
-          acc
-        else begin
-          if ext = "mll" then run_ocamllex base;
-          String.capitalize_ascii base :: acc
-        end
-      | _ ->
-        acc)
-  |> String_set.of_list
+  let files_of dir =
+    Sys.readdir dir |> Array.to_list |> List.map ~f:(Filename.concat dir)
+  in
+  let impls, intfs =
+    List.map dirs ~f:files_of
+    |> List.concat
+    |> List.fold_left ~init:(String_map.empty, String_map.empty)
+         ~f:(fun ((impls, intfs) as acc) fn ->
+           let base = Filename.basename fn in
+           match String.index base '.' with
+           | exception Not_found -> acc
+           | i ->
+             let base, ext = String.break base i in
+             let is_boot, ext =
+               match String.rindex ext '.' with
+               | exception Not_found -> (false, ext)
+               | i ->
+                 let a, b = String.break ext i in
+                 if a = ".boot" then
+                   (true, b)
+                 else
+                   (false, ext)
+             in
+             match ext with
+             | ".ml" | ".mll" ->
+               let mod_name = String.capitalize_ascii base in
+               if is_boot || not (String_map.mem mod_name impls) then
+                 let fn =
+                   if ext = ".mll" then lazy (run_ocamllex fn) else lazy fn
+                 in
+                 (String_map.add mod_name fn impls, intfs)
+               else
+                 acc
+             | ".mli" ->
+               let mod_name = String.capitalize_ascii base in
+               if is_boot || not (String_map.mem mod_name intfs) then
+                 (impls, String_map.add mod_name fn intfs)
+               else
+                 acc
+             | _ -> acc)
+  in
+  String_map.merge
+    (fun _ impl intf ->
+       match impl with
+       | None -> None
+       | Some impl -> Some { impl = Lazy.force impl; intf })
+    impls intfs
 
 let split_words s =
   let rec skip_blanks i =
@@ -187,13 +225,13 @@ let read_deps files =
     let unit =
       String.sub line ~pos:0 ~len:i
       |> Filename.basename
-      |> Filename.chop_extension
+      |> (fun s -> String.sub s ~pos:0 ~len:(String.index s '.'))
       |> String.capitalize_ascii
     in
     let deps =
       split_words (String.sub line ~pos:(i + 1)
                      ~len:(String.length line - (i + 1)))
-      |> List.filter ~f:(fun m -> String_set.mem m modules)
+      |> List.filter ~f:(fun m -> String_map.mem m modules)
     in
     (unit, deps))
 
@@ -216,10 +254,9 @@ let topsort deps =
   done;
   List.rev !res
 
-let modules =
+let topsorted_module_names =
   let files =
-    List.map (String_set.elements modules) ~f:(fun unit ->
-      sprintf "src/%s.ml" (String.uncapitalize_ascii unit))
+    List.map (String_map.bindings modules) ~f:(fun (_, x) -> x.impl)
   in
   topsort (read_deps files)
 
@@ -263,68 +300,24 @@ let generate_file_with_all_the_sources () =
     pos_in_generated_file := !pos_in_generated_file + newlines;
     pr "# %d %S" (!pos_in_generated_file + 1) generated_file
   in
-  let s = {|
-module Jbuilder_re = struct
-  module Re = struct
-    type t = unit
-    type re = unit
-    let compile () = ()
-    let execp _ _ = false
-  end
-end
-
-module Jbuilder_opam_file_format = struct
-  module OpamParserTypes = struct
-    type value =
-      | String of unit * string
-      | List of unit * value list
-      | Other
-
-    type opamfile_item =
-      | Variable of unit * string * value
-      | Other
-
-    type opamfile =
-      { file_contents : opamfile_item list
-      ; file_name     : string
-      }
-  end
-  module OpamBaseParser = struct
-    open OpamParserTypes
-    let main _lex _lexbuf fn =
-      assert (fn = "jbuilder.opam");
-      { file_contents = []
-      ; file_name     = fn
-      }
-  end
-  module OpamLexer = struct
-    exception Error of string
-    let token _ = assert false
-  end
-end
-
-module Glob_lexer = struct
-  let parse_string _ = failwith "globs are not available during bootstrap"
-end
-|}
-  in
-  output_string oc s;
-  pos_in_generated_file := !pos_in_generated_file + count_newlines s;
-  List.iter modules ~f:(fun m ->
-    let base = String.uncapitalize_ascii m in
-    let mli = sprintf "src/%s.mli" base in
-    let ml  = sprintf "src/%s.ml"  base in
-    if Sys.file_exists mli then begin
+  List.iter topsorted_module_names ~f:(fun m ->
+    let { impl; intf } =
+      try
+        String_map.find m modules
+      with Not_found ->
+        Printf.ksprintf failwith "module not found: %s" m
+    in
+    match intf with
+    | Some intf ->
       pr "module %s : sig" m;
-      dump mli;
+      dump intf;
       pr "end = struct";
-      dump ml;
+      dump impl;
       pr "end"
-    end else begin
+    | None ->
       pr "module %s = struct" m;
-      dump ml;
-      pr "end"
-    end);
+      dump impl;
+      pr "end");
   output_string oc "let () = Main.bootstrap ()\n";
   close_out oc
 

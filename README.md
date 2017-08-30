@@ -253,6 +253,13 @@ In order to build itself, Jbuilder uses an OCaml script
 single `boot.ml` file. This file is built using `ocamlopt` or `ocamlc`
 and used to build everything else.
 
+Note that we don't include all of the sources in boot.ml. We skip a
+few parts to speed up the build. In particular:
+- vendored libraries are replaced by simpler implementations taken
+  from `vendor/boot`
+- a few files in `src` have an alternative version. These alternatives
+  versions are named `XXX.boot.EXT`. For instance: `glob_lexer.boot.ml`
+
 ### OCaml compatibility test
 
 Install opam switches for all the entries in the

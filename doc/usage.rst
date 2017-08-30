@@ -16,13 +16,6 @@ jbuild-workspace
 
 The root of the current workspace is determined by looking up a
 ``jbuild-workspace`` file in the current directory and parent directories.
-``jbuilder`` prints out the root when starting:
-
-.. code:: bash
-
-    $ jbuilder runtest
-    Workspace root: /usr/local/home/jdimino/workspaces/public-jane/+share+
-    ...
 
 More precisely, it will choose the outermost ancestor directory containing a
 ``jbuild-workspace`` file as root. For instance if you are in
@@ -54,7 +47,7 @@ in ancestor directories. For instance ``jbuild-workspace.dev``. If such a file
 is found, it will mark the root of the workspace. ``jbuilder`` will however not
 read its contents.
 
-The rationale for this rule is that it is good practice to have a
+ The rationale for this rule is that it is good practice to have a
 ``jbuild-workspace.dev`` file at the root of your project.
 
 For quick experiments, simply do this to mark the root:
@@ -311,6 +304,16 @@ a typical ``jbuild-workspace`` file looks like:
     (context ((switch 4.04.0)))
 
 The rest of this section describe the stanzas available.
+
+Note that an empty ``jbuild-workspace`` file is interpreted the same
+as one containing exactly:
+
+.. code:: scheme
+
+    (context default)
+
+This allows you to use an empty ``jbuilder-workspace`` file to mark
+the root of your project.
 
 context
 ~~~~~~~

@@ -65,6 +65,11 @@ let t sexps =
       | _ ->
         (merlin_ctx, ctx :: ctxs))
   in
+  let contexts =
+    match contexts with
+    | [] -> [Context.Default]
+    | _  -> contexts
+  in
   let merlin_ctx =
     match merlin_ctx with
     | Some _ -> merlin_ctx

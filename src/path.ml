@@ -432,8 +432,24 @@ let is_directory t =
   try Sys.is_directory (to_string t)
   with Sys_error _ -> false
 let rmdir t = Unix.rmdir (to_string t)
-let unlink t = Unix.unlink (to_string t)
-let unlink_no_err t = try Unix.unlink (to_string t) with _ -> ()
+let win32_unlink fn =
+  try
+    Unix.unlink fn
+  with Unix.Unix_error (Unix.EACCES, _, _) as e ->
+    (* Try removing the read-only attribute *)
+    try
+      Unix.chmod fn 0o666;
+      Unix.unlink fn
+    with _ ->
+      raise e
+let unlink_operation =
+  if Sys.win32 then
+    win32_unlink
+  else
+    Unix.unlink
+let unlink t =
+  unlink_operation (to_string t)
+let unlink_no_err t = try unlink t with _ -> ()
 
 let extend_basename t ~suffix = t ^ suffix
 
@@ -459,7 +475,7 @@ let rm_rf =
       let fn = Filename.concat dir fn in
       match Unix.lstat fn with
       | { st_kind = S_DIR; _ } -> loop fn
-      | _                      -> Unix.unlink fn);
+      | _                      -> unlink_operation fn);
     Unix.rmdir dir
   in
   fun t ->

@@ -65,6 +65,8 @@ next
   `META.pkg.template`. This feature was unused and was making the code
   complicated (#370)
 
+- Remove read-only attribute on Windows before unlink (#247)
+
 1.0+beta16 (05/11/2017)
 -----------------------
 

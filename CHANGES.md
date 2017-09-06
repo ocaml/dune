@@ -1,3 +1,12 @@
+1.0+beta13 (05/09/2017)
+-----------------------
+
+- Generate toplevel html index for documentation (#224, Thomas Gazagnaire)
+
+- Fix recompilation of native artifacts. Regression introduced in the last
+  version (1.0+beta12) when digests replaces timestamps for checking staleness
+  (#238, David Allsopp)
+
 1.0+beta12 (18/08/2017)
 -----------------------
 

@@ -101,3 +101,6 @@ val rmdir : t -> unit
 val unlink : t -> unit
 val unlink_no_err : t -> unit
 val rm_rf : t -> unit
+
+(** Changes the extension of the filename (or adds an extension if there was none) *)
+val change_extension : ext:string -> t -> t

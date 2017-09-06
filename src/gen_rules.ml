@@ -86,6 +86,12 @@ module Gen(P : Params) = struct
         else
           fun x -> x
       in
+      let objs (cm, _, _, _) =
+        if mode = Mode.Byte then
+          []
+        else
+          List.map ~f:(Path.change_extension ~ext:ctx.ext_obj) cm
+      in
       SC.add_rule sctx
         (Build.fanout4
            (dep_graph >>>
@@ -99,6 +105,8 @@ module Gen(P : Params) = struct
            (SC.expand_and_eval_set sctx ~scope ~dir lib.c_library_flags ~standard:[])
            (Ocaml_flags.get flags mode)
            (SC.expand_and_eval_set sctx ~scope ~dir lib.library_flags ~standard:[])
+         >>>
+         Build.dyn_paths (Build.arr objs)
          >>>
          Build.run ~context:ctx (Dep compiler)
            ~extra_targets:(
@@ -376,6 +384,8 @@ module Gen(P : Params) = struct
         let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Native) in
         let dst = lib_archive lib ~dir ~ext:".cmxs" in
         let build =
+          Build.dyn_paths (Build.arr (fun () -> [lib_archive lib ~dir ~ext:ctx.ext_lib]))
+          >>>
           Ocaml_flags.get flags Native
           >>>
           Build.run ~context:ctx
@@ -440,8 +450,21 @@ module Gen(P : Params) = struct
              ~mode
              [String.capitalize_ascii name]))
     in
+    let objs (libs, cm) =
+      if mode = Mode.Byte then
+        []
+      else
+        let libs =
+          let f = function
+            | Lib.Internal (dir, lib) -> Some (Path.relative dir (lib.name ^ ctx.ext_lib))
+            | External _ -> None
+          in
+          List.filter_map ~f libs
+        in
+        libs @ List.map ~f:(Path.change_extension ~ext:ctx.ext_obj) cm
+    in
     SC.add_rule sctx
-      (libs_and_cm
+      ((libs_and_cm >>> Build.dyn_paths (Build.arr objs))
        &&&
        Build.fanout
        (Ocaml_flags.get flags mode)

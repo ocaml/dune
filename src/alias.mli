@@ -1,3 +1,5 @@
+(** Rule aliases. *)
+
 type t
 
 val make : string -> dir:Path.t -> t

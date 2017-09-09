@@ -43,10 +43,16 @@ val vpath : 'a Vspec.t  -> (unit, 'a) t
 
 val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
 
+(** [contents path] returns an arrow that when run will return the contents of
+    the file at [path]. *)
 val contents : Path.t -> ('a, string) t
+
+(** [lines_of path] returns an arrow that when run will return the contents of
+    the file at [path] as a list of lines. *)
 val lines_of : Path.t -> ('a, string list) t
 
-(** Read lines from a file, unescaping each line using the OCaml conventions *)
+(** [strings path] is like [lines_of path] except each line is unescaped using
+    the OCaml conventions. *)
 val strings : Path.t -> ('a, string list) t
 
 (** Load an S-expression from a file *)

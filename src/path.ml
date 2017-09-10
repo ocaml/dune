@@ -93,16 +93,14 @@ module Local = struct
       | exception Not_found -> t
       | i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1)
 
-  let relative initial_t path =
+  let relative ?error_loc t path =
     let rec loop t components =
       match components with
-      | [] -> t
+      | [] -> Ok t
       | "." :: rest -> loop t rest
       | ".." :: rest ->
         begin match t with
-        | "" ->
-          die "path outside the workspace: %s from %s" path
-            (to_string initial_t)
+        | "" -> Error ()
         | t -> loop (parent t) rest
         end
       | fn :: rest ->
@@ -110,7 +108,11 @@ module Local = struct
         | "" -> loop fn rest
         | _ -> loop (t ^ "/" ^ fn) rest
     in
-    loop initial_t (explode_path path)
+    match loop t (explode_path path) with
+    | Ok t -> t
+    | Error () ->
+       Loc.fail_opt error_loc "path outside the workspace: %s from %s" path
+         (to_string t)
 
   let is_canonicalized =
     let rec before_slash s i =
@@ -151,11 +153,11 @@ module Local = struct
       else
         before_slash s (len - 1)
 
-  let of_string s =
+  let of_string ?error_loc s =
     if is_canonicalized s then
       s
     else
-      relative "" s
+      relative "" s ?error_loc
 
   let rec mkdir_p = function
     | "" -> ()
@@ -243,24 +245,25 @@ let to_string_maybe_quoted t =
 
 let root = ""
 
-let relative t fn =
+let relative ?error_loc t fn =
   if fn = "" then
     t
   else
     match is_local t, is_local fn with
-    | true, true  -> Local.relative t fn
+    | true, true  -> Local.relative t fn ?error_loc
     | _   , false -> fn
     | false, true -> External.relative t fn
 
-let of_string = function
+let of_string ?error_loc s =
+  match s with
   | "" -> ""
   | s  ->
     if Filename.is_relative s then
-      Local.of_string s
+      Local.of_string s ?error_loc
     else
       s
 
-let t sexp = of_string (Sexp.Of_sexp.string sexp)
+let t sexp = of_string (Sexp.Of_sexp.string sexp) ~error_loc:(Sexp.Ast.loc sexp)
 let sexp_of_t t = Sexp.Atom (to_string t)
 
 let absolute =

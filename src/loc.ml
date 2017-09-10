@@ -25,6 +25,11 @@ let fail t fmt =
 let fail_lex lb fmt =
   fail (of_lexbuf lb) fmt
 
+let fail_opt t fmt =
+  match t with
+  | None -> die fmt
+  | Some t -> fail t fmt
+
 let in_file fn =
   let pos : Lexing.position =
     { pos_fname = fn

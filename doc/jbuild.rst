@@ -527,6 +527,10 @@ The syntax is as follows:
 ``<glob>`` represents the set of files to copy, see the :ref:`glob
 <glob>` for details.
 
+The difference between ``copy_files`` and ``copy_files#`` is the same
+as the difference between the ``copy`` and ``copy#`` action. See the
+`User actions`_ section for more details.
+
 Common items
 ============
 

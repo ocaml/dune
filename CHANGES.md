@@ -1,3 +1,11 @@
+next
+----
+
+- Add (copy_files <glob>) and (copy_files# <glob>) stanzas. These
+  stanzas setup rules for copying files from a sub-directory to the
+  current directory. This provides a reasonable way to support
+  multi-directory library/executables in jbuilder (#35, Francois Bobot)
+
 1.0+beta13 (05/09/2017)
 -----------------------
 

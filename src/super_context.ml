@@ -515,6 +515,7 @@ module Action = struct
         match String.lsplit2 var ~on:':' with
         | Some ("exe"     , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
+        | Some ("path-no-dep", s) -> Some (path_exp @@ Path.relative dir s)
         | Some ("bin"     , s) -> begin
             match A.binary (artifacts sctx) s with
             | Ok path -> static_dep_exp acc path

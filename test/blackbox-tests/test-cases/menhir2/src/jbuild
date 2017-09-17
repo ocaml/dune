@@ -1,0 +1,15 @@
+(jbuild_version 1)
+
+(ocamllex (lexer))
+
+(menhir
+ ((flags (--only-tokens))
+  (modules (tokens))))
+
+(menhir
+ ((merge_into parser)
+  (flags (--external-tokens Tokens))
+  (modules (tokens parser))))
+
+(executables
+ ((names (test))))

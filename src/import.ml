@@ -12,6 +12,8 @@ let () = Printexc.record_backtrace true
 let sprintf = Printf.sprintf
 let ksprintf = Printf.ksprintf
 
+let initial_cwd = Sys.getcwd ()
+
 (* An error in the code of jbuild, that should be reported upstream *)
 exception Code_error of string
 let code_errorf fmt = ksprintf (fun msg -> raise (Code_error msg)) fmt

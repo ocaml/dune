@@ -266,13 +266,11 @@ let of_string ?error_loc s =
 let t sexp = of_string (Sexp.Of_sexp.string sexp) ~error_loc:(Sexp.Ast.loc sexp)
 let sexp_of_t t = Sexp.Atom (to_string t)
 
-let absolute =
-  let initial_dir = Sys.getcwd () in
-  fun fn ->
-    if is_local fn then
-      Filename.concat initial_dir fn
-    else
-      fn
+let absolute fn =
+  if is_local fn then
+    Filename.concat initial_cwd fn
+  else
+    fn
 
 let reach t ~from =
   match is_local t, is_local from with

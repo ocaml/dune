@@ -17,6 +17,15 @@ jbuild-workspace
 The root of the current workspace is determined by looking up a
 ``jbuild-workspace`` file in the current directory and parent directories.
 
+``jbuilder`` prints out the root when starting if it is not the
+current directory:
+
+.. code:: bash
+
+    $ jbuilder runtest
+    Entering directory '/home/jdimino/code/jbuilder'
+    ...
+
 More precisely, it will choose the outermost ancestor directory containing a
 ``jbuild-workspace`` file as root. For instance if you are in
 ``/home/me/code/myproject/src``, then jbuilder will look for all these files in

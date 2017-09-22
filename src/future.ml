@@ -661,5 +661,7 @@ module Scheduler = struct
     Lazy.force Ansi_color.setup_env_for_colors;
     Log.info log ("Workspace root: " ^ !Clflags.workspace_root);
     let cwd = Sys.getcwd () in
+    if cwd <> initial_cwd then
+      Printf.eprintf "Entering directory '%s'\n%!" cwd;
     go_rec cwd log t
 end

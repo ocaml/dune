@@ -57,6 +57,8 @@ val is_local : t -> bool
 
 val relative : ?error_loc:Loc.t -> t -> string -> t
 
+(** Create an external path. If the argument is relative, assume it is
+    relative to the initial directory jbuilder was launched in. *)
 val absolute : string -> t
 
 val reach : t -> from:t -> string

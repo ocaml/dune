@@ -124,7 +124,7 @@ end
             [ [ "-I"; "+compiler-libs" ]
             ; includes
             ; List.map cmas ~f:(Path.reach ~from:dir)
-            ; [ Path.reach ~from:dir wrapper ]
+            ; [ Path.to_absolute_filename wrapper ]
             ]
         in
         (* CR-someday jdimino: if we want to allow plugins to use findlib:

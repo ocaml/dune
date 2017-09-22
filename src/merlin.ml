@@ -12,15 +12,12 @@ type t =
   ; source_dirs: Path.Set.t
   }
 
-(* This must be forced after we change the cwd to the workspace root *)
-let root_absolute_name = lazy (Sys.getcwd ())
-
 let ppx_flags sctx ~dir ~src_dir:_ { preprocess; libname; _ } =
   match preprocess with
   | Pps { pps; flags } ->
     let exe = SC.PP.get_ppx_driver sctx pps ~dir ~dep_kind:Optional in
     let command =
-      List.map (Filename.concat (Lazy.force root_absolute_name) (Path.to_string exe)
+      List.map (Path.to_absolute_filename  exe
                 :: "--as-ppx"
                 :: SC.PP.cookie_library_name libname
                 @ flags)

@@ -61,6 +61,10 @@ val relative : ?error_loc:Loc.t -> t -> string -> t
     relative to the initial directory jbuilder was launched in. *)
 val absolute : string -> t
 
+(** Convert a path to an absolute filename. Must be called after the
+    workspace root has been set. *)
+val to_absolute_filename : t -> string
+
 val reach : t -> from:t -> string
 val reach_for_running : t -> from:t -> string
 

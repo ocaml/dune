@@ -272,6 +272,14 @@ let absolute fn =
   else
     fn
 
+let to_absolute_filename t =
+  if is_local t then begin
+    let root = !Clflags.workspace_root in
+    assert (not (Filename.is_relative root));
+    Filename.concat root (to_string t)
+  end else
+    t
+
 let reach t ~from =
   match is_local t, is_local from with
   | false, _ -> t

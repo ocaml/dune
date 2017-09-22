@@ -16,6 +16,7 @@ module Rule : sig
     ; targets  : Target.t list
     ; sandbox  : bool
     ; fallback : Jbuild.Rule.Fallback.t
+    ; locks    : Path.t list
     ; loc      : Loc.t option
     }
 
@@ -23,6 +24,7 @@ module Rule : sig
     :  ?sandbox:bool
     -> ?fallback:Jbuild.Rule.Fallback.t
     -> ?context:Context.t
+    -> ?locks:Path.t list
     -> ?loc:Loc.t
     -> (unit, Action.t) Build.t
     -> t

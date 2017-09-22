@@ -154,16 +154,18 @@ module Rule = struct
     ; targets  : Target.t list
     ; sandbox  : bool
     ; fallback : Jbuild.Rule.Fallback.t
+    ; locks    : Path.t list
     ; loc      : Loc.t option
     }
 
   let make ?(sandbox=false) ?(fallback=Jbuild.Rule.Fallback.Not_possible)
-        ?context ?loc build =
+        ?context ?(locks=[]) ?loc build =
     { context
     ; build
     ; targets = targets build
     ; sandbox
     ; fallback
+    ; locks
     ; loc
     }
 end

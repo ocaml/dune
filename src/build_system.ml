@@ -405,6 +405,16 @@ let make_local_parent_dirs t paths ~map_path =
 
 let sandbox_dir = Path.of_string "_build/.sandbox"
 
+let locks : (Path.t, Future.Mutex.t) Hashtbl.t = Hashtbl.create 32
+
+let rec with_locks mutexes ~f =
+  match mutexes with
+  | [] -> f ()
+  | m :: mutexes ->
+    Future.Mutex.with_lock
+      (Hashtbl.find_or_add locks m ~f:(fun _ -> Future.Mutex.create ()))
+      (fun () -> with_locks mutexes ~f)
+
 let compile_rule t ~all_targets_by_dir ?(copy_source=false) pre_rule =
   let { Pre_rule.
         context
@@ -412,6 +422,7 @@ let compile_rule t ~all_targets_by_dir ?(copy_source=false) pre_rule =
       ; targets = target_specs
       ; sandbox
       ; fallback
+      ; locks
       ; loc
       } =
     pre_rule
@@ -500,7 +511,8 @@ let compile_rule t ~all_targets_by_dir ?(copy_source=false) pre_rule =
           action
       in
       make_local_dirs t (Action.chdirs action);
-      Action.exec ~targets action >>| fun () ->
+      with_locks locks ~f:(fun () ->
+        Action.exec ~targets action) >>| fun () ->
       Option.iter sandbox_dir ~f:Path.rm_rf;
       (* All went well, these targets are no longer pending *)
       pending_targets := Pset.diff !pending_targets targets_to_remove;

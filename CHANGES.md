@@ -20,6 +20,9 @@ next
   `merge_into` field that were in `jbuild` files in sub-directories
   where incorectly interpreted (#264)
 
+- Add support for locks in actions, for tests that can't be run
+  concurrently (#263)
+
 1.0+beta13 (05/09/2017)
 -----------------------
 

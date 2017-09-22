@@ -213,9 +213,12 @@ let create
       | _ -> Chdir (context.build_dir, action))
   }
 
-let add_rule t ?sandbox ?fallback ?loc build =
+let add_rule t ?sandbox ?fallback ?locks ?loc build =
   let build = Build.O.(>>>) build t.chdir in
-  let rule = Build_interpret.Rule.make ?sandbox ?fallback ?loc ~context:t.context build in
+  let rule =
+    Build_interpret.Rule.make ?sandbox ?fallback ?locks ?loc
+      ~context:t.context build
+  in
   t.rules <- rule :: t.rules;
   t.known_targets_by_src_dir_so_far <-
     List.fold_left rule.targets ~init:t.known_targets_by_src_dir_so_far

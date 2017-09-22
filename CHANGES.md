@@ -6,6 +6,16 @@ next
   current directory. This provides a reasonable way to support
   multi-directory library/executables in jbuilder (#35, Francois Bobot)
 
+- An empty `jbuild-workspace` file is now interpreted the same as one
+  containing just `(context default)`
+
+- Better support for on-demand utop toplevels on Windows and when the
+  library has C stubs
+
+- Print `Entering directory '...'` when the workspace root is not the
+  current directory. This allows Emacs and Vim to know where relative
+  filenames should be interpreted from. Fixes #138
+
 1.0+beta13 (05/09/2017)
 -----------------------
 

@@ -321,7 +321,7 @@ as one containing exactly:
 
     (context default)
 
-This allows you to use an empty ``jbuilder-workspace`` file to mark
+This allows you to use an empty ``jbuild-workspace`` file to mark
 the root of your project.
 
 context
@@ -345,11 +345,18 @@ description of an opam switch, as follows:
    the opam root defined by the environment in which ``jbuilder`` is
    run which is usually ``~/.opam``
 
--  ``(merlin)`` instructs Jbuilder to generate the ``.merlin`` files
-   from this context. There can be at most one build context with a
-   ``(merlin)`` field. If no build context has a ``(merlin)`` field,
-   the selected context for ``merlin`` will be ``(context default)``
-   if present. Otherwise Jbuilder won't generate ``.merlin`` files
+- ``(merlin)`` instructs Jbuilder to use this build context for
+   merlin
+
+Merlin reads compilation artifacts and it can only read the
+compilation artifacts of a single context.  Usually, you should use
+the artifacts from the ``default`` context, and if you have the
+``(context default)`` stanza in your ``jbuild-workspace`` file, that
+is the one Jbuilder will use.
+
+For rare cases where this is not what you want, you can force Jbuilder
+to use a different build contexts for merlin by adding the field
+``(merlin)`` to this context.
 
 Building JavaScript with js_of_ocaml
 ====================================

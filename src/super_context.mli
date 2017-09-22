@@ -45,6 +45,7 @@ val add_rule
   :  t
   -> ?sandbox:bool
   -> ?fallback:Jbuild.Rule.Fallback.t
+  -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> (unit, Action.t) Build.t
   -> unit

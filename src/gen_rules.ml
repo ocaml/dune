@@ -549,6 +549,10 @@ module Gen(P : Params) = struct
      | User rules                                                      |
      +-----------------------------------------------------------------+ *)
 
+  let interpret_locks ~dir ~scope locks =
+    List.map locks ~f:(fun s ->
+      Path.relative dir (SC.expand_vars sctx ~dir ~scope s))
+
   let user_rule (rule : Rule.t) ~dir ~scope =
     let targets : SC.Action.targets =
       match rule.targets with
@@ -556,6 +560,7 @@ module Gen(P : Params) = struct
       | Static fns -> Static (List.map fns ~f:(Path.relative dir))
     in
     SC.add_rule sctx ~fallback:rule.fallback ~loc:rule.loc
+      ~locks:(interpret_locks ~dir ~scope rule.locks)
       (SC.Deps.interpret sctx ~scope ~dir rule.deps
        >>>
        SC.Action.run
@@ -584,6 +589,7 @@ module Gen(P : Params) = struct
     Alias.add_deps (SC.aliases sctx) alias [digest_path];
     let deps = SC.Deps.interpret sctx ~scope ~dir alias_conf.deps in
     SC.add_rule sctx
+      ~locks:(interpret_locks ~dir ~scope alias_conf.locks)
       (match alias_conf.action with
        | None ->
          deps

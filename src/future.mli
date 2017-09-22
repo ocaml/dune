@@ -15,6 +15,13 @@ val all_unit : unit t list -> unit t
 
 val with_exn_handler : (unit -> 'a) -> handler:(exn -> Printexc.raw_backtrace -> unit) -> 'a
 
+module Mutex : sig
+  type 'a future = 'a t
+  type t
+  val create : unit -> t
+  val with_lock : t -> (unit -> 'a future) -> 'a future
+end with type 'a future := 'a t
+
 type accepted_codes =
   | These of int list
   | All

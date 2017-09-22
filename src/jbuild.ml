@@ -724,6 +724,7 @@ module Rule = struct
     ; deps     : Dep_conf.t list
     ; action   : Action.Unexpanded.t
     ; fallback : Fallback.t
+    ; locks    : String_with_vars.t list
     ; loc      : Loc.t
     }
 
@@ -734,18 +735,21 @@ module Rule = struct
       ; deps     = []
       ; action   = Action.Unexpanded.t sexp
       ; fallback = No
-      ; loc = Loc.none
+      ; locks    = []
+      ; loc      = Loc.none
       }
     | _ ->
       record
         (field "targets" (list file_in_current_dir)    >>= fun targets ->
          field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
          field "action"  Action.Unexpanded.t           >>= fun action ->
+         field "locks"   (list String_with_vars.t) ~default:[] >>= fun locks ->
          field_b "fallback" >>= fun fallback ->
          return { targets = Static targets
                 ; deps
                 ; action
                 ; fallback = if fallback then Yes else No
+                ; locks
                 ; loc = Loc.none
                 })
         sexp
@@ -767,6 +771,7 @@ module Rule = struct
                   ; S.virt_var __POS__"<"
                   ]))
       ; fallback = Not_possible
+      ; locks = []
       ; loc
       })
 
@@ -782,6 +787,7 @@ module Rule = struct
              Run (S.virt_text __POS__ "ocamlyacc",
                   [S.virt_var __POS__ "<"]))
       ; fallback = Not_possible
+      ; locks = []
       ; loc
       })
 end
@@ -820,7 +826,8 @@ module Menhir = struct
               (S.virt_var __POS__ "ROOT",
                Run (S.virt_text __POS__ "menhir",
                     t.flags @ [S.virt_var __POS__ "<"]))
-       ; fallback = Not_possible
+        ; fallback = Not_possible
+        ; locks = []
        ; loc
        })
     | Some merge_into ->
@@ -840,6 +847,7 @@ module Menhir = struct
                      ; [ S.virt_var __POS__ "!^" ]
                      ]))
        ; fallback = Not_possible
+       ; locks = []
        ; loc
        }]
 end
@@ -869,9 +877,10 @@ end
 
 module Alias_conf = struct
   type t =
-    { name  : string
-    ; deps  : Dep_conf.t list
-    ; action : Action.Unexpanded.t option
+    { name    : string
+    ; deps    : Dep_conf.t list
+    ; action  : Action.Unexpanded.t option
+    ; locks   : String_with_vars.t list
     ; package : Package.t option
     }
 
@@ -881,11 +890,13 @@ module Alias_conf = struct
        field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
        field_o "package" (Scope.package pkgs)            >>= fun package ->
        field_o "action" Action.Unexpanded.t  >>= fun action ->
+       field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
        return
          { name
          ; deps
          ; action
          ; package
+         ; locks
          })
 end
 

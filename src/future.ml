@@ -98,6 +98,17 @@ let with_exn_handler f ~handler =
     handler exn bt;
     reraise exn
 
+let finalize f ~finally =
+  let finalize = lazy(finally ()) in
+  with_exn_handler
+    (fun () ->
+       f () >>| fun x ->
+       Lazy.force finalize;
+       x)
+    ~handler:(fun exn _ ->
+      Lazy.force finalize;
+      reraise exn)
+
 let both a b =
   a >>= fun a ->
   b >>= fun b ->
@@ -133,6 +144,41 @@ let rec all_unit = function
   | x :: l ->
     x >>= fun () ->
     all_unit l
+
+type to_fill = To_fill : 'a Ivar.t * 'a -> to_fill
+
+let to_fill = Queue.create ()
+
+module Mutex = struct
+  type t =
+    { mutable locked  : bool
+    ; mutable waiters : unit Ivar.t Queue.t
+    }
+
+  let lock t =
+    if t.locked then
+      create (fun ivar -> Queue.push ivar t.waiters)
+    else begin
+      t.locked <- true;
+      return ()
+    end
+
+  let unlock t =
+    assert t.locked;
+    if Queue.is_empty t.waiters then
+      t.locked <- false
+    else
+      Queue.push (To_fill (Queue.pop t.waiters, ())) to_fill
+
+  let with_lock t f =
+    lock t >>= fun () ->
+    finalize f ~finally:(fun () -> unlock t)
+
+  let create () =
+    { locked  = false
+    ; waiters = Queue.create ()
+    }
+end
 
 type accepted_codes =
   | These of int list
@@ -655,6 +701,10 @@ module Scheduler = struct
       done;
       let job, status = Running_jobs.wait () in
       process_done job status;
+      while not (Queue.is_empty to_fill) do
+        let (To_fill (ivar, x)) = Queue.pop to_fill in
+        Ivar.fill ivar x
+      done;
       go_rec cwd log t
 
   let go ?(log=Log.no_log) t =

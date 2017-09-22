@@ -205,6 +205,7 @@ module Rule : sig
     ; deps     : Dep_conf.t list
     ; action   : Action.Unexpanded.t
     ; fallback : Fallback.t
+    ; locks    : String_with_vars.t list
     ; loc      : Loc.t
     }
 end
@@ -218,9 +219,10 @@ end
 
 module Alias_conf : sig
   type t =
-    { name  : string
-    ; deps  : Dep_conf.t list
-    ; action : Action.Unexpanded.t option
+    { name    : string
+    ; deps    : Dep_conf.t list
+    ; action  : Action.Unexpanded.t option
+    ; locks   : String_with_vars.t list
     ; package : Package.t option
     }
 end

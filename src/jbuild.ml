@@ -833,10 +833,10 @@ module Menhir = struct
              (S.virt_var __POS__ "ROOT",
               Run (S.virt_text __POS__ "menhir",
                    [ S.virt_text __POS__ "--base"
-                   ; S.virt_text __POS__ merge_into
+                   ; S.virt_var __POS__ ("path-no-dep:" ^ merge_into)
                    ]
                    @ t.flags
-                   @ (List.map ~f:mly t.modules))
+                   @ [S.virt_var __POS__ "!^"])
              )
        ; fallback = Not_possible
        ; loc

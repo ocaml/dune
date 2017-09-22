@@ -52,6 +52,13 @@
 
 (alias
  ((name runtest)
+  (deps ((files_recursively_in test-cases/menhir2)))
+  (action
+   (chdir test-cases/menhir2
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
   (deps ((files_recursively_in test-cases/github25)))
   (action
    (chdir test-cases/github25/root

@@ -338,12 +338,13 @@ module Libs = struct
        Build.store_vfile vrequires);
     Build.vpath vrequires
 
-  let requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
+  let requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps
+        ~has_dot_merlin =
     let real_requires =
       real_requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps
     in
     let requires =
-      if t.context.merlin then
+      if t.context.merlin && has_dot_merlin then
         (* We don't depend on the dot_merlin directly, otherwise everytime it changes we
            would have to rebuild everything.
 

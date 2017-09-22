@@ -268,6 +268,7 @@ module Gen(P : Params) = struct
         ~libraries:lib.buildable.libraries
         ~preprocess:lib.buildable.preprocess
         ~virtual_deps:lib.virtual_deps
+        ~has_dot_merlin:lib.buildable.gen_dot_merlin
     in
 
     SC.Libs.setup_runtime_deps sctx ~dir ~dep_kind ~item:lib.name
@@ -520,6 +521,7 @@ module Gen(P : Params) = struct
         ~libraries:exes.buildable.libraries
         ~preprocess:exes.buildable.preprocess
         ~virtual_deps:[]
+        ~has_dot_merlin:exes.buildable.gen_dot_merlin
     in
 
     SC.Libs.add_select_rules sctx ~dir exes.buildable.libraries;
@@ -794,7 +796,6 @@ Add it to your jbuild file to remove this warning.
     Option.iter (Utop.exe_stanzas stanzas) ~f:(fun (exe, all_modules) ->
       let dir = Utop.utop_exe_dir ~dir:ctx_dir in
       let merlin = executables_rules exe ~dir ~all_modules ~scope in
-      Merlin.add_rules sctx ~dir merlin;
       Utop.add_module_rules sctx ~dir merlin.requires;
     )
 

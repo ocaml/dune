@@ -54,6 +54,7 @@ let utop_of_libs (libs : Library.t list) =
       ; ocamlc_flags = Ordered_set_lang.Unexpanded.standard
       ; ocamlopt_flags = Ordered_set_lang.Unexpanded.standard
       ; js_of_ocaml = Js_of_ocaml.default
+      ; gen_dot_merlin = false
       }
   }
 

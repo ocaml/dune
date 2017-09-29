@@ -410,11 +410,14 @@ module Deps = struct
     | File  s ->
       let path = Path.relative dir (expand_vars t ~scope ~dir s) in
       Build.path path
-      >>^ fun _ -> [path]
+      >>^ fun () -> [path]
     | Alias s ->
-      let path = Alias.file (Alias.make ~dir (expand_vars t ~scope ~dir s)) in
-      Build.path path
-      >>^ fun _ -> []
+      Alias.dep (Alias.make ~dir (expand_vars t ~scope ~dir s))
+      >>^ fun () -> []
+    | Alias_rec s ->
+      Alias.dep_rec ~loc:(String_with_vars.loc s) ~file_tree:t.file_tree
+        (Alias.make ~dir (expand_vars t ~scope ~dir s))
+      >>^ fun () -> []
     | Glob_files s -> begin
         let path = Path.relative dir (expand_vars t ~scope ~dir s) in
         match Glob_lexer.parse_string (Path.basename path) with

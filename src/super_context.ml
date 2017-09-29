@@ -406,17 +406,20 @@ module Deps = struct
   open Build.O
   open Dep_conf
 
+  let make_alias t ~scope ~dir s =
+    Alias.of_path (Path.relative dir (expand_vars t ~scope ~dir s))
+
   let dep t ~scope ~dir = function
     | File  s ->
       let path = Path.relative dir (expand_vars t ~scope ~dir s) in
       Build.path path
       >>^ fun () -> [path]
     | Alias s ->
-      Alias.dep (Alias.make ~dir (expand_vars t ~scope ~dir s))
+      Alias.dep (make_alias t ~scope ~dir s)
       >>^ fun () -> []
     | Alias_rec s ->
       Alias.dep_rec ~loc:(String_with_vars.loc s) ~file_tree:t.file_tree
-        (Alias.make ~dir (expand_vars t ~scope ~dir s))
+        (make_alias t ~scope ~dir s)
       >>^ fun () -> []
     | Glob_files s -> begin
         let path = Path.relative dir (expand_vars t ~scope ~dir s) in

@@ -2,6 +2,8 @@ type t
 
 val make : string -> dir:Path.t -> t
 
+val of_path : Path.t -> t
+
 (** The following always holds:
 
     {[

@@ -43,11 +43,12 @@ Terminology
 -  **build context root**: the root of a build context named ``foo`` is
    ``<root>/_build/<foo>``
 
--  **alias**: an alias is a build target that doesn't produce any file
-   and has configurable dependencies. Alias are per-directory and some
-   are recursive; asking an alias to be built in a given directory will
-   trigger the construction of the alias in all children directories
-   recursively. The most interesting ones are:
+- **alias**: an alias is a build target that doesn't produce any file
+   and has configurable dependencies. Aliases are
+   per-directory. However, on the command line, asking for an alias to
+   be built in a given directory will trigger the construction of the
+   alias in all children directories recursively. Jbuilder defines the
+   following standard aliases:
 
    -  ``runtest`` which runs user defined tests
    -  ``install`` which depends on everything that should be installed

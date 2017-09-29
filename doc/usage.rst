@@ -125,8 +125,9 @@ Aliases
 -------
 
 Targets starting with a ``@`` are interpreted as aliases. For instance
-``@src/runtest`` means the alias ``src/runtest``. If you want to refer
-to a target starting with a ``@``, simply write: ``./@foo``.
+``@src/runtest`` means the alias ``runtest`` in all descendant of
+``src`` where it is defined. If you want to refer to a target starting
+with a ``@``, simply write: ``./@foo``.
 
 Note that an alias not pointing to the ``_build`` directory always
 depends on all the corresponding aliases in build contexts.

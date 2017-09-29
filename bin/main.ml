@@ -35,9 +35,9 @@ let set_common c ~targets =
   Clflags.dev_mode := c.dev_mode;
   Clflags.verbose := c.verbose;
   Clflags.capture_outputs := c.capture_outputs;
-  Clflags.workspace_root := c.root;
   if c.root <> Filename.current_dir_name then
     Sys.chdir c.root;
+  Clflags.workspace_root := Sys.getcwd ();
   Clflags.external_lib_deps_hint :=
     List.concat
       [ ["jbuilder"; "external-lib-deps"; "--missing"]

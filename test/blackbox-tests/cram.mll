@@ -30,7 +30,7 @@ rule file = parse
         | Comment s -> Buffer.add_string buf s; Buffer.add_char buf '\n'
         | Command s ->
           Printf.bprintf buf "  $ %s\n" s;
-          let fd = Unix.openfile temp_file [O_WRONLY] 0 in
+          let fd = Unix.openfile temp_file [O_WRONLY; O_TRUNC] 0 in
           let pid =
             Unix.create_process "sh" [|"sh"; "-c"; s|] Unix.stdin fd fd
           in

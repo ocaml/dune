@@ -832,12 +832,13 @@ module Menhir = struct
            Chdir
              (S.virt_var __POS__ "ROOT",
               Run (S.virt_text __POS__ "menhir",
-                   [ S.virt_text __POS__ "--base"
-                   ; S.virt_text __POS__ merge_into
-                   ]
-                   @ t.flags
-                   @ (List.map ~f:mly t.modules))
-             )
+                   List.concat
+                     [ [ S.virt_text __POS__ "--base"
+                       ; S.virt_var __POS__ ("path-no-dep:" ^ merge_into)
+                       ]
+                     ; t.flags
+                     ; [ S.virt_var __POS__ "!^" ]
+                     ]))
        ; fallback = Not_possible
        ; loc
        }]

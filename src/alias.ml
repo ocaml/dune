@@ -104,21 +104,27 @@ let add_deps store t deps =
             }
   | Some e -> e.deps <- Path.Set.union deps e.deps
 
-type tree = Node of Path.t * tree list
-
-let rec setup_rec_alias store ~make_alias ~prefix ~tree:(Node (dir, children)) =
-  let alias = make_alias ~dir:(Path.append prefix dir) in
-  add_deps store alias (List.map children ~f:(fun child ->
-    setup_rec_alias store ~make_alias ~prefix ~tree:child));
+let rec setup_rec_alias store ~make_alias ~prefix ~dir =
+  let path = File_tree.Dir.path dir in
+  let children = File_tree.Dir.sub_dirs dir in
+  let alias = make_alias ~dir:(Path.append prefix path) in
+  add_deps store alias
+    (String_map.fold children ~init:[]
+       ~f:(fun ~key:_ ~data:child acc ->
+         if File_tree.Dir.ignored child then
+           acc
+         else
+           setup_rec_alias store ~make_alias ~prefix ~dir:child :: acc));
   alias.file
 
-let setup_rec_aliases store ~prefix ~tree =
+let setup_rec_aliases store ~prefix ~file_tree =
+  let dir = File_tree.root file_tree in
   List.iter recursive_aliases ~f:(fun make_alias ->
-    ignore (setup_rec_alias store ~make_alias ~prefix ~tree : Path.t))
+    ignore (setup_rec_alias store ~make_alias ~prefix ~dir : Path.t))
 
-let rules store ~prefixes ~tree =
+let rules store ~prefixes ~file_tree =
   List.iter prefixes ~f:(fun prefix ->
-    setup_rec_aliases store ~prefix ~tree);
+    setup_rec_aliases store ~prefix ~file_tree);
 
   (* For each alias @_build/blah/../x, add a dependency: @../x --> @_build/blah/../x *)
   Hashtbl.fold store ~init:[] ~f:(fun ~key:_ ~data:{ Store. alias; _ } acc ->

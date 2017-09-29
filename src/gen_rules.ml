@@ -1104,7 +1104,7 @@ end
 let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
       ?only_packages conf =
   let open Future in
-  let { Jbuild_load. file_tree; tree; jbuilds; packages } = conf in
+  let { Jbuild_load. file_tree; jbuilds; packages } = conf in
   let aliases = Alias.Store.create () in
   let dirs_with_dot_opam_files =
     String_map.fold packages ~init:Path.Set.empty
@@ -1151,6 +1151,6 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
   >>| fun l ->
   let rules, context_names_and_stanzas = List.split l in
   (Alias.rules aliases
-     ~prefixes:(Path.root :: List.map contexts ~f:(fun c -> c.Context.build_dir)) ~tree
+     ~prefixes:(Path.root :: List.map contexts ~f:(fun c -> c.Context.build_dir)) ~file_tree
    @ List.concat rules,
    String_map.of_alist_exn context_names_and_stanzas)

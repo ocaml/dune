@@ -14,7 +14,7 @@ end
 
 type t
 
-val load : Path.t -> t
+val load : ?extra_ignored_subtrees:Path.Set.t -> Path.t -> t
 
 val fold
   :  t

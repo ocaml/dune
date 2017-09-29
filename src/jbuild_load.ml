@@ -151,7 +151,6 @@ end
 
 type conf =
   { file_tree : File_tree.t
-  ; tree      : Alias.tree
   ; jbuilds   : Jbuilds.t
   ; packages  : Package.t String_map.t
   }
@@ -164,8 +163,8 @@ let load ~dir ~scope =
   | Ocaml_script ->
     Script { dir; scope }
 
-let load ?(extra_ignored_subtrees=Path.Set.empty) () =
-  let ftree = File_tree.load Path.root in
+let load ?extra_ignored_subtrees () =
+  let ftree = File_tree.load Path.root ?extra_ignored_subtrees in
   let packages =
     File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[] ~f:(fun dir pkgs ->
       let path = File_tree.Dir.path dir in
@@ -205,9 +204,8 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) () =
     |> Path.Map.map ~f:Scope.make
   in
   let rec walk dir jbuilds scope =
-    if File_tree.Dir.ignored dir ||
-       Path.Set.mem (File_tree.Dir.path dir) extra_ignored_subtrees then
-      None
+    if File_tree.Dir.ignored dir then
+      jbuilds
     else begin
       let path = File_tree.Dir.path dir in
       let files = File_tree.Dir.files dir in
@@ -220,23 +218,13 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) () =
         else
           jbuilds
       in
-      let children, jbuilds =
-        String_map.fold sub_dirs ~init:([], jbuilds)
-          ~f:(fun ~key:_ ~data:dir (children, jbuilds) ->
-            match walk dir jbuilds scope with
-            | None -> (children, jbuilds)
-            | Some (child, jbuilds) -> (child :: children, jbuilds))
-      in
-      Some (Alias.Node (path, children), jbuilds)
+      String_map.fold sub_dirs ~init:jbuilds
+        ~f:(fun ~key:_ ~data:dir jbuilds ->
+          walk dir jbuilds scope)
     end
   in
-  let root = File_tree.root ftree in
-  let tree, jbuilds =
-    Option.value (walk root [] Scope.empty)
-      ~default:(Alias.Node (File_tree.Dir.path root, []), [])
-  in
+  let jbuilds = walk (File_tree.root ftree) [] Scope.empty in
   { file_tree = ftree
-  ; tree
   ; jbuilds
   ; packages
   }

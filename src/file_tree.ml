@@ -34,7 +34,7 @@ let ignore_file fn ~is_directory =
   (is_directory && (fn.[0] = '.' || fn.[0] = '_')) ||
   (fn.[0] = '.' && fn.[1] = '#')
 
-let load path =
+let load ?(extra_ignored_subtrees=Path.Set.empty) path =
   let rec walk path ~ignored : Dir.t =
     let files, sub_dirs =
       Path.readdir path
@@ -61,7 +61,11 @@ let load path =
     in
     let sub_dirs =
       List.map sub_dirs ~f:(fun (fn, path) ->
-        let ignored = ignored || String_set.mem fn ignored_sub_dirs in
+        let ignored =
+          ignored
+          || String_set.mem fn ignored_sub_dirs
+          || Path.Set.mem path extra_ignored_subtrees
+        in
         (fn, walk path ~ignored))
       |> String_map.of_alist_exn
     in

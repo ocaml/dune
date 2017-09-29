@@ -48,10 +48,8 @@ end
 
 val add_deps : Store.t -> t -> Path.t list -> unit
 
-type tree = Node of Path.t * tree list
-
 val rules
   :  Store.t
   -> prefixes:Path.t list
-  -> tree:tree
+  -> file_tree:File_tree.t
   -> Build_interpret.Rule.t list

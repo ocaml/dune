@@ -1151,6 +1151,6 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
   >>| fun l ->
   let rules, context_names_and_stanzas = List.split l in
   (Alias.rules aliases
-     ~prefixes:(Path.root :: List.map contexts ~f:(fun c -> c.Context.build_dir)) ~file_tree
+        ~prefixes:(Path.root :: List.map contexts ~f:(fun c -> c.Context.build_dir)) ~file_tree
    @ List.concat rules,
    String_map.of_alist_exn context_names_and_stanzas)

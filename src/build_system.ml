@@ -125,6 +125,7 @@ type t =
        [(deps (filename + contents), targets (filename only), action)] *)
     trace      : (Path.t, Digest.t) Hashtbl.t
   ; mutable local_mkdirs : Path.Local.Set.t
+  ; all_targets_by_dir : Pset.t Pmap.t Lazy.t
   }
 
 let all_targets t = Hashtbl.fold t.files ~init:[] ~f:(fun ~key ~data:_ acc -> key :: acc)
@@ -304,6 +305,9 @@ module Build_exec = struct
     let dyn_deps = ref Pset.empty in
     let action = exec dyn_deps (Build.repr t) x in
     (action, !dyn_deps)
+
+  let exec_nop bs t x =
+    snd (exec bs (Build.O.(>>^) t (fun () -> Action.Progn [])) x)
 end
 
 (* This variable is filled during the creation of the build system. Once the build system
@@ -638,6 +642,7 @@ let create ~contexts ~file_tree ~rules =
     ; files      = Hashtbl.create 1024
     ; trace      = Trace.load ()
     ; local_mkdirs = Path.Local.Set.empty
+    ; all_targets_by_dir
     } in
   List.iter rules ~f:(compile_rule t ~all_targets_by_dir ~copy_source:false);
   setup_copy_rules t ~all_targets_by_dir
@@ -717,13 +722,34 @@ let remove_old_artifacts t =
     walk (Config.local_install_dir ~context:ctx.name);
   )
 
-let do_build_exn t targets =
-  remove_old_artifacts t;
-  all_unit (List.map targets ~f:(fun fn -> wait_for_file t fn ~targeting:fn))
+let eval_request t ~request ~process_target =
+  let { Build_interpret.Static_deps.
+        rule_deps
+      ; action_deps = static_deps
+      } = Build_interpret.static_deps request ~all_targets_by_dir:t.all_targets_by_dir
+  in
 
-let do_build t targets =
+  let process_targets ts =
+    Future.all_unit (List.map (Pset.elements ts) ~f:process_target)
+  in
+
+  Future.both
+    (process_targets static_deps)
+    (Future.all_unit (List.map (Pset.elements rule_deps) ~f:(fun fn ->
+       wait_for_file t fn ~targeting:fn))
+     >>= fun () ->
+     let dyn_deps = Build_exec.exec_nop t request () in
+     process_targets (Pset.diff dyn_deps static_deps))
+  >>| fun ((), ()) -> ()
+
+let do_build_exn t ~request =
+  remove_old_artifacts t;
+  eval_request t ~request ~process_target:(fun fn ->
+    wait_for_file t fn ~targeting:fn)
+
+let do_build t ~request =
   try
-    Ok (do_build_exn t targets)
+    Ok (do_build_exn t ~request)
   with Build_error.E e ->
     Error e
 
@@ -760,7 +786,16 @@ let rules_for_targets t targets =
          Path.to_string (Pset.choose rule.Internal_rule.targets))
        |> String.concat ~sep:"\n-> ")
 
-let all_lib_deps t targets =
+let static_deps_of_request t request =
+  let { Build_interpret.Static_deps.
+        rule_deps
+      ; action_deps
+      } = Build_interpret.static_deps request ~all_targets_by_dir:t.all_targets_by_dir
+  in
+  Pset.elements (Pset.union rule_deps action_deps)
+
+let all_lib_deps t ~request =
+  let targets = static_deps_of_request t request in
   List.fold_left (rules_for_targets t targets) ~init:Pmap.empty
     ~f:(fun acc rule ->
       let lib_deps = Build_interpret.lib_deps rule.Internal_rule.build in
@@ -771,7 +806,8 @@ let all_lib_deps t targets =
         | None, Some b -> Some b
         | Some a, Some b -> Some (Build.merge_lib_deps a b)))
 
-let all_lib_deps_by_context t targets =
+let all_lib_deps_by_context t ~request =
+  let targets = static_deps_of_request t request in
   List.fold_left (rules_for_targets t targets) ~init:[] ~f:(fun acc rule ->
     let lib_deps = Build_interpret.lib_deps rule.Internal_rule.build in
     Path.Map.fold lib_deps ~init:acc ~f:(fun ~key:path ~data:lib_deps acc ->
@@ -817,7 +853,7 @@ module Rule_closure =
         rules_for_files graph (Pset.elements t.deps)
     end)
 
-let build_rules t ?(recursive=false) targets =
+let build_rules ?(recursive=false) t ~request =
   let rules_seen = ref Id_set.empty in
   let rules = ref [] in
   let rec loop fn =
@@ -863,7 +899,10 @@ let build_rules t ?(recursive=false) targets =
           return ()
       end
   in
-  Future.all_unit (List.map targets ~f:loop)
+  let targets = ref Pset.empty in
+  eval_request t ~request ~process_target:(fun fn ->
+    targets := Pset.add fn !targets;
+    loop fn)
   >>= fun () ->
   Future.all !rules
   >>| fun rules ->
@@ -872,7 +911,10 @@ let build_rules t ?(recursive=false) targets =
       Pset.fold r.targets ~init:acc ~f:(fun fn acc ->
         Pmap.add acc ~key:fn ~data:r))
   in
-  match Rule_closure.top_closure rules (rules_for_files rules targets) with
+  match
+    Rule_closure.top_closure rules
+      (rules_for_files rules (Pset.elements !targets))
+  with
   | Ok l -> l
   | Error cycle ->
     die "dependency cycle detected:\n   %s"

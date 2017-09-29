@@ -70,8 +70,23 @@ module Main = struct
       ?filter_out_optional_stanzas_with_missing_deps ()
 end
 
+type target =
+  | File      of Path.t
+  | Alias_rec of Alias.t
+
+let request_of_targets (setup : Main.setup) targets =
+  let open Build.O in
+  List.fold_left targets ~init:(Build.return ()) ~f:(fun acc target ->
+    acc >>>
+    match target with
+    | File path -> Build.path path
+    | Alias_rec alias ->
+      Alias.dep_rec ~loc:(Loc.in_file "<command-line>")
+        ~file_tree:setup.file_tree alias)
+
 let do_build (setup : Main.setup) targets =
-  Build_system.do_build_exn setup.build_system targets
+  Build_system.do_build_exn setup.build_system
+    ~request:(request_of_targets setup targets)
 
 let find_root () =
   let cwd = Sys.getcwd () in
@@ -338,10 +353,6 @@ let resolve_package_install setup pkg =
   | Error () ->
     die "Unknown package %s!%s" pkg (hint pkg (String_map.keys setup.packages))
 
-type target =
-  | File  of Path.t
-  | Alias of Path.t * Alias.t
-
 let target_hint (setup : Main.setup) path =
   assert (Path.is_local path);
   let sub_dir = Path.parent path in
@@ -381,7 +392,7 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
           else
             let dir = Path.parent path in
             let name = Path.basename path in
-            [Alias (path, Alias.make ~dir name)]
+            [Alias_rec (Alias.make ~dir name)]
         else
           let path = Path.relative Path.root (prefix_target common s) in
           let can't_build path =
@@ -420,13 +431,13 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
       List.iter targets ~f:(function
         | File path ->
           Log.info log @@ "- " ^ (Path.to_string path)
-        | Alias (path, _) ->
-          Log.info log @@ "- alias " ^ (Path.to_string path));
+        | Alias_rec alias ->
+          let path = Alias.fully_qualified_name alias in
+          Log.info log @@ "- recursive alias " ^
+                          (Path.to_string_maybe_quoted path));
       flush stdout;
     end;
-    List.map targets ~f:(function
-      | File path -> path
-      | Alias (_, alias) -> Alias.file alias)
+    targets
 
 let build_targets =
   let doc = "Build the given targets, or all installable targets if none are given." in
@@ -471,7 +482,7 @@ let runtest =
        let targets =
          List.map dirs ~f:(fun dir ->
            let dir = Path.(relative root) (prefix_target common dir) in
-           Alias.file (Alias.runtest ~dir))
+           Alias_rec (Alias.runtest ~dir))
        in
        do_build setup targets) in
   ( Term.(const go
@@ -522,9 +533,10 @@ let external_lib_deps =
       (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
        >>= fun setup ->
        let targets = resolve_targets ~log common setup targets in
+       let request = request_of_targets setup targets in
        let failure =
          String_map.fold ~init:false
-           (Build_system.all_lib_deps_by_context setup.build_system targets)
+           (Build_system.all_lib_deps_by_context setup.build_system ~request)
            ~f:(fun ~key:context_name ~data:lib_deps acc ->
              let internals =
                Jbuild.Stanzas.lib_names
@@ -623,12 +635,12 @@ let rules =
     Future.Scheduler.go ~log
       (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
        >>= fun setup ->
-       let targets =
+       let request =
          match targets with
-         | [] -> Build_system.all_targets setup.build_system
-         | _  -> resolve_targets ~log common setup targets
+         | [] -> Build.paths (Build_system.all_targets setup.build_system)
+         | _  -> resolve_targets ~log common setup targets |> request_of_targets setup
        in
-       Build_system.build_rules setup.build_system targets ~recursive >>= fun rules ->
+       Build_system.build_rules setup.build_system ~request ~recursive >>= fun rules ->
        let print oc =
          let ppf = Format.formatter_of_out_channel oc in
          Sexp.prepare_formatter ppf;
@@ -918,10 +930,10 @@ let utop =
        let target =
          match resolve_targets ~log common setup [utop_target] with
          | [] -> die "no libraries defined in %s" dir
-         | [target] -> target
-         | _::_::_ -> assert false
+         | [File target] -> target
+         | [Alias_rec _] | _::_::_ -> assert false
        in
-       do_build setup [target] >>| fun () ->
+       do_build setup [File target] >>| fun () ->
        (setup.build_system, context, Path.to_string target)
       ) |> Future.Scheduler.go ~log in
     Build_system.dump_trace build_system;

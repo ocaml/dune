@@ -11,12 +11,18 @@ val make : string -> dir:Path.t -> t
 val name : t -> string
 val dir  : t -> Path.t
 
+val fully_qualified_name : t -> Path.t
+
 val default : dir:Path.t -> t
 val runtest : dir:Path.t -> t
 val install : dir:Path.t -> t
 val doc     : dir:Path.t -> t
 
 val dep : t -> ('a, 'a) Build.t
+
+(** Implements [(alias_rec ...)] in dependency specification and
+    [@alias] on the command line. *)
+val dep_rec : loc:Loc.t -> file_tree:File_tree.t -> t -> (unit, unit) Build.t
 
 (** File that represent the alias in the filesystem. It is a file under
     [_build/.aliases]. *)

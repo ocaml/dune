@@ -32,11 +32,39 @@ let of_path path =
 let name t = Path.basename (Fq_name.path t.name)
 let dir  t = Path.parent   (Fq_name.path t.name)
 
+let fully_qualified_name t = Fq_name.path t.name
+
 let make name ~dir =
   assert (not (String.contains name '/'));
   of_path (Path.relative dir name)
 
 let dep t = Build.path t.file
+
+let dep_rec ~loc ~file_tree t =
+  let path = Path.parent   (Fq_name.path t.name) |> Path.drop_build_context in
+  let name = Path.basename (Fq_name.path t.name) in
+  match File_tree.find_dir file_tree path with
+  | None -> Build.fail { fail = fun () ->
+    Loc.fail loc "Don't know about directory %s!" (Path.to_string_maybe_quoted path) }
+  | Some dir ->
+    let open Build.O in
+    File_tree.Dir.fold dir ~traverse_ignored_dirs:false ~init:(Build.return true)
+      ~f:(fun dir acc ->
+        let path = File_tree.Dir.path dir in
+        let t = of_path (Path.relative path name) in
+        acc
+        >>>
+        Build.if_file_exists t.file
+          ~then_:(Build.path t.file
+                  >>^
+                  fun _ -> false)
+          ~else_:(Build.arr (fun x -> x)))
+    >>^ function
+    | false -> ()
+    | true ->
+      Loc.fail loc "This recursive alias is empty.\n\
+                    Alias %S is not defined in %s or any of its descendants."
+        name (Path.to_string_maybe_quoted path)
 
 let file t = t.file
 

@@ -10,6 +10,13 @@ module Dir : sig
   (** Whether this directory is ignored by a [jbuild-ignore] file in
       one of its ancestor directories. *)
   val ignored : t -> bool
+
+  val fold
+    :  t
+    -> traverse_ignored_dirs:bool
+    -> init:'a
+    -> f:(t -> 'a -> 'a)
+    -> 'a
 end
 
 type t

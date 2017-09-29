@@ -40,6 +40,10 @@ let make name ~dir =
 
 let dep t = Build.path t.file
 
+let is_standard = function
+  | "runtest" | "install" | "doc" -> true
+  | _ -> false
+
 let dep_rec ~loc ~file_tree t =
   let path = Path.parent   (Fq_name.path t.name) |> Path.drop_build_context in
   let name = Path.basename (Fq_name.path t.name) in
@@ -59,9 +63,8 @@ let dep_rec ~loc ~file_tree t =
                   >>^
                   fun _ -> false)
           ~else_:(Build.arr (fun x -> x)))
-    >>^ function
-    | false -> ()
-    | true ->
+    >>^ fun is_empty ->
+    if is_empty && not (is_standard name) then
       Loc.fail loc "This recursive alias is empty.\n\
                     Alias %S is not defined in %s or any of its descendants."
         name (Path.to_string_maybe_quoted path)
@@ -105,13 +108,6 @@ let runtest = make "runtest"
 let install = make "install"
 let doc     = make "doc"
 
-let recursive_aliases =
-  [ default
-  ; runtest
-  ; install
-  ; doc
-  ]
-
 module Store = struct
   type entry =
     { alias : t
@@ -132,28 +128,7 @@ let add_deps store t deps =
             }
   | Some e -> e.deps <- Path.Set.union deps e.deps
 
-let rec setup_rec_alias store ~make_alias ~prefix ~dir =
-  let path = File_tree.Dir.path dir in
-  let children = File_tree.Dir.sub_dirs dir in
-  let alias = make_alias ~dir:(Path.append prefix path) in
-  add_deps store alias
-    (String_map.fold children ~init:[]
-       ~f:(fun ~key:_ ~data:child acc ->
-         if File_tree.Dir.ignored child then
-           acc
-         else
-           setup_rec_alias store ~make_alias ~prefix ~dir:child :: acc));
-  alias.file
-
-let setup_rec_aliases store ~prefix ~file_tree =
-  let dir = File_tree.root file_tree in
-  List.iter recursive_aliases ~f:(fun make_alias ->
-    ignore (setup_rec_alias store ~make_alias ~prefix ~dir : Path.t))
-
-let rules store ~prefixes ~file_tree =
-  List.iter prefixes ~f:(fun prefix ->
-    setup_rec_aliases store ~prefix ~file_tree);
-
+let rules store =
   (* For each alias @_build/blah/../x, add a dependency: @../x --> @_build/blah/../x *)
   Hashtbl.fold store ~init:[] ~f:(fun ~key:_ ~data:{ Store. alias; _ } acc ->
     match Path.extract_build_context (Fq_name.path alias.name) with

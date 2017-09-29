@@ -54,8 +54,4 @@ end
 
 val add_deps : Store.t -> t -> Path.t list -> unit
 
-val rules
-  :  Store.t
-  -> prefixes:Path.t list
-  -> file_tree:File_tree.t
-  -> Build_interpret.Rule.t list
+val rules : Store.t -> Build_interpret.Rule.t list

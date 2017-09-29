@@ -514,6 +514,7 @@ module Action = struct
         let open Action.Var_expansion in
         let cos, var = parse_bang key in
         match String.lsplit2 var ~on:':' with
+        | Some ("path-no-dep", s) -> Some (path_exp (Path.relative dir s))
         | Some ("exe"     , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("bin"     , s) -> begin

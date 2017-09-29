@@ -16,6 +16,10 @@ next
   current directory. This allows Emacs and Vim to know where relative
   filenames should be interpreted from. Fixes #138
 
+- Fix a bug related to `menhir` stanzas: `menhir` stanzas with a
+  `merge_into` field that were in `jbuild` files in sub-directories
+  where incorectly interpreted (#264)
+
 1.0+beta13 (05/09/2017)
 -----------------------
 

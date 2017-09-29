@@ -166,39 +166,25 @@ let load ~dir ~scope =
 
 let load ?(extra_ignored_subtrees=Path.Set.empty) () =
   let ftree = File_tree.load Path.root in
-  let packages, ignored_subtrees =
-    File_tree.fold ftree ~init:([], extra_ignored_subtrees) ~f:(fun dir (pkgs, ignored) ->
+  let packages =
+    File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[] ~f:(fun dir pkgs ->
       let path = File_tree.Dir.path dir in
       let files = File_tree.Dir.files dir in
-      let pkgs =
-        String_set.fold files ~init:pkgs ~f:(fun fn acc ->
-          match Filename.split_extension fn with
-          | (pkg, ".opam") when pkg <> "" ->
-            let version_from_opam_file =
-              let opam = Opam_file.load (Path.relative path fn |> Path.to_string) in
-              match Opam_file.get_field opam "version" with
-              | Some (String (_, s)) -> Some s
-              | _ -> None
-            in
-            (pkg,
-             { Package. name = pkg
-             ; path
-             ; version_from_opam_file
-             }) :: acc
-          | _ -> acc)
-      in
-      if String_set.mem "jbuild-ignore" files then
-        let ignore_set =
-          String_set.of_list
-            (Io.lines_of_file (Path.to_string (Path.relative path "jbuild-ignore")))
-        in
-        Dont_recurse_in
-          (ignore_set,
-           (pkgs,
-            String_set.fold ignore_set ~init:ignored ~f:(fun fn acc ->
-              Path.Set.add (Path.relative path fn) acc)))
-      else
-        Cont (pkgs, ignored))
+      String_set.fold files ~init:pkgs ~f:(fun fn acc ->
+        match Filename.split_extension fn with
+        | (pkg, ".opam") when pkg <> "" ->
+          let version_from_opam_file =
+            let opam = Opam_file.load (Path.relative path fn |> Path.to_string) in
+            match Opam_file.get_field opam "version" with
+            | Some (String (_, s)) -> Some s
+            | _ -> None
+          in
+          (pkg,
+           { Package. name = pkg
+           ; path
+           ; version_from_opam_file
+           }) :: acc
+        | _ -> acc))
   in
   let packages =
     String_map.of_alist_multi packages
@@ -219,30 +205,36 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) () =
     |> Path.Map.map ~f:Scope.make
   in
   let rec walk dir jbuilds scope =
-    let path = File_tree.Dir.path dir in
-    let files = File_tree.Dir.files dir in
-    let sub_dirs = File_tree.Dir.sub_dirs dir in
-    let scope = Path.Map.find_default path scopes ~default:scope in
-    let jbuilds =
-      if String_set.mem "jbuild" files then
-        let jbuild = load ~dir:path ~scope in
-        jbuild :: jbuilds
-      else
-        jbuilds
-    in
-    let children, jbuilds =
-      String_map.fold sub_dirs ~init:([], jbuilds)
-        ~f:(fun ~key:_ ~data:dir (children, jbuilds) ->
-          if Path.Set.mem (File_tree.Dir.path dir) ignored_subtrees then
-            (children, jbuilds)
-          else
-            let child, jbuilds = walk dir jbuilds scope in
-            (child :: children, jbuilds))
-    in
-    (Alias.Node (path, children), jbuilds)
+    if File_tree.Dir.ignored dir ||
+       Path.Set.mem (File_tree.Dir.path dir) extra_ignored_subtrees then
+      None
+    else begin
+      let path = File_tree.Dir.path dir in
+      let files = File_tree.Dir.files dir in
+      let sub_dirs = File_tree.Dir.sub_dirs dir in
+      let scope = Path.Map.find_default path scopes ~default:scope in
+      let jbuilds =
+        if String_set.mem "jbuild" files then
+          let jbuild = load ~dir:path ~scope in
+          jbuild :: jbuilds
+        else
+          jbuilds
+      in
+      let children, jbuilds =
+        String_map.fold sub_dirs ~init:([], jbuilds)
+          ~f:(fun ~key:_ ~data:dir (children, jbuilds) ->
+            match walk dir jbuilds scope with
+            | None -> (children, jbuilds)
+            | Some (child, jbuilds) -> (child :: children, jbuilds))
+      in
+      Some (Alias.Node (path, children), jbuilds)
+    end
   in
   let root = File_tree.root ftree in
-  let tree, jbuilds = walk root [] Scope.empty in
+  let tree, jbuilds =
+    Option.value (walk root [] Scope.empty)
+      ~default:(Alias.Node (File_tree.Dir.path root, []), [])
+  in
   { file_tree = ftree
   ; tree
   ; jbuilds

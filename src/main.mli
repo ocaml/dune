@@ -31,7 +31,7 @@ val report_error : ?map_fname:(string -> string) -> Format.formatter -> exn -> u
 
 val find_context_exn : setup -> name:string -> Context.t
 
-(** / *)
+(**/**)
 
 (* This is used to bootstrap jbuilder itself. It is not part of the public API. *)
 val bootstrap : unit -> unit

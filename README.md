@@ -25,7 +25,7 @@ jbuilder.
 [quick-start]:    https://jbuilder.readthedocs.io/en/latest/quick-start.html
 [example]:        https://github.com/janestreet/jbuilder/tree/master/example
 [travis]:         https://travis-ci.org/janestreet/jbuilder
-[travis-img]:     https://travis-ci.org/janestreet/jbuilder.png?branch=master
+[travis-img]:     https://travis-ci.org/janestreet/jbuilder.svg?branch=master
 [appveyor]:       https://ci.appveyor.com/project/diml/jbuilder/branch/master
 [appveyor-img]:   https://ci.appveyor.com/api/projects/status/bn3kcxx648jt6dyt?svg=true
 [merlin]:         https://github.com/ocaml/merlin

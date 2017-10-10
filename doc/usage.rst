@@ -158,7 +158,7 @@ determined as follow:
 .. _running-tests:
 
 Running tests
--------------
+=============
 
 There are two ways to run tests:
 

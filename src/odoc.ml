@@ -183,18 +183,27 @@ let setup_css_rule sctx =
 let sp = Printf.sprintf
 
 let setup_toplevel_index_rule sctx =
-  let packages =
-    String_map.fold ~f:(fun ~key ~data pkgs ->
-      let name = sp {|<a href="%s/index.html">%s</a>|} key key in
-      let pkg = match data.Package.version_from_opam_file with
-        | None   -> name
-        | Some v -> sp {|%s <span class="version">%s</span>|} name v
-      in
-      sp "<li>%s</li>" pkg :: pkgs
-    ) ~init:[] (SC.packages sctx)
-    |> List.rev
+  let list_items =
+    Super_context.stanzas_to_consider_for_install sctx
+    |> List.filter_map ~f:(fun (_path, stanza) ->
+      match stanza with
+      | Stanza.Library
+          {Library.kind = Library.Kind.Normal; public = Some public_info; _} ->
+        let name = public_info.name in
+        let link = sp {|<a href="%s/index.html">%s</a>|} name name in
+        let version_suffix =
+          match public_info.package.Package.version_from_opam_file with
+          | None ->
+            ""
+          | Some v ->
+            sp {| <span class="version">%s</span>|} v
+        in
+        Some (sp "<li>%s%s</li>" link version_suffix)
+
+      | _ ->
+        None)
   in
-  let packages = String.concat ~sep:"\n    " packages in
+  let list_items = String.concat ~sep:"\n    " list_items in
   let html =
     sp {|<!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -212,7 +221,7 @@ let setup_toplevel_index_rule sctx =
     </ol>
  </body>
  </html>
-|} packages
+|} list_items
   in
   let context = SC.context sctx in
   let doc_dir = doc_dir ~context in

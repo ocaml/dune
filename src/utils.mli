@@ -33,7 +33,8 @@ val library_not_found : ?context:string -> ?hint:string -> string -> _
 (** [\["-g"\]] if [!Clflags.g] and [\[\]] otherwise *)
 val g : unit -> string list
 
-(** Similar to [String.find] but with a better error message in case of failure *)
+(** Similar to [String_map.find] but with a better error message in case of
+    failure. *)
 val find_module : dir:Path.t -> 'a String_map.t -> string -> 'a
 val find_deps   : dir:Path.t -> 'a String_map.t -> string -> 'a
 

@@ -23,10 +23,10 @@ module Unexpanded : sig
   val append : t -> t -> t
 
   (** List of files needed to expand this set *)
-  val files : t -> String_set.t
+  val files : t -> f:(String_with_vars.t -> string) -> String_set.t
 
   (** Expand [t] using with the given file contents. [file_contents] is a map from
       filenames to their parsed contents. Every [(:include fn)] in [t] is replaced by
       [Map.find files_contents fn]. Every element is converted to a string using [f]. *)
-  val expand : t -> files_contents:Sexp.Ast.t String_map.t -> f:(Sexp.Ast.t -> string) -> expanded
+  val expand : t -> files_contents:Sexp.Ast.t String_map.t -> f:(String_with_vars.t -> string) -> expanded
 end with type expanded := t

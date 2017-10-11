@@ -9,7 +9,7 @@ module Ast = struct
     | Special : Loc.t * string -> ('a, _) t
     | Union : ('a, 'b) t list -> ('a, 'b) t
     | Diff : ('a, 'b) t * ('a, 'b) t -> ('a, 'b) t
-    | Include : string -> ('a, unexpanded) t
+    | Include : String_with_vars.t -> ('a, unexpanded) t
 end
 
 type t = (string, Ast.expanded) Ast.t
@@ -40,16 +40,16 @@ let eval t ~special_values =
     match t with
     | Element s -> [s]
     | Special (loc, name) ->
-        begin
-          match List.assoc name special_values with
-          | l -> l
-          | exception Not_found -> Loc.fail loc "undefined symbol %s" name;
-        end
+      begin
+        match List.assoc name special_values with
+        | l -> l
+        | exception Not_found -> Loc.fail loc "undefined symbol %s" name;
+      end
     | Union elts -> List.flatten (List.map elts ~f:of_ast)
     | Diff (left, right) ->
-        let left = of_ast left in
-        let right = of_ast right in
-        List.filter left ~f:(fun acc_elt -> not (List.mem acc_elt ~set:right))
+      let left = of_ast left in
+      let right = of_ast right in
+      List.filter left ~f:(fun acc_elt -> not (List.mem acc_elt ~set:right))
   in
   of_ast t
 
@@ -83,15 +83,15 @@ module Unexpanded = struct
       match t with
       | Element s -> Element s
       | Union [Special (_, "include"); Element fn] ->
-          Include (Sexp.Of_sexp.string fn)
+        Include (String_with_vars.t fn)
       | Union [Special (loc, "include"); _]
       | Special (loc, "include") ->
-          Loc.fail loc "(:include expects a single element (do you need to quote the filename?)"
+        Loc.fail loc "(:include expects a single element (do you need to quote the filename?)"
       | Special (l, s) -> Special (l, s)
       | Union l ->
-          Union (List.map l ~f:map)
+        Union (List.map l ~f:map)
       | Diff (l, r) ->
-          Diff (map l, map r)
+        Diff (map l, map r)
     in
     parse_general t ~f:(fun x -> x) |> map
 
@@ -99,31 +99,33 @@ module Unexpanded = struct
 
   let append = append
 
-  let files t =
+  let files t ~f =
     let rec loop acc (t : t) =
       let open Ast in
       match t with
       | Element _
       | Special _ -> acc
       | Include fn ->
-          String_set.add fn acc
+        String_set.add (f fn) acc
       | Union l ->
-          List.fold_left l ~init:acc ~f:loop
+        List.fold_left l ~init:acc ~f:loop
       | Diff (l, r) ->
-          loop (loop acc l) r
+        loop (loop acc l) r
     in
     loop String_set.empty t
 
   let rec expand (t : t) ~files_contents ~f : (string, Ast.expanded) Ast.t =
     let open Ast in
     match t with
-    | Element s -> Element (f s)
+    | Element s -> Element (f (String_with_vars.t s))
     | Special (l, s) -> Special (l, s)
     | Include fn ->
-        parse_general (String_map.find_exn fn files_contents ~string_of_key:(sprintf "%S")
-          ~desc:(fun _ -> "<filename to s-expression>")) ~f
+      parse_general (
+        String_map.find_exn (f fn) files_contents ~string_of_key:(sprintf "%S")
+          ~desc:(fun _ -> "<filename to s-expression>")
+      ) ~f:(fun s -> f (String_with_vars.t s))
     | Union l ->
-        Union (List.map l ~f:(expand ~files_contents ~f))
+      Union (List.map l ~f:(expand ~files_contents ~f))
     | Diff (l, r) ->
-        Diff (expand l ~files_contents ~f, expand r ~files_contents ~f)
+      Diff (expand l ~files_contents ~f, expand r ~files_contents ~f)
 end

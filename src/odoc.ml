@@ -66,7 +66,7 @@ let lib_index sctx ~odoc ~dir ~(lib : Library.t) ~lib_public_name ~doc_dir ~modu
   let context = SC.context sctx in
   let generated_index_mld = dir ++ sprintf "%s-generated.mld" lib.name in
   let source_index_mld = dir ++ sprintf "%s.mld" lib.name in
-  let header = {|{%html:<nav><a href="..">Up</a></nav>%}|} in
+  let header = {|{%html:<nav><a href="../index.html">Up</a></nav>%}|} in
   SC.add_rule sctx
     (Build.if_file_exists source_index_mld
        ~then_:(Build.contents source_index_mld

@@ -23,6 +23,8 @@ next
 - Add support for locks in actions, for tests that can't be run
   concurrently (#263)
 
+- Support `${..}` syntax in the `include` stanza. (#231)
+
 1.0+beta13 (05/09/2017)
 -----------------------
 

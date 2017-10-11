@@ -1,5 +1,5 @@
-next
-----
+1.0+beta14 (11/10/2017)
+-----------------------
 
 - Add (copy_files <glob>) and (copy_files# <glob>) stanzas. These
   stanzas setup rules for copying files from a sub-directory to the

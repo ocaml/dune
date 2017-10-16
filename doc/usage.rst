@@ -158,7 +158,7 @@ determined as follow:
 .. _running-tests:
 
 Running tests
--------------
+=============
 
 There are two ways to run tests:
 
@@ -171,6 +171,31 @@ tests in a specific sub-directory and its children by using:
 
 -  ``jbuilder build @foo/bar/runtest``
 -  ``jbuilder runtest foo/bar``
+
+Launching the Toplevel (REPL)
+=============================
+
+jbuilder supports launching a `utop <https://github.com/diml/utop>`__ instance
+with locally defined libraries loaded.
+
+.. code:: bash
+
+   $ jbuilder utop <dir> -- <args>
+
+Where ``<dir>`` is a directory containing a ``jbuild`` file defining all the
+libraries that will be loaded (using the ``library`` stanza). ``<args>`` will be
+passed as arguments to the utop command itself. For example, to launch it in
+emacs mode.
+
+Requirements & Limitations
+--------------------------
+
+* utop version >= 2.0 is required for this to work.
+* This subcommand only supports loading libraries. Executables aren't supported.
+* Libraries that are dependencies of utop itself cannot be loaded. For example
+  `Camomile <https://github.com/yoriyuki/Camomile>`__.
+* Loading libraries that are defined in different directories into one utop
+  instance isn't possible.
 
 Restricting the set of packages
 ===============================

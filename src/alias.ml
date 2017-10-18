@@ -65,7 +65,7 @@ let dep_rec ~loc ~file_tree t =
           ~else_:(Build.arr (fun x -> x)))
     >>^ fun is_empty ->
     if is_empty && not (is_standard name) then
-      Loc.fail loc "This recursive alias is empty.\n\
+      Loc.fail loc "This alias is empty.\n\
                     Alias %S is not defined in %s or any of its descendants."
         name (Path.to_string_maybe_quoted path)
 

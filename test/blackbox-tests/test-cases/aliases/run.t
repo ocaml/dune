@@ -13,7 +13,7 @@
   running in src
   $ $JBUILDER build -j1 --root . @plop
   File "<command-line>", line 1, characters 0-0:
-  Error: This recursive alias is empty.
+  Error: This alias is empty.
   Alias "plop" is not defined in . or any of its descendants.
   [1]
   $ $JBUILDER build -j1 --root . @truc/x

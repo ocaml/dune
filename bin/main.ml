@@ -62,9 +62,10 @@ let execve =
 module Main = struct
   include Jbuilder.Main
 
-  let setup ~log ?filter_out_optional_stanzas_with_missing_deps common =
+  let setup ~log ?unlink_aliases ?filter_out_optional_stanzas_with_missing_deps common =
     setup
       ~log
+      ?unlink_aliases
       ?workspace_file:common.workspace_file
       ?only_packages:common.only_packages
       ?filter_out_optional_stanzas_with_missing_deps ()
@@ -468,7 +469,8 @@ let runtest =
     ]
   in
   let name_ = Arg.info [] ~docv:"DIR" in
-  let go common dirs =
+  let go common force dirs =
+    let unlink_aliases = if force then Some ["runtest"] else None in
     set_common common
       ~targets:(List.map dirs ~f:(function
         | "" | "." -> "@runtest"
@@ -476,7 +478,7 @@ let runtest =
         | dir -> sprintf "@%s/runtest" dir));
     let log = Log.create () in
     Future.Scheduler.go ~log
-      (Main.setup ~log common >>= fun setup ->
+      (Main.setup ?unlink_aliases ~log common >>= fun setup ->
        let targets =
          List.map dirs ~f:(fun dir ->
            let dir = Path.(relative root) (prefix_target common dir) in
@@ -485,6 +487,7 @@ let runtest =
        do_build setup targets) in
   ( Term.(const go
           $ common
+          $ Arg.(value & flag & info ["force"; "f"])
           $ Arg.(value & pos_all string ["."] name_))
   , Term.info "runtest" ~doc ~man)
 

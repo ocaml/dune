@@ -1,4 +1,8 @@
+open Import
+
 type t
+
+val pp : t Fmt.t
 
 val make : string -> dir:Path.t -> t
 
@@ -51,6 +55,9 @@ val name_of_file : Path.t -> string option
 
 module Store : sig
   type t
+
+  val pp : t Fmt.t
+
   val create : unit -> t
 end
 

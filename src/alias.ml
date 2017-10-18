@@ -3,18 +3,24 @@ open! Import
 (** Fully qualified name *)
 module Fq_name : sig
   type t
+  val pp : Format.formatter -> t -> unit
   val make : Path.t -> t
   val path : t -> Path.t
 end = struct
   type t = Path.t
   let make t = t
   let path t = t
+  let pp = Path.pp
 end
 
 type t =
   { name : Fq_name.t
   ; file : Path.t
   }
+
+let pp fmt t =
+  Format.fprintf fmt "@[<2>{ name@ =@ %a@ ;@ file@ =@ %a }@]"
+    Path.pp (Fq_name.path t.name) Path.pp t.file
 
 let aliases_path = Path.(relative root) "_build/.aliases"
 
@@ -113,7 +119,23 @@ module Store = struct
     { alias : t
     ; mutable deps : Path.Set.t
     }
+  let pp_entry fmt entry =
+    let pp_deps fmt deps =
+      Format.pp_print_list Path.pp fmt (Path.Set.elements deps) in
+    Format.fprintf fmt "@[<2>{@ alias@ =@ %a@ ;@ deps@ = (%a)@ }@]"
+      pp entry.alias pp_deps entry.deps
+
   type t = (Fq_name.t, entry) Hashtbl.t
+
+  let pp fmt (t : t) =
+    let bindings = Hashtbl.fold ~init:[] ~f:(fun ~key ~data acc ->
+      (key, data)::acc
+    ) t in
+    let pp_bindings fmt b =
+      Format.pp_print_list (fun fmt (k, v) ->
+        Format.fprintf fmt "@[<2>(%a@ %a)@]" Fq_name.pp k pp_entry v
+      ) fmt b in
+    Format.fprintf fmt "Store.t@ @[@<2>(%a)@]" pp_bindings bindings
 
   let create () = Hashtbl.create 1024
 end

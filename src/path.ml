@@ -424,3 +424,5 @@ let rm_rf =
 let change_extension ~ext t =
   let t = try Filename.chop_extension t with Not_found -> t in
   t ^ ext
+
+let pp = Format.pp_print_string

@@ -200,6 +200,7 @@ module Dep_conf = struct
   type t =
     | File of String_with_vars.t
     | Alias of String_with_vars.t
+    | Alias_rec of String_with_vars.t
     | Glob_files of String_with_vars.t
     | Files_recursively_in of String_with_vars.t
 
@@ -211,6 +212,7 @@ module Dep_conf = struct
       sum
         [ cstr "file"                 (fun x -> File x)
         ; cstr "alias"                (fun x -> Alias x)
+        ; cstr "alias_rec"            (fun x -> Alias_rec x)
         ; cstr "glob_files"           (fun x -> Glob_files x)
         ; cstr "files_recursively_in" (fun x -> Files_recursively_in x)
         ]
@@ -226,6 +228,8 @@ module Dep_conf = struct
       List [Atom "file" ; String_with_vars.sexp_of_t t]
     | Alias t ->
       List [Atom "alias" ; String_with_vars.sexp_of_t t]
+    | Alias_rec t ->
+      List [Atom "alias_rec" ; String_with_vars.sexp_of_t t]
     | Glob_files t ->
       List [Atom "glob_files" ; String_with_vars.sexp_of_t t]
     | Files_recursively_in t ->

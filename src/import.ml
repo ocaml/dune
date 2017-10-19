@@ -504,3 +504,7 @@ let open_out_gen = `Use_Io
 module No_io = struct
   module Io = struct end
 end
+
+module Fmt = struct
+  type 'a t = Format.formatter -> 'a -> unit
+end

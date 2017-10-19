@@ -1,31 +1,25 @@
 open! Import
 
-type 'a fold_callback_result =
-  | Cont            of 'a
-  | Dont_recurse_in of String_set.t * 'a
-
 module Dir = struct
   type t =
     { path     : Path.t
     ; files    : String_set.t
     ; sub_dirs : t String_map.t
+    ; ignored  : bool
     }
 
   let path t = t.path
   let files t = t.files
   let sub_dirs t = t.sub_dirs
+  let ignored t = t.ignored
 
-  let rec fold t ~init ~f =
-    match f t init with
-    | Cont init ->
-      String_map.fold t.sub_dirs ~init ~f:(fun ~key:_ ~data:t acc ->
-        fold t ~init:acc ~f)
-    | Dont_recurse_in (forbidden, init) ->
-      String_map.fold t.sub_dirs ~init ~f:(fun ~key:sub_dir ~data:t acc ->
-        if String_set.mem sub_dir forbidden then
-          acc
-        else
-          fold t ~init:acc ~f)
+  let rec fold t ~traverse_ignored_dirs ~init:acc ~f =
+    if not traverse_ignored_dirs && t.ignored then
+      acc
+    else
+      let acc = f t acc in
+      String_map.fold t.sub_dirs ~init:acc ~f:(fun ~key:_ ~data:t acc ->
+        fold t ~traverse_ignored_dirs ~init:acc ~f)
 end
 
 type t =
@@ -40,38 +34,59 @@ let ignore_file fn ~is_directory =
   (is_directory && (fn.[0] = '.' || fn.[0] = '_')) ||
   (fn.[0] = '.' && fn.[1] = '#')
 
-let load path =
-  let rec walk path : Dir.t =
+let load ?(extra_ignored_subtrees=Path.Set.empty) path =
+  let rec walk path ~ignored : Dir.t =
     let files, sub_dirs =
       Path.readdir path
       |> List.filter_map ~f:(fun fn ->
         let path = Path.relative path fn in
-        let is_directory = Path.exists path && Path.is_directory path in
+        let is_directory =
+          try Path.is_directory path with _ -> false
+        in
         if ignore_file fn ~is_directory then
           None
+        else if is_directory then
+          Some (Inr (fn, path))
         else
-          Some (fn, path, is_directory))
-      |> List.partition_map ~f:(fun (fn, path, is_directory)  ->
-          if is_directory then
-            Inr (fn, walk path)
-          else
-            Inl fn)
+          Some (Inl fn))
+      |> List.partition_map ~f:(fun x -> x)
+    in
+    let files = String_set.of_list files in
+    let ignored_sub_dirs =
+      if not ignored && String_set.mem "jbuild-ignore" files then
+        String_set.of_list
+          (Io.lines_of_file (Path.to_string (Path.relative path "jbuild-ignore")))
+      else
+        String_set.empty
+    in
+    let sub_dirs =
+      List.map sub_dirs ~f:(fun (fn, path) ->
+        let ignored =
+          ignored
+          || String_set.mem fn ignored_sub_dirs
+          || Path.Set.mem path extra_ignored_subtrees
+        in
+        (fn, walk path ~ignored))
+      |> String_map.of_alist_exn
     in
     { path
-    ; files    = String_set.of_list files
-    ; sub_dirs = String_map.of_alist_exn sub_dirs
+    ; files
+    ; sub_dirs
+    ; ignored
     }
   in
-  let root = walk path in
+  let root = walk path ~ignored:false in
   let dirs =
-    Dir.fold root ~init:Path.Map.empty ~f:(fun dir acc ->
-      Cont (Path.Map.add acc ~key:dir.path ~data:dir))
+    Dir.fold root ~init:Path.Map.empty ~traverse_ignored_dirs:true
+      ~f:(fun dir acc ->
+        Path.Map.add acc ~key:dir.path ~data:dir)
   in
   { root
   ; dirs
   }
 
-let fold t ~init ~f = Dir.fold t.root ~init ~f
+let fold t ~traverse_ignored_dirs ~init ~f =
+  Dir.fold t.root ~traverse_ignored_dirs ~init ~f
 
 let find_dir t path =
   Path.Map.find path t.dirs
@@ -89,8 +104,8 @@ let files_recursively_in t ?(prefix_with=Path.root) path =
   match find_dir t path with
   | None -> Path.Set.empty
   | Some dir ->
-    Dir.fold dir ~init:Path.Set.empty ~f:(fun dir acc ->
-      let path = Path.append prefix_with (Dir.path dir) in
-      Cont
-        (String_set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->
-           Path.Set.add (Path.relative path fn) acc)))
+    Dir.fold dir ~init:Path.Set.empty ~traverse_ignored_dirs:true
+      ~f:(fun dir acc ->
+        let path = Path.append prefix_with (Dir.path dir) in
+        String_set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->
+          Path.Set.add (Path.relative path fn) acc))

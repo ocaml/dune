@@ -843,6 +843,10 @@ syntax:
 - ``(file <filename>)`` or simply ``<filename>``: depend on this file
 - ``(alias <alias-name>)``: depend on the construction of this alias, for
   instance: ``(alias src/runtest)``
+- ``(alias_rec <alias-name>)``: depend on the construction of this
+  alias recursively in all children directories wherever it is
+  defined. For instance: ``(alias_rec src/runtest)`` might depend on
+  ``(alias src/runtest)``, ``(alias src/foo/bar/runtest)``, ...
 - ``(glob_files <glob>)``: depend on all files matched by ``<glob>``, see the
   :ref:`glob <glob>` for details
 - ``(files_recursively_in <dir>)``: depend on all files in the subtree with root

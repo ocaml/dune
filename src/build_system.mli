@@ -23,16 +23,28 @@ module Build_error : sig
 end
 
 (** Do the actual build *)
-val do_build     : t -> Path.t list -> (unit Future.t, Build_error.t) result
-val do_build_exn : t -> Path.t list -> unit Future.t
+val do_build
+  :  t
+  -> request:(unit, unit) Build.t
+  -> (unit Future.t, Build_error.t) result
+val do_build_exn
+  :  t
+  -> request:(unit, unit) Build.t
+  -> unit Future.t
 
-(** Return all the library dependencies (as written by the user) needed to build these
-    targets *)
-val all_lib_deps : t -> Path.t list -> Build.lib_deps Path.Map.t
+(** Return all the library dependencies (as written by the user)
+   needed to build this request *)
+val all_lib_deps
+  :  t
+  -> request:(unit, unit) Build.t
+  -> Build.lib_deps Path.Map.t
 
-(** Return all the library dependencies required to build these targets, by context
-    name *)
-val all_lib_deps_by_context : t -> Path.t list -> Build.lib_deps String_map.t
+(** Return all the library dependencies required to build this
+   request, by context name *)
+val all_lib_deps_by_context
+  :  t
+  -> request:(unit, unit) Build.t
+  -> Build.lib_deps String_map.t
 
 (** List of all buildable targets *)
 val all_targets : t -> Path.t list
@@ -58,9 +70,9 @@ end
     [recursive] is [true], return all the rules needed to build the
     given targets and their transitive dependencies. *)
 val build_rules
-  :  t
-  -> ?recursive:bool (* default false *)
-  -> Path.t list
+  :  ?recursive:bool (* default false *)
+  -> t
+  -> request:(unit, unit) Build.t
   -> Rule.t list Future.t
 
 val all_targets_ever_built

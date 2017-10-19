@@ -93,6 +93,7 @@ module Dep_conf : sig
   type t =
     | File of String_with_vars.t
     | Alias of String_with_vars.t
+    | Alias_rec of String_with_vars.t
     | Glob_files of String_with_vars.t
     | Files_recursively_in of String_with_vars.t
 

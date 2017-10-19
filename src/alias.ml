@@ -3,18 +3,24 @@ open! Import
 (** Fully qualified name *)
 module Fq_name : sig
   type t
+  val pp : Format.formatter -> t -> unit
   val make : Path.t -> t
   val path : t -> Path.t
 end = struct
   type t = Path.t
   let make t = t
   let path t = t
+  let pp = Path.pp
 end
 
 type t =
   { name : Fq_name.t
   ; file : Path.t
   }
+
+let pp fmt t =
+  Format.fprintf fmt "@[<2>{ name@ =@ %a@ ;@ file@ =@ %a }@]"
+    Path.pp (Fq_name.path t.name) Path.pp t.file
 
 let aliases_path = Path.(relative root) "_build/.aliases"
 
@@ -32,11 +38,42 @@ let of_path path =
 let name t = Path.basename (Fq_name.path t.name)
 let dir  t = Path.parent   (Fq_name.path t.name)
 
+let fully_qualified_name t = Fq_name.path t.name
+
 let make name ~dir =
   assert (not (String.contains name '/'));
   of_path (Path.relative dir name)
 
 let dep t = Build.path t.file
+
+let is_standard = function
+  | "runtest" | "install" | "doc" -> true
+  | _ -> false
+
+let dep_rec ~loc ~file_tree t =
+  let path = Path.parent   (Fq_name.path t.name) |> Path.drop_build_context in
+  let name = Path.basename (Fq_name.path t.name) in
+  match File_tree.find_dir file_tree path with
+  | None -> Build.fail { fail = fun () ->
+    Loc.fail loc "Don't know about directory %s!" (Path.to_string_maybe_quoted path) }
+  | Some dir ->
+    let open Build.O in
+    File_tree.Dir.fold dir ~traverse_ignored_dirs:false ~init:(Build.return true)
+      ~f:(fun dir acc ->
+        let path = File_tree.Dir.path dir in
+        let t = of_path (Path.relative path name) in
+        acc
+        >>>
+        Build.if_file_exists t.file
+          ~then_:(Build.path t.file
+                  >>^
+                  fun _ -> false)
+          ~else_:(Build.arr (fun x -> x)))
+    >>^ fun is_empty ->
+    if is_empty && not (is_standard name) then
+      Loc.fail loc "This alias is empty.\n\
+                    Alias %S is not defined in %s or any of its descendants."
+        name (Path.to_string_maybe_quoted path)
 
 let file t = t.file
 
@@ -77,19 +114,28 @@ let runtest = make "runtest"
 let install = make "install"
 let doc     = make "doc"
 
-let recursive_aliases =
-  [ default
-  ; runtest
-  ; install
-  ; doc
-  ]
-
 module Store = struct
   type entry =
     { alias : t
     ; mutable deps : Path.Set.t
     }
+  let pp_entry fmt entry =
+    let pp_deps fmt deps =
+      Format.pp_print_list Path.pp fmt (Path.Set.elements deps) in
+    Format.fprintf fmt "@[<2>{@ alias@ =@ %a@ ;@ deps@ = (%a)@ }@]"
+      pp entry.alias pp_deps entry.deps
+
   type t = (Fq_name.t, entry) Hashtbl.t
+
+  let pp fmt (t : t) =
+    let bindings = Hashtbl.fold ~init:[] ~f:(fun ~key ~data acc ->
+      (key, data)::acc
+    ) t in
+    let pp_bindings fmt b =
+      Format.pp_print_list (fun fmt (k, v) ->
+        Format.fprintf fmt "@[<2>(%a@ %a)@]" Fq_name.pp k pp_entry v
+      ) fmt b in
+    Format.fprintf fmt "Store.t@ @[@<2>(%a)@]" pp_bindings bindings
 
   let create () = Hashtbl.create 1024
 end
@@ -104,22 +150,7 @@ let add_deps store t deps =
             }
   | Some e -> e.deps <- Path.Set.union deps e.deps
 
-type tree = Node of Path.t * tree list
-
-let rec setup_rec_alias store ~make_alias ~prefix ~tree:(Node (dir, children)) =
-  let alias = make_alias ~dir:(Path.append prefix dir) in
-  add_deps store alias (List.map children ~f:(fun child ->
-    setup_rec_alias store ~make_alias ~prefix ~tree:child));
-  alias.file
-
-let setup_rec_aliases store ~prefix ~tree =
-  List.iter recursive_aliases ~f:(fun make_alias ->
-    ignore (setup_rec_alias store ~make_alias ~prefix ~tree : Path.t))
-
-let rules store ~prefixes ~tree =
-  List.iter prefixes ~f:(fun prefix ->
-    setup_rec_aliases store ~prefix ~tree);
-
+let rules store =
   (* For each alias @_build/blah/../x, add a dependency: @../x --> @_build/blah/../x *)
   Hashtbl.fold store ~init:[] ~f:(fun ~key:_ ~data:{ Store. alias; _ } acc ->
     match Path.extract_build_context (Fq_name.path alias.name) with

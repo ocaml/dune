@@ -1,6 +1,12 @@
+open Import
+
 type t
 
+val pp : t Fmt.t
+
 val make : string -> dir:Path.t -> t
+
+val of_path : Path.t -> t
 
 (** The following always holds:
 
@@ -11,12 +17,18 @@ val make : string -> dir:Path.t -> t
 val name : t -> string
 val dir  : t -> Path.t
 
+val fully_qualified_name : t -> Path.t
+
 val default : dir:Path.t -> t
 val runtest : dir:Path.t -> t
 val install : dir:Path.t -> t
 val doc     : dir:Path.t -> t
 
 val dep : t -> ('a, 'a) Build.t
+
+(** Implements [(alias_rec ...)] in dependency specification and
+    [@alias] on the command line. *)
+val dep_rec : loc:Loc.t -> file_tree:File_tree.t -> t -> (unit, unit) Build.t
 
 (** File that represent the alias in the filesystem. It is a file under
     [_build/.aliases]. *)
@@ -43,15 +55,12 @@ val name_of_file : Path.t -> string option
 
 module Store : sig
   type t
+
+  val pp : t Fmt.t
+
   val create : unit -> t
 end
 
 val add_deps : Store.t -> t -> Path.t list -> unit
 
-type tree = Node of Path.t * tree list
-
-val rules
-  :  Store.t
-  -> prefixes:Path.t list
-  -> tree:tree
-  -> Build_interpret.Rule.t list
+val rules : Store.t -> Build_interpret.Rule.t list

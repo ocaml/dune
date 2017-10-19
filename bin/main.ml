@@ -830,7 +830,13 @@ let exec =
     let log = Log.create () in
     let setup = Future.Scheduler.go ~log (Main.setup ~log common) in
     let context = Main.find_context_exn setup ~name:context in
-    let path = Config.local_install_bin_dir ~context:context.name :: context.path in
+    let (prog, path) =
+      if String.contains prog '/' then (
+        let p = Path.of_string prog in
+        (Path.basename p, [Path.append context.build_dir (Path.parent p)])
+      ) else (
+        (prog, Config.local_install_bin_dir ~context:context.name :: context.path)
+      ) in
     match Bin.which ~path prog with
     | None ->
       Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;

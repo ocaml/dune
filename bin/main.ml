@@ -390,9 +390,7 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
           if Path.is_root path then
             die "@@ on the command line must be followed by a valid alias name"
           else
-            let dir = Path.parent path in
-            let name = Path.basename path in
-            [Alias_rec (Alias.make ~dir name)]
+            [Alias_rec (Alias.of_path path)]
         else
           let path = Path.relative Path.root (prefix_target common s) in
           let can't_build path =

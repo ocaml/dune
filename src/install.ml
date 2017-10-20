@@ -31,6 +31,9 @@ module Section = struct
     | Man        -> "man"
     | Misc       -> "misc"
 
+  let pp fmt t =
+    Format.pp_print_string fmt (String.capitalize_ascii (to_string t))
+
   let t =
     let open Sexp.Of_sexp in
     enum
@@ -55,6 +58,15 @@ module Entry = struct
     ; dst     : string option
     ; section : Section.t
     }
+
+  let pp fmt t =
+    Format.fprintf fmt "@[<2>{@ src@ =@ %a@ ; dst@ =@ %a@ ;@ section@ =@ %a@ }@]"
+      Path.pp t.src
+      (fun fmt -> function
+       | None -> Format.pp_print_string fmt "None"
+       | Some s -> Format.fprintf fmt "%S" s)
+      t.dst
+      Section.pp t.section
 
   let make section ?dst src =
     let dst =

@@ -47,7 +47,7 @@ let make name ~dir =
 let dep t = Build.path t.file
 
 let is_standard = function
-  | "runtest" | "install" | "doc" -> true
+  | "runtest" | "install" | "doc" | "exe" -> true
   | _ -> false
 
 let dep_rec ~loc ~file_tree t =
@@ -113,6 +113,7 @@ let default = make "DEFAULT"
 let runtest = make "runtest"
 let install = make "install"
 let doc     = make "doc"
+let exe     = make "exe"
 
 module Store = struct
   type entry =

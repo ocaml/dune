@@ -816,12 +816,15 @@ let exec =
   in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|$(b,jbuilder exec -- COMMAND) should behave in the same way as if you do:|}
+    ; `P {|$(b,jbuilder exec -- COMMAND) when COMMAND doesn't have a / will
+           behave in the same way as if you do:|}
     ; `Pre "  \\$ jbuilder install\n\
            \  \\$ COMMAND"
     ; `P {|In particular if you run $(b,jbuilder exec ocaml), you will have access
            to the libraries defined in the workspace using your usual directives
            ($(b,#require) for instance)|}
+    ; `P {|When a / is present in the command, then the path is interpreted
+           relative to the build path of the specified context|}
     ; `Blocks help_secs
     ]
   in

@@ -40,7 +40,7 @@ let parse_deps ~dir lines ~modules ~alias_module ~lib_interface_module =
                 This doesn't make sense to me.\n\
                 \n\
                 %s is the main module of the library and is the only module exposed \n\
-                outside of the library. Consequently it should be the one dependending \n\
+                outside of the library. Consequently, it should be the one depending \n\
                 on all the other modules in the library."
              unit (Path.to_string dir) m.name m.name);
       let deps =

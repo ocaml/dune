@@ -816,19 +816,18 @@ let exec =
   in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|$(b,jbuilder exec -- COMMAND) when COMMAND doesn't have a / will
-           behave in the same way as if you do:|}
+    ; `P {|$(b,jbuilder exec -- COMMAND) should behave in the same way as if you
+           do:|}
     ; `Pre "  \\$ jbuilder install\n\
            \  \\$ COMMAND"
-    ; `P {|In particular if you run $(b,jbuilder exec ocaml), you will have access
-           to the libraries defined in the workspace using your usual directives
-           ($(b,#require) for instance)|}
+    ; `P {|In particular if you run $(b,jbuilder exec ocaml), you will have
+           access to the libraries defined in the workspace using your usual
+           directives ($(b,#require) for instance)|}
     ; `P {|When a leading / is present in the command (absolute path), then the
-           path is interpreted relative to the build path of the specified
-           context|}
+           path is interpreted as an absolute path|}
     ; `P {|When a / is present at any other position (relative path), then the
-           path is interpeted as relative to the specified build context +
-           current working directory|}
+           path is interpreted as relative to the build context + current
+           working directory |}
     ; `Blocks help_secs
     ]
   in
@@ -846,11 +845,7 @@ let exec =
         let p = Path.of_string prog in
         let path =
           if i = 0 then (
-            String.drop_prefix prog ~prefix:"/"
-            |> Option.value_exn
-            |> Path.of_string
-            |> Path.parent
-            |> Path.append context.build_dir
+            Path.parent p
           ) else (
             let cwd_part =
               String.drop_prefix runcwd ~prefix:common.root

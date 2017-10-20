@@ -209,6 +209,15 @@ module String = struct
     len >= suffix_len &&
     sub s ~pos:(len - suffix_len) ~len:suffix_len = suffix
 
+  let drop_prefix s ~prefix =
+    if is_prefix s ~prefix then
+      if length s = length prefix then
+        Some ""
+      else
+        Some (sub s ~pos:(length prefix) ~len:(length s - length prefix - 1))
+    else
+      None
+
   include struct
     [@@@warning "-3"]
     let capitalize_ascii   = String.capitalize

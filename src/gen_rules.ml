@@ -410,7 +410,13 @@ module Gen(P : Params) = struct
       );
 
     (* Odoc *)
-    Odoc.setup_library_rules sctx lib ~dir ~requires ~modules ~dep_graph;
+    let mld_files =
+      String_set.fold files ~init:[] ~f:(fun fn acc ->
+        if Filename.check_suffix fn ".mld" then fn :: acc else acc)
+    in
+    Odoc.setup_library_rules sctx lib ~dir ~requires ~modules ~dep_graph
+      ~mld_files
+    ;
 
     let flags =
       match alias_module with

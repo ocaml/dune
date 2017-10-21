@@ -9,104 +9,138 @@ let ( ++ ) = Path.relative
 let get_odoc sctx = SC.resolve_program sctx "odoc" ~hint:"opam install odoc"
 let odoc_ext = ".odoc"
 
-let module_deps (m : Module.t) ~dir ~dep_graph ~modules =
+module Mld = struct
+  type t = {
+    name : string; (** source file name without the extension. *)
+    odoc_input_name : string;
+    odoc_file_name  : string;
+  }
+
+  let odoc_file ~dir {odoc_file_name; _} =
+    Path.relative dir odoc_file_name
+
+  let odoc_input ~dir {odoc_input_name; _} =
+    Path.relative dir odoc_input_name
+end
+
+module Module_or_mld = struct
+  type t =
+    | Mld of Mld.t
+    | Module of Module.t
+
+  let odoc_file ~dir = function
+    | Mld m -> Mld.odoc_file ~dir m
+    | Module m -> Module.odoc_file ~dir m
+
+  let odoc_input ~dir = function
+    | Mld m -> Mld.odoc_input ~dir m
+    | Module m -> Module.cmti_file m ~dir
+end
+
+let module_or_mld_deps (m : Module_or_mld.t) ~dir ~dep_graph ~modules =
   Build.dyn_paths
     (dep_graph
      >>^ fun graph ->
-     List.map (Utils.find_deps ~dir graph m.name)
-       ~f:(fun name ->
-         let m = Utils.find_module ~dir modules name in
-         Module.odoc_file m ~dir))
+     match m with
+     | Mld _ -> []
+     | Module m ->
+       List.map (Utils.find_deps ~dir graph m.name)
+         ~f:(fun name ->
+           let m = Utils.find_module ~dir modules name in
+           Module.odoc_file m ~dir))
 
-let compile_module sctx (m : Module.t) ~odoc ~dir ~includes ~dep_graph ~modules
-      ~lib_public_name =
+let compile sctx (m : Module_or_mld.t) ~odoc ~dir ~includes ~dep_graph
+      ~modules ~lib_public_name =
   let context = SC.context sctx in
-  let odoc_file = Module.odoc_file m ~dir in
+  let odoc_file = Module_or_mld.odoc_file m ~dir in
   SC.add_rule sctx
-    (module_deps m ~dir ~dep_graph ~modules
+    (module_or_mld_deps m ~dir ~dep_graph ~modules
      >>>
      includes
      >>>
      Build.run ~context ~dir odoc ~extra_targets:[odoc_file]
        [ A "compile"
-       ; Dyn (fun x -> x)
        ; A "-I"; Path dir
+       ; Dyn (fun x -> x)
        ; As ["--pkg"; lib_public_name]
-       ; Dep (Module.cmti_file m ~dir)
+       ; A "-o"; Path odoc_file
+       ; Dep (Module_or_mld.odoc_input m ~dir)
        ]);
   (m, odoc_file)
 
-let to_html sctx (m : Module.t) odoc_file ~doc_dir ~odoc ~dir ~includes
+let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
       ~lib_public_name ~(lib : Library.t) =
   let context = SC.context sctx in
-  let html_dir = doc_dir ++ lib_public_name ++ String.capitalize_ascii m.obj_name in
-  let html_file = html_dir ++ "index.html" in
-  SC.add_rule sctx
-    (SC.Libs.static_file_deps (dir, lib) ~ext:odoc_ext
-     >>>
-     includes
-     >>>
-     Build.progn
-       [ Build.remove_tree html_dir
-       ; Build.mkdir html_dir
-       ; Build.run ~context ~dir odoc ~extra_targets:[html_file]
-           [ A "html"
-           ; Dyn (fun x -> x)
-           ; A "-I"; Path dir
-           ; A "-o"; Path doc_dir
-           ; Dep odoc_file
-           ]
-       ; Build.create_file (html_dir ++ Config.jbuilder_keep_fname)
-       ]
-    );
-  html_file
-
-let lib_index sctx ~odoc ~dir ~(lib : Library.t) ~lib_public_name ~doc_dir ~modules
-      ~includes =
-  let context = SC.context sctx in
-  let generated_index_mld = dir ++ sprintf "%s-generated.mld" lib.name in
-  let source_index_mld = dir ++ sprintf "%s.mld" lib.name in
-  let header = {|{%html:<nav><a href="../index.html">Up</a></nav>%}|} in
-  SC.add_rule sctx
-    (Build.if_file_exists source_index_mld
-       ~then_:(Build.contents source_index_mld
-               >>^ fun s -> sprintf "%s\n%s" header s)
-       ~else_:(Build.arr (fun () ->
-         (if lib.wrapped then
-            sprintf
-              "%s\n\
-               {1 Library %s}\n\
-               The entry point for this library is module {!module:%s}."
-              header
-              lib_public_name
-              (String.capitalize_ascii lib.name)
-          else
-            sprintf
-              "%s\n\
-               {1 Library %s}\n\
-               This library exposes the following toplevel modules: {!modules:%s}."
-              header
-              lib_public_name
-              (String_map.keys modules |> String.concat ~sep:" "))))
-     >>>
-     Build.write_file_dyn generated_index_mld);
-  let html_file =
-    doc_dir ++ lib_public_name ++ "index.html"
+  let to_remove, html_dir, html_file, jbuilder_keep =
+    match m with
+    | Mld m ->
+      let html_dir = doc_dir ++ lib_public_name in
+      let html_file = html_dir ++ (m.Mld.name ^ ".html") in
+      html_file, html_dir, html_file, []
+    | Module m ->
+      let html_dir = doc_dir ++ lib_public_name ++ String.capitalize_ascii m.obj_name in
+      let html_file = html_dir ++ "index.html" in
+      let jbuilder_keep =
+       Build.create_file (html_dir ++ Config.jbuilder_keep_fname)
+      in
+      html_dir, html_dir, html_file, [jbuilder_keep]
   in
   SC.add_rule sctx
     (SC.Libs.static_file_deps (dir, lib) ~ext:odoc_ext
      >>>
      includes
      >>>
-     Build.run ~context ~dir odoc ~extra_targets:[html_file]
-       [ A "html"
-       ; Dyn (fun x -> x)
-       ; A "-I"; Path dir
-       ; A "-o"; Path doc_dir
-       ; A "--index-for"; A lib_public_name
-       ; Dep generated_index_mld
-       ]);
+     Build.progn (
+       Build.remove_tree to_remove
+       :: Build.mkdir html_dir
+       :: Build.run ~context ~dir odoc ~extra_targets:[html_file]
+            [ A "html"
+            ; A "-I"; Path dir
+            ; Dyn (fun x -> x)
+            ; A "-o"; Path doc_dir
+            ; Dep odoc_file
+            ]
+       :: jbuilder_keep
+     )
+    );
   html_file
+
+let all_mld_files sctx ~(lib : Library.t) ~lib_public_name ~modules ~dir files =
+  let header = {|{%html:<nav><a href="../index.html">Up</a></nav>%}|} in
+  let all_files =
+    if List.mem "index.mld" ~set:files then files else "index.mld" :: files
+  in
+  List.map all_files ~f:(fun file ->
+    let name = Filename.chop_extension file in
+    let odoc_input_name = sprintf "%s-generated.mld" name in
+    let odoc_file_name = sprintf "page-%s%s" name odoc_ext in
+    let generated_mld = dir ++ odoc_input_name in
+    let source_mld = dir ++ file in
+    SC.add_rule sctx
+      (Build.if_file_exists source_mld
+         ~then_:(Build.contents source_mld
+                 >>^ fun s -> sprintf "%s\n%s" header s)
+         ~else_:(Build.arr (fun () ->
+           (if lib.wrapped then
+              sprintf
+                "%s\n\
+                 {1 Library %s}\n\
+                 The entry point for this library is module {!module:%s}."
+                header
+                lib_public_name
+                (String.capitalize_ascii lib.name)
+            else
+              sprintf
+                "%s\n\
+                 {1 Library %s}\n\
+                 This library exposes the following toplevel modules: {!modules:%s}."
+                header
+                lib_public_name
+                (String_map.keys modules |> String.concat ~sep:" "))))
+       >>>
+       Build.write_file_dyn generated_mld);
+    { Mld. name; odoc_file_name; odoc_input_name }
+  )
 
 let doc_dir ~context = Path.relative context.Context.build_dir "_doc"
 
@@ -114,8 +148,8 @@ let css_file ~doc_dir = doc_dir ++ "odoc.css"
 
 let toplevel_index ~doc_dir = doc_dir ++ "index.html"
 
-let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
-      ~(dep_graph:Ocamldep.dep_graph) =
+let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
+      ~requires ~(dep_graph:Ocamldep.dep_graph) =
   Option.iter lib.public ~f:(fun public ->
     let context = SC.context sctx in
     let dep_graph =
@@ -138,13 +172,23 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
          SC.Libs.file_deps sctx ~ext:odoc_ext
          >>^ Lib.include_flags)
     in
-    let modules_and_odoc_files =
-      List.map (String_map.values modules)
-        ~f:(compile_module sctx ~odoc ~dir ~includes ~dep_graph ~modules
-              ~lib_public_name:public.name)
+    let mld_files =
+      all_mld_files sctx ~dir ~lib ~lib_public_name:public.name
+        ~modules mld_files
     in
+    let mld_and_odoc_files =
+      List.map mld_files ~f:(fun m ->
+        compile sctx ~odoc ~dir ~includes ~dep_graph ~modules
+          ~lib_public_name:public.name (Mld m))
+    in
+    let modules_and_odoc_files =
+      List.map (String_map.values modules) ~f:(fun m ->
+        compile sctx ~odoc ~dir ~includes ~dep_graph ~modules
+          ~lib_public_name:public.name (Module m))
+    in
+    let inputs_and_odoc_files = modules_and_odoc_files @ mld_and_odoc_files in
     SC.Libs.setup_file_deps_alias sctx ~ext:odoc_ext (dir, lib)
-      (List.map modules_and_odoc_files ~f:snd);
+      (List.map inputs_and_odoc_files ~f:snd);
     let doc_dir = doc_dir ~context in
     (*
     let modules_and_odoc_files =
@@ -156,18 +200,13 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
         modules_and_odoc_files
        in*)
     let html_files =
-      List.map modules_and_odoc_files ~f:(fun (m, odoc_file) ->
+      List.map inputs_and_odoc_files ~f:(fun (m, odoc_file) ->
         to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~lib
           ~lib_public_name:public.name)
-    in
-    let lib_index_html =
-      lib_index sctx ~dir ~lib ~lib_public_name:public.name ~doc_dir
-        ~modules ~includes ~odoc
     in
     Alias.add_deps (SC.aliases sctx) (Alias.doc ~dir)
       (css_file ~doc_dir
        :: toplevel_index ~doc_dir
-       :: lib_index_html
        :: html_files))
 
 let setup_css_rule sctx =

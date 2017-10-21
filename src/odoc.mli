@@ -8,6 +8,7 @@ val setup_library_rules
   -> Library.t
   -> dir:Path.t
   -> modules:Module.t String_map.t
+  -> mld_files:string list
   -> requires:(unit, Lib.t list) Build.t
   -> dep_graph:Ocamldep.dep_graph
   -> unit

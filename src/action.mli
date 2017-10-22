@@ -15,7 +15,7 @@ end
 module Outputs : module type of struct include Action_intf.Outputs end
 
 module Maybe_prog : sig
-  type t = Found of Path.t | Not_found of string
+  type t = Found of Path.t | Not_found of exn
 end
 
 include Action_intf.Ast

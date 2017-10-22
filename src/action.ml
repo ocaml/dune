@@ -129,11 +129,19 @@ module Make_mapper
 end
 
 module Maybe_prog = struct
-  type t = Found of Path.t | Not_found of string
-  let t _ = Not_found ""
+  type t = Found of Path.t | Not_found of exn
+
+  let t sexp =
+    sum
+      [ cstr "found" (Path.t @> nil) (fun t -> Found t)
+      ; cstr "not_found" (Sexp.Of_sexp.string @> nil)
+          (fun t -> Not_found (Fatal_error t))
+      ] sexp
+
   let sexp_of_t = function
-    | Found p -> Path.sexp_of_t p
-    | Not_found s -> Sexp.Atom s
+    | Found p -> Sexp.List [Atom "found"; Path.sexp_of_t p]
+    | Not_found (Fatal_error s) -> List [Atom "not_found"; Atom s]
+    | Not_found e -> List [Atom "not_found"; Atom (Printexc.to_string e)]
 end
 
 module type Ast = Action_intf.Ast
@@ -521,7 +529,7 @@ let run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
 
 let run_maybe ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
   match prog with
-  | Maybe_prog.Not_found _ -> failwith "Not_found"
+  | Maybe_prog.Not_found e -> raise e
   | Maybe_prog.Found prog ->
     let stdout_to = get_std_output stdout_to in
     let stderr_to = get_std_output stderr_to in

@@ -527,17 +527,6 @@ let run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
     ~purpose:ectx.purpose
     (Path.reach_for_running ~from:dir prog) args
 
-let run_maybe ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
-  match prog with
-  | Maybe_prog.Not_found e -> raise e
-  | Maybe_prog.Found prog ->
-    let stdout_to = get_std_output stdout_to in
-    let stderr_to = get_std_output stderr_to in
-    let env = Context.extend_env ~vars:env_extra ~env:ectx.env in
-    Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to ~stderr_to
-      ~purpose:ectx.purpose
-      (Path.reach_for_running ~from:dir prog) args
-
 let exec_echo stdout_to str =
   return
     (match stdout_to with
@@ -546,8 +535,10 @@ let exec_echo stdout_to str =
 
 let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   match t with
-  | Run (prog, args) ->
-    run_maybe ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args
+  | Run (Maybe_prog.Not_found e, _) ->
+    raise e
+  | Run (Found prog, args) ->
+    run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args
   | Chdir (dir, t) ->
     exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
   | Setenv (var, value, t) ->

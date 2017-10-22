@@ -14,8 +14,12 @@ end
 
 module Outputs : module type of struct include Action_intf.Outputs end
 
+module Maybe_prog : sig
+  type t = Found of Path.t | Not_found of string
+end
+
 include Action_intf.Ast
-  with type program := Path.t
+  with type program := Maybe_prog.t
   with type path    := Path.t
   with type string  := string
 

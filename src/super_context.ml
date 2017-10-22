@@ -87,7 +87,7 @@ let resolve_program_internal t ?hint ?(in_the_tree=true) bin =
 
 let resolve_program t ?hint ?in_the_tree bin =
   match resolve_program_internal t ?hint ?in_the_tree bin with
-  | Error fail -> Build.Prog_spec.Dyn (fun _ -> fail.fail ())
+  | Error _ -> Build.Prog_spec.Missing
   | Ok    path -> Build.Prog_spec.Dep path
 
 let create

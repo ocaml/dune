@@ -78,6 +78,7 @@ val memoize : string -> (unit, 'a) t -> (unit, 'a) t
 
 module Prog_spec : sig
   type 'a t =
+    | Missing
     | Dep of Path.t
     | Dyn of ('a -> Path.t)
 end

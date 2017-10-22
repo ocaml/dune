@@ -128,14 +128,22 @@ module Make_mapper
     | Digest_files x -> Digest_files (List.map x ~f:f_path)
 end
 
+module Maybe_prog = struct
+  type t = Found of Path.t | Not_found of string
+  let t _ = Not_found ""
+  let sexp_of_t = function
+    | Found p -> Path.sexp_of_t p
+    | Not_found s -> Sexp.Atom s
+end
+
 module type Ast = Action_intf.Ast
-  with type program = Path.t
+  with type program = Maybe_prog.t
   with type path    = Path.t
   with type string  = String.t
 module rec Ast : Ast = Ast
 
 include Make_ast
-    (Path)
+    (Maybe_prog)
     (Path)
     (struct
       type t = string
@@ -169,8 +177,8 @@ module Unresolved = struct
   let resolve t ~f =
     map t ~f_path:(fun x -> x) ~f_string:(fun x -> x)
       ~f_program:(function
-        | This p -> p
-        | Search s -> f s)
+        | This p -> Maybe_prog.Found p
+        | Search s -> Maybe_prog.Found (f s))
 end
 
 module Var_expansion = struct
@@ -511,6 +519,17 @@ let run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
     ~purpose:ectx.purpose
     (Path.reach_for_running ~from:dir prog) args
 
+let run_maybe ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
+  match prog with
+  | Maybe_prog.Not_found _ -> failwith "Not_found"
+  | Maybe_prog.Found prog ->
+    let stdout_to = get_std_output stdout_to in
+    let stderr_to = get_std_output stderr_to in
+    let env = Context.extend_env ~vars:env_extra ~env:ectx.env in
+    Future.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to ~stderr_to
+      ~purpose:ectx.purpose
+      (Path.reach_for_running ~from:dir prog) args
+
 let exec_echo stdout_to str =
   return
     (match stdout_to with
@@ -520,7 +539,7 @@ let exec_echo stdout_to str =
 let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   match t with
   | Run (prog, args) ->
-    run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args
+    run_maybe ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args
   | Chdir (dir, t) ->
     exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
   | Setenv (var, value, t) ->
@@ -657,7 +676,10 @@ let sandbox t ~sandboxed ~deps ~targets =
           Some (Ast.Symlink (path, sandboxed path))
         else
           None))
-    ; map t ~f_string:(fun x -> x) ~f_path:sandboxed ~f_program:sandboxed
+    ; map t ~f_string:(fun x -> x) ~f_path:sandboxed
+        ~f_program:(function
+        | Maybe_prog.Found p -> Maybe_prog.Found (sandboxed p)
+        | Maybe_prog.Not_found _ as e -> e)
     ; Progn (List.filter_map targets ~f:(fun path ->
         if Path.is_local path then
           Some (Ast.Rename (sandboxed path, path))
@@ -680,7 +702,8 @@ module Infer = struct
 
   let rec infer acc t =
     match t with
-    | Run (prog, _)        -> acc +< prog
+    | Run (Maybe_prog.Found prog, _)        -> acc +< prog
+    | Run (Maybe_prog.Not_found _, _) -> acc
     | Redirect (_, fn, t)  -> infer (acc +@ fn) t
     | Cat fn               -> acc +< fn
     | Write_file (fn, _)  -> acc +@ fn

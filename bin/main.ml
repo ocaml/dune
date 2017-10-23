@@ -828,6 +828,9 @@ let exec =
     ; `P {|When a / is present at any other position (relative path), then the
            path is interpreted as relative to the build context + current
            working directory |}
+    ; `P {|When this command is ran outside of the project root (in conjunction
+         with setting the $(b,--root) option manually), the path will always be
+         treated as relative to $(b,--root)|}
     ; `Blocks help_secs
     ]
   in
@@ -847,11 +850,11 @@ let exec =
           if i = 0 then (
             Path.parent p
           ) else (
-            let cwd_part =
-              String.drop_prefix runcwd ~prefix:common.root
-              |> Option.value_exn
-            in
-            Path.append (Path.relative context.build_dir cwd_part) (Path.parent p)
+            match String.drop_prefix runcwd ~prefix:common.root with
+            | None ->
+              Path.parent p
+            | Some s ->
+              Path.append (Path.relative context.build_dir s) (Path.parent p)
           ) in
         (Path.basename p, [path]) in
     match Bin.which ~path prog with

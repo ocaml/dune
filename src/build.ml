@@ -8,7 +8,6 @@ end
 
 module Prog_spec = struct
   type 'a t =
-    | Missing of fail
     | Dep of Path.t
     | Dyn of ('a -> Path.t)
 end
@@ -198,9 +197,10 @@ let store_vfile spec = Store_vfile spec
 let get_prog (prog : _ Prog_spec.t) =
   let open Action.Maybe_prog in
   match prog with
-  | Missing s -> arr (fun _ -> Not_found (try s.fail () with e -> e))
   | Dep p -> path p >>> arr (fun _ -> Found p)
-  | Dyn f -> arr f >>> dyn_paths (arr (fun x -> [x])) >>^ (fun x -> Found x)
+  | Dyn f ->
+    arr (fun x -> try Found (f x) with e -> Not_found e)
+    >>> dyn_paths (arr (function Not_found _ -> [] | Found x -> [x]))
 
 let prog_and_args ?(dir=Path.root) prog args =
   Paths (Arg_spec.add_deps args Pset.empty)

@@ -255,6 +255,11 @@ let copy ~src ~dst =
   path src >>>
   action ~targets:[dst] (Copy (src, dst))
 
+let copy_and_add_line_directive ~src ~dst =
+  path src >>>
+  action ~targets:[dst]
+    (Copy_and_add_line_directive (src, dst))
+
 let symlink ~src ~dst =
   path src >>>
   action ~targets:[dst] (Symlink (src, dst))

@@ -12,7 +12,7 @@ let infer (a : Action.t) =
   (List.map (Path.Set.elements x.deps) ~f:Path.to_string,
    List.map (Path.Set.elements x.targets) ~f:Path.to_string)
 [%%expect{|
-val p : string -> Jbuilder.Path.t = <fun>
+val p : ?error_loc:Jbuilder.Loc.t -> string -> Jbuilder.Path.t = <fun>
 val infer : Jbuilder.Action.t -> string list * string list = <fun>
 |}]
 

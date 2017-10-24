@@ -200,6 +200,7 @@ module Dep_conf = struct
   type t =
     | File of String_with_vars.t
     | Alias of String_with_vars.t
+    | Alias_rec of String_with_vars.t
     | Glob_files of String_with_vars.t
     | Files_recursively_in of String_with_vars.t
 
@@ -211,6 +212,7 @@ module Dep_conf = struct
       sum
         [ cstr "file"                 (fun x -> File x)
         ; cstr "alias"                (fun x -> Alias x)
+        ; cstr "alias_rec"            (fun x -> Alias_rec x)
         ; cstr "glob_files"           (fun x -> Glob_files x)
         ; cstr "files_recursively_in" (fun x -> Files_recursively_in x)
         ]
@@ -226,6 +228,8 @@ module Dep_conf = struct
       List [Atom "file" ; String_with_vars.sexp_of_t t]
     | Alias t ->
       List [Atom "alias" ; String_with_vars.sexp_of_t t]
+    | Alias_rec t ->
+      List [Atom "alias_rec" ; String_with_vars.sexp_of_t t]
     | Glob_files t ->
       List [Atom "glob_files" ; String_with_vars.sexp_of_t t]
     | Files_recursively_in t ->
@@ -442,6 +446,7 @@ module Buildable = struct
     ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
     ; js_of_ocaml              : Js_of_ocaml.t
+    ; gen_dot_merlin           : bool
     }
 
   let v1 =
@@ -471,6 +476,7 @@ module Buildable = struct
       ; ocamlc_flags
       ; ocamlopt_flags
       ; js_of_ocaml
+      ; gen_dot_merlin = true
       }
 
   let single_preprocess t =
@@ -722,6 +728,7 @@ module Rule = struct
     ; deps     : Dep_conf.t list
     ; action   : Action.Unexpanded.t
     ; fallback : Fallback.t
+    ; locks    : String_with_vars.t list
     ; loc      : Loc.t
     }
 
@@ -732,18 +739,21 @@ module Rule = struct
       ; deps     = []
       ; action   = Action.Unexpanded.t sexp
       ; fallback = No
-      ; loc = Loc.none
+      ; locks    = []
+      ; loc      = Loc.none
       }
     | _ ->
       record
         (field "targets" (list file_in_current_dir)    >>= fun targets ->
          field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
          field "action"  Action.Unexpanded.t           >>= fun action ->
+         field "locks"   (list String_with_vars.t) ~default:[] >>= fun locks ->
          field_b "fallback" >>= fun fallback ->
          return { targets = Static targets
                 ; deps
                 ; action
                 ; fallback = if fallback then Yes else No
+                ; locks
                 ; loc = Loc.none
                 })
         sexp
@@ -765,6 +775,7 @@ module Rule = struct
                   ; S.virt_var __POS__"<"
                   ]))
       ; fallback = Not_possible
+      ; locks = []
       ; loc
       })
 
@@ -780,6 +791,7 @@ module Rule = struct
              Run (S.virt_text __POS__ "ocamlyacc",
                   [S.virt_var __POS__ "<"]))
       ; fallback = Not_possible
+      ; locks = []
       ; loc
       })
 end
@@ -818,7 +830,8 @@ module Menhir = struct
               (S.virt_var __POS__ "ROOT",
                Run (S.virt_text __POS__ "menhir",
                     t.flags @ [S.virt_var __POS__ "<"]))
-       ; fallback = Not_possible
+        ; fallback = Not_possible
+        ; locks = []
        ; loc
        })
     | Some merge_into ->
@@ -830,13 +843,15 @@ module Menhir = struct
            Chdir
              (S.virt_var __POS__ "ROOT",
               Run (S.virt_text __POS__ "menhir",
-                   [ S.virt_text __POS__ "--base"
-                   ; S.virt_text __POS__ merge_into
-                   ]
-                   @ t.flags
-                   @ (List.map ~f:mly t.modules))
-             )
+                   List.concat
+                     [ [ S.virt_text __POS__ "--base"
+                       ; S.virt_var __POS__ ("path-no-dep:" ^ merge_into)
+                       ]
+                     ; t.flags
+                     ; [ S.virt_var __POS__ "!^" ]
+                     ]))
        ; fallback = Not_possible
+       ; locks = []
        ; loc
        }]
 end
@@ -866,9 +881,10 @@ end
 
 module Alias_conf = struct
   type t =
-    { name  : string
-    ; deps  : Dep_conf.t list
-    ; action : Action.Unexpanded.t option
+    { name    : string
+    ; deps    : Dep_conf.t list
+    ; action  : Action.Unexpanded.t option
+    ; locks   : String_with_vars.t list
     ; package : Package.t option
     }
 
@@ -878,12 +894,22 @@ module Alias_conf = struct
        field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
        field_o "package" (Scope.package pkgs)            >>= fun package ->
        field_o "action" Action.Unexpanded.t  >>= fun action ->
+       field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
        return
          { name
          ; deps
          ; action
          ; package
+         ; locks
          })
+end
+
+module Copy_files = struct
+  type t = { add_line_directive : bool
+           ; glob : String_with_vars.t
+           }
+
+  let v1 = String_with_vars.t
 end
 
 module Stanza = struct
@@ -894,6 +920,7 @@ module Stanza = struct
     | Provides    of Provides.t
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
+    | Copy_files  of Copy_files.t
 
   let rules l = List.map l ~f:(fun x -> Rule x)
 
@@ -913,6 +940,10 @@ module Stanza = struct
       ; cstr_loc "menhir"    (Menhir.v1   @> nil) (fun loc x -> rules (Menhir.v1_to_rule loc x))
       ; cstr "install"     (Install_conf.v1 pkgs @> nil) (fun x -> [Install     x])
       ; cstr "alias"       (Alias_conf.v1 pkgs @> nil)   (fun x -> [Alias       x])
+      ; cstr "copy_files" (Copy_files.v1 @> nil)
+          (fun glob -> [Copy_files {add_line_directive = false; glob}])
+      ; cstr "copy_files#" (Copy_files.v1 @> nil)
+          (fun glob -> [Copy_files {add_line_directive = true; glob}])
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ]

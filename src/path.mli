@@ -37,13 +37,14 @@ val t : t Sexp.Of_sexp.t
 val sexp_of_t : t Sexp.To_sexp.t
 
 val compare : t -> t -> int
+(** a directory is smaller than its descendants *)
 
 module Set : Set.S with type elt = t
 module Map : Map.S with type key = t
 
 val kind : t -> Kind.t
 
-val of_string : string -> t
+val of_string : ?error_loc:Loc.t -> string -> t
 val to_string : t -> string
 
 (** [to_string_maybe_quoted t] is [maybe_quoted (to_string t)] *)
@@ -54,9 +55,15 @@ val is_root : t -> bool
 
 val is_local : t -> bool
 
-val relative : t -> string -> t
+val relative : ?error_loc:Loc.t -> t -> string -> t
 
+(** Create an external path. If the argument is relative, assume it is
+    relative to the initial directory jbuilder was launched in. *)
 val absolute : string -> t
+
+(** Convert a path to an absolute filename. Must be called after the
+    workspace root has been set. *)
+val to_absolute_filename : t -> string
 
 val reach : t -> from:t -> string
 val reach_for_running : t -> from:t -> string
@@ -104,3 +111,5 @@ val rm_rf : t -> unit
 
 (** Changes the extension of the filename (or adds an extension if there was none) *)
 val change_extension : ext:string -> t -> t
+
+val pp : t Fmt.t

@@ -11,7 +11,7 @@ let pp_ml fmt include_dirs =
   let pp_include fmt =
     let pp_sep fmt () = Format.fprintf fmt "@ ; " in
     Format.pp_print_list ~pp_sep (fun fmt p ->
-      Format.fprintf fmt {|"%s"|} (Path.to_string p)
+      Format.fprintf fmt "%S" (Path.to_string p)
     ) fmt
   in
   Format.fprintf fmt "@[<v 2>Clflags.include_dirs :=@ [ %a@ ]@];@."
@@ -54,6 +54,7 @@ let utop_of_libs (libs : Library.t list) =
       ; ocamlc_flags = Ordered_set_lang.Unexpanded.standard
       ; ocamlopt_flags = Ordered_set_lang.Unexpanded.standard
       ; js_of_ocaml = Js_of_ocaml.default
+      ; gen_dot_merlin = false
       }
   }
 
@@ -84,4 +85,8 @@ let utop_exe_dir ~dir = Path.relative dir ".utop"
 
 let utop_exe dir =
   Path.relative (utop_exe_dir ~dir) exe_name
-  |> Path.extend_basename ~suffix:(Mode.exe_ext Mode.Byte)
+  (* Use the [.exe] version. As the utop executable is declared with
+     [(modes (byte))], the [.exe] correspond the bytecode linked in
+     custom mode. We do that so that it works without hassle when
+     generating a utop for a library with C stubs. *)
+  |> Path.extend_basename ~suffix:(Mode.exe_ext Mode.Native)

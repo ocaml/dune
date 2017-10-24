@@ -101,3 +101,12 @@
 (install
  ((section man)
   (files (jbuilder-uninstall.1))))
+
+(rule
+  ((targets (jbuilder-utop.1))
+   (action  (with-stdout-to ${@}
+             (run ${bin:jbuilder} utop --help=groff)))))
+
+(install
+ ((section man)
+  (files (jbuilder-utop.1))))

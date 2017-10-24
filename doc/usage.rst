@@ -16,12 +16,14 @@ jbuild-workspace
 
 The root of the current workspace is determined by looking up a
 ``jbuild-workspace`` file in the current directory and parent directories.
-``jbuilder`` prints out the root when starting:
+
+``jbuilder`` prints out the root when starting if it is not the
+current directory:
 
 .. code:: bash
 
     $ jbuilder runtest
-    Workspace root: /usr/local/home/jdimino/workspaces/public-jane/+share+
+    Entering directory '/home/jdimino/code/jbuilder'
     ...
 
 More precisely, it will choose the outermost ancestor directory containing a
@@ -54,7 +56,7 @@ in ancestor directories. For instance ``jbuild-workspace.dev``. If such a file
 is found, it will mark the root of the workspace. ``jbuilder`` will however not
 read its contents.
 
-The rationale for this rule is that it is good practice to have a
+ The rationale for this rule is that it is good practice to have a
 ``jbuild-workspace.dev`` file at the root of your project.
 
 For quick experiments, simply do this to mark the root:
@@ -123,8 +125,9 @@ Aliases
 -------
 
 Targets starting with a ``@`` are interpreted as aliases. For instance
-``@src/runtest`` means the alias ``src/runtest``. If you want to refer
-to a target starting with a ``@``, simply write: ``./@foo``.
+``@src/runtest`` means the alias ``runtest`` in all descendant of
+``src`` where it is defined. If you want to refer to a target starting
+with a ``@``, simply write: ``./@foo``.
 
 Note that an alias not pointing to the ``_build`` directory always
 depends on all the corresponding aliases in build contexts.
@@ -156,7 +159,7 @@ determined as follow:
 .. _running-tests:
 
 Running tests
--------------
+=============
 
 There are two ways to run tests:
 
@@ -169,6 +172,31 @@ tests in a specific sub-directory and its children by using:
 
 -  ``jbuilder build @foo/bar/runtest``
 -  ``jbuilder runtest foo/bar``
+
+Launching the Toplevel (REPL)
+=============================
+
+jbuilder supports launching a `utop <https://github.com/diml/utop>`__ instance
+with locally defined libraries loaded.
+
+.. code:: bash
+
+   $ jbuilder utop <dir> -- <args>
+
+Where ``<dir>`` is a directory containing a ``jbuild`` file defining all the
+libraries that will be loaded (using the ``library`` stanza). ``<args>`` will be
+passed as arguments to the utop command itself. For example, to launch it in
+emacs mode.
+
+Requirements & Limitations
+--------------------------
+
+* utop version >= 2.0 is required for this to work.
+* This subcommand only supports loading libraries. Executables aren't supported.
+* Libraries that are dependencies of utop itself cannot be loaded. For example
+  `Camomile <https://github.com/yoriyuki/Camomile>`__.
+* Loading libraries that are defined in different directories into one utop
+  instance isn't possible.
 
 Restricting the set of packages
 ===============================
@@ -312,6 +340,16 @@ a typical ``jbuild-workspace`` file looks like:
 
 The rest of this section describe the stanzas available.
 
+Note that an empty ``jbuild-workspace`` file is interpreted the same
+as one containing exactly:
+
+.. code:: scheme
+
+    (context default)
+
+This allows you to use an empty ``jbuild-workspace`` file to mark
+the root of your project.
+
 context
 ~~~~~~~
 
@@ -333,11 +371,18 @@ description of an opam switch, as follows:
    the opam root defined by the environment in which ``jbuilder`` is
    run which is usually ``~/.opam``
 
--  ``(merlin)`` instructs Jbuilder to generate the ``.merlin`` files
-   from this context. There can be at most one build context with a
-   ``(merlin)`` field. If no build context has a ``(merlin)`` field,
-   the selected context for ``merlin`` will be ``(context default)``
-   if present. Otherwise Jbuilder won't generate ``.merlin`` files
+- ``(merlin)`` instructs Jbuilder to use this build context for
+   merlin
+
+Merlin reads compilation artifacts and it can only read the
+compilation artifacts of a single context.  Usually, you should use
+the artifacts from the ``default`` context, and if you have the
+``(context default)`` stanza in your ``jbuild-workspace`` file, that
+is the one Jbuilder will use.
+
+For rare cases where this is not what you want, you can force Jbuilder
+to use a different build contexts for merlin by adding the field
+``(merlin)`` to this context.
 
 Building JavaScript with js_of_ocaml
 ====================================

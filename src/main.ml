@@ -6,6 +6,7 @@ type setup =
   ; stanzas      : (Path.t * Jbuild.Scope.t * Jbuild.Stanzas.t) list String_map.t
   ; contexts     : Context.t list
   ; packages     : Package.t String_map.t
+  ; file_tree    : File_tree.t
   }
 
 let package_install_file { packages; _ } pkg =
@@ -54,6 +55,7 @@ let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
          ; stanzas
          ; contexts
          ; packages = conf.packages
+         ; file_tree = conf.file_tree
          }
 
 let external_lib_deps ?log ~packages () =
@@ -71,7 +73,8 @@ let external_lib_deps ?log ~packages () =
      | Some stanzas ->
        let internals = Jbuild.Stanzas.lib_names stanzas in
        Path.Map.map
-         (Build_system.all_lib_deps setup.build_system install_files)
+         (Build_system.all_lib_deps setup.build_system
+            ~request:(Build.paths install_files))
          ~f:(String_map.filter ~f:(fun name _ ->
            not (String_set.mem name internals))))
 
@@ -211,7 +214,8 @@ let bootstrap () =
          ~extra_ignored_subtrees:ignored_during_bootstrap
          ()
        >>= fun { build_system = bs; _ } ->
-       Build_system.do_build_exn bs [Path.(relative root) (pkg ^ ".install")])
+       Build_system.do_build_exn bs
+         ~request:(Build.path (Path.(relative root) (pkg ^ ".install"))))
   in
   try
     main ()

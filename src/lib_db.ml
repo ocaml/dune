@@ -123,7 +123,15 @@ let create findlib ~dirs_with_dot_opam_files internal_libraries =
     let scope = internal_name_scope t ~dir in
     scope := String_map.add !scope ~key:lib.Library.name ~data:internal;
     Option.iter lib.public ~f:(fun { name; _ } ->
-      Hashtbl.add t.by_public_name ~key:name ~data:(Internal internal)));
+      match Hashtbl.find t.by_public_name name with
+      | None
+      | Some (External _) ->
+        Hashtbl.add t.by_public_name ~key:name ~data:(Internal internal)
+      | Some (Internal dup) ->
+        let internal_path (path, _) = Path.relative path "jbuild" in
+        die "Libraries with identical public names %s defined in %a and %a."
+          name Path.pp (internal_path internal) Path.pp (internal_path dup)
+    ));
   compute_instalable_internal_libs t ~internal_libraries
 
 let internal_libs_without_non_installable_optional_ones t =

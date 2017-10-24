@@ -12,6 +12,8 @@ let () = Printexc.record_backtrace true
 let sprintf = Printf.sprintf
 let ksprintf = Printf.ksprintf
 
+let initial_cwd = Sys.getcwd ()
+
 (* An error in the code of jbuild, that should be reported upstream *)
 exception Code_error of string
 let code_errorf fmt = ksprintf (fun msg -> raise (Code_error msg)) fmt
@@ -501,4 +503,8 @@ let open_out_gen = `Use_Io
    Io manually *)
 module No_io = struct
   module Io = struct end
+end
+
+module Fmt = struct
+  type 'a t = Format.formatter -> 'a -> unit
 end

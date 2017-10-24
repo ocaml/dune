@@ -2,3 +2,4 @@
           diff alias runtest
           diff alias runtest
           diff alias runtest
+          diff alias runtest

@@ -28,17 +28,17 @@
 (alias
  ((name runtest)
   (deps (stdout stdout.expected))
-  (action (run diff -u stdout.expected stdout))))
+  (action (run diff -uw  stdout.expected stdout))))
 
 (alias
  ((name runtest)
   (deps (stderr stderr.expected))
-  (action (run diff -u stderr.expected stderr))))
+  (action (run diff -uw stderr.expected stderr))))
 
 (alias
  ((name runtest)
   (deps (both both.expected))
-  (action (run diff -u both.expected both))))
+  (action (run diff -uw both.expected both))))
 
 (alias
  ((name runtest)

@@ -1,6 +1,8 @@
 INSTALL_ARGS := $(if $(PREFIX),--prefix $(PREFIX),)
 BIN := ./_build/default/bin/main.exe
 
+-include Makefile.dev
+
 default: boot.exe
 	./boot.exe -j 4 --dev
 
@@ -50,4 +52,10 @@ update-jbuilds: $(BIN)
 	rm -f doc/jbuild
 	mv doc/jbuild.tmp doc/jbuild
 
+accept-corrections:
+	for i in `find . -name \*.corrected`; do \
+	  cp $$i $${i/.corrected}; \
+	done
+
 .PHONY: default install uninstall reinstall clean test doc
+.PHONY: accept-corrections

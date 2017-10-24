@@ -7,6 +7,7 @@ type setup =
     stanzas      : (Path.t * Scope.t * Stanzas.t) list String_map.t
   ; contexts     : Context.t list
   ; packages     : Package.t String_map.t
+  ; file_tree    : File_tree.t
   }
 
 (* Returns [Error ()] if [pkg] is unknown *)

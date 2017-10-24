@@ -1,3 +1,43 @@
+next
+----
+
+- Change the semantic of aliases: there are no longer aliases that are
+  recursive such as `install` or `runtest`. All aliases are
+  non-recursive. However, when requesting an alias from the command
+  line, this request the construction of the alias in the specified
+  directory and all its children recursively. This allows users to get
+  the same behavior as previous recursive aliases for their own
+  aliases, such as `example`. Inside jbuild files, one can use `(deps
+  (... (alias_rec xxx) ...))` to get the same behavior as on the
+  command line.
+
+1.0+beta14 (11/10/2017)
+-----------------------
+
+- Add (copy_files <glob>) and (copy_files# <glob>) stanzas. These
+  stanzas setup rules for copying files from a sub-directory to the
+  current directory. This provides a reasonable way to support
+  multi-directory library/executables in jbuilder (#35, Francois Bobot)
+
+- An empty `jbuild-workspace` file is now interpreted the same as one
+  containing just `(context default)`
+
+- Better support for on-demand utop toplevels on Windows and when the
+  library has C stubs
+
+- Print `Entering directory '...'` when the workspace root is not the
+  current directory. This allows Emacs and Vim to know where relative
+  filenames should be interpreted from. Fixes #138
+
+- Fix a bug related to `menhir` stanzas: `menhir` stanzas with a
+  `merge_into` field that were in `jbuild` files in sub-directories
+  where incorectly interpreted (#264)
+
+- Add support for locks in actions, for tests that can't be run
+  concurrently (#263)
+
+- Support `${..}` syntax in the `include` stanza. (#231)
+
 1.0+beta13 (05/09/2017)
 -----------------------
 

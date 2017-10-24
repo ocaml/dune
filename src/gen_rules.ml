@@ -268,6 +268,7 @@ module Gen(P : Params) = struct
         ~libraries:lib.buildable.libraries
         ~preprocess:lib.buildable.preprocess
         ~virtual_deps:lib.virtual_deps
+        ~has_dot_merlin:lib.buildable.gen_dot_merlin
     in
 
     SC.Libs.setup_runtime_deps sctx ~dir ~dep_kind ~item:lib.name
@@ -421,6 +422,7 @@ module Gen(P : Params) = struct
     ; flags
     ; preprocess = Buildable.single_preprocess lib.buildable
     ; libname = Some lib.name
+    ; source_dirs = Path.Set.empty
     }
 
   (* +-----------------------------------------------------------------+
@@ -519,6 +521,7 @@ module Gen(P : Params) = struct
         ~libraries:exes.buildable.libraries
         ~preprocess:exes.buildable.preprocess
         ~virtual_deps:[]
+        ~has_dot_merlin:exes.buildable.gen_dot_merlin
     in
 
     SC.Libs.add_select_rules sctx ~dir exes.buildable.libraries;
@@ -539,11 +542,16 @@ module Gen(P : Params) = struct
     ; flags      = Ocaml_flags.common flags
     ; preprocess = Buildable.single_preprocess exes.buildable
     ; libname    = None
+    ; source_dirs = Path.Set.empty
     }
 
   (* +-----------------------------------------------------------------+
      | User rules                                                      |
      +-----------------------------------------------------------------+ *)
+
+  let interpret_locks ~dir ~scope locks =
+    List.map locks ~f:(fun s ->
+      Path.relative dir (SC.expand_vars sctx ~dir ~scope s))
 
   let user_rule (rule : Rule.t) ~dir ~scope =
     let targets : SC.Action.targets =
@@ -552,6 +560,7 @@ module Gen(P : Params) = struct
       | Static fns -> Static (List.map fns ~f:(Path.relative dir))
     in
     SC.add_rule sctx ~fallback:rule.fallback ~loc:rule.loc
+      ~locks:(interpret_locks ~dir ~scope rule.locks)
       (SC.Deps.interpret sctx ~scope ~dir rule.deps
        >>>
        SC.Action.run
@@ -580,6 +589,7 @@ module Gen(P : Params) = struct
     Alias.add_deps (SC.aliases sctx) alias [digest_path];
     let deps = SC.Deps.interpret sctx ~scope ~dir alias_conf.deps in
     SC.add_rule sctx
+      ~locks:(interpret_locks ~dir ~scope alias_conf.locks)
       (match alias_conf.action with
        | None ->
          deps
@@ -598,6 +608,51 @@ module Gen(P : Params) = struct
                ~scope
            ; Build.create_file digest_path
            ])
+
+  let copy_files_rules (def: Copy_files.t) ~src_dir ~dir ~scope =
+    let loc = String_with_vars.loc def.glob in
+    let glob_in_src =
+      let src_glob = SC.expand_vars sctx ~dir def.glob ~scope in
+      Path.relative src_dir src_glob ~error_loc:loc
+    in
+    (* The following condition is required for merlin to work.
+       Additionally, the order in which the rules are evaluated only
+       ensures that [sources_and_targets_known_so_far] returns the
+       right answer for sub-directories only. *)
+    if not (Path.is_descendant glob_in_src ~of_:src_dir) then
+      Loc.fail loc "%s is not a sub-directory of %s"
+        (Path.to_string_maybe_quoted glob_in_src) (Path.to_string_maybe_quoted src_dir);
+    let glob = Path.basename glob_in_src in
+    let src_in_src = Path.parent glob_in_src in
+    let re =
+      match Glob_lexer.parse_string glob with
+      | Ok re ->
+        Re.compile re
+      | Error (_pos, msg) ->
+        Loc.fail (String_with_vars.loc def.glob) "invalid glob: %s" msg
+    in
+    (* add rules *)
+    let files = SC.sources_and_targets_known_so_far sctx ~src_path:src_in_src in
+    let src_in_build = Path.append ctx.build_dir src_in_src in
+    String_set.iter files ~f:(fun basename ->
+      let matches = Re.execp re basename in
+      if matches then
+        let file_src = Path.relative src_in_build basename in
+        let file_dst = Path.relative dir basename in
+        SC.add_rule sctx
+          ((if def.add_line_directive
+            then Build.copy_and_add_line_directive
+            else Build.copy)
+             ~src:file_src
+             ~dst:file_dst)
+    );
+    { Merlin.requires = Build.return []
+    ; flags           = Build.return []
+    ; preprocess      = Jbuild.Preprocess.No_preprocessing
+    ; libname         = None
+    ; source_dirs     = Path.Set.singleton src_in_src
+    }
+
 
   (* +-----------------------------------------------------------------+
      | Modules listing                                                 |
@@ -704,12 +759,16 @@ Add it to your jbuild file to remove this warning.
   let rules { SC.Dir_with_jbuild. src_dir; ctx_dir; stanzas; scope } =
     (* Interpret user rules and other simple stanzas first in order to populate the known
        target table, which is needed for guessing the list of modules. *)
-    List.iter stanzas ~f:(fun stanza ->
-      let dir = ctx_dir in
-      match (stanza : Stanza.t) with
-      | Rule         rule  -> user_rule   rule  ~dir ~scope
-      | Alias        alias -> alias_rules alias ~dir ~scope
-      | Library _ | Executables _ | Provides _ | Install _ -> ());
+    let merlins =
+      List.filter_map stanzas ~f:(fun stanza ->
+        let dir = ctx_dir in
+        match (stanza : Stanza.t) with
+        | Rule         rule  -> user_rule   rule  ~dir ~scope; None
+        | Alias        alias -> alias_rules alias ~dir ~scope; None
+        | Copy_files def ->
+          Some (copy_files_rules def ~src_dir ~dir ~scope)
+        | Library _ | Executables _ | Provides _ | Install _ -> None)
+    in
     let files = lazy (
       let files = SC.sources_and_targets_known_so_far sctx ~src_path:src_dir in
       (* Manually add files generated by the (select ...) dependencies since we haven't
@@ -727,25 +786,34 @@ Add it to your jbuild file to remove this warning.
       guess_modules ~dir:src_dir
         ~files:(Lazy.force files))
     in
-    List.filter_map stanzas ~f:(fun stanza ->
+    List.fold_left stanzas ~init:merlins ~f:(fun merlins stanza ->
       let dir = ctx_dir in
       match (stanza : Stanza.t) with
       | Library lib ->
-        Some (library_rules lib ~dir ~all_modules:(Lazy.force all_modules)
-                ~files:(Lazy.force files) ~scope)
+        library_rules lib ~dir ~all_modules:(Lazy.force all_modules)
+          ~files:(Lazy.force files) ~scope
+        :: merlins
       | Executables exes ->
-        Some (executables_rules exes ~dir ~all_modules:(Lazy.force all_modules) ~scope)
-      | _ -> None)
+        executables_rules exes ~dir ~all_modules:(Lazy.force all_modules) ~scope
+        :: merlins
+      | _ -> merlins)
     |> Merlin.merge_all
     |> Option.iter ~f:(Merlin.add_rules sctx ~dir:ctx_dir);
     Option.iter (Utop.exe_stanzas stanzas) ~f:(fun (exe, all_modules) ->
       let dir = Utop.utop_exe_dir ~dir:ctx_dir in
       let merlin = executables_rules exe ~dir ~all_modules ~scope in
-      Merlin.add_rules sctx ~dir merlin;
       Utop.add_module_rules sctx ~dir merlin.requires;
     )
 
-  let () = List.iter (SC.stanzas sctx) ~f:rules
+  let () =
+    (* Sort the list of stanzas by directory so that we traverse
+       subdirectories first.
+
+       This is required for correctly interpreting [copy_files]. *)
+    let subtree_smaller x y =
+      Path.compare y.SC.Dir_with_jbuild.src_dir x.SC.Dir_with_jbuild.src_dir in
+    let stanzas = List.sort ~cmp:subtree_smaller (SC.stanzas sctx) in
+    List.iter stanzas ~f:rules
   let () =
     SC.add_rules sctx (Js_of_ocaml_rules.setup_separate_compilation_rules sctx)
   let () = Odoc.setup_css_rule sctx
@@ -1036,7 +1104,7 @@ end
 let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
       ?only_packages conf =
   let open Future in
-  let { Jbuild_load. file_tree; tree; jbuilds; packages } = conf in
+  let { Jbuild_load. file_tree; jbuilds; packages } = conf in
   let aliases = Alias.Store.create () in
   let dirs_with_dot_opam_files =
     String_map.fold packages ~init:Path.Set.empty
@@ -1082,7 +1150,5 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
   |> Future.all
   >>| fun l ->
   let rules, context_names_and_stanzas = List.split l in
-  (Alias.rules aliases
-     ~prefixes:(Path.root :: List.map contexts ~f:(fun c -> c.Context.build_dir)) ~tree
-   @ List.concat rules,
+  (Alias.rules aliases @ List.concat rules,
    String_map.of_alist_exn context_names_and_stanzas)

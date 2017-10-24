@@ -24,10 +24,19 @@ module Print_diff = struct
     match diff_command with
     | Some s -> ignore (exec s : bool)
     | None ->
-      if exec (patdiff_cmd ~use_color) then (
-        Printf.eprintf "File \"%s\", line 1, characters 0-0:\n%!" file1;
-        ignore (exec "diff -u" : bool);
-      )
+      let has_patdiff =
+        let dev_null = if Sys.win32 then "nul" else "/dev/null" in
+        Printf.ksprintf Sys.command "patdiff -version > %s 2> %s"
+          dev_null dev_null = 0
+      in
+      if has_patdiff then begin
+        if exec (patdiff_cmd ~use_color) then begin
+          (* Use "diff" if "patdiff" reported no differences *)
+          Printf.eprintf "File \"%s\", line 1, characters 0-0:\n%!" file1;
+          ignore (exec "diff -u" : bool);
+        end
+      end else
+        ignore (exec "diff -u" : bool)
 end
 
 let read_file file =

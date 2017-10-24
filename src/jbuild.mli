@@ -95,6 +95,7 @@ module Dep_conf : sig
   type t =
     | File of String_with_vars.t
     | Alias of String_with_vars.t
+    | Alias_rec of String_with_vars.t
     | Glob_files of String_with_vars.t
     | Files_recursively_in of String_with_vars.t
 
@@ -111,6 +112,9 @@ module Buildable : sig
     ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
     ; js_of_ocaml              : Js_of_ocaml.t
+    ; (** [true] except for on-demand utops, to avoid generation
+          [.utop/.merlin] files everywhere. *)
+      gen_dot_merlin           : bool
     }
 
   (** Preprocessing specification used by all modules or [No_preprocessing] *)
@@ -204,6 +208,7 @@ module Rule : sig
     ; deps     : Dep_conf.t list
     ; action   : Action.Unexpanded.t
     ; fallback : Fallback.t
+    ; locks    : String_with_vars.t list
     ; loc      : Loc.t
     }
 end
@@ -217,10 +222,18 @@ end
 
 module Alias_conf : sig
   type t =
-    { name  : string
-    ; deps  : Dep_conf.t list
-    ; action : Action.Unexpanded.t option
+    { name    : string
+    ; deps    : Dep_conf.t list
+    ; action  : Action.Unexpanded.t option
+    ; locks   : String_with_vars.t list
     ; package : Package.t option
+    }
+end
+
+module Copy_files : sig
+  type t =
+    { add_line_directive : bool
+    ; glob : String_with_vars.t
     }
 end
 
@@ -232,6 +245,7 @@ module Stanza : sig
     | Provides    of Provides.t
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
+    | Copy_files  of Copy_files.t
 end
 
 module Stanzas : sig

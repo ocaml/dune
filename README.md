@@ -25,7 +25,7 @@ jbuilder.
 [quick-start]:    https://jbuilder.readthedocs.io/en/latest/quick-start.html
 [example]:        https://github.com/janestreet/jbuilder/tree/master/example
 [travis]:         https://travis-ci.org/janestreet/jbuilder
-[travis-img]:     https://travis-ci.org/janestreet/jbuilder.png?branch=master
+[travis-img]:     https://travis-ci.org/janestreet/jbuilder.svg?branch=master
 [appveyor]:       https://ci.appveyor.com/project/diml/jbuilder/branch/master
 [appveyor-img]:   https://ci.appveyor.com/api/projects/status/bn3kcxx648jt6dyt?svg=true
 [merlin]:         https://github.com/ocaml/merlin
@@ -252,6 +252,13 @@ In order to build itself, Jbuilder uses an OCaml script
 ([bootstrap.ml](bootstrap.ml)) that dumps most of the sources of Jbuilder into a
 single `boot.ml` file. This file is built using `ocamlopt` or `ocamlc`
 and used to build everything else.
+
+Note that we don't include all of the sources in boot.ml. We skip a
+few parts to speed up the build. In particular:
+- vendored libraries are replaced by simpler implementations taken
+  from `vendor/boot`
+- a few files in `src` have an alternative version. These alternatives
+  versions are named `XXX.boot.EXT`. For instance: `glob_lexer.boot.ml`
 
 ### OCaml compatibility test
 

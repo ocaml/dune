@@ -45,6 +45,7 @@ val add_rule
   :  t
   -> ?sandbox:bool
   -> ?fallback:Jbuild.Rule.Fallback.t
+  -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> (unit, Action.t) Build.t
   -> unit
@@ -82,9 +83,10 @@ module Libs : sig
   (** Add rules for (select ...) forms *)
   val add_select_rules : t -> dir:Path.t -> Lib_deps.t -> unit
 
-  (** Returns the closed list of dependencies for a dependency list in a stanza. The
-      second arrow is the same as the first one but with an added dependency on the
-      .merlin. *)
+  (** Returns the closed list of dependencies for a dependency list in
+     a stanza. The second arrow is the same as the first one but with
+     an added dependency on the .merlin if [has_dot_merlin] is
+     [true]. *)
   val requires
     :  t
     -> dir:Path.t
@@ -93,6 +95,7 @@ module Libs : sig
     -> libraries:Lib_deps.t
     -> preprocess:Preprocess_map.t
     -> virtual_deps:string list
+    -> has_dot_merlin:bool
     -> (unit, Lib.t list) Build.t * (unit, Lib.t list) Build.t
 
   (** Setup the rules for ppx runtime dependencies *)

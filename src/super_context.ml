@@ -213,9 +213,12 @@ let create
       | _ -> Chdir (context.build_dir, action))
   }
 
-let add_rule t ?sandbox ?fallback ?loc build =
+let add_rule t ?sandbox ?fallback ?locks ?loc build =
   let build = Build.O.(>>>) build t.chdir in
-  let rule = Build_interpret.Rule.make ?sandbox ?fallback ?loc ~context:t.context build in
+  let rule =
+    Build_interpret.Rule.make ?sandbox ?fallback ?locks ?loc
+      ~context:t.context build
+  in
   t.rules <- rule :: t.rules;
   t.known_targets_by_src_dir_so_far <-
     List.fold_left rule.targets ~init:t.known_targets_by_src_dir_so_far
@@ -338,12 +341,13 @@ module Libs = struct
        Build.store_vfile vrequires);
     Build.vpath vrequires
 
-  let requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps =
+  let requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps
+        ~has_dot_merlin =
     let real_requires =
       real_requires t ~dir ~dep_kind ~item ~libraries ~preprocess ~virtual_deps
     in
     let requires =
-      if t.context.merlin then
+      if t.context.merlin && has_dot_merlin then
         (* We don't depend on the dot_merlin directly, otherwise everytime it changes we
            would have to rebuild everything.
 
@@ -402,15 +406,21 @@ module Deps = struct
   open Build.O
   open Dep_conf
 
+  let make_alias t ~scope ~dir s =
+    Alias.of_path (Path.relative dir (expand_vars t ~scope ~dir s))
+
   let dep t ~scope ~dir = function
     | File  s ->
       let path = Path.relative dir (expand_vars t ~scope ~dir s) in
       Build.path path
-      >>^ fun _ -> [path]
+      >>^ fun () -> [path]
     | Alias s ->
-      let path = Alias.file (Alias.make ~dir (expand_vars t ~scope ~dir s)) in
-      Build.path path
-      >>^ fun _ -> []
+      Alias.dep (make_alias t ~scope ~dir s)
+      >>^ fun () -> []
+    | Alias_rec s ->
+      Alias.dep_rec ~loc:(String_with_vars.loc s) ~file_tree:t.file_tree
+        (make_alias t ~scope ~dir s)
+      >>^ fun () -> []
     | Glob_files s -> begin
         let path = Path.relative dir (expand_vars t ~scope ~dir s) in
         match Glob_lexer.parse_string (Path.basename path) with
@@ -513,6 +523,7 @@ module Action = struct
         let open Action.Var_expansion in
         let cos, var = parse_bang key in
         match String.lsplit2 var ~on:':' with
+        | Some ("path-no-dep", s) -> Some (path_exp (Path.relative dir s))
         | Some ("exe"     , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("bin"     , s) -> begin
@@ -897,8 +908,8 @@ end
 
 let expand_and_eval_set t ~scope ~dir set ~standard =
   let open Build.O in
-  let f sexp = expand_vars t ~scope ~dir (String_with_vars.t sexp) in
-  match Ordered_set_lang.Unexpanded.files set |> String_set.elements with
+  let f = expand_vars t ~scope ~dir in
+  match Ordered_set_lang.Unexpanded.files set ~f |> String_set.elements with
   | [] ->
     let set = Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f in
     Build.return (Ordered_set_lang.eval_with_standard set ~standard)

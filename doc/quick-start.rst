@@ -31,7 +31,9 @@ And build it with:
 
     jbuilder build hello_world.exe
 
-The executable will be built as ``_build/default/hello_world.exe``
+The executable will be built as ``_build/default/hello_world.exe``. Note that
+native code executables will have the ``.exe`` extension on all platforms
+(including non-Windows systems).
 
 Building a hello world program using Lwt
 ========================================

@@ -175,7 +175,7 @@ let extend_env ~vars ~env =
       imported
     |> Array.of_list
 
-let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findlib =
+let create ?host ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findlib () =
   let env = extend_env ~env:base_env ~vars:env_extra in
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
@@ -319,7 +319,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
     { name
     ; kind
     ; merlin
-    ; for_host = None
+    ; for_host = host
     ; build_dir
     ; path
     ; toplevel_path = Option.map (get_env env "OCAML_TOPLEVEL_PATH") ~f:Path.absolute
@@ -391,9 +391,9 @@ let default ?(merlin=true) ?(use_findlib=true) () =
     | None -> []
   in
   create ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
-    ~name:"default" ~merlin ~use_findlib
+    ~name:"default" ~merlin ~use_findlib ()
 
-let create_for_opam ?root ~switch ~name ?(merlin=false) () =
+let create_for_opam ?root ?host ~switch ~name ?(merlin=false) () =
   match Bin.opam with
   | None -> Utils.program_not_found "opam"
   | Some fn ->
@@ -430,8 +430,8 @@ let create_for_opam ?root ~switch ~name ?(merlin=false) () =
       | Some s -> Bin.parse_path s
     in
     let env = Lazy.force initial_env in
-    create ~kind:(Opam { root; switch }) ~path ~base_env:env ~env_extra:vars
-      ~name ~merlin ~use_findlib:true
+    create ?host ~kind:(Opam { root; switch }) ~path ~base_env:env ~env_extra:vars
+      ~name ~merlin ~use_findlib:true ()
 
 let which t s = which ~cache:t.which_cache ~path:t.path s
 

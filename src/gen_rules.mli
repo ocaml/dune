@@ -2,7 +2,8 @@ open! Import
 open Jbuild
 
 val gen
-  :  contexts:Context.t list
+  :  with_hosts:Context.t list
+  -> no_hosts:Context.t list
   -> ?filter_out_optional_stanzas_with_missing_deps:bool (* default: true *)
   -> ?only_packages:String_set.t
   -> Jbuild_load.conf

@@ -36,24 +36,46 @@ let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
       else
         { merlin_context = Some "default"; contexts = [Default] }
   in
-  Future.all
-    (List.map workspace.contexts ~f:(function
+  (* TODO validate that a context that sets a host, cannot have a host itself. *)
+  let (hosts, targets) = List.partition_map ~f:(function
+    | Workspace.Context.Opam { host = Some name ; _ } as e ->
+      Inr (name, e)
+    | Opam _
+    | Workspace.Context.Default as e -> Inl e
+  ) workspace.contexts in
+  let make_context ?host ws_context =
+    let name = Workspace.Context.name ws_context in
+    ( name
+    , match ws_context with
      | Workspace.Context.Default ->
-       Context.default ~merlin:(workspace.merlin_context = Some "default")
+       Context.default ~merlin:(workspace.merlin_context = Some name)
          ~use_findlib ()
-     | Opam { name; switch; root; merlin } ->
-       Context.create_for_opam ~name ~switch ?root ~merlin ()))
-  >>= fun contexts ->
-  List.iter contexts ~f:(fun ctx ->
+     | Opam { switch; root; merlin; _ } ->
+       Context.create_for_opam ?host ~name ~switch
+         ?root ~merlin ()
+    ) in
+  let host_contexts = List.map hosts ~f:make_context in
+  let target_contexts =
+    List.map targets ~f:(fun (host, wctx) ->
+      List.assoc host host_contexts >>= fun host ->
+      snd (make_context ~host wctx)) in
+  let host_contexts = List.map ~f:snd host_contexts in
+  Future.both (Future.all host_contexts) (Future.all target_contexts)
+  >>= fun (host_contexts, target_contexts) ->
+  let all_contexts = host_contexts @ target_contexts in
+  List.iter all_contexts ~f:(fun (ctx : Context.t) ->
     Log.infof log "@[<1>Jbuilder context:@,%a@]@." Sexp.pp (Context.sexp_of_t ctx));
-  Gen_rules.gen conf ~contexts
+  Gen_rules.gen conf
+    ~with_hosts:target_contexts
+    ~no_hosts:host_contexts
     ?only_packages
     ?filter_out_optional_stanzas_with_missing_deps
   >>= fun (rules, stanzas) ->
-  let build_system = Build_system.create ~contexts ~file_tree:conf.file_tree ~rules in
+  let build_system = Build_system.create ~contexts:all_contexts
+                       ~file_tree:conf.file_tree ~rules in
   return { build_system
          ; stanzas
-         ; contexts
+         ; contexts = all_contexts
          ; packages = conf.packages
          ; file_tree = conf.file_tree
          }

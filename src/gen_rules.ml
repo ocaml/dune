@@ -1103,7 +1103,7 @@ Add it to your jbuild file to remove this warning.
         end)
 end
 
-let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
+let gen ~with_hosts ~no_hosts ?(filter_out_optional_stanzas_with_missing_deps=true)
       ?only_packages conf =
   let open Future in
   let { Jbuild_load. file_tree; jbuilds; packages } = conf in
@@ -1120,35 +1120,52 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
       String_map.filter packages ~f:(fun _ { Package.name; _ } ->
         String_set.mem name pkgs)
   in
-  List.map contexts ~f:(fun context ->
-    Jbuild_load.Jbuilds.eval ~context jbuilds >>| fun stanzas ->
-    let stanzas =
-      match only_packages with
-      | None -> stanzas
-      | Some pkgs ->
-        List.map stanzas ~f:(fun (dir, pkgs_ctx, stanzas) ->
-          (dir,
-           pkgs_ctx,
-           List.filter stanzas ~f:(fun stanza ->
-             match (stanza : Stanza.t) with
-             | Library { public = Some { package; _ }; _ }
-             | Alias { package = Some package ;  _ }
-             | Install { package; _ } ->
-               String_set.mem package.name pkgs
-             | _ -> true)))
-    in
-    let sctx =
-      Super_context.create
-        ~context
-        ~aliases
-        ~dirs_with_dot_opam_files
-        ~file_tree
-        ~packages
-        ~filter_out_optional_stanzas_with_missing_deps
-        ~stanzas
-    in
-    let module M = Gen(struct let sctx = sctx end) in
-    (Super_context.rules sctx, (context.name, stanzas)))
+  let make_sctx ~host context : (string * (_ * _ * _) Future.t) =
+    let sctx_results =
+      let stanzas =
+        Jbuild_load.Jbuilds.eval ~context jbuilds >>| fun stanzas ->
+        match only_packages with
+        | None -> stanzas
+        | Some pkgs ->
+          List.map stanzas ~f:(fun (dir, pkgs_ctx, stanzas) ->
+            (dir,
+             pkgs_ctx,
+             List.filter stanzas ~f:(fun stanza ->
+               match (stanza : Stanza.t) with
+               | Library { public = Some { package; _ }; _ }
+               | Alias { package = Some package ;  _ }
+               | Install { package; _ } ->
+                 String_set.mem package.name pkgs
+               | _ -> true))) in
+      Future.both host stanzas >>| fun (host, stanzas) ->
+      let sctx =
+        Super_context.create
+          ?host
+          ~context
+          ~aliases
+          ~dirs_with_dot_opam_files
+          ~file_tree
+          ~packages
+          ~filter_out_optional_stanzas_with_missing_deps
+          ~stanzas
+      in
+      let module M = Gen(struct let sctx = sctx end) in
+      (sctx, Super_context.rules sctx, stanzas) in
+    (context.name, sctx_results) in
+  let no_host_rules = List.map no_hosts ~f:(make_sctx ~host:(Future.return None)) in
+  let with_host_rules = List.map with_hosts ~f:(fun (ctx : Context.t) ->
+    let host =
+      let host_name = (Option.value_exn ctx.for_host).name in
+      List.find_map no_host_rules ~f:(fun (name, res) ->
+        if name = host_name then
+          Some (res >>| (fun (sctx, _, _) -> Some sctx))
+        else
+          None)
+      |> Option.value_exn in
+    make_sctx ~host ctx) in
+  (no_host_rules @ with_host_rules)
+  |> List.map ~f:(fun (name, d) ->
+    d >>| fun (_, rules, stanzas) -> (rules, (name, stanzas)))
   |> Future.all
   >>| fun l ->
   let rules, context_names_and_stanzas = List.split l in

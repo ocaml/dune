@@ -57,6 +57,7 @@ type t =
   ; ppx_drivers                             : (string, Path.t) Hashtbl.t
   ; external_dirs                           : (Path.t, External_dir.t) Hashtbl.t
   ; chdir                                   : (Action.t, Action.t) Build.t
+  ; host                                    : t option
   }
 
 let context t = t.context
@@ -87,6 +88,7 @@ let resolve_program t ?hint bin =
 
 let create
       ~(context:Context.t)
+      ?host
       ~aliases
       ~dirs_with_dot_opam_files
       ~file_tree
@@ -187,6 +189,7 @@ let create
     | Error _ -> assert false
   in
   { context
+  ; host
   ; libs
   ; stanzas
   ; packages
@@ -521,6 +524,7 @@ module Action = struct
         | Some ("exe"     , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("bin"     , s) -> begin
+            let sctx = Option.value sctx.host ~default:sctx in
             match Artifacts.binary (artifacts sctx) s with
             | Ok path ->
               static_dep_exp acc path
@@ -810,6 +814,7 @@ module PP = struct
       | [] -> "+none+"
       | _  -> String.concat names ~sep:"+"
     in
+    let sctx = Option.value sctx.host ~default:sctx in
     match Hashtbl.find sctx.ppx_drivers key with
     | Some x -> x
     | None ->

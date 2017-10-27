@@ -22,6 +22,7 @@ type t
 
 val create
   :  context:Context.t
+  -> ?host:t
   -> aliases:Alias.Store.t
   -> dirs_with_dot_opam_files:Path.Set.t
   -> file_tree:File_tree.t

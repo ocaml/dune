@@ -126,6 +126,7 @@ val compare : t -> t -> int
 
 val create_for_opam
   :  ?root:string
+  -> ?host:t
   -> switch:string
   -> name:string
   -> ?merlin:bool

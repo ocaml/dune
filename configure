@@ -514,7 +514,10 @@ fi
 
 # dbm?
 
-if [ -f "${ocaml_core_stdlib}/dbm.cmi" ]; then
+if [ -f "${ocaml_sitelib}/dbm/META" ]; then
+    echo "dbm: package already present"
+    ldbm=""
+elif [ -f "${ocaml_core_stdlib}/dbm.cmi" ]; then
     echo "dbm: found"
     ldbm="dbm"
 else
@@ -524,8 +527,12 @@ fi
 
 # num?
 
-if [ -f "${ocaml_core_stdlib}/num.cmi" ]; then
-    echo "num: found"
+if [ -f "${ocaml_sitelib}/num/META" ]; then
+    echo "num: package already present"
+    lnum=""
+    numtop=""
+elif [ -f "${ocaml_core_stdlib}/num.cmi" ]; then
+    echo "num: found but not as package"
     lnum="num num-top"
     numtop="num-top"
 else

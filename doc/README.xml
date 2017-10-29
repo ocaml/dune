@@ -110,6 +110,11 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
+      <p><em>git version:</em> Fix reinstallation of "num" for OCaml-4.06.
+      </p>
+    </li>
+      
+    <li>
       <p><em>1.7.3:</em> Fix regarding num-top: this library is now also
       optional, as num.</p>
     </li>

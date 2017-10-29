@@ -57,5 +57,6 @@ accept-corrections:
 	  cp $$i $${i/.corrected}; \
 	done
 
+.DEFAULT_GOAL := default
 .PHONY: default install uninstall reinstall clean test doc
 .PHONY: accept-corrections

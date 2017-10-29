@@ -852,7 +852,7 @@ let exec =
           ) else (
             match String.drop_prefix runcwd ~prefix:common.root with
             | None ->
-              Path.parent p
+              Path.append context.build_dir (Path.parent p)
             | Some s ->
               Path.append (Path.relative context.build_dir s) (Path.parent p)
           ) in

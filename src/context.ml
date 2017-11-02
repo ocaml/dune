@@ -113,11 +113,15 @@ let sexp_of_t t =
 let compare a b = compare a.name b.name
 
 let get_arch_sixtyfour stdlib_dir =
-  let config_h = Path.relative stdlib_dir "caml/config.h" in
-  List.exists (Io.lines_of_file (Path.to_string config_h)) ~f:(fun line ->
-    match String.extract_blank_separated_words line with
-    | ["#define"; "ARCH_SIXTYFOUR"] -> true
-    | _ -> false)
+  let files = ["caml/config.h"; "caml/m.h"] in
+  let get_arch_sixtyfour_from file =
+    let config_h = Path.relative stdlib_dir file in
+    List.exists (Io.lines_of_file (Path.to_string config_h)) ~f:(fun line ->
+      match String.extract_blank_separated_words line with
+      | ["#define"; "ARCH_SIXTYFOUR"] -> true
+      | _ -> false)
+  in
+  List.exists ~f:get_arch_sixtyfour_from files
 
 let opam_config_var ~env ~cache var =
   match Hashtbl.find cache var with

@@ -113,11 +113,15 @@ let sexp_of_t t =
 let compare a b = compare a.name b.name
 
 let get_arch_sixtyfour stdlib_dir =
-  let config_h = Path.relative stdlib_dir "caml/config.h" in
-  List.exists (Io.lines_of_file (Path.to_string config_h)) ~f:(fun line ->
-    match String.extract_blank_separated_words line with
-    | ["#define"; "ARCH_SIXTYFOUR"] -> true
-    | _ -> false)
+  let files = ["caml/config.h"; "caml/m.h"] in
+  let get_arch_sixtyfour_from file =
+    let config_h = Path.relative stdlib_dir file in
+    List.exists (Io.lines_of_file (Path.to_string config_h)) ~f:(fun line ->
+      match String.extract_blank_separated_words line with
+      | ["#define"; "ARCH_SIXTYFOUR"] -> true
+      | _ -> false)
+  in
+  List.exists ~f:get_arch_sixtyfour_from files
 
 let opam_config_var ~env ~cache var =
   match Hashtbl.find cache var with
@@ -303,6 +307,11 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
       let _, ocamlopt_cflags = split_prog (get "native_c_compiler") in
       (c_compiler, ocamlc_cflags, ocamlopt_cflags)
   in
+  let arch_sixtyfour =
+    match get_opt "word_size" with
+    | Some ws -> ws = "64"
+    | None -> get_arch_sixtyfour stdlib_dir
+  in
   return
     { name
     ; kind
@@ -322,7 +331,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
     ; env
     ; env_extra
     ; findlib = Findlib.create ~stdlib_dir ~path:findlib_path
-    ; arch_sixtyfour = get_arch_sixtyfour stdlib_dir
+    ; arch_sixtyfour
 
     ; opam_var_cache
 

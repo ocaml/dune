@@ -307,6 +307,11 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
       let _, ocamlopt_cflags = split_prog (get "native_c_compiler") in
       (c_compiler, ocamlc_cflags, ocamlopt_cflags)
   in
+  let arch_sixtyfour =
+    match get_opt "word_size" with
+    | Some ws -> String.equal ws "64"
+    | None -> get_arch_sixtyfour stdlib_dir
+  in
   return
     { name
     ; kind
@@ -326,7 +331,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
     ; env
     ; env_extra
     ; findlib = Findlib.create ~stdlib_dir ~path:findlib_path
-    ; arch_sixtyfour = get_arch_sixtyfour stdlib_dir
+    ; arch_sixtyfour
 
     ; opam_var_cache
 

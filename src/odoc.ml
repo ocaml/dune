@@ -116,59 +116,59 @@ let toplevel_index ~doc_dir = doc_dir ++ "index.html"
 
 let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
       ~(dep_graph:Ocamldep.dep_graph) =
-  Option.iter lib.public ~f:(fun public ->
-    let context = SC.context sctx in
-    let dep_graph =
-      Build.memoize "odoc deps"
-        ((* Use the dependency graph given by ocamldep. However, when a module has no
-            .mli, use the dependencies for the .ml *)
-          Build.fanout dep_graph.intf dep_graph.impl
-          >>^ fun (intf, impl) ->
-          String_map.merge intf impl ~f:(fun _ intf impl ->
-            match intf, impl with
-            | Some _, _    -> intf
-            | None, Some _ -> impl
-            | None, None -> assert false))
-    in
-    let odoc = get_odoc sctx in
-    let includes =
-      Build.memoize "includes"
-        (requires
-         >>>
-         SC.Libs.file_deps sctx ~ext:odoc_ext
-         >>^ Lib.include_flags)
-    in
-    let modules_and_odoc_files =
-      List.map (String_map.values modules)
-        ~f:(compile_module sctx ~odoc ~dir ~includes ~dep_graph ~modules
-              ~lib_public_name:public.name)
-    in
-    SC.Libs.setup_file_deps_alias sctx ~ext:odoc_ext (dir, lib)
-      (List.map modules_and_odoc_files ~f:snd);
-    let doc_dir = doc_dir ~context in
+  let name = Option.value (Option.map ~f:(fun x -> x.name) lib.public) ~default:lib.name in
+  let context = SC.context sctx in
+  let dep_graph =
+    Build.memoize "odoc deps"
+      ((* Use the dependency graph given by ocamldep. However, when a module has no
+          .mli, use the dependencies for the .ml *)
+        Build.fanout dep_graph.intf dep_graph.impl
+        >>^ fun (intf, impl) ->
+        String_map.merge intf impl ~f:(fun _ intf impl ->
+          match intf, impl with
+          | Some _, _    -> intf
+          | None, Some _ -> impl
+          | None, None -> assert false))
+  in
+  let odoc = get_odoc sctx in
+  let includes =
+    Build.memoize "includes"
+      (requires
+       >>>
+       SC.Libs.file_deps sctx ~ext:odoc_ext
+       >>^ Lib.include_flags)
+  in
+  let modules_and_odoc_files =
+    List.map (String_map.values modules)
+      ~f:(compile_module sctx ~odoc ~dir ~includes ~dep_graph ~modules
+            ~lib_public_name:name)
+  in
+  SC.Libs.setup_file_deps_alias sctx ~ext:odoc_ext (dir, lib)
+    (List.map modules_and_odoc_files ~f:snd);
+  let doc_dir = doc_dir ~context in
     (*
-    let modules_and_odoc_files =
-      if lib.wrapped then
-        let main_module_name = String.capitalize_ascii lib.name in
-        List.filter modules_and_odoc_files
-          ~f:(fun (m, _) -> m.Module.name = main_module_name)
-      else
-        modules_and_odoc_files
-       in*)
-    let html_files =
-      List.map modules_and_odoc_files ~f:(fun (m, odoc_file) ->
-        to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~lib
-          ~lib_public_name:public.name)
-    in
-    let lib_index_html =
-      lib_index sctx ~dir ~lib ~lib_public_name:public.name ~doc_dir
-        ~modules ~includes ~odoc
-    in
-    Alias.add_deps (SC.aliases sctx) (Alias.doc ~dir)
-      (css_file ~doc_dir
-       :: toplevel_index ~doc_dir
-       :: lib_index_html
-       :: html_files))
+     let modules_and_odoc_files =
+     if lib.wrapped then
+     let main_module_name = String.capitalize_ascii lib.name in
+     List.filter modules_and_odoc_files
+     ~f:(fun (m, _) -> m.Module.name = main_module_name)
+     else
+     modules_and_odoc_files
+     in*)
+  let html_files =
+    List.map modules_and_odoc_files ~f:(fun (m, odoc_file) ->
+      to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~lib
+        ~lib_public_name:name)
+  in
+  let lib_index_html =
+    lib_index sctx ~dir ~lib ~lib_public_name:name ~doc_dir
+      ~modules ~includes ~odoc
+  in
+  Alias.add_deps (SC.aliases sctx) (Alias.doc ~dir)
+    (css_file ~doc_dir
+     :: toplevel_index ~doc_dir
+     :: lib_index_html
+     :: html_files)
 
 let setup_css_rule sctx =
   let context = SC.context sctx in

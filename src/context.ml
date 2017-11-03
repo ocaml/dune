@@ -309,7 +309,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findli
   in
   let arch_sixtyfour =
     match get_opt "word_size" with
-    | Some ws -> String.equal ws "64"
+    | Some ws -> ws = "64"
     | None -> get_arch_sixtyfour stdlib_dir
   in
   return

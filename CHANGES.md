@@ -1,5 +1,5 @@
-next
-----
+1.0+beta15 (04/11/2017)
+-----------------------
 
 - Change the semantic of aliases: there are no longer aliases that are
   recursive such as `install` or `runtest`. All aliases are
@@ -9,7 +9,15 @@ next
   the same behavior as previous recursive aliases for their own
   aliases, such as `example`. Inside jbuild files, one can use `(deps
   (... (alias_rec xxx) ...))` to get the same behavior as on the
-  command line.
+  command line. (#268)
+
+- Include sub libraries that have a `.` in the generated documentation index
+  (#280).
+
+- Fix "up" links to the top-level index in the odoc generated documentation
+  (#282).
+
+- Fix `ARCH_SIXTYFOUR` detection for OCaml 4.06.0 (#303)
 
 1.0+beta14 (11/10/2017)
 -----------------------

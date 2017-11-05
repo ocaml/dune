@@ -52,7 +52,7 @@ type t =
   ; mutable known_targets_by_src_dir_so_far : String_set.t Path.Map.t
   ; libs_vfile                              : (module Vfile_kind.S with type t = Lib.t list)
   ; cxx_flags                               : string list
-  ; vars                                    : string String_map.t
+  ; vars                                    : (Action.Var_expansion.Concat_or_split.t -> Action.Var_expansion.t) String_map.t
   ; ppx_dir                                 : Path.t
   ; ppx_drivers                             : (string, Path.t) Hashtbl.t
   ; external_dirs                           : (Path.t, External_dir.t) Hashtbl.t
@@ -69,7 +69,10 @@ let rules t = t.rules
 let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
 let cxx_flags t = t.cxx_flags
 
-let expand_var_no_root t var = String_map.find var t.vars
+let expand_var_no_root t var cos =
+  match String_map.find var t.vars with
+  | Some v -> Some(v cos)
+  | None -> None
 
 let get_external_dir t ~dir =
   Hashtbl.find_or_add t.external_dirs dir ~f:(fun dir ->
@@ -80,7 +83,14 @@ let expand_vars t ~scope ~dir s =
   | "ROOT" -> Some (Path.reach ~from:dir t.context.build_dir)
   | "SCOPE_ROOT" ->
     Some (Path.reach ~from:dir (Path.append t.context.build_dir scope.Scope.root))
-  | var -> String_map.find var t.vars)
+  | var ->
+     let open Action.Var_expansion in
+     match expand_var_no_root t var Concat_or_split.Concat with
+     | Some(Paths(p,_)) ->
+        let p = List.map p ~f:Path.to_string in
+        Some (String.concat ~sep:" " p)
+     | Some(Strings(s,_)) -> Some (String.concat ~sep:" " s)
+     | None -> None)
 
 let resolve_program_internal t ?hint ?(in_the_tree=true) bin =
   Artifacts.binary t.artifacts ?hint ~in_the_tree bin
@@ -160,6 +170,8 @@ let create
     |> List.filter ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
   let vars =
+    let path_exp p cos = Action.Var_expansion.Paths ([p], cos) in
+    let str_exp s cos = Action.Var_expansion.Strings (s, cos) in
     let ocamlopt =
       match context.ocamlopt with
       | None -> Path.relative context.ocaml_bin "ocamlopt"
@@ -167,24 +179,25 @@ let create
     in
     let make =
       match Bin.make with
-      | None   -> "make"
-      | Some p -> Path.to_string p
+      | None   -> path_exp (Path.of_string "make")
+      | Some p -> path_exp p
     in
-    [ "-verbose"       , "" (*"-verbose";*)
-    ; "CPP"            , sprintf "%s %s -E" context.c_compiler context.ocamlc_cflags
-    ; "PA_CPP"         , sprintf "%s %s -undef -traditional -x c -E" context.c_compiler
-                           context.ocamlc_cflags
-    ; "CC"             , sprintf "%s %s" context.c_compiler context.ocamlc_cflags
-    ; "CXX"            , String.concat ~sep:" " (context.c_compiler :: cxx_flags)
-    ; "ocaml_bin"      , Path.to_string context.ocaml_bin
-    ; "OCAML"          , Path.to_string context.ocaml
-    ; "OCAMLC"         , Path.to_string context.ocamlc
-    ; "OCAMLOPT"       , Path.to_string ocamlopt
-    ; "ocaml_version"  , context.version
-    ; "ocaml_where"    , Path.to_string context.stdlib_dir
-    ; "ARCH_SIXTYFOUR" , string_of_bool context.arch_sixtyfour
+    let cflags = String.extract_blank_separated_words context.ocamlc_cflags in
+    [ "-verbose"       , str_exp [] (*"-verbose";*)
+    ; "CPP"            , str_exp (context.c_compiler :: cflags @ ["-E"])
+    ; "PA_CPP"         , str_exp (context.c_compiler :: cflags
+                                  @ ["-undef"; "-traditional"; "-x"; "c"; "-E"])
+    ; "CC"             , str_exp (context.c_compiler :: cflags)
+    ; "CXX"            , str_exp (context.c_compiler :: cxx_flags)
+    ; "ocaml_bin"      , path_exp context.ocaml_bin
+    ; "OCAML"          , path_exp context.ocaml
+    ; "OCAMLC"         , path_exp context.ocamlc
+    ; "OCAMLOPT"       , path_exp ocamlopt
+    ; "ocaml_version"  , str_exp [context.version]
+    ; "ocaml_where"    , path_exp context.stdlib_dir
+    ; "ARCH_SIXTYFOUR" , str_exp [string_of_bool context.arch_sixtyfour]
     ; "MAKE"           , make
-    ; "null"           , Path.to_string Config.dev_null
+    ; "null"           , path_exp Config.dev_null
     ]
     |> String_map.of_alist
     |> function
@@ -606,10 +619,7 @@ module Action = struct
               | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
               | Static l -> Some (Paths (l, cos))
             end
-          | _ ->
-            match expand_var_no_root sctx var with
-            | Some s -> Some (str_exp s)
-            | None -> None)
+          | _ -> expand_var_no_root sctx var cos)
     in
     (t, acc)
 

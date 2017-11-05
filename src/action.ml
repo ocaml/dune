@@ -200,7 +200,8 @@ module Var_expansion = struct
     | Paths   (l, Concat) -> [concat (List.map l ~f:(string_of_path ~dir))]
 
   let to_string ~dir = function
-    | Strings (_, Split) | Paths (_, Split) -> assert false
+    | Strings (_, Split) | Paths (_, Split) ->
+       failwith "Action.Var_expansion.to_string"
     | Strings (l, Concat) -> concat l
     | Paths   (l, Concat) -> concat (List.map l ~f:(string_of_path ~dir))
 
@@ -355,7 +356,12 @@ module Unexpanded = struct
       SW.partial_expand template ~f:(fun loc var ->
         match f loc var with
         | None   -> None
-        | Some e -> Some (VE.to_string ~dir e))
+        | Some e ->
+           try Some (VE.to_string ~dir e)
+           with Failure _ ->
+             let msg = sprintf "Split variable %S in string does not \
+                                make sense" var in
+             raise(Loc.Error (loc, msg)))
 
     let expand ~generic ~special ~dir ~f template =
       match SW.just_a_var template with

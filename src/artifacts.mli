@@ -16,7 +16,6 @@ val create
 val binary
   :  t
   -> ?hint:string
-  -> ?in_the_tree:bool (* default true *)
   -> string
   -> (Path.t, fail) result
 

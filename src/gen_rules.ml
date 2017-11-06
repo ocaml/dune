@@ -163,9 +163,7 @@ module Gen(P : Params) = struct
          (* We have to execute the rule in the library directory as the .o is produced in
             the current directory *)
          ~dir
-         (SC.resolve_program sctx ctx.c_compiler
-            (* The C compiler surely is not in the tree *)
-            ~in_the_tree:false)
+         (SC.resolve_program sctx ctx.c_compiler)
          [ S [A "-I"; Path ctx.stdlib_dir]
          ; As (SC.cxx_flags sctx)
          ; Dyn (fun (cxx_flags, libs) ->

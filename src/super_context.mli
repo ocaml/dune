@@ -68,7 +68,6 @@ val sources_and_targets_known_so_far : t -> src_path:Path.t -> String_set.t
 val resolve_program
   :  t
   -> ?hint:string
-  -> ?in_the_tree:bool (* default true *)
   -> string
   -> Action.Prog.t
 

@@ -82,11 +82,11 @@ let expand_vars t ~scope ~dir s =
     Some (Path.reach ~from:dir (Path.append t.context.build_dir scope.Scope.root))
   | var -> String_map.find var t.vars)
 
-let resolve_program_internal t ?(in_the_tree=true) bin =
-  Artifacts.binary t.artifacts ~in_the_tree bin
+let resolve_program_internal t bin =
+  Artifacts.binary t.artifacts bin
 
-let resolve_program t ?hint ?in_the_tree bin =
-  match resolve_program_internal t ?in_the_tree bin with
+let resolve_program t ?hint bin =
+  match resolve_program_internal t bin with
   | Ok path -> Ok path
   | Error _fail ->
     Error

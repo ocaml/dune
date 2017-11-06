@@ -21,6 +21,8 @@ module Prog : sig
       ; program: string
       ; hint: string option
       }
+
+    val raise : t -> _
   end
 
   type t = (Path.t, Not_found.t) result

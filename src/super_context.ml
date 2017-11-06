@@ -82,18 +82,8 @@ let expand_vars t ~scope ~dir s =
     Some (Path.reach ~from:dir (Path.append t.context.build_dir scope.Scope.root))
   | var -> String_map.find var t.vars)
 
-let resolve_program_internal t bin =
-  Artifacts.binary t.artifacts bin
-
 let resolve_program t ?hint bin =
-  match resolve_program_internal t bin with
-  | Ok path -> Ok path
-  | Error _fail ->
-    Error
-      { Action.Prog.Not_found.
-        context = t.context.name
-      ; program = bin
-      ; hint }
+  Artifacts.binary ?hint t.artifacts bin
 
 let create
       ~(context:Context.t)
@@ -532,8 +522,10 @@ module Action = struct
         | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("bin"     , s) -> begin
             match Artifacts.binary (artifacts sctx) s with
-            | Ok path -> static_dep_exp acc path
-            | Error fail -> add_fail acc fail
+            | Ok path ->
+              static_dep_exp acc path
+            | Error e ->
+              add_fail acc ({ fail = fun () -> Action.Prog.Not_found.raise e })
           end
         (* "findlib" for compatibility with Jane Street packages which are not yet updated
            to convert "findlib" to "lib" *)
@@ -699,9 +691,9 @@ module Action = struct
           expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user
         in
         Action.Unresolved.resolve unresolved ~f:(fun prog ->
-          match resolve_program_internal sctx prog with
+          match Artifacts.binary sctx.artifacts prog with
           | Ok path    -> path
-          | Error fail -> fail.fail ()))
+          | Error fail -> Action.Prog.Not_found.raise fail))
       >>>
       Build.dyn_paths (Build.arr (fun action ->
         let { Action.Infer.Outcome.deps; targets = _ } =
@@ -839,7 +831,8 @@ module PP = struct
      a new module with only OCaml sources *)
   let setup_reason_rules sctx ~dir (m : Module.t) =
     let ctx = sctx.context in
-    let refmt = resolve_program sctx "refmt" ~hint:"opam install reason" in
+    let refmt =
+      Artifacts.binary sctx.artifacts "refmt" ~hint:"opam install reason" in
     let rule src target =
       let src_path = Path.relative dir src in
       Build.run ~context:ctx refmt

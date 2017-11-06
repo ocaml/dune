@@ -68,11 +68,10 @@ let binary t ?hint name =
       | Some p -> Ok p
       | None ->
         Error
-          { fail = fun () ->
-              Utils.program_not_found name
-                ~context:t.context.name
-                ?hint
-                ~in_the_tree:true
+          { Action.Prog.Not_found.
+            program = name
+          ; hint
+          ; context = t.context.Context.name
           }
 
 let file_of_lib t ~from ~lib ~file =

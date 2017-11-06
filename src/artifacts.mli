@@ -17,7 +17,7 @@ val binary
   :  t
   -> ?hint:string
   -> string
-  -> (Path.t, fail) result
+  -> Action.Prog.t
 
 (** [file_of_lib t ~from name] a named artifact that is looked up in the given library.
 

@@ -527,21 +527,23 @@ module Action = struct
         | Some ("exe"     , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("bin"     , s) -> begin
-            match A.binary (artifacts sctx) s with
+            match Artifacts.binary (artifacts sctx) s with
             | Ok path -> static_dep_exp acc path
             | Error fail -> add_fail acc fail
           end
         (* "findlib" for compatibility with Jane Street packages which are not yet updated
            to convert "findlib" to "lib" *)
         | Some (("lib"|"findlib"), s) -> begin
-            let lib_dep, res = A.file_of_lib (artifacts sctx) ~loc ~from:dir s in
+            let lib_dep, res =
+              Artifacts.file_of_lib (artifacts sctx) ~loc ~from:dir s in
             add_lib_dep acc lib_dep dep_kind;
             match res with
             | Ok path -> static_dep_exp acc path
             | Error fail -> add_fail acc fail
           end
         | Some ("libexec" , s) -> begin
-            let lib_dep, res = A.file_of_lib (artifacts sctx) ~loc ~from:dir s in
+            let lib_dep, res =
+              Artifacts.file_of_lib (artifacts sctx) ~loc ~from:dir s in
             add_lib_dep acc lib_dep dep_kind;
             match res with
             | Error fail -> add_fail acc fail

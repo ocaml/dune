@@ -115,11 +115,14 @@ let compare a b = compare a.name b.name
 let get_arch_sixtyfour stdlib_dir =
   let files = ["caml/config.h"; "caml/m.h"] in
   let get_arch_sixtyfour_from file =
-    let config_h = Path.relative stdlib_dir file in
-    List.exists (Io.lines_of_file (Path.to_string config_h)) ~f:(fun line ->
-      match String.extract_blank_separated_words line with
-      | ["#define"; "ARCH_SIXTYFOUR"] -> true
-      | _ -> false)
+    let file_path = Path.to_string (Path.relative stdlib_dir file) in
+    if Sys.file_exists file_path then begin
+      List.exists (Io.lines_of_file file_path) ~f:(fun line ->
+        match String.extract_blank_separated_words line with
+        | ["#define"; "ARCH_SIXTYFOUR"] -> true
+        | _ -> false)
+    end else
+      false
   in
   List.exists ~f:get_arch_sixtyfour_from files
 

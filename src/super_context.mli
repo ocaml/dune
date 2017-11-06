@@ -70,7 +70,7 @@ val resolve_program
   -> ?hint:string
   -> ?in_the_tree:bool (* default true *)
   -> string
-  -> _ Build.Prog_spec.t
+  -> Action.Prog.t
 
 module Libs : sig
   val find : t -> from:Path.t -> string -> Lib.t option

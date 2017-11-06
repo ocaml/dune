@@ -108,7 +108,7 @@ module Gen(P : Params) = struct
          >>>
          Build.dyn_paths (Build.arr objs)
          >>>
-         Build.run ~context:ctx (Dep compiler)
+         Build.run ~context:ctx (Ok compiler)
            ~extra_targets:(
              match mode with
              | Byte -> []
@@ -138,7 +138,7 @@ module Gen(P : Params) = struct
          (* We have to execute the rule in the library directory as the .o is produced in
             the current directory *)
          ~dir
-         (Dep ctx.ocamlc)
+         (Ok ctx.ocamlc)
          [ As (Utils.g ())
          ; Dyn (fun (c_flags, libs) ->
              S [ Lib.c_include_flags libs
@@ -328,7 +328,7 @@ module Gen(P : Params) = struct
              >>>
              Build.run ~context:ctx
                ~extra_targets:targets
-               (Dep ctx.ocamlmklib)
+               (Ok ctx.ocamlmklib)
                [ As (Utils.g ())
                ; if custom then A "-custom" else As []
                ; A "-o"
@@ -390,7 +390,7 @@ module Gen(P : Params) = struct
           Ocaml_flags.get flags Native
           >>>
           Build.run ~context:ctx
-            (Dep ocamlopt)
+            (Ok ocamlopt)
             [ Dyn (fun flags -> As flags)
             ; A "-shared"; A "-linkall"
             ; A "-I"; Path dir
@@ -473,7 +473,7 @@ module Gen(P : Params) = struct
        (SC.expand_and_eval_set sctx ~scope ~dir link_flags ~standard:[])
        >>>
        Build.run ~context:ctx
-         (Dep compiler)
+         (Ok compiler)
          [ Dyn (fun (_, (flags,_)) -> As flags)
          ; A "-o"; Target exe
          ; Dyn (fun (_, (_, link_flags)) -> As (link_custom @ link_flags))

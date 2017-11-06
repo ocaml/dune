@@ -76,7 +76,7 @@ let rules sctx ~ml_kind ~dir ~item ~modules ~alias_module ~lib_interface_module 
   in
   let ctx = SC.context sctx in
   SC.add_rule sctx
-    (Build.run ~context:ctx (Dep ctx.ocamldep) [A "-modules"; S files]
+    (Build.run ~context:ctx (Ok ctx.ocamldep) [A "-modules"; S files]
        ~stdout_to:ocamldep_output);
   Build.memoize (Path.to_string ocamldep_output)
     (Build.lines_of ocamldep_output

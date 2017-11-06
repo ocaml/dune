@@ -82,13 +82,18 @@ let expand_vars t ~scope ~dir s =
     Some (Path.reach ~from:dir (Path.append t.context.build_dir scope.Scope.root))
   | var -> String_map.find var t.vars)
 
-let resolve_program_internal t ?hint ?(in_the_tree=true) bin =
-  Artifacts.binary t.artifacts ?hint ~in_the_tree bin
+let resolve_program_internal t ?(in_the_tree=true) bin =
+  Artifacts.binary t.artifacts ~in_the_tree bin
 
 let resolve_program t ?hint ?in_the_tree bin =
-  match resolve_program_internal t ?hint ?in_the_tree bin with
-  | Error fail -> Build.Prog_spec.Dyn (fun _ -> fail.fail ())
-  | Ok    path -> Build.Prog_spec.Dep path
+  match resolve_program_internal t ?in_the_tree bin with
+  | Ok path -> Ok path
+  | Error _fail ->
+    Error
+      { Action.Prog.Not_found.
+        context = t.context.name
+      ; program = bin
+      ; hint }
 
 let create
       ~(context:Context.t)
@@ -519,7 +524,6 @@ module Action = struct
     in
     let t =
       U.partial_expand dir t ~f:(fun loc key ->
-        let module A = Artifacts in
         let open Action.Var_expansion in
         let cos, var = parse_bang key in
         match String.lsplit2 var ~on:':' with
@@ -797,7 +801,7 @@ module PP = struct
        >>>
        Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib))
        >>>
-       Build.run ~context:ctx (Dep compiler)
+       Build.run ~context:ctx (Ok compiler)
          [ A "-o" ; Target target
          ; Dyn (Lib.link_flags ~mode)
          ])
@@ -897,7 +901,7 @@ module PP = struct
             (preprocessor_deps
              >>>
              Build.run ~context:sctx.context
-               (Dep ppx_exe)
+               (Ok ppx_exe)
                [ As flags
                ; A "--dump-ast"
                ; As (cookie_library_name lib_name)

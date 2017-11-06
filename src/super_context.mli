@@ -58,10 +58,9 @@ val rules : t -> Build_interpret.Rule.t list
 
 val sources_and_targets_known_so_far : t -> src_path:Path.t -> String_set.t
 
-(** [prog_spec t ?hint ?in_the_tree name] resolve a program. If [in_the_tree] is [true]
-    (the default), [name] is looked up in the workspace. Otherwise, or if it is not found
-    in the tree is is looked up in the PATH. If it is not found at all, the resulting
-    [Prog_spec.t] will fail when evaluated.
+(** [prog_spec t ?hint name] resolve a program. [name] is looked up in the
+    workspace, if it is not found in the tree is is looked up in the PATH. If it
+    is not found at all, the resulting [Prog_spec.t] will fail when evaluated.
 
     [hint] should tell the user what to install when the program is not found.
 *)

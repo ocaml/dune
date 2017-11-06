@@ -18,11 +18,9 @@ val jbuild_name_in : dir:Path.t -> string
 (** Nice description of a target *)
 val describe_target : Path.t -> string
 
-(** Raise an error about a program not found in the PATH. If [in_the_tree] is [true], then
-    assume that the program was looked up in the tree as well. *)
+(** Raise an error about a program not found in the PATH or in the tree *)
 val program_not_found
   :  ?context:string
-  -> ?in_the_tree:bool (* default: false *)
   -> ?hint:string
   -> string
   -> _

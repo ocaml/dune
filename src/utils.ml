@@ -88,12 +88,9 @@ let describe_target fn =
   | _ ->
     Path.to_string_maybe_quoted fn
 
-let program_not_found ?context ?(in_the_tree=false) ?hint prog =
-  die "@{<error>Error@}: Program %s not found in%s PATH%s%a" (maybe_quoted prog)
-    (if in_the_tree then
-       " the tree or in"
-     else
-       "")
+let program_not_found ?context ?hint prog =
+  die "@{<error>Error@}: Program %s not found in the tree or in PATH%s%a"
+    (maybe_quoted prog)
     (match context with
      | None -> ""
      | Some name -> sprintf " (context: %s)" name)

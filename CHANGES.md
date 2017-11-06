@@ -1,7 +1,7 @@
 1.0+beta16 (05/11/2017)
 -----------------------
 
-* Fix build on 32-bit OCaml on Windows/Cygwin (#313)
+- Fix build on 32-bit OCaml (#313)
 
 1.0+beta15 (04/11/2017)
 -----------------------

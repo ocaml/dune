@@ -1,3 +1,19 @@
+next
+----
+
+- Add `S .` to .merlin by default (#284)
+
+- Improve `jbuilder exec` to make it possible to execute non public executables.
+  `jbuilder exec path/bin` will execute `bin` inside default (or specified)
+  context relative to `path`. `jbuilder exec /path` will execute `/path` as
+  absolute path but with the context's environment set appropriately. Lastly,
+  `jbuilder exec` will change the root as to which paths are relative using the
+  `-root` option. (#286)
+  
+- Fix `jbuilder rules` printing rules when some binaries are missing (#292)
+
+- Build documentation for non public libraries (#306)
+
 1.0+beta16 (05/11/2017)
 -----------------------
 

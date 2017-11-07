@@ -827,10 +827,8 @@ let exec =
            path is interpreted as an absolute path|}
     ; `P {|When a / is present at any other position (relative path), then the
            path is interpreted as relative to the build context + current
-           working directory |}
-    ; `P {|When this command is ran outside of the project root (in conjunction
-         with setting the $(b,--root) option manually), the path will always be
-         treated as relative to $(b,--root)|}
+           working directory (or the value of $(b,--root) when ran outside of
+           the project root)|}
     ; `Blocks help_secs
     ]
   in

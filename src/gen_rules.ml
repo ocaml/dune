@@ -796,6 +796,10 @@ Add it to your jbuild file to remove this warning.
         :: merlins
       | _ -> merlins)
     |> Merlin.merge_all
+    |> Option.map ~f:(fun (m : Merlin.t) ->
+      { m with source_dirs =
+                 Path.Set.add (Path.relative src_dir ".") m.source_dirs
+      })
     |> Option.iter ~f:(Merlin.add_rules sctx ~dir:ctx_dir);
     Option.iter (Utop.exe_stanzas stanzas) ~f:(fun (exe, all_modules) ->
       let dir = Utop.utop_exe_dir ~dir:ctx_dir in

@@ -60,7 +60,8 @@ val sources_and_targets_known_so_far : t -> src_path:Path.t -> String_set.t
 
 (** [prog_spec t ?hint name] resolve a program. [name] is looked up in the
     workspace, if it is not found in the tree is is looked up in the PATH. If it
-    is not found at all, the resulting [Prog_spec.t] will fail when evaluated.
+    is not found at all, the resulting [Prog_spec.t] will either return the
+    resolved path or a record with details about the error and possibly a hint.
 
     [hint] should tell the user what to install when the program is not found.
 *)

@@ -131,9 +131,9 @@ end
 module Prog = struct
   module Not_found = struct
     type t =
-      { context: string
-      ; program: string
-      ; hint: string option
+      { context : string
+      ; program : string
+      ; hint    : string option
       }
 
     let raise { context ; program ; hint } =

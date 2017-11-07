@@ -14,12 +14,14 @@ end
 
 module Outputs : module type of struct include Action_intf.Outputs end
 
+(** result of the lookup of a program, the path to it or information about the
+    failure and possibly a hint how to fix it *)
 module Prog : sig
   module Not_found : sig
     type t =
-      { context: string
-      ; program: string
-      ; hint: string option
+      { context : string
+      ; program : string
+      ; hint    : string option
       }
 
     val raise : t -> _

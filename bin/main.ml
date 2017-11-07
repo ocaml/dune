@@ -816,21 +816,45 @@ let exec =
   in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|$(b,jbuilder exec -- COMMAND) should behave in the same way as if you do:|}
+    ; `P {|$(b,jbuilder exec -- COMMAND) should behave in the same way as if you
+           do:|}
     ; `Pre "  \\$ jbuilder install\n\
            \  \\$ COMMAND"
-    ; `P {|In particular if you run $(b,jbuilder exec ocaml), you will have access
-           to the libraries defined in the workspace using your usual directives
-           ($(b,#require) for instance)|}
+    ; `P {|In particular if you run $(b,jbuilder exec ocaml), you will have
+           access to the libraries defined in the workspace using your usual
+           directives ($(b,#require) for instance)|}
+    ; `P {|When a leading / is present in the command (absolute path), then the
+           path is interpreted as an absolute path|}
+    ; `P {|When a / is present at any other position (relative path), then the
+           path is interpreted as relative to the build context + current
+           working directory (or the value of $(b,--root) when ran outside of
+           the project root)|}
     ; `Blocks help_secs
     ]
   in
   let go common context prog args =
+    let runcwd = Sys.getcwd () in
     set_common common ~targets:[];
     let log = Log.create () in
     let setup = Future.Scheduler.go ~log (Main.setup ~log common) in
     let context = Main.find_context_exn setup ~name:context in
-    let path = Config.local_install_bin_dir ~context:context.name :: context.path in
+    let (prog, path) =
+      match String.index prog '/' with
+      | None ->
+        (prog, Config.local_install_bin_dir ~context:context.name :: context.path)
+      | Some i ->
+        let p = Path.of_string prog in
+        let path =
+          if i = 0 then (
+            Path.parent p
+          ) else (
+            match String.drop_prefix runcwd ~prefix:common.root with
+            | None ->
+              Path.append context.build_dir (Path.parent p)
+            | Some s ->
+              Path.append (Path.relative context.build_dir s) (Path.parent p)
+          ) in
+        (Path.basename p, [path]) in
     match Bin.which ~path prog with
     | None ->
       Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;

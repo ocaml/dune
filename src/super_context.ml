@@ -82,13 +82,8 @@ let expand_vars t ~scope ~dir s =
     Some (Path.reach ~from:dir (Path.append t.context.build_dir scope.Scope.root))
   | var -> String_map.find var t.vars)
 
-let resolve_program_internal t ?hint ?(in_the_tree=true) bin =
-  Artifacts.binary t.artifacts ?hint ~in_the_tree bin
-
-let resolve_program t ?hint ?in_the_tree bin =
-  match resolve_program_internal t ?hint ?in_the_tree bin with
-  | Error fail -> Build.Prog_spec.Dyn (fun _ -> fail.fail ())
-  | Ok    path -> Build.Prog_spec.Dep path
+let resolve_program t ?hint bin =
+  Artifacts.binary ?hint t.artifacts bin
 
 let create
       ~(context:Context.t)
@@ -519,7 +514,6 @@ module Action = struct
     in
     let t =
       U.partial_expand dir t ~f:(fun loc key ->
-        let module A = Artifacts in
         let open Action.Var_expansion in
         let cos, var = parse_bang key in
         match String.lsplit2 var ~on:':' with
@@ -527,21 +521,25 @@ module Action = struct
         | Some ("exe"     , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("bin"     , s) -> begin
-            match A.binary (artifacts sctx) s with
-            | Ok path -> static_dep_exp acc path
-            | Error fail -> add_fail acc fail
+            match Artifacts.binary (artifacts sctx) s with
+            | Ok path ->
+              static_dep_exp acc path
+            | Error e ->
+              add_fail acc ({ fail = fun () -> Action.Prog.Not_found.raise e })
           end
         (* "findlib" for compatibility with Jane Street packages which are not yet updated
            to convert "findlib" to "lib" *)
         | Some (("lib"|"findlib"), s) -> begin
-            let lib_dep, res = A.file_of_lib (artifacts sctx) ~loc ~from:dir s in
+            let lib_dep, res =
+              Artifacts.file_of_lib (artifacts sctx) ~loc ~from:dir s in
             add_lib_dep acc lib_dep dep_kind;
             match res with
             | Ok path -> static_dep_exp acc path
             | Error fail -> add_fail acc fail
           end
         | Some ("libexec" , s) -> begin
-            let lib_dep, res = A.file_of_lib (artifacts sctx) ~loc ~from:dir s in
+            let lib_dep, res =
+              Artifacts.file_of_lib (artifacts sctx) ~loc ~from:dir s in
             add_lib_dep acc lib_dep dep_kind;
             match res with
             | Error fail -> add_fail acc fail
@@ -693,9 +691,9 @@ module Action = struct
           expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user
         in
         Action.Unresolved.resolve unresolved ~f:(fun prog ->
-          match resolve_program_internal sctx prog with
+          match Artifacts.binary sctx.artifacts prog with
           | Ok path    -> path
-          | Error fail -> fail.fail ()))
+          | Error fail -> Action.Prog.Not_found.raise fail))
       >>>
       Build.dyn_paths (Build.arr (fun action ->
         let { Action.Infer.Outcome.deps; targets = _ } =
@@ -795,7 +793,7 @@ module PP = struct
        >>>
        Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib))
        >>>
-       Build.run ~context:ctx (Dep compiler)
+       Build.run ~context:ctx (Ok compiler)
          [ A "-o" ; Target target
          ; Dyn (Lib.link_flags ~mode)
          ])
@@ -833,7 +831,8 @@ module PP = struct
      a new module with only OCaml sources *)
   let setup_reason_rules sctx ~dir (m : Module.t) =
     let ctx = sctx.context in
-    let refmt = resolve_program sctx "refmt" ~hint:"opam install reason" in
+    let refmt =
+      Artifacts.binary sctx.artifacts "refmt" ~hint:"opam install reason" in
     let rule src target =
       let src_path = Path.relative dir src in
       Build.run ~context:ctx refmt
@@ -895,7 +894,7 @@ module PP = struct
             (preprocessor_deps
              >>>
              Build.run ~context:sctx.context
-               (Dep ppx_exe)
+               (Ok ppx_exe)
                [ As flags
                ; A "--dump-ast"
                ; As (cookie_library_name lib_name)

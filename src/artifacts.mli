@@ -8,17 +8,15 @@ val create
   -> f:('a -> Jbuild.Stanza.t list)
   -> t
 
-(** A named artifact that is looked up in the PATH if not found in the tree or
-    [in_the_tree] is [false].
+(** A named artifact that is looked up in the PATH if not found in the tree
 
     If the name is an absolute path, it is used as it.
 *)
 val binary
   :  t
   -> ?hint:string
-  -> ?in_the_tree:bool (* default true *)
   -> string
-  -> (Path.t, fail) result
+  -> Action.Prog.t
 
 (** [file_of_lib t ~from name] a named artifact that is looked up in the given library.
 

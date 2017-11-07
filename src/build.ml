@@ -6,12 +6,6 @@ module Vspec = struct
   type 'a t = T : Path.t * 'a Vfile_kind.t -> 'a t
 end
 
-module Prog_spec = struct
-  type 'a t =
-    | Dep of Path.t
-    | Dyn of ('a -> Path.t)
-end
-
 type lib_dep_kind =
   | Optional
   | Required
@@ -194,10 +188,11 @@ let files_recursively_in ~dir ~file_tree =
 
 let store_vfile spec = Store_vfile spec
 
-let get_prog (prog : _ Prog_spec.t) =
-  match prog with
-  | Dep p -> path p >>> arr (fun _ -> p)
-  | Dyn f -> arr f >>> dyn_paths (arr (fun x -> [x]))
+let get_prog = function
+  | Ok p -> path p >>> arr (fun _ -> Ok p)
+  | Error f ->
+    arr (fun _ -> Error f)
+    >>> dyn_paths (arr (function Error _ -> [] | Ok x -> [x]))
 
 let prog_and_args ?(dir=Path.root) prog args =
   Paths (Arg_spec.add_deps args Pset.empty)

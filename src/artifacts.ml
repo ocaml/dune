@@ -57,10 +57,10 @@ let create (context : Context.t) l ~f =
   ; local_libs
   }
 
-let binary t ?hint ?(in_the_tree=true) name =
+let binary t ?hint name =
   if not (Filename.is_relative name) then
     Ok (Path.absolute name)
-  else if in_the_tree then begin
+  else
     match String_map.find name t.local_bins with
     | Some path -> Ok path
     | None ->
@@ -68,24 +68,11 @@ let binary t ?hint ?(in_the_tree=true) name =
       | Some p -> Ok p
       | None ->
         Error
-          { fail = fun () ->
-              Utils.program_not_found name
-                ~context:t.context.name
-                ?hint
-                ~in_the_tree:true
+          { Action.Prog.Not_found.
+            program = name
+          ; hint
+          ; context = t.context.Context.name
           }
-  end else begin
-    match Context.which t.context name with
-    | Some p -> Ok p
-    | None ->
-      Error
-        { fail = fun () ->
-            Utils.program_not_found name
-              ~context:t.context.name
-              ?hint
-              ~in_the_tree:false
-        }
-  end
 
 let file_of_lib t ~from ~lib ~file =
   match String_map.find lib t.local_libs with

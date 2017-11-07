@@ -76,18 +76,12 @@ val fail : ?targets:Path.t list -> fail -> (_, _) t
     result is computed only once. *)
 val memoize : string -> (unit, 'a) t -> (unit, 'a) t
 
-module Prog_spec : sig
-  type 'a t =
-    | Dep of Path.t
-    | Dyn of ('a -> Path.t)
-end
-
 val run
   :  context:Context.t
   -> ?dir:Path.t (* default: [context.build_dir] *)
   -> ?stdout_to:Path.t
   -> ?extra_targets:Path.t list
-  -> 'a Prog_spec.t
+  -> Action.Prog.t
   -> 'a Arg_spec.t list
   -> ('a, Action.t) t
 

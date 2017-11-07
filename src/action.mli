@@ -14,8 +14,24 @@ end
 
 module Outputs : module type of struct include Action_intf.Outputs end
 
+(** result of the lookup of a program, the path to it or information about the
+    failure and possibly a hint how to fix it *)
+module Prog : sig
+  module Not_found : sig
+    type t =
+      { context : string
+      ; program : string
+      ; hint    : string option
+      }
+
+    val raise : t -> _
+  end
+
+  type t = (Path.t, Not_found.t) result
+end
+
 include Action_intf.Ast
-  with type program := Path.t
+  with type program := Prog.t
   with type path    := Path.t
   with type string  := string
 

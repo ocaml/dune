@@ -128,14 +128,35 @@ module Make_mapper
     | Digest_files x -> Digest_files (List.map x ~f:f_path)
 end
 
+module Prog = struct
+  module Not_found = struct
+    type t =
+      { context : string
+      ; program : string
+      ; hint    : string option
+      }
+
+    let raise { context ; program ; hint } =
+      Utils.program_not_found ?hint ~context program
+  end
+
+  type t = (Path.t, Not_found.t) result
+
+  let t sexp = Ok (Path.t sexp)
+
+  let sexp_of_t = function
+    | Ok s -> Path.sexp_of_t s
+    | Error (e : Not_found.t) -> Sexp.To_sexp.string e.program
+end
+
 module type Ast = Action_intf.Ast
-  with type program = Path.t
+  with type program = Prog.t
   with type path    = Path.t
   with type string  = String.t
 module rec Ast : Ast = Ast
 
 include Make_ast
-    (Path)
+    (Prog)
     (Path)
     (struct
       type t = string
@@ -169,8 +190,8 @@ module Unresolved = struct
   let resolve t ~f =
     map t ~f_path:(fun x -> x) ~f_string:(fun x -> x)
       ~f_program:(function
-        | This p -> p
-        | Search s -> f s)
+        | This p -> Ok p
+        | Search s -> Ok (f s))
 end
 
 module Var_expansion = struct
@@ -519,7 +540,9 @@ let exec_echo stdout_to str =
 
 let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   match t with
-  | Run (prog, args) ->
+  | Run (Error e, _) ->
+    Prog.Not_found.raise e
+  | Run (Ok prog, args) ->
     run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args
   | Chdir (dir, t) ->
     exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
@@ -657,7 +680,10 @@ let sandbox t ~sandboxed ~deps ~targets =
           Some (Ast.Symlink (path, sandboxed path))
         else
           None))
-    ; map t ~f_string:(fun x -> x) ~f_path:sandboxed ~f_program:sandboxed
+    ; map t ~f_string:(fun x -> x) ~f_path:sandboxed
+        ~f_program:(function
+        | Ok p -> Ok (sandboxed p)
+        | Error _ as e -> e)
     ; Progn (List.filter_map targets ~f:(fun path ->
         if Path.is_local path then
           Some (Ast.Rename (sandboxed path, path))
@@ -680,7 +706,8 @@ module Infer = struct
 
   let rec infer acc t =
     match t with
-    | Run (prog, _)        -> acc +< prog
+    | Run (Ok prog, _)        -> acc +< prog
+    | Run (Error _, _) -> acc
     | Redirect (_, fn, t)  -> infer (acc +@ fn) t
     | Cat fn               -> acc +< fn
     | Write_file (fn, _)  -> acc +@ fn

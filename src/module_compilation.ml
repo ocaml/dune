@@ -63,7 +63,7 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~(dep_graph:Ocamldep.dep_gra
          other_cm_files >>>
          requires &&&
          Ocaml_flags.get_for_cm flags ~cm_kind >>>
-         Build.run ~context:ctx (Dep compiler)
+         Build.run ~context:ctx (Ok compiler)
            ~extra_targets
            [ Dyn (fun (_, ocaml_flags) -> As ocaml_flags)
            ; cmt_args

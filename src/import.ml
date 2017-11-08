@@ -214,7 +214,7 @@ module String = struct
       if length s = length prefix then
         Some ""
       else
-        Some (sub s ~pos:(length prefix) ~len:(length s - length prefix - 1))
+        Some (sub s ~pos:(length prefix) ~len:(length s - length prefix))
     else
       None
 

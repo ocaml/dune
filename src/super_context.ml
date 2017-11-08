@@ -521,7 +521,17 @@ module Action = struct
         let cos, var = parse_bang key in
         match String.lsplit2 var ~on:':' with
         | Some ("path-no-dep", s) -> Some (path_exp (Path.relative dir s))
-        | Some ("exe"     , s) -> static_dep_exp acc (Path.relative dir s)
+        | Some ("exe"     , s) ->
+          let dir =
+            match sctx.host with
+            | None -> dir
+            | Some host ->
+              let prefix = Path.to_string sctx.context.build_dir ^ "/" in
+              let suffix =
+                String.drop_prefix ~prefix (Path.to_string dir)
+                |> Option.value_exn in
+              Path.relative host.context.build_dir suffix in
+          static_dep_exp acc (Path.relative dir s)
         | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("bin"     , s) -> begin
             let sctx = Option.value sctx.host ~default:sctx in

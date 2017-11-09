@@ -552,6 +552,7 @@ module Action = struct
             | Error fail -> add_fail acc fail
           end
         | Some ("libexec" , s) -> begin
+            let sctx = Option.value sctx.host ~default:sctx in
             let lib_dep, res =
               Artifacts.file_of_lib (artifacts sctx) ~loc ~from:dir s in
             add_lib_dep acc lib_dep dep_kind;

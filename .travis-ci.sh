@@ -56,13 +56,13 @@ case "$TARGET" in
     UPDATE_OPAM=0
     if [ $WITH_OPAM -eq 1 ] ; then
       echo -en "travis_fold:start:opam.deps\r"
+      DATE=$(date +%Y%m%d)
       eval $(opam config env)
       if [ $(opam pin list | wc -l) -ne 0 ] ; then
         UPDATE_OPAM=1
         opam pin remove jbuilder --no-action --yes
         opam remove jbuilder --yes
       fi
-      DATE=$(date +%Y%m%d)
       if [ ! -e ~/.opam/last-update ] || [ $(cat ~/.opam/last-update) != $DATE ] ; then
         opam update --yes
         echo $DATE> ~/.opam/last-update
@@ -70,6 +70,7 @@ case "$TARGET" in
         opam upgrade --yes
       fi
       opam list
+      echo "version: \"1.0+dev$DATE\"" >> jbuilder.opam
       opam pin add jbuilder . --no-action --yes
       opam install ocaml-migrate-parsetree js_of_ocaml-ppx --yes
       echo -en "travis_fold:end:opam.deps\r"

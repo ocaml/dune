@@ -21,6 +21,8 @@ module Scope : sig
 
   val empty : t
 
+  (** [resolve t package_name] looks up [package_name] in [t] and returns the
+      package description if it exists, otherwise it returns an error. *)
   val resolve : t -> string -> (Package.t, string) result
 end
 

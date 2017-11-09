@@ -1,5 +1,15 @@
 [@@@ocaml.warning "-40"]
 
+(* This module is here to build a version of jbuilder that is capable of
+ * building itself. It accomplishes this by concatenating all its source files
+ * into a single .ml file and simply compiling it. The source code of the
+ * vendored libraries are omitted, being replaced by stubs, just to speed up
+ * the bootstrapping process. This is possible because the features used in
+ * jbuilder's jbuild files use a minimal set of features that do not actually
+ * hit codepaths in which the vendored libraries are used. In order for this to
+ * continue to work, jbuild files in the jbuilder repository should not use
+ * globs. *)
+
 module Array = ArrayLabels
 module List  = ListLabels
 

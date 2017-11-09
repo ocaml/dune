@@ -1,4 +1,7 @@
+(** Rule aliases. *)
+
 open Import
+
 
 type t
 

@@ -13,6 +13,8 @@ type setup =
 (* Returns [Error ()] if [pkg] is unknown *)
 val package_install_file : setup -> string -> (Path.t, unit) result
 
+(** Scan the source tree and discover everything that's needed in order to build
+    it. *)
 val setup
   :  ?log:Log.t
   -> ?filter_out_optional_stanzas_with_missing_deps:bool
@@ -28,6 +30,9 @@ val external_lib_deps
   -> Build.lib_deps Path.Map.t
 val report_error : ?map_fname:(string -> string) -> Format.formatter -> exn -> unit
 
-val bootstrap : unit -> unit
-
 val find_context_exn : setup -> name:string -> Context.t
+
+(**/**)
+
+(* This is used to bootstrap jbuilder itself. It is not part of the public API. *)
+val bootstrap : unit -> unit

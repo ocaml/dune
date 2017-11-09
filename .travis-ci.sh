@@ -62,6 +62,13 @@ case "$TARGET" in
         opam pin remove jbuilder --no-action --yes
         opam remove jbuilder --yes
       fi
+      DATE=$(date +%Y%m%d)
+      if [ ! -e ~/.opam/last-update ] || [ $(cat ~/.opam/last-update) != $DATE ] ; then
+        opam update --yes
+        echo $DATE> ~/.opam/last-update
+        UPDATE_OPAM=1
+        opam upgrade --yes
+      fi
       opam list
       opam pin add jbuilder . --no-action --yes
       opam install ocaml-migrate-parsetree js_of_ocaml-ppx --yes

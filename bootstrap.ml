@@ -130,7 +130,7 @@ let ocamldep = get_prog bin_dir "ocamldep"
 let run_ocamllex src =
   let dst = String.sub src ~pos:0 ~len:(String.length src - 1) in
   let x = Sys.file_exists dst in
-  let n = exec "%s -q %s" ocamllex src in
+  let n = exec "%s -q %s" (Filename.quote ocamllex) src in
   if n <> 0 then exit n;
   if not x then
     at_exit (fun () -> try Sys.remove dst with _ -> ());
@@ -225,9 +225,7 @@ let read_deps files =
   at_exit (fun () -> Sys.remove out_fn);
   let n =
     exec "%s -modules %s > %s"
-      ocamldep
-      (String.concat ~sep:" " files)
-      out_fn
+      (Filename.quote ocamldep) (String.concat ~sep:" " files) out_fn
   in
   if n <> 0 then exit n;
   List.map (read_lines out_fn) ~f:(fun line ->
@@ -350,9 +348,9 @@ let () =
     | Byte   -> "cma"
   in
   let n =
-    match exec "%s -w -40 -o boot.exe unix.%s %s" compiler lib_ext generated_file with
-    | n -> n
-    | exception e -> cleanup ~keep_ml_file:true; raise e
+    try exec "%s -w -40 -o boot.exe unix.%s %s"
+          (Filename.quote compiler) lib_ext generated_file
+    with e -> cleanup ~keep_ml_file:true; raise e
   in
   cleanup ~keep_ml_file:(n <> 0);
   if n <> 0 then exit n

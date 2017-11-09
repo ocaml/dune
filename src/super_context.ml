@@ -706,6 +706,7 @@ module Action = struct
           expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user
         in
         Action.Unresolved.resolve unresolved ~f:(fun prog ->
+          let sctx = Option.value sctx.host ~default:sctx in
           match Artifacts.binary sctx.artifacts prog with
           | Ok path    -> path
           | Error fail -> Action.Prog.Not_found.raise fail))

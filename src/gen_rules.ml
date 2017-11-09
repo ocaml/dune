@@ -1103,7 +1103,7 @@ Add it to your jbuild file to remove this warning.
         end)
 end
 
-let gen ~with_hosts ~no_hosts ?(filter_out_optional_stanzas_with_missing_deps=true)
+let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
       ?only_packages conf =
   let open Future in
   let { Jbuild_load. file_tree; jbuilds; packages } = conf in
@@ -1120,8 +1120,15 @@ let gen ~with_hosts ~no_hosts ?(filter_out_optional_stanzas_with_missing_deps=tr
       String_map.filter packages ~f:(fun _ { Package.name; _ } ->
         String_set.mem name pkgs)
   in
-  let make_sctx ~host context : (string * (_ * _ * _) Future.t) =
-    let sctx_results =
+  let sctxs : (string, (Super_context.t * _)) Hashtbl.t = Hashtbl.create 4 in
+  let rec make_sctx (context : Context.t) : (_ * _) Future.t =
+    match Hashtbl.find sctxs context.name with
+    | Some r -> Future.return r
+    | None ->
+      let host =
+        match context.for_host with
+        | None -> Future.return None
+        | Some h -> make_sctx h >>| (fun (sctx, _) -> Some sctx) in
       let stanzas =
         Jbuild_load.Jbuilds.eval ~context jbuilds >>| fun stanzas ->
         match only_packages with
@@ -1150,24 +1157,14 @@ let gen ~with_hosts ~no_hosts ?(filter_out_optional_stanzas_with_missing_deps=tr
           ~stanzas
       in
       let module M = Gen(struct let sctx = sctx end) in
-      (sctx, Super_context.rules sctx, stanzas) in
-    (context.name, sctx_results) in
-  let no_host_rules = List.map no_hosts ~f:(make_sctx ~host:(Future.return None)) in
-  let with_host_rules = List.map with_hosts ~f:(fun (ctx : Context.t) ->
-    let host =
-      let host_name = (Option.value_exn ctx.for_host).name in
-      List.find_map no_host_rules ~f:(fun (name, res) ->
-        if name = host_name then
-          Some (res >>| (fun (sctx, _, _) -> Some sctx))
-        else
-          None)
-      |> Option.value_exn in
-    make_sctx ~host ctx) in
-  (no_host_rules @ with_host_rules)
-  |> List.map ~f:(fun (name, d) ->
-    d >>| fun (_, rules, stanzas) -> (rules, (name, stanzas)))
+      Hashtbl.add sctxs ~key:context.name ~data:(sctx, stanzas);
+      (sctx, stanzas) in
+  List.map ~f:make_sctx contexts
   |> Future.all
   >>| fun l ->
-  let rules, context_names_and_stanzas = List.split l in
+  let rules, context_names_and_stanzas =
+    List.map l ~f:(fun (sctx, stanzas) ->
+      (Super_context.rules sctx, ((Super_context.context sctx).name, stanzas)))
+    |> List.split in
   (Alias.rules aliases @ List.concat rules,
    String_map.of_alist_exn context_names_and_stanzas)

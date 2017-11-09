@@ -60,22 +60,20 @@ let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
       List.assoc host host_contexts >>= fun host ->
       snd (make_context ~host wctx)) in
   let host_contexts = List.map ~f:snd host_contexts in
-  Future.both (Future.all host_contexts) (Future.all target_contexts)
-  >>= fun (host_contexts, target_contexts) ->
-  let all_contexts = host_contexts @ target_contexts in
-  List.iter all_contexts ~f:(fun (ctx : Context.t) ->
+  Future.all (host_contexts @ target_contexts)
+  >>= fun contexts ->
+  List.iter contexts ~f:(fun (ctx : Context.t) ->
     Log.infof log "@[<1>Jbuilder context:@,%a@]@." Sexp.pp (Context.sexp_of_t ctx));
   Gen_rules.gen conf
-    ~with_hosts:target_contexts
-    ~no_hosts:host_contexts
+    ~contexts
     ?only_packages
     ?filter_out_optional_stanzas_with_missing_deps
   >>= fun (rules, stanzas) ->
-  let build_system = Build_system.create ~contexts:all_contexts
+  let build_system = Build_system.create ~contexts
                        ~file_tree:conf.file_tree ~rules in
   return { build_system
          ; stanzas
-         ; contexts = all_contexts
+         ; contexts
          ; packages = conf.packages
          ; file_tree = conf.file_tree
          }

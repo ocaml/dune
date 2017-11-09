@@ -53,9 +53,15 @@ case "$TARGET" in
     fi
   ;;
   build)
+    UPDATE_OPAM=0
     if [ $WITH_OPAM -eq 1 ] ; then
       echo -en "travis_fold:start:opam.deps\r"
       eval $(opam config env)
+      if [ $(opam pin list | wc -l) -ne 0 ] ; then
+        UPDATE_OPAM=1
+        opam pin remove jbuilder --no-action --yes
+        opam remove jbuilder --yes
+      fi
       opam list
       opam pin add jbuilder . --no-action --yes
       opam install ocaml-migrate-parsetree js_of_ocaml-ppx --yes
@@ -73,8 +79,10 @@ case "$TARGET" in
       _build/install/default/bin/jbuilder build @test/blackbox-tests/runtest-js && \
       ! _build/install/default/bin/jbuilder build @test/fail-with-background-jobs-running
       RESULT=$?
-      rm -rf ~/.opam
-      mv ~/.opam-start ~/.opam
+      if [ $UPDATE_OPAM -eq 0 ] ; then
+        rm -rf ~/.opam
+        mv ~/.opam-start ~/.opam
+      fi
       exit $RESULT
     fi
   ;;

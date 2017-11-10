@@ -38,8 +38,7 @@ let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
   in
   (* TODO validate that a context that sets a host, cannot have a host itself. *)
   let (hosts, targets) = List.partition_map ~f:(function
-    | Workspace.Context.Opam { host = Some name ; _ } as e ->
-      Inr (name, e)
+    | Workspace.Context.Opam { host = Some name ; _ } as e -> Inr (name, e)
     | Opam _
     | Workspace.Context.Default as e -> Inl e
   ) workspace.contexts in

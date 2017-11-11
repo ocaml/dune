@@ -101,3 +101,51 @@ set of predicates:
 - ``ppx_driver``: when a library acts differently depending on whether
   it is linked as part of a driver or meant to add a ``-ppx`` argument
   to the compiler, choose the former behavior
+
+Cross Compilation
+=================
+
+Jbuilder allows for cross compilation by defining a workspace with multiple
+contexts and defining a host-target relationship between the contexts.
+
+For example, the following defines a workspace where the target context is the
+switch ``4.05.0+mingw``, while the host switch is ``4.05.0``:
+
+.. code:: scheme
+
+    (context ((switch 4.05.0)))
+    (context ((switch 4.05.0+mingw) (host 4.05.0)))
+
+In such a setup, binaries that need to be built and executed in the target
+context as part of the build, will no longer be executed. Instead, all the
+binaries that will be executed will come from the host context. One consequence
+of this is that all preprocessing (ppx or otherwise) will be done using binaries
+built on the host context.
+
+To clarify this with an example, let's assume that you have the following
+``src/jbuild`` file:
+
+... code:: scheme
+
+  (executable ((name foo)))
+  (rule (with-stdout-to blah (run ./foo.exe)))
+
+When building ``_build/4.05.0/src/blah``, jbuilder will resolve ``./foo.exe`` to
+``_build/4.05.0/src/foo.exe`` as expected. However, for
+``_build/4.05.0+mingw/src/blah`` jbuilder will resolve ``./foo.exe`` to
+``_build/4.05.0/src/foo.exe`` since it knows 4.05.0 is the host context for
+``4.05.0+mingw``.
+
+We should never end up trying to call ``mingw-ocamlrun``, so there is no need for
+it.
+
+Assuming that the right packages are installed in both opam switches, jbuilder
+will be able to cross-compile a given package without doing anything special.
+
+Some packages might still have to be updated to support cross-compilation. For
+instance if the ``foo.exe`` program in the previous example was using
+``Sys.os_type``, it should instead take it as a command line argument:
+
+.. code:: scheme
+
+  (rule (with-stdout-to blah (run ./foo.exe -os-type ${os_type})))

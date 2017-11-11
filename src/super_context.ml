@@ -526,11 +526,9 @@ module Action = struct
             match sctx.host with
             | None -> dir
             | Some host ->
-              let prefix = Path.to_string sctx.context.build_dir ^ "/" in
-              let suffix =
-                String.drop_prefix ~prefix (Path.to_string dir)
-                |> Option.value_exn in
-              Path.relative host.context.build_dir suffix in
+              Path.drop_prefix dir ~prefix:sctx.context.build_dir
+              |> Option.value_exn
+              |> Path.relative host.context.build_dir in
           static_dep_exp acc (Path.relative dir s)
         | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("bin"     , s) -> begin

@@ -70,6 +70,8 @@ let rules t = t.rules
 let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
 let cxx_flags t = t.cxx_flags
 
+let build_sctx t = Option.value t.host ~default:t
+
 let expand_var_no_root t var = String_map.find var t.vars
 
 let get_external_dir t ~dir =
@@ -532,7 +534,7 @@ module Action = struct
           static_dep_exp acc (Path.relative dir s)
         | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("bin"     , s) -> begin
-            let sctx = Option.value sctx.host ~default:sctx in
+            let sctx = build_sctx sctx in
             match Artifacts.binary (artifacts sctx) s with
             | Ok path ->
               static_dep_exp acc path
@@ -550,7 +552,7 @@ module Action = struct
             | Error fail -> add_fail acc fail
           end
         | Some ("libexec" , s) -> begin
-            let sctx = Option.value sctx.host ~default:sctx in
+            let sctx = build_sctx sctx in
             let lib_dep, res =
               Artifacts.file_of_lib (artifacts sctx) ~loc ~from:dir s in
             add_lib_dep acc lib_dep dep_kind;
@@ -704,7 +706,7 @@ module Action = struct
           expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user
         in
         Action.Unresolved.resolve unresolved ~f:(fun prog ->
-          let sctx = Option.value sctx.host ~default:sctx in
+          let sctx = build_sctx sctx in
           match Artifacts.binary sctx.artifacts prog with
           | Ok path    -> path
           | Error fail -> Action.Prog.Not_found.raise fail))
@@ -824,7 +826,7 @@ module PP = struct
       | [] -> "+none+"
       | _  -> String.concat names ~sep:"+"
     in
-    let sctx = Option.value sctx.host ~default:sctx in
+    let sctx = build_sctx sctx in
     match Hashtbl.find sctx.ppx_drivers key with
     | Some x -> x
     | None ->

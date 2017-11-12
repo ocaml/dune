@@ -45,19 +45,25 @@ let set_common c ~targets =
       ; targets
       ]
 
-let execve =
+let restore_cwd_and_execve common prog argv env =
+  let prog =
+    if Filename.is_relative prog then
+      Filename.concat common.root prog
+    else
+      prog
+  in
+  Sys.chdir initial_cwd;
   if Sys.win32 then
-    fun prog argv env ->
-      let pid = Unix.create_process_env prog argv env
-                  Unix.stdin Unix.stdout Unix.stderr
-      in
-      match snd (Unix.waitpid [] pid) with
-      | WEXITED   0 -> ()
-      | WEXITED   n -> exit n
-      | WSIGNALED _ -> exit 255
-      | WSTOPPED  _ -> assert false
+    let pid = Unix.create_process_env prog argv env
+                Unix.stdin Unix.stdout Unix.stderr
+    in
+    match snd (Unix.waitpid [] pid) with
+    | WEXITED   0 -> ()
+    | WEXITED   n -> exit n
+    | WSIGNALED _ -> exit 255
+    | WSTOPPED  _ -> assert false
   else
-    Unix.execve
+    Unix.execve prog argv env
 
 module Main = struct
   include Jbuilder.Main
@@ -868,7 +874,7 @@ let exec =
       let real_prog = Path.to_string real_prog     in
       let env       = Context.env_for_exec context in
       let argv      = Array.of_list (prog :: args) in
-      execve real_prog argv env
+      restore_cwd_and_execve common real_prog argv env
   in
   ( Term.(const go
           $ common
@@ -964,7 +970,7 @@ let utop =
        (setup.build_system, context, Path.to_string target)
       ) |> Future.Scheduler.go ~log in
     Build_system.dump_trace build_system;
-    execve utop_path (Array.of_list (utop_path :: args))
+    restore_cwd_and_execve common utop_path (Array.of_list (utop_path :: args))
       (Context.env_for_exec context)
   in
   let name_ = Arg.info [] ~docv:"PATH" in

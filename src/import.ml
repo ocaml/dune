@@ -378,6 +378,19 @@ module Filename = struct
   let extension fn =
     let i = extension_start fn in
     String.sub fn ~pos:i ~len:(String.length fn - i)
+
+  type program_name_kind =
+    | In_path
+    | Relative_to_current_dir
+    | Absolute
+
+  let analyze_program_name fn =
+    if not (Filename.is_relative fn) then
+      Absolute
+    else if String.contains fn '/' || (Sys.win32 && String.contains fn '\\') then
+      Relative_to_current_dir
+    else
+      In_path
 end
 
 module Option = struct

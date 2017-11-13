@@ -833,29 +833,34 @@ let exec =
     ]
   in
   let go common context prog args =
-    let runcwd = Sys.getcwd () in
     set_common common ~targets:[];
     let log = Log.create () in
     let setup = Future.Scheduler.go ~log (Main.setup ~log common) in
     let context = Main.find_context_exn setup ~name:context in
-    let (prog, path) =
-      match String.index prog '/' with
-      | None ->
-        (prog, Config.local_install_bin_dir ~context:context.name :: context.path)
-      | Some i ->
-        let p = Path.of_string prog in
-        let path =
-          if i = 0 then (
-            Path.parent p
-          ) else (
-            match String.drop_prefix runcwd ~prefix:common.root with
-            | None ->
-              Path.append context.build_dir (Path.parent p)
-            | Some s ->
-              Path.append (Path.relative context.build_dir s) (Path.parent p)
-          ) in
-        (Path.basename p, [path]) in
-    match Bin.which ~path prog with
+    let real_prog =
+      match
+        match Filename.analyze_program_name prog with
+        | Absolute ->
+          `This (Path.of_string prog)
+        | In_path ->
+          `Search prog
+        | Relative_to_current_dir ->
+          let prog = prefix_target common prog in
+          `This (Path.relative context.build_dir prog)
+      with
+      | `Search prog ->
+        let path = Config.local_install_bin_dir ~context:context.name :: context.path in
+        Bin.which prog ~path
+      | `This prog ->
+        if Path.exists prog then
+          Some prog
+        else if not Sys.win32 then
+          None
+        else
+          let prog = Path.extend_basename prog ~suffix:Bin.exe in
+          Option.some_if (Path.exists prog) prog
+    in
+    match real_prog with
     | None ->
       Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
       die ""

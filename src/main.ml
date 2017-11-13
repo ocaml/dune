@@ -36,24 +36,28 @@ let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
       else
         { merlin_context = Some "default"; contexts = [Default] }
   in
-  (* TODO validate that a context that sets a host, cannot have a host itself. *)
-  let rec contexts : (string * Context.t Future.t Lazy.t) list Lazy.t =
+  let rec contexts
+    : (string * (Workspace.Context.t * Context.t Future.t Lazy.t)) list Lazy.t =
     lazy (List.map ~f:(fun ws ->
       let name = Workspace.Context.name ws in
-      (name, lazy (
+      (name, (ws, lazy (
          match ws with
          | Opam { switch; root; merlin; host = None ; name = _ } ->
            Context.create_for_opam ~name ~switch ?root ~merlin ()
          | Opam { switch; root; merlin; host = Some host ; name = _ } ->
            (match List.assoc_opt host (Lazy.force contexts) with
-            | None -> die "Context %s is not defined. Used as host for %s" host name
-            | Some s -> Lazy.force s) >>= fun host ->
+            | None ->
+              die "Context %s is not defined. Used as host for %s" host name
+            | Some (Workspace.Context.Opam { host = Some host_host ; _ }, _) ->
+              die "Context %s is a host for %s. It cannot have a host %s itself"
+                host name host_host
+            | Some (_, c) -> Lazy.force c) >>= fun host ->
            Context.create_for_opam ~host ~name ~switch ?root ~merlin ()
          | Default ->
-           Context.default ~merlin:(workspace.merlin_context = Some name) ~use_findlib ()))
+           Context.default ~merlin:(workspace.merlin_context = Some name) ~use_findlib ())))
     ) workspace.contexts) in
   Lazy.force contexts
-  |> List.map ~f:(fun (_, c) -> Lazy.force c)
+  |> List.map ~f:(fun (_, (_, c)) -> Lazy.force c)
   |> Future.all
   >>= fun contexts ->
   List.iter contexts ~f:(fun (ctx : Context.t) ->

@@ -78,6 +78,11 @@ module List = struct
       max acc (String.length (f x)))
 
   let longest l = longest_map l ~f:(fun x -> x)
+
+  let assoc_opt e l =
+    match List.assoc e l with
+    | e -> Some e
+    | exception Not_found -> None
 end
 
 module Hashtbl = struct

@@ -516,7 +516,7 @@ let compile_rule t ~all_targets_by_dir ?(copy_source=false) pre_rule =
       in
       make_local_dirs t (Action.chdirs action);
       with_locks locks ~f:(fun () ->
-        Action.exec ~targets action) >>| fun () ->
+        Action.exec ?context ~targets action) >>| fun () ->
       Option.iter sandbox_dir ~f:Path.rm_rf;
       (* All went well, these targets are no longer pending *)
       pending_targets := Pset.diff !pending_targets targets_to_remove;

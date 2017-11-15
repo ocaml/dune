@@ -25,6 +25,7 @@ case "$TARGET" in
     if [ $WITH_OPAM -eq 1 ] ; then
       echo -en "travis_fold:start:opam.init\r"
       if [ "$TRAVIS_OS_NAME" = "osx" ] ; then
+        brew update
         brew install aspcud
         PREFIX=/Users/travis
       else

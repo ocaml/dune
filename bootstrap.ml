@@ -57,7 +57,10 @@ let starts_with s ~prefix =
 let exec fmt =
   ksprintf (fun cmd ->
     print_endline cmd;
-    Sys.command cmd)
+    (* To make sure quotes are preserved in Win32, the whole command
+       must be wrapped with a extra pair of quotes. *)
+    if Sys.win32 then Sys.command ("\"" ^ cmd ^ "\"")
+    else Sys.command cmd)
     fmt
 
 let path_sep =

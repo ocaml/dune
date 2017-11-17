@@ -102,9 +102,6 @@ topfind.ml: topfind.ml.in
 			> topfind.ml ;                                   \
 	fi
 
-topfind.cmo: topfind.cmi
-topfind.cmx: topfind.cmi
-
 topfind: topfind_rd$(OCAML_REMOVE_DIRECTORY).p
 	USE_CYGPATH="$(USE_CYGPATH)"; \
 	export USE_CYGPATH; \
@@ -147,7 +144,7 @@ uninstall:
 	rm -f $(prefix)$(OCAMLFIND_BIN)/ocamlfind$(EXEC_SUFFIX)
 
 
-depend: *.ml *.mli fl_meta.ml fl_metascanner.ml
+depend: *.ml *.mli fl_meta.ml fl_metascanner.ml findlib_config.ml topfind.ml
 	$(OCAMLDEP) *.ml *.mli >depend
 
 # Some 'make' implementations require that .SUFFIXES must occur before

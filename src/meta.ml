@@ -236,13 +236,37 @@ let pp_list f ppf l =
       Format.pp_print_cut ppf ();
       f ppf x)
 
+let escape_double_quote s =
+  let n = ref 0 in
+  let len = String.length s in
+  for i = 0 to len - 1 do
+    if String.unsafe_get s i = '"' then incr n;
+  done;
+  if !n = 0 then s
+  else (
+    let b = Bytes.create (len + !n) in
+    n := 0;
+    for i = 0 to len - 1 do
+      if String.unsafe_get s i = '"' then (
+        Bytes.unsafe_set b !n '\\';
+        incr n;
+      );
+      Bytes.unsafe_set b !n (String.unsafe_get s i);
+      incr n
+    done;
+    Bytes.unsafe_to_string b
+  )
+
+let pp_print_text fmt s = Format.pp_print_text fmt (escape_double_quote s)
+let pp_print_string fmt s = Format.pp_print_string fmt (escape_double_quote s)
+
 let pp_value var =
   match var with
   | "archive" | "plugin" | "requires"
   | "ppx_runtime_deps" | "linkopts" | "jsoo_runtime" ->
-    Format.pp_print_text
+     pp_print_text
   | _ ->
-    Format.pp_print_string
+     pp_print_string
 
 let rec pp ppf entries =
   Format.fprintf ppf "@[<v>%a@]" (pp_list pp_entry) entries

@@ -70,9 +70,7 @@ let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
 let cxx_flags t = t.cxx_flags
 
 let expand_var_no_root t var cos =
-  match String_map.find var t.vars with
-  | Some v -> Some(v cos)
-  | None -> None
+  String_map.find var t.vars |> Option.map ~f:(fun v -> v cos)
 
 let get_external_dir t ~dir =
   Hashtbl.find_or_add t.external_dirs dir ~f:(fun dir ->
@@ -85,12 +83,11 @@ let expand_vars t ~scope ~dir s =
     Some (Path.reach ~from:dir (Path.append t.context.build_dir scope.Scope.root))
   | var ->
      let open Action.Var_expansion in
-     match expand_var_no_root t var Concat_or_split.Concat with
-     | Some(Paths(p,_)) ->
-        let p = List.map p ~f:Path.to_string in
-        Some (String.concat ~sep:" " p)
-     | Some(Strings(s,_)) -> Some (String.concat ~sep:" " s)
-     | None -> None)
+     expand_var_no_root t var Concat_or_split.Concat
+     |> Option.map ~f:(function
+            | Paths(p,_) -> let p = List.map p ~f:Path.to_string in
+                            String.concat ~sep:" " p
+            | Strings(s,_) -> String.concat ~sep:" " s))
 
 let resolve_program_internal t ?hint ?(in_the_tree=true) bin =
   Artifacts.binary t.artifacts ?hint ~in_the_tree bin

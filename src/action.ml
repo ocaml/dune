@@ -221,15 +221,13 @@ module Var_expansion = struct
     | Paths   (l, Concat) -> [concat (List.map l ~f:(string_of_path ~dir))]
 
   let to_string ~dir = function
-    | Strings (_, Split) | Paths (_, Split) -> assert false
-    | Strings (l, Concat) -> concat l
-    | Paths   (l, Concat) -> concat (List.map l ~f:(string_of_path ~dir))
+    | Strings (l, _) -> concat l
+    | Paths   (l, _) -> concat (List.map l ~f:(string_of_path ~dir))
 
   let to_path ~dir = function
-    | Strings (_, Split) | Paths (_, Split) -> assert false
-    | Strings (l, Concat) -> path_of_string ~dir (concat l)
-    | Paths ([p], Concat) -> p
-    | Paths (l,   Concat) ->
+    | Strings (l, _) -> path_of_string ~dir (concat l)
+    | Paths ([p], _) -> p
+    | Paths (l,   _) ->
       path_of_string ~dir (concat (List.map l ~f:(string_of_path ~dir)))
 
   let to_prog_and_args ~dir exp : Unresolved.Program.t * string list =

@@ -360,8 +360,9 @@ module Unexpanded = struct
         | Some e ->
            try Some (VE.to_string ~dir e)
            with VE.Split ->
-             let msg = sprintf "Split variable %S in string does not \
-                                make sense" var in
+             let var' = String.sub var ~pos:1 ~len:(String.length var - 1) in
+             let msg = sprintf "${%s} is a list and so cannot be used in a \
+                                string (did you mean just ${%s}?)" var var' in
              raise(Loc.Error (loc, msg)))
 
     let expand ~generic ~special ~dir ~f template =

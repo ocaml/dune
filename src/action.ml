@@ -199,9 +199,10 @@ module Var_expansion = struct
     | Paths   (l, Split ) -> List.map l ~f:(string_of_path ~dir)
     | Paths   (l, Concat) -> [concat (List.map l ~f:(string_of_path ~dir))]
 
+  exception Split
+
   let to_string ~dir = function
-    | Strings (_, Split) | Paths (_, Split) ->
-       failwith "Action.Var_expansion.to_string"
+    | Strings (_, Split) | Paths (_, Split) -> raise Split
     | Strings (l, Concat) -> concat l
     | Paths   (l, Concat) -> concat (List.map l ~f:(string_of_path ~dir))
 
@@ -358,7 +359,7 @@ module Unexpanded = struct
         | None   -> None
         | Some e ->
            try Some (VE.to_string ~dir e)
-           with Failure _ ->
+           with VE.Split ->
              let msg = sprintf "Split variable %S in string does not \
                                 make sense" var in
              raise(Loc.Error (loc, msg)))

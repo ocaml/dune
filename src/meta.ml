@@ -236,31 +236,17 @@ let pp_list f ppf l =
       Format.pp_print_cut ppf ();
       f ppf x)
 
-let escape_double_quote s =
-  let n = ref 0 in
-  let len = String.length s in
-  for i = 0 to len - 1 do
-    if String.unsafe_get s i = '"' then incr n;
-  done;
-  if !n = 0 then s
-  else (
-    let b = Bytes.create (len + !n) in
-    n := 0;
-    for i = 0 to len - 1 do
-      if String.unsafe_get s i = '"' then (
-        Bytes.unsafe_set b !n '\\';
-        incr n;
-      );
-      Bytes.unsafe_set b !n (String.unsafe_get s i);
-      incr n
-    done;
-    Bytes.unsafe_to_string b
-  )
+let pp_print_text ppf s =
+  Format.fprintf ppf "\"@[<hv>";
+  Format.pp_print_text ppf (String.escape_double_quote s);
+  Format.fprintf ppf "@]\""
 
-let pp_print_text fmt s = Format.pp_print_text fmt (escape_double_quote s)
-let pp_print_string fmt s = Format.pp_print_string fmt (escape_double_quote s)
+let pp_print_string ppf s =
+  Format.fprintf ppf "\"@[<hv>";
+  Format.pp_print_string ppf (String.escape_double_quote s);
+  Format.fprintf ppf "@]\""
 
-let pp_value var =
+let pp_quoted_value var =
   match var with
   | "archive" | "plugin" | "requires"
   | "ppx_runtime_deps" | "linkopts" | "jsoo_runtime" ->
@@ -277,12 +263,12 @@ and pp_entry ppf entry =
   | Comment s ->
     fprintf ppf "# %s" s
   | Rule { var; predicates = []; action; value } ->
-    fprintf ppf "@[%s %s \"@[<hv>%a@]\"@]"
-      var (string_of_action action) (pp_value var) value
+    fprintf ppf "@[%s %s %a@]"
+      var (string_of_action action) (pp_quoted_value var) value
   | Rule { var; predicates; action; value } ->
-    fprintf ppf "@[%s(%s) %s \"@[<hv>%a@]\"@]"
+    fprintf ppf "@[%s(%s) %s %a@]"
       var (String.concat ~sep:"," (List.map predicates ~f:string_of_predicate))
-      (string_of_action action) (pp_value var) value
+      (string_of_action action) (pp_quoted_value var) value
   | Package { name; entries } ->
     fprintf ppf "@[<v 2>package %S (@,%a@]@,)"
       name pp entries

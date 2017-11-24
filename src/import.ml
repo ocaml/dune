@@ -306,6 +306,30 @@ module String = struct
           loop i (j + 1) ~last_is_cr:false
     in
     loop 0 0 ~last_is_cr:false
+
+  (* Escape ONLY double quotes.  String.escape also escapes
+     '\n',... and transforms all chars above '~' into '\xxx' which is
+     not suitable for UTF-8 strings. *)
+  let escape_double_quote s =
+    let n = ref 0 in
+    let len = String.length s in
+    for i = 0 to len - 1 do
+      if String.unsafe_get s i = '"' then incr n;
+    done;
+    if !n = 0 then s
+    else (
+      let b = Bytes.create (len + !n) in
+      n := 0;
+      for i = 0 to len - 1 do
+        if String.unsafe_get s i = '"' then (
+          Bytes.unsafe_set b !n '\\';
+          incr n;
+        );
+        Bytes.unsafe_set b !n (String.unsafe_get s i);
+        incr n
+      done;
+      Bytes.unsafe_to_string b
+    )
 end
 
 module Sys = struct

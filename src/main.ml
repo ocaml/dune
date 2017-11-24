@@ -19,6 +19,7 @@ let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
       ?(use_findlib=true)
       ?only_packages
       ?extra_ignored_subtrees
+      ?enable_optional_pps
       () =
   let conf = Jbuild_load.load ?extra_ignored_subtrees () in
   Option.iter only_packages ~f:(fun set ->
@@ -49,6 +50,7 @@ let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
   Gen_rules.gen conf ~contexts
     ?only_packages
     ?filter_out_optional_stanzas_with_missing_deps
+    ?enable_optional_pps
   >>= fun (rules, stanzas) ->
   let build_system = Build_system.create ~contexts ~file_tree:conf.file_tree ~rules in
   return { build_system

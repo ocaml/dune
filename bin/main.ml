@@ -10,19 +10,20 @@ let (>>=) = Future.(>>=)
 let (>>|) = Future.(>>|)
 
 type common =
-  { concurrency      : int
-  ; debug_dep_path   : bool
-  ; debug_findlib    : bool
-  ; debug_backtraces : bool
-  ; dev_mode         : bool
-  ; verbose          : bool
-  ; workspace_file   : string option
-  ; root             : string
-  ; target_prefix    : string
-  ; only_packages    : String_set.t option
-  ; capture_outputs  : bool
+  { concurrency         : int
+  ; debug_dep_path      : bool
+  ; debug_findlib       : bool
+  ; debug_backtraces    : bool
+  ; dev_mode            : bool
+  ; verbose             : bool
+  ; workspace_file      : string option
+  ; root                : string
+  ; target_prefix       : string
+  ; only_packages       : String_set.t option
+  ; capture_outputs     : bool
+  ; enable_optional_pps : String_set.t option
   ; (* Original arguments for the external-lib-deps hint *)
-    orig_args        : string list
+    orig_args           : string list
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -67,6 +68,7 @@ module Main = struct
       ~log
       ?workspace_file:common.workspace_file
       ?only_packages:common.only_packages
+      ?enable_optional_pps:common.enable_optional_pps
       ?filter_out_optional_stanzas_with_missing_deps ()
 end
 
@@ -146,6 +148,7 @@ let common =
         verbose
         no_buffer
         workspace_file
+        enable_optional_pps
         (root, only_packages, orig)
     =
     let root, to_cwd =
@@ -174,6 +177,7 @@ let common =
     ; only_packages =
         Option.map only_packages
           ~f:(fun s -> String_set.of_list (String.split s ~on:','))
+    ; enable_optional_pps = Option.map enable_optional_pps ~f:String_set.of_list
     }
   in
   let docs = copts_sect in
@@ -195,6 +199,13 @@ let common =
                     During development, it is likely that what you want instead is to
                     build a particular $(b,<package>.install) target.|}
         )
+  in
+  let enable_optional_pps =
+    Arg.(value
+         & opt (some (list string)) None
+         & info ["enable-optional-pps"] ~docs ~docv:"PPX-REWRITERS"
+             ~doc:{|Enable ppx preprocessors specified as optional in jbuild files.
+                    $(b,PPX-REWRITERS) is a comma-separated list of package names.|})
   in
   let ddep_path =
     Arg.(value
@@ -306,6 +317,7 @@ let common =
         $ verbose
         $ no_buffer
         $ workspace_file
+        $ enable_optional_pps
         $ root_and_only_packages
        )
 

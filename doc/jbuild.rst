@@ -785,14 +785,17 @@ Preprocessing with ppx rewriters
 ``<ppx-rewriters-and-flags>`` is expected to be a list where each element is
 either a command line flag if starting with a ``-`` or the name of a library.
 Additionnally, any sub-list will be treated as a list of command line arguments.
+Optional ppx rewriters are specified by starting the library name with a ``?``.
 So for instance from the following ``preprocess`` field:
 
    .. code:: scheme
 
-       (preprocess (pps (ppx1 -foo ppx2 (-bar 42))))
+       (preprocess (pps (ppx1 -foo ppx2 (-bar 42) ?ppx3 ?ppx4)))
 
 The list of libraries will be ``ppx1`` and ``ppx2`` and the command line
-arguments will be: ``-foo -bar 42``.
+arguments will be: ``-foo -bar 42``.  ``ppx3`` and ``ppx4`` will be
+included if ``--enable-optional-pps=ppx3,ppx4`` is passed to
+``jbuilder``.
 
 Libraries listed here should be libraries implementing an OCaml AST rewriter and
 registering themselves using the `ocaml-migrate-parsetree.driver API

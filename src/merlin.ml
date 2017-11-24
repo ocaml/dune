@@ -14,7 +14,9 @@ type t =
 
 let ppx_flags sctx ~dir ~src_dir:_ { preprocess; libname; _ } =
   match preprocess with
-  | Pps { pps; flags } ->
+  | Pps _ as pps ->
+    let flags = Jbuild.Preprocess.flags pps in
+    let pps = Jbuild.Preprocess.pps pps in
     let exe = SC.PP.get_ppx_driver sctx pps ~dir ~dep_kind:Optional in
     let command =
       List.map (Path.to_absolute_filename  exe

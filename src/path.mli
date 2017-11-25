@@ -112,4 +112,12 @@ val rm_rf : t -> unit
 (** Changes the extension of the filename (or adds an extension if there was none) *)
 val change_extension : ext:string -> t -> t
 
+(** maintains the invariant:
+    {[
+      let suffix = Option.value_exn (Path.drop_prefix t ~prefix) in
+      Path.relative prefix suffix = t
+    ]}
+*)
+val drop_prefix : t -> prefix:t -> string option
+
 val pp : t Fmt.t

@@ -8,18 +8,21 @@ module Context = struct
       ; switch : string
       ; root   : string option
       ; merlin : bool
+      ; host   : string option
       }
 
     let t =
       record
         (field   "switch" string                 >>= fun switch ->
          field   "name"   string ~default:switch >>= fun name ->
+         field_o "host"   string                 >>= fun host ->
          field_o "root"   string                 >>= fun root ->
          field_b "merlin"                        >>= fun merlin ->
          return { switch
                 ; name
                 ; root
                 ; merlin
+                ; host
                 })
   end
 

@@ -9,10 +9,13 @@ module Context : sig
       ; switch : string
       ; root   : string option
       ; merlin : bool
+      ; host   : string option
       }
   end
 
   type t = Default | Opam of Opam.t
+
+  val name : t -> string
 end
 
 type t =

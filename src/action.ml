@@ -525,6 +525,20 @@ type exec_context =
   }
 
 let run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
+  begin match ectx.context with
+   | None
+   | Some { Context.for_host = None; _ } -> ()
+   | Some ({ Context.for_host = Some host; _ } as target) ->
+     let invalid_prefix prefix =
+       match Path.descendant prog ~of_:(Path.of_string prefix) with
+       | None -> ()
+       | Some _ ->
+         die "Context %s has a host %s.@.It's not possible to execute binary %a \
+              in it.@.@.This is a bug and should be reported upstream."
+           target.name host.name Path.pp prog in
+     invalid_prefix ("_build/" ^ target.name);
+     invalid_prefix ("_build/install/" ^ target.name);
+  end;
   let stdout_to = get_std_output stdout_to in
   let stderr_to = get_std_output stderr_to in
   let env = Context.extend_env ~vars:env_extra ~env:ectx.env in

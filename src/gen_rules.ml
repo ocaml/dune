@@ -1120,37 +1120,51 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
       String_map.filter packages ~f:(fun _ { Package.name; _ } ->
         String_set.mem name pkgs)
   in
-  List.map contexts ~f:(fun context ->
-    Jbuild_load.Jbuilds.eval ~context jbuilds >>| fun stanzas ->
-    let stanzas =
-      match only_packages with
-      | None -> stanzas
-      | Some pkgs ->
-        List.map stanzas ~f:(fun (dir, pkgs_ctx, stanzas) ->
-          (dir,
-           pkgs_ctx,
-           List.filter stanzas ~f:(fun stanza ->
-             match (stanza : Stanza.t) with
-             | Library { public = Some { package; _ }; _ }
-             | Alias { package = Some package ;  _ }
-             | Install { package; _ } ->
-               String_set.mem package.name pkgs
-             | _ -> true)))
-    in
-    let sctx =
-      Super_context.create
-        ~context
-        ~aliases
-        ~dirs_with_dot_opam_files
-        ~file_tree
-        ~packages
-        ~filter_out_optional_stanzas_with_missing_deps
-        ~stanzas
-    in
-    let module M = Gen(struct let sctx = sctx end) in
-    (Super_context.rules sctx, (context.name, stanzas)))
+  let sctxs : (string, (Super_context.t * _)) Hashtbl.t = Hashtbl.create 4 in
+  let rec make_sctx (context : Context.t) : (_ * _) Future.t =
+    match Hashtbl.find sctxs context.name with
+    | Some r -> Future.return r
+    | None ->
+      let host =
+        match context.for_host with
+        | None -> Future.return None
+        | Some h -> make_sctx h >>| (fun (sctx, _) -> Some sctx) in
+      let stanzas =
+        Jbuild_load.Jbuilds.eval ~context jbuilds >>| fun stanzas ->
+        match only_packages with
+        | None -> stanzas
+        | Some pkgs ->
+          List.map stanzas ~f:(fun (dir, pkgs_ctx, stanzas) ->
+            (dir,
+             pkgs_ctx,
+             List.filter stanzas ~f:(fun stanza ->
+               match (stanza : Stanza.t) with
+               | Library { public = Some { package; _ }; _ }
+               | Alias { package = Some package ;  _ }
+               | Install { package; _ } ->
+                 String_set.mem package.name pkgs
+               | _ -> true))) in
+      Future.both host stanzas >>| fun (host, stanzas) ->
+      let sctx =
+        Super_context.create
+          ?host
+          ~context
+          ~aliases
+          ~dirs_with_dot_opam_files
+          ~file_tree
+          ~packages
+          ~filter_out_optional_stanzas_with_missing_deps
+          ~stanzas
+      in
+      let module M = Gen(struct let sctx = sctx end) in
+      Hashtbl.add sctxs ~key:context.name ~data:(sctx, stanzas);
+      (sctx, stanzas) in
+  List.map ~f:make_sctx contexts
   |> Future.all
   >>| fun l ->
-  let rules, context_names_and_stanzas = List.split l in
+  let rules, context_names_and_stanzas =
+    List.map l ~f:(fun (sctx, stanzas) ->
+      (Super_context.rules sctx, ((Super_context.context sctx).name, stanzas)))
+    |> List.split in
   (Alias.rules aliases @ List.concat rules,
    String_map.of_alist_exn context_names_and_stanzas)

@@ -57,6 +57,7 @@ type t =
   ; ppx_drivers                             : (string, Path.t) Hashtbl.t
   ; external_dirs                           : (Path.t, External_dir.t) Hashtbl.t
   ; chdir                                   : (Action.t, Action.t) Build.t
+  ; host                                    : t option
   }
 
 let context t = t.context
@@ -68,6 +69,8 @@ let file_tree t = t.file_tree
 let rules t = t.rules
 let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
 let cxx_flags t = t.cxx_flags
+
+let host_sctx t = Option.value t.host ~default:t
 
 let expand_var_no_root t var = String_map.find var t.vars
 
@@ -87,6 +90,7 @@ let resolve_program t ?hint bin =
 
 let create
       ~(context:Context.t)
+      ?host
       ~aliases
       ~dirs_with_dot_opam_files
       ~file_tree
@@ -187,6 +191,7 @@ let create
     | Error _ -> assert false
   in
   { context
+  ; host
   ; libs
   ; stanzas
   ; packages
@@ -518,9 +523,18 @@ module Action = struct
         let cos, var = parse_bang key in
         match String.lsplit2 var ~on:':' with
         | Some ("path-no-dep", s) -> Some (path_exp (Path.relative dir s))
-        | Some ("exe"     , s) -> static_dep_exp acc (Path.relative dir s)
+        | Some ("exe"     , s) ->
+          let dir =
+            match sctx.host with
+            | None -> dir
+            | Some host ->
+              Path.drop_prefix dir ~prefix:sctx.context.build_dir
+              |> Option.value_exn
+              |> Path.relative host.context.build_dir in
+          static_dep_exp acc (Path.relative dir s)
         | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("bin"     , s) -> begin
+            let sctx = host_sctx sctx in
             match Artifacts.binary (artifacts sctx) s with
             | Ok path ->
               static_dep_exp acc path
@@ -538,6 +552,7 @@ module Action = struct
             | Error fail -> add_fail acc fail
           end
         | Some ("libexec" , s) -> begin
+            let sctx = host_sctx sctx in
             let lib_dep, res =
               Artifacts.file_of_lib (artifacts sctx) ~loc ~from:dir s in
             add_lib_dep acc lib_dep dep_kind;
@@ -691,6 +706,7 @@ module Action = struct
           expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user
         in
         Action.Unresolved.resolve unresolved ~f:(fun prog ->
+          let sctx = host_sctx sctx in
           match Artifacts.binary sctx.artifacts prog with
           | Ok path    -> path
           | Error fail -> Action.Prog.Not_found.raise fail))
@@ -810,6 +826,7 @@ module PP = struct
       | [] -> "+none+"
       | _  -> String.concat names ~sep:"+"
     in
+    let sctx = host_sctx sctx in
     match Hashtbl.find sctx.ppx_drivers key with
     | Some x -> x
     | None ->

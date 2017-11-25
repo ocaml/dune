@@ -36,21 +36,39 @@ let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
       else
         { merlin_context = Some "default"; contexts = [Default] }
   in
-  Future.all
-    (List.map workspace.contexts ~f:(function
-     | Workspace.Context.Default ->
-       Context.default ~merlin:(workspace.merlin_context = Some "default")
-         ~use_findlib ()
-     | Opam { name; switch; root; merlin } ->
-       Context.create_for_opam ~name ~switch ?root ~merlin ()))
+  let rec contexts
+    : (string * (Workspace.Context.t * Context.t Future.t Lazy.t)) list Lazy.t =
+    lazy (List.map ~f:(fun ws ->
+      let name = Workspace.Context.name ws in
+      (name, (ws, lazy (
+         match ws with
+         | Opam { switch; root; merlin; host = None ; name = _ } ->
+           Context.create_for_opam ~name ~switch ?root ~merlin ()
+         | Opam { switch; root; merlin; host = Some host ; name = _ } ->
+           (match List.assoc_opt host (Lazy.force contexts) with
+            | None ->
+              die "Context %s is not defined. Used as host for %s" host name
+            | Some (Workspace.Context.Opam { host = Some host_host ; _ }, _) ->
+              die "Context %s is a host for %s. It cannot have a host %s itself"
+                host name host_host
+            | Some (_, c) -> Lazy.force c) >>= fun host ->
+           Context.create_for_opam ~host ~name ~switch ?root ~merlin ()
+         | Default ->
+           Context.default ~merlin:(workspace.merlin_context = Some name) ~use_findlib ())))
+    ) workspace.contexts) in
+  Lazy.force contexts
+  |> List.map ~f:(fun (_, (_, c)) -> Lazy.force c)
+  |> Future.all
   >>= fun contexts ->
-  List.iter contexts ~f:(fun ctx ->
+  List.iter contexts ~f:(fun (ctx : Context.t) ->
     Log.infof log "@[<1>Jbuilder context:@,%a@]@." Sexp.pp (Context.sexp_of_t ctx));
-  Gen_rules.gen conf ~contexts
+  Gen_rules.gen conf
+    ~contexts
     ?only_packages
     ?filter_out_optional_stanzas_with_missing_deps
   >>= fun (rules, stanzas) ->
-  let build_system = Build_system.create ~contexts ~file_tree:conf.file_tree ~rules in
+  let build_system = Build_system.create ~contexts
+                       ~file_tree:conf.file_tree ~rules in
   return { build_system
          ; stanzas
          ; contexts

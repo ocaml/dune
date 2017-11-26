@@ -363,13 +363,13 @@ module Unexpanded = struct
       | Remove_tree x ->
         Remove_tree (E.path ~dir ~f x)
       | Mkdir x -> begin
-        match x with
-        | Inl path -> Mkdir path
-        | Inr tmpl ->
-          let path = E.path ~dir ~f x in
-          check_mkdir (SW.loc tmpl) path;
-          Mkdir path
-      end
+          match x with
+          | Inl path -> Mkdir path
+          | Inr tmpl ->
+            let path = E.path ~dir ~f x in
+            check_mkdir (SW.loc tmpl) path;
+            Mkdir path
+        end
       | Digest_files x ->
         Digest_files (List.map x ~f:(E.path ~dir ~f))
   end

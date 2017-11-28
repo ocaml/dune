@@ -1,0 +1,27 @@
+(jbuild_version 1)
+
+(library
+ ((name foobar)
+  (libraries (bytes))
+  (public_name foobar)
+  (synopsis "contains \"quotes\"")))
+
+(library
+ ((name foobar_baz)
+  (public_name foobar.baz)
+  (libraries (bytes))
+  (modes (byte))
+  (synopsis "sub library with modes set to byte")))
+
+(library
+ ((name foobar_rewriter)
+  (synopsis "ppx rewriter")
+  (libraries (foobar))
+  (public_name foobar.rewriter)
+  (ppx_runtime_libraries (foobar_baz))
+  (kind ppx_rewriter)))
+
+(alias
+ ((name runtest)
+  (deps (META.foobar))
+  (action (echo "${read:META.foobar}"))))

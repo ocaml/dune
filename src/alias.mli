@@ -62,6 +62,8 @@ module Store : sig
   val pp : t Fmt.t
 
   val create : unit -> t
+
+  val unlink : t -> string list -> unit
 end
 
 val add_deps : Store.t -> t -> Path.t list -> unit

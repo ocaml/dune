@@ -14,7 +14,8 @@ let package_install_file { packages; _ } pkg =
   | None -> Error ()
   | Some p -> Ok (Path.relative p.path (p.name ^ ".install"))
 
-let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
+let setup ?(log=Log.no_log) ?unlink_aliases
+      ?filter_out_optional_stanzas_with_missing_deps
       ?workspace ?(workspace_file="jbuild-workspace")
       ?(use_findlib=true)
       ?only_packages
@@ -47,6 +48,7 @@ let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
   List.iter contexts ~f:(fun ctx ->
     Log.infof log "@[<1>Jbuilder context:@,%a@]@." Sexp.pp (Context.sexp_of_t ctx));
   Gen_rules.gen conf ~contexts
+    ?unlink_aliases
     ?only_packages
     ?filter_out_optional_stanzas_with_missing_deps
   >>= fun (rules, stanzas) ->

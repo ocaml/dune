@@ -5,6 +5,7 @@ val gen
   :  contexts:Context.t list
   -> ?filter_out_optional_stanzas_with_missing_deps:bool (* default: true *)
   -> ?only_packages:String_set.t
+  -> ?unlink_aliases:string list
   -> Jbuild_load.conf
   -> (Build_interpret.Rule.t list *
      (* Evaluated jbuilds per context names *)

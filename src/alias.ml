@@ -138,6 +138,18 @@ module Store = struct
     Format.fprintf fmt "Store.t@ @[@<2>(%a)@]" pp_bindings bindings
 
   let create () = Hashtbl.create 1024
+
+  let unlink (store : t) = function
+    | [] -> ()
+    | alias_basenames ->
+      store
+      |> Hashtbl.fold ~init:Path.Set.empty ~f:(fun ~key:_ ~data:entry acc ->
+        if List.mem (name entry.alias) ~set:alias_basenames then (
+          Path.Set.union acc (Path.Set.add entry.alias.file entry.deps)
+        ) else (
+          acc
+        ))
+      |> Path.Set.iter ~f:Path.unlink_no_err
 end
 
 let add_deps store t deps =

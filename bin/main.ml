@@ -385,30 +385,29 @@ let target_hint (setup : Main.setup) path =
   let candidates = String_set.of_list candidates |> String_set.elements in
   hint (Path.to_string path) candidates
 
-let resolve_targets ~log common (setup : Main.setup) user_targets =
+let resolve_targets' ~log common (setup : Main.setup) user_targets =
   match user_targets with
   | [] -> []
   | _ ->
     let targets =
-      List.concat_map user_targets ~f:(fun s ->
+      List.map user_targets ~f:(fun s ->
         if String.is_prefix s ~prefix:"@" then
           let s = String.sub s ~pos:1 ~len:(String.length s - 1) in
           let path = Path.relative Path.root (prefix_target common s) in
           if Path.is_root path then
             die "@@ on the command line must be followed by a valid alias name"
           else
-            [Alias_rec (Alias.of_path path)]
+            Ok [Alias_rec (Alias.of_path path)]
         else
           let path = Path.relative Path.root (prefix_target common s) in
           let can't_build path =
-            die "Don't know how to build %s%s" (Path.to_string path)
-              (target_hint setup path)
+            Error (path, target_hint setup path);
           in
           if not (Path.is_local path) then
-            [File path]
+            Ok [File path]
           else if Path.is_in_build_dir path then begin
             if Build_system.is_target setup.build_system path then
-              [File path]
+              Ok [File path]
             else
               can't_build path
           end else
@@ -428,11 +427,15 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
                 l
             with
             | [] -> can't_build path
-            | l  -> l
+            | l  -> Ok l
         )
     in
     if !Clflags.verbose then begin
       Log.info log "Actual targets:";
+      let targets =
+        List.concat_map targets ~f:(function
+          | Ok targets -> targets
+          | Error _ -> []) in
       List.iter targets ~f:(function
         | File path ->
           Log.info log @@ "- " ^ (Path.to_string path)
@@ -443,6 +446,14 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
       flush stdout;
     end;
     targets
+
+let resolve_targets ~log common setup user_targets =
+  resolve_targets' ~log common setup user_targets
+  |> List.concat_map ~f:(function
+    | Error (path, hint) ->
+      die "Don't know how to build %a%s" Path.pp path hint
+    | Ok targets ->
+      targets)
 
 let build_targets =
   let doc = "Build the given targets, or all installable targets if none are given." in
@@ -869,12 +880,18 @@ let exec =
             [p]
           | `This_abs _ ->
             [] in
-        targets
-        |> List.map ~f:Path.to_string
-        |> resolve_targets ~log common setup
-        |> do_build setup
-        |> Future.Scheduler.go ~log;
-        Build_system.dump_trace setup.build_system;
+        begin match
+          List.map ~f:Path.to_string targets
+          |> resolve_targets' ~log common setup
+          |> List.concat_map ~f:(function
+            | Ok targets -> targets
+            | Error _ -> [])
+        with
+        | [] -> ()
+        | targets ->
+          Future.Scheduler.go ~log (do_build setup targets);
+          Build_system.dump_trace setup.build_system
+        end
       end;
       match prog_where with
       | `Search prog ->

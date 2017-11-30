@@ -841,26 +841,47 @@ let exec =
     ; `Blocks help_secs
     ]
   in
-  let go common context prog args =
+  let go common context prog rebuild args =
     set_common common ~targets:[];
     let log = Log.create () in
     let setup = Future.Scheduler.go ~log (Main.setup ~log common) in
     let context = Main.find_context_exn setup ~name:context in
     let real_prog =
-      match
+      let prog_where =
         match Filename.analyze_program_name prog with
         | Absolute ->
-          `This (Path.of_string prog)
+          `This_abs (Path.of_string prog)
         | In_path ->
           `Search prog
         | Relative_to_current_dir ->
           let prog = prefix_target common prog in
-          `This (Path.relative context.build_dir prog)
-      with
+          `This_rel (Path.relative context.build_dir prog) in
+      if rebuild then begin
+        let targets =
+          match prog_where with
+          | `Search p ->
+            [Path.relative (Config.local_install_bin_dir ~context:context.name) p]
+          | `This_rel p when Sys.win32 ->
+            [p; Path.extend_basename p ~suffix:Bin.exe]
+          | `This_rel p ->
+            [p]
+          | `This_abs p when Path.is_in_build_dir p ->
+            [p]
+          | `This_abs _ ->
+            [] in
+        targets
+        |> List.map ~f:Path.to_string
+        |> resolve_targets ~log common setup
+        |> do_build setup
+        |> Future.Scheduler.go ~log;
+        Build_system.dump_trace setup.build_system;
+      end;
+      match prog_where with
       | `Search prog ->
         let path = Config.local_install_bin_dir ~context:context.name :: context.path in
         Bin.which prog ~path
-      | `This prog ->
+      | `This_rel prog
+      | `This_abs prog ->
         if Path.exists prog then
           Some prog
         else if not Sys.win32 then
@@ -884,6 +905,8 @@ let exec =
           $ context_arg ~doc:{|Run the command in this build context.|}
           $ Arg.(required
                  & pos 0 (some string) None (Arg.info [] ~docv:"PROG"))
+          $ Arg.(value & flag & info ["build"; "b"]
+                                  ~doc:"rebuild target before executing")
           $ Arg.(value
                  & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
          )

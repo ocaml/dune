@@ -357,7 +357,7 @@ let create ?host ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
     ; toplevel_path = Option.map (get_env env "OCAML_TOPLEVEL_PATH") ~f:Path.absolute
 
     ; ocaml_bin  = dir
-    ; ocaml      = Path.relative dir ("ocaml" ^ Bin.exe)
+    ; ocaml      = (match which "ocaml" with Some p -> p | None -> prog_not_found "ocaml")
     ; ocamlc
     ; ocamlopt   = best_prog "ocamlopt"
     ; ocamldep   = get_prog  "ocamldep"

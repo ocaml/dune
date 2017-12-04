@@ -60,6 +60,15 @@ let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
   |> List.map ~f:(fun (_, (_, c)) -> Lazy.force c)
   |> Future.all
   >>= fun contexts ->
+  let contexts =
+    List.concat_map contexts ~f:(fun c ->
+      if c.name = "default" then
+        match c.for_host with
+        | None -> [c]
+        | Some c' -> [c'; c]
+      else
+        [c])
+  in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
     Log.infof log "@[<1>Jbuilder context:@,%a@]@." Sexp.pp (Context.sexp_of_t ctx));
   Gen_rules.gen conf

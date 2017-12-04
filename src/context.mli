@@ -72,6 +72,8 @@ type t =
     env_extra : string Env_var_map.t
 
   ; findlib : Findlib.t
+  ; findlib_config : Findlib.Config.t
+  ; findlib_toolchain : string option
 
   ; (** Misc *)
     arch_sixtyfour : bool

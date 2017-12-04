@@ -118,6 +118,30 @@ module Vars = struct
   let get_words t var preds = String.extract_comma_space_separated_words (get t var preds)
 end
 
+module Config = struct
+  type t = Vars.t
+
+  let empty = String_map.empty
+  
+  let load path =
+    let files =
+      let path_d = Path.extend_basename path ~suffix:".d" in
+      if Path.is_directory path_d then
+        path :: List.map (Path.readdir path_d) ~f:(Path.relative path_d)
+      else
+        [path]
+    in
+    let vars =
+      (Meta.simplify { name = ""
+                     ; entries = List.concat_map files ~f:(fun p -> Meta.load (Path.to_string p))
+                     }).vars
+    in
+    String_map.map vars ~f:Rules.of_meta_rules
+
+  let get ?(predicates=[]) t ~var =
+    Vars.get t var predicates
+end
+
 type package =
   { name             : string
   ; dir              : Path.t

@@ -46,6 +46,8 @@ type t =
   ; env                     : string array
   ; env_extra               : string Env_var_map.t
   ; findlib                 : Findlib.t
+  ; findlib_config          : Findlib.Config.t
+  ; findlib_toolchain       : string option
   ; arch_sixtyfour          : bool
   ; opam_var_cache          : (string, string) Hashtbl.t
   ; natdynlink_supported    : bool
@@ -175,7 +177,8 @@ let extend_env ~vars ~env =
       imported
     |> Array.of_list
 
-let create ?host ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_findlib () =
+let create ?host ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
+      ~use_findlib ?findlib_toolchain () =
   let env = extend_env ~env:base_env ~vars:env_extra in
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
@@ -187,6 +190,35 @@ let create ?host ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_
   in
   let which_cache = Hashtbl.create 128 in
   let which x = which ~cache:which_cache ~path x in
+  (match findlib_toolchain with
+   | None -> Future.return Findlib.Config.empty
+   | Some _ ->
+     match which "ocamlfind" with
+     | None -> assert false
+     | Some fn ->
+       Future.run_capture_line ~env Strict
+         (Path.to_string fn) ["printconf"; "conf"]
+       >>| fun s ->
+       let path = Path.absolute s in
+       Findlib.Config.load path)
+  >>= fun findlib_cfg ->
+  let get_findlib_var =
+    let predicates =
+      match findlib_toolchain with
+      | None -> []
+      | Some s -> [s]
+    in
+    fun var -> Findlib.Config.get findlib_cfg ~predicates ~var
+  in
+  let which prog =
+    let s = get_findlib_var prog in
+    if s = "" then
+      which prog
+    else
+      match Filename.analyze_program_name s with
+      | In_path | Relative_to_current_dir -> which s
+      | Absolute -> Some (Path.absolute s)
+  in
   let ocamlc =
     match which "ocamlc" with
     | None -> prog_not_found_in_path "ocamlc"
@@ -334,6 +366,8 @@ let create ?host ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin ~use_
     ; env
     ; env_extra
     ; findlib = Findlib.create ~stdlib_dir ~path:findlib_path
+    ; findlib_config = findlib_cfg
+    ; findlib_toolchain
     ; arch_sixtyfour
 
     ; opam_var_cache
@@ -390,8 +424,18 @@ let default ?(merlin=true) ?(use_findlib=true) () =
     | Some s -> Bin.parse_path s
     | None -> []
   in
-  create ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
-    ~name:"default" ~merlin ~use_findlib ()
+  match !Clflags.x with
+  | None ->
+    create ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
+      ~name:"default" ~merlin ~use_findlib ()
+  | Some x ->
+    assert use_findlib;
+    create ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
+      ~name:"default.host" ~merlin:false ~use_findlib ()
+    >>= fun host ->
+    let env_extra = Env_var_map.singleton "OCAMLFIND_TOOLCHAIN" x in
+    create ~host ~kind:Default ~path ~base_env:env ~env_extra
+      ~name:"default" ~merlin ~use_findlib ~findlib_toolchain:x ()
 
 let create_for_opam ?root ?host ~switch ~name ?(merlin=false) () =
   match Bin.opam with
@@ -433,7 +477,21 @@ let create_for_opam ?root ?host ~switch ~name ?(merlin=false) () =
     create ?host ~kind:(Opam { root; switch }) ~path ~base_env:env ~env_extra:vars
       ~name ~merlin ~use_findlib:true ()
 
-let which t s = which ~cache:t.which_cache ~path:t.path s
+
+let which =
+  let real_which t s = which ~cache:t.which_cache ~path:t.path s in
+  fun t s ->
+    let predicates =
+      match t.findlib_toolchain with
+      | None -> []
+      | Some s -> [s]
+    in
+    match Findlib.Config.get t.findlib_config ~predicates ~var:s with
+    | "" -> real_which t s
+    | s  ->
+      match Filename.analyze_program_name s with
+      | In_path | Relative_to_current_dir -> real_which t s
+      | Absolute -> Some (Path.absolute s)
 
 let install_prefix t =
   opam_config_var t "prefix" >>| function

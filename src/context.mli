@@ -27,7 +27,7 @@ module Kind : sig
       ; switch : string
       }
   end
-  type t = Default | Opam of Opam.t
+  type t = Default | Opam of Opam.t | Host_for_default
 end
 
 module Env_var : sig

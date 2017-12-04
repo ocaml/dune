@@ -1086,21 +1086,22 @@ Add it to your jbuild file to remove this warning.
 
   let () =
     let is_default = Path.basename ctx.build_dir = "default" in
-    String_map.iter (SC.packages sctx)
-      ~f:(fun ~key:pkg ~data:{ Package.path = src_path; _ } ->
-        let install_fn = pkg ^ ".install" in
+    if ctx.kind <> Host_for_default then
+      String_map.iter (SC.packages sctx)
+        ~f:(fun ~key:pkg ~data:{ Package.path = src_path; _ } ->
+          let install_fn = pkg ^ ".install" in
 
-        let ctx_path = Path.append ctx.build_dir src_path in
-        let ctx_install_alias = Alias.install ~dir:ctx_path in
-        let ctx_install_file = Path.relative ctx_path install_fn in
-        Alias.add_deps (SC.aliases sctx) ctx_install_alias [ctx_install_file];
+          let ctx_path = Path.append ctx.build_dir src_path in
+          let ctx_install_alias = Alias.install ~dir:ctx_path in
+          let ctx_install_file = Path.relative ctx_path install_fn in
+          Alias.add_deps (SC.aliases sctx) ctx_install_alias [ctx_install_file];
 
-        if is_default then begin
-          let src_install_alias = Alias.install ~dir:src_path in
-          let src_install_file = Path.relative src_path install_fn in
-          SC.add_rule sctx (Build.copy ~src:ctx_install_file ~dst:src_install_file);
-          Alias.add_deps (SC.aliases sctx) src_install_alias [src_install_file]
-        end)
+          if is_default then begin
+            let src_install_alias = Alias.install ~dir:src_path in
+            let src_install_file = Path.relative src_path install_fn in
+            SC.add_rule sctx (Build.copy ~src:ctx_install_file ~dst:src_install_file);
+            Alias.add_deps (SC.aliases sctx) src_install_alias [src_install_file]
+          end)
 end
 
 let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)

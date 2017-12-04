@@ -8,10 +8,11 @@ module Kind = struct
       ; switch : string
       }
   end
-  type t = Default | Opam of Opam.t
+  type t = Default | Opam of Opam.t | Host_for_default
 
   let sexp_of_t : t -> Sexp.t = function
     | Default -> Atom "default"
+    | Host_for_default -> Atom "host-for-default"
     | Opam o  ->
       Sexp.To_sexp.(record [ "root"  , string o.root
                            ; "switch", string o.switch
@@ -184,7 +185,7 @@ let create ?host ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
   (match kind with
    | Opam { root; _ } ->
      Hashtbl.add opam_var_cache ~key:"root" ~data:root
-   | Default -> ());
+   | Default | Host_for_default -> ());
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name
   in
@@ -430,7 +431,7 @@ let default ?(merlin=true) ?(use_findlib=true) () =
       ~name:"default" ~merlin ~use_findlib ()
   | Some x ->
     assert use_findlib;
-    create ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
+    create ~kind:Host_for_default ~path ~base_env:env ~env_extra:Env_var_map.empty
       ~name:"default.host" ~merlin:false ~use_findlib ()
     >>= fun host ->
     let env_extra = Env_var_map.singleton "OCAMLFIND_TOOLCHAIN" x in

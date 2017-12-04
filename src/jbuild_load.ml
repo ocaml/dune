@@ -104,6 +104,7 @@ end
           create_plugin_wrapper context ~exec_dir:dir ~plugin:file ~wrapper
             ~target:generated_jbuild
         in
+        let context = Option.value context.for_host ~default:context in
         let pkgs =
           List.map requires ~f:(Findlib.find_exn context.findlib
                                   ~required_by:[Utils.jbuild_name_in ~dir:dir])

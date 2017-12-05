@@ -852,7 +852,7 @@ let exec =
     ; `Blocks help_secs
     ]
   in
-  let go common context prog rebuild args =
+  let go common context prog no_rebuild args =
     set_common common ~targets:[];
     let log = Log.create () in
     let setup = Future.Scheduler.go ~log (Main.setup ~log common) in
@@ -867,7 +867,7 @@ let exec =
         | Relative_to_current_dir ->
           let prog = prefix_target common prog in
           `This_rel (Path.relative context.build_dir prog) in
-      if rebuild then begin
+      if not no_rebuild then begin
         let targets =
           match prog_where with
           | `Search p ->
@@ -922,8 +922,9 @@ let exec =
           $ context_arg ~doc:{|Run the command in this build context.|}
           $ Arg.(required
                  & pos 0 (some string) None (Arg.info [] ~docv:"PROG"))
-          $ Arg.(value & flag & info ["build"; "b"]
-                                  ~doc:"rebuild target before executing")
+          $ Arg.(value & flag
+                 & info ["no-build"]
+                     ~doc:"don't rebuild target before executing")
           $ Arg.(value
                  & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
          )

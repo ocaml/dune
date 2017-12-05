@@ -78,15 +78,17 @@ module Unexpanded : sig
       with type string  = (string              , String_with_vars.t) either
 
     val expand
-      :  Path.t
-      -> t
+      :  t
+      -> dir:Path.t
+      -> map_exe:(Path.t -> Path.t)
       -> f:(Loc.t -> String.t -> Var_expansion.t option)
       -> Unresolved.t
   end
 
   val partial_expand
-    :  Path.t
-    -> t
+    :  t
+    -> dir:Path.t
+    -> map_exe:(Path.t -> Path.t)
     -> f:(Loc.t -> string -> Var_expansion.t option)
     -> Partial.t
 end

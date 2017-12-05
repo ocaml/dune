@@ -7,3 +7,7 @@
         ocamlc foo.{cmi,cmo,cmt}
         ocamlc foo.exe
   Foo
+  $ $JBUILDER exec --dev ./foo.exe -j1 --root .
+        ocamlc foo.{cmi,cmo,cmt}
+        ocamlc foo.exe
+  Foo

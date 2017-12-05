@@ -99,3 +99,10 @@
   (action
      (chdir test-cases/ocaml-syntax
   (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/gen-opam-install-file)))
+  (action
+     (chdir test-cases/gen-opam-install-file
+  (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))

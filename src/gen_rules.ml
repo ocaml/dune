@@ -1062,6 +1062,13 @@ Add it to your jbuild file to remove this warning.
     SC.add_rule sctx
       (Build.path_set (Install.files entries)
        >>^ (fun () ->
+         let entries =
+           match !Clflags.install_prefix with
+           | None -> entries
+           | Some prefix ->
+             List.map entries
+               ~f:(Install.Entry.add_install_prefix ~prefix ~package)
+         in
          Install.gen_install_file entries)
        >>>
        Build.write_file_dyn fn)

@@ -37,3 +37,5 @@ val capture_outputs : bool ref
 val debug_backtraces : bool ref
 
 val x : string option ref
+
+val install_prefix : Path.t option ref

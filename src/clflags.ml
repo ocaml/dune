@@ -11,3 +11,4 @@ let external_lib_deps_hint = ref []
 let capture_outputs = ref true
 let debug_backtraces = ref false
 let x = ref None
+let install_prefix = ref None

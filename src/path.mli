@@ -112,4 +112,6 @@ val rm_rf : t -> unit
 (** Changes the extension of the filename (or adds an extension if there was none) *)
 val change_extension : ext:string -> t -> t
 
+val extension : t -> string
+
 val pp : t Fmt.t

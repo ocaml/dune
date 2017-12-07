@@ -26,6 +26,8 @@ next
 
 - Fix doc generation when several private libraries have the same name (#369)
 
+- Fix copy# for C/C++ with Microsoft C compiler (#353)
+
 1.0+beta16 (05/11/2017)
 -----------------------
 

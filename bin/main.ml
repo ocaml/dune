@@ -385,7 +385,7 @@ let target_hint (setup : Main.setup) path =
   let candidates = String_set.of_list candidates |> String_set.elements in
   hint (Path.to_string path) candidates
 
-let resolve_targets' ~log common (setup : Main.setup) user_targets =
+let resolve_targets ~log common (setup : Main.setup) user_targets =
   match user_targets with
   | [] -> []
   | _ ->
@@ -447,8 +447,8 @@ let resolve_targets' ~log common (setup : Main.setup) user_targets =
     end;
     targets
 
-let resolve_targets ~log common setup user_targets =
-  resolve_targets' ~log common setup user_targets
+let resolve_targets_exn ~log common setup user_targets =
+  resolve_targets ~log common setup user_targets
   |> List.concat_map ~f:(function
     | Error (path, hint) ->
       die "Don't know how to build %a%s" Path.pp path hint
@@ -469,7 +469,7 @@ let build_targets =
     let log = Log.create () in
     Future.Scheduler.go ~log
       (Main.setup ~log common >>= fun setup ->
-       let targets = resolve_targets ~log common setup targets in
+       let targets = resolve_targets_exn ~log common setup targets in
        do_build setup targets) in
   ( Term.(const go
           $ common
@@ -550,7 +550,7 @@ let external_lib_deps =
     Future.Scheduler.go ~log
       (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
        >>= fun setup ->
-       let targets = resolve_targets ~log common setup targets in
+       let targets = resolve_targets_exn ~log common setup targets in
        let request = request_of_targets setup targets in
        let failure =
          String_map.fold ~init:false
@@ -656,7 +656,7 @@ let rules =
        let request =
          match targets with
          | [] -> Build.paths (Build_system.all_targets setup.build_system)
-         | _  -> resolve_targets ~log common setup targets |> request_of_targets setup
+         | _  -> resolve_targets_exn ~log common setup targets |> request_of_targets setup
        in
        Build_system.build_rules setup.build_system ~request ~recursive >>= fun rules ->
        let print oc =
@@ -882,7 +882,7 @@ let exec =
             [] in
         begin match
           List.map ~f:Path.to_string targets
-          |> resolve_targets' ~log common setup
+          |> resolve_targets ~log common setup
           |> List.concat_map ~f:(function
             | Ok targets -> targets
             | Error _ -> [])
@@ -1005,7 +1005,7 @@ let utop =
        let context = Main.find_context_exn setup ~name:ctx_name in
        let setup = { setup with contexts = [context] } in
        let target =
-         match resolve_targets ~log common setup [utop_target] with
+         match resolve_targets_exn ~log common setup [utop_target] with
          | [] -> die "no libraries defined in %s" dir
          | [File target] -> target
          | [Alias_rec _] | _::_::_ -> assert false

@@ -12,7 +12,8 @@ type setup =
 let package_install_file { packages; _ } pkg =
   match String_map.find pkg packages with
   | None -> Error ()
-  | Some p -> Ok (Path.relative p.path (p.name ^ ".install"))
+  | Some p ->
+    Ok (Path.relative p.path (Utils.install_file ~package:p.name))
 
 let setup ?(log=Log.no_log) ?filter_out_optional_stanzas_with_missing_deps
       ?workspace ?(workspace_file="jbuild-workspace")

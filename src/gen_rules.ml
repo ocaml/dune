@@ -413,6 +413,13 @@ Add it to your jbuild file to remove this warning.
   let build_cxx_file (lib : Library.t) ~scope ~dir ~requires ~h_files c_name =
     let src = Path.relative dir (c_name ^ ".cpp") in
     let dst = Path.relative dir (c_name ^ ctx.ext_obj) in
+    let open Arg_spec in
+    let output_param =
+      if ctx.ccomp_type = "msvc" then
+        [Concat ("", [A "/Fo"; Target dst])]
+      else
+        [A "-o"; Target dst]
+    in
     SC.add_rule sctx
       (Build.paths h_files
        >>>
@@ -425,15 +432,15 @@ Add it to your jbuild file to remove this warning.
             the current directory *)
          ~dir
          (SC.resolve_program sctx ctx.c_compiler)
-         [ S [A "-I"; Path ctx.stdlib_dir]
-         ; As (SC.cxx_flags sctx)
-         ; Dyn (fun (cxx_flags, libs) ->
-             S [ Lib.c_include_flags libs
-               ; As cxx_flags
-               ])
-         ; A "-o"; Target dst
-         ; A "-c"; Dep src
-         ]);
+         ([ S [A "-I"; Path ctx.stdlib_dir]
+          ; As (SC.cxx_flags sctx)
+          ; Dyn (fun (cxx_flags, libs) ->
+              S [ Lib.c_include_flags libs
+                ; As cxx_flags
+                ])
+          ] @ output_param @
+          [ A "-c"; Dep src
+          ]));
     dst
 
   (* In 4.02, the compiler reads the cmi for module alias even with [-w -49

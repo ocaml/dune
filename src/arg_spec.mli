@@ -4,6 +4,7 @@ type 'a t =
   | A        of string
   | As       of string list
   | S        of 'a t list
+  | Concat   of string * 'a t list (** Concatenation with a custom separator *)
   | Dep      of Path.t (** A path that is a dependency *)
   | Deps     of Path.t list
   | Target   of Path.t

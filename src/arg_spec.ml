@@ -6,6 +6,7 @@ type 'a t =
   | A        of string
   | As       of string list
   | S        of 'a t list
+  | Concat   of string * 'a t list
   | Dep      of Path.t
   | Deps     of Path.t list
   | Target   of Path.t
@@ -18,14 +19,16 @@ let rec add_deps ts set =
     match t with
     | Dep  fn  -> Pset.add fn set
     | Deps fns -> Pset.union set (Pset.of_list fns)
-    | S ts -> add_deps ts set
+    | S ts
+    | Concat (_, ts) -> add_deps ts set
     | _ -> set)
 
 let rec add_targets ts acc =
   List.fold_left ts ~init:acc ~f:(fun acc t ->
     match t with
     | Target fn  -> fn :: acc
-    | S ts -> add_targets ts acc
+    | S ts
+    | Concat (_, ts) -> add_targets ts acc
     | _ -> acc)
 
 let expand ~dir ts x =
@@ -45,6 +48,7 @@ let expand ~dir ts x =
     | Paths fns ->
       List.map fns ~f:(Path.reach ~from:dir)
     | S ts -> List.concat_map ts ~f:loop_dyn
+    | Concat (sep, ts) -> [String.concat ~sep (loop_dyn (S ts))]
     | Target _ -> die "Target not allowed under Dyn"
     | Dyn _ -> assert false
   in
@@ -54,6 +58,7 @@ let expand ~dir ts x =
     | (Dep fn | Path fn) -> [Path.reach fn ~from:dir]
     | (Deps fns | Paths fns) -> List.map fns ~f:(Path.reach ~from:dir)
     | S ts -> List.concat_map ts ~f:loop
+    | Concat (sep, ts) -> [String.concat ~sep (loop (S ts))]
     | Target fn -> [Path.reach fn ~from:dir]
     | Dyn f -> loop_dyn (f x)
   in

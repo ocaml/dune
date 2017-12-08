@@ -22,7 +22,7 @@ type common =
   ; only_packages    : String_set.t option
   ; capture_outputs  : bool
   ; x                : string option
-  ; install_prefix : Path.t option
+  ; install_prefix   : string option
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args        : string list
   }
@@ -181,7 +181,7 @@ let common =
         Option.map only_packages
           ~f:(fun s -> String_set.of_list (String.split s ~on:','))
     ; x
-    ; install_prefix = Option.map install_prefix ~f:Path.of_string
+    ; install_prefix = install_prefix
     }
   in
   let docs = copts_sect in

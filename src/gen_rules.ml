@@ -1066,6 +1066,7 @@ Add it to your jbuild file to remove this warning.
            match !Clflags.install_prefix with
            | None -> entries
            | Some prefix ->
+             let prefix = Path.of_string prefix in
              List.map entries
                ~f:(Install.Entry.add_install_prefix ~prefix ~package)
          in

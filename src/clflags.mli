@@ -38,4 +38,4 @@ val debug_backtraces : bool ref
 
 val x : string option ref
 
-val install_prefix : Path.t option ref
+val install_prefix : string option ref

@@ -25,6 +25,7 @@ case "$TARGET" in
     if [ $WITH_OPAM -eq 1 ] ; then
       echo -en "travis_fold:start:opam.init\r"
       if [ "$TRAVIS_OS_NAME" = "osx" ] ; then
+        brew update
         brew install aspcud
         PREFIX=/Users/travis
       else
@@ -53,10 +54,24 @@ case "$TARGET" in
     fi
   ;;
   build)
+    UPDATE_OPAM=0
     if [ $WITH_OPAM -eq 1 ] ; then
       echo -en "travis_fold:start:opam.deps\r"
+      DATE=$(date +%Y%m%d)
       eval $(opam config env)
+      if [ $(opam pin list | wc -l) -ne 0 ] ; then
+        UPDATE_OPAM=1
+        opam pin remove jbuilder --no-action --yes
+        opam remove jbuilder --yes
+      fi
+      if [ ! -e ~/.opam/last-update ] || [ $(cat ~/.opam/last-update) != $DATE ] ; then
+        opam update --yes
+        echo $DATE> ~/.opam/last-update
+        UPDATE_OPAM=1
+        opam upgrade --yes
+      fi
       opam list
+      echo "version: \"1.0+dev$DATE\"" >> jbuilder.opam
       opam pin add jbuilder . --no-action --yes
       opam install ocaml-migrate-parsetree js_of_ocaml-ppx --yes
       echo -en "travis_fold:end:opam.deps\r"
@@ -73,8 +88,10 @@ case "$TARGET" in
       _build/install/default/bin/jbuilder build @test/blackbox-tests/runtest-js && \
       ! _build/install/default/bin/jbuilder build @test/fail-with-background-jobs-running
       RESULT=$?
-      rm -rf ~/.opam
-      mv ~/.opam-start ~/.opam
+      if [ $UPDATE_OPAM -eq 0 ] ; then
+        rm -rf ~/.opam
+        mv ~/.opam-start ~/.opam
+      fi
       exit $RESULT
     fi
   ;;

@@ -13,8 +13,8 @@ long time and is used daily by hundreds of developers, which means
 that it is highly tested and productive.
 
 Jbuilder comes with a [manual][manual]. If you want to get started
-without reading too much, you can look at the
-[quick start guide][quick-start].
+without reading too much, you can look at the [quick start
+guide][quick-start] or watch [this introduction video][video].
 
 The [example][example] directory contains examples of projects using
 jbuilder.
@@ -33,6 +33,7 @@ jbuilder.
 [jenga]:          https://github.com/janestreet/jenga
 [issues]:         https://github.com/janestreet/jbuilder/issues
 [topkg-jbuilder]: https://github.com/diml/topkg-jbuilder
+[video]:          https://youtu.be/BNZhmMAJarw
 
 Overview
 --------

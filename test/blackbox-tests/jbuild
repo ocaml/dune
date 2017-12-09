@@ -78,3 +78,31 @@
   (action
    (chdir test-cases/aliases
     (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/force-test)))
+  (action
+   (chdir test-cases/force-test
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/meta-gen)))
+  (action
+   (chdir test-cases/meta-gen
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/ocaml-syntax)))
+  (action
+     (chdir test-cases/ocaml-syntax
+  (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/gen-opam-install-file)))
+  (action
+     (chdir test-cases/gen-opam-install-file
+  (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))

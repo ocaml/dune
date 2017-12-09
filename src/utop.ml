@@ -11,7 +11,7 @@ let pp_ml fmt include_dirs =
   let pp_include fmt =
     let pp_sep fmt () = Format.fprintf fmt "@ ; " in
     Format.pp_print_list ~pp_sep (fun fmt p ->
-      Format.fprintf fmt "%S" (Path.to_string p)
+      Format.fprintf fmt "%S" (Path.to_absolute_filename p)
     ) fmt
   in
   Format.fprintf fmt "@[<v 2>Clflags.include_dirs :=@ [ %a@ ]@];@."

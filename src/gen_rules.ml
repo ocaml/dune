@@ -1114,7 +1114,7 @@ Add it to your jbuild file to remove this warning.
 end
 
 let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
-      ?only_packages conf =
+      ?only_packages ?(unlink_aliases=[]) conf =
   let open Future in
   let { Jbuild_load. file_tree; jbuilds; packages } = conf in
   let aliases = Alias.Store.create () in
@@ -1176,5 +1176,6 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
     List.map l ~f:(fun (sctx, stanzas) ->
       (Super_context.rules sctx, ((Super_context.context sctx).name, stanzas)))
     |> List.split in
+  Alias.Store.unlink aliases unlink_aliases;
   (Alias.rules aliases @ List.concat rules,
    String_map.of_alist_exn context_names_and_stanzas)

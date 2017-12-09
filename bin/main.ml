@@ -49,26 +49,33 @@ let set_common c ~targets =
       ; targets
       ]
 
-let execve =
+let restore_cwd_and_execve common prog argv env =
+  let prog =
+    if Filename.is_relative prog then
+      Filename.concat common.root prog
+    else
+      prog
+  in
+  Sys.chdir initial_cwd;
   if Sys.win32 then
-    fun prog argv env ->
-      let pid = Unix.create_process_env prog argv env
-                  Unix.stdin Unix.stdout Unix.stderr
-      in
-      match snd (Unix.waitpid [] pid) with
-      | WEXITED   0 -> ()
-      | WEXITED   n -> exit n
-      | WSIGNALED _ -> exit 255
-      | WSTOPPED  _ -> assert false
+    let pid = Unix.create_process_env prog argv env
+                Unix.stdin Unix.stdout Unix.stderr
+    in
+    match snd (Unix.waitpid [] pid) with
+    | WEXITED   0 -> ()
+    | WEXITED   n -> exit n
+    | WSIGNALED _ -> exit 255
+    | WSTOPPED  _ -> assert false
   else
-    Unix.execve
+    Unix.execve prog argv env
 
 module Main = struct
   include Jbuilder.Main
 
-  let setup ~log ?filter_out_optional_stanzas_with_missing_deps common =
+  let setup ~log ?unlink_aliases ?filter_out_optional_stanzas_with_missing_deps common =
     setup
       ~log
+      ?unlink_aliases
       ?workspace_file:common.workspace_file
       ?only_packages:common.only_packages
       ?filter_out_optional_stanzas_with_missing_deps ()
@@ -490,7 +497,8 @@ let runtest =
     ]
   in
   let name_ = Arg.info [] ~docv:"DIR" in
-  let go common dirs =
+  let go common force dirs =
+    let unlink_aliases = if force then Some ["runtest"] else None in
     set_common common
       ~targets:(List.map dirs ~f:(function
         | "" | "." -> "@runtest"
@@ -498,7 +506,7 @@ let runtest =
         | dir -> sprintf "@%s/runtest" dir));
     let log = Log.create () in
     Future.Scheduler.go ~log
-      (Main.setup ~log common >>= fun setup ->
+      (Main.setup ?unlink_aliases ~log common >>= fun setup ->
        let targets =
          List.map dirs ~f:(fun dir ->
            let dir = Path.(relative root) (prefix_target common dir) in
@@ -507,6 +515,7 @@ let runtest =
        do_build setup targets) in
   ( Term.(const go
           $ common
+          $ Arg.(value & flag & info ["force"; "f"])
           $ Arg.(value & pos_all string ["."] name_))
   , Term.info "runtest" ~doc ~man)
 
@@ -890,7 +899,7 @@ let exec =
       let real_prog = Path.to_string real_prog     in
       let env       = Context.env_for_exec context in
       let argv      = Array.of_list (prog :: args) in
-      execve real_prog argv env
+      restore_cwd_and_execve common real_prog argv env
   in
   ( Term.(const go
           $ common
@@ -986,7 +995,7 @@ let utop =
        (setup.build_system, context, Path.to_string target)
       ) |> Future.Scheduler.go ~log in
     Build_system.dump_trace build_system;
-    execve utop_path (Array.of_list (utop_path :: args))
+    restore_cwd_and_execve common utop_path (Array.of_list (utop_path :: args))
       (Context.env_for_exec context)
   in
   let name_ = Arg.info [] ~docv:"PATH" in

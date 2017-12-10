@@ -101,3 +101,12 @@ set of predicates:
 - ``ppx_driver``: when a library acts differently depending on whether
   it is linked as part of a driver or meant to add a ``-ppx`` argument
   to the compiler, choose the former behavior
+
+Classical ppx
+=============
+
+*classical ppx* refers to running ppx using the -ppx compiler option, which is
+composed using Findlib. Even though this is useful to run some (usually old)
+ppx's which don't support drivers, Jbuilder does not support preprocessing with
+ppx this way. but a workaround exists using the `ppxfind
+<https://github.com/diml/ppxfind>`_ tool.

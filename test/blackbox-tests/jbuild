@@ -95,6 +95,13 @@
 
 (alias
  ((name runtest)
+  (deps ((files_recursively_in test-cases/exec-cmd)))
+  (action
+   (chdir test-cases/exec-cmd
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
   (deps ((files_recursively_in test-cases/ocaml-syntax)))
   (action
      (chdir test-cases/ocaml-syntax

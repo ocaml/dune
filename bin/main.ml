@@ -390,25 +390,24 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
   | [] -> []
   | _ ->
     let targets =
-      List.concat_map user_targets ~f:(fun s ->
+      List.map user_targets ~f:(fun s ->
         if String.is_prefix s ~prefix:"@" then
           let s = String.sub s ~pos:1 ~len:(String.length s - 1) in
           let path = Path.relative Path.root (prefix_target common s) in
           if Path.is_root path then
             die "@@ on the command line must be followed by a valid alias name"
           else
-            [Alias_rec (Alias.of_path path)]
+            Ok [Alias_rec (Alias.of_path path)]
         else
           let path = Path.relative Path.root (prefix_target common s) in
           let can't_build path =
-            die "Don't know how to build %s%s" (Path.to_string path)
-              (target_hint setup path)
+            Error (path, target_hint setup path);
           in
           if not (Path.is_local path) then
-            [File path]
+            Ok [File path]
           else if Path.is_in_build_dir path then begin
             if Build_system.is_target setup.build_system path then
-              [File path]
+              Ok [File path]
             else
               can't_build path
           end else
@@ -428,11 +427,15 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
                 l
             with
             | [] -> can't_build path
-            | l  -> l
+            | l  -> Ok l
         )
     in
     if !Clflags.verbose then begin
       Log.info log "Actual targets:";
+      let targets =
+        List.concat_map targets ~f:(function
+          | Ok targets -> targets
+          | Error _ -> []) in
       List.iter targets ~f:(function
         | File path ->
           Log.info log @@ "- " ^ (Path.to_string path)
@@ -443,6 +446,14 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
       flush stdout;
     end;
     targets
+
+let resolve_targets_exn ~log common setup user_targets =
+  resolve_targets ~log common setup user_targets
+  |> List.concat_map ~f:(function
+    | Error (path, hint) ->
+      die "Don't know how to build %a%s" Path.pp path hint
+    | Ok targets ->
+      targets)
 
 let build_targets =
   let doc = "Build the given targets, or all installable targets if none are given." in
@@ -458,7 +469,7 @@ let build_targets =
     let log = Log.create () in
     Future.Scheduler.go ~log
       (Main.setup ~log common >>= fun setup ->
-       let targets = resolve_targets ~log common setup targets in
+       let targets = resolve_targets_exn ~log common setup targets in
        do_build setup targets) in
   ( Term.(const go
           $ common
@@ -539,7 +550,7 @@ let external_lib_deps =
     Future.Scheduler.go ~log
       (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
        >>= fun setup ->
-       let targets = resolve_targets ~log common setup targets in
+       let targets = resolve_targets_exn ~log common setup targets in
        let request = request_of_targets setup targets in
        let failure =
          String_map.fold ~init:false
@@ -645,7 +656,7 @@ let rules =
        let request =
          match targets with
          | [] -> Build.paths (Build_system.all_targets setup.build_system)
-         | _  -> resolve_targets ~log common setup targets |> request_of_targets setup
+         | _  -> resolve_targets_exn ~log common setup targets |> request_of_targets setup
        in
        Build_system.build_rules setup.build_system ~request ~recursive >>= fun rules ->
        let print oc =
@@ -841,26 +852,52 @@ let exec =
     ; `Blocks help_secs
     ]
   in
-  let go common context prog args =
+  let go common context prog no_rebuild args =
     set_common common ~targets:[];
     let log = Log.create () in
     let setup = Future.Scheduler.go ~log (Main.setup ~log common) in
     let context = Main.find_context_exn setup ~name:context in
+    let prog_where =
+      match Filename.analyze_program_name prog with
+      | Absolute ->
+        `This_abs (Path.of_string prog)
+      | In_path ->
+        `Search prog
+      | Relative_to_current_dir ->
+        let prog = prefix_target common prog in
+        `This_rel (Path.relative context.build_dir prog) in
+    let targets = lazy (
+      (match prog_where with
+       | `Search p ->
+         [Path.relative (Config.local_install_bin_dir ~context:context.name) p]
+       | `This_rel p when Sys.win32 ->
+         [p; Path.extend_basename p ~suffix:Bin.exe]
+       | `This_rel p ->
+         [p]
+       | `This_abs p when Path.is_in_build_dir p ->
+         [p]
+       | `This_abs _ ->
+         [])
+      |> List.map ~f:Path.to_string
+      |> resolve_targets ~log common setup
+      |> List.concat_map ~f:(function
+        | Ok targets -> targets
+        | Error _ -> [])
+    ) in
     let real_prog =
-      match
-        match Filename.analyze_program_name prog with
-        | Absolute ->
-          `This (Path.of_string prog)
-        | In_path ->
-          `Search prog
-        | Relative_to_current_dir ->
-          let prog = prefix_target common prog in
-          `This (Path.relative context.build_dir prog)
-      with
+      if not no_rebuild then begin
+        match Lazy.force targets with
+        | [] -> ()
+        | targets ->
+          Future.Scheduler.go ~log (do_build setup targets);
+          Build_system.dump_trace setup.build_system
+      end;
+      match prog_where with
       | `Search prog ->
         let path = Config.local_install_bin_dir ~context:context.name :: context.path in
         Bin.which prog ~path
-      | `This prog ->
+      | `This_rel prog
+      | `This_abs prog ->
         if Path.exists prog then
           Some prog
         else if not Sys.win32 then
@@ -869,11 +906,22 @@ let exec =
           let prog = Path.extend_basename prog ~suffix:Bin.exe in
           Option.some_if (Path.exists prog) prog
     in
-    match real_prog with
-    | None ->
+    match real_prog, no_rebuild with
+    | None, true ->
+      begin match Lazy.force targets with
+      | [] ->
+        Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
+        die ""
+      | _::_ ->
+        Format.eprintf "@{<Error>Error@}: Program %S isn't built yet \
+                        you need to buid it first or remove the \
+                        --no-build option.@." prog;
+        die ""
+      end
+    | None, false ->
       Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
       die ""
-    | Some real_prog ->
+    | Some real_prog, _ ->
       let real_prog = Path.to_string real_prog     in
       let env       = Context.env_for_exec context in
       let argv      = Array.of_list (prog :: args) in
@@ -884,6 +932,9 @@ let exec =
           $ context_arg ~doc:{|Run the command in this build context.|}
           $ Arg.(required
                  & pos 0 (some string) None (Arg.info [] ~docv:"PROG"))
+          $ Arg.(value & flag
+                 & info ["no-build"]
+                     ~doc:"don't rebuild target before executing")
           $ Arg.(value
                  & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
          )
@@ -964,7 +1015,7 @@ let utop =
        let context = Main.find_context_exn setup ~name:ctx_name in
        let setup = { setup with contexts = [context] } in
        let target =
-         match resolve_targets ~log common setup [utop_target] with
+         match resolve_targets_exn ~log common setup [utop_target] with
          | [] -> die "no libraries defined in %s" dir
          | [File target] -> target
          | [Alias_rec _] | _::_::_ -> assert false

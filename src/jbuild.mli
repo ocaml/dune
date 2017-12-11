@@ -57,6 +57,13 @@ module Preprocess_map : sig
   val pps : t -> Pp.t list
 end
 
+module Lint : sig
+  type t = Preprocess_map.t
+
+  val no_lint : t
+end
+
+
 module Js_of_ocaml : sig
   type t =
     { flags            : Ordered_set_lang.Unexpanded.t
@@ -108,6 +115,7 @@ module Buildable : sig
     ; libraries                : Lib_dep.t list
     ; preprocess               : Preprocess_map.t
     ; preprocessor_deps        : Dep_conf.t list
+    ; lint                     : Lint.t
     ; flags                    : Ordered_set_lang.Unexpanded.t
     ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t

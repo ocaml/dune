@@ -160,7 +160,7 @@ let archives name =
   ; plugin  "native" (name ^ ".cmxs")
   ]
 
-let builtins =
+let builtins ~stdlib_dir =
   let version = version "[distributed with Ocaml]" in
   let simple name ?dir ?(archive_name=name) deps =
     let archives = archives archive_name in
@@ -216,7 +216,16 @@ let builtins =
         ]
     }
   in
-  List.map [ compiler_libs; str; unix; bigarray; threads; num ] ~f:(fun t -> t.name, t)
+  let libs =
+    (* We do not rely on an "exists_if" ocamlfind variable,
+       because it would produce an error message mentioning
+       a "hidden" package (which could be confusing). *)
+    if Path.exists (Path.relative stdlib_dir "nums.cma") then
+      [ compiler_libs; str; unix; bigarray; threads; num ]
+    else
+      [ compiler_libs; str; unix; bigarray; threads ]
+  in
+  List.map libs ~f:(fun t -> t.name, t)
   |> String_map.of_alist_exn
 
 let string_of_action = function

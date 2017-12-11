@@ -149,3 +149,12 @@ instance if the ``foo.exe`` program in the previous example was using
 .. code:: scheme
 
   (rule (with-stdout-to blah (run ./foo.exe -os-type ${os_type})))
+
+Classical ppx
+=============
+
+*classical ppx* refers to running ppx using the -ppx compiler option, which is
+composed using Findlib. Even though this is useful to run some (usually old)
+ppx's which don't support drivers, Jbuilder does not support preprocessing with
+ppx this way. but a workaround exists using the `ppxfind
+<https://github.com/diml/ppxfind>`_ tool.

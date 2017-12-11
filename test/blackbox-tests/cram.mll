@@ -20,7 +20,32 @@ rule file = parse
 
 {
   let () =
-    Test_common.run_expect_test Sys.argv.(1) ~f:(fun file_contents lexbuf ->
+    let ocaml_version = ref None in
+    let skip_versions = ref [] in
+    let expect_test = ref None in
+    let usage = sprintf "%s [OPTIONS]" (Filename.basename Sys.executable_name) in
+    let anon s =
+      match !expect_test with
+      | None -> expect_test := Some s
+      | Some _ -> raise (Arg.Bad "test must only be given once") in
+    Arg.parse
+      [ "-ocamlv"
+      , Arg.String (fun s -> ocaml_version := Some s)
+      , "Version of ocaml being used"
+      ; "-skip-versions"
+      , Arg.String (fun s -> skip_versions := String.split s ~on:',')
+      , "Comma separated versions of ocaml where to skip test"
+      ] anon usage;
+    let expect_test =
+      match !expect_test with
+      | None -> raise (Arg.Bad "expect test file must be passed")
+      | Some p -> p in
+    begin match !ocaml_version, !skip_versions with
+    | None, [] -> ()
+    | None, _::_ -> raise (Arg.Bad "provide -ocaml along with -skip-versions")
+    | Some v, skip -> if List.mem v ~set:skip then exit 0
+    end;
+    Test_common.run_expect_test expect_test ~f:(fun file_contents lexbuf ->
       let items = file lexbuf in
       let temp_file = Filename.temp_file "jbuilder-test" ".output" in
       at_exit (fun () -> Sys.remove temp_file);

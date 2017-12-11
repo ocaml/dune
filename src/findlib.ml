@@ -202,6 +202,7 @@ type present_or_not_available =
 type t =
   { stdlib_dir    : Path.t
   ; path          : Path.t list
+  ; builtins      : Meta.t String_map.t
   ; packages      : (string, present_or_not_available) Hashtbl.t
   }
 
@@ -210,6 +211,7 @@ let path t = t.path
 let create ~stdlib_dir ~path =
   { stdlib_dir
   ; path
+  ; builtins      = Meta.builtins ~stdlib_dir
   ; packages      = Hashtbl.create 1024
   }
 
@@ -313,7 +315,7 @@ let rec load_meta_rec t ~fq_name ~packages ~required_by =
           else
             loop dirs
       | [] ->
-        match String_map.find root_name Meta.builtins with
+        match String_map.find root_name t.builtins with
         | Some meta -> Some (t.stdlib_dir, meta)
         | None ->
           let required_by =
@@ -532,7 +534,7 @@ let root_packages t =
   in
   let pkgs =
     String_set.union pkgs
-      (String_set.of_list (String_map.keys Meta.builtins))
+      (String_set.of_list (String_map.keys t.builtins))
   in
   String_set.elements pkgs
 

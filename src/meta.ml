@@ -217,6 +217,9 @@ let builtins ~stdlib_dir =
     }
   in
   let libs =
+    (* We do not rely on an "exists_if" ocamlfind variable,
+       because it would produce an error message mentioning
+       a "hidden" package (which could be confusing). *)
     if Path.exists (Path.relative stdlib_dir "nums.cma") then
       [ compiler_libs; str; unix; bigarray; threads; num ]
     else

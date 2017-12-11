@@ -1,5 +1,10 @@
 (jbuild_version 1)
 
 (executable
- ((modes (byte))
+ ((modules (foo))
   (name foo)))
+
+(executable
+ ((modules (bar))
+  (name bar)
+  (public_name bar)))

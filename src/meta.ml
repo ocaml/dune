@@ -160,7 +160,7 @@ let archives name =
   ; plugin  "native" (name ^ ".cmxs")
   ]
 
-let builtins ~stdlib_dir =
+let builtins =
   let version = version "[distributed with Ocaml]" in
   let simple name ?dir ?(archive_name=name) deps =
     let archives = archives archive_name in
@@ -213,16 +213,11 @@ let builtins ~stdlib_dir =
         [ requires ["num.core"]
         ; version
         ; Package (simple "core" [] ~dir:"+" ~archive_name:"nums")
+        ; rule "exists_if" [] Set "nums.cmxa"
         ]
     }
   in
-  let libs =
-    if Path.exists (Path.relative stdlib_dir "nums.cmxa") then
-      [ compiler_libs; str; unix; bigarray; threads; num ]
-    else
-      [ compiler_libs; str; unix; bigarray; threads ]
-  in
-  List.map libs ~f:(fun t -> t.name, t)
+  List.map [ compiler_libs; str; unix; bigarray; threads; num ] ~f:(fun t -> t.name, t)
   |> String_map.of_alist_exn
 
 let string_of_action = function

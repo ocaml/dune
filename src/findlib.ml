@@ -313,7 +313,7 @@ let rec load_meta_rec t ~fq_name ~packages ~required_by =
           else
             loop dirs
       | [] ->
-        match String_map.find root_name (Meta.builtins ~stdlib_dir:t.stdlib_dir) with
+        match String_map.find root_name Meta.builtins with
         | Some meta -> Some (t.stdlib_dir, meta)
         | None ->
           let required_by =
@@ -532,8 +532,7 @@ let root_packages t =
   in
   let pkgs =
     String_set.union pkgs
-      (String_set.of_list
-         (String_map.keys (Meta.builtins ~stdlib_dir:t.stdlib_dir)))
+      (String_set.of_list (String_map.keys Meta.builtins))
   in
   String_set.elements pkgs
 

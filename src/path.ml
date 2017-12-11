@@ -220,7 +220,10 @@ end
 type t = string
 let compare = String.compare
 
-module Set = String_set
+module Set = struct
+  include String_set
+  let sexp_of_t t = Sexp.To_sexp.(list string) (String_set.elements t)
+end
 module Map = String_map
 
 module Kind = struct

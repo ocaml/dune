@@ -113,6 +113,7 @@ let default = make "DEFAULT"
 let runtest = make "runtest"
 let install = make "install"
 let doc     = make "doc"
+let lint    = make "lint"
 
 module Store = struct
   type entry =

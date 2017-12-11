@@ -857,41 +857,40 @@ let exec =
     let log = Log.create () in
     let setup = Future.Scheduler.go ~log (Main.setup ~log common) in
     let context = Main.find_context_exn setup ~name:context in
+    let prog_where =
+      match Filename.analyze_program_name prog with
+      | Absolute ->
+        `This_abs (Path.of_string prog)
+      | In_path ->
+        `Search prog
+      | Relative_to_current_dir ->
+        let prog = prefix_target common prog in
+        `This_rel (Path.relative context.build_dir prog) in
+    let targets = lazy (
+      (match prog_where with
+       | `Search p ->
+         [Path.relative (Config.local_install_bin_dir ~context:context.name) p]
+       | `This_rel p when Sys.win32 ->
+         [p; Path.extend_basename p ~suffix:Bin.exe]
+       | `This_rel p ->
+         [p]
+       | `This_abs p when Path.is_in_build_dir p ->
+         [p]
+       | `This_abs _ ->
+         [])
+      |> List.map ~f:Path.to_string
+      |> resolve_targets ~log common setup
+      |> List.concat_map ~f:(function
+        | Ok targets -> targets
+        | Error _ -> [])
+    ) in
     let real_prog =
-      let prog_where =
-        match Filename.analyze_program_name prog with
-        | Absolute ->
-          `This_abs (Path.of_string prog)
-        | In_path ->
-          `Search prog
-        | Relative_to_current_dir ->
-          let prog = prefix_target common prog in
-          `This_rel (Path.relative context.build_dir prog) in
       if not no_rebuild then begin
-        let targets =
-          match prog_where with
-          | `Search p ->
-            [Path.relative (Config.local_install_bin_dir ~context:context.name) p]
-          | `This_rel p when Sys.win32 ->
-            [p; Path.extend_basename p ~suffix:Bin.exe]
-          | `This_rel p ->
-            [p]
-          | `This_abs p when Path.is_in_build_dir p ->
-            [p]
-          | `This_abs _ ->
-            [] in
-        begin match
-          List.map ~f:Path.to_string targets
-          |> resolve_targets ~log common setup
-          |> List.concat_map ~f:(function
-            | Ok targets -> targets
-            | Error _ -> [])
-        with
+        match Lazy.force targets with
         | [] -> ()
         | targets ->
           Future.Scheduler.go ~log (do_build setup targets);
           Build_system.dump_trace setup.build_system
-        end
       end;
       match prog_where with
       | `Search prog ->
@@ -907,11 +906,22 @@ let exec =
           let prog = Path.extend_basename prog ~suffix:Bin.exe in
           Option.some_if (Path.exists prog) prog
     in
-    match real_prog with
-    | None ->
+    match real_prog, no_rebuild, prog_where with
+    | None, true, (`This_rel _ | `This_abs _ ) ->
+      begin match Lazy.force targets with
+      | [] ->
+        Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
+        die ""
+      | _::_ ->
+        Format.eprintf "@{<Error>Error@}: Program %S isn't built yet \
+                        you need to buid it first or remove the \
+                        --no-build option.!@." prog;
+        die ""
+      end
+    | None, _, _ ->
       Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
       die ""
-    | Some real_prog ->
+    | Some real_prog, _, _ ->
       let real_prog = Path.to_string real_prog     in
       let env       = Context.env_for_exec context in
       let argv      = Array.of_list (prog :: args) in

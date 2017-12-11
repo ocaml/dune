@@ -906,8 +906,8 @@ let exec =
           let prog = Path.extend_basename prog ~suffix:Bin.exe in
           Option.some_if (Path.exists prog) prog
     in
-    match real_prog, no_rebuild, prog_where with
-    | None, true, (`This_rel _ | `This_abs _ ) ->
+    match real_prog, no_rebuild with
+    | None, true ->
       begin match Lazy.force targets with
       | [] ->
         Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
@@ -915,13 +915,13 @@ let exec =
       | _::_ ->
         Format.eprintf "@{<Error>Error@}: Program %S isn't built yet \
                         you need to buid it first or remove the \
-                        --no-build option.!@." prog;
+                        --no-build option.@." prog;
         die ""
       end
-    | None, _, _ ->
+    | None, false ->
       Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
       die ""
-    | Some real_prog, _, _ ->
+    | Some real_prog, _ ->
       let real_prog = Path.to_string real_prog     in
       let env       = Context.env_for_exec context in
       let argv      = Array.of_list (prog :: args) in

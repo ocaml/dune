@@ -14,7 +14,6 @@ module Context : sig
       ; switch : string
       ; root   : string option
       ; merlin : bool
-      ; host   : string option
       ; targets : Target.t list
       }
   end

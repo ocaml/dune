@@ -18,7 +18,6 @@ module Context = struct
       ; switch  : string
       ; root    : string option
       ; merlin  : bool
-      ; host   : string option
       ; targets : Target.t list
       }
 
@@ -27,14 +26,12 @@ module Context = struct
         (field   "switch"  string                                    >>= fun switch ->
          field   "name"    string ~default:switch                    >>= fun name ->
          field   "targets" (list Target.t) ~default:[]               >>= fun targets ->
-         field_o "host"    string                                    >>= fun host ->
          field_o "root"    string                                    >>= fun root ->
          field_b "merlin"                                            >>= fun merlin ->
          return { switch
                 ; name
                 ; root
                 ; merlin
-                ; host
                 ; targets
                 })
   end

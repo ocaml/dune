@@ -38,29 +38,30 @@ let setup ?(log=Log.no_log) ?unlink_aliases
       else
         { merlin_context = Some "default"; contexts = [Default] }
   in
-  let rec contexts
-    : (string * (Workspace.Context.t * Context.t Future.t Lazy.t)) list Lazy.t =
-    lazy (List.map ~f:(fun ws ->
+  let contexts =
+    List.concat_map workspace.contexts ~f:(fun ws ->
       let name = Workspace.Context.name ws in
-      (name, (ws, lazy (
-         match ws with
-         | Opam { switch; root; merlin; host = None ; _ } ->
-           Context.create_for_opam ~implicit:false ~name ~switch ?root ~merlin ()
-         | Opam { switch; root; merlin; host = Some host ; _ } ->
-           (match List.assoc_opt host (Lazy.force contexts) with
-            | None ->
-              die "Context %s is not defined. Used as host for %s" host name
-            | Some (Workspace.Context.Opam { host = Some host_host ; _ }, _) ->
-              die "Context %s is a host for %s. It cannot have a host %s itself"
-                host name host_host
-            | Some (_, c) -> Lazy.force c) >>= fun host ->
-           Context.create_for_opam ~implicit:false ~host ~name ~switch ?root ~merlin ()
-         | Default ->
-           Context.default ~merlin:(workspace.merlin_context = Some name) ~use_findlib ())))
-    ) workspace.contexts) in
-  Lazy.force contexts
-  |> List.map ~f:(fun (_, (_, c)) -> Lazy.force c)
-  |> Future.all
+      match ws with
+      | Default ->
+        [Context.default ~merlin:(workspace.merlin_context = Some name) ~use_findlib ()]
+      | Opam { switch; root; merlin; targets ; _ } ->
+        let native =
+          let implicit = not (List.mem ~set:targets Workspace.Context.Target.Native) in
+          Context.create_for_opam ?root ~implicit ~switch ~name ~merlin () in
+        let targets =
+          List.filter_map targets ~f:(function
+            | Workspace.Context.Target.Native -> None
+            | Workspace.Context.Target.Named n ->
+              let name = sprintf "%s.%s" name n in
+              Some (
+                native >>= fun host ->
+                Context.create_for_opam ?root ~implicit:false ~switch
+                  ~host ~name ~merlin:false ()
+              )
+          ) in
+        native :: targets
+    ) in
+  Future.all contexts
   >>= fun contexts ->
   let contexts =
     List.concat_map contexts ~f:(fun c ->

@@ -26,7 +26,7 @@ module Context = struct
       record
         (field   "switch"  string                                    >>= fun switch ->
          field   "name"    string ~default:switch                    >>= fun name ->
-         field   "targets" (list Target.t) ~default:[Target.Native]  >>= fun targets ->
+         field   "targets" (list Target.t) ~default:[]               >>= fun targets ->
          field_o "host"    string                                    >>= fun host ->
          field_o "root"    string                                    >>= fun root ->
          field_b "merlin"                                            >>= fun merlin ->

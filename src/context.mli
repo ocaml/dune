@@ -27,7 +27,7 @@ module Kind : sig
       ; switch : string
       }
   end
-  type t = Default | Opam of Opam.t | Host_for_default
+  type t = Default | Opam of Opam.t
 end
 
 module Env_var : sig
@@ -47,6 +47,10 @@ type t =
   ; (** If this context is a cross-compilation context, you need another context for
         building tools used for the compilation that run on the host. *)
     for_host : t option
+
+  ; (** [false] if a user explicitly listed this context in the workspace.
+        Controls whether we add artifacts from this context @install *)
+    implicit : bool
 
   ; (** Directory where artifact are stored, for instance "_build/default" *)
     build_dir : Path.t
@@ -129,6 +133,7 @@ val compare : t -> t -> int
 val create_for_opam
   :  ?root:string
   -> ?host:t
+  -> implicit:bool
   -> switch:string
   -> name:string
   -> ?merlin:bool

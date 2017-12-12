@@ -45,7 +45,7 @@ let setup ?(log=Log.no_log) ?unlink_aliases
       (name, (ws, lazy (
          match ws with
          | Opam { switch; root; merlin; host = None ; _ } ->
-           Context.create_for_opam ~name ~switch ?root ~merlin ()
+           Context.create_for_opam ~implicit:false ~name ~switch ?root ~merlin ()
          | Opam { switch; root; merlin; host = Some host ; _ } ->
            (match List.assoc_opt host (Lazy.force contexts) with
             | None ->
@@ -54,7 +54,7 @@ let setup ?(log=Log.no_log) ?unlink_aliases
               die "Context %s is a host for %s. It cannot have a host %s itself"
                 host name host_host
             | Some (_, c) -> Lazy.force c) >>= fun host ->
-           Context.create_for_opam ~host ~name ~switch ?root ~merlin ()
+           Context.create_for_opam ~implicit:false ~host ~name ~switch ?root ~merlin ()
          | Default ->
            Context.default ~merlin:(workspace.merlin_context = Some name) ~use_findlib ())))
     ) workspace.contexts) in

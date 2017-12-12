@@ -8,11 +8,10 @@ module Kind = struct
       ; switch : string
       }
   end
-  type t = Default | Opam of Opam.t | Host_for_default
+  type t = Default | Opam of Opam.t
 
   let sexp_of_t : t -> Sexp.t = function
     | Default -> Atom "default"
-    | Host_for_default -> Atom "host-for-default"
     | Opam o  ->
       Sexp.To_sexp.(record [ "root"  , string o.root
                            ; "switch", string o.switch
@@ -35,6 +34,7 @@ type t =
   ; kind                    : Kind.t
   ; merlin                  : bool
   ; for_host                : t option
+  ; implicit                : bool
   ; build_dir               : Path.t
   ; path                    : Path.t list
   ; toplevel_path           : Path.t option
@@ -178,14 +178,14 @@ let extend_env ~vars ~env =
       imported
     |> Array.of_list
 
-let create ?host ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
+let create ?host ~implicit ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       ~use_findlib ?findlib_toolchain () =
   let env = extend_env ~env:base_env ~vars:env_extra in
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
    | Opam { root; _ } ->
      Hashtbl.add opam_var_cache ~key:"root" ~data:root
-   | Default | Host_for_default -> ());
+   | Default -> ());
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name
   in
@@ -350,6 +350,7 @@ let create ?host ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
   in
   return
     { name
+    ; implicit
     ; kind
     ; merlin
     ; for_host = host
@@ -427,18 +428,18 @@ let default ?(merlin=true) ?(use_findlib=true) () =
   in
   match !Clflags.x with
   | None ->
-    create ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
+    create ~implicit:false ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
       ~name:"default" ~merlin ~use_findlib ()
   | Some x ->
     assert use_findlib;
-    create ~kind:Host_for_default ~path ~base_env:env ~env_extra:Env_var_map.empty
+    create ~implicit:true ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
       ~name:"default.host" ~merlin:false ~use_findlib ()
     >>= fun host ->
     let env_extra = Env_var_map.singleton "OCAMLFIND_TOOLCHAIN" x in
-    create ~host ~kind:Default ~path ~base_env:env ~env_extra
+    create ~implicit:false ~host ~kind:Default ~path ~base_env:env ~env_extra
       ~name:"default" ~merlin ~use_findlib ~findlib_toolchain:x ()
 
-let create_for_opam ?root ?host ~switch ~name ?(merlin=false) () =
+let create_for_opam ?root ?host ~implicit ~switch ~name ?(merlin=false) () =
   match Bin.opam with
   | None -> Utils.program_not_found "opam"
   | Some fn ->
@@ -475,7 +476,7 @@ let create_for_opam ?root ?host ~switch ~name ?(merlin=false) () =
       | Some s -> Bin.parse_path s
     in
     let env = Lazy.force initial_env in
-    create ?host ~kind:(Opam { root; switch }) ~path ~base_env:env ~env_extra:vars
+    create ?host ~implicit ~kind:(Opam { root; switch }) ~path ~base_env:env ~env_extra:vars
       ~name ~merlin ~use_findlib:true ()
 
 

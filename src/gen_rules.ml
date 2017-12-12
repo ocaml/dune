@@ -1095,7 +1095,7 @@ Add it to your jbuild file to remove this warning.
 
   let () =
     let is_default = Path.basename ctx.build_dir = "default" in
-    if ctx.kind <> Host_for_default then
+    if not ctx.implicit then
       String_map.iter (SC.packages sctx)
         ~f:(fun ~key:pkg ~data:{ Package.path = src_path; _ } ->
           let install_fn = Utils.install_file ~package:pkg in

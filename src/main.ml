@@ -44,9 +44,9 @@ let setup ?(log=Log.no_log) ?unlink_aliases
       let name = Workspace.Context.name ws in
       (name, (ws, lazy (
          match ws with
-         | Opam { switch; root; merlin; host = None ; name = _ } ->
+         | Opam { switch; root; merlin; host = None ; _ } ->
            Context.create_for_opam ~name ~switch ?root ~merlin ()
-         | Opam { switch; root; merlin; host = Some host ; name = _ } ->
+         | Opam { switch; root; merlin; host = Some host ; _ } ->
            (match List.assoc_opt host (Lazy.force contexts) with
             | None ->
               die "Context %s is not defined. Used as host for %s" host name

@@ -2,27 +2,40 @@ open Import
 open Sexp.Of_sexp
 
 module Context = struct
+  module Target = struct
+    type t =
+      | Native
+      | Named of string
+
+    let t = function
+      | Atom (_, "native") -> Native
+      | Atom (_, s) -> Named s
+      | s -> of_sexp_error s "target must be native or named"
+  end
   module Opam = struct
     type t =
-      { name   : string
-      ; switch : string
-      ; root   : string option
-      ; merlin : bool
+      { name    : string
+      ; switch  : string
+      ; root    : string option
+      ; merlin  : bool
       ; host   : string option
+      ; targets : Target.t list
       }
 
     let t =
       record
-        (field   "switch" string                 >>= fun switch ->
-         field   "name"   string ~default:switch >>= fun name ->
-         field_o "host"   string                 >>= fun host ->
-         field_o "root"   string                 >>= fun root ->
-         field_b "merlin"                        >>= fun merlin ->
+        (field   "switch"  string                                    >>= fun switch ->
+         field   "name"    string ~default:switch                    >>= fun name ->
+         field   "targets" (list Target.t) ~default:[Target.Native]  >>= fun targets ->
+         field_o "host"    string                                    >>= fun host ->
+         field_o "root"    string                                    >>= fun root ->
+         field_b "merlin"                                            >>= fun merlin ->
          return { switch
                 ; name
                 ; root
                 ; merlin
                 ; host
+                ; targets
                 })
   end
 

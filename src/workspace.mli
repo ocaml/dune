@@ -3,6 +3,11 @@
 open! Import
 
 module Context : sig
+  module Target : sig
+    type t =
+      | Native
+      | Named of string
+  end
   module Opam : sig
     type t =
       { name   : string
@@ -10,6 +15,7 @@ module Context : sig
       ; root   : string option
       ; merlin : bool
       ; host   : string option
+      ; targets : Target.t list
       }
   end
 

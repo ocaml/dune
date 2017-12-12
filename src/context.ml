@@ -406,7 +406,7 @@ let create_for_opam ?root ~switch ~name ?(merlin=false) () =
       ["config"; "env"; "--root"; root; "--switch"; switch; "--sexp"]
     >>= fun s ->
     let vars =
-      Sexp_lexer.single (Lexing.from_string s)
+      Usexp.parse_string ~fname:"<opam output>" ~mode:Single s
       |> Sexp.Of_sexp.(list (pair string string))
       |> Env_var_map.of_alist_multi
       |> Env_var_map.mapi ~f:(fun var values ->

@@ -5,7 +5,8 @@
 ;;  (public_name jbuilder)
   (libraries   (unix
 		jbuilder_re
-		jbuilder_opam_file_format))
+		jbuilder_opam_file_format
+                usexp))
   (synopsis    "Internal Jbuilder library, do not use!")))
 
-(ocamllex (sexp_lexer meta_lexer glob_lexer))
+(ocamllex (meta_lexer glob_lexer))

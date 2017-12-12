@@ -1,6 +1,16 @@
 next
 ----
 
+- Make jbuilder aware that `num` is an external package in OCaml >= 4.06.0
+  (#358)
+
+- `jbuilder exec` will now rebuild the executable before running it if
+  necessary. This can be turned off by passing `--no-build` (#345)
+
+- Fix `jbuilder utop` to work in any working directory (#339)
+
+- Fix generation of META synopsis that contains double quotes (#337)
+
 - Add `S .` to .merlin by default (#284)
 
 - Improve `jbuilder exec` to make it possible to execute non public executables.

@@ -128,3 +128,9 @@
    (chdir test-cases/odoc
     (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3 run.t))))))
 
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/select)))
+  (action
+   (chdir test-cases/select
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))

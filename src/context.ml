@@ -193,12 +193,12 @@ let create ?host ~implicit ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~me
   let which x = which ~cache:which_cache ~path x in
   (match findlib_toolchain with
    | None -> Future.return Findlib.Config.empty
-   | Some toolchain ->
+   | Some _ ->
      match which "ocamlfind" with
      | None -> assert false
      | Some fn ->
        Future.run_capture_line ~env Strict
-         (Path.to_string fn) ["-toolchain"; toolchain; "printconf"; "conf"]
+         (Path.to_string fn) ["printconf"; "conf"]
        >>| fun s ->
        let path = Path.absolute s in
        Findlib.Config.load path)

@@ -59,3 +59,24 @@ val meta : Jbuilder.Meta.t =
       {var = "requires"; predicates = [Pos "ppx_driver"]; action = Set;
        value = "baz"}]}
 |}]
+
+let conf_vars =
+  let conf =
+    "test/unit-tests/findlib-db/fl.conf" 
+    |> Path.of_string
+    |> Findlib.Config.load in
+  List.map
+    ~f:(fun (predicates, var) -> Findlib.Config.get conf ~predicates ~var)
+    [ ["bar"], "foo"
+    ; [], "foo"
+    ; ["bar"], "baz"
+    ; [], "baz"
+    ; ["a"], "x"
+    ; ["b"], "x"
+    ; ["a"; "b"], "x"
+    ]
+
+[%%expect{|
+val conf_vars : string list =
+  ["foo+bar"; "foo"; "baz"; "baz-bar"; "a"; "b"; ""]
+|}]

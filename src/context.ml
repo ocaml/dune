@@ -193,12 +193,12 @@ let create ?host ~implicit ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~me
   let which x = which ~cache:which_cache ~path x in
   (match findlib_toolchain with
    | None -> Future.return Findlib.Config.empty
-   | Some _ ->
+   | Some toolchain ->
      match which "ocamlfind" with
      | None -> assert false
      | Some fn ->
        Future.run_capture_line ~env Strict
-         (Path.to_string fn) ["printconf"; "conf"]
+         (Path.to_string fn) ["-toolchain"; toolchain; "printconf"; "conf"]
        >>| fun s ->
        let path = Path.absolute s in
        Findlib.Config.load path)
@@ -435,8 +435,7 @@ let default ?(merlin=true) ?(use_findlib=true) () =
     create ~implicit:true ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
       ~name:"default.host" ~merlin:false ~use_findlib ()
     >>= fun host ->
-    let env_extra = Env_var_map.singleton "OCAMLFIND_TOOLCHAIN" x in
-    create ~implicit:false ~host ~kind:Default ~path ~base_env:env ~env_extra
+    create ~implicit:false ~host ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
       ~name:"default" ~merlin ~use_findlib ~findlib_toolchain:x ()
 
 let create_for_opam ?findlib_toolchain ?root ?host ~implicit ~switch ~name ?(merlin=false) () =

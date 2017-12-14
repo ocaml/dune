@@ -122,7 +122,7 @@ module Config = struct
   type t = Vars.t
 
   let empty = String_map.empty
-  
+
   let load path =
     let files =
       let path_d = Path.extend_basename path ~suffix:".d" in

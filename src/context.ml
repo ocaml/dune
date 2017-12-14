@@ -192,7 +192,7 @@ let create ?host ~implicit ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~me
   let which_cache = Hashtbl.create 128 in
   let which x = which ~cache:which_cache ~path x in
   (match findlib_toolchain with
-   | None -> Future.return Findlib.Config.empty
+   | None -> Future.return (None, Findlib.Config.empty)
    | Some _ ->
      match which "ocamlfind" with
      | None -> assert false
@@ -201,8 +201,8 @@ let create ?host ~implicit ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~me
          (Path.to_string fn) ["printconf"; "conf"]
        >>| fun s ->
        let path = Path.absolute s in
-       Findlib.Config.load path)
-  >>= fun findlib_cfg ->
+       (Some path, Findlib.Config.load path))
+  >>= fun (findlib_conf, findlib_cfg) ->
   let get_findlib_var =
     let predicates =
       match findlib_toolchain with
@@ -210,6 +210,14 @@ let create ?host ~implicit ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~me
       | Some s -> [s]
     in
     fun var -> Findlib.Config.get findlib_cfg ~predicates ~var
+  in
+  let () =
+    Option.iter findlib_toolchain ~f:(fun toolchain ->
+      match get_findlib_var "ocamlc", findlib_conf with
+      | "", Some fc ->
+        die "@{<error>Error@}: Toolchain %s isn't defined found in %a \
+             (context: %s)" toolchain Path.pp fc name
+      | _, _ -> ())
   in
   let which prog =
     let s = get_findlib_var prog in

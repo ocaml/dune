@@ -51,12 +51,12 @@ let setup ?(log=Log.no_log) ?unlink_aliases
         let targets =
           List.filter_map targets ~f:(function
             | Workspace.Context.Target.Native -> None
-            | Workspace.Context.Target.Named n ->
-              let name = sprintf "%s.%s" name n in
+            | Workspace.Context.Target.Named findlib_toolchain ->
+              let name = sprintf "%s.%s" name findlib_toolchain in
               Some (
                 native >>= fun host ->
                 Context.create_for_opam ?root ~implicit:false ~switch
-                  ~host ~name ~merlin:false ()
+                  ~host ~name ~merlin:false ~findlib_toolchain ()
               )
           ) in
         native :: targets

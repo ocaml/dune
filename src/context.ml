@@ -439,7 +439,7 @@ let default ?(merlin=true) ?(use_findlib=true) () =
     create ~implicit:false ~host ~kind:Default ~path ~base_env:env ~env_extra
       ~name:"default" ~merlin ~use_findlib ~findlib_toolchain:x ()
 
-let create_for_opam ?root ?host ~implicit ~switch ~name ?(merlin=false) () =
+let create_for_opam ?findlib_toolchain ?root ?host ~implicit ~switch ~name ?(merlin=false) () =
   match Bin.opam with
   | None -> Utils.program_not_found "opam"
   | Some fn ->
@@ -476,8 +476,8 @@ let create_for_opam ?root ?host ~implicit ~switch ~name ?(merlin=false) () =
       | Some s -> Bin.parse_path s
     in
     let env = Lazy.force initial_env in
-    create ?host ~implicit ~kind:(Opam { root; switch }) ~path ~base_env:env ~env_extra:vars
-      ~name ~merlin ~use_findlib:true ()
+    create ?findlib_toolchain ?host ~implicit ~kind:(Opam { root; switch })
+      ~path ~base_env:env ~env_extra:vars ~name ~merlin ~use_findlib:true ()
 
 
 let which =

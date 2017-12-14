@@ -131,7 +131,8 @@ val sexp_of_t : t -> Sexp.t
 val compare : t -> t -> int
 
 val create_for_opam
-  :  ?root:string
+  : ?findlib_toolchain:string
+  -> ?root:string
   -> ?host:t
   -> implicit:bool
   -> switch:string

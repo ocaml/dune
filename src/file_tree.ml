@@ -40,9 +40,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
       Path.readdir path
       |> List.filter_map ~f:(fun fn ->
         let path = Path.relative path fn in
-        let is_directory =
-          try Path.is_directory path with _ -> false
-        in
+        let is_directory = Path.is_directory path in
         if ignore_file fn ~is_directory then
           None
         else if is_directory then

@@ -1,6 +1,14 @@
 (jbuild_version 1)
 
 (copy_files# lexers/*.ml{,i})
+(copy_files# include/bar.h)
 
-(executables
- ((names (test))))
+(library
+ ((name foo)
+  (c_names (bar))
+  (modules ())
+  (wrapped false)))
+
+(executable
+ ((name test)
+  (libraries (foo))))

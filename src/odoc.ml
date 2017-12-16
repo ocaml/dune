@@ -84,7 +84,7 @@ let lib_index sctx ~odoc ~dir ~(lib : Library.t) ~lib_public_name ~doc_dir ~modu
             sprintf
               "%s\n\
                {2 Library %s}\n\
-               This library exposes the following toplevel modules: {!modules:%s}."
+               This library exposes the following toplevel modules:\n{!modules:%s}"
               header
               lib_public_name
               (String_map.keys modules |> String.concat ~sep:" "))))

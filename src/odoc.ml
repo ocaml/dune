@@ -66,7 +66,7 @@ let lib_index sctx ~odoc ~dir ~(lib : Library.t) ~lib_public_name ~doc_dir ~modu
   let context = SC.context sctx in
   let generated_index_mld = dir ++ sprintf "%s-generated.mld" lib.name in
   let source_index_mld = dir ++ sprintf "%s.mld" lib.name in
-  let header = {|{%html:<nav><a href="../index.html">Up</a></nav>%}|} in
+  let header = "{{: ../index.html} Up}" in
   SC.add_rule sctx
     (Build.if_file_exists source_index_mld
        ~then_:(Build.contents source_index_mld
@@ -75,7 +75,7 @@ let lib_index sctx ~odoc ~dir ~(lib : Library.t) ~lib_public_name ~doc_dir ~modu
          (if lib.wrapped then
             sprintf
               "%s\n\
-               {1 Library %s}\n\
+               {2 Library %s}\n\
                The entry point for this library is module {!module:%s}."
               header
               lib_public_name
@@ -83,8 +83,8 @@ let lib_index sctx ~odoc ~dir ~(lib : Library.t) ~lib_public_name ~doc_dir ~modu
           else
             sprintf
               "%s\n\
-               {1 Library %s}\n\
-               This library exposes the following toplevel modules: {!modules:%s}."
+               {2 Library %s}\n\
+               This library exposes the following toplevel modules:\n{!modules:%s}"
               header
               lib_public_name
               (String_map.keys modules |> String.concat ~sep:" "))))

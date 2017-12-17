@@ -134,3 +134,10 @@
   (action
    (chdir test-cases/select
     (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/multiple-private-libs)))
+  (action
+   (chdir test-cases/multiple-private-libs
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))

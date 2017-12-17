@@ -153,6 +153,7 @@ type conf =
   { file_tree : File_tree.t
   ; jbuilds   : Jbuilds.t
   ; packages  : Package.t String_map.t
+  ; scopes    : Scope.t list
   }
 
 let load ~dir ~scope =
@@ -203,6 +204,12 @@ let load ?extra_ignored_subtrees () =
     |> Path.Map.of_alist_multi
     |> Path.Map.map ~f:Scope.make
   in
+  let scopes =
+    if Path.Map.mem Path.root scopes then
+      scopes
+    else
+      Path.Map.add scopes ~key:Path.root ~data:Scope.empty
+  in
   let rec walk dir jbuilds scope =
     if File_tree.Dir.ignored dir then
       jbuilds
@@ -227,4 +234,5 @@ let load ?extra_ignored_subtrees () =
   { file_tree = ftree
   ; jbuilds
   ; packages
+  ; scopes = Path.Map.values scopes
   }

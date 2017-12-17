@@ -1,12 +1,17 @@
 open Import
 open Jbuild
 
+type scope =
+  { mutable libs : Lib.Internal.t String_map.t
+  ; scope        : Scope.t
+  }
+
 type t =
   { findlib                  : Findlib.t
   ; (* This include both libraries from the current workspace and external ones *)
     by_public_name           : (string, Lib.t) Hashtbl.t
   ; (* This is to implement the scoping described in the manual *)
-    by_internal_name         : (Path.t, Lib.Internal.t String_map.t ref) Hashtbl.t
+    by_internal_name         : (Path.t, scope) Hashtbl.t
   ; (* This is to filter out libraries that are not installable because of missing
        dependencies *)
     instalable_internal_libs : Lib.Internal.t String_map.t
@@ -27,7 +32,7 @@ let rec internal_name_scope t ~dir =
 
 let find_by_internal_name t ~from name =
   let scope = internal_name_scope t ~dir:from in
-  String_map.find name !scope
+  String_map.find name scope.libs
 
 let find_exn t ~from name =
   match find_by_internal_name t ~from name with
@@ -99,7 +104,7 @@ let compute_instalable_internal_libs t ~internal_libraries =
       else
         t)
 
-let create findlib ~dirs_with_dot_opam_files internal_libraries =
+let create findlib ~scopes internal_libraries =
   let local_public_libs =
     List.fold_left internal_libraries ~init:String_map.empty ~f:(fun acc (dir, lib) ->
       match lib.Library.public with
@@ -116,12 +121,14 @@ let create findlib ~dirs_with_dot_opam_files internal_libraries =
   in
   (* Initializes the scopes, including [Path.root] so that when there are no <pkg>.opam
      files in parent directories, the scope is the whole workspace. *)
-  Path.Set.iter (Path.Set.add Path.root dirs_with_dot_opam_files) ~f:(fun dir ->
-    Hashtbl.add t.by_internal_name ~key:dir
-      ~data:(ref String_map.empty));
+  List.iter scopes ~f:(fun (scope : Scope.t) ->
+    Hashtbl.add t.by_internal_name ~key:scope.root
+      ~data:{ libs = String_map.empty
+            ; scope
+            });
   List.iter internal_libraries ~f:(fun ((dir, lib) as internal) ->
     let scope = internal_name_scope t ~dir in
-    scope := String_map.add !scope ~key:lib.Library.name ~data:internal;
+    scope.libs <- String_map.add scope.libs ~key:lib.Library.name ~data:internal;
     Option.iter lib.public ~f:(fun { name; _ } ->
       match Hashtbl.find t.by_public_name name with
       | None
@@ -190,3 +197,15 @@ let resolve_selects t ~from lib_deps =
         | None -> "no solution found"
       in
       Some { dst_fn = result_fn; src_fn })
+
+let unique_library_name t (lib : Lib.t) =
+  match lib with
+  | External pkg -> pkg.name
+  | Internal (dir, lib) ->
+    match lib.public with
+    | Some x -> x.name
+    | None ->
+      let scope = internal_name_scope t ~dir in
+      match scope.scope.name with
+      | None -> lib.name ^ "@"
+      | Some s -> lib.name ^ "@" ^ s

@@ -11,6 +11,7 @@ type conf =
   { file_tree : File_tree.t
   ; jbuilds   : Jbuilds.t
   ; packages  : Package.t String_map.t
+  ; scopes    : Scope.t list
   }
 
 val load : ?extra_ignored_subtrees:Path.Set.t -> unit -> conf

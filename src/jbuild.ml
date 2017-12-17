@@ -66,6 +66,12 @@ let file_in_current_dir sexp =
       of_sexp_error sexp "file in current directory expected";
     fn
 
+let relative_file sexp =
+  let fn = file sexp in
+  if not (Filename.is_relative fn) then
+    of_sexp_error sexp "relative filename expected";
+  fn
+
 module Scope = struct
   type t =
     { name     : string option
@@ -926,6 +932,14 @@ module Stanza = struct
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
     | Copy_files  of Copy_files.t
+end
+
+module Stanzas = struct
+  type t = Stanza.t list
+
+  type syntax = OCaml | Plain
+
+  open Stanza
 
   let rules l = List.map l ~f:(fun x -> Rule x)
 
@@ -934,7 +948,7 @@ module Stanza = struct
     | None -> [Executables exe]
     | Some i -> [Executables exe; Install i]
 
-  let v1 pkgs =
+  let rec v1 pkgs : Stanza.t list Sexp.Of_sexp.t =
     sum
       [ cstr "library"     (Library.v1 pkgs @> nil)      (fun x -> [Library     x])
       ; cstr "executable"  (Executables.v1_single pkgs @> nil) execs
@@ -951,30 +965,36 @@ module Stanza = struct
           (fun glob -> [Copy_files {add_line_directive = true; glob}])
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
+      ; cstr_loc "include" (relative_file @> nil) (fun loc fn ->
+          let dir = Filename.dirname loc.start.pos_fname in
+          let fn =
+            if dir <> Filename.current_dir_name then
+              Filename.concat dir fn
+            else
+              fn
+          in
+          let sexps = Sexp.load ~fname:fn ~mode:Many in
+          parse pkgs sexps ~default_version:Jbuild_version.V1)
       ]
 
-  let select : Jbuild_version.t -> Scope.t -> t list Sexp.Of_sexp.t = function
+  and select : Jbuild_version.t -> Scope.t -> Stanza.t list Sexp.Of_sexp.t = function
     | V1  -> v1
-end
 
-module Stanzas = struct
-  type t = Stanza.t list
-
-  let parse pkgs sexps =
+  and parse ?(default_version=Jbuild_version.latest_stable) pkgs sexps =
     let versions, sexps =
       List.partition_map sexps ~f:(function
-          | List (loc, [Atom (_, "jbuild_version"); ver]) ->
+        | List (loc, [Atom (_, "jbuild_version"); ver]) ->
             Inl (Jbuild_version.t ver, loc)
           | sexp -> Inr sexp)
     in
     let version =
       match versions with
-      | [] -> Jbuild_version.latest_stable
+      | [] -> default_version
       | [(v, _)] -> v
       | _ :: (_, loc) :: _ ->
         Loc.fail loc "jbuild_version specified too many times"
     in
-    List.concat_map sexps ~f:(Stanza.select version pkgs)
+    List.concat_map sexps ~f:(select version pkgs)
 
   let lib_names ts =
     List.fold_left ts ~init:String_set.empty ~f:(fun acc (_, _, stanzas) ->

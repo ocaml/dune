@@ -22,6 +22,8 @@ type common =
   ; only_packages    : String_set.t option
   ; capture_outputs  : bool
   ; x                : string option
+  ; diff_command     : string option
+  ; promote_mode     : Clflags.promote_mode
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args        : string list
   }
@@ -39,6 +41,8 @@ let set_common c ~targets =
   if c.root <> Filename.current_dir_name then
     Sys.chdir c.root;
   Clflags.workspace_root := Sys.getcwd ();
+  Clflags.diff_command := c.diff_command;
+  Clflags.promote_mode := c.promote_mode;
   Clflags.external_lib_deps_hint :=
     List.concat
       [ ["jbuilder"; "external-lib-deps"; "--missing"]
@@ -156,6 +160,8 @@ let common =
         verbose
         no_buffer
         workspace_file
+        diff_command
+        promote_mode
         (root, only_packages, orig)
         x
     =
@@ -182,6 +188,8 @@ let common =
     ; root
     ; orig_args
     ; target_prefix = String.concat ~sep:"" (List.map to_cwd ~f:(sprintf "%s/"))
+    ; diff_command
+    ; promote_mode
     ; only_packages =
         Option.map only_packages
           ~f:(fun s -> String_set.of_list (String.split s ~on:','))
@@ -315,6 +323,36 @@ let common =
          & info ["x"] ~docs
              ~doc:{|Cross-compile using this toolchain.|})
   in
+  let diff_command =
+    Arg.(value
+         & opt (some string) None
+         & info ["diff-command"] ~docs
+             ~doc:"Shell command to use to diff files")
+  in
+  let promote =
+    let mode =
+      Arg.(conv
+             (Arg.parser_of_kind_of_string ~kind:"promotion mode"
+                (function
+                  | "ignore" -> Some Clflags.Ignore
+                  | "check" -> Some Check
+                  | "copy" -> Some Copy
+                  | _ -> None),
+              fun ppf mode ->
+                Format.pp_print_string ppf
+                  (match mode with
+                   | Clflags.Ignore -> "ignore"
+                   | Check -> "check"
+                   | Copy -> "copy")))
+    in
+    Arg.(value
+         & opt mode Check
+         & info ["promote"] ~docs
+             ~doc:"How to interpret promote actions. $(b,check), the default, means to
+                   only check that promoted files are equal to the source files.
+                   $(b,ignore) means to ignore promote action altogether and $(b,copy)
+                   means to copy generated files to the source tree.")
+  in
   Term.(const make
         $ concurrency
         $ ddep_path
@@ -324,6 +362,8 @@ let common =
         $ verbose
         $ no_buffer
         $ workspace_file
+        $ diff_command
+        $ promote
         $ root_and_only_packages
         $ x
        )

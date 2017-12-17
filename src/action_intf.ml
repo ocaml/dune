@@ -5,10 +5,25 @@ module Outputs = struct
     | Outputs (** Both Stdout and Stderr *)
 end
 
+module Promote_mode = struct
+  type t =
+    | If_corrected_file_exists
+    | Always
+end
+
 module type Ast = sig
   type program
   type path
   type string
+
+  module Promote : sig
+    type file = { src : path; dst : path }
+
+    type t =
+      { mode  : Promote_mode.t
+      ; files : file list
+      }
+  end
 
   type t =
     | Run            of program * string list
@@ -29,6 +44,7 @@ module type Ast = sig
     | Remove_tree    of path
     | Mkdir          of path
     | Digest_files   of path list
+    | Promote        of Promote.t
 end
 
 module type Helpers = sig

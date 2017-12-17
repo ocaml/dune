@@ -35,3 +35,13 @@ val capture_outputs : bool ref
 
 (** Always print backtraces, to help debugging jbuilder itself *)
 val debug_backtraces : bool ref
+
+(** Command to use to diff things *)
+val diff_command : string option ref
+
+type promote_mode =
+  | Ignore (** We ignore 'promote' stanzas and actions *)
+  | Check  (** Just check for equality *)
+  | Copy   (** If the correction is different, copy the file to the source tree *)
+
+val promote_mode : promote_mode ref

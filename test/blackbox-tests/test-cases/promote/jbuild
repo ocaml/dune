@@ -1,0 +1,7 @@
+(jbuild_version 1)
+
+(rule (with-stdout-to x.gen (echo "toto")))
+
+(alias
+ ((name blah)
+  (action (promote (x.gen as x)))))

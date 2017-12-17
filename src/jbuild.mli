@@ -260,6 +260,12 @@ end
 module Stanzas : sig
   type t = Stanza.t list
 
-  val parse : Scope.t -> Sexp.Ast.t list -> t
+  type syntax = OCaml | Plain
+
+  val parse
+    :  ?default_version:Jbuild_version.t
+    -> Scope.t
+    -> Sexp.Ast.t list
+    -> t
   val lib_names : (_ * _ * t) list -> String_set.t
 end

@@ -140,4 +140,4 @@
   (deps ((files_recursively_in test-cases/multiple-private-libs)))
   (action
    (chdir test-cases/multiple-private-libs
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3 run.t))))))

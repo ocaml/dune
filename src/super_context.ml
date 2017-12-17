@@ -3,6 +3,7 @@ open Jbuild
 
 module A = Action
 module Pset = Path.Set
+module Alias = Build_system.Alias
 
 module Dir_with_jbuild = struct
   type t =
@@ -13,71 +14,35 @@ module Dir_with_jbuild = struct
     }
 end
 
-module External_dir = struct
-  (* Files in the directory, grouped by extension *)
-  type t = Path.t list String_map.t
-
-  let create ~dir : t =
-    match Path.readdir dir with
-    | exception _ -> String_map.empty
-    | files ->
-      List.map files ~f:(fun fn -> Filename.extension fn, Path.relative dir fn)
-      |> String_map.of_alist_multi
-  (* CR-someday jdimino: when we can have dynamic targets:
-
-     {[
-       |> String_map.mapi ~f:(fun ext files ->
-         lazy (
-           let alias =
-             Alias.make ~dir:Path.root (sprintf "external-files-%s%s" hash ext)
-           in
-           Alias.add_deps aliases alias files;
-           alias
-         ))
-     ]}
-  *)
-
-  let files t ~ext = String_map.find_default ext t ~default:[]
-end
-
 type t =
-  { context                                 : Context.t
-  ; libs                                    : Lib_db.t
-  ; stanzas                                 : Dir_with_jbuild.t list
-  ; packages                                : Package.t String_map.t
-  ; aliases                                 : Alias.Store.t
-  ; file_tree                               : File_tree.t
-  ; artifacts                               : Artifacts.t
-  ; mutable rules                           : Build_interpret.Rule.t list
-  ; stanzas_to_consider_for_install         : (Path.t * Stanza.t) list
-  ; mutable known_targets_by_src_dir_so_far : String_set.t Path.Map.t
-  ; libs_vfile                              : (module Vfile_kind.S with type t = Lib.t list)
-  ; cxx_flags                               : string list
-  ; vars                                    : Action.Var_expansion.t String_map.t
-  ; ppx_dir                                 : Path.t
-  ; ppx_drivers                             : (string, Path.t) Hashtbl.t
-  ; external_dirs                           : (Path.t, External_dir.t) Hashtbl.t
-  ; chdir                                   : (Action.t, Action.t) Build.t
-  ; host                                    : t option
+  { context                          : Context.t
+  ; build_system                     : Build_system.t
+  ; libs                             : Lib_db.t
+  ; stanzas                          : Dir_with_jbuild.t list
+  ; packages                         : Package.t String_map.t
+  ; file_tree                        : File_tree.t
+  ; artifacts                        : Artifacts.t
+  ; stanzas_to_consider_for_install  : (Path.t * Stanza.t) list
+  ; libs_vfile                       : (module Vfile_kind.S with type t = Lib.t list)
+  ; cxx_flags                        : string list
+  ; vars                             : Action.Var_expansion.t String_map.t
+  ; ppx_dir                          : Path.t
+  ; chdir                            : (Action.t, Action.t) Build.t
+  ; host                             : t option
   }
 
 let context t = t.context
-let aliases t = t.aliases
 let stanzas t = t.stanzas
 let packages t = t.packages
 let artifacts t = t.artifacts
 let file_tree t = t.file_tree
-let rules t = t.rules
 let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
 let cxx_flags t = t.cxx_flags
+let libs t = t.libs
 
 let host_sctx t = Option.value t.host ~default:t
 
 let expand_var_no_root t var = String_map.find var t.vars
-
-let get_external_dir t ~dir =
-  Hashtbl.find_or_add t.external_dirs dir ~f:(fun dir ->
-    External_dir.create ~dir)
 
 let expand_vars t ~scope ~dir s =
   String_with_vars.expand s ~f:(fun _loc -> function
@@ -98,12 +63,12 @@ let resolve_program t ?hint bin =
 let create
       ~(context:Context.t)
       ?host
-      ~aliases
       ~scopes
       ~file_tree
       ~packages
       ~stanzas
       ~filter_out_optional_stanzas_with_missing_deps
+      ~build_system
   =
   let stanzas =
     List.map stanzas
@@ -203,61 +168,55 @@ let create
   in
   { context
   ; host
+  ; build_system
   ; libs
   ; stanzas
   ; packages
-  ; aliases
   ; file_tree
-  ; rules = []
   ; stanzas_to_consider_for_install
-  ; known_targets_by_src_dir_so_far = Path.Map.empty
   ; libs_vfile = (module Libs_vfile)
   ; artifacts
   ; cxx_flags
   ; vars
-  ; ppx_drivers = Hashtbl.create 32
   ; ppx_dir = Path.relative context.build_dir ".ppx"
-  ; external_dirs = Hashtbl.create 1024
   ; chdir = Build.arr (fun (action : Action.t) ->
       match action with
       | Chdir _ -> action
       | _ -> Chdir (context.build_dir, action))
   }
 
-let add_rule t ?sandbox ?fallback ?locks ?loc build =
+let add_rule t ?sandbox ?mode ?locks ?loc build =
+  let build = Build.O.(>>>) build t.chdir in
+  Build_system.add_rule t.build_system
+    (Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
+       ~context:t.context build)
+
+let add_rule_get_targets t ?sandbox ?mode ?locks ?loc build =
   let build = Build.O.(>>>) build t.chdir in
   let rule =
-    Build_interpret.Rule.make ?sandbox ?fallback ?locks ?loc
+    Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
       ~context:t.context build
   in
-  t.rules <- rule :: t.rules;
-  t.known_targets_by_src_dir_so_far <-
-    List.fold_left rule.targets ~init:t.known_targets_by_src_dir_so_far
-      ~f:(fun acc target ->
-        match Path.extract_build_context (Build_interpret.Target.path target) with
-        | None -> acc
-        | Some (_, path) ->
-          let dir = Path.parent path in
-          let fn = Path.basename path in
-          let files =
-            match Path.Map.find dir acc with
-            | None -> String_set.singleton fn
-            | Some set -> String_set.add fn set
-          in
-          Path.Map.add acc ~key:dir ~data:files)
+  Build_system.add_rule t.build_system rule;
+  List.map rule.targets ~f:Build_interpret.Target.path
 
 let add_rules t ?sandbox builds =
   List.iter builds ~f:(add_rule t ?sandbox)
 
-let sources_and_targets_known_so_far t ~src_path =
-  let sources =
-    match File_tree.find_dir t.file_tree src_path with
-    | None -> String_set.empty
-    | Some dir -> File_tree.Dir.files dir
-  in
-  match Path.Map.find src_path t.known_targets_by_src_dir_so_far with
-  | None -> sources
-  | Some set -> String_set.union sources set
+let add_alias_deps t alias deps =
+  Alias.add_deps t.build_system alias deps
+
+let add_alias_action t alias ?locks ~stamp action =
+  Alias.add_action t.build_system alias ?locks ~stamp action
+
+let eval_glob t ~dir re = Build_system.eval_glob t.build_system ~dir re
+let load_dir t ~dir = Build_system.load_dir t.build_system ~dir
+let on_load_dir t ~dir ~f = Build_system.on_load_dir t.build_system ~dir ~f
+
+let source_files t ~src_path =
+  match File_tree.find_dir t.file_tree src_path with
+  | None -> String_set.empty
+  | Some dir -> File_tree.Dir.files dir
 
 let unique_library_name t lib =
   Lib_db.unique_library_name t.libs lib
@@ -363,14 +322,7 @@ module Libs = struct
     in
     let requires =
       if t.context.merlin && has_dot_merlin then
-        (* We don't depend on the dot_merlin directly, otherwise everytime it changes we
-           would have to rebuild everything.
-
-           .merlin-exists depends on the .merlin and is an empty file. Depending on it
-           forces the generation of the .merlin but not recompilation when it
-           changes. Maybe one day we should add [Build.path_exists] to do the same in
-           general. *)
-        Build.path (Path.relative dir ".merlin-exists")
+        Build.path (Path.relative dir ".merlin")
         >>>
         real_requires
       else
@@ -394,24 +346,21 @@ module Libs = struct
     Alias.make (sprintf "lib-%s%s-all" lib.name ext) ~dir
 
   let setup_file_deps_alias t lib ~ext files =
-    Alias.add_deps t.aliases (lib_files_alias lib ~ext) files
+    add_alias_deps t (lib_files_alias lib ~ext) files
 
   let setup_file_deps_group_alias t lib ~exts =
     setup_file_deps_alias t lib
       ~ext:(String.concat exts ~sep:"-and-")
-      (List.map exts ~f:(fun ext -> Alias.file (lib_files_alias lib ~ext)))
+      (List.map exts ~f:(fun ext -> Alias.stamp_file (lib_files_alias lib ~ext)))
 
   let file_deps t ~ext =
     Build.dyn_paths (Build.arr (fun libs ->
       List.fold_left libs ~init:[] ~f:(fun acc (lib : Lib.t) ->
         match lib with
-        | External pkg -> begin
-            List.rev_append
-              (External_dir.files (get_external_dir t ~dir:pkg.dir) ~ext)
-              acc
-          end
+        | External pkg ->
+          Build_system.stamp_file_for_files_of t.build_system ~dir:pkg.dir ~ext :: acc
         | Internal lib ->
-          Alias.file (lib_files_alias lib ~ext) :: acc)))
+          Alias.stamp_file (lib_files_alias lib ~ext) :: acc)))
 
   let static_file_deps ~ext lib =
     Alias.dep (lib_files_alias lib ~ext)
@@ -852,12 +801,31 @@ module PP = struct
          ; Dyn (Lib.link_flags ~mode)
          ])
 
-  let get_ppx_driver sctx pps ~dir ~dep_kind =
-    let driver, names =
+  let gen_rules sctx components =
+    match components with
+    | [key] ->
+      let ppx_dir = Path.relative sctx.ppx_dir key in
+      let exe = Path.relative ppx_dir "ppx.exe" in
+      let names =
+        match key with
+        | "+none+" -> []
+        | _ -> String.split key ~on:'+'
+      in
+      let driver, names =
+        match List.rev names with
+        | [] -> (None, [])
+        | driver :: rest ->
+          (Some driver, List.sort rest ~cmp:String.compare @ [driver])
+      in
+      build_ppx_driver sctx names ~dir:ppx_dir ~dep_kind:Required ~target:exe ~driver
+    | _ -> ()
+
+  let get_ppx_driver sctx pps =
+    let names =
       match List.rev_map pps ~f:Pp.to_string with
-      | [] -> (None, [])
+      | [] -> []
       | driver :: rest ->
-        (Some driver, List.sort rest ~cmp:String.compare @ [driver])
+        List.sort rest ~cmp:String.compare @ [driver]
     in
     let key =
       match names with
@@ -865,14 +833,8 @@ module PP = struct
       | _  -> String.concat names ~sep:"+"
     in
     let sctx = host_sctx sctx in
-    match Hashtbl.find sctx.ppx_drivers key with
-    | Some x -> x
-    | None ->
-      let ppx_dir = Path.relative sctx.ppx_dir key in
-      let exe = Path.relative ppx_dir "ppx.exe" in
-      build_ppx_driver sctx names ~dir ~dep_kind ~target:exe ~driver;
-      Hashtbl.add sctx.ppx_drivers ~key ~data:exe;
-      exe
+    let ppx_dir = Path.relative sctx.ppx_dir key in
+    Path.relative ppx_dir "ppx.exe"
 
   let target_var = String_with_vars.virt_var __POS__ "@"
   let root_var   = String_with_vars.virt_var __POS__ "ROOT"
@@ -933,12 +895,11 @@ module PP = struct
         ~dep_kind ~lint ~lib_name ~scope =
     let alias = Alias.lint ~dir in
     let add_alias fn build =
-      add_rule sctx
-        (Alias.add_build (aliases sctx) alias build
-           ~stamp:(List [ Atom "lint"
-                        ; Sexp.To_sexp.(option string) lib_name
-                        ; Atom fn
-                        ]))
+      Alias.add_action sctx.build_system alias build
+        ~stamp:(List [ Atom "lint"
+                     ; Sexp.To_sexp.(option string) lib_name
+                     ; Atom fn
+                     ])
     in
     match Preprocess_map.find source.name lint with
     | No_preprocessing -> ()
@@ -957,7 +918,7 @@ module PP = struct
                  ~scope)
       )
     | Pps { pps; flags } ->
-      let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in
+      let ppx_exe = get_ppx_driver sctx pps in
       Module.iter ast ~f:(fun kind src ->
         let src_path = Path.relative dir src.name in
         let args =
@@ -1020,7 +981,7 @@ module PP = struct
         lint_module ~ast ~source:m;
         ast
       | Pps { pps; flags } ->
-        let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in
+        let ppx_exe = get_ppx_driver sctx pps in
         let ast = setup_reason_rules sctx ~dir m in
         lint_module ~ast ~source:m;
         let uses_ppx_driver = uses_ppx_driver ~pps in

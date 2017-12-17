@@ -12,10 +12,10 @@ type t =
   ; source_dirs: Path.Set.t
   }
 
-let ppx_flags sctx ~dir ~src_dir:_ { preprocess; libname; _ } =
+let ppx_flags sctx ~dir:_ ~src_dir:_ { preprocess; libname; _ } =
   match preprocess with
   | Pps { pps; flags } ->
-    let exe = SC.PP.get_ppx_driver sctx pps ~dir ~dep_kind:Optional in
+    let exe = SC.PP.get_ppx_driver sctx pps in
     let command =
       List.map (Path.to_absolute_filename  exe
                 :: "--as-ppx"
@@ -28,14 +28,10 @@ let ppx_flags sctx ~dir ~src_dir:_ { preprocess; libname; _ } =
   | _ -> []
 
 let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
-  match Path.extract_build_context dir with
-  | Some (_, remaindir) ->
-    let path = Path.relative remaindir ".merlin" in
-    SC.add_rule sctx
-      (Build.path path
-       >>>
-       Build.write_file (Path.relative dir ".merlin-exists") "");
-    SC.add_rule sctx (
+  match Path.drop_build_context dir with
+  | Some remaindir ->
+    let merlin_file = Path.relative dir ".merlin" in
+    SC.add_rule sctx ~mode:Promote_but_delete_on_clean (
       requires &&& flags
       >>^ (fun (libs, flags) ->
         let ppx_flags = ppx_flags sctx ~dir ~src_dir:remaindir t in
@@ -82,7 +78,7 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
         |> List.map ~f:(Printf.sprintf "%s\n")
         |> String.concat ~sep:"")
       >>>
-      Build.write_file_dyn path
+      Build.write_file_dyn merlin_file
     )
   | _ ->
     ()

@@ -13,6 +13,19 @@ module Dir = struct
   let sub_dirs t = t.sub_dirs
   let ignored t = t.ignored
 
+  let file_paths t =
+    Path.Set.of_string_set t.files ~f:(Path.relative t.path)
+
+  let sub_dir_names t =
+    String_map.fold t.sub_dirs ~init:String_set.empty
+      ~f:(fun ~key:s ~data:_ acc ->
+        String_set.add s acc)
+
+  let sub_dir_paths t =
+    String_map.fold t.sub_dirs ~init:Path.Set.empty
+      ~f:(fun ~key:s ~data:_ acc ->
+        Path.Set.add (Path.relative t.path s) acc)
+
   let rec fold t ~traverse_ignored_dirs ~init:acc ~f =
     if not traverse_ignored_dirs && t.ignored then
       acc
@@ -88,6 +101,12 @@ let fold t ~traverse_ignored_dirs ~init ~f =
 
 let find_dir t path =
   Path.Map.find path t.dirs
+
+let files_of t path =
+  match find_dir t path with
+  | None -> Path.Set.empty
+  | Some dir ->
+    Path.Set.of_string_set (Dir.files dir) ~f:(Path.relative path)
 
 let file_exists t path fn =
   match Path.Map.find path t.dirs with

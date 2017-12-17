@@ -41,3 +41,6 @@ val diff_command : string option ref
 
 (** Automatically promote files *)
 val auto_promote : bool ref
+
+(** Force re-running actions associated to aliases *)
+val force : bool ref

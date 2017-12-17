@@ -795,7 +795,7 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
     exec_echo stdout_to s
   | Diff { optional; file1; file2 } ->
     if (optional && not (Path.exists file1 && Path.exists file2)) ||
-       Io.read_file (Path.to_string file1) = Io.read_file (Path.to_string file2) then
+       Io.compare_files (Path.to_string file1) (Path.to_string file2) = 0 then
       return ()
     else begin
       let is_copied_from_source_tree file =

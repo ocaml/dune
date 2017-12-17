@@ -56,6 +56,10 @@ next
   ppx_driver. This allows to use `[@@deriving_inline]` in .ml/.mli
   files. This require `ppx_driver >= v0.10.2` to work properly (#415)
 
+- Make jbuilder load rules lazily instead of generating them all
+  eagerly. This speeds up the initial startup time of jbuilder on big
+  workspaces (#370)
+
 1.0+beta16 (05/11/2017)
 -----------------------
 

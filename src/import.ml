@@ -2,7 +2,29 @@ include Jbuilder_re
 
 module Array   = StdLabels.Array
 module Bytes   = StdLabels.Bytes
-module Set     = MoreLabels.Set
+
+module Set = struct
+  module type OrderedType = MoreLabels.Set.OrderedType
+  module type S = sig
+    include MoreLabels.Set.S
+    val map : f:(elt -> elt) -> t -> t
+  end
+
+  module Make(Elt : OrderedType) : S with type elt = Elt.t = struct
+    module M = MoreLabels.Set.Make(Elt)
+
+    include struct
+      [@@@warning "-32"]
+      (* [map] is only available since 4.04 *)
+      let map ~f t =
+        M.elements t
+        |> List.map f
+        |> M.of_list
+    end
+
+    include M
+  end
+end
 
 external reraise : exn -> _ = "%reraise"
 

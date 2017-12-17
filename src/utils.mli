@@ -18,6 +18,14 @@ val jbuild_name_in : dir:Path.t -> string
 (** Nice description of a target *)
 val describe_target : Path.t -> string
 
+type target_kind =
+  | Regular of string (* build context *) * Path.t
+  | Alias   of string (* build context *) * Path.t
+  | Other of Path.t
+
+(** Return the name of an alias from its stamp file *)
+val analyse_target : Path.t -> target_kind
+
 (** Raise an error about a program not found in the PATH or in the tree *)
 val program_not_found
   :  ?context:string

@@ -42,8 +42,11 @@ val compare : t -> t -> int
 module Set : sig
   include Set.S with type elt = t
   val sexp_of_t : t Sexp.To_sexp.t
+  val of_string_set : f:(string -> elt) -> String_set.t -> t
 end
+
 module Map : Map.S with type key = t
+
 
 val kind : t -> Kind.t
 
@@ -99,13 +102,29 @@ val extract_build_context_dir : t -> (t * t) option
 
 (** Drop the "_build/blah" prefix *)
 val drop_build_context : t -> t option
+val drop_build_context_exn : t -> t
 
 (** Drop the "_build/blah" prefix if present, return [t] otherwise *)
 val drop_optional_build_context : t -> t
 
+val explode : t -> string list option
+val explode_exn : t -> string list
+
+(** The build directory *)
+val build_dir : t
+
+(** [is_in_build_dir t = is_descendant t ~of:build_dir] *)
 val is_in_build_dir : t -> bool
 
-val insert_after_build_dir_exn : t -> t -> t
+(** [is_in_build_dir t = is_local t && not (is_in_build_dir t)] *)
+val is_in_source_tree : t -> bool
+
+val is_alias_stamp_file : t -> bool
+
+(**  Split after the first component if [t] is local *)
+val split_first_component : t -> (string * t) option
+
+val insert_after_build_dir_exn : t -> string -> t
 
 val exists : t -> bool
 val readdir : t -> string list

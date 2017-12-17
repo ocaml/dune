@@ -155,7 +155,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
      ~f:(fun (m, _) -> m.Module.name = main_module_name)
      else
      modules_and_odoc_files
-     in*)
+       in*)
   let html_files =
     List.map modules_and_odoc_files ~f:(fun (m, odoc_file) ->
       to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~lib
@@ -165,7 +165,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
     lib_index sctx ~dir ~lib ~lib_unique_name ~lib_name ~doc_dir
       ~modules ~includes ~odoc
   in
-  Alias.add_deps (SC.aliases sctx) (Alias.doc ~dir)
+  SC.add_alias_deps sctx (Build_system.Alias.doc ~dir)
     (css_file ~doc_dir
      :: toplevel_index ~doc_dir
      :: lib_index_html
@@ -227,3 +227,13 @@ let setup_toplevel_index_rule sctx =
   let context = SC.context sctx in
   let doc_dir = doc_dir ~context in
   SC.add_rule sctx @@ Build.write_file (toplevel_index ~doc_dir) html
+
+let gen_rules sctx ~dir rest =
+  match rest with
+  | [] ->
+    setup_css_rule sctx;
+    setup_toplevel_index_rule sctx
+  | lib :: _ ->
+    match Lib_db.find (SC.libs sctx) ~from:dir lib with
+    | None | Some (External _) -> ()
+    | Some (Internal (dir, _)) -> SC.load_dir sctx ~dir

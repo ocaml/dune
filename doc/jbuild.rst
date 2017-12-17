@@ -537,6 +537,26 @@ The difference between ``copy_files`` and ``copy_files#`` is the same
 as the difference between the ``copy`` and ``copy#`` action. See the
 `User actions`_ section for more details.
 
+inline
+------
+
+Inline blocks are written as follow:
+
+.. code:: scheme
+
+    (inline <action>)
+    <stanzas>
+    (end)
+
+When reading jbuild files, ``inline`` and ``end`` stanzas are
+ignored. However, when building the ``jbuild`` alias, jbuilder will
+run ``<action>`` and make sure that the output of the action matches
+``<stanzas>``. If not, jbuilder will update the jbuild file in place
+and print a diff.
+
+You can use this feature to auto-generate a part of a jbuild file and
+keep it up to date.
+
 Common items
 ============
 

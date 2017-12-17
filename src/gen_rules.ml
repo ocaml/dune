@@ -751,6 +751,51 @@ Add it to your jbuild file to remove this warning.
     )
 
   (* +-----------------------------------------------------------------+
+     | Inline                                                          |
+     +-----------------------------------------------------------------+ *)
+
+  let process_inlines ~src_dir ~ctx_dir ~scope ~stanzas =
+    match
+      List.filter_map stanzas
+        ~f:(function
+          | Stanza.Inline (_, act) -> Some act
+          | _ -> None)
+    with
+    | [] -> ()
+    | actions ->
+      let generated =
+        List.map actions ~f:(fun action ->
+          let digest =
+            Action.Unexpanded.sexp_of_t action
+            |> Sexp.to_string
+            |> Digest.string
+          in
+          let fn = Printf.sprintf ".jbuild.inline.%s" (Digest.to_hex digest) in
+          SC.add_rule sctx
+            (Build.return []
+             >>>
+             SC.Action.run sctx
+               (Redirect (Stdout, String_with_vars.virt_text __POS__ fn, action))
+               ~dir:ctx_dir
+               ~dep_kind:Required
+               ~targets:Infer
+               ~scope);
+          fn)
+      in
+      alias_rules ~dir:Path.root ~scope
+        { name = "jbuild"
+        ; deps = []
+        ; action =
+            (let file dir fn =
+               String_with_vars.virt_text __POS__ (Path.relative dir fn |> Path.to_string)
+             in
+             Some (Update_jbuild (file src_dir "jbuild" ,
+                                  List.map generated ~f:(file ctx_dir))))
+        ; locks   = []
+        ; package = None
+        }
+
+  (* +-----------------------------------------------------------------+
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
 
@@ -765,7 +810,8 @@ Add it to your jbuild file to remove this warning.
         | Alias        alias -> alias_rules alias ~dir ~scope; None
         | Copy_files def ->
           Some (copy_files_rules def ~src_dir ~dir ~scope)
-        | Library _ | Executables _ | Provides _ | Install _ -> None)
+        | Library _ | Executables _ | Provides _ | Install _
+        | Inline _ | End _ -> None)
     in
     let files = lazy (
       let files = SC.sources_and_targets_known_so_far sctx ~src_path:src_dir in
@@ -784,6 +830,7 @@ Add it to your jbuild file to remove this warning.
       guess_modules ~dir:src_dir
         ~files:(Lazy.force files))
     in
+    process_inlines ~src_dir ~ctx_dir ~stanzas ~scope;
     List.fold_left stanzas ~init:merlins ~f:(fun merlins stanza ->
       let dir = ctx_dir in
       match (stanza : Stanza.t) with

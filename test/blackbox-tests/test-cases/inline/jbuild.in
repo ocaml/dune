@@ -1,0 +1,4 @@
+(jbuild_version 1)
+
+(inline (echo "toto"))
+(end)

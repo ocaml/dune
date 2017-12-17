@@ -29,5 +29,6 @@ module type Ast = sig
     | Remove_tree    of path
     | Mkdir          of path
     | Digest_files   of path list
+    | Update_jbuild  of path * path list
 end
 

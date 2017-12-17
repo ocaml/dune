@@ -93,6 +93,7 @@ struct
     | Remove_tree x -> List [Atom "remove-tree"; path x]
     | Mkdir x       -> List [Atom "mkdir"; path x]
     | Digest_files paths -> List [Atom "digest-files"; List (List.map paths ~f:path)]
+    | Update_jbuild (p, paths) -> List [Atom "update-jbuild"; path p; List (List.map paths ~f:path)]
 end
 
 module Make_mapper
@@ -126,6 +127,7 @@ module Make_mapper
     | Remove_tree x -> Remove_tree (f_path x)
     | Mkdir x -> Mkdir (f_path x)
     | Digest_files x -> Digest_files (List.map x ~f:f_path)
+    | Update_jbuild (x, y) -> Update_jbuild (f_path x, List.map y ~f:f_path)
 end
 
 module Prog = struct
@@ -369,6 +371,8 @@ module Unexpanded = struct
       end
       | Digest_files x ->
         Digest_files (List.map x ~f:(E.path ~dir ~f))
+      | Update_jbuild (x, y) ->
+        Update_jbuild (E.path ~dir ~f x, List.map y ~f:(E.path ~dir ~f))
   end
 
   module E = struct
@@ -465,6 +469,8 @@ module Unexpanded = struct
       Mkdir res
     | Digest_files x ->
       Digest_files (List.map x ~f:(E.path ~dir ~f))
+    | Update_jbuild (x, y) ->
+      Update_jbuild (E.path ~dir ~f x, List.map y ~f:(E.path ~dir ~f))
 end
 
 let fold_one_step t ~init:acc ~f =
@@ -486,7 +492,8 @@ let fold_one_step t ~init:acc ~f =
   | Rename _
   | Remove_tree _
   | Mkdir _
-  | Digest_files _ -> acc
+  | Digest_files _
+  | Update_jbuild _ -> acc
 
 include Make_mapper(Ast)(Ast)
 
@@ -637,6 +644,59 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
         (Marshal.to_string data [])
     in
     exec_echo stdout_to s
+  | Update_jbuild (jbuild, files) ->
+    let s = Io.read_file (Path.to_string jbuild) in
+    let repls = List.map files ~f:(fun p -> Io.read_file (Path.to_string p)) in
+    let sexps =
+      let lb = Lexing.from_string s in
+      lb.lex_curr_p <-
+        { pos_fname = Path.to_string jbuild
+        ; pos_lnum  = 1
+        ; pos_bol   = 0
+        ; pos_cnum  = 0
+        };
+      Sexp_lexer.many lb
+    in
+    let fail loc = Loc.fail loc "jbuild file changed while jbuilder was running" in
+    let rec loop blocks inline_start = function
+      | [] ->
+        Option.iter inline_start ~f:fail;
+        List.rev blocks
+      | Sexp.Ast.List (loc, Atom (_, "inline") :: _) :: rest ->
+        if Option.is_some inline_start then fail loc;
+        loop blocks (Some loc) rest
+      | Sexp.Ast.List (loc2, Atom (_, "end") :: _) :: rest ->
+        (match inline_start with
+         | None -> fail loc2
+         | Some loc1 -> loop ((loc1.stop.pos_cnum, loc2.start.pos_cnum) :: blocks) None rest)
+      | _ :: rest -> loop blocks inline_start rest
+    in
+    let blocks = loop [] None sexps in
+    if List.length repls <> List.length blocks then
+      fail (Loc.in_file (Path.to_string jbuild));
+    let repl =
+      let buf = Buffer.create (String.length s) in
+      let ofs =
+        List.fold_left2 blocks repls ~init:0 ~f:(fun ofs (start, stop) repl ->
+          Buffer.add_substring buf s ofs (start - ofs);
+          Buffer.add_char buf '\n';
+          Buffer.add_string buf repl;
+          stop)
+      in
+      let len = String.length s in
+      Buffer.add_substring buf s ofs (len - ofs);
+      Buffer.contents buf
+    in
+    if s = repl then
+      return ()
+    else begin
+      let old = Path.extend_basename jbuild ~suffix:".old" in
+      Path.unlink_no_err old;
+      Unix.rename (Path.to_string jbuild) (Path.to_string old);
+      Io.write_file (Path.to_string jbuild) repl;
+      at_exit (fun () -> Path.unlink_no_err old);
+      Diff.print old jbuild
+    end
 
 and redirect outputs fn t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   let fn = Path.to_string fn in
@@ -720,6 +780,7 @@ module Infer = struct
     | Ignore (_, t) -> infer acc t
     | Progn l -> List.fold_left l ~init:acc ~f:infer
     | Digest_files l -> List.fold_left l ~init:acc ~f:(+<)
+    | Update_jbuild (x, l) -> List.fold_left l ~init:(acc +< x) ~f:(+<)
     | Echo _
     | System _
     | Bash _
@@ -761,6 +822,7 @@ module Infer = struct
     | Ignore (_, t) -> partial acc t
     | Progn l -> List.fold_left l ~init:acc ~f:partial
     | Digest_files l -> List.fold_left l ~init:acc ~f:(+<?)
+    | Update_jbuild (x, l) -> List.fold_left l ~init:(acc +<? x) ~f:(+<?)
     | Echo _
     | System _
     | Bash _
@@ -788,6 +850,7 @@ module Infer = struct
     | Ignore (_, t) -> partial_with_all_targets acc t
     | Progn l -> List.fold_left l ~init:acc ~f:partial_with_all_targets
     | Digest_files l -> List.fold_left l ~init:acc ~f:(+<?)
+    | Update_jbuild (x, l) -> List.fold_left l ~init:(acc +<? x) ~f:(+<?)
     | Echo _
     | System _
     | Bash _

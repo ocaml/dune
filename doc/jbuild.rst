@@ -551,11 +551,19 @@ Inline blocks are written as follow:
 When reading jbuild files, ``inline`` and ``end`` stanzas are
 ignored. However, when building the ``jbuild`` alias, jbuilder will
 run ``<action>`` and make sure that the output of the action matches
-``<stanzas>``. If not, jbuilder will update the jbuild file in place
-and print a diff.
+``<stanzas>``. If not, jbuilder will update the jbuild file in place,
+print a diff and fail. You then have to restart the build to pick up
+the changes.
 
 You can use this feature to auto-generate a part of a jbuild file and
-keep it up to date.
+keep it up to date. In order to make sure that the jbuild files are
+up-to-date, simply build the ``jbuild`` alias. For instance you can
+use this command line to build both the package and check the jbuild
+files:
+
+..code:: bash
+
+    $ jbuilder build @install @jbuild
 
 Common items
 ============

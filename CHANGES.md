@@ -25,7 +25,7 @@ next
 - Build documentation for non public libraries (#306)
 
 - Add an `(inline)` allowing one to auto-generate part of a jbuild
-  file and keep it up-to-date
+  file and keep it up-to-date (#371)
 
 1.0+beta16 (05/11/2017)
 -----------------------

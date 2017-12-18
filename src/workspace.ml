@@ -7,10 +7,10 @@ module Context = struct
       | Native
       | Named of string
 
-    let t = function
-      | Atom (_, "native") -> Native
-      | Atom (_, s) -> Named s
-      | s -> of_sexp_error s "target must be native or named"
+    let t sexp =
+      match string sexp with
+      | "native" -> Native
+      | s        -> Named s
   end
   module Opam = struct
     type t =

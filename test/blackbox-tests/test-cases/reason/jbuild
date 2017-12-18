@@ -5,7 +5,9 @@
 
 (library
  ((name rlib)
-  (public_name rlib)))
+  (public_name rlib)
+  (preprocess
+   (per_module ((action (run ./pp/reasononlypp.exe ${<})) (cppome))))))
 
 ;; we want to make sure that .rei files are present
 (alias

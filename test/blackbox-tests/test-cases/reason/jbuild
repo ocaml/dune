@@ -1,7 +1,7 @@
 (jbuild_version 1)
 
-(rule (copy pped.pp.re pped.re))
-(rule (copy pped.rei.pp pped.rei))
+(rule (copy copy-sources/pped.pp.re pped.re))
+(rule (copy copy-sources/pped.rei.pp pped.rei))
 
 (library
  ((name rlib)

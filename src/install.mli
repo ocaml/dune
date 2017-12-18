@@ -1,3 +1,5 @@
+open! Import
+
 (** Opam install file *)
 
 module Section : sig
@@ -16,6 +18,8 @@ module Section : sig
     | Misc
 
   val t : t Sexp.Of_sexp.t
+
+  val pp : t Fmt.t
 end
 
 module Entry : sig
@@ -29,6 +33,8 @@ module Entry : sig
   val set_src : t -> Path.t -> t
 
   val relative_installed_path : t -> package:string -> Path.t
+
+  val pp : t Fmt.t
 end
 
 val files : Entry.t list -> Path.Set.t

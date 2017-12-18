@@ -1067,8 +1067,10 @@ Add it to your jbuild file to remove this warning.
        Build.write_file_dyn fn)
 
   let () =
+    let stanzas_to_consider_for_install =
+      SC.stanzas_to_consider_for_install sctx in
     let entries_per_package =
-      List.concat_map (SC.stanzas_to_consider_for_install sctx)
+      List.concat_map stanzas_to_consider_for_install
         ~f:(fun (dir, stanza) ->
           match stanza with
           | Library ({ public = Some { package; sub_dir; _ }; _ } as lib) ->
@@ -1080,6 +1082,17 @@ Add it to your jbuild file to remove this warning.
           | _ -> [])
       |> String_map.of_alist_multi
     in
+    let () =
+      let aliases = SC.aliases sctx in
+      List.iter stanzas_to_consider_for_install
+        ~f:(fun (dir, stanza) ->
+          match (stanza : Jbuild.Stanza.t) with
+          | Executables { names ; modes ; _ } ->
+            let ext = if modes.native then ".exe" else ".bc" in
+            List.map ~f:(fun name -> Path.relative dir (name ^ ext)) names
+            |> Alias.add_deps aliases (Alias.exe ~dir)
+          | _ -> ()
+        ) in
     String_map.iter (SC.packages sctx) ~f:(fun ~key:_ ~data:(pkg : Package.t) ->
       let stanzas = String_map.find_default pkg.name entries_per_package ~default:[] in
       install_file pkg.path pkg.name stanzas)

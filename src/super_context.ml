@@ -873,9 +873,8 @@ module PP = struct
         (Deps.interpret sctx ~scope ~dir preprocessor_deps)
     in
     String_map.map modules ~f:(fun (m : Module.t) ->
-      let m = setup_reason_rules sctx ~dir m in
       match Preprocess_map.find m.name preprocess with
-      | No_preprocessing -> m
+      | No_preprocessing -> setup_reason_rules sctx ~dir m
       | Action action ->
         pped_module m ~dir ~f:(fun _kind src dst ->
           add_rule sctx
@@ -894,8 +893,10 @@ module PP = struct
                ~dep_kind
                ~targets:(Static [dst])
                ~scope))
+        |> setup_reason_rules sctx ~dir
       | Pps { pps; flags } ->
         let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in
+        let m = setup_reason_rules sctx ~dir m in
         pped_module m ~dir ~f:(fun kind src dst ->
           add_rule sctx
             (preprocessor_deps

@@ -24,7 +24,7 @@ next
 
 - Build documentation for non public libraries (#306)
 
-- Fix doc generation when several private libraries have the same name
+- Fix doc generation when several private libraries have the same name (#369)
 
 1.0+beta16 (05/11/2017)
 -----------------------

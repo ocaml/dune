@@ -246,11 +246,15 @@ module Stanza : sig
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
     | Copy_files  of Copy_files.t
+    | Inline      of Loc.t * Action.Unexpanded.t
+    | End         of Loc.t
 end
 
 module Stanzas : sig
   type t = Stanza.t list
 
-  val parse : Scope.t -> Sexp.Ast.t list -> t
+  type syntax = OCaml | Plain
+
+  val parse : syntax:syntax -> Scope.t -> Sexp.Ast.t list -> t
   val lib_names : (_ * _ * t) list -> String_set.t
 end

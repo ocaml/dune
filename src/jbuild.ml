@@ -921,6 +921,8 @@ module Stanza = struct
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
     | Copy_files  of Copy_files.t
+    | Inline      of Loc.t * Action.Unexpanded.t
+    | End         of Loc.t
 
   let rules l = List.map l ~f:(fun x -> Rule x)
 
@@ -946,6 +948,8 @@ module Stanza = struct
           (fun glob -> [Copy_files {add_line_directive = true; glob}])
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
+      ; cstr_loc "inline"  (Action.Unexpanded.t @> nil) (fun loc act -> [Inline (loc, act)])
+      ; cstr_loc "end"     nil (fun loc -> [End loc])
       ]
 
   let select : Jbuild_version.t -> Scope.t -> t list Sexp.Of_sexp.t = function
@@ -955,7 +959,9 @@ end
 module Stanzas = struct
   type t = Stanza.t list
 
-  let parse pkgs sexps =
+  type syntax = OCaml | Plain
+
+  let parse ~syntax pkgs sexps =
     let versions, sexps =
       List.partition_map sexps ~f:(function
           | List (loc, [Atom (_, "jbuild_version"); ver]) ->
@@ -969,7 +975,26 @@ module Stanzas = struct
       | _ :: (_, loc) :: _ ->
         Loc.fail loc "jbuild_version specified too many times"
     in
-    List.concat_map sexps ~f:(Stanza.select version pkgs)
+    let stanzas = List.concat_map sexps ~f:(Stanza.select version pkgs) in
+    let rec check inline_start = function
+      | [] ->
+        Option.iter inline_start ~f:(fun loc ->
+          Loc.fail loc "this (inline) stanza doesn't have a matching (end) stanza")
+      | Stanza.Inline (loc, _) :: rest ->
+        (match syntax with
+         | OCaml -> Loc.fail loc "(inline) stanzas are not allowed in jbuild in OCaml syntax"
+         | Plain -> ());
+        if Option.is_some inline_start then
+          Loc.fail loc "cannot have an inline block inside another one";
+        check (Some loc) rest
+      | End loc :: rest ->
+        (match inline_start with
+         | None -> Loc.fail loc "this (end) stanza must come after an (inline) stanza"
+         | Some _ -> check None rest)
+      | _ :: rest -> check inline_start rest
+    in
+    check None stanzas;
+    stanzas
 
   let lib_names ts =
     List.fold_left ts ~init:String_set.empty ~f:(fun acc (_, _, stanzas) ->

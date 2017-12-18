@@ -21,6 +21,7 @@ type common =
   ; target_prefix    : string
   ; only_packages    : String_set.t option
   ; capture_outputs  : bool
+  ; diff_command     : string option
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args        : string list
   }
@@ -38,6 +39,7 @@ let set_common c ~targets =
   if c.root <> Filename.current_dir_name then
     Sys.chdir c.root;
   Clflags.workspace_root := Sys.getcwd ();
+  Clflags.diff_command := c.diff_command;
   Clflags.external_lib_deps_hint :=
     List.concat
       [ ["jbuilder"; "external-lib-deps"; "--missing"]
@@ -153,6 +155,7 @@ let common =
         verbose
         no_buffer
         workspace_file
+        diff_command
         (root, only_packages, orig)
     =
     let root, to_cwd =
@@ -178,6 +181,7 @@ let common =
     ; root
     ; orig_args
     ; target_prefix = String.concat ~sep:"" (List.map to_cwd ~f:(sprintf "%s/"))
+    ; diff_command
     ; only_packages =
         Option.map only_packages
           ~f:(fun s -> String_set.of_list (String.split s ~on:','))
@@ -304,6 +308,12 @@ let common =
                $ only_packages
                $ frop))
   in
+  let diff_command =
+    Arg.(value
+         & opt (some string) None
+         & info ["diff-command"] ~docs
+             ~doc:"Shell command to use to diff files")
+  in
   Term.(const make
         $ concurrency
         $ ddep_path
@@ -313,6 +323,7 @@ let common =
         $ verbose
         $ no_buffer
         $ workspace_file
+        $ diff_command
         $ root_and_only_packages
        )
 

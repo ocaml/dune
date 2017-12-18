@@ -19,10 +19,13 @@ next
   absolute path but with the context's environment set appropriately. Lastly,
   `jbuilder exec` will change the root as to which paths are relative using the
   `-root` option. (#286)
-  
+
 - Fix `jbuilder rules` printing rules when some binaries are missing (#292)
 
 - Build documentation for non public libraries (#306)
+
+- Add an `(inline)` allowing one to auto-generate part of a jbuild
+  file and keep it up-to-date (#371)
 
 1.0+beta16 (05/11/2017)
 -----------------------

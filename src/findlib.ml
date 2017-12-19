@@ -131,7 +131,7 @@ module Config = struct
            (context: %s)" toolchain Path.pp path context;
     let vars =
       (Meta.simplify { name = ""
-                     ; entries = Meta.load (Path.to_string path)
+                     ; entries = Meta.load (Path.to_string conf_file)
                      }).vars
     in
     { vars = String_map.map vars ~f:Rules.of_meta_rules; preds = [toolchain] }

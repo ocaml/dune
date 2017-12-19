@@ -1094,7 +1094,12 @@ Add it to your jbuild file to remove this warning.
       install_file pkg.path pkg.name stanzas)
 
   let () =
-    let is_default = Path.basename ctx.build_dir = "default" in
+    let copy_to_src =
+      not ctx.implicit &&
+      match ctx.kind with
+      | Default -> true
+      | Opam _  -> false
+    in
     if not ctx.implicit then
       String_map.iter (SC.packages sctx)
         ~f:(fun ~key:pkg ~data:{ Package.path = src_path; _ } ->
@@ -1105,7 +1110,7 @@ Add it to your jbuild file to remove this warning.
           let ctx_install_file = Path.relative ctx_path install_fn in
           Alias.add_deps (SC.aliases sctx) ctx_install_alias [ctx_install_file];
 
-          if is_default then begin
+          if copy_to_src then begin
             let src_install_alias = Alias.install ~dir:src_path in
             let src_install_file = Path.relative src_path install_fn in
             SC.add_rule sctx (Build.copy ~src:ctx_install_file ~dst:src_install_file);

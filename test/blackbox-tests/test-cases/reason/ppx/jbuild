@@ -1,0 +1,6 @@
+(jbuild_version 1)
+
+(library
+ ((name reasonppx)
+  (wrapped false)
+  (libraries (ocaml-migrate-parsetree))))

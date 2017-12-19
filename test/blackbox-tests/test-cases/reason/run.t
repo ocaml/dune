@@ -1,6 +1,7 @@
   $ $JBUILDER runtest -j1 --root .
          refmt bar.re.ml
       ocamldep pp/reasononlypp.depends.ocamldep-output
+      ocamldep ppx/reasonppx.depends.ocamldep-output
          refmt hello.re.ml
          refmt pped.re.ml
         ocamlc rlib.{cmi,cmo,cmt}
@@ -8,67 +9,30 @@
          refmt hello.re.mli
          refmt pped.re.mli
         ocamlc pp/reasononlypp.{cmi,cmo,cmt}
+        ocamlc ppx/reasonppx.{cmi,cmo,cmt}
       ocamlopt rlib.{cmx,o}
       ocamlopt pp/reasononlypp.{cmx,o}
+      ocamlopt ppx/reasonppx.{cmx,o}
       ocamlopt pp/reasononlypp.exe
+      ocamlopt ppx/reasonppx.{a,cmxa}
   reasononlypp cppome.pp.re
   reasononlypp cppome.pp.rei
+      ocamlopt .ppx/reasonppx/ppx.exe
          refmt cppome.pp.re.ml
          refmt cppome.pp.re.mli
-      ocamldep rlib.depends.ocamldep-output
-      ocamldep rlib.dependsi.ocamldep-output
-        ocamlc rlib__Bar.{cmi,cmti}
-        ocamlc rlib__Cppome.{cmi,cmti}
-        ocamlc rlib__Foo.{cmi,cmti}
-        ocamlc rlib__Hello.{cmi,cmti}
-        ocamlc rlib__Pped.{cmi,cmti}
-        ocamlc rlib__Bar.{cmo,cmt}
-      ocamlopt rlib__Bar.{cmx,o}
-        ocamlc rlib__Cppome.{cmo,cmt}
-      ocamlopt rlib__Cppome.{cmx,o}
-        ocamlc rlib__Foo.{cmo,cmt}
-      ocamlopt rlib__Foo.{cmx,o}
-        ocamlc rlib__Hello.{cmo,cmt}
-      ocamlopt rlib__Hello.{cmx,o}
-        ocamlc rlib__Pped.{cmo,cmt}
-      ocamlopt rlib__Pped.{cmx,o}
-        ocamlc rlib.cma
-      ocamlopt rlib.{a,cmxa}
-      ocamlopt rlib.cmxs
-  lib: [
-    "_build/install/default/lib/rlib/META" {"META"}
-    "_build/install/default/lib/rlib/opam" {"opam"}
-    "_build/install/default/lib/rlib/rlib__Bar.cmi"
-    "_build/install/default/lib/rlib/rlib__Bar.cmx"
-    "_build/install/default/lib/rlib/rlib__Bar.cmt"
-    "_build/install/default/lib/rlib/rlib__Bar.cmti"
-    "_build/install/default/lib/rlib/bar.mli"
-    "_build/install/default/lib/rlib/rlib__Cppome.cmi"
-    "_build/install/default/lib/rlib/rlib__Cppome.cmx"
-    "_build/install/default/lib/rlib/rlib__Cppome.cmt"
-    "_build/install/default/lib/rlib/rlib__Cppome.cmti"
-    "_build/install/default/lib/rlib/cppome.rei"
-    "_build/install/default/lib/rlib/rlib__Foo.cmi"
-    "_build/install/default/lib/rlib/rlib__Foo.cmx"
-    "_build/install/default/lib/rlib/rlib__Foo.cmt"
-    "_build/install/default/lib/rlib/rlib__Foo.cmti"
-    "_build/install/default/lib/rlib/foo.rei"
-    "_build/install/default/lib/rlib/rlib__Hello.cmi"
-    "_build/install/default/lib/rlib/rlib__Hello.cmx"
-    "_build/install/default/lib/rlib/rlib__Hello.cmt"
-    "_build/install/default/lib/rlib/rlib__Hello.cmti"
-    "_build/install/default/lib/rlib/hello.rei"
-    "_build/install/default/lib/rlib/rlib__Pped.cmi"
-    "_build/install/default/lib/rlib/rlib__Pped.cmx"
-    "_build/install/default/lib/rlib/rlib__Pped.cmt"
-    "_build/install/default/lib/rlib/rlib__Pped.cmti"
-    "_build/install/default/lib/rlib/pped.rei"
-    "_build/install/default/lib/rlib/rlib.cmi"
-    "_build/install/default/lib/rlib/rlib.cmx"
-    "_build/install/default/lib/rlib/rlib.cmt"
-    "_build/install/default/lib/rlib/rlib.ml-gen"
-    "_build/install/default/lib/rlib/rlib.cma"
-    "_build/install/default/lib/rlib/rlib.cmxa"
-    "_build/install/default/lib/rlib/rlib.a"
-    "_build/install/default/lib/rlib/rlib.cmxs"
-  ]
+           ppx foo.pp.ml
+           ppx hello.re.pp.ml (exit 2)
+  (cd _build/default && ./.ppx/reasonppx/ppx.exe -lint false --dump-ast --cookie 'library-name="rlib"' -o hello.re.pp.ml --impl hello.re.ml)
+  ./.ppx/reasonppx/ppx.exe: unknown option '-lint'.
+  ppx.exe [options] [<files>]
+    --as-ppx           Act as a -ppx rewriter
+    --as-pp            Shorthand for: --dump-ast --embed-errors
+    --dump-ast         Output a binary AST instead of source code
+    -o FILE            Output to this file instead of the standard output
+    --intf FILE        Treat FILE as a .mli file
+    --impl FILE        Treat FILE as a .ml file
+    --embed-errors     Embed error reported by rewriters into the AST
+    --cookie NAME=EXPR Set the cookie NAME to EXPR
+    -help              Display this list of options
+    --help             Display this list of options
+  [1]

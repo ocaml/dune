@@ -1,6 +1,7 @@
   $ $JBUILDER runtest -j1 --root .
          refmt bar.re.ml
       ocamldep pp/reasononlypp.depends.ocamldep-output
+      ocamldep ppx/reasonppx.depends.ocamldep-output
          refmt hello.re.ml
          refmt pped.re.ml
         ocamlc rlib.{cmi,cmo,cmt}
@@ -8,13 +9,21 @@
          refmt hello.re.mli
          refmt pped.re.mli
         ocamlc pp/reasononlypp.{cmi,cmo,cmt}
+        ocamlc ppx/reasonppx.{cmi,cmo,cmt}
       ocamlopt rlib.{cmx,o}
       ocamlopt pp/reasononlypp.{cmx,o}
+      ocamlopt ppx/reasonppx.{cmx,o}
       ocamlopt pp/reasononlypp.exe
+      ocamlopt ppx/reasonppx.{a,cmxa}
   reasononlypp cppome.pp.re
   reasononlypp cppome.pp.rei
+      ocamlopt .ppx/reasonppx/ppx.exe
          refmt cppome.pp.re.ml
          refmt cppome.pp.re.mli
+           ppx foo.pp.ml
+           ppx hello.re.pp.ml
+           ppx foo.re.pp.mli
+           ppx hello.re.pp.mli
       ocamldep rlib.depends.ocamldep-output
       ocamldep rlib.dependsi.ocamldep-output
         ocamlc rlib__Bar.{cmi,cmti}

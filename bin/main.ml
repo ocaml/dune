@@ -22,7 +22,6 @@ type common =
   ; only_packages    : String_set.t option
   ; capture_outputs  : bool
   ; x                : string option
-  ; install_prefix   : string option
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args        : string list
   }
@@ -40,7 +39,6 @@ let set_common c ~targets =
   if c.root <> Filename.current_dir_name then
     Sys.chdir c.root;
   Clflags.workspace_root := Sys.getcwd ();
-  Clflags.install_prefix := c.install_prefix;
   Clflags.external_lib_deps_hint :=
     List.concat
       [ ["jbuilder"; "external-lib-deps"; "--missing"]
@@ -160,7 +158,6 @@ let common =
         workspace_file
         (root, only_packages, orig)
         x
-        install_prefix
     =
     let root, to_cwd =
       match root with
@@ -189,7 +186,6 @@ let common =
         Option.map only_packages
           ~f:(fun s -> String_set.of_list (String.split s ~on:','))
     ; x
-    ; install_prefix = install_prefix
     }
   in
   let docs = copts_sect in
@@ -319,12 +315,6 @@ let common =
          & info ["x"] ~docs
              ~doc:{|Cross-compile using this toolchain.|})
   in
-  let install_prefix =
-    Arg.(value
-         & opt (some string) None
-         & info ["install-prefix"] ~docs
-             ~doc:{|Installation prefix.|})
-  in
   Term.(const make
         $ concurrency
         $ ddep_path
@@ -336,7 +326,6 @@ let common =
         $ workspace_file
         $ root_and_only_packages
         $ x
-        $ install_prefix
        )
 
 let installed_libraries =

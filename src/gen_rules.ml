@@ -1064,10 +1064,10 @@ Add it to your jbuild file to remove this warning.
       (Build.path_set (Install.files entries)
        >>^ (fun () ->
          let entries =
-           match !Clflags.install_prefix with
+           match ctx.findlib_toolchain with
            | None -> entries
-           | Some prefix ->
-             let prefix = Path.of_string prefix in
+           | Some toolchain ->
+             let prefix = Path.of_string (toolchain ^ "-sysroot") in
              List.map entries
                ~f:(Install.Entry.add_install_prefix ~prefix ~package)
          in

@@ -35,5 +35,3 @@ val capture_outputs : bool ref
 
 (** Always print backtraces, to help debugging jbuilder itself *)
 val debug_backtraces : bool ref
-
-val install_prefix : string option ref

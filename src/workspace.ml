@@ -86,9 +86,15 @@ let t ?x sexps =
         | None -> ctx
         | Some s ->
           let target = Context.Target.Named s in
+          let add_target target targets =
+            if List.mem target ~set:targets then
+              targets
+            else
+              targets @ [target]
+          in
           match ctx with
-          | Default targets -> Default (targets @ [target])
-          | Opam o -> Opam { o with targets = o.targets @ [target] }
+          | Default targets -> Default (add_target target targets)
+          | Opam o -> Opam { o with targets = add_target target o.targets }
       in
       let name = Context.name ctx in
       if name = "" ||

@@ -194,9 +194,15 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
     match which "ocamlfind" with
     | None -> prog_not_found_in_path "ocamlfind"
     | Some fn ->
-      Future.run_capture_line ~env Strict
-        (Path.to_string fn) ["printconf"; "conf"]
-      >>| Path.absolute)
+      (* When OCAMLFIND_CONF is set, "ocamlfind printconf" does print the contents of the
+         variable, but "ocamlfind printconf conf" still prints the configuration file set
+         at the configuration time of ocamlfind, sigh... *)
+      match Sys.getenv "OCAMLFIND_CONF" with
+      | s -> Future.return (Path.absolute s)
+      | exception Not_found ->
+        Future.run_capture_line ~env Strict
+          (Path.to_string fn) ["printconf"; "conf"]
+        >>| Path.absolute)
   in
 
   let create_one ~name ~implicit ?findlib_toolchain ?host () =

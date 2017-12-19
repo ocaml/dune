@@ -24,6 +24,7 @@ depends: [
   "menhir" {test}
   "reason" {test}
   "ocaml-migrate-parsetree" {test}
+  "ppx_driver" {test}
   "odoc" {test}
   "js_of_ocaml-compiler" {test}
 ]

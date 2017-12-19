@@ -205,7 +205,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
         >>| Path.absolute)
   in
 
-  let create_one ~name ~implicit ?findlib_toolchain ?host () =
+  let create_one ~name ~implicit ?findlib_toolchain ?host ~merlin () =
     (match findlib_toolchain with
      | None -> Future.return None
      | Some toolchain ->
@@ -431,13 +431,14 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
   in
 
   let implicit = not (List.mem ~set:targets Workspace.Context.Target.Native) in
-  create_one () ~implicit ~name >>= fun native ->
+  create_one () ~implicit ~name ~merlin >>= fun native ->
   Future.all (
     List.filter_map targets ~f:(function
       | Native -> None
       | Named findlib_toolchain ->
         let name = sprintf "%s.%s" name findlib_toolchain in
-        Some (create_one () ~implicit:false ~name ~findlib_toolchain ~host:native)
+        Some (create_one () ~implicit:false ~name ~findlib_toolchain ~host:native
+                ~merlin:false)
     )
   ) >>| fun others ->
   native :: others

@@ -18,7 +18,7 @@ module Context : sig
       }
   end
 
-  type t = Default | Opam of Opam.t
+  type t = Default of Target.t list | Opam of Opam.t
 
   val name : t -> string
 end

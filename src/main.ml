@@ -36,42 +36,16 @@ let setup ?(log=Log.no_log) ?unlink_aliases
       if Sys.file_exists workspace_file then
         Workspace.load workspace_file
       else
-        { merlin_context = Some "default"; contexts = [Default] }
+        { merlin_context = Some "default"; contexts = [Default [Native]] }
   in
-  let contexts =
-    List.concat_map workspace.contexts ~f:(fun ws ->
-      let name = Workspace.Context.name ws in
-      match ws with
-      | Default ->
-        [Context.default ~merlin:(workspace.merlin_context = Some name) ~use_findlib ()]
-      | Opam { switch; root; merlin; targets ; _ } ->
-        let native =
-          let implicit = not (List.mem ~set:targets Workspace.Context.Target.Native) in
-          Context.create_for_opam ?root ~implicit ~switch ~name ~merlin () in
-        let targets =
-          List.filter_map targets ~f:(function
-            | Workspace.Context.Target.Native -> None
-            | Workspace.Context.Target.Named findlib_toolchain ->
-              let name = sprintf "%s.%s" name findlib_toolchain in
-              Some (
-                native >>= fun host ->
-                Context.create_for_opam ?root ~implicit:false ~switch
-                  ~host ~name ~merlin:false ~findlib_toolchain ()
-              )
-          ) in
-        native :: targets
-    ) in
-  Future.all contexts
+
+  Future.all (
+    List.map workspace.contexts ~f:(fun ctx_def ->
+      let name = Workspace.Context.name ctx_def in
+      Context.create ctx_def ~merlin:(workspace.merlin_context = Some name) ~use_findlib)
+  )
   >>= fun contexts ->
-  let contexts =
-    List.concat_map contexts ~f:(fun c ->
-      if c.name = "default" then
-        match c.for_host with
-        | None -> [c]
-        | Some c' -> [c'; c]
-      else
-        [c])
-  in
+  let contexts = List.concat contexts in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
     Log.infof log "@[<1>Jbuilder context:@,%a@]@." Sexp.pp (Context.sexp_of_t ctx));
   Gen_rules.gen conf
@@ -240,7 +214,7 @@ let bootstrap () =
     Clflags.debug_dep_path := true;
     let log = Log.create () in
     Future.Scheduler.go ~log
-      (setup ~log ~workspace:{ merlin_context = Some "default"; contexts = [Default] }
+      (setup ~log ~workspace:{ merlin_context = Some "default"; contexts = [Default [Native]] }
          ~use_findlib:false
          ~extra_ignored_subtrees:ignored_during_bootstrap
          ()

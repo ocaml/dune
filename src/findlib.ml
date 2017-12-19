@@ -55,7 +55,6 @@ module Rule = struct
     Preds.is_subset preds ~subset:t.preds_required &&
     not (Preds.intersects preds t.preds_forbidden)
 
-
   let make (rule : Meta.rule) =
     let preds_required, preds_forbidden =
       List.partition_map rule.predicates ~f:(function
@@ -119,27 +118,26 @@ module Vars = struct
 end
 
 module Config = struct
-  type t = Vars.t
+  type t =
+    { vars  : Vars.t
+    ; preds : string list
+    }
 
-  let empty = String_map.empty
-
-  let load path =
-    let files =
-      let path_d = Path.extend_basename path ~suffix:".d" in
-      if Path.is_directory path_d then
-        path :: List.map (Path.readdir path_d) ~f:(Path.relative path_d)
-      else
-        [path]
-    in
+  let load path ~toolchain ~context =
+    let path = Path.extend_basename path ~suffix:".d" in
+    let conf_file = Path.relative path (toolchain ^ ".conf") in
+    if not (Path.exists conf_file) then
+      die "@{<error>Error@}: ocamlfind toolchain %s isn't defined in %a \
+           (context: %s)" toolchain Path.pp path context;
     let vars =
       (Meta.simplify { name = ""
-                     ; entries = List.concat_map files ~f:(fun p -> Meta.load (Path.to_string p))
+                     ; entries = Meta.load (Path.to_string path)
                      }).vars
     in
-    String_map.map vars ~f:Rules.of_meta_rules
+    { vars = String_map.map vars ~f:Rules.of_meta_rules; preds = [toolchain] }
 
-  let get ?(predicates=[]) t ~var =
-    Vars.get t var predicates
+  let get { vars; preds } var =
+    Vars.get vars var preds
 end
 
 type package =

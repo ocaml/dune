@@ -47,7 +47,6 @@ type t =
   ; env                     : string array
   ; env_extra               : string Env_var_map.t
   ; findlib                 : Findlib.t
-  ; findlib_config          : Findlib.Config.t
   ; findlib_toolchain       : string option
   ; arch_sixtyfour          : bool
   ; opam_var_cache          : (string, string) Hashtbl.t
@@ -178,8 +177,8 @@ let extend_env ~vars ~env =
       imported
     |> Array.of_list
 
-let create ?host ~implicit ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
-      ~use_findlib ?findlib_toolchain () =
+let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
+      ~use_findlib ~targets () =
   let env = extend_env ~env:base_env ~vars:env_extra in
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
@@ -191,235 +190,251 @@ let create ?host ~implicit ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~me
   in
   let which_cache = Hashtbl.create 128 in
   let which x = which ~cache:which_cache ~path x in
-  (match findlib_toolchain with
-   | None -> Future.return (None, Findlib.Config.empty)
-   | Some _ ->
-     match which "ocamlfind" with
-     | None -> assert false
-     | Some fn ->
-       Future.run_capture_line ~env Strict
-         (Path.to_string fn) ["printconf"; "conf"]
-       >>| fun s ->
-       let path = Path.absolute s in
-       (Some path, Findlib.Config.load path))
-  >>= fun (findlib_conf, findlib_cfg) ->
-  let get_findlib_var =
-    let predicates =
-      match findlib_toolchain with
-      | None -> []
-      | Some s -> [s]
+  let findlib_config_path = lazy (
+    match which "ocamlfind" with
+    | None -> prog_not_found_in_path "ocamlfind"
+    | Some fn ->
+      Future.run_capture_line ~env Strict
+        (Path.to_string fn) ["printconf"; "conf"]
+      >>| Path.absolute)
+  in
+
+  let create_one ~name ~implicit ?findlib_toolchain ?host () =
+    (match findlib_toolchain with
+     | None -> Future.return None
+     | Some toolchain ->
+       Lazy.force findlib_config_path >>| fun path ->
+       Some (Findlib.Config.load path ~toolchain ~context:name))
+    >>= fun findlib_config ->
+
+    let get_tool_using_findlib_config prog =
+      match findlib_config with
+      | None -> None
+      | Some conf ->
+        match Findlib.Config.get conf prog with
+        | "" -> None
+        | s ->
+          match Filename.analyze_program_name s with
+          | In_path | Relative_to_current_dir -> which s
+          | Absolute -> Some (Path.absolute s)
     in
-    fun var -> Findlib.Config.get findlib_cfg ~predicates ~var
-  in
-  let () =
-    Option.iter findlib_toolchain ~f:(fun toolchain ->
-      match get_findlib_var "ocamlc", findlib_conf with
-      | "", Some fc ->
-        die "@{<error>Error@}: Toolchain %s isn't defined found in %a \
-             (context: %s)" toolchain Path.pp fc name
-      | _, _ -> ())
-  in
-  let which prog =
-    let s = get_findlib_var prog in
-    if s = "" then
-      which prog
-    else
-      match Filename.analyze_program_name s with
-      | In_path | Relative_to_current_dir -> which s
-      | Absolute -> Some (Path.absolute s)
-  in
-  let ocamlc =
-    match which "ocamlc" with
-    | None -> prog_not_found_in_path "ocamlc"
-    | Some x -> x
-  in
-  let dir = Path.parent ocamlc in
-  let prog_not_found prog =
-    die "ocamlc found in %s, but %s/%s doesn't exist (context: %s)"
-      (Path.to_string dir) (Path.to_string dir) prog name
-  in
-  let best_prog prog = Bin.best_prog dir prog in
-  let get_prog prog =
-    match best_prog prog with
-    | None -> prog_not_found prog
-    | Some fn -> fn
-  in
-  let build_dir =
-    Path.of_string (sprintf "_build/%s" name)
-  in
-  let ocamlc_config_cmd = sprintf "%s -config" (Path.to_string ocamlc) in
-  let findlib_path =
-    if use_findlib then
-      (* If ocamlfind is present, it has precedence over everything else. *)
-      match which "ocamlfind" with
-      | Some fn ->
-        (Future.run_capture_lines ~env Strict
-           (Path.to_string fn) ["printconf"; "path"]
-         >>| List.map ~f:Path.absolute)
-      | None ->
-        (* If there no ocamlfind in the PATH, check if we have opam and assume a stan opam
-           setup *)
-        opam_config_var ~env ~cache:opam_var_cache "lib"
-        >>| function
-        | Some s -> [Path.absolute s]
-        | None ->
-          (* If neither opam neither ocamlfind are present, assume that libraries are
-             [dir ^ "/../lib"] *)
-          [Path.relative (Path.parent dir) "lib"]
-    else
-      return []
-  in
-  both
-    findlib_path
-    (Future.run_capture_lines ~env Strict (Path.to_string ocamlc) ["-config"])
-  >>= fun (findlib_path, ocamlc_config) ->
-  let ocamlc_config =
-    List.map ocamlc_config ~f:(fun line ->
-      match String.index line ':' with
-      | Some i ->
-        (String.sub line ~pos:0 ~len:i,
-         String.sub line ~pos:(i + 2) ~len:(String.length line - i - 2))
-      | None ->
-        die "unrecognized line in the output of `%s`: %s" ocamlc_config_cmd
-          line)
-    |> String_map.of_alist
-    |> function
-    | Ok x -> x
-    | Error (key, _, _) ->
-      die "variable %S present twice in the output of `%s`" key ocamlc_config_cmd
-  in
-  let get_opt var = String_map.find var ocamlc_config in
-  let get ?default var =
-    match get_opt var with
-    | Some s -> s
-    | None ->
-      match default with
+
+    let ocamlc =
+      match get_tool_using_findlib_config "ocamlc" with
       | Some x -> x
       | None ->
-        die "variable %S not found in the output of `%s`" var ocamlc_config_cmd
-  in
-  let get_bool ?default var =
-    match get ?default:(Option.map default ~f:string_of_bool) var with
-    | "true" -> true
-    | "false" -> false
-    | _ -> die "variable %S is neither 'true' neither 'false' in the output of `%s`"
-             var ocamlc_config_cmd
-  in
-  let get_path var = Path.absolute (get var) in
-  let stdlib_dir = get_path "standard_library" in
-  let natdynlink_supported = Path.exists (Path.relative stdlib_dir "dynlink.cmxa") in
-  let version = get "version" in
-  let env,env_extra =
-    (* See comment in ansi_color.ml for setup_env_for_colors. For OCaml < 4.05,
-       OCAML_COLOR is not supported so we use OCAMLPARAM. OCaml 4.02 doesn't support
-       'color' in OCAMLPARAM, so we just don't force colors with 4.02. *)
-    let ocaml_version = Scanf.sscanf version "%u.%u" (fun a b -> a, b) in
-    if !Clflags.capture_outputs
-    && Lazy.force Ansi_color.stderr_supports_colors
-    && ocaml_version > (4, 02)
-    && ocaml_version < (4, 05) then
-      let value =
-        match get_env env "OCAMLPARAM" with
-        | None -> "color=always,_"
-        | Some s -> "color=always," ^ s
-      in
-      extend_env ~env ~vars:((Env_var_map.singleton "OCAMLPARAM" value)),
-      (Env_var_map.add ~key:"OCAMLPARAM" ~data:value env_extra)
-    else
-      env,env_extra
-  in
-  let c_compiler, ocamlc_cflags, ocamlopt_cflags =
-    match get_opt "c_compiler" with
-    | Some c_compiler -> (* >= 4.06 *)
-      (c_compiler, get "ocamlc_cflags", get "ocamlopt_cflags")
-    | None ->
-      let split_prog s =
-        let len = String.length s in
-        let rec loop i =
-          if i = len then
-            (s, "")
-          else
-            match s.[i] with
-            | ' ' | '\t' ->
-              (String.sub s ~pos:0 ~len:i,
-               String.sub s ~pos:i ~len:(len - i))
-            | _ -> loop (i + 1)
+        match which "ocamlc" with
+        | Some x -> x
+        | None -> prog_not_found_in_path "ocamlc"
+    in
+    let dir = Path.parent ocamlc in
+    let ocaml_tool_not_found prog =
+      die "ocamlc found in %s, but %s/%s doesn't exist (context: %s)"
+        (Path.to_string dir) (Path.to_string dir) prog name
+    in
+    let get_ocaml_tool prog =
+      match get_tool_using_findlib_config prog with
+      | None -> Bin.best_prog dir prog
+      | Some _ as x -> x
+    in
+    let get_ocaml_tool_exn prog =
+      match get_ocaml_tool prog with
+      | None -> ocaml_tool_not_found prog
+      | Some fn -> fn
+    in
+
+    let build_dir = Path.of_string (sprintf "_build/%s" name) in
+    let ocamlc_config_cmd = sprintf "%s -config" (Path.to_string ocamlc) in
+    let findlib_path =
+      if use_findlib then
+        (* If ocamlfind is present, it has precedence over everything else. *)
+        match which "ocamlfind" with
+        | Some fn ->
+          let args =
+            let args = ["printconf"; "path"] in
+            match findlib_toolchain with
+            | None -> args
+            | Some s -> "-toolchain" :: s :: args
+          in
+          Future.run_capture_lines ~env Strict (Path.to_string fn) args
+          >>| List.map ~f:Path.absolute
+        | None ->
+          (* If there no ocamlfind in the PATH, check if we have opam
+             and assume a standard opam setup *)
+          opam_config_var ~env ~cache:opam_var_cache "lib"
+          >>| function
+          | Some s -> [Path.absolute s]
+          | None ->
+            (* If neither opam neither ocamlfind are present, assume that libraries are
+               [dir ^ "/../lib"] *)
+            [Path.relative (Path.parent dir) "lib"]
+      else
+        return []
+    in
+    both
+      findlib_path
+      (Future.run_capture_lines ~env Strict (Path.to_string ocamlc) ["-config"])
+    >>= fun (findlib_path, ocamlc_config) ->
+
+    let ocamlc_config =
+      List.map ocamlc_config ~f:(fun line ->
+        match String.index line ':' with
+        | Some i ->
+          (String.sub line ~pos:0 ~len:i,
+           String.sub line ~pos:(i + 2) ~len:(String.length line - i - 2))
+        | None ->
+          die "unrecognized line in the output of `%s`: %s" ocamlc_config_cmd
+            line)
+      |> String_map.of_alist
+      |> function
+      | Ok x -> x
+      | Error (key, _, _) ->
+        die "variable %S present twice in the output of `%s`" key ocamlc_config_cmd
+    in
+    let get_opt var = String_map.find var ocamlc_config in
+    let get ?default var =
+      match get_opt var with
+      | Some s -> s
+      | None ->
+        match default with
+        | Some x -> x
+        | None ->
+          die "variable %S not found in the output of `%s`" var ocamlc_config_cmd
+    in
+    let get_bool ?default var =
+      match get ?default:(Option.map default ~f:string_of_bool) var with
+      | "true" -> true
+      | "false" -> false
+      | _ -> die "variable %S is neither 'true' neither 'false' in the output of `%s`"
+               var ocamlc_config_cmd
+    in
+    let get_path var = Path.absolute (get var) in
+    let stdlib_dir = get_path "standard_library" in
+    let natdynlink_supported = Path.exists (Path.relative stdlib_dir "dynlink.cmxa") in
+    let version = get "version" in
+    let env, env_extra =
+      (* See comment in ansi_color.ml for setup_env_for_colors. For OCaml < 4.05,
+         OCAML_COLOR is not supported so we use OCAMLPARAM. OCaml 4.02 doesn't support
+         'color' in OCAMLPARAM, so we just don't force colors with 4.02. *)
+      let ocaml_version = Scanf.sscanf version "%u.%u" (fun a b -> a, b) in
+      if !Clflags.capture_outputs
+      && Lazy.force Ansi_color.stderr_supports_colors
+      && ocaml_version > (4, 02)
+      && ocaml_version < (4, 05) then
+        let value =
+          match get_env env "OCAMLPARAM" with
+          | None -> "color=always,_"
+          | Some s -> "color=always," ^ s
         in
-        loop 0
-      in
-      let c_compiler, ocamlc_cflags = split_prog (get "bytecomp_c_compiler") in
-      let _, ocamlopt_cflags = split_prog (get "native_c_compiler") in
-      (c_compiler, ocamlc_cflags, ocamlopt_cflags)
+        extend_env ~env ~vars:((Env_var_map.singleton "OCAMLPARAM" value)),
+        (Env_var_map.add ~key:"OCAMLPARAM" ~data:value env_extra)
+      else
+        env,env_extra
+    in
+    let c_compiler, ocamlc_cflags, ocamlopt_cflags =
+      match get_opt "c_compiler" with
+      | Some c_compiler -> (* >= 4.06 *)
+        (c_compiler, get "ocamlc_cflags", get "ocamlopt_cflags")
+      | None ->
+        let split_prog s =
+          let len = String.length s in
+          let rec loop i =
+            if i = len then
+              (s, "")
+            else
+              match s.[i] with
+              | ' ' | '\t' ->
+                (String.sub s ~pos:0 ~len:i,
+                 String.sub s ~pos:i ~len:(len - i))
+              | _ -> loop (i + 1)
+          in
+          loop 0
+        in
+        let c_compiler, ocamlc_cflags = split_prog (get "bytecomp_c_compiler") in
+        let _, ocamlopt_cflags = split_prog (get "native_c_compiler") in
+        (c_compiler, ocamlc_cflags, ocamlopt_cflags)
+    in
+    let arch_sixtyfour =
+      match get_opt "word_size" with
+      | Some ws -> ws = "64"
+      | None -> get_arch_sixtyfour stdlib_dir
+    in
+    return
+      { name
+      ; implicit
+      ; kind
+      ; merlin
+      ; for_host = host
+      ; build_dir
+      ; path
+      ; toplevel_path = Option.map (get_env env "OCAML_TOPLEVEL_PATH") ~f:Path.absolute
+
+      ; ocaml_bin  = dir
+      ; ocaml      = (match which "ocaml" with Some p -> p | None -> prog_not_found_in_path "ocaml")
+      ; ocamlc
+      ; ocamlopt   = get_ocaml_tool     "ocamlopt"
+      ; ocamldep   = get_ocaml_tool_exn "ocamldep"
+      ; ocamlmklib = get_ocaml_tool_exn "ocamlmklib"
+
+      ; env
+      ; env_extra
+      ; findlib = Findlib.create ~stdlib_dir ~path:findlib_path
+      ; findlib_toolchain
+      ; arch_sixtyfour
+
+      ; opam_var_cache
+
+      ; natdynlink_supported
+
+      ; stdlib_dir
+      ; ocamlc_config = String_map.bindings ocamlc_config
+      ; version
+      ; ccomp_type              = get       "ccomp_type"
+      ; c_compiler
+      ; ocamlc_cflags
+      ; ocamlopt_cflags
+      ; bytecomp_c_libraries    = get       "bytecomp_c_libraries"
+      ; native_c_libraries      = get       "native_c_libraries"
+      ; native_pack_linker      = get       "native_pack_linker"
+      ; ranlib                  = get       "ranlib"
+      ; cc_profile              = get       "cc_profile"
+      ; architecture            = get       "architecture"
+      ; system                  = get       "system"
+      ; ext_obj                 = get       "ext_obj"
+      ; ext_asm                 = get       "ext_asm"
+      ; ext_lib                 = get       "ext_lib"
+      ; ext_dll                 = get       "ext_dll"
+      ; os_type                 = get       "os_type"
+      ; default_executable_name = get       "default_executable_name"
+      ; host                    = get       "host"
+      ; target                  = get       "target"
+      ; flambda                 = get_bool  "flambda" ~default:false
+      ; exec_magic_number       = get       "exec_magic_number"
+      ; cmi_magic_number        = get       "cmi_magic_number"
+      ; cmo_magic_number        = get       "cmo_magic_number"
+      ; cma_magic_number        = get       "cma_magic_number"
+      ; cmx_magic_number        = get       "cmx_magic_number"
+      ; cmxa_magic_number       = get       "cmxa_magic_number"
+      ; ast_impl_magic_number   = get       "ast_impl_magic_number"
+      ; ast_intf_magic_number   = get       "ast_intf_magic_number"
+      ; cmxs_magic_number       = get       "cmxs_magic_number"
+      ; cmt_magic_number        = get       "cmt_magic_number"
+
+      ; which_cache
+      }
   in
-  let arch_sixtyfour =
-    match get_opt "word_size" with
-    | Some ws -> ws = "64"
-    | None -> get_arch_sixtyfour stdlib_dir
-  in
-  return
-    { name
-    ; implicit
-    ; kind
-    ; merlin
-    ; for_host = host
-    ; build_dir
-    ; path
-    ; toplevel_path = Option.map (get_env env "OCAML_TOPLEVEL_PATH") ~f:Path.absolute
 
-    ; ocaml_bin  = dir
-    ; ocaml      = (match which "ocaml" with Some p -> p | None -> prog_not_found "ocaml")
-    ; ocamlc
-    ; ocamlopt   = best_prog "ocamlopt"
-    ; ocamldep   = get_prog  "ocamldep"
-    ; ocamlmklib = get_prog  "ocamlmklib"
-
-    ; env
-    ; env_extra
-    ; findlib = Findlib.create ~stdlib_dir ~path:findlib_path
-    ; findlib_config = findlib_cfg
-    ; findlib_toolchain
-    ; arch_sixtyfour
-
-    ; opam_var_cache
-
-    ; natdynlink_supported
-
-    ; stdlib_dir
-    ; ocamlc_config = String_map.bindings ocamlc_config
-    ; version
-    ; ccomp_type              = get       "ccomp_type"
-    ; c_compiler
-    ; ocamlc_cflags
-    ; ocamlopt_cflags
-    ; bytecomp_c_libraries    = get       "bytecomp_c_libraries"
-    ; native_c_libraries      = get       "native_c_libraries"
-    ; native_pack_linker      = get       "native_pack_linker"
-    ; ranlib                  = get       "ranlib"
-    ; cc_profile              = get       "cc_profile"
-    ; architecture            = get       "architecture"
-    ; system                  = get       "system"
-    ; ext_obj                 = get       "ext_obj"
-    ; ext_asm                 = get       "ext_asm"
-    ; ext_lib                 = get       "ext_lib"
-    ; ext_dll                 = get       "ext_dll"
-    ; os_type                 = get       "os_type"
-    ; default_executable_name = get       "default_executable_name"
-    ; host                    = get       "host"
-    ; target                  = get       "target"
-    ; flambda                 = get_bool  "flambda" ~default:false
-    ; exec_magic_number       = get       "exec_magic_number"
-    ; cmi_magic_number        = get       "cmi_magic_number"
-    ; cmo_magic_number        = get       "cmo_magic_number"
-    ; cma_magic_number        = get       "cma_magic_number"
-    ; cmx_magic_number        = get       "cmx_magic_number"
-    ; cmxa_magic_number       = get       "cmxa_magic_number"
-    ; ast_impl_magic_number   = get       "ast_impl_magic_number"
-    ; ast_intf_magic_number   = get       "ast_intf_magic_number"
-    ; cmxs_magic_number       = get       "cmxs_magic_number"
-    ; cmt_magic_number        = get       "cmt_magic_number"
-
-    ; which_cache
-    }
+  let implicit = not (List.mem ~set:targets Workspace.Context.Target.Native) in
+  create_one () ~implicit ~name >>= fun native ->
+  Future.all (
+    List.filter_map targets ~f:(function
+      | Native -> None
+      | Named findlib_toolchain ->
+        let name = sprintf "%s.%s" name findlib_toolchain in
+        Some (create_one () ~implicit:false ~name ~findlib_toolchain ~host:native)
+    )
+  ) >>| fun others ->
+  native :: others
 
 let opam_config_var t var = opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
@@ -427,26 +442,17 @@ let initial_env = lazy (
   Lazy.force Ansi_color.setup_env_for_colors;
   Unix.environment ())
 
-let default ?(merlin=true) ?(use_findlib=true) () =
+let default ?(merlin=true) ?(use_findlib=true) ~targets () =
   let env = Lazy.force initial_env in
   let path =
     match get_env env "PATH" with
     | Some s -> Bin.parse_path s
     | None -> []
   in
-  match !Clflags.x with
-  | None ->
-    create ~implicit:false ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
-      ~name:"default" ~merlin ~use_findlib ()
-  | Some x ->
-    assert use_findlib;
-    create ~implicit:true ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
-      ~name:"default.host" ~merlin:false ~use_findlib ()
-    >>= fun host ->
-    create ~implicit:false ~host ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
-      ~name:"default" ~merlin ~use_findlib ~findlib_toolchain:x ()
+  create ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
+    ~name:"default" ~merlin ~use_findlib ~targets ()
 
-let create_for_opam ?findlib_toolchain ?root ?host ~implicit ~switch ~name ?(merlin=false) () =
+let create_for_opam ?root ~targets ~switch ~name ?(merlin=false) () =
   match Bin.opam with
   | None -> Utils.program_not_found "opam"
   | Some fn ->
@@ -483,24 +489,16 @@ let create_for_opam ?findlib_toolchain ?root ?host ~implicit ~switch ~name ?(mer
       | Some s -> Bin.parse_path s
     in
     let env = Lazy.force initial_env in
-    create ?findlib_toolchain ?host ~implicit ~kind:(Opam { root; switch })
+    create ~kind:(Opam { root; switch }) ~targets
       ~path ~base_env:env ~env_extra:vars ~name ~merlin ~use_findlib:true ()
 
+let create ?use_findlib ?merlin def =
+  match (def : Workspace.Context.t) with
+  | Default targets -> default ~targets ?merlin ?use_findlib ()
+  | Opam { name; switch; root; targets; _ } ->
+    create_for_opam ?root ~switch ~name ?merlin ~targets ()
 
-let which =
-  let real_which t s = which ~cache:t.which_cache ~path:t.path s in
-  fun t s ->
-    let predicates =
-      match t.findlib_toolchain with
-      | None -> []
-      | Some s -> [s]
-    in
-    match Findlib.Config.get t.findlib_config ~predicates ~var:s with
-    | "" -> real_which t s
-    | s  ->
-      match Filename.analyze_program_name s with
-      | In_path | Relative_to_current_dir -> real_which t s
-      | Absolute -> Some (Path.absolute s)
+let which t s = which ~cache:t.which_cache ~path:t.path s
 
 let install_prefix t =
   opam_config_var t "prefix" >>| function

@@ -12,6 +12,7 @@ module Context = struct
       | "native" -> Native
       | s        -> Named s
   end
+
   module Opam = struct
     type t =
       { name    : string
@@ -22,29 +23,48 @@ module Context = struct
       }
 
     let t =
-      record
-        (field   "switch"  string                                    >>= fun switch ->
-         field   "name"    string ~default:switch                    >>= fun name ->
-         field   "targets" (list Target.t) ~default:[]               >>= fun targets ->
-         field_o "root"    string                                    >>= fun root ->
-         field_b "merlin"                                            >>= fun merlin ->
-         return { switch
-                ; name
-                ; root
-                ; merlin
-                ; targets
-                })
+      field   "switch"  string                                    >>= fun switch ->
+      field   "name"    string ~default:switch                    >>= fun name ->
+      field   "targets" (list Target.t) ~default:[]               >>= fun targets ->
+      field_o "root"    string                                    >>= fun root ->
+      field_b "merlin"                                            >>= fun merlin ->
+      return { switch
+             ; name
+             ; root
+             ; merlin
+             ; targets
+             }
   end
 
-  type t = Default | Opam of Opam.t
+  type t = Default of Target.t list | Opam of Opam.t
 
   let t = function
-    | Atom (_, "default") -> Default
-    | sexp -> Opam (Opam.t sexp)
+    | Atom (_, "default") -> Default [Native]
+    | List (_, List _ :: _) as sexp -> Opam (record Opam.t sexp)
+    | sexp ->
+      sum
+        [ cstr_record "default"
+            (field "targets" (list Target.t) ~default:[]
+             >>= fun targets ->
+             return (Default targets))
+        ; cstr_record "opam"
+            (Opam.t >>= fun x -> return (Opam x))
+        ]
+        sexp
 
   let name = function
-    | Default -> "default"
-    | Opam o  -> o.name
+    | Default _ -> "default"
+    | Opam    o -> o.name
+
+  let targets = function
+    | Default l -> l
+    | Opam    o -> o.targets
+
+  let all_names t =
+    let n = name t in
+    n :: List.filter_map (targets t) ~f:(function
+      | Native -> None
+      | Named s -> Some (n ^ "." ^ s))
 end
 
 type t =
@@ -53,6 +73,7 @@ type t =
   }
 
 let t sexps =
+  let defined_names = ref String_set.empty in
   let merlin_ctx, contexts =
     List.fold_left sexps ~init:(None, []) ~f:(fun (merlin_ctx, ctxs) sexp ->
       let ctx =
@@ -68,8 +89,9 @@ let t sexps =
          String.contains name '/' ||
          String.contains name '\\' then
         of_sexp_errorf sexp "%S is not allowed as a build context name" name;
-      if List.exists ctxs ~f:(fun c -> Context.name c = name) then
+      if String_set.mem name !defined_names then
         of_sexp_errorf sexp "second definition of build context %S" name;
+      defined_names := String_set.union !defined_names (String_set.of_list (Context.all_names ctx));
       match ctx, merlin_ctx with
       | Opam { merlin = true; _ }, Some _ ->
         of_sexp_errorf sexp "you can only have one context for merlin"
@@ -80,14 +102,14 @@ let t sexps =
   in
   let contexts =
     match contexts with
-    | [] -> [Context.Default]
+    | [] -> [Context.Default [Native]]
     | _  -> contexts
   in
   let merlin_ctx =
     match merlin_ctx with
     | Some _ -> merlin_ctx
     | None ->
-      if List.mem Context.Default ~set:contexts then
+      if List.exists contexts ~f:(function Context.Default _ -> true | _ -> false) then
         Some "default"
       else
         None

@@ -85,7 +85,6 @@ val stdlib_with_archives : t -> package
 
 module Config : sig
   type t
-  val empty : t
-  val load : Path.t -> t
-  val get : ?predicates:string list -> t -> var:string  -> string
+  val load : Path.t -> toolchain:string -> context:string -> t
+  val get : t -> string -> string
 end

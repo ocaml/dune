@@ -343,7 +343,8 @@ let installed_libraries =
   let go common na =
     set_common common ~targets:[];
     Future.Scheduler.go ~log:(Log.create ())
-      (Context.default () >>= fun ctx ->
+      (Context.create (Default [Native])  >>= fun ctxs ->
+       let ctx = List.hd ctxs in
        let findlib = ctx.findlib in
        if na then begin
          let pkgs = Findlib.all_unavailable_packages findlib in

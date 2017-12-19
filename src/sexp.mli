@@ -99,12 +99,14 @@ module Of_sexp : sig
     -> ('a -> 'b, 'c) Constructor_args_spec.t
 
   val cstr : string -> ('a, 'b) Constructor_args_spec.t -> 'a -> 'b Constructor_spec.t
-  val cstr_rest
-    :  string
+  val cstr_rest :
+    string
     -> ('a, 'b list -> 'c) Constructor_args_spec.t
     -> 'b t
     -> 'a
     -> 'c Constructor_spec.t
+
+  val cstr_record : string -> 'a record_parser -> 'a Constructor_spec.t
 
   val cstr_loc
     :  string

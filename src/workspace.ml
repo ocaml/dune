@@ -25,7 +25,7 @@ module Context = struct
     let t =
       field   "switch"  string                                    >>= fun switch ->
       field   "name"    string ~default:switch                    >>= fun name ->
-      field   "targets" (list Target.t) ~default:[]               >>= fun targets ->
+      field   "targets" (list Target.t) ~default:[Target.Native]  >>= fun targets ->
       field_o "root"    string                                    >>= fun root ->
       field_b "merlin"                                            >>= fun merlin ->
       return { switch
@@ -44,7 +44,7 @@ module Context = struct
     | sexp ->
       sum
         [ cstr_record "default"
-            (field "targets" (list Target.t) ~default:[]
+            (field "targets" (list Target.t) ~default:[Target.Native]
              >>= fun targets ->
              return (Default targets))
         ; cstr_record "opam"
@@ -72,7 +72,7 @@ type t =
   ; contexts       : Context.t list
   }
 
-let t sexps =
+let t ?x sexps =
   let defined_names = ref String_set.empty in
   let merlin_ctx, contexts =
     List.fold_left sexps ~init:(None, []) ~f:(fun (merlin_ctx, ctxs) sexp ->
@@ -80,6 +80,15 @@ let t sexps =
         sum
           [ cstr "context" (Context.t @> nil) (fun x -> x) ]
           sexp
+      in
+      let ctx =
+        match x with
+        | None -> ctx
+        | Some s ->
+          let target = Context.Target.Named s in
+          match ctx with
+          | Default targets -> Default (targets @ [target])
+          | Opam o -> Opam { o with targets = o.targets @ [target] }
       in
       let name = Context.name ctx in
       if name = "" ||
@@ -118,4 +127,4 @@ let t sexps =
   ; contexts       = List.rev contexts
   }
 
-let load fn = t (Sexp_lexer.Load.many fn)
+let load ?x fn = t ?x (Sexp_lexer.Load.many fn)

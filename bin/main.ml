@@ -40,7 +40,6 @@ let set_common c ~targets =
   if c.root <> Filename.current_dir_name then
     Sys.chdir c.root;
   Clflags.workspace_root := Sys.getcwd ();
-  Clflags.x := c.x;
   Clflags.install_prefix := c.install_prefix;
   Clflags.external_lib_deps_hint :=
     List.concat
@@ -78,7 +77,9 @@ module Main = struct
       ?unlink_aliases
       ?workspace_file:common.workspace_file
       ?only_packages:common.only_packages
-      ?filter_out_optional_stanzas_with_missing_deps ()
+      ?filter_out_optional_stanzas_with_missing_deps
+      ?x:common.x
+      ()
 end
 
 type target =

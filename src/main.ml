@@ -13,7 +13,7 @@ let package_install_file { packages; _ } pkg =
   match String_map.find pkg packages with
   | None -> Error ()
   | Some p ->
-    Ok (Path.relative p.path (Utils.install_file ~package:p.name))
+    Ok (Path.relative p.path (Utils.install_file ~package:p.name ~findlib_toolchain:None))
 
 let setup ?(log=Log.no_log) ?unlink_aliases
       ?filter_out_optional_stanzas_with_missing_deps
@@ -21,6 +21,7 @@ let setup ?(log=Log.no_log) ?unlink_aliases
       ?(use_findlib=true)
       ?only_packages
       ?extra_ignored_subtrees
+      ?x
       () =
   let conf = Jbuild_load.load ?extra_ignored_subtrees () in
   Option.iter only_packages ~f:(fun set ->
@@ -34,9 +35,15 @@ let setup ?(log=Log.no_log) ?unlink_aliases
     | Some w -> w
     | None ->
       if Sys.file_exists workspace_file then
-        Workspace.load workspace_file
+        Workspace.load ?x workspace_file
       else
-        { merlin_context = Some "default"; contexts = [Default [Native]] }
+        { merlin_context = Some "default"
+        ; contexts = [Default [
+            match x with
+            | None -> Native
+            | Some x -> Named x
+          ]]
+        }
   in
 
   Future.all (

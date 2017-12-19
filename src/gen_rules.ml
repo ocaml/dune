@@ -1057,7 +1057,7 @@ Add it to your jbuild file to remove this warning.
     in
     let fn =
       Path.relative (Path.append ctx.build_dir package_path)
-        (Utils.install_file ~package)
+        (Utils.install_file ~package ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let entries = local_install_rules entries ~package in
     SC.add_rule sctx
@@ -1098,7 +1098,7 @@ Add it to your jbuild file to remove this warning.
     if not ctx.implicit then
       String_map.iter (SC.packages sctx)
         ~f:(fun ~key:pkg ~data:{ Package.path = src_path; _ } ->
-          let install_fn = Utils.install_file ~package:pkg in
+          let install_fn = Utils.install_file ~package:pkg ~findlib_toolchain:ctx.findlib_toolchain in
 
           let ctx_path = Path.append ctx.build_dir src_path in
           let ctx_install_alias = Alias.install ~dir:ctx_path in

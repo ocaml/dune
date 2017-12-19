@@ -43,7 +43,7 @@ val find_deps   : dir:Path.t -> 'a String_map.t -> string -> 'a
 *)
 val obj_name_of_basename : string -> string
 
-val install_file : package:string -> string
+val install_file : package:string -> findlib_toolchain:string option -> string
 
 (** Digest files with caching *)
 module Cached_digest : sig

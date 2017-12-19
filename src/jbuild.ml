@@ -599,6 +599,11 @@ module Library = struct
 
   let all_lib_deps t =
     List.map t.virtual_deps ~f:(fun s -> Lib_dep.Direct s) @ t.buildable.libraries
+
+  let best_name t =
+    match t.public with
+    | None -> t.name
+    | Some p -> p.name
 end
 
 module Install_conf = struct

@@ -1116,13 +1116,8 @@ end
 let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
       ?only_packages ?(unlink_aliases=[]) conf =
   let open Future in
-  let { Jbuild_load. file_tree; jbuilds; packages } = conf in
+  let { Jbuild_load. file_tree; jbuilds; packages; scopes } = conf in
   let aliases = Alias.Store.create () in
-  let dirs_with_dot_opam_files =
-    String_map.fold packages ~init:Path.Set.empty
-      ~f:(fun ~key:_ ~data:{ Package. path; _ } acc ->
-        Path.Set.add path acc)
-  in
   let packages =
     match only_packages with
     | None -> packages
@@ -1138,7 +1133,8 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
       let host =
         match context.for_host with
         | None -> Future.return None
-        | Some h -> make_sctx h >>| (fun (sctx, _) -> Some sctx) in
+        | Some h -> make_sctx h >>| (fun (sctx, _) -> Some sctx)
+      in
       let stanzas =
         Jbuild_load.Jbuilds.eval ~context jbuilds >>| fun stanzas ->
         match only_packages with
@@ -1153,14 +1149,15 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
                | Alias { package = Some package ;  _ }
                | Install { package; _ } ->
                  String_set.mem package.name pkgs
-               | _ -> true))) in
+               | _ -> true)))
+      in
       Future.both host stanzas >>| fun (host, stanzas) ->
       let sctx =
         Super_context.create
           ?host
           ~context
           ~aliases
-          ~dirs_with_dot_opam_files
+          ~scopes
           ~file_tree
           ~packages
           ~filter_out_optional_stanzas_with_missing_deps
@@ -1175,7 +1172,8 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
   let rules, context_names_and_stanzas =
     List.map l ~f:(fun (sctx, stanzas) ->
       (Super_context.rules sctx, ((Super_context.context sctx).name, stanzas)))
-    |> List.split in
+    |> List.split
+  in
   Alias.Store.unlink aliases unlink_aliases;
   (Alias.rules aliases @ List.concat rules,
    String_map.of_alist_exn context_names_and_stanzas)

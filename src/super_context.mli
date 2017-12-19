@@ -24,7 +24,7 @@ val create
   :  context:Context.t
   -> ?host:t
   -> aliases:Alias.Store.t
-  -> dirs_with_dot_opam_files:Path.Set.t
+  -> scopes:Scope.t list
   -> file_tree:File_tree.t
   -> packages:Package.t String_map.t
   -> stanzas:(Path.t * Scope.t * Stanzas.t) list
@@ -71,6 +71,9 @@ val resolve_program
   -> ?hint:string
   -> string
   -> Action.Prog.t
+
+(** Unique name, even for internal libraries *)
+val unique_library_name : t -> Lib.t -> string
 
 module Libs : sig
   val find : t -> from:Path.t -> string -> Lib.t option

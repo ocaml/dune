@@ -9,7 +9,7 @@ type t
 
 val create
   :  Findlib.t
-  -> dirs_with_dot_opam_files:Path.Set.t
+  -> scopes:Jbuild.Scope.t list
   -> (Path.t * Jbuild.Library.t) list
   -> t
 
@@ -39,3 +39,6 @@ val lib_is_available : t -> from:Path.t -> string -> bool
 
 (** For [Findlib.closure] *)
 val local_public_libs : t -> Path.t String_map.t
+
+(** Unique name, even for internal libraries *)
+val unique_library_name : t -> Lib.t -> string

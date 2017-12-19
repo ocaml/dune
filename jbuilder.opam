@@ -10,6 +10,9 @@ build: [
   ["./boot.exe" "--subst"] {pinned}
   ["./boot.exe" "-j" jobs]
 ]
+build-test: [
+  ["./_build/default/bin/main.exe" "runtest" "-p" name "-j" jobs]
+]
 depends: [
   # ocamlfind is not mandatory to build packages using
   # jbuilder. However if it is present jbuilder will use it.  Making
@@ -18,5 +21,10 @@ depends: [
   # it is only a runtime dependency so that reinstalling ocamlfind
   # doesn't resintall jbuilder
   "ocamlfind" {build}
+  "menhir" {test}
+  "reason" {test}
+  "ocaml-migrate-parsetree" {test}
+  "odoc" {test}
+  "js_of_ocaml-compiler" {test}
 ]
 available: [ ocaml-version >= "4.02.3" ]

@@ -1,20 +1,31 @@
   $ $JBUILDER runtest -j1 --root .
          refmt bar.re.ml
+      ocamldep pp/reasononlypp.depends.ocamldep-output
          refmt hello.re.ml
          refmt pped.re.ml
         ocamlc rlib.{cmi,cmo,cmt}
          refmt foo.re.mli
          refmt hello.re.mli
          refmt pped.re.mli
-      ocamldep rlib.depends.ocamldep-output
+        ocamlc pp/reasononlypp.{cmi,cmo,cmt}
       ocamlopt rlib.{cmx,o}
+      ocamlopt pp/reasononlypp.{cmx,o}
+      ocamlopt pp/reasononlypp.exe
+  reasononlypp cppome.pp.re
+  reasononlypp cppome.pp.rei
+         refmt cppome.pp.re.ml
+         refmt cppome.pp.re.mli
+      ocamldep rlib.depends.ocamldep-output
       ocamldep rlib.dependsi.ocamldep-output
         ocamlc rlib__Bar.{cmi,cmti}
+        ocamlc rlib__Cppome.{cmi,cmti}
         ocamlc rlib__Foo.{cmi,cmti}
         ocamlc rlib__Hello.{cmi,cmti}
         ocamlc rlib__Pped.{cmi,cmti}
         ocamlc rlib__Bar.{cmo,cmt}
       ocamlopt rlib__Bar.{cmx,o}
+        ocamlc rlib__Cppome.{cmo,cmt}
+      ocamlopt rlib__Cppome.{cmx,o}
         ocamlc rlib__Foo.{cmo,cmt}
       ocamlopt rlib__Foo.{cmx,o}
         ocamlc rlib__Hello.{cmo,cmt}
@@ -32,6 +43,11 @@
     "_build/install/default/lib/rlib/rlib__Bar.cmt"
     "_build/install/default/lib/rlib/rlib__Bar.cmti"
     "_build/install/default/lib/rlib/bar.mli"
+    "_build/install/default/lib/rlib/rlib__Cppome.cmi"
+    "_build/install/default/lib/rlib/rlib__Cppome.cmx"
+    "_build/install/default/lib/rlib/rlib__Cppome.cmt"
+    "_build/install/default/lib/rlib/rlib__Cppome.cmti"
+    "_build/install/default/lib/rlib/cppome.rei"
     "_build/install/default/lib/rlib/rlib__Foo.cmi"
     "_build/install/default/lib/rlib/rlib__Foo.cmx"
     "_build/install/default/lib/rlib/rlib__Foo.cmt"

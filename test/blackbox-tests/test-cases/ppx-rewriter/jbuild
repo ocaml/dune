@@ -1,0 +1,16 @@
+(jbuild_version 1)
+
+(executable
+ ((name w_omp_driver)
+  (modules (w_omp_driver))
+  (preprocess (pps (fooppx -flag (-arg omp))))))
+
+(executable
+ ((name w_ppx_driver)
+  (modules (w_ppx_driver))
+  (preprocess (pps (ppx_driver.runner)))))
+
+(executable
+ ((name w_ppx_driver_flags)
+  (modules (w_ppx_driver_flags))
+  (preprocess (pps (fooppx -flag (-arg omp) ppx_driver.runner)))))

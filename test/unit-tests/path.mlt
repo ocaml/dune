@@ -1,5 +1,4 @@
 (* -*- tuareg -*- *)
-
 open Jbuilder;;
 open Import;;
 
@@ -10,37 +9,23 @@ let r = Path.(relative root);;
 Path.(let p = relative root "foo" in descendant p ~of_:p)
 [%%expect{|
 val r : string -> Jbuilder.Path.t = <fun>
-Exception: Invalid_argument "String.sub / Bytes.sub".
-Raised at file "pervasives.ml", line 33, characters 25-45
-Called from file "string.ml", line 47, characters 2-23
-Called from file "src/path.ml", line 193, characters 13-71
-Called from file "toplevel/toploop.ml", line 180, characters 17-56
+- : Jbuilder.Path.t option = Some foo
 |}]
 
 (* different strings but same length *)
 Path.(descendant (relative root "foo") ~of_:(relative root "bar"))
 [%%expect{|
-Exception: Invalid_argument "index out of bounds".
-Raised by primitive operation at file "src/path.ml", line 192, characters 29-39
-Called from file "toplevel/toploop.ml", line 180, characters 17-56
+- : Jbuilder.Path.t option = None
 |}]
 
 Path.(descendant (r "foo") ~of_:(r "foo/"))
 [%%expect{|
-Exception: Invalid_argument "String.sub / Bytes.sub".
-Raised at file "pervasives.ml", line 33, characters 25-45
-Called from file "string.ml", line 47, characters 2-23
-Called from file "src/path.ml", line 193, characters 13-71
-Called from file "toplevel/toploop.ml", line 180, characters 17-56
+- : Jbuilder.Path.t option = Some foo
 |}]
 
 Path.(descendant (r "foo/") ~of_:(r "foo"))
 [%%expect{|
-Exception: Invalid_argument "String.sub / Bytes.sub".
-Raised at file "pervasives.ml", line 33, characters 25-45
-Called from file "string.ml", line 47, characters 2-23
-Called from file "src/path.ml", line 193, characters 13-71
-Called from file "toplevel/toploop.ml", line 180, characters 17-56
+- : Jbuilder.Path.t option = Some foo
 |}]
 
 Path.(descendant (r "foo/bar") ~of_:(r "foo"))

@@ -256,8 +256,6 @@ let builtins ~stdlib_dir ~version:ocaml_version =
         ; requires ~preds:[Pos "mt"; Pos "mt_posix"] ["threads.posix"]
         ; directory "+"
         ; rule "type_of_threads" [] Set "posix"
-        ; rule "error" [Neg "mt"] Set "Missing -thread or -vmthread switch"
-        ; rule "error" [Neg "mt_vm"; Neg "mt_posix"] Set "Missing -thread or -vmthread switch"
         ; Package (simple "vm" ["unix"] ~dir:"+vmthreads" ~archive_name:"threads")
         ; Package (simple "posix" ["unix"] ~dir:"+threads" ~archive_name:"threads")
         ]

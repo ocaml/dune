@@ -220,8 +220,10 @@ module Var_expansion = struct
     | Paths   (l, Split ) -> List.map l ~f:(string_of_path ~dir)
     | Paths   (l, Concat) -> [concat (List.map l ~f:(string_of_path ~dir))]
 
+  exception Split
+
   let to_string ~dir = function
-    | Strings (_, Split) | Paths (_, Split) -> assert false
+    | Strings (_, Split) | Paths (_, Split) -> raise Split
     | Strings (l, Concat) -> concat l
     | Paths   (l, Concat) -> concat (List.map l ~f:(string_of_path ~dir))
 
@@ -376,7 +378,13 @@ module Unexpanded = struct
       SW.partial_expand template ~f:(fun loc var ->
         match f loc var with
         | None   -> None
-        | Some e -> Some (VE.to_string ~dir e))
+        | Some e ->
+           try Some (VE.to_string ~dir e)
+           with VE.Split ->
+             let var' = String.sub var ~pos:1 ~len:(String.length var - 1) in
+             let msg = sprintf "${%s} is a list and so cannot be used in a \
+                                string (did you mean just ${%s}?)" var var' in
+             raise(Loc.Error (loc, msg)))
 
     let expand ~generic ~special ~dir ~f template =
       match SW.just_a_var template with

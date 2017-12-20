@@ -1,4 +1,4 @@
-  $ $JBUILDER runtest -j1 --root .
+  $ $JBUILDER build @runtest @install-file -j1 --root .
          refmt bar.re.ml
       ocamldep pp/reasononlypp.depends.ocamldep-output
       ocamldep ppx/reasonppx.depends.ocamldep-output
@@ -17,13 +17,16 @@
       ocamlopt ppx/reasonppx.{a,cmxa}
   reasononlypp cppome.pp.re
   reasononlypp cppome.pp.rei
+  reasononlypp rbin.pp.re
       ocamlopt .ppx/reasonppx/ppx.exe
          refmt cppome.pp.re.ml
          refmt cppome.pp.re.mli
+         refmt rbin.pp.re.ml
            ppx foo.pp.ml
            ppx hello.re.pp.ml
            ppx foo.re.pp.mli
            ppx hello.re.pp.mli
+      ocamldep rbin.depends.ocamldep-output
       ocamldep rlib.depends.ocamldep-output
       ocamldep rlib.dependsi.ocamldep-output
         ocamlc rlib__Bar.{cmi,cmti}
@@ -41,8 +44,10 @@
       ocamlopt rlib__Hello.{cmx,o}
         ocamlc rlib__Pped.{cmo,cmt}
       ocamlopt rlib__Pped.{cmx,o}
+        ocamlc rbin.{cmi,cmo,cmt}
         ocamlc rlib.cma
       ocamlopt rlib.{a,cmxa}
+      ocamlopt rbin.{cmx,o}
       ocamlopt rlib.cmxs
   lib: [
     "_build/install/default/lib/rlib/META" {"META"}
@@ -81,3 +86,9 @@
     "_build/install/default/lib/rlib/rlib.a"
     "_build/install/default/lib/rlib/rlib.cmxs"
   ]
+      ocamlopt rbin.exe
+          rbin alias runtest
+  Cppome
+  hello world
+  Bar
+  Foo

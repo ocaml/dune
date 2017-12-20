@@ -1,1 +1,1 @@
-let y = () => 42;
+let run = () => print_endline("Bar");

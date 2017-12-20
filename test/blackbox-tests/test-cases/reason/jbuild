@@ -6,14 +6,26 @@
 (library
  ((name rlib)
   (public_name rlib)
+  (modules (bar cppome foo hello pped))
   (preprocess
    (per_module
     ((pps (reasonppx)) (foo))
     ((pps (reasonppx (-lint false))) (hello))
     ((action (run ./pp/reasononlypp.exe ${<})) (cppome))))))
 
+(executable
+ ((name rbin)
+  (modules (rbin))
+  (preprocess (action (run ./pp/reasononlypp.exe ${<})))
+  (libraries (rlib))))
+
 ;; we want to make sure that .rei files are present
 (alias
- ((name runtest)
+ ((name install-file)
   (deps (rlib.install))
   (action (echo "${read:rlib.install}"))))
+
+(alias
+ ((name runtest)
+  (deps (rbin.exe))
+  (action (run ${<}))))

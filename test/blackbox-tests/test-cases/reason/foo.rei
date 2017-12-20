@@ -1,1 +1,1 @@
-let x : int
+let run : unit => unit;

@@ -19,12 +19,18 @@ next
   absolute path but with the context's environment set appropriately. Lastly,
   `jbuilder exec` will change the root as to which paths are relative using the
   `-root` option. (#286)
-  
+
 - Fix `jbuilder rules` printing rules when some binaries are missing (#292)
 
 - Build documentation for non public libraries (#306)
 
 - Fix doc generation when several private libraries have the same name (#369)
+
+- Add support for cross-compilation. Currently we are supporting the
+  opam-cross-x repositories such as
+  [opam-cross-windows](https://github.com/whitequark/opam-cross-windows)
+  (#355)
+
 
 1.0+beta16 (05/11/2017)
 -----------------------

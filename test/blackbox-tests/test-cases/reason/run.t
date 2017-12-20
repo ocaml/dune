@@ -86,9 +86,3 @@
     "_build/install/default/lib/rlib/rlib.a"
     "_build/install/default/lib/rlib/rlib.cmxs"
   ]
-      ocamlopt rbin.exe
-          rbin alias runtest
-  Cppome
-  hello world
-  Bar
-  Foo

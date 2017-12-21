@@ -12,7 +12,8 @@ type setup =
 let package_install_file { packages; _ } pkg =
   match String_map.find pkg packages with
   | None -> Error ()
-  | Some p -> Ok (Path.relative p.path (p.name ^ ".install"))
+  | Some p ->
+    Ok (Path.relative p.path (Utils.install_file ~package:p.name ~findlib_toolchain:None))
 
 let setup ?(log=Log.no_log) ?unlink_aliases
       ?filter_out_optional_stanzas_with_missing_deps
@@ -20,6 +21,7 @@ let setup ?(log=Log.no_log) ?unlink_aliases
       ?(use_findlib=true)
       ?only_packages
       ?extra_ignored_subtrees
+      ?x
       () =
   let conf = Jbuild_load.load ?extra_ignored_subtrees () in
   Option.iter only_packages ~f:(fun set ->
@@ -33,26 +35,34 @@ let setup ?(log=Log.no_log) ?unlink_aliases
     | Some w -> w
     | None ->
       if Sys.file_exists workspace_file then
-        Workspace.load workspace_file
+        Workspace.load ?x workspace_file
       else
-        { merlin_context = Some "default"; contexts = [Default] }
+        { merlin_context = Some "default"
+        ; contexts = [Default [
+            match x with
+            | None -> Native
+            | Some x -> Named x
+          ]]
+        }
   in
-  Future.all
-    (List.map workspace.contexts ~f:(function
-     | Workspace.Context.Default ->
-       Context.default ~merlin:(workspace.merlin_context = Some "default")
-         ~use_findlib ()
-     | Opam { name; switch; root; merlin } ->
-       Context.create_for_opam ~name ~switch ?root ~merlin ()))
+
+  Future.all (
+    List.map workspace.contexts ~f:(fun ctx_def ->
+      let name = Workspace.Context.name ctx_def in
+      Context.create ctx_def ~merlin:(workspace.merlin_context = Some name) ~use_findlib)
+  )
   >>= fun contexts ->
-  List.iter contexts ~f:(fun ctx ->
+  let contexts = List.concat contexts in
+  List.iter contexts ~f:(fun (ctx : Context.t) ->
     Log.infof log "@[<1>Jbuilder context:@,%a@]@." Sexp.pp (Context.sexp_of_t ctx));
-  Gen_rules.gen conf ~contexts
+  Gen_rules.gen conf
+    ~contexts
     ?unlink_aliases
     ?only_packages
     ?filter_out_optional_stanzas_with_missing_deps
   >>= fun (rules, stanzas) ->
-  let build_system = Build_system.create ~contexts ~file_tree:conf.file_tree ~rules in
+  let build_system = Build_system.create ~contexts
+                       ~file_tree:conf.file_tree ~rules in
   return { build_system
          ; stanzas
          ; contexts
@@ -211,7 +221,7 @@ let bootstrap () =
     Clflags.debug_dep_path := true;
     let log = Log.create () in
     Future.Scheduler.go ~log
-      (setup ~log ~workspace:{ merlin_context = Some "default"; contexts = [Default] }
+      (setup ~log ~workspace:{ merlin_context = Some "default"; contexts = [Default [Native]] }
          ~use_findlib:false
          ~extra_ignored_subtrees:ignored_during_bootstrap
          ()

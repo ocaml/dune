@@ -22,6 +22,7 @@ val setup
   -> ?workspace:Workspace.t
   -> ?workspace_file:string
   -> ?only_packages:String_set.t
+  -> ?x:string
   -> unit
   -> setup Future.t
 val external_lib_deps

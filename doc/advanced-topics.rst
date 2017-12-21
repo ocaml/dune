@@ -102,6 +102,99 @@ set of predicates:
   it is linked as part of a driver or meant to add a ``-ppx`` argument
   to the compiler, choose the former behavior
 
+Cross Compilation
+=================
+
+Jbuilder allows for cross compilation by defining build contexts with
+multiple targets. Targets are specified by adding a ``targets`` field
+to the definition of a build context.
+
+``targets`` takes a list of target name. It can be either:
+
+- ``native`` which means using the native tools that can build
+  binaries that run on the machine doing the build
+
+- the name of an alternative toolchain
+
+Note that at the moment, there is no official support for
+cross-compilation in OCaml. Jbuilder supports the two following
+opam-cross-x repositories:
+
+- `opam-cross-windows <https://github.com/whitequark/opam-cross-windows>`_
+- `opam-cross-android <https://github.com/whitequark/opam-cross-android>`_
+
+To build Windows binaries using opam-cross-windows, write ``windows``
+in the list of targets. To build Android binaries using
+opam-cross-android, write ``android`` in the list of targets.
+
+For example, the following workspace file defines three different
+targets for the ``default`` build context:
+
+.. code:: scheme
+
+    (context (default (targets (native windows android))))
+
+This configuration defines three build contexts:
+
+- ``default``
+- ``default.windows``
+- ``default.android``
+
+Note that the ``native`` target is always implicitly added when not
+present. However, when implicitly added ``jbuilder build @install``
+will skip this context, i.e. ``default`` will only be used for
+building executables needed by the other contexts.
+
+With such a setup, calling ``jbuilder build @install`` will build all
+the packages three times.
+
+Note that instead of writing a ``jbuild-workspace`` file, you can also
+use the ``-x`` command line option. Passing ``-x foo`` to ``jbuilder``
+without having a ``jbuild-workspace`` file is the same as writing the
+following ``jbuild-workspace`` file:
+
+.. code:: scheme
+
+   (context (default (targets (foo))))
+
+If you have a ``jbuild-workspace`` and pass a ``-x foo`` option,
+``foo`` will be added as target of all context stanzas.
+
+How does it work?
+-----------------
+
+In such a setup, binaries that need to be built and executed in the
+``default.windows`` or ``default.android`` contexts as part of the
+build, will no longer be executed. Instead, all the binaries that will
+be executed will come from the ``default`` context. One consequence of
+this is that all preprocessing (ppx or otherwise) will be done using
+binaries built in the ``default`` context.
+
+To clarify this with an example, let's assume that you have the
+following ``src/jbuild`` file:
+
+.. code:: scheme
+
+    (executable ((name foo)))
+    (rule (with-stdout-to blah (run ./foo.exe)))
+
+When building ``_build/default/src/blah``, jbuilder will resolve ``./foo.exe`` to
+``_build/default/src/foo.exe`` as expected. However, for
+``_build/default.windows/src/blah`` jbuilder will resolve ``./foo.exe`` to
+``_build/default/src/foo.exe``
+
+Assuming that the right packages are installed or that your workspace
+has no external dependencies, jbuilder will be able to cross-compile a
+given package without doing anything special.
+
+Some packages might still have to be updated to support cross-compilation. For
+instance if the ``foo.exe`` program in the previous example was using
+``Sys.os_type``, it should instead take it as a command line argument:
+
+.. code:: scheme
+
+  (rule (with-stdout-to blah (run ./foo.exe -os-type ${os_type})))
+
 Classical ppx
 =============
 

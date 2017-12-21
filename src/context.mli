@@ -48,6 +48,10 @@ type t =
         building tools used for the compilation that run on the host. *)
     for_host : t option
 
+  ; (** [false] if a user explicitly listed this context in the workspace.
+        Controls whether we add artifacts from this context @install *)
+    implicit : bool
+
   ; (** Directory where artifact are stored, for instance "_build/default" *)
     build_dir : Path.t
 
@@ -72,6 +76,7 @@ type t =
     env_extra : string Env_var_map.t
 
   ; findlib : Findlib.t
+  ; findlib_toolchain : string option
 
   ; (** Misc *)
     arch_sixtyfour : bool
@@ -124,18 +129,14 @@ val sexp_of_t : t -> Sexp.t
 (** Compare the context names *)
 val compare : t -> t -> int
 
-val create_for_opam
-  :  ?root:string
-  -> switch:string
-  -> name:string
-  -> ?merlin:bool
-  -> unit
-  -> t Future.t
-
 (** If [use_findlib] is [false], don't try to guess the library search path with opam or
     ocamlfind. This is only for building jbuilder itself, so that its build is completely
     independent of the user setup. *)
-val default : ?merlin:bool -> ?use_findlib:bool -> unit -> t Future.t
+val create
+  :  ?use_findlib:bool
+  -> ?merlin:bool
+  -> Workspace.Context.t
+  -> t list Future.t
 
 val which : t -> string -> Path.t option
 

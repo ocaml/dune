@@ -82,3 +82,9 @@ val all_packages  : t -> package list
 val all_unavailable_packages : t -> Package_not_available.t list
 
 val stdlib_with_archives : t -> package
+
+module Config : sig
+  type t
+  val load : Path.t -> toolchain:string -> context:string -> t
+  val get : t -> string -> string
+end

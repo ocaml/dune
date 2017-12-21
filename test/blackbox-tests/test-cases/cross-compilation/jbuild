@@ -1,0 +1,3 @@
+(jbuild_version 1)
+
+(rule (with-stdout-to file (run ./bin/blah.exe)))

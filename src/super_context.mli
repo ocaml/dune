@@ -22,6 +22,7 @@ type t
 
 val create
   :  context:Context.t
+  -> ?host:t
   -> aliases:Alias.Store.t
   -> scopes:Scope.t list
   -> file_tree:File_tree.t

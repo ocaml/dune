@@ -327,23 +327,28 @@ module Unexpanded = struct
           ~map:(fun x -> (x, []))
     end
 
-    let rec expand dir t ~f : Unresolved.t =
+    let rec expand t ~dir ~map_exe ~f : Unresolved.t =
       match t with
       | Run (prog, args) ->
         let args = List.concat_map args ~f:(E.strings ~dir ~f) in
         let prog, more_args = E.prog_and_args ~dir ~f prog in
+        let prog =
+          match prog with
+          | Search _ -> prog
+          | This path -> This (map_exe path)
+        in
         Run (prog, more_args @ args)
       | Chdir (fn, t) ->
         let fn = E.path ~dir ~f fn in
-        Chdir (fn, expand fn t ~f)
+        Chdir (fn, expand t ~dir:fn ~map_exe ~f)
       | Setenv (var, value, t) ->
         Setenv (E.string ~dir ~f var, E.string ~dir ~f value,
-                expand dir t ~f)
+                expand t ~dir ~map_exe ~f)
       | Redirect (outputs, fn, t) ->
-        Redirect (outputs, E.path ~dir ~f fn, expand dir t ~f)
+        Redirect (outputs, E.path ~dir ~f fn, expand t ~dir ~map_exe ~f)
       | Ignore (outputs, t) ->
-        Ignore (outputs, expand dir t ~f)
-      | Progn l -> Progn (List.map l ~f:(fun t -> expand dir t ~f))
+        Ignore (outputs, expand t ~dir ~map_exe ~f)
+      | Progn l -> Progn (List.map l ~f:(fun t -> expand t ~dir ~map_exe ~f))
       | Echo x -> Echo (E.string ~dir ~f x)
       | Cat x -> Cat (E.path ~dir ~f x)
       | Copy (x, y) ->
@@ -406,7 +411,7 @@ module Unexpanded = struct
         ~special:VE.to_prog_and_args
   end
 
-  let rec partial_expand dir t ~f : Partial.t =
+  let rec partial_expand t ~dir ~map_exe ~f : Partial.t =
     match t with
     | Run (prog, args) ->
       let args =
@@ -419,6 +424,11 @@ module Unexpanded = struct
         match E.prog_and_args ~dir ~f prog with
         | Inl (prog, more_args) ->
           let more_args = List.map more_args ~f:(fun x -> Inl x) in
+          let prog =
+            match prog with
+            | Search _ -> prog
+            | This path -> This (map_exe path)
+          in
           Run (Inl prog, more_args @ args)
         | Inr _ as prog ->
           Run (prog, args)
@@ -427,7 +437,7 @@ module Unexpanded = struct
         let res = E.path ~dir ~f fn in
         match res with
         | Inl dir ->
-          Chdir (res, partial_expand dir t ~f)
+          Chdir (res, partial_expand t ~dir ~map_exe ~f)
         | Inr fn ->
           let loc = SW.loc fn in
           Loc.fail loc
@@ -436,12 +446,12 @@ module Unexpanded = struct
       end
     | Setenv (var, value, t) ->
       Setenv (E.string ~dir ~f var, E.string ~dir ~f value,
-              partial_expand dir t ~f)
+              partial_expand t ~dir ~map_exe ~f)
     | Redirect (outputs, fn, t) ->
-      Redirect (outputs, E.path ~dir ~f fn, partial_expand dir t ~f)
+      Redirect (outputs, E.path ~dir ~f fn, partial_expand t ~dir ~map_exe ~f)
     | Ignore (outputs, t) ->
-      Ignore (outputs, partial_expand dir t ~f)
-    | Progn l -> Progn (List.map l ~f:(fun t -> partial_expand dir t ~f))
+      Ignore (outputs, partial_expand t ~dir ~map_exe ~f)
+    | Progn l -> Progn (List.map l ~f:(fun t -> partial_expand t ~dir ~map_exe ~f))
     | Echo x -> Echo (E.string ~dir ~f x)
     | Cat x -> Cat (E.path ~dir ~f x)
     | Copy (x, y) ->
@@ -525,6 +535,20 @@ type exec_context =
   }
 
 let run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
+  begin match ectx.context with
+   | None
+   | Some { Context.for_host = None; _ } -> ()
+   | Some ({ Context.for_host = Some host; _ } as target) ->
+     let invalid_prefix prefix =
+       match Path.descendant prog ~of_:(Path.of_string prefix) with
+       | None -> ()
+       | Some _ ->
+         die "Context %s has a host %s.@.It's not possible to execute binary %a \
+              in it.@.@.This is a bug and should be reported upstream."
+           target.name host.name Path.pp prog in
+     invalid_prefix ("_build/" ^ target.name);
+     invalid_prefix ("_build/install/" ^ target.name);
+  end;
   let stdout_to = get_std_output stdout_to in
   let stderr_to = get_std_output stderr_to in
   let env = Context.extend_env ~vars:env_extra ~env:ectx.env in

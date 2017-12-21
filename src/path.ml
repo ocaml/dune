@@ -429,3 +429,13 @@ let change_extension ~ext t =
 let extension = Filename.extension
 
 let pp = Format.pp_print_string
+
+let drop_prefix t ~prefix =
+  let t = to_string t in
+  let prefix =
+    to_string (
+      if String.is_suffix prefix ~suffix:"/" then
+        prefix
+      else
+        prefix ^ "/") in
+  String.drop_prefix t ~prefix

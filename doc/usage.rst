@@ -334,9 +334,9 @@ a typical ``jbuild-workspace`` file looks like:
 
 .. code:: scheme
 
-    (context ((switch 4.02.3)))
-    (context ((switch 4.03.0)))
-    (context ((switch 4.04.0)))
+    (context (opam (switch 4.02.3)))
+    (context (opam (switch 4.03.0)))
+    (context (opam (switch 4.04.0)))
 
 The rest of this section describe the stanzas available.
 
@@ -354,13 +354,13 @@ context
 ~~~~~~~
 
 The ``(context ...)`` stanza declares a build context. The argument
-can be either ``default`` for the default build context or can be the
-description of an opam switch, as follows:
+can be either ``default`` or ``(default)`` for the default build
+context or can be the description of an opam switch, as follows:
 
 .. code:: scheme
 
-    (context ((switch <opam-switch-name>)
-              <optional-fields>))
+    (context (opam (switch <opam-switch-name>)
+                   <optional-fields>))
 
 ``<optional-fields>`` are:
 
@@ -374,6 +374,10 @@ description of an opam switch, as follows:
 - ``(merlin)`` instructs Jbuilder to use this build context for
    merlin
 
+Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field
+in order to setup cross compilation. See `Cross Compilation`_ for more
+information.
+
 Merlin reads compilation artifacts and it can only read the
 compilation artifacts of a single context.  Usually, you should use
 the artifacts from the ``default`` context, and if you have the
@@ -383,6 +387,15 @@ is the one Jbuilder will use.
 For rare cases where this is not what you want, you can force Jbuilder
 to use a different build contexts for merlin by adding the field
 ``(merlin)`` to this context.
+
+Note that the following syntax is still accepted but is deprecated:
+
+.. code:: scheme
+
+    (context ((switch <opam-switch-name>)
+              <optional-fields>))
+
+it is interpreted the same as ``(context (opam (switch ...) ...))``.
 
 Building JavaScript with js_of_ocaml
 ====================================

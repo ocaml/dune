@@ -1,0 +1,6 @@
+(jbuild_version 1)
+
+(executable
+ ((name blah)
+  (public_name blah)
+  (libraries (p))))

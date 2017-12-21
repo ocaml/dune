@@ -343,20 +343,35 @@ module Of_sexp = struct
   let ( @> ) a b = Constructor_args_spec.Cons (a, b)
 
   module Constructor_spec = struct
-    type ('a, 'b, 'c) unpacked =
+    type ('a, 'b, 'c) tuple =
       { name : string
       ; args : ('a, 'b) Constructor_args_spec.t
       ; rest : ('b, 'c) rest
       ; make : Loc.t -> 'a
       }
 
-    type 'a t = T : (_, _, 'a) unpacked -> 'a t
+    type 'a record =
+      { name  : string
+      ; parse : 'a record_parser
+      }
+
+    type 'a t =
+      | Tuple  : (_, _, 'a) tuple -> 'a t
+      | Record : 'a record        -> 'a t
+
+    let name = function
+      | Tuple  x -> x.name
+      | Record x -> x.name
   end
+  module C = Constructor_spec
 
   let cstr_loc name args make =
-    Constructor_spec.T { name; args; make; rest = No_rest }
+    C.Tuple { name; args; make; rest = No_rest }
   let cstr_rest_loc name args rest make =
-    Constructor_spec.T { name; args; make; rest = Many rest }
+    C.Tuple { name; args; make; rest = Many rest }
+
+  let cstr_record name parse =
+    C.Record { name; parse }
 
   let cstr name args make =
     cstr_loc name args (fun _ -> make)
@@ -368,8 +383,8 @@ module Of_sexp = struct
 
   let find_cstr cstrs sexp name =
     match
-      List.find cstrs ~f:(fun (Constructor_spec.T cstr) ->
-        equal_cstr_name cstr.name name)
+      List.find cstrs ~f:(fun cstr ->
+        equal_cstr_name (C.name cstr) name)
     with
     | Some cstr -> cstr
     | None ->
@@ -377,22 +392,24 @@ module Of_sexp = struct
         "Unknown constructor %s%s" name
         (hint
            (String.uncapitalize_ascii name)
-           (List.map cstrs ~f:(fun (Constructor_spec.T c) ->
-              String.uncapitalize_ascii c.name)))
+           (List.map cstrs ~f:(fun c ->
+              String.uncapitalize_ascii (C.name c))))
 
   let sum cstrs sexp =
     match sexp with
     | Atom (loc, s) -> begin
-        let (Constructor_spec.T c) = find_cstr cstrs sexp s in
-        Constructor_args_spec.convert c.args c.rest sexp [] (c.make loc)
+        match find_cstr cstrs sexp s with
+        | C.Tuple  t -> Constructor_args_spec.convert t.args t.rest sexp [] (t.make loc)
+        | C.Record _ -> of_sexp_error sexp "'%s' expect arguments"
       end
     | List (_, []) -> of_sexp_error sexp "non-empty list expected"
     | List (loc, name_sexp :: args) ->
       match name_sexp with
       | List _ -> of_sexp_error name_sexp "Atom expected"
       | Atom (_, s) ->
-        let (Constructor_spec.T c) = find_cstr cstrs sexp s in
-        Constructor_args_spec.convert c.args c.rest sexp args (c.make loc)
+        match find_cstr cstrs sexp s with
+        | C.Tuple  t -> Constructor_args_spec.convert t.args t.rest sexp args (t.make loc)
+        | C.Record r -> record r.parse (List (loc, args))
 
   let enum cstrs sexp =
     match sexp with

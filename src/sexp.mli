@@ -85,6 +85,8 @@ module Of_sexp : sig
     -> 'a
     -> 'c Constructor_spec.t
 
+  val cstr_record : string -> 'a record_parser -> 'a Constructor_spec.t
+
   val cstr_loc
     :  string
     -> ('a, 'b) Constructor_args_spec.t

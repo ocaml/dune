@@ -29,6 +29,7 @@ module Entry : sig
   val set_src : t -> Path.t -> t
 
   val relative_installed_path : t -> package:string -> Path.t
+  val add_install_prefix : t -> package:string -> prefix:Path.t -> t
 end
 
 val files : Entry.t list -> Path.Set.t

@@ -1057,12 +1057,21 @@ Add it to your jbuild file to remove this warning.
         entries
     in
     let fn =
-      Path.relative (Path.append ctx.build_dir package_path) (package ^ ".install")
+      Path.relative (Path.append ctx.build_dir package_path)
+        (Utils.install_file ~package ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let entries = local_install_rules entries ~package in
     SC.add_rule sctx
       (Build.path_set (Install.files entries)
        >>^ (fun () ->
+         let entries =
+           match ctx.findlib_toolchain with
+           | None -> entries
+           | Some toolchain ->
+             let prefix = Path.of_string (toolchain ^ "-sysroot") in
+             List.map entries
+               ~f:(Install.Entry.add_install_prefix ~prefix ~package)
+         in
          Install.gen_install_file entries)
        >>>
        Build.write_file_dyn fn)
@@ -1086,22 +1095,28 @@ Add it to your jbuild file to remove this warning.
       install_file pkg.path pkg.name stanzas)
 
   let () =
-    let is_default = Path.basename ctx.build_dir = "default" in
-    String_map.iter (SC.packages sctx)
-      ~f:(fun ~key:pkg ~data:{ Package.path = src_path; _ } ->
-        let install_fn = pkg ^ ".install" in
+    let copy_to_src =
+      not ctx.implicit &&
+      match ctx.kind with
+      | Default -> true
+      | Opam _  -> false
+    in
+    if not ctx.implicit then
+      String_map.iter (SC.packages sctx)
+        ~f:(fun ~key:pkg ~data:{ Package.path = src_path; _ } ->
+          let install_fn = Utils.install_file ~package:pkg ~findlib_toolchain:ctx.findlib_toolchain in
 
-        let ctx_path = Path.append ctx.build_dir src_path in
-        let ctx_install_alias = Alias.install ~dir:ctx_path in
-        let ctx_install_file = Path.relative ctx_path install_fn in
-        Alias.add_deps (SC.aliases sctx) ctx_install_alias [ctx_install_file];
+          let ctx_path = Path.append ctx.build_dir src_path in
+          let ctx_install_alias = Alias.install ~dir:ctx_path in
+          let ctx_install_file = Path.relative ctx_path install_fn in
+          Alias.add_deps (SC.aliases sctx) ctx_install_alias [ctx_install_file];
 
-        if is_default then begin
-          let src_install_alias = Alias.install ~dir:src_path in
-          let src_install_file = Path.relative src_path install_fn in
-          SC.add_rule sctx (Build.copy ~src:ctx_install_file ~dst:src_install_file);
-          Alias.add_deps (SC.aliases sctx) src_install_alias [src_install_file]
-        end)
+          if copy_to_src then begin
+            let src_install_alias = Alias.install ~dir:src_path in
+            let src_install_file = Path.relative src_path install_fn in
+            SC.add_rule sctx (Build.copy ~src:ctx_install_file ~dst:src_install_file);
+            Alias.add_deps (SC.aliases sctx) src_install_alias [src_install_file]
+          end)
 end
 
 let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
@@ -1116,38 +1131,55 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
       String_map.filter packages ~f:(fun _ { Package.name; _ } ->
         String_set.mem name pkgs)
   in
-  List.map contexts ~f:(fun context ->
-    Jbuild_load.Jbuilds.eval ~context jbuilds >>| fun stanzas ->
-    let stanzas =
-      match only_packages with
-      | None -> stanzas
-      | Some pkgs ->
-        List.map stanzas ~f:(fun (dir, pkgs_ctx, stanzas) ->
-          (dir,
-           pkgs_ctx,
-           List.filter stanzas ~f:(fun stanza ->
-             match (stanza : Stanza.t) with
-             | Library { public = Some { package; _ }; _ }
-             | Alias { package = Some package ;  _ }
-             | Install { package; _ } ->
-               String_set.mem package.name pkgs
-             | _ -> true)))
-    in
-    let sctx =
-      Super_context.create
-        ~context
-        ~aliases
-        ~scopes
-        ~file_tree
-        ~packages
-        ~filter_out_optional_stanzas_with_missing_deps
-        ~stanzas
-    in
-    let module M = Gen(struct let sctx = sctx end) in
-    (Super_context.rules sctx, (context.name, stanzas)))
+  let sctxs : (string, (Super_context.t * _)) Hashtbl.t = Hashtbl.create 4 in
+  let rec make_sctx (context : Context.t) : (_ * _) Future.t =
+    match Hashtbl.find sctxs context.name with
+    | Some r -> Future.return r
+    | None ->
+      let host =
+        match context.for_host with
+        | None -> Future.return None
+        | Some h -> make_sctx h >>| (fun (sctx, _) -> Some sctx)
+      in
+      let stanzas =
+        Jbuild_load.Jbuilds.eval ~context jbuilds >>| fun stanzas ->
+        match only_packages with
+        | None -> stanzas
+        | Some pkgs ->
+          List.map stanzas ~f:(fun (dir, pkgs_ctx, stanzas) ->
+            (dir,
+             pkgs_ctx,
+             List.filter stanzas ~f:(fun stanza ->
+               match (stanza : Stanza.t) with
+               | Library { public = Some { package; _ }; _ }
+               | Alias { package = Some package ;  _ }
+               | Install { package; _ } ->
+                 String_set.mem package.name pkgs
+               | _ -> true)))
+      in
+      Future.both host stanzas >>| fun (host, stanzas) ->
+      let sctx =
+        Super_context.create
+          ?host
+          ~context
+          ~aliases
+          ~scopes
+          ~file_tree
+          ~packages
+          ~filter_out_optional_stanzas_with_missing_deps
+          ~stanzas
+      in
+      let module M = Gen(struct let sctx = sctx end) in
+      Hashtbl.add sctxs ~key:context.name ~data:(sctx, stanzas);
+      (sctx, stanzas) in
+  List.map ~f:make_sctx contexts
   |> Future.all
   >>| fun l ->
-  let rules, context_names_and_stanzas = List.split l in
+  let rules, context_names_and_stanzas =
+    List.map l ~f:(fun (sctx, stanzas) ->
+      (Super_context.rules sctx, ((Super_context.context sctx).name, stanzas)))
+    |> List.split
+  in
   Alias.Store.unlink aliases unlink_aliases;
   (Alias.rules aliases @ List.concat rules,
    String_map.of_alist_exn context_names_and_stanzas)

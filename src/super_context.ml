@@ -57,6 +57,7 @@ type t =
   ; ppx_drivers                             : (string, Path.t) Hashtbl.t
   ; external_dirs                           : (Path.t, External_dir.t) Hashtbl.t
   ; chdir                                   : (Action.t, Action.t) Build.t
+  ; host                                    : t option
   }
 
 let context t = t.context
@@ -68,6 +69,8 @@ let file_tree t = t.file_tree
 let rules t = t.rules
 let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
 let cxx_flags t = t.cxx_flags
+
+let host_sctx t = Option.value t.host ~default:t
 
 let expand_var_no_root t var = String_map.find var t.vars
 
@@ -87,6 +90,7 @@ let resolve_program t ?hint bin =
 
 let create
       ~(context:Context.t)
+      ?host
       ~aliases
       ~scopes
       ~file_tree
@@ -186,6 +190,7 @@ let create
     | Error _ -> assert false
   in
   { context
+  ; host
   ; libs
   ; stanzas
   ; packages
@@ -505,7 +510,17 @@ module Action = struct
     acc.sdeps <- Pset.add path acc.sdeps;
     Some (path_exp path)
 
-  let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user t =
+  let map_exe sctx =
+    match sctx.host with
+    | None -> (fun exe -> exe)
+    | Some host ->
+      fun exe ->
+        match Path.extract_build_context_dir exe with
+        | Some (dir, exe) when dir = sctx.context.build_dir ->
+          Path.append host.context.build_dir exe
+        | _ -> exe
+
+  let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user ~map_exe t =
     let acc =
       { failures  = []
       ; lib_deps  = String_map.empty
@@ -514,14 +529,17 @@ module Action = struct
       }
     in
     let t =
-      U.partial_expand dir t ~f:(fun loc key ->
+      U.partial_expand t ~dir ~map_exe ~f:(fun loc key ->
         let open Action.Var_expansion in
         let cos, var = parse_bang key in
         match String.lsplit2 var ~on:':' with
         | Some ("path-no-dep", s) -> Some (path_exp (Path.relative dir s))
-        | Some ("exe"     , s) -> static_dep_exp acc (Path.relative dir s)
+        | Some ("exe"     , s) ->
+          let exe = map_exe (Path.relative dir s) in
+          static_dep_exp acc exe
         | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
         | Some ("bin"     , s) -> begin
+            let sctx = host_sctx sctx in
             match Artifacts.binary (artifacts sctx) s with
             | Ok path ->
               static_dep_exp acc path
@@ -539,6 +557,7 @@ module Action = struct
             | Error fail -> add_fail acc fail
           end
         | Some ("libexec" , s) -> begin
+            let sctx = host_sctx sctx in
             let lib_dep, res =
               Artifacts.file_of_lib (artifacts sctx) ~loc ~from:dir s in
             add_lib_dep acc lib_dep dep_kind;
@@ -612,9 +631,9 @@ module Action = struct
     in
     (t, acc)
 
-  let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user t =
+  let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
     let open Action.Var_expansion in
-    U.Partial.expand dir t ~f:(fun _loc key ->
+    U.Partial.expand t ~dir ~map_exe ~f:(fun _loc key ->
       match String_map.find key dynamic_expansions with
       | Some _ as opt -> opt
       | None ->
@@ -633,9 +652,10 @@ module Action = struct
 
   let run sctx t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
     : (Path.t list, Action.t) Build.t =
+    let map_exe = map_exe sctx in
     let t, forms =
       expand_step1 sctx t ~dir ~dep_kind ~scope
-        ~targets_written_by_user
+        ~targets_written_by_user ~map_exe
     in
     let { Action.Infer.Outcome. deps; targets } =
       match targets_written_by_user with
@@ -689,9 +709,10 @@ module Action = struct
             String_map.add acc ~key:var ~data:value)
         in
         let unresolved =
-          expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user
+          expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe
         in
         Action.Unresolved.resolve unresolved ~f:(fun prog ->
+          let sctx = host_sctx sctx in
           match Artifacts.binary sctx.artifacts prog with
           | Ok path    -> path
           | Error fail -> Action.Prog.Not_found.raise fail))
@@ -818,6 +839,7 @@ module PP = struct
       | [] -> "+none+"
       | _  -> String.concat names ~sep:"+"
     in
+    let sctx = host_sctx sctx in
     match Hashtbl.find sctx.ppx_drivers key with
     | Some x -> x
     | None ->

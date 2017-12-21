@@ -118,6 +118,29 @@ module Vars = struct
   let get_words t var preds = String.extract_comma_space_separated_words (get t var preds)
 end
 
+module Config = struct
+  type t =
+    { vars  : Vars.t
+    ; preds : string list
+    }
+
+  let load path ~toolchain ~context =
+    let path = Path.extend_basename path ~suffix:".d" in
+    let conf_file = Path.relative path (toolchain ^ ".conf") in
+    if not (Path.exists conf_file) then
+      die "@{<error>Error@}: ocamlfind toolchain %s isn't defined in %a \
+           (context: %s)" toolchain Path.pp path context;
+    let vars =
+      (Meta.simplify { name = ""
+                     ; entries = Meta.load (Path.to_string conf_file)
+                     }).vars
+    in
+    { vars = String_map.map vars ~f:Rules.of_meta_rules; preds = [toolchain] }
+
+  let get { vars; preds } var =
+    Vars.get vars var preds
+end
+
 type package =
   { name             : string
   ; dir              : Path.t

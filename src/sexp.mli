@@ -1,37 +1,16 @@
 open Import
 
-type t =
-  | Atom of string
-  | List of t list
-
-module Ast : sig
-  type sexp = t
-  type t =
-    | Atom of Loc.t * string
-    | List of Loc.t * t list
-
-  val loc : t -> Loc.t
-
-  val remove_locs : t -> sexp
-  val to_string : t -> string
-end with type sexp := t
-
-val add_loc : t -> loc:Loc.t -> Ast.t
+include module type of struct include Usexp end with module Loc := Usexp.Loc
 
 val code_error : string -> (string * t) list -> _
 
-val to_string : t -> string
+val load : fname:string -> mode:'a Parser.Mode.t -> 'a
 
-val pp : Format.formatter -> t -> unit
+type sexps_or_ocaml_script =
+  | Sexps of Ast.t list
+  | Ocaml_script
 
-(** Same as [pp], but split long strings. The formatter must have been
-    prepared with [prepare_formatter]. *)
-val pp_split_strings : Format.formatter -> t -> unit
-
-(** Prepare a formatter for [pp_split_strings]. Additionaly the
-    formatter escape newlines when the tags "makefile-action" or
-    "makefile-stuff" are active. *)
-val prepare_formatter : Format.formatter -> unit
+val load_many_or_ocaml_script : string -> sexps_or_ocaml_script
 
 module type Combinators = sig
   type 'a t

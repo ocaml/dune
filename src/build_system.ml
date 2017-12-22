@@ -585,7 +585,7 @@ module Trace = struct
     Utils.Cached_digest.load ();
     let trace = Hashtbl.create 1024 in
     if Sys.file_exists file then begin
-      let sexp = Sexp_lexer.Load.single file in
+      let sexp = Sexp.load ~fname:file ~mode:Single in
       let bindings =
         let open Sexp.Of_sexp in
         list (pair Path.t (fun s -> Digest.from_hex (string s))) sexp

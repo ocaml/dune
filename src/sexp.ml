@@ -1,119 +1,7 @@
 open Import
 
-type t =
-  | Atom of string
-  | List of t list
-
-type sexp = t
-
-let must_escape str =
-  let len = String.length str in
-  len = 0 ||
-  let rec loop ix =
-    match str.[ix] with
-    | '"' | '(' | ')' | ';' | '\\' -> true
-    | '|' -> ix > 0 && let next = ix - 1 in str.[next] = '#' || loop next
-    | '#' -> ix > 0 && let next = ix - 1 in str.[next] = '|' || loop next
-    | '\000' .. '\032' | '\127' .. '\255' -> true
-    | _ -> ix > 0 && loop (ix - 1)
-  in
-  loop (len - 1)
-
-let rec to_string = function
-  | Atom s -> if must_escape s then sprintf "%S" s else s
-  | List l -> sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
-
-let rec pp ppf = function
-  | Atom s ->
-    if must_escape s then
-      Format.fprintf ppf "%S" s
-    else
-      Format.pp_print_string ppf s
-  | List [] ->
-    Format.pp_print_string ppf "()"
-  | List (first :: rest) ->
-    Format.pp_open_box ppf 1;
-    Format.pp_print_string ppf "(";
-    Format.pp_open_hvbox ppf 0;
-    pp ppf first;
-    List.iter rest ~f:(fun sexp ->
-      Format.pp_print_space ppf ();
-      pp ppf sexp);
-    Format.pp_close_box ppf ();
-    Format.pp_print_string ppf ")";
-    Format.pp_close_box ppf ()
-
-let rec pp_split_strings ppf = function
-  | Atom s ->
-    if must_escape s then begin
-      if String.contains s '\n' then begin
-        match String.split s ~on:'\n' with
-        | [] -> Format.fprintf ppf "%S" s
-        | first :: rest ->
-          Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (String.escaped first);
-          List.iter rest ~f:(fun s ->
-            Format.fprintf ppf "@,\\n%s" (String.escaped s));
-          Format.fprintf ppf "@}\"@]"
-      end else
-        Format.fprintf ppf "%S" s
-    end else
-      Format.pp_print_string ppf s
-  | List [] ->
-    Format.pp_print_string ppf "()"
-  | List (first :: rest) ->
-    Format.pp_open_box ppf 1;
-    Format.pp_print_string ppf "(";
-    Format.pp_open_hvbox ppf 0;
-    pp_split_strings ppf first;
-    List.iter rest ~f:(fun sexp ->
-      Format.pp_print_space ppf ();
-      pp_split_strings ppf sexp);
-    Format.pp_close_box ppf ();
-    Format.pp_print_string ppf ")";
-    Format.pp_close_box ppf ()
-
-type formatter_state =
-  | In_atom
-  | In_makefile_action
-  | In_makefile_stuff
-
-let prepare_formatter ppf =
-  let state = ref [] in
-  Format.pp_set_mark_tags ppf true;
-  let ofuncs = Format.pp_get_formatter_out_functions ppf () in
-  let tfuncs = Format.pp_get_formatter_tag_functions ppf () in
-  Format.pp_set_formatter_tag_functions ppf
-    { tfuncs with
-      mark_open_tag  = (function
-        | "atom" -> state := In_atom :: !state; ""
-        | "makefile-action" -> state := In_makefile_action :: !state; ""
-        | "makefile-stuff" -> state := In_makefile_stuff :: !state; ""
-        | s -> tfuncs.mark_open_tag s)
-    ; mark_close_tag = (function
-        | "atom" | "makefile-action" | "makefile-stuff" -> state := List.tl !state; ""
-        | s -> tfuncs.mark_close_tag s)
-    };
-  Format.pp_set_formatter_out_functions ppf
-    { ofuncs with
-      out_newline = (fun () ->
-        match !state with
-        | [In_atom; In_makefile_action] ->
-          ofuncs.out_string "\\\n\t" 0 3
-        | [In_atom] ->
-          ofuncs.out_string "\\\n" 0 2
-        | [In_makefile_action] ->
-          ofuncs.out_string " \\\n\t" 0 4
-        | [In_makefile_stuff] ->
-          ofuncs.out_string " \\\n" 0 3
-        | [] ->
-          ofuncs.out_string "\n" 0 1
-        | _ -> assert false)
-    ; out_spaces = (fun n ->
-        ofuncs.out_spaces
-          (match !state with
-           | In_atom :: _ -> max 0 (n - 2)
-           | _ -> n))
-    }
+include (Usexp : module type of struct include Usexp end
+         with module Loc := Usexp.Loc)
 
 let code_error message vars =
   code_errorf "%s"
@@ -122,27 +10,53 @@ let code_error message vars =
               :: List.map vars ~f:(fun (name, value) ->
                 List [Atom name; value]))))
 
+let buf_len = 65_536
 
-module Ast = struct
-  type t =
-    | Atom of Loc.t * string
-    | List of Loc.t * t list
+let load ~fname ~mode =
+  Io.with_file_in fname ~f:(fun ic ->
+    let state = Parser.create ~fname ~mode in
+    let buf = Bytes.create buf_len in
+    let rec loop stack =
+      match input ic buf 0 buf_len with
+      | 0 -> Parser.feed_eoi state stack
+      | n -> loop (Parser.feed_subbytes state buf ~pos:0 ~len:n stack)
+    in
+    loop Parser.Stack.empty)
 
-  let loc = function
-    | Atom (loc, _) -> loc
-    | List (loc, _) -> loc
+let ocaml_script_prefix = "(* -*- tuareg -*- *)"
+let ocaml_script_prefix_len = String.length ocaml_script_prefix
 
-  let rec remove_locs : t -> sexp = function
-    | Atom (_, s) -> Atom s
-    | List (_, l) -> List (List.map l ~f:remove_locs)
+type sexps_or_ocaml_script =
+  | Sexps of Ast.t list
+  | Ocaml_script
 
-  let to_string t = to_string (remove_locs t)
-end
-
-let rec add_loc t ~loc : Ast.t =
-  match t with
-  | Atom s -> Atom (loc, s)
-  | List l -> List (loc, List.map l ~f:(add_loc ~loc))
+let load_many_or_ocaml_script fname =
+  Io.with_file_in fname ~f:(fun ic ->
+    let state = Parser.create ~fname ~mode:Many in
+    let buf = Bytes.create buf_len in
+    let rec loop stack =
+      match input ic buf 0 buf_len with
+      | 0 -> Parser.feed_eoi state stack
+      | n -> loop (Parser.feed_subbytes state buf ~pos:0 ~len:n stack)
+    in
+    let rec loop0 stack i =
+      match input ic buf i (buf_len - i) with
+      | 0 ->
+        let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
+        Sexps (Parser.feed_eoi state stack)
+      | n ->
+        let i = i + n in
+        if i < ocaml_script_prefix_len then
+          loop0 stack i
+        else if Bytes.sub_string buf 0 ocaml_script_prefix_len
+                  [@warning "-6"]
+                = ocaml_script_prefix then
+          Ocaml_script
+        else
+          let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
+          Sexps (loop stack)
+    in
+    loop0 Parser.Stack.empty 0)
 
 module type Combinators = sig
   type 'a t

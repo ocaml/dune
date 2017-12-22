@@ -144,7 +144,7 @@ end
           die "@{<error>Error:@} %s failed to produce a valid jbuild file.\n\
                Did you forgot to call [Jbuild_plugin.V*.send]?"
             (Path.to_string file);
-        let sexps = Sexp_lexer.Load.many (Path.to_string generated_jbuild) in
+        let sexps = Sexp.load ~fname:(Path.to_string generated_jbuild) ~mode:Many in
         return (dir, scope, Stanzas.parse scope sexps))
     |> Future.all
 end
@@ -158,7 +158,7 @@ type conf =
 
 let load ~dir ~scope =
   let file = Path.relative dir "jbuild" in
-  match Sexp_lexer.Load.many_or_ocaml_script (Path.to_string file) with
+  match Sexp.load_many_or_ocaml_script (Path.to_string file) with
   | Sexps sexps ->
     Jbuilds.Literal (dir, scope, Stanzas.parse scope sexps)
   | Ocaml_script ->

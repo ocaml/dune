@@ -725,8 +725,9 @@ Add it to your jbuild file to remove this warning.
         action_str;
       let dir = Path.append ctx.build_dir dir in
       let action =
-        Lexing.from_string action_str
-        |> Sexp_lexer.single
+        Usexp.parse_string action_str
+          ~fname:"<internal action for mli to ml>"
+          ~mode:Single
         |> Action.Unexpanded.t
       in
       SC.add_rule sctx

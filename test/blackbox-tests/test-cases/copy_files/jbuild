@@ -12,3 +12,8 @@
 (executable
  ((name test)
   (libraries (foo))))
+
+(alias
+ ((name bar-source)
+  (deps (bar.h))
+  (action (echo "${read:bar.h}"))))

@@ -10,3 +10,6 @@
     ocamlmklib dllfoo_stubs.so,libfoo_stubs.a
       ocamlopt test.{cmx,o}
       ocamlopt test.exe
+  $ $JBUILDER build -j1 @bar-source --root .
+  #line 1 "include/bar.h"
+  int foo () {return 42;}

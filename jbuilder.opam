@@ -27,5 +27,6 @@ depends: [
   "ppx_driver" {test}
   "odoc" {test}
   "js_of_ocaml-compiler" {test}
+  "utop" {test}
 ]
 available: [ ocaml-version >= "4.02.3" ]

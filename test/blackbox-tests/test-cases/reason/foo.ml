@@ -1,1 +1,1 @@
-let x = 43
+let run () = print_endline "Foo"

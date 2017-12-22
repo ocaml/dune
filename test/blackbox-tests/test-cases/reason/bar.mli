@@ -1,1 +1,1 @@
-val y : unit -> int
+val run : unit -> unit

@@ -3,6 +3,7 @@
 (library
  ((name foo)
   (modules (foo))
+  (install_c_headers (cfoo))
   (wrapped false)
   (public_name foo)))
 

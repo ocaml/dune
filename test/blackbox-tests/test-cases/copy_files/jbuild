@@ -3,14 +3,20 @@
 (copy_files# lexers/*.ml{,i})
 (copy_files# include/bar.h)
 
+(rule
+ ((targets (dummy.ml))
+  (deps ())
+  (action (with-stdout-to ${@} (echo "")))))
+
 (library
  ((name foo)
   (c_names (bar))
-  (modules ())
+  (modules (dummy))
   (wrapped false)))
 
 (executable
  ((name test)
+  (modules (:standard \ dummy))
   (libraries (foo))))
 
 (alias

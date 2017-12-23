@@ -11,4 +11,12 @@
       ocamlopt q/q.{a,cmxa}
       ocamlopt qnativerun/run.exe
   42
-#  $ $JBUILDER exec -j1 ./qbyterun/run.bc --root .
+  $ $JBUILDER exec -j1 ./qbyterun/run.bc --root .
+      ocamldep qbyterun/run.depends.ocamldep-output
+        ocamlc q/q.{cmo,cmt}
+        ocamlc qbyterun/run.{cmi,cmo,cmt}
+        ocamlc q/q.cma
+        ocamlc qbyterun/run.bc
+  Fatal error: cannot load shared library dllq_stubs
+  Reason: dlopen(dllq_stubs.so, 138): image not found
+  [2]

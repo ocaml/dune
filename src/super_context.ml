@@ -478,12 +478,12 @@ module Pkg_version = struct
     Build.vpath spec
 end
 
-let parse_bang var : Action.Var_expansion.Concat_or_split.t * string =
+let parse_bang var : bool * string =
   let len = String.length var in
   if len > 0 && var.[0] = '!' then
-    (Split, String.sub var ~pos:1 ~len:(len - 1))
+    (true, String.sub var ~pos:1 ~len:(len - 1))
   else
-    (Concat, var)
+    (false, var)
 
 module Action = struct
   open Build.O
@@ -544,7 +544,10 @@ module Action = struct
     let t =
       U.partial_expand t ~dir ~map_exe ~f:(fun loc key ->
         let open Action.Var_expansion in
-        let _cos, var = parse_bang key in
+        let has_bang, var = parse_bang key in
+        if has_bang then
+          Format.eprintf "@{<warning>Warning@}: The use of the variable \
+                          prefix '!' is deprecated, simply use '${%s}'@." var;
         match String.lsplit2 var ~on:':' with
         | Some ("path-no-dep", s) -> Some (path_exp (Path.relative dir s))
         | Some ("exe"     , s) ->
@@ -647,7 +650,7 @@ module Action = struct
       match String_map.find key dynamic_expansions with
       | Some _ as opt -> opt
       | None ->
-        let cos, var = parse_bang key in
+        let _, var = parse_bang key in
         match var with
         | "<" ->
           Some

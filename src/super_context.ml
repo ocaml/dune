@@ -653,11 +653,12 @@ module Action = struct
           Some
             (match deps_written_by_user with
              | [] ->
-               (* CR-someday jdimino: this should be an error *)
-               Strings ([""], cos)
+                Format.eprintf "@{<warning>Warning@}: Variable '<' used with \
+                                no explicit dependencies@.";
+                Strings ([""], Split)
              | dep :: _ ->
-               Paths ([dep], cos))
-        | "^" -> Some (Paths (deps_written_by_user, cos))
+               Paths ([dep], Split))
+        | "^" -> Some (Paths (deps_written_by_user, Split))
         | _ -> None)
 
   let run sctx t ~dir ~dep_kind ~targets:targets_written_by_user ~scope

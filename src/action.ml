@@ -198,7 +198,7 @@ module Var_expansion = struct
   module Concat_or_split = struct
     type t =
       | Concat (* default *)
-      | Split  (* ${!...} *)
+      | Split  (* the variable is a "split" list of items *)
   end
 
   open Concat_or_split

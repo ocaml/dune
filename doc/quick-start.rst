@@ -259,6 +259,42 @@ And run the tests with:
 
     jbuilder runtest
 
+Build and run multiple targets
+==============================
+
+Let's say you have 2 executable targets ``tests/hello.exe`` and ``tests/world.exe`` and you want to build and run them seamlessly. Your ``tests/jbuild`` file should look like this:
+
+.. code:: scheme
+    (jbuild_version 1)
+
+    (executables
+     ((names (hello))
+     (modules (hello))
+     (libraries (cryptokit))))
+
+    (executables
+     ((names (world))
+     (modules (world))
+     (libraries (cryptokit nocrypto))))
+
+    (alias
+     ((name runtest)
+      (package hello_world)
+      (deps (hello.exe))
+      (action (run ${<}))))
+
+    (alias
+     ((name runtest)
+      (package hello_world)
+      (deps (world.exe))
+      (action (run ${<}))))    
+
+Now run this familiar command and it will build and run tests for you:
+
+.. code:: bash
+
+    jbuilder runtest
+
 Building a custom toplevel
 ==========================
 

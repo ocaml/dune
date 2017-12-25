@@ -147,14 +147,7 @@ let strings p =
 let read_sexp p =
   contents p
   >>^ fun s ->
-  let lb = Lexing.from_string s in
-  lb.lex_curr_p <-
-    { pos_fname = Path.to_string p
-    ; pos_lnum  = 1
-    ; pos_bol   = 0
-    ; pos_cnum  = 0
-    };
-  Sexp_lexer.single lb
+  Usexp.parse_string s ~fname:(Path.to_string p) ~mode:Single
 
 let if_file_exists p ~then_ ~else_ =
   If_file_exists (p, ref (Undecided (then_, else_)))

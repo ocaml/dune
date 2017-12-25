@@ -1,0 +1,9 @@
+(* -*- tuareg -*- *)
+
+let () = Jbuild_plugin.V1.send {|
+(jbuild_version 1)
+
+(alias
+ ((name runtest)
+  (action (echo "ocaml syntax"))))
+|}

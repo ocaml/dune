@@ -27,15 +27,33 @@ module String = struct
      sub s ~pos ~len:(String.length s - pos))
 end
 
+(* Directories with library names *)
 let dirs =
-  [ "vendor/boot"
-  ; "src"
+  [ ("vendor/boot"      , None)
+  ; ("vendor/usexp/src" , Some "Usexp")
+  ; ("src"              , None)
   ]
 
 open Printf
 
 module String_set = Set.Make(String)
-module String_map = Map.Make(String)
+
+module Make_map(Key : Map.OrderedType) = struct
+  include Map.Make(Key)
+
+  let of_alist_multi l =
+    List.fold_left (List.rev l) ~init:empty ~f:(fun acc (k, v) ->
+      let l =
+        try
+          find k acc
+        with Not_found ->
+          []
+      in
+      add k (v :: l) acc)
+end
+
+module String_map = Make_map(String)
+module String_option_map = Make_map(struct type t = string option let compare = compare end)
 
 let () =
   match Sys.getenv "OCAMLPARAM" with
@@ -136,21 +154,30 @@ let run_ocamllex src =
     at_exit (fun () -> try Sys.remove dst with _ -> ());
   dst
 
-type module_files =
-  { impl : string
-  ; intf : string option
+type module_info =
+  { impl    : string
+  ; intf    : string option
+  ; name    : string
+  ; libname : string option
+  ; fqn     : string (** Fully qualified name *)
   }
+
+let fqn libname mod_name =
+  match libname with
+  | None -> mod_name
+  | Some s -> if s = mod_name then s else s ^ "." ^ mod_name
 
 (* Map from module names to ml/mli filenames *)
 let modules =
-  let files_of dir =
-    Sys.readdir dir |> Array.to_list |> List.map ~f:(Filename.concat dir)
+  let files_of (dir, libname) =
+    Sys.readdir dir |> Array.to_list |> List.map ~f:(fun fn ->
+      (Filename.concat dir fn, libname))
   in
   let impls, intfs =
     List.map dirs ~f:files_of
     |> List.concat
     |> List.fold_left ~init:(String_map.empty, String_map.empty)
-         ~f:(fun ((impls, intfs) as acc) fn ->
+         ~f:(fun ((impls, intfs) as acc) (fn, libname) ->
            let base = Filename.basename fn in
            match String.index base '.' with
            | exception Not_found -> acc
@@ -173,22 +200,31 @@ let modules =
                  let fn =
                    if ext = ".mll" then lazy (run_ocamllex fn) else lazy fn
                  in
-                 (String_map.add mod_name fn impls, intfs)
+                 let fqn = fqn libname mod_name in
+                 (String_map.add fqn (libname, mod_name, fn) impls, intfs)
                else
                  acc
              | ".mli" ->
                let mod_name = String.capitalize_ascii base in
                if is_boot || not (String_map.mem mod_name intfs) then
-                 (impls, String_map.add mod_name fn intfs)
+                 let fqn = fqn libname mod_name in
+                 (impls, String_map.add fqn fn intfs)
                else
                  acc
              | _ -> acc)
   in
   String_map.merge
-    (fun _ impl intf ->
+    (fun fqn impl intf ->
        match impl with
        | None -> None
-       | Some impl -> Some { impl = Lazy.force impl; intf })
+       | Some (libname, name, impl) ->
+         let impl = Lazy.force impl in
+         Some { impl
+              ; intf
+              ; name
+              ; libname
+              ; fqn
+              })
     impls intfs
 
 let split_words s =
@@ -220,28 +256,44 @@ let read_lines fn =
   close_in ic;
   lines
 
-let read_deps files =
+let read_deps files_by_lib =
   let out_fn = "boot-depends.txt" in
   at_exit (fun () -> Sys.remove out_fn);
-  let n =
-    exec "%s -modules %s > %s"
-      (Filename.quote ocamldep) (String.concat ~sep:" " files) out_fn
-  in
-  if n <> 0 then exit n;
-  List.map (read_lines out_fn) ~f:(fun line ->
-    let i = String.index line ':' in
-    let unit =
-      String.sub line ~pos:0 ~len:i
-      |> Filename.basename
-      |> (fun s -> String.sub s ~pos:0 ~len:(String.index s '.'))
-      |> String.capitalize_ascii
+  List.map files_by_lib ~f:(fun (libname, files) ->
+    let n =
+      exec "%s -modules %s > %s"
+        (Filename.quote ocamldep) (String.concat ~sep:" " files) out_fn
     in
-    let deps =
-      split_words (String.sub line ~pos:(i + 1)
-                     ~len:(String.length line - (i + 1)))
-      |> List.filter ~f:(fun m -> String_map.mem m modules)
-    in
-    (unit, deps))
+    if n <> 0 then exit n;
+    List.map (read_lines out_fn) ~f:(fun line ->
+      let i = String.index line ':' in
+      let unit =
+        String.sub line ~pos:0 ~len:i
+        |> Filename.basename
+        |> (fun s -> String.sub s ~pos:0 ~len:(String.index s '.'))
+        |> String.capitalize_ascii
+      in
+      let deps =
+        split_words (String.sub line ~pos:(i + 1)
+                       ~len:(String.length line - (i + 1)))
+      in
+      let rec resolve deps acc =
+        match deps with
+        | [] -> List.rev acc
+        | dep :: deps ->
+          let fqn = fqn libname dep in
+          let acc =
+            if String_map.mem fqn modules then
+              fqn :: acc
+            else if String_map.mem dep modules then
+              dep :: acc
+            else
+              acc
+          in
+          resolve deps acc
+      in
+      (fqn libname unit, resolve deps [])))
+  |> List.concat
 
 let topsort deps =
   let n = List.length deps in
@@ -263,10 +315,12 @@ let topsort deps =
   List.rev !res
 
 let topsorted_module_names =
-  let files =
-    List.map (String_map.bindings modules) ~f:(fun (_, x) -> x.impl)
+  let files_by_lib =
+    List.map (String_map.bindings modules) ~f:(fun (_, x) -> (x.libname, x.impl))
+    |> String_option_map.of_alist_multi
+    |> String_option_map.bindings
   in
-  topsort (read_deps files)
+  topsort (read_deps files_by_lib)
 
 let count_newlines s =
   let newlines = ref 0 in
@@ -308,24 +362,57 @@ let generate_file_with_all_the_sources () =
     pos_in_generated_file := !pos_in_generated_file + newlines;
     pr "# %d %S" (!pos_in_generated_file + 1) generated_file
   in
-  List.iter topsorted_module_names ~f:(fun m ->
-    let { impl; intf } =
-      try
-        String_map.find m modules
-      with Not_found ->
-        Printf.ksprintf failwith "module not found: %s" m
-    in
-    match intf with
-    | Some intf ->
-      pr "module %s : sig" m;
-      dump intf;
-      pr "end = struct";
-      dump impl;
-      pr "end"
-    | None ->
-      pr "module %s = struct" m;
-      dump impl;
-      pr "end");
+  let modules_by_lib =
+    List.map topsorted_module_names ~f:(fun m ->
+      let info = String_map.find m modules in
+      (info.libname, info))
+    |> String_option_map.of_alist_multi
+  in
+  let lib_order =
+    List.fold_left topsorted_module_names ~init:(String_set.empty, [])
+      ~f:(fun ((seen, rev_order) as acc) m ->
+        match (String_map.find m modules).libname with
+        | None -> acc
+        | Some lib ->
+          if String_set.mem lib seen then
+            acc
+          else
+            (String_set.add lib seen, lib :: rev_order))
+    |> snd
+    |> List.rev_map ~f:(fun lib -> Some lib)
+  in
+  let lib_order = lib_order @ [None] in
+  List.iter lib_order ~f:(fun libname ->
+    let modules = String_option_map.find libname modules_by_lib in
+    (match libname with
+     | None -> ()
+     | Some s -> pr "module %s = struct" s);
+    List.iter modules ~f:(fun { name; intf; impl; _ } ->
+      if Some name = libname then
+        match intf with
+        | Some intf ->
+          pr "include (struct";
+          dump impl;
+          pr "end : sig";
+          dump intf;
+          pr "end)"
+        | None ->
+          dump impl;
+      else
+        match intf with
+        | Some intf ->
+          pr "module %s : sig" name;
+          dump intf;
+          pr "end = struct";
+          dump impl;
+          pr "end"
+        | None ->
+          pr "module %s = struct" name;
+          dump impl;
+          pr "end");
+    (match libname with
+     | None -> ()
+     | Some _ -> pr "end"));
   output_string oc "let () = Main.bootstrap ()\n";
   close_out oc
 

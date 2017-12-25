@@ -144,7 +144,7 @@ end
           die "@{<error>Error:@} %s failed to produce a valid jbuild file.\n\
                Did you forgot to call [Jbuild_plugin.V*.send]?"
             (Path.to_string file);
-        let sexps = Sexp_lexer.Load.many (Path.to_string generated_jbuild) in
+        let sexps = Sexp.load ~fname:(Path.to_string generated_jbuild) ~mode:Many in
         return (dir, scope, Stanzas.parse scope sexps))
     |> Future.all
 end
@@ -153,11 +153,12 @@ type conf =
   { file_tree : File_tree.t
   ; jbuilds   : Jbuilds.t
   ; packages  : Package.t String_map.t
+  ; scopes    : Scope.t list
   }
 
 let load ~dir ~scope =
   let file = Path.relative dir "jbuild" in
-  match Sexp_lexer.Load.many_or_ocaml_script (Path.to_string file) with
+  match Sexp.load_many_or_ocaml_script (Path.to_string file) with
   | Sexps sexps ->
     Jbuilds.Literal (dir, scope, Stanzas.parse scope sexps)
   | Ocaml_script ->
@@ -203,6 +204,12 @@ let load ?extra_ignored_subtrees () =
     |> Path.Map.of_alist_multi
     |> Path.Map.map ~f:Scope.make
   in
+  let scopes =
+    if Path.Map.mem Path.root scopes then
+      scopes
+    else
+      Path.Map.add scopes ~key:Path.root ~data:Scope.empty
+  in
   let rec walk dir jbuilds scope =
     if File_tree.Dir.ignored dir then
       jbuilds
@@ -227,4 +234,5 @@ let load ?extra_ignored_subtrees () =
   { file_tree = ftree
   ; jbuilds
   ; packages
+  ; scopes = Path.Map.values scopes
   }

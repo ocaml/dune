@@ -50,7 +50,7 @@ let module_or_mld_deps (m : Module_or_mld.t) ~dir ~dep_graph ~modules =
            Module.odoc_file m ~dir))
 
 let compile sctx (m : Module_or_mld.t) ~odoc ~dir ~includes ~dep_graph
-      ~modules ~lib_public_name =
+      ~modules ~lib_unique_name =
   let context = SC.context sctx in
   let odoc_file = Module_or_mld.odoc_file m ~dir in
   SC.add_rule sctx
@@ -62,23 +62,23 @@ let compile sctx (m : Module_or_mld.t) ~odoc ~dir ~includes ~dep_graph
        [ A "compile"
        ; A "-I"; Path dir
        ; Dyn (fun x -> x)
-       ; As ["--pkg"; lib_public_name]
+       ; As ["--pkg"; lib_unique_name]
        ; A "-o"; Path odoc_file
        ; Dep (Module_or_mld.odoc_input m ~dir)
        ]);
   (m, odoc_file)
 
 let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
-      ~lib_public_name ~(lib : Library.t) =
+      ~lib_unique_name ~(lib : Library.t) =
   let context = SC.context sctx in
   let to_remove, html_dir, html_file, jbuilder_keep =
     match m with
     | Mld m ->
-      let html_dir = doc_dir ++ lib_public_name in
+      let html_dir = doc_dir ++ lib_unique_name in
       let html_file = html_dir ++ (m.Mld.name ^ ".html") in
       html_file, html_dir, html_file, []
     | Module m ->
-      let html_dir = doc_dir ++ lib_public_name ++ String.capitalize_ascii m.obj_name in
+      let html_dir = doc_dir ++ lib_unique_name ++ String.capitalize_ascii m.obj_name in
       let html_file = html_dir ++ "index.html" in
       let jbuilder_keep =
        Build.create_file (html_dir ++ Config.jbuilder_keep_fname)
@@ -105,7 +105,7 @@ let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
     );
   html_file
 
-let all_mld_files sctx ~(lib : Library.t) ~lib_public_name ~modules ~dir files =
+let all_mld_files sctx ~(lib : Library.t) ~lib_name ~modules ~dir files =
   let all_files =
     if List.mem "index.mld" ~set:files then files else "index.mld" :: files
   in
@@ -123,13 +123,13 @@ let all_mld_files sctx ~(lib : Library.t) ~lib_public_name ~modules ~dir files =
               sprintf
                 "{1 Library %s}\n\
                  The entry point for this library is module {!module:%s}."
-                lib_public_name
+                lib_name
                 (String.capitalize_ascii lib.name)
             else
               sprintf
                 "{1 Library %s}\n\
                  This library exposes the following toplevel modules: {!modules:%s}."
-                lib_public_name
+                lib_name
                 (String_map.keys modules |> String.concat ~sep:" "))))
        >>>
        Build.write_file_dyn generated_mld);
@@ -144,7 +144,8 @@ let toplevel_index ~doc_dir = doc_dir ++ "index.html"
 
 let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
       ~requires ~(dep_graph:Ocamldep.dep_graph) =
-  let name = Option.value (Option.map ~f:(fun x -> x.name) lib.public) ~default:lib.name in
+  let lib_unique_name = SC.unique_library_name sctx (Internal (dir, lib)) in
+  let lib_name = Library.best_name lib in
   let context = SC.context sctx in
   let dep_graph =
     Build.memoize "odoc deps"
@@ -167,18 +168,17 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
        >>^ Lib.include_flags)
   in
   let mld_files =
-    all_mld_files sctx ~dir ~lib ~lib_public_name:name
-      ~modules mld_files
+    all_mld_files sctx ~dir ~lib ~lib_name ~modules mld_files
   in
   let mld_and_odoc_files =
     List.map mld_files ~f:(fun m ->
       compile sctx ~odoc ~dir ~includes ~dep_graph ~modules
-        ~lib_public_name:name (Mld m))
+        ~lib_unique_name (Mld m))
   in
   let modules_and_odoc_files =
     List.map (String_map.values modules) ~f:(fun m ->
       compile sctx ~odoc ~dir ~includes ~dep_graph ~modules
-        ~lib_public_name:name (Module m))
+        ~lib_unique_name (Module m))
   in
   let inputs_and_odoc_files = modules_and_odoc_files @ mld_and_odoc_files in
   SC.Libs.setup_file_deps_alias sctx ~ext:odoc_ext (dir, lib)
@@ -196,7 +196,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
   let html_files =
     List.map inputs_and_odoc_files ~f:(fun (m, odoc_file) ->
       to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~lib
-        ~lib_public_name:name)
+        ~lib_unique_name)
   in
   Alias.add_deps (SC.aliases sctx) (Alias.doc ~dir)
     (css_file ~doc_dir

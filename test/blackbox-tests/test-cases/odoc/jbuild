@@ -1,0 +1,24 @@
+(jbuild_version 1)
+
+(library
+ ((name foo)
+  (modules (foo))
+  (wrapped false)
+  (public_name foo)))
+
+(library
+ ((name foo_byte)
+  (modules (foo_byte))
+  (modes (byte))
+  (public_name foo.byte)))
+
+(executables
+ ((names (bar))
+  (modules (bar))
+  (public_names (bar))
+  (libraries (foo))))
+
+(alias
+ ((name runtest)
+  (deps (_doc/index.html))
+  (action (echo "${read:_doc/index.html}"))))

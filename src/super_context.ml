@@ -88,7 +88,7 @@ let resolve_program t ?hint bin =
 let create
       ~(context:Context.t)
       ~aliases
-      ~dirs_with_dot_opam_files
+      ~scopes
       ~file_tree
       ~packages
       ~stanzas
@@ -111,14 +111,13 @@ let create
         | Library lib -> Some (ctx_dir, lib)
         | _ -> None))
   in
-  let dirs_with_dot_opam_files =
-    Pset.elements dirs_with_dot_opam_files
-    |> List.map ~f:(Path.append context.build_dir)
-    |> Pset.of_list
-  in
   let libs =
+    let scopes =
+      List.map scopes ~f:(fun scope ->
+        { scope with Scope.root = Path.append context.build_dir scope.Scope.root })
+    in
     Lib_db.create context.findlib internal_libraries
-      ~dirs_with_dot_opam_files
+      ~scopes
   in
   let stanzas_to_consider_for_install =
     if filter_out_optional_stanzas_with_missing_deps then
@@ -243,6 +242,8 @@ let sources_and_targets_known_so_far t ~src_path =
   | None -> sources
   | Some set -> String_set.union sources set
 
+let unique_library_name t lib =
+  Lib_db.unique_library_name t.libs lib
 
 module Libs = struct
   open Build.O
@@ -791,7 +792,14 @@ module PP = struct
     add_rule sctx
       (libs
        >>>
-       Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib))
+       Build.dyn_paths (Build.arr (fun libs ->
+         List.rev_append
+           (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib libs)
+           (List.filter_map libs ~f:(function
+              | Lib.Internal (dir, lib) ->
+                Some (Path.relative dir (lib.name ^ ctx.ext_lib))
+              | External _ ->
+                None))))
        >>>
        Build.run ~context:ctx (Ok compiler)
          [ A "-o" ; Target target
@@ -866,9 +874,8 @@ module PP = struct
         (Deps.interpret sctx ~scope ~dir preprocessor_deps)
     in
     String_map.map modules ~f:(fun (m : Module.t) ->
-      let m = setup_reason_rules sctx ~dir m in
       match Preprocess_map.find m.name preprocess with
-      | No_preprocessing -> m
+      | No_preprocessing -> setup_reason_rules sctx ~dir m
       | Action action ->
         pped_module m ~dir ~f:(fun _kind src dst ->
           add_rule sctx
@@ -887,8 +894,10 @@ module PP = struct
                ~dep_kind
                ~targets:(Static [dst])
                ~scope))
+        |> setup_reason_rules sctx ~dir
       | Pps { pps; flags } ->
         let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in
+        let m = setup_reason_rules sctx ~dir m in
         pped_module m ~dir ~f:(fun kind src dst ->
           add_rule sctx
             (preprocessor_deps

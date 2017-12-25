@@ -731,8 +731,9 @@ Add it to your jbuild file to remove this warning.
         action_str;
       let dir = Path.append ctx.build_dir dir in
       let action =
-        Lexing.from_string action_str
-        |> Sexp_lexer.single
+        Usexp.parse_string action_str
+          ~fname:"<internal action for mli to ml>"
+          ~mode:Single
         |> Action.Unexpanded.t
       in
       SC.add_rule sctx
@@ -1112,13 +1113,8 @@ end
 let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
       ?only_packages ?(unlink_aliases=[]) conf =
   let open Future in
-  let { Jbuild_load. file_tree; jbuilds; packages } = conf in
+  let { Jbuild_load. file_tree; jbuilds; packages; scopes } = conf in
   let aliases = Alias.Store.create () in
-  let dirs_with_dot_opam_files =
-    String_map.fold packages ~init:Path.Set.empty
-      ~f:(fun ~key:_ ~data:{ Package. path; _ } acc ->
-        Path.Set.add path acc)
-  in
   let packages =
     match only_packages with
     | None -> packages
@@ -1147,7 +1143,7 @@ let gen ~contexts ?(filter_out_optional_stanzas_with_missing_deps=true)
       Super_context.create
         ~context
         ~aliases
-        ~dirs_with_dot_opam_files
+        ~scopes
         ~file_tree
         ~packages
         ~filter_out_optional_stanzas_with_missing_deps

@@ -162,6 +162,7 @@ module Library : sig
   val has_stubs : t -> bool
   val stubs_archive : t -> dir:Path.t -> ext_lib:string -> Path.t
   val all_lib_deps : t -> Lib_deps.t
+  val best_name : t -> string
 end
 
 module Install_conf : sig

@@ -1,6 +1,6 @@
 open Import
 
-type t =
+type t = Usexp.Loc.t =
   { start : Lexing.position
   ; stop  : Lexing.position
   }

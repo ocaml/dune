@@ -596,7 +596,13 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
     Io.with_file_in (Path.to_string src) ~f:(fun ic ->
       Io.with_file_out (Path.to_string dst) ~f:(fun oc ->
         let fn = Path.drop_build_context src in
-        Printf.fprintf oc "# 1 %S\n" (Path.to_string fn);
+        let directive =
+          if List.mem (Path.extension fn) ~set:[".c"; ".cpp"; ".h"] then
+            "line"
+          else
+            ""
+        in
+        Printf.fprintf oc "#%s 1 %S\n" directive (Path.to_string fn);
         Io.copy_channels ic oc));
     return ()
   | System cmd ->

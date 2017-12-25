@@ -46,6 +46,6 @@ val simplify : t -> Simplified.t
 
 (** Builtin META files for libraries distributed with the compiler. For when ocamlfind is
     not installed. *)
-val builtins : t String_map.t
+val builtins : stdlib_dir:Path.t -> t String_map.t
 
 val pp : Format.formatter -> entry list -> unit

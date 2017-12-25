@@ -54,7 +54,7 @@ update-jbuilds: $(BIN)
 
 accept-corrections:
 	for i in `find . -name \*.corrected`; do \
-	  cp $$i $${i/.corrected}; \
+	  cp $$i $${i%.corrected}; \
 	done
 
 .DEFAULT_GOAL := default

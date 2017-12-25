@@ -11,10 +11,7 @@ module T = struct
 
   let best_name = function
     | External pkg -> pkg.name
-    | Internal (_, lib) ->
-      match lib.public with
-      | Some p -> p.name
-      | None -> lib.name
+    | Internal (_, lib) -> Jbuild.Library.best_name lib
 
   let compare a b = String.compare (best_name a) (best_name b)
 end

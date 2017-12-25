@@ -7,7 +7,9 @@ This test checks that there is no clash when two private libraries have the same
       ocamldep b/test.depends.ocamldep-output
       ocamldep b/test.dependsi.ocamldep-output
         ocamlc a/test.{cmi,cmo,cmt}
+          odoc a/page-index.odoc
         ocamlc b/test.{cmi,cmo,cmt}
+          odoc b/page-index.odoc
           odoc a/test.odoc
           odoc b/test.odoc
           odoc _doc/test@a/index.html

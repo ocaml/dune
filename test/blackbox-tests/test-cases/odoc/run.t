@@ -5,9 +5,11 @@
       ocamldep foo.dependsi.ocamldep-output
           odoc _doc/odoc.css
         ocamlc foo_byte.{cmi,cmo,cmt}
+          odoc foo.byte/page-index.odoc
         ocamlc foo.{cmi,cmo,cmt}
-          odoc foo_byte.odoc
-          odoc foo.odoc
+          odoc foo/page-index.odoc
+          odoc foo.byte/foo_byte.odoc
+          odoc foo/foo.odoc
           odoc _doc/foo.byte/index.html
           odoc _doc/foo.byte/Foo_byte/.jbuilder-keep,_doc/foo.byte/Foo_byte/index.html
           odoc _doc/foo/index.html

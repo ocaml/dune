@@ -58,12 +58,12 @@ let compile sctx (m : Module_or_mld.t) ~odoc ~dir ~includes ~dep_graph
      >>>
      includes
      >>>
-     Build.run ~context ~dir odoc ~extra_targets:[odoc_file]
+     Build.run ~context ~dir odoc
        [ A "compile"
        ; A "-I"; Path dir
        ; Dyn (fun x -> x)
        ; As ["--pkg"; lib_unique_name]
-       ; A "-o"; Path odoc_file
+       ; A "-o"; Target odoc_file
        ; Dep (Module_or_mld.odoc_input m ~dir)
        ]);
   (m, odoc_file)

@@ -65,11 +65,12 @@ next
   `META.pkg.template`. This feature was unused and was making the code
   complicated (#370)
 
-
 - Remove read-only attribute on Windows before unlink (#247)
 
 - Use /Fo instead of -o when invoking the Microsoft C compiler to eliminate
   deprecation warning when compiling C++ sources (#354)
+
+- Display a warning for invalid lines in jbuild-ignore (#389)
 
 1.0+beta16 (05/11/2017)
 -----------------------

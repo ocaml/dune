@@ -21,6 +21,7 @@ type common =
   ; target_prefix    : string
   ; only_packages    : String_set.t option
   ; capture_outputs  : bool
+  ; x                : string option
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args        : string list
   }
@@ -74,7 +75,9 @@ module Main = struct
       ?unlink_aliases
       ?workspace_file:common.workspace_file
       ?only_packages:common.only_packages
-      ?filter_out_optional_stanzas_with_missing_deps ()
+      ?filter_out_optional_stanzas_with_missing_deps
+      ?x:common.x
+      ()
 end
 
 type target =
@@ -154,6 +157,7 @@ let common =
         no_buffer
         workspace_file
         (root, only_packages, orig)
+        x
     =
     let root, to_cwd =
       match root with
@@ -181,6 +185,7 @@ let common =
     ; only_packages =
         Option.map only_packages
           ~f:(fun s -> String_set.of_list (String.split s ~on:','))
+    ; x
     }
   in
   let docs = copts_sect in
@@ -304,6 +309,12 @@ let common =
                $ only_packages
                $ frop))
   in
+  let x =
+    Arg.(value
+         & opt (some string) None
+         & info ["x"] ~docs
+             ~doc:{|Cross-compile using this toolchain.|})
+  in
   Term.(const make
         $ concurrency
         $ ddep_path
@@ -314,6 +325,7 @@ let common =
         $ no_buffer
         $ workspace_file
         $ root_and_only_packages
+        $ x
        )
 
 let installed_libraries =
@@ -321,7 +333,8 @@ let installed_libraries =
   let go common na =
     set_common common ~targets:[];
     Future.Scheduler.go ~log:(Log.create ())
-      (Context.default () >>= fun ctx ->
+      (Context.create (Default [Native])  >>= fun ctxs ->
+       let ctx = List.hd ctxs in
        let findlib = ctx.findlib in
        if na then begin
          let pkgs = Findlib.all_unavailable_packages findlib in

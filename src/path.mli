@@ -114,4 +114,12 @@ val change_extension : ext:string -> t -> t
 
 val extension : t -> string
 
+(** maintains the invariant:
+    {[
+      let suffix = Option.value_exn (Path.drop_prefix t ~prefix) in
+      Path.relative prefix suffix = t
+    ]}
+*)
+val drop_prefix : t -> prefix:t -> string option
+
 val pp : t Fmt.t

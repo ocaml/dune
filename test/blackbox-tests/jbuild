@@ -162,3 +162,10 @@
   (action
    (chdir test-cases/c-stubs
     (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/cross-compilation)))
+  (action
+   (chdir test-cases/cross-compilation
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))

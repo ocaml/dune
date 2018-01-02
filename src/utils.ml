@@ -133,6 +133,11 @@ let obj_name_of_basename fn =
   | None -> fn
   | Some i -> String.sub fn ~pos:0 ~len:i
 
+let install_file ~package ~findlib_toolchain =
+  match findlib_toolchain with
+  | None -> package ^ ".install"
+  | Some x -> sprintf "%s-%s.install" package x
+
 module Cached_digest = struct
   type file =
     { mutable digest            : Digest.t

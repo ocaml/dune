@@ -30,3 +30,12 @@
     requires(-ppx_driver) = "bytes foobar.baz"
     ppx(-ppx_driver,-custom_ppx) = "./ppx.exe --as-ppx"
   )
+  package "sub" (
+    directory = "sub"
+    description = "sub library in a sub dir"
+    requires = "bytes"
+    archive(byte) = "foobar_sub.cma"
+    archive(native) = "foobar_sub.cmxa"
+    plugin(byte) = "foobar_sub.cma"
+    plugin(native) = "foobar_sub.cmxs"
+  )

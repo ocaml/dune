@@ -337,25 +337,30 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       else
         env,env_extra
     in
+    let split_prog s =
+      let len = String.length s in
+      let rec loop i =
+        if i = len then
+          (s, "")
+        else
+          match s.[i] with
+          | ' ' | '\t' ->
+            (String.sub s ~pos:0 ~len:i,
+             String.sub s ~pos:i ~len:(len - i))
+          | _ -> loop (i + 1)
+      in
+      loop 0
+    in
     let c_compiler, ocamlc_cflags, ocamlopt_cflags =
       match get_opt "c_compiler" with
       | Some c_compiler -> (* >= 4.06 *)
+        let c_compiler, discarded_args = split_prog c_compiler in
+        if String.length discarded_args > 0 then (
+          Format.eprintf "@{<warning>Warning@}: c_compiler contains arguments \
+                          that will be discarded: %S" discarded_args
+        );
         (c_compiler, get "ocamlc_cflags", get "ocamlopt_cflags")
       | None ->
-        let split_prog s =
-          let len = String.length s in
-          let rec loop i =
-            if i = len then
-              (s, "")
-            else
-              match s.[i] with
-              | ' ' | '\t' ->
-                (String.sub s ~pos:0 ~len:i,
-                 String.sub s ~pos:i ~len:(len - i))
-              | _ -> loop (i + 1)
-          in
-          loop 0
-        in
         let c_compiler, ocamlc_cflags = split_prog (get "bytecomp_c_compiler") in
         let _, ocamlopt_cflags = split_prog (get "native_c_compiler") in
         (c_compiler, ocamlc_cflags, ocamlopt_cflags)

@@ -523,6 +523,9 @@ let install_ocaml_libdir t =
   | None ->
     return None
 
+let doc_prefix t =
+  opam_config_var t "doc" >>| Option.map ~f:Path.absolute
+
 (* CR-someday jdimino: maybe we should just do this for [t.env] directly? *)
 let env_for_exec t =
   let sep = if Sys.win32 then ';' else ':' in

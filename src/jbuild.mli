@@ -238,15 +238,23 @@ module Copy_files : sig
     }
 end
 
+module Documentation : sig
+  type t =
+    { package : Package.t option
+    ; files   : Ordered_set_lang.t
+    }
+end
+
 module Stanza : sig
   type t =
-    | Library     of Library.t
-    | Executables of Executables.t
-    | Rule        of Rule.t
-    | Provides    of Provides.t
-    | Install     of Install_conf.t
-    | Alias       of Alias_conf.t
-    | Copy_files  of Copy_files.t
+    | Library       of Library.t
+    | Executables   of Executables.t
+    | Rule          of Rule.t
+    | Provides      of Provides.t
+    | Install       of Install_conf.t
+    | Alias         of Alias_conf.t
+    | Copy_files    of Copy_files.t
+    | Documentation of Documentation.t
 end
 
 module Stanzas : sig

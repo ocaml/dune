@@ -772,7 +772,8 @@ Add it to your jbuild file to remove this warning.
         | Alias        alias -> alias_rules alias ~dir ~scope; None
         | Copy_files def ->
           Some (copy_files_rules def ~src_dir ~dir ~scope)
-        | Library _ | Executables _ | Provides _ | Install _ -> None)
+        | Library _ | Executables _ | Provides _ | Install _
+        | Documentation _ -> None)
     in
     let files = lazy (
       let files = SC.sources_and_targets_known_so_far sctx ~src_path:src_dir in

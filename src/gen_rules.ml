@@ -239,7 +239,7 @@ module Gen(P : Params) = struct
                   match (dep : Jbuild.Lib_dep.t) with
                   | Direct _ -> None
                   | Select s -> Some s.result_fn)
-              | Alias _ | Provides _ | Install _ -> [])
+              | Alias _ | Provides _ | Install _ | Documentation _ -> [])
             |> String_set.of_list
           in
           String_set.union generated_files

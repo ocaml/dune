@@ -69,6 +69,9 @@ type t =
   ; ocamldep   : Path.t
   ; ocamlmklib : Path.t
 
+  ; (** external documentation dir *)
+    doc_dir : Path.t option
+
   ; (** Environment variables *)
     env : string array
 
@@ -146,7 +149,6 @@ val opam_config_var : t -> string -> string option Future.t
 
 val install_prefix : t -> Path.t Future.t
 val install_ocaml_libdir : t -> Path.t option Future.t
-val doc_prefix : t -> Path.t option Future.t
 
 val env_for_exec : t -> string array
 

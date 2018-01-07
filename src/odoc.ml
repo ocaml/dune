@@ -16,8 +16,7 @@ module Mld = struct
     odoc_file_name  : string;
   }
 
-  let odoc_file ~dir ~lib_name {odoc_file_name; _} =
-    let dir = dir ++ lib_name in
+  let odoc_file ~dir {odoc_file_name; _} =
     Path.relative dir odoc_file_name
 
   let odoc_input ~dir {odoc_input_name; _} =
@@ -29,16 +28,16 @@ module Module_or_mld = struct
     | Mld of Mld.t
     | Module of Module.t
 
-  let odoc_file ~dir ~lib_name = function
-    | Mld m -> Mld.odoc_file ~dir ~lib_name m
-    | Module m -> Module.odoc_file ~dir ~lib_name m
+  let odoc_file ~dir = function
+    | Mld m -> Mld.odoc_file ~dir m
+    | Module m -> Module.odoc_file ~dir m
 
-  let odoc_input ~dir ~lib_name = function
-    | Mld m -> Mld.odoc_input ~dir:(dir ++ lib_name) m
+  let odoc_input ~dir = function
+    | Mld m -> Mld.odoc_input ~dir m
     | Module m -> Module.cmti_file m ~dir
 end
 
-let module_or_mld_deps (m : Module_or_mld.t) ~dir ~lib_name ~dep_graph ~modules =
+let module_or_mld_deps (m : Module_or_mld.t) ~dir ~dep_graph ~modules =
   Build.dyn_paths
     (dep_graph
      >>^ fun graph ->
@@ -48,14 +47,14 @@ let module_or_mld_deps (m : Module_or_mld.t) ~dir ~lib_name ~dep_graph ~modules 
        List.map (Utils.find_deps ~dir graph m.name)
          ~f:(fun name ->
            let m = Utils.find_module ~dir modules name in
-           Module.odoc_file m ~lib_name ~dir))
+           Module.odoc_file m ~dir))
 
 let compile sctx (m : Module_or_mld.t) ~odoc ~dir ~includes ~dep_graph
-      ~modules ~lib_name ~lib_unique_name =
+      ~modules ~lib_unique_name =
   let context = SC.context sctx in
-  let odoc_file = Module_or_mld.odoc_file m ~dir ~lib_name in
+  let odoc_file = Module_or_mld.odoc_file m ~dir in
   SC.add_rule sctx
-    (module_or_mld_deps m ~dir ~lib_name ~dep_graph ~modules
+    (module_or_mld_deps m ~dir ~dep_graph ~modules
      >>>
      includes
      >>>
@@ -65,7 +64,7 @@ let compile sctx (m : Module_or_mld.t) ~odoc ~dir ~includes ~dep_graph
        ; Dyn (fun x -> x)
        ; As ["--pkg"; lib_unique_name]
        ; A "-o"; Target odoc_file
-       ; Dep (Module_or_mld.odoc_input ~dir ~lib_name m)
+       ; Dep (Module_or_mld.odoc_input m ~dir)
        ]);
   (m, odoc_file)
 
@@ -107,7 +106,6 @@ let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
   html_file
 
 let all_mld_files sctx ~(lib : Library.t) ~lib_name ~modules ~dir files =
-  let dir = dir ++ lib_name in
   let all_files =
     if List.mem "index.mld" ~set:files then files else "index.mld" :: files
   in
@@ -175,12 +173,12 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
   let mld_and_odoc_files =
     List.map mld_files ~f:(fun m ->
       compile sctx ~odoc ~dir ~includes ~dep_graph ~modules
-        ~lib_name ~lib_unique_name (Mld m))
+        ~lib_unique_name (Mld m))
   in
   let modules_and_odoc_files =
     List.map (String_map.values modules) ~f:(fun m ->
       compile sctx ~odoc ~dir ~includes ~dep_graph ~modules
-       ~lib_name ~lib_unique_name (Module m))
+        ~lib_unique_name (Module m))
   in
   let inputs_and_odoc_files = modules_and_odoc_files @ mld_and_odoc_files in
   SC.Libs.setup_file_deps_alias sctx ~ext:odoc_ext (dir, lib)

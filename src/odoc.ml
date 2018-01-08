@@ -53,18 +53,19 @@ module Module_or_mld = struct
     | Mld m -> Mld.odoc_input ~dir m
     | Module m -> Module.cmti_file m ~dir
 
-  let html_file ~doc_dir ~lib_unique_name = function
-    | Mld m ->
-      let html_dir = doc_dir ++ lib_unique_name in
-      html_dir ++ Mld.html_filename m
-    | Module m ->
-      let html_dir = doc_dir ++ lib_unique_name ++ String.capitalize_ascii m.obj_name in
-      html_dir ++ "index.html"
+  let html_dir ~doc_dir ~lib_unique_name = function
+    | Mld _ -> doc_dir ++ lib_unique_name
+    | Module m -> doc_dir ++ lib_unique_name ++ String.capitalize_ascii m.obj_name
+
+  let html_file ~doc_dir ~lib_unique_name t =
+    match t with
+    | Mld m -> html_dir ~doc_dir ~lib_unique_name t ++ Mld.html_filename m
+    | Module _ -> html_dir ~doc_dir ~lib_unique_name t ++ "index.html"
 
   let html_target ~doc_dir ~lib_unique_name t =
     match t with
     | Mld mld ->
-      let html_dir = Path.parent (html_file ~doc_dir ~lib_unique_name t) in
+      let html_dir = html_dir ~doc_dir ~lib_unique_name t in
       Path.relative html_dir (Mld.html_target_filename mld)
     | Module _ ->
       html_file t ~doc_dir ~lib_unique_name
@@ -104,8 +105,8 @@ let compile sctx (m : Module_or_mld.t) ~odoc ~dir ~includes ~dep_graph
 let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
       ~lib_unique_name ~(lib : Library.t) =
   let context = SC.context sctx in
+  let html_dir = Module_or_mld.html_dir ~doc_dir ~lib_unique_name m in
   let html_file = Module_or_mld.html_file ~doc_dir ~lib_unique_name m in
-  let html_dir = Path.parent html_file in
   let html_target = Module_or_mld.html_target ~doc_dir ~lib_unique_name m in
   let to_remove, jbuilder_keep =
     match m with

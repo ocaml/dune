@@ -113,8 +113,7 @@ let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
     | Mld _ -> html_file, []
     | Module _ ->
       let jbuilder_keep =
-       Build.create_file (html_dir ++ Config.jbuilder_keep_fname)
-      in
+        Build.create_file (html_dir ++ Config.jbuilder_keep_fname) in
       html_dir, [jbuilder_keep]
   in
   if html_target <> html_file then (

@@ -7,12 +7,12 @@ This test checks that there is no clash when two private libraries have the same
       ocamldep b/test.depends.ocamldep-output
       ocamldep b/test.dependsi.ocamldep-output
         ocamlc a/test.{cmi,cmo,cmt}
-          odoc a/page-index-test.odoc
+          odoc _doc/test@a/page-index.odoc
         ocamlc b/test.{cmi,cmo,cmt}
-          odoc b/page-index-test.odoc
-          odoc a/test.odoc
-          odoc b/test.odoc
-          odoc _doc/test@a/index-test.html
+          odoc _doc/test@b/page-index.odoc
+          odoc _doc/test@a/test.odoc
+          odoc _doc/test@b/test.odoc
+          odoc _doc/test@a/index.html
           odoc _doc/test@a/Test/.jbuilder-keep,_doc/test@a/Test/index.html
-          odoc _doc/test@b/index-test.html
+          odoc _doc/test@b/index.html
           odoc _doc/test@b/Test/.jbuilder-keep,_doc/test@b/Test/index.html

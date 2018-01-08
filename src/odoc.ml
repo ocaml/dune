@@ -69,13 +69,31 @@ let compile sctx (m : Module_or_mld.t) ~odoc ~dir ~includes ~dep_graph
   (m, odoc_file)
 
 let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
-      ~lib_unique_name ~(lib : Library.t) =
+      ~lib_unique_name ~lib_name ~(lib : Library.t) =
+  let fix_filename =
+    let re =
+      let open Re in
+      [ group (rep1 any)
+      ; char '-'
+      ; rep1 (compl [char '.'])
+      ; str ".html" ]
+      |> seq
+      |> compile in
+    fun p ->
+      Re.exec_opt re (Path.basename p)
+      |> Option.map ~f:(fun groups ->
+        let basename = Re.Group.get groups 1 ^ ".html" in
+        Path.relative (Path.parent p) basename
+      ) in
   let context = SC.context sctx in
   let to_remove, html_dir, html_file, jbuilder_keep =
     match m with
     | Mld m ->
       let html_dir = doc_dir ++ lib_unique_name in
-      let html_file = html_dir ++ (m.Mld.name ^ ".html") in
+      let html_file = html_dir ++ (sprintf "%s-%s.html" m.Mld.name lib_name) in
+      Option.iter (fix_filename html_file) ~f:(fun dst ->
+        SC.add_rule sctx (Build.copy ~dst ~src:html_file)
+      );
       html_file, html_dir, html_file, []
     | Module m ->
       let html_dir = doc_dir ++ lib_unique_name ++ String.capitalize_ascii m.obj_name in
@@ -111,8 +129,8 @@ let all_mld_files sctx ~(lib : Library.t) ~lib_name ~modules ~dir files =
   in
   List.map all_files ~f:(fun file ->
     let name = Filename.chop_extension file in
-    let odoc_input_name = sprintf "%s-generated.mld" name in
-    let odoc_file_name = sprintf "page-%s%s" name odoc_ext in
+    let odoc_input_name = sprintf "%s-%s-generated.mld" name lib_name in
+    let odoc_file_name = sprintf "page-%s-%s%s" name lib_name odoc_ext in
     let generated_mld = dir ++ odoc_input_name in
     let source_mld = dir ++ file in
     SC.add_rule sctx
@@ -196,7 +214,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
   let html_files =
     List.map inputs_and_odoc_files ~f:(fun (m, odoc_file) ->
       to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~lib
-        ~lib_unique_name)
+        ~lib_unique_name ~lib_name)
   in
   Alias.add_deps (SC.aliases sctx) (Alias.doc ~dir)
     (css_file ~doc_dir

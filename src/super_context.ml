@@ -401,22 +401,6 @@ module Libs = struct
 
   let static_file_deps ~ext lib =
     Alias.dep (lib_files_alias lib ~ext)
-
-  let odoc_deps t =
-    let ext = ".odoc" in
-    Build.dyn_paths (Build.arr (
-      List.fold_left ~init:[] ~f:(fun acc (lib : Lib.t) ->
-        match lib with
-        | External pkg -> begin
-            let dir =
-              let doc_dir = Option.value_exn t.context.doc_dir in
-              Path.relative (Path.relative doc_dir pkg.name) "odoc-pages" in
-            List.rev_append
-              (External_dir.files (get_external_dir t ~dir) ~ext)
-              acc
-          end
-        | Internal lib ->
-          Alias.file (lib_files_alias lib ~ext) :: acc)))
 end
 
 module Deps = struct

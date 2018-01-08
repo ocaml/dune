@@ -5,12 +5,14 @@
       ocamldep foo.dependsi.ocamldep-output
           odoc _doc/odoc.css
         ocamlc foo_byte.{cmi,cmo,cmt}
+          odoc page-index-foo.byte.odoc
         ocamlc foo.{cmi,cmo,cmt}
+          odoc page-index-foo.odoc
           odoc foo_byte.odoc
           odoc foo.odoc
-          odoc _doc/foo.byte/index.html
+          odoc _doc/foo.byte/index-foo.byte.html
           odoc _doc/foo.byte/Foo_byte/.jbuilder-keep,_doc/foo.byte/Foo_byte/index.html
-          odoc _doc/foo/index.html
+          odoc _doc/foo/index-foo.html
           odoc _doc/foo/Foo/.jbuilder-keep,_doc/foo/Foo/index.html
   $ $JBUILDER runtest -j1 --root .
   <!DOCTYPE html>

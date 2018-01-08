@@ -407,15 +407,13 @@ module Libs = struct
     Build.dyn_paths (Build.arr (
       List.fold_left ~init:[] ~f:(fun acc (lib : Lib.t) ->
         match lib with
-        | External pkg ->
-          begin match t.context.doc_dir with
-          | Some doc_dir ->
+        | External pkg -> begin
             let dir =
+              let doc_dir = Option.value_exn t.context.doc_dir in
               Path.relative (Path.relative doc_dir pkg.name) "odoc-pages" in
             List.rev_append
               (External_dir.files (get_external_dir t ~dir) ~ext)
               acc
-          | None -> acc
           end
         | Internal lib ->
           Alias.file (lib_files_alias lib ~ext) :: acc)))

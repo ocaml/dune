@@ -197,7 +197,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
     Build.memoize "includes"
       (requires
        >>>
-       SC.Libs.odoc_deps sctx
+       SC.Libs.file_deps sctx ~ext:odoc_ext
        >>^ Lib.include_flags)
   in
   let mld_files =

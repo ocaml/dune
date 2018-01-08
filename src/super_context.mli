@@ -126,6 +126,8 @@ module Libs : sig
       To depend on this alias, use [~ext:"ext1-and-ext2-...-extn"]
   *)
   val setup_file_deps_group_alias : t -> Lib.Internal.t -> exts:string list -> unit
+
+  val odoc_deps : t -> (Lib.t list, Lib.t list) Build.t
 end
 
 (** Interpret dependencies written in jbuild files *)

@@ -13,8 +13,8 @@ module Mld : sig
   type t
   val create : name:string -> t
 
-  val odoc_file : dir:Path.t -> t -> Path.t
-  val odoc_input : dir:Path.t -> t -> Path.t
+  val odoc_file : doc_dir:Path.t -> t -> Path.t
+  val odoc_input : doc_dir:Path.t -> t -> Path.t
 
   val html_filename : t -> string
 end = struct
@@ -22,11 +22,11 @@ end = struct
 
   let create ~name = name
 
-  let odoc_file ~dir t =
-    Path.relative dir (sprintf "page-%s%s" t odoc_ext)
+  let odoc_file ~doc_dir t =
+    Path.relative doc_dir (sprintf "page-%s%s" t odoc_ext)
 
-  let odoc_input ~dir t =
-    Path.relative dir (sprintf "%s-generated.mld" t)
+  let odoc_input ~doc_dir t =
+    Path.relative doc_dir (sprintf "%s-generated.mld" t)
 
   let html_filename t =
     sprintf "%s.html" t
@@ -37,12 +37,12 @@ module Module_or_mld = struct
     | Mld of Mld.t
     | Module of Module.t
 
-  let odoc_file ~dir = function
-    | Mld m -> Mld.odoc_file ~dir m
-    | Module m -> Module.odoc_file ~dir m
+  let odoc_file ~doc_dir = function
+    | Mld m -> Mld.odoc_file ~doc_dir m
+    | Module m -> Module.odoc_file ~doc_dir m
 
   let odoc_input ~dir ~doc_dir = function
-    | Mld m -> Mld.odoc_input ~dir:doc_dir m
+    | Mld m -> Mld.odoc_input ~doc_dir m
     | Module m -> Module.cmti_file m ~dir
 
   let html_dir ~doc_dir = function
@@ -65,12 +65,12 @@ let module_or_mld_deps (m : Module_or_mld.t) ~dir ~doc_dir ~dep_graph ~modules =
        List.map (Utils.find_deps ~dir graph m.name)
          ~f:(fun name ->
            let m = Utils.find_module ~dir modules name in
-           Module.odoc_file m ~dir:doc_dir))
+           Module.odoc_file m ~doc_dir))
 
 let compile sctx (m : Module_or_mld.t) ~odoc ~dir ~includes ~dep_graph
       ~doc_dir ~modules ~lib_unique_name =
   let context = SC.context sctx in
-  let odoc_file = Module_or_mld.odoc_file m ~dir:doc_dir in
+  let odoc_file = Module_or_mld.odoc_file m ~doc_dir in
   SC.add_rule sctx
     (module_or_mld_deps m ~doc_dir ~dir ~dep_graph ~modules
      >>>
@@ -127,7 +127,7 @@ let all_mld_files sctx ~(lib : Library.t) ~lib_name ~modules ~dir files =
   List.map all_files ~f:(fun file ->
     let name = Filename.chop_extension file in
     let mld = Mld.create ~name in
-    let generated_mld = Mld.odoc_input ~dir:doc_dir mld in
+    let generated_mld = Mld.odoc_input ~doc_dir mld in
     let source_mld = dir ++ file in
     SC.add_rule sctx
       (Build.if_file_exists source_mld

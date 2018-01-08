@@ -9,18 +9,35 @@ let ( ++ ) = Path.relative
 let get_odoc sctx = SC.resolve_program sctx "odoc" ~hint:"opam install odoc"
 let odoc_ext = ".odoc"
 
-module Mld = struct
+module Mld : sig
+  type t
+  val create : name:string -> lib_name:string -> t
+
+  val odoc_file : dir:Path.t -> t -> Path.t
+  val odoc_input : dir:Path.t -> t -> Path.t
+
+  val html_filename : t -> string
+
+  val html_target_filename : t -> string
+end = struct
   type t = {
     name : string; (** source file name without the extension. *)
-    odoc_input_name : string;
-    odoc_file_name  : string;
+    lib_name : string;
   }
 
-  let odoc_file ~dir {odoc_file_name; _} =
-    Path.relative dir odoc_file_name
+  let create ~name ~lib_name = { name ; lib_name }
 
-  let odoc_input ~dir {odoc_input_name; _} =
-    Path.relative dir odoc_input_name
+  let odoc_file ~dir t =
+    Path.relative dir (sprintf "page-%s-%s%s" t.name t.lib_name odoc_ext)
+
+  let odoc_input ~dir t =
+    Path.relative dir (sprintf "%s-%s-generated.mld" t.name t.lib_name)
+
+  let html_filename t =
+    sprintf "%s-%s.html" t.name t.lib_name
+
+  let html_target_filename t =
+    sprintf "%s.html" t.name
 end
 
 module Module_or_mld = struct
@@ -35,6 +52,22 @@ module Module_or_mld = struct
   let odoc_input ~dir = function
     | Mld m -> Mld.odoc_input ~dir m
     | Module m -> Module.cmti_file m ~dir
+
+  let html_file ~doc_dir ~lib_unique_name = function
+    | Mld m ->
+      let html_dir = doc_dir ++ lib_unique_name in
+      html_dir ++ Mld.html_filename m
+    | Module m ->
+      let html_dir = doc_dir ++ lib_unique_name ++ String.capitalize_ascii m.obj_name in
+      html_dir ++ "index.html"
+
+  let html_target ~doc_dir ~lib_unique_name t =
+    match t with
+    | Mld mld ->
+      let html_dir = Path.parent (html_file ~doc_dir ~lib_unique_name t) in
+      Path.relative html_dir (Mld.html_target_filename mld)
+    | Module _ ->
+      html_file t ~doc_dir ~lib_unique_name
 end
 
 let module_or_mld_deps (m : Module_or_mld.t) ~dir ~dep_graph ~modules =
@@ -69,40 +102,23 @@ let compile sctx (m : Module_or_mld.t) ~odoc ~dir ~includes ~dep_graph
   (m, odoc_file)
 
 let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
-      ~lib_unique_name ~lib_name ~(lib : Library.t) =
-  let fix_filename =
-    let re =
-      let open Re in
-      [ group (rep1 any)
-      ; char '-'
-      ; rep1 (compl [char '.'])
-      ; str ".html" ]
-      |> seq
-      |> compile in
-    fun p ->
-      Re.exec_opt re (Path.basename p)
-      |> Option.map ~f:(fun groups ->
-        let basename = Re.Group.get groups 1 ^ ".html" in
-        Path.relative (Path.parent p) basename
-      ) in
+      ~lib_unique_name ~(lib : Library.t) =
   let context = SC.context sctx in
-  let to_remove, html_dir, html_file, jbuilder_keep =
+  let html_file = Module_or_mld.html_file ~doc_dir ~lib_unique_name m in
+  let html_dir = Path.parent html_file in
+  let html_target = Module_or_mld.html_target ~doc_dir ~lib_unique_name m in
+  let to_remove, jbuilder_keep =
     match m with
-    | Mld m ->
-      let html_dir = doc_dir ++ lib_unique_name in
-      let html_file = html_dir ++ (sprintf "%s-%s.html" m.Mld.name lib_name) in
-      Option.iter (fix_filename html_file) ~f:(fun dst ->
-        SC.add_rule sctx (Build.copy ~dst ~src:html_file)
-      );
-      html_file, html_dir, html_file, []
-    | Module m ->
-      let html_dir = doc_dir ++ lib_unique_name ++ String.capitalize_ascii m.obj_name in
-      let html_file = html_dir ++ "index.html" in
+    | Mld _ -> html_file, []
+    | Module _ ->
       let jbuilder_keep =
        Build.create_file (html_dir ++ Config.jbuilder_keep_fname)
       in
-      html_dir, html_dir, html_file, [jbuilder_keep]
+      html_dir, [jbuilder_keep]
   in
+  if html_target <> html_file then (
+    SC.add_rule sctx (Build.copy ~dst:html_target ~src:html_file)
+  );
   SC.add_rule sctx
     (SC.Libs.static_file_deps (dir, lib) ~ext:odoc_ext
      >>>
@@ -121,7 +137,7 @@ let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
        :: jbuilder_keep
      )
     );
-  html_file
+  html_target
 
 let all_mld_files sctx ~(lib : Library.t) ~lib_name ~modules ~dir files =
   let all_files =
@@ -129,9 +145,8 @@ let all_mld_files sctx ~(lib : Library.t) ~lib_name ~modules ~dir files =
   in
   List.map all_files ~f:(fun file ->
     let name = Filename.chop_extension file in
-    let odoc_input_name = sprintf "%s-%s-generated.mld" name lib_name in
-    let odoc_file_name = sprintf "page-%s-%s%s" name lib_name odoc_ext in
-    let generated_mld = dir ++ odoc_input_name in
+    let mld = Mld.create ~name ~lib_name in
+    let generated_mld = Mld.odoc_input ~dir mld in
     let source_mld = dir ++ file in
     SC.add_rule sctx
       (Build.if_file_exists source_mld
@@ -151,7 +166,7 @@ let all_mld_files sctx ~(lib : Library.t) ~lib_name ~modules ~dir files =
                 (String_map.keys modules |> String.concat ~sep:" "))))
        >>>
        Build.write_file_dyn generated_mld);
-    { Mld. name; odoc_file_name; odoc_input_name }
+    mld
   )
 
 let doc_dir ~context = Path.relative context.Context.build_dir "_doc"
@@ -214,7 +229,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
   let html_files =
     List.map inputs_and_odoc_files ~f:(fun (m, odoc_file) ->
       to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~lib
-        ~lib_unique_name ~lib_name)
+        ~lib_unique_name)
   in
   Alias.add_deps (SC.aliases sctx) (Alias.doc ~dir)
     (css_file ~doc_dir

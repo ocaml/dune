@@ -7,6 +7,10 @@
  ((name rlib)
   (public_name rlib)
   (modules (bar cppome foo hello pped))
+  (lint
+   (per_module
+    ((pps (reasonppx (-lint true))) (hello cppome))
+    ((action (run ./pp/reasononlypp.exe -lint ${<})) (foo bar pped))))
   (preprocess
    (per_module
     ((pps (reasonppx)) (foo))
@@ -16,6 +20,7 @@
 (executable
  ((name rbin)
   (modules (rbin))
+  (lint (action (run ./pp/reasononlypp.exe -lint ${<})))
   (preprocess (action (run ./pp/reasononlypp.exe ${<})))
   (libraries (rlib))))
 

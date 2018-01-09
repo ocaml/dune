@@ -228,13 +228,15 @@ module Gen(P : Params) = struct
           | Some m -> String_map.add modules ~key:m.name ~data:m
         in
         String_map.values modules);
+
     (* Preprocess before adding the alias module as it doesn't need preprocessing *)
     let modules =
-      SC.PP.pped_modules sctx ~dir ~dep_kind ~modules ~preprocess:lib.buildable.preprocess
+      SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
+        ~preprocess:lib.buildable.preprocess
         ~preprocessor_deps:lib.buildable.preprocessor_deps
-        ~lib_name:(Some lib.name)
-        ~scope
-    in
+        ~lint:lib.buildable.lint
+        ~lib_name:(Some lib.name) in
+
     let modules =
       match alias_module with
       | None -> modules
@@ -501,13 +503,15 @@ module Gen(P : Params) = struct
       if not (String_map.mem (String.capitalize_ascii name) modules) then
         die "executable %s in %s doesn't have a corresponding .ml file"
           name (Path.to_string dir));
+
     let modules =
-      SC.PP.pped_modules sctx ~dir ~dep_kind ~modules
+      SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
         ~preprocess:exes.buildable.preprocess
         ~preprocessor_deps:exes.buildable.preprocessor_deps
+        ~lint:exes.buildable.lint
         ~lib_name:None
-        ~scope
     in
+
     let item = List.hd exes.names in
     let dep_graph =
       Ocamldep.rules sctx ~dir ~item ~modules ~alias_module:None

@@ -925,6 +925,12 @@ module PP = struct
           ; Ml_kind.ppx_driver_flag kind
           ; Dep src_path
           ] in
+        let args =
+          (* This hack is needed until -null is standard:
+             https://github.com/ocaml-ppx/ocaml-migrate-parsetree/issues/35 *)
+          match Option.map ~f:Pp.to_string (List.last pps) with
+          | Some "ppx_driver.runner" -> args @ [A "-null"]
+          | Some _ | None -> args in
         let digest_path =
           Alias.add_stamp_dep (aliases sctx) alias
             ~data:(

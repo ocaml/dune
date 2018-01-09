@@ -101,6 +101,13 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
     in
     Format.fprintf ppf "%a@{<error>Error@}: %s\n" Loc.print loc msg;
     false
+  | Usexp.Parser.Error e ->
+    let pos = Usexp.Parser.Error.position e in
+    let msg = Usexp.Parser.Error.message e in
+    let pos = { pos with pos_fname = map_fname pos.pos_fname } in
+    let loc = { Loc. start = pos; stop = pos } in
+    Format.fprintf ppf "%a@{<error>Error@}: %s\n" Loc.print loc msg;
+    false
   | Fatal_error "" -> false
   | Fatal_error msg ->
     Format.fprintf ppf "%s\n" (String.capitalize_ascii msg);

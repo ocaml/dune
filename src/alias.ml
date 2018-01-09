@@ -184,3 +184,19 @@ let rules store =
                         (Path.Set.elements deps))))
     in
     rule :: acc)
+
+let add_stamp_dep (store: Store.t) (t : t) ~data =
+  let digest = Digest.string (Sexp.to_string data) in
+  let digest_path = file_with_digest_suffix t ~digest in
+  add_deps store t [digest_path];
+  digest_path
+
+let add_action_dep (store: Store.t) (t : t) ~action ~action_deps =
+  let data =
+    let deps = Sexp.To_sexp.list Jbuild.Dep_conf.sexp_of_t action_deps in
+    let action =
+      match action with
+      | None -> Sexp.Atom "none"
+      | Some a -> List [Atom "some"; Action.Unexpanded.sexp_of_t a] in
+    Sexp.List [deps ; action] in
+  add_stamp_dep store t ~data

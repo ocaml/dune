@@ -70,3 +70,21 @@ end
 val add_deps : Store.t -> t -> Path.t list -> unit
 
 val rules : Store.t -> Build_interpret.Rule.t list
+
+(** Create an alias dependency for an action and its inputs represented by
+    [~data]. The path returned is the file that should be represented by the
+    file the action will create following execution.*)
+val add_stamp_dep
+  : Store.t
+  -> t
+  -> data:Sexp.t
+  -> Path.t
+
+(** Like [add_stamp_dep] but an action (if present) and the dependencies can be
+    passed in directly. *)
+val add_action_dep
+  : Store.t
+  -> t
+  -> action:Action.Unexpanded.t option
+  -> action_deps:Jbuild.Dep_conf.t list
+  -> Path.t

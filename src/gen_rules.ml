@@ -570,21 +570,11 @@ module Gen(P : Params) = struct
          ~scope)
 
   let alias_rules (alias_conf : Alias_conf.t) ~dir ~scope =
-    let digest =
-      let deps =
-        Sexp.To_sexp.list Dep_conf.sexp_of_t alias_conf.deps in
-      let action =
-        match alias_conf.action with
-        | None -> Sexp.Atom "none"
-        | Some a -> List [Atom "some" ; Action.Unexpanded.sexp_of_t a]
-      in
-      Sexp.List [deps ; action]
-      |> Sexp.to_string
-      |> Digest.string
-    in
     let alias = Alias.make alias_conf.name ~dir in
-    let digest_path = Alias.file_with_digest_suffix alias ~digest in
-    Alias.add_deps (SC.aliases sctx) alias [digest_path];
+    let digest_path =
+      Alias.add_action_dep (SC.aliases sctx) alias
+        ~action:alias_conf.action
+        ~action_deps:alias_conf.deps in
     let deps = SC.Deps.interpret sctx ~scope ~dir alias_conf.deps in
     SC.add_rule sctx
       ~locks:(interpret_locks ~dir ~scope alias_conf.locks)

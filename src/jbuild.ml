@@ -301,14 +301,12 @@ module Preprocess_map = struct
 end
 
 module Lint = struct
-  type t = Pps of Preprocess.pps
+  type t = Preprocess_map.t
 
-  let t =
-    sum
-      [ cstr "pps" (list Pp_or_flags.t @> nil) (fun l ->
-          let pps, flags = Pp_or_flags.split l in
-          Pps { pps; flags })
-      ]
+  let t = Preprocess_map.t
+
+  let default = Preprocess_map.default
+  let no_lint = default
 end
 
 let field_oslu name =
@@ -442,6 +440,7 @@ module Buildable = struct
     ; libraries                : Lib_dep.t list
     ; preprocess               : Preprocess_map.t
     ; preprocessor_deps        : Dep_conf.t list
+    ; lint                     : Preprocess_map.t
     ; flags                    : Ordered_set_lang.Unexpanded.t
     ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
@@ -456,8 +455,8 @@ module Buildable = struct
     >>= fun preprocessor_deps ->
     (* CR-someday jdimino: remove this. There are still a few Jane Street packages using
        this *)
-    field_o "lint" (Per_module.t Lint.t)
-    >>= fun _lint ->
+    field "lint" Lint.t ~default:Lint.default
+    >>= fun lint ->
     field "modules" (fun s -> Ordered_set_lang.(map (t s)) ~f:String.capitalize_ascii)
       ~default:Ordered_set_lang.standard
     >>= fun modules ->
@@ -470,6 +469,7 @@ module Buildable = struct
     return
       { preprocess
       ; preprocessor_deps
+      ; lint
       ; modules
       ; libraries
       ; flags

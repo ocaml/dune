@@ -49,6 +49,7 @@ let utop_of_libs (libs : Library.t list) =
           (Lib_dep.direct "utop") :: (List.map libs ~f:(fun lib ->
             Lib_dep.direct lib.Library.name))
       ; preprocess = Preprocess_map.no_preprocessing
+      ; lint = Lint.no_lint
       ; preprocessor_deps = []
       ; flags = Ordered_set_lang.Unexpanded.standard
       ; ocamlc_flags = Ordered_set_lang.Unexpanded.standard

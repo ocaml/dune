@@ -228,13 +228,15 @@ module Gen(P : Params) = struct
           | Some m -> String_map.add modules ~key:m.name ~data:m
         in
         String_map.values modules);
+
     (* Preprocess before adding the alias module as it doesn't need preprocessing *)
     let modules =
-      SC.PP.pped_modules sctx ~dir ~dep_kind ~modules ~preprocess:lib.buildable.preprocess
+      SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
+        ~preprocess:lib.buildable.preprocess
         ~preprocessor_deps:lib.buildable.preprocessor_deps
-        ~lib_name:(Some lib.name)
-        ~scope
-    in
+        ~lint:lib.buildable.lint
+        ~lib_name:(Some lib.name) in
+
     let modules =
       match alias_module with
       | None -> modules
@@ -501,13 +503,15 @@ module Gen(P : Params) = struct
       if not (String_map.mem (String.capitalize_ascii name) modules) then
         die "executable %s in %s doesn't have a corresponding .ml file"
           name (Path.to_string dir));
+
     let modules =
-      SC.PP.pped_modules sctx ~dir ~dep_kind ~modules
+      SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
         ~preprocess:exes.buildable.preprocess
         ~preprocessor_deps:exes.buildable.preprocessor_deps
+        ~lint:exes.buildable.lint
         ~lib_name:None
-        ~scope
     in
+
     let item = List.hd exes.names in
     let dep_graph =
       Ocamldep.rules sctx ~dir ~item ~modules ~alias_module:None
@@ -570,21 +574,11 @@ module Gen(P : Params) = struct
          ~scope)
 
   let alias_rules (alias_conf : Alias_conf.t) ~dir ~scope =
-    let digest =
-      let deps =
-        Sexp.To_sexp.list Dep_conf.sexp_of_t alias_conf.deps in
-      let action =
-        match alias_conf.action with
-        | None -> Sexp.Atom "none"
-        | Some a -> List [Atom "some" ; Action.Unexpanded.sexp_of_t a]
-      in
-      Sexp.List [deps ; action]
-      |> Sexp.to_string
-      |> Digest.string
-    in
     let alias = Alias.make alias_conf.name ~dir in
-    let digest_path = Alias.file_with_digest_suffix alias ~digest in
-    Alias.add_deps (SC.aliases sctx) alias [digest_path];
+    let digest_path =
+      Alias.add_action_dep (SC.aliases sctx) alias
+        ~action:alias_conf.action
+        ~action_deps:alias_conf.deps in
     let deps = SC.Deps.interpret sctx ~scope ~dir alias_conf.deps in
     SC.add_rule sctx
       ~locks:(interpret_locks ~dir ~scope alias_conf.locks)

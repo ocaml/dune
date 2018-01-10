@@ -35,3 +35,5 @@ val odoc_file : t -> dir:Path.t -> Path.t
 
 (** Either the .cmti, or .cmt if the module has no interface *)
 val cmti_file : t -> dir:Path.t -> Path.t
+
+val iter : t -> f:(Ml_kind.t -> File.t -> unit) -> unit

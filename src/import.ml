@@ -78,6 +78,11 @@ module List = struct
       max acc (String.length (f x)))
 
   let longest l = longest_map l ~f:(fun x -> x)
+
+  let rec last = function
+    | [] -> None
+    | [x] -> Some x
+    | _::xs -> last xs
 end
 
 module Hashtbl = struct

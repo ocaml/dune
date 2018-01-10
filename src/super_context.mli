@@ -158,12 +158,14 @@ end
 
 (** Preprocessing stuff *)
 module PP : sig
-  (** Setup pre-processing rules and return the list of pre-processed modules *)
-  val pped_modules
+  (** Setup pre-processing and linting rules and return the list of
+      pre-processed modules *)
+  val pp_and_lint_modules
     :  t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
     -> modules:Module.t String_map.t
+    -> lint:Preprocess_map.t
     -> preprocess:Preprocess_map.t
     -> preprocessor_deps:Dep_conf.t list
     -> lib_name:string option

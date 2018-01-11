@@ -1140,7 +1140,8 @@ is global to all build contexts, simply use an absolute filename:
 Promotion
 ---------
 
-The ``(promote (<file1> as <file2>) (<file3> as <file4>) ...)`` action
+The ``(promote (<file1> as <file2>) (<file3> as <file4>) ...)`` and
+``(promote-if (<file1> as <file2>) (<file3> as <file4>) ...)`` actions
 can be used to copy generated files to the source tree.
 
 This method is used when one wants to commit a generated file that is
@@ -1150,6 +1151,8 @@ be used to:
 - cut dependencies and/or speed up the build in release mode: we use
   the file in the source tree rather than re-generate it
 - support bootstrap cycles
+- simplify the review when the generated code is easier to review than
+  the generator
 
 How jbuilder interprets promotions can be controlled using the
 ``--promote`` command line argument. The following behaviors are
@@ -1161,6 +1164,9 @@ available:
 - ``--promote ignore``: ``promote`` actions are simply ignored
 - ``--promote copy``: when the two files are different, jbuilder
   prints a diff and copies ``<a>`` to ``<b>`` directly in the source tree
+
+Note that ``-p/--for-release-of-packages`` implies ``--promote
+ignore``.
 
 OCaml syntax
 ============

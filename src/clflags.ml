@@ -11,8 +11,21 @@ let external_lib_deps_hint = ref []
 let capture_outputs = ref true
 let debug_backtraces = ref false
 let diff_command = ref None
-type promote_mode =
-  | Ignore
-  | Check
-  | Copy
-let promote_mode = ref Check
+module Promote_mode = struct
+  type t =
+    | Ignore
+    | Check
+    | Copy
+
+  let to_string = function
+    | Ignore -> "ignore"
+    | Check -> "check"
+    | Copy -> "copy"
+
+  let of_string = function
+    | "ignore" -> Some Ignore
+    | "check" -> Some Check
+    | "copy" -> Some Copy
+    | _ -> None
+end
+let promote_mode = ref Promote_mode.Check

@@ -33,6 +33,9 @@ next
   [opam-cross-windows](https://github.com/whitequark/opam-cross-windows)
   (#355)
 
+- Simplify generated META files: do not generate the transitive
+  closure of dependencies in META files (#405)
+
 1.0+beta16 (05/11/2017)
 -----------------------
 

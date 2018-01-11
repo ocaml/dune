@@ -256,6 +256,8 @@ module Libs = struct
 
   let find t ~from name = find t.libs ~from name
 
+  let best_lib_dep_names_exn t ~dir deps = best_lib_dep_names_exn t.libs ~dir deps
+
   let vrequires t ~dir ~item =
     let fn = Path.relative dir (item ^ ".requires.sexp") in
     Build.Vspec.T (fn, t.libs_vfile)

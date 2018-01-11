@@ -1,7 +1,6 @@
 open Import
 open Jbuild
 open Meta
-open Build.O
 
 module Pub_name = struct
   type t =
@@ -121,7 +120,7 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~
       )
     ]
 
-let gen ~package ~version ~stanzas ~lib_deps ~ppx_runtime_deps =
+let gen ~package ~version ~stanzas ~resolve_lib_dep_names =
   let items =
     List.filter_map stanzas ~f:(fun (dir, stanza) ->
       match (stanza : Stanza.t) with
@@ -131,20 +130,21 @@ let gen ~package ~version ~stanzas ~lib_deps ~ppx_runtime_deps =
       | _ ->
         None)
   in
-  (version >>^ function
-   | None -> []
-   | Some s -> [rule "version" [] Set s])
-  >>>
-  Build.all
-    (List.map items ~f:(fun (Lib (dir, pub_name, lib)) ->
-         Build.fanout3
-           (Build.arr (fun x -> x))
-           (lib_deps ~dir         (Stanza.Library lib))
-           (ppx_runtime_deps ~dir (Stanza.Library lib))
-         >>^ fun (version, lib_deps, ppx_runtime_deps) ->
-         (pub_name,
-          gen_lib pub_name lib ~lib_deps ~ppx_runtime_deps ~version)))
-  >>^ fun pkgs ->
+  let version =
+    match version with
+    | None -> []
+    | Some s -> [rule "version" [] Set s]
+  in
+  let pkgs =
+    List.map items ~f:(fun (Lib (dir, pub_name, lib)) ->
+      let lib_deps = resolve_lib_dep_names ~dir lib.buildable.libraries in
+      let ppx_runtime_deps =
+        resolve_lib_dep_names ~dir
+          (List.map lib.ppx_runtime_libraries ~f:Lib_dep.direct)
+      in
+      (pub_name,
+       gen_lib pub_name lib ~lib_deps ~ppx_runtime_deps ~version))
+  in
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->
       match Pub_name.to_list pn with

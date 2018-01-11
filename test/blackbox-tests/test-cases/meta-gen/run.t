@@ -17,17 +17,17 @@
   package "rewriter" (
     directory = "rewriter"
     description = "ppx rewriter"
-    requires(ppx_driver) = "bytes foobar"
+    requires(ppx_driver) = "foobar"
     archive(ppx_driver,byte) = "foobar_rewriter.cma"
     archive(ppx_driver,native) = "foobar_rewriter.cmxa"
     plugin(ppx_driver,byte) = "foobar_rewriter.cma"
     plugin(ppx_driver,native) = "foobar_rewriter.cmxs"
     # This is what jbuilder uses to find out the runtime dependencies of
     # a preprocessor
-    ppx_runtime_deps = "bytes foobar.baz"
+    ppx_runtime_deps = "foobar.baz"
     # This line makes things transparent for people mixing preprocessors
     # and normal dependencies
-    requires(-ppx_driver) = "bytes foobar.baz"
+    requires(-ppx_driver) = "foobar.baz"
     ppx(-ppx_driver,-custom_ppx) = "./ppx.exe --as-ppx"
   )
   package "sub" (

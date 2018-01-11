@@ -1143,7 +1143,7 @@ Promotion
 The ``(promote (<file1> as <file2>) (<file3> as <file4>) ...)`` action
 can be used to copy generated files to the source tree.
 
-This method is used when one wants to comit a generated file that is
+This method is used when one wants to commit a generated file that is
 independent of the systems where it is generated. Typically this can
 be used to:
 

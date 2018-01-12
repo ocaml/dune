@@ -24,6 +24,12 @@ val interpret_lib_deps
   -> Jbuild.Lib_dep.t list
   -> Lib.Internal.t list * Findlib.package list * fail option
 
+val best_lib_dep_names_exn
+  :  t
+  -> dir:Path.t
+  -> Jbuild.Lib_dep.t list
+  -> string list
+
 type resolved_select =
   { src_fn : string
   ; dst_fn : string

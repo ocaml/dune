@@ -881,31 +881,11 @@ Add it to your jbuild file to remove this warning.
           Build.return ["# JBUILDER_GEN"]
       in
       let meta =
+        version >>^ fun version ->
         Gen_meta.gen ~package:pkg.name
           ~version
           ~stanzas:(SC.stanzas_to_consider_for_install sctx)
-          ~lib_deps:(fun ~dir jbuild ->
-            match jbuild with
-            | Library lib ->
-              Build.arr ignore
-              >>>
-              SC.Libs.load_requires sctx ~dir ~item:lib.name
-              >>^ List.map ~f:Lib.best_name
-            | Executables exes ->
-              let item = List.hd exes.names in
-              Build.arr ignore
-              >>>
-              SC.Libs.load_requires sctx ~dir ~item
-              >>^ List.map ~f:Lib.best_name
-            | _ -> Build.arr (fun _ -> []))
-          ~ppx_runtime_deps:(fun ~dir jbuild ->
-            match jbuild with
-            | Library lib ->
-              Build.arr ignore
-              >>>
-              SC.Libs.load_runtime_deps sctx ~dir ~item:lib.name
-              >>^ List.map ~f:Lib.best_name
-            | _ -> Build.arr (fun _ -> []))
+          ~resolve_lib_dep_names:(SC.Libs.best_lib_dep_names_exn sctx)
       in
       SC.add_rule sctx
         (Build.fanout meta template

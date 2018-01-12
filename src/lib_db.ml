@@ -144,33 +144,38 @@ let create findlib ~scopes internal_libraries =
 let internal_libs_without_non_installable_optional_ones t =
   String_map.values t.instalable_internal_libs
 
+let interpret_lib_dep t ~dir lib_dep =
+  match lib_dep with
+  | Lib_dep.Direct name -> begin
+      match find_exn t ~from:dir name with
+      | x -> Inl [x]
+      | exception _ ->
+        (* Call [find] again to get a proper backtrace *)
+        Inr { fail = fun () ->
+          ignore (find_exn t ~from:dir name : Lib.t);
+          assert false }
+    end
+  | Select { choices; loc; _ } ->
+    match
+      List.find_map choices ~f:(fun { required; forbidden; _ } ->
+        if String_set.exists forbidden ~f:(lib_is_available t ~from:dir) then
+          None
+        else
+          match
+            List.map (String_set.elements required) ~f:(find_exn t ~from:dir)
+          with
+          | l           -> Some l
+          | exception _ -> None)
+    with
+    | Some l -> Inl l
+    | None ->
+      Inr { fail = fun () ->
+        Loc.fail loc "No solution found for this select form"
+      }
+
 let interpret_lib_deps t ~dir lib_deps =
   let libs, failures =
-    List.partition_map lib_deps ~f:(function
-      | Lib_dep.Direct name -> begin
-          match find_exn t ~from:dir name with
-          | x -> Inl [x]
-          | exception e ->
-            (* Call [find] again to get a proper backtrace *)
-            Inr { fail = fun () -> ignore (find_exn t ~from:dir name : Lib.t); raise e }
-        end
-      | Select { choices; loc; _ } ->
-        match
-          List.find_map choices ~f:(fun { required; forbidden; _ } ->
-            if String_set.exists forbidden ~f:(lib_is_available t ~from:dir) then
-              None
-            else
-              match
-                List.map (String_set.elements required) ~f:(find_exn t ~from:dir)
-              with
-              | l           -> Some l
-              | exception _ -> None)
-        with
-        | Some l -> Inl l
-        | None ->
-          Inr { fail = fun () ->
-            Loc.fail loc "No solution found for this select form"
-          })
+    List.partition_map lib_deps ~f:(interpret_lib_dep t ~dir)
   in
   let internals, externals =
     List.partition_map (List.concat libs) ~f:(function
@@ -181,6 +186,12 @@ let interpret_lib_deps t ~dir lib_deps =
    match failures with
    | [] -> None
    | f :: _ -> Some f)
+
+let best_lib_dep_names_exn t ~dir lib_deps =
+  List.concat_map lib_deps ~f:(fun lib_dep ->
+    match interpret_lib_dep t ~dir lib_dep with
+    | Inl libs -> List.map libs ~f:Lib.best_name
+    | Inr fail -> fail.fail ())
 
 type resolved_select =
   { src_fn : string

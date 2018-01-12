@@ -77,6 +77,7 @@ val unique_library_name : t -> Lib.t -> string
 
 module Libs : sig
   val find : t -> from:Path.t -> string -> Lib.t option
+  val best_lib_dep_names_exn : t -> dir:Path.t -> Lib_dep.t list -> string list
 
   val load_requires     : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t
   val load_runtime_deps : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t

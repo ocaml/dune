@@ -4,12 +4,7 @@ open! Import
 
 val gen
   :  package:string
-  -> version:(unit, string option) Build.t
+  -> version:string option
   -> stanzas:(Path.t * Jbuild.Stanza.t) list
-  -> lib_deps:(dir:Path.t
-               -> Jbuild.Stanza.t
-               -> (Meta.entry list, string list) Build.t)
-  -> ppx_runtime_deps:(dir:Path.t
-                       -> Jbuild.Stanza.t
-                       -> (Meta.entry list, string list) Build.t)
-  -> (unit, Meta.t) Build.t
+  -> resolve_lib_dep_names:(dir:Path.t -> Jbuild.Lib_dep.t list -> string list)
+  -> Meta.t

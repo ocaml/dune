@@ -546,8 +546,8 @@ module Action = struct
         let open Action.Var_expansion in
         let has_bang, var = parse_bang key in
         if has_bang then
-          Format.eprintf "@{<warning>Warning@}: The use of the variable \
-                          prefix '!' is deprecated, simply use '${%s}'@." var;
+          Loc.warn loc "The use of the variable prefix '!' is deprecated, \
+                        simply use '${%s}'@." var;
         match String.lsplit2 var ~on:':' with
         | Some ("path-no-dep", s) -> Some (path_exp (Path.relative dir s))
         | Some ("exe"     , s) ->
@@ -646,7 +646,7 @@ module Action = struct
 
   let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
     let open Action.Var_expansion in
-    U.Partial.expand t ~dir ~map_exe ~f:(fun _loc key ->
+    U.Partial.expand t ~dir ~map_exe ~f:(fun loc key ->
       match String_map.find key dynamic_expansions with
       | Some _ as opt -> opt
       | None ->
@@ -656,8 +656,8 @@ module Action = struct
           Some
             (match deps_written_by_user with
              | [] ->
-                Format.eprintf "@{<warning>Warning@}: Variable '<' used with \
-                                no explicit dependencies@.";
+                Loc.warn loc "Variable '<' used with no explicit \
+                              dependencies@.";
                 Strings ([""], Split)
              | dep :: _ ->
                Paths ([dep], Split))

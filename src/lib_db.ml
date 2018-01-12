@@ -149,9 +149,11 @@ let interpret_lib_dep t ~dir lib_dep =
   | Lib_dep.Direct name -> begin
       match find_exn t ~from:dir name with
       | x -> Inl [x]
-      | exception e ->
+      | exception _ ->
         (* Call [find] again to get a proper backtrace *)
-        Inr { fail = fun () -> ignore (find_exn t ~from:dir name : Lib.t); raise e }
+        Inr { fail = fun () ->
+          ignore (find_exn t ~from:dir name : Lib.t);
+          assert false }
     end
   | Select { choices; loc; _ } ->
     match

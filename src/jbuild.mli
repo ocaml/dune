@@ -240,7 +240,7 @@ end
 
 module Documentation : sig
   type t =
-    { package : Package.t option
+    { package : Package.t
     ; files   : Ordered_set_lang.t
     }
 end

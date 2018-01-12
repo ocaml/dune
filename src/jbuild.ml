@@ -919,13 +919,13 @@ end
 
 module Documentation = struct
   type t =
-    { package: Package.t option
+    { package: Package.t
     ; files: Ordered_set_lang.t
     }
 
   let v1 pkgs =
     record
-      (field_o "package" (Scope.package pkgs) >>= fun package ->
+      (Scope.package_field pkgs >>= fun package ->
        field "files" Ordered_set_lang.t ~default:Ordered_set_lang.standard >>= fun files ->
        return
          { package

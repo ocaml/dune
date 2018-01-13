@@ -93,6 +93,29 @@ struct
     | Remove_tree x -> List [Atom "remove-tree"; path x]
     | Mkdir x       -> List [Atom "mkdir"; path x]
     | Digest_files paths -> List [Atom "digest-files"; List (List.map paths ~f:path)]
+
+  let run prog args = Run (prog, args)
+  let chdir path t = Chdir (path, t)
+  let setenv var value t = Setenv (var, value, t)
+  let with_stdout_to path t = Redirect (Stdout, path, t)
+  let with_stderr_to path t = Redirect (Stderr, path, t)
+  let with_outputs_to path t = Redirect (Outputs, path, t)
+  let ignore_stdout t = Ignore (Stdout, t)
+  let ignore_stderr t = Ignore (Stderr, t)
+  let ignore_outputs t = Ignore (Outputs, t)
+  let progn ts = Progn ts
+  let echo s = Echo s
+  let cat path = Cat path
+  let copy a b = Copy (a, b)
+  let symlink a b = Symlink (a, b)
+  let copy_and_add_line_directive a b = Copy_and_add_line_directive (a, b)
+  let system s = System s
+  let bash s = Bash s
+  let write_file p s = Write_file (p, s)
+  let rename a b = Rename (a, b)
+  let remove_tree path = Remove_tree path
+  let mkdir path = Mkdir path
+  let digest_files files = Digest_files files
 end
 
 module Make_mapper
@@ -534,7 +557,7 @@ type exec_context =
   ; env     : string array
   }
 
-let run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
+let exec_run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
   begin match ectx.context with
    | None
    | Some { Context.for_host = None; _ } -> ()
@@ -567,7 +590,7 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   | Run (Error e, _) ->
     Prog.Not_found.raise e
   | Run (Ok prog, args) ->
-    run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args
+    exec_run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args
   | Chdir (dir, t) ->
     exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
   | Setenv (var, value, t) ->
@@ -633,9 +656,9 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
     let path, arg =
       Utils.system_shell_exn ~needed_to:"interpret (system ...) actions"
     in
-    run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to path [arg; cmd]
+    exec_run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to path [arg; cmd]
   | Bash cmd ->
-    run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
+    exec_run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
       (Utils.bash_exn ~needed_to:"interpret (bash ...) actions")
       ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
   | Write_file (fn, s) ->

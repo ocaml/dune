@@ -31,3 +31,29 @@ module type Ast = sig
     | Digest_files   of path list
 end
 
+module type Helpers = sig
+  include Ast
+
+  val run : program -> string list -> t
+  val chdir : path -> t -> t
+  val setenv : string -> string -> t -> t
+  val with_stdout_to : path -> t -> t
+  val with_stderr_to : path -> t -> t
+  val with_outputs_to : path -> t -> t
+  val ignore_stdout : t -> t
+  val ignore_stderr : t -> t
+  val ignore_outputs : t -> t
+  val progn : t list -> t
+  val echo : string -> t
+  val cat : path -> t
+  val copy : path -> path -> t
+  val symlink : path -> path -> t
+  val copy_and_add_line_directive : path -> path -> t
+  val system : string -> t
+  val bash : string -> t
+  val write_file : path -> string -> t
+  val rename : path -> path -> t
+  val remove_tree : path -> t
+  val mkdir : path -> t
+  val digest_files : path list -> t
+end

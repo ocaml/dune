@@ -185,18 +185,26 @@ let rules store =
     in
     rule :: acc)
 
-let add_stamp_dep (store: Store.t) (t : t) ~data =
-  let digest = Digest.string (Sexp.to_string data) in
+let add_build store t ~stamp build =
+  let digest = Digest.string (Sexp.to_string stamp) in
   let digest_path = file_with_digest_suffix t ~digest in
   add_deps store t [digest_path];
-  digest_path
+  Build.progn
+    [ build
+    ; Build.create_file digest_path
+    ]
 
-let add_action_dep (store: Store.t) (t : t) ~action ~action_deps =
-  let data =
-    let deps = Sexp.To_sexp.list Jbuild.Dep_conf.sexp_of_t action_deps in
-    let action =
-      match action with
-      | None -> Sexp.Atom "none"
-      | Some a -> List [Atom "some"; Action.Unexpanded.sexp_of_t a] in
-    Sexp.List [deps ; action] in
-  add_stamp_dep store t ~data
+let add_builds store t builds =
+  let digest_files, actions =
+    List.split
+      (List.map builds ~f:(fun (stamp, build) ->
+         let digest = Digest.string (Sexp.to_string stamp) in
+         let digest_path = file_with_digest_suffix t ~digest in
+         (digest_path,
+          Build.progn
+            [ build
+            ; Build.create_file digest_path
+            ])))
+  in
+  add_deps store t digest_files;
+  actions

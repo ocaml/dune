@@ -67,24 +67,29 @@ module Store : sig
   val unlink : t -> string list -> unit
 end
 
+(** [add_build store alias deps] arrange things so that all [deps] are built as part of
+    the build of alias [alias]. *)
 val add_deps : Store.t -> t -> Path.t list -> unit
+
+(** [add_build store alias ~stamp build] arrange things so that [build] is part of the
+    build of alias [alias]. [stamp] is any S-expression that is unique and persistent
+    S-expression.
+
+    Return a rule that must be added with [Super_context.add_rule].
+*)
+val add_build
+  :  Store.t
+  -> t
+  -> stamp:Sexp.t
+  -> (unit, Action.t) Build.t
+  -> (unit, Action.t) Build.t
+
+(** Same as calling [add_build] in a loop but slightly more efficient. *)
+val add_builds
+  :  Store.t
+  -> t
+  -> (Sexp.t * (unit, Action.t) Build.t) list
+  -> (unit, Action.t) Build.t list
 
 val rules : Store.t -> Build_interpret.Rule.t list
 
-(** Create an alias dependency for an action and its inputs represented by
-    [~data]. The path returned is the file that should be represented by the
-    file the action will create following execution.*)
-val add_stamp_dep
-  : Store.t
-  -> t
-  -> data:Sexp.t
-  -> Path.t
-
-(** Like [add_stamp_dep] but an action (if present) and the dependencies can be
-    passed in directly. *)
-val add_action_dep
-  : Store.t
-  -> t
-  -> action:Action.Unexpanded.t option
-  -> action_deps:Jbuild.Dep_conf.t list
-  -> Path.t

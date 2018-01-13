@@ -35,6 +35,12 @@ include Action_intf.Ast
   with type path    := Path.t
   with type string  := string
 
+include Action_intf.Helpers
+  with type program := Prog.t
+  with type path    := Path.t
+  with type string  := string
+  with type t       := t
+
 val t : t Sexp.Of_sexp.t
 val sexp_of_t : t Sexp.To_sexp.t
 

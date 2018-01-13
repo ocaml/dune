@@ -283,7 +283,7 @@ module Gen(P : Params) = struct
     Option.iter alias_module ~f:(fun m ->
       let flags = Ocaml_flags.default () in
       Module_compilation.build_module sctx m
-         ~js_of_ocaml
+        ~js_of_ocaml
         ~dynlink
         ~sandbox:alias_module_build_sandbox
         ~flags:(Ocaml_flags.append_common flags ["-w"; "-49"])
@@ -573,33 +573,37 @@ module Gen(P : Params) = struct
          ~targets
          ~scope)
 
+  let add_alias ~dir ~name ~stamp ?(locks=[]) build =
+    let alias = Alias.make name ~dir in
+    SC.add_rule sctx ~locks
+      (Alias.add_build (SC.aliases sctx) alias ~stamp build)
+
   let alias_rules (alias_conf : Alias_conf.t) ~dir ~scope =
-    let alias = Alias.make alias_conf.name ~dir in
-    let digest_path =
-      Alias.add_action_dep (SC.aliases sctx) alias
-        ~action:alias_conf.action
-        ~action_deps:alias_conf.deps in
-    let deps = SC.Deps.interpret sctx ~scope ~dir alias_conf.deps in
-    SC.add_rule sctx
+    let stamp =
+      let module S = Sexp.To_sexp in
+      Sexp.List
+        [ Atom "user-alias"
+        ; S.list   Jbuild.Dep_conf.sexp_of_t   alias_conf.deps
+        ; S.option Action.Unexpanded.sexp_of_t alias_conf.action
+        ]
+    in
+    add_alias
+      ~dir
+      ~name:alias_conf.name
+      ~stamp
       ~locks:(interpret_locks ~dir ~scope alias_conf.locks)
-      (match alias_conf.action with
-       | None ->
-         deps
-         >>>
-         Build.create_file digest_path
+      (SC.Deps.interpret sctx ~scope ~dir alias_conf.deps
+       >>>
+       match alias_conf.action with
+       | None -> Build.progn []
        | Some action ->
-         deps
-         >>>
-         Build.progn
-           [ SC.Action.run
-               sctx
-               action
-               ~dir
-               ~dep_kind:Required
-               ~targets:(Static [])
-               ~scope
-           ; Build.create_file digest_path
-           ])
+         SC.Action.run
+           sctx
+           action
+           ~dir
+           ~dep_kind:Required
+           ~targets:(Static [])
+           ~scope)
 
   let copy_files_rules (def: Copy_files.t) ~src_dir ~dir ~scope =
     let loc = String_with_vars.loc def.glob in

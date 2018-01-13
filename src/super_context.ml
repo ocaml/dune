@@ -892,30 +892,28 @@ module PP = struct
   let lint_module sctx ~(source : Module.t) ~(ast : Module.t) ~dir
         ~dep_kind ~lint ~lib_name ~scope =
     let alias = Alias.lint ~dir in
+    let add_alias fn build =
+      add_rule sctx
+        (Alias.add_build (aliases sctx) alias build
+           ~stamp:(List [ Atom "lint"
+                        ; Sexp.To_sexp.(option string) lib_name
+                        ; Atom fn]))
+    in
     match Preprocess_map.find source.name lint with
     | No_preprocessing -> ()
     | Action action ->
       let action = Action.U.Chdir (root_var, action) in
       Module.iter source ~f:(fun _ (src : Module.File.t) ->
-        let digest_path =
-          Alias.add_action_dep
-            ~action:(Some action)
-            ~action_deps:[Dep_conf.File (String_with_vars.virt __POS__ src.name)]
-            (aliases sctx) alias in
-        let src = Path.relative dir src.name in
-        add_rule sctx
-          (Build.path src
-           >>^ (fun _ -> [src])
-           >>>
-           Build.progn
-             [ Action.run sctx
+        let src_path = Path.relative dir src.name in
+        add_alias src.name
+          (Build.path src_path
+           >>^ (fun _ -> [src_path])
+           >>> Action.run sctx
                  action
                  ~dir
                  ~dep_kind
                  ~targets:(Static [])
-                 ~scope
-             ; Build.create_file digest_path
-             ])
+                 ~scope)
       )
     | Pps { pps; flags } ->
       let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in
@@ -926,25 +924,17 @@ module PP = struct
           ; As (cookie_library_name lib_name)
           ; Ml_kind.ppx_driver_flag kind
           ; Dep src_path
-          ] in
+          ]
+        in
         let args =
           (* This hack is needed until -null is standard:
              https://github.com/ocaml-ppx/ocaml-migrate-parsetree/issues/35 *)
           match Option.map ~f:Pp.to_string (List.last pps) with
           | Some "ppx_driver.runner" -> args @ [A "-null"]
-          | Some _ | None -> args in
-        let digest_path =
-          Alias.add_stamp_dep (aliases sctx) alias
-            ~data:(
-              Sexp.To_sexp.(
-                triple Path.sexp_of_t string (pair (list string) Path.Set.sexp_of_t)
-              ) (ppx_exe, src.name, Arg_spec.expand ~dir args ())
-            ) in
-        add_rule sctx
-          (Build.progn
-             [ Build.run ~context:sctx.context (Ok ppx_exe) args
-             ; Build.create_file digest_path
-             ])
+          | Some _ | None -> args
+        in
+        add_alias src.name
+          (Build.run ~context:sctx.context (Ok ppx_exe) args)
       )
 
   (* Generate rules to build the .pp files and return a new module map where all filenames

@@ -148,6 +148,12 @@ module Library : sig
       | Ppx_rewriter
   end
 
+  module Inline_tests : sig
+    type t =
+      { deps: Dep_conf.t list
+      }
+  end
+
   type t =
     { name                     : string
     ; public                   : Public_lib.t option
@@ -168,6 +174,7 @@ module Library : sig
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
+    ; inline_tests             : Inline_tests.t
     }
 
   val has_stubs : t -> bool

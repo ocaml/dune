@@ -542,6 +542,24 @@ module Library = struct
         ]
   end
 
+  module Inline_tests = struct
+    type t =
+      { deps: Dep_conf.t list
+      }
+
+    let empty =
+      { deps = []
+      }
+
+    let t =
+      record
+        (field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
+         return
+           { deps
+           }
+        )
+  end
+
   type t =
     { name                     : string
     ; public                   : Public_lib.t option
@@ -562,6 +580,7 @@ module Library = struct
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
+    ; inline_tests             : Inline_tests.t
     }
 
   let v1 pkgs =
@@ -585,6 +604,7 @@ module Library = struct
        field_b    "optional"                                                 >>= fun optional                 ->
        field      "self_build_stubs_archive" (option string) ~default:None   >>= fun self_build_stubs_archive ->
        field_b    "no_dynlink"                                               >>= fun no_dynlink               ->
+       field      "inline_tests" Inline_tests.t ~default:Inline_tests.empty  >>= fun inline_tests             ->
        return
          { name
          ; public
@@ -605,6 +625,7 @@ module Library = struct
          ; optional
          ; buildable
          ; dynlink = not no_dynlink
+         ; inline_tests
          })
 
   let has_stubs t =

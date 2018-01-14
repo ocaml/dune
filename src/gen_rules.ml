@@ -470,7 +470,21 @@ module Gen(P : Params) = struct
      it references are built after. *)
   let alias_module_build_sandbox = ctx.version < (4, 03, 0)
 
-  let library_rules (lib : Library.t) ~dir ~files
+  let rec runner_rules ~dir ~(lib : Library.t)
+            ~(scope : Lib_db.Scope.t With_required_by.t) =
+    Option.iter (Inline_lib.rule sctx ~lib ~dir ~scope:scope.data)
+      ~f:(fun { Inline_lib.exe ; alias_name ; alias_action ; alias_stamp
+              ; gen_source ; all_modules } ->
+           SC.add_rule sctx gen_source;
+           executables_rules exe ~dir ~all_modules ~scope
+           |> ignore;
+           add_alias ~dir
+             ~name:alias_name
+             ~stamp:alias_stamp
+             alias_action
+         )
+
+  and library_rules (lib : Library.t) ~dir ~files
         ~(scope : Lib_db.Scope.t With_required_by.t) =
     let obj_dir = Lib.lib_obj_dir dir lib in
     let dep_kind = if lib.optional then Build.Optional else Required in
@@ -689,6 +703,10 @@ module Gen(P : Params) = struct
       | None -> Ocaml_flags.common flags
       | Some m -> Ocaml_flags.prepend_common ["-open"; m.name] flags |> Ocaml_flags.common
     in
+
+    (* test runners if they are present *)
+    runner_rules ~dir ~lib ~scope;
+
     { Merlin.
       requires = real_requires
     ; flags
@@ -702,7 +720,7 @@ module Gen(P : Params) = struct
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  let build_exe ~js_of_ocaml ~flags ~scope ~dir ~obj_dir ~requires ~name ~mode
+  and build_exe ~js_of_ocaml ~flags ~scope ~dir ~obj_dir ~requires ~name ~mode
         ~top_sorted_modules ~link_flags ~force_custom_bytecode =
     let exe_ext = Mode.exe_ext mode in
     let mode, link_custom, compiler =
@@ -758,7 +776,7 @@ module Gen(P : Params) = struct
       in
       SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm_and_flags >>> r))
 
-  let executables_rules (exes : Executables.t) ~dir ~all_modules
+  and executables_rules (exes : Executables.t) ~dir ~all_modules
     ~(scope : Lib_db.Scope.t With_required_by.t) =
     let item = snd (List.hd exes.names) in
     (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library of the
@@ -836,7 +854,11 @@ module Gen(P : Params) = struct
      | Aliases                                                         |
      +-----------------------------------------------------------------+ *)
 
-  let add_alias ~dir ~name ~stamp ?(locks=[]) build =
+  and interpret_locks ~dir ~scope locks =
+    List.map locks ~f:(fun s ->
+      Path.relative dir (SC.expand_vars sctx ~dir ~scope s))
+
+  and add_alias ~dir ~name ~stamp ?(locks=[]) build =
     let alias = Build_system.Alias.make name ~dir in
     SC.add_alias_action sctx alias ~locks ~stamp build
 

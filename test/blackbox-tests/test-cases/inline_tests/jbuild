@@ -1,0 +1,5 @@
+(jbuild_version 1)
+
+(library
+ ((name mylib)
+  (preprocess (pps (ppx_inline_test)))))

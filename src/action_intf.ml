@@ -48,7 +48,11 @@ module type Ast = sig
 end
 
 module type Helpers = sig
-  include Ast
+  type program
+  type path
+  type string
+  type t
+  type promote_file
 
   val run : program -> string list -> t
   val chdir : path -> t -> t
@@ -72,4 +76,5 @@ module type Helpers = sig
   val remove_tree : path -> t
   val mkdir : path -> t
   val digest_files : path list -> t
+  val promote : Promote_mode.t -> promote_file list -> t
 end

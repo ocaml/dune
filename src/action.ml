@@ -137,6 +137,7 @@ struct
   let remove_tree path = Remove_tree path
   let mkdir path = Mkdir path
   let digest_files files = Digest_files files
+  let promote mode files = Promote { mode; files }
 end
 
 module Make_mapper

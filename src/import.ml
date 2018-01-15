@@ -292,25 +292,28 @@ module String = struct
     loop 0 0
 
   let split_lines s =
-    let rec loop ~last_is_cr i j =
+    let rec loop ~last_is_cr ~acc i j =
       if j = length s then (
-        if j = i || (j = i + 1 && last_is_cr) then
-          []
+        let acc =
+          if j = i || (j = i + 1 && last_is_cr) then
+          acc
         else
-          [sub s ~pos:i ~len:(j - i)]
+          sub s ~pos:i ~len:(j - i) :: acc
+        in
+        List.rev acc
       ) else
         match s.[j] with
-        | '\r' -> loop ~last_is_cr:true i (j + 1)
+        | '\r' -> loop ~last_is_cr:true ~acc i (j + 1)
         | '\n' ->
           let line =
             let len = if last_is_cr then j - i - 1 else j - i in
             sub s ~pos:i ~len
           in
-          line :: loop (j + 1) (j + 1) ~last_is_cr:false
+          loop ~acc:(line :: acc) (j + 1) (j + 1) ~last_is_cr:false
         | _ ->
-          loop i (j + 1) ~last_is_cr:false
+          loop ~acc i (j + 1) ~last_is_cr:false
     in
-    loop 0 0 ~last_is_cr:false
+    loop ~acc:[] 0 0 ~last_is_cr:false
 
   (* Escape ONLY double quotes.  String.escape also escapes
      '\n',... and transforms all chars above '~' into '\xxx' which is

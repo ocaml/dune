@@ -1017,9 +1017,10 @@ The following constructions are available:
 - ``(promote <files-to-promote>)`` copy generated files to the source
   tree. See `Promotion`_ for more details
 - ``(promote-if <files-to-promote>)`` is the same as ``(promote
-  <files-to-promote>)`` except that it does nothing when the files to
-  copy don't exist. This can be used with command that only produce a
-  correction when differences are found
+  <files-to-promote>)`` except that it does nothing when either of the
+  two files of a ``(<a> as <b>)`` form doesn't exist.  This can be
+  used with command that only produce a correction when differences
+  are found
 
 As mentioned ``copy#`` inserts a line directive at the beginning of
 the destination file. More precisely, it inserts the following line:

@@ -76,5 +76,6 @@ module type Helpers = sig
   val remove_tree : path -> t
   val mkdir : path -> t
   val digest_files : path list -> t
-  val promote : Promote_mode.t -> promote_file list -> t
+  val promote : promote_file list -> t
+  val promote_if : promote_file list -> t
 end

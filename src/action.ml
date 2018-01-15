@@ -137,7 +137,8 @@ struct
   let remove_tree path = Remove_tree path
   let mkdir path = Mkdir path
   let digest_files files = Digest_files files
-  let promote mode files = Promote { mode; files }
+  let promote files = Promote { mode = Always; files }
+  let promote_if files = Promote { mode = If_corrected_file_exists; files }
 end
 
 module Make_mapper
@@ -744,7 +745,8 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
         match mode with
         | Always -> files
         | If_corrected_file_exists ->
-          List.filter files ~f:(fun file -> Path.exists file.Promote.src)
+          List.filter files ~f:(fun { Promote. src; dst } ->
+            Path.exists src && Path.exists dst)
       in
       let not_ok =
         List.filter files ~f:(fun { Promote. src; dst } ->

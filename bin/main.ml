@@ -291,10 +291,11 @@ let common =
     Arg.(value
          & opt (some mode) None
          & info ["promote"] ~docs
-             ~doc:"How to interpret promote actions. $(b,check), the default, means to
-                   only check that promoted files are equal to the source files.
-                   $(b,ignore) means to ignore promote action altogether and $(b,copy)
-                   means to copy generated files to the source tree.")
+             ~doc:"How to interpret promote actions. $(b,copy) means to print
+                   a diff and copy the generated files to the source tree when
+                   they differ. $(b,copy) is the default. $(b,check) means to
+                   only print a diff without copying files. $(b,ignore) means
+                   to ignore promote action altogether.")
   in
   let for_release = "for-release-of-packages" in
   let frop =
@@ -327,7 +328,7 @@ let common =
       | None, _, _, _ ->
         `Ok (root,
              only_packages,
-             Option.value promote ~default:Clflags.Promote_mode.Check,
+             Option.value promote ~default:Clflags.Promote_mode.Copy,
              List.concat
                [ dump_opt "--root" root
                ; dump_opt "--only-packages" only_packages

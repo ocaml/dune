@@ -563,7 +563,7 @@ With this jbuild file, running jbuilder as follow will replace the
 
 .. code:: shell
 
-    $ jbuilder build @jbuild --promote copy
+    $ jbuilder build @jbuild
 
 Common items
 ============
@@ -1158,12 +1158,13 @@ How jbuilder interprets promotions can be controlled using the
 ``--promote`` command line argument. The following behaviors are
 available:
 
-- ``--promote check``: this is the default. Jbuilder just checks that
-  the two files given in each ``(<a> as <b>)`` form are equal. If not,
-  it prints a diff
+- ``--promote copy``: when the two files given in a ``(<a> as <b>)``
+  form are different, jbuilder prints a diff and copies ``<a>`` to
+  ``<b>`` directly in the source
+   tree. This is the default
+- ``--promote check``: Jbuilder just checks that the two files are
+  equal and print a diff when there are not
 - ``--promote ignore``: ``promote`` actions are simply ignored
-- ``--promote copy``: when the two files are different, jbuilder
-  prints a diff and copies ``<a>`` to ``<b>`` directly in the source tree
 
 Note that ``-p/--for-release-of-packages`` implies ``--promote
 ignore``.

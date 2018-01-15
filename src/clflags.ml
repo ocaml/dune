@@ -28,4 +28,4 @@ module Promote_mode = struct
     | "copy" -> Some Copy
     | _ -> None
 end
-let promote_mode = ref Promote_mode.Check
+let promote_mode = ref Promote_mode.Copy

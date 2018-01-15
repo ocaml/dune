@@ -169,3 +169,10 @@
   (action
    (chdir test-cases/cross-compilation
     (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/promote)))
+  (action
+   (chdir test-cases/promote
+    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))

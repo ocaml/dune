@@ -22,6 +22,8 @@ type common =
   ; only_packages    : String_set.t option
   ; capture_outputs  : bool
   ; x                : string option
+  ; diff_command     : string option
+  ; promote_mode     : Clflags.Promote_mode.t
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args        : string list
   }
@@ -39,6 +41,8 @@ let set_common c ~targets =
   if c.root <> Filename.current_dir_name then
     Sys.chdir c.root;
   Clflags.workspace_root := Sys.getcwd ();
+  Clflags.diff_command := c.diff_command;
+  Clflags.promote_mode := c.promote_mode;
   Clflags.external_lib_deps_hint :=
     List.concat
       [ ["jbuilder"; "external-lib-deps"; "--missing"]
@@ -156,7 +160,8 @@ let common =
         verbose
         no_buffer
         workspace_file
-        (root, only_packages, orig)
+        diff_command
+        (root, only_packages, promote_mode, orig)
         x
     =
     let root, to_cwd =
@@ -182,6 +187,8 @@ let common =
     ; root
     ; orig_args
     ; target_prefix = String.concat ~sep:"" (List.map to_cwd ~f:(sprintf "%s/"))
+    ; diff_command
+    ; promote_mode
     ; only_packages =
         Option.map only_packages
           ~f:(fun s -> String_set.of_list (String.split s ~on:','))
@@ -272,41 +279,66 @@ let common =
                     targets given on the command line. It is only intended
                     for scripts.|})
   in
+  let promote =
+    let mode =
+      Arg.(conv
+             (Arg.parser_of_kind_of_string ~kind:"promotion mode"
+                Clflags.Promote_mode.of_string,
+              fun ppf mode ->
+                Format.pp_print_string ppf
+                  (Clflags.Promote_mode.to_string mode)))
+    in
+    Arg.(value
+         & opt (some mode) None
+         & info ["promote"] ~docs
+             ~doc:"How to interpret promote actions. $(b,check), the default, means to
+                   only check that promoted files are equal to the source files.
+                   $(b,ignore) means to ignore promote action altogether and $(b,copy)
+                   means to copy generated files to the source tree.")
+  in
   let for_release = "for-release-of-packages" in
   let frop =
     Arg.(value
          & opt (some string) None
          & info ["p"; for_release] ~docs ~docv:"PACKAGES"
-             ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE). You must use
-                    this option in your $(i,<package>.opam) files, in order to build
-                    only what's necessary when your project contains multiple packages
-                    as well as getting reproducible builds.|})
+             ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE --promote ignore).
+                    You must use this option in your $(i,<package>.opam) files, in order
+                    to build only what's necessary when your project contains multiple
+                    packages as well as getting reproducible builds.|})
   in
   let root_and_only_packages =
-    let merge root only_packages release =
-      match release, root, only_packages with
-      | Some _, Some _, _ ->
+    let merge root only_packages promote release =
+      let fail opt =
         `Error (true,
                 sprintf
-                  "Cannot use %s and --root simultaneously"
-                  for_release)
-      | Some _, _, Some _ ->
-        `Error (true,
-                sprintf
-                  "Cannot use %s and --only-packages simultaneously"
-                  for_release)
-      | Some pkgs, None, None ->
-        `Ok (Some ".", Some pkgs, ["-p"; pkgs])
-      | None, _, _ ->
-        `Ok (root, only_packages,
+                  "Cannot use -p/--%s and %s simultaneously"
+                  for_release opt)
+      in
+      match release, root, only_packages, promote with
+      | Some _, Some _, _, _ -> fail "--root"
+      | Some _, _, Some _, _ -> fail "--only-packages"
+      | Some _, _, _, Some _ -> fail "--promote"
+      | Some pkgs, None, None, None ->
+        `Ok (Some ".",
+             Some pkgs,
+             Clflags.Promote_mode.Ignore,
+             ["-p"; pkgs]
+            )
+      | None, _, _, _ ->
+        `Ok (root,
+             only_packages,
+             Option.value promote ~default:Clflags.Promote_mode.Check,
              List.concat
                [ dump_opt "--root" root
                ; dump_opt "--only-packages" only_packages
+               ; dump_opt "--promote"
+                   (Option.map promote ~f:Clflags.Promote_mode.to_string)
                ])
     in
     Term.(ret (const merge
                $ root
                $ only_packages
+               $ promote
                $ frop))
   in
   let x =
@@ -314,6 +346,12 @@ let common =
          & opt (some string) None
          & info ["x"] ~docs
              ~doc:{|Cross-compile using this toolchain.|})
+  in
+  let diff_command =
+    Arg.(value
+         & opt (some string) None
+         & info ["diff-command"] ~docs
+             ~doc:"Shell command to use to diff files")
   in
   Term.(const make
         $ concurrency
@@ -324,6 +362,7 @@ let common =
         $ verbose
         $ no_buffer
         $ workspace_file
+        $ diff_command
         $ root_and_only_packages
         $ x
        )

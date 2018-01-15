@@ -36,6 +36,12 @@ next
 - Simplify generated META files: do not generate the transitive
   closure of dependencies in META files (#405)
 
+- Add an `(include ...)` stanza allowing one to include another
+  non-generated jbuild file in the current file (#402)
+
+- Add a `(promote (<file1> as <file2>) ...)` action allowing one to
+  promote generated files as source files (#402)
+
 1.0+beta16 (05/11/2017)
 -----------------------
 

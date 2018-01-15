@@ -222,14 +222,16 @@ follows:
 
     build: [["jbuilder" "build" "-p" name "-j" jobs]]
 
-``-p pkg`` is a shorthand for ``--root . --only-packages pkg``. ``-p``
-is the short version of ``--for-release-of-packages``.
+``-p pkg`` is a shorthand for ``--root . --only-packages pkg --promote
+ignore``. ``-p`` is the short version of
+``--for-release-of-packages``.
 
 This has the following effects:
 
 -  it tells jbuilder to build everything that is installable and to
    ignore packages other than ``name`` defined in your project
 -  it sets the root to prevent jbuilder from looking it up
+-  it ignores promotion to cut down dependencies and speed up the build
 -  it uses whatever concurrency option opam provides
 
 Note that ``name`` and ``jobs`` are variables expanded by opam. ``name``

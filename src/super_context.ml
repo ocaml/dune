@@ -437,12 +437,12 @@ module Deps = struct
       >>^ fun () -> []
     | Glob_files s -> begin
         let path = Path.relative dir (expand_vars t ~scope ~dir s) in
+        let loc = String_with_vars.loc s in
         match Glob_lexer.parse_string (Path.basename path) with
         | Ok re ->
           let dir = Path.parent path in
-          Build.paths_glob ~dir (Re.compile re)
+          Build.paths_glob ~loc ~dir (Re.compile re)
         | Error (_pos, msg) ->
-          let loc = String_with_vars.loc s in
           Loc.fail loc "invalid glob: %s" msg
       end
     | Files_recursively_in s ->

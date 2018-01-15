@@ -42,6 +42,9 @@ next
 - Add a `(promote (<file1> as <file2>) ...)` action allowing one to
   promote generated files as source files (#402)
 
+- Report better errors when using `(glob_files ...)` with a directory
+  that doesn't exist (#413, Fix #412)
+
 1.0+beta16 (05/11/2017)
 -----------------------
 

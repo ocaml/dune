@@ -57,3 +57,9 @@
  ((name   runtest)
   (deps   (pnd-result pnd-expected))
   (action (run diff -u ${^}))))
+
+;; Test for globs
+
+(alias
+ ((name runtest)
+  (deps ((glob_files dir-that-doesnt-exist/*)))))

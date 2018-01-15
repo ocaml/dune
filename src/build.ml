@@ -54,7 +54,7 @@ module Repr = struct
     | Decided   of bool * ('a, 'b) t
 
   and glob_state =
-    | G_unevaluated of Path.t * Re.re
+    | G_unevaluated of Loc.t * Path.t * Re.re
     | G_evaluated   of Path.t list
 
   let get_if_file_exists_exn state =
@@ -132,7 +132,7 @@ let rec all = function
 let path p = Paths (Pset.singleton p)
 let paths ps = Paths (Pset.of_list ps)
 let path_set ps = Paths ps
-let paths_glob ~dir re = Paths_glob (ref (G_unevaluated (dir, re)))
+let paths_glob ~loc ~dir re = Paths_glob (ref (G_unevaluated (loc, dir, re)))
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths t
 

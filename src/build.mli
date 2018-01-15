@@ -37,7 +37,7 @@ val all : ('a, 'b) t list -> ('a, 'b list) t
 val path  : Path.t      -> ('a, 'a) t
 val paths : Path.t list -> ('a, 'a) t
 val path_set : Path.Set.t -> ('a, 'a) t
-val paths_glob : dir:Path.t -> Re.re -> ('a, Path.t list) t
+val paths_glob : loc:Loc.t -> dir:Path.t -> Re.re -> ('a, Path.t list) t
 val files_recursively_in : dir:Path.t -> file_tree:File_tree.t -> ('a, Path.Set.t) t
 val vpath : 'a Vspec.t  -> (unit, 'a) t
 
@@ -173,7 +173,7 @@ module Repr : sig
     | Decided   of bool * ('a, 'b) t
 
   and glob_state =
-    | G_unevaluated of Path.t * Re.re
+    | G_unevaluated of Loc.t * Path.t * Re.re
     | G_evaluated   of Path.t list
 
   val get_if_file_exists_exn : ('a, 'b) if_file_exists_state ref -> ('a, 'b) t

@@ -42,9 +42,13 @@ let static_deps t ~all_targets_by_dir =
         match !state with
         | G_evaluated l ->
           { acc with action_deps = Pset.union acc.action_deps (Pset.of_list l) }
-        | G_unevaluated (dir, re) ->
+        | G_unevaluated (loc, dir, re) ->
           match Pmap.find dir (Lazy.force all_targets_by_dir) with
-          | None -> acc
+          | None ->
+            Loc.warn loc "Directory %s doesn't exist."
+              (Path.to_string_maybe_quoted dir);
+            state := G_evaluated [];
+            acc
           | Some targets ->
             let result =
               Pset.filter targets ~f:(fun path ->

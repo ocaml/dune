@@ -36,6 +36,9 @@ next
 - Simplify generated META files: do not generate the transitive
   closure of dependencies in META files (#405)
 
+- Report better errors when using `(glob_files ...)` with a directory
+  that doesn't exist (Fix #412)
+
 1.0+beta16 (05/11/2017)
 -----------------------
 

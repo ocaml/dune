@@ -4,7 +4,7 @@ module Var_expansion : sig
   module Concat_or_split : sig
     type t =
       | Concat (* default *)
-      | Split  (* ${!...} *)
+      | Split  (* the variable is a "split" list of items *)
   end
 
   type t =

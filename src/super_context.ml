@@ -52,7 +52,7 @@ type t =
   ; mutable known_targets_by_src_dir_so_far : String_set.t Path.Map.t
   ; libs_vfile                              : (module Vfile_kind.S with type t = Lib.t list)
   ; cxx_flags                               : string list
-  ; vars                                    : string String_map.t
+  ; vars                                    : Action.Var_expansion.t String_map.t
   ; ppx_dir                                 : Path.t
   ; ppx_drivers                             : (string, Path.t) Hashtbl.t
   ; external_dirs                           : (Path.t, External_dir.t) Hashtbl.t
@@ -83,7 +83,13 @@ let expand_vars t ~scope ~dir s =
   | "ROOT" -> Some (Path.reach ~from:dir t.context.build_dir)
   | "SCOPE_ROOT" ->
     Some (Path.reach ~from:dir (Path.append t.context.build_dir scope.Scope.root))
-  | var -> String_map.find var t.vars)
+  | var ->
+     let open Action.Var_expansion in
+     expand_var_no_root t var
+     |> Option.map ~f:(function
+            | Paths(p,_) -> let p = List.map p ~f:Path.to_string in
+                            String.concat ~sep:" " p
+            | Strings(s,_) -> String.concat ~sep:" " s))
 
 let resolve_program t ?hint bin =
   Artifacts.binary ?hint t.artifacts bin
@@ -163,26 +169,31 @@ let create
       | None -> Path.relative context.ocaml_bin "ocamlopt"
       | Some p -> p
     in
+    let open Action.Var_expansion in
+    let open Action.Var_expansion.Concat_or_split in
     let make =
       match Bin.make with
-      | None   -> "make"
-      | Some p -> Path.to_string p
+      | None   -> Strings (["make"], Split)
+      | Some p -> Paths ([p], Split)
     in
-    [ "-verbose"       , "" (*"-verbose";*)
-    ; "CPP"            , sprintf "%s %s -E" context.c_compiler context.ocamlc_cflags
-    ; "PA_CPP"         , sprintf "%s %s -undef -traditional -x c -E" context.c_compiler
-                           context.ocamlc_cflags
-    ; "CC"             , sprintf "%s %s" context.c_compiler context.ocamlc_cflags
-    ; "CXX"            , String.concat ~sep:" " (context.c_compiler :: cxx_flags)
-    ; "ocaml_bin"      , Path.to_string context.ocaml_bin
-    ; "OCAML"          , Path.to_string context.ocaml
-    ; "OCAMLC"         , Path.to_string context.ocamlc
-    ; "OCAMLOPT"       , Path.to_string ocamlopt
-    ; "ocaml_version"  , context.version
-    ; "ocaml_where"    , Path.to_string context.stdlib_dir
-    ; "ARCH_SIXTYFOUR" , string_of_bool context.arch_sixtyfour
+    let cflags = String.extract_blank_separated_words context.ocamlc_cflags in
+    [ "-verbose"       , Strings ([] (*"-verbose";*), Concat)
+    ; "CPP"            , Strings (context.c_compiler :: cflags @ ["-E"], Split)
+    ; "PA_CPP"         , Strings (context.c_compiler :: cflags
+                                  @ ["-undef"; "-traditional"; "-x"; "c"; "-E"],
+                                  Split)
+    ; "CC"             , Strings (context.c_compiler :: cflags, Split)
+    ; "CXX"            , Strings (context.c_compiler :: cxx_flags, Split)
+    ; "ocaml_bin"      , Paths ([context.ocaml_bin], Split)
+    ; "OCAML"          , Paths ([context.ocaml], Split)
+    ; "OCAMLC"         , Paths ([context.ocamlc], Split)
+    ; "OCAMLOPT"       , Paths ([ocamlopt], Split)
+    ; "ocaml_version"  , Strings ([context.version], Concat)
+    ; "ocaml_where"    , Paths ([context.stdlib_dir], Concat)
+    ; "ARCH_SIXTYFOUR" , Strings ([string_of_bool context.arch_sixtyfour],
+                                  Concat)
     ; "MAKE"           , make
-    ; "null"           , Path.to_string Config.dev_null
+    ; "null"           , Paths ([Config.dev_null], Concat)
     ]
     |> String_map.of_alist
     |> function
@@ -467,12 +478,12 @@ module Pkg_version = struct
     Build.vpath spec
 end
 
-let parse_bang var : Action.Var_expansion.Concat_or_split.t * string =
+let parse_bang var : bool * string =
   let len = String.length var in
   if len > 0 && var.[0] = '!' then
-    (Split, String.sub var ~pos:1 ~len:(len - 1))
+    (true, String.sub var ~pos:1 ~len:(len - 1))
   else
-    (Concat, var)
+    (false, var)
 
 module Action = struct
   open Build.O
@@ -533,7 +544,10 @@ module Action = struct
     let t =
       U.partial_expand t ~dir ~map_exe ~f:(fun loc key ->
         let open Action.Var_expansion in
-        let cos, var = parse_bang key in
+        let has_bang, var = parse_bang key in
+        if has_bang then
+          Loc.warn loc "The use of the variable prefix '!' is deprecated, \
+                        simply use '${%s}'@." var;
         match String.lsplit2 var ~on:':' with
         | Some ("path-no-dep", s) -> Some (path_exp (Path.relative dir s))
         | Some ("exe"     , s) ->
@@ -597,7 +611,7 @@ module Action = struct
             let path = Path.relative dir s in
             let data =
               Build.contents path
-              >>^ fun s -> Strings ([s], cos)
+              >>^ fun s -> Strings ([s], Concat)
             in
             add_ddep acc ~key data
           end
@@ -605,7 +619,7 @@ module Action = struct
             let path = Path.relative dir s in
             let data =
               Build.lines_of path
-              >>^ fun l -> Strings (l, cos)
+              >>^ fun l -> Strings (l, Split)
             in
             add_ddep acc ~key data
           end
@@ -613,7 +627,7 @@ module Action = struct
             let path = Path.relative dir s in
             let data =
               Build.strings path
-              >>^ fun l -> Strings (l, cos)
+              >>^ fun l -> Strings (l, Split)
             in
             add_ddep acc ~key data
           end
@@ -624,32 +638,30 @@ module Action = struct
           | "@" -> begin
               match targets_written_by_user with
               | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
-              | Static l -> Some (Paths (l, cos))
+              | Static l -> Some (Paths (l, Split))
             end
-          | _ ->
-            match expand_var_no_root sctx var with
-            | Some s -> Some (str_exp s)
-            | None -> None)
+          | _ -> expand_var_no_root sctx var)
     in
     (t, acc)
 
   let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
     let open Action.Var_expansion in
-    U.Partial.expand t ~dir ~map_exe ~f:(fun _loc key ->
+    U.Partial.expand t ~dir ~map_exe ~f:(fun loc key ->
       match String_map.find key dynamic_expansions with
       | Some _ as opt -> opt
       | None ->
-        let cos, var = parse_bang key in
+        let _, var = parse_bang key in
         match var with
         | "<" ->
           Some
             (match deps_written_by_user with
              | [] ->
-               (* CR-someday jdimino: this should be an error *)
-               Strings ([""], cos)
+                Loc.warn loc "Variable '<' used with no explicit \
+                              dependencies@.";
+                Strings ([""], Split)
              | dep :: _ ->
-               Paths ([dep], cos))
-        | "^" -> Some (Paths (deps_written_by_user, cos))
+               Paths ([dep], Split))
+        | "^" -> Some (Paths (deps_written_by_user, Split))
         | _ -> None)
 
   let run sctx t ~dir ~dep_kind ~targets:targets_written_by_user ~scope

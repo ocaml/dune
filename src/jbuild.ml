@@ -853,7 +853,7 @@ module Menhir = struct
                        ; S.virt_var __POS__ ("path-no-dep:" ^ merge_into)
                        ]
                      ; t.flags
-                     ; [ S.virt_var __POS__ "!^" ]
+                     ; [ S.virt_var __POS__ "^" ]
                      ]))
        ; fallback = Not_possible
        ; locks = []

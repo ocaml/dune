@@ -33,7 +33,7 @@
 (alias
  ((name   runtest)
   (deps   (jbuild jbuild-plop))
-  (action (run diff -u ${!^}))))
+  (action (run diff -u ${^}))))
 
 ;; For some tests in subdirs
 
@@ -56,4 +56,4 @@
 (alias
  ((name   runtest)
   (deps   (pnd-result pnd-expected))
-  (action (run diff -u ${!^}))))
+  (action (run diff -u ${^}))))

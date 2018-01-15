@@ -221,7 +221,7 @@ module Var_expansion = struct
   module Concat_or_split = struct
     type t =
       | Concat (* default *)
-      | Split  (* ${!...} *)
+      | Split  (* the variable is a "split" list of items *)
   end
 
   open Concat_or_split
@@ -244,15 +244,13 @@ module Var_expansion = struct
     | Paths   (l, Concat) -> [concat (List.map l ~f:(string_of_path ~dir))]
 
   let to_string ~dir = function
-    | Strings (_, Split) | Paths (_, Split) -> assert false
-    | Strings (l, Concat) -> concat l
-    | Paths   (l, Concat) -> concat (List.map l ~f:(string_of_path ~dir))
+    | Strings (l, _) -> concat l
+    | Paths   (l, _) -> concat (List.map l ~f:(string_of_path ~dir))
 
   let to_path ~dir = function
-    | Strings (_, Split) | Paths (_, Split) -> assert false
-    | Strings (l, Concat) -> path_of_string ~dir (concat l)
-    | Paths ([p], Concat) -> p
-    | Paths (l,   Concat) ->
+    | Strings (l, _) -> path_of_string ~dir (concat l)
+    | Paths ([p], _) -> p
+    | Paths (l,   _) ->
       path_of_string ~dir (concat (List.map l ~f:(string_of_path ~dir)))
 
   let to_prog_and_args ~dir exp : Unresolved.Program.t * string list =
@@ -388,13 +386,13 @@ module Unexpanded = struct
       | Remove_tree x ->
         Remove_tree (E.path ~dir ~f x)
       | Mkdir x -> begin
-        match x with
-        | Inl path -> Mkdir path
-        | Inr tmpl ->
-          let path = E.path ~dir ~f x in
-          check_mkdir (SW.loc tmpl) path;
-          Mkdir path
-      end
+          match x with
+          | Inl path -> Mkdir path
+          | Inr tmpl ->
+            let path = E.path ~dir ~f x in
+            check_mkdir (SW.loc tmpl) path;
+            Mkdir path
+        end
       | Digest_files x ->
         Digest_files (List.map x ~f:(E.path ~dir ~f))
   end

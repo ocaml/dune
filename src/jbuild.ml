@@ -917,15 +917,33 @@ module Copy_files = struct
   let v1 = String_with_vars.t
 end
 
+module Documentation = struct
+  type t =
+    { package: Package.t
+    ; files: Ordered_set_lang.t
+    }
+
+  let v1 pkgs =
+    record
+      (Scope.package_field pkgs >>= fun package ->
+       field "files" Ordered_set_lang.t ~default:Ordered_set_lang.standard >>= fun files ->
+       return
+         { package
+         ; files
+         }
+      )
+end
+
 module Stanza = struct
   type t =
-    | Library     of Library.t
-    | Executables of Executables.t
-    | Rule        of Rule.t
-    | Provides    of Provides.t
-    | Install     of Install_conf.t
-    | Alias       of Alias_conf.t
-    | Copy_files  of Copy_files.t
+    | Library       of Library.t
+    | Executables   of Executables.t
+    | Rule          of Rule.t
+    | Provides      of Provides.t
+    | Install       of Install_conf.t
+    | Alias         of Alias_conf.t
+    | Copy_files    of Copy_files.t
+    | Documentation of Documentation.t
 
   let rules l = List.map l ~f:(fun x -> Rule x)
 
@@ -951,6 +969,7 @@ module Stanza = struct
           (fun glob -> [Copy_files {add_line_directive = true; glob}])
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
+      ; cstr "documentation" (Documentation.v1 pkgs @> nil) (fun d -> [Documentation d])
       ]
 
   let select : Jbuild_version.t -> Scope.t -> t list Sexp.Of_sexp.t = function

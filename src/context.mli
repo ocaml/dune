@@ -69,6 +69,9 @@ type t =
   ; ocamldep   : Path.t
   ; ocamlmklib : Path.t
 
+  ; (** external documentation dir *)
+    doc_dir : Path.t option
+
   ; (** Environment variables *)
     env : string array
 

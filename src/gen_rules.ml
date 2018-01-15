@@ -38,6 +38,23 @@ module Gen(P : Params) = struct
       String_map.filter all_modules ~f:(fun unit _ -> String_set.mem unit units)
     end
 
+  let parse_mlds ~dir ~all_mlds ~mlds_written_by_user =
+    if Ordered_set_lang.is_standard mlds_written_by_user then
+      all_mlds
+    else
+      let mlds =
+        Ordered_set_lang.eval_with_standard
+          mlds_written_by_user
+          ~standard:all_mlds in
+      List.iter mlds ~f:(fun mld ->
+        if not (List.mem mld ~set:all_mlds) then (
+          die "no mld file %s in %s" mld (Path.to_string dir)
+        )
+      );
+      List.filter ~f:(fun mld ->
+        List.mem mld ~set:mlds
+      ) all_mlds
+
   (* +-----------------------------------------------------------------+
      | Library stuff                                                   |
      +-----------------------------------------------------------------+ *)
@@ -184,7 +201,8 @@ module Gen(P : Params) = struct
   let alias_module_build_sandbox = Scanf.sscanf ctx.version "%u.%u"
      (fun a b -> a, b) <= (4, 02)
 
-  let library_rules (lib : Library.t) ~dir ~all_modules ~files ~scope =
+  let library_rules (lib : Library.t) ~(doc : Documentation.t option)
+        ~dir ~all_modules ~files ~scope =
     let dep_kind = if lib.optional then Build.Optional else Required in
     let flags = Ocaml_flags.make lib.buildable sctx ~scope ~dir in
     let modules =
@@ -410,7 +428,18 @@ module Gen(P : Params) = struct
       );
 
     (* Odoc *)
-    Odoc.setup_library_rules sctx lib ~dir ~requires ~modules ~dep_graph;
+    let mld_files =
+      match doc with
+      | None -> []
+      | Some doc ->
+        let all_mlds =
+          String_set.fold files ~init:[] ~f:(fun fn acc ->
+            if Filename.check_suffix fn ".mld" then fn :: acc else acc) in
+        parse_mlds ~dir ~all_mlds ~mlds_written_by_user:doc.files
+    in
+    Odoc.setup_library_rules sctx lib ~dir ~requires ~modules ~dep_graph
+      ~mld_files
+    ;
 
     let flags =
       match alias_module with
@@ -764,7 +793,8 @@ Add it to your jbuild file to remove this warning.
         | Alias        alias -> alias_rules alias ~dir ~scope; None
         | Copy_files def ->
           Some (copy_files_rules def ~src_dir ~dir ~scope)
-        | Library _ | Executables _ | Provides _ | Install _ -> None)
+        | Library _ | Executables _ | Provides _ | Install _
+        | Documentation _ -> None)
     in
     let files = lazy (
       let files = SC.sources_and_targets_known_so_far sctx ~src_path:src_dir in
@@ -783,12 +813,23 @@ Add it to your jbuild file to remove this warning.
       guess_modules ~dir:src_dir
         ~files:(Lazy.force files))
     in
+    let docs =
+      List.fold_left stanzas ~init:[] ~f:(fun acc stanza ->
+        match (stanza : Stanza.t) with
+        | Documentation ({ package ; _ } as doc) ->
+          (package.name, doc)::acc
+        | _ -> acc)
+      |> String_map.of_alist_exn
+    in
     List.fold_left stanzas ~init:merlins ~f:(fun merlins stanza ->
       let dir = ctx_dir in
       match (stanza : Stanza.t) with
       | Library lib ->
         library_rules lib ~dir ~all_modules:(Lazy.force all_modules)
           ~files:(Lazy.force files) ~scope
+          ~doc:(match lib.public with
+            | None -> None
+            | Some public_lib -> String_map.find public_lib.name docs)
         :: merlins
       | Executables exes ->
         executables_rules exes ~dir ~all_modules:(Lazy.force all_modules) ~scope

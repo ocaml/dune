@@ -44,6 +44,7 @@ type t =
   ; ocamlopt                : Path.t option
   ; ocamldep                : Path.t
   ; ocamlmklib              : Path.t
+  ; doc_dir                 : Path.t option
   ; env                     : string array
   ; env_extra               : string Env_var_map.t
   ; findlib                 : Findlib.t
@@ -318,6 +319,8 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
     let stdlib_dir = get_path "standard_library" in
     let natdynlink_supported = Path.exists (Path.relative stdlib_dir "dynlink.cmxa") in
     let version = get "version" in
+    opam_config_var ~env ~cache:opam_var_cache "doc"
+    >>| Option.map ~f:Path.absolute >>= fun doc_dir ->
     let env, env_extra =
       (* See comment in ansi_color.ml for setup_env_for_colors. For OCaml < 4.05,
          OCAML_COLOR is not supported so we use OCAMLPARAM. OCaml 4.02 doesn't support
@@ -387,6 +390,8 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       ; ocamlopt   = get_ocaml_tool     "ocamlopt"
       ; ocamldep   = get_ocaml_tool_exn "ocamldep"
       ; ocamlmklib = get_ocaml_tool_exn "ocamlmklib"
+
+      ; doc_dir
 
       ; env
       ; env_extra

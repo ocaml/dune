@@ -537,6 +537,34 @@ The difference between ``copy_files`` and ``copy_files#`` is the same
 as the difference between the ``copy`` and ``copy#`` action. See the
 `User actions`_ section for more details.
 
+include
+-------
+
+The ``include`` stanza allows to include the contents of another file
+into the current jbuild file. Currently, the included file cannot be
+generated and must be present in the source tree. This feature is
+intended to be used in conjunction with promotion, when parts of a
+jbuild file are to be generated.
+
+For instance:
+
+.. code:: scheme
+
+    (include jbuild.inc)
+
+    (rule (with-stdout-to jbuild.inc.gen (run ./gen-jbuild.exe)))
+
+    (alias
+     ((name   jbuild)
+      (action (promote (jbuild.inc.gen as jbuild.inc)))))
+
+With this jbuild file, running jbuilder as follow will replace the
+``jbuild.inc`` file in the source tree by the generated one:
+
+.. code:: shell
+
+    $ jbuilder build @jbuild --promote copy
+
 Common items
 ============
 
@@ -986,6 +1014,12 @@ The following constructions are available:
   and ``cmd`` on Windows
 - ``(bash <cmd>)`` to execute a command using ``/bin/bash``. This is obviously
   not very portable
+- ``(promote <files-to-promote>)`` copy generated files to the source
+  tree. See `Promotion`_ for more details
+- ``(promote-if <files-to-promote>)`` is the same as ``(promote
+  <files-to-promote>)`` except that it does nothing when the files to
+  copy don't exist. This can be used with command that only produce a
+  correction when differences are found
 
 As mentioned ``copy#`` inserts a line directive at the beginning of
 the destination file. More precisely, it inserts the following line:
@@ -1102,6 +1136,37 @@ is global to all build contexts, simply use an absolute filename:
       (action (run test.exe ${<}))))
 
 .. _ocaml-syntax:
+
+Promotion
+---------
+
+The ``(promote (<file1> as <file2>) (<file3> as <file4>) ...)`` and
+``(promote-if (<file1> as <file2>) (<file3> as <file4>) ...)`` actions
+can be used to copy generated files to the source tree.
+
+This method is used when one wants to commit a generated file that is
+independent of the systems where it is generated. Typically this can
+be used to:
+
+- cut dependencies and/or speed up the build in release mode: we use
+  the file in the source tree rather than re-generate it
+- support bootstrap cycles
+- simplify the review when the generated code is easier to review than
+  the generator
+
+How jbuilder interprets promotions can be controlled using the
+``--promote`` command line argument. The following behaviors are
+available:
+
+- ``--promote check``: this is the default. Jbuilder just checks that
+  the two files given in each ``(<a> as <b>)`` form are equal. If not,
+  it prints a diff
+- ``--promote ignore``: ``promote`` actions are simply ignored
+- ``--promote copy``: when the two files are different, jbuilder
+  prints a diff and copies ``<a>`` to ``<b>`` directly in the source tree
+
+Note that ``-p/--for-release-of-packages`` implies ``--promote
+ignore``.
 
 OCaml syntax
 ============

@@ -100,12 +100,3 @@ let file_of_lib t ~from ~lib ~file =
                     : Findlib.package);
             assert false
         }
-
-let file_of_lib t ~loc ~from name =
-  let lib, file =
-    match String.lsplit2 name ~on:':' with
-    | None ->
-      Loc.fail loc "invalid ${lib:...} form: %s" name
-    | Some x -> x
-  in
-  (lib, file_of_lib t ~from ~lib ~file)

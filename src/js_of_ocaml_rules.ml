@@ -18,11 +18,10 @@ let in_build_dir ~ctx =
   List.fold_left ~init ~f:Path.relative
 
 let runtime_file ~sctx ~dir fname =
-  let _lib, file =
-    Artifacts.file_of_lib (SC.artifacts sctx) ~loc:Loc.none ~from:dir
-      (sprintf "js_of_ocaml-compiler:%s" fname)
-  in
-  match file with
+  match
+    Artifacts.file_of_lib (SC.artifacts sctx) ~from:dir
+      ~lib:"js_of_ocaml-compiler" ~file:fname
+  with
   | Error _ ->
     Arg_spec.Dyn (fun _ ->
       Utils.library_not_found ~context:(SC.context sctx).name ~hint:install_jsoo_hint

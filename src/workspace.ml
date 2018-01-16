@@ -16,39 +16,57 @@ module Context = struct
   module Opam = struct
     type t =
       { name    : string
+      ; profile : string
       ; switch  : string
       ; root    : string option
       ; merlin  : bool
       ; targets : Target.t list
       }
 
-    let t =
+    let t ~profile =
       field   "switch"  string                                    >>= fun switch ->
       field   "name"    string ~default:switch                    >>= fun name ->
       field   "targets" (list Target.t) ~default:[Target.Native]  >>= fun targets ->
       field_o "root"    string                                    >>= fun root ->
       field_b "merlin"                                            >>= fun merlin ->
+      field   "profile" string ~default:profile                   >>= fun profile ->
       return { switch
              ; name
              ; root
              ; merlin
              ; targets
+             ; profile
              }
   end
 
-  type t = Default of Target.t list | Opam of Opam.t
+  module Default = struct
+    type t =
+      { profile : string
+      ; targets : Target.t list
+      }
 
-  let t = function
-    | Atom (_, A "default") -> Default [Native]
-    | List (_, List _ :: _) as sexp -> Opam (record Opam.t sexp)
+    let t ~profile =
+      field "targets" (list Target.t) ~default:[Target.Native]
+      >>= fun targets ->
+      field "profile" string ~default:profile
+      >>= fun profile ->
+      return { targets; profile }
+  end
+
+  type t = Default of Default.t | Opam of Opam.t
+
+  let t ~profile = function
+    | Atom (_, A "default") ->
+      Default { targets = [Native]
+              ; profile
+              }
+    | List (_, List _ :: _) as sexp -> Opam (record (Opam.t ~profile) sexp)
     | sexp ->
       sum
         [ cstr_record "default"
-            (field "targets" (list Target.t) ~default:[Target.Native]
-             >>= fun targets ->
-             return (Default targets))
+            (Default.t ~profile >>= fun x -> return (Default x))
         ; cstr_record "opam"
-            (Opam.t >>= fun x -> return (Opam x))
+            (Opam.t ~profile >>= fun x -> return (Opam x))
         ]
         sexp
 
@@ -57,8 +75,8 @@ module Context = struct
     | Opam    o -> o.name
 
   let targets = function
-    | Default l -> l
-    | Opam    o -> o.targets
+    | Default x -> x.targets
+    | Opam    x -> x.targets
 
   let all_names t =
     let n = name t in
@@ -72,15 +90,38 @@ type t =
   ; contexts       : Context.t list
   }
 
-let t ?x sexps =
+type item = Context of Sexp.Ast.t | Profile of Loc.t * string
+
+let item_of_sexp =
+  sum
+    [ cstr "context" (raw @> nil) (fun x -> Context x)
+    ; cstr_loc "profile" (string @> nil) (fun loc x -> Profile (loc, x))
+    ]
+
+let t ?x ?profile:cmdline_profile sexps =
   let defined_names = ref String.Set.empty in
-  let merlin_ctx, contexts =
-    List.fold_left sexps ~init:(None, []) ~f:(fun (merlin_ctx, ctxs) sexp ->
-      let ctx =
-        sum
-          [ cstr "context" (Context.t @> nil) (fun x -> x) ]
-          sexp
-      in
+  let profiles, contexts =
+    List.partition_map sexps ~f:(fun sexp ->
+      match item_of_sexp sexp with
+      | Profile (loc, p) -> Left (loc, p)
+      | Context c -> Right c)
+  in
+  let profile =
+    match profiles, cmdline_profile with
+    | _ :: (loc, _) :: _, _ ->
+      Loc.fail loc "profile defined too many times"
+    | _, Some p -> p
+    | [], None -> "default"
+    | [(_, p)], None -> p
+  in
+  let { merlin_context; contexts } =
+    let init =
+      { merlin_context = None
+      ; contexts       = []
+      }
+    in
+    List.fold_left contexts ~init ~f:(fun t sexp ->
+      let ctx = Context.t ~profile sexp in
       let ctx =
         match x with
         | None -> ctx
@@ -93,8 +134,10 @@ let t ?x sexps =
               targets @ [target]
           in
           match ctx with
-          | Default targets -> Default (add_target target targets)
-          | Opam o -> Opam { o with targets = add_target target o.targets }
+          | Default d ->
+            Default { d with targets = add_target target d.targets }
+          | Opam o ->
+            Opam    { o with targets = add_target target o.targets }
       in
       let name = Context.name ctx in
       if name = "" ||
@@ -108,22 +151,22 @@ let t ?x sexps =
         of_sexp_errorf sexp "second definition of build context %S" name;
       defined_names := String.Set.union !defined_names
                          (String.Set.of_list (Context.all_names ctx));
-      match ctx, merlin_ctx with
+      match ctx, t.merlin_context with
       | Opam { merlin = true; _ }, Some _ ->
         of_sexp_errorf sexp "you can only have one context for merlin"
       | Opam { merlin = true; _ }, None ->
-        (Some name, ctx :: ctxs)
+        { merlin_context = Some name; contexts = ctx :: t.contexts }
       | _ ->
-        (merlin_ctx, ctx :: ctxs))
+        { t with contexts = ctx :: t.contexts })
   in
   let contexts =
     match contexts with
-    | [] -> [Context.Default [Native]]
+    | [] -> [Context.Default { targets = [Native]; profile }]
     | _  -> contexts
   in
-  let merlin_ctx =
-    match merlin_ctx with
-    | Some _ -> merlin_ctx
+  let merlin_context =
+    match merlin_context with
+    | Some _ -> merlin_context
     | None ->
       if List.exists contexts
            ~f:(function Context.Default _ -> true | _ -> false) then
@@ -131,8 +174,8 @@ let t ?x sexps =
       else
         None
   in
-  { merlin_context = merlin_ctx
-  ; contexts       = List.rev contexts
+  { merlin_context
+  ; contexts = List.rev contexts
   }
 
-let load ?x p = t ?x (Io.Sexp.load p ~mode:Many)
+let load ?x ?profile p = t ?x ?profile (Io.Sexp.load p ~mode:Many)

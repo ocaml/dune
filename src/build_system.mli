@@ -177,8 +177,8 @@ end with type build_system := t
 (** Do the actual build *)
 val do_build
   :  t
-  -> request:(unit, unit) Build.t
-  -> unit Fiber.t
+  -> request:(unit, 'a) Build.t
+  -> 'a Fiber.t
 
 (** {2 Other queries} *)
 

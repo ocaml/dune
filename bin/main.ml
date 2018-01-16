@@ -11,7 +11,7 @@ type common =
   { debug_dep_path        : bool
   ; debug_findlib         : bool
   ; debug_backtraces      : bool
-  ; dev_mode              : bool
+  ; profile               : string option
   ; workspace_file        : string option
   ; root                  : string
   ; target_prefix         : string
@@ -33,7 +33,6 @@ let set_common c ~targets =
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces := c.debug_backtraces;
-  Clflags.dev_mode := c.dev_mode;
   Clflags.capture_outputs := c.capture_outputs;
   if c.root <> Filename.current_dir_name then
     Sys.chdir c.root;
@@ -80,6 +79,7 @@ module Main = struct
       ?only_packages:common.only_packages
       ?external_lib_deps_mode
       ?x:common.x
+      ?profile:common.profile
       ~ignore_promoted_rules:common.ignore_promoted_rules
       ~capture_outputs:common.capture_outputs
       ()
@@ -211,7 +211,6 @@ let common =
         debug_dep_path
         debug_findlib
         debug_backtraces
-        dev_mode
         no_buffer
         workspace_file
         diff_command
@@ -221,6 +220,7 @@ let common =
          only_packages,
          ignore_promoted_rules,
          config_file,
+         profile,
          orig)
         x
         display
@@ -236,7 +236,7 @@ let common =
     in
     let orig_args =
       List.concat
-        [ if dev_mode then ["--dev"] else []
+        [ dump_opt "--profile" profile
         ; dump_opt "--workspace" workspace_file
         ; orig
         ]
@@ -264,7 +264,7 @@ let common =
     { debug_dep_path
     ; debug_findlib
     ; debug_backtraces
-    ; dev_mode
+    ; profile
     ; capture_outputs = not no_buffer
     ; workspace_file
     ; root
@@ -334,7 +334,27 @@ let common =
     Arg.(value
          & flag
          & info ["dev"] ~docs
-             ~doc:{|Use stricter compilation flags by default.|})
+             ~doc:{|Same as $(b,--profile dev)|})
+  in
+  let profile =
+    Arg.(value
+         & opt (some string) None
+         & info ["profile"] ~docs
+             ~doc:{|Select the build profile, for instance $(b,dev) or $(b,release).
+                    The default is $(b,default).|})
+  in
+  let profile =
+    let merge dev profile =
+      match dev, profile with
+      | false, x    -> `Ok x
+      | true , None -> `Ok (Some "dev")
+      | true , Some _ ->
+        `Error (true,
+                "Cannot use --dev and --profile simultaneously")
+    in
+    Term.(ret (const merge
+               $ dev
+               $ profile))
   in
   let display =
     let verbose =
@@ -440,34 +460,39 @@ let common =
            & opt (some string) None
            & info ["p"; for_release] ~docs ~docv:"PACKAGES"
                ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE
-                      --promote ignore --no-config).
+                      --promote ignore --no-config --profile release).
                       You must use this option in your $(i,<package>.opam) files, in order
                       to build only what's necessary when your project contains multiple
                       packages as well as getting reproducible builds.|})
     in
     let merge root only_packages ignore_promoted_rules
-          (config_file_opt, config_file) release =
+          (config_file_opt, config_file) profile release =
       let fail opt = incompatible ("-p/--" ^ for_release) opt in
-      match release, root, only_packages, ignore_promoted_rules, config_file_opt with
-      | Some _, Some _, _, _, _      -> fail "--root"
-      | Some _, _, Some _, _, _      -> fail "--only-packages"
-      | Some _, _, _, true  , _      -> fail "--ignore-promoted-rules"
-      | Some _, _, _, _     , Some s -> fail s
-      | Some pkgs, None, None, false, None ->
+      match release, root, only_packages, ignore_promoted_rules,
+            profile, config_file_opt with
+      | Some _, Some _, _, _, _, _ -> fail "--root"
+      | Some _, _, Some _, _, _, _ -> fail "--only-packages"
+      | Some _, _, _, true  , _, _ -> fail "--ignore-promoted-rules"
+      | Some _, _, _, _, Some _, _ -> fail "--profile"
+      | Some _, _, _, _, _, Some s -> fail s
+      | Some pkgs, None, None, false, None, None ->
         `Ok (Some ".",
              Some pkgs,
              true,
              No_config,
+             Some "release",
              ["-p"; pkgs]
             )
-      | None, _, _, _, _ ->
+      | None, _, _, _, _, _ ->
         `Ok (root,
              only_packages,
              ignore_promoted_rules,
              config_file,
+             profile,
              List.concat
                [ dump_opt "--root" root
                ; dump_opt "--only-packages" only_packages
+               ; dump_opt "--profile" profile
                ; if ignore_promoted_rules then
                    ["--ignore-promoted-rules"]
                  else
@@ -484,6 +509,7 @@ let common =
                $ only_packages
                $ ignore_promoted_rules
                $ config_file
+               $ profile
                $ frop))
   in
   let x =
@@ -503,7 +529,6 @@ let common =
         $ ddep_path
         $ dfindlib
         $ dbacktraces
-        $ dev
         $ no_buffer
         $ workspace_file
         $ diff_command
@@ -520,7 +545,11 @@ let installed_libraries =
     set_common common ~targets:[];
     let env = Main.setup_env ~capture_outputs:common.capture_outputs in
     Scheduler.go ~log:(Log.create common) ~common
-      (Context.create (Default [Native]) ~env >>= fun ctxs ->
+      (Context.create
+         (Default { targets = [Native]
+                  ; profile = "default" })
+         ~env
+       >>= fun ctxs ->
        let ctx = List.hd ctxs in
        let findlib = ctx.findlib in
        if na then begin
@@ -783,8 +812,8 @@ let external_lib_deps =
            (Build_system.all_lib_deps_by_context setup.build_system ~request)
            ~f:(fun context_name lib_deps acc ->
              let internals =
-               Jbuild.Stanzas.lib_names
-                 (match String.Map.find setup.Main.stanzas context_name with
+               Super_context.internal_lib_names
+                 (match String.Map.find setup.Main.scontexts context_name with
                   | None -> assert false
                   | Some x -> x)
              in
@@ -1297,6 +1326,59 @@ let promote =
           $ common)
   , Term.info "promote" ~doc ~man )
 
+let printenv =
+  let doc = "Print the environment of a directory" in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|$(b,dune printenv DIR) prints the environment of a directory|}
+    ; `Blocks help_secs
+    ] in
+  let go common dir =
+    set_common common ~targets:[];
+    let log = Log.create common in
+    Scheduler.go ~log ~common (
+      Main.setup ~log common >>= fun setup ->
+      let dir = Path.of_string dir in
+      check_path setup.contexts dir;
+      let request =
+        let dump sctx ~dir =
+          let open Build.O in
+          Super_context.dump_env sctx ~dir
+          >>^ fun env ->
+          ((Super_context.context sctx).name, env)
+        in
+        Build.all (
+          match Path.extract_build_context dir with
+          | Some (ctx, _) ->
+            let sctx =
+              String_map.find setup.scontexts ctx |> Option.value_exn
+            in
+            [dump sctx ~dir]
+          | None ->
+            String_map.values setup.scontexts
+            |> List.map ~f:(fun sctx ->
+              let dir =
+                Path.append (Super_context.context sctx).build_dir dir
+              in
+              dump sctx ~dir)
+        )
+      in
+      Build_system.do_build setup.build_system ~request
+      >>| fun l ->
+      let pp ppf = Format.fprintf ppf "@[<v1>(@,@[<v>%a@]@]@,)" (Format.pp_print_list Sexp.pp) in
+      match l with
+      | [(_, env)] ->
+        Format.printf "%a@." pp env
+      | l ->
+        List.iter l ~f:(fun (name, env) ->
+          Format.printf "@[<v2>Environment for context %s:@,%a@]@." name pp env)
+    )
+  in
+  ( Term.(const go
+          $ common
+          $ Arg.(value & pos 0 dir "" & info [] ~docv:"PATH"))
+  , Term.info "printenv" ~doc ~man )
+
 module Help = struct
   let config =
     ("dune-config", 5, "", "Dune", "Dune manual"),
@@ -1412,6 +1494,7 @@ let all =
   ; rules
   ; utop
   ; promote
+  ; printenv
   ; Help.help
   ]
 

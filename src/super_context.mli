@@ -40,6 +40,7 @@ val artifacts : t -> Artifacts.t
 val stanzas_to_consider_for_install : t -> (Path.t * Scope.t * Stanza.t) list
 val cxx_flags : t -> string list
 val build_dir : t -> Path.t
+val profile   : t -> string
 val host : t -> t
 val build_system : t -> Build_system.t
 
@@ -48,6 +49,21 @@ val public_libs : t -> Lib.DB.t
 
 (** Installed libraries that are not part of the workspace *)
 val installed_libs : t -> Lib.DB.t
+
+(** All non-public library names *)
+val internal_lib_names : t -> String.Set.t
+
+(** Compute the ocaml flags based on the directory environment and a
+    buildable stanza *)
+val ocaml_flags
+  :  t
+  -> dir:Path.t
+  -> scope:Scope.t
+  -> Buildable.t
+  -> Ocaml_flags.t
+
+(** Dump a directory environment in a readable form *)
+val dump_env : t -> dir:Path.t -> (unit, Sexp.t list) Build.t
 
 val find_scope_by_dir  : t -> Path.t        -> Scope.t
 val find_scope_by_name : t -> string option -> Scope.t
@@ -66,14 +82,15 @@ val expand_and_eval_set
   -> dir:Path.t
   -> ?extra_vars:Action.Var_expansion.t String.Map.t
   -> Ordered_set_lang.Unexpanded.t
-  -> standard:string list
+  -> standard:(unit, string list) Build.t
   -> (unit, string list) Build.t
 
 val prefix_rules
-  : t
+  :  t
   -> (unit, unit) Build.t
   -> f:(unit -> 'a)
   -> 'a
+
 val add_rule
   :  t
   -> ?sandbox:bool

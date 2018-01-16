@@ -78,6 +78,8 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
       ~scope
       ~linkages:[Exe.Linkage.custom]
       ~requires
-      ~flags:(Ocaml_flags.append_common (Ocaml_flags.default ()) ["-w"; "-24"])
+      ~flags:(Ocaml_flags.append_common
+                (Ocaml_flags.default ~profile:(Super_context.profile sctx))
+                ["-w"; "-24"])
       ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"]);
     add_module_rules sctx ~dir:utop_exe_dir requires

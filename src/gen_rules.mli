@@ -1,5 +1,4 @@
 open! Import
-open Jbuild
 
 (* Generate rules. Returns evaluated jbuilds per context names. *)
 val gen
@@ -8,4 +7,4 @@ val gen
   -> ?external_lib_deps_mode:bool (* default: false *)
   -> ?only_packages:Package.Name.Set.t
   -> Jbuild_load.conf
-  -> (Path.t * Scope_info.t * Stanzas.t) list String.Map.t Fiber.t
+  -> Super_context.t String_map.t Fiber.t

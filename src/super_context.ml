@@ -14,6 +14,16 @@ module Dir_with_jbuild = struct
     }
 end
 
+module Env_node = struct
+  type t =
+    { dir                 : Path.t
+    ; inherit_from        : t Lazy.t option
+    ; scope               : Scope.t
+    ; config              : Env.t
+    ; mutable ocaml_flags : Ocaml_flags.t option
+    }
+end
+
 type t =
   { context                          : Context.t
   ; build_system                     : Build_system.t
@@ -30,6 +40,7 @@ type t =
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
+  ; env                              : (Path.t, Env_node.t) Hashtbl.t
   }
 
 let context t = t.context
@@ -41,9 +52,22 @@ let file_tree t = t.file_tree
 let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
 let cxx_flags t = t.cxx_flags
 let build_dir t = t.context.build_dir
+let profile t = t.context.profile
 let build_system t = t.build_system
 
 let host t = Option.value t.host ~default:t
+
+let internal_lib_names t =
+  List.fold_left t.stanzas ~init:String.Set.empty
+    ~f:(fun acc { Dir_with_jbuild. stanzas; _ } ->
+      List.fold_left stanzas ~init:acc ~f:(fun acc -> function
+        | Stanza.Library lib ->
+          String.Set.add
+            (match lib.public with
+             | None -> acc
+             | Some { name; _ } -> String.Set.add acc name)
+            lib.name
+        | _ -> acc))
 
 let public_libs    t = t.public_libs
 let installed_libs t = t.installed_libs
@@ -63,6 +87,88 @@ let expand_vars t ~scope ~dir ?(extra_vars=String.Map.empty) s =
         (match expand_var_no_root t var with
          | Some _ as x -> x
          | None -> String.Map.find extra_vars var))
+
+let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
+  let open Build.O in
+  let f = expand_vars t ~scope ~dir ?extra_vars in
+  let parse ~loc:_ s = s in
+  match Ordered_set_lang.Unexpanded.files set ~f |> String.Set.to_list with
+  | [] ->
+    let set =
+      Ordered_set_lang.Unexpanded.expand set ~files_contents:String.Map.empty ~f
+    in
+    standard >>^ fun standard ->
+    Ordered_set_lang.String.eval set ~standard ~parse
+  | files ->
+    let paths = List.map files ~f:(Path.relative dir) in
+    Build.fanout standard (Build.all (List.map paths ~f:Build.read_sexp))
+    >>^ fun (standard, sexps) ->
+    let files_contents = List.combine files sexps |> String.Map.of_list_exn in
+    let set = Ordered_set_lang.Unexpanded.expand set ~files_contents ~f in
+    Ordered_set_lang.String.eval set ~standard ~parse
+
+module Env = struct
+  open Env_node
+
+  let rec get t ~dir =
+    match Hashtbl.find t.env dir with
+    | None ->
+      if Path.is_root dir then raise_notrace Exit;
+      let node = get t ~dir:(Path.parent dir) in
+      Hashtbl.add t.env dir node;
+      node
+    | Some node -> node
+
+  let get t ~dir =
+    match get t ~dir with
+    | node -> node
+    | exception Exit ->
+      Exn.code_error "Super_context.Env.get called on invalid directory"
+        [ "dir", Path.sexp_of_t dir ]
+
+  let ocaml_flags t ~dir =
+    let rec loop t node =
+      match node.ocaml_flags with
+      | Some x -> x
+      | None ->
+        let default =
+          match node.inherit_from with
+          | None -> Ocaml_flags.default ~profile:(profile t)
+          | Some (lazy node) -> loop t node
+        in
+        let flags =
+          match List.find_map node.config ~f:(fun (pat, cfg) ->
+            match (pat : Env.pattern), profile t with
+            | Any, _ -> Some cfg
+            | Profile a, b -> Option.some_if (a = b) cfg)
+          with
+          | None -> default
+          | Some cfg ->
+            Ocaml_flags.make
+              ~flags:cfg.flags
+              ~ocamlc_flags:cfg.ocamlc_flags
+              ~ocamlopt_flags:cfg.ocamlopt_flags
+              ~default
+              ~eval:(expand_and_eval_set t ~scope:node.scope ~dir:node.dir
+                       ?extra_vars:None)
+        in
+        node.ocaml_flags <- Some flags;
+        flags
+    in
+    loop t (get t ~dir)
+
+end
+
+let ocaml_flags t ~dir ~scope (x : Buildable.t) =
+  Ocaml_flags.make
+    ~flags:x.flags
+    ~ocamlc_flags:x.ocamlc_flags
+    ~ocamlopt_flags:x.ocamlopt_flags
+    ~default:(Env.ocaml_flags t ~dir)
+    ~eval:(expand_and_eval_set t ~scope ~dir ?extra_vars:None)
+
+let dump_env t ~dir =
+  Ocaml_flags.dump (Env.ocaml_flags t ~dir)
 
 let resolve_program t ?hint bin =
   Artifacts.binary ?hint t.artifacts bin
@@ -189,34 +295,65 @@ let create
     | Ok    x -> x
     | Error _ -> assert false
   in
-  { context
-  ; host
-  ; build_system
-  ; scopes
-  ; public_libs
-  ; installed_libs
-  ; stanzas
-  ; packages
-  ; file_tree
-  ; stanzas_to_consider_for_install
-  ; artifacts
-  ; cxx_flags
-  ; vars
-  ; chdir = Build.arr (fun (action : Action.t) ->
-      match action with
-      | Chdir _ -> action
-      | _ -> Chdir (context.build_dir, action))
-  ; libs_by_package =
-    Lib.DB.all public_libs
-    |> Lib.Set.to_list
-    |> List.map ~f:(fun lib ->
-      (Option.value_exn (Lib.package lib), lib))
-    |> Package.Name.Map.of_list_multi
-    |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
-      let pkg  = Option.value_exn pkg          in
-      let libs = Option.value libs ~default:[] in
-      Some (pkg, Lib.Set.of_list libs))
-  }
+  let t =
+    { context
+    ; host
+    ; build_system
+    ; scopes
+    ; public_libs
+    ; installed_libs
+    ; stanzas
+    ; packages
+    ; file_tree
+    ; stanzas_to_consider_for_install
+    ; artifacts
+    ; cxx_flags
+    ; vars
+    ; chdir = Build.arr (fun (action : Action.t) ->
+        match action with
+        | Chdir _ -> action
+        | _ -> Chdir (context.build_dir, action))
+    ; libs_by_package =
+        Lib.DB.all public_libs
+        |> Lib.Set.to_list
+        |> List.map ~f:(fun lib ->
+          (Option.value_exn (Lib.package lib), lib))
+        |> Package.Name.Map.of_list_multi
+        |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
+          let pkg  = Option.value_exn pkg          in
+          let libs = Option.value libs ~default:[] in
+          Some (pkg, Lib.Set.of_list libs))
+    ; env = Hashtbl.create 128
+    }
+  in
+  List.iter stanzas
+    ~f:(fun { Dir_with_jbuild. ctx_dir; scope; stanzas; _ } ->
+      List.iter stanzas ~f:(function
+        | Stanza.Env config ->
+          let inherit_from =
+            if ctx_dir = Scope.root scope then
+              None
+            else
+              Some (lazy (Env.get t ~dir:(Path.parent ctx_dir)))
+          in
+          Hashtbl.add t.env ctx_dir
+            { dir          = ctx_dir
+            ; inherit_from = inherit_from
+            ; scope        = scope
+            ; config       = config
+            ; ocaml_flags  = None
+            }
+        | _ -> ()));
+  if not (Hashtbl.mem t.env context.build_dir) then
+    Hashtbl.add t.env context.build_dir
+      { Env_node.
+        dir          = context.build_dir
+      ; inherit_from = None
+      ; scope        = Scope.DB.find_by_dir scopes context.build_dir
+      ; config       = []
+      ; ocaml_flags  = None
+      };
+  t
 
 let prefix_rules t prefix ~f =
   Build_system.prefix_rules t.build_system prefix ~f
@@ -695,21 +832,3 @@ module Action = struct
     | [] -> build
     | fail :: _ -> Build.fail fail >>> build
 end
-
-let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
-  let open Build.O in
-  let f = expand_vars t ~scope ~dir ?extra_vars in
-  let parse ~loc:_ s = s in
-  match Ordered_set_lang.Unexpanded.files set ~f |> String.Set.to_list with
-  | [] ->
-    let set =
-      Ordered_set_lang.Unexpanded.expand set ~files_contents:String.Map.empty ~f
-    in
-    Build.return (Ordered_set_lang.String.eval set ~standard ~parse)
-  | files ->
-    let paths = List.map files ~f:(Path.relative dir) in
-    Build.all (List.map paths ~f:Build.read_sexp)
-    >>^ fun sexps ->
-    let files_contents = List.combine files sexps |> String.Map.of_list_exn in
-    let set = Ordered_set_lang.Unexpanded.expand set ~files_contents ~f in
-    Ordered_set_lang.String.eval set ~standard ~parse

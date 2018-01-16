@@ -58,6 +58,14 @@
     (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
 
 (alias
+ ((name env)
+  (deps ((package dune) (files_recursively_in test-cases/env)))
+  (action
+   (chdir
+    test-cases/env
+    (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+
+(alias
  ((name exclude-missing-module)
   (deps
    ((package dune) (files_recursively_in test-cases/exclude-missing-module)))
@@ -444,6 +452,7 @@
     (alias copy_files)
     (alias cross-compilation)
     (alias depend-on-the-universe)
+    (alias env)
     (alias exclude-missing-module)
     (alias exec-cmd)
     (alias findlib)
@@ -496,6 +505,7 @@
     (alias copy_files)
     (alias cross-compilation)
     (alias depend-on-the-universe)
+    (alias env)
     (alias exclude-missing-module)
     (alias exec-cmd)
     (alias findlib)

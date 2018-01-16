@@ -369,6 +369,20 @@ module Documentation : sig
     }
 end
 
+module Env : sig
+  type config =
+    { flags          : Ordered_set_lang.Unexpanded.t
+    ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
+    ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
+    }
+
+  type pattern =
+    | Profile of string
+    | Any
+
+  type t = (pattern * config) list
+end
+
 module Stanza : sig
   type t =
     | Library     of Library.t
@@ -380,6 +394,7 @@ module Stanza : sig
     | Copy_files  of Copy_files.t
     | Menhir      of Menhir.t
     | Documentation of Documentation.t
+    | Env         of Env.t
 end
 
 module Stanzas : sig
@@ -393,5 +408,4 @@ module Stanzas : sig
     -> Scope_info.t
     -> Sexp.Ast.t list
     -> t
-  val lib_names : (_ * _ * t) list -> String.Set.t
 end

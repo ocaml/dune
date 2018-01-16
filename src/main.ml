@@ -5,8 +5,8 @@ let () = Inline_tests.linkme
 
 type setup =
   { build_system : Build_system.t
-  ; stanzas      : (Path.t * Jbuild.Scope_info.t * Jbuild.Stanzas.t) list String.Map.t
   ; contexts     : Context.t list
+  ; scontexts    : Super_context.t String_map.t
   ; packages     : Package.t Package.Name.Map.t
   ; file_tree    : File_tree.t
   ; env          : Env.t
@@ -36,6 +36,7 @@ let setup ?(log=Log.no_log)
       ?x
       ?ignore_promoted_rules
       ?(capture_outputs=true)
+      ?profile
       () =
   let env = setup_env ~capture_outputs in
   let conf =
@@ -57,7 +58,7 @@ let setup ?(log=Log.no_log)
     | None ->
       match workspace_file with
       | Some p ->
-        Workspace.load ?x p
+        Workspace.load ?x ?profile p
       | _ ->
         match
           List.find_map ["dune-workspace"; "jbuild-workspace"] ~f:(fun fn ->
@@ -67,14 +68,17 @@ let setup ?(log=Log.no_log)
             else
               None)
         with
-        | Some p -> Workspace.load ?x p
+        | Some p -> Workspace.load ?x ?profile p
         | None ->
           { merlin_context = Some "default"
-          ; contexts = [Default [
-              match x with
-              | None -> Native
-              | Some x -> Named x
-            ]]
+          ; contexts = [Default
+                          { targets = [
+                              match x with
+                              | None   -> Native
+                              | Some x -> Named x
+                            ]
+                          ; profile = Option.value profile ~default:"default"
+                          }]
           }
   in
 
@@ -104,12 +108,12 @@ let setup ?(log=Log.no_log)
     ~contexts
     ?only_packages
     ?external_lib_deps_mode
-  >>= fun stanzas ->
+  >>= fun scontexts ->
   Scheduler.set_status_line_generator gen_status_line
   >>>
   Fiber.return
     { build_system
-    ; stanzas
+    ; scontexts
     ; contexts
     ; packages = conf.packages
     ; file_tree = conf.file_tree
@@ -133,8 +137,8 @@ let external_lib_deps ?log ~packages () =
          | Ok path -> Path.append context.build_dir path
          | Error () -> die "Unknown package %S" (Package.Name.to_string pkg))
      in
-     let stanzas = Option.value_exn (String.Map.find setup.stanzas "default") in
-     let internals = Jbuild.Stanzas.lib_names stanzas in
+     let sctx = Option.value_exn (String.Map.find setup.scontexts "default") in
+     let internals = Super_context.internal_lib_names sctx in
      Path.Map.map
        (Build_system.all_lib_deps setup.build_system
           ~request:(Build.paths install_files))
@@ -220,9 +224,11 @@ let bootstrap () =
       | Error msg -> raise (Arg.Bad msg)
       | Ok c -> concurrency := Some c
     in
+    let profile = ref None in
     Arg.parse
       [ "-j"           , String concurrency_arg, "JOBS concurrency"
-      ; "--dev"        , Set Clflags.dev_mode  , " set development mode"
+      ; "--dev"        , Unit (fun () -> profile := Some "dev"),
+        " set development mode"
       ; "--display"    , display_mode          , " set the display mode"
       ; "--subst"      , Unit subst            ,
         " substitute watermarks in source files"
@@ -234,7 +240,7 @@ let bootstrap () =
     Clflags.debug_dep_path := true;
     let config =
       (* Only load the configuration with --dev *)
-      if !Clflags.dev_mode then
+      if !profile = Some "dev" then
         Config.load_user_config_file ()
       else
         Config.default
@@ -254,7 +260,14 @@ let bootstrap () =
       (set_concurrency config
        >>= fun () ->
        setup ~log ~workspace:{ merlin_context = Some "default"
-                             ; contexts = [Default [Native]] }
+                             ; contexts = [Default { targets = [Native]
+                                                   ; profile =
+                                                       Option.value !profile
+                                                         ~default:"default"
+                                                   }
+                                          ]
+                             }
+         ?profile:!profile
          ~extra_ignored_subtrees:ignored_during_bootstrap
          ()
        >>= fun { build_system = bs; _ } ->

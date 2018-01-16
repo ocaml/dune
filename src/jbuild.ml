@@ -1192,6 +1192,40 @@ module Documentation = struct
       )
 end
 
+module Env = struct
+  type config =
+    { flags          : Ordered_set_lang.Unexpanded.t
+    ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
+    ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
+    }
+
+  type pattern =
+    | Profile of string
+    | Any
+
+  type t = (pattern * config) list
+
+  let config =
+    record
+      (field_oslu "flags"          >>= fun flags          ->
+       field_oslu "ocamlc_flags"   >>= fun ocamlc_flags   ->
+       field_oslu "ocamlopt_flags" >>= fun ocamlopt_flags ->
+       return { flags; ocamlc_flags; ocamlopt_flags })
+
+  let t sexps =
+    List.map sexps ~f:(function
+      | List (loc, Atom (_, A pat) :: fields) ->
+        let pat =
+          match pat with
+          | "_" -> Any
+          | s   -> Profile s
+        in
+        (pat, config (List (loc, fields)))
+      | sexp ->
+        of_sexp_error sexp
+          "S-expression of the form (<profile> <fields>) expected")
+end
+
 module Stanza = struct
   type t =
     | Library     of Library.t
@@ -1203,6 +1237,7 @@ module Stanza = struct
     | Copy_files  of Copy_files.t
     | Menhir      of Menhir.t
     | Documentation of Documentation.t
+    | Env         of Env.t
 end
 
 module Stanzas = struct
@@ -1239,6 +1274,8 @@ module Stanzas = struct
           (fun glob -> [Copy_files {add_line_directive = false; glob}])
       ; cstr "copy_files#" (Copy_files.v1 @> nil)
           (fun glob -> [Copy_files {add_line_directive = true; glob}])
+      ; cstr_rest "env" nil (fun x -> x)
+          (fun x -> [Env (Env.t x)])
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ; cstr_loc "include" (relative_file @> nil) (fun loc fn ->
@@ -1302,16 +1339,4 @@ module Stanzas = struct
               sprintf
                 "\n--> included from %s"
                 (line_loc x))))
-
-  let lib_names ts =
-    List.fold_left ts ~init:String.Set.empty ~f:(fun acc (_, _, stanzas) ->
-      List.fold_left stanzas ~init:acc ~f:(fun acc -> function
-        | Stanza.Library lib ->
-          let acc =
-            match lib.public with
-             | None -> acc
-             | Some { name; _ } -> String.Set.add acc name
-          in
-          String.Set.add acc lib.name
-        | _ -> acc))
 end

@@ -58,6 +58,8 @@ module Unexpanded : sig
 
   val field : ?default:t -> string -> t Sexp.Of_sexp.record_parser
 
+  val has_special_forms : t -> bool
+
   (** List of files needed to expand this set *)
   val files : t -> f:(String_with_vars.t -> string) -> String.Set.t
 

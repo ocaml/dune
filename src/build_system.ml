@@ -508,11 +508,8 @@ module Build_exec = struct
             reraise exn
     in
     let dyn_deps = ref Pset.empty in
-    let action = exec dyn_deps (Build.repr t) x in
-    (action, !dyn_deps)
-
-  let exec_nop bs t x =
-    snd (exec bs (Build.O.(>>^) t (fun () -> Action.Progn [])) x)
+    let result = exec dyn_deps (Build.repr t) x in
+    (result, !dyn_deps)
 end
 
 (* [copy_source] is [true] for rules copying files from the source directory *)
@@ -1206,8 +1203,10 @@ let eval_request t ~request ~process_target =
     (fun () ->
        wait_for_deps t rule_deps
        >>= fun () ->
-       let dyn_deps = Build_exec.exec_nop t request () in
-       process_targets (Pset.diff dyn_deps static_deps))
+       let result, dyn_deps = Build_exec.exec t request () in
+       process_targets (Pset.diff dyn_deps static_deps)
+       >>| fun () ->
+       result)
 
 let universe_file = Path.relative Path.build_dir ".universe-state"
 

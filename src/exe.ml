@@ -163,7 +163,7 @@ let link_exe
       Build.fanout
         (modules_and_cm_files >>^ snd)
         (SC.expand_and_eval_set sctx ~scope ~dir js_of_ocaml.flags
-           ~standard:(Js_of_ocaml_rules.standard ()))
+           ~standard:(Build.return (Js_of_ocaml_rules.standard sctx)))
     in
     SC.add_rules sctx (List.map rules ~f:(fun r -> cm_and_flags >>> r))
 

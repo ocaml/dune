@@ -1029,9 +1029,8 @@ module PP = struct
                   ; As (if uses_ppx_driver then ["-diff-cmd"; "-"] else [])
                   ; A "-o"; Target dst
                   ; Ml_kind.ppx_driver_flag kind; Dep src
-                  ])
-            )
-
+                  ])))
+    )
 end
 
 let expand_and_eval_set t ~scope ~dir set ~standard =

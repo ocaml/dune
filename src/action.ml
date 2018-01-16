@@ -745,8 +745,7 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
         match mode with
         | Always -> files
         | If_corrected_file_exists ->
-          List.filter files ~f:(fun { Promote. src; dst } ->
-            Path.exists src && Path.exists dst)
+          List.filter files ~f:(fun file -> Path.exists file.Promote.src)
       in
       let not_ok =
         List.filter files ~f:(fun { Promote. src; dst } ->
@@ -760,10 +759,12 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
         if promote_mode = Copy then
           Future.Scheduler.at_exit_after_waiting_for_commands (fun () ->
             List.iter not_ok ~f:(fun { Promote. src; dst } ->
-              Format.eprintf "Promoting %s to %s.@."
-                (Path.to_string_maybe_quoted src)
-                (Path.to_string_maybe_quoted dst);
-              Io.copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst)));
+              if mode = Always || Path.exists dst then begin
+                Format.eprintf "Promoting %s to %s.@."
+                  (Path.to_string_maybe_quoted src)
+                  (Path.to_string_maybe_quoted dst);
+                Io.copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst)
+              end));
         Future.all_unit (List.map not_ok ~f:(fun { Promote. src; dst } ->
           Diff.print dst src))
     end

@@ -1,6 +1,7 @@
 open Import
 open Jbuild
 
+module A = Action
 module Pset = Path.Set
 
 module Dir_with_jbuild = struct
@@ -901,6 +902,24 @@ module PP = struct
           mli) in
     { m with impl ; intf }
 
+  let uses_ppx_driver ~pps =
+    match Option.map ~f:Pp.to_string (List.last pps) with
+    | Some "ppx_driver.runner" -> true
+    | Some _ | None -> false
+
+  let promote_correction ~uses_ppx_driver fn build =
+    if not uses_ppx_driver then
+      build
+    else
+      Build.progn
+        [ build
+        ; Build.return
+            (A.promote_if
+               [{ src = Path.extend_basename fn ~suffix:".ppx-corrected"
+                ; dst = Path.drop_build_context fn
+                }])
+        ]
+
   let lint_module sctx ~(source : Module.t) ~(ast : Module.t) ~dir
         ~dep_kind ~lint ~lib_name ~scope =
     let alias = Alias.lint ~dir in
@@ -909,7 +928,8 @@ module PP = struct
         (Alias.add_build (aliases sctx) alias build
            ~stamp:(List [ Atom "lint"
                         ; Sexp.To_sexp.(option string) lib_name
-                        ; Atom fn]))
+                        ; Atom fn
+                        ]))
     in
     match Preprocess_map.find source.name lint with
     | No_preprocessing -> ()
@@ -938,15 +958,19 @@ module PP = struct
           ; Dep src_path
           ]
         in
+        let uses_ppx_driver = uses_ppx_driver ~pps in
         let args =
           (* This hack is needed until -null is standard:
              https://github.com/ocaml-ppx/ocaml-migrate-parsetree/issues/35 *)
-          match Option.map ~f:Pp.to_string (List.last pps) with
-          | Some "ppx_driver.runner" -> args @ [A "-null"]
-          | Some _ | None -> args
+          if uses_ppx_driver then
+            args @ [ A "-null"; A "-diff-cmd"; A "-" ]
+          else
+            args
         in
         add_alias src.name
-          (Build.run ~context:sctx.context (Ok ppx_exe) args)
+          (promote_correction ~uses_ppx_driver
+             (Option.value_exn (Module.file ~dir source kind))
+             (Build.run ~context:sctx.context (Ok ppx_exe) args))
       )
 
   (* Generate rules to build the .pp files and return a new module map where all filenames
@@ -959,51 +983,54 @@ module PP = struct
     in
     let lint_module = lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope in
     String_map.map modules ~f:(fun (m : Module.t) ->
-        match Preprocess_map.find m.name preprocess with
-        | No_preprocessing ->
-          let ast = setup_reason_rules sctx ~dir m in
-          lint_module ~ast ~source:m;
-          ast
-        | Action action ->
-          let ast =
-            pped_module m ~dir ~f:(fun _kind src dst ->
-              add_rule sctx
-                (preprocessor_deps
-                >>>
-                Build.path src
-                >>^ (fun _ -> [src])
-                >>>
-                Action.run sctx
-                  (Redirect
-                      (Stdout,
-                      target_var,
-                      Chdir (root_var,
-                              action)))
-                  ~dir
-                  ~dep_kind
-                  ~targets:(Static [dst])
-                  ~scope))
-            |> setup_reason_rules sctx ~dir in
-          lint_module ~ast ~source:m;
-          ast
-        | Pps { pps; flags } ->
-          let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in
-          let ast = setup_reason_rules sctx ~dir m in
-          lint_module ~ast ~source:m;
-          pped_module ast ~dir ~f:(fun kind src dst ->
+      match Preprocess_map.find m.name preprocess with
+      | No_preprocessing ->
+        let ast = setup_reason_rules sctx ~dir m in
+        lint_module ~ast ~source:m;
+        ast
+      | Action action ->
+        let ast =
+          pped_module m ~dir ~f:(fun _kind src dst ->
             add_rule sctx
               (preprocessor_deps
                >>>
-               Build.run ~context:sctx.context
-                 (Ok ppx_exe)
-                 [ As flags
-                 ; A "--dump-ast"
-                 ; As (cookie_library_name lib_name)
-                 ; A "-o"; Target dst
-                 ; Ml_kind.ppx_driver_flag kind; Dep src
-                 ]))
+               Build.path src
+               >>^ (fun _ -> [src])
+               >>>
+               Action.run sctx
+                 (Redirect
+                    (Stdout,
+                     target_var,
+                     Chdir (root_var,
+                            action)))
+                 ~dir
+                 ~dep_kind
+                 ~targets:(Static [dst])
+                 ~scope))
+          |> setup_reason_rules sctx ~dir in
+        lint_module ~ast ~source:m;
+        ast
+      | Pps { pps; flags } ->
+        let ppx_exe = get_ppx_driver sctx pps ~dir ~dep_kind in
+        let ast = setup_reason_rules sctx ~dir m in
+        lint_module ~ast ~source:m;
+        let uses_ppx_driver = uses_ppx_driver ~pps in
+        pped_module ast ~dir ~f:(fun kind src dst ->
+          add_rule sctx
+            (promote_correction ~uses_ppx_driver
+               (Option.value_exn (Module.file m ~dir kind))
+               (preprocessor_deps
+                >>>
+                Build.run ~context:sctx.context
+                  (Ok ppx_exe)
+                  [ As flags
+                  ; A "--dump-ast"
+                  ; As (cookie_library_name lib_name)
+                  ; As (if uses_ppx_driver then ["-diff-cmd"; "-"] else [])
+                  ; A "-o"; Target dst
+                  ; Ml_kind.ppx_driver_flag kind; Dep src
+                  ])))
     )
-
 end
 
 let expand_and_eval_set t ~scope ~dir set ~standard =

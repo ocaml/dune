@@ -64,8 +64,8 @@ module Ext : sig
   type t =
     { deps   : Path.Set.t  (** List of files that we'll be read when
                                execution [acton]. *)
-    ; locks  : Path.t list (** List of lock files that must be held
-                               while [action] is running. *)
+    ; locks  : Path.t list (** Two actions with non disjoint set of locks cannot
+                               be executed at the same time. *)
     ; action : Action.t    (** The actual action to execute. *)
     }
 
@@ -79,20 +79,6 @@ module Ext : sig
       However, because [path] is given statically, Dune is able to
       know earlier about this dependency and can parallelize the build
       better.
-
-      Note that [add_dep] can only be called inside a call to [ext].
-      I.e. the following code is valid:
-
-      {[
-        Biild.ext ~targets (Build.Ext.add_dep path <<< t)
-      ]}
-
-      but this one isn't:
-
-      {[
-        t >>> Build.Ext.add_dep path >>>
-        Biild.ext ~targets Build.return
-      ]}
   *)
   val add_dep : Path.t -> (t, t) build
 end with type ('a, 'b) build := ('a, 'b) t
@@ -153,15 +139,30 @@ val sub_dirs : dir:Path.t -> (unit, string list) t
     later reading this file. The only difference is that the value is
     not actually written out and is kept in memory. The command line
     option [--debug-vars] forces all variables to be written out.
+
+    Note that variable can also be used as dependencies/targets
+    of external actions. When used as a dependeny, jbuilder will produce
+    a file containing a string representation of the variable.
+    When used as a target, the external action is expected to produce a file
+    with a string representation of the variable.
 *)
 
 (** Type of variables. *)
 module Type : sig
   type 'a t
 
-  (** [create to_sexp] creates a new variable type. [to_sexp] is only
-      used when [--debug-vars] is used. *)
-  val create : ('a -> Sexp.t) -> 'a t
+  val create
+    :  ?to_string:('a -> string)
+    -> ?of_string:(filename:string -> string -> 'a)
+    -> unit
+    -> 'a t
+
+  (** [create ?to_sexp ?of_sexp ()] creates a new variable type. *)
+  val create_sexp
+    :  ?to_sexp:('a -> Sexp.t)
+    -> ?of_sexp:(Sexp.t -> 'a)
+    -> unit
+    -> 'a t
 end
 
 (** [set_var path type] set the value of variable [path]. *)
@@ -177,12 +178,12 @@ val get_var : Path.t -> 'a Type.t -> (unit, 'a) t
     build script can generate a certain file.
 *)
 
-(** [define_section ~dir ~limits t] defines a section of the file system.
+(** [define_section ~dir t] defines a section of the file system.
 
     The section is defined as the set of directories [d] such that:
 
-    - [Path.is_descendant d ~of_:dir]
-    - [List.iter limits ~f:(fun p -> not (Path.is_descendant d ~of_:p))]
+    - [d] is a descendant of [dir]
+    - for all other sections [s], [d] is not part of [s]
 
     Whenever a section is defined, the following must hold:
 
@@ -191,6 +192,5 @@ val get_var : Path.t -> 'a Type.t -> (unit, 'a) t
 *)
 val define_section
   :  dir:Path.t
-  -> limits:Path.t list
   -> ('a, 'b) t Lazy.t
   -> ('a, 'b) t

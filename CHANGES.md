@@ -45,6 +45,10 @@ next
 - Report better errors when using `(glob_files ...)` with a directory
   that doesn't exist (#413, Fix #412)
 
+- Jbuilder now properly handles correction files produced by
+  ppx_driver. This allows to use `[@@deriving_inline]` in .ml/.mli
+  files. This require `ppx_driver >= v0.10.2` to work properly (#415)
+
 1.0+beta16 (05/11/2017)
 -----------------------
 

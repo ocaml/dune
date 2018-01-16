@@ -534,6 +534,12 @@ module Action = struct
           Path.append host.context.build_dir exe
         | _ -> exe
 
+  let parse_lib_file ~loc s =
+    match String.lsplit2 s ~on:':' with
+    | None ->
+      Loc.fail loc "invalid ${lib:...} form: %s" s
+    | Some x -> x
+
   let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user ~map_exe t =
     let acc =
       { failures  = []
@@ -566,19 +572,23 @@ module Action = struct
         (* "findlib" for compatibility with Jane Street packages which are not yet updated
            to convert "findlib" to "lib" *)
         | Some (("lib"|"findlib"), s) -> begin
-            let lib_dep, res =
-              Artifacts.file_of_lib (artifacts sctx) ~loc ~from:dir s in
+            let lib_dep, file = parse_lib_file ~loc s in
             add_lib_dep acc lib_dep dep_kind;
-            match res with
+            match
+              Artifacts.file_of_lib (artifacts sctx) ~from:dir
+                ~lib:lib_dep ~file
+            with
             | Ok path -> static_dep_exp acc path
             | Error fail -> add_fail acc fail
           end
         | Some ("libexec" , s) -> begin
             let sctx = host_sctx sctx in
-            let lib_dep, res =
-              Artifacts.file_of_lib (artifacts sctx) ~loc ~from:dir s in
+            let lib_dep, file = parse_lib_file ~loc s in
             add_lib_dep acc lib_dep dep_kind;
-            match res with
+            match
+              Artifacts.file_of_lib (artifacts sctx) ~from:dir
+                ~lib:lib_dep ~file
+            with
             | Error fail -> add_fail acc fail
             | Ok path ->
               if not Sys.win32 || Filename.extension s = ".exe" then begin

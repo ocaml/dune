@@ -18,14 +18,11 @@ val binary
   -> string
   -> Action.Prog.t
 
-(** [file_of_lib t ~from name] a named artifact that is looked up in the given library.
-
-    [name] is expected to be of the form "<lib>:<file>". Raises immediately if it is not
-    the case. Returns "<lib>" as well as the resolved artifact.
-*)
+(** [file_of_lib t ~from ~lib ~file] returns the path to a file in the directory of the
+    given library. *)
 val file_of_lib
   :  t
-  -> loc:Loc.t
   -> from:Path.t
-  -> string
-  -> string * (Path.t, fail) result
+  -> lib:string
+  -> file:string
+  -> (Path.t, fail) result

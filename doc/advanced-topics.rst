@@ -69,7 +69,7 @@ a binary OCaml AST in ``<output-file>``.
 
 Additionally, it is expected that if the executable is invoked with
 ``--as-ppx`` as its first argument, then it will behave as a standard
-ppx rewirter as passed to ``-ppx`` option of OCaml. This is for two
+ppx rewriter as passed to ``-ppx`` option of OCaml. This is for two
 reasons:
 
 -  to improve interoperability with build systems other than Jbuilder

@@ -606,7 +606,7 @@ Jbuilder supports the following variables:
 -  ``SCOPE_ROOT`` is the root of the current scope. It is typically
    the toplevel directory of your project and as long as you have at
    least one ``<package>.opam`` file there, ``SCOPE_ROOT`` is
-   independant of the workspace configuration
+   independent of the workspace configuration
 - ``CC`` is the C compiler command line (list made of the compiler
    name followed by its flags) that was used to compile OCaml in the
    current build context
@@ -652,7 +652,7 @@ In addition, ``(action ...)`` fields support the following special variables:
   when cross-compiling, in which case it will expand to the file from the host
   build context
 - ``lib-available:<library-name>`` expands to ``true`` or ``false`` depending on
-  wether the library is available or not. A library is available iff at least
+  whether the library is available or not. A library is available iff at least
   one of the following condition holds:
 
   -  it is part the installed worlds
@@ -746,7 +746,7 @@ workspace but in another scope, you need to use the public name. For
 instance: ``(libraries (base re))``.
 
 When resolving libraries, libraries that are part of the workspace are always
-prefered to ones that are part of the installed world.
+preferred to ones that are part of the installed world.
 
 .. _alternative-deps:
 
@@ -827,7 +827,7 @@ Preprocessing with ppx rewriters
 
 ``<ppx-rewriters-and-flags>`` is expected to be a list where each element is
 either a command line flag if starting with a ``-`` or the name of a library.
-Additionnally, any sub-list will be treated as a list of command line arguments.
+Additionally, any sub-list will be treated as a list of command line arguments.
 So for instance from the following ``preprocess`` field:
 
    .. code:: scheme
@@ -1089,16 +1089,16 @@ of your project. What you should write instead is:
 Locks
 -----
 
-Given two rules that are independant, Jbuilder will assume that there
+Given two rules that are independent, Jbuilder will assume that there
 associated action can be run concurrently. Two rules are considered
-independant if none of them depend on the other, either directly or
+independent if none of them depend on the other, either directly or
 through a chain of dependencies. This basic assumption allows to
 parallelize the build.
 
-However, it is sometimes the case that two independant rules cannot be
+However, it is sometimes the case that two independent rules cannot be
 executed concurrently. For instance this can happen for more
 complicated tests. In order to prevent jbuilder from running the
-actions at the same time, you can sepcify that both actions take the
+actions at the same time, you can specify that both actions take the
 same lock:
 
 .. code:: scheme

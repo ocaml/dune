@@ -555,7 +555,7 @@ For instance:
     (rule (with-stdout-to jbuild.inc.gen (run ./gen-jbuild.exe)))
 
     (alias
-     ((name   jbuild)
+     ((name   runtest)
       (action (promote (jbuild.inc.gen as jbuild.inc)))))
 
 With this jbuild file, running jbuilder as follow will replace the
@@ -563,7 +563,7 @@ With this jbuild file, running jbuilder as follow will replace the
 
 .. code:: shell
 
-    $ jbuilder build @jbuild
+    $ jbuilder build @runtest --auto-promote
 
 Common items
 ============
@@ -1014,13 +1014,11 @@ The following constructions are available:
   and ``cmd`` on Windows
 - ``(bash <cmd>)`` to execute a command using ``/bin/bash``. This is obviously
   not very portable
-- ``(promote <files-to-promote>)`` copy generated files to the source
-  tree. See `Promotion`_ for more details
-- ``(promote-if <files-to-promote>)`` is the same as ``(promote
-  <files-to-promote>)`` except that a form ``(<a> as <b>)`` is ignored
-  when ``<a>`` doesn't exists. Additionally, ``<a>`` won't be copied
-  if ``<b>`` doesn't already exist. This can be used with command that
-  only produce a correction when differences are found
+- ``(diff <file1> <file2>)`` makes sure that the to files are equal
+  and print a diff otherwise. See `Promotion`_ for a example of use
+- ``(diff? <file1> <file2>)`` is the same as ``(diff <file1>
+  <file2>)`` except that it is ignored when ``<file1>`` or ``<file2>``
+  doesn't exists
 
 As mentioned ``copy#`` inserts a line directive at the beginning of
 the destination file. More precisely, it inserts the following line:
@@ -1141,34 +1139,35 @@ is global to all build contexts, simply use an absolute filename:
 Promotion
 ---------
 
-The ``(promote (<file1> as <file2>) (<file3> as <file4>) ...)`` and
-``(promote-if (<file1> as <file2>) (<file3> as <file4>) ...)`` actions
-can be used to copy generated files to the source tree.
+Whenever an action of the form ``(diff <file1> <file2>)`` or ``(diff?
+<file1> <file2>)`` fails because the two files are different, jbuilder
+allows you to promote ``<file2>`` as ``<file1>`` if ``<file1>`` is a
+source file and ``<file2>`` is a generated file.
 
-This method is used when one wants to commit a generated file that is
-independent of the systems where it is generated. Typically this can
-be used to:
+More precisely, let's consider the following jbuild file:
 
-- cut dependencies and/or speed up the build in release mode: we use
-  the file in the source tree rather than re-generate it
-- support bootstrap cycles
-- simplify the review when the generated code is easier to review than
-  the generator
 
-How jbuilder interprets promotions can be controlled using the
-``--promote`` command line argument. The following behaviors are
-available:
+.. code:: scheme
 
-- ``--promote copy``: when the two files given in a ``(<a> as <b>)``
-  form are different, jbuilder prints a diff and copies ``<a>`` to
-  ``<b>`` directly in the source
-   tree. This is the default
-- ``--promote check``: Jbuilder just checks that the two files are
-  equal and print a diff when there are not
-- ``--promote ignore``: ``promote`` actions are simply ignored
+   (rule
+    (with-stdout-to data.out (run ./test.exe)))
 
-Note that ``-p/--for-release-of-packages`` implies ``--promote
-ignore``.
+   (alias
+    ((name   runtest)
+     (action (diff data.expected data.out))))
+
+Where ``data.expected`` is a file committed in the source
+repository. You can use the following workflow to update your test:
+
+- update the code of your test
+- run ``jbuilder runtest``. The diff action will fail and a diff will
+  be printed
+- check the diff to make sure it is what you expect
+- run ``jbuilder promote``. This will copy the generated ``data.out``
+  file to ``data.expected`` directly in the source tree
+
+You can also use ``jbuilder runtest --auto-promote`` which will
+automatically do the promotion.
 
 OCaml syntax
 ============

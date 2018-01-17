@@ -14,8 +14,6 @@ end
 
 module Outputs : module type of struct include Action_intf.Outputs end
 
-module Promote_mode = Action_intf.Promote_mode
-
 (** result of the lookup of a program, the path to it or information about the
     failure and possibly a hint how to fix it *)
 module Prog : sig
@@ -38,11 +36,10 @@ include Action_intf.Ast
   with type string  := string
 
 include Action_intf.Helpers
-  with type program      := Prog.t
-  with type path         := Path.t
-  with type string       := string
-  with type promote_file := Promote.file
-  with type t            := t
+  with type program := Prog.t
+  with type path    := Path.t
+  with type string  := string
+  with type t       := t
 
 val t : t Sexp.Of_sexp.t
 val sexp_of_t : t Sexp.To_sexp.t
@@ -129,4 +126,20 @@ module Infer : sig
 
   (** If [all_targets] is [true] and a target cannot be determined statically, fail *)
   val partial : all_targets:bool -> Unexpanded.Partial.t -> Outcome.t
+end
+
+module Promotion : sig
+  module File : sig
+    type t =
+      { src : Path.t
+      ; dst : Path.t
+      }
+
+    (** Promote a file to the source tree *)
+    val promote : t -> unit
+  end
+
+  (** Create/load _build/.to-promote. *)
+  val dump_db : unit -> unit
+  val load_db : unit -> File.t list
 end

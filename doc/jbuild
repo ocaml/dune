@@ -16,5 +16,5 @@
   (run bash ${path:update-jbuild.sh} ${bin:jbuilder})))
 
 (alias
- ((name jbuild)
-  (action (promote (jbuild.inc.gen as jbuild.inc)))))
+ ((name runtest)
+  (action (diff jbuild.inc jbuild.inc.gen))))

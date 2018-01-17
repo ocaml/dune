@@ -150,7 +150,7 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
        - external library %S is required in %s\n\
        This cannot work.\n"
       package
-      (Utils.jbuild_name_in ~dir:(Path.drop_build_context defined_locally_in))
+      (Utils.jbuild_name_in ~dir:(Path.drop_optional_build_context defined_locally_in))
       required_by
       required_by
       (Utils.jbuild_name_in ~dir:required_locally_in);

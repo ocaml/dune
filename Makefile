@@ -34,7 +34,7 @@ doc:
 	cd doc && sphinx-build . _build
 
 update-jbuilds: $(BIN)
-	$(BIN) build --dev @jbuild --promote copy
+	$(BIN) build --dev @doc/runtest --auto-promote
 
 accept-corrections:
 	for i in `find . -name \*.corrected`; do \

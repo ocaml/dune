@@ -5,23 +5,18 @@ module Outputs = struct
     | Outputs (** Both Stdout and Stderr *)
 end
 
-module Promote_mode = struct
-  type t =
-    | If_corrected_file_exists
-    | Always
-end
-
 module type Ast = sig
   type program
   type path
   type string
 
-  module Promote : sig
+  module Diff : sig
     type file = { src : path; dst : path }
 
     type t =
-      { mode  : Promote_mode.t
-      ; files : file list
+      { optional : bool
+      ; file1    : path
+      ; file2    : path
       }
   end
 
@@ -44,7 +39,7 @@ module type Ast = sig
     | Remove_tree    of path
     | Mkdir          of path
     | Digest_files   of path list
-    | Promote        of Promote.t
+    | Diff           of Diff.t
 end
 
 module type Helpers = sig
@@ -52,7 +47,6 @@ module type Helpers = sig
   type path
   type string
   type t
-  type promote_file
 
   val run : program -> string list -> t
   val chdir : path -> t -> t
@@ -76,6 +70,5 @@ module type Helpers = sig
   val remove_tree : path -> t
   val mkdir : path -> t
   val digest_files : path list -> t
-  val promote : promote_file list -> t
-  val promote_if : promote_file list -> t
+  val diff : ?optional:bool -> Path.t -> Path.t -> t
 end

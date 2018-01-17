@@ -51,7 +51,7 @@ let is_standard = function
   | _ -> false
 
 let dep_rec ~loc ~file_tree t =
-  let path = Path.parent   (Fq_name.path t.name) |> Path.drop_build_context in
+  let path = Path.parent   (Fq_name.path t.name) |> Path.drop_optional_build_context in
   let name = Path.basename (Fq_name.path t.name) in
   match File_tree.find_dir file_tree path with
   | None -> Build.fail { fail = fun () ->

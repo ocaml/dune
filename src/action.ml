@@ -783,6 +783,7 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
         else
           Promotion.db := p :: !Promotion.db
       end;
+
       Print_diff.print file1 file2
     end
 

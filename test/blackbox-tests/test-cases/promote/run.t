@@ -2,7 +2,7 @@
 
   $ $JBUILDER build --root . -j1 --diff-command false @blah
             sh (internal) (exit 1)
-  /usr/bin/sh -c 'false _build/default/x _build/default/x.gen'
+  (cd _build/default && /usr/bin/sh -c 'false x x.gen')
   [1]
   $ cat x
   titi
@@ -19,7 +19,7 @@
   $ echo titi > x
   $ $JBUILDER build --root . -j1 --diff-command false @blah --auto-promote
             sh (internal) (exit 1)
-  /usr/bin/sh -c 'false _build/default/x _build/default/x.gen'
+  (cd _build/default && /usr/bin/sh -c 'false x x.gen')
   Promoting _build/default/x.gen to x.
   [1]
   $ cat x

@@ -15,32 +15,47 @@
          (glob_files ${SCOPE_ROOT}/src/*.cmi)
          (glob_files ${SCOPE_ROOT}/vendor/re/*.cmi)
          (files_recursively_in findlib-db)))
-  (action (chdir ${SCOPE_ROOT} (run ${exe:expect_test.exe} ${<})))))
+  (action (chdir ${SCOPE_ROOT}
+           (progn
+            (run ${exe:expect_test.exe} ${<})
+            (diff? ${<} ${<}.corrected))))))
 
 (alias
  ((name runtest)
   (deps (filename.mlt
          (glob_files ${SCOPE_ROOT}/src/*.cmi)
          (glob_files ${SCOPE_ROOT}/vendor/re/*.cmi)))
-  (action (chdir ${SCOPE_ROOT} (run ${exe:expect_test.exe} ${<})))))
+  (action (chdir ${SCOPE_ROOT}
+           (progn
+            (run ${exe:expect_test.exe} ${<})
+            (diff? ${<} ${<}.corrected))))))
 
 (alias
  ((name runtest)
   (deps (import_dot_map.mlt
          (glob_files ${SCOPE_ROOT}/src/*.cmi)
          (glob_files ${SCOPE_ROOT}/vendor/re/*.cmi)))
-  (action (chdir ${SCOPE_ROOT} (run ${exe:expect_test.exe} ${<})))))
+  (action (chdir ${SCOPE_ROOT}
+           (progn
+            (run ${exe:expect_test.exe} ${<})
+            (diff? ${<} ${<}.corrected))))))
 
 (alias
  ((name runtest)
   (deps (action.mlt
          (glob_files ${SCOPE_ROOT}/src/*.cmi)
          (glob_files ${SCOPE_ROOT}/vendor/re/*.cmi)))
-  (action (chdir ${SCOPE_ROOT} (run ${exe:expect_test.exe} ${<})))))
+  (action (chdir ${SCOPE_ROOT}
+           (progn
+            (run ${exe:expect_test.exe} ${<})
+            (diff? ${<} ${<}.corrected))))))
 
 (alias
  ((name runtest)
   (deps (path.mlt
          (glob_files ${SCOPE_ROOT}/src/*.cmi)
          (glob_files ${SCOPE_ROOT}/vendor/re/*.cmi)))
-  (action (chdir ${SCOPE_ROOT} (run ${exe:expect_test.exe} ${<})))))
+  (action (chdir ${SCOPE_ROOT}
+           (progn
+            (run ${exe:expect_test.exe} ${<})
+            (diff? ${<} ${<}.corrected))))))

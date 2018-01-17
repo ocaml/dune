@@ -115,7 +115,7 @@
   (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
 
 (alias
- ((name runtest)
+ ((name runtest-skipped)
   (deps ((files_recursively_in test-cases/reason)))
   (action
    (chdir test-cases/reason

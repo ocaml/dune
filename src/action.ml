@@ -771,7 +771,12 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
       in
       if is_copied_from_source_tree file1 &&
          not (is_copied_from_source_tree file2) then begin
-        let p = { Promotion.File.src = file2; dst = file1 } in
+        let p =
+          { Promotion.File.
+            src = file2
+          ; dst = Option.value_exn (Path.drop_build_context file1)
+          }
+        in
         if !Clflags.auto_promote then
           Future.Scheduler.at_exit_after_waiting_for_commands (fun () ->
             Promotion.File.promote p)

@@ -1,9 +1,8 @@
   $ echo titi > x
 
-  $ $JBUILDER build --root . -j1 --diff-command false @blah
+  $ $JBUILDER build --root . -j1 --diff-command false @blah 2>&1 | sed 's/.*false.*/DIFF/'
             sh (internal) (exit 1)
-  (cd _build/default && /usr/bin/sh -c 'false x x.gen')
-  [1]
+  DIFF
   $ cat x
   titi
 
@@ -17,11 +16,10 @@
   toto
 
   $ echo titi > x
-  $ $JBUILDER build --root . -j1 --diff-command false @blah --auto-promote
+  $ $JBUILDER build --root . -j1 --diff-command false @blah --auto-promote 2>&1 | sed 's/.*false.*/DIFF/'
             sh (internal) (exit 1)
-  (cd _build/default && /usr/bin/sh -c 'false x x.gen')
+  DIFF
   Promoting _build/default/x.gen to x.
-  [1]
   $ cat x
   toto
   $ $JBUILDER build --root . -j1 --diff-command false @blah

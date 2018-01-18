@@ -36,11 +36,18 @@ next
 - Simplify generated META files: do not generate the transitive
   closure of dependencies in META files (#405)
 
+- Deprecated `${!...}`: the split behavior is now a property of the
+  variable. For instance `${CC}`, `${^}`, `${read-lines:...}` all
+  expand to lists unless used in the middle of a longer atom (#336)
+
 - Add an `(include ...)` stanza allowing one to include another
   non-generated jbuild file in the current file (#402)
 
-- Add a `(promote (<file1> as <file2>) ...)` action allowing one to
-  promote generated files as source files (#402)
+- Add a `(diff <file1> <file2>)` action allowing to diff files and
+  promote generated files in case of mismatch (#402, #421)
+
+- Add `jbuilder promote` and `--auto-promote` to promote files (#402,
+  #421)
 
 - Report better errors when using `(glob_files ...)` with a directory
   that doesn't exist (#413, Fix #412)

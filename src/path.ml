@@ -378,6 +378,9 @@ let extract_build_context_dir t =
     None
 
 let drop_build_context t =
+  Option.map (extract_build_context t) ~f:snd
+
+let drop_optional_build_context t =
   match extract_build_context t with
   | None -> t
   | Some (_, t) -> t

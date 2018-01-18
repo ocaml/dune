@@ -23,6 +23,11 @@ reinstall: uninstall reinstall
 test:
 	$(BIN) runtest --dev
 
+promote:
+	$(BIN) promote
+
+accept-corrections: promote
+
 all-supported-ocaml-versions:
 	$(BIN) build --dev @install @runtest --workspace jbuild-workspace.dev --root .
 
@@ -34,13 +39,8 @@ doc:
 	cd doc && sphinx-build . _build
 
 update-jbuilds: $(BIN)
-	$(BIN) build --dev @jbuild --promote copy
-
-accept-corrections:
-	for i in `find . -name \*.corrected`; do \
-	  cp $$i $${i%.corrected}; \
-	done
+	$(BIN) build --dev @doc/runtest --auto-promote
 
 .DEFAULT_GOAL := default
 .PHONY: default install uninstall reinstall clean test doc
-.PHONY: accept-corrections
+.PHONY: promote accept-corrections

@@ -924,10 +924,9 @@ module PP = struct
       Build.progn
         [ build
         ; Build.return
-            (A.promote_if
-               [{ src = Path.extend_basename fn ~suffix:".ppx-corrected"
-                ; dst = Path.drop_build_context fn
-                }])
+            (A.diff ~optional:true
+               (Path.extend_basename fn ~suffix:".ppx-corrected")
+               fn)
         ]
 
   let lint_module sctx ~(source : Module.t) ~(ast : Module.t) ~dir

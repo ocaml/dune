@@ -54,6 +54,15 @@
   (files (jbuilder-installed-libraries.1))))
 
 (rule
+ ((targets (jbuilder-promote.1))
+  (action  (with-stdout-to ${@}
+            (run ${bin:jbuilder} promote --help=groff)))))
+
+(install
+ ((section man)
+  (files (jbuilder-promote.1))))
+
+(rule
  ((targets (jbuilder-rules.1))
   (action  (with-stdout-to ${@}
             (run ${bin:jbuilder} rules --help=groff)))))

@@ -4,4 +4,4 @@
 
 (alias
  ((name blah)
-  (action (promote (x.gen as x)))))
+  (action (diff x x.gen))))

@@ -23,7 +23,7 @@ type common =
   ; capture_outputs  : bool
   ; x                : string option
   ; diff_command     : string option
-  ; promote_mode     : Clflags.Promote_mode.t
+  ; auto_promote     : bool
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args        : string list
   }
@@ -42,7 +42,7 @@ let set_common c ~targets =
     Sys.chdir c.root;
   Clflags.workspace_root := Sys.getcwd ();
   Clflags.diff_command := c.diff_command;
-  Clflags.promote_mode := c.promote_mode;
+  Clflags.auto_promote := c.auto_promote;
   Clflags.external_lib_deps_hint :=
     List.concat
       [ ["jbuilder"; "external-lib-deps"; "--missing"]
@@ -161,7 +161,8 @@ let common =
         no_buffer
         workspace_file
         diff_command
-        (root, only_packages, promote_mode, orig)
+        auto_promote
+        (root, only_packages, orig)
         x
     =
     let root, to_cwd =
@@ -188,7 +189,7 @@ let common =
     ; orig_args
     ; target_prefix = String.concat ~sep:"" (List.map to_cwd ~f:(sprintf "%s/"))
     ; diff_command
-    ; promote_mode
+    ; auto_promote
     ; only_packages =
         Option.map only_packages
           ~f:(fun s -> String_set.of_list (String.split s ~on:','))
@@ -279,23 +280,12 @@ let common =
                     targets given on the command line. It is only intended
                     for scripts.|})
   in
-  let promote =
-    let mode =
-      Arg.(conv
-             (Arg.parser_of_kind_of_string ~kind:"promotion mode"
-                Clflags.Promote_mode.of_string,
-              fun ppf mode ->
-                Format.pp_print_string ppf
-                  (Clflags.Promote_mode.to_string mode)))
-    in
+  let auto_promote =
     Arg.(value
-         & opt (some mode) None
-         & info ["promote"] ~docs
-             ~doc:"How to interpret promote actions. $(b,copy) means to print
-                   a diff and copy the generated files to the source tree when
-                   they differ. $(b,copy) is the default. $(b,check) means to
-                   only print a diff without copying files. $(b,ignore) means
-                   to ignore promote action altogether.")
+         & flag
+         & info ["auto-promote"] ~docs
+             ~doc:"Automatically promote files. This is similar to running
+                   $(b,jbuilder promote) after the build.")
   in
   let for_release = "for-release-of-packages" in
   let frop =
@@ -308,38 +298,32 @@ let common =
                     packages as well as getting reproducible builds.|})
   in
   let root_and_only_packages =
-    let merge root only_packages promote release =
+    let merge root only_packages release =
       let fail opt =
         `Error (true,
                 sprintf
                   "Cannot use -p/--%s and %s simultaneously"
                   for_release opt)
       in
-      match release, root, only_packages, promote with
-      | Some _, Some _, _, _ -> fail "--root"
-      | Some _, _, Some _, _ -> fail "--only-packages"
-      | Some _, _, _, Some _ -> fail "--promote"
-      | Some pkgs, None, None, None ->
+      match release, root, only_packages with
+      | Some _, Some _, _ -> fail "--root"
+      | Some _, _, Some _ -> fail "--only-packages"
+      | Some pkgs, None, None ->
         `Ok (Some ".",
              Some pkgs,
-             Clflags.Promote_mode.Ignore,
              ["-p"; pkgs]
             )
-      | None, _, _, _ ->
+      | None, _, _ ->
         `Ok (root,
              only_packages,
-             Option.value promote ~default:Clflags.Promote_mode.Copy,
              List.concat
                [ dump_opt "--root" root
                ; dump_opt "--only-packages" only_packages
-               ; dump_opt "--promote"
-                   (Option.map promote ~f:Clflags.Promote_mode.to_string)
                ])
     in
     Term.(ret (const merge
                $ root
                $ only_packages
-               $ promote
                $ frop))
   in
   let x =
@@ -364,6 +348,7 @@ let common =
         $ no_buffer
         $ workspace_file
         $ diff_command
+        $ auto_promote
         $ root_and_only_packages
         $ x
        )
@@ -1088,6 +1073,28 @@ let utop =
           $ Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")))
   , Term.info "utop" ~doc ~man )
 
+let promote =
+  let doc = "Promote files from the last run" in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|Considering all actions of the form $(b,(diff a b)) that failed
+           in the last run of jbuilder, $(b,jbuilder promote) does the following:
+
+           If $(b,a) is present in the source tree but $(b,b) isn't, $(b,b) is
+           copied over to $(b,a) in the source tree. The idea behind this is that
+           you might use $(b,(diff file.expected file.generated)) and then call
+           $(b,jbuilder promote) to promote the generated file.
+         |}
+    ; `Blocks help_secs
+    ] in
+  let go common =
+    set_common common ~targets:[];
+    Action.Promotion.promote_files_registered_in_last_run ()
+  in
+  ( Term.(const go
+          $ common)
+  , Term.info "promote" ~doc ~man )
+
 let all =
   [ installed_libraries
   ; external_lib_deps
@@ -1100,6 +1107,7 @@ let all =
   ; subst
   ; rules
   ; utop
+  ; promote
   ]
 
 let default =

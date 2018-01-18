@@ -87,7 +87,7 @@ module Internal_rule = struct
     | None ->
       Loc.in_file
         (Path.to_string
-           (Path.drop_build_context (Path.relative dir "jbuild")))
+           (Path.drop_optional_build_context (Path.relative dir "jbuild")))
 end
 
 module File_kind = struct
@@ -339,7 +339,7 @@ let add_spec t fn spec ~copy_source =
            | Yes _ -> assert false
            | Not_possible ->
              Format.fprintf ppf "Delete file %s to get rid of this warning."
-               (Path.to_string_maybe_quoted (Path.drop_build_context fn))
+               (Path.to_string_maybe_quoted (Path.drop_optional_build_context fn))
            | No ->
              Format.fprintf ppf
                "To keep the current behavior and get rid of this warning, add a field \
@@ -663,7 +663,7 @@ let create ~contexts ~file_tree ~rules =
          Pset.elements set
          |> List.map ~f:(fun p -> sprintf "- %s"
                                     (Path.to_string_maybe_quoted
-                                       (Path.drop_build_context p)))
+                                       (Path.drop_optional_build_context p)))
          |> String.concat ~sep:"\n"
        in
        Loc.fail (Internal_rule.loc rule ~dir:(Path.parent (Pset.choose leftover_targets)))
@@ -684,6 +684,7 @@ The following targets are not:
    ));
 
   at_exit (fun () -> dump_trace t);
+  Future.Scheduler.at_exit_after_waiting_for_commands Action.Promotion.finalize;
   t
 
 let remove_old_artifacts t =

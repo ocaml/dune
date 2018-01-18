@@ -44,7 +44,7 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
             function
             | Lib.Internal (path, _) ->
               let spath =
-                Path.drop_build_context path
+                Path.drop_optional_build_context path
                 |> Path.reach ~from:remaindir
               in
               let bpath = Path.reach path ~from:remaindir in

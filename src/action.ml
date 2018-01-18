@@ -12,8 +12,6 @@ module Outputs = struct
     | Outputs -> "outputs"
 end
 
-module Promote_mode = Action_intf.Promote_mode
-
 module type Sexpable = sig
   type t
   val t : t Sexp.Of_sexp.t
@@ -30,14 +28,6 @@ module Make_ast
      with type string  := String.t) =
 struct
   include Ast
-
-  let promoted_file sexp =
-    match sexp with
-    | List (_, [src; Atom (_, "as"); dst]) ->
-      { Promote. src = Path.t src; dst = Path.t dst }
-    | _ ->
-      of_sexp_error sexp
-        "(<file1> as <file2>) expected"
 
   let rec t sexp =
     let path = Path.t and string = String.t in
@@ -69,15 +59,12 @@ struct
       ; cstr "system" (string @> nil) (fun cmd -> System cmd)
       ; cstr "bash"   (string @> nil) (fun cmd -> Bash   cmd)
       ; cstr "write-file" (path @> string @> nil) (fun fn s -> Write_file (fn, s))
-      ; cstr_rest "promote" nil promoted_file
-          (fun files -> Promote { mode = Always; files })
-      ; cstr_rest "promote-if" nil promoted_file
-          (fun files -> Promote { mode = If_corrected_file_exists; files })
+      ; cstr "diff" (path @> path @> nil)
+          (fun file1 file2 -> Diff { optional = false; file1; file2 })
+      ; cstr "diff?" (path @> path @> nil)
+          (fun file1 file2 -> Diff { optional = true ; file1; file2 })
       ]
       sexp
-
-  let sexp_of_promoted_file (file : Promote.file) =
-    Sexp.List [Path.sexp_of_t file.src; Atom "as"; Path.sexp_of_t file.dst]
 
   let rec sexp_of_t : _ -> Sexp.t =
     let path = Path.sexp_of_t and string = String.sexp_of_t in
@@ -110,10 +97,10 @@ struct
     | Remove_tree x -> List [Atom "remove-tree"; path x]
     | Mkdir x       -> List [Atom "mkdir"; path x]
     | Digest_files paths -> List [Atom "digest-files"; List (List.map paths ~f:path)]
-    | Promote { mode = Always; files } ->
-      List (Atom "promote" :: List.map files ~f:sexp_of_promoted_file)
-    | Promote { mode = If_corrected_file_exists; files } ->
-      List (Atom "promote-if" :: List.map files ~f:sexp_of_promoted_file)
+    | Diff { optional = false; file1; file2 } ->
+      List [Atom "diff"; path file1; path file2]
+    | Diff { optional = true; file1; file2 } ->
+      List [Atom "diff?"; path file1; path file2]
 
   let run prog args = Run (prog, args)
   let chdir path t = Chdir (path, t)
@@ -137,8 +124,7 @@ struct
   let remove_tree path = Remove_tree path
   let mkdir path = Mkdir path
   let digest_files files = Digest_files files
-  let promote files = Promote { mode = Always; files }
-  let promote_if files = Promote { mode = If_corrected_file_exists; files }
+  let diff ?(optional=false) file1 file2 = Diff { optional; file1; file2 }
 end
 
 module Make_mapper
@@ -172,12 +158,8 @@ module Make_mapper
     | Remove_tree x -> Remove_tree (f_path x)
     | Mkdir x -> Mkdir (f_path x)
     | Digest_files x -> Digest_files (List.map x ~f:f_path)
-    | Promote p ->
-      let files =
-        List.map p.files ~f:(fun { Src.Promote. src; dst } ->
-          { Dst.Promote.src = f_path src; dst = f_path dst })
-      in
-      Promote { mode = p.mode; files }
+    | Diff { optional; file1; file2 } ->
+      Diff { optional; file1 = f_path file1; file2 = f_path file2 }
 end
 
 module Prog = struct
@@ -424,15 +406,11 @@ module Unexpanded = struct
         end
       | Digest_files x ->
         Digest_files (List.map x ~f:(E.path ~dir ~f))
-      | Promote p ->
-        let files =
-          List.map p.files ~f:(fun { Promote.src; dst } ->
-            { Unresolved.Promote.
-              src = E.path ~dir ~f src
-            ; dst = Path.drop_build_context (E.path ~dir ~f dst)
-            })
-        in
-        Promote { mode = p.mode; files }
+      | Diff { optional; file1; file2 } ->
+        Diff { optional
+             ; file1 = E.path ~dir ~f file1
+             ; file2 = E.path ~dir ~f file2
+             }
   end
 
   module E = struct
@@ -534,15 +512,11 @@ module Unexpanded = struct
       Mkdir res
     | Digest_files x ->
       Digest_files (List.map x ~f:(E.path ~dir ~f))
-    | Promote p ->
-      let files =
-        List.map p.files ~f:(fun { Promote.src; dst } ->
-          { Partial.Promote.
-            src = E.path ~dir ~f src
-          ; dst = E.path ~dir ~f dst
-          })
-      in
-      Promote { mode = p.mode; files }
+    | Diff { optional; file1; file2 } ->
+      Diff { optional
+           ; file1 = E.path ~dir ~f file1
+           ; file2 = E.path ~dir ~f file2
+           }
 end
 
 let fold_one_step t ~init:acc ~f =
@@ -565,7 +539,7 @@ let fold_one_step t ~init:acc ~f =
   | Remove_tree _
   | Mkdir _
   | Digest_files _
-  | Promote _ -> acc
+  | Diff _ -> acc
 
 include Make_mapper(Ast)(Ast)
 
@@ -596,6 +570,89 @@ open Future
 let get_std_output : _ -> Future.std_output_to = function
   | None          -> Terminal
   | Some (fn, oc) -> Opened_file { filename = fn; tail = false; desc = Channel oc }
+
+module Promotion = struct
+  module File = struct
+    type t =
+      { src : Path.t
+      ; dst : Path.t
+      }
+
+    let t = function
+      | Sexp.Ast.List (_, [src; Atom (_, "as"); dst]) ->
+        { src = Path.t src
+        ; dst = Path.t dst
+        }
+      | sexp ->
+        Sexp.Of_sexp.of_sexp_errorf sexp "(<file> as <file>) expected"
+
+    let sexp_of_t { src; dst } =
+      Sexp.List [Path.sexp_of_t src; Atom "as"; Path.sexp_of_t dst]
+
+    let db : t list ref = ref []
+
+    let register t = db := t :: !db
+
+    let promote { src; dst } =
+      Format.eprintf "Promoting %s to %s.@."
+        (Path.to_string_maybe_quoted src)
+        (Path.to_string_maybe_quoted dst);
+      Io.copy_file
+        ~src:(Path.to_string src)
+        ~dst:(Path.to_string dst)
+  end
+
+  let db_file = "_build/.to-promote"
+
+  let dump_db db =
+    if Sys.file_exists "_build" then begin
+      match db with
+      | [] -> if Sys.file_exists db_file then Sys.remove db_file
+      | l ->
+        Io.write_file db_file
+          (String.concat ~sep:""
+             (List.map l ~f:(fun x -> Sexp.to_string (File.sexp_of_t x) ^ "\n")))
+    end
+
+  let load_db () =
+    if Sys.file_exists db_file then
+      Sexp.load ~fname:db_file ~mode:Many
+      |> List.map ~f:File.t
+    else
+      []
+
+  let group_by_targets db =
+    List.map db ~f:(fun { File. src; dst } ->
+      (dst, src))
+    |> Path.Map.of_alist_multi
+    (* Sort the list of possible sources for deterministic behavior *)
+    |> Path.Map.map ~f:(List.sort ~cmp:Path.compare)
+
+  let do_promote db =
+    let by_targets = group_by_targets db  in
+    Path.Map.iter by_targets ~f:(fun ~key:dst ~data:srcs ->
+      match srcs with
+      | [] -> assert false
+      | src :: others ->
+        File.promote { src; dst };
+        List.iter others ~f:(fun path ->
+          Format.eprintf " -> ignored %s.@."
+            (Path.to_string_maybe_quoted path)))
+
+  let finalize () =
+    let db =
+      if !Clflags.auto_promote then
+        (do_promote !File.db; [])
+      else
+        !File.db
+    in
+    dump_db db
+
+  let promote_files_registered_in_last_run () =
+    let db = load_db () in
+    do_promote db;
+    dump_db []
+end
 
 type exec_context =
   { context : Context.t option
@@ -688,7 +745,7 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   | Copy_and_add_line_directive (src, dst) ->
     Io.with_file_in (Path.to_string src) ~f:(fun ic ->
       Io.with_file_out (Path.to_string dst) ~f:(fun oc ->
-        let fn = Path.drop_build_context src in
+        let fn = Path.drop_optional_build_context src in
         let directive =
           if List.mem (Path.extension fn) ~set:[".c"; ".cpp"; ".h"] then
             "line"
@@ -736,37 +793,24 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
         (Marshal.to_string data [])
     in
     exec_echo stdout_to s
-  | Promote { mode; files } ->
-    let promote_mode = !Clflags.promote_mode in
-    if promote_mode = Ignore then
+  | Diff { optional; file1; file2 } ->
+    if (optional && not (Path.exists file1 && Path.exists file2)) ||
+       Io.read_file (Path.to_string file1) = Io.read_file (Path.to_string file2) then
       return ()
     else begin
-      let files =
-        match mode with
-        | Always -> files
-        | If_corrected_file_exists ->
-          List.filter files ~f:(fun file -> Path.exists file.Promote.src)
+      let is_copied_from_source_tree file =
+        match Path.drop_build_context file with
+        | None -> false
+        | Some file -> Path.exists file
       in
-      let not_ok =
-        List.filter files ~f:(fun { Promote. src; dst } ->
-          let src_contents = Io.read_file (Path.to_string src) in
-          let dst_contents = Io.read_file (Path.to_string dst) in
-          src_contents <> dst_contents)
-      in
-      match not_ok with
-      | [] -> return ()
-      | _ ->
-        if promote_mode = Copy then
-          Future.Scheduler.at_exit_after_waiting_for_commands (fun () ->
-            List.iter not_ok ~f:(fun { Promote. src; dst } ->
-              if mode = Always || Path.exists dst then begin
-                Format.eprintf "Promoting %s to %s.@."
-                  (Path.to_string_maybe_quoted src)
-                  (Path.to_string_maybe_quoted dst);
-                Io.copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst)
-              end));
-        Future.all_unit (List.map not_ok ~f:(fun { Promote. src; dst } ->
-          Diff.print dst src))
+      if is_copied_from_source_tree file1 &&
+         not (is_copied_from_source_tree file2) then begin
+        Promotion.File.register
+          { src = file2
+          ; dst = Option.value_exn (Path.drop_build_context file1)
+          }
+      end;
+      Print_diff.print file1 file2
     end
 
 and redirect outputs fn t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
@@ -832,13 +876,6 @@ module Infer = struct
   end
   open Outcome
 
-  let infer_promote mode files ~init ~f =
-    if mode = Promote_mode.If_corrected_file_exists ||
-       !Clflags.promote_mode = Ignore then
-      init
-    else
-      List.fold_left files ~init ~f
-
   let ( +@ ) acc fn = { acc with targets = S.add fn acc.targets }
   let ( +< ) acc fn = { acc with deps    = S.add fn acc.deps    }
 
@@ -858,8 +895,8 @@ module Infer = struct
     | Ignore (_, t) -> infer acc t
     | Progn l -> List.fold_left l ~init:acc ~f:infer
     | Digest_files l -> List.fold_left l ~init:acc ~f:(+<)
-    | Promote { mode; files } ->
-      infer_promote mode files ~init:acc ~f:(fun acc file -> acc +< file.Promote.src)
+    | Diff { optional; file1; file2 } ->
+      if optional then acc else acc +< file1 +< file2
     | Echo _
     | System _
     | Bash _
@@ -901,9 +938,8 @@ module Infer = struct
     | Ignore (_, t) -> partial acc t
     | Progn l -> List.fold_left l ~init:acc ~f:partial
     | Digest_files l -> List.fold_left l ~init:acc ~f:(+<?)
-    | Promote { mode; files } ->
-      infer_promote mode files ~init:acc ~f:(fun acc file ->
-        acc +<? file.Unexpanded.Partial.Promote.src)
+    | Diff { optional; file1; file2 } ->
+      if optional then acc else acc +<? file1 +<? file2
     | Echo _
     | System _
     | Bash _
@@ -931,9 +967,8 @@ module Infer = struct
     | Ignore (_, t) -> partial_with_all_targets acc t
     | Progn l -> List.fold_left l ~init:acc ~f:partial_with_all_targets
     | Digest_files l -> List.fold_left l ~init:acc ~f:(+<?)
-    | Promote { mode; files } ->
-      infer_promote mode files ~init:acc ~f:(fun acc file ->
-        acc +<? file.Unexpanded.Partial.Promote.src)
+    | Diff { optional; file1; file2 } ->
+      if optional then acc else acc +<? file1 +<? file2
     | Echo _
     | System _
     | Bash _

@@ -11,21 +11,30 @@
   (deps   ((files_recursively_in test-cases/redirections)))
   (action
    (chdir test-cases/redirections
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/misc)))
   (action
    (chdir test-cases/misc
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/github20)))
   (action
    (chdir test-cases/github20
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest-js)
@@ -34,21 +43,29 @@
    (chdir test-cases/js_of_ocaml
     (setenv JBUILDER ${bin:jbuilder}
      (setenv NODE ${bin:node}
-      (run ${exe:cram.exe} run.t)))))))
+      (progn
+       (run ${exe:cram.exe} run.t)
+       (diff? run.t run.t.corrected))))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/github24)))
   (action
    (chdir test-cases/github24
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/menhir)))
   (action
    (chdir test-cases/menhir
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
@@ -56,123 +73,177 @@
   (action
    (chdir test-cases/github25/root
     (setenv OCAMLPATH ../findlib-packages
-     (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t)))))))
+     (setenv JBUILDER ${bin:jbuilder}
+      (progn
+       (run ${exe:cram.exe} run.t)
+       (diff? run.t run.t.corrected))))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/lib-available)))
   (action
    (chdir test-cases/lib-available
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/copy_files)))
   (action
    (chdir test-cases/copy_files
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/aliases)))
   (action
    (chdir test-cases/aliases
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/force-test)))
   (action
    (chdir test-cases/force-test
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/meta-gen)))
   (action
    (chdir test-cases/meta-gen
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/exec-cmd)))
   (action
    (chdir test-cases/exec-cmd
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/ocaml-syntax)))
   (action
      (chdir test-cases/ocaml-syntax
-  (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+      (setenv JBUILDER ${bin:jbuilder}
+       (progn
+        (run ${exe:cram.exe} run.t)
+        (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/gen-opam-install-file)))
   (action
      (chdir test-cases/gen-opam-install-file
-  (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+      (setenv JBUILDER ${bin:jbuilder}
+       (progn
+        (run ${exe:cram.exe} run.t)
+        (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/reason)))
   (action
    (chdir test-cases/reason
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/odoc)))
   (action
    (chdir test-cases/odoc
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3 run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3 run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/select)))
   (action
    (chdir test-cases/select
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/multiple-private-libs)))
   (action
    (chdir test-cases/multiple-private-libs
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3 run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3 run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/ppx-rewriter)))
   (action
    (chdir test-cases/ppx-rewriter
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3 run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3 run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/utop)))
   (action
    (chdir test-cases/utop
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/c-stubs)))
   (action
    (chdir test-cases/c-stubs
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/cross-compilation)))
   (action
    (chdir test-cases/cross-compilation
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))
 
 (alias
  ((name runtest)
   (deps ((files_recursively_in test-cases/promote)))
   (action
    (chdir test-cases/promote
-    (setenv JBUILDER ${bin:jbuilder} (run ${exe:cram.exe} run.t))))))
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))

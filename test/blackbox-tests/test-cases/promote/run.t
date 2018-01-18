@@ -1,21 +1,27 @@
   $ echo titi > x
 
-  $ $JBUILDER build --root . -j1 --diff-command false @blah --promote check
+  $ $JBUILDER build --root . -j1 --diff-command false @blah 2>&1 | sed 's/.*false.*/DIFF/'
             sh (internal) (exit 1)
-  /usr/bin/sh -c 'false '\''x'\'' '\''_build/default/x.gen'\'''
-  [1]
+  DIFF
   $ cat x
   titi
 
-  $ $JBUILDER build --root . -j1 --diff-command false @blah --promote ignore
+  $ $JBUILDER promote --root .
+  Promoting _build/default/x.gen to x.
   $ cat x
-  titi
+  toto
 
   $ $JBUILDER build --root . -j1 --diff-command false @blah
+  $ cat x
+  toto
+
+  $ echo titi > x
+  $ $JBUILDER build --root . -j1 --diff-command false @blah --auto-promote 2>&1 | sed 's/.*false.*/DIFF/'
             sh (internal) (exit 1)
-  /usr/bin/sh -c 'false '\''x'\'' '\''_build/default/x.gen'\'''
+  DIFF
   Promoting _build/default/x.gen to x.
-  [1]
   $ cat x
   toto
   $ $JBUILDER build --root . -j1 --diff-command false @blah
+  $ cat x
+  toto

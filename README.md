@@ -180,7 +180,7 @@ running `./configure` script when working on multiple projects at the same time.
 Yes, have a look at the [topkg-jbuilder][topkg-jbuilder] project for
 more details.
 
-### Where can I find some examples of projects using Jbuilder?
+### Where can I find some examples of projects using Jbuilder?
 
 The [jbuilder-universe](https://github.com/janestreet/jbuilder-universe)
 repository contains a snapshot of the latest versions of all opam packages

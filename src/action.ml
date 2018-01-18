@@ -589,6 +589,10 @@ module Promotion = struct
     let sexp_of_t { src; dst } =
       Sexp.List [Path.sexp_of_t src; Atom "as"; Path.sexp_of_t dst]
 
+    let db : t list ref = ref []
+
+    let register t = db := t :: !db
+
     let promote { src; dst } =
       Format.eprintf "Promoting %s to %s.@."
         (Path.to_string_maybe_quoted src)
@@ -598,9 +602,17 @@ module Promotion = struct
         ~dst:(Path.to_string dst)
   end
 
-  let db = ref []
-
   let db_file = "_build/.to-promote"
+
+  let dump_db db =
+    if Sys.file_exists "_build" then begin
+      match db with
+      | [] -> if Sys.file_exists db_file then Sys.remove db_file
+      | l ->
+        Io.write_file db_file
+          (String.concat ~sep:""
+             (List.map l ~f:(fun x -> Sexp.to_string (File.sexp_of_t x) ^ "\n")))
+    end
 
   let load_db () =
     if Sys.file_exists db_file then
@@ -609,15 +621,37 @@ module Promotion = struct
     else
       []
 
-  let dump_db () =
-    if Sys.file_exists "_build" then begin
-      match !db with
-      | [] -> if Sys.file_exists db_file then Sys.remove db_file
-      | l ->
-        Io.write_file db_file
-          (String.concat ~sep:""
-             (List.map l ~f:(fun x -> Sexp.to_string (File.sexp_of_t x) ^ "\n")))
-    end
+  let group_by_targets db =
+    List.map db ~f:(fun { File. src; dst } ->
+      (dst, src))
+    |> Path.Map.of_alist_multi
+    (* Sort the list of possible sources for deterministic behavior *)
+    |> Path.Map.map ~f:(List.sort ~cmp:Path.compare)
+
+  let do_promote db =
+    let by_targets = group_by_targets db  in
+    Path.Map.iter by_targets ~f:(fun ~key:dst ~data:srcs ->
+      match srcs with
+      | [] -> assert false
+      | src :: others ->
+        File.promote { src; dst };
+        List.iter others ~f:(fun path ->
+          Format.eprintf " -> ignored %s.@."
+            (Path.to_string_maybe_quoted path)))
+
+  let finalize () =
+    let db =
+      if !Clflags.auto_promote then
+        (do_promote !File.db; [])
+      else
+        !File.db
+    in
+    dump_db db
+
+  let promote_files_registered_in_last_run () =
+    let db = load_db () in
+    do_promote db;
+    dump_db []
 end
 
 type exec_context =
@@ -771,19 +805,11 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
       in
       if is_copied_from_source_tree file1 &&
          not (is_copied_from_source_tree file2) then begin
-        let p =
-          { Promotion.File.
-            src = file2
+        Promotion.File.register
+          { src = file2
           ; dst = Option.value_exn (Path.drop_build_context file1)
           }
-        in
-        if !Clflags.auto_promote then
-          Future.Scheduler.at_exit_after_waiting_for_commands (fun () ->
-            Promotion.File.promote p)
-        else
-          Promotion.db := p :: !Promotion.db
       end;
-
       Print_diff.print file1 file2
     end
 

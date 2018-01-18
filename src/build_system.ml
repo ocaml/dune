@@ -683,10 +683,8 @@ The following targets are not:
      end
    ));
 
-  at_exit (fun () ->
-    dump_trace t;
-    Action.Promotion.dump_db ()
-  );
+  at_exit (fun () -> dump_trace t);
+  Future.Scheduler.at_exit_after_waiting_for_commands Action.Promotion.finalize;
   t
 
 let remove_old_artifacts t =

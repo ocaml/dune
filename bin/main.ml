@@ -1087,27 +1087,12 @@ let promote =
          |}
     ; `Blocks help_secs
     ] in
-  let go common ctx_name =
+  let go common =
     set_common common ~targets:[];
-    let files =
-      Action.Promotion.load_db ()
-      |> List.filter ~f:(fun { Action.Promotion.File.src; _ } ->
-        match Path.extract_build_context src with
-        | None -> die "Corrupted file in _build, run jbuilder again"
-        | Some (ctx, _) -> ctx = ctx_name)
-    in
-    match files with
-    | [] ->
-      if ctx_name = "default" then
-        Format.eprintf "No files to promote."
-      else
-        Format.eprintf "No files to promote from context %s." ctx_name
-    | files ->
-      List.iter files ~f:Action.Promotion.File.promote
+    Action.Promotion.promote_files_registered_in_last_run ()
   in
   ( Term.(const go
-          $ common
-          $ context_arg ~doc:{|Select the context to promote files from.|})
+          $ common)
   , Term.info "promote" ~doc ~man )
 
 let all =

@@ -135,11 +135,13 @@ module Promotion : sig
       ; dst : Path.t
       }
 
-    (** Promote a file to the source tree *)
-    val promote : t -> unit
+    (** Register a file to promote *)
+    val register : t -> unit
   end
 
-  (** Create/load _build/.to-promote. *)
-  val dump_db : unit -> unit
-  val load_db : unit -> File.t list
+  (** Promote all registered files if [!Clflags.auto_promote]. Otherwise dump the list of
+      registered files to [_build/.to-promote]. *)
+  val finalize : unit -> unit
+
+  val promote_files_registered_in_last_run : unit -> unit
 end

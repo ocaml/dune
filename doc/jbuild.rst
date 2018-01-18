@@ -556,7 +556,7 @@ For instance:
 
     (alias
      ((name   runtest)
-      (action (promote (jbuild.inc.gen as jbuild.inc)))))
+      (action (diff jbuild.inc jbuild.inc.gen))))
 
 With this jbuild file, running jbuilder as follow will replace the
 ``jbuild.inc`` file in the source tree by the generated one:
@@ -1014,8 +1014,9 @@ The following constructions are available:
   and ``cmd`` on Windows
 - ``(bash <cmd>)`` to execute a command using ``/bin/bash``. This is obviously
   not very portable
-- ``(diff <file1> <file2>)`` makes sure that the to files are equal
-  and print a diff otherwise. See `Promotion`_ for a example of use
+- ``(diff <file1> <file2>)`` is similar to ``(run diff <file1>
+  <file2>)`` but is better and allows promotion.  See `Diffing and
+  promotion`_ for more details
 - ``(diff? <file1> <file2>)`` is the same as ``(diff <file1>
   <file2>)`` except that it is ignored when ``<file1>`` or ``<file2>``
   doesn't exists
@@ -1136,16 +1137,47 @@ is global to all build contexts, simply use an absolute filename:
 
 .. _ocaml-syntax:
 
-Promotion
----------
+Diffing and promotion
+---------------------
 
-Whenever an action of the form ``(diff <file1> <file2>)`` or ``(diff?
-<file1> <file2>)`` fails because the two files are different, jbuilder
-allows you to promote ``<file2>`` as ``<file1>`` if ``<file1>`` is a
-source file and ``<file2>`` is a generated file.
+``(diff <file1> <file2>)`` is very similar to ``(run diff <file1>
+<file2>)``. In particular it behaves in the same way:
+
+- when ``<file1>`` and ``<file2>`` are equal, it doesn't nothing
+- when they are not, the differences are shown and the action fails
+
+However, it is different for the following reason:
+
+- the exact command used to diff files can be configured via the
+  ``--diff-command`` command line argument. Note that it is only
+  called when the files are not byte equals
+
+- by default, it will use ``patdiff`` if it is installed. ``patdiff``
+  is a better diffing program. You can install it via opam with:
+
+  .. code:: sh
+
+     $ opam install patdiff
+
+- since ``(diff a b)`` is a builtin action, Jbuilder knowns that ``a``
+  and ``b`` are needed and so you don't need to specify them
+  explicitly as dependencies
+
+- you can use ``(diff? a b)`` after a command that might or might not
+  produce ``b``. For cases where commands optionally produce a
+  *corrected* file
+
+- it allows promotion. See below
+
+Promotion
+~~~~~~~~~
+
+Whenever an action ``(diff <file1> <file2>)`` or ``(diff?  <file1>
+<file2>)`` fails because the two files are different, jbuilder allows
+you to promote ``<file2>`` as ``<file1>`` if ``<file1>`` is a source
+file and ``<file2>`` is a generated file.
 
 More precisely, let's consider the following jbuild file:
-
 
 .. code:: scheme
 

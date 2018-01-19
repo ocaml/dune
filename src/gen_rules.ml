@@ -854,18 +854,8 @@ Add it to your jbuild file to remove this warning.
       SC.on_load_dir sctx ~dir:path ~f:(fun () ->
         let meta_fn = "META." ^ pkg.name in
 
-        let meta_from_jbuilder = Path.relative path (meta_fn ^ ".from-jbuilder") in
         let meta_template      = Path.relative path (meta_fn ^ ".template"     ) in
         let meta               = Path.relative path  meta_fn                     in
-
-        (let dot_meta = Path.relative path ("." ^ meta_fn) in
-         SC.add_rule sctx
-           (Build.if_file_exists meta
-              ~then_:(Build.return meta)
-              ~else_:(Build.return meta_from_jbuilder)
-            >>> Build.dyn_paths (Build.arr (fun x -> [x]))
-            >>^ (fun fn -> Action.Copy (fn, dot_meta))
-            >>> Build.action_dyn () ~targets:[dot_meta]));
 
         let version =
           let get =
@@ -897,7 +887,7 @@ Add it to your jbuild file to remove this warning.
             ~then_:(Build.lines_of meta_template)
             ~else_:(Build.return ["# JBUILDER_GEN"])
         in
-        let meta =
+        let meta_contents =
           version >>^ fun version ->
           Gen_meta.gen ~package:pkg.name
             ~version
@@ -905,7 +895,7 @@ Add it to your jbuild file to remove this warning.
             ~resolve_lib_dep_names:(SC.Libs.best_lib_dep_names_exn sctx)
         in
         SC.add_rule sctx
-          (Build.fanout meta template
+          (Build.fanout meta_contents template
            >>^ (fun ((meta : Meta.t), template) ->
              let buf = Buffer.create 1024 in
              let ppf = Format.formatter_of_buffer buf in
@@ -924,7 +914,7 @@ Add it to your jbuild file to remove this warning.
              Format.pp_print_flush ppf ();
              Buffer.contents buf)
            >>>
-           Build.write_file_dyn meta_from_jbuilder)))
+           Build.write_file_dyn meta)))
 
   (* +-----------------------------------------------------------------+
      | Installation                                                    |
@@ -1028,7 +1018,7 @@ Add it to your jbuild file to remove this warning.
       Install.Entry.make Lib opam ~dst:"opam" :: entries
     in
     let entries =
-      let meta_fn = ".META." ^ package in
+      let meta_fn = "META." ^ package in
       let meta = Path.append ctx.build_dir (Path.relative package_path meta_fn) in
       Install.Entry.make Lib meta ~dst:"META" :: entries
     in

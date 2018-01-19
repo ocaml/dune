@@ -60,6 +60,11 @@ next
   eagerly. This speeds up the initial startup time of jbuilder on big
   workspaces (#370)
 
+- Now longer generate a `META.pkg.from-jbuilder` file. Now the only
+  way to customise the generated `META` file is through
+  `META.pkg.template`. This feature was unused and was making the code
+  complicated (#370)
+
 1.0+beta16 (05/11/2017)
 -----------------------
 

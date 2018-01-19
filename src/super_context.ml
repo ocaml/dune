@@ -442,6 +442,7 @@ module Action = struct
   type targets =
     | Static of Path.t list
     | Infer
+    | Alias
 
   type resolved_forms =
     { (* Failed resolutions *)
@@ -598,6 +599,7 @@ module Action = struct
           | "@" -> begin
               match targets_written_by_user with
               | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
+              | Alias -> Loc.fail loc "You cannot use ${@} in aliases."
               | Static l -> Some (Paths (l, Split))
             end
           | _ -> expand_var_no_root sctx var)
@@ -627,6 +629,14 @@ module Action = struct
   let run sctx t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
     : (Path.t list, Action.t) Build.t =
     let map_exe = map_exe sctx in
+    if targets_written_by_user = Alias then begin
+      match Action.Infer.unexpanded_targets t with
+      | [] -> ()
+      | x :: _ ->
+        let loc = String_with_vars.loc x in
+        Loc.warn loc "Aliases must not have targets, this target will be ignored.\n\
+                      This will become an error in the future.";
+    end;
     let t, forms =
       expand_step1 sctx t ~dir ~dep_kind ~scope
         ~targets_written_by_user ~map_exe
@@ -656,6 +666,11 @@ module Action = struct
            ]}
         *)
         { deps; targets = Pset.union targets targets_written_by_user }
+      | Alias ->
+        let { Action.Infer.Outcome. deps; targets = _ } =
+          Action.Infer.partial t ~all_targets:false
+        in
+        { deps; targets = Pset.empty }
     in
     let targets = Pset.elements targets in
     List.iter targets ~f:(fun target ->

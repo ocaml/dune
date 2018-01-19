@@ -887,8 +887,8 @@ module PP = struct
         [ build
         ; Build.return
             (A.diff ~optional:true
-               (Path.extend_basename fn ~suffix:".ppx-corrected")
-               fn)
+               fn
+               (Path.extend_basename fn ~suffix:".ppx-corrected"))
         ]
 
   let lint_module sctx ~(source : Module.t) ~(ast : Module.t) ~dir

@@ -16,11 +16,13 @@ module Atom = struct
     done;
     !n
 
-  let must_escape s = escaped_length s > String.length s
+  let must_escape s =
+    let len = String.length s in
+    len = 0 || escaped_length s > len
 
   let escaped_internal s ~with_double_quotes =
     let n = escaped_length s in
-    if n = String.length s then s else begin
+    if n > 0 && n = String.length s then s else begin
       let s' = Bytes.create (n + if with_double_quotes then 2 else 0) in
       let n = ref 0 in
       if with_double_quotes then begin

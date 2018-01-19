@@ -203,20 +203,25 @@ module Rule : sig
       | Infer
   end
 
-  module Fallback : sig
+  module Mode : sig
     type t =
-      | Yes
-      | No
-      | Not_possible
-      (** It is not possible to add a [(fallback)] field to the rule. For instance for
-          [ocamllex], ... *)
+      | Standard
+      (** Only use this rule if  the source files don't exist. *)
+      | Fallback
+      (** Silently promote the targets to the source tree. *)
+      | Promote
+      (** Same as [Promote] but [jbuilder clean] must delete the file *)
+      | Promote_but_delete_on_clean
+      (** Same as [Standard] however this is not a rule stanza, so it is not possible to
+          add a [(fallback)] field to the rule. *)
+      | Not_a_rule_stanza
   end
 
   type t =
     { targets  : Targets.t
     ; deps     : Dep_conf.t list
     ; action   : Action.Unexpanded.t
-    ; fallback : Fallback.t
+    ; mode     : Mode.t
     ; locks    : String_with_vars.t list
     ; loc      : Loc.t
     }

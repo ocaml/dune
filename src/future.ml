@@ -387,30 +387,15 @@ module Scheduler = struct
       let rec split_paths targets_acc ctxs_acc = function
         | [] -> List.rev targets_acc, String_set.(elements (of_list ctxs_acc))
         | path :: rest ->
-          match Path.extract_build_context path with
-          | None ->
+          let add_ctx ctx acc = if ctx = "default" then acc else ctx :: acc in
+          match Utils.analyse_target path with
+          | Other path ->
             split_paths (Path.to_string path :: targets_acc) ctxs_acc rest
-          | Some ("default", filename) ->
-            split_paths (Path.to_string filename :: targets_acc) ctxs_acc rest
-          | Some (".aliases", filename) ->
-            let ctxs_acc, filename =
-              match Path.extract_build_context filename with
-              | None -> ctxs_acc, Path.to_string filename
-              | Some (ctx, fn) ->
-                let strip_digest fn =
-                  let fn = Path.to_string fn in
-                  match String.rsplit2 fn ~on:'-' with
-                  | None -> assert false
-                  | Some (name, digest) ->
-                    assert (String.length digest = 32);
-                    name
-                in
-                let ctxs_acc =
-                  if ctx = "default" then ctxs_acc else ctx :: ctxs_acc in
-                ctxs_acc, strip_digest fn in
-            split_paths (("alias " ^ filename) :: targets_acc) ctxs_acc rest
-          | Some (ctx, filename) ->
-            split_paths (Path.to_string filename :: targets_acc) (ctx :: ctxs_acc) rest in
+          | Regular (ctx, filename) ->
+            split_paths (Path.to_string filename :: targets_acc) (add_ctx ctx ctxs_acc) rest
+          | Alias (ctx, name) ->
+            split_paths (("alias " ^ Path.to_string name) :: targets_acc) (add_ctx ctx ctxs_acc) rest
+      in
       let target_names, contexts = split_paths [] [] targets in
       let target_names_grouped_by_prefix =
         List.map target_names ~f:Filename.split_extension_after_dot

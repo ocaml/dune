@@ -91,14 +91,13 @@ the command line.
 Resolution
 ----------
 
-Most targets that Jbuilder knows how to build lives in the ``_build`` directory,
-except for a few:
+All targets that Jbuilder knows how to build live in the ``_build``
+directory.  Although, some are sometimes copied to the source tree for
+the need of external tools. These includes:
 
-= ``.merlin`` files
+- ``.merlin`` files
 
-- ``<package>.install`` files; for the ``default`` context Jbuilder knows how
-   generate the install file both in ``_build/default`` and in the source tree
-   so that ``opam`` can find it
+- ``<package>.install`` files
 
 As a result, if you want to ask ``jbuilder`` to produce a particular ``.exe``
 file you would have to type:
@@ -107,14 +106,15 @@ file you would have to type:
 
     $ jbuilder build _build/default/bin/prog.exe
 
-However, for convenience when a target on the command line doesn't start with
-``_build``, ``jbuilder`` will expand it to the corresponding target in all the
-build contexts where it knows how to build it. It prints out the actual set of
-targets when starting so that you know what is happening:
+However, for convenience when a target on the command line doesn't
+start with ``_build``, ``jbuilder`` will expand it to the
+corresponding target in all the build contexts where it knows how to
+build it. When using ``--verbose``, It prints out the actual set of
+targets when starting:
 
 .. code:: bash
 
-    $ jbuilder build bin/prog.exe
+    $ jbuilder build bin/prog.exe --verbose
     ...
     Actual targets:
     - _build/default/bin/prog.exe
@@ -126,11 +126,11 @@ Aliases
 
 Targets starting with a ``@`` are interpreted as aliases. For instance
 ``@src/runtest`` means the alias ``runtest`` in all descendant of
-``src`` where it is defined. If you want to refer to a target starting
-with a ``@``, simply write: ``./@foo``.
+``src`` in all build contexts where it is defined. If you want to
+refer to a target starting with a ``@``, simply write: ``./@foo``.
 
-Note that an alias not pointing to the ``_build`` directory always
-depends on all the corresponding aliases in build contexts.
+To build and run the tests for a particular build context, use
+``@_build/default/runtest`` instead.
 
 So for instance:
 

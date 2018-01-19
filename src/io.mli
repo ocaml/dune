@@ -16,6 +16,8 @@ val lines_of_file : string -> string list
 val read_file : string -> string
 val write_file : string -> string -> unit
 
+val compare_files : string -> string -> int
+
 val copy_channels : in_channel -> out_channel -> unit
 
 val copy_file : src:string -> dst:string -> unit

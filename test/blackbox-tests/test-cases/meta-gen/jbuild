@@ -23,5 +23,4 @@
 
 (alias
  ((name runtest)
-  (deps (META.foobar))
   (action (echo "${read:META.foobar}"))))

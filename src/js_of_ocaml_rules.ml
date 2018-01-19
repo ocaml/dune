@@ -101,36 +101,34 @@ let build_cm sctx ~scope ~dir ~js_of_ocaml ~src =
       js_of_ocaml_rule ~sctx ~dir ~flags:(fun flags -> As flags) ~spec ~target ]
   else []
 
-let setup_separate_compilation_rules sctx =
+let setup_separate_compilation_rules sctx components =
   if separate_compilation_enabled ()
   then
-    let ctx = SC.context sctx in
-    let all_pkg =
-      List.map
-        (Findlib.all_packages ctx.findlib)
-        ~f:(fun pkg ->
+    match components with
+    | [] | _ :: _ :: _ -> ()
+    | [pkg] ->
+      let ctx = SC.context sctx in
+      match Findlib.find ctx.findlib pkg ~required_by:[] with
+      | None -> ()
+      | Some pkg ->
+        let pkg =
           (* Special case for the stdlib because it is not referenced in the META *)
-          let pkg =
-            if pkg.Findlib.name = "stdlib"
-            then Findlib.stdlib_with_archives ctx.findlib
-            else pkg
-          in
-          let archives = Mode.Dict.get pkg.Findlib.archives Mode.Byte in
-          pkg.Findlib.name, pkg.dir, archives)
-    in
-    List.concat_map all_pkg
-      ~f:(fun (pkg_name,pkg_dir,archives) ->
-        List.map archives ~f:(fun fn ->
+          match pkg.Findlib.name with
+          | "stdlib" -> Findlib.stdlib_with_archives ctx.findlib
+          | _ -> pkg
+        in
+        let archives = Mode.Dict.get pkg.Findlib.archives Mode.Byte in
+        List.iter archives ~f:(fun fn ->
           let name = Path.basename fn in
-          let src = Path.relative pkg_dir name in
-          let target = in_build_dir ~ctx [ pkg_name; sprintf "%s.js" name] in
-          let dir = in_build_dir ~ctx [ pkg_name ] in
+          let src = Path.relative pkg.dir name in
+          let target = in_build_dir ~ctx [ pkg.name; sprintf "%s.js" name] in
+          let dir = in_build_dir ~ctx [ pkg.name ] in
           let spec = Arg_spec.Dep src in
-          Build.return (standard ())
-          >>>
-          js_of_ocaml_rule ~sctx ~dir ~flags:(fun flags -> As flags) ~spec ~target
-        ))
-  else []
+          SC.add_rule sctx
+            (Build.return (standard ())
+             >>>
+             js_of_ocaml_rule ~sctx ~dir ~flags:(fun flags -> As flags) ~spec ~target)
+        )
 
 let build_exe sctx ~dir ~js_of_ocaml ~src =
   let {Jbuild.Js_of_ocaml.javascript_files; _} = js_of_ocaml in

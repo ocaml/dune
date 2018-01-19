@@ -727,18 +727,21 @@ module Rule = struct
       | Infer
   end
 
-  module Fallback = struct
+
+  module Mode = struct
     type t =
-      | Yes
-      | No
-      | Not_possible
+      | Standard
+      | Fallback
+      | Promote
+      | Promote_but_delete_on_clean
+      | Not_a_rule_stanza
   end
 
   type t =
     { targets  : Targets.t
     ; deps     : Dep_conf.t list
     ; action   : Action.Unexpanded.t
-    ; fallback : Fallback.t
+    ; mode     : Mode.t
     ; locks    : String_with_vars.t list
     ; loc      : Loc.t
     }
@@ -749,7 +752,7 @@ module Rule = struct
       { targets  = Infer
       ; deps     = []
       ; action   = Action.Unexpanded.t sexp
-      ; fallback = No
+      ; mode     = Standard
       ; locks    = []
       ; loc      = Loc.none
       }
@@ -763,7 +766,7 @@ module Rule = struct
          return { targets = Static targets
                 ; deps
                 ; action
-                ; fallback = if fallback then Yes else No
+                ; mode = if fallback then Fallback else Standard
                 ; locks
                 ; loc = Loc.none
                 })
@@ -785,7 +788,7 @@ module Rule = struct
                   ; S.virt_var __POS__ "@"
                   ; S.virt_var __POS__"<"
                   ]))
-      ; fallback = Not_possible
+      ; mode = Not_a_rule_stanza
       ; locks = []
       ; loc
       })
@@ -801,7 +804,7 @@ module Rule = struct
             (S.virt_var __POS__ "ROOT",
              Run (S.virt_text __POS__ "ocamlyacc",
                   [S.virt_var __POS__ "<"]))
-      ; fallback = Not_possible
+      ; mode = Not_a_rule_stanza
       ; locks = []
       ; loc
       })
@@ -841,7 +844,7 @@ module Menhir = struct
               (S.virt_var __POS__ "ROOT",
                Run (S.virt_text __POS__ "menhir",
                     t.flags @ [S.virt_var __POS__ "<"]))
-        ; fallback = Not_possible
+        ; mode = Not_a_rule_stanza
         ; locks = []
        ; loc
        })
@@ -861,7 +864,7 @@ module Menhir = struct
                      ; t.flags
                      ; [ S.virt_var __POS__ "^" ]
                      ]))
-       ; fallback = Not_possible
+       ; mode = Not_a_rule_stanza
        ; locks = []
        ; loc
        }]

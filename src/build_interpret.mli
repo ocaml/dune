@@ -15,14 +15,16 @@ module Rule : sig
     ; build    : (unit, Action.t) Build.t
     ; targets  : Target.t list
     ; sandbox  : bool
-    ; fallback : Jbuild.Rule.Fallback.t
+    ; mode     : Jbuild.Rule.Mode.t
     ; locks    : Path.t list
     ; loc      : Loc.t option
+    ; (** Directory where all the targets are produced *)
+      dir      : Path.t
     }
 
   val make
     :  ?sandbox:bool
-    -> ?fallback:Jbuild.Rule.Fallback.t
+    -> ?mode:Jbuild.Rule.Mode.t
     -> ?context:Context.t
     -> ?locks:Path.t list
     -> ?loc:Loc.t
@@ -40,7 +42,7 @@ end
 (* must be called first *)
 val static_deps
   :  (_, _) Build.t
-  -> all_targets_by_dir:Path.Set.t Path.Map.t Lazy.t
+  -> all_targets:(dir:Path.t -> Path.Set.t)
   -> Static_deps.t
 
 val lib_deps

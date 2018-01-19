@@ -26,7 +26,7 @@ module Static_deps = struct
     }
 end
 
-let static_deps t ~all_targets_by_dir =
+let static_deps t ~all_targets =
   let rec loop : type a b. (a, b) t -> Static_deps.t -> Static_deps.t = fun t acc ->
     match t with
     | Arr _ -> acc
@@ -43,30 +43,32 @@ let static_deps t ~all_targets_by_dir =
         | G_evaluated l ->
           { acc with action_deps = Pset.union acc.action_deps (Pset.of_list l) }
         | G_unevaluated (loc, dir, re) ->
-          match Pmap.find dir (Lazy.force all_targets_by_dir) with
-          | None ->
-            Loc.warn loc "Directory %s doesn't exist."
-              (Path.to_string_maybe_quoted dir);
-            state := G_evaluated [];
-            acc
-          | Some targets ->
-            let result =
-              Pset.filter targets ~f:(fun path ->
-                Re.execp re (Path.basename path))
-            in
-            state := G_evaluated (Pset.elements result);
-            let action_deps = Pset.union result acc.action_deps in
-            { acc with action_deps }
+          let targets = all_targets ~dir in
+          let result =
+            Pset.filter targets ~f:(fun path ->
+              Re.execp re (Path.basename path))
+          in
+          if Pset.is_empty result then begin
+            if not (Path.exists dir) then
+              Loc.warn loc "Directory %s doesn't exist."
+                (Path.to_string_maybe_quoted dir)
+            else if not (Path.is_directory dir) then
+              Loc.warn loc "%s is not a directory."
+                (Path.to_string_maybe_quoted dir)
+            else
+              (* diml: we should probably warn in this case as well *)
+              ()
+          end;
+          state := G_evaluated (Pset.elements result);
+          let action_deps = Pset.union result acc.action_deps in
+          { acc with action_deps }
       end
     | If_file_exists (p, state) -> begin
         match !state with
         | Decided (_, t) -> loop t acc
         | Undecided (then_, else_) ->
           let dir = Path.parent p in
-          let targets =
-            Option.value (Pmap.find dir (Lazy.force all_targets_by_dir))
-              ~default:Pset.empty
-          in
+          let targets = all_targets ~dir in
           if Pset.mem p targets then begin
             state := Decided (true, then_);
             loop then_ acc
@@ -157,19 +159,38 @@ module Rule = struct
     ; build    : (unit, Action.t) Build.t
     ; targets  : Target.t list
     ; sandbox  : bool
-    ; fallback : Jbuild.Rule.Fallback.t
+    ; mode     : Jbuild.Rule.Mode.t
     ; locks    : Path.t list
     ; loc      : Loc.t option
+    ; dir      : Path.t
     }
 
-  let make ?(sandbox=false) ?(fallback=Jbuild.Rule.Fallback.Not_possible)
+  let make ?(sandbox=false) ?(mode=Jbuild.Rule.Mode.Not_a_rule_stanza)
         ?context ?(locks=[]) ?loc build =
+    let targets = targets build in
+    let dir =
+      match targets with
+      | [] ->
+        invalid_arg "Build_interpret.Rule.make: rule has no targets"
+      | x :: l ->
+        let dir = Path.parent (Target.path x) in
+        List.iter l ~f:(fun target ->
+          let path = Target.path target in
+          if Path.parent path <> dir then
+            Sexp.code_error "rule has targets in different directories"
+              [ "dir", Path.sexp_of_t dir
+              ; "targets", Sexp.To_sexp.list Path.sexp_of_t
+                             (List.map (x :: l) ~f:Target.path)
+              ]);
+        dir
+    in
     { context
     ; build
-    ; targets = targets build
+    ; targets
     ; sandbox
-    ; fallback
+    ; mode
     ; locks
     ; loc
+    ; dir
     }
 end

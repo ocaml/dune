@@ -73,19 +73,44 @@ let jbuild_name_in ~dir =
       (Path.to_string_maybe_quoted (Path.relative dir "jbuild"))
       ctx_name
 
-let describe_target fn =
+type target_kind =
+  | Regular of string * Path.t
+  | Alias   of string * Path.t
+  | Other of Path.t
+
+let analyse_target fn =
   match Path.extract_build_context fn with
-  | Some (".aliases", fn) ->
-    let name =
-      let fn = Path.to_string fn in
-      match String.rsplit2 fn ~on:'-' with
-      | None -> assert false
-      | Some (name, digest) ->
-        assert (String.length digest = 32);
-        name
-    in
-    sprintf "alias %s" (maybe_quoted name)
-  | _ ->
+  | Some (".aliases", sub) -> begin
+      match Path.split_first_component sub with
+      | None -> Other fn
+      | Some (ctx, fn) ->
+        if Path.is_root fn then
+          Other fn
+        else
+          let basename =
+            match String.rsplit2 (Path.basename fn) ~on:'-' with
+            | None -> assert false
+            | Some (name, digest) ->
+              assert (String.length digest = 32);
+              name
+          in
+          Alias (ctx, Path.relative (Path.parent fn) basename)
+    end
+  | Some (ctx, sub) -> Regular (ctx, sub)
+  | None ->
+    Other fn
+
+let describe_target fn =
+  let ctx_suffix = function
+    | "default" -> ""
+    | ctx -> sprintf " (context %s)" ctx
+  in
+  match analyse_target fn with
+  | Alias (ctx, p) ->
+    sprintf "alias %s%s" (Path.to_string_maybe_quoted p) (ctx_suffix ctx)
+  | Regular (ctx, fn) ->
+    sprintf "%s%s" (Path.to_string_maybe_quoted fn) (ctx_suffix ctx)
+  | Other fn ->
     Path.to_string_maybe_quoted fn
 
 let program_not_found ?context ?hint prog =

@@ -19,6 +19,7 @@ val build_exe
 
 val setup_separate_compilation_rules
   :  Super_context.t
-  -> (unit, Action.t) Build.t list
+  -> string list
+  -> unit
 
 val standard : unit -> string list

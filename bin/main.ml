@@ -24,6 +24,7 @@ type common =
   ; x                : string option
   ; diff_command     : string option
   ; auto_promote     : bool
+  ; force            : bool
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args        : string list
   }
@@ -43,6 +44,7 @@ let set_common c ~targets =
   Clflags.workspace_root := Sys.getcwd ();
   Clflags.diff_command := c.diff_command;
   Clflags.auto_promote := c.auto_promote;
+  Clflags.force := c.force;
   Clflags.external_lib_deps_hint :=
     List.concat
       [ ["jbuilder"; "external-lib-deps"; "--missing"]
@@ -73,10 +75,9 @@ let restore_cwd_and_execve common prog argv env =
 module Main = struct
   include Jbuilder.Main
 
-  let setup ~log ?unlink_aliases ?filter_out_optional_stanzas_with_missing_deps common =
+  let setup ~log ?filter_out_optional_stanzas_with_missing_deps common =
     setup
       ~log
-      ?unlink_aliases
       ?workspace_file:common.workspace_file
       ?only_packages:common.only_packages
       ?filter_out_optional_stanzas_with_missing_deps
@@ -86,17 +87,29 @@ end
 
 type target =
   | File      of Path.t
-  | Alias_rec of Alias.t
+  | Alias_rec of Path.t
 
 let request_of_targets (setup : Main.setup) targets =
   let open Build.O in
+  let contexts = List.map setup.contexts ~f:(fun c -> c.Context.name) in
   List.fold_left targets ~init:(Build.return ()) ~f:(fun acc target ->
     acc >>>
     match target with
     | File path -> Build.path path
-    | Alias_rec alias ->
-      Alias.dep_rec ~loc:(Loc.in_file "<command-line>")
-        ~file_tree:setup.file_tree alias)
+    | Alias_rec path ->
+      let dir = Path.parent path in
+      let name = Path.basename path in
+      let contexts, dir =
+        match Path.extract_build_context dir with
+        | None -> (contexts, dir)
+        | Some ("install", _) ->
+          die "Invalid alias: %s.\n\
+               There are no aliases in _build/install."
+            (Path.to_string_maybe_quoted path)
+        | Some (ctx, dir) -> ([ctx], dir)
+      in
+      Build_system.Alias.dep_rec_multi_contexts ~dir ~name
+        ~file_tree:setup.file_tree ~contexts)
 
 let do_build (setup : Main.setup) targets =
   Build_system.do_build_exn setup.build_system
@@ -162,6 +175,7 @@ let common =
         workspace_file
         diff_command
         auto_promote
+        force
         (root, only_packages, orig)
         x
     =
@@ -190,6 +204,7 @@ let common =
     ; target_prefix = String.concat ~sep:"" (List.map to_cwd ~f:(sprintf "%s/"))
     ; diff_command
     ; auto_promote
+    ; force
     ; only_packages =
         Option.map only_packages
           ~f:(fun s -> String_set.of_list (String.split s ~on:','))
@@ -287,6 +302,13 @@ let common =
              ~doc:"Automatically promote files. This is similar to running
                    $(b,jbuilder promote) after the build.")
   in
+  let force =
+    Arg.(value
+         & flag
+         & info ["force"; "f"]
+             ~doc:"Force actions associated to aliases to be re-executed even
+                   if their dependencies haven't changed.")
+  in
   let for_release = "for-release-of-packages" in
   let frop =
     Arg.(value
@@ -349,6 +371,7 @@ let common =
         $ workspace_file
         $ diff_command
         $ auto_promote
+        $ force
         $ root_and_only_packages
         $ x
        )
@@ -423,21 +446,43 @@ let target_hint (setup : Main.setup) path =
   let candidates = String_set.of_list candidates |> String_set.elements in
   hint (Path.to_string path) candidates
 
+let check_path contexts =
+  let contexts = String_set.of_list (List.map contexts ~f:(fun c -> c.Context.name)) in
+  fun path ->
+    let internal path =
+      die "This path is internal to jbuilder: %s" (Path.to_string_maybe_quoted path)
+    in
+    if Path.is_in_build_dir path then
+      match Path.extract_build_context path with
+      | None -> internal path
+      | Some (name, _) ->
+        if name = "" || name.[0] = '.' then internal path;
+        if not (name = "install" || String_set.mem name contexts) then
+          die "%s refers to unknown build context: %s%s"
+            (Path.to_string_maybe_quoted path)
+            name
+            (hint name (String_set.elements contexts))
+
 let resolve_targets ~log common (setup : Main.setup) user_targets =
   match user_targets with
   | [] -> []
   | _ ->
+    let check_path = check_path setup.contexts in
     let targets =
       List.map user_targets ~f:(fun s ->
-        if String.is_prefix s ~prefix:"@" then
+        if String.is_prefix s ~prefix:"@" then begin
           let s = String.sub s ~pos:1 ~len:(String.length s - 1) in
           let path = Path.relative Path.root (prefix_target common s) in
+          check_path path;
           if Path.is_root path then
             die "@@ on the command line must be followed by a valid alias name"
+          else if not (Path.is_local path) then
+            die "@@ on the command line must be followed by a relative path"
           else
-            Ok [Alias_rec (Alias.of_path path)]
-        else
+            Ok [Alias_rec path]
+        end else begin
           let path = Path.relative Path.root (prefix_target common s) in
+          check_path path;
           let can't_build path =
             Error (path, target_hint setup path);
           in
@@ -450,23 +495,17 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
               can't_build path
           end else
             match
-              let l =
-                List.filter_map setup.contexts ~f:(fun ctx ->
-                    let path = Path.append ctx.Context.build_dir path in
-                    if Build_system.is_target setup.build_system path then
-                      Some (File path)
-                    else
-                      None)
-              in
-              if Build_system.is_target setup.build_system path ||
-                 Path.exists path then
-                File path :: l
-              else
-                l
+              List.filter_map setup.contexts ~f:(fun ctx ->
+                let path = Path.append ctx.Context.build_dir path in
+                if Build_system.is_target setup.build_system path then
+                  Some (File path)
+                else
+                  None)
             with
             | [] -> can't_build path
             | l  -> Ok l
-        )
+        end
+      )
     in
     if !Clflags.verbose then begin
       Log.info log "Actual targets:";
@@ -477,8 +516,7 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
       List.iter targets ~f:(function
         | File path ->
           Log.info log @@ "- " ^ (Path.to_string path)
-        | Alias_rec alias ->
-          let path = Alias.fully_qualified_name alias in
+        | Alias_rec path ->
           Log.info log @@ "- recursive alias " ^
                           (Path.to_string_maybe_quoted path));
       flush stdout;
@@ -524,8 +562,7 @@ let runtest =
     ]
   in
   let name_ = Arg.info [] ~docv:"DIR" in
-  let go common force dirs =
-    let unlink_aliases = if force then Some ["runtest"] else None in
+  let go common dirs =
     set_common common
       ~targets:(List.map dirs ~f:(function
         | "" | "." -> "@runtest"
@@ -533,16 +570,17 @@ let runtest =
         | dir -> sprintf "@%s/runtest" dir));
     let log = Log.create () in
     Future.Scheduler.go ~log
-      (Main.setup ?unlink_aliases ~log common >>= fun setup ->
+      (Main.setup ~log common >>= fun setup ->
+       let check_path = check_path setup.contexts in
        let targets =
          List.map dirs ~f:(fun dir ->
            let dir = Path.(relative root) (prefix_target common dir) in
-           Alias_rec (Alias.runtest ~dir))
+           check_path dir;
+           Alias_rec (Path.relative dir "runtest"))
        in
        do_build setup targets) in
   ( Term.(const go
           $ common
-          $ Arg.(value & flag & info ["force"; "f"])
           $ Arg.(value & pos_all string ["."] name_))
   , Term.info "runtest" ~doc ~man)
 
@@ -557,7 +595,8 @@ let clean =
   let go common =
     begin
       set_common common ~targets:[];
-      Build_system.all_targets_ever_built () |> List.iter ~f:Path.unlink_no_err;
+      Build_system.files_in_source_tree_to_delete ()
+      |> List.iter ~f:Path.unlink_no_err;
       Path.(rm_rf (append root (of_string "_build")))
     end
   in
@@ -928,7 +967,7 @@ let exec =
         | [] -> ()
         | targets ->
           Future.Scheduler.go ~log (do_build setup targets);
-          Build_system.dump_trace setup.build_system
+          Build_system.finalize setup.build_system
       end;
       match prog_where with
       | `Search prog ->
@@ -1061,7 +1100,7 @@ let utop =
        do_build setup [File target] >>| fun () ->
        (setup.build_system, context, Path.to_string target)
       ) |> Future.Scheduler.go ~log in
-    Build_system.dump_trace build_system;
+    Build_system.finalize build_system;
     restore_cwd_and_execve common utop_path (Array.of_list (utop_path :: args))
       (Context.env_for_exec context)
   in

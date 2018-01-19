@@ -66,3 +66,6 @@ let copy_file ~src ~dst =
       ~finally:close_out
       ~f:(fun oc ->
         copy_channels ic oc))
+
+(* TODO: diml: improve this *)
+let compare_files fn1 fn2 = String.compare (read_file fn1) (read_file fn2)

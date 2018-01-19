@@ -23,41 +23,65 @@ type t
 val create
   :  context:Context.t
   -> ?host:t
-  -> aliases:Alias.Store.t
   -> scopes:Scope.t list
   -> file_tree:File_tree.t
   -> packages:Package.t String_map.t
   -> stanzas:(Path.t * Scope.t * Stanzas.t) list
   -> filter_out_optional_stanzas_with_missing_deps:bool
+  -> build_system:Build_system.t
   -> t
 
 val context   : t -> Context.t
-val aliases   : t -> Alias.Store.t
 val stanzas   : t -> Dir_with_jbuild.t list
 val packages  : t -> Package.t String_map.t
 val file_tree : t -> File_tree.t
 val artifacts : t -> Artifacts.t
 val stanzas_to_consider_for_install : t -> (Path.t * Stanza.t) list
 val cxx_flags : t -> string list
+val libs      : t -> Lib_db.t
 
 val expand_vars : t -> scope:Scope.t -> dir:Path.t -> String_with_vars.t -> string
 
 val add_rule
   :  t
   -> ?sandbox:bool
-  -> ?fallback:Jbuild.Rule.Fallback.t
+  -> ?mode:Jbuild.Rule.Mode.t
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> (unit, Action.t) Build.t
   -> unit
+val add_rule_get_targets
+  :  t
+  -> ?sandbox:bool
+  -> ?mode:Jbuild.Rule.Mode.t
+  -> ?locks:Path.t list
+  -> ?loc:Loc.t
+  -> (unit, Action.t) Build.t
+  -> Path.t list
 val add_rules
   :  t
   -> ?sandbox:bool
   -> (unit, Action.t) Build.t list
   -> unit
-val rules : t -> Build_interpret.Rule.t list
+val add_alias_deps
+  :  t
+  -> Build_system.Alias.t
+  -> Path.t list
+  -> unit
+val add_alias_action
+  :  t
+  -> Build_system.Alias.t
+  -> ?locks:Path.t list
+  -> stamp:Sexp.t
+  -> (unit, Action.t) Build.t
+  -> unit
 
-val sources_and_targets_known_so_far : t -> src_path:Path.t -> String_set.t
+(** See [Build_system for details] *)
+val eval_glob : t -> dir:Path.t -> Re.re -> string list
+val load_dir : t -> dir:Path.t -> unit
+val on_load_dir : t -> dir:Path.t -> f:(unit -> unit) -> unit
+
+val source_files : t -> src_path:Path.t -> String_set.t
 
 (** [prog_spec t ?hint name] resolve a program. [name] is looked up in the
     workspace, if it is not found in the tree is is looked up in the PATH. If it
@@ -174,16 +198,13 @@ module PP : sig
     -> Module.t String_map.t
 
   (** Get a path to a cached ppx driver *)
-  val get_ppx_driver
-    :  t
-    -> Pp.t list
-    -> dir:Path.t
-    -> dep_kind:Build.lib_dep_kind
-    -> Path.t
+  val get_ppx_driver : t -> Pp.t list -> Path.t
 
   (** [cookie_library_name lib_name] is ["--cookie"; lib_name] if [lib_name] is not
       [None] *)
   val cookie_library_name : string option -> string list
+
+  val gen_rules : t -> string list -> unit
 end
 
 val expand_and_eval_set

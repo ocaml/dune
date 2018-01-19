@@ -223,7 +223,9 @@ let compare = String.compare
 module Set = struct
   include String_set
   let sexp_of_t t = Sexp.To_sexp.(list string) (String_set.elements t)
+  let of_string_set = map
 end
+
 module Map = String_map
 
 module Kind = struct
@@ -346,8 +348,15 @@ let parent t =
 
 let build_prefix = "_build/"
 
+let build_dir = "_build"
+
 let is_in_build_dir t =
   String.is_prefix t ~prefix:build_prefix
+
+let is_in_source_tree t = is_local t && not (is_in_build_dir t)
+
+let is_alias_stamp_file t =
+  String.is_prefix t ~prefix:"_build/.aliases/"
 
 let extract_build_context t =
   if String.is_prefix t ~prefix:build_prefix then
@@ -380,10 +389,38 @@ let extract_build_context_dir t =
 let drop_build_context t =
   Option.map (extract_build_context t) ~f:snd
 
+let drop_build_context_exn t =
+  match extract_build_context t with
+  | None -> Sexp.code_error "Path.drop_build_context_exn" [ "t", sexp_of_t t ]
+  | Some (_, t) -> t
+
 let drop_optional_build_context t =
   match extract_build_context t with
   | None -> t
   | Some (_, t) -> t
+
+let split_first_component t =
+  if is_local t && not (is_root t)then
+    match String.index t '/' with
+    | None -> Some (t, root)
+    | Some i ->
+      Some
+        (String.sub t ~pos:0 ~len:i,
+         String.sub t ~pos:(i + 1) ~len:(String.length t - i - 1))
+  else
+    None
+
+let explode t =
+  if is_local t then
+    Some (String.split t ~on:'/')
+  else
+    None
+
+let explode_exn t =
+  if is_local t then
+    String.split t ~on:'/'
+  else
+    Sexp.code_error "Path.explode_exn" ["path", Atom t]
 
 let exists t = Sys.file_exists (to_string t)
 let readdir t = Sys.readdir (to_string t) |> Array.to_list
@@ -405,13 +442,10 @@ let insert_after_build_dir_exn =
       ]
   in
   fun a b ->
-    if not (is_local a && is_local b) then error a b;
+    if not (is_local a) || String.contains b '/' then error a b;
     match String.lsplit2 a ~on:'/' with
     | Some ("_build", rest) ->
-      if is_root b then
-        a
-      else
-        sprintf "_build/%s/%s" b rest
+      sprintf "_build/%s/%s" b rest
     | _ ->
       error a b
 

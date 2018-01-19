@@ -5,7 +5,10 @@ module Dir : sig
 
   val path     : t -> Path.t
   val files    : t -> String_set.t
+  val file_paths    : t -> Path.Set.t
   val sub_dirs : t -> t String_map.t
+  val sub_dir_paths : t -> Path.Set.t
+  val sub_dir_names : t -> String_set.t
 
   (** Whether this directory is ignored by a [jbuild-ignore] file in
       one of its ancestor directories. *)
@@ -33,6 +36,8 @@ val fold
 val root : t -> Dir.t
 
 val find_dir : t -> Path.t -> Dir.t option
+
+val files_of : t -> Path.t -> Path.Set.t
 
 val exists : t -> Path.t -> bool
 val file_exists : t -> Path.t -> string -> bool

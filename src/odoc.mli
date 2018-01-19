@@ -12,6 +12,4 @@ val setup_library_rules
   -> dep_graph:Ocamldep.dep_graph
   -> unit
 
-val setup_css_rule : Super_context.t -> unit
-
-val setup_toplevel_index_rule: Super_context.t -> unit
+val gen_rules : Super_context.t -> dir:Path.t -> string list -> unit

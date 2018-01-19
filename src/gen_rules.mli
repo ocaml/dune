@@ -1,12 +1,11 @@
 open! Import
 open Jbuild
 
+(* Generate rules. Returns evaluated jbuilds per context names. *)
 val gen
   :  contexts:Context.t list
+  -> build_system:Build_system.t
   -> ?filter_out_optional_stanzas_with_missing_deps:bool (* default: true *)
   -> ?only_packages:String_set.t
-  -> ?unlink_aliases:string list
   -> Jbuild_load.conf
-  -> (Build_interpret.Rule.t list *
-     (* Evaluated jbuilds per context names *)
-     (Path.t * Scope.t * Stanzas.t) list String_map.t) Future.t
+  -> (Path.t * Scope.t * Stanzas.t) list String_map.t Future.t

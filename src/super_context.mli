@@ -169,6 +169,7 @@ module Action : sig
   type targets =
     | Static of Path.t list
     | Infer
+    | Alias (** This action is for an alias *)
 
   (** The arrow takes as input the list of actual dependencies *)
   val run

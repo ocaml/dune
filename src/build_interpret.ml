@@ -177,11 +177,19 @@ module Rule = struct
         List.iter l ~f:(fun target ->
           let path = Target.path target in
           if Path.parent path <> dir then
-            Sexp.code_error "rule has targets in different directories"
-              [ "dir", Path.sexp_of_t dir
-              ; "targets", Sexp.To_sexp.list Path.sexp_of_t
-                             (List.map (x :: l) ~f:Target.path)
-              ]);
+            match loc with
+            | None ->
+              Sexp.code_error "rule has targets in different directories"
+                [ "targets", Sexp.To_sexp.list Path.sexp_of_t
+                               (List.map targets ~f:Target.path)
+                ]
+            | Some loc ->
+              Loc.fail loc
+                "Rule has targets in different directories.\nTargets:\n%s"
+                (String.concat ~sep:"\n"
+                   (List.map targets ~f:(fun t ->
+                      sprintf "- %s"
+                        (Target.path t |> Path.to_string_maybe_quoted)))));
         dir
     in
     { context

@@ -876,112 +876,143 @@ module Infer = struct
   end
   open Outcome
 
-  let ( +@ ) acc fn = { acc with targets = S.add fn acc.targets }
-  let ( +< ) acc fn = { acc with deps    = S.add fn acc.deps    }
+  module type Pset = sig
+    type t
+    val empty : t
+    val diff : t -> t -> t
+  end
 
-  let rec infer acc t =
-    match t with
-    | Run (Ok prog, _)        -> acc +< prog
-    | Run (Error _, _) -> acc
-    | Redirect (_, fn, t)  -> infer (acc +@ fn) t
-    | Cat fn               -> acc +< fn
-    | Write_file (fn, _)  -> acc +@ fn
-    | Rename (src, dst)    -> acc +< src +@ dst
-    | Copy (src, dst)
-    | Copy_and_add_line_directive (src, dst)
-    | Symlink (src, dst) -> acc +< src +@ dst
-    | Chdir (_, t)
-    | Setenv (_, _, t)
-    | Ignore (_, t) -> infer acc t
-    | Progn l -> List.fold_left l ~init:acc ~f:infer
-    | Digest_files l -> List.fold_left l ~init:acc ~f:(+<)
-    | Diff { optional; file1; file2 } ->
-      if optional then acc else acc +< file1 +< file2
-    | Echo _
-    | System _
-    | Bash _
-    | Remove_tree _
-    | Mkdir _ -> acc
+  module type Outcome = sig
+    type path_set
+    type t =
+      { deps    : path_set
+      ; targets : path_set
+      }
+  end
 
-  let infer t =
-    let { deps; targets } = infer { deps = S.empty; targets = S.empty } t in
-    (* A file can be inferred as both a dependency and a target, for instance:
+  module type Primitives = sig
+    type path
+    type program
+    type outcome
+    val ( +@ ) : outcome -> path -> outcome
+    val ( +< ) : outcome -> path -> outcome
+    val ( +<! ) : outcome -> program -> outcome
+  end
 
-       {[
-         (progn (copy a b) (copy b c))
-       ]}
-    *)
-    { deps = S.diff deps targets; targets }
+  module Make
+      (Ast : Action_intf.Ast)
+      (Pset : Pset)
+      (Out : Outcome with type path_set := Pset.t)
+      (Prim : Primitives
+       with type path := Ast.path
+       with type program := Ast.program
+       with type outcome := Out.t) =
+  struct
+    open Ast
+    open Out
+    open Prim
+    let rec infer acc t =
+      match t with
+      | Run (prog, _) -> acc +<! prog
+      | Redirect (_, fn, t)  -> infer (acc +@ fn) t
+      | Cat fn               -> acc +< fn
+      | Write_file (fn, _)  -> acc +@ fn
+      | Rename (src, dst)    -> acc +< src +@ dst
+      | Copy (src, dst)
+      | Copy_and_add_line_directive (src, dst)
+      | Symlink (src, dst) -> acc +< src +@ dst
+      | Chdir (_, t)
+      | Setenv (_, _, t)
+      | Ignore (_, t) -> infer acc t
+      | Progn l -> List.fold_left l ~init:acc ~f:infer
+      | Digest_files l -> List.fold_left l ~init:acc ~f:(+<)
+      | Diff { optional; file1; file2 } ->
+        if optional then acc else acc +< file1 +< file2
+      | Echo _
+      | System _
+      | Bash _
+      | Remove_tree _
+      | Mkdir _ -> acc
 
-  let ( +@? ) acc fn =
-    match fn with
-    | Inl fn -> { acc with targets = S.add fn acc.targets }
-    | Inr _  -> acc
-  let ( +<? ) acc fn =
-    match fn with
-    | Inl fn -> { acc with deps    = S.add fn acc.deps    }
-    | Inr _  -> acc
+    let infer t =
+      let { deps; targets } =
+        infer { deps = Pset.empty; targets = Pset.empty } t
+      in
+      (* A file can be inferred as both a dependency and a target,
+         for instance:
 
-  let rec partial acc (t : Unexpanded.Partial.t) =
-    match t with
-    | Run (Inl (This prog), _)   -> acc +< prog
-    | Run (_, _) -> acc
-    | Redirect (_, fn, t)  -> partial (acc +@? fn) t
-    | Cat fn               -> acc +<? fn
-    | Write_file (fn, _)  -> acc +@? fn
-    | Rename (src, dst)    -> acc +<? src +@? dst
-    | Copy (src, dst)
-    | Copy_and_add_line_directive (src, dst)
-    | Symlink (src, dst) -> acc +<? src +@? dst
-    | Chdir (_, t)
-    | Setenv (_, _, t)
-    | Ignore (_, t) -> partial acc t
-    | Progn l -> List.fold_left l ~init:acc ~f:partial
-    | Digest_files l -> List.fold_left l ~init:acc ~f:(+<?)
-    | Diff { optional; file1; file2 } ->
-      if optional then acc else acc +<? file1 +<? file2
-    | Echo _
-    | System _
-    | Bash _
-    | Remove_tree _
-    | Mkdir _ -> acc
+         {[
+           (progn (copy a b) (copy b c))
+         ]}
+      *)
+      { deps = Pset.diff deps targets; targets }
+  end [@@inline always]
 
-  let ( +@? ) acc fn =
-    match fn with
-    | Inl fn -> { acc with targets = S.add fn acc.targets }
-    | Inr sw -> Loc.fail (SW.loc sw) "Cannot determine this target statically."
+  include Make(Ast)(S)(Outcome)(struct
+      let ( +@ ) acc fn = { acc with targets = S.add fn acc.targets }
+      let ( +< ) acc fn = { acc with deps    = S.add fn acc.deps    }
+      let ( +<! ) acc prog =
+        match prog with
+        | Ok p -> acc +< p
+        | Error _ -> acc
+    end)
 
-  let rec partial_with_all_targets acc (t : Unexpanded.Partial.t) =
-    match t with
-    | Run (Inl (This prog), _)   -> acc +< prog
-    | Run (_, _) -> acc
-    | Redirect (_, fn, t)  -> partial_with_all_targets (acc +@? fn) t
-    | Cat fn               -> acc +<? fn
-    | Write_file (fn, _)  -> acc +@? fn
-    | Rename (src, dst)    -> acc +<? src +@? dst
-    | Copy (src, dst)
-    | Copy_and_add_line_directive (src, dst)
-    | Symlink (src, dst) -> acc +<? src +@? dst
-    | Chdir (_, t)
-    | Setenv (_, _, t)
-    | Ignore (_, t) -> partial_with_all_targets acc t
-    | Progn l -> List.fold_left l ~init:acc ~f:partial_with_all_targets
-    | Digest_files l -> List.fold_left l ~init:acc ~f:(+<?)
-    | Diff { optional; file1; file2 } ->
-      if optional then acc else acc +<? file1 +<? file2
-    | Echo _
-    | System _
-    | Bash _
-    | Remove_tree _
-    | Mkdir _ -> acc
+  module Partial = Make(Unexpanded.Partial.Past)(S)(Outcome)(struct
+      let ( +@ ) acc fn =
+        match fn with
+        | Inl fn -> { acc with targets = S.add fn acc.targets }
+        | Inr _  -> acc
+      let ( +< ) acc fn =
+        match fn with
+        | Inl fn -> { acc with deps    = S.add fn acc.deps    }
+        | Inr _  -> acc
+      let ( +<! ) acc fn =
+        match (fn : Unexpanded.Partial.program) with
+        | Inl (This fn) -> { acc with deps = S.add fn acc.deps }
+        | Inl (Search _) | Inr _ -> acc
+    end)
+
+  module Partial_with_all_targets = Make(Unexpanded.Partial.Past)(S)(Outcome)(struct
+      let ( +@ ) acc fn =
+        match fn with
+        | Inl fn -> { acc with targets = S.add fn acc.targets }
+        | Inr sw -> Loc.fail (SW.loc sw) "Cannot determine this target statically."
+      let ( +< ) acc fn =
+        match fn with
+        | Inl fn -> { acc with deps    = S.add fn acc.deps    }
+        | Inr _  -> acc
+      let ( +<! ) acc fn =
+        match (fn : Unexpanded.Partial.program) with
+        | Inl (This fn) -> { acc with deps = S.add fn acc.deps }
+        | Inl (Search _) | Inr _ -> acc
+    end)
 
   let partial ~all_targets t =
-    let acc = { deps = S.empty; targets = S.empty } in
-    let { deps; targets } =
-      if all_targets then
-        partial_with_all_targets acc t
-      else
-        partial acc t
-    in
-    { deps = S.diff deps targets; targets }
+    if all_targets then
+      Partial_with_all_targets.infer t
+    else
+      Partial.infer t
+
+  module S_unexp = struct
+    type t = String_with_vars.t list
+    let empty = []
+    let diff a _ = a
+  end
+
+  module Outcome_unexp = struct
+    type t =
+      { deps    : S_unexp.t
+      ; targets : S_unexp.t
+      }
+  end
+
+  module Unexp = Make(Unexpanded.Uast)(S_unexp)(Outcome_unexp)(struct
+      open Outcome_unexp
+      let ( +@ ) acc fn = { acc with targets = fn :: acc.targets }
+      let ( +< ) acc _ = acc
+      let ( +<! )= ( +< )
+    end)
+
+  let unexpanded_targets t =
+    (Unexp.infer t).targets
 end

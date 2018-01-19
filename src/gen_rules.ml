@@ -796,7 +796,7 @@ Add it to your jbuild file to remove this warning.
            action
            ~dir
            ~dep_kind:Required
-           ~targets:(Static [])
+           ~targets:Alias
            ~scope)
 
   (* +-----------------------------------------------------------------+

@@ -126,6 +126,9 @@ module Infer : sig
 
   (** If [all_targets] is [true] and a target cannot be determined statically, fail *)
   val partial : all_targets:bool -> Unexpanded.Partial.t -> Outcome.t
+
+  (** Return the list of targets of an unexpanded action. *)
+  val unexpanded_targets : Unexpanded.t -> String_with_vars.t list
 end
 
 module Promotion : sig

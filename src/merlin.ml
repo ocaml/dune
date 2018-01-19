@@ -31,6 +31,18 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
   match Path.drop_build_context dir with
   | Some remaindir ->
     let merlin_file = Path.relative dir ".merlin" in
+    (* We make the compilation of .ml/.mli files depend on the
+       existence of .merlin so that they are always generated, however
+       the command themselves don't read the merlin file, so we don't
+       want to declare a dependency on the contents of the .merlin
+       file.
+
+       Currently jbuilder doesn't support declaring a dependency only
+       on the existence of a file, so we have to use this trick. *)
+    SC.add_rule sctx
+      (Build.path merlin_file
+       >>>
+       Build.create_file (Path.relative dir ".merlin-exists"));
     SC.add_rule sctx ~mode:Promote_but_delete_on_clean (
       requires &&& flags
       >>^ (fun (libs, flags) ->

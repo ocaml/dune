@@ -322,7 +322,7 @@ module Libs = struct
     in
     let requires =
       if t.context.merlin && has_dot_merlin then
-        Build.path (Path.relative dir ".merlin")
+        Build.path (Path.relative dir ".merlin-exists")
         >>>
         real_requires
       else

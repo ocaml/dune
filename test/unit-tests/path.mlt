@@ -47,3 +47,23 @@ Path.(descendant (r "foo") ~of_:Path.root)
 [%%expect{|
 - : Jbuilder.Path.t option = Some foo
 |}]
+
+Path.explode (Path.of_string "a/b/c");
+[%%expect{|
+- : string list option = Some ["a"; "b"; "c"]
+|}]
+
+Path.explode (Path.of_string "a/b");
+[%%expect{|
+- : string list option = Some ["a"; "b"]
+|}]
+
+Path.explode (Path.of_string "a");
+[%%expect{|
+- : string list option = Some ["a"]
+|}]
+
+Path.explode (Path.of_string "");
+[%%expect{|
+- : string list option = Some []
+|}]

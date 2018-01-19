@@ -411,13 +411,17 @@ let split_first_component t =
     None
 
 let explode t =
-  if is_local t then
+  if is_root t then
+    Some []
+  else if is_local t then
     Some (String.split t ~on:'/')
   else
     None
 
 let explode_exn t =
-  if is_local t then
+  if is_root t then
+    []
+  else if is_local t then
     String.split t ~on:'/'
   else
     Sexp.code_error "Path.explode_exn" ["path", Atom t]

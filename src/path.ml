@@ -474,7 +474,7 @@ let change_extension ~ext t =
 
 let extension = Filename.extension
 
-let pp = Format.pp_print_string
+let pp ppf t = Format.pp_print_string ppf (to_string t)
 
 let drop_prefix t ~prefix =
   let t = to_string t in

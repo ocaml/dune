@@ -40,7 +40,7 @@ Path.(descendant Path.root ~of_:(r "foo"))
 
 Path.(descendant Path.root ~of_:Path.root)
 [%%expect{|
-- : Jbuilder.Path.t option = Some 
+- : Jbuilder.Path.t option = Some .
 |}]
 
 Path.(descendant (r "foo") ~of_:Path.root)

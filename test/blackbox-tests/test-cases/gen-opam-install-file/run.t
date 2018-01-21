@@ -2,10 +2,10 @@
       ocamldep bar.ml.d
       ocamldep foo_byte.ml.d
       ocamldep foo.ml.d
-        ocamlc foo_byte.{cmi,cmo,cmt}
-        ocamlc foo.{cmi,cmo,cmt}
+        ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
+        ocamlc .foo.objs/foo.{cmi,cmo,cmt}
         ocamlc foo_byte.cma
-      ocamlopt foo.{cmx,o}
+      ocamlopt .foo.objs/foo.{cmx,o}
         ocamlc bar.{cmi,cmo,cmt}
         ocamlc foo.cma
       ocamlopt foo.{a,cmxa}

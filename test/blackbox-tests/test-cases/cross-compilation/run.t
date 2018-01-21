@@ -2,16 +2,16 @@
       ocamldep bin/blah.ml.d [default.foo]
       ocamldep lib/p.ml.d [default.foo]
       ocamldep bin/blah.ml.d
-        ocamlc lib/p.{cmi,cmo,cmt} [default.foo]
+        ocamlc lib/.p.objs/p.{cmi,cmo,cmt} [default.foo]
       ocamldep lib/p.ml.d
-      ocamlopt lib/p.{cmx,o} [default.foo]
+      ocamlopt lib/.p.objs/p.{cmx,o} [default.foo]
         ocamlc bin/blah.{cmi,cmo,cmt} [default.foo]
         ocamlc lib/p.cma [default.foo]
-        ocamlc lib/p.{cmi,cmo,cmt}
+        ocamlc lib/.p.objs/p.{cmi,cmo,cmt}
       ocamlopt lib/p.{a,cmxa} [default.foo]
       ocamlopt bin/blah.{cmx,o} [default.foo]
         ocamlc bin/blah.{cmi,cmo,cmt}
-      ocamlopt lib/p.{cmx,o}
+      ocamlopt lib/.p.objs/p.{cmx,o}
       ocamlopt lib/p.cmxs [default.foo]
       ocamlopt bin/blah.exe [default.foo]
       ocamlopt bin/blah.{cmx,o}

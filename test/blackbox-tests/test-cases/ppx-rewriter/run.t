@@ -1,7 +1,7 @@
   $ $JBUILDER build ./w_omp_driver.exe -j1 --display short --root .
       ocamldep ppx/fooppx.ml.d
-        ocamlc ppx/fooppx.{cmi,cmo,cmt}
-      ocamlopt ppx/fooppx.{cmx,o}
+        ocamlc ppx/.fooppx.objs/fooppx.{cmi,cmo,cmt}
+      ocamlopt ppx/.fooppx.objs/fooppx.{cmx,o}
       ocamlopt ppx/fooppx.{a,cmxa}
       ocamlopt .ppx/fooppx@/ppx.exe
            ppx w_omp_driver.pp.ml

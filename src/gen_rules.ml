@@ -333,7 +333,7 @@ Add it to your jbuild file to remove this warning.
     in
     List.map cclibs ~f
 
-  let build_lib (lib : Library.t) ~scope ~flags ~dir ~mode ~top_sorted_modules =
+  let build_lib (lib : Library.t) ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules =
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
@@ -361,7 +361,7 @@ Add it to your jbuild file to remove this warning.
       SC.add_rule sctx
         (Build.fanout4
            (top_sorted_modules >>^ List.map ~f:(fun m ->
-              Module.cm_file m ~dir (Mode.cm_kind mode)))
+              Module.cm_file m ~obj_dir (Mode.cm_kind mode)))
            (SC.expand_and_eval_set sctx ~scope ~dir lib.c_library_flags ~standard:[])
            (Ocaml_flags.get flags mode)
            (SC.expand_and_eval_set sctx ~scope ~dir lib.library_flags ~standard:[])
@@ -401,7 +401,7 @@ Add it to your jbuild file to remove this warning.
          (Ok ctx.ocamlc)
          [ As (Utils.g ())
          ; Dyn (fun (c_flags, libs) ->
-             S [ Lib.c_include_flags libs
+             S [ Lib.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
                ; Arg_spec.quote_args "-ccopt" c_flags
                ])
          ; A "-o"; Target dst
@@ -434,7 +434,7 @@ Add it to your jbuild file to remove this warning.
          ([ S [A "-I"; Path ctx.stdlib_dir]
           ; As (SC.cxx_flags sctx)
           ; Dyn (fun (cxx_flags, libs) ->
-              S [ Lib.c_include_flags libs
+              S [ Lib.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
                 ; As cxx_flags
                 ])
           ] @ output_param @
@@ -450,6 +450,7 @@ Add it to your jbuild file to remove this warning.
 
   let library_rules (lib : Library.t) ~dir ~files
         ~(scope : Lib_db.Scope.t With_required_by.t) =
+    let obj_dir = Lib.lib_obj_dir dir lib in
     let dep_kind = if lib.optional then Build.Optional else Required in
     let flags = Ocaml_flags.make lib.buildable sctx ~scope:scope.data ~dir in
     let { modules; main_module_name; alias_module } = modules_by_lib ~dir lib in
@@ -503,7 +504,7 @@ Add it to your jbuild file to remove this warning.
     let dynlink = lib.dynlink in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
     Module_compilation.build_modules sctx
-      ~js_of_ocaml ~dynlink ~flags ~scope:scope.data ~dir ~dep_graphs
+      ~js_of_ocaml ~dynlink ~flags ~scope:scope.data ~dir ~obj_dir ~dep_graphs
       ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
       let flags = Ocaml_flags.default () in
@@ -514,6 +515,7 @@ Add it to your jbuild file to remove this warning.
         ~flags:(Ocaml_flags.append_common flags ["-w"; "-49"])
         ~scope:scope.data
         ~dir
+        ~obj_dir
         ~dep_graphs:(Ocamldep.Dep_graphs.dummy m)
         ~requires:(
           let requires =
@@ -592,7 +594,7 @@ Add it to your jbuild file to remove this warning.
     List.iter Cm_kind.all ~f:(fun cm_kind ->
       let files =
         String_map.fold modules ~init:[] ~f:(fun ~key:_ ~data:m acc ->
-          Module.cm_file m ~dir cm_kind :: acc)
+          Module.cm_file m ~obj_dir cm_kind :: acc)
       in
       SC.Libs.setup_file_deps_alias sctx (dir, lib) ~ext:(Cm_kind.ext cm_kind)
         files);
@@ -606,7 +608,7 @@ Add it to your jbuild file to remove this warning.
         Ocamldep.Dep_graph.top_closed dep_graphs.impl (String_map.values modules))
     in
     List.iter Mode.all ~f:(fun mode ->
-      build_lib lib ~scope:scope.data ~flags ~dir ~mode ~top_sorted_modules);
+      build_lib lib ~scope:scope.data ~flags ~dir ~obj_dir ~mode ~top_sorted_modules);
     (* Build *.cma.js *)
     SC.add_rules sctx (
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
@@ -662,13 +664,14 @@ Add it to your jbuild file to remove this warning.
     ; preprocess = Buildable.single_preprocess lib.buildable
     ; libname = Some lib.name
     ; source_dirs = Path.Set.empty
+    ; objs_dirs = Path.Set.singleton obj_dir
     }
 
   (* +-----------------------------------------------------------------+
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  let build_exe ~js_of_ocaml ~flags ~scope ~dir ~requires ~name ~mode
+  let build_exe ~js_of_ocaml ~flags ~scope ~dir ~obj_dir ~requires ~name ~mode
         ~top_sorted_modules ~link_flags ~force_custom_bytecode =
     let exe_ext = Mode.exe_ext mode in
     let mode, link_custom, compiler =
@@ -682,7 +685,7 @@ Add it to your jbuild file to remove this warning.
         (requires
          >>> Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib)))
         (top_sorted_modules >>^ List.map ~f:(fun m ->
-           Module.cm_file m ~dir (Mode.cm_kind mode)))
+           Module.cm_file m ~obj_dir (Mode.cm_kind mode)))
     in
     let objs (libs, cm) =
       if mode = Mode.Byte then
@@ -723,6 +726,8 @@ Add it to your jbuild file to remove this warning.
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules
     ~(scope : Lib_db.Scope.t With_required_by.t) =
+    let item = List.hd exes.names in
+    let obj_dir = dir in
     let dep_kind = Build.Required in
     let flags = Ocaml_flags.make exes.buildable sctx ~scope:scope.data ~dir in
     let modules =
@@ -749,7 +754,6 @@ Add it to your jbuild file to remove this warning.
         ~lib_name:None
     in
 
-    let item = List.hd exes.names in
     let dep_graphs =
       Ocamldep.rules sctx ~dir ~modules ~alias_module:None
         ~lib_interface_module:None
@@ -768,7 +772,7 @@ Add it to your jbuild file to remove this warning.
     (* CR-someday jdimino: this should probably say [~dynlink:false] *)
     Module_compilation.build_modules sctx
       ~js_of_ocaml:exes.buildable.js_of_ocaml
-      ~dynlink:true ~flags ~scope:scope.data ~dir ~dep_graphs ~modules
+      ~dynlink:true ~flags ~scope:scope.data ~dir ~obj_dir ~dep_graphs ~modules
       ~requires ~alias_module:None;
 
     List.iter programs ~f:(fun (name, unit) ->
@@ -778,7 +782,7 @@ Add it to your jbuild file to remove this warning.
       in
       List.iter Mode.all ~f:(fun mode ->
         build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~scope:scope.data
-          ~dir ~requires ~name ~mode ~top_sorted_modules
+          ~dir ~obj_dir ~requires ~name ~mode ~top_sorted_modules
           ~link_flags:exes.link_flags
           ~force_custom_bytecode:(mode = Native && not exes.modes.native)));
     { Merlin.
@@ -787,6 +791,7 @@ Add it to your jbuild file to remove this warning.
     ; preprocess = Buildable.single_preprocess exes.buildable
     ; libname    = None
     ; source_dirs = Path.Set.empty
+    ; objs_dirs  = Path.Set.singleton obj_dir
     }
 
   (* +-----------------------------------------------------------------+
@@ -855,6 +860,7 @@ Add it to your jbuild file to remove this warning.
           ; preprocess      = Jbuild.Preprocess.No_preprocessing
           ; libname         = None
           ; source_dirs     = Path.Set.singleton src_dir
+          ; objs_dirs       = Path.Set.empty
           }
       | _ -> None)
     |> Merlin.merge_all
@@ -948,6 +954,7 @@ Add it to your jbuild file to remove this warning.
      +-----------------------------------------------------------------+ *)
 
   let lib_install_files ~dir ~sub_dir (lib : Library.t) =
+    let obj_dir = Lib.lib_obj_dir dir lib in
     let make_entry section fn =
       Install.Entry.make section fn
         ?dst:(Option.map sub_dir ~f:(fun d -> sprintf "%s/%s" d (Path.basename fn)))
@@ -959,9 +966,9 @@ Add it to your jbuild file to remove this warning.
       List.concat
         [ List.concat_map modules ~f:(fun m ->
             List.concat
-              [ [ Module.cm_file m ~dir Cmi ]
-              ; if_ native [ Module.cm_file m ~dir Cmx ]
-              ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~dir)
+              [ [ Module.cm_file m ~obj_dir Cmi ]
+              ; if_ native [ Module.cm_file m ~obj_dir Cmx ]
+              ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~obj_dir)
               ; [ match Module.file m ~dir Intf with
                   | Some fn -> fn
                   | None    -> Path.relative dir m.impl.name ]

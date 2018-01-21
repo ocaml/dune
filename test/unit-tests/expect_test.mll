@@ -44,8 +44,7 @@ let main () =
 
     Toploop.initialize_toplevel_env ();
     List.iter
-      [ "src"
-      ; "vendor/re"
+      [ "src/.jbuilder.objs"
       ]
       ~f:Topdirs.dir_directory;
 

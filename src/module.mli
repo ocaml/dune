@@ -30,12 +30,12 @@ val real_unit_name : t -> string
 
 val file      : t -> dir:Path.t -> Ml_kind.t -> Path.t option
 val cm_source : t -> dir:Path.t -> Cm_kind.t -> Path.t option
-val cm_file   : t -> dir:Path.t -> Cm_kind.t -> Path.t
-val cmt_file  : t -> dir:Path.t -> Ml_kind.t -> Path.t option
+val cm_file   : t -> obj_dir:Path.t -> Cm_kind.t -> Path.t
+val cmt_file  : t -> obj_dir:Path.t -> Ml_kind.t -> Path.t option
 
 val odoc_file : t -> doc_dir:Path.t -> Path.t
 
 (** Either the .cmti, or .cmt if the module has no interface *)
-val cmti_file : t -> dir:Path.t -> Path.t
+val cmti_file : t -> obj_dir:Path.t -> Path.t
 
 val iter : t -> f:(Ml_kind.t -> File.t -> unit) -> unit

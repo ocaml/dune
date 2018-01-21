@@ -19,13 +19,20 @@ end
 include T
 module Set = Set.Make(T)
 
+let lib_obj_dir dir lib =
+  Path.relative dir ("." ^ lib.Jbuild.Library.name ^ ".objs")
+
 let dir = function
   | Internal (dir, _) -> dir
   | External pkg -> pkg.dir
 
+let obj_dir = function
+  | Internal (dir, lib) -> lib_obj_dir dir lib
+  | External pkg -> pkg.dir
+
 let include_paths ts ~stdlib_dir =
   List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-    Path.Set.add (dir t) acc)
+    Path.Set.add (obj_dir t) acc)
   |> Path.Set.remove stdlib_dir
 
 let include_flags ts ~stdlib_dir =
@@ -33,10 +40,11 @@ let include_flags ts ~stdlib_dir =
   Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
     [Arg_spec.A "-I"; Path dir]))
 
-let c_include_flags ts =
+let c_include_flags ts ~stdlib_dir =
   let dirs =
     List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
       Path.Set.add (dir t) acc)
+    |> Path.Set.remove stdlib_dir
   in
   Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
     [Arg_spec.A "-I"; Path dir]))
@@ -52,7 +60,7 @@ let describe = function
 
 let link_flags ts ~mode ~stdlib_dir =
   Arg_spec.S
-    (include_flags ts ~stdlib_dir ::
+    (c_include_flags ts ~stdlib_dir ::
      List.map ts ~f:(fun t ->
        match t with
        | External pkg ->

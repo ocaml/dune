@@ -1,23 +1,23 @@
   $ $JBUILDER build -j1 --display short --root . @install
       ocamldep alib/alib.ml.d
       ocamldep alib/main.ml.d
-        ocamlc alib/alib__.{cmi,cmo,cmt}
+        ocamlc alib/.alib.objs/alib__.{cmi,cmo,cmt}
       ocamldep blib/blib.ml.d
       ocamldep blib/sub/sub.ml.d
-      ocamlopt alib/alib__.{cmx,o}
-        ocamlc blib/sub/sub.{cmi,cmo,cmt}
-      ocamlopt blib/sub/sub.{cmx,o}
-        ocamlc blib/blib.{cmi,cmo,cmt}
+      ocamlopt alib/.alib.objs/alib__.{cmx,o}
+        ocamlc blib/sub/.sub.objs/sub.{cmi,cmo,cmt}
+      ocamlopt blib/sub/.sub.objs/sub.{cmx,o}
+        ocamlc blib/.blib.objs/blib.{cmi,cmo,cmt}
         ocamlc blib/sub/sub.cma
       ocamlopt blib/sub/sub.{a,cmxa}
-      ocamlopt blib/blib.{cmx,o}
-        ocamlc alib/alib.{cmi,cmo,cmt}
-        ocamlc alib/alib__Main.{cmi,cmo,cmt}
+      ocamlopt blib/.blib.objs/blib.{cmx,o}
+        ocamlc alib/.alib.objs/alib.{cmi,cmo,cmt}
+        ocamlc alib/.alib.objs/alib__Main.{cmi,cmo,cmt}
         ocamlc blib/blib.cma
       ocamlopt blib/sub/sub.cmxs
       ocamlopt blib/blib.{a,cmxa}
-      ocamlopt alib/alib.{cmx,o}
-      ocamlopt alib/alib__Main.{cmx,o}
+      ocamlopt alib/.alib.objs/alib.{cmx,o}
+      ocamlopt alib/.alib.objs/alib__Main.{cmx,o}
         ocamlc alib/alib.cma
       ocamlopt blib/blib.cmxs
       ocamlopt alib/alib.{a,cmxa}

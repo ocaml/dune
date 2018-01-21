@@ -4,9 +4,9 @@
       ocamldep q/q.ml.d
       ocamldep q/q.mli.d
     ocamlmklib q/dllq_stubs.so,q/libq_stubs.a
-        ocamlc q/q.{cmi,cmti}
+        ocamlc q/.q.objs/q.{cmi,cmti}
         ocamlc qnativerun/run.{cmi,cmo,cmt}
-      ocamlopt q/q.{cmx,o}
+      ocamlopt q/.q.objs/q.{cmx,o}
       ocamlopt qnativerun/run.{cmx,o}
       ocamlopt q/q.{a,cmxa}
       ocamlopt qnativerun/run.exe

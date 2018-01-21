@@ -4,10 +4,10 @@
       ocamldep lexer1.ml.d
       ocamldep dummy.ml.d
         ocamlc bar.o
-        ocamlc dummy.{cmi,cmo,cmt}
+        ocamlc .foo.objs/dummy.{cmi,cmo,cmt}
     ocamlmklib dllfoo_stubs.so,libfoo_stubs.a
         ocamlc lexer1.{cmi,cmo,cmt}
-      ocamlopt dummy.{cmx,o}
+      ocamlopt .foo.objs/dummy.{cmx,o}
         ocamlc test.{cmi,cmo,cmt}
       ocamlopt lexer1.{cmx,o}
       ocamlopt foo.{a,cmxa}

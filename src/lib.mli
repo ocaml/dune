@@ -10,12 +10,14 @@ type t =
 
 module Set : Set.S with type elt := t
 
+val lib_obj_dir : Path.t -> Jbuild.Library.t -> Path.t
+
 (*val deps : t -> string list*)
 
 val include_paths : t list -> stdlib_dir:Path.t -> Path.Set.t
 val include_flags : t list -> stdlib_dir:Path.t -> _ Arg_spec.t
 
-val c_include_flags : t list -> _ Arg_spec.t
+val c_include_flags : t list -> stdlib_dir:Path.t -> _ Arg_spec.t
 
 val link_flags : t list -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
 

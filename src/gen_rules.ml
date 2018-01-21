@@ -327,7 +327,7 @@ Add it to your jbuild file to remove this warning.
     in
     List.map cclibs ~f
 
-  let build_lib (lib : Library.t) ~scope ~flags ~dir ~mode ~modules ~dep_graph =
+  let build_lib (lib : Library.t) ~scope ~flags ~dir ~obj_dir ~mode ~modules ~dep_graph =
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let dep_graph = Ml_kind.Dict.get dep_graph Impl in
@@ -359,6 +359,7 @@ Add it to your jbuild file to remove this warning.
             Build.arr (fun dep_graph ->
               Ocamldep.names_to_top_closed_cm_files
                 ~dir
+                ~obj_dir
                 ~dep_graph
                 ~modules
                 ~mode
@@ -443,6 +444,7 @@ Add it to your jbuild file to remove this warning.
      (fun a b -> a, b) <= (4, 02)
 
   let library_rules (lib : Library.t) ~dir ~files ~scope =
+    let obj_dir = Lib.lib_obj_dir dir lib in
     let dep_kind = if lib.optional then Build.Optional else Required in
     let flags = Ocaml_flags.make lib.buildable sctx ~scope ~dir in
     let { modules; main_module_name; alias_module } = modules_by_lib ~dir lib in
@@ -496,7 +498,7 @@ Add it to your jbuild file to remove this warning.
     let dynlink = lib.dynlink in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
     Module_compilation.build_modules sctx
-      ~js_of_ocaml ~dynlink ~flags ~scope ~dir ~dep_graph ~modules ~requires ~alias_module;
+      ~js_of_ocaml ~dynlink ~flags ~scope ~dir ~obj_dir ~dep_graph ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
       let flags = Ocaml_flags.default () in
       Module_compilation.build_module sctx m
@@ -506,6 +508,7 @@ Add it to your jbuild file to remove this warning.
         ~flags:(Ocaml_flags.append_common flags ["-w"; "-49"])
         ~scope
         ~dir
+        ~obj_dir
         ~modules:(String_map.singleton m.name m)
         ~dep_graph:(Ml_kind.Dict.make_both (Build.return (String_map.singleton m.name [])))
         ~requires:(
@@ -581,7 +584,7 @@ Add it to your jbuild file to remove this warning.
     List.iter Cm_kind.all ~f:(fun cm_kind ->
       let files =
         String_map.fold modules ~init:[] ~f:(fun ~key:_ ~data:m acc ->
-          Module.cm_file m ~dir cm_kind :: acc)
+          Module.cm_file m ~obj_dir cm_kind :: acc)
       in
       SC.Libs.setup_file_deps_alias sctx (dir, lib) ~ext:(Cm_kind.ext cm_kind)
         files);
@@ -591,7 +594,7 @@ Add it to your jbuild file to remove this warning.
          Path.relative dir (header ^ ".h")));
 
     List.iter Mode.all ~f:(fun mode ->
-      build_lib lib ~scope ~flags ~dir ~mode ~modules ~dep_graph);
+      build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~modules ~dep_graph);
     (* Build *.cma.js *)
     SC.add_rules sctx (
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
@@ -640,13 +643,14 @@ Add it to your jbuild file to remove this warning.
     ; preprocess = Buildable.single_preprocess lib.buildable
     ; libname = Some lib.name
     ; source_dirs = Path.Set.empty
+    ; objs_dirs = Path.Set.singleton obj_dir
     }
 
   (* +-----------------------------------------------------------------+
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  let build_exe ~js_of_ocaml ~flags ~scope ~dir ~requires ~name ~mode ~modules ~dep_graph
+  let build_exe ~js_of_ocaml ~flags ~scope ~dir ~obj_dir ~requires ~name ~mode ~modules ~dep_graph
         ~link_flags ~force_custom_bytecode =
     let exe_ext = Mode.exe_ext mode in
     let mode, link_custom, compiler =
@@ -664,6 +668,7 @@ Add it to your jbuild file to remove this warning.
          >>> Build.arr (fun dep_graph ->
            Ocamldep.names_to_top_closed_cm_files
              ~dir
+             ~obj_dir
              ~dep_graph
              ~modules
              ~mode
@@ -707,6 +712,7 @@ Add it to your jbuild file to remove this warning.
       SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm_and_flags >>> r))
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules ~scope =
+    let obj_dir = dir in
     let dep_kind = Build.Required in
     let flags = Ocaml_flags.make exes.buildable sctx ~scope ~dir in
     let modules =
@@ -748,12 +754,12 @@ Add it to your jbuild file to remove this warning.
     (* CR-someday jdimino: this should probably say [~dynlink:false] *)
     Module_compilation.build_modules sctx
       ~js_of_ocaml:exes.buildable.js_of_ocaml
-      ~dynlink:true ~flags ~scope ~dir ~dep_graph ~modules
+      ~dynlink:true ~flags ~scope ~dir ~obj_dir ~dep_graph ~modules
       ~requires ~alias_module:None;
 
     List.iter exes.names ~f:(fun name ->
       List.iter Mode.all ~f:(fun mode ->
-        build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~scope ~dir ~requires ~name
+        build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~scope ~dir ~obj_dir ~requires ~name
           ~mode ~modules ~dep_graph ~link_flags:exes.link_flags
           ~force_custom_bytecode:(mode = Native && not exes.modes.native)));
     { Merlin.
@@ -762,6 +768,7 @@ Add it to your jbuild file to remove this warning.
     ; preprocess = Buildable.single_preprocess exes.buildable
     ; libname    = None
     ; source_dirs = Path.Set.empty
+    ; objs_dirs  = Path.Set.singleton obj_dir
     }
 
   (* +-----------------------------------------------------------------+
@@ -829,6 +836,7 @@ Add it to your jbuild file to remove this warning.
           ; preprocess      = Jbuild.Preprocess.No_preprocessing
           ; libname         = None
           ; source_dirs     = Path.Set.singleton src_dir
+          ; objs_dirs       = Path.Set.empty
           }
       | _ -> None)
     |> Merlin.merge_all
@@ -921,6 +929,7 @@ Add it to your jbuild file to remove this warning.
      +-----------------------------------------------------------------+ *)
 
   let lib_install_files ~dir ~sub_dir (lib : Library.t) =
+    let obj_dir = Lib.lib_obj_dir dir lib in
     let make_entry section fn =
       Install.Entry.make section fn
         ?dst:(Option.map sub_dir ~f:(fun d -> sprintf "%s/%s" d (Path.basename fn)))
@@ -932,9 +941,9 @@ Add it to your jbuild file to remove this warning.
       List.concat
         [ List.concat_map modules ~f:(fun m ->
             List.concat
-              [ [ Module.cm_file m ~dir Cmi ]
-              ; if_ native [ Module.cm_file m ~dir Cmx ]
-              ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~dir)
+              [ [ Module.cm_file m ~obj_dir Cmi ]
+              ; if_ native [ Module.cm_file m ~obj_dir Cmx ]
+              ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~obj_dir)
               ; [ match Module.file m ~dir Intf with
                   | Some fn -> fn
                   | None    -> Path.relative dir m.impl.name ]

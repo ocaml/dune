@@ -4,10 +4,10 @@
       ocamldep foo.depends.ocamldep-output
       ocamldep foo.dependsi.ocamldep-output
           odoc _doc/odoc.css
-        ocamlc foo_byte.{cmi,cmo,cmt}
-        ocamlc foo.{cmi,cmo,cmt}
-          odoc foo_byte.odoc
-          odoc foo.odoc
+        ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
+        ocamlc .foo.objs/foo.{cmi,cmo,cmt}
+          odoc .foo_byte.objs/foo_byte.odoc
+          odoc .foo.objs/foo.odoc
           odoc _doc/foo.byte/index.html
           odoc _doc/foo.byte/Foo_byte/.jbuilder-keep,_doc/foo.byte/Foo_byte/index.html
           odoc _doc/foo/index.html

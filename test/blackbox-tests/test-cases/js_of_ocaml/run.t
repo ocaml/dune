@@ -1,22 +1,22 @@
   $ $JBUILDER build -j1 --root . --dev bin/technologic.bc.js @install lib/x.cma.js lib/x__Y.cmo.js bin/z.cmo.js
         ocamlc lib/stubs.o
       ocamlopt .ppx/js_of_ocaml-ppx/ppx.exe
-        ocamlc lib/x__.{cmi,cmo,cmt}
+        ocamlc lib/.x.objs/x__.{cmi,cmo,cmt}
     ocamlmklib lib/dllx_stubs.so,lib/libx_stubs.a
            ppx lib/x.pp.ml
            ppx lib/y.pp.ml
            ppx bin/technologic.pp.ml
            ppx bin/z.pp.ml
-      ocamlopt lib/x__.{cmx,o}
+      ocamlopt lib/.x.objs/x__.{cmx,o}
       ocamldep lib/x.depends.ocamldep-output
       ocamldep bin/technologic.depends.ocamldep-output
-        ocamlc lib/x__Y.{cmi,cmo,cmt}
+        ocamlc lib/.x.objs/x__Y.{cmi,cmo,cmt}
    js_of_ocaml .js/js_of_ocaml/js_of_ocaml.cma.js
    js_of_ocaml .js/stdlib/stdlib.cma.js
-   js_of_ocaml lib/x__Y.cmo.js
-      ocamlopt lib/x__Y.{cmx,o}
-        ocamlc lib/x.{cmi,cmo,cmt}
-      ocamlopt lib/x.{cmx,o}
+   js_of_ocaml lib/.x.objs/x__Y.cmo.js
+      ocamlopt lib/.x.objs/x__Y.{cmx,o}
+        ocamlc lib/.x.objs/x.{cmi,cmo,cmt}
+      ocamlopt lib/.x.objs/x.{cmx,o}
         ocamlc lib/x.cma
         ocamlc bin/z.{cmi,cmo,cmt}
       ocamlopt lib/x.{a,cmxa}
@@ -33,12 +33,12 @@
   break it
   fix it
   $ $JBUILDER build -j1 --root . bin/technologic.bc.js @install
-        ocamlc lib/x__.{cmi,cmo,cmt}
-      ocamlopt lib/x__.{cmx,o}
-        ocamlc lib/x__Y.{cmi,cmo,cmt}
-      ocamlopt lib/x__Y.{cmx,o}
-        ocamlc lib/x.{cmi,cmo,cmt}
-      ocamlopt lib/x.{cmx,o}
+        ocamlc lib/.x.objs/x__.{cmi,cmo,cmt}
+      ocamlopt lib/.x.objs/x__.{cmx,o}
+        ocamlc lib/.x.objs/x__Y.{cmi,cmo,cmt}
+      ocamlopt lib/.x.objs/x__Y.{cmx,o}
+        ocamlc lib/.x.objs/x.{cmi,cmo,cmt}
+      ocamlopt lib/.x.objs/x.{cmx,o}
         ocamlc lib/x.cma
         ocamlc bin/z.{cmi,cmo,cmt}
       ocamlopt lib/x.{a,cmxa}

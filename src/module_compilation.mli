@@ -15,6 +15,7 @@ val build_module
   -> Module.t
   -> scope:Jbuild.Scope.t
   -> dir:Path.t
+  -> obj_dir:Path.t
   -> dep_graph:Ocamldep.dep_graph
   -> modules:Module.t String_map.t
   -> requires:(unit, Lib.t list) Build.t Cm_kind.Dict.t
@@ -29,6 +30,7 @@ val build_modules
   -> flags:Ocaml_flags.t
   -> scope:Jbuild.Scope.t
   -> dir:Path.t
+  -> obj_dir:Path.t
   -> dep_graph:Ocamldep.dep_graph
   -> modules:Module.t String_map.t
   -> requires:(unit, Lib.t list) Build.t

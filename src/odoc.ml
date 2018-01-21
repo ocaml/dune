@@ -9,34 +9,34 @@ let ( ++ ) = Path.relative
 let get_odoc sctx = SC.resolve_program sctx "odoc" ~hint:"opam install odoc"
 let odoc_ext = ".odoc"
 
-let module_deps (m : Module.t) ~dir ~dep_graph ~modules =
+let module_deps (m : Module.t) ~dir ~obj_dir ~dep_graph ~modules =
   Build.dyn_paths
     (dep_graph
      >>^ fun graph ->
      List.map (Utils.find_deps ~dir graph m.name)
        ~f:(fun name ->
          let m = Utils.find_module ~dir modules name in
-         Module.odoc_file m ~dir))
+         Module.odoc_file m ~obj_dir))
 
-let compile_module sctx (m : Module.t) ~odoc ~dir ~includes ~dep_graph ~modules
+let compile_module sctx (m : Module.t) ~odoc ~dir ~obj_dir ~includes ~dep_graph ~modules
       ~lib_unique_name =
   let context = SC.context sctx in
-  let odoc_file = Module.odoc_file m ~dir in
+  let odoc_file = Module.odoc_file m ~obj_dir in
   SC.add_rule sctx
-    (module_deps m ~dir ~dep_graph ~modules
+    (module_deps m ~dir ~obj_dir ~dep_graph ~modules
      >>>
      includes
      >>>
      Build.run ~context ~dir odoc ~extra_targets:[odoc_file]
        [ A "compile"
        ; Dyn (fun x -> x)
-       ; A "-I"; Path dir
+       ; A "-I"; Path obj_dir
        ; As ["--pkg"; lib_unique_name]
-       ; Dep (Module.cmti_file m ~dir)
+       ; Dep (Module.cmti_file m ~obj_dir)
        ]);
   (m, odoc_file)
 
-let to_html sctx (m : Module.t) odoc_file ~doc_dir ~odoc ~dir ~includes
+let to_html sctx (m : Module.t) odoc_file ~doc_dir ~odoc ~dir ~obj_dir ~includes
       ~lib_unique_name ~(lib : Library.t) =
   let context = SC.context sctx in
   let html_dir = doc_dir ++ lib_unique_name ++ String.capitalize_ascii m.obj_name in
@@ -52,7 +52,7 @@ let to_html sctx (m : Module.t) odoc_file ~doc_dir ~odoc ~dir ~includes
        ; Build.run ~context ~dir odoc ~extra_targets:[html_file]
            [ A "html"
            ; Dyn (fun x -> x)
-           ; A "-I"; Path dir
+           ; A "-I"; Path obj_dir
            ; A "-o"; Path doc_dir
            ; Dep odoc_file
            ]
@@ -61,7 +61,7 @@ let to_html sctx (m : Module.t) odoc_file ~doc_dir ~odoc ~dir ~includes
     );
   html_file
 
-let lib_index sctx ~odoc ~dir ~(lib : Library.t) ~lib_name ~lib_unique_name ~doc_dir ~modules
+let lib_index sctx ~odoc ~dir ~obj_dir ~(lib : Library.t) ~lib_name ~lib_unique_name ~doc_dir ~modules
       ~includes =
   let context = SC.context sctx in
   let generated_index_mld = dir ++ sprintf "%s-generated.mld" lib.name in
@@ -101,7 +101,7 @@ let lib_index sctx ~odoc ~dir ~(lib : Library.t) ~lib_name ~lib_unique_name ~doc
      Build.run ~context ~dir odoc ~extra_targets:[html_file]
        [ A "html"
        ; Dyn (fun x -> x)
-       ; A "-I"; Path dir
+       ; A "-I"; Path obj_dir
        ; A "-o"; Path doc_dir
        ; A "--index-for"; A lib_unique_name
        ; Dep generated_index_mld
@@ -116,6 +116,7 @@ let toplevel_index ~doc_dir = doc_dir ++ "index.html"
 
 let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
       ~(dep_graph:Ocamldep.dep_graph) =
+  let obj_dir = Lib.lib_obj_dir dir lib in
   let lib_unique_name = SC.unique_library_name sctx (Internal (dir, lib)) in
   let lib_name = Library.best_name lib in
   let context = SC.context sctx in
@@ -141,7 +142,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
   in
   let modules_and_odoc_files =
     List.map (String_map.values modules)
-      ~f:(compile_module sctx ~odoc ~dir ~includes ~dep_graph ~modules
+      ~f:(compile_module sctx ~odoc ~dir ~obj_dir ~includes ~dep_graph ~modules
             ~lib_unique_name)
   in
   SC.Libs.setup_file_deps_alias sctx ~ext:odoc_ext (dir, lib)
@@ -158,11 +159,11 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
        in*)
   let html_files =
     List.map modules_and_odoc_files ~f:(fun (m, odoc_file) ->
-      to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~lib
+      to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~obj_dir ~includes ~lib
         ~lib_unique_name)
   in
   let lib_index_html =
-    lib_index sctx ~dir ~lib ~lib_unique_name ~lib_name ~doc_dir
+    lib_index sctx ~dir ~obj_dir ~lib ~lib_unique_name ~lib_name ~doc_dir
       ~modules ~includes ~odoc
   in
   SC.add_alias_deps sctx (Build_system.Alias.doc ~dir)

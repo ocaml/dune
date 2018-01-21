@@ -5,10 +5,14 @@ module Internal : sig
 end
 
 type t =
-  | Internal of Internal.t
-  | External of Findlib.package
+  | Internal of Internal.t * bool
+  | External of Findlib.package * bool
 
 module Set : Set.S with type elt := t
+
+val included : t -> bool
+val set_included : t -> t
+val unset_included : t -> t
 
 val lib_obj_dir : Path.t -> Jbuild.Library.t -> Path.t
 

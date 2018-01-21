@@ -113,12 +113,12 @@ let create
       (struct type t = Lib.t list end)
       (struct
         open Sexp.To_sexp
-        let t _dir l = list string (List.map l ~f:Lib.best_name)
+        let t _dir l = list string (List.map l ~f:Lib_db.best_name)
       end)
       (struct
         open Sexp.Of_sexp
         let t dir sexp =
-          List.map (list string sexp) ~f:(Lib_db.find_exn libs ~from:dir)
+          List.map (list string sexp) ~f:(Lib_db.resolve_exn libs ~from:dir)
       end)
   in
   let artifacts =
@@ -225,7 +225,7 @@ module Libs = struct
   open Build.O
   open Lib_db
 
-  let find t ~from name = find t.libs ~from name
+  let find t ~included ~from name = find t.libs ~included ~from name
 
   let best_lib_dep_names_exn t ~dir deps = best_lib_dep_names_exn t.libs ~dir deps
 
@@ -233,8 +233,9 @@ module Libs = struct
     let fn = Path.relative dir (item ^ ".requires.sexp") in
     Build.Vspec.T (fn, t.libs_vfile)
 
-  let load_requires t ~dir ~item =
+  let load_requires t ~included ~dir ~item =
     Build.vpath (vrequires t ~dir ~item)
+    >>^ (fun t -> if included then t else List.map ~f:Lib.unset_included t)
 
   let vruntime_deps t ~dir ~item =
     let fn = Path.relative dir (item ^ ".runtime-deps.sexp") in
@@ -254,18 +255,19 @@ module Libs = struct
       (Build.record_lib_deps ~dir ~kind:dep_kind lib_deps
        >>>
        Build.all
-         (List.map internals ~f:(fun ((dir, lib) : Lib.Internal.t) ->
-            load_requires t ~dir ~item:lib.name))
+         (List.map internals ~f:(fun (((dir, lib), included) : Lib.Internal.t * bool) ->
+            load_requires t ~included ~dir ~item:lib.name))
        >>^ (fun internal_deps ->
          let externals =
-           Findlib.closure externals
+           (* TODO GRGR FIXME ... *)
+           Findlib.closure (List.map ~f:fst externals)
              ~required_by:dir
              ~local_public_libs:(local_public_libs t.libs)
-           |> List.map ~f:(fun pkg -> Lib.External pkg)
+           |> List.map ~f:(fun pkg -> Lib.External (pkg, true))
          in
          Lib.remove_dups_preserve_order
            (List.concat (externals :: internal_deps) @
-            List.map internals ~f:(fun x -> Lib.Internal x))))
+            List.map internals ~f:(fun (x, _) -> Lib.Internal (x, true)))))
 
   let closed_ppx_runtime_deps_of t ~dir ~dep_kind lib_deps =
     let internals, externals, fail = Lib_db.interpret_lib_deps t.libs ~dir lib_deps in
@@ -273,14 +275,15 @@ module Libs = struct
       (Build.record_lib_deps ~dir ~kind:dep_kind lib_deps
        >>>
        Build.all
-         (List.map internals ~f:(fun ((dir, lib) : Lib.Internal.t) ->
+         (List.map internals ~f:(fun (((dir, lib), _) : Lib.Internal.t * bool) ->
             load_runtime_deps t ~dir ~item:lib.name))
        >>^ (fun libs ->
          let externals =
-           Findlib.closed_ppx_runtime_deps_of externals
+           (* FIXME GRGR ... fst externals... *)
+           Findlib.closed_ppx_runtime_deps_of (List.map ~f:fst externals)
              ~required_by:dir
              ~local_public_libs:(local_public_libs t.libs)
-           |> List.map ~f:(fun pkg -> Lib.External pkg)
+           |> List.map ~f:(fun pkg -> Lib.External (pkg, true))
          in
          Lib.remove_dups_preserve_order (List.concat (externals :: libs))))
 
@@ -310,7 +313,7 @@ module Libs = struct
             (List.map all_pps ~f:Lib_dep.direct))
        >>>
        Build.arr (fun (libs, rt_deps) ->
-         Lib.remove_dups_preserve_order (libs @ rt_deps))
+         (Lib.remove_dups_preserve_order (libs @ rt_deps)))
        >>>
        Build.store_vfile vrequires);
     Build.vpath vrequires
@@ -357,9 +360,9 @@ module Libs = struct
     Build.dyn_paths (Build.arr (fun libs ->
       List.fold_left libs ~init:[] ~f:(fun acc (lib : Lib.t) ->
         match lib with
-        | External pkg ->
+        | External (pkg, _) ->
           Build_system.stamp_file_for_files_of t.build_system ~dir:pkg.dir ~ext :: acc
-        | Internal lib ->
+        | Internal (lib, _) ->
           Alias.stamp_file (lib_files_alias lib ~ext) :: acc)))
 
   let static_file_deps ~ext lib =
@@ -762,8 +765,8 @@ module PP = struct
         let libs, drivers =
           List.partition_map libs ~f:(fun lib ->
             if (match lib with
-              | External pkg -> is_driver pkg.name
-              | Internal (_, lib) ->
+              | External (pkg, _) -> is_driver pkg.name
+              | Internal ((_, lib), _) ->
                 is_driver lib.name ||
                 match lib.public with
                 | None -> false
@@ -785,7 +788,7 @@ module PP = struct
     (* Provide a better error for migrate_driver_main given that this is an implicit
        dependency *)
     let libs =
-      match Libs.find sctx ~from:dir migrate_driver_main with
+      match Libs.find sctx ~included:true ~from:dir migrate_driver_main with
       | None ->
         Build.fail { fail = fun () ->
           die "@{<error>Error@}: I couldn't find '%s'.\n\
@@ -806,7 +809,7 @@ module PP = struct
          List.rev_append
            (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib libs)
            (List.filter_map libs ~f:(function
-              | Lib.Internal (dir, lib) ->
+              | Lib.Internal ((dir, lib), _) ->
                 Some (Path.relative dir (lib.name ^ ctx.ext_lib))
               | External _ ->
                 None))))

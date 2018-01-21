@@ -1,0 +1,21 @@
+(jbuild_version 1)
+
+(executable
+ ((name test_c)
+  (libraries (c))
+  (modules (Test_c))))
+
+(executable
+ ((name test_d)
+  (libraries (d))
+  (modules (Test_d))))
+
+(executable
+ ((name test_e)
+  (libraries (b))
+  (modules (Test_e))))
+
+(executable
+ ((name test_f)
+  (libraries (!b))
+  (modules (Test_f))))

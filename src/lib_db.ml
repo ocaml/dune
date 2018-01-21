@@ -34,17 +34,18 @@ let find_by_internal_name t ~from name =
   let scope = internal_name_scope t ~dir:from in
   String_map.find name scope.libs
 
-let find_exn t ~from name =
+let find_exn t ~included ~from name =
   match find_by_internal_name t ~from name with
-  | Some x -> Lib.Internal x
+  | Some x -> Lib.Internal (x, included)
   | None ->
     Hashtbl.find_or_add t.by_public_name name
       ~f:(fun name ->
         External (Findlib.find_exn t.findlib name
-                    ~required_by:[Utils.jbuild_name_in ~dir:from]))
+                    ~required_by:[Utils.jbuild_name_in ~dir:from],
+                  included))
 
-let find t ~from name =
-  match find_exn t ~from name with
+let find t ~included ~from name =
+  match find_exn t ~included ~from name with
   | exception _ -> None
   | x -> Some x
 
@@ -53,7 +54,7 @@ let find_internal t ~from name =
   | Some _ as some -> some
   | None ->
     match Hashtbl.find t.by_public_name name with
-    | Some (Internal x) -> Some x
+    | Some (Internal (x, _)) -> Some x
     | _ -> None
 
 module Local_closure = Top_closure.Make(String)(struct
@@ -72,7 +73,7 @@ let top_sort_internals t ~internal_libraries =
   | Ok l -> l
   | Error cycle ->
     die "dependency cycle between libraries:\n   %s"
-      (List.map cycle ~f:(fun lib -> Lib.describe (Internal lib))
+      (List.map cycle ~f:(fun lib -> Lib.describe (Internal (lib, true)))
        |> String.concat ~sep:"\n-> ")
 
 let lib_is_available t ~from name =
@@ -133,8 +134,8 @@ let create findlib ~scopes internal_libraries =
       match Hashtbl.find t.by_public_name name with
       | None
       | Some (External _) ->
-        Hashtbl.add t.by_public_name ~key:name ~data:(Internal internal)
-      | Some (Internal dup) ->
+        Hashtbl.add t.by_public_name ~key:name ~data:(Internal (internal, true))
+      | Some (Internal (dup, _)) ->
         let internal_path (path, _) = Path.relative path "jbuild" in
         die "Libraries with identical public names %s defined in %a and %a."
           name Path.pp (internal_path internal) Path.pp (internal_path dup)
@@ -144,15 +145,27 @@ let create findlib ~scopes internal_libraries =
 let internal_libs_without_non_installable_optional_ones t =
   String_map.values t.instalable_internal_libs
 
+let best_name lib =
+  (if Lib.included lib then "" else "!") ^ Lib.best_name lib
+
+let resolve_exn t ~from name =
+  let included, name =
+    if name.[0] = '!' then
+      false, String.sub name ~pos:1 ~len:(String.length name - 1)
+    else
+      true, name
+  in
+  find_exn t ~included ~from name
+
 let interpret_lib_dep t ~dir lib_dep =
   match lib_dep with
   | Lib_dep.Direct name -> begin
-      match find_exn t ~from:dir name with
+      match resolve_exn t ~from:dir name with
       | x -> Inl [x]
       | exception _ ->
         (* Call [find] again to get a proper backtrace *)
         Inr { fail = fun () ->
-          ignore (find_exn t ~from:dir name : Lib.t);
+          ignore (find_exn t ~included:true ~from:dir name : Lib.t);
           assert false }
     end
   | Select { choices; loc; _ } ->
@@ -162,7 +175,7 @@ let interpret_lib_dep t ~dir lib_dep =
           None
         else
           match
-            List.map (String_set.elements required) ~f:(find_exn t ~from:dir)
+            List.map (String_set.elements required) ~f:(find_exn t ~included:true ~from:dir)
           with
           | l           -> Some l
           | exception _ -> None)
@@ -179,8 +192,8 @@ let interpret_lib_deps t ~dir lib_deps =
   in
   let internals, externals =
     List.partition_map (List.concat libs) ~f:(function
-      | Internal x -> Inl x
-      | External x -> Inr x)
+      | Internal (x, included) -> Inl (x, included)
+      | External (x, included) -> Inr (x, included))
   in
   (internals, externals,
    match failures with
@@ -211,8 +224,8 @@ let resolve_selects t ~from lib_deps =
 
 let unique_library_name t (lib : Lib.t) =
   match lib with
-  | External pkg -> pkg.name
-  | Internal (dir, lib) ->
+  | External (pkg, _) -> pkg.name
+  | Internal ((dir, lib), _) ->
     match lib.public with
     | Some x -> x.name
     | None ->

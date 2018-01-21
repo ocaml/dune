@@ -51,15 +51,17 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
         let internals, externals =
           List.fold_left libs ~init:([], []) ~f:(fun (internals, externals) ->
             function
-            | Lib.Internal (path, lib) ->
+            | Lib.Internal ((path, lib), true) ->
               let spath =
                 Path.drop_optional_build_context path
                 |> Path.reach ~from:remaindir
               in
               let bpath = Path.reach (Lib.lib_obj_dir path lib) ~from:remaindir in
               ("S " ^ spath) :: ("B " ^ bpath) :: internals, externals
-            | Lib.External pkg ->
+            | Lib.External (pkg, true) ->
               internals, ("PKG " ^ pkg.name) :: externals
+            | Lib.Internal (_, false) | Lib.External (_, false) ->
+              internals, externals
           )
         in
         let source_dirs =

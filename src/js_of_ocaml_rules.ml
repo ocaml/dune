@@ -64,13 +64,13 @@ let link_rule ~sctx ~dir ~runtime ~target =
   let ctx = SC.context sctx in
   let get_all ((libs,cm),_) =
     (* Special case for the stdlib because it is not referenced in the META *)
-    let stdlib = Lib.External (Findlib.stdlib_with_archives ctx.findlib) in
+    let stdlib = Lib.External (Findlib.stdlib_with_archives ctx.findlib, true) in
     let all_libs =
       List.concat_map (stdlib :: libs) ~f:(function
-        | Lib.External pkg ->
+        | Lib.External (pkg, _) ->
           List.map (Mode.Dict.get pkg.archives Mode.Byte) ~f:(fun fn ->
             in_build_dir ~ctx [pkg.name; sprintf "%s.js" (Path.basename fn)])
-        | Lib.Internal (dir, lib) ->
+        | Lib.Internal ((dir, lib), _) ->
           [ Path.relative dir (sprintf "%s.cma.js" lib.name) ]
       )
     in

@@ -117,7 +117,7 @@ let toplevel_index ~doc_dir = doc_dir ++ "index.html"
 let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~requires
       ~(dep_graph:Ocamldep.dep_graph) =
   let obj_dir = Lib.lib_obj_dir dir lib in
-  let lib_unique_name = SC.unique_library_name sctx (Internal (dir, lib)) in
+  let lib_unique_name = SC.unique_library_name sctx (Internal ((dir, lib), true)) in
   let lib_name = Library.best_name lib in
   let context = SC.context sctx in
   let dep_graph =
@@ -235,6 +235,6 @@ let gen_rules sctx ~dir rest =
     setup_css_rule sctx;
     setup_toplevel_index_rule sctx
   | lib :: _ ->
-    match Lib_db.find (SC.libs sctx) ~from:dir lib with
+    match Lib_db.find (SC.libs sctx) ~included:true ~from:dir lib with
     | None | Some (External _) -> ()
-    | Some (Internal (dir, _)) -> SC.load_dir sctx ~dir
+    | Some (Internal ((dir, _), _)) -> SC.load_dir sctx ~dir

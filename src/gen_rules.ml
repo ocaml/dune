@@ -680,7 +680,7 @@ Add it to your jbuild file to remove this warning.
       else
         let libs =
           let f = function
-            | Lib.Internal (dir, lib) -> Some (Path.relative dir (lib.name ^ ctx.ext_lib))
+            | Lib.Internal ((dir, lib), _) -> Some (Path.relative dir (lib.name ^ ctx.ext_lib))
             | External _ -> None
           in
           List.filter_map ~f libs

@@ -598,7 +598,8 @@ Add it to your jbuild file to remove this warning.
     (* Build *.cma.js *)
     SC.add_rules sctx (
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
-      Js_of_ocaml_rules.build_cm sctx ~scope ~dir ~js_of_ocaml:lib.buildable.js_of_ocaml ~src);
+      let target = Path.extend_basename src ~suffix:".js" in
+      Js_of_ocaml_rules.build_cm sctx ~scope ~dir ~js_of_ocaml:lib.buildable.js_of_ocaml ~src ~target);
 
     if ctx.natdynlink_supported then
       Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->

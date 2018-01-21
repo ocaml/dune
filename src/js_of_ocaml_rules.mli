@@ -8,6 +8,7 @@ val build_cm
   -> dir:Path.t
   -> js_of_ocaml:Js_of_ocaml.t
   -> src:Path.t
+  -> target:Path.t
   -> (unit, Action.t) Build.t list
 
 val build_exe

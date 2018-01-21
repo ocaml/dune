@@ -6,9 +6,9 @@ This test checks that there is no clash when two private libraries have the same
       ocamldep a/test.dependsi.ocamldep-output
       ocamldep b/test.depends.ocamldep-output
       ocamldep b/test.dependsi.ocamldep-output
-        ocamlc a/test.{cmi,cmo,cmt}
+        ocamlc a/.test.objs/test.{cmi,cmo,cmt}
           odoc _doc/test@a/page-index.odoc
-        ocamlc b/test.{cmi,cmo,cmt}
+        ocamlc b/.test.objs/test.{cmi,cmo,cmt}
           odoc _doc/test@b/page-index.odoc
           odoc _doc/test@a/test.odoc
           odoc _doc/test@b/test.odoc

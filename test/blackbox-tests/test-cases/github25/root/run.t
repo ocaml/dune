@@ -8,8 +8,8 @@ We need ocamlfind to run this test
 
   $ $JBUILDER build -j1 @install --root . --only hello
       ocamldep hello.depends.ocamldep-output
-        ocamlc hello.{cmi,cmo,cmt}
-      ocamlopt hello.{cmx,o}
+        ocamlc .hello.objs/hello.{cmi,cmo,cmt}
+      ocamlopt .hello.objs/hello.{cmx,o}
         ocamlc hello.cma
       ocamlopt hello.{a,cmxa}
       ocamlopt hello.cmxs

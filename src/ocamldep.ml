@@ -97,11 +97,11 @@ let dep_closure ~dir dep_graph names =
     die "dependency cycle between modules in %s:\n   %s" (Path.to_string dir)
       (String.concat cycle ~sep:"\n-> ")
 
-let names_to_top_closed_cm_files ~dir ~dep_graph ~modules ~mode names =
+let names_to_top_closed_cm_files ~dir ~obj_dir ~dep_graph ~modules ~mode names =
   let cm_kind = Mode.cm_kind mode in
   List.map (dep_closure ~dir dep_graph names) ~f:(fun name ->
     let m = Utils.find_module ~dir modules name in
-    Module.cm_file m ~dir cm_kind)
+    Module.cm_file m ~obj_dir cm_kind)
 
 let rules sctx ~dir ~item ~modules ~alias_module ~lib_interface_module =
   Ml_kind.Dict.of_func (rules sctx ~dir ~item ~modules ~alias_module ~lib_interface_module)

@@ -2,10 +2,10 @@
       ocamldep bar.depends.ocamldep-output
       ocamldep foo_byte.depends.ocamldep-output
       ocamldep foo.depends.ocamldep-output
-        ocamlc foo_byte.{cmi,cmo,cmt}
-        ocamlc foo.{cmi,cmo,cmt}
+        ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
+        ocamlc .foo.objs/foo.{cmi,cmo,cmt}
         ocamlc foo_byte.cma
-      ocamlopt foo.{cmx,o}
+      ocamlopt .foo.objs/foo.{cmx,o}
         ocamlc bar.{cmi,cmo,cmt}
         ocamlc foo.cma
       ocamlopt foo.{a,cmxa}

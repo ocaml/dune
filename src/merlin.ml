@@ -10,6 +10,7 @@ type t =
   ; preprocess : Jbuild.Preprocess.t
   ; libname    : string option
   ; source_dirs: Path.Set.t
+  ; objs_dirs  : Path.Set.t
   }
 
 let ppx_flags sctx ~dir:_ ~scope ~src_dir:_ { preprocess; libname; _ } =
@@ -50,12 +51,12 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
         let internals, externals =
           List.fold_left libs ~init:([], []) ~f:(fun (internals, externals) ->
             function
-            | Lib.Internal (path, _) ->
+            | Lib.Internal (path, lib) ->
               let spath =
                 Path.drop_optional_build_context path
                 |> Path.reach ~from:remaindir
               in
-              let bpath = Path.reach path ~from:remaindir in
+              let bpath = Path.reach (Lib.lib_obj_dir path lib) ~from:remaindir in
               ("S " ^ spath) :: ("B " ^ bpath) :: internals, externals
             | Lib.External pkg ->
               internals, ("PKG " ^ pkg.name) :: externals
@@ -67,6 +68,12 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
             ("S " ^ path)::acc
           )
         in
+        let objs_dirs =
+          Path.Set.fold t.objs_dirs ~init:[] ~f:(fun path acc ->
+            let path = Path.reach path ~from:remaindir in
+            ("B " ^ path)::acc
+          )
+        in
         let flags =
           match flags with
           | [] -> []
@@ -76,8 +83,8 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
         in
         let dot_merlin =
           List.concat
-            [ [ "B " ^ (Path.reach dir ~from:remaindir) ]
-            ; source_dirs
+            [ source_dirs
+            ; objs_dirs
             ; internals
             ; externals
             ; flags
@@ -111,6 +118,7 @@ let merge_two a b =
        | Some _ as x -> x
        | None -> b.libname)
   ; source_dirs = Path.Set.union a.source_dirs b.source_dirs
+  ; objs_dirs = Path.Set.union a.objs_dirs b.objs_dirs
   }
 
 let merge_all = function

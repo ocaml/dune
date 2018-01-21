@@ -11,13 +11,14 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
     Option.iter (Module.cm_source ~dir m cm_kind) ~f:(fun src ->
       let ml_kind = Cm_kind.source cm_kind in
       let dst = Module.cm_file m ~obj_dir cm_kind in
-      let extra_args, extra_deps, extra_targets =
+      let extra_args, extra_deps, extra_targets, extra_symlinks =
         match cm_kind, m.intf with
         (* If there is no mli, [ocamlY -c file.ml] produces both the
            .cmY and .cmi. We choose to use ocamlc to produce the cmi
            and to produce the cmx we have to wait to avoid race
            conditions. *)
-        | Cmo, None -> [], [], [Module.cm_file m ~obj_dir Cmi]
+        | Cmo, None -> [], [], [Module.cm_file m ~obj_dir Cmi],
+                       [Module.cm_file m ~obj_dir:dir Cmi]
         | Cmx, None ->
           (* Change [-intf-suffix] so that the compiler thinks the
              cmi exists and reads it instead of re-creating it, which
@@ -25,16 +26,18 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
           ([ "-intf-suffix"
            ; Filename.extension m.impl.name
            ],
-           [Module.cm_file m ~obj_dir Cmi], [])
+           [Module.cm_file m ~obj_dir Cmi], [], [])
         | Cmi, None -> assert false
-        | Cmi, Some _ -> [], [], []
+        | Cmi, Some _ -> [], [], [], []
         (* We need the .cmi to build either the .cmo or .cmx *)
-        | (Cmo | Cmx), Some _ -> [], [Module.cm_file m ~obj_dir Cmi], []
+        | (Cmo | Cmx), Some _ -> [], [Module.cm_file m ~obj_dir Cmi], [], []
       in
-      let extra_targets =
+      let extra_targets, extra_symlinks =
         match cm_kind with
-        | Cmx -> Path.change_extension ~ext:ctx.ext_obj (Module.cm_file m ~obj_dir Cmx) :: extra_targets
-        | Cmi | Cmo -> extra_targets
+        | Cmx ->
+          Path.change_extension ~ext:ctx.ext_obj (Module.cm_file m ~obj_dir Cmx) :: extra_targets,
+          Path.change_extension ~ext:ctx.ext_obj (Module.cm_file m ~obj_dir:dir Cmx) :: extra_symlinks
+        | Cmi | Cmo -> extra_targets, extra_symlinks
       in
       let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
       let other_cm_files =
@@ -48,13 +51,20 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
                         ; Module.cm_file m ~obj_dir Cmx
                         ]))
       in
-      let extra_targets, cmt_args =
+      let extra_targets, extra_symlinks, cmt_args =
         match cm_kind with
-        | Cmx -> (extra_targets, Arg_spec.S [])
+        | Cmx -> (extra_targets, extra_symlinks, Arg_spec.S [])
         | Cmi | Cmo ->
           let fn = Option.value_exn (Module.cmt_file m ~obj_dir ml_kind) in
-          (fn :: extra_targets, A "-bin-annot")
+          let fn2 = Option.value_exn (Module.cmt_file m ~obj_dir:dir ml_kind) in
+          (fn :: extra_targets, fn2 :: extra_symlinks, A "-bin-annot")
       in
+      let old_dst = Module.cm_file m ~obj_dir:dir cm_kind in
+      if obj_dir <> dir then begin
+        SC.add_rule sctx ?sandbox (Build.symlink ~src:dst ~dst:old_dst) ;
+        List.iter2 extra_targets extra_symlinks ~f:(fun src dst ->
+          SC.add_rule sctx ?sandbox (Build.symlink ~src ~dst))
+      end;
       SC.add_rule sctx ?sandbox
         (Build.paths extra_deps >>>
          other_cm_files >>>
@@ -84,7 +94,8 @@ let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~scope ~dir
       ~requires ~alias_module);
   (* Build *.cmo.js *)
   let src = Module.cm_file m ~obj_dir Cm_kind.Cmo in
-  SC.add_rules sctx (Js_of_ocaml_rules.build_cm sctx ~scope ~dir ~js_of_ocaml ~src)
+  let target = Path.extend_basename (Module.cm_file m ~obj_dir:dir Cm_kind.Cmo) ~suffix:".js" in
+  SC.add_rules sctx (Js_of_ocaml_rules.build_cm sctx ~scope ~dir ~js_of_ocaml ~src ~target)
 
 let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~scope ~dir ~obj_dir
       ~dep_graphs ~modules ~requires ~alias_module =

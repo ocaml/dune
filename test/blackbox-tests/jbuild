@@ -247,3 +247,13 @@
      (progn
       (run ${exe:cram.exe} run.t)
       (diff? run.t run.t.corrected)))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/include-loop)))
+  (action
+   (chdir test-cases/include-loop
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))

@@ -951,7 +951,9 @@ module Stanzas = struct
     | None -> [Executables exe]
     | Some i -> [Executables exe; Install i]
 
-  let rec v1 pkgs : Stanza.t list Sexp.Of_sexp.t =
+  exception Include_loop of Path.t * (Loc.t * Path.t) list
+
+  let rec v1 pkgs ~file ~include_stack : Stanza.t list Sexp.Of_sexp.t =
     sum
       [ cstr "library"     (Library.v1 pkgs @> nil)      (fun x -> [Library     x])
       ; cstr "executable"  (Executables.v1_single pkgs @> nil) execs
@@ -969,21 +971,24 @@ module Stanzas = struct
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ; cstr_loc "include" (relative_file @> nil) (fun loc fn ->
-          let dir = Filename.dirname loc.start.pos_fname in
-          let fn =
-            if dir <> Filename.current_dir_name then
-              Filename.concat dir fn
-            else
-              fn
-          in
-          let sexps = Sexp.load ~fname:fn ~mode:Many in
-          parse pkgs sexps ~default_version:Jbuild_version.V1)
+          let include_stack = (loc, file) :: include_stack in
+          let dir = Path.parent file in
+          let file = Path.relative dir fn in
+          if List.exists include_stack ~f:(fun (_, f) -> f = file) then
+            raise (Include_loop (file, include_stack));
+          let sexps = Sexp.load ~fname:(Path.to_string file) ~mode:Many in
+          parse pkgs sexps ~default_version:Jbuild_version.V1 ~file ~include_stack)
       ]
 
-  and select : Jbuild_version.t -> Scope.t -> Stanza.t list Sexp.Of_sexp.t = function
+  and select
+    :  Jbuild_version.t
+    -> Scope.t
+    -> file:Path.t
+    -> include_stack:(Loc.t * Path.t) list
+    -> Stanza.t list Sexp.Of_sexp.t = function
     | V1  -> v1
 
-  and parse ?(default_version=Jbuild_version.latest_stable) pkgs sexps =
+  and parse ~default_version ~file ~include_stack pkgs sexps =
     let versions, sexps =
       List.partition_map sexps ~f:(function
         | List (loc, [Atom (_, "jbuild_version"); ver]) ->
@@ -997,7 +1002,30 @@ module Stanzas = struct
       | _ :: (_, loc) :: _ ->
         Loc.fail loc "jbuild_version specified too many times"
     in
-    List.concat_map sexps ~f:(select version pkgs)
+    List.concat_map sexps ~f:(select version pkgs ~file ~include_stack)
+
+  let parse ?(default_version=Jbuild_version.latest_stable) ~file pkgs sexps =
+    try
+      parse pkgs sexps ~default_version ~include_stack:[] ~file
+    with
+    | Include_loop (_, []) -> assert false
+    | Include_loop (file, last :: rest) ->
+      let loc = fst (Option.value (List.last rest) ~default:last) in
+      let line_loc (loc, file) =
+        sprintf "%s:%d"
+          (Path.to_string_maybe_quoted file)
+          loc.Loc.start.pos_lnum
+      in
+      Loc.fail loc
+        "Recursive inclusion of jbuild files detected:\n\
+         File %s is included from %s%s"
+        (Path.to_string_maybe_quoted file)
+        (line_loc last)
+        (String.concat ~sep:""
+           (List.map rest ~f:(fun x ->
+              sprintf
+                "\n--> included from %s"
+                (line_loc x))))
 
   let lib_names ts =
     List.fold_left ts ~init:String_set.empty ~f:(fun acc (_, _, stanzas) ->

@@ -974,6 +974,9 @@ module Stanzas = struct
           let include_stack = (loc, file) :: include_stack in
           let dir = Path.parent file in
           let file = Path.relative dir fn in
+          if not (Path.exists file) then
+            Loc.fail loc "File %s doesn't exist."
+              (Path.to_string_maybe_quoted file);
           if List.exists include_stack ~f:(fun (_, f) -> f = file) then
             raise (Include_loop (file, include_stack));
           let sexps = Sexp.load ~fname:(Path.to_string file) ~mode:Many in

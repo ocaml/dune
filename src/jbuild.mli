@@ -269,6 +269,7 @@ module Stanzas : sig
 
   val parse
     :  ?default_version:Jbuild_version.t
+    -> file:Path.t
     -> Scope.t
     -> Sexp.Ast.t list
     -> t

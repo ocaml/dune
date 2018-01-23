@@ -229,6 +229,9 @@ module Libs = struct
 
   let best_lib_dep_names_exn t ~dir deps = best_lib_dep_names_exn t.libs ~dir deps
 
+  let ppx_runtime_deps_for_deprecated_method_exn t ~dir lib_deps =
+    ppx_runtime_deps_for_deprecated_method_exn t.libs ~dir lib_deps
+
   let vrequires t ~dir ~item =
     let fn = Path.relative dir (item ^ ".requires.sexp") in
     Build.Vspec.T (fn, t.libs_vfile)

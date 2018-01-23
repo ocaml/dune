@@ -54,7 +54,8 @@ let archives ?(preds=[]) name =
   ; plugin  (preds @ [Pos "native"]) (name ^ ".cmxs")
   ]
 
-let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~version =
+let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps
+      ~ppx_runtime_deps_for_deprecated_method ~version =
   let desc =
     match lib.synopsis with
     | Some s -> s
@@ -75,22 +76,24 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~
       ; requires ~preds lib_deps
       ]
     ; archives ~preds lib.name
+    ; (match ppx_rt_deps with
+       | [] -> []
+       | _ ->
+         [ Comment "This is what jbuilder uses to find out the runtime \
+                    dependencies of"
+         ; Comment "a preprocessor"
+         ; ppx_runtime_deps ppx_rt_deps
+         ])
     ; (match lib.kind with
        | Normal -> []
        | Ppx_rewriter | Ppx_deriver ->
+         (* Deprecated ppx method support *)
          let no_ppx_driver = Neg "ppx_driver" and no_custom_ppx = Neg "custom_ppx" in
          List.concat
-           [ [ Comment "This is what jbuilder uses to find out the runtime \
-                        dependencies of"
-             ; Comment "a preprocessor"
-             ; ppx_runtime_deps ppx_rt_deps
-             ]
-
-           (* Deprecated ppx method support *)
-           ; [ Comment "This line makes things transparent for people mixing \
+           [ [ Comment "This line makes things transparent for people mixing \
                         preprocessors"
              ; Comment "and normal dependencies"
-             ; requires ~preds:[no_ppx_driver] ppx_rt_deps
+             ; requires ~preds:[no_ppx_driver] ppx_runtime_deps_for_deprecated_method
              ]
            ; match lib.kind with
            | Normal -> assert false
@@ -120,7 +123,8 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~
       )
     ]
 
-let gen ~package ~version ~stanzas ~resolve_lib_dep_names =
+let gen ~package ~version ~stanzas ~resolve_lib_dep_names
+      ~ppx_runtime_deps_for_deprecated_method_exn =
   let items =
     List.filter_map stanzas ~f:(fun (dir, stanza) ->
       match (stanza : Stanza.t) with
@@ -142,8 +146,25 @@ let gen ~package ~version ~stanzas ~resolve_lib_dep_names =
         resolve_lib_dep_names ~dir
           (List.map lib.ppx_runtime_libraries ~f:Lib_dep.direct)
       in
+      (* For the deprecated method, we need to put the transitive closure of the ppx
+         runtime dependencies.
+
+         We need to do this because [ocamlfind ocamlc -package ppx_foo] will not look
+         for the transitive dependencies of [foo], and the runtime dependencies might
+         be attached to a dependency of [foo] rather than [foo] itself.
+
+         Sigh...
+      *)
+      let ppx_runtime_deps_for_deprecated_method =
+        String_set.union
+          (String_set.of_list ppx_runtime_deps)
+          (ppx_runtime_deps_for_deprecated_method_exn ~dir
+             lib.buildable.libraries)
+        |> String_set.elements
+      in
       (pub_name,
-       gen_lib pub_name lib ~lib_deps ~ppx_runtime_deps ~version))
+       gen_lib pub_name lib ~lib_deps ~ppx_runtime_deps ~version
+         ~ppx_runtime_deps_for_deprecated_method))
   in
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->

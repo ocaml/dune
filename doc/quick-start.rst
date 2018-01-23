@@ -3,7 +3,7 @@ Quickstart
 **********
 
 This document gives simple usage examples of Jbuilder. You can also look at
-`examples <https://github.com/janestreet/jbuilder/tree/master/example>`__ for
+`examples <https://github.com/ocaml/dune/tree/master/example>`__ for
 complete examples of projects using Jbuilder.
 
 Building a hello world program

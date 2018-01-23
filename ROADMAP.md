@@ -67,7 +67,7 @@ documentation.
 
 So that we can filter tests when using `-p pkg`
 
-- *05/02/2017*: Rudi Grinberg added this ([[https://github.com/janestreet/jbuilder/pull/64][#64]])
+- *05/02/2017*: Rudi Grinberg added this ([[https://github.com/ocaml/dune/pull/64][#64]])
 
 ## ~~Integrate rules for js_of_ocaml~~
 

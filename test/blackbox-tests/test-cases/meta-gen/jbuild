@@ -16,7 +16,7 @@
 (library
  ((name foobar_runtime_lib2)
   (public_name foobar.runtime-lib2)
-  (synopsis "sub library with modes set to byte")))
+  (synopsis "runtime library for foobar.rewriter2")))
 
 (library
  ((name foobar_rewriter)

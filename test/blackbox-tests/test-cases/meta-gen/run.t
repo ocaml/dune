@@ -44,7 +44,7 @@
   )
   package "runtime-lib2" (
     directory = "runtime-lib2"
-    description = "sub library with modes set to byte"
+    description = "runtime library for foobar.rewriter2"
     requires = ""
     archive(byte) = "foobar_runtime_lib2.cma"
     archive(native) = "foobar_runtime_lib2.cmxa"

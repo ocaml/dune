@@ -163,7 +163,7 @@ module Gen(P : Params) = struct
     {|@{<warning>Warning@}: Module %s in %s doesn't have a corresponding .%s file.
 Modules without an implementation are not recommended, see this discussion:
 
-  https://github.com/janestreet/jbuilder/issues/9
+  https://github.com/ocaml/dune/issues/9
 
 In the meantime I'm implicitely adding this rule:
 
@@ -341,7 +341,7 @@ Add it to your jbuild file to remove this warning.
           | Native -> ["-cclib"; "-l" ^ stubs_name]
       in
       let map_cclibs =
-        (* https://github.com/janestreet/jbuilder/issues/119 *)
+        (* https://github.com/ocaml/dune/issues/119 *)
         if ctx.ccomp_type = "msvc" then
           msvc_hack_cclibs
         else
@@ -559,7 +559,7 @@ Add it to your jbuild file to remove this warning.
                ; Path (Path.relative dir (sprintf "%s_stubs" lib.name))
                ; Deps o_files
                ; Dyn (fun cclibs ->
-                   (* https://github.com/janestreet/jbuilder/issues/119 *)
+                   (* https://github.com/ocaml/dune/issues/119 *)
                    if ctx.ccomp_type = "msvc" then
                      let cclibs = msvc_hack_cclibs cclibs in
                      Arg_spec.quote_args "-ldopt" cclibs

@@ -1208,7 +1208,7 @@ If a ``jbuild`` file starts with ``(* -*- tuareg -*- *)``, then it is
 interpreted as an OCaml script that generates the ``jbuild`` file as described
 in the rest of this section. The code in the script will have access to a
 `Jbuild_plugin
-<https://github.com/janestreet/jbuilder/blob/master/plugin/jbuild_plugin.mli>`__
+<https://github.com/ocaml/dune/blob/master/plugin/jbuild_plugin.mli>`__
 module containing details about the build context it is executed in.
 
 The OCaml syntax gives you an escape hatch for when the S-expression

@@ -23,7 +23,7 @@ jbuilder.
 
 [manual]:         https://jbuilder.readthedocs.io/en/latest/
 [quick-start]:    https://jbuilder.readthedocs.io/en/latest/quick-start.html
-[example]:        https://github.com/janestreet/jbuilder/tree/master/example
+[example]:        https://github.com/ocaml/dune/tree/master/example
 [travis]:         https://travis-ci.org/ocaml/dune
 [travis-img]:     https://travis-ci.org/ocaml/dune.svg?branch=master
 [appveyor]:       https://ci.appveyor.com/project/diml/dune/branch/master
@@ -31,7 +31,7 @@ jbuilder.
 [merlin]:         https://github.com/ocaml/merlin
 [opam]:           https://opam.ocaml.org
 [jenga]:          https://github.com/janestreet/jenga
-[issues]:         https://github.com/janestreet/jbuilder/issues
+[issues]:         https://github.com/ocaml/dune/issues
 [topkg-jbuilder]: https://github.com/diml/topkg-jbuilder
 [video]:          https://youtu.be/BNZhmMAJarw
 
@@ -192,7 +192,7 @@ Known issues
 
 ### Optional libraries inside a multilib directory
 
-https://github.com/janestreet/jbuilder/issues/51
+https://github.com/ocaml/dune/issues/51
 
 If a directory contains several libraries and some are marked as
 optional (by adding `(optional)` in the `(library ...)` stanza), then
@@ -207,7 +207,7 @@ Put each optional library in a separate directory.
 
 ### mli only modules
 
-https://github.com/janestreet/jbuilder/issues/9
+https://github.com/ocaml/dune/issues/9
 
 Due to the low-level details of OCaml compilation, it is currently
 possible to write a module that has only a `.mli` and no `.ml`

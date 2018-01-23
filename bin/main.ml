@@ -155,7 +155,7 @@ let help_secs =
   ; `S "MORE HELP"
   ; `P "Use `$(mname) $(i,COMMAND) --help' for help on a single command."
   ; `S "BUGS"
-  ; `P "Check bug reports at https://github.com/janestreet/jbuilder/issues"
+  ; `P "Check bug reports at https://github.com/ocaml/dune/issues"
   ]
 
 let common =

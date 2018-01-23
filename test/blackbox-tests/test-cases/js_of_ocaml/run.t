@@ -15,8 +15,8 @@
         ocamlc lib/x__Y.{cmi,cmo,cmt}
    js_of_ocaml .js/js_of_ocaml/js_of_ocaml.cma.js
    js_of_ocaml .js/stdlib/stdlib.cma.js
-   js_of_ocaml lib/x__Y.cmo.js
       ocamlopt lib/x__Y.{cmx,o}
+   js_of_ocaml lib/x__Y.cmo.js
         ocamlc lib/x.{cmi,cmo,cmt}
       ocamlopt lib/x.{cmx,o}
         ocamlc lib/x.cma
@@ -36,17 +36,17 @@
   fix it
   $ $JBUILDER build -j1 --root . bin/technologic.bc.js @install
         ocamlc lib/x__.{cmi,cmo,cmt}
-      ocamlopt lib/x__.{cmx,o}
         ocamlc lib/x__Y.{cmi,cmo,cmt}
-      ocamlopt lib/x__Y.{cmx,o}
+      ocamlopt lib/x__.{cmx,o}
         ocamlc lib/x.{cmi,cmo,cmt}
-      ocamlopt lib/x.{cmx,o}
+      ocamlopt lib/x__Y.{cmx,o}
         ocamlc lib/x.cma
         ocamlc bin/z.{cmi,cmo,cmt}
-      ocamlopt lib/x.{a,cmxa}
+      ocamlopt lib/x.{cmx,o}
         ocamlc bin/technologic.{cmi,cmo,cmt}
-      ocamlopt lib/x.cmxs
+      ocamlopt lib/x.{a,cmxa}
         ocamlc bin/technologic.bc
+      ocamlopt lib/x.cmxs
    js_of_ocaml bin/technologic.bc.js
   $ $NODE ./_build/default/bin/technologic.bc.js
   buy it

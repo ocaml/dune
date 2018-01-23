@@ -136,16 +136,16 @@ val create
   :  ?use_findlib:bool
   -> ?merlin:bool
   -> Workspace.Context.t
-  -> t list Future.t
+  -> t list Fiber.t
 
 val which : t -> string -> Path.t option
 
 val extend_env : vars:string Env_var_map.t -> env:string array -> string array
 
-val opam_config_var : t -> string -> string option Future.t
+val opam_config_var : t -> string -> string option Fiber.t
 
-val install_prefix : t -> Path.t Future.t
-val install_ocaml_libdir : t -> Path.t option Future.t
+val install_prefix : t -> Path.t Fiber.t
+val install_ocaml_libdir : t -> Path.t option Fiber.t
 
 val env_for_exec : t -> string array
 

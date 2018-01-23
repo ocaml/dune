@@ -1,7 +1,7 @@
 open Import
 open Jbuilder_opam_file_format
 
-let ( >>= ) = Future.( >>= )
+open Fiber.O
 
 let is_a_source_file fn =
   match Filename.extension fn with
@@ -205,11 +205,15 @@ let subst_git ?name () =
     | Some x -> Path.to_string x
     | None -> Utils.program_not_found "git"
   in
-  Future.both
-    (Future.both
-       (Future.run_capture Strict git ["describe"; "--always"; "--dirty"])
-       (Future.run_capture Strict git ["rev-parse"; rev]))
-    (Future.run_capture_lines Strict git ["ls-tree"; "-r"; "--name-only"; rev])
+  Fiber.fork_and_join
+    (fun () ->
+       Fiber.fork_and_join
+         (fun () ->
+            Process.run_capture Strict git ["describe"; "--always"; "--dirty"])
+         (fun () ->
+            Process.run_capture Strict git ["rev-parse"; rev]))
+    (fun () ->
+       Process.run_capture_lines Strict git ["ls-tree"; "-r"; "--name-only"; rev])
   >>= fun ((version, commit), files) ->
   let version = String.trim version in
   let commit  = String.trim commit  in
@@ -218,10 +222,10 @@ let subst_git ?name () =
   List.iter files ~f:(fun fn ->
     if is_a_source_file fn then
       subst_file fn ~map:watermarks);
-  Future.return ()
+  Fiber.return ()
 
 let subst ?name () =
   if Sys.file_exists ".git" then
     subst_git ?name ()
   else
-    Future.return ()
+    Fiber.return ()

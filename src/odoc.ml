@@ -273,9 +273,9 @@ let gen_rules sctx ~dir:_ rest =
       | Some (lib, name) -> (lib, Lib_db.find_scope_by_name_exn libs ~name)
     in
     let scope =
-      { Lib_db.
+      { With_required_by.
         data = scope
-      ; required_by = ["@doc target"]
+      ; required_by = [Alias (Path.of_string "doc")]
       } in
     match Lib_db.Scope.find scope lib with
     | None | Some (External _) -> ()

@@ -1,26 +1,6 @@
-(** Simplified Async/Lwt like monad *)
+(** Running external programs *)
 
 open Import
-
-type 'a t
-
-val return : 'a -> 'a t
-val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
-val (>>|) : 'a t -> ('a -> 'b) -> 'b t
-
-val both : 'a t -> 'b t -> ('a * 'b) t
-
-val all : 'a t list -> 'a list t
-val all_unit : unit t list -> unit t
-
-val with_exn_handler : (unit -> 'a) -> handler:(exn -> Printexc.raw_backtrace -> unit) -> 'a
-
-module Mutex : sig
-  type 'a future = 'a t
-  type t
-  val create : unit -> t
-  val with_lock : t -> (unit -> 'a future) -> 'a future
-end with type 'a future := 'a t
 
 type accepted_codes =
   | These of int list
@@ -31,8 +11,8 @@ type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
   (** Fail if the process exits with anything else than [0] *)
   | Accept : accepted_codes -> ('a, ('a, int) result) failure_mode
-  (** Accept the following non-zero exit codes, and return [Error code] if the process
-      exists with one of these codes. *)
+  (** Accept the following non-zero exit codes, and return [Error
+      code] if the process exists with one of these codes. *)
 
 (** Where to redirect standard output *)
 type std_output_to =
@@ -51,7 +31,7 @@ and opened_file_desc =
   | Fd      of Unix.file_descr
   | Channel of out_channel
 
-(** Why a Future.t was run *)
+(** Why a Fiber.t was run *)
 type purpose =
   | Internal_job
   | Build_job of Path.t list
@@ -66,7 +46,7 @@ val run
   -> (unit, 'a) failure_mode
   -> string
   -> string list
-  -> 'a t
+  -> 'a Fiber.t
 
 (** Run a command and capture its output *)
 val run_capture
@@ -76,7 +56,7 @@ val run_capture
   -> (string, 'a) failure_mode
   -> string
   -> string list
-  -> 'a t
+  -> 'a Fiber.t
 val run_capture_line
   :  ?dir:string
   -> ?env:string array
@@ -84,7 +64,7 @@ val run_capture_line
   -> (string, 'a) failure_mode
   -> string
   -> string list
-  -> 'a t
+  -> 'a Fiber.t
 val run_capture_lines
   :  ?dir:string
   -> ?env:string array
@@ -92,11 +72,5 @@ val run_capture_lines
   -> (string list, 'a) failure_mode
   -> string
   -> string list
-  -> 'a t
+  -> 'a Fiber.t
 
-module Scheduler : sig
-  val go : ?log:Log.t -> 'a t -> 'a
-
-  (** Executes [f] before exiting, after all pending commands have finished *)
-  val at_exit_after_waiting_for_commands : (unit -> unit) -> unit
-end

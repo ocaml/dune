@@ -4,7 +4,9 @@ open! Import
 
 type t
 
-(** {1 Creation} *)
+(** {1 Setup} *)
+
+(** {2 Creation} *)
 
 (** Create a new build system. [file_tree] represent the source
     tree. *)
@@ -31,7 +33,10 @@ type extra_sub_directories_to_keep =
    descendant of [dir]. *)
 val set_rule_generators : t -> (dir:Path.t -> string list -> extra_sub_directories_to_keep) String_map.t -> unit
 
-(** {1 Primitive for rule generations} *)
+(** All other functions in this section must be called inside the rule generator
+    callback. *)
+
+(** {2 Primitive for rule generations} *)
 
 (** Add a rule to the system. This function must be called from the [gen_rules]
     callback. All the target of the rule must be in the same directory.
@@ -67,7 +72,7 @@ val on_load_dir : t -> dir:Path.t -> f:(unit -> unit) -> unit
 (** Stamp file that depends on all files of [dir] with extension [ext]. *)
 val stamp_file_for_files_of : t -> dir:Path.t -> ext:string -> Path.t
 
-(** {1 Aliases} *)
+(** {2 Aliases} *)
 
 module Alias : sig
   type build_system = t
@@ -137,28 +142,16 @@ end with type build_system := t
 
 (** {1 Building} *)
 
-module Build_error : sig
-  (** Exception raised in case of build error *)
-  type t
-
-  val backtrace : t -> Printexc.raw_backtrace
-  val dependency_path : t -> Path.t list
-  val exn : t -> exn
-
-  exception E of t
-end
+(** ALl the functions in this section must be called outside the rule generator
+    callback. *)
 
 (** Do the actual build *)
 val do_build
   :  t
   -> request:(unit, unit) Build.t
-  -> (unit Future.t, Build_error.t) result
-val do_build_exn
-  :  t
-  -> request:(unit, unit) Build.t
-  -> unit Future.t
+  -> unit Fiber.t
 
-(** {1 Other queries} *)
+(** {2 Other queries} *)
 
 val is_target : t -> Path.t -> bool
 
@@ -185,7 +178,7 @@ val files_in_source_tree_to_delete
   :  unit
   -> Path.t list
 
-(** {1 Build rules} *)
+(** {2 Build rules} *)
 
 (** A fully built rule *)
 module Rule : sig
@@ -211,7 +204,7 @@ val build_rules
   :  ?recursive:bool (* default false *)
   -> t
   -> request:(unit, unit) Build.t
-  -> Rule.t list Future.t
+  -> Rule.t list Fiber.t
 
 (** {1 Misc} *)
 

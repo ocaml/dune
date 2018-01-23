@@ -1,6 +1,6 @@
 open Import
 
-let ( >>= ) = Future.( >>= )
+open Fiber.O
 
 let print path1 path2 =
   let dir, file1, file2 =
@@ -24,7 +24,7 @@ let print path1 path2 =
     | None -> fallback ()
     | Some prog ->
       Format.eprintf "%a@?" Loc.print loc;
-      Future.run ~dir Strict (Path.to_string prog)
+      Process.run ~dir Strict (Path.to_string prog)
         ["-u"; file1; file2]
       >>= fun () ->
       fallback ()
@@ -35,7 +35,7 @@ let print path1 path2 =
     let cmd =
       sprintf "%s %s %s" cmd (quote_for_shell file1) (quote_for_shell file2)
     in
-    Future.run ~dir Strict (Path.to_string sh) [arg; cmd]
+    Process.run ~dir Strict (Path.to_string sh) [arg; cmd]
     >>= fun () ->
     die "command reported no differences: %s"
       (if dir = "." then
@@ -46,7 +46,7 @@ let print path1 path2 =
     match Bin.which "patdiff" with
     | None -> normal_diff ()
     | Some prog ->
-      Future.run ~dir Strict (Path.to_string prog)
+      Process.run ~dir Strict (Path.to_string prog)
         [ "-keep-whitespace"
         ; "-location-style"; "omake"
         ; "-unrefined"

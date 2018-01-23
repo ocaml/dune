@@ -7,11 +7,6 @@ open Import
 
 type t
 
-type 'a with_required_by =
-  { required_by: string list
-  ; data: 'a
-  }
-
 type resolved_select =
   { src_fn : string
   ; dst_fn : string
@@ -28,30 +23,30 @@ module Scope : sig
 
   type t
 
-  val find : t with_required_by -> string -> Lib.t option
-  val find_exn : t with_required_by -> string -> Lib.t
+  val find : t With_required_by.t -> string -> Lib.t option
+  val find_exn : t With_required_by.t -> string -> Lib.t
 
-  val lib_is_available : t with_required_by -> string -> bool
+  val lib_is_available : t With_required_by.t -> string -> bool
 
   val root : t -> Path.t
   val name : t -> string
 
-  val resolve : t with_required_by -> string -> (Package.t, string) result
+  val resolve : t With_required_by.t -> string -> (Package.t, string) result
 
-  val required_in_jbuild : t -> jbuild_dir:Path.t -> t with_required_by
+  val required_in_jbuild : t -> jbuild_dir:Path.t -> t With_required_by.t
 
   val interpret_lib_deps
-    :  t with_required_by
+    :  t With_required_by.t
     -> Jbuild.Lib_dep.t list
     -> Lib.Internal.t list * Findlib.package list * fail option
 
   val resolve_selects
-    :  t with_required_by
+    :  t With_required_by.t
     -> Jbuild.Lib_dep.t list
     -> resolved_select list
 
   val best_lib_dep_names_exn
-    :  t with_required_by
+    :  t With_required_by.t
     -> Jbuild.Lib_dep.t list
     -> string list
 
@@ -59,7 +54,7 @@ module Scope : sig
       and return the set of all the ppx runtime dependencies of these
       libraries. *)
   val all_ppx_runtime_deps_exn
-    :  t with_required_by
+    :  t With_required_by.t
     -> Jbuild.Lib_dep.t list
     -> String_set.t
 end
@@ -80,7 +75,7 @@ val local_public_libs : t -> Path.t String_map.t
 val unique_library_name : t -> Lib.t -> string
 
 val find_scope : t -> dir:Path.t -> Scope.t
-val find_scope' : t -> dir:Path.t -> Scope.t with_required_by
+val find_scope' : t -> dir:Path.t -> Scope.t With_required_by.t
 
 (** Includes the private libraries not belonging to any named scope. Corresopnds
     to the context's build root path.*)

@@ -1,5 +1,5 @@
 open Import
-open Future
+open Fiber.O
 
 type setup =
   { build_system : Build_system.t
@@ -47,11 +47,9 @@ let setup ?(log=Log.no_log)
         }
   in
 
-  Future.all (
-    List.map workspace.contexts ~f:(fun ctx_def ->
-      let name = Workspace.Context.name ctx_def in
-      Context.create ctx_def ~merlin:(workspace.merlin_context = Some name) ~use_findlib)
-  )
+  Fiber.parallel_map workspace.contexts ~f:(fun ctx_def ->
+    let name = Workspace.Context.name ctx_def in
+    Context.create ctx_def ~merlin:(workspace.merlin_context = Some name) ~use_findlib)
   >>= fun contexts ->
   let contexts = List.concat contexts in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
@@ -65,15 +63,16 @@ let setup ?(log=Log.no_log)
     ?only_packages
     ?filter_out_optional_stanzas_with_missing_deps
   >>= fun stanzas ->
-  return { build_system
-         ; stanzas
-         ; contexts
-         ; packages = conf.packages
-         ; file_tree = conf.file_tree
-         }
+  Fiber.return
+    { build_system
+    ; stanzas
+    ; contexts
+    ; packages = conf.packages
+    ; file_tree = conf.file_tree
+    }
 
 let external_lib_deps ?log ~packages () =
-  Future.Scheduler.go ?log
+  Scheduler.go ?log
     (setup () ~filter_out_optional_stanzas_with_missing_deps:false
      >>| fun setup ->
      let install_files =
@@ -92,118 +91,6 @@ let external_lib_deps ?log ~packages () =
          ~f:(String_map.filter ~f:(fun name _ ->
            not (String_set.mem name internals))))
 
-(* Return [true] if the backtrace was printed *)
-let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
-  match exn with
-  | Loc.Error (loc, msg) ->
-    let loc =
-      { loc with
-        start = { loc.start with pos_fname = map_fname loc.start.pos_fname }
-      }
-    in
-    Format.fprintf ppf "%a@{<error>Error@}: %s\n" Loc.print loc msg;
-    false
-  | Usexp.Parser.Error e ->
-    let pos = Usexp.Parser.Error.position e in
-    let msg = Usexp.Parser.Error.message e in
-    let pos = { pos with pos_fname = map_fname pos.pos_fname } in
-    let loc = { Loc. start = pos; stop = pos } in
-    Format.fprintf ppf "%a@{<error>Error@}: %s\n" Loc.print loc msg;
-    false
-  | Fatal_error "" -> false
-  | Fatal_error msg ->
-    Format.fprintf ppf "%s\n" (String.capitalize_ascii msg);
-    false
-  | Findlib.Findlib (Findlib.Package_not_available { package; required_by; reason }) ->
-    Format.fprintf ppf
-      "@{<error>Error@}: External library %S %s.\n" package
-      (match reason with
-       | Not_found -> "not found"
-       | Hidden    -> "is hidden"
-       | _         -> "is unavailable");
-    List.iter required_by ~f:(Format.fprintf ppf "-> required by %S\n");
-    begin match reason with
-    | Not_found -> ()
-    | Hidden ->
-      Format.fprintf ppf
-        "External library %S is hidden because its 'exist_if' \
-         clause is not satisfied.\n" package
-    | Dependencies_unavailable deps ->
-      Format.fprintf ppf
-        "External library %S is not available because it depends on the \
-         following libraries that are not available:\n" package;
-      let deps = Findlib.Package_not_available.top_closure deps in
-      let longest = List.longest_map deps ~f:(fun na -> na.package) in
-      List.iter deps ~f:(fun (na : Findlib.Package_not_available.t) ->
-        Format.fprintf ppf "- %-*s -> %a@\n" longest na.package
-          Findlib.Package_not_available.explain na.reason)
-    end;
-    Format.fprintf ppf
-      "Hint: try: %s\n"
-      (List.map !Clflags.external_lib_deps_hint ~f:quote_for_shell
-       |> String.concat ~sep:" ");
-    false
-  | Findlib.Findlib (Findlib.External_dep_conflicts_with_local_lib {
-    package; required_by; required_locally_in; defined_locally_in }) ->
-    Format.fprintf ppf
-      "@{<error>Error@}: Conflict between internal and external version of library %S:\n\
-       - it is defined locally in %s\n\
-       - it is required by external library %S\n\
-       %s\n\
-       This cannot work.\n"
-      package
-      (Utils.jbuild_name_in ~dir:(Path.drop_optional_build_context defined_locally_in))
-      required_by
-      (required_locally_in
-       |> List.map ~f:(sprintf "  -> required by %S")
-       |> String.concat ~sep:"\n");
-    false
-  | Code_error msg ->
-    let bt = Printexc.raw_backtrace_to_string backtrace in
-    Format.fprintf ppf "@{<error>Internal error, please report upstream \
-                        including the contents of _build/log.@}\n\
-                        Description: %s\n\
-                        Backtrace:\n\
-                        %s" msg bt;
-    true
-  | Unix.Unix_error (err, func, fname) ->
-    Format.fprintf ppf "@{<error>Error@}: %s: %s: %s\n"
-      func fname (Unix.error_message err);
-    false
-  | _ ->
-    let s = Printexc.to_string exn in
-    let bt = Printexc.raw_backtrace_to_string backtrace in
-    if String.is_prefix s ~prefix:"File \"" then
-      Format.fprintf ppf "%s\nBacktrace:\n%s" s bt
-    else
-      Format.fprintf ppf "@{<error>Error@}: exception %s\nBacktrace:\n%s" s bt;
-    true
-
-let report_error ?map_fname ppf exn =
-  match
-    match exn with
-    | Build_system.Build_error.E err ->
-      let module E = Build_system.Build_error in
-      let backtrace = E.backtrace err in
-      let bt_printed =
-        report_error ?map_fname ppf (E.exn err) ~backtrace:(E.backtrace err)
-      in
-      if !Clflags.debug_dep_path then
-        Format.fprintf ppf "Dependency path:\n    %s\n"
-          (String.concat ~sep:"\n--> "
-             (List.map (E.dependency_path err) ~f:Utils.describe_target));
-      Option.some_if (not bt_printed) backtrace
-    | exn ->
-      let backtrace = Printexc.get_raw_backtrace () in
-      let bt_printed =
-        report_error ?map_fname ppf exn ~backtrace
-      in
-      Option.some_if (not bt_printed) backtrace
-  with
-  | Some bt when !Clflags.debug_backtraces ->
-    Format.fprintf ppf "Backtrace:\n%s" (Printexc.raw_backtrace_to_string bt)
-  | _ -> ()
-
 let ignored_during_bootstrap =
   Path.Set.of_list
     (List.map ~f:Path.of_string
@@ -217,7 +104,7 @@ let bootstrap () =
   let main () =
     let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
     let subst () =
-      Future.Scheduler.go (Watermarks.subst () ~name:"jbuilder");
+      Scheduler.go (Watermarks.subst () ~name:"jbuilder");
       exit 0
     in
     Arg.parse
@@ -229,20 +116,22 @@ let bootstrap () =
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
     Clflags.debug_dep_path := true;
     let log = Log.create () in
-    Future.Scheduler.go ~log
+    Scheduler.go ~log
       (setup ~log ~workspace:{ merlin_context = Some "default"
                              ; contexts = [Default [Native]] }
          ~use_findlib:false
          ~extra_ignored_subtrees:ignored_during_bootstrap
          ()
        >>= fun { build_system = bs; _ } ->
-       Build_system.do_build_exn bs
+       Build_system.do_build bs
          ~request:(Build.path (Path.of_string "_build/default/jbuilder.install")))
   in
   try
     main ()
-  with exn ->
-    Format.eprintf "%a@?" (report_error ?map_fname:None) exn;
+  with
+  | Fiber.Never -> exit 1
+  | exn ->
+    Report_error.report exn;
     exit 1
 
 let setup = setup ~use_findlib:true ~extra_ignored_subtrees:Path.Set.empty
@@ -251,5 +140,4 @@ let find_context_exn t ~name =
   match List.find t.contexts ~f:(fun c -> c.name = name) with
   | Some ctx -> ctx
   | None ->
-    Format.eprintf "@{<Error>Error@}: Context %S not found!@." name;
-    die ""
+    die "@{<Error>Error@}: Context %S not found!@." name

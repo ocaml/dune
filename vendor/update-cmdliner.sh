@@ -17,5 +17,5 @@ SRC=$TMP/cmdliner.$version
 cp -v $SRC/LICENSE.md cmdliner
 cp -v $SRC/src/*.{ml,mli} cmdliner/src
 
-git checkout cmdliner/src/{jbuild,result.ml}
+git checkout cmdliner/src/jbuild
 git add -A .

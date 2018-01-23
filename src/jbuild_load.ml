@@ -101,67 +101,69 @@ end
     extract_requires ~fname:plugin plugin_contents
 
   let eval { jbuilds; ignore_promoted_rules } ~(context : Context.t) =
-    let open Future in
-    List.map jbuilds ~f:(function
-      | Literal x -> return x
-      | Script { dir; scope } ->
-        let file = Path.relative dir "jbuild" in
-        let generated_jbuild =
-          Path.append (Path.relative generated_jbuilds_dir context.name) file
-        in
-        let wrapper = Path.extend_basename generated_jbuild ~suffix:".ml" in
-        ensure_parent_dir_exists generated_jbuild;
-        let requires =
-          create_plugin_wrapper context ~exec_dir:dir ~plugin:file ~wrapper
-            ~target:generated_jbuild
-        in
-        let context = Option.value context.for_host ~default:context in
-        let pkgs =
-          List.map requires ~f:(Findlib.find_exn context.findlib
-                                  ~required_by:[Utils.jbuild_name_in ~dir:dir])
-          |> Findlib.closure ~required_by:[Utils.jbuild_name_in ~dir]
-               ~local_public_libs:String_map.empty
-        in
-        let includes =
-          List.fold_left pkgs ~init:Path.Set.empty ~f:(fun acc pkg ->
-            Path.Set.add pkg.Findlib.dir acc)
-          |> Path.Set.elements
-          |> List.concat_map ~f:(fun path ->
-              [ "-I"; Path.to_string path ])
-        in
-        let cmas =
-          List.concat_map pkgs ~f:(fun pkg -> pkg.archives.byte)
-        in
-        let args =
-          List.concat
-            [ [ "-I"; "+compiler-libs" ]
-            ; includes
-            ; List.map cmas ~f:(Path.reach ~from:dir)
-            ; [ Path.to_absolute_filename wrapper ]
-            ]
-        in
-        (* CR-someday jdimino: if we want to allow plugins to use findlib:
-           {[
-             let args =
-               match context.toplevel_path with
-               | None -> args
-               | Some path -> "-I" :: Path.reach ~from:dir path :: args
-             in
-           ]}
-        *)
-        Future.run Strict ~dir:(Path.to_string dir) ~env:context.env
-          (Path.to_string context.ocaml)
-          args
-        >>= fun () ->
-        if not (Path.exists generated_jbuild) then
-          die "@{<error>Error:@} %s failed to produce a valid jbuild file.\n\
-               Did you forgot to call [Jbuild_plugin.V*.send]?"
-            (Path.to_string file);
-        let sexps = Sexp.load ~fname:(Path.to_string generated_jbuild) ~mode:Many in
-        return (dir, scope,
-                Stanzas.parse scope sexps ~file:generated_jbuild
-                |> filter_stanzas ~ignore_promoted_rules))
-    |> Future.all
+    let open Fiber.O in
+    let static, dynamic =
+      List.partition_map jbuilds ~f:(function
+        | Literal x -> Inl x
+        | Script  x -> Inr x)
+    in
+    Fiber.parallel_map dynamic ~f:(fun { dir; scope } ->
+      let file = Path.relative dir "jbuild" in
+      let generated_jbuild =
+        Path.append (Path.relative generated_jbuilds_dir context.name) file
+      in
+      let wrapper = Path.extend_basename generated_jbuild ~suffix:".ml" in
+      ensure_parent_dir_exists generated_jbuild;
+      let requires =
+        create_plugin_wrapper context ~exec_dir:dir ~plugin:file ~wrapper
+          ~target:generated_jbuild
+      in
+      let context = Option.value context.for_host ~default:context in
+      let pkgs =
+        let required_by = [With_required_by.Entry.jbuild_file_in ~dir] in
+        List.map requires ~f:(Findlib.find_exn context.findlib ~required_by)
+        |> Findlib.closure ~required_by ~local_public_libs:String_map.empty
+      in
+      let includes =
+        List.fold_left pkgs ~init:Path.Set.empty ~f:(fun acc pkg ->
+          Path.Set.add pkg.Findlib.dir acc)
+        |> Path.Set.elements
+        |> List.concat_map ~f:(fun path ->
+          [ "-I"; Path.to_string path ])
+      in
+      let cmas =
+        List.concat_map pkgs ~f:(fun pkg -> pkg.archives.byte)
+      in
+      let args =
+        List.concat
+          [ [ "-I"; "+compiler-libs" ]
+          ; includes
+          ; List.map cmas ~f:(Path.reach ~from:dir)
+          ; [ Path.to_absolute_filename wrapper ]
+          ]
+      in
+      (* CR-someday jdimino: if we want to allow plugins to use findlib:
+         {[
+           let args =
+             match context.toplevel_path with
+             | None -> args
+             | Some path -> "-I" :: Path.reach ~from:dir path :: args
+           in
+         ]}
+      *)
+      Process.run Strict ~dir:(Path.to_string dir) ~env:context.env
+        (Path.to_string context.ocaml)
+        args
+      >>= fun () ->
+      if not (Path.exists generated_jbuild) then
+        die "@{<error>Error:@} %s failed to produce a valid jbuild file.\n\
+             Did you forgot to call [Jbuild_plugin.V*.send]?"
+          (Path.to_string file);
+      let sexps = Sexp.load ~fname:(Path.to_string generated_jbuild) ~mode:Many in
+      Fiber.return (dir, scope, Stanzas.parse scope sexps ~file:generated_jbuild
+                                |> filter_stanzas ~ignore_promoted_rules))
+    >>| fun dynamic ->
+    static @ dynamic
 end
 
 type conf =

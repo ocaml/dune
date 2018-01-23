@@ -14,7 +14,7 @@ module Dir_with_jbuild : sig
     { src_dir : Path.t
     ; ctx_dir : Path.t (** [_build/context-name/src_dir] *)
     ; stanzas : Stanzas.t
-    ; scope   : Lib_db.Scope.t Lib_db.with_required_by
+    ; scope   : Lib_db.Scope.t With_required_by.t
     }
 end
 
@@ -110,7 +110,7 @@ module Libs : sig
   val add_select_rules
     : t
     -> dir:Path.t
-    -> scope:Lib_db.Scope.t Lib_db.with_required_by
+    -> scope:Lib_db.Scope.t With_required_by.t
     -> Lib_deps.t
     -> unit
 
@@ -121,7 +121,7 @@ module Libs : sig
   val requires
     :  t
     -> dir:Path.t
-    -> scope:Lib_db.Scope.t Lib_db.with_required_by
+    -> scope:Lib_db.Scope.t With_required_by.t
     -> dep_kind:Build.lib_dep_kind
     -> item:string (* Library name or first exe name *)
     -> libraries:Lib_deps.t
@@ -134,7 +134,7 @@ module Libs : sig
   val setup_runtime_deps
     :  t
     -> dir:Path.t
-    -> scope:Lib_db.Scope.t Lib_db.with_required_by
+    -> scope:Lib_db.Scope.t With_required_by.t
     -> dep_kind:Build.lib_dep_kind
     -> item:string (* Library name or first exe name *)
     -> libraries:Lib_deps.t
@@ -195,7 +195,7 @@ module Action : sig
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
     -> targets:targets
-    -> scope:Lib_db.Scope.t Lib_db.with_required_by
+    -> scope:Lib_db.Scope.t With_required_by.t
     -> (Path.t list, Action.t) Build.t
 end
 
@@ -212,13 +212,13 @@ module PP : sig
     -> preprocess:Preprocess_map.t
     -> preprocessor_deps:Dep_conf.t list
     -> lib_name:string option
-    -> scope:Lib_db.Scope.t Lib_db.with_required_by
+    -> scope:Lib_db.Scope.t With_required_by.t
     -> Module.t String_map.t
 
   (** Get a path to a cached ppx driver *)
   val get_ppx_driver
     : t
-    -> scope:Lib_db.Scope.t Lib_db.with_required_by
+    -> scope:Lib_db.Scope.t With_required_by.t
     -> Pp.t list
     -> Path.t
 

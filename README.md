@@ -24,8 +24,8 @@ jbuilder.
 [manual]:         https://jbuilder.readthedocs.io/en/latest/
 [quick-start]:    https://jbuilder.readthedocs.io/en/latest/quick-start.html
 [example]:        https://github.com/janestreet/jbuilder/tree/master/example
-[travis]:         https://travis-ci.org/janestreet/jbuilder
-[travis-img]:     https://travis-ci.org/janestreet/jbuilder.svg?branch=master
+[travis]:         https://travis-ci.org/ocaml/dune
+[travis-img]:     https://travis-ci.org/ocaml/dune.svg?branch=master
 [appveyor]:       https://ci.appveyor.com/project/diml/dune/branch/master
 [appveyor-img]:   https://ci.appveyor.com/api/projects/status/rsxayce22e8f2jkp?svg=true
 [merlin]:         https://github.com/ocaml/merlin

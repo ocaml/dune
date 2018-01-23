@@ -1,5 +1,5 @@
-next
-----
+1.0+beta17 (23/01/2018)
+-----------------------
 
 - Make jbuilder aware that `num` is an external package in OCaml >= 4.06.0
   (#358)

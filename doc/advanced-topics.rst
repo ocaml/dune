@@ -110,15 +110,22 @@ to the definition of a build context.
 - the name of an alternative toolchain
 
 Note that at the moment, there is no official support for
-cross-compilation in OCaml. Jbuilder supports the two following
-opam-cross-x repositories:
+cross-compilation in OCaml. Jbuilder supports the opam-cross-x
+repositories from the `ocaml-cross organization on github
+<https://github.com/ocaml-cross/>`, such as:
 
-- `opam-cross-windows <https://github.com/whitequark/opam-cross-windows>`_
-- `opam-cross-android <https://github.com/whitequark/opam-cross-android>`_
+- `opam-cross-windows <https://github.com/ocaml-cross/opam-cross-windows>`_
+- `opam-cross-android <https://github.com/ocaml-cross/opam-cross-android>`_
+- `opam-cross-ios <https://github.com/ocaml-cross/opam-cross-ios>`_
 
-To build Windows binaries using opam-cross-windows, write ``windows``
-in the list of targets. To build Android binaries using
-opam-cross-android, write ``android`` in the list of targets.
+In particular:
+
+- to build Windows binaries using opam-cross-windows, write ``windows``
+  in the list of targets
+- to build Android binaries using opam-cross-android, write
+  ``android`` in the list of targets
+- to build Android binaries using opam-cross-ios, write ``ios`` in the
+  list of targets
 
 For example, the following workspace file defines three different
 targets for the ``default`` build context:

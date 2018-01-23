@@ -30,6 +30,12 @@ val best_lib_dep_names_exn
   -> Jbuild.Lib_dep.t list
   -> string list
 
+val ppx_runtime_deps_for_deprecated_method_exn
+  :  t
+  -> dir:Path.t
+  -> Jbuild.Lib_dep.t list
+  -> String_set.t
+
 type resolved_select =
   { src_fn : string
   ; dst_fn : string

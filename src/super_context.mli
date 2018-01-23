@@ -103,6 +103,12 @@ module Libs : sig
   val find : t -> from:Path.t -> string -> Lib.t option
   val best_lib_dep_names_exn : t -> dir:Path.t -> Lib_dep.t list -> string list
 
+  val ppx_runtime_deps_for_deprecated_method_exn
+    :  t
+    -> dir:Path.t
+    -> Jbuild.Lib_dep.t list
+    -> String_set.t
+
   val load_requires     : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t
   val load_runtime_deps : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t
 

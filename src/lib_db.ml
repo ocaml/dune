@@ -193,6 +193,58 @@ let best_lib_dep_names_exn t ~dir lib_deps =
     | Inl libs -> List.map libs ~f:Lib.best_name
     | Inr fail -> fail.fail ())
 
+let ppx_runtime_deps_for_deprecated_method_exn t ~dir lib_deps =
+  let seen = ref String_set.empty in
+  let result = ref String_set.empty in
+  let lib_is_available name =
+    String_set.mem name !seen || lib_is_available t ~from:dir name
+  in
+  let rec loop lib_dep =
+    match lib_dep with
+    | Lib_dep.Direct name ->
+      if not (String_set.mem name !seen) then begin
+        let lib = find_exn t ~from:dir name in
+        process lib
+      end
+    | Select { choices; loc; _ } ->
+      match
+        List.find_map choices ~f:(fun { required; forbidden; _ } ->
+          if String_set.exists forbidden ~f:lib_is_available then
+            None
+          else
+            match
+              String_set.fold required ~init:[] ~f:(fun name acc ->
+                if String_set.mem name !seen then
+                  (* It's available and already processed *)
+                  acc
+                else
+                  find_exn t ~from:dir name :: acc)
+            with
+            | l           -> Some l
+            | exception _ -> None)
+      with
+      | Some l -> List.iter l ~f:process
+      | None -> Loc.fail loc "No solution found for this select form"
+  and process (lib : Lib.t) =
+    match lib with
+    | Internal (_, lib) ->
+      seen :=
+        (let set = String_set.add lib.name !seen in
+         match lib.public with
+         | None -> set
+         | Some p -> String_set.add p.name set);
+      result := String_set.union !result
+                  (String_set.of_list lib.ppx_runtime_libraries);
+      List.iter lib.buildable.libraries ~f:loop
+    | External pkg ->
+      seen := String_set.add pkg.name !seen;
+      result := String_set.union !result
+                  (String_set.of_list
+                     (List.map pkg.ppx_runtime_deps ~f:(fun p -> p.Findlib.name)))
+  in
+  List.iter lib_deps ~f:loop;
+  !result
+
 type resolved_select =
   { src_fn : string
   ; dst_fn : string

@@ -14,12 +14,26 @@
   (synopsis "sub library with modes set to byte")))
 
 (library
+ ((name foobar_runtime_lib2)
+  (public_name foobar.runtime-lib2)
+  (synopsis "runtime library for foobar.rewriter2")))
+
+(library
  ((name foobar_rewriter)
   (synopsis "ppx rewriter")
-  (libraries (foobar))
+  (libraries (foobar foobar_rewriter2))
   (public_name foobar.rewriter)
   (ppx_runtime_libraries (foobar_baz))
   (kind ppx_rewriter)))
+
+;; The ppx runtime libraries to this for library must end up in the requires(-ppx_driver)
+;; of foobar.rewriter
+(library
+ ((name foobar_rewriter2)
+  (synopsis "ppx rewriter expander")
+  (libraries (foobar))
+  (public_name foobar.rewriter2)
+  (ppx_runtime_libraries (foobar_runtime_lib2))))
 
 (alias
  ((name runtest)

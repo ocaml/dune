@@ -906,6 +906,8 @@ Add it to your jbuild file to remove this warning.
             ~version
             ~stanzas:(SC.stanzas_to_consider_for_install sctx)
             ~resolve_lib_dep_names:(SC.Libs.best_lib_dep_names_exn sctx)
+            ~ppx_runtime_deps_for_deprecated_method_exn:
+              (SC.Libs.ppx_runtime_deps_for_deprecated_method_exn sctx)
         in
         SC.add_rule sctx
           (Build.fanout meta_contents template

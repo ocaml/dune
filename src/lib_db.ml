@@ -121,6 +121,8 @@ let create findlib ~scopes internal_libraries =
   in
   (* Initializes the scopes, including [Path.root] so that when there are no <pkg>.opam
      files in parent directories, the scope is the whole workspace. *)
+  Hashtbl.add t.by_internal_name ~key:Path.root
+    ~data:{ libs = String_map.empty; scope = Scope.empty };
   List.iter scopes ~f:(fun (scope : Scope.t) ->
     Hashtbl.add t.by_internal_name ~key:scope.root
       ~data:{ libs = String_map.empty

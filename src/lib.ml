@@ -13,6 +13,10 @@ module T = struct
     | External pkg -> pkg.name
     | Internal (_, lib) -> Jbuild.Library.best_name lib
 
+  let public_name = function
+    | External pkg -> Some pkg.name
+    | Internal (_, lib) -> Option.map lib.public ~f:(fun p -> p.name)
+
   let compare a b = String.compare (best_name a) (best_name b)
 end
 

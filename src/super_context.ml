@@ -232,6 +232,12 @@ module Libs = struct
   let all_ppx_runtime_deps_exn t ~dir lib_deps =
     all_ppx_runtime_deps_exn t.libs ~dir lib_deps
 
+  let find_scope_dir_by_name_exn t name =
+    find_scope_dir_by_name_exn t.libs ~name
+
+  let find_scope_by_dir t ~dir =
+    find_scope_by_dir t.libs ~dir
+
   let vrequires t ~dir ~item =
     let fn = Path.relative dir (item ^ ".requires.sexp") in
     Build.Vspec.T (fn, t.libs_vfile)
@@ -848,6 +854,11 @@ module PP = struct
     | [key] ->
       let ppx_dir = Path.relative sctx.ppx_dir key in
       let exe = Path.relative ppx_dir "ppx.exe" in
+      let (key, scope) =
+        match String.rsplit2 key ~on:'@' with
+        | None -> (key, "")
+        | Some p -> p in
+      let scope_dir = Libs.find_scope_dir_by_name_exn sctx scope in
       let names =
         match key with
         | "+none+" -> []
@@ -859,23 +870,53 @@ module PP = struct
         | driver :: rest ->
           (Some driver, List.sort rest ~cmp:String.compare @ [driver])
       in
-      build_ppx_driver sctx names ~dir:ppx_dir ~dep_kind:Required ~target:exe ~driver
+      build_ppx_driver sctx names ~dir:scope_dir ~dep_kind:Required ~target:exe ~driver
     | _ -> ()
 
-  let get_ppx_driver sctx pps =
-    let names =
+  let get_ppx_driver sctx ~(scope:Jbuild.Scope.t) pps =
+    let (driver, names) =
       match List.rev_map pps ~f:Pp.to_string with
-      | [] -> []
-      | driver :: rest ->
-        List.sort rest ~cmp:String.compare @ [driver]
+      | [] -> (None, [])
+      | driver :: rest -> (Some driver, List.sort ~cmp:String.compare rest)
     in
+    let sctx = host_sctx sctx in
+    let from = Libs.find_scope_dir_by_name_exn sctx scope.name in
+    let public_name name =
+      match Libs.find sctx ~from name with
+      | None -> Some name (* XXX unknown but assume it's public *)
+      | Some lib -> Lib.public_name lib in
+    let (driver_public, driver_name) =
+      match driver with
+      | None -> (true, None)
+      | Some driver ->
+        begin match public_name driver with
+        | None -> (false, Some driver)
+        | Some driver -> (true, Some driver)
+        end in
+    let (public, private_) =
+      List.fold_left ~f:(fun (pubs, privs) name ->
+        match public_name name with
+        | None -> (pubs, name :: privs)
+        | Some pub_name -> (pub_name :: pubs, privs)
+      ) ~init:([], []) names in
+    let names =
+      let without_driver = List.rev_append public private_ in
+      match driver_name with
+      | None -> without_driver
+      | Some driver -> without_driver @ [driver] in
     let key =
       match names with
       | [] -> "+none+"
       | _  -> String.concat names ~sep:"+"
     in
-    let sctx = host_sctx sctx in
-    let ppx_dir = Path.relative sctx.ppx_dir key in
+    let ppx_dir =
+      Path.relative sctx.ppx_dir (
+        if List.is_empty private_ && driver_public then (
+          key
+        ) else (
+          sprintf "%s@%s" key scope.name
+        )
+      ) in
     Path.relative ppx_dir "ppx.exe"
 
   let target_var = String_with_vars.virt_var __POS__ "@"
@@ -960,7 +1001,7 @@ module PP = struct
                  ~scope)
       )
     | Pps { pps; flags } ->
-      let ppx_exe = get_ppx_driver sctx pps in
+      let ppx_exe = get_ppx_driver sctx ~scope pps in
       Module.iter ast ~f:(fun kind src ->
         let src_path = Path.relative dir src.name in
         let args =
@@ -1023,7 +1064,7 @@ module PP = struct
         lint_module ~ast ~source:m;
         ast
       | Pps { pps; flags } ->
-        let ppx_exe = get_ppx_driver sctx pps in
+        let ppx_exe = get_ppx_driver sctx ~scope pps in
         let ast = setup_reason_rules sctx ~dir m in
         lint_module ~ast ~source:m;
         let uses_ppx_driver = uses_ppx_driver ~pps in

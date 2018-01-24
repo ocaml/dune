@@ -27,6 +27,8 @@ val jsoo_runtime_files : t list -> Path.t list
 (** [public_name] if present, [name] if not *)
 val best_name : t -> string
 
+val public_name : t -> string option
+
 val describe : t -> string
 
 val remove_dups_preserve_order : t list -> t list

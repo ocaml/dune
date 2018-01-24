@@ -12,12 +12,13 @@ type t =
   ; source_dirs: Path.Set.t
   }
 
-let ppx_flags sctx ~dir:_ ~src_dir:_ { preprocess; libname; _ } =
+let ppx_flags sctx ~dir ~src_dir:_ { preprocess; libname; _ } =
   match preprocess with
   | Pps { pps; flags } ->
-    let exe = SC.PP.get_ppx_driver sctx pps in
+    let scope = SC.Libs.find_scope_by_dir sctx ~dir in
+    let exe = SC.PP.get_ppx_driver sctx ~scope pps in
     let command =
-      List.map (Path.to_absolute_filename  exe
+      List.map (Path.to_absolute_filename exe
                 :: "--as-ppx"
                 :: SC.PP.cookie_library_name libname
                 @ flags)

@@ -93,7 +93,7 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps
            [ [ Comment "This line makes things transparent for people mixing \
                         preprocessors"
              ; Comment "and normal dependencies"
-             ; requires ~preds:[no_ppx_driver] ppx_runtime_deps_for_deprecated_method
+             ; requires ~preds:[no_ppx_driver] (Lazy.force ppx_runtime_deps_for_deprecated_method)
              ]
            ; match lib.kind with
            | Normal -> assert false
@@ -155,12 +155,12 @@ let gen ~package ~version ~stanzas ~resolve_lib_dep_names
 
          Sigh...
       *)
-      let ppx_runtime_deps_for_deprecated_method =
+      let ppx_runtime_deps_for_deprecated_method = lazy (
         String_set.union
           (String_set.of_list ppx_runtime_deps)
           (ppx_runtime_deps_for_deprecated_method_exn ~dir
              lib.buildable.libraries)
-        |> String_set.elements
+        |> String_set.elements)
       in
       (pub_name,
        gen_lib pub_name lib ~lib_deps ~ppx_runtime_deps ~version

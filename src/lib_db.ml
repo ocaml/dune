@@ -199,7 +199,7 @@ let ppx_runtime_deps_for_deprecated_method_exn t ~dir lib_deps =
   let lib_is_available name =
     String_set.mem name !seen || lib_is_available t ~from:dir name
   in
-  let rec loop lib_dep =
+  let rec loop dir lib_dep =
     match lib_dep with
     | Lib_dep.Direct name ->
       if not (String_set.mem name !seen) then begin
@@ -227,7 +227,7 @@ let ppx_runtime_deps_for_deprecated_method_exn t ~dir lib_deps =
       | None -> Loc.fail loc "No solution found for this select form"
   and process (lib : Lib.t) =
     match lib with
-    | Internal (_, lib) ->
+    | Internal (dir, lib) ->
       seen :=
         (let set = String_set.add lib.name !seen in
          match lib.public with
@@ -235,14 +235,14 @@ let ppx_runtime_deps_for_deprecated_method_exn t ~dir lib_deps =
          | Some p -> String_set.add p.name set);
       result := String_set.union !result
                   (String_set.of_list lib.ppx_runtime_libraries);
-      List.iter lib.buildable.libraries ~f:loop
+      List.iter lib.buildable.libraries ~f:(loop dir)
     | External pkg ->
       seen := String_set.add pkg.name !seen;
       result := String_set.union !result
                   (String_set.of_list
                      (List.map pkg.ppx_runtime_deps ~f:(fun p -> p.Findlib.name)))
   in
-  List.iter lib_deps ~f:loop;
+  List.iter lib_deps ~f:(loop dir);
   !result
 
 type resolved_select =

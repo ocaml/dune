@@ -1,0 +1,6 @@
+(jbuild_version 1)
+
+(library
+ ((name blib)
+  (public_name blib)
+  (libraries (sub))))

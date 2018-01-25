@@ -45,7 +45,7 @@ let find_exn t ~from name =
 
 let find t ~from name =
   match find_exn t ~from name with
-  | exception _ -> None
+  | exception (Findlib.Findlib _) -> None
   | x -> Some x
 
 let find_internal t ~from name =
@@ -165,7 +165,7 @@ let interpret_lib_dep t ~dir lib_dep =
             List.map (String_set.elements required) ~f:(find_exn t ~from:dir)
           with
           | l           -> Some l
-          | exception _ -> None)
+          | exception (Findlib.Findlib _) -> None)
     with
     | Some l -> Inl l
     | None ->

@@ -248,6 +248,21 @@ module Pkg_step1 = struct
     }
 end
 
+module External_dep_conflicts_with_local_lib = struct
+  type t =
+    { package             : string
+    ; required_by         : string
+    ; required_locally_in : Path.t
+    ; defined_locally_in  : Path.t
+    }
+end
+
+type error =
+  | Package_not_available of Package_not_available.t
+  | External_dep_conflicts_with_local_lib of External_dep_conflicts_with_local_lib.t
+
+exception Findlib of error
+
 let parse_package t ~name ~parent_dir ~vars ~required_by =
   let pkg_dir = Vars.get vars "directory" [] in
   let dir =
@@ -478,18 +493,16 @@ let load_meta t ~fq_name ~required_by =
       Hashtbl.add t.packages ~key:pkg.package.name ~data:status
     )
 
-exception Package_not_available of Package_not_available.t
-
 let find_exn t ~required_by name =
   match Hashtbl.find t.packages name with
   | Some (Present x) -> x
-  | Some (Not_available na) -> raise (Package_not_available na)
+  | Some (Not_available na) -> raise (Findlib (Package_not_available na))
   | None ->
     load_meta t ~fq_name:name ~required_by;
     match Hashtbl.find t.packages name with
     | Some (Present x) -> x
     | Some (Not_available pnf) ->
-      raise (Package_not_available pnf)
+      raise (Findlib (Package_not_available pnf))
     | None ->
       let na : Package_not_available.t =
         { package = name
@@ -498,40 +511,29 @@ let find_exn t ~required_by name =
         }
       in
       Hashtbl.add t.packages ~key:name ~data:(Not_available na);
-      raise (Package_not_available na)
+      raise (Findlib (Package_not_available na))
 
 let find t ~required_by name =
   match find_exn t ~required_by name with
-  | exception (Package_not_available _) -> None
+  | exception (Findlib (Package_not_available _)) -> None
   | x -> Some x
 
 let available t ~required_by name =
   match find_exn t name ~required_by with
   | (_ : package) -> true
-  | exception (Package_not_available _) -> false
-
-module External_dep_conflicts_with_local_lib = struct
-  type t =
-    { package             : string
-    ; required_by         : string
-    ; required_locally_in : Path.t
-    ; defined_locally_in  : Path.t
-    }
-end
-
-exception External_dep_conflicts_with_local_lib of External_dep_conflicts_with_local_lib.t
+  | exception (Findlib (Package_not_available _)) -> false
 
 let check_deps_consistency ~required_by ~local_public_libs pkg requires =
   List.iter requires ~f:(fun pkg' ->
     match String_map.find pkg'.name local_public_libs with
     | None -> ()
     | Some path ->
-      raise (External_dep_conflicts_with_local_lib
-               { package             = pkg'.name
-               ; required_by         = pkg.name
-               ; required_locally_in = required_by
-               ; defined_locally_in  = path
-               }))
+      raise (Findlib (External_dep_conflicts_with_local_lib
+                        { package             = pkg'.name
+                        ; required_by         = pkg.name
+                        ; required_locally_in = required_by
+                        ; defined_locally_in  = path
+                        })))
 
 let closure ~required_by ~local_public_libs pkgs =
   remove_dups_preserve_order

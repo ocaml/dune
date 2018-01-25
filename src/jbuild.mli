@@ -11,8 +11,8 @@ end
 
 module Scope : sig
   type t =
-    { name     : string option (** First package name in alphabetical order.  [None] for
-                                   the global scope. *)
+    { name     : string (** First package name in alphabetical order.  [""] for
+                            the global scope. *)
     ; packages : Package.t String_map.t
     ; root     : Path.t
     }

@@ -271,6 +271,4 @@ let unique_library_name t (lib : Lib.t) =
     | Some x -> x.name
     | None ->
       let scope = internal_name_scope t ~dir in
-      match scope.scope.name with
-      | None -> lib.name ^ "@"
-      | Some s -> lib.name ^ "@" ^ s
+      sprintf "%s@%s" lib.name scope.scope.name

@@ -74,13 +74,13 @@ let relative_file sexp =
 
 module Scope = struct
   type t =
-    { name     : string option
+    { name     : string
     ; packages : Package.t String_map.t
     ; root     : Path.t
     }
 
   let empty =
-    { name     = None
+    { name     = ""
     ; packages = String_map.empty
     ; root     = Path.root
     }
@@ -94,7 +94,7 @@ module Scope = struct
       in
       let root = pkg.path in
       List.iter rest ~f:(fun pkg -> assert (pkg.Package.path = root));
-      { name = Some name
+      { name
       ; packages =
           String_map.of_alist_exn (List.map pkgs ~f:(fun pkg ->
             pkg.Package.name, pkg))

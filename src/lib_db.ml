@@ -193,57 +193,59 @@ let best_lib_dep_names_exn t ~dir lib_deps =
     | Inl libs -> List.map libs ~f:Lib.best_name
     | Inr fail -> fail.fail ())
 
-let ppx_runtime_deps_for_deprecated_method_exn t ~dir lib_deps =
+(* Fold the transitive closure, not necessarily in topological order *)
+let fold_transitive_closure t ~dir ~deep_traverse_externals lib_deps ~init ~f =
   let seen = ref String_set.empty in
-  let result = ref String_set.empty in
-  let lib_is_available name =
-    String_set.mem name !seen || lib_is_available t ~from:dir name
+  let rec loop dir acc lib_dep =
+    match interpret_lib_dep t ~dir lib_dep with
+    | Inr fail -> fail.fail ()
+    | Inl libs -> List.fold_left libs ~init:acc ~f:process
+  and process acc (lib : Lib.t) =
+    let unique_id =
+      match lib with
+      | External pkg -> pkg.name
+      | Internal (dir, lib) ->
+        match lib.public with
+        | Some p -> p.name
+        | None -> Path.to_string dir ^ "\000" ^ lib.name
+    in
+    if String_set.mem unique_id !seen then
+      acc
+    else begin
+      seen := String_set.add unique_id !seen;
+      let acc = f lib acc in
+      match lib with
+      | Internal (dir, lib) ->
+        List.fold_left lib.buildable.libraries ~init:acc ~f:(loop dir)
+      | External pkg ->
+        if deep_traverse_externals then
+          List.fold_left pkg.requires ~init:acc ~f:(fun acc pkg ->
+            process acc (External pkg))
+        else begin
+          seen :=
+            String_set.union !seen
+              (String_set.of_list
+                 (List.map pkg.requires ~f:(fun p -> p.Findlib.name)));
+          acc
+        end
+    end
   in
-  let rec loop dir lib_dep =
-    match lib_dep with
-    | Lib_dep.Direct name ->
-      if not (String_set.mem name !seen) then begin
-        let lib = find_exn t ~from:dir name in
-        process lib
-      end
-    | Select { choices; loc; _ } ->
-      match
-        List.find_map choices ~f:(fun { required; forbidden; _ } ->
-          if String_set.exists forbidden ~f:lib_is_available then
-            None
-          else
-            match
-              String_set.fold required ~init:[] ~f:(fun name acc ->
-                if String_set.mem name !seen then
-                  (* It's available and already processed *)
-                  acc
-                else
-                  find_exn t ~from:dir name :: acc)
-            with
-            | l           -> Some l
-            | exception _ -> None)
-      with
-      | Some l -> List.iter l ~f:process
-      | None -> Loc.fail loc "No solution found for this select form"
-  and process (lib : Lib.t) =
-    match lib with
-    | Internal (dir, lib) ->
-      seen :=
-        (let set = String_set.add lib.name !seen in
-         match lib.public with
-         | None -> set
-         | Some p -> String_set.add p.name set);
-      result := String_set.union !result
-                  (String_set.of_list lib.ppx_runtime_libraries);
-      List.iter lib.buildable.libraries ~f:(loop dir)
-    | External pkg ->
-      seen := String_set.add pkg.name !seen;
-      result := String_set.union !result
-                  (String_set.of_list
-                     (List.map pkg.ppx_runtime_deps ~f:(fun p -> p.Findlib.name)))
-  in
-  List.iter lib_deps ~f:(loop dir);
-  !result
+  List.fold_left lib_deps ~init ~f:(loop dir)
+
+let all_ppx_runtime_deps_exn t ~dir lib_deps =
+  (* The [ppx_runtime_deps] of [Findlib.package] already holds the transitive closure. *)
+  let deep_traverse_externals = false in
+  fold_transitive_closure t ~dir ~deep_traverse_externals lib_deps
+    ~init:String_set.empty ~f:(fun lib acc ->
+      let rt_deps =
+        match lib with
+        | Internal (dir, lib) ->
+          List.map lib.ppx_runtime_libraries ~f:(fun name ->
+            Lib.best_name (find_exn t ~from:dir name))
+        | External pkg ->
+          List.map pkg.ppx_runtime_deps ~f:(fun p -> p.Findlib.name)
+      in
+      String_set.union acc (String_set.of_list rt_deps))
 
 type resolved_select =
   { src_fn : string

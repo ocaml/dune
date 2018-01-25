@@ -92,6 +92,7 @@ module Lib_dep : sig
 
   val to_lib_names : t -> string list
   val direct : string -> t
+  val of_pp : Pp.t -> t
 end
 
 module Lib_deps : sig

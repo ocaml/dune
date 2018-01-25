@@ -124,7 +124,7 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps
     ]
 
 let gen ~package ~version ~stanzas ~resolve_lib_dep_names
-      ~ppx_runtime_deps_for_deprecated_method_exn =
+      ~all_ppx_runtime_deps_exn =
   let items =
     List.filter_map stanzas ~f:(fun (dir, stanza) ->
       match (stanza : Stanza.t) with
@@ -142,6 +142,14 @@ let gen ~package ~version ~stanzas ~resolve_lib_dep_names
   let pkgs =
     List.map items ~f:(fun (Lib (dir, pub_name, lib)) ->
       let lib_deps = resolve_lib_dep_names ~dir lib.buildable.libraries in
+      let lib_deps =
+        match Preprocess_map.pps lib.buildable.preprocess with
+        | [] -> lib_deps
+        | pps ->
+          lib_deps @
+          String_set.elements
+            (all_ppx_runtime_deps_exn ~dir (List.map pps ~f:Lib_dep.of_pp))
+      in
       let ppx_runtime_deps =
         resolve_lib_dep_names ~dir
           (List.map lib.ppx_runtime_libraries ~f:Lib_dep.direct)
@@ -158,7 +166,7 @@ let gen ~package ~version ~stanzas ~resolve_lib_dep_names
       let ppx_runtime_deps_for_deprecated_method = lazy (
         String_set.union
           (String_set.of_list ppx_runtime_deps)
-          (ppx_runtime_deps_for_deprecated_method_exn ~dir
+          (all_ppx_runtime_deps_exn ~dir
              lib.buildable.libraries)
         |> String_set.elements)
       in

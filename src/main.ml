@@ -113,7 +113,7 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
   | Fatal_error msg ->
     Format.fprintf ppf "%s\n" (String.capitalize_ascii msg);
     false
-  | Findlib.Package_not_available { package; required_by; reason } ->
+  | Findlib.Findlib (Findlib.Package_not_available { package; required_by; reason }) ->
     Format.fprintf ppf
       "@{<error>Error@}: External library %S %s.\n" package
       (match reason with
@@ -142,8 +142,8 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
       (List.map !Clflags.external_lib_deps_hint ~f:quote_for_shell
        |> String.concat ~sep:" ");
     false
-  | Findlib.External_dep_conflicts_with_local_lib
-      { package; required_by; required_locally_in; defined_locally_in } ->
+  | Findlib.Findlib (Findlib.External_dep_conflicts_with_local_lib {
+    package; required_by; required_locally_in; defined_locally_in }) ->
     Format.fprintf ppf
       "@{<error>Error@}: Conflict between internal and external version of library %S:\n\
        - it is defined locally in %s\n\

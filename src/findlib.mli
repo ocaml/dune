@@ -22,8 +22,6 @@ module Package_not_available : sig
   val explain : Format.formatter -> reason -> unit
 end
 
-exception Package_not_available of Package_not_available.t
-
 module External_dep_conflicts_with_local_lib : sig
   type t =
     { package             : string
@@ -33,7 +31,11 @@ module External_dep_conflicts_with_local_lib : sig
     }
 end
 
-exception External_dep_conflicts_with_local_lib of External_dep_conflicts_with_local_lib.t
+type error =
+  | Package_not_available of Package_not_available.t
+  | External_dep_conflicts_with_local_lib of External_dep_conflicts_with_local_lib.t
+
+exception Findlib of error
 
 (** Findlib database *)
 type t

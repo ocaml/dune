@@ -17,7 +17,7 @@
   package "ppd" (
     directory = "ppd"
     description = "pp'd with a rewriter"
-    requires = "foobar"
+    requires = "foobar foobar.baz foobar.runtime-lib2"
     archive(byte) = "foobar_ppd.cma"
     archive(native) = "foobar_ppd.cmxa"
     plugin(byte) = "foobar_ppd.cma"
@@ -36,7 +36,7 @@
     ppx_runtime_deps = "foobar.baz"
     # This line makes things transparent for people mixing preprocessors
     # and normal dependencies
-    requires(-ppx_driver) = "foobar.baz foobar_runtime_lib2"
+    requires(-ppx_driver) = "foobar.baz foobar.runtime-lib2"
     ppx(-ppx_driver,-custom_ppx) = "./ppx.exe --as-ppx"
   )
   package "rewriter2" (

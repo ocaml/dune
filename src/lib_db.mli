@@ -30,7 +30,9 @@ val best_lib_dep_names_exn
   -> Jbuild.Lib_dep.t list
   -> string list
 
-val ppx_runtime_deps_for_deprecated_method_exn
+(** [all_ppx_runtime_deps_exn t ~dir deps] takes the transitive closure of [deps] and
+    return the set of all the ppx runtime dependencies of these libraries. *)
+val all_ppx_runtime_deps_exn
   :  t
   -> dir:Path.t
   -> Jbuild.Lib_dep.t list

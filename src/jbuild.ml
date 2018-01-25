@@ -398,6 +398,8 @@ module Lib_dep = struct
       |> String_set.elements
 
   let direct s = Direct s
+
+  let of_pp pp = Direct (Pp.to_string pp)
 end
 
 module Lib_deps = struct

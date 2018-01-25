@@ -14,4 +14,8 @@ type conf =
   ; scopes    : Scope.t list
   }
 
-val load : ?extra_ignored_subtrees:Path.Set.t -> unit -> conf
+val load
+  :  ?extra_ignored_subtrees:Path.Set.t
+  -> ?ignore_promoted_rules:bool
+  -> unit
+  -> conf

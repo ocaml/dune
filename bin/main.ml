@@ -10,23 +10,24 @@ let (>>=) = Future.(>>=)
 let (>>|) = Future.(>>|)
 
 type common =
-  { concurrency      : int
-  ; debug_dep_path   : bool
-  ; debug_findlib    : bool
-  ; debug_backtraces : bool
-  ; dev_mode         : bool
-  ; verbose          : bool
-  ; workspace_file   : string option
-  ; root             : string
-  ; target_prefix    : string
-  ; only_packages    : String_set.t option
-  ; capture_outputs  : bool
-  ; x                : string option
-  ; diff_command     : string option
-  ; auto_promote     : bool
-  ; force            : bool
+  { concurrency           : int
+  ; debug_dep_path        : bool
+  ; debug_findlib         : bool
+  ; debug_backtraces      : bool
+  ; dev_mode              : bool
+  ; verbose               : bool
+  ; workspace_file        : string option
+  ; root                  : string
+  ; target_prefix         : string
+  ; only_packages         : String_set.t option
+  ; capture_outputs       : bool
+  ; x                     : string option
+  ; diff_command          : string option
+  ; auto_promote          : bool
+  ; force                 : bool
+  ; ignore_promoted_rules : bool
   ; (* Original arguments for the external-lib-deps hint *)
-    orig_args        : string list
+    orig_args             : string list
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -82,6 +83,7 @@ module Main = struct
       ?only_packages:common.only_packages
       ?filter_out_optional_stanzas_with_missing_deps
       ?x:common.x
+      ~ignore_promoted_rules:common.ignore_promoted_rules
       ()
 end
 
@@ -176,7 +178,10 @@ let common =
         diff_command
         auto_promote
         force
-        (root, only_packages, orig)
+        (root,
+         only_packages,
+         ignore_promoted_rules,
+         orig)
         x
     =
     let root, to_cwd =
@@ -205,6 +210,7 @@ let common =
     ; diff_command
     ; auto_promote
     ; force
+    ; ignore_promoted_rules
     ; only_packages =
         Option.map only_packages
           ~f:(fun s -> String_set.of_list (String.split s ~on:','))
@@ -309,6 +315,12 @@ let common =
              ~doc:"Force actions associated to aliases to be re-executed even
                    if their dependencies haven't changed.")
   in
+  let ignore_promoted_rules =
+    Arg.(value
+         & flag
+         & info ["ignore-promoted-rules"] ~docs
+             ~doc:"Ignore rules with (mode promote)")
+  in
   let for_release = "for-release-of-packages" in
   let frop =
     Arg.(value
@@ -320,32 +332,40 @@ let common =
                     packages as well as getting reproducible builds.|})
   in
   let root_and_only_packages =
-    let merge root only_packages release =
+    let merge root only_packages ignore_promoted_rules release =
       let fail opt =
         `Error (true,
                 sprintf
                   "Cannot use -p/--%s and %s simultaneously"
                   for_release opt)
       in
-      match release, root, only_packages with
-      | Some _, Some _, _ -> fail "--root"
-      | Some _, _, Some _ -> fail "--only-packages"
-      | Some pkgs, None, None ->
+      match release, root, only_packages, ignore_promoted_rules with
+      | Some _, Some _, _, _ -> fail "--root"
+      | Some _, _, Some _, _ -> fail "--only-packages"
+      | Some _, _, _, true   -> fail "--ignore-promoted-rules"
+      | Some pkgs, None, None, false ->
         `Ok (Some ".",
              Some pkgs,
+             true,
              ["-p"; pkgs]
             )
-      | None, _, _ ->
+      | None, _, _, _ ->
         `Ok (root,
              only_packages,
+             ignore_promoted_rules,
              List.concat
                [ dump_opt "--root" root
                ; dump_opt "--only-packages" only_packages
+               ; if ignore_promoted_rules then
+                   ["--ignore-promoted-rules"]
+                 else
+                   []
                ])
     in
     Term.(ret (const merge
                $ root
                $ only_packages
+               $ ignore_promoted_rules
                $ frop))
   in
   let x =

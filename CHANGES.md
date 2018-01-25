@@ -70,6 +70,18 @@
 - Use /Fo instead of -o when invoking the Microsoft C compiler to eliminate
   deprecation warning when compiling C++ sources (#354)
 
+- Add a mode field to `rule` stanzas:
+  + `(mode standard)` is the default
+  + `(mode fallback)` replaces `(fallback)`
+  + `(mode promote)` means that targets are copied to the source tree
+  after the rule has completed
+  + `(mode promote-until-clean)` is the same as `(mode promote)` except
+  that `jbuilder clean` deletes the files copied to the source tree.
+  (#437)
+
+- Add a flag `--ignore-promoted-rules` to make jbuilder ignore rules
+  with `(mode promote)`. `-p` implies `--ignore-promoted-rules` (#437)
+
 - Display a warning for invalid lines in jbuild-ignore (#389)
 
 1.0+beta16 (05/11/2017)

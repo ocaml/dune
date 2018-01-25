@@ -738,6 +738,16 @@ module Rule = struct
       | Promote_but_delete_on_clean
       | Not_a_rule_stanza
       | Ignore_source_files
+
+    let t =
+      enum
+        [ "standard"          , Standard
+        ; "fallback"          , Fallback
+        ; "promote"           , Promote
+        ; "promote-unil-clean", Promote_but_delete_on_clean
+        ]
+
+    let field = field "mode" t ~default:Standard
   end
 
   type t =
@@ -765,19 +775,51 @@ module Rule = struct
          field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
          field "action"  Action.Unexpanded.t           >>= fun action ->
          field "locks"   (list String_with_vars.t) ~default:[] >>= fun locks ->
-         field_b "fallback" >>= fun fallback ->
+         map_validate
+           (field_b "fallback" >>= fun fallback ->
+            field_o "mode" Mode.t >>= fun mode ->
+            return (fallback, mode))
+           ~f:(function
+             | true, Some _ ->
+               Error "Cannot use both (fallback) and (mode ...) at the same time.\n\
+                      (fallback) is the same as (mode fallback), \
+                      please use the latter in new code."
+             | false, Some mode -> Ok mode
+             | true, None -> Ok Fallback
+             | false, None -> Ok Standard)
+         >>= fun mode ->
          return { targets = Static targets
                 ; deps
                 ; action
-                ; mode = if fallback then Fallback else Standard
+                ; mode
                 ; locks
                 ; loc = Loc.none
                 })
         sexp
 
-  let ocamllex_v1 loc names =
+  type lex_or_yacc =
+    { modules : string list
+    ; mode    : Mode.t
+    }
+
+  let ocamllex_v1 sexp =
+    match sexp with
+    | List (_, List (_, _) :: _) ->
+      record
+        (field "modules" (list string) >>= fun modules ->
+         Mode.field >>= fun mode ->
+         return { modules; mode })
+        sexp
+    | _ ->
+      { modules = list string sexp
+      ; mode    = Standard
+      }
+
+  let ocamlyacc_v1 = ocamllex_v1
+
+  let ocamllex_to_rule loc { modules; mode } =
     let module S = String_with_vars in
-    List.map names ~f:(fun name ->
+    List.map modules ~f:(fun name ->
       let src = name ^ ".mll" in
       let dst = name ^ ".ml"  in
       { targets = Static [dst]
@@ -791,14 +833,14 @@ module Rule = struct
                   ; S.virt_var __POS__ "@"
                   ; S.virt_var __POS__"<"
                   ]))
-      ; mode = Not_a_rule_stanza
+      ; mode
       ; locks = []
       ; loc
       })
 
-  let ocamlyacc_v1 loc names =
+  let ocamlyacc_to_rule loc { modules; mode } =
     let module S = String_with_vars in
-    List.map names ~f:(fun name ->
+    List.map modules ~f:(fun name ->
       let src = name ^ ".mly" in
       { targets = Static [name ^ ".ml"; name ^ ".mli"]
       ; deps    = [File (S.virt_text __POS__ src)]
@@ -807,7 +849,7 @@ module Rule = struct
             (S.virt_var __POS__ "ROOT",
              Run (S.virt_text __POS__ "ocamlyacc",
                   [S.virt_var __POS__ "<"]))
-      ; mode = Not_a_rule_stanza
+      ; mode
       ; locks = []
       ; loc
       })
@@ -818,6 +860,7 @@ module Menhir = struct
     { merge_into : string option
     ; flags      : String_with_vars.t list
     ; modules    : string list
+    ; mode       : Rule.Mode.t
     }
 
   let v1 =
@@ -825,10 +868,12 @@ module Menhir = struct
       (field_o "merge_into" string >>= fun merge_into ->
        field "flags" (list String_with_vars.t) ~default:[] >>= fun flags ->
        field "modules" (list string) >>= fun modules ->
+       Rule.Mode.field >>= fun mode ->
        return
          { merge_into
          ; flags
          ; modules
+         ; mode
          }
       )
 
@@ -847,7 +892,7 @@ module Menhir = struct
               (S.virt_var __POS__ "ROOT",
                Run (S.virt_text __POS__ "menhir",
                     t.flags @ [S.virt_var __POS__ "<"]))
-        ; mode = Not_a_rule_stanza
+        ; mode  = t.mode
         ; locks = []
        ; loc
        })
@@ -867,7 +912,7 @@ module Menhir = struct
                      ; t.flags
                      ; [ S.virt_var __POS__ "^" ]
                      ]))
-       ; mode = Not_a_rule_stanza
+       ; mode  = t.mode
        ; locks = []
        ; loc
        }]
@@ -962,9 +1007,12 @@ module Stanzas = struct
       ; cstr "executable"  (Executables.v1_single pkgs @> nil) execs
       ; cstr "executables" (Executables.v1_multi  pkgs @> nil) execs
       ; cstr_loc "rule"      (Rule.v1     @> nil) (fun loc x -> [Rule { x with loc }])
-      ; cstr_loc "ocamllex"  (list string @> nil) (fun loc x -> rules (Rule.ocamllex_v1  loc x))
-      ; cstr_loc "ocamlyacc" (list string @> nil) (fun loc x -> rules (Rule.ocamlyacc_v1 loc x))
-      ; cstr_loc "menhir"    (Menhir.v1   @> nil) (fun loc x -> rules (Menhir.v1_to_rule loc x))
+      ; cstr_loc "ocamllex" (Rule.ocamllex_v1 @> nil)
+          (fun loc x -> rules (Rule.ocamllex_to_rule loc x))
+      ; cstr_loc "ocamlyacc" (Rule.ocamlyacc_v1 @> nil)
+          (fun loc x -> rules (Rule.ocamlyacc_to_rule loc x))
+      ; cstr_loc "menhir" (Menhir.v1 @> nil)
+          (fun loc x -> rules (Menhir.v1_to_rule loc x))
       ; cstr "install"     (Install_conf.v1 pkgs @> nil) (fun x -> [Install     x])
       ; cstr "alias"       (Alias_conf.v1 pkgs @> nil)   (fun x -> [Alias       x])
       ; cstr "copy_files" (Copy_files.v1 @> nil)

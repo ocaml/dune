@@ -1,6 +1,14 @@
 open Import
 open Jbuild
 
+let filter_stanzas ~ignore_promoted_rules stanzas =
+  if ignore_promoted_rules then
+    List.filter stanzas ~f:(function
+      | Stanza.Rule { mode = Promote; _ } -> false
+      | _ -> true)
+  else
+    stanzas
+
 module Jbuilds = struct
   type script =
     { dir   : Path.t
@@ -11,7 +19,10 @@ module Jbuilds = struct
     | Literal of (Path.t * Scope.t * Stanza.t list)
     | Script of script
 
-  type t = one list
+  type t =
+    { jbuilds               : one list
+    ; ignore_promoted_rules : bool
+    }
 
   let generated_jbuilds_dir = Path.(relative root) "_build/.jbuilds"
 
@@ -89,7 +100,7 @@ end
         plugin plugin_contents);
     extract_requires ~fname:plugin plugin_contents
 
-  let eval jbuilds ~(context : Context.t) =
+  let eval { jbuilds; ignore_promoted_rules } ~(context : Context.t) =
     let open Future in
     List.map jbuilds ~f:(function
       | Literal x -> return x
@@ -146,7 +157,9 @@ end
                Did you forgot to call [Jbuild_plugin.V*.send]?"
             (Path.to_string file);
         let sexps = Sexp.load ~fname:(Path.to_string generated_jbuild) ~mode:Many in
-        return (dir, scope, Stanzas.parse scope sexps ~file:generated_jbuild))
+        return (dir, scope,
+                Stanzas.parse scope sexps ~file:generated_jbuild
+                |> filter_stanzas ~ignore_promoted_rules))
     |> Future.all
 end
 
@@ -157,15 +170,17 @@ type conf =
   ; scopes    : Scope.t list
   }
 
-let load ~dir ~scope =
+let load ~dir ~scope ~ignore_promoted_rules =
   let file = Path.relative dir "jbuild" in
   match Sexp.load_many_or_ocaml_script (Path.to_string file) with
   | Sexps sexps ->
-    Jbuilds.Literal (dir, scope, Stanzas.parse scope sexps ~file)
+    Jbuilds.Literal (dir, scope,
+                     Stanzas.parse scope sexps ~file
+                     |> filter_stanzas ~ignore_promoted_rules)
   | Ocaml_script ->
     Script { dir; scope }
 
-let load ?extra_ignored_subtrees () =
+let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
   let ftree = File_tree.load Path.root ?extra_ignored_subtrees in
   let packages =
     File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[] ~f:(fun dir pkgs ->
@@ -221,7 +236,7 @@ let load ?extra_ignored_subtrees () =
       let scope = Path.Map.find_default path scopes ~default:scope in
       let jbuilds =
         if String_set.mem "jbuild" files then
-          let jbuild = load ~dir:path ~scope in
+          let jbuild = load ~dir:path ~scope ~ignore_promoted_rules in
           jbuild :: jbuilds
         else
           jbuilds
@@ -233,7 +248,7 @@ let load ?extra_ignored_subtrees () =
   in
   let jbuilds = walk (File_tree.root ftree) [] Scope.empty in
   { file_tree = ftree
-  ; jbuilds
+  ; jbuilds = { jbuilds; ignore_promoted_rules }
   ; packages
   ; scopes = Path.Map.values scopes
   }

@@ -22,8 +22,9 @@ let setup ?(log=Log.no_log)
       ?only_packages
       ?extra_ignored_subtrees
       ?x
+      ?ignore_promoted_rules
       () =
-  let conf = Jbuild_load.load ?extra_ignored_subtrees () in
+  let conf = Jbuild_load.load ?extra_ignored_subtrees ?ignore_promoted_rules () in
   Option.iter only_packages ~f:(fun set ->
     String_set.iter set ~f:(fun pkg ->
       if not (String_map.mem pkg conf.packages) then

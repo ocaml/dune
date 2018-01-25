@@ -129,12 +129,11 @@ let create findlib ~scopes internal_libraries =
   Hashtbl.add t.scope_by_name ~key:"" ~data:root_scope.scope;
   List.iter scopes ~f:(fun (scope : Scope.t) ->
     Hashtbl.add t.by_internal_name ~key:scope.root
-      ~data:{ libs = String_map.empty
-            ; scope
-            });
+      ~data:{ libs = String_map.empty ; scope };
+      Hashtbl.add t.scope_by_name ~key:scope.name ~data:scope
+  );
   List.iter internal_libraries ~f:(fun ((dir, lib) as internal) ->
     let scope = internal_name_scope t ~dir in
-    Hashtbl.add t.scope_by_name ~key:scope.scope.name ~data:scope.scope;
     scope.libs <- String_map.add scope.libs ~key:lib.Library.name ~data:internal;
     Option.iter lib.public ~f:(fun { name; _ } ->
       match Hashtbl.find t.by_public_name name with

@@ -35,6 +35,13 @@
   (public_name foobar.rewriter2)
   (ppx_runtime_libraries (foobar_runtime_lib2))))
 
+(library
+ ((name foobar_ppd)
+  (public_name foobar.ppd)
+  (synopsis "pp'd with a rewriter")
+  (libraries (foobar))
+  (preprocess (pps (foobar_rewriter)))))
+
 (alias
  ((name runtest)
   (action (echo "${read:META.foobar}"))))

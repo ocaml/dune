@@ -112,7 +112,7 @@ to the definition of a build context.
 Note that at the moment, there is no official support for
 cross-compilation in OCaml. Jbuilder supports the opam-cross-x
 repositories from the `ocaml-cross organization on github
-<https://github.com/ocaml-cross/>`, such as:
+<https://github.com/ocaml-cross/>`_, such as:
 
 - `opam-cross-windows <https://github.com/ocaml-cross/opam-cross-windows>`_
 - `opam-cross-android <https://github.com/ocaml-cross/opam-cross-android>`_

@@ -232,11 +232,11 @@ module Libs = struct
   let all_ppx_runtime_deps_exn t ~dir lib_deps =
     all_ppx_runtime_deps_exn t.libs ~dir lib_deps
 
-  let find_scope_dir_by_name_exn t name =
-    find_scope_dir_by_name_exn t.libs ~name
+  let find_scope_by_name_exn t name =
+    find_scope_by_name_exn t.libs ~name
 
-  let find_scope_by_dir t ~dir =
-    find_scope_by_dir t.libs ~dir
+  let find_scope_of_dir t ~dir =
+    find_scope_of_dir t.libs ~dir
 
   let vrequires t ~dir ~item =
     let fn = Path.relative dir (item ^ ".requires.sexp") in
@@ -858,7 +858,7 @@ module PP = struct
         match String.rsplit2 key ~on:'@' with
         | None -> (key, "")
         | Some p -> p in
-      let scope_dir = Libs.find_scope_dir_by_name_exn sctx scope in
+      let scope = Libs.find_scope_by_name_exn sctx scope in
       let names =
         match key with
         | "+none+" -> []
@@ -870,7 +870,7 @@ module PP = struct
         | driver :: rest ->
           (Some driver, List.sort rest ~cmp:String.compare @ [driver])
       in
-      build_ppx_driver sctx names ~dir:scope_dir ~dep_kind:Required ~target:exe ~driver
+      build_ppx_driver sctx names ~dir:scope.root ~dep_kind:Required ~target:exe ~driver
     | _ -> ()
 
   let get_ppx_driver sctx ~(scope:Jbuild.Scope.t) pps =
@@ -880,7 +880,7 @@ module PP = struct
       | driver :: rest -> (Some driver, List.sort ~cmp:String.compare rest)
     in
     let sctx = host_sctx sctx in
-    let from = Libs.find_scope_dir_by_name_exn sctx scope.name in
+    let from = (Libs.find_scope_by_name_exn sctx scope.name).root in
     let public_name name =
       match Libs.find sctx ~from name with
       | None -> Some name (* XXX unknown but assume it's public *)

@@ -103,7 +103,7 @@ module Libs : sig
   val find : t -> from:Path.t -> string -> Lib.t option
   val best_lib_dep_names_exn : t -> dir:Path.t -> Lib_dep.t list -> string list
 
-  val find_scope_by_dir : t -> dir:Path.t -> Jbuild.Scope.t
+  val find_scope_of_dir : t -> dir:Path.t -> Jbuild.Scope.t
 
   val all_ppx_runtime_deps_exn
     :  t

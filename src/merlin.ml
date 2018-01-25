@@ -15,7 +15,7 @@ type t =
 let ppx_flags sctx ~dir ~src_dir:_ { preprocess; libname; _ } =
   match preprocess with
   | Pps { pps; flags } ->
-    let scope = SC.Libs.find_scope_by_dir sctx ~dir in
+    let scope = SC.Libs.find_scope_of_dir sctx ~dir in
     let exe = SC.PP.get_ppx_driver sctx ~scope pps in
     let command =
       List.map (Path.to_absolute_filename exe

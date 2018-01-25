@@ -57,6 +57,6 @@ val local_public_libs : t -> Path.t String_map.t
 (** Unique name, even for internal libraries *)
 val unique_library_name : t -> Lib.t -> string
 
-val find_scope_dir_by_name_exn : t -> name:string -> Path.t
+val find_scope_by_name_exn : t -> name:string -> Jbuild.Scope.t
 
-val find_scope_by_dir : t -> dir:Path.t -> Jbuild.Scope.t
+val find_scope_of_dir : t -> dir:Path.t -> Jbuild.Scope.t

@@ -16,7 +16,7 @@ type t =
        dependencies *)
     instalable_internal_libs : Lib.Internal.t String_map.t
   ; (* this is to resolve the scope of ppx derivers *)
-    by_scope_name            : (string, Path.t) Hashtbl.t
+    scope_by_name            : (string, Scope.t) Hashtbl.t
   ; local_public_libs        : Path.t String_map.t
   }
 
@@ -117,7 +117,7 @@ let create findlib ~scopes internal_libraries =
     { findlib
     ; by_public_name   = Hashtbl.create 1024
     ; by_internal_name = Hashtbl.create 1024
-    ; by_scope_name     = Hashtbl.create 1024
+    ; scope_by_name    = Hashtbl.create 1024
     ; instalable_internal_libs = String_map.empty
     ; local_public_libs
     }
@@ -126,7 +126,7 @@ let create findlib ~scopes internal_libraries =
      files in parent directories, the scope is the whole workspace. *)
   let root_scope = { libs = String_map.empty; scope = Scope.empty } in
   Hashtbl.add t.by_internal_name ~key:Path.root ~data:root_scope;
-  Hashtbl.add t.by_scope_name ~key:"" ~data:root_scope.scope.Scope.root;
+  Hashtbl.add t.scope_by_name ~key:"" ~data:root_scope.scope;
   List.iter scopes ~f:(fun (scope : Scope.t) ->
     Hashtbl.add t.by_internal_name ~key:scope.root
       ~data:{ libs = String_map.empty
@@ -134,7 +134,7 @@ let create findlib ~scopes internal_libraries =
             });
   List.iter internal_libraries ~f:(fun ((dir, lib) as internal) ->
     let scope = internal_name_scope t ~dir in
-    Hashtbl.add t.by_scope_name ~key:scope.scope.name ~data:dir;
+    Hashtbl.add t.scope_by_name ~key:scope.scope.name ~data:scope.scope;
     scope.libs <- String_map.add scope.libs ~key:lib.Library.name ~data:internal;
     Option.iter lib.public ~f:(fun { name; _ } ->
       match Hashtbl.find t.by_public_name name with
@@ -280,9 +280,9 @@ let unique_library_name t (lib : Lib.t) =
       let scope = internal_name_scope t ~dir in
       sprintf "%s@%s" lib.name scope.scope.name
 
-let find_scope_dir_by_name_exn t ~name =
-  match Hashtbl.find t.by_scope_name name with
+let find_scope_by_name_exn t ~name =
+  match Hashtbl.find t.scope_by_name name with
   | None -> raise (Code_error (sprintf "Invalid scope '%s'" name))
-  | Some path -> path
+  | Some scope -> scope
 
-let find_scope_by_dir t ~dir = (internal_name_scope t ~dir).scope
+let find_scope_of_dir t ~dir = (internal_name_scope t ~dir).scope

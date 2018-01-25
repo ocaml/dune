@@ -65,6 +65,18 @@ module List = struct
       | None -> filter_map l ~f
       | Some x -> x :: filter_map l ~f
 
+  let filteri l ~f =
+    let rec filteri l i =
+      match l with
+      | [] -> []
+      | x :: l ->
+        let i' = succ i in
+        if f i x
+        then x :: filteri l i'
+        else filteri l i'
+    in
+    filteri l 0
+
   let concat_map l ~f = concat (map l ~f)
 
   let rev_partition_map =

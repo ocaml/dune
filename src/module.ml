@@ -48,7 +48,7 @@ let cmt_file t ~dir (kind : Ml_kind.t) =
   | Impl -> Some (Path.relative dir (t.obj_name ^ ".cmt"))
   | Intf -> Option.map t.intf ~f:(fun _ -> Path.relative dir (t.obj_name ^ ".cmti"))
 
-let odoc_file t ~dir = Path.relative dir (t.obj_name ^ ".odoc")
+let odoc_file t ~doc_dir = Path.relative doc_dir (t.obj_name ^ ".odoc")
 
 let cmti_file t ~dir =
   match t.intf with

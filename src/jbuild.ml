@@ -398,6 +398,8 @@ module Lib_dep = struct
       |> String_set.elements
 
   let direct s = Direct s
+
+  let of_pp pp = Direct (Pp.to_string pp)
 end
 
 module Lib_deps = struct
@@ -735,6 +737,7 @@ module Rule = struct
       | Promote
       | Promote_but_delete_on_clean
       | Not_a_rule_stanza
+      | Ignore_source_files
 
     let t =
       enum
@@ -1022,6 +1025,9 @@ module Stanzas = struct
           let include_stack = (loc, file) :: include_stack in
           let dir = Path.parent file in
           let file = Path.relative dir fn in
+          if not (Path.exists file) then
+            Loc.fail loc "File %s doesn't exist."
+              (Path.to_string_maybe_quoted file);
           if List.exists include_stack ~f:(fun (_, f) -> f = file) then
             raise (Include_loop (file, include_stack));
           let sexps = Sexp.load ~fname:(Path.to_string file) ~mode:Many in

@@ -103,6 +103,12 @@ module Libs : sig
   val find : t -> from:Path.t -> string -> Lib.t option
   val best_lib_dep_names_exn : t -> dir:Path.t -> Lib_dep.t list -> string list
 
+  val all_ppx_runtime_deps_exn
+    :  t
+    -> dir:Path.t
+    -> Jbuild.Lib_dep.t list
+    -> String_set.t
+
   val load_requires     : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t
   val load_runtime_deps : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t
 
@@ -162,6 +168,18 @@ module Deps : sig
     -> dir:Path.t
     -> Dep_conf.t list
     -> (unit, Path.t list) Build.t
+end
+
+module Doc : sig
+  val root : t -> Path.t
+
+  val dir : t -> Lib.Internal.t -> Path.t
+
+  val deps : t -> (Lib.t list, Lib.t list) Build.t
+
+  val static_deps : t -> Lib.Internal.t -> ('a, 'a) Build.t
+
+  val setup_deps : t -> Lib.Internal.t -> Path.t list -> unit
 end
 
 (** Interpret action written in jbuild files *)

@@ -705,7 +705,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       pending_targets := Pset.diff !pending_targets targets_to_remove;
       clear_targets_digests_after_rule_execution targets_as_list;
       match mode with
-      | Standard | Fallback | Not_a_rule_stanza -> ()
+      | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files -> ()
       | Promote | Promote_but_delete_on_clean ->
         Pset.iter targets ~f:(fun path ->
           let in_source_tree = Option.value_exn (Path.drop_build_context path) in
@@ -816,20 +816,20 @@ and load_dir t ~dir =
     in
     Hashtbl.replace t.dirs ~key:alias_dir ~data:(Loaded alias_stamp_files);
 
-    (* Compute the set of targets and files to copy *)
-    let user_rule_targets, to_promote =
+    (* Compute the set of targets and the set of source files that must not be copied *)
+    let user_rule_targets, source_files_to_ignore =
       List.fold_left rules ~init:(Pset.empty, Pset.empty)
-        ~f:(fun (acc, acc_to_promote) { Pre_rule.targets; mode; _ } ->
+        ~f:(fun (acc_targets, acc_ignored) { Pre_rule.targets; mode; _ } ->
           let targets = Build_interpret.Target.paths targets in
-          (Pset.union targets acc,
+          (Pset.union targets acc_targets,
            match mode with
-           | Promote | Promote_but_delete_on_clean ->
-             Pset.union targets acc_to_promote
+           | Promote | Promote_but_delete_on_clean | Ignore_source_files ->
+             Pset.union targets acc_ignored
            | _ ->
-             acc_to_promote))
+             acc_ignored))
     in
-    let to_promote =
-      Pset.map to_promote ~f:(fun p ->
+    let source_files_to_ignore =
+      Pset.map source_files_to_ignore ~f:(fun p ->
         Option.value_exn (Path.drop_build_context p))
     in
 
@@ -850,7 +850,7 @@ and load_dir t ~dir =
             (File_tree.Dir.file_paths    dir,
              File_tree.Dir.sub_dir_names dir)
         in
-        let files = Pset.diff files to_promote in
+        let files = Pset.diff files source_files_to_ignore in
         if Pset.is_empty files then
           (user_rule_targets, None, subdirs)
         else
@@ -877,7 +877,7 @@ and load_dir t ~dir =
         List.filter rules ~f:(fun (rule : Build_interpret.Rule.t) ->
           match rule.mode with
           | Standard | Promote | Promote_but_delete_on_clean
-          | Not_a_rule_stanza -> true
+          | Not_a_rule_stanza | Ignore_source_files -> true
           | Fallback ->
             let source_files_for_targtes =
               List.fold_left rule.targets ~init:Pset.empty

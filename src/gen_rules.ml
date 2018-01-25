@@ -163,7 +163,7 @@ module Gen(P : Params) = struct
     {|@{<warning>Warning@}: Module %s in %s doesn't have a corresponding .%s file.
 Modules without an implementation are not recommended, see this discussion:
 
-  https://github.com/janestreet/jbuilder/issues/9
+  https://github.com/ocaml/dune/issues/9
 
 In the meantime I'm implicitely adding this rule:
 
@@ -341,7 +341,7 @@ Add it to your jbuild file to remove this warning.
           | Native -> ["-cclib"; "-l" ^ stubs_name]
       in
       let map_cclibs =
-        (* https://github.com/janestreet/jbuilder/issues/119 *)
+        (* https://github.com/ocaml/dune/issues/119 *)
         if ctx.ccomp_type = "msvc" then
           msvc_hack_cclibs
         else
@@ -559,7 +559,7 @@ Add it to your jbuild file to remove this warning.
                ; Path (Path.relative dir (sprintf "%s_stubs" lib.name))
                ; Deps o_files
                ; Dyn (fun cclibs ->
-                   (* https://github.com/janestreet/jbuilder/issues/119 *)
+                   (* https://github.com/ocaml/dune/issues/119 *)
                    if ctx.ccomp_type = "msvc" then
                      let cclibs = msvc_hack_cclibs cclibs in
                      Arg_spec.quote_args "-ldopt" cclibs
@@ -634,7 +634,13 @@ Add it to your jbuild file to remove this warning.
       );
 
     (* Odoc *)
-    Odoc.setup_library_rules sctx lib ~dir ~requires ~modules ~dep_graph;
+    let mld_files =
+      String_set.fold files ~init:[] ~f:(fun fn acc ->
+        if Filename.check_suffix fn ".mld" then fn :: acc else acc)
+    in
+    Odoc.setup_library_rules sctx lib ~dir ~requires ~modules ~dep_graph
+      ~mld_files
+    ;
 
     let flags =
       match alias_module with
@@ -900,6 +906,7 @@ Add it to your jbuild file to remove this warning.
             ~version
             ~stanzas:(SC.stanzas_to_consider_for_install sctx)
             ~resolve_lib_dep_names:(SC.Libs.best_lib_dep_names_exn sctx)
+            ~all_ppx_runtime_deps_exn:(SC.Libs.all_ppx_runtime_deps_exn sctx)
         in
         SC.add_rule sctx
           (Build.fanout meta_contents template
@@ -1035,8 +1042,12 @@ Add it to your jbuild file to remove this warning.
     in
     let entries = local_install_rules entries ~package in
     SC.add_rule sctx
-      ?mode:(Option.some_if promote_install_file
-               Rule.Mode.Promote_but_delete_on_clean)
+      ~mode:(if promote_install_file then
+               Promote_but_delete_on_clean
+             else
+               (* We must ignore the source file since it might be copied to the source
+                  tree by another context. *)
+               Ignore_source_files)
       (Build.path_set (Install.files entries)
        >>^ (fun () ->
          let entries =

@@ -1,5 +1,5 @@
-next
-----
+1.0+beta17 (23/01/2018)
+-----------------------
 
 - Make jbuilder aware that `num` is an external package in OCaml >= 4.06.0
   (#358)
@@ -65,7 +65,6 @@ next
   `META.pkg.template`. This feature was unused and was making the code
   complicated (#370)
 
-
 - Remove read-only attribute on Windows before unlink (#247)
 
 - Use /Fo instead of -o when invoking the Microsoft C compiler to eliminate
@@ -82,6 +81,8 @@ next
 
 - Add a flag `--ignore-promoted-rules` to make jbuilder ignore rules
   with `(mode promote)`. `-p` implies `--ignore-promoted-rules` (#437)
+
+- Display a warning for invalid lines in jbuild-ignore (#389)
 
 1.0+beta16 (05/11/2017)
 -----------------------

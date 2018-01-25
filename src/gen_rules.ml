@@ -1043,8 +1043,12 @@ Add it to your jbuild file to remove this warning.
     in
     let entries = local_install_rules entries ~package in
     SC.add_rule sctx
-      ?mode:(Option.some_if promote_install_file
-               Rule.Mode.Promote_but_delete_on_clean)
+      ~mode:(if promote_install_file then
+               Promote_but_delete_on_clean
+             else
+               (* We must ignore the source file since it might be copied to the source
+                  tree by another context. *)
+               Ignore_source_files)
       (Build.path_set (Install.files entries)
        >>^ (fun () ->
          let entries =

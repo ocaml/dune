@@ -215,6 +215,9 @@ module Rule : sig
       (** Same as [Standard] however this is not a rule stanza, so it is not possible to
           add a [(fallback)] field to the rule. *)
       | Not_a_rule_stanza
+      (** Just ignore the source files entirely. This is for cases where the targets are
+          promoted only in a specific context, such as for .install files. *)
+      | Ignore_source_files
   end
 
   type t =

@@ -735,6 +735,7 @@ module Rule = struct
       | Promote
       | Promote_but_delete_on_clean
       | Not_a_rule_stanza
+      | Ignore_source_files
   end
 
   type t =

@@ -856,9 +856,8 @@ module PP = struct
       let exe = Path.relative ppx_dir "ppx.exe" in
       let (key, scope) =
         match String.rsplit2 key ~on:'@' with
-        | None -> (key, "")
-        | Some p -> p in
-      let scope = Libs.find_scope_by_name_exn sctx scope in
+        | None -> (key, Scope.empty)
+        | Some (key, scope) -> (key, Libs.find_scope_by_name_exn sctx scope) in
       let names =
         match key with
         | "+none+" -> []

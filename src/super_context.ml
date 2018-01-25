@@ -877,7 +877,7 @@ module PP = struct
     let (driver, names) =
       match List.rev_map pps ~f:Pp.to_string with
       | [] -> (None, [])
-      | driver :: rest -> (Some driver, List.sort ~cmp:String.compare rest)
+      | driver :: rest -> (Some driver, rest)
     in
     let sctx = host_sctx sctx in
     let from = (Libs.find_scope_by_name_exn sctx scope.name).root in
@@ -885,25 +885,25 @@ module PP = struct
       match Libs.find sctx ~from name with
       | None -> Some name (* XXX unknown but assume it's public *)
       | Some lib -> Lib.public_name lib in
-    let (driver_public, driver_name) =
+    let (driver_private, driver) =
       match driver with
-      | None -> (true, None)
+      | None -> (false, None)
       | Some driver ->
         begin match public_name driver with
-        | None -> (false, Some driver)
-        | Some driver -> (true, Some driver)
+        | None -> (true, Some driver)
+        | Some driver -> (false, Some driver)
         end in
-    let (public, private_) =
-      List.fold_left ~f:(fun (pubs, privs) name ->
-        match public_name name with
-        | None -> (pubs, name :: privs)
-        | Some pub_name -> (pub_name :: pubs, privs)
-      ) ~init:([], []) names in
+    let (libs, has_private_libs) =
+      List.fold_left ~f:(fun (libs, has_private_libs) lib ->
+        match public_name lib with
+        | None -> (lib :: libs, true)
+        | Some pub_name -> (pub_name :: libs, has_private_libs)
+      ) ~init:([], driver_private) names in
+    let libs = List.sort ~cmp:String.compare libs in
     let names =
-      let without_driver = List.rev_append public private_ in
-      match driver_name with
-      | None -> without_driver
-      | Some driver -> without_driver @ [driver] in
+      match driver with
+      | None -> libs
+      | Some driver -> libs @ [driver] in
     let key =
       match names with
       | [] -> "+none+"
@@ -911,10 +911,10 @@ module PP = struct
     in
     let ppx_dir =
       Path.relative sctx.ppx_dir (
-        if List.is_empty private_ && driver_public then (
-          key
-        ) else (
+        if has_private_libs then (
           sprintf "%s@%s" key scope.name
+        ) else (
+          key
         )
       ) in
     Path.relative ppx_dir "ppx.exe"

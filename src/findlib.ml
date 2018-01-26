@@ -252,7 +252,7 @@ module External_dep_conflicts_with_local_lib = struct
   type t =
     { package             : string
     ; required_by         : string
-    ; required_locally_in : Path.t
+    ; required_locally_in : string list
     ; defined_locally_in  : Path.t
     }
 end

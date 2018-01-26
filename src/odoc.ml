@@ -274,6 +274,7 @@ let gen_rules sctx ~dir rest =
     setup_css_rule sctx;
     setup_toplevel_index_rule sctx
   | lib :: _ ->
-    match Lib_db.find (SC.libs sctx) ~from:dir lib with
+    let scope = Lib_db.find_scope' (SC.libs sctx) ~dir in
+    match Lib_db.Scope.find scope lib with
     | None | Some (External _) -> ()
     | Some (Internal (dir, _)) -> SC.load_dir sctx ~dir

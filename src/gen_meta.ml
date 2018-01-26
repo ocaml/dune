@@ -32,7 +32,8 @@ module Pub_name = struct
   let to_string t = String.concat ~sep:"." (to_list t)
 end
 
-type item = Lib of Path.t * Pub_name.t * Library.t
+type item =
+    Lib of Lib_db.Scope.t Lib_db.with_required_by * Pub_name.t * Library.t
 
 let string_of_deps l =
   String.concat (List.sort l ~cmp:String.compare) ~sep:" "
@@ -123,14 +124,14 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps
       )
     ]
 
-let gen ~package ~version ~stanzas ~resolve_lib_dep_names
-      ~all_ppx_runtime_deps_exn =
+let gen ~package ~scope ~version ~stanzas =
   let items =
     List.filter_map stanzas ~f:(fun (dir, stanza) ->
       match (stanza : Stanza.t) with
       | Library ({ public = Some { name; package = p; _ }; _ } as lib)
         when p.name = package ->
-        Some (Lib (dir, Pub_name.parse name, lib))
+        let scope = Lib_db.Scope.required_in_jbuild scope ~jbuild_dir:dir in
+        Some (Lib (scope, Pub_name.parse name, lib))
       | _ ->
         None)
   in
@@ -140,18 +141,19 @@ let gen ~package ~version ~stanzas ~resolve_lib_dep_names
     | Some s -> [rule "version" [] Set s]
   in
   let pkgs =
-    List.map items ~f:(fun (Lib (dir, pub_name, lib)) ->
-      let lib_deps = resolve_lib_dep_names ~dir lib.buildable.libraries in
+    List.map items ~f:(fun (Lib (scope, pub_name, lib)) ->
+      let lib_deps = Lib_db.Scope.best_lib_dep_names_exn scope
+                       lib.buildable.libraries in
       let lib_deps =
         match Preprocess_map.pps lib.buildable.preprocess with
         | [] -> lib_deps
         | pps ->
           lib_deps @
           String_set.elements
-            (all_ppx_runtime_deps_exn ~dir (List.map pps ~f:Lib_dep.of_pp))
+            (Lib_db.Scope.all_ppx_runtime_deps_exn scope (List.map pps ~f:Lib_dep.of_pp))
       in
       let ppx_runtime_deps =
-        resolve_lib_dep_names ~dir
+        Lib_db.Scope.best_lib_dep_names_exn scope
           (List.map lib.ppx_runtime_libraries ~f:Lib_dep.direct)
       in
       (* For the deprecated method, we need to put the transitive closure of the ppx
@@ -166,8 +168,7 @@ let gen ~package ~version ~stanzas ~resolve_lib_dep_names
       let ppx_runtime_deps_for_deprecated_method = lazy (
         String_set.union
           (String_set.of_list ppx_runtime_deps)
-          (all_ppx_runtime_deps_exn ~dir
-             lib.buildable.libraries)
+          (Lib_db.Scope.all_ppx_runtime_deps_exn scope lib.buildable.libraries)
         |> String_set.elements)
       in
       (pub_name,

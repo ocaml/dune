@@ -14,7 +14,7 @@ module Dir_with_jbuild : sig
     { src_dir : Path.t
     ; ctx_dir : Path.t (** [_build/context-name/src_dir] *)
     ; stanzas : Stanzas.t
-    ; scope   : Scope.t
+    ; scope   : Lib_db.Scope.t Lib_db.with_required_by
     }
 end
 
@@ -40,7 +40,7 @@ val stanzas_to_consider_for_install : t -> (Path.t * Stanza.t) list
 val cxx_flags : t -> string list
 val libs      : t -> Lib_db.t
 
-val expand_vars : t -> scope:Scope.t -> dir:Path.t -> String_with_vars.t -> string
+val expand_vars : t -> scope:Lib_db.Scope.t -> dir:Path.t -> String_with_vars.t -> string
 
 val add_rule
   :  t
@@ -100,22 +100,19 @@ val resolve_program
 val unique_library_name : t -> Lib.t -> string
 
 module Libs : sig
-  val find : t -> from:Path.t -> string -> Lib.t option
-  val best_lib_dep_names_exn : t -> dir:Path.t -> Lib_dep.t list -> string list
-
-  val all_ppx_runtime_deps_exn
-    :  t
-    -> dir:Path.t
-    -> Jbuild.Lib_dep.t list
-    -> String_set.t
+  val anonymous_scope : t -> Lib_db.Scope.t
+  val external_scope : t -> Lib_db.Scope.t
 
   val load_requires     : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t
   val load_runtime_deps : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t
 
-  val lib_is_available : t -> from:Path.t -> string -> bool
-
   (** Add rules for (select ...) forms *)
-  val add_select_rules : t -> dir:Path.t -> Lib_deps.t -> unit
+  val add_select_rules
+    : t
+    -> dir:Path.t
+    -> scope:Lib_db.Scope.t Lib_db.with_required_by
+    -> Lib_deps.t
+    -> unit
 
   (** Returns the closed list of dependencies for a dependency list in
      a stanza. The second arrow is the same as the first one but with
@@ -124,6 +121,7 @@ module Libs : sig
   val requires
     :  t
     -> dir:Path.t
+    -> scope:Lib_db.Scope.t Lib_db.with_required_by
     -> dep_kind:Build.lib_dep_kind
     -> item:string (* Library name or first exe name *)
     -> libraries:Lib_deps.t
@@ -136,6 +134,7 @@ module Libs : sig
   val setup_runtime_deps
     :  t
     -> dir:Path.t
+    -> scope:Lib_db.Scope.t Lib_db.with_required_by
     -> dep_kind:Build.lib_dep_kind
     -> item:string (* Library name or first exe name *)
     -> libraries:Lib_deps.t
@@ -164,7 +163,7 @@ module Deps : sig
   (** Evaluates to the actual list of dependencies, ignoring aliases *)
   val interpret
     :  t
-    -> scope:Scope.t
+    -> scope:Lib_db.Scope.t
     -> dir:Path.t
     -> Dep_conf.t list
     -> (unit, Path.t list) Build.t
@@ -196,7 +195,7 @@ module Action : sig
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
     -> targets:targets
-    -> scope:Scope.t
+    -> scope:Lib_db.Scope.t Lib_db.with_required_by
     -> (Path.t list, Action.t) Build.t
 end
 
@@ -213,7 +212,7 @@ module PP : sig
     -> preprocess:Preprocess_map.t
     -> preprocessor_deps:Dep_conf.t list
     -> lib_name:string option
-    -> scope:Scope.t
+    -> scope:Lib_db.Scope.t Lib_db.with_required_by
     -> Module.t String_map.t
 
   (** Get a path to a cached ppx driver *)
@@ -228,7 +227,7 @@ end
 
 val expand_and_eval_set
   :  t
-  -> scope:Scope.t
+  -> scope:Lib_db.Scope.t
   -> dir:Path.t
   -> Ordered_set_lang.Unexpanded.t
   -> standard:string list

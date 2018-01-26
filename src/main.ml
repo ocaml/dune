@@ -149,13 +149,14 @@ let report_error ?(map_fname=fun x->x) ppf exn ~backtrace =
       "@{<error>Error@}: Conflict between internal and external version of library %S:\n\
        - it is defined locally in %s\n\
        - it is required by external library %S\n\
-       - external library %S is required in %s\n\
+       %s\n\
        This cannot work.\n"
       package
       (Utils.jbuild_name_in ~dir:(Path.drop_optional_build_context defined_locally_in))
       required_by
-      required_by
-      (Utils.jbuild_name_in ~dir:required_locally_in);
+      (required_locally_in
+       |> List.map ~f:(sprintf "  -> required by %S")
+       |> String.concat ~sep:"\n");
     false
   | Code_error msg ->
     let bt = Printexc.raw_backtrace_to_string backtrace in

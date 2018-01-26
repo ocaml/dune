@@ -741,10 +741,10 @@ module Rule = struct
 
     let t =
       enum
-        [ "standard"          , Standard
-        ; "fallback"          , Fallback
-        ; "promote"           , Promote
-        ; "promote-unil-clean", Promote_but_delete_on_clean
+        [ "standard"           , Standard
+        ; "fallback"           , Fallback
+        ; "promote"            , Promote
+        ; "promote-until-clean", Promote_but_delete_on_clean
         ]
 
     let field = field "mode" t ~default:Standard

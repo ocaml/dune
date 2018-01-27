@@ -1,5 +1,8 @@
-Jbuilder - A composable build system
-====================================
+Dune (Jbuilder) - A composable build system
+===========================================
+
+__Jbuilder has been renamed to Dune__. A full renaming of the documentation and
+the tool will be done as part of the 1.0 release.
 
 Jbuilder is a build system designed for OCaml/Reason projects only. It
 focuses on providing the user with a consistent experience and takes

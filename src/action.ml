@@ -363,7 +363,7 @@ module Unexpanded = struct
       let expand ~generic ~special ~map ~dir ~f = function
         | Inl x -> map x
         | Inr template as x ->
-          match SW.just_a_var template with
+          match SW.unquoted_var template with
           | None -> generic ~dir (string ~dir ~f x)
           | Some var ->
             match f (SW.loc template) var with
@@ -452,7 +452,7 @@ module Unexpanded = struct
         | Some e -> Some (VE.to_string ~dir e))
 
     let expand ~generic ~special ~dir ~f template =
-      match SW.just_a_var template with
+      match SW.unquoted_var template with
       | None -> begin
           match string ~dir ~f template with
           | Inl x -> Inl (generic ~dir x)

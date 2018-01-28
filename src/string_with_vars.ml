@@ -6,6 +6,8 @@ type item =
   | Text of string
   | Var of var_syntax * string
 
+(* A single unquoted variable is encoded as the list [Var v].  A
+   quoted variable is encoded as [Var v; Text ""]. *)
 type t =
   { items : item list
   ; loc   : Loc.t
@@ -67,9 +69,11 @@ let loc t = t.loc
 
 let virt pos s = of_string ~loc:(Loc.of_pos pos) s
 let virt_var  pos s = { loc = Loc.of_pos pos; items = [Var (Braces, s)] }
+let virt_quoted_var pos s = { loc = Loc.of_pos pos;
+                              items = [Var (Braces, s); Text ""] }
 let virt_text pos s = { loc = Loc.of_pos pos; items = [Text s] }
 
-let just_a_var t =
+let unquoted_var t =
   match t.items with
   | [Var (_, s)] -> Some s
   | _ -> None

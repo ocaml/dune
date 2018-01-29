@@ -696,19 +696,18 @@ Add it to your jbuild file to remove this warning.
         libs @ List.map ~f:(Path.change_extension ~ext:ctx.ext_obj) cm
     in
     SC.add_rule sctx
-      ((libs_and_cm >>> Build.dyn_paths (Build.arr objs))
-       &&&
-       Build.fanout
-       (Ocaml_flags.get flags mode)
-       (SC.expand_and_eval_set sctx ~scope ~dir link_flags ~standard:[])
+      (Build.fanout3
+         (libs_and_cm >>> Build.dyn_paths (Build.arr objs))
+         (Ocaml_flags.get flags mode)
+         (SC.expand_and_eval_set sctx ~scope ~dir link_flags ~standard:[])
        >>>
        Build.run ~context:ctx
          (Ok compiler)
-         [ Dyn (fun (_, (flags,_)) -> As flags)
+         [ Dyn (fun (_, flags,_) -> As flags)
          ; A "-o"; Target exe
-         ; Dyn (fun (_, (_, link_flags)) -> As (link_custom @ link_flags))
-         ; Dyn (fun ((libs, _), _) -> Lib.link_flags libs ~mode)
-         ; Dyn (fun ((_, cm_files), _) -> Deps cm_files)
+         ; Dyn (fun (_, _, link_flags) -> As (link_custom @ link_flags))
+         ; Dyn (fun ((libs, _), _, _) -> Lib.link_flags libs ~mode)
+         ; Dyn (fun ((_, cm_files), _, _) -> Deps cm_files)
          ]);
     if mode = Mode.Byte then
       let rules = Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe in

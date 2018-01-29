@@ -34,7 +34,7 @@ module Repr = struct
     | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
-    | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
+    | Record_lib_deps : lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t
 
@@ -80,13 +80,12 @@ let merge_lib_deps a b =
 let arr f = Arr f
 let return x = Arr (fun () -> x)
 
-let record_lib_deps_simple ~dir lib_deps =
-  Record_lib_deps (dir, lib_deps)
+let record_lib_deps_simple lib_deps =
+  Record_lib_deps lib_deps
 
-let record_lib_deps ~dir ~kind lib_deps =
+let record_lib_deps ~kind lib_deps =
   Record_lib_deps
-    (dir,
-     List.concat_map lib_deps ~f:(function
+    (List.concat_map lib_deps ~f:(function
        | Jbuild.Lib_dep.Direct s -> [(s, kind)]
        | Select { choices; _ } ->
          List.concat_map choices ~f:(fun c ->

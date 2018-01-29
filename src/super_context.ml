@@ -254,7 +254,7 @@ module Libs = struct
   let closure t ~dir ~dep_kind lib_deps =
     let internals, externals, fail = Lib_db.interpret_lib_deps t.libs ~dir lib_deps in
     with_fail ~fail
-      (Build.record_lib_deps ~dir ~kind:dep_kind lib_deps
+      (Build.record_lib_deps ~kind:dep_kind lib_deps
        >>>
        Build.all
          (List.map internals ~f:(fun ((dir, lib) : Lib.Internal.t) ->
@@ -273,7 +273,7 @@ module Libs = struct
   let closed_ppx_runtime_deps_of t ~dir ~dep_kind lib_deps =
     let internals, externals, fail = Lib_db.interpret_lib_deps t.libs ~dir lib_deps in
     with_fail ~fail
-      (Build.record_lib_deps ~dir ~kind:dep_kind lib_deps
+      (Build.record_lib_deps ~kind:dep_kind lib_deps
        >>>
        Build.all
          (List.map internals ~f:(fun ((dir, lib) : Lib.Internal.t) ->
@@ -305,7 +305,7 @@ module Libs = struct
     in
     let vrequires = vrequires t ~dir ~item in
     add_rule t
-      (Build.record_lib_deps ~dir ~kind:dep_kind (List.map virtual_deps ~f:Lib_dep.direct)
+      (Build.record_lib_deps ~kind:dep_kind (List.map virtual_deps ~f:Lib_dep.direct)
        >>>
        Build.fanout
          (closure t ~dir ~dep_kind libraries)
@@ -709,7 +709,7 @@ module Action = struct
              sprintf "- %s" (Utils.describe_target target))
            |> String.concat ~sep:"\n"));
     let build =
-      Build.record_lib_deps_simple ~dir forms.lib_deps
+      Build.record_lib_deps_simple forms.lib_deps
       >>>
       Build.path_set deps
       >>>

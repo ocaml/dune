@@ -107,6 +107,7 @@ module Internal_rule = struct
     ; build            : (unit, Action.t) Build.t
     ; mode             : Jbuild.Rule.Mode.t
     ; loc              : Loc.t option
+    ; dir              : Path.t
     ; mutable exec     : Exec_status.t
     }
 
@@ -606,7 +607,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       ; mode
       ; locks
       ; loc
-      ; dir = _
+      ; dir
       } =
     pre_rule
   in
@@ -728,6 +729,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     ; exec = Not_started { eval_rule; exec_rule }
     ; mode
     ; loc
+    ; dir
     }
   in
   create_file_specs t target_specs rule ~copy_source
@@ -1188,8 +1190,11 @@ let static_deps_of_request t request =
 let all_lib_deps t ~request =
   let targets = static_deps_of_request t request in
   List.fold_left (rules_for_targets t targets) ~init:Pmap.empty
-    ~f:(fun acc rule ->
-      let lib_deps = Build_interpret.lib_deps rule.Internal_rule.build in
+    ~f:(fun acc (rule : Internal_rule.t) ->
+      let lib_deps =
+        match Build_interpret.lib_deps rule.build with
+        | None -> Pmap.empty
+        | Some deps -> Pmap.singleton rule.dir deps in
       Pmap.merge acc lib_deps ~f:(fun _ a b ->
         match a, b with
         | None, None -> None
@@ -1199,8 +1204,12 @@ let all_lib_deps t ~request =
 
 let all_lib_deps_by_context t ~request =
   let targets = static_deps_of_request t request in
-  List.fold_left (rules_for_targets t targets) ~init:[] ~f:(fun acc rule ->
-    let lib_deps = Build_interpret.lib_deps rule.Internal_rule.build in
+  rules_for_targets t targets
+  |> List.fold_left  ~init:[] ~f:(fun acc (rule : Internal_rule.t) ->
+    let lib_deps =
+        match Build_interpret.lib_deps rule.build with
+        | None -> Pmap.empty
+        | Some deps -> Pmap.singleton rule.dir deps in
     Path.Map.fold lib_deps ~init:acc ~f:(fun ~key:path ~data:lib_deps acc ->
       match Path.extract_build_context path with
       | None -> acc

@@ -124,14 +124,13 @@ type lib_dep_kind =
   | Required
 
 val record_lib_deps
-  :  dir:Path.t
-  -> kind:lib_dep_kind
+  :  kind:lib_dep_kind
   -> Jbuild.Lib_dep.t list
   -> ('a, 'a) t
 
 type lib_deps = lib_dep_kind String_map.t
 
-val record_lib_deps_simple : dir:Path.t -> lib_deps -> ('a, 'a) t
+val record_lib_deps_simple : lib_deps -> ('a, 'a) t
 
 (**/**)
 
@@ -153,7 +152,7 @@ module Repr : sig
     | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
-    | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
+    | Record_lib_deps : lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t
 

@@ -47,7 +47,7 @@ val static_deps
 
 val lib_deps
   :  (_, _) Build.t
-  -> Build.lib_deps Path.Map.t
+  -> Build.lib_deps option
 
 val targets
   :  (_, _) Build.t

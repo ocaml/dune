@@ -1,4 +1,14 @@
+module UnlabeledBytes = Bytes
 open StdLabels
+
+module Bytes = struct
+  include StdLabels.Bytes
+
+  (* [blit_string] was forgotten from the labeled version in OCaml
+     4.02—4.04. *)
+  let blit_string ~src ~src_pos ~dst ~dst_pos ~len =
+    UnlabeledBytes.blit_string src src_pos dst dst_pos len
+end
 
 module A = Parser_automaton_internal
 
@@ -20,9 +30,18 @@ module Atom = struct
     let len = String.length s in
     len = 0 || escaped_length s > len
 
-  let escaped_internal s ~with_double_quotes =
+  let escaped_internal s ~with_double_quotes ~always_quote =
     let n = escaped_length s in
-    if n > 0 && n = String.length s then s else begin
+    if n > 0 && n = String.length s then
+      if always_quote then begin
+          let s' = Bytes.create (n + 2) in
+          Bytes.unsafe_set s' 0 '"';
+          Bytes.blit_string ~src:s ~src_pos:0 ~dst:s' ~dst_pos:1 ~len:n;
+          Bytes.unsafe_set s' (n + 1) '"';
+          Bytes.unsafe_to_string s'
+        end
+      else s
+    else begin
       let s' = Bytes.create (n + if with_double_quotes then 2 else 0) in
       let n = ref 0 in
       if with_double_quotes then begin
@@ -58,8 +77,12 @@ module Atom = struct
       Bytes.unsafe_to_string s'
     end
 
-  let escaped s = escaped_internal s ~with_double_quotes:false
-  let serialize s = escaped_internal s ~with_double_quotes:true
+  let escaped s =
+    escaped_internal s ~with_double_quotes:false ~always_quote:false
+  let serialize s =
+    escaped_internal s ~with_double_quotes:true ~always_quote:false
+  let quote s =
+    escaped_internal s ~with_double_quotes:true ~always_quote:true
 end
 
 type t =
@@ -71,7 +94,7 @@ type sexp = t
 
 let rec to_string = function
   | Atom s -> Atom.serialize s
-  | String s -> Atom.serialize s
+  | String s -> Atom.quote s
   | List l -> Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
 
 let rec pp ppf = function

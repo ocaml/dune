@@ -15,6 +15,8 @@ type t =
   ; (* This is to filter out libraries that are not installable because of missing
        dependencies *)
     instalable_internal_libs : Lib.Internal.t String_map.t
+  ; (* this is to resolve the scope of ppx derivers *)
+    scope_by_name            : (string, Scope.t) Hashtbl.t
   ; local_public_libs        : Path.t String_map.t
   }
 
@@ -115,17 +117,21 @@ let create findlib ~scopes internal_libraries =
     { findlib
     ; by_public_name   = Hashtbl.create 1024
     ; by_internal_name = Hashtbl.create 1024
+    ; scope_by_name    = Hashtbl.create 1024
     ; instalable_internal_libs = String_map.empty
     ; local_public_libs
     }
   in
   (* Initializes the scopes, including [Path.root] so that when there are no <pkg>.opam
      files in parent directories, the scope is the whole workspace. *)
+  let root_scope = { libs = String_map.empty; scope = Scope.empty } in
+  Hashtbl.add t.by_internal_name ~key:Path.root ~data:root_scope;
+  Hashtbl.add t.scope_by_name ~key:"" ~data:root_scope.scope;
   List.iter scopes ~f:(fun (scope : Scope.t) ->
     Hashtbl.add t.by_internal_name ~key:scope.root
-      ~data:{ libs = String_map.empty
-            ; scope
-            });
+      ~data:{ libs = String_map.empty ; scope };
+      Hashtbl.add t.scope_by_name ~key:scope.name ~data:scope
+  );
   List.iter internal_libraries ~f:(fun ((dir, lib) as internal) ->
     let scope = internal_name_scope t ~dir in
     scope.libs <- String_map.add scope.libs ~key:lib.Library.name ~data:internal;
@@ -271,6 +277,11 @@ let unique_library_name t (lib : Lib.t) =
     | Some x -> x.name
     | None ->
       let scope = internal_name_scope t ~dir in
-      match scope.scope.name with
-      | None -> lib.name ^ "@"
-      | Some s -> lib.name ^ "@" ^ s
+      sprintf "%s@%s" lib.name scope.scope.name
+
+let find_scope_by_name_exn t ~name =
+  match Hashtbl.find t.scope_by_name name with
+  | None -> raise (Code_error (sprintf "Invalid scope '%s'" name))
+  | Some scope -> scope
+
+let find_scope_of_dir t ~dir = (internal_name_scope t ~dir).scope

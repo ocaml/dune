@@ -990,7 +990,8 @@ Add it to your jbuild file to remove this warning.
           else
             pps
         in
-        let ppx_exe = SC.PP.get_ppx_driver sctx pps in
+        let scope = SC.Libs.find_scope_of_dir sctx ~dir in
+        let ppx_exe = SC.PP.get_ppx_driver sctx ~scope pps in
         [ppx_exe]
     in
     List.concat

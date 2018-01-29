@@ -103,6 +103,8 @@ module Libs : sig
   val find : t -> from:Path.t -> string -> Lib.t option
   val best_lib_dep_names_exn : t -> dir:Path.t -> Lib_dep.t list -> string list
 
+  val find_scope_of_dir : t -> dir:Path.t -> Jbuild.Scope.t
+
   val all_ppx_runtime_deps_exn
     :  t
     -> dir:Path.t
@@ -217,7 +219,7 @@ module PP : sig
     -> Module.t String_map.t
 
   (** Get a path to a cached ppx driver *)
-  val get_ppx_driver : t -> Pp.t list -> Path.t
+  val get_ppx_driver : t -> scope:Jbuild.Scope.t -> Pp.t list -> Path.t
 
   (** [cookie_library_name lib_name] is ["--cookie"; lib_name] if [lib_name] is not
       [None] *)

@@ -630,10 +630,29 @@ module Promotion = struct
 
   let do_promote db =
     let by_targets = group_by_targets db  in
+    let potential_build_contexts =
+      match Path.readdir Path.build_dir with
+      | exception _ -> []
+      | files ->
+        List.filter_map files ~f:(fun fn ->
+          if fn = "" || fn.[0] = '.' || fn = "install" then
+            None
+          else
+            let path = Path.(relative build_dir) fn in
+            Option.some_if (Path.is_directory path) path)
+    in
+    let dirs_to_clear_from_cache = Path.root :: potential_build_contexts in
     Path.Map.iter by_targets ~f:(fun ~key:dst ~data:srcs ->
       match srcs with
       | [] -> assert false
       | src :: others ->
+        (* We remove the files from the digest cache to force a rehash
+           on the next run. We do this because on OSX [mtime] is not
+           precise enough and if a file is modified and promoted
+           quickly, it will look like it hasn't changed even though it
+           might have. *)
+        List.iter dirs_to_clear_from_cache ~f:(fun dir ->
+          Utils.Cached_digest.remove (Path.append dir dst));
         File.promote { src; dst };
         List.iter others ~f:(fun path ->
           Format.eprintf " -> ignored %s.@."

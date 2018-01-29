@@ -196,10 +196,7 @@ module Cached_digest = struct
               };
       digest
 
-  let remove fn =
-    match Hashtbl.find cache fn with
-    | None -> ()
-    | Some file -> file.timestamp_checked <- false
+  let remove fn = Hashtbl.remove cache fn
 
   let db_file = "_build/.digest-db"
 

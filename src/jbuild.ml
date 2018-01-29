@@ -190,7 +190,7 @@ module Pp_or_flags = struct
       PP (Pp.of_string s)
 
   let t = function
-    | Atom (_, s) -> of_string s
+    | Atom (_, s) | String (_, s) -> of_string s
     | List (_, l) -> Flags (List.map l ~f:string)
 
   let split l =
@@ -225,7 +225,7 @@ module Dep_conf = struct
     in
     fun sexp ->
       match sexp with
-      | Atom _ -> File (String_with_vars.t sexp)
+      | Atom _ | String _ -> File (String_with_vars.t sexp)
       | List _ -> t sexp
 
   open Sexp
@@ -356,7 +356,7 @@ module Lib_dep = struct
   let choice = function
     | List (_, l) as sexp ->
       let rec loop required forbidden = function
-        | [Atom (_, "->"); fsexp] ->
+        | [Atom (_, "->"); fsexp] | [String (_, "->"); fsexp]  ->
           let common = String_set.inter required forbidden in
           if not (String_set.is_empty common) then
             of_sexp_errorf sexp
@@ -366,9 +366,9 @@ module Lib_dep = struct
           ; forbidden
           ; file = file fsexp
           }
-        | Atom (_, "->") :: _ | List _ :: _ | [] ->
+        | Atom (_, "->") :: _ | String (_, "->") :: _ | List _ :: _ | [] ->
           of_sexp_error sexp "(<[!]libraries>... -> <file>) expected"
-        | Atom (_, s) :: l ->
+        | (Atom (_, s) | String (_, s)) :: l ->
           let len = String.length s in
           if len > 0 && s.[0] = '!' then
             let s = String.sub s ~pos:1 ~len:(len - 1) in

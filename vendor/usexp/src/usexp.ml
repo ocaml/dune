@@ -64,16 +64,20 @@ end
 
 type t =
   | Atom of string
+  | String of string
   | List of t list
 
 type sexp = t
 
 let rec to_string = function
   | Atom s -> Atom.serialize s
+  | String s -> Atom.serialize s
   | List l -> Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
 
 let rec pp ppf = function
   | Atom s ->
+    Format.pp_print_string ppf (Atom.serialize s)
+  | String s ->
     Format.pp_print_string ppf (Atom.serialize s)
   | List [] ->
     Format.pp_print_string ppf "()"
@@ -101,7 +105,7 @@ let split_string s ~on =
   loop 0 0
 
 let rec pp_split_strings ppf = function
-  | Atom s ->
+  | Atom s | String s ->
     if Atom.must_escape s then begin
       if String.contains s '\n' then begin
         match split_string s ~on:'\n' with
@@ -177,17 +181,20 @@ module Loc = Sexp_ast.Loc
 module Ast = struct
   type t = Sexp_ast.t =
     | Atom of Loc.t * string
+    | String of Loc.t * string
     | List of Loc.t * t list
 
-  let loc (Atom (loc, _) | List (loc, _)) = loc
+  let loc (Atom (loc, _) | String (loc, _) | List (loc, _)) = loc
 
   let rec remove_locs : t -> sexp = function
     | Atom (_, s) -> Atom s
+    | String (_, s) -> String s
     | List (_, l) -> List (List.map l ~f:remove_locs)
 
   module Token = struct
     type t =
       | Atom   of Loc.t * string
+      | String of Loc.t * string
       | Lparen of Loc.t
       | Rparen of Loc.t
   end
@@ -196,6 +203,7 @@ module Ast = struct
     let rec loop acc t =
       match t with
       | Atom (loc, s) -> Token.Atom (loc, s) :: acc
+      | String (loc, s) -> Token.String (loc, s) :: acc
       | List (loc, l) ->
         let shift (pos : Lexing.position) delta =
           { pos with pos_cnum = pos.pos_cnum + delta }
@@ -213,6 +221,7 @@ end
 let rec add_loc t ~loc : Ast.t =
   match t with
   | Atom s -> Atom (loc, s)
+  | String s -> String (loc, s)
   | List l -> List (loc, List.map l ~f:(add_loc ~loc))
 
 module Parser = struct

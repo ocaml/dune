@@ -328,7 +328,7 @@ module Unexpanded = struct
 
   let t sexp =
     match sexp with
-    | Atom _ ->
+    | Atom _ | String _ ->
       of_sexp_errorf sexp
         "if you meant for this to be executed with bash, write (bash \"...\") instead"
     | List _ -> t sexp

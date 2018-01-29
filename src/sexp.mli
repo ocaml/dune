@@ -40,6 +40,7 @@ end with type sexp := t
 module Of_sexp : sig
   type ast = Ast.t =
     | Atom of Loc.t * string
+    | String of Loc.t * string
     | List of Loc.t * ast list
 
   include Combinators with type 'a t = Ast.t -> 'a

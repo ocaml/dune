@@ -9,7 +9,9 @@ type t
 (** A sequence of text and variables. *)
 
 val t : t Sexp.Of_sexp.t
-(** [t ast] takes an [ast] sexp and return a *)
+(** [t ast] takes an [ast] sexp and returns a string-with-vars.  This
+   function distinguishes between unquoted variables — such as ${@} —
+   and quoted variables — such as "${@}". *)
 
 val loc : t -> Loc.t
 (** [loc t] returns the location of [t] — typically, in the jbuild file. *)

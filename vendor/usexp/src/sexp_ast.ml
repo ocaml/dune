@@ -7,4 +7,5 @@ end
 
 type t =
   | Atom of Loc.t * string
+  | String of Loc.t * string
   | List of Loc.t * t list

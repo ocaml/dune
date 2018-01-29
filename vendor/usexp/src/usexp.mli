@@ -23,7 +23,8 @@ end
 
 (** The S-expression type *)
 type t =
-  | Atom of string
+  | Atom of Atom.t
+  | String of string (** Quoted string *)
   | List of t list
 
 (** Serialize a S-expression *)
@@ -46,6 +47,7 @@ module Ast : sig
   type sexp = t
   type t =
     | Atom of Loc.t * Atom.t
+    | String of Loc.t * string (** Quoted string *)
     | List of Loc.t * t list
 
   val loc : t -> Loc.t
@@ -55,6 +57,7 @@ module Ast : sig
   module Token : sig
     type t =
       | Atom   of Loc.t * string
+      | String of Loc.t * string
       | Lparen of Loc.t
       | Rparen of Loc.t
   end

@@ -85,7 +85,7 @@ end
 module To_sexp = struct
   type nonrec 'a t = 'a -> t
   let unit () = List []
-  let string s = Atom s
+  let string s = String s
   let int n = Atom (string_of_int n)
   let float f = Atom (string_of_float f)
   let bool b = Atom (string_of_bool b)
@@ -109,6 +109,7 @@ end
 module Of_sexp = struct
   type ast = Ast.t =
     | Atom of Loc.t * string
+    | String of Loc.t * string
     | List of Loc.t * ast list
 
   type 'a t = ast -> 'a
@@ -125,6 +126,7 @@ module Of_sexp = struct
 
   let string = function
     | Atom (_, s) -> s
+    | String (_, s) -> s
     | List _ as sexp -> of_sexp_error sexp "Atom expected"
 
   let int sexp =
@@ -156,7 +158,7 @@ module Of_sexp = struct
     | sexp -> of_sexp_error sexp "S-expression of the form (_ _ _) expected"
 
   let list f = function
-    | Atom _ as sexp -> of_sexp_error sexp "List expected"
+    | (Atom _ | String _) as sexp -> of_sexp_error sexp "List expected"
     | List (_, l) -> List.map l ~f
 
   let array f sexp = Array.of_list (list f sexp)
@@ -290,7 +292,7 @@ module Of_sexp = struct
 
   let make_record_parser_state sexp =
     match sexp with
-    | Atom _ -> of_sexp_error sexp "List expected"
+    | Atom _ | String _ -> of_sexp_error sexp "List expected"
     | List (loc, sexps) ->
       let unparsed =
         List.fold_left sexps ~init:Name_map.empty ~f:(fun acc sexp ->
@@ -299,8 +301,9 @@ module Of_sexp = struct
             Name_map.add acc ~key:name ~data:{ value = None; entry = sexp }
           | List (_, [name_sexp; value]) -> begin
               match name_sexp with
-              | Atom (_, name) ->
-                Name_map.add acc ~key:name ~data:{ value = Some value; entry = sexp }
+              | Atom (_, name) | String (_, name) ->
+                 Name_map.add acc ~key:name ~data:{ value = Some value;
+                                                    entry = sexp }
               | List _ ->
                 of_sexp_error name_sexp "Atom expected"
             end
@@ -407,7 +410,7 @@ module Of_sexp = struct
 
   let sum cstrs sexp =
     match sexp with
-    | Atom (loc, s) -> begin
+    | Atom (loc, s) | String (loc, s) -> begin
         match find_cstr cstrs sexp s with
         | C.Tuple  t -> Constructor_args_spec.convert t.args t.rest sexp [] (t.make loc)
         | C.Record _ -> of_sexp_error sexp "'%s' expect arguments"
@@ -416,7 +419,7 @@ module Of_sexp = struct
     | List (loc, name_sexp :: args) ->
       match name_sexp with
       | List _ -> of_sexp_error name_sexp "Atom expected"
-      | Atom (_, s) ->
+      | Atom (_, s) | String (_, s) ->
         match find_cstr cstrs sexp s with
         | C.Tuple  t -> Constructor_args_spec.convert t.args t.rest sexp args (t.make loc)
         | C.Record r -> record r.parse (List (loc, args))
@@ -424,7 +427,7 @@ module Of_sexp = struct
   let enum cstrs sexp =
     match sexp with
     | List _ -> of_sexp_error sexp "Atom expected"
-    | Atom (_, s) ->
+    | Atom (_, s) | String (_, s) ->
       match
         List.find cstrs ~f:(fun (name, _) ->
           equal_cstr_name name s)

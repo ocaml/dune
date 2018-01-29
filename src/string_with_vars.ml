@@ -63,7 +63,20 @@ let of_string ~loc s =
   ; loc
   }
 
-let t sexp = of_string ~loc:(Sexp.Ast.loc sexp) (Sexp.Of_sexp.string sexp)
+let unquoted_var t =
+  match t.items with
+  | [Var (_, s)] -> Some s
+  | _ -> None
+
+let t : Sexp.Of_sexp.ast -> t = function
+  | Atom(loc, s) -> of_string ~loc s
+  | String(loc, s) ->
+     (* If [unquoted_var], then add [""] at the end (see [type t]). *)
+     let t = of_string ~loc s in
+     (match t.items with
+      | [Var _ as v] -> {t with items = [v; Text ""] }
+      | _ -> t)
+  | List _ as sexp -> Sexp.Of_sexp.of_sexp_error sexp "Atom expected"
 
 let loc t = t.loc
 
@@ -72,11 +85,6 @@ let virt_var  pos s = { loc = Loc.of_pos pos; items = [Var (Braces, s)] }
 let virt_quoted_var pos s = { loc = Loc.of_pos pos;
                               items = [Var (Braces, s); Text ""] }
 let virt_text pos s = { loc = Loc.of_pos pos; items = [Text s] }
-
-let unquoted_var t =
-  match t.items with
-  | [Var (_, s)] -> Some s
-  | _ -> None
 
 let sexp_of_var_syntax = function
   | Parens -> Sexp.Atom "parens"

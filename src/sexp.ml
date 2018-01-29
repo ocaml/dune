@@ -127,27 +127,22 @@ module Of_sexp = struct
   let string = function
     | Atom (_, s) -> s
     | Quoted_string (_, s) -> s
-    | List _ as sexp -> of_sexp_error sexp "Atom expected"
+    | List _ as sexp -> of_sexp_error sexp "Atom or quoted string expected"
 
-  let int sexp =
-    let s = string sexp in
-    try
-      int_of_string s
-    with _ ->
-      of_sexp_error sexp "Integer expected"
+  let int sexp = match sexp with
+    | Atom (_, s) -> (try int_of_string s
+                      with _ -> of_sexp_error sexp "Integer expected")
+    | _ -> of_sexp_error sexp "Integer expected"
 
-  let float sexp =
-    let s = string sexp in
-    try
-      float_of_string s
-    with _ ->
-      of_sexp_error sexp "Float expected"
+  let float sexp = match sexp with
+    | Atom (_, s) -> (try float_of_string s
+                      with _ -> of_sexp_error sexp "Float expected")
+    | _ -> of_sexp_error sexp "Float expected"
 
-  let bool sexp =
-    match string sexp with
-    | "true" -> true
-    | "false" -> false
-    | _ -> of_sexp_error sexp "'true' or 'false' expected"
+  let bool = function
+    | Atom (_, "true") -> true
+    | Atom (_, "false") -> false
+    | sexp -> of_sexp_error sexp "'true' or 'false' expected"
 
   let pair fa fb = function
     | List (_, [a; b]) -> (fa a, fb b)
@@ -301,10 +296,10 @@ module Of_sexp = struct
             Name_map.add acc ~key:name ~data:{ value = None; entry = sexp }
           | List (_, [name_sexp; value]) -> begin
               match name_sexp with
-              | Atom (_, name) | Quoted_string (_, name) ->
+              | Atom (_, name) ->
                  Name_map.add acc ~key:name ~data:{ value = Some value;
                                                     entry = sexp }
-              | List _ ->
+              | List _ | Quoted_string _ ->
                 of_sexp_error name_sexp "Atom expected"
             end
           | _ ->
@@ -410,24 +405,25 @@ module Of_sexp = struct
 
   let sum cstrs sexp =
     match sexp with
-    | Atom (loc, s) | Quoted_string (loc, s) -> begin
+    | Atom (loc, s) -> begin
         match find_cstr cstrs sexp s with
         | C.Tuple  t -> Constructor_args_spec.convert t.args t.rest sexp [] (t.make loc)
         | C.Record _ -> of_sexp_error sexp "'%s' expect arguments"
       end
+    | Quoted_string _ -> of_sexp_error sexp "Atom expected"
     | List (_, []) -> of_sexp_error sexp "non-empty list expected"
     | List (loc, name_sexp :: args) ->
       match name_sexp with
-      | List _ -> of_sexp_error name_sexp "Atom expected"
-      | Atom (_, s) | Quoted_string (_, s) ->
+      | Quoted_string _ | List _ -> of_sexp_error name_sexp "Atom expected"
+      | Atom (_, s) ->
         match find_cstr cstrs sexp s with
         | C.Tuple  t -> Constructor_args_spec.convert t.args t.rest sexp args (t.make loc)
         | C.Record r -> record r.parse (List (loc, args))
 
   let enum cstrs sexp =
     match sexp with
-    | List _ -> of_sexp_error sexp "Atom expected"
-    | Atom (_, s) | Quoted_string (_, s) ->
+    | Quoted_string _ | List _ -> of_sexp_error sexp "Atom expected"
+    | Atom (_, s) ->
       match
         List.find cstrs ~f:(fun (name, _) ->
           equal_cstr_name name s)

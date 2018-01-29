@@ -70,7 +70,7 @@ let unquoted_var t =
 
 let t : Sexp.Of_sexp.ast -> t = function
   | Atom(loc, s) -> of_string ~loc s
-  | String(loc, s) ->
+  | Quoted_string (loc, s) ->
      (* If [unquoted_var], then add [""] at the end (see [type t]). *)
      let t = of_string ~loc s in
      (match t.items with

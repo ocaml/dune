@@ -87,20 +87,20 @@ end
 
 type t =
   | Atom of string
-  | String of string
+  | Quoted_string of string
   | List of t list
 
 type sexp = t
 
 let rec to_string = function
   | Atom s -> Atom.serialize s
-  | String s -> Atom.quote s
+  | Quoted_string s -> Atom.quote s
   | List l -> Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
 
 let rec pp ppf = function
   | Atom s ->
     Format.pp_print_string ppf (Atom.serialize s)
-  | String s ->
+  | Quoted_string s ->
     Format.pp_print_string ppf (Atom.serialize s)
   | List [] ->
     Format.pp_print_string ppf "()"
@@ -128,7 +128,7 @@ let split_string s ~on =
   loop 0 0
 
 let rec pp_split_strings ppf = function
-  | Atom s | String s ->
+  | Atom s | Quoted_string s ->
     if Atom.must_escape s then begin
       if String.contains s '\n' then begin
         match split_string s ~on:'\n' with
@@ -204,14 +204,14 @@ module Loc = Sexp_ast.Loc
 module Ast = struct
   type t = Sexp_ast.t =
     | Atom of Loc.t * string
-    | String of Loc.t * string
+    | Quoted_string of Loc.t * string
     | List of Loc.t * t list
 
-  let loc (Atom (loc, _) | String (loc, _) | List (loc, _)) = loc
+  let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)) = loc
 
   let rec remove_locs : t -> sexp = function
     | Atom (_, s) -> Atom s
-    | String (_, s) -> String s
+    | Quoted_string (_, s) -> Quoted_string s
     | List (_, l) -> List (List.map l ~f:remove_locs)
 
   module Token = struct
@@ -226,7 +226,7 @@ module Ast = struct
     let rec loop acc t =
       match t with
       | Atom (loc, s) -> Token.Atom (loc, s) :: acc
-      | String (loc, s) -> Token.String (loc, s) :: acc
+      | Quoted_string (loc, s) -> Token.String (loc, s) :: acc
       | List (loc, l) ->
         let shift (pos : Lexing.position) delta =
           { pos with pos_cnum = pos.pos_cnum + delta }
@@ -244,7 +244,7 @@ end
 let rec add_loc t ~loc : Ast.t =
   match t with
   | Atom s -> Atom (loc, s)
-  | String s -> String (loc, s)
+  | Quoted_string s -> Quoted_string (loc, s)
   | List l -> List (loc, List.map l ~f:(add_loc ~loc))
 
 module Parser = struct

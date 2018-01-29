@@ -765,14 +765,13 @@ you have to quote the variable as in:
 
 .. code:: scheme
 
-    (run foo "${^} ")
+    (run foo "${^}")
 
-(for now the final space is necessary)
 which is equivalent to the following shell command:
 
 .. code:: shell
 
-    $ foo "a b "
+    $ foo "a b"
 
 (the items of the list are concatenated with space).
 Note that, since ``${^}`` is a list of items, the first one may be

@@ -26,29 +26,80 @@ Metadata format
 ===============
 
 Most configuration files read by Jbuilder are using the S-expression
-syntax, which is very simple. Everything is either an atom or a list.
-The exact specification of S-expressions is described in the
-documentation of the `parsexp <https://github.com/janestreet/parsexp>`__
-library.
-
-In a nutshell, the syntax is as follows:
-
-- atoms that do no contain special characters are simply written as
-  is. For instance: ``foo``, ``bar`` are valid atomic S-expressions
-
-- atoms containing special characters or spaces must be quoted using
-  the syntax ``"..."``: ``"foo bar\n"``
-
-- lists are formed by surrounding a sequence of S-expressions separated
-  by spaces with parentheses: ``(a b (c d))``
-
-- single-line comments are introduced with the ``;`` character and may
-  appear anywhere except in the middle of a quoted atom
-
-- block comment are enclosed by ``#|`` and ``|#`` and can be nested
+syntax, which is very simple.  It is described below.
 
 Note that the format is completely static. However you can do
 meta-programming on jbuilds files by writing them in :ref:`ocaml-syntax`.
+
+
+Lexical conventions of s-expressions
+------------------------------------
+
+Whitespace, which consists of space, newline, horizontal tab, and form
+feed, is ignored unless within an OCaml-string, where it is treated
+according to OCaml-conventions.  The left parenthesis opens a new
+list, the right one closes it.  Lists can be empty.
+
+The double quote denotes the beginning and end of a string using
+similar lexing conventions to the ones of OCaml (see the OCaml-manual
+for details).  Differences are:
+
+- octal escape sequences (``\o123``) are not supported;
+- backslash that's not a part of any escape sequence is kept as it is
+  instead of resulting in parse error;
+- a backslash followed by a space does not form an escape sequence, so
+  it’s interpreted as is, while it is interpreted as just a space by
+  OCaml.
+
+All characters other than double quotes, left- and right parentheses,
+whitespace, carriage return, and comment-introducing characters or
+sequences (see next paragraph) are considered part of a contiguous
+string.
+
+Comments
+--------
+
+There are three kinds of comments:
+
+- line comments are introduced with ``;``, and end at the newline;
+- sexp comments are introduced with ``#;``, and end at the end of the
+  following s-expression;
+- block comments are introduced with ``#|`` and end with ``|#``.
+  These can be nested, and double-quotes within them must be balanced
+  and be lexically correct OCaml strings.
+
+Grammar of s-expressions
+------------------------
+
+S-expressions are either sequences of non-whitespace characters
+(= atoms), doubly quoted strings or lists. The lists can recursively
+contain further s-expressions or be empty, and must be balanced,
+i.e. parentheses must match.
+
+Examples
+--------
+
+::
+
+    this_is_an_atom_123'&^%!  ; this is a comment
+    "another atom in an OCaml-string \"string in a string\" \123"
+    
+    ; empty list follows below
+    ()
+    
+    ; a more complex example
+    (
+      (
+        list in a list  ; comment within a list
+        (list in a list in a list)
+        42 is the answer to all questions
+        #; (this S-expression
+             (has been commented out)
+           )
+        #| Block comments #| can be "nested" |# |#
+      )
+    )
+
 
 .. _opam-files:
 

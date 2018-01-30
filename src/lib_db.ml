@@ -145,6 +145,9 @@ module Scope = struct
         Some { dst_fn = result_fn; src_fn })
 
   let root t = t.scope.scope.root
+  let name t =
+    Option.value ~default:"" t.scope.scope.name
+
   let resolve t =
     (* TODO do something with required_by here *)
     Jbuild.Scope.resolve t.data.scope.scope

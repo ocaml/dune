@@ -34,6 +34,7 @@ module Scope : sig
   val lib_is_available : t with_required_by -> string -> bool
 
   val root : t -> Path.t
+  val name : t -> string
 
   val resolve : t with_required_by -> string -> (Package.t, string) result
 

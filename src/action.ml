@@ -543,17 +543,6 @@ let fold_one_step t ~init:acc ~f =
 
 include Make_mapper(Ast)(Ast)
 
-let updated_files =
-  let rec loop acc t =
-    let acc =
-      match t with
-      | Write_file (fn, _) -> Path.Set.add fn acc
-      | _ -> acc
-    in
-    fold_one_step t ~init:acc ~f:loop
-  in
-  fun t -> loop Path.Set.empty t
-
 let chdirs =
   let rec loop acc t =
     let acc =

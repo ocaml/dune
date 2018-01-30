@@ -84,6 +84,9 @@
 
 - Display a warning for invalid lines in jbuild-ignore (#389)
 
+- Always build `boot.exe` as a bytecode program. It makes the build of
+  jbuilder faster and fix the build on some architectures (#463, fixes #446)
+
 1.0+beta16 (05/11/2017)
 -----------------------
 

@@ -340,5 +340,5 @@ let anonymous_scope t =
 
 let find_scope_by_name_exn t ~name =
   match Hashtbl.find t.by_scope_name name with
-  | None -> raise (Code_error (sprintf "Invalid scope '%s'" name))
+  | None -> die "Invalid scope '%s'" name
   | Some scope -> { Scope.scope ; lib_db = t }

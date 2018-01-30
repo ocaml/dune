@@ -12,12 +12,12 @@ type t =
   ; source_dirs: Path.Set.t
   }
 
-let ppx_flags sctx ~dir:_ ~src_dir:_ { preprocess; libname; _ } =
+let ppx_flags sctx ~dir:_ ~scope ~src_dir:_ { preprocess; libname; _ } =
   match preprocess with
   | Pps { pps; flags } ->
-    let exe = SC.PP.get_ppx_driver sctx pps in
+    let exe = SC.PP.get_ppx_driver sctx ~scope pps in
     let command =
-      List.map (Path.to_absolute_filename  exe
+      List.map (Path.to_absolute_filename exe
                 :: "--as-ppx"
                 :: SC.PP.cookie_library_name libname
                 @ flags)
@@ -27,7 +27,7 @@ let ppx_flags sctx ~dir:_ ~src_dir:_ { preprocess; libname; _ } =
     [sprintf "FLG -ppx %s" (Filename.quote command)]
   | _ -> []
 
-let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
+let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
   match Path.drop_build_context dir with
   | Some remaindir ->
     let merlin_file = Path.relative dir ".merlin" in
@@ -46,7 +46,7 @@ let dot_merlin sctx ~dir ({ requires; flags; _ } as t) =
     SC.add_rule sctx ~mode:Promote_but_delete_on_clean (
       requires &&& flags
       >>^ (fun (libs, flags) ->
-        let ppx_flags = ppx_flags sctx ~dir ~src_dir:remaindir t in
+        let ppx_flags = ppx_flags sctx ~dir ~scope ~src_dir:remaindir t in
         let internals, externals =
           List.fold_left libs ~init:([], []) ~f:(fun (internals, externals) ->
             function
@@ -117,6 +117,6 @@ let merge_all = function
   | [] -> None
   | init::ts -> Some (List.fold_left ~init ~f:merge_two ts)
 
-let add_rules sctx ~dir merlin =
+let add_rules sctx ~dir ~scope merlin =
   if (SC.context sctx).merlin then
-    dot_merlin sctx ~dir merlin
+    dot_merlin sctx ~dir ~scope merlin

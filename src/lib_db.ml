@@ -289,7 +289,10 @@ let create findlib ~scopes ~root internal_libraries =
       assert (not (Hashtbl.mem t.by_scope_name name));
       Hashtbl.add t.by_scope_name ~key:name ~data:lib_scope;
     );
-    Hashtbl.add t.by_internal_name ~key:scope.root ~data:lib_scope);
+    Hashtbl.add t.by_internal_name ~key:scope.root ~data:lib_scope
+  );
+  let anon_scope = internal_name_scope t ~dir:t.anonymous_root in
+  Hashtbl.add t.by_scope_name ~key:"" ~data:anon_scope;
   List.iter internal_libraries ~f:(fun ((dir, lib) as internal) ->
     let scope = internal_name_scope t ~dir in
     scope.libs <- String_map.add scope.libs ~key:lib.Library.name ~data:internal;

@@ -17,6 +17,7 @@ type t =
     instalable_internal_libs : Lib.Internal.t String_map.t
   ; local_public_libs        : Path.t String_map.t
   ; anonymous_root           : Path.t
+  ; by_scope_name            : (string, scope) Hashtbl.t
   }
 
 let rec internal_name_scope t ~dir =
@@ -273,15 +274,19 @@ let create findlib ~scopes ~root internal_libraries =
     ; instalable_internal_libs = String_map.empty
     ; local_public_libs
     ; anonymous_root = root
+    ; by_scope_name = Hashtbl.create 1024
     }
   in
   (* Initializes the scopes, including [Path.root] so that when there are no <pkg>.opam
      files in parent directories, the scope is the whole workspace. *)
   List.iter scopes ~f:(fun (scope : Jbuild.Scope.t) ->
-    Hashtbl.add t.by_internal_name ~key:scope.root
-      ~data:{ libs = String_map.empty
-            ; scope
-            });
+    let lib_scope = { libs = String_map.empty; scope } in
+    Option.iter scope.name ~f:(fun name ->
+      assert (name <> "");
+      assert (not (Hashtbl.mem t.by_scope_name name));
+      Hashtbl.add t.by_scope_name ~key:name ~data:lib_scope;
+    );
+    Hashtbl.add t.by_internal_name ~key:scope.root ~data:lib_scope);
   List.iter internal_libraries ~f:(fun ((dir, lib) as internal) ->
     let scope = internal_name_scope t ~dir in
     scope.libs <- String_map.add scope.libs ~key:lib.Library.name ~data:internal;
@@ -326,3 +331,8 @@ let anonymous_scope t =
     lib_db = t
   ; scope = internal_name_scope t ~dir:t.anonymous_root
   }
+
+let find_scope_by_name_exn t ~name =
+  match Hashtbl.find t.by_scope_name name with
+  | None -> raise (Code_error (sprintf "Invalid scope '%s'" name))
+  | Some scope -> { Scope.scope ; lib_db = t }

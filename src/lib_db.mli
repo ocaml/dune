@@ -87,3 +87,7 @@ val anonymous_scope : t -> Scope.t
 
 (** Contains only publicly, and external (findlib) libraries *)
 val external_scope : t -> Scope.t
+
+(** Find scope by the their explicit names (opam package names) [""] corresponds
+    to the anonymous scope *)
+val find_scope_by_name_exn : t -> name:string -> Scope.t

@@ -216,7 +216,11 @@ module PP : sig
     -> Module.t String_map.t
 
   (** Get a path to a cached ppx driver *)
-  val get_ppx_driver : t -> Pp.t list -> Path.t
+  val get_ppx_driver
+    : t
+    -> scope:Lib_db.Scope.t Lib_db.with_required_by
+    -> Pp.t list
+    -> Path.t
 
   (** [cookie_library_name lib_name] is ["--cookie"; lib_name] if [lib_name] is not
       [None] *)

@@ -11,5 +11,10 @@ type t =
 val merge_all : t list -> t option
 
 (** Add rules for generating the .merlin in a directory *)
-val add_rules : Super_context.t -> dir:Path.t -> t -> unit
+val add_rules
+  : Super_context.t
+  -> dir:Path.t
+  -> scope:Lib_db.Scope.t Lib_db.with_required_by
+  -> t
+  -> unit
 

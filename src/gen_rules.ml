@@ -862,7 +862,7 @@ Add it to your jbuild file to remove this warning.
       { m with source_dirs =
                  Path.Set.add (Path.relative src_dir ".") m.source_dirs
       })
-    |> Option.iter ~f:(Merlin.add_rules sctx ~dir:ctx_dir);
+    |> Option.iter ~f:(Merlin.add_rules sctx ~dir:ctx_dir ~scope);
     Option.iter (Utop.exe_stanzas stanzas) ~f:(fun (exe, all_modules) ->
       let dir = Utop.utop_exe_dir ~dir:ctx_dir in
       let merlin = executables_rules exe ~dir ~all_modules ~scope in
@@ -1003,7 +1003,8 @@ Add it to your jbuild file to remove this warning.
           else
             pps
         in
-        let ppx_exe = SC.PP.get_ppx_driver sctx pps in
+        let scope = Lib_db.find_scope' (SC.libs sctx) ~dir in
+        let ppx_exe = SC.PP.get_ppx_driver sctx ~scope pps in
         [ppx_exe]
     in
     List.concat

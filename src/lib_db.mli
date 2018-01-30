@@ -34,6 +34,7 @@ module Scope : sig
   val lib_is_available : t with_required_by -> string -> bool
 
   val root : t -> Path.t
+  val name : t -> string
 
   val resolve : t with_required_by -> string -> (Package.t, string) result
 
@@ -87,3 +88,7 @@ val anonymous_scope : t -> Scope.t
 
 (** Contains only publicly, and external (findlib) libraries *)
 val external_scope : t -> Scope.t
+
+(** Find scope by the their explicit names (opam package names) [""] corresponds
+    to the anonymous scope *)
+val find_scope_by_name_exn : t -> name:string -> Scope.t

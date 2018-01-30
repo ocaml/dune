@@ -20,15 +20,20 @@ type t =
   ; by_scope_name            : (string, scope) Hashtbl.t
   }
 
-let rec internal_name_scope t ~dir =
-  match Hashtbl.find t.by_internal_name dir with
-  | Some scope -> scope
-  | None ->
-    (* [create] ensures that [Hashtbl.find t.by_internal_name Path.root] is [Some _] so
-       this [Path.parent dir] is never called with [Path.root] *)
-    let scope = internal_name_scope t ~dir:(Path.parent dir) in
-    Hashtbl.add t.by_internal_name ~key:dir ~data:scope;
-    scope
+let internal_name_scope t ~dir =
+  let rec loop d =
+    match Hashtbl.find t.by_internal_name d with
+    | Some scope -> scope
+    | None ->
+      if Path.is_root d || not (Path.is_local d) then (
+        Sexp.code_error "Lib_db.Scope.internal_name_scope got an invalid path"
+          [ "dir", Path.sexp_of_t dir
+          ; "t.anonymous_root", Path.sexp_of_t t.anonymous_root ]
+      );
+      let scope = loop (Path.parent d) in
+      Hashtbl.add t.by_internal_name ~key:d ~data:scope;
+      scope in
+  loop dir
 
 type 'a with_required_by =
   { required_by: string list

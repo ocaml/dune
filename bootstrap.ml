@@ -106,8 +106,6 @@ let prog_not_found prog =
   eprintf "Program %s not found in PATH" prog;
   exit 2
 
-type mode = Native | Byte
-
 let best_prog dir prog =
   let fn = dir ^/ prog ^ ".opt" ^ exe in
   if Sys.file_exists fn then
@@ -134,13 +132,10 @@ let get_prog dir prog =
   | None -> prog_not_found prog
   | Some fn -> fn
 
-let bin_dir, mode, compiler =
+let bin_dir, compiler =
   match find_prog "ocamlc" with
   | None -> prog_not_found "ocamlc"
-  | Some (bin_dir, prog) ->
-    match best_prog bin_dir "ocamlopt" with
-    | Some prog -> (bin_dir, Native, prog)
-    | None -> (bin_dir, Byte, prog)
+  | Some x -> x
 
 let ocamllex = get_prog bin_dir "ocamllex"
 let ocamldep = get_prog bin_dir "ocamldep"
@@ -429,14 +424,9 @@ let cleanup ~keep_ml_file =
     ()
 
 let () =
-  let lib_ext =
-    match mode with
-    | Native -> "cmxa"
-    | Byte   -> "cma"
-  in
   let n =
-    try exec "%s -w -40 -o boot.exe unix.%s %s"
-          (Filename.quote compiler) lib_ext generated_file
+    try exec "%s -w -40 -o boot.exe unix.cma %s"
+          (Filename.quote compiler) generated_file
     with e -> cleanup ~keep_ml_file:true; raise e
   in
   cleanup ~keep_ml_file:(n <> 0);

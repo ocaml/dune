@@ -13,7 +13,7 @@ val build_module
   -> js_of_ocaml:Jbuild.Js_of_ocaml.t
   -> flags:Ocaml_flags.t
   -> Module.t
-  -> scope:Jbuild.Scope.t
+  -> scope:Lib_db.Scope.t
   -> dir:Path.t
   -> dep_graph:Ocamldep.dep_graph
   -> modules:Module.t String_map.t
@@ -27,7 +27,7 @@ val build_modules
   -> dynlink:bool
   -> js_of_ocaml:Jbuild.Js_of_ocaml.t
   -> flags:Ocaml_flags.t
-  -> scope:Jbuild.Scope.t
+  -> scope:Lib_db.Scope.t
   -> dir:Path.t
   -> dep_graph:Ocamldep.dep_graph
   -> modules:Module.t String_map.t

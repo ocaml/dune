@@ -3,7 +3,7 @@
         ocamlc ppx/fooppx.{cmi,cmo,cmt}
       ocamlopt ppx/fooppx.{cmx,o}
       ocamlopt ppx/fooppx.{a,cmxa}
-      ocamlopt .ppx/fooppx/ppx.exe
+      ocamlopt .ppx/fooppx@/ppx.exe
            ppx w_omp_driver.pp.ml
       ocamldep w_omp_driver.depends.ocamldep-output
         ocamlc w_omp_driver.{cmi,cmo,cmt}

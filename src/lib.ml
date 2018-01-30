@@ -101,3 +101,7 @@ let remove_dups_preserve_order libs =
   in
   loop String_set.empty libs []
 ;;
+
+let public_name = function
+  | External pkg -> Some pkg.name
+  | Internal (_, lib) -> Option.map lib.public ~f:(fun p -> p.name)

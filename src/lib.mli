@@ -33,3 +33,5 @@ val remove_dups_preserve_order : t list -> t list
 
 (*val ppx_runtime_libraries : t list -> String_set.t
 *)
+
+val public_name : t -> string option

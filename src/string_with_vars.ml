@@ -6,12 +6,10 @@ type item =
   | Text of string
   | Var of var_syntax * string
 
-(* A single unquoted variable is encoded as the list [Var v].  A
-   quoted variable is encoded as [Var v; Text ""]. *)
 type t =
   { items : item list
-  ; loc   : Loc.t
-  }
+  ; loc : Loc.t
+  ; quoted : bool }
 
 module Token = struct
   type t =
@@ -48,6 +46,7 @@ module Token = struct
     | Close Parens -> ")"
 end
 
+(* Remark: Consecutive [Text] items are concatenated. *)
 let rec of_tokens : Token.t list -> item list = function
   | [] -> []
   | Open a :: String s :: Close b :: rest when a = b ->
@@ -58,33 +57,27 @@ let rec of_tokens : Token.t list -> item list = function
     | Text s' :: l -> Text (s ^ s') :: l
     | l -> Text s :: l
 
-let of_string ~loc s =
-  { items = of_tokens (Token.tokenise s)
-  ; loc
-  }
+let items_of_string s = of_tokens (Token.tokenise s)
 
 let unquoted_var t =
-  match t.items with
-  | [Var (_, s)] -> Some s
+  match t.quoted, t.items with
+  | true, [Var(_, s)] -> Some s
   | _ -> None
 
 let t : Sexp.Of_sexp.ast -> t = function
-  | Atom(loc, s) -> of_string ~loc s
+  | Atom(loc, s) -> { items = items_of_string s;  loc;  quoted = false }
   | Quoted_string (loc, s) ->
-     (* If [unquoted_var], then add [""] at the end (see [type t]). *)
-     let t = of_string ~loc s in
-     (match t.items with
-      | [Var _ as v] -> {t with items = [v; Text ""] }
-      | _ -> t)
+     { items = items_of_string s;  loc;  quoted = true }
   | List _ as sexp -> Sexp.Of_sexp.of_sexp_error sexp "Atom expected"
 
 let loc t = t.loc
 
-let virt pos s = of_string ~loc:(Loc.of_pos pos) s
-let virt_var  pos s = { loc = Loc.of_pos pos; items = [Var (Braces, s)] }
-let virt_quoted_var pos s = { loc = Loc.of_pos pos;
-                              items = [Var (Braces, s); Text ""] }
-let virt_text pos s = { loc = Loc.of_pos pos; items = [Text s] }
+let virt ?(quoted=true) pos s =
+  { items = items_of_string s;  loc = Loc.of_pos pos;  quoted }
+let virt_var ?(quoted=true) pos s =
+  { items = [Var (Braces, s)];  loc = Loc.of_pos pos;  quoted }
+let virt_text pos s =
+  { items = [Text s];  loc = Loc.of_pos pos;  quoted = true }
 
 let sexp_of_var_syntax = function
   | Parens -> Sexp.Atom "parens"
@@ -100,14 +93,13 @@ let sexp_of_t t = Sexp.To_sexp.list sexp_of_item t.items
 
 let fold t ~init ~f =
   List.fold_left t.items ~init ~f:(fun acc item ->
-    match item with
-    | Text _ -> acc
-    | Var (_, v) -> f acc t.loc v)
+      match item with
+      | Text _ -> acc
+      | Var (_, v) -> f acc t.loc v)
 
-let iter t ~f =
-  List.iter t.items ~f:(function
-    | Text _ -> ()
-    | Var (_, v) -> f t.loc v)
+let iter t ~f = List.iter t.items ~f:(function
+                    | Text _ -> ()
+                    | Var (_, v) -> f t.loc v)
 
 let vars t = fold t ~init:String_set.empty ~f:(fun acc _ x -> String_set.add x acc)
 
@@ -118,11 +110,11 @@ let string_of_var syntax v =
 
 let expand t ~f =
   List.map t.items ~f:(function
-    | Text s -> s
-    | Var (syntax, v) ->
-      match f t.loc v with
-      | Some x -> x
-      | None -> string_of_var syntax v)
+      | Text s -> s
+      | Var (syntax, v) ->
+         match f t.loc v with
+         | Some x -> x
+         | None -> string_of_var syntax v)
   |> String.concat ~sep:""
 
 let concat_rev = function
@@ -140,7 +132,8 @@ let partial_expand t ~f =
     | [] -> begin
         match acc with
         | [] -> Inl (concat_rev acc_text)
-        | _  -> Inr { t with items = List.rev (commit_text acc_text acc) }
+        | _  ->
+           Inr { t with items = List.rev (commit_text acc_text acc) }
       end
     | Text s :: items -> loop (s :: acc_text) acc items
     | Var (_, v) as it :: items ->

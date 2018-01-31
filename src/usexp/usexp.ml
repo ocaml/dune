@@ -101,7 +101,7 @@ let rec pp ppf = function
   | Atom s ->
     Format.pp_print_string ppf (Atom.serialize s)
   | Quoted_string s ->
-    Format.pp_print_string ppf (Atom.serialize s)
+    Format.pp_print_string ppf (Atom.quote s)
   | List [] ->
     Format.pp_print_string ppf "()"
   | List (first :: rest) ->
@@ -128,7 +128,7 @@ let split_string s ~on =
   loop 0 0
 
 let rec pp_split_strings ppf = function
-  | Atom s | Quoted_string s ->
+  | Atom s ->
     if Atom.must_escape s then begin
       if String.contains s '\n' then begin
         match split_string s ~on:'\n' with
@@ -142,6 +142,17 @@ let rec pp_split_strings ppf = function
         Format.fprintf ppf "%S" s
     end else
       Format.pp_print_string ppf s
+  | Quoted_string s ->
+      if String.contains s '\n' then begin
+        match split_string s ~on:'\n' with
+        | [] -> Format.pp_print_string ppf (Atom.quote s)
+        | first :: rest ->
+           Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (String.escaped first);
+           List.iter rest ~f:(fun s ->
+               Format.fprintf ppf "@,\\n%s" (String.escaped s));
+           Format.fprintf ppf "@}\"@]"
+      end else
+        Format.pp_print_string ppf (Atom.quote s)
   | List [] ->
     Format.pp_print_string ppf "()"
   | List (first :: rest) ->

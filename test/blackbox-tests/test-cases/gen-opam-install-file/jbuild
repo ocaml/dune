@@ -4,6 +4,7 @@
  ((name foo)
   (modules (foo))
   (install_c_headers (cfoo))
+  (js_of_ocaml ((javascript_files (foo.js))))
   (wrapped false)
   (public_name foo)))
 

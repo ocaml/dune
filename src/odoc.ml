@@ -268,13 +268,23 @@ let setup_toplevel_index_rule sctx =
   let doc_dir = SC.Doc.root sctx in
   SC.add_rule sctx @@ Build.write_file (toplevel_index ~doc_dir) html
 
-let gen_rules sctx ~dir rest =
+let gen_rules sctx ~dir:_ rest =
   match rest with
   | [] ->
     setup_css_rule sctx;
     setup_toplevel_index_rule sctx
   | lib :: _ ->
-    let scope = Lib_db.find_scope' (SC.libs sctx) ~dir in
+    let libs = SC.libs sctx in
+    let (lib, scope) =
+      match String.rsplit2 lib ~on:'@' with
+      | None -> (lib, Lib_db.external_scope libs)
+      | Some (lib, name) -> (lib, Lib_db.find_scope_by_name_exn libs ~name)
+    in
+    let scope =
+      { Lib_db.
+        data = scope
+      ; required_by = ["@doc target"]
+      } in
     match Lib_db.Scope.find scope lib with
     | None | Some (External _) -> ()
     | Some (Internal (dir, _)) -> SC.load_dir sctx ~dir

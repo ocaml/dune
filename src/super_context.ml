@@ -50,12 +50,8 @@ let expand_vars t ~(scope : Lib_db.Scope.t) ~dir s =
     | "SCOPE_ROOT" ->
       Some (Path.reach ~from:dir (Lib_db.Scope.root scope))
     | var ->
-      let open Action.Var_expansion in
       expand_var_no_root t var
-      |> Option.map ~f:(function
-        | Paths(p,_) -> let p = List.map p ~f:Path.to_string in
-          String.concat ~sep:" " p
-        | Strings(s,_) -> String.concat ~sep:" " s))
+      |> Option.map ~f:(fun e -> Action.Var_expansion.to_string e))
 
 let resolve_program t ?hint bin =
   Artifacts.binary ?hint t.artifacts bin
@@ -139,7 +135,6 @@ let create
       | Some p -> p
     in
     let open Action.Var_expansion in
-    let open Action.Var_expansion.Concat_or_split in
     let make =
       match Bin.make with
       | None   -> Strings (["make"], Split)
@@ -657,9 +652,9 @@ module Action = struct
              | [] ->
                 Loc.warn loc "Variable '<' used with no explicit \
                               dependencies@.";
-                Strings ([""], Split)
+                Strings ([""], Concat)
              | dep :: _ ->
-               Paths ([dep], Split))
+               Paths ([dep], Concat))
         | "^" -> Some (Paths (deps_written_by_user, Split))
         | _ -> None)
 

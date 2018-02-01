@@ -272,20 +272,29 @@ module Var_expansion = struct
     | Paths   of Path.t list * Concat_or_split.t
     | Strings of string list * Concat_or_split.t
 
+  let is_multivalued = function
+    | Paths (_, Split) | Strings (_, Split) -> true
+    | Paths (_, Concat) | Strings (_, Concat) -> false
+
   let concat = function
     | [s] -> s
     | l -> String.concat ~sep:" " l
 
+  let to_string = function
+    | Strings (l, _) -> concat l
+    | Paths   (l, _) -> concat (List.map l ~f:Path.to_string)
+
+  (* Relative to [dir]. *)
   let string_of_path ~dir p = Path.reach ~from:dir p
   let path_of_string ~dir s = Path.relative dir s
 
-  let to_strings ~dir = function
+  let to_strings_rel ~dir = function
     | Strings (l, Split ) -> l
     | Strings (l, Concat) -> [concat l]
     | Paths   (l, Split ) -> List.map l ~f:(string_of_path ~dir)
     | Paths   (l, Concat) -> [concat (List.map l ~f:(string_of_path ~dir))]
 
-  let to_string ~dir = function
+  let to_string_rel ~dir = function
     | Strings (l, _) -> concat l
     | Paths   (l, _) -> concat (List.map l ~f:(string_of_path ~dir))
 
@@ -352,29 +361,27 @@ module Unexpanded = struct
     include Past
 
     module E = struct
-      let string ~dir ~f = function
-        | Inl x -> x
-        | Inr template ->
-          SW.expand template ~f:(fun loc var ->
-            match f loc var with
-            | None   -> None
-            | Some e -> Some (VE.to_string ~dir e))
-
       let expand ~generic ~special ~map ~dir ~f = function
         | Inl x -> map x
-        | Inr template as x ->
-          match SW.unquoted_var template with
-          | None -> generic ~dir (string ~dir ~f x)
-          | Some var ->
-            match f (SW.loc template) var with
-            | None   -> generic ~dir (SW.to_string template)
-            | Some e -> special ~dir e
+        | Inr template ->
+           match SW.expand_generic template ~f
+                   ~is_multivalued:VE.is_multivalued
+                   ~to_string:(VE.to_string_rel ~dir)
+           with
+           | Inl e -> special ~dir e
+           | Inr s -> generic ~dir s
       [@@inlined always]
+
+      let string ~dir ~f x =
+        expand ~dir ~f x
+          ~generic:(fun ~dir:_ x -> x)
+          ~special:VE.to_string_rel
+          ~map:(fun x -> x)
 
       let strings ~dir ~f x =
         expand ~dir ~f x
           ~generic:(fun ~dir:_ x -> [x])
-          ~special:VE.to_strings
+          ~special:VE.to_strings_rel
           ~map:(fun x -> [x])
 
       let path ~dir ~f x =
@@ -445,28 +452,23 @@ module Unexpanded = struct
   end
 
   module E = struct
-    let string ~dir ~f template =
-      SW.partial_expand template ~f:(fun loc var ->
-        match f loc var with
-        | None   -> None
-        | Some e -> Some (VE.to_string ~dir e))
-
     let expand ~generic ~special ~dir ~f template =
-      match SW.unquoted_var template with
-      | None -> begin
-          match string ~dir ~f template with
-          | Inl x -> Inl (generic ~dir x)
-          | Inr _ as x -> x
-        end
-      | Some var ->
-        match f (SW.loc template) var with
-        | None   -> Inr template
-        | Some e -> Inl (special ~dir e)
+      match SW.partial_expand_generic template ~f
+              ~is_multivalued:VE.is_multivalued
+              ~to_string:(VE.to_string_rel ~dir) with
+      | Inl (Inl e) -> Inl(special ~dir e)
+      | Inl (Inr s) -> Inl(generic ~dir s)
+      | Inr _ as x -> x
+
+    let string ~dir ~f x =
+      expand ~dir ~f x
+        ~generic:(fun ~dir:_ x -> x)
+        ~special:VE.to_string_rel
 
     let strings ~dir ~f x =
       expand ~dir ~f x
         ~generic:(fun ~dir:_ x -> [x])
-        ~special:VE.to_strings
+        ~special:VE.to_strings_rel
 
     let path ~dir ~f x =
       expand ~dir ~f x

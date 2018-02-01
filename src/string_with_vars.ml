@@ -59,11 +59,6 @@ let rec of_tokens : Token.t list -> item list = function
 
 let items_of_string s = of_tokens (Token.tokenise s)
 
-let unquoted_var t =
-  match t.quoted, t.items with
-  | true, [Var(_, s)] -> Some s
-  | _ -> None
-
 let t : Sexp.Of_sexp.ast -> t = function
   | Atom(loc, s) -> { items = items_of_string s;  loc;  quoted = false }
   | Quoted_string (loc, s) ->
@@ -72,9 +67,9 @@ let t : Sexp.Of_sexp.ast -> t = function
 
 let loc t = t.loc
 
-let virt ?(quoted=true) pos s =
+let virt ?(quoted=false) pos s =
   { items = items_of_string s;  loc = Loc.of_pos pos;  quoted }
-let virt_var ?(quoted=true) pos s =
+let virt_var ?(quoted=false) pos s =
   { items = [Var (Braces, s)];  loc = Loc.of_pos pos;  quoted }
 let virt_text pos s =
   { items = [Text s];  loc = Loc.of_pos pos;  quoted = true }
@@ -108,21 +103,41 @@ let string_of_var syntax v =
   | Parens -> sprintf "$(%s)" v
   | Braces -> sprintf "${%s}" v
 
+let expand_generic t ~f ~is_multivalued ~to_string =
+  match t.items with
+  | [Var (syntax, v)] when not t.quoted ->
+     (* Unquoted single var *)
+     (match f t.loc v with
+      | Some e -> Inl e
+      | None -> Inr(string_of_var syntax v))
+  | _ ->
+     Inr(List.map t.items ~f:(function
+             | Text s -> s
+             | Var (syntax, v) ->
+                match f t.loc v with
+                | Some x ->
+                   if not t.quoted && is_multivalued x then
+                     Loc.fail t.loc "please quote the string \
+                                     containing the list variable %s"
+                       (string_of_var syntax v)
+                   else to_string x
+                | None -> string_of_var syntax v)
+         |> String.concat ~sep:"")
+
+let always_false _ = false
+let identity_string (s: string) = s
+
 let expand t ~f =
-  List.map t.items ~f:(function
-      | Text s -> s
-      | Var (syntax, v) ->
-         match f t.loc v with
-         | Some x -> x
-         | None -> string_of_var syntax v)
-  |> String.concat ~sep:""
+  match expand_generic t ~f ~is_multivalued:always_false
+          ~to_string:identity_string with
+  | Inl s | Inr s -> s
 
 let concat_rev = function
   | [] -> ""
   | [s] -> s
   | l -> String.concat (List.rev l) ~sep:""
 
-let partial_expand t ~f =
+let partial_expand_generic t ~f ~is_multivalued ~to_string =
   let commit_text acc_text acc =
     let s = concat_rev acc_text in
     if s = "" then acc else Text s :: acc
@@ -131,17 +146,32 @@ let partial_expand t ~f =
     match items with
     | [] -> begin
         match acc with
-        | [] -> Inl (concat_rev acc_text)
-        | _  ->
-           Inr { t with items = List.rev (commit_text acc_text acc) }
+        | [] -> Inl (Inr(concat_rev acc_text))
+        | _  -> Inr { t with items = List.rev (commit_text acc_text acc) }
       end
     | Text s :: items -> loop (s :: acc_text) acc items
-    | Var (_, v) as it :: items ->
+    | Var (syntax, v) as it :: items ->
       match f t.loc v with
       | None -> loop [] (it :: commit_text acc_text acc) items
-      | Some s -> loop (s :: acc_text) acc items
+      | Some x ->
+         if not t.quoted && is_multivalued x then
+           Loc.fail t.loc "please quote the string containing the \
+                           list variable %s" (string_of_var syntax v)
+         else loop (to_string x :: acc_text) acc items
   in
-  loop [] [] t.items
+  match t.items with
+  | [Var (_, v)] when not t.quoted ->
+     (* Unquoted single var *)
+     (match f t.loc v with
+      | Some e -> Inl (Inl e)
+      | None -> Inr t)
+  | _ -> loop [] [] t.items
+
+let partial_expand t ~f =
+  match partial_expand_generic t ~f ~is_multivalued:always_false
+          ~to_string:identity_string with
+  | Inl(Inl s | Inr s) -> Inl s
+  | Inr _ as x -> x
 
 let to_string t =
   match t.items with

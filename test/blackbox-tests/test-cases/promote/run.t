@@ -1,4 +1,4 @@
-  $ echo titi > x
+  $ printf titi > x
 
   $ $JBUILDER build --root . -j1 --diff-command false @blah 2>&1 | sed 's/.*false.*/DIFF/'
             sh (internal) (exit 1)
@@ -15,7 +15,10 @@
   $ cat x
   toto
 
-  $ echo titi > x
+Otherwise this test fails on OSX
+  $ jbuilder clean --root . -j1
+
+  $ printf titi > x
   $ $JBUILDER build --root . -j1 --diff-command false @blah --auto-promote 2>&1 | sed 's/.*false.*/DIFF/'
             sh (internal) (exit 1)
   DIFF

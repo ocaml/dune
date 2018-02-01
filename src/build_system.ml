@@ -672,13 +672,8 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       List.exists targets_as_list ~f:Path.is_alias_stamp_file
     in
     if deps_or_rule_changed || targets_missing || force then (
-      (* Do not remove files that are just updated, otherwise this would break incremental
-         compilation *)
-      let targets_to_remove =
-        Pset.diff targets (Action.updated_files action)
-      in
-      Pset.iter targets_to_remove ~f:Path.unlink_no_err;
-      pending_targets := Pset.union targets_to_remove !pending_targets;
+      List.iter targets_as_list ~f:Path.unlink_no_err;
+      pending_targets := Pset.union targets !pending_targets;
       let action =
         match sandbox_dir with
         | Some sandbox_dir ->
@@ -703,7 +698,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
         Action.exec ?context ~targets action) >>| fun () ->
       Option.iter sandbox_dir ~f:Path.rm_rf;
       (* All went well, these targets are no longer pending *)
-      pending_targets := Pset.diff !pending_targets targets_to_remove;
+      pending_targets := Pset.diff !pending_targets targets;
       clear_targets_digests_after_rule_execution targets_as_list;
       match mode with
       | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files -> ()
@@ -1056,7 +1051,6 @@ module Trace = struct
   let file = "_build/.db"
 
   let dump (trace : t) =
-    Utils.Cached_digest.dump ();
     let sexp =
       Sexp.List (
         Hashtbl.fold trace ~init:Pmap.empty ~f:(fun ~key ~data acc ->
@@ -1069,7 +1063,6 @@ module Trace = struct
       Io.write_file file (Sexp.to_string sexp)
 
   let load () =
-    Utils.Cached_digest.load ();
     let trace = Hashtbl.create 1024 in
     if Sys.file_exists file then begin
       let sexp = Sexp.load ~fname:file ~mode:Single in
@@ -1090,11 +1083,15 @@ let all_targets t =
   Hashtbl.fold t.files ~init:[] ~f:(fun ~key ~data:_ acc -> key :: acc)
 
 let finalize t =
+  (* Promotion must be handled before dumping the digest cache, as it might delete some
+     entries. *)
+  Action.Promotion.finalize ();
   Promoted_to_delete.dump ();
-  Trace.dump t.trace;
-  Action.Promotion.finalize ()
+  Utils.Cached_digest.dump ();
+  Trace.dump t.trace
 
 let create ~contexts ~file_tree =
+  Utils.Cached_digest.load ();
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> String_map.of_alist_exn

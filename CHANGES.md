@@ -87,6 +87,9 @@
 - Always build `boot.exe` as a bytecode program. It makes the build of
   jbuilder faster and fix the build on some architectures (#463, fixes #446)
 
+- Fix bad interaction between promotion and incremental builds on OSX
+  (#460, fix #456)
+
 1.0+beta16 (05/11/2017)
 -----------------------
 

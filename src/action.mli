@@ -44,9 +44,6 @@ include Action_intf.Helpers
 val t : t Sexp.Of_sexp.t
 val sexp_of_t : t Sexp.To_sexp.t
 
-(** Return the list of files under an [Update_file] *)
-val updated_files : t -> Path.Set.t
-
 (** Return the list of directories the action chdirs to *)
 val chdirs : t -> Path.Set.t
 

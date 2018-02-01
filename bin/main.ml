@@ -1152,7 +1152,11 @@ let promote =
     ] in
   let go common =
     set_common common ~targets:[];
-    Action.Promotion.promote_files_registered_in_last_run ()
+    (* We load and restore the digest cache as we need to clear the
+       cache for promoted files, due to issues on OSX. *)
+    Utils.Cached_digest.load ();
+    Action.Promotion.promote_files_registered_in_last_run ();
+    Utils.Cached_digest.dump ()
   in
   ( Term.(const go
           $ common)

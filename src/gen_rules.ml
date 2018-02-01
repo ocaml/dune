@@ -176,6 +176,7 @@ Add it to your jbuild file to remove this warning.
 |}
 
   let guess_modules ~dir ~files =
+    let src_dir = Path.drop_build_context_exn dir in
     let impl_files, intf_files =
       String_set.elements files
       |> List.filter_map ~f:(fun fn ->
@@ -210,12 +211,11 @@ Add it to your jbuild file to remove this warning.
           impl_fname intf.name
       in
       Format.eprintf no_impl_warning
-        name (Path.to_string dir)
+        name (Path.to_string src_dir)
         (match intf.syntax with
          | OCaml  -> "ml"
          | Reason -> "re")
         action_str;
-      let dir = Path.append ctx.build_dir dir in
       let action =
         Usexp.parse_string action_str
           ~fname:"<internal action for mli to ml>"
@@ -231,7 +231,7 @@ Add it to your jbuild file to remove this warning.
            ~targets:Infer
            ~scope:(
              Lib_db.Scope.required_in_jbuild (SC.Libs.anonymous_scope sctx)
-               ~jbuild_dir:dir
+               ~jbuild_dir:src_dir
            ));
       { intf with name = impl_fname } in
     String_map.merge impls intfs ~f:(fun name impl intf ->
@@ -731,7 +731,7 @@ Add it to your jbuild file to remove this warning.
       SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm_and_flags >>> r))
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules
-    ~(scope : Lib_db.Scope.t Lib_db.with_required_by) = 
+    ~(scope : Lib_db.Scope.t Lib_db.with_required_by) =
     let dep_kind = Build.Required in
     let flags = Ocaml_flags.make exes.buildable sctx ~scope:scope.data ~dir in
     let modules =

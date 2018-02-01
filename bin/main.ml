@@ -443,7 +443,11 @@ let resolve_package_install setup pkg =
 
 let target_hint (setup : Main.setup) path =
   assert (Path.is_local path);
-  let sub_dir = Path.parent path in
+  let sub_dir =
+    if Path.is_root path then
+      path
+    else
+      Path.parent path in
   let candidates = Build_system.all_targets setup.build_system in
   let candidates =
     if Path.is_in_build_dir path then

@@ -246,11 +246,11 @@ following rule into your jbuild file:
        (progn
         (echo "module rec HACK : sig\n")
         (cat foo.mli)
-        (echo "\nend = HACK\ninclue HACK\n"))))
+        (echo "\nend = HACK\ninclude HACK\n"))))
 ```
 
 In fact, jbuilder will automatically add this rule if you have a
-module without imlpementation. However it will print a warning.
+module without implementation. However it will print a warning.
 
 Implementation details
 ----------------------

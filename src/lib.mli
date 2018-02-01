@@ -10,6 +10,8 @@ type t =
 
 module Set : Set.S with type elt := t
 
+val lib_obj_dir : Path.t -> Jbuild.Library.t -> Path.t
+
 (*val deps : t -> string list*)
 
 val include_paths : t list -> Path.Set.t

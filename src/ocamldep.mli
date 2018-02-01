@@ -23,6 +23,7 @@ val rules
 (** Close and convert a list of module names to a list of .cm file names *)
 val names_to_top_closed_cm_files
   :  dir:Path.t
+  -> obj_dir:Path.t
   -> dep_graph:string list String_map.t
   -> modules:Module.t String_map.t
   -> mode:Mode.t

@@ -88,9 +88,10 @@ let link_rule ~sctx ~dir ~runtime ~target =
     ; Arg_spec.Dyn get_all
     ]
 
-let build_cm sctx ~scope ~dir ~js_of_ocaml ~src =
+let build_cm sctx ~scope ~dir ~js_of_ocaml ~src ~target =
   if separate_compilation_enabled ()
-  then let target = Path.extend_basename src ~suffix:".js" in
+  then
+    let itarget = Path.extend_basename src ~suffix:".js" in
     let spec = Arg_spec.Dep src in
     let flags =
       SC.expand_and_eval_set sctx ~scope ~dir js_of_ocaml.Jbuild.Js_of_ocaml.flags
@@ -98,7 +99,8 @@ let build_cm sctx ~scope ~dir ~js_of_ocaml ~src =
     in
     [ flags
       >>>
-      js_of_ocaml_rule ~sctx ~dir ~flags:(fun flags -> As flags) ~spec ~target ]
+      js_of_ocaml_rule ~sctx ~dir ~flags:(fun flags -> As flags) ~spec ~target:itarget ]
+    @ (if target = itarget then [] else [Build.symlink ~src:itarget ~dst:target])
   else []
 
 let setup_separate_compilation_rules sctx components =

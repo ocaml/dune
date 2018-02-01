@@ -4,10 +4,10 @@
       ocamldep foo.depends.ocamldep-output
       ocamldep foo.dependsi.ocamldep-output
           odoc _doc/odoc.css
-        ocamlc foo_byte.{cmi,cmo,cmt}
+        ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
           odoc _doc/foo.byte/page-index.odoc
           odoc _doc/foo.byte/page-test.odoc
-        ocamlc foo.{cmi,cmo,cmt}
+        ocamlc .foo.objs/foo.{cmi,cmo,cmt}
           odoc _doc/foo/page-index.odoc
           odoc _doc/foo/page-test.odoc
           odoc _doc/foo.byte/foo_byte.odoc

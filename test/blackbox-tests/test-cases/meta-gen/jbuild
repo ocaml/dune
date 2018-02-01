@@ -15,6 +15,7 @@
 
 (library
  ((name foobar_runtime_lib2)
+  (js_of_ocaml ((javascript_files (foobar_runtime.js foobar_runtime2.js))))
   (public_name foobar.runtime-lib2)
   (synopsis "runtime library for foobar.rewriter2")))
 

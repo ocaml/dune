@@ -23,6 +23,7 @@
     "_build/install/default/lib/foo/foo.cmxa"
     "_build/install/default/lib/foo/foo.a"
     "_build/install/default/lib/foo/foo.cmxs"
+    "_build/install/default/lib/foo/foo.js"
     "_build/install/default/lib/foo/cfoo.h"
     "_build/install/default/lib/foo/byte/foo_byte.cmi" {"byte/foo_byte.cmi"}
     "_build/install/default/lib/foo/byte/foo_byte.cmt" {"byte/foo_byte.cmt"}

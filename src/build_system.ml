@@ -287,6 +287,7 @@ type t =
        all their ancestors. *)
     mutable build_dirs_to_keep : Path.Set.t
   ; files_of : (Path.t, Files_of.t) Hashtbl.t
+  ; mutable prefix : (unit, unit) Build.t option
   }
 
 let string_of_paths set =
@@ -1107,6 +1108,7 @@ let create ~contexts ~file_tree =
     ; gen_rules = String_map.map contexts ~f:(fun _ ~dir:_ -> die "gen_rules called too early")
     ; build_dirs_to_keep = Pset.empty
     ; files_of = Hashtbl.create 1024
+    ; prefix = None
     }
   in
   at_exit (fun () -> finalize t);
@@ -1355,8 +1357,17 @@ let get_collector t ~dir =
       ]
 
 let add_rule t (rule : Build_interpret.Rule.t) =
+  let rule =
+    match t.prefix with
+    | None -> rule
+    | Some prefix -> { rule with build = Build.O.(>>>) prefix rule.build } in
   let collector = get_collector t ~dir:rule.dir in
   collector.rules <- rule :: collector.rules
+
+let prefix_rules t prefix ~f =
+  let old_prefix = t.prefix in
+  t.prefix <- Some prefix;
+  protectx () ~f ~finally:(fun () -> t.prefix <- old_prefix)
 
 let on_load_dir t ~dir ~f =
   let collector = get_collector t ~dir in

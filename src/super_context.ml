@@ -464,6 +464,8 @@ let parse_bang var : bool * string =
   else
     (false, var)
 
+let bang_deprecations = Hashtbl.create 16
+
 module Action = struct
   open Build.O
   module U = Action.Unexpanded
@@ -532,8 +534,11 @@ module Action = struct
         let open Action.Var_expansion in
         let has_bang, var = parse_bang key in
         if has_bang then
-          Loc.warn loc "The use of the variable prefix '!' is deprecated, \
-                        simply use '${%s}'@." var;
+          if not (Hashtbl.mem bang_deprecations loc) then begin
+            Loc.warn loc "The use of the variable prefix '!' is deprecated, \
+                          simply use '${%s}'@." var;
+            Hashtbl.add bang_deprecations ~key:loc ~data:()
+          end;
         match String.lsplit2 var ~on:':' with
         | Some ("path-no-dep", s) -> Some (path_exp (Path.relative dir s))
         | Some ("exe"     , s) ->

@@ -127,32 +127,26 @@ let split_string s ~on =
   in
   loop 0 0
 
+let pp_print_atom ppf ~serialize s =
+  if String.contains s '\n' then begin
+    match split_string s ~on:'\n' with
+    | [] -> Format.pp_print_string ppf (serialize s)
+    | first :: rest ->
+       Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (serialize first);
+       List.iter rest ~f:(fun s ->
+           Format.fprintf ppf "@,\\n%s" (serialize s));
+       Format.fprintf ppf "@}\"@]"
+  end else
+    Format.fprintf ppf "%S" (serialize s)
+
 let rec pp_split_strings ppf = function
   | Atom s ->
-    if Atom.must_escape s then begin
-      if String.contains s '\n' then begin
-        match split_string s ~on:'\n' with
-        | [] -> Format.pp_print_string ppf (Atom.serialize s)
-        | first :: rest ->
-          Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (String.escaped first);
-          List.iter rest ~f:(fun s ->
-            Format.fprintf ppf "@,\\n%s" (String.escaped s));
-          Format.fprintf ppf "@}\"@]"
-      end else
-        Format.fprintf ppf "%S" s
-    end else
+    if Atom.must_escape s then
+      pp_print_atom ppf s ~serialize:Atom.serialize
+    else
       Format.pp_print_string ppf s
   | Quoted_string s ->
-      if String.contains s '\n' then begin
-        match split_string s ~on:'\n' with
-        | [] -> Format.pp_print_string ppf (Atom.quote s)
-        | first :: rest ->
-           Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (String.escaped first);
-           List.iter rest ~f:(fun s ->
-               Format.fprintf ppf "@,\\n%s" (String.escaped s));
-           Format.fprintf ppf "@}\"@]"
-      end else
-        Format.pp_print_string ppf (Atom.quote s)
+     pp_print_atom ppf s ~serialize:Atom.quote
   | List [] ->
     Format.pp_print_string ppf "()"
   | List (first :: rest) ->

@@ -276,35 +276,32 @@ module Var_expansion = struct
     | Paths (_, Split) | Strings (_, Split) -> true
     | Paths (_, Concat) | Strings (_, Concat) -> false
 
+  type context = Path.t (* For String_with_vars.Expand_to *)
+
   let concat = function
     | [s] -> s
     | l -> String.concat ~sep:" " l
 
-  let to_string = function
-    | Strings (l, _) -> concat l
-    | Paths   (l, _) -> concat (List.map l ~f:Path.to_string)
-
-  (* Relative to [dir]. *)
   let string_of_path ~dir p = Path.reach ~from:dir p
-  let path_of_string ~dir s = Path.relative dir s
+  let path_of_string dir s = Path.relative dir s
 
-  let to_strings_rel ~dir = function
+  let to_strings dir = function
     | Strings (l, Split ) -> l
     | Strings (l, Concat) -> [concat l]
     | Paths   (l, Split ) -> List.map l ~f:(string_of_path ~dir)
     | Paths   (l, Concat) -> [concat (List.map l ~f:(string_of_path ~dir))]
 
-  let to_string_rel ~dir = function
+  let to_string (dir: context) = function
     | Strings (l, _) -> concat l
     | Paths   (l, _) -> concat (List.map l ~f:(string_of_path ~dir))
 
-  let to_path ~dir = function
-    | Strings (l, _) -> path_of_string ~dir (concat l)
+  let to_path dir = function
+    | Strings (l, _) -> path_of_string dir (concat l)
     | Paths ([p], _) -> p
     | Paths (l,   _) ->
-      path_of_string ~dir (concat (List.map l ~f:(string_of_path ~dir)))
+      path_of_string dir (concat (List.map l ~f:(string_of_path ~dir)))
 
-  let to_prog_and_args ~dir exp : Unresolved.Program.t * string list =
+  let to_prog_and_args dir exp : Unresolved.Program.t * string list =
     let module P = Unresolved.Program in
     match exp with
     | Paths   ([p], _) -> (This p, [])
@@ -312,7 +309,7 @@ module Var_expansion = struct
     | Paths ([], _) | Strings ([], _) -> (Search "", [])
     | Paths (l, Concat) ->
       (This
-         (path_of_string ~dir
+         (path_of_string dir
             (concat (List.map l ~f:(string_of_path ~dir)))),
        [])
     | Strings (l, Concat) ->
@@ -324,6 +321,7 @@ module Var_expansion = struct
 end
 
 module VE = Var_expansion
+module To_VE = String_with_vars.Expand_to(VE)
 module SW = String_with_vars
 
 module Unexpanded = struct
@@ -364,24 +362,21 @@ module Unexpanded = struct
       let expand ~generic ~special ~map ~dir ~f = function
         | Inl x -> map x
         | Inr template ->
-           match SW.expand_generic template ~f
-                   ~is_multivalued:VE.is_multivalued
-                   ~to_string:(VE.to_string_rel ~dir)
-           with
-           | Inl e -> special ~dir e
-           | Inr s -> generic ~dir s
+           match To_VE.expand dir template ~f with
+           | Inl e -> special dir e
+           | Inr s -> generic dir s
       [@@inlined always]
 
       let string ~dir ~f x =
         expand ~dir ~f x
-          ~generic:(fun ~dir:_ x -> x)
-          ~special:VE.to_string_rel
+          ~generic:(fun _dir x -> x)
+          ~special:VE.to_string
           ~map:(fun x -> x)
 
       let strings ~dir ~f x =
         expand ~dir ~f x
-          ~generic:(fun ~dir:_ x -> [x])
-          ~special:VE.to_strings_rel
+          ~generic:(fun _dir x -> [x])
+          ~special:VE.to_strings
           ~map:(fun x -> [x])
 
       let path ~dir ~f x =
@@ -392,7 +387,7 @@ module Unexpanded = struct
 
       let prog_and_args ~dir ~f x =
         expand ~dir ~f x
-          ~generic:(fun ~dir:_ s -> (Program.of_string ~dir s, []))
+          ~generic:(fun _dir s -> (Program.of_string ~dir s, []))
           ~special:VE.to_prog_and_args
           ~map:(fun x -> (x, []))
     end
@@ -453,22 +448,20 @@ module Unexpanded = struct
 
   module E = struct
     let expand ~generic ~special ~dir ~f template =
-      match SW.partial_expand_generic template ~f
-              ~is_multivalued:VE.is_multivalued
-              ~to_string:(VE.to_string_rel ~dir) with
-      | Inl (Inl e) -> Inl(special ~dir e)
-      | Inl (Inr s) -> Inl(generic ~dir s)
+      match To_VE.partial_expand dir template ~f with
+      | Inl (Inl e) -> Inl(special dir e)
+      | Inl (Inr s) -> Inl(generic dir s)
       | Inr _ as x -> x
 
     let string ~dir ~f x =
       expand ~dir ~f x
-        ~generic:(fun ~dir:_ x -> x)
-        ~special:VE.to_string_rel
+        ~generic:(fun _dir x -> x)
+        ~special:VE.to_string
 
     let strings ~dir ~f x =
       expand ~dir ~f x
-        ~generic:(fun ~dir:_ x -> [x])
-        ~special:VE.to_strings_rel
+        ~generic:(fun _dir x -> [x])
+        ~special:VE.to_strings
 
     let path ~dir ~f x =
       expand ~dir ~f x
@@ -477,7 +470,7 @@ module Unexpanded = struct
 
     let prog_and_args ~dir ~f x =
       expand ~dir ~f x
-        ~generic:(fun ~dir s -> (Unresolved.Program.of_string ~dir s, []))
+        ~generic:(fun dir s -> (Unresolved.Program.of_string ~dir s, []))
         ~special:VE.to_prog_and_args
   end
 

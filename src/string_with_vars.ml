@@ -103,73 +103,86 @@ let string_of_var syntax v =
   | Parens -> sprintf "$(%s)" v
   | Braces -> sprintf "${%s}" v
 
-let expand_generic t ~f ~is_multivalued ~to_string =
-  match t.items with
-  | [Var (syntax, v)] when not t.quoted ->
-     (* Unquoted single var *)
-     (match f t.loc v with
-      | Some e -> Inl e
-      | None -> Inr(string_of_var syntax v))
-  | _ ->
-     Inr(List.map t.items ~f:(function
-             | Text s -> s
-             | Var (syntax, v) ->
-                match f t.loc v with
-                | Some x ->
-                   if not t.quoted && is_multivalued x then
-                     Loc.fail t.loc "please quote the string \
-                                     containing the list variable %s"
-                       (string_of_var syntax v)
-                   else to_string x
-                | None -> string_of_var syntax v)
-         |> String.concat ~sep:"")
-
-let always_false _ = false
-let identity_string (s: string) = s
-
-let expand t ~f =
-  match expand_generic t ~f ~is_multivalued:always_false
-          ~to_string:identity_string with
-  | Inl s | Inr s -> s
+module type EXPANSION = sig
+  type t
+  val is_multivalued : t -> bool
+  type context
+  val to_string : context -> t -> string
+end
 
 let concat_rev = function
   | [] -> ""
   | [s] -> s
   | l -> String.concat (List.rev l) ~sep:""
 
-let partial_expand_generic t ~f ~is_multivalued ~to_string =
-  let commit_text acc_text acc =
-    let s = concat_rev acc_text in
-    if s = "" then acc else Text s :: acc
-  in
-  let rec loop acc_text acc items =
-    match items with
-    | [] -> begin
-        match acc with
-        | [] -> Inl (Inr(concat_rev acc_text))
-        | _  -> Inr { t with items = List.rev (commit_text acc_text acc) }
-      end
-    | Text s :: items -> loop (s :: acc_text) acc items
-    | Var (syntax, v) as it :: items ->
-      match f t.loc v with
-      | None -> loop [] (it :: commit_text acc_text acc) items
-      | Some x ->
-         if not t.quoted && is_multivalued x then
+module Expand_to(V: EXPANSION) = struct
+
+  let expand ctx t ~f =
+    match t.items with
+    | [Var (syntax, v)] when not t.quoted ->
+       (* Unquoted single var *)
+       (match f t.loc v with
+        | Some e -> Inl e
+        | None -> Inr(string_of_var syntax v))
+    | _ ->
+       Inr(List.map t.items ~f:(function
+               | Text s -> s
+               | Var (syntax, v) ->
+                  match f t.loc v with
+                  | Some x ->
+                     if not t.quoted && V.is_multivalued x then
+                       Loc.fail t.loc "please quote the string \
+                                       containing the list variable %s"
+                         (string_of_var syntax v)
+                     else V.to_string ctx x
+                  | None -> string_of_var syntax v)
+           |> String.concat ~sep:"")
+
+  let partial_expand ctx t ~f =
+    let commit_text acc_text acc =
+      let s = concat_rev acc_text in
+      if s = "" then acc else Text s :: acc
+    in
+    let rec loop acc_text acc items =
+      match items with
+      | [] -> begin
+          match acc with
+          | [] -> Inl (Inr(concat_rev acc_text))
+          | _  -> Inr { t with items = List.rev (commit_text acc_text acc) }
+        end
+      | Text s :: items -> loop (s :: acc_text) acc items
+      | Var (syntax, v) as it :: items ->
+         match f t.loc v with
+         | None -> loop [] (it :: commit_text acc_text acc) items
+         | Some x ->
+            if not t.quoted && V.is_multivalued x then
            Loc.fail t.loc "please quote the string containing the \
                            list variable %s" (string_of_var syntax v)
-         else loop (to_string x :: acc_text) acc items
-  in
-  match t.items with
-  | [Var (_, v)] when not t.quoted ->
-     (* Unquoted single var *)
-     (match f t.loc v with
-      | Some e -> Inl (Inl e)
-      | None -> Inr t)
-  | _ -> loop [] [] t.items
+         else loop (V.to_string ctx x :: acc_text) acc items
+    in
+    match t.items with
+    | [Var (_, v)] when not t.quoted ->
+       (* Unquoted single var *)
+       (match f t.loc v with
+        | Some e -> Inl (Inl e)
+        | None -> Inr t)
+    | _ -> loop [] [] t.items
+end
+
+module String_expansion = struct
+  type t = string
+  let is_multivalued _ = false
+  type context = unit
+  let to_string () (s: string) = s
+end
+
+module S = Expand_to(String_expansion)
+
+let expand t ~f =
+  match S.expand () t ~f with Inl s | Inr s -> s
 
 let partial_expand t ~f =
-  match partial_expand_generic t ~f ~is_multivalued:always_false
-          ~to_string:identity_string with
+  match S.partial_expand () t ~f with
   | Inl(Inl s | Inr s) -> Inl s
   | Inr _ as x -> x
 

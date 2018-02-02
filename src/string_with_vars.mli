@@ -39,38 +39,48 @@ val iter : t -> f:(Loc.t -> string -> unit) -> unit
 (** [iter t ~f] iterates [f] over all variables of [t], the text
    portions being ignored. *)
 
-val expand_generic :
-  t -> f:(Loc.t -> string -> 'a option) -> is_multivalued:('a -> bool) ->
-  to_string:('a -> string) -> ('a, string) either
-(** [expand_generic t ~f] return [t] where all variables have been expanded
-   using [f].  If [f loc var] return [Some x], the variable [var] is
-   replaced by [x]; otherwise, the variable is inserted as [${var}] or
-   [$(var)] — depending on the original concrete syntax used.
+module type EXPANSION = sig
+  type t
+  (** The value to which variables are expanded. *)
 
-   - [is_multivalued]: says whether the variables is a multivalued
-   one (such as for example ${@}) which much be in quoted strings to
-   be concatenated to text or other variables.
-   - [to_string]: For single unquoted variables, the outcome of [f] is
-   directly returned.  For variables containing text portions or which
-   are quoted, the value returned by [f] is converted to a string
-   using [to_string]. *)
+  val is_multivalued : t -> bool
+  (** Report whether the value is a multivalued one (such as for
+     example ${@}) which much be in quoted strings to be concatenated
+     to text or other variables. *)
+
+  type context
+  (** Context needed to expand values of type [t] to strings. *)
+
+  val to_string : context -> t -> string
+  (** When needing to expand with text portions or if the
+     string-with-vars is quoted, the value is converted to a string
+     using [to_string]. *)
+end
+
+module Expand_to(V : EXPANSION) : sig
+  val expand : V.context -> t -> f:(Loc.t -> string -> V.t option) ->
+               (V.t, string) either
+  (** [expand t ~f] return [t] where all variables have been expanded
+     using [f].  If [f loc var] return [Some x], the variable [var] is
+     replaced by [x]; otherwise, the variable is inserted as [${var}]
+     or [$(var)] — depending on the original concrete syntax used.  *)
+
+  val partial_expand :
+    V.context -> t -> f:(Loc.t -> string -> V.t option) ->
+    ((V.t, string) either, t) either
+  (** [partial_expand t ~f] is like [expand_generic] where all
+     variables that could be expanded (i.e., those for which [f]
+     returns [Some _]) are.  If all the variables of [t] were
+     expanded, a string is returned.  If [f] returns [None] on at
+     least a variable of [t], it returns a string-with-vars. *)
+end
 
 val expand :
   t -> f:(Loc.t -> string -> string option) -> string
-(** Specialized version [expand_generic] that returns a string (so
+(** Specialized version [Expand_to.expand] that returns a string (so
    variables are assumed to expand to a single value). *)
-
-val partial_expand_generic :
-  t -> f:(Loc.t -> string -> 'a option) -> is_multivalued:('a -> bool) ->
-  to_string:('a -> string) -> (('a, string) either, t) either
-(** [partial_expand_generic t ~f] is like [expand_generic] where all
-   variables that could be expanded (i.e., those for which [f] returns
-   [Some _]) are.  If all the variables of [t] were expanded, a string
-   is returned.  If [f] returns [None] on at least a variable of [t],
-   it returns a string-with-vars. *)
 
 val partial_expand :
   t -> f:(Loc.t -> string -> string option) -> (string, t) either
 (** [partial_expand] is a specialized version of
-   [partial_expand_generic] that returns a string. *)
-
+   [Expand_to.partial_expand] that returns a string. *)

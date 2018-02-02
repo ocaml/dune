@@ -11,7 +11,10 @@ module Var_expansion : sig
     | Paths   of Path.t list * Concat_or_split.t
     | Strings of string list * Concat_or_split.t
 
-  val to_string : t -> string
+  val to_string : Path.t -> t -> string
+  (** [to_string dir v] convert the variable expansion to a string.
+     If it is a path, the corresponding string will be relative to
+     [dir]. *)
 end
 
 module Outputs : module type of struct include Action_intf.Outputs end

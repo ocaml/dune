@@ -51,7 +51,7 @@ let expand_vars t ~(scope : Lib_db.Scope.t) ~dir s =
       Some (Path.reach ~from:dir (Lib_db.Scope.root scope))
     | var ->
       expand_var_no_root t var
-      |> Option.map ~f:(fun e -> Action.Var_expansion.to_string e))
+      |> Option.map ~f:(fun e -> Action.Var_expansion.to_string dir e))
 
 let resolve_program t ?hint bin =
   Artifacts.binary ?hint t.artifacts bin

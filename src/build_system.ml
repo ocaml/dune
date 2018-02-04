@@ -1365,18 +1365,17 @@ let add_rule t (rule : Build_interpret.Rule.t) =
   collector.rules <- rule :: collector.rules
 
 let prefix_rules' t prefix ~f =
-  Option.iter prefix ~f:(fun prefix ->
-    match Build_interpret.targets prefix with
-    | [] -> ()
-    | targets ->
-      Sexp.code_error "Build_system.prefix_rules' prefix contains targets"
-        ["targets", Path.Set.sexp_of_t (Build_interpret.Target.paths targets)]
-  );
   let old_prefix = t.prefix in
   t.prefix <- prefix;
   protectx () ~f ~finally:(fun () -> t.prefix <- old_prefix)
 
 let prefix_rules t prefix ~f =
+  begin match Build_interpret.targets prefix with
+  | [] -> ()
+  | targets ->
+    Sexp.code_error "Build_system.prefix_rules' prefix contains targets"
+      ["targets", Path.Set.sexp_of_t (Build_interpret.Target.paths targets)]
+  end;
   prefix_rules' t (Some prefix) ~f
 
 let on_load_dir t ~dir ~f =

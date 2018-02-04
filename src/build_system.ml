@@ -1364,13 +1364,18 @@ let add_rule t (rule : Build_interpret.Rule.t) =
   let collector = get_collector t ~dir:rule.dir in
   collector.rules <- rule :: collector.rules
 
-let prefix_rules t prefix ~f =
+let prefix_rules' t prefix ~f =
   let old_prefix = t.prefix in
-  t.prefix <- Some prefix;
+  t.prefix <- prefix;
   protectx () ~f ~finally:(fun () -> t.prefix <- old_prefix)
+
+let prefix_rules t prefix ~f =
+  prefix_rules' t (Some prefix) ~f
 
 let on_load_dir t ~dir ~f =
   let collector = get_collector t ~dir in
+  let current_prefix = t.prefix in
+  let f () = prefix_rules' t current_prefix ~f in
   match collector.stage with
   | Loading -> f ()
   | Pending p ->

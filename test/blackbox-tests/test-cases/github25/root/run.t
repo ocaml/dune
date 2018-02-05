@@ -7,7 +7,6 @@ problem. So jbuilder shouldn't crash because of "plop.ca-marche-pas"
 We need ocamlfind to run this test
 
   $ $JBUILDER build -j1 @install --root . --only hello
-      ocamldep hello.depends.ocamldep-output
         ocamlc hello.{cmi,cmo,cmt}
       ocamlopt hello.{cmx,o}
         ocamlc hello.cma

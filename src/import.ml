@@ -150,12 +150,6 @@ module Map = struct
     val add_multi : 'a list t -> key:key -> data:'a -> 'a list t
     val find : key -> 'a t -> 'a option
     val find_default : key -> 'a t -> default:'a -> 'a
-    val find_exn
-      :  key
-      -> 'a t
-      -> string_of_key:(key -> string)
-      -> desc:('a t -> string)
-      -> 'a
     val of_alist : (key * 'a) list -> ('a t, key * 'a * 'a) result
     val of_alist_exn : (key * 'a) list -> 'a t
     val of_alist_multi : (key * 'a) list -> 'a list t
@@ -216,13 +210,6 @@ module Map = struct
 
     let keys   t = bindings t |> List.map ~f:fst
     let values t = bindings t |> List.map ~f:snd
-
-    let find_exn key t ~string_of_key ~desc =
-      try
-        find_exn key t
-      with Not_found ->
-        code_errorf "%s not found in map %s"
-          (string_of_key key) (desc t)
   end
 end
 

@@ -55,24 +55,27 @@ module Module_or_mld = struct
     | Module _ -> html_dir ~doc_dir t ++ "index.html"
 end
 
-let module_or_mld_deps (m : Module_or_mld.t) ~dir ~doc_dir ~dep_graph ~modules =
-  Build.dyn_paths
-    (dep_graph
-     >>^ fun graph ->
-     match m with
-     | Mld _ -> []
-     | Module m ->
-       List.map (Utils.find_deps ~dir graph m.name)
-         ~f:(fun name ->
-           let m = Utils.find_module ~dir modules name in
-           Module.odoc_file m ~doc_dir))
+let module_or_mld_deps (m : Module_or_mld.t) ~doc_dir
+      ~(dep_graphs:Ocamldep.Dep_graphs.t) =
+  match m with
+  | Mld _ ->
+    Build.arr (fun x -> x)
+  | Module m ->
+    Build.dyn_paths
+      ((match m.intf with
+         | Some _ ->
+           Ocamldep.Dep_graph.deps_of dep_graphs.intf m
+         | None ->
+           (* When a module has no .mli, use the dependencies for the .ml *)
+           Ocamldep.Dep_graph.deps_of dep_graphs.impl m)
+       >>^ List.map ~f:(Module.odoc_file ~doc_dir))
 
-let compile sctx (m : Module_or_mld.t) ~odoc ~dir ~includes ~dep_graph
-      ~doc_dir ~modules ~lib_unique_name =
+let compile sctx (m : Module_or_mld.t) ~odoc ~dir ~includes ~dep_graphs
+      ~doc_dir ~lib_unique_name =
   let context = SC.context sctx in
   let odoc_file = Module_or_mld.odoc_file m ~doc_dir in
   SC.add_rule sctx
-    (module_or_mld_deps m ~doc_dir ~dir ~dep_graph ~modules
+    (module_or_mld_deps m ~doc_dir ~dep_graphs
      >>>
      includes
      >>>
@@ -155,22 +158,10 @@ let css_file ~doc_dir = doc_dir ++ "odoc.css"
 let toplevel_index ~doc_dir = doc_dir ++ "index.html"
 
 let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
-      ~requires ~(dep_graph:Ocamldep.dep_graph) =
+      ~requires ~(dep_graphs:Ocamldep.Dep_graph.t Ml_kind.Dict.t) =
   let doc_dir = SC.Doc.dir sctx (dir, lib) in
   let lib_unique_name = SC.unique_library_name sctx (Internal (dir, lib)) in
   let lib_name = Library.best_name lib in
-  let dep_graph =
-    Build.memoize "odoc deps"
-      ((* Use the dependency graph given by ocamldep. However, when a module has no
-          .mli, use the dependencies for the .ml *)
-        Build.fanout dep_graph.intf dep_graph.impl
-        >>^ fun (intf, impl) ->
-        String_map.merge intf impl ~f:(fun _ intf impl ->
-          match intf, impl with
-          | Some _, _    -> intf
-          | None, Some _ -> impl
-          | None, None -> assert false))
-  in
   let odoc = get_odoc sctx in
   let includes =
     Build.memoize "includes"
@@ -183,12 +174,12 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
   in
   let mld_and_odoc_files =
     List.map mld_files ~f:(fun m ->
-      compile sctx ~odoc ~dir ~includes ~dep_graph ~modules
+      compile sctx ~odoc ~dir ~includes ~dep_graphs
         ~doc_dir ~lib_unique_name (Mld m))
   in
   let modules_and_odoc_files =
     List.map (String_map.values modules) ~f:(fun m ->
-      compile sctx ~odoc ~dir ~includes ~dep_graph ~modules
+      compile sctx ~odoc ~dir ~includes ~dep_graphs
         ~doc_dir ~lib_unique_name (Module m))
   in
   let inputs_and_odoc_files = modules_and_odoc_files @ mld_and_odoc_files in

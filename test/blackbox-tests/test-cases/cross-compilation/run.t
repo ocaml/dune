@@ -1,9 +1,9 @@
   $ env OCAMLFIND_CONF=$PWD/etc/findlib.conf $JBUILDER build --root . -j1 -x foo file @install
-      ocamldep bin/blah.depends.ocamldep-output [default.foo]
-      ocamldep lib/p.depends.ocamldep-output [default.foo]
-      ocamldep bin/blah.depends.ocamldep-output
+      ocamldep bin/blah.ml.d [default.foo]
+      ocamldep lib/p.ml.d [default.foo]
+      ocamldep bin/blah.ml.d
         ocamlc lib/p.{cmi,cmo,cmt} [default.foo]
-      ocamldep lib/p.depends.ocamldep-output
+      ocamldep lib/p.ml.d
       ocamlopt lib/p.{cmx,o} [default.foo]
         ocamlc bin/blah.{cmi,cmo,cmt} [default.foo]
         ocamlc lib/p.cma [default.foo]

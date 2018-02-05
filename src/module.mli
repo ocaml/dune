@@ -23,6 +23,8 @@ type t =
                            modules. *)
   }
 
+val name : t -> string
+
 (** Real unit name once wrapped. This is always a valid module name. *)
 val real_unit_name : t -> string
 

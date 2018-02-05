@@ -1,7 +1,7 @@
   $ $JBUILDER runtest -j1 --root .
-      ocamldep bar.depends.ocamldep-output
-      ocamldep foo_byte.depends.ocamldep-output
-      ocamldep foo.depends.ocamldep-output
+      ocamldep bar.ml.d
+      ocamldep foo_byte.ml.d
+      ocamldep foo.ml.d
         ocamlc foo_byte.{cmi,cmo,cmt}
         ocamlc foo.{cmi,cmo,cmt}
         ocamlc foo_byte.cma

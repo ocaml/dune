@@ -1,7 +1,8 @@
   $ $JBUILDER build -j1 test.exe .merlin --root . --debug-dependency-path
       ocamllex lexers/lexer1.ml
-      ocamldep test.depends.ocamldep-output
-      ocamldep foo.depends.ocamldep-output
+      ocamldep test.ml.d
+      ocamldep lexer1.ml.d
+      ocamldep dummy.ml.d
         ocamlc bar.o
         ocamlc dummy.{cmi,cmo,cmt}
     ocamlmklib dllfoo_stubs.so,libfoo_stubs.a

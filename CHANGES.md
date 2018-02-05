@@ -1,3 +1,10 @@
+next
+----
+
+- Split calls to ocamldep. Before ocamldep would be called once per
+  `library`/`executables` stanza. Now it is called once per file
+  (#486)
+
 1.0+beta17 (01/02/2018)
 -----------------------
 

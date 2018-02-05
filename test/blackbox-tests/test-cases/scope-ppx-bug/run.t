@@ -1,7 +1,5 @@
   $ $JBUILDER build -j1 --root . @install
-      ocamldep a/ppx/a.depends.ocamldep-output
         ocamlc a/ppx/a.{cmi,cmo,cmt}
-      ocamldep a/kernel/a_kernel.depends.ocamldep-output
         ocamlc a/kernel/a_kernel.{cmi,cmo,cmt}
       ocamlopt a/ppx/a.{cmx,o}
         ocamlc a/ppx/a.cma
@@ -14,7 +12,7 @@
       ocamlopt .ppx/a.kernel/ppx.exe
       ocamlopt .ppx/a/ppx.exe
            ppx b/b.pp.ml
-      ocamldep b/b.depends.ocamldep-output
+      ocamldep b/b.pp.ml.d
         ocamlc b/b.{cmi,cmo,cmt}
       ocamlopt b/b.{cmx,o}
         ocamlc b/b.cma

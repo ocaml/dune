@@ -35,11 +35,6 @@ let internal_name_scope t ~dir =
       scope in
   loop dir
 
-type 'a with_required_by =
-  { required_by: string list
-  ; data: 'a
-  }
-
 type resolved_select =
   { src_fn : string
   ; dst_fn : string
@@ -51,7 +46,7 @@ module Scope = struct
     ; lib_db : t
     }
 
-  let find_exn (t : t with_required_by) name =
+  let find_exn (t : t With_required_by.t) name =
     match String_map.find name t.data.scope.libs with
     | Some l -> Lib.Internal l
     | None ->
@@ -73,9 +68,10 @@ module Scope = struct
       | Some (Internal x) -> Some x
       | _ -> None
 
-  let find_internal t name = find_internal' t.data name
+  let find_internal (t : t With_required_by.t) name =
+    find_internal' t.data name
 
-  let lib_is_available (t : t with_required_by) name =
+  let lib_is_available (t : t With_required_by.t) name =
     match find_internal t name with
     | Some (_, lib) -> String_map.mem lib.name t.data.lib_db.instalable_internal_libs
     | None -> Findlib.available t.data.lib_db.findlib name ~required_by:t.required_by
@@ -89,7 +85,7 @@ module Scope = struct
     | Direct s -> lib_is_available t s
     | Select { choices; _ } -> List.exists choices ~f:(choice_is_possible t)
 
-  let interpret_lib_dep (t : t with_required_by) lib_dep =
+  let interpret_lib_dep (t : t With_required_by.t) lib_dep =
     match lib_dep with
     | Lib_dep.Direct name -> begin
         match find_exn t name with
@@ -155,11 +151,13 @@ module Scope = struct
 
   let resolve t =
     (* TODO do something with required_by here *)
-    Jbuild.Scope.resolve t.data.scope.scope
+    Jbuild.Scope.resolve t.With_required_by.data.scope.scope
 
   let required_in_jbuild t ~jbuild_dir =
-    { required_by = [Utils.jbuild_name_in ~dir:jbuild_dir]
-    ; data = t }
+    { With_required_by.
+      required_by = [With_required_by.Entry.jbuild_file_in ~dir:jbuild_dir]
+    ; data        = t
+    }
 
   let find_scope t ~dir =
     { lib_db = t
@@ -193,7 +191,7 @@ module Scope = struct
         let acc = f lib acc in
         match lib with
         | Internal (dir, lib) ->
-          let scope = find_scope' scope.data.lib_db ~dir in
+          let scope = find_scope' scope.With_required_by.data.lib_db ~dir in
           List.fold_left lib.buildable.libraries ~init:acc ~f:(loop scope)
         | External pkg ->
           if deep_traverse_externals then

@@ -88,7 +88,8 @@ let file_of_lib t ~from ~lib ~file =
     Ok (Path.relative lib_install_dir file)
   | None ->
     match
-      Findlib.find t.context.findlib lib ~required_by:[Utils.jbuild_name_in ~dir:from]
+      Findlib.find t.context.findlib lib
+        ~required_by:[With_required_by.Entry.jbuild_file_in ~dir:from]
     with
     | Some pkg ->
       Ok (Path.relative pkg.dir file)
@@ -96,7 +97,7 @@ let file_of_lib t ~from ~lib ~file =
       Error
         { fail = fun () ->
             ignore (Findlib.find_exn t.context.findlib lib
-                      ~required_by:[Utils.jbuild_name_in ~dir:from]
+                      ~required_by:[With_required_by.Entry.jbuild_file_in ~dir:from]
                     : Findlib.package);
             assert false
         }

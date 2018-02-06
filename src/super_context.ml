@@ -10,7 +10,7 @@ module Dir_with_jbuild = struct
     { src_dir : Path.t
     ; ctx_dir : Path.t
     ; stanzas : Stanzas.t
-    ; scope   : Lib_db.Scope.t Lib_db.with_required_by
+    ; scope   : Lib_db.Scope.t With_required_by.t
     }
 end
 
@@ -707,7 +707,7 @@ module Action = struct
     let targets = Pset.elements targets in
     List.iter targets ~f:(fun target ->
       if Path.parent target <> dir then
-        Loc.fail (Loc.in_file (Utils.jbuild_name_in ~dir))
+        Loc.fail (Loc.in_file (Utils.describe_target (Utils.jbuild_file_in ~dir)))
           "A rule in this jbuild has targets in a different directory \
            than the current one, this is not allowed by Jbuilder at the moment:\n%s"
           (List.map targets ~f:(fun target ->
@@ -871,10 +871,9 @@ module PP = struct
           (Some driver, List.sort rest ~cmp:String.compare @ [driver])
       in
       let scope =
-        { Lib_db.
+        { With_required_by.
           data = scope
-        ; required_by = [sprintf "required by (pps (%s))"
-                           (String.concat names ~sep:", ")]
+        ; required_by = [Preprocess names]
         } in
       build_ppx_driver sctx names ~scope ~dep_kind:Required ~target:exe ~driver
     | _ -> ()
@@ -1036,7 +1035,7 @@ module PP = struct
      point to the .pp files *)
   let pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~lint ~preprocess
         ~preprocessor_deps ~lib_name
-        ~(scope : Lib_db.Scope.t Lib_db.with_required_by) =
+        ~(scope : Lib_db.Scope.t With_required_by.t) =
     let preprocessor_deps =
       Build.memoize "preprocessor deps"
         (Deps.interpret sctx ~scope:scope.data ~dir preprocessor_deps)

@@ -1,4 +1,5 @@
 include Jbuilder_re
+include Errors
 
 module Array   = StdLabels.Array
 module Bytes   = StdLabels.Bytes
@@ -36,17 +37,13 @@ let ksprintf = Printf.ksprintf
 
 let initial_cwd = Sys.getcwd ()
 
-(* An error in the code of jbuild, that should be reported upstream *)
-exception Code_error of string
-let code_errorf fmt = ksprintf (fun msg -> raise (Code_error msg)) fmt
-
-type ('a, 'b) result =
-  | Ok    of 'a
-  | Error of 'b
-
 type ('a, 'b) either =
   | Inl of 'a
   | Inr of 'b
+
+type ('a, 'b) result = ('a, 'b) Result.t =
+  | Ok of 'a
+  | Error of 'b
 
 module List = struct
   type 'a t = 'a list
@@ -493,18 +490,6 @@ let protectx x ~finally ~f =
   match f x with
   | y           -> finally x; y
   | exception e -> finally x; raise e
-
-exception Fatal_error of string
-let die_buf = Buffer.create 128
-let die_ppf (* Referenced in Ansi_color *) = Format.formatter_of_buffer die_buf
-let die fmt =
-  Format.kfprintf
-    (fun ppf ->
-       Format.pp_print_flush ppf ();
-       let s = Buffer.contents die_buf in
-       Buffer.clear die_buf;
-       raise (Fatal_error s))
-    die_ppf fmt
 
 let warn fmt =
   ksprintf (fun msg ->

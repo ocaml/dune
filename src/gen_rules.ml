@@ -53,7 +53,7 @@ module Gen(P : Params) = struct
       Path.relative dir (SC.expand_vars sctx ~dir ~scope s))
 
   let user_rule (rule : Rule.t) ~dir
-        ~(scope : Lib_db.Scope.t Lib_db.with_required_by) =
+        ~(scope : Lib_db.Scope.t With_required_by.t) =
     let targets : SC.Action.targets =
       match rule.targets with
       | Infer -> Infer
@@ -72,7 +72,7 @@ module Gen(P : Params) = struct
          ~scope)
 
   let copy_files_rules (def: Copy_files.t) ~src_dir ~dir
-        ~(scope : Lib_db.Scope.t Lib_db.with_required_by) =
+        ~(scope : Lib_db.Scope.t With_required_by.t) =
     let loc = String_with_vars.loc def.glob in
     let glob_in_src =
       let src_glob = SC.expand_vars sctx ~dir def.glob ~scope:scope.data in
@@ -449,7 +449,7 @@ Add it to your jbuild file to remove this warning.
      (fun a b -> a, b) <= (4, 02)
 
   let library_rules (lib : Library.t) ~dir ~files
-        ~(scope : Lib_db.Scope.t Lib_db.with_required_by) =
+        ~(scope : Lib_db.Scope.t With_required_by.t) =
     let dep_kind = if lib.optional then Build.Optional else Required in
     let flags = Ocaml_flags.make lib.buildable sctx ~scope:scope.data ~dir in
     let { modules; main_module_name; alias_module } = modules_by_lib ~dir lib in
@@ -722,7 +722,7 @@ Add it to your jbuild file to remove this warning.
       SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm_and_flags >>> r))
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules
-    ~(scope : Lib_db.Scope.t Lib_db.with_required_by) =
+    ~(scope : Lib_db.Scope.t With_required_by.t) =
     let dep_kind = Build.Required in
     let flags = Ocaml_flags.make exes.buildable sctx ~scope:scope.data ~dir in
     let modules =
@@ -798,7 +798,7 @@ Add it to your jbuild file to remove this warning.
     SC.add_alias_action sctx alias ~locks ~stamp build
 
   let alias_rules (alias_conf : Alias_conf.t) ~dir
-        ~(scope : Lib_db.Scope.t Lib_db.with_required_by) =
+        ~(scope : Lib_db.Scope.t With_required_by.t) =
     let stamp =
       let module S = Sexp.To_sexp in
       Sexp.List
@@ -1140,7 +1140,7 @@ end
 let gen ~contexts ~build_system
       ?(filter_out_optional_stanzas_with_missing_deps=true)
       ?only_packages conf =
-  let open Future in
+  let open Fiber.O in
   let { Jbuild_load. file_tree; jbuilds; packages; scopes } = conf in
   let packages =
     match only_packages with
@@ -1150,12 +1150,17 @@ let gen ~contexts ~build_system
         String_set.mem name pkgs)
   in
   let sctxs = Hashtbl.create 4 in
-  let make_sctx (context : Context.t) : _ Future.t =
-    let host =
-      Option.map context.for_host ~f:(fun h ->
-        Option.value_exn (Hashtbl.find sctxs h.name))
+  List.iter contexts ~f:(fun c ->
+    Hashtbl.add sctxs ~key:c.Context.name ~data:(Fiber.Ivar.create ()));
+  let make_sctx (context : Context.t) : _ Fiber.t =
+    let host () =
+      match context.for_host with
+      | None -> Fiber.return None
+      | Some h ->
+        Fiber.Ivar.read (Option.value_exn (Hashtbl.find sctxs h.name))
+        >>| fun x -> Some x
     in
-    let stanzas =
+    let stanzas () =
       Jbuild_load.Jbuilds.eval ~context jbuilds >>| fun stanzas ->
       match only_packages with
       | None -> stanzas
@@ -1171,7 +1176,7 @@ let gen ~contexts ~build_system
                String_set.mem package.name pkgs
              | _ -> true)))
     in
-    stanzas >>| fun stanzas ->
+    Fiber.fork_and_join host stanzas >>= fun (host, stanzas) ->
     let sctx =
       Super_context.create
         ?host
@@ -1184,10 +1189,11 @@ let gen ~contexts ~build_system
         ~stanzas
     in
     let module M = Gen(struct let sctx = sctx end) in
-    Hashtbl.add sctxs ~key:context.name ~data:sctx;
+    Fiber.Ivar.fill (Option.value_exn (Hashtbl.find sctxs context.name)) sctx
+    >>| fun () ->
     (context.name, ((module M : Gen), stanzas))
   in
-  Future.all (List.map ~f:make_sctx contexts) >>| fun l ->
+  Fiber.parallel_map contexts ~f:make_sctx >>| fun l ->
   let map = String_map.of_alist_exn l in
   Build_system.set_rule_generators build_system
     (String_map.map map ~f:(fun ((module M : Gen), _) -> M.gen_rules));

@@ -2,8 +2,10 @@
 
 (library
  ((name        jbuilder)
-;;  (public_name jbuilder)
+  ;;  (public_name jbuilder)
   (libraries   (unix
+                result
+                fiber
 		jbuilder_re
 		jbuilder_opam_file_format
                 usexp))

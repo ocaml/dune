@@ -156,7 +156,7 @@ type package =
 module Package_not_available = struct
   type t =
     { package     : string
-    ; required_by : string list
+    ; required_by : With_required_by.Entry.t list
     ; reason      : reason
     }
 
@@ -244,15 +244,15 @@ module Pkg_step1 = struct
     ; requires         : string list
     ; ppx_runtime_deps : string list
     ; exists           : bool
-    ; required_by      : string list
+    ; required_by      : With_required_by.Entry.t list
     }
 end
 
 module External_dep_conflicts_with_local_lib = struct
   type t =
     { package             : string
-    ; required_by         : string
-    ; required_locally_in : string list
+    ; required_by         : With_required_by.Entry.t
+    ; required_locally_in : With_required_by.Entry.t list
     ; defined_locally_in  : Path.t
     }
 end
@@ -360,7 +360,7 @@ let rec load_meta_rec t ~fq_name ~packages ~required_by =
             if root_name = fq_name then
               required_by
             else
-              fq_name :: required_by
+              With_required_by.Entry.Library fq_name :: required_by
           in
           Hashtbl.add t.packages ~key:root_name
             ~data:(Not_available { package = root_name
@@ -390,7 +390,8 @@ let rec load_meta_rec t ~fq_name ~packages ~required_by =
               acc)
       in
       String_map.fold deps ~init:packages ~f:(fun ~key:dep ~data:package packages ->
-        load_meta_rec t ~fq_name:dep ~packages ~required_by:(package :: required_by))
+        load_meta_rec t ~fq_name:dep ~packages
+          ~required_by:(With_required_by.Entry.Library package :: required_by))
 
 module Local_closure =
   Top_closure.Make
@@ -448,7 +449,7 @@ let load_meta t ~fq_name ~required_by =
                 | None ->
                   let na : Package_not_available.t =
                     { package     = name
-                    ; required_by = pkg.package.name :: pkg.required_by
+                    ; required_by = Library pkg.package.name :: pkg.required_by
                     ; reason      = Not_found
                     }
                   in
@@ -530,7 +531,7 @@ let check_deps_consistency ~required_by ~local_public_libs pkg requires =
     | Some path ->
       raise (Findlib (External_dep_conflicts_with_local_lib
                         { package             = pkg'.name
-                        ; required_by         = pkg.name
+                        ; required_by         = Library pkg.name
                         ; required_locally_in = required_by
                         ; defined_locally_in  = path
                         })))

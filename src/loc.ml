@@ -13,14 +13,9 @@ let of_lexbuf lb =
 exception Error of t * string
 
 let fail t fmt =
-  Format.pp_print_as die_ppf 7 ""; (* "Error: " *)
-  Format.kfprintf
-    (fun ppf ->
-       Format.pp_print_flush ppf ();
-       let s = Buffer.contents die_buf in
-       Buffer.clear die_buf;
-       raise (Error (t, s)))
-    die_ppf fmt
+  Format.pp_print_as err_ppf 7 ""; (* "Error: " *)
+  kerrf fmt ~f:(fun s ->
+    raise (Error (t, s)))
 
 let fail_lex lb fmt =
   fail (of_lexbuf lb) fmt

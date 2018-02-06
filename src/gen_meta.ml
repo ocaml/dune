@@ -33,7 +33,7 @@ module Pub_name = struct
 end
 
 type item =
-    Lib of Lib_db.Scope.t Lib_db.with_required_by * Pub_name.t * Library.t
+    Lib of Lib_db.Scope.t With_required_by.t * Pub_name.t * Library.t
 
 let string_of_deps l =
   String.concat (List.sort l ~cmp:String.compare) ~sep:" "

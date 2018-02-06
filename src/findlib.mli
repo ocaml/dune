@@ -5,7 +5,7 @@ open Import
 module Package_not_available : sig
   type t =
     { package     : string
-    ; required_by : string list
+    ; required_by : With_required_by.Entry.t list
     ; reason      : reason
     }
 
@@ -25,8 +25,8 @@ end
 module External_dep_conflicts_with_local_lib : sig
   type t =
     { package             : string
-    ; required_by         : string
-    ; required_locally_in : string list
+    ; required_by         : With_required_by.Entry.t
+    ; required_locally_in : With_required_by.Entry.t list
     ; defined_locally_in  : Path.t
     }
 end
@@ -59,22 +59,22 @@ type package =
   ; ppx_runtime_deps : package list
   }
 
-val find     : t -> required_by:string list -> string -> package option
-val find_exn : t -> required_by:string list -> string -> package
+val find     : t -> required_by:With_required_by.Entry.t list -> string -> package option
+val find_exn : t -> required_by:With_required_by.Entry.t list -> string -> package
 
-val available : t -> required_by:string list -> string -> bool
+val available : t -> required_by:With_required_by.Entry.t list -> string -> bool
 
 val root_package_name : string -> string
 
 (** [local_public_libs] is a map from public library names to where they are defined in
     the workspace. These must not appear as dependency of a findlib package *)
 val closure
-  :  required_by:string list
+  :  required_by:With_required_by.Entry.t list
   -> local_public_libs:Path.t String_map.t
   -> package list
   -> package list
 val closed_ppx_runtime_deps_of
-  :  required_by:string list
+  :  required_by:With_required_by.Entry.t list
   -> local_public_libs:Path.t String_map.t
   -> package list
   -> package list

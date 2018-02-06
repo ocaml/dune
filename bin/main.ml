@@ -1,13 +1,11 @@
 open Jbuilder
 open Import
 open Jbuilder_cmdliner.Cmdliner
+open Fiber.O
 
 (* Things in src/ don't depend on cmdliner to speed up the bootstrap, so we set this
    reference here *)
 let () = suggest_function := Jbuilder_cmdliner.Cmdliner_suggest.value
-
-let (>>=) = Future.(>>=)
-let (>>|) = Future.(>>|)
 
 type common =
   { concurrency           : int
@@ -114,7 +112,7 @@ let request_of_targets (setup : Main.setup) targets =
         ~file_tree:setup.file_tree ~contexts)
 
 let do_build (setup : Main.setup) targets =
-  Build_system.do_build_exn setup.build_system
+  Build_system.do_build setup.build_system
     ~request:(request_of_targets setup targets)
 
 let find_root () =
@@ -400,7 +398,7 @@ let installed_libraries =
   let doc = "Print out libraries installed on the system." in
   let go common na =
     set_common common ~targets:[];
-    Future.Scheduler.go ~log:(Log.create ())
+    Scheduler.go ~log:(Log.create ())
       (Context.create (Default [Native])  >>= fun ctxs ->
        let ctx = List.hd ctxs in
        let findlib = ctx.findlib in
@@ -412,7 +410,7 @@ let installed_libraries =
            Format.fprintf ppf "%-*s -> %a@\n" longest na.package
              Findlib.Package_not_available.explain na.reason);
          Format.pp_print_flush ppf ();
-         Future.return ()
+         Fiber.return ()
        end else begin
          let pkgs = Findlib.all_packages findlib in
          let max_len = List.longest_map pkgs ~f:(fun p -> p.name) in
@@ -423,7 +421,7 @@ let installed_libraries =
              | v  -> v
            in
            Printf.printf "%-*s (version: %s)\n" max_len pkg.name ver);
-         Future.return ()
+         Fiber.return ()
        end)
   in
   ( Term.(const go
@@ -567,7 +565,7 @@ let build_targets =
   let go common targets =
     set_common common ~targets;
     let log = Log.create () in
-    Future.Scheduler.go ~log
+    Scheduler.go ~log
       (Main.setup ~log common >>= fun setup ->
        let targets = resolve_targets_exn ~log common setup targets in
        do_build setup targets) in
@@ -593,7 +591,7 @@ let runtest =
         | dir when dir.[String.length dir - 1] = '/' -> sprintf "@%sruntest" dir
         | dir -> sprintf "@%s/runtest" dir));
     let log = Log.create () in
-    Future.Scheduler.go ~log
+    Scheduler.go ~log
       (Main.setup ~log common >>= fun setup ->
        let check_path = check_path setup.contexts in
        let targets =
@@ -648,7 +646,7 @@ let external_lib_deps =
   let go common only_missing targets =
     set_common common ~targets:[];
     let log = Log.create () in
-    Future.Scheduler.go ~log
+    Scheduler.go ~log
       (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
        >>= fun setup ->
        let targets = resolve_targets_exn ~log common setup targets in
@@ -715,8 +713,8 @@ let external_lib_deps =
                acc
              end)
        in
-       if failure then die "";
-       Future.return ())
+       if failure then raise Already_reported;
+       Fiber.return ())
   in
   ( Term.(const go
           $ common
@@ -751,7 +749,7 @@ let rules =
   let go common out recursive makefile_syntax targets =
     set_common common ~targets;
     let log = Log.create () in
-    Future.Scheduler.go ~log
+    Scheduler.go ~log
       (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
        >>= fun setup ->
        let request =
@@ -791,7 +789,7 @@ let rules =
              Format.fprintf ppf "%a@," Sexp.pp_split_strings sexp)
          end;
          Format.pp_print_flush ppf ();
-         Future.return ()
+         Fiber.return ()
        in
        match out with
        | None -> print stdout
@@ -828,12 +826,12 @@ I couldn't find the opam-installer binary :-("
 
 let get_prefix context ~from_command_line =
   match from_command_line with
-  | Some p -> Future.return (Path.of_string p)
+  | Some p -> Fiber.return (Path.of_string p)
   | None -> Context.install_prefix context
 
 let get_libdir context ~libdir_from_command_line =
   match libdir_from_command_line with
-  | Some p -> Future.return (Some (Path.of_string p))
+  | Some p -> Fiber.return (Some (Path.of_string p))
   | None -> Context.install_ocaml_libdir context
 
 let install_uninstall ~what =
@@ -845,7 +843,7 @@ let install_uninstall ~what =
     set_common common ~targets:[];
     let opam_installer = opam_installer () in
     let log = Log.create () in
-    Future.Scheduler.go ~log
+    Scheduler.go ~log
       (Main.setup ~log common >>= fun setup ->
        let pkgs =
          match pkgs with
@@ -880,25 +878,24 @@ let install_uninstall ~what =
        let install_files_by_context =
          CMap.of_alist_multi install_files |> CMap.bindings
        in
-       Future.all_unit
-         (List.map install_files_by_context ~f:(fun (context, install_files) ->
-            get_prefix context ~from_command_line:prefix_from_command_line
-            >>= fun prefix ->
-            get_libdir context ~libdir_from_command_line
-            >>= fun libdir ->
-            Future.all_unit
-              (List.map install_files ~f:(fun path ->
-                 let purpose = Future.Build_job install_files in
-                 Future.run ~purpose Strict (Path.to_string opam_installer)
-                   ([ sprintf "-%c" what.[0]
-                    ; Path.to_string path
-                    ; "--prefix"
-                    ; Path.to_string prefix
-                    ] @
-                    match libdir with
-                    | None -> []
-                    | Some p -> [ "--libdir"; Path.to_string p ]
-                   ))))))
+       Fiber.parallel_iter install_files_by_context
+         ~f:(fun (context, install_files) ->
+           get_prefix context ~from_command_line:prefix_from_command_line
+           >>= fun prefix ->
+           get_libdir context ~libdir_from_command_line
+           >>= fun libdir ->
+           Fiber.parallel_iter install_files ~f:(fun path ->
+             let purpose = Process.Build_job install_files in
+             Process.run ~purpose Strict (Path.to_string opam_installer)
+               ([ sprintf "-%c" what.[0]
+                ; Path.to_string path
+                ; "--prefix"
+                ; Path.to_string prefix
+                ] @
+                match libdir with
+                | None -> []
+                | Some p -> [ "--libdir"; Path.to_string p ]
+               ))))
   in
   ( Term.(const go
           $ common
@@ -956,7 +953,7 @@ let exec =
   let go common context prog no_rebuild args =
     set_common common ~targets:[];
     let log = Log.create () in
-    let setup = Future.Scheduler.go ~log (Main.setup ~log common) in
+    let setup = Scheduler.go ~log (Main.setup ~log common) in
     let context = Main.find_context_exn setup ~name:context in
     let prog_where =
       match Filename.analyze_program_name prog with
@@ -990,7 +987,7 @@ let exec =
         match Lazy.force targets with
         | [] -> ()
         | targets ->
-          Future.Scheduler.go ~log (do_build setup targets);
+          Scheduler.go ~log (do_build setup targets);
           Build_system.finalize setup.build_system
       end;
       match prog_where with
@@ -1012,16 +1009,16 @@ let exec =
       begin match Lazy.force targets with
       | [] ->
         Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
-        die ""
+        raise Already_reported
       | _::_ ->
         Format.eprintf "@{<Error>Error@}: Program %S isn't built yet \
                         you need to buid it first or remove the \
                         --no-build option.@." prog;
-        die ""
+        raise Already_reported
       end
     | None, false ->
       Format.eprintf "@{<Error>Error@}: Program %S not found!@." prog;
-      die ""
+      raise Already_reported
     | Some real_prog, _ ->
       let real_prog = Path.to_string real_prog     in
       let env       = Context.env_for_exec context in
@@ -1089,7 +1086,7 @@ let subst =
   in
   let go common name =
     set_common common ~targets:[];
-    Future.Scheduler.go (Watermarks.subst ?name ())
+    Scheduler.go (Watermarks.subst ?name ())
   in
   ( Term.(const go
           $ common
@@ -1123,7 +1120,7 @@ let utop =
        in
        do_build setup [File target] >>| fun () ->
        (setup.build_system, context, Path.to_string target)
-      ) |> Future.Scheduler.go ~log in
+      ) |> Scheduler.go ~log in
     Build_system.finalize build_system;
     restore_cwd_and_execve common utop_path (Array.of_list (utop_path :: args))
       (Context.env_for_exec context)
@@ -1204,6 +1201,8 @@ let () =
     match Term.eval_choice default all ~catch:false with
     | `Error _ -> exit 1
     | _ -> exit 0
-  with exn ->
-    Format.eprintf "%a@?" (Main.report_error ?map_fname:None) exn;
+  with
+  | Fiber.Never -> exit 1
+  | exn ->
+    Report_error.report exn;
     exit 1

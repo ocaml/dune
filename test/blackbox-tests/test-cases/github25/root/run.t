@@ -15,8 +15,12 @@ We need ocamlfind to run this test
 
   $ $JBUILDER build -j1 @install --root . --only pas-de-bol
   Error: External library "plop.ca-marche-pas" is unavailable.
-  -> required by "jbuild (context default)"
+  -> required by jbuild
   External library "plop.ca-marche-pas" is not available because it depends on the following libraries that are not available:
   - une-lib-qui-nexiste-pas -> not found
   Hint: try: jbuilder external-lib-deps --missing --root . --only-packages pas-de-bol @install
+      ocamldep a.ml.d
+      ocamldep b.ml.d
+        ocamlc pas_de_bol.{cmi,cmo,cmt}
+      ocamlopt pas_de_bol.{cmx,o}
   [1]

@@ -4,11 +4,10 @@ include (Usexp : module type of struct include Usexp end
          with module Loc := Usexp.Loc)
 
 let code_error message vars =
-  code_errorf "%s"
-    (to_string
-       (List (Atom message
-              :: List.map vars ~f:(fun (name, value) ->
-                List [Atom name; value]))))
+  code_errorf "%a" pp
+    (List (Atom message
+           :: List.map vars ~f:(fun (name, value) ->
+             List [Atom name; value])))
 
 let buf_len = 65_536
 

@@ -64,14 +64,7 @@ let signal_name =
     | exception Not_found -> sprintf "%d\n" n
     | s -> s
 
-let jbuild_name_in ~dir =
-  match Path.extract_build_context dir with
-  | None ->
-    Path.to_string_maybe_quoted (Path.relative dir "jbuild")
-  | Some (ctx_name, dir) ->
-    sprintf "%s (context %s)"
-      (Path.to_string_maybe_quoted (Path.relative dir "jbuild"))
-      ctx_name
+let jbuild_file_in ~dir = Path.relative dir "jbuild"
 
 type target_kind =
   | Regular of string * Path.t

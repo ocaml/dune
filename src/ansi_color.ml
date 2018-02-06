@@ -180,7 +180,7 @@ let styles_of_tag = function
 let setup_err_formatter_colors () =
   let open Format in
   if Lazy.force stderr_supports_colors then begin
-    List.iter [err_formatter; die_ppf] ~f:(fun ppf ->
+    List.iter [err_formatter; err_ppf] ~f:(fun ppf ->
       let funcs = pp_get_formatter_tag_functions ppf () in
       pp_set_mark_tags ppf true;
       pp_set_formatter_tag_functions ppf

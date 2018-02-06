@@ -40,7 +40,7 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
       let other_cm_files =
         Build.dyn_paths
           (Ocamldep.Dep_graph.deps_of dep_graph m >>^ fun deps ->
-           List.concat_map     deps
+           List.concat_map deps
              ~f:(fun m ->
                match cm_kind with
                | Cmi | Cmo -> [Module.cm_file m ~dir Cmi]

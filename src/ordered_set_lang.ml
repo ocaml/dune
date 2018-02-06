@@ -120,7 +120,16 @@ module Unexpanded = struct
     | Element s -> Element (f (String_with_vars.t s))
     | Special (l, s) -> Special (l, s)
     | Include fn ->
-      parse_general (Option.value_exn (String_map.find (f fn) files_contents))
+      parse_general
+        (let fn = f fn in
+         match String_map.find fn files_contents with
+         | Some x -> x
+         | None ->
+           Sexp.code_error
+             "Ordered_set_lang.Unexpanded.expand"
+             [ "included-file", Atom fn
+             ; "files", Sexp.To_sexp.(list string) (String_map.keys files_contents)
+             ])
         ~f:(fun s -> f (String_with_vars.t s))
     | Union l ->
       Union (List.map l ~f:(expand ~files_contents ~f))

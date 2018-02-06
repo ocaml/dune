@@ -132,12 +132,12 @@ let pp_print_atom ppf ~serialize s =
     match split_string s ~on:'\n' with
     | [] -> Format.pp_print_string ppf (serialize s)
     | first :: rest ->
-       Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (serialize first);
+       Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (Atom.escaped first);
        List.iter rest ~f:(fun s ->
-           Format.fprintf ppf "@,\\n%s" (serialize s));
+           Format.fprintf ppf "@,\\n%s" (Atom.escaped s));
        Format.fprintf ppf "@}\"@]"
   end else
-    Format.fprintf ppf "%S" (serialize s)
+    Format.pp_print_string ppf (serialize s)
 
 let rec pp_split_strings ppf = function
   | Atom s ->

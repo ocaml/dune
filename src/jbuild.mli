@@ -112,7 +112,9 @@ end
 
 module Buildable : sig
   type t =
-    { modules                  : Ordered_set_lang.t
+    { loc                      : Loc.t
+    ; modules                  : Ordered_set_lang.t
+    ; modules_without_implementation : Ordered_set_lang.t
     ; libraries                : Lib_dep.t list
     ; preprocess               : Preprocess_map.t
     ; preprocessor_deps        : Dep_conf.t list
@@ -189,7 +191,7 @@ end
 
 module Executables : sig
   type t =
-    { names            : string list
+    { names            : (Loc.t * string) list
     ; link_executables : bool
     ; link_flags       : Ordered_set_lang.Unexpanded.t
     ; modes            : Mode.Dict.Set.t

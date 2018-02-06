@@ -157,7 +157,7 @@ let create
     ; "OCAML"          , Paths ([context.ocaml], Split)
     ; "OCAMLC"         , Paths ([context.ocamlc], Split)
     ; "OCAMLOPT"       , Paths ([ocamlopt], Split)
-    ; "ocaml_version"  , Strings ([context.version], Concat)
+    ; "ocaml_version"  , Strings ([context.version_string], Concat)
     ; "ocaml_where"    , Paths ([context.stdlib_dir], Concat)
     ; "ARCH_SIXTYFOUR" , Strings ([string_of_bool context.arch_sixtyfour],
                                   Concat)
@@ -762,17 +762,14 @@ module PP = struct
     fn ^ ".pp" ^ ext
 
   let pped_module ~dir (m : Module.t) ~f =
-    let ml_pp_fname = pp_fname m.impl.name in
-    f Ml_kind.Impl (Path.relative dir m.impl.name) (Path.relative dir ml_pp_fname);
-    let intf =
-      Option.map m.intf ~f:(fun intf ->
-        let pp_fname = pp_fname intf.name in
-        f Intf (Path.relative dir intf.name) (Path.relative dir pp_fname);
-        {intf with name = pp_fname})
+    let pped_file (kind : Ml_kind.t) (file : Module.File.t) =
+      let pp_fname = pp_fname file.name in
+      f kind (Path.relative dir file.name) (Path.relative dir pp_fname);
+      {file with name = pp_fname}
     in
     { m with
-      impl = { m.impl with name = ml_pp_fname }
-    ; intf
+      impl = Option.map m.impl ~f:(pped_file Impl)
+    ; intf = Option.map m.intf ~f:(pped_file Intf)
     }
 
   let migrate_driver_main = "ocaml-migrate-parsetree.driver-main"
@@ -941,22 +938,18 @@ module PP = struct
         ; A "binary"
         ; Dep src_path ]
         ~stdout_to:(Path.relative dir target) in
-    let impl =
-      match m.impl.syntax with
-      | OCaml -> m.impl
+    let to_ml (f : Module.File.t) =
+      match f.syntax with
+      | OCaml  -> f
       | Reason ->
-        let ml = Module.File.to_ocaml m.impl in
-        add_rule sctx (rule m.impl.name ml.name);
-        ml in
-    let intf =
-      Option.map m.intf ~f:(fun f ->
-        match f.syntax with
-        | OCaml -> f
-        | Reason ->
-          let mli = Module.File.to_ocaml f in
-          add_rule sctx (rule f.name mli.name);
-          mli) in
-    { m with impl ; intf }
+        let ml = Module.File.to_ocaml f in
+        add_rule sctx (rule f.name ml.name);
+        ml
+    in
+    { m with
+      impl = Option.map m.impl ~f:to_ml
+    ; intf = Option.map m.intf ~f:to_ml
+    }
 
   let uses_ppx_driver ~pps =
     match Option.map ~f:Pp.to_string (List.last pps) with
@@ -1088,17 +1081,23 @@ module PP = struct
     )
 end
 
+module Eval_strings = Ordered_set_lang.Make(struct
+    type t = string
+    let name t = t
+  end)
+
 let expand_and_eval_set t ~scope ~dir set ~standard =
   let open Build.O in
   let f = expand_vars t ~scope ~dir in
+  let parse ~loc:_ s = s in
   match Ordered_set_lang.Unexpanded.files set ~f |> String_set.elements with
   | [] ->
     let set = Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f in
-    Build.return (Ordered_set_lang.eval_with_standard set ~standard)
+    Build.return (Eval_strings.eval set ~standard ~parse)
   | files ->
     let paths = List.map files ~f:(Path.relative dir) in
     Build.all (List.map paths ~f:Build.read_sexp)
     >>^ fun sexps ->
     let files_contents = List.combine files sexps |> String_map.of_alist_exn in
     let set = Ordered_set_lang.Unexpanded.expand set ~files_contents ~f in
-    Ordered_set_lang.eval_with_standard set ~standard
+    Eval_strings.eval set ~standard ~parse

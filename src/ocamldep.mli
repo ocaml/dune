@@ -10,7 +10,10 @@ module Dep_graph : sig
     -> Module.t
     -> (unit, Module.t list) Build.t
 
-  val top_closed : t -> Module.t list -> (unit, Module.t list) Build.t
+  val top_closed_implementations
+    :  t
+    -> Module.t list
+    -> (unit, Module.t list) Build.t
 end
 
 module Dep_graphs : sig

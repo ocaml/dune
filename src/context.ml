@@ -52,7 +52,8 @@ type t =
   ; opam_var_cache          : (string, string) Hashtbl.t
   ; natdynlink_supported    : bool
   ; ocamlc_config           : (string * string) list
-  ; version                 : string
+  ; version_string          : string
+  ; version                 : int * int * int
   ; stdlib_dir              : Path.t
   ; ccomp_type              : string
   ; c_compiler              : string
@@ -318,16 +319,16 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
     let get_path var = Path.absolute (get var) in
     let stdlib_dir = get_path "standard_library" in
     let natdynlink_supported = Path.exists (Path.relative stdlib_dir "dynlink.cmxa") in
-    let version = get "version" in
+    let version_string = get "version" in
+    let version = Scanf.sscanf version_string "%u.%u.%u" (fun a b c -> a, b, c) in
     let env, env_extra =
       (* See comment in ansi_color.ml for setup_env_for_colors. For OCaml < 4.05,
          OCAML_COLOR is not supported so we use OCAMLPARAM. OCaml 4.02 doesn't support
          'color' in OCAMLPARAM, so we just don't force colors with 4.02. *)
-      let ocaml_version = Scanf.sscanf version "%u.%u" (fun a b -> a, b) in
       if !Clflags.capture_outputs
       && Lazy.force Ansi_color.stderr_supports_colors
-      && ocaml_version > (4, 02)
-      && ocaml_version < (4, 05) then
+      && version >= (4, 03, 0)
+      && version <  (4, 05, 0) then
         let value =
           match get_env env "OCAMLPARAM" with
           | None -> "color=always,_"
@@ -401,6 +402,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
 
       ; stdlib_dir
       ; ocamlc_config = String_map.bindings ocamlc_config
+      ; version_string
       ; version
       ; ccomp_type              = get       "ccomp_type"
       ; c_compiler

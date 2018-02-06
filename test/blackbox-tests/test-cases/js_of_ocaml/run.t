@@ -1,13 +1,12 @@
   $ $JBUILDER build -j1 --display short --root . --dev bin/technologic.bc.js @install lib/x.cma.js lib/x__Y.cmo.js bin/z.cmo.js
         ocamlc lib/stubs.o
       ocamlopt .ppx/js_of_ocaml-ppx/ppx.exe
-        ocamlc lib/.x.objs/x__.{cmi,cmo,cmt}
+        ocamlc lib/.x.objs/x__.{cmi,cmti}
     ocamlmklib lib/dllx_stubs.so,lib/libx_stubs.a
            ppx lib/x.pp.ml
            ppx lib/y.pp.ml
            ppx bin/technologic.pp.ml
            ppx bin/z.pp.ml
-      ocamlopt lib/.x.objs/x__.{cmx,o}
       ocamldep lib/x.pp.ml.d
       ocamldep lib/y.pp.ml.d
       ocamldep bin/technologic.pp.ml.d
@@ -35,9 +34,8 @@
   break it
   fix it
   $ $JBUILDER build -j1 --display short --root . bin/technologic.bc.js @install
-        ocamlc lib/.x.objs/x__.{cmi,cmo,cmt}
+        ocamlc lib/.x.objs/x__.{cmi,cmti}
         ocamlc lib/.x.objs/x__Y.{cmi,cmo,cmt}
-      ocamlopt lib/.x.objs/x__.{cmx,o}
         ocamlc lib/.x.objs/x.{cmi,cmo,cmt}
       ocamlopt lib/.x.objs/x__Y.{cmx,o}
         ocamlc lib/x.cma

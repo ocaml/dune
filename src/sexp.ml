@@ -212,6 +212,9 @@ module Of_sexp = struct
     let x, state = m state in
     f x state
 
+  let record_loc state =
+    (state.loc, state)
+
   let consume name state =
     { state with
       unparsed = Name_map.remove name state.unparsed

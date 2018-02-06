@@ -54,6 +54,9 @@ module Of_sexp : sig
   val return : 'a -> 'a record_parser
   val ( >>= ) : 'a record_parser -> ('a -> 'b record_parser) -> 'b record_parser
 
+  (** Return the location of the record being parsed *)
+  val record_loc : Loc.t record_parser
+
   val field   : string -> ?default:'a -> 'a t -> 'a record_parser
   val field_o : string -> 'a t -> 'a option record_parser
   val field_b : string -> bool record_parser

@@ -39,13 +39,6 @@ val library_not_found : ?context:string -> ?hint:string -> string -> _
 (** [\["-g"\]] if [!Clflags.g] and [\[\]] otherwise *)
 val g : unit -> string list
 
-(** Base name of the object file (.o) for a given source file basename:
-
-    - [obj_name_of_basename "toto.ml" = "toto"]
-    - [obj_name_of_basename "toto.pp.ml" = "toto"]
-*)
-val obj_name_of_basename : string -> string
-
 val install_file : package:string -> findlib_toolchain:string option -> string
 
 (** Digest files with caching *)

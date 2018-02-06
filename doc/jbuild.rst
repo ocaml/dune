@@ -167,6 +167,16 @@ modules you want.
   build system. It is not for casual uses, see the `re2 library
   <https://github.com/janestreet/re2>`__ for an example of use
 
+- ``(modules_without_implementation <modules>)`` specifies a list of
+  modules that have only a ``.mli`` or ``.rei`` but no ``.ml`` or
+  ``.re`` file. Such modules are usually referred as *mli only
+  modules*. They are not officially supported by the OCaml compiler,
+  however they are commonly used. Such modules must only define
+  types. Since it is not reasonably possible for Jbuilder to check
+  that this is the case, Jbuilder requires the user to explicitly list
+  such modules to avoid surprises. ``<modules>`` must be a subset of
+  the modules listed in the ``(modules ...)`` field.
+
 Note that when binding C libraries, Jbuilder doesn't provide special support for
 tools such as ``pkg-config``, however it integrates easily with `configurator
 <https://github.com/janestreet/configurator>`__ by using ``(c_flags (:include
@@ -249,6 +259,9 @@ binary at the same place as where ``ocamlc`` was found, or when there is a
 
 - ``flags``, ``ocamlc_flags`` and ``ocamlopt_flags``. See the section about
    specifying `OCaml flags`_
+
+- ``(modules_without_implementation <modules>)`` is the same as the
+  corresponding field of `library`_
 
 executables
 -----------

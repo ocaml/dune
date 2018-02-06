@@ -26,6 +26,8 @@ next
   directory can't see each other unless one of them depend on the
   other (#472)
 
+- Better support for mli/rei only modules (#490)
+
 1.0+beta17 (01/02/2018)
 -----------------------
 

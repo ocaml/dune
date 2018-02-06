@@ -23,7 +23,11 @@ let add_module_rules sctx ~dir lib_requires =
   let utop_ml =
     lib_requires
     >>^ (fun libs ->
-      let include_paths = Path.Set.elements (Lib.include_paths libs) in
+      let include_paths =
+        let ctx = Super_context.context sctx in
+        Path.Set.elements
+          (Lib.include_paths libs ~stdlib_dir:ctx.stdlib_dir)
+      in
       let b = Buffer.create 64 in
       let fmt = Format.formatter_of_buffer b in
       pp_ml fmt include_paths;

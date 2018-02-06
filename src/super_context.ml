@@ -845,7 +845,7 @@ module PP = struct
        >>>
        Build.run ~context:ctx (Ok compiler)
          [ A "-o" ; Target target
-         ; Dyn (Lib.link_flags ~mode)
+         ; Dyn (Lib.link_flags ~mode ~stdlib_dir:ctx.stdlib_dir)
          ])
 
   let gen_rules sctx components =

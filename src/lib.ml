@@ -23,12 +23,13 @@ let dir = function
   | Internal (dir, _) -> dir
   | External pkg -> pkg.dir
 
-let include_paths ts =
+let include_paths ts ~stdlib_dir =
   List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
     Path.Set.add (dir t) acc)
+  |> Path.Set.remove stdlib_dir
 
-let include_flags ts =
-  let dirs = include_paths ts in
+let include_flags ts ~stdlib_dir =
+  let dirs = include_paths ts ~stdlib_dir in
   Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
     [Arg_spec.A "-I"; Path dir]))
 
@@ -49,9 +50,9 @@ let describe = function
   | External pkg ->
     sprintf "%s (external)" pkg.name
 
-let link_flags ts ~mode =
+let link_flags ts ~mode ~stdlib_dir =
   Arg_spec.S
-    (include_flags ts ::
+    (include_flags ts ~stdlib_dir ::
      List.map ts ~f:(fun t ->
        match t with
        | External pkg ->

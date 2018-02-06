@@ -708,7 +708,8 @@ Add it to your jbuild file to remove this warning.
          [ Dyn (fun (_, flags,_) -> As flags)
          ; A "-o"; Target exe
          ; Dyn (fun (_, _, link_flags) -> As (link_custom @ link_flags))
-         ; Dyn (fun ((libs, _), _, _) -> Lib.link_flags libs ~mode)
+         ; Dyn (fun ((libs, _), _, _) -> Lib.link_flags libs ~mode
+                                           ~stdlib_dir:ctx.stdlib_dir)
          ; Dyn (fun ((_, cm_files), _, _) -> Deps cm_files)
          ]);
     if mode = Mode.Byte then

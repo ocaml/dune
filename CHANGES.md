@@ -5,6 +5,9 @@ next
   `library`/`executables` stanza. Now it is called once per file
   (#486)
 
+- Make sure to not pass `-I <stdlib-dir>` to the compiler. It is
+  useless and it causes problems in some cases (#488)
+
 1.0+beta17 (01/02/2018)
 -----------------------
 

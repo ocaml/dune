@@ -1,4 +1,4 @@
-  $ $JBUILDER runtest -j1 --root .
+  $ $JBUILDER runtest -j1 --display short --root .
       ocamldep bar.ml.d
       ocamldep bar_no_unix.ml.d
       ocamldep bar_unix.ml.d

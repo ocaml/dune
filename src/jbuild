@@ -6,6 +6,7 @@
   (libraries   (unix
                 result
                 fiber
+                xdg
 		jbuilder_re
 		jbuilder_opam_file_format
                 usexp))

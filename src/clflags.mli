@@ -9,9 +9,6 @@ val concurrency : int ref
 (** [-g] *)
 val g : bool ref
 
-(** Print executed commands verbosely *)
-val verbose : bool ref
-
 (** Print dependency path in case of error *)
 val debug_dep_path : bool ref
 

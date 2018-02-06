@@ -1,4 +1,4 @@
-  $ $JBUILDER build @runtest @install-file -j1 --root .
+  $ $JBUILDER build @runtest @install-file -j1 --display short --root .
          refmt bar.re.ml
       ocamldep pp/reasononlypp.depends.ocamldep-output
       ocamldep ppx/reasonppx.depends.ocamldep-output

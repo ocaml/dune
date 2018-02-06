@@ -575,3 +575,9 @@ module Fmt = struct
 
   let failwith fmt = kstrf failwith fmt
 end
+
+(* This is ugly *)
+type printer =
+  { print : 'a. ('a, Format.formatter, unit, unit) format4 -> 'a } [@@unboxed]
+let printer = ref { print = fun fmt -> Format.eprintf fmt }
+let print_to_console fmt = (!printer).print fmt

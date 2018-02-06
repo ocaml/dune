@@ -1,16 +1,17 @@
 open Import
 
 type real =
-  { oc  : out_channel
-  ; buf : Buffer.t
-  ; ppf : Format.formatter
+  { oc      : out_channel
+  ; buf     : Buffer.t
+  ; ppf     : Format.formatter
+  ; display : Config.Display.t
   }
 
 type t = real option
 
 let no_log = None
 
-let create () =
+let create ?(display=Config.default.display) () =
   if not (Sys.file_exists "_build") then
     Unix.mkdir "_build" 0o777;
   let oc = Io.open_out "_build/log" in
@@ -21,16 +22,17 @@ let create () =
      | exception Not_found -> "unset");
   let buf = Buffer.create 1024 in
   let ppf = Format.formatter_of_buffer buf in
-  Some { oc; buf; ppf }
+  Some { oc; buf; ppf; display }
 
-let info_internal { oc; _ } str =
-  let write oc =
+let info_internal { ppf; display; _ } str =
+  let write ppf =
     List.iter (String.split_lines str) ~f:(function
-      | "" -> output_string oc "#\n"
-      | s  -> Printf.fprintf oc "# %s\n" s);
-    flush oc in
-  write oc;
-  if !Clflags.verbose then write stderr
+      | "" -> Format.pp_print_string ppf "#\n"
+      | s  -> Format.fprintf ppf "# %s\n" s);
+    Format.pp_print_flush ppf ()
+  in
+  write ppf;
+  if display = Verbose then print_to_console "%t" write
 
 let info t str =
   match t with

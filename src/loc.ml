@@ -59,4 +59,4 @@ let print ppf { start; stop } =
     start.pos_fname start.pos_lnum start_c stop_c
 
 let warn t fmt =
-  Format.eprintf ("%a@{<warning>Warning@}: " ^^ fmt ^^ "@.") print t
+  print_to_console ("%a@{<warning>Warning@}: " ^^ fmt ^^ "@.") print t

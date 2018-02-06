@@ -1,4 +1,4 @@
-  $ $JBUILDER build -j1 src/test.exe --root . --debug-dependency-path
+  $ $JBUILDER build -j1 src/test.exe --display short --root . --debug-dependency-path
       ocamllex src/lexer1.ml
       ocamllex src/lexer2.ml
       ocamldep src/test.ml.d

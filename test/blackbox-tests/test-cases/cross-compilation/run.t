@@ -1,4 +1,4 @@
-  $ env OCAMLFIND_CONF=$PWD/etc/findlib.conf $JBUILDER build --root . -j1 -x foo file @install
+  $ env OCAMLFIND_CONF=$PWD/etc/findlib.conf $JBUILDER build --display short --root . -j1 -x foo file @install
       ocamldep bin/blah.ml.d [default.foo]
       ocamldep lib/p.ml.d [default.foo]
       ocamldep bin/blah.ml.d

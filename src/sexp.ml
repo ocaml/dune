@@ -22,6 +22,14 @@ let load ~fname ~mode =
     in
     loop Parser.Stack.empty)
 
+let load_many_as_one ~fname =
+  match load ~fname ~mode:Many with
+  | [] -> Ast.List (Loc.in_file fname, [])
+  | x :: l ->
+    let last = Option.value (List.last l) ~default:x in
+    let loc = { (Ast.loc x) with stop = (Ast.loc last).stop } in
+    Ast.List (loc, x :: l)
+
 let ocaml_script_prefix = "(* -*- tuareg -*- *)"
 let ocaml_script_prefix_len = String.length ocaml_script_prefix
 

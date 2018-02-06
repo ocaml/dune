@@ -1,4 +1,4 @@
-  $ $JBUILDER runtest --force -j1 --root .
+  $ $JBUILDER runtest --force -j1 --display short --root .
   description = "contains \"quotes\""
   requires = "bytes"
   archive(byte) = "foobar.cma"

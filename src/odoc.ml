@@ -164,10 +164,11 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
   let lib_name = Library.best_name lib in
   let odoc = get_odoc sctx in
   let includes =
+    let ctx = SC.context sctx in
     Build.memoize "includes"
       (requires
        >>> SC.Doc.deps sctx
-       >>^ Lib.include_flags)
+       >>^ Lib.include_flags ~stdlib_dir:ctx.stdlib_dir)
   in
   let mld_files =
     all_mld_files sctx ~dir ~lib ~lib_name ~modules mld_files

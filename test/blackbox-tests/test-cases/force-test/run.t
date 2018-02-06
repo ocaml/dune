@@ -1,6 +1,6 @@
   $ $JBUILDER clean -j1 --root .
   $ $JBUILDER runtest -j1 --root .
-      ocamldep f.depends.ocamldep-output
+      ocamldep f.ml.d
         ocamlc f.{cmi,cmo,cmt}
       ocamlopt f.{cmx,o}
       ocamlopt f.exe

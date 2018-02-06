@@ -1,10 +1,15 @@
   $ $JBUILDER build -j1 src/test.exe --root . --debug-dependency-path
       ocamllex src/lexer1.ml
       ocamllex src/lexer2.ml
+      ocamldep src/test.ml.d
         menhir src/test_base.{ml,mli}
         menhir src/test_menhir1.{ml,mli}
-      ocamldep src/test.depends.ocamldep-output
-      ocamldep src/test.dependsi.ocamldep-output
+      ocamldep src/lexer1.ml.d
+      ocamldep src/lexer2.ml.d
+      ocamldep src/test_base.ml.d
+      ocamldep src/test_menhir1.ml.d
+      ocamldep src/test_menhir1.mli.d
+      ocamldep src/test_base.mli.d
         ocamlc src/test_menhir1.{cmi,cmti}
         ocamlc src/test_base.{cmi,cmti}
       ocamlopt src/test_menhir1.{cmx,o}

@@ -3,7 +3,7 @@
   Error: Program "./foo.exe" isn't built yet you need to buid it first or remove the --no-build option.
   [1]
   $ $JBUILDER exec ./foo.exe -j1 --root .
-      ocamldep foo.depends.ocamldep-output
+      ocamldep foo.ml.d
         ocamlc foo.{cmi,cmo,cmt}
       ocamlopt foo.{cmx,o}
       ocamlopt foo.exe
@@ -17,7 +17,7 @@
   Error: Program "bar" isn't built yet you need to buid it first or remove the --no-build option.
   [1]
   $ $JBUILDER exec bar -j1 --root .
-      ocamldep bar.depends.ocamldep-output
+      ocamldep bar.ml.d
         ocamlc bar.{cmi,cmo,cmt}
       ocamlopt bar.{cmx,o}
       ocamlopt bar.exe

@@ -1,15 +1,13 @@
   $ $JBUILDER build @doc -j1 --root .
-      ocamldep foo_byte.depends.ocamldep-output
-      ocamldep foo_byte.dependsi.ocamldep-output
-      ocamldep foo.depends.ocamldep-output
-      ocamldep foo.dependsi.ocamldep-output
-          odoc _doc/odoc.css
-        ocamlc foo_byte.{cmi,cmo,cmt}
+      ocamldep foo_byte.ml.d
           odoc _doc/foo.byte/page-index.odoc
           odoc _doc/foo.byte/page-test.odoc
-        ocamlc foo.{cmi,cmo,cmt}
+      ocamldep foo.ml.d
           odoc _doc/foo/page-index.odoc
           odoc _doc/foo/page-test.odoc
+          odoc _doc/odoc.css
+        ocamlc foo_byte.{cmi,cmo,cmt}
+        ocamlc foo.{cmi,cmo,cmt}
           odoc _doc/foo.byte/foo_byte.odoc
           odoc _doc/foo/foo.odoc
           odoc _doc/foo.byte/index.html

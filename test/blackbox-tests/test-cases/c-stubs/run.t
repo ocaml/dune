@@ -1,8 +1,8 @@
   $ $JBUILDER exec -j1 ./qnativerun/run.exe --root .
-      ocamldep qnativerun/run.depends.ocamldep-output
+      ocamldep qnativerun/run.ml.d
         ocamlc q/q_stub.o
-      ocamldep q/q.depends.ocamldep-output
-      ocamldep q/q.dependsi.ocamldep-output
+      ocamldep q/q.ml.d
+      ocamldep q/q.mli.d
     ocamlmklib q/dllq_stubs.so,q/libq_stubs.a
         ocamlc q/q.{cmi,cmti}
         ocamlc qnativerun/run.{cmi,cmo,cmt}

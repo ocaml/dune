@@ -10,7 +10,7 @@ val setup_library_rules
   -> modules:Module.t String_map.t
   -> mld_files:string list
   -> requires:(unit, Lib.t list) Build.t
-  -> dep_graph:Ocamldep.dep_graph
+  -> dep_graphs:Ocamldep.Dep_graphs.t
   -> unit
 
 val gen_rules : Super_context.t -> dir:Path.t -> string list -> unit

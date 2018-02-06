@@ -32,6 +32,8 @@ type t =
   ; obj_name : string
   }
 
+let name t = t.name
+
 let real_unit_name t = String.capitalize_ascii (Filename.basename t.obj_name)
 
 let file t ~dir (kind : Ml_kind.t) =

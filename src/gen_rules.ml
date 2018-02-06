@@ -333,10 +333,9 @@ Add it to your jbuild file to remove this warning.
     in
     List.map cclibs ~f
 
-  let build_lib (lib : Library.t) ~scope ~flags ~dir ~mode ~modules ~dep_graph =
+  let build_lib (lib : Library.t) ~scope ~flags ~dir ~mode ~top_sorted_modules =
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
-      let dep_graph = Ml_kind.Dict.get dep_graph Impl in
       let stubs_flags =
         if not (Library.has_stubs lib) then
           []
@@ -361,14 +360,8 @@ Add it to your jbuild file to remove this warning.
       in
       SC.add_rule sctx
         (Build.fanout4
-           (dep_graph >>>
-            Build.arr (fun dep_graph ->
-              Ocamldep.names_to_top_closed_cm_files
-                ~dir
-                ~dep_graph
-                ~modules
-                ~mode
-                (String_map.keys modules)))
+           (top_sorted_modules >>^ List.map ~f:(fun m ->
+              Module.cm_file m ~dir (Mode.cm_kind mode)))
            (SC.expand_and_eval_set sctx ~scope ~dir lib.c_library_flags ~standard:[])
            (Ocaml_flags.get flags mode)
            (SC.expand_and_eval_set sctx ~scope ~dir lib.library_flags ~standard:[])
@@ -474,8 +467,8 @@ Add it to your jbuild file to remove this warning.
       | Some m -> String_map.add modules ~key:m.name ~data:m
     in
 
-    let dep_graph =
-      Ocamldep.rules sctx ~dir ~item:lib.name ~modules ~alias_module
+    let dep_graphs =
+      Ocamldep.rules sctx ~dir ~modules ~alias_module
         ~lib_interface_module:(if lib.wrapped then
                                  String_map.find main_module_name modules
                                else
@@ -510,7 +503,8 @@ Add it to your jbuild file to remove this warning.
     let dynlink = lib.dynlink in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
     Module_compilation.build_modules sctx
-      ~js_of_ocaml ~dynlink ~flags ~scope:scope.data ~dir ~dep_graph ~modules ~requires ~alias_module;
+      ~js_of_ocaml ~dynlink ~flags ~scope:scope.data ~dir ~dep_graphs
+      ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
       let flags = Ocaml_flags.default () in
       Module_compilation.build_module sctx m
@@ -520,8 +514,7 @@ Add it to your jbuild file to remove this warning.
         ~flags:(Ocaml_flags.append_common flags ["-w"; "-49"])
         ~scope:scope.data
         ~dir
-        ~modules:(String_map.singleton m.name m)
-        ~dep_graph:(Ml_kind.Dict.make_both (Build.return (String_map.singleton m.name [])))
+        ~dep_graphs:(Ocamldep.Dep_graphs.dummy m)
         ~requires:(
           let requires =
             if String_map.is_empty modules then
@@ -608,8 +601,12 @@ Add it to your jbuild file to remove this warning.
       (List.map lib.install_c_headers ~f:(fun header ->
          Path.relative dir (header ^ ".h")));
 
+    let top_sorted_modules =
+      Build.memoize "top sorted modules" (
+        Ocamldep.Dep_graph.top_closed dep_graphs.impl (String_map.values modules))
+    in
     List.iter Mode.all ~f:(fun mode ->
-      build_lib lib ~scope:scope.data ~flags ~dir ~mode ~modules ~dep_graph);
+      build_lib lib ~scope:scope.data ~flags ~dir ~mode ~top_sorted_modules);
     (* Build *.cma.js *)
     SC.add_rules sctx (
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
@@ -650,7 +647,7 @@ Add it to your jbuild file to remove this warning.
       String_set.fold files ~init:[] ~f:(fun fn acc ->
         if Filename.check_suffix fn ".mld" then fn :: acc else acc)
     in
-    Odoc.setup_library_rules sctx lib ~dir ~requires ~modules ~dep_graph
+    Odoc.setup_library_rules sctx lib ~dir ~requires ~modules ~dep_graphs
       ~mld_files
     ;
 
@@ -671,28 +668,21 @@ Add it to your jbuild file to remove this warning.
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  let build_exe ~js_of_ocaml ~flags ~scope ~dir ~requires ~name ~mode ~modules ~dep_graph
-        ~link_flags ~force_custom_bytecode =
+  let build_exe ~js_of_ocaml ~flags ~scope ~dir ~requires ~name ~mode
+        ~top_sorted_modules ~link_flags ~force_custom_bytecode =
     let exe_ext = Mode.exe_ext mode in
     let mode, link_custom, compiler =
       match force_custom_bytecode, Context.compiler ctx mode with
       | false, Some compiler -> (mode, [], compiler)
       | _                    -> (Byte, ["-custom"], ctx.ocamlc)
     in
-    let dep_graph = Ml_kind.Dict.get dep_graph Impl in
     let exe = Path.relative dir (name ^ exe_ext) in
     let libs_and_cm =
       Build.fanout
         (requires
          >>> Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib)))
-        (dep_graph
-         >>> Build.arr (fun dep_graph ->
-           Ocamldep.names_to_top_closed_cm_files
-             ~dir
-             ~dep_graph
-             ~modules
-             ~mode
-             [String.capitalize_ascii name]))
+        (top_sorted_modules >>^ List.map ~f:(fun m ->
+           Module.cm_file m ~dir (Mode.cm_kind mode)))
     in
     let objs (libs, cm) =
       if mode = Mode.Byte then
@@ -741,10 +731,14 @@ Add it to your jbuild file to remove this warning.
       String_map.map modules ~f:(fun (m : Module.t) ->
         { m with obj_name = Utils.obj_name_of_basename m.impl.name })
     in
-    List.iter exes.names ~f:(fun name ->
-      if not (String_map.mem (String.capitalize_ascii name) modules) then
-        die "executable %s in %s doesn't have a corresponding .ml file"
-          name (Path.to_string dir));
+    let programs =
+      List.map exes.names ~f:(fun name ->
+        match String_map.find (String.capitalize_ascii name) modules with
+        | Some m -> (name, m)
+        | None ->
+          die "executable %s in %s doesn't have a corresponding .ml file"
+            name (Path.to_string dir))
+    in
 
     let modules =
       SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
@@ -755,8 +749,8 @@ Add it to your jbuild file to remove this warning.
     in
 
     let item = List.hd exes.names in
-    let dep_graph =
-      Ocamldep.rules sctx ~dir ~item ~modules ~alias_module:None
+    let dep_graphs =
+      Ocamldep.rules sctx ~dir ~modules ~alias_module:None
         ~lib_interface_module:None
     in
 
@@ -773,13 +767,18 @@ Add it to your jbuild file to remove this warning.
     (* CR-someday jdimino: this should probably say [~dynlink:false] *)
     Module_compilation.build_modules sctx
       ~js_of_ocaml:exes.buildable.js_of_ocaml
-      ~dynlink:true ~flags ~scope:scope.data ~dir ~dep_graph ~modules
+      ~dynlink:true ~flags ~scope:scope.data ~dir ~dep_graphs ~modules
       ~requires ~alias_module:None;
 
-    List.iter exes.names ~f:(fun name ->
+    List.iter programs ~f:(fun (name, unit) ->
+      let top_sorted_modules =
+        Build.memoize "top sorted modules"
+          (Ocamldep.Dep_graph.top_closed dep_graphs.impl [unit])
+      in
       List.iter Mode.all ~f:(fun mode ->
         build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~scope:scope.data
-          ~dir ~requires ~name ~mode ~modules ~dep_graph ~link_flags:exes.link_flags
+          ~dir ~requires ~name ~mode ~top_sorted_modules
+          ~link_flags:exes.link_flags
           ~force_custom_bytecode:(mode = Native && not exes.modes.native)));
     { Merlin.
       requires   = real_requires

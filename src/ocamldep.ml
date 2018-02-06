@@ -3,29 +3,84 @@ open Build.O
 
 module SC = Super_context
 
-type dep_graph = (unit, string list String_map.t) Build.t Ml_kind.Dict.t
+module Dep_graph = struct
+  type t =
+    { dir        : Path.t
+    ; per_module : (unit, Module.t list) Build.t String_map.t
+    }
 
-let parse_deps ~dir lines ~modules ~alias_module ~lib_interface_module =
-  List.map lines ~f:(fun line ->
+  let deps_of t (m : Module.t) =
+    match String_map.find m.name t.per_module with
+    | Some x -> x
+    | None ->
+      Sexp.code_error "Ocamldep.Dep_graph.deps_of"
+        [ "dir", Path.sexp_of_t t.dir
+        ; "modules", Sexp.To_sexp.(list string) (String_map.keys t.per_module)
+        ; "module", Atom m.name
+        ]
+
+  module Dep_closure =
+    Top_closure.Make(String)(struct
+      type t = Module.t
+      type graph = t list String_map.t
+      let key (t : t) = t.name
+      let deps t map = Option.value_exn (String_map.find (key t) map)
+    end)
+
+  let top_closed t modules =
+    Build.all
+      (List.map (String_map.bindings t.per_module) ~f:(fun (unit, deps) ->
+         deps >>^ fun deps -> (unit, deps)))
+    >>^ fun per_module ->
+    let per_module = String_map.of_alist_exn per_module in
+    match Dep_closure.top_closure per_module modules with
+    | Ok modules -> modules
+    | Error cycle ->
+      die "dependency cycle between modules in %s:\n   %s" (Path.to_string t.dir)
+        (String.concat ~sep:"\n-> "
+           (List.map cycle ~f:Module.name))
+
+  let dummy (m : Module.t) =
+    { dir = Path.root
+    ; per_module = String_map.singleton m.name (Build.return [])
+    }
+end
+
+module Dep_graphs = struct
+  type t = Dep_graph.t Ml_kind.Dict.t
+
+  let dummy m =
+    Ml_kind.Dict.make_both (Dep_graph.dummy m)
+end
+
+let parse_deps ~dir ~file ~(unit : Module.t)
+      ~modules ~alias_module ~lib_interface_module lines =
+  let invalid () =
+    die "ocamldep returned unexpected output for %s:\n\
+         %s"
+      (Path.to_string_maybe_quoted file)
+      (String.concat ~sep:"\n"
+         (List.map lines ~f:(sprintf "> %s")))
+  in
+  match lines with
+  | [] | _ :: _ :: _ -> invalid ()
+  | [line] ->
     match String.index line ':' with
-    | None -> die "`ocamldep` in %s returned invalid line: %S" (Path.to_string dir) line
+    | None -> invalid ()
     | Some i ->
-      let unit =
-        let basename =
-          String.sub line ~pos:0 ~len:i
-          |> Filename.basename
-        in
-        let module_basename =
-          match String.index basename '.' with
-          | None -> basename
-          | Some i -> String.sub basename ~pos:0 ~len:i
-        in
-        String.capitalize_ascii module_basename
+      let basename =
+        String.sub line ~pos:0 ~len:i
+        |> Filename.basename
       in
+      if basename <> Path.basename file then invalid ();
       let deps =
         String.extract_blank_separated_words (String.sub line ~pos:(i + 1)
                                                 ~len:(String.length line - (i + 1)))
-        |> List.filter ~f:(fun m -> m <> unit && String_map.mem m modules)
+        |> List.filter_map ~f:(fun m ->
+          if m = unit.name then
+            None
+          else
+            String_map.find m modules)
       in
       (match lib_interface_module with
        | None -> ()
@@ -33,75 +88,49 @@ let parse_deps ~dir lines ~modules ~alias_module ~lib_interface_module =
          let is_alias_module =
            match alias_module with
            | None -> false
-           | Some (m : Module.t) -> unit = m.name
+           | Some (m : Module.t) -> unit.name = m.name
          in
-         if unit <> m.name && not is_alias_module && List.mem m.name ~set:deps then
+         if unit.name <> m.name && not is_alias_module &&
+            List.exists deps ~f:(fun x -> Module.name x = m.name) then
            die "Module %s in directory %s depends on %s.\n\
                 This doesn't make sense to me.\n\
                 \n\
                 %s is the main module of the library and is the only module exposed \n\
                 outside of the library. Consequently, it should be the one depending \n\
                 on all the other modules in the library."
-             unit (Path.to_string dir) m.name m.name);
+             unit.name (Path.to_string dir) m.name m.name);
       let deps =
         match alias_module with
         | None -> deps
-        | Some (m : Module.t) -> m.name :: deps
+        | Some m -> m :: deps
       in
-      (unit, deps))
-  |> String_map.of_alist
-  |> function
-  | Ok x -> begin
-      match alias_module with
-      | None -> x
-      | Some m -> String_map.add x ~key:m.name ~data:[]
-    end
-  | Error (unit, _, _) ->
-    die
-      "`ocamldep` in %s returned %s several times" (Path.to_string dir) unit
+      deps
 
-let rules sctx ~ml_kind ~dir ~item ~modules ~alias_module ~lib_interface_module =
-  let suffix = Ml_kind.suffix ml_kind in
-  let files =
-    List.filter_map (String_map.values modules) ~f:(fun m -> Module.file ~dir m ml_kind)
-    |> List.map ~f:(fun fn ->
-      match ml_kind, Filename.extension (Path.to_string fn) with
-      | Impl, ".ml"  -> Arg_spec.Dep fn
-      | Intf, ".mli" -> Dep fn
-      | Impl, _ -> S [A "-impl"; Dep fn]
-      | Intf, _ -> S [A "-intf"; Dep fn])
+let rules sctx ~ml_kind ~dir ~modules ~alias_module ~lib_interface_module =
+  let per_module =
+    String_map.map modules ~f:(fun unit ->
+      match Module.file ~dir unit ml_kind with
+      | None -> Build.return []
+      | Some file ->
+        let ocamldep_output = Path.extend_basename file ~suffix:".d" in
+        let context = SC.context sctx in
+        SC.add_rule sctx
+          (Build.run ~context (Ok context.ocamldep)
+             [A "-modules"; Ml_kind.flag ml_kind; Dep file]
+             ~stdout_to:ocamldep_output);
+        Build.memoize (Path.to_string ocamldep_output)
+          (Build.lines_of ocamldep_output
+           >>^ parse_deps ~dir ~file ~unit ~modules ~alias_module ~lib_interface_module))
   in
-  let ocamldep_output =
-    Path.relative dir (sprintf "%s.depends%s.ocamldep-output" item suffix)
+  let per_module =
+    match alias_module with
+    | None -> per_module
+    | Some m -> String_map.add per_module ~key:m.name ~data:(Build.return [])
   in
-  let ctx = SC.context sctx in
-  SC.add_rule sctx
-    (Build.run ~context:ctx (Ok ctx.ocamldep) [A "-modules"; S files]
-       ~stdout_to:ocamldep_output);
-  Build.memoize (Path.to_string ocamldep_output)
-    (Build.lines_of ocamldep_output
-     >>^ parse_deps ~dir ~modules ~alias_module ~lib_interface_module)
+  { Dep_graph.
+    dir
+  ; per_module
+  }
 
-module Dep_closure =
-  Top_closure.Make(String)(struct
-    type t = string
-    type graph = Path.t * t list String_map.t
-    let key t = t
-    let deps t (dir, map) = Utils.find_deps ~dir map t
-  end)
-
-let dep_closure ~dir dep_graph names =
-  match Dep_closure.top_closure (dir, dep_graph) names with
-  | Ok names -> names
-  | Error cycle ->
-    die "dependency cycle between modules in %s:\n   %s" (Path.to_string dir)
-      (String.concat cycle ~sep:"\n-> ")
-
-let names_to_top_closed_cm_files ~dir ~dep_graph ~modules ~mode names =
-  let cm_kind = Mode.cm_kind mode in
-  List.map (dep_closure ~dir dep_graph names) ~f:(fun name ->
-    let m = Utils.find_module ~dir modules name in
-    Module.cm_file m ~dir cm_kind)
-
-let rules sctx ~dir ~item ~modules ~alias_module ~lib_interface_module =
-  Ml_kind.Dict.of_func (rules sctx ~dir ~item ~modules ~alias_module ~lib_interface_module)
+let rules sctx ~dir ~modules ~alias_module ~lib_interface_module =
+  Ml_kind.Dict.of_func (rules sctx ~dir ~modules ~alias_module ~lib_interface_module)

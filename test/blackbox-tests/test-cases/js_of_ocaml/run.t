@@ -8,8 +8,10 @@
            ppx bin/technologic.pp.ml
            ppx bin/z.pp.ml
       ocamlopt lib/x__.{cmx,o}
-      ocamldep lib/x.depends.ocamldep-output
-      ocamldep bin/technologic.depends.ocamldep-output
+      ocamldep lib/x.pp.ml.d
+      ocamldep lib/y.pp.ml.d
+      ocamldep bin/technologic.pp.ml.d
+      ocamldep bin/z.pp.ml.d
         ocamlc lib/x__Y.{cmi,cmo,cmt}
    js_of_ocaml .js/js_of_ocaml/js_of_ocaml.cma.js
    js_of_ocaml .js/stdlib/stdlib.cma.js

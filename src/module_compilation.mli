@@ -15,8 +15,7 @@ val build_module
   -> Module.t
   -> scope:Lib_db.Scope.t
   -> dir:Path.t
-  -> dep_graph:Ocamldep.dep_graph
-  -> modules:Module.t String_map.t
+  -> dep_graphs:Ocamldep.Dep_graphs.t
   -> requires:(unit, Lib.t list) Build.t Cm_kind.Dict.t
   -> alias_module:Module.t option
   -> unit
@@ -29,7 +28,7 @@ val build_modules
   -> flags:Ocaml_flags.t
   -> scope:Lib_db.Scope.t
   -> dir:Path.t
-  -> dep_graph:Ocamldep.dep_graph
+  -> dep_graphs:Ocamldep.Dep_graphs.t
   -> modules:Module.t String_map.t
   -> requires:(unit, Lib.t list) Build.t
   -> alias_module:Module.t option

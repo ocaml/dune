@@ -140,19 +140,6 @@ let g () =
   else
     []
 
-let find_module ~dir modules name =
-  String_map.find_exn name modules
-    ~string_of_key:(sprintf "%S")
-    ~desc:(fun _ ->
-      sprintf "<module name to module info in %s>"
-        (Path.to_string_maybe_quoted dir))
-
-let find_deps ~dir dep_graph name =
-  String_map.find_exn name dep_graph
-    ~string_of_key:(sprintf "%S")
-    ~desc:(fun _ -> sprintf "<dependency graph in %s>"
-                      (Path.to_string_maybe_quoted dir))
-
 let obj_name_of_basename fn =
   match String.index fn '.' with
   | None -> fn

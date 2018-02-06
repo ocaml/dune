@@ -356,7 +356,7 @@ module Lib_dep = struct
   let choice = function
     | List (_, l) as sexp ->
       let rec loop required forbidden = function
-        | [Atom (_, "->"); fsexp] | [Quoted_string (_, "->"); fsexp]  ->
+        | [Atom (_, "->"); fsexp] ->
           let common = String_set.inter required forbidden in
           if not (String_set.is_empty common) then
             of_sexp_errorf sexp
@@ -366,7 +366,7 @@ module Lib_dep = struct
           ; forbidden
           ; file = file fsexp
           }
-        | Atom (_, "->") :: _ | Quoted_string (_, "->") :: _
+        | Atom (_, "->") :: _
         | List _ :: _ | [] ->
           of_sexp_error sexp "(<[!]libraries>... -> <file>) expected"
         | (Atom (_, s) | Quoted_string (_, s)) :: l ->

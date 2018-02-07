@@ -6,7 +6,7 @@ end
 
 type t =
   | Internal of Internal.t
-  | External of Findlib.package
+  | External of Findlib.Package.t
 
 module Set : Set.S with type elt := t
 

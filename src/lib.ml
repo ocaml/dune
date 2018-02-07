@@ -1,5 +1,7 @@
 open Import
 
+module FP = Findlib.Package
+
 module Internal = struct
   type t = Path.t * Jbuild.Library.t
 end
@@ -7,10 +9,10 @@ end
 module T = struct
   type t =
     | Internal of Internal.t
-    | External of Findlib.package
+    | External of FP.t
 
   let best_name = function
-    | External pkg -> pkg.name
+    | External pkg -> FP.name pkg
     | Internal (_, lib) -> Jbuild.Library.best_name lib
 
   let compare a b = String.compare (best_name a) (best_name b)
@@ -24,11 +26,11 @@ let lib_obj_dir dir lib =
 
 let dir = function
   | Internal (dir, _) -> dir
-  | External pkg -> pkg.dir
+  | External pkg -> FP.dir pkg
 
 let obj_dir = function
   | Internal (dir, lib) -> lib_obj_dir dir lib
-  | External pkg -> pkg.dir
+  | External pkg -> FP.dir pkg
 
 let include_paths ts ~stdlib_dir =
   List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
@@ -56,7 +58,7 @@ let describe = function
        | Some p -> p.name
        | None -> lib.name)
   | External pkg ->
-    sprintf "%s (external)" pkg.name
+    sprintf "%s (external)" (FP.name pkg)
 
 let link_flags ts ~mode ~stdlib_dir =
   Arg_spec.S
@@ -64,14 +66,13 @@ let link_flags ts ~mode ~stdlib_dir =
      List.map ts ~f:(fun t ->
        match t with
        | External pkg ->
-         Arg_spec.Deps (Mode.Dict.get pkg.archives mode)
+         Arg_spec.Deps (FP.archives pkg mode)
        | Internal (dir, lib) ->
          Dep (Path.relative dir (lib.name ^ Mode.compiled_lib_ext mode))))
 
 let archive_files ts ~mode ~ext_lib =
   List.concat_map ts ~f:(function
-    | External pkg ->
-      Mode.Dict.get pkg.archives mode
+    | External pkg -> FP.archives pkg mode
     | Internal (dir, lib) ->
       let l =
         [Path.relative dir (lib.name ^ Mode.compiled_lib_ext mode)]
@@ -84,7 +85,7 @@ let archive_files ts ~mode ~ext_lib =
 let jsoo_runtime_files ts =
   List.concat_map ts ~f:(function
     | External pkg ->
-      List.map pkg.jsoo_runtime ~f:(Path.relative pkg.dir)
+      List.map (FP.jsoo_runtime pkg) ~f:(Path.relative (FP.dir pkg))
     | Internal (dir, lib) ->
       List.map lib.buildable.js_of_ocaml.javascript_files ~f:(Path.relative dir))
 (*
@@ -112,5 +113,5 @@ let remove_dups_preserve_order libs =
 ;;
 
 let public_name = function
-  | External pkg -> Some pkg.name
+  | External pkg -> Some (FP.name pkg)
   | Internal (_, lib) -> Option.map lib.public ~f:(fun p -> p.name)

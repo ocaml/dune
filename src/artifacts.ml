@@ -92,12 +92,12 @@ let file_of_lib t ~from ~lib ~file =
         ~required_by:[With_required_by.Entry.jbuild_file_in ~dir:from]
     with
     | Some pkg ->
-      Ok (Path.relative pkg.dir file)
+      Ok (Path.relative (Findlib.Package.dir pkg) file)
     | None ->
       Error
         { fail = fun () ->
             ignore (Findlib.find_exn t.context.findlib lib
                       ~required_by:[With_required_by.Entry.jbuild_file_in ~dir:from]
-                    : Findlib.package);
+                    : Findlib.Package.t);
             assert false
         }

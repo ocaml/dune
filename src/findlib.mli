@@ -47,23 +47,39 @@ val create
 
 val path : t -> Path.t list
 
-type package =
-  { name             : string
-  ; dir              : Path.t
-  ; version          : string
-  ; description      : string
-  ; archives         : Path.t list Mode.Dict.t
-  ; plugins          : Path.t list Mode.Dict.t
-  ; jsoo_runtime     : string list
-  ; requires         : package list
-  ; ppx_runtime_deps : package list
-  }
+module Package : sig
+  (** Representation of a findlib package *)
+  type t
 
-val find     : t -> required_by:With_required_by.Entry.t list -> string -> package option
-val find_exn : t -> required_by:With_required_by.Entry.t list -> string -> package
+  val name        : t -> string
+  val dir         : t -> Path.t
+  val version     : t -> string
+  val description : t -> string
 
+  (** Package files *)
+  val archives     : t -> Mode.t -> Path.t list
+  val plugins      : t -> Mode.t -> Path.t list
+  val jsoo_runtime : t -> string list
+
+  val requires         : t -> t list
+  val ppx_runtime_deps : t -> t list
+end
+
+val find
+  :  t
+  -> required_by:With_required_by.Entry.t list
+  -> string
+  -> Package.t option
+val find_exn
+  :  t
+  -> required_by:With_required_by.Entry.t list
+  -> string
+  -> Package.t
+
+(** Same as [Option.is_some (find t ...)] *)
 val available : t -> required_by:With_required_by.Entry.t list -> string -> bool
 
+(** [root_package_name "foo.*"] is "foo" *)
 val root_package_name : string -> string
 
 (** [local_public_libs] is a map from public library names to where they are defined in
@@ -71,19 +87,19 @@ val root_package_name : string -> string
 val closure
   :  required_by:With_required_by.Entry.t list
   -> local_public_libs:Path.t String_map.t
-  -> package list
-  -> package list
+  -> Package.t list
+  -> Package.t list
 val closed_ppx_runtime_deps_of
   :  required_by:With_required_by.Entry.t list
   -> local_public_libs:Path.t String_map.t
-  -> package list
-  -> package list
+  -> Package.t list
+  -> Package.t list
 
 val root_packages : t -> string list
-val all_packages  : t -> package list
+val all_packages  : t -> Package.t list
 val all_unavailable_packages : t -> Package_not_available.t list
 
-val stdlib_with_archives : t -> package
+val stdlib_with_archives : t -> Package.t
 
 module Config : sig
   type t

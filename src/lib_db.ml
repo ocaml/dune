@@ -1,6 +1,8 @@
 open Import
 open Jbuild
 
+module FP = Findlib.Package
+
 type scope =
   { mutable libs : Lib.Internal.t String_map.t
   ; scope        : Scope.t
@@ -178,7 +180,7 @@ module Scope = struct
     and process acc (lib : Lib.t) =
       let unique_id =
         match lib with
-        | External pkg -> pkg.name
+        | External pkg -> FP.name pkg
         | Internal (dir, lib) ->
           match lib.public with
           | Some p -> p.name
@@ -195,13 +197,13 @@ module Scope = struct
           List.fold_left lib.buildable.libraries ~init:acc ~f:(loop scope)
         | External pkg ->
           if deep_traverse_externals then
-            List.fold_left pkg.requires ~init:acc ~f:(fun acc pkg ->
+            List.fold_left (FP.requires pkg) ~init:acc ~f:(fun acc pkg ->
               process acc (External pkg))
           else begin
             seen :=
               String_set.union !seen
                 (String_set.of_list
-                   (List.map pkg.requires ~f:(fun p -> p.Findlib.name)));
+                   (List.map (FP.requires pkg) ~f:FP.name));
             acc
           end
       end
@@ -220,7 +222,7 @@ module Scope = struct
             List.map lib.ppx_runtime_libraries ~f:(fun name ->
               Lib.best_name (find_exn (Lazy.force scope) name))
           | External pkg ->
-            List.map pkg.ppx_runtime_deps ~f:(fun p -> p.Findlib.name)
+            List.map (FP.ppx_runtime_deps pkg) ~f:FP.name
         in
         String_set.union acc (String_set.of_list rt_deps))
 end
@@ -316,7 +318,7 @@ let internal_libs_without_non_installable_optional_ones t =
 
 let unique_library_name t (lib : Lib.t) =
   match lib with
-  | External pkg -> pkg.name
+  | External pkg -> FP.name pkg
   | Internal (dir, lib) ->
     match lib.public with
     | Some x -> x.name

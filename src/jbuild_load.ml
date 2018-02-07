@@ -126,13 +126,13 @@ end
       in
       let includes =
         List.fold_left pkgs ~init:Path.Set.empty ~f:(fun acc pkg ->
-          Path.Set.add pkg.Findlib.dir acc)
+          Path.Set.add (Findlib.Package.dir pkg) acc)
         |> Path.Set.elements
         |> List.concat_map ~f:(fun path ->
           [ "-I"; Path.to_string path ])
       in
       let cmas =
-        List.concat_map pkgs ~f:(fun pkg -> pkg.archives.byte)
+        List.concat_map pkgs ~f:(fun pkg -> Findlib.Package.archives pkg Byte)
       in
       let args =
         List.concat

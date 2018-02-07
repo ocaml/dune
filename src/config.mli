@@ -25,9 +25,7 @@ module Display : sig
     | Quiet    (** Only display errors            *)
 
   val t : t Sexp.Of_sexp.t
-  val all : t list
-  val of_string : string -> t option
-  val to_string : t -> string
+  val all : (string * t) list
 end
 
 type t =

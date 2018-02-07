@@ -28,28 +28,14 @@ module Display = struct
     | Verbose
     | Quiet
 
-  let all = [Progress; Short; Verbose; Quiet]
-
-  let t =
-    enum
+  let all =
       [ "progress" , Progress
       ; "verbose"  , Verbose
       ; "short"    , Short
       ; "quiet"    , Quiet
       ]
 
-  let of_string = function
-    | "progress" -> Some Progress
-    | "verbose"  -> Some Verbose
-    | "short"    -> Some Short
-    | "quiet"    -> Some Quiet
-    | _          -> None
-
-  let to_string = function
-    | Progress -> "progress"
-    | Verbose  -> "verbose"
-    | Short    -> "short"
-    | Quiet    -> "quiet"
+  let t = enum all
 end
 
 type t =

@@ -122,10 +122,9 @@ let bootstrap () =
     let display = ref None in
     let display_mode =
       Arg.Symbol
-        (List.map Config.Display.all ~f:Config.Display.to_string,
+        (List.map Config.Display.all ~f:fst,
          fun s ->
-           display := Some (Config.Display.of_string s
-                            |> Option.value_exn))
+           display := Some (List.assoc s Config.Display.all))
     in
     Arg.parse
       [ "-j"           , Set_int Clflags.concurrency, "JOBS concurrency"

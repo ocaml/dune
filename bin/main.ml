@@ -161,14 +161,19 @@ let find_root () =
     | None -> assert false
     | Some (_, dir, to_cwd) -> (dir, to_cwd)
 
+let common_footer =
+  `Blocks
+    [ `S "BUGS"
+    ; `P "Check bug reports at https://github.com/ocaml/dune/issues"
+    ]
+
 let copts_sect = "COMMON OPTIONS"
 let help_secs =
   [ `S copts_sect
   ; `P "These options are common to all commands."
   ; `S "MORE HELP"
   ; `P "Use `$(mname) $(i,COMMAND) --help' for help on a single command."
-  ; `S "BUGS"
-  ; `P "Check bug reports at https://github.com/ocaml/dune/issues"
+  ; common_footer
   ]
 
 type config_file =
@@ -302,20 +307,14 @@ let common =
       Arg.(value
            & flag
            & info ["verbose"] ~docs
-               ~doc:"Print detailed information about commands being run")
+               ~doc:"Same as $(b,--display verbose)")
     in
     let display =
-      let arg =
-        Arg.conv ~docv:"MODE"
-          (Arg.parser_of_kind_of_string ~kind:"a display mode"
-             Config.Display.of_string,
-           fun ppf x ->
-             Format.pp_print_string ppf (Config.Display.to_string x))
-      in
       Arg.(value
-           & opt (some arg) None
-           & info ["display"] ~docs
-               ~doc:"Control the display mode of Jbuilder")
+           & opt (some (enum Config.Display.all)) None
+           & info ["display"] ~docs ~docv:"MODE"
+               ~doc:{|Control the display mode of Jbuilder.
+                      See $(b,dune-config\(5\)) for more details.|})
     in
     let merge verbose display =
       match verbose, display with
@@ -383,7 +382,7 @@ let common =
       let config_file =
         Arg.(value
              & opt (some file) None
-             & info ["config-file"] ~docs
+             & info ["config-file"] ~docs ~docv:"FILE"
                  ~doc:"Load this configuration file instead of the default one.")
       in
       let no_config =
@@ -1246,6 +1245,94 @@ let promote =
           $ common)
   , Term.info "promote" ~doc ~man )
 
+module Help = struct
+  let config =
+    ("dune-config", 5, "", "Jbuilder", "Jbuilder manual"),
+    [ `S Manpage.s_synopsis
+    ; `Pre "~/.config/dune/config"
+    ; `S Manpage.s_description
+    ; `P {|Unless $(b,--no-config) or $(b,-p) is passed, Jbuilder will read a
+           configuration file from the user home directory. This file is used
+           to control various aspects of the behavior of Jbuilder.|}
+    ; `P {|The configuration file is normally $(b,~/.config/dune/config) on
+           Unix systems and $(b,Local Settings/dune/config) in the User home
+           directory on Windows. However, it is possible to specify an
+           alternative configuration file with the $(b,--config-file) option.|}
+    ; `P {|This file must be written in S-expression syntax and be composed of
+           a list of stanzas. The following sections describe the stanzas available.|}
+    ; `S "DISPLAY MODES"
+    ; `P {|Syntax: $(b,\(display MODE\))|}
+    ; `P {|This stanza controls how Jbuilder reports what it is doing to the user.
+           This parameter can also be set from the command line via $(b,--display MODE).
+           The following display modes are available:|}
+    ; `Blocks
+        (List.map ~f:(fun (x, desc) -> `I (sprintf "$(b,%s)" x, desc))
+           [ "progress",
+             {|This is the default, Jbuilder shows and update a
+               status line as build goals are being completed.|}
+           ; "quiet",
+             {|Only display errors.|}
+           ; "short",
+             {|Print one line per command being executed, with the
+               binary name on the left and the reason it is being executed for
+               on the right.|}
+           ; "verbose",
+             {|Print the full command lines of programs being
+               executed by Jbuilder, with some colors to help differentiate
+               programs.|}
+           ])
+    ; common_footer
+    ]
+
+  type what =
+    | Man of Manpage.t
+    | List_topics
+
+  let commands =
+    [ "config", Man config
+    ; "topics", List_topics
+    ]
+
+  let help =
+    let doc = "Additional Jbuilder help" in
+    let man =
+      [ `S "DESCRIPTION"
+      ; `P {|$(b,jbuilder help TOPIC) provides additional help on the given topic.
+             The following topics are available:|}
+      ; `Blocks (List.concat_map commands ~f:(fun (s, what) ->
+          match what with
+          | List_topics -> []
+          | Man ((title, _, _, _, _), _) -> [`I (sprintf "$(b,%s)" s, title)]))
+      ; common_footer
+      ]
+    in
+    let go man_format what =
+      match what with
+      | None ->
+        `Help (man_format, Some "help")
+      | Some (Man man_page) ->
+        Format.printf "%a@?" (Manpage.print man_format) man_page;
+        `Ok ()
+      | Some List_topics ->
+        List.filter_map commands ~f:(fun (s, what) ->
+          match what with
+          | List_topics -> None
+          | _ -> Some s)
+        |> List.sort ~cmp:String.compare
+        |> String.concat ~sep:"\n"
+        |> print_endline;
+        `Ok ()
+    in
+    ( Term.(ret (const go
+                 $ Arg.man_format
+                 $ Arg.(value
+                        & pos 0 (some (enum commands)) None
+                        & info [] ~docv:"TOPIC")
+                ))
+    , Term.info "help" ~doc ~man
+    )
+end
+
 let all =
   [ installed_libraries
   ; external_lib_deps
@@ -1259,6 +1346,7 @@ let all =
   ; rules
   ; utop
   ; promote
+  ; Help.help
   ]
 
 let default =

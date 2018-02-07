@@ -42,7 +42,18 @@ include Action_intf.Helpers
   with type t       := t
 
 val t : t Sexp.Of_sexp.t
-val sexp_of_t : t Sexp.To_sexp.t
+
+module For_shell : sig
+  include Action_intf.Ast
+    with type program := string
+    with type path    := string
+    with type string  := string
+
+  val sexp_of_t : t Sexp.To_sexp.t
+end
+
+(** Convert the action to a format suitable for printing *)
+val for_shell : t -> For_shell.t
 
 (** Return the list of directories the action chdirs to *)
 val chdirs : t -> Path.Set.t

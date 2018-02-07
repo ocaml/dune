@@ -842,6 +842,9 @@ let rules =
          | _  -> resolve_targets_exn ~log common setup targets |> request_of_targets setup
        in
        Build_system.build_rules setup.build_system ~request ~recursive >>= fun rules ->
+       let sexp_of_action action =
+         Action.for_shell action |> Action.For_shell.sexp_of_t
+       in
        let print oc =
          let ppf = Format.formatter_of_out_channel oc in
          Sexp.prepare_formatter ppf;
@@ -855,7 +858,7 @@ let rules =
                (fun ppf ->
                   Path.Set.iter rule.deps ~f:(fun dep ->
                     Format.fprintf ppf "@ %s" (Path.to_string dep)))
-               Sexp.pp_split_strings (Action.sexp_of_t rule.action))
+               Sexp.pp_split_strings (sexp_of_action rule.action))
          end else begin
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
              let sexp =
@@ -867,7 +870,7 @@ let rules =
                    ; (match rule.context with
                       | None -> []
                       | Some c -> ["context", Atom c.name])
-                   ; [ "action" , Action.sexp_of_t rule.action ]
+                   ; [ "action" , sexp_of_action rule.action ]
                    ])
              in
              Format.fprintf ppf "%a@," Sexp.pp_split_strings sexp)

@@ -4,6 +4,20 @@ open! No_io
 
 module SC = Super_context
 
+module Target : sig
+  type t
+  val cm : Module.t -> Cm_kind.t -> t
+  val obj : Module.t -> ext:string -> t
+  val cmt : Module.t -> Ml_kind.t -> t option
+  val file : Path.t -> t -> Path.t
+end = struct
+  type t = Path.t
+  let cm m cm_kind = Module.cm_file m ~obj_dir:Path.root cm_kind
+  let obj m ~ext = Module.obj_file m ~obj_dir:Path.root ~ext
+  let cmt m ml_kind = Module.cmt_file m ~obj_dir:Path.root ml_kind
+  let file dir t = Path.append dir t
+end
+
 let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
       ~requires ~dir ~obj_dir ~alias_module (m : Module.t) =
   let ctx = SC.context sctx in
@@ -11,33 +25,31 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
     Option.iter (Module.cm_source ~dir m cm_kind) ~f:(fun src ->
       let ml_kind = Cm_kind.source cm_kind in
       let dst = Module.cm_file m ~obj_dir cm_kind in
-      let extra_args, extra_deps, extra_targets, extra_symlinks =
+      let extra_args, extra_deps, other_targets =
         match cm_kind, m.intf with
         (* If there is no mli, [ocamlY -c file.ml] produces both the
            .cmY and .cmi. We choose to use ocamlc to produce the cmi
            and to produce the cmx we have to wait to avoid race
            conditions. *)
-        | Cmo, None -> [], [], [Module.cm_file m ~obj_dir Cmi],
-                       [Module.cm_file m ~obj_dir:dir Cmi]
+        | Cmo, None -> [], [], [Target.cm m Cmi]
         | Cmx, None ->
           (* Change [-intf-suffix] so that the compiler thinks the
              cmi exists and reads it instead of re-creating it, which
              could create a race condition. *)
-          ([ "-intf-suffix"
-           ; Filename.extension m.impl.name
-           ],
-           [Module.cm_file m ~obj_dir Cmi], [], [])
+          [ "-intf-suffix"
+          ; Filename.extension m.impl.name
+          ],
+          [Module.cm_file m ~obj_dir Cmi],
+          []
         | Cmi, None -> assert false
-        | Cmi, Some _ -> [], [], [], []
+        | Cmi, Some _ -> [], [], []
         (* We need the .cmi to build either the .cmo or .cmx *)
-        | (Cmo | Cmx), Some _ -> [], [Module.cm_file m ~obj_dir Cmi], [], []
+        | (Cmo | Cmx), Some _ -> [], [Module.cm_file m ~obj_dir Cmi], []
       in
-      let extra_targets, extra_symlinks =
+      let other_targets =
         match cm_kind with
-        | Cmx ->
-          Path.change_extension ~ext:ctx.ext_obj (Module.cm_file m ~obj_dir Cmx) :: extra_targets,
-          Path.change_extension ~ext:ctx.ext_obj (Module.cm_file m ~obj_dir:dir Cmx) :: extra_symlinks
-        | Cmi | Cmo -> extra_targets, extra_symlinks
+        | Cmx -> Target.obj m ~ext:ctx.ext_obj :: other_targets
+        | Cmi | Cmo -> other_targets
       in
       let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
       let other_cm_files =
@@ -51,19 +63,22 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
                         ; Module.cm_file m ~obj_dir Cmx
                         ]))
       in
-      let extra_targets, extra_symlinks, cmt_args =
+      let other_targets, cmt_args =
         match cm_kind with
-        | Cmx -> (extra_targets, extra_symlinks, Arg_spec.S [])
+        | Cmx -> (other_targets, Arg_spec.S [])
         | Cmi | Cmo ->
-          let fn = Option.value_exn (Module.cmt_file m ~obj_dir ml_kind) in
-          let fn2 = Option.value_exn (Module.cmt_file m ~obj_dir:dir ml_kind) in
-          (fn :: extra_targets, fn2 :: extra_symlinks, A "-bin-annot")
+          let fn = Option.value_exn (Target.cmt m ml_kind) in
+          (fn :: other_targets, A "-bin-annot")
       in
-      let old_dst = Module.cm_file m ~obj_dir:dir cm_kind in
+      let extra_targets = List.map other_targets ~f:(Target.file obj_dir) in
       if obj_dir <> dir then begin
-        SC.add_rule sctx ?sandbox (Build.symlink ~src:dst ~dst:old_dst) ;
-        List.iter2 extra_targets extra_symlinks ~f:(fun src dst ->
-          SC.add_rule sctx ?sandbox (Build.symlink ~src ~dst))
+        (* Symlink the object files in the original directory for
+           backward compatibility *)
+        let old_dst = Module.cm_file m ~obj_dir:dir cm_kind in
+        SC.add_rule sctx (Build.symlink ~src:dst ~dst:old_dst) ;
+        List.iter2 extra_targets other_targets ~f:(fun in_obj_dir target ->
+          let in_dir = Target.file dir target in
+          SC.add_rule sctx (Build.symlink ~src:in_obj_dir ~dst:in_dir))
       end;
       SC.add_rule sctx ?sandbox
         (Build.paths extra_deps >>>

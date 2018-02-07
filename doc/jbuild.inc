@@ -36,6 +36,15 @@
   (files (jbuilder-external-lib-deps.1))))
 
 (rule
+ ((targets (jbuilder-help.1))
+  (action  (with-stdout-to ${@}
+            (run ${bin:jbuilder} help --help=groff)))))
+
+(install
+ ((section man)
+  (files (jbuilder-help.1))))
+
+(rule
  ((targets (jbuilder-install.1))
   (action  (with-stdout-to ${@}
             (run ${bin:jbuilder} install --help=groff)))))

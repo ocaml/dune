@@ -13,7 +13,7 @@ val exe_ext : t -> string
 val cm_kind : t -> Cm_kind.t
 val of_cm_kind : Cm_kind.t -> t
 
-val findlib_predicate : t -> string
+val variant : t -> Variant.t
 
 module Dict : sig
   type mode = t

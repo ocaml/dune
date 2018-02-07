@@ -18,7 +18,7 @@ let choose byte native = function
 let compiled_unit_ext = choose ".cmo" ".cmx"
 let compiled_lib_ext = choose ".cma" ".cmxa"
 
-let findlib_predicate = choose "byte" "native"
+let variant = choose Variant.byte Variant.native
 
 let cm_kind = choose Cm_kind.Cmo Cmx
 

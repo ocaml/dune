@@ -8,6 +8,16 @@ next
 - Make sure to not pass `-I <stdlib-dir>` to the compiler. It is
   useless and it causes problems in some cases (#488)
 
+- Don't stop on the first error. Before, jbuilder would stop its
+  execution after an error was encountered. Now it continues until
+  all branches have been explored (#477)
+
+- Add supprot for a user configuration file (#490)
+
+- Add more display modes and change the default display of
+  Jbuilder. The mode can be set from the command line or from the
+  configuration file (#490)
+
 1.0+beta17 (01/02/2018)
 -----------------------
 

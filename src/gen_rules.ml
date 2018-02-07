@@ -352,21 +352,23 @@ Add it to your jbuild file to remove this warning.
         else
           fun x -> x
       in
-      let objs (cm, _, _, _) =
-        if mode = Mode.Byte then
-          []
-        else
-          List.map ~f:(Path.change_extension ~ext:ctx.ext_obj) cm
+      let artifacts ~ext modules =
+        List.map modules ~f:(Module.obj_file ~obj_dir ~ext)
+      in
+      let register_native_objs_deps build =
+        match mode with
+        | Byte   -> build
+        | Native ->
+          build >>>
+          Build.dyn_paths (Build.arr (artifacts ~ext:ctx.ext_obj))
       in
       SC.add_rule sctx
         (Build.fanout4
-           (top_sorted_modules >>^ List.map ~f:(fun m ->
-              Module.cm_file m ~obj_dir (Mode.cm_kind mode)))
+           (register_native_objs_deps top_sorted_modules
+            >>^ artifacts ~ext:(Cm_kind.ext (Mode.cm_kind mode)))
            (SC.expand_and_eval_set sctx ~scope ~dir lib.c_library_flags ~standard:[])
            (Ocaml_flags.get flags mode)
            (SC.expand_and_eval_set sctx ~scope ~dir lib.library_flags ~standard:[])
-         >>>
-         Build.dyn_paths (Build.arr objs)
          >>>
          Build.run ~context:ctx (Ok compiler)
            ~extra_targets:(
@@ -681,47 +683,50 @@ Add it to your jbuild file to remove this warning.
       | _                    -> (Byte, ["-custom"], ctx.ocamlc)
     in
     let exe = Path.relative dir (name ^ exe_ext) in
-    let libs_and_cm =
-      Build.fanout
-        (requires
-         >>> Build.dyn_paths (Build.arr (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib)))
-        (top_sorted_modules >>^ List.map ~f:(fun m ->
-           Module.cm_file m ~obj_dir (Mode.cm_kind mode)))
+    let artifacts ~ext modules =
+      List.map modules ~f:(Module.obj_file ~obj_dir ~ext)
     in
-    let objs (libs, cm) =
-      if mode = Mode.Byte then
-        []
-      else
-        let libs =
-          let f = function
-            | Lib.Internal (dir, lib) -> Some (Path.relative dir (lib.name ^ ctx.ext_lib))
-            | External _ -> None
-          in
-          List.filter_map ~f libs
-        in
-        libs @ List.map ~f:(Path.change_extension ~ext:ctx.ext_obj) cm
+    let modules_and_cm_files =
+      Build.memoize "cm files"
+        (top_sorted_modules >>^ fun modules ->
+         (modules,
+          artifacts modules ~ext:(Cm_kind.ext (Mode.cm_kind mode))))
+    in
+    let register_native_objs_deps build =
+      match mode with
+      | Byte -> build
+      | Native ->
+        build >>>
+        Build.dyn_paths (Build.arr (fun (modules, _) ->
+          artifacts modules ~ext:ctx.ext_obj))
     in
     SC.add_rule sctx
-      (Build.fanout3
-         (libs_and_cm >>> Build.dyn_paths (Build.arr objs))
+      (Build.fanout4
+         requires
+         (register_native_objs_deps modules_and_cm_files >>^ snd)
          (Ocaml_flags.get flags mode)
          (SC.expand_and_eval_set sctx ~scope ~dir link_flags ~standard:[])
        >>>
+       Build.dyn_paths (Build.arr (fun (libs, _, _, _) ->
+         Lib.archive_files libs ~mode ~ext_lib:ctx.ext_lib))
+       >>>
        Build.run ~context:ctx
          (Ok compiler)
-         [ Dyn (fun (_, flags,_) -> As flags)
+         [ Dyn (fun (_, _, flags,_) -> As flags)
          ; A "-o"; Target exe
-         ; Dyn (fun (_, _, link_flags) -> As (link_custom @ link_flags))
-         ; Dyn (fun ((libs, _), _, _) -> Lib.link_flags libs ~mode
-                                           ~stdlib_dir:ctx.stdlib_dir)
-         ; Dyn (fun ((_, cm_files), _, _) -> Deps cm_files)
+         ; Dyn (fun (_, _, _, link_flags) ->
+             As (link_custom @ link_flags))
+         ; Dyn (fun (libs, _, _, _) ->
+             Lib.link_flags libs ~mode ~stdlib_dir:ctx.stdlib_dir)
+         ; Dyn (fun (_, cm_files, _, _) -> Deps cm_files)
          ]);
     if mode = Mode.Byte then
       let rules = Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe in
       let libs_and_cm_and_flags =
-        libs_and_cm
+        (requires &&& (modules_and_cm_files >>^ snd))
         &&&
-        SC.expand_and_eval_set sctx ~scope ~dir js_of_ocaml.flags ~standard:(Js_of_ocaml_rules.standard ())
+        SC.expand_and_eval_set sctx ~scope ~dir js_of_ocaml.flags
+          ~standard:(Js_of_ocaml_rules.standard ())
       in
       SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm_and_flags >>> r))
 

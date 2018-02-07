@@ -21,6 +21,8 @@ val c_include_flags : t list -> stdlib_dir:Path.t -> _ Arg_spec.t
 
 val link_flags : t list -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
 
+(** All the library archive files (.a, .cmxa, _stubs.a, ...)  that
+    should be linked in when linking an executable. *)
 val archive_files : t list -> mode:Mode.t -> ext_lib:string -> Path.t list
 
 val jsoo_runtime_files : t list -> Path.t list

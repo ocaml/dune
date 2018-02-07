@@ -835,14 +835,9 @@ module PP = struct
     add_rule sctx
       (libs
        >>>
-       Build.dyn_paths (Build.arr (fun libs ->
-         List.rev_append
-           (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib libs)
-           (List.filter_map libs ~f:(function
-              | Lib.Internal (dir, lib) ->
-                Some (Path.relative dir (lib.name ^ ctx.ext_lib))
-              | External _ ->
-                None))))
+       Build.dyn_paths
+         (Build.arr
+            (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib))
        >>>
        Build.run ~context:ctx (Ok compiler)
          [ A "-o" ; Target target

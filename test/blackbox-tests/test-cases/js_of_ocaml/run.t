@@ -15,6 +15,7 @@
         ocamlc lib/.x.objs/x__Y.{cmi,cmo,cmt}
    js_of_ocaml .js/js_of_ocaml/js_of_ocaml.cma.js
    js_of_ocaml .js/stdlib/stdlib.cma.js
+   js_of_ocaml bin/technologic.bc.runtime.js
       ocamlopt lib/.x.objs/x__Y.{cmx,o}
    js_of_ocaml lib/.x.objs/x__Y.cmo.js
         ocamlc lib/.x.objs/x.{cmi,cmo,cmt}
@@ -23,7 +24,6 @@
         ocamlc bin/.technologic.eobjs/z.{cmi,cmo,cmt}
       ocamlopt lib/x.{a,cmxa}
    js_of_ocaml lib/x.cma.js
-   js_of_ocaml bin/technologic.bc.runtime.js
    js_of_ocaml bin/.technologic.eobjs/z.cmo.js
         ocamlc bin/.technologic.eobjs/technologic.{cmi,cmo,cmt}
       ocamlopt lib/x.cmxs

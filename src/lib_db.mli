@@ -38,7 +38,7 @@ module Scope : sig
   val interpret_lib_deps
     :  t With_required_by.t
     -> Jbuild.Lib_dep.t list
-    -> Lib.Internal.t list * Findlib.package list * fail option
+    -> Lib.Internal.t list * Findlib.Package.t list * fail option
 
   val resolve_selects
     :  t With_required_by.t

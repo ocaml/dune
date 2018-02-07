@@ -68,8 +68,10 @@ let link_rule ~sctx ~dir ~runtime ~target =
     let all_libs =
       List.concat_map (stdlib :: libs) ~f:(function
         | Lib.External pkg ->
-          List.map (Mode.Dict.get pkg.archives Mode.Byte) ~f:(fun fn ->
-            in_build_dir ~ctx [pkg.name; sprintf "%s.js" (Path.basename fn)])
+          List.map (Findlib.Package.archives pkg Byte) ~f:(fun fn ->
+            in_build_dir ~ctx [ Findlib.Package.name pkg
+                              ; sprintf "%s.js" (Path.basename fn)
+                              ])
         | Lib.Internal (dir, lib) ->
           [ Path.relative dir (sprintf "%s.cma.js" lib.name) ]
       )
@@ -115,16 +117,18 @@ let setup_separate_compilation_rules sctx components =
       | Some pkg ->
         let pkg =
           (* Special case for the stdlib because it is not referenced in the META *)
-          match pkg.Findlib.name with
+          match Findlib.Package.name pkg with
           | "stdlib" -> Findlib.stdlib_with_archives ctx.findlib
           | _ -> pkg
         in
-        let archives = Mode.Dict.get pkg.Findlib.archives Mode.Byte in
+        let archives = Findlib.Package.archives pkg Byte in
         List.iter archives ~f:(fun fn ->
           let name = Path.basename fn in
-          let src = Path.relative pkg.dir name in
-          let target = in_build_dir ~ctx [ pkg.name; sprintf "%s.js" name] in
-          let dir = in_build_dir ~ctx [ pkg.name ] in
+          let src = Path.relative (Findlib.Package.dir pkg) name in
+          let target =
+            in_build_dir ~ctx [ Findlib.Package.name pkg; sprintf "%s.js" name]
+          in
+          let dir = in_build_dir ~ctx [ Findlib.Package.name pkg ] in
           let spec = Arg_spec.Dep src in
           SC.add_rule sctx
             (Build.return (standard ())

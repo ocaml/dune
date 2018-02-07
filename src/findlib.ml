@@ -141,17 +141,34 @@ module Config = struct
     Vars.get vars var preds
 end
 
-type package =
-  { name             : string
-  ; dir              : Path.t
-  ; version          : string
-  ; description      : string
-  ; archives         : Path.t list Mode.Dict.t
-  ; plugins          : Path.t list Mode.Dict.t
-  ; jsoo_runtime     : string list
-  ; requires         : package list
-  ; ppx_runtime_deps : package list
-  }
+module Package = struct
+  type t =
+    { name             : string
+    ; dir              : Path.t
+    ; version          : string
+    ; description      : string
+    ; archives         : Path.t list Mode.Dict.t
+    ; plugins          : Path.t list Mode.Dict.t
+    ; jsoo_runtime     : string list
+    ; requires         : t list
+    ; ppx_runtime_deps : t list
+    }
+
+  let name        t = t.name
+  let dir         t = t.dir
+  let version     t = t.version
+  let description t = t.description
+
+  let archives t mode = Mode.Dict.get t.archives mode
+  let plugins  t mode = Mode.Dict.get t.plugins  mode
+
+  let jsoo_runtime t = t.jsoo_runtime
+
+  let requires         t = t.requires
+  let ppx_runtime_deps t = t.ppx_runtime_deps
+end
+
+open Package
 
 module Package_not_available = struct
   type t =
@@ -219,7 +236,7 @@ module Package_not_available = struct
 end
 
 type present_or_not_available =
-  | Present       of package
+  | Present       of Package.t
   | Not_available of Package_not_available.t
 
 type t =
@@ -240,7 +257,7 @@ let create ~stdlib_dir ~path =
 
 module Pkg_step1 = struct
   type t =
-    { package          : package
+    { package          : Package.t
     ; requires         : string list
     ; ppx_runtime_deps : string list
     ; exists           : bool
@@ -521,7 +538,7 @@ let find t ~required_by name =
 
 let available t ~required_by name =
   match find_exn t name ~required_by with
-  | (_ : package) -> true
+  | (_ : Package.t) -> true
   | exception (Findlib (Package_not_available _)) -> false
 
 let check_deps_consistency ~required_by ~local_public_libs pkg requires =
@@ -566,7 +583,7 @@ let root_packages t =
 
 let all_packages t =
   List.iter (root_packages t) ~f:(fun pkg ->
-    ignore (find t pkg ~required_by:[] : package option));
+    ignore (find t pkg ~required_by:[] : Package.t option));
   Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:_ ~data acc ->
     match data with
     | Present       p -> p :: acc
@@ -575,7 +592,7 @@ let all_packages t =
 
 let all_unavailable_packages t =
   List.iter (root_packages t) ~f:(fun pkg ->
-    ignore (find t pkg ~required_by:[] : package option));
+    ignore (find t pkg ~required_by:[] : Package.t option));
   Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:_ ~data acc ->
     match data with
     | Present       _ -> acc

@@ -59,7 +59,7 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
               let bpath = Path.reach (Lib.lib_obj_dir path lib) ~from:remaindir in
               ("S " ^ spath) :: ("B " ^ bpath) :: internals, externals
             | Lib.External pkg ->
-              internals, ("PKG " ^ pkg.name) :: externals
+              internals, ("PKG " ^ Findlib.Package.name pkg) :: externals
           )
         in
         let source_dirs =

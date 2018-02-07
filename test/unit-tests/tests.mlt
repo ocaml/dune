@@ -6,13 +6,14 @@ open Jbuilder
 open Import
 
 let print_pkg ppf pkg =
-  Format.fprintf ppf "<package:%s>" pkg.Findlib.name
+  Format.fprintf ppf "<package:%s>" (Findlib.Package.name pkg)
 ;;
 
 #install_printer print_pkg;;
 
 [%%expect{|
-val print_pkg : Format.formatter -> Jbuilder.Findlib.package -> unit = <fun>
+val print_pkg : Format.formatter -> Jbuilder.Findlib.Package.t -> unit =
+  <fun>
 |}]
 
 let findlib =
@@ -29,14 +30,14 @@ val findlib : Jbuilder.Findlib.t = <abstr>
 let pkg = Findlib.find_exn findlib ~required_by:[] "foo";;
 
 [%%expect{|
-val pkg : Jbuilder.Findlib.package = <package:foo>
+val pkg : Jbuilder.Findlib.Package.t = <package:foo>
 |}]
 
 (* "foo" should depend on "baz" *)
-pkg.requires;;
+Findlib.Package.requires pkg;;
 
 [%%expect{|
-- : Jbuilder.Findlib.package list = [<package:baz>]
+- : Jbuilder.Findlib.Package.t list = [<package:baz>]
 |}]
 
 (* +-----------------------------------------------------------------+

@@ -497,14 +497,15 @@ let installed_libraries =
          Fiber.return ()
        end else begin
          let pkgs = Findlib.all_packages findlib in
-         let max_len = List.longest_map pkgs ~f:(fun p -> p.name) in
+         let max_len = List.longest_map pkgs ~f:Findlib.Package.name in
          List.iter pkgs ~f:(fun pkg ->
            let ver =
-             match pkg.Findlib.version with
+             match Findlib.Package.version pkg with
              | "" -> "n/a"
              | v  -> v
            in
-           Printf.printf "%-*s (version: %s)\n" max_len pkg.name ver);
+           Printf.printf "%-*s (version: %s)\n" max_len
+             (Findlib.Package.name pkg) ver);
          Fiber.return ()
        end)
   in

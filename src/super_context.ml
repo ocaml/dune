@@ -363,7 +363,8 @@ module Libs = struct
       List.fold_left libs ~init:[] ~f:(fun acc (lib : Lib.t) ->
         match lib with
         | External pkg ->
-          Build_system.stamp_file_for_files_of t.build_system ~dir:pkg.dir ~ext :: acc
+          Build_system.stamp_file_for_files_of t.build_system
+            ~dir:(Findlib.Package.dir pkg) ~ext :: acc
         | Internal lib ->
           Alias.stamp_file (lib_files_alias lib ~ext) :: acc)))
 
@@ -794,7 +795,7 @@ module PP = struct
         let libs, drivers =
           List.partition_map libs ~f:(fun lib ->
             if (match lib with
-              | External pkg -> is_driver pkg.name
+              | External pkg -> is_driver (Findlib.Package.name pkg)
               | Internal (_, lib) ->
                 is_driver lib.name ||
                 match lib.public with

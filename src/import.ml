@@ -446,6 +446,13 @@ end
 module Option = struct
   type 'a t = 'a option
 
+  module Infix = struct
+    let (>>=) t f =
+      match t with
+      | None -> None
+      | Some a -> f a
+  end
+
   let map t ~f =
     match t with
     | None -> None
@@ -480,6 +487,10 @@ module Option = struct
     match x, y with
     | Some x, Some y -> Some (x, y)
     | _ -> None
+
+  let to_list = function
+    | None -> []
+    | Some x -> [x]
 end
 
 type ('a, 'b) eq = Eq : ('a, 'a) eq

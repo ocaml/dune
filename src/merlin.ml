@@ -49,18 +49,15 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
       >>^ (fun (libs, flags) ->
         let ppx_flags = ppx_flags sctx ~dir ~scope ~src_dir:remaindir t in
         let libs =
-          List.fold_left libs ~init:[] ~f:(fun acc ->
-            let serialize_path = Path.reach ~from:remaindir in
-            function
-            | Lib.Internal (path, lib) ->
-              let spath =
-                serialize_path (Path.drop_optional_build_context path) in
-              let bpath = serialize_path (Lib.lib_obj_dir path lib) in
-              ("S " ^ spath) :: ("B " ^ bpath) :: acc
-            | Lib.External pkg ->
-              let external_dir = serialize_path (Findlib.Package.dir pkg) in
-              ("S " ^ external_dir) :: ("B " ^ external_dir) :: acc
-          )
+          List.fold_left ~f:(fun acc (lib : Lib.t) ->
+            let nice_path = Path.reach ~from:remaindir in
+            let spath = Option.map (Lib.src_dir lib) ~f:(fun dir ->
+              nice_path (Path.drop_optional_build_context dir)) in
+            let bpath = nice_path (Lib.obj_dir lib) in
+            ("B " ^ bpath)
+            :: ("S " ^ (Option.value spath ~default:bpath))
+            :: acc
+          ) libs ~init:[]
         in
         let source_dirs =
           Path.Set.fold t.source_dirs ~init:[] ~f:(fun path acc ->

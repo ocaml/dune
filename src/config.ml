@@ -38,18 +38,42 @@ module Display = struct
   let t = enum all
 end
 
-type t =
-  { display : Display.t
+module type S = sig
+  type 'a field
+
+  type t =
+    { display     : Display.t field
+    ; concurrency : int       field
+    }
+end
+
+module rec M : S with type 'a field = 'a = M
+include M
+
+module rec Partial : S with type 'a field := 'a option = Partial
+
+let merge t (partial : Partial.t) =
+  let field from_t from_partial =
+    Option.value from_partial ~default:from_t
+  in
+  { display     = field t.display     partial.display
+  ; concurrency = field t.concurrency partial.concurrency
   }
 
 let default =
-  { display = Progress
+  { display     = Progress
+  ; concurrency = 4
   }
 
 let t =
   record
-    (field "display" Display.t >>= fun display ->
-     return { display })
+    (field "display" Display.t ~default:default.display
+     >>= fun display ->
+     field "jobs" int ~default:default.concurrency
+     >>= fun concurrency ->
+     return { display
+            ; concurrency
+            })
 
 let user_config_file = Filename.concat Xdg.config_dir "dune/config"
 

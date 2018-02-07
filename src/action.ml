@@ -131,35 +131,35 @@ module Make_mapper
     (Src : Action_intf.Ast)
     (Dst : Action_intf.Ast)
 = struct
-  let rec map (t : Src.t) ~f_program ~f_string ~f_path : Dst.t =
+  let rec map (t : Src.t) ~dir ~f_program ~f_string ~f_path : Dst.t =
     match t with
     | Run (prog, args) ->
-      Run (f_program prog, List.map args ~f:f_string)
+      Run (f_program ~dir prog, List.map args ~f:(f_string ~dir))
     | Chdir (fn, t) ->
-      Chdir (f_path fn, map t ~f_program ~f_string ~f_path)
+      Chdir (f_path ~dir fn, map t ~dir:fn ~f_program ~f_string ~f_path)
     | Setenv (var, value, t) ->
-      Setenv (f_string var, f_string value, map t ~f_program ~f_string ~f_path)
+      Setenv (f_string ~dir var, f_string ~dir value, map t ~dir ~f_program ~f_string ~f_path)
     | Redirect (outputs, fn, t) ->
-      Redirect (outputs, f_path fn, map t ~f_program ~f_string ~f_path)
+      Redirect (outputs, f_path ~dir fn, map t ~dir ~f_program ~f_string ~f_path)
     | Ignore (outputs, t) ->
-      Ignore (outputs, map t ~f_program ~f_string ~f_path)
-    | Progn l -> Progn (List.map l ~f:(fun t -> map t ~f_program ~f_string ~f_path))
-    | Echo x -> Echo (f_string x)
-    | Cat x -> Cat (f_path x)
-    | Copy (x, y) -> Copy (f_path x, f_path y)
+      Ignore (outputs, map t ~dir ~f_program ~f_string ~f_path)
+    | Progn l -> Progn (List.map l ~f:(fun t -> map t ~dir ~f_program ~f_string ~f_path))
+    | Echo x -> Echo (f_string ~dir x)
+    | Cat x -> Cat (f_path ~dir x)
+    | Copy (x, y) -> Copy (f_path ~dir x, f_path ~dir y)
     | Symlink (x, y) ->
-      Symlink (f_path x, f_path y)
+      Symlink (f_path ~dir x, f_path ~dir y)
     | Copy_and_add_line_directive (x, y) ->
-      Copy_and_add_line_directive (f_path x, f_path y)
-    | System x -> System (f_string x)
-    | Bash x -> Bash (f_string x)
-    | Write_file (x, y) -> Write_file (f_path x, f_string y)
-    | Rename (x, y) -> Rename (f_path x, f_path y)
-    | Remove_tree x -> Remove_tree (f_path x)
-    | Mkdir x -> Mkdir (f_path x)
-    | Digest_files x -> Digest_files (List.map x ~f:f_path)
+      Copy_and_add_line_directive (f_path ~dir x, f_path ~dir y)
+    | System x -> System (f_string ~dir x)
+    | Bash x -> Bash (f_string ~dir x)
+    | Write_file (x, y) -> Write_file (f_path ~dir x, f_string ~dir y)
+    | Rename (x, y) -> Rename (f_path ~dir x, f_path ~dir y)
+    | Remove_tree x -> Remove_tree (f_path ~dir x)
+    | Mkdir x -> Mkdir (f_path ~dir x)
+    | Digest_files x -> Digest_files (List.map x ~f:(f_path ~dir))
     | Diff { optional; file1; file2 } ->
-      Diff { optional; file1 = f_path file1; file2 = f_path file2 }
+      Diff { optional; file1 = f_path ~dir file1; file2 = f_path ~dir file2 }
 end
 
 module Prog = struct
@@ -189,15 +189,43 @@ module type Ast = Action_intf.Ast
   with type string  = String.t
 module rec Ast : Ast = Ast
 
+module String_with_sexp = struct
+  type t = string
+  let t = Sexp.Of_sexp.string
+  let sexp_of_t = Sexp.To_sexp.string
+end
+
 include Make_ast
     (Prog)
     (Path)
-    (struct
-      type t = string
-      let t = Sexp.Of_sexp.string
-      let sexp_of_t = Sexp.To_sexp.string
-    end)
+    (String_with_sexp)
     (Ast)
+
+module For_shell = struct
+  module type Ast = Action_intf.Ast
+    with type program = string
+    with type path    = string
+    with type string  = string
+  module rec Ast : Ast = Ast
+
+  include Make_ast
+      (String_with_sexp)
+      (String_with_sexp)
+      (String_with_sexp)
+      (Ast)
+end
+
+module Relativise = Make_mapper(Ast)(For_shell.Ast)
+
+let for_shell t =
+  Relativise.map t
+    ~dir:Path.root
+    ~f_string:(fun ~dir:_ x -> x)
+    ~f_path:(fun ~dir x -> Path.reach x ~from:dir)
+    ~f_program:(fun ~dir x ->
+      match x with
+      | Ok p -> Path.reach p ~from:dir
+      | Error e -> e.program)
 
 module Unresolved = struct
   module Program = struct
@@ -222,8 +250,11 @@ module Unresolved = struct
   include Make_mapper(Uast)(Ast)
 
   let resolve t ~f =
-    map t ~f_path:(fun x -> x) ~f_string:(fun x -> x)
-      ~f_program:(function
+    map t
+      ~dir:Path.root
+      ~f_path:(fun ~dir:_ x -> x)
+      ~f_string:(fun ~dir:_ x -> x)
+      ~f_program:(fun ~dir:_ -> function
         | This p -> Ok p
         | Search s -> Ok (f s))
 end
@@ -864,10 +895,11 @@ let sandbox t ~sandboxed ~deps ~targets =
           Some (Ast.Symlink (path, sandboxed path))
         else
           None))
-    ; map t ~f_string:(fun x -> x) ~f_path:sandboxed
-        ~f_program:(function
-        | Ok p -> Ok (sandboxed p)
-        | Error _ as e -> e)
+    ; map t
+        ~dir:Path.root
+        ~f_string:(fun ~dir:_ x -> x)
+        ~f_path:(fun ~dir:_ p -> sandboxed p)
+        ~f_program:(fun ~dir:_ x -> Result.map x ~f:sandboxed)
     ; Progn (List.filter_map targets ~f:(fun path ->
         if Path.is_local path then
           Some (Ast.Rename (sandboxed path, path))

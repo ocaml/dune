@@ -23,6 +23,12 @@ reinstall: uninstall reinstall
 test:
 	$(BIN) runtest --dev
 
+test-js:
+	$(BIN) build @runtest-js --dev
+
+test-all:
+	$(BIN) build @runtest @runtest-js --dev
+
 promote:
 	$(BIN) promote
 

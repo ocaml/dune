@@ -21,6 +21,11 @@ next
 - Allow to set the concurency level (`-j N`) from the configuration
   file (#491)
 
+- Store artifacts for libraries and executables in separate
+  directories. This ensure that Two libraries defined in the same
+  directory can't see each other unless one of them depend on the
+  other (#472)
+
 1.0+beta17 (01/02/2018)
 -----------------------
 

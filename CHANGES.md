@@ -18,6 +18,9 @@ next
   Jbuilder. The mode can be set from the command line or from the
   configuration file (#490)
 
+- Allow to set the concurency level (`-j N`) from the configuration
+  file (#491)
+
 1.0+beta17 (01/02/2018)
 -----------------------
 

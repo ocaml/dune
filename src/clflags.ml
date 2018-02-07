@@ -1,4 +1,3 @@
-let concurrency = ref 4
 (*let ocaml_comp_flags = ref ["-g"]*)
 let g = ref true
 let debug_findlib = ref false

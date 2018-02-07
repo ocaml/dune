@@ -58,11 +58,13 @@ end = struct
 end
 
 type t =
-  { log                     : Log.t
-  ; original_cwd            : string
-  ; display                 : Config.Display.t
-  ; mutable status_line     : string
-  ; mutable gen_status_line : unit -> string option
+  { log                       : Log.t
+  ; original_cwd              : string
+  ; display                   : Config.Display.t
+  ; concurrency               : int
+  ; waiting_for_available_job : t Fiber.Ivar.t Queue.t
+  ; mutable status_line       : string
+  ; mutable gen_status_line   : unit -> string option
   }
 
 let log t = t.log
@@ -92,13 +94,13 @@ let set_status_line_generator f =
   Fiber.Var.get_exn t_var >>| fun t ->
   t.gen_status_line <- f
 
-let waiting_for_available_job = Queue.create ()
 let wait_for_available_job () =
-  if Running_jobs.count () < !Clflags.concurrency then
-    Fiber.Var.get_exn t_var
+  Fiber.Var.get_exn t_var >>= fun t ->
+  if Running_jobs.count () < t.concurrency then
+    Fiber.return t
   else begin
     let ivar = Fiber.Ivar.create () in
-    Queue.push ivar waiting_for_available_job;
+    Queue.push ivar t.waiting_for_available_job;
     Fiber.Ivar.read ivar
   end
 
@@ -128,8 +130,8 @@ let rec go_rec t =
         t.status_line <- status_line;
     end;
     let job, status = Running_jobs.wait () in
-    (if not (Queue.is_empty waiting_for_available_job) then
-       Fiber.Ivar.fill (Queue.pop waiting_for_available_job) t
+    (if not (Queue.is_empty t.waiting_for_available_job) then
+       Fiber.Ivar.fill (Queue.pop t.waiting_for_available_job) t
      else
        Fiber.return ())
     >>= fun () ->
@@ -150,7 +152,9 @@ let go ?(log=Log.no_log) ?(config=Config.default)
     ; gen_status_line
     ; original_cwd = cwd
     ; display      = config.display
+    ; concurrency  = config.concurrency
     ; status_line  = ""
+    ; waiting_for_available_job = Queue.create ()
     }
   in
   printer := { print = fun fmt -> print t fmt };

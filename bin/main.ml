@@ -8,8 +8,7 @@ open Fiber.O
 let () = suggest_function := Jbuilder_cmdliner.Cmdliner_suggest.value
 
 type common =
-  { concurrency           : int
-  ; debug_dep_path        : bool
+  { debug_dep_path        : bool
   ; debug_findlib         : bool
   ; debug_backtraces      : bool
   ; dev_mode              : bool
@@ -31,7 +30,6 @@ type common =
 let prefix_target common s = common.target_prefix ^ s
 
 let set_common c ~targets =
-  Clflags.concurrency := c.concurrency;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces := c.debug_backtraces;
@@ -231,12 +229,12 @@ let common =
       | Default    -> Config.load_user_config_file ()
     in
     let config =
-      match display with
-      | None -> config
-      | Some display -> { display }
+      Config.merge config
+        { display
+        ; concurrency
+        }
     in
-    { concurrency
-    ; debug_dep_path
+    { debug_dep_path
     ; debug_findlib
     ; debug_backtraces
     ; dev_mode
@@ -259,7 +257,7 @@ let common =
   let docs = copts_sect in
   let concurrency =
     Arg.(value
-         & opt int !Clflags.concurrency
+         & opt (some int) None
          & info ["j"] ~docs ~docv:"JOBS"
              ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|}
         )
@@ -1281,6 +1279,11 @@ module Help = struct
                executed by Jbuilder, with some colors to help differentiate
                programs.|}
            ])
+    ; `S "JOBS"
+    ; `P {|Syntax: $(b,\(jobs NUMBER\))|}
+    ; `P {|Set the maximum number of jobs Jbuilder might run in parallel.
+           This can also be set from the command line via $(b,-j NUMBER).|}
+    ; `P {|The default for this value is 4.|}
     ; common_footer
     ]
 

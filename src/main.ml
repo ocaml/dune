@@ -126,19 +126,22 @@ let bootstrap () =
          fun s ->
            display := Some (List.assoc s Config.Display.all))
     in
+    let concurrency = ref None in
+    let set r x = r := Some x in
     Arg.parse
-      [ "-j"           , Set_int Clflags.concurrency, "JOBS concurrency"
-      ; "--dev"        , Set Clflags.dev_mode       , " set development mode"
-      ; "--display"    , display_mode               , " print detailed information about commands being run"
-      ; "--subst"      , Unit subst                 , " substitute watermarks in source files"
+      [ "-j"           , Int (set concurrency), "JOBS concurrency"
+      ; "--dev"        , Set Clflags.dev_mode , " set development mode"
+      ; "--display"    , display_mode         , " set the display mode"
+      ; "--subst"      , Unit subst           , " substitute watermarks in source files"
       ]
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
     Clflags.debug_dep_path := true;
     let config = Config.load_user_config_file () in
     let config =
-      match !display with
-      | None -> config
-      | Some display -> { display }
+      Config.merge config
+        { display     = !display
+        ; concurrency = !concurrency
+        }
     in
     let log = Log.create ~display:config.display () in
     Scheduler.go ~log ~config

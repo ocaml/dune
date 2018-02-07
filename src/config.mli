@@ -28,11 +28,22 @@ module Display : sig
   val all : (string * t) list
 end
 
-type t =
-  { display : Display.t
-  }
+module type S = sig
+  type 'a field
+
+  type t =
+    { display     : Display.t field
+    ; concurrency : int       field
+    }
+end
+
+include S with type 'a field = 'a
+
+module Partial : S with type 'a field := 'a option
 
 val t : t Sexp.Of_sexp.t
+
+val merge : t -> Partial.t -> t
 
 val default : t
 val user_config_file : string

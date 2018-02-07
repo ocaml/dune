@@ -1,8 +1,5 @@
 (** Command line flags *)
 
-(** Concurrency *)
-val concurrency : int ref
-
 (** Compilation flags for OCaml files *)
 (*val ocaml_comp_flags : string list ref*)
 

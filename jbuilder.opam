@@ -21,12 +21,5 @@ depends: [
   # it is only a runtime dependency so that reinstalling ocamlfind
   # doesn't resintall jbuilder
   "ocamlfind" {build}
-  "menhir" {test}
-  "reason" {test}
-  "ocaml-migrate-parsetree" {test}
-  "ppx_driver" {test}
-  "odoc" {test}
-  "js_of_ocaml-compiler" {test}
-  "utop" {test}
 ]
 available: [ ocaml-version >= "4.02.3" ]

@@ -6,10 +6,10 @@
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
         ocamlc foo_byte.cma
       ocamlopt .foo.objs/foo.{cmx,o}
-        ocamlc bar.{cmi,cmo,cmt}
+        ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}
         ocamlc foo.cma
       ocamlopt foo.{a,cmxa}
-      ocamlopt bar.{cmx,o}
+      ocamlopt .bar.eobjs/bar.{cmx,o}
       ocamlopt foo.cmxs
       ocamlopt bar.exe
   lib: [

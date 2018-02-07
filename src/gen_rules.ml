@@ -728,7 +728,9 @@ Add it to your jbuild file to remove this warning.
   let executables_rules (exes : Executables.t) ~dir ~all_modules
     ~(scope : Lib_db.Scope.t With_required_by.t) =
     let item = List.hd exes.names in
-    let obj_dir = dir in
+    (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library of the
+       same name *)
+    let obj_dir = Path.relative dir ("." ^ item ^ ".eobjs") in
     let dep_kind = Build.Required in
     let flags = Ocaml_flags.make exes.buildable sctx ~scope:scope.data ~dir in
     let modules =

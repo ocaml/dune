@@ -1,8 +1,8 @@
   $ $JBUILDER clean -j1 --display short --root .
   $ $JBUILDER runtest -j1 --display short --root .
       ocamldep f.ml.d
-        ocamlc f.{cmi,cmo,cmt}
-      ocamlopt f.{cmx,o}
+        ocamlc .f.eobjs/f.{cmi,cmo,cmt}
+      ocamlopt .f.eobjs/f.{cmx,o}
       ocamlopt f.exe
              f alias runtest
   Foo Bar

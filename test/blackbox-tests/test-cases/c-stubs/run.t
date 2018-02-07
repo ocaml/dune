@@ -1,4 +1,4 @@
-  $ $JBUILDER exec -j1 ./qnativerun/run.exe --root .
+  $ $JBUILDER exec -j1 ./qnativerun/run.exe --display short --root .
       ocamldep qnativerun/run.ml.d
         ocamlc q/q_stub.o
       ocamldep q/q.ml.d
@@ -11,4 +11,4 @@
       ocamlopt q/q.{a,cmxa}
       ocamlopt qnativerun/run.exe
   42
-#  $ $JBUILDER exec -j1 ./qbyterun/run.bc --root .
+#  $ $JBUILDER exec -j1 ./qbyterun/run.bc --display short --root .

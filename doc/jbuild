@@ -9,6 +9,15 @@
  ((section man)
   (files (jbuilder.1))))
 
+(rule
+ ((targets (dune-config.5))
+  (action  (with-stdout-to ${@}
+            (run ${bin:jbuilder} help config --man-format=groff)))))
+
+(install
+ ((section man)
+  (files (dune-config.5))))
+
 (include jbuild.inc)
 
 (rule

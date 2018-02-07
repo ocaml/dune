@@ -57,17 +57,45 @@ end = struct
       wait_unix
 end
 
-type info =
-  { log : Log.t
-  ; original_cwd : string
+type t =
+  { log                     : Log.t
+  ; original_cwd            : string
+  ; display                 : Config.Display.t
+  ; mutable status_line     : string
+  ; mutable gen_status_line : unit -> string option
   }
 
-let info_var : info Fiber.Var.t = Fiber.Var.create ()
+let log t = t.log
+let display t = t.display
+
+let with_chdir t ~dir ~f =
+  Sys.chdir dir;
+  protectx () ~finally:(fun () -> Sys.chdir t.original_cwd) ~f
+
+let hide_status_line s ppf =
+  let len = String.length s in
+  if len > 0 then Format.fprintf ppf "\r%*s\r%!" len ""
+
+let show_status_line s ppf =
+  Format.pp_print_string ppf s;
+  Format.pp_print_flush ppf ()
+
+let print t fmt =
+  let ppf = Format.err_formatter in
+  let s = t.status_line in
+  hide_status_line s ppf;
+  Format.kfprintf (show_status_line s) ppf fmt
+
+let t_var : t Fiber.Var.t = Fiber.Var.create ()
+
+let set_status_line_generator f =
+  Fiber.Var.get_exn t_var >>| fun t ->
+  t.gen_status_line <- f
 
 let waiting_for_available_job = Queue.create ()
 let wait_for_available_job () =
   if Running_jobs.count () < !Clflags.concurrency then
-    Fiber.Var.get_exn info_var
+    Fiber.Var.get_exn t_var
   else begin
     let ivar = Fiber.Ivar.create () in
     Queue.push ivar waiting_for_available_job;
@@ -79,34 +107,58 @@ let wait_for_process pid =
   Running_jobs.add { pid; ivar };
   Fiber.Ivar.read ivar
 
-let rec go_rec info =
+let rec go_rec t =
   Fiber.yield ()
   >>= fun () ->
-  if Running_jobs.count () = 0 then
+  let count = Running_jobs.count () in
+  if count = 0 then begin
+    Format.eprintf "%t%!" (hide_status_line t.status_line);
     Fiber.return ()
-  else begin
+  end else begin
+    if t.display = Progress then begin
+      let ppf = Format.err_formatter in
+      match t.gen_status_line () with
+      | None ->
+        if t.status_line <> "" then
+          Format.eprintf "%t%!" (hide_status_line t.status_line)
+      | Some status_line ->
+        let status_line = sprintf "%s (jobs: %u)" status_line count in
+        hide_status_line t.status_line ppf;
+        show_status_line   status_line ppf;
+        t.status_line <- status_line;
+    end;
     let job, status = Running_jobs.wait () in
     (if not (Queue.is_empty waiting_for_available_job) then
-       Fiber.Ivar.fill (Queue.pop waiting_for_available_job) info
+       Fiber.Ivar.fill (Queue.pop waiting_for_available_job) t
      else
        Fiber.return ())
     >>= fun () ->
     Fiber.Ivar.fill job.ivar status
     >>= fun () ->
-    go_rec info
+    go_rec t
   end
 
-let go ?(log=Log.no_log) fiber =
+let go ?(log=Log.no_log) ?(config=Config.default)
+      ?(gen_status_line=fun () -> None) fiber =
   Lazy.force Ansi_color.setup_env_for_colors;
   Log.info log ("Workspace root: " ^ !Clflags.workspace_root);
   let cwd = Sys.getcwd () in
   if cwd <> initial_cwd then
     Printf.eprintf "Entering directory '%s'\n%!" cwd;
-  let info = { log; original_cwd = cwd } in
+  let t =
+    { log
+    ; gen_status_line
+    ; original_cwd = cwd
+    ; display      = config.display
+    ; status_line  = ""
+    }
+  in
+  printer := { print = fun fmt -> print t fmt };
   let fiber =
-    Fiber.Var.set info_var info
+    Fiber.Var.set t_var t
       (Fiber.with_error_handler (fun () -> fiber) ~on_error:Report_error.report)
   in
   Fiber.run
-    (Fiber.fork (fun () -> go_rec info) >>= fun _ ->
-     fiber)
+    (Fiber.fork_and_join_unit
+       (fun () -> go_rec t)
+       (fun () -> fiber))

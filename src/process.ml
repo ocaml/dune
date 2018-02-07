@@ -205,8 +205,11 @@ let gen_id =
   let next = ref (-1) in
   fun () -> incr next; !next
 
-let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose fail_mode prog args =
-  Scheduler.wait_for_available_job () >>= fun { Scheduler. log; original_cwd } ->
+let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose
+      fail_mode prog args =
+  Scheduler.wait_for_available_job ()
+  >>= fun scheduler ->
+  let display = Scheduler.display scheduler in
   let dir =
     match dir with
     | Some "." -> None
@@ -215,7 +218,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose 
   let id = gen_id () in
   let ok_codes = accepted_codes fail_mode in
   let command_line = Fancy.command_line ~prog ~args ~dir ~stdout_to ~stderr_to in
-  if !Clflags.verbose then
+  if display = Verbose then
     Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
       (Ansi_color.strip_colors_for_stderr command_line);
   let argv = Array.of_list (prog :: args) in
@@ -230,8 +233,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose 
   in
   let stdout, close_stdout = get_std_output stdout_to ~default:stdout_fd in
   let stderr, close_stderr = get_std_output stderr_to ~default:stderr_fd in
-  Option.iter dir ~f:(fun dir -> Sys.chdir dir);
-  let pid =
+  let run () =
     match env with
     | None ->
       Unix.create_process prog argv
@@ -240,7 +242,11 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose 
       Unix.create_process_env prog argv env
         Unix.stdin stdout stderr
   in
-  Option.iter dir ~f:(fun _ -> Sys.chdir original_cwd);
+  let pid =
+    match dir with
+    | None -> run ()
+    | Some dir -> Scheduler.with_chdir scheduler ~dir ~f:run
+  in
   Option.iter to_close ~f:Unix.close;
   close_std_output close_stdout;
   close_std_output close_stderr;
@@ -258,28 +264,27 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose 
       else
         s
   in
-  Log.command log
+  Log.command (Scheduler.log scheduler)
     ~command_line:command_line
     ~output:output
     ~exit_status:status;
   let _, progname, _ = Fancy.split_prog prog in
+  let print fmt = Scheduler.print scheduler fmt in
   match status with
   | WEXITED n when code_is_ok ok_codes n ->
-    if !Clflags.verbose then begin
+    if display = Verbose then begin
       if output <> "" then
-        Format.eprintf "@{<kwd>Output@}[@{<id>%d@}]:\n%s%!" id output;
+        print "@{<kwd>Output@}[@{<id>%d@}]:\n%s" id output;
       if n <> 0 then
-        Format.eprintf
+        print
           "@{<warning>Warning@}: Command [@{<id>%d@}] exited with code %d, \
-           but I'm ignore it, hope that's OK.\n%!" id n;
-    end else if (output <> "" || purpose <> Internal_job) then
-      begin
-        Format.eprintf "@{<ok>%12s@} %a@." progname Fancy.pp_purpose purpose;
-        Format.eprintf "%s%!" output;
-      end;
+           but I'm ignoring it, hope that's OK.\n" id n
+    end else if output <> "" ||
+                (display = Short && purpose <> Internal_job) then
+      print "@{<ok>%12s@} %a\n%s" progname Fancy.pp_purpose purpose output;
     n
   | WEXITED n ->
-    if !Clflags.verbose then
+    if display = Verbose then
       die "\n@{<kwd>Command@} [@{<id>%d@}] exited with code %d:\n\
            @{<prompt>$@} %s\n%s"
         id n
@@ -293,7 +298,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose 
         (Ansi_color.strip command_line)
         output
   | WSIGNALED n ->
-    if !Clflags.verbose then
+    if display = Verbose then
       die "\n@{<kwd>Command@} [@{<id>%d@}] got signal %s:\n\
            @{<prompt>$@} %s\n%s"
         id (Utils.signal_name n)
@@ -309,7 +314,8 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose 
   | WSTOPPED _ -> assert false
 
 let run ?dir ?stdout_to ?stderr_to ?env ?(purpose=Internal_job) fail_mode prog args =
-  map_result fail_mode (run_internal ?dir ?stdout_to ?stderr_to ?env ~purpose fail_mode prog args)
+  map_result fail_mode
+    (run_internal ?dir ?stdout_to ?stderr_to ?env ~purpose fail_mode prog args)
     ~f:ignore
 
 let run_capture_gen ?dir ?env ?(purpose=Internal_job) fail_mode prog args ~f =

@@ -8,11 +8,16 @@ type t
 
 (** {2 Creation} *)
 
+type hook =
+  | Rule_started
+  | Rule_completed
+
 (** Create a new build system. [file_tree] represent the source
     tree. *)
 val create
   :  contexts:Context.t list
   -> file_tree:File_tree.t
+  -> hook:(hook -> unit)
   -> t
 
 type extra_sub_directories_to_keep =

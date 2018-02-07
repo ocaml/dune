@@ -1,4 +1,4 @@
-  $ $JBUILDER build -j1 --root . --dev bin/technologic.bc.js @install lib/x.cma.js lib/x__Y.cmo.js bin/z.cmo.js
+  $ $JBUILDER build -j1 --display short --root . --dev bin/technologic.bc.js @install lib/x.cma.js lib/x__Y.cmo.js bin/z.cmo.js
         ocamlc lib/stubs.o
       ocamlopt .ppx/js_of_ocaml-ppx/ppx.exe
         ocamlc lib/x__.{cmi,cmo,cmt}
@@ -34,7 +34,7 @@
   use it
   break it
   fix it
-  $ $JBUILDER build -j1 --root . bin/technologic.bc.js @install
+  $ $JBUILDER build -j1 --display short --root . bin/technologic.bc.js @install
         ocamlc lib/x__.{cmi,cmo,cmt}
         ocamlc lib/x__Y.{cmi,cmo,cmt}
       ocamlopt lib/x__.{cmx,o}

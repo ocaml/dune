@@ -1,4 +1,4 @@
-  $ $JBUILDER build @doc -j1 --root .
+  $ $JBUILDER build @doc -j1 --display short --root .
       ocamldep foo_byte.ml.d
           odoc _doc/foo.byte/page-index.odoc
           odoc _doc/foo.byte/page-test.odoc
@@ -16,7 +16,7 @@
           odoc _doc/foo/index.html
           odoc _doc/foo/test.html
           odoc _doc/foo/Foo/.jbuilder-keep,_doc/foo/Foo/index.html
-  $ $JBUILDER runtest -j1 --root .
+  $ $JBUILDER runtest -j1 --display short --root .
   <!DOCTYPE html>
   <html xmlns="http://www.w3.org/1999/xhtml">
     <head>

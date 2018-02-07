@@ -54,8 +54,18 @@ let setup ?(log=Log.no_log)
   let contexts = List.concat contexts in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
     Log.infof log "@[<1>Jbuilder context:@,%a@]@." Sexp.pp (Context.sexp_of_t ctx));
+  let rule_done  = ref 0 in
+  let rule_total = ref 0 in
+  let gen_status_line () =
+    Some (sprintf "Done: %u/%u" !rule_done !rule_total)
+  in
+  let hook (hook : Build_system.hook) =
+    match hook with
+    | Rule_started   -> incr rule_total
+    | Rule_completed -> incr rule_done
+  in
   let build_system =
-    Build_system.create ~contexts ~file_tree:conf.file_tree
+    Build_system.create ~contexts ~file_tree:conf.file_tree ~hook
   in
   Gen_rules.gen conf
     ~build_system
@@ -63,6 +73,8 @@ let setup ?(log=Log.no_log)
     ?only_packages
     ?filter_out_optional_stanzas_with_missing_deps
   >>= fun stanzas ->
+  Scheduler.set_status_line_generator gen_status_line
+  >>>
   Fiber.return
     { build_system
     ; stanzas
@@ -107,16 +119,29 @@ let bootstrap () =
       Scheduler.go (Watermarks.subst () ~name:"jbuilder");
       exit 0
     in
+    let display = ref None in
+    let display_mode =
+      Arg.Symbol
+        (List.map Config.Display.all ~f:fst,
+         fun s ->
+           display := Some (List.assoc s Config.Display.all))
+    in
     Arg.parse
       [ "-j"           , Set_int Clflags.concurrency, "JOBS concurrency"
       ; "--dev"        , Set Clflags.dev_mode       , " set development mode"
-      ; "--verbose"    , Set Clflags.verbose        , " print detailed information about commands being run"
+      ; "--display"    , display_mode               , " print detailed information about commands being run"
       ; "--subst"      , Unit subst                 , " substitute watermarks in source files"
       ]
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
     Clflags.debug_dep_path := true;
-    let log = Log.create () in
-    Scheduler.go ~log
+    let config = Config.load_user_config_file () in
+    let config =
+      match !display with
+      | None -> config
+      | Some display -> { display }
+    in
+    let log = Log.create ~display:config.display () in
+    Scheduler.go ~log ~config
       (setup ~log ~workspace:{ merlin_context = Some "default"
                              ; contexts = [Default [Native]] }
          ~use_findlib:false

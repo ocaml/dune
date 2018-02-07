@@ -324,6 +324,10 @@ type extra_sub_directories_to_keep =
   | All
   | These of String_set.t
 
+type hook =
+  | Rule_started
+  | Rule_completed
+
 type t =
   { (* File specification by targets *)
     files       : (Path.t, File_spec.packed) Hashtbl.t
@@ -341,6 +345,7 @@ type t =
     mutable build_dirs_to_keep : Path.Set.t
   ; files_of : (Path.t, Files_of.t) Hashtbl.t
   ; mutable prefix : (unit, unit) Build.t option
+  ; hook : hook -> unit
   }
 
 let string_of_paths set =
@@ -639,6 +644,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
   in
 
   let eval_rule () =
+    t.hook Rule_started;
     wait_for_deps t rule_deps
     >>| fun () ->
     Build_exec.exec t build ()
@@ -693,7 +699,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       !Clflags.force &&
       List.exists targets_as_list ~f:Path.is_alias_stamp_file
     in
-    if deps_or_rule_changed || targets_missing || force then (
+    if deps_or_rule_changed || targets_missing || force then begin
       List.iter targets_as_list ~f:Path.unlink_no_err;
       pending_targets := Pset.union targets !pending_targets;
       let action =
@@ -722,18 +728,21 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       (* All went well, these targets are no longer pending *)
       pending_targets := Pset.diff !pending_targets targets;
       clear_targets_digests_after_rule_execution targets_as_list;
-      match mode with
-      | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files -> ()
-      | Promote | Promote_but_delete_on_clean ->
-        Pset.iter targets ~f:(fun path ->
-          let in_source_tree = Option.value_exn (Path.drop_build_context path) in
-          if mode = Promote_but_delete_on_clean then
-            Promoted_to_delete.add in_source_tree;
-          Io.copy_file
-            ~src:(Path.to_string path)
-            ~dst:(Path.to_string in_source_tree))
-    ) else
+      (match mode with
+       | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files -> ()
+       | Promote | Promote_but_delete_on_clean ->
+         Pset.iter targets ~f:(fun path ->
+           let in_source_tree = Option.value_exn (Path.drop_build_context path) in
+           if mode = Promote_but_delete_on_clean then
+             Promoted_to_delete.add in_source_tree;
+           Io.copy_file
+             ~src:(Path.to_string path)
+             ~dst:(Path.to_string in_source_tree)));
+      t.hook Rule_completed
+    end else begin
+      t.hook Rule_completed;
       Fiber.return ()
+    end
   in
   let rule =
     { Internal_rule.
@@ -1105,7 +1114,7 @@ let finalize t =
   Utils.Cached_digest.dump ();
   Trace.dump t.trace
 
-let create ~contexts ~file_tree =
+let create ~contexts ~file_tree ~hook =
   Utils.Cached_digest.load ();
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
@@ -1123,6 +1132,7 @@ let create ~contexts ~file_tree =
     ; build_dirs_to_keep = Pset.empty
     ; files_of = Hashtbl.create 1024
     ; prefix = None
+    ; hook
     }
   in
   at_exit (fun () -> finalize t);

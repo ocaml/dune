@@ -31,6 +31,7 @@ end
 let dirs =
   [ "src/result"       , Some "Result"
   ; "src/fiber"        , Some "Fiber"
+  ; "src/xdg"          , Some "Xdg"
   ; "vendor/boot"      , None
   ; "vendor/usexp/src" , Some "Usexp"
   ; "src"              , None

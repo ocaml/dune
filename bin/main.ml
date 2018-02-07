@@ -13,7 +13,6 @@ type common =
   ; debug_findlib         : bool
   ; debug_backtraces      : bool
   ; dev_mode              : bool
-  ; verbose               : bool
   ; workspace_file        : string option
   ; root                  : string
   ; target_prefix         : string
@@ -26,6 +25,7 @@ type common =
   ; ignore_promoted_rules : bool
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args             : string list
+  ; config                : Config.t
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -36,7 +36,6 @@ let set_common c ~targets =
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces := c.debug_backtraces;
   Clflags.dev_mode := c.dev_mode;
-  Clflags.verbose := c.verbose;
   Clflags.capture_outputs := c.capture_outputs;
   if c.root <> Filename.current_dir_name then
     Sys.chdir c.root;
@@ -83,6 +82,20 @@ module Main = struct
       ?x:common.x
       ~ignore_promoted_rules:common.ignore_promoted_rules
       ()
+end
+
+module Log = struct
+  include Jbuilder.Log
+
+  let create common =
+    Log.create ~display:common.config.display ()
+end
+
+module Scheduler = struct
+  include Jbuilder.Scheduler
+
+  let go ?log ~common fiber =
+    Scheduler.go ?log ~config:common.config fiber
 end
 
 type target =
@@ -148,15 +161,31 @@ let find_root () =
     | None -> assert false
     | Some (_, dir, to_cwd) -> (dir, to_cwd)
 
+let common_footer =
+  `Blocks
+    [ `S "BUGS"
+    ; `P "Check bug reports at https://github.com/ocaml/dune/issues"
+    ]
+
 let copts_sect = "COMMON OPTIONS"
 let help_secs =
   [ `S copts_sect
   ; `P "These options are common to all commands."
   ; `S "MORE HELP"
   ; `P "Use `$(mname) $(i,COMMAND) --help' for help on a single command."
-  ; `S "BUGS"
-  ; `P "Check bug reports at https://github.com/ocaml/dune/issues"
+  ; common_footer
   ]
+
+type config_file =
+  | No_config
+  | Default
+  | This of string
+
+let incompatible a b =
+  `Error (true,
+          sprintf
+            "Cannot use %s and %s simultaneously"
+            a b)
 
 let common =
   let dump_opt name value =
@@ -170,7 +199,6 @@ let common =
         debug_findlib
         debug_backtraces
         dev_mode
-        verbose
         no_buffer
         workspace_file
         diff_command
@@ -179,8 +207,10 @@ let common =
         (root,
          only_packages,
          ignore_promoted_rules,
+         config_file,
          orig)
         x
+        display
     =
     let root, to_cwd =
       match root with
@@ -194,12 +224,22 @@ let common =
         ; orig
         ]
     in
+    let config =
+      match config_file with
+      | No_config  -> Config.default
+      | This fname -> Config.load_config_file ~fname
+      | Default    -> Config.load_user_config_file ()
+    in
+    let config =
+      match display with
+      | None -> config
+      | Some display -> { display }
+    in
     { concurrency
     ; debug_dep_path
     ; debug_findlib
     ; debug_backtraces
     ; dev_mode
-    ; verbose
     ; capture_outputs = not no_buffer
     ; workspace_file
     ; root
@@ -213,6 +253,7 @@ let common =
         Option.map only_packages
           ~f:(fun s -> String_set.of_list (String.split s ~on:','))
     ; x
+    ; config
     }
   in
   let docs = copts_sect in
@@ -261,11 +302,28 @@ let common =
          & info ["dev"] ~docs
              ~doc:{|Use stricter compilation flags by default.|})
   in
-  let verbose =
-    Arg.(value
-         & flag
-         & info ["verbose"] ~docs
-             ~doc:"Print detailed information about commands being run")
+  let display =
+    let verbose =
+      Arg.(value
+           & flag
+           & info ["verbose"] ~docs
+               ~doc:"Same as $(b,--display verbose)")
+    in
+    let display =
+      Arg.(value
+           & opt (some (enum Config.Display.all)) None
+           & info ["display"] ~docs ~docv:"MODE"
+               ~doc:{|Control the display mode of Jbuilder.
+                      See $(b,dune-config\(5\)) for more details.|})
+    in
+    let merge verbose display =
+      match verbose, display with
+      | false , None   -> `Ok None
+      | false , Some x -> `Ok (Some x)
+      | true  , None   -> `Ok (Some Config.Display.Verbose)
+      | true  , Some _ -> incompatible "--display" "--verbose"
+    in
+    Term.(ret (const merge $ verbose $ display))
   in
   let no_buffer =
     Arg.(value
@@ -290,15 +348,6 @@ let common =
          & info ["workspace"] ~docs ~docv:"FILE"
              ~doc:"Use this specific workspace file instead of looking it up.")
   in
-  let root =
-    Arg.(value
-         & opt (some dir) None
-         & info ["root"] ~docs ~docv:"DIR"
-             ~doc:{|Use this directory as workspace root instead of guessing it.
-                    Note that this option doesn't change the interpretation of
-                    targets given on the command line. It is only intended
-                    for scripts.|})
-  in
   let auto_promote =
     Arg.(value
          & flag
@@ -313,44 +362,75 @@ let common =
              ~doc:"Force actions associated to aliases to be re-executed even
                    if their dependencies haven't changed.")
   in
-  let ignore_promoted_rules =
-    Arg.(value
-         & flag
-         & info ["ignore-promoted-rules"] ~docs
-             ~doc:"Ignore rules with (mode promote)")
-  in
-  let for_release = "for-release-of-packages" in
-  let frop =
-    Arg.(value
-         & opt (some string) None
-         & info ["p"; for_release] ~docs ~docv:"PACKAGES"
-             ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE --promote ignore).
-                    You must use this option in your $(i,<package>.opam) files, in order
-                    to build only what's necessary when your project contains multiple
-                    packages as well as getting reproducible builds.|})
-  in
-  let root_and_only_packages =
-    let merge root only_packages ignore_promoted_rules release =
-      let fail opt =
-        `Error (true,
-                sprintf
-                  "Cannot use -p/--%s and %s simultaneously"
-                  for_release opt)
+  let merged_options =
+    let root =
+      Arg.(value
+           & opt (some dir) None
+           & info ["root"] ~docs ~docv:"DIR"
+               ~doc:{|Use this directory as workspace root instead of guessing it.
+                      Note that this option doesn't change the interpretation of
+                      targets given on the command line. It is only intended
+                      for scripts.|})
+    in
+    let ignore_promoted_rules =
+      Arg.(value
+           & flag
+           & info ["ignore-promoted-rules"] ~docs
+               ~doc:"Ignore rules with (mode promote)")
+    in
+    let config_file =
+      let config_file =
+        Arg.(value
+             & opt (some file) None
+             & info ["config-file"] ~docs ~docv:"FILE"
+                 ~doc:"Load this configuration file instead of the default one.")
       in
-      match release, root, only_packages, ignore_promoted_rules with
-      | Some _, Some _, _, _ -> fail "--root"
-      | Some _, _, Some _, _ -> fail "--only-packages"
-      | Some _, _, _, true   -> fail "--ignore-promoted-rules"
-      | Some pkgs, None, None, false ->
+      let no_config =
+        Arg.(value
+             & flag
+             & info ["no-config"] ~docs
+                 ~doc:"Do not load the configuration file")
+      in
+      let merge config_file no_config =
+        match config_file, no_config with
+        | None   , false -> `Ok (None                , Default)
+        | Some fn, false -> `Ok (Some "--config-file", This fn)
+        | None   , true  -> `Ok (Some "--no-config"  , No_config)
+        | Some _ , true  -> incompatible "--no-config" "--config-file"
+      in
+      Term.(ret (const merge $ config_file $ no_config))
+    in
+    let for_release = "for-release-of-packages" in
+    let frop =
+      Arg.(value
+           & opt (some string) None
+           & info ["p"; for_release] ~docs ~docv:"PACKAGES"
+               ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE
+                      --promote ignore --no-config).
+                      You must use this option in your $(i,<package>.opam) files, in order
+                      to build only what's necessary when your project contains multiple
+                      packages as well as getting reproducible builds.|})
+    in
+    let merge root only_packages ignore_promoted_rules
+          (config_file_opt, config_file) release =
+      let fail opt = incompatible ("-p/--" ^ for_release) opt in
+      match release, root, only_packages, ignore_promoted_rules, config_file_opt with
+      | Some _, Some _, _, _, _      -> fail "--root"
+      | Some _, _, Some _, _, _      -> fail "--only-packages"
+      | Some _, _, _, true  , _      -> fail "--ignore-promoted-rules"
+      | Some _, _, _, _     , Some s -> fail s
+      | Some pkgs, None, None, false, None ->
         `Ok (Some ".",
              Some pkgs,
              true,
+             No_config,
              ["-p"; pkgs]
             )
-      | None, _, _, _ ->
+      | None, _, _, _, _ ->
         `Ok (root,
              only_packages,
              ignore_promoted_rules,
+             config_file,
              List.concat
                [ dump_opt "--root" root
                ; dump_opt "--only-packages" only_packages
@@ -358,12 +438,18 @@ let common =
                    ["--ignore-promoted-rules"]
                  else
                    []
-               ])
+               ; (match config_file with
+                  | This fn   -> ["--config-file"; fn]
+                  | No_config -> ["--no-config"]
+                  | Default   -> [])
+               ]
+            )
     in
     Term.(ret (const merge
                $ root
                $ only_packages
                $ ignore_promoted_rules
+               $ config_file
                $ frop))
   in
   let x =
@@ -384,21 +470,21 @@ let common =
         $ dfindlib
         $ dbacktraces
         $ dev
-        $ verbose
         $ no_buffer
         $ workspace_file
         $ diff_command
         $ auto_promote
         $ force
-        $ root_and_only_packages
+        $ merged_options
         $ x
+        $ display
        )
 
 let installed_libraries =
   let doc = "Print out libraries installed on the system." in
   let go common na =
     set_common common ~targets:[];
-    Scheduler.go ~log:(Log.create ())
+    Scheduler.go ~log:(Log.create common) ~common
       (Context.create (Default [Native])  >>= fun ctxs ->
        let ctx = List.hd ctxs in
        let findlib = ctx.findlib in
@@ -529,7 +615,7 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
         end
       )
     in
-    if !Clflags.verbose then begin
+    if common.config.display = Verbose then begin
       Log.info log "Actual targets:";
       let targets =
         List.concat_map targets ~f:(function
@@ -564,8 +650,8 @@ let build_targets =
   let name_ = Arg.info [] ~docv:"TARGET" in
   let go common targets =
     set_common common ~targets;
-    let log = Log.create () in
-    Scheduler.go ~log
+    let log = Log.create common in
+    Scheduler.go ~log ~common
       (Main.setup ~log common >>= fun setup ->
        let targets = resolve_targets_exn ~log common setup targets in
        do_build setup targets) in
@@ -590,8 +676,8 @@ let runtest =
         | "" | "." -> "@runtest"
         | dir when dir.[String.length dir - 1] = '/' -> sprintf "@%sruntest" dir
         | dir -> sprintf "@%s/runtest" dir));
-    let log = Log.create () in
-    Scheduler.go ~log
+    let log = Log.create common in
+    Scheduler.go ~log ~common
       (Main.setup ~log common >>= fun setup ->
        let check_path = check_path setup.contexts in
        let targets =
@@ -645,8 +731,8 @@ let external_lib_deps =
   in
   let go common only_missing targets =
     set_common common ~targets:[];
-    let log = Log.create () in
-    Scheduler.go ~log
+    let log = Log.create common in
+    Scheduler.go ~log ~common
       (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
        >>= fun setup ->
        let targets = resolve_targets_exn ~log common setup targets in
@@ -748,8 +834,8 @@ let rules =
   in
   let go common out recursive makefile_syntax targets =
     set_common common ~targets;
-    let log = Log.create () in
-    Scheduler.go ~log
+    let log = Log.create common in
+    Scheduler.go ~log ~common
       (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
        >>= fun setup ->
        let request =
@@ -842,8 +928,8 @@ let install_uninstall ~what =
   let go common prefix_from_command_line libdir_from_command_line pkgs =
     set_common common ~targets:[];
     let opam_installer = opam_installer () in
-    let log = Log.create () in
-    Scheduler.go ~log
+    let log = Log.create common in
+    Scheduler.go ~log ~common
       (Main.setup ~log common >>= fun setup ->
        let pkgs =
          match pkgs with
@@ -952,8 +1038,8 @@ let exec =
   in
   let go common context prog no_rebuild args =
     set_common common ~targets:[];
-    let log = Log.create () in
-    let setup = Scheduler.go ~log (Main.setup ~log common) in
+    let log = Log.create common in
+    let setup = Scheduler.go ~log ~common (Main.setup ~log common) in
     let context = Main.find_context_exn setup ~name:context in
     let prog_where =
       match Filename.analyze_program_name prog with
@@ -987,7 +1073,7 @@ let exec =
         match Lazy.force targets with
         | [] -> ()
         | targets ->
-          Scheduler.go ~log (do_build setup targets);
+          Scheduler.go ~log ~common (do_build setup targets);
           Build_system.finalize setup.build_system
       end;
       match prog_where with
@@ -1086,7 +1172,7 @@ let subst =
   in
   let go common name =
     set_common common ~targets:[];
-    Scheduler.go (Watermarks.subst ?name ())
+    Scheduler.go ~common (Watermarks.subst ?name ())
   in
   ( Term.(const go
           $ common
@@ -1107,7 +1193,7 @@ let utop =
   let go common dir ctx_name args =
     let utop_target = dir |> Path.of_string |> Utop.utop_exe |> Path.to_string in
     set_common common ~targets:[utop_target];
-    let log = Log.create () in
+    let log = Log.create common in
     let (build_system, context, utop_path) =
       (Main.setup ~log common >>= fun setup ->
        let context = Main.find_context_exn setup ~name:ctx_name in
@@ -1120,7 +1206,7 @@ let utop =
        in
        do_build setup [File target] >>| fun () ->
        (setup.build_system, context, Path.to_string target)
-      ) |> Scheduler.go ~log in
+      ) |> Scheduler.go ~log ~common in
     Build_system.finalize build_system;
     restore_cwd_and_execve common utop_path (Array.of_list (utop_path :: args))
       (Context.env_for_exec context)
@@ -1159,6 +1245,94 @@ let promote =
           $ common)
   , Term.info "promote" ~doc ~man )
 
+module Help = struct
+  let config =
+    ("dune-config", 5, "", "Jbuilder", "Jbuilder manual"),
+    [ `S Manpage.s_synopsis
+    ; `Pre "~/.config/dune/config"
+    ; `S Manpage.s_description
+    ; `P {|Unless $(b,--no-config) or $(b,-p) is passed, Jbuilder will read a
+           configuration file from the user home directory. This file is used
+           to control various aspects of the behavior of Jbuilder.|}
+    ; `P {|The configuration file is normally $(b,~/.config/dune/config) on
+           Unix systems and $(b,Local Settings/dune/config) in the User home
+           directory on Windows. However, it is possible to specify an
+           alternative configuration file with the $(b,--config-file) option.|}
+    ; `P {|This file must be written in S-expression syntax and be composed of
+           a list of stanzas. The following sections describe the stanzas available.|}
+    ; `S "DISPLAY MODES"
+    ; `P {|Syntax: $(b,\(display MODE\))|}
+    ; `P {|This stanza controls how Jbuilder reports what it is doing to the user.
+           This parameter can also be set from the command line via $(b,--display MODE).
+           The following display modes are available:|}
+    ; `Blocks
+        (List.map ~f:(fun (x, desc) -> `I (sprintf "$(b,%s)" x, desc))
+           [ "progress",
+             {|This is the default, Jbuilder shows and update a
+               status line as build goals are being completed.|}
+           ; "quiet",
+             {|Only display errors.|}
+           ; "short",
+             {|Print one line per command being executed, with the
+               binary name on the left and the reason it is being executed for
+               on the right.|}
+           ; "verbose",
+             {|Print the full command lines of programs being
+               executed by Jbuilder, with some colors to help differentiate
+               programs.|}
+           ])
+    ; common_footer
+    ]
+
+  type what =
+    | Man of Manpage.t
+    | List_topics
+
+  let commands =
+    [ "config", Man config
+    ; "topics", List_topics
+    ]
+
+  let help =
+    let doc = "Additional Jbuilder help" in
+    let man =
+      [ `S "DESCRIPTION"
+      ; `P {|$(b,jbuilder help TOPIC) provides additional help on the given topic.
+             The following topics are available:|}
+      ; `Blocks (List.concat_map commands ~f:(fun (s, what) ->
+          match what with
+          | List_topics -> []
+          | Man ((title, _, _, _, _), _) -> [`I (sprintf "$(b,%s)" s, title)]))
+      ; common_footer
+      ]
+    in
+    let go man_format what =
+      match what with
+      | None ->
+        `Help (man_format, Some "help")
+      | Some (Man man_page) ->
+        Format.printf "%a@?" (Manpage.print man_format) man_page;
+        `Ok ()
+      | Some List_topics ->
+        List.filter_map commands ~f:(fun (s, what) ->
+          match what with
+          | List_topics -> None
+          | _ -> Some s)
+        |> List.sort ~cmp:String.compare
+        |> String.concat ~sep:"\n"
+        |> print_endline;
+        `Ok ()
+    in
+    ( Term.(ret (const go
+                 $ Arg.man_format
+                 $ Arg.(value
+                        & pos 0 (some (enum commands)) None
+                        & info [] ~docv:"TOPIC")
+                ))
+    , Term.info "help" ~doc ~man
+    )
+end
+
 let all =
   [ installed_libraries
   ; external_lib_deps
@@ -1172,6 +1346,7 @@ let all =
   ; rules
   ; utop
   ; promote
+  ; Help.help
   ]
 
 let default =

@@ -132,7 +132,11 @@ let bootstrap () =
       [ "-j"           , Int (set concurrency), "JOBS concurrency"
       ; "--dev"        , Set Clflags.dev_mode , " set development mode"
       ; "--display"    , display_mode         , " set the display mode"
-      ; "--subst"      , Unit subst           , " substitute watermarks in source files"
+      ; "--subst"      , Unit subst           ,
+        " substitute watermarks in source files"
+      ; "--debug-backtraces",
+        Set Clflags.debug_backtraces,
+        " always print exception backtraces"
       ]
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
     Clflags.debug_dep_path := true;

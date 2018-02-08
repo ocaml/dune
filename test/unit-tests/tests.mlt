@@ -34,7 +34,7 @@ val pkg : Jbuilder.Findlib.Package.t = <package:foo>
 |}]
 
 (* "foo" should depend on "baz" *)
-Findlib.Package.requires pkg;;
+Findlib.Package.requires pkg ~required_by:[];;
 
 [%%expect{|
 - : Jbuilder.Findlib.Package.t list = [<package:baz>]

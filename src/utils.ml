@@ -89,6 +89,7 @@ let analyse_target fn =
           in
           Alias (ctx, Path.relative (Path.parent fn) basename)
     end
+  | Some ("install", _) -> Other fn
   | Some (ctx, sub) -> Regular (ctx, sub)
   | None ->
     Other fn

@@ -11,12 +11,7 @@ module Package_not_available : sig
 
   and reason =
     | Not_found
-    | Hidden
-    (** exist_if not satisfied *)
-    | Dependencies_unavailable of t list
-    (** At least one dependency is unavailable *)
-
-  val top_closure : t list -> t list
+    | Hidden (** exist_if not satisfied *)
 
   (** Explain why a package is not available *)
   val explain : Format.formatter -> reason -> unit
@@ -31,9 +26,20 @@ module External_dep_conflicts_with_local_lib : sig
     }
 end
 
+module Dependency_cycle : sig
+  type t =
+    { cycle       : string list
+    ; required_by : With_required_by.Entry.t list
+    }
+end
+
 type error =
-  | Package_not_available of Package_not_available.t
-  | External_dep_conflicts_with_local_lib of External_dep_conflicts_with_local_lib.t
+  | Package_not_available
+    of Package_not_available.t
+  | External_dep_conflicts_with_local_lib
+    of External_dep_conflicts_with_local_lib.t
+  | Dependency_cycle
+    of Dependency_cycle.t
 
 exception Findlib of error
 
@@ -61,15 +67,23 @@ module Package : sig
   val plugins      : t -> Mode.t -> Path.t list
   val jsoo_runtime : t -> string list
 
-  val requires         : t -> t list
-  val ppx_runtime_deps : t -> t list
+  (** Note that these are what is written in the META file, not the
+      transitive closure *)
+  val requires
+    :  t
+    -> required_by:With_required_by.Entry.t list
+    -> t list
+  val ppx_runtime_deps
+    :  t
+    -> required_by:With_required_by.Entry.t list
+    -> t list
 end
 
 val find
   :  t
   -> required_by:With_required_by.Entry.t list
   -> string
-  -> Package.t option
+  -> (Package.t, Package_not_available.t) result
 val find_exn
   :  t
   -> required_by:With_required_by.Entry.t list
@@ -77,7 +91,7 @@ val find_exn
   -> Package.t
 
 (** Same as [Option.is_some (find t ...)] *)
-val available : t -> required_by:With_required_by.Entry.t list -> string -> bool
+val available : t -> string -> bool
 
 (** [root_package_name "foo.*"] is "foo" *)
 val root_package_name : string -> string

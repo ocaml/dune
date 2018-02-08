@@ -125,18 +125,20 @@ let jsoo_runtime_files ts =
     | Internal (dir, lib) ->
       List.map lib.buildable.js_of_ocaml.javascript_files ~f:(Path.relative dir))
 
-let ppx_runtime_libraries t =
+let ppx_runtime_libraries t ~required_by =
   String_set.of_list (
     match t with
     | Internal (_, lib) -> lib.ppx_runtime_libraries
-    | External pkg -> List.map ~f:FP.name (FP.ppx_runtime_deps pkg)
+    | External pkg -> List.map ~f:FP.name (FP.ppx_runtime_deps pkg ~required_by)
   )
 
-let requires = function
+let requires t ~required_by =
+  match t with
   | Internal (_, lib) ->
     lib.buildable.libraries
   | External pkg ->
-    List.map ~f:(fun fp -> Jbuild.Lib_dep.direct (FP.name fp)) (FP.requires pkg)
+    List.map ~f:(fun fp -> Jbuild.Lib_dep.direct (FP.name fp))
+      (FP.requires pkg ~required_by)
 
 let scope = function
   | Internal (dir, _) -> `Dir dir

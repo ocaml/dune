@@ -62,16 +62,13 @@ module Scope = struct
     | exception (Findlib.Findlib _) -> None
     | x -> Some x
 
-  let find_internal' t name =
-    match String_map.find name t.scope.libs with
+  let find_internal (t : t With_required_by.t) name =
+    match String_map.find name t.data.scope.libs with
     | Some _ as some -> some
     | None ->
-      match Hashtbl.find t.lib_db.by_public_name name with
+      match Hashtbl.find t.data.lib_db.by_public_name name with
       | Some (Internal x) -> Some x
       | _ -> None
-
-  let find_internal (t : t With_required_by.t) name =
-    find_internal' t.data name
 
   let lib_is_available (t : t With_required_by.t) name =
     match find_internal t name with

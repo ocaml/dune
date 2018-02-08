@@ -22,6 +22,7 @@
     "_build/install/default/lib/foo/foo.cmt"
     "_build/install/default/lib/foo/foo.cmti"
     "_build/install/default/lib/foo/foo.mli"
+    "_build/install/default/lib/foo/foo.ml"
     "_build/install/default/lib/foo/foo.cma"
     "_build/install/default/lib/foo/foo.cmxa"
     "_build/install/default/lib/foo/foo.a"

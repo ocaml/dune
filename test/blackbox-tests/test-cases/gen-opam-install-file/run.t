@@ -2,9 +2,11 @@
       ocamldep bar.ml.d
       ocamldep foo_byte.ml.d
       ocamldep foo.ml.d
+      ocamldep foo.mli.d
         ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
-        ocamlc .foo.objs/foo.{cmi,cmo,cmt}
+        ocamlc .foo.objs/foo.{cmi,cmti}
         ocamlc foo_byte.cma
+        ocamlc .foo.objs/foo.{cmo,cmt}
       ocamlopt .foo.objs/foo.{cmx,o}
         ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}
         ocamlc foo.cma
@@ -18,7 +20,8 @@
     "_build/install/default/lib/foo/foo.cmi"
     "_build/install/default/lib/foo/foo.cmx"
     "_build/install/default/lib/foo/foo.cmt"
-    "_build/install/default/lib/foo/foo.ml"
+    "_build/install/default/lib/foo/foo.cmti"
+    "_build/install/default/lib/foo/foo.mli"
     "_build/install/default/lib/foo/foo.cma"
     "_build/install/default/lib/foo/foo.cmxa"
     "_build/install/default/lib/foo/foo.a"

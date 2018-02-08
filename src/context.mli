@@ -88,7 +88,8 @@ type t =
 
   ; (** Output of [ocamlc -config] *)
     ocamlc_config           : (string * string) list
-  ; version                 : string
+  ; version_string          : string
+  ; version                 : int * int * int
   ; stdlib_dir              : Path.t
   ; ccomp_type              : string
   ; c_compiler              : string

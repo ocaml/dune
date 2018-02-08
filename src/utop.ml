@@ -37,7 +37,7 @@ let add_module_rules sctx ~dir lib_requires =
   Super_context.add_rule sctx utop_ml
 
 let utop_of_libs (libs : Library.t list) =
-  { Executables.names = [exe_name]
+  { Executables.names = [(Loc.none, exe_name)]
   ; link_executables = true
   ; link_flags = Ordered_set_lang.Unexpanded.t (
       Sexp.add_loc ~loc:Loc.none
@@ -47,8 +47,11 @@ let utop_of_libs (libs : Library.t list) =
     )
   ; modes = Mode.Dict.Set.of_list [Mode.Byte]
   ; buildable =
-      { Buildable.modules =
+      { Buildable.
+        loc = Loc.none
+      ; modules =
           Ordered_set_lang.t (List (Loc.none, [Atom (Loc.none, module_name)]))
+      ; modules_without_implementation = Ordered_set_lang.standard
       ; libraries =
           (Lib_dep.direct "utop") :: (List.map libs ~f:(fun lib ->
             Lib_dep.direct lib.Library.name))
@@ -77,10 +80,10 @@ let exe_stanzas stanzas =
         [ module_name
         , { Module.
             name = module_name
-          ; impl = { Module.File.
-                     name = module_filename
-                   ; syntax = Module.Syntax.OCaml
-                   }
+          ; impl = Some { Module.File.
+                          name = module_filename
+                        ; syntax = Module.Syntax.OCaml
+                        }
           ; intf = None
           ; obj_name = "" }
         ] in

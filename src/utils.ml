@@ -133,11 +133,6 @@ let g () =
   else
     []
 
-let obj_name_of_basename fn =
-  match String.index fn '.' with
-  | None -> fn
-  | Some i -> String.sub fn ~pos:0 ~len:i
-
 let install_file ~package ~findlib_toolchain =
   match findlib_toolchain with
   | None -> package ^ ".install"

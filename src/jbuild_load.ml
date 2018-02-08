@@ -91,7 +91,7 @@ end
 # 1 %S
 %s|}
         context.name
-        context.version
+        context.version_string
         (String.concat ~sep:"\n      ; "
            (let longest = List.longest_map context.ocamlc_config ~f:fst in
             List.map context.ocamlc_config ~f:(fun (k, v) ->

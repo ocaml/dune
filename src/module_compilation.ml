@@ -12,7 +12,7 @@ module Target : sig
   val file : Path.t -> t -> Path.t
 end = struct
   type t = Path.t
-  let cm m cm_kind = Module.cm_file m ~obj_dir:Path.root cm_kind
+  let cm m cm_kind = Module.cm_file_unsafe m ~obj_dir:Path.root cm_kind
   let obj m ~ext = Module.obj_file m ~obj_dir:Path.root ~ext
   let cmt m ml_kind = Module.cmt_file m ~obj_dir:Path.root ml_kind
   let file dir t = Path.append dir t
@@ -24,7 +24,7 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
   Option.iter (Mode.of_cm_kind cm_kind |> Context.compiler ctx) ~f:(fun compiler ->
     Option.iter (Module.cm_source ~dir m cm_kind) ~f:(fun src ->
       let ml_kind = Cm_kind.source cm_kind in
-      let dst = Module.cm_file m ~obj_dir cm_kind in
+      let dst = Module.cm_file_unsafe m ~obj_dir cm_kind in
       let extra_args, extra_deps, other_targets =
         match cm_kind, m.intf with
         (* If there is no mli, [ocamlY -c file.ml] produces both the
@@ -37,14 +37,14 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
              cmi exists and reads it instead of re-creating it, which
              could create a race condition. *)
           [ "-intf-suffix"
-          ; Filename.extension m.impl.name
+          ; Filename.extension (Option.value_exn m.impl).name
           ],
-          [Module.cm_file m ~obj_dir Cmi],
+          [Module.cm_file_unsafe m ~obj_dir Cmi],
           []
         | Cmi, None -> assert false
         | Cmi, Some _ -> [], [], []
         (* We need the .cmi to build either the .cmo or .cmx *)
-        | (Cmo | Cmx), Some _ -> [], [Module.cm_file m ~obj_dir Cmi], []
+        | (Cmo | Cmx), Some _ -> [], [Module.cm_file_unsafe m ~obj_dir Cmi], []
       in
       let other_targets =
         match cm_kind with
@@ -57,11 +57,11 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
           (Ocamldep.Dep_graph.deps_of dep_graph m >>^ fun deps ->
            List.concat_map deps
              ~f:(fun m ->
-               match cm_kind with
-               | Cmi | Cmo -> [Module.cm_file m ~obj_dir Cmi]
-               | Cmx -> [ Module.cm_file m ~obj_dir Cmi
-                        ; Module.cm_file m ~obj_dir Cmx
-                        ]))
+               let deps = [Module.cm_file_unsafe m ~obj_dir Cmi] in
+               if Module.has_impl m && cm_kind = Cmx then
+                 Module.cm_file_unsafe m ~obj_dir Cmx :: deps
+               else
+                 deps))
       in
       let other_targets, cmt_args =
         match cm_kind with
@@ -74,12 +74,18 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
       if obj_dir <> dir then begin
         (* Symlink the object files in the original directory for
            backward compatibility *)
-        let old_dst = Module.cm_file m ~obj_dir:dir cm_kind in
+        let old_dst = Module.cm_file_unsafe m ~obj_dir:dir cm_kind in
         SC.add_rule sctx (Build.symlink ~src:dst ~dst:old_dst) ;
         List.iter2 extra_targets other_targets ~f:(fun in_obj_dir target ->
           let in_dir = Target.file dir target in
           SC.add_rule sctx (Build.symlink ~src:in_obj_dir ~dst:in_dir))
       end;
+      let opaque =
+        if cm_kind = Cmi && not (Module.has_impl m) && ctx.version >= (4, 03, 0) then
+          Arg_spec.A "-opaque"
+        else
+          As []
+      in
       SC.add_rule sctx ?sandbox
         (Build.paths extra_deps >>>
          other_cm_files >>>
@@ -92,7 +98,7 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
            ; Dyn (fun (libs, _) -> Lib.include_flags libs ~stdlib_dir:ctx.stdlib_dir)
            ; As extra_args
            ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"
-           ; A "-no-alias-deps"
+           ; A "-no-alias-deps"; opaque
            ; A "-I"; Path obj_dir
            ; (match alias_module with
               | None -> S []
@@ -108,9 +114,13 @@ let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~scope ~dir
     build_cm sctx ?sandbox ~dynlink ~flags ~dir ~obj_dir ~dep_graphs m ~cm_kind
       ~requires ~alias_module);
   (* Build *.cmo.js *)
-  let src = Module.cm_file m ~obj_dir Cm_kind.Cmo in
-  let target = Path.extend_basename (Module.cm_file m ~obj_dir:dir Cm_kind.Cmo) ~suffix:".js" in
-  SC.add_rules sctx (Js_of_ocaml_rules.build_cm sctx ~scope ~dir ~js_of_ocaml ~src ~target)
+  let src = Module.cm_file_unsafe m ~obj_dir Cm_kind.Cmo in
+  let target =
+    Path.extend_basename (Module.cm_file_unsafe m ~obj_dir:dir Cm_kind.Cmo)
+      ~suffix:".js"
+  in
+  SC.add_rules sctx
+    (Js_of_ocaml_rules.build_cm sctx ~scope ~dir ~js_of_ocaml ~src ~target)
 
 let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~scope ~dir ~obj_dir
       ~dep_graphs ~modules ~requires ~alias_module =

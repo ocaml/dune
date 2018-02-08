@@ -40,6 +40,12 @@ module Dep_graph = struct
         (String.concat ~sep:"\n-> "
            (List.map cycle ~f:Module.name))
 
+  let top_closed_implementations t modules =
+    Build.memoize "top sorted implementations" (
+      let filter_out_intf_only = List.filter ~f:Module.has_impl in
+      top_closed t (filter_out_intf_only modules)
+      >>^ filter_out_intf_only)
+
   let dummy (m : Module.t) =
     { dir = Path.root
     ; per_module = String_map.singleton m.name (Build.return [])
@@ -106,7 +112,7 @@ let parse_deps ~dir ~file ~(unit : Module.t)
       in
       deps
 
-let rules sctx ~ml_kind ~dir ~modules ~alias_module ~lib_interface_module =
+let rules sctx ~(ml_kind:Ml_kind.t) ~dir ~modules ~alias_module ~lib_interface_module =
   let per_module =
     String_map.map modules ~f:(fun unit ->
       match Module.file ~dir unit ml_kind with

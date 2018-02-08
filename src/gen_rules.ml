@@ -27,21 +27,97 @@ module Gen(P : Params) = struct
      | Interpretation of [modules] fields                              |
      +-----------------------------------------------------------------+ *)
 
-  let parse_modules ~dir ~all_modules ~modules_written_by_user =
-    if Ordered_set_lang.is_standard modules_written_by_user then
-      all_modules
+  module Eval_modules = Ordered_set_lang.Make(struct
+      type t = Module.t
+      let name = Module.name
+    end)
+
+  let parse_modules ~all_modules ~buildable =
+    let conf : Buildable.t = buildable in
+    let parse ~loc s =
+        let s = String.capitalize_ascii s in
+        match String_map.find s all_modules with
+        | Some m -> m
+        | None -> Loc.fail loc "Module %s doesn't exist." s
+    in
+    let modules =
+      Eval_modules.eval_unordered
+        conf.modules
+        ~parse
+        ~standard:all_modules
+    in
+    let intf_only =
+      Eval_modules.eval_unordered
+        conf.modules_without_implementation
+        ~parse
+        ~standard:String_map.empty
+    in
+    let real_intf_only =
+      String_map.filter modules
+        ~f:(fun _ (m : Module.t) -> Option.is_none m.impl)
+    in
+    if String_map.equal intf_only real_intf_only
+         ~cmp:(fun a b -> Module.name a = Module.name b) then
+      modules
     else begin
-      let units =
-        Ordered_set_lang.eval_with_standard
-          modules_written_by_user
-          ~standard:(String_map.keys all_modules)
+      let should_be_listed, shouldn't_be_listed =
+        String_map.merge intf_only real_intf_only ~f:(fun name x y ->
+          match x, y with
+          | Some _, Some _ -> None
+          | None  , Some _ -> Some (Inl (String.uncapitalize_ascii name))
+          | Some _, None   -> Some (Inr (String.uncapitalize_ascii name))
+          | None  , None   -> assert false)
+        |> String_map.values
+        |> List.partition_map ~f:(fun x -> x)
       in
-      List.iter units ~f:(fun unit ->
-        if not (String_map.mem unit all_modules) then
-          die "no implementation for module %s in %s"
-            unit (Path.to_string dir));
-      let units = String_set.of_list units in
-      String_map.filter all_modules ~f:(fun unit _ -> String_set.mem unit units)
+      let list_modules l =
+        String.concat ~sep:"\n" (List.map l ~f:(sprintf "- %s"))
+      in
+      if should_be_listed <> [] then begin
+        match Ordered_set_lang.loc conf.modules_without_implementation with
+        | None ->
+          Loc.warn conf.loc
+            "Some modules don't have an implementation.\
+             \nYou need to add the following field to this stanza:\
+             \n\
+             \n  %s\
+             \n\
+             \nThis will become an error in the future."
+            (Sexp.to_string (List [ Atom "modules_without_implementation"
+                                  ; Sexp.To_sexp.(list string) should_be_listed
+                                  ]))
+        | Some loc ->
+          Loc.warn loc
+            "The following modules must be listed here as they don't \
+             have an implementation:\n\
+             %s\n\
+             This will become an error in the future."
+            (list_modules should_be_listed)
+      end;
+      if shouldn't_be_listed <> [] then begin
+        (* Re-evaluate conf.modules_without_implementation but this time keep locations *)
+        let module Eval =
+          Ordered_set_lang.Make(struct
+            type t = Loc.t * Module.t
+            let name (_, m) = Module.name m
+          end)
+        in
+        let parse ~loc s = (loc, parse ~loc s) in
+        let shouldn't_be_listed =
+          Eval.eval_unordered conf.modules_without_implementation
+            ~parse
+            ~standard:(String_map.map all_modules ~f:(fun m -> (Loc.none, m)))
+          |> String_map.values
+          |> List.filter ~f:(fun (_, (m : Module.t)) ->
+            Option.is_some m.impl)
+        in
+        (* CR-soon jdimino for jdimino: report all errors *)
+        let loc, m = List.hd shouldn't_be_listed in
+        Loc.fail loc
+          "Module %s has an implementation, it cannot be listed here"
+          m.name
+      end;
+      modules
     end
 
   (* +-----------------------------------------------------------------+
@@ -148,35 +224,7 @@ module Gen(P : Params) = struct
      | Modules listing                                                 |
      +-----------------------------------------------------------------+ *)
 
-  let ml_of_mli : _ format =
-{|(with-stdout-to %s
-       (progn
-        (echo "[@@@warning \"-a\"]\nmodule rec HACK : sig\n")
-        (cat %s)
-        (echo "\nend = HACK\ninclude HACK\n")))|}
-
-  let re_of_rei : _ format =
-{|(with-stdout-to %s
-       (progn
-        (echo "[@@@warning \"-a\"];\nmodule type HACK = {\n")
-        (cat %s)
-        (echo "\n};\nmodule rec HACK : HACK = HACK;\ninclude HACK;\n")))|}
-
-  let no_impl_warning : _ format =
-    {|@{<warning>Warning@}: Module %s in %s doesn't have a corresponding .%s file.
-Modules without an implementation are not recommended, see this discussion:
-
-  https://github.com/ocaml/dune/issues/9
-
-In the meantime I'm implicitely adding this rule:
-
-(rule %s)
-
-Add it to your jbuild file to remove this warning.
-|}
-
   let guess_modules ~dir ~files =
-    let src_dir = Path.drop_build_context_exn dir in
     let impl_files, intf_files =
       String_set.elements files
       |> List.filter_map ~f:(fun fn ->
@@ -196,54 +244,19 @@ Add it to your jbuild file to remove this warning.
       |> function
       | Ok x -> x
       | Error (name, f1, f2) ->
+        let src_dir = Path.drop_build_context_exn dir in
         die "too many files for module %s in %s: %s and %s"
-          name (Path.to_string dir) f1.name f2.name
+          name (Path.to_string src_dir) f1.name f2.name
     in
     let impls = parse_one_set impl_files in
     let intfs = parse_one_set intf_files in
-    let setup_intf_only name (intf : Module.File.t) =
-      let impl_fname = String.sub intf.name ~pos:0 ~len:(String.length intf.name - 1) in
-      let action_str =
-        sprintf
-          (match intf.syntax with
-           | OCaml  -> ml_of_mli
-           | Reason -> re_of_rei)
-          impl_fname intf.name
-      in
-      Format.eprintf no_impl_warning
-        name (Path.to_string src_dir)
-        (match intf.syntax with
-         | OCaml  -> "ml"
-         | Reason -> "re")
-        action_str;
-      let action =
-        Usexp.parse_string action_str
-          ~fname:"<internal action for mli to ml>"
-          ~mode:Single
-        |> Action.Unexpanded.t
-      in
-      SC.add_rule sctx
-        (Build.return []
-         >>>
-         SC.Action.run sctx action
-           ~dir
-           ~dep_kind:Required
-           ~targets:Infer
-           ~scope:(
-             Lib_db.Scope.required_in_jbuild (SC.Libs.anonymous_scope sctx)
-               ~jbuild_dir:src_dir
-           ));
-      { intf with name = impl_fname } in
     String_map.merge impls intfs ~f:(fun name impl intf ->
-      let impl =
-        match impl with
-        | None -> setup_intf_only name (Option.value_exn intf)
-        | Some i -> i in
       Some
         { Module.name
         ; impl
         ; intf
-        ; obj_name = "" }
+        ; obj_name = ""
+        }
     )
 
   let modules_by_dir =
@@ -265,33 +278,41 @@ Add it to your jbuild file to remove this warning.
       Hashtbl.find_or_add cache (dir, lib.name) ~f:(fun _ ->
         let all_modules = modules_by_dir ~dir in
         let modules =
-          parse_modules ~dir ~all_modules ~modules_written_by_user:lib.buildable.modules
+          parse_modules ~all_modules ~buildable:lib.buildable
         in
         let main_module_name = String.capitalize_ascii lib.name in
         let modules =
           String_map.map modules ~f:(fun (m : Module.t) ->
-            if not lib.wrapped || m.name = main_module_name then
-              { m with obj_name = Utils.obj_name_of_basename m.impl.name }
-            else
-              { m with obj_name = sprintf "%s__%s" lib.name m.name })
+            let wrapper =
+              if not lib.wrapped || m.name = main_module_name then
+                None
+              else
+                Some lib.name
+            in
+            Module.set_obj_name m ~wrapper)
         in
         let alias_module =
           if not lib.wrapped ||
              (String_map.cardinal modules = 1 &&
               String_map.mem main_module_name modules) then
             None
-          else
-            let suf =
-              if String_map.mem main_module_name modules then
-                "__"
-              else
-                ""
-            in
+          else if String_map.mem main_module_name modules then
             Some
-              { Module.name = main_module_name ^ suf
-              ; impl = { name = lib.name ^ suf ^ ".ml-gen" ; syntax = OCaml }
+              { Module.name = main_module_name ^ "__"
+              ; impl = None
+              ; intf = Some { name   = lib.name ^ "__.mli-gen"
+                            ; syntax = OCaml
+                            }
+              ; obj_name = lib.name ^ "__"
+              }
+          else
+            Some
+              { Module.name = main_module_name
+              ; impl = Some { name   = lib.name ^ ".ml-gen"
+                            ; syntax = OCaml
+                            }
               ; intf = None
-              ; obj_name = lib.name ^ suf
+              ; obj_name = lib.name
               }
         in
         { modules; alias_module; main_module_name })
@@ -447,8 +468,7 @@ Add it to your jbuild file to remove this warning.
   (* In 4.02, the compiler reads the cmi for module alias even with [-w -49
      -no-alias-deps], so we must sandbox the build of the alias module since the modules
      it references are built after. *)
-  let alias_module_build_sandbox = Scanf.sscanf ctx.version "%u.%u"
-     (fun a b -> a, b) <= (4, 02)
+  let alias_module_build_sandbox = ctx.version < (4, 03, 0)
 
   let library_rules (lib : Library.t) ~dir ~files
         ~(scope : Lib_db.Scope.t With_required_by.t) =
@@ -462,7 +482,8 @@ Add it to your jbuild file to remove this warning.
         ~preprocess:lib.buildable.preprocess
         ~preprocessor_deps:lib.buildable.preprocessor_deps
         ~lint:lib.buildable.lint
-        ~lib_name:(Some lib.name) in
+        ~lib_name:(Some lib.name)
+    in
 
     let modules =
       match alias_module with
@@ -479,6 +500,11 @@ Add it to your jbuild file to remove this warning.
     in
 
     Option.iter alias_module ~f:(fun m ->
+      let file =
+        match m.impl with
+        | Some f -> f
+        | None -> Option.value_exn m.intf
+      in
       SC.add_rule sctx
         (Build.return
            (String_map.values (String_map.remove m.name modules)
@@ -488,7 +514,7 @@ Add it to your jbuild file to remove this warning.
                 main_module_name m.name
                 m.name (Module.real_unit_name m))
             |> String.concat ~sep:"\n")
-         >>> Build.write_file_dyn (Path.relative dir m.impl.name)));
+         >>> Build.write_file_dyn (Path.relative dir file.name)));
 
     let requires, real_requires =
       SC.Libs.requires sctx ~dir ~scope ~dep_kind ~item:lib.name
@@ -596,7 +622,9 @@ Add it to your jbuild file to remove this warning.
     List.iter Cm_kind.all ~f:(fun cm_kind ->
       let files =
         String_map.fold modules ~init:[] ~f:(fun ~key:_ ~data:m acc ->
-          Module.cm_file m ~obj_dir cm_kind :: acc)
+          match Module.cm_file m ~obj_dir cm_kind with
+          | None -> acc
+          | Some fn -> fn :: acc)
       in
       SC.Libs.setup_file_deps_alias sctx (dir, lib) ~ext:(Cm_kind.ext cm_kind)
         files);
@@ -606,8 +634,8 @@ Add it to your jbuild file to remove this warning.
          Path.relative dir (header ^ ".h")));
 
     let top_sorted_modules =
-      Build.memoize "top sorted modules" (
-        Ocamldep.Dep_graph.top_closed dep_graphs.impl (String_map.values modules))
+      Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl
+        (String_map.values modules)
     in
     List.iter Mode.all ~f:(fun mode ->
       build_lib lib ~scope:scope.data ~flags ~dir ~obj_dir ~mode ~top_sorted_modules);
@@ -732,26 +760,28 @@ Add it to your jbuild file to remove this warning.
 
   let executables_rules (exes : Executables.t) ~dir ~all_modules
     ~(scope : Lib_db.Scope.t With_required_by.t) =
-    let item = List.hd exes.names in
+    let item = snd (List.hd exes.names) in
     (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library of the
        same name *)
     let obj_dir = Path.relative dir ("." ^ item ^ ".eobjs") in
     let dep_kind = Build.Required in
     let flags = Ocaml_flags.make exes.buildable sctx ~scope:scope.data ~dir in
     let modules =
-      parse_modules ~dir ~all_modules ~modules_written_by_user:exes.buildable.modules
+      parse_modules ~all_modules ~buildable:exes.buildable
     in
     let modules =
-      String_map.map modules ~f:(fun (m : Module.t) ->
-        { m with obj_name = Utils.obj_name_of_basename m.impl.name })
+      String_map.map modules ~f:(Module.set_obj_name ~wrapper:None)
     in
     let programs =
-      List.map exes.names ~f:(fun name ->
-        match String_map.find (String.capitalize_ascii name) modules with
-        | Some m -> (name, m)
-        | None ->
-          die "executable %s in %s doesn't have a corresponding .ml file"
-            name (Path.to_string dir))
+      List.map exes.names ~f:(fun (loc, name) ->
+        let mod_name = String.capitalize_ascii name in
+        match String_map.find mod_name modules with
+        | Some m ->
+          if not (Module.has_impl m) then
+            Loc.fail loc "Module %s has no implementation." mod_name
+          else
+            (name, m)
+        | None -> Loc.fail loc "Module %s doesn't exist." mod_name)
     in
 
     let modules =
@@ -785,8 +815,8 @@ Add it to your jbuild file to remove this warning.
 
     List.iter programs ~f:(fun (name, unit) ->
       let top_sorted_modules =
-        Build.memoize "top sorted modules"
-          (Ocamldep.Dep_graph.top_closed dep_graphs.impl [unit])
+        Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl
+          [unit]
       in
       List.iter Mode.all ~f:(fun mode ->
         build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~scope:scope.data
@@ -974,12 +1004,16 @@ Add it to your jbuild file to remove this warning.
       List.concat
         [ List.concat_map modules ~f:(fun m ->
             List.concat
-              [ [ Module.cm_file m ~obj_dir Cmi ]
-              ; if_ native [ Module.cm_file m ~obj_dir Cmx ]
+              [ [ Module.cm_file_unsafe m ~obj_dir Cmi ]
+              ; if_ (native && Module.has_impl m)
+                  [ Module.cm_file_unsafe m ~obj_dir Cmx ]
               ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~obj_dir)
-              ; [ match Module.file m ~dir Intf with
-                  | Some fn -> fn
-                  | None    -> Path.relative dir m.impl.name ]
+              ; [ let file =
+                    match m.intf with
+                    | Some f -> f
+                    | None -> Option.value_exn m.impl
+                  in
+                  Path.relative dir file.name ]
               ])
         ; if_ byte [ lib_archive ~dir lib ~ext:".cma" ]
         ; if_ (Library.has_stubs lib) [ stubs_archive ~dir lib ]

@@ -1008,12 +1008,9 @@ module Gen(P : Params) = struct
               ; if_ (native && Module.has_impl m)
                   [ Module.cm_file_unsafe m ~obj_dir Cmx ]
               ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~obj_dir)
-              ; [ let file =
-                    match m.intf with
-                    | Some f -> f
-                    | None -> Option.value_exn m.impl
-                  in
-                  Path.relative dir file.name ]
+              ; List.filter_map [m.intf;m.impl] ~f:(function
+                  | None -> None
+                  | Some f -> Some (Path.relative dir f.name))
               ])
         ; if_ byte [ lib_archive ~dir lib ~ext:".cma" ]
         ; if_ (Library.has_stubs lib) [ stubs_archive ~dir lib ]

@@ -85,14 +85,14 @@ val root_package_name : string -> string
 (** [local_public_libs] is a map from public library names to where they are defined in
     the workspace. These must not appear as dependency of a findlib package *)
 val closure
-  :  required_by:With_required_by.Entry.t list
+  :  Package.t list
+  -> required_by:With_required_by.Entry.t list
   -> local_public_libs:Path.t String_map.t
-  -> Package.t list
   -> Package.t list
 val closed_ppx_runtime_deps_of
-  :  required_by:With_required_by.Entry.t list
+  :  Package.t list
+  -> required_by:With_required_by.Entry.t list
   -> local_public_libs:Path.t String_map.t
-  -> Package.t list
   -> Package.t list
 
 val root_packages : t -> string list

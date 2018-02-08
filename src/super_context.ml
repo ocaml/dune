@@ -250,34 +250,42 @@ module Libs = struct
     | None -> build
     | Some f -> Build.fail f >>> build
 
-  let closure' t ~findlib ~load_deps ~scope ~dep_kind lib_deps =
+  let closure_generic t ~findlib_closure ~load_deps ~scope ~dep_kind lib_deps =
     let internals, externals, fail =
-      Lib_db.Scope.interpret_lib_deps scope lib_deps in
+      Lib_db.Scope.interpret_lib_deps scope lib_deps
+    in
     with_fail ~fail
       (Build.record_lib_deps ~kind:dep_kind lib_deps
        >>>
        Build.all
          (List.map internals ~f:(fun ((dir, lib) : Lib.Internal.t) ->
             load_deps t ~dir ~item:lib.name))
-       >>^ (fun internal_deps ->
-         let externals =
-           findlib ~required_by:scope.required_by
-             ~local_public_libs:(local_public_libs t.libs)
-             externals
-           |> List.map ~f:(fun pkg -> Lib.External pkg)
-         in
-         (internals, List.concat (externals :: internal_deps))))
+       >>^ fun internal_deps ->
+       let externals =
+         findlib_closure externals
+           ~required_by:scope.required_by
+           ~local_public_libs:(local_public_libs t.libs)
+         |> List.map ~f:(fun pkg -> Lib.External pkg)
+       in
+       (internals, List.concat (externals :: internal_deps)))
 
   let closure t ~scope ~dep_kind lib_deps =
-    closure' t ~load_deps:load_requires ~findlib:Findlib.closure
-      ~scope ~dep_kind lib_deps >>^ fun (internals, deps) ->
+    closure_generic t lib_deps
+      ~load_deps:load_requires
+      ~findlib_closure:Findlib.closure
+      ~scope
+      ~dep_kind
+    >>^ fun (internals, deps) ->
     Lib.remove_dups_preserve_order
       (deps @ List.map internals ~f:(fun x -> Lib.Internal x))
 
   let closed_ppx_runtime_deps_of t ~scope ~dep_kind lib_deps =
-    closure' t ~load_deps:load_runtime_deps
-      ~findlib:Findlib.closed_ppx_runtime_deps_of
-      ~scope ~dep_kind lib_deps >>^ fun (_, deps) ->
+    closure_generic t lib_deps
+      ~load_deps:load_runtime_deps
+      ~findlib_closure:Findlib.closed_ppx_runtime_deps_of
+      ~scope
+      ~dep_kind
+    >>^ fun (_, deps) ->
     Lib.remove_dups_preserve_order deps
 
   let add_select_rules t ~dir ~scope lib_deps =

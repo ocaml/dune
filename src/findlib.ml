@@ -553,14 +553,14 @@ let check_deps_consistency ~required_by ~local_public_libs pkg requires =
                         ; defined_locally_in  = path
                         })))
 
-let closure ~required_by ~local_public_libs pkgs =
+let closure pkgs ~required_by ~local_public_libs =
   remove_dups_preserve_order
     (List.concat_map pkgs ~f:(fun pkg ->
        check_deps_consistency ~required_by ~local_public_libs pkg pkg.requires;
        pkg.requires)
      @ pkgs)
 
-let closed_ppx_runtime_deps_of ~required_by ~local_public_libs pkgs =
+let closed_ppx_runtime_deps_of pkgs ~required_by ~local_public_libs =
   remove_dups_preserve_order
     (List.concat_map pkgs ~f:(fun pkg ->
        check_deps_consistency ~required_by ~local_public_libs pkg pkg.ppx_runtime_deps;

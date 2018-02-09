@@ -100,8 +100,6 @@ val resolve_program
 val unique_library_name : t -> Lib.t -> string
 
 module Libs : sig
-  val anonymous_scope : t -> Lib_db.Scope.t
-  val external_scope : t -> Lib_db.Scope.t
 
   val load_requires     : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t
   val load_runtime_deps : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t

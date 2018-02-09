@@ -228,9 +228,6 @@ module Libs = struct
   open Build.O
   open Lib_db
 
-  let anonymous_scope t = Lib_db.anonymous_scope t.libs
-  let external_scope t = Lib_db.external_scope t.libs
-
   let vrequires t ~dir ~item =
     let fn = Path.relative dir (item ^ ".requires.sexp") in
     Build.Vspec.T (fn, t.libs_vfile)
@@ -849,7 +846,7 @@ module PP = struct
       let (key, scope) =
         match String.rsplit2 key ~on:'@' with
         | None ->
-          (key, Libs.external_scope sctx)
+          (key, Lib_db.external_scope sctx.libs)
         | Some (key, scope) ->
           (key, Lib_db.find_scope_by_name_exn sctx.libs ~name:scope) in
       let names =

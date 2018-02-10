@@ -74,8 +74,7 @@ val local_public_libs : t -> Path.t String_map.t
 (** Unique name, even for internal libraries *)
 val unique_library_name : t -> Lib.t -> string
 
-val find_scope : t -> dir:Path.t -> Scope.t
-val find_scope' : t -> dir:Path.t -> Scope.t With_required_by.t
+val find_scope : t -> dir:Path.t -> Scope.t With_required_by.t
 
 (** Includes the private libraries not belonging to any named scope. Corresopnds
     to the context's build root path.*)

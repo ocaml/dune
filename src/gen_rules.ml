@@ -959,7 +959,7 @@ module Gen(P : Params) = struct
         in
         let meta_contents =
           version >>^ fun version ->
-          let scope = Lib_db.find_scope (SC.libs sctx) ~dir:path in
+          let scope = (Lib_db.find_scope (SC.libs sctx) ~dir:path).data in
           Gen_meta.gen ~package:pkg.name
             ~scope
             ~version
@@ -1049,7 +1049,7 @@ module Gen(P : Params) = struct
           else
             pps
         in
-        let scope = Lib_db.find_scope' (SC.libs sctx) ~dir in
+        let scope = Lib_db.find_scope (SC.libs sctx) ~dir in
         let ppx_exe = SC.PP.get_ppx_driver sctx ~scope pps in
         [ppx_exe]
     in

@@ -94,7 +94,7 @@ let create
           src_dir = dir
         ; ctx_dir
         ; stanzas
-        ; scope = Lib_db.find_scope' libs ~dir:ctx_dir
+        ; scope = Lib_db.find_scope libs ~dir:ctx_dir
         })
   in
   let stanzas_to_consider_for_install =
@@ -120,7 +120,7 @@ let create
       (struct
         open Sexp.Of_sexp
         let t dir sexp =
-          let scope = Lib_db.find_scope' libs ~dir in
+          let scope = Lib_db.find_scope libs ~dir in
           List.map (list string sexp) ~f:(Lib_db.Scope.find_exn scope)
       end)
   in

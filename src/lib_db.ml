@@ -163,7 +163,7 @@ module Scope = struct
     ; scope = internal_name_scope t ~dir
     }
 
-  let find_scope' t ~dir =
+  let find_scope t ~dir =
     let scope = find_scope t ~dir in
     required_in_jbuild scope ~jbuild_dir:dir
 
@@ -190,7 +190,7 @@ module Scope = struct
         let acc = f lib acc in
         match lib with
         | Internal (dir, lib) ->
-          let scope = find_scope' scope.With_required_by.data.lib_db ~dir in
+          let scope = find_scope scope.With_required_by.data.lib_db ~dir in
           List.fold_left lib.buildable.libraries ~init:acc ~f:(loop scope)
         | External pkg ->
           if deep_traverse_externals then
@@ -215,7 +215,7 @@ module Scope = struct
         let rt_deps =
           match lib with
           | Internal (dir, lib) ->
-            let scope = lazy (find_scope' scope.data.lib_db ~dir) in
+            let scope = lazy (find_scope scope.data.lib_db ~dir) in
             List.map lib.ppx_runtime_libraries ~f:(fun name ->
               Lib.best_name (find_exn (Lazy.force scope) name))
           | External pkg ->
@@ -225,7 +225,6 @@ module Scope = struct
 end
 
 let find_scope = Scope.find_scope
-let find_scope' = Scope.find_scope'
 
 let local_public_libs t = t.local_public_libs
 
@@ -234,7 +233,7 @@ module Local_closure = Top_closure.Make(String)(struct
     type t = Lib.Internal.t
     let key ((_, lib) : t) = lib.name
     let deps ((dir, lib) : Lib.Internal.t) graph =
-      let scope = find_scope' graph ~dir in
+      let scope = find_scope graph ~dir in
       List.concat_map lib.buildable.libraries ~f:(fun dep ->
         List.filter_map (Lib_dep.to_lib_names dep) ~f:(Scope.find_internal scope)) @
       List.filter_map lib.ppx_runtime_libraries ~f:(fun dep ->
@@ -252,7 +251,7 @@ let top_sort_internals t ~internal_libraries =
 let compute_instalable_internal_libs t ~internal_libraries =
   List.fold_left (top_sort_internals t ~internal_libraries) ~init:t
     ~f:(fun t (dir, lib) ->
-      let scope = find_scope' t ~dir in
+      let scope = find_scope t ~dir in
       if not lib.Library.optional ||
          (List.for_all (Library.all_lib_deps lib) ~f:(Scope.dep_is_available scope) &&
           List.for_all lib.ppx_runtime_libraries  ~f:(Scope.lib_is_available scope))

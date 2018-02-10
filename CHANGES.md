@@ -1,6 +1,11 @@
 1.0+beta18 (14/02/2018)
 -----------------------
 
+- Let the parser distinguish quoted strings from atoms.  This makes
+  possible to use "${v}" to concatenate the list of values provided by
+  a split-variable.  Concatenating split-variables with text is also
+  now required to be quoted.
+
 - Split calls to ocamldep. Before ocamldep would be called once per
   `library`/`executables` stanza. Now it is called once per file
   (#486)

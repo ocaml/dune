@@ -12,30 +12,47 @@ type rule =
   ; gen_source : (unit, Action.t) Build.t
   }
 
-module Test_lib = struct
+module Ppx_info = struct
   type t =
-    | Ppx_expect
-    | Ppx_inline_test
+    { uses_expect: bool
+    ; uses_inline_test: bool
+    }
 
-  let of_lib_name = function
-    | "ppx_inline_test" -> [Ppx_inline_test]
-    | "ppx_expect" -> [Ppx_expect]
-    | "ppx_jane" -> [Ppx_inline_test; Ppx_expect]
-    | _ -> []
+  let need_runner t = t.uses_inline_test || t.uses_expect
 
-  module Set = Set.Make(struct
-      type t' = t
-      type t = t'
-      let compare (x : t) (y : t) =
-        match x, y with
-        | Ppx_expect, Ppx_expect
-        | Ppx_inline_test, Ppx_inline_test -> 0
-        | Ppx_inline_test, Ppx_expect -> 1
-        | Ppx_expect, Ppx_inline_test -> -1
-    end)
+  let of_lib ~scope (lib : Jbuild.Library.t) =
+    Jbuild.Preprocess_map.pps lib.buildable.preprocess
+    |> List.rev_map ~f:(fun pp -> Lib_dep.direct (Jbuild.Pp.to_string pp))
+    (* we should early terminate once both uses_expect and uses_inline_test are
+       true *)
+    |> Lib_db.Scope.fold_transitive_closure
+         scope
+         ~deep_traverse_externals:true
+         ~init:{ uses_expect = false
+               ; uses_inline_test = false
+               }
+         ~f:(fun (lib : Lib.t) acc ->
+           (* TODO replace once Lib.t is abstract *)
+           let is_name =
+             List.mem ~set: (
+               match lib with
+               | External p -> [Findlib.Package.name p]
+               | Internal (_, lib) ->
+                 begin match lib.public with
+                 | None -> [lib.name]
+                 | Some p -> [lib.name; p.name]
+                 end
+             ) in
+           { uses_expect
+             = acc.uses_expect || is_name "ppx_expect"
+           ; uses_inline_test
+             = acc.uses_inline_test || is_name "ppx_inline_test"
+           }
+         )
 end
 
-let setup_rules test_libs ~sctx ~dir ~(lib : Jbuild.Library.t) ~scope =
+let setup_rules (config : Ppx_info.t) ~sctx ~dir ~(lib : Jbuild.Library.t)
+      ~scope =
   let name = lib.name ^ "_test_runner" in
   let module_filename = name ^ ".ml-gen" in
   let module_name = String.capitalize_ascii name in
@@ -55,7 +72,7 @@ let setup_rules test_libs ~sctx ~dir ~(lib : Jbuild.Library.t) ~scope =
         ; libraries =
             List.map ~f:Lib_dep.direct (
               [lib.name]
-              @ (if Test_lib.Set.mem Test_lib.Ppx_expect test_libs then
+              @ (if config.uses_expect then
                    ["ppx_expect.evaluator"]
                  else
                    [])
@@ -101,12 +118,8 @@ let setup_rules test_libs ~sctx ~dir ~(lib : Jbuild.Library.t) ~scope =
 ;;
 
 let rule sctx ~(lib : Jbuild.Library.t) ~dir ~scope =
-  let test_config =
-    Jbuild.Preprocess_map.pps lib.buildable.preprocess
-    |> List.rev_map ~f:Jbuild.Pp.to_string
-    |> List.concat_map ~f:Test_lib.of_lib_name
-    |> Test_lib.Set.of_list in
-  if Test_lib.Set.is_empty test_config then
-    None
+  let ppx_info = Ppx_info.of_lib ~scope lib in
+  if Ppx_info.need_runner ppx_info then
+    Some (setup_rules ppx_info ~sctx ~dir ~lib ~scope:scope.data)
   else
-    Some (setup_rules test_config ~sctx ~dir ~lib ~scope)
+    None

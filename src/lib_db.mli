@@ -50,6 +50,14 @@ module Scope : sig
     -> Jbuild.Lib_dep.t list
     -> string list
 
+  val fold_transitive_closure
+    : t With_required_by.t
+    -> deep_traverse_externals:bool
+    -> Jbuild.Lib_dep.t list
+    -> init:'a
+    -> f:(Lib.t -> 'a -> 'a)
+    -> 'a
+
   (** [all_ppx_runtime_deps_exn t deps] takes the transitive closure of [deps]
       and return the set of all the ppx runtime dependencies of these
       libraries. *)

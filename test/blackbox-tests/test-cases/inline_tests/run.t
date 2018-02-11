@@ -1,12 +1,12 @@
-  $ $JBUILDER runtest -j1 --root .
-      ocamldep mylib_test_runner.depends.ocamldep-output
+  $ $JBUILDER runtest -j1 --display short --root .
+      ocamldep mylib_test_runner.ml-gen.d
       ocamlopt .ppx/ppx_inline_test/ppx.exe
            ppx mylib.pp.ml
-      ocamldep mylib.depends.ocamldep-output
-        ocamlc mylib.{cmi,cmo,cmt}
-        ocamlc mylib_test_runner.{cmi,cmo,cmt}
-      ocamlopt mylib.{cmx,o}
-      ocamlopt mylib_test_runner.{cmx,o}
+      ocamldep mylib.pp.ml.d
+        ocamlc .mylib.objs/mylib.{cmi,cmo,cmt}
+        ocamlc .mylib_test_runner.eobjs/mylib_test_runner.{cmi,cmo,cmt}
+      ocamlopt .mylib.objs/mylib.{cmx,o}
+      ocamlopt .mylib_test_runner.eobjs/mylib_test_runner.{cmx,o}
       ocamlopt mylib.{a,cmxa}
       ocamlopt mylib_test_runner.exe
   mylib_test_runner alias runtest (exit 2)

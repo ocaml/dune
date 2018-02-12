@@ -9,17 +9,18 @@ type scope =
   }
 
 type t =
-  { findlib                  : Findlib.t
-  ; (* This include both libraries from the current workspace and external ones *)
-    by_public_name           : (string, Lib.t) Hashtbl.t
+  { findlib                   : Findlib.t
+  ; (* This include both libraries from the current workspace and external
+    ones *)
+    by_public_name            : (string, Lib.t) Hashtbl.t
   ; (* This is to implement the scoping described in the manual *)
-    by_internal_name         : (Path.t, scope) Hashtbl.t
-  ; (* This is to filter out libraries that are not installable because of missing
-       dependencies *)
-    instalable_internal_libs : Lib.Internal.t String_map.t
-  ; local_public_libs        : Path.t String_map.t
-  ; anonymous_root           : Path.t
-  ; by_scope_name            : (string, scope) Hashtbl.t
+    by_internal_name          : (Path.t, scope) Hashtbl.t
+  ; (* This is to filter out libraries that are not installable because of
+       missing dependencies. Keyed by the unique_library_name *)
+    installable_internal_libs : Lib.Internal.t String_map.t
+  ; local_public_libs         : Path.t String_map.t
+  ; anonymous_root            : Path.t
+  ; by_scope_name             : (string, scope) Hashtbl.t
   }
 
 let internal_name_scope t ~dir =
@@ -41,6 +42,19 @@ type resolved_select =
   { src_fn : string
   ; dst_fn : string
   }
+
+let unique_library_name t (lib : Lib.t) =
+  match lib with
+  | External pkg -> FP.name pkg
+  | Internal (dir, lib) ->
+    match lib.public with
+    | Some x -> x.name
+    | None ->
+      let scope = internal_name_scope t ~dir in
+      match scope.scope.name with
+      | None -> lib.name ^ "@"
+      | Some s -> lib.name ^ "@" ^ s
+
 
 module Scope = struct
   type nonrec t =
@@ -72,8 +86,12 @@ module Scope = struct
 
   let lib_is_available (t : t With_required_by.t) name =
     match find_internal t name with
-    | Some (_, lib) -> String_map.mem lib.name t.data.lib_db.instalable_internal_libs
-    | None -> Findlib.available t.data.lib_db.findlib name ~required_by:t.required_by
+    | Some lib ->
+      String_map.mem
+        (unique_library_name t.data.lib_db (Lib.Internal lib))
+        t.data.lib_db.installable_internal_libs
+    | None ->
+      Findlib.available t.data.lib_db.findlib name ~required_by:t.required_by
 
   let choice_is_possible t { Lib_dep.required; forbidden; _ } =
     String_set.for_all required  ~f:(fun name ->      lib_is_available t name ) &&
@@ -257,9 +275,9 @@ let compute_instalable_internal_libs t ~internal_libraries =
           List.for_all lib.ppx_runtime_libraries  ~f:(Scope.lib_is_available scope))
       then
         { t with
-          instalable_internal_libs =
-            String_map.add t.instalable_internal_libs
-              ~key:lib.name ~data:(dir, lib)
+          installable_internal_libs =
+            String_map.add t.installable_internal_libs
+              ~key:(unique_library_name t (Internal (dir, lib))) ~data:(dir, lib)
         }
       else
         t)
@@ -275,7 +293,7 @@ let create findlib ~scopes ~root internal_libraries =
     { findlib
     ; by_public_name   = Hashtbl.create 1024
     ; by_internal_name = Hashtbl.create 1024
-    ; instalable_internal_libs = String_map.empty
+    ; installable_internal_libs = String_map.empty
     ; local_public_libs
     ; anonymous_root = root
     ; by_scope_name = Hashtbl.create 1024
@@ -310,19 +328,7 @@ let create findlib ~scopes ~root internal_libraries =
   compute_instalable_internal_libs t ~internal_libraries
 
 let internal_libs_without_non_installable_optional_ones t =
-  String_map.values t.instalable_internal_libs
-
-let unique_library_name t (lib : Lib.t) =
-  match lib with
-  | External pkg -> FP.name pkg
-  | Internal (dir, lib) ->
-    match lib.public with
-    | Some x -> x.name
-    | None ->
-      let scope = internal_name_scope t ~dir in
-      match scope.scope.name with
-      | None -> lib.name ^ "@"
-      | Some s -> lib.name ^ "@" ^ s
+  String_map.values t.installable_internal_libs
 
 let external_scope t =
   { Scope.

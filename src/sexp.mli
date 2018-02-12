@@ -16,7 +16,8 @@ val load_many_or_ocaml_script : string -> sexps_or_ocaml_script
 module type Combinators = sig
   type 'a t
   val unit       : unit                      t
-  val string     : string                    t
+  val atom       : string                    t
+  val quoted_string : string                 t
   val int        : int                       t
   val float      : float                     t
   val bool       : bool                      t
@@ -25,9 +26,17 @@ module type Combinators = sig
   val list       : 'a t -> 'a list           t
   val array      : 'a t -> 'a array          t
   val option     : 'a t -> 'a option         t
-  val string_set : String_set.t              t
-  val string_map : 'a t -> 'a String_map.t   t
-  val string_hashtbl : 'a t -> (string, 'a) Hashtbl.t t
+
+  val atom_set   : String_set.t            t
+  (** [atom_set] is a conversion to/from a set of strings representing atoms. *)
+
+  val atom_map   : 'a t -> 'a String_map.t   t
+  (** [atom_map conv]: given a conversion [conv] to/from ['a], returns
+     a conversion to/from a map where the keys are atoms and the
+     values are of type ['a]. *)
+
+  val atom_hashtbl : 'a t -> (string, 'a) Hashtbl.t t
+  (** [atom_hashtbl conv] is similar to [atom_map] for hash tables. *)
 end
 
 module To_sexp : sig
@@ -44,6 +53,9 @@ module Of_sexp : sig
     | List of Loc.t * ast list
 
   include Combinators with type 'a t = Ast.t -> 'a
+
+  val string : Ast.t -> string
+  (** Convert and [Atom] or a [Quoted_string] to s string. *)
 
   val of_sexp_error  : Ast.t -> string -> _
   val of_sexp_errorf : Ast.t -> ('a, unit, string, 'b) format4 -> 'a

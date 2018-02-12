@@ -84,7 +84,7 @@ module Gen(P : Params) = struct
              \n\
              \nThis will become an error in the future."
             (Sexp.to_string (List [ Atom "modules_without_implementation"
-                                  ; Sexp.To_sexp.(list string) should_be_listed
+                                  ; Sexp.To_sexp.(list atom) should_be_listed
                                   ]))
         | Some loc ->
           Loc.warn loc

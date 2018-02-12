@@ -180,7 +180,7 @@ module Prog = struct
 
   let sexp_of_t = function
     | Ok s -> Path.sexp_of_t s
-    | Error (e : Not_found.t) -> Sexp.To_sexp.string e.program
+    | Error (e : Not_found.t) -> Sexp.To_sexp.atom e.program
 end
 
 module type Ast = Action_intf.Ast
@@ -192,7 +192,7 @@ module rec Ast : Ast = Ast
 module String_with_sexp = struct
   type t = string
   let t = Sexp.Of_sexp.string
-  let sexp_of_t = Sexp.To_sexp.string
+  let sexp_of_t = Sexp.To_sexp.atom
 end
 
 include Make_ast

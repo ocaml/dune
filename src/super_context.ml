@@ -111,7 +111,7 @@ let create
       (struct type t = Lib.t list end)
       (struct
         open Sexp.To_sexp
-        let t _dir l = list string (List.map l ~f:Lib.best_name)
+        let t _dir l = list atom (List.map l ~f:Lib.best_name)
       end)
       (struct
         open Sexp.Of_sexp
@@ -439,7 +439,7 @@ module Pkg_version = struct
 
   module V = Vfile_kind.Make(struct type t = string option end)
       (functor (C : Sexp.Combinators) -> struct
-        let t = C.option C.string
+        let t = C.option C.atom
       end)
 
   let spec sctx (p : Package.t) =
@@ -966,7 +966,7 @@ module PP = struct
     let add_alias fn build =
       Alias.add_action sctx.build_system alias build
         ~stamp:(List [ Atom "lint"
-                     ; Sexp.To_sexp.(option string) lib_name
+                     ; Sexp.To_sexp.(option atom) lib_name
                      ; Atom fn
                      ])
     in

@@ -195,7 +195,7 @@ module Unexpanded = struct
             Sexp.code_error
               "Ordered_set_lang.Unexpanded.expand"
               [ "included-file", Atom fn
-              ; "files", Sexp.To_sexp.(list string) (String_map.keys files_contents)
+              ; "files", Sexp.To_sexp.(list atom) (String_map.keys files_contents)
               ]
         in
         parse_general sexp ~f:(fun sexp ->

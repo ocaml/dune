@@ -42,6 +42,11 @@ val libs      : t -> Lib_db.t
 
 val expand_vars : t -> scope:Lib_db.Scope.t -> dir:Path.t -> String_with_vars.t -> string
 
+val prefix_rules
+  : t
+  -> (unit, unit) Build.t
+  -> f:(unit -> 'a)
+  -> 'a
 val add_rule
   :  t
   -> ?sandbox:bool

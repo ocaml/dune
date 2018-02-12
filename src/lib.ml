@@ -104,17 +104,18 @@ let ml_archives t ~mode ~ext_lib =
     let l =
       [Path.relative dir (lib.name ^ Mode.compiled_lib_ext mode)]
     in
-    match mode with
-    | Byte -> l
-    | Native -> Path.relative dir (lib.name ^ ext_lib) :: l
+    match mode, ext_lib with
+    | Byte, _
+    | Native, None -> l
+    | Native, Some ext_lib -> Path.relative dir (lib.name ^ ext_lib) :: l
 
 let archive_files ts ~mode ~ext_lib =
   List.concat_map ts ~f:(fun lib ->
-    ml_archives lib ~mode ~ext_lib @
+    ml_archives lib ~mode ~ext_lib:(Some ext_lib) @
     Option.to_list (stub_archives lib ~ext_lib))
 
 let jsoo_archives t =
-  ml_archives t ~mode:Mode.Byte ~ext_lib:".cma"
+  ml_archives t ~mode:Mode.Byte ~ext_lib:None
   |> List.map ~f:(Path.extend_basename ~suffix:".js")
 
 let jsoo_runtime_files ts =

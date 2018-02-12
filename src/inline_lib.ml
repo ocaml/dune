@@ -21,34 +21,39 @@ module Ppx_info = struct
   let need_runner t = t.uses_inline_test || t.uses_expect
 
   let of_lib ~scope (lib : Jbuild.Library.t) =
-    Jbuild.Preprocess_map.pps lib.buildable.preprocess
-    |> List.rev_map ~f:(fun pp -> Lib_dep.direct (Jbuild.Pp.to_string pp))
+    let user_ppx =
+      Jbuild.Preprocess_map.pps lib.buildable.preprocess
+      |> List.rev_map ~f:(fun pp -> Lib_dep.direct (Jbuild.Pp.to_string pp)) in
     (* we should early terminate once both uses_expect and uses_inline_test are
        true *)
-    |> Lib_db.Scope.fold_transitive_closure
-         scope
-         ~deep_traverse_externals:true
-         ~init:{ uses_expect = false
-               ; uses_inline_test = false
-               }
-         ~f:(fun (lib : Lib.t) acc ->
-           (* TODO replace once Lib.t is abstract *)
-           let is_name =
-             List.mem ~set: (
-               match lib with
-               | External p -> [Findlib.Package.name p]
-               | Internal (_, lib) ->
-                 begin match lib.public with
-                 | None -> [lib.name]
-                 | Some p -> [lib.name; p.name]
-                 end
-             ) in
-           { uses_expect
-             = acc.uses_expect || is_name "ppx_expect"
-           ; uses_inline_test
-             = acc.uses_inline_test || is_name "ppx_inline_test"
-           }
-         )
+    match
+      Lib_db.Scope.fold_transitive_closure
+        scope
+        user_ppx
+        ~deep_traverse_externals:true
+        ~init:{ uses_expect = false
+              ; uses_inline_test = false
+              }
+        ~f:(fun (lib : Lib.t) acc ->
+          (* TODO replace once Lib.t is abstract *)
+          let is_name =
+            List.mem ~set: (
+              match lib with
+              | External p -> [Findlib.Package.name p]
+              | Internal (_, lib) ->
+                begin match lib.public with
+                | None -> [lib.name]
+                | Some p -> [lib.name; p.name]
+                end
+            ) in
+          { uses_expect
+            = acc.uses_expect || is_name "ppx_expect"
+          ; uses_inline_test
+            = acc.uses_inline_test || is_name "ppx_inline_test"
+          }
+        ) with
+    | res -> Some res
+    | exception _ -> None
 end
 
 let setup_rules (config : Ppx_info.t) ~sctx ~dir ~(lib : Jbuild.Library.t)
@@ -119,7 +124,10 @@ let setup_rules (config : Ppx_info.t) ~sctx ~dir ~(lib : Jbuild.Library.t)
 
 let rule sctx ~(lib : Jbuild.Library.t) ~dir ~scope =
   let ppx_info = Ppx_info.of_lib ~scope lib in
-  if Ppx_info.need_runner ppx_info then
-    Some (setup_rules ppx_info ~sctx ~dir ~lib ~scope:scope.data)
-  else
-    None
+  match ppx_info with
+  | None -> None
+  | Some ppx_info ->
+    if Ppx_info.need_runner ppx_info then
+      Some (setup_rules ppx_info ~sctx ~dir ~lib ~scope:scope.data)
+    else
+      None

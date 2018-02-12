@@ -246,10 +246,16 @@ let find_scope = Scope.find_scope
 
 let local_public_libs t = t.local_public_libs
 
-module Local_closure = Top_closure.Make(String)(struct
+module Local_closure = Top_closure.Make(struct
+    type t = Path.t * string
+    let compare (p1, l1) (p2, l2) =
+      match String.compare l1 l2 with
+      | 0 -> Path.compare p1 p2
+      | x -> x
+  end)(struct
     type graph = t
     type t = Lib.Internal.t
-    let key ((_, lib) : t) = lib.name
+    let key ((dir, lib) : t) = (dir, lib.name)
     let deps ((dir, lib) : Lib.Internal.t) graph =
       let scope = find_scope graph ~dir in
       List.concat_map lib.buildable.libraries ~f:(fun dep ->

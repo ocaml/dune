@@ -318,3 +318,14 @@
      (progn
       (run ${exe:cram.exe} run.t)
       (diff? run.t run.t.corrected)))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/findlib)))
+  (action
+   (chdir test-cases/findlib
+    (setenv OCAMLPATH findlib-packages
+     (setenv JBUILDER ${bin:jbuilder}
+      (progn
+       (run ${exe:cram.exe} run.t)
+       (diff? run.t run.t.corrected))))))))

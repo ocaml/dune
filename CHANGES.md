@@ -30,6 +30,9 @@ next
 
 - Fix support for byte-code only architectures (#510, fixes #330)
 
+- Fix a regression in `external-lib-deps` introduced in 1.0+beta17
+  (#512, fixes #485)
+
 1.0+beta17 (01/02/2018)
 -----------------------
 

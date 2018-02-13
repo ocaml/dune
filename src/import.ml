@@ -588,5 +588,5 @@ module Fmt = struct
 end
 
 (* This is ugly *)
-let printer = ref prerr_endline
+let printer = ref (Printf.eprintf "%s%!")
 let print_to_console s = !printer s

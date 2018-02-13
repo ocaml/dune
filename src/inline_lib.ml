@@ -30,22 +30,11 @@ module Ppx_info = struct
       Lib_db.Scope.fold_transitive_closure
         scope
         user_ppx
-        ~deep_traverse_externals:true
         ~init:{ uses_expect = false
               ; uses_inline_test = false
               }
-        ~f:(fun (lib : Lib.t) acc ->
-          (* TODO replace once Lib.t is abstract *)
-          let is_name =
-            List.mem ~set: (
-              match lib with
-              | External p -> [Findlib.Package.name p]
-              | Internal (_, lib) ->
-                begin match lib.public with
-                | None -> [lib.name]
-                | Some p -> [lib.name; p.name]
-                end
-            ) in
+        ~f:(fun (lib : Lib.t) acc ~required_by:_ ->
+          let is_name name = Lib.exists_name lib ~f:((=) name) in
           { uses_expect
             = acc.uses_expect || is_name "ppx_expect"
           ; uses_inline_test

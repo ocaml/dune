@@ -52,10 +52,9 @@ module Scope : sig
 
   val fold_transitive_closure
     : t With_required_by.t
-    -> deep_traverse_externals:bool
     -> Jbuild.Lib_dep.t list
     -> init:'a
-    -> f:(Lib.t -> 'a -> 'a)
+    -> f:(Lib.t -> 'a -> required_by:With_required_by.Entry.t list -> 'a)
     -> 'a
 
   (** [all_ppx_runtime_deps_exn t deps] takes the transitive closure of [deps]

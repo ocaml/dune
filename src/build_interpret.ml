@@ -88,7 +88,7 @@ let static_deps t ~all_targets =
   loop (Build.repr t) { rule_deps = Pset.empty; action_deps = Pset.empty }
 
 let lib_deps =
-  let rec loop : type a b. (a, b) t -> Build.lib_deps option -> Build.lib_deps option
+  let rec loop : type a b. (a, b) t -> Build.lib_deps -> Build.lib_deps
     = fun t acc ->
       match t with
       | Arr _ -> acc
@@ -105,17 +105,13 @@ let lib_deps =
       | Dyn_paths t -> loop t acc
       | Contents _ -> acc
       | Lines_of _ -> acc
-      | Record_lib_deps deps ->
-        begin match acc with
-        | None -> Some deps
-        | Some acc -> Some (Build.merge_lib_deps deps acc)
-        end
+      | Record_lib_deps deps -> Build.merge_lib_deps deps acc
       | Fail _ -> acc
       | If_file_exists (_, state) ->
         loop (get_if_file_exists_exn state) acc
       | Memo m -> loop m.t acc
   in
-  fun t -> loop (Build.repr t) None
+  fun t -> loop (Build.repr t) String_map.empty
 
 let targets =
   let rec loop : type a b. (a, b) t -> Target.t list -> Target.t list = fun t acc ->

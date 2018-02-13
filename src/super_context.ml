@@ -303,7 +303,8 @@ module Libs = struct
     in
     let vrequires = vrequires t ~dir ~item in
     add_rule t
-      (Build.record_lib_deps ~kind:dep_kind (List.map virtual_deps ~f:Lib_dep.direct)
+      (Build.record_lib_deps ~kind:dep_kind
+         (List.map virtual_deps ~f:Lib_dep.direct)
        >>>
        Build.fanout
          (closure t ~scope ~dep_kind libraries)

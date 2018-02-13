@@ -1165,7 +1165,7 @@ module Ir_set = Set.Make(Internal_rule)
 
 let rules_for_files t paths =
   List.filter_map paths ~f:(fun path ->
-    if Path.is_in_build_dir path then load_dir t ~dir:path;
+    if Path.is_in_build_dir path then load_dir t ~dir:(Path.parent path);
     match Hashtbl.find t.files path with
     | None -> None
     | Some (File_spec.T { rule; _ }) -> Some rule)
@@ -1207,29 +1207,28 @@ let all_lib_deps t ~request =
   let targets = static_deps_of_request t request in
   List.fold_left (rules_for_targets t targets) ~init:Pmap.empty
     ~f:(fun acc (rule : Internal_rule.t) ->
-      let lib_deps =
-        match Build_interpret.lib_deps rule.build with
-        | None -> Pmap.empty
-        | Some deps -> Pmap.singleton rule.dir deps in
-      Pmap.merge acc lib_deps ~f:(fun _ a b ->
-        match a, b with
-        | None, None -> None
-        | Some a, None -> Some a
-        | None, Some b -> Some b
-        | Some a, Some b -> Some (Build.merge_lib_deps a b)))
+      let deps = Build_interpret.lib_deps rule.build in
+      if String_map.is_empty deps then
+        acc
+      else
+        let deps =
+          match Pmap.find rule.dir acc with
+          | None -> deps
+          | Some deps' -> Build.merge_lib_deps deps deps'
+        in
+        Pmap.add acc ~key:rule.dir ~data:deps)
 
 let all_lib_deps_by_context t ~request =
   let targets = static_deps_of_request t request in
-  rules_for_targets t targets
-  |> List.fold_left  ~init:[] ~f:(fun acc (rule : Internal_rule.t) ->
-    let lib_deps =
-        match Build_interpret.lib_deps rule.build with
-        | None -> Pmap.empty
-        | Some deps -> Pmap.singleton rule.dir deps in
-    Path.Map.fold lib_deps ~init:acc ~f:(fun ~key:path ~data:lib_deps acc ->
-      match Path.extract_build_context path with
+  let rules = rules_for_targets t targets in
+  List.fold_left rules ~init:[] ~f:(fun acc (rule : Internal_rule.t) ->
+    let deps = Build_interpret.lib_deps rule.build in
+    if String_map.is_empty deps then
+      acc
+    else
+      match Path.extract_build_context rule.dir with
       | None -> acc
-      | Some (context, _) -> (context, lib_deps) :: acc))
+      | Some (context, _) -> (context, deps) :: acc)
   |> String_map.of_alist_multi
   |> String_map.map ~f:(function
     | [] -> String_map.empty

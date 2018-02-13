@@ -74,19 +74,19 @@ let with_chdir t ~dir ~f =
   Sys.chdir dir;
   protectx () ~finally:(fun () -> Sys.chdir t.original_cwd) ~f
 
-let hide_status_line s ppf =
+let hide_status_line s =
   let len = String.length s in
-  if len > 0 then Format.fprintf ppf "\r%*s\r%!" len ""
+  if len > 0 then Printf.eprintf "\r%*s\r" len ""
 
-let show_status_line s ppf =
-  Format.pp_print_string ppf s;
-  Format.pp_print_flush ppf ()
+let show_status_line s =
+  prerr_string s
 
-let print t fmt =
-  let ppf = Format.err_formatter in
+let print t msg =
   let s = t.status_line in
-  hide_status_line s ppf;
-  Format.kfprintf (show_status_line s) ppf fmt
+  hide_status_line s;
+  prerr_string msg;
+  show_status_line s;
+  flush stderr
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
@@ -114,19 +114,22 @@ let rec go_rec t =
   >>= fun () ->
   let count = Running_jobs.count () in
   if count = 0 then begin
-    Format.eprintf "%t%!" (hide_status_line t.status_line);
+    hide_status_line t.status_line;
+    flush stderr;
     Fiber.return ()
   end else begin
     if t.display = Progress then begin
-      let ppf = Format.err_formatter in
       match t.gen_status_line () with
       | None ->
-        if t.status_line <> "" then
-          Format.eprintf "%t%!" (hide_status_line t.status_line)
+        if t.status_line <> "" then begin
+          hide_status_line t.status_line;
+          flush stderr
+        end
       | Some status_line ->
         let status_line = sprintf "%s (jobs: %u)" status_line count in
-        hide_status_line t.status_line ppf;
-        show_status_line   status_line ppf;
+        hide_status_line t.status_line;
+        show_status_line   status_line;
+        flush stderr;
         t.status_line <- status_line;
     end;
     let job, status = Running_jobs.wait () in
@@ -157,7 +160,7 @@ let go ?(log=Log.no_log) ?(config=Config.default)
     ; waiting_for_available_job = Queue.create ()
     }
   in
-  printer := { print = fun fmt -> print t fmt };
+  printer := print t;
   let fiber =
     Fiber.Var.set t_var t
       (Fiber.with_error_handler (fun () -> fiber) ~on_error:Report_error.report)

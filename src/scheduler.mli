@@ -33,4 +33,4 @@ val with_chdir : t -> dir:string -> f:(unit -> 'a) -> 'a
 val display : t -> Config.Display.t
 
 (** Print something to the terminal *)
-val print : t -> ('a, Format.formatter, unit, unit) format4 -> 'a
+val print : t -> string -> unit

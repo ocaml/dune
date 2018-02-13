@@ -32,7 +32,7 @@ let info_internal { ppf; display; _ } str =
     Format.pp_print_flush ppf ()
   in
   write ppf;
-  if display = Verbose then print_to_console "%t" write
+  if display = Verbose then Format.kasprintf print_to_console "%t" write
 
 let info t str =
   match t with

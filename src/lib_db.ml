@@ -44,16 +44,15 @@ type resolved_select =
   }
 
 let unique_library_name t (lib : Lib.t) =
-  match lib with
-  | External pkg -> FP.name pkg
-  | Internal (dir, lib) ->
-    match lib.public with
-    | Some x -> x.name
-    | None ->
-      let scope = internal_name_scope t ~dir in
-      match scope.scope.name with
-      | None -> lib.name ^ "@"
-      | Some s -> lib.name ^ "@" ^ s
+  match Lib.public_name lib with
+  | Some p -> p
+  | None ->
+    let dir = Option.value_exn (Lib.src_dir lib) in
+    let scope = internal_name_scope t ~dir in
+    let name = Lib.best_name lib in
+    match scope.scope.name with
+    | None -> name ^ "@"
+    | Some s -> name ^ "@" ^ s
 
 
 module Scope = struct
@@ -62,14 +61,22 @@ module Scope = struct
     ; lib_db : t
     }
 
+  let external_scope t =
+    { lib_db = t
+    ; scope =
+        { libs = String_map.empty
+        ; scope = Jbuild.Scope.empty
+        }
+    }
+
   let find_exn (t : t With_required_by.t) name =
     match String_map.find name t.data.scope.libs with
-    | Some l -> Lib.Internal l
+    | Some l -> Lib.internal l
     | None ->
       Hashtbl.find_or_add t.data.lib_db.by_public_name name
         ~f:(fun name ->
-          External (Findlib.find_exn t.data.lib_db.findlib name
-                      ~required_by:t.required_by))
+          Lib.external_ (Findlib.find_exn t.data.lib_db.findlib name
+                          ~required_by:t.required_by))
 
   let find t name =
     match find_exn t name with
@@ -80,15 +87,14 @@ module Scope = struct
     match String_map.find name t.data.scope.libs with
     | Some _ as some -> some
     | None ->
-      match Hashtbl.find t.data.lib_db.by_public_name name with
-      | Some (Internal x) -> Some x
-      | _ -> None
+      let open Option.Infix in
+      Hashtbl.find t.data.lib_db.by_public_name name >>= Lib.get_internal
 
   let lib_is_available (t : t With_required_by.t) name =
     match find_internal t name with
     | Some lib ->
       String_map.mem
-        (unique_library_name t.data.lib_db (Lib.Internal lib))
+        (unique_library_name t.data.lib_db (Lib.internal lib))
         t.data.lib_db.installable_internal_libs
     | None ->
       Findlib.available t.data.lib_db.findlib name ~required_by:t.required_by
@@ -131,14 +137,17 @@ module Scope = struct
           Loc.fail loc "No solution found for this select form"
         }
 
+  let interpret_lib_dep_exn t lib_dep =
+    match interpret_lib_dep t lib_dep with
+    | Inr fail -> fail.fail ()
+    | Inl r -> r
+
   let interpret_lib_deps t lib_deps =
     let libs, failures =
       List.partition_map lib_deps ~f:(interpret_lib_dep t)
     in
     let internals, externals =
-      List.partition_map (List.concat libs) ~f:(function
-        | Internal x -> Inl x
-        | External x -> Inr x)
+      List.partition_map (List.concat libs) ~f:Lib.to_either
     in
     (internals, externals,
      match failures with
@@ -186,41 +195,40 @@ module Scope = struct
     required_in_jbuild scope ~jbuild_dir:dir
 
   (* Fold the transitive closure, not necessarily in topological order *)
-  let fold_transitive_closure scope ~deep_traverse_externals lib_deps ~init ~f =
+  let fold_transitive_closure (scope : t With_required_by.t)
+        ~deep_traverse_externals lib_deps ~init ~f =
     let seen = ref String_set.empty in
     let rec loop scope acc lib_dep =
-      match interpret_lib_dep scope lib_dep with
-      | Inr fail -> fail.fail ()
-      | Inl libs -> List.fold_left libs ~init:acc ~f:process
+      interpret_lib_dep_exn scope lib_dep
+      |> List.fold_left ~init:acc ~f:process
     and process acc (lib : Lib.t) =
-      let unique_id =
-        match lib with
-        | External pkg -> FP.name pkg
-        | Internal (dir, lib) ->
-          match lib.public with
-          | Some p -> p.name
-          | None -> Path.to_string dir ^ "\000" ^ lib.name
-      in
+      let unique_id = Lib.unique_id lib in
       if String_set.mem unique_id !seen then
         acc
       else begin
         seen := String_set.add unique_id !seen;
         let acc = f lib acc in
-        match lib with
-        | Internal (dir, lib) ->
-          let scope = find_scope scope.With_required_by.data.lib_db ~dir in
-          List.fold_left lib.buildable.libraries ~init:acc ~f:(loop scope)
-        | External pkg ->
-          if deep_traverse_externals then
-            List.fold_left (FP.requires pkg) ~init:acc ~f:(fun acc pkg ->
-              process acc (External pkg))
-          else begin
-            seen :=
-              String_set.union !seen
-                (String_set.of_list
-                   (List.map (FP.requires pkg) ~f:FP.name));
-            acc
-          end
+        let requires = Lib.requires lib in
+        let scope =
+          match Lib.scope lib with
+          | `External ->
+            { With_required_by.
+              data = external_scope scope.data.lib_db
+            ; required_by = scope.required_by
+            }
+          | `Dir dir ->
+            find_scope scope.data.lib_db ~dir in
+        if deep_traverse_externals || Lib.is_local lib then (
+          List.fold_left requires ~init:acc ~f:(loop scope)
+        ) else (
+          seen := String_set.union !seen (
+            String_set.of_list (List.concat_map ~f:(fun lib_dep ->
+              interpret_lib_dep_exn scope lib_dep
+              |> List.map ~f:Lib.unique_id
+            ) requires)
+          );
+          acc
+        )
       end
     in
     List.fold_left lib_deps ~init ~f:(loop scope)
@@ -231,15 +239,16 @@ module Scope = struct
     fold_transitive_closure scope ~deep_traverse_externals lib_deps
       ~init:String_set.empty ~f:(fun lib acc ->
         let rt_deps =
-          match lib with
-          | Internal (dir, lib) ->
+          let ppx_runtime_libraries = Lib.ppx_runtime_libraries lib in
+          match Lib.src_dir lib with
+          | Some dir ->
             let scope = lazy (find_scope scope.data.lib_db ~dir) in
-            List.map lib.ppx_runtime_libraries ~f:(fun name ->
+            String_set.map ppx_runtime_libraries ~f:(fun name ->
               Lib.best_name (find_exn (Lazy.force scope) name))
-          | External pkg ->
-            List.map (FP.ppx_runtime_deps pkg) ~f:FP.name
+          | None ->
+            ppx_runtime_libraries
         in
-        String_set.union acc (String_set.of_list rt_deps))
+        String_set.union acc rt_deps)
 end
 
 let find_scope = Scope.find_scope
@@ -269,7 +278,7 @@ let top_sort_internals t ~internal_libraries =
   | Ok l -> l
   | Error cycle ->
     die "dependency cycle between libraries:\n   %s"
-      (List.map cycle ~f:(fun lib -> Lib.describe (Internal lib))
+      (List.map cycle ~f:(fun lib -> Lib.describe (Lib.internal lib))
        |> String.concat ~sep:"\n-> ")
 
 let compute_instalable_internal_libs t ~internal_libraries =
@@ -283,7 +292,8 @@ let compute_instalable_internal_libs t ~internal_libraries =
         { t with
           installable_internal_libs =
             String_map.add t.installable_internal_libs
-              ~key:(unique_library_name t (Internal (dir, lib))) ~data:(dir, lib)
+              ~key:(unique_library_name t (Lib.internal (dir, lib)))
+              ~data:(dir, lib)
         }
       else
         t)
@@ -323,27 +333,22 @@ let create findlib ~scopes ~root internal_libraries =
     scope.libs <- String_map.add scope.libs ~key:lib.Library.name ~data:internal;
     Option.iter lib.public ~f:(fun { name; _ } ->
       match Hashtbl.find t.by_public_name name with
-      | None
-      | Some (External _) ->
-        Hashtbl.add t.by_public_name ~key:name ~data:(Internal internal)
-      | Some (Internal dup) ->
-        let internal_path (path, _) = Path.relative path "jbuild" in
+      | None ->
+        Hashtbl.add t.by_public_name ~key:name ~data:(Lib.internal internal)
+      | Some lib ->
+        (* We only populated this table with internal libraries, who always have
+           source dir *)
+        let dup_path = Option.value_exn (Lib.src_dir lib) in
+        let internal_path d = Path.relative d "jbuild" in
         die "Libraries with identical public names %s defined in %a and %a."
-          name Path.pp (internal_path internal) Path.pp (internal_path dup)
+          name Path.pp (internal_path dir) Path.pp (internal_path dup_path)
     ));
   compute_instalable_internal_libs t ~internal_libraries
 
 let internal_libs_without_non_installable_optional_ones t =
   String_map.values t.installable_internal_libs
 
-let external_scope t =
-  { Scope.
-    lib_db = t
-  ; scope =
-      { libs = String_map.empty
-      ; scope = Jbuild.Scope.empty
-      }
-  }
+let external_scope = Scope.external_scope
 
 let anonymous_scope t =
   { Scope.

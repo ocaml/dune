@@ -64,16 +64,17 @@ let link_rule ~sctx ~dir ~runtime ~target =
   let ctx = SC.context sctx in
   let get_all ((libs,cm),_) =
     (* Special case for the stdlib because it is not referenced in the META *)
-    let stdlib = Lib.External (Findlib.stdlib_with_archives ctx.findlib) in
+    let stdlib = Lib.external_ (Findlib.stdlib_with_archives ctx.findlib) in
     let all_libs =
-      List.concat_map (stdlib :: libs) ~f:(function
-        | Lib.External pkg ->
-          List.map (Findlib.Package.archives pkg Byte) ~f:(fun fn ->
-            in_build_dir ~ctx [ Findlib.Package.name pkg
-                              ; sprintf "%s.js" (Path.basename fn)
-                              ])
-        | Lib.Internal (dir, lib) ->
-          [ Path.relative dir (sprintf "%s.cma.js" lib.name) ]
+      List.concat_map (stdlib :: libs) ~f:(fun (lib : Lib.t) ->
+        let jsoo_archives = Lib.jsoo_archives lib in
+        if Lib.is_local lib then (
+          jsoo_archives
+        ) else (
+          let lib_name = Option.value_exn (Lib.public_name lib) in
+          List.map ~f:(fun js ->
+            in_build_dir ~ctx [lib_name ; Path.basename js]) jsoo_archives
+        )
       )
     in
     let all_other_modules =

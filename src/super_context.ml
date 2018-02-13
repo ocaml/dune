@@ -262,7 +262,7 @@ module Libs = struct
          findlib_closure externals
            ~required_by:scope.required_by
            ~local_public_libs:(local_public_libs t.libs)
-         |> List.map ~f:(fun pkg -> Lib.External pkg)
+         |> List.map ~f:Lib.external_
        in
        (internals, List.concat (externals :: internal_deps)))
 
@@ -274,7 +274,7 @@ module Libs = struct
       ~dep_kind
     >>^ fun (internals, deps) ->
     Lib.remove_dups_preserve_order
-      (deps @ List.map internals ~f:(fun x -> Lib.Internal x))
+      (deps @ List.map internals ~f:Lib.internal)
 
   let closed_ppx_runtime_deps_of t ~scope ~dep_kind lib_deps =
     closure_generic t lib_deps
@@ -344,53 +344,59 @@ module Libs = struct
        >>>
        Build.store_vfile vruntime_deps)
 
-  let lib_files_alias ((dir, lib) : Lib.Internal.t) ~ext =
-    Alias.make (sprintf "lib-%s%s-all" lib.name ext) ~dir
+  let lib_files_alias ~dir ~name ~ext =
+    Alias.make (sprintf "lib-%s%s-all" name ext) ~dir
 
-  let setup_file_deps_alias t lib ~ext files =
-    add_alias_deps t (lib_files_alias lib ~ext) files
+  let setup_file_deps_alias t ((dir, lib) : Lib.Internal.t) ~ext files =
+    add_alias_deps t (lib_files_alias ~dir ~name:lib.name ~ext) files
 
-  let setup_file_deps_group_alias t lib ~exts =
-    setup_file_deps_alias t lib
+  let setup_file_deps_group_alias t ((dir, lib) : Lib.Internal.t) ~exts =
+    setup_file_deps_alias t (dir, lib)
       ~ext:(String.concat exts ~sep:"-and-")
-      (List.map exts ~f:(fun ext -> Alias.stamp_file (lib_files_alias lib ~ext)))
+      (List.map exts ~f:(fun ext ->
+         Alias.stamp_file (lib_files_alias ~dir ~name:lib.name ~ext)))
 
   let file_deps t ~ext =
     Build.dyn_paths (Build.arr (fun libs ->
       List.fold_left libs ~init:[] ~f:(fun acc (lib : Lib.t) ->
-        match lib with
-        | External pkg ->
+        match Lib.local lib with
+        | None ->
           Build_system.stamp_file_for_files_of t.build_system
-            ~dir:(Findlib.Package.dir pkg) ~ext :: acc
-        | Internal lib ->
-          Alias.stamp_file (lib_files_alias lib ~ext) :: acc)))
+            ~dir:(Lib.obj_dir lib) ~ext :: acc
+        | Some { Lib .src ; name } ->
+          Alias.stamp_file (lib_files_alias ~dir:src ~name ~ext) :: acc
+      )))
 
-  let static_file_deps ~ext lib =
-    Alias.dep (lib_files_alias lib ~ext)
+  let static_file_deps ~ext ((dir, lib) : Lib.Internal.t) =
+    Alias.dep (lib_files_alias ~dir ~name:lib.name ~ext)
 end
 
 module Doc = struct
   let root t = Path.relative t.context.Context.build_dir "_doc"
 
   let dir t lib =
-    let name = unique_library_name t (Lib.Internal lib) in
+    let name = unique_library_name t lib in
     Path.relative (root t) name
 
-  let alias t ((_, lib) as ilib) =
-    let doc_dir = dir t ilib in
-    Alias.make (sprintf "odoc-%s%s-all" lib.name ".odoc") ~dir:doc_dir
+  let alias = Alias.make ".doc-all"
 
   let deps t =
     Build.dyn_paths (Build.arr (
       List.fold_left ~init:[] ~f:(fun acc (lib : Lib.t) ->
-        match lib with
-        | External _ -> acc
-        | Internal lib -> (Alias.stamp_file (alias t lib)) :: acc
+        if Lib.is_local lib then (
+          Alias.stamp_file (alias ~dir:(dir t lib)) :: acc
+        ) else (
+          acc
+        )
       )))
+
+  let alias t lib = alias ~dir:(dir t (Lib.internal lib))
 
   let static_deps t lib = Alias.dep (alias t lib)
 
   let setup_deps t lib files = add_alias_deps t (alias t lib) files
+
+  let dir t lib = dir t (Lib.internal lib)
 end
 
 module Deps = struct
@@ -788,14 +794,7 @@ module PP = struct
         let is_driver name = name = driver || name = migrate_driver_main in
         let libs, drivers =
           List.partition_map libs ~f:(fun lib ->
-            if (match lib with
-              | External pkg -> is_driver (Findlib.Package.name pkg)
-              | Internal (_, lib) ->
-                is_driver lib.name ||
-                match lib.public with
-                | None -> false
-                | Some { name; _ } -> is_driver name)
-            then
+            if Lib.exists_name lib ~f:is_driver then
               Inr lib
             else
               Inl lib)

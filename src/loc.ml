@@ -59,4 +59,5 @@ let print ppf { start; stop } =
     start.pos_fname start.pos_lnum start_c stop_c
 
 let warn t fmt =
-  print_to_console ("%a@{<warning>Warning@}: " ^^ fmt ^^ "@.") print t
+  Errors.kerrf ~f:print_to_console
+    ("%a@{<warning>Warning@}: " ^^ fmt ^^ "@.") print t

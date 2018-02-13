@@ -129,7 +129,5 @@ let report exn =
     let hash = Digest.string s in
     if not (String_set.mem hash !reported) then begin
       reported := String_set.add hash !reported;
-      prerr_string s;
-      flush stderr
+      print_to_console s
     end
-

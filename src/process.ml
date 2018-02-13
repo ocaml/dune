@@ -269,7 +269,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose
     ~output:output
     ~exit_status:status;
   let _, progname, _ = Fancy.split_prog prog in
-  let print fmt = Scheduler.print scheduler fmt in
+  let print fmt = Errors.kerrf ~f:(Scheduler.print scheduler) fmt in
   match status with
   | WEXITED n when code_is_ok ok_codes n ->
     if display = Verbose then begin

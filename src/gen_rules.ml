@@ -999,6 +999,7 @@ module Gen(P : Params) = struct
     in
     let { Mode.Dict. byte; native } = lib.modes in
     let if_ cond l = if cond then l else [] in
+    let native = native && Option.is_some ctx.ocamlopt in
     let files =
       let modules = module_names_of_lib lib ~dir in
       List.concat
@@ -1015,19 +1016,15 @@ module Gen(P : Params) = struct
         ; if_ byte [ lib_archive ~dir lib ~ext:".cma" ]
         ; if_ (Library.has_stubs lib) [ stubs_archive ~dir lib ]
         ; if_ native
-            (match ctx.ocamlopt with
-             | None -> []
-             | Some _ ->
-               let files =
-                 [ lib_archive ~dir lib ~ext:".cmxa"
-                 ; lib_archive ~dir lib ~ext:ctx.ext_lib
-                 ]
-               in
-               if ctx.natdynlink_supported && lib.dynlink then
-                 files @ [ lib_archive ~dir lib ~ext:".cmxs" ]
-               else
-                 files
-            )
+            (let files =
+               [ lib_archive ~dir lib ~ext:".cmxa"
+               ; lib_archive ~dir lib ~ext:ctx.ext_lib
+               ]
+             in
+             if ctx.natdynlink_supported && lib.dynlink then
+               files @ [ lib_archive ~dir lib ~ext:".cmxs" ]
+             else
+               files)
         ; List.map lib.buildable.js_of_ocaml.javascript_files ~f:(Path.relative dir)
         ; List.map lib.install_c_headers ~f:(fun fn ->
             Path.relative dir (fn ^ ".h"))

@@ -28,6 +28,8 @@ next
 
 - Better support for mli/rei only modules (#490)
 
+- Fix support for byte-code only architectures (#510, fixes #330)
+
 1.0+beta17 (01/02/2018)
 -----------------------
 

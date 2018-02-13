@@ -44,8 +44,16 @@ val describe : t -> string
 
 val remove_dups_preserve_order : t list -> t list
 
-val ppx_runtime_libraries : t -> String_set.t
-val requires : t -> Jbuild.Lib_deps.t
+val ppx_runtime_libraries
+  :  t
+  -> required_by:With_required_by.Entry.t list
+  -> String_set.t
+
+val requires
+  :  t
+  -> required_by:With_required_by.Entry.t list
+  -> Jbuild.Lib_deps.t
+
 val scope : t -> [`Dir of Path.t | `External]
 
 val public_name : t -> string option

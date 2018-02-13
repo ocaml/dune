@@ -2,6 +2,13 @@ open Import
 
 let map_fname = ref (fun x -> x)
 
+let pp_required_by ppf required_by =
+  Format.fprintf ppf "@[<v>%a@]@\n"
+    (Format.pp_print_list
+       (fun ppf x ->
+          Format.fprintf ppf "-> required by %a" With_required_by.Entry.pp x))
+    required_by
+
 (* Return [true] if the backtrace was printed *)
 let report_with_backtrace ppf exn ~backtrace =
   match exn with
@@ -28,33 +35,24 @@ let report_with_backtrace ppf exn ~backtrace =
     false
   | Findlib.Findlib (Package_not_available { package; required_by; reason }) ->
     Format.fprintf ppf
-      "@{<error>Error@}: External library %S %s.\n" package
+      "@{<error>Error@}: External library %S %s.@\n" package
       (match reason with
        | Not_found -> "not found"
-       | Hidden    -> "is hidden"
-       | _         -> "is unavailable");
-    List.iter required_by ~f:(Format.fprintf ppf "-> required by %a\n"
-                                With_required_by.Entry.pp);
+       | Hidden    -> "is hidden");
+    pp_required_by ppf required_by;
     begin match reason with
     | Not_found -> ()
     | Hidden ->
       Format.fprintf ppf
         "External library %S is hidden because its 'exist_if' \
          clause is not satisfied.\n" package
-    | Dependencies_unavailable deps ->
-      Format.fprintf ppf
-        "External library %S is not available because it depends on the \
-         following libraries that are not available:\n" package;
-      let deps = Findlib.Package_not_available.top_closure deps in
-      let longest = List.longest_map deps ~f:(fun na -> na.package) in
-      List.iter deps ~f:(fun (na : Findlib.Package_not_available.t) ->
-        Format.fprintf ppf "- %-*s -> %a@\n" longest na.package
-          Findlib.Package_not_available.explain na.reason)
     end;
-    Format.fprintf ppf
-      "Hint: try: %s\n"
-      (List.map !Clflags.external_lib_deps_hint ~f:quote_for_shell
-       |> String.concat ~sep:" ");
+    (match !Clflags.external_lib_deps_hint with
+     | [] -> (* during bootstrap *) ()
+     | l ->
+       Format.fprintf ppf
+         "Hint: try: %s\n"
+         (List.map l ~f:quote_for_shell |> String.concat ~sep:" "));
     false
   | Findlib.Findlib
       (External_dep_conflicts_with_local_lib
@@ -63,16 +61,23 @@ let report_with_backtrace ppf exn ~backtrace =
       "@{<error>Error@}: Conflict between internal and external version of library %S:\n\
        - it is defined locally in %s\n\
        - it is required by external library %a\n\
-       %s\n\
+      \  %a\
        This cannot work.\n"
       package
       (Utils.describe_target
          (Utils.jbuild_file_in ~dir:(Path.drop_optional_build_context defined_locally_in)))
       With_required_by.Entry.pp required_by
-      (required_locally_in
-       |> List.map ~f:(fun x -> "  -> required by " ^
-                                With_required_by.Entry.to_string x)
-       |> String.concat ~sep:"\n");
+      pp_required_by required_locally_in;
+    false
+  | Findlib.Findlib (Dependency_cycle { cycle; required_by }) ->
+    Format.fprintf ppf
+      "@{<error>Error@}: \
+       Dependency cycle detected between external findlib packages:\n\
+       @[<v>%a@]\n\
+       Required by:\n\
+       %a"
+      (Format.pp_print_list (fun ppf -> Format.fprintf ppf "-> %s")) cycle
+      pp_required_by required_by;
     false
   | Code_error msg ->
     let bt = Printexc.raw_backtrace_to_string backtrace in

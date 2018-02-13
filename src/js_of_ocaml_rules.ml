@@ -114,8 +114,8 @@ let setup_separate_compilation_rules sctx components =
     | [pkg] ->
       let ctx = SC.context sctx in
       match Findlib.find ctx.findlib pkg ~required_by:[] with
-      | None -> ()
-      | Some pkg ->
+      | Error _ -> ()
+      | Ok pkg ->
         let pkg =
           (* Special case for the stdlib because it is not referenced in the META *)
           match Findlib.Package.name pkg with

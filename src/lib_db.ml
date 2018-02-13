@@ -97,7 +97,7 @@ module Scope = struct
         (unique_library_name t.data.lib_db (Lib.internal lib))
         t.data.lib_db.installable_internal_libs
     | None ->
-      Findlib.available t.data.lib_db.findlib name ~required_by:t.required_by
+      Findlib.available t.data.lib_db.findlib name
 
   let choice_is_possible t { Lib_dep.required; forbidden; _ } =
     String_set.for_all required  ~f:(fun name ->      lib_is_available t name ) &&
@@ -195,51 +195,44 @@ module Scope = struct
     required_in_jbuild scope ~jbuild_dir:dir
 
   (* Fold the transitive closure, not necessarily in topological order *)
-  let fold_transitive_closure (scope : t With_required_by.t)
-        ~deep_traverse_externals lib_deps ~init ~f =
+  let fold_transitive_closure (scope : t With_required_by.t) lib_deps ~init ~f =
     let seen = ref String_set.empty in
-    let rec loop scope acc lib_dep =
+    let rec loop scope acc lib_dep ~required_by =
       interpret_lib_dep_exn scope lib_dep
-      |> List.fold_left ~init:acc ~f:process
-    and process acc (lib : Lib.t) =
+      |> List.fold_left ~init:acc ~f:(process ~required_by)
+    and process acc (lib : Lib.t) ~required_by =
       let unique_id = Lib.unique_id lib in
       if String_set.mem unique_id !seen then
         acc
       else begin
         seen := String_set.add unique_id !seen;
-        let acc = f lib acc in
-        let requires = Lib.requires lib in
+        let acc = f lib acc ~required_by in
+        let required_by =
+          With_required_by.Entry.Library (Lib.best_name lib) :: required_by
+        in
+        let requires = Lib.requires lib ~required_by in
         let scope =
           match Lib.scope lib with
           | `External ->
             { With_required_by.
               data = external_scope scope.data.lib_db
-            ; required_by = scope.required_by
+            ; required_by
             }
           | `Dir dir ->
-            find_scope scope.data.lib_db ~dir in
-        if deep_traverse_externals || Lib.is_local lib then (
-          List.fold_left requires ~init:acc ~f:(loop scope)
-        ) else (
-          seen := String_set.union !seen (
-            String_set.of_list (List.concat_map ~f:(fun lib_dep ->
-              interpret_lib_dep_exn scope lib_dep
-              |> List.map ~f:Lib.unique_id
-            ) requires)
-          );
-          acc
-        )
+            find_scope scope.data.lib_db ~dir
+        in
+        List.fold_left requires ~init:acc ~f:(loop scope ~required_by)
       end
     in
-    List.fold_left lib_deps ~init ~f:(loop scope)
+    List.fold_left lib_deps ~init ~f:(loop scope ~required_by:scope.required_by)
 
   let all_ppx_runtime_deps_exn scope lib_deps =
-    (* The [ppx_runtime_deps] of [Findlib.package] already holds the transitive closure. *)
-    let deep_traverse_externals = false in
-    fold_transitive_closure scope ~deep_traverse_externals lib_deps
-      ~init:String_set.empty ~f:(fun lib acc ->
+    fold_transitive_closure scope lib_deps
+      ~init:String_set.empty ~f:(fun lib acc ~required_by ->
         let rt_deps =
-          let ppx_runtime_libraries = Lib.ppx_runtime_libraries lib in
+          let ppx_runtime_libraries =
+            Lib.ppx_runtime_libraries lib ~required_by
+          in
           match Lib.src_dir lib with
           | Some dir ->
             let scope = lazy (find_scope scope.data.lib_db ~dir) in

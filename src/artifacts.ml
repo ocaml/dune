@@ -91,13 +91,8 @@ let file_of_lib t ~from ~lib ~file =
       Findlib.find t.context.findlib lib
         ~required_by:[With_required_by.Entry.jbuild_file_in ~dir:from]
     with
-    | Some pkg ->
+    | Ok pkg ->
       Ok (Path.relative (Findlib.Package.dir pkg) file)
-    | None ->
-      Error
-        { fail = fun () ->
-            ignore (Findlib.find_exn t.context.findlib lib
-                      ~required_by:[With_required_by.Entry.jbuild_file_in ~dir:from]
-                    : Findlib.Package.t);
-            assert false
-        }
+    | Error na ->
+      Error { fail = fun () ->
+        raise (Findlib.Findlib (Package_not_available na)) }

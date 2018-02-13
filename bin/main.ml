@@ -758,7 +758,7 @@ let external_lib_deps =
                in
                let missing =
                  String_map.filter externals ~f:(fun name _ ->
-                   not (Findlib.available context.findlib name ~required_by:[]))
+                   not (Findlib.available context.findlib name))
                in
                if String_map.is_empty missing then
                  acc

@@ -12,7 +12,7 @@ module Entry = struct
   let to_string = function
     | Path p -> Utils.describe_target p
     | Alias p -> "alias " ^ Utils.describe_target p
-    | Library s -> sprintf "%S" s
+    | Library s -> sprintf "library %S" s
     | Preprocess l -> Sexp.to_string (List [Atom "pps"; Sexp.To_sexp.(list string) l])
 
   let pp ppf x =

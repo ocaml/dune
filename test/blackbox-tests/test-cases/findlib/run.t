@@ -8,6 +8,6 @@ Reproduction case for #484. The error should point to src/jbuild
 
   $ $JBUILDER build --root . -j1 --display quiet @install
   Error: External library "a" not found.
-  -> required by test/jbuild
+  -> required by src/jbuild
   Hint: try: jbuilder external-lib-deps --missing --root . @install
   [1]

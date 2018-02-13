@@ -141,35 +141,6 @@ module Config = struct
     Vars.get vars var preds
 end
 
-module Package = struct
-  type t =
-    { name             : string
-    ; dir              : Path.t
-    ; version          : string
-    ; description      : string
-    ; archives         : Path.t list Mode.Dict.t
-    ; plugins          : Path.t list Mode.Dict.t
-    ; jsoo_runtime     : string list
-    ; requires         : t list
-    ; ppx_runtime_deps : t list
-    }
-
-  let name        t = t.name
-  let dir         t = t.dir
-  let version     t = t.version
-  let description t = t.description
-
-  let archives t mode = Mode.Dict.get t.archives mode
-  let plugins  t mode = Mode.Dict.get t.plugins  mode
-
-  let jsoo_runtime t = t.jsoo_runtime
-
-  let requires         t = t.requires
-  let ppx_runtime_deps t = t.ppx_runtime_deps
-end
-
-open Package
-
 module Package_not_available = struct
   type t =
     { package     : string
@@ -180,42 +151,6 @@ module Package_not_available = struct
   and reason =
     | Not_found
     | Hidden
-    | Dependencies_unavailable of t list
-
-  module Closure =
-    Top_closure.Make
-      (String)
-      (struct
-        type graph = unit
-        type nonrec t = t
-        let key t = t.package
-        let deps t () =
-          match t.reason with
-          | Not_found | Hidden -> []
-          | Dependencies_unavailable l -> l
-      end)
-
-  let all_names ts =
-    let rec loop acc ts =
-      List.fold_left ts ~init:acc ~f:(fun acc t ->
-        if String_set.mem t.package acc then
-          acc
-        else
-          let acc = String_set.add t.package acc in
-          match t.reason with
-          | Not_found | Hidden -> acc
-          | Dependencies_unavailable ts -> loop acc ts)
-    in
-    loop String_set.empty ts |> String_set.elements
-
-  let top_closure ts =
-    match Closure.top_closure () ts with
-    | Ok ts   -> ts
-    | Error _ ->
-      code_errorf "Findlib.Package_not_available.top_sort got a cycle:\n%s"
-        (all_names ts
-         |> List.map ~f:(sprintf "- %s")
-         |> String.concat ~sep:"\n")
 
   let explain ppf reason =
     match reason with
@@ -223,46 +158,6 @@ module Package_not_available = struct
       Format.fprintf ppf "not found"
     | Hidden ->
       Format.fprintf ppf "hidden (unsatisfied 'exist_if')"
-    | Dependencies_unavailable deps ->
-      Format.fprintf ppf
-        "@[<2>unavailable dependencies:@ %t@]"
-        (fun ppf ->
-           match deps with
-           | [] -> ()
-           | t :: rest ->
-             Format.fprintf ppf "%s" t.package;
-             List.iter rest ~f:(fun t ->
-               Format.fprintf ppf ",@ %s" t.package))
-end
-
-type present_or_not_available =
-  | Present       of Package.t
-  | Not_available of Package_not_available.t
-
-type t =
-  { stdlib_dir    : Path.t
-  ; path          : Path.t list
-  ; builtins      : Meta.t String_map.t
-  ; packages      : (string, present_or_not_available) Hashtbl.t
-  }
-
-let path t = t.path
-
-let create ~stdlib_dir ~path =
-  { stdlib_dir
-  ; path
-  ; builtins      = Meta.builtins ~stdlib_dir
-  ; packages      = Hashtbl.create 1024
-  }
-
-module Pkg_step1 = struct
-  type t =
-    { package          : Package.t
-    ; requires         : string list
-    ; ppx_runtime_deps : string list
-    ; exists           : bool
-    ; required_by      : With_required_by.Entry.t list
-    }
 end
 
 module External_dep_conflicts_with_local_lib = struct
@@ -274,13 +169,73 @@ module External_dep_conflicts_with_local_lib = struct
     }
 end
 
+module Dependency_cycle = struct
+  type t =
+    { cycle       : string list
+    ; required_by : With_required_by.Entry.t list
+    }
+end
+
 type error =
-  | Package_not_available of Package_not_available.t
-  | External_dep_conflicts_with_local_lib of External_dep_conflicts_with_local_lib.t
+  | Package_not_available
+    of Package_not_available.t
+  | External_dep_conflicts_with_local_lib
+    of External_dep_conflicts_with_local_lib.t
+  | Dependency_cycle
+    of Dependency_cycle.t
 
 exception Findlib of error
 
-let parse_package t ~name ~parent_dir ~vars ~required_by =
+type t =
+  { stdlib_dir    : Path.t
+  ; path          : Path.t list
+  ; builtins      : Meta.t String_map.t
+  ; packages      : (string, package or_not_available) Hashtbl.t
+  (* Cache the result of [closure]. A key is the list of package
+     unique identifiers. *)
+  ; closure_cache : (int list, (package list, error) result) Hashtbl.t
+  }
+
+and package =
+  { name             : string
+  ; unique_id        : int
+  ; dir              : Path.t
+  ; version          : string
+  ; description      : string
+  ; archives         : Path.t list Mode.Dict.t
+  ; plugins          : Path.t list Mode.Dict.t
+  ; jsoo_runtime     : string list
+  ; requires         : package list or_not_available Lazy.t
+  ; ppx_runtime_deps : package list or_not_available Lazy.t
+  ; db               : t
+  }
+
+and 'a or_not_available = ('a, Package_not_available.t) result
+
+let path t = t.path
+
+let create ~stdlib_dir ~path =
+  { stdlib_dir
+  ; path
+  ; builtins      = Meta.builtins ~stdlib_dir
+  ; packages      = Hashtbl.create 1024
+  ; closure_cache = Hashtbl.create 1024
+  }
+
+let root_package_name s =
+  match String.index s '.' with
+  | None -> s
+  | Some i -> String.sub s ~pos:0 ~len:i
+
+let gen_package_unique_id =
+  let next = ref 0 in
+  fun () ->
+    let n = !next in
+    next := n + 1;
+    n
+
+(* Parse a single package from a META file *)
+let rec parse_package t ~name ~parent_dir ~vars =
   let pkg_dir = Vars.get vars "directory" [] in
   let dir =
     if pkg_dir = "" then
@@ -298,273 +253,228 @@ let parse_package t ~name ~parent_dir ~vars ~required_by =
       List.map (Vars.get_words vars var (Mode.findlib_predicate mode :: preds))
         ~f:(Path.relative dir))
   in
-  let jsoo_runtime = Vars.get_words vars "jsoo_runtime" [] in
-  let preds = ["ppx_driver"; "mt"; "mt_posix"] in
-  let pkg =
-    { name
-    ; dir
-    ; version     = Vars.get vars "version" []
-    ; description = Vars.get vars "description" []
-    ; archives    = archives "archive" preds
-    ; jsoo_runtime
-    ; plugins     = Mode.Dict.map2 ~f:(@)
-                       (archives "archive" ("plugin" :: preds))
-                       (archives "plugin" preds)
-    ; requires    = []
-    ; ppx_runtime_deps = []
-    }
-  in
   let exists_if = Vars.get_words vars "exists_if" [] in
   let exists =
     List.for_all exists_if ~f:(fun fn ->
       Path.exists (Path.relative dir fn))
   in
-  { Pkg_step1.
-    package          = pkg
-  ; requires         = Vars.get_words vars "requires"         preds
-  ; ppx_runtime_deps = Vars.get_words vars "ppx_runtime_deps" preds
-  ; exists           = exists
-  ; required_by
-  }
-
-let parse_meta t ~dir ~required_by (meta : Meta.t) =
-  let rec loop ~dir ~full_name ~acc (meta : Meta.Simplified.t) =
-    let vars = String_map.map meta.vars ~f:Rules.of_meta_rules in
-    let pkg = parse_package t ~name:full_name ~parent_dir:dir ~vars ~required_by in
-    let dir = pkg.package.dir in
-    List.fold_left meta.subs ~init:(pkg :: acc) ~f:(fun acc (meta : Meta.Simplified.t) ->
-      loop ~dir ~full_name:(sprintf "%s.%s" full_name meta.name) ~acc meta)
-  in
-  loop ~dir ~full_name:meta.name (Meta.simplify meta) ~acc:[]
-
-let root_package_name s =
-  match String.index s '.' with
-  | None -> s
-  | Some i -> String.sub s ~pos:0 ~len:i
-
-let rec load_meta_rec t ~fq_name ~packages ~required_by =
-  let root_name = root_package_name fq_name in
-  if String_map.mem root_name packages ||
-     Hashtbl.mem t.packages root_name then
-    packages
+  (dir,
+   if exists then
+     let jsoo_runtime = Vars.get_words vars "jsoo_runtime" [] in
+     let preds = ["ppx_driver"; "mt"; "mt_posix"] in
+     let requires         = Vars.get_words vars "requires"         preds in
+     let ppx_runtime_deps = Vars.get_words vars "ppx_runtime_deps" preds in
+     Ok
+      { name
+      ; dir
+      ; unique_id   = gen_package_unique_id ()
+      ; version     = Vars.get vars "version" []
+      ; description = Vars.get vars "description" []
+      ; archives    = archives "archive" preds
+      ; jsoo_runtime
+      ; plugins     = Mode.Dict.map2 ~f:(@)
+                        (archives "archive" ("plugin" :: preds))
+                        (archives "plugin" preds)
+      ; requires         = lazy (resolve_deps t requires)
+      ; ppx_runtime_deps = lazy (resolve_deps t ppx_runtime_deps)
+      ; db = t
+      }
   else
-    (* Search for a <package>/META file in the findlib search path *)
-    let rec loop dirs : (Path.t * Meta.t) option =
-      match dirs with
-      | dir :: dirs ->
-        let sub_dir = Path.relative dir root_name in
-        let fn = Path.relative sub_dir "META" in
+    Error
+      { Package_not_available.
+        package     = name
+      ; reason      = Hidden
+      ; required_by = []
+      })
+
+(* Parse all the packages defined in a META file and add them to
+   [t.packages] *)
+and parse_and_acknowledge_meta t ~dir (meta : Meta.t) =
+  let rec loop ~dir ~full_name (meta : Meta.Simplified.t) =
+    let vars = String_map.map meta.vars ~f:Rules.of_meta_rules in
+    let dir, pkg = parse_package t ~name:full_name ~parent_dir:dir ~vars in
+    Hashtbl.add t.packages ~key:full_name ~data:pkg;
+    List.iter meta.subs ~f:(fun (meta : Meta.Simplified.t) ->
+      loop ~dir ~full_name:(sprintf "%s.%s" full_name meta.name) meta)
+  in
+  loop ~dir ~full_name:meta.name (Meta.simplify meta)
+
+(* Search for a <package>/META file in the findlib search path, parse
+   it and add its contents to [t.packages] *)
+and find_and_acknowledge_meta t ~fq_name =
+  let root_name = root_package_name fq_name in
+  let rec loop dirs : (Path.t * Meta.t) option =
+    match dirs with
+    | dir :: dirs ->
+      let sub_dir = Path.relative dir root_name in
+      let fn = Path.relative sub_dir "META" in
+      if Path.exists fn then
+        Some (sub_dir,
+              { name    = root_name
+              ; entries = Meta.load (Path.to_string fn)
+              })
+      else
+        (* Alternative layout *)
+        let fn = Path.relative dir ("META." ^ root_name) in
         if Path.exists fn then
-          Some (sub_dir,
+          Some (dir,
                 { name    = root_name
                 ; entries = Meta.load (Path.to_string fn)
                 })
         else
-          (* Alternative layout *)
-          let fn = Path.relative dir ("META." ^ root_name) in
-          if Path.exists fn then
-            Some (dir,
-                  { name    = root_name
-                  ; entries = Meta.load (Path.to_string fn)
-                  })
-          else
-            loop dirs
-      | [] ->
-        match String_map.find root_name t.builtins with
-        | Some meta -> Some (t.stdlib_dir, meta)
-        | None ->
-          let required_by =
-            if root_name = fq_name then
-              required_by
-            else
-              With_required_by.Entry.Library fq_name :: required_by
-          in
-          Hashtbl.add t.packages ~key:root_name
-            ~data:(Not_available { package = root_name
-                                 ; required_by
-                                 ; reason = Not_found
-                                 });
-          None
-    in
-    match loop t.path with
-    | None -> packages
-    | Some (dir, meta) ->
-      let new_packages = parse_meta t ~dir ~required_by meta in
-      let packages =
-        List.fold_left new_packages ~init:packages ~f:(fun acc (pkg : Pkg_step1.t) ->
-          String_map.add acc ~key:pkg.package.name ~data:pkg)
-      in
-      let deps =
-        List.fold_left new_packages ~init:String_map.empty
-          ~f:(fun acc (pkg : Pkg_step1.t) ->
-            if pkg.exists then
-              let add_deps acc deps =
-                List.fold_left deps ~init:acc ~f:(fun acc dep ->
-                  String_map.add acc ~key:dep ~data:pkg.package.name)
-              in
-              add_deps (add_deps acc pkg.requires) pkg.ppx_runtime_deps
-            else
-              acc)
-      in
-      String_map.fold deps ~init:packages ~f:(fun ~key:dep ~data:package packages ->
-        load_meta_rec t ~fq_name:dep ~packages
-          ~required_by:(With_required_by.Entry.Library package :: required_by))
+          loop dirs
+    | [] ->
+      match String_map.find root_name t.builtins with
+      | Some meta -> Some (t.stdlib_dir, meta)
+      | None -> None
+  in
+  match loop t.path with
+  | None ->
+    Hashtbl.add t.packages ~key:root_name
+      ~data:(Error { package     = root_name
+                   ; reason      = Not_found
+                   ; required_by = []
+                   })
+  | Some (dir, meta) -> parse_and_acknowledge_meta t meta ~dir
 
-module Local_closure =
+and find_internal t name =
+  match Hashtbl.find t.packages name with
+  | Some x -> x
+  | None ->
+    find_and_acknowledge_meta t ~fq_name:name;
+    match Hashtbl.find t.packages name with
+    | Some x -> x
+    | None ->
+      let res : _ or_not_available =
+        Error
+          { package     = name
+          ; required_by = []
+          ; reason      = Not_found
+          }
+      in
+      Hashtbl.add t.packages ~key:name ~data:res;
+      res
+
+and resolve_deps t names =
+  let rec loop acc = function
+    | [] -> Ok (List.rev acc)
+    | name :: names ->
+      match find_internal t name with
+      | Ok x -> loop (x :: acc) names
+      | Error _ as e -> e
+  in
+  loop [] names
+
+let find t ~required_by name =
+  match find_internal t name with
+  | Ok _ as res -> res
+  | Error (na : Package_not_available.t) ->
+    Error { na with required_by }
+
+let find_exn t ~required_by name =
+  match find t ~required_by name with
+  | Ok    x -> x
+  | Error e -> raise (Findlib (Package_not_available e))
+
+let available t name =
+  match find_internal t name with
+  | Ok    _ -> true
+  | Error _ -> false
+
+module Package = struct
+  type t = package
+
+  let name        t = t.name
+  let dir         t = t.dir
+  let version     t = t.version
+  let description t = t.description
+
+  let archives t mode = Mode.Dict.get t.archives mode
+  let plugins  t mode = Mode.Dict.get t.plugins  mode
+
+  let jsoo_runtime t = t.jsoo_runtime
+
+  let deps_exn (deps : _ or_not_available Lazy.t) ~required_by =
+    match Lazy.force deps with
+    | Ok x -> x
+    | Error na ->
+      raise (Findlib (Package_not_available { na with required_by }))
+
+  let requires         t ~required_by = deps_exn t.requires         ~required_by
+  let ppx_runtime_deps t ~required_by = deps_exn t.ppx_runtime_deps ~required_by
+end
+
+module Closure =
   Top_closure.Make
     (String)
     (struct
-      type graph = Pkg_step1.t String_map.t
-      type t = Pkg_step1.t
-      let key (t : t) = t.package.name
-      let deps (t : t) packages =
-        List.filter_map t.requires ~f:(fun name ->
-          String_map.find name packages) @
-        List.filter_map t.ppx_runtime_deps ~f:(fun name ->
-          String_map.find name packages)
+      type graph = unit
+      type t = Package.t * With_required_by.Entry.t list
+      let key (pkg, _) = pkg.name
+      let deps (pkg, required_by) () =
+        let required_by =
+          With_required_by.Entry.Library pkg.name :: required_by
+        in
+        List.map (Package.requires pkg ~required_by)
+          ~f:(fun x -> (x, required_by))
     end)
 
-let remove_dups_preserve_order pkgs =
-  let rec loop seen pkgs acc =
-    match pkgs with
-    | [] -> List.rev acc
-    | pkg :: pkgs ->
-      if String_set.mem pkg.name seen then
-        loop seen pkgs acc
-      else
-        loop (String_set.add pkg.name seen) pkgs (pkg :: acc)
-  in
-  loop String_set.empty pkgs []
-;;
-
-let load_meta t ~fq_name ~required_by =
-  let packages = load_meta_rec t ~fq_name ~packages:String_map.empty ~required_by in
-  match Local_closure.top_closure packages (String_map.values packages) with
-  | Error cycle ->
-    die "dependency cycle detected between external findlib packages:\n   %s"
-      (List.map cycle ~f:(fun (pkg : Pkg_step1.t) -> pkg.package.name)
-       |> String.concat ~sep:"\n-> ")
-  | Ok ordering ->
-    List.iter ordering ~f:(fun (pkg : Pkg_step1.t) ->
-      let status =
-        if not pkg.exists then begin
-          if !Clflags.debug_findlib then
-            Printf.eprintf "findlib: package %S is hidden\n"
-              pkg.package.name;
-          Not_available
-            { package     = pkg.package.name
-            ; required_by = pkg.required_by
-            ; reason      = Hidden
-            }
-        end else begin
-          let resolve_deps deps missing_deps_acc =
-            let deps, missing_deps =
-              List.partition_map deps ~f:(fun name ->
-                match Hashtbl.find t.packages name with
-                | Some (Present pkg) -> Inl pkg
-                | Some (Not_available na) -> Inr na
-                | None ->
-                  let na : Package_not_available.t =
-                    { package     = name
-                    ; required_by = Library pkg.package.name :: pkg.required_by
-                    ; reason      = Not_found
-                    }
-                  in
-                  Hashtbl.add t.packages ~key:name ~data:(Not_available na);
-                  Inr na)
-            in
-            (deps, missing_deps @ missing_deps_acc)
-          in
-          let requires, missing_deps = resolve_deps pkg.requires [] in
-          let ppx_runtime_deps, missing_deps =
-            resolve_deps pkg.ppx_runtime_deps missing_deps
-          in
-          match missing_deps with
-          | [] ->
-            let requires =
-              remove_dups_preserve_order
-                (List.concat_map requires ~f:(fun pkg -> pkg.requires) @ requires)
-            in
-            let ppx_runtime_deps =
-              remove_dups_preserve_order
-                (List.concat
-                   [ List.concat_map ppx_runtime_deps ~f:(fun pkg -> pkg.requires)
-                   ; ppx_runtime_deps
-                   ; List.concat_map requires ~f:(fun pkg -> pkg.ppx_runtime_deps)
-                   ])
-            in
-            let pkg =
-              { pkg.package with
-                requires
-              ; ppx_runtime_deps
-              }
-            in
-            Present pkg
-          | _ ->
-            Not_available
-              { package     = pkg.package.name
-              ; required_by = pkg.required_by
-              ; reason      = Dependencies_unavailable missing_deps
-              }
-        end
-      in
-      Hashtbl.add t.packages ~key:pkg.package.name ~data:status
-    )
-
-let find_exn t ~required_by name =
-  match Hashtbl.find t.packages name with
-  | Some (Present x) -> x
-  | Some (Not_available na) -> raise (Findlib (Package_not_available na))
-  | None ->
-    load_meta t ~fq_name:name ~required_by;
-    match Hashtbl.find t.packages name with
-    | Some (Present x) -> x
-    | Some (Not_available pnf) ->
-      raise (Findlib (Package_not_available pnf))
-    | None ->
-      let na : Package_not_available.t =
-        { package = name
-        ; required_by
-        ; reason = Not_found
-        }
-      in
-      Hashtbl.add t.packages ~key:name ~data:(Not_available na);
-      raise (Findlib (Package_not_available na))
-
-let find t ~required_by name =
-  match find_exn t ~required_by name with
-  | exception (Findlib (Package_not_available _)) -> None
-  | x -> Some x
-
-let available t ~required_by name =
-  match find_exn t name ~required_by with
-  | (_ : Package.t) -> true
-  | exception (Findlib (Package_not_available _)) -> false
-
-let check_deps_consistency ~required_by ~local_public_libs pkg requires =
-  List.iter requires ~f:(fun pkg' ->
+let check_deps_consistency ~required_by ~local_public_libs deps =
+  List.iter deps ~f:(fun pkg' ->
     match String_map.find pkg'.name local_public_libs with
     | None -> ()
     | Some path ->
       raise (Findlib (External_dep_conflicts_with_local_lib
                         { package             = pkg'.name
-                        ; required_by         = Library pkg.name
+                        ; required_by         = Library "TODO" (*pkg.name*)
                         ; required_locally_in = required_by
                         ; defined_locally_in  = path
                         })))
 
+let extend_error_stack e ~required_by =
+  match e with
+  | Package_not_available x ->
+    Package_not_available
+      { x with required_by = x.required_by @ required_by }
+  | External_dep_conflicts_with_local_lib x ->
+    External_dep_conflicts_with_local_lib
+      { x with required_locally_in = x.required_locally_in @ required_by }
+  | Dependency_cycle x ->
+    Dependency_cycle
+      { x with required_by = x.required_by @ required_by }
+
 let closure pkgs ~required_by ~local_public_libs =
-  remove_dups_preserve_order
-    (List.concat_map pkgs ~f:(fun pkg ->
-       check_deps_consistency ~required_by ~local_public_libs pkg pkg.requires;
-       pkg.requires)
-     @ pkgs)
+  match pkgs with
+  | [] -> []
+  | first :: others ->
+    let t = first.db in
+    let key =
+      first.unique_id :: List.map others ~f:(fun p ->
+        assert (p.db == t);
+        p.unique_id)
+    in
+    match
+      Hashtbl.find_or_add t.closure_cache key ~f:(fun _ ->
+        let pkgs = List.map pkgs ~f:(fun p -> (p, [])) in
+        match Closure.top_closure () pkgs with
+        | Ok pkgs -> Ok (List.map pkgs ~f:fst)
+        | Error cycle ->
+          Error
+            (Dependency_cycle
+               { cycle       = List.map cycle ~f:(fun (p, _) -> p.name)
+               ; required_by = []
+               })
+        | exception (Findlib e) -> Error e)
+    with
+    | Ok pkgs ->
+      check_deps_consistency pkgs ~required_by ~local_public_libs;
+      pkgs
+    | Error e -> raise (Findlib (extend_error_stack e ~required_by))
 
 let closed_ppx_runtime_deps_of pkgs ~required_by ~local_public_libs =
-  remove_dups_preserve_order
-    (List.concat_map pkgs ~f:(fun pkg ->
-       check_deps_consistency ~required_by ~local_public_libs pkg pkg.ppx_runtime_deps;
-       pkg.ppx_runtime_deps))
+  closure pkgs ~required_by ~local_public_libs
+  |> List.concat_map ~f:(Package.ppx_runtime_deps ~required_by)
+  |> closure ~required_by ~local_public_libs
 
 let root_packages t =
   let pkgs =
@@ -581,22 +491,24 @@ let root_packages t =
   in
   String_set.elements pkgs
 
-let all_packages t =
+let load_all_packages t =
   List.iter (root_packages t) ~f:(fun pkg ->
-    ignore (find t pkg ~required_by:[] : Package.t option));
+    find_and_acknowledge_meta t ~fq_name:pkg)
+
+let all_packages t =
+  load_all_packages t;
   Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:_ ~data acc ->
     match data with
-    | Present       p -> p :: acc
-    | Not_available _ -> acc)
+    | Ok    p -> p :: acc
+    | Error _ -> acc)
   |> List.sort ~cmp:(fun a b -> String.compare a.name b.name)
 
 let all_unavailable_packages t =
-  List.iter (root_packages t) ~f:(fun pkg ->
-    ignore (find t pkg ~required_by:[] : Package.t option));
+  load_all_packages t;
   Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:_ ~data acc ->
     match data with
-    | Present       _ -> acc
-    | Not_available n -> n :: acc)
+    | Ok    _ -> acc
+    | Error n -> n :: acc)
   |> List.sort ~cmp:(fun a b ->
     String.compare a.Package_not_available.package b.package)
 

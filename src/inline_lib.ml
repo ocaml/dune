@@ -13,42 +13,29 @@ type rule =
   }
 
 module Ppx_info = struct
-  type t =
-    { uses_expect: bool
-    ; uses_inline_test: bool
-    }
+  exception Found_expect
 
-  let of_lib ~scope (lib : Jbuild.Library.t) =
+  let uses_expect ~scope (lib : Jbuild.Library.t) =
     let user_ppx =
       Jbuild.Preprocess_map.pps lib.buildable.preprocess
       |> List.rev_map ~f:(fun pp -> Lib_dep.direct (Jbuild.Pp.to_string pp)) in
-    (* we should early terminate once both uses_expect and uses_inline_test are
-       true *)
     match
       Lib_db.Scope.fold_transitive_closure
         scope
         user_ppx
-        ~init:{ uses_expect = false
-              ; uses_inline_test = false
-              }
-        ~f:(fun (lib : Lib.t) acc ~required_by:_ ->
-          let is_name name = Lib.exists_name lib ~f:((=) name) in
-          { uses_expect
-            = acc.uses_expect || is_name "ppx_expect"
-          ; uses_inline_test
-            = acc.uses_inline_test || is_name "ppx_inline_test"
-          }
+        ~init:()
+        ~f:(fun (lib : Lib.t) () ~required_by:_ ->
+          if Lib.exists_name lib ~f:((=) "ppx_expect") then
+            raise Found_expect
         ) with
-    | res -> Some res
-    | exception _ -> None
+    | () -> false
+    | exception Found_expect -> true
+    | exception _ -> false
 end
 
 let rule sctx ~dir ~(lib : Jbuild.Library.t) ~scope =
   Option.map lib.inline_tests ~f:begin fun inline_tests ->
-    let uses_expect =
-      let config = Ppx_info.of_lib lib ~scope in
-      Option.map config ~f:(fun c -> c.uses_expect)
-      |> Option.value ~default:false in
+    let uses_expect = Ppx_info.uses_expect lib ~scope in
     let name = lib.name ^ "_test_runner" in
     let module_filename = name ^ ".ml-gen" in
     let module_name = String.capitalize_ascii name in

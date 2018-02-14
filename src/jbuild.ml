@@ -545,17 +545,21 @@ module Library = struct
   module Inline_tests = struct
     type t =
       { deps: Dep_conf.t list
+      ; flags: Ordered_set_lang.Unexpanded.t
       }
 
     let empty =
       { deps = []
+      ; flags = Ordered_set_lang.Unexpanded.standard
       }
 
     let t =
       record
         (field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
-         return
+         field "flags" Ordered_set_lang.Unexpanded.t >>= fun flags ->
+           return
            { deps
+           ; flags
            }
         )
   end

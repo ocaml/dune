@@ -151,6 +151,7 @@ module Library : sig
   module Inline_tests : sig
     type t =
       { deps: Dep_conf.t list
+      ; flags: Ordered_set_lang.Unexpanded.t
       }
   end
 

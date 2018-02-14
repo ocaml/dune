@@ -175,7 +175,7 @@ module Library : sig
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
-    ; inline_tests             : Inline_tests.t
+    ; inline_tests             : Inline_tests.t option
     }
 
   val has_stubs : t -> bool

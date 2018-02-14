@@ -548,15 +548,10 @@ module Library = struct
       ; flags: Ordered_set_lang.Unexpanded.t
       }
 
-    let empty =
-      { deps = []
-      ; flags = Ordered_set_lang.Unexpanded.standard
-      }
-
     let t =
       record
         (field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
-         field "flags" Ordered_set_lang.Unexpanded.t >>= fun flags ->
+         field_oslu "flags" >>= fun flags ->
            return
            { deps
            ; flags
@@ -584,31 +579,31 @@ module Library = struct
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
-    ; inline_tests             : Inline_tests.t
+    ; inline_tests             : Inline_tests.t option
     }
 
   let v1 pkgs =
     record
       (Buildable.v1 >>= fun buildable ->
-       field      "name" library_name                                        >>= fun name                     ->
-       Public_lib.public_name_field pkgs                                     >>= fun public                   ->
-       field_o    "synopsis" string                                          >>= fun synopsis                 ->
-       field      "install_c_headers" (list string) ~default:[]              >>= fun install_c_headers        ->
-       field      "ppx_runtime_libraries" (list string) ~default:[]          >>= fun ppx_runtime_libraries    ->
-       field_oslu "c_flags"                                                  >>= fun c_flags                  ->
-       field_oslu "cxx_flags"                                                >>= fun cxx_flags                ->
-       field      "c_names" (list string) ~default:[]                        >>= fun c_names                  ->
-       field      "cxx_names" (list string) ~default:[]                      >>= fun cxx_names                ->
-       field_oslu "library_flags"                                            >>= fun library_flags            ->
-       field_oslu "c_library_flags"                                          >>= fun c_library_flags          ->
-       field      "virtual_deps" (list string) ~default:[]                   >>= fun virtual_deps             ->
-       field      "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all         >>= fun modes                    ->
-       field      "kind" Kind.t ~default:Kind.Normal                         >>= fun kind                     ->
-       field      "wrapped" bool ~default:true                               >>= fun wrapped                  ->
-       field_b    "optional"                                                 >>= fun optional                 ->
-       field      "self_build_stubs_archive" (option string) ~default:None   >>= fun self_build_stubs_archive ->
-       field_b    "no_dynlink"                                               >>= fun no_dynlink               ->
-       field      "inline_tests" Inline_tests.t ~default:Inline_tests.empty  >>= fun inline_tests             ->
+       field      "name" library_name                                      >>= fun name                     ->
+       Public_lib.public_name_field pkgs                                   >>= fun public                   ->
+       field_o    "synopsis" string                                        >>= fun synopsis                 ->
+       field      "install_c_headers" (list string) ~default:[]            >>= fun install_c_headers        ->
+       field      "ppx_runtime_libraries" (list string) ~default:[]        >>= fun ppx_runtime_libraries    ->
+       field_oslu "c_flags"                                                >>= fun c_flags                  ->
+       field_oslu "cxx_flags"                                              >>= fun cxx_flags                ->
+       field      "c_names" (list string) ~default:[]                      >>= fun c_names                  ->
+       field      "cxx_names" (list string) ~default:[]                    >>= fun cxx_names                ->
+       field_oslu "library_flags"                                          >>= fun library_flags            ->
+       field_oslu "c_library_flags"                                        >>= fun c_library_flags          ->
+       field      "virtual_deps" (list string) ~default:[]                 >>= fun virtual_deps             ->
+       field      "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all       >>= fun modes                    ->
+       field      "kind" Kind.t ~default:Kind.Normal                       >>= fun kind                     ->
+       field      "wrapped" bool ~default:true                             >>= fun wrapped                  ->
+       field_b    "optional"                                               >>= fun optional                 ->
+       field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
+       field_b    "no_dynlink"                                             >>= fun no_dynlink               ->
+       field_o    "inline_tests" Inline_tests.t                            >>= fun inline_tests             ->
        return
          { name
          ; public

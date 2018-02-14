@@ -11,7 +11,7 @@ type rule =
 
 val rule
   : Super_context.t
-  -> lib:Jbuild.Library.t
   -> dir:Path.t
+  -> lib:Jbuild.Library.t
   -> scope:Lib_db.Scope.t With_required_by.t
   -> rule option

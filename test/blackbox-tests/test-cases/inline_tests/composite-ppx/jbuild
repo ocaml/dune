@@ -9,5 +9,5 @@
 (library
  ((name lib_tested)
   (modules (lib_tested))
-  (inline_tests ())
+  (inline_tests ()) ;; use the long syntax on purpose for tests
   (preprocess (pps (ppx_has_inline_tests)))))

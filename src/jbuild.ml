@@ -548,6 +548,11 @@ module Library = struct
       ; flags: Ordered_set_lang.Unexpanded.t
       }
 
+    let empty =
+      { deps = []
+      ; flags = Ordered_set_lang.Unexpanded.standard
+      }
+
     let t =
       record
         (field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
@@ -603,7 +608,9 @@ module Library = struct
        field_b    "optional"                                               >>= fun optional                 ->
        field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
        field_b    "no_dynlink"                                             >>= fun no_dynlink               ->
-       field_o    "inline_tests" Inline_tests.t                            >>= fun inline_tests             ->
+       field_o_short "inline_tests"
+         Inline_tests.t ~short:Inline_tests.empty
+       >>= fun inline_tests ->
        return
          { name
          ; public

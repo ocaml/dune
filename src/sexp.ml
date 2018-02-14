@@ -287,6 +287,14 @@ module Of_sexp = struct
       Loc.fail state.loc "field %s needs a value" name
     | None -> (None, add_known name state)
 
+  let field_o_short name value_of_sexp ~short state =
+    match Name_map.find name state.unparsed with
+    | Some { value = Some value; _ } ->
+      (Some (value_of_sexp value), consume name state)
+    | Some { value = None; _ } ->
+      (Some short, consume name state)
+    | None -> (None, add_known name state)
+
   let field_b name state =
     match Name_map.find name state.unparsed with
     | Some { value = Some value; _ } ->

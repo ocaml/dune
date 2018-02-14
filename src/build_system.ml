@@ -464,10 +464,14 @@ module Build_exec = struct
         | Unevaluated ->
           m.state <- Evaluating;
           let dyn_deps' = ref Pset.empty in
-          let x = exec dyn_deps' m.t x in
-          m.state <- Evaluated (x, !dyn_deps');
-          dyn_deps := Pset.union !dyn_deps !dyn_deps';
-          x
+          match exec dyn_deps' m.t x with
+          | x ->
+            m.state <- Evaluated (x, !dyn_deps');
+            dyn_deps := Pset.union !dyn_deps !dyn_deps';
+            x
+          | exception exn ->
+            m.state <- Unevaluated;
+            reraise exn
     in
     let dyn_deps = ref Pset.empty in
     let action = exec dyn_deps (Build.repr t) x in

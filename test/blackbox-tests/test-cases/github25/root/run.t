@@ -13,13 +13,13 @@ We need ocamlfind to run this test
       ocamlopt hello.{a,cmxa}
       ocamlopt hello.cmxs
 
-  $ $JBUILDER build -j1 @install --display short --root . --only pas-de-bol
-  Error: External library "une-lib-qui-nexiste-pas" not found.
-  -> required by library "plop.ca-marche-pas"
-  -> required by jbuild
+  $ $JBUILDER build -j1 @install --display short --root . --only pas-de-bol 2>&1 | sed 's/" in .*/" in .../'
+  File "jbuild", line 8, characters 1-107:
+  Error: Library "une-lib-qui-nexiste-pas" not found.
+  -> required by library "plop.ca-marche-pas" in ...
+  -> required by library "plop.ca-marche-pas" in ...
   Hint: try: jbuilder external-lib-deps --missing --root . --only-packages pas-de-bol @install
       ocamldep a.ml.d
       ocamldep b.ml.d
         ocamlc .pas_de_bol.objs/pas_de_bol.{cmi,cmo,cmt}
       ocamlopt .pas_de_bol.objs/pas_de_bol.{cmx,o}
-  [1]

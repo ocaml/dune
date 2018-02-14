@@ -10,20 +10,21 @@ module Dir_with_jbuild = struct
     { src_dir : Path.t
     ; ctx_dir : Path.t
     ; stanzas : Stanzas.t
-    ; scope   : Lib_db.Scope.t With_required_by.t
+    ; scope   : Scope.t
     }
 end
 
 type t =
   { context                          : Context.t
   ; build_system                     : Build_system.t
-  ; libs                             : Lib_db.t
+  ; scopes                           : Scope.DB.t
+  ; public_libs                      : Lib.DB.t
+  ; installed_libs                   : Lib.DB.t
   ; stanzas                          : Dir_with_jbuild.t list
   ; packages                         : Package.t String_map.t
   ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
-  ; stanzas_to_consider_for_install  : (Path.t * Stanza.t) list
-  ; libs_vfile                       : (module Vfile_kind.S with type t = Lib.t list)
+  ; stanzas_to_consider_for_install  : (Path.t * Scope.t * Stanza.t) list
   ; cxx_flags                        : string list
   ; vars                             : Action.Var_expansion.t String_map.t
   ; ppx_dir                          : Path.t
@@ -38,17 +39,22 @@ let artifacts t = t.artifacts
 let file_tree t = t.file_tree
 let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
 let cxx_flags t = t.cxx_flags
-let libs t = t.libs
 
 let host_sctx t = Option.value t.host ~default:t
 
+let public_libs    t = t.public_libs
+let installed_libs t = t.installed_libs
+
+let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
+let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
+
 let expand_var_no_root t var = String_map.find var t.vars
 
-let expand_vars t ~(scope : Lib_db.Scope.t) ~dir s =
+let expand_vars t ~scope ~dir s =
   String_with_vars.expand s ~f:(fun _loc -> function
     | "ROOT" -> Some (Path.reach ~from:dir t.context.build_dir)
     | "SCOPE_ROOT" ->
-      Some (Path.reach ~from:dir (Lib_db.Scope.root scope))
+      Some (Path.reach ~from:dir (Scope.root scope))
     | var ->
       expand_var_no_root t var
       |> Option.map ~f:(fun e -> Action.Var_expansion.to_string dir e))
@@ -66,7 +72,8 @@ let create
       ~filter_out_optional_stanzas_with_missing_deps
       ~build_system
   =
-  let internal_libraries =
+  let installed_libs = Lib.DB.create_from_findlib context.findlib in
+  let internal_libs =
     List.concat_map stanzas ~f:(fun (dir, _, stanzas) ->
       let ctx_dir = Path.append context.build_dir dir in
       List.filter_map stanzas ~f:(fun stanza ->
@@ -74,55 +81,46 @@ let create
         | Library lib -> Some (ctx_dir, lib)
         | _ -> None))
   in
-  let libs =
+  let scopes, public_libs =
     let scopes =
-      List.map scopes ~f:(fun scope ->
-        { scope with Scope.root = Path.append context.build_dir scope.Scope.root })
+      List.map scopes ~f:(fun (scope : Scope_info.t) ->
+        { scope with root = Path.append context.build_dir scope.root })
     in
-    Lib_db.create context.findlib internal_libraries
-      ~scopes ~root:context.build_dir
+    Scope.DB.create
+      ~scopes
+      ~context:context.name
+      ~installed_libs
+      internal_libs
   in
   let stanzas =
     List.map stanzas
-      ~f:(fun (dir, _, stanzas) ->
+      ~f:(fun (dir, scope, stanzas) ->
         let ctx_dir = Path.append context.build_dir dir in
         { Dir_with_jbuild.
           src_dir = dir
         ; ctx_dir
         ; stanzas
-        ; scope = Lib_db.find_scope libs ~dir:ctx_dir
+        ; scope = Scope.DB.find_by_name scopes scope.Scope_info.name
         })
   in
   let stanzas_to_consider_for_install =
     if filter_out_optional_stanzas_with_missing_deps then
-      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; _ } ->
-        List.filter_map stanzas ~f:(function
-          | Library _ -> None
-          | stanza    -> Some (ctx_dir, stanza)))
-      @ List.map
-          (Lib_db.internal_libs_without_non_installable_optional_ones libs)
-          ~f:(fun (dir, lib) -> (dir, Stanza.Library lib))
+      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; _ } ->
+        List.filter_map stanzas ~f:(fun stanza ->
+          let keep =
+            match (stanza : Stanza.t) with
+            | Library lib -> Lib.DB.available (Scope.libs scope) lib.name
+            | Install _   -> true
+            | _           -> false
+          in
+          Option.some_if keep (ctx_dir, scope, stanza)))
     else
-      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; _ } ->
-        List.map stanzas ~f:(fun s -> (ctx_dir, s)))
-  in
-  let module Libs_vfile =
-    Vfile_kind.Make_full
-      (struct type t = Lib.t list end)
-      (struct
-        open Sexp.To_sexp
-        let t _dir l = list atom (List.map l ~f:Lib.best_name)
-      end)
-      (struct
-        open Sexp.Of_sexp
-        let t dir sexp =
-          let scope = Lib_db.find_scope libs ~dir in
-          List.map (list string sexp) ~f:(Lib_db.Scope.find_exn scope)
-      end)
+      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; _ } ->
+        List.map stanzas ~f:(fun s -> (ctx_dir, scope, s)))
   in
   let artifacts =
-    Artifacts.create context stanzas ~f:(fun (d : Dir_with_jbuild.t) ->
-      d.stanzas)
+    Artifacts.create context ~public_libs stanzas
+      ~f:(fun (d : Dir_with_jbuild.t) -> d.stanzas)
   in
   let cxx_flags =
     String.extract_blank_separated_words context.ocamlc_cflags
@@ -167,12 +165,13 @@ let create
   { context
   ; host
   ; build_system
-  ; libs
+  ; scopes
+  ; public_libs
+  ; installed_libs
   ; stanzas
   ; packages
   ; file_tree
   ; stanzas_to_consider_for_install
-  ; libs_vfile = (module Libs_vfile)
   ; artifacts
   ; cxx_flags
   ; vars
@@ -216,163 +215,141 @@ let source_files t ~src_path =
   | None -> String_set.empty
   | Some dir -> File_tree.Dir.files dir
 
-let unique_library_name t lib =
-  Lib_db.unique_library_name t.libs lib
-
 module Libs = struct
   open Build.O
-  open Lib_db
 
-  let vrequires t ~dir ~item =
-    let fn = Path.relative dir (item ^ ".requires.sexp") in
-    Build.Vspec.T (fn, t.libs_vfile)
+  let requires_to_build requires ~required_by =
+    match requires with
+    | Ok x -> Build.return x
+    | Error e ->
+      Build.fail
+        { fail = fun () ->
+            raise (Lib.Error (With_required_by.append e required_by))
+        }
 
-  let load_requires t ~dir ~item =
-    Build.vpath (vrequires t ~dir ~item)
-
-  let vruntime_deps t ~dir ~item =
-    let fn = Path.relative dir (item ^ ".runtime-deps.sexp") in
-    Build.Vspec.T (fn, t.libs_vfile)
-
-  let load_runtime_deps t ~dir ~item =
-    Build.vpath (vruntime_deps t ~dir ~item)
-
-  let with_fail ~fail build =
-    match fail with
-    | None -> build
-    | Some f -> Build.fail f >>> build
-
-  let closure_generic t ~findlib_closure ~load_deps ~scope ~dep_kind lib_deps =
-    let internals, externals, fail =
-      Lib_db.Scope.interpret_lib_deps scope lib_deps
-    in
-    with_fail ~fail
-      (Build.record_lib_deps ~kind:dep_kind lib_deps
-       >>>
-       Build.all
-         (List.map internals ~f:(fun ((dir, lib) : Lib.Internal.t) ->
-            load_deps t ~dir ~item:lib.name))
-       >>^ fun internal_deps ->
-       let externals =
-         findlib_closure externals
-           ~required_by:scope.required_by
-           ~local_public_libs:(local_public_libs t.libs)
-         |> List.map ~f:Lib.external_
-       in
-       (internals, List.concat (externals :: internal_deps)))
-
-  let closure t ~scope ~dep_kind lib_deps =
-    closure_generic t lib_deps
-      ~load_deps:load_requires
-      ~findlib_closure:Findlib.closure
-      ~scope
-      ~dep_kind
-    >>^ fun (internals, deps) ->
-    Lib.remove_dups_preserve_order
-      (deps @ List.map internals ~f:Lib.internal)
-
-  let closed_ppx_runtime_deps_of t ~scope ~dep_kind lib_deps =
-    closure_generic t lib_deps
-      ~load_deps:load_runtime_deps
-      ~findlib_closure:Findlib.closed_ppx_runtime_deps_of
-      ~scope
-      ~dep_kind
-    >>^ fun (_, deps) ->
-    Lib.remove_dups_preserve_order deps
-
-  let add_select_rules t ~dir ~scope lib_deps =
-    Lib_db.Scope.resolve_selects scope lib_deps
-    |> List.iter ~f:(fun { dst_fn; src_fn } ->
-      let src = Path.relative dir src_fn in
-      let dst = Path.relative dir dst_fn in
-      add_rule t
-        (Build.path src
-         >>>
-         Build.action ~targets:[dst]
-           (Copy_and_add_line_directive (src, dst))))
-
-  let real_requires t ~dir ~scope ~dep_kind ~item ~libraries ~preprocess
-        ~virtual_deps =
-    let all_pps =
-      List.map (Preprocess_map.pps preprocess) ~f:Pp.to_string
-    in
-    let vrequires = vrequires t ~dir ~item in
-    add_rule t
-      (Build.record_lib_deps ~kind:dep_kind
-         (List.map virtual_deps ~f:Lib_dep.direct)
-       >>>
-       Build.fanout
-         (closure t ~scope ~dep_kind libraries)
-         (closed_ppx_runtime_deps_of t ~scope ~dep_kind
-            (List.map all_pps ~f:Lib_dep.direct))
-       >>>
-       Build.arr (fun (libs, rt_deps) ->
-         Lib.remove_dups_preserve_order (libs @ rt_deps))
-       >>>
-       Build.store_vfile vrequires);
-    Build.vpath vrequires
-
-  let requires t ~dir ~scope ~dep_kind ~item ~libraries ~preprocess ~virtual_deps
-        ~has_dot_merlin =
-    let real_requires = real_requires t ~dir ~scope ~dep_kind ~item ~libraries
-                          ~preprocess ~virtual_deps
+  let requires_generic
+        t
+        ~dir
+        ~requires
+        ~(buildable:Buildable.t)
+        ~dep_kind
+        ~virtual_deps
+    =
+    let requires =
+      requires_to_build requires ~required_by:[Loc buildable.loc]
     in
     let requires =
-      if t.context.merlin && has_dot_merlin then
+      Build.record_lib_deps ~kind:dep_kind
+        (List.fold_left virtual_deps ~init:buildable.libraries ~f:(fun acc s ->
+           Lib_dep.Direct s :: acc))
+      >>> requires
+    in
+    let requires_with_merlin =
+      if t.context.merlin && buildable.gen_dot_merlin then
         Build.path (Path.relative dir ".merlin-exists")
         >>>
-        real_requires
+        requires
       else
-        real_requires
+        requires
     in
-    (requires, real_requires)
+    (requires_with_merlin, requires)
 
-  let setup_runtime_deps t ~dir ~scope ~dep_kind ~item ~libraries
-        ~ppx_runtime_libraries =
-    let vruntime_deps = vruntime_deps t ~dir ~item in
-    add_rule t
-      (Build.fanout
-         (closure t ~scope ~dep_kind (List.map ppx_runtime_libraries ~f:Lib_dep.direct))
-         (closed_ppx_runtime_deps_of t ~scope ~dep_kind libraries)
-       >>>
-       Build.arr (fun (rt_deps, rt_deps_of_deps) ->
-         Lib.remove_dups_preserve_order (rt_deps @ rt_deps_of_deps))
-       >>>
-       Build.store_vfile vruntime_deps)
+  let add_select_rules t ~dir resolved_selects =
+    List.iter resolved_selects ~f:(fun rs ->
+      let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
+      let dst = Path.relative dir dst_fn in
+      add_rule t
+        (match src_fn with
+         | Ok src_fn ->
+           let src = Path.relative dir src_fn in
+           Build.copy_and_add_line_directive ~src ~dst
+         | Error e ->
+           Build.fail ~targets:[dst]
+             { fail = fun () ->
+                 raise (Lib.Error { data        = No_solution_found_for_select e
+                                  ; required_by = []
+                                  })
+             }))
+
+  let requires_for_library t ~dir ~scope ~dep_kind (conf : Jbuild.Library.t) =
+    match Lib.DB.find (Scope.libs scope) conf.name with
+    | Error Not_found -> assert false
+    | Error (Hidden _ as reason) ->
+      let build =
+        Build.fail { fail = fun () ->
+          Lib.not_available ~loc:conf.buildable.loc reason "Library %S"
+            conf.name  }
+      in
+      (build, build)
+    | Ok lib ->
+      add_select_rules t ~dir (Lib.Compile.resolved_selects lib);
+      requires_generic t ~dir
+        ~requires:(Lib.Compile.requires lib)
+        ~buildable:conf.buildable
+        ~virtual_deps:conf.virtual_deps
+        ~dep_kind
+
+  let requires_for_executables t ~dir ~scope ~dep_kind
+        (exes : Jbuild.Executables.t) =
+    let requires, resolved_selects =
+      Lib.DB.resolve_user_written_deps (Scope.libs scope)
+        exes.buildable.libraries
+        ~pps:(Jbuild.Preprocess_map.pps exes.buildable.preprocess)
+    in
+    add_select_rules t ~dir resolved_selects;
+    requires_generic t ~dir ~requires
+      ~buildable:exes.buildable
+      ~virtual_deps:[]
+      ~dep_kind
 
   let lib_files_alias ~dir ~name ~ext =
     Alias.make (sprintf "lib-%s%s-all" name ext) ~dir
 
-  let setup_file_deps_alias t ((dir, lib) : Lib.Internal.t) ~ext files =
-    add_alias_deps t (lib_files_alias ~dir ~name:lib.name ~ext) files
+  let setup_file_deps_alias t ~dir ~ext lib files =
+    add_alias_deps t
+      (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext) files
 
-  let setup_file_deps_group_alias t ((dir, lib) : Lib.Internal.t) ~exts =
-    setup_file_deps_alias t (dir, lib)
+  let setup_file_deps_group_alias t ~dir ~exts lib =
+    setup_file_deps_alias t lib ~dir
       ~ext:(String.concat exts ~sep:"-and-")
       (List.map exts ~f:(fun ext ->
-         Alias.stamp_file (lib_files_alias ~dir ~name:lib.name ~ext)))
+         Alias.stamp_file
+           (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext)))
 
   let file_deps t ~ext =
     Build.dyn_paths (Build.arr (fun libs ->
       List.fold_left libs ~init:[] ~f:(fun acc (lib : Lib.t) ->
-        match Lib.local lib with
-        | None ->
-          Build_system.stamp_file_for_files_of t.build_system
-            ~dir:(Lib.obj_dir lib) ~ext :: acc
-        | Some { Lib .src ; name } ->
-          Alias.stamp_file (lib_files_alias ~dir:src ~name ~ext) :: acc
-      )))
-
-  let static_file_deps ~ext ((dir, lib) : Lib.Internal.t) =
-    Alias.dep (lib_files_alias ~dir ~name:lib.name ~ext)
+        let x =
+          if Lib.is_local lib then
+            Alias.stamp_file
+              (lib_files_alias ~dir:(Lib.src_dir lib) ~name:(Lib.name lib) ~ext)
+          else
+            Build_system.stamp_file_for_files_of t.build_system
+              ~dir:(Lib.obj_dir lib) ~ext
+        in
+        x :: acc)))
 end
 
 module Doc = struct
   let root t = Path.relative t.context.Context.build_dir "_doc"
 
-  let dir t lib =
-    let name = unique_library_name t lib in
+  type origin =
+    | Public  of string
+    | Private of string * Scope_info.Name.t
+
+  let dir_internal t origin =
+    let name =
+      match origin with
+      | Public   n     -> n
+      | Private (n, s) -> sprintf "%s@%s" n (Scope_info.Name.to_string s)
+    in
     Path.relative (root t) name
+
+  let dir t (lib : Library.t) =
+    dir_internal t
+      (match lib.public with
+       | Some { name; _ } -> Public name
+       | None             -> Private (lib.name, lib.scope_name))
 
   let alias = Alias.make ".doc-all"
 
@@ -380,19 +357,26 @@ module Doc = struct
     Build.dyn_paths (Build.arr (
       List.fold_left ~init:[] ~f:(fun acc (lib : Lib.t) ->
         if Lib.is_local lib then (
-          Alias.stamp_file (alias ~dir:(dir t lib)) :: acc
+          let dir =
+            dir_internal t
+              (match Lib.status lib with
+               | Installed -> assert false
+               | Public    -> Public (Lib.name lib)
+               | Private s -> Private (Lib.name lib, s))
+          in
+          Alias.stamp_file (alias ~dir) :: acc
         ) else (
           acc
         )
       )))
 
-  let alias t lib = alias ~dir:(dir t (Lib.internal lib))
+  let alias t lib = alias ~dir:(dir t lib)
 
   let static_deps t lib = Alias.dep (alias t lib)
 
   let setup_deps t lib files = add_alias_deps t (alias t lib) files
 
-  let dir t lib = dir t (Lib.internal lib)
+  let dir t lib = dir t lib
 end
 
 module Deps = struct
@@ -554,8 +538,7 @@ module Action = struct
             let lib_dep, file = parse_lib_file ~loc s in
             add_lib_dep acc lib_dep dep_kind;
             match
-              Artifacts.file_of_lib (artifacts sctx) ~from:dir
-                ~lib:lib_dep ~file
+              Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
             with
             | Ok path -> static_dep_exp acc path
             | Error fail -> add_fail acc fail
@@ -565,8 +548,7 @@ module Action = struct
             let lib_dep, file = parse_lib_file ~loc s in
             add_lib_dep acc lib_dep dep_kind;
             match
-              Artifacts.file_of_lib (artifacts sctx) ~from:dir
-                ~lib:lib_dep ~file
+              Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
             with
             | Error fail -> add_fail acc fail
             | Ok path ->
@@ -585,11 +567,9 @@ module Action = struct
         | Some ("lib-available", lib) ->
           add_lib_dep acc lib Optional;
           Some (str_exp (string_of_bool (
-            (* XXX should we really be using the required_by of scope here? lib
-               isn't really required here, but optional *)
-            Lib_db.Scope.lib_is_available scope lib)))
+            Lib.DB.available (Scope.libs scope) lib)))
         | Some ("version", s) -> begin
-            match Lib_db.Scope.resolve scope s with
+            match Scope_info.resolve (Scope.info scope) s with
             | Ok p ->
               let x =
                 Pkg_version.read sctx p >>^ function
@@ -627,7 +607,7 @@ module Action = struct
         | _ ->
           match var with
           | "ROOT" -> Some (path_exp sctx.context.build_dir)
-          | "SCOPE_ROOT" -> Some (path_exp (Lib_db.Scope.root scope.data))
+          | "SCOPE_ROOT" -> Some (path_exp (Scope.root scope))
           | "@" -> begin
               match targets_written_by_user with
               | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
@@ -773,13 +753,27 @@ module PP = struct
 
   let migrate_driver_main = "ocaml-migrate-parsetree.driver-main"
 
-  let build_ppx_driver sctx ~scope ~dep_kind ~target pp_names ~driver =
+  let build_ppx_driver sctx ~lib_db ~dep_kind ~target pps =
     let ctx = sctx.context in
     let mode = Context.best_mode ctx in
     let compiler = Option.value_exn (Context.compiler ctx mode) in
-    let pp_names = pp_names @ [migrate_driver_main] in
+    let pps = pps @ [Pp.of_string migrate_driver_main] in
+    let driver, libs =
+      let resolved_pps = Lib.DB.resolve_pps lib_db pps in
+      let driver =
+        match resolved_pps with
+        | Ok    l -> List.last l
+        | Error _ -> None
+      in
+      (driver,
+       Result.bind resolved_pps ~f:Lib.closure
+       |> Libs.requires_to_build
+            ~required_by:[Preprocess (pps : Jbuild.Pp.t list :> string list)])
+    in
     let libs =
-      Libs.closure sctx ~scope ~dep_kind (List.map pp_names ~f:Lib_dep.direct)
+      Build.record_lib_deps ~kind:dep_kind (List.map pps ~f:Lib_dep.of_pp)
+      >>>
+      libs
     in
     let libs =
       (* Put the driver back at the end, just before migrate_driver_main *)
@@ -787,17 +781,16 @@ module PP = struct
       | None -> libs
       | Some driver ->
         libs >>^ fun libs ->
-        let is_driver name = name = driver || name = migrate_driver_main in
         let libs, drivers =
           List.partition_map libs ~f:(fun lib ->
-            if Lib.exists_name lib ~f:is_driver then
+            if lib == driver || Lib.name lib = migrate_driver_main then
               Inr lib
             else
               Inl lib)
         in
         let user_driver, migrate_driver =
           List.partition_map drivers ~f:(fun lib ->
-            if Lib.best_name lib = migrate_driver_main then
+            if Lib.name lib = migrate_driver_main then
               Inr lib
             else
               Inl lib)
@@ -807,8 +800,8 @@ module PP = struct
     (* Provide a better error for migrate_driver_main given that this is an implicit
        dependency *)
     let libs =
-      match Lib_db.Scope.find scope migrate_driver_main with
-      | None ->
+      match Lib.DB.available lib_db migrate_driver_main with
+      | false ->
         Build.fail { fail = fun () ->
           die "@{<error>Error@}: I couldn't find '%s'.\n\
                I need this library in order to use ppx rewriters.\n\
@@ -818,7 +811,7 @@ module PP = struct
         }
         >>>
         libs
-      | Some _ ->
+      | true ->
         libs
     in
     add_rule sctx
@@ -826,11 +819,11 @@ module PP = struct
        >>>
        Build.dyn_paths
          (Build.arr
-            (Lib.archive_files ~mode ~ext_lib:ctx.ext_lib))
+            (Lib.L.archive_files ~mode ~ext_lib:ctx.ext_lib))
        >>>
        Build.run ~context:ctx (Ok compiler)
          [ A "-o" ; Target target
-         ; Dyn (Lib.link_flags ~mode ~stdlib_dir:ctx.stdlib_dir)
+         ; Dyn (Lib.L.link_flags ~mode ~stdlib_dir:ctx.stdlib_dir)
          ])
 
   let gen_rules sctx components =
@@ -838,75 +831,83 @@ module PP = struct
     | [key] ->
       let ppx_dir = Path.relative sctx.ppx_dir key in
       let exe = Path.relative ppx_dir "ppx.exe" in
-      let (key, scope) =
+      let (key, lib_db) =
         match String.rsplit2 key ~on:'@' with
         | None ->
-          (key, Lib_db.external_scope sctx.libs)
+          (key, sctx.public_libs)
         | Some (key, scope) ->
-          (key, Lib_db.find_scope_by_name_exn sctx.libs ~name:scope) in
+          (key, Scope.libs (find_scope_by_name sctx
+                              (Scope_info.Name.of_string scope)))
+      in
       let names =
         match key with
         | "+none+" -> []
         | _ -> String.split key ~on:'+'
       in
-      let driver, names =
+      let names =
         match List.rev names with
-        | [] -> (None, [])
-        | driver :: rest ->
-          (Some driver, List.sort rest ~cmp:String.compare @ [driver])
+        | [] -> []
+        | driver :: rest -> List.sort rest ~cmp:String.compare @ [driver]
       in
-      let scope =
-        { With_required_by.
-          data = scope
-        ; required_by = [Preprocess names]
-        } in
-      build_ppx_driver sctx names ~scope ~dep_kind:Required ~target:exe ~driver
+      let pps = List.map names ~f:Jbuild.Pp.of_string in
+      build_ppx_driver sctx pps ~lib_db ~dep_kind:Required ~target:exe
     | _ -> ()
 
+  let most_specific_db (a : Lib.Status.t) (b : Lib.Status.t) =
+    match a, b with
+    | Private x, Private y -> assert (x = y); a
+    | Private _, _         -> a
+    | _        , Private _ -> b
+    | Public   , _
+    | _        , Public    -> Public
+    | Installed, Installed -> Installed
+
   let get_ppx_driver sctx ~scope pps =
-    let (driver, names) =
+    let driver, names =
       match List.rev_map pps ~f:Pp.to_string with
       | [] -> (None, [])
       | driver :: rest -> (Some driver, rest)
     in
     let sctx = host_sctx sctx in
-    let public_name name =
-      match Lib_db.Scope.find scope name with
-      | None -> Some name (* XXX unknown but assume it's public *)
-      | Some lib -> Lib.public_name lib in
-    let (driver_private, driver) =
+    let name_and_db name =
+      match Lib.DB.find (Scope.libs scope) name with
+      | Error _ ->
+        (* XXX unknown but assume it's public *)
+        (name, Lib.Status.Installed)
+      | Ok lib ->
+        (Lib.name lib, Lib.status lib)
+    in
+    let driver, driver_db =
       match driver with
-      | None -> (false, None)
+      | None -> (None, Lib.Status.Installed)
       | Some driver ->
-        begin match public_name driver with
-        | None -> (true, Some driver)
-        | Some driver -> (false, Some driver)
-        end in
-    let (libs, has_private_libs) =
-      List.fold_left ~f:(fun (libs, has_private_libs) lib ->
-        match public_name lib with
-        | None -> (lib :: libs, true)
-        | Some pub_name -> (pub_name :: libs, has_private_libs)
-      ) ~init:([], driver_private) names in
-    let libs = List.sort ~cmp:String.compare libs in
+        let name, db = name_and_db driver in
+        (Some name, db)
+    in
+    let names, db =
+      List.fold_left names ~init:([], driver_db) ~f:(fun (names, db) lib ->
+        let name, db' = name_and_db lib in
+        (name :: names, most_specific_db db db'))
+    in
+    let names = List.sort ~cmp:String.compare names in
     let names =
       match driver with
-      | None -> libs
-      | Some driver -> libs @ [driver] in
+      | None        -> names
+      | Some driver -> names @ [driver]
+    in
     let key =
       match names with
       | [] -> "+none+"
       | _  -> String.concat names ~sep:"+"
     in
+    let key =
+      match db with
+      | Installed | Public -> key
+      | Private scope_name ->
+        sprintf "%s@%s" key (Scope_info.Name.to_string scope_name)
+    in
     let sctx = host_sctx sctx in
-    let ppx_dir =
-      Path.relative sctx.ppx_dir (
-        if has_private_libs then (
-          sprintf "%s@%s" key (Lib_db.Scope.name scope.data)
-        ) else (
-          key
-        )
-      ) in
+    let ppx_dir = Path.relative sctx.ppx_dir key in
     Path.relative ppx_dir "ppx.exe"
 
   let target_var = String_with_vars.virt_var __POS__ "@"
@@ -1022,11 +1023,10 @@ module PP = struct
   (* Generate rules to build the .pp files and return a new module map
      where all filenames point to the .pp files *)
   let pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~lint ~preprocess
-        ~preprocessor_deps ~lib_name
-        ~(scope : Lib_db.Scope.t With_required_by.t) =
+        ~preprocessor_deps ~lib_name ~scope =
     let preprocessor_deps =
       Build.memoize "preprocessor deps"
-        (Deps.interpret sctx ~scope:scope.data ~dir preprocessor_deps)
+        (Deps.interpret sctx ~scope ~dir preprocessor_deps)
     in
     let lint_module =
       Staged.unstage (lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope)

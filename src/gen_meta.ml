@@ -1,5 +1,4 @@
 open Import
-open Jbuild
 open Meta
 
 module Pub_name = struct
@@ -32,11 +31,7 @@ module Pub_name = struct
   let to_string t = String.concat ~sep:"." (to_list t)
 end
 
-type item =
-    Lib of Lib_db.Scope.t With_required_by.t * Pub_name.t * Library.t
-
-let string_of_deps l =
-  String.concat (List.sort l ~cmp:String.compare) ~sep:" "
+let string_of_deps deps = String_set.elements deps |> String.concat ~sep:" "
 
 let rule var predicates action value =
   Rule { var; predicates; action; value }
@@ -48,44 +43,53 @@ let description s = rule "description" []      Set s
 let directory   s = rule "directory"   []      Set s
 let archive preds s = rule "archive"   preds Set s
 let plugin preds  s = rule "plugin"    preds Set s
-let archives ?(preds=[]) name =
-  [ archive (preds @ [Pos "byte"  ]) (name ^ ".cma" )
-  ; archive (preds @ [Pos "native"]) (name ^ ".cmxa")
-  ; plugin  (preds @ [Pos "byte"  ]) (name ^ ".cma" )
-  ; plugin  (preds @ [Pos "native"]) (name ^ ".cmxs")
+let archives ?(preds=[]) lib =
+  let archives = Lib.archives lib in
+  let plugins  = Lib.plugins  lib in
+  let make ps =
+    String.concat ~sep:" " (List.map ps ~f:Path.basename)
+  in
+  [ archive (preds @ [Pos "byte"  ]) (make archives.byte  )
+  ; archive (preds @ [Pos "native"]) (make archives.native)
+  ; plugin  (preds @ [Pos "byte"  ]) (make plugins .byte  )
+  ; plugin  (preds @ [Pos "native"]) (make plugins .native)
   ]
 
-let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps
-      ~ppx_runtime_deps_for_deprecated_method ~version =
+let gen_lib pub_name lib ~required_by ~version =
   let desc =
-    match lib.synopsis with
+    match Lib.synopsis lib with
     | Some s -> s
     | None ->
+      (* CR-someday jdimino: wut? this looks old *)
       match (pub_name : Pub_name.t) with
-      | Dot (p, "runtime-lib") -> sprintf "Runtime library for %s" (Pub_name.to_string p)
-      | Dot (p, "expander"   ) -> sprintf "Expander for %s"        (Pub_name.to_string p)
+      | Dot (p, "runtime-lib") ->
+        sprintf "Runtime library for %s" (Pub_name.to_string p)
+      | Dot (p, "expander") ->
+        sprintf "Expander for %s" (Pub_name.to_string p)
       | _ -> ""
   in
   let preds =
-    match lib.kind with
+    match Lib.kind lib with
     | Normal -> []
     | Ppx_rewriter | Ppx_deriver -> [Pos "ppx_driver"]
   in
+  let lib_deps    = Lib.Meta.requires lib ~required_by in
+  let ppx_rt_deps = Lib.Meta.ppx_runtime_deps lib ~required_by in
   List.concat
     [ version
     ; [ description desc
       ; requires ~preds lib_deps
       ]
-    ; archives ~preds lib.name
-    ; (match ppx_rt_deps with
-       | [] -> []
-       | _ ->
-         [ Comment "This is what jbuilder uses to find out the runtime \
-                    dependencies of"
-         ; Comment "a preprocessor"
-         ; ppx_runtime_deps ppx_rt_deps
-         ])
-    ; (match lib.kind with
+    ; archives ~preds lib
+    ; if String_set.is_empty ppx_rt_deps then
+        []
+      else
+        [ Comment "This is what jbuilder uses to find out the runtime \
+                   dependencies of"
+        ; Comment "a preprocessor"
+        ; ppx_runtime_deps ppx_rt_deps
+        ]
+    ; (match Lib.kind lib with
        | Normal -> []
        | Ppx_rewriter | Ppx_deriver ->
          (* Deprecated ppx method support *)
@@ -94,9 +98,11 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps
            [ [ Comment "This line makes things transparent for people mixing \
                         preprocessors"
              ; Comment "and normal dependencies"
-             ; requires ~preds:[no_ppx_driver] (Lazy.force ppx_runtime_deps_for_deprecated_method)
+             ; requires ~preds:[no_ppx_driver]
+                 (Lib.Meta.ppx_runtime_deps_for_deprecated_method lib
+                    ~required_by)
              ]
-           ; match lib.kind with
+           ; match Lib.kind lib with
            | Normal -> assert false
            | Ppx_rewriter ->
              [ rule "ppx" [no_ppx_driver; no_custom_ppx]
@@ -109,71 +115,31 @@ let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps
              ]
            ]
       )
-    ; (match lib.buildable.js_of_ocaml with
-       | { javascript_files = []; _ } -> []
-       | { javascript_files = l ; _ } ->
+    ; (match Lib.jsoo_runtime lib with
+       | [] -> []
+       | l  ->
          let root = Pub_name.root pub_name in
+         let l = List.map l ~f:Path.basename in
          [ rule "linkopts" [Pos "javascript"] Set
-             (List.map l ~f:(fun fn ->
-                sprintf "+%s/%s" root (Filename.basename fn))
-              |> String.concat ~sep:" ")
+             (List.map l ~f:(sprintf "+%s/%s" root) |> String.concat ~sep:" ")
          ; rule "jsoo_runtime" [] Set
-             (List.map l ~f:Filename.basename
-              |> String.concat ~sep:" ")
+             (String.concat l ~sep:" ")
          ]
       )
     ]
 
-let gen ~package ~scope ~version ~stanzas =
-  let items =
-    List.filter_map stanzas ~f:(fun (dir, stanza) ->
-      match (stanza : Stanza.t) with
-      | Library ({ public = Some { name; package = p; _ }; _ } as lib)
-        when p.name = package ->
-        let scope = Lib_db.Scope.required_in_jbuild scope ~jbuild_dir:dir in
-        Some (Lib (scope, Pub_name.parse name, lib))
-      | _ ->
-        None)
-  in
+let gen ~package ~version ~meta_path libs =
+  let required_by = [With_required_by.Entry.Path meta_path] in
   let version =
     match version with
     | None -> []
     | Some s -> [rule "version" [] Set s]
   in
   let pkgs =
-    List.map items ~f:(fun (Lib (scope, pub_name, lib)) ->
-      let lib_deps = Lib_db.Scope.best_lib_dep_names_exn scope
-                       lib.buildable.libraries in
-      let lib_deps =
-        match Preprocess_map.pps lib.buildable.preprocess with
-        | [] -> lib_deps
-        | pps ->
-          lib_deps @
-          String_set.elements
-            (Lib_db.Scope.all_ppx_runtime_deps_exn scope (List.map pps ~f:Lib_dep.of_pp))
-      in
-      let ppx_runtime_deps =
-        Lib_db.Scope.best_lib_dep_names_exn scope
-          (List.map lib.ppx_runtime_libraries ~f:Lib_dep.direct)
-      in
-      (* For the deprecated method, we need to put the transitive closure of the ppx
-         runtime dependencies.
-
-         We need to do this because [ocamlfind ocamlc -package ppx_foo] will not look
-         for the transitive dependencies of [foo], and the runtime dependencies might
-         be attached to a dependency of [foo] rather than [foo] itself.
-
-         Sigh...
-      *)
-      let ppx_runtime_deps_for_deprecated_method = lazy (
-        String_set.union
-          (String_set.of_list ppx_runtime_deps)
-          (Lib_db.Scope.all_ppx_runtime_deps_exn scope lib.buildable.libraries)
-        |> String_set.elements)
-      in
+    List.map libs ~f:(fun lib ->
+      let pub_name = Pub_name.parse (Lib.name lib) in
       (pub_name,
-       gen_lib pub_name lib ~lib_deps ~ppx_runtime_deps ~version
-         ~ppx_runtime_deps_for_deprecated_method))
+       gen_lib pub_name lib ~version ~required_by))
   in
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->

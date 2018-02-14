@@ -1,5 +1,5 @@
-next
-----
+1.0+beta18 (14/02/2018)
+-----------------------
 
 - Split calls to ocamldep. Before ocamldep would be called once per
   `library`/`executables` stanza. Now it is called once per file

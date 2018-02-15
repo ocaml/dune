@@ -186,6 +186,7 @@ let incompatible a b =
             a b)
 
 let common =
+  let module I = Doc.Common(struct let docs = Some copts_sect end) in
   let dump_opt name value =
     match value with
     | None -> []
@@ -217,8 +218,8 @@ let common =
     in
     let orig_args =
       List.concat
-        [ if dev_mode then ["--dev"] else []
-        ; dump_opt "--workspace" workspace_file
+        [ if dev_mode then [I._dev] else []
+        ; dump_opt I._workspace workspace_file
         ; orig
         ]
     in
@@ -258,168 +259,122 @@ let common =
     ; config
     }
   in
-  let docs = copts_sect in
   let concurrency =
     Arg.(value
          & opt (some int) None
-         & info ["j"] ~docs ~docv:"JOBS"
-             ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|}
-        )
+         & I.j)
   in
   let only_packages =
     Arg.(value
          & opt (some string) None
-         & info ["only-packages"] ~docs ~docv:"PACKAGES"
-             ~doc:{|Ignore stanzas referring to a package that is not in $(b,PACKAGES).
-                    $(b,PACKAGES) is a comma-separated list of package names.
-                    Note that this has the same effect as deleting the relevant stanzas
-                    from jbuild files. It is mostly meant for releases.
-                    During development, it is likely that what you want instead is to
-                    build a particular $(b,<package>.install) target.|}
-        )
+         & I.only_packages)
   in
   let ddep_path =
     Arg.(value
          & flag
-         & info ["debug-dependency-path"] ~docs
-             ~doc:{|In case of error, print the dependency path from
-                    the targets on the command line to the rule that failed.
-                  |})
+         & I.debug_dependency_path)
   in
   let dfindlib =
     Arg.(value
          & flag
-         & info ["debug-findlib"] ~docs
-             ~doc:{|Debug the findlib sub-system.|})
+         & I.debug_findlib)
   in
   let dbacktraces =
     Arg.(value
          & flag
-         & info ["debug-backtraces"] ~docs
-             ~doc:{|Always print exception backtraces.|})
+         & I.debug_backtraces)
   in
   let dev =
     Arg.(value
          & flag
-         & info ["dev"] ~docs
-             ~doc:{|Use stricter compilation flags by default.|})
+         & I.dev)
   in
   let display =
     let verbose =
       Arg.(value
            & flag
-           & info ["verbose"] ~docs
-               ~doc:"Same as $(b,--display verbose)")
+           & I.verbose)
     in
     let display =
       Arg.(value
            & opt (some (enum Config.Display.all)) None
-           & info ["display"] ~docs ~docv:"MODE"
-               ~doc:{|Control the display mode of Jbuilder.
-                      See $(b,dune-config\(5\)) for more details.|})
+           & I.display)
     in
     let merge verbose display =
       match verbose, display with
       | false , None   -> `Ok None
       | false , Some x -> `Ok (Some x)
       | true  , None   -> `Ok (Some Config.Display.Verbose)
-      | true  , Some _ -> incompatible "--display" "--verbose"
+      | true  , Some _ -> incompatible I._display I._verbose
     in
     Term.(ret (const merge $ verbose $ display))
   in
   let no_buffer =
     Arg.(value
          & flag
-         & info ["no-buffer"] ~docs ~docv:"DIR"
-             ~doc:{|Do not buffer the output of commands executed by jbuilder.
-                    By default jbuilder buffers the output of subcommands, in order
-                    to prevent interleaving when multiple commands are executed
-                    in parallel. However, this can be an issue when debugging
-                    long running tests. With $(b,--no-buffer), commands have direct
-                    access to the terminal. Note that as a result their output won't
-                    be captured in the log file.
-
-                    You should use this option in conjunction with $(b,-j 1),
-                    to avoid interleaving. Additionally you should use
-                    $(b,--verbose) as well, to make sure that commands are printed
-                    before they are being executed.|})
+         & I.no_buffer)
   in
   let workspace_file =
     Arg.(value
          & opt (some file) None
-         & info ["workspace"] ~docs ~docv:"FILE"
-             ~doc:"Use this specific workspace file instead of looking it up.")
+         & I.workspace)
   in
   let auto_promote =
     Arg.(value
          & flag
-         & info ["auto-promote"] ~docs
-             ~doc:"Automatically promote files. This is similar to running
-                   $(b,jbuilder promote) after the build.")
+         & I.auto_promote)
   in
   let force =
     Arg.(value
          & flag
-         & info ["force"; "f"]
-             ~doc:"Force actions associated to aliases to be re-executed even
-                   if their dependencies haven't changed.")
+         & I.force)
   in
   let merged_options =
     let root =
       Arg.(value
            & opt (some dir) None
-           & info ["root"] ~docs ~docv:"DIR"
-               ~doc:{|Use this directory as workspace root instead of guessing it.
-                      Note that this option doesn't change the interpretation of
-                      targets given on the command line. It is only intended
-                      for scripts.|})
+           & I.root)
     in
     let ignore_promoted_rules =
       Arg.(value
            & flag
-           & info ["ignore-promoted-rules"] ~docs
-               ~doc:"Ignore rules with (mode promote)")
+           & I.ignore_promoted_rules)
     in
     let config_file =
       let config_file =
         Arg.(value
              & opt (some file) None
-             & info ["config-file"] ~docs ~docv:"FILE"
-                 ~doc:"Load this configuration file instead of the default one.")
+             & I.config_file)
       in
       let no_config =
         Arg.(value
              & flag
-             & info ["no-config"] ~docs
-                 ~doc:"Do not load the configuration file")
+             & I.no_config)
       in
       let merge config_file no_config =
         match config_file, no_config with
-        | None   , false -> `Ok (None                , Default)
-        | Some fn, false -> `Ok (Some "--config-file", This fn)
-        | None   , true  -> `Ok (Some "--no-config"  , No_config)
-        | Some _ , true  -> incompatible "--no-config" "--config-file"
+        | None   , false -> `Ok (None              , Default)
+        | Some fn, false -> `Ok (Some I._config_file, This fn)
+        | None   , true  -> `Ok (Some I._no_config  , No_config)
+        | Some _ , true  -> incompatible I._no_config I._config_file
       in
       Term.(ret (const merge $ config_file $ no_config))
     in
-    let for_release = "for-release-of-packages" in
     let frop =
       Arg.(value
            & opt (some string) None
-           & info ["p"; for_release] ~docs ~docv:"PACKAGES"
-               ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE
-                      --promote ignore --no-config).
-                      You must use this option in your $(i,<package>.opam) files, in order
-                      to build only what's necessary when your project contains multiple
-                      packages as well as getting reproducible builds.|})
+           & I.for_release_of_packages)
     in
     let merge root only_packages ignore_promoted_rules
           (config_file_opt, config_file) release =
-      let fail opt = incompatible ("-p/--" ^ for_release) opt in
-      match release, root, only_packages, ignore_promoted_rules, config_file_opt with
-      | Some _, Some _, _, _, _      -> fail "--root"
-      | Some _, _, Some _, _, _      -> fail "--only-packages"
-      | Some _, _, _, true  , _      -> fail "--ignore-promoted-rules"
+      let fail opt =
+        incompatible I._for_release_of_packages opt
+      in
+      match release, root, only_packages, ignore_promoted_rules,
+            config_file_opt with
+      | Some _, Some _, _, _, _      -> fail I._root
+      | Some _, _, Some _, _, _      -> fail I._only_packages
+      | Some _, _, _, true  , _      -> fail I._ignore_promoted_rules
       | Some _, _, _, _     , Some s -> fail s
       | Some pkgs, None, None, false, None ->
         `Ok (Some ".",
@@ -434,15 +389,15 @@ let common =
              ignore_promoted_rules,
              config_file,
              List.concat
-               [ dump_opt "--root" root
-               ; dump_opt "--only-packages" only_packages
+               [ dump_opt I._root root
+               ; dump_opt I._only_packages only_packages
                ; if ignore_promoted_rules then
-                   ["--ignore-promoted-rules"]
+                   [I._ignore_promoted_rules]
                  else
                    []
                ; (match config_file with
-                  | This fn   -> ["--config-file"; fn]
-                  | No_config -> ["--no-config"]
+                  | This fn   -> [I._config_file; fn]
+                  | No_config -> [I._no_config]
                   | Default   -> [])
                ]
             )
@@ -457,14 +412,12 @@ let common =
   let x =
     Arg.(value
          & opt (some string) None
-         & info ["x"] ~docs
-             ~doc:{|Cross-compile using this toolchain.|})
+         & I.x)
   in
   let diff_command =
     Arg.(value
          & opt (some string) None
-         & info ["diff-command"] ~docs
-             ~doc:"Shell command to use to diff files")
+         & I.diff_command)
   in
   Term.(const make
         $ concurrency

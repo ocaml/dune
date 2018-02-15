@@ -28,30 +28,53 @@ module Gen(P : Params) = struct
      +-----------------------------------------------------------------+ *)
 
   module Eval_modules = Ordered_set_lang.Make(struct
-      type t = Module.t
-      let name = Module.name
+      type t = Loc.t * ((Module.t, string) result)
+      let name (_, m) =
+        match m with
+        | Error s -> s
+        | Ok m -> Module.name m
     end)
 
-  let parse_modules ~all_modules ~buildable =
+  let parse_modules ~(all_modules : Module.t String_map.t) ~buildable =
     let conf : Buildable.t = buildable in
-    let parse ~loc s =
+    let standard_modules =
+      String_map.map all_modules ~f:(fun m -> (Loc.none, Ok m)) in
+    let fake_modules = ref String_map.empty in
+    let parse : loc:Loc.t -> string -> (Loc.t * ((Module.t, string) result))
+      = fun ~loc s ->
         let s = String.capitalize_ascii s in
         match String_map.find s all_modules with
-        | Some m -> m
-        | None -> Loc.fail loc "Module %s doesn't exist." s
+        | Some m -> (loc, Ok m)
+        | None ->
+          if not (String_map.mem s !fake_modules) then (
+            fake_modules := String_map.add ~key:s ~data:loc !fake_modules;
+          );
+          (loc, Error s)
     in
     let modules =
       Eval_modules.eval_unordered
         conf.modules
         ~parse
-        ~standard:all_modules
+        ~standard:standard_modules
     in
+    let only_present_modules modules =
+      String_map.filter_map ~f:(fun ~key:_ ~data:(loc, m) ->
+        match m with
+        | Ok m -> Some m
+        | Error s -> Loc.fail loc "Module %s doesn't exist." s
+      ) modules
+    in
+    let modules = only_present_modules modules in
     let intf_only =
       Eval_modules.eval_unordered
         conf.modules_without_implementation
         ~parse
         ~standard:String_map.empty
     in
+    let intf_only = only_present_modules intf_only in
+    String_map.iter !fake_modules ~f:(fun ~key ~data:loc ->
+      Loc.fail loc "Module %s is excluded but it doesn't exist." key
+    );
     let real_intf_only =
       String_map.filter modules
         ~f:(fun _ (m : Module.t) -> Option.is_none m.impl)
@@ -101,6 +124,12 @@ module Gen(P : Params) = struct
             type t = Loc.t * Module.t
             let name (_, m) = Module.name m
           end)
+        in
+        let parse ~loc s =
+          let s = String.capitalize_ascii s in
+          match String_map.find s all_modules with
+          | Some m -> m
+          | None -> Loc.fail loc "Module %s doesn't exist." s
         in
         let parse ~loc s = (loc, parse ~loc s) in
         let shouldn't_be_listed =

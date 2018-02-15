@@ -12,7 +12,7 @@
   (preprocess  no_preprocessing)))
 
 (rule
- (with-stdout-to doc.ml
+ (with-stdout-to arg_info.ml
   (run ./gen_arg_info.exe
    ${path:doc/common.txt}
 )))

@@ -186,7 +186,7 @@ let incompatible a b =
             a b)
 
 let common =
-  let module I = Doc.Common(struct let docs = Some copts_sect end) in
+  let module I = Arg_info.Common(struct let docs = Some copts_sect end) in
   let dump_opt name value =
     match value with
     | None -> []

@@ -155,6 +155,7 @@ module Map = struct
     val of_alist_reduce : (key * 'a) list -> f:('a -> 'a -> 'a) -> 'a t
     val keys : 'a t -> key list
     val values : 'a t -> 'a list
+    val filter_map : 'a t -> f:(key:key -> data:'a -> 'b option) -> 'b t
   end
 
   module Make(Key : OrderedType) : S with type key = Key.t = struct
@@ -209,6 +210,12 @@ module Map = struct
 
     let keys   t = bindings t |> List.map ~f:fst
     let values t = bindings t |> List.map ~f:snd
+
+    let filter_map t ~f =
+      merge t empty ~f:(fun key data _always_none ->
+        match data with
+        | None -> assert false
+        | Some data -> f ~key ~data)
   end
 end
 

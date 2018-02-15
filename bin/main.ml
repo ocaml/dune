@@ -234,6 +234,10 @@ let common =
         ; concurrency
         }
     in
+    let config =
+      Config.adapt_display config
+        ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_colors)
+    in
     { debug_dep_path
     ; debug_findlib
     ; debug_backtraces
@@ -1283,6 +1287,15 @@ module Help = struct
                executed by Jbuilder, with some colors to help differentiate
                programs.|}
            ])
+    ; `P {|Note that when the selected display mode is $(b,progress) and the
+           output is not a terminal then the $(b,quiet) mode is selected
+           instead. This rule doesn't apply when running Jbuilder inside Emacs.
+           Jbuilder detects whether it is executed from inside Emacs or not by
+           looking at the environment variable $(b,INSIDE_EMACS) that is set by
+           Emacs. If you want the same behavior with another editor, you can set
+           this variable. If your editor already sets another variable,
+           please open a ticket on the ocaml/dune github project so that we can
+           add support for it.|}
     ; `S "JOBS"
     ; `P {|Syntax: $(b,\(jobs NUMBER\))|}
     ; `P {|Set the maximum number of jobs Jbuilder might run in parallel.

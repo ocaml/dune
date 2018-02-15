@@ -15,6 +15,9 @@ val dev_null : Path.t
     nothing in it if it knows to generate this file. *)
 val jbuilder_keep_fname : string
 
+(** Are we running inside an emacs shell? *)
+val inside_emacs : bool
+
 (** Jbuilder configuration *)
 
 module Display : sig
@@ -49,3 +52,7 @@ val default : t
 val user_config_file : string
 val load_user_config_file : unit -> t
 val load_config_file : fname:string -> t
+
+(** Set display mode to [Quiet] if it is [Progress], the output is not
+    a tty and we are not running inside emacs. *)
+val adapt_display : t -> output_is_a_tty:bool -> t

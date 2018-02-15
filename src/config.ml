@@ -85,3 +85,17 @@ let load_user_config_file () =
     load_config_file ~fname:user_config_file
   else
     default
+
+let inside_emacs =
+  match Sys.getenv "INSIDE_EMACS" with
+  | (_ : string) -> true
+  | exception Not_found -> false
+
+let adapt_display config ~output_is_a_tty =
+  if config.display = Progress &&
+     not output_is_a_tty &&
+     not inside_emacs
+  then
+    { config with display = Quiet }
+  else
+    config

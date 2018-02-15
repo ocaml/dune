@@ -28,28 +28,25 @@ module Gen(P : Params) = struct
      +-----------------------------------------------------------------+ *)
 
   module Eval_modules = Ordered_set_lang.Make(struct
-      type t = Loc.t * ((Module.t, string) result)
-      let name (_, m) =
-        match m with
+      type t = (Module.t, string) result
+      let name = function
         | Error s -> s
         | Ok m -> Module.name m
     end)
 
   let parse_modules ~(all_modules : Module.t String_map.t) ~buildable =
     let conf : Buildable.t = buildable in
-    let standard_modules =
-      String_map.map all_modules ~f:(fun m -> (Loc.none, Ok m)) in
+    let standard_modules = String_map.map all_modules ~f:(fun m -> Ok m) in
     let fake_modules = ref String_map.empty in
-    let parse : loc:Loc.t -> string -> (Loc.t * ((Module.t, string) result))
-      = fun ~loc s ->
-        let s = String.capitalize_ascii s in
-        match String_map.find s all_modules with
-        | Some m -> (loc, Ok m)
-        | None ->
-          if not (String_map.mem s !fake_modules) then (
-            fake_modules := String_map.add ~key:s ~data:loc !fake_modules;
-          );
-          (loc, Error s)
+    let parse ~loc s =
+      let s = String.capitalize_ascii s in
+      match String_map.find s all_modules with
+      | Some m -> Ok m
+      | None ->
+        if not (String_map.mem s !fake_modules) then (
+          fake_modules := String_map.add ~key:s ~data:loc !fake_modules;
+        );
+        Error s
     in
     let modules =
       Eval_modules.eval_unordered
@@ -58,10 +55,15 @@ module Gen(P : Params) = struct
         ~standard:standard_modules
     in
     let only_present_modules modules =
-      String_map.filter_map ~f:(fun ~key:_ ~data:(loc, m) ->
-        match m with
-        | Ok m -> Some m
-        | Error s -> Loc.fail loc "Module %s doesn't exist." s
+      String_map.filter_map ~f:(fun ~key:_ ~data ->
+        match data with
+        | Ok m ->
+          Some m
+        | Error s ->
+          Loc.fail
+            (* fake modules contain all modules that we might error on *)
+            (Option.value_exn (String_map.find s !fake_modules))
+            "Module %s doesn't exist." s
       ) modules
     in
     let modules = only_present_modules modules in

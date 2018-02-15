@@ -140,12 +140,22 @@ let bootstrap () =
       ]
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
     Clflags.debug_dep_path := true;
-    let config = Config.load_user_config_file () in
+    let config =
+      (* Only load the configuration with --dev *)
+      if !Clflags.dev_mode then
+        Config.load_user_config_file ()
+      else
+        Config.default
+    in
     let config =
       Config.merge config
         { display     = !display
         ; concurrency = !concurrency
         }
+    in
+    let config =
+      Config.adapt_display config
+        ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_colors)
     in
     let log = Log.create ~display:config.display () in
     Scheduler.go ~log ~config

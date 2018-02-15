@@ -234,6 +234,10 @@ let common =
         ; concurrency
         }
     in
+    let config =
+      Config.adapt_display config
+        ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_colors)
+    in
     { debug_dep_path
     ; debug_findlib
     ; debug_backtraces

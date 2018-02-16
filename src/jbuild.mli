@@ -212,6 +212,12 @@ module Mode_conf : sig
   end
 end
 
+module Bisect : sig
+  type t =
+    { modules : Ordered_set_lang.t
+    }
+end
+
 module Library : sig
   module Kind : sig
     type t =
@@ -242,6 +248,7 @@ module Library : sig
     ; dynlink                  : bool
     ; scope_name               : Scope_info.Name.t
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
+    ; bisect                   : Bisect.t
     }
 
   val has_stubs : t -> bool

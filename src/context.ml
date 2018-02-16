@@ -73,6 +73,7 @@ type t =
   ; cmxs_magic_number       : string
   ; cmt_magic_number        : string
   ; which_cache             : (string, Path.t option) Hashtbl.t
+  ; coverage                : Coverage0.Context.t option
   }
 
 let sexp_of_t t =
@@ -320,6 +321,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
       ; cmt_magic_number        = Ocaml_config.cmt_magic_number        ocfg
 
       ; which_cache
+      ; coverage = None
       }
   in
 
@@ -385,6 +387,7 @@ let create ?merlin def =
   | Default targets -> default ~targets ?merlin ()
   | Opam { name; switch; root; targets; _ } ->
     create_for_opam ?root ~switch ~name ?merlin ~targets ()
+  | Derived _ -> assert false
 
 let which t s = which ~cache:t.which_cache ~path:t.path s
 

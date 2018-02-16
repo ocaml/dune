@@ -111,6 +111,7 @@ type t =
   ; cmt_magic_number        : string
 
   ; which_cache             : (string, Path.t option) Hashtbl.t
+  ; coverage                : Coverage0.Context.t option
   }
 
 val sexp_of_t : t -> Sexp.t

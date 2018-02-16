@@ -31,6 +31,13 @@ module type S = sig
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
   val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc) -> 'acc
+
+  val merge
+    :  'a t
+    -> 'b t
+    -> default:'c
+    -> f:(key -> 'a -> 'b -> 'c)
+    -> 'c t
 end
 
 module Make(Key : Comparable.S) : S with type key = Key.t

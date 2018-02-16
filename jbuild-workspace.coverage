@@ -1,0 +1,8 @@
+(context default)
+
+(context
+ (derived
+  (from default)
+  (name mylib-coverage)
+  (instrumented
+   ((coverage bisect_ppx)))))

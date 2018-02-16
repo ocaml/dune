@@ -507,6 +507,10 @@ module Gen(P : Install_rules.Params) = struct
     let dep_kind = if lib.optional then Build.Optional else Required in
     let flags = Ocaml_flags.make lib.buildable sctx ~scope ~dir in
     let { modules; main_module_name; alias_module } = modules_by_lib ~dir lib in
+    let lib =
+      match ctx.coverage with
+      | None -> lib
+      | Some coverage -> Coverage.apply_instrumented coverage ~lib ~modules in
     let source_modules = modules in
     let already_used =
       Modules_partitioner.acknowledge modules_partitioner

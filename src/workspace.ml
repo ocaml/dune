@@ -2,6 +2,24 @@ open Import
 open Sexp.Of_sexp
 
 module Context = struct
+  module Derived = struct
+    type t =
+      { from: string
+      ; name: string
+      ; instrumented: Coverage0.Context.t
+      }
+
+    let t =
+      field "from" string >>= fun from ->
+      field "name" string >>= fun name ->
+      field "instrumented" Coverage0.Context.t >>= fun instrumented ->
+      return
+        { from
+        ; name
+        ; instrumented
+        }
+  end
+
   module Target = struct
     type t =
       | Native
@@ -36,7 +54,10 @@ module Context = struct
              }
   end
 
-  type t = Default of Target.t list | Opam of Opam.t
+  type t =
+    | Default of Target.t list
+    | Opam of Opam.t
+    | Derived of Derived.t
 
   let t = function
     | Atom (_, A "default") -> Default [Native]
@@ -49,16 +70,20 @@ module Context = struct
              return (Default targets))
         ; cstr_record "opam"
             (Opam.t >>= fun x -> return (Opam x))
+        ; cstr_record "derived"
+            (Derived.t >>= fun x -> return (Derived x))
         ]
         sexp
 
   let name = function
     | Default _ -> "default"
     | Opam    o -> o.name
+    | Derived d -> d.name
 
   let targets = function
     | Default l -> l
     | Opam    o -> o.targets
+    | Derived _ -> []
 
   let all_names t =
     let n = name t in
@@ -95,6 +120,7 @@ let t ?x sexps =
           match ctx with
           | Default targets -> Default (add_target target targets)
           | Opam o -> Opam { o with targets = add_target target o.targets }
+          | Derived _ -> failwith "TODO derived/?x"
       in
       let name = Context.name ctx in
       if name = "" ||

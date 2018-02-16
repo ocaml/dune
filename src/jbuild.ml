@@ -645,6 +645,24 @@ module Mode_conf = struct
   end
 end
 
+module Bisect = struct
+  type t =
+    { modules : Ordered_set_lang.t
+    }
+
+  let default =
+    { modules = Ordered_set_lang.standard
+    }
+
+  let t =
+    record
+      (Buildable.modules_field "modules" >>= fun modules ->
+       return
+         { modules
+         }
+      )
+end
+
 module Library = struct
   module Kind = struct
     type t =
@@ -682,6 +700,7 @@ module Library = struct
     ; dynlink                  : bool
     ; scope_name               : Scope_info.Name.t
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
+    ; bisect                   : Bisect.t
     }
 
   let v1 pkgs =
@@ -707,6 +726,7 @@ module Library = struct
        field_b    "no_dynlink"                                             >>= fun no_dynlink               ->
        Sub_system_info.record_parser () >>= fun sub_systems ->
        field "ppx.driver" ignore ~default:() >>= fun () ->
+       field      "bisect" Bisect.t ~default:Bisect.default                  >>= fun bisect                   ->
        return
          { name
          ; public
@@ -729,6 +749,7 @@ module Library = struct
          ; dynlink = not no_dynlink
          ; scope_name = pkgs.name
          ; sub_systems
+         ; bisect
          })
 
   let has_stubs t =

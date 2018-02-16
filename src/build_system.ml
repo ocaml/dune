@@ -225,7 +225,7 @@ module Alias0 = struct
   let dep t = Build.path (stamp_file t)
 
   let is_standard = function
-    | "runtest" | "install" | "doc" | "lint" -> true
+    | "runtest" | "install" | "doc" | "doc-private" | "lint" -> true
     | _ -> false
 
   open Build.O
@@ -272,11 +272,12 @@ module Alias0 = struct
              It is not defined in %s or any of its descendants."
           name (Path.to_string_maybe_quoted src_dir)
 
-  let default = make "DEFAULT"
-  let runtest = make "runtest"
-  let install = make "install"
-  let doc     = make "doc"
-  let lint    = make "lint"
+  let default     = make "DEFAULT"
+  let runtest     = make "runtest"
+  let install     = make "install"
+  let doc         = make "doc"
+  let private_doc = make "doc-private"
+  let lint        = make "lint"
 end
 
 module Dir_status = struct

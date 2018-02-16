@@ -1,4 +1,4 @@
-1.0+beta18 (14/02/2018)
+1.0+beta18 (next)
 -----------------------
 
 - Split calls to ocamldep. Before ocamldep would be called once per
@@ -32,6 +32,10 @@
 
 - Fix a regression in `external-lib-deps` introduced in 1.0+beta17
   (#512, fixes #485)
+
+- `@doc` alias will now build only documentation for public libraries. A new
+  `@doc-private` alias has been added to build documentation for private
+  libraries.
 
 1.0+beta17 (01/02/2018)
 -----------------------

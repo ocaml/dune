@@ -43,9 +43,7 @@ module Gen(P : Params) = struct
       match String_map.find s all_modules with
       | Some m -> Ok m
       | None ->
-        if not (String_map.mem s !fake_modules) then (
-          fake_modules := String_map.add ~key:s ~data:loc !fake_modules;
-        );
+        fake_modules := String_map.add ~key:s ~data:loc !fake_modules;
         Error s
     in
     let modules =

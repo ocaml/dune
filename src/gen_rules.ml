@@ -146,6 +146,27 @@ module Gen(P : Params) = struct
       modules
     end
 
+  let parse_mlds ~dir ~(all_mlds : string String_map.t) ~mlds_written_by_user =
+    let module Eval_mlds =
+      Ordered_set_lang.Make(struct
+        type t = string
+        let name x = x
+      end) in
+    if Ordered_set_lang.is_standard mlds_written_by_user then
+      all_mlds
+    else
+      let mlds =
+        Eval_mlds.eval_unordered
+          mlds_written_by_user
+          ~parse:(fun ~loc:_ s -> s)
+          ~standard:all_mlds in
+      String_map.iter mlds ~f:(fun ~key:_ ~data:mld ->
+        if not (String_map.mem mld all_mlds) then (
+          die "no mld file %s in %s" mld (Path.to_string dir)
+        )
+      );
+      mlds
+
   (* +-----------------------------------------------------------------+
      | User rules & copy files                                         |
      +-----------------------------------------------------------------+ *)
@@ -284,12 +305,27 @@ module Gen(P : Params) = struct
         }
     )
 
+  let guess_mlds ~files =
+    String_set.elements files
+    |> List.filter_map ~f:(fun fn ->
+      match String.lsplit2 fn ~on:'.' with
+      | Some (_, "mld") -> Some (Filename.chop_extension fn, fn)
+      | _ -> None)
+    |> String_map.of_alist_exn (* TODO error handling *)
+
   let modules_by_dir =
     let cache = Hashtbl.create 32 in
     fun ~dir ->
       Hashtbl.find_or_add cache dir ~f:(fun dir ->
         let files = text_files ~dir in
         guess_modules ~dir ~files)
+
+  let mlds_by_dir =
+    let cache = Hashtbl.create 32 in
+    fun ~dir ->
+      Hashtbl.find_or_add cache dir ~f:(fun dir ->
+        let files = text_files ~dir in
+        guess_mlds ~files)
 
   type modules_by_lib =
     { modules          : Module.t String_map.t

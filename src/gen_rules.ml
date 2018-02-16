@@ -73,7 +73,7 @@ module Gen(P : Params) = struct
     in
     let intf_only = only_present_modules intf_only in
     String_map.iter !fake_modules ~f:(fun ~key ~data:loc ->
-      Loc.fail loc "Module %s is excluded but it doesn't exist." key
+      Loc.warn loc "Module %s is excluded but it doesn't exist." key
     );
     let real_intf_only =
       String_map.filter modules

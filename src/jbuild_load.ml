@@ -92,10 +92,7 @@ end
 %s|}
         context.name
         context.version_string
-        (String.concat ~sep:"\n      ; "
-           (let longest = List.longest_map context.ocamlc_config ~f:fst in
-            List.map context.ocamlc_config ~f:(fun (k, v) ->
-                Printf.sprintf "%-*S , %S" (longest + 2) k v)))
+        (Ocamlc_config.ocaml_value context.ocamlc_config)
         (Path.reach ~from:exec_dir target)
         plugin plugin_contents);
     extract_requires ~fname:plugin plugin_contents

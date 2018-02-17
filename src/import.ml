@@ -453,6 +453,8 @@ module Option = struct
       | Some a -> f a
   end
 
+  let bind t ~f = Infix.(>>=) t f
+
   let map t ~f =
     match t with
     | None -> None

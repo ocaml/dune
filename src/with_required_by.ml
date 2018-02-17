@@ -13,7 +13,7 @@ module Entry = struct
     | Path p -> Utils.describe_target p
     | Alias p -> "alias " ^ Utils.describe_target p
     | Library s -> sprintf "library %S" s
-    | Preprocess l -> Sexp.to_string (List [Atom "pps"; Sexp.To_sexp.(list string) l])
+    | Preprocess l -> Sexp.to_string (List [Atom "pps"; Sexp.To_sexp.(list atom) l])
 
   let pp ppf x =
     Format.pp_print_string ppf (to_string x)

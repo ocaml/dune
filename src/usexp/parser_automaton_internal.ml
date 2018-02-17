@@ -344,7 +344,7 @@ let push_quoted_atom state _char stack =
   Buffer.clear state.atom_buffer;
   let stack =
     if state.ignoring = 0 then
-      Sexp (Atom (make_loc state ~delta:1, str), stack)
+      Sexp (Quoted_string (make_loc state ~delta:1, str), stack)
     else
       stack
   in

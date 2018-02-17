@@ -25,7 +25,7 @@ let loc t = t.loc
 let parse_general sexp ~f =
   let rec of_sexp : Sexp.Ast.t -> _ = function
     | Atom (loc, "\\") -> Loc.fail loc "unexpected \\"
-    | Atom (_, "") as t -> Ast.Element (f t)
+    | (Atom (_, "") | Quoted_string (_, _)) as t -> Ast.Element (f t)
     | Atom (loc, s) as t ->
       if s.[0] = ':' then
         Special (loc, String.sub s ~pos:1 ~len:(String.length s - 1))
@@ -43,7 +43,7 @@ let parse_general sexp ~f =
 let t sexp : t =
   let ast =
     parse_general sexp ~f:(function
-      | Atom (loc, s) -> (loc, s)
+      | Atom (loc, s) | Quoted_string (loc, s) -> (loc, s)
       | List _ -> assert false)
   in
   { ast
@@ -195,7 +195,7 @@ module Unexpanded = struct
             Sexp.code_error
               "Ordered_set_lang.Unexpanded.expand"
               [ "included-file", Atom fn
-              ; "files", Sexp.To_sexp.(list string) (String_map.keys files_contents)
+              ; "files", Sexp.To_sexp.(list atom) (String_map.keys files_contents)
               ]
         in
         parse_general sexp ~f:(fun sexp ->

@@ -1,4 +1,14 @@
+module UnlabeledBytes = Bytes
 open StdLabels
+
+module Bytes = struct
+  include StdLabels.Bytes
+
+  (* [blit_string] was forgotten from the labeled version in OCaml
+     4.02—4.04. *)
+  let blit_string ~src ~src_pos ~dst ~dst_pos ~len =
+    UnlabeledBytes.blit_string src src_pos dst dst_pos len
+end
 
 module A = Parser_automaton_internal
 
@@ -20,9 +30,18 @@ module Atom = struct
     let len = String.length s in
     len = 0 || escaped_length s > len
 
-  let escaped_internal s ~with_double_quotes =
+  let escaped_internal s ~with_double_quotes ~always_quote =
     let n = escaped_length s in
-    if n > 0 && n = String.length s then s else begin
+    if n > 0 && n = String.length s then
+      if always_quote then begin
+          let s' = Bytes.create (n + 2) in
+          Bytes.unsafe_set s' 0 '"';
+          Bytes.blit_string ~src:s ~src_pos:0 ~dst:s' ~dst_pos:1 ~len:n;
+          Bytes.unsafe_set s' (n + 1) '"';
+          Bytes.unsafe_to_string s'
+        end
+      else s
+    else begin
       let s' = Bytes.create (n + if with_double_quotes then 2 else 0) in
       let n = ref 0 in
       if with_double_quotes then begin
@@ -58,23 +77,31 @@ module Atom = struct
       Bytes.unsafe_to_string s'
     end
 
-  let escaped s = escaped_internal s ~with_double_quotes:false
-  let serialize s = escaped_internal s ~with_double_quotes:true
+  let escaped s =
+    escaped_internal s ~with_double_quotes:false ~always_quote:false
+  let serialize s =
+    escaped_internal s ~with_double_quotes:true ~always_quote:false
+  let quote s =
+    escaped_internal s ~with_double_quotes:true ~always_quote:true
 end
 
 type t =
   | Atom of string
+  | Quoted_string of string
   | List of t list
 
 type sexp = t
 
 let rec to_string = function
   | Atom s -> Atom.serialize s
+  | Quoted_string s -> Atom.quote s
   | List l -> Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
 
 let rec pp ppf = function
   | Atom s ->
     Format.pp_print_string ppf (Atom.serialize s)
+  | Quoted_string s ->
+    Format.pp_print_string ppf (Atom.quote s)
   | List [] ->
     Format.pp_print_string ppf "()"
   | List (first :: rest) ->
@@ -100,21 +127,26 @@ let split_string s ~on =
   in
   loop 0 0
 
+let pp_print_atom ppf ~serialize s =
+  if String.contains s '\n' then begin
+    match split_string s ~on:'\n' with
+    | [] -> Format.pp_print_string ppf (serialize s)
+    | first :: rest ->
+       Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (Atom.escaped first);
+       List.iter rest ~f:(fun s ->
+           Format.fprintf ppf "@,\\n%s" (Atom.escaped s));
+       Format.fprintf ppf "@}\"@]"
+  end else
+    Format.pp_print_string ppf (serialize s)
+
 let rec pp_split_strings ppf = function
   | Atom s ->
-    if Atom.must_escape s then begin
-      if String.contains s '\n' then begin
-        match split_string s ~on:'\n' with
-        | [] -> Format.pp_print_string ppf (Atom.serialize s)
-        | first :: rest ->
-          Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (String.escaped first);
-          List.iter rest ~f:(fun s ->
-            Format.fprintf ppf "@,\\n%s" (String.escaped s));
-          Format.fprintf ppf "@}\"@]"
-      end else
-        Format.fprintf ppf "%S" s
-    end else
+    if Atom.must_escape s then
+      pp_print_atom ppf s ~serialize:Atom.serialize
+    else
       Format.pp_print_string ppf s
+  | Quoted_string s ->
+     pp_print_atom ppf s ~serialize:Atom.quote
   | List [] ->
     Format.pp_print_string ppf "()"
   | List (first :: rest) ->
@@ -177,17 +209,20 @@ module Loc = Sexp_ast.Loc
 module Ast = struct
   type t = Sexp_ast.t =
     | Atom of Loc.t * string
+    | Quoted_string of Loc.t * string
     | List of Loc.t * t list
 
-  let loc (Atom (loc, _) | List (loc, _)) = loc
+  let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)) = loc
 
   let rec remove_locs : t -> sexp = function
     | Atom (_, s) -> Atom s
+    | Quoted_string (_, s) -> Quoted_string s
     | List (_, l) -> List (List.map l ~f:remove_locs)
 
   module Token = struct
     type t =
       | Atom   of Loc.t * string
+      | String of Loc.t * string
       | Lparen of Loc.t
       | Rparen of Loc.t
   end
@@ -196,6 +231,7 @@ module Ast = struct
     let rec loop acc t =
       match t with
       | Atom (loc, s) -> Token.Atom (loc, s) :: acc
+      | Quoted_string (loc, s) -> Token.String (loc, s) :: acc
       | List (loc, l) ->
         let shift (pos : Lexing.position) delta =
           { pos with pos_cnum = pos.pos_cnum + delta }
@@ -213,6 +249,7 @@ end
 let rec add_loc t ~loc : Ast.t =
   match t with
   | Atom s -> Atom (loc, s)
+  | Quoted_string s -> Quoted_string (loc, s)
   | List l -> List (loc, List.map l ~f:(add_loc ~loc))
 
 module Parser = struct

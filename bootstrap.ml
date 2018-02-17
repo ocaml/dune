@@ -33,7 +33,7 @@ let dirs =
   ; "src/fiber"        , Some "Fiber"
   ; "src/xdg"          , Some "Xdg"
   ; "vendor/boot"      , None
-  ; "vendor/usexp/src" , Some "Usexp"
+  ; "src/usexp"        , Some "Usexp"
   ; "src"              , None
   ]
 

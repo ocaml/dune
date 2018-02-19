@@ -471,8 +471,8 @@ module Gen(P : Params) = struct
   let alias_module_build_sandbox = ctx.version < (4, 03, 0)
 
   let rec runner_rules ~dir ~(lib : Library.t)
-            ~(scope : Lib_db.Scope.t With_required_by.t) =
-    Option.iter (Inline_tests.rule sctx ~lib ~dir ~scope)
+            ~(scope : Lib_db.Scope.t With_required_by.t) ~modules =
+    Option.iter (Inline_tests.rule sctx ~lib ~dir ~scope ~modules)
       ~f:(fun { Inline_tests.exe ; alias_name ; alias_action ; alias_stamp
               ; gen_source ; all_modules } ->
            SC.add_rule sctx gen_source;
@@ -490,7 +490,9 @@ module Gen(P : Params) = struct
     let dep_kind = if lib.optional then Build.Optional else Required in
     let flags = Ocaml_flags.make lib.buildable sctx ~scope:scope.data ~dir in
     let { modules; main_module_name; alias_module } = modules_by_lib ~dir lib in
-    (* Preprocess before adding the alias module as it doesn't need preprocessing *)
+    (* Preprocess before adding the alias module as it doesn't need
+       preprocessing *)
+    let source_modules = modules in
     let modules =
       SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
         ~preprocess:lib.buildable.preprocess
@@ -705,7 +707,7 @@ module Gen(P : Params) = struct
     in
 
     (* test runners if they are present *)
-    runner_rules ~dir ~lib ~scope;
+    runner_rules ~dir ~lib ~scope ~modules:source_modules;
 
     { Merlin.
       requires = real_requires

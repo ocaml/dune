@@ -26,14 +26,14 @@ module Ppx_info = struct
         ~init:()
         ~f:(fun (lib : Lib.t) () ~required_by:_ ->
           if Lib.exists_name lib ~f:((=) "ppx_expect") then
-            raise Found_expect
+            raise_notrace Found_expect
         ) with
     | () -> false
     | exception Found_expect -> true
     | exception _ -> false
 end
 
-let rule sctx ~dir ~(lib : Jbuild.Library.t) ~scope =
+let rule sctx ~dir ~(lib : Jbuild.Library.t) ~scope ~modules =
   Option.map lib.inline_tests ~f:begin fun inline_tests ->
     let uses_expect = Ppx_info.uses_expect lib ~scope in
     let name = lib.name ^ "_test_runner" in
@@ -84,7 +84,24 @@ let rule sctx ~dir ~(lib : Jbuild.Library.t) ~scope =
            inline_tests.deps
          >>^ fun _ ->
          A.chdir dir
-           (A.run (Ok exe) ["inline-test-runner"; lib.name]))
+           (A.progn
+              (A.run (Ok exe)
+                 [ "inline-test-runner"
+                 ; lib.name
+                 ; "-source-tree-root"
+                 ; Path.reach (Super_context.context sctx).build_dir ~from:dir
+                 ; "-diff-cmd"; "-"
+                 ]
+               ::
+               (String_map.values modules
+                |> List.concat_map ~f:(fun m ->
+                  [ Module.file m ~dir Impl
+                  ; Module.file m ~dir Intf
+                  ])
+                |> List.filter_map ~f:(fun x -> x)
+                |> List.map ~f:(fun fn ->
+                  A.diff ~optional:true
+                    fn (Path.extend_basename fn ~suffix:".corrected"))))))
     ; gen_source = (
         Build.write_file (Path.relative dir module_filename)
           "let () = Ppx_inline_test_lib.Runtime.exit ()"
@@ -102,4 +119,3 @@ let rule sctx ~dir ~(lib : Jbuild.Library.t) ~scope =
              ; obj_name = "" } ])
     }
   end
-;;

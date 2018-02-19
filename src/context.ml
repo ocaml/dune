@@ -51,7 +51,7 @@ type t =
   ; arch_sixtyfour          : bool
   ; opam_var_cache          : (string, string) Hashtbl.t
   ; natdynlink_supported    : bool
-  ; ocamlc_config           : (string * string) list
+  ; ocamlc_config           : Ocamlc_config.t
   ; version_string          : string
   ; version                 : int * int * int
   ; stdlib_dir              : Path.t
@@ -109,7 +109,7 @@ let sexp_of_t t =
     ; "arch_sixtyfour", bool t.arch_sixtyfour
     ; "natdynlink_supported", bool t.natdynlink_supported
     ; "opam_vars", atom_hashtbl atom t.opam_var_cache
-    ; "ocamlc_config", list (pair atom atom) t.ocamlc_config
+    ; "ocamlc_config", Ocamlc_config.sexp_of_t t.ocamlc_config
     ; "which", atom_hashtbl (option path) t.which_cache
     ]
 
@@ -215,15 +215,13 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
     >>= fun findlib_config ->
 
     let get_tool_using_findlib_config prog =
-      match findlib_config with
-      | None -> None
-      | Some conf ->
+      Option.bind findlib_config ~f:(fun conf ->
         match Findlib.Config.get conf prog with
         | "" -> None
         | s ->
           match Filename.analyze_program_name s with
           | In_path | Relative_to_current_dir -> which s
-          | Absolute -> Some (Path.absolute s)
+          | Absolute -> Some (Path.absolute s))
     in
 
     let ocamlc =
@@ -251,7 +249,6 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
     in
 
     let build_dir = Path.of_string (sprintf "_build/%s" name) in
-    let ocamlc_config_cmd = sprintf "%s -config" (Path.to_string ocamlc) in
     let findlib_path () =
       if use_findlib then
         (* If ocamlfind is present, it has precedence over everything else. *)
@@ -280,47 +277,9 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
     in
     Fiber.fork_and_join
       findlib_path
-      (fun () ->
-         Process.run_capture_lines ~env Strict (Path.to_string ocamlc) ["-config"])
+      (fun () -> Ocamlc_config.read ~ocamlc ~env)
     >>= fun (findlib_path, ocamlc_config) ->
-
-    let ocamlc_config =
-      List.map ocamlc_config ~f:(fun line ->
-        match String.index line ':' with
-        | Some i ->
-          (String.sub line ~pos:0 ~len:i,
-           String.sub line ~pos:(i + 2) ~len:(String.length line - i - 2))
-        | None ->
-          die "unrecognized line in the output of `%s`: %s" ocamlc_config_cmd
-            line)
-      |> String_map.of_alist
-      |> function
-      | Ok x -> x
-      | Error (key, _, _) ->
-        die "variable %S present twice in the output of `%s`" key ocamlc_config_cmd
-    in
-    let get_opt var = String_map.find var ocamlc_config in
-    let get ?default var =
-      match get_opt var with
-      | Some s -> s
-      | None ->
-        match default with
-        | Some x -> x
-        | None ->
-          die "variable %S not found in the output of `%s`" var ocamlc_config_cmd
-    in
-    let get_bool ?default var =
-      match get ?default:(Option.map default ~f:string_of_bool) var with
-      | "true" -> true
-      | "false" -> false
-      | _ -> die "variable %S is neither 'true' neither 'false' in the output of `%s`"
-               var ocamlc_config_cmd
-    in
-    let get_path var = Path.absolute (get var) in
-    let stdlib_dir = get_path "standard_library" in
-    let natdynlink_supported = Path.exists (Path.relative stdlib_dir "dynlink.cmxa") in
-    let version_string = get "version" in
-    let version = Scanf.sscanf version_string "%u.%u.%u" (fun a b c -> a, b, c) in
+    let version = Ocamlc_config.version ocamlc_config in
     let env, env_extra =
       (* See comment in ansi_color.ml for setup_env_for_colors. For OCaml < 4.05,
          OCAML_COLOR is not supported so we use OCAMLPARAM. OCaml 4.02 doesn't support
@@ -339,37 +298,15 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       else
         env,env_extra
     in
-    let split_prog s =
-      let len = String.length s in
-      let rec loop i =
-        if i = len then
-          (s, "")
-        else
-          match s.[i] with
-          | ' ' | '\t' ->
-            (String.sub s ~pos:0 ~len:i,
-             String.sub s ~pos:i ~len:(len - i))
-          | _ -> loop (i + 1)
-      in
-      loop 0
-    in
+    let stdlib_dir = Ocamlc_config.stdlib_dir ocamlc_config in
+    let natdynlink_supported = Ocamlc_config.natdynlink_supported ocamlc_config in
+    let version = Ocamlc_config.version ocamlc_config in
+    let version_string = Ocamlc_config.version_string ocamlc_config in
+    let get = Ocamlc_config.get ocamlc_config in
     let c_compiler, ocamlc_cflags, ocamlopt_cflags =
-      match get_opt "c_compiler" with
-      | Some c_compiler -> (* >= 4.06 *)
-        let c_compiler, extra_args = split_prog c_compiler in
-        let args var =
-          if String.length extra_args > 0 then
-            sprintf "%s %s" extra_args (get var)
-          else
-            get var in
-        (c_compiler, args "ocamlc_cflags", args "ocamlopt_cflags")
-      | None ->
-        let c_compiler, ocamlc_cflags = split_prog (get "bytecomp_c_compiler") in
-        let _, ocamlopt_cflags = split_prog (get "native_c_compiler") in
-        (c_compiler, ocamlc_cflags, ocamlopt_cflags)
-    in
+      Ocamlc_config.c_compiler_settings ocamlc_config in
     let arch_sixtyfour =
-      match get_opt "word_size" with
+      match Ocamlc_config.word_size ocamlc_config with
       | Some ws -> ws = "64"
       | None -> get_arch_sixtyfour stdlib_dir
     in
@@ -401,7 +338,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       ; natdynlink_supported
 
       ; stdlib_dir
-      ; ocamlc_config = String_map.bindings ocamlc_config
+      ; ocamlc_config
       ; version_string
       ; version
       ; ccomp_type              = get       "ccomp_type"
@@ -423,7 +360,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       ; default_executable_name = get       "default_executable_name"
       ; host                    = get       "host"
       ; target                  = get       "target"
-      ; flambda                 = get_bool  "flambda" ~default:false
+      ; flambda                 = Ocamlc_config.flambda ocamlc_config
       ; exec_magic_number       = get       "exec_magic_number"
       ; cmi_magic_number        = get       "cmi_magic_number"
       ; cmo_magic_number        = get       "cmo_magic_number"

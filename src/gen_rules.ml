@@ -28,9 +28,9 @@ module Gen(P : Params) = struct
      +-----------------------------------------------------------------+ *)
 
   module Eval_modules = Ordered_set_lang.Make(struct
-      type t = (Module.t, string) result
+      type t = (Module.t, string * Loc.t) result
       let name = function
-        | Error s -> s
+        | Error (s, _) -> s
         | Ok m -> Module.name m
     end)
 
@@ -44,7 +44,7 @@ module Gen(P : Params) = struct
       | Some m -> Ok m
       | None ->
         fake_modules := String_map.add ~key:s ~data:loc !fake_modules;
-        Error s
+        Error (s, loc)
     in
     let modules =
       Eval_modules.eval_unordered
@@ -55,13 +55,8 @@ module Gen(P : Params) = struct
     let only_present_modules modules =
       String_map.filter_map ~f:(fun ~key:_ ~data ->
         match data with
-        | Ok m ->
-          Some m
-        | Error s ->
-          Loc.fail
-            (* fake modules contain all modules that we might error on *)
-            (Option.value_exn (String_map.find s !fake_modules))
-            "Module %s doesn't exist." s
+        | Ok m -> Some m
+        | Error (s, loc) -> Loc.fail loc "Module %s doesn't exist." s
       ) modules
     in
     let modules = only_present_modules modules in

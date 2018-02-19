@@ -212,11 +212,10 @@ module Map = struct
     let values t = bindings t |> List.map ~f:snd
 
     let filter_map t ~f =
-      fold t ~init:empty ~f:(fun ~key ~data acc ->
-        match f ~key ~data with
-        | None -> acc
-        | Some data -> add ~key ~data acc
-      )
+      merge t empty ~f:(fun key data _always_none ->
+        match data with
+        | None -> assert false
+        | Some data -> f ~key ~data)
   end
 end
 

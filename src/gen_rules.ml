@@ -472,8 +472,8 @@ module Gen(P : Params) = struct
 
   let rec runner_rules ~dir ~(lib : Library.t)
             ~(scope : Lib_db.Scope.t With_required_by.t) =
-    Option.iter (Inline_lib.rule sctx ~lib ~dir ~scope)
-      ~f:(fun { Inline_lib.exe ; alias_name ; alias_action ; alias_stamp
+    Option.iter (Inline_tests.rule sctx ~lib ~dir ~scope)
+      ~f:(fun { Inline_tests.exe ; alias_name ; alias_action ; alias_stamp
               ; gen_source ; all_modules } ->
            SC.add_rule sctx gen_source;
            executables_rules exe ~dir ~all_modules ~scope

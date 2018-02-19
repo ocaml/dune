@@ -11,6 +11,8 @@ val make
 
 val default : unit -> t
 
+val empty : t
+
 val get : t -> Mode.t -> (unit, string list) Build.t
 val get_for_cm : t -> cm_kind:Cm_kind.t -> (unit, string list) Build.t
 

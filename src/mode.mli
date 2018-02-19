@@ -29,6 +29,8 @@ module Dict : sig
 
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
+  val make_both : 'a -> 'a t
+
   module Set : sig
     type nonrec t = bool t
     val t : t Sexp.Of_sexp.t

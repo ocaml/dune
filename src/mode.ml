@@ -48,6 +48,11 @@ module Dict = struct
     ; native = f a.native b.native
     }
 
+  let make_both x =
+    { byte   = x
+    ; native = x
+    }
+
   module Set = struct
     type nonrec t = bool t
 

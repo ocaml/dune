@@ -496,7 +496,9 @@ module Gen(P : Params) = struct
     let modules =
       SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
         ~preprocess:lib.buildable.preprocess
-        ~preprocessor_deps:lib.buildable.preprocessor_deps
+        ~preprocessor_deps:
+          (SC.Deps.interpret sctx ~scope:scope.data ~dir
+             lib.buildable.preprocessor_deps)
         ~lint:lib.buildable.lint
         ~lib_name:(Some lib.name)
     in
@@ -722,134 +724,70 @@ module Gen(P : Params) = struct
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  and build_exe ~js_of_ocaml ~flags ~scope ~dir ~obj_dir ~requires ~name ~mode
-        ~top_sorted_modules ~link_flags ~force_custom_bytecode =
-    let exe_ext = Mode.exe_ext mode in
-    let mode, link_custom, compiler =
-      match force_custom_bytecode, Context.compiler ctx mode with
-      | false, Some compiler -> (mode, [], compiler)
-      | _                    -> (Byte, ["-custom"], ctx.ocamlc)
-    in
-    let exe = Path.relative dir (name ^ exe_ext) in
-    let artifacts ~ext modules =
-      List.map modules ~f:(Module.obj_file ~obj_dir ~ext)
-    in
-    let modules_and_cm_files =
-      Build.memoize "cm files"
-        (top_sorted_modules >>^ fun modules ->
-         (modules,
-          artifacts modules ~ext:(Cm_kind.ext (Mode.cm_kind mode))))
-    in
-    let register_native_objs_deps build =
-      match mode with
-      | Byte -> build
-      | Native ->
-        build >>>
-        Build.dyn_paths (Build.arr (fun (modules, _) ->
-          artifacts modules ~ext:ctx.ext_obj))
-    in
-    SC.add_rule sctx
-      (Build.fanout4
-         requires
-         (register_native_objs_deps modules_and_cm_files >>^ snd)
-         (Ocaml_flags.get flags mode)
-         (SC.expand_and_eval_set sctx ~scope ~dir link_flags ~standard:[])
-       >>>
-       Build.dyn_paths (Build.arr (fun (libs, _, _, _) ->
-         Lib.archive_files libs ~mode ~ext_lib:ctx.ext_lib))
-       >>>
-       Build.run ~context:ctx
-         (Ok compiler)
-         [ Dyn (fun (_, _, flags,_) -> As flags)
-         ; A "-o"; Target exe
-         ; Dyn (fun (_, _, _, link_flags) ->
-             As (link_custom @ link_flags))
-         ; Dyn (fun (libs, _, _, _) ->
-             Lib.link_flags libs ~mode ~stdlib_dir:ctx.stdlib_dir)
-         ; Dyn (fun (_, cm_files, _, _) -> Deps cm_files)
-         ]);
-    if mode = Mode.Byte then
-      let rules = Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe in
-      let libs_and_cm_and_flags =
-        (requires &&& (modules_and_cm_files >>^ snd))
-        &&&
-        SC.expand_and_eval_set sctx ~scope ~dir js_of_ocaml.flags
-          ~standard:(Js_of_ocaml_rules.standard ())
-      in
-      SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm_and_flags >>> r))
-
   and executables_rules (exes : Executables.t) ~dir ~all_modules
-    ~(scope : Lib_db.Scope.t With_required_by.t) =
-    let item = snd (List.hd exes.names) in
-    (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library of the
-       same name *)
-    let obj_dir = Path.relative dir ("." ^ item ^ ".eobjs") in
-    let dep_kind = Build.Required in
-    let flags = Ocaml_flags.make exes.buildable sctx ~scope:scope.data ~dir in
+        ~(scope : Lib_db.Scope.t With_required_by.t) =
     let modules =
       parse_modules ~all_modules ~buildable:exes.buildable
-    in
-    let modules =
-      String_map.map modules ~f:(Module.set_obj_name ~wrapper:None)
     in
     let programs =
       List.map exes.names ~f:(fun (loc, name) ->
         let mod_name = String.capitalize_ascii name in
         match String_map.find mod_name modules with
-        | Some m ->
-          if not (Module.has_impl m) then
+        | Some main ->
+          if not (Module.has_impl main) then
             Loc.fail loc "Module %s has no implementation." mod_name
           else
-            (name, m)
+            { Exe.Program.name; main }
         | None -> Loc.fail loc "Module %s doesn't exist." mod_name)
     in
 
-    let modules =
-      SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
-        ~preprocess:exes.buildable.preprocess
-        ~preprocessor_deps:exes.buildable.preprocessor_deps
-        ~lint:exes.buildable.lint
-        ~lib_name:None
+    let linkages =
+      [ Exe.Linkage.byte
+      ; if exes.modes.native then
+          Exe.Linkage.native_or_custom ctx
+        else
+          Exe.Linkage.custom
+      ]
     in
 
-    let dep_graphs =
-      Ocamldep.rules sctx ~dir ~modules ~alias_module:None
-        ~lib_interface_module:None
+    let flags =
+      Ocaml_flags.make exes.buildable sctx ~scope:scope.data ~dir
+    in
+    let link_flags =
+      SC.expand_and_eval_set sctx exes.link_flags
+        ~scope:scope.data
+        ~dir
+        ~standard:[]
+    in
+    let preprocessor_deps =
+      SC.Deps.interpret sctx exes.buildable.preprocessor_deps
+        ~scope:scope.data ~dir
     in
 
-    let requires, real_requires =
-      SC.Libs.requires sctx ~dir ~scope ~dep_kind ~item
+    let obj_dir, requires =
+      Exe.build_and_link_many sctx
+        ~dir
+        ~programs
+        ~modules
+        ~scope
+        ~linkages
         ~libraries:exes.buildable.libraries
+        ~flags
+        ~link_flags
         ~preprocess:exes.buildable.preprocess
-        ~virtual_deps:[]
+        ~preprocessor_deps
+        ~lint:exes.buildable.lint
+        ~js_of_ocaml:exes.buildable.js_of_ocaml
         ~has_dot_merlin:exes.buildable.gen_dot_merlin
     in
 
-    SC.Libs.add_select_rules sctx ~dir ~scope exes.buildable.libraries;
-
-    (* CR-someday jdimino: this should probably say [~dynlink:false] *)
-    Module_compilation.build_modules sctx
-      ~js_of_ocaml:exes.buildable.js_of_ocaml
-      ~dynlink:true ~flags ~scope:scope.data ~dir ~obj_dir ~dep_graphs ~modules
-      ~requires ~alias_module:None;
-
-    List.iter programs ~f:(fun (name, unit) ->
-      let top_sorted_modules =
-        Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl
-          [unit]
-      in
-      List.iter Mode.all ~f:(fun mode ->
-        build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~scope:scope.data
-          ~dir ~obj_dir ~requires ~name ~mode ~top_sorted_modules
-          ~link_flags:exes.link_flags
-          ~force_custom_bytecode:(mode = Native && not exes.modes.native)));
     { Merlin.
-      requires   = real_requires
-    ; flags      = Ocaml_flags.common flags
-    ; preprocess = Buildable.single_preprocess exes.buildable
-    ; libname    = None
+      requires    = requires
+    ; flags       = Ocaml_flags.common flags
+    ; preprocess  = Buildable.single_preprocess exes.buildable
+    ; libname     = None
     ; source_dirs = Path.Set.empty
-    ; objs_dirs  = Path.Set.singleton obj_dir
+    ; objs_dirs   = Path.Set.singleton obj_dir
     }
 
   (* +-----------------------------------------------------------------+

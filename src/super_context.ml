@@ -1021,8 +1021,7 @@ module PP = struct
         ~preprocessor_deps ~lib_name
         ~(scope : Lib_db.Scope.t With_required_by.t) =
     let preprocessor_deps =
-      Build.memoize "preprocessor deps"
-        (Deps.interpret sctx ~scope:scope.data ~dir preprocessor_deps)
+      Build.memoize "preprocessor deps" preprocessor_deps
     in
     let lint_module = lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope in
     String_map.map modules ~f:(fun (m : Module.t) ->

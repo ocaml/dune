@@ -213,7 +213,7 @@ module PP : sig
     -> modules:Module.t String_map.t
     -> lint:Preprocess_map.t
     -> preprocess:Preprocess_map.t
-    -> preprocessor_deps:Dep_conf.t list
+    -> preprocessor_deps:(unit, Path.t list) Build.t
     -> lib_name:string option
     -> scope:Lib_db.Scope.t With_required_by.t
     -> Module.t String_map.t

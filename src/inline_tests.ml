@@ -30,11 +30,11 @@ let setup sctx ~dir ~(lib : Jbuild.Library.t) ~scope ~modules =
   Option.iter lib.inline_tests ~f:(fun inline_tests ->
     let uses_expect = Ppx_info.uses_expect lib ~scope in
     let name = lib.name ^ "_test_runner" in
-    let module_filename = name ^ ".ml-gen" in
-    let module_name = String.capitalize_ascii name in
-    let main : Module.t =
-      { name = module_name
-      ; impl = Some { name   = module_filename
+    let main_module_filename = name ^ ".ml-gen" in
+    let main_module_name = String.capitalize_ascii name in
+    let main_module : Module.t =
+      { name = main_module_name
+      ; impl = Some { name   = main_module_filename
                     ; syntax = Module.Syntax.OCaml
                     }
       ; intf = None
@@ -43,13 +43,13 @@ let setup sctx ~dir ~(lib : Jbuild.Library.t) ~scope ~modules =
     in
 
     SC.add_rule sctx (
-      Build.write_file (Path.relative dir module_filename)
+      Build.write_file (Path.relative dir main_module_filename)
         "let () = Ppx_inline_test_lib.Runtime.exit ()");
     ignore (
       Exe.build_and_link sctx
         ~dir
-        ~program:{ name; main }
-        ~modules:(String_map.singleton module_name main)
+        ~program:{ name; main = main_module }
+        ~modules:(String_map.singleton main_module_name main_module)
         ~scope
         ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
         ~libraries:

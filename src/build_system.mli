@@ -100,11 +100,12 @@ module Alias : sig
 
   val fully_qualified_name : t -> Path.t
 
-  val default : dir:Path.t -> t
-  val runtest : dir:Path.t -> t
-  val install : dir:Path.t -> t
-  val doc     : dir:Path.t -> t
-  val lint    : dir:Path.t -> t
+  val default     : dir:Path.t -> t
+  val runtest     : dir:Path.t -> t
+  val install     : dir:Path.t -> t
+  val doc         : dir:Path.t -> t
+  val private_doc : dir:Path.t -> t
+  val lint        : dir:Path.t -> t
 
   (** Return the underlying stamp file *)
   val stamp_file : t -> Path.t

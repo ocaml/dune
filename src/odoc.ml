@@ -200,7 +200,11 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
       to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~lib)
   in
   let doc_root = SC.Doc.root sctx in
-  SC.add_alias_deps sctx (Build_system.Alias.doc ~dir)
+  let alias =
+    match lib.public with
+    | None -> Build_system.Alias.private_doc ~dir
+    | Some _ -> Build_system.Alias.doc ~dir in
+  SC.add_alias_deps sctx alias
     (css_file ~doc_dir:doc_root
      :: toplevel_index ~doc_dir:doc_root
      :: html_files)
@@ -268,15 +272,17 @@ let gen_rules sctx ~dir:_ rest =
     setup_toplevel_index_rule sctx
   | lib :: _ ->
     let libs = SC.libs sctx in
-    let (lib, scope) =
+    let (lib, scope, alias) =
       match String.rsplit2 lib ~on:'@' with
-      | None -> (lib, Lib_db.external_scope libs)
-      | Some (lib, name) -> (lib, Lib_db.find_scope_by_name_exn libs ~name)
+      | None ->
+        (lib, Lib_db.external_scope libs, "doc")
+      | Some (lib, name) ->
+        (lib, Lib_db.find_scope_by_name_exn libs ~name, "doc-private")
     in
     let scope =
       { With_required_by.
         data = scope
-      ; required_by = [Alias (Path.of_string "doc")]
+      ; required_by = [Alias (Path.of_string alias)]
       } in
     let open Option.Infix in
     Option.iter (Lib_db.Scope.find scope lib >>= Lib.src_dir)

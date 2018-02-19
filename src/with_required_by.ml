@@ -16,7 +16,8 @@ module Entry = struct
     | Library (path, lib_name) ->
       sprintf "library %S in %s" lib_name (Path.to_string_maybe_quoted path)
     | Preprocess l ->
-      Sexp.to_string (List [Atom "pps"; Sexp.To_sexp.(list atom) l])
+      Sexp.to_string (List [Sexp.unsafe_atom_of_string "pps";
+                            Sexp.To_sexp.(list string) l])
     | Loc loc ->
       Loc.to_file_colon_line loc
 

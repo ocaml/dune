@@ -452,19 +452,22 @@ and resolve_name db name ~stack =
     in
     (* Add [init] to the table, to detect loops *)
     Option.iter (Hashtbl.find db.table name) ~f:(fun x ->
-      let to_sexp = Sexp.To_sexp.(pair Path.sexp_of_t atom) in
+      let to_sexp = Sexp.To_sexp.(pair Path.sexp_of_t string) in
       let sexp =
         match x with
         | Initializing x ->
-          Sexp.List [Atom "Initializing"; Path.sexp_of_t x.path]
-        | Done (Ok t) -> List [Atom "Ok"; Path.sexp_of_t t.src_dir]
-        | Done (Error Not_found) -> Atom "Not_found"
+          Sexp.List [Sexp.unsafe_atom_of_string "Initializing";
+                     Path.sexp_of_t x.path]
+        | Done (Ok t) -> List [Sexp.unsafe_atom_of_string "Ok";
+                               Path.sexp_of_t t.src_dir]
+        | Done (Error Not_found) -> Sexp.unsafe_atom_of_string "Not_found"
         | Done (Error (Hidden { info; reason; _ })) ->
-          List [Atom "Hidden"; Path.sexp_of_t info.src_dir; Atom reason]
+          List [Sexp.unsafe_atom_of_string "Hidden";
+                Path.sexp_of_t info.src_dir; Sexp.atom reason]
       in
         Sexp.code_error
           "Lib_db.DB: resolver returned name that's already in the table"
-          [ "name"            , Atom name
+          [ "name"            , Sexp.atom name
           ; "returned_lib"    , to_sexp (info.src_dir, name)
           ; "conflicting_with", sexp
           ]);

@@ -24,16 +24,17 @@ let loc t = t.loc
 
 let parse_general sexp ~f =
   let rec of_sexp : Sexp.Ast.t -> _ = function
-    | Atom (loc, "\\") -> Loc.fail loc "unexpected \\"
-    | (Atom (_, "") | Quoted_string (_, _)) as t -> Ast.Element (f t)
-    | Atom (loc, s) as t ->
+    | Atom (loc, A "\\") -> Loc.fail loc "unexpected \\"
+    | (Atom (_, A "") | Quoted_string (_, _)) as t -> Ast.Element (f t)
+    | Atom (loc, A s) as t ->
       if s.[0] = ':' then
         Special (loc, String.sub s ~pos:1 ~len:(String.length s - 1))
       else
         Element (f t)
     | List (_, sexps) -> of_sexps [] sexps
   and of_sexps acc = function
-    | Atom (_, "\\") :: sexps -> Diff (Union (List.rev acc), of_sexps [] sexps)
+    | Atom (_, A "\\") :: sexps ->
+       Diff (Union (List.rev acc), of_sexps [] sexps)
     | elt :: sexps ->
       of_sexps (of_sexp elt :: acc) sexps
     | [] -> Union (List.rev acc)
@@ -43,7 +44,7 @@ let parse_general sexp ~f =
 let t sexp : t =
   let ast =
     parse_general sexp ~f:(function
-      | Atom (loc, s) | Quoted_string (loc, s) -> (loc, s)
+      | Atom (loc, A s) | Quoted_string (loc, s) -> (loc, s)
       | List _ -> assert false)
   in
   { ast
@@ -194,8 +195,8 @@ module Unexpanded = struct
           | None ->
             Sexp.code_error
               "Ordered_set_lang.Unexpanded.expand"
-              [ "included-file", Atom fn
-              ; "files", Sexp.To_sexp.(list atom) (String_map.keys files_contents)
+              [ "included-file", Quoted_string fn
+              ; "files", Sexp.To_sexp.(list string) (String_map.keys files_contents)
               ]
         in
         parse_general sexp ~f:(fun sexp ->

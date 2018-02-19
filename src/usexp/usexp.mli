@@ -1,17 +1,24 @@
 (** Parsing of s-expressions *)
 
 module Atom : sig
-  type t = string
+  type t = private A of string [@@unboxed]
+  (** Acceptable atoms are composed of chars in the range [' ' .. '~']
+     and must be nonempty. *)
 
-  (** Whether the atom must be escaped when serialized *)
-  val must_escape : t -> bool
+  val is_valid : string -> bool
+  (** [is_valid s] checks that [s] respects the constraints to be an atom. *)
 
-  (** Escape all special characters in the atom *)
-  val escaped : t -> string
+ val of_string : string -> t
+  (** Convert a string to an atom.  If the string contains invalid
+     characters, raise [Invalid_argument]. *)
 
-  (** [serialize t] is the serialized representation of [t], so either
-      [t] either [escaped t] surrounded by double quotes. *)
-  val serialize : t -> string
+  val of_int : int -> t
+  val of_float : float -> t
+  val of_bool : bool -> t
+  val of_int64 : Int64.t -> t
+  val of_digest : Digest.t -> t
+
+  val to_string : t -> string
 end
 
 module Loc : sig
@@ -26,6 +33,14 @@ type t =
   | Atom of Atom.t
   | Quoted_string of string
   | List of t list
+
+val atom : string -> t
+(** [atom s] convert the string [s] to an Atom.
+    @raise Invalid_argument if [s] does not satisfy [Atom.is_valid s]. *)
+
+val atom_or_quoted_string : string -> t
+
+val unsafe_atom_of_string : string -> t
 
 (** Serialize a S-expression *)
 val to_string : t -> string
@@ -50,13 +65,15 @@ module Ast : sig
     | Quoted_string of Loc.t * string
     | List of Loc.t * t list
 
+  val atom_or_quoted_string : Loc.t -> string -> t
+
   val loc : t -> Loc.t
 
   val remove_locs : t -> sexp
 
   module Token : sig
     type t =
-      | Atom   of Loc.t * string
+      | Atom   of Loc.t * Atom.t
       | String of Loc.t * string
       | Lparen of Loc.t
       | Rparen of Loc.t

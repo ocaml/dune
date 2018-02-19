@@ -11,7 +11,7 @@ let ocamlc_config_cmd ocamlc =
 
 let sexp_of_t t =
   let open Sexp.To_sexp in
-  atom_map atom t.bindings
+  string_map Sexp.atom_or_quoted_string t.bindings
 
 let read ~ocamlc ~env =
   Process.run_capture_lines ~env Strict (Path.to_string ocamlc) ["-config"]

@@ -333,7 +333,7 @@ let eps_push_atom state stack =
   Buffer.clear state.atom_buffer;
   let stack =
     if state.ignoring = 0 then
-      Sexp (Atom (make_loc state, str), stack)
+      Sexp (Atom (make_loc state, A str), stack)
     else
       stack
   in

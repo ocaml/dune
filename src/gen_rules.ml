@@ -718,11 +718,11 @@ module Gen(P : Params) = struct
       List.map exes.names ~f:(fun (loc, name) ->
         let mod_name = String.capitalize_ascii name in
         match String_map.find mod_name modules with
-        | Some main ->
-          if not (Module.has_impl main) then
+        | Some m ->
+          if not (Module.has_impl m) then
             Loc.fail loc "Module %s has no implementation." mod_name
           else
-            { Exe.Program.name; main }
+            { Exe.Program.name; main_module_name = mod_name }
         | None -> Loc.fail loc "Module %s doesn't exist." mod_name)
     in
 

@@ -4,8 +4,8 @@ open Import
 
 module Program : sig
   type t =
-    { name : string
-    ; main : Module.t
+    { name             : string
+    ; main_module_name : string
     }
 end
 

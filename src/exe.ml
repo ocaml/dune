@@ -6,8 +6,8 @@ module SC = Super_context
 
 module Program = struct
   type t =
-    { name : string
-    ; main : Module.t
+    { name             : string
+    ; main_module_name : string
     }
 end
 
@@ -164,8 +164,9 @@ let build_and_link_many
     ~dynlink:true ~flags ~scope:scope.data ~dir ~obj_dir ~dep_graphs ~modules
     ~requires ~alias_module:None;
 
-  List.iter programs ~f:(fun { Program.name; main } ->
+  List.iter programs ~f:(fun { Program.name; main_module_name } ->
     let top_sorted_modules =
+      let main = Option.value_exn (String_map.find main_module_name modules) in
       Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl
         [main]
     in

@@ -26,20 +26,22 @@ module Ppx_info = struct
     | exception _ -> false
 end
 
-let setup sctx ~dir ~(lib : Jbuild.Library.t) ~scope ~modules =
+let setup sctx ~dir ~(lib : Jbuild.Library.t) ~scope ~modules:lib_modules =
   Option.iter lib.inline_tests ~f:(fun inline_tests ->
     let uses_expect = Ppx_info.uses_expect lib ~scope in
     let name = lib.name ^ "_test_runner" in
     let main_module_filename = name ^ ".ml-gen" in
     let main_module_name = String.capitalize_ascii name in
-    let main_module : Module.t =
-      { name = main_module_name
-      ; impl = Some { name   = main_module_filename
-                    ; syntax = Module.Syntax.OCaml
-                    }
-      ; intf = None
-      ; obj_name = ""
-      }
+    let modules =
+      String_map.singleton main_module_name
+        { Module.
+          name = main_module_name
+        ; impl = Some { name   = main_module_filename
+                      ; syntax = OCaml
+                      }
+        ; intf = None
+        ; obj_name = ""
+        }
     in
 
     SC.add_rule sctx (
@@ -48,8 +50,8 @@ let setup sctx ~dir ~(lib : Jbuild.Library.t) ~scope ~modules =
     ignore (
       Exe.build_and_link sctx
         ~dir
-        ~program:{ name; main = main_module }
-        ~modules:(String_map.singleton main_module_name main_module)
+        ~program:{ name; main_module_name }
+        ~modules
         ~scope
         ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
         ~libraries:
@@ -85,7 +87,7 @@ let setup sctx ~dir ~(lib : Jbuild.Library.t) ~scope ~modules =
                ; "-diff-cmd"; "-"
                ]
              ::
-             (String_map.values modules
+             (String_map.values lib_modules
               |> List.concat_map ~f:(fun m ->
                 [ Module.file m ~dir Impl
                 ; Module.file m ~dir Intf

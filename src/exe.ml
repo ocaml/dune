@@ -1,4 +1,5 @@
 open Import
+open! No_io
 open Build.O
 
 module SC = Super_context

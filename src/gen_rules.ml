@@ -470,21 +470,7 @@ module Gen(P : Params) = struct
      it references are built after. *)
   let alias_module_build_sandbox = ctx.version < (4, 03, 0)
 
-  let rec runner_rules ~dir ~(lib : Library.t)
-            ~(scope : Lib_db.Scope.t With_required_by.t) ~modules =
-    Option.iter (Inline_tests.rule sctx ~lib ~dir ~scope ~modules)
-      ~f:(fun { Inline_tests.exe ; alias_name ; alias_action ; alias_stamp
-              ; gen_source ; all_modules } ->
-           SC.add_rule sctx gen_source;
-           executables_rules exe ~dir ~all_modules ~scope
-           |> ignore;
-           add_alias ~dir
-             ~name:alias_name
-             ~stamp:alias_stamp
-             alias_action
-         )
-
-  and library_rules (lib : Library.t) ~dir ~files
+  let library_rules (lib : Library.t) ~dir ~files
         ~(scope : Lib_db.Scope.t With_required_by.t) =
     let obj_dir = Lib.lib_obj_dir dir lib in
     let dep_kind = if lib.optional then Build.Optional else Required in
@@ -708,8 +694,7 @@ module Gen(P : Params) = struct
       | Some m -> Ocaml_flags.prepend_common ["-open"; m.name] flags |> Ocaml_flags.common
     in
 
-    (* test runners if they are present *)
-    runner_rules ~dir ~lib ~scope ~modules:source_modules;
+    Inline_tests.setup sctx ~lib ~dir ~scope ~modules:source_modules;
 
     { Merlin.
       requires = real_requires
@@ -724,7 +709,7 @@ module Gen(P : Params) = struct
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  and executables_rules (exes : Executables.t) ~dir ~all_modules
+  let executables_rules (exes : Executables.t) ~dir ~all_modules
         ~(scope : Lib_db.Scope.t With_required_by.t) =
     let modules =
       parse_modules ~all_modules ~buildable:exes.buildable
@@ -794,11 +779,11 @@ module Gen(P : Params) = struct
      | Aliases                                                         |
      +-----------------------------------------------------------------+ *)
 
-  and interpret_locks ~dir ~scope locks =
+  let interpret_locks ~dir ~scope locks =
     List.map locks ~f:(fun s ->
       Path.relative dir (SC.expand_vars sctx ~dir ~scope s))
 
-  and add_alias ~dir ~name ~stamp ?(locks=[]) build =
+  let add_alias ~dir ~name ~stamp ?(locks=[]) build =
     let alias = Build_system.Alias.make name ~dir in
     SC.add_alias_action sctx alias ~locks ~stamp build
 

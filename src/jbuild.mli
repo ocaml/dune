@@ -45,13 +45,16 @@ module Preprocess : sig
     | Pps    of pps
 end
 
+module Per_module : Per_item.S with type key = string
+
 module Preprocess_map : sig
-  type t
+  type t = Preprocess.t Per_module.t
 
   val no_preprocessing : t
   val default : t
 
-  (** [find module_name] find the preprocessing specification for a given module *)
+  (** [find module_name] find the preprocessing specification for a
+      given module *)
   val find : string -> t -> Preprocess.t
 
   val pps : t -> Pp.t list

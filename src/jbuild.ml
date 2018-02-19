@@ -264,46 +264,39 @@ module Preprocess = struct
 end
 
 module Per_module = struct
-  type 'a t =
-    | For_all    of 'a
-    | Per_module of 'a String_map.t
+  include Per_item.Make(String)
 
-  let t a sexp =
+  let t ~default a sexp =
     match sexp with
     | List (_, Atom (_, "per_module") :: rest) -> begin
-        List.concat_map rest ~f:(fun sexp ->
-          let pp, names = pair a module_names sexp in
-          List.map (String_set.elements names) ~f:(fun name -> (name, pp)))
-        |> String_map.of_alist
-        |> function
-        | Ok map -> Per_module map
-        | Error (name, _, _) ->
-          of_sexp_error sexp (sprintf "module %s present in two different sets" name)
-      end
-    | sexp -> For_all (a sexp)
+      List.map rest ~f:(fun sexp ->
+        let pp, names = pair a module_names sexp in
+        (String_set.elements names, pp))
+      |> of_mapping ~default
+      |> function
+      | Ok t -> t
+      | Error (name, _, _) ->
+        of_sexp_error sexp (sprintf "module %s present in two different sets" name)
+    end
+    | sexp -> for_all (a sexp)
 end
 
 module Preprocess_map = struct
   type t = Preprocess.t Per_module.t
-  let t = Per_module.t Preprocess.t
+  let t = Per_module.t Preprocess.t ~default:Preprocess.No_preprocessing
 
-  let no_preprocessing = Per_module.For_all Preprocess.No_preprocessing
+  let no_preprocessing = Per_module.for_all Preprocess.No_preprocessing
 
-  let find module_name (t : t) =
-    match t with
-    | For_all pp -> pp
-    | Per_module map -> String_map.find_default module_name map ~default:No_preprocessing
+  let find module_name t = Per_module.get t module_name
 
-  let default : t = For_all No_preprocessing
+  let default = Per_module.for_all Preprocess.No_preprocessing
 
   module Pp_set = Set.Make(Pp)
 
-  let pps : t -> _ = function
-    | For_all pp -> Preprocess.pps pp
-    | Per_module map ->
-      String_map.fold map ~init:Pp_set.empty ~f:(fun ~key:_ ~data:pp acc ->
-        Pp_set.union acc (Pp_set.of_list (Preprocess.pps pp)))
-      |> Pp_set.elements
+  let pps t =
+    Per_module.fold t ~init:Pp_set.empty ~f:(fun pp acc ->
+      Pp_set.union acc (Pp_set.of_list (Preprocess.pps pp)))
+    |> Pp_set.elements
 end
 
 module Lint = struct
@@ -498,9 +491,10 @@ module Buildable = struct
       }
 
   let single_preprocess t =
-    match t.preprocess with
-    | For_all pp -> pp
-    | Per_module _ -> No_preprocessing
+    if Per_module.is_constant t.preprocess then
+      Per_module.get t.preprocess ""
+    else
+      Preprocess.No_preprocessing
 end
 
 module Public_lib = struct

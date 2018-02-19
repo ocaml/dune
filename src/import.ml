@@ -141,6 +141,8 @@ module Hashtbl = struct
 end
 
 module Map = struct
+  module type OrderedType = MoreLabels.Map.OrderedType
+
   module type S = sig
     include MoreLabels.Map.S
 
@@ -155,7 +157,7 @@ module Map = struct
     val values : 'a t -> 'a list
   end
 
-  module Make(Key : MoreLabels.Map.OrderedType) : S with type key = Key.t = struct
+  module Make(Key : OrderedType) : S with type key = Key.t = struct
     include MoreLabels.Map.Make(Key)
 
     let add_multi t ~key ~data =

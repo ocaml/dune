@@ -5,15 +5,37 @@ open! No_io
 
 module SC = Super_context
 
+module Ppx_info = struct
+  type t =
+    { uses_ppx_expect      : bool
+    ; uses_ppx_inline_test : bool
+    }
+
+  let default =
+    { uses_ppx_expect      = false
+    ; uses_ppx_inline_test = false
+    }
+
+  let make compile_info =
+    Lib.Compile.pps compile_info
+    |> function
+    | Error _ -> default
+    | Ok l ->
+      List.fold_left l ~init:default ~f:(fun acc pp ->
+        match Lib.name pp with
+        | "ppx_expect"      -> { acc with uses_ppx_expect      = true }
+        | "ppx_inline_test" -> { acc with uses_ppx_inline_test = true }
+        | _                 -> acc)
+end
+
 let setup sctx ~dir ~(lib : Jbuild.Library.t) ~scope ~modules:lib_modules
       ~compile_info =
   Option.iter lib.inline_tests ~f:(fun inline_tests ->
-    let uses_expect =
-      match Lib.Compile.pps compile_info with
-      | Error _ -> false
-      | Ok pps ->
-        List.exists pps ~f:(fun pp -> Lib.name pp = "ppx_expect")
-    in
+    let ppx_info = Ppx_info.make compile_info in
+    if not ppx_info.uses_ppx_inline_test then
+      Loc.warn lib.buildable.loc
+        "This library has an 'inline_tests' field but \
+         'ppx_inline_test' is not used.";
     let name = lib.name ^ "_test_runner" in
     let main_module_filename = name ^ ".ml-gen" in
     let main_module_name = String.capitalize_ascii name in
@@ -43,7 +65,7 @@ let setup sctx ~dir ~(lib : Jbuild.Library.t) ~scope ~modules:lib_modules
         ~libraries:
           (List.map ~f:Lib_dep.direct (
              [lib.name]
-             @ (if uses_expect then
+             @ (if ppx_info.uses_ppx_expect then
                   ["ppx_expect.evaluator"]
                 else
                   [])

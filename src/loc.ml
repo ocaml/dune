@@ -64,3 +64,6 @@ let warn t fmt =
 
 let to_file_colon_line t =
   sprintf "%s:%d" t.start.pos_fname t.start.pos_lnum
+
+let pp_file_colon_line ppf t =
+  Format.pp_print_string ppf (to_file_colon_line t)

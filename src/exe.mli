@@ -44,6 +44,7 @@ val build_and_link
   -> modules:Module.t String_map.t
   -> scope:Scope.t
   -> linkages:Linkage.t list
+  -> ?modules_partitioner:Modules_partitioner.t
   -> ?libraries:Jbuild.Lib_deps.t
   -> ?flags:Ocaml_flags.t
   -> ?link_flags:(unit, string list) Build.t
@@ -62,6 +63,7 @@ val build_and_link_many
   -> modules:Module.t String_map.t
   -> scope:Scope.t
   -> linkages:Linkage.t list
+  -> ?modules_partitioner:Modules_partitioner.t
   -> ?libraries:Jbuild.Lib_deps.t
   -> ?flags:Ocaml_flags.t
   -> ?link_flags:(unit, string list) Build.t

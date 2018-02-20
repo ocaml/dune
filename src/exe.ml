@@ -115,6 +115,7 @@ let build_and_link_many
       ~loc ~dir ~programs ~modules
       ~scope
       ~linkages
+      ?modules_partitioner
       ?(libraries=[])
       ?(flags=Ocaml_flags.empty)
       ?link_flags
@@ -141,10 +142,17 @@ let build_and_link_many
       ~lint
       ~lib_name:None
   in
+  let already_used =
+    match modules_partitioner with
+    | None -> String_set.empty
+    | Some mp ->
+      Modules_partitioner.acknowledge mp
+        ~loc ~modules
+  in
 
   let dep_graphs =
-    Ocamldep.rules sctx ~dir ~modules ~alias_module:None
-      ~lib_interface_module:None
+    Ocamldep.rules sctx ~dir ~modules ~already_used
+      ~alias_module:None ~lib_interface_module:None
   in
 
   let requires, real_requires =

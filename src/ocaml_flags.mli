@@ -2,7 +2,12 @@
 
 type t
 
-val make : Jbuild.Buildable.t -> Super_context.t -> scope:Lib_db.Scope.t -> dir:Path.t -> t
+val make
+  :  Jbuild.Buildable.t
+  -> Super_context.t
+  -> scope:Scope.t
+  -> dir:Path.t
+  -> t
 
 val default : unit -> t
 

@@ -7,6 +7,7 @@ val setup_library_rules
   :  Super_context.t
   -> Library.t
   -> dir:Path.t
+  -> scope:Scope.t
   -> modules:Module.t String_map.t
   -> mld_files:string list
   -> requires:(unit, Lib.t list) Build.t

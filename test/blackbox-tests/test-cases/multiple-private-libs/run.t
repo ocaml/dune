@@ -1,6 +1,6 @@
 This test checks that there is no clash when two private libraries have the same name
 
-  $ $JBUILDER build -j1 --display short --root . @doc
+  $ $JBUILDER build -j1 --display short --root . @doc-private
           odoc _doc/odoc.css
           odoc _doc/test@a/page-index.odoc
       ocamldep a/test.ml.d

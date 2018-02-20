@@ -2,8 +2,8 @@
 
 open! Import
 
-(** Return the absolute path to the shell and the argument to pass it (-c or /c). Raise in
-    case in cannot be found. *)
+(** Return the absolute path to the shell and the argument to pass it
+    (-c or /c). Raise in case in cannot be found. *)
 val system_shell_exn : needed_to:string -> Path.t * string
 
 (** Same as [system_shell_exn] but for bash *)
@@ -17,6 +17,20 @@ val jbuild_file_in : dir:Path.t -> Path.t
 
 (** Nice description of a target *)
 val describe_target : Path.t -> string
+
+(** Return the directory where the object files for the given
+    library should be stored. *)
+val library_object_directory
+  :  dir:Path.t
+  -> string
+  -> Path.t
+
+(** Return the directory where the object files for the given
+    executable should be stored. *)
+val executable_object_directory
+  :  dir:Path.t
+  -> string
+  -> Path.t
 
 type target_kind =
   | Regular of string (* build context *) * Path.t

@@ -86,8 +86,7 @@ type t =
   ; (** Native dynlink *)
     natdynlink_supported : bool
 
-  ; (** Output of [ocamlc -config] *)
-    ocamlc_config           : (string * string) list
+  ; ocamlc_config           : Ocamlc_config.t
   ; version_string          : string
   ; version                 : int * int * int
   ; stdlib_dir              : Path.t

@@ -141,6 +141,8 @@ module Hashtbl = struct
 end
 
 module Map = struct
+  module type OrderedType = MoreLabels.Map.OrderedType
+
   module type S = sig
     include MoreLabels.Map.S
 
@@ -153,9 +155,10 @@ module Map = struct
     val of_alist_reduce : (key * 'a) list -> f:('a -> 'a -> 'a) -> 'a t
     val keys : 'a t -> key list
     val values : 'a t -> 'a list
+    val filter_map : 'a t -> f:(key:key -> data:'a -> 'b option) -> 'b t
   end
 
-  module Make(Key : MoreLabels.Map.OrderedType) : S with type key = Key.t = struct
+  module Make(Key : OrderedType) : S with type key = Key.t = struct
     include MoreLabels.Map.Make(Key)
 
     let add_multi t ~key ~data =
@@ -207,11 +210,24 @@ module Map = struct
 
     let keys   t = bindings t |> List.map ~f:fst
     let values t = bindings t |> List.map ~f:snd
+
+    let filter_map t ~f =
+      merge t empty ~f:(fun key data _always_none ->
+        match data with
+        | None -> assert false
+        | Some data -> f ~key ~data)
   end
 end
 
 module String_set = Set.Make(String)
 module String_map = Map.Make(String)
+
+module Int = struct
+  type t = int
+  let compare : int -> int -> int = compare
+end
+module Int_set = Set.Make(Int)
+module Int_map = Map.Make(Int)
 
 module String = struct
   include StringLabels
@@ -453,6 +469,8 @@ module Option = struct
       | Some a -> f a
   end
 
+  let bind t ~f = Infix.(>>=) t f
+
   let map t ~f =
     match t with
     | None -> None
@@ -577,6 +595,18 @@ module No_io = struct
 end
 
 module Fmt = struct
+  (* CR-someday diml: we should define a GADT for this:
+
+     {[
+       type 'a t =
+         | Int : int t
+         | Box : ...
+         | Colored : ...
+     ]}
+
+     This way we could separate the creation of messages from the
+     actual rendering.
+  *)
   type 'a t = Format.formatter -> 'a -> unit
 
   let kstrf f fmt =
@@ -585,6 +615,11 @@ module Fmt = struct
     Format.kfprintf f (Format.formatter_of_buffer buf) fmt
 
   let failwith fmt = kstrf failwith fmt
+
+  let list = Format.pp_print_list
+  let string s ppf = Format.pp_print_string ppf s
+
+  let prefix f g ppf x = f ppf; g ppf x
 end
 
 (* This is ugly *)

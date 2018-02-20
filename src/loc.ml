@@ -61,3 +61,9 @@ let print ppf { start; stop } =
 let warn t fmt =
   Errors.kerrf ~f:print_to_console
     ("%a@{<warning>Warning@}: " ^^ fmt ^^ "@.") print t
+
+let to_file_colon_line t =
+  sprintf "%s:%d" t.start.pos_fname t.start.pos_lnum
+
+let pp_file_colon_line ppf t =
+  Format.pp_print_string ppf (to_file_colon_line t)

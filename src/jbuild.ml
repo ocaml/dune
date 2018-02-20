@@ -72,21 +72,36 @@ let relative_file sexp =
     of_sexp_error sexp "relative filename expected";
   fn
 
-module Scope = struct
+module Scope_info = struct
+  module Name = struct
+    type t = string option
+
+    let compare : t -> t -> int = compare
+
+    let of_string = function
+      | "" -> None
+      | s  -> Some s
+
+    let to_string = function
+      | None -> ""
+      | Some "" -> assert false
+      | Some s -> s
+  end
+
   type t =
-    { name     : string option
+    { name     : Name.t
     ; packages : Package.t String_map.t
     ; root     : Path.t
     }
 
-  let empty =
+  let anonymous =
     { name     = None
     ; packages = String_map.empty
     ; root     = Path.root
     }
 
   let make = function
-    | [] -> empty
+    | [] -> anonymous
     | pkg :: rest as pkgs ->
       let name =
         List.fold_left rest ~init:pkg.Package.name ~f:(fun acc pkg ->
@@ -162,7 +177,7 @@ end
 
 
 module Pp : sig
-  type t
+  type t = private string
   val of_string : string -> t
   val to_string : t -> string
   val compare : t -> t -> int
@@ -264,46 +279,39 @@ module Preprocess = struct
 end
 
 module Per_module = struct
-  type 'a t =
-    | For_all    of 'a
-    | Per_module of 'a String_map.t
+  include Per_item.Make(String)
 
-  let t a sexp =
+  let t ~default a sexp =
     match sexp with
     | List (_, Atom (_, "per_module") :: rest) -> begin
-        List.concat_map rest ~f:(fun sexp ->
-          let pp, names = pair a module_names sexp in
-          List.map (String_set.elements names) ~f:(fun name -> (name, pp)))
-        |> String_map.of_alist
-        |> function
-        | Ok map -> Per_module map
-        | Error (name, _, _) ->
-          of_sexp_error sexp (sprintf "module %s present in two different sets" name)
-      end
-    | sexp -> For_all (a sexp)
+      List.map rest ~f:(fun sexp ->
+        let pp, names = pair a module_names sexp in
+        (String_set.elements names, pp))
+      |> of_mapping ~default
+      |> function
+      | Ok t -> t
+      | Error (name, _, _) ->
+        of_sexp_error sexp (sprintf "module %s present in two different sets" name)
+    end
+    | sexp -> for_all (a sexp)
 end
 
 module Preprocess_map = struct
   type t = Preprocess.t Per_module.t
-  let t = Per_module.t Preprocess.t
+  let t = Per_module.t Preprocess.t ~default:Preprocess.No_preprocessing
 
-  let no_preprocessing = Per_module.For_all Preprocess.No_preprocessing
+  let no_preprocessing = Per_module.for_all Preprocess.No_preprocessing
 
-  let find module_name (t : t) =
-    match t with
-    | For_all pp -> pp
-    | Per_module map -> String_map.find_default module_name map ~default:No_preprocessing
+  let find module_name t = Per_module.get t module_name
 
-  let default : t = For_all No_preprocessing
+  let default = Per_module.for_all Preprocess.No_preprocessing
 
   module Pp_set = Set.Make(Pp)
 
-  let pps : t -> _ = function
-    | For_all pp -> Preprocess.pps pp
-    | Per_module map ->
-      String_map.fold map ~init:Pp_set.empty ~f:(fun ~key:_ ~data:pp acc ->
-        Pp_set.union acc (Pp_set.of_list (Preprocess.pps pp)))
-      |> Pp_set.elements
+  let pps t =
+    Per_module.fold t ~init:Pp_set.empty ~f:(fun pp acc ->
+      Pp_set.union acc (Pp_set.of_list (Preprocess.pps pp)))
+    |> Pp_set.elements
 end
 
 module Lint = struct
@@ -498,9 +506,10 @@ module Buildable = struct
       }
 
   let single_preprocess t =
-    match t.preprocess with
-    | For_all pp -> pp
-    | Per_module _ -> No_preprocessing
+    if Per_module.is_constant t.preprocess then
+      Per_module.get t.preprocess ""
+    else
+      Preprocess.No_preprocessing
 end
 
 module Public_lib = struct
@@ -517,7 +526,7 @@ module Public_lib = struct
         match String.split s ~on:'.' with
         | [] -> assert false
         | pkg :: rest ->
-          match Scope.resolve pkgs pkg with
+          match Scope_info.resolve pkgs pkg with
           | Ok pkg ->
             Ok (Some
                   { package = pkg
@@ -585,6 +594,7 @@ module Library = struct
     ; buildable                : Buildable.t
     ; dynlink                  : bool
     ; inline_tests             : Inline_tests.t option
+    ; scope_name               : Scope_info.Name.t
     }
 
   let v1 pkgs =
@@ -632,6 +642,7 @@ module Library = struct
          ; buildable
          ; dynlink = not no_dynlink
          ; inline_tests
+         ; scope_name = pkgs.name
          })
 
   let has_stubs t =
@@ -676,7 +687,7 @@ module Install_conf = struct
     record
       (field   "section" Install.Section.t >>= fun section ->
        field   "files"   (list file)       >>= fun files ->
-       Scope.package_field pkgs             >>= fun package ->
+       Scope_info.package_field pkgs             >>= fun package ->
        return
          { section
          ; files
@@ -730,7 +741,7 @@ module Executables = struct
            (if multi then "s" else "");
          return (t, None))
     | files ->
-      Scope.package_field pkgs >>= fun package ->
+      Scope_info.package_field pkgs >>= fun package ->
       return (t, Some { Install_conf. section = Bin; files; package })
 
   let public_name sexp =
@@ -991,7 +1002,7 @@ module Alias_conf = struct
     record
       (field "name" string                              >>= fun name ->
        field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
-       field_o "package" (Scope.package pkgs)            >>= fun package ->
+       field_o "package" (Scope_info.package pkgs)      >>= fun package ->
        field_o "action" Action.Unexpanded.t  >>= fun action ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
        return
@@ -1073,7 +1084,7 @@ module Stanzas = struct
 
   and select
     :  Jbuild_version.t
-    -> Scope.t
+    -> Scope_info.t
     -> file:Path.t
     -> include_stack:(Loc.t * Path.t) list
     -> Stanza.t list Sexp.Of_sexp.t = function

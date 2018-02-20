@@ -1,5 +1,4 @@
 open Import
-open! No_io
 open Build.O
 
 module SC = Super_context
@@ -90,7 +89,7 @@ let link_exe
        link_flags
      >>>
      Build.dyn_paths (Build.arr (fun (libs, _, _, _) ->
-       Lib.archive_files libs ~mode ~ext_lib:ctx.ext_lib))
+       Lib.L.archive_files libs ~mode ~ext_lib:ctx.ext_lib))
      >>>
      Build.run ~context:ctx
        (Ok compiler)
@@ -99,7 +98,7 @@ let link_exe
        ; As linkage.flags
        ; Dyn (fun (_, _, _, link_flags) -> As link_flags)
        ; Dyn (fun (libs, _, _, _) ->
-           Lib.link_flags libs ~mode ~stdlib_dir:ctx.stdlib_dir)
+           Lib.L.link_flags libs ~mode ~stdlib_dir:ctx.stdlib_dir)
        ; Dyn (fun (_, cm_files, _, _) -> Deps cm_files)
        ]);
   if mode = Mode.Byte then
@@ -113,9 +112,10 @@ let link_exe
     SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm_and_flags >>> r))
 
 let build_and_link_many
-      ~dir ~programs ~modules
-      ~(scope : Lib_db.Scope.t With_required_by.t)
+      ~loc ~dir ~programs ~modules
+      ~scope
       ~linkages
+      ?modules_partitioner
       ?(libraries=[])
       ?(flags=Ocaml_flags.empty)
       ?link_flags
@@ -142,26 +142,34 @@ let build_and_link_many
       ~lint
       ~lib_name:None
   in
+  let already_used =
+    match modules_partitioner with
+    | None -> String_set.empty
+    | Some mp ->
+      Modules_partitioner.acknowledge mp
+        ~loc ~modules
+  in
 
   let dep_graphs =
-    Ocamldep.rules sctx ~dir ~modules ~alias_module:None
-      ~lib_interface_module:None
+    Ocamldep.rules sctx ~dir ~modules ~already_used
+      ~alias_module:None ~lib_interface_module:None
   in
 
   let requires, real_requires =
-    SC.Libs.requires sctx ~dir ~scope ~dep_kind ~item
+    SC.Libs.requires sctx
+      ~loc
+      ~dir
+      ~scope
+      ~dep_kind
       ~libraries
-      ~preprocess
-      ~virtual_deps:[]
       ~has_dot_merlin
+      ~preprocess
   in
-
-  SC.Libs.add_select_rules sctx ~dir ~scope libraries;
 
   (* CR-someday jdimino: this should probably say [~dynlink:false] *)
   Module_compilation.build_modules sctx
     ~js_of_ocaml
-    ~dynlink:true ~flags ~scope:scope.data ~dir ~obj_dir ~dep_graphs ~modules
+    ~dynlink:true ~flags ~scope:scope ~dir ~obj_dir ~dep_graphs ~modules
     ~requires ~alias_module:None;
 
   List.iter programs ~f:(fun { Program.name; main_module_name } ->
@@ -174,7 +182,7 @@ let build_and_link_many
       link_exe sctx
         ~dir
         ~obj_dir
-        ~scope:scope.data
+        ~scope
         ~requires
         ~name
         ~linkage
@@ -185,5 +193,5 @@ let build_and_link_many
 
   (obj_dir, real_requires)
 
-let build_and_link ~dir ~program =
-  build_and_link_many ~dir ~programs:[program]
+let build_and_link ~loc ~dir ~program =
+  build_and_link_many ~loc ~dir ~programs:[program]

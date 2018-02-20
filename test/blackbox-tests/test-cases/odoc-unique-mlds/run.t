@@ -17,6 +17,7 @@ Duplicate mld's in the same scope
           odoc _doc/root.lib2/Root_lib2/.jbuilder-keep,_doc/root.lib2/Root_lib2/index.html
 
 Duplicate mld's in different scope
+  $ rm -rf diff-scope/_build
   $ $JBUILDER build @doc -j1 --display short --root ./diff-scope 2>&1 | grep -v Entering
           odoc _doc/odoc.css
           odoc _doc/scope1/page-foo.odoc

@@ -4,6 +4,7 @@ type t
 
 val create
   :  Context.t
+  -> public_libs:Lib.DB.t
   -> 'a list
   -> f:('a -> Jbuild.Stanza.t list)
   -> t
@@ -18,11 +19,11 @@ val binary
   -> string
   -> Action.Prog.t
 
-(** [file_of_lib t ~from ~lib ~file] returns the path to a file in the directory of the
-    given library. *)
+(** [file_of_lib t ~from ~lib ~file] returns the path to a file in the
+    directory of the given library. *)
 val file_of_lib
   :  t
-  -> from:Path.t
+  -> loc:Loc.t
   -> lib:string
   -> file:string
   -> (Path.t, fail) result

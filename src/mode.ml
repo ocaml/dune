@@ -17,6 +17,7 @@ let choose byte native = function
 
 let compiled_unit_ext = choose ".cmo" ".cmx"
 let compiled_lib_ext = choose ".cma" ".cmxa"
+let plugin_ext = choose ".cma" ".cmxs"
 
 let variant = choose Variant.byte Variant.native
 

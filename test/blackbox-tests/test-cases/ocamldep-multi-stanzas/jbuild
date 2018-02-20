@@ -1,0 +1,9 @@
+(jbuild_version 1)
+
+(library
+ ((name lib)
+  (modules (:standard \ test))))
+
+(executable
+ ((name test)
+  (libraries (lib))))

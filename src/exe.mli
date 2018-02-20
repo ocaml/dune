@@ -38,11 +38,13 @@ end
     directory and the resolved list of library dependencies. *)
 
 val build_and_link
-  :  dir:Path.t
+  :  loc:Loc.t
+  -> dir:Path.t
   -> program:Program.t
   -> modules:Module.t String_map.t
-  -> scope:Lib_db.Scope.t With_required_by.t
+  -> scope:Scope.t
   -> linkages:Linkage.t list
+  -> ?modules_partitioner:Modules_partitioner.t
   -> ?libraries:Jbuild.Lib_deps.t
   -> ?flags:Ocaml_flags.t
   -> ?link_flags:(unit, string list) Build.t
@@ -55,11 +57,13 @@ val build_and_link
   -> Path.t * (unit, Lib.t list) Build.t
 
 val build_and_link_many
-  :  dir:Path.t
+  :  loc:Loc.t
+  -> dir:Path.t
   -> programs:Program.t list
   -> modules:Module.t String_map.t
-  -> scope:Lib_db.Scope.t With_required_by.t
+  -> scope:Scope.t
   -> linkages:Linkage.t list
+  -> ?modules_partitioner:Modules_partitioner.t
   -> ?libraries:Jbuild.Lib_deps.t
   -> ?flags:Ocaml_flags.t
   -> ?link_flags:(unit, string list) Build.t
@@ -77,7 +81,7 @@ val build_and_link_many
 val link_exe
   :  dir:Path.t
   -> obj_dir:Path.t
-  -> scope:Lib_db.Scope.t
+  -> scope:Scope.t
   -> requires:(unit, Lib.t list) Build.t
   -> name:string
   -> linkage:Linkage.t

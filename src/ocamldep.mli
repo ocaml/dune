@@ -22,17 +22,23 @@ module Dep_graphs : sig
   val dummy : Module.t -> t
 end
 
-(** Generate ocamldep rules for the given modules. [item] is either the internal name of a
-    library of the first name of a list of executables.
+(** Generate ocamldep rules for the given modules. [item] is either
+    the internal name of a library of the first name of a list of
+    executables.
 
-    For wrapped libraries, [lib_interface_module] is the main module of the library.
+    For wrapped libraries, [lib_interface_module] is the main module
+    of the library.
 
-    Return arrows that evaluate to the dependency graphs.
-*)
+    [already_used] represents the modules that are used by another
+    stanzas in the same directory. No [.d] rule will be generated for
+    such modules.
+
+    Return arrows that evaluate to the dependency graphs.  *)
 val rules
   :  Super_context.t
   -> dir:Path.t
   -> modules:Module.t String_map.t
+  -> already_used:String_set.t
   -> alias_module:Module.t option
   -> lib_interface_module:Module.t option
   -> Dep_graphs.t

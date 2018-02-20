@@ -595,6 +595,18 @@ module No_io = struct
 end
 
 module Fmt = struct
+  (* CR-someday diml: we should define a GADT for this:
+
+     {[
+       type 'a t =
+         | Int : int t
+         | Box : ...
+         | Colored : ...
+     ]}
+
+     This way we could separate the creation of messages from the
+     actual rendering.
+  *)
   type 'a t = Format.formatter -> 'a -> unit
 
   let kstrf f fmt =
@@ -603,6 +615,11 @@ module Fmt = struct
     Format.kfprintf f (Format.formatter_of_buffer buf) fmt
 
   let failwith fmt = kstrf failwith fmt
+
+  let list = Format.pp_print_list
+  let string s ppf = Format.pp_print_string ppf s
+
+  let prefix f g ppf x = f ppf; g ppf x
 end
 
 (* This is ugly *)

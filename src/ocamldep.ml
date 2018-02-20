@@ -101,8 +101,10 @@ let parse_deps ~dir ~file ~(unit : Module.t)
            die "Module %s in directory %s depends on %s.\n\
                 This doesn't make sense to me.\n\
                 \n\
-                %s is the main module of the library and is the only module exposed \n\
-                outside of the library. Consequently, it should be the one depending \n\
+                %s is the main module of the library and is \
+                the only module exposed \n\
+                outside of the library. Consequently, it should \
+                be the one depending \n\
                 on all the other modules in the library."
              unit.name (Path.to_string dir) m.name m.name);
       let deps =
@@ -112,7 +114,8 @@ let parse_deps ~dir ~file ~(unit : Module.t)
       in
       deps
 
-let rules sctx ~(ml_kind:Ml_kind.t) ~dir ~modules ~alias_module ~lib_interface_module =
+let rules sctx ~(ml_kind:Ml_kind.t) ~dir ~modules ~already_used
+      ~alias_module ~lib_interface_module =
   let per_module =
     String_map.map modules ~f:(fun unit ->
       match Module.file ~dir unit ml_kind with
@@ -120,13 +123,15 @@ let rules sctx ~(ml_kind:Ml_kind.t) ~dir ~modules ~alias_module ~lib_interface_m
       | Some file ->
         let ocamldep_output = Path.extend_basename file ~suffix:".d" in
         let context = SC.context sctx in
-        SC.add_rule sctx
-          (Build.run ~context (Ok context.ocamldep)
-             [A "-modules"; Ml_kind.flag ml_kind; Dep file]
-             ~stdout_to:ocamldep_output);
+        if not (String_set.mem unit.name already_used) then
+          SC.add_rule sctx
+            (Build.run ~context (Ok context.ocamldep)
+               [A "-modules"; Ml_kind.flag ml_kind; Dep file]
+               ~stdout_to:ocamldep_output);
         Build.memoize (Path.to_string ocamldep_output)
           (Build.lines_of ocamldep_output
-           >>^ parse_deps ~dir ~file ~unit ~modules ~alias_module ~lib_interface_module))
+           >>^ parse_deps ~dir ~file ~unit ~modules ~alias_module
+                 ~lib_interface_module))
   in
   let per_module =
     match alias_module with
@@ -138,5 +143,6 @@ let rules sctx ~(ml_kind:Ml_kind.t) ~dir ~modules ~alias_module ~lib_interface_m
   ; per_module
   }
 
-let rules sctx ~dir ~modules ~alias_module ~lib_interface_module =
-  Ml_kind.Dict.of_func (rules sctx ~dir ~modules ~alias_module ~lib_interface_module)
+let rules sctx ~dir ~modules ~already_used ~alias_module ~lib_interface_module =
+  Ml_kind.Dict.of_func (rules sctx ~dir ~modules ~already_used ~alias_module
+                          ~lib_interface_module)

@@ -493,12 +493,17 @@ module Gen(P : Params) = struct
      it references are built after. *)
   let alias_module_build_sandbox = ctx.version < (4, 03, 0)
 
-  let library_rules (lib : Library.t) ~dir ~files ~scope =
+  let library_rules (lib : Library.t) ~modules_partitioner ~dir ~files ~scope =
     let obj_dir = Utils.library_object_directory ~dir lib.name in
     let dep_kind = if lib.optional then Build.Optional else Required in
     let flags = Ocaml_flags.make lib.buildable sctx ~scope ~dir in
     let { modules; main_module_name; alias_module } = modules_by_lib ~dir lib in
-    (* Preprocess before adding the alias module as it doesn't need preprocessing *)
+    let already_used =
+      Modules_partitioner.acknowledge modules_partitioner
+        ~loc:lib.buildable.loc ~modules
+    in
+  (* Preprocess before adding the alias module as it doesn't need
+     preprocessing *)
     let modules =
       SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
         ~preprocess:lib.buildable.preprocess
@@ -516,7 +521,7 @@ module Gen(P : Params) = struct
     in
 
     let dep_graphs =
-      Ocamldep.rules sctx ~dir ~modules ~alias_module
+      Ocamldep.rules sctx ~dir ~modules ~already_used ~alias_module
         ~lib_interface_module:(if lib.wrapped then
                                  String_map.find main_module_name modules
                                else
@@ -719,7 +724,8 @@ module Gen(P : Params) = struct
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  let executables_rules (exes : Executables.t) ~dir ~all_modules ~scope =
+  let executables_rules ~dir ~all_modules
+        ?modules_partitioner ~scope (exes : Executables.t) =
     let modules =
       parse_modules ~all_modules ~buildable:exes.buildable
     in
@@ -764,6 +770,7 @@ module Gen(P : Params) = struct
         ~dir
         ~programs
         ~modules
+        ?modules_partitioner
         ~scope
         ~linkages
         ~libraries:exes.buildable.libraries
@@ -828,13 +835,17 @@ module Gen(P : Params) = struct
     (* This interprets "rule" and "copy_files" stanzas. *)
     let files = text_files ~dir:ctx_dir in
     let all_modules = modules_by_dir ~dir:ctx_dir in
+    let modules_partitioner =
+      Modules_partitioner.create ~dir:src_dir ~all_modules
+    in
     List.filter_map stanzas ~f:(fun stanza ->
       let dir = ctx_dir in
       match (stanza : Stanza.t) with
       | Library lib ->
-        Some (library_rules lib ~dir ~files ~scope)
+        Some (library_rules lib ~dir ~files ~scope ~modules_partitioner)
       | Executables exes ->
-        Some (executables_rules exes ~dir ~all_modules ~scope)
+        Some (executables_rules exes ~dir ~all_modules ~scope
+                ~modules_partitioner)
       | Alias alias ->
         alias_rules alias ~dir ~scope;
         None
@@ -861,9 +872,12 @@ module Gen(P : Params) = struct
     |> Option.iter ~f:(Merlin.add_rules sctx ~dir:ctx_dir ~scope);
     Option.iter (Utop.exe_stanzas stanzas) ~f:(fun (exe, all_modules) ->
       let dir = Utop.utop_exe_dir ~dir:ctx_dir in
-      let merlin = executables_rules exe ~dir ~all_modules ~scope in
+      let merlin =
+        executables_rules exe ~dir ~all_modules ~scope
+      in
       Utop.add_module_rules sctx ~dir merlin.requires;
-    )
+    );
+    Modules_partitioner.emit_warnings modules_partitioner
 
   (* +-----------------------------------------------------------------+
      | META                                                            |

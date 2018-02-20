@@ -14,7 +14,7 @@ module Dir_with_jbuild : sig
     { src_dir : Path.t
     ; ctx_dir : Path.t (** [_build/context-name/src_dir] *)
     ; stanzas : Stanzas.t
-    ; scope   : Lib_db.Scope.t With_required_by.t
+    ; scope   : Scope.t
     }
 end
 
@@ -23,10 +23,10 @@ type t
 val create
   :  context:Context.t
   -> ?host:t
-  -> scopes:Scope.t list
+  -> scopes:Scope_info.t list
   -> file_tree:File_tree.t
   -> packages:Package.t String_map.t
-  -> stanzas:(Path.t * Scope.t * Stanzas.t) list
+  -> stanzas:(Path.t * Scope_info.t * Stanzas.t) list
   -> filter_out_optional_stanzas_with_missing_deps:bool
   -> build_system:Build_system.t
   -> t
@@ -36,11 +36,24 @@ val stanzas   : t -> Dir_with_jbuild.t list
 val packages  : t -> Package.t String_map.t
 val file_tree : t -> File_tree.t
 val artifacts : t -> Artifacts.t
-val stanzas_to_consider_for_install : t -> (Path.t * Stanza.t) list
+val stanzas_to_consider_for_install : t -> (Path.t * Scope.t * Stanza.t) list
 val cxx_flags : t -> string list
-val libs      : t -> Lib_db.t
 
-val expand_vars : t -> scope:Lib_db.Scope.t -> dir:Path.t -> String_with_vars.t -> string
+(** All public libraries of the workspace *)
+val public_libs : t -> Lib.DB.t
+
+(** Installed libraries that are not part of the workspace *)
+val installed_libs : t -> Lib.DB.t
+
+val find_scope_by_dir  : t -> Path.t        -> Scope.t
+val find_scope_by_name : t -> string option -> Scope.t
+
+val expand_vars
+  :  t
+  -> scope:Scope.t
+  -> dir:Path.t
+  -> String_with_vars.t
+  -> string
 
 val add_rule
   :  t
@@ -96,64 +109,50 @@ val resolve_program
   -> string
   -> Action.Prog.t
 
-(** Unique name, even for internal libraries *)
-val unique_library_name : t -> Lib.t -> string
-
 module Libs : sig
-
-  val load_requires     : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t
-  val load_runtime_deps : t -> dir:Path.t -> item:string -> (unit, Lib.t list) Build.t
-
-  (** Add rules for (select ...) forms *)
-  val add_select_rules
-    : t
-    -> dir:Path.t
-    -> scope:Lib_db.Scope.t With_required_by.t
-    -> Lib_deps.t
-    -> unit
-
   (** Returns the closed list of dependencies for a dependency list in
-     a stanza. The second arrow is the same as the first one but with
-     an added dependency on the .merlin if [has_dot_merlin] is
-     [true]. *)
-  val requires
+      a stanza. The second arrow is the same as the first one but with
+      an added dependency on the [.merlin] if [(context t).merlin &&
+      lib.buildable.gen_dot_merlin] is [true]. *)
+  val requires_for_library
     :  t
     -> dir:Path.t
-    -> scope:Lib_db.Scope.t With_required_by.t
+    -> scope:Scope.t
     -> dep_kind:Build.lib_dep_kind
-    -> item:string (* Library name or first exe name *)
-    -> libraries:Lib_deps.t
-    -> preprocess:Preprocess_map.t
-    -> virtual_deps:string list
-    -> has_dot_merlin:bool
-    -> (unit, Lib.t list) Build.t * (unit, Lib.t list) Build.t
-
-  (** Setup the rules for ppx runtime dependencies *)
-  val setup_runtime_deps
+    -> Jbuild.Library.t
+    -> (unit, Lib.L.t) Build.t * (unit, Lib.L.t) Build.t
+  val requires_for_executables
     :  t
     -> dir:Path.t
-    -> scope:Lib_db.Scope.t With_required_by.t
+    -> scope:Scope.t
     -> dep_kind:Build.lib_dep_kind
-    -> item:string (* Library name or first exe name *)
-    -> libraries:Lib_deps.t
-    -> ppx_runtime_libraries:string list
-    -> unit
+    -> Jbuild.Executables.t
+    -> (unit, Lib.L.t) Build.t * (unit, Lib.L.t) Build.t
 
-  (** [file_deps ~ext] is an arrow that record dependencies on all the files with
-      extension [ext] of the libraries given as input. *)
+  (** [file_deps ~ext] is an arrow that record dependencies on all the
+      files with extension [ext] of the libraries given as input. *)
   val file_deps : t -> ext:string -> (Lib.t list, Lib.t list) Build.t
 
-  (** Same as [file_deps] but for a single known library *)
-  val static_file_deps : ext:string -> Lib.Internal.t -> ('a, 'a) Build.t
-
-  (** Setup the alias that depends on all files with a given extension for a library *)
-  val setup_file_deps_alias : t -> Lib.Internal.t -> ext:string -> Path.t list -> unit
+  (** Setup the alias that depends on all files with a given extension
+      for a library *)
+  val setup_file_deps_alias
+    :  t
+    -> dir:Path.t
+    -> ext:string
+    -> Library.t
+    -> Path.t list
+    -> unit
 
   (** Setup an alias that depend on all files with the given extensions.
 
       To depend on this alias, use [~ext:"ext1-and-ext2-...-extn"]
   *)
-  val setup_file_deps_group_alias : t -> Lib.Internal.t -> exts:string list -> unit
+  val setup_file_deps_group_alias
+    :  t
+    -> dir:Path.t
+    -> exts:string list
+    -> Library.t
+    -> unit
 end
 
 (** Interpret dependencies written in jbuild files *)
@@ -161,7 +160,7 @@ module Deps : sig
   (** Evaluates to the actual list of dependencies, ignoring aliases *)
   val interpret
     :  t
-    -> scope:Lib_db.Scope.t
+    -> scope:Scope.t
     -> dir:Path.t
     -> Dep_conf.t list
     -> (unit, Path.t list) Build.t
@@ -170,13 +169,13 @@ end
 module Doc : sig
   val root : t -> Path.t
 
-  val dir : t -> Lib.Internal.t -> Path.t
+  val dir : t -> Library.t -> Path.t
 
   val deps : t -> (Lib.t list, Lib.t list) Build.t
 
-  val static_deps : t -> Lib.Internal.t -> ('a, 'a) Build.t
+  val static_deps : t -> Library.t -> ('a, 'a) Build.t
 
-  val setup_deps : t -> Lib.Internal.t -> Path.t list -> unit
+  val setup_deps : t -> Library.t -> Path.t list -> unit
 end
 
 (** Interpret action written in jbuild files *)
@@ -193,7 +192,7 @@ module Action : sig
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
     -> targets:targets
-    -> scope:Lib_db.Scope.t With_required_by.t
+    -> scope:Scope.t
     -> (Path.t list, Action.t) Build.t
 end
 
@@ -210,13 +209,13 @@ module PP : sig
     -> preprocess:Preprocess_map.t
     -> preprocessor_deps:Dep_conf.t list
     -> lib_name:string option
-    -> scope:Lib_db.Scope.t With_required_by.t
+    -> scope:Scope.t
     -> Module.t String_map.t
 
   (** Get a path to a cached ppx driver *)
   val get_ppx_driver
     : t
-    -> scope:Lib_db.Scope.t With_required_by.t
+    -> scope:Scope.t
     -> Pp.t list
     -> Path.t
 
@@ -229,7 +228,7 @@ end
 
 val expand_and_eval_set
   :  t
-  -> scope:Lib_db.Scope.t
+  -> scope:Scope.t
   -> dir:Path.t
   -> Ordered_set_lang.Unexpanded.t
   -> standard:string list

@@ -72,21 +72,36 @@ let relative_file sexp =
     of_sexp_error sexp "relative filename expected";
   fn
 
-module Scope = struct
+module Scope_info = struct
+  module Name = struct
+    type t = string option
+
+    let compare : t -> t -> int = compare
+
+    let of_string = function
+      | "" -> None
+      | s  -> Some s
+
+    let to_string = function
+      | None -> ""
+      | Some "" -> assert false
+      | Some s -> s
+  end
+
   type t =
-    { name     : string option
+    { name     : Name.t
     ; packages : Package.t String_map.t
     ; root     : Path.t
     }
 
-  let empty =
+  let anonymous =
     { name     = None
     ; packages = String_map.empty
     ; root     = Path.root
     }
 
   let make = function
-    | [] -> empty
+    | [] -> anonymous
     | pkg :: rest as pkgs ->
       let name =
         List.fold_left rest ~init:pkg.Package.name ~f:(fun acc pkg ->
@@ -162,7 +177,7 @@ end
 
 
 module Pp : sig
-  type t
+  type t = private string
   val of_string : string -> t
   val to_string : t -> string
   val compare : t -> t -> int
@@ -511,7 +526,7 @@ module Public_lib = struct
         match String.split s ~on:'.' with
         | [] -> assert false
         | pkg :: rest ->
-          match Scope.resolve pkgs pkg with
+          match Scope_info.resolve pkgs pkg with
           | Ok pkg ->
             Ok (Some
                   { package = pkg
@@ -556,6 +571,7 @@ module Library = struct
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
+    ; scope_name               : Scope_info.Name.t
     }
 
   let v1 pkgs =
@@ -599,6 +615,7 @@ module Library = struct
          ; optional
          ; buildable
          ; dynlink = not no_dynlink
+         ; scope_name = pkgs.name
          })
 
   let has_stubs t =
@@ -643,7 +660,7 @@ module Install_conf = struct
     record
       (field   "section" Install.Section.t >>= fun section ->
        field   "files"   (list file)       >>= fun files ->
-       Scope.package_field pkgs             >>= fun package ->
+       Scope_info.package_field pkgs             >>= fun package ->
        return
          { section
          ; files
@@ -697,7 +714,7 @@ module Executables = struct
            (if multi then "s" else "");
          return (t, None))
     | files ->
-      Scope.package_field pkgs >>= fun package ->
+      Scope_info.package_field pkgs >>= fun package ->
       return (t, Some { Install_conf. section = Bin; files; package })
 
   let public_name sexp =
@@ -958,7 +975,7 @@ module Alias_conf = struct
     record
       (field "name" string                              >>= fun name ->
        field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
-       field_o "package" (Scope.package pkgs)            >>= fun package ->
+       field_o "package" (Scope_info.package pkgs)      >>= fun package ->
        field_o "action" Action.Unexpanded.t  >>= fun action ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
        return
@@ -1040,7 +1057,7 @@ module Stanzas = struct
 
   and select
     :  Jbuild_version.t
-    -> Scope.t
+    -> Scope_info.t
     -> file:Path.t
     -> include_stack:(Loc.t * Path.t) list
     -> Stanza.t list Sexp.Of_sexp.t = function

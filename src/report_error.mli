@@ -10,5 +10,9 @@
 *)
 val report : exn -> unit
 
+(** Register an error reporter. The callbacks takes an exception to
+    report and must return [true] if it was reported. *)
+val register : (Format.formatter -> exn -> bool) -> unit
+
 (**/**)
 val map_fname : (string -> string) ref

@@ -18,6 +18,8 @@ val of_pos : (string * int * int * int) -> t
 
 val none : t
 
+val to_file_colon_line : t -> string
+
 (** Prints "File ..., line ..., characters ...:\n" *)
 val print : Format.formatter -> t -> unit
 

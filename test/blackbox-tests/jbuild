@@ -358,3 +358,13 @@
      (progn
       (run ${exe:cram.exe} run.t)
       (diff? run.t run.t.corrected)))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/ocamldep-multi-stanzas)))
+  (action
+   (chdir test-cases/ocamldep-multi-stanzas
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))

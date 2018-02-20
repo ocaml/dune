@@ -17,6 +17,7 @@ let choose byte native = function
 
 let compiled_unit_ext = choose ".cmo" ".cmx"
 let compiled_lib_ext = choose ".cma" ".cmxa"
+let plugin_ext = choose ".cma" ".cmxs"
 
 let variant = choose Variant.byte Variant.native
 
@@ -46,6 +47,11 @@ module Dict = struct
   let map2 a b ~f =
     { byte   = f a.byte   b.byte
     ; native = f a.native b.native
+    }
+
+  let make_both x =
+    { byte   = x
+    ; native = x
     }
 
   module Set = struct

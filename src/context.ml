@@ -217,8 +217,8 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
     let get_tool_using_findlib_config prog =
       Option.bind findlib_config ~f:(fun conf ->
         match Findlib.Config.get conf prog with
-        | "" -> None
-        | s ->
+        | None -> None
+        | Some s ->
           match Filename.analyze_program_name s with
           | In_path | Relative_to_current_dir -> which s
           | Absolute -> Some (Path.absolute s))

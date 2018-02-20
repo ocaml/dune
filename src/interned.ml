@@ -15,13 +15,6 @@ module type S = sig
   module Map : Map.S with type key = t
 end
 
-module Int = struct
-  type t = int
-  let compare : int -> int -> int = compare
-end
-module Int_set = Set.Make(Int)
-module Int_map = Map.Make(Int)
-
 module Make() = struct
   include Int
 

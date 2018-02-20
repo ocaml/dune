@@ -625,7 +625,7 @@ and non_sorted_closure ts ~stack =
     | [] -> Ok acc
     | t :: ts ->
       if Int_set.mem t.unique_id !seen then
-        Ok acc
+        loop ts acc ~stack
       else begin
         seen := Int_set.add t.unique_id !seen;
         let acc = t :: acc in

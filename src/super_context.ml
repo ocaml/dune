@@ -229,23 +229,22 @@ module Libs = struct
 
   let requires_generic
         t
+        ~loc
         ~dir
         ~requires
-        ~(buildable:Buildable.t)
+        ~libraries
         ~dep_kind
-        ~virtual_deps
+        ~has_dot_merlin
     =
     let requires =
-      requires_to_build requires ~required_by:[Loc buildable.loc]
+      requires_to_build requires ~required_by:[Loc loc]
     in
     let requires =
-      Build.record_lib_deps ~kind:dep_kind
-        (List.fold_left virtual_deps ~init:buildable.libraries ~f:(fun acc s ->
-           Lib_dep.Direct s :: acc))
+      Build.record_lib_deps ~kind:dep_kind libraries
       >>> requires
     in
     let requires_with_merlin =
-      if t.context.merlin && buildable.gen_dot_merlin then
+      if t.context.merlin && has_dot_merlin then
         Build.path (Path.relative dir ".merlin-exists")
         >>>
         requires
@@ -283,24 +282,29 @@ module Libs = struct
       (build, build)
     | Ok lib ->
       add_select_rules t ~dir (Lib.Compile.resolved_selects lib);
-      requires_generic t ~dir
+      let libraries =
+        List.fold_left conf.virtual_deps ~init:conf.buildable.libraries
+          ~f:(fun acc s -> Lib_dep.Direct s :: acc)
+      in
+      requires_generic t ~dir ~loc:conf.buildable.loc
         ~requires:(Lib.Compile.requires lib)
-        ~buildable:conf.buildable
-        ~virtual_deps:conf.virtual_deps
+        ~libraries
         ~dep_kind
+        ~has_dot_merlin:conf.buildable.gen_dot_merlin
 
-  let requires_for_executables t ~dir ~scope ~dep_kind
-        (exes : Jbuild.Executables.t) =
+  let requires t ~loc ~dir ~scope ~dep_kind ~libraries
+        ~preprocess ~has_dot_merlin =
     let requires, resolved_selects =
       Lib.DB.resolve_user_written_deps (Scope.libs scope)
-        exes.buildable.libraries
-        ~pps:(Jbuild.Preprocess_map.pps exes.buildable.preprocess)
+        libraries
+        ~pps:(Jbuild.Preprocess_map.pps preprocess)
     in
     add_select_rules t ~dir resolved_selects;
-    requires_generic t ~dir ~requires
-      ~buildable:exes.buildable
-      ~virtual_deps:[]
+    requires_generic t ~dir ~loc
+      ~requires
+      ~libraries
       ~dep_kind
+      ~has_dot_merlin
 
   let lib_files_alias ~dir ~name ~ext =
     Alias.make (sprintf "lib-%s%s-all" name ext) ~dir
@@ -1025,8 +1029,7 @@ module PP = struct
   let pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~lint ~preprocess
         ~preprocessor_deps ~lib_name ~scope =
     let preprocessor_deps =
-      Build.memoize "preprocessor deps"
-        (Deps.interpret sctx ~scope ~dir preprocessor_deps)
+      Build.memoize "preprocessor deps" preprocessor_deps
     in
     let lint_module =
       Staged.unstage (lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope)

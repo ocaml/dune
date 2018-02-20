@@ -121,12 +121,15 @@ module Libs : sig
     -> dep_kind:Build.lib_dep_kind
     -> Jbuild.Library.t
     -> (unit, Lib.L.t) Build.t * (unit, Lib.L.t) Build.t
-  val requires_for_executables
+  val requires
     :  t
+    -> loc:Loc.t
     -> dir:Path.t
     -> scope:Scope.t
     -> dep_kind:Build.lib_dep_kind
-    -> Jbuild.Executables.t
+    -> libraries:Lib_deps.t
+    -> preprocess:Preprocess_map.t
+    -> has_dot_merlin:bool
     -> (unit, Lib.L.t) Build.t * (unit, Lib.L.t) Build.t
 
   (** [file_deps ~ext] is an arrow that record dependencies on all the
@@ -207,7 +210,7 @@ module PP : sig
     -> modules:Module.t String_map.t
     -> lint:Preprocess_map.t
     -> preprocess:Preprocess_map.t
-    -> preprocessor_deps:Dep_conf.t list
+    -> preprocessor_deps:(unit, Path.t list) Build.t
     -> lib_name:string option
     -> scope:Scope.t
     -> Module.t String_map.t

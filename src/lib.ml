@@ -594,7 +594,7 @@ and fold_closure ts ~init ~f ~stack =
     | [] -> Ok acc
     | t :: ts ->
       if Int_set.mem t.unique_id !seen then
-        Ok acc
+        loop ts acc ~stack
       else begin
         seen := Int_set.add t.unique_id !seen;
         f t acc >>= fun acc ->

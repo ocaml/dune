@@ -42,6 +42,9 @@
   `@doc-private` alias has been added to build documentation for private
   libraries.
 
+- Refactor internal library management. It should now be possible to
+  run `jbuilder build @lint` in Base for instance (#516)
+
 1.0+beta17 (01/02/2018)
 -----------------------
 

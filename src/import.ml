@@ -215,6 +215,13 @@ end
 module String_set = Set.Make(String)
 module String_map = Map.Make(String)
 
+module Int = struct
+  type t = int
+  let compare : int -> int -> int = compare
+end
+module Int_set = Set.Make(Int)
+module Int_map = Map.Make(Int)
+
 module String = struct
   include StringLabels
 

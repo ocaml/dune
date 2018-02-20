@@ -1,4 +1,4 @@
-  $ $JBUILDER build -j1 --display short --root . @install
+  $ $JBUILDER build -j1 --display short --root . @install --debug-dep
         ocamlc a/ppx/.a.objs/a.{cmi,cmo,cmt}
         ocamlc a/kernel/.a_kernel.objs/a_kernel.{cmi,cmo,cmt}
       ocamlopt a/ppx/.a.objs/a.{cmx,o}

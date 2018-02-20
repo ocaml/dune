@@ -128,16 +128,15 @@ module Gen(P : Params) = struct
     List.map locks ~f:(fun s ->
       Path.relative dir (SC.expand_vars sctx ~dir ~scope s))
 
-  let user_rule (rule : Rule.t) ~dir
-        ~(scope : Lib_db.Scope.t With_required_by.t) =
+  let user_rule (rule : Rule.t) ~dir ~scope =
     let targets : SC.Action.targets =
       match rule.targets with
       | Infer -> Infer
       | Static fns -> Static (List.map fns ~f:(Path.relative dir))
     in
     SC.add_rule_get_targets sctx ~mode:rule.mode ~loc:rule.loc
-      ~locks:(interpret_locks ~dir ~scope:scope.data rule.locks)
-      (SC.Deps.interpret sctx ~scope:scope.data ~dir rule.deps
+      ~locks:(interpret_locks ~dir ~scope rule.locks)
+      (SC.Deps.interpret sctx ~scope ~dir rule.deps
        >>>
        SC.Action.run
          sctx
@@ -147,11 +146,10 @@ module Gen(P : Params) = struct
          ~targets
          ~scope)
 
-  let copy_files_rules (def: Copy_files.t) ~src_dir ~dir
-        ~(scope : Lib_db.Scope.t With_required_by.t) =
+  let copy_files_rules (def: Copy_files.t) ~src_dir ~dir ~scope =
     let loc = String_with_vars.loc def.glob in
     let glob_in_src =
-      let src_glob = SC.expand_vars sctx ~dir def.glob ~scope:scope.data in
+      let src_glob = SC.expand_vars sctx ~dir def.glob ~scope in
       Path.relative src_dir src_glob ~error_loc:loc
     in
     (* The following condition is required for merlin to work.
@@ -354,7 +352,8 @@ module Gen(P : Params) = struct
     in
     List.map cclibs ~f
 
-  let build_lib (lib : Library.t) ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules =
+  let build_lib (lib : Library.t) ~scope ~flags ~dir ~obj_dir ~mode
+        ~top_sorted_modules =
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
@@ -424,7 +423,7 @@ module Gen(P : Params) = struct
          (Ok ctx.ocamlc)
          [ As (Utils.g ())
          ; Dyn (fun (c_flags, libs) ->
-             S [ Lib.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
+             S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
                ; Arg_spec.quote_args "-ccopt" c_flags
                ])
          ; A "-o"; Target dst
@@ -457,7 +456,7 @@ module Gen(P : Params) = struct
          ([ S [A "-I"; Path ctx.stdlib_dir]
           ; As (SC.cxx_flags sctx)
           ; Dyn (fun (cxx_flags, libs) ->
-              S [ Lib.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
+              S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
                 ; As cxx_flags
                 ])
           ] @ output_param @
@@ -470,11 +469,10 @@ module Gen(P : Params) = struct
      it references are built after. *)
   let alias_module_build_sandbox = ctx.version < (4, 03, 0)
 
-  let library_rules (lib : Library.t) ~dir ~files
-        ~(scope : Lib_db.Scope.t With_required_by.t) =
-    let obj_dir = Lib.lib_obj_dir dir lib in
+  let library_rules (lib : Library.t) ~dir ~files ~scope =
+    let obj_dir = Utils.library_object_directory ~dir lib.name in
     let dep_kind = if lib.optional then Build.Optional else Required in
-    let flags = Ocaml_flags.make lib.buildable sctx ~scope:scope.data ~dir in
+    let flags = Ocaml_flags.make lib.buildable sctx ~scope ~dir in
     let { modules; main_module_name; alias_module } = modules_by_lib ~dir lib in
     (* Preprocess before adding the alias module as it doesn't need preprocessing *)
     let modules =
@@ -517,22 +515,13 @@ module Gen(P : Params) = struct
          >>> Build.write_file_dyn (Path.relative dir file.name)));
 
     let requires, real_requires =
-      SC.Libs.requires sctx ~dir ~scope ~dep_kind ~item:lib.name
-        ~libraries:lib.buildable.libraries
-        ~preprocess:lib.buildable.preprocess
-        ~virtual_deps:lib.virtual_deps
-        ~has_dot_merlin:lib.buildable.gen_dot_merlin
+      SC.Libs.requires_for_library sctx ~dir ~scope ~dep_kind lib
     in
-
-    SC.Libs.setup_runtime_deps sctx ~dir ~scope ~dep_kind ~item:lib.name
-      ~libraries:lib.buildable.libraries
-      ~ppx_runtime_libraries:lib.ppx_runtime_libraries;
-    SC.Libs.add_select_rules sctx ~dir ~scope lib.buildable.libraries;
 
     let dynlink = lib.dynlink in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
     Module_compilation.build_modules sctx
-      ~js_of_ocaml ~dynlink ~flags ~scope:scope.data ~dir ~obj_dir ~dep_graphs
+      ~js_of_ocaml ~dynlink ~flags ~scope ~dir ~obj_dir ~dep_graphs
       ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
       let flags = Ocaml_flags.default () in
@@ -541,7 +530,7 @@ module Gen(P : Params) = struct
         ~dynlink
         ~sandbox:alias_module_build_sandbox
         ~flags:(Ocaml_flags.append_common flags ["-w"; "-49"])
-        ~scope:scope.data
+        ~scope
         ~dir
         ~obj_dir
         ~dep_graphs:(Ocamldep.Dep_graphs.dummy m)
@@ -571,9 +560,9 @@ module Gen(P : Params) = struct
             (requires >>> SC.Libs.file_deps sctx ~ext:".h")
         in
         List.map lib.c_names ~f:(
-          build_c_file   lib ~scope:scope.data ~dir ~requires ~h_files
+          build_c_file   lib ~scope ~dir ~requires ~h_files
         ) @ List.map lib.cxx_names ~f:(
-          build_cxx_file lib ~scope:scope.data ~dir ~requires ~h_files
+          build_cxx_file lib ~scope ~dir ~requires ~h_files
         )
       in
       match lib.self_build_stubs_archive with
@@ -581,7 +570,7 @@ module Gen(P : Params) = struct
       | None ->
         let ocamlmklib ~sandbox ~custom ~targets =
           SC.add_rule sctx ~sandbox
-            (SC.expand_and_eval_set sctx ~scope:scope.data ~dir
+            (SC.expand_and_eval_set sctx ~scope ~dir
                lib.c_library_flags ~standard:[]
              >>>
              Build.run ~context:ctx
@@ -626,10 +615,10 @@ module Gen(P : Params) = struct
           | None -> acc
           | Some fn -> fn :: acc)
       in
-      SC.Libs.setup_file_deps_alias sctx (dir, lib) ~ext:(Cm_kind.ext cm_kind)
+      SC.Libs.setup_file_deps_alias sctx ~dir lib ~ext:(Cm_kind.ext cm_kind)
         files);
-    SC.Libs.setup_file_deps_group_alias sctx (dir, lib) ~exts:[".cmi"; ".cmx"];
-    SC.Libs.setup_file_deps_alias sctx (dir, lib) ~ext:".h"
+    SC.Libs.setup_file_deps_group_alias sctx ~dir lib ~exts:[".cmi"; ".cmx"];
+    SC.Libs.setup_file_deps_alias sctx ~dir lib ~ext:".h"
       (List.map lib.install_c_headers ~f:(fun header ->
          Path.relative dir (header ^ ".h")));
 
@@ -638,12 +627,12 @@ module Gen(P : Params) = struct
         (String_map.values modules)
     in
     List.iter Mode.all ~f:(fun mode ->
-      build_lib lib ~scope:scope.data ~flags ~dir ~obj_dir ~mode ~top_sorted_modules);
+      build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules);
     (* Build *.cma.js *)
     SC.add_rules sctx (
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
       let target = Path.extend_basename src ~suffix:".js" in
-      Js_of_ocaml_rules.build_cm sctx ~scope:scope.data ~dir
+      Js_of_ocaml_rules.build_cm sctx ~scope ~dir
         ~js_of_ocaml:lib.buildable.js_of_ocaml ~src ~target);
 
     if ctx.natdynlink_supported then
@@ -681,7 +670,7 @@ module Gen(P : Params) = struct
         if Filename.check_suffix fn ".mld" then fn :: acc else acc)
     in
     Odoc.setup_library_rules sctx lib ~dir ~requires ~modules ~dep_graphs
-      ~mld_files
+      ~mld_files ~scope
     ;
 
     let flags =
@@ -736,7 +725,7 @@ module Gen(P : Params) = struct
          (SC.expand_and_eval_set sctx ~scope ~dir link_flags ~standard:[])
        >>>
        Build.dyn_paths (Build.arr (fun (libs, _, _, _) ->
-         Lib.archive_files libs ~mode ~ext_lib:ctx.ext_lib))
+         Lib.L.archive_files libs ~mode ~ext_lib:ctx.ext_lib))
        >>>
        Build.run ~context:ctx
          (Ok compiler)
@@ -745,7 +734,7 @@ module Gen(P : Params) = struct
          ; Dyn (fun (_, _, _, link_flags) ->
              As (link_custom @ link_flags))
          ; Dyn (fun (libs, _, _, _) ->
-             Lib.link_flags libs ~mode ~stdlib_dir:ctx.stdlib_dir)
+             Lib.L.link_flags libs ~mode ~stdlib_dir:ctx.stdlib_dir)
          ; Dyn (fun (_, cm_files, _, _) -> Deps cm_files)
          ]);
     if mode = Mode.Byte then
@@ -758,14 +747,11 @@ module Gen(P : Params) = struct
       in
       SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm_and_flags >>> r))
 
-  let executables_rules (exes : Executables.t) ~dir ~all_modules
-    ~(scope : Lib_db.Scope.t With_required_by.t) =
+  let executables_rules (exes : Executables.t) ~dir ~all_modules ~scope =
     let item = snd (List.hd exes.names) in
-    (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library of the
-       same name *)
-    let obj_dir = Path.relative dir ("." ^ item ^ ".eobjs") in
+    let obj_dir = Utils.executable_object_directory ~dir item in
     let dep_kind = Build.Required in
-    let flags = Ocaml_flags.make exes.buildable sctx ~scope:scope.data ~dir in
+    let flags = Ocaml_flags.make exes.buildable sctx ~scope ~dir in
     let modules =
       parse_modules ~all_modules ~buildable:exes.buildable
     in
@@ -798,19 +784,13 @@ module Gen(P : Params) = struct
     in
 
     let requires, real_requires =
-      SC.Libs.requires sctx ~dir ~scope ~dep_kind ~item
-        ~libraries:exes.buildable.libraries
-        ~preprocess:exes.buildable.preprocess
-        ~virtual_deps:[]
-        ~has_dot_merlin:exes.buildable.gen_dot_merlin
+      SC.Libs.requires_for_executables sctx ~dir ~scope ~dep_kind exes
     in
-
-    SC.Libs.add_select_rules sctx ~dir ~scope exes.buildable.libraries;
 
     (* CR-someday jdimino: this should probably say [~dynlink:false] *)
     Module_compilation.build_modules sctx
       ~js_of_ocaml:exes.buildable.js_of_ocaml
-      ~dynlink:true ~flags ~scope:scope.data ~dir ~obj_dir ~dep_graphs ~modules
+      ~dynlink:true ~flags ~scope ~dir ~obj_dir ~dep_graphs ~modules
       ~requires ~alias_module:None;
 
     List.iter programs ~f:(fun (name, unit) ->
@@ -819,7 +799,7 @@ module Gen(P : Params) = struct
           [unit]
       in
       List.iter Mode.all ~f:(fun mode ->
-        build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~scope:scope.data
+        build_exe ~js_of_ocaml:exes.buildable.js_of_ocaml ~flags ~scope
           ~dir ~obj_dir ~requires ~name ~mode ~top_sorted_modules
           ~link_flags:exes.link_flags
           ~force_custom_bytecode:(mode = Native && not exes.modes.native)));
@@ -840,8 +820,7 @@ module Gen(P : Params) = struct
     let alias = Build_system.Alias.make name ~dir in
     SC.add_alias_action sctx alias ~locks ~stamp build
 
-  let alias_rules (alias_conf : Alias_conf.t) ~dir
-        ~(scope : Lib_db.Scope.t With_required_by.t) =
+  let alias_rules (alias_conf : Alias_conf.t) ~dir ~scope =
     let stamp =
       let module S = Sexp.To_sexp in
       Sexp.List
@@ -854,8 +833,8 @@ module Gen(P : Params) = struct
       ~dir
       ~name:alias_conf.name
       ~stamp
-      ~locks:(interpret_locks ~dir ~scope:scope.data alias_conf.locks)
-      (SC.Deps.interpret sctx ~scope:scope.data ~dir alias_conf.deps
+      ~locks:(interpret_locks ~dir ~scope alias_conf.locks)
+      (SC.Deps.interpret sctx ~scope ~dir alias_conf.deps
        >>>
        match alias_conf.action with
        | None -> Build.progn []
@@ -889,7 +868,7 @@ module Gen(P : Params) = struct
       | Copy_files { glob; _ } ->
         let src_dir =
           let loc = String_with_vars.loc glob in
-          let src_glob = SC.expand_vars sctx ~dir glob ~scope:scope.data in
+          let src_glob = SC.expand_vars sctx ~dir glob ~scope in
           Path.parent (Path.relative src_dir src_glob ~error_loc:loc)
         in
         Some
@@ -918,14 +897,20 @@ module Gen(P : Params) = struct
      +-----------------------------------------------------------------+ *)
 
   let init_meta () =
-    String_map.values (SC.packages sctx)
-    |> List.iter ~f:(fun (pkg : Package.t) ->
+    Lib.DB.all (SC.public_libs sctx)
+    |> List.map ~f:(fun lib -> (Findlib.root_package_name (Lib.name lib), lib))
+    |> String_map.of_alist_multi
+    |> String_map.merge (SC.packages sctx) ~f:(fun _name pkg libs ->
+      let pkg  = Option.value_exn pkg          in
+      let libs = Option.value libs ~default:[] in
+      Some (pkg, libs))
+    |> String_map.iter ~f:(fun ~key:_ ~data:((pkg : Package.t), libs) ->
       let path = Path.append ctx.build_dir pkg.path in
       SC.on_load_dir sctx ~dir:path ~f:(fun () ->
         let meta_fn = "META." ^ pkg.name in
 
-        let meta_template      = Path.relative path (meta_fn ^ ".template"     ) in
-        let meta               = Path.relative path  meta_fn                     in
+        let meta_template = Path.relative path (meta_fn ^ ".template"     ) in
+        let meta          = Path.relative path  meta_fn                     in
 
         let version =
           let get =
@@ -959,11 +944,11 @@ module Gen(P : Params) = struct
         in
         let meta_contents =
           version >>^ fun version ->
-          let scope = (Lib_db.find_scope (SC.libs sctx) ~dir:path).data in
-          Gen_meta.gen ~package:pkg.name
-            ~scope
+          Gen_meta.gen
+            ~package:pkg.name
             ~version
-            ~stanzas:(SC.stanzas_to_consider_for_install sctx)
+            ~meta_path:meta
+            libs
         in
         SC.add_rule sctx
           (Build.fanout meta_contents template
@@ -991,8 +976,8 @@ module Gen(P : Params) = struct
      | Installation                                                    |
      +-----------------------------------------------------------------+ *)
 
-  let lib_install_files ~dir ~sub_dir (lib : Library.t) =
-    let obj_dir = Lib.lib_obj_dir dir lib in
+  let lib_install_files ~dir ~sub_dir ~scope (lib : Library.t) =
+    let obj_dir = Utils.library_object_directory ~dir lib.name in
     let make_entry section fn =
       Install.Entry.make section fn
         ?dst:(Option.map sub_dir ~f:(fun d -> sprintf "%s/%s" d (Path.basename fn)))
@@ -1046,7 +1031,6 @@ module Gen(P : Params) = struct
           else
             pps
         in
-        let scope = Lib_db.find_scope (SC.libs sctx) ~dir in
         let ppx_exe = SC.PP.get_ppx_driver sctx ~scope pps in
         [ppx_exe]
     in
@@ -1122,10 +1106,10 @@ module Gen(P : Params) = struct
   let init_install () =
     let entries_per_package =
       List.concat_map (SC.stanzas_to_consider_for_install sctx)
-        ~f:(fun (dir, stanza) ->
+        ~f:(fun (dir, scope, stanza) ->
           match stanza with
           | Library ({ public = Some { package; sub_dir; _ }; _ } as lib) ->
-            List.map (lib_install_files ~dir ~sub_dir lib) ~f:(fun x ->
+            List.map (lib_install_files ~dir ~sub_dir ~scope lib) ~f:(fun x ->
               package.name, x)
           | Install { section; files; package}->
             List.map files ~f:(fun { Install_conf. src; dst } ->

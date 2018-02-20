@@ -47,6 +47,5 @@ doc:
 update-jbuilds: $(BIN)
 	$(BIN) build --dev @doc/runtest --auto-promote
 
-.DEFAULT_GOAL := default
 .PHONY: default install uninstall reinstall clean test doc
 .PHONY: promote accept-corrections

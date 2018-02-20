@@ -19,7 +19,8 @@ let in_build_dir ~ctx =
 
 let runtime_file ~sctx ~dir fname =
   match
-    Artifacts.file_of_lib (SC.artifacts sctx) ~from:dir
+    Artifacts.file_of_lib (SC.artifacts sctx)
+      ~loc:(Loc.in_file (Utils.jbuild_file_in ~dir |> Path.to_string))
       ~lib:"js_of_ocaml-compiler" ~file:fname
   with
   | Error _ ->
@@ -42,7 +43,8 @@ let js_of_ocaml_rule ~sctx ~dir ~flags ~spec ~target =
 let standalone_runtime_rule ~sctx ~dir ~javascript_files ~target =
   let spec =
     Arg_spec.S
-      [ Arg_spec.Dyn (fun ((libs,_),_) -> Arg_spec.Deps (Lib.jsoo_runtime_files libs))
+      [ Arg_spec.Dyn (fun ((libs,_),_) ->
+          Arg_spec.Deps (Lib.L.jsoo_runtime_files libs))
       ; Arg_spec.Deps javascript_files
       ]
   in
@@ -53,30 +55,34 @@ let standalone_runtime_rule ~sctx ~dir ~javascript_files ~target =
 let exe_rule ~sctx ~dir ~javascript_files ~src ~target =
   let spec =
     Arg_spec.S
-      [ Arg_spec.Dyn (fun ((libs,_),_) -> Arg_spec.Deps (Lib.jsoo_runtime_files libs))
+      [ Arg_spec.Dyn (fun ((libs,_),_) ->
+          Arg_spec.Deps (Lib.L.jsoo_runtime_files libs))
       ; Arg_spec.Deps javascript_files
       ; Arg_spec.Dep src
       ]
   in
   js_of_ocaml_rule ~sctx ~dir ~flags:(fun (_,flags) -> As flags) ~spec ~target
 
+let jsoo_archives lib =
+  List.map (Lib.archives lib).byte ~f:(Path.extend_basename ~suffix:".js")
+
 let link_rule ~sctx ~dir ~runtime ~target =
   let ctx = SC.context sctx in
   let get_all ((libs,cm),_) =
-    (* Special case for the stdlib because it is not referenced in the META *)
-    let stdlib = Lib.external_ (Findlib.stdlib_with_archives ctx.findlib) in
     let all_libs =
-      List.concat_map (stdlib :: libs) ~f:(fun (lib : Lib.t) ->
-        let jsoo_archives = Lib.jsoo_archives lib in
+      List.concat_map libs ~f:(fun (lib : Lib.t) ->
+        let jsoo_archives = jsoo_archives lib in
         if Lib.is_local lib then (
           jsoo_archives
         ) else (
-          let lib_name = Option.value_exn (Lib.public_name lib) in
+          let lib_name = Lib.name lib in
           List.map ~f:(fun js ->
             in_build_dir ~ctx [lib_name ; Path.basename js]) jsoo_archives
         )
       )
     in
+    (* Special case for the stdlib because it is not referenced in the META *)
+    let all_libs = in_build_dir ~ctx ["stdlib"; "stdlib.cma.js"] :: all_libs in
     let all_other_modules =
       List.map cm ~f:(fun m -> Path.extend_basename m ~suffix:".js")
     in
@@ -113,23 +119,24 @@ let setup_separate_compilation_rules sctx components =
     | [] | _ :: _ :: _ -> ()
     | [pkg] ->
       let ctx = SC.context sctx in
-      match Findlib.find ctx.findlib pkg ~required_by:[] with
+      match Lib.DB.find (SC.installed_libs sctx) pkg with
       | Error _ -> ()
       | Ok pkg ->
-        let pkg =
-          (* Special case for the stdlib because it is not referenced in the META *)
-          match Findlib.Package.name pkg with
-          | "stdlib" -> Findlib.stdlib_with_archives ctx.findlib
-          | _ -> pkg
+        let archives = (Lib.archives pkg).byte in
+        let archives =
+          (* Special case for the stdlib because it is not referenced
+             in the META *)
+          match Lib.name pkg with
+          | "stdlib" -> Path.relative ctx.stdlib_dir "stdlib.cma" :: archives
+          | _ -> archives
         in
-        let archives = Findlib.Package.archives pkg Byte in
         List.iter archives ~f:(fun fn ->
           let name = Path.basename fn in
-          let src = Path.relative (Findlib.Package.dir pkg) name in
+          let src = Path.relative (Lib.src_dir pkg) name in
           let target =
-            in_build_dir ~ctx [ Findlib.Package.name pkg; sprintf "%s.js" name]
+            in_build_dir ~ctx [ Lib.name pkg; sprintf "%s.js" name]
           in
-          let dir = in_build_dir ~ctx [ Findlib.Package.name pkg ] in
+          let dir = in_build_dir ~ctx [ Lib.name pkg ] in
           let spec = Arg_spec.Dep src in
           SC.add_rule sctx
             (Build.return (standard ())

@@ -107,6 +107,14 @@ let describe_target fn =
   | Other fn ->
     Path.to_string_maybe_quoted fn
 
+let library_object_directory ~dir name =
+  Path.relative dir ("." ^ name ^ ".objs")
+
+(* Use "eobjs" rather than "objs" to avoid a potential conflict with a
+   library of the same name *)
+let executable_object_directory ~dir name =
+  Path.relative dir ("." ^ name ^ ".eobjs")
+
 let program_not_found ?context ?hint prog =
   die "@{<error>Error@}: Program %s not found in the tree or in PATH%s%a"
     (maybe_quoted prog)

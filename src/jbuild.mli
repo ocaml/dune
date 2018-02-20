@@ -9,17 +9,33 @@ module Jbuild_version : sig
   val latest_stable : t
 end
 
-module Scope : sig
+module Scope_info : sig
+  module Name : sig
+    (* CR-someday diml: change to [private string] and encode [None]
+       as [""] *)
+    (** [None] is the for the {!anonymous} scope *)
+    type t = string option
+
+    val compare : t -> t -> int
+
+    val of_string : string -> t
+    val to_string : t -> string
+  end
+
   type t =
-    { name     : string option (** First package name in alphabetical order.  [None] for
-                                   the global scope. *)
+    { name     : string option (** First package name in alphabetical
+                                   order. [None] for the global
+                                   scope. *)
     ; packages : Package.t String_map.t
     ; root     : Path.t
     }
 
   val make : Package.t list -> t
 
-  val empty : t
+  (** The anonymous represent the scope at the root of the workspace
+      when the root of the workspace contains no [<package>.opam]
+      files. *)
+  val anonymous : t
 
   (** [resolve t package_name] looks up [package_name] in [t] and returns the
       package description if it exists, otherwise it returns an error. *)
@@ -28,7 +44,7 @@ end
 
 (** Ppx preprocessors  *)
 module Pp : sig
-  type t
+  type t = private string
   val of_string : string -> t
   val to_string : t -> string
 end
@@ -171,6 +187,7 @@ module Library : sig
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
+    ; scope_name               : Scope_info.Name.t
     }
 
   val has_stubs : t -> bool
@@ -279,7 +296,7 @@ module Stanzas : sig
   val parse
     :  ?default_version:Jbuild_version.t
     -> file:Path.t
-    -> Scope.t
+    -> Scope_info.t
     -> Sexp.Ast.t list
     -> t
   val lib_names : (_ * _ * t) list -> String_set.t

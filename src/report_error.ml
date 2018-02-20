@@ -2,103 +2,56 @@ open Import
 
 let map_fname = ref (fun x -> x)
 
-let pp_required_by ppf required_by =
-  Format.fprintf ppf "@[<v>%a@]@\n"
-    (Format.pp_print_list
-       (fun ppf x ->
-          Format.fprintf ppf "-> required by %a" With_required_by.Entry.pp x))
-    required_by
+let reporters = ref []
+let register f = reporters := f :: !reporters
 
 (* Return [true] if the backtrace was printed *)
 let report_with_backtrace ppf exn ~backtrace =
-  match exn with
-  | Loc.Error (loc, msg) ->
-    let loc =
-      { loc with
-        start = { loc.start with pos_fname = !map_fname loc.start.pos_fname }
-      }
-    in
-    Format.fprintf ppf "%a@{<error>Error@}: %s\n" Loc.print loc msg;
+  if List.exists !reporters ~f:(fun f -> f ppf exn) then
     false
-  | Usexp.Parser.Error e ->
-    let pos = Usexp.Parser.Error.position e in
-    let msg = Usexp.Parser.Error.message e in
-    let pos = { pos with pos_fname = !map_fname pos.pos_fname } in
-    let loc = { Loc. start = pos; stop = pos } in
-    Format.fprintf ppf "%a@{<error>Error@}: %s\n" Loc.print loc msg;
-    false
-  | Fatal_error msg ->
-    if msg.[String.length msg - 1] = '\n' then
-      Format.fprintf ppf "%s" msg
-    else
-      Format.fprintf ppf "%s\n" (String.capitalize_ascii msg);
-    false
-  | Findlib.Findlib (Package_not_available { package; required_by; reason }) ->
-    Format.fprintf ppf
-      "@{<error>Error@}: External library %S %s.@\n" package
-      (match reason with
-       | Not_found -> "not found"
-       | Hidden    -> "is hidden");
-    pp_required_by ppf required_by;
-    begin match reason with
-    | Not_found -> ()
-    | Hidden ->
-      Format.fprintf ppf
-        "External library %S is hidden because its 'exist_if' \
-         clause is not satisfied.\n" package
-    end;
-    (match !Clflags.external_lib_deps_hint with
-     | [] -> (* during bootstrap *) ()
-     | l ->
-       Format.fprintf ppf
-         "Hint: try: %s\n"
-         (List.map l ~f:quote_for_shell |> String.concat ~sep:" "));
-    false
-  | Findlib.Findlib
-      (External_dep_conflicts_with_local_lib
-         { package; required_by; required_locally_in; defined_locally_in }) ->
-    Format.fprintf ppf
-      "@{<error>Error@}: Conflict between internal and external version of library %S:\n\
-       - it is defined locally in %s\n\
-       - it is required by external library %a\n\
-      \  %a\
-       This cannot work.\n"
-      package
-      (Utils.describe_target
-         (Utils.jbuild_file_in ~dir:(Path.drop_optional_build_context defined_locally_in)))
-      With_required_by.Entry.pp required_by
-      pp_required_by required_locally_in;
-    false
-  | Findlib.Findlib (Dependency_cycle { cycle; required_by }) ->
-    Format.fprintf ppf
-      "@{<error>Error@}: \
-       Dependency cycle detected between external findlib packages:\n\
-       @[<v>%a@]\n\
-       Required by:\n\
-       %a"
-      (Format.pp_print_list (fun ppf -> Format.fprintf ppf "-> %s")) cycle
-      pp_required_by required_by;
-    false
-  | Code_error msg ->
-    let bt = Printexc.raw_backtrace_to_string backtrace in
-    Format.fprintf ppf "@{<error>Internal error, please report upstream \
-                        including the contents of _build/log.@}\n\
-                        Description: %s\n\
-                        Backtrace:\n\
-                        %s" msg bt;
-    true
-  | Unix.Unix_error (err, func, fname) ->
-    Format.fprintf ppf "@{<error>Error@}: %s: %s: %s\n"
-      func fname (Unix.error_message err);
-    false
-  | _ ->
-    let s = Printexc.to_string exn in
-    let bt = Printexc.raw_backtrace_to_string backtrace in
-    if String.is_prefix s ~prefix:"File \"" then
-      Format.fprintf ppf "%s\nBacktrace:\n%s" s bt
-    else
-      Format.fprintf ppf "@{<error>Error@}: exception %s\nBacktrace:\n%s" s bt;
-    true
+  else
+    match exn with
+    | Loc.Error (loc, msg) ->
+      let loc =
+        { loc with
+          start = { loc.start with pos_fname = !map_fname loc.start.pos_fname }
+        }
+      in
+      Format.fprintf ppf "%a@{<error>Error@}: %s\n" Loc.print loc msg;
+      false
+    | Usexp.Parser.Error e ->
+      let pos = Usexp.Parser.Error.position e in
+      let msg = Usexp.Parser.Error.message e in
+      let pos = { pos with pos_fname = !map_fname pos.pos_fname } in
+      let loc = { Loc. start = pos; stop = pos } in
+      Format.fprintf ppf "%a@{<error>Error@}: %s\n" Loc.print loc msg;
+      false
+    | Fatal_error msg ->
+      if msg.[String.length msg - 1] = '\n' then
+        Format.fprintf ppf "%s" msg
+      else
+        Format.fprintf ppf "%s\n" (String.capitalize_ascii msg);
+      false
+    | Code_error msg ->
+      let bt = Printexc.raw_backtrace_to_string backtrace in
+      Format.fprintf ppf "@{<error>Internal error, please report upstream \
+                          including the contents of _build/log.@}\n\
+                          Description: %s\n\
+                          Backtrace:\n\
+                          %s" msg bt;
+      true
+    | Unix.Unix_error (err, func, fname) ->
+      Format.fprintf ppf "@{<error>Error@}: %s: %s: %s\n"
+        func fname (Unix.error_message err);
+      false
+    | _ ->
+      let s = Printexc.to_string exn in
+      let bt = Printexc.raw_backtrace_to_string backtrace in
+      if String.is_prefix s ~prefix:"File \"" then
+        Format.fprintf ppf "%s\nBacktrace:\n%s" s bt
+      else
+        Format.fprintf ppf "@{<error>Error@}: exception %s\nBacktrace:\n%s" s bt;
+      true
 
 let report_aux ppf ?dependency_path exn =
   let backtrace = Printexc.get_raw_backtrace () in

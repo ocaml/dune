@@ -50,13 +50,14 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
         let ppx_flags = ppx_flags sctx ~dir ~scope ~src_dir:remaindir t in
         let libs =
           List.fold_left ~f:(fun acc (lib : Lib.t) ->
-            let nice_path = Path.reach ~from:remaindir in
-            let spath = Option.map (Lib.src_dir lib) ~f:(fun dir ->
-              nice_path (Path.drop_optional_build_context dir)) in
-            let bpath = nice_path (Lib.obj_dir lib) in
-            ("B " ^ bpath)
-            :: ("S " ^ (Option.value spath ~default:bpath))
-            :: acc
+            let serialize_path = Path.reach ~from:remaindir in
+            let bpath = serialize_path (Lib.obj_dir lib) in
+            let spath =
+              Lib.src_dir lib
+              |> Path.drop_optional_build_context
+              |> serialize_path
+            in
+            ("B " ^ bpath) :: ("S " ^ spath) :: acc
           ) libs ~init:[]
         in
         let source_dirs =
@@ -102,7 +103,7 @@ let merge_two a b =
   { requires =
       (Build.fanout a.requires b.requires
        >>^ fun (x, y) ->
-       Lib.remove_dups_preserve_order (x @ y))
+       Lib.L.remove_dups (x @ y))
   ; flags = a.flags &&& b.flags >>^ (fun (a, b) -> a @ b)
   ; preprocess =
       if a.preprocess = b.preprocess then

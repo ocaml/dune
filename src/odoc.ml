@@ -103,7 +103,7 @@ let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
       html_dir, [jbuilder_keep]
   in
   SC.add_rule sctx
-    (SC.Doc.static_deps sctx (dir, lib)
+    (SC.Doc.static_deps sctx lib
      >>>
      includes
      >>>
@@ -126,7 +126,7 @@ let all_mld_files sctx ~(lib : Library.t) ~lib_name ~modules ~dir files =
   let all_files =
     if List.mem "index.mld" ~set:files then files else "index.mld" :: files
   in
-  let doc_dir = SC.Doc.dir sctx (dir, lib) in
+  let doc_dir = SC.Doc.dir sctx lib in
   List.map all_files ~f:(fun file ->
     let name = Filename.chop_extension file in
     let mld = Mld.create ~name in
@@ -157,11 +157,27 @@ let css_file ~doc_dir = doc_dir ++ "odoc.css"
 
 let toplevel_index ~doc_dir = doc_dir ++ "index.html"
 
-let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
+let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
       ~requires ~(dep_graphs:Ocamldep.Dep_graph.t Ml_kind.Dict.t) =
-  let doc_dir = SC.Doc.dir sctx (dir, lib) in
-  let obj_dir = Lib.lib_obj_dir dir lib in
-  let lib_unique_name = SC.unique_library_name sctx (Lib.internal (dir, lib)) in
+  let doc_dir = SC.Doc.dir sctx lib in
+  let obj_dir, lib_unique_name =
+    let obj_dir, name, status =
+      match Lib.DB.find (Scope.libs scope) lib.name with
+      | Error Not_found -> assert false
+      | Error (Hidden { name; info; _ }) ->
+        (info.obj_dir, name, info.status)
+      | Ok lib ->
+        (Lib.obj_dir lib, Lib.name lib, Lib.status lib)
+    in
+    let name =
+      match status with
+      | Installed -> assert false
+      | Public    -> name
+      | Private scope_name ->
+        sprintf "%s@%s" name (Scope_info.Name.to_string scope_name)
+    in
+    (obj_dir, name)
+  in
   let lib_name = Library.best_name lib in
   let odoc = get_odoc sctx in
   let includes =
@@ -169,7 +185,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
     Build.memoize "includes"
       (requires
        >>> SC.Doc.deps sctx
-       >>^ Lib.include_flags ~stdlib_dir:ctx.stdlib_dir)
+       >>^ Lib.L.include_flags ~stdlib_dir:ctx.stdlib_dir)
   in
   let mld_files =
     all_mld_files sctx ~dir ~lib ~lib_name ~modules mld_files
@@ -185,16 +201,16 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~modules ~mld_files
         ~doc_dir ~lib_unique_name (Module m))
   in
   let inputs_and_odoc_files = modules_and_odoc_files @ mld_and_odoc_files in
-  SC.Doc.setup_deps sctx (dir, lib) (List.map inputs_and_odoc_files ~f:snd);
+  SC.Doc.setup_deps sctx lib (List.map inputs_and_odoc_files ~f:snd);
   (*
-    let modules_and_odoc_files =
-    if lib.wrapped then
-    let main_module_name = String.capitalize_ascii lib.name in
-    List.filter modules_and_odoc_files
-    ~f:(fun (m, _) -> m.Module.name = main_module_name)
-    else
-    modules_and_odoc_files
-    in*)
+     let modules_and_odoc_files =
+     if lib.wrapped then
+     let main_module_name = String.capitalize_ascii lib.name in
+     List.filter modules_and_odoc_files
+     ~f:(fun (m, _) -> m.Module.name = main_module_name)
+     else
+     modules_and_odoc_files
+     in*)
   let html_files =
     List.map inputs_and_odoc_files ~f:(fun (m, odoc_file) ->
       to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~lib)
@@ -224,7 +240,7 @@ let sp = Printf.sprintf
 let setup_toplevel_index_rule sctx =
   let list_items =
     Super_context.stanzas_to_consider_for_install sctx
-    |> List.filter_map ~f:(fun (_path, stanza) ->
+    |> List.filter_map ~f:(fun (_path, _scope, stanza) ->
       match stanza with
       | Stanza.Library
           {Library.kind = Library.Kind.Normal; public = Some public_info; _} ->
@@ -271,19 +287,15 @@ let gen_rules sctx ~dir:_ rest =
     setup_css_rule sctx;
     setup_toplevel_index_rule sctx
   | lib :: _ ->
-    let libs = SC.libs sctx in
-    let (lib, scope, alias) =
+    let lib, lib_db =
       match String.rsplit2 lib ~on:'@' with
       | None ->
-        (lib, Lib_db.external_scope libs, "doc")
+        (lib, SC.public_libs sctx)
       | Some (lib, name) ->
-        (lib, Lib_db.find_scope_by_name_exn libs ~name, "doc-private")
+        (lib,
+         Scope.libs
+           (SC.find_scope_by_name sctx (Scope_info.Name.of_string name)))
     in
-    let scope =
-      { With_required_by.
-        data = scope
-      ; required_by = [Alias (Path.of_string alias)]
-      } in
-    let open Option.Infix in
-    Option.iter (Lib_db.Scope.find scope lib >>= Lib.src_dir)
-      ~f:(fun dir -> SC.load_dir sctx ~dir)
+    match Lib.DB.find lib_db lib with
+    | Error _ -> ()
+    | Ok lib  -> SC.load_dir sctx ~dir:(Lib.src_dir lib)

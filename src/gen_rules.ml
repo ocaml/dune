@@ -546,8 +546,11 @@ module Gen(P : Params) = struct
             |> String.concat ~sep:"\n")
          >>> Build.write_file_dyn (Path.relative dir file.name)));
 
+    let compile_info = Lib.DB.get_compile_info (Scope.libs scope) lib.name in
     let requires, real_requires =
-      SC.Libs.requires_for_library sctx ~dir ~scope ~dep_kind lib
+      SC.Libs.requires sctx compile_info
+        ~loc:lib.buildable.loc ~dir
+        ~has_dot_merlin:lib.buildable.gen_dot_merlin
     in
 
     let dynlink = lib.dynlink in
@@ -713,7 +716,8 @@ module Gen(P : Params) = struct
         |> Ocaml_flags.common
     in
 
-    Inline_tests.setup sctx ~lib ~dir ~scope ~modules:source_modules;
+    Inline_tests.setup sctx ~lib ~dir ~scope ~modules:source_modules
+      ~compile_info;
 
     { Merlin.
       requires = real_requires

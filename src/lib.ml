@@ -28,6 +28,10 @@ module Info = struct
       match loop [] deps with
       | Some l -> Simple l
       | None   -> Complex deps
+
+    let to_lib_deps = function
+      | Simple l -> List.map l ~f:Jbuild.Lib_dep.direct
+      | Complex l -> l
   end
 
   type t =
@@ -46,7 +50,13 @@ module Info = struct
     ; ppx_runtime_deps : string list
     ; pps              : Jbuild.Pp.t list
     ; optional         : bool
+    ; virtual_deps     : string list
     }
+
+  let user_written_deps t =
+    List.fold_left t.virtual_deps
+      ~init:(Deps.to_lib_deps t.requires)
+      ~f:(fun acc s -> Jbuild.Lib_dep.Direct s :: acc)
 
   let of_library_stanza ~dir (conf : Jbuild.Library.t) =
     let archive_file ext = Path.relative dir (conf.name ^ ext) in
@@ -86,6 +96,7 @@ module Info = struct
     ; foreign_archives
     ; jsoo_runtime
     ; status
+    ; virtual_deps     = conf.virtual_deps
     ; requires         = Deps.of_lib_deps conf.buildable.libraries
     ; ppx_runtime_deps = conf.ppx_runtime_libraries
     ; pps = Jbuild.Preprocess_map.pps conf.buildable.preprocess
@@ -105,6 +116,7 @@ module Info = struct
     ; requires         = Simple (P.requires pkg)
     ; ppx_runtime_deps = P.ppx_runtime_deps pkg
     ; pps              = []
+    ; virtual_deps     = []
     ; optional         = false
     ; status           = Installed
     ; (* We don't know how these are named for external libraries *)
@@ -167,22 +179,25 @@ module Init = struct
 end
 
 type t =
-  { loc              : Loc.t
-  ; name             : string
-  ; unique_id        : int
-  ; kind             : Jbuild.Library.Kind.t
-  ; status           : Status.t
-  ; src_dir          : Path.t
-  ; obj_dir          : Path.t
-  ; version          : string option
-  ; synopsis         : string option
-  ; archives         : Path.t list Mode.Dict.t
-  ; plugins          : Path.t list Mode.Dict.t
-  ; foreign_archives : Path.t list Mode.Dict.t
-  ; jsoo_runtime     : Path.t list
-  ; requires         : t list or_error
-  ; ppx_runtime_deps : t list or_error
-  ; resolved_selects : Resolved_select.t list
+  { loc               : Loc.t
+  ; name              : string
+  ; unique_id         : int
+  ; kind              : Jbuild.Library.Kind.t
+  ; status            : Status.t
+  ; src_dir           : Path.t
+  ; obj_dir           : Path.t
+  ; version           : string option
+  ; synopsis          : string option
+  ; archives          : Path.t list Mode.Dict.t
+  ; plugins           : Path.t list Mode.Dict.t
+  ; foreign_archives  : Path.t list Mode.Dict.t
+  ; jsoo_runtime      : Path.t list
+  ; requires          : t list or_error
+  ; ppx_runtime_deps  : t list or_error
+  ; pps               : t list or_error
+  ; resolved_selects  : Resolved_select.t list
+  ; optional          : bool
+  ; user_written_deps : Jbuild.Lib_deps.t
   }
 
 and db =
@@ -214,6 +229,8 @@ and conflict =
   }
 
 and 'a or_error = ('a, error With_required_by.t) result
+
+type lib = t
 
 module Error = struct
   include Error0
@@ -382,7 +399,7 @@ let map_find_result name res : (_, _) result =
           }
 
 let rec make db name (info : Info.t) ~unique_id ~stack =
-  let requires, resolved_selects =
+  let requires, pps, resolved_selects =
     resolve_user_deps db info.requires ~pps:info.pps ~stack
   in
   let ppx_runtime_deps =
@@ -394,22 +411,25 @@ let rec make db name (info : Info.t) ~unique_id ~stack =
   in
   let requires         = map_error requires         in
   let ppx_runtime_deps = map_error ppx_runtime_deps in
-  { loc              = info.loc
-  ; name             = name
-  ; unique_id        = unique_id
-  ; kind             = info.kind
-  ; status           = info.status
-  ; src_dir          = info.src_dir
-  ; obj_dir          = info.obj_dir
-  ; version          = info.version
-  ; synopsis         = info.synopsis
-  ; archives         = info.archives
-  ; plugins          = info.plugins
-  ; foreign_archives = info.foreign_archives
-  ; jsoo_runtime     = info.jsoo_runtime
-  ; requires         = requires
-  ; ppx_runtime_deps = ppx_runtime_deps
-  ; resolved_selects = resolved_selects
+  { loc               = info.loc
+  ; name              = name
+  ; unique_id         = unique_id
+  ; kind              = info.kind
+  ; status            = info.status
+  ; src_dir           = info.src_dir
+  ; obj_dir           = info.obj_dir
+  ; version           = info.version
+  ; synopsis          = info.synopsis
+  ; archives          = info.archives
+  ; plugins           = info.plugins
+  ; foreign_archives  = info.foreign_archives
+  ; jsoo_runtime      = info.jsoo_runtime
+  ; requires          = requires
+  ; ppx_runtime_deps  = ppx_runtime_deps
+  ; pps               = pps
+  ; resolved_selects  = resolved_selects
+  ; optional          = info.optional
+  ; user_written_deps = Info.user_written_deps info
   }
 
 and find db name =
@@ -573,21 +593,32 @@ and resolve_deps db deps ~stack =
 
 and resolve_user_deps db deps ~pps ~stack =
   let deps, resolved_selects = resolve_deps db deps ~stack in
-  let deps =
+  let deps, pps =
     match pps with
-    | [] -> deps
+    | [] -> (deps, Ok [])
     | pps ->
-      let pps = List.map pps ~f:Jbuild.Pp.to_string in
-      deps >>= fun deps ->
-      resolve_simple_deps db pps ~stack >>= fun pps ->
-      fold_closure pps ~stack ~init:deps ~f:(fun t acc ->
-        t.ppx_runtime_deps >>= fun rt_deps ->
-        Ok (List.rev_append rt_deps acc))
+      let pps =
+        let pps = List.map pps ~f:Jbuild.Pp.to_string in
+        resolve_simple_deps db pps ~stack >>= fun pps ->
+        non_sorted_closure pps ~stack
+      in
+      let deps =
+        let rec loop acc = function
+          | [] -> Ok acc
+          | pp :: pps ->
+            pp.ppx_runtime_deps >>= fun rt_deps ->
+            loop (List.rev_append rt_deps acc) pps
+        in
+        deps >>= fun deps ->
+        pps  >>= fun pps  ->
+        loop deps pps
+      in
+      (deps, pps)
   in
-  (deps, resolved_selects)
+  (deps, pps, resolved_selects)
 
 (* Fold the transitive closure in arbitrary order *)
-and fold_closure ts ~init ~f ~stack =
+and non_sorted_closure ts ~stack =
   let seen = ref Int_set.empty in
   let rec loop ts acc ~stack =
     match ts with
@@ -597,7 +628,7 @@ and fold_closure ts ~init ~f ~stack =
         Ok acc
       else begin
         seen := Int_set.add t.unique_id !seen;
-        f t acc >>= fun acc ->
+        let acc = t :: acc in
         (Dep_stack.push stack (to_init t) >>= fun stack ->
          t.requires >>= fun deps ->
          loop deps acc ~stack)
@@ -605,7 +636,7 @@ and fold_closure ts ~init ~f ~stack =
         loop ts acc ~stack
       end
   in
-  loop ts init ~stack
+  loop ts [] ~stack
 
 let to_exn res ~required_by =
   match res with
@@ -680,9 +711,55 @@ let closure_exn ts ~required_by = to_exn (closure ts) ~required_by
 module Compile = struct
   module Resolved_select = Resolved_select
 
-  let requires t = t.requires >>= closure
+  type nonrec t =
+    { requires          : t list or_error
+    ; pps               : t list or_error
+    ; resolved_selects  : Resolved_select.t list
+    ; optional          : bool
+    ; user_written_deps : Jbuild.Lib_deps.t
+    }
 
-  let resolved_selects t = t.resolved_selects
+  let of_lib (t : lib) =
+    { requires          = t.requires >>= closure
+    ; resolved_selects  = t.resolved_selects
+    ; pps               = t.pps
+    ; optional          = t.optional
+    ; user_written_deps = t.user_written_deps
+    }
+
+  let of_hidden db hidden =
+    let { Error.Library_not_available.Reason.Hidden. name; info; _ } =
+      hidden
+    in
+    let error =
+      { With_required_by.
+        data = Error.Library_not_available { name; reason = Hidden hidden }
+      ; required_by = [Loc info.loc]
+      }
+    in
+    let resolved_selects =
+      match info.requires with
+      | Simple _ -> []
+      | Complex deps ->
+        List.filter deps ~f:(fun dep ->
+          match (dep : Jbuild.Lib_dep.t) with
+          | Direct _ -> false
+          | Select _ -> true)
+      |> resolve_complex_deps db ~stack:Dep_stack.empty
+      |> snd
+    in
+    { requires          = Error error
+    ; pps               = Error error
+    ; resolved_selects  = resolved_selects
+    ; optional          = info.optional
+    ; user_written_deps = Info.user_written_deps info
+    }
+
+  let requires          t = t.requires
+  let resolved_selects  t = t.resolved_selects
+  let pps               t = t.pps
+  let optional          t = t.optional
+  let user_written_deps t = t.user_written_deps
 end
 
 (* +-----------------------------------------------------------------+
@@ -774,13 +851,26 @@ module DB = struct
 
   let available t name = available_internal t name ~stack:Dep_stack.empty
 
+  let get_compile_info t name =
+    match find t name with
+    | Error Not_found ->
+      Sexp.code_error "Lib.DB.get_compile_info got library that doesn't exist"
+        [ "name", Atom name ]
+    | Error (Hidden hidden) -> Compile.of_hidden t hidden
+    | Ok lib -> Compile.of_lib lib
+
   let resolve_user_written_deps t deps ~pps =
-    let res, resolved_select =
+    let res, pps, resolved_selects =
       resolve_user_deps t (Info.Deps.of_lib_deps deps) ~pps
         ~stack:Dep_stack.empty
     in
-    let res = res >>= closure in
-    (res, resolved_select)
+    { Compile.
+      requires = res >>= closure
+    ; pps
+    ; resolved_selects
+    ; optional          = false
+    ; user_written_deps = deps
+    }
 
   let resolve_pps t pps =
     resolve_simple_deps t (List.map pps ~f:Jbuild.Pp.to_string)

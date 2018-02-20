@@ -5,30 +5,15 @@ open! No_io
 
 module SC = Super_context
 
-module Ppx_info = struct
-  exception Found_expect
-
-  let uses_expect ~scope (lib : Jbuild.Library.t) =
-    let user_ppx =
-      Jbuild.Preprocess_map.pps lib.buildable.preprocess
-      |> List.rev_map ~f:(fun pp -> Lib_dep.direct (Jbuild.Pp.to_string pp)) in
-    match
-      Lib_db.Scope.fold_transitive_closure
-        scope
-        user_ppx
-        ~init:()
-        ~f:(fun (lib : Lib.t) () ~required_by:_ ->
-          if Lib.exists_name lib ~f:((=) "ppx_expect") then
-            raise_notrace Found_expect
-        ) with
-    | () -> false
-    | exception Found_expect -> true
-    | exception _ -> false
-end
-
-let setup sctx ~dir ~(lib : Jbuild.Library.t) ~scope ~modules:lib_modules =
+let setup sctx ~dir ~(lib : Jbuild.Library.t) ~scope ~modules:lib_modules
+      ~compile_info =
   Option.iter lib.inline_tests ~f:(fun inline_tests ->
-    let uses_expect = Ppx_info.uses_expect lib ~scope in
+    let uses_expect =
+      match Lib.Compile.pps compile_info with
+      | Error _ -> false
+      | Ok pps ->
+        List.exists pps ~f:(fun pp -> Lib.name pp = "ppx_expect")
+    in
     let name = lib.name ^ "_test_runner" in
     let main_module_filename = name ^ ".ml-gen" in
     let main_module_name = String.capitalize_ascii name in
@@ -49,6 +34,7 @@ let setup sctx ~dir ~(lib : Jbuild.Library.t) ~scope ~modules:lib_modules =
         "let () = Ppx_inline_test_lib.Runtime.exit ()");
     ignore (
       Exe.build_and_link sctx
+        ~loc:lib.buildable.loc
         ~dir
         ~program:{ name; main_module_name }
         ~modules
@@ -73,7 +59,7 @@ let setup sctx ~dir ~(lib : Jbuild.Library.t) ~scope ~modules:lib_modules =
        let exe = Path.relative dir (name ^ ".exe") in
        Build.path exe >>>
        Super_context.Deps.interpret sctx
-         ~scope:scope.data
+         ~scope
          ~dir
          inline_tests.deps
        >>^ fun _ ->

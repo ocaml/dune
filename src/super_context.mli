@@ -118,23 +118,13 @@ module Libs : sig
   (** Returns the closed list of dependencies for a dependency list in
       a stanza. The second arrow is the same as the first one but with
       an added dependency on the [.merlin] if [(context t).merlin &&
-      lib.buildable.gen_dot_merlin] is [true]. *)
-  val requires_for_library
-    :  t
-    -> dir:Path.t
-    -> scope:Scope.t
-    -> dep_kind:Build.lib_dep_kind
-    -> Jbuild.Library.t
-    -> (unit, Lib.L.t) Build.t * (unit, Lib.L.t) Build.t
+      has_dot_merlin] is [true]. *)
   val requires
     :  t
     -> loc:Loc.t
     -> dir:Path.t
-    -> scope:Scope.t
-    -> dep_kind:Build.lib_dep_kind
-    -> libraries:Lib_deps.t
-    -> preprocess:Preprocess_map.t
     -> has_dot_merlin:bool
+    -> Lib.Compile.t
     -> (unit, Lib.L.t) Build.t * (unit, Lib.L.t) Build.t
 
   (** [file_deps ~ext] is an arrow that record dependencies on all the

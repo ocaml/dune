@@ -230,32 +230,6 @@ module Libs = struct
             raise (Lib.Error (With_required_by.append e required_by))
         }
 
-  let requires_generic
-        t
-        ~loc
-        ~dir
-        ~requires
-        ~libraries
-        ~dep_kind
-        ~has_dot_merlin
-    =
-    let requires =
-      requires_to_build requires ~required_by:[Loc loc]
-    in
-    let requires =
-      Build.record_lib_deps ~kind:dep_kind libraries
-      >>> requires
-    in
-    let requires_with_merlin =
-      if t.context.merlin && has_dot_merlin then
-        Build.path (Path.relative dir ".merlin-exists")
-        >>>
-        requires
-      else
-        requires
-    in
-    (requires_with_merlin, requires)
-
   let add_select_rules t ~dir resolved_selects =
     List.iter resolved_selects ~f:(fun rs ->
       let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
@@ -273,41 +247,29 @@ module Libs = struct
                                   })
              }))
 
-  let requires_for_library t ~dir ~scope ~dep_kind (conf : Jbuild.Library.t) =
-    match Lib.DB.find (Scope.libs scope) conf.name with
-    | Error Not_found -> assert false
-    | Error (Hidden _ as reason) ->
-      let build =
-        Build.fail { fail = fun () ->
-          Lib.not_available ~loc:conf.buildable.loc reason "Library %S"
-            conf.name  }
-      in
-      (build, build)
-    | Ok lib ->
-      add_select_rules t ~dir (Lib.Compile.resolved_selects lib);
-      let libraries =
-        List.fold_left conf.virtual_deps ~init:conf.buildable.libraries
-          ~f:(fun acc s -> Lib_dep.Direct s :: acc)
-      in
-      requires_generic t ~dir ~loc:conf.buildable.loc
-        ~requires:(Lib.Compile.requires lib)
-        ~libraries
-        ~dep_kind
-        ~has_dot_merlin:conf.buildable.gen_dot_merlin
-
-  let requires t ~loc ~dir ~scope ~dep_kind ~libraries
-        ~preprocess ~has_dot_merlin =
-    let requires, resolved_selects =
-      Lib.DB.resolve_user_written_deps (Scope.libs scope)
-        libraries
-        ~pps:(Jbuild.Preprocess_map.pps preprocess)
+  let requires t ~loc ~dir ~has_dot_merlin compile_info =
+    add_select_rules t ~dir (Lib.Compile.resolved_selects compile_info);
+    let requires =
+      requires_to_build (Lib.Compile.requires compile_info)
+        ~required_by:[Loc loc]
     in
-    add_select_rules t ~dir resolved_selects;
-    requires_generic t ~dir ~loc
-      ~requires
-      ~libraries
-      ~dep_kind
-      ~has_dot_merlin
+    let requires =
+      Build.record_lib_deps (Lib.Compile.user_written_deps compile_info)
+        ~kind:(if Lib.Compile.optional compile_info then
+                 Optional
+               else
+                 Required)
+      >>> requires
+    in
+    let requires_with_merlin =
+      if t.context.merlin && has_dot_merlin then
+        Build.path (Path.relative dir ".merlin-exists")
+        >>>
+        requires
+      else
+        requires
+    in
+    (requires_with_merlin, requires)
 
   let lib_files_alias ~dir ~name ~ext =
     Alias.make (sprintf "lib-%s%s-all" name ext) ~dir

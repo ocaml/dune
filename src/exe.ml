@@ -155,15 +155,13 @@ let build_and_link_many
       ~alias_module:None ~lib_interface_module:None
   in
 
+  let compile_info =
+    Lib.DB.resolve_user_written_deps (Scope.libs scope)
+      libraries
+      ~pps:(Jbuild.Preprocess_map.pps preprocess)
+  in
   let requires, real_requires =
-    SC.Libs.requires sctx
-      ~loc
-      ~dir
-      ~scope
-      ~dep_kind
-      ~libraries
-      ~has_dot_merlin
-      ~preprocess
+    SC.Libs.requires sctx ~loc ~dir ~has_dot_merlin compile_info
   in
 
   (* CR-someday jdimino: this should probably say [~dynlink:false] *)

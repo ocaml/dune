@@ -83,6 +83,7 @@ module Info : sig
     ; ppx_runtime_deps : string list
     ; pps              : Jbuild.Pp.t list
     ; optional         : bool
+    ; virtual_deps     : string list
     }
 
   val of_library_stanza : dir:Path.t -> Jbuild.Library.t -> t
@@ -146,8 +147,10 @@ val not_available
 
 (** {1 Library compilation} *)
 
-(** For compiling the library itself *)
+(** For compiling a library or executable *)
 module Compile : sig
+  type t
+
   (** Return the list of dependencies needed for compiling this library *)
   val requires : t -> (L.t, Error.t With_required_by.t) result
 
@@ -160,6 +163,12 @@ module Compile : sig
 
   (** Resolved select forms *)
   val resolved_selects : t -> Resolved_select.t list
+
+  (** Transitive closure of all used ppx rewriters *)
+  val pps : t -> (L.t, Error.t With_required_by.t) result
+
+  val optional          : t -> bool
+  val user_written_deps : t -> Jbuild.Lib_deps.t
 end
 
 (** {1 Library name resolution} *)
@@ -212,6 +221,10 @@ module DB : sig
 
   val available : t -> string -> bool
 
+  (** Retreive the compile informations for the given library. Works
+      for libraries that are optional and not available as well. *)
+  val get_compile_info : t -> string -> Compile.t
+
   (** Resolve libraries written by the user in a jbuild file. The
       resulting list of libraries is transitively closed and sorted by
       order of dependencies.
@@ -221,8 +234,7 @@ module DB : sig
     :  t
     -> Jbuild.Lib_dep.t list
     -> pps:Jbuild.Pp.t list
-    -> (L.t, Error.t With_required_by.t) result *
-       Compile.Resolved_select.t list
+    -> Compile.t
 
   val resolve_pps
     :  t

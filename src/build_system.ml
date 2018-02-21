@@ -646,6 +646,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
         rule_deps
       ; action_deps = static_deps
       } = Build_interpret.static_deps build ~all_targets:(targets_of t)
+            ~file_tree:t.file_tree
   in
 
   let eval_rule () =
@@ -1148,6 +1149,7 @@ let eval_request t ~request ~process_target =
         rule_deps
       ; action_deps = static_deps
       } = Build_interpret.static_deps request ~all_targets:(targets_of t)
+            ~file_tree:t.file_tree
   in
 
   let process_targets ts =
@@ -1205,6 +1207,7 @@ let static_deps_of_request t request =
         rule_deps
       ; action_deps
       } = Build_interpret.static_deps request ~all_targets:(targets_of t)
+            ~file_tree:t.file_tree
   in
   Pset.elements (Pset.union rule_deps action_deps)
 

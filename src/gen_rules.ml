@@ -870,13 +870,11 @@ module Gen(P : Params) = struct
                  Path.Set.add (Path.relative src_dir ".") m.source_dirs
       })
     |> Option.iter ~f:(Merlin.add_rules sctx ~dir:ctx_dir ~scope);
-    Option.iter (Utop.exe_stanzas stanzas) ~f:(fun (exe, all_modules) ->
-      let dir = Utop.utop_exe_dir ~dir:ctx_dir in
-      let merlin =
-        executables_rules exe ~dir ~all_modules ~scope
-      in
-      Utop.add_module_rules sctx ~dir merlin.requires;
-    );
+    Utop.setup sctx ~dir:ctx_dir ~libs:(
+      List.filter_map stanzas ~f:(function
+        | Stanza.Library lib -> Some lib
+        | _ -> None)
+    ) ~scope;
     Modules_partitioner.emit_warnings modules_partitioner
 
   (* +-----------------------------------------------------------------+

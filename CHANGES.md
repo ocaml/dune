@@ -1,4 +1,4 @@
-1.0+beta18 (next)
+1.0+beta18 (21/02/2018)
 -----------------------
 
 - Let the parser distinguish quoted strings from atoms.  This makes

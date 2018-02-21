@@ -1,3 +1,8 @@
+next
+----
+
+- Fix invalid warning about non-existent direcotry (#536, fixes #534)
+
 1.0+beta18 (21/02/2018)
 -----------------------
 

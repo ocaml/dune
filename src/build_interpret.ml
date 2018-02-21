@@ -26,7 +26,32 @@ module Static_deps = struct
     }
 end
 
-let static_deps t ~all_targets =
+type file_kind = Reg | Dir
+
+let inspect_path file_tree path =
+  match Path.drop_build_context path with
+  | None ->
+    if not (Path.exists path) then
+      None
+    else if Path.is_directory path then
+      Some Dir
+    else
+      Some Reg
+  | Some path ->
+    match File_tree.find_dir file_tree path with
+    | Some _ ->
+      Some Dir
+    | None ->
+      if Path.is_root path then
+        Some Dir
+      else if File_tree.file_exists file_tree
+                (Path.parent   path)
+                (Path.basename path) then
+        Some Reg
+      else
+        None
+
+let static_deps t ~all_targets ~file_tree =
   let rec loop : type a b. (a, b) t -> Static_deps.t -> Static_deps.t = fun t acc ->
     match t with
     | Arr _ -> acc
@@ -49,13 +74,16 @@ let static_deps t ~all_targets =
               Re.execp re (Path.basename path))
           in
           if Pset.is_empty result then begin
-            if not (Path.exists dir) then
+            match inspect_path file_tree dir with
+            | None ->
               Loc.warn loc "Directory %s doesn't exist."
-                (Path.to_string_maybe_quoted dir)
-            else if not (Path.is_directory dir) then
+                (Path.to_string_maybe_quoted
+                   (Path.drop_optional_build_context dir))
+            | Some Reg ->
               Loc.warn loc "%s is not a directory."
-                (Path.to_string_maybe_quoted dir)
-            else
+                (Path.to_string_maybe_quoted
+                   (Path.drop_optional_build_context dir))
+            | Some Dir ->
               (* diml: we should probably warn in this case as well *)
               ()
           end;

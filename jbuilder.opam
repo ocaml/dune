@@ -10,9 +10,6 @@ build: [
   ["./boot.exe" "--subst"] {pinned}
   ["./boot.exe" "-j" jobs]
 ]
-build-test: [
-  ["./_build/default/bin/main.exe" "runtest" "-p" name "-j" jobs]
-]
 depends: [
   # ocamlfind is not mandatory to build packages using
   # jbuilder. However if it is present jbuilder will use it.  Making

@@ -737,6 +737,26 @@ module Gen(P : Params) = struct
     let modules =
       parse_modules ~all_modules ~buildable:exes.buildable
     in
+    let already_used =
+      match modules_partitioner with
+      | None -> String_set.empty
+      | Some mp ->
+        Modules_partitioner.acknowledge mp
+          ~loc ~modules
+    in
+
+    let modules =
+      let preprocessor_deps =
+        SC.Deps.interpret sctx exes.buildable.preprocessor_deps
+          ~scope ~dir
+      in
+      SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind:Required ~modules ~scope
+        ~preprocess:exes.buildable.preprocess
+        ~preprocessor_deps
+        ~lint:exes.buildable.lint
+        ~lib_name:None
+    in
+
     let programs =
       List.map exes.names ~f:(fun (loc, name) ->
         let mod_name = String.capitalize_ascii name in
@@ -767,9 +787,14 @@ module Gen(P : Params) = struct
         ~dir
         ~standard:[]
     in
-    let preprocessor_deps =
-      SC.Deps.interpret sctx exes.buildable.preprocessor_deps
-        ~scope ~dir
+
+    let compile_info =
+      Lib.DB.resolve_user_written_deps (Scope.libs scope)
+        exes.buildable.libraries
+        ~pps:(Jbuild.Preprocess_map.pps exes.buildable.preprocess)
+    in
+    let requires, real_requires =
+      SC.Libs.requires sctx ~loc ~dir ~has_dot_merlin compile_info
     in
 
     let obj_dir, requires =
@@ -778,17 +803,13 @@ module Gen(P : Params) = struct
         ~dir
         ~programs
         ~modules
-        ?modules_partitioner
+        ?already_used
         ~scope
         ~linkages
-        ~libraries:exes.buildable.libraries
+        ~requires
         ~flags
         ~link_flags
-        ~preprocess:exes.buildable.preprocess
-        ~preprocessor_deps
-        ~lint:exes.buildable.lint
         ~js_of_ocaml:exes.buildable.js_of_ocaml
-        ~has_dot_merlin:exes.buildable.gen_dot_merlin
     in
 
     { Merlin.

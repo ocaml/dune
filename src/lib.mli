@@ -84,6 +84,7 @@ module Info : sig
     ; pps              : Jbuild.Pp.t list
     ; optional         : bool
     ; virtual_deps     : string list
+    ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
     }
 
   val of_library_stanza : dir:Path.t -> Jbuild.Library.t -> t
@@ -145,11 +146,18 @@ val not_available
   -> ('a, Format.formatter, unit, 'b) format4
   -> 'a
 
-(** {1 Library compilation} *)
+(** {1 Compilation contexts} *)
+
+(** See {!Sub_system} *)
+type sub_system = ..
 
 (** For compiling a library or executable *)
 module Compile : sig
   type t
+
+  (** Create a compilation context from a list of libraries. The list
+      doesn't have to be transitively closed. *)
+  val make : (L.t, Error.t With_required_by.t) result -> t
 
   (** Return the list of dependencies needed for compiling this library *)
   val requires : t -> (L.t, Error.t With_required_by.t) result
@@ -169,6 +177,9 @@ module Compile : sig
 
   val optional          : t -> bool
   val user_written_deps : t -> Jbuild.Lib_deps.t
+
+  (** Sub-systems used in this compilation context *)
+  val sub_systems : t -> sub_system list
 end
 
 (** {1 Library name resolution} *)
@@ -219,6 +230,12 @@ module DB : sig
     -> required_by:With_required_by.Entry.t list
     -> lib
 
+  val find_many
+    :  t
+    -> string list
+    -> required_by:With_required_by.Entry.t list
+    -> (lib list, Error.t With_required_by.t) result
+
   val available : t -> string -> bool
 
   (** Retreive the compile informations for the given library. Works
@@ -251,6 +268,27 @@ end with type lib := t
 
 val closure : L.t -> (L.t, Error.t With_required_by.t) result
 
+(** {1 Sub-systems} *)
+
+module Sub_system : sig
+  type lib = t
+
+  type t = sub_system = ..
+
+  val register
+    :  name:Sub_system_name.t
+    -> instantiate:(DB.t -> Sub_system_info.t -> t)
+    -> ?dump:(t -> Sexp.t)
+    -> unit
+    -> unit
+end with type lib := t
+
+(** Get the instance of the subsystem for this library *)
+val get_sub_system
+  :  t
+  -> Sub_system_name.t
+  -> Sub_system.t option
+
 (** {1 Dependencies for META files} *)
 
 module Meta : sig
@@ -268,4 +306,6 @@ module Meta : sig
     :  t
     -> required_by:With_required_by.Entry.t list
     -> String_set.t
+
+  val sub_systems : t -> Sexp.t list
 end

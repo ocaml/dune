@@ -267,42 +267,35 @@ module Of_sexp = struct
       in
       Loc.fail loc "%s" msg
 
-  let field name ?default value_of_sexp state =
+  let field name ?short ?default value_of_sexp state =
     match Name_map.find name state.unparsed with
     | Some { value = Some value; _ } ->
       (value_of_sexp value, consume name state)
-    | Some { value = None; _ } ->
-      Loc.fail state.loc "field %s needs a value" name
+    | Some { value = None; _ } -> begin
+        match short with
+        | Some v -> (v, consume name state)
+        | None ->
+          Loc.fail state.loc "field %s needs a value" name
+      end
     | None ->
       match default with
       | Some v -> (v, add_known name state)
       | None ->
         Loc.fail state.loc "field %s missing" name
 
-  let field_o name value_of_sexp state =
+  let field_o name ?short value_of_sexp state =
     match Name_map.find name state.unparsed with
     | Some { value = Some value; _ } ->
       (Some (value_of_sexp value), consume name state)
-    | Some { value = None; _ } ->
-      Loc.fail state.loc "field %s needs a value" name
+    | Some { value = None; _ } -> begin
+        match short with
+        | Some v -> (Some v, consume name state)
+        | None ->
+          Loc.fail state.loc "field %s needs a value" name
+      end
     | None -> (None, add_known name state)
 
-  let field_o_short name value_of_sexp ~short state =
-    match Name_map.find name state.unparsed with
-    | Some { value = Some value; _ } ->
-      (Some (value_of_sexp value), consume name state)
-    | Some { value = None; _ } ->
-      (Some short, consume name state)
-    | None -> (None, add_known name state)
-
-  let field_b name state =
-    match Name_map.find name state.unparsed with
-    | Some { value = Some value; _ } ->
-      (bool value, consume name state)
-    | Some { value = None; _ } ->
-      (true, consume name state)
-    | None ->
-      (false, add_known name state)
+  let field_b name = field name bool ~default:false ~short:true
 
   let make_record_parser_state sexp =
     match sexp with

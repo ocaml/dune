@@ -51,6 +51,7 @@ module Info = struct
     ; pps              : Jbuild.Pp.t list
     ; optional         : bool
     ; virtual_deps     : string list
+    ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
     }
 
   let user_written_deps t =
@@ -100,6 +101,7 @@ module Info = struct
     ; requires         = Deps.of_lib_deps conf.buildable.libraries
     ; ppx_runtime_deps = conf.ppx_runtime_libraries
     ; pps = Jbuild.Preprocess_map.pps conf.buildable.preprocess
+    ; sub_systems = conf.sub_systems
     }
 
   let of_findlib_package pkg =
@@ -121,6 +123,7 @@ module Info = struct
     ; status           = Installed
     ; (* We don't know how these are named for external libraries *)
       foreign_archives = Mode.Dict.make_both []
+    ; sub_systems      = Findlib.Package.sub_systems pkg
     }
 end
 
@@ -198,6 +201,14 @@ type t =
   ; resolved_selects  : Resolved_select.t list
   ; optional          : bool
   ; user_written_deps : Jbuild.Lib_deps.t
+  ; sub_systems       : sub_system_instance Sub_system_name.Map.t
+  }
+
+and sub_system = ..
+
+and sub_system_instance =
+  { sub_system : sub_system Lazy.t
+  ; dump       : (sub_system -> Sexp.t) option
   }
 
 and db =
@@ -331,6 +342,29 @@ module L = struct
 end
 
 (* +-----------------------------------------------------------------+
+   | Sub-systems                                                     |
+   +-----------------------------------------------------------------+ *)
+
+module Sub_system = struct
+  type t = sub_system = ..
+
+  type desc =
+    { name        : Sub_system_name.t
+    ; instantiate : db -> Sub_system_info.t -> t
+    ; dump        : (t -> Sexp.t) option
+    }
+
+  let all = Hashtbl.create 1024
+
+  let register ~name ~instantiate ?dump () =
+    Hashtbl.add all ~key:name
+      ~data:{ name
+            ; instantiate
+            ; dump
+            }
+end
+
+(* +-----------------------------------------------------------------+
    | Library name resolution and transitive closure                  |
    +-----------------------------------------------------------------+ *)
 
@@ -398,6 +432,15 @@ let map_find_result name res : (_, _) result =
           ; required_by = []
           }
 
+let instantiate_sub_systems db sub_systems =
+  Sub_system_name.Map.mapi sub_systems ~f:(fun name info ->
+    match Hashtbl.find Sub_system.all name with
+    | None -> assert false
+    | Some s ->
+      { sub_system = lazy (s.instantiate db info)
+      ; dump       = s.dump
+      })
+
 let rec make db name (info : Info.t) ~unique_id ~stack =
   let requires, pps, resolved_selects =
     resolve_user_deps db info.requires ~pps:info.pps ~stack
@@ -430,6 +473,7 @@ let rec make db name (info : Info.t) ~unique_id ~stack =
   ; resolved_selects  = resolved_selects
   ; optional          = info.optional
   ; user_written_deps = Info.user_written_deps info
+  ; sub_systems       = instantiate_sub_systems db info.sub_systems
   }
 
 and find db name =
@@ -717,17 +761,28 @@ module Compile = struct
     ; resolved_selects  : Resolved_select.t list
     ; optional          : bool
     ; user_written_deps : Jbuild.Lib_deps.t
+    ; sub_systems       : sub_system_instance Sub_system_name.Map.t
     }
 
-  let of_lib (t : lib) =
+  let make libs =
+    { requires          = libs >>= closure
+    ; resolved_selects  = []
+    ; pps               = Ok []
+    ; optional          = false
+    ; user_written_deps = []
+    ; sub_systems       = Sub_system_name.Map.empty
+    }
+
+  let for_lib (t : lib) =
     { requires          = t.requires >>= closure
     ; resolved_selects  = t.resolved_selects
     ; pps               = t.pps
     ; optional          = t.optional
     ; user_written_deps = t.user_written_deps
+    ; sub_systems       = t.sub_systems
     }
 
-  let of_hidden db hidden =
+  let for_hidden db hidden =
     let { Error.Library_not_available.Reason.Hidden. name; info; _ } =
       hidden
     in
@@ -753,6 +808,7 @@ module Compile = struct
     ; resolved_selects  = resolved_selects
     ; optional          = info.optional
     ; user_written_deps = Info.user_written_deps info
+    ; sub_systems       = instantiate_sub_systems db info.sub_systems
     }
 
   let requires          t = t.requires
@@ -760,7 +816,14 @@ module Compile = struct
   let pps               t = t.pps
   let optional          t = t.optional
   let user_written_deps t = t.user_written_deps
+  let sub_systems t =
+    Sub_system_name.Map.values t.sub_systems
+    |> List.map ~f:(fun s -> Lazy.force s.sub_system)
 end
+
+let get_sub_system t name =
+  Option.map (Sub_system_name.Map.find name t.sub_systems) ~f:(fun s ->
+    Lazy.force s.sub_system)
 
 (* +-----------------------------------------------------------------+
    | Databases                                                       |
@@ -841,6 +904,21 @@ module DB = struct
 
   let find = find
 
+  let find_many =
+    let rec loop t acc = function
+      | [] -> Ok (List.rev acc)
+      | name :: names ->
+        match find t name with
+        | Ok lib -> loop t (lib ::acc) names
+        | Error reason ->
+          Error (Error.Library_not_available { name; reason })
+    in
+    fun t names ~required_by ->
+      match loop t [] names with
+      | Ok _ as res -> res
+      | Error e ->
+        Error { With_required_by. data = e; required_by }
+
   let find_exn t name ~required_by =
     match find t name with
     | Ok x -> x
@@ -856,8 +934,8 @@ module DB = struct
     | Error Not_found ->
       Sexp.code_error "Lib.DB.get_compile_info got library that doesn't exist"
         [ "name", Atom name ]
-    | Error (Hidden hidden) -> Compile.of_hidden t hidden
-    | Ok lib -> Compile.of_lib lib
+    | Error (Hidden hidden) -> Compile.for_hidden t hidden
+    | Ok lib -> Compile.for_lib lib
 
   let resolve_user_written_deps t deps ~pps =
     let res, pps, resolved_selects =
@@ -870,6 +948,7 @@ module DB = struct
     ; resolved_selects
     ; optional          = false
     ; user_written_deps = deps
+    ; sub_systems       = Sub_system_name.Map.empty
     }
 
   let resolve_pps t pps =
@@ -919,6 +998,16 @@ module Meta = struct
     to_names (requires_exn t ~required_by)
   let ppx_runtime_deps t ~required_by =
     to_names (ppx_runtime_deps_exn t ~required_by)
+
+  let sub_systems t =
+    Sub_system_name.Map.bindings t.sub_systems
+    |> List.filter_map ~f:(fun (name, s) ->
+      match s.dump with
+      | None -> None
+      | Some f ->
+        Some (Sexp.List [ Atom (Sub_system_name.to_string name)
+                        ; f (Lazy.force s.sub_system)
+                        ]))
 end
 
 (* +-----------------------------------------------------------------+

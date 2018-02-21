@@ -30,6 +30,7 @@ module Package : sig
   val jsoo_runtime     : t -> Path.t list
   val requires         : t -> string list
   val ppx_runtime_deps : t -> string list
+  val sub_systems      : t -> Sub_system_info.t Sub_system_name.Map.t
 end
 
 module Unavailable_reason : sig

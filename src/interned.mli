@@ -8,6 +8,8 @@ module type S = sig
   val make : string -> t
   val compare : t -> t -> int
 
+  val to_string : t -> string
+
   module Set : sig
     include Set.S with type elt = t
 

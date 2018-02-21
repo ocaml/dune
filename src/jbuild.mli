@@ -167,13 +167,6 @@ module Library : sig
       | Ppx_rewriter
   end
 
-  module Inline_tests : sig
-    type t =
-      { deps: Dep_conf.t list
-      ; flags: Ordered_set_lang.Unexpanded.t
-      }
-  end
-
   type t =
     { name                     : string
     ; public                   : Public_lib.t option
@@ -194,8 +187,8 @@ module Library : sig
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
-    ; inline_tests             : Inline_tests.t option
     ; scope_name               : Scope_info.Name.t
+    ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     }
 
   val has_stubs : t -> bool

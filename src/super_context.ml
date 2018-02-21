@@ -50,14 +50,16 @@ let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
 let expand_var_no_root t var = String_map.find var t.vars
 
-let expand_vars t ~scope ~dir s =
+let expand_vars t ~scope ~dir ?(extra_vars=String_map.empty) s =
   String_with_vars.expand s ~f:(fun _loc -> function
     | "ROOT" -> Some (Path.reach ~from:dir t.context.build_dir)
     | "SCOPE_ROOT" ->
       Some (Path.reach ~from:dir (Scope.root scope))
     | var ->
-      expand_var_no_root t var
-      |> Option.map ~f:(fun e -> Action.Var_expansion.to_string dir e))
+      Option.map ~f:(fun e -> Action.Var_expansion.to_string dir e)
+        (match expand_var_no_root t var with
+         | Some _ as x -> x
+         | None -> String_map.find var extra_vars))
 
 let resolve_program t ?hint bin =
   Artifacts.binary ?hint t.artifacts bin
@@ -1064,13 +1066,15 @@ module Eval_strings = Ordered_set_lang.Make(struct
     let name t = t
   end)
 
-let expand_and_eval_set t ~scope ~dir set ~standard =
+let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
   let open Build.O in
-  let f = expand_vars t ~scope ~dir in
+  let f = expand_vars t ~scope ~dir ?extra_vars in
   let parse ~loc:_ s = s in
   match Ordered_set_lang.Unexpanded.files set ~f |> String_set.elements with
   | [] ->
-    let set = Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f in
+    let set =
+      Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f
+    in
     Build.return (Eval_strings.eval set ~standard ~parse)
   | files ->
     let paths = List.map files ~f:(Path.relative dir) in

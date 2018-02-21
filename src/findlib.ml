@@ -144,6 +144,20 @@ module Package = struct
     Mode.Dict.map2 ~f:(@)
       (make_archives t "archive" (Ps.add Variant.plugin preds))
       (make_archives t "plugin" preds)
+
+  let sub_systems t =
+    match Vars.get t.vars "dune_sub_systems" Ps.empty with
+    | None -> Sub_system_name.Map.empty
+    | Some s ->
+      let fname =
+        sprintf
+          "%s:%s.dune_sub_systems" (Path.to_string t.meta_file)
+          t.name
+      in
+      let sexp =
+        Usexp.parse_string ~mode:Single ~fname s
+      in
+      Sexp.Of_sexp.record (Sub_system_info.parse ()) sexp
 end
 
 module Unavailable_reason = struct

@@ -6,6 +6,8 @@ module type S = sig
   val make : string -> t
   val compare : t -> t -> int
 
+  val to_string : t -> string
+
   module Set : sig
     include Set.S with type elt = t
 
@@ -19,13 +21,20 @@ module Make() = struct
   include Int
 
   let table = Hashtbl.create 1024
+  let names = Hashtbl.create 1024
   let next = ref 0
 
   let make s =
-    Hashtbl.find_or_add table s ~f:(fun _ ->
+    Hashtbl.find_or_add table s ~f:(fun s ->
       let n = !next in
       next := n + 1;
+      Hashtbl.add names ~key:n ~data:s;
       n)
+
+  let to_string t =
+    match Hashtbl.find names t with
+    | None -> assert false
+    | Some s -> s
 
   module Set = struct
     include Int_set

@@ -52,8 +52,18 @@ val expand_vars
   :  t
   -> scope:Scope.t
   -> dir:Path.t
+  -> ?extra_vars:Action.Var_expansion.t String_map.t
   -> String_with_vars.t
   -> string
+
+val expand_and_eval_set
+  :  t
+  -> scope:Scope.t
+  -> dir:Path.t
+  -> ?extra_vars:Action.Var_expansion.t String_map.t
+  -> Ordered_set_lang.Unexpanded.t
+  -> standard:string list
+  -> (unit, string list) Build.t
 
 val prefix_rules
   : t
@@ -223,14 +233,6 @@ module PP : sig
 
   val gen_rules : t -> string list -> unit
 end
-
-val expand_and_eval_set
-  :  t
-  -> scope:Scope.t
-  -> dir:Path.t
-  -> Ordered_set_lang.Unexpanded.t
-  -> standard:string list
-  -> (unit, string list) Build.t
 
 module Pkg_version : sig
   val set : t -> Package.t -> (unit, string option) Build.t -> (unit, string option) Build.t

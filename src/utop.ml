@@ -4,8 +4,8 @@ open Build.O
 open! No_io
 
 let exe_name = "utop"
-let module_name = String.capitalize_ascii exe_name
-let module_filename = exe_name ^ ".ml"
+let main_module_name = String.capitalize_ascii exe_name
+let main_module_filename = exe_name ^ ".ml"
 
 let pp_ml fmt include_dirs =
   let pp_include fmt =
@@ -19,7 +19,7 @@ let pp_ml fmt include_dirs =
   Format.fprintf fmt "@.UTop_main.main ();@."
 
 let add_module_rules sctx ~dir lib_requires =
-  let path = Path.relative dir module_filename in
+  let path = Path.relative dir main_module_filename in
   let utop_ml =
     lib_requires
     >>^ (fun libs ->
@@ -36,59 +36,6 @@ let add_module_rules sctx ~dir lib_requires =
     >>> Build.write_file_dyn path in
   Super_context.add_rule sctx utop_ml
 
-let utop_of_libs (libs : Library.t list) =
-  { Executables.names = [(Loc.none, exe_name)]
-  ; link_executables = true
-  ; link_flags = Ordered_set_lang.Unexpanded.t (
-      Sexp.add_loc ~loc:Loc.none
-        (List [ Atom "-linkall"
-              ; Atom "-warn-error"
-              ; Atom "-31" ])
-    )
-  ; modes = Mode.Dict.Set.of_list [Mode.Byte]
-  ; buildable =
-      { Buildable.
-        loc = Loc.none
-      ; modules =
-          Ordered_set_lang.t (List (Loc.none, [Atom (Loc.none, module_name)]))
-      ; modules_without_implementation = Ordered_set_lang.standard
-      ; libraries =
-          (Lib_dep.direct "utop") :: (List.map libs ~f:(fun lib ->
-            Lib_dep.direct lib.Library.name))
-      ; preprocess = Preprocess_map.no_preprocessing
-      ; lint = Lint.no_lint
-      ; preprocessor_deps = []
-      ; flags = Ordered_set_lang.Unexpanded.standard
-      ; ocamlc_flags = Ordered_set_lang.Unexpanded.standard
-      ; ocamlopt_flags = Ordered_set_lang.Unexpanded.standard
-      ; js_of_ocaml = Js_of_ocaml.default
-      ; gen_dot_merlin = false
-      }
-  }
-
-let exe_stanzas stanzas =
-  let libs =
-    List.filter_map stanzas ~f:(function
-      | Stanza.Library lib -> Some lib
-      | _ -> None
-    ) in
-  match libs with
-  | [] -> None
-  | libs ->
-    let all_modules =
-      String_map.of_alist_exn
-        [ module_name
-        , { Module.
-            name = module_name
-          ; impl = Some { Module.File.
-                          name = module_filename
-                        ; syntax = Module.Syntax.OCaml
-                        }
-          ; intf = None
-          ; obj_name = "" }
-        ] in
-    Some (utop_of_libs libs, all_modules)
-
 let utop_exe_dir ~dir = Path.relative dir ".utop"
 
 let utop_exe dir =
@@ -98,3 +45,37 @@ let utop_exe dir =
      custom mode. We do that so that it works without hassle when
      generating a utop for a library with C stubs. *)
   |> Path.extend_basename ~suffix:(Mode.exe_ext Mode.Native)
+
+let setup sctx ~dir ~(libs : Library.t list) ~scope =
+  match libs with
+  | [] -> ()
+  | lib::_ ->
+    let loc = lib.buildable.loc in
+    let modules =
+      String_map.singleton
+        main_module_name
+        { Module.
+          name = main_module_name
+        ; impl = Some { Module.File.
+                        name = main_module_filename
+                      ; syntax = Module.Syntax.OCaml
+                      }
+        ; intf = None
+        ; obj_name = "" } in
+    let utop_exe_dir = utop_exe_dir ~dir in
+    let _obj_dir, libs =
+      Exe.build_and_link sctx
+        ~loc
+        ~dir:utop_exe_dir
+        ~program:{ name = exe_name ; main_module_name }
+        ~modules
+        ~scope
+        ~linkages:[Exe.Linkage.custom]
+        ~libraries:(
+          Lib_dep.direct "utop"::
+          (List.map ~f:(fun (lib : Library.t) ->
+             Lib_dep.direct lib.name) libs)
+        )
+        ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"])
+    in
+    add_module_rules sctx ~dir:utop_exe_dir libs

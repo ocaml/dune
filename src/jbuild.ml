@@ -536,6 +536,48 @@ module Public_lib = struct
           | Error _ as e -> e)
 end
 
+module Sub_system_info = struct
+  type t = ..
+  type sub_system = t = ..
+
+  module type S = sig
+    type t
+    type sub_system += T of t
+    val name    : Sub_system_name.t
+    val short   : t Sexp.Of_sexp.Short_syntax.t
+    val of_sexp : t Sexp.Of_sexp.t
+  end
+
+  let all = Sub_system_name.Table.create ()
+
+  (* For parsing config files in the workspace *)
+  let record_parser = ref return
+
+  module Register(M : S) : sig end = struct
+    open M
+
+    let () =
+      match Sub_system_name.Table.get all name with
+      | Some _ ->
+        Sexp.code_error "Sub_system_info.register: already registered"
+          [ "name", Sexp.To_sexp.atom (Sub_system_name.to_string name) ];
+      | None ->
+        Sub_system_name.Table.set all ~key:name ~data:(module M : S);
+        let p = !record_parser in
+        let name_s = Sub_system_name.to_string name in
+        record_parser := (fun acc ->
+          field_o name_s ~short:M.short M.of_sexp >>= function
+          | None   -> p acc
+          | Some x ->
+            let acc = Sub_system_name.Map.add acc ~key:name ~data:(T x) in
+            p acc)
+  end
+
+  let record_parser () = !record_parser Sub_system_name.Map.empty
+
+  let get name = Option.value_exn (Sub_system_name.Table.get all name)
+end
+
 module Library = struct
   module Kind = struct
     type t =
@@ -572,29 +614,31 @@ module Library = struct
     ; buildable                : Buildable.t
     ; dynlink                  : bool
     ; scope_name               : Scope_info.Name.t
+    ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     }
 
   let v1 pkgs =
     record
       (Buildable.v1 >>= fun buildable ->
-       field      "name" library_name                                        >>= fun name                     ->
-       Public_lib.public_name_field pkgs                                     >>= fun public                   ->
-       field_o    "synopsis" string                                          >>= fun synopsis                 ->
-       field      "install_c_headers" (list string) ~default:[]              >>= fun install_c_headers        ->
-       field      "ppx_runtime_libraries" (list string) ~default:[]          >>= fun ppx_runtime_libraries    ->
-       field_oslu "c_flags"                                                  >>= fun c_flags                  ->
-       field_oslu "cxx_flags"                                                >>= fun cxx_flags                ->
-       field      "c_names" (list string) ~default:[]                        >>= fun c_names                  ->
-       field      "cxx_names" (list string) ~default:[]                      >>= fun cxx_names                ->
-       field_oslu "library_flags"                                            >>= fun library_flags            ->
-       field_oslu "c_library_flags"                                          >>= fun c_library_flags          ->
-       field      "virtual_deps" (list string) ~default:[]                   >>= fun virtual_deps             ->
-       field      "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all         >>= fun modes                    ->
-       field      "kind" Kind.t ~default:Kind.Normal                         >>= fun kind                     ->
-       field      "wrapped" bool ~default:true                               >>= fun wrapped                  ->
-       field_b    "optional"                                                 >>= fun optional                 ->
-       field      "self_build_stubs_archive" (option string) ~default:None   >>= fun self_build_stubs_archive ->
-       field_b    "no_dynlink"                                               >>= fun no_dynlink               ->
+       field      "name" library_name                                      >>= fun name                     ->
+       Public_lib.public_name_field pkgs                                   >>= fun public                   ->
+       field_o    "synopsis" string                                        >>= fun synopsis                 ->
+       field      "install_c_headers" (list string) ~default:[]            >>= fun install_c_headers        ->
+       field      "ppx_runtime_libraries" (list string) ~default:[]        >>= fun ppx_runtime_libraries    ->
+       field_oslu "c_flags"                                                >>= fun c_flags                  ->
+       field_oslu "cxx_flags"                                              >>= fun cxx_flags                ->
+       field      "c_names" (list string) ~default:[]                      >>= fun c_names                  ->
+       field      "cxx_names" (list string) ~default:[]                    >>= fun cxx_names                ->
+       field_oslu "library_flags"                                          >>= fun library_flags            ->
+       field_oslu "c_library_flags"                                        >>= fun c_library_flags          ->
+       field      "virtual_deps" (list string) ~default:[]                 >>= fun virtual_deps             ->
+       field      "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all       >>= fun modes                    ->
+       field      "kind" Kind.t ~default:Kind.Normal                       >>= fun kind                     ->
+       field      "wrapped" bool ~default:true                             >>= fun wrapped                  ->
+       field_b    "optional"                                               >>= fun optional                 ->
+       field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
+       field_b    "no_dynlink"                                             >>= fun no_dynlink               ->
+       Sub_system_info.record_parser () >>= fun sub_systems ->
        return
          { name
          ; public
@@ -616,6 +660,7 @@ module Library = struct
          ; buildable
          ; dynlink = not no_dynlink
          ; scope_name = pkgs.name
+         ; sub_systems
          })
 
   let has_stubs t =

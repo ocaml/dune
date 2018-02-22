@@ -144,6 +144,32 @@ module Package = struct
     Mode.Dict.map2 ~f:(@)
       (make_archives t "archive" (Ps.add Variant.plugin preds))
       (make_archives t "plugin" preds)
+
+  let sub_systems t =
+    let fn = Path.relative t.dir (sprintf "%s.dune" t.name) in
+    if not (Path.exists fn) then
+      Sub_system_name.Map.empty
+    else begin
+      let sexps= Sexp.load ~mode:Many ~fname:(Path.to_string fn) in
+      let entry sexp =
+        let name, data = Sexp.Of_sexp.(pair string (fun x -> x)) sexp in
+        match Sub_system_name.get name with
+        | None ->
+          (* We ignore sub-systems that are not internally
+             known. These correspond to plugins that are not in use in
+             the current workspace. *)
+          None
+        | Some name -> Some (name, data)
+      in
+      List.filter_map sexps ~f:entry
+      |> Sub_system_name.Map.of_alist
+      |> function
+      | Ok x -> x
+      | Error (name, _, sexp) ->
+        Loc.fail (Sexp.Ast.loc sexp)
+          "%S present twice"
+          (Sub_system_name.to_string name)
+    end
 end
 
 module Unavailable_reason = struct

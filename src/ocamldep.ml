@@ -114,8 +114,9 @@ let parse_deps ~dir ~file ~(unit : Module.t)
       in
       deps
 
-let rules sctx ~(ml_kind:Ml_kind.t) ~dir ~modules ~already_used
-      ~alias_module ~lib_interface_module =
+let rules ~(ml_kind:Ml_kind.t) ~dir ~modules
+      ?(already_used=String_set.empty)
+      ~alias_module ~lib_interface_module sctx =
   let per_module =
     String_map.map modules ~f:(fun unit ->
       match Module.file ~dir unit ml_kind with
@@ -143,6 +144,6 @@ let rules sctx ~(ml_kind:Ml_kind.t) ~dir ~modules ~already_used
   ; per_module
   }
 
-let rules sctx ~dir ~modules ~already_used ~alias_module ~lib_interface_module =
-  Ml_kind.Dict.of_func (rules sctx ~dir ~modules ~already_used ~alias_module
+let rules ~dir ~modules ?already_used ~alias_module ~lib_interface_module sctx =
+  Ml_kind.Dict.of_func (rules sctx ~dir ~modules ?already_used ~alias_module
                           ~lib_interface_module)

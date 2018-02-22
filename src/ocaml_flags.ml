@@ -43,6 +43,9 @@ let empty =
   ; specific = Mode.Dict.make_both build
   }
 
+let of_list l =
+  { empty with common = Build.arr (fun () -> l) }
+
 let make { Jbuild.Buildable. flags; ocamlc_flags; ocamlopt_flags; _ } ctx ~scope ~dir =
   let eval = Super_context.expand_and_eval_set ctx ~scope ~dir in
   { common   = Build.memoize "common flags" (eval flags ~standard:(default_flags ()))

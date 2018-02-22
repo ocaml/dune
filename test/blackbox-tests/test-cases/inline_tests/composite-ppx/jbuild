@@ -1,0 +1,13 @@
+(jbuild_version 1)
+
+(library
+ ((name ppx_has_inline_tests)
+  (modules ())
+  (kind ppx_rewriter)
+  (libraries (ppx_inline_test))))
+
+(library
+ ((name lib_tested)
+  (modules (lib_tested))
+  (inline_tests ()) ;; use the long syntax on purpose for tests
+  (preprocess (pps (ppx_has_inline_tests)))))

@@ -83,6 +83,8 @@ module Info : sig
     ; ppx_runtime_deps : string list
     ; pps              : Jbuild.Pp.t list
     ; optional         : bool
+    ; virtual_deps     : string list
+    ; sub_systems      : Jbuild.Sub_system_info.t Sub_system_name.Map.t
     }
 
   val of_library_stanza : dir:Path.t -> Jbuild.Library.t -> t
@@ -144,10 +146,19 @@ val not_available
   -> ('a, Format.formatter, unit, 'b) format4
   -> 'a
 
-(** {1 Library compilation} *)
+(** {1 Compilation contexts} *)
 
-(** For compiling the library itself *)
+(** See {!Sub_system} *)
+type sub_system = ..
+
+(** For compiling a library or executable *)
 module Compile : sig
+  type t
+
+  (** Create a compilation context from a list of libraries. The list
+      doesn't have to be transitively closed. *)
+  val make : (L.t, Error.t With_required_by.t) result -> t
+
   (** Return the list of dependencies needed for compiling this library *)
   val requires : t -> (L.t, Error.t With_required_by.t) result
 
@@ -160,6 +171,15 @@ module Compile : sig
 
   (** Resolved select forms *)
   val resolved_selects : t -> Resolved_select.t list
+
+  (** Transitive closure of all used ppx rewriters *)
+  val pps : t -> (L.t, Error.t With_required_by.t) result
+
+  val optional          : t -> bool
+  val user_written_deps : t -> Jbuild.Lib_deps.t
+
+  (** Sub-systems used in this compilation context *)
+  val sub_systems : t -> sub_system list
 end
 
 (** {1 Library name resolution} *)
@@ -210,7 +230,17 @@ module DB : sig
     -> required_by:With_required_by.Entry.t list
     -> lib
 
+  val find_many
+    :  t
+    -> string list
+    -> required_by:With_required_by.Entry.t list
+    -> (lib list, Error.t With_required_by.t) result
+
   val available : t -> string -> bool
+
+  (** Retreive the compile informations for the given library. Works
+      for libraries that are optional and not available as well. *)
+  val get_compile_info : t -> string -> Compile.t
 
   (** Resolve libraries written by the user in a jbuild file. The
       resulting list of libraries is transitively closed and sorted by
@@ -221,8 +251,7 @@ module DB : sig
     :  t
     -> Jbuild.Lib_dep.t list
     -> pps:Jbuild.Pp.t list
-    -> (L.t, Error.t With_required_by.t) result *
-       Compile.Resolved_select.t list
+    -> Compile.t
 
   val resolve_pps
     :  t
@@ -238,6 +267,29 @@ end with type lib := t
 (** {1 Transitive closure} *)
 
 val closure : L.t -> (L.t, Error.t With_required_by.t) result
+
+(** {1 Sub-systems} *)
+
+module Sub_system : sig
+  type lib = t
+
+  type t = sub_system = ..
+
+  module type S = sig
+    module Info : Jbuild.Sub_system_info.S
+    type t
+    type sub_system += T of t
+    val instantiate : DB.t -> Info.t -> t
+    val to_sexp : t Sexp.To_sexp.t option
+  end
+
+  module Register(M : S) : sig
+    (** Get the instance of the subsystem for this library *)
+    val get : lib -> M.t option
+  end
+
+  val dump_config : lib -> Sexp.t Sub_system_name.Map.t
+end with type lib := t
 
 (** {1 Dependencies for META files} *)
 

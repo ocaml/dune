@@ -129,9 +129,14 @@ module M = struct
     in
 
     let runner_libs, _ =
+      let open Result.O in
       Lib.Compile.make
         (Result.concat_map backends
-           ~f:(fun (backend : Backend.t) -> backend.runner_libraries))
+           ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
+         >>= fun libs ->
+         Lib.DB.find_many (Scope.libs scope) [lib.name] ~required_by:[]
+         >>= fun lib ->
+         Ok (lib @ libs))
       |> Super_context.Libs.requires sctx ~loc:info.loc ~dir
            ~has_dot_merlin:false
     in

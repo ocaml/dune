@@ -196,6 +196,7 @@ module Action : sig
   (** The arrow takes as input the list of actual dependencies *)
   val run
     :  t
+    -> ?extra_vars:Action.Var_expansion.t String_map.t
     -> Action.Unexpanded.t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind

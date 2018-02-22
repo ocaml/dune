@@ -153,11 +153,11 @@ let create
     ; "OCAMLC"         , Paths ([context.ocamlc], Split)
     ; "OCAMLOPT"       , Paths ([ocamlopt], Split)
     ; "ocaml_version"  , Strings ([context.version_string], Concat)
-    ; "ocaml_where"    , Paths ([context.stdlib_dir], Concat)
+    ; "ocaml_where"    , Strings ([Path.to_string context.stdlib_dir], Concat)
     ; "ARCH_SIXTYFOUR" , Strings ([string_of_bool context.arch_sixtyfour],
                                   Concat)
     ; "MAKE"           , make
-    ; "null"           , Paths ([Config.dev_null], Concat)
+    ; "null"           , Strings ([Path.to_string Config.dev_null], Concat)
     ]
     |> String_map.of_alist
     |> function
@@ -453,11 +453,6 @@ module Action = struct
   let path_exp path = Action.Var_expansion.Paths   ([path], Concat)
   let str_exp  path = Action.Var_expansion.Strings ([path], Concat)
 
-  (* Static expansion that creates a dependency on the expanded path *)
-  let static_dep_exp acc path =
-    acc.sdeps <- Pset.add path acc.sdeps;
-    Some (path_exp path)
-
   let map_exe sctx =
     match sctx.host with
     | None -> (fun exe -> exe)
@@ -474,7 +469,8 @@ module Action = struct
       Loc.fail loc "invalid ${lib:...} form: %s" s
     | Some x -> x
 
-  let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user ~map_exe t =
+  let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user
+        ~map_exe ~extra_vars t =
     let acc =
       { failures  = []
       ; lib_deps  = String_map.empty
@@ -482,110 +478,120 @@ module Action = struct
       ; ddeps     = String_map.empty
       }
     in
+    let open Action.Var_expansion in
+    let expand loc key var = function
+      | Some ("exe"     , s) -> Some (path_exp (map_exe (Path.relative dir s)))
+      | Some ("path"    , s) -> Some (path_exp          (Path.relative dir s) )
+      | Some ("bin"     , s) -> begin
+          let sctx = host_sctx sctx in
+          match Artifacts.binary (artifacts sctx) s with
+          | Ok path -> Some (path_exp path)
+          | Error e ->
+            add_fail acc ({ fail = fun () -> Action.Prog.Not_found.raise e })
+        end
+      (* "findlib" for compatibility with Jane Street packages which are not yet updated
+         to convert "findlib" to "lib" *)
+      | Some (("lib"|"findlib"), s) -> begin
+          let lib_dep, file = parse_lib_file ~loc s in
+          add_lib_dep acc lib_dep dep_kind;
+          match
+            Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
+          with
+          | Ok path -> Some (path_exp path)
+          | Error fail -> add_fail acc fail
+        end
+      | Some ("libexec" , s) -> begin
+          let sctx = host_sctx sctx in
+          let lib_dep, file = parse_lib_file ~loc s in
+          add_lib_dep acc lib_dep dep_kind;
+          match
+            Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
+          with
+          | Error fail -> add_fail acc fail
+          | Ok path ->
+            if not Sys.win32 || Filename.extension s = ".exe" then begin
+              Some (path_exp path)
+            end else begin
+              let path_exe = Path.extend_basename path ~suffix:".exe" in
+              let dep =
+                Build.if_file_exists path_exe
+                  ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
+                  ~else_:(Build.path path     >>^ fun _ -> path_exp path)
+              in
+              add_ddep acc ~key dep
+            end
+        end
+      | Some ("lib-available", lib) ->
+        add_lib_dep acc lib Optional;
+        Some (str_exp (string_of_bool (
+          Lib.DB.available (Scope.libs scope) lib)))
+      | Some ("version", s) -> begin
+          match Scope_info.resolve (Scope.info scope) s with
+          | Ok p ->
+            let x =
+              Pkg_version.read sctx p >>^ function
+              | None   -> Strings ([""], Concat)
+              | Some s -> Strings ([s],  Concat)
+            in
+            add_ddep acc ~key x
+          | Error s ->
+            add_fail acc { fail = fun () -> Loc.fail loc "%s" s }
+        end
+      | Some ("read", s) -> begin
+          let path = Path.relative dir s in
+          let data =
+            Build.contents path
+            >>^ fun s -> Strings ([s], Concat)
+          in
+          add_ddep acc ~key data
+        end
+      | Some ("read-lines", s) -> begin
+          let path = Path.relative dir s in
+          let data =
+            Build.lines_of path
+            >>^ fun l -> Strings (l, Split)
+          in
+          add_ddep acc ~key data
+        end
+      | Some ("read-strings", s) -> begin
+          let path = Path.relative dir s in
+          let data =
+            Build.strings path
+            >>^ fun l -> Strings (l, Split)
+          in
+          add_ddep acc ~key data
+        end
+      | _ ->
+        match expand_var_no_root sctx var with
+        | Some _ as x -> x
+        | None -> String_map.find var extra_vars
+    in
     let t =
       U.partial_expand t ~dir ~map_exe ~f:(fun loc key ->
-        let open Action.Var_expansion in
         let has_bang, var = parse_bang key in
         if has_bang then
           Loc.warn loc "The use of the variable prefix '!' is deprecated, \
                         simply use '${%s}'@." var;
-        match String.lsplit2 var ~on:':' with
-        | Some ("path-no-dep", s) -> Some (path_exp (Path.relative dir s))
-        | Some ("exe"     , s) ->
-          let exe = map_exe (Path.relative dir s) in
-          static_dep_exp acc exe
-        | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
-        | Some ("bin"     , s) -> begin
-            let sctx = host_sctx sctx in
-            match Artifacts.binary (artifacts sctx) s with
-            | Ok path ->
-              static_dep_exp acc path
-            | Error e ->
-              add_fail acc ({ fail = fun () -> Action.Prog.Not_found.raise e })
-          end
-        (* "findlib" for compatibility with Jane Street packages which are not yet updated
-           to convert "findlib" to "lib" *)
-        | Some (("lib"|"findlib"), s) -> begin
-            let lib_dep, file = parse_lib_file ~loc s in
-            add_lib_dep acc lib_dep dep_kind;
-            match
-              Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
-            with
-            | Ok path -> static_dep_exp acc path
-            | Error fail -> add_fail acc fail
-          end
-        | Some ("libexec" , s) -> begin
-            let sctx = host_sctx sctx in
-            let lib_dep, file = parse_lib_file ~loc s in
-            add_lib_dep acc lib_dep dep_kind;
-            match
-              Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
-            with
-            | Error fail -> add_fail acc fail
-            | Ok path ->
-              if not Sys.win32 || Filename.extension s = ".exe" then begin
-                static_dep_exp acc path
-              end else begin
-                let path_exe = Path.extend_basename path ~suffix:".exe" in
-                let dep =
-                  Build.if_file_exists path_exe
-                    ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
-                    ~else_:(Build.path path     >>^ fun _ -> path_exp path)
-                in
-                add_ddep acc ~key dep
-              end
-          end
-        | Some ("lib-available", lib) ->
-          add_lib_dep acc lib Optional;
-          Some (str_exp (string_of_bool (
-            Lib.DB.available (Scope.libs scope) lib)))
-        | Some ("version", s) -> begin
-            match Scope_info.resolve (Scope.info scope) s with
-            | Ok p ->
-              let x =
-                Pkg_version.read sctx p >>^ function
-                | None   -> Strings ([""], Concat)
-                | Some s -> Strings ([s],  Concat)
-              in
-              add_ddep acc ~key x
-            | Error s ->
-              add_fail acc { fail = fun () -> Loc.fail loc "%s" s }
-          end
-        | Some ("read", s) -> begin
-            let path = Path.relative dir s in
-            let data =
-              Build.contents path
-              >>^ fun s -> Strings ([s], Concat)
-            in
-            add_ddep acc ~key data
-          end
-        | Some ("read-lines", s) -> begin
-            let path = Path.relative dir s in
-            let data =
-              Build.lines_of path
-              >>^ fun l -> Strings (l, Split)
-            in
-            add_ddep acc ~key data
-          end
-        | Some ("read-strings", s) -> begin
-            let path = Path.relative dir s in
-            let data =
-              Build.strings path
-              >>^ fun l -> Strings (l, Split)
-            in
-            add_ddep acc ~key data
+        match var with
+        | "ROOT" -> Some (path_exp sctx.context.build_dir)
+        | "SCOPE_ROOT" -> Some (path_exp (Scope.root scope))
+        | "@" -> begin
+            match targets_written_by_user with
+            | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
+            | Alias -> Loc.fail loc "You cannot use ${@} in aliases."
+            | Static l -> Some (Paths (l, Split))
           end
         | _ ->
-          match var with
-          | "ROOT" -> Some (path_exp sctx.context.build_dir)
-          | "SCOPE_ROOT" -> Some (path_exp (Scope.root scope))
-          | "@" -> begin
-              match targets_written_by_user with
-              | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
-              | Alias -> Loc.fail loc "You cannot use ${@} in aliases."
-              | Static l -> Some (Paths (l, Split))
-            end
-          | _ -> expand_var_no_root sctx var)
+          match String.lsplit2 var ~on:':' with
+          | Some ("path-no-dep", s) ->
+            Some (path_exp (Path.relative dir s))
+          | x ->
+            let exp = expand loc key var x in
+            (match exp with
+             | Some (Paths (ps, _)) ->
+               acc.sdeps <- Pset.union (Pset.of_list ps) acc.sdeps
+             | _ -> ());
+            exp)
     in
     (t, acc)
 
@@ -609,7 +615,8 @@ module Action = struct
         | "^" -> Some (Paths (deps_written_by_user, Split))
         | _ -> None)
 
-  let run sctx t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
+  let run sctx ?(extra_vars=String_map.empty)
+        t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
     : (Path.t list, Action.t) Build.t =
     let map_exe = map_exe sctx in
     if targets_written_by_user = Alias then begin
@@ -622,7 +629,7 @@ module Action = struct
     end;
     let t, forms =
       expand_step1 sctx t ~dir ~dep_kind ~scope
-        ~targets_written_by_user ~map_exe
+        ~targets_written_by_user ~map_exe ~extra_vars
     in
     let { Action.Infer.Outcome. deps; targets } =
       match targets_written_by_user with
@@ -634,9 +641,10 @@ module Action = struct
         in
         (* CR-someday jdimino: should this be an error or not?
 
-           It's likely that what we get here is what the user thinks of as temporary
-           files, even though they might conflict with actual targets. We need to tell
-           jbuilder about such things, so that it can report better errors.
+           It's likely that what we get here is what the user thinks
+           of as temporary files, even though they might conflict with
+           actual targets. We need to tell jbuilder about such things,
+           so that it can report better errors.
 
            {[
              let missing = Pset.diff targets targets_written_by_user in

@@ -13,7 +13,7 @@ module M = struct
       type t =
         { runner_libraries : string list
         ; flags            : Ordered_set_lang.Unexpanded.t
-        ; ocaml_code       : String_with_vars.t option
+        ; gen              : Action.Unexpanded.t option
         }
 
       type Jbuild.Sub_system_info.t += T of t
@@ -26,11 +26,11 @@ module M = struct
           (field "runner_libraries" (list string) ~default:[]
            >>= fun runner_libraries ->
            Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
-           field_o "ocaml_code" String_with_vars.t >>= fun ocaml_code ->
+           field_o "gen" Action.Unexpanded.t >>= fun gen ->
            return
              { runner_libraries
              ; flags
-             ; ocaml_code
+             ; gen
              })
     end
 
@@ -56,7 +56,7 @@ module M = struct
       record
         [ "runner_libraries", list atom runner_libs
         ; "flags"           , Ordered_set_lang.Unexpanded.sexp_of_t t.info.flags
-        ; "ocaml_code"      , option String_with_vars.sexp_of_t t.info.ocaml_code
+        ; "gen"             , option Action.Unexpanded.sexp_of_t t.info.gen
         ]
   end
 
@@ -145,17 +145,32 @@ module M = struct
 
     (* Generate the runner file *)
     SC.add_rule sctx (
-      let code =
-        String.concat ~sep:""
-          (List.filter_map backends ~f:(fun (backend : Backend.t) ->
-             Option.map backend.info.ocaml_code ~f:(fun code ->
-               let code =
-                 Super_context.expand_vars sctx code
-                   ~dir ~scope ~extra_vars
-               in
-               sprintf "let () = (%s)\n" code)))
+      let target = Path.relative dir main_module_filename in
+      let source_modules = String_map.values source_modules in
+      let files ml_kind =
+        Action.Var_expansion.Paths (
+          List.filter_map source_modules ~f:(fun m ->
+            Module.file m ~dir ml_kind),
+          Split)
       in
-      Build.write_file (Path.relative dir main_module_filename) code);
+      let extra_vars =
+        String_map.of_alist_exn
+          [ "impl-files", files Impl
+          ; "intf-files", files Intf
+          ]
+      in
+      Build.return []
+      >>>
+      Build.all
+        (List.filter_map backends ~f:(fun (backend : Backend.t) ->
+           Option.map backend.info.gen ~f:(fun action ->
+             SC.Action.run sctx action
+               ~extra_vars ~dir ~dep_kind:Required ~targets:Alias ~scope)))
+      >>^ (fun actions ->
+        Action.with_stdout_to target
+          (Action.progn actions))
+      >>>
+      Build.action_dyn ~targets:[target] ());
 
     ignore (
       Exe.build_and_link sctx

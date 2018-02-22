@@ -159,9 +159,9 @@ this jbuild:
      ((name            mylib)
       (public_name     mylib)
       (libraries       (re lwt))
-      (c_names         (mystubs)
+      (c_names         (mystubs))
       (c_flags         (-I/blah/include))
-      (c_library_flags (-lblah)))))
+      (c_library_flags (-lblah))))
 
 Defining a library with C stubs using pkg-config
 ================================================

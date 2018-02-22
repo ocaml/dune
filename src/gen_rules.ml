@@ -930,7 +930,7 @@ module Gen(P : Params) = struct
     SC.add_rule sctx
       (Build.arr (fun () ->
          Format.asprintf
-           "@[<v>%a@]"
+           "@[<v>%a@]@."
            (Format.pp_print_list
               (fun ppf (name, sexp) ->
                  Sexp.pp ppf
@@ -1092,7 +1092,7 @@ module Gen(P : Params) = struct
       [ List.map files ~f:(make_entry Lib    )
       ; List.map execs ~f:(make_entry Libexec)
       ; List.map dlls  ~f:(Install.Entry.make Stublibs)
-      ; [make_entry Lib (lib_dune_file ~dir ~name) ~dst:"dune"]
+      ; [make_entry Lib (lib_dune_file ~dir ~name)]
       ]
 
   let is_odig_doc_file fn =

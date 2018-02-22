@@ -108,7 +108,7 @@ module M = struct
         } = c
     in
 
-    let name = lib.name ^ "_test_runner" in
+    let name = sprintf "_%s_test_runner" lib.name in
     let main_module_filename = name ^ ".ml-gen" in
     let main_module_name = String.capitalize_ascii name in
     let modules =
@@ -159,6 +159,7 @@ module M = struct
         ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
         ~requires:runner_libs
         ~link_flags:(Build.return ["-linkall"])
+        ~flags:(Ocaml_flags.of_list ["-w"; "-24"])
       : Path.t);
 
     let flags =

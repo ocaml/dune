@@ -146,7 +146,7 @@ module Package = struct
       (make_archives t "plugin" preds)
 
   let sub_systems t =
-    let fn = Path.relative t.dir "dune" in
+    let fn = Path.relative t.dir (sprintf "%s.dune" t.name) in
     if not (Path.exists fn) then
       Sub_system_name.Map.empty
     else begin

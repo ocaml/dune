@@ -1022,7 +1022,7 @@ module Gen(P : Params) = struct
      | Installation                                                    |
      +-----------------------------------------------------------------+ *)
 
-  let lib_install_files ~dir ~sub_dir ~scope (lib : Library.t) =
+  let lib_install_files ~dir ~sub_dir ~scope ~name (lib : Library.t) =
     let obj_dir = Utils.library_object_directory ~dir lib.name in
     let make_entry section ?dst fn =
       Install.Entry.make section fn
@@ -1092,7 +1092,7 @@ module Gen(P : Params) = struct
       [ List.map files ~f:(make_entry Lib    )
       ; List.map execs ~f:(make_entry Libexec)
       ; List.map dlls  ~f:(Install.Entry.make Stublibs)
-      ; [make_entry Lib (lib_dune_file ~dir ~name:lib.name) ~dst:"dune"]
+      ; [make_entry Lib (lib_dune_file ~dir ~name) ~dst:"dune"]
       ]
 
   let is_odig_doc_file fn =
@@ -1141,8 +1141,8 @@ module Gen(P : Params) = struct
       ~mode:(if promote_install_file then
                Promote_but_delete_on_clean
              else
-               (* We must ignore the source file since it might be copied to the source
-                  tree by another context. *)
+               (* We must ignore the source file since it might be
+                  copied to the source tree by another context. *)
                Ignore_source_files)
       (Build.path_set (Install.files entries)
        >>^ (fun () ->
@@ -1163,17 +1163,20 @@ module Gen(P : Params) = struct
       List.concat_map (SC.stanzas_to_consider_for_install sctx)
         ~f:(fun (dir, scope, stanza) ->
           match stanza with
-          | Library ({ public = Some { package; sub_dir; _ }; _ } as lib) ->
-            List.map (lib_install_files ~dir ~sub_dir ~scope lib) ~f:(fun x ->
-              package.name, x)
+          | Library ({ public = Some { package; sub_dir; name; _ }; _ } as lib) ->
+            List.map (lib_install_files ~dir ~sub_dir ~scope ~name lib)
+              ~f:(fun x -> package.name, x)
           | Install { section; files; package}->
             List.map files ~f:(fun { Install_conf. src; dst } ->
-              (package.name, Install.Entry.make section (Path.relative dir src) ?dst))
+              (package.name,
+               Install.Entry.make section (Path.relative dir src) ?dst))
           | _ -> [])
       |> String_map.of_alist_multi
     in
     String_map.iter (SC.packages sctx) ~f:(fun ~key:_ ~data:(pkg : Package.t) ->
-      let stanzas = String_map.find_default pkg.name entries_per_package ~default:[] in
+      let stanzas =
+        String_map.find_default pkg.name entries_per_package ~default:[]
+      in
       install_file pkg.path pkg.name stanzas)
 
   let init_install_files () =
@@ -1181,7 +1184,8 @@ module Gen(P : Params) = struct
       String_map.iter (SC.packages sctx)
         ~f:(fun ~key:pkg ~data:{ Package.path = src_path; _ } ->
           let install_fn =
-            Utils.install_file ~package:pkg ~findlib_toolchain:ctx.findlib_toolchain
+            Utils.install_file ~package:pkg
+              ~findlib_toolchain:ctx.findlib_toolchain
           in
 
           let path = Path.append ctx.build_dir src_path in
@@ -1196,7 +1200,8 @@ module Gen(P : Params) = struct
 
   let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
     (match components with
-     | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules sctx rest;
+     | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
+                           sctx rest
      | "_doc" :: rest -> Odoc.gen_rules sctx rest ~dir
      | ".ppx"  :: rest -> SC.PP.gen_rules sctx rest
      | _ ->

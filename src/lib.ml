@@ -125,7 +125,9 @@ module Info = struct
       foreign_archives = Mode.Dict.make_both []
     ; sub_systems      =
         Sub_system_name.Map.mapi (P.sub_systems pkg)
-          ~f:Jbuild.Sub_system_info.parse
+          ~f:(fun name sexp ->
+            let (module M) = Jbuild.Sub_system_info.get name in
+            M.T (M.of_sexp sexp))
     }
 end
 

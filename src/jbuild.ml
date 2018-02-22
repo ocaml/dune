@@ -543,16 +543,12 @@ module Sub_system_info = struct
   module type S = sig
     type t
     type sub_system += T of t
-
-    (** Name of the sub-system *)
-    val name : Sub_system_name.t
-
-    (** Parse the value from a library stanza *)
-    val parse : t option Sexp.Of_sexp.record_parser
+    val name    : Sub_system_name.t
+    val short   : t Sexp.Of_sexp.Short_syntax.t
+    val of_sexp : t Sexp.Of_sexp.t
   end
 
-  (* For parsing config of installed libraries *)
-  let parsers = Sub_system_name.Table.create ()
+  let all = Sub_system_name.Table.create ()
 
   (* For parsing config files in the workspace *)
   let record_parser = ref return
@@ -561,21 +557,16 @@ module Sub_system_info = struct
     open M
 
     let () =
-      match Sub_system_name.Table.get parsers name with
+      match Sub_system_name.Table.get all name with
       | Some _ ->
         Sexp.code_error "Sub_system_info.register: already registered"
           [ "name", Sexp.To_sexp.atom (Sub_system_name.to_string name) ];
       | None ->
-        Sub_system_name.Table.set parsers ~key:name
-          ~data:
-            (record (map_validate parse ~f:(function
-               | Some x -> Ok (T x)
-               | None ->
-                 Error (sprintf "Empty configuration for %S"
-                          (Sub_system_name.to_string name)))));
+        Sub_system_name.Table.set all ~key:name ~data:(module M : S);
         let p = !record_parser in
+        let name_s = Sub_system_name.to_string name in
         record_parser := (fun acc ->
-          parse >>= function
+          field_o name_s ~short:M.short M.of_sexp >>= function
           | None   -> p acc
           | Some x ->
             let acc = Sub_system_name.Map.add acc ~key:name ~data:(T x) in
@@ -584,8 +575,7 @@ module Sub_system_info = struct
 
   let record_parser () = !record_parser Sub_system_name.Map.empty
 
-  let parse name sexp =
-    Option.value_exn (Sub_system_name.Table.get parsers name) sexp
+  let get name = Option.value_exn (Sub_system_name.Table.get all name)
 end
 
 module Library = struct

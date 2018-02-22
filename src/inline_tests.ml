@@ -18,19 +18,20 @@ module M = struct
 
       type Jbuild.Sub_system_info.t += T of t
 
-      let parse =
-        let open Sexp.Of_sexp in
-        field_o "inline_tests.backend"
-          (record
-             (field "runner_libraries" (list string) ~default:[]
-              >>= fun runner_libraries ->
-              Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
-              field_o "ocaml_code" String_with_vars.t >>= fun ocaml_code ->
-              return
-                { runner_libraries
-                ; flags
-                ; ocaml_code
-                }))
+      open Sexp.Of_sexp
+
+      let short = Short_syntax.Not_allowed
+      let of_sexp =
+        record
+          (field "runner_libraries" (list string) ~default:[]
+           >>= fun runner_libraries ->
+           Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
+           field_o "ocaml_code" String_with_vars.t >>= fun ocaml_code ->
+           return
+             { runner_libraries
+             ; flags
+             ; ocaml_code
+             })
     end
 
     type t =
@@ -81,20 +82,21 @@ module M = struct
     let loc      t = t.loc
     let backends t = Option.to_list t.backend
 
-    let parse =
-      let open Sexp.Of_sexp in
-      field_o "inline_tests" ~short:(Located empty)
-        (record
-           (record_loc >>= fun loc ->
-            field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
-            Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
-            field_o "backend" (located string) >>= fun backend ->
-            return
-              { loc
-              ; deps
-              ; flags
-              ; backend
-              }))
+    open Sexp.Of_sexp
+
+    let short = Short_syntax.(Located empty)
+    let of_sexp =
+      record
+        (record_loc >>= fun loc ->
+         field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
+         Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
+         field_o "backend" (located string) >>= fun backend ->
+         return
+           { loc
+           ; deps
+           ; flags
+           ; backend
+           })
   end
 
   let gen_rules c ~(info:Info.t) ~backends =

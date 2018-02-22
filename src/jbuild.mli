@@ -176,13 +176,16 @@ module Sub_system_info : sig
     (** Name of the sub-system *)
     val name : Sub_system_name.t
 
-    (** Parse the value from a library stanza *)
-    val parse : t option Sexp.Of_sexp.record_parser
+    (** Value when the sub-system has no argument *)
+    val short : t Sexp.Of_sexp.Short_syntax.t
+
+    (** Parse the argument *)
+    val of_sexp : t Sexp.Of_sexp.t
   end
 
   module Register(M : S) : sig end
 
-  val parse : Sub_system_name.t -> t Sexp.Of_sexp.t
+  val get : Sub_system_name.t -> (module S)
 end
 
 module Library : sig

@@ -7,44 +7,23 @@ type Lib.Sub_system.t +=
 
 let register_multi_backends (module M : Multi_backends) =
   let module X = struct
-    open M
+    include Jbuild.Sub_system_info.Register(M.Backend.Info)
+    include Jbuild.Sub_system_info.Register(M.Info)
 
-    type Sub_system_info.t += Backend_info of Backend.Info.t
-    type Sub_system_info.t += Info of Info.t
-
-    let () =
-      Sub_system_info.register ()
-        ~name:Backend.name
-        ?short:(Option.map Backend.Info.short ~f:(fun x -> Backend_info x))
-        ~of_sexp:(fun sexp -> Backend_info (Backend.Info.of_sexp sexp));
-      Sub_system_info.register ()
-        ~name:name
-        ?short:(Option.map Info.short ~f:(fun x -> Info x))
-        ~of_sexp:(fun sexp -> Info (Info.of_sexp sexp))
-
-    type Lib.Sub_system.t += Backend of Backend.t
-
-    let () =
-      Lib.Sub_system.register ()
-        ~name:Backend.name
-        ~dump:(function
-          | Backend x -> Backend.to_sexp x
-          | _ -> assert false)
-        ~instantiate:(fun db info ->
-          match info with
-          | Backend_info info ->
-            Backend (Backend.instantiate db info)
-          | _ -> assert false)
-
-    let get_backend lib =
-      Option.map (Lib.get_sub_system lib Backend.name) ~f:(function
-        | Backend x -> x
-        | _ -> assert false)
+    module Backend = struct
+      module M = struct
+        include M.Backend
+        type Lib.Sub_system.t += T of t
+        let to_sexp = Some to_sexp
+      end
+      include M
+      include Lib.Sub_system.Register(M)
+    end
 
     let gen info (c : Library_compilation_context.t) =
       let open Result.O in
       let backends =
-        let more_backends = Info.backends info in
+        let more_backends = M.Info.backends info in
         Result.all
           (List.map more_backends ~f:(fun (loc, name) ->
              match Lib.DB.find (Scope.libs c.scope) name with
@@ -57,38 +36,51 @@ let register_multi_backends (module M : Multi_backends) =
                      ; required_by = [Loc loc]
                      }
              | Ok lib ->
-               match get_backend lib with
+               match Backend.get lib with
                | Some x -> Ok x
                | None ->
-                 (* XXX fix *)
-                 Loc.fail loc "this is not a backend"))
+                 (* XXX this should raise immediately, but the error
+                    is of the wrong type. *)
+                 Loc.fail loc
+                   "Library %S is not a backend for the %S sub-system"
+                   name
+                   (Sub_system_name.to_string M.Info.name)))
         >>= fun more_backends ->
         Lib.Compile.requires c.compile_info >>= fun deps ->
         Lib.Compile.pps      c.compile_info >>= fun pps  ->
+        (* We need to take the transitive closure to ensure the order
+           is correct *)
         Lib.closure (deps @ pps) >>| fun deps ->
-        List.filter_map deps ~f:get_backend @ more_backends
+        List.filter_map deps ~f:Backend.get @ more_backends
       in
-      match backends with
-      | Ok [] ->
-        Super_context.prefix_rules c.super_context
-          (Build.fail { fail = fun () ->
-             Loc.fail c.stanza.buildable.loc
+      let fail, backends =
+        match backends with
+        | Ok [] ->
+          (Some { fail = fun () ->
+             Loc.fail (M.Info.loc info)
                "No backend found for (%s)"
-               (Sub_system_name.to_string name) })
-          ~f:(fun () -> gen_rules c ~info ~backends:[])
-      | Ok backends -> gen_rules c ~info ~backends
-      | Error e ->
-        Super_context.prefix_rules c.super_context
-          (Build.fail { fail = fun () -> raise (Lib.Error e) })
-          ~f:(fun () -> gen_rules c ~info ~backends:[])
+               (Sub_system_name.to_string M.Info.name) },
+           [])
+        | Ok backends -> (None, backends)
+        | Error e ->
+          (Some { fail = fun () -> raise (Lib.Error e) },
+           [])
+      in
+      match fail with
+      | None -> M.gen_rules c ~info ~backends
+      | Some fail ->
+        Super_context.prefix_rules c.super_context (Build.fail fail)
+          ~f:(fun () -> M.gen_rules c ~info ~backends)
 
-    let () =
-      Lib.Sub_system.register ()
-        ~name
-        ~instantiate:(fun _db info ->
-          match info with
-          | Info info -> Gen (gen info)
-          | _ -> assert false)
+    include
+      Lib.Sub_system.Register
+        (struct
+          module Info = M.Info
+          type t = Library_compilation_context.t -> unit
+          type Lib.Sub_system.t += T = Gen
+          let instantiate _db info = gen info
+          let to_sexp = None
+        end)
   end in
   ()
 

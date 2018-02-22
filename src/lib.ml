@@ -51,7 +51,7 @@ module Info = struct
     ; pps              : Jbuild.Pp.t list
     ; optional         : bool
     ; virtual_deps     : string list
-    ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
+    ; sub_systems      : Jbuild.Sub_system_info.t Sub_system_name.Map.t
     }
 
   let user_written_deps t =
@@ -123,7 +123,9 @@ module Info = struct
     ; status           = Installed
     ; (* We don't know how these are named for external libraries *)
       foreign_archives = Mode.Dict.make_both []
-    ; sub_systems      = Findlib.Package.sub_systems pkg
+    ; sub_systems      =
+        Sub_system_name.Map.mapi (P.sub_systems pkg)
+          ~f:Jbuild.Sub_system_info.parse
     }
 end
 
@@ -173,6 +175,22 @@ module Resolved_select = struct
     }
 end
 
+type sub_system = ..
+
+module Sub_system0 = struct
+  module type S = sig
+    type t
+    type sub_system += T of t
+    val to_sexp : t Sexp.To_sexp.t option
+  end
+
+  type 'a s = (module S with type t = 'a)
+
+  module Instance = struct
+    type t = T : 'a s * 'a Lazy.t -> t
+  end
+end
+
 module Init = struct
   type t =
     { unique_id : int
@@ -201,14 +219,7 @@ type t =
   ; resolved_selects  : Resolved_select.t list
   ; optional          : bool
   ; user_written_deps : Jbuild.Lib_deps.t
-  ; sub_systems       : sub_system_instance Sub_system_name.Map.t
-  }
-
-and sub_system = ..
-
-and sub_system_instance =
-  { sub_system : sub_system Lazy.t
-  ; dump       : (sub_system -> Sexp.t) option
+  ; sub_systems       : Sub_system0.Instance.t Sub_system_name.Map.t
   }
 
 and db =
@@ -348,20 +359,53 @@ end
 module Sub_system = struct
   type t = sub_system = ..
 
-  type desc =
-    { name        : Sub_system_name.t
-    ; instantiate : db -> Sub_system_info.t -> t
-    ; dump        : (t -> Sexp.t) option
-    }
+  module type S = sig
+    module Info : Jbuild.Sub_system_info.S
+    type t
+    type sub_system += T of t
+    val instantiate : db -> Info.t -> t
+    val to_sexp : t Sexp.To_sexp.t option
+  end
 
-  let all = Hashtbl.create 1024
+  module type S' = sig
+    include S
+    val for_instance : t Sub_system0.s
+  end
 
-  let register ~name ~instantiate ?dump () =
-    Hashtbl.add all ~key:name
-      ~data:{ name
-            ; instantiate
-            ; dump
-            }
+  let all = Sub_system_name.Table.create ()
+
+  module Register(M : S) = struct
+    let get lib =
+      Option.map (Sub_system_name.Map.find M.Info.name lib.sub_systems)
+        ~f:(fun (Sub_system0.Instance.T ((module X), lazy t)) ->
+          match X.T t with
+          | M.T t -> t
+          | _   -> assert false)
+
+    let () =
+      let module M = struct
+        include M
+        let for_instance = (module M : Sub_system0.S with type t = t)
+      end in
+      Sub_system_name.Table.set all ~key:M.Info.name ~data:(module M : S')
+  end
+
+  let instantiate_many db sub_systems =
+    Sub_system_name.Map.mapi sub_systems ~f:(fun name info ->
+      let impl = Option.value_exn (Sub_system_name.Table.get all name) in
+      let (module M : S') = impl in
+      match info with
+      | M.Info.T info ->
+        Sub_system0.Instance.T
+          (M.for_instance, lazy (M.instantiate db info))
+      | _ -> assert false)
+
+  let dump_config lib =
+    Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun ~key:_ ~data:inst ->
+      let (Sub_system0.Instance.T ((module M), lazy t)) = inst in
+      match M.to_sexp with
+      | None -> None
+      | Some f -> Some (f t))
 end
 
 (* +-----------------------------------------------------------------+
@@ -432,15 +476,6 @@ let map_find_result name res : (_, _) result =
           ; required_by = []
           }
 
-let instantiate_sub_systems db sub_systems =
-  Sub_system_name.Map.mapi sub_systems ~f:(fun name info ->
-    match Hashtbl.find Sub_system.all name with
-    | None -> assert false
-    | Some s ->
-      { sub_system = lazy (s.instantiate db info)
-      ; dump       = s.dump
-      })
-
 let rec make db name (info : Info.t) ~unique_id ~stack =
   let requires, pps, resolved_selects =
     resolve_user_deps db info.requires ~pps:info.pps ~stack
@@ -473,7 +508,7 @@ let rec make db name (info : Info.t) ~unique_id ~stack =
   ; resolved_selects  = resolved_selects
   ; optional          = info.optional
   ; user_written_deps = Info.user_written_deps info
-  ; sub_systems       = instantiate_sub_systems db info.sub_systems
+  ; sub_systems       = Sub_system.instantiate_many db info.sub_systems
   }
 
 and find db name =
@@ -761,7 +796,7 @@ module Compile = struct
     ; resolved_selects  : Resolved_select.t list
     ; optional          : bool
     ; user_written_deps : Jbuild.Lib_deps.t
-    ; sub_systems       : sub_system_instance Sub_system_name.Map.t
+    ; sub_systems       : Sub_system0.Instance.t Sub_system_name.Map.t
     }
 
   let make libs =
@@ -808,7 +843,7 @@ module Compile = struct
     ; resolved_selects  = resolved_selects
     ; optional          = info.optional
     ; user_written_deps = Info.user_written_deps info
-    ; sub_systems       = instantiate_sub_systems db info.sub_systems
+    ; sub_systems       = Sub_system.instantiate_many db info.sub_systems
     }
 
   let requires          t = t.requires
@@ -818,12 +853,8 @@ module Compile = struct
   let user_written_deps t = t.user_written_deps
   let sub_systems t =
     Sub_system_name.Map.values t.sub_systems
-    |> List.map ~f:(fun s -> Lazy.force s.sub_system)
+    |> List.map ~f:(fun (Sub_system0.Instance.T ((module M), lazy t)) -> M.T t)
 end
-
-let get_sub_system t name =
-  Option.map (Sub_system_name.Map.find name t.sub_systems) ~f:(fun s ->
-    Lazy.force s.sub_system)
 
 (* +-----------------------------------------------------------------+
    | Databases                                                       |
@@ -998,16 +1029,6 @@ module Meta = struct
     to_names (requires_exn t ~required_by)
   let ppx_runtime_deps t ~required_by =
     to_names (ppx_runtime_deps_exn t ~required_by)
-
-  let sub_systems t =
-    Sub_system_name.Map.bindings t.sub_systems
-    |> List.filter_map ~f:(fun (name, s) ->
-      match s.dump with
-      | None -> None
-      | Some f ->
-        Some (Sexp.List [ Atom (Sub_system_name.to_string name)
-                        ; f (Lazy.force s.sub_system)
-                        ]))
 end
 
 (* +-----------------------------------------------------------------+

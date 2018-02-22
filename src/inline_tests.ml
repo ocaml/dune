@@ -6,32 +6,31 @@ open! No_io
 module SC = Super_context
 
 module M = struct
-  let name = Sub_system_name.make "inline_tests"
-
   module Backend = struct
-    let name = Sub_system_name.make "inline_tests.backend"
-
     module Info = struct
+      let name = Sub_system_name.make "inline_tests.backend"
+
       type t =
         { runner_libraries : string list
         ; flags            : Ordered_set_lang.Unexpanded.t
         ; ocaml_code       : String_with_vars.t option
         }
 
-      let short = None
+      type Jbuild.Sub_system_info.t += T of t
 
-      let of_sexp ~lib_name:_ =
+      let parse =
         let open Sexp.Of_sexp in
-        record
-          (field "runner_libraries" (list string) ~default:[]
-           >>= fun runner_libraries ->
-           Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
-           field_o "ocaml_code" String_with_vars.t >>= fun ocaml_code ->
-           return
-             { runner_libraries
-             ; flags
-             ; ocaml_code
-             })
+        field_o "inline_tests.backend"
+          (record
+             (field "runner_libraries" (list string) ~default:[]
+              >>= fun runner_libraries ->
+              Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
+              field_o "ocaml_code" String_with_vars.t >>= fun ocaml_code ->
+              return
+                { runner_libraries
+                ; flags
+                ; ocaml_code
+                }))
     end
 
     type t =
@@ -56,11 +55,13 @@ module M = struct
       record
         [ "runner_libraries", list atom runner_libs
         ; "flags"           , Ordered_set_lang.Unexpanded.sexp_of_t t.info.flags
-        ; "ocaml_code"      , atom t.info.ocaml_code
+        ; "ocaml_code"      , option String_with_vars.sexp_of_t t.info.ocaml_code
         ]
   end
 
   module Info = struct
+    let name = Sub_system_name.make "inline_tests"
+
     type t =
       { loc     : Loc.t
       ; deps    : Dep_conf.t list
@@ -68,34 +69,45 @@ module M = struct
       ; backend : (Loc.t * string) option
       }
 
-    let empty =
-      { loc     = Loc.none
+    type Jbuild.Sub_system_info.t += T of t
+
+    let empty loc =
+      { loc
       ; deps    = []
       ; flags   = Ordered_set_lang.Unexpanded.standard
       ; backend = None
       }
 
-    let short = Some empty
+    let loc      t = t.loc
+    let backends t = Option.to_list t.backend
 
-    let backend t = t.backend
-
-    let of_sexp =
+    let parse =
       let open Sexp.Of_sexp in
-      record
-        (record_loc >>= fun loc ->
-         field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
-         Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
-         field_o "backend" (located string) >>= fun backend ->
-         return
-           { loc
-           ; deps
-           ; flags
-           ; backend
-           })
+      field_o "inline_tests" ~short:(Located empty)
+        (record
+           (record_loc >>= fun loc ->
+            field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
+            Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
+            field_o "backend" (located string) >>= fun backend ->
+            return
+              { loc
+              ; deps
+              ; flags
+              ; backend
+              }))
   end
 
-  let gen_rules sctx ~(info:Info.t) ~backends
-        ~dir ~(lib : Jbuild.Library.t) ~scope ~source_modules =
+  let gen_rules c ~(info:Info.t) ~backends =
+    let { Sub_system.Library_compilation_context.
+          super_context = sctx
+        ; dir
+        ; stanza = lib
+        ; scope
+        ; source_modules
+        ; _
+        } = c
+    in
+
     let name = lib.name ^ "_test_runner" in
     let main_module_filename = name ^ ".ml-gen" in
     let main_module_name = String.capitalize_ascii name in
@@ -118,8 +130,8 @@ module M = struct
 
     let runner_libs, _ =
       Lib.Compile.make
-        (Result.List.concat_map backends
-           ~f:(fun backend -> backend.runner_libs))
+        (Result.concat_map backends
+           ~f:(fun (backend : Backend.t) -> backend.runner_libraries))
       |> Super_context.Libs.requires sctx ~loc:info.loc ~dir
            ~has_dot_merlin:false
     in
@@ -128,31 +140,31 @@ module M = struct
     SC.add_rule sctx (
       let code =
         String.concat ~sep:""
-          (List.map backends ~f:(fun backend ->
-             let code =
-               Super_context.expand_vars sctx backend.Backend.ocaml_code
-                 ~dir ~scope ~extra_vars
-             in
-             sprintf "let () = (%s)\n" code))
+          (List.filter_map backends ~f:(fun (backend : Backend.t) ->
+             Option.map backend.info.ocaml_code ~f:(fun code ->
+               let code =
+                 Super_context.expand_vars sctx code
+                   ~dir ~scope ~extra_vars
+               in
+               sprintf "let () = (%s)\n" code)))
       in
       Build.write_file (Path.relative dir main_module_filename) code);
 
     ignore (
       Exe.build_and_link sctx
-        ~loc:lib.buildable.loc
         ~dir
         ~program:{ name; main_module_name }
         ~modules
         ~scope
         ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
-        ~requires
+        ~requires:runner_libs
         ~link_flags:(Build.return ["-linkall"])
-      : _ * _);
+      : Path.t);
 
     let flags =
       let flags =
         List.map backends ~f:(fun backend ->
-          backend.Backend.flags) @ [info.flags]
+          backend.Backend.info.flags) @ [info.flags]
       in
       Build.all (
         List.map flags ~f:(fun flags ->
@@ -171,7 +183,7 @@ module M = struct
        let exe = Path.relative dir (name ^ ".exe") in
        Build.path exe >>>
        Build.fanout
-         (Super_context.Deps.interpret sctx t.deps ~dir ~scope)
+         (Super_context.Deps.interpret sctx info.deps ~dir ~scope)
          flags
        >>^ fun (_deps, flags) ->
        A.chdir dir
@@ -188,6 +200,6 @@ module M = struct
                   fn (Path.extend_basename fn ~suffix:".corrected"))))))
 end
 
-let () = Sub_system.register (module M)
+let () = Sub_system.register_multi_backends (module M)
 
 let linkme = ()

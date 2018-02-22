@@ -84,7 +84,7 @@ module Info : sig
     ; pps              : Jbuild.Pp.t list
     ; optional         : bool
     ; virtual_deps     : string list
-    ; sub_systems      : Sub_system_info.t Sub_system_name.Map.t
+    ; sub_systems      : Jbuild.Sub_system_info.t Sub_system_name.Map.t
     }
 
   val of_library_stanza : dir:Path.t -> Jbuild.Library.t -> t
@@ -275,19 +275,21 @@ module Sub_system : sig
 
   type t = sub_system = ..
 
-  val register
-    :  name:Sub_system_name.t
-    -> instantiate:(DB.t -> Sub_system_info.t -> t)
-    -> ?dump:(t -> Sexp.t)
-    -> unit
-    -> unit
-end with type lib := t
+  module type S = sig
+    module Info : Jbuild.Sub_system_info.S
+    type t
+    type sub_system += T of t
+    val instantiate : DB.t -> Info.t -> t
+    val to_sexp : t Sexp.To_sexp.t option
+  end
 
-(** Get the instance of the subsystem for this library *)
-val get_sub_system
-  :  t
-  -> Sub_system_name.t
-  -> Sub_system.t option
+  module Register(M : S) : sig
+    (** Get the instance of the subsystem for this library *)
+    val get : lib -> M.t option
+  end
+
+  val dump_config : lib -> Sexp.t Sub_system_name.Map.t
+end with type lib := t
 
 (** {1 Dependencies for META files} *)
 
@@ -306,6 +308,4 @@ module Meta : sig
     :  t
     -> required_by:With_required_by.Entry.t list
     -> String_set.t
-
-  val sub_systems : t -> Sexp.t list
 end

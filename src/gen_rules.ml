@@ -716,8 +716,14 @@ module Gen(P : Params) = struct
         |> Ocaml_flags.common
     in
 
-    Inline_tests.setup sctx ~lib ~dir ~scope ~modules:source_modules
-      ~compile_info;
+    Sub_system.gen_rules
+      { super_context = sctx
+      ; dir
+      ; stanza = lib
+      ; scope
+      ; source_modules
+      ; compile_info
+      };
 
     { Merlin.
       requires = real_requires
@@ -742,7 +748,7 @@ module Gen(P : Params) = struct
       | None -> String_set.empty
       | Some mp ->
         Modules_partitioner.acknowledge mp
-          ~loc ~modules
+          ~loc:exes.buildable.loc ~modules
     in
 
     let modules =
@@ -794,16 +800,17 @@ module Gen(P : Params) = struct
         ~pps:(Jbuild.Preprocess_map.pps exes.buildable.preprocess)
     in
     let requires, real_requires =
-      SC.Libs.requires sctx ~loc ~dir ~has_dot_merlin compile_info
+      SC.Libs.requires sctx ~loc:exes.buildable.loc ~dir
+        ~has_dot_merlin:exes.buildable.gen_dot_merlin
+        compile_info
     in
 
-    let obj_dir, requires =
+    let obj_dir =
       Exe.build_and_link_many sctx
-        ~loc:exes.buildable.loc
         ~dir
         ~programs
         ~modules
-        ?already_used
+        ~already_used
         ~scope
         ~linkages
         ~requires
@@ -813,7 +820,7 @@ module Gen(P : Params) = struct
     in
 
     { Merlin.
-      requires    = requires
+      requires    = real_requires
     ; flags       = Ocaml_flags.common flags
     ; preprocess  = Buildable.single_preprocess exes.buildable
     ; libname     = None
@@ -916,9 +923,28 @@ module Gen(P : Params) = struct
      | META                                                            |
      +-----------------------------------------------------------------+ *)
 
+  let lib_dune_file ~dir ~name =
+    Path.relative dir (name ^ ".dune")
+
+  let gen_lib_dune_file lib =
+    SC.add_rule sctx
+      (Build.arr (fun () ->
+         Format.asprintf
+           "@[<v>%a@]"
+           (Format.pp_print_list
+              (fun ppf (name, sexp) ->
+                 Sexp.pp ppf
+                   (List [Atom (Sub_system_name.to_string name); sexp])))
+           (Lib.Sub_system.dump_config lib
+            |> Sub_system_name.Map.bindings))
+       >>> Build.write_file_dyn
+             (lib_dune_file ~dir:(Lib.src_dir lib) ~name:(Lib.name lib)))
+
   let init_meta () =
-    Lib.DB.all (SC.public_libs sctx)
-    |> List.map ~f:(fun lib -> (Findlib.root_package_name (Lib.name lib), lib))
+    let public_libs = Lib.DB.all (SC.public_libs sctx) in
+    List.iter public_libs ~f:gen_lib_dune_file;
+    List.map public_libs ~f:(fun lib ->
+      (Findlib.root_package_name (Lib.name lib), lib))
     |> String_map.of_alist_multi
     |> String_map.merge (SC.packages sctx) ~f:(fun _name pkg libs ->
       let pkg  = Option.value_exn pkg          in
@@ -998,9 +1024,17 @@ module Gen(P : Params) = struct
 
   let lib_install_files ~dir ~sub_dir ~scope (lib : Library.t) =
     let obj_dir = Utils.library_object_directory ~dir lib.name in
-    let make_entry section fn =
+    let make_entry section ?dst fn =
       Install.Entry.make section fn
-        ?dst:(Option.map sub_dir ~f:(fun d -> sprintf "%s/%s" d (Path.basename fn)))
+        ~dst:(
+          let dst =
+            match dst with
+            | Some s -> s
+            | None   -> Path.basename fn
+          in
+          match sub_dir with
+          | None -> dst
+          | Some dir -> sprintf "%s/%s" dir dst)
     in
     let { Mode.Dict. byte; native } = lib.modes in
     let if_ cond l = if cond then l else [] in
@@ -1058,6 +1092,7 @@ module Gen(P : Params) = struct
       [ List.map files ~f:(make_entry Lib    )
       ; List.map execs ~f:(make_entry Libexec)
       ; List.map dlls  ~f:(Install.Entry.make Stublibs)
+      ; [make_entry Lib (lib_dune_file ~dir ~name:lib.name) ~dst:"dune"]
       ]
 
   let is_odig_doc_file fn =
@@ -1180,7 +1215,10 @@ module Gen(P : Params) = struct
 end
 
 module type Gen = sig
-  val gen_rules : dir:Path.t -> string list -> Build_system.extra_sub_directories_to_keep
+  val gen_rules
+    :  dir:Path.t
+    -> string list
+    -> Build_system.extra_sub_directories_to_keep
   val init : unit -> unit
 end
 

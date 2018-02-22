@@ -146,18 +146,30 @@ module Package = struct
       (make_archives t "plugin" preds)
 
   let sub_systems t =
-    match Vars.get t.vars "dune_sub_systems" Ps.empty with
-    | None -> Sub_system_name.Map.empty
-    | Some s ->
-      let fname =
-        sprintf
-          "%s:%s.dune_sub_systems" (Path.to_string t.meta_file)
-          t.name
+    let fn = Path.relative t.dir "dune" in
+    if not (Path.exists fn) then
+      Sub_system_name.Map.empty
+    else begin
+      let sexps= Sexp.load ~mode:Many ~fname:(Path.to_string fn) in
+      let entry sexp =
+        let name, data = Sexp.Of_sexp.(pair string (fun x -> x)) sexp in
+        match Sub_system_name.get name with
+        | None ->
+          (* We ignore sub-systems that are not internally
+             known. These correspond to plugins that are not in use in
+             the current workspace. *)
+          None
+        | Some name -> Some (name, data)
       in
-      let sexp =
-        Usexp.parse_string ~mode:Single ~fname s
-      in
-      Sexp.Of_sexp.record (Sub_system_info.parse ()) sexp
+      List.filter_map sexps ~f:entry
+      |> Sub_system_name.Map.of_alist
+      |> function
+      | Ok x -> x
+      | Error (name, _, sexp) ->
+        Loc.fail (Sexp.Ast.loc sexp)
+          "%S present twice"
+          (Sub_system_name.to_string name)
+    end
 end
 
 module Unavailable_reason = struct

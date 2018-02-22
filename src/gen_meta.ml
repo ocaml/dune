@@ -126,10 +126,6 @@ let gen_lib pub_name lib ~required_by ~version =
              (String.concat l ~sep:" ")
          ]
       )
-    ; (match Lib.Meta.sub_systems lib with
-       | [] -> []
-       | l  -> [rule "dune_sub_systems" [] Set (Sexp.to_string (List l))]
-      )
     ]
 
 let gen ~package ~version ~meta_path libs =

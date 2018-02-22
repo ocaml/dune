@@ -536,6 +536,58 @@ module Public_lib = struct
           | Error _ as e -> e)
 end
 
+module Sub_system_info = struct
+  type t = ..
+  type sub_system = t = ..
+
+  module type S = sig
+    type t
+    type sub_system += T of t
+
+    (** Name of the sub-system *)
+    val name : Sub_system_name.t
+
+    (** Parse the value from a library stanza *)
+    val parse : t option Sexp.Of_sexp.record_parser
+  end
+
+  (* For parsing config of installed libraries *)
+  let parsers = Sub_system_name.Table.create ()
+
+  (* For parsing config files in the workspace *)
+  let record_parser = ref return
+
+  module Register(M : S) : sig end = struct
+    open M
+
+    let () =
+      match Sub_system_name.Table.get parsers name with
+      | Some _ ->
+        Sexp.code_error "Sub_system_info.register: already registered"
+          [ "name", Sexp.To_sexp.atom (Sub_system_name.to_string name) ];
+      | None ->
+        Sub_system_name.Table.set parsers ~key:name
+          ~data:
+            (record (map_validate parse ~f:(function
+               | Some x -> Ok (T x)
+               | None ->
+                 Error (sprintf "Empty configuration for %S"
+                          (Sub_system_name.to_string name)))));
+        let p = !record_parser in
+        record_parser := (fun acc ->
+          parse >>= function
+          | None   -> p acc
+          | Some x ->
+            let acc = Sub_system_name.Map.add acc ~key:name ~data:(T x) in
+            p acc)
+  end
+
+  let record_parser () = !record_parser Sub_system_name.Map.empty
+
+  let parse name sexp =
+    Option.value_exn (Sub_system_name.Table.get parsers name) sexp
+end
+
 module Library = struct
   module Kind = struct
     type t =
@@ -596,7 +648,7 @@ module Library = struct
        field_b    "optional"                                               >>= fun optional                 ->
        field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
        field_b    "no_dynlink"                                             >>= fun no_dynlink               ->
-       Sub_system_info.parse () >>= fun sub_systems ->
+       Sub_system_info.record_parser () >>= fun sub_systems ->
        return
          { name
          ; public

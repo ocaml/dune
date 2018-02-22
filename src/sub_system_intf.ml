@@ -1,19 +1,12 @@
 open! Import
 
+module type Info = Jbuild.Sub_system_info.S
+
 module type S = sig
-  (** Name of the system. Used in jbuild and META files *)
-  val name : Sub_system_name.t
+  module Info : Info
 
-  (** Raw informations *)
-  module Info : sig
-    type t
-    val of_sexp : t Sexp.Of_sexp.t
-
-    (** For the short syntax: [(name)] *)
-    val short : t option
-  end
-
-  (** Instantiated informations *)
+  (** Instantiated representation of the sub-system. I.e. with names
+      resolved using a library database. *)
   type t
 
   (** Create an instance of the sub-system *)
@@ -47,12 +40,10 @@ end
 module type Multi_backends = sig
   module Backend : Backend
 
-  val name : Sub_system_name.t
-
   module Info : sig
-    type t
-    val of_sexp : t Sexp.Of_sexp.t
-    val short : t option
+    include Info
+
+    val loc : t -> Loc.t
 
     (** Additional backends specified by the user at use-site *)
     val backends : t -> (Loc.t * string) list

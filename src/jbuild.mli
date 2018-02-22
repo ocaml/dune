@@ -126,6 +126,7 @@ module Dep_conf : sig
     | Glob_files of String_with_vars.t
     | Files_recursively_in of String_with_vars.t
 
+  val t : t Sexp.Of_sexp.t
   val sexp_of_t : t -> Sexp.t
 end
 
@@ -155,8 +156,33 @@ module Public_lib : sig
   type t =
     { name    : string        (** Full public name *)
     ; package : Package.t     (** Package it is part of *)
-    ; sub_dir : string option (** Subdirectory inside the installation directory *)
+    ; sub_dir : string option (** Subdirectory inside the installation
+                                  directory *)
     }
+end
+
+module Sub_system_info : sig
+  (** The type of all sub-systems informations. This type is what we
+      get just after parsing a [jbuild] file. *)
+  type t = ..
+  type sub_system = t = ..
+
+  (** What the user must provide in order to define the parsing part
+      of a sub-system. *)
+  module type S = sig
+    type t
+    type sub_system += T of t
+
+    (** Name of the sub-system *)
+    val name : Sub_system_name.t
+
+    (** Parse the value from a library stanza *)
+    val parse : t option Sexp.Of_sexp.record_parser
+  end
+
+  module Register(M : S) : sig end
+
+  val parse : Sub_system_name.t -> t Sexp.Of_sexp.t
 end
 
 module Library : sig

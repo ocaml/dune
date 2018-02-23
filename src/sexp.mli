@@ -69,8 +69,24 @@ module Of_sexp : sig
   (** Return the location of the record being parsed *)
   val record_loc : Loc.t record_parser
 
-  val field   : string -> ?default:'a -> 'a t -> 'a record_parser
-  val field_o : string -> 'a t -> 'a option record_parser
+  module Short_syntax : sig
+    type 'a t =
+      | Not_allowed
+      | This    of 'a
+      | Located of (Loc.t -> 'a)
+  end
+
+  val field
+    :  string
+    -> ?short:'a Short_syntax.t
+    -> ?default:'a
+    -> 'a t
+    -> 'a record_parser
+  val field_o
+    :  string
+    -> ?short:'a Short_syntax.t
+    -> 'a t
+    -> 'a option record_parser
   val field_b : string -> bool record_parser
 
   val map_validate : 'a record_parser -> f:('a -> ('b, string) result) -> 'b record_parser

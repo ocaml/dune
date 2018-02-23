@@ -252,34 +252,44 @@ module Of_sexp = struct
       in
       Loc.fail loc "%s" msg
 
-  let field name ?default value_of_sexp state =
+  module Short_syntax = struct
+    type 'a t =
+      | Not_allowed
+      | This    of 'a
+      | Located of (Loc.t -> 'a)
+
+    let parse t entry name =
+      match t with
+      | Not_allowed ->
+        Loc.fail (Ast.loc entry) "field %s needs a value" name
+      | This    x -> x
+      | Located f -> f (Ast.loc entry)
+  end
+
+  let field name ?(short=Short_syntax.Not_allowed)
+        ?default value_of_sexp state =
     match Name_map.find state.unparsed name with
     | Some { value = Some value; _ } ->
       (value_of_sexp value, consume name state)
-    | Some { value = None; _ } ->
-      Loc.fail state.loc "field %s needs a value" name
+    | Some { value = None; entry } ->
+      (Short_syntax.parse short entry name,
+       consume name state)
     | None ->
       match default with
       | Some v -> (v, add_known name state)
       | None ->
         Loc.fail state.loc "field %s missing" name
 
-  let field_o name value_of_sexp state =
+  let field_o name ?(short=Short_syntax.Not_allowed) value_of_sexp state =
     match Name_map.find state.unparsed name with
     | Some { value = Some value; _ } ->
       (Some (value_of_sexp value), consume name state)
-    | Some { value = None; _ } ->
-      Loc.fail state.loc "field %s needs a value" name
+    | Some { value = None; entry } ->
+      (Some (Short_syntax.parse short entry name),
+       consume name state)
     | None -> (None, add_known name state)
 
-  let field_b name state =
-    match Name_map.find state.unparsed name with
-    | Some { value = Some value; _ } ->
-      (bool value, consume name state)
-    | Some { value = None; _ } ->
-      (true, consume name state)
-    | None ->
-      (false, add_known name state)
+  let field_b name = field name bool ~default:false ~short:(This true)
 
   let make_record_parser_state sexp =
     match sexp with

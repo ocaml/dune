@@ -1406,6 +1406,11 @@ let prefix_rules t prefix ~f =
     Sexp.code_error "Build_system.prefix_rules' prefix contains targets"
       ["targets", Path.Set.sexp_of_t (Build_interpret.Target.paths targets)]
   end;
+  let prefix =
+    match t.prefix with
+    | None -> prefix
+    | Some p -> Build.O.(>>>) p prefix
+  in
   prefix_rules' t (Some prefix) ~f
 
 let on_load_dir t ~dir ~f =

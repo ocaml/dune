@@ -1,6 +1,8 @@
 open Import
 open Fiber.O
 
+let () = Inline_tests.linkme
+
 type setup =
   { build_system : Build_system.t
   ; stanzas      : (Path.t * Jbuild.Scope_info.t * Jbuild.Stanzas.t) list String_map.t

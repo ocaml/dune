@@ -61,7 +61,7 @@ end
 module Info : sig
   module Deps : sig
     type t =
-      | Simple  of string list
+      | Simple  of (Loc.t * string) list
       | Complex of Jbuild.Lib_dep.t list
   end
 
@@ -80,13 +80,23 @@ module Info : sig
     ; foreign_archives : Path.t list Mode.Dict.t (** [.a/.lib/...] files *)
     ; jsoo_runtime     : Path.t list
     ; requires         : Deps.t
-    ; ppx_runtime_deps : string list
-    ; pps              : Jbuild.Pp.t list
+    ; ppx_runtime_deps : (Loc.t * string) list
+    ; pps              : (Loc.t * Jbuild.Pp.t) list
     ; optional         : bool
+    ; virtual_deps     : (Loc.t * string) list
+    ; sub_systems      : Jbuild.Sub_system_info.t Sub_system_name.Map.t
     }
 
   val of_library_stanza : dir:Path.t -> Jbuild.Library.t -> t
   val of_findlib_package : Findlib.Package.t -> t
+end
+
+module Id : sig
+  type t =
+    { unique_id : int
+    ; path      : Path.t
+    ; name      : string
+    }
 end
 
 (** {1 Errors} *)
@@ -111,7 +121,8 @@ module Error : sig
     end
 
     type nonrec t =
-      { name   : string
+      { loc    : Loc.t (** For names coming from Jbuild files *)
+      ; name   : string
       ; reason : Reason.t
       }
   end
@@ -123,8 +134,8 @@ module Error : sig
   module Conflict : sig
     (** When two libraries in a transitive closure conflict *)
     type nonrec t =
-      { lib1 : t * With_required_by.Entry.t list
-      ; lib2 : t * With_required_by.Entry.t list
+      { lib1 : t * Dep_path.Entry.t list
+      ; lib2 : t * Dep_path.Entry.t list
       }
   end
 
@@ -135,7 +146,7 @@ module Error : sig
     | Conflict                     of Conflict.t
 end
 
-exception Error of Error.t With_required_by.t
+exception Error of Error.t
 
 (** Raise a error about a library that is not available *)
 val not_available
@@ -144,12 +155,24 @@ val not_available
   -> ('a, Format.formatter, unit, 'b) format4
   -> 'a
 
-(** {1 Library compilation} *)
+(** {1 Compilation contexts} *)
 
-(** For compiling the library itself *)
+(** See {!Sub_system} *)
+type sub_system = ..
+
+(** For compiling a library or executable *)
 module Compile : sig
+  type t
+
+  (** Create a compilation context from a list of libraries. The list
+      doesn't have to be transitively closed. *)
+  val make : (L.t, exn) result -> t
+
   (** Return the list of dependencies needed for compiling this library *)
-  val requires : t -> (L.t, Error.t With_required_by.t) result
+  val requires : t -> (L.t, exn) result
+
+  (** Dependencies listed by the user + runtime dependencies from ppx *)
+  val direct_requires : t -> (L.t, exn) result
 
   module Resolved_select : sig
     type t =
@@ -160,6 +183,15 @@ module Compile : sig
 
   (** Resolved select forms *)
   val resolved_selects : t -> Resolved_select.t list
+
+  (** Transitive closure of all used ppx rewriters *)
+  val pps : t -> (L.t, exn) result
+
+  val optional          : t -> bool
+  val user_written_deps : t -> Jbuild.Lib_deps.t
+
+  (** Sub-systems used in this compilation context *)
+  val sub_systems : t -> sub_system list
 end
 
 (** {1 Library name resolution} *)
@@ -204,13 +236,18 @@ module DB : sig
   val create_from_findlib : Findlib.t -> t
 
   val find : t -> string -> (lib, Error.Library_not_available.Reason.t) result
-  val find_exn
+  val find_many
     :  t
-    -> string
-    -> required_by:With_required_by.Entry.t list
-    -> lib
+    -> string list
+    -> (lib list, exn) result
 
   val available : t -> string -> bool
+
+  (** Retreive the compile informations for the given library. Works
+      for libraries that are optional and not available as well. *)
+  val get_compile_info : t -> string -> Compile.t
+
+  val resolve : t -> Loc.t * string -> (lib, exn) result
 
   (** Resolve libraries written by the user in a jbuild file. The
       resulting list of libraries is transitively closed and sorted by
@@ -220,14 +257,13 @@ module DB : sig
   val resolve_user_written_deps
     :  t
     -> Jbuild.Lib_dep.t list
-    -> pps:Jbuild.Pp.t list
-    -> (L.t, Error.t With_required_by.t) result *
-       Compile.Resolved_select.t list
+    -> pps:(Loc.t * Jbuild.Pp.t) list
+    -> Compile.t
 
   val resolve_pps
     :  t
-    -> Jbuild.Pp.t list
-    -> (L.t, Error.t With_required_by.t) result
+    -> (Loc.t * Jbuild.Pp.t) list
+    -> (L.t, exn) result
 
   (** Return the list of all libraries in this database. If
       [recursive] is true, also include libraries in parent databases
@@ -237,23 +273,40 @@ end with type lib := t
 
 (** {1 Transitive closure} *)
 
-val closure : L.t -> (L.t, Error.t With_required_by.t) result
+val closure : L.t -> (L.t, exn) result
+
+(** {1 Sub-systems} *)
+
+module Sub_system : sig
+  type lib = t
+
+  type t = sub_system = ..
+
+  module type S = sig
+    module Info : Jbuild.Sub_system_info.S
+    type t
+    type sub_system += T of t
+    val instantiate
+      :  resolve:(Loc.t * string -> (lib, exn) result)
+      -> get:(lib -> t option)
+      -> Id.t
+      -> Info.t
+      -> t
+    val to_sexp : (t -> Syntax.Version.t * Sexp.t) option
+  end
+
+  module Register(M : S) : sig
+    (** Get the instance of the subsystem for this library *)
+    val get : lib -> M.t option
+  end
+
+  val dump_config : lib -> (Syntax.Version.t * Sexp.t) Sub_system_name.Map.t
+end with type lib := t
 
 (** {1 Dependencies for META files} *)
 
 module Meta : sig
-  val requires
-    :  t
-    -> required_by:With_required_by.Entry.t list
-    -> String_set.t
-
-  val ppx_runtime_deps
-    :  t
-    -> required_by:With_required_by.Entry.t list
-    -> String_set.t
-
-  val ppx_runtime_deps_for_deprecated_method
-    :  t
-    -> required_by:With_required_by.Entry.t list
-    -> String_set.t
+  val requires                               : t -> String_set.t
+  val ppx_runtime_deps                       : t -> String_set.t
+  val ppx_runtime_deps_for_deprecated_method : t -> String_set.t
 end

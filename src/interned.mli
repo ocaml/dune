@@ -27,9 +27,9 @@ module type S = sig
     type key = t
     type 'a t
 
-    val create : unit -> 'a t
+    val create : default_value:'a -> 'a t
 
-    val get : 'a t -> key -> 'a option
+    val get : 'a t -> key -> 'a
     val set : 'a t -> key:key -> data:'a -> unit
   end with type key := t
 end

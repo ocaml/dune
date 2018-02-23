@@ -52,8 +52,18 @@ val expand_vars
   :  t
   -> scope:Scope.t
   -> dir:Path.t
+  -> ?extra_vars:Action.Var_expansion.t String_map.t
   -> String_with_vars.t
   -> string
+
+val expand_and_eval_set
+  :  t
+  -> scope:Scope.t
+  -> dir:Path.t
+  -> ?extra_vars:Action.Var_expansion.t String_map.t
+  -> Ordered_set_lang.Unexpanded.t
+  -> standard:string list
+  -> (unit, string list) Build.t
 
 val prefix_rules
   : t
@@ -118,23 +128,12 @@ module Libs : sig
   (** Returns the closed list of dependencies for a dependency list in
       a stanza. The second arrow is the same as the first one but with
       an added dependency on the [.merlin] if [(context t).merlin &&
-      lib.buildable.gen_dot_merlin] is [true]. *)
-  val requires_for_library
-    :  t
-    -> dir:Path.t
-    -> scope:Scope.t
-    -> dep_kind:Build.lib_dep_kind
-    -> Jbuild.Library.t
-    -> (unit, Lib.L.t) Build.t * (unit, Lib.L.t) Build.t
+      has_dot_merlin] is [true]. *)
   val requires
     :  t
-    -> loc:Loc.t
     -> dir:Path.t
-    -> scope:Scope.t
-    -> dep_kind:Build.lib_dep_kind
-    -> libraries:Lib_deps.t
-    -> preprocess:Preprocess_map.t
     -> has_dot_merlin:bool
+    -> Lib.Compile.t
     -> (unit, Lib.L.t) Build.t * (unit, Lib.L.t) Build.t
 
   (** [file_deps ~ext] is an arrow that record dependencies on all the
@@ -196,6 +195,7 @@ module Action : sig
   (** The arrow takes as input the list of actual dependencies *)
   val run
     :  t
+    -> ?extra_vars:Action.Var_expansion.t String_map.t
     -> Action.Unexpanded.t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
@@ -224,7 +224,7 @@ module PP : sig
   val get_ppx_driver
     : t
     -> scope:Scope.t
-    -> Pp.t list
+    -> (Loc.t * Pp.t) list
     -> Path.t
 
   (** [cookie_library_name lib_name] is ["--cookie"; lib_name] if [lib_name] is not
@@ -233,14 +233,6 @@ module PP : sig
 
   val gen_rules : t -> string list -> unit
 end
-
-val expand_and_eval_set
-  :  t
-  -> scope:Scope.t
-  -> dir:Path.t
-  -> Ordered_set_lang.Unexpanded.t
-  -> standard:string list
-  -> (unit, string list) Build.t
 
 module Pkg_version : sig
   val set : t -> Package.t -> (unit, string option) Build.t -> (unit, string option) Build.t

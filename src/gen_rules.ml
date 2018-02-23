@@ -507,12 +507,13 @@ module Gen(P : Params) = struct
     let dep_kind = if lib.optional then Build.Optional else Required in
     let flags = Ocaml_flags.make lib.buildable sctx ~scope ~dir in
     let { modules; main_module_name; alias_module } = modules_by_lib ~dir lib in
+    let source_modules = modules in
     let already_used =
       Modules_partitioner.acknowledge modules_partitioner
         ~loc:lib.buildable.loc ~modules
     in
-  (* Preprocess before adding the alias module as it doesn't need
-     preprocessing *)
+    (* Preprocess before adding the alias module as it doesn't need
+       preprocessing *)
     let modules =
       SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
         ~preprocess:lib.buildable.preprocess
@@ -554,8 +555,10 @@ module Gen(P : Params) = struct
             |> String.concat ~sep:"\n")
          >>> Build.write_file_dyn (Path.relative dir file.name)));
 
+    let compile_info = Lib.DB.get_compile_info (Scope.libs scope) lib.name in
     let requires, real_requires =
-      SC.Libs.requires_for_library sctx ~dir ~scope ~dep_kind lib
+      SC.Libs.requires sctx compile_info
+        ~dir ~has_dot_merlin:true
     in
 
     let dynlink = lib.dynlink in
@@ -720,6 +723,16 @@ module Gen(P : Params) = struct
         Ocaml_flags.prepend_common ["-open"; m.name] flags
         |> Ocaml_flags.common
     in
+
+    Sub_system.gen_rules
+      { super_context = sctx
+      ; dir
+      ; stanza = lib
+      ; scope
+      ; source_modules
+      ; compile_info
+      };
+
     { Merlin.
       requires = real_requires
     ; flags
@@ -738,6 +751,26 @@ module Gen(P : Params) = struct
     let modules =
       parse_modules ~all_modules ~buildable:exes.buildable
     in
+    let already_used =
+      match modules_partitioner with
+      | None -> String_set.empty
+      | Some mp ->
+        Modules_partitioner.acknowledge mp
+          ~loc:exes.buildable.loc ~modules
+    in
+
+    let modules =
+      let preprocessor_deps =
+        SC.Deps.interpret sctx exes.buildable.preprocessor_deps
+          ~scope ~dir
+      in
+      SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind:Required ~modules ~scope
+        ~preprocess:exes.buildable.preprocess
+        ~preprocessor_deps
+        ~lint:exes.buildable.lint
+        ~lib_name:None
+    in
+
     let programs =
       List.map exes.names ~f:(fun (loc, name) ->
         let mod_name = String.capitalize name in
@@ -768,32 +801,34 @@ module Gen(P : Params) = struct
         ~dir
         ~standard:[]
     in
-    let preprocessor_deps =
-      SC.Deps.interpret sctx exes.buildable.preprocessor_deps
-        ~scope ~dir
+
+    let compile_info =
+      Lib.DB.resolve_user_written_deps (Scope.libs scope)
+        exes.buildable.libraries
+        ~pps:(Jbuild.Preprocess_map.pps exes.buildable.preprocess)
+    in
+    let requires, real_requires =
+      SC.Libs.requires sctx ~dir
+        ~has_dot_merlin:true
+        compile_info
     in
 
-    let obj_dir, requires =
+    let obj_dir =
       Exe.build_and_link_many sctx
-        ~loc:exes.buildable.loc
         ~dir
         ~programs
         ~modules
-        ?modules_partitioner
+        ~already_used
         ~scope
         ~linkages
-        ~libraries:exes.buildable.libraries
+        ~requires
         ~flags
         ~link_flags
-        ~preprocess:exes.buildable.preprocess
-        ~preprocessor_deps
-        ~lint:exes.buildable.lint
         ~js_of_ocaml:exes.buildable.js_of_ocaml
-        ~has_dot_merlin:true
     in
 
     { Merlin.
-      requires    = requires
+      requires    = real_requires
     ; flags       = Ocaml_flags.common flags
     ; preprocess  = Buildable.single_preprocess exes.buildable
     ; libname     = None
@@ -890,9 +925,22 @@ module Gen(P : Params) = struct
      | META                                                            |
      +-----------------------------------------------------------------+ *)
 
+  let lib_dune_file ~dir ~name =
+    Path.relative dir (name ^ ".dune")
+
+  let gen_lib_dune_file lib =
+    SC.add_rule sctx
+      (Build.arr (fun () ->
+         Format.asprintf "%a@." Sexp.pp
+           (Lib.Sub_system.dump_config lib |> Installed_dune_file.gen))
+       >>> Build.write_file_dyn
+             (lib_dune_file ~dir:(Lib.src_dir lib) ~name:(Lib.name lib)))
+
   let init_meta () =
-    Lib.DB.all (SC.public_libs sctx)
-    |> List.map ~f:(fun lib -> (Findlib.root_package_name (Lib.name lib), lib))
+    let public_libs = Lib.DB.all (SC.public_libs sctx) in
+    List.iter public_libs ~f:gen_lib_dune_file;
+    List.map public_libs ~f:(fun lib ->
+      (Findlib.root_package_name (Lib.name lib), lib))
     |> String_map.of_list_multi
     |> String_map.merge (SC.packages sctx) ~f:(fun _name pkg libs ->
       let pkg  = Option.value_exn pkg          in
@@ -941,7 +989,6 @@ module Gen(P : Params) = struct
           Gen_meta.gen
             ~package:pkg.name
             ~version
-            ~meta_path:meta
             libs
         in
         SC.add_rule sctx
@@ -970,11 +1017,19 @@ module Gen(P : Params) = struct
      | Installation                                                    |
      +-----------------------------------------------------------------+ *)
 
-  let lib_install_files ~dir ~sub_dir ~scope (lib : Library.t) =
+  let lib_install_files ~dir ~sub_dir ~scope ~name (lib : Library.t) =
     let obj_dir = Utils.library_object_directory ~dir lib.name in
-    let make_entry section fn =
+    let make_entry section ?dst fn =
       Install.Entry.make section fn
-        ?dst:(Option.map sub_dir ~f:(fun d -> sprintf "%s/%s" d (Path.basename fn)))
+        ~dst:(
+          let dst =
+            match dst with
+            | Some s -> s
+            | None   -> Path.basename fn
+          in
+          match sub_dir with
+          | None -> dst
+          | Some dir -> sprintf "%s/%s" dir dst)
     in
     let { Mode.Dict. byte; native } = lib.modes in
     let if_ cond l = if cond then l else [] in
@@ -1014,14 +1069,16 @@ module Gen(P : Params) = struct
       match lib.kind with
       | Normal | Ppx_deriver -> []
       | Ppx_rewriter ->
-        let pps = [Pp.of_string lib.name] in
+        let pps = [(lib.buildable.loc, Pp.of_string lib.name)] in
         let pps =
           (* This is a temporary hack until we get a standard driver *)
-          let deps = List.concat_map lib.buildable.libraries ~f:Lib_dep.to_lib_names in
+          let deps =
+            List.concat_map lib.buildable.libraries ~f:Lib_dep.to_lib_names
+          in
           if List.exists deps ~f:(function
             | "ppx_driver" | "ppx_type_conv" -> true
             | _ -> false) then
-            pps @ [Pp.of_string "ppx_driver.runner"]
+            pps @ [(Loc.none, Pp.of_string "ppx_driver.runner")]
           else
             pps
         in
@@ -1032,6 +1089,7 @@ module Gen(P : Params) = struct
       [ List.map files ~f:(make_entry Lib    )
       ; List.map execs ~f:(make_entry Libexec)
       ; List.map dlls  ~f:(Install.Entry.make Stublibs)
+      ; [make_entry Lib (lib_dune_file ~dir ~name)]
       ]
 
   let is_odig_doc_file fn =
@@ -1080,8 +1138,8 @@ module Gen(P : Params) = struct
       ~mode:(if promote_install_file then
                Promote_but_delete_on_clean
              else
-               (* We must ignore the source file since it might be copied to the source
-                  tree by another context. *)
+               (* We must ignore the source file since it might be
+                  copied to the source tree by another context. *)
                Ignore_source_files)
       (Build.path_set (Install.files entries)
        >>^ (fun () ->
@@ -1102,12 +1160,13 @@ module Gen(P : Params) = struct
       List.concat_map (SC.stanzas_to_consider_for_install sctx)
         ~f:(fun (dir, scope, stanza) ->
           match stanza with
-          | Library ({ public = Some { package; sub_dir; _ }; _ } as lib) ->
-            List.map (lib_install_files ~dir ~sub_dir ~scope lib) ~f:(fun x ->
-              package.name, x)
+          | Library ({ public = Some { package; sub_dir; name; _ }; _ } as lib) ->
+            List.map (lib_install_files ~dir ~sub_dir ~scope ~name lib)
+              ~f:(fun x -> package.name, x)
           | Install { section; files; package}->
             List.map files ~f:(fun { Install_conf. src; dst } ->
-              (package.name, Install.Entry.make section (Path.relative dir src) ?dst))
+              (package.name,
+               Install.Entry.make section (Path.relative dir src) ?dst))
           | _ -> [])
       |> String_map.of_list_multi
     in
@@ -1138,7 +1197,8 @@ module Gen(P : Params) = struct
 
   let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
     (match components with
-     | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules sctx rest;
+     | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
+                           sctx rest
      | "_doc" :: rest -> Odoc.gen_rules sctx rest ~dir
      | ".ppx"  :: rest -> SC.PP.gen_rules sctx rest
      | _ ->
@@ -1157,7 +1217,10 @@ module Gen(P : Params) = struct
 end
 
 module type Gen = sig
-  val gen_rules : dir:Path.t -> string list -> Build_system.extra_sub_directories_to_keep
+  val gen_rules
+    :  dir:Path.t
+    -> string list
+    -> Build_system.extra_sub_directories_to_keep
   val init : unit -> unit
 end
 

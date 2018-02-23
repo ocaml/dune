@@ -36,21 +36,14 @@ module Entries = struct
       t
 end
 
-type 'a t =
-  { data : 'a
-  ; required_by : Entries.t
-  }
-
-let prepend_one t entry = { t with required_by = entry :: t.required_by }
-let append t entries = { t with required_by = t.required_by @ entries }
-
 exception E of exn * Entry.t list
 
-let reraise exn entry =
-  reraise (
-    match exn with
-    | E (exn, entries) -> E (exn, entry :: entries)
-    | exn -> E (exn, [entry]))
+let prepend_exn exn entry =
+  match exn with
+  | E (exn, entries) -> E (exn, entry :: entries)
+  | exn -> E (exn, [entry])
+
+let reraise exn entry = reraise (prepend_exn exn entry)
 
 let unwrap_exn = function
   | E (exn, entries) -> (exn, Some entries)

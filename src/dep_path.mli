@@ -1,4 +1,4 @@
-(** Value with a dependency path *)
+(** Dependency path *)
 
 module Entry : sig
   type t =
@@ -21,20 +21,12 @@ module Entries : sig
   val pp : Format.formatter -> t -> unit
 end
 
-type 'a t =
-  { data        : 'a
-  ; required_by : Entries.t
-  }
-
-(** Add an entry at the beginning the [required_by] stack *)
-val prepend_one : 'a t -> Entry.t -> 'a t
-
-(** Add entries at the end of the [required_by] stack *)
-val append : 'a t -> Entry.t list -> 'a t
-
-(** Re-raise an exception and augment it's dependency path with the given entry. The
-    raised exception will be wrapped. *)
+(** Re-raise an exception and augment it's dependency path with the
+    given entry. The raised exception will be wrapped. *)
 val reraise : exn -> Entry.t -> _
+
+(** Extend the required_by stack of an exception *)
+val prepend_exn : exn -> Entry.t -> exn
 
 (** Extract a wrapped exception *)
 val unwrap_exn : exn -> exn * Entry.t list option

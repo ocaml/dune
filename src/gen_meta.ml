@@ -55,7 +55,7 @@ let archives ?(preds=[]) lib =
   ; plugin  (preds @ [Pos "native"]) (make plugins .native)
   ]
 
-let gen_lib pub_name lib ~required_by ~version =
+let gen_lib pub_name lib ~version =
   let desc =
     match Lib.synopsis lib with
     | Some s -> s
@@ -73,8 +73,8 @@ let gen_lib pub_name lib ~required_by ~version =
     | Normal -> []
     | Ppx_rewriter | Ppx_deriver -> [Pos "ppx_driver"]
   in
-  let lib_deps    = Lib.Meta.requires lib ~required_by in
-  let ppx_rt_deps = Lib.Meta.ppx_runtime_deps lib ~required_by in
+  let lib_deps    = Lib.Meta.requires lib in
+  let ppx_rt_deps = Lib.Meta.ppx_runtime_deps lib in
   List.concat
     [ version
     ; [ description desc
@@ -99,8 +99,7 @@ let gen_lib pub_name lib ~required_by ~version =
                         preprocessors"
              ; Comment "and normal dependencies"
              ; requires ~preds:[no_ppx_driver]
-                 (Lib.Meta.ppx_runtime_deps_for_deprecated_method lib
-                    ~required_by)
+                 (Lib.Meta.ppx_runtime_deps_for_deprecated_method lib)
              ]
            ; match Lib.kind lib with
            | Normal -> assert false
@@ -128,8 +127,7 @@ let gen_lib pub_name lib ~required_by ~version =
       )
     ]
 
-let gen ~package ~version ~meta_path libs =
-  let required_by = [With_required_by.Entry.Path meta_path] in
+let gen ~package ~version libs =
   let version =
     match version with
     | None -> []
@@ -139,7 +137,7 @@ let gen ~package ~version ~meta_path libs =
     List.map libs ~f:(fun lib ->
       let pub_name = Pub_name.parse (Lib.name lib) in
       (pub_name,
-       gen_lib pub_name lib ~version ~required_by))
+       gen_lib pub_name lib ~version))
   in
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->

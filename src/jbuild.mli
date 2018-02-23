@@ -51,7 +51,7 @@ end
 
 module Preprocess : sig
   type pps =
-    { pps   : Pp.t list
+    { pps   : (Loc.t * Pp.t) list
     ; flags : string list
     }
 
@@ -73,7 +73,7 @@ module Preprocess_map : sig
       given module *)
   val find : string -> t -> Preprocess.t
 
-  val pps : t -> Pp.t list
+  val pps : t -> (Loc.t * Pp.t) list
 end
 
 module Lint : sig
@@ -106,12 +106,12 @@ module Lib_dep : sig
     }
 
   type t =
-    | Direct of string
+    | Direct of (Loc.t * string)
     | Select of select
 
   val to_lib_names : t -> string list
-  val direct : string -> t
-  val of_pp : Pp.t -> t
+  val direct : Loc.t * string -> t
+  val of_pp : Loc.t * Pp.t -> t
 end
 
 module Lib_deps : sig
@@ -126,6 +126,7 @@ module Dep_conf : sig
     | Glob_files of String_with_vars.t
     | Files_recursively_in of String_with_vars.t
 
+  val t : t Sexp.Of_sexp.t
   val sexp_of_t : t -> Sexp.t
 end
 
@@ -152,8 +153,41 @@ module Public_lib : sig
   type t =
     { name    : string        (** Full public name *)
     ; package : Package.t     (** Package it is part of *)
-    ; sub_dir : string option (** Subdirectory inside the installation directory *)
+    ; sub_dir : string option (** Subdirectory inside the installation
+                                  directory *)
     }
+end
+
+module Sub_system_info : sig
+  (** The type of all sub-systems informations. This type is what we
+      get just after parsing a [jbuild] file. *)
+  type t = ..
+  type sub_system = t = ..
+
+  type 'a parser =
+    { short : (Loc.t -> 'a) option (** Value when the sub-system has
+                                       no argument *)
+    ; parse : 'a Sexp.Of_sexp.t    (** Parse the argument *)
+    }
+
+  (** What the user must provide in order to define the parsing part
+      of a sub-system. *)
+  module type S = sig
+    type t
+    type sub_system += T of t
+
+    (** Name of the sub-system *)
+    val name : Sub_system_name.t
+
+    (** Location of the S-expression passed to [of_sexp] or [short]. *)
+    val loc : t -> Loc.t
+
+    val parsers : t parser Syntax.Versioned_parser.t
+  end
+
+  module Register(M : S) : sig end
+
+  val get : Sub_system_name.t -> (module S)
 end
 
 module Library : sig
@@ -169,7 +203,7 @@ module Library : sig
     ; public                   : Public_lib.t option
     ; synopsis                 : string option
     ; install_c_headers        : string list
-    ; ppx_runtime_libraries    : string list
+    ; ppx_runtime_libraries    : (Loc.t * string) list
     ; modes                    : Mode.Dict.Set.t
     ; kind                     : Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
@@ -179,17 +213,17 @@ module Library : sig
     ; library_flags            : Ordered_set_lang.Unexpanded.t
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
-    ; virtual_deps             : string list
+    ; virtual_deps             : (Loc.t * string) list
     ; wrapped                  : bool
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
     ; scope_name               : Scope_info.Name.t
+    ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     }
 
   val has_stubs : t -> bool
   val stubs_archive : t -> dir:Path.t -> ext_lib:string -> Path.t
-  val all_lib_deps : t -> Lib_deps.t
   val best_name : t -> string
 end
 

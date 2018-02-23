@@ -197,24 +197,24 @@ end
 
 module Pp_or_flags = struct
   type t =
-    | PP of Pp.t
+    | PP of Loc.t * Pp.t
     | Flags of string list
 
-  let of_string s =
+  let of_string ~loc s =
     if String.is_prefix s ~prefix:"-" then
       Flags [s]
     else
-      PP (Pp.of_string s)
+      PP (loc, Pp.of_string s)
 
   let t = function
-    | Atom (_, A s) | Quoted_string (_, s) -> of_string s
+    | Atom (loc, A s) | Quoted_string (loc, s) -> of_string ~loc s
     | List (_, l) -> Flags (List.map l ~f:string)
 
   let split l =
     let pps, flags =
       List.partition_map l ~f:(function
-        | PP pp   -> Left pp
-        | Flags s -> Right s)
+        | PP (loc, pp) -> Left (loc, pp)
+        | Flags s      -> Right s)
     in
     (pps, List.concat flags)
 end
@@ -263,7 +263,7 @@ module Dep_conf = struct
 end
 
 module Preprocess = struct
-  type pps = { pps : Pp.t list; flags : string list }
+  type pps = { pps : (Loc.t * Pp.t) list; flags : string list }
   type t =
     | No_preprocessing
     | Action of Action.Unexpanded.t
@@ -311,12 +311,13 @@ module Preprocess_map = struct
 
   let default = Per_module.for_all Preprocess.No_preprocessing
 
-  module Pp_set = Set.Make(Pp)
+  module Pp_map = Map.Make(Pp)
 
   let pps t =
-    Per_module.fold t ~init:Pp_set.empty ~f:(fun pp acc ->
-      Pp_set.union acc (Pp_set.of_list (Preprocess.pps pp)))
-    |> Pp_set.to_list
+    Per_module.fold t ~init:Pp_map.empty ~f:(fun pp acc ->
+      List.fold_left (Preprocess.pps pp) ~init:acc ~f:(fun acc (loc, pp) ->
+        Pp_map.add acc pp loc))
+    |> Pp_map.foldi ~init:[] ~f:(fun pp loc acc -> (loc, pp) :: acc)
 end
 
 module Lint = struct
@@ -364,7 +365,7 @@ module Lib_dep = struct
     }
 
   type t =
-    | Direct of string
+    | Direct of (Loc.t * string)
     | Select of select
 
   let choice = function
@@ -395,8 +396,8 @@ module Lib_dep = struct
     | sexp -> of_sexp_error sexp "(<library-name> <code>) expected"
 
   let t = function
-    | Atom (_, A s) ->
-      Direct s
+    | Atom (loc, A s) | Quoted_string (loc, s) ->
+      Direct (loc, s)
     | List (loc, Atom (_, A "select") :: m :: Atom (_, A "from") :: libs) ->
       Select { result_fn = file m
              ; choices   = List.map libs ~f:choice
@@ -406,15 +407,15 @@ module Lib_dep = struct
       of_sexp_error sexp "<library> or (select <module> from <libraries...>) expected"
 
   let to_lib_names = function
-    | Direct s -> [s]
+    | Direct (_, s) -> [s]
     | Select s ->
       List.fold_left s.choices ~init:String_set.empty ~f:(fun acc x ->
         String_set.union acc (String_set.union x.required x.forbidden))
       |> String_set.to_list
 
-  let direct s = Direct s
+  let direct x = Direct x
 
-  let of_pp pp = Direct (Pp.to_string pp)
+  let of_pp (loc, pp) = Direct (loc, Pp.to_string pp)
 end
 
 module Lib_deps = struct
@@ -448,7 +449,7 @@ module Lib_deps = struct
     ignore (
       List.fold_left t ~init:String_map.empty ~f:(fun acc x ->
         match x with
-        | Lib_dep.Direct s -> add Required s acc
+        | Lib_dep.Direct (_, s) -> add Required s acc
         | Select { choices; _ } ->
           List.fold_left choices ~init:acc ~f:(fun acc c ->
             let acc = String_set.fold c.Lib_dep.required ~init:acc ~f:(add Optional) in
@@ -540,6 +541,60 @@ module Public_lib = struct
           | Error _ as e -> e)
 end
 
+module Sub_system_info = struct
+  type t = ..
+  type sub_system = t = ..
+
+  type 'a parser =
+    { short : (Loc.t -> 'a) option
+    ; parse : 'a Sexp.Of_sexp.t
+    }
+
+  module type S = sig
+    type t
+    type sub_system += T of t
+    val name    : Sub_system_name.t
+    val loc     : t -> Loc.t
+    val parsers : t parser Syntax.Versioned_parser.t
+  end
+
+  let all = Sub_system_name.Table.create ~default_value:None
+
+  (* For parsing config files in the workspace *)
+  let record_parser = ref return
+
+  module Register(M : S) : sig end = struct
+    open M
+
+    let { short; parse } = snd (Syntax.Versioned_parser.last M.parsers)
+
+    let short =
+      match short with
+      | None -> Short_syntax.Not_allowed
+      | Some f -> Located f
+
+    let () =
+      match Sub_system_name.Table.get all name with
+      | Some _ ->
+        Sexp.code_error "Sub_system_info.register: already registered"
+          [ "name", Sexp.To_sexp.string (Sub_system_name.to_string name) ];
+      | None ->
+        Sub_system_name.Table.set all ~key:name ~data:(Some (module M : S));
+        let p = !record_parser in
+        let name_s = Sub_system_name.to_string name in
+        record_parser := (fun acc ->
+          field_o name_s ~short parse >>= function
+          | None   -> p acc
+          | Some x ->
+            let acc = Sub_system_name.Map.add acc name (T x) in
+            p acc)
+  end
+
+  let record_parser () = !record_parser Sub_system_name.Map.empty
+
+  let get name = Option.value_exn (Sub_system_name.Table.get all name)
+end
+
 module Library = struct
   module Kind = struct
     type t =
@@ -560,7 +615,7 @@ module Library = struct
     ; public                   : Public_lib.t option
     ; synopsis                 : string option
     ; install_c_headers        : string list
-    ; ppx_runtime_libraries    : string list
+    ; ppx_runtime_libraries    : (Loc.t * string) list
     ; modes                    : Mode.Dict.Set.t
     ; kind                     : Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
@@ -570,35 +625,37 @@ module Library = struct
     ; library_flags            : Ordered_set_lang.Unexpanded.t
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
-    ; virtual_deps             : string list
+    ; virtual_deps             : (Loc.t * string) list
     ; wrapped                  : bool
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
     ; scope_name               : Scope_info.Name.t
+    ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     }
 
   let v1 pkgs =
     record
       (Buildable.v1 >>= fun buildable ->
-       field      "name" library_name                                        >>= fun name                     ->
-       Public_lib.public_name_field pkgs                                     >>= fun public                   ->
-       field_o    "synopsis" string                                          >>= fun synopsis                 ->
-       field      "install_c_headers" (list string) ~default:[]              >>= fun install_c_headers        ->
-       field      "ppx_runtime_libraries" (list string) ~default:[]          >>= fun ppx_runtime_libraries    ->
-       field_oslu "c_flags"                                                  >>= fun c_flags                  ->
-       field_oslu "cxx_flags"                                                >>= fun cxx_flags                ->
-       field      "c_names" (list string) ~default:[]                        >>= fun c_names                  ->
-       field      "cxx_names" (list string) ~default:[]                      >>= fun cxx_names                ->
-       field_oslu "library_flags"                                            >>= fun library_flags            ->
-       field_oslu "c_library_flags"                                          >>= fun c_library_flags          ->
-       field      "virtual_deps" (list string) ~default:[]                   >>= fun virtual_deps             ->
-       field      "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all         >>= fun modes                    ->
-       field      "kind" Kind.t ~default:Kind.Normal                         >>= fun kind                     ->
-       field      "wrapped" bool ~default:true                               >>= fun wrapped                  ->
-       field_b    "optional"                                                 >>= fun optional                 ->
-       field      "self_build_stubs_archive" (option string) ~default:None   >>= fun self_build_stubs_archive ->
-       field_b    "no_dynlink"                                               >>= fun no_dynlink               ->
+       field      "name" library_name                                      >>= fun name                     ->
+       Public_lib.public_name_field pkgs                                   >>= fun public                   ->
+       field_o    "synopsis" string                                        >>= fun synopsis                 ->
+       field      "install_c_headers" (list string) ~default:[]            >>= fun install_c_headers        ->
+       field      "ppx_runtime_libraries" (list (located string)) ~default:[] >>= fun ppx_runtime_libraries    ->
+       field_oslu "c_flags"                                                >>= fun c_flags                  ->
+       field_oslu "cxx_flags"                                              >>= fun cxx_flags                ->
+       field      "c_names" (list string) ~default:[]                      >>= fun c_names                  ->
+       field      "cxx_names" (list string) ~default:[]                    >>= fun cxx_names                ->
+       field_oslu "library_flags"                                          >>= fun library_flags            ->
+       field_oslu "c_library_flags"                                        >>= fun c_library_flags          ->
+       field      "virtual_deps" (list (located string)) ~default:[]       >>= fun virtual_deps             ->
+       field      "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all       >>= fun modes                    ->
+       field      "kind" Kind.t ~default:Kind.Normal                       >>= fun kind                     ->
+       field      "wrapped" bool ~default:true                             >>= fun wrapped                  ->
+       field_b    "optional"                                               >>= fun optional                 ->
+       field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
+       field_b    "no_dynlink"                                             >>= fun no_dynlink               ->
+       Sub_system_info.record_parser () >>= fun sub_systems ->
        return
          { name
          ; public
@@ -620,6 +677,7 @@ module Library = struct
          ; buildable
          ; dynlink = not no_dynlink
          ; scope_name = pkgs.name
+         ; sub_systems
          })
 
   let has_stubs t =
@@ -629,9 +687,6 @@ module Library = struct
 
   let stubs_archive t ~dir ~ext_lib =
     Path.relative dir (sprintf "lib%s_stubs%s" t.name ext_lib)
-
-  let all_lib_deps t =
-    List.map t.virtual_deps ~f:(fun s -> Lib_dep.Direct s) @ t.buildable.libraries
 
   let best_name t =
     match t.public with

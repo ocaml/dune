@@ -120,6 +120,8 @@ module Of_sexp = struct
   let of_sexp_error sexp str = raise (Loc.Error (Ast.loc sexp, str))
   let of_sexp_errorf sexp fmt = ksprintf (of_sexp_error sexp) fmt
 
+  let raw x = x
+
   let unit = function
     | List (_, []) -> ()
     | sexp -> of_sexp_error sexp "() expected"

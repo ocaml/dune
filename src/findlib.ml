@@ -144,6 +144,10 @@ module Package = struct
     Mode.Dict.map2 ~f:(@)
       (make_archives t "archive" (Ps.add preds Variant.plugin))
       (make_archives t "plugin" preds)
+
+  let dune_file t =
+    let fn = Path.relative t.dir (sprintf "%s.dune" t.name) in
+    Option.some_if (Path.exists fn) fn
 end
 
 module Unavailable_reason = struct

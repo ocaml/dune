@@ -29,3 +29,25 @@ module O = struct
   let ( >>= ) t f = bind t ~f
   let ( >>| ) t f = map  t ~f
 end
+
+open O
+
+let all =
+  let rec loop acc = function
+    | [] -> Ok (List.rev acc)
+    | t :: l ->
+      t >>= fun x ->
+      loop (x :: acc) l
+  in
+  fun l -> loop [] l
+
+let concat_map =
+  let rec loop f acc = function
+    | [] -> Ok (List.rev acc)
+    | x :: l ->
+      f x >>= fun y ->
+      loop f (List.rev_append y acc) l
+  in
+  fun l ~f -> loop f [] l
+
+type ('a, 'error) result = ('a, 'error) t

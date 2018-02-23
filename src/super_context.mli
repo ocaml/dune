@@ -55,6 +55,11 @@ val expand_vars
   -> String_with_vars.t
   -> string
 
+val prefix_rules
+  : t
+  -> (unit, unit) Build.t
+  -> f:(unit -> 'a)
+  -> 'a
 val add_rule
   :  t
   -> ?sandbox:bool

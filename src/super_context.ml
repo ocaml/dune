@@ -182,6 +182,9 @@ let create
       | _ -> Chdir (context.build_dir, action))
   }
 
+let prefix_rules t prefix ~f =
+  Build_system.prefix_rules t.build_system prefix ~f
+
 let add_rule t ?sandbox ?mode ?locks ?loc build =
   let build = Build.O.(>>>) build t.chdir in
   Build_system.add_rule t.build_system

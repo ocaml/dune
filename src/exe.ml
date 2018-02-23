@@ -112,69 +112,37 @@ let link_exe
     SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm_and_flags >>> r))
 
 let build_and_link_many
-      ?obj_dir
-      ~loc ~dir ~programs ~modules
+      ?obj_dir ~dir ~programs ~modules
       ~scope
       ~linkages
-      ?modules_partitioner
-      ?(libraries=[])
+      ?(requires=Build.return [])
+      ?already_used
       ?(flags=Ocaml_flags.empty)
       ?link_flags
-      ?(preprocess=Jbuild.Preprocess_map.default)
-      ?(preprocessor_deps=Build.arr (fun () -> []))
-      ?(lint=Jbuild.Preprocess_map.default)
       ?(js_of_ocaml=Jbuild.Js_of_ocaml.default)
-      ?(has_dot_merlin=false)
       sctx
   =
   let item = (List.hd programs).Program.name in
-  let obj_dir =
+ let obj_dir =
     match obj_dir with
     (* Use "eobjs" rather than "objs" to avoid a potential conflict with a
        library of the same name *)
     | None -> Path.relative dir ("." ^ item ^ ".eobjs")
     | Some d -> d
   in
-  let dep_kind = Build.Required in
   let modules =
     String_map.map modules ~f:(Module.set_obj_name ~wrapper:None)
   in
 
-  let modules =
-    SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
-      ~preprocess
-      ~preprocessor_deps
-      ~lint
-      ~lib_name:None
-  in
-  let already_used =
-    match modules_partitioner with
-    | None -> String_set.empty
-    | Some mp ->
-      Modules_partitioner.acknowledge mp
-        ~loc ~modules
-  in
-
   let dep_graphs =
-    Ocamldep.rules sctx ~dir ~modules ~already_used
+    Ocamldep.rules sctx ~dir ~modules ?already_used
       ~alias_module:None ~lib_interface_module:None
-  in
-
-  let requires, real_requires =
-    SC.Libs.requires sctx
-      ~loc
-      ~dir
-      ~scope
-      ~dep_kind
-      ~libraries
-      ~has_dot_merlin
-      ~preprocess
   in
 
   (* CR-someday jdimino: this should probably say [~dynlink:false] *)
   Module_compilation.build_modules sctx
     ~js_of_ocaml
-    ~dynlink:true ~flags ~scope:scope ~dir ~obj_dir ~dep_graphs ~modules
+    ~dynlink:true ~flags ~scope ~dir ~obj_dir ~dep_graphs ~modules
     ~requires ~alias_module:None;
 
   List.iter programs ~f:(fun { Program.name; main_module_name } ->
@@ -196,7 +164,7 @@ let build_and_link_many
         ~flags
         ?link_flags));
 
-  (obj_dir, real_requires)
+  obj_dir
 
-let build_and_link ?obj_dir ~loc ~dir ~program =
-  build_and_link_many ?obj_dir ~loc ~dir ~programs:[program]
+let build_and_link ?obj_dir ~dir ~program =
+  build_and_link_many ?obj_dir ~dir ~programs:[program]

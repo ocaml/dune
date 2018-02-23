@@ -86,7 +86,7 @@ let record_lib_deps_simple lib_deps =
 let record_lib_deps ~kind lib_deps =
   Record_lib_deps
     (List.concat_map lib_deps ~f:(function
-       | Jbuild.Lib_dep.Direct s -> [(s, kind)]
+       | Jbuild.Lib_dep.Direct (_, s) -> [(s, kind)]
        | Select { choices; _ } ->
          List.concat_map choices ~f:(fun c ->
            String_set.to_list c.Jbuild.Lib_dep.required

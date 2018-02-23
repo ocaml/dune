@@ -61,6 +61,8 @@ module Of_sexp : sig
 
   val located : 'a t -> (Loc.t * 'a) t
 
+  val raw : ast t
+
   (* Record parsing monad *)
   type 'a record_parser
   val return : 'a -> 'a record_parser

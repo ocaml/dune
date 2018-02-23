@@ -30,6 +30,7 @@ module Package : sig
   val jsoo_runtime     : t -> Path.t list
   val requires         : t -> string list
   val ppx_runtime_deps : t -> string list
+  val dune_file        : t -> Path.t option
 end
 
 module Unavailable_reason : sig

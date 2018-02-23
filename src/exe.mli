@@ -34,48 +34,37 @@ end
 
 (** {1 High-level functions} *)
 
-(** Build and link one or more executables. Return the object
-    directory and the resolved list of library dependencies. *)
+(** Build and link one or more executables. Return the object directory. *)
 
 val build_and_link
   :  ?obj_dir:Path.t
-  -> loc:Loc.t
   -> dir:Path.t
   -> program:Program.t
   -> modules:Module.t String_map.t
   -> scope:Scope.t
   -> linkages:Linkage.t list
-  -> ?modules_partitioner:Modules_partitioner.t
-  -> ?libraries:Jbuild.Lib_deps.t
+  -> ?requires:(unit, Lib.L.t) Build.t
+  -> ?already_used:String_set.t
   -> ?flags:Ocaml_flags.t
   -> ?link_flags:(unit, string list) Build.t
-  -> ?preprocess:Jbuild.Preprocess_map.t
-  -> ?preprocessor_deps:(unit, Path.t list) Build.t
-  -> ?lint:Jbuild.Preprocess_map.t
   -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
-  -> ?has_dot_merlin:bool
   -> Super_context.t
-  -> Path.t * (unit, Lib.t list) Build.t
+  -> Path.t
 
 val build_and_link_many
   :  ?obj_dir:Path.t
-  -> loc:Loc.t
   -> dir:Path.t
   -> programs:Program.t list
   -> modules:Module.t String_map.t
   -> scope:Scope.t
   -> linkages:Linkage.t list
-  -> ?modules_partitioner:Modules_partitioner.t
-  -> ?libraries:Jbuild.Lib_deps.t
+  -> ?requires:(unit, Lib.L.t) Build.t
+  -> ?already_used:String_set.t
   -> ?flags:Ocaml_flags.t
   -> ?link_flags:(unit, string list) Build.t
-  -> ?preprocess:Jbuild.Preprocess_map.t
-  -> ?preprocessor_deps:(unit, Path.t list) Build.t
-  -> ?lint:Jbuild.Preprocess_map.t
   -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
-  -> ?has_dot_merlin:bool
   -> Super_context.t
-  -> Path.t * (unit, Lib.t list) Build.t
+  -> Path.t
 
 (** {1 Low-level functions} *)
 

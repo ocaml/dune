@@ -88,7 +88,7 @@ module Dependency_path = struct
       }
     in
     let on_error exn =
-      With_required_by.reraise exn (Path requested_file)
+      Dep_path.reraise exn (Path requested_file)
     in
     Fiber.Var.set var t (Fiber.with_error_handler f ~on_error)
 end

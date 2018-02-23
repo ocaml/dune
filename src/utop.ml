@@ -3,8 +3,8 @@ open Jbuild
 open Build.O
 open! No_io
 
-let exe_name = "utop"
-let main_module_name = String.capitalize_ascii exe_name
+let exe_name = "_utop"
+let main_module_name = "Utop"
 let main_module_filename = exe_name ^ ".ml"
 
 let pp_ml fmt include_dirs =
@@ -36,10 +36,8 @@ let add_module_rules sctx ~dir lib_requires =
     >>> Build.write_file_dyn path in
   Super_context.add_rule sctx utop_ml
 
-let utop_exe_dir ~dir = Path.relative dir ".utop"
-
 let utop_exe dir =
-  Path.relative (utop_exe_dir ~dir) exe_name
+  Path.relative dir exe_name
   (* Use the [.exe] version. As the utop executable is declared with
      [(modes (byte))], the [.exe] correspond the bytecode linked in
      custom mode. We do that so that it works without hassle when
@@ -62,7 +60,6 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
                       }
         ; intf = None
         ; obj_name = "" } in
-    let utop_exe_dir = utop_exe_dir ~dir in
     let requires, _ =
       Lib.DB.find_many (Scope.libs scope)
         ("utop" :: List.map libs ~f:(fun (lib : Library.t) -> lib.name))
@@ -73,12 +70,13 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
     in
     let (_obj_dir : Path.t) =
       Exe.build_and_link sctx
-        ~dir:utop_exe_dir
+        ~dir
         ~program:{ name = exe_name ; main_module_name }
         ~modules
         ~scope
         ~linkages:[Exe.Linkage.custom]
         ~requires
+        ~flags:(Ocaml_flags.append_common (Ocaml_flags.default ()) ["-w"; "-24"])
         ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"])
     in
-    add_module_rules sctx ~dir:utop_exe_dir requires
+    add_module_rules sctx ~dir requires

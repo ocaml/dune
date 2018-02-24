@@ -1,5 +1,4 @@
-module Set = Set
-module Map = Map
+module String = String
 
 type ('a, 'error) result = ('a, 'error) Result.t =
   | Ok    of 'a

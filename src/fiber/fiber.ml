@@ -1,36 +1,5 @@
 open Stdune
 
-external reraise : exn -> _ = "%reraise"
-
-module String = struct
-  include String
-
-  (* CR-someday jdimino: this should go somewhere else *)
-  let split_lines s =
-    let rec loop ~last_is_cr ~acc i j =
-      if j = length s then (
-        let acc =
-          if j = i || (j = i + 1 && last_is_cr) then
-            acc
-          else
-            sub s ~pos:i ~len:(j - i) :: acc
-        in
-        List.rev acc
-      ) else
-        match s.[j] with
-        | '\r' -> loop ~last_is_cr:true ~acc i (j + 1)
-        | '\n' ->
-          let line =
-            let len = if last_is_cr then j - i - 1 else j - i in
-            sub s ~pos:i ~len
-          in
-          loop ~acc:(line :: acc) (j + 1) (j + 1) ~last_is_cr:false
-        | _ ->
-          loop ~acc i (j + 1) ~last_is_cr:false
-    in
-    loop ~acc:[] 0 0 ~last_is_cr:false
-end
-
 module Eq = struct
   type ('a, 'b) t = T : ('a, 'a) t
 
@@ -78,7 +47,7 @@ end
 
 module Int_map = Map.Make(struct
     type t = int
-    let compare a b = Ordering.of_int (compare a b)
+    let compare (a : t) b = Ordering.of_int (compare a b)
   end)
 
 module Execution_context : sig

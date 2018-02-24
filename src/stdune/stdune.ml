@@ -5,4 +5,6 @@ module Option   = Option
 module Ordering = Ordering
 module Result   = Result
 module Set      = Set
-module String   = StringLabels
+module String   = String
+
+external reraise : exn -> _ = "%reraise"

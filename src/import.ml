@@ -1,8 +1,8 @@
 include Jbuilder_re
 include Errors
 
-module Array   = StdLabels.Array
-module Bytes   = StdLabels.Bytes
+module Array = StdLabels.Array
+module Bytes = StdLabels.Bytes
 
 module Result = Stdune.Result
 

@@ -14,40 +14,47 @@ type +'a t =
   | Text of string
   | Tag of 'a * 'a t
 
-module type Tag_interpretation = sig
+module type Tag_handler = sig
   type t
-  val open_tag  : t -> string
-  val close_tag : t -> string
+  type tag
+  val init : t
+  val handle : t -> tag -> string * t * string
 end
 
 module Renderer = struct
   module type S = sig
     type tag
+    type tag_handler
 
     val string
       :  unit
-      -> (?margin:int -> tag t -> string) Staged.t
+      -> (?margin:int -> ?tag_handler:tag_handler -> tag t -> string) Staged.t
     val channel
       :  out_channel
-      -> (?margin:int -> tag t -> unit) Staged.t
+      -> (?margin:int -> ?tag_handler:tag_handler -> tag t -> unit) Staged.t
   end
 
-  module Make(Tag : Tag_interpretation) = struct
+  module Make(T : Tag_handler) = struct
     open Format
 
+    (* The format interface only support string for tags, so we embed
+       then as follow:
+
+       - length of opening string on 16 bits
+       - opening string
+       - closing string
+    *)
     external get16 : string -> int -> int         = "%caml_string_get16"
     external set16 : bytes  -> int -> int -> unit = "%caml_string_set16"
 
-    let embed_tag tag =
-      let open_tag  = Tag.open_tag  tag in
-      let close_tag = Tag.close_tag tag in
-      let open_len  = String.length open_tag  in
-      let close_len = String.length close_tag in
-      assert (open_len <= 0xffff);
-      let buf = Bytes.create (2 + open_len + close_len) in
-      set16 buf 0 open_len;
-      Bytes.blit_string open_tag  0 buf  2   open_len;
-      Bytes.blit_string close_tag 0 buf (2 + open_len) close_len;
+    let embed_tag ~opening ~closing =
+      let opening_len = String.length opening  in
+      let closing_len = String.length closing in
+      assert (opening_len <= 0xffff);
+      let buf = Bytes.create (2 + opening_len + closing_len) in
+      set16 buf 0 opening_len;
+      Bytes.blit_string opening 0 buf  2   opening_len;
+      Bytes.blit_string closing 0 buf (2 + opening_len) closing_len;
       Bytes.unsafe_to_string buf
 
     let extract_opening_tag s =
@@ -58,30 +65,32 @@ module Renderer = struct
       let pos = 2 + get16 s 0 in
       String.sub s ~pos ~len:(String.length s - pos)
 
-    let rec pp ppf t =
+
+    let rec pp th ppf t =
       match t with
       | Nop -> ()
-      | Seq (a, b) -> pp ppf a; pp ppf b
-      | Concat l -> List.iter l ~f:(pp ppf)
+      | Seq (a, b) -> pp th ppf a; pp th ppf b
+      | Concat l -> List.iter l ~f:(pp th ppf)
       | Vbox (indent, t) ->
         pp_open_vbox ppf indent;
-        pp ppf t;
+        pp th ppf t;
         pp_close_box ppf ()
       | Hbox t ->
         pp_open_hbox ppf ();
-        pp ppf t;
+        pp th ppf t;
         pp_close_box ppf ()
      | Int    x -> pp_print_int ppf x
      | String x -> pp_print_string ppf x
      | Char   x -> pp_print_char ppf x
-     | List (f, l) -> pp_print_list (fun ppf x -> pp ppf (f x)) ppf l
+     | List (f, l) -> pp_print_list (fun ppf x -> pp th ppf (f x)) ppf l
      | Space -> pp_print_space ppf ()
      | Cut -> pp_print_cut ppf ()
      | Newline -> pp_force_newline ppf ()
      | Text s -> pp_print_text ppf s
      | Tag (tag, t) ->
-       pp_open_tag ppf (embed_tag tag);
-       pp ppf t;
+       let opening, th, closing = T.handle th tag in
+       pp_open_tag ppf (embed_tag ~opening ~closing);
+       pp th ppf t;
        pp_close_tag ppf ()
 
     let setup ppf =
@@ -97,26 +106,29 @@ module Renderer = struct
       let buf = Buffer.create 1024 in
       let ppf = formatter_of_buffer buf in
       setup ppf;
-      Staged.stage (fun ?(margin=80) t ->
+      Staged.stage (fun ?(margin=80) ?(tag_handler=T.init) t ->
         pp_set_margin ppf margin;
-        pp ppf t;
+        pp tag_handler ppf t;
         pp_print_flush ppf ();
-        Buffer.contents buf)
+        let s = Buffer.contents buf in
+        Buffer.clear buf;
+        s)
 
     let channel oc =
       let ppf = formatter_of_out_channel oc in
       setup ppf;
-      Staged.stage (fun ?(margin=80) t ->
+      Staged.stage (fun ?(margin=80) ?(tag_handler=T.init) t ->
         pp_set_margin ppf margin;
-        pp ppf t;
+        pp tag_handler ppf t;
         pp_print_flush ppf ())
   end
 end
 
 module Render = Renderer.Make(struct
-    type t = unit
-    let open_tag  () = ""
-    let close_tag () = ""
+    type tag = unit
+    type t   = unit
+    let init = ()
+    let handle () () = "", (), ""
   end)
 
 let nop = Nop

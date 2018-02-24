@@ -15,8 +15,8 @@ module Dep_graph = struct
     | None ->
       Sexp.code_error "Ocamldep.Dep_graph.deps_of"
         [ "dir", Path.sexp_of_t t.dir
-        ; "modules", Sexp.To_sexp.(list atom) (String_map.keys t.per_module)
-        ; "module", Atom m.name
+        ; "modules", Sexp.To_sexp.(list string) (String_map.keys t.per_module)
+        ; "module", Sexp.atom m.name
         ]
 
   module Dep_closure =

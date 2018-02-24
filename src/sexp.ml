@@ -5,9 +5,9 @@ include (Usexp : module type of struct include Usexp end
 
 let code_error message vars =
   code_errorf "%a" pp
-    (List (Atom message
+    (List (Usexp.atom_or_quoted_string message
            :: List.map vars ~f:(fun (name, value) ->
-             List [Atom name; value])))
+             List [Usexp.atom_or_quoted_string name; value])))
 
 let buf_len = 65_536
 
@@ -68,8 +68,7 @@ let load_many_or_ocaml_script fname =
 module type Combinators = sig
   type 'a t
   val unit       : unit                      t
-  val atom       : string                    t
-  val quoted_string : string                 t
+  val string     : string                    t
   val int        : int                       t
   val float      : float                     t
   val bool       : bool                      t
@@ -78,19 +77,18 @@ module type Combinators = sig
   val list       : 'a t -> 'a list           t
   val array      : 'a t -> 'a array          t
   val option     : 'a t -> 'a option         t
-  val atom_set   : String_set.t            t
-  val atom_map   : 'a t -> 'a String_map.t   t
-  val atom_hashtbl : 'a t -> (string, 'a) Hashtbl.t t
+  val string_set : String_set.t            t
+  val string_map : 'a t -> 'a String_map.t   t
+  val string_hashtbl : 'a t -> (string, 'a) Hashtbl.t t
 end
 
 module To_sexp = struct
   type nonrec 'a t = 'a -> t
   let unit () = List []
-  let atom a = Atom a
-  let quoted_string s = Quoted_string s
-  let int n = Atom (string_of_int n)
-  let float f = Atom (string_of_float f)
-  let bool b = Atom (string_of_bool b)
+  let string = Usexp.atom_or_quoted_string
+  let int n = Atom (Atom.of_int n)
+  let float f = Atom (Atom.of_float f)
+  let bool b = Atom (Atom.of_bool b)
   let pair fa fb (a, b) = List [fa a; fb b]
   let triple fa fb fc (a, b, c) = List [fa a; fb b; fc c]
   let list f l = List (List.map l ~f)
@@ -98,19 +96,19 @@ module To_sexp = struct
   let option f = function
     | None -> List []
     | Some x -> List [f x]
-  let atom_set set = list atom (String_set.elements set)
-  let atom_map f map = list (pair atom f) (String_map.bindings map)
+  let string_set set = list atom (String_set.elements set)
+  let string_map f map = list (pair atom f) (String_map.bindings map)
   let record l =
-    List (List.map l ~f:(fun (n, v) -> List [Atom n; v]))
-  let atom_hashtbl f h =
-    atom_map f
+    List (List.map l ~f:(fun (n, v) -> List [Atom(Atom.of_string n); v]))
+  let string_hashtbl f h =
+    string_map f
       (Hashtbl.fold h ~init:String_map.empty ~f:(fun ~key ~data acc ->
          String_map.add acc ~key ~data))
 end
 
 module Of_sexp = struct
   type ast = Ast.t =
-    | Atom of Loc.t * string
+    | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
     | List of Loc.t * ast list
 
@@ -126,33 +124,24 @@ module Of_sexp = struct
     | List (_, []) -> ()
     | sexp -> of_sexp_error sexp "() expected"
 
-  let atom = function
-    | Atom (_, s) -> s
-    | (Quoted_string _ | List _) as sexp ->
-       of_sexp_error sexp "Atom expected"
-
-  let quoted_string = function
-    | Quoted_string (_, s) -> s
-    | (Atom _ | List _) as sexp -> of_sexp_error sexp "Quoted_string expected"
-
   let string = function
-    | Atom (_, s) -> s
+    | Atom (_, A s) -> s
     | Quoted_string (_, s) -> s
     | List _ as sexp -> of_sexp_error sexp "Atom or quoted string expected"
 
   let int sexp = match sexp with
-    | Atom (_, s) -> (try int_of_string s
-                      with _ -> of_sexp_error sexp "Integer expected")
+    | Atom (_, A s) -> (try int_of_string s
+                        with _ -> of_sexp_error sexp "Integer expected")
     | _ -> of_sexp_error sexp "Integer expected"
 
   let float sexp = match sexp with
-    | Atom (_, s) -> (try float_of_string s
-                      with _ -> of_sexp_error sexp "Float expected")
+    | Atom (_, A s) -> (try float_of_string s
+                        with _ -> of_sexp_error sexp "Float expected")
     | _ -> of_sexp_error sexp "Float expected"
 
   let bool = function
-    | Atom (_, "true") -> true
-    | Atom (_, "false") -> false
+    | Atom (_, A "true") -> true
+    | Atom (_, A "false") -> false
     | sexp -> of_sexp_error sexp "'true' or 'false' expected"
 
   let pair fa fb = function
@@ -174,15 +163,15 @@ module Of_sexp = struct
     | List (_, [x]) -> Some (f x)
     | sexp -> of_sexp_error sexp "S-expression of the form () or (_) expected"
 
-  let atom_set sexp = String_set.of_list (list string sexp)
-  let atom_map f sexp =
+  let string_set sexp = String_set.of_list (list string sexp)
+  let string_map f sexp =
     match String_map.of_alist (list (pair string f) sexp) with
     | Ok x -> x
     | Error (key, _v1, _v2) ->
       of_sexp_error sexp (sprintf "key %S present multiple times" key)
 
-  let atom_hashtbl f sexp =
-    let map = atom_map f sexp in
+  let string_hashtbl f sexp =
+    let map = string_map f sexp in
     let tbl = Hashtbl.create (String_map.cardinal map + 32) in
     String_map.iter map ~f:(fun ~key ~data ->
       Hashtbl.add tbl ~key ~data);
@@ -303,11 +292,11 @@ module Of_sexp = struct
       let unparsed =
         List.fold_left sexps ~init:Name_map.empty ~f:(fun acc sexp ->
           match sexp with
-          | List (_, [Atom (_, name)]) ->
+          | List (_, [Atom (_, A name)]) ->
             Name_map.add acc ~key:name ~data:{ value = None; entry = sexp }
           | List (_, [name_sexp; value]) -> begin
               match name_sexp with
-              | Atom (_, name) ->
+              | Atom (_, A name) ->
                  Name_map.add acc ~key:name ~data:{ value = Some value;
                                                     entry = sexp }
               | List _ | Quoted_string _ ->
@@ -416,7 +405,7 @@ module Of_sexp = struct
 
   let sum cstrs sexp =
     match sexp with
-    | Atom (loc, s) -> begin
+    | Atom (loc, A s) -> begin
         match find_cstr cstrs sexp s with
         | C.Tuple  t -> Constructor_args_spec.convert t.args t.rest sexp [] (t.make loc)
         | C.Record _ -> of_sexp_error sexp "'%s' expect arguments"
@@ -426,7 +415,7 @@ module Of_sexp = struct
     | List (loc, name_sexp :: args) ->
       match name_sexp with
       | Quoted_string _ | List _ -> of_sexp_error name_sexp "Atom expected"
-      | Atom (_, s) ->
+      | Atom (_, A s) ->
         match find_cstr cstrs sexp s with
         | C.Tuple  t -> Constructor_args_spec.convert t.args t.rest sexp args (t.make loc)
         | C.Record r -> record r.parse (List (loc, args))
@@ -434,7 +423,7 @@ module Of_sexp = struct
   let enum cstrs sexp =
     match sexp with
     | Quoted_string _ | List _ -> of_sexp_error sexp "Atom expected"
-    | Atom (_, s) ->
+    | Atom (_, A s) ->
       match
         List.find cstrs ~f:(fun (name, _) ->
           equal_cstr_name name s)

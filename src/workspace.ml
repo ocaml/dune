@@ -39,7 +39,7 @@ module Context = struct
   type t = Default of Target.t list | Opam of Opam.t
 
   let t = function
-    | Atom (_, "default") -> Default [Native]
+    | Atom (_, A "default") -> Default [Native]
     | List (_, List _ :: _) as sexp -> Opam (record Opam.t sexp)
     | sexp ->
       sum

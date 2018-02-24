@@ -205,7 +205,7 @@ module Pp_or_flags = struct
       PP (Pp.of_string s)
 
   let t = function
-    | Atom (_, s) | Quoted_string (_, s) -> of_string s
+    | Atom (_, A s) | Quoted_string (_, s) -> of_string s
     | List (_, l) -> Flags (List.map l ~f:string)
 
   let split l =
@@ -246,15 +246,18 @@ module Dep_conf = struct
   open Sexp
   let sexp_of_t = function
     | File t ->
-      List [Atom "file" ; String_with_vars.sexp_of_t t]
+       List [Sexp.unsafe_atom_of_string "file" ; String_with_vars.sexp_of_t t]
     | Alias t ->
-      List [Atom "alias" ; String_with_vars.sexp_of_t t]
+       List [Sexp.unsafe_atom_of_string "alias" ; String_with_vars.sexp_of_t t]
     | Alias_rec t ->
-      List [Atom "alias_rec" ; String_with_vars.sexp_of_t t]
+       List [Sexp.unsafe_atom_of_string "alias_rec" ;
+             String_with_vars.sexp_of_t t]
     | Glob_files t ->
-      List [Atom "glob_files" ; String_with_vars.sexp_of_t t]
+       List [Sexp.unsafe_atom_of_string "glob_files" ;
+             String_with_vars.sexp_of_t t]
     | Files_recursively_in t ->
-      List [Atom "files_recursively_in" ; String_with_vars.sexp_of_t t]
+       List [Sexp.unsafe_atom_of_string "files_recursively_in" ;
+             String_with_vars.sexp_of_t t]
 end
 
 module Preprocess = struct
@@ -283,7 +286,7 @@ module Per_module = struct
 
   let t ~default a sexp =
     match sexp with
-    | List (_, Atom (_, "per_module") :: rest) -> begin
+    | List (_, Atom (_, A "per_module") :: rest) -> begin
       List.map rest ~f:(fun sexp ->
         let pp, names = pair a module_names sexp in
         (String_set.elements names, pp))
@@ -364,7 +367,7 @@ module Lib_dep = struct
   let choice = function
     | List (_, l) as sexp ->
       let rec loop required forbidden = function
-        | [Atom (_, "->"); fsexp] ->
+        | [Atom (_, A "->"); fsexp] ->
           let common = String_set.inter required forbidden in
           if not (String_set.is_empty common) then
             of_sexp_errorf sexp
@@ -374,10 +377,10 @@ module Lib_dep = struct
           ; forbidden
           ; file = file fsexp
           }
-        | Atom (_, "->") :: _
+        | Atom (_, A "->") :: _
         | List _ :: _ | [] ->
           of_sexp_error sexp "(<[!]libraries>... -> <file>) expected"
-        | (Atom (_, s) | Quoted_string (_, s)) :: l ->
+        | (Atom (_, A s) | Quoted_string (_, s)) :: l ->
           let len = String.length s in
           if len > 0 && s.[0] = '!' then
             let s = String.sub s ~pos:1 ~len:(len - 1) in
@@ -389,9 +392,9 @@ module Lib_dep = struct
     | sexp -> of_sexp_error sexp "(<library-name> <code>) expected"
 
   let t = function
-    | Atom (_, s) ->
+    | Atom (_, A s) ->
       Direct s
-    | List (loc, Atom (_, "select") :: m :: Atom (_, "from") :: libs) ->
+    | List (loc, Atom (_, A "select") :: m :: Atom (_, A "from") :: libs) ->
       Select { result_fn = file m
              ; choices   = List.map libs ~f:choice
              ; loc
@@ -641,8 +644,8 @@ module Install_conf = struct
 
   let file sexp =
     match sexp with
-    | Atom (_, src) -> { src; dst = None }
-    | List (_, [Atom (_, src); Atom (_, "as"); Atom (_, dst)]) ->
+    | Atom (_, A src) -> { src; dst = None }
+    | List (_, [Atom (_, A src); Atom (_, A "as"); Atom (_, A dst)]) ->
       { src; dst = Some dst }
     | _ ->
       of_sexp_error sexp
@@ -1064,7 +1067,7 @@ module Stanzas = struct
   and parse ~default_version ~file ~include_stack pkgs sexps =
     let versions, sexps =
       List.partition_map sexps ~f:(function
-        | List (loc, [Atom (_, "jbuild_version"); ver]) ->
+        | List (loc, [Atom (_, A "jbuild_version"); ver]) ->
             Inl (Jbuild_version.t ver, loc)
           | sexp -> Inr sexp)
     in

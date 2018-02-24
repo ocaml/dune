@@ -192,9 +192,10 @@ module Cached_digest = struct
           Pmap.add acc ~key ~data)
         |> Path.Map.bindings
         |> List.map ~f:(fun (path, file) ->
-          Sexp.List [ Atom (Path.to_string path)
-                    ; Atom (Digest.to_hex file.digest)
-                    ; Atom (Int64.to_string (Int64.bits_of_float file.timestamp))
+          Sexp.List [ Quoted_string (Path.to_string path)
+                    ; Atom (Sexp.Atom.of_digest file.digest)
+                    ; Atom (Sexp.Atom.of_int64
+                              (Int64.bits_of_float file.timestamp))
                     ]))
     in
     if Sys.file_exists "_build" then

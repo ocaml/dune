@@ -69,38 +69,45 @@ struct
   let rec sexp_of_t : _ -> Sexp.t =
     let path = Path.sexp_of_t and string = String.sexp_of_t in
     function
-    | Run (a, xs) -> List (Atom "run" :: Program.sexp_of_t a :: List.map xs ~f:string)
-    | Chdir (a, r) -> List [Atom "chdir" ; path a ; sexp_of_t r]
-    | Setenv (k, v, r) -> List [Atom "setenv" ; string k ; string v ; sexp_of_t r]
+    | Run (a, xs) -> List (Sexp.unsafe_atom_of_string "run"
+                           :: Program.sexp_of_t a :: List.map xs ~f:string)
+    | Chdir (a, r) -> List [Sexp.unsafe_atom_of_string "chdir" ;
+                            path a ; sexp_of_t r]
+    | Setenv (k, v, r) -> List [Sexp.unsafe_atom_of_string "setenv" ;
+                                string k ; string v ; sexp_of_t r]
     | Redirect (outputs, fn, r) ->
-      List [ Atom (sprintf "with-%s-to" (Outputs.to_string outputs))
+      List [ Sexp.atom (sprintf "with-%s-to" (Outputs.to_string outputs))
            ; path fn
            ; sexp_of_t r
            ]
     | Ignore (outputs, r) ->
-      List [ Atom (sprintf "ignore-%s" (Outputs.to_string outputs))
+      List [ Sexp.atom (sprintf "ignore-%s" (Outputs.to_string outputs))
            ; sexp_of_t r
            ]
-    | Progn l -> List (Atom "progn" :: List.map l ~f:sexp_of_t)
-    | Echo x -> List [Atom "echo"; string x]
-    | Cat x -> List [Atom "cat"; path x]
+    | Progn l -> List (Sexp.unsafe_atom_of_string "progn"
+                       :: List.map l ~f:sexp_of_t)
+    | Echo x -> List [Sexp.unsafe_atom_of_string "echo"; string x]
+    | Cat x -> List [Sexp.unsafe_atom_of_string "cat"; path x]
     | Copy (x, y) ->
-      List [Atom "copy"; path x; path y]
+      List [Sexp.unsafe_atom_of_string "copy"; path x; path y]
     | Symlink (x, y) ->
-      List [Atom "symlink"; path x; path y]
+      List [Sexp.unsafe_atom_of_string "symlink"; path x; path y]
     | Copy_and_add_line_directive (x, y) ->
-      List [Atom "copy#"; path x; path y]
-    | System x -> List [Atom "system"; string x]
-    | Bash   x -> List [Atom "bash"; string x]
-    | Write_file (x, y) -> List [Atom "write-file"; path x; string y]
-    | Rename (x, y) -> List [Atom "rename"; path x; path y]
-    | Remove_tree x -> List [Atom "remove-tree"; path x]
-    | Mkdir x       -> List [Atom "mkdir"; path x]
-    | Digest_files paths -> List [Atom "digest-files"; List (List.map paths ~f:path)]
+      List [Sexp.unsafe_atom_of_string "copy#"; path x; path y]
+    | System x -> List [Sexp.unsafe_atom_of_string "system"; string x]
+    | Bash   x -> List [Sexp.unsafe_atom_of_string "bash"; string x]
+    | Write_file (x, y) -> List [Sexp.unsafe_atom_of_string "write-file";
+                                 path x; string y]
+    | Rename (x, y) -> List [Sexp.unsafe_atom_of_string "rename";
+                             path x; path y]
+    | Remove_tree x -> List [Sexp.unsafe_atom_of_string "remove-tree"; path x]
+    | Mkdir x       -> List [Sexp.unsafe_atom_of_string "mkdir"; path x]
+    | Digest_files paths -> List [Sexp.unsafe_atom_of_string "digest-files";
+                                  List (List.map paths ~f:path)]
     | Diff { optional = false; file1; file2 } ->
-      List [Atom "diff"; path file1; path file2]
+      List [Sexp.unsafe_atom_of_string "diff"; path file1; path file2]
     | Diff { optional = true; file1; file2 } ->
-      List [Atom "diff?"; path file1; path file2]
+      List [Sexp.unsafe_atom_of_string "diff?"; path file1; path file2]
 
   let run prog args = Run (prog, args)
   let chdir path t = Chdir (path, t)
@@ -180,7 +187,7 @@ module Prog = struct
 
   let sexp_of_t = function
     | Ok s -> Path.sexp_of_t s
-    | Error (e : Not_found.t) -> Sexp.To_sexp.atom e.program
+    | Error (e : Not_found.t) -> Sexp.To_sexp.string e.program
 end
 
 module type Ast = Action_intf.Ast
@@ -192,7 +199,7 @@ module rec Ast : Ast = Ast
 module String_with_sexp = struct
   type t = string
   let t = Sexp.Of_sexp.string
-  let sexp_of_t = Sexp.To_sexp.atom
+  let sexp_of_t = Sexp.To_sexp.string
 end
 
 include Make_ast
@@ -345,7 +352,7 @@ module Unexpanded = struct
       Loc.fail loc
         "(mkdir ...) is not supported for paths outside of the workspace:\n\
         \  %a\n"
-        Sexp.pp (List [Atom "mkdir"; Path.sexp_of_t path])
+        Sexp.pp (List [Sexp.unsafe_atom_of_string "mkdir"; Path.sexp_of_t path])
 
   module Partial = struct
     module Program = Unresolved.Program
@@ -594,7 +601,7 @@ module Promotion = struct
       }
 
     let t = function
-      | Sexp.Ast.List (_, [src; Atom (_, "as"); dst]) ->
+      | Sexp.Ast.List (_, [src; Atom (_, A "as"); dst]) ->
         { src = Path.t src
         ; dst = Path.t dst
         }
@@ -602,7 +609,8 @@ module Promotion = struct
         Sexp.Of_sexp.of_sexp_errorf sexp "(<file> as <file>) expected"
 
     let sexp_of_t { src; dst } =
-      Sexp.List [Path.sexp_of_t src; Atom "as"; Path.sexp_of_t dst]
+      Sexp.List [Path.sexp_of_t src; Sexp.unsafe_atom_of_string "as";
+                 Path.sexp_of_t dst]
 
     let db : t list ref = ref []
 

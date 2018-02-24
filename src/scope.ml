@@ -29,7 +29,7 @@ module DB = struct
         if Path.is_root d || not (Path.is_local d) then
           Sexp.code_error "Scope.DB.find_by_dir got an invalid path"
             [ "dir"    , Path.sexp_of_t dir
-            ; "context", Sexp.To_sexp.atom t.context
+            ; "context", Sexp.To_sexp.string t.context
             ];
         let scope = loop (Path.parent d) in
         Hashtbl.add t.by_dir ~key:d ~data:scope;
@@ -42,8 +42,8 @@ module DB = struct
     | Some x -> x
     | None ->
       Sexp.code_error "Scope.DB.find_by_name"
-        [ "name"   , Sexp.To_sexp.(option atom) name
-        ; "context", Sexp.To_sexp.atom t.context
+        [ "name"   , Sexp.To_sexp.(option string) name
+        ; "context", Sexp.To_sexp.string t.context
         ]
 
   let create ~scopes ~context ~installed_libs internal_libs =
@@ -55,7 +55,7 @@ module DB = struct
       | Ok x -> x
       | Error (_name, scope1, scope2) ->
         let to_sexp (scope : Jbuild.Scope_info.t) =
-          Sexp.To_sexp.(pair (option atom) Path.sexp_of_t)
+          Sexp.To_sexp.(pair (option string) Path.sexp_of_t)
             (scope.name, scope.root)
         in
         Sexp.code_error "Scope.DB.create got two scopes with the same name"

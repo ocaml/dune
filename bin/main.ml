@@ -872,7 +872,8 @@ let rules =
                      ; "targets", paths rule.targets ]
                    ; (match rule.context with
                       | None -> []
-                      | Some c -> ["context", Atom c.name])
+                      | Some c -> ["context",
+                                   Sexp.atom_or_quoted_string c.name])
                    ; [ "action" , sexp_of_action rule.action ]
                    ])
              in

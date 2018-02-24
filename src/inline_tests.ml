@@ -5,87 +5,129 @@ open! No_io
 
 module SC = Super_context
 
-module M = struct
-  module Backend = struct
+module Backend = struct
+  module M = struct
     module Info = struct
       let name = Sub_system_name.make "inline_tests.backend"
 
       type t =
-        { runner_libraries : string list
+        { loc              : Loc.t
+        ; runner_libraries : (Loc.t * string) list
         ; flags            : Ordered_set_lang.Unexpanded.t
         ; gen              : Action.Unexpanded.t option
+        ; extends          : (Loc.t * string) list option
         }
 
       type Jbuild.Sub_system_info.t += T of t
 
+      let loc t = t.loc
+
       open Sexp.Of_sexp
 
-      let short = Short_syntax.Not_allowed
-      let of_sexp =
+      let short = None
+      let parse =
         record
-          (field "runner_libraries" (list string) ~default:[]
+          (record_loc >>= fun loc ->
+           field "runner_libraries" (list (located string)) ~default:[]
            >>= fun runner_libraries ->
            Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
            field_o "gen" Action.Unexpanded.t >>= fun gen ->
+           field_o "extends" (list (located string)) >>= fun extends ->
            return
-             { runner_libraries
+             { loc
+             ; runner_libraries
              ; flags
              ; gen
+             ; extends
              })
+
+      let parsers =
+        Syntax.Versioned_parser.make
+          [ (1, 0),
+            { Jbuild.Sub_system_info.
+              short
+            ; parse
+            }
+          ]
     end
 
     type t =
       { info             : Info.t
-      ; runner_libraries : (Lib.t list, Lib.Error.t With_required_by.t) result
+      ; id               : Lib.Id.t
+      ; runner_libraries : (Lib.t list, exn) result
+      ; extends          : (    t list, exn) result option
       }
 
-    let instantiate db (info : Info.t) =
+    let desc = "an inline tests framework"
+
+    let id t = t.id
+    let deps t = t.extends
+
+    let instantiate ~resolve ~get id (info : Info.t) =
       { info
-      ; runner_libraries =
-          Lib.DB.find_many db info.runner_libraries
-            ~required_by:[]
+      ; id
+      ; runner_libraries = Result.all (List.map info.runner_libraries ~f:resolve)
+      ; extends =
+          let open Result.O in
+          Option.map info.extends
+            ~f:(fun l ->
+              Result.all
+                (List.map l
+                   ~f:(fun ((loc, name) as x) ->
+                     resolve x >>= fun lib ->
+                     match get lib with
+                     | None ->
+                       Error (Loc.exnf loc "%S is not %s" name desc)
+                     | Some t -> Ok t)))
       }
 
     let to_sexp t =
       let open Sexp.To_sexp in
-      let runner_libs =
-        match t.runner_libraries with
-        | Ok l -> List.map l ~f:Lib.name
-        | Error e -> raise (Lib.Error e)
-      in
-      record
-        [ "runner_libraries", list atom runner_libs
-        ; "flags"           , Ordered_set_lang.Unexpanded.sexp_of_t t.info.flags
-        ; "gen"             , option Action.Unexpanded.sexp_of_t t.info.gen
-        ]
+      let lib x = string (Lib.name x) in
+      let f x = string x.id.name in
+      ((1, 0),
+       record
+         [ "runner_libraries", list lib (Result.ok_exn t.runner_libraries)
+         ; "flags"           , Ordered_set_lang.Unexpanded.sexp_of_t t.info.flags
+         ; "gen"             , option Action.Unexpanded.sexp_of_t t.info.gen
+         ; "extends"         , option (list f)
+                                 (Option.map t.extends ~f:Result.ok_exn)
+         ])
   end
+  include M
+  include Sub_system.Register_backend(M)
+end
 
-  module Info = struct
-    let name = Sub_system_name.make "inline_tests"
+include Sub_system.Register_with_backend(
+  struct
+    module Backend = Backend
 
-    type t =
-      { loc     : Loc.t
-      ; deps    : Dep_conf.t list
-      ; flags   : Ordered_set_lang.Unexpanded.t
-      ; backend : (Loc.t * string) option
-      }
+    module Info = struct
+      let name = Sub_system_name.make "inline_tests"
 
-    type Jbuild.Sub_system_info.t += T of t
+      type t =
+        { loc     : Loc.t
+        ; deps    : Dep_conf.t list
+        ; flags   : Ordered_set_lang.Unexpanded.t
+        ; backend : (Loc.t * string) option
+        }
 
-    let empty loc =
-      { loc
-      ; deps    = []
-      ; flags   = Ordered_set_lang.Unexpanded.standard
-      ; backend = None
-      }
+      type Jbuild.Sub_system_info.t += T of t
+
+      let empty loc =
+        { loc
+        ; deps    = []
+        ; flags   = Ordered_set_lang.Unexpanded.standard
+        ; backend = None
+        }
 
     let loc      t = t.loc
-    let backends t = Option.to_list t.backend
+    let backends t = Option.map t.backend ~f:(fun x -> [x])
 
     open Sexp.Of_sexp
 
-    let short = Short_syntax.(Located empty)
-    let of_sexp =
+    let short = Some empty
+    let parse =
       record
         (record_loc >>= fun loc ->
          field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
@@ -97,6 +139,15 @@ module M = struct
            ; flags
            ; backend
            })
+
+    let parsers =
+      Syntax.Versioned_parser.make
+        [ (1, 0),
+          { Jbuild.Sub_system_info.
+            short
+          ; parse
+          }
+        ]
   end
 
   let gen_rules c ~(info:Info.t) ~backends =
@@ -136,11 +187,10 @@ module M = struct
         (Result.concat_map backends
            ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
          >>= fun libs ->
-         Lib.DB.find_many (Scope.libs scope) [lib.name] ~required_by:[]
+         Lib.DB.find_many (Scope.libs scope) [lib.name]
          >>= fun lib ->
          Ok (lib @ libs))
-      |> Super_context.Libs.requires sctx ~loc:info.loc ~dir
-           ~has_dot_merlin:false
+      |> Super_context.Libs.requires sctx ~dir ~has_dot_merlin:false
     in
 
     (* Generate the runner file *)
@@ -154,7 +204,7 @@ module M = struct
           Split)
       in
       let extra_vars =
-        String_map.of_alist_exn
+        String_map.of_list_exn
           [ "impl-files", files Impl
           ; "intf-files", files Intf
           ]
@@ -172,17 +222,16 @@ module M = struct
       >>>
       Build.action_dyn ~targets:[target] ());
 
-    ignore (
-      Exe.build_and_link sctx
-        ~dir
-        ~program:{ name; main_module_name }
-        ~modules
-        ~scope
-        ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
-        ~requires:runner_libs
-        ~link_flags:(Build.return ["-linkall"])
-        ~flags:(Ocaml_flags.of_list ["-w"; "-24"])
-      : Path.t);
+    Exe.build_and_link sctx
+      ~dir
+      ~obj_dir:dir
+      ~program:{ name; main_module_name }
+      ~modules
+      ~scope
+      ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
+      ~requires:runner_libs
+      ~link_flags:(Build.return ["-linkall"])
+      ~flags:(Ocaml_flags.of_list ["-w"; "-24"]);
 
     let flags =
       let flags =
@@ -201,7 +250,9 @@ module M = struct
 
     SC.add_alias_action sctx
       (Build_system.Alias.runtest ~dir)
-      ~stamp:(List [Atom "ppx-runner"; Atom name])
+      ~stamp:(List [ Sexp.unsafe_atom_of_string "ppx-runner"
+                   ; Quoted_string name
+                   ])
       (let module A = Action in
        let exe = Path.relative dir (name ^ ".exe") in
        Build.path exe >>>
@@ -221,8 +272,6 @@ module M = struct
               |> List.map ~f:(fun fn ->
                 A.diff ~optional:true
                   fn (Path.extend_basename fn ~suffix:".corrected"))))))
-end
-
-let () = Sub_system.register_multi_backends (module M)
+end)
 
 let linkme = ()

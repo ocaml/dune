@@ -7,6 +7,8 @@ type ('a, 'error) t = ('a, 'error) Caml.result =
 val is_ok    : _ t -> bool
 val is_error : _ t -> bool
 
+val ok_exn : ('a, exn) t -> 'a
+
 module O : sig
   val ( >>| ) : ('a, 'error) t -> ('a -> 'b) -> ('b, 'error) t
   val ( >>= ) : ('a, 'error) t -> ('a -> ('b, 'error) t) -> ('b, 'error) t

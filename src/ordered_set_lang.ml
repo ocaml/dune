@@ -168,10 +168,12 @@ module Unexpanded = struct
     let open Ast in
     let rec loop : ast -> Sexp.t = function
       | Element sexp -> Usexp.Ast.remove_locs sexp
-      | Special (_, s) -> Atom (":" ^ s)
+      | Special (_, s) -> Sexp.atom (":" ^ s)
       | Union l -> List (List.map l ~f:loop)
-      | Diff (a, b) -> List [loop a; Atom "\\"; loop b]
-      | Include fn -> List [Atom ":include"; String_with_vars.sexp_of_t fn]
+      | Diff (a, b) -> List [loop a; Sexp.unsafe_atom_of_string "\\"; loop b]
+      | Include fn -> List [ Sexp.unsafe_atom_of_string ":include"
+                           ; String_with_vars.sexp_of_t fn
+                           ]
     in
     loop t.ast
 

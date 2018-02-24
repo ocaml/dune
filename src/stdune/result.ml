@@ -10,6 +10,10 @@ let is_error = function
   | Ok    _ -> false
   | Error _ -> true
 
+let ok_exn = function
+  | Ok    x -> x
+  | Error e -> raise e
+
 let bind t ~f =
   match t with
   | Ok x -> f x

@@ -7,7 +7,6 @@ type +'tag t
 
 module type Tag_interpretation = sig
   type t
-  val compare : t -> t -> Ordering.t
   val open_tag  : t -> string
   val close_tag : t -> string
 end
@@ -16,8 +15,12 @@ module Renderer : sig
   module type S = sig
     type tag
 
-    val to_string  : ?margin:int -> tag t -> string
-    val to_channel : ?margin:int -> tag t -> out_channel -> unit
+    val string
+      :  unit
+      -> (?margin:int -> tag t -> string) Staged.t
+    val channel
+      :  out_channel
+      -> (?margin:int -> tag t -> unit) Staged.t
   end
 
   module Make(Tag : Tag_interpretation) : S with type tag := Tag.t

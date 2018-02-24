@@ -16,105 +16,105 @@ type +'a t =
 
 module type Tag_interpretation = sig
   type t
-  val compare : t -> t -> Ordering.t
   val open_tag  : t -> string
   val close_tag : t -> string
 end
-
-module Smap = Map.Make(String)
 
 module Renderer = struct
   module type S = sig
     type tag
 
-    val to_string  : ?margin:int -> tag t -> string
-    val to_channel : ?margin:int -> tag t -> out_channel -> unit
+    val string
+      :  unit
+      -> (?margin:int -> tag t -> string) Staged.t
+    val channel
+      :  out_channel
+      -> (?margin:int -> tag t -> unit) Staged.t
   end
 
   module Make(Tag : Tag_interpretation) = struct
     open Format
 
-    module Tmap = Map.Make(Tag)
+    external get16 : string -> int -> int         = "%caml_string_get16"
+    external set16 : bytes  -> int -> int -> unit = "%caml_string_set16"
 
-    type tags =
-      { mutable next : int
-      ; mutable tag2str : string Tmap.t
-      ; mutable str2tag : Tag.t Smap.t
-      }
+    let embed_tag tag =
+      let open_tag  = Tag.open_tag  tag in
+      let close_tag = Tag.close_tag tag in
+      let open_len  = String.length open_tag  in
+      let close_len = String.length close_tag in
+      assert (open_len <= 0xffff);
+      let buf = Bytes.create (2 + open_len + close_len) in
+      set16 buf 0 open_len;
+      Bytes.blit_string open_tag  0 buf  2   open_len;
+      Bytes.blit_string close_tag 0 buf (2 + open_len) close_len;
+      Bytes.unsafe_to_string buf
 
-    let string_of_tag tags tag =
-      match Tmap.find tags.tag2str tag with
-      | Some s -> s
-      | None ->
-        let key = string_of_int tags.next in
-        tags.next <- tags.next + 1;
-        tags.tag2str <- Tmap.add tags.tag2str tag key;
-        tags.str2tag <- Smap.add tags.str2tag key tag;
-        key
+    let extract_opening_tag s =
+      let open_len = get16 s 0 in
+      String.sub s ~pos:2 ~len:open_len
 
-    let tag_of_string tags key =
-      Option.value_exn (Smap.find tags.str2tag key)
+    let extract_closing_tag s =
+      let pos = 2 + get16 s 0 in
+      String.sub s ~pos ~len:(String.length s - pos)
 
-    let rec pp tags ppf t =
+    let rec pp ppf t =
       match t with
       | Nop -> ()
-      | Seq (a, b) -> pp tags ppf a; pp tags ppf b
-      | Concat l -> List.iter l ~f:(pp tags ppf)
+      | Seq (a, b) -> pp ppf a; pp ppf b
+      | Concat l -> List.iter l ~f:(pp ppf)
       | Vbox (indent, t) ->
         pp_open_vbox ppf indent;
-        pp tags ppf t;
+        pp ppf t;
         pp_close_box ppf ()
       | Hbox t ->
         pp_open_hbox ppf ();
-        pp tags ppf t;
+        pp ppf t;
         pp_close_box ppf ()
      | Int    x -> pp_print_int ppf x
      | String x -> pp_print_string ppf x
      | Char   x -> pp_print_char ppf x
-     | List (f, l) -> pp_print_list (fun ppf x -> pp tags ppf (f x)) ppf l
+     | List (f, l) -> pp_print_list (fun ppf x -> pp ppf (f x)) ppf l
      | Space -> pp_print_space ppf ()
      | Cut -> pp_print_cut ppf ()
      | Newline -> pp_force_newline ppf ()
      | Text s -> pp_print_text ppf s
      | Tag (tag, t) ->
-       let s = string_of_tag tags tag in
-       pp_open_tag ppf s;
-       pp tags ppf t;
+       pp_open_tag ppf (embed_tag tag);
+       pp ppf t;
        pp_close_tag ppf ()
 
-    let pp ppf ?(margin=80) t =
-      pp_set_margin ppf margin;
-      let tags =
-        { next = 0
-        ; tag2str = Tmap.empty
-        ; str2tag = Smap.empty
-        }
-      in
+    let setup ppf =
       let funcs = pp_get_formatter_tag_functions ppf () in
       pp_set_mark_tags ppf true;
       pp_set_formatter_tag_functions ppf
         { funcs with
-          mark_close_tag = (fun tag -> Tag.close_tag (tag_of_string tags tag))
-        ; mark_open_tag  = (fun tag -> Tag. open_tag (tag_of_string tags tag))
-        };
-      pp tags ppf t;
-      pp_print_flush ppf ()
+          mark_open_tag  = extract_opening_tag
+        ; mark_close_tag = extract_closing_tag
+        }
 
-    let to_string ?margin t =
-      let buf = Buffer.create 256 in
+    let string () =
+      let buf = Buffer.create 1024 in
       let ppf = formatter_of_buffer buf in
-      pp ppf t ?margin;
-      Buffer.contents buf
+      setup ppf;
+      Staged.stage (fun ?(margin=80) t ->
+        pp_set_margin ppf margin;
+        pp ppf t;
+        pp_print_flush ppf ();
+        Buffer.contents buf)
 
-    let to_channel ?margin t oc =
+    let channel oc =
       let ppf = formatter_of_out_channel oc in
-      pp ppf t ?margin
+      setup ppf;
+      Staged.stage (fun ?(margin=80) t ->
+        pp_set_margin ppf margin;
+        pp ppf t;
+        pp_print_flush ppf ())
   end
 end
 
 module Render = Renderer.Make(struct
     type t = unit
-    let compare () () = Ordering.Eq
     let open_tag  () = ""
     let close_tag () = ""
   end)

@@ -1,9 +1,4 @@
-next
-----
-
-- Fix invalid warning about non-existent direcotry (#536, fixes #534)
-
-1.0+beta18 (21/02/2018)
+1.0+beta18 (25/02/2018)
 -----------------------
 
 - Let the parser distinguish quoted strings from atoms.  This makes
@@ -49,6 +44,8 @@ next
 
 - Refactor internal library management. It should now be possible to
   run `jbuilder build @lint` in Base for instance (#516)
+
+- Fix invalid warning about non-existent direcotry (#536, fixes #534)
 
 1.0+beta17 (01/02/2018)
 -----------------------

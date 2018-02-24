@@ -2,5 +2,5 @@
 
 (library
  ((name jbuilder_cmdliner)
-  (libraries (result-compat))
+  (libraries (result_compat))
   (flags (-w -3-6-27-32-33-35-50))))

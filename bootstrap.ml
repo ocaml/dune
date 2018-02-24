@@ -29,8 +29,8 @@ end
 
 (* Directories with library names *)
 let dirs =
-  [ "src/result-compat", None
-  ; "src/stdune/caml"  , None
+  [ "src/result-compat", Some "Result"
+  ; "src/stdune/caml"  , Some "Caml"
   ; "src/stdune"       , Some "Stdune"
   ; "src/fiber"        , Some "Fiber"
   ; "src/xdg"          , Some "Xdg"
@@ -314,13 +314,37 @@ let topsort deps =
   done;
   List.rev !res
 
-let topsorted_module_names =
+let modules_deps =
   let files_by_lib =
     List.map (String_map.bindings modules) ~f:(fun (_, x) -> (x.libname, x.impl))
     |> String_option_map.of_alist_multi
     |> String_option_map.bindings
   in
-  topsort (read_deps files_by_lib)
+  read_deps files_by_lib
+
+let topsorted_module_names = topsort modules_deps
+
+let topsorted_libs =
+  let get_lib m =
+    match (String_map.find m modules).libname with
+    | None -> ""
+    | Some s -> s
+  in
+  let libs_deps =
+    List.map modules_deps ~f:(fun (m, deps) ->
+      (get_lib m, deps))
+    |> String_map.of_alist_multi
+    |> String_map.map
+         (fun l ->
+            List.concat l
+            |> List.map ~f:get_lib
+            |> String_set.of_list
+            |> String_set.elements)
+    |> String_map.bindings
+  in
+  List.map (topsort libs_deps) ~f:(function
+    | "" -> None
+    | s  -> Some s)
 
 let count_newlines s =
   let newlines = ref 0 in
@@ -368,21 +392,7 @@ let generate_file_with_all_the_sources () =
       (info.libname, info))
     |> String_option_map.of_alist_multi
   in
-  let lib_order =
-    List.fold_left topsorted_module_names ~init:(String_set.empty, [])
-      ~f:(fun ((seen, rev_order) as acc) m ->
-        match (String_map.find m modules).libname with
-        | None -> acc
-        | Some lib ->
-          if String_set.mem lib seen then
-            acc
-          else
-            (String_set.add lib seen, lib :: rev_order))
-    |> snd
-    |> List.rev_map ~f:(fun lib -> Some lib)
-  in
-  let lib_order = lib_order @ [None] in
-  List.iter lib_order ~f:(fun libname ->
+  List.iter topsorted_libs ~f:(fun libname ->
     let modules = String_option_map.find libname modules_by_lib in
     (match libname with
      | None -> ()

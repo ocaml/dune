@@ -78,7 +78,7 @@ end
 
 module Int_map = Map.Make(struct
     type t = int
-    let compare : int -> int -> int = compare
+    let compare a b = Ordering.of_int (compare a b)
   end)
 
 module Execution_context : sig
@@ -308,16 +308,16 @@ module Var = struct
   include Var0
 
   let find ctx var =
-    match Int_map.find (id var) (EC.vars ctx) with
-    | exception Not_found -> None
-    | Binding.T (var', v) ->
+    match Int_map.find (EC.vars ctx) (id var) with
+    | None -> None
+    | Some (Binding.T (var', v)) ->
       let eq = eq var' var in
       Some (Eq.cast eq v)
 
   let find_exn ctx var =
-    match Int_map.find (id var) (EC.vars ctx) with
-    | exception Not_found -> failwith "Fiber.Var.find_exn"
-    | Binding.T (var', v) ->
+    match Int_map.find (EC.vars ctx) (id var) with
+    | None -> failwith "Fiber.Var.find_exn"
+    | Some (Binding.T (var', v)) ->
       let eq = eq var' var in
       Eq.cast eq v
 

@@ -28,4 +28,4 @@ module Style : sig
 end
 
 module Render : Pp.Renderer.S
-  with type tag = Style.t list
+  with type Tag.t = Style.t list

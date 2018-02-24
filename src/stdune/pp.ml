@@ -14,31 +14,34 @@ type +'a t =
   | Text of string
   | Tag of 'a * 'a t
 
-module type Tag_handler = sig
+module type Tag = sig
   type t
-  type tag
-  val init : t
-  val handle : t -> tag -> string * t * string
+  module Handler : sig
+    type tag = t
+    type t
+    val init : t
+    val handle : t -> tag -> string * t * string
+  end with type tag := t
 end
 
 module Renderer = struct
   module type S = sig
-    type tag
-    type tag_handler
+    module Tag : Tag
 
     val string
       :  unit
-      -> (?margin:int -> ?tag_handler:tag_handler -> tag t -> string) Staged.t
+      -> (?margin:int -> ?tag_handler:Tag.Handler.t -> Tag.t t -> string)
+           Staged.t
     val channel
       :  out_channel
-      -> (?margin:int -> ?tag_handler:tag_handler -> tag t -> unit) Staged.t
+      -> (?margin:int -> ?tag_handler:Tag.Handler.t -> Tag.t t -> unit)
+           Staged.t
   end
 
-  module Make(T : Tag_handler) = struct
+  module Make(Tag : Tag) = struct
     open Format
 
-    type tag         = T.tag
-    type tag_handler = T.t
+    module Tag = Tag
 
     (* The format interface only support string for tags, so we embed
        then as follow:
@@ -91,7 +94,7 @@ module Renderer = struct
      | Newline -> pp_force_newline ppf ()
      | Text s -> pp_print_text ppf s
      | Tag (tag, t) ->
-       let opening, th, closing = T.handle th tag in
+       let opening, th, closing = Tag.Handler.handle th tag in
        pp_open_tag ppf (embed_tag ~opening ~closing);
        pp th ppf t;
        pp_close_tag ppf ()
@@ -109,7 +112,7 @@ module Renderer = struct
       let buf = Buffer.create 1024 in
       let ppf = formatter_of_buffer buf in
       setup ppf;
-      Staged.stage (fun ?(margin=80) ?(tag_handler=T.init) t ->
+      Staged.stage (fun ?(margin=80) ?(tag_handler=Tag.Handler.init) t ->
         pp_set_margin ppf margin;
         pp tag_handler ppf t;
         pp_print_flush ppf ();
@@ -120,7 +123,7 @@ module Renderer = struct
     let channel oc =
       let ppf = formatter_of_out_channel oc in
       setup ppf;
-      Staged.stage (fun ?(margin=80) ?(tag_handler=T.init) t ->
+      Staged.stage (fun ?(margin=80) ?(tag_handler=Tag.Handler.init) t ->
         pp_set_margin ppf margin;
         pp tag_handler ppf t;
         pp_print_flush ppf ())
@@ -128,10 +131,12 @@ module Renderer = struct
 end
 
 module Render = Renderer.Make(struct
-    type tag = unit
-    type t   = unit
-    let init = ()
-    let handle () () = "", (), ""
+    type t = unit
+    module Handler = struct
+      type t   = unit
+      let init = ()
+      let handle () () = "", (), ""
+    end
   end)
 
 let nop = Nop

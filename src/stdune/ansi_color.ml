@@ -122,18 +122,21 @@ module Styles = struct
 end
 
 module Render = Pp.Renderer.Make(struct
-    type tag = Style.t list
-    type t = Styles.t * string
+    type t = Style.t list
 
-    let init = (Styles.default, "")
+    module Handler = struct
+      type t = Styles.t * string
 
-    let handle (t, seq) styles =
-      let t' = List.fold_left styles ~init:t ~f:Styles.apply in
-      if t <> t' then
-        let seq' = Styles.escape_sequence t' in
-        (seq',
-         (t', seq'),
-         seq)
-      else
-        ("", (t, seq), "")
+      let init = (Styles.default, "")
+
+      let handle (t, seq) styles =
+        let t' = List.fold_left styles ~init:t ~f:Styles.apply in
+        if t <> t' then
+          let seq' = Styles.escape_sequence t' in
+          (seq',
+           (t', seq'),
+           seq)
+        else
+          ("", (t, seq), "")
+    end
   end)

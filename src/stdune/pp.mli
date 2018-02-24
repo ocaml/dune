@@ -5,41 +5,44 @@
     styles. *)
 type +'tag t
 
-module type Tag_handler = sig
+module type Tag = sig
   type t
-  type tag
 
-  (** Initial tag handler *)
-  val init : t
+  module Handler : sig
+    type tag = t
+    type t
 
-  (** Handle a tag: return the string that enables the tag, the
-      handler while the tag is active and the string to disable the
-      tag. *)
-  val handle : t -> tag -> string * t * string
+    (** Initial tag handler *)
+    val init : t
+
+    (** Handle a tag: return the string that enables the tag, the
+        handler while the tag is active and the string to disable the
+        tag. *)
+    val handle : t -> tag -> string * t * string
+  end with type tag := t
 end
 
 module Renderer : sig
   module type S = sig
-    type tag
-    type tag_handler
+    module Tag : Tag
 
     val string
       :  unit
-      -> (?margin:int -> ?tag_handler:tag_handler -> tag t -> string) Staged.t
+      -> (?margin:int -> ?tag_handler:Tag.Handler.t -> Tag.t t -> string)
+           Staged.t
     val channel
       :  out_channel
-      -> (?margin:int -> ?tag_handler:tag_handler -> tag t -> unit) Staged.t
+      -> (?margin:int -> ?tag_handler:Tag.Handler.t -> Tag.t t -> unit)
+           Staged.t
   end
 
-  module Make(Tag_handler : Tag_handler) : S
-    with type tag         = Tag_handler.tag
-    with type tag_handler = Tag_handler.t
+  module Make(Tag : Tag) : S with module Tag = Tag
 end
 
 (** A simple renderer that doesn't take tags *)
 module Render : Renderer.S
-  with type tag         = unit
-  with type tag_handler = unit
+  with type Tag.t         = unit
+  with type Tag.Handler.t = unit
 
 val nop : 'a t
 val seq : 'a t -> 'a t -> 'a t

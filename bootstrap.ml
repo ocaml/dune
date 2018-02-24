@@ -29,7 +29,9 @@ end
 
 (* Directories with library names *)
 let dirs =
-  [ "src/result"       , Some "Result"
+  [ "src/result-compat", None
+  ; "src/stdune/caml"  , None
+  ; "src/stdune"       , Some "Stdune"
   ; "src/fiber"        , Some "Fiber"
   ; "src/xdg"          , Some "Xdg"
   ; "vendor/boot"      , None
@@ -194,18 +196,18 @@ let modules =
              match ext with
              | ".ml" | ".mll" ->
                let mod_name = String.capitalize_ascii base in
-               if is_boot || not (String_map.mem mod_name impls) then
+               let fqn = fqn libname mod_name in
+               if is_boot || not (String_map.mem fqn impls) then
                  let fn =
                    if ext = ".mll" then lazy (run_ocamllex fn) else lazy fn
                  in
-                 let fqn = fqn libname mod_name in
                  (String_map.add fqn (libname, mod_name, fn) impls, intfs)
                else
                  acc
              | ".mli" ->
                let mod_name = String.capitalize_ascii base in
-               if is_boot || not (String_map.mem mod_name intfs) then
-                 let fqn = fqn libname mod_name in
+               let fqn = fqn libname mod_name in
+               if is_boot || not (String_map.mem fqn intfs) then
                  (impls, String_map.add fqn fn intfs)
                else
                  acc
@@ -385,9 +387,33 @@ let generate_file_with_all_the_sources () =
     (match libname with
      | None -> ()
      | Some s -> pr "module %s = struct" s);
+    let main, modules =
+      match List.partition modules ~f:(fun m -> Some m.name = libname) with
+      | [m], l -> (Some m, l)
+      | [] , l -> (None  , l)
+      | _  , l -> assert false
+    in
+    (match main with
+     | None -> ()
+     | Some _ -> pr "module XXXX = struct");
     List.iter modules ~f:(fun { name; intf; impl; _ } ->
-      if Some name = libname then
-        match intf with
+      match intf with
+      | Some intf ->
+        pr "module %s : sig" name;
+        dump intf;
+        pr "end = struct";
+        dump impl;
+        pr "end"
+      | None ->
+        pr "module %s = struct" name;
+        dump impl;
+        pr "end");
+    (match main with
+     | None -> ()
+     | Some { intf; impl } ->
+       pr "end";
+       pr "open XXXX";
+       match intf with
         | Some intf ->
           pr "include (struct";
           dump impl;
@@ -395,19 +421,7 @@ let generate_file_with_all_the_sources () =
           dump intf;
           pr "end)"
         | None ->
-          dump impl;
-      else
-        match intf with
-        | Some intf ->
-          pr "module %s : sig" name;
-          dump intf;
-          pr "end = struct";
-          dump impl;
-          pr "end"
-        | None ->
-          pr "module %s = struct" name;
-          dump impl;
-          pr "end");
+          dump impl);
     (match libname with
      | None -> ()
      | Some _ -> pr "end"));

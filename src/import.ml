@@ -4,6 +4,8 @@ include Errors
 module Array   = StdLabels.Array
 module Bytes   = StdLabels.Bytes
 
+module Result = Stdune.Result
+
 module Set = struct
   module type OrderedType = MoreLabels.Set.OrderedType
   module type S = sig

@@ -1,5 +1,6 @@
 (jbuild_version 1)
 
 (library
- ((name     result)
+ ((name     result_compat)
+  (wrapped  false)
   (synopsis "Result type library")))

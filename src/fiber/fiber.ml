@@ -1,5 +1,4 @@
-open StdLabels
-open MoreLabels
+open Stdune
 
 external reraise : exn -> _ = "%reraise"
 
@@ -328,7 +327,7 @@ module Var = struct
   let set (type a) (var : a t) x fiber ctx k =
     let (module M) = var in
     let data = Binding.T (var, x) in
-    let ctx = EC.set_vars ctx (Int_map.add (EC.vars ctx) ~key:M.id ~data) in
+    let ctx = EC.set_vars ctx (Int_map.add (EC.vars ctx) M.id data) in
     fiber ctx k
 end
 

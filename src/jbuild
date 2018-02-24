@@ -4,6 +4,7 @@
  ((name        jbuilder)
   ;;  (public_name jbuilder)
   (libraries   (unix
+                stdune
                 result
                 fiber
                 xdg

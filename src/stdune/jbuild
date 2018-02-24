@@ -1,0 +1,4 @@
+(library
+ ((name stdune)
+  (synopsis "Stdlib of Dune")
+  (libraries (caml))))

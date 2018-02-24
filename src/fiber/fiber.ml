@@ -45,10 +45,7 @@ module Binding = struct
   type t = T : 'a Var0.t * 'a -> t
 end
 
-module Int_map = Map.Make(struct
-    type t = int
-    let compare (a : t) b = Ordering.of_int (compare a b)
-  end)
+module Int_map = Map.Make(Int)
 
 module Execution_context : sig
   type t

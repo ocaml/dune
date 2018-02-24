@@ -32,14 +32,14 @@ module Renderer : sig
   end
 
   module Make(Tag_handler : Tag_handler) : S
-    with type tag         := Tag_handler.tag
-    with type tag_handler := Tag_handler.t
+    with type tag         = Tag_handler.tag
+    with type tag_handler = Tag_handler.t
 end
 
 (** A simple renderer that doesn't take tags *)
 module Render : Renderer.S
-  with type tag         := unit
-  with type tag_handler := unit
+  with type tag         = unit
+  with type tag_handler = unit
 
 val nop : 'a t
 val seq : 'a t -> 'a t -> 'a t

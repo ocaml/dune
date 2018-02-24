@@ -37,6 +37,9 @@ module Renderer = struct
   module Make(T : Tag_handler) = struct
     open Format
 
+    type tag         = T.tag
+    type tag_handler = T.t
+
     (* The format interface only support string for tags, so we embed
        then as follow:
 

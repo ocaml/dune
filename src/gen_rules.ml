@@ -780,7 +780,7 @@ module Gen(P : Params) = struct
         ~preprocessor_deps
         ~lint:exes.buildable.lint
         ~js_of_ocaml:exes.buildable.js_of_ocaml
-        ~has_dot_merlin:exes.buildable.gen_dot_merlin
+        ~has_dot_merlin:true
     in
 
     { Merlin.

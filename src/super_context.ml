@@ -290,7 +290,7 @@ module Libs = struct
         ~requires:(Lib.Compile.requires lib)
         ~libraries
         ~dep_kind
-        ~has_dot_merlin:conf.buildable.gen_dot_merlin
+        ~has_dot_merlin:true
 
   let requires t ~loc ~dir ~scope ~dep_kind ~libraries
         ~preprocess ~has_dot_merlin =

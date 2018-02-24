@@ -142,9 +142,6 @@ module Buildable : sig
     ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
     ; js_of_ocaml              : Js_of_ocaml.t
-    ; (** [true] except for on-demand utops, to avoid generation
-          [.utop/.merlin] files everywhere. *)
-      gen_dot_merlin           : bool
     }
 
   (** Preprocessing specification used by all modules or [No_preprocessing] *)

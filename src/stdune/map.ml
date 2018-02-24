@@ -1,10 +1,7 @@
-open StdLabels
-open MoreLabels
-
 module type S = Map_intf.S
 
 module Make(Key : Comparable.S) : S with type key = Key.t = struct
-  module M = Map.Make(struct
+  module M = MoreLabels.Map.Make(struct
       type t = Key.t
       let compare a b = Ordering.to_int (Key.compare a b)
     end)

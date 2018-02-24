@@ -1,10 +1,7 @@
-open StdLabels
-open MoreLabels
-
 module type S = Set_intf.S
 
 module Make(Elt : Comparable.S) : S with type elt = Elt.t = struct
-  module M = Set.Make(struct
+  module M = MoreLabels.Set.Make(struct
       type t = Elt.t
       let compare a b = Ordering.to_int (Elt.compare a b)
     end)

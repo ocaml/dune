@@ -1,5 +1,3 @@
-module List = ListLabels
-
 type +'a t =
   | Nop
   | Seq of 'a t * 'a t

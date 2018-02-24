@@ -1,5 +1,5 @@
-module Array    = ArrayLabels
-module List     = ListLabels
+module Array    = Array
+module List     = List
 module Map      = Map
 module Option   = Option
 module Ordering = Ordering

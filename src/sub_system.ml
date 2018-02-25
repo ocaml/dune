@@ -64,12 +64,6 @@ module Register_backend(M : Backend) = struct
       if Set.cardinal roots = 1 then
         Ok backends
       else
-        let desc =
-          match String.lsplit2 M.desc ~on:' ' with
-          | Some ("a", s) -> s
-          | Some ("an", s) -> s
-          | _ -> M.desc
-        in
         Error
           (Loc.exnf loc
              "Too many independant %s found:\n%s"

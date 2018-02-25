@@ -58,7 +58,8 @@ module Backend = struct
       ; extends          : (    t list, exn) result option
       }
 
-    let desc = "an inline tests framework"
+    let desc ~plural = "inline tests framework" ^ if plural then "s" else ""
+    let desc_article = "an"
 
     let id t = t.id
     let deps t = t.extends
@@ -77,7 +78,8 @@ module Backend = struct
                      resolve x >>= fun lib ->
                      match get lib with
                      | None ->
-                       Error (Loc.exnf loc "%S is not %s" name desc)
+                       Error (Loc.exnf loc "%S is not an %s" name
+                                (desc ~plural:false))
                      | Some t -> Ok t)))
       }
 

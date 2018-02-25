@@ -38,7 +38,8 @@ end
     directory and the resolved list of library dependencies. *)
 
 val build_and_link
-  :  loc:Loc.t
+  :  ?obj_dir:Path.t
+  -> loc:Loc.t
   -> dir:Path.t
   -> program:Program.t
   -> modules:Module.t String_map.t
@@ -57,7 +58,8 @@ val build_and_link
   -> Path.t * (unit, Lib.t list) Build.t
 
 val build_and_link_many
-  :  loc:Loc.t
+  :  ?obj_dir:Path.t
+  -> loc:Loc.t
   -> dir:Path.t
   -> programs:Program.t list
   -> modules:Module.t String_map.t

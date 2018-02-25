@@ -156,4 +156,4 @@ let newline = Newline
 
 let text s = Text s
 
-let tag tag t = Tag (tag, t)
+let tag t ~tag = Tag (tag, t)

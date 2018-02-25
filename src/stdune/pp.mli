@@ -61,4 +61,4 @@ val newline : _ t
 
 val text : string -> _ t
 
-val tag : 'a -> 'a t -> 'a t
+val tag : 'a t -> tag:'a -> 'a t

@@ -5,7 +5,7 @@ open! No_io
 
 let exe_name = "_utop"
 let main_module_name = "Utop"
-let main_module_filename = exe_name ^ ".ml"
+let main_module_filename = exe_name ^ ".ml-gen"
 
 let pp_ml fmt include_dirs =
   let pp_include fmt =

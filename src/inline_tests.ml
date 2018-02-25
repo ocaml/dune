@@ -161,8 +161,12 @@ include Sub_system.Register_with_backend(
         } = c
     in
 
-    let name = sprintf "_%s_test_runner" lib.name in
-    let main_module_filename = name ^ ".ml-gen" in
+    let inline_test_dir =
+      Path.relative dir (sprintf ".%s.inline-tests" lib.name)
+    in
+
+    let name = "run" in
+    let main_module_filename = name ^ ".ml" in
     let main_module_name = String.capitalize_ascii name in
     let modules =
       String_map.singleton main_module_name
@@ -195,7 +199,7 @@ include Sub_system.Register_with_backend(
 
     (* Generate the runner file *)
     SC.add_rule sctx (
-      let target = Path.relative dir main_module_filename in
+      let target = Path.relative inline_test_dir main_module_filename in
       let source_modules = String_map.values source_modules in
       let files ml_kind =
         Action.Var_expansion.Paths (
@@ -223,8 +227,8 @@ include Sub_system.Register_with_backend(
       Build.action_dyn ~targets:[target] ());
 
     Exe.build_and_link sctx
-      ~dir
-      ~obj_dir:dir
+      ~dir:inline_test_dir
+      ~obj_dir:inline_test_dir
       ~program:{ name; main_module_name }
       ~modules
       ~scope
@@ -254,7 +258,7 @@ include Sub_system.Register_with_backend(
                    ; Quoted_string name
                    ])
       (let module A = Action in
-       let exe = Path.relative dir (name ^ ".exe") in
+       let exe = Path.relative inline_test_dir (name ^ ".exe") in
        Build.path exe >>>
        Build.fanout
          (Super_context.Deps.interpret sctx info.deps ~dir ~scope)

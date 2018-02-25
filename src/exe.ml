@@ -112,6 +112,7 @@ let link_exe
     SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm_and_flags >>> r))
 
 let build_and_link_many
+      ?obj_dir
       ~loc ~dir ~programs ~modules
       ~scope
       ~linkages
@@ -127,9 +128,13 @@ let build_and_link_many
       sctx
   =
   let item = (List.hd programs).Program.name in
-  (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library of the
-     same name *)
-  let obj_dir = Path.relative dir ("." ^ item ^ ".eobjs") in
+  let obj_dir =
+    match obj_dir with
+    (* Use "eobjs" rather than "objs" to avoid a potential conflict with a
+       library of the same name *)
+    | None -> Path.relative dir ("." ^ item ^ ".eobjs")
+    | Some d -> d
+  in
   let dep_kind = Build.Required in
   let modules =
     String_map.map modules ~f:(Module.set_obj_name ~wrapper:None)
@@ -193,5 +198,5 @@ let build_and_link_many
 
   (obj_dir, real_requires)
 
-let build_and_link ~loc ~dir ~program =
-  build_and_link_many ~loc ~dir ~programs:[program]
+let build_and_link ?obj_dir ~loc ~dir ~program =
+  build_and_link_many ?obj_dir ~loc ~dir ~programs:[program]

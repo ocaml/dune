@@ -66,6 +66,7 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
     let _obj_dir, libs =
       Exe.build_and_link sctx
         ~loc
+        ~obj_dir:utop_exe_dir
         ~dir:utop_exe_dir
         ~program:{ name = exe_name ; main_module_name }
         ~modules

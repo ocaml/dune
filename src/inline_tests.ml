@@ -167,7 +167,7 @@ include Sub_system.Register_with_backend(
 
     let name = "run" in
     let main_module_filename = name ^ ".ml" in
-    let main_module_name = String.capitalize_ascii name in
+    let main_module_name = String.capitalize name in
     let modules =
       String_map.singleton main_module_name
         { Module.

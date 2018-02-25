@@ -22,7 +22,8 @@
 (alias
  ((name runtest)
   (deps (filename.mlt
-         (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)))
+         (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)
+         (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)))
   (action (chdir ${SCOPE_ROOT}
            (progn
             (run ${exe:expect_test.exe} ${<})

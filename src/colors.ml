@@ -57,17 +57,48 @@ let setup_env_for_colors = lazy(
   end
 )
 
-let styles_of_tag : string -> styles = function
-  | "loc"     -> [Bold]
-  | "error"   -> [Bold; Fg Red]
-  | "warning" -> [Bold; Fg Magenta]
-  | "kwd"     -> [Bold; Fg Blue]
-  | "id"      -> [Bold; Fg Yellow]
-  | "prompt"  -> [Bold; Fg Green]
-  | "details" -> [Dim; Fg White]
-  | "ok"      -> [Dim; Fg Green]
-  | "debug"   -> [Underlined; Fg Bright_cyan]
-  | _         -> []
+module Style = struct
+  open Ansi_color.Style
+
+  type t =
+    | Loc
+    | Error
+    | Warning
+    | Kwd
+    | Id
+    | Prompt
+    | Details
+    | Ok
+    | Debug
+
+  let to_styles = function
+    | Loc     -> [Bold]
+    | Error   -> [Bold; Fg Red]
+    | Warning -> [Bold; Fg Magenta]
+    | Kwd     -> [Bold; Fg Blue]
+    | Id      -> [Bold; Fg Yellow]
+    | Prompt  -> [Bold; Fg Green]
+    | Details -> [Dim; Fg White]
+    | Ok      -> [Dim; Fg Green]
+    | Debug   -> [Underlined; Fg Bright_cyan]
+
+  let of_string = function
+    | "loc"     -> Some Loc
+    | "error"   -> Some Error
+    | "warning" -> Some Warning
+    | "kwd"     -> Some Kwd
+    | "id"      -> Some Id
+    | "prompt"  -> Some Prompt
+    | "details" -> Some Details
+    | "ok"      -> Some Ok
+    | "debug"   -> Some Debug
+    | _         -> None
+end
+
+let styles_of_tag s =
+  match Style.of_string s with
+  | None -> []
+  | Some style -> Style.to_styles style
 
 let setup_err_formatter_colors () =
   let open Format in
@@ -84,3 +115,13 @@ let setup_err_formatter_colors () =
   end
 
 let output_filename : styles = [Bold; Fg Green]
+
+module Render = Pp.Renderer.Make(struct
+    type t = Style.t
+
+    module Handler = struct
+      include Ansi_color.Render.Tag.Handler
+
+      let handle t style = handle t (Style.to_styles style)
+    end
+  end)

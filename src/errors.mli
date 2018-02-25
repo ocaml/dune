@@ -7,7 +7,7 @@
    - Rename to [User_error]
    - change the [string] argument to [Loc.t option * string] and get rid of
    [Loc.Error]. The two are a bit confusing
-   - change [string] to [Format.formatter -> unit]?
+   - change [string] to [Colors.Style.t Pp.t]
 *)
 (** A fatal error, that should be reported to the user in a nice way *)
 exception Fatal_error of string

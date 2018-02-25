@@ -10,6 +10,7 @@ module List       = List
 module Map        = Map
 module Option     = Option
 module Ordering   = Ordering
+module Pp         = Pp
 module Result     = Result
 module Set        = Set
 module Staged     = Staged

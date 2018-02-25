@@ -1,4 +1,4 @@
 (library
  ((name stdune)
-  (synopsis "Stdlib of Dune")
+  (synopsis "Standard library of Dune")
   (libraries (caml result_compat))))

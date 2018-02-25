@@ -3,6 +3,7 @@ module Array      = Array
 module Comparable = Comparable
 module Either     = Either
 module Exn        = Exn
+module Filename   = Filename
 module Hashtbl    = Hashtbl
 module Int        = Int
 module List       = List

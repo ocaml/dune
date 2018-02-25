@@ -4,7 +4,7 @@ open Build.O
 open! No_io
 
 let exe_name = "utop"
-let main_module_name = String.capitalize_ascii exe_name
+let main_module_name = String.capitalize exe_name
 let main_module_filename = exe_name ^ ".ml"
 
 let pp_ml fmt include_dirs =

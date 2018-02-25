@@ -18,14 +18,22 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
       match f t with
       | x -> Some x
       | exception Not_found -> None
-    let choose_opt  = to_opt M.choose
-    let min_binding_opt = to_opt M.min_binding
-    let max_binding_opt = to_opt M.max_binding
+    let choose_opt t = to_opt M.choose t
+    let min_binding_opt t = to_opt M.min_binding t
+    let max_binding_opt t = to_opt M.max_binding t
 
     let update ~key ~f t =
       match f (find_opt key t) with
       | None -> M.remove key t
       | Some v -> M.add t ~key ~data:v
+
+    let union ~f a b =
+      M.merge a b ~f:(fun k a b ->
+        match a, b with
+        | None  , None   -> None
+        | Some v, None
+        | None  , Some v -> Some v
+        | Some a, Some b -> f k a b)
   end
 
   include M
@@ -67,7 +75,7 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
 
   let of_list =
     let rec loop acc = function
-      | [] -> Ok acc
+      | [] -> Result.Ok acc
       | (k, v) :: l ->
         match find acc k with
         | None    -> loop (add acc k v) l

@@ -30,7 +30,7 @@ let report_with_backtrace ppf exn ~backtrace =
       if msg.[String.length msg - 1] = '\n' then
         Format.fprintf ppf "%s" msg
       else
-        Format.fprintf ppf "%s\n" (String.capitalize_ascii msg);
+        Format.fprintf ppf "%s\n" (String.capitalize msg);
       false
     | Code_error msg ->
       let bt = Printexc.raw_backtrace_to_string backtrace in

@@ -39,7 +39,7 @@ module Gen(P : Params) = struct
     let standard_modules = String_map.map all_modules ~f:(fun m -> Ok m) in
     let fake_modules = ref String_map.empty in
     let parse ~loc s =
-      let s = String.capitalize_ascii s in
+      let s = String.capitalize s in
       match String_map.find all_modules s with
       | Some m -> Ok m
       | None ->
@@ -81,8 +81,8 @@ module Gen(P : Params) = struct
         String_map.merge intf_only real_intf_only ~f:(fun name x y ->
           match x, y with
           | Some _, Some _ -> None
-          | None  , Some _ -> Some (Left  (String.uncapitalize_ascii name))
-          | Some _, None   -> Some (Right (String.uncapitalize_ascii name))
+          | None  , Some _ -> Some (Left  (String.uncapitalize name))
+          | Some _, None   -> Some (Right (String.uncapitalize name))
           | None  , None   -> assert false)
         |> String_map.values
         |> List.partition_map ~f:(fun x -> x)
@@ -123,7 +123,7 @@ module Gen(P : Params) = struct
           end)
         in
         let parse ~loc s =
-          let s = String.capitalize_ascii s in
+          let s = String.capitalize s in
           match String_map.find all_modules s with
           | Some m -> m
           | None -> Loc.fail loc "Module %s doesn't exist." s
@@ -264,7 +264,7 @@ module Gen(P : Params) = struct
     in
     let parse_one_set files =
       List.map files ~f:(fun (f : Module.File.t) ->
-        (String.capitalize_ascii (Filename.chop_extension f.name), f))
+        (String.capitalize (Filename.chop_extension f.name), f))
       |> String_map.of_list
       |> function
       | Ok x -> x
@@ -305,7 +305,7 @@ module Gen(P : Params) = struct
         let modules =
           parse_modules ~all_modules ~buildable:lib.buildable
         in
-        let main_module_name = String.capitalize_ascii lib.name in
+        let main_module_name = String.capitalize lib.name in
         let modules =
           String_map.map modules ~f:(fun (m : Module.t) ->
             let wrapper =
@@ -740,7 +740,7 @@ module Gen(P : Params) = struct
     in
     let programs =
       List.map exes.names ~f:(fun (loc, name) ->
-        let mod_name = String.capitalize_ascii name in
+        let mod_name = String.capitalize name in
         match String_map.find modules mod_name with
         | Some m ->
           if not (Module.has_impl m) then

@@ -34,7 +34,7 @@ type t =
 
 let name t = t.name
 
-let real_unit_name t = String.capitalize_ascii (Filename.basename t.obj_name)
+let real_unit_name t = String.capitalize (Filename.basename t.obj_name)
 
 let has_impl t = Option.is_some t.impl
 

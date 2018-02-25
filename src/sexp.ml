@@ -393,9 +393,9 @@ module Of_sexp = struct
       of_sexp_errorf sexp
         "Unknown constructor %s%s" name
         (hint
-           (String.uncapitalize_ascii name)
+           (String.uncapitalize name)
            (List.map cstrs ~f:(fun c ->
-              String.uncapitalize_ascii (C.name c))))
+              String.uncapitalize (C.name c))))
 
   let sum cstrs sexp =
     match sexp with
@@ -427,7 +427,7 @@ module Of_sexp = struct
         of_sexp_errorf sexp
           "Unknown value %s%s" s
           (hint
-             (String.uncapitalize_ascii s)
+             (String.uncapitalize s)
              (List.map cstrs ~f:(fun (name, _) ->
-                String.uncapitalize_ascii name)))
+                String.uncapitalize name)))
 end

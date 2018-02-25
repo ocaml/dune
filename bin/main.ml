@@ -935,7 +935,7 @@ let get_libdir context ~libdir_from_command_line =
 
 let install_uninstall ~what =
   let doc =
-    sprintf "%s packages using opam-installer." (String.capitalize_ascii what)
+    sprintf "%s packages using opam-installer." (String.capitalize what)
   in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let go common prefix_from_command_line libdir_from_command_line pkgs =
@@ -1148,7 +1148,7 @@ let subst =
       `Blocks [`Noblank; `P ("- $(b,%%" ^ name ^ "%%), " ^ desc) ]
     in
     let opam field =
-      var ("PKG_" ^ String.uppercase_ascii field)
+      var ("PKG_" ^ String.uppercase field)
         ("contents of the $(b," ^ field ^ ":) field from the opam file")
     in
     [ `S "DESCRIPTION"

@@ -321,12 +321,18 @@ module Gen(P : Params) = struct
               String_map.mem main_module_name modules) then
             None
           else if String_map.mem main_module_name modules then
+            let file ext =
+              Some { Module.File.
+                     name   = sprintf "%s__%s-gen" lib.name ext
+                   ; syntax = OCaml
+                   }
+            in
+            (* The tests don't pass with 4.02 if we don't do that *)
+            let needs_impl = ctx.version < (4, 03, 0) in
             Some
               { Module.name = main_module_name ^ "__"
-              ; impl = None
-              ; intf = Some { name   = lib.name ^ "__.mli-gen"
-                            ; syntax = OCaml
-                            }
+              ; impl = if     needs_impl then file ".ml"  else None
+              ; intf = if not needs_impl then file ".mli" else None
               ; obj_name = lib.name ^ "__"
               }
           else

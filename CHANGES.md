@@ -1,6 +1,10 @@
 1.0+beta18 (25/02/2018)
 -----------------------
 
+- Fix generation of the implicit alias module with 4.02. With 4.02 it
+  must have an implementation while with OCaml >= 4.03 it can be an
+  interface only module (#549)
+
 - Let the parser distinguish quoted strings from atoms.  This makes
   possible to use "${v}" to concatenate the list of values provided by
   a split-variable.  Concatenating split-variables with text is also

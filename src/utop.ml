@@ -68,16 +68,14 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
       |> Lib.Compile.make
       |> Super_context.Libs.requires sctx ~dir ~has_dot_merlin:false
     in
-    let (_obj_dir : Path.t) =
-      Exe.build_and_link sctx
-        ~dir:utop_exe_dir
-        ~obj_dir:utop_exe_dir
-        ~program:{ name = exe_name ; main_module_name }
-        ~modules
-        ~scope
-        ~linkages:[Exe.Linkage.custom]
-        ~requires
-        ~flags:(Ocaml_flags.append_common (Ocaml_flags.default ()) ["-w"; "-24"])
-        ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"])
-    in
+    Exe.build_and_link sctx
+      ~dir:utop_exe_dir
+      ~obj_dir:utop_exe_dir
+      ~program:{ name = exe_name ; main_module_name }
+      ~modules
+      ~scope
+      ~linkages:[Exe.Linkage.custom]
+      ~requires
+      ~flags:(Ocaml_flags.append_common (Ocaml_flags.default ()) ["-w"; "-24"])
+      ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"]);
     add_module_rules sctx ~dir:utop_exe_dir requires

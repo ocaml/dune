@@ -49,7 +49,7 @@
 (alias
  ((name runtest)
   (deps (path.mlt
-         (glob_files ${SCOPE_ROOT}/src/*.cmi)
+         (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)
          (glob_files ${SCOPE_ROOT}/vendor/re/*.cmi)))
   (action (chdir ${SCOPE_ROOT}
            (progn

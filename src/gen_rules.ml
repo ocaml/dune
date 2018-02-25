@@ -813,19 +813,23 @@ module Gen(P : Params) = struct
         compile_info
     in
 
+    (* Use "eobjs" rather than "objs" to avoid a potential conflict
+       with a library of the same name *)
     let obj_dir =
-      Exe.build_and_link_many sctx
-        ~dir
-        ~programs
-        ~modules
-        ~already_used
-        ~scope
-        ~linkages
-        ~requires
-        ~flags
-        ~link_flags
-        ~js_of_ocaml:exes.buildable.js_of_ocaml
+      Path.relative dir ("." ^ (List.hd programs).name ^ ".eobjs")
     in
+    Exe.build_and_link_many sctx
+      ~dir
+      ~obj_dir
+      ~programs
+      ~modules
+      ~already_used
+      ~scope
+      ~linkages
+      ~requires
+      ~flags
+      ~link_flags
+      ~js_of_ocaml:exes.buildable.js_of_ocaml;
 
     { Merlin.
       requires    = real_requires

@@ -34,11 +34,11 @@ end
 
 (** {1 High-level functions} *)
 
-(** Build and link one or more executables. Return the object directory. *)
+(** Build and link one or more executables *)
 
 val build_and_link
-  :  ?obj_dir:Path.t
-  -> dir:Path.t
+  :  dir:Path.t
+  -> obj_dir:Path.t
   -> program:Program.t
   -> modules:Module.t String_map.t
   -> scope:Scope.t
@@ -49,11 +49,11 @@ val build_and_link
   -> ?link_flags:(unit, string list) Build.t
   -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
   -> Super_context.t
-  -> Path.t
+  -> unit
 
 val build_and_link_many
-  :  ?obj_dir:Path.t
-  -> dir:Path.t
+  :  dir:Path.t
+  -> obj_dir:Path.t
   -> programs:Program.t list
   -> modules:Module.t String_map.t
   -> scope:Scope.t
@@ -64,7 +64,7 @@ val build_and_link_many
   -> ?link_flags:(unit, string list) Build.t
   -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
   -> Super_context.t
-  -> Path.t
+  -> unit
 
 (** {1 Low-level functions} *)
 

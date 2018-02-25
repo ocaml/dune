@@ -112,7 +112,7 @@ let link_exe
     SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm_and_flags >>> r))
 
 let build_and_link_many
-      ?obj_dir ~dir ~programs ~modules
+      ~dir ~obj_dir ~programs ~modules
       ~scope
       ~linkages
       ?(requires=Build.return [])
@@ -122,14 +122,6 @@ let build_and_link_many
       ?(js_of_ocaml=Jbuild.Js_of_ocaml.default)
       sctx
   =
-  let item = (List.hd programs).Program.name in
- let obj_dir =
-    match obj_dir with
-    (* Use "eobjs" rather than "objs" to avoid a potential conflict with a
-       library of the same name *)
-    | None -> Path.relative dir ("." ^ item ^ ".eobjs")
-    | Some d -> d
-  in
   let modules =
     String_map.map modules ~f:(Module.set_obj_name ~wrapper:None)
   in
@@ -162,9 +154,7 @@ let build_and_link_many
         ~top_sorted_modules
         ~js_of_ocaml
         ~flags
-        ?link_flags));
+        ?link_flags))
 
-  obj_dir
-
-let build_and_link ?obj_dir ~dir ~program =
-  build_and_link_many ?obj_dir ~dir ~programs:[program]
+let build_and_link ~dir ~obj_dir ~program =
+  build_and_link_many ~dir ~obj_dir ~programs:[program]

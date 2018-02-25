@@ -130,7 +130,7 @@ let find_root () =
   let cwd = Sys.getcwd () in
   let rec loop counter ~candidates ~to_cwd dir =
     let files = Sys.readdir dir |> Array.to_list |> String_set.of_list in
-    if String_set.mem "jbuild-workspace" files then
+    if String_set.mem files "jbuild-workspace" then
       cont counter ~candidates:((0, dir, to_cwd) :: candidates) dir ~to_cwd
     else if String_set.exists files ~f:(fun fn ->
         String.is_prefix fn ~prefix:"jbuild-workspace") then
@@ -236,7 +236,7 @@ let common =
     in
     let config =
       Config.adapt_display config
-        ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_colors)
+        ~output_is_a_tty:(Lazy.force Colors.stderr_supports_colors)
     in
     { debug_dep_path
     ; debug_findlib
@@ -492,7 +492,7 @@ let installed_libraries =
        let findlib = ctx.findlib in
        if na then begin
          let pkgs = Findlib.all_unavailable_packages findlib in
-         let longest = List.longest_map pkgs ~f:(fun (n, _) -> n) in
+         let longest = String.longest_map pkgs ~f:fst in
          let ppf = Format.std_formatter in
          List.iter pkgs ~f:(fun (n, r) ->
            Format.fprintf ppf "%-*s -> %a@\n" longest n
@@ -501,7 +501,7 @@ let installed_libraries =
          Fiber.return ()
        end else begin
          let pkgs = Findlib.all_packages findlib in
-         let max_len = List.longest_map pkgs ~f:Findlib.Package.name in
+         let max_len = String.longest_map pkgs ~f:Findlib.Package.name in
          List.iter pkgs ~f:(fun pkg ->
            let ver =
              Option.value (Findlib.Package.version pkg) ~default:"n/a"
@@ -552,25 +552,28 @@ let target_hint (setup : Main.setup) path =
       else
         None)
   in
-  let candidates = String_set.of_list candidates |> String_set.elements in
+  let candidates = String_set.of_list candidates |> String_set.to_list in
   hint (Path.to_string path) candidates
 
 let check_path contexts =
-  let contexts = String_set.of_list (List.map contexts ~f:(fun c -> c.Context.name)) in
+  let contexts =
+    String_set.of_list (List.map contexts ~f:(fun c -> c.Context.name))
+  in
   fun path ->
     let internal path =
-      die "This path is internal to jbuilder: %s" (Path.to_string_maybe_quoted path)
+      die "This path is internal to jbuilder: %s"
+        (Path.to_string_maybe_quoted path)
     in
     if Path.is_in_build_dir path then
       match Path.extract_build_context path with
       | None -> internal path
       | Some (name, _) ->
         if name = "" || name.[0] = '.' then internal path;
-        if not (name = "install" || String_set.mem name contexts) then
+        if not (name = "install" || String_set.mem contexts name) then
           die "%s refers to unknown build context: %s%s"
             (Path.to_string_maybe_quoted path)
             name
-            (hint name (String_set.elements contexts))
+            (hint name (String_set.to_list contexts))
 
 let resolve_targets ~log common (setup : Main.setup) user_targets =
   match user_targets with
@@ -713,7 +716,7 @@ let clean =
   , Term.info "clean" ~doc ~man)
 
 let format_external_libs libs =
-  String_map.bindings libs
+  String_map.to_list libs
   |> List.map ~f:(fun (name, kind) ->
     match (kind : Build.lib_dep_kind) with
     | Optional -> sprintf "- %s (optional)" name
@@ -739,32 +742,35 @@ let external_lib_deps =
        let targets = resolve_targets_exn ~log common setup targets in
        let request = request_of_targets setup targets in
        let failure =
-         String_map.fold ~init:false
+         String_map.foldi ~init:false
            (Build_system.all_lib_deps_by_context setup.build_system ~request)
-           ~f:(fun ~key:context_name ~data:lib_deps acc ->
+           ~f:(fun context_name lib_deps acc ->
              let internals =
                Jbuild.Stanzas.lib_names
-                 (match String_map.find context_name setup.Main.stanzas with
+                 (match String_map.find setup.Main.stanzas context_name with
                   | None -> assert false
                   | Some x -> x)
              in
              let externals =
-               String_map.filter lib_deps ~f:(fun name _ ->
-                 not (String_set.mem name internals))
+               String_map.filteri lib_deps ~f:(fun name _ ->
+                 not (String_set.mem internals name))
              in
              if only_missing then begin
                let context =
-                 match List.find setup.contexts ~f:(fun c -> c.name = context_name) with
+                 match
+                   List.find setup.contexts ~f:(fun c -> c.name = context_name)
+                 with
                  | None -> assert false
                  | Some c -> c
                in
                let missing =
-                 String_map.filter externals ~f:(fun name _ ->
+                 String_map.filteri externals ~f:(fun name _ ->
                    not (Findlib.available context.findlib name))
                in
                if String_map.is_empty missing then
                  acc
-               else if String_map.for_all missing ~f:(fun _ kind -> kind = Build.Optional)
+               else if String_map.for_alli missing
+                         ~f:(fun _ kind -> kind = Build.Optional)
                then begin
                  Format.eprintf
                    "@{<error>Error@}: The following libraries are missing \
@@ -781,13 +787,13 @@ let external_lib_deps =
                     Hint: try: opam install %s@."
                    context_name
                    (format_external_libs missing)
-                   (String_map.bindings missing
+                   (String_map.to_list missing
                     |> List.filter_map ~f:(fun (name, kind) ->
                       match (kind : Build.lib_dep_kind) with
                       | Optional -> None
                       | Required -> Some (Findlib.root_package_name name))
                     |> String_set.of_list
-                    |> String_set.elements
+                    |> String_set.to_list
                     |> String.concat ~sep:" ");
                  true
                end
@@ -857,7 +863,7 @@ let rules =
              Format.fprintf ppf "@[<hov 2>@{<makefile-stuff>%a:%t@}@]@,@<0>\t@{<makefile-action>%a@}@,@,"
                (Format.pp_print_list ~pp_sep:Format.pp_print_space (fun ppf p ->
                   Format.pp_print_string ppf (Path.to_string p)))
-               (Path.Set.elements rule.targets)
+               (Path.Set.to_list rule.targets)
                (fun ppf ->
                   Path.Set.iter rule.deps ~f:(fun dep ->
                     Format.fprintf ppf "@ %s" (Path.to_string dep)))
@@ -865,7 +871,9 @@ let rules =
          end else begin
            List.iter rules ~f:(fun (rule : Build_system.Rule.t) ->
              let sexp =
-               let paths ps = Sexp.To_sexp.list Path.sexp_of_t (Path.Set.elements ps) in
+               let paths ps =
+                 Sexp.To_sexp.list Path.sexp_of_t (Path.Set.to_list ps)
+               in
                Sexp.To_sexp.record (
                  List.concat
                    [ [ "deps"   , paths rule.deps
@@ -927,7 +935,7 @@ let get_libdir context ~libdir_from_command_line =
 
 let install_uninstall ~what =
   let doc =
-    sprintf "%s packages using opam-installer." (String.capitalize_ascii what)
+    sprintf "%s packages using opam-installer." (String.capitalize what)
   in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let go common prefix_from_command_line libdir_from_command_line pkgs =
@@ -947,9 +955,9 @@ let install_uninstall ~what =
            List.map setup.contexts ~f:(fun ctx ->
              let fn = Path.append ctx.Context.build_dir fn in
              if Path.exists fn then
-               Inl (ctx, fn)
+               Left (ctx, fn)
              else
-               Inr fn))
+               Right fn))
          |> List.partition_map ~f:(fun x -> x)
        in
        if missing_install_files <> [] then begin
@@ -960,14 +968,16 @@ let install_uninstall ~what =
               (List.map missing_install_files
                  ~f:(fun p -> sprintf "- %s" (Path.to_string p))))
        end;
-       (match setup.contexts, prefix_from_command_line, libdir_from_command_line with
+       (match
+          setup.contexts, prefix_from_command_line, libdir_from_command_line
+        with
         | _ :: _ :: _, Some _, _ | _ :: _ :: _, _, Some _ ->
           die "Cannot specify --prefix or --libdir when installing \
                into multiple contexts!"
         | _ -> ());
        let module CMap = Map.Make(Context) in
        let install_files_by_context =
-         CMap.of_alist_multi install_files |> CMap.bindings
+         CMap.of_list_multi install_files |> CMap.to_list
        in
        Fiber.parallel_iter install_files_by_context
          ~f:(fun (context, install_files) ->
@@ -1138,7 +1148,7 @@ let subst =
       `Blocks [`Noblank; `P ("- $(b,%%" ^ name ^ "%%), " ^ desc) ]
     in
     let opam field =
-      var ("PKG_" ^ String.uppercase_ascii field)
+      var ("PKG_" ^ String.uppercase field)
         ("contents of the $(b," ^ field ^ ":) field from the opam file")
     in
     [ `S "DESCRIPTION"
@@ -1337,7 +1347,7 @@ module Help = struct
           match what with
           | List_topics -> None
           | _ -> Some s)
-        |> List.sort ~cmp:String.compare
+        |> List.sort ~compare:String.compare
         |> String.concat ~sep:"\n"
         |> print_endline;
         `Ok ()
@@ -1390,7 +1400,7 @@ let default =
   )
 
 let () =
-  Ansi_color.setup_err_formatter_colors ();
+  Colors.setup_err_formatter_colors ();
   try
     match Term.eval_choice default all ~catch:false with
     | `Error _ -> exit 1

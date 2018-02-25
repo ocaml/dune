@@ -1,12 +1,6 @@
-include struct
-  [@@@warning "-33"]
-  open Result_compat
-  open Pervasives
-
-  type ('a, 'error) t = ('a, 'error) result =
-    | Ok    of 'a
-    | Error of 'error
-end
+type ('a, 'error) t = ('a, 'error) Caml.result =
+  | Ok    of 'a
+  | Error of 'error
 
 let is_ok = function
   | Ok    _ -> true
@@ -33,8 +27,5 @@ let map_error x ~f =
 
 module O = struct
   let ( >>= ) t f = bind t ~f
-
-  let ( >>| ) t f = map t ~f
+  let ( >>| ) t f = map  t ~f
 end
-
-type ('a, 'error) result = ('a, 'error) t

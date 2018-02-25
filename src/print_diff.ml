@@ -49,7 +49,7 @@ let print path1 path2 =
       Process.run ~dir Strict (Path.to_string prog)
         [ "-keep-whitespace"
         ; "-location-style"; "omake"
-        ; if Lazy.force Ansi_color.stderr_supports_colors then
+        ; if Lazy.force Colors.stderr_supports_colors then
             "-unrefined"
           else
             "-ascii"

@@ -173,11 +173,11 @@ module Cached_digest = struct
       end
     | None ->
       let digest = Digest.file (Path.to_string fn) in
-      Hashtbl.add cache ~key:fn
-        ~data:{ digest
-              ; timestamp = (Unix.stat (Path.to_string fn)).st_mtime
-              ; timestamp_checked = true
-              };
+      Hashtbl.add cache fn
+        { digest
+        ; timestamp = (Unix.stat (Path.to_string fn)).st_mtime
+        ; timestamp_checked = true
+        };
       digest
 
   let remove fn = Hashtbl.remove cache fn
@@ -188,9 +188,9 @@ module Cached_digest = struct
     let module Pmap = Path.Map in
     let sexp =
       Sexp.List (
-        Hashtbl.fold cache ~init:Pmap.empty ~f:(fun ~key ~data acc ->
-          Pmap.add acc ~key ~data)
-        |> Path.Map.bindings
+        Hashtbl.foldi cache ~init:Pmap.empty ~f:(fun key data acc ->
+          Pmap.add acc key data)
+        |> Path.Map.to_list
         |> List.map ~f:(fun (path, file) ->
           Sexp.List [ Quoted_string (Path.to_string path)
                     ; Atom (Sexp.Atom.of_digest file.digest)
@@ -214,10 +214,10 @@ module Cached_digest = struct
           ) sexp
       in
       List.iter bindings ~f:(fun (path, digest, timestamp) ->
-        Hashtbl.add cache ~key:path
-          ~data:{ digest
-                ; timestamp
-                ; timestamp_checked = false
-                });
+        Hashtbl.add cache path
+          { digest
+          ; timestamp
+          ; timestamp_checked = false
+          });
     end
 end

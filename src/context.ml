@@ -22,7 +22,7 @@ module Env_var = struct
   type t = string
   let compare a b =
     if Sys.win32 then
-      String.compare (String.lowercase_ascii a) (String.lowercase_ascii b)
+      String.compare (String.lowercase a) (String.lowercase b)
     else
       String.compare a b
 end
@@ -104,7 +104,7 @@ let sexp_of_t t =
     ; "ocamlopt", option path t.ocamlopt
     ; "ocamldep", path t.ocamldep
     ; "ocamlmklib", path t.ocamlmklib
-    ; "env", list (pair string string) (Env_var_map.bindings t.env_extra)
+    ; "env", list (pair string string) (Env_var_map.to_list t.env_extra)
     ; "findlib_path", list path (Findlib.path t.findlib)
     ; "arch_sixtyfour", bool t.arch_sixtyfour
     ; "natdynlink_supported", bool t.natdynlink_supported
@@ -140,7 +140,7 @@ let opam_config_var ~env ~cache var =
       >>| function
       | Ok s ->
         let s = String.trim s in
-        Hashtbl.add cache ~key:var ~data:s;
+        Hashtbl.add cache var s;
         Some s
       | Error _ -> None
 
@@ -151,7 +151,7 @@ let get_env env var =
     else
       let entry = env.(i) in
       match String.lsplit2 entry ~on:'=' with
-      | Some (key, value) when Env_var.compare key var = 0 ->
+      | Some (key, value) when Env_var.compare key var = Eq ->
         Some value
       | _ -> loop (i + 1)
   in
@@ -171,10 +171,11 @@ let extend_env ~vars ~env =
         | None -> true
         | Some i ->
           let key = String.sub s ~pos:0 ~len:i in
-          not (Env_var_map.mem key vars))
+          not (Env_var_map.mem vars key))
     in
     List.rev_append
-      (List.map (Env_var_map.bindings vars) ~f:(fun (k, v) -> sprintf "%s=%s" k v))
+      (List.map (Env_var_map.to_list vars)
+         ~f:(fun (k, v) -> sprintf "%s=%s" k v))
       imported
     |> Array.of_list
 
@@ -184,7 +185,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
    | Opam { root; _ } ->
-     Hashtbl.add opam_var_cache ~key:"root" ~data:root
+     Hashtbl.add opam_var_cache "root" root
    | Default -> ());
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name
@@ -285,7 +286,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
          OCAML_COLOR is not supported so we use OCAMLPARAM. OCaml 4.02 doesn't support
          'color' in OCAMLPARAM, so we just don't force colors with 4.02. *)
       if !Clflags.capture_outputs
-      && Lazy.force Ansi_color.stderr_supports_colors
+      && Lazy.force Colors.stderr_supports_colors
       && version >= (4, 03, 0)
       && version <  (4, 05, 0) then
         let value =
@@ -294,12 +295,14 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
           | Some s -> "color=always," ^ s
         in
         extend_env ~env ~vars:((Env_var_map.singleton "OCAMLPARAM" value)),
-        (Env_var_map.add ~key:"OCAMLPARAM" ~data:value env_extra)
+        (Env_var_map.add env_extra "OCAMLPARAM" value)
       else
         env,env_extra
     in
     let stdlib_dir = Ocamlc_config.stdlib_dir ocamlc_config in
-    let natdynlink_supported = Ocamlc_config.natdynlink_supported ocamlc_config in
+    let natdynlink_supported =
+      Ocamlc_config.natdynlink_supported ocamlc_config
+    in
     let version = Ocamlc_config.version ocamlc_config in
     let version_string = Ocamlc_config.version_string ocamlc_config in
     let get = Ocamlc_config.get ocamlc_config in
@@ -391,7 +394,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
 let opam_config_var t var = opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
 let initial_env = lazy (
-  Lazy.force Ansi_color.setup_env_for_colors;
+  Lazy.force Colors.setup_env_for_colors;
   Unix.environment ())
 
 let default ?(merlin=true) ?(use_findlib=true) ~targets () =
@@ -419,7 +422,7 @@ let create_for_opam ?root ~targets ~switch ~name ?(merlin=false) () =
     let vars =
       Usexp.parse_string ~fname:"<opam output>" ~mode:Single s
       |> Sexp.Of_sexp.(list (pair string string))
-      |> Env_var_map.of_alist_multi
+      |> Env_var_map.of_list_multi
       |> Env_var_map.mapi ~f:(fun var values ->
         match List.rev values with
         | [] -> assert false
@@ -436,7 +439,7 @@ let create_for_opam ?root ~targets ~switch ~name ?(merlin=false) () =
           x)
     in
     let path =
-      match Env_var_map.find "PATH" vars with
+      match Env_var_map.find vars "PATH" with
       | None -> Bin.path
       | Some s -> Bin.parse_path s
     in
@@ -479,17 +482,21 @@ let env_for_exec t =
     | Some prev -> (var, sprintf "%s%c%s" v sep prev)
   in
   let vars =
-    [ extend_var "CAML_LD_LIBRARY_PATH" (Path.relative
-                                           (Config.local_install_dir ~context:t.name)
-                                           "lib/stublibs")
-    ; extend_var "OCAMLPATH"            (Path.relative
-                                           (Config.local_install_dir ~context:t.name)
-                                           "lib")
-    ; extend_var "PATH"                 (Config.local_install_bin_dir ~context:t.name)
-    ; extend_var "MANPATH"              (Config.local_install_man_dir ~context:t.name)
+    [ extend_var "CAML_LD_LIBRARY_PATH"
+        (Path.relative
+           (Config.local_install_dir ~context:t.name)
+           "lib/stublibs")
+    ; extend_var "OCAMLPATH"
+        (Path.relative
+           (Config.local_install_dir ~context:t.name)
+           "lib")
+    ; extend_var "PATH"
+        (Config.local_install_bin_dir ~context:t.name)
+    ; extend_var "MANPATH"
+        (Config.local_install_man_dir ~context:t.name)
     ]
   in
-  extend_env ~env:t.env ~vars:(Env_var_map.of_alist_exn vars)
+  extend_env ~env:t.env ~vars:(Env_var_map.of_list_exn vars)
 
 let compiler t (mode : Mode.t) =
   match mode with

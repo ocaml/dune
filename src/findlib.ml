@@ -15,14 +15,14 @@ module Rule = struct
     Ps.cardinal t.preds_required + Ps.cardinal t.preds_forbidden
 
   let matches t ~preds =
-    Ps.subset t.preds_required preds &&
+    Ps.is_subset t.preds_required ~of_:preds &&
     Ps.is_empty (Ps.inter preds t.preds_forbidden)
 
   let make (rule : Meta.rule) =
     let preds_required, preds_forbidden =
       List.partition_map rule.predicates ~f:(function
-        | Pos x -> Inl x
-        | Neg x -> Inr x)
+        | Pos x -> Left  x
+        | Neg x -> Right x)
     in
     { preds_required  = Ps.make preds_required
     ; preds_forbidden = Ps.make preds_forbidden
@@ -65,7 +65,7 @@ module Rules = struct
     let add_rules = List.map rules.add_rules ~f:Rule.make in
     let set_rules =
       List.map rules.set_rules ~f:Rule.make
-      |> List.stable_sort ~cmp:(fun a b ->
+      |> List.stable_sort ~compare:(fun a b ->
         compare
           (Rule.formal_predicates_count b)
           (Rule.formal_predicates_count a))
@@ -77,7 +77,7 @@ module Vars = struct
   type t = Rules.t String_map.t
 
   let get (t : t) var preds =
-    match String_map.find var t with
+    match String_map.find t var with
     | None -> None
     | Some rules -> Some (Rules.interpret rules ~preds)
 
@@ -131,7 +131,7 @@ module Package = struct
 
   let make_archives t var preds =
     Mode.Dict.of_func (fun ~mode ->
-      get_paths t var (Ps.add (Mode.variant mode) preds))
+      get_paths t var (Ps.add preds (Mode.variant mode)))
 
   let version          t = Vars.get       t.vars "version"          Ps.empty
   let description      t = Vars.get       t.vars "description"      Ps.empty
@@ -142,7 +142,7 @@ module Package = struct
   let archives t = make_archives t "archive" preds
   let plugins t =
     Mode.Dict.map2 ~f:(@)
-      (make_archives t "archive" (Ps.add Variant.plugin preds))
+      (make_archives t "archive" (Ps.add preds Variant.plugin))
       (make_archives t "plugin" preds)
 end
 
@@ -218,7 +218,7 @@ let parse_and_acknowledge_meta t ~dir ~meta_file (meta : Meta.t) =
     let dir, res =
       parse_package t ~meta_file ~name:full_name ~parent_dir:dir ~vars
     in
-    Hashtbl.add t.packages ~key:full_name ~data:res;
+    Hashtbl.add t.packages full_name res;
     List.iter meta.subs ~f:(fun (meta : Meta.Simplified.t) ->
       loop ~dir ~full_name:(sprintf "%s.%s" full_name meta.name) meta)
   in
@@ -251,13 +251,13 @@ let find_and_acknowledge_meta t ~fq_name =
         else
           loop dirs
     | [] ->
-      match String_map.find root_name t.builtins with
+      match String_map.find t.builtins root_name with
       | Some meta -> Some (t.stdlib_dir, Path.of_string "<internal>", meta)
       | None -> None
   in
   match loop t.path with
   | None ->
-    Hashtbl.add t.packages ~key:root_name ~data:(Error Not_found)
+    Hashtbl.add t.packages root_name (Error Not_found)
   | Some (dir, meta_file, meta) ->
     parse_and_acknowledge_meta t meta ~meta_file ~dir
 
@@ -270,7 +270,7 @@ let find t name =
     | Some x -> x
     | None ->
       let res = Error Unavailable_reason.Not_found in
-      Hashtbl.add t.packages ~key:name ~data:res;
+      Hashtbl.add t.packages name res;
       res
 
 let available t name =
@@ -291,7 +291,7 @@ let root_packages t =
     String_set.union pkgs
       (String_set.of_list (String_map.keys t.builtins))
   in
-  String_set.elements pkgs
+  String_set.to_list pkgs
 
 let load_all_packages t =
   List.iter (root_packages t) ~f:(fun pkg ->
@@ -299,11 +299,11 @@ let load_all_packages t =
 
 let all_packages t =
   load_all_packages t;
-  Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:_ ~data acc ->
-    match data with
+  Hashtbl.fold t.packages ~init:[] ~f:(fun x acc ->
+    match x with
     | Ok    p -> p :: acc
     | Error _ -> acc)
-  |> List.sort ~cmp:(fun (a : Package.t) b -> String.compare a.name b.name)
+  |> List.sort ~compare:(fun (a : Package.t) b -> String.compare a.name b.name)
 
 let create ~stdlib_dir ~path =
   { stdlib_dir
@@ -314,8 +314,8 @@ let create ~stdlib_dir ~path =
 
 let all_unavailable_packages t =
   load_all_packages t;
-  Hashtbl.fold t.packages ~init:[] ~f:(fun ~key:name ~data acc ->
-    match data with
+  Hashtbl.foldi t.packages ~init:[] ~f:(fun name x acc ->
+    match x with
     | Ok    _ -> acc
     | Error e -> ((name, e) :: acc))
-  |> List.sort ~cmp:(fun (a, _) (b, _) -> String.compare a b)
+  |> List.sort ~compare:(fun (a, _) (b, _) -> String.compare a b)

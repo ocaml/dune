@@ -1,36 +1,4 @@
-open StdLabels
-open MoreLabels
-
-external reraise : exn -> _ = "%reraise"
-
-module String = struct
-  include String
-
-  (* CR-someday jdimino: this should go somewhere else *)
-  let split_lines s =
-    let rec loop ~last_is_cr ~acc i j =
-      if j = length s then (
-        let acc =
-          if j = i || (j = i + 1 && last_is_cr) then
-            acc
-          else
-            sub s ~pos:i ~len:(j - i) :: acc
-        in
-        List.rev acc
-      ) else
-        match s.[j] with
-        | '\r' -> loop ~last_is_cr:true ~acc i (j + 1)
-        | '\n' ->
-          let line =
-            let len = if last_is_cr then j - i - 1 else j - i in
-            sub s ~pos:i ~len
-          in
-          loop ~acc:(line :: acc) (j + 1) (j + 1) ~last_is_cr:false
-        | _ ->
-          loop ~acc i (j + 1) ~last_is_cr:false
-    in
-    loop ~acc:[] 0 0 ~last_is_cr:false
-end
+open Stdune
 
 module Eq = struct
   type ('a, 'b) t = T : ('a, 'a) t
@@ -77,10 +45,7 @@ module Binding = struct
   type t = T : 'a Var0.t * 'a -> t
 end
 
-module Int_map = Map.Make(struct
-    type t = int
-    let compare : int -> int -> int = compare
-  end)
+module Int_map = Map.Make(Int)
 
 module Execution_context : sig
   type t
@@ -309,16 +274,16 @@ module Var = struct
   include Var0
 
   let find ctx var =
-    match Int_map.find (id var) (EC.vars ctx) with
-    | exception Not_found -> None
-    | Binding.T (var', v) ->
+    match Int_map.find (EC.vars ctx) (id var) with
+    | None -> None
+    | Some (Binding.T (var', v)) ->
       let eq = eq var' var in
       Some (Eq.cast eq v)
 
   let find_exn ctx var =
-    match Int_map.find (id var) (EC.vars ctx) with
-    | exception Not_found -> failwith "Fiber.Var.find_exn"
-    | Binding.T (var', v) ->
+    match Int_map.find (EC.vars ctx) (id var) with
+    | None -> failwith "Fiber.Var.find_exn"
+    | Some (Binding.T (var', v)) ->
       let eq = eq var' var in
       Eq.cast eq v
 
@@ -328,7 +293,7 @@ module Var = struct
   let set (type a) (var : a t) x fiber ctx k =
     let (module M) = var in
     let data = Binding.T (var, x) in
-    let ctx = EC.set_vars ctx (Int_map.add (EC.vars ctx) ~key:M.id ~data) in
+    let ctx = EC.set_vars ctx (Int_map.add (EC.vars ctx) M.id data) in
     fiber ctx k
 end
 

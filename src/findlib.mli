@@ -1,6 +1,6 @@
 (** Findlib database *)
 
-open Import
+open Stdune
 
 (** Findlib database *)
 type t

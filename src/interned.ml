@@ -4,7 +4,7 @@ module type S = sig
   type t
 
   val make : string -> t
-  val compare : t -> t -> int
+  val compare : t -> t -> Ordering.t
 
   module Set : sig
     include Set.S with type elt = t
@@ -31,7 +31,7 @@ module Make() = struct
     include Int_set
 
     let make l =
-      List.fold_left l ~init:empty ~f:(fun acc s -> add (make s) acc)
+      List.fold_left l ~init:empty ~f:(fun acc s -> add acc (make s))
   end
 
   module Map = Int_map

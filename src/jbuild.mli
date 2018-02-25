@@ -16,7 +16,7 @@ module Scope_info : sig
     (** [None] is the for the {!anonymous} scope *)
     type t = string option
 
-    val compare : t -> t -> int
+    val compare : t -> t -> Ordering.t
 
     val of_string : string -> t
     val to_string : t -> string

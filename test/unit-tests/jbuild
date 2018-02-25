@@ -13,6 +13,7 @@
  ((name runtest)
   (deps (tests.mlt
          (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)
+         (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)
          (files_recursively_in findlib-db)))
   (action (chdir ${SCOPE_ROOT}
            (progn
@@ -22,7 +23,8 @@
 (alias
  ((name runtest)
   (deps (filename.mlt
-         (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)))
+         (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)
+         (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)))
   (action (chdir ${SCOPE_ROOT}
            (progn
             (run ${exe:expect_test.exe} ${<})
@@ -31,7 +33,8 @@
 (alias
  ((name runtest)
   (deps (import_dot_map.mlt
-         (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)))
+         (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)
+         (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)))
   (action (chdir ${SCOPE_ROOT}
            (progn
             (run ${exe:expect_test.exe} ${<})
@@ -40,7 +43,8 @@
 (alias
  ((name runtest)
   (deps (action.mlt
-         (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)))
+         (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)
+         (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)))
   (action (chdir ${SCOPE_ROOT}
            (progn
             (run ${exe:expect_test.exe} ${<})
@@ -50,7 +54,7 @@
  ((name runtest)
   (deps (path.mlt
          (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)
-         (glob_files ${SCOPE_ROOT}/vendor/re/*.cmi)))
+         (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)))
   (action (chdir ${SCOPE_ROOT}
            (progn
             (run ${exe:expect_test.exe} ${<})

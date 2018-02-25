@@ -47,7 +47,7 @@ module Module_or_mld = struct
 
   let html_dir ~doc_dir = function
     | Mld _ -> doc_dir
-    | Module m -> doc_dir ++ String.capitalize_ascii m.obj_name
+    | Module m -> doc_dir ++ String.capitalize m.obj_name
 
   let html_file ~doc_dir t =
     match t with
@@ -141,7 +141,7 @@ let all_mld_files sctx ~(lib : Library.t) ~lib_name ~modules ~dir files =
                 "{1 Library %s}\n\
                  The entry point for this library is module {!module:%s}."
                 lib_name
-                (String.capitalize_ascii lib.name)
+                (String.capitalize lib.name)
             else
               sprintf
                 "{1 Library %s}\n\
@@ -205,7 +205,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
   (*
      let modules_and_odoc_files =
      if lib.wrapped then
-     let main_module_name = String.capitalize_ascii lib.name in
+     let main_module_name = String.capitalize lib.name in
      List.filter modules_and_odoc_files
      ~f:(fun (m, _) -> m.Module.name = main_module_name)
      else

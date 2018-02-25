@@ -59,7 +59,7 @@ end
 
 module Expand_to(V : EXPANSION) : sig
   val expand : V.context -> t -> f:(Loc.t -> string -> V.t option) ->
-               (V.t, string) either
+               (V.t, string) Either.t
   (** [expand t ~f] return [t] where all variables have been expanded
      using [f].  If [f loc var] return [Some x], the variable [var] is
      replaced by [x]; otherwise, the variable is inserted as [${var}]
@@ -67,7 +67,7 @@ module Expand_to(V : EXPANSION) : sig
 
   val partial_expand :
     V.context -> t -> f:(Loc.t -> string -> V.t option) ->
-    ((V.t, string) either, t) either
+    ((V.t, string) either, t) Either.t
   (** [partial_expand t ~f] is like [expand_generic] where all
      variables that could be expanded (i.e., those for which [f]
      returns [Some _]) are.  If all the variables of [t] were
@@ -81,6 +81,6 @@ val expand :
    variables are assumed to expand to a single value). *)
 
 val partial_expand :
-  t -> f:(Loc.t -> string -> string option) -> (string, t) either
+  t -> f:(Loc.t -> string -> string option) -> (string, t) Either.t
 (** [partial_expand] is a specialized version of
    [Expand_to.partial_expand] that returns a string. *)

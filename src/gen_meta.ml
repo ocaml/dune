@@ -31,7 +31,7 @@ module Pub_name = struct
   let to_string t = String.concat ~sep:"." (to_list t)
 end
 
-let string_of_deps deps = String_set.elements deps |> String.concat ~sep:" "
+let string_of_deps deps = String_set.to_list deps |> String.concat ~sep:" "
 
 let rule var predicates action value =
   Rule { var; predicates; action; value }
@@ -147,17 +147,17 @@ let gen ~package ~version ~meta_path libs =
       | [] -> assert false
       | _package :: path -> (path, meta))
   in
-  let pkgs = List.sort pkgs ~cmp:(fun (a, _) (b, _) -> compare a b) in
+  let pkgs = List.sort pkgs ~compare:(fun (a, _) (b, _) -> compare a b) in
   let rec loop name pkgs =
     let entries, sub_pkgs =
       List.partition_map pkgs ~f:(function
-        | ([]    , entries) -> Inl entries
-        | (x :: p, entries) -> Inr (x, (p, entries)))
+        | ([]    , entries) -> Left  entries
+        | (x :: p, entries) -> Right (x, (p, entries)))
     in
     let entries = List.concat entries in
     let subs =
-      String_map.of_alist_multi sub_pkgs
-      |> String_map.bindings
+      String_map.of_list_multi sub_pkgs
+      |> String_map.to_list
       |> List.map ~f:(fun (name, pkgs) ->
         let pkg = loop name pkgs in
         Package { pkg with

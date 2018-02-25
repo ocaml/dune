@@ -135,7 +135,7 @@ let rec simplify t =
         { pkg with subs = simplify sub :: pkg.subs }
       | Rule rule ->
         let rules =
-          String_map.find_default rule.var pkg.vars
+          Option.value (String_map.find pkg.vars rule.var)
             ~default:{ set_rules = []; add_rules = [] }
         in
         let rules =
@@ -143,7 +143,7 @@ let rec simplify t =
           | Set -> { rules with set_rules = rule :: rules.set_rules }
           | Add -> { rules with add_rules = rule :: rules.add_rules }
         in
-        { pkg with vars = String_map.add pkg.vars ~key:rule.var ~data:rules })
+        { pkg with vars = String_map.add pkg.vars rule.var rules })
 
 let rule var predicates action value =
   Rule { var; predicates; action; value }
@@ -226,7 +226,7 @@ let builtins ~stdlib_dir =
       [ compiler_libs; str; unix; bigarray; threads ]
   in
   List.map libs ~f:(fun t -> t.name, t)
-  |> String_map.of_alist_exn
+  |> String_map.of_list_exn
 
 let string_of_action = function
   | Set -> "="

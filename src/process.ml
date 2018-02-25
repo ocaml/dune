@@ -59,12 +59,12 @@ module Temp = struct
 
   let create prefix suffix =
     let fn = Filename.temp_file prefix suffix in
-    tmp_files := String_set.add fn !tmp_files;
+    tmp_files := String_set.add !tmp_files fn;
     fn
 
   let destroy fn =
     (try Sys.force_remove fn with Sys_error _ -> ());
-    tmp_files := String_set.remove fn !tmp_files
+    tmp_files := String_set.remove !tmp_files fn
 end
 
 module Fancy = struct
@@ -104,18 +104,20 @@ module Fancy = struct
       s
     else
       let before, prog, after = split_prog s in
-      before ^ Ansi_color.colorize ~key:prog prog ^ after
+      before ^ Colors.colorize ~key:prog prog ^ after
 
   let rec colorize_args = function
     | [] -> []
     | "-o" :: fn :: rest ->
-      "-o" :: Ansi_color.(apply_string output_filename) fn :: colorize_args rest
+      "-o" :: Colors.(apply_string output_filename) fn :: colorize_args rest
     | x :: rest -> x :: colorize_args rest
 
   let command_line ~prog ~args ~dir ~stdout_to ~stderr_to =
     let quote = quote_for_shell in
     let prog = colorize_prog (quote prog) in
-    let s = String.concat (prog :: colorize_args (List.map args ~f:quote)) ~sep:" " in
+    let s =
+      String.concat (prog :: colorize_args (List.map args ~f:quote)) ~sep:" "
+    in
     let s =
       match dir with
       | None -> s
@@ -140,22 +142,24 @@ module Fancy = struct
       Format.fprintf ppf "(internal)"
     | Build_job targets ->
       let rec split_paths targets_acc ctxs_acc = function
-        | [] -> List.rev targets_acc, String_set.(elements (of_list ctxs_acc))
+        | [] -> List.rev targets_acc, String_set.(to_list (of_list ctxs_acc))
         | path :: rest ->
           let add_ctx ctx acc = if ctx = "default" then acc else ctx :: acc in
           match Utils.analyse_target path with
           | Other path ->
             split_paths (Path.to_string path :: targets_acc) ctxs_acc rest
           | Regular (ctx, filename) ->
-            split_paths (Path.to_string filename :: targets_acc) (add_ctx ctx ctxs_acc) rest
+            split_paths (Path.to_string filename :: targets_acc)
+              (add_ctx ctx ctxs_acc) rest
           | Alias (ctx, name) ->
-            split_paths (("alias " ^ Path.to_string name) :: targets_acc) (add_ctx ctx ctxs_acc) rest
+            split_paths (("alias " ^ Path.to_string name) :: targets_acc)
+              (add_ctx ctx ctxs_acc) rest
       in
       let target_names, contexts = split_paths [] [] targets in
       let target_names_grouped_by_prefix =
         List.map target_names ~f:Filename.split_extension_after_dot
-        |> String_map.of_alist_multi
-        |> String_map.bindings
+        |> String_map.of_list_multi
+        |> String_map.to_list
       in
       let pp_comma ppf () = Format.fprintf ppf "," in
       let pp_group ppf (prefix, suffixes) =
@@ -220,7 +224,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose
   let command_line = Fancy.command_line ~prog ~args ~dir ~stdout_to ~stderr_to in
   if display = Verbose then
     Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
-      (Ansi_color.strip_colors_for_stderr command_line);
+      (Colors.strip_colors_for_stderr command_line);
   let argv = Array.of_list (prog :: args) in
   let output_filename, stdout_fd, stderr_fd, to_close =
     match stdout_to, stderr_to with
@@ -288,8 +292,8 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose
       die "\n@{<kwd>Command@} [@{<id>%d@}] exited with code %d:\n\
            @{<prompt>$@} %s\n%s"
         id n
-        (Ansi_color.strip_colors_for_stderr command_line)
-        (Ansi_color.strip_colors_for_stderr output)
+        (Colors.strip_colors_for_stderr command_line)
+        (Colors.strip_colors_for_stderr output)
     else
       die "@{<error>%12s@} %a @{<error>(exit %d)@}\n\
            @{<details>%s@}\n\
@@ -302,8 +306,8 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose
       die "\n@{<kwd>Command@} [@{<id>%d@}] got signal %s:\n\
            @{<prompt>$@} %s\n%s"
         id (Utils.signal_name n)
-        (Ansi_color.strip_colors_for_stderr command_line)
-        (Ansi_color.strip_colors_for_stderr output)
+        (Colors.strip_colors_for_stderr command_line)
+        (Colors.strip_colors_for_stderr output)
     else
       die "@{<error>%12s@} %a @{<error>(got signal %s)@}\n\
            @{<details>%s@}\n\
@@ -313,14 +317,16 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose
         output
   | WSTOPPED _ -> assert false
 
-let run ?dir ?stdout_to ?stderr_to ?env ?(purpose=Internal_job) fail_mode prog args =
+let run ?dir ?stdout_to ?stderr_to ?env ?(purpose=Internal_job) fail_mode
+      prog args =
   map_result fail_mode
     (run_internal ?dir ?stdout_to ?stderr_to ?env ~purpose fail_mode prog args)
     ~f:ignore
 
 let run_capture_gen ?dir ?env ?(purpose=Internal_job) fail_mode prog args ~f =
   let fn = Temp.create "jbuild" ".output" in
-  map_result fail_mode (run_internal ?dir ~stdout_to:(File fn) ?env ~purpose fail_mode prog args)
+  map_result fail_mode
+    (run_internal ?dir ~stdout_to:(File fn) ?env ~purpose fail_mode prog args)
     ~f:(fun () ->
       let x = f fn in
       Temp.destroy fn;

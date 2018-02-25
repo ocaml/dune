@@ -30,7 +30,7 @@ module Promoted_to_delete = struct
     if Sys.file_exists "_build" then
       Io.write_file fn
         (String.concat ~sep:""
-           (List.map (Pset.elements db) ~f:(fun p ->
+           (List.map (Pset.to_list db) ~f:(fun p ->
               Sexp.to_string (Path.sexp_of_t p) ^ "\n")))
 end
 
@@ -64,7 +64,7 @@ module Dependency_path = struct
       match dep_path with
       | [] -> assert false
       |  { requested_file; targets } :: dep_path ->
-        if Pset.mem last targets then
+        if Pset.mem targets last then
           last :: acc
         else
           build_loop (requested_file :: acc) dep_path
@@ -77,7 +77,7 @@ module Dependency_path = struct
   let push requested_file ~targets ~f =
     Fiber.Var.get var >>= fun x ->
     let t = Option.value x ~default:empty in
-    if Pset.mem requested_file t.targets_seen then
+    if Pset.mem t.targets_seen requested_file then
       dependency_cycle requested_file t.dependency_path;
     let dependency_path =
       { requested_file; targets } :: t.dependency_path
@@ -136,7 +136,7 @@ module Internal_rule = struct
   module Id : sig
     type t
     val to_int : t -> int
-    val compare : t -> t -> int
+    val compare : t -> t -> Ordering.t
     val gen : unit -> t
   end = struct
     type t = int
@@ -350,7 +350,7 @@ type t =
   }
 
 let string_of_paths set =
-  Pset.elements set
+  Pset.to_list set
   |> List.map ~f:(fun p -> sprintf "- %s"
                              (Path.to_string_maybe_quoted
                                 (Path.drop_optional_build_context p)))
@@ -377,7 +377,7 @@ let get_dir_status t ~dir =
       let (ctx, sub_dir) = Option.value_exn (Path.extract_build_context dir) in
       if ctx = ".aliases" then
         Forward (Path.(append build_dir) sub_dir)
-      else if ctx <> "install" && not (String_map.mem ctx t.contexts) then
+      else if ctx <> "install" && not (String_map.mem t.contexts ctx) then
         Dir_status.Loaded Pset.empty
       else
         Collecting_rules
@@ -485,7 +485,7 @@ end
 let add_spec t fn spec ~copy_source =
   match Hashtbl.find t.files fn with
   | None ->
-    Hashtbl.add t.files ~key:fn ~data:spec
+    Hashtbl.add t.files fn spec
   | Some (File_spec.T { rule; _ }) ->
     match copy_source, rule.mode with
     | true, (Standard | Not_a_rule_stanza) ->
@@ -505,7 +505,7 @@ let add_spec t fn spec ~copy_source =
                "To keep the current behavior and get rid of this warning, add a field \
                 (fallback) to the rule."
            | _ -> assert false);
-      Hashtbl.add t.files ~key:fn ~data:spec
+      Hashtbl.add t.files fn spec
     | _ ->
       let (File_spec.T { rule = rule2; _ }) = spec in
       let string_of_loc = function
@@ -544,7 +544,7 @@ let clear_targets_digests_after_rule_execution targets =
   let missing =
     List.fold_left targets ~init:Pset.empty ~f:(fun acc fn ->
       match Unix.lstat (Path.to_string fn) with
-      | exception _ -> Pset.add fn acc
+      | exception _ -> Pset.add acc fn
       | (_ : Unix.stats) ->
         Utils.Cached_digest.remove fn;
         acc)
@@ -557,9 +557,9 @@ let make_local_dirs t paths =
   Pset.iter paths ~f:(fun path ->
     match Path.kind path with
     | Local path ->
-      if not (Path.Local.Set.mem path t.local_mkdirs) then begin
+      if not (Path.Local.Set.mem t.local_mkdirs path) then begin
         Path.Local.mkdir_p path;
-        t.local_mkdirs <- Path.Local.Set.add path t.local_mkdirs
+        t.local_mkdirs <- Path.Local.Set.add t.local_mkdirs path
       end
     | _ -> ())
 
@@ -568,9 +568,9 @@ let make_local_parent_dirs t paths ~map_path =
     match Path.kind (map_path path) with
     | Local path when not (Path.Local.is_root path) ->
       let parent = Path.Local.parent path in
-      if not (Path.Local.Set.mem parent t.local_mkdirs) then begin
+      if not (Path.Local.Set.mem t.local_mkdirs parent) then begin
         Path.Local.mkdir_p parent;
-        t.local_mkdirs <- Path.Local.Set.add parent t.local_mkdirs
+        t.local_mkdirs <- Path.Local.Set.add t.local_mkdirs parent
       end
     | _ -> ())
 
@@ -601,8 +601,8 @@ let remove_old_artifacts t ~dir ~subdirs_to_keep =
             match subdirs_to_keep with
             | All -> ()
             | These set ->
-              if String_set.mem fn set ||
-                 Pset.mem path t.build_dirs_to_keep then
+              if String_set.mem set fn ||
+                 Pset.mem t.build_dirs_to_keep path then
                 ()
               else
                 Path.rm_rf path
@@ -620,7 +620,7 @@ let no_rule_found =
     match Path.extract_build_context fn with
     | None -> fail fn
     | Some (ctx, _) ->
-      if String_map.mem ctx t.contexts then
+      if String_map.mem t.contexts ctx then
         fail fn
       else
         die "Trying to build %s but build context %s doesn't exist.%s"
@@ -667,8 +667,8 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     >>= fun (action, dyn_deps) ->
     make_local_parent_dirs t targets ~map_path:(fun x -> x);
     let all_deps = Pset.union static_deps dyn_deps in
-    let all_deps_as_list = Pset.elements all_deps in
-    let targets_as_list  = Pset.elements targets  in
+    let all_deps_as_list = Pset.to_list all_deps in
+    let targets_as_list  = Pset.to_list targets  in
     let hash =
       let trace =
         (List.map all_deps_as_list ~f:(fun fn ->
@@ -689,7 +689,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       List.fold_left targets_as_list ~init:false ~f:(fun acc fn ->
         match Hashtbl.find t.trace fn with
         | None ->
-          Hashtbl.add t.trace ~key:fn ~data:hash;
+          Hashtbl.add t.trace fn hash;
           true
         | Some prev_hash ->
           Hashtbl.replace t.trace ~key:fn ~data:hash;
@@ -833,7 +833,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
     if context_name = "install" then
       These String_set.empty
     else
-      let gen_rules = Option.value_exn (String_map.find context_name t.gen_rules) in
+      let gen_rules = Option.value_exn (String_map.find t.gen_rules context_name) in
       gen_rules ~dir (Option.value_exn (Path.explode sub_dir))
   in
   let rules = collector.rules in
@@ -842,8 +842,8 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
   let alias_dir = Path.append (Path.relative alias_dir context_name) sub_dir in
   let alias_rules, alias_stamp_files =
     let open Build.O in
-    String_map.fold collector.aliases ~init:([], Pset.empty)
-      ~f:(fun ~key:name ~data:{ Dir_status. deps; actions } (rules, alias_stamp_files) ->
+    String_map.foldi collector.aliases ~init:([], Pset.empty)
+      ~f:(fun name { Dir_status. deps; actions } (rules, alias_stamp_files) ->
         let base_path = Path.relative alias_dir name in
         let rules, deps =
           List.fold_left actions ~init:(rules, deps)
@@ -856,7 +856,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
                 Pre_rule.make ~locks
                   (Build.progn [ action; Build.create_file path ])
               in
-              (rule :: rules, Pset.add path deps))
+              (rule :: rules, Pset.add deps path))
         in
         let path = Path.extend_basename base_path ~suffix:Alias0.suffix in
         (Pre_rule.make
@@ -865,9 +865,9 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
               (Redirect (Stdout,
                          path,
                          Digest_files
-                           (Path.Set.elements deps))))
+                           (Path.Set.to_list deps))))
          :: rules,
-         Pset.add path alias_stamp_files))
+         Pset.add alias_stamp_files path))
   in
   Hashtbl.replace t.dirs ~key:alias_dir ~data:(Loaded alias_stamp_files);
 
@@ -897,7 +897,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
        String_set.empty)
     | ctx_name ->
       (* This condition is [true] because of [get_dir_status] *)
-      assert (String_map.mem ctx_name t.contexts);
+      assert (String_map.mem t.contexts ctx_name);
       let files, subdirs =
         match File_tree.find_dir t.file_tree sub_dir with
         | None -> (Pset.empty, String_set.empty)
@@ -937,16 +937,16 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
           let source_files_for_targtes =
             List.fold_left rule.targets ~init:Pset.empty
               ~f:(fun acc target ->
-                Pset.add
+                Pset.add acc
                   (Build_interpret.Target.path target
                    |> Path.drop_build_context
-                   (* All targets are in [dir] and we know it correspond to a directory
-                      of a build context since there are source files to copy, so this
+                   (* All targets are in [dir] and we know it
+                      correspond to a directory of a build context
+                      since there are source files to copy, so this
                       call can't fail. *)
-                   |> Option.value_exn)
-                  acc)
+                   |> Option.value_exn))
           in
-          if Pset.subset source_files_for_targtes to_copy then
+          if Pset.is_subset source_files_for_targtes ~of_:to_copy then
             (* All targets are present *)
             false
           else begin
@@ -1039,29 +1039,29 @@ and wait_for_file_found fn (File_spec.T file) =
       Fiber.Future.wait rule_execution)
 
 and wait_for_deps t deps =
-  Fiber.parallel_iter (Pset.elements deps) ~f:(wait_for_file t)
+  Fiber.parallel_iter (Pset.to_list deps) ~f:(wait_for_file t)
 
 let stamp_file_for_files_of t ~dir ~ext =
   let files_of_dir =
     Hashtbl.find_or_add t.files_of dir ~f:(fun dir ->
       let files_by_ext =
         targets_of t ~dir
-        |> Path.Set.elements
+        |> Path.Set.to_list
         |> List.map ~f:(fun fn -> Filename.extension (Path.to_string fn), fn)
-        |> String_map.of_alist_multi
+        |> String_map.of_list_multi
       in
       { files_by_ext
       ; dir_hash = Path.to_string dir |> Digest.string |> Digest.to_hex
       ; stamps = String_map.empty
       })
   in
-  match String_map.find ext files_of_dir.stamps with
+  match String_map.find files_of_dir.stamps ext with
   | Some fn -> fn
   | None ->
     let stamp_file = Path.relative misc_dir (files_of_dir.dir_hash ^ ext) in
     let files =
       Option.value
-        (String_map.find ext files_of_dir.files_by_ext)
+        (String_map.find files_of_dir.files_by_ext ext)
         ~default:[]
     in
     compile_rule t
@@ -1071,7 +1071,7 @@ let stamp_file_for_files_of t ~dir ~ext =
           Build.action ~targets:[stamp_file]
             (Action.with_stdout_to stamp_file
                (Action.digest_files files))));
-    files_of_dir.stamps <- String_map.add files_of_dir.stamps ~key:ext ~data:stamp_file;
+    files_of_dir.stamps <- String_map.add files_of_dir.stamps ext stamp_file;
     stamp_file
 
 module Trace = struct
@@ -1082,9 +1082,9 @@ module Trace = struct
   let dump (trace : t) =
     let sexp =
       Sexp.List (
-        Hashtbl.fold trace ~init:Pmap.empty ~f:(fun ~key ~data acc ->
-          Pmap.add acc ~key ~data)
-        |> Path.Map.bindings
+        Hashtbl.foldi trace ~init:Pmap.empty ~f:(fun key data acc ->
+          Pmap.add acc key data)
+        |> Path.Map.to_list
         |> List.map ~f:(fun (path, hash) ->
                Sexp.List [ Path.sexp_of_t path;
                            Atom (Sexp.Atom.of_digest hash) ]))
@@ -1101,21 +1101,22 @@ module Trace = struct
         list (pair Path.t (fun s -> Digest.from_hex (string s))) sexp
       in
       List.iter bindings ~f:(fun (path, hash) ->
-        Hashtbl.add trace ~key:path ~data:hash);
+        Hashtbl.add trace path hash);
     end;
     trace
 end
 
 let all_targets t =
-  String_map.iter t.contexts ~f:(fun ~key:_ ~data:ctx ->
-    File_tree.fold t.file_tree ~traverse_ignored_dirs:true ~init:() ~f:(fun dir () ->
-      load_dir t
-        ~dir:(Path.append ctx.Context.build_dir (File_tree.Dir.path dir))));
-  Hashtbl.fold t.files ~init:[] ~f:(fun ~key ~data:_ acc -> key :: acc)
+  String_map.iter t.contexts ~f:(fun ctx ->
+    File_tree.fold t.file_tree ~traverse_ignored_dirs:true ~init:()
+      ~f:(fun dir () ->
+        load_dir t
+          ~dir:(Path.append ctx.Context.build_dir (File_tree.Dir.path dir))));
+  Hashtbl.foldi t.files ~init:[] ~f:(fun key _ acc -> key :: acc)
 
 let finalize t =
-  (* Promotion must be handled before dumping the digest cache, as it might delete some
-     entries. *)
+  (* Promotion must be handled before dumping the digest cache, as it
+     might delete some entries. *)
   Action.Promotion.finalize ();
   Promoted_to_delete.dump ();
   Utils.Cached_digest.dump ();
@@ -1125,7 +1126,7 @@ let create ~contexts ~file_tree ~hook =
   Utils.Cached_digest.load ();
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
-    |> String_map.of_alist_exn
+    |> String_map.of_list_exn
   in
   let t =
     { contexts
@@ -1135,7 +1136,8 @@ let create ~contexts ~file_tree ~hook =
     ; dirs       = Hashtbl.create 1024
     ; load_dir_stack = []
     ; file_tree
-    ; gen_rules = String_map.map contexts ~f:(fun _ ~dir:_ -> die "gen_rules called too early")
+    ; gen_rules = String_map.map contexts ~f:(fun _ ~dir:_ ->
+        die "gen_rules called too early")
     ; build_dirs_to_keep = Pset.empty
     ; files_of = Hashtbl.create 1024
     ; prefix = None
@@ -1154,7 +1156,7 @@ let eval_request t ~request ~process_target =
   in
 
   let process_targets ts =
-    Fiber.parallel_iter (Pset.elements ts) ~f:process_target
+    Fiber.parallel_iter (Pset.to_list ts) ~f:process_target
   in
 
   Fiber.fork_and_join_unit
@@ -1178,7 +1180,7 @@ let rules_for_files t paths =
     | None -> None
     | Some (File_spec.T { rule; _ }) -> Some rule)
   |> Ir_set.of_list
-  |> Ir_set.elements
+  |> Ir_set.to_list
 
 module Ir_closure =
   Top_closure.Make(Internal_rule.Id)
@@ -1188,7 +1190,7 @@ module Ir_closure =
       let key (t : t) = t.id
       let deps (t : t) bs =
         rules_for_files bs
-          (Pset.elements
+          (Pset.to_list
              (Pset.union
                 t.static_deps
                 t.rule_deps))
@@ -1200,7 +1202,8 @@ let rules_for_targets t targets =
   | Error cycle ->
     die "dependency cycle detected:\n   %s"
       (List.map cycle ~f:(fun rule ->
-         Path.to_string (Pset.choose rule.Internal_rule.targets))
+         Path.to_string (Option.value_exn
+                           (Pset.choose rule.Internal_rule.targets)))
        |> String.concat ~sep:"\n-> ")
 
 let static_deps_of_request t request =
@@ -1210,7 +1213,7 @@ let static_deps_of_request t request =
       } = Build_interpret.static_deps request ~all_targets:(targets_of t)
             ~file_tree:t.file_tree
   in
-  Pset.elements (Pset.union rule_deps action_deps)
+  Pset.to_list (Pset.union rule_deps action_deps)
 
 let all_lib_deps t ~request =
   let targets = static_deps_of_request t request in
@@ -1221,11 +1224,11 @@ let all_lib_deps t ~request =
         acc
       else
         let deps =
-          match Pmap.find rule.dir acc with
+          match Pmap.find acc rule.dir with
           | None -> deps
           | Some deps' -> Build.merge_lib_deps deps deps'
         in
-        Pmap.add acc ~key:rule.dir ~data:deps)
+        Pmap.add acc rule.dir deps)
 
 let all_lib_deps_by_context t ~request =
   let targets = static_deps_of_request t request in
@@ -1238,7 +1241,7 @@ let all_lib_deps_by_context t ~request =
       match Path.extract_build_context rule.dir with
       | None -> acc
       | Some (context, _) -> (context, deps) :: acc)
-  |> String_map.of_alist_multi
+  |> String_map.of_list_multi
   |> String_map.map ~f:(function
     | [] -> String_map.empty
     | x :: l -> List.fold_left l ~init:x ~f:Build.merge_lib_deps)
@@ -1262,10 +1265,10 @@ module Id_set = Set.Make(Rule.Id)
 
 let rules_for_files rules paths =
   List.fold_left paths ~init:Rule_set.empty ~f:(fun acc path ->
-    match Pmap.find path rules with
+    match Pmap.find rules path with
     | None -> acc
-    | Some rule -> Rule_set.add rule acc)
-  |> Rule_set.elements
+    | Some rule -> Rule_set.add acc rule)
+  |> Rule_set.to_list
 
 module Rule_closure =
   Top_closure.Make(Rule.Id)
@@ -1274,7 +1277,7 @@ module Rule_closure =
       type t = Rule.t
       let key (t : t) = t.id
       let deps (t : t) (graph : graph) =
-        rules_for_files graph (Pset.elements t.deps)
+        rules_for_files graph (Pset.to_list t.deps)
     end)
 
 let build_rules_internal ?(recursive=false) t ~request =
@@ -1289,10 +1292,10 @@ let build_rules_internal ?(recursive=false) t ~request =
     | None ->
       Fiber.return ()
   and file_found fn (File_spec.T { rule = ir; _ }) =
-    if Id_set.mem ir.id !rules_seen then
+    if Id_set.mem !rules_seen ir.id then
       Fiber.return ()
     else begin
-      rules_seen := Id_set.add ir.id !rules_seen;
+      rules_seen := Id_set.add !rules_seen ir.id;
       (match ir.exec with
        | Running { rule_evaluation; _ } | Evaluating_rule { rule_evaluation; _ } ->
          Fiber.return rule_evaluation
@@ -1321,12 +1324,12 @@ let build_rules_internal ?(recursive=false) t ~request =
         Fiber.return ()
       else
         Fiber.Future.wait rule >>= fun rule ->
-        Fiber.parallel_iter (Pset.elements rule.deps) ~f:loop
+        Fiber.parallel_iter (Pset.to_list rule.deps) ~f:loop
     end
   in
   let targets = ref Pset.empty in
   eval_request t ~request ~process_target:(fun fn ->
-    targets := Pset.add fn !targets;
+    targets := Pset.add !targets fn;
     loop fn)
   >>= fun () ->
   Fiber.all (List.map !rules ~f:Fiber.Future.wait)
@@ -1334,16 +1337,17 @@ let build_rules_internal ?(recursive=false) t ~request =
   let rules =
     List.fold_left rules ~init:Pmap.empty ~f:(fun acc (r : Rule.t) ->
       Pset.fold r.targets ~init:acc ~f:(fun fn acc ->
-        Pmap.add acc ~key:fn ~data:r))
+        Pmap.add acc fn r))
   in
   match
     Rule_closure.top_closure rules
-      (rules_for_files rules (Pset.elements !targets))
+      (rules_for_files rules (Pset.to_list !targets))
   with
   | Ok l -> l
   | Error cycle ->
     die "dependency cycle detected:\n   %s"
-      (List.map cycle ~f:(fun rule -> Path.to_string (Pset.choose rule.Rule.targets))
+      (List.map cycle ~f:(fun rule ->
+         Path.to_string (Option.value_exn (Pset.choose rule.Rule.targets)))
        |> String.concat ~sep:"\n-> ")
 
 let build_rules ?recursive t ~request =
@@ -1355,8 +1359,8 @@ let build_rules ?recursive t ~request =
    +-----------------------------------------------------------------+ *)
 
 let rec add_build_dir_to_keep t ~dir =
-  if not (Pset.mem dir t.build_dirs_to_keep) then begin
-    t.build_dirs_to_keep <- Pset.add dir t.build_dirs_to_keep;
+  if not (Pset.mem t.build_dirs_to_keep dir) then begin
+    t.build_dirs_to_keep <- Pset.add t.build_dirs_to_keep dir;
     let dir = Path.parent dir in
     if dir <> Path.root then
       add_build_dir_to_keep t ~dir
@@ -1419,13 +1423,13 @@ let on_load_dir t ~dir ~f =
     p.lazy_generators <- f :: lazy_generators
 
 let eval_glob t ~dir re =
-  let targets = targets_of t ~dir |> Pset.elements |> List.map ~f:Path.basename in
+  let targets = targets_of t ~dir |> Pset.to_list |> List.map ~f:Path.basename in
   let files =
     match File_tree.find_dir t.file_tree dir with
     | None -> targets
     | Some d ->
       String_set.union (String_set.of_list targets) (File_tree.Dir.files d)
-      |> String_set.elements
+      |> String_set.to_list
   in
   List.filter files ~f:(Re.execp re)
 
@@ -1434,10 +1438,10 @@ module Alias = struct
 
   let get_alias_def build_system t =
     let collector = get_collector build_system ~dir:t.dir in
-    match String_map.find t.name collector.aliases with
+    match String_map.find collector.aliases t.name with
     | None ->
       let x = { Dir_status. deps = Pset.empty; actions = [] } in
-      collector.aliases <- String_map.add collector.aliases ~key:t.name ~data:x;
+      collector.aliases <- String_map.add collector.aliases t.name x;
       x
     | Some x -> x
 
@@ -1453,4 +1457,4 @@ module Alias = struct
                    } :: def.actions
 end
 
-let is_target t file = Pset.mem file (targets_of t ~dir:(Path.parent file))
+let is_target t file = Pset.mem (targets_of t ~dir:(Path.parent file)) file

@@ -21,7 +21,7 @@ module Gen(P : Params) = struct
   let stanzas_per_dir =
     List.map (SC.stanzas sctx) ~f:(fun stanzas ->
       (stanzas.SC.Dir_with_jbuild.ctx_dir, stanzas))
-    |> Path.Map.of_alist_exn
+    |> Path.Map.of_list_exn
 
   (* +-----------------------------------------------------------------+
      | Interpretation of [modules] fields                              |
@@ -39,11 +39,11 @@ module Gen(P : Params) = struct
     let standard_modules = String_map.map all_modules ~f:(fun m -> Ok m) in
     let fake_modules = ref String_map.empty in
     let parse ~loc s =
-      let s = String.capitalize_ascii s in
-      match String_map.find s all_modules with
+      let s = String.capitalize s in
+      match String_map.find all_modules s with
       | Some m -> Ok m
       | None ->
-        fake_modules := String_map.add ~key:s ~data:loc !fake_modules;
+        fake_modules := String_map.add !fake_modules s loc;
         Error (s, loc)
     in
     let modules =
@@ -53,8 +53,7 @@ module Gen(P : Params) = struct
         ~standard:standard_modules
     in
     let only_present_modules modules =
-      String_map.filter_map ~f:(fun ~key:_ ~data ->
-        match data with
+      String_map.filter_map ~f:(function
         | Ok m -> Some m
         | Error (s, loc) -> Loc.fail loc "Module %s doesn't exist." s
       ) modules
@@ -67,23 +66,23 @@ module Gen(P : Params) = struct
         ~standard:String_map.empty
     in
     let intf_only = only_present_modules intf_only in
-    String_map.iter !fake_modules ~f:(fun ~key ~data:loc ->
-      Loc.warn loc "Module %s is excluded but it doesn't exist." key
+    String_map.iteri !fake_modules ~f:(fun m loc ->
+      Loc.warn loc "Module %s is excluded but it doesn't exist." m
     );
     let real_intf_only =
       String_map.filter modules
-        ~f:(fun _ (m : Module.t) -> Option.is_none m.impl)
+        ~f:(fun (m : Module.t) -> Option.is_none m.impl)
     in
     if String_map.equal intf_only real_intf_only
-         ~cmp:(fun a b -> Module.name a = Module.name b) then
+         ~equal:(fun a b -> Module.name a = Module.name b) then
       modules
     else begin
       let should_be_listed, shouldn't_be_listed =
         String_map.merge intf_only real_intf_only ~f:(fun name x y ->
           match x, y with
           | Some _, Some _ -> None
-          | None  , Some _ -> Some (Inl (String.uncapitalize_ascii name))
-          | Some _, None   -> Some (Inr (String.uncapitalize_ascii name))
+          | None  , Some _ -> Some (Left  (String.uncapitalize name))
+          | Some _, None   -> Some (Right (String.uncapitalize name))
           | None  , None   -> assert false)
         |> String_map.values
         |> List.partition_map ~f:(fun x -> x)
@@ -115,7 +114,8 @@ module Gen(P : Params) = struct
             (list_modules should_be_listed)
       end;
       if shouldn't_be_listed <> [] then begin
-        (* Re-evaluate conf.modules_without_implementation but this time keep locations *)
+        (* Re-evaluate conf.modules_without_implementation but this
+           time keep locations *)
         let module Eval =
           Ordered_set_lang.Make(struct
             type t = Loc.t * Module.t
@@ -123,8 +123,8 @@ module Gen(P : Params) = struct
           end)
         in
         let parse ~loc s =
-          let s = String.capitalize_ascii s in
-          match String_map.find s all_modules with
+          let s = String.capitalize s in
+          match String_map.find all_modules s with
           | Some m -> m
           | None -> Loc.fail loc "Module %s doesn't exist." s
         in
@@ -219,7 +219,7 @@ module Gen(P : Params) = struct
     let cache = Hashtbl.create 32 in
     fun ~dir ->
       Hashtbl.find_or_add cache dir ~f:(fun dir ->
-        match Path.Map.find dir stanzas_per_dir with
+        match Path.Map.find stanzas_per_dir dir with
         | None -> String_set.empty
         | Some { stanzas; src_dir; scope; _ } ->
           (* Interpret a few stanzas in order to determine the list of
@@ -242,7 +242,8 @@ module Gen(P : Params) = struct
               | Alias _ | Provides _ | Install _ -> [])
             |> String_set.of_list
           in
-          String_set.union generated_files (SC.source_files sctx ~src_path:src_dir))
+          String_set.union generated_files
+            (SC.source_files sctx ~src_path:src_dir))
 
   (* +-----------------------------------------------------------------+
      | Modules listing                                                 |
@@ -250,21 +251,21 @@ module Gen(P : Params) = struct
 
   let guess_modules ~dir ~files =
     let impl_files, intf_files =
-      String_set.elements files
-      |> List.filter_map ~f:(fun fn ->
+      String_set.to_list files
+      |> List.filter_partition_map ~f:(fun fn ->
         (* we aren't using Filename.extension because we want to handle
            filenames such as foo.cppo.ml *)
         match String.lsplit2 fn ~on:'.' with
-        | Some (_, "ml") -> Some (Inl { Module.File.syntax=OCaml ; name=fn })
-        | Some (_, "re") -> Some (Inl { Module.File.syntax=Reason ; name=fn })
-        | Some (_, "mli") -> Some (Inr { Module.File.syntax=OCaml ; name=fn })
-        | Some (_, "rei") -> Some (Inr { Module.File.syntax=Reason ; name=fn })
-        | _ -> None)
-      |> List.partition_map ~f:(fun x -> x) in
+        | Some (_, "ml") -> Left { Module.File.syntax=OCaml ; name=fn }
+        | Some (_, "re") -> Left { Module.File.syntax=Reason ; name=fn }
+        | Some (_, "mli") -> Right { Module.File.syntax=OCaml ; name=fn }
+        | Some (_, "rei") -> Right { Module.File.syntax=Reason ; name=fn }
+        | _ -> Skip)
+    in
     let parse_one_set files =
       List.map files ~f:(fun (f : Module.File.t) ->
-        (String.capitalize_ascii (Filename.chop_extension f.name), f))
-      |> String_map.of_alist
+        (String.capitalize (Filename.chop_extension f.name), f))
+      |> String_map.of_list
       |> function
       | Ok x -> x
       | Error (name, f1, f2) ->
@@ -304,7 +305,7 @@ module Gen(P : Params) = struct
         let modules =
           parse_modules ~all_modules ~buildable:lib.buildable
         in
-        let main_module_name = String.capitalize_ascii lib.name in
+        let main_module_name = String.capitalize lib.name in
         let modules =
           String_map.map modules ~f:(fun (m : Module.t) ->
             let wrapper =
@@ -318,9 +319,9 @@ module Gen(P : Params) = struct
         let alias_module =
           if not lib.wrapped ||
              (String_map.cardinal modules = 1 &&
-              String_map.mem main_module_name modules) then
+              String_map.mem modules main_module_name) then
             None
-          else if String_map.mem main_module_name modules then
+          else if String_map.mem modules main_module_name then
             let file ext =
               Some { Module.File.
                      name   = sprintf "%s__%s-gen" lib.name ext
@@ -352,7 +353,7 @@ module Gen(P : Params) = struct
     let modules =
       match alias_module with
       | None -> modules
-      | Some m -> String_map.add modules ~key:m.name ~data:m
+      | Some m -> String_map.add modules m.name m
     in
     String_map.values modules
 
@@ -525,13 +526,13 @@ module Gen(P : Params) = struct
     let modules =
       match alias_module with
       | None -> modules
-      | Some m -> String_map.add modules ~key:m.name ~data:m
+      | Some m -> String_map.add modules m.name m
     in
 
     let dep_graphs =
       Ocamldep.rules sctx ~dir ~modules ~already_used ~alias_module
         ~lib_interface_module:(if lib.wrapped then
-                                 String_map.find main_module_name modules
+                                 String_map.find modules main_module_name
                                else
                                  None)
     in
@@ -544,7 +545,7 @@ module Gen(P : Params) = struct
       in
       SC.add_rule sctx
         (Build.return
-           (String_map.values (String_map.remove m.name modules)
+           (String_map.values (String_map.remove modules m.name)
             |> List.map ~f:(fun (m : Module.t) ->
               sprintf "(** @canonical %s.%s *)\n\
                        module %s = %s\n"
@@ -586,7 +587,7 @@ module Gen(P : Params) = struct
 
     if Library.has_stubs lib then begin
       let h_files =
-        String_set.elements files
+        String_set.to_list files
         |> List.filter_map ~f:(fun fn ->
           if String.is_suffix fn ~suffix:".h" then
             Some (Path.relative dir fn)
@@ -649,7 +650,7 @@ module Gen(P : Params) = struct
 
     List.iter Cm_kind.all ~f:(fun cm_kind ->
       let files =
-        String_map.fold modules ~init:[] ~f:(fun ~key:_ ~data:m acc ->
+        String_map.fold modules ~init:[] ~f:(fun m acc ->
           match Module.cm_file m ~obj_dir cm_kind with
           | None -> acc
           | Some fn -> fn :: acc)
@@ -739,8 +740,8 @@ module Gen(P : Params) = struct
     in
     let programs =
       List.map exes.names ~f:(fun (loc, name) ->
-        let mod_name = String.capitalize_ascii name in
-        match String_map.find mod_name modules with
+        let mod_name = String.capitalize name in
+        match String_map.find modules mod_name with
         | Some m ->
           if not (Module.has_impl m) then
             Loc.fail loc "Module %s has no implementation." mod_name
@@ -875,7 +876,7 @@ module Gen(P : Params) = struct
     |> Merlin.merge_all
     |> Option.map ~f:(fun (m : Merlin.t) ->
       { m with source_dirs =
-                 Path.Set.add (Path.relative src_dir ".") m.source_dirs
+                 Path.Set.add m.source_dirs (Path.relative src_dir ".")
       })
     |> Option.iter ~f:(Merlin.add_rules sctx ~dir:ctx_dir ~scope);
     Utop.setup sctx ~dir:ctx_dir ~libs:(
@@ -892,12 +893,12 @@ module Gen(P : Params) = struct
   let init_meta () =
     Lib.DB.all (SC.public_libs sctx)
     |> List.map ~f:(fun lib -> (Findlib.root_package_name (Lib.name lib), lib))
-    |> String_map.of_alist_multi
+    |> String_map.of_list_multi
     |> String_map.merge (SC.packages sctx) ~f:(fun _name pkg libs ->
       let pkg  = Option.value_exn pkg          in
       let libs = Option.value libs ~default:[] in
       Some (pkg, libs))
-    |> String_map.iter ~f:(fun ~key:_ ~data:((pkg : Package.t), libs) ->
+    |> String_map.iter ~f:(fun ((pkg : Package.t), libs) ->
       let path = Path.append ctx.build_dir pkg.path in
       SC.on_load_dir sctx ~dir:path ~f:(fun () ->
         let meta_fn = "META." ^ pkg.name in
@@ -1112,18 +1113,21 @@ module Gen(P : Params) = struct
             List.map files ~f:(fun { Install_conf. src; dst } ->
               (package.name, Install.Entry.make section (Path.relative dir src) ?dst))
           | _ -> [])
-      |> String_map.of_alist_multi
+      |> String_map.of_list_multi
     in
-    String_map.iter (SC.packages sctx) ~f:(fun ~key:_ ~data:(pkg : Package.t) ->
-      let stanzas = String_map.find_default pkg.name entries_per_package ~default:[] in
+    String_map.iter (SC.packages sctx) ~f:(fun (pkg : Package.t) ->
+      let stanzas =
+        Option.value (String_map.find entries_per_package pkg.name) ~default:[]
+      in
       install_file pkg.path pkg.name stanzas)
 
   let init_install_files () =
     if not ctx.implicit then
-      String_map.iter (SC.packages sctx)
-        ~f:(fun ~key:pkg ~data:{ Package.path = src_path; _ } ->
+      String_map.iteri (SC.packages sctx)
+        ~f:(fun pkg { Package.path = src_path; _ } ->
           let install_fn =
-            Utils.install_file ~package:pkg ~findlib_toolchain:ctx.findlib_toolchain
+            Utils.install_file ~package:pkg
+              ~findlib_toolchain:ctx.findlib_toolchain
           in
 
           let path = Path.append ctx.build_dir src_path in
@@ -1142,7 +1146,7 @@ module Gen(P : Params) = struct
      | "_doc" :: rest -> Odoc.gen_rules sctx rest ~dir
      | ".ppx"  :: rest -> SC.PP.gen_rules sctx rest
      | _ ->
-       match Path.Map.find dir stanzas_per_dir with
+       match Path.Map.find stanzas_per_dir dir with
        | Some x -> gen_rules x
        | None ->
          if components <> [] &&
@@ -1170,12 +1174,12 @@ let gen ~contexts ~build_system
     match only_packages with
     | None -> packages
     | Some pkgs ->
-      String_map.filter packages ~f:(fun _ { Package.name; _ } ->
-        String_set.mem name pkgs)
+      String_map.filter packages ~f:(fun { Package.name; _ } ->
+        String_set.mem pkgs name)
   in
   let sctxs = Hashtbl.create 4 in
   List.iter contexts ~f:(fun c ->
-    Hashtbl.add sctxs ~key:c.Context.name ~data:(Fiber.Ivar.create ()));
+    Hashtbl.add sctxs c.Context.name (Fiber.Ivar.create ()));
   let make_sctx (context : Context.t) : _ Fiber.t =
     let host () =
       match context.for_host with
@@ -1197,7 +1201,7 @@ let gen ~contexts ~build_system
              | Library { public = Some { package; _ }; _ }
              | Alias { package = Some package ;  _ }
              | Install { package; _ } ->
-               String_set.mem package.name pkgs
+               String_set.mem pkgs package.name
              | _ -> true)))
     in
     Fiber.fork_and_join host stanzas >>= fun (host, stanzas) ->
@@ -1218,8 +1222,8 @@ let gen ~contexts ~build_system
     (context.name, ((module M : Gen), stanzas))
   in
   Fiber.parallel_map contexts ~f:make_sctx >>| fun l ->
-  let map = String_map.of_alist_exn l in
+  let map = String_map.of_list_exn l in
   Build_system.set_rule_generators build_system
     (String_map.map map ~f:(fun ((module M : Gen), _) -> M.gen_rules));
-  String_map.iter map ~f:(fun ~key:_ ~data:((module M : Gen), _) -> M.init ());
+  String_map.iter map ~f:(fun ((module M : Gen), _) -> M.init ());
   String_map.map map ~f:snd

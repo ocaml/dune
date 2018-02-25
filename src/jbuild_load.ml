@@ -103,8 +103,8 @@ end
     let open Fiber.O in
     let static, dynamic =
       List.partition_map jbuilds ~f:(function
-        | Literal x -> Inl x
-        | Script  x -> Inr x)
+        | Literal x -> Left  x
+        | Script  x -> Right x)
     in
     Fiber.parallel_map dynamic ~f:(fun { dir; scope } ->
       let file = Path.relative dir "jbuild" in
@@ -194,7 +194,7 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
         | _ -> acc))
   in
   let packages =
-    String_map.of_alist_multi packages
+    String_map.of_list_multi packages
     |> String_map.mapi ~f:(fun name pkgs ->
       match pkgs with
       | [pkg] -> pkg
@@ -208,14 +208,14 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
   let scopes =
     String_map.values packages
     |> List.map ~f:(fun pkg -> (pkg.Package.path, pkg))
-    |> Path.Map.of_alist_multi
+    |> Path.Map.of_list_multi
     |> Path.Map.map ~f:Scope_info.make
   in
   let scopes =
-    if Path.Map.mem Path.root scopes then
+    if Path.Map.mem scopes Path.root then
       scopes
     else
-      Path.Map.add scopes ~key:Path.root ~data:Scope_info.anonymous
+      Path.Map.add scopes Path.root Scope_info.anonymous
   in
   let rec walk dir jbuilds scope =
     if File_tree.Dir.ignored dir then
@@ -224,17 +224,16 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
       let path = File_tree.Dir.path dir in
       let files = File_tree.Dir.files dir in
       let sub_dirs = File_tree.Dir.sub_dirs dir in
-      let scope = Path.Map.find_default path scopes ~default:scope in
+      let scope = Option.value (Path.Map.find scopes path) ~default:scope in
       let jbuilds =
-        if String_set.mem "jbuild" files then
+        if String_set.mem files "jbuild" then
           let jbuild = load ~dir:path ~scope ~ignore_promoted_rules in
           jbuild :: jbuilds
         else
           jbuilds
       in
       String_map.fold sub_dirs ~init:jbuilds
-        ~f:(fun ~key:_ ~data:dir jbuilds ->
-          walk dir jbuilds scope)
+        ~f:(fun dir jbuilds -> walk dir jbuilds scope)
     end
   in
   let jbuilds = walk (File_tree.root ftree) [] Scope_info.anonymous in

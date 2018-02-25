@@ -17,7 +17,7 @@ type 'a t =
 let rec add_deps ts set =
   List.fold_left ts ~init:set ~f:(fun set t ->
     match t with
-    | Dep  fn  -> Pset.add fn set
+    | Dep  fn  -> Pset.add set fn
     | Deps fns -> Pset.union set (Pset.of_list fns)
     | S ts
     | Concat (_, ts) -> add_deps ts set
@@ -33,7 +33,7 @@ let rec add_targets ts acc =
 
 let expand ~dir ts x =
   let dyn_deps = ref Path.Set.empty in
-  let add_dep path = dyn_deps := Path.Set.add path !dyn_deps in
+  let add_dep path = dyn_deps := Path.Set.add !dyn_deps path in
   let rec loop_dyn : nothing t -> string list = function
     | A s  -> [s]
     | As l -> l

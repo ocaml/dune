@@ -32,7 +32,7 @@ let emit_warnings t =
     |> Path.to_string
     |> Loc.in_file
   in
-  String_map.iter t.used ~f:(fun ~key:name ~data:locs ->
+  String_map.iteri t.used ~f:(fun name locs ->
     if List.length locs > 1 then
       Loc.warn loc
         "Module %S is used in several stanzas:@\n\

@@ -34,7 +34,7 @@ let module_name sexp =
     String.iter s ~f:(function
       | 'A'..'Z' | 'a'..'z' | '0'..'9' | '\'' | '_' -> ()
       | _ -> invalid_module_name name sexp);
-    String.capitalize_ascii s
+    String.capitalize s
 
 let module_names sexp = String_set.of_list (list module_name sexp)
 
@@ -76,7 +76,7 @@ module Scope_info = struct
   module Name = struct
     type t = string option
 
-    let compare : t -> t -> int = compare
+    let compare : t -> t -> Ordering.t = compare
 
     let of_string = function
       | "" -> None
@@ -111,13 +111,15 @@ module Scope_info = struct
       List.iter rest ~f:(fun pkg -> assert (pkg.Package.path = root));
       { name = Some name
       ; packages =
-          String_map.of_alist_exn (List.map pkgs ~f:(fun pkg ->
+          String_map.of_list_exn (List.map pkgs ~f:(fun pkg ->
             pkg.Package.name, pkg))
       ; root
       }
 
   let package_listing packages =
-    let longest_pkg = List.longest_map packages ~f:(fun p -> p.Package.name) in
+    let longest_pkg =
+      String.longest_map packages ~f:(fun p -> p.Package.name)
+    in
     String.concat ~sep:"\n"
       (List.map packages ~f:(fun pkg ->
          sprintf "- %-*s (because of %s)" longest_pkg pkg.Package.name
@@ -143,7 +145,7 @@ module Scope_info = struct
            (package_listing (String_map.values t.packages)))
 
   let resolve t name =
-    match String_map.find name t.packages with
+    match String_map.find t.packages name with
     | Some pkg ->
       Ok pkg
     | None ->
@@ -180,7 +182,7 @@ module Pp : sig
   type t = private string
   val of_string : string -> t
   val to_string : t -> string
-  val compare : t -> t -> int
+  val compare : t -> t -> Ordering.t
 end = struct
   type t = string
 
@@ -211,8 +213,8 @@ module Pp_or_flags = struct
   let split l =
     let pps, flags =
       List.partition_map l ~f:(function
-        | PP pp  -> Inl pp
-        | Flags s -> Inr s)
+        | PP pp   -> Left pp
+        | Flags s -> Right s)
     in
     (pps, List.concat flags)
 end
@@ -289,7 +291,7 @@ module Per_module = struct
     | List (_, Atom (_, A "per_module") :: rest) -> begin
       List.map rest ~f:(fun sexp ->
         let pp, names = pair a module_names sexp in
-        (String_set.elements names, pp))
+        (String_set.to_list names, pp))
       |> of_mapping ~default
       |> function
       | Ok t -> t
@@ -314,7 +316,7 @@ module Preprocess_map = struct
   let pps t =
     Per_module.fold t ~init:Pp_set.empty ~f:(fun pp acc ->
       Pp_set.union acc (Pp_set.of_list (Preprocess.pps pp)))
-    |> Pp_set.elements
+    |> Pp_set.to_list
 end
 
 module Lint = struct
@@ -327,7 +329,8 @@ module Lint = struct
 end
 
 let field_oslu name =
-  field name Ordered_set_lang.Unexpanded.t ~default:Ordered_set_lang.Unexpanded.standard
+  field name Ordered_set_lang.Unexpanded.t
+    ~default:Ordered_set_lang.Unexpanded.standard
 
 module Js_of_ocaml = struct
 
@@ -369,10 +372,10 @@ module Lib_dep = struct
       let rec loop required forbidden = function
         | [Atom (_, A "->"); fsexp] ->
           let common = String_set.inter required forbidden in
-          if not (String_set.is_empty common) then
+          Option.iter (String_set.choose common) ~f:(fun name ->
             of_sexp_errorf sexp
               "library %S is both required and forbidden in this clause"
-              (String_set.choose common);
+              name);
           { required
           ; forbidden
           ; file = file fsexp
@@ -384,9 +387,9 @@ module Lib_dep = struct
           let len = String.length s in
           if len > 0 && s.[0] = '!' then
             let s = String.sub s ~pos:1 ~len:(len - 1) in
-            loop required (String_set.add s forbidden) l
+            loop required (String_set.add forbidden s) l
           else
-            loop (String_set.add s required) forbidden l
+            loop (String_set.add required s) forbidden l
       in
       loop String_set.empty String_set.empty l
     | sexp -> of_sexp_error sexp "(<library-name> <code>) expected"
@@ -407,7 +410,7 @@ module Lib_dep = struct
     | Select s ->
       List.fold_left s.choices ~init:String_set.empty ~f:(fun acc x ->
         String_set.union acc (String_set.union x.required x.forbidden))
-      |> String_set.elements
+      |> String_set.to_list
 
   let direct s = Direct s
 
@@ -425,8 +428,8 @@ module Lib_deps = struct
   let t sexp =
     let t = list Lib_dep.t sexp in
     let add kind name acc =
-      match String_map.find name acc with
-      | None -> String_map.add acc ~key:name ~data:kind
+      match String_map.find acc name with
+      | None -> String_map.add acc name kind
       | Some kind' ->
         match kind, kind' with
         | Required, Required ->
@@ -1068,8 +1071,8 @@ module Stanzas = struct
     let versions, sexps =
       List.partition_map sexps ~f:(function
         | List (loc, [Atom (_, A "jbuild_version"); ver]) ->
-            Inl (Jbuild_version.t ver, loc)
-          | sexp -> Inr sexp)
+          Left (Jbuild_version.t ver, loc)
+        | sexp -> Right sexp)
     in
     let version =
       match versions with
@@ -1107,9 +1110,11 @@ module Stanzas = struct
     List.fold_left ts ~init:String_set.empty ~f:(fun acc (_, _, stanzas) ->
       List.fold_left stanzas ~init:acc ~f:(fun acc -> function
         | Stanza.Library lib ->
-          String_set.add lib.name
-            (match lib.public with
+          let acc =
+            match lib.public with
              | None -> acc
-             | Some { name; _ } -> String_set.add name acc)
+             | Some { name; _ } -> String_set.add acc name
+          in
+          String_set.add acc lib.name
         | _ -> acc))
 end

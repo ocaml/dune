@@ -30,7 +30,7 @@ let report_with_backtrace ppf exn ~backtrace =
       if msg.[String.length msg - 1] = '\n' then
         Format.fprintf ppf "%s" msg
       else
-        Format.fprintf ppf "%s\n" (String.capitalize_ascii msg);
+        Format.fprintf ppf "%s\n" (String.capitalize msg);
       false
     | Code_error msg ->
       let bt = Printexc.raw_backtrace_to_string backtrace in
@@ -80,7 +80,7 @@ let report exn =
     Buffer.clear err_buf;
     (* To avoid keeping huge errors in memory *)
     let hash = Digest.string s in
-    if not (String_set.mem hash !reported) then begin
-      reported := String_set.add hash !reported;
+    if not (String_set.mem !reported hash) then begin
+      reported := String_set.add !reported hash;
       print_to_console s
     end

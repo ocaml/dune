@@ -32,13 +32,13 @@ module DB = struct
             ; "context", Sexp.To_sexp.string t.context
             ];
         let scope = loop (Path.parent d) in
-        Hashtbl.add t.by_dir ~key:d ~data:scope;
+        Hashtbl.add t.by_dir d scope;
         scope
     in
     loop dir
 
   let find_by_name t name =
-    match Scope_name_map.find name t.by_name with
+    match Scope_name_map.find t.by_name name with
     | Some x -> x
     | None ->
       Sexp.code_error "Scope.DB.find_by_name"
@@ -50,7 +50,7 @@ module DB = struct
     let scopes_info_by_name =
       List.map scopes ~f:(fun (scope : Jbuild.Scope_info.t) ->
         (scope.name, scope))
-      |> Scope_name_map.of_alist
+      |> Scope_name_map.of_list
       |> function
       | Ok x -> x
       | Error (_name, scope1, scope2) ->
@@ -66,7 +66,7 @@ module DB = struct
     let libs_by_scope_name =
       List.map internal_libs ~f:(fun (dir, (lib : Jbuild.Library.t)) ->
         (lib.scope_name, (dir, lib)))
-      |> Scope_name_map.of_alist_multi
+      |> Scope_name_map.of_list_multi
     in
     let by_name_cell = ref Scope_name_map.empty in
     let public_libs =
@@ -75,16 +75,16 @@ module DB = struct
           match lib.public with
           | None -> None
           | Some p -> Some (p.name, lib.scope_name))
-        |> String_map.of_alist_exn
+        |> String_map.of_list_exn
       in
       Lib.DB.create ()
         ~parent:installed_libs
         ~resolve:(fun name ->
-          match String_map.find name public_libs with
+          match String_map.find public_libs name with
           | None -> Error Not_found
           | Some scope_name ->
             let scope =
-              Option.value_exn (Scope_name_map.find scope_name !by_name_cell)
+              Option.value_exn (Scope_name_map.find !by_name_cell scope_name)
             in
             match Lib.DB.find scope.db name with
             | Error _ as res -> res
@@ -103,7 +103,7 @@ module DB = struct
     in
     by_name_cell := by_name;
     let by_dir = Hashtbl.create 1024 in
-    Scope_name_map.iter by_name ~f:(fun ~key:_name ~data:scope ->
-      Hashtbl.add by_dir ~key:scope.info.root ~data:scope);
+    Scope_name_map.iter by_name ~f:(fun scope ->
+      Hashtbl.add by_dir scope.info.root scope);
     ({ by_name; by_dir; context }, public_libs)
 end

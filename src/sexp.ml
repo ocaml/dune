@@ -96,14 +96,14 @@ module To_sexp = struct
   let option f = function
     | None -> List []
     | Some x -> List [f x]
-  let string_set set = list atom (String_set.elements set)
-  let string_map f map = list (pair atom f) (String_map.bindings map)
+  let string_set set = list atom (String_set.to_list set)
+  let string_map f map = list (pair atom f) (String_map.to_list map)
   let record l =
     List (List.map l ~f:(fun (n, v) -> List [Atom(Atom.of_string n); v]))
   let string_hashtbl f h =
     string_map f
-      (Hashtbl.fold h ~init:String_map.empty ~f:(fun ~key ~data acc ->
-         String_map.add acc ~key ~data))
+      (Hashtbl.foldi h ~init:String_map.empty ~f:(fun key data acc ->
+         String_map.add acc key data))
 end
 
 module Of_sexp = struct
@@ -165,7 +165,7 @@ module Of_sexp = struct
 
   let string_set sexp = String_set.of_list (list string sexp)
   let string_map f sexp =
-    match String_map.of_alist (list (pair string f) sexp) with
+    match String_map.of_list (list (pair string f) sexp) with
     | Ok x -> x
     | Error (key, _v1, _v2) ->
       of_sexp_error sexp (sprintf "key %S present multiple times" key)
@@ -173,8 +173,7 @@ module Of_sexp = struct
   let string_hashtbl f sexp =
     let map = string_map f sexp in
     let tbl = Hashtbl.create (String_map.cardinal map + 32) in
-    String_map.iter map ~f:(fun ~key ~data ->
-      Hashtbl.add tbl ~key ~data);
+    String_map.iteri map ~f:(Hashtbl.add tbl);
     tbl
 
   type unparsed_field =
@@ -186,12 +185,9 @@ module Of_sexp = struct
     type t = string
     let compare a b =
       let alen = String.length a and blen = String.length b in
-      if alen < blen then
-        -1
-      else if alen > blen then
-        1
-      else
-        String.compare a b
+      match Int.compare alen blen with
+      | Eq -> String.compare a b
+      | ne -> ne
   end
 
   module Name_map = Map.Make(Name)
@@ -214,7 +210,7 @@ module Of_sexp = struct
 
   let consume name state =
     { state with
-      unparsed = Name_map.remove name state.unparsed
+      unparsed = Name_map.remove state.unparsed name
     ; known    = name :: state.known
     }
 
@@ -224,7 +220,7 @@ module Of_sexp = struct
   let ignore_fields names state =
     let unparsed =
       List.fold_left names ~init:state.unparsed ~f:(fun acc name ->
-        Name_map.remove name acc)
+        Name_map.remove acc name)
     in
     ((),
      { state with
@@ -247,7 +243,7 @@ module Of_sexp = struct
         match
           Name_map.values parsed
           |> List.map ~f:(fun f -> Ast.loc f.entry)
-          |> List.sort ~cmp:(fun a b -> compare a.Loc.start.pos_cnum b.start.pos_cnum)
+          |> List.sort ~compare:(fun a b -> compare a.Loc.start.pos_cnum b.start.pos_cnum)
         with
         | [] -> state.loc
         | first :: l ->
@@ -257,7 +253,7 @@ module Of_sexp = struct
       Loc.fail loc "%s" msg
 
   let field name ?default value_of_sexp state =
-    match Name_map.find name state.unparsed with
+    match Name_map.find state.unparsed name with
     | Some { value = Some value; _ } ->
       (value_of_sexp value, consume name state)
     | Some { value = None; _ } ->
@@ -269,7 +265,7 @@ module Of_sexp = struct
         Loc.fail state.loc "field %s missing" name
 
   let field_o name value_of_sexp state =
-    match Name_map.find name state.unparsed with
+    match Name_map.find state.unparsed name with
     | Some { value = Some value; _ } ->
       (Some (value_of_sexp value), consume name state)
     | Some { value = None; _ } ->
@@ -277,7 +273,7 @@ module Of_sexp = struct
     | None -> (None, add_known name state)
 
   let field_b name state =
-    match Name_map.find name state.unparsed with
+    match Name_map.find state.unparsed name with
     | Some { value = Some value; _ } ->
       (bool value, consume name state)
     | Some { value = None; _ } ->
@@ -293,12 +289,11 @@ module Of_sexp = struct
         List.fold_left sexps ~init:Name_map.empty ~f:(fun acc sexp ->
           match sexp with
           | List (_, [Atom (_, A name)]) ->
-            Name_map.add acc ~key:name ~data:{ value = None; entry = sexp }
+            Name_map.add acc name { value = None; entry = sexp }
           | List (_, [name_sexp; value]) -> begin
               match name_sexp with
               | Atom (_, A name) ->
-                 Name_map.add acc ~key:name ~data:{ value = Some value;
-                                                    entry = sexp }
+                Name_map.add acc name { value = Some value; entry = sexp }
               | List _ | Quoted_string _ ->
                 of_sexp_error name_sexp "Atom expected"
             end
@@ -313,10 +308,9 @@ module Of_sexp = struct
   let record parse sexp =
     let state = make_record_parser_state sexp in
     let v, state = parse state in
-    if Name_map.is_empty state.unparsed then
-      v
-    else
-      let name, { entry; _ } = Name_map.choose state.unparsed in
+    match Name_map.choose state.unparsed with
+    | None -> v
+    | Some (name, { entry; _ }) ->
       let name_sexp =
         match entry with
         | List (_, s :: _) -> s
@@ -387,7 +381,7 @@ module Of_sexp = struct
   let cstr_rest name args rest make =
     cstr_rest_loc name args rest (fun _ -> make)
 
-  let equal_cstr_name a b = Name.compare a b = 0
+  let equal_cstr_name a b = Name.compare a b = Eq
 
   let find_cstr cstrs sexp name =
     match
@@ -399,9 +393,9 @@ module Of_sexp = struct
       of_sexp_errorf sexp
         "Unknown constructor %s%s" name
         (hint
-           (String.uncapitalize_ascii name)
+           (String.uncapitalize name)
            (List.map cstrs ~f:(fun c ->
-              String.uncapitalize_ascii (C.name c))))
+              String.uncapitalize (C.name c))))
 
   let sum cstrs sexp =
     match sexp with
@@ -433,7 +427,7 @@ module Of_sexp = struct
         of_sexp_errorf sexp
           "Unknown value %s%s" s
           (hint
-             (String.uncapitalize_ascii s)
+             (String.uncapitalize s)
              (List.map cstrs ~f:(fun (name, _) ->
-                String.uncapitalize_ascii name)))
+                String.uncapitalize name)))
 end

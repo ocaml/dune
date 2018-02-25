@@ -50,7 +50,7 @@ let make_watermark_map ~name ~version ~commit =
         end
       | _ -> err
   in
-  String_map.of_alist_exn
+  String_map.of_list_exn
     [ "NAME"           , Ok name
     ; "VERSION"        , Ok version
     ; "VERSION_NUM"    , Ok version_num
@@ -66,7 +66,7 @@ let make_watermark_map ~name ~version ~commit =
 
 let subst_string s ~fname ~map =
   let len = String.length s in
-  let longest_var = List.longest (String_map.keys map) in
+  let longest_var = String.longest (String_map.keys map) in
   let loc_of_offset ~ofs ~len =
     let rec loop lnum bol i =
       if i = ofs then
@@ -125,7 +125,7 @@ let subst_string s ~fname ~map =
       match s.[i] with
       | '%' -> begin
           let var = String.sub s ~pos:(start + 2) ~len:(i - start - 3) in
-          match String_map.find var map with
+          match String_map.find map var with
           | None -> in_var ~start:(i - 1) (i + 1) acc
           | Some (Ok repl) ->
             let acc = (start, i + 1, repl) :: acc in

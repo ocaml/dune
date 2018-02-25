@@ -79,7 +79,7 @@ module Make(Value : Value) = struct
           let x = parse ~loc s in
           M.singleton x
         | Special (loc, name) -> begin
-            match String_map.find name special_values with
+            match String_map.find special_values name with
             | Some x -> x
             | None   -> Loc.fail loc "undefined symbol %s" name
           end
@@ -173,7 +173,7 @@ module Unexpanded = struct
       | Element _
       | Special _ -> acc
       | Include fn ->
-        String_set.add (f fn) acc
+        String_set.add acc (f fn)
       | Union l ->
         List.fold_left l ~init:acc ~f:loop
       | Diff (l, r) ->
@@ -190,13 +190,14 @@ module Unexpanded = struct
       | Include fn ->
         let sexp =
           let fn = f fn in
-          match String_map.find fn files_contents with
+          match String_map.find files_contents fn with
           | Some x -> x
           | None ->
             Sexp.code_error
               "Ordered_set_lang.Unexpanded.expand"
               [ "included-file", Quoted_string fn
-              ; "files", Sexp.To_sexp.(list string) (String_map.keys files_contents)
+              ; "files", Sexp.To_sexp.(list string)
+                           (String_map.keys files_contents)
               ]
         in
         parse_general sexp ~f:(fun sexp ->

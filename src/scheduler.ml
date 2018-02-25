@@ -13,14 +13,15 @@ module Running_jobs : sig
 end = struct
   let all = Hashtbl.create 128
 
-  let add job = Hashtbl.add all ~key:job.pid ~data:job
+  let add job = Hashtbl.add all job.pid job
 
   let count () = Hashtbl.length all
 
   let resolve_and_remove_job pid =
     let job =
-      Hashtbl.find_exn all pid ~string_of_key:(sprintf "<pid:%d>")
-        ~table_desc:(fun _ -> "<running-jobs>")
+      match Hashtbl.find all pid with
+      | Some job -> job
+      | None -> assert false
     in
     Hashtbl.remove all pid;
     job
@@ -145,7 +146,7 @@ let rec go_rec t =
 
 let go ?(log=Log.no_log) ?(config=Config.default)
       ?(gen_status_line=fun () -> None) fiber =
-  Lazy.force Ansi_color.setup_env_for_colors;
+  Lazy.force Colors.setup_env_for_colors;
   Log.info log ("Workspace root: " ^ !Clflags.workspace_root);
   let cwd = Sys.getcwd () in
   if cwd <> initial_cwd then

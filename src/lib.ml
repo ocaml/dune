@@ -268,22 +268,24 @@ module L = struct
   type nonrec t = t list
 
   let include_paths ts ~stdlib_dir =
-    List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-      Path.Set.add (obj_dir t) acc)
-    |> Path.Set.remove stdlib_dir
+    let dirs =
+      List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
+        Path.Set.add acc (obj_dir t))
+    in
+    Path.Set.remove dirs stdlib_dir
 
   let include_flags ts ~stdlib_dir =
     let dirs = include_paths ts ~stdlib_dir in
-    Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
+    Arg_spec.S (List.concat_map (Path.Set.to_list dirs) ~f:(fun dir ->
       [Arg_spec.A "-I"; Path dir]))
 
   let c_include_flags ts ~stdlib_dir =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-        Path.Set.add t.src_dir acc)
-      |> Path.Set.remove stdlib_dir
+        Path.Set.add acc t.src_dir)
     in
-    Arg_spec.S (List.concat_map (Path.Set.elements dirs) ~f:(fun dir ->
+    let dirs = Path.Set.remove dirs stdlib_dir in
+    Arg_spec.S (List.concat_map (Path.Set.to_list dirs) ~f:(fun dir ->
       [Arg_spec.A "-I"; Path dir]))
 
   let link_flags ts ~mode ~stdlib_dir =
@@ -305,10 +307,10 @@ module L = struct
       match l with
       | [] -> acc
       | x :: l ->
-        if Int_set.mem x.unique_id seen then
+        if Int_set.mem seen x.unique_id then
           loop acc l seen
         else
-          loop (x :: acc) l (Int_set.add x.unique_id seen)
+          loop (x :: acc) l (Int_set.add seen x.unique_id)
     in
     loop [] l Int_set.empty
 end
@@ -338,7 +340,7 @@ module Dep_stack = struct
     }
 
   let dependency_cycle t (last : Init.t) =
-    assert (Int_set.mem last.unique_id t.seen);
+    assert (Int_set.mem t.seen last.unique_id);
     let rec build_loop acc stack =
       match stack with
       | [] -> assert false
@@ -360,15 +362,15 @@ module Dep_stack = struct
     let init = { Init. unique_id; name; path } in
     (init,
      { stack = init :: t.stack
-     ; seen  = Int_set.add unique_id t.seen
+     ; seen  = Int_set.add t.seen unique_id
      })
 
   let push t (x : Init.t) : (_, _) result =
-    if Int_set.mem x.unique_id t.seen then
+    if Int_set.mem t.seen x.unique_id then
       Error (dependency_cycle t x)
     else
       Ok { stack = x :: t.stack
-         ; seen  = Int_set.add x.unique_id t.seen
+         ; seen  = Int_set.add t.seen x.unique_id
          }
 end
 
@@ -435,7 +437,7 @@ and resolve_name db name ~stack =
     let init, stack =
       Dep_stack.create_and_push stack name path
     in
-    Hashtbl.add db.table ~key:name ~data:(Initializing init);
+    Hashtbl.add db.table name (Initializing init);
     let res =
       match find_internal db name' ~stack with
       | Ok _ as res -> res
@@ -471,7 +473,7 @@ and resolve_name db name ~stack =
           ; "returned_lib"    , to_sexp (info.src_dir, name)
           ; "conflicting_with", sexp
           ]);
-    Hashtbl.add db.table ~key:name ~data:(Initializing init);
+    Hashtbl.add db.table name (Initializing init);
     let t = make db name info ~unique_id:init.unique_id ~stack in
     let res =
       if not info.optional ||
@@ -501,7 +503,7 @@ and resolve_name db name ~stack =
           else
             res
     in
-    Hashtbl.add db.table ~key:name ~data:(Done res);
+    Hashtbl.add db.table name (Done res);
     res
 
 and available_internal db name ~stack =
@@ -537,7 +539,7 @@ and resolve_complex_deps db deps ~stack =
                   None
                 else
                   match
-                    resolve_simple_deps db (String_set.elements required) ~stack
+                    resolve_simple_deps db (String_set.to_list required) ~stack
                   with
                   | Ok ts -> Some (ts, file)
                   | Error _ -> None)
@@ -596,10 +598,10 @@ and fold_closure ts ~init ~f ~stack =
     match ts with
     | [] -> Ok acc
     | t :: ts ->
-      if Int_set.mem t.unique_id !seen then
+      if Int_set.mem !seen t.unique_id then
         loop ts acc ~stack
       else begin
-        seen := Int_set.add t.unique_id !seen;
+        seen := Int_set.add !seen t.unique_id;
         f t acc >>= fun acc ->
         (Dep_stack.push stack (to_init t) >>= fun stack ->
          t.requires >>= fun deps ->
@@ -644,8 +646,8 @@ let check_conflicts ts =
   match
     List.fold_left ts ~init:String_map.empty ~f:(fun acc t ->
       let name = (fst t).name in
-      match String_map.find name acc with
-      | None -> String_map.add acc ~key:name ~data:t
+      match String_map.find acc name with
+      | None -> String_map.add acc name t
       | Some t' -> raise_notrace (Conflict_found { lib1 = t'; lib2 = t }))
   with
   | (_ : _ String_map.t) ->
@@ -723,7 +725,7 @@ module DB = struct
             [ p.name   , Info info
             ; conf.name, Redirect (conf.buildable.loc, dir, p.name)
             ])
-      |> String_map.of_alist
+      |> String_map.of_list
       |> function
       | Ok x -> x
       | Error (name, x, y) ->
@@ -741,7 +743,7 @@ module DB = struct
     in
     create () ?parent
       ~resolve:(fun name ->
-        match String_map.find name map with
+        match String_map.find map name with
         | None -> Error Not_found
         | Some x -> Ok x)
       ~all:(fun () -> String_map.keys map)
@@ -812,7 +814,7 @@ end
 module Meta = struct
   let to_names ts =
     List.fold_left ts ~init:String_set.empty ~f:(fun acc t ->
-      String_set.add t.name acc)
+      String_set.add acc t.name)
 
   (* For the deprecated method, we need to put all the runtime
      dependencies of the transitive closure.

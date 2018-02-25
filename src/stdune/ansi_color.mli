@@ -24,8 +24,16 @@ module Style : sig
     | Fg of Color.t
     | Bg of Color.t
     | Bold
+    | Dim
     | Underlined
+
+  (** Ansi escape sequence that set the terminal style to exactly
+      these styles *)
+  val escape_sequence : t list -> string
 end
 
 module Render : Pp.Renderer.S
   with type Tag.t = Style.t list
+
+(** Filter out escape sequences in a string *)
+val strip : string -> string

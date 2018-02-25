@@ -6,7 +6,7 @@ module type S = sig
   type t
 
   val make : string -> t
-  val compare : t -> t -> int
+  val compare : t -> t -> Ordering.t
 
   module Set : sig
     include Set.S with type elt = t

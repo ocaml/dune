@@ -146,7 +146,7 @@ let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~scope ~dir ~obj_dir
   String_map.iter
     (match alias_module with
      | None -> modules
-     | Some (m : Module.t) -> String_map.remove m.name modules)
-    ~f:(fun ~key:_ ~data:m ->
+     | Some (m : Module.t) -> String_map.remove modules m.name)
+    ~f:(fun m ->
       build_module sctx m ~dynlink ~js_of_ocaml ~flags ~scope ~dir ~obj_dir
         ~dep_graphs ~requires ~alias_module)

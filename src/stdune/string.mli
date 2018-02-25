@@ -31,3 +31,7 @@ val split_lines : t -> t list
     transforms all chars above '~' into '\xxx' which is not suitable
     for UTF-8 strings. *)
 val escape_double_quote : t -> t
+
+(** Return the length of the longest string in the list *)
+val longest : string list -> int
+val longest_map : 'a list -> f:('a -> string) -> int

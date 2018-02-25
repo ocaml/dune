@@ -43,6 +43,27 @@ let partition_map l ~f =
   let l, r = rev_partition_map l ~f in
   (rev l, rev r)
 
+type ('a, 'b) skip_or_either =
+  | Skip
+  | Left  of 'a
+  | Right of 'b
+
+let rev_filter_partition_map =
+  let rec loop l accl accr ~f =
+    match l with
+    | [] -> (accl, accr)
+    | x :: l ->
+      match f x with
+      | Skip    -> loop l accl accr        ~f
+      | Left  y -> loop l (y :: accl) accr ~f
+      | Right y -> loop l accl (y :: accr) ~f
+  in
+  fun l ~f -> loop l [] [] ~f
+
+let filter_partition_map l ~f =
+  let l, r = rev_filter_partition_map l ~f in
+  (rev l, rev r)
+
 let rec find_map l ~f =
   match l with
   | [] -> None
@@ -56,11 +77,13 @@ let rec find l ~f =
   | [] -> None
   | x :: l -> if f x then Some x else find l ~f
 
-let max_length l ~length =
-  fold_left l ~init:0 ~f:(fun acc x ->
-    max acc (length x))
-
 let rec last = function
   | [] -> None
   | [x] -> Some x
   | _::xs -> last xs
+
+let sort t ~compare =
+  sort t ~cmp:(fun a b -> Ordering.to_int (compare a b))
+
+let stable_sort t ~compare =
+  stable_sort t ~cmp:(fun a b -> Ordering.to_int (compare a b))

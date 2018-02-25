@@ -147,3 +147,9 @@ let escape_double_quote s =
     done;
     Bytes.unsafe_to_string b
   )
+
+let longest_map l ~f =
+  List.fold_left l ~init:0 ~f:(fun acc x ->
+    max acc (length (f x)))
+
+let longest l = longest_map l ~f:(fun x -> x)

@@ -25,7 +25,7 @@ let add_module_rules sctx ~dir lib_requires =
     >>^ (fun libs ->
       let include_paths =
         let ctx = Super_context.context sctx in
-        Path.Set.elements
+        Path.Set.to_list
           (Lib.L.include_paths libs ~stdlib_dir:ctx.stdlib_dir)
       in
       let b = Buffer.create 64 in

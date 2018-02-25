@@ -80,7 +80,7 @@ let report exn =
     Buffer.clear err_buf;
     (* To avoid keeping huge errors in memory *)
     let hash = Digest.string s in
-    if not (String_set.mem hash !reported) then begin
-      reported := String_set.add hash !reported;
+    if not (String_set.mem !reported hash) then begin
+      reported := String_set.add !reported hash;
       print_to_console s
     end

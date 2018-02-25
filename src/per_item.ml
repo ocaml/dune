@@ -16,7 +16,7 @@ module type S = sig
   val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc) -> 'acc
 end
 
-module Make(Key : Map.OrderedType) : S with type key = Key.t = struct
+module Make(Key : Comparable.S) : S with type key = Key.t = struct
   module Map = Map.Make(Key)
 
   type key = Key.t
@@ -38,7 +38,7 @@ module Make(Key : Map.OrderedType) : S with type key = Key.t = struct
     List.mapi l ~f:(fun i (keys, _) ->
       List.map keys ~f:(fun key -> (key, i + 1)))
     |> List.concat
-    |> Map.of_alist
+    |> Map.of_list
     |> function
     | Ok map ->
       Ok { map; values }
@@ -47,7 +47,7 @@ module Make(Key : Map.OrderedType) : S with type key = Key.t = struct
 
   let get t key =
     let index =
-      match Map.find key t.map with
+      match Map.find t.map key with
       | None   -> 0
       | Some i -> i
     in

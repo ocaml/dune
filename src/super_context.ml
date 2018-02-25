@@ -48,7 +48,7 @@ let installed_libs t = t.installed_libs
 let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
-let expand_var_no_root t var = String_map.find var t.vars
+let expand_var_no_root t var = String_map.find t.vars var
 
 let expand_vars t ~scope ~dir s =
   String_with_vars.expand s ~f:(fun _loc -> function
@@ -157,7 +157,7 @@ let create
     ; "MAKE"           , make
     ; "null"           , Paths ([Config.dev_null], Concat)
     ]
-    |> String_map.of_alist
+    |> String_map.of_list
     |> function
     | Ok x -> x
     | Error _ -> assert false
@@ -415,7 +415,7 @@ module Deps = struct
     | Files_recursively_in s ->
       let path = Path.relative dir (expand_vars t ~scope ~dir s) in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
-      >>^ Pset.elements
+      >>^ Pset.to_list
 
   let interpret t ~scope ~dir l =
     Build.all (List.map l ~f:(dep t ~scope ~dir))
@@ -473,14 +473,14 @@ module Action = struct
     }
 
   let add_lib_dep acc lib kind =
-    acc.lib_deps <- String_map.add acc.lib_deps ~key:lib ~data:kind
+    acc.lib_deps <- String_map.add acc.lib_deps lib kind
 
   let add_fail acc fail =
     acc.failures <- fail :: acc.failures;
     None
 
   let add_ddep acc ~key dep =
-    acc.ddeps <- String_map.add acc.ddeps ~key ~data:dep;
+    acc.ddeps <- String_map.add acc.ddeps key dep;
     None
 
   let path_exp path = Action.Var_expansion.Paths   ([path], Concat)
@@ -488,7 +488,7 @@ module Action = struct
 
   (* Static expansion that creates a dependency on the expanded path *)
   let static_dep_exp acc path =
-    acc.sdeps <- Pset.add path acc.sdeps;
+    acc.sdeps <- Pset.add acc.sdeps path;
     Some (path_exp path)
 
   let map_exe sctx =
@@ -625,7 +625,7 @@ module Action = struct
   let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
     let open Action.Var_expansion in
     U.Partial.expand t ~dir ~map_exe ~f:(fun loc key ->
-      match String_map.find key dynamic_expansions with
+      match String_map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
         let _, var = parse_bang key in
@@ -688,7 +688,7 @@ module Action = struct
         in
         { deps; targets = Pset.empty }
     in
-    let targets = Pset.elements targets in
+    let targets = Pset.to_list targets in
     List.iter targets ~f:(fun target ->
       if Path.parent target <> dir then
         Loc.fail (Loc.in_file (Utils.describe_target (Utils.jbuild_file_in ~dir)))
@@ -706,12 +706,12 @@ module Action = struct
       >>>
       Build.arr (fun paths -> ((), paths))
       >>>
-      let ddeps = String_map.bindings forms.ddeps in
+      let ddeps = String_map.to_list forms.ddeps in
       Build.first (Build.all (List.map ddeps ~f:snd))
       >>^ (fun (vals, deps_written_by_user) ->
         let dynamic_expansions =
-          List.fold_left2 ddeps vals ~init:String_map.empty ~f:(fun acc (var, _) value ->
-            String_map.add acc ~key:var ~data:value)
+          List.fold_left2 ddeps vals ~init:String_map.empty
+            ~f:(fun acc (var, _) value -> String_map.add acc var value)
         in
         let unresolved =
           expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe
@@ -726,7 +726,7 @@ module Action = struct
         let { Action.Infer.Outcome.deps; targets = _ } =
           Action.Infer.infer action
         in
-        Pset.elements deps))
+        Pset.to_list deps))
       >>>
       Build.action_dyn () ~dir ~targets
     in
@@ -788,16 +788,16 @@ module PP = struct
         let libs, drivers =
           List.partition_map libs ~f:(fun lib ->
             if lib == driver || Lib.name lib = migrate_driver_main then
-              Inr lib
+              Right lib
             else
-              Inl lib)
+              Left lib)
         in
         let user_driver, migrate_driver =
           List.partition_map drivers ~f:(fun lib ->
             if Lib.name lib = migrate_driver_main then
-              Inr lib
+              Right lib
             else
-              Inl lib)
+              Left lib)
         in
         libs @ user_driver @ migrate_driver
     in
@@ -851,7 +851,7 @@ module PP = struct
       let names =
         match List.rev names with
         | [] -> []
-        | driver :: rest -> List.sort rest ~cmp:String.compare @ [driver]
+        | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
       in
       let pps = List.map names ~f:Jbuild.Pp.of_string in
       build_ppx_driver sctx pps ~lib_db ~dep_kind:Required ~target:exe
@@ -893,7 +893,7 @@ module PP = struct
         let name, db' = name_and_db lib in
         (name :: names, most_specific_db db db'))
     in
-    let names = List.sort ~cmp:String.compare names in
+    let names = List.sort ~compare:String.compare names in
     let names =
       match driver with
       | None        -> names
@@ -1103,14 +1103,16 @@ let expand_and_eval_set t ~scope ~dir set ~standard =
   let open Build.O in
   let f = expand_vars t ~scope ~dir in
   let parse ~loc:_ s = s in
-  match Ordered_set_lang.Unexpanded.files set ~f |> String_set.elements with
+  match Ordered_set_lang.Unexpanded.files set ~f |> String_set.to_list with
   | [] ->
-    let set = Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f in
+    let set =
+      Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f
+    in
     Build.return (Eval_strings.eval set ~standard ~parse)
   | files ->
     let paths = List.map files ~f:(Path.relative dir) in
     Build.all (List.map paths ~f:Build.read_sexp)
     >>^ fun sexps ->
-    let files_contents = List.combine files sexps |> String_map.of_alist_exn in
+    let files_contents = List.combine files sexps |> String_map.of_list_exn in
     let set = Ordered_set_lang.Unexpanded.expand set ~files_contents ~f in
     Eval_strings.eval set ~standard ~parse

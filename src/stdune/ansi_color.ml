@@ -62,13 +62,19 @@ module Style = struct
     | Fg of Color.t
     | Bg of Color.t
     | Bold
+    | Dim
     | Underlined
 
   let code = function
     | Bold       -> "1"
+    | Dim        -> "2"
     | Underlined -> "4"
     | Fg c       -> Color.fg_code c
     | Bg c       -> Color.bg_code c
+
+  let escape_sequence l =
+    let codes = "0" :: List.map l ~f:code in
+    Printf.sprintf "\027[%sm" (String.concat codes ~sep:";")
 end
 
 module Styles = struct
@@ -76,6 +82,7 @@ module Styles = struct
     { fg         : Color.t
     ; bg         : Color.t
     ; bold       : bool
+    ; dim        : bool
     ; underlined : bool
     }
 
@@ -83,6 +90,7 @@ module Styles = struct
     { fg         = Default
     ; bg         = Default
     ; bold       = true
+    ; dim        = true
     ; underlined = true
     }
 
@@ -91,34 +99,41 @@ module Styles = struct
     | Fg c       -> { t with fg         = c    }
     | Bg c       -> { t with bg         = c    }
     | Bold       -> { t with bold       = true }
+    | Dim        -> { t with dim        = true }
     | Underlined -> { t with underlined = true }
 
   let escape_sequence t =
+    let open Style in
     let l = [] in
     let l =
       match t.fg with
       | Default -> l
-      | c       -> Color.fg_code c :: l
+      | c       -> Fg c :: l
     in
     let l =
       match t.bg with
       | Default -> l
-      | c       -> Color.bg_code c :: l
+      | c       -> Bg c :: l
     in
     let l =
       if t.bold then
-        Style.code Bold :: l
+        Bold :: l
+      else
+        l
+    in
+    let l =
+      if t.bold then
+        Dim :: l
       else
         l
     in
     let l =
       if t.underlined then
-        Style.code Underlined :: l
+        Underlined :: l
       else
         l
     in
-    let l = "0" :: l in
-    Printf.sprintf "\027[%sm" (String.concat l ~sep:";")
+    Style.escape_sequence l
 end
 
 module Render = Pp.Renderer.Make(struct
@@ -140,3 +155,23 @@ module Render = Pp.Renderer.Make(struct
           ("", (t, seq), "")
     end
   end)
+
+let strip str =
+  let len = String.length str in
+  let buf = Buffer.create len in
+  let rec loop i =
+    if i = len then
+      Buffer.contents buf
+    else
+      match str.[i] with
+      | '\027' -> skip (i + 1)
+      | c      -> Buffer.add_char buf c; loop (i + 1)
+  and skip i =
+    if i = len then
+      Buffer.contents buf
+    else
+      match str.[i] with
+      | 'm' -> loop (i + 1)
+      | _   -> skip (i + 1)
+  in
+  loop 0

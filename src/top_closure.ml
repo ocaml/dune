@@ -8,7 +8,7 @@ module type Elt = sig
   val deps : t -> graph -> t list
 end
 
-module Make(Key : Set.OrderedType)(Elt : Elt with type key := Key.t) = struct
+module Make(Key : Comparable.S)(Elt : Elt with type key := Key.t) = struct
   module Set = Set.Make(Key)
 
   let top_closure graph elements =
@@ -16,11 +16,11 @@ module Make(Key : Set.OrderedType)(Elt : Elt with type key := Key.t) = struct
     let res = ref [] in
     let rec loop elt ~temporarily_marked =
       let key = Elt.key elt in
-      if Set.mem key temporarily_marked then
+      if Set.mem temporarily_marked key then
         Error [elt]
-      else if not (Set.mem key !visited) then begin
-        visited := Set.add key !visited;
-        let temporarily_marked = Set.add key temporarily_marked in
+      else if not (Set.mem !visited key) then begin
+        visited := Set.add !visited key;
+        let temporarily_marked = Set.add temporarily_marked key in
         match iter_elts (Elt.deps elt graph) ~temporarily_marked with
         | Ok () -> res := elt :: !res; Ok ()
         | Error l -> Error (elt :: l)

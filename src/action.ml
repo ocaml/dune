@@ -367,11 +367,11 @@ module Unexpanded = struct
 
     module E = struct
       let expand ~generic ~special ~map ~dir ~f = function
-        | Inl x -> map x
-        | Inr template ->
+        | Left x -> map x
+        | Right template ->
            match To_VE.expand dir template ~f with
-           | Inl e -> special dir e
-           | Inr s -> generic dir s
+           | Left  e -> special dir e
+           | Right s -> generic dir s
       [@@inlined always]
 
       let string ~dir ~f x =
@@ -438,8 +438,8 @@ module Unexpanded = struct
         Remove_tree (E.path ~dir ~f x)
       | Mkdir x -> begin
           match x with
-          | Inl path -> Mkdir path
-          | Inr tmpl ->
+          | Left  path -> Mkdir path
+          | Right tmpl ->
             let path = E.path ~dir ~f x in
             check_mkdir (SW.loc tmpl) path;
             Mkdir path
@@ -456,9 +456,9 @@ module Unexpanded = struct
   module E = struct
     let expand ~generic ~special ~dir ~f template =
       match To_VE.partial_expand dir template ~f with
-      | Inl (Inl e) -> Inl(special dir e)
-      | Inl (Inr s) -> Inl(generic dir s)
-      | Inr _ as x -> x
+      | Left (Left  e) -> Left (special dir e)
+      | Left (Right s) -> Left (generic dir s)
+      | Right _ as x -> x
 
     let string ~dir ~f x =
       expand ~dir ~f x
@@ -487,28 +487,28 @@ module Unexpanded = struct
       let args =
         List.concat_map args ~f:(fun arg ->
           match E.strings ~dir ~f arg with
-          | Inl args -> List.map args ~f:(fun x -> Inl x)
-          | Inr _ as x -> [x])
+          | Left args -> List.map args ~f:(fun x -> Left x)
+          | Right _ as x -> [x])
       in
       begin
         match E.prog_and_args ~dir ~f prog with
-        | Inl (prog, more_args) ->
-          let more_args = List.map more_args ~f:(fun x -> Inl x) in
+        | Left (prog, more_args) ->
+          let more_args = List.map more_args ~f:(fun x -> Left x) in
           let prog =
             match prog with
             | Search _ -> prog
             | This path -> This (map_exe path)
           in
-          Run (Inl prog, more_args @ args)
-        | Inr _ as prog ->
+          Run (Left prog, more_args @ args)
+        | Right _ as prog ->
           Run (prog, args)
       end
     | Chdir (fn, t) -> begin
         let res = E.path ~dir ~f fn in
         match res with
-        | Inl dir ->
+        | Left dir ->
           Chdir (res, partial_expand t ~dir ~map_exe ~f)
-        | Inr fn ->
+        | Right fn ->
           let loc = SW.loc fn in
           Loc.fail loc
             "This directory cannot be evaluated statically.\n\
@@ -540,8 +540,8 @@ module Unexpanded = struct
     | Mkdir x ->
       let res = E.path ~dir ~f x in
       (match res with
-       | Inl path -> check_mkdir (SW.loc x) path
-       | Inr _    -> ());
+       | Left path -> check_mkdir (SW.loc x) path
+       | Right _   -> ());
       Mkdir res
     | Digest_files x ->
       Digest_files (List.map x ~f:(E.path ~dir ~f))
@@ -580,7 +580,7 @@ let chdirs =
   let rec loop acc t =
     let acc =
       match t with
-      | Chdir (dir, _) -> Path.Set.add dir acc
+      | Chdir (dir, _) -> Path.Set.add acc dir
       | _ -> acc
     in
     fold_one_step t ~init:acc ~f:loop
@@ -647,9 +647,9 @@ module Promotion = struct
   let group_by_targets db =
     List.map db ~f:(fun { File. src; dst } ->
       (dst, src))
-    |> Path.Map.of_alist_multi
+    |> Path.Map.of_list_multi
     (* Sort the list of possible sources for deterministic behavior *)
-    |> Path.Map.map ~f:(List.sort ~cmp:Path.compare)
+    |> Path.Map.map ~f:(List.sort ~compare:Path.compare)
 
   let do_promote db =
     let by_targets = group_by_targets db  in
@@ -665,7 +665,7 @@ module Promotion = struct
             Option.some_if (Path.is_directory path) path)
     in
     let dirs_to_clear_from_cache = Path.root :: potential_build_contexts in
-    Path.Map.iter by_targets ~f:(fun ~key:dst ~data:srcs ->
+    Path.Map.iteri by_targets ~f:(fun dst srcs ->
       match srcs with
       | [] -> assert false
       | src :: others ->
@@ -740,7 +740,7 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
     exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
   | Setenv (var, value, t) ->
     exec t ~ectx ~dir ~stdout_to ~stderr_to
-      ~env_extra:(Env_var_map.add env_extra ~key:var ~data:value)
+      ~env_extra:(Env_var_map.add env_extra var value)
   | Redirect (Stdout, fn, Echo s) ->
     Io.write_file (Path.to_string fn) s;
     Fiber.return ()
@@ -838,7 +838,7 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
     exec_echo stdout_to s
   | Diff { optional; file1; file2 } ->
     if (optional && not (Path.exists file1 && Path.exists file2)) ||
-       Io.compare_files (Path.to_string file1) (Path.to_string file2) = 0 then
+       Io.compare_files (Path.to_string file1) (Path.to_string file2) = Eq then
       Fiber.return ()
     else begin
       let is_copied_from_source_tree file =
@@ -885,7 +885,7 @@ let exec ~targets ?context t =
     | None -> Lazy.force Context.initial_env
     | Some c -> c.env
   in
-  let targets = Path.Set.elements targets in
+  let targets = Path.Set.to_list targets in
   let purpose = Process.Build_job targets in
   let ectx = { purpose; context; env } in
   exec t ~ectx ~dir:Path.root ~env_extra:Env_var_map.empty
@@ -993,8 +993,8 @@ module Infer = struct
   end [@@inline always]
 
   include Make(Ast)(S)(Outcome)(struct
-      let ( +@ ) acc fn = { acc with targets = S.add fn acc.targets }
-      let ( +< ) acc fn = { acc with deps    = S.add fn acc.deps    }
+      let ( +@ ) acc fn = { acc with targets = S.add acc.targets fn }
+      let ( +< ) acc fn = { acc with deps    = S.add acc.deps    fn }
       let ( +<! ) acc prog =
         match prog with
         | Ok p -> acc +< p
@@ -1004,31 +1004,32 @@ module Infer = struct
   module Partial = Make(Unexpanded.Partial.Past)(S)(Outcome)(struct
       let ( +@ ) acc fn =
         match fn with
-        | Inl fn -> { acc with targets = S.add fn acc.targets }
-        | Inr _  -> acc
+        | Left  fn -> { acc with targets = S.add acc.targets fn }
+        | Right _  -> acc
       let ( +< ) acc fn =
         match fn with
-        | Inl fn -> { acc with deps    = S.add fn acc.deps    }
-        | Inr _  -> acc
+        | Left  fn -> { acc with deps    = S.add acc.deps fn }
+        | Right _  -> acc
       let ( +<! ) acc fn =
         match (fn : Unexpanded.Partial.program) with
-        | Inl (This fn) -> { acc with deps = S.add fn acc.deps }
-        | Inl (Search _) | Inr _ -> acc
+        | Left  (This fn) -> { acc with deps = S.add acc.deps fn }
+        | Left  (Search _) | Right _ -> acc
     end)
 
   module Partial_with_all_targets = Make(Unexpanded.Partial.Past)(S)(Outcome)(struct
       let ( +@ ) acc fn =
         match fn with
-        | Inl fn -> { acc with targets = S.add fn acc.targets }
-        | Inr sw -> Loc.fail (SW.loc sw) "Cannot determine this target statically."
+        | Left  fn -> { acc with targets = S.add acc.targets fn }
+        | Right sw ->
+          Loc.fail (SW.loc sw) "Cannot determine this target statically."
       let ( +< ) acc fn =
         match fn with
-        | Inl fn -> { acc with deps    = S.add fn acc.deps    }
-        | Inr _  -> acc
+        | Left  fn -> { acc with deps    = S.add acc.deps fn }
+        | Right _  -> acc
       let ( +<! ) acc fn =
         match (fn : Unexpanded.Partial.program) with
-        | Inl (This fn) -> { acc with deps = S.add fn acc.deps }
-        | Inl (Search _) | Inr _ -> acc
+        | Left  (This fn) -> { acc with deps = S.add acc.deps fn }
+        | Left  (Search _) | Right _ -> acc
     end)
 
   let partial ~all_targets t =

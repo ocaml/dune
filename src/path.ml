@@ -222,7 +222,7 @@ let compare = String.compare
 
 module Set = struct
   include String_set
-  let sexp_of_t t = Sexp.To_sexp.(list string) (String_set.elements t)
+  let sexp_of_t t = Sexp.To_sexp.(list string) (String_set.to_list t)
   let of_string_set = map
 end
 

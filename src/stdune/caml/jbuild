@@ -1,4 +1,4 @@
 (library
  ((name caml)
   (synopsis "Wrapped version of the OCaml stdlib")
-  (libraries (result_compat))))
+  (libraries (result))))

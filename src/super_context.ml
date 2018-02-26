@@ -953,7 +953,7 @@ module PP = struct
 
   let uses_ppx_driver ~pps =
     match Option.map ~f:Pp.to_string (List.last pps) with
-    | Some ("ppx_driver.runner" | "ppx_base.runner") -> true
+    | Some "ppx_driver.runner" -> true
     | Some _ | None -> false
 
   let promote_correction ~uses_ppx_driver fn build =

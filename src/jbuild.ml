@@ -1062,7 +1062,7 @@ module Documentation = struct
 
   let v1 pkgs =
     record
-      (Scope.package_field pkgs >>= fun package ->
+      (Scope_info.package_field pkgs >>= fun package ->
        field "files" Ordered_set_lang.t ~default:Ordered_set_lang.standard
        >>= fun files ->
        return

@@ -160,8 +160,8 @@ module Gen(P : Params) = struct
           mlds_written_by_user
           ~parse:(fun ~loc:_ s -> s)
           ~standard:all_mlds in
-      String_map.iter mlds ~f:(fun ~key:_ ~data:mld ->
-        if not (String_map.mem mld all_mlds) then (
+      String_map.iter mlds ~f:(fun mld ->
+        if not (String_map.mem all_mlds mld) then (
           die "no mld file %s in %s" mld (Path.to_string dir)
         )
       );
@@ -306,12 +306,12 @@ module Gen(P : Params) = struct
     )
 
   let guess_mlds ~files =
-    String_set.elements files
+    String_set.to_list files
     |> List.filter_map ~f:(fun fn ->
       match String.lsplit2 fn ~on:'.' with
       | Some (_, "mld") -> Some (Filename.chop_extension fn, fn)
       | _ -> None)
-    |> String_map.of_alist_exn (* TODO error handling *)
+    |> String_map.of_list_exn (* TODO error handling *)
 
   let modules_by_dir =
     let cache = Hashtbl.create 32 in

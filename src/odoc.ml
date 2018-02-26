@@ -122,10 +122,11 @@ let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
     );
   html_file
 
-let all_mld_files sctx ~(lib : Library.t) ~lib_name ~modules ~dir files =
+let all_mld_files sctx ~(lib : Library.t) ~modules ~dir files =
   let all_files =
     if List.mem "index.mld" ~set:files then files else "index.mld" :: files
   in
+  let lib_name = Library.best_name lib in
   let doc_dir = SC.Doc.dir sctx lib in
   List.map all_files ~f:(fun file ->
     let name = Filename.chop_extension file in
@@ -178,7 +179,6 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
     in
     (obj_dir, name)
   in
-  let lib_name = Library.best_name lib in
   let odoc = get_odoc sctx in
   let includes =
     let ctx = SC.context sctx in
@@ -188,7 +188,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
        >>^ Lib.L.include_flags ~stdlib_dir:ctx.stdlib_dir)
   in
   let mld_files =
-    all_mld_files sctx ~dir ~lib ~lib_name ~modules mld_files
+    all_mld_files sctx ~dir ~lib ~modules mld_files
   in
   let mld_and_odoc_files =
     List.map mld_files ~f:(fun m ->

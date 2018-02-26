@@ -146,7 +146,7 @@ module Gen(P : Params) = struct
       modules
     end
 
-  let parse_mlds ~dir ~(all_mlds : string String_map.t) ~mlds_written_by_user =
+  let _parse_mlds ~dir ~(all_mlds : string String_map.t) ~mlds_written_by_user =
     let module Eval_mlds =
       Ordered_set_lang.Make(struct
         type t = string
@@ -319,13 +319,6 @@ module Gen(P : Params) = struct
       Hashtbl.find_or_add cache dir ~f:(fun dir ->
         let files = text_files ~dir in
         guess_modules ~dir ~files)
-
-  let mlds_by_dir =
-    let cache = Hashtbl.create 32 in
-    fun ~dir ->
-      Hashtbl.find_or_add cache dir ~f:(fun dir ->
-        let files = text_files ~dir in
-        guess_mlds ~files)
 
   type modules_by_lib =
     { modules          : Module.t String_map.t

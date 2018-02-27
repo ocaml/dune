@@ -210,10 +210,12 @@ include Sub_system.Register_with_backend(
           Split)
       in
       let extra_vars =
-        String_map.of_list_exn
+        List.fold_left
           [ "impl-files", files Impl
           ; "intf-files", files Intf
           ]
+          ~init:extra_vars
+          ~f:(fun acc (k, v) -> String_map.add acc k v)
       in
       Build.return []
       >>>

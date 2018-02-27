@@ -307,7 +307,7 @@ See the `User actions`_ section for more details.
 - ``(deps (<deps-conf list>))`` to specify the dependencies of the
   rule. See the `Dependency specification`_ section for more details.
 
-- ``(mode <mode>)`` to specify how to handle the targets, see `mode`_
+- ``(mode <mode>)`` to specify how to handle the targets, see `modes`_
   for details
 
 - ``(fallback)`` is deprecated and is the same as ``(mode fallback)``
@@ -630,6 +630,8 @@ With this jbuild file, running jbuilder as follow will replace the
 Common items
 ============
 
+.. _ordered-set-language:
+
 Ordered set language
 --------------------
 
@@ -938,6 +940,8 @@ For instance:
                    (((action (run ./pp.sh X=1 ${<})) (foo bar)))
                    (((action (run ./pp.sh X=2 ${<})) (baz)))))
 
+.. _deps-field:
+
 Dependency specification
 ------------------------
 
@@ -1030,6 +1034,8 @@ using ``(js_of_ocaml (<js_of_ocaml-options>))``.
 
 The default value for ``(flags ...)`` depends on whether ``--dev`` is passed to
 Jbuilder. ``--dev`` will enable sourcemap and the pretty JavaScript output.
+
+.. _user-actions:
 
 User actions
 ------------

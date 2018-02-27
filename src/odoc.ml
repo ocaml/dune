@@ -37,14 +37,6 @@ module Module_or_mld = struct
     | Mld of Mld.t
     | Module of Module.t
 
-  let odoc_file ~doc_dir = function
-    | Mld m -> Mld.odoc_file ~doc_dir m
-    | Module m -> Module.odoc_file ~doc_dir m
-
-  let odoc_input ~obj_dir ~doc_dir = function
-    | Mld m -> Mld.odoc_input ~doc_dir m
-    | Module m -> Module.cmti_file m ~obj_dir
-
   let html_dir ~doc_dir = function
     | Mld _ -> doc_dir
     | Module m -> doc_dir ++ String.capitalize m.obj_name
@@ -55,27 +47,36 @@ module Module_or_mld = struct
     | Module _ -> html_dir ~doc_dir t ++ "index.html"
 end
 
-let module_or_mld_deps (m : Module_or_mld.t) ~doc_dir
+let module_deps (m : Module.t) ~doc_dir
       ~(dep_graphs:Ocamldep.Dep_graphs.t) =
-  match m with
-  | Mld _ ->
-    Build.arr (fun x -> x)
-  | Module m ->
-    Build.dyn_paths
-      ((match m.intf with
-         | Some _ ->
-           Ocamldep.Dep_graph.deps_of dep_graphs.intf m
-         | None ->
-           (* When a module has no .mli, use the dependencies for the .ml *)
-           Ocamldep.Dep_graph.deps_of dep_graphs.impl m)
-       >>^ List.map ~f:(Module.odoc_file ~doc_dir))
+  Build.dyn_paths
+    ((match m.intf with
+       | Some _ ->
+         Ocamldep.Dep_graph.deps_of dep_graphs.intf m
+       | None ->
+         (* When a module has no .mli, use the dependencies for the .ml *)
+         Ocamldep.Dep_graph.deps_of dep_graphs.impl m)
+     >>^ List.map ~f:(Module.odoc_file ~doc_dir))
 
-let compile sctx (m : Module_or_mld.t) ~odoc ~dir ~obj_dir ~includes ~dep_graphs
+let compile_mld sctx (m : Mld.t) ~odoc ~dir ~pkg ~doc_dir =
+  let context = SC.context sctx in
+  let odoc_file = Mld.odoc_file m ~doc_dir in
+  SC.add_rule sctx
+    (Build.run ~context ~dir:doc_dir odoc
+       [ A "compile"
+       ; A "-I"; Path dir
+       ; As ["--pkg"; pkg]
+       ; A "-o"; Target odoc_file
+       ; Dep (Mld.odoc_input m ~doc_dir)
+       ]);
+  (Module_or_mld.Mld m, odoc_file)
+
+let compile_module sctx (m : Module.t) ~odoc ~dir ~obj_dir ~includes ~dep_graphs
       ~doc_dir ~lib_unique_name =
   let context = SC.context sctx in
-  let odoc_file = Module_or_mld.odoc_file m ~doc_dir in
+  let odoc_file = Module.odoc_file m ~doc_dir in
   SC.add_rule sctx
-    (module_or_mld_deps m ~doc_dir ~dep_graphs
+    (module_deps m ~doc_dir ~dep_graphs
      >>>
      includes
      >>>
@@ -85,12 +86,12 @@ let compile sctx (m : Module_or_mld.t) ~odoc ~dir ~obj_dir ~includes ~dep_graphs
        ; Dyn (fun x -> x)
        ; As ["--pkg"; lib_unique_name]
        ; A "-o"; Target odoc_file
-       ; Dep (Module_or_mld.odoc_input m ~obj_dir ~doc_dir)
+       ; Dep (Module.cmti_file m ~obj_dir)
        ]);
-  (m, odoc_file)
+  (Module_or_mld.Module m, odoc_file)
 
-let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
-      ~(lib : Library.t) =
+let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir
+      ~(includes : (unit, nothing Arg_spec.t) Build.t) ~libs =
   let context = SC.context sctx in
   let html_dir = Module_or_mld.html_dir ~doc_dir m in
   let html_file = Module_or_mld.html_file ~doc_dir m in
@@ -103,7 +104,9 @@ let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
       html_dir, [jbuilder_keep]
   in
   SC.add_rule sctx
-    (SC.Doc.static_deps sctx lib
+    (List.map libs ~f:(SC.Doc.static_deps sctx)
+     |> Build.all
+     >>^ (fun _ -> ())
      >>>
      includes
      >>>
@@ -122,43 +125,11 @@ let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
     );
   html_file
 
-let all_mld_files sctx ~(lib : Library.t) ~modules ~dir files =
-  let all_files =
-    if List.mem "index.mld" ~set:files then files else "index.mld" :: files
-  in
-  let lib_name = Library.best_name lib in
-  let doc_dir = SC.Doc.dir sctx lib in
-  List.map all_files ~f:(fun file ->
-    let name = Filename.chop_extension file in
-    let mld = Mld.create ~name in
-    let generated_mld = Mld.odoc_input ~doc_dir mld in
-    let source_mld = dir ++ file in
-    SC.add_rule sctx
-      (Build.if_file_exists source_mld
-         ~then_:(Build.contents source_mld)
-         ~else_:(Build.arr (fun () ->
-           (if lib.wrapped then
-              sprintf
-                "{1 Library %s}\n\
-                 The entry point for this library is module {!module:%s}."
-                lib_name
-                (String.capitalize lib.name)
-            else
-              sprintf
-                "{1 Library %s}\n\
-                 This library exposes the following toplevel modules: {!modules:%s}."
-                lib_name
-                (String_map.keys modules |> String.concat ~sep:" "))))
-       >>>
-       Build.write_file_dyn generated_mld);
-    mld
-  )
-
 let css_file ~doc_dir = doc_dir ++ "odoc.css"
 
 let toplevel_index ~doc_dir = doc_dir ++ "index.html"
 
-let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
+let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules
       ~requires ~(dep_graphs:Ocamldep.Dep_graph.t Ml_kind.Dict.t) =
   let doc_dir = SC.Doc.dir sctx lib in
   let obj_dir, lib_unique_name =
@@ -187,20 +158,11 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
        >>> SC.Doc.deps sctx
        >>^ Lib.L.include_flags ~stdlib_dir:ctx.stdlib_dir)
   in
-  let mld_files =
-    all_mld_files sctx ~dir ~lib ~modules mld_files
-  in
-  let mld_and_odoc_files =
-    List.map mld_files ~f:(fun m ->
-      compile sctx ~odoc ~dir ~obj_dir ~includes ~dep_graphs
-        ~doc_dir ~lib_unique_name (Mld m))
-  in
-  let modules_and_odoc_files =
+  let inputs_and_odoc_files =
     List.map (String_map.values modules) ~f:(fun m ->
-      compile sctx ~odoc ~dir ~obj_dir ~includes ~dep_graphs
-        ~doc_dir ~lib_unique_name (Module m))
+      compile_module sctx ~odoc ~dir ~obj_dir ~includes ~dep_graphs
+        ~doc_dir ~lib_unique_name m)
   in
-  let inputs_and_odoc_files = modules_and_odoc_files @ mld_and_odoc_files in
   SC.Doc.setup_deps sctx lib (List.map inputs_and_odoc_files ~f:snd);
   (*
      let modules_and_odoc_files =
@@ -213,7 +175,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
      in*)
   let html_files =
     List.map inputs_and_odoc_files ~f:(fun (m, odoc_file) ->
-      to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~lib)
+      to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~libs:[lib])
   in
   let doc_root = SC.Doc.root sctx in
   let alias =
@@ -234,6 +196,33 @@ let setup_css_rule sctx =
        ~extra_targets:[css_file ~doc_dir]
        (get_odoc sctx)
        [ A "css"; A "-o"; Path doc_dir ])
+
+
+let setup_package_rules =
+  let mld_glob =
+    Re.compile (
+      Re.seq [Re.(rep1 any) ; Re.str ".mld" ; Re.eos]
+    ) in
+  fun sctx ~dir ~pkg ->
+    let odoc = get_odoc sctx in
+    let mld_files =
+      SC.eval_glob sctx ~dir:(SC.Doc.mld_dir sctx ~pkg) mld_glob in
+    let doc_dir = dir in
+    let mld_files =
+      List.map ~f:(fun f -> Mld.create ~name:(Filename.chop_extension f))
+        mld_files in
+    let includes = Build.arr (fun () -> Arg_spec.As []) in
+    let mld_and_odoc_files =
+      List.map mld_files ~f:(fun m ->
+        compile_mld sctx ~odoc ~dir ~pkg ~doc_dir m)
+    in
+    let html_files =
+      List.map mld_and_odoc_files ~f:(fun (m, odoc_file) ->
+        to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~libs:[])
+    in
+    ignore html_files
+    (* SC.add_alias_deps sctx (Build_system.Alias.doc ~dir:Path.root)
+     *   html_files *)
 
 let sp = Printf.sprintf
 
@@ -281,11 +270,37 @@ let setup_toplevel_index_rule sctx =
   let doc_dir = SC.Doc.root sctx in
   SC.add_rule sctx @@ Build.write_file (toplevel_index ~doc_dir) html
 
-let gen_rules sctx ~dir:_ rest =
+let gen_rules sctx ~dir rest =
   match rest with
   | [] ->
     setup_css_rule sctx;
     setup_toplevel_index_rule sctx
+  | "_mlds" :: pkg :: _ ->
+    begin match String_map.find (SC.packages sctx) pkg with
+    | None -> die "no documentation for non-existent package %s" pkg
+    | Some _ ->
+      List.iter ~f:(fun (d : Super_context.Dir_with_jbuild.t) ->
+        List.iter d.stanzas ~f:(fun (stanza : Jbuild.Stanza.t) ->
+          match stanza with
+          | Documentation p when p.package.name = pkg ->
+            let dir = Path.append ((SC.context sctx).build_dir) d.src_dir in
+            SC.load_dir sctx ~dir
+          | _ -> ()
+        )
+      ) (SC.stanzas sctx);
+      let index_mld = "index.mld" in
+      if not (String_set.mem (SC.Doc.mlds sctx ~pkg) index_mld) then (
+        let mld_dir = SC.Doc.mld_dir sctx ~pkg in
+        let index = Path.relative mld_dir index_mld in
+        SC.Doc.register_mld sctx ~mld:index_mld ~pkg;
+        SC.add_rule sctx (Build.write_file index "Generated index");
+      )
+    end
+  | "_package" :: pkg :: _ ->
+    begin match String_map.find (SC.packages sctx) pkg with
+    | None -> die "no documentation for non-existent package %s" pkg
+    | Some _ -> setup_package_rules sctx ~dir ~pkg;
+    end
   | lib :: _ ->
     let lib, lib_db =
       match String.rsplit2 lib ~on:'@' with

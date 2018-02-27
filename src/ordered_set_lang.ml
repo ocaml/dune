@@ -164,7 +164,22 @@ module Unexpanded = struct
     ; loc = Some (Sexp.Ast.loc sexp)
     }
 
+  let sexp_of_t t =
+    let open Ast in
+    let rec loop : ast -> Sexp.t = function
+      | Element sexp -> Usexp.Ast.remove_locs sexp
+      | Special (_, s) -> Sexp.atom (":" ^ s)
+      | Union l -> List (List.map l ~f:loop)
+      | Diff (a, b) -> List [loop a; Sexp.unsafe_atom_of_string "\\"; loop b]
+      | Include fn -> List [ Sexp.unsafe_atom_of_string ":include"
+                           ; String_with_vars.sexp_of_t fn
+                           ]
+    in
+    loop t.ast
+
   let standard = standard
+
+  let field ?(default=standard) name = Sexp.Of_sexp.field name t ~default
 
   let files t ~f =
     let rec loop acc (t : ast) =

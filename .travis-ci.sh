@@ -46,7 +46,7 @@ case "$TARGET" in
         rm -rf ~/.opam
         opam init --yes
         eval $(opam config env)
-        opam install utop ppx_driver odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler --yes
+        opam install utop ppx_driver odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler--yes
         opam remove jbuilder `opam list --depends-on jbuilder --installed --short` --yes
       fi
       cp -a ~/.opam ~/.opam-start

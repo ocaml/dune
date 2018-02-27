@@ -6,6 +6,9 @@
 - Accept and ignore upcoming new library fields: `ppx.driver`,
   `inline_tests` and `inline_tests.backend`
 
+- Add a hack to be able to build ppxlib, until beta20 which will have
+  generic support for ppx drivers
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

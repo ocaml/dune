@@ -869,6 +869,18 @@ module Gen(P : Params) = struct
     ; objs_dirs   = Path.Set.singleton obj_dir
     }
 
+  let documentation_rules ~dir ~all_mlds (doc : Documentation.t) =
+    let doc_dir = SC.Doc.mld_dir sctx ~pkg:doc.package.name in
+    parse_mlds ~dir ~all_mlds ~mlds_written_by_user:doc.mld_files
+    |> String_map.iter ~f:(fun mld ->
+      SC.Doc.register_mld sctx ~mld ~pkg:doc.package.name;
+      SC.add_rule sctx (
+        Build.copy
+          ~src:(Path.relative dir mld)
+          ~dst:(Path.relative doc_dir mld)
+      )
+    )
+
   (* +-----------------------------------------------------------------+
      | Aliases                                                         |
      +-----------------------------------------------------------------+ *)
@@ -912,6 +924,7 @@ module Gen(P : Params) = struct
     (* This interprets "rule" and "copy_files" stanzas. *)
     let files = text_files ~dir:ctx_dir in
     let all_modules = modules_by_dir ~dir:ctx_dir in
+    let all_mlds = guess_mlds ~files in
     let modules_partitioner =
       Modules_partitioner.create ~dir:src_dir ~all_modules
     in
@@ -925,6 +938,9 @@ module Gen(P : Params) = struct
                 ~modules_partitioner)
       | Alias alias ->
         alias_rules alias ~dir ~scope;
+        None
+      | Documentation d ->
+        documentation_rules ~dir ~all_mlds d;
         None
       | Copy_files { glob; _ } ->
         let src_dir =

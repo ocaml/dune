@@ -1013,8 +1013,8 @@ module Gen(P : Params) = struct
             | "ppx_driver" | "ppx_type_conv" -> true
             | _ -> false) then
             pps @ [match Scope.name scope with
-              | Some "ppx_base" ->
-                Pp.of_string "ppx_base.runner"
+              | Some "ppxlib" ->
+                Pp.of_string "ppxlib.runner"
               | _ ->
                 Pp.of_string "ppx_driver.runner"]
           else

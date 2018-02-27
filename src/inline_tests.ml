@@ -59,7 +59,7 @@ module Backend = struct
       ; extends          : (    t list, exn) result option
       }
 
-    let desc ~plural = "inline tests framework" ^ if plural then "s" else ""
+    let desc ~plural = "inline tests backend" ^ if plural then "s" else ""
     let desc_article = "an"
 
     let id t = t.id

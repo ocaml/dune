@@ -22,3 +22,6 @@
  ((name runtest)
   (deps (_doc/index.html))
   (action (echo "${read:_doc/index.html}"))))
+
+(documentation
+ ())

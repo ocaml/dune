@@ -1082,7 +1082,11 @@ module Gen(P : Params) = struct
           if List.exists deps ~f:(function
             | "ppx_driver" | "ppx_type_conv" -> true
             | _ -> false) then
-            pps @ [(Loc.none, Pp.of_string "ppx_driver.runner")]
+            pps @ [match Scope.name scope with
+              | Some "ppxlib" ->
+                Loc.none, Pp.of_string "ppxlib.runner"
+              | _ ->
+                Loc.none, Pp.of_string "ppx_driver.runner"]
           else
             pps
         in

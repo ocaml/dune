@@ -926,7 +926,7 @@ module PP = struct
 
   let uses_ppx_driver ~pps =
     match (List.last pps : (_ * Pp.t) option :> (_ * string) option) with
-    | Some (_, "ppx_driver.runner") -> true
+    | Some (_, ("ppx_driver.runner" | "ppxlib.runner")) -> true
     | Some _ | None -> false
 
   let promote_correction ~uses_ppx_driver fn build =

@@ -310,8 +310,8 @@ end
 
 module Documentation : sig
   type t =
-    { package : Package.t
-    ; files   : Ordered_set_lang.t
+    { package     : Package.t
+    ; mld_files   : Ordered_set_lang.t
     }
 end
 

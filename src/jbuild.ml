@@ -1057,17 +1057,17 @@ end
 module Documentation = struct
   type t =
     { package: Package.t
-    ; files: Ordered_set_lang.t
+    ; mld_files: Ordered_set_lang.t
     }
 
   let v1 pkgs =
     record
       (Scope_info.package_field pkgs >>= fun package ->
-       field "files" Ordered_set_lang.t ~default:Ordered_set_lang.standard
-       >>= fun files ->
+       field "mld_files" Ordered_set_lang.t ~default:Ordered_set_lang.standard
+       >>= fun mld_files ->
        return
          { package
-         ; files
+         ; mld_files
          }
       )
 end

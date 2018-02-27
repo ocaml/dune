@@ -1171,6 +1171,10 @@ module Gen(P : Params) = struct
         (Utils.install_file ~package ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let entries = local_install_rules entries ~package in
+    let mld_glob =
+      Re.compile (
+        Re.seq [Re.(rep1 any) ; Re.str ".mld" ; Re.eos]
+      ) in
     SC.add_rule sctx
       ~mode:(if promote_install_file then
                Promote_but_delete_on_clean
@@ -1179,7 +1183,14 @@ module Gen(P : Params) = struct
                   copied to the source tree by another context. *)
                Ignore_source_files)
       (Build.path_set (Install.files entries)
-       >>^ (fun () ->
+       &&& Build.paths_glob ~loc:Loc.none mld_glob
+             ~dir:(SC.Doc.mld_dir sctx ~pkg:package)
+       >>^ (fun ((), mlds) ->
+         let entries =
+           List.map mlds ~f:(fun mld ->
+             Install.Entry.make Install.Section.Doc mld
+               ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
+           ) @ entries in
          let entries =
            match ctx.findlib_toolchain with
            | None -> entries

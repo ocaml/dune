@@ -100,7 +100,7 @@ module Backend = struct
   include Sub_system.Register_backend(M)
 end
 
-include Sub_system.Register_with_backend(
+include Sub_system.Register_end_point(
   struct
     module Backend = Backend
 

@@ -14,7 +14,7 @@ module Backend = struct
         { loc              : Loc.t
         ; runner_libraries : (Loc.t * string) list
         ; flags            : Ordered_set_lang.Unexpanded.t
-        ; gen              : Action.Unexpanded.t option
+        ; generate_runner  : Action.Unexpanded.t option
         ; extends          : (Loc.t * string) list option
         }
 
@@ -31,13 +31,14 @@ module Backend = struct
            field "runner_libraries" (list (located string)) ~default:[]
            >>= fun runner_libraries ->
            Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
-           field_o "gen" Action.Unexpanded.t >>= fun gen ->
+           field_o "generate_runner" Action.Unexpanded.t
+           >>= fun generate_runner ->
            field_o "extends" (list (located string)) >>= fun extends ->
            return
              { loc
              ; runner_libraries
              ; flags
-             ; gen
+             ; generate_runner
              ; extends
              })
 
@@ -90,8 +91,10 @@ module Backend = struct
       ((1, 0),
        record
          [ "runner_libraries", list lib (Result.ok_exn t.runner_libraries)
-         ; "flags"           , Ordered_set_lang.Unexpanded.sexp_of_t t.info.flags
-         ; "gen"             , option Action.Unexpanded.sexp_of_t t.info.gen
+         ; "flags"           , Ordered_set_lang.Unexpanded.sexp_of_t
+                                 t.info.flags
+         ; "generate_runner" , option Action.Unexpanded.sexp_of_t
+                                 t.info.generate_runner
          ; "extends"         , option (list f)
                                  (Option.map t.extends ~f:Result.ok_exn)
          ])
@@ -221,7 +224,7 @@ include Sub_system.Register_end_point(
       >>>
       Build.all
         (List.filter_map backends ~f:(fun (backend : Backend.t) ->
-           Option.map backend.info.gen ~f:(fun action ->
+           Option.map backend.info.generate_runner ~f:(fun action ->
              SC.Action.run sctx action
                ~extra_vars ~dir ~dep_kind:Required ~targets:Alias ~scope)))
       >>^ (fun actions ->

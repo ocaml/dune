@@ -563,10 +563,20 @@ else
     lspacetime=""
 fi
 
+# graphics?
+
+if [ -f "${ocaml_core_stdlib}/graphics.cmi" ]; then
+    echo "graphics: found"
+    lgraphics="graphics"
+else
+    echo "graphics: not found"
+    lgraphics=""
+fi
+
 
 # Generate the META files now.
 
-l="$ldbm dynlink graphics $lnum str threads unix stdlib bigarray ocamldoc $llabltk $lcamlp4 $lobuild $lcomplibs $lbytes $lspacetime"
+l="$ldbm dynlink $lgraphics $lnum str threads unix stdlib bigarray ocamldoc $llabltk $lcamlp4 $lobuild $lcomplibs $lbytes $lspacetime"
 
 for dir in site-lib-src/*; do
     # We do not really know if $dir is a directory.

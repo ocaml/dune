@@ -11,7 +11,7 @@ let ocamlc_config_cmd ocamlc =
 
 let sexp_of_t t =
   let open Sexp.To_sexp in
-  atom_map atom t.bindings
+  string_map Sexp.atom_or_quoted_string t.bindings
 
 let read ~ocamlc ~env =
   Process.run_capture_lines ~env Strict (Path.to_string ocamlc) ["-config"]
@@ -24,7 +24,7 @@ let read ~ocamlc ~env =
     | None ->
       die "unrecognized line in the output of `%s`: %s"
         (ocamlc_config_cmd ocamlc) line)
-  |> String_map.of_alist
+  |> String_map.of_list
   |> function
   | Ok bindings -> { bindings ; ocamlc }
   | Error (key, _, _) ->
@@ -32,12 +32,12 @@ let read ~ocamlc ~env =
       key (ocamlc_config_cmd ocamlc)
 
 let ocaml_value t =
-  let t = String_map.bindings t.bindings in
-  let longest = List.longest_map t ~f:fst in
+  let t = String_map.to_list t.bindings in
+  let longest = String.longest_map t ~f:fst in
   List.map t ~f:(fun (k, v) -> sprintf "%-*S , %S" (longest + 2) k v)
   |> String.concat ~sep:"\n      ; "
 
-let get_opt t var = String_map.find var t.bindings
+let get_opt t var = String_map.find t.bindings var
 
 let get ?default t var =
   match get_opt t var with

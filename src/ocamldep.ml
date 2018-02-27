@@ -10,13 +10,13 @@ module Dep_graph = struct
     }
 
   let deps_of t (m : Module.t) =
-    match String_map.find m.name t.per_module with
+    match String_map.find t.per_module m.name with
     | Some x -> x
     | None ->
       Sexp.code_error "Ocamldep.Dep_graph.deps_of"
         [ "dir", Path.sexp_of_t t.dir
-        ; "modules", Sexp.To_sexp.(list atom) (String_map.keys t.per_module)
-        ; "module", Atom m.name
+        ; "modules", Sexp.To_sexp.(list string) (String_map.keys t.per_module)
+        ; "module", Sexp.atom m.name
         ]
 
   module Dep_closure =
@@ -24,15 +24,15 @@ module Dep_graph = struct
       type t = Module.t
       type graph = t list String_map.t
       let key (t : t) = t.name
-      let deps t map = Option.value_exn (String_map.find (key t) map)
+      let deps t map = Option.value_exn (String_map.find map (key t))
     end)
 
   let top_closed t modules =
     Build.all
-      (List.map (String_map.bindings t.per_module) ~f:(fun (unit, deps) ->
+      (List.map (String_map.to_list t.per_module) ~f:(fun (unit, deps) ->
          deps >>^ fun deps -> (unit, deps)))
     >>^ fun per_module ->
-    let per_module = String_map.of_alist_exn per_module in
+    let per_module = String_map.of_list_exn per_module in
     match Dep_closure.top_closure per_module modules with
     | Ok modules -> modules
     | Error cycle ->
@@ -80,13 +80,13 @@ let parse_deps ~dir ~file ~(unit : Module.t)
       in
       if basename <> Path.basename file then invalid ();
       let deps =
-        String.extract_blank_separated_words (String.sub line ~pos:(i + 1)
-                                                ~len:(String.length line - (i + 1)))
+        String.extract_blank_separated_words
+          (String.sub line ~pos:(i + 1) ~len:(String.length line - (i + 1)))
         |> List.filter_map ~f:(fun m ->
           if m = unit.name then
             None
           else
-            String_map.find m modules)
+            String_map.find modules m)
       in
       (match lib_interface_module with
        | None -> ()
@@ -114,8 +114,9 @@ let parse_deps ~dir ~file ~(unit : Module.t)
       in
       deps
 
-let rules sctx ~(ml_kind:Ml_kind.t) ~dir ~modules ~already_used
-      ~alias_module ~lib_interface_module =
+let rules ~(ml_kind:Ml_kind.t) ~dir ~modules
+      ?(already_used=String_set.empty)
+      ~alias_module ~lib_interface_module sctx =
   let per_module =
     String_map.map modules ~f:(fun unit ->
       match Module.file ~dir unit ml_kind with
@@ -123,7 +124,7 @@ let rules sctx ~(ml_kind:Ml_kind.t) ~dir ~modules ~already_used
       | Some file ->
         let ocamldep_output = Path.extend_basename file ~suffix:".d" in
         let context = SC.context sctx in
-        if not (String_set.mem unit.name already_used) then
+        if not (String_set.mem already_used unit.name) then
           SC.add_rule sctx
             (Build.run ~context (Ok context.ocamldep)
                [A "-modules"; Ml_kind.flag ml_kind; Dep file]
@@ -136,13 +137,13 @@ let rules sctx ~(ml_kind:Ml_kind.t) ~dir ~modules ~already_used
   let per_module =
     match alias_module with
     | None -> per_module
-    | Some m -> String_map.add per_module ~key:m.name ~data:(Build.return [])
+    | Some m -> String_map.add per_module m.name (Build.return [])
   in
   { Dep_graph.
     dir
   ; per_module
   }
 
-let rules sctx ~dir ~modules ~already_used ~alias_module ~lib_interface_module =
-  Ml_kind.Dict.of_func (rules sctx ~dir ~modules ~already_used ~alias_module
+let rules ~dir ~modules ?already_used ~alias_module ~lib_interface_module sctx =
+  Ml_kind.Dict.of_func (rules sctx ~dir ~modules ?already_used ~alias_module
                           ~lib_interface_module)

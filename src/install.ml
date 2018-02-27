@@ -15,7 +15,7 @@ module Section = struct
     | Man
     | Misc
 
-  let compare : t -> t -> int = compare
+  let compare : t -> t -> Ordering.t = compare
 
   let to_string = function
     | Lib        -> "lib"
@@ -145,12 +145,12 @@ module SMap = Map.Make(Section)
 
 let files entries =
   List.fold_left entries ~init:Path.Set.empty ~f:(fun acc (entry : Entry.t) ->
-    Path.Set.add entry.src acc)
+    Path.Set.add acc entry.src)
 
 let group entries =
   List.map entries ~f:(fun (entry : Entry.t) -> (entry.section, entry))
-  |> SMap.of_alist_multi
-  |> SMap.bindings
+  |> SMap.of_list_multi
+  |> SMap.to_list
 
 let gen_install_file entries =
   let buf = Buffer.create 4096 in

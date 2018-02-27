@@ -44,7 +44,8 @@ let main () =
 
     Toploop.initialize_toplevel_env ();
     List.iter
-      [ "src/.jbuilder.objs"
+      [ "src/stdune/.stdune.objs"
+      ; "src/.jbuilder.objs"
       ]
       ~f:Topdirs.dir_directory;
 

@@ -16,7 +16,7 @@ module Target = struct
 
   let paths ts =
     List.fold_left ts ~init:Pset.empty ~f:(fun acc t ->
-      Pset.add (path t) acc)
+      Pset.add acc (path t))
 end
 
 module Static_deps = struct
@@ -87,7 +87,7 @@ let static_deps t ~all_targets ~file_tree =
               (* diml: we should probably warn in this case as well *)
               ()
           end;
-          state := G_evaluated (Pset.elements result);
+          state := G_evaluated (Pset.to_list result);
           let action_deps = Pset.union result acc.action_deps in
           { acc with action_deps }
       end
@@ -97,7 +97,7 @@ let static_deps t ~all_targets ~file_tree =
         | Undecided (then_, else_) ->
           let dir = Path.parent p in
           let targets = all_targets ~dir in
-          if Pset.mem p targets then begin
+          if Pset.mem targets p then begin
             state := Decided (true, then_);
             loop then_ acc
           end else begin
@@ -106,9 +106,9 @@ let static_deps t ~all_targets ~file_tree =
           end
       end
     | Dyn_paths t -> loop t acc
-    | Vpath (Vspec.T (p, _)) -> { acc with rule_deps = Pset.add p acc.rule_deps }
-    | Contents p -> { acc with rule_deps = Pset.add p acc.rule_deps }
-    | Lines_of p -> { acc with rule_deps = Pset.add p acc.rule_deps }
+    | Vpath (Vspec.T (p, _)) -> { acc with rule_deps = Pset.add acc.rule_deps p }
+    | Contents p -> { acc with rule_deps = Pset.add acc.rule_deps p }
+    | Lines_of p -> { acc with rule_deps = Pset.add acc.rule_deps p }
     | Record_lib_deps _ -> acc
     | Fail _ -> acc
     | Memo m -> loop m.t acc

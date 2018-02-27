@@ -12,6 +12,10 @@ let of_lexbuf lb =
 
 exception Error of t * string
 
+let exnf t fmt =
+  Format.pp_print_as err_ppf 7 ""; (* "Error: " *)
+  kerrf fmt ~f:(fun s -> Error (t, s))
+
 let fail t fmt =
   Format.pp_print_as err_ppf 7 ""; (* "Error: " *)
   kerrf fmt ~f:(fun s ->

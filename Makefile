@@ -44,6 +44,10 @@ clean:
 doc:
 	cd doc && sphinx-build . _build
 
+livedoc:
+	cd doc && sphinx-autobuild . _build \
+	  -p 8888 -q  --host $(shell hostname) -r '\.#.*'
+
 update-jbuilds: $(BIN)
 	$(BIN) build --dev @doc/runtest --auto-promote
 

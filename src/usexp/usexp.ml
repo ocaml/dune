@@ -13,95 +13,122 @@ end
 module A = Parser_automaton_internal
 
 module Atom = struct
-  type t = string
+ type t = Sexp_ast.atom = A of string [@@unboxed]
 
-  let escaped_length s =
-    let n = ref 0 in
-    for i = 0 to String.length s - 1 do
-      n := !n +
-           (match String.unsafe_get s i with
-            | '\"' | '\\' | '\n' | '\t' | '\r' | '\b' -> 2
-            | ' ' .. '~' -> 1
-            | _ -> 4)
-    done;
-    !n
+  let is_valid s =
+    if s = "" then false
+    else
+      try
+        for i = 0 to String.length s - 1 do
+          match String.unsafe_get s i with
+          | ' ' .. '~' -> ()
+          | _ -> raise Exit
+        done;
+        true
+      with Exit -> false
 
-  let must_escape s =
-    let len = String.length s in
-    len = 0 || escaped_length s > len
+ (* XXX eventually we want to report a nice error message to the user
+     at the point the conversion is made. *)
+  let of_string s =
+    if is_valid s then A s
+    else invalid_arg(Printf.sprintf "Usexp.Atom.of_string: %S" s)
 
-  let escaped_internal s ~with_double_quotes ~always_quote =
-    let n = escaped_length s in
-    if n > 0 && n = String.length s then
-      if always_quote then begin
-          let s' = Bytes.create (n + 2) in
-          Bytes.unsafe_set s' 0 '"';
-          Bytes.blit_string ~src:s ~src_pos:0 ~dst:s' ~dst_pos:1 ~len:n;
-          Bytes.unsafe_set s' (n + 1) '"';
-          Bytes.unsafe_to_string s'
-        end
-      else s
-    else begin
-      let s' = Bytes.create (n + if with_double_quotes then 2 else 0) in
-      let n = ref 0 in
-      if with_double_quotes then begin
-        Bytes.unsafe_set s' 0 '"';
-        n := 1
-      end;
-      for i = 0 to String.length s - 1 do
-        begin match String.unsafe_get s i with
-        | ('\"' | '\\') as c ->
-          Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n c
-        | '\n' ->
-          Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 'n'
-        | '\t' ->
-          Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 't'
-        | '\r' ->
-          Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 'r'
-        | '\b' ->
-          Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 'b'
-        | (' ' .. '~') as c -> Bytes.unsafe_set s' !n c
-        | c ->
-          let a = Char.code c in
-          Bytes.unsafe_set s' !n '\\';
-          incr n;
-          Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + a / 100));
-          incr n;
-          Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + (a / 10) mod 10));
-          incr n;
-          Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + a mod 10));
-        end;
-        incr n
-      done;
-      if with_double_quotes then Bytes.unsafe_set s' !n '"';
-      Bytes.unsafe_to_string s'
-    end
+  let of_int i = A (string_of_int i)
+  let of_float x = A (string_of_float x)
+  let of_bool x = A (string_of_bool x)
+  let of_int64 i = A (Int64.to_string i)
+  let of_digest d = A (Digest.to_hex d)
 
-  let escaped s =
-    escaped_internal s ~with_double_quotes:false ~always_quote:false
-  let serialize s =
-    escaped_internal s ~with_double_quotes:true ~always_quote:false
-  let quote s =
-    escaped_internal s ~with_double_quotes:true ~always_quote:true
+  let to_string (A s) = s
 end
 
 type t =
-  | Atom of string
+  | Atom of Atom.t
   | Quoted_string of string
   | List of t list
 
 type sexp = t
 
+let atom s =
+  if Atom.is_valid s then Atom (A s)
+  else invalid_arg "Usexp.atom"
+
+let unsafe_atom_of_string s = Atom(A s)
+
+let atom_or_quoted_string s =
+  if Atom.is_valid s then Atom (A s)
+  else Quoted_string s
+
+let quote_length s =
+  let n = ref 0 in
+  for i = 0 to String.length s - 1 do
+    n := !n + (match String.unsafe_get s i with
+               | '\"' | '\\' | '\n' | '\t' | '\r' | '\b' -> 2
+               | ' ' .. '~' -> 1
+               | _ -> 4)
+  done;
+  !n
+
+let escape_to s ~dst:s' ~ofs =
+  let n = ref ofs in
+  for i = 0 to String.length s - 1 do
+    begin match String.unsafe_get s i with
+    | ('\"' | '\\') as c ->
+       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n c
+    | '\n' ->
+       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 'n'
+    | '\t' ->
+       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 't'
+    | '\r' ->
+       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 'r'
+    | '\b' ->
+       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 'b'
+    | (' ' .. '~') as c -> Bytes.unsafe_set s' !n c
+    | c ->
+       let a = Char.code c in
+       Bytes.unsafe_set s' !n '\\';
+       incr n;
+       Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + a / 100));
+       incr n;
+       Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + (a / 10) mod 10));
+       incr n;
+       Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + a mod 10));
+    end;
+    incr n
+  done
+
+(* Escape [s] if needed. *)
+let escaped s =
+  let n = quote_length s in
+  if n = 0 || n > String.length s then
+    let s' = Bytes.create n in
+    escape_to s ~dst:s' ~ofs:0;
+    Bytes.unsafe_to_string s'
+  else s
+
+(* Surround [s] with quotes, escaping it if necessary. *)
+let quoted s =
+  let len = String.length s in
+  let n = quote_length s in
+  let s' = Bytes.create (n + 2) in
+  Bytes.unsafe_set s' 0 '"';
+  if len = 0 || n > len then
+    escape_to s ~dst:s' ~ofs:1
+  else
+    Bytes.blit_string ~src:s ~src_pos:0 ~dst:s' ~dst_pos:1 ~len;
+  Bytes.unsafe_set s' (n + 1) '"';
+  Bytes.unsafe_to_string s'
+
 let rec to_string = function
-  | Atom s -> Atom.serialize s
-  | Quoted_string s -> Atom.quote s
+  | Atom (A s) -> s
+  | Quoted_string s -> quoted s
   | List l -> Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
 
 let rec pp ppf = function
-  | Atom s ->
-    Format.pp_print_string ppf (Atom.serialize s)
+  | Atom (A s) ->
+    Format.pp_print_string ppf s
   | Quoted_string s ->
-    Format.pp_print_string ppf (Atom.quote s)
+    Format.pp_print_string ppf (quoted s)
   | List [] ->
     Format.pp_print_string ppf "()"
   | List (first :: rest) ->
@@ -127,26 +154,21 @@ let split_string s ~on =
   in
   loop 0 0
 
-let pp_print_atom ppf ~serialize s =
+let pp_print_quoted_string ppf s =
   if String.contains s '\n' then begin
     match split_string s ~on:'\n' with
-    | [] -> Format.pp_print_string ppf (serialize s)
+    | [] -> Format.pp_print_string ppf (quoted s)
     | first :: rest ->
-       Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (Atom.escaped first);
+       Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (escaped first);
        List.iter rest ~f:(fun s ->
-           Format.fprintf ppf "@,\\n%s" (Atom.escaped s));
+           Format.fprintf ppf "@,\\n%s" (escaped s));
        Format.fprintf ppf "@}\"@]"
   end else
-    Format.pp_print_string ppf (serialize s)
+    Format.pp_print_string ppf (quoted s)
 
 let rec pp_split_strings ppf = function
-  | Atom s ->
-    if Atom.must_escape s then
-      pp_print_atom ppf s ~serialize:Atom.serialize
-    else
-      Format.pp_print_string ppf s
-  | Quoted_string s ->
-     pp_print_atom ppf s ~serialize:Atom.quote
+  | Atom (A s) -> Format.pp_print_string ppf s
+  | Quoted_string s -> pp_print_quoted_string ppf s
   | List [] ->
     Format.pp_print_string ppf "()"
   | List (first :: rest) ->
@@ -208,11 +230,15 @@ module Loc = Sexp_ast.Loc
 
 module Ast = struct
   type t = Sexp_ast.t =
-    | Atom of Loc.t * string
+    | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
     | List of Loc.t * t list
 
-  let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)) = loc
+  let atom_or_quoted_string loc s =
+    if Atom.is_valid s then Atom (loc, A s)
+    else Quoted_string (loc, s)
+
+let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)) = loc
 
   let rec remove_locs : t -> sexp = function
     | Atom (_, s) -> Atom s
@@ -221,7 +247,7 @@ module Ast = struct
 
   module Token = struct
     type t =
-      | Atom   of Loc.t * string
+      | Atom   of Loc.t * Atom.t
       | String of Loc.t * string
       | Lparen of Loc.t
       | Rparen of Loc.t

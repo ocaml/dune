@@ -191,7 +191,7 @@ module Rule : sig
   module Id : sig
     type t
     val to_int : t -> int
-    val compare : t -> t -> int
+    val compare : t -> t -> Ordering.t
   end
 
   type t =

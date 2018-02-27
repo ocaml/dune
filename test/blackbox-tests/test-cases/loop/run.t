@@ -23,7 +23,6 @@ does show a cycle.
       _build/default/result2
   --> _build/default/input
   --> _build/default/result2
-  Dependency path:
-      result1
-  --> input
+  -> required by input
+  -> required by result1
   [1]

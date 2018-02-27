@@ -2,5 +2,5 @@
 
 (library
  ((name      fiber)
-  (libraries (result))
+  (libraries (stdune))
   (synopsis  "Monadic concurrency library")))

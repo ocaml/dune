@@ -4,7 +4,7 @@ open Import
 module Local : sig
   type t
 
-  val compare : t -> t -> int
+  val compare : t -> t -> Ordering.t
 
   module Set : Set.S with type elt = t
 
@@ -36,13 +36,13 @@ type t
 val t : t Sexp.Of_sexp.t
 val sexp_of_t : t Sexp.To_sexp.t
 
-val compare : t -> t -> int
+val compare : t -> t -> Ordering.t
 (** a directory is smaller than its descendants *)
 
 module Set : sig
   include Set.S with type elt = t
   val sexp_of_t : t Sexp.To_sexp.t
-  val of_string_set : f:(string -> elt) -> String_set.t -> t
+  val of_string_set : String_set.t -> f:(string -> elt) -> t
 end
 
 module Map : Map.S with type key = t

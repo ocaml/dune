@@ -32,7 +32,7 @@ end
 
 module Env_var : sig
   type t = string
-  val compare : t -> t -> int
+  val compare : t -> t -> Ordering.t
 end
 
 module Env_var_map : Map.S with type key := Env_var.t
@@ -127,7 +127,7 @@ type t =
 val sexp_of_t : t -> Sexp.t
 
 (** Compare the context names *)
-val compare : t -> t -> int
+val compare : t -> t -> Ordering.t
 
 (** If [use_findlib] is [false], don't try to guess the library search path with opam or
     ocamlfind. This is only for building jbuilder itself, so that its build is completely

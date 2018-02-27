@@ -1,10 +1,9 @@
-next
-----
-
-- Fix invalid warning about non-existent direcotry (#536, fixes #534)
-
-1.0+beta18 (21/02/2018)
+1.0+beta18 (25/02/2018)
 -----------------------
+
+- Fix generation of the implicit alias module with 4.02. With 4.02 it
+  must have an implementation while with OCaml >= 4.03 it can be an
+  interface only module (#549)
 
 - Let the parser distinguish quoted strings from atoms.  This makes
   possible to use "${v}" to concatenate the list of values provided by
@@ -49,6 +48,8 @@ next
 
 - Refactor internal library management. It should now be possible to
   run `jbuilder build @lint` in Base for instance (#516)
+
+- Fix invalid warning about non-existent direcotry (#536, fixes #534)
 
 1.0+beta17 (01/02/2018)
 -----------------------

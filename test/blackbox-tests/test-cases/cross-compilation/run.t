@@ -35,6 +35,7 @@
     "_build/install/default.foo/lib/p/p.cmxa" {"../../foo-sysroot/lib/p/p.cmxa"}
     "_build/install/default.foo/lib/p/p.a" {"../../foo-sysroot/lib/p/p.a"}
     "_build/install/default.foo/lib/p/p.cmxs" {"../../foo-sysroot/lib/p/p.cmxs"}
+    "_build/install/default.foo/lib/p/p.dune" {"../../foo-sysroot/lib/p/p.dune"}
   ]
   bin: [
     "_build/install/default.foo/bin/blah" {"../foo-sysroot/bin/blah"}

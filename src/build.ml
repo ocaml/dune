@@ -86,12 +86,12 @@ let record_lib_deps_simple lib_deps =
 let record_lib_deps ~kind lib_deps =
   Record_lib_deps
     (List.concat_map lib_deps ~f:(function
-       | Jbuild.Lib_dep.Direct s -> [(s, kind)]
+       | Jbuild.Lib_dep.Direct (_, s) -> [(s, kind)]
        | Select { choices; _ } ->
          List.concat_map choices ~f:(fun c ->
-           String_set.elements c.Jbuild.Lib_dep.required
+           String_set.to_list c.Jbuild.Lib_dep.required
            |> List.map ~f:(fun d -> (d, Optional))))
-     |> String_map.of_alist_reduce ~f:merge_lib_dep_kind)
+     |> String_map.of_list_reduce ~f:merge_lib_dep_kind)
 
 module O = struct
   let ( >>> ) a b =
@@ -192,7 +192,7 @@ let prog_and_args ?(dir=Path.root) prog args =
   (get_prog prog &&&
    (arr (Arg_spec.expand ~dir args)
     >>>
-    dyn_paths (arr (fun (_args, deps) -> Path.Set.elements deps))
+    dyn_paths (arr (fun (_args, deps) -> Path.Set.to_list deps))
     >>>
     arr fst))
 

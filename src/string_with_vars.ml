@@ -60,7 +60,7 @@ let rec of_tokens : Token.t list -> item list = function
 let items_of_string s = of_tokens (Token.tokenise s)
 
 let t : Sexp.Of_sexp.ast -> t = function
-  | Atom(loc, s) -> { items = items_of_string s;  loc;  quoted = false }
+  | Atom(loc, A s) -> { items = items_of_string s;  loc;  quoted = false }
   | Quoted_string (loc, s) ->
      { items = items_of_string s;  loc;  quoted = true }
   | List _ as sexp -> Sexp.Of_sexp.of_sexp_error sexp "Atom expected"
@@ -75,13 +75,15 @@ let virt_text pos s =
   { items = [Text s];  loc = Loc.of_pos pos;  quoted = true }
 
 let sexp_of_var_syntax = function
-  | Parens -> Sexp.Atom "parens"
-  | Braces -> Sexp.Atom "braces"
+  | Parens -> Sexp.unsafe_atom_of_string "parens"
+  | Braces -> Sexp.unsafe_atom_of_string "braces"
 
 let sexp_of_item =
   let open Sexp in function
-    | Text s -> List [Atom "text" ; Atom s]
-    | Var (vs, s) -> List [sexp_of_var_syntax vs ; Atom s]
+    | Text s -> List [Sexp.unsafe_atom_of_string "text" ;
+                      Sexp.atom_or_quoted_string s]
+    | Var (vs, s) -> List [sexp_of_var_syntax vs ;
+                           Sexp.atom_or_quoted_string s]
 
 let sexp_of_t t = Sexp.To_sexp.list sexp_of_item t.items
 
@@ -96,7 +98,7 @@ let iter t ~f = List.iter t.items ~f:(function
                     | Text _ -> ()
                     | Var (_, v) -> f t.loc v)
 
-let vars t = fold t ~init:String_set.empty ~f:(fun acc _ x -> String_set.add x acc)
+let vars t = fold t ~init:String_set.empty ~f:(fun acc _ x -> String_set.add acc x)
 
 let string_of_var syntax v =
   match syntax with
@@ -120,23 +122,23 @@ module Expand_to(V: EXPANSION) = struct
   let expand ctx t ~f =
     match t.items with
     | [Var (syntax, v)] when not t.quoted ->
-       (* Unquoted single var *)
-       (match f t.loc v with
-        | Some e -> Inl e
-        | None -> Inr(string_of_var syntax v))
+      (* Unquoted single var *)
+      (match f t.loc v with
+       | Some e -> Left e
+       | None -> Right (string_of_var syntax v))
     | _ ->
-       Inr(List.map t.items ~f:(function
-               | Text s -> s
-               | Var (syntax, v) ->
-                  match f t.loc v with
-                  | Some x ->
-                     if not t.quoted && V.is_multivalued x then
-                       Loc.fail t.loc "please quote the string \
-                                       containing the list variable %s"
-                         (string_of_var syntax v)
-                     else V.to_string ctx x
-                  | None -> string_of_var syntax v)
-           |> String.concat ~sep:"")
+      Right (List.map t.items ~f:(function
+        | Text s -> s
+        | Var (syntax, v) ->
+          match f t.loc v with
+          | Some x ->
+            if not t.quoted && V.is_multivalued x then
+              Loc.fail t.loc "please quote the string \
+                              containing the list variable %s"
+                (string_of_var syntax v)
+            else V.to_string ctx x
+          | None -> string_of_var syntax v)
+             |> String.concat ~sep:"")
 
   let partial_expand ctx t ~f =
     let commit_text acc_text acc =
@@ -147,8 +149,8 @@ module Expand_to(V: EXPANSION) = struct
       match items with
       | [] -> begin
           match acc with
-          | [] -> Inl (Inr(concat_rev acc_text))
-          | _  -> Inr { t with items = List.rev (commit_text acc_text acc) }
+          | [] -> Left  (Right (concat_rev acc_text))
+          | _  -> Right { t with items = List.rev (commit_text acc_text acc) }
         end
       | Text s :: items -> loop (s :: acc_text) acc items
       | Var (syntax, v) as it :: items ->
@@ -164,8 +166,8 @@ module Expand_to(V: EXPANSION) = struct
     | [Var (_, v)] when not t.quoted ->
        (* Unquoted single var *)
        (match f t.loc v with
-        | Some e -> Inl (Inl e)
-        | None -> Inr t)
+        | Some e -> Left (Left e)
+        | None   -> Right t)
     | _ -> loop [] [] t.items
 end
 
@@ -179,12 +181,12 @@ end
 module S = Expand_to(String_expansion)
 
 let expand t ~f =
-  match S.expand () t ~f with Inl s | Inr s -> s
+  match S.expand () t ~f with Left s | Right s -> s
 
 let partial_expand t ~f =
   match S.partial_expand () t ~f with
-  | Inl(Inl s | Inr s) -> Inl s
-  | Inr _ as x -> x
+  | Left (Left s | Right s) -> Left s
+  | Right _ as x -> x
 
 let to_string t =
   match t.items with

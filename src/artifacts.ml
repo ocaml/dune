@@ -42,7 +42,7 @@ let create (context : Context.t) ~public_libs l ~f =
                 in
                 Path.relative bin_dir fn
               in
-              String_map.add acc ~key ~data:in_bin_dir)
+              String_map.add acc key in_bin_dir)
         | _ ->
           local_bins))
   in
@@ -55,7 +55,7 @@ let binary t ?hint name =
   if not (Filename.is_relative name) then
     Ok (Path.absolute name)
   else
-    match String_map.find name t.local_bins with
+    match String_map.find t.local_bins name with
     | Some path -> Ok path
     | None ->
       match Context.which t.context name with

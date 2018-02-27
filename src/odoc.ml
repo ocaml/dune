@@ -47,7 +47,7 @@ module Module_or_mld = struct
 
   let html_dir ~doc_dir = function
     | Mld _ -> doc_dir
-    | Module m -> doc_dir ++ String.capitalize_ascii m.obj_name
+    | Module m -> doc_dir ++ String.capitalize m.obj_name
 
   let html_file ~doc_dir t =
     match t with
@@ -122,10 +122,11 @@ let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
     );
   html_file
 
-let all_mld_files sctx ~(lib : Library.t) ~lib_name ~modules ~dir files =
+let all_mld_files sctx ~(lib : Library.t) ~modules ~dir files =
   let all_files =
     if List.mem "index.mld" ~set:files then files else "index.mld" :: files
   in
+  let lib_name = Library.best_name lib in
   let doc_dir = SC.Doc.dir sctx lib in
   List.map all_files ~f:(fun file ->
     let name = Filename.chop_extension file in
@@ -141,7 +142,7 @@ let all_mld_files sctx ~(lib : Library.t) ~lib_name ~modules ~dir files =
                 "{1 Library %s}\n\
                  The entry point for this library is module {!module:%s}."
                 lib_name
-                (String.capitalize_ascii lib.name)
+                (String.capitalize lib.name)
             else
               sprintf
                 "{1 Library %s}\n\
@@ -178,7 +179,6 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
     in
     (obj_dir, name)
   in
-  let lib_name = Library.best_name lib in
   let odoc = get_odoc sctx in
   let includes =
     let ctx = SC.context sctx in
@@ -188,7 +188,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
        >>^ Lib.L.include_flags ~stdlib_dir:ctx.stdlib_dir)
   in
   let mld_files =
-    all_mld_files sctx ~dir ~lib ~lib_name ~modules mld_files
+    all_mld_files sctx ~dir ~lib ~modules mld_files
   in
   let mld_and_odoc_files =
     List.map mld_files ~f:(fun m ->
@@ -205,7 +205,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
   (*
      let modules_and_odoc_files =
      if lib.wrapped then
-     let main_module_name = String.capitalize_ascii lib.name in
+     let main_module_name = String.capitalize lib.name in
      List.filter modules_and_odoc_files
      ~f:(fun (m, _) -> m.Module.name = main_module_name)
      else

@@ -4,7 +4,7 @@ open Build.O
 open! No_io
 
 let exe_name = "utop"
-let main_module_name = String.capitalize_ascii exe_name
+let main_module_name = String.capitalize exe_name
 let main_module_filename = exe_name ^ ".ml"
 
 let pp_ml fmt include_dirs =
@@ -25,7 +25,7 @@ let add_module_rules sctx ~dir lib_requires =
     >>^ (fun libs ->
       let include_paths =
         let ctx = Super_context.context sctx in
-        Path.Set.elements
+        Path.Set.to_list
           (Lib.L.include_paths libs ~stdlib_dir:ctx.stdlib_dir)
       in
       let b = Buffer.create 64 in
@@ -49,8 +49,7 @@ let utop_exe dir =
 let setup sctx ~dir ~(libs : Library.t list) ~scope =
   match libs with
   | [] -> ()
-  | lib::_ ->
-    let loc = lib.buildable.loc in
+  | _ :: _ ->
     let modules =
       String_map.singleton
         main_module_name
@@ -63,19 +62,20 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
         ; intf = None
         ; obj_name = "" } in
     let utop_exe_dir = utop_exe_dir ~dir in
-    let _obj_dir, libs =
-      Exe.build_and_link sctx
-        ~loc
-        ~dir:utop_exe_dir
-        ~program:{ name = exe_name ; main_module_name }
-        ~modules
-        ~scope
-        ~linkages:[Exe.Linkage.custom]
-        ~libraries:(
-          Lib_dep.direct "utop"::
-          (List.map ~f:(fun (lib : Library.t) ->
-             Lib_dep.direct lib.name) libs)
-        )
-        ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"])
+    let requires, _ =
+      Lib.DB.find_many (Scope.libs scope)
+        ("utop" :: List.map libs ~f:(fun (lib : Library.t) -> lib.name))
+      |> Lib.Compile.make
+      |> Super_context.Libs.requires sctx ~dir ~has_dot_merlin:false
     in
-    add_module_rules sctx ~dir:utop_exe_dir libs
+    Exe.build_and_link sctx
+      ~dir:utop_exe_dir
+      ~obj_dir:utop_exe_dir
+      ~program:{ name = exe_name ; main_module_name }
+      ~modules
+      ~scope
+      ~linkages:[Exe.Linkage.custom]
+      ~requires
+      ~flags:(Ocaml_flags.append_common (Ocaml_flags.default ()) ["-w"; "-24"])
+      ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"]);
+    add_module_rules sctx ~dir:utop_exe_dir requires

@@ -48,16 +48,18 @@ let installed_libs t = t.installed_libs
 let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
-let expand_var_no_root t var = String_map.find var t.vars
+let expand_var_no_root t var = String_map.find t.vars var
 
-let expand_vars t ~scope ~dir s =
+let expand_vars t ~scope ~dir ?(extra_vars=String_map.empty) s =
   String_with_vars.expand s ~f:(fun _loc -> function
     | "ROOT" -> Some (Path.reach ~from:dir t.context.build_dir)
     | "SCOPE_ROOT" ->
       Some (Path.reach ~from:dir (Scope.root scope))
     | var ->
-      expand_var_no_root t var
-      |> Option.map ~f:(fun e -> Action.Var_expansion.to_string dir e))
+      Option.map ~f:(fun e -> Action.Var_expansion.to_string dir e)
+        (match expand_var_no_root t var with
+         | Some _ as x -> x
+         | None -> String_map.find extra_vars var))
 
 let resolve_program t ?hint bin =
   Artifacts.binary ?hint t.artifacts bin
@@ -151,13 +153,13 @@ let create
     ; "OCAMLC"         , Paths ([context.ocamlc], Split)
     ; "OCAMLOPT"       , Paths ([ocamlopt], Split)
     ; "ocaml_version"  , Strings ([context.version_string], Concat)
-    ; "ocaml_where"    , Paths ([context.stdlib_dir], Concat)
+    ; "ocaml_where"    , Strings ([Path.to_string context.stdlib_dir], Concat)
     ; "ARCH_SIXTYFOUR" , Strings ([string_of_bool context.arch_sixtyfour],
                                   Concat)
     ; "MAKE"           , make
-    ; "null"           , Paths ([Config.dev_null], Concat)
+    ; "null"           , Strings ([Path.to_string Config.dev_null], Concat)
     ]
-    |> String_map.of_alist
+    |> String_map.of_list
     |> function
     | Ok x -> x
     | Error _ -> assert false
@@ -181,6 +183,9 @@ let create
       | Chdir _ -> action
       | _ -> Chdir (context.build_dir, action))
   }
+
+let prefix_rules t prefix ~f =
+  Build_system.prefix_rules t.build_system prefix ~f
 
 let add_rule t ?sandbox ?mode ?locks ?loc build =
   let build = Build.O.(>>>) build t.chdir in
@@ -218,40 +223,10 @@ let source_files t ~src_path =
 module Libs = struct
   open Build.O
 
-  let requires_to_build requires ~required_by =
+  let requires_to_build requires =
     match requires with
-    | Ok x -> Build.return x
-    | Error e ->
-      Build.fail
-        { fail = fun () ->
-            raise (Lib.Error (With_required_by.append e required_by))
-        }
-
-  let requires_generic
-        t
-        ~loc
-        ~dir
-        ~requires
-        ~libraries
-        ~dep_kind
-        ~has_dot_merlin
-    =
-    let requires =
-      requires_to_build requires ~required_by:[Loc loc]
-    in
-    let requires =
-      Build.record_lib_deps ~kind:dep_kind libraries
-      >>> requires
-    in
-    let requires_with_merlin =
-      if t.context.merlin && has_dot_merlin then
-        Build.path (Path.relative dir ".merlin-exists")
-        >>>
-        requires
-      else
-        requires
-    in
-    (requires_with_merlin, requires)
+    | Ok    x -> Build.return x
+    | Error e -> Build.fail { fail = fun () -> raise e }
 
   let add_select_rules t ~dir resolved_selects =
     List.iter resolved_selects ~f:(fun rs ->
@@ -265,46 +240,31 @@ module Libs = struct
          | Error e ->
            Build.fail ~targets:[dst]
              { fail = fun () ->
-                 raise (Lib.Error { data        = No_solution_found_for_select e
-                                  ; required_by = []
-                                  })
+                 raise (Lib.Error (No_solution_found_for_select e))
              }))
 
-  let requires_for_library t ~dir ~scope ~dep_kind (conf : Jbuild.Library.t) =
-    match Lib.DB.find (Scope.libs scope) conf.name with
-    | Error Not_found -> assert false
-    | Error (Hidden _ as reason) ->
-      let build =
-        Build.fail { fail = fun () ->
-          Lib.not_available ~loc:conf.buildable.loc reason "Library %S"
-            conf.name  }
-      in
-      (build, build)
-    | Ok lib ->
-      add_select_rules t ~dir (Lib.Compile.resolved_selects lib);
-      let libraries =
-        List.fold_left conf.virtual_deps ~init:conf.buildable.libraries
-          ~f:(fun acc s -> Lib_dep.Direct s :: acc)
-      in
-      requires_generic t ~dir ~loc:conf.buildable.loc
-        ~requires:(Lib.Compile.requires lib)
-        ~libraries
-        ~dep_kind
-        ~has_dot_merlin:conf.buildable.gen_dot_merlin
-
-  let requires t ~loc ~dir ~scope ~dep_kind ~libraries
-        ~preprocess ~has_dot_merlin =
-    let requires, resolved_selects =
-      Lib.DB.resolve_user_written_deps (Scope.libs scope)
-        libraries
-        ~pps:(Jbuild.Preprocess_map.pps preprocess)
+  let requires t ~dir ~has_dot_merlin compile_info =
+    add_select_rules t ~dir (Lib.Compile.resolved_selects compile_info);
+    let requires =
+      requires_to_build (Lib.Compile.requires compile_info)
     in
-    add_select_rules t ~dir resolved_selects;
-    requires_generic t ~dir ~loc
-      ~requires
-      ~libraries
-      ~dep_kind
-      ~has_dot_merlin
+    let requires =
+      Build.record_lib_deps (Lib.Compile.user_written_deps compile_info)
+        ~kind:(if Lib.Compile.optional compile_info then
+                 Optional
+               else
+                 Required)
+      >>> requires
+    in
+    let requires_with_merlin =
+      if t.context.merlin && has_dot_merlin then
+        Build.path (Path.relative dir ".merlin-exists")
+        >>>
+        requires
+      else
+        requires
+    in
+    (requires_with_merlin, requires)
 
   let lib_files_alias ~dir ~name ~ext =
     Alias.make (sprintf "lib-%s%s-all" name ext) ~dir
@@ -415,7 +375,7 @@ module Deps = struct
     | Files_recursively_in s ->
       let path = Path.relative dir (expand_vars t ~scope ~dir s) in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
-      >>^ Pset.elements
+      >>^ Pset.to_list
 
   let interpret t ~scope ~dir l =
     Build.all (List.map l ~f:(dep t ~scope ~dir))
@@ -427,7 +387,7 @@ module Pkg_version = struct
 
   module V = Vfile_kind.Make(struct type t = string option end)
       (functor (C : Sexp.Combinators) -> struct
-        let t = C.option C.atom
+        let t = C.option C.string
       end)
 
   let spec sctx (p : Package.t) =
@@ -473,23 +433,18 @@ module Action = struct
     }
 
   let add_lib_dep acc lib kind =
-    acc.lib_deps <- String_map.add acc.lib_deps ~key:lib ~data:kind
+    acc.lib_deps <- String_map.add acc.lib_deps lib kind
 
   let add_fail acc fail =
     acc.failures <- fail :: acc.failures;
     None
 
   let add_ddep acc ~key dep =
-    acc.ddeps <- String_map.add acc.ddeps ~key ~data:dep;
+    acc.ddeps <- String_map.add acc.ddeps key dep;
     None
 
   let path_exp path = Action.Var_expansion.Paths   ([path], Concat)
   let str_exp  path = Action.Var_expansion.Strings ([path], Concat)
-
-  (* Static expansion that creates a dependency on the expanded path *)
-  let static_dep_exp acc path =
-    acc.sdeps <- Pset.add path acc.sdeps;
-    Some (path_exp path)
 
   let map_exe sctx =
     match sctx.host with
@@ -507,7 +462,8 @@ module Action = struct
       Loc.fail loc "invalid ${lib:...} form: %s" s
     | Some x -> x
 
-  let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user ~map_exe t =
+  let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user
+        ~map_exe ~extra_vars t =
     let acc =
       { failures  = []
       ; lib_deps  = String_map.empty
@@ -515,117 +471,127 @@ module Action = struct
       ; ddeps     = String_map.empty
       }
     in
+    let open Action.Var_expansion in
+    let expand loc key var = function
+      | Some ("exe"     , s) -> Some (path_exp (map_exe (Path.relative dir s)))
+      | Some ("path"    , s) -> Some (path_exp          (Path.relative dir s) )
+      | Some ("bin"     , s) -> begin
+          let sctx = host_sctx sctx in
+          match Artifacts.binary (artifacts sctx) s with
+          | Ok path -> Some (path_exp path)
+          | Error e ->
+            add_fail acc ({ fail = fun () -> Action.Prog.Not_found.raise e })
+        end
+      (* "findlib" for compatibility with Jane Street packages which are not yet updated
+         to convert "findlib" to "lib" *)
+      | Some (("lib"|"findlib"), s) -> begin
+          let lib_dep, file = parse_lib_file ~loc s in
+          add_lib_dep acc lib_dep dep_kind;
+          match
+            Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
+          with
+          | Ok path -> Some (path_exp path)
+          | Error fail -> add_fail acc fail
+        end
+      | Some ("libexec" , s) -> begin
+          let sctx = host_sctx sctx in
+          let lib_dep, file = parse_lib_file ~loc s in
+          add_lib_dep acc lib_dep dep_kind;
+          match
+            Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
+          with
+          | Error fail -> add_fail acc fail
+          | Ok path ->
+            if not Sys.win32 || Filename.extension s = ".exe" then begin
+              Some (path_exp path)
+            end else begin
+              let path_exe = Path.extend_basename path ~suffix:".exe" in
+              let dep =
+                Build.if_file_exists path_exe
+                  ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
+                  ~else_:(Build.path path     >>^ fun _ -> path_exp path)
+              in
+              add_ddep acc ~key dep
+            end
+        end
+      | Some ("lib-available", lib) ->
+        add_lib_dep acc lib Optional;
+        Some (str_exp (string_of_bool (
+          Lib.DB.available (Scope.libs scope) lib)))
+      | Some ("version", s) -> begin
+          match Scope_info.resolve (Scope.info scope) s with
+          | Ok p ->
+            let x =
+              Pkg_version.read sctx p >>^ function
+              | None   -> Strings ([""], Concat)
+              | Some s -> Strings ([s],  Concat)
+            in
+            add_ddep acc ~key x
+          | Error s ->
+            add_fail acc { fail = fun () -> Loc.fail loc "%s" s }
+        end
+      | Some ("read", s) -> begin
+          let path = Path.relative dir s in
+          let data =
+            Build.contents path
+            >>^ fun s -> Strings ([s], Concat)
+          in
+          add_ddep acc ~key data
+        end
+      | Some ("read-lines", s) -> begin
+          let path = Path.relative dir s in
+          let data =
+            Build.lines_of path
+            >>^ fun l -> Strings (l, Split)
+          in
+          add_ddep acc ~key data
+        end
+      | Some ("read-strings", s) -> begin
+          let path = Path.relative dir s in
+          let data =
+            Build.strings path
+            >>^ fun l -> Strings (l, Split)
+          in
+          add_ddep acc ~key data
+        end
+      | _ ->
+        match expand_var_no_root sctx var with
+        | Some _ as x -> x
+        | None -> String_map.find extra_vars var
+    in
     let t =
       U.partial_expand t ~dir ~map_exe ~f:(fun loc key ->
-        let open Action.Var_expansion in
         let has_bang, var = parse_bang key in
         if has_bang then
           Loc.warn loc "The use of the variable prefix '!' is deprecated, \
                         simply use '${%s}'@." var;
-        match String.lsplit2 var ~on:':' with
-        | Some ("path-no-dep", s) -> Some (path_exp (Path.relative dir s))
-        | Some ("exe"     , s) ->
-          let exe = map_exe (Path.relative dir s) in
-          static_dep_exp acc exe
-        | Some ("path"    , s) -> static_dep_exp acc (Path.relative dir s)
-        | Some ("bin"     , s) -> begin
-            let sctx = host_sctx sctx in
-            match Artifacts.binary (artifacts sctx) s with
-            | Ok path ->
-              static_dep_exp acc path
-            | Error e ->
-              add_fail acc ({ fail = fun () -> Action.Prog.Not_found.raise e })
-          end
-        (* "findlib" for compatibility with Jane Street packages which are not yet updated
-           to convert "findlib" to "lib" *)
-        | Some (("lib"|"findlib"), s) -> begin
-            let lib_dep, file = parse_lib_file ~loc s in
-            add_lib_dep acc lib_dep dep_kind;
-            match
-              Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
-            with
-            | Ok path -> static_dep_exp acc path
-            | Error fail -> add_fail acc fail
-          end
-        | Some ("libexec" , s) -> begin
-            let sctx = host_sctx sctx in
-            let lib_dep, file = parse_lib_file ~loc s in
-            add_lib_dep acc lib_dep dep_kind;
-            match
-              Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
-            with
-            | Error fail -> add_fail acc fail
-            | Ok path ->
-              if not Sys.win32 || Filename.extension s = ".exe" then begin
-                static_dep_exp acc path
-              end else begin
-                let path_exe = Path.extend_basename path ~suffix:".exe" in
-                let dep =
-                  Build.if_file_exists path_exe
-                    ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
-                    ~else_:(Build.path path     >>^ fun _ -> path_exp path)
-                in
-                add_ddep acc ~key dep
-              end
-          end
-        | Some ("lib-available", lib) ->
-          add_lib_dep acc lib Optional;
-          Some (str_exp (string_of_bool (
-            Lib.DB.available (Scope.libs scope) lib)))
-        | Some ("version", s) -> begin
-            match Scope_info.resolve (Scope.info scope) s with
-            | Ok p ->
-              let x =
-                Pkg_version.read sctx p >>^ function
-                | None   -> Strings ([""], Concat)
-                | Some s -> Strings ([s],  Concat)
-              in
-              add_ddep acc ~key x
-            | Error s ->
-              add_fail acc { fail = fun () -> Loc.fail loc "%s" s }
-          end
-        | Some ("read", s) -> begin
-            let path = Path.relative dir s in
-            let data =
-              Build.contents path
-              >>^ fun s -> Strings ([s], Concat)
-            in
-            add_ddep acc ~key data
-          end
-        | Some ("read-lines", s) -> begin
-            let path = Path.relative dir s in
-            let data =
-              Build.lines_of path
-              >>^ fun l -> Strings (l, Split)
-            in
-            add_ddep acc ~key data
-          end
-        | Some ("read-strings", s) -> begin
-            let path = Path.relative dir s in
-            let data =
-              Build.strings path
-              >>^ fun l -> Strings (l, Split)
-            in
-            add_ddep acc ~key data
+        match var with
+        | "ROOT" -> Some (path_exp sctx.context.build_dir)
+        | "SCOPE_ROOT" -> Some (path_exp (Scope.root scope))
+        | "@" -> begin
+            match targets_written_by_user with
+            | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
+            | Alias -> Loc.fail loc "You cannot use ${@} in aliases."
+            | Static l -> Some (Paths (l, Split))
           end
         | _ ->
-          match var with
-          | "ROOT" -> Some (path_exp sctx.context.build_dir)
-          | "SCOPE_ROOT" -> Some (path_exp (Scope.root scope))
-          | "@" -> begin
-              match targets_written_by_user with
-              | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
-              | Alias -> Loc.fail loc "You cannot use ${@} in aliases."
-              | Static l -> Some (Paths (l, Split))
-            end
-          | _ -> expand_var_no_root sctx var)
+          match String.lsplit2 var ~on:':' with
+          | Some ("path-no-dep", s) ->
+            Some (path_exp (Path.relative dir s))
+          | x ->
+            let exp = expand loc key var x in
+            (match exp with
+             | Some (Paths (ps, _)) ->
+               acc.sdeps <- Pset.union (Pset.of_list ps) acc.sdeps
+             | _ -> ());
+            exp)
     in
     (t, acc)
 
   let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
     let open Action.Var_expansion in
     U.Partial.expand t ~dir ~map_exe ~f:(fun loc key ->
-      match String_map.find key dynamic_expansions with
+      match String_map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
         let _, var = parse_bang key in
@@ -642,7 +608,8 @@ module Action = struct
         | "^" -> Some (Paths (deps_written_by_user, Split))
         | _ -> None)
 
-  let run sctx t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
+  let run sctx ?(extra_vars=String_map.empty)
+        t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
     : (Path.t list, Action.t) Build.t =
     let map_exe = map_exe sctx in
     if targets_written_by_user = Alias then begin
@@ -655,7 +622,7 @@ module Action = struct
     end;
     let t, forms =
       expand_step1 sctx t ~dir ~dep_kind ~scope
-        ~targets_written_by_user ~map_exe
+        ~targets_written_by_user ~map_exe ~extra_vars
     in
     let { Action.Infer.Outcome. deps; targets } =
       match targets_written_by_user with
@@ -667,9 +634,10 @@ module Action = struct
         in
         (* CR-someday jdimino: should this be an error or not?
 
-           It's likely that what we get here is what the user thinks of as temporary
-           files, even though they might conflict with actual targets. We need to tell
-           jbuilder about such things, so that it can report better errors.
+           It's likely that what we get here is what the user thinks
+           of as temporary files, even though they might conflict with
+           actual targets. We need to tell jbuilder about such things,
+           so that it can report better errors.
 
            {[
              let missing = Pset.diff targets targets_written_by_user in
@@ -688,7 +656,7 @@ module Action = struct
         in
         { deps; targets = Pset.empty }
     in
-    let targets = Pset.elements targets in
+    let targets = Pset.to_list targets in
     List.iter targets ~f:(fun target ->
       if Path.parent target <> dir then
         Loc.fail (Loc.in_file (Utils.describe_target (Utils.jbuild_file_in ~dir)))
@@ -706,12 +674,12 @@ module Action = struct
       >>>
       Build.arr (fun paths -> ((), paths))
       >>>
-      let ddeps = String_map.bindings forms.ddeps in
+      let ddeps = String_map.to_list forms.ddeps in
       Build.first (Build.all (List.map ddeps ~f:snd))
       >>^ (fun (vals, deps_written_by_user) ->
         let dynamic_expansions =
-          List.fold_left2 ddeps vals ~init:String_map.empty ~f:(fun acc (var, _) value ->
-            String_map.add acc ~key:var ~data:value)
+          List.fold_left2 ddeps vals ~init:String_map.empty
+            ~f:(fun acc (var, _) value -> String_map.add acc var value)
         in
         let unresolved =
           expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe
@@ -726,7 +694,7 @@ module Action = struct
         let { Action.Infer.Outcome.deps; targets = _ } =
           Action.Infer.infer action
         in
-        Pset.elements deps))
+        Pset.to_list deps))
       >>>
       Build.action_dyn () ~dir ~targets
     in
@@ -763,7 +731,15 @@ module PP = struct
     let compiler = Option.value_exn (Context.compiler ctx mode) in
     let pps = pps @ [Pp.of_string migrate_driver_main] in
     let driver, libs =
-      let resolved_pps = Lib.DB.resolve_pps lib_db pps in
+      let resolved_pps =
+        Lib.DB.resolve_pps lib_db
+          (List.map pps ~f:(fun x -> (Loc.none, x)))
+        (* Extend the dependency stack as we don't have locations at
+           this point *)
+        |> Result.map_error ~f:(fun e ->
+          Dep_path.prepend_exn e
+            (Preprocess (pps : Jbuild.Pp.t list :> string list)))
+      in
       let driver =
         match resolved_pps with
         | Ok    l -> List.last l
@@ -771,11 +747,11 @@ module PP = struct
       in
       (driver,
        Result.bind resolved_pps ~f:Lib.closure
-       |> Libs.requires_to_build
-            ~required_by:[Preprocess (pps : Jbuild.Pp.t list :> string list)])
+       |> Libs.requires_to_build)
     in
     let libs =
-      Build.record_lib_deps ~kind:dep_kind (List.map pps ~f:Lib_dep.of_pp)
+      Build.record_lib_deps ~kind:dep_kind
+        (List.map pps ~f:(fun pp -> Lib_dep.of_pp (Loc.none, pp)))
       >>>
       libs
     in
@@ -788,21 +764,21 @@ module PP = struct
         let libs, drivers =
           List.partition_map libs ~f:(fun lib ->
             if lib == driver || Lib.name lib = migrate_driver_main then
-              Inr lib
+              Right lib
             else
-              Inl lib)
+              Left lib)
         in
         let user_driver, migrate_driver =
           List.partition_map drivers ~f:(fun lib ->
             if Lib.name lib = migrate_driver_main then
-              Inr lib
+              Right lib
             else
-              Inl lib)
+              Left lib)
         in
         libs @ user_driver @ migrate_driver
     in
-    (* Provide a better error for migrate_driver_main given that this is an implicit
-       dependency *)
+    (* Provide a better error for migrate_driver_main given that this
+       is an implicit dependency *)
     let libs =
       match Lib.DB.available lib_db migrate_driver_main with
       | false ->
@@ -851,7 +827,7 @@ module PP = struct
       let names =
         match List.rev names with
         | [] -> []
-        | driver :: rest -> List.sort rest ~cmp:String.compare @ [driver]
+        | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
       in
       let pps = List.map names ~f:Jbuild.Pp.of_string in
       build_ppx_driver sctx pps ~lib_db ~dep_kind:Required ~target:exe
@@ -868,7 +844,7 @@ module PP = struct
 
   let get_ppx_driver sctx ~scope pps =
     let driver, names =
-      match List.rev_map pps ~f:Pp.to_string with
+      match List.rev_map pps ~f:(fun (_loc, pp) -> Pp.to_string pp) with
       | [] -> (None, [])
       | driver :: rest -> (Some driver, rest)
     in
@@ -893,7 +869,7 @@ module PP = struct
         let name, db' = name_and_db lib in
         (name :: names, most_specific_db db db'))
     in
-    let names = List.sort ~cmp:String.compare names in
+    let names = List.sort ~compare:String.compare names in
     let names =
       match driver with
       | None        -> names
@@ -949,8 +925,8 @@ module PP = struct
     }
 
   let uses_ppx_driver ~pps =
-    match Option.map ~f:Pp.to_string (List.last pps) with
-    | Some ("ppx_driver.runner" | "ppxlib.runner") -> true
+    match (List.last pps : (_ * Pp.t) option :> (_ * string) option) with
+    | Some (_, ("ppx_driver.runner" | "ppxlib.runner")) -> true
     | Some _ | None -> false
 
   let promote_correction ~uses_ppx_driver fn build =
@@ -969,9 +945,9 @@ module PP = struct
     let alias = Alias.lint ~dir in
     let add_alias fn build =
       Alias.add_action sctx.build_system alias build
-        ~stamp:(List [ Atom "lint"
-                     ; Sexp.To_sexp.(option atom) lib_name
-                     ; Atom fn
+        ~stamp:(List [ Sexp.unsafe_atom_of_string "lint"
+                     ; Sexp.To_sexp.(option string) lib_name
+                     ; Sexp.atom fn
                      ])
     in
     let lint =
@@ -1099,18 +1075,20 @@ module Eval_strings = Ordered_set_lang.Make(struct
     let name t = t
   end)
 
-let expand_and_eval_set t ~scope ~dir set ~standard =
+let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
   let open Build.O in
-  let f = expand_vars t ~scope ~dir in
+  let f = expand_vars t ~scope ~dir ?extra_vars in
   let parse ~loc:_ s = s in
-  match Ordered_set_lang.Unexpanded.files set ~f |> String_set.elements with
+  match Ordered_set_lang.Unexpanded.files set ~f |> String_set.to_list with
   | [] ->
-    let set = Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f in
+    let set =
+      Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f
+    in
     Build.return (Eval_strings.eval set ~standard ~parse)
   | files ->
     let paths = List.map files ~f:(Path.relative dir) in
     Build.all (List.map paths ~f:Build.read_sexp)
     >>^ fun sexps ->
-    let files_contents = List.combine files sexps |> String_map.of_alist_exn in
+    let files_contents = List.combine files sexps |> String_map.of_list_exn in
     let set = Ordered_set_lang.Unexpanded.expand set ~files_contents ~f in
     Eval_strings.eval set ~standard ~parse

@@ -35,10 +35,10 @@ end
 
     Return arrows that evaluate to the dependency graphs.  *)
 val rules
-  :  Super_context.t
-  -> dir:Path.t
+  :  dir:Path.t
   -> modules:Module.t String_map.t
-  -> already_used:String_set.t
+  -> ?already_used:String_set.t
   -> alias_module:Module.t option
   -> lib_interface_module:Module.t option
+  -> Super_context.t
   -> Dep_graphs.t

@@ -1,6 +1,7 @@
+open Stdune
+
 val colorize : key:string -> string -> string
 
-val strip : string -> string
 val stderr_supports_colors : bool Lazy.t
 val setup_env_for_colors : unit Lazy.t
 
@@ -15,3 +16,19 @@ type styles
 val output_filename : styles
 
 val apply_string : styles -> string -> string
+
+module Style : sig
+  type t =
+    | Loc
+    | Error
+    | Warning
+    | Kwd
+    | Id
+    | Prompt
+    | Details
+    | Ok
+    | Debug
+end
+
+module Render : Pp.Renderer.S
+  with type Tag.t = Style.t

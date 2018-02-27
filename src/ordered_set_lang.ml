@@ -24,16 +24,17 @@ let loc t = t.loc
 
 let parse_general sexp ~f =
   let rec of_sexp : Sexp.Ast.t -> _ = function
-    | Atom (loc, "\\") -> Loc.fail loc "unexpected \\"
-    | (Atom (_, "") | Quoted_string (_, _)) as t -> Ast.Element (f t)
-    | Atom (loc, s) as t ->
+    | Atom (loc, A "\\") -> Loc.fail loc "unexpected \\"
+    | (Atom (_, A "") | Quoted_string (_, _)) as t -> Ast.Element (f t)
+    | Atom (loc, A s) as t ->
       if s.[0] = ':' then
         Special (loc, String.sub s ~pos:1 ~len:(String.length s - 1))
       else
         Element (f t)
     | List (_, sexps) -> of_sexps [] sexps
   and of_sexps acc = function
-    | Atom (_, "\\") :: sexps -> Diff (Union (List.rev acc), of_sexps [] sexps)
+    | Atom (_, A "\\") :: sexps ->
+       Diff (Union (List.rev acc), of_sexps [] sexps)
     | elt :: sexps ->
       of_sexps (of_sexp elt :: acc) sexps
     | [] -> Union (List.rev acc)
@@ -43,7 +44,7 @@ let parse_general sexp ~f =
 let t sexp : t =
   let ast =
     parse_general sexp ~f:(function
-      | Atom (loc, s) | Quoted_string (loc, s) -> (loc, s)
+      | Atom (loc, A s) | Quoted_string (loc, s) -> (loc, s)
       | List _ -> assert false)
   in
   { ast
@@ -78,7 +79,7 @@ module Make(Value : Value) = struct
           let x = parse ~loc s in
           M.singleton x
         | Special (loc, name) -> begin
-            match String_map.find name special_values with
+            match String_map.find special_values name with
             | Some x -> x
             | None   -> Loc.fail loc "undefined symbol %s" name
           end
@@ -172,7 +173,7 @@ module Unexpanded = struct
       | Element _
       | Special _ -> acc
       | Include fn ->
-        String_set.add (f fn) acc
+        String_set.add acc (f fn)
       | Union l ->
         List.fold_left l ~init:acc ~f:loop
       | Diff (l, r) ->
@@ -189,13 +190,14 @@ module Unexpanded = struct
       | Include fn ->
         let sexp =
           let fn = f fn in
-          match String_map.find fn files_contents with
+          match String_map.find files_contents fn with
           | Some x -> x
           | None ->
             Sexp.code_error
               "Ordered_set_lang.Unexpanded.expand"
-              [ "included-file", Atom fn
-              ; "files", Sexp.To_sexp.(list atom) (String_map.keys files_contents)
+              [ "included-file", Quoted_string fn
+              ; "files", Sexp.To_sexp.(list string)
+                           (String_map.keys files_contents)
               ]
         in
         parse_general sexp ~f:(fun sexp ->

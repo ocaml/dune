@@ -178,11 +178,16 @@ module Doc : sig
 
   val dir : t -> Library.t -> Path.t
 
+  val mld_dir : t -> pkg:string -> Path.t
+
   val deps : t -> (Lib.t list, Lib.t list) Build.t
 
   val static_deps : t -> Library.t -> ('a, 'a) Build.t
 
   val setup_deps : t -> Library.t -> Path.t list -> unit
+
+  val register_mld : t -> mld:string -> pkg:string -> unit
+  val mlds : t -> pkg:string -> String_set.t
 end
 
 (** Interpret action written in jbuild files *)

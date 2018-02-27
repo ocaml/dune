@@ -1,6 +1,0 @@
-(jbuild_version 1)
-
-(library
- ((name lib_with_expect_tests)
-  (inline_tests)
-  (preprocess (pps (ppx_expect)))))

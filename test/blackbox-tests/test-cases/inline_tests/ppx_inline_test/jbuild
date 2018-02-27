@@ -1,6 +1,0 @@
-(jbuild_version 1)
-
-(library
- ((name mylib)
-  (inline_tests)
-  (preprocess (pps (ppx_inline_test)))))

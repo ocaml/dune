@@ -294,55 +294,6 @@ module Libs = struct
         x :: acc)))
 end
 
-module Doc = struct
-  let root t = Path.relative t.context.Context.build_dir "_doc"
-
-  type origin =
-    | Public  of string
-    | Private of string * Scope_info.Name.t
-
-  let dir_internal t origin =
-    let name =
-      match origin with
-      | Public   n     -> n
-      | Private (n, s) -> sprintf "%s@%s" n (Scope_info.Name.to_string s)
-    in
-    Path.relative (root t) name
-
-  let dir t (lib : Library.t) =
-    dir_internal t
-      (match lib.public with
-       | Some { name; _ } -> Public name
-       | None             -> Private (lib.name, lib.scope_name))
-
-  let alias = Alias.make ".doc-all"
-
-  let deps t =
-    Build.dyn_paths (Build.arr (
-      List.fold_left ~init:[] ~f:(fun acc (lib : Lib.t) ->
-        if Lib.is_local lib then (
-          let dir =
-            dir_internal t
-              (match Lib.status lib with
-               | Installed -> assert false
-               | Public    -> Public (Lib.name lib)
-               | Private s -> Private (Lib.name lib, s))
-          in
-          Alias.stamp_file (alias ~dir) :: acc
-        ) else (
-          acc
-        )
-      )))
-
-  let alias t lib = alias ~dir:(dir t lib)
-
-  let static_deps t lib = Alias.dep (alias t lib)
-
-  let setup_deps t lib files = add_alias_deps t (alias t lib) files
-
-  let dir t lib = dir t lib
-end
-
 module Deps = struct
   open Build.O
   open Dep_conf

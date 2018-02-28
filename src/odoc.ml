@@ -4,6 +4,56 @@ open Build.O
 
 module SC = Super_context
 
+module Doc = struct
+  let root sctx = Path.relative (SC.context sctx).Context.build_dir "_doc"
+
+  type origin =
+    | Public  of string
+    | Private of string * Scope_info.Name.t
+
+  let dir_internal t origin =
+    let name =
+      match origin with
+      | Public   n     -> n
+      | Private (n, s) -> sprintf "%s@%s" n (Scope_info.Name.to_string s)
+    in
+    Path.relative (root t) name
+
+  let dir t (lib : Library.t) =
+    dir_internal t
+      (match lib.public with
+       | Some { name; _ } -> Public name
+       | None             -> Private (lib.name, lib.scope_name))
+
+  let alias = Build_system.Alias.make ".doc-all"
+
+  let deps t =
+    Build.dyn_paths (Build.arr (
+      List.fold_left ~init:[] ~f:(fun acc (lib : Lib.t) ->
+        if Lib.is_local lib then (
+          let dir =
+            dir_internal t
+              (match Lib.status lib with
+               | Installed -> assert false
+               | Public    -> Public (Lib.name lib)
+               | Private s -> Private (Lib.name lib, s))
+          in
+          Build_system.Alias.stamp_file (alias ~dir) :: acc
+        ) else (
+          acc
+        )
+      )))
+
+  let alias t lib = alias ~dir:(dir t lib)
+
+  let static_deps t lib = Build_system.Alias.dep (alias t lib)
+
+  let setup_deps t lib files = SC.add_alias_deps t (alias t lib) files
+
+  let dir t lib = dir t lib
+end
+
+
 let ( ++ ) = Path.relative
 
 let get_odoc sctx = SC.resolve_program sctx "odoc" ~hint:"opam install odoc"
@@ -103,7 +153,7 @@ let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir ~includes
       html_dir, [jbuilder_keep]
   in
   SC.add_rule sctx
-    (SC.Doc.static_deps sctx lib
+    (Doc.static_deps sctx lib
      >>>
      includes
      >>>
@@ -127,7 +177,7 @@ let all_mld_files sctx ~(lib : Library.t) ~modules ~dir files =
     if List.mem "index.mld" ~set:files then files else "index.mld" :: files
   in
   let lib_name = Library.best_name lib in
-  let doc_dir = SC.Doc.dir sctx lib in
+  let doc_dir = Doc.dir sctx lib in
   List.map all_files ~f:(fun file ->
     let name = Filename.chop_extension file in
     let mld = Mld.create ~name in
@@ -160,7 +210,7 @@ let toplevel_index ~doc_dir = doc_dir ++ "index.html"
 
 let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
       ~requires ~(dep_graphs:Ocamldep.Dep_graph.t Ml_kind.Dict.t) =
-  let doc_dir = SC.Doc.dir sctx lib in
+  let doc_dir = Doc.dir sctx lib in
   let obj_dir, lib_unique_name =
     let obj_dir, name, status =
       match Lib.DB.find (Scope.libs scope) lib.name with
@@ -184,7 +234,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
     let ctx = SC.context sctx in
     Build.memoize "includes"
       (requires
-       >>> SC.Doc.deps sctx
+       >>> Doc.deps sctx
        >>^ Lib.L.include_flags ~stdlib_dir:ctx.stdlib_dir)
   in
   let mld_files =
@@ -201,7 +251,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
         ~doc_dir ~lib_unique_name (Module m))
   in
   let inputs_and_odoc_files = modules_and_odoc_files @ mld_and_odoc_files in
-  SC.Doc.setup_deps sctx lib (List.map inputs_and_odoc_files ~f:snd);
+  Doc.setup_deps sctx lib (List.map inputs_and_odoc_files ~f:snd);
   (*
      let modules_and_odoc_files =
      if lib.wrapped then
@@ -215,7 +265,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
     List.map inputs_and_odoc_files ~f:(fun (m, odoc_file) ->
       to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~lib)
   in
-  let doc_root = SC.Doc.root sctx in
+  let doc_root = Doc.root sctx in
   let alias =
     match lib.public with
     | None -> Build_system.Alias.private_doc ~dir
@@ -227,7 +277,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
 
 let setup_css_rule sctx =
   let context = SC.context sctx in
-  let doc_dir = SC.Doc.root sctx in
+  let doc_dir = Doc.root sctx in
   SC.add_rule sctx
     (Build.run ~context
        ~dir:context.build_dir
@@ -278,7 +328,7 @@ let setup_toplevel_index_rule sctx =
  </html>
 |} list_items
   in
-  let doc_dir = SC.Doc.root sctx in
+  let doc_dir = Doc.root sctx in
   SC.add_rule sctx @@ Build.write_file (toplevel_index ~doc_dir) html
 
 let gen_rules sctx ~dir:_ rest =

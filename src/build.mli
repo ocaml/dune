@@ -78,6 +78,8 @@ val file_exists_opt : Path.t -> ('a, 'b) t -> ('a, 'b option) t
     backtrace *)
 val fail : ?targets:Path.t list -> fail -> (_, _) t
 
+val of_result : ('a, exn) Result.t -> (unit, 'a) t
+
 (** [memoize name t] is an arrow that behaves like [t] except that its
     result is computed only once. *)
 val memoize : string -> (unit, 'a) t -> (unit, 'a) t

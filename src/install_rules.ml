@@ -189,7 +189,7 @@ module Gen(P : Install_params) = struct
           else
             pps
         in
-        let ppx_exe = SC.PP.get_ppx_driver sctx ~scope pps in
+        let ppx_exe = Preprocessing.get_ppx_driver sctx ~scope pps in
         [ppx_exe]
     in
     List.concat

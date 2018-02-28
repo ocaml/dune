@@ -173,18 +173,6 @@ module Deps : sig
     -> (unit, Path.t list) Build.t
 end
 
-module Doc : sig
-  val root : t -> Path.t
-
-  val dir : t -> Library.t -> Path.t
-
-  val deps : t -> (Lib.t list, Lib.t list) Build.t
-
-  val static_deps : t -> Library.t -> ('a, 'a) Build.t
-
-  val setup_deps : t -> Library.t -> Path.t list -> unit
-end
-
 (** Interpret action written in jbuild files *)
 module Action : sig
   type targets =

@@ -30,44 +30,6 @@ Jbuilder you can write the folliwing ``META.foo.template`` file:
    # JBUILDER_GEN
    blah = "..."
 
-.. _custom-driver:
-
-Using a custom ppx driver
-=========================
-
-You can use a custom ppx driver by putting it as the last library in ``(pps
-...)`` forms. An example of alternative driver is `ppx_driver
-<https://github.com/janestreet/ppx_driver>`__. To use it instead of
-``ocaml-migrate-parsetree.driver-main``, simply write ``ppx_driver.runner`` as
-the last library:
-
-.. code:: scheme
-
-    (preprocess (pps (ppx_sexp_conv ppx_bin_prot ppx_driver.runner)))
-
-Driver expectation
-------------------
-
-Jbuilder will invoke the executable resulting from linking the libraries
-given in the ``(pps ...)`` form as follows:
-
-.. code:: bash
-
-    ppx.exe <flags-written-by-user> --dump-ast -o <output-file> \
-      [--cookie library-name="<name>"] [--impl|--intf] <source-file>
-
-Where ``<source-file>`` is either an implementation (``.ml``) or
-interface (``.mli``) OCaml source file. The command is expected to write
-a binary OCaml AST in ``<output-file>``.
-
-Additionally, it is expected that if the executable is invoked with
-``--as-ppx`` as its first argument, then it will behave as a standard
-ppx rewriter as passed to ``-ppx`` option of OCaml. This is for two
-reasons:
-
--  to improve interoperability with build systems other than Jbuilder
--  so that it can be used with merlin
-
 Findlib integration and limitations
 ===================================
 

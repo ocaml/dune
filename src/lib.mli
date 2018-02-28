@@ -318,7 +318,7 @@ module Sub_system : sig
     type sub_system += T of t
     val instantiate
       :  resolve:(Loc.t * string -> lib Or_exn.t)
-      -> get:(lib -> t option)
+      -> get:(loc:Loc.t -> lib -> t option)
       -> lib
       -> Info.t
       -> t

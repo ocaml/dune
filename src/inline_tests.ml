@@ -77,7 +77,7 @@ module Backend = struct
             (List.map info.extends
                ~f:(fun ((loc, name) as x) ->
                  resolve x >>= fun lib ->
-                 match get lib with
+                 match get ~loc lib with
                  | None ->
                    Error (Loc.exnf loc "%S is not an %s" name
                             (desc ~plural:false))

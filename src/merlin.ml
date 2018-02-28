@@ -18,8 +18,8 @@ module Preprocess = struct
     | Other, Other -> Other
     | Pps _, Other -> a
     | Other, Pps _ -> b
-    | Pps { pps = pps1; flags = flags1 },
-      Pps { pps = pps2; flags = flags2 } ->
+    | Pps { loc = _; pps = pps1; flags = flags1 },
+      Pps { loc = _; pps = pps2; flags = flags2 } ->
       match
         match List.compare flags1 flags2 ~compare:String.compare with
         | Eq ->
@@ -98,12 +98,15 @@ let add_source_dir t dir =
 
 let ppx_flags sctx ~dir:_ ~scope ~src_dir:_ { preprocess; libname; _ } =
   match preprocess with
-  | Pps { pps; flags } ->
-    let exe = Preprocessing.get_ppx_driver sctx ~scope pps in
-    (Path.to_absolute_filename exe
-     :: "--as-ppx"
-     :: Preprocessing.cookie_library_name libname
-     @ flags)
+  | Pps { loc = _; pps; flags } -> begin
+    match Preprocessing.get_ppx_driver sctx ~scope pps with
+    | Ok exe ->
+      (Path.to_absolute_filename exe
+       :: "--as-ppx"
+       :: Preprocessing.cookie_library_name libname
+       @ flags)
+    | Error _ -> []
+  end
   | Other -> []
 
 let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =

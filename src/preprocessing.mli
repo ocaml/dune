@@ -37,9 +37,14 @@ val pp_module_as
 
 (** Get a path to a cached ppx driver *)
 val get_ppx_driver
-  : Super_context.t
+  :  Super_context.t
   -> scope:Scope.t
   -> (Loc.t * Jbuild.Pp.t) list
+  -> Path.t Or_exn.t
+
+val get_ppx_driver_for_public_lib
+  :  Super_context.t
+  -> name:string
   -> Path.t
 
 (** [cookie_library_name lib_name] is ["--cookie"; lib_name] if [lib_name] is not

@@ -43,15 +43,20 @@ module Register_backend(M : Backend) = struct
                (M.desc ~plural:false))
     | Some t -> Ok t
 
-  let written_by_user_or_scan ~loc ~written_by_user ~to_scan =
+  let written_by_user_or_scan ~loc ~written_by_user ~to_scan ~no_backend_error =
     match
       match written_by_user with
       | Some l -> l
       | None   -> List.filter_map to_scan ~f:get
     with
-    | [] ->
-      Error
-        (Loc.exnf loc "No %s found." (M.desc ~plural:false))
+    | [] -> begin
+        match no_backend_error with
+        | Some f ->
+          Error (Loc.exnf loc "%s" (f to_scan))
+        | None ->
+          Error
+            (Loc.exnf loc "No %s found." (M.desc ~plural:false))
+      end
     | l -> Ok l
 
   let too_many_backends ~loc backends =
@@ -68,6 +73,7 @@ module Register_backend(M : Backend) = struct
   let select_extensible_backends ~loc ?written_by_user ~extends to_scan =
     let open Result.O in
     written_by_user_or_scan ~loc ~written_by_user ~to_scan
+      ~no_backend_error:None
     >>= fun backends ->
     top_closure backends ~deps:extends
     >>= fun backends ->
@@ -82,9 +88,10 @@ module Register_backend(M : Backend) = struct
     else
       Error (too_many_backends ~loc roots)
 
-  let select_replaceable_backend ~loc ?written_by_user ~replaces to_scan =
+  let select_replaceable_backend ~loc ?written_by_user ~replaces
+        ?no_backend_error to_scan =
     let open Result.O in
-    written_by_user_or_scan ~loc ~written_by_user ~to_scan
+    written_by_user_or_scan ~loc ~written_by_user ~to_scan ~no_backend_error
     >>= fun backends ->
     Result.concat_map backends ~f:replaces
     >>= fun replaced_backends ->

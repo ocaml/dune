@@ -249,7 +249,7 @@ module Dep_conf = struct
 end
 
 module Preprocess = struct
-  type pps = { pps : (Loc.t * Pp.t) list; flags : string list }
+  type pps = { loc : Loc.t; pps : (Loc.t * Pp.t) list; flags : string list }
   type t =
     | No_preprocessing
     | Action of Loc.t * Action.Unexpanded.t
@@ -258,11 +258,24 @@ module Preprocess = struct
   let t =
     sum
       [ cstr "no_preprocessing" nil No_preprocessing
-      ; cstr "action" (located Action.Unexpanded.t @> nil)
-          (fun (loc, x) -> Action (loc, x))
-      ; cstr "pps" (list Pp_or_flags.t @> nil) (fun l ->
+      ; cstr "action" (located Action.Unexpanded.t @> nil) (fun (loc, x) ->
+          Action (loc, x))
+      ; cstr "pps" (cstr_loc (list Pp_or_flags.t @> nil)) (fun loc l ->
           let pps, flags = Pp_or_flags.split l in
-          Pps { pps; flags })
+          let pps =
+            (* Compatibility hacks. We can remove them when switching
+               to Dune and make these cases errors. *)
+            match pps with
+            | [] ->
+              [(loc, Pp.of_string "ocaml-migrate-parsetree")]
+            | _ ->
+              List.map pps ~f:(fun ((loc, pp) as x) ->
+                match Pp.to_string pp with
+                | "ppx_driver.runner" -> (loc, Pp.of_string "ppx_driver")
+                | "ppxlib.runner" -> (loc, Pp.of_string "ppxlib")
+                | _ -> x)
+          in
+          Pps { loc; pps; flags })
       ]
 
   let pps = function

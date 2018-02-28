@@ -12,7 +12,7 @@ module type S = sig
   (** Create an instance of the sub-system *)
   val instantiate
     :  resolve:(Loc.t * string -> Lib.t Or_exn.t)
-    -> get:(Lib.t -> t option)
+    -> get:(loc:Loc.t -> Lib.t -> t option)
     -> Lib.t
     -> Info.t
     -> t
@@ -67,6 +67,7 @@ module type Registered_backend = sig
     :  loc:Loc.t
     -> ?written_by_user:t list
     -> replaces:(t -> t list Or_exn.t)
+    -> ?no_backend_error:(Lib.t list -> string)
     -> Lib.t list
     -> t Or_exn.t
 end

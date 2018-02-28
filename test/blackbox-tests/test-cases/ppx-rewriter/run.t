@@ -10,7 +10,7 @@
       ocamlopt .w_omp_driver.eobjs/w_omp_driver.{cmx,o}
       ocamlopt w_omp_driver.exe
   $ dune build ./w_ppx_driver.exe --display short
-      ocamlopt .ppx/ppx_driver.runner/ppx.exe
+      ocamlopt .ppx/ppx_driver/ppx.exe
            ppx w_ppx_driver.pp.ml
       ocamldep w_ppx_driver.pp.ml.d
         ocamlc .w_ppx_driver.eobjs/w_ppx_driver.{cmi,cmo,cmt}

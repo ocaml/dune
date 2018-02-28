@@ -56,6 +56,9 @@ next
 - In dune files, add support for block strings, allowing to nicely
   format blocks of texts (#837, @diml)
 
+- Remove hard-coded knowledge of ppx_driver and
+  ocaml-migrate-parsetree (#576, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 
@@ -175,7 +178,6 @@ next
 
 - Add a hack to be able to build ppxlib, until beta20 which will have
   generic support for ppx drivers
-
 
 1.0+beta18 (25/02/2018)
 -----------------------

@@ -19,7 +19,8 @@ end
 
 module Preprocess : sig
   type pps =
-    { pps   : (Loc.t * Pp.t) list
+    { loc   : Loc.t
+    ; pps   : (Loc.t * Pp.t) list
     ; flags : string list
     }
 

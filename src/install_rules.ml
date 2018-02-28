@@ -130,7 +130,7 @@ module Gen(P : Install_params) = struct
            >>>
            Build.write_file_dyn meta)))
 
-  let lib_install_files ~dir ~sub_dir ~scope ~name (lib : Library.t) =
+  let lib_install_files ~dir ~sub_dir ~name (lib : Library.t) =
     let obj_dir = Utils.library_object_directory ~dir lib.name in
     let make_entry section ?dst fn =
       Install.Entry.make section fn
@@ -184,25 +184,7 @@ module Gen(P : Install_params) = struct
       match lib.kind with
       | Normal | Ppx_deriver -> []
       | Ppx_rewriter ->
-        let pps = [(lib.buildable.loc, Pp.of_string lib.name)] in
-        let pps =
-          (* This is a temporary hack until we get a standard driver *)
-          let deps =
-            List.concat_map lib.buildable.libraries ~f:Lib_dep.to_lib_names
-          in
-          if List.exists deps ~f:(function
-            | "ppx_driver" | "ppx_type_conv" -> true
-            | _ -> false) then
-            pps @ [match Scope.name scope with
-              | Named "ppxlib" ->
-                Loc.none, Pp.of_string "ppxlib.runner"
-              | _ ->
-                Loc.none, Pp.of_string "ppx_driver.runner"]
-          else
-            pps
-        in
-        let ppx_exe = Preprocessing.get_ppx_driver sctx ~scope pps in
-        [ppx_exe]
+        [Preprocessing.get_ppx_driver_for_public_lib sctx ~name]
     in
     List.concat
       [ List.map files ~f:(make_entry Lib    )
@@ -292,10 +274,10 @@ module Gen(P : Install_params) = struct
   let init_install () =
     let entries_per_package =
       List.concat_map (SC.stanzas_to_consider_for_install sctx)
-        ~f:(fun (dir, scope, stanza) ->
+        ~f:(fun (dir, _scope, stanza) ->
           match stanza with
           | Library ({ public = Some { package; sub_dir; name; _ }; _ } as lib) ->
-            List.map (lib_install_files ~dir ~sub_dir ~scope ~name lib)
+            List.map (lib_install_files ~dir ~sub_dir ~name lib)
               ~f:(fun x -> package.name, x)
           | Install { section; files; package}->
             List.map files ~f:(fun { Install_conf. src; dst } ->

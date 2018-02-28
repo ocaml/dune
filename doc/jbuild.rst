@@ -1045,11 +1045,6 @@ dependencies. Note that it is important that all these libraries are linked with
 ``-linkall``. Jbuilder automatically uses ``-linkall`` when the ``(kind ...)``
 field is set to ``ppx_rewriter`` or ``ppx_deriver``.
 
-It is guaranteed that the last library in the list will be linked last. You can
-use this feature to use a custom ppx driver. By default Jbuilder will use
-``ocaml-migrate-parsetree.driver-main``. See the section about
-:ref:`custom-driver` for more details.
-
 Per module preprocessing specification
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

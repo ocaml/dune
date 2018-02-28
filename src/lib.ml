@@ -456,8 +456,8 @@ module Sub_system = struct
     type t
     type sub_system += T of t
     val instantiate
-      :  resolve:(Loc.t * string -> (lib, exn) result)
-      -> get:(lib -> t option)
+      :  resolve:(Loc.t * string -> lib Or_exn.t)
+      -> get:(loc:Loc.t -> lib -> t option)
       -> lib
       -> Info.t
       -> t
@@ -495,8 +495,14 @@ module Sub_system = struct
     let (module M : S') = impl in
     match info with
     | M.Info.T info ->
+      let get ~loc lib' =
+        if lib.unique_id = lib'.unique_id then
+          Loc.fail loc "Library %S depends on itself" lib.name
+        else
+          M.get lib'
+      in
       Sub_system0.Instance.T
-        (M.for_instance, M.instantiate ~resolve ~get:M.get lib info)
+        (M.for_instance, M.instantiate ~resolve ~get lib info)
     | _ -> assert false
 
   let dump_config lib =
@@ -697,7 +703,7 @@ and find_internal db name ~stack : status =
   | Some x -> x
   | None   -> resolve_name db name ~stack
 
-and resolve_dep db name ~allow_private_deps ~loc ~stack : (t, exn) result =
+and resolve_dep db name ~allow_private_deps ~loc ~stack : t Or_exn.t =
   match find_internal db name ~stack with
   | St_initializing id ->
     Error (Dep_stack.dependency_cycle stack id)

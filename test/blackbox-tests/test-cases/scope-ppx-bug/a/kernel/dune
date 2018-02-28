@@ -3,4 +3,5 @@
 (library
  ((name a_kernel)
   (public_name a.kernel)
+  (libraries (ocaml-migrate-parsetree))
   (kind ppx_rewriter)))

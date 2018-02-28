@@ -5,7 +5,7 @@ open Import
 type t
 
 val make
-  :  ?requires:(Lib.t list, exn) result
+  :  ?requires:Lib.t list Or_exn.t
   -> ?flags:(unit, string list) Build.t
   -> ?preprocess:Jbuild.Preprocess.t
   -> ?libname:string

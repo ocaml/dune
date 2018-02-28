@@ -107,7 +107,7 @@ module Error : sig
       module Hidden : sig
         type t =
           { name   : string
-          ; info   : Info.t
+          ; path   : Path.t
           ; reason : string
           }
       end
@@ -203,11 +203,12 @@ module DB : sig
   (** A database allow to resolve library names *)
   type t
 
-  module Info_or_redirect : sig
+  module Resolve_result : sig
     type nonrec t =
-      | Info     of Info.t
-      | Redirect of Loc.t * Path.t * string
-      | Proxy    of lib
+      | Not_found
+      | Found    of Info.t
+      | Hidden   of Info.t * string
+      | Redirect of t option * string
   end
 
   (** Create a new library database. [resolve] is used to resolve
@@ -220,9 +221,7 @@ module DB : sig
   *)
   val create
     :  ?parent:t
-    -> resolve:(string ->
-                (Info_or_redirect.t, Error.Library_not_available.Reason.t)
-                  result)
+    -> resolve:(string -> Resolve_result.t)
     -> all:(unit -> string list)
     -> unit
     -> t
@@ -240,6 +239,8 @@ module DB : sig
     :  t
     -> string list
     -> (lib list, exn) result
+
+  val find_even_when_hidden : t -> string -> lib option
 
   val available : t -> string -> bool
 

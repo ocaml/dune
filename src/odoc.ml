@@ -212,22 +212,18 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
       ~requires ~(dep_graphs:Ocamldep.Dep_graph.t Ml_kind.Dict.t) =
   let doc_dir = Doc.dir sctx lib in
   let obj_dir, lib_unique_name =
-    let obj_dir, name, status =
-      match Lib.DB.find (Scope.libs scope) lib.name with
-      | Error Not_found -> assert false
-      | Error (Hidden { name; info; _ }) ->
-        (info.obj_dir, name, info.status)
-      | Ok lib ->
-        (Lib.obj_dir lib, Lib.name lib, Lib.status lib)
+    let lib =
+      Option.value_exn (Lib.DB.find_even_when_hidden (Scope.libs scope) lib.name)
     in
     let name =
-      match status with
+      let name = Lib.name lib in
+      match Lib.status lib with
       | Installed -> assert false
       | Public    -> name
       | Private scope_name ->
         sprintf "%s@%s" name (Scope_info.Name.to_string scope_name)
     in
-    (obj_dir, name)
+    (Lib.obj_dir lib, name)
   in
   let odoc = get_odoc sctx in
   let includes =

@@ -13,8 +13,8 @@ module Mld : sig
   type t
   val create : name:string -> t
 
-  val odoc_file : doc_dir:Path.t -> t -> Path.t
-  val odoc_input : doc_dir:Path.t -> t -> Path.t
+  val odoc_file : odoc_dir:Path.t -> t -> Path.t
+  val odoc_input : mld_dir:Path.t -> t -> Path.t
 
   val html_filename : t -> string
 end = struct
@@ -22,11 +22,11 @@ end = struct
 
   let create ~name = name
 
-  let odoc_file ~doc_dir t =
-    Path.relative doc_dir (sprintf "page-%s%s" t odoc_ext)
+  let odoc_file ~odoc_dir t =
+    Path.relative odoc_dir (sprintf "page-%s%s" t odoc_ext)
 
-  let odoc_input ~doc_dir t =
-    Path.relative doc_dir (sprintf "%s-generated.mld" t)
+  let odoc_input ~mld_dir t =
+    Path.relative mld_dir (sprintf "%s.mld" t)
 
   let html_filename t =
     sprintf "%s.html" t
@@ -58,16 +58,16 @@ let module_deps (m : Module.t) ~doc_dir
          Ocamldep.Dep_graph.deps_of dep_graphs.impl m)
      >>^ List.map ~f:(Module.odoc_file ~doc_dir))
 
-let compile_mld sctx (m : Mld.t) ~odoc ~dir ~pkg ~doc_dir =
+let compile_mld sctx (m : Mld.t) ~odoc ~pkg ~odoc_dir ~mld_dir =
   let context = SC.context sctx in
-  let odoc_file = Mld.odoc_file m ~doc_dir in
+  let odoc_file = Mld.odoc_file m ~odoc_dir in
   SC.add_rule sctx
-    (Build.run ~context ~dir:doc_dir odoc
+    (Build.run ~context ~dir:odoc_dir odoc
        [ A "compile"
-       ; A "-I"; Path dir
+       (* ; A "-I"; Path odoc_dir *)
        ; As ["--pkg"; pkg]
        ; A "-o"; Target odoc_file
-       ; Dep (Mld.odoc_input m ~doc_dir)
+       ; Dep (Mld.odoc_input m ~mld_dir)
        ]);
   (Module_or_mld.Mld m, odoc_file)
 
@@ -197,32 +197,31 @@ let setup_css_rule sctx =
        (get_odoc sctx)
        [ A "css"; A "-o"; Path doc_dir ])
 
+  let pkg_dir sctx ~(pkg : Package.t) =
+    Path.append (SC.context sctx).build_dir pkg.path
 
 let setup_package_rules =
   let mld_glob =
     Re.compile (
       Re.seq [Re.(rep1 any) ; Re.str ".mld" ; Re.eos]
     ) in
-  fun sctx ~dir ~pkg ->
+  fun sctx ~dir ~(pkg : Package.t) ->
     let odoc = get_odoc sctx in
-    let mld_files =
-      SC.eval_glob sctx ~dir:(SC.Doc.mld_dir sctx ~pkg) mld_glob in
-    let doc_dir = dir in
+    let mld_dir = SC.Doc.mld_dir sctx ~pkg:pkg.name in
+    let mld_files = SC.eval_glob sctx ~dir:mld_dir mld_glob in
     let mld_files =
       List.map ~f:(fun f -> Mld.create ~name:(Filename.chop_extension f))
         mld_files in
     let includes = Build.arr (fun () -> Arg_spec.As []) in
     let mld_and_odoc_files =
       List.map mld_files ~f:(fun m ->
-        compile_mld sctx ~odoc ~dir ~pkg ~doc_dir m)
+        compile_mld sctx ~odoc ~odoc_dir:dir ~pkg:pkg.name ~mld_dir m)
     in
     let html_files =
       List.map mld_and_odoc_files ~f:(fun (m, odoc_file) ->
-        to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~libs:[])
+        to_html sctx m odoc_file ~doc_dir:dir ~odoc ~dir ~includes ~libs:[])
     in
-    ignore html_files
-    (* SC.add_alias_deps sctx (Build_system.Alias.doc ~dir:Path.root)
-     *   html_files *)
+    SC.add_alias_deps sctx (Build_system.Alias.doc ~dir) html_files
 
 let sp = Printf.sprintf
 
@@ -298,8 +297,9 @@ let gen_rules sctx ~dir rest =
     end
   | "_package" :: pkg :: _ ->
     begin match String_map.find (SC.packages sctx) pkg with
-    | None -> die "no documentation for non-existent package %s" pkg
-    | Some _ -> setup_package_rules sctx ~dir ~pkg;
+    | None ->
+      die "no documentation for non-existent package %s" pkg
+    | Some pkg -> setup_package_rules sctx ~dir ~pkg
     end
   | lib :: _ ->
     let lib, lib_db =

@@ -20,6 +20,10 @@ val write_file : string -> string -> unit
 
 val compare_files : string -> string -> Ordering.t
 
+val write_lines : string -> string list -> unit
+
 val copy_channels : in_channel -> out_channel -> unit
 
 val copy_file : src:string -> dst:string -> unit
+
+val read_all : in_channel -> string

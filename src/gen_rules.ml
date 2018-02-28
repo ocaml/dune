@@ -1230,6 +1230,12 @@ module Gen(P : Params) = struct
       |> String_map.of_list_multi
     in
     String_map.iter (SC.packages sctx) ~f:(fun (pkg : Package.t) ->
+      SC.add_alias_deps sctx (
+        Build_system.Alias.doc ~dir:(Path.append ctx.build_dir pkg.path)
+      ) [Alias.stamp_file (
+        let dir =
+          Path.relative ctx.build_dir (sprintf "_doc/_package/%s" pkg.name) in
+        Alias.doc ~dir)];
       let stanzas =
         Option.value (String_map.find entries_per_package pkg.name) ~default:[]
       in

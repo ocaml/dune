@@ -38,6 +38,8 @@ val file_tree : t -> File_tree.t
 val artifacts : t -> Artifacts.t
 val stanzas_to_consider_for_install : t -> (Path.t * Scope.t * Stanza.t) list
 val cxx_flags : t -> string list
+val build_dir : t -> Path.t
+val host : t -> t
 
 (** All public libraries of the workspace *)
 val public_libs : t -> Lib.DB.t
@@ -190,36 +192,6 @@ module Action : sig
     -> targets:targets
     -> scope:Scope.t
     -> (Path.t list, Action.t) Build.t
-end
-
-(** Preprocessing stuff *)
-module PP : sig
-  (** Setup pre-processing and linting rules and return the list of
-      pre-processed modules *)
-  val pp_and_lint_modules
-    :  t
-    -> dir:Path.t
-    -> dep_kind:Build.lib_dep_kind
-    -> modules:Module.t String_map.t
-    -> lint:Preprocess_map.t
-    -> preprocess:Preprocess_map.t
-    -> preprocessor_deps:(unit, Path.t list) Build.t
-    -> lib_name:string option
-    -> scope:Scope.t
-    -> Module.t String_map.t
-
-  (** Get a path to a cached ppx driver *)
-  val get_ppx_driver
-    : t
-    -> scope:Scope.t
-    -> (Loc.t * Pp.t) list
-    -> Path.t
-
-  (** [cookie_library_name lib_name] is ["--cookie"; lib_name] if [lib_name] is not
-      [None] *)
-  val cookie_library_name : string option -> string list
-
-  val gen_rules : t -> string list -> unit
 end
 
 module Pkg_version : sig

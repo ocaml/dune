@@ -505,7 +505,7 @@ module Gen(P : Install_rules.Params) = struct
     (* Preprocess before adding the alias module as it doesn't need
        preprocessing *)
     let modules =
-      SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
+      Preprocessing.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
         ~preprocess:lib.buildable.preprocess
         ~preprocessor_deps:
           (SC.Deps.interpret sctx ~scope ~dir
@@ -754,7 +754,7 @@ module Gen(P : Install_rules.Params) = struct
         SC.Deps.interpret sctx exes.buildable.preprocessor_deps
           ~scope ~dir
       in
-      SC.PP.pp_and_lint_modules sctx ~dir ~dep_kind:Required ~modules ~scope
+      Preprocessing.pp_and_lint_modules sctx ~dir ~dep_kind:Required ~modules ~scope
         ~preprocess:exes.buildable.preprocess
         ~preprocessor_deps
         ~lint:exes.buildable.lint
@@ -920,7 +920,7 @@ module Gen(P : Install_rules.Params) = struct
      | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
                            sctx rest
      | "_doc" :: rest -> Odoc.gen_rules sctx rest ~dir
-     | ".ppx"  :: rest -> SC.PP.gen_rules sctx rest
+     | ".ppx"  :: rest -> Preprocessing.gen_rules sctx rest
      | _ ->
        match Path.Map.find stanzas_per_dir dir with
        | Some x -> gen_rules x

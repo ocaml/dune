@@ -166,6 +166,10 @@ let fail ?targets x =
   | None -> Fail x
   | Some l -> Targets l >>> Fail x
 
+let of_result = function
+  | Ok    x -> return x
+  | Error e -> fail { fail = fun () -> raise e }
+
 let memoize name t =
   Memo { name; t; state = Unevaluated }
 

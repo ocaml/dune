@@ -1,0 +1,10 @@
+(jbuild_version 1)
+
+(executable
+ ((name test_configurator)
+  (libraries (configurator))))
+
+(alias
+ ((name runtest)
+  (deps (./test_configurator.exe))
+  (action (run ${<}))))

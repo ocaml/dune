@@ -13,10 +13,4 @@ val setup_library_rules
   -> dep_graphs:Ocamldep.Dep_graphs.t
   -> unit
 
-val setup_package_rules
-  :  Super_context.t
-  -> dir:Path.t
-  -> pkg:string
-  -> unit
-
 val gen_rules : Super_context.t -> dir:Path.t -> string list -> unit

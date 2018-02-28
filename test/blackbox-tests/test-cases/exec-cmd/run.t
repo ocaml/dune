@@ -13,10 +13,10 @@
       ocamlopt .foo.eobjs/foo.{cmx,o}
       ocamlopt foo.exe
   Foo
-  $ $JBUILDER exec bar --no-build -j1 --display short --root .
-  Error: Program "bar" isn't built yet you need to buid it first or remove the --no-build option.
+  $ $JBUILDER exec dunetestbar --no-build -j1 --display short --root .
+  Error: Program "dunetestbar" isn't built yet you need to buid it first or remove the --no-build option.
   [1]
-  $ $JBUILDER exec bar -j1 --display short --root .
+  $ $JBUILDER exec dunetestbar -j1 --display short --root .
       ocamldep bar.ml.d
         ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}
       ocamlopt .bar.eobjs/bar.{cmx,o}

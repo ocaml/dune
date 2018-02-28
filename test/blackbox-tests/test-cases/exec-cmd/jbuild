@@ -7,4 +7,4 @@
 (executable
  ((modules (bar))
   (name bar)
-  (public_name bar)))
+  (public_name dunetestbar)))

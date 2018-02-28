@@ -146,6 +146,27 @@ module Gen(P : Params) = struct
       modules
     end
 
+  let parse_mlds ~dir ~(all_mlds : string String_map.t) ~mlds_written_by_user =
+    let module Eval_mlds =
+      Ordered_set_lang.Make(struct
+        type t = string
+        let name x = x
+      end) in
+    if Ordered_set_lang.is_standard mlds_written_by_user then
+      all_mlds
+    else
+      let mlds =
+        Eval_mlds.eval_unordered
+          mlds_written_by_user
+          ~parse:(fun ~loc:_ s -> s)
+          ~standard:all_mlds in
+      String_map.iter mlds ~f:(fun mld ->
+        if not (String_map.mem all_mlds mld) then (
+          die "no mld file %s in %s" mld (Path.to_string dir)
+        )
+      );
+      mlds
+
   (* +-----------------------------------------------------------------+
      | User rules & copy files                                         |
      +-----------------------------------------------------------------+ *)
@@ -239,7 +260,7 @@ module Gen(P : Params) = struct
                   match (dep : Jbuild.Lib_dep.t) with
                   | Direct _ -> None
                   | Select s -> Some s.result_fn)
-              | Alias _ | Provides _ | Install _ -> [])
+              | Alias _ | Provides _ | Install _ | Documentation _ -> [])
             |> String_set.of_list
           in
           String_set.union generated_files
@@ -283,6 +304,14 @@ module Gen(P : Params) = struct
         ; obj_name = ""
         }
     )
+
+  let guess_mlds ~files =
+    String_set.to_list files
+    |> List.filter_map ~f:(fun fn ->
+      match String.lsplit2 fn ~on:'.' with
+      | Some (_, "mld") -> Some (Filename.chop_extension fn, fn)
+      | _ -> None)
+    |> String_map.of_list_exn (* TODO error handling *)
 
   let modules_by_dir =
     let cache = Hashtbl.create 32 in
@@ -708,13 +737,7 @@ module Gen(P : Params) = struct
       );
 
     (* Odoc *)
-    let mld_files =
-      String_set.fold files ~init:[] ~f:(fun fn acc ->
-        if Filename.check_suffix fn ".mld" then fn :: acc else acc)
-    in
-    Odoc.setup_library_rules sctx lib ~dir ~requires ~modules ~dep_graphs
-      ~mld_files ~scope
-    ;
+    Odoc.setup_library_rules sctx lib ~dir ~requires ~modules ~dep_graphs ~scope;
 
     let flags =
       match alias_module with
@@ -840,6 +863,18 @@ module Gen(P : Params) = struct
     ; objs_dirs   = Path.Set.singleton obj_dir
     }
 
+  let documentation_rules ~dir ~all_mlds (doc : Documentation.t) =
+    let doc_dir = SC.Doc.mld_dir sctx ~pkg:doc.package.name in
+    parse_mlds ~dir ~all_mlds ~mlds_written_by_user:doc.mld_files
+    |> String_map.iter ~f:(fun mld ->
+      SC.Doc.register_mld sctx ~mld ~pkg:doc.package.name;
+      SC.add_rule sctx (
+        Build.copy
+          ~src:(Path.relative dir mld)
+          ~dst:(Path.relative doc_dir mld)
+      )
+    )
+
   (* +-----------------------------------------------------------------+
      | Aliases                                                         |
      +-----------------------------------------------------------------+ *)
@@ -883,6 +918,7 @@ module Gen(P : Params) = struct
     (* This interprets "rule" and "copy_files" stanzas. *)
     let files = text_files ~dir:ctx_dir in
     let all_modules = modules_by_dir ~dir:ctx_dir in
+    let all_mlds = guess_mlds ~files in
     let modules_partitioner =
       Modules_partitioner.create ~dir:src_dir ~all_modules
     in
@@ -896,6 +932,9 @@ module Gen(P : Params) = struct
                 ~modules_partitioner)
       | Alias alias ->
         alias_rules alias ~dir ~scope;
+        None
+      | Documentation d ->
+        documentation_rules ~dir ~all_mlds d;
         None
       | Copy_files { glob; _ } ->
         let src_dir =
@@ -1142,6 +1181,10 @@ module Gen(P : Params) = struct
         (Utils.install_file ~package ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let entries = local_install_rules entries ~package in
+    let mld_glob =
+      Re.compile (
+        Re.seq [Re.(rep1 any) ; Re.str ".mld" ; Re.eos]
+      ) in
     SC.add_rule sctx
       ~mode:(if promote_install_file then
                Promote_but_delete_on_clean
@@ -1150,7 +1193,15 @@ module Gen(P : Params) = struct
                   copied to the source tree by another context. *)
                Ignore_source_files)
       (Build.path_set (Install.files entries)
-       >>^ (fun () ->
+       (* TODO this is bad b/c we should only use files in _build/install *)
+       &&& Build.paths_glob ~loc:Loc.none mld_glob
+             ~dir:(SC.Doc.mld_dir sctx ~pkg:package)
+       >>^ (fun ((), mlds) ->
+         let entries =
+           List.map mlds ~f:(fun mld ->
+             Install.Entry.make Install.Section.Doc mld
+               ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
+           ) @ entries in
          let entries =
            match ctx.findlib_toolchain with
            | None -> entries
@@ -1179,6 +1230,12 @@ module Gen(P : Params) = struct
       |> String_map.of_list_multi
     in
     String_map.iter (SC.packages sctx) ~f:(fun (pkg : Package.t) ->
+      SC.add_alias_deps sctx (
+        Build_system.Alias.doc ~dir:(Path.append ctx.build_dir pkg.path)
+      ) [Alias.stamp_file (
+        let dir =
+          Path.relative ctx.build_dir (sprintf "_doc/_package/%s" pkg.name) in
+        Alias.doc ~dir)];
       let stanzas =
         Option.value (String_map.find entries_per_package pkg.name) ~default:[]
       in

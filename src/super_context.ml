@@ -30,6 +30,7 @@ type t =
   ; ppx_dir                          : Path.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
+  ; mlds_by_package                  : (string, String_set.t) Hashtbl.t
   }
 
 let context t = t.context
@@ -182,6 +183,7 @@ let create
       match action with
       | Chdir _ -> action
       | _ -> Chdir (context.build_dir, action))
+  ; mlds_by_package = Hashtbl.create 256
   }
 
 let prefix_rules t prefix ~f =
@@ -315,6 +317,9 @@ module Doc = struct
        | Some { name; _ } -> Public name
        | None             -> Private (lib.name, lib.scope_name))
 
+  let mld_dir t ~pkg =
+    Path.relative (root t) (sprintf "_mlds/%s" pkg)
+
   let alias = Alias.make ".doc-all"
 
   let deps t =
@@ -341,6 +346,19 @@ module Doc = struct
   let setup_deps t lib files = add_alias_deps t (alias t lib) files
 
   let dir t lib = dir t lib
+
+  let register_mld t ~mld ~pkg =
+    match Hashtbl.find t.mlds_by_package pkg with
+    | None ->
+      Hashtbl.add t.mlds_by_package pkg (String_set.singleton mld)
+    | Some s ->
+      Hashtbl.replace t.mlds_by_package ~key:pkg ~data:(String_set.add s mld)
+
+  let mlds t ~pkg =
+    match Hashtbl.find t.mlds_by_package pkg with
+    | Some s -> s
+    | None -> Sexp.code_error "Super_context.mlds: invalid pacakge"
+                ["pkg", Sexp.To_sexp.string pkg]
 end
 
 module Deps = struct

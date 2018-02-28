@@ -26,6 +26,10 @@ val archives     : t -> Path.t list Mode.Dict.t
 val plugins      : t -> Path.t list Mode.Dict.t
 val jsoo_runtime : t -> Path.t list
 
+(** A unique integer identifier. It is only unique for the duration of
+    the process *)
+val unique_id : t -> int
+
 module Status : sig
   type t =
     | Installed
@@ -89,14 +93,6 @@ module Info : sig
 
   val of_library_stanza : dir:Path.t -> Jbuild.Library.t -> t
   val of_findlib_package : Findlib.Package.t -> t
-end
-
-module Id : sig
-  type t =
-    { unique_id : int
-    ; path      : Path.t
-    ; name      : string
-    }
 end
 
 (** {1 Errors} *)
@@ -290,7 +286,7 @@ module Sub_system : sig
     val instantiate
       :  resolve:(Loc.t * string -> (lib, exn) result)
       -> get:(lib -> t option)
-      -> Id.t
+      -> lib
       -> Info.t
       -> t
     val to_sexp : (t -> Syntax.Version.t * Sexp.t) option

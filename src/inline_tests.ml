@@ -54,7 +54,7 @@ module Backend = struct
 
     type t =
       { info             : Info.t
-      ; id               : Lib.Id.t
+      ; lib              : Lib.t
       ; runner_libraries : (Lib.t list, exn) result
       ; extends          : (    t list, exn) result option
       }
@@ -62,12 +62,12 @@ module Backend = struct
     let desc ~plural = "inline tests backend" ^ if plural then "s" else ""
     let desc_article = "an"
 
-    let id t = t.id
+    let lib  t = t.lib
     let deps t = t.extends
 
-    let instantiate ~resolve ~get id (info : Info.t) =
+    let instantiate ~resolve ~get lib (info : Info.t) =
       { info
-      ; id
+      ; lib
       ; runner_libraries = Result.all (List.map info.runner_libraries ~f:resolve)
       ; extends =
           let open Result.O in
@@ -87,7 +87,7 @@ module Backend = struct
     let to_sexp t =
       let open Sexp.To_sexp in
       let lib x = string (Lib.name x) in
-      let f x = string x.id.name in
+      let f x = string (Lib.name x.lib) in
       ((1, 0),
        record
          [ "runner_libraries", list lib (Result.ok_exn t.runner_libraries)

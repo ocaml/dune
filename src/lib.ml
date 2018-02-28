@@ -194,7 +194,7 @@ module Sub_system0 = struct
   type 'a s = (module S with type t = 'a)
 
   module Instance = struct
-    type t = T : 'a s * 'a Lazy.t -> t
+    type t = T : 'a s * 'a -> t
   end
 end
 
@@ -226,7 +226,13 @@ type t =
   ; resolved_selects  : Resolved_select.t list
   ; optional          : bool
   ; user_written_deps : Jbuild.Lib_deps.t
-  ; sub_systems       : Sub_system0.Instance.t Sub_system_name.Map.t
+  ; (* This is mutable to avoid this error:
+
+       {[
+         This kind of expression is not allowed as right-hand side of `let rec'
+       }]
+       *)
+    mutable sub_systems : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
   }
 
 and db =
@@ -298,6 +304,7 @@ let synopsis     t = t.synopsis
 let archives     t = t.archives
 let plugins      t = t.plugins
 let jsoo_runtime t = t.jsoo_runtime
+let unique_id    t = t.unique_id
 
 let src_dir t = t.src_dir
 let obj_dir t = t.obj_dir
@@ -377,7 +384,7 @@ module Sub_system = struct
     val instantiate
       :  resolve:(Loc.t * string -> (lib, exn) result)
       -> get:(lib -> t option)
-      -> Id.t
+      -> lib
       -> Info.t
       -> t
     val to_sexp : (t -> Syntax.Version.t * Sexp.t) option
@@ -394,7 +401,7 @@ module Sub_system = struct
   module Register(M : S) = struct
     let get lib =
       Option.map (Sub_system_name.Map.find lib.sub_systems M.Info.name)
-        ~f:(fun (Sub_system0.Instance.T ((module X), lazy t)) ->
+        ~f:(fun (lazy (Sub_system0.Instance.T ((module X), t))) ->
           match X.T t with
           | M.T t -> t
           | _   -> assert false)
@@ -409,19 +416,18 @@ module Sub_system = struct
         ~data:(Some (module M : S'))
   end
 
-  let instantiate_many sub_systems id ~resolve =
-    Sub_system_name.Map.mapi sub_systems ~f:(fun name info ->
-      let impl = Option.value_exn (Sub_system_name.Table.get all name) in
-      let (module M : S') = impl in
-      match info with
-      | M.Info.T info ->
-        Sub_system0.Instance.T
-          (M.for_instance, lazy (M.instantiate ~resolve ~get:M.get id info))
-      | _ -> assert false)
+  let instantiate name info lib ~resolve =
+    let impl = Option.value_exn (Sub_system_name.Table.get all name) in
+    let (module M : S') = impl in
+    match info with
+    | M.Info.T info ->
+      Sub_system0.Instance.T
+        (M.for_instance, M.instantiate ~resolve ~get:M.get lib info)
+    | _ -> assert false
 
   let dump_config lib =
-    Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun inst ->
-      let (Sub_system0.Instance.T ((module M), lazy t)) = inst in
+    Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun (lazy inst) ->
+      let (Sub_system0.Instance.T ((module M), t)) = inst in
       match M.to_sexp with
       | None -> None
       | Some f -> Some (f t))
@@ -567,10 +573,12 @@ let rec instantiate db name (info : Info.t) ~stack ~hidden =
     ; resolved_selects  = resolved_selects
     ; optional          = info.optional
     ; user_written_deps = Info.user_written_deps info
-    ; sub_systems       = Sub_system.instantiate_many info.sub_systems id
-                            ~resolve
+    ; sub_systems       = Sub_system_name.Map.empty
     }
   in
+  t.sub_systems <-
+    Sub_system_name.Map.mapi info.sub_systems ~f:(fun name info ->
+      lazy (Sub_system.instantiate name info t ~resolve));
 
   let res =
     let hidden =
@@ -797,7 +805,7 @@ module Compile = struct
     ; resolved_selects  : Resolved_select.t list
     ; optional          : bool
     ; user_written_deps : Jbuild.Lib_deps.t
-    ; sub_systems       : Sub_system0.Instance.t Sub_system_name.Map.t
+    ; sub_systems       : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
     }
 
   let make libs =
@@ -828,7 +836,8 @@ module Compile = struct
   let user_written_deps t = t.user_written_deps
   let sub_systems t =
     Sub_system_name.Map.values t.sub_systems
-    |> List.map ~f:(fun (Sub_system0.Instance.T ((module M), lazy t)) -> M.T t)
+    |> List.map ~f:(fun (lazy (Sub_system0.Instance.T ((module M), t))) ->
+      M.T t)
 end
 
 (* +-----------------------------------------------------------------+

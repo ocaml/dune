@@ -90,7 +90,7 @@ let compile_module sctx (m : Module.t) ~odoc ~dir ~obj_dir ~includes ~dep_graphs
        ]);
   (Module_or_mld.Module m, odoc_file)
 
-let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir
+let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc
       ~(includes : (unit, nothing Arg_spec.t) Build.t) ~libs =
   let context = SC.context sctx in
   let html_dir = Module_or_mld.html_dir ~doc_dir m in
@@ -113,7 +113,8 @@ let to_html sctx (m : Module_or_mld.t) odoc_file ~doc_dir ~odoc ~dir
      Build.progn (
        Build.remove_tree to_remove
        :: Build.mkdir html_dir
-       :: Build.run ~context ~dir odoc ~extra_targets:[html_file]
+       :: Build.run ~context ~dir:(SC.Doc.root sctx) odoc
+            ~extra_targets:[html_file]
             [ A "html"
             ; A "-I"; Path doc_dir
             ; Dyn (fun x -> x)
@@ -175,7 +176,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules
      in*)
   let html_files =
     List.map inputs_and_odoc_files ~f:(fun (m, odoc_file) ->
-      to_html sctx m odoc_file ~doc_dir ~odoc ~dir ~includes ~libs:[lib])
+      to_html sctx m odoc_file ~doc_dir ~odoc ~includes ~libs:[lib])
   in
   let doc_root = SC.Doc.root sctx in
   let alias =
@@ -197,9 +198,6 @@ let setup_css_rule sctx =
        (get_odoc sctx)
        [ A "css"; A "-o"; Path doc_dir ])
 
-  let pkg_dir sctx ~(pkg : Package.t) =
-    Path.append (SC.context sctx).build_dir pkg.path
-
 let setup_package_rules =
   let mld_glob =
     Re.compile (
@@ -219,7 +217,7 @@ let setup_package_rules =
     in
     let html_files =
       List.map mld_and_odoc_files ~f:(fun (m, odoc_file) ->
-        to_html sctx m odoc_file ~doc_dir:dir ~odoc ~dir ~includes ~libs:[])
+        to_html sctx m odoc_file ~doc_dir:dir ~odoc ~includes ~libs:[])
     in
     SC.add_alias_deps sctx (Build_system.Alias.doc ~dir) html_files
 

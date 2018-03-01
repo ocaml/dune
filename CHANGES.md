@@ -3,6 +3,9 @@
 
 - Reduce the number of simultaneously opened fds (#578)
 
+- Always produce an implementation for the alias module, for
+  non-jbuilder users (Fix #576)
+
 - Accept and ignore upcoming new library fields: `ppx.driver`,
   `inline_tests` and `inline_tests.backend`
 

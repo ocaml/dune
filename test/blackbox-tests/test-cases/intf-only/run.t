@@ -3,8 +3,9 @@ Successes:
   $ $JBUILDER build --display short --root foo -j1 --debug-dep 2>&1 | grep -v Entering
       ocamldep test/bar.ml.d
       ocamldep foo.ml.d
-        ocamlc .foo.objs/foo__.{cmi,cmti}
+        ocamlc .foo.objs/foo__.{cmi,cmo,cmt}
       ocamldep intf.mli.d
+      ocamlopt .foo.objs/foo__.{cmx,o}
         ocamlc .foo.objs/foo__Intf.{cmi,cmti}
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
       ocamlopt .foo.objs/foo.{cmx,o}

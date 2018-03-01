@@ -1160,6 +1160,24 @@ module Copy_files = struct
   let v1 = String_with_vars.t
 end
 
+module Documentation = struct
+  type t =
+    { package: Package.t
+    ; mld_files: Ordered_set_lang.t
+    }
+
+  let v1 pkgs =
+    record
+      (Scope_info.package_field pkgs >>= fun package ->
+       field "mld_files" Ordered_set_lang.t ~default:Ordered_set_lang.standard
+       >>= fun mld_files ->
+       return
+         { package
+         ; mld_files
+         }
+      )
+end
+
 module Stanza = struct
   type t =
     | Library     of Library.t
@@ -1170,6 +1188,7 @@ module Stanza = struct
     | Alias       of Alias_conf.t
     | Copy_files  of Copy_files.t
     | Menhir      of Menhir.t
+    | Documentation of Documentation.t
 end
 
 module Stanzas = struct
@@ -1219,6 +1238,8 @@ module Stanzas = struct
             raise (Include_loop (file, include_stack));
           let sexps = Sexp.load ~fname:(Path.to_string file) ~mode:Many in
           parse pkgs sexps ~default_version:Jbuild_version.V1 ~file ~include_stack)
+      ; cstr "documentation" (Documentation.v1 pkgs @> nil)
+          (fun d -> [Documentation d])
       ]
 
   and select

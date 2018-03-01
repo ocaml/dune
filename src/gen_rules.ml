@@ -246,7 +246,7 @@ module Gen(P : Install_rules.Params) = struct
                   match (dep : Jbuild.Lib_dep.t) with
                   | Direct _ -> None
                   | Select s -> Some s.result_fn)
-              | Alias _ | Provides _ | Install _ -> [])
+              | Documentation _ | Alias _ | Provides _ | Install _ -> [])
             |> String_set.of_list
           in
           String_set.union generated_files

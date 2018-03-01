@@ -358,6 +358,13 @@ module Copy_files : sig
     }
 end
 
+module Documentation : sig
+  type t =
+    { package     : Package.t
+    ; mld_files   : Ordered_set_lang.t
+    }
+end
+
 module Stanza : sig
   type t =
     | Library     of Library.t
@@ -368,6 +375,7 @@ module Stanza : sig
     | Alias       of Alias_conf.t
     | Copy_files  of Copy_files.t
     | Menhir      of Menhir.t
+    | Documentation of Documentation.t
 end
 
 module Stanzas : sig

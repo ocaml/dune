@@ -31,6 +31,8 @@ let value_exn = function
   | Some x -> x
   | None -> invalid_arg "Option.value_exn"
 
+let some x = Some x
+
 let some_if cond x =
   if cond then Some x else None
 

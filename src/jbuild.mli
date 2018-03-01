@@ -116,6 +116,7 @@ end
 
 module Lib_deps : sig
   type t = Lib_dep.t list
+  val of_pps : Pp.t list -> t
 end
 
 module Dep_conf : sig

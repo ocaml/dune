@@ -470,6 +470,9 @@ module Lib_deps = struct
             String_set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
       : kind String_map.t);
     t
+
+  let of_pps pps =
+    List.map pps ~f:(fun pp -> Lib_dep.of_pp (Loc.none, pp))
 end
 
 module Buildable = struct

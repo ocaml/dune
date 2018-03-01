@@ -26,6 +26,10 @@ val archives     : t -> Path.t list Mode.Dict.t
 val plugins      : t -> Path.t list Mode.Dict.t
 val jsoo_runtime : t -> Path.t list
 
+(** A unique integer identifier. It is only unique for the duration of
+    the process *)
+val unique_id : t -> int
+
 module Status : sig
   type t =
     | Installed
@@ -91,14 +95,6 @@ module Info : sig
   val of_findlib_package : Findlib.Package.t -> t
 end
 
-module Id : sig
-  type t =
-    { unique_id : int
-    ; path      : Path.t
-    ; name      : string
-    }
-end
-
 (** {1 Errors} *)
 
 module Error : sig
@@ -107,7 +103,7 @@ module Error : sig
       module Hidden : sig
         type t =
           { name   : string
-          ; info   : Info.t
+          ; path   : Path.t
           ; reason : string
           }
       end
@@ -203,11 +199,12 @@ module DB : sig
   (** A database allow to resolve library names *)
   type t
 
-  module Info_or_redirect : sig
+  module Resolve_result : sig
     type nonrec t =
-      | Info     of Info.t
-      | Redirect of Loc.t * Path.t * string
-      | Proxy    of lib
+      | Not_found
+      | Found    of Info.t
+      | Hidden   of Info.t * string
+      | Redirect of t option * string
   end
 
   (** Create a new library database. [resolve] is used to resolve
@@ -220,9 +217,7 @@ module DB : sig
   *)
   val create
     :  ?parent:t
-    -> resolve:(string ->
-                (Info_or_redirect.t, Error.Library_not_available.Reason.t)
-                  result)
+    -> resolve:(string -> Resolve_result.t)
     -> all:(unit -> string list)
     -> unit
     -> t
@@ -240,6 +235,8 @@ module DB : sig
     :  t
     -> string list
     -> (lib list, exn) result
+
+  val find_even_when_hidden : t -> string -> lib option
 
   val available : t -> string -> bool
 
@@ -289,7 +286,7 @@ module Sub_system : sig
     val instantiate
       :  resolve:(Loc.t * string -> (lib, exn) result)
       -> get:(lib -> t option)
-      -> Id.t
+      -> lib
       -> Info.t
       -> t
     val to_sexp : (t -> Syntax.Version.t * Sexp.t) option

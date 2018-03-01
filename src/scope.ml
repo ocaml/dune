@@ -81,14 +81,12 @@ module DB = struct
         ~parent:installed_libs
         ~resolve:(fun name ->
           match String_map.find public_libs name with
-          | None -> Error Not_found
+          | None -> Not_found
           | Some scope_name ->
             let scope =
               Option.value_exn (Scope_name_map.find !by_name_cell scope_name)
             in
-            match Lib.DB.find scope.db name with
-            | Error _ as res -> res
-            | Ok t -> Ok (Proxy t))
+            Redirect (Some scope.db, name))
         ~all:(fun () -> String_map.keys public_libs)
     in
     let by_name =

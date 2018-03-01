@@ -13,7 +13,7 @@ module type S = sig
   val instantiate
     :  resolve:(Loc.t * string -> (Lib.t, exn) result)
     -> get:(Lib.t -> t option)
-    -> Lib.Id.t
+    -> Lib.t
     -> Info.t
     -> t
 end
@@ -30,7 +30,7 @@ module type Backend = sig
   val desc_article : string
 
   (** Library the backend is attached to *)
-  val id : t -> Lib.Id.t
+  val lib : t -> Lib.t
 
   (** Dependencies on other backends *)
   val deps : t -> (t list, exn) result option

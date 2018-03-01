@@ -15,7 +15,7 @@ module Register_backend(M : Backend) = struct
       (struct
         type t = M.t
         type graph = unit
-        let key t = (M.id t).unique_id
+        let key t = Lib.unique_id (M.lib t)
         let deps t () =
           match M.deps t with
           | Some (Ok l) -> l
@@ -25,7 +25,10 @@ module Register_backend(M : Backend) = struct
   module Set =
     Set.Make(struct
       type t = M.t
-      let compare a b = compare (M.id a).unique_id (M.id b).unique_id
+      let compare a b =
+        compare
+          (Lib.unique_id (M.lib a))
+          (Lib.unique_id (M.lib b))
     end)
 
   let select_backends ~loc ~scope ~written_by_user to_scan =
@@ -70,9 +73,10 @@ module Register_backend(M : Backend) = struct
              (M.desc ~plural:true)
              (String.concat ~sep:"\n"
                 (List.map (Set.to_list roots) ~f:(fun t ->
+                   let lib = M.lib t in
                    sprintf "- %S in %s"
-                     (M.id t).name
-                     (Path.to_string_maybe_quoted (M.id t).path)))))
+                     (Lib.name lib)
+                     (Path.to_string_maybe_quoted (Lib.src_dir lib))))))
 end
 
 type Lib.Sub_system.t +=

@@ -145,7 +145,7 @@ module Error0 = struct
       module Hidden = struct
         type t =
           { name   : string
-          ; info   : Info.t
+          ; path   : Path.t
           ; reason : string
           }
       end
@@ -156,9 +156,9 @@ module Error0 = struct
 
       let to_string = function
         | Not_found -> "not found"
-        | Hidden { info; reason; _ } ->
+        | Hidden { path; reason; _ } ->
           sprintf "in %s is hidden (%s)"
-            (Path.to_string_maybe_quoted info.src_dir) reason
+            (Path.to_string_maybe_quoted path) reason
 
       let pp ppf t = Format.pp_print_string ppf (to_string t)
     end
@@ -194,7 +194,7 @@ module Sub_system0 = struct
   type 'a s = (module S with type t = 'a)
 
   module Instance = struct
-    type t = T : 'a s * 'a Lazy.t -> t
+    type t = T : 'a s * 'a -> t
   end
 end
 
@@ -226,20 +226,27 @@ type t =
   ; resolved_selects  : Resolved_select.t list
   ; optional          : bool
   ; user_written_deps : Jbuild.Lib_deps.t
-  ; sub_systems       : Sub_system0.Instance.t Sub_system_name.Map.t
+  ; (* This is mutable to avoid this error:
+
+       {[
+         This kind of expression is not allowed as right-hand side of `let rec'
+       }]
+       *)
+    mutable sub_systems : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
   }
 
 and db =
   { parent  : db option
-  ; resolve : string -> (info_or_redirect,
-                         Error0.Library_not_available.Reason.t) result
-  ; table   : (string, resolve_status) Hashtbl.t
+  ; resolve : string -> resolve_result
+  ; table   : (string, status) Hashtbl.t
   ; all     : string list Lazy.t
   }
 
-and resolve_status =
-  | Initializing of Id.t
-  | Done         of (t, Error0.Library_not_available.Reason.t) result
+and status =
+  | St_initializing of Id.t (* To detect cycles *)
+  | St_found        of t
+  | St_not_found
+  | St_hidden       of t * Error0.Library_not_available.Reason.Hidden.t
 
 and error =
   | Library_not_available        of Error0.Library_not_available.t
@@ -247,10 +254,11 @@ and error =
   | Dependency_cycle             of (Path.t * string) list
   | Conflict                     of conflict
 
-and info_or_redirect =
-  | Info     of Info.t
-  | Redirect of Loc.t * Path.t * string
-  | Proxy    of t
+and resolve_result =
+  | Not_found
+  | Found    of Info.t
+  | Hidden   of Info.t * string
+  | Redirect of db option * string
 
 and conflict =
   { lib1 : t * Dep_path.Entry.t list
@@ -296,6 +304,7 @@ let synopsis     t = t.synopsis
 let archives     t = t.archives
 let plugins      t = t.plugins
 let jsoo_runtime t = t.jsoo_runtime
+let unique_id    t = t.unique_id
 
 let src_dir t = t.src_dir
 let obj_dir t = t.obj_dir
@@ -375,7 +384,7 @@ module Sub_system = struct
     val instantiate
       :  resolve:(Loc.t * string -> (lib, exn) result)
       -> get:(lib -> t option)
-      -> Id.t
+      -> lib
       -> Info.t
       -> t
     val to_sexp : (t -> Syntax.Version.t * Sexp.t) option
@@ -392,7 +401,7 @@ module Sub_system = struct
   module Register(M : S) = struct
     let get lib =
       Option.map (Sub_system_name.Map.find lib.sub_systems M.Info.name)
-        ~f:(fun (Sub_system0.Instance.T ((module X), lazy t)) ->
+        ~f:(fun (lazy (Sub_system0.Instance.T ((module X), t))) ->
           match X.T t with
           | M.T t -> t
           | _   -> assert false)
@@ -407,19 +416,18 @@ module Sub_system = struct
         ~data:(Some (module M : S'))
   end
 
-  let instantiate_many sub_systems id ~resolve =
-    Sub_system_name.Map.mapi sub_systems ~f:(fun name info ->
-      let impl = Option.value_exn (Sub_system_name.Table.get all name) in
-      let (module M : S') = impl in
-      match info with
-      | M.Info.T info ->
-        Sub_system0.Instance.T
-          (M.for_instance, lazy (M.instantiate ~resolve ~get:M.get id info))
-      | _ -> assert false)
+  let instantiate name info lib ~resolve =
+    let impl = Option.value_exn (Sub_system_name.Table.get all name) in
+    let (module M : S') = impl in
+    match info with
+    | M.Info.T info ->
+      Sub_system0.Instance.T
+        (M.for_instance, M.instantiate ~resolve ~get:M.get lib info)
+    | _ -> assert false
 
   let dump_config lib =
-    Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun inst ->
-      let (Sub_system0.Instance.T ((module M), lazy t)) = inst in
+    Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun (lazy inst) ->
+      let (Sub_system0.Instance.T ((module M), t)) = inst in
       match M.to_sexp with
       | None -> None
       | Some f -> Some (f t))
@@ -498,15 +506,17 @@ let already_in_table (info : Info.t) name x =
   let to_sexp = Sexp.To_sexp.(pair Path.sexp_of_t string) in
   let sexp =
     match x with
-    | Initializing x ->
+    | St_initializing x ->
       Sexp.List [Sexp.unsafe_atom_of_string "Initializing";
                  Path.sexp_of_t x.path]
-    | Done (Ok t) -> List [Sexp.unsafe_atom_of_string "Ok";
-                           Path.sexp_of_t t.src_dir]
-    | Done (Error Not_found) -> Sexp.unsafe_atom_of_string "Not_found"
-    | Done (Error (Hidden { info; reason; _ })) ->
+    | St_found t ->
+      List [Sexp.unsafe_atom_of_string "Found";
+            Path.sexp_of_t t.src_dir]
+    | St_not_found ->
+      Sexp.unsafe_atom_of_string "Not_found"
+    | St_hidden (_, { path; reason; _ }) ->
       List [Sexp.unsafe_atom_of_string "Hidden";
-            Path.sexp_of_t info.src_dir; Sexp.atom reason]
+            Path.sexp_of_t path; Sexp.atom reason]
   in
   Sexp.code_error
     "Lib_db.DB: resolver returned name that's already in the table"
@@ -515,13 +525,21 @@ let already_in_table (info : Info.t) name x =
     ; "conflicting_with", sexp
     ]
 
-let map_find_result ~loc name res : (_, _) result =
-  match res with
-  | Ok _ as res -> res
-  | Error reason ->
-    Error (Error (Error.Library_not_available { loc; name; reason }))
+let result_of_resolve_status = function
+  | St_initializing _     -> assert false
+  | St_found x            -> Ok x
+  | St_not_found          -> Error Error.Library_not_available.Reason.Not_found
+  | St_hidden (_, hidden) -> Error (Hidden hidden)
 
-let rec make db name (info : Info.t) (id : Id.t) ~stack =
+let rec instantiate db name (info : Info.t) ~stack ~hidden =
+  let id, stack =
+    Dep_stack.create_and_push stack name info.src_dir
+  in
+  Option.iter (Hashtbl.find db.table name) ~f:(fun x ->
+    already_in_table info name x);
+  (* Add [id] to the table, to detect loops *)
+  Hashtbl.add db.table name (St_initializing id);
+
   let requires, pps, resolved_selects =
     resolve_user_deps db info.requires ~pps:info.pps ~stack
   in
@@ -534,232 +552,237 @@ let rec make db name (info : Info.t) (id : Id.t) ~stack =
   in
   let requires         = map_error requires         in
   let ppx_runtime_deps = map_error ppx_runtime_deps in
-  let resolve (loc, name) =
-    find_internal db name ~loc ~stack
+  let resolve (loc, name) = resolve_dep db name ~loc ~stack in
+  let t =
+    { loc               = info.loc
+    ; name              = name
+    ; unique_id         = id.unique_id
+    ; kind              = info.kind
+    ; status            = info.status
+    ; src_dir           = info.src_dir
+    ; obj_dir           = info.obj_dir
+    ; version           = info.version
+    ; synopsis          = info.synopsis
+    ; archives          = info.archives
+    ; plugins           = info.plugins
+    ; foreign_archives  = info.foreign_archives
+    ; jsoo_runtime      = info.jsoo_runtime
+    ; requires          = requires
+    ; ppx_runtime_deps  = ppx_runtime_deps
+    ; pps               = pps
+    ; resolved_selects  = resolved_selects
+    ; optional          = info.optional
+    ; user_written_deps = Info.user_written_deps info
+    ; sub_systems       = Sub_system_name.Map.empty
+    }
   in
-  { loc               = info.loc
-  ; name              = name
-  ; unique_id         = id.unique_id
-  ; kind              = info.kind
-  ; status            = info.status
-  ; src_dir           = info.src_dir
-  ; obj_dir           = info.obj_dir
-  ; version           = info.version
-  ; synopsis          = info.synopsis
-  ; archives          = info.archives
-  ; plugins           = info.plugins
-  ; foreign_archives  = info.foreign_archives
-  ; jsoo_runtime      = info.jsoo_runtime
-  ; requires          = requires
-  ; ppx_runtime_deps  = ppx_runtime_deps
-  ; pps               = pps
-  ; resolved_selects  = resolved_selects
-  ; optional          = info.optional
-  ; user_written_deps = Info.user_written_deps info
-  ; sub_systems       = Sub_system.instantiate_many info.sub_systems id ~resolve
-  }
+  t.sub_systems <-
+    Sub_system_name.Map.mapi info.sub_systems ~f:(fun name info ->
+      lazy (Sub_system.instantiate name info t ~resolve));
 
-and find db name =
-  match Hashtbl.find db.table name with
-  | Some (Initializing _) -> assert false
-  | Some (Done x) -> x
-  | None -> resolve_name db name ~stack:Dep_stack.empty
+  let res =
+    let hidden =
+      match hidden with
+      | None ->
+        Option.some_if
+          (info.optional &&
+           not (Result.is_ok t.requires && Result.is_ok t.ppx_runtime_deps))
+          "optional with unavailable dependencies"
+      | Some _ -> hidden
+    in
+    match hidden with
+    | None -> St_found t
+    | Some reason ->
+      St_hidden (t, { name; path = t.src_dir; reason })
+  in
+  Hashtbl.replace db.table ~key:name ~data:res;
+  res
 
-and find_internal db name ~loc ~stack : (_, _) result =
+and find db name : (t, Error.Library_not_available.Reason.t) result =
+  result_of_resolve_status (find_internal db name ~stack:Dep_stack.empty)
+
+and find_even_when_hidden db name =
+  match find_internal db name ~stack:Dep_stack.empty with
+  | St_initializing _     -> assert false
+  | St_found t            -> Some t
+  | St_not_found          -> None
+  | St_hidden (t, _)      -> Some t
+
+and find_internal db name ~stack : status =
   match Hashtbl.find db.table name with
-  | Some (Initializing init) ->
-    Error (Dep_stack.dependency_cycle stack init)
-  | Some (Done x) -> map_find_result ~loc name x
-  | None -> map_find_result ~loc name (resolve_name db name ~stack)
+  | Some x -> x
+  | None   -> resolve_name db name ~stack
+
+and resolve_dep db name ~loc ~stack : (t, exn) result =
+  match find_internal db name ~stack with
+  | St_initializing id ->
+    Error (Dep_stack.dependency_cycle stack id)
+  | St_found t ->
+    Ok t
+  | St_not_found ->
+    Error (Error (Library_not_available { loc; name; reason = Not_found }))
+  | St_hidden (_, hidden) ->
+    Error (Error (Library_not_available { loc; name; reason = Hidden hidden }))
 
 and resolve_name db name ~stack =
   match db.resolve name with
-  | Ok (Proxy t) ->
-    let res = Ok t in
-    Hashtbl.replace db.table ~key:name ~data:(Done res);
-    res
-  | Ok (Redirect (loc, path, name')) ->
-    let init, stack =
-      Dep_stack.create_and_push stack name path
-    in
-    Hashtbl.add db.table name (Initializing init);
-    let res =
-      match find_internal db name' ~loc ~stack with
-      | Ok _ as res -> res
-      | Error _ ->
-        match Hashtbl.find db.table name' with
-        | Some (Done res) -> res
-        | _ -> assert false
-    in
-    Hashtbl.replace db.table ~key:name ~data:(Done res);
-    res
-  | Ok (Info info) ->
-    let id, stack =
-      Dep_stack.create_and_push stack name info.src_dir
-    in
-    Option.iter (Hashtbl.find db.table name) ~f:(fun x ->
-      already_in_table info name x);
-    (* Add [id] to the table, to detect loops *)
-    Hashtbl.add db.table name (Initializing id);
-    let t = make db name info id ~stack in
-    let res =
-      if not info.optional ||
-         (Result.is_ok t.requires && Result.is_ok t.ppx_runtime_deps) then
-        Ok t
-      else
-        Error
-          (Error.Library_not_available.Reason.Hidden
-             { name
-             ; info
-             ; reason = "optional with unavailable dependencies"
-             })
-    in
-    Hashtbl.replace db.table ~key:name ~data:(Done res);
-    res
-  | Error reason as res ->
+  | Redirect (db', name') -> begin
+      let db' = Option.value db' ~default:db in
+      match find_internal db' name' ~stack with
+      | St_initializing _ as x -> x
+      | x ->
+        Hashtbl.add db.table name x;
+        x
+    end
+  | Found info ->
+    instantiate db name info ~stack ~hidden:None
+  | Not_found ->
     let res =
       match db.parent with
-      | None -> res
-      | Some db ->
-        let res' = find db name in
-        match res' with
-        | Ok _ -> res'
-        | Error _ ->
-          if reason = Not_found then
-            res'
-          else
-            res
+      | None    -> St_not_found
+      | Some db -> find_internal db name ~stack
     in
-    Hashtbl.add db.table name (Done res);
+    Hashtbl.add db.table name res;
     res
+  | Hidden (info, hidden) ->
+    match
+      match db.parent with
+      | None    -> St_not_found
+      | Some db -> find_internal db name ~stack
+    with
+    | St_found _ as x ->
+      Hashtbl.add db.table name x;
+      x
+    | _ ->
+      instantiate db name info ~stack ~hidden:(Some hidden)
 
 and available_internal db name ~stack =
-  match find_internal db name ~loc:Loc.none ~stack with
-  | Ok    _ -> true
-  | Error _ -> false
+    match resolve_dep db name ~loc:Loc.none ~stack with
+    | Ok    _ -> true
+    | Error _ -> false
 
 and resolve_simple_deps db names ~stack =
-  let rec loop acc = function
-    | [] -> Ok (List.rev acc)
-    | (loc, name) :: names ->
-      find_internal db name ~loc ~stack >>= fun x ->
-      loop (x :: acc) names
-  in
-  loop [] names
+    let rec loop acc = function
+      | [] -> Ok (List.rev acc)
+      | (loc, name) :: names ->
+        resolve_dep db name ~loc ~stack >>= fun x ->
+        loop (x :: acc) names
+    in
+    loop [] names
 
 and resolve_complex_deps db deps ~stack =
-  let res, resolved_selects =
-    List.fold_left deps ~init:(Ok [], []) ~f:(fun (acc_res, acc_selects) dep ->
-      let res, acc_selects =
-        match (dep : Jbuild.Lib_dep.t) with
-        | Direct (loc, name) ->
-          let res =
-            find_internal db name ~loc ~stack >>| fun x -> [x]
-          in
-          (res, acc_selects)
-        | Select { result_fn; choices; loc } ->
-          let res, src_fn =
-            match
-              List.find_map choices ~f:(fun { required; forbidden; file } ->
-                if String_set.exists forbidden
-                     ~f:(available_internal db ~stack) then
-                  None
-                else
-                  match
-                    let deps =
-                      String_set.fold required ~init:[] ~f:(fun x acc ->
-                        (Loc.none, x) :: acc)
-                    in
-                    resolve_simple_deps db deps ~stack
-                  with
-                  | Ok ts -> Some (ts, file)
-                  | Error _ -> None)
-            with
-            | Some (ts, file) ->
-              (Ok ts, Ok file)
-            | None ->
-              let e = { Error.No_solution_found_for_select.loc } in
-              (Error (Error (No_solution_found_for_select e)),
-               Error e)
-          in
-          (res, { Resolved_select. src_fn; dst_fn = result_fn } :: acc_selects)
-      in
-      let res =
-        match res, acc_res with
-        | Ok l, Ok acc -> Ok (List.rev_append l acc)
-        | (Error _ as res), _
-        | _, (Error _ as res) -> res
-      in
-      (res, acc_selects))
-  in
-  let res =
-    match res with
-    | Ok    l -> Ok (List.rev l)
-    | Error _ -> res
-  in
-  (res, resolved_selects)
+    let res, resolved_selects =
+      List.fold_left deps ~init:(Ok [], []) ~f:(fun (acc_res, acc_selects) dep ->
+        let res, acc_selects =
+          match (dep : Jbuild.Lib_dep.t) with
+          | Direct (loc, name) ->
+            let res =
+              resolve_dep db name ~loc ~stack >>| fun x -> [x]
+            in
+            (res, acc_selects)
+          | Select { result_fn; choices; loc } ->
+            let res, src_fn =
+              match
+                List.find_map choices ~f:(fun { required; forbidden; file } ->
+                  if String_set.exists forbidden
+                       ~f:(available_internal db ~stack) then
+                    None
+                  else
+                    match
+                      let deps =
+                        String_set.fold required ~init:[] ~f:(fun x acc ->
+                          (Loc.none, x) :: acc)
+                      in
+                      resolve_simple_deps db deps ~stack
+                    with
+                    | Ok ts -> Some (ts, file)
+                    | Error _ -> None)
+              with
+              | Some (ts, file) ->
+                (Ok ts, Ok file)
+              | None ->
+                let e = { Error.No_solution_found_for_select.loc } in
+                (Error (Error (No_solution_found_for_select e)),
+                 Error e)
+            in
+            (res, { Resolved_select. src_fn; dst_fn = result_fn } :: acc_selects)
+        in
+        let res =
+          match res, acc_res with
+          | Ok l, Ok acc -> Ok (List.rev_append l acc)
+          | (Error _ as res), _
+          | _, (Error _ as res) -> res
+        in
+        (res, acc_selects))
+    in
+    let res =
+      match res with
+      | Ok    l -> Ok (List.rev l)
+      | Error _ -> res
+    in
+    (res, resolved_selects)
 
 and resolve_deps db deps ~stack =
-  match (deps : Info.Deps.t) with
-  | Simple  names -> (resolve_simple_deps  db names ~stack, [])
-  | Complex names ->  resolve_complex_deps db names ~stack
+    match (deps : Info.Deps.t) with
+    | Simple  names -> (resolve_simple_deps  db names ~stack, [])
+    | Complex names ->  resolve_complex_deps db names ~stack
 
 and resolve_user_deps db deps ~pps ~stack =
-  let deps, resolved_selects = resolve_deps db deps ~stack in
-  let deps, pps =
-    match pps with
-    | [] -> (deps, Ok [])
-    | pps ->
-      let pps =
-        let pps = (pps : (Loc.t * Jbuild.Pp.t) list :> (Loc.t * string) list) in
-        resolve_simple_deps db pps ~stack >>= fun pps ->
-        closure pps ~stack
-      in
-      let deps =
-        let rec loop acc = function
-          | [] -> Ok acc
-          | pp :: pps ->
-            pp.ppx_runtime_deps >>= fun rt_deps ->
-            loop (List.rev_append rt_deps acc) pps
+    let deps, resolved_selects = resolve_deps db deps ~stack in
+    let deps, pps =
+      match pps with
+      | [] -> (deps, Ok [])
+      | pps ->
+        let pps =
+          let pps = (pps : (Loc.t * Jbuild.Pp.t) list :> (Loc.t * string) list) in
+          resolve_simple_deps db pps ~stack >>= fun pps ->
+          closure pps ~stack
         in
-        deps >>= fun deps ->
-        pps  >>= fun pps  ->
-        loop deps pps
-      in
-      (deps, pps)
-  in
-  (deps, pps, resolved_selects)
+        let deps =
+          let rec loop acc = function
+            | [] -> Ok acc
+            | pp :: pps ->
+              pp.ppx_runtime_deps >>= fun rt_deps ->
+              loop (List.rev_append rt_deps acc) pps
+          in
+          deps >>= fun deps ->
+          pps  >>= fun pps  ->
+          loop deps pps
+        in
+        (deps, pps)
+    in
+    (deps, pps, resolved_selects)
 
 and closure ts ~stack =
-  let visited = ref String_map.empty in
-  let res = ref [] in
-  let orig_stack = stack in
-  let rec loop t ~stack =
-    match String_map.find !visited t.name with
-    | Some (t', stack') ->
-      if t.unique_id = t'.unique_id then
-        Ok ()
-      else
-        let req_by = Dep_stack.to_required_by ~stop_at:orig_stack in
-        Error
-          (Error (Conflict { lib1 = (t', req_by stack')
-                           ; lib2 = (t , req_by stack )
-                           }))
-    | None ->
-      visited := String_map.add !visited t.name (t, stack);
-      Dep_stack.push stack (to_id t) >>= fun stack ->
-      t.requires >>= fun deps ->
-      iter deps ~stack >>| fun () ->
-      res := t :: !res
-  and iter ts ~stack =
-    match ts with
-    | [] -> Ok ()
-    | t :: ts ->
-      loop t ~stack >>= fun () ->
-      iter ts ~stack
-  in
-  iter ts ~stack >>| fun () ->
-  List.rev !res
+    let visited = ref String_map.empty in
+    let res = ref [] in
+    let orig_stack = stack in
+    let rec loop t ~stack =
+      match String_map.find !visited t.name with
+      | Some (t', stack') ->
+        if t.unique_id = t'.unique_id then
+          Ok ()
+        else
+          let req_by = Dep_stack.to_required_by ~stop_at:orig_stack in
+          Error
+            (Error (Conflict { lib1 = (t', req_by stack')
+                             ; lib2 = (t , req_by stack )
+                             }))
+      | None ->
+        visited := String_map.add !visited t.name (t, stack);
+        Dep_stack.push stack (to_id t) >>= fun stack ->
+        t.requires >>= fun deps ->
+        iter deps ~stack >>| fun () ->
+        res := t :: !res
+    and iter ts ~stack =
+      match ts with
+      | [] -> Ok ()
+      | t :: ts ->
+        loop t ~stack >>= fun () ->
+        iter ts ~stack
+    in
+    iter ts ~stack >>| fun () ->
+    List.rev !res
 
 let closure l = closure l ~stack:Dep_stack.empty
 
@@ -782,7 +805,7 @@ module Compile = struct
     ; resolved_selects  : Resolved_select.t list
     ; optional          : bool
     ; user_written_deps : Jbuild.Lib_deps.t
-    ; sub_systems       : Sub_system0.Instance.t Sub_system_name.Map.t
+    ; sub_systems       : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
     }
 
   let make libs =
@@ -805,45 +828,6 @@ module Compile = struct
     ; sub_systems       = t.sub_systems
     }
 
-  let for_hidden db hidden =
-    let { Error.Library_not_available.Reason.Hidden. name; info; _ } =
-      hidden
-    in
-    let error =
-      Error (Library_not_available
-               { loc = info.loc
-               ; name
-               ; reason = Hidden hidden
-               })
-    in
-    let resolved_selects =
-      match info.requires with
-      | Simple _ -> []
-      | Complex deps ->
-        List.filter deps ~f:(fun dep ->
-          match (dep : Jbuild.Lib_dep.t) with
-          | Direct _ -> false
-          | Select _ -> true)
-      |> resolve_complex_deps db ~stack:Dep_stack.empty
-      |> snd
-    in
-    let resolve (loc, name) =
-      find_internal db name ~loc ~stack:Dep_stack.empty
-    in
-    { direct_requires   = Error error
-    ; requires          = Error error
-    ; pps               = Error error
-    ; resolved_selects  = resolved_selects
-    ; optional          = info.optional
-    ; user_written_deps = Info.user_written_deps info
-    ; sub_systems       = Sub_system.instantiate_many info.sub_systems
-                            { Id. unique_id = gen_unique_id ()
-                            ; name
-                            ; path = info.src_dir
-                            }
-                            ~resolve
-    }
-
   let direct_requires   t = t.direct_requires
   let requires          t = t.requires
   let resolved_selects  t = t.resolved_selects
@@ -852,7 +836,8 @@ module Compile = struct
   let user_written_deps t = t.user_written_deps
   let sub_systems t =
     Sub_system_name.Map.values t.sub_systems
-    |> List.map ~f:(fun (Sub_system0.Instance.T ((module M), lazy t)) -> M.T t)
+    |> List.map ~f:(fun (lazy (Sub_system0.Instance.T ((module M), t))) ->
+      M.T t)
 end
 
 (* +-----------------------------------------------------------------+
@@ -860,11 +845,12 @@ end
    +-----------------------------------------------------------------+ *)
 
 module DB = struct
-  module Info_or_redirect = struct
-    type nonrec t = info_or_redirect =
-      | Info     of Info.t
-      | Redirect of Loc.t * Path.t * string
-      | Proxy    of t
+  module Resolve_result = struct
+    type t = resolve_result =
+      | Not_found
+      | Found    of Info.t
+      | Hidden   of Info.t * string
+      | Redirect of db option * string
   end
 
   type t = db
@@ -882,57 +868,60 @@ module DB = struct
         let info = Info.of_library_stanza ~dir conf in
         match conf.public with
         | None ->
-          [(conf.name, Info_or_redirect.Info info)]
+          [(conf.name, Resolve_result.Found info)]
         | Some p ->
           if p.name = conf.name then
-            [(p.name, Info info)]
+            [(p.name, Found info)]
           else
-            [ p.name   , Info info
-            ; conf.name, Redirect (conf.buildable.loc, dir, p.name)
+            [ p.name   , Found info
+            ; conf.name, Redirect (None, p.name)
             ])
       |> String_map.of_list
       |> function
       | Ok x -> x
-      | Error (name, x, y) ->
-        let pr : Info_or_redirect.t -> string = function
-          | Info      info       -> Loc.to_file_colon_line info.loc
-          | Redirect (loc, _, _) -> Loc.to_file_colon_line loc
-          | Proxy     t          -> Loc.to_file_colon_line t.loc
-        in
-        die "Library %S is defined twice:\n\
-             - %s\n\
-             - %s"
-          name
-          (pr x)
-          (pr y)
+      | Error (name, _, _) ->
+        match
+          List.filter_map stanzas ~f:(fun (_, (conf : Jbuild.Library.t)) ->
+            if name = conf.name ||
+               match conf.public with
+               | None -> false
+               | Some p -> name = p.name
+            then Some conf.buildable.loc
+            else None)
+        with
+        | [] | [_] -> assert false
+        | loc1 :: loc2 :: _ ->
+          die "Library %S is defined twice:\n\
+               - %s\n\
+               - %s"
+            name
+            (Loc.to_file_colon_line loc1)
+            (Loc.to_file_colon_line loc2)
     in
     create () ?parent
       ~resolve:(fun name ->
         match String_map.find map name with
-        | None -> Error Not_found
-        | Some x -> Ok x)
+        | None   -> Not_found
+        | Some x -> x)
       ~all:(fun () -> String_map.keys map)
 
   let create_from_findlib findlib =
     create ()
       ~resolve:(fun name ->
         match Findlib.find findlib name with
-        | Ok pkg -> Ok (Info_or_redirect.Info (Info.of_findlib_package pkg))
+        | Ok pkg -> Found (Info.of_findlib_package pkg)
         | Error e ->
           match e with
-          | Not_found -> Error Not_found
+          | Not_found -> Not_found
           | Hidden pkg ->
-            Error
-              (Hidden
-                 { name   = Findlib.Package.name pkg
-                 ; info   = Info.of_findlib_package pkg
-                 ; reason = "unsatisfied 'exist_if'"
-                 }))
+            Hidden (Info.of_findlib_package pkg,
+                    "unsatisfied 'exist_if'"))
       ~all:(fun () ->
         Findlib.all_packages findlib
         |> List.map ~f:Findlib.Package.name)
 
   let find = find
+  let find_even_when_hidden = find_even_when_hidden
 
   let resolve t (loc, name) =
     match find t name with
@@ -956,12 +945,11 @@ module DB = struct
   let available t name = available_internal t name ~stack:Dep_stack.empty
 
   let get_compile_info t name =
-    match find t name with
-    | Error Not_found ->
+    match find_even_when_hidden t name with
+    | None ->
       Sexp.code_error "Lib.DB.get_compile_info got library that doesn't exist"
         [ "name", Sexp.To_sexp.string name ]
-    | Error (Hidden hidden) -> Compile.for_hidden t hidden
-    | Ok lib -> Compile.for_lib lib
+    | Some lib -> Compile.for_lib lib
 
   let resolve_user_written_deps t deps ~pps =
     let res, pps, resolved_selects =

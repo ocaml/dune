@@ -21,8 +21,9 @@ let make
       ?(source_dirs=Path.Set.empty)
       ?(objs_dirs=Path.Set.empty)
       () =
-  { requires
-  ; flags
+  (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
+  { requires = Build.catch requires ~on_error:(fun _ -> [])
+  ; flags    = Build.catch flags    ~on_error:(fun _ -> [])
   ; preprocess
   ; libname
   ; source_dirs

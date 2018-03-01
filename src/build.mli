@@ -110,11 +110,20 @@ val if_file_exists : Path.t -> then_:('a, 'b) t -> else_:('a, 'b) t -> ('a, 'b) 
 *)
 val file_exists_opt : Path.t -> ('a, 'b) t -> ('a, 'b option) t
 
-(** Always fail when executed. We pass a function rather than an exception to get a proper
-    backtrace *)
+(** Always fail when executed. We pass a function rather than an
+    exception to get a proper backtrace *)
 val fail : ?targets:Path.t list -> fail -> (_, _) t
 
-val of_result : ('a, exn) Result.t -> (unit, 'a) t
+val of_result
+  :  ?targets:Path.t list
+  -> (('a, 'b) t, exn) Result.t
+  -> ('a, 'b) t
+
+val of_result_map
+  : ?targets:Path.t list
+  -> ('a, exn) Result.t
+  -> f:('a -> ('b, 'c) t)
+  -> ('b, 'c) t
 
 (** [memoize name t] is an arrow that behaves like [t] except that its
     result is computed only once. *)

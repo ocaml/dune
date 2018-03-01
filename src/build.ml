@@ -172,9 +172,14 @@ let fail ?targets x =
   | None -> Fail x
   | Some l -> Targets l >>> Fail x
 
-let of_result = function
-  | Ok    x -> return x
-  | Error e -> fail { fail = fun () -> raise e }
+let of_result ?targets = function
+  | Ok    x -> x
+  | Error e -> fail ?targets { fail = fun () -> raise e }
+
+let of_result_map ?targets res ~f =
+  match res with
+  | Ok    x -> f x
+  | Error e -> fail ?targets { fail = fun () -> raise e }
 
 let memoize name t =
   Memo { name; t; state = Unevaluated }

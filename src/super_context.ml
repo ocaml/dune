@@ -272,7 +272,10 @@ module Libs = struct
 
   let requires t ~dir ~has_dot_merlin compile_info =
     add_select_rules t ~dir (Lib.Compile.resolved_selects compile_info);
-    let requires = Build.of_result (Lib.Compile.requires compile_info) in
+    let requires =
+      Build.of_result_map (Lib.Compile.requires compile_info)
+        ~f:Build.return
+    in
     let requires =
       Build.record_lib_deps (Lib.Compile.user_written_deps compile_info)
         ~kind:(if Lib.Compile.optional compile_info then

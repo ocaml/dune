@@ -35,7 +35,7 @@
   directory can't see each other unless one of them depend on the
   other (#472)
 
-- Better support for mli/rei only modules (#490)
+- Better support for mli/rei only modules (#489)
 
 - Fix support for byte-code only architectures (#510, fixes #330)
 

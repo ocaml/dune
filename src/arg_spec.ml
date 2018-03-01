@@ -71,3 +71,12 @@ let quote_args =
     | arg :: args -> quote :: arg :: loop quote args
   in
   fun quote args -> As (loop quote args)
+
+let of_result = function
+  | Ok x -> x
+  | Error e -> Dyn (fun _ -> raise e)
+
+let of_result_map res ~f =
+  match res with
+  | Ok    x -> f x
+  | Error e -> Dyn (fun _ -> raise e)

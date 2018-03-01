@@ -46,3 +46,6 @@ val expand      : dir:Path.t -> 'a t list -> 'a -> string list * Path.Set.t
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
 val quote_args : string -> string list -> _ t
+
+val of_result : ('a t, exn) result -> 'a t
+val of_result_map : ('a, exn) result -> f:('a -> 'b t) -> 'b t

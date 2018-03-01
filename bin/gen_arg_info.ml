@@ -117,7 +117,7 @@ let main =
      ~doc:"Generate command line doc for cmdliner from text files.")
 
 let () =
-  Ansi_color.setup_err_formatter_colors ();
+  Colors.setup_err_formatter_colors ();
   try
     match Term.eval main ~catch:false with
     | `Error _ -> exit 1

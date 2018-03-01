@@ -30,6 +30,8 @@ val jsoo_runtime : t -> Path.t list
     the process *)
 val unique_id : t -> int
 
+module Set : Set.S with type elt = t
+
 module Status : sig
   type t =
     | Installed
@@ -265,7 +267,7 @@ module DB : sig
   (** Return the list of all libraries in this database. If
       [recursive] is true, also include libraries in parent databases
       recursively. *)
-  val all : ?recursive:bool -> t -> lib list
+  val all : ?recursive:bool -> t -> Set.t
 end with type lib := t
 
 (** {1 Transitive closure} *)

@@ -45,9 +45,9 @@ module Gen(P : Install_params) = struct
 
   let init_meta () =
     let public_libs = Lib.DB.all (SC.public_libs sctx) in
-    List.iter public_libs ~f:gen_lib_dune_file;
-    List.map public_libs ~f:(fun lib ->
-      (Findlib.root_package_name (Lib.name lib), lib))
+    Lib.Set.iter public_libs ~f:gen_lib_dune_file;
+    Lib.Set.to_list public_libs
+    |> List.map ~f:(fun lib -> (Findlib.root_package_name (Lib.name lib), lib))
     |> String_map.of_list_multi
     |> String_map.merge (SC.packages sctx) ~f:(fun _name pkg libs ->
       let pkg  = Option.value_exn pkg          in

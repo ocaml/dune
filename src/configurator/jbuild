@@ -1,0 +1,7 @@
+(library
+ ((name configurator)
+  (flags (:standard -safe-string))
+  (libraries (jbuilder stdune))
+  (preprocess no_preprocessing)))
+
+(jbuild_version 1)

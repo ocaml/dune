@@ -22,6 +22,8 @@ let break s ~pos =
   (sub s ~pos:0 ~len:pos,
    sub s ~pos ~len:(length s - pos))
 
+let is_empty s = length s = 0
+
 let is_prefix s ~prefix =
   let len = length s in
   let prefix_len = length prefix in
@@ -78,6 +80,11 @@ let lsplit2 s ~on =
     Some
       (sub s ~pos:0 ~len:i,
        sub s ~pos:(i + 1) ~len:(length s - i - 1))
+
+let lsplit2_exn s ~on =
+  match lsplit2 s ~on with
+  | Some s -> s
+  | None -> invalid_arg "lsplit2_exn"
 
 let rsplit2 s ~on =
   match rindex s on with
@@ -153,3 +160,12 @@ let longest_map l ~f =
     max acc (length (f x)))
 
 let longest l = longest_map l ~f:(fun x -> x)
+
+let exists s ~f =
+  try
+    for i=0 to length s - 1 do
+      if (f s.[i]) then raise_notrace Exit
+    done;
+    false
+  with Exit ->
+    true

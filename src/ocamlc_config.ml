@@ -6,6 +6,8 @@ type t =
   ; ocamlc: Path.t
   }
 
+let bindings t = t.bindings
+
 let ocamlc_config_cmd ocamlc =
   sprintf "%s -config" (Path.to_string ocamlc)
 
@@ -13,9 +15,7 @@ let sexp_of_t t =
   let open Sexp.To_sexp in
   string_map Sexp.atom_or_quoted_string t.bindings
 
-let read ~ocamlc ~env =
-  Process.run_capture_lines ~env Strict (Path.to_string ocamlc) ["-config"]
-  >>| fun lines ->
+let make ~ocamlc ~ocamlc_config_output:lines =
   List.map lines ~f:(fun line ->
     match String.index line ':' with
     | Some i ->
@@ -30,6 +30,11 @@ let read ~ocamlc ~env =
   | Error (key, _, _) ->
     die "variable %S present twice in the output of `%s`"
       key (ocamlc_config_cmd ocamlc)
+
+let read ~ocamlc ~env =
+  Process.run_capture_lines ~env Strict (Path.to_string ocamlc) ["-config"]
+  >>| fun lines ->
+  make ~ocamlc ~ocamlc_config_output:lines
 
 let ocaml_value t =
   let t = String_map.to_list t.bindings in

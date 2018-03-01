@@ -318,18 +318,16 @@ module Gen(P : Install_rules.Params) = struct
               String_map.mem modules main_module_name) then
             None
           else if String_map.mem modules main_module_name then
-            let file ext =
-              Some { Module.File.
-                     name   = sprintf "%s__%s-gen" lib.name ext
-                   ; syntax = OCaml
-                   }
-            in
-            (* The tests don't pass with 4.02 if we don't do that *)
-            let needs_impl = ctx.version < (4, 03, 0) in
+            (* This module needs an implementaion for non-jbuilder
+               users of the library:
+
+               https://github.com/ocaml/dune/issues/567 *)
             Some
               { Module.name = main_module_name ^ "__"
-              ; impl = if     needs_impl then file ".ml"  else None
-              ; intf = if not needs_impl then file ".mli" else None
+              ; intf = None
+              ; impl = Some { name   = sprintf "%s__.ml-gen" lib.name
+                            ; syntax = OCaml
+                            }
               ; obj_name = lib.name ^ "__"
               }
           else

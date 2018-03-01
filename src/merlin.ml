@@ -13,6 +13,25 @@ type t =
   ; objs_dirs  : Path.Set.t
   }
 
+let make
+      ?(requires=Build.return [])
+      ?(flags=Build.return [])
+      ?(preprocess=Jbuild.Preprocess.No_preprocessing)
+      ?libname
+      ?(source_dirs=Path.Set.empty)
+      ?(objs_dirs=Path.Set.empty)
+      () =
+  { requires
+  ; flags
+  ; preprocess
+  ; libname
+  ; source_dirs
+  ; objs_dirs
+  }
+
+let add_source_dir t dir =
+  { t with source_dirs = Path.Set.add t.source_dirs dir }
+
 let ppx_flags sctx ~dir:_ ~scope ~src_dir:_ { preprocess; libname; _ } =
   match preprocess with
   | Pps { pps; flags } ->

@@ -319,6 +319,12 @@ let to_id t : Id.t =
   ; name      = t.name
   }
 
+module Set = Set.Make(
+struct
+  type nonrec t = t
+  let compare x y = compare x.unique_id y.unique_id
+end)
+
 module L = struct
   type nonrec t = t list
 
@@ -973,13 +979,13 @@ module DB = struct
 
   let rec all ?(recursive=false) t =
     let l =
-      List.filter_map (Lazy.force t.all) ~f:(fun name ->
+      List.fold_left (Lazy.force t.all) ~f:(fun libs name ->
         match find t name with
-        | Ok    x -> Some x
-        | Error _ -> None)
+        | Ok    x -> Set.add libs x
+        | Error _ -> libs) ~init:Set.empty
     in
     match recursive, t.parent with
-    | true, Some t -> all ~recursive t @ l
+    | true, Some t -> Set.union (all ~recursive t) l
     | _ -> l
 end
 

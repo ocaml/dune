@@ -454,6 +454,12 @@ module Build_exec = struct
       | Fail { fail } -> fail ()
       | If_file_exists (_, state) ->
         exec dyn_deps (get_if_file_exists_exn state) x
+      | Catch (t, on_error) -> begin
+          try
+            exec dyn_deps t x
+          with exn ->
+            on_error exn
+        end
       | Memo m ->
         match m.state with
         | Evaluated (x, deps) ->

@@ -37,6 +37,7 @@ module Repr = struct
     | Record_lib_deps : lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t
+    | Catch : ('a, 'b) t * (exn -> 'b) -> ('a, 'b) t
 
   and 'a memo =
     { name          : string
@@ -134,6 +135,8 @@ let path_set ps = Paths ps
 let paths_glob ~loc ~dir re = Paths_glob (ref (G_unevaluated (loc, dir, re)))
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths t
+
+let catch t ~on_error = Catch (t, on_error)
 
 let contents p = Contents p
 let lines_of p = Lines_of p

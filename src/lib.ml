@@ -383,6 +383,12 @@ end)
 module L = struct
   type nonrec t = t list
 
+  let to_iflags dirs =
+    Arg_spec.S
+      (Path.Set.fold dirs ~init:[] ~f:(fun dir acc ->
+         Arg_spec.Path dir :: A "-I" :: acc)
+       |> List.rev)
+
   let include_paths ts ~stdlib_dir =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
@@ -391,23 +397,33 @@ module L = struct
     Path.Set.remove dirs stdlib_dir
 
   let include_flags ts ~stdlib_dir =
-    let dirs = include_paths ts ~stdlib_dir in
-    Arg_spec.S (List.concat_map (Path.Set.to_list dirs) ~f:(fun dir ->
-      [Arg_spec.A "-I"; Path dir]))
+    to_iflags (include_paths ts ~stdlib_dir)
 
-  let c_include_flags ts ~stdlib_dir =
+  let c_include_paths ts ~stdlib_dir =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
         Path.Set.add acc t.src_dir)
     in
-    let dirs = Path.Set.remove dirs stdlib_dir in
-    Arg_spec.S (List.concat_map (Path.Set.to_list dirs) ~f:(fun dir ->
-      [Arg_spec.A "-I"; Path dir]))
+    Path.Set.remove dirs stdlib_dir
+
+  let c_include_flags ts ~stdlib_dir =
+    to_iflags (c_include_paths ts ~stdlib_dir)
 
   let link_flags ts ~mode ~stdlib_dir =
     Arg_spec.S
       (c_include_flags ts ~stdlib_dir ::
        List.map ts ~f:(fun t -> Arg_spec.Deps (Mode.Dict.get t.archives mode)))
+
+  let compile_and_link_flags ~compile ~link ~mode ~stdlib_dir =
+    let dirs =
+      Path.Set.union
+        (  include_paths compile ~stdlib_dir)
+        (c_include_paths link    ~stdlib_dir)
+    in
+    Arg_spec.S
+      (to_iflags dirs ::
+       List.map link ~f:(fun t ->
+         Arg_spec.Deps (Mode.Dict.get t.archives mode)))
 
   let jsoo_runtime_files ts =
     List.concat_map ts ~f:(fun t -> t.jsoo_runtime)

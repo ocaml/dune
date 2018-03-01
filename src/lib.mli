@@ -58,6 +58,13 @@ module L : sig
 
   val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
 
+  val compile_and_link_flags
+    :  compile:t
+    -> link:t
+    -> mode:Mode.t
+    -> stdlib_dir:Path.t
+    -> _ Arg_spec.t
+
   (** All the library archive files (.a, .cmxa, _stubs.a, ...)  that
       should be linked in when linking an executable. *)
   val archive_files : t -> mode:Mode.t -> ext_lib:string -> Path.t list

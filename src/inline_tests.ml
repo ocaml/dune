@@ -15,7 +15,7 @@ module Backend = struct
         ; runner_libraries : (Loc.t * string) list
         ; flags            : Ordered_set_lang.Unexpanded.t
         ; generate_runner  : Action.Unexpanded.t option
-        ; extends          : (Loc.t * string) list option
+        ; extends          : (Loc.t * string) list
         }
 
       type Jbuild.Sub_system_info.t += T of t
@@ -33,7 +33,8 @@ module Backend = struct
            Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
            field_o "generate_runner" Action.Unexpanded.t
            >>= fun generate_runner ->
-           field_o "extends" (list (located string)) >>= fun extends ->
+           field "extends" (list (located string)) ~default:[]
+           >>= fun extends ->
            return
              { loc
              ; runner_libraries
@@ -56,32 +57,31 @@ module Backend = struct
       { info             : Info.t
       ; lib              : Lib.t
       ; runner_libraries : (Lib.t list, exn) result
-      ; extends          : (    t list, exn) result option
+      ; extends          : (    t list, exn) result
       }
 
     let desc ~plural = "inline tests backend" ^ if plural then "s" else ""
     let desc_article = "an"
 
     let lib  t = t.lib
-    let deps t = t.extends
+    let extends t = t.extends
 
     let instantiate ~resolve ~get lib (info : Info.t) =
       { info
       ; lib
-      ; runner_libraries = Result.all (List.map info.runner_libraries ~f:resolve)
+      ; runner_libraries =
+          Result.all (List.map info.runner_libraries ~f:resolve)
       ; extends =
           let open Result.O in
-          Option.map info.extends
-            ~f:(fun l ->
-              Result.all
-                (List.map l
-                   ~f:(fun ((loc, name) as x) ->
-                     resolve x >>= fun lib ->
-                     match get lib with
-                     | None ->
-                       Error (Loc.exnf loc "%S is not an %s" name
-                                (desc ~plural:false))
-                     | Some t -> Ok t)))
+          Result.all
+            (List.map info.extends
+               ~f:(fun ((loc, name) as x) ->
+                 resolve x >>= fun lib ->
+                 match get lib with
+                 | None ->
+                   Error (Loc.exnf loc "%S is not an %s" name
+                            (desc ~plural:false))
+                 | Some t -> Ok t))
       }
 
     let to_sexp t =
@@ -95,7 +95,7 @@ module Backend = struct
          ; field "flags" Ordered_set_lang.Unexpanded.sexp_of_t t.info.flags
          ; field_o "generate_runner" Action.Unexpanded.sexp_of_t
              t.info.generate_runner
-         ; field_o "extends" (list f) (Option.map t.extends ~f:Result.ok_exn)
+         ; field "extends" (list f) (Result.ok_exn t.extends) ~default:[]
          ])
   end
   include M

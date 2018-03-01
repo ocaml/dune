@@ -32,9 +32,6 @@ module type Backend = sig
   (** Library the backend is attached to *)
   val lib : t -> Lib.t
 
-  (** Dependencies on other backends *)
-  val deps : t -> (t list, exn) result option
-
   (** Dump the sub-system configuration. This is used to generate META
       files. *)
   val to_sexp : t -> Syntax.Version.t * Sexp.t
@@ -45,19 +42,33 @@ module type Registered_backend = sig
 
   val get : Lib.t -> t option
 
+  (** Resolve a backend name *)
+  val resolve : Lib.DB.t -> Loc.t * string -> (t, exn) result
+
   (** Choose a backend by either using the ones written by the user or
-      by by scanning the dependencies.
+      by scanning the dependencies.
 
       The returned list is sorted by order of dependencies. It is not
       allowed to have two different backend that are completely
       independant, i.e. none of them is in the transitive closure of
       the other one. *)
-  val select_backends
+  val select_extensible_backends
     :  loc:Loc.t
-    -> scope:Scope.t
-    -> written_by_user:(Loc.t * string) list option
+    -> ?written_by_user:t list
+    -> extends:(t -> (t list, exn) result)
     -> Lib.t list
     -> (t list, exn) result
+
+  (** Choose a backend by either using the ones written by the user or
+      by scanning the dependencies.
+
+      A backend can replace other backends *)
+  val select_replaceable_backend
+    :  loc:Loc.t
+    -> ?written_by_user:t list
+    -> replaces:(t -> (t list, exn) result)
+    -> Lib.t list
+    -> (t, exn) result
 end
 
 (* This is probably what we'll give to plugins *)
@@ -74,7 +85,12 @@ end
 
 (** An end-point, for users of the systems *)
 module type End_point = sig
-  module Backend : Registered_backend
+  module Backend : sig
+    include Registered_backend
+
+    (** Backends that this backends extends *)
+    val extends : t -> (t list, exn) result
+  end
 
   module Info : sig
     include Info

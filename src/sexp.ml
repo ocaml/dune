@@ -107,7 +107,14 @@ module To_sexp = struct
 
   type field = string * Usexp.t option
 
-  let field name f v = (name, Some (f v))
+  let field name f ?(equal=(=)) ?default v =
+    match default with
+    | None -> (name, Some (f v))
+    | Some d ->
+      if equal d v then
+        (name, None)
+      else
+        (name, Some (f v))
   let field_o name f v = (name, Option.map ~f v)
 
   let record_fields (l : field list) =

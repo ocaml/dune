@@ -43,6 +43,10 @@ val vpath : 'a Vspec.t  -> (unit, 'a) t
 
 val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
 
+(** [catch t ~on_error] evaluates to [on_error exn] if exception [exn] is
+    raised during the evaluation of [t]. *)
+val catch : ('a, 'b) t -> on_error:(exn -> 'b) -> ('a, 'b) t
+
 (** [contents path] returns an arrow that when run will return the contents of
     the file at [path]. *)
 val contents : Path.t -> ('a, string) t
@@ -157,6 +161,7 @@ module Repr : sig
     | Record_lib_deps : lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t
+    | Catch : ('a, 'b) t * (exn -> 'b) -> ('a, 'b) t
 
   and 'a memo =
     { name          : string

@@ -112,6 +112,7 @@ let static_deps t ~all_targets ~file_tree =
     | Record_lib_deps _ -> acc
     | Fail _ -> acc
     | Memo m -> loop m.t acc
+    | Catch (t, _) -> loop t acc
   in
   loop (Build.repr t) { rule_deps = Pset.empty; action_deps = Pset.empty }
 
@@ -138,6 +139,7 @@ let lib_deps =
       | If_file_exists (_, state) ->
         loop (get_if_file_exists_exn state) acc
       | Memo m -> loop m.t acc
+      | Catch (t, _) -> loop t acc
   in
   fun t -> loop (Build.repr t) String_map.empty
 
@@ -172,6 +174,7 @@ let targets =
                          under a [if_file_exists]"
       end
     | Memo m -> loop m.t acc
+    | Catch (t, _) -> loop t acc
   in
   fun t -> loop (Build.repr t) []
 

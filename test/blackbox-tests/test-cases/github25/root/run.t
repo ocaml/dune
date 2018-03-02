@@ -14,11 +14,11 @@ We need ocamlfind to run this test
       ocamlopt hello.cmxs
 
   $ $JBUILDER build -j1 @install --display short --root . --only pas-de-bol 2>&1 | sed 's/[^ "]*findlib-packages/.../'
+      ocamldep a.ml.d
   File ".../plop/META", line 1, characters 0-0:
   Error: Library "une-lib-qui-nexiste-pas" not found.
   -> required by library "plop.ca-marche-pas" in .../plop
   Hint: try: jbuilder external-lib-deps --missing --root . --only-packages pas-de-bol @install
-      ocamldep a.ml.d
       ocamldep b.ml.d
         ocamlc .pas_de_bol.objs/pas_de_bol.{cmi,cmo,cmt}
       ocamlopt .pas_de_bol.objs/pas_de_bol.{cmx,o}

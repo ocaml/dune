@@ -721,14 +721,12 @@ module Gen(P : Install_rules.Params) = struct
       ; compile_info
       };
 
-    { Merlin.
-      requires = real_requires
-    ; flags
-    ; preprocess = Buildable.single_preprocess lib.buildable
-    ; libname = Some lib.name
-    ; source_dirs = Path.Set.empty
-    ; objs_dirs = Path.Set.singleton obj_dir
-    }
+    Merlin.make ()
+      ~requires:real_requires
+      ~flags
+      ~preprocess:(Buildable.single_preprocess lib.buildable)
+      ~libname:lib.name
+      ~objs_dirs:(Path.Set.singleton obj_dir)
 
   (* +-----------------------------------------------------------------+
      | Executables stuff                                               |
@@ -819,14 +817,11 @@ module Gen(P : Install_rules.Params) = struct
       ~link_flags
       ~js_of_ocaml:exes.buildable.js_of_ocaml;
 
-    { Merlin.
-      requires    = real_requires
-    ; flags       = Ocaml_flags.common flags
-    ; preprocess  = Buildable.single_preprocess exes.buildable
-    ; libname     = None
-    ; source_dirs = Path.Set.empty
-    ; objs_dirs   = Path.Set.singleton obj_dir
-    }
+    Merlin.make ()
+      ~requires:real_requires
+      ~flags:(Ocaml_flags.common flags)
+      ~preprocess:(Buildable.single_preprocess exes.buildable)
+      ~objs_dirs:(Path.Set.singleton obj_dir)
 
   (* +-----------------------------------------------------------------+
      | Aliases                                                         |
@@ -892,19 +887,11 @@ module Gen(P : Install_rules.Params) = struct
           Path.parent (Path.relative src_dir src_glob ~error_loc:loc)
         in
         Some
-          { Merlin.requires = Build.return []
-          ; flags           = Build.return []
-          ; preprocess      = Jbuild.Preprocess.No_preprocessing
-          ; libname         = None
-          ; source_dirs     = Path.Set.singleton src_dir
-          ; objs_dirs       = Path.Set.empty
-          }
+          (Merlin.make ()
+             ~source_dirs:(Path.Set.singleton src_dir))
       | _ -> None)
     |> Merlin.merge_all
-    |> Option.map ~f:(fun (m : Merlin.t) ->
-      { m with source_dirs =
-                 Path.Set.add m.source_dirs (Path.relative src_dir ".")
-      })
+    |> Option.map ~f:(fun m -> Merlin.add_source_dir m src_dir)
     |> Option.iter ~f:(Merlin.add_rules sctx ~dir:ctx_dir ~scope);
     Utop.setup sctx ~dir:ctx_dir ~libs:(
       List.filter_map stanzas ~f:(function

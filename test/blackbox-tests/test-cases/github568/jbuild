@@ -1,0 +1,35 @@
+(jbuild_version 1)
+
+
+(library
+ ((name lib1)
+  (public_name lib1)
+  (modules (Lib1))))
+
+(alias
+ ((name runtest)
+  (package lib1)
+  (deps (test1.exe))
+  (action (run ${<}))))
+
+(executable
+ ((name test1)
+  (modules (Test1))
+  (libraries (lib1))))
+
+
+(library
+ ((name lib2)
+  (public_name lib2)
+  (modules (Lib2))))
+
+(alias
+ ((name runtest)
+  (package lib2)
+  (deps (test2.exe))
+  (action (run ${<}))))
+
+(executable
+ ((name test2)
+  (modules (Test2))
+  (libraries (lib2))))

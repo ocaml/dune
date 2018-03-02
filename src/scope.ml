@@ -44,6 +44,8 @@ module DB = struct
       Sexp.code_error "Scope.DB.find_by_name"
         [ "name"   , Sexp.To_sexp.(option string) name
         ; "context", Sexp.To_sexp.string t.context
+        ; "names",
+          Sexp.To_sexp.(list (option string)) (Scope_name_map.keys t.by_name)
         ]
 
   let create ~scopes ~context ~installed_libs internal_libs =

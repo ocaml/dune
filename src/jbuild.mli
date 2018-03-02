@@ -26,7 +26,7 @@ module Scope_info : sig
     { name     : string option (** First package name in alphabetical
                                    order. [None] for the global
                                    scope. *)
-    ; packages : Package.t String_map.t
+    ; packages : Package.t Package.Name.Map.t
     ; root     : Path.t
     }
 
@@ -39,7 +39,7 @@ module Scope_info : sig
 
   (** [resolve t package_name] looks up [package_name] in [t] and returns the
       package description if it exists, otherwise it returns an error. *)
-  val resolve : t -> string -> (Package.t, string) result
+  val resolve : t -> Package.Name.t -> (Package.t, string) result
 end
 
 (** Ppx preprocessors  *)

@@ -25,7 +25,7 @@ val create
   -> ?host:t
   -> scopes:Scope_info.t list
   -> file_tree:File_tree.t
-  -> packages:Package.t String_map.t
+  -> packages:Package.t Package.Name.Map.t
   -> stanzas:(Path.t * Scope_info.t * Stanzas.t) list
   -> filter_out_optional_stanzas_with_missing_deps:bool
   -> build_system:Build_system.t
@@ -33,7 +33,7 @@ val create
 
 val context   : t -> Context.t
 val stanzas   : t -> Dir_with_jbuild.t list
-val packages  : t -> Package.t String_map.t
+val packages  : t -> Package.t Package.Name.Map.t
 val file_tree : t -> File_tree.t
 val artifacts : t -> Artifacts.t
 val stanzas_to_consider_for_install : t -> (Path.t * Scope.t * Stanza.t) list

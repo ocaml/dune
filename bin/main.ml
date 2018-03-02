@@ -15,7 +15,7 @@ type common =
   ; workspace_file        : string option
   ; root                  : string
   ; target_prefix         : string
-  ; only_packages         : String_set.t option
+  ; only_packages         : Package.Name.Set.t option
   ; capture_outputs       : bool
   ; x                     : string option
   ; diff_command          : string option
@@ -159,6 +159,9 @@ let find_root () =
     | None -> assert false
     | Some (_, dir, to_cwd) -> (dir, to_cwd)
 
+let package_name =
+  Arg.conv ((fun p -> Ok (Package.Name.of_string p)), Package.Name.pp)
+
 let common_footer =
   `Blocks
     [ `S "BUGS"
@@ -253,7 +256,8 @@ let common =
     ; ignore_promoted_rules
     ; only_packages =
         Option.map only_packages
-          ~f:(fun s -> String_set.of_list (String.split s ~on:','))
+          ~f:(fun s -> Package.Name.Set.of_list (
+            List.map ~f:Package.Name.of_string (String.split s ~on:',')))
     ; x
     ; config
     }
@@ -524,7 +528,9 @@ let resolve_package_install setup pkg =
   match Main.package_install_file setup pkg with
   | Ok path -> path
   | Error () ->
-    die "Unknown package %s!%s" pkg (hint pkg (String_map.keys setup.packages))
+    die "Unknown package %s!%s" (pkg :> string)
+      (hint (pkg :> string)
+         ((Package.Name.Map.keys setup.packages) :> string list))
 
 let target_hint (setup : Main.setup) path =
   assert (Path.is_local path);
@@ -946,7 +952,7 @@ let install_uninstall ~what =
       (Main.setup ~log common >>= fun setup ->
        let pkgs =
          match pkgs with
-         | [] -> String_map.keys setup.packages
+         | [] -> Package.Name.Map.keys setup.packages
          | l  -> l
        in
        let install_files, missing_install_files =
@@ -1018,7 +1024,7 @@ let install_uninstall ~what =
                            is specified the default is $(i,\\$prefix/lib), otherwise \
                            it is the output of $(b,ocamlfind printconf destdir)"
                 )
-          $ Arg.(value & pos_all string [] name_))
+          $ Arg.(value & pos_all package_name [] name_))
   , Term.info what ~doc ~man:help_secs)
 
 let install   = install_uninstall ~what:"install"

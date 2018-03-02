@@ -21,7 +21,7 @@ type t =
   ; public_libs                      : Lib.DB.t
   ; installed_libs                   : Lib.DB.t
   ; stanzas                          : Dir_with_jbuild.t list
-  ; packages                         : Package.t String_map.t
+  ; packages                         : Package.t Package.Name.Map.t
   ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
   ; stanzas_to_consider_for_install  : (Path.t * Scope.t * Stanza.t) list
@@ -336,7 +336,7 @@ module Pkg_version = struct
   let spec sctx (p : Package.t) =
     let fn =
       Path.relative (Path.append sctx.context.build_dir p.path)
-        (sprintf "%s.version.sexp" p.name)
+        (sprintf "%s.version.sexp" (p.name :> string))
     in
     Build.Vspec.T (fn, (module V))
 
@@ -462,7 +462,8 @@ module Action = struct
         Some (str_exp (string_of_bool (
           Lib.DB.available (Scope.libs scope) lib)))
       | Some ("version", s) -> begin
-          match Scope_info.resolve (Scope.info scope) s with
+          match Scope_info.resolve (Scope.info scope)
+                  (Package.Name.of_string s) with
           | Ok p ->
             let x =
               Pkg_version.read sctx p >>^ function

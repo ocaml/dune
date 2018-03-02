@@ -7,12 +7,12 @@ type setup =
   { build_system : Build_system.t
   ; stanzas      : (Path.t * Jbuild.Scope_info.t * Jbuild.Stanzas.t) list String_map.t
   ; contexts     : Context.t list
-  ; packages     : Package.t String_map.t
+  ; packages     : Package.t Package.Name.Map.t
   ; file_tree    : File_tree.t
   }
 
 let package_install_file { packages; _ } pkg =
-  match String_map.find packages pkg with
+  match Package.Name.Map.find packages pkg with
   | None -> Error ()
   | Some p ->
     Ok (Path.relative p.path
@@ -29,11 +29,13 @@ let setup ?(log=Log.no_log)
       () =
   let conf = Jbuild_load.load ?extra_ignored_subtrees ?ignore_promoted_rules () in
   Option.iter only_packages ~f:(fun set ->
-    String_set.iter set ~f:(fun pkg ->
-      if not (String_map.mem conf.packages pkg) then
+    Package.Name.Set.iter set ~f:(fun pkg ->
+      if not (Package.Name.Map.mem conf.packages pkg) then
         die "@{<error>Error@}: I don't know about package %s \
              (passed through --only-packages/--release)%s"
-          pkg (hint pkg (String_map.keys conf.packages))));
+          (pkg :> string)
+          (hint (pkg :> string)
+             (Package.Name.Map.keys conf.packages :> string list))));
   let workspace =
     match workspace with
     | Some w -> w
@@ -94,7 +96,7 @@ let external_lib_deps ?log ~packages () =
        List.map packages ~f:(fun pkg ->
          match package_install_file setup pkg with
          | Ok path -> path
-         | Error () -> die "Unknown package %S" pkg)
+         | Error () -> die "Unknown package %S" (pkg :> string))
      in
      match String_map.find setup.stanzas "default" with
      | None -> die "You need to set a default context to use external-lib-deps"

@@ -8,7 +8,7 @@
 (executable
  ((name        cmdliner_gen)
   (modules     (cmdliner_gen))
-  (libraries   (unix jbuilder jbuilder_cmdliner))
+  (libraries   (stdune jbuilder_cmdliner))
   (preprocess  no_preprocessing)))
 
 (rule

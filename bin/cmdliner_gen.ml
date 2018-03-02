@@ -1,6 +1,5 @@
-open Jbuilder
-open Import
 open Jbuilder_cmdliner.Cmdliner
+open Stdune
 open Printf
 
 type arg_info =
@@ -9,9 +8,12 @@ type arg_info =
   ; doc          : string list
   }
 
+type loc = string * int * int * int
+exception Fail of loc * string
+
 let parse_arg_names_and_docv ~loc line =
   let invalid () =
-    Loc.fail loc "Invalid command line option specification"
+    raise (Fail (loc, "Invalid command line option specification"))
   in
   let rec loop names = function
     | [] -> List.rev names, None
@@ -27,31 +29,20 @@ let parse_arg_names_and_docv ~loc line =
   loop [] (String.extract_comma_space_separated_words line)
 
 let parse fn =
-  let rec loop i acc acc_current_block lines =
-    match lines with
-    | [] -> List.rev (acc_current_block :: acc)
-    | "" :: lines -> loop (i + 1) (acc_current_block :: acc) [] lines
-    | line :: lines -> loop (i + 1) acc ((i, line) :: acc_current_block) lines
+  let rec loop ic i acc acc_current_block =
+    match input_line ic with
+    | exception End_of_file ->
+      close_in ic;
+      List.rev (acc_current_block :: acc)
+    | ""   -> loop ic (i + 1) (acc_current_block :: acc) []
+    | line -> loop ic (i + 1) acc ((i, line) :: acc_current_block)
   in
-  loop 1 [] [] (Io.lines_of_file fn)
+  loop (open_in fn) 1 [] []
   |> List.filter_map ~f:(fun l ->
     match List.rev l with
     | [] -> None
     | (i, line) :: lines ->
-      let pos =
-        { Lexing.
-          pos_fname = fn
-        ; pos_cnum  = 0
-        ; pos_bol   = 0
-        ; pos_lnum  = i
-        }
-      in
-      let loc =
-        { Loc.
-          start = pos
-        ; stop  = { pos with pos_cnum = String.length line }
-        }
-      in
+      let loc = (fn, i, 0, String.length line) in
       let names, docv = parse_arg_names_and_docv ~loc line in
       Some { names
            ; docv
@@ -117,13 +108,14 @@ let main =
      ~doc:"Generate command line doc for cmdliner from text files.")
 
 let () =
-  Colors.setup_err_formatter_colors ();
   try
     match Term.eval main ~catch:false with
     | `Error _ -> exit 1
     | _ -> exit 0
   with
-  | Fiber.Never -> exit 1
-  | exn ->
-    Report_error.report exn;
+  | Fail ((fname, line, start, stop), msg) ->
+    eprintf
+      "File \"%s\", line %d, characters %d-%d:\n\
+       Error: %s\n%!"
+      fname line start stop msg;
     exit 1

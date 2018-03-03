@@ -528,9 +528,11 @@ let resolve_package_install setup pkg =
   match Main.package_install_file setup pkg with
   | Ok path -> path
   | Error () ->
-    die "Unknown package %s!%s" (pkg :> string)
-      (hint (pkg :> string)
-         ((Package.Name.Map.keys setup.packages) :> string list))
+    let pkg = Package.Name.to_string pkg in
+    die "Unknown package %s!%s" pkg
+      (hint pkg
+         (Package.Name.Map.keys setup.packages
+         |> List.map ~f:Package.Name.to_string))
 
 let target_hint (setup : Main.setup) path =
   assert (Path.is_local path);

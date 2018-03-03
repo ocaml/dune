@@ -109,7 +109,7 @@ module Scope_info = struct
       in
       let root = pkg.path in
       List.iter rest ~f:(fun pkg -> assert (pkg.Package.path = root));
-      { name = Some (name :> string)
+      { name = Some (Package.Name.to_string name)
       ; packages =
           Package.Name.Map.of_list_exn (List.map pkgs ~f:(fun pkg ->
             pkg.Package.name, pkg))
@@ -118,11 +118,13 @@ module Scope_info = struct
 
   let package_listing packages =
     let longest_pkg =
-      String.longest_map packages ~f:(fun p -> (p.Package.name :> string))
+      String.longest_map packages ~f:(fun p ->
+        Package.Name.to_string p.Package.name)
     in
     String.concat ~sep:"\n"
       (List.map packages ~f:(fun pkg ->
-         sprintf "- %-*s (because of %s)" longest_pkg (pkg.Package.name :> string)
+         sprintf "- %-*s (because of %s)" longest_pkg
+           (Package.Name.to_string pkg.Package.name)
            (Path.to_string (Package.opam_file pkg))))
 
   let default t =
@@ -149,22 +151,24 @@ module Scope_info = struct
     | Some pkg ->
       Ok pkg
     | None ->
+      let name_s = Package.Name.to_string name in
       if Package.Name.Map.is_empty t.packages then
         Error (sprintf
                  "You cannot declare items to be installed without \
                   adding a <package>.opam file at the root of your project.\n\
                   To declare elements to be installed as part of package %S, \
                   add a %S file at the root of your project."
-                 (name :> string) (Package.Name.opam_fn name))
+                 name_s (Package.Name.opam_fn name))
       else
         Error (sprintf
                  "The current scope doesn't define package %S.\n\
                   The only packages for which you can declare \
                   elements to be installed in this directory are:\n\
                   %s%s"
-                 (name :> string)
+                 name_s
                  (package_listing (Package.Name.Map.values t.packages))
-                 (hint (name :> string) (Package.Name.Map.keys t.packages :> string list)))
+                 (hint name_s (Package.Name.Map.keys t.packages
+                              |> List.map ~f:Package.Name.to_string)))
 
   let package t sexp =
     match resolve t (Package.Name.of_string (string sexp)) with

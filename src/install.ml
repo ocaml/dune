@@ -63,7 +63,7 @@ module Section = struct
   end
 
   let install_dir t ~(package : Package.Name.t) =
-    let package = (package :> string) in
+    let package = Package.Name.to_string package in
     match t with
     | Bin        -> Paths.bin
     | Sbin       -> Paths.sbin

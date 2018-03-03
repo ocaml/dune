@@ -201,7 +201,7 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
       | [pkg] -> pkg
       | _ ->
         die "Too many opam files for package %S:\n%s"
-          (name :> string)
+          (Package.Name.to_string name)
           (String.concat ~sep:"\n"
              (List.map pkgs ~f:(fun pkg ->
                 sprintf "- %s" (Path.to_string (Package.opam_file pkg))))))

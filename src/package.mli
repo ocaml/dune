@@ -1,16 +1,15 @@
 (** Information about a package defined in the workspace *)
 
 module Name : sig
-  type t = private string
+  type t
 
   val of_string : string -> t
 
   val opam_fn : t -> string
 
-  module Map : Stdune.Map.S with type key = t
-  module Set : Stdune.Set.S with type elt = t
-
   val pp : Format.formatter -> t -> unit
+
+  include Interned.S with type t := t
 end
 
 type t =

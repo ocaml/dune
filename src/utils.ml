@@ -143,7 +143,7 @@ let g () =
     []
 
 let install_file ~(package : Package.Name.t) ~findlib_toolchain =
-  let package = (package :> string) in
+  let package = Package.Name.to_string package in
   match findlib_toolchain with
   | None -> package ^ ".install"
   | Some x -> sprintf "%s-%s.install" package x

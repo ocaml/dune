@@ -57,7 +57,7 @@ module Gen(P : Install_params) = struct
     |> Package.Name.Map.iter ~f:(fun ((pkg : Package.t), libs) ->
       let path = Path.append ctx.build_dir pkg.path in
       SC.on_load_dir sctx ~dir:path ~f:(fun () ->
-        let meta_fn = "META." ^ (pkg.name :> string) in
+        let meta_fn = "META." ^ (Package.Name.to_string pkg.name) in
 
         let meta_template = Path.relative path (meta_fn ^ ".template"     ) in
         let meta          = Path.relative path  meta_fn                     in
@@ -79,7 +79,7 @@ module Gen(P : Install_params) = struct
                     ~else_:(loop rest)
               in
               loop
-                [ (pkg.name :> string) ^ ".version"
+                [ (Package.Name.to_string pkg.name) ^ ".version"
                 ; "version"
                 ; "VERSION"
                 ]
@@ -95,7 +95,7 @@ module Gen(P : Install_params) = struct
         let meta_contents =
           version >>^ fun version ->
           Gen_meta.gen
-            ~package:(pkg.name :> string)
+            ~package:(Package.Name.to_string pkg.name)
             ~version
             libs
         in
@@ -233,7 +233,7 @@ module Gen(P : Install_params) = struct
       Install.Entry.make Lib opam ~dst:"opam" :: entries
     in
     let entries =
-      let meta_fn = "META." ^ (package :> string) in
+      let meta_fn = "META." ^ (Package.Name.to_string package) in
       let meta = Path.append ctx.build_dir (Path.relative package_path meta_fn) in
       Install.Entry.make Lib meta ~dst:"META" :: entries
     in

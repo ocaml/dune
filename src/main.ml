@@ -31,11 +31,13 @@ let setup ?(log=Log.no_log)
   Option.iter only_packages ~f:(fun set ->
     Package.Name.Set.iter set ~f:(fun pkg ->
       if not (Package.Name.Map.mem conf.packages pkg) then
+        let pkg_name = Package.Name.to_string pkg in
         die "@{<error>Error@}: I don't know about package %s \
              (passed through --only-packages/--release)%s"
-          (pkg :> string)
-          (hint (pkg :> string)
-             (Package.Name.Map.keys conf.packages :> string list))));
+          pkg_name
+          (hint pkg_name
+             (Package.Name.Map.keys conf.packages
+             |> List.map ~f:Package.Name.to_string))));
   let workspace =
     match workspace with
     | Some w -> w
@@ -96,7 +98,7 @@ let external_lib_deps ?log ~packages () =
        List.map packages ~f:(fun pkg ->
          match package_install_file setup pkg with
          | Ok path -> path
-         | Error () -> die "Unknown package %S" (pkg :> string))
+         | Error () -> die "Unknown package %S" (Package.Name.to_string pkg))
      in
      match String_map.find setup.stanzas "default" with
      | None -> die "You need to set a default context to use external-lib-deps"

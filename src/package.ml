@@ -1,15 +1,12 @@
 
 module Name = struct
-  type t = string
+  include Interned.Make()
 
-  let of_string x = x
+  let of_string = make
 
-  let opam_fn t = t ^ ".opam"
+  let opam_fn (t : t) = to_string t ^ ".opam"
 
-  module Map = Import.String_map
-  module Set = Import.String_set
-
-  let pp = Format.pp_print_string
+  let pp fmt t = Format.pp_print_string fmt (to_string t)
 end
 
 

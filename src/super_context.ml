@@ -336,7 +336,7 @@ module Pkg_version = struct
   let spec sctx (p : Package.t) =
     let fn =
       Path.relative (Path.append sctx.context.build_dir p.path)
-        (sprintf "%s.version.sexp" (p.name :> string))
+        (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
     in
     Build.Vspec.T (fn, (module V))
 

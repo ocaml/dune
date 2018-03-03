@@ -10,17 +10,21 @@ module Register_backend(M : Backend) = struct
       let to_sexp = Some to_sexp
     end)
 
-  module Closure =
-    Top_closure.Make(Int)
-      (struct
-        type t = M.t
-        type graph = unit
-        let key t = Lib.unique_id (M.lib t)
-        let deps t () =
+  let top_closure l =
+    match
+      Top_closure.Int.top_closure l
+        ~key:(fun t -> Lib.unique_id (M.lib t))
+        ~deps:(fun t ->
           match M.deps t with
-          | Some (Ok l) -> l
-          | _ -> []
-      end)
+          | None           -> []
+          | Some (Ok l)    -> l
+          | Some (Error e) -> raise_notrace e)
+    with
+    | Ok _ as res -> res
+    | Error _ ->
+      (* Lib.t values can't be cyclic, so we can't have cycles here *)
+      assert false
+    | exception exn -> Error exn
 
   module Set =
     Set.Make(struct
@@ -53,8 +57,7 @@ module Register_backend(M : Backend) = struct
         (Loc.exnf loc "No %s found." (M.desc ~plural:false))
     | backends ->
       Result.all (List.filter_map backends ~f:M.deps) >>= fun _ ->
-      Result.map_error (Closure.top_closure () backends) ~f:(fun _ ->
-        assert false)
+      top_closure backends
       >>= fun backends ->
       let roots =
         let all = Set.of_list backends in

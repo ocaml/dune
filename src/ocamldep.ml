@@ -20,21 +20,18 @@ module Dep_graph = struct
         ; "module", Module.Name.t m.name
         ]
 
-  module Dep_closure =
-    Top_closure.Make(Module.Name)(struct
-      type t = Module.t
-      type graph = t list Module.Name.Map.t
-      let key (t : t) = t.name
-      let deps t map = Option.value_exn (Module.Name.Map.find map (key t))
-    end)
-
   let top_closed t modules =
     Build.all
       (List.map (Module.Name.Map.to_list t.per_module) ~f:(fun (unit, deps) ->
          deps >>^ fun deps -> (unit, deps)))
     >>^ fun per_module ->
     let per_module = Module.Name.Map.of_list_exn per_module in
-    match Dep_closure.top_closure per_module modules with
+    match
+      Module.Name.Top_closure.top_closure modules
+        ~key:Module.name
+        ~deps:(fun m ->
+          Option.value_exn (Module.Name.Map.find per_module (Module.name m)))
+    with
     | Ok modules -> modules
     | Error cycle ->
       die "dependency cycle between modules in %s:\n   %a"

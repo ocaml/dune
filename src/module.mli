@@ -15,6 +15,8 @@ module Name : sig
 
   module Set : Set.S with type elt = t
   module Map : Map.S with type key = t
+
+  module Top_closure : Top_closure.S with type key := t
 end
 
 module Syntax : sig

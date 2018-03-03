@@ -138,10 +138,17 @@ module Internal_rule = struct
     val to_int : t -> int
     val compare : t -> t -> Ordering.t
     val gen : unit -> t
+    module Set : Set.S with type elt = t
+    module Top_closure : Top_closure.S with type key := t
   end = struct
-    type t = int
+    module M = struct
+      type t = int
+      let compare (x : int) y = compare x y
+    end
+    include M
+    module Set = Set.Make(M)
+    module Top_closure = Top_closure.Make(Set)
     let to_int x = x
-    let compare (x : int) y = compare x y
 
     let counter = ref 0
     let gen () =
@@ -1221,22 +1228,17 @@ let rules_for_files t paths =
   |> Ir_set.of_list
   |> Ir_set.to_list
 
-module Ir_closure =
-  Top_closure.Make(Internal_rule.Id)
-    (struct
-      type graph = t
-      type t = Internal_rule.t
-      let key (t : t) = t.id
-      let deps (t : t) bs =
-        rules_for_files bs
+let rules_for_targets t targets =
+  match
+    Internal_rule.Id.Top_closure.top_closure (rules_for_files t targets)
+      ~key:(fun (r : Internal_rule.t) -> r.id)
+      ~deps:(fun (r : Internal_rule.t) ->
+        rules_for_files t
           (Pset.to_list
              (Pset.union
-                t.static_deps
-                t.rule_deps))
-    end)
-
-let rules_for_targets t targets =
-  match Ir_closure.top_closure t (rules_for_files t targets) with
+                r.static_deps
+                r.rule_deps)))
+  with
   | Ok l -> l
   | Error cycle ->
     die "dependency cycle detected:\n   %s"
@@ -1300,7 +1302,6 @@ module Rule = struct
 end
 
 module Rule_set = Set.Make(Rule)
-module Id_set = Set.Make(Rule.Id)
 
 let rules_for_files rules paths =
   List.fold_left paths ~init:Rule_set.empty ~f:(fun acc path ->
@@ -1309,18 +1310,8 @@ let rules_for_files rules paths =
     | Some rule -> Rule_set.add acc rule)
   |> Rule_set.to_list
 
-module Rule_closure =
-  Top_closure.Make(Rule.Id)
-    (struct
-      type graph = Rule.t Pmap.t
-      type t = Rule.t
-      let key (t : t) = t.id
-      let deps (t : t) (graph : graph) =
-        rules_for_files graph (Pset.to_list t.deps)
-    end)
-
 let build_rules_internal ?(recursive=false) t ~request =
-  let rules_seen = ref Id_set.empty in
+  let rules_seen = ref Rule.Id.Set.empty in
   let rules = ref [] in
   let rec loop fn =
     let dir = Path.parent fn in
@@ -1331,10 +1322,10 @@ let build_rules_internal ?(recursive=false) t ~request =
     | None ->
       Fiber.return ()
   and file_found fn (File_spec.T { rule = ir; _ }) =
-    if Id_set.mem !rules_seen ir.id then
+    if Rule.Id.Set.mem !rules_seen ir.id then
       Fiber.return ()
     else begin
-      rules_seen := Id_set.add !rules_seen ir.id;
+      rules_seen := Rule.Id.Set.add !rules_seen ir.id;
       (match ir.exec with
        | Running { rule_evaluation; _ }
        | Evaluating_rule { rule_evaluation; _ } ->
@@ -1380,8 +1371,11 @@ let build_rules_internal ?(recursive=false) t ~request =
         Pmap.add acc fn r))
   in
   match
-    Rule_closure.top_closure rules
+    Rule.Id.Top_closure.top_closure
       (rules_for_files rules (Pset.to_list !targets))
+      ~key:(fun (r : Rule.t) -> r.id)
+      ~deps:(fun (r : Rule.t) ->
+        rules_for_files rules (Pset.to_list r.deps))
   with
   | Ok l -> l
   | Error cycle ->
@@ -1398,7 +1392,7 @@ let set_package t file package =
   Hashtbl.add t.packages file package
 
 let package_deps t pkg files =
-  let rules_seen = ref Id_set.empty in
+  let rules_seen = ref Rule.Id.Set.empty in
   let rec loop fn acc =
     match Hashtbl.find_all t.packages fn with
     | [] -> loop_deps fn acc
@@ -1414,10 +1408,10 @@ let package_deps t pkg files =
     match Hashtbl.find t.files fn with
     | None -> acc
     | Some (File_spec.T { rule = ir; _ }) ->
-      if Id_set.mem !rules_seen ir.id then
+      if Rule.Id.Set.mem !rules_seen ir.id then
         acc
       else begin
-        rules_seen := Id_set.add !rules_seen ir.id;
+        rules_seen := Rule.Id.Set.add !rules_seen ir.id;
         let _, dyn_deps =
           match ir.exec with
           | Running { rule_evaluation; _ }

@@ -16,6 +16,7 @@ module Name = struct
 
   module Set = String_set
   module Map = String_map
+  module Top_closure = Top_closure.String
 end
 
 module Syntax = struct

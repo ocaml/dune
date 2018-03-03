@@ -28,8 +28,8 @@ module Entry : sig
   val make : Section.t -> ?dst:string -> Path.t -> t
   val set_src : t -> Path.t -> t
 
-  val relative_installed_path : t -> package:string -> Path.t
-  val add_install_prefix : t -> package:string -> prefix:Path.t -> t
+  val relative_installed_path : t -> package:Package.Name.t -> Path.t
+  val add_install_prefix : t -> package:Package.Name.t -> prefix:Path.t -> t
 end
 
 val files : Entry.t list -> Path.Set.t

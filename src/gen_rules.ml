@@ -946,8 +946,8 @@ let gen ~contexts ~build_system
     match only_packages with
     | None -> packages
     | Some pkgs ->
-      String_map.filter packages ~f:(fun { Package.name; _ } ->
-        String_set.mem pkgs name)
+      Package.Name.Map.filter packages ~f:(fun { Package.name; _ } ->
+        Package.Name.Set.mem pkgs name)
   in
   let sctxs = Hashtbl.create 4 in
   List.iter contexts ~f:(fun c ->
@@ -973,7 +973,7 @@ let gen ~contexts ~build_system
              | Library { public = Some { package; _ }; _ }
              | Alias { package = Some package ;  _ }
              | Install { package; _ } ->
-               String_set.mem pkgs package.name
+               Package.Name.Set.mem pkgs package.name
              | _ -> true)))
     in
     Fiber.fork_and_join host stanzas >>= fun (host, stanzas) ->

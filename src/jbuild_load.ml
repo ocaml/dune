@@ -157,7 +157,7 @@ end
 type conf =
   { file_tree : File_tree.t
   ; jbuilds   : Jbuilds.t
-  ; packages  : Package.t String_map.t
+  ; packages  : Package.t Package.Name.Map.t
   ; scopes    : Scope_info.t list
   }
 
@@ -186,27 +186,28 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
             | Some (String (_, s)) -> Some s
             | _ -> None
           in
-          (pkg,
-           { Package. name = pkg
+          let name = Package.Name.of_string pkg in
+          (name,
+           { Package. name
            ; path
            ; version_from_opam_file
            }) :: acc
         | _ -> acc))
   in
   let packages =
-    String_map.of_list_multi packages
-    |> String_map.mapi ~f:(fun name pkgs ->
+    Package.Name.Map.of_list_multi packages
+    |> Package.Name.Map.mapi ~f:(fun name pkgs ->
       match pkgs with
       | [pkg] -> pkg
       | _ ->
         die "Too many opam files for package %S:\n%s"
-          name
+          (Package.Name.to_string name)
           (String.concat ~sep:"\n"
              (List.map pkgs ~f:(fun pkg ->
                 sprintf "- %s" (Path.to_string (Package.opam_file pkg))))))
   in
   let scopes =
-    String_map.values packages
+    Package.Name.Map.values packages
     |> List.map ~f:(fun pkg -> (pkg.Package.path, pkg))
     |> Path.Map.of_list_multi
     |> Path.Map.map ~f:Scope_info.make

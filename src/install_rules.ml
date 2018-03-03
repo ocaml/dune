@@ -47,16 +47,17 @@ module Gen(P : Install_params) = struct
     let public_libs = Lib.DB.all (SC.public_libs sctx) in
     Lib.Set.iter public_libs ~f:gen_lib_dune_file;
     Lib.Set.to_list public_libs
-    |> List.map ~f:(fun lib -> (Findlib.root_package_name (Lib.name lib), lib))
-    |> String_map.of_list_multi
-    |> String_map.merge (SC.packages sctx) ~f:(fun _name pkg libs ->
+    |> List.map ~f:(fun lib ->
+      (Package.Name.of_string (Findlib.root_package_name (Lib.name lib)), lib))
+    |> Package.Name.Map.of_list_multi
+    |> Package.Name.Map.merge (SC.packages sctx) ~f:(fun _name pkg libs ->
       let pkg  = Option.value_exn pkg          in
       let libs = Option.value libs ~default:[] in
       Some (pkg, libs))
-    |> String_map.iter ~f:(fun ((pkg : Package.t), libs) ->
+    |> Package.Name.Map.iter ~f:(fun ((pkg : Package.t), libs) ->
       let path = Path.append ctx.build_dir pkg.path in
       SC.on_load_dir sctx ~dir:path ~f:(fun () ->
-        let meta_fn = "META." ^ pkg.name in
+        let meta_fn = "META." ^ (Package.Name.to_string pkg.name) in
 
         let meta_template = Path.relative path (meta_fn ^ ".template"     ) in
         let meta          = Path.relative path  meta_fn                     in
@@ -78,7 +79,7 @@ module Gen(P : Install_params) = struct
                     ~else_:(loop rest)
               in
               loop
-                [ pkg.name ^ ".version"
+                [ (Package.Name.to_string pkg.name) ^ ".version"
                 ; "version"
                 ; "VERSION"
                 ]
@@ -94,7 +95,7 @@ module Gen(P : Install_params) = struct
         let meta_contents =
           version >>^ fun version ->
           Gen_meta.gen
-            ~package:pkg.name
+            ~package:(Package.Name.to_string pkg.name)
             ~version
             libs
         in
@@ -228,11 +229,11 @@ module Gen(P : Install_params) = struct
           acc)
     in
     let entries =
-      let opam = Path.relative package_path (package ^ ".opam") in
+      let opam = Path.relative package_path (Package.Name.opam_fn package) in
       Install.Entry.make Lib opam ~dst:"opam" :: entries
     in
     let entries =
-      let meta_fn = "META." ^ package in
+      let meta_fn = "META." ^ (Package.Name.to_string package) in
       let meta = Path.append ctx.build_dir (Path.relative package_path meta_fn) in
       Install.Entry.make Lib meta ~dst:"META" :: entries
     in
@@ -275,17 +276,18 @@ module Gen(P : Install_params) = struct
               (package.name,
                Install.Entry.make section (Path.relative dir src) ?dst))
           | _ -> [])
-      |> String_map.of_list_multi
+      |> Package.Name.Map.of_list_multi
     in
-    String_map.iter (SC.packages sctx) ~f:(fun (pkg : Package.t) ->
+    Package.Name.Map.iter (SC.packages sctx) ~f:(fun (pkg : Package.t) ->
       let stanzas =
-        Option.value (String_map.find entries_per_package pkg.name) ~default:[]
+        Option.value (Package.Name.Map.find entries_per_package pkg.name)
+          ~default:[]
       in
       install_file pkg.path pkg.name stanzas)
 
   let init_install_files () =
     if not ctx.implicit then
-      String_map.iteri (SC.packages sctx)
+      Package.Name.Map.iteri (SC.packages sctx)
         ~f:(fun pkg { Package.path = src_path; _ } ->
           let install_fn =
             Utils.install_file ~package:pkg

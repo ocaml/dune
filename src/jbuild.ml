@@ -90,13 +90,13 @@ module Scope_info = struct
 
   type t =
     { name     : Name.t
-    ; packages : Package.t String_map.t
+    ; packages : Package.t Package.Name.Map.t
     ; root     : Path.t
     }
 
   let anonymous =
     { name     = None
-    ; packages = String_map.empty
+    ; packages = Package.Name.Map.empty
     ; root     = Path.root
     }
 
@@ -109,24 +109,26 @@ module Scope_info = struct
       in
       let root = pkg.path in
       List.iter rest ~f:(fun pkg -> assert (pkg.Package.path = root));
-      { name = Some name
+      { name = Some (Package.Name.to_string name)
       ; packages =
-          String_map.of_list_exn (List.map pkgs ~f:(fun pkg ->
+          Package.Name.Map.of_list_exn (List.map pkgs ~f:(fun pkg ->
             pkg.Package.name, pkg))
       ; root
       }
 
   let package_listing packages =
     let longest_pkg =
-      String.longest_map packages ~f:(fun p -> p.Package.name)
+      String.longest_map packages ~f:(fun p ->
+        Package.Name.to_string p.Package.name)
     in
     String.concat ~sep:"\n"
       (List.map packages ~f:(fun pkg ->
-         sprintf "- %-*s (because of %s)" longest_pkg pkg.Package.name
-           (Path.to_string (Path.relative pkg.path (pkg.name ^ ".opam")))))
+         sprintf "- %-*s (because of %s)" longest_pkg
+           (Package.Name.to_string pkg.Package.name)
+           (Path.to_string (Package.opam_file pkg))))
 
   let default t =
-    match String_map.values t.packages with
+    match Package.Name.Map.values t.packages with
     | [pkg] -> Ok pkg
     | [] ->
       Error
@@ -142,39 +144,41 @@ module Scope_info = struct
             stanza is for. I have the choice between these ones:\n\
             %s\n\
             You need to add a (package ...) field in this (install ...) stanza"
-           (package_listing (String_map.values t.packages)))
+           (package_listing (Package.Name.Map.values t.packages)))
 
   let resolve t name =
-    match String_map.find t.packages name with
+    match Package.Name.Map.find t.packages name with
     | Some pkg ->
       Ok pkg
     | None ->
-      if String_map.is_empty t.packages then
+      let name_s = Package.Name.to_string name in
+      if Package.Name.Map.is_empty t.packages then
         Error (sprintf
                  "You cannot declare items to be installed without \
                   adding a <package>.opam file at the root of your project.\n\
                   To declare elements to be installed as part of package %S, \
                   add a %S file at the root of your project."
-                 name (name ^ ".opam"))
+                 name_s (Package.Name.opam_fn name))
       else
         Error (sprintf
                  "The current scope doesn't define package %S.\n\
                   The only packages for which you can declare \
                   elements to be installed in this directory are:\n\
                   %s%s"
-                 name
-                 (package_listing (String_map.values t.packages))
-                 (hint name (String_map.keys t.packages)))
+                 name_s
+                 (package_listing (Package.Name.Map.values t.packages))
+                 (hint name_s (Package.Name.Map.keys t.packages
+                              |> List.map ~f:Package.Name.to_string)))
 
   let package t sexp =
-    match resolve t (string sexp) with
+    match resolve t (Package.Name.of_string (string sexp)) with
     | Ok p -> p
     | Error s -> Loc.fail (Sexp.Ast.loc sexp) "%s" s
 
   let package_field t =
     map_validate (field_o "package" string) ~f:(function
       | None -> default t
-      | Some name -> resolve t name)
+      | Some name -> resolve t (Package.Name.of_string name))
 end
 
 
@@ -531,7 +535,7 @@ module Public_lib = struct
         match String.split s ~on:'.' with
         | [] -> assert false
         | pkg :: rest ->
-          match Scope_info.resolve pkgs pkg with
+          match Scope_info.resolve pkgs (Package.Name.of_string pkg) with
           | Ok pkg ->
             Ok (Some
                   { package = pkg

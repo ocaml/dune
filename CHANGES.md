@@ -7,6 +7,9 @@ next
   compiler is not installed but still has a META file (#574, fixes
   #563)
 
+- Do not depend on ocamlfind. Instead, hard-code the library path when
+  installing from opam (#575)
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

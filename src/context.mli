@@ -129,12 +129,8 @@ val sexp_of_t : t -> Sexp.t
 (** Compare the context names *)
 val compare : t -> t -> Ordering.t
 
-(** If [use_findlib] is [false], don't try to guess the library search path with opam or
-    ocamlfind. This is only for building jbuilder itself, so that its build is completely
-    independent of the user setup. *)
 val create
-  :  ?use_findlib:bool
-  -> ?merlin:bool
+  :  ?merlin:bool
   -> Workspace.Context.t
   -> t list Fiber.t
 

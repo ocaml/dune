@@ -1,5 +1,31 @@
 open! Import
 
+module Name : sig
+  type t = private string
+
+  val add_suffix : t -> string -> t
+
+  val t : t Sexp.To_sexp.t
+  val compare : t -> t -> Ordering.t
+  val of_string : string -> t
+  val to_string : t -> string
+
+  val pp : Format.formatter -> t -> unit
+  val pp_quote : Format.formatter -> t -> unit
+
+  module Set : sig
+    include Set.S with type elt = t
+
+    val of_sset : String_set.t -> t
+  end
+  module Map : sig
+    include Map.S with type key = t
+
+    val to_smap : 'a t -> 'a String_map.t
+    val of_smap : 'a String_map.t -> 'a t
+  end
+end
+
 module Syntax : sig
   type t = OCaml | Reason
 end
@@ -14,7 +40,7 @@ module File : sig
 end
 
 type t =
-  { name      : string (** Name of the module. This is always the basename of the filename
+  { name      : Name.t (** Name of the module. This is always the basename of the filename
                            without the extension. *)
   ; impl      : File.t option
   ; intf      : File.t option
@@ -23,10 +49,10 @@ type t =
                            modules. *)
   }
 
-val name : t -> string
+val name : t -> Name.t
 
 (** Real unit name once wrapped. This is always a valid module name. *)
-val real_unit_name : t -> string
+val real_unit_name : t -> Name.t
 
 val file      : t -> dir:    Path.t -> Ml_kind.t -> Path.t option
 val cm_source : t -> dir:    Path.t -> Cm_kind.t -> Path.t option

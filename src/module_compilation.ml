@@ -103,7 +103,8 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
            ; A "-I"; Path obj_dir
            ; (match alias_module with
               | None -> S []
-              | Some (m : Module.t) -> As ["-open"; m.name])
+              | Some (m : Module.t) ->
+                As ["-open"; Module.Name.to_string m.name])
            ; A "-o"; Target dst
            ; A "-c"; Ml_kind.flag ml_kind; Dep src
            ])))
@@ -143,10 +144,10 @@ let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~scope ~dir ~obj_dir
     ; cmx = cmi_and_cmx_requires
     }
   in
-  String_map.iter
+  Module.Name.Map.iter
     (match alias_module with
      | None -> modules
-     | Some (m : Module.t) -> String_map.remove modules m.name)
+     | Some (m : Module.t) -> Module.Name.Map.remove modules m.name)
     ~f:(fun m ->
       build_module sctx m ~dynlink ~js_of_ocaml ~flags ~scope ~dir ~obj_dir
         ~dep_graphs ~requires ~alias_module)

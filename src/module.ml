@@ -1,5 +1,32 @@
 open Import
 
+module Name = struct
+  type t = string
+
+  let t = Sexp.atom
+
+  let add_suffix = (^)
+
+  let compare = compare
+  let of_string = String.capitalize
+  let to_string x = x
+
+  let pp = Format.pp_print_string
+  let pp_quote fmt x = Format.fprintf fmt "%S" x
+
+  module Set = struct
+    include String_set
+    let of_sset x = x
+  end
+
+  module Map = struct
+    include String_map
+
+    let to_smap x = x
+    let of_smap x = x
+  end
+end
+
 module Syntax = struct
   type t = OCaml | Reason
 end
@@ -26,7 +53,7 @@ module File = struct
 end
 
 type t =
-  { name     : string
+  { name     : Name.t
   ; impl     : File.t option
   ; intf     : File.t option
   ; obj_name : string
@@ -34,7 +61,7 @@ type t =
 
 let name t = t.name
 
-let real_unit_name t = String.capitalize (Filename.basename t.obj_name)
+let real_unit_name t = Name.of_string (Filename.basename t.obj_name)
 
 let has_impl t = Option.is_some t.impl
 

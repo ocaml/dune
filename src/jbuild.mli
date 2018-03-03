@@ -284,6 +284,16 @@ module Rule : sig
     }
 end
 
+module Menhir : sig
+  type t =
+    { merge_into : string option
+    ; flags      : String_with_vars.t list
+    ; modules    : string list
+    ; mode       : Rule.Mode.t
+    ; loc        : Loc.t
+    }
+end
+
 module Provides : sig
   type t =
     { name : string
@@ -317,6 +327,7 @@ module Stanza : sig
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
     | Copy_files  of Copy_files.t
+    | Menhir      of Menhir.t
 end
 
 module Stanzas : sig

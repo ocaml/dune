@@ -3,6 +3,8 @@ next
 
 - Ignore errors during the generation of the .merlin (#569, fixes #568 and #51)
 
+- Reduce the number of simultaneously opened fds (#578)
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

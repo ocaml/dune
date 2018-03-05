@@ -225,8 +225,7 @@ module Gen(P : Install_rules.Params) = struct
             List.concat_map stanzas ~f:(fun stanza ->
               match (stanza : Stanza.t) with
               | Menhir menhir ->
-                Menhir_rules.to_rules menhir
-                |> List.concat_map ~f:(user_rule ~dir ~scope)
+                Menhir_rules.gen_rules sctx ~dir ~scope menhir
                 |> List.map ~f:Path.basename
               | Rule rule ->
                 List.map (user_rule rule  ~dir ~scope) ~f:Path.basename

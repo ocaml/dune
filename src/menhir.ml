@@ -1,42 +1,35 @@
 open Import
-open Jbuild
 
-let to_rules (t : Jbuild.Menhir.t) =
-  let module S = String_with_vars in
-  let targets n = [n ^ ".ml"; n ^ ".mli"] in
+let gen_rules sctx ~dir ~scope (t : Jbuild.Menhir.t) =
+  let targets n = List.map ~f:(Path.relative dir) [n ^ ".ml"; n ^ ".mli"] in
+  let flags =
+    List.map ~f:(Super_context.expand_vars sctx ~scope ~dir) t.flags in
+  let menhir =
+    let menhir =
+      Super_context.resolve_program sctx ~hint:"opam install menhir" "menhir" in
+    fun ~extra_targets ->
+      Build.run ~extra_targets
+        menhir
+        ~dir
+        ~context:(Super_context.context sctx) in
+  let add_rule_get_targets =
+    Super_context.add_rule_get_targets sctx ~mode:t.mode ~loc:t.loc in
+  let mly name = Path.relative dir (name ^ ".mly") in
   match t.merge_into with
   | None ->
-    List.map t.modules ~f:(fun name ->
-      let src = name ^ ".mly" in
-      { Jbuild.Rule.
-        targets = Static (targets name)
-      ; deps    = [Dep_conf.File (S.virt_text __POS__ src)]
-      ; action  =
-          Chdir
-            (S.virt_var __POS__ "ROOT",
-             Run (S.virt_text __POS__ "menhir",
-                  t.flags @ [S.virt_var __POS__ "<"]))
-      ; mode  = t.mode
-      ; locks = []
-      ; loc = t.loc
-      })
+    List.concat_map ~f:(fun name ->
+      add_rule_get_targets (
+        menhir
+          ~extra_targets:(targets name)
+          [ As flags
+          ; Dep (mly name)]
+      )) t.modules
   | Some merge_into ->
-    let mly m = S.virt_text __POS__ (m ^ ".mly") in
-    [{ Rule.
-       targets = Static (targets merge_into)
-     ; deps    = List.map ~f:(fun m -> Dep_conf.File (mly m)) t.modules
-     ; action  =
-         Chdir
-           (S.virt_var __POS__ "ROOT",
-            Run (S.virt_text __POS__ "menhir",
-                 List.concat
-                   [ [ S.virt_text __POS__ "--base"
-                     ; S.virt_var __POS__ ("path-no-dep:" ^ merge_into)
-                     ]
-                   ; t.flags
-                   ; [ S.virt_var __POS__ "^" ]
-                   ]))
-     ; mode  = t.mode
-     ; locks = []
-     ; loc = t.loc
-     }]
+    add_rule_get_targets (
+      menhir
+        ~extra_targets:(targets merge_into)
+        [ A "--base" ; A merge_into
+        ; As flags
+        ; Deps (List.map ~f:mly t.modules)
+        ]
+    )

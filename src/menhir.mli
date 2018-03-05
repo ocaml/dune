@@ -1,2 +1,7 @@
 
-val to_rules : Jbuild.Menhir.t -> Jbuild.Rule.t list
+val gen_rules
+  :  Super_context.t
+  -> dir:Path.t
+  -> scope:Scope.t
+  -> Jbuild.Menhir.t
+  -> Path.t list

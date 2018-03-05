@@ -189,14 +189,9 @@ let parse_package t ~meta_file ~name ~parent_dir ~vars =
         Path.relative t.stdlib_dir
           (String.sub pkg_dir ~pos:1 ~len:(String.length pkg_dir - 1))
       else if Filename.is_relative pkg_dir then
-      Path.relative parent_dir pkg_dir
+        Path.relative parent_dir pkg_dir
       else
         Path.absolute pkg_dir
-  in
-  let exists_if = Vars.get_words vars "exists_if" Ps.empty in
-  let exists =
-    List.for_all exists_if ~f:(fun fn ->
-      Path.exists (Path.relative dir fn))
   in
   let pkg =
     { Package.
@@ -205,6 +200,28 @@ let parse_package t ~meta_file ~name ~parent_dir ~vars =
     ; dir
     ; vars
     }
+  in
+  let exists_if = Vars.get_words vars "exists_if" Ps.empty in
+  let exists =
+    match exists_if with
+    | _ :: _ ->
+      List.for_all exists_if ~f:(fun fn ->
+        Path.exists (Path.relative dir fn))
+    | [] ->
+      if not (String_map.mem t.builtins (root_package_name name)) then
+        true
+      else
+        (* The META files for installed packages are sometimes broken,
+           i.e. META files for libraries that were not installed by
+           the compiler are still present:
+
+           https://github.com/ocaml/dune/issues/563
+
+           To workaround this problem, for builtin packages we check
+           that at least one of the archive is present. *)
+        match Package.archives pkg with
+        | { byte = []; native = [] } -> true
+        | { byte; native } -> List.exists (byte @ native) ~f:Path.exists
   in
   let res =
     if exists then

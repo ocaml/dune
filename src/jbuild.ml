@@ -476,6 +476,7 @@ module Buildable = struct
     ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
     ; js_of_ocaml              : Js_of_ocaml.t
+    ; allow_overlapping_dependencies : bool
     }
 
   let modules_field name =
@@ -487,8 +488,6 @@ module Buildable = struct
     >>= fun preprocess ->
     field "preprocessor_deps" (list Dep_conf.t) ~default:[]
     >>= fun preprocessor_deps ->
-    (* CR-someday jdimino: remove this. There are still a few Jane Street packages using
-       this *)
     field "lint" Lint.t ~default:Lint.default
     >>= fun lint ->
     modules_field "modules"
@@ -500,7 +499,10 @@ module Buildable = struct
     field_oslu "flags"          >>= fun flags          ->
     field_oslu "ocamlc_flags"   >>= fun ocamlc_flags   ->
     field_oslu "ocamlopt_flags" >>= fun ocamlopt_flags ->
-    field "js_of_ocaml" (Js_of_ocaml.t) ~default:Js_of_ocaml.default >>= fun js_of_ocaml ->
+    field "js_of_ocaml" (Js_of_ocaml.t) ~default:Js_of_ocaml.default
+    >>= fun js_of_ocaml ->
+    field_b "allow_overlapping_dependencies"
+    >>= fun allow_overlapping_dependencies ->
     return
       { loc
       ; preprocess
@@ -513,6 +515,7 @@ module Buildable = struct
       ; ocamlc_flags
       ; ocamlopt_flags
       ; js_of_ocaml
+      ; allow_overlapping_dependencies
       }
 
   let single_preprocess t =
@@ -867,7 +870,8 @@ module Rule = struct
             return (fallback, mode))
            ~f:(function
              | true, Some _ ->
-               Error "Cannot use both (fallback) and (mode ...) at the same time.\n\
+               Error "Cannot use both (fallback) and (mode ...) at the \
+                      same time.\n\
                       (fallback) is the same as (mode fallback), \
                       please use the latter in new code."
              | false, Some mode -> Ok mode

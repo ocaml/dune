@@ -177,6 +177,9 @@ modules you want.
   such modules to avoid surprises. ``<modules>`` must be a subset of
   the modules listed in the ``(modules ...)`` field.
 
+- ``(allow_overlapping_dependencies)`` allows external dependencies to
+  overlap with libraries that are present in the workspace
+
 Note that when binding C libraries, Jbuilder doesn't provide special support for
 tools such as ``pkg-config``, however it integrates easily with `configurator
 <https://github.com/janestreet/configurator>`__ by using ``(c_flags (:include
@@ -261,6 +264,9 @@ binary at the same place as where ``ocamlc`` was found, or when there is a
    specifying `OCaml flags`_
 
 - ``(modules_without_implementation <modules>)`` is the same as the
+  corresponding field of `library`_
+
+- ``(allow_overlapping_dependencies)`` is the same as the
   corresponding field of `library`_
 
 executables

@@ -143,6 +143,7 @@ module Buildable : sig
     ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
     ; js_of_ocaml              : Js_of_ocaml.t
+    ; allow_overlapping_dependencies : bool
     }
 
   (** Preprocessing specification used by all modules or [No_preprocessing] *)

@@ -37,7 +37,11 @@ let emit_warnings t =
       Loc.warn loc
         "Module %S is used in several stanzas:@\n\
          @[<v>%a@]@\n\
-         This will become an error in the future."
+         This will become an error in the future.@.\
+         To fix this error, you must specify an explicit modules field in \
+         every library, executable, and executables stanzas in this jbuild \
+         file. Note that each module cannot appear in more than one modules \
+         field - it must belong to a single library or executable"
         name
         (Fmt.list (Fmt.prefix (Fmt.string "- ") Loc.pp_file_colon_line))
         locs)

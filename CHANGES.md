@@ -10,6 +10,9 @@ next
 - Reduce interleaving in the scheduler in an attempt to make Jbuilder
   keep file descriptors open for less long (#586)
 
+- Accept and ignore `ppx.driver` fields in library stanzas, in
+  preparation for the generic ppx driver system (#588)
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

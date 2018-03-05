@@ -660,6 +660,7 @@ module Library = struct
        field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
        field_b    "no_dynlink"                                             >>= fun no_dynlink               ->
        Sub_system_info.record_parser () >>= fun sub_systems ->
+       field "ppx.driver" ignore ~default:() >>= fun () ->
        return
          { name
          ; public

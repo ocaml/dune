@@ -4,19 +4,19 @@ Successes:
       ocamldep test/bar.ml.d
       ocamldep foo.ml.d
         ocamlc .foo.objs/foo__.{cmi,cmo,cmt}
-      ocamldep intf.mli.d
       ocamlopt .foo.objs/foo__.{cmx,o}
+      ocamldep intf.mli.d
         ocamlc .foo.objs/foo__Intf.{cmi,cmti}
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
       ocamlopt .foo.objs/foo.{cmx,o}
-        ocamlc test/.bar.objs/bar.{cmi,cmo,cmt}
-        ocamlc foo.cma
       ocamlopt foo.{a,cmxa}
-      ocamlopt test/.bar.objs/bar.{cmx,o}
-        ocamlc test/bar.cma
       ocamlopt foo.cmxs
+        ocamlc test/.bar.objs/bar.{cmi,cmo,cmt}
+      ocamlopt test/.bar.objs/bar.{cmx,o}
       ocamlopt test/bar.{a,cmxa}
       ocamlopt test/bar.cmxs
+        ocamlc foo.cma
+        ocamlc test/bar.cma
 
 Errors:
 

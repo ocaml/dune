@@ -7,6 +7,9 @@ next
   compiler is not installed but still has a META file (#574, fixes
   #563)
 
+- Reduce interleaving in the scheduler in an attempt to make Jbuilder
+  keep file descriptors open for less long (#586)
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

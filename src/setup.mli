@@ -7,3 +7,6 @@
 (** Where to find installed libraries for the default context. If
     [None], auto-detect it using standard tools such as [ocamlfind]. *)
 val library_path : string list option
+
+(** Where to install libraries for the default context. *)
+val library_destdir : string option

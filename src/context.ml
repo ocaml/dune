@@ -464,15 +464,19 @@ let install_prefix t =
   | None   -> Path.parent t.ocaml_bin
 
 let install_ocaml_libdir t =
-  (* If ocamlfind is present, it has precedence over everything else. *)
-  match which t "ocamlfind" with
-  | Some fn ->
-    (Process.run_capture_line ~env:t.env Strict
-       (Path.to_string fn) ["printconf"; "destdir"]
-     >>| fun s ->
-     Some (Path.absolute s))
-  | None ->
-    Fiber.return None
+  match t.kind, t.findlib_toolchain, Setup.library_destdir with
+  | Default, None, Some d ->
+    Fiber.return (Some (Path.absolute d))
+  | _ ->
+    (* If ocamlfind is present, it has precedence over everything else. *)
+    match which t "ocamlfind" with
+    | Some fn ->
+      (Process.run_capture_line ~env:t.env Strict
+         (Path.to_string fn) ["printconf"; "destdir"]
+       >>| fun s ->
+       Some (Path.absolute s))
+    | None ->
+      Fiber.return None
 
 (* CR-someday jdimino: maybe we should just do this for [t.env] directly? *)
 let env_for_exec t =

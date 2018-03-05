@@ -994,9 +994,17 @@ end
    +-----------------------------------------------------------------+ *)
 
 module Meta = struct
-  let to_names ts =
+  let valid_public_names_exn ~for_lib ts =
     List.fold_left ts ~init:String_set.empty ~f:(fun acc t ->
-      String_set.add acc t.name)
+      match status t with
+      | Status.Installed | Public -> String_set.add acc t.name
+      | Status.Private _ ->
+        Loc.fail for_lib.loc
+          "Public library %S cannot have the private dependency %S\n\
+           The private dependency must be removed or made public by \
+           giving it a public_name"
+          (name for_lib) (name t)
+    )
 
   (* For the deprecated method, we need to put all the runtime
      dependencies of the transitive closure.
@@ -1010,10 +1018,12 @@ module Meta = struct
   let ppx_runtime_deps_for_deprecated_method t =
     closure_exn [t]
     |> List.concat_map ~f:ppx_runtime_deps_exn
-    |> to_names
+    |> valid_public_names_exn ~for_lib:t
 
-  let requires         t = to_names (requires_exn         t)
-  let ppx_runtime_deps t = to_names (ppx_runtime_deps_exn t)
+  let requires t =
+    valid_public_names_exn ~for_lib:t (requires_exn t)
+  let ppx_runtime_deps t =
+    valid_public_names_exn ~for_lib:t (ppx_runtime_deps_exn t)
 end
 
 (* +-----------------------------------------------------------------+

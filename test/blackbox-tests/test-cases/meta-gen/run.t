@@ -1,4 +1,4 @@
-  $ $JBUILDER runtest --force -j1 --display short --root .
+  $ $JBUILDER runtest --force -j1 --display short --root main-test
   description = "contains \"quotes\""
   requires = "bytes"
   archive(byte) = "foobar.cma"
@@ -72,3 +72,7 @@
     plugin(byte) = "foobar_sub.cma"
     plugin(native) = "foobar_sub.cmxs"
   )
+
+public libraries can't have private dependencies
+
+  $ $JBUILDER build --force -j1 --display short --root private-dep

@@ -942,15 +942,16 @@ end
 module Menhir = struct
   type t =
     { merge_into : string option
-    ; flags      : String_with_vars.t list
+    ; flags      : Ordered_set_lang.Unexpanded.t
     ; modules    : string list
     ; mode       : Rule.Mode.t
+    ; loc        :  Loc.t
     }
 
   let v1 =
     record
       (field_o "merge_into" string >>= fun merge_into ->
-       field "flags" (list String_with_vars.t) ~default:[] >>= fun flags ->
+       field_oslu "flags" >>= fun flags ->
        field "modules" (list string) >>= fun modules ->
        Rule.Mode.field >>= fun mode ->
        return
@@ -958,48 +959,9 @@ module Menhir = struct
          ; flags
          ; modules
          ; mode
+         ; loc = Loc.none
          }
       )
-
-  let v1_to_rule loc t =
-    let module S = String_with_vars in
-    let targets n = [n ^ ".ml"; n ^ ".mli"] in
-    match t.merge_into with
-    | None ->
-      List.map t.modules ~f:(fun name ->
-        let src = name ^ ".mly" in
-        { Rule.
-          targets = Static (targets name)
-        ; deps    = [Dep_conf.File (S.virt_text __POS__ src)]
-        ; action  =
-            Chdir
-              (S.virt_var __POS__ "ROOT",
-               Run (S.virt_text __POS__ "menhir",
-                    t.flags @ [S.virt_var __POS__ "<"]))
-        ; mode  = t.mode
-        ; locks = []
-       ; loc
-       })
-    | Some merge_into ->
-      let mly m = S.virt_text __POS__ (m ^ ".mly") in
-      [{ Rule.
-         targets = Static (targets merge_into)
-       ; deps    = List.map ~f:(fun m -> Dep_conf.File (mly m)) t.modules
-       ; action  =
-           Chdir
-             (S.virt_var __POS__ "ROOT",
-              Run (S.virt_text __POS__ "menhir",
-                   List.concat
-                     [ [ S.virt_text __POS__ "--base"
-                       ; S.virt_var __POS__ ("path-no-dep:" ^ merge_into)
-                       ]
-                     ; t.flags
-                     ; [ S.virt_var __POS__ "^" ]
-                     ]))
-       ; mode  = t.mode
-       ; locks = []
-       ; loc
-       }]
 end
 
 module Provides = struct
@@ -1067,6 +1029,7 @@ module Stanza = struct
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
     | Copy_files  of Copy_files.t
+    | Menhir      of Menhir.t
 end
 
 module Stanzas = struct
@@ -1096,7 +1059,7 @@ module Stanzas = struct
       ; cstr_loc "ocamlyacc" (Rule.ocamlyacc_v1 @> nil)
           (fun loc x -> rules (Rule.ocamlyacc_to_rule loc x))
       ; cstr_loc "menhir" (Menhir.v1 @> nil)
-          (fun loc x -> rules (Menhir.v1_to_rule loc x))
+          (fun loc x -> [Menhir { x with loc }])
       ; cstr "install"     (Install_conf.v1 pkgs @> nil) (fun x -> [Install     x])
       ; cstr "alias"       (Alias_conf.v1 pkgs @> nil)   (fun x -> [Alias       x])
       ; cstr "copy_files" (Copy_files.v1 @> nil)

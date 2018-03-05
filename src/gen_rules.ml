@@ -1,4 +1,5 @@
 open Import
+module Menhir_rules = Menhir
 open Jbuild
 open Build.O
 open! No_io
@@ -223,6 +224,9 @@ module Gen(P : Install_rules.Params) = struct
           let generated_files =
             List.concat_map stanzas ~f:(fun stanza ->
               match (stanza : Stanza.t) with
+              | Menhir menhir ->
+                Menhir_rules.gen_rules sctx ~dir ~scope menhir
+                |> List.map ~f:Path.basename
               | Rule rule ->
                 List.map (user_rule rule  ~dir ~scope) ~f:Path.basename
               | Copy_files def ->

@@ -3,7 +3,8 @@
 (ocamllex (lexer1 lexer2))
 
 (menhir
- ((modules (test_menhir1))))
+ ((modules (test_menhir1))
+  (flags (:standard --unused-tokens))))
 
 (menhir
  ((merge_into test_base)

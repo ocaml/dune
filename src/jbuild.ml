@@ -599,6 +599,9 @@ module Library = struct
        field_b    "optional"                                                 >>= fun optional                 ->
        field      "self_build_stubs_archive" (option string) ~default:None   >>= fun self_build_stubs_archive ->
        field_b    "no_dynlink"                                               >>= fun no_dynlink               ->
+       field "ppx.driver" ignore ~default:() >>= fun () ->
+       field "inline_tests" ignore ~default:() >>= fun () ->
+       field "inline_tests.backend" ignore ~default:() >>= fun () ->
        return
          { name
          ; public

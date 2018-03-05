@@ -3,6 +3,9 @@
 
 - Reduce the number of simultaneously opened fds (#578)
 
+- Accept and ignore upcoming new library fields: `ppx.driver`,
+  `inline_tests` and `inline_tests.backend`
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

@@ -253,6 +253,7 @@ and error =
   | No_solution_found_for_select of Error0.No_solution_found_for_select.t
   | Dependency_cycle             of (Path.t * string) list
   | Conflict                     of conflict
+  | Overlap                      of overlap
 
 and resolve_result =
   | Not_found
@@ -263,6 +264,11 @@ and resolve_result =
 and conflict =
   { lib1 : t * Dep_path.Entry.t list
   ; lib2 : t * Dep_path.Entry.t list
+  }
+
+and overlap =
+  { in_workspace : t
+  ; installed    : t * Dep_path.Entry.t list
   }
 
 and 'a or_error = ('a, exn) result
@@ -279,11 +285,19 @@ module Error = struct
       }
   end
 
+  module Overlap = struct
+    type nonrec t = overlap =
+      { in_workspace : t
+      ; installed    : t * Dep_path.Entry.t list
+      }
+  end
+
   type t = error =
     | Library_not_available        of Library_not_available.t
     | No_solution_found_for_select of No_solution_found_for_select.t
     | Dependency_cycle             of (Path.t * string) list
     | Conflict                     of Conflict.t
+    | Overlap                      of Overlap.t
 end
 
 exception Error of Error.t
@@ -742,7 +756,7 @@ and resolve_user_deps db deps ~pps ~stack =
       let pps =
         let pps = (pps : (Loc.t * Jbuild.Pp.t) list :> (Loc.t * string) list) in
         resolve_simple_deps db pps ~stack >>= fun pps ->
-        closure pps ~stack
+        closure_with_overlap_checks None pps ~stack
       in
       let deps =
         let rec loop acc = function
@@ -759,7 +773,7 @@ and resolve_user_deps db deps ~pps ~stack =
   in
   (deps, pps, resolved_selects)
 
-and closure ts ~stack =
+and closure_with_overlap_checks db ts ~stack =
   let visited = ref String_map.empty in
   let res = ref [] in
   let orig_stack = stack in
@@ -776,6 +790,23 @@ and closure ts ~stack =
                            }))
     | None ->
       visited := String_map.add !visited t.name (t, stack);
+      (match db with
+       | None -> Ok ()
+       | Some db ->
+         match find_internal db t.name ~stack with
+         | St_found t' ->
+           if t.unique_id = t'.unique_id then
+             Ok ()
+           else begin
+             let req_by = Dep_stack.to_required_by stack ~stop_at:orig_stack in
+             Error
+               (Error (Overlap
+                         { in_workspace = t'
+                         ; installed    = (t, req_by)
+                         }))
+           end
+         | _ -> assert false)
+      >>= fun () ->
       Dep_stack.push stack (to_id t) >>= fun stack ->
       t.requires >>= fun deps ->
       iter deps ~stack >>| fun () ->
@@ -790,7 +821,10 @@ and closure ts ~stack =
   iter ts ~stack >>| fun () ->
   List.rev !res
 
-let closure l = closure l ~stack:Dep_stack.empty
+let closure_with_overlap_checks db l =
+  closure_with_overlap_checks db l ~stack:Dep_stack.empty
+
+let closure l = closure_with_overlap_checks None l
 
 let to_exn res =
   match res with
@@ -824,9 +858,9 @@ module Compile = struct
     ; sub_systems       = Sub_system_name.Map.empty
     }
 
-  let for_lib (t : lib) =
+  let for_lib db (t : lib) =
     { direct_requires   = t.requires
-    ; requires          = t.requires >>= closure
+    ; requires          = t.requires >>= closure_with_overlap_checks db
     ; resolved_selects  = t.resolved_selects
     ; pps               = t.pps
     ; optional          = t.optional
@@ -950,21 +984,28 @@ module DB = struct
 
   let available t name = available_internal t name ~stack:Dep_stack.empty
 
-  let get_compile_info t name =
+  let get_compile_info t ?(allow_overlaps=false) name =
     match find_even_when_hidden t name with
     | None ->
       Sexp.code_error "Lib.DB.get_compile_info got library that doesn't exist"
         [ "name", Sexp.To_sexp.string name ]
-    | Some lib -> Compile.for_lib lib
+    | Some lib ->
+      let t = Option.some_if (not allow_overlaps) t in
+      Compile.for_lib t lib
 
-  let resolve_user_written_deps t deps ~pps =
+  let resolve_user_written_deps t ?(allow_overlaps=false) deps ~pps =
     let res, pps, resolved_selects =
       resolve_user_deps t (Info.Deps.of_lib_deps deps) ~pps
         ~stack:Dep_stack.empty
     in
+    let requires =
+      res
+      >>=
+      closure_with_overlap_checks (Option.some_if (not allow_overlaps) t)
+    in
     { Compile.
       direct_requires = res
-    ; requires        = res >>= closure
+    ; requires
     ; pps
     ; resolved_selects
     ; optional          = false
@@ -1037,6 +1078,16 @@ let report_lib_error ppf (e : Error.t) =
        This cannot work.@\n"
       lib1.name (Path.to_string_maybe_quoted lib1.src_dir)
       Dep_path.Entries.pp rb1
+      lib2.name (Path.to_string_maybe_quoted lib2.src_dir)
+      Dep_path.Entries.pp rb2
+  | Overlap { in_workspace = lib1; installed = (lib2, rb2) } ->
+    Format.fprintf ppf
+      "@[<v>@{<error>Error@}: Conflict between the following libraries:@,\
+       - %S in %s@,\
+       - %S in %s@,\
+      \    %a@,\
+       This is not allowed.@\n"
+      lib1.name (Path.to_string_maybe_quoted lib1.src_dir)
       lib2.name (Path.to_string_maybe_quoted lib2.src_dir)
       Dep_path.Entries.pp rb2
   | No_solution_found_for_select { loc } ->

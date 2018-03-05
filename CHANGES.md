@@ -6,6 +6,9 @@
 - Always produce an implementation for the alias module, for
   non-jbuilder users (Fix #576)
 
+- Reduce interleaving in the scheduler in an attempt to make Jbuilder
+  keep file descriptors open for less long (#586)
+
 - Accept and ignore upcoming new library fields: `ppx.driver`,
   `inline_tests` and `inline_tests.backend`
 

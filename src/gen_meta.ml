@@ -1,7 +1,5 @@
 open Import
-open Jbuild
 open Meta
-open Build.O
 
 module Pub_name = struct
   type t =
@@ -33,10 +31,7 @@ module Pub_name = struct
   let to_string t = String.concat ~sep:"." (to_list t)
 end
 
-type item = Lib of Path.t * Pub_name.t * Library.t
-
-let string_of_deps l =
-  String.concat (List.sort l ~cmp:String.compare) ~sep:" "
+let string_of_deps deps = String_set.to_list deps |> String.concat ~sep:" "
 
 let rule var predicates action value =
   Rule { var; predicates; action; value }
@@ -48,123 +43,119 @@ let description s = rule "description" []      Set s
 let directory   s = rule "directory"   []      Set s
 let archive preds s = rule "archive"   preds Set s
 let plugin preds  s = rule "plugin"    preds Set s
-let archives ?(preds=[]) name =
-  [ archive (preds @ [Pos "byte"  ]) (name ^ ".cma" )
-  ; archive (preds @ [Pos "native"]) (name ^ ".cmxa")
-  ; plugin  (preds @ [Pos "byte"  ]) (name ^ ".cma" )
-  ; plugin  (preds @ [Pos "native"]) (name ^ ".cmxs")
+let archives ?(preds=[]) lib =
+  let archives = Lib.archives lib in
+  let plugins  = Lib.plugins  lib in
+  let make ps =
+    String.concat ~sep:" " (List.map ps ~f:Path.basename)
+  in
+  [ archive (preds @ [Pos "byte"  ]) (make archives.byte  )
+  ; archive (preds @ [Pos "native"]) (make archives.native)
+  ; plugin  (preds @ [Pos "byte"  ]) (make plugins .byte  )
+  ; plugin  (preds @ [Pos "native"]) (make plugins .native)
   ]
 
-let gen_lib pub_name (lib : Library.t) ~lib_deps ~ppx_runtime_deps:ppx_rt_deps ~version =
+let gen_lib pub_name lib ~version =
   let desc =
-    match lib.synopsis with
+    match Lib.synopsis lib with
     | Some s -> s
     | None ->
+      (* CR-someday jdimino: wut? this looks old *)
       match (pub_name : Pub_name.t) with
-      | Dot (p, "runtime-lib") -> sprintf "Runtime library for %s" (Pub_name.to_string p)
-      | Dot (p, "expander"   ) -> sprintf "Expander for %s"        (Pub_name.to_string p)
+      | Dot (p, "runtime-lib") ->
+        sprintf "Runtime library for %s" (Pub_name.to_string p)
+      | Dot (p, "expander") ->
+        sprintf "Expander for %s" (Pub_name.to_string p)
       | _ -> ""
   in
   let preds =
-    match lib.kind with
+    match Lib.kind lib with
     | Normal -> []
     | Ppx_rewriter | Ppx_deriver -> [Pos "ppx_driver"]
   in
+  let lib_deps    = Lib.Meta.requires lib in
+  let ppx_rt_deps = Lib.Meta.ppx_runtime_deps lib in
   List.concat
     [ version
     ; [ description desc
       ; requires ~preds lib_deps
       ]
-    ; archives ~preds lib.name
-    ; (match lib.kind with
+    ; archives ~preds lib
+    ; if String_set.is_empty ppx_rt_deps then
+        []
+      else
+        [ Comment "This is what jbuilder uses to find out the runtime \
+                   dependencies of"
+        ; Comment "a preprocessor"
+        ; ppx_runtime_deps ppx_rt_deps
+        ]
+    ; (match Lib.kind lib with
        | Normal -> []
        | Ppx_rewriter | Ppx_deriver ->
-         let sub_pkg_name = "deprecated-ppx-method" in
-         [ Comment "This is what jbuilder uses to find out the runtime dependencies of"
-         ; Comment "a preprocessor"
-         ; ppx_runtime_deps ppx_rt_deps
-         ; Comment "This line makes things transparent for people mixing preprocessors"
-         ; Comment "and normal dependencies"
-         ; requires ~preds:[Neg "ppx_driver"]
-             [Pub_name.to_string (Dot (pub_name, sub_pkg_name))]
-         ; Package
-             { name    = sub_pkg_name
-             ; entries =
-                 List.concat
-                   [ version
-                   ; [ description "glue package for the deprecated method of using ppx"
-                     ; requires ppx_rt_deps
-                     ]
-                   ; match lib.kind with
-                   | Normal -> assert false
-                   | Ppx_rewriter ->
-                     [ rule "ppx" [Neg "ppx_driver"; Neg "custom_ppx"]
-                         Set "./ppx.exe --as-ppx" ]
-                   | Ppx_deriver ->
-                     [ rule "requires" [Neg "ppx_driver"; Neg "custom_ppx"] Add
-                         "ppx_deriving"
-                     ; rule "ppxopt" [Neg "ppx_driver"; Neg "custom_ppx"] Set
-                         ("ppx_deriving,package:" ^ Pub_name.to_string pub_name)
-                     ]
-                   ]
-             }
-         ])
-    ; (match lib.buildable.js_of_ocaml with
-       | { javascript_files = []; _ } -> []
-       | { javascript_files = l ; _ } ->
+         (* Deprecated ppx method support *)
+         let no_ppx_driver = Neg "ppx_driver" and no_custom_ppx = Neg "custom_ppx" in
+         List.concat
+           [ [ Comment "This line makes things transparent for people mixing \
+                        preprocessors"
+             ; Comment "and normal dependencies"
+             ; requires ~preds:[no_ppx_driver]
+                 (Lib.Meta.ppx_runtime_deps_for_deprecated_method lib)
+             ]
+           ; match Lib.kind lib with
+           | Normal -> assert false
+           | Ppx_rewriter ->
+             [ rule "ppx" [no_ppx_driver; no_custom_ppx]
+                 Set "./ppx.exe --as-ppx" ]
+           | Ppx_deriver ->
+             [ rule "requires" [no_ppx_driver; no_custom_ppx] Add
+                 "ppx_deriving"
+             ; rule "ppxopt" [no_ppx_driver; no_custom_ppx] Set
+                 ("ppx_deriving,package:" ^ Pub_name.to_string pub_name)
+             ]
+           ]
+      )
+    ; (match Lib.jsoo_runtime lib with
+       | [] -> []
+       | l  ->
          let root = Pub_name.root pub_name in
+         let l = List.map l ~f:Path.basename in
          [ rule "linkopts" [Pos "javascript"] Set
-             (List.map l ~f:(fun fn ->
-                sprintf "+%s/%s" root (Filename.basename fn))
-              |> String.concat ~sep:" ")
+             (List.map l ~f:(sprintf "+%s/%s" root) |> String.concat ~sep:" ")
          ; rule "jsoo_runtime" [] Set
-             (List.map l ~f:Filename.basename
-              |> String.concat ~sep:" ")
+             (String.concat l ~sep:" ")
          ]
       )
     ]
 
-let gen ~package ~version ~stanzas ~lib_deps ~ppx_runtime_deps =
-  let items =
-    List.filter_map stanzas ~f:(fun (dir, stanza) ->
-      match (stanza : Stanza.t) with
-      | Library ({ public = Some { name; package = p; _ }; _ } as lib)
-        when p.name = package ->
-        Some (Lib (dir, Pub_name.parse name, lib))
-      | _ ->
-        None)
+let gen ~package ~version libs =
+  let version =
+    match version with
+    | None -> []
+    | Some s -> [rule "version" [] Set s]
   in
-  (version >>^ function
-   | None -> []
-   | Some s -> [rule "version" [] Set s])
-  >>>
-  Build.all
-    (List.map items ~f:(fun (Lib (dir, pub_name, lib)) ->
-         Build.fanout3
-           (Build.arr (fun x -> x))
-           (lib_deps ~dir         (Stanza.Library lib))
-           (ppx_runtime_deps ~dir (Stanza.Library lib))
-         >>^ fun (version, lib_deps, ppx_runtime_deps) ->
-         (pub_name,
-          gen_lib pub_name lib ~lib_deps ~ppx_runtime_deps ~version)))
-  >>^ fun pkgs ->
+  let pkgs =
+    List.map libs ~f:(fun lib ->
+      let pub_name = Pub_name.parse (Lib.name lib) in
+      (pub_name,
+       gen_lib pub_name lib ~version))
+  in
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->
       match Pub_name.to_list pn with
       | [] -> assert false
       | _package :: path -> (path, meta))
   in
-  let pkgs = List.sort pkgs ~cmp:(fun (a, _) (b, _) -> compare a b) in
+  let pkgs = List.sort pkgs ~compare:(fun (a, _) (b, _) -> compare a b) in
   let rec loop name pkgs =
     let entries, sub_pkgs =
       List.partition_map pkgs ~f:(function
-        | ([]    , entries) -> Inl entries
-        | (x :: p, entries) -> Inr (x, (p, entries)))
+        | ([]    , entries) -> Left  entries
+        | (x :: p, entries) -> Right (x, (p, entries)))
     in
     let entries = List.concat entries in
     let subs =
-      String_map.of_alist_multi sub_pkgs
-      |> String_map.bindings
+      String_map.of_list_multi sub_pkgs
+      |> String_map.to_list
       |> List.map ~f:(fun (name, pkgs) ->
         let pkg = loop name pkgs in
         Package { pkg with

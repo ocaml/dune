@@ -1,0 +1,4 @@
+(library
+ ((name foo)
+  (libraries (bytes unix findlib))
+  (preprocess (pps (fooppx)))))

@@ -1,9 +1,0 @@
-(library
- ((name        hello)
-  (public_name hello)
-  (libraries (plop.ca-marche))))
-
-(library
- ((name        pas_de_bol)
-  (public_name pas-de-bol)
-  (libraries (plop.ca-marche-pas))))

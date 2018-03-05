@@ -1,7 +1,7 @@
 open Import
 open Jbuilder_opam_file_format
 
-let ( >>= ) = Future.( >>= )
+open Fiber.O
 
 let is_a_source_file fn =
   match Filename.extension fn with
@@ -50,7 +50,7 @@ let make_watermark_map ~name ~version ~commit =
         end
       | _ -> err
   in
-  String_map.of_alist_exn
+  String_map.of_list_exn
     [ "NAME"           , Ok name
     ; "VERSION"        , Ok version
     ; "VERSION_NUM"    , Ok version_num
@@ -66,7 +66,7 @@ let make_watermark_map ~name ~version ~commit =
 
 let subst_string s ~fname ~map =
   let len = String.length s in
-  let longest_var = List.longest (String_map.keys map) in
+  let longest_var = String.longest (String_map.keys map) in
   let loc_of_offset ~ofs ~len =
     let rec loop lnum bol i =
       if i = ofs then
@@ -125,7 +125,7 @@ let subst_string s ~fname ~map =
       match s.[i] with
       | '%' -> begin
           let var = String.sub s ~pos:(start + 2) ~len:(i - start - 3) in
-          match String_map.find var map with
+          match String_map.find map var with
           | None -> in_var ~start:(i - 1) (i + 1) acc
           | Some (Ok repl) ->
             let acc = (start, i + 1, repl) :: acc in
@@ -205,11 +205,15 @@ let subst_git ?name () =
     | Some x -> Path.to_string x
     | None -> Utils.program_not_found "git"
   in
-  Future.both
-    (Future.both
-       (Future.run_capture Strict git ["describe"; "--always"; "--dirty"])
-       (Future.run_capture Strict git ["rev-parse"; rev]))
-    (Future.run_capture_lines Strict git ["ls-tree"; "-r"; "--name-only"; rev])
+  Fiber.fork_and_join
+    (fun () ->
+       Fiber.fork_and_join
+         (fun () ->
+            Process.run_capture Strict git ["describe"; "--always"; "--dirty"])
+         (fun () ->
+            Process.run_capture Strict git ["rev-parse"; rev]))
+    (fun () ->
+       Process.run_capture_lines Strict git ["ls-tree"; "-r"; "--name-only"; rev])
   >>= fun ((version, commit), files) ->
   let version = String.trim version in
   let commit  = String.trim commit  in
@@ -218,10 +222,10 @@ let subst_git ?name () =
   List.iter files ~f:(fun fn ->
     if is_a_source_file fn then
       subst_file fn ~map:watermarks);
-  Future.return ()
+  Fiber.return ()
 
 let subst ?name () =
   if Sys.file_exists ".git" then
     subst_git ?name ()
   else
-    Future.return ()
+    Fiber.return ()

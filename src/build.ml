@@ -6,12 +6,6 @@ module Vspec = struct
   type 'a t = T : Path.t * 'a Vfile_kind.t -> 'a t
 end
 
-module Prog_spec = struct
-  type 'a t =
-    | Dep of Path.t
-    | Dyn of ('a -> Path.t)
-end
-
 type lib_dep_kind =
   | Optional
   | Required
@@ -40,9 +34,10 @@ module Repr = struct
     | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
-    | Record_lib_deps : Path.t * lib_deps -> ('a, 'a) t
+    | Record_lib_deps : lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t
+    | Catch : ('a, 'b) t * (exn -> 'b) -> ('a, 'b) t
 
   and 'a memo =
     { name          : string
@@ -60,7 +55,7 @@ module Repr = struct
     | Decided   of bool * ('a, 'b) t
 
   and glob_state =
-    | G_unevaluated of Path.t * Re.re
+    | G_unevaluated of Loc.t * Path.t * Re.re
     | G_evaluated   of Path.t list
 
   let get_if_file_exists_exn state =
@@ -86,19 +81,18 @@ let merge_lib_deps a b =
 let arr f = Arr f
 let return x = Arr (fun () -> x)
 
-let record_lib_deps_simple ~dir lib_deps =
-  Record_lib_deps (dir, lib_deps)
+let record_lib_deps_simple lib_deps =
+  Record_lib_deps lib_deps
 
-let record_lib_deps ~dir ~kind lib_deps =
+let record_lib_deps ~kind lib_deps =
   Record_lib_deps
-    (dir,
-     List.concat_map lib_deps ~f:(function
-       | Jbuild.Lib_dep.Direct s -> [(s, kind)]
+    (List.concat_map lib_deps ~f:(function
+       | Jbuild.Lib_dep.Direct (_, s) -> [(s, kind)]
        | Select { choices; _ } ->
          List.concat_map choices ~f:(fun c ->
-           String_set.elements c.Jbuild.Lib_dep.required
+           String_set.to_list c.Jbuild.Lib_dep.required
            |> List.map ~f:(fun d -> (d, Optional))))
-     |> String_map.of_alist_reduce ~f:merge_lib_dep_kind)
+     |> String_map.of_list_reduce ~f:merge_lib_dep_kind)
 
 module O = struct
   let ( >>> ) a b =
@@ -122,6 +116,11 @@ let fanout3 a b c =
   (a &&& (b &&& c))
   >>>
   arr (fun (a, (b, c)) -> (a, b, c))
+let fanout4 a b c d =
+  let open O in
+  (a &&& (b &&& (c &&& d)))
+  >>>
+  arr (fun (a, (b, (c, d))) -> (a, b, c, d))
 
 let rec all = function
   | [] -> arr (fun _ -> [])
@@ -133,9 +132,11 @@ let rec all = function
 let path p = Paths (Pset.singleton p)
 let paths ps = Paths (Pset.of_list ps)
 let path_set ps = Paths ps
-let paths_glob ~dir re = Paths_glob (ref (G_unevaluated (dir, re)))
+let paths_glob ~loc ~dir re = Paths_glob (ref (G_unevaluated (loc, dir, re)))
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths t
+
+let catch t ~on_error = Catch (t, on_error)
 
 let contents p = Contents p
 let lines_of p = Lines_of p
@@ -148,14 +149,7 @@ let strings p =
 let read_sexp p =
   contents p
   >>^ fun s ->
-  let lb = Lexing.from_string s in
-  lb.lex_curr_p <-
-    { pos_fname = Path.to_string p
-    ; pos_lnum  = 1
-    ; pos_bol   = 0
-    ; pos_cnum  = 0
-    };
-  Sexp_lexer.single lb
+  Usexp.parse_string s ~fname:(Path.to_string p) ~mode:Single
 
 let if_file_exists p ~then_ ~else_ =
   If_file_exists (p, ref (Undecided (then_, else_)))
@@ -175,6 +169,10 @@ let fail ?targets x =
   | None -> Fail x
   | Some l -> Targets l >>> Fail x
 
+let of_result = function
+  | Ok    x -> return x
+  | Error e -> fail { fail = fun () -> raise e }
+
 let memoize name t =
   Memo { name; t; state = Unevaluated }
 
@@ -189,10 +187,11 @@ let files_recursively_in ~dir ~file_tree =
 
 let store_vfile spec = Store_vfile spec
 
-let get_prog (prog : _ Prog_spec.t) =
-  match prog with
-  | Dep p -> path p >>> arr (fun _ -> p)
-  | Dyn f -> arr f >>> dyn_paths (arr (fun x -> [x]))
+let get_prog = function
+  | Ok p -> path p >>> arr (fun _ -> Ok p)
+  | Error f ->
+    arr (fun _ -> Error f)
+    >>> dyn_paths (arr (function Error _ -> [] | Ok x -> [x]))
 
 let prog_and_args ?(dir=Path.root) prog args =
   Paths (Arg_spec.add_deps args Pset.empty)
@@ -200,7 +199,7 @@ let prog_and_args ?(dir=Path.root) prog args =
   (get_prog prog &&&
    (arr (Arg_spec.expand ~dir args)
     >>>
-    dyn_paths (arr (fun (_args, deps) -> Path.Set.elements deps))
+    dyn_paths (arr (fun (_args, deps) -> Path.Set.to_list deps))
     >>>
     arr fst))
 
@@ -238,24 +237,29 @@ let action_dyn ?dir ~targets () =
   | None -> action
   | Some dir -> Action.Chdir (dir, action)
 
-let update_file fn s =
-  action ~targets:[fn] (Update_file (fn, s))
+let write_file fn s =
+  action ~targets:[fn] (Write_file (fn, s))
 
-let update_file_dyn fn =
+let write_file_dyn fn =
   Targets [fn]
   >>^ fun s ->
-  Action.Update_file (fn, s)
+  Action.Write_file (fn, s)
 
 let copy ~src ~dst =
   path src >>>
   action ~targets:[dst] (Copy (src, dst))
+
+let copy_and_add_line_directive ~src ~dst =
+  path src >>>
+  action ~targets:[dst]
+    (Copy_and_add_line_directive (src, dst))
 
 let symlink ~src ~dst =
   path src >>>
   action ~targets:[dst] (Symlink (src, dst))
 
 let create_file fn =
-  action ~targets:[fn] (Create_file fn)
+  action ~targets:[fn] (Redirect (Stdout, fn, Progn []))
 
 let remove_tree dir =
   arr (fun _ -> Action.Remove_tree dir)

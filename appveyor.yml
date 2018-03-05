@@ -1,8 +1,8 @@
 # AppVeyor config using https://github.com/Chris00/ocaml-appveyor
 
 install:
-  - appveyor DownloadFile "https://raw.githubusercontent.com/Chris00/ocaml-appveyor/master/install_ocaml.cmd" -FileName "C:\install_ocaml.cmd"
-  - C:\install_ocaml.cmd
+  - cd "%APPVEYOR_BUILD_FOLDER%"
+  - install_ocaml.cmd
 
 build_script:
   - cd "%APPVEYOR_BUILD_FOLDER%"

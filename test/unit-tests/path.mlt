@@ -1,0 +1,69 @@
+(* -*- tuareg -*- *)
+open Jbuilder;;
+open Import;;
+
+let r = Path.(relative root);;
+
+#install_printer Path.pp;;
+
+Path.(let p = relative root "foo" in descendant p ~of_:p)
+[%%expect{|
+val r : string -> Jbuilder.Path.t = <fun>
+- : Jbuilder.Path.t option = Some foo
+|}]
+
+(* different strings but same length *)
+Path.(descendant (relative root "foo") ~of_:(relative root "bar"))
+[%%expect{|
+- : Jbuilder.Path.t option = None
+|}]
+
+Path.(descendant (r "foo") ~of_:(r "foo/"))
+[%%expect{|
+- : Jbuilder.Path.t option = Some foo
+|}]
+
+Path.(descendant (r "foo/") ~of_:(r "foo"))
+[%%expect{|
+- : Jbuilder.Path.t option = Some foo
+|}]
+
+Path.(descendant (r "foo/bar") ~of_:(r "foo"))
+[%%expect{|
+- : Jbuilder.Path.t option = Some bar
+|}]
+
+Path.(descendant Path.root ~of_:(r "foo"))
+[%%expect{|
+- : Jbuilder.Path.t option = None
+|}]
+
+Path.(descendant Path.root ~of_:Path.root)
+[%%expect{|
+- : Jbuilder.Path.t option = Some .
+|}]
+
+Path.(descendant (r "foo") ~of_:Path.root)
+[%%expect{|
+- : Jbuilder.Path.t option = Some foo
+|}]
+
+Path.explode (Path.of_string "a/b/c");
+[%%expect{|
+- : string list option = Some ["a"; "b"; "c"]
+|}]
+
+Path.explode (Path.of_string "a/b");
+[%%expect{|
+- : string list option = Some ["a"; "b"]
+|}]
+
+Path.explode (Path.of_string "a");
+[%%expect{|
+- : string list option = Some ["a"]
+|}]
+
+Path.explode (Path.of_string "");
+[%%expect{|
+- : string list option = Some []
+|}]

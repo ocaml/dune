@@ -11,13 +11,25 @@ end
 
 module Rule : sig
   type t =
-    { context : Context.t option
-    ; build   : (unit, Action.t) Build.t
-    ; targets : Target.t list
-    ; sandbox : bool
+    { context  : Context.t option
+    ; build    : (unit, Action.t) Build.t
+    ; targets  : Target.t list
+    ; sandbox  : bool
+    ; mode     : Jbuild.Rule.Mode.t
+    ; locks    : Path.t list
+    ; loc      : Loc.t option
+    ; (** Directory where all the targets are produced *)
+      dir      : Path.t
     }
 
-  val make : ?sandbox:bool -> ?context:Context.t -> (unit, Action.t) Build.t -> t
+  val make
+    :  ?sandbox:bool
+    -> ?mode:Jbuild.Rule.Mode.t
+    -> ?context:Context.t
+    -> ?locks:Path.t list
+    -> ?loc:Loc.t
+    -> (unit, Action.t) Build.t
+    -> t
 end
 
 module Static_deps : sig
@@ -30,12 +42,13 @@ end
 (* must be called first *)
 val static_deps
   :  (_, _) Build.t
-  -> all_targets_by_dir:Path.Set.t Path.Map.t Lazy.t
+  -> all_targets:(dir:Path.t -> Path.Set.t)
+  -> file_tree:File_tree.t
   -> Static_deps.t
 
 val lib_deps
   :  (_, _) Build.t
-  -> Build.lib_deps Path.Map.t
+  -> Build.lib_deps
 
 val targets
   :  (_, _) Build.t

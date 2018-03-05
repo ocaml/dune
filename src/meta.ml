@@ -135,7 +135,7 @@ let rec simplify t =
         { pkg with subs = simplify sub :: pkg.subs }
       | Rule rule ->
         let rules =
-          String_map.find_default rule.var pkg.vars
+          Option.value (String_map.find pkg.vars rule.var)
             ~default:{ set_rules = []; add_rules = [] }
         in
         let rules =
@@ -143,7 +143,7 @@ let rec simplify t =
           | Set -> { rules with set_rules = rule :: rules.set_rules }
           | Add -> { rules with add_rules = rule :: rules.add_rules }
         in
-        { pkg with vars = String_map.add pkg.vars ~key:rule.var ~data:rules })
+        { pkg with vars = String_map.add pkg.vars rule.var rules })
 
 let rule var predicates action value =
   Rule { var; predicates; action; value }
@@ -160,7 +160,7 @@ let archives name =
   ; plugin  "native" (name ^ ".cmxs")
   ]
 
-let builtins =
+let builtins ~stdlib_dir =
   let version = version "[distributed with Ocaml]" in
   let simple name ?dir ?(archive_name=name) deps =
     let archives = archives archive_name in
@@ -216,8 +216,17 @@ let builtins =
         ]
     }
   in
-  List.map [ compiler_libs; str; unix; bigarray; threads; num ] ~f:(fun t -> t.name, t)
-  |> String_map.of_alist_exn
+  let libs =
+    (* We do not rely on an "exists_if" ocamlfind variable,
+       because it would produce an error message mentioning
+       a "hidden" package (which could be confusing). *)
+    if Path.exists (Path.relative stdlib_dir "nums.cma") then
+      [ compiler_libs; str; unix; bigarray; threads; num ]
+    else
+      [ compiler_libs; str; unix; bigarray; threads ]
+  in
+  List.map libs ~f:(fun t -> t.name, t)
+  |> String_map.of_list_exn
 
 let string_of_action = function
   | Set -> "="
@@ -236,13 +245,23 @@ let pp_list f ppf l =
       Format.pp_print_cut ppf ();
       f ppf x)
 
-let pp_value var =
+let pp_print_text ppf s =
+  Format.fprintf ppf "\"@[<hv>";
+  Format.pp_print_text ppf (String.escape_double_quote s);
+  Format.fprintf ppf "@]\""
+
+let pp_print_string ppf s =
+  Format.fprintf ppf "\"@[<hv>";
+  Format.pp_print_string ppf (String.escape_double_quote s);
+  Format.fprintf ppf "@]\""
+
+let pp_quoted_value var =
   match var with
   | "archive" | "plugin" | "requires"
   | "ppx_runtime_deps" | "linkopts" | "jsoo_runtime" ->
-    Format.pp_print_text
+     pp_print_text
   | _ ->
-    Format.pp_print_string
+     pp_print_string
 
 let rec pp ppf entries =
   Format.fprintf ppf "@[<v>%a@]" (pp_list pp_entry) entries
@@ -253,12 +272,12 @@ and pp_entry ppf entry =
   | Comment s ->
     fprintf ppf "# %s" s
   | Rule { var; predicates = []; action; value } ->
-    fprintf ppf "@[%s %s \"@[<hv>%a@]\"@]"
-      var (string_of_action action) (pp_value var) value
+    fprintf ppf "@[%s %s %a@]"
+      var (string_of_action action) (pp_quoted_value var) value
   | Rule { var; predicates; action; value } ->
-    fprintf ppf "@[%s(%s) %s \"@[<hv>%a@]\"@]"
+    fprintf ppf "@[%s(%s) %s %a@]"
       var (String.concat ~sep:"," (List.map predicates ~f:string_of_predicate))
-      (string_of_action action) (pp_value var) value
+      (string_of_action action) (pp_quoted_value var) value
   | Package { name; entries } ->
     fprintf ppf "@[<v 2>package %S (@,%a@]@,)"
       name pp entries

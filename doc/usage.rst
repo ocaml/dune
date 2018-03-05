@@ -16,12 +16,14 @@ jbuild-workspace
 
 The root of the current workspace is determined by looking up a
 ``jbuild-workspace`` file in the current directory and parent directories.
-``jbuilder`` prints out the root when starting:
+
+``jbuilder`` prints out the root when starting if it is not the
+current directory:
 
 .. code:: bash
 
     $ jbuilder runtest
-    Workspace root: /usr/local/home/jdimino/workspaces/public-jane/+share+
+    Entering directory '/home/jdimino/code/jbuilder'
     ...
 
 More precisely, it will choose the outermost ancestor directory containing a
@@ -54,7 +56,7 @@ in ancestor directories. For instance ``jbuild-workspace.dev``. If such a file
 is found, it will mark the root of the workspace. ``jbuilder`` will however not
 read its contents.
 
-The rationale for this rule is that it is good practice to have a
+ The rationale for this rule is that it is good practice to have a
 ``jbuild-workspace.dev`` file at the root of your project.
 
 For quick experiments, simply do this to mark the root:
@@ -89,14 +91,13 @@ the command line.
 Resolution
 ----------
 
-Most targets that Jbuilder knows how to build lives in the ``_build`` directory,
-except for a few:
+All targets that Jbuilder knows how to build live in the ``_build``
+directory.  Although, some are sometimes copied to the source tree for
+the need of external tools. These includes:
 
-= ``.merlin`` files
+- ``.merlin`` files
 
-- ``<package>.install`` files; for the ``default`` context Jbuilder knows how
-   generate the install file both in ``_build/default`` and in the source tree
-   so that ``opam`` can find it
+- ``<package>.install`` files
 
 As a result, if you want to ask ``jbuilder`` to produce a particular ``.exe``
 file you would have to type:
@@ -105,14 +106,15 @@ file you would have to type:
 
     $ jbuilder build _build/default/bin/prog.exe
 
-However, for convenience when a target on the command line doesn't start with
-``_build``, ``jbuilder`` will expand it to the corresponding target in all the
-build contexts where it knows how to build it. It prints out the actual set of
-targets when starting so that you know what is happening:
+However, for convenience when a target on the command line doesn't
+start with ``_build``, ``jbuilder`` will expand it to the
+corresponding target in all the build contexts where it knows how to
+build it. When using ``--verbose``, It prints out the actual set of
+targets when starting:
 
 .. code:: bash
 
-    $ jbuilder build bin/prog.exe
+    $ jbuilder build bin/prog.exe --verbose
     ...
     Actual targets:
     - _build/default/bin/prog.exe
@@ -123,11 +125,12 @@ Aliases
 -------
 
 Targets starting with a ``@`` are interpreted as aliases. For instance
-``@src/runtest`` means the alias ``src/runtest``. If you want to refer
-to a target starting with a ``@``, simply write: ``./@foo``.
+``@src/runtest`` means the alias ``runtest`` in all descendant of
+``src`` in all build contexts where it is defined. If you want to
+refer to a target starting with a ``@``, simply write: ``./@foo``.
 
-Note that an alias not pointing to the ``_build`` directory always
-depends on all the corresponding aliases in build contexts.
+To build and run the tests for a particular build context, use
+``@_build/default/runtest`` instead.
 
 So for instance:
 
@@ -156,7 +159,7 @@ determined as follow:
 .. _running-tests:
 
 Running tests
--------------
+=============
 
 There are two ways to run tests:
 
@@ -169,6 +172,31 @@ tests in a specific sub-directory and its children by using:
 
 -  ``jbuilder build @foo/bar/runtest``
 -  ``jbuilder runtest foo/bar``
+
+Launching the Toplevel (REPL)
+=============================
+
+jbuilder supports launching a `utop <https://github.com/diml/utop>`__ instance
+with locally defined libraries loaded.
+
+.. code:: bash
+
+   $ jbuilder utop <dir> -- <args>
+
+Where ``<dir>`` is a directory containing a ``jbuild`` file defining all the
+libraries that will be loaded (using the ``library`` stanza). ``<args>`` will be
+passed as arguments to the utop command itself. For example, to launch it in
+emacs mode.
+
+Requirements & Limitations
+--------------------------
+
+* utop version >= 2.0 is required for this to work.
+* This subcommand only supports loading libraries. Executables aren't supported.
+* Libraries that are dependencies of utop itself cannot be loaded. For example
+  `Camomile <https://github.com/yoriyuki/Camomile>`__.
+* Loading libraries that are defined in different directories into one utop
+  instance isn't possible.
 
 Restricting the set of packages
 ===============================
@@ -194,14 +222,16 @@ follows:
 
     build: [["jbuilder" "build" "-p" name "-j" jobs]]
 
-``-p pkg`` is a shorthand for ``--root . --only-packages pkg``. ``-p``
-is the short version of ``--for-release-of-packages``.
+``-p pkg`` is a shorthand for ``--root . --only-packages pkg --promote
+ignore``. ``-p`` is the short version of
+``--for-release-of-packages``.
 
 This has the following effects:
 
 -  it tells jbuilder to build everything that is installable and to
    ignore packages other than ``name`` defined in your project
 -  it sets the root to prevent jbuilder from looking it up
+-  it ignores promotion to cut down dependencies and speed up the build
 -  it uses whatever concurrency option opam provides
 
 Note that ``name`` and ``jobs`` are variables expanded by opam. ``name``
@@ -306,23 +336,33 @@ a typical ``jbuild-workspace`` file looks like:
 
 .. code:: scheme
 
-    (context ((switch 4.02.3)))
-    (context ((switch 4.03.0)))
-    (context ((switch 4.04.0)))
+    (context (opam (switch 4.02.3)))
+    (context (opam (switch 4.03.0)))
+    (context (opam (switch 4.04.0)))
 
 The rest of this section describe the stanzas available.
+
+Note that an empty ``jbuild-workspace`` file is interpreted the same
+as one containing exactly:
+
+.. code:: scheme
+
+    (context default)
+
+This allows you to use an empty ``jbuild-workspace`` file to mark
+the root of your project.
 
 context
 ~~~~~~~
 
 The ``(context ...)`` stanza declares a build context. The argument
-can be either ``default`` for the default build context or can be the
-description of an opam switch, as follows:
+can be either ``default`` or ``(default)`` for the default build
+context or can be the description of an opam switch, as follows:
 
 .. code:: scheme
 
-    (context ((switch <opam-switch-name>)
-              <optional-fields>))
+    (context (opam (switch <opam-switch-name>)
+                   <optional-fields>))
 
 ``<optional-fields>`` are:
 
@@ -333,11 +373,31 @@ description of an opam switch, as follows:
    the opam root defined by the environment in which ``jbuilder`` is
    run which is usually ``~/.opam``
 
--  ``(merlin)`` instructs Jbuilder to generate the ``.merlin`` files
-   from this context. There can be at most one build context with a
-   ``(merlin)`` field. If no build context has a ``(merlin)`` field,
-   the selected context for ``merlin`` will be ``(context default)``
-   if present. Otherwise Jbuilder won't generate ``.merlin`` files
+- ``(merlin)`` instructs Jbuilder to use this build context for
+   merlin
+
+Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field
+in order to setup cross compilation. See `Cross Compilation`_ for more
+information.
+
+Merlin reads compilation artifacts and it can only read the
+compilation artifacts of a single context.  Usually, you should use
+the artifacts from the ``default`` context, and if you have the
+``(context default)`` stanza in your ``jbuild-workspace`` file, that
+is the one Jbuilder will use.
+
+For rare cases where this is not what you want, you can force Jbuilder
+to use a different build contexts for merlin by adding the field
+``(merlin)`` to this context.
+
+Note that the following syntax is still accepted but is deprecated:
+
+.. code:: scheme
+
+    (context ((switch <opam-switch-name>)
+              <optional-fields>))
+
+it is interpreted the same as ``(context (opam (switch ...) ...))``.
 
 Building JavaScript with js_of_ocaml
 ====================================

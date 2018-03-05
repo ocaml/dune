@@ -32,7 +32,7 @@ end
 
 module Env_var : sig
   type t = string
-  val compare : t -> t -> int
+  val compare : t -> t -> Ordering.t
 end
 
 module Env_var_map : Map.S with type key := Env_var.t
@@ -47,6 +47,10 @@ type t =
   ; (** If this context is a cross-compilation context, you need another context for
         building tools used for the compilation that run on the host. *)
     for_host : t option
+
+  ; (** [false] if a user explicitly listed this context in the workspace.
+        Controls whether we add artifacts from this context @install *)
+    implicit : bool
 
   ; (** Directory where artifact are stored, for instance "_build/default" *)
     build_dir : Path.t
@@ -72,6 +76,7 @@ type t =
     env_extra : string Env_var_map.t
 
   ; findlib : Findlib.t
+  ; findlib_toolchain : string option
 
   ; (** Misc *)
     arch_sixtyfour : bool
@@ -81,9 +86,9 @@ type t =
   ; (** Native dynlink *)
     natdynlink_supported : bool
 
-  ; (** Output of [ocamlc -config] *)
-    ocamlc_config           : (string * string) list
-  ; version                 : string
+  ; ocamlc_config           : Ocamlc_config.t
+  ; version_string          : string
+  ; version                 : int * int * int
   ; stdlib_dir              : Path.t
   ; ccomp_type              : string
   ; c_compiler              : string
@@ -122,29 +127,25 @@ type t =
 val sexp_of_t : t -> Sexp.t
 
 (** Compare the context names *)
-val compare : t -> t -> int
-
-val create_for_opam
-  :  ?root:string
-  -> switch:string
-  -> name:string
-  -> ?merlin:bool
-  -> unit
-  -> t Future.t
+val compare : t -> t -> Ordering.t
 
 (** If [use_findlib] is [false], don't try to guess the library search path with opam or
     ocamlfind. This is only for building jbuilder itself, so that its build is completely
     independent of the user setup. *)
-val default : ?merlin:bool -> ?use_findlib:bool -> unit -> t Future.t
+val create
+  :  ?use_findlib:bool
+  -> ?merlin:bool
+  -> Workspace.Context.t
+  -> t list Fiber.t
 
 val which : t -> string -> Path.t option
 
 val extend_env : vars:string Env_var_map.t -> env:string array -> string array
 
-val opam_config_var : t -> string -> string option Future.t
+val opam_config_var : t -> string -> string option Fiber.t
 
-val install_prefix : t -> Path.t Future.t
-val install_ocaml_libdir : t -> Path.t option Future.t
+val install_prefix : t -> Path.t Fiber.t
+val install_ocaml_libdir : t -> Path.t option Fiber.t
 
 val env_for_exec : t -> string array
 

@@ -9,11 +9,12 @@ val all : t list
 val compiled_unit_ext : t -> string
 val compiled_lib_ext : t -> string
 val exe_ext : t -> string
+val plugin_ext : t -> string
 
 val cm_kind : t -> Cm_kind.t
 val of_cm_kind : Cm_kind.t -> t
 
-val findlib_predicate : t -> string
+val variant : t -> Variant.t
 
 module Dict : sig
   type mode = t
@@ -28,6 +29,8 @@ module Dict : sig
   val of_func : (mode:mode -> 'a) -> 'a t
 
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
+
+  val make_both : 'a -> 'a t
 
   module Set : sig
 

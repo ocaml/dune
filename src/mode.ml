@@ -17,8 +17,9 @@ let choose byte native = function
 
 let compiled_unit_ext = choose ".cmo" ".cmx"
 let compiled_lib_ext = choose ".cma" ".cmxa"
+let plugin_ext = choose ".cma" ".cmxs"
 
-let findlib_predicate = choose "byte" "native"
+let variant = choose Variant.byte Variant.native
 
 let cm_kind = choose Cm_kind.Cmo Cmx
 
@@ -46,6 +47,11 @@ module Dict = struct
   let map2 a b ~f =
     { byte   = f a.byte   b.byte
     ; native = f a.native b.native
+    }
+
+  let make_both x =
+    { byte   = x
+    ; native = x
     }
 
   module Set = struct
@@ -108,12 +114,19 @@ module Dict = struct
       (List.map t.byte ~f:(fun x -> Byte,x))
 
     let of_list l =
-      let byte, native = List.partition_map ~f:(fun (m,x) -> if m=Byte then Inr x else Inl x) l in
+      let byte, native = List.partition_map ~f:(fun (m,x) -> if m=Byte then Right x else Left x) l in
       { byte
       ; native
       }
 
-    let t : t Sexp.Of_sexp.t = fun sexp -> of_list (Sexp.Of_sexp.list (Sexp.Of_sexp.pair t binary_kind) sexp)
+    let t : t Sexp.Of_sexp.t =
+      fun sexp ->
+        let elt (sexp : Sexp.Ast.t) =
+          match sexp with
+          | List _ -> Sexp.Of_sexp.pair t binary_kind sexp
+          | _      -> (t sexp, Executable)
+        in
+        of_list (Sexp.Of_sexp.list elt sexp)
 
     let is_empty t = t.byte = [] && t.native = []
 

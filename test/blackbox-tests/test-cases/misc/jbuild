@@ -1,0 +1,65 @@
+(jbuild_version 1)
+
+;; Test for ${^} with globs in rules
+
+(rule
+ ((targets (result expected))
+  (deps    (jbuild (glob_files *.txt)))
+  (action  (progn
+            (with-stdout-to result   (echo ${^}))
+            (with-stdout-to expected (echo "jbuild a.txt b.txt c.txt"))))))
+
+(rule
+ ((targets (result2 expected2))
+  (deps    ((files_recursively_in sub-tree)))
+  (action  (progn
+            (with-stdout-to result2   (echo ${^}))
+            (with-stdout-to expected2 (echo "sub-tree/a sub-tree/dir/b"))))))
+
+(alias
+ ((name   runtest)
+  (deps   (result expected))
+  (action (run diff -u result expected))))
+
+(alias
+ ((name   runtest)
+  (deps   (result2 expected2))
+  (action (run diff -u result2 expected2))))
+
+;; Test inferred rules
+
+(rule (copy jbuild jbuild-plop))
+
+(alias
+ ((name   runtest)
+  (deps   (jbuild jbuild-plop))
+  (action (run diff -u ${^}))))
+
+;; For some tests in subdirs
+
+(rule (with-stdout-to 023e1a58-4d08-11e7-a041-aa000008c8a6 (echo "plop")))
+
+;; Test for ${path-no-dep}
+
+(rule
+ (progn
+  (with-stdout-to pnd-result
+   (chdir sub-tree/dir
+    (progn
+     (echo "${path-no-dep:file-that-doesn't-exist}\n")
+     (echo "${path-no-dep:.}\n"))))
+  (with-stdout-to pnd-expected
+   (progn
+    (echo "../../file-that-doesn't-exist\n")
+    (echo "../..\n")))))
+
+(alias
+ ((name   runtest)
+  (deps   (pnd-result pnd-expected))
+  (action (run diff -u ${^}))))
+
+;; Test for globs
+
+(alias
+ ((name runtest)
+  (deps ((glob_files dir-that-doesnt-exist/*)))))

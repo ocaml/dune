@@ -15,7 +15,7 @@ module Section = struct
     | Man
     | Misc
 
-  let compare : t -> t -> int = compare
+  let compare : t -> t -> Ordering.t = compare
 
   let to_string = function
     | Lib        -> "lib"
@@ -47,6 +47,36 @@ module Section = struct
       ; "man"        , Man
       ; "misc"       , Misc
       ]
+
+  module Paths = struct
+    let lib         = Path.(relative root) "lib"
+    let libexec     = Path.(relative root) "lib"
+    let bin         = Path.(relative root) "bin"
+    let sbin        = Path.(relative root) "sbin"
+    let toplevel    = Path.(relative root) "lib/toplevel"
+    let share       = Path.(relative root) "share"
+    let share_root  = Path.(relative root) "share_root"
+    let etc         = Path.(relative root) "etc"
+    let doc         = Path.(relative root) "doc"
+    let stublibs    = Path.(relative root) "lib/stublibs"
+    let man         = Path.(relative root) "man"
+  end
+
+  let install_dir t ~(package : Package.Name.t) =
+    let package = Package.Name.to_string package in
+    match t with
+    | Bin        -> Paths.bin
+    | Sbin       -> Paths.sbin
+    | Toplevel   -> Paths.toplevel
+    | Share_root -> Paths.share_root
+    | Stublibs   -> Paths.stublibs
+    | Man        -> Paths.man
+    | Lib        -> Path.relative Paths.lib     package
+    | Libexec    -> Path.relative Paths.libexec package
+    | Share      -> Path.relative Paths.share   package
+    | Etc        -> Path.relative Paths.etc     package
+    | Doc        -> Path.relative Paths.doc     package
+    | Misc       -> invalid_arg "Install.Section.install_dir"
 end
 
 module Entry = struct
@@ -82,36 +112,8 @@ module Entry = struct
 
   let set_src t src = { t with src }
 
-  module Paths = struct
-    let lib         = Path.(relative root) "lib"
-    let libexec     = Path.(relative root) "lib"
-    let bin         = Path.(relative root) "bin"
-    let sbin        = Path.(relative root) "sbin"
-    let toplevel    = Path.(relative root) "lib/toplevel"
-    let share       = Path.(relative root) "share"
-    let share_root  = Path.(relative root) "share_root"
-    let etc         = Path.(relative root) "etc"
-    let doc         = Path.(relative root) "doc"
-    let stublibs    = Path.(relative root) "lib/stublibs"
-    let man         = Path.(relative root) "man"
-  end
-
   let relative_installed_path t ~package =
-    let main_dir =
-      match t.section with
-      | Bin        -> Paths.bin
-      | Sbin       -> Paths.sbin
-      | Toplevel   -> Paths.toplevel
-      | Share_root -> Paths.share_root
-      | Stublibs   -> Paths.stublibs
-      | Man        -> Paths.man
-      | Lib        -> Path.relative Paths.lib     package
-      | Libexec    -> Path.relative Paths.libexec package
-      | Share      -> Path.relative Paths.share   package
-      | Etc        -> Path.relative Paths.etc     package
-      | Doc        -> Path.relative Paths.doc     package
-      | Misc       -> invalid_arg "Install.Entry.relative_installed_path"
-    in
+    let main_dir = Section.install_dir t.section ~package in
     let dst =
       match t.dst with
       | Some x -> x
@@ -126,18 +128,30 @@ module Entry = struct
         | _ -> dst
     in
     Path.relative main_dir dst
+
+  let add_install_prefix t ~package ~prefix =
+    let opam_will_install_in_this_dir =
+      Section.install_dir t.section ~package
+    in
+    let i_want_to_install_the_file_as =
+      Path.append prefix (relative_installed_path t ~package)
+    in
+    let dst =
+      Path.reach i_want_to_install_the_file_as ~from:opam_will_install_in_this_dir
+    in
+    { t with dst = Some dst }
 end
 
 module SMap = Map.Make(Section)
 
 let files entries =
   List.fold_left entries ~init:Path.Set.empty ~f:(fun acc (entry : Entry.t) ->
-    Path.Set.add entry.src acc)
+    Path.Set.add acc entry.src)
 
 let group entries =
   List.map entries ~f:(fun (entry : Entry.t) -> (entry.section, entry))
-  |> SMap.of_alist_multi
-  |> SMap.bindings
+  |> SMap.of_list_multi
+  |> SMap.to_list
 
 let gen_install_file entries =
   let buf = Buffer.create 4096 in

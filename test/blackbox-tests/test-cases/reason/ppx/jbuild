@@ -1,0 +1,7 @@
+(jbuild_version 1)
+
+(library
+ ((name reasonppx)
+  (wrapped false)
+  (kind ppx_rewriter)
+  (libraries (ocaml-migrate-parsetree))))

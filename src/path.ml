@@ -93,16 +93,14 @@ module Local = struct
       | exception Not_found -> t
       | i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1)
 
-  let relative initial_t path =
+  let relative ?error_loc t path =
     let rec loop t components =
       match components with
-      | [] -> t
+      | [] -> Ok t
       | "." :: rest -> loop t rest
       | ".." :: rest ->
         begin match t with
-        | "" ->
-          die "path outside the workspace: %s from %s" path
-            (to_string initial_t)
+        | "" -> Error ()
         | t -> loop (parent t) rest
         end
       | fn :: rest ->
@@ -110,7 +108,11 @@ module Local = struct
         | "" -> loop fn rest
         | _ -> loop (t ^ "/" ^ fn) rest
     in
-    loop initial_t (explode_path path)
+    match loop t (explode_path path) with
+    | Ok t -> t
+    | Error () ->
+       Loc.fail_opt error_loc "path outside the workspace: %s from %s" path
+         (to_string t)
 
   let is_canonicalized =
     let rec before_slash s i =
@@ -151,11 +153,11 @@ module Local = struct
       else
         before_slash s (len - 1)
 
-  let of_string s =
+  let of_string ?error_loc s =
     if is_canonicalized s then
       s
     else
-      relative "" s
+      relative "" s ?error_loc
 
   let rec mkdir_p = function
     | "" -> ()
@@ -186,8 +188,9 @@ module Local = struct
     | _ ->
       let of_len = String.length of_ in
       let t_len = String.length t in
-      if (t_len = of_len && t = of_) ||
-         (t_len >= of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_) then
+      if t_len = of_len then
+        Option.some_if (t = of_) t
+      else if (t_len >= of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_) then
         Some (String.sub t ~pos:(of_len + 1) ~len:(t_len - of_len - 1))
       else
         None
@@ -217,7 +220,12 @@ end
 type t = string
 let compare = String.compare
 
-module Set = String_set
+module Set = struct
+  include String_set
+  let sexp_of_t t = Sexp.To_sexp.(list string) (String_set.to_list t)
+  let of_string_set = map
+end
+
 module Map = String_map
 
 module Kind = struct
@@ -243,33 +251,40 @@ let to_string_maybe_quoted t =
 
 let root = ""
 
-let relative t fn =
+let relative ?error_loc t fn =
   if fn = "" then
     t
   else
     match is_local t, is_local fn with
-    | true, true  -> Local.relative t fn
+    | true, true  -> Local.relative t fn ?error_loc
     | _   , false -> fn
     | false, true -> External.relative t fn
 
-let of_string = function
+let of_string ?error_loc s =
+  match s with
   | "" -> ""
   | s  ->
     if Filename.is_relative s then
-      Local.of_string s
+      Local.of_string s ?error_loc
     else
       s
 
-let t sexp = of_string (Sexp.Of_sexp.string sexp)
-let sexp_of_t t = Sexp.Atom (to_string t)
+let t sexp = of_string (Sexp.Of_sexp.string sexp) ~error_loc:(Sexp.Ast.loc sexp)
+let sexp_of_t t = Sexp.atom_or_quoted_string (to_string t)
 
-let absolute =
-  let initial_dir = Sys.getcwd () in
-  fun fn ->
-    if is_local fn then
-      Filename.concat initial_dir fn
-    else
-      fn
+let absolute fn =
+  if is_local fn then
+    Filename.concat initial_cwd fn
+  else
+    fn
+
+let to_absolute_filename t =
+  if is_local t then begin
+    let root = !Clflags.workspace_root in
+    assert (not (Filename.is_relative root));
+    Filename.concat root (to_string t)
+  end else
+    t
 
 let reach t ~from =
   match is_local t, is_local from with
@@ -333,8 +348,15 @@ let parent t =
 
 let build_prefix = "_build/"
 
+let build_dir = "_build"
+
 let is_in_build_dir t =
   String.is_prefix t ~prefix:build_prefix
+
+let is_in_source_tree t = is_local t && not (is_in_build_dir t)
+
+let is_alias_stamp_file t =
+  String.is_prefix t ~prefix:"_build/.aliases/"
 
 let extract_build_context t =
   if String.is_prefix t ~prefix:build_prefix then
@@ -365,16 +387,70 @@ let extract_build_context_dir t =
     None
 
 let drop_build_context t =
+  Option.map (extract_build_context t) ~f:snd
+
+let drop_build_context_exn t =
+  match extract_build_context t with
+  | None -> Sexp.code_error "Path.drop_build_context_exn" [ "t", sexp_of_t t ]
+  | Some (_, t) -> t
+
+let drop_optional_build_context t =
   match extract_build_context t with
   | None -> t
   | Some (_, t) -> t
 
+let split_first_component t =
+  if is_local t && not (is_root t)then
+    match String.index t '/' with
+    | None -> Some (t, root)
+    | Some i ->
+      Some
+        (String.sub t ~pos:0 ~len:i,
+         String.sub t ~pos:(i + 1) ~len:(String.length t - i - 1))
+  else
+    None
+
+let explode t =
+  if is_root t then
+    Some []
+  else if is_local t then
+    Some (String.split t ~on:'/')
+  else
+    None
+
+let explode_exn t =
+  if is_root t then
+    []
+  else if is_local t then
+    String.split t ~on:'/'
+  else
+    Sexp.code_error "Path.explode_exn"
+      ["path", Sexp.atom_or_quoted_string t]
+
 let exists t = Sys.file_exists (to_string t)
 let readdir t = Sys.readdir (to_string t) |> Array.to_list
-let is_directory t = Sys.is_directory (to_string t)
+let is_directory t =
+  try Sys.is_directory (to_string t)
+  with Sys_error _ -> false
 let rmdir t = Unix.rmdir (to_string t)
-let unlink t = Unix.unlink (to_string t)
-let unlink_no_err t = try Unix.unlink (to_string t) with _ -> ()
+let win32_unlink fn =
+  try
+    Unix.unlink fn
+  with Unix.Unix_error (Unix.EACCES, _, _) as e ->
+    (* Try removing the read-only attribute *)
+    try
+      Unix.chmod fn 0o666;
+      Unix.unlink fn
+    with _ ->
+      raise e
+let unlink_operation =
+  if Sys.win32 then
+    win32_unlink
+  else
+    Unix.unlink
+let unlink t =
+  unlink_operation (to_string t)
+let unlink_no_err t = try unlink t with _ -> ()
 
 let extend_basename t ~suffix = t ^ suffix
 
@@ -382,18 +458,15 @@ let insert_after_build_dir_exn =
   let error a b =
     Sexp.code_error
       "Path.insert_after_build_dir_exn"
-      [ "path"  , Atom a
-      ; "insert", Atom b
+      [ "path"  , Sexp.unsafe_atom_of_string a
+      ; "insert", Sexp.unsafe_atom_of_string b
       ]
   in
   fun a b ->
-    if not (is_local a && is_local b) then error a b;
+    if not (is_local a) || String.contains b '/' then error a b;
     match String.lsplit2 a ~on:'/' with
     | Some ("_build", rest) ->
-      if is_root b then
-        a
-      else
-        sprintf "_build/%s/%s" b rest
+      sprintf "_build/%s/%s" b rest
     | _ ->
       error a b
 
@@ -403,7 +476,7 @@ let rm_rf =
       let fn = Filename.concat dir fn in
       match Unix.lstat fn with
       | { st_kind = S_DIR; _ } -> loop fn
-      | _                      -> Unix.unlink fn);
+      | _                      -> unlink_operation fn);
     Unix.rmdir dir
   in
   fun t ->
@@ -411,3 +484,21 @@ let rm_rf =
     match Unix.lstat fn with
     | exception Unix.Unix_error(ENOENT, _, _) -> ()
     | _ -> loop fn
+
+let change_extension ~ext t =
+  let t = try Filename.chop_extension t with Not_found -> t in
+  t ^ ext
+
+let extension = Filename.extension
+
+let pp ppf t = Format.pp_print_string ppf (to_string t)
+
+let drop_prefix t ~prefix =
+  let t = to_string t in
+  let prefix =
+    to_string (
+      if String.is_suffix prefix ~suffix:"/" then
+        prefix
+      else
+        prefix ^ "/") in
+  String.drop_prefix t ~prefix

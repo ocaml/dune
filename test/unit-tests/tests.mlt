@@ -1,0 +1,65 @@
+(* -*- tuareg -*- *)
+
+#warnings "-40";;
+
+open Jbuilder
+open Import
+
+let print_pkg ppf pkg =
+  Format.fprintf ppf "<package:%s>" (Findlib.Package.name pkg)
+;;
+
+#install_printer print_pkg;;
+
+[%%expect{|
+val print_pkg : Format.formatter -> Jbuilder.Findlib.Package.t -> unit =
+  <fun>
+|}]
+
+let findlib =
+  let cwd = Path.absolute (Sys.getcwd ()) in
+    Findlib.create
+    ~stdlib_dir:cwd
+    ~path:[Path.relative cwd "test/unit-tests/findlib-db"]
+;;
+
+[%%expect{|
+val findlib : Jbuilder.Findlib.t = <abstr>
+|}]
+
+let pkg =
+  match Findlib.find findlib "foo" with
+  | Ok x -> x
+  | Error _ -> assert false;;
+
+[%%expect{|
+val pkg : Jbuilder.Findlib.Package.t = <package:foo>
+|}]
+
+(* "foo" should depend on "baz" *)
+Findlib.Package.requires pkg;;
+
+[%%expect{|
+- : string list = ["baz"]
+|}]
+
+(* +-----------------------------------------------------------------+
+   | Meta parsing/simplification                                     |
+   +-----------------------------------------------------------------+ *)
+
+open Meta
+
+let meta =
+  { name = "foo"
+  ; entries = Meta.load "test/unit-tests/findlib-db/foo/META"
+  }
+
+[%%expect{|
+val meta : Jbuilder.Meta.t =
+  {name = "foo";
+   entries =
+    [Rule {var = "requires"; predicates = []; action = Set; value = "bar"};
+     Rule
+      {var = "requires"; predicates = [Pos "ppx_driver"]; action = Set;
+       value = "baz"}]}
+|}]

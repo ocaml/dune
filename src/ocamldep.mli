@@ -2,29 +2,43 @@
 
 open Import
 
-type dep_graph = (unit, string list String_map.t) Build.t Ml_kind.Dict.t
+module Dep_graph : sig
+  type t
 
-(** Generate ocamldep rules for the given modules. [item] is either the internal name of a
-    library of the first name of a list of executables.
+  val deps_of
+    :  t
+    -> Module.t
+    -> (unit, Module.t list) Build.t
 
-    For wrapped libraries, [lib_interface_module] is the main module of the library.
+  val top_closed_implementations
+    :  t
+    -> Module.t list
+    -> (unit, Module.t list) Build.t
+end
 
-    Return arrows that evaluate to the dependency graphs.
-*)
+module Dep_graphs : sig
+  type t = Dep_graph.t Ml_kind.Dict.t
+
+  val dummy : Module.t -> t
+end
+
+(** Generate ocamldep rules for the given modules. [item] is either
+    the internal name of a library of the first name of a list of
+    executables.
+
+    For wrapped libraries, [lib_interface_module] is the main module
+    of the library.
+
+    [already_used] represents the modules that are used by another
+    stanzas in the same directory. No [.d] rule will be generated for
+    such modules.
+
+    Return arrows that evaluate to the dependency graphs.  *)
 val rules
-  :  Super_context.t
-  -> dir:Path.t
-  -> item:string
+  :  dir:Path.t
   -> modules:Module.t String_map.t
+  -> ?already_used:String_set.t
   -> alias_module:Module.t option
   -> lib_interface_module:Module.t option
-  -> dep_graph
-
-(** Close and convert a list of module names to a list of .cm file names *)
-val names_to_top_closed_cm_files
-  :  dir:Path.t
-  -> dep_graph:string list String_map.t
-  -> modules:Module.t String_map.t
-  -> mode:Mode.t
-  -> string list
-  -> Path.t list
+  -> Super_context.t
+  -> Dep_graphs.t

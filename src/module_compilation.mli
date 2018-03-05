@@ -13,9 +13,10 @@ val build_module
   -> js_of_ocaml:Jbuild.Js_of_ocaml.t
   -> flags:Ocaml_flags.t
   -> Module.t
+  -> scope:Scope.t
   -> dir:Path.t
-  -> dep_graph:Ocamldep.dep_graph
-  -> modules:Module.t String_map.t
+  -> obj_dir:Path.t
+  -> dep_graphs:Ocamldep.Dep_graphs.t
   -> requires:(unit, Lib.t list) Build.t Cm_kind.Dict.t
   -> alias_module:Module.t option
   -> unit
@@ -26,8 +27,10 @@ val build_modules
   -> dynlink:bool
   -> js_of_ocaml:Jbuild.Js_of_ocaml.t
   -> flags:Ocaml_flags.t
+  -> scope:Scope.t
   -> dir:Path.t
-  -> dep_graph:Ocamldep.dep_graph
+  -> obj_dir:Path.t
+  -> dep_graphs:Ocamldep.Dep_graphs.t
   -> modules:Module.t String_map.t
   -> requires:(unit, Lib.t list) Build.t
   -> alias_module:Module.t option

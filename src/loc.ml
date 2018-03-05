@@ -1,6 +1,6 @@
 open Import
 
-type t =
+type t = Usexp.Loc.t =
   { start : Lexing.position
   ; stop  : Lexing.position
   }
@@ -12,18 +12,22 @@ let of_lexbuf lb =
 
 exception Error of t * string
 
+let exnf t fmt =
+  Format.pp_print_as err_ppf 7 ""; (* "Error: " *)
+  kerrf fmt ~f:(fun s -> Error (t, s))
+
 let fail t fmt =
-  Format.pp_print_as die_ppf 7 ""; (* "Error: " *)
-  Format.kfprintf
-    (fun ppf ->
-       Format.pp_print_flush ppf ();
-       let s = Buffer.contents die_buf in
-       Buffer.clear die_buf;
-       raise (Error (t, s)))
-    die_ppf fmt
+  Format.pp_print_as err_ppf 7 ""; (* "Error: " *)
+  kerrf fmt ~f:(fun s ->
+    raise (Error (t, s)))
 
 let fail_lex lb fmt =
   fail (of_lexbuf lb) fmt
+
+let fail_opt t fmt =
+  match t with
+  | None -> die fmt
+  | Some t -> fail t fmt
 
 let in_file fn =
   let pos : Lexing.position =
@@ -59,4 +63,11 @@ let print ppf { start; stop } =
     start.pos_fname start.pos_lnum start_c stop_c
 
 let warn t fmt =
-  Format.eprintf ("%a@{<warning>Warning@}: " ^^ fmt ^^ "@.") print t
+  Errors.kerrf ~f:print_to_console
+    ("%a@{<warning>Warning@}: " ^^ fmt ^^ "@.") print t
+
+let to_file_colon_line t =
+  sprintf "%s:%d" t.start.pos_fname t.start.pos_lnum
+
+let pp_file_colon_line ppf t =
+  Format.pp_print_string ppf (to_file_colon_line t)

@@ -1,39 +1,6 @@
 (** Findlib database *)
 
-open Import
-
-module Package_not_available : sig
-  type t =
-    { package     : string
-    ; required_by : string list
-    ; reason      : reason
-    }
-
-  and reason =
-    | Not_found
-    | Hidden
-    (** exist_if not satisfied *)
-    | Dependencies_unavailable of t list
-    (** At least one dependency is unavailable *)
-
-  val top_closure : t list -> t list
-
-  (** Explain why a package is not available *)
-  val explain : Format.formatter -> reason -> unit
-end
-
-exception Package_not_available of Package_not_available.t
-
-module External_dep_conflicts_with_local_lib : sig
-  type t =
-    { package             : string
-    ; required_by         : string
-    ; required_locally_in : Path.t
-    ; defined_locally_in  : Path.t
-    }
-end
-
-exception External_dep_conflicts_with_local_lib of External_dep_conflicts_with_local_lib.t
+open Stdune
 
 (** Findlib database *)
 type t
@@ -43,42 +10,53 @@ val create
   -> path:Path.t list
   -> t
 
+(** The search path for this DB *)
 val path : t -> Path.t list
 
-type package =
-  { name             : string
-  ; dir              : Path.t
-  ; version          : string
-  ; description      : string
-  ; archives         : Path.t list Mode.Dict.t
-  ; plugins          : Path.t list Mode.Dict.t
-  ; jsoo_runtime     : string list
-  ; requires         : package list
-  ; ppx_runtime_deps : package list
-  }
-
-val find     : t -> required_by:string list -> string -> package option
-val find_exn : t -> required_by:string list -> string -> package
-
-val available : t -> required_by:string list -> string -> bool
-
+(** [root_package_name "foo.*"] is "foo" *)
 val root_package_name : string -> string
 
-(** [local_public_libs] is a map from public library names to where they are defined in
-    the workspace. These must not appear as dependency of a findlib package *)
-val closure
-  :  required_by:Path.t
-  -> local_public_libs:Path.t String_map.t
-  -> package list
-  -> package list
-val closed_ppx_runtime_deps_of
-  :  required_by:Path.t
-  -> local_public_libs:Path.t String_map.t
-  -> package list
-  -> package list
+module Package : sig
+  (** Representation of a findlib package *)
+  type t
 
-val root_packages : t -> string list
-val all_packages  : t -> package list
-val all_unavailable_packages : t -> Package_not_available.t list
+  val meta_file        : t -> Path.t
+  val name             : t -> string
+  val dir              : t -> Path.t
+  val version          : t -> string option
+  val description      : t -> string option
+  val archives         : t -> Path.t list Mode.Dict.t
+  val plugins          : t -> Path.t list Mode.Dict.t
+  val jsoo_runtime     : t -> Path.t list
+  val requires         : t -> string list
+  val ppx_runtime_deps : t -> string list
+  val dune_file        : t -> Path.t option
+end
 
-val stdlib_with_archives : t -> package
+module Unavailable_reason : sig
+  type t =
+    | Not_found
+    (** The package is hidden because it contains an unsatisfied
+        'exist_if' clause *)
+    | Hidden of Package.t
+
+  val to_string : t -> string
+  val pp : Format.formatter -> t -> unit
+end
+
+(** Lookup a package in the given database *)
+val find : t -> string -> (Package.t, Unavailable_reason.t) result
+
+val available : t -> string -> bool
+
+(** List all the packages available in this Database *)
+val all_packages  : t -> Package.t list
+
+(** List all the packages that are not available in this database *)
+val all_unavailable_packages : t -> (string * Unavailable_reason.t) list
+
+module Config : sig
+  type t
+  val load : Path.t -> toolchain:string -> context:string -> t
+  val get : t -> string -> string option
+end

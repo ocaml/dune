@@ -3,7 +3,7 @@ Quickstart
 **********
 
 This document gives simple usage examples of Jbuilder. You can also look at
-`examples <https://github.com/janestreet/jbuilder/tree/master/example>`__ for
+`examples <https://github.com/ocaml/dune/tree/master/example>`__ for
 complete examples of projects using Jbuilder.
 
 Building a hello world program
@@ -31,7 +31,9 @@ And build it with:
 
     jbuilder build hello_world.exe
 
-The executable will be built as ``_build/default/hello_world.exe``
+The executable will be built as ``_build/default/hello_world.exe``. Note that
+native code executables will have the ``.exe`` extension on all platforms
+(including non-Windows systems).
 
 Building a hello world program using Lwt
 ========================================
@@ -157,9 +159,9 @@ this jbuild:
      ((name            mylib)
       (public_name     mylib)
       (libraries       (re lwt))
-      (c_names         (mystubs)
+      (c_names         (mystubs))
       (c_flags         (-I/blah/include))
-      (c_library_flags (-lblah)))))
+      (c_library_flags (-lblah))))
 
 Defining a library with C stubs using pkg-config
 ================================================
@@ -175,9 +177,9 @@ compilation and link flags. Write this jbuild:
      ((name            mylib)
       (public_name     mylib)
       (libraries       (re lwt))
-      (c_names         (mystubs)
+      (c_names         (mystubs))
       (c_flags         (:include c_flags.sexp))
-      (c_library_flags (:include c_library_flags.sexp)))))
+      (c_library_flags (:include c_library_flags.sexp))))
 
     (rule
      ((targets (c_flags.sexp
@@ -220,8 +222,8 @@ as well as this ``discover.ml`` file:
             Option.value (C.Pkg_config.query pc ~package:"blah") ~default
         in
 
-        write_sexp "c_flags.sexp"         (sexp_of_list sexp_of_string conf.libs);
-        write_sexp "c_library_flags.sexp" (sexp_of_list sexp_of_string conf.cflags))
+        write_sexp "c_flags.sexp"         (sexp_of_list sexp_of_string conf.cflags);
+        write_sexp "c_library_flags.sexp" (sexp_of_list sexp_of_string conf.libs))
 
 Using a custom code generator
 =============================

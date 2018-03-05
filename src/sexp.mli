@@ -1,52 +1,44 @@
 open Import
 
-type t =
-  | Atom of string
-  | List of t list
-
-module Ast : sig
-  type sexp = t
-  type t =
-    | Atom of Loc.t * string
-    | List of Loc.t * t list
-
-  val loc : t -> Loc.t
-
-  val remove_locs : t -> sexp
-  val to_string : t -> string
-end with type sexp := t
-
-val add_loc : t -> loc:Loc.t -> Ast.t
+include module type of struct include Usexp end with module Loc := Usexp.Loc
 
 val code_error : string -> (string * t) list -> _
 
-val to_string : t -> string
+val load : fname:string -> mode:'a Parser.Mode.t -> 'a
+val load_many_as_one : fname:string -> Ast.t
 
-val pp : Format.formatter -> t -> unit
+type sexps_or_ocaml_script =
+  | Sexps of Ast.t list
+  | Ocaml_script
 
-(** Same as [pp], but split long strings. The formatter must have been
-    prepared with [prepare_formatter]. *)
-val pp_split_strings : Format.formatter -> t -> unit
-
-(** Prepare a formatter for [pp_split_strings]. Additionaly the
-    formatter escape newlines when the tags "makefile-action" or
-    "makefile-stuff" are active. *)
-val prepare_formatter : Format.formatter -> unit
+val load_many_or_ocaml_script : string -> sexps_or_ocaml_script
 
 module type Combinators = sig
   type 'a t
   val unit       : unit                      t
+
   val string     : string                    t
+  (** Convert an [Atom] or a [Quoted_string] from/to a string. *)
+
   val int        : int                       t
   val float      : float                     t
   val bool       : bool                      t
   val pair       : 'a t -> 'b t -> ('a * 'b) t
+  val triple     : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
   val list       : 'a t -> 'a list           t
   val array      : 'a t -> 'a array          t
   val option     : 'a t -> 'a option         t
-  val string_set : String_set.t              t
+
+  val string_set : String_set.t            t
+  (** [atom_set] is a conversion to/from a set of strings representing atoms. *)
+
   val string_map : 'a t -> 'a String_map.t   t
+  (** [atom_map conv]: given a conversion [conv] to/from ['a], returns
+     a conversion to/from a map where the keys are atoms and the
+     values are of type ['a]. *)
+
   val string_hashtbl : 'a t -> (string, 'a) Hashtbl.t t
+  (** [atom_hashtbl conv] is similar to [atom_map] for hash tables. *)
 end
 
 module To_sexp : sig
@@ -58,7 +50,8 @@ end with type sexp := t
 
 module Of_sexp : sig
   type ast = Ast.t =
-    | Atom of Loc.t * string
+    | Atom of Loc.t * Atom.t
+    | Quoted_string of Loc.t * string
     | List of Loc.t * ast list
 
   include Combinators with type 'a t = Ast.t -> 'a
@@ -68,13 +61,34 @@ module Of_sexp : sig
 
   val located : 'a t -> (Loc.t * 'a) t
 
+  val raw : ast t
+
   (* Record parsing monad *)
   type 'a record_parser
   val return : 'a -> 'a record_parser
   val ( >>= ) : 'a record_parser -> ('a -> 'b record_parser) -> 'b record_parser
 
-  val field   : string -> ?default:'a -> 'a t -> 'a record_parser
-  val field_o : string -> 'a t -> 'a option record_parser
+  (** Return the location of the record being parsed *)
+  val record_loc : Loc.t record_parser
+
+  module Short_syntax : sig
+    type 'a t =
+      | Not_allowed
+      | This    of 'a
+      | Located of (Loc.t -> 'a)
+  end
+
+  val field
+    :  string
+    -> ?short:'a Short_syntax.t
+    -> ?default:'a
+    -> 'a t
+    -> 'a record_parser
+  val field_o
+    :  string
+    -> ?short:'a Short_syntax.t
+    -> 'a t
+    -> 'a option record_parser
   val field_b : string -> bool record_parser
 
   val map_validate : 'a record_parser -> f:('a -> ('b, string) result) -> 'b record_parser
@@ -104,6 +118,8 @@ module Of_sexp : sig
     -> 'b t
     -> 'a
     -> 'c Constructor_spec.t
+
+  val cstr_record : string -> 'a record_parser -> 'a Constructor_spec.t
 
   val cstr_loc
     :  string

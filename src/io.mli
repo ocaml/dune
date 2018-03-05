@@ -1,5 +1,7 @@
 (** IO operations *)
 
+open Stdune
+
 val open_in  : ?binary:bool (* default true *) -> string -> in_channel
 val open_out : ?binary:bool (* default true *) -> string -> out_channel
 
@@ -16,6 +18,12 @@ val lines_of_file : string -> string list
 val read_file : string -> string
 val write_file : string -> string -> unit
 
+val compare_files : string -> string -> Ordering.t
+
+val write_lines : string -> string list -> unit
+
 val copy_channels : in_channel -> out_channel -> unit
 
 val copy_file : src:string -> dst:string -> unit
+
+val read_all : in_channel -> string

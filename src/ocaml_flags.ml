@@ -1,4 +1,5 @@
 open Import
+open Build.O
 
 let default_ocamlc_flags   = Utils.g
 let default_ocamlopt_flags = Utils.g
@@ -32,27 +33,47 @@ let default_flags () =
     [ "-w"; !Clflags.warnings ]
 
 type t =
-  { common   : string list
-  ; specific : string list Mode.Dict.t
+  { common     : (unit, string list) Build.t
+  ; specific   : (unit, string list) Build.t Mode.Dict.t
   }
 
-let make { Jbuild.Buildable. flags; ocamlc_flags; ocamlopt_flags; _ } =
-  let eval = Ordered_set_lang.eval_with_standard in
-  { common   = eval flags ~standard:(default_flags ())
+let empty =
+  let build = Build.arr (fun () -> []) in
+  { common   = build
+  ; specific = Mode.Dict.make_both build
+  }
+
+let of_list l =
+  { empty with common = Build.arr (fun () -> l) }
+
+let make { Jbuild.Buildable. flags; ocamlc_flags; ocamlopt_flags; _ } ctx ~scope ~dir =
+  let eval = Super_context.expand_and_eval_set ctx ~scope ~dir in
+  { common   = Build.memoize "common flags" (eval flags ~standard:(default_flags ()))
   ; specific =
-      { byte   = eval ocamlc_flags   ~standard:(default_ocamlc_flags ())
-      ; native = eval ocamlopt_flags ~standard:(default_ocamlopt_flags ())
+      { byte   = Build.memoize "ocamlc flags" (eval ocamlc_flags   ~standard:(default_ocamlc_flags ()))
+      ; native = Build.memoize "ocamlopt flags" (eval ocamlopt_flags ~standard:(default_ocamlopt_flags ()))
       }
   }
 
-let get t mode = Arg_spec.As (t.common @ Mode.Dict.get t.specific mode)
+let get t mode =
+  t.common
+  &&&
+  (Mode.Dict.get t.specific mode)
+  >>^ fun (common, specific) ->
+  common @ specific
 
 let get_for_cm t ~cm_kind = get t (Mode.of_cm_kind cm_kind)
 
 let default () =
-  { common = default_flags ()
+  { common = Build.return (default_flags ())
   ; specific =
-      { byte   = default_ocamlc_flags   ()
-      ; native = default_ocamlopt_flags ()
+      { byte   = Build.return (default_ocamlc_flags   ())
+      ; native = Build.return (default_ocamlopt_flags ())
       }
   }
+
+let append_common t flags = {t with common = t.common >>^ fun l -> l @ flags}
+
+let prepend_common flags t = {t with common = t.common >>^ fun l -> flags @ l}
+
+let common t = t.common

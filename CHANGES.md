@@ -1,5 +1,227 @@
-1.0.0 (comming soon)
---------------------
+next
+----
+
+- Ignore errors during the generation of the .merlin (#569, fixes #568 and #51)
+
+- Add a workaround for when a library normally installed by the
+  compiler is not installed but still has a META file (#574, fixes
+  #563)
+
+- Reduce interleaving in the scheduler in an attempt to make Jbuilder
+  keep file descriptors open for less long (#586)
+
+- Accept and ignore `ppx.driver` fields in library stanzas, in
+  preparation for the generic ppx driver system (#588)
+
+1.0+beta18 (25/02/2018)
+-----------------------
+
+- Fix generation of the implicit alias module with 4.02. With 4.02 it
+  must have an implementation while with OCaml >= 4.03 it can be an
+  interface only module (#549)
+
+- Let the parser distinguish quoted strings from atoms.  This makes
+  possible to use "${v}" to concatenate the list of values provided by
+  a split-variable.  Concatenating split-variables with text is also
+  now required to be quoted.
+
+- Split calls to ocamldep. Before ocamldep would be called once per
+  `library`/`executables` stanza. Now it is called once per file
+  (#486)
+
+- Make sure to not pass `-I <stdlib-dir>` to the compiler. It is
+  useless and it causes problems in some cases (#488)
+
+- Don't stop on the first error. Before, jbuilder would stop its
+  execution after an error was encountered. Now it continues until
+  all branches have been explored (#477)
+
+- Add supprot for a user configuration file (#490)
+
+- Add more display modes and change the default display of
+  Jbuilder. The mode can be set from the command line or from the
+  configuration file (#490)
+
+- Allow to set the concurency level (`-j N`) from the configuration
+  file (#491)
+
+- Store artifacts for libraries and executables in separate
+  directories. This ensure that Two libraries defined in the same
+  directory can't see each other unless one of them depend on the
+  other (#472)
+
+- Better support for mli/rei only modules (#489)
+
+- Fix support for byte-code only architectures (#510, fixes #330)
+
+- Fix a regression in `external-lib-deps` introduced in 1.0+beta17
+  (#512, fixes #485)
+
+- `@doc` alias will now build only documentation for public libraries. A new
+  `@doc-private` alias has been added to build documentation for private
+  libraries.
+
+- Refactor internal library management. It should now be possible to
+  run `jbuilder build @lint` in Base for instance (#516)
+
+- Fix invalid warning about non-existent direcotry (#536, fixes #534)
+
+1.0+beta17 (01/02/2018)
+-----------------------
+
+- Make jbuilder aware that `num` is an external package in OCaml >= 4.06.0
+  (#358)
+
+- `jbuilder exec` will now rebuild the executable before running it if
+  necessary. This can be turned off by passing `--no-build` (#345)
+
+- Fix `jbuilder utop` to work in any working directory (#339)
+
+- Fix generation of META synopsis that contains double quotes (#337)
+
+- Add `S .` to .merlin by default (#284)
+
+- Improve `jbuilder exec` to make it possible to execute non public executables.
+  `jbuilder exec path/bin` will execute `bin` inside default (or specified)
+  context relative to `path`. `jbuilder exec /path` will execute `/path` as
+  absolute path but with the context's environment set appropriately. Lastly,
+  `jbuilder exec` will change the root as to which paths are relative using the
+  `-root` option. (#286)
+
+- Fix `jbuilder rules` printing rules when some binaries are missing (#292)
+
+- Build documentation for non public libraries (#306)
+
+- Fix doc generation when several private libraries have the same name (#369)
+
+- Fix copy# for C/C++ with Microsoft C compiler (#353)
+
+- Add support for cross-compilation. Currently we are supporting the
+  opam-cross-x repositories such as
+  [opam-cross-windows](https://github.com/whitequark/opam-cross-windows)
+  (#355)
+
+- Simplify generated META files: do not generate the transitive
+  closure of dependencies in META files (#405)
+
+- Deprecated `${!...}`: the split behavior is now a property of the
+  variable. For instance `${CC}`, `${^}`, `${read-lines:...}` all
+  expand to lists unless used in the middle of a longer atom (#336)
+
+- Add an `(include ...)` stanza allowing one to include another
+  non-generated jbuild file in the current file (#402)
+
+- Add a `(diff <file1> <file2>)` action allowing to diff files and
+  promote generated files in case of mismatch (#402, #421)
+
+- Add `jbuilder promote` and `--auto-promote` to promote files (#402,
+  #421)
+
+- Report better errors when using `(glob_files ...)` with a directory
+  that doesn't exist (#413, Fix #412)
+
+- Jbuilder now properly handles correction files produced by
+  ppx_driver. This allows to use `[@@deriving_inline]` in .ml/.mli
+  files. This require `ppx_driver >= v0.10.2` to work properly (#415)
+
+- Make jbuilder load rules lazily instead of generating them all
+  eagerly. This speeds up the initial startup time of jbuilder on big
+  workspaces (#370)
+
+- Now longer generate a `META.pkg.from-jbuilder` file. Now the only
+  way to customise the generated `META` file is through
+  `META.pkg.template`. This feature was unused and was making the code
+  complicated (#370)
+
+- Remove read-only attribute on Windows before unlink (#247)
+
+- Use /Fo instead of -o when invoking the Microsoft C compiler to eliminate
+  deprecation warning when compiling C++ sources (#354)
+
+- Add a mode field to `rule` stanzas:
+  + `(mode standard)` is the default
+  + `(mode fallback)` replaces `(fallback)`
+  + `(mode promote)` means that targets are copied to the source tree
+  after the rule has completed
+  + `(mode promote-until-clean)` is the same as `(mode promote)` except
+  that `jbuilder clean` deletes the files copied to the source tree.
+  (#437)
+
+- Add a flag `--ignore-promoted-rules` to make jbuilder ignore rules
+  with `(mode promote)`. `-p` implies `--ignore-promoted-rules` (#437)
+
+- Display a warning for invalid lines in jbuild-ignore (#389)
+
+- Always build `boot.exe` as a bytecode program. It makes the build of
+  jbuilder faster and fix the build on some architectures (#463, fixes #446)
+
+- Fix bad interaction between promotion and incremental builds on OSX
+  (#460, fix #456)
+
+1.0+beta16 (05/11/2017)
+-----------------------
+
+- Fix build on 32-bit OCaml (#313)
+
+1.0+beta15 (04/11/2017)
+-----------------------
+
+- Change the semantic of aliases: there are no longer aliases that are
+  recursive such as `install` or `runtest`. All aliases are
+  non-recursive. However, when requesting an alias from the command
+  line, this request the construction of the alias in the specified
+  directory and all its children recursively. This allows users to get
+  the same behavior as previous recursive aliases for their own
+  aliases, such as `example`. Inside jbuild files, one can use `(deps
+  (... (alias_rec xxx) ...))` to get the same behavior as on the
+  command line. (#268)
+
+- Include sub libraries that have a `.` in the generated documentation index
+  (#280).
+
+- Fix "up" links to the top-level index in the odoc generated documentation
+  (#282).
+
+- Fix `ARCH_SIXTYFOUR` detection for OCaml 4.06.0 (#303)
+
+1.0+beta14 (11/10/2017)
+-----------------------
+
+- Add (copy_files <glob>) and (copy_files# <glob>) stanzas. These
+  stanzas setup rules for copying files from a sub-directory to the
+  current directory. This provides a reasonable way to support
+  multi-directory library/executables in jbuilder (#35, Francois Bobot)
+
+- An empty `jbuild-workspace` file is now interpreted the same as one
+  containing just `(context default)`
+
+- Better support for on-demand utop toplevels on Windows and when the
+  library has C stubs
+
+- Print `Entering directory '...'` when the workspace root is not the
+  current directory. This allows Emacs and Vim to know where relative
+  filenames should be interpreted from. Fixes #138
+
+- Fix a bug related to `menhir` stanzas: `menhir` stanzas with a
+  `merge_into` field that were in `jbuild` files in sub-directories
+  where incorectly interpreted (#264)
+
+- Add support for locks in actions, for tests that can't be run
+  concurrently (#263)
+
+- Support `${..}` syntax in the `include` stanza. (#231)
+
+1.0+beta13 (05/09/2017)
+-----------------------
+
+- Generate toplevel html index for documentation (#224, Thomas Gazagnaire)
+
+- Fix recompilation of native artifacts. Regression introduced in the last
+  version (1.0+beta12) when digests replaces timestamps for checking staleness
+  (#238, David Allsopp)
+
+1.0+beta12 (18/08/2017)
+-----------------------
 
 - Fix the quoting of `FLG` lines in generated `.merlin` files (#200,
   Marcello Seri)
@@ -8,11 +230,40 @@
   would do: `-I <path> file.cmxa`, now it does `-I <path>
   <path>/file.cmxa`. Fixes #118 and #177
 
+- Use an absolute path for ppx drivers in `.merlin` files. Merlin
+  <3.0.0 used to run ppx commands from the directory where the
+  `.merlin` was present but this is no longer the case
+
 - Allow to use `jbuilder install` in contexts other than opam; if
   `ocamlfind` is present in the `PATH` and the user didn't pass
   `--prefix` or `--libdir` explicitly, use the output of `ocamlfind
   printconf destdir` as destination directory for library files (#179,
   Francois Bobot)
+
+- Allow `(:include ...)` forms in all `*flags` fields (#153, David
+  Allsopp)
+
+- Add a `utop` subsommand. Running `jbuilder utop` in a directory
+  builds and executes a custom `utop` toplevel with all libraries
+  defined in the current directory (#183, Rudi Grinberg)
+
+- Do not accept `per_file` anymore in `preprocess` field. `per_file`
+  was renamed `per_module` and it is planned to reuse `per_file` for
+  another purpose
+
+- Warn when a file is both present in the source tree and generated by
+  a rule. Before, jbuilder would silently ignore the rule. One now has
+  to add a field `(fallback)` to custom rules to keep the current
+  behavior (#218)
+
+- Get rid of the `deprecated-ppx-method` findlib package for ppx
+  rewriters (#222, fixes #163)
+
+- Use digests (MD5) of files contents to detect changes rather than
+  just looking at the timestamps. We still use timestamps to avoid
+  recomputing digests. The performance difference is negligible and we
+  avoid more useless recompilations, especially when switching branches
+  for instance (#209, fixes #158)
 
 1.0+beta11 (21/07/2017)
 -----------------------

@@ -1029,7 +1029,7 @@ let report_lib_error ppf (e : Error.t) =
       Error.Library_not_available.Reason.pp reason
   | Conflict { lib1 = (lib1, rb1); lib2 = (lib2, rb2) } ->
     Format.fprintf ppf
-      "@[<v>@{<error>Error@}: Conflict between the following libaries:@,\
+      "@[<v>@{<error>Error@}: Conflict between the following libraries:@,\
        - %S in %s@,\
       \    %a@,\
        - %S in %s@,\

@@ -663,132 +663,132 @@ and resolve_name db name ~stack =
       instantiate db name info ~stack ~hidden:(Some hidden)
 
 and available_internal db name ~stack =
-    match resolve_dep db name ~loc:Loc.none ~stack with
-    | Ok    _ -> true
-    | Error _ -> false
+  match resolve_dep db name ~loc:Loc.none ~stack with
+  | Ok    _ -> true
+  | Error _ -> false
 
 and resolve_simple_deps db names ~stack =
-    let rec loop acc = function
-      | [] -> Ok (List.rev acc)
-      | (loc, name) :: names ->
-        resolve_dep db name ~loc ~stack >>= fun x ->
-        loop (x :: acc) names
-    in
-    loop [] names
+  let rec loop acc = function
+    | [] -> Ok (List.rev acc)
+    | (loc, name) :: names ->
+      resolve_dep db name ~loc ~stack >>= fun x ->
+      loop (x :: acc) names
+  in
+  loop [] names
 
 and resolve_complex_deps db deps ~stack =
-    let res, resolved_selects =
-      List.fold_left deps ~init:(Ok [], []) ~f:(fun (acc_res, acc_selects) dep ->
-        let res, acc_selects =
-          match (dep : Jbuild.Lib_dep.t) with
-          | Direct (loc, name) ->
-            let res =
-              resolve_dep db name ~loc ~stack >>| fun x -> [x]
-            in
-            (res, acc_selects)
-          | Select { result_fn; choices; loc } ->
-            let res, src_fn =
-              match
-                List.find_map choices ~f:(fun { required; forbidden; file } ->
-                  if String_set.exists forbidden
-                       ~f:(available_internal db ~stack) then
-                    None
-                  else
-                    match
-                      let deps =
-                        String_set.fold required ~init:[] ~f:(fun x acc ->
-                          (Loc.none, x) :: acc)
-                      in
-                      resolve_simple_deps db deps ~stack
-                    with
-                    | Ok ts -> Some (ts, file)
-                    | Error _ -> None)
-              with
-              | Some (ts, file) ->
-                (Ok ts, Ok file)
-              | None ->
-                let e = { Error.No_solution_found_for_select.loc } in
-                (Error (Error (No_solution_found_for_select e)),
-                 Error e)
-            in
-            (res, { Resolved_select. src_fn; dst_fn = result_fn } :: acc_selects)
-        in
-        let res =
-          match res, acc_res with
-          | Ok l, Ok acc -> Ok (List.rev_append l acc)
-          | (Error _ as res), _
-          | _, (Error _ as res) -> res
-        in
-        (res, acc_selects))
-    in
-    let res =
-      match res with
-      | Ok    l -> Ok (List.rev l)
-      | Error _ -> res
-    in
-    (res, resolved_selects)
+  let res, resolved_selects =
+    List.fold_left deps ~init:(Ok [], []) ~f:(fun (acc_res, acc_selects) dep ->
+      let res, acc_selects =
+        match (dep : Jbuild.Lib_dep.t) with
+        | Direct (loc, name) ->
+          let res =
+            resolve_dep db name ~loc ~stack >>| fun x -> [x]
+          in
+          (res, acc_selects)
+        | Select { result_fn; choices; loc } ->
+          let res, src_fn =
+            match
+              List.find_map choices ~f:(fun { required; forbidden; file } ->
+                if String_set.exists forbidden
+                     ~f:(available_internal db ~stack) then
+                  None
+                else
+                  match
+                    let deps =
+                      String_set.fold required ~init:[] ~f:(fun x acc ->
+                        (Loc.none, x) :: acc)
+                    in
+                    resolve_simple_deps db deps ~stack
+                  with
+                  | Ok ts -> Some (ts, file)
+                  | Error _ -> None)
+            with
+            | Some (ts, file) ->
+              (Ok ts, Ok file)
+            | None ->
+              let e = { Error.No_solution_found_for_select.loc } in
+              (Error (Error (No_solution_found_for_select e)),
+               Error e)
+          in
+          (res, { Resolved_select. src_fn; dst_fn = result_fn } :: acc_selects)
+      in
+      let res =
+        match res, acc_res with
+        | Ok l, Ok acc -> Ok (List.rev_append l acc)
+        | (Error _ as res), _
+        | _, (Error _ as res) -> res
+      in
+      (res, acc_selects))
+  in
+  let res =
+    match res with
+    | Ok    l -> Ok (List.rev l)
+    | Error _ -> res
+  in
+  (res, resolved_selects)
 
 and resolve_deps db deps ~stack =
-    match (deps : Info.Deps.t) with
-    | Simple  names -> (resolve_simple_deps  db names ~stack, [])
-    | Complex names ->  resolve_complex_deps db names ~stack
+  match (deps : Info.Deps.t) with
+  | Simple  names -> (resolve_simple_deps  db names ~stack, [])
+  | Complex names ->  resolve_complex_deps db names ~stack
 
 and resolve_user_deps db deps ~pps ~stack =
-    let deps, resolved_selects = resolve_deps db deps ~stack in
-    let deps, pps =
-      match pps with
-      | [] -> (deps, Ok [])
-      | pps ->
-        let pps =
-          let pps = (pps : (Loc.t * Jbuild.Pp.t) list :> (Loc.t * string) list) in
-          resolve_simple_deps db pps ~stack >>= fun pps ->
-          closure pps ~stack
+  let deps, resolved_selects = resolve_deps db deps ~stack in
+  let deps, pps =
+    match pps with
+    | [] -> (deps, Ok [])
+    | pps ->
+      let pps =
+        let pps = (pps : (Loc.t * Jbuild.Pp.t) list :> (Loc.t * string) list) in
+        resolve_simple_deps db pps ~stack >>= fun pps ->
+        closure pps ~stack
+      in
+      let deps =
+        let rec loop acc = function
+          | [] -> Ok acc
+          | pp :: pps ->
+            pp.ppx_runtime_deps >>= fun rt_deps ->
+            loop (List.rev_append rt_deps acc) pps
         in
-        let deps =
-          let rec loop acc = function
-            | [] -> Ok acc
-            | pp :: pps ->
-              pp.ppx_runtime_deps >>= fun rt_deps ->
-              loop (List.rev_append rt_deps acc) pps
-          in
-          deps >>= fun deps ->
-          pps  >>= fun pps  ->
-          loop deps pps
-        in
-        (deps, pps)
-    in
-    (deps, pps, resolved_selects)
+        deps >>= fun deps ->
+        pps  >>= fun pps  ->
+        loop deps pps
+      in
+      (deps, pps)
+  in
+  (deps, pps, resolved_selects)
 
 and closure ts ~stack =
-    let visited = ref String_map.empty in
-    let res = ref [] in
-    let orig_stack = stack in
-    let rec loop t ~stack =
-      match String_map.find !visited t.name with
-      | Some (t', stack') ->
-        if t.unique_id = t'.unique_id then
-          Ok ()
-        else
-          let req_by = Dep_stack.to_required_by ~stop_at:orig_stack in
-          Error
-            (Error (Conflict { lib1 = (t', req_by stack')
-                             ; lib2 = (t , req_by stack )
-                             }))
-      | None ->
-        visited := String_map.add !visited t.name (t, stack);
-        Dep_stack.push stack (to_id t) >>= fun stack ->
-        t.requires >>= fun deps ->
-        iter deps ~stack >>| fun () ->
-        res := t :: !res
-    and iter ts ~stack =
-      match ts with
-      | [] -> Ok ()
-      | t :: ts ->
-        loop t ~stack >>= fun () ->
-        iter ts ~stack
-    in
-    iter ts ~stack >>| fun () ->
-    List.rev !res
+  let visited = ref String_map.empty in
+  let res = ref [] in
+  let orig_stack = stack in
+  let rec loop t ~stack =
+    match String_map.find !visited t.name with
+    | Some (t', stack') ->
+      if t.unique_id = t'.unique_id then
+        Ok ()
+      else
+        let req_by = Dep_stack.to_required_by ~stop_at:orig_stack in
+        Error
+          (Error (Conflict { lib1 = (t', req_by stack')
+                           ; lib2 = (t , req_by stack )
+                           }))
+    | None ->
+      visited := String_map.add !visited t.name (t, stack);
+      Dep_stack.push stack (to_id t) >>= fun stack ->
+      t.requires >>= fun deps ->
+      iter deps ~stack >>| fun () ->
+      res := t :: !res
+  and iter ts ~stack =
+    match ts with
+    | [] -> Ok ()
+    | t :: ts ->
+      loop t ~stack >>= fun () ->
+      iter ts ~stack
+  in
+  iter ts ~stack >>| fun () ->
+  List.rev !res
 
 let closure l = closure l ~stack:Dep_stack.empty
 

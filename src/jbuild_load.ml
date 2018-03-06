@@ -67,6 +67,14 @@ module Jbuilds = struct
     let plugin = Path.to_string plugin in
     let plugin_contents = Io.read_file plugin in
     Io.with_file_out (Path.to_string wrapper) ~f:(fun oc ->
+      let ocamlc_config =
+        let vars =
+          String_map.to_list (Ocamlc_config.bindings context.ocamlc_config)
+        in
+        let longest = String.longest_map vars ~f:fst in
+        List.map vars ~f:(fun (k, v) -> sprintf "%-*S , %S" (longest + 2) k v)
+        |> String.concat ~sep:"\n      ; "
+      in
       Printf.fprintf oc {|
 let () =
   Hashtbl.add Toploop.directive_table "require" (Toploop.Directive_string ignore);
@@ -94,7 +102,7 @@ end
 %s|}
         context.name
         context.version_string
-        (Ocamlc_config.ocaml_value context.ocamlc_config)
+        ocamlc_config
         (Path.reach ~from:exec_dir target)
         plugin plugin_contents);
     extract_requires ~fname:plugin plugin_contents

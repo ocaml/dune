@@ -125,8 +125,8 @@ let create
       ~f:(fun (d : Dir_with_jbuild.t) -> d.stanzas)
   in
   let cxx_flags =
-    String.extract_blank_separated_words context.ocamlc_cflags
-    |> List.filter ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+    List.filter context.ocamlc_cflags
+      ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
   let vars =
     let ocamlopt =
@@ -140,7 +140,7 @@ let create
       | None   -> Strings (["make"], Split)
       | Some p -> Paths ([p], Split)
     in
-    let cflags = String.extract_blank_separated_words context.ocamlc_cflags in
+    let cflags = context.ocamlc_cflags in
     [ "-verbose"       , Strings ([] (*"-verbose";*), Concat)
     ; "CPP"            , Strings (context.c_compiler :: cflags @ ["-E"], Split)
     ; "PA_CPP"         , Strings (context.c_compiler :: cflags

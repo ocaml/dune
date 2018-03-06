@@ -129,6 +129,9 @@ let ext_asm t = get t "ext_asm"
 let ext_lib t = get t "ext_lib"
 let ext_dll t = get t "ext_dll"
 let ext_exe t =
-  match get t "os_type" with
-  | "Win32" -> ".exe"
-  | _       -> ""
+  match get_opt t "ext_exe" with
+  | Some s -> s
+  | None ->
+    match get t "os_type" with
+    | "Win32" -> ".exe"
+    | _       -> ""

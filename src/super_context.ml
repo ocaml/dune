@@ -140,7 +140,9 @@ let create
       | None   -> Strings (["make"], Split)
       | Some p -> Paths ([p], Split)
     in
-    let cflags = String.extract_blank_separated_words context.ocamlc_cflags in
+    let cflags = context.ocamlc_cflags in
+    let string  x = Strings ([x], Split) in
+    let strings x = Strings (x  , Split) in
     [ "-verbose"       , Strings ([] (*"-verbose";*), Concat)
     ; "CPP"            , Strings (context.c_compiler :: cflags @ ["-E"], Split)
     ; "PA_CPP"         , Strings (context.c_compiler :: cflags
@@ -158,6 +160,14 @@ let create
                                   Concat)
     ; "MAKE"           , make
     ; "null"           , Strings ([Path.to_string Config.dev_null], Concat)
+    ; "ext_obj"        , string context.ext_obj
+    ; "ext_asm"        , string context.ext_asm
+    ; "ext_lib"        , string context.ext_lib
+    ; "ext_dll"        , string context.ext_dll
+    ; "ext_exe"        , string
+                           (if context.os_type = "Win32" then ".exe" else "")
+    ; "bytecomp_c_libraries", strings context.bytecomp_c_libraries
+    ; "native_c_libraries"  , strings context.native_c_libraries
     ]
     |> String_map.of_list
     |> function

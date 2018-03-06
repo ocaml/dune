@@ -1,29 +1,24 @@
-(alias (
-   (name all)
-   (deps (test.exe test.bc test.exe.o test.so stub))
-))
+(alias
+ ((name all)
+  (deps (test.exe test.bc test.exe.o test.so stub))))
 
-(executable (
-   (name test)
-   (modes ((byte executable)(native executable)
-           (byte object)(native object)
-           (byte shared_object)(native shared_object)))
-))
+(executable
+ ((name test)
+  (modes ((byte executable)(native executable)
+          (byte object)(native object)
+          (byte shared_object)(native shared_object)))))
 
-(rule (
-   (targets (stub_native))
-   (deps (stub.c test.exe.o))
-   (action (run cc -o ${@} -I ${ocaml_where} -I . test.exe.o -lm -ldl stub.c))
-))
+(rule
+ ((targets (stub_native))
+  (deps (stub.c test.exe.o))
+  (action (run ${CC} -o ${@} -I ${ocaml_where} -I . test.exe.o -lm -ldl stub.c))))
 
-(rule (
-   (targets (stub_byte))
-   (deps (stub.c test.bc.o))
-   (action (run cc -o ${@} -I ${ocaml_where} -I . test.bc.o -lm -ldl stub.c))
-))
+(rule
+ ((targets (stub_byte))
+  (deps (stub.c test.bc.o))
+  (action (run ${CC} -o ${@} -I ${ocaml_where} -I . test.bc.o -lm -ldl stub.c))))
 
-(install (
-  (section bin)
+(install
+ ((section bin)
   (files (stub_native stub_byte))
-  (package stub)
-))
+  (package stub)))

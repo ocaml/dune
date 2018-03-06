@@ -2,46 +2,99 @@
 
 open Stdune
 
+(** Represent a parsed and interpreted output of [ocamlc -config] *)
 type t
+
 val sexp_of_t : t -> Usexp.t
 
-exception E of string
+module Prog_and_args : sig
+  type t =
+    { prog : string
+    ; args : string list
+    }
+end
 
-(** Create a [t] value from the output of [ocamlc -config]. Return
-    [Error msg] in case of error. *)
-val of_lines : string list -> t
+(** {1 Raw bindings} *)
 
-(** All the uninterpret variables in the output [ocamlc -config] *)
-val bindings : t -> string Map.Make(String).t
+(** Represent the parsed but uninterpreted output of [ocamlc -config] *)
+module Vars : sig
+  type t = string Map.Make(String).t
 
-(** Lookup a variable in [t] *)
-val get : t -> string -> string
+  (** Parse the output of [ocamlc -config] given as a list of lines. *)
+  val of_lines : string list -> (t, string) Result.t
+end
 
-(** Same as [get] but return [None] if the variable is not found *)
-val get_opt : t -> string -> string option
+(** {1 Creation} *)
 
-(** Lookup up a boolean variable in [t]. Returns [false] when the
-    variable is not found *)
-val get_bool : t -> string -> bool
+(** Interpret raw bindings *)
+val make : Vars.t -> (t, string) Result.t
 
-(** Interpret a varialbe as a list of words separated by spaces *)
-val get_strings : t -> string -> string list
+(** {1 Query} *)
 
-val version : t -> int * int * int
+(** The following parameters match the variables in the output of
+    [ocamlc -config] but are stable accross versions of OCaml. *)
 
-(** The full version of the compiler as a string *)
-val version_string : t -> string
+val version                  : t -> int * int * int
+val version_string           : t -> string
+val standard_library_default : t -> string
+val standard_library         : t -> string
+val standard_runtime         : t -> string
+val ccomp_type               : t -> string
+val c_compiler               : t -> string
+val ocamlc_cflags            : t -> string list
+val ocamlopt_cflags          : t -> string list
+val bytecomp_c_compiler      : t -> Prog_and_args.t
+val bytecomp_c_libraries     : t -> string list
+val native_c_compiler        : t -> Prog_and_args.t
+val native_c_libraries       : t -> string list
+val ranlib                   : t -> Prog_and_args.t
+val cc_profile               : t -> string list
+val architecture             : t -> string
+val model                    : t -> string
+val int_size                 : t -> int
+val word_size                : t -> int
+val system                   : t -> string
+val asm                      : t -> Prog_and_args.t
+val asm_cfi_supported        : t -> bool
+val with_frame_pointers      : t -> bool
+val ext_exe                  : t -> string
+val ext_obj                  : t -> string
+val ext_asm                  : t -> string
+val ext_lib                  : t -> string
+val ext_dll                  : t -> string
+val os_type                  : t -> string
+val default_executable_name  : t -> string
+val systhread_supported      : t -> bool
+val host                     : t -> string
+val target                   : t -> string
+val profiling                : t -> bool
+val flambda                  : t -> bool
+val spacetime                : t -> bool
+val safe_string              : t -> bool
+val exec_magic_number        : t -> string
+val cmi_magic_number         : t -> string
+val cmo_magic_number         : t -> string
+val cma_magic_number         : t -> string
+val cmx_magic_number         : t -> string
+val cmxa_magic_number        : t -> string
+val ast_impl_magic_number    : t -> string
+val ast_intf_magic_number    : t -> string
+val cmxs_magic_number        : t -> string
+val cmt_magic_number         : t -> string
+val natdynlink_supported     : t -> bool
 
-val natdynlink_supported : t -> bool
-val word_size            : t -> string option
-val flambda              : t -> bool
-val stdlib_dir           : t -> string
-val c_compiler           : t -> string
-val ocamlc_cflags        : t -> string list
-val ocamlopt_cflags      : t -> string list
+(** {1 Values} *)
 
-val ext_obj : t -> string
-val ext_asm : t -> string
-val ext_lib : t -> string
-val ext_dll : t -> string
-val ext_exe : t -> string
+module Value : sig
+  type t =
+    | Bool          of bool
+    | Int           of int
+    | String        of string
+    | Words         of string list
+    | Prog_and_args of Prog_and_args.t
+
+  val to_string : t -> string
+  val sexp_of_t : t -> Usexp.t
+end
+
+val to_list : t -> (string * Value.t) list

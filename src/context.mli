@@ -96,9 +96,8 @@ type t =
   ; ocamlopt_cflags         : string list
   ; bytecomp_c_libraries    : string list
   ; native_c_libraries      : string list
-  ; native_pack_linker      : string
-  ; ranlib                  : string
-  ; cc_profile              : string
+  ; ranlib                  : Ocamlc_config.Prog_and_args.t
+  ; cc_profile              : string list
   ; architecture            : string
   ; system                  : string
   ; ext_obj                 : string

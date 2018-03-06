@@ -61,9 +61,8 @@ type t =
   ; ocamlopt_cflags         : string list
   ; bytecomp_c_libraries    : string list
   ; native_c_libraries      : string list
-  ; native_pack_linker      : string
-  ; ranlib                  : string
-  ; cc_profile              : string
+  ; ranlib                  : Ocamlc_config.Prog_and_args.t
+  ; cc_profile              : string list
   ; architecture            : string
   ; system                  : string
   ; ext_obj                 : string
@@ -115,20 +114,6 @@ let sexp_of_t t =
     ]
 
 let compare a b = compare a.name b.name
-
-let get_arch_sixtyfour stdlib_dir =
-  let files = ["caml/config.h"; "caml/m.h"] in
-  let get_arch_sixtyfour_from file =
-    let file_path = Path.to_string (Path.relative stdlib_dir file) in
-    if Sys.file_exists file_path then begin
-      List.exists (Io.lines_of_file file_path) ~f:(fun line ->
-        match String.extract_blank_separated_words line with
-        | ["#define"; "ARCH_SIXTYFOUR"] -> true
-        | _ -> false)
-    end else
-      false
-  in
-  List.exists ~f:get_arch_sixtyfour_from files
 
 let opam_config_var ~env ~cache var =
   match Hashtbl.find cache var with
@@ -279,12 +264,22 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
                that libraries are [dir ^ "/../lib"] *)
             [Path.relative (Path.parent dir) "lib"]
     in
+    let ocaml_config_ok_exn = function
+      | Ok x -> x
+      | Error msg ->
+        die "Failed to parse the output of '%s -config':@\n\
+             %s"
+          (Path.to_string ocamlc) msg
+    in
     Fiber.fork_and_join
       findlib_path
       (fun () ->
          Process.run_capture_lines ~env Strict
            (Path.to_string ocamlc) ["-config"]
-         >>| Ocamlc_config.of_lines)
+         >>| fun lines ->
+         let open Result.O in
+         ocaml_config_ok_exn
+           (Ocamlc_config.Vars.of_lines lines >>= Ocamlc_config.make))
     >>= fun (findlib_path, ocamlc_config) ->
     let version = Ocamlc_config.version ocamlc_config in
     let env, env_extra =
@@ -306,19 +301,15 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       else
         env,env_extra
     in
-    let stdlib_dir = Path.of_string (Ocamlc_config.stdlib_dir ocamlc_config) in
+    let stdlib_dir =
+      Path.of_string (Ocamlc_config.standard_library ocamlc_config)
+    in
     let natdynlink_supported =
       Ocamlc_config.natdynlink_supported ocamlc_config
     in
-    let version = Ocamlc_config.version ocamlc_config in
+    let version        = Ocamlc_config.version ocamlc_config        in
     let version_string = Ocamlc_config.version_string ocamlc_config in
-    let get         = Ocamlc_config.get         ocamlc_config in
-    let get_strings = Ocamlc_config.get_strings ocamlc_config in
-    let arch_sixtyfour =
-      match Ocamlc_config.word_size ocamlc_config with
-      | Some ws -> ws = "64"
-      | None -> get_arch_sixtyfour stdlib_dir
-    in
+    let arch_sixtyfour = Ocamlc_config.word_size ocamlc_config = 64 in
     Fiber.return
       { name
       ; implicit
@@ -350,44 +341,39 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       ; ocamlc_config
       ; version_string
       ; version
-      ; ccomp_type              = get       "ccomp_type"
+      ; ccomp_type              = Ocamlc_config.ccomp_type ocamlc_config
       ; c_compiler              = Ocamlc_config.c_compiler      ocamlc_config
       ; ocamlc_cflags           = Ocamlc_config.ocamlc_cflags   ocamlc_config
       ; ocamlopt_cflags         = Ocamlc_config.ocamlopt_cflags ocamlc_config
-      ; bytecomp_c_libraries    = get_strings "bytecomp_c_libraries"
-      ; native_c_libraries      = get_strings "native_c_libraries"
-      ; native_pack_linker      = get       "native_pack_linker"
-      ; ranlib                  = get       "ranlib"
-      ; cc_profile              = get       "cc_profile"
-      ; architecture            = get       "architecture"
-      ; system                  = get       "system"
+      ; bytecomp_c_libraries    = Ocamlc_config.bytecomp_c_libraries ocamlc_config
+      ; native_c_libraries      = Ocamlc_config.native_c_libraries ocamlc_config
+      ; ranlib                  = Ocamlc_config.ranlib ocamlc_config
+      ; cc_profile              = Ocamlc_config.cc_profile ocamlc_config
+      ; architecture            = Ocamlc_config.architecture ocamlc_config
+      ; system                  = Ocamlc_config.system ocamlc_config
       ; ext_obj                 = Ocamlc_config.ext_obj ocamlc_config
       ; ext_asm                 = Ocamlc_config.ext_asm ocamlc_config
       ; ext_lib                 = Ocamlc_config.ext_lib ocamlc_config
       ; ext_dll                 = Ocamlc_config.ext_dll ocamlc_config
       ; ext_exe                 = Ocamlc_config.ext_exe ocamlc_config
-      ; os_type                 = get       "os_type"
-      ; default_executable_name = get       "default_executable_name"
-      ; host                    = get       "host"
-      ; target                  = get       "target"
+      ; os_type                 = Ocamlc_config.os_type ocamlc_config
+      ; default_executable_name = Ocamlc_config.default_executable_name ocamlc_config
+      ; host                    = Ocamlc_config.host ocamlc_config
+      ; target                  = Ocamlc_config.target ocamlc_config
       ; flambda                 = Ocamlc_config.flambda ocamlc_config
-      ; exec_magic_number       = get       "exec_magic_number"
-      ; cmi_magic_number        = get       "cmi_magic_number"
-      ; cmo_magic_number        = get       "cmo_magic_number"
-      ; cma_magic_number        = get       "cma_magic_number"
-      ; cmx_magic_number        = get       "cmx_magic_number"
-      ; cmxa_magic_number       = get       "cmxa_magic_number"
-      ; ast_impl_magic_number   = get       "ast_impl_magic_number"
-      ; ast_intf_magic_number   = get       "ast_intf_magic_number"
-      ; cmxs_magic_number       = get       "cmxs_magic_number"
-      ; cmt_magic_number        = get       "cmt_magic_number"
+      ; exec_magic_number       = Ocamlc_config.exec_magic_number ocamlc_config
+      ; cmi_magic_number        = Ocamlc_config.cmi_magic_number ocamlc_config
+      ; cmo_magic_number        = Ocamlc_config.cmo_magic_number ocamlc_config
+      ; cma_magic_number        = Ocamlc_config.cma_magic_number ocamlc_config
+      ; cmx_magic_number        = Ocamlc_config.cmx_magic_number ocamlc_config
+      ; cmxa_magic_number       = Ocamlc_config.cmxa_magic_number ocamlc_config
+      ; ast_impl_magic_number   = Ocamlc_config.ast_impl_magic_number ocamlc_config
+      ; ast_intf_magic_number   = Ocamlc_config.ast_intf_magic_number ocamlc_config
+      ; cmxs_magic_number       = Ocamlc_config.cmxs_magic_number ocamlc_config
+      ; cmt_magic_number        = Ocamlc_config.cmt_magic_number ocamlc_config
 
       ; which_cache
       }
-    with Ocamlc_config.E msg ->
-      die "Failed to parse the output of '%s -config':@\n\
-           %s"
-        (Path.to_string ocamlc) msg
   in
 
   let implicit = not (List.mem ~set:targets Workspace.Context.Target.Native) in

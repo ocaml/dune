@@ -110,6 +110,16 @@ let wait_for_process pid =
   Running_jobs.add { pid; ivar };
   Fiber.Ivar.read ivar
 
+let rec restart_waiting_for_available_job t =
+  if Queue.is_empty t.waiting_for_available_job ||
+     Running_jobs.count () >= t.concurrency then
+    Fiber.return ()
+  else begin
+    Fiber.Ivar.fill (Queue.pop t.waiting_for_available_job) t
+    >>= fun () ->
+    restart_waiting_for_available_job t
+  end
+
 let rec go_rec t =
   Fiber.yield ()
   >>= fun () ->
@@ -134,12 +144,9 @@ let rec go_rec t =
         t.status_line <- status_line;
     end;
     let job, status = Running_jobs.wait () in
-    (if not (Queue.is_empty t.waiting_for_available_job) then
-       Fiber.Ivar.fill (Queue.pop t.waiting_for_available_job) t
-     else
-       Fiber.return ())
-    >>= fun () ->
     Fiber.Ivar.fill job.ivar status
+    >>= fun () ->
+    restart_waiting_for_available_job t
     >>= fun () ->
     go_rec t
   end

@@ -1,18 +1,18 @@
   $ $JBUILDER runtest -j1 --display short --root .
       ocamldep bar.ml.d
       ocamldep foo_byte.ml.d
+        ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
+        ocamlc foo_byte.cma
       ocamldep foo.ml.d
       ocamldep foo.mli.d
-        ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
         ocamlc .foo.objs/foo.{cmi,cmti}
-        ocamlc foo_byte.cma
         ocamlc .foo.objs/foo.{cmo,cmt}
-      ocamlopt .foo.objs/foo.{cmx,o}
-        ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}
         ocamlc foo.cma
+      ocamlopt .foo.objs/foo.{cmx,o}
       ocamlopt foo.{a,cmxa}
-      ocamlopt .bar.eobjs/bar.{cmx,o}
       ocamlopt foo.cmxs
+        ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}
+      ocamlopt .bar.eobjs/bar.{cmx,o}
       ocamlopt bar.exe
   lib: [
     "_build/install/default/lib/foo/META" {"META"}

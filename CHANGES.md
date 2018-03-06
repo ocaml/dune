@@ -10,6 +10,18 @@ next
 - Do not depend on ocamlfind. Instead, hard-code the library path when
   installing from opam (#575)
 
+- Reduce interleaving in the scheduler in an attempt to make Jbuilder
+  keep file descriptors open for less long (#586)
+
+- Accept and ignore `ppx.driver` fields in library stanzas, in
+  preparation for the generic ppx driver system (#588)
+
+- Change the default behavior regarding the check for overlaps between
+  local and installed libraries. Now even if there is no link time
+  conflict, we don't allow an external dependency to overlap with a
+  local library, unless the user specifies `allow_overlapping_dependencies`
+  in the jbuild file (#587, fixes #562)
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

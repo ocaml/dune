@@ -288,19 +288,20 @@ module Preprocess = struct
 end
 
 module Per_module = struct
-  include Per_item.Make(String)
+  include Per_item.Make(Module.Name)
 
   let t ~default a sexp =
     match sexp with
     | List (_, Atom (_, A "per_module") :: rest) -> begin
       List.map rest ~f:(fun sexp ->
         let pp, names = pair a module_names sexp in
-        (String_set.to_list names, pp))
+        (List.map ~f:Module.Name.of_string (String_set.to_list names), pp))
       |> of_mapping ~default
       |> function
       | Ok t -> t
       | Error (name, _, _) ->
-        of_sexp_error sexp (sprintf "module %s present in two different sets" name)
+        of_sexp_error sexp (sprintf "module %s present in two different sets"
+                              (Module.Name.to_string name))
     end
     | sexp -> for_all (a sexp)
 end
@@ -475,6 +476,7 @@ module Buildable = struct
     ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
     ; js_of_ocaml              : Js_of_ocaml.t
+    ; allow_overlapping_dependencies : bool
     }
 
   let modules_field name =
@@ -486,8 +488,6 @@ module Buildable = struct
     >>= fun preprocess ->
     field "preprocessor_deps" (list Dep_conf.t) ~default:[]
     >>= fun preprocessor_deps ->
-    (* CR-someday jdimino: remove this. There are still a few Jane Street packages using
-       this *)
     field "lint" Lint.t ~default:Lint.default
     >>= fun lint ->
     modules_field "modules"
@@ -499,7 +499,10 @@ module Buildable = struct
     field_oslu "flags"          >>= fun flags          ->
     field_oslu "ocamlc_flags"   >>= fun ocamlc_flags   ->
     field_oslu "ocamlopt_flags" >>= fun ocamlopt_flags ->
-    field "js_of_ocaml" (Js_of_ocaml.t) ~default:Js_of_ocaml.default >>= fun js_of_ocaml ->
+    field "js_of_ocaml" (Js_of_ocaml.t) ~default:Js_of_ocaml.default
+    >>= fun js_of_ocaml ->
+    field_b "allow_overlapping_dependencies"
+    >>= fun allow_overlapping_dependencies ->
     return
       { loc
       ; preprocess
@@ -512,11 +515,12 @@ module Buildable = struct
       ; ocamlc_flags
       ; ocamlopt_flags
       ; js_of_ocaml
+      ; allow_overlapping_dependencies
       }
 
   let single_preprocess t =
     if Per_module.is_constant t.preprocess then
-      Per_module.get t.preprocess ""
+      Per_module.get t.preprocess (Module.Name.of_string "")
     else
       Preprocess.No_preprocessing
 end
@@ -660,6 +664,7 @@ module Library = struct
        field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
        field_b    "no_dynlink"                                             >>= fun no_dynlink               ->
        Sub_system_info.record_parser () >>= fun sub_systems ->
+       field "ppx.driver" ignore ~default:() >>= fun () ->
        return
          { name
          ; public
@@ -865,7 +870,8 @@ module Rule = struct
             return (fallback, mode))
            ~f:(function
              | true, Some _ ->
-               Error "Cannot use both (fallback) and (mode ...) at the same time.\n\
+               Error "Cannot use both (fallback) and (mode ...) at the \
+                      same time.\n\
                       (fallback) is the same as (mode fallback), \
                       please use the latter in new code."
              | false, Some mode -> Ok mode
@@ -942,15 +948,16 @@ end
 module Menhir = struct
   type t =
     { merge_into : string option
-    ; flags      : String_with_vars.t list
+    ; flags      : Ordered_set_lang.Unexpanded.t
     ; modules    : string list
     ; mode       : Rule.Mode.t
+    ; loc        :  Loc.t
     }
 
   let v1 =
     record
       (field_o "merge_into" string >>= fun merge_into ->
-       field "flags" (list String_with_vars.t) ~default:[] >>= fun flags ->
+       field_oslu "flags" >>= fun flags ->
        field "modules" (list string) >>= fun modules ->
        Rule.Mode.field >>= fun mode ->
        return
@@ -958,48 +965,9 @@ module Menhir = struct
          ; flags
          ; modules
          ; mode
+         ; loc = Loc.none
          }
       )
-
-  let v1_to_rule loc t =
-    let module S = String_with_vars in
-    let targets n = [n ^ ".ml"; n ^ ".mli"] in
-    match t.merge_into with
-    | None ->
-      List.map t.modules ~f:(fun name ->
-        let src = name ^ ".mly" in
-        { Rule.
-          targets = Static (targets name)
-        ; deps    = [Dep_conf.File (S.virt_text __POS__ src)]
-        ; action  =
-            Chdir
-              (S.virt_var __POS__ "ROOT",
-               Run (S.virt_text __POS__ "menhir",
-                    t.flags @ [S.virt_var __POS__ "<"]))
-        ; mode  = t.mode
-        ; locks = []
-       ; loc
-       })
-    | Some merge_into ->
-      let mly m = S.virt_text __POS__ (m ^ ".mly") in
-      [{ Rule.
-         targets = Static (targets merge_into)
-       ; deps    = List.map ~f:(fun m -> Dep_conf.File (mly m)) t.modules
-       ; action  =
-           Chdir
-             (S.virt_var __POS__ "ROOT",
-              Run (S.virt_text __POS__ "menhir",
-                   List.concat
-                     [ [ S.virt_text __POS__ "--base"
-                       ; S.virt_var __POS__ ("path-no-dep:" ^ merge_into)
-                       ]
-                     ; t.flags
-                     ; [ S.virt_var __POS__ "^" ]
-                     ]))
-       ; mode  = t.mode
-       ; locks = []
-       ; loc
-       }]
 end
 
 module Provides = struct
@@ -1067,6 +1035,7 @@ module Stanza = struct
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
     | Copy_files  of Copy_files.t
+    | Menhir      of Menhir.t
 end
 
 module Stanzas = struct
@@ -1096,7 +1065,7 @@ module Stanzas = struct
       ; cstr_loc "ocamlyacc" (Rule.ocamlyacc_v1 @> nil)
           (fun loc x -> rules (Rule.ocamlyacc_to_rule loc x))
       ; cstr_loc "menhir" (Menhir.v1 @> nil)
-          (fun loc x -> rules (Menhir.v1_to_rule loc x))
+          (fun loc x -> [Menhir { x with loc }])
       ; cstr "install"     (Install_conf.v1 pkgs @> nil) (fun x -> [Install     x])
       ; cstr "alias"       (Alias_conf.v1 pkgs @> nil)   (fun x -> [Alias       x])
       ; cstr "copy_files" (Copy_files.v1 @> nil)

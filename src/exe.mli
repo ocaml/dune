@@ -1,11 +1,9 @@
 (** Compilation and linking of executables *)
 
-open Import
-
 module Program : sig
   type t =
     { name             : string
-    ; main_module_name : string
+    ; main_module_name : Module.Name.t
     }
 end
 
@@ -40,11 +38,11 @@ val build_and_link
   :  dir:Path.t
   -> obj_dir:Path.t
   -> program:Program.t
-  -> modules:Module.t String_map.t
+  -> modules:Module.t Module.Name.Map.t
   -> scope:Scope.t
   -> linkages:Linkage.t list
   -> ?requires:(unit, Lib.L.t) Build.t
-  -> ?already_used:String_set.t
+  -> ?already_used:Module.Name.Set.t
   -> ?flags:Ocaml_flags.t
   -> ?link_flags:(unit, string list) Build.t
   -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
@@ -55,11 +53,11 @@ val build_and_link_many
   :  dir:Path.t
   -> obj_dir:Path.t
   -> programs:Program.t list
-  -> modules:Module.t String_map.t
+  -> modules:Module.t Module.Name.Map.t
   -> scope:Scope.t
   -> linkages:Linkage.t list
   -> ?requires:(unit, Lib.L.t) Build.t
-  -> ?already_used:String_set.t
+  -> ?already_used:Module.Name.Set.t
   -> ?flags:Ocaml_flags.t
   -> ?link_flags:(unit, string list) Build.t
   -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t

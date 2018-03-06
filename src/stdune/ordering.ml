@@ -15,3 +15,7 @@ let to_int = function
   | Lt -> -1
   | Eq ->  0
   | Gt ->  1
+
+let neq = function
+  | Eq -> false
+  | Lt | Gt -> true

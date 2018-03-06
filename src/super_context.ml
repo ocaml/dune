@@ -649,7 +649,12 @@ end
 
 module Eval_strings = Ordered_set_lang.Make(struct
     type t = string
-    let name t = t
+    let compare = String.compare
+    module Map = String_map
+  end)(struct
+    type t = string
+    type key = string
+    let key x = x
   end)
 
 let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =

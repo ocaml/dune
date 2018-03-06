@@ -692,6 +692,10 @@ Jbuilder supports the following variables:
 -  ``ARCH_SIXTYFOUR`` is ``true`` if using a compiler targeting a
    64 bit architecture and ``false`` otherwise
 -  ``null`` is ``/dev/null`` on Unix or ``nul`` on Windows
+- ``ext_obj``, ``ext_asm``, ``ext_lib``, ``ext_dll`` and ``ext_exe``
+   are the file extension used for various artifacts
+- ``bytecomp_c_libraries`` and ``native_c_libraries`` are list of C libraries
+  used by the OCaml runtimes
 
 In addition, ``(action ...)`` fields support the following special variables:
 

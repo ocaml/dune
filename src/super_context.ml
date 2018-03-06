@@ -159,6 +159,13 @@ let create
     ; "ARCH_SIXTYFOUR" , string (string_of_bool context.arch_sixtyfour)
     ; "MAKE"           , make
     ; "null"           , string (Path.to_string Config.dev_null)
+    ; "ext_obj"        , string context.ext_obj
+    ; "ext_asm"        , string context.ext_asm
+    ; "ext_lib"        , string context.ext_lib
+    ; "ext_dll"        , string context.ext_dll
+    ; "ext_exe"        , string context.ext_exe
+    ; "bytecomp_c_libraries", strings context.bytecomp_c_libraries
+    ; "native_c_libraries"  , strings context.bytecomp_c_libraries
     ]
     |> String_map.of_list
     |> function

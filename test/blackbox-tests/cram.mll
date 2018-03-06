@@ -66,7 +66,7 @@ rule file = parse
             | _ -> 255
           in
           List.iter (Io.lines_of_file temp_file) ~f:(fun line ->
-            Printf.bprintf buf "  %s\n" line);
+            Printf.bprintf buf "  %s\n" (Ansi_color.strip line));
           if n <> 0 then Printf.bprintf buf "  [%d]\n" n);
       Buffer.contents buf)
 }

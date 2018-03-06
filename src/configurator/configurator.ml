@@ -205,10 +205,12 @@ let create ?dest_dir ?ocamlc ?(log=ignore) name =
       run_capture_exn t ~dir:dest_dir ocamlc_config_cmd
       |> String.split_lines
     in
-    Jbuilder.Ocamlc_config.make
-      ~ocamlc:(Jbuilder.Path.of_string ocamlc)
-      ~ocamlc_config_output:ocamlc_config_output
-    |> Jbuilder.Ocamlc_config.bindings
+    match Ocamlc_config.of_lines ocamlc_config_output with
+    | oc -> Ocamlc_config.bindings oc
+    | exception (Ocamlc_config.E msg) ->
+      die "Failed to parse the output of '%s':@\n\
+           %s"
+        ocamlc_config_cmd msg
   in
   let get = get_ocaml_config_var_exn ocamlc_config ~ocamlc_config_cmd in
   let c_compiler =

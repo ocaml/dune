@@ -738,11 +738,72 @@ end
 
 module Executables = struct
 
+  module Link_mode = struct
+    type t =
+      { mode : Mode.t
+      ; kind : Binary_kind.t
+      }
+
+    let make mode kind =
+      { mode
+      ; kind
+      }
+
+    let exe           = make Native Exe
+    let object_       = make Native Object
+    let shared_object = make Native Shared_object
+    let byte          = make Byte   Exe
+    let native        = exe
+
+    let simple =
+      let open Sexp.Of_sexp in
+      enum
+        [ "exe"           , exe
+        ; "object"        , object_
+        ; "shared_object" , shared_object
+        ; "byte"          , byte
+        ; "native"        , native
+        ]
+
+    let t sexp =
+      match sexp with
+      | List _ ->
+        let mode, kind = pair Mode.t Binary_kind.t sexp in
+        { mode; kind }
+      | _ -> simple sexp
+  end
+
+  module Link_modes = struct
+    open Link_mode
+
+    type t = Link_mode.t list
+
+    let t sexp : t =
+      match list Link_mode.t sexp with
+      | [] -> of_sexp_error sexp "No linking mode defined"
+      | l  -> l
+
+    let default =
+      [ byte
+      ; native
+      ]
+
+    let best_install_mode l =
+      List.fold_left l ~init:None ~f:(fun acc t ->
+        if t.kind = Exe then
+          Some
+            (match t.mode with
+             | Native -> Mode.Native
+             | Byte   -> Option.value acc ~default:Byte)
+        else
+          acc)
+  end
+
   type t =
     { names            : (Loc.t * string) list
     ; link_executables : bool
     ; link_flags       : Ordered_set_lang.Unexpanded.t
-    ; modes            : Mode.Dict.Binary_Kind_Set.t
+    ; modes            : Link_mode.t list
     ; buildable        : Buildable.t
     }
 
@@ -750,13 +811,7 @@ module Executables = struct
     Buildable.v1 >>= fun buildable ->
     field      "link_executables"   bool ~default:true >>= fun link_executables ->
     field_oslu "link_flags"                            >>= fun link_flags ->
-    map_validate (field "modes" Mode.Dict.Binary_Kind_Set.t
-                    ~default:Mode.Dict.Binary_Kind_Set.default)
-      ~f:(fun modes ->
-        if Mode.Dict.Binary_Kind_Set.is_empty modes then
-          Error "No compilation mode defined."
-        else
-          Ok modes)
+    field "modes" Link_modes.t ~default:Link_modes.default
     >>= fun modes ->
     let t =
       { names
@@ -767,10 +822,10 @@ module Executables = struct
       }
     in
     let to_install =
-      match Mode.Dict.Binary_Kind_Set.best_executable_mode t.modes with
+      match Link_modes.best_install_mode t.modes with
       | None -> []
-      | Some best_mode ->
-        let ext = if best_mode = Native then ".exe" else ".bc" in
+      | Some mode ->
+        let ext = if mode = Native then ".exe" else ".bc" in
         List.map2 names public_names
           ~f:(fun (_, name) pub ->
             match pub with
@@ -786,7 +841,8 @@ module Executables = struct
       (field_o "package" Sexp.Ast.loc >>= function
        | None -> return (t, None)
        | Some loc ->
-         Loc.warn loc "This field is useless without a (public_name%s ...) field."
+         Loc.warn loc
+           "This field is useless without a (public_name%s ...) field."
            (if multi then "s" else "");
          return (t, None))
     | files ->

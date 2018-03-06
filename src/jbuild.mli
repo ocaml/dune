@@ -242,11 +242,18 @@ module Install_conf : sig
 end
 
 module Executables : sig
+  module Link_mode : sig
+    type t =
+      { mode : Mode.t
+      ; kind : Binary_kind.t
+      }
+  end
+
   type t =
     { names            : (Loc.t * string) list
     ; link_executables : bool
     ; link_flags       : Ordered_set_lang.Unexpanded.t
-    ; modes            : Mode.Dict.Binary_Kind_Set.t
+    ; modes            : Link_mode.t list
     ; buildable        : Buildable.t
     }
 end

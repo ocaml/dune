@@ -45,6 +45,41 @@ module Linkage = struct
     ; ext
     ; flags
     }
+
+  let  o_flags = ["-output-complete-obj"]
+  let so_flags = ["-output-complete-obj"; "-runtime-variant"; "_pic"]
+
+  let of_user_config (ctx : Context.t) (m : Jbuild.Executables.Link_mode.t) =
+    let has_native = Option.is_some ctx.ocamlopt in
+    let mode = m.mode in
+    match m.kind with
+    | Exe ->
+      if mode = Native && not has_native then
+        custom
+      else
+        { ext =
+            (match mode with
+             | Byte   -> ".bc"
+             | Native -> ".exe")
+        ; mode
+        ; flags = []
+        }
+    | Object ->
+      { ext =
+          (match mode with
+           | Byte   -> ".bc"  ^ ctx.ext_obj
+           | Native -> ".exe" ^ ctx.ext_obj)
+      ; mode = if has_native then mode else Byte
+      ; flags = o_flags
+      }
+    | Shared_object ->
+      { ext =
+          (match mode with
+           | Byte   -> ".bc"  ^ ctx.ext_dll
+           | Native ->          ctx.ext_dll)
+      ; mode = if has_native then mode else Byte
+      ; flags = so_flags
+      }
 end
 
 let link_exe
@@ -101,7 +136,7 @@ let link_exe
            Lib.L.link_flags libs ~mode ~stdlib_dir:ctx.stdlib_dir)
        ; Dyn (fun (_, cm_files, _, _) -> Deps cm_files)
        ]);
-  if mode = Mode.Byte then
+  if linkage.ext = ".bc" then
     let rules = Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe in
     let libs_and_cm_and_flags =
       (requires &&& (modules_and_cm_files >>^ snd))

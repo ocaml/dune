@@ -791,26 +791,7 @@ module Gen(P : Install_rules.Params) = struct
     in
 
     let linkages =
-      List.map (Mode.Dict.Binary_Kind_Set.to_list exes.modes)
-        ~f:(fun x ->
-          match (x : Mode.t * Mode.Dict.Binary_Kind_Set.binary_kind) with
-          | Byte  , Executable -> Exe.Linkage.byte
-          | Native, Executable -> Exe.Linkage.native_or_custom ctx
-          | mode, Object ->
-            Exe.Linkage.make ()
-              ~mode
-              ~ext:(Mode.exe_ext mode ^ ctx.ext_obj)
-              ~flags:["-output-complete-obj"]
-          | Byte, Shared_object ->
-            Exe.Linkage.make ()
-              ~mode:Byte
-              ~ext:(".bc" ^ ctx.ext_dll)
-              ~flags:["-output-complete-obj"; "-runtime-variant"; "_pic"]
-          | Native, Shared_object ->
-            Exe.Linkage.make ()
-              ~mode:Native
-              ~ext:ctx.ext_dll
-              ~flags:["-output-complete-obj"; "-runtime-variant"; "_pic"])
+      List.map exes.modes ~f:(Exe.Linkage.of_user_config ctx)
     in
 
     let flags =

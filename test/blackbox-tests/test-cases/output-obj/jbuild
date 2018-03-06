@@ -4,9 +4,12 @@
 
 (executable
  ((name test)
-  (modes ((byte executable)(native executable)
-          (byte object)(native object)
-          (byte shared_object)(native shared_object)))))
+  (modes ((byte   exe          )
+          (native exe          )
+          (byte   object       )
+          (native object       )
+          (byte   shared_object)
+          (native shared_object)))))
 
 (rule
  ((targets (stub_native))

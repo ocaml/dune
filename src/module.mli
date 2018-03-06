@@ -13,17 +13,8 @@ module Name : sig
   val pp : Format.formatter -> t -> unit
   val pp_quote : Format.formatter -> t -> unit
 
-  module Set : sig
-    include Set.S with type elt = t
-
-    val of_sset : String_set.t -> t
-  end
-  module Map : sig
-    include Map.S with type key = t
-
-    val to_smap : 'a t -> 'a String_map.t
-    val of_smap : 'a String_map.t -> 'a t
-  end
+  module Set : Set.S with type elt = t
+  module Map : Map.S with type key = t
 end
 
 module Syntax : sig

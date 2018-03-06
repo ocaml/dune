@@ -24,19 +24,18 @@ module Gen(P : Install_rules.Params) = struct
      | Interpretation of [modules] fields                              |
      +-----------------------------------------------------------------+ *)
 
-  module Eval_modules = Ordered_set_lang.Make(struct
+  module Eval_modules = Ordered_set_lang.Make(Module.Name)(struct
       type t = (Module.t, Module.Name.t * Loc.t) result
-      let name r = (
-        (match r with
-         | Error (s, _) -> s
-         | Ok m -> Module.name m)
-        |> Module.Name.to_string
-      )
+
+      type key = Module.Name.t
+
+      let key = function
+        | Error (s, _) -> s
+        | Ok m -> Module.name m
     end)
 
-  let parse_modules ~(all_modules : Module.t Module.Name.Map.t) ~buildable =
-    let conf : Buildable.t = buildable in
-    let standard_modules = Module.Name.Map.map all_modules ~f:(fun m -> Ok m) in
+  let parse_modules ~(all_modules : Module.t Module.Name.Map.t)
+        ~buildable:(conf : Buildable.t) =
     let fake_modules = ref Module.Name.Map.empty in
     let parse ~loc s =
       let name = Module.Name.of_string s in
@@ -47,12 +46,10 @@ module Gen(P : Install_rules.Params) = struct
         Error (name, loc)
     in
     let modules =
-      let standard = Module.Name.Map.to_smap standard_modules in
       Eval_modules.eval_unordered
         conf.modules
         ~parse
-        ~standard
-      |> Module.Name.Map.of_smap
+        ~standard:(Module.Name.Map.map all_modules ~f:(fun m -> Ok m))
     in
     let only_present_modules modules =
       Module.Name.Map.filter_map ~f:(function
@@ -66,8 +63,7 @@ module Gen(P : Install_rules.Params) = struct
       Eval_modules.eval_unordered
         conf.modules_without_implementation
         ~parse
-        ~standard:String_map.empty
-      |> Module.Name.Map.of_smap
+        ~standard:Module.Name.Map.empty
     in
     let intf_only = only_present_modules intf_only in
     Module.Name.Map.iteri !fake_modules ~f:(fun m loc ->
@@ -124,9 +120,10 @@ module Gen(P : Install_rules.Params) = struct
         (* Re-evaluate conf.modules_without_implementation but this
            time keep locations *)
         let module Eval =
-          Ordered_set_lang.Make(struct
+          Ordered_set_lang.Make(Module.Name)(struct
             type t = Loc.t * Module.t
-            let name (_, m) = Module.Name.to_string (Module.name m)
+            type key = Module.Name.t
+            let key (_, m) = Module.name m
           end)
         in
         let parse ~loc s =
@@ -137,11 +134,10 @@ module Gen(P : Install_rules.Params) = struct
         in
         let parse ~loc s = (loc, parse ~loc s) in
         let shouldn't_be_listed =
-          let all_modules = Module.Name.Map.to_smap all_modules in
           Eval.eval_unordered conf.modules_without_implementation
             ~parse
-            ~standard:(String_map.map all_modules ~f:(fun m -> (Loc.none, m)))
-          |> String_map.values
+            ~standard:(Module.Name.Map.map all_modules ~f:(fun m -> (Loc.none, m)))
+          |> Module.Name.Map.values
           |> List.filter ~f:(fun (_, (m : Module.t)) ->
             Option.is_some m.impl)
         in

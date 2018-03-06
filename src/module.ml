@@ -14,17 +14,8 @@ module Name = struct
   let pp = Format.pp_print_string
   let pp_quote fmt x = Format.fprintf fmt "%S" x
 
-  module Set = struct
-    include String_set
-    let of_sset x = x
-  end
-
-  module Map = struct
-    include String_map
-
-    let to_smap x = x
-    let of_smap x = x
-  end
+  module Set = String_set
+  module Map = String_map
 end
 
 module Syntax = struct

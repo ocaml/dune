@@ -57,10 +57,10 @@ type t =
   ; stdlib_dir              : Path.t
   ; ccomp_type              : string
   ; c_compiler              : string
-  ; ocamlc_cflags           : string
-  ; ocamlopt_cflags         : string
-  ; bytecomp_c_libraries    : string
-  ; native_c_libraries      : string
+  ; ocamlc_cflags           : string list
+  ; ocamlopt_cflags         : string list
+  ; bytecomp_c_libraries    : string list
+  ; native_c_libraries      : string list
   ; native_pack_linker      : string
   ; ranlib                  : string
   ; cc_profile              : string
@@ -306,13 +306,15 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
     let version = Ocamlc_config.version ocamlc_config in
     let version_string = Ocamlc_config.version_string ocamlc_config in
     let get = Ocamlc_config.get ocamlc_config in
-    let c_compiler, ocamlc_cflags, ocamlopt_cflags =
+    let get_strings = Ocamlc_config.get_strings ocamlc_config in
+    let { Ocamlc_config. c_compiler, ocamlc_cflags, ocamlopt_cflags } =
       Ocamlc_config.c_compiler_settings ocamlc_config in
     let arch_sixtyfour =
       match Ocamlc_config.word_size ocamlc_config with
       | Some ws -> ws = "64"
       | None -> get_arch_sixtyfour stdlib_dir
     in
+    let os_type = get "os_type" in
     Fiber.return
       { name
       ; implicit
@@ -349,8 +351,8 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       ; ocamlc_cflags
       ; ocamlopt_cflags
       ; bytecomp_c_libraries    = get       "bytecomp_c_libraries"
-      ; native_c_libraries      = get       "native_c_libraries"
-      ; native_pack_linker      = get       "native_pack_linker"
+      ; native_c_libraries      = get_strings "native_c_libraries"
+      ; native_pack_linker      = get_strings "native_pack_linker"
       ; ranlib                  = get       "ranlib"
       ; cc_profile              = get       "cc_profile"
       ; architecture            = get       "architecture"
@@ -359,6 +361,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       ; ext_asm                 = get       "ext_asm"
       ; ext_lib                 = get       "ext_lib"
       ; ext_dll                 = get       "ext_dll"
+      ; ext_exe                 = if os_type = "Win32" then ".exe" else ""
       ; os_type                 = get       "os_type"
       ; default_executable_name = get       "default_executable_name"
       ; host                    = get       "host"

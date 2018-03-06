@@ -92,10 +92,10 @@ type t =
   ; stdlib_dir              : Path.t
   ; ccomp_type              : string
   ; c_compiler              : string
-  ; ocamlc_cflags           : string
-  ; ocamlopt_cflags         : string
-  ; bytecomp_c_libraries    : string
-  ; native_c_libraries      : string
+  ; ocamlc_cflags           : string list
+  ; ocamlopt_cflags         : string list
+  ; bytecomp_c_libraries    : string list
+  ; native_c_libraries      : string list
   ; native_pack_linker      : string
   ; ranlib                  : string
   ; cc_profile              : string

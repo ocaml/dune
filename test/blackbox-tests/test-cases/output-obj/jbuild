@@ -11,12 +11,14 @@
 (rule
  ((targets (stub_native))
   (deps (stub.c test.exe.o))
-  (action (run ${CC} -o ${@} -I ${ocaml_where} -I . test.exe.o -lm -ldl stub.c))))
+  (action (run ${CC} -o ${@} -I ${ocaml_where} -I . test.exe.o stub.c
+           ${bytecomp_c_libraries}))))
 
 (rule
  ((targets (stub_byte))
   (deps (stub.c test.bc.o))
-  (action (run ${CC} -o ${@} -I ${ocaml_where} -I . test.bc.o -lm -ldl stub.c))))
+  (action (run ${CC} -o ${@} -I ${ocaml_where} -I . test.bc.o stub.c
+           ${native_c_libraries}))))
 
 (install
  ((section bin)

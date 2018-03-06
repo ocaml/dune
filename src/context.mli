@@ -96,7 +96,6 @@ type t =
   ; ocamlopt_cflags         : string list
   ; bytecomp_c_libraries    : string list
   ; native_c_libraries      : string list
-  ; ranlib                  : Ocaml_config.Prog_and_args.t
   ; cc_profile              : string list
   ; architecture            : string
   ; system                  : string

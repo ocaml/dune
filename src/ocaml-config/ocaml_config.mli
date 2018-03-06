@@ -47,7 +47,6 @@ val bytecomp_c_compiler      : t -> Prog_and_args.t
 val bytecomp_c_libraries     : t -> string list
 val native_c_compiler        : t -> Prog_and_args.t
 val native_c_libraries       : t -> string list
-val ranlib                   : t -> Prog_and_args.t
 val cc_profile               : t -> string list
 val architecture             : t -> string
 val model                    : t -> string

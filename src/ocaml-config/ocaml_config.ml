@@ -48,7 +48,6 @@ type t =
   ; bytecomp_c_libraries     : string list
   ; native_c_compiler        : Prog_and_args.t
   ; native_c_libraries       : string list
-  ; ranlib                   : Prog_and_args.t
   ; cc_profile               : string list
   ; architecture             : string
   ; model                    : string
@@ -98,7 +97,6 @@ let bytecomp_c_compiler      t = t.bytecomp_c_compiler
 let bytecomp_c_libraries     t = t.bytecomp_c_libraries
 let native_c_compiler        t = t.native_c_compiler
 let native_c_libraries       t = t.native_c_libraries
-let ranlib                   t = t.ranlib
 let cc_profile               t = t.cc_profile
 let architecture             t = t.architecture
 let model                    t = t.model
@@ -147,7 +145,6 @@ let to_list t : (string * Value.t) list =
   ; "bytecomp_c_libraries"     , Words         t.bytecomp_c_libraries
   ; "native_c_compiler"        , Prog_and_args t.native_c_compiler
   ; "native_c_libraries"       , Words         t.native_c_libraries
-  ; "ranlib"                   , Prog_and_args t.ranlib
   ; "cc_profile"               , Words         t.cc_profile
   ; "architecture"             , String        t.architecture
   ; "model"                    , String        t.model
@@ -313,7 +310,6 @@ let make vars =
     let ccomp_type               = get vars "ccomp_type" in
     let bytecomp_c_libraries     = get_words vars "bytecomp_c_libraries" in
     let native_c_libraries       = get_words vars "native_c_libraries" in
-    let ranlib                   = get_prog_and_args vars "ranlib" in
     let cc_profile               = get_words vars "cc_profile" in
     let architecture             = get vars "architecture" in
     let model                    = get vars "model" in
@@ -382,7 +378,6 @@ let make vars =
     ; bytecomp_c_libraries
     ; native_c_compiler
     ; native_c_libraries
-    ; ranlib
     ; cc_profile
     ; architecture
     ; model

@@ -61,7 +61,6 @@ type t =
   ; ocamlopt_cflags         : string list
   ; bytecomp_c_libraries    : string list
   ; native_c_libraries      : string list
-  ; ranlib                  : Ocaml_config.Prog_and_args.t
   ; cc_profile              : string list
   ; architecture            : string
   ; system                  : string
@@ -343,7 +342,6 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       ; ocamlopt_cflags         = Ocaml_config.ocamlopt_cflags         ocfg
       ; bytecomp_c_libraries    = Ocaml_config.bytecomp_c_libraries    ocfg
       ; native_c_libraries      = Ocaml_config.native_c_libraries      ocfg
-      ; ranlib                  = Ocaml_config.ranlib                  ocfg
       ; cc_profile              = Ocaml_config.cc_profile              ocfg
       ; architecture            = Ocaml_config.architecture            ocfg
       ; system                  = Ocaml_config.system                  ocfg

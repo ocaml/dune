@@ -136,7 +136,8 @@ let opam_config_var ~env ~cache var =
     match Bin.opam with
     | None -> Fiber.return None
     | Some fn ->
-      Process.run_capture (Accept All) (Path.to_string fn) ~env ["config"; "var"; var]
+      Process.run_capture (Accept All) (Path.to_string fn) ~env
+        ["config"; "var"; var]
       >>| function
       | Ok s ->
         let s = String.trim s in
@@ -180,7 +181,7 @@ let extend_env ~vars ~env =
     |> Array.of_list
 
 let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
-      ~use_findlib ~targets () =
+      ~targets () =
   let env = extend_env ~env:base_env ~vars:env_extra in
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
@@ -251,7 +252,10 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
 
     let build_dir = Path.of_string (sprintf "_build/%s" name) in
     let findlib_path () =
-      if use_findlib then
+      match kind, findlib_toolchain, Setup.library_path with
+      | Default, None, Some l ->
+        Fiber.return (List.map l ~f:Path.absolute)
+      | _ ->
         (* If ocamlfind is present, it has precedence over everything else. *)
         match which "ocamlfind" with
         | Some fn ->
@@ -270,11 +274,9 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
           >>| function
           | Some s -> [Path.absolute s]
           | None ->
-            (* If neither opam neither ocamlfind are present, assume that libraries are
-               [dir ^ "/../lib"] *)
+            (* If neither opam neither ocamlfind are present, assume
+               that libraries are [dir ^ "/../lib"] *)
             [Path.relative (Path.parent dir) "lib"]
-      else
-        Fiber.return []
     in
     Fiber.fork_and_join
       findlib_path
@@ -282,9 +284,10 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
     >>= fun (findlib_path, ocamlc_config) ->
     let version = Ocamlc_config.version ocamlc_config in
     let env, env_extra =
-      (* See comment in ansi_color.ml for setup_env_for_colors. For OCaml < 4.05,
-         OCAML_COLOR is not supported so we use OCAMLPARAM. OCaml 4.02 doesn't support
-         'color' in OCAMLPARAM, so we just don't force colors with 4.02. *)
+      (* See comment in ansi_color.ml for setup_env_for_colors. For
+         OCaml < 4.05, OCAML_COLOR is not supported so we use
+         OCAMLPARAM. OCaml 4.02 doesn't support 'color' in OCAMLPARAM,
+         so we just don't force colors with 4.02. *)
       if !Clflags.capture_outputs
       && Lazy.force Colors.stderr_supports_colors
       && version >= (4, 03, 0)
@@ -397,7 +400,7 @@ let initial_env = lazy (
   Lazy.force Colors.setup_env_for_colors;
   Unix.environment ())
 
-let default ?(merlin=true) ?(use_findlib=true) ~targets () =
+let default ?(merlin=true) ~targets () =
   let env = Lazy.force initial_env in
   let path =
     match get_env env "PATH" with
@@ -405,7 +408,7 @@ let default ?(merlin=true) ?(use_findlib=true) ~targets () =
     | None -> []
   in
   create ~kind:Default ~path ~base_env:env ~env_extra:Env_var_map.empty
-    ~name:"default" ~merlin ~use_findlib ~targets ()
+    ~name:"default" ~merlin ~targets ()
 
 let create_for_opam ?root ~targets ~switch ~name ?(merlin=false) () =
   match Bin.opam with
@@ -445,11 +448,11 @@ let create_for_opam ?root ~targets ~switch ~name ?(merlin=false) () =
     in
     let env = Lazy.force initial_env in
     create ~kind:(Opam { root; switch }) ~targets
-      ~path ~base_env:env ~env_extra:vars ~name ~merlin ~use_findlib:true ()
+      ~path ~base_env:env ~env_extra:vars ~name ~merlin ()
 
-let create ?use_findlib ?merlin def =
+let create ?merlin def =
   match (def : Workspace.Context.t) with
-  | Default targets -> default ~targets ?merlin ?use_findlib ()
+  | Default targets -> default ~targets ?merlin ()
   | Opam { name; switch; root; targets; _ } ->
     create_for_opam ?root ~switch ~name ?merlin ~targets ()
 
@@ -461,15 +464,19 @@ let install_prefix t =
   | None   -> Path.parent t.ocaml_bin
 
 let install_ocaml_libdir t =
-  (* If ocamlfind is present, it has precedence over everything else. *)
-  match which t "ocamlfind" with
-  | Some fn ->
-    (Process.run_capture_line ~env:t.env Strict
-       (Path.to_string fn) ["printconf"; "destdir"]
-     >>| fun s ->
-     Some (Path.absolute s))
-  | None ->
-    Fiber.return None
+  match t.kind, t.findlib_toolchain, Setup.library_destdir with
+  | Default, None, Some d ->
+    Fiber.return (Some (Path.absolute d))
+  | _ ->
+    (* If ocamlfind is present, it has precedence over everything else. *)
+    match which t "ocamlfind" with
+    | Some fn ->
+      (Process.run_capture_line ~env:t.env Strict
+         (Path.to_string fn) ["printconf"; "destdir"]
+       >>| fun s ->
+       Some (Path.absolute s))
+    | None ->
+      Fiber.return None
 
 (* CR-someday jdimino: maybe we should just do this for [t.env] directly? *)
 let env_for_exec t =

@@ -13,3 +13,8 @@
   (synopsis    "Internal Jbuilder library, do not use!")))
 
 (ocamllex (meta_lexer glob_lexer))
+
+(rule
+ ((targets (setup.ml))
+  (mode    fallback)
+  (action  (copy# setup.defaults.ml setup.ml))))

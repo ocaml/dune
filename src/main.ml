@@ -21,7 +21,6 @@ let package_install_file { packages; _ } pkg =
 let setup ?(log=Log.no_log)
       ?filter_out_optional_stanzas_with_missing_deps
       ?workspace ?(workspace_file="jbuild-workspace")
-      ?(use_findlib=true)
       ?only_packages
       ?extra_ignored_subtrees
       ?x
@@ -56,11 +55,12 @@ let setup ?(log=Log.no_log)
 
   Fiber.parallel_map workspace.contexts ~f:(fun ctx_def ->
     let name = Workspace.Context.name ctx_def in
-    Context.create ctx_def ~merlin:(workspace.merlin_context = Some name) ~use_findlib)
+    Context.create ctx_def ~merlin:(workspace.merlin_context = Some name))
   >>= fun contexts ->
   let contexts = List.concat contexts in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
-    Log.infof log "@[<1>Jbuilder context:@,%a@]@." Sexp.pp (Context.sexp_of_t ctx));
+    Log.infof log "@[<1>Jbuilder context:@,%a@]@." Sexp.pp
+      (Context.sexp_of_t ctx));
   let rule_done  = ref 0 in
   let rule_total = ref 0 in
   let gen_status_line () =
@@ -168,7 +168,6 @@ let bootstrap () =
     Scheduler.go ~log ~config
       (setup ~log ~workspace:{ merlin_context = Some "default"
                              ; contexts = [Default [Native]] }
-         ~use_findlib:false
          ~extra_ignored_subtrees:ignored_during_bootstrap
          ()
        >>= fun { build_system = bs; _ } ->
@@ -183,7 +182,7 @@ let bootstrap () =
     Report_error.report exn;
     exit 1
 
-let setup = setup ~use_findlib:true ~extra_ignored_subtrees:Path.Set.empty
+let setup = setup ~extra_ignored_subtrees:Path.Set.empty
 
 let find_context_exn t ~name =
   match List.find t.contexts ~f:(fun c -> c.name = name) with

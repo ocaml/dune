@@ -69,8 +69,8 @@ module Jbuilds = struct
     Io.with_file_out (Path.to_string wrapper) ~f:(fun oc ->
       let ocamlc_config =
         let vars =
-          Ocamlc_config.to_list context.ocamlc_config
-          |> List.map ~f:(fun (k, v) -> k, Ocamlc_config.Value.to_string v)
+          Ocaml_config.to_list context.ocaml_config
+          |> List.map ~f:(fun (k, v) -> k, Ocaml_config.Value.to_string v)
         in
         let longest = String.longest_map vars ~f:fst in
         List.map vars ~f:(fun (k, v) -> sprintf "%-*S , %S" (longest + 2) k v)

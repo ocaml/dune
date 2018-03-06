@@ -198,7 +198,8 @@ let all_mld_files sctx ~(lib : Library.t) ~modules ~dir files =
                 "{1 Library %s}\n\
                  This library exposes the following toplevel modules: {!modules:%s}."
                 lib_name
-                (String_map.keys modules |> String.concat ~sep:" "))))
+                ((Module.Name.Map.keys modules :> string list)
+                 |> String.concat ~sep:" "))))
        >>>
        Build.write_file_dyn generated_mld);
     mld
@@ -242,7 +243,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
         ~doc_dir ~lib_unique_name (Mld m))
   in
   let modules_and_odoc_files =
-    List.map (String_map.values modules) ~f:(fun m ->
+    List.map (Module.Name.Map.values modules) ~f:(fun m ->
       compile sctx ~odoc ~dir ~obj_dir ~includes ~dep_graphs
         ~doc_dir ~lib_unique_name (Module m))
   in

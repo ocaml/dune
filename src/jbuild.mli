@@ -61,7 +61,7 @@ module Preprocess : sig
     | Pps    of pps
 end
 
-module Per_module : Per_item.S with type key = string
+module Per_module : Per_item.S with type key = Module.Name.t
 
 module Preprocess_map : sig
   type t = Preprocess.t Per_module.t
@@ -71,7 +71,7 @@ module Preprocess_map : sig
 
   (** [find module_name] find the preprocessing specification for a
       given module *)
-  val find : string -> t -> Preprocess.t
+  val find : Module.Name.t -> t -> Preprocess.t
 
   val pps : t -> (Loc.t * Pp.t) list
 end

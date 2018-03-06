@@ -24,35 +24,38 @@ module Gen(P : Install_rules.Params) = struct
      | Interpretation of [modules] fields                              |
      +-----------------------------------------------------------------+ *)
 
-  module Eval_modules = Ordered_set_lang.Make(struct
-      type t = (Module.t, string * Loc.t) result
-      let name = function
+  module Eval_modules = Ordered_set_lang.Make(Module.Name)(struct
+      type t = (Module.t, Module.Name.t * Loc.t) result
+
+      type key = Module.Name.t
+
+      let key = function
         | Error (s, _) -> s
         | Ok m -> Module.name m
     end)
 
-  let parse_modules ~(all_modules : Module.t String_map.t) ~buildable =
-    let conf : Buildable.t = buildable in
-    let standard_modules = String_map.map all_modules ~f:(fun m -> Ok m) in
-    let fake_modules = ref String_map.empty in
+  let parse_modules ~(all_modules : Module.t Module.Name.Map.t)
+        ~buildable:(conf : Buildable.t) =
+    let fake_modules = ref Module.Name.Map.empty in
     let parse ~loc s =
-      let s = String.capitalize s in
-      match String_map.find all_modules s with
+      let name = Module.Name.of_string s in
+      match Module.Name.Map.find all_modules name with
       | Some m -> Ok m
       | None ->
-        fake_modules := String_map.add !fake_modules s loc;
-        Error (s, loc)
+        fake_modules := Module.Name.Map.add !fake_modules name loc;
+        Error (name, loc)
     in
     let modules =
       Eval_modules.eval_unordered
         conf.modules
         ~parse
-        ~standard:standard_modules
+        ~standard:(Module.Name.Map.map all_modules ~f:(fun m -> Ok m))
     in
     let only_present_modules modules =
-      String_map.filter_map ~f:(function
+      Module.Name.Map.filter_map ~f:(function
         | Ok m -> Some m
-        | Error (s, loc) -> Loc.fail loc "Module %s doesn't exist." s
+        | Error (s, loc) ->
+          Loc.fail loc "Module %a doesn't exist." Module.Name.pp s
       ) modules
     in
     let modules = only_present_modules modules in
@@ -60,28 +63,31 @@ module Gen(P : Install_rules.Params) = struct
       Eval_modules.eval_unordered
         conf.modules_without_implementation
         ~parse
-        ~standard:String_map.empty
+        ~standard:Module.Name.Map.empty
     in
     let intf_only = only_present_modules intf_only in
-    String_map.iteri !fake_modules ~f:(fun m loc ->
-      Loc.warn loc "Module %s is excluded but it doesn't exist." m
+    Module.Name.Map.iteri !fake_modules ~f:(fun m loc ->
+      Loc.warn loc "Module %a is excluded but it doesn't exist."
+        Module.Name.pp m
     );
     let real_intf_only =
-      String_map.filter modules
+      Module.Name.Map.filter modules
         ~f:(fun (m : Module.t) -> Option.is_none m.impl)
     in
-    if String_map.equal intf_only real_intf_only
+    if Module.Name.Map.equal intf_only real_intf_only
          ~equal:(fun a b -> Module.name a = Module.name b) then
       modules
     else begin
       let should_be_listed, shouldn't_be_listed =
-        String_map.merge intf_only real_intf_only ~f:(fun name x y ->
+        Module.Name.Map.merge intf_only real_intf_only ~f:(fun name x y ->
           match x, y with
           | Some _, Some _ -> None
-          | None  , Some _ -> Some (Left  (String.uncapitalize name))
-          | Some _, None   -> Some (Right (String.uncapitalize name))
+          | None  , Some _ ->
+            Some (Left  (String.uncapitalize (Module.Name.to_string name)))
+          | Some _, None   ->
+            Some (Right (String.uncapitalize (Module.Name.to_string name)))
           | None  , None   -> assert false)
-        |> String_map.values
+        |> Module.Name.Map.values
         |> List.partition_map ~f:(fun x -> x)
       in
       let list_modules l =
@@ -114,14 +120,15 @@ module Gen(P : Install_rules.Params) = struct
         (* Re-evaluate conf.modules_without_implementation but this
            time keep locations *)
         let module Eval =
-          Ordered_set_lang.Make(struct
+          Ordered_set_lang.Make(Module.Name)(struct
             type t = Loc.t * Module.t
-            let name (_, m) = Module.name m
+            type key = Module.Name.t
+            let key (_, m) = Module.name m
           end)
         in
         let parse ~loc s =
-          let s = String.capitalize s in
-          match String_map.find all_modules s with
+          let name = Module.Name.of_string s in
+          match Module.Name.Map.find all_modules name with
           | Some m -> m
           | None -> Loc.fail loc "Module %s doesn't exist." s
         in
@@ -129,16 +136,16 @@ module Gen(P : Install_rules.Params) = struct
         let shouldn't_be_listed =
           Eval.eval_unordered conf.modules_without_implementation
             ~parse
-            ~standard:(String_map.map all_modules ~f:(fun m -> (Loc.none, m)))
-          |> String_map.values
+            ~standard:(Module.Name.Map.map all_modules ~f:(fun m -> (Loc.none, m)))
+          |> Module.Name.Map.values
           |> List.filter ~f:(fun (_, (m : Module.t)) ->
             Option.is_some m.impl)
         in
         (* CR-soon jdimino for jdimino: report all errors *)
         let loc, m = List.hd shouldn't_be_listed in
         Loc.fail loc
-          "Module %s has an implementation, it cannot be listed here"
-          m.name
+          "Module %a has an implementation, it cannot be listed here"
+          Module.Name.pp m.name
       end;
       modules
     end
@@ -264,18 +271,19 @@ module Gen(P : Install_rules.Params) = struct
     in
     let parse_one_set files =
       List.map files ~f:(fun (f : Module.File.t) ->
-        (String.capitalize (Filename.chop_extension f.name), f))
-      |> String_map.of_list
+        (Module.Name.of_string (Filename.chop_extension f.name), f))
+      |> Module.Name.Map.of_list
       |> function
       | Ok x -> x
       | Error (name, f1, f2) ->
         let src_dir = Path.drop_build_context_exn dir in
-        die "too many files for module %s in %s: %s and %s"
-          name (Path.to_string src_dir) f1.name f2.name
+        die "too many files for module %a in %s: %s and %s"
+          Module.Name.pp name (Path.to_string src_dir)
+          f1.name f2.name
     in
     let impls = parse_one_set impl_files in
     let intfs = parse_one_set intf_files in
-    String_map.merge impls intfs ~f:(fun name impl intf ->
+    Module.Name.Map.merge impls intfs ~f:(fun name impl intf ->
       Some
         { Module.name
         ; impl
@@ -292,9 +300,9 @@ module Gen(P : Install_rules.Params) = struct
         guess_modules ~dir ~files)
 
   type modules_by_lib =
-    { modules          : Module.t String_map.t
+    { modules          : Module.t Module.Name.Map.t
     ; alias_module     : Module.t option
-    ; main_module_name : string
+    ; main_module_name : Module.Name.t
     }
 
   let modules_by_lib =
@@ -305,9 +313,9 @@ module Gen(P : Install_rules.Params) = struct
         let modules =
           parse_modules ~all_modules ~buildable:lib.buildable
         in
-        let main_module_name = String.capitalize lib.name in
+        let main_module_name = Module.Name.of_string lib.name in
         let modules =
-          String_map.map modules ~f:(fun (m : Module.t) ->
+          Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
             let wrapper =
               if not lib.wrapped || m.name = main_module_name then
                 None
@@ -318,16 +326,16 @@ module Gen(P : Install_rules.Params) = struct
         in
         let alias_module =
           if not lib.wrapped ||
-             (String_map.cardinal modules = 1 &&
-              String_map.mem modules main_module_name) then
+             (Module.Name.Map.cardinal modules = 1 &&
+              Module.Name.Map.mem modules main_module_name) then
             None
-          else if String_map.mem modules main_module_name then
+          else if Module.Name.Map.mem modules main_module_name then
             (* This module needs an implementaion for non-jbuilder
                users of the library:
 
                https://github.com/ocaml/dune/issues/567 *)
             Some
-              { Module.name = main_module_name ^ "__"
+              { Module.name = Module.Name.add_suffix main_module_name "__"
               ; intf = None
               ; impl = Some { name   = sprintf "%s__.ml-gen" lib.name
                             ; syntax = OCaml
@@ -351,9 +359,9 @@ module Gen(P : Install_rules.Params) = struct
     let modules =
       match alias_module with
       | None -> modules
-      | Some m -> String_map.add modules m.name m
+      | Some m -> Module.Name.Map.add modules m.name m
     in
-    String_map.values modules
+    Module.Name.Map.values modules
 
   (* +-----------------------------------------------------------------+
      | Library stuff                                                   |
@@ -519,15 +527,16 @@ module Gen(P : Install_rules.Params) = struct
     let modules =
       match alias_module with
       | None -> modules
-      | Some m -> String_map.add modules m.name m
+      | Some m -> Module.Name.Map.add modules m.name m
     in
 
     let dep_graphs =
       Ocamldep.rules sctx ~dir ~modules ~already_used ~alias_module
-        ~lib_interface_module:(if lib.wrapped then
-                                 String_map.find modules main_module_name
-                               else
-                                 None)
+        ~lib_interface_module:(
+          if lib.wrapped then
+            Module.Name.Map.find modules main_module_name
+          else
+            None)
     in
 
     Option.iter alias_module ~f:(fun m ->
@@ -538,12 +547,15 @@ module Gen(P : Install_rules.Params) = struct
       in
       SC.add_rule sctx
         (Build.return
-           (String_map.values (String_map.remove modules m.name)
+           (Module.Name.Map.values (Module.Name.Map.remove modules m.name)
             |> List.map ~f:(fun (m : Module.t) ->
               sprintf "(** @canonical %s.%s *)\n\
                        module %s = %s\n"
-                main_module_name m.name
-                m.name (Module.real_unit_name m))
+                (Module.Name.to_string main_module_name)
+                (Module.Name.to_string m.name)
+                (Module.Name.to_string m.name)
+                (Module.Name.to_string (Module.real_unit_name m))
+            )
             |> String.concat ~sep:"\n")
          >>> Build.write_file_dyn (Path.relative dir file.name)));
 
@@ -571,7 +583,7 @@ module Gen(P : Install_rules.Params) = struct
         ~dep_graphs:(Ocamldep.Dep_graphs.dummy m)
         ~requires:(
           let requires =
-            if String_map.is_empty modules then
+            if Module.Name.Map.is_empty modules then
               (* Just so that we setup lib dependencies for empty libraries *)
               requires
             else
@@ -645,7 +657,7 @@ module Gen(P : Install_rules.Params) = struct
 
     List.iter Cm_kind.all ~f:(fun cm_kind ->
       let files =
-        String_map.fold modules ~init:[] ~f:(fun m acc ->
+        Module.Name.Map.fold modules ~init:[] ~f:(fun m acc ->
           match Module.cm_file m ~obj_dir cm_kind with
           | None -> acc
           | Some fn -> fn :: acc)
@@ -659,7 +671,7 @@ module Gen(P : Install_rules.Params) = struct
 
     let top_sorted_modules =
       Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl
-        (String_map.values modules)
+        (Module.Name.Map.values modules)
     in
     List.iter Mode.all ~f:(fun mode ->
       build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules);
@@ -712,7 +724,7 @@ module Gen(P : Install_rules.Params) = struct
       match alias_module with
       | None -> Ocaml_flags.common flags
       | Some m ->
-        Ocaml_flags.prepend_common ["-open"; m.name] flags
+        Ocaml_flags.prepend_common ["-open"; Module.Name.to_string m.name] flags
         |> Ocaml_flags.common
     in
 
@@ -743,7 +755,7 @@ module Gen(P : Install_rules.Params) = struct
     in
     let already_used =
       match modules_partitioner with
-      | None -> String_set.empty
+      | None -> Module.Name.Set.empty
       | Some mp ->
         Modules_partitioner.acknowledge mp
           ~loc:exes.buildable.loc ~modules
@@ -763,14 +775,16 @@ module Gen(P : Install_rules.Params) = struct
 
     let programs =
       List.map exes.names ~f:(fun (loc, name) ->
-        let mod_name = String.capitalize name in
-        match String_map.find modules mod_name with
+        let mod_name = Module.Name.of_string name in
+        match Module.Name.Map.find modules mod_name with
         | Some m ->
           if not (Module.has_impl m) then
-            Loc.fail loc "Module %s has no implementation." mod_name
+            Loc.fail loc "Module %a has no implementation."
+              Module.Name.pp mod_name
           else
             { Exe.Program.name; main_module_name = mod_name }
-        | None -> Loc.fail loc "Module %s doesn't exist." mod_name)
+        | None -> Loc.fail loc "Module %a doesn't exist."
+                    Module.Name.pp mod_name)
     in
 
     let linkages =

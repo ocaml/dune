@@ -172,9 +172,9 @@ include Sub_system.Register_end_point(
 
     let name = "run" in
     let main_module_filename = name ^ ".ml" in
-    let main_module_name = String.capitalize name in
+    let main_module_name = Module.Name.of_string name in
     let modules =
-      String_map.singleton main_module_name
+      Module.Name.Map.singleton main_module_name
         { Module.
           name = main_module_name
         ; impl = Some { name   = main_module_filename
@@ -205,7 +205,7 @@ include Sub_system.Register_end_point(
     (* Generate the runner file *)
     SC.add_rule sctx (
       let target = Path.relative inline_test_dir main_module_filename in
-      let source_modules = String_map.values source_modules in
+      let source_modules = Module.Name.Map.values source_modules in
       let files ml_kind =
         Action.Var_expansion.Paths (
           List.filter_map source_modules ~f:(fun m ->
@@ -274,7 +274,7 @@ include Sub_system.Register_end_point(
        A.chdir dir
          (A.progn
             (A.run (Ok exe) flags ::
-             (String_map.values source_modules
+             (Module.Name.Map.values source_modules
               |> List.concat_map ~f:(fun m ->
                 [ Module.file m ~dir Impl
                 ; Module.file m ~dir Intf

@@ -288,19 +288,20 @@ module Preprocess = struct
 end
 
 module Per_module = struct
-  include Per_item.Make(String)
+  include Per_item.Make(Module.Name)
 
   let t ~default a sexp =
     match sexp with
     | List (_, Atom (_, A "per_module") :: rest) -> begin
       List.map rest ~f:(fun sexp ->
         let pp, names = pair a module_names sexp in
-        (String_set.to_list names, pp))
+        (List.map ~f:Module.Name.of_string (String_set.to_list names), pp))
       |> of_mapping ~default
       |> function
       | Ok t -> t
       | Error (name, _, _) ->
-        of_sexp_error sexp (sprintf "module %s present in two different sets" name)
+        of_sexp_error sexp (sprintf "module %s present in two different sets"
+                              (Module.Name.to_string name))
     end
     | sexp -> for_all (a sexp)
 end
@@ -516,7 +517,7 @@ module Buildable = struct
 
   let single_preprocess t =
     if Per_module.is_constant t.preprocess then
-      Per_module.get t.preprocess ""
+      Per_module.get t.preprocess (Module.Name.of_string "")
     else
       Preprocess.No_preprocessing
 end

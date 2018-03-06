@@ -141,23 +141,24 @@ let create
       | Some p -> Paths ([p], Split)
     in
     let cflags = context.ocamlc_cflags in
+    let strings l = Strings (l  , Split) in
+    let string  s = Strings ([s], Split) in
+    let path    p = Paths   ([p], Split) in
     [ "-verbose"       , Strings ([] (*"-verbose";*), Concat)
-    ; "CPP"            , Strings (context.c_compiler :: cflags @ ["-E"], Split)
-    ; "PA_CPP"         , Strings (context.c_compiler :: cflags
-                                  @ ["-undef"; "-traditional"; "-x"; "c"; "-E"],
-                                  Split)
-    ; "CC"             , Strings (context.c_compiler :: cflags, Split)
-    ; "CXX"            , Strings (context.c_compiler :: cxx_flags, Split)
-    ; "ocaml_bin"      , Paths ([context.ocaml_bin], Split)
-    ; "OCAML"          , Paths ([context.ocaml], Split)
-    ; "OCAMLC"         , Paths ([context.ocamlc], Split)
-    ; "OCAMLOPT"       , Paths ([ocamlopt], Split)
-    ; "ocaml_version"  , Strings ([context.version_string], Concat)
-    ; "ocaml_where"    , Strings ([Path.to_string context.stdlib_dir], Concat)
-    ; "ARCH_SIXTYFOUR" , Strings ([string_of_bool context.arch_sixtyfour],
-                                  Concat)
+    ; "CPP"            , strings (context.c_compiler :: cflags @ ["-E"])
+    ; "PA_CPP"         , strings (context.c_compiler :: cflags
+                                  @ ["-undef"; "-traditional"; "-x"; "c"; "-E"])
+    ; "CC"             , strings (context.c_compiler :: cflags)
+    ; "CXX"            , strings (context.c_compiler :: cxx_flags)
+    ; "ocaml_bin"      , path context.ocaml_bin
+    ; "OCAML"          , path context.ocaml
+    ; "OCAMLC"         , path context.ocamlc
+    ; "OCAMLOPT"       , path ocamlopt
+    ; "ocaml_version"  , string context.version_string
+    ; "ocaml_where"    , string (Path.to_string context.stdlib_dir)
+    ; "ARCH_SIXTYFOUR" , string (string_of_bool context.arch_sixtyfour)
     ; "MAKE"           , make
-    ; "null"           , Strings ([Path.to_string Config.dev_null], Concat)
+    ; "null"           , string (Path.to_string Config.dev_null)
     ]
     |> String_map.of_list
     |> function

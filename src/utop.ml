@@ -4,7 +4,7 @@ open Build.O
 open! No_io
 
 let exe_name = "utop"
-let main_module_name = String.capitalize exe_name
+let main_module_name = Module.Name.of_string exe_name
 let main_module_filename = exe_name ^ ".ml"
 
 let pp_ml fmt include_dirs =
@@ -51,7 +51,7 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
   | [] -> ()
   | _ :: _ ->
     let modules =
-      String_map.singleton
+      Module.Name.Map.singleton
         main_module_name
         { Module.
           name = main_module_name

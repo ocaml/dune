@@ -1,6 +1,5 @@
 (** Odoc rules *)
 
-open Import
 open Jbuild
 
 val setup_library_rules
@@ -8,7 +7,7 @@ val setup_library_rules
   -> Library.t
   -> dir:Path.t
   -> scope:Scope.t
-  -> modules:Module.t String_map.t
+  -> modules:Module.t Module.Name.Map.t
   -> mld_files:string list
   -> requires:(unit, Lib.t list) Build.t
   -> dep_graphs:Ocamldep.Dep_graphs.t

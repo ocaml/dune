@@ -70,6 +70,7 @@ type t =
   ; ext_asm                 : string
   ; ext_lib                 : string
   ; ext_dll                 : string
+  ; ext_exe                 : string
   ; os_type                 : string
   ; default_executable_name : string
   ; host                    : string
@@ -278,11 +279,15 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
     in
     Fiber.fork_and_join
       findlib_path
-      (fun () -> Ocamlc_config.read ~ocamlc ~env)
+      (fun () ->
+         Process.run_capture_lines ~env Strict
+           (Path.to_string ocamlc) ["-config"]
+         >>| Ocamlc_config.of_lines)
     >>= fun (findlib_path, ocamlc_config) ->
-    let version = Ocamlc_config.version ocamlc_config in
-    let env, env_extra =
-      (* See comment in ansi_color.ml for setup_env_for_colors. For OCaml < 4.05,
+    try
+      let version = Ocamlc_config.version ocamlc_config in
+      let env, env_extra =
+        (* See comment in ansi_color.ml for setup_env_for_colors. For OCaml < 4.05,
          OCAML_COLOR is not supported so we use OCAMLPARAM. OCaml 4.02 doesn't support
          'color' in OCAMLPARAM, so we just don't force colors with 4.02. *)
       if !Clflags.capture_outputs
@@ -299,22 +304,19 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       else
         env,env_extra
     in
-    let stdlib_dir = Ocamlc_config.stdlib_dir ocamlc_config in
+    let stdlib_dir = Path.of_string (Ocamlc_config.stdlib_dir ocamlc_config) in
     let natdynlink_supported =
       Ocamlc_config.natdynlink_supported ocamlc_config
     in
     let version = Ocamlc_config.version ocamlc_config in
     let version_string = Ocamlc_config.version_string ocamlc_config in
-    let get = Ocamlc_config.get ocamlc_config in
+    let get         = Ocamlc_config.get         ocamlc_config in
     let get_strings = Ocamlc_config.get_strings ocamlc_config in
-    let { Ocamlc_config. c_compiler, ocamlc_cflags, ocamlopt_cflags } =
-      Ocamlc_config.c_compiler_settings ocamlc_config in
     let arch_sixtyfour =
       match Ocamlc_config.word_size ocamlc_config with
       | Some ws -> ws = "64"
       | None -> get_arch_sixtyfour stdlib_dir
     in
-    let os_type = get "os_type" in
     Fiber.return
       { name
       ; implicit
@@ -347,21 +349,21 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       ; version_string
       ; version
       ; ccomp_type              = get       "ccomp_type"
-      ; c_compiler
-      ; ocamlc_cflags
-      ; ocamlopt_cflags
-      ; bytecomp_c_libraries    = get       "bytecomp_c_libraries"
+      ; c_compiler              = Ocamlc_config.c_compiler      ocamlc_config
+      ; ocamlc_cflags           = Ocamlc_config.ocamlc_cflags   ocamlc_config
+      ; ocamlopt_cflags         = Ocamlc_config.ocamlopt_cflags ocamlc_config
+      ; bytecomp_c_libraries    = get_strings "bytecomp_c_libraries"
       ; native_c_libraries      = get_strings "native_c_libraries"
-      ; native_pack_linker      = get_strings "native_pack_linker"
+      ; native_pack_linker      = get       "native_pack_linker"
       ; ranlib                  = get       "ranlib"
       ; cc_profile              = get       "cc_profile"
       ; architecture            = get       "architecture"
       ; system                  = get       "system"
-      ; ext_obj                 = get       "ext_obj"
-      ; ext_asm                 = get       "ext_asm"
-      ; ext_lib                 = get       "ext_lib"
-      ; ext_dll                 = get       "ext_dll"
-      ; ext_exe                 = if os_type = "Win32" then ".exe" else ""
+      ; ext_obj                 = Ocamlc_config.ext_obj ocamlc_config
+      ; ext_asm                 = Ocamlc_config.ext_asm ocamlc_config
+      ; ext_lib                 = Ocamlc_config.ext_lib ocamlc_config
+      ; ext_dll                 = Ocamlc_config.ext_dll ocamlc_config
+      ; ext_exe                 = Ocamlc_config.ext_exe ocamlc_config
       ; os_type                 = get       "os_type"
       ; default_executable_name = get       "default_executable_name"
       ; host                    = get       "host"
@@ -380,6 +382,10 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
 
       ; which_cache
       }
+    with Ocamlc_config.E msg ->
+      die "Failed to parse the output of '%s -config':@\n\
+           %s"
+        (Path.to_string ocamlc) msg
   in
 
   let implicit = not (List.mem ~set:targets Workspace.Context.Target.Native) in

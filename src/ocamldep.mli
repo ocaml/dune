@@ -1,6 +1,4 @@
-(** ocamldep managenemt *)
-
-open Import
+(** ocamldep management *)
 
 module Dep_graph : sig
   type t
@@ -36,8 +34,8 @@ end
     Return arrows that evaluate to the dependency graphs.  *)
 val rules
   :  dir:Path.t
-  -> modules:Module.t String_map.t
-  -> ?already_used:String_set.t
+  -> modules:Module.t Module.Name.Map.t
+  -> ?already_used:Module.Name.Set.t
   -> alias_module:Module.t option
   -> lib_interface_module:Module.t option
   -> Super_context.t

@@ -6,7 +6,7 @@ module SC = Super_context
 module Program = struct
   type t =
     { name             : string
-    ; main_module_name : string
+    ; main_module_name : Module.Name.t
     }
 end
 
@@ -123,7 +123,7 @@ let build_and_link_many
       sctx
   =
   let modules =
-    String_map.map modules ~f:(Module.set_obj_name ~wrapper:None)
+    Module.Name.Map.map modules ~f:(Module.set_obj_name ~wrapper:None)
   in
 
   let dep_graphs =
@@ -139,7 +139,8 @@ let build_and_link_many
 
   List.iter programs ~f:(fun { Program.name; main_module_name } ->
     let top_sorted_modules =
-      let main = Option.value_exn (String_map.find modules main_module_name) in
+      let main = Option.value_exn
+                   (Module.Name.Map.find modules main_module_name) in
       Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl
         [main]
     in

@@ -1,0 +1,6 @@
+(jbuild_version 1)
+
+(library
+ ((name      ocamlc_config)
+  (libraries (stdune usexp))
+  (synopsis  "Interpret the output of 'ocamlc -config'")))

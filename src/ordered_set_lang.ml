@@ -58,10 +58,17 @@ let is_standard t =
 
 module type Value = sig
   type t
-  val name  : t -> string
+  type key
+  val key : t -> key
 end
 
-module Make(Value : Value) = struct
+module type Key = sig
+  type t
+  val compare : t -> t -> Ordering.t
+  module Map : Map.S with type key = t
+end
+
+module Make(Key : Key)(Value : Value with type key = Key.t) = struct
   module type Named_values = sig
     type t
 
@@ -99,23 +106,24 @@ module Make(Value : Value) = struct
       let union = List.flatten
       let diff a b =
         List.filter a ~f:(fun x ->
-          List.for_all b ~f:(fun y -> Value.name x <> Value.name y))
+          List.for_all b ~f:(fun y ->
+            Ordering.neq (Key.compare (Value.key x) (Value.key y))))
     end)
 
   module Unordered = Make(struct
-      type t = Value.t String_map.t
+      type t = Value.t Key.Map.t
 
-      let singleton x = String_map.singleton (Value.name x) x
+      let singleton x = Key.Map.singleton (Value.key x) x
 
       let union l =
-        List.fold_left l ~init:String_map.empty ~f:(fun acc t ->
-          String_map.merge acc t ~f:(fun _name x y ->
+        List.fold_left l ~init:Key.Map.empty ~f:(fun acc t ->
+          Key.Map.merge acc t ~f:(fun _name x y ->
             match x, y with
             | Some x, _ | _, Some x -> Some x
             | _ -> None))
 
       let diff a b =
-        String_map.merge a b ~f:(fun _name x y ->
+        Key.Map.merge a b ~f:(fun _name x y ->
           match x, y with
           | Some _, None -> x
           | _ -> None)

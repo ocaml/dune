@@ -105,6 +105,7 @@ type t =
   ; ext_asm                 : string
   ; ext_lib                 : string
   ; ext_dll                 : string
+  ; ext_exe                 : string
   ; os_type                 : string
   ; default_executable_name : string
   ; host                    : string

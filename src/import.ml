@@ -128,6 +128,8 @@ module Fmt = struct
   let list = Format.pp_print_list
   let string s ppf = Format.pp_print_string ppf s
 
+  let nl = Format.pp_print_newline
+
   let prefix f g ppf x = f ppf; g ppf x
 end
 

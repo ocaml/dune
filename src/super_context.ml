@@ -144,32 +144,43 @@ let create
     let strings l = Strings (l  , Split) in
     let string  s = Strings ([s], Split) in
     let path    p = Paths   ([p], Split) in
-    [ "-verbose"       , Strings ([] (*"-verbose";*), Concat)
-    ; "CPP"            , strings (context.c_compiler :: cflags @ ["-E"])
-    ; "PA_CPP"         , strings (context.c_compiler :: cflags
-                                  @ ["-undef"; "-traditional"; "-x"; "c"; "-E"])
-    ; "CC"             , strings (context.c_compiler :: cflags)
-    ; "CXX"            , strings (context.c_compiler :: cxx_flags)
-    ; "ocaml_bin"      , path context.ocaml_bin
-    ; "OCAML"          , path context.ocaml
-    ; "OCAMLC"         , path context.ocamlc
-    ; "OCAMLOPT"       , path ocamlopt
-    ; "ocaml_version"  , string context.version_string
-    ; "ocaml_where"    , string (Path.to_string context.stdlib_dir)
-    ; "ARCH_SIXTYFOUR" , string (string_of_bool context.arch_sixtyfour)
-    ; "MAKE"           , make
-    ; "null"           , string (Path.to_string Config.dev_null)
-    ; "ext_obj"        , string context.ext_obj
-    ; "ext_asm"        , string context.ext_asm
-    ; "ext_lib"        , string context.ext_lib
-    ; "ext_dll"        , string context.ext_dll
-    ; "ext_exe"        , string context.ext_exe
-    ; "bytecomp_c_libraries", strings context.bytecomp_c_libraries
-    ; "native_c_libraries"  , strings context.bytecomp_c_libraries
-    ]
-    |> String_map.of_list
-    |> function
-    | Ok x -> x
+    let vars =
+      [ "-verbose"       , Strings ([] (*"-verbose";*), Concat)
+      ; "CPP"            , strings (context.c_compiler :: cflags @ ["-E"])
+      ; "PA_CPP"         , strings (context.c_compiler :: cflags
+                                    @ ["-undef"; "-traditional";
+                                       "-x"; "c"; "-E"])
+      ; "CC"             , strings (context.c_compiler :: cflags)
+      ; "CXX"            , strings (context.c_compiler :: cxx_flags)
+      ; "ocaml_bin"      , path context.ocaml_bin
+      ; "OCAML"          , path context.ocaml
+      ; "OCAMLC"         , path context.ocamlc
+      ; "OCAMLOPT"       , path ocamlopt
+      ; "ocaml_version"  , string context.version_string
+      ; "ocaml_where"    , string (Path.to_string context.stdlib_dir)
+      ; "ARCH_SIXTYFOUR" , string (string_of_bool context.arch_sixtyfour)
+      ; "MAKE"           , make
+      ; "null"           , string (Path.to_string Config.dev_null)
+      ; "ext_obj"        , string context.ext_obj
+      ; "ext_asm"        , string context.ext_asm
+      ; "ext_lib"        , string context.ext_lib
+      ; "ext_dll"        , string context.ext_dll
+      ; "ext_exe"        , string context.ext_exe
+      ]
+    in
+    let vars =
+      vars @
+      List.map (Ocaml_config.to_list context.ocaml_config) ~f:(fun (k, v) ->
+        ("ocaml-config:" ^ k,
+         match (v : Ocaml_config.Value.t) with
+         | Bool   x -> string (string_of_bool x)
+         | Int    x -> string (string_of_int x)
+         | String x -> string x
+         | Words  x -> strings x
+         | Prog_and_args x -> strings (x.prog :: x.args)))
+    in
+    match String_map.of_list vars with
+    | Ok    x -> x
     | Error _ -> assert false
   in
   { context

@@ -51,7 +51,7 @@ type t =
   ; arch_sixtyfour          : bool
   ; opam_var_cache          : (string, string) Hashtbl.t
   ; natdynlink_supported    : bool
-  ; ocamlc_config           : Ocamlc_config.t
+  ; ocaml_config            : Ocaml_config.t
   ; version_string          : string
   ; version                 : int * int * int
   ; stdlib_dir              : Path.t
@@ -61,7 +61,7 @@ type t =
   ; ocamlopt_cflags         : string list
   ; bytecomp_c_libraries    : string list
   ; native_c_libraries      : string list
-  ; ranlib                  : Ocamlc_config.Prog_and_args.t
+  ; ranlib                  : Ocaml_config.Prog_and_args.t
   ; cc_profile              : string list
   ; architecture            : string
   ; system                  : string
@@ -109,7 +109,7 @@ let sexp_of_t t =
     ; "arch_sixtyfour", bool t.arch_sixtyfour
     ; "natdynlink_supported", bool t.natdynlink_supported
     ; "opam_vars", string_hashtbl string t.opam_var_cache
-    ; "ocamlc_config", Ocamlc_config.sexp_of_t t.ocamlc_config
+    ; "ocaml_config", Ocaml_config.sexp_of_t t.ocaml_config
     ; "which", string_hashtbl (option path) t.which_cache
     ]
 
@@ -279,14 +279,14 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
          >>| fun lines ->
          let open Result.O in
          ocaml_config_ok_exn
-           (Ocamlc_config.Vars.of_lines lines >>= Ocamlc_config.make))
-    >>= fun (findlib_path, ocamlc_config) ->
-    let version = Ocamlc_config.version ocamlc_config in
-    let env, env_extra =
-      (* See comment in ansi_color.ml for setup_env_for_colors. For
-         OCaml < 4.05, OCAML_COLOR is not supported so we use
-         OCAMLPARAM. OCaml 4.02 doesn't support 'color' in OCAMLPARAM,
-         so we just don't force colors with 4.02. *)
+           (Ocaml_config.Vars.of_lines lines >>= Ocaml_config.make))
+    >>= fun (findlib_path, ocfg) ->
+      let version = Ocaml_config.version ocfg in
+      let env, env_extra =
+        (* See comment in ansi_color.ml for setup_env_for_colors. For
+           OCaml < 4.05, OCAML_COLOR is not supported so we use
+           OCAMLPARAM. OCaml 4.02 doesn't support 'color' in
+           OCAMLPARAM, so we just don't force colors with 4.02. *)
       if !Clflags.capture_outputs
       && Lazy.force Colors.stderr_supports_colors
       && version >= (4, 03, 0)
@@ -301,15 +301,11 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       else
         env,env_extra
     in
-    let stdlib_dir =
-      Path.of_string (Ocamlc_config.standard_library ocamlc_config)
-    in
-    let natdynlink_supported =
-      Ocamlc_config.natdynlink_supported ocamlc_config
-    in
-    let version        = Ocamlc_config.version ocamlc_config        in
-    let version_string = Ocamlc_config.version_string ocamlc_config in
-    let arch_sixtyfour = Ocamlc_config.word_size ocamlc_config = 64 in
+    let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
+    let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
+    let version        = Ocaml_config.version ocfg        in
+    let version_string = Ocaml_config.version_string ocfg in
+    let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
     Fiber.return
       { name
       ; implicit
@@ -338,39 +334,39 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
       ; natdynlink_supported
 
       ; stdlib_dir
-      ; ocamlc_config
+      ; ocaml_config = ocfg
       ; version_string
       ; version
-      ; ccomp_type              = Ocamlc_config.ccomp_type ocamlc_config
-      ; c_compiler              = Ocamlc_config.c_compiler      ocamlc_config
-      ; ocamlc_cflags           = Ocamlc_config.ocamlc_cflags   ocamlc_config
-      ; ocamlopt_cflags         = Ocamlc_config.ocamlopt_cflags ocamlc_config
-      ; bytecomp_c_libraries    = Ocamlc_config.bytecomp_c_libraries ocamlc_config
-      ; native_c_libraries      = Ocamlc_config.native_c_libraries ocamlc_config
-      ; ranlib                  = Ocamlc_config.ranlib ocamlc_config
-      ; cc_profile              = Ocamlc_config.cc_profile ocamlc_config
-      ; architecture            = Ocamlc_config.architecture ocamlc_config
-      ; system                  = Ocamlc_config.system ocamlc_config
-      ; ext_obj                 = Ocamlc_config.ext_obj ocamlc_config
-      ; ext_asm                 = Ocamlc_config.ext_asm ocamlc_config
-      ; ext_lib                 = Ocamlc_config.ext_lib ocamlc_config
-      ; ext_dll                 = Ocamlc_config.ext_dll ocamlc_config
-      ; ext_exe                 = Ocamlc_config.ext_exe ocamlc_config
-      ; os_type                 = Ocamlc_config.os_type ocamlc_config
-      ; default_executable_name = Ocamlc_config.default_executable_name ocamlc_config
-      ; host                    = Ocamlc_config.host ocamlc_config
-      ; target                  = Ocamlc_config.target ocamlc_config
-      ; flambda                 = Ocamlc_config.flambda ocamlc_config
-      ; exec_magic_number       = Ocamlc_config.exec_magic_number ocamlc_config
-      ; cmi_magic_number        = Ocamlc_config.cmi_magic_number ocamlc_config
-      ; cmo_magic_number        = Ocamlc_config.cmo_magic_number ocamlc_config
-      ; cma_magic_number        = Ocamlc_config.cma_magic_number ocamlc_config
-      ; cmx_magic_number        = Ocamlc_config.cmx_magic_number ocamlc_config
-      ; cmxa_magic_number       = Ocamlc_config.cmxa_magic_number ocamlc_config
-      ; ast_impl_magic_number   = Ocamlc_config.ast_impl_magic_number ocamlc_config
-      ; ast_intf_magic_number   = Ocamlc_config.ast_intf_magic_number ocamlc_config
-      ; cmxs_magic_number       = Ocamlc_config.cmxs_magic_number ocamlc_config
-      ; cmt_magic_number        = Ocamlc_config.cmt_magic_number ocamlc_config
+      ; ccomp_type              = Ocaml_config.ccomp_type              ocfg
+      ; c_compiler              = Ocaml_config.c_compiler              ocfg
+      ; ocamlc_cflags           = Ocaml_config.ocamlc_cflags           ocfg
+      ; ocamlopt_cflags         = Ocaml_config.ocamlopt_cflags         ocfg
+      ; bytecomp_c_libraries    = Ocaml_config.bytecomp_c_libraries    ocfg
+      ; native_c_libraries      = Ocaml_config.native_c_libraries      ocfg
+      ; ranlib                  = Ocaml_config.ranlib                  ocfg
+      ; cc_profile              = Ocaml_config.cc_profile              ocfg
+      ; architecture            = Ocaml_config.architecture            ocfg
+      ; system                  = Ocaml_config.system                  ocfg
+      ; ext_obj                 = Ocaml_config.ext_obj                 ocfg
+      ; ext_asm                 = Ocaml_config.ext_asm                 ocfg
+      ; ext_lib                 = Ocaml_config.ext_lib                 ocfg
+      ; ext_dll                 = Ocaml_config.ext_dll                 ocfg
+      ; ext_exe                 = Ocaml_config.ext_exe                 ocfg
+      ; os_type                 = Ocaml_config.os_type                 ocfg
+      ; default_executable_name = Ocaml_config.default_executable_name ocfg
+      ; host                    = Ocaml_config.host                    ocfg
+      ; target                  = Ocaml_config.target                  ocfg
+      ; flambda                 = Ocaml_config.flambda                 ocfg
+      ; exec_magic_number       = Ocaml_config.exec_magic_number       ocfg
+      ; cmi_magic_number        = Ocaml_config.cmi_magic_number        ocfg
+      ; cmo_magic_number        = Ocaml_config.cmo_magic_number        ocfg
+      ; cma_magic_number        = Ocaml_config.cma_magic_number        ocfg
+      ; cmx_magic_number        = Ocaml_config.cmx_magic_number        ocfg
+      ; cmxa_magic_number       = Ocaml_config.cmxa_magic_number       ocfg
+      ; ast_impl_magic_number   = Ocaml_config.ast_impl_magic_number   ocfg
+      ; ast_intf_magic_number   = Ocaml_config.ast_intf_magic_number   ocfg
+      ; cmxs_magic_number       = Ocaml_config.cmxs_magic_number       ocfg
+      ; cmt_magic_number        = Ocaml_config.cmt_magic_number        ocfg
 
       ; which_cache
       }

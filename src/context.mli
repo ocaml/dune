@@ -86,7 +86,7 @@ type t =
   ; (** Native dynlink *)
     natdynlink_supported : bool
 
-  ; ocamlc_config           : Ocamlc_config.t
+  ; ocaml_config            : Ocaml_config.t
   ; version_string          : string
   ; version                 : int * int * int
   ; stdlib_dir              : Path.t
@@ -96,7 +96,7 @@ type t =
   ; ocamlopt_cflags         : string list
   ; bytecomp_c_libraries    : string list
   ; native_c_libraries      : string list
-  ; ranlib                  : Ocamlc_config.Prog_and_args.t
+  ; ranlib                  : Ocaml_config.Prog_and_args.t
   ; cc_profile              : string list
   ; architecture            : string
   ; system                  : string

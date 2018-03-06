@@ -10,7 +10,7 @@
                 jbuilder_re
                 jbuilder_opam_file_format
                 usexp
-                ocamlc_config))
+                ocaml_config))
   (synopsis    "Internal Jbuilder library, do not use!")))
 
 (ocamllex (meta_lexer glob_lexer))

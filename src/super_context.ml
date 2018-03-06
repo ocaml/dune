@@ -141,9 +141,9 @@ let create
       | Some p -> Paths ([p], Split)
     in
     let cflags = context.ocamlc_cflags in
-    let strings l = Strings (l  , Split) in
-    let string  s = Strings ([s], Split) in
-    let path    p = Paths   ([p], Split) in
+    let strings l = Strings (l  , Split)  in
+    let string  s = Strings ([s], Concat) in
+    let path    p = Paths   ([p], Split)  in
     let vars =
       [ "-verbose"       , Strings ([] (*"-verbose";*), Concat)
       ; "CPP"            , strings (context.c_compiler :: cflags @ ["-E"])

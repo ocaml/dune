@@ -1,4 +1,3 @@
-  $ rm -f /tmp/camlobj*
   $ $JBUILDER build -j1 --root . --display short
       ocamldep test.ml.d
         ocamlc .test.eobjs/test.{cmi,cmo,cmt}

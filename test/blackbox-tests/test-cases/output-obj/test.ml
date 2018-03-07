@@ -1,1 +1,2 @@
-let () = print_endline Sys.argv.(1)
+let () =
+  Printf.printf "OK: %s\n%!" (String.concat " " (Array.to_list Sys.argv))

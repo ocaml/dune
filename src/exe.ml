@@ -49,6 +49,7 @@ module Linkage = struct
   let  o_flags = ["-output-complete-obj"]
   let so_flags = ["-output-complete-obj"; "-runtime-variant"; "_pic"]
 
+
   let of_user_config (ctx : Context.t) (m : Jbuild.Executables.Link_mode.t) =
     let has_native = Option.is_some ctx.ocamlopt in
     let mode = m.mode in
@@ -73,12 +74,22 @@ module Linkage = struct
       ; flags = o_flags
       }
     | Shared_object ->
+      let flags =
+        if mode = Native then
+          (* The compiler doesn't pass this flags in native mode. This
+             looks like a bug in the compiler. *)
+          List.concat_map ctx.native_c_libraries ~f:(fun flag ->
+            ["-ccopt"; flag])
+          @ so_flags
+        else
+          so_flags
+      in
       { ext =
           (match mode with
            | Byte   -> ".bc"  ^ ctx.ext_dll
            | Native ->          ctx.ext_dll)
       ; mode = if has_native then mode else Byte
-      ; flags = so_flags
+      ; flags
       }
 end
 

@@ -34,7 +34,7 @@ let dirs =
   ; "src/stdune"             , Some "Stdune"
   ; "src/fiber"              , Some "Fiber"
   ; "src/xdg"                , Some "Xdg"
-  ; "src/ocamlc-config"      , Some "Ocamlc_config"
+  ; "src/ocaml-config"       , Some "Ocaml_config"
   ; "vendor/boot"            , None
   ; "src/usexp"              , Some "Usexp"
   ; "src"                    , None

@@ -7,6 +7,9 @@ next
   compiler is not installed but still has a META file (#574, fixes
   #563)
 
+- Do not depend on ocamlfind. Instead, hard-code the library path when
+  installing from opam (#575)
+
 - Reduce interleaving in the scheduler in an attempt to make Jbuilder
   keep file descriptors open for less long (#586)
 
@@ -20,8 +23,8 @@ next
   in the jbuild file (#587, fixes #562)
 
 - Expose a few more variables in jbuild files: `ext_obj`, `ext_asm`,
-  `ext_lib`, `ext_dll` and `ext_exe`, `bytecomp_c_libraries` and
-  `native_c_libraries` (#590)
+  `ext_lib`, `ext_dll` and `ext_exe` as well as `${ocaml-config:XXX}`
+  for most variables in the output of `ocamlc -config` (#590)
 
 1.0+beta18 (25/02/2018)
 -----------------------

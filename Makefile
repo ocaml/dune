@@ -41,6 +41,9 @@ clean:
 	$(BIN) clean
 	rm -f ./boot.exe $(wildcard ./bootstrap.cmi ./bootstrap.cmo ./bootstrap.exe)
 
+distclean: clean
+	rm -f src/setup.ml
+
 doc:
 	cd doc && sphinx-build . _build
 

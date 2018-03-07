@@ -86,7 +86,7 @@ type t =
   ; (** Native dynlink *)
     natdynlink_supported : bool
 
-  ; ocamlc_config           : Ocamlc_config.t
+  ; ocaml_config            : Ocaml_config.t
   ; version_string          : string
   ; version                 : int * int * int
   ; stdlib_dir              : Path.t
@@ -96,9 +96,7 @@ type t =
   ; ocamlopt_cflags         : string list
   ; bytecomp_c_libraries    : string list
   ; native_c_libraries      : string list
-  ; native_pack_linker      : string
-  ; ranlib                  : string
-  ; cc_profile              : string
+  ; cc_profile              : string list
   ; architecture            : string
   ; system                  : string
   ; ext_obj                 : string
@@ -130,12 +128,8 @@ val sexp_of_t : t -> Sexp.t
 (** Compare the context names *)
 val compare : t -> t -> Ordering.t
 
-(** If [use_findlib] is [false], don't try to guess the library search path with opam or
-    ocamlfind. This is only for building jbuilder itself, so that its build is completely
-    independent of the user setup. *)
 val create
-  :  ?use_findlib:bool
-  -> ?merlin:bool
+  :  ?merlin:bool
   -> Workspace.Context.t
   -> t list Fiber.t
 

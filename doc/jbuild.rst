@@ -694,8 +694,13 @@ Jbuilder supports the following variables:
 -  ``null`` is ``/dev/null`` on Unix or ``nul`` on Windows
 - ``ext_obj``, ``ext_asm``, ``ext_lib``, ``ext_dll`` and ``ext_exe``
    are the file extension used for various artifacts
-- ``bytecomp_c_libraries`` and ``native_c_libraries`` are list of C libraries
-  used by the OCaml runtimes
+- ``ocaml-config:v`` for every variable ``v`` in the output of
+  ``ocamlc -config``. Note that output Jbuilder processes the output
+  of ``ocamlc -config`` in order to make it a bit more stable across
+  versions, so the exact set of variables accessible this way might
+  not be exactly the same as what you can see in the output of
+  ``ocamlc -config``. In particular, variables added in new versions
+  of OCaml needs to be registered in Jbuilder before they can be used
 
 In addition, ``(action ...)`` fields support the following special variables:
 

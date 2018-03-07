@@ -23,8 +23,8 @@ next
   in the jbuild file (#587, fixes #562)
 
 - Expose a few more variables in jbuild files: `ext_obj`, `ext_asm`,
-  `ext_lib`, `ext_dll` and `ext_exe`, `bytecomp_c_libraries` and
-  `native_c_libraries` (#590)
+  `ext_lib`, `ext_dll` and `ext_exe` as well as `${ocaml-config:XXX}`
+  for most variables in the output of `ocamlc -config` (#590)
 
 1.0+beta18 (25/02/2018)
 -----------------------

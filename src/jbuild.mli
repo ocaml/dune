@@ -247,13 +247,23 @@ module Executables : sig
       { mode : Mode.t
       ; kind : Binary_kind.t
       }
+
+    val exe           : t
+    val object_       : t
+    val shared_object : t
+    val byte          : t
+    val native        : t
+
+    val compare : t -> t -> Ordering.t
+
+    module Set : Set.S with type elt = t
   end
 
   type t =
     { names            : (Loc.t * string) list
     ; link_executables : bool
     ; link_flags       : Ordered_set_lang.Unexpanded.t
-    ; modes            : Link_mode.t list
+    ; modes            : Link_mode.Set.t
     ; buildable        : Buildable.t
     }
 end

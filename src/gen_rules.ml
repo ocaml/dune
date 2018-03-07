@@ -791,7 +791,16 @@ module Gen(P : Install_rules.Params) = struct
     in
 
     let linkages =
-      List.map exes.modes ~f:(Exe.Linkage.of_user_config ctx)
+      let module L = Executables.Link_mode in
+      let l =
+        List.map (L.Set.to_list exes.modes) ~f:(Exe.Linkage.of_user_config ctx)
+      in
+      (* If bytecode was requested but not native version, adds custom
+         linking *)
+      if L.Set.mem exes.modes L.byte && not (L.Set.mem exes.modes L.native) then
+        Exe.Linkage.custom :: l
+      else
+        l
     in
 
     let flags =

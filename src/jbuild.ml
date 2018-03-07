@@ -739,10 +739,19 @@ end
 module Executables = struct
 
   module Link_mode = struct
-    type t =
-      { mode : Mode.t
-      ; kind : Binary_kind.t
-      }
+    module T = struct
+      type t =
+        { mode : Mode.t
+        ; kind : Binary_kind.t
+        }
+
+      let compare a b =
+        match compare a.mode b.mode with
+        | Eq -> compare a.kind b.kind
+        | ne -> ne
+    end
+    include T
+    module Set = Set.Make(T)
 
     let make mode kind =
       { mode
@@ -776,34 +785,33 @@ module Executables = struct
   module Link_modes = struct
     open Link_mode
 
-    type t = Link_mode.t list
+    type t = Link_mode.Set.t
 
     let t sexp : t =
       match list Link_mode.t sexp with
       | [] -> of_sexp_error sexp "No linking mode defined"
-      | l  -> l
+      | l  -> Set.of_list l
 
     let default =
-      [ byte
-      ; native
-      ]
+      Set.of_list
+        [ byte
+        ; native
+        ]
 
-    let best_install_mode l =
-      List.fold_left l ~init:None ~f:(fun acc t ->
-        if t.kind = Exe then
-          Some
-            (match t.mode with
-             | Native -> Mode.Native
-             | Byte   -> Option.value acc ~default:Byte)
-        else
-          acc)
+    let best_install_mode t =
+      if Set.mem t native then
+        Some native
+      else if Set.mem t byte then
+        Some byte
+      else
+        None
   end
 
   type t =
     { names            : (Loc.t * string) list
     ; link_executables : bool
     ; link_flags       : Ordered_set_lang.Unexpanded.t
-    ; modes            : Link_mode.t list
+    ; modes            : Link_mode.Set.t
     ; buildable        : Buildable.t
     }
 
@@ -825,7 +833,7 @@ module Executables = struct
       match Link_modes.best_install_mode t.modes with
       | None -> []
       | Some mode ->
-        let ext = if mode = Native then ".exe" else ".bc" in
+        let ext = if mode.mode = Native then ".exe" else ".bc" in
         List.map2 names public_names
           ~f:(fun (_, name) pub ->
             match pub with

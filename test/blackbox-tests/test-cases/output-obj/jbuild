@@ -1,6 +1,13 @@
 (alias
  ((name all)
-  (deps (test.exe test.bc test.exe.o test.so stub))))
+  (deps (test.bc
+         test.exe
+         test.bc${ext_obj}
+         test.exe${ext_obj}
+         test.bc${ext_dll}
+         test${ext_dll}
+         prog.bc.exe
+         prog.exe))))
 
 (executable
  ((name test)
@@ -12,18 +19,21 @@
           (native shared_object)))))
 
 (rule
- ((targets (stub_native))
+ ((targets (prog.exe))
   (deps (stub.c test.exe.o))
   (action (run ${CC} -o ${@} -I ${ocaml_where} -I . test.exe.o stub.c
            ${ocaml-config:native_c_libraries}))))
 
 (rule
- ((targets (stub_byte))
+ ((targets (prog.bc.exe))
   (deps (stub.c test.bc.o))
   (action (run ${CC} -o ${@} -I ${ocaml_where} -I . test.bc.o stub.c
            ${ocaml-config:bytecomp_c_libraries}))))
 
-(install
- ((section bin)
-  (files (stub_native stub_byte))
-  (package stub)))
+(alias
+ ((name   runtest)
+  (action (run ./prog.exe "Hello, world from manually linked native program"))))
+
+(alias
+ ((name   runtest)
+  (action (run ./prog.exe "Hello, world from manually linked byte program"))))

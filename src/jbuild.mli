@@ -191,6 +191,26 @@ module Sub_system_info : sig
   val get : Sub_system_name.t -> (module S)
 end
 
+module Mode_conf : sig
+  type t =
+    | Byte
+    | Native
+    | Best (** [Native] if available and [Byte] if not *)
+
+  val t : t Sexp.Of_sexp.t
+  val compare : t -> t -> Ordering.t
+
+  module Set : sig
+    include Set.S with type elt = t
+    val t : t Sexp.Of_sexp.t
+
+    (** Both Byte and Native *)
+    val default : t
+
+    val eval : t -> has_native:bool -> Mode.Dict.Set.t
+  end
+end
+
 module Library : sig
   module Kind : sig
     type t =
@@ -205,7 +225,7 @@ module Library : sig
     ; synopsis                 : string option
     ; install_c_headers        : string list
     ; ppx_runtime_libraries    : (Loc.t * string) list
-    ; modes                    : Mode.Dict.Set.t
+    ; modes                    : Mode_conf.Set.t
     ; kind                     : Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
     ; c_names                  : string list
@@ -244,7 +264,7 @@ end
 module Executables : sig
   module Link_mode : sig
     type t =
-      { mode : Mode.t
+      { mode : Mode_conf.t
       ; kind : Binary_kind.t
       }
 
@@ -256,7 +276,13 @@ module Executables : sig
 
     val compare : t -> t -> Ordering.t
 
-    module Set : Set.S with type elt = t
+    module Set : sig
+      include Set.S with type elt = t
+
+      (** Remove modes that overlap when [has_native=false], such as
+          [byte] and [exe] *)
+      val remove_overlaps : t -> has_native:bool -> t
+    end
   end
 
   type t =

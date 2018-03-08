@@ -10,3 +10,5 @@ let t =
     ; "object"        , Object
     ; "shared_object" , Shared_object
     ]
+
+let all = [Exe; Object; Shared_object]

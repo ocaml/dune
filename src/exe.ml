@@ -49,33 +49,38 @@ module Linkage = struct
   let  o_flags = ["-output-complete-obj"]
   let so_flags = ["-output-complete-obj"; "-runtime-variant"; "_pic"]
 
-
   let of_user_config (ctx : Context.t) (m : Jbuild.Executables.Link_mode.t) =
-    let has_native = Option.is_some ctx.ocamlopt in
-    let mode = m.mode in
-    match m.kind with
-    | Exe ->
-      if mode = Native && not has_native then
-        custom
-      else
-        { ext =
-            (match mode with
-             | Byte   -> ".bc"
-             | Native -> ".exe")
-        ; mode
-        ; flags = []
-        }
-    | Object ->
-      { ext =
-          (match mode with
-           | Byte   -> ".bc"  ^ ctx.ext_obj
-           | Native -> ".exe" ^ ctx.ext_obj)
-      ; mode = if has_native then mode else Byte
-      ; flags = o_flags
-      }
-    | Shared_object ->
-      let flags =
-        if mode = Native then
+    let wanted_mode : Mode.t =
+      match m.mode with
+      | Byte   -> Byte
+      | Native -> Native
+      | Best   -> Native
+    in
+    let real_mode : Mode.t =
+      match m.mode with
+      | Byte   -> Byte
+      | Native -> Native
+      | Best   -> if Option.is_some ctx.ocamlopt then Native else Byte
+    in
+    let ext =
+      match wanted_mode, m.kind with
+      | Byte   , Exe           -> ".bc"
+      | Native , Exe           -> ".exe"
+      | Byte   , Object        -> ".bc"  ^ ctx.ext_obj
+      | Native , Object        -> ".exe" ^ ctx.ext_obj
+      | Byte   , Shared_object -> ".bc"  ^ ctx.ext_dll
+      | Native , Shared_object ->          ctx.ext_dll
+    in
+    let flags =
+      match m.kind with
+      | Exe ->
+        if wanted_mode = Native && real_mode = Byte then
+          ["-custom"]
+        else
+          []
+      | Object -> o_flags
+      | Shared_object ->
+        if real_mode = Native then
           (* The compiler doesn't pass this flags in native mode. This
              looks like a bug in the compiler. *)
           List.concat_map ctx.native_c_libraries ~f:(fun flag ->
@@ -83,14 +88,11 @@ module Linkage = struct
           @ so_flags
         else
           so_flags
-      in
-      { ext =
-          (match mode with
-           | Byte   -> ".bc"  ^ ctx.ext_dll
-           | Native ->          ctx.ext_dll)
-      ; mode = if has_native then mode else Byte
-      ; flags
-      }
+    in
+    { ext
+    ; mode = real_mode
+    ; flags
+    }
 end
 
 let link_exe

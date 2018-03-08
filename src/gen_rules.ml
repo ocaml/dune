@@ -643,17 +643,22 @@ module Gen(P : Install_rules.Params) = struct
         in
         let static = stubs_archive lib ~dir in
         let dynamic = dll lib ~dir in
-        if lib.modes.native &&
-           lib.modes.byte   &&
+        let modes =
+          Mode_conf.Set.eval lib.modes
+            ~has_native:(Option.is_some ctx.ocamlopt)
+        in
+        if modes.native &&
+           modes.byte   &&
            lib.dynlink
         then begin
-          (* If we build for both modes and support dynlink, use a single invocation to
-             build both the static and dynamic libraries *)
+          (* If we build for both modes and support dynlink, use a
+             single invocation to build both the static and dynamic
+             libraries *)
           ocamlmklib ~sandbox:false ~custom:false ~targets:[static; dynamic]
         end else begin
           ocamlmklib ~sandbox:false ~custom:true ~targets:[static];
-          (* We can't tell ocamlmklib to build only the dll, so we sandbox the action to
-             avoid overriding the static archive *)
+          (* We can't tell ocamlmklib to build only the dll, so we
+             sandbox the action to avoid overriding the static archive *)
           ocamlmklib ~sandbox:true ~custom:false ~targets:[dynamic]
         end
     end;
@@ -793,11 +798,16 @@ module Gen(P : Install_rules.Params) = struct
     let linkages =
       let module L = Executables.Link_mode in
       let l =
-        List.map (L.Set.to_list exes.modes) ~f:(Exe.Linkage.of_user_config ctx)
+        L.Set.remove_overlaps exes.modes
+          ~has_native:(Option.is_some ctx.ocamlopt)
+        |> L.Set.to_list
+        |> List.map ~f:(Exe.Linkage.of_user_config ctx)
       in
-      (* If bytecode was requested but not native version, adds custom
-         linking *)
-      if L.Set.mem exes.modes L.byte && not (L.Set.mem exes.modes L.native) then
+      (* If bytecode was requested but not native or best version,
+         adds custom linking *)
+      if L.Set.mem exes.modes L.byte         &&
+         not (L.Set.mem exes.modes L.native) &&
+         not (L.Set.mem exes.modes L.exe) then
         Exe.Linkage.custom :: l
       else
         l

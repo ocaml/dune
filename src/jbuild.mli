@@ -26,7 +26,7 @@ module Scope_info : sig
     { name     : string option (** First package name in alphabetical
                                    order. [None] for the global
                                    scope. *)
-    ; packages : Package.t String_map.t
+    ; packages : Package.t Package.Name.Map.t
     ; root     : Path.t
     }
 
@@ -39,7 +39,7 @@ module Scope_info : sig
 
   (** [resolve t package_name] looks up [package_name] in [t] and returns the
       package description if it exists, otherwise it returns an error. *)
-  val resolve : t -> string -> (Package.t, string) result
+  val resolve : t -> Package.Name.t -> (Package.t, string) result
 end
 
 (** Ppx preprocessors  *)
@@ -61,7 +61,7 @@ module Preprocess : sig
     | Pps    of pps
 end
 
-module Per_module : Per_item.S with type key = string
+module Per_module : Per_item.S with type key = Module.Name.t
 
 module Preprocess_map : sig
   type t = Preprocess.t Per_module.t
@@ -71,7 +71,7 @@ module Preprocess_map : sig
 
   (** [find module_name] find the preprocessing specification for a
       given module *)
-  val find : string -> t -> Preprocess.t
+  val find : Module.Name.t -> t -> Preprocess.t
 
   val pps : t -> (Loc.t * Pp.t) list
 end
@@ -143,6 +143,7 @@ module Buildable : sig
     ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
     ; js_of_ocaml              : Js_of_ocaml.t
+    ; allow_overlapping_dependencies : bool
     }
 
   (** Preprocessing specification used by all modules or [No_preprocessing] *)
@@ -284,6 +285,16 @@ module Rule : sig
     }
 end
 
+module Menhir : sig
+  type t =
+    { merge_into : string option
+    ; flags      : Ordered_set_lang.Unexpanded.t
+    ; modules    : string list
+    ; mode       : Rule.Mode.t
+    ; loc        : Loc.t
+    }
+end
+
 module Provides : sig
   type t =
     { name : string
@@ -317,6 +328,7 @@ module Stanza : sig
     | Install     of Install_conf.t
     | Alias       of Alias_conf.t
     | Copy_files  of Copy_files.t
+    | Menhir      of Menhir.t
 end
 
 module Stanzas : sig

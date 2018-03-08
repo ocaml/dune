@@ -1,4 +1,3 @@
-open Import
 open Jbuild
 
 module Jbuilds : sig
@@ -13,7 +12,7 @@ end
 type conf =
   { file_tree : File_tree.t
   ; jbuilds   : Jbuilds.t
-  ; packages  : Package.t String_map.t
+  ; packages  : Package.t Package.Name.Map.t
   ; scopes    : Scope_info.t list
   }
 

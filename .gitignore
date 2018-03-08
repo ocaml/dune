@@ -10,3 +10,4 @@ bootstrap.cmi
 bootstrap.cmo
 bootstrap.exe
 Makefile.dev
+src/setup.ml

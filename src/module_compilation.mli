@@ -1,7 +1,5 @@
 (** OCaml module compilation *)
 
-open Import
-
 (** Setup rules to build a single module.
 
     [requires] must declare dependencies on files of libraries.
@@ -31,7 +29,7 @@ val build_modules
   -> dir:Path.t
   -> obj_dir:Path.t
   -> dep_graphs:Ocamldep.Dep_graphs.t
-  -> modules:Module.t String_map.t
+  -> modules:Module.t Module.Name.Map.t
   -> requires:(unit, Lib.t list) Build.t
   -> alias_module:Module.t option
   -> unit

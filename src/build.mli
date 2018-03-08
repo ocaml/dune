@@ -34,14 +34,45 @@ val fanout4 : ('a, 'b) t -> ('a, 'c) t -> ('a, 'd) t -> ('a, 'e) t -> ('a, 'b * 
 
 val all : ('a, 'b) t list -> ('a, 'b list) t
 
-val path  : Path.t      -> ('a, 'a) t
+(* CR-someday diml: this API is not great, what about:
+
+   {[
+     module Action_with_deps : sig
+       type t
+       val add_file_dependency : t -> Path.t -> t
+     end
+
+     (** Same as [t >>> arr (fun x -> Action_with_deps.add_file_dependency x p)]
+         but better as [p] is statically known *)
+     val record_dependency
+       :  Path.t
+       -> ('a, Action_with_deps.t) t
+       -> ('a, Action_with_deps.t) t
+   ]}
+*)
+(** [path p] records [p] as a file that is read by the action produced by the
+    build arrow. *)
+val path  : Path.t -> ('a, 'a) t
+
 val paths : Path.t list -> ('a, 'a) t
 val path_set : Path.Set.t -> ('a, 'a) t
-val paths_glob : loc:Loc.t -> dir:Path.t -> Re.re -> ('a, Path.t list) t
-val files_recursively_in : dir:Path.t -> file_tree:File_tree.t -> ('a, Path.Set.t) t
-val vpath : 'a Vspec.t  -> (unit, 'a) t
 
+(** Evaluate a glob and record all the matched files as dependencies
+    of the action produced by the build arrow. *)
+val paths_glob : loc:Loc.t -> dir:Path.t -> Re.re -> ('a, Path.t list) t
+
+(* CR-someday diml: rename to [source_files_recursively_in] *)
+(** Compute the set of source of all files present in the sub-tree
+    starting at [dir] and record them as dependencies. *)
+val files_recursively_in
+  :  dir:Path.t
+  -> file_tree:File_tree.t
+  -> ('a, Path.Set.t) t
+
+(** Record dynamic dependencies *)
 val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
+
+val vpath : 'a Vspec.t  -> (unit, 'a) t
 
 (** [catch t ~on_error] evaluates to [on_error exn] if exception [exn] is
     raised during the evaluation of [t]. *)

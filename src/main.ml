@@ -7,12 +7,12 @@ type setup =
   { build_system : Build_system.t
   ; stanzas      : (Path.t * Jbuild.Scope_info.t * Jbuild.Stanzas.t) list String_map.t
   ; contexts     : Context.t list
-  ; packages     : Package.t String_map.t
+  ; packages     : Package.t Package.Name.Map.t
   ; file_tree    : File_tree.t
   }
 
 let package_install_file { packages; _ } pkg =
-  match String_map.find packages pkg with
+  match Package.Name.Map.find packages pkg with
   | None -> Error ()
   | Some p ->
     Ok (Path.relative p.path
@@ -21,7 +21,6 @@ let package_install_file { packages; _ } pkg =
 let setup ?(log=Log.no_log)
       ?filter_out_optional_stanzas_with_missing_deps
       ?workspace ?(workspace_file="jbuild-workspace")
-      ?(use_findlib=true)
       ?only_packages
       ?extra_ignored_subtrees
       ?x
@@ -29,11 +28,15 @@ let setup ?(log=Log.no_log)
       () =
   let conf = Jbuild_load.load ?extra_ignored_subtrees ?ignore_promoted_rules () in
   Option.iter only_packages ~f:(fun set ->
-    String_set.iter set ~f:(fun pkg ->
-      if not (String_map.mem conf.packages pkg) then
+    Package.Name.Set.iter set ~f:(fun pkg ->
+      if not (Package.Name.Map.mem conf.packages pkg) then
+        let pkg_name = Package.Name.to_string pkg in
         die "@{<error>Error@}: I don't know about package %s \
              (passed through --only-packages/--release)%s"
-          pkg (hint pkg (String_map.keys conf.packages))));
+          pkg_name
+          (hint pkg_name
+             (Package.Name.Map.keys conf.packages
+             |> List.map ~f:Package.Name.to_string))));
   let workspace =
     match workspace with
     | Some w -> w
@@ -52,11 +55,12 @@ let setup ?(log=Log.no_log)
 
   Fiber.parallel_map workspace.contexts ~f:(fun ctx_def ->
     let name = Workspace.Context.name ctx_def in
-    Context.create ctx_def ~merlin:(workspace.merlin_context = Some name) ~use_findlib)
+    Context.create ctx_def ~merlin:(workspace.merlin_context = Some name))
   >>= fun contexts ->
   let contexts = List.concat contexts in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
-    Log.infof log "@[<1>Jbuilder context:@,%a@]@." Sexp.pp (Context.sexp_of_t ctx));
+    Log.infof log "@[<1>Jbuilder context:@,%a@]@." Sexp.pp
+      (Context.sexp_of_t ctx));
   let rule_done  = ref 0 in
   let rule_total = ref 0 in
   let gen_status_line () =
@@ -94,7 +98,7 @@ let external_lib_deps ?log ~packages () =
        List.map packages ~f:(fun pkg ->
          match package_install_file setup pkg with
          | Ok path -> path
-         | Error () -> die "Unknown package %S" pkg)
+         | Error () -> die "Unknown package %S" (Package.Name.to_string pkg))
      in
      match String_map.find setup.stanzas "default" with
      | None -> die "You need to set a default context to use external-lib-deps"
@@ -164,7 +168,6 @@ let bootstrap () =
     Scheduler.go ~log ~config
       (setup ~log ~workspace:{ merlin_context = Some "default"
                              ; contexts = [Default [Native]] }
-         ~use_findlib:false
          ~extra_ignored_subtrees:ignored_during_bootstrap
          ()
        >>= fun { build_system = bs; _ } ->
@@ -179,7 +182,7 @@ let bootstrap () =
     Report_error.report exn;
     exit 1
 
-let setup = setup ~use_findlib:true ~extra_ignored_subtrees:Path.Set.empty
+let setup = setup ~extra_ignored_subtrees:Path.Set.empty
 
 let find_context_exn t ~name =
   match List.find t.contexts ~f:(fun c -> c.name = name) with

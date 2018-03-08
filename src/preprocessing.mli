@@ -8,13 +8,13 @@ val pp_and_lint_modules
   :  Super_context.t
   -> dir:Path.t
   -> dep_kind:Build.lib_dep_kind
-  -> modules:Module.t String_map.t
+  -> modules:Module.t Module.Name.Map.t
   -> lint:Jbuild.Preprocess_map.t
   -> preprocess:Jbuild.Preprocess_map.t
   -> preprocessor_deps:(unit, Path.t list) Build.t
   -> lib_name:string option
   -> scope:Scope.t
-  -> Module.t String_map.t
+  -> Module.t Module.Name.Map.t 
 
 (** Get a path to a cached ppx driver *)
 val get_ppx_driver

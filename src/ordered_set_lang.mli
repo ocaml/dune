@@ -12,10 +12,17 @@ val loc : t -> Loc.t option
 (** Value parsed from elements in the DSL *)
 module type Value = sig
   type t
-  val name : t -> string
+  type key
+  val key : t -> key
 end
 
-module Make(Value : Value) : sig
+module type Key = sig
+  type t
+  val compare : t -> t -> Ordering.t
+  module Map : Map.S with type key = t
+end
+
+module Make(Key : Key)(Value : Value with type key = Key.t) : sig
   (** Evaluate an ordered set. [standard] is the interpretation of [:standard] inside the
       DSL. *)
   val eval
@@ -28,8 +35,8 @@ module Make(Value : Value) : sig
   val eval_unordered
     :  t
     -> parse:(loc:Loc.t -> string -> Value.t)
-    -> standard:Value.t String_map.t
-    -> Value.t String_map.t
+    -> standard:Value.t Key.Map.t
+    -> Value.t Key.Map.t
 end
 
 val standard : t

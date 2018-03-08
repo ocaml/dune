@@ -365,5 +365,5 @@ let pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~lint ~preprocess
                      ; Ml_kind.ppx_driver_flag kind; Dep src
                      ])))))
   in
-  String_map.map modules ~f:(fun (m : Module.t) ->
+ Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
     Per_module.get preprocess m.name m)

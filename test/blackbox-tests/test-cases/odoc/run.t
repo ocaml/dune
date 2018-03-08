@@ -1,21 +1,21 @@
   $ $JBUILDER build @doc -j1 --display short --root .
       ocamldep foo_byte.ml.d
+        ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
+          odoc _doc/foo.byte/foo_byte.odoc
           odoc _doc/foo.byte/page-index.odoc
           odoc _doc/foo.byte/page-test.odoc
+          odoc _doc/foo.byte/Foo_byte/.jbuilder-keep,_doc/foo.byte/Foo_byte/index.html
       ocamldep foo.ml.d
+        ocamlc .foo.objs/foo.{cmi,cmo,cmt}
+          odoc _doc/foo/foo.odoc
           odoc _doc/foo/page-index.odoc
           odoc _doc/foo/page-test.odoc
+          odoc _doc/foo/Foo/.jbuilder-keep,_doc/foo/Foo/index.html
           odoc _doc/odoc.css
-        ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
-        ocamlc .foo.objs/foo.{cmi,cmo,cmt}
-          odoc _doc/foo.byte/foo_byte.odoc
-          odoc _doc/foo/foo.odoc
           odoc _doc/foo.byte/index.html
           odoc _doc/foo.byte/test.html
-          odoc _doc/foo.byte/Foo_byte/.jbuilder-keep,_doc/foo.byte/Foo_byte/index.html
           odoc _doc/foo/index.html
           odoc _doc/foo/test.html
-          odoc _doc/foo/Foo/.jbuilder-keep,_doc/foo/Foo/index.html
   $ $JBUILDER runtest -j1 --display short --root .
   <!DOCTYPE html>
   <html xmlns="http://www.w3.org/1999/xhtml">

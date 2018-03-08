@@ -177,6 +177,9 @@ modules you want.
   such modules to avoid surprises. ``<modules>`` must be a subset of
   the modules listed in the ``(modules ...)`` field.
 
+- ``(allow_overlapping_dependencies)`` allows external dependencies to
+  overlap with libraries that are present in the workspace
+
 Note that when binding C libraries, Jbuilder doesn't provide special support for
 tools such as ``pkg-config``, however it integrates easily with `configurator
 <https://github.com/janestreet/configurator>`__ by using ``(c_flags (:include
@@ -261,6 +264,9 @@ binary at the same place as where ``ocamlc`` was found, or when there is a
    specifying `OCaml flags`_
 
 - ``(modules_without_implementation <modules>)`` is the same as the
+  corresponding field of `library`_
+
+- ``(allow_overlapping_dependencies)`` is the same as the
   corresponding field of `library`_
 
 executables
@@ -686,6 +692,15 @@ Jbuilder supports the following variables:
 -  ``ARCH_SIXTYFOUR`` is ``true`` if using a compiler targeting a
    64 bit architecture and ``false`` otherwise
 -  ``null`` is ``/dev/null`` on Unix or ``nul`` on Windows
+- ``ext_obj``, ``ext_asm``, ``ext_lib``, ``ext_dll`` and ``ext_exe``
+   are the file extension used for various artifacts
+- ``ocaml-config:v`` for every variable ``v`` in the output of
+  ``ocamlc -config``. Note that output Jbuilder processes the output
+  of ``ocamlc -config`` in order to make it a bit more stable across
+  versions, so the exact set of variables accessible this way might
+  not be exactly the same as what you can see in the output of
+  ``ocamlc -config``. In particular, variables added in new versions
+  of OCaml needs to be registered in Jbuilder before they can be used
 
 In addition, ``(action ...)`` fields support the following special variables:
 

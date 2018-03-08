@@ -67,7 +67,7 @@ module Library_compilation_context = struct
     ; dir            : Path.t
     ; stanza         : Jbuild.Library.t
     ; scope          : Scope.t
-    ; source_modules : Module.t String_map.t
+    ; source_modules : Module.t Module.Name.Map.t
     ; compile_info   : Lib.Compile.t
     }
 end

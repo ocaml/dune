@@ -67,6 +67,15 @@ module Jbuilds = struct
     let plugin = Path.to_string plugin in
     let plugin_contents = Io.read_file plugin in
     Io.with_file_out (Path.to_string wrapper) ~f:(fun oc ->
+      let ocamlc_config =
+        let vars =
+          Ocaml_config.to_list context.ocaml_config
+          |> List.map ~f:(fun (k, v) -> k, Ocaml_config.Value.to_string v)
+        in
+        let longest = String.longest_map vars ~f:fst in
+        List.map vars ~f:(fun (k, v) -> sprintf "%-*S , %S" (longest + 2) k v)
+        |> String.concat ~sep:"\n      ; "
+      in
       Printf.fprintf oc {|
 let () =
   Hashtbl.add Toploop.directive_table "require" (Toploop.Directive_string ignore);
@@ -94,7 +103,7 @@ end
 %s|}
         context.name
         context.version_string
-        (Ocamlc_config.ocaml_value context.ocamlc_config)
+        ocamlc_config
         (Path.reach ~from:exec_dir target)
         plugin plugin_contents);
     extract_requires ~fname:plugin plugin_contents
@@ -157,7 +166,7 @@ end
 type conf =
   { file_tree : File_tree.t
   ; jbuilds   : Jbuilds.t
-  ; packages  : Package.t String_map.t
+  ; packages  : Package.t Package.Name.Map.t
   ; scopes    : Scope_info.t list
   }
 
@@ -186,27 +195,28 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
             | Some (String (_, s)) -> Some s
             | _ -> None
           in
-          (pkg,
-           { Package. name = pkg
+          let name = Package.Name.of_string pkg in
+          (name,
+           { Package. name
            ; path
            ; version_from_opam_file
            }) :: acc
         | _ -> acc))
   in
   let packages =
-    String_map.of_list_multi packages
-    |> String_map.mapi ~f:(fun name pkgs ->
+    Package.Name.Map.of_list_multi packages
+    |> Package.Name.Map.mapi ~f:(fun name pkgs ->
       match pkgs with
       | [pkg] -> pkg
       | _ ->
         die "Too many opam files for package %S:\n%s"
-          name
+          (Package.Name.to_string name)
           (String.concat ~sep:"\n"
              (List.map pkgs ~f:(fun pkg ->
                 sprintf "- %s" (Path.to_string (Package.opam_file pkg))))))
   in
   let scopes =
-    String_map.values packages
+    Package.Name.Map.values packages
     |> List.map ~f:(fun pkg -> (pkg.Package.path, pkg))
     |> Path.Map.of_list_multi
     |> Path.Map.map ~f:Scope_info.make

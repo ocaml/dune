@@ -21,7 +21,7 @@ type t =
   ; public_libs                      : Lib.DB.t
   ; installed_libs                   : Lib.DB.t
   ; stanzas                          : Dir_with_jbuild.t list
-  ; packages                         : Package.t String_map.t
+  ; packages                         : Package.t Package.Name.Map.t
   ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
   ; stanzas_to_consider_for_install  : (Path.t * Scope.t * Stanza.t) list
@@ -125,8 +125,8 @@ let create
       ~f:(fun (d : Dir_with_jbuild.t) -> d.stanzas)
   in
   let cxx_flags =
-    String.extract_blank_separated_words context.ocamlc_cflags
-    |> List.filter ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+    List.filter context.ocamlc_cflags
+      ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
   let vars =
     let ocamlopt =
@@ -140,28 +140,47 @@ let create
       | None   -> Strings (["make"], Split)
       | Some p -> Paths ([p], Split)
     in
-    let cflags = String.extract_blank_separated_words context.ocamlc_cflags in
-    [ "-verbose"       , Strings ([] (*"-verbose";*), Concat)
-    ; "CPP"            , Strings (context.c_compiler :: cflags @ ["-E"], Split)
-    ; "PA_CPP"         , Strings (context.c_compiler :: cflags
-                                  @ ["-undef"; "-traditional"; "-x"; "c"; "-E"],
-                                  Split)
-    ; "CC"             , Strings (context.c_compiler :: cflags, Split)
-    ; "CXX"            , Strings (context.c_compiler :: cxx_flags, Split)
-    ; "ocaml_bin"      , Paths ([context.ocaml_bin], Split)
-    ; "OCAML"          , Paths ([context.ocaml], Split)
-    ; "OCAMLC"         , Paths ([context.ocamlc], Split)
-    ; "OCAMLOPT"       , Paths ([ocamlopt], Split)
-    ; "ocaml_version"  , Strings ([context.version_string], Concat)
-    ; "ocaml_where"    , Strings ([Path.to_string context.stdlib_dir], Concat)
-    ; "ARCH_SIXTYFOUR" , Strings ([string_of_bool context.arch_sixtyfour],
-                                  Concat)
-    ; "MAKE"           , make
-    ; "null"           , Strings ([Path.to_string Config.dev_null], Concat)
-    ]
-    |> String_map.of_list
-    |> function
-    | Ok x -> x
+    let cflags = context.ocamlc_cflags in
+    let strings l = Strings (l  , Split)  in
+    let string  s = Strings ([s], Concat) in
+    let path    p = Paths   ([p], Split)  in
+    let vars =
+      [ "-verbose"       , Strings ([] (*"-verbose";*), Concat)
+      ; "CPP"            , strings (context.c_compiler :: cflags @ ["-E"])
+      ; "PA_CPP"         , strings (context.c_compiler :: cflags
+                                    @ ["-undef"; "-traditional";
+                                       "-x"; "c"; "-E"])
+      ; "CC"             , strings (context.c_compiler :: cflags)
+      ; "CXX"            , strings (context.c_compiler :: cxx_flags)
+      ; "ocaml_bin"      , path context.ocaml_bin
+      ; "OCAML"          , path context.ocaml
+      ; "OCAMLC"         , path context.ocamlc
+      ; "OCAMLOPT"       , path ocamlopt
+      ; "ocaml_version"  , string context.version_string
+      ; "ocaml_where"    , string (Path.to_string context.stdlib_dir)
+      ; "ARCH_SIXTYFOUR" , string (string_of_bool context.arch_sixtyfour)
+      ; "MAKE"           , make
+      ; "null"           , string (Path.to_string Config.dev_null)
+      ; "ext_obj"        , string context.ext_obj
+      ; "ext_asm"        , string context.ext_asm
+      ; "ext_lib"        , string context.ext_lib
+      ; "ext_dll"        , string context.ext_dll
+      ; "ext_exe"        , string context.ext_exe
+      ]
+    in
+    let vars =
+      vars @
+      List.map (Ocaml_config.to_list context.ocaml_config) ~f:(fun (k, v) ->
+        ("ocaml-config:" ^ k,
+         match (v : Ocaml_config.Value.t) with
+         | Bool   x -> string (string_of_bool x)
+         | Int    x -> string (string_of_int x)
+         | String x -> string x
+         | Words  x -> strings x
+         | Prog_and_args x -> strings (x.prog :: x.args)))
+    in
+    match String_map.of_list vars with
+    | Ok    x -> x
     | Error _ -> assert false
   in
   { context
@@ -336,7 +355,7 @@ module Pkg_version = struct
   let spec sctx (p : Package.t) =
     let fn =
       Path.relative (Path.append sctx.context.build_dir p.path)
-        (sprintf "%s.version.sexp" p.name)
+        (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
     in
     Build.Vspec.T (fn, (module V))
 
@@ -462,7 +481,8 @@ module Action = struct
         Some (str_exp (string_of_bool (
           Lib.DB.available (Scope.libs scope) lib)))
       | Some ("version", s) -> begin
-          match Scope_info.resolve (Scope.info scope) s with
+          match Scope_info.resolve (Scope.info scope)
+                  (Package.Name.of_string s) with
           | Ok p ->
             let x =
               Pkg_version.read sctx p >>^ function
@@ -648,7 +668,12 @@ end
 
 module Eval_strings = Ordered_set_lang.Make(struct
     type t = string
-    let name t = t
+    let compare = String.compare
+    module Map = String_map
+  end)(struct
+    type t = string
+    type key = string
+    let key x = x
   end)
 
 let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =

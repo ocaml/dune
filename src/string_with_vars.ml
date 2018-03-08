@@ -85,8 +85,7 @@ let sexp_of_item =
     | Var (vs, s) -> List [sexp_of_var_syntax vs ;
                            Sexp.atom_or_quoted_string s]
 
-let sexp_of_t t = Sexp.To_sexp.list sexp_of_item t.items
-
+let sexp_of_ast t = Sexp.To_sexp.list sexp_of_item t.items
 
 let fold t ~init ~f =
   List.fold_left t.items ~init ~f:(fun acc item ->
@@ -197,3 +196,5 @@ let to_string t =
       | Text s -> s
       | Var (syntax, v) -> string_of_var syntax v)
     |> String.concat ~sep:""
+
+let sexp_of_t t = Sexp.To_sexp.string (to_string t)

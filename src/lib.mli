@@ -137,11 +137,21 @@ module Error : sig
       }
   end
 
+  module Overlap : sig
+    (** A conflict that doesn't prevent compilation, but that we still
+        consider as an error to avoid surprises. *)
+    type nonrec t =
+      { in_workspace : t
+      ; installed    : t * Dep_path.Entry.t list
+      }
+  end
+
   type t =
     | Library_not_available        of Library_not_available.t
     | No_solution_found_for_select of No_solution_found_for_select.t
     | Dependency_cycle             of (Path.t * string) list
     | Conflict                     of Conflict.t
+    | Overlap                      of Overlap.t
 end
 
 exception Error of Error.t
@@ -244,7 +254,7 @@ module DB : sig
 
   (** Retreive the compile informations for the given library. Works
       for libraries that are optional and not available as well. *)
-  val get_compile_info : t -> string -> Compile.t
+  val get_compile_info : t -> ?allow_overlaps:bool -> string -> Compile.t
 
   val resolve : t -> Loc.t * string -> (lib, exn) result
 
@@ -255,6 +265,7 @@ module DB : sig
       This function is for executables stanzas.  *)
   val resolve_user_written_deps
     :  t
+    -> ?allow_overlaps:bool
     -> Jbuild.Lib_dep.t list
     -> pps:(Loc.t * Jbuild.Pp.t) list
     -> Compile.t

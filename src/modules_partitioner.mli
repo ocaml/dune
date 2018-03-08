@@ -1,12 +1,10 @@
 (** Checks modules partitioning inside a directory *)
 
-open Import
-
 type t
 
 val create
   :  dir:Path.t
-  -> all_modules:Module.t String_map.t
+  -> all_modules:Module.t Module.Name.Map.t
   -> t
 
 (** [acknowledge t ~loc ~modules] registers the fact that [modules]
@@ -18,8 +16,8 @@ val create
 val acknowledge
   :  t
   -> loc:Loc.t
-  -> modules:Module.t String_map.t
-  -> String_set.t
+  -> modules:Module.t Module.Name.Map.t
+  -> Module.Name.Set.t
 
 (** To be called after processing a directory. Emit warnings about
     detected problems *)

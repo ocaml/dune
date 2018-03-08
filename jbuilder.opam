@@ -6,17 +6,9 @@ bug-reports: "https://github.com/ocaml/dune/issues"
 dev-repo: "https://github.com/ocaml/dune.git"
 license: "Apache-2.0"
 build: [
+  ["ocaml" "configure.ml" "--libdir" lib]
   ["ocaml" "bootstrap.ml"]
   ["./boot.exe" "--subst"] {pinned}
   ["./boot.exe" "-j" jobs]
-]
-depends: [
-  # ocamlfind is not mandatory to build packages using
-  # jbuilder. However if it is present jbuilder will use it.  Making
-  # it a hard-dependency avoids problems when there is a previous
-  # ocamlfind in the PATH. We make it a "build" depepdency even though
-  # it is only a runtime dependency so that reinstalling ocamlfind
-  # doesn't resintall jbuilder
-  "ocamlfind" {build}
 ]
 available: [ ocaml-version >= "4.02.3" ]

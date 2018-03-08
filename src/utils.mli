@@ -53,7 +53,10 @@ val library_not_found : ?context:string -> ?hint:string -> string -> _
 (** [\["-g"\]] if [!Clflags.g] and [\[\]] otherwise *)
 val g : unit -> string list
 
-val install_file : package:string -> findlib_toolchain:string option -> string
+val install_file
+  :  package:Package.Name.t
+  -> findlib_toolchain:string option
+  -> string
 
 (** Digest files with caching *)
 module Cached_digest : sig

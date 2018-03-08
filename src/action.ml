@@ -702,7 +702,7 @@ type exec_context =
   ; env     : string array
   }
 
-let exec_run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
+let exec_run_direct ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
   begin match ectx.context with
    | None
    | Some { Context.for_host = None; _ } -> ()
@@ -717,12 +717,15 @@ let exec_run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
      invalid_prefix ("_build/" ^ target.name);
      invalid_prefix ("_build/install/" ^ target.name);
   end;
-  let stdout_to = get_std_output stdout_to in
-  let stderr_to = get_std_output stderr_to in
   let env = Context.extend_env ~vars:env_extra ~env:ectx.env in
   Process.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to ~stderr_to
     ~purpose:ectx.purpose
     (Path.reach_for_running ~from:dir prog) args
+
+let exec_run ~stdout_to ~stderr_to =
+  let stdout_to = get_std_output stdout_to in
+  let stderr_to = get_std_output stderr_to in
+  exec_run_direct ~stdout_to ~stderr_to
 
 let exec_echo stdout_to str =
   Fiber.return
@@ -744,6 +747,15 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
   | Redirect (Stdout, fn, Echo s) ->
     Io.write_file (Path.to_string fn) s;
     Fiber.return ()
+  | Redirect (outputs, fn, Run (Ok prog, args)) ->
+    let out = Process.File (Path.to_string fn) in
+    let stdout_to, stderr_to =
+      match outputs with
+      | Stdout -> (out, get_std_output stderr_to)
+      | Stderr -> (get_std_output stdout_to, out)
+      | Outputs -> (out, out)
+    in
+    exec_run_direct ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args
   | Redirect (outputs, fn, t) ->
     redirect ~ectx ~dir outputs fn t ~env_extra ~stdout_to ~stderr_to
   | Ignore (outputs, t) ->

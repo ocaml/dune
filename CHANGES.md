@@ -3,6 +3,8 @@ next
 
 - Ignore errors during the generation of the .merlin (#569, fixes #568 and #51)
 
+- Reduce the number of simultaneously opened fds (#578)
+
 - Add a workaround for when a library normally installed by the
   compiler is not installed but still has a META file (#574, fixes
   #563)

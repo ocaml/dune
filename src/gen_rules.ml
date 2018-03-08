@@ -798,10 +798,14 @@ module Gen(P : Install_rules.Params) = struct
     let linkages =
       let module L = Executables.Link_mode in
       let l =
-        L.Set.remove_overlaps exes.modes
-          ~has_native:(Option.is_some ctx.ocamlopt)
+        let has_native = Option.is_some ctx.ocamlopt in
+        L.Set.remove_overlaps exes.modes ~has_native
         |> L.Set.to_list
-        |> List.map ~f:(Exe.Linkage.of_user_config ctx)
+        |> List.filter_map ~f:(fun (mode : L.t) ->
+          if not has_native && mode.mode = Native then
+            None
+          else
+            Some (Exe.Linkage.of_user_config ctx mode))
       in
       (* If bytecode was requested but not native or best version,
          adds custom linking *)

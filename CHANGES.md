@@ -1,3 +1,8 @@
+1.0+beta18.1 (14/03/2018)
+-------------------------
+
+- Reduce the number of simultaneously opened fds (#578)
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

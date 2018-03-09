@@ -32,6 +32,10 @@ next
   generic and should support several inline test systems such as
   `ppx_inline_test`, `ppx_expect` or `qtest` (#547)
 
+- Make sure modules in the current directory always have precedence
+  over included directories (#597)
+
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

@@ -148,12 +148,20 @@ module Error : sig
       }
   end
 
+  module Private_deps_not_allowed : sig
+    type nonrec t =
+      { private_dep : t
+      ; public_lib : t option
+      }
+  end
+
   type t =
     | Library_not_available        of Library_not_available.t
     | No_solution_found_for_select of No_solution_found_for_select.t
     | Dependency_cycle             of (Path.t * string) list
     | Conflict                     of Conflict.t
     | Overlap                      of Overlap.t
+    | Private_deps_not_allowed     of Private_deps_not_allowed.t
 end
 
 exception Error of Error.t
@@ -256,7 +264,12 @@ module DB : sig
 
   (** Retreive the compile informations for the given library. Works
       for libraries that are optional and not available as well. *)
-  val get_compile_info : t -> ?allow_overlaps:bool -> string -> Compile.t
+  val get_compile_info
+    :  t
+    -> ?allow_overlaps:bool
+    -> allow_private_deps:bool
+    -> string
+    -> Compile.t
 
   val resolve : t -> Loc.t * string -> (lib, exn) result
 

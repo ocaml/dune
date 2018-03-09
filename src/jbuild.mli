@@ -276,13 +276,7 @@ module Executables : sig
 
     val compare : t -> t -> Ordering.t
 
-    module Set : sig
-      include Set.S with type elt = t
-
-      (** Remove modes that overlap when [has_native=false], such as
-          [byte] and [exe] *)
-      val remove_overlaps : t -> has_native:bool -> t
-    end
+    module Set : Set.S with type elt = t
   end
 
   type t =

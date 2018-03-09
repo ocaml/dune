@@ -800,8 +800,6 @@ module Executables = struct
     let shared_object = make Best Shared_object
 
     let byte_exe           = make Byte Exe
-    let byte_object        = make Byte Object
-    let byte_shared_object = make Byte Shared_object
 
     let native_exe           = make Native Exe
     let native_object        = make Native Object
@@ -859,25 +857,6 @@ module Executables = struct
           Some byte
         else
           None
-
-      let remove_overlaps t ~has_native =
-        if has_native then
-          t
-        else begin
-          let t =
-            if mem t object_ then
-              remove t byte_object
-            else
-              t
-          in
-          let t =
-            if mem t shared_object then
-              remove t byte_shared_object
-            else
-              t
-          in
-          t
-        end
     end
   end
 

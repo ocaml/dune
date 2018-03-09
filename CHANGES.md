@@ -31,6 +31,9 @@ next
 - Add support for building executables as object or shared object
   files (#23)
 
+- Add a `best` mode which is native with fallback to byte-code when
+  native compilation is not available (#23)
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

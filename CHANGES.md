@@ -28,6 +28,9 @@ next
   `ext_lib`, `ext_dll` and `ext_exe` as well as `${ocaml-config:XXX}`
   for most variables in the output of `ocamlc -config` (#590)
 
+- Add support for building executables as object or shared object
+  files (#23)
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

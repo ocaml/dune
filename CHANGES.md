@@ -28,6 +28,10 @@ next
   `ext_lib`, `ext_dll` and `ext_exe` as well as `${ocaml-config:XXX}`
   for most variables in the output of `ocamlc -config` (#590)
 
+- Add support for inline and inline expectation tests. The system is
+  generic and should support several inline test systems such as
+  `ppx_inline_test`, `ppx_expect` or `qtest` (#547)
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

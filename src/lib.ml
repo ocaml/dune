@@ -10,6 +10,14 @@ module Status = struct
     | Installed
     | Public
     | Private of Jbuild.Scope_info.Name.t
+
+  let pp ppf t =
+    Format.pp_print_string ppf
+      (match t with
+       | Installed -> "installed"
+       | Public -> "public"
+       | Private s ->
+         sprintf "private (%s)" (Jbuild.Scope_info.Name.to_string s))
 end
 
 module Info = struct

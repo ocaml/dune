@@ -37,6 +37,8 @@ module Status : sig
     | Installed
     | Public
     | Private of Jbuild.Scope_info.Name.t
+
+  val pp : t Fmt.t
 end
 
 val status : t -> Status.t

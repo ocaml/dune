@@ -212,6 +212,21 @@ as:
 
 The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
 
+Using additional libraries in the test runner
+---------------------------------------------
+
+When tests are not part of the library code, it is possible that tests
+require additional libraries than the library being tested. This is
+the case with qtest_ as tests are written in comments. You can specify
+such libraries using a ``libraries`` field, such as:
+
+.. code:: ocaml
+
+          (library
+           ((name foo)
+            (inline_tests ((backend qtest)
+                           (libraries (bar))))))
+
 Defining you own inline test backend
 ------------------------------------
 

@@ -111,19 +111,21 @@ include Sub_system.Register_end_point(
       let name = Sub_system_name.make "inline_tests"
 
       type t =
-        { loc     : Loc.t
-        ; deps    : Dep_conf.t list
-        ; flags   : Ordered_set_lang.Unexpanded.t
-        ; backend : (Loc.t * string) option
+        { loc       : Loc.t
+        ; deps      : Dep_conf.t list
+        ; flags     : Ordered_set_lang.Unexpanded.t
+        ; backend   : (Loc.t * string) option
+        ; libraries : (Loc.t * string) list
         }
 
       type Jbuild.Sub_system_info.t += T of t
 
       let empty loc =
         { loc
-        ; deps    = []
-        ; flags   = Ordered_set_lang.Unexpanded.standard
-        ; backend = None
+        ; deps      = []
+        ; flags     = Ordered_set_lang.Unexpanded.standard
+        ; backend   = None
+        ; libraries = []
         }
 
     let loc      t = t.loc
@@ -138,11 +140,14 @@ include Sub_system.Register_end_point(
          field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
          Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
          field_o "backend" (located string) >>= fun backend ->
+         field "libraries" (list (located string)) ~default:[]
+         >>= fun libraries ->
          return
            { loc
            ; deps
            ; flags
            ; backend
+           ; libraries
            })
 
     let parsers =
@@ -198,7 +203,11 @@ include Sub_system.Register_end_point(
          >>= fun libs ->
          Lib.DB.find_many (Scope.libs scope) [lib.name]
          >>= fun lib ->
-         Ok (lib @ libs))
+         Result.all
+           (List.map info.libraries
+              ~f:(Lib.DB.resolve (Scope.libs scope)))
+         >>= fun more_libs ->
+         Ok (lib @ libs @ more_libs))
       |> Super_context.Libs.requires sctx ~dir ~has_dot_merlin:false
     in
 

@@ -95,12 +95,12 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
            ~extra_targets
            [ Dyn (fun (_, ocaml_flags) -> As ocaml_flags)
            ; cmt_args
+           ; A "-I"; Path obj_dir
            ; Dyn (fun (libs, _) ->
                Lib.L.include_flags libs ~stdlib_dir:ctx.stdlib_dir)
            ; As extra_args
            ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"
            ; A "-no-alias-deps"; opaque
-           ; A "-I"; Path obj_dir
            ; (match alias_module with
               | None -> S []
               | Some (m : Module.t) ->

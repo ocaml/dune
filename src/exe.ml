@@ -81,10 +81,10 @@ module Linkage = struct
       | Object -> o_flags
       | Shared_object ->
         if real_mode = Native then
-          (* The compiler doesn't pass this flags in native mode. This
+          (* The compiler doesn't pass these flags in native mode. This
              looks like a bug in the compiler. *)
           List.concat_map ctx.native_c_libraries ~f:(fun flag ->
-            ["-ccopt"; flag])
+            ["-cclib"; flag])
           @ so_flags
         else
           so_flags

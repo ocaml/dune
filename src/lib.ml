@@ -1097,7 +1097,7 @@ let report_lib_error ppf (e : Error.t) =
   | Dependency_cycle cycle ->
     Format.fprintf ppf
       "@{<error>Error@}: Dependency cycle detected between the \
-       following libraries:\n\
+       following libraries:@\n\
        @[<v>%a@]\n"
       (Format.pp_print_list (fun ppf (path, name) ->
          Format.fprintf ppf "-> %S in %s"

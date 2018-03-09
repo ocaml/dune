@@ -28,6 +28,9 @@ next
   `ext_lib`, `ext_dll` and `ext_exe` as well as `${ocaml-config:XXX}`
   for most variables in the output of `ocamlc -config` (#590)
 
+- Make sure modules in the current directory always have precedence
+  over included directories (#597)
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

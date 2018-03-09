@@ -324,9 +324,9 @@ For instance the following ``modes`` fields are all equivalent:
 The extensions for the various linking modes are choosen as follow:
 
 ================ ============= =================
-compilation mode binary kind   extension
+compilation mode binary kind   extensions
 ---------------- ------------- -----------------
-byte             exe           .bc
+byte             exe           .bc and .bc.js
 native/best      exe           .exe
 byte             object        .bc${ext_obj}
 native/best      object        .exe${ext_obj}

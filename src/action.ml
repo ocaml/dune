@@ -1,8 +1,6 @@
 open Import
 open Sexp.Of_sexp
 
-module Env_var_map = Context.Env_var_map
-
 module Outputs = struct
   include Action_intf.Outputs
 
@@ -717,7 +715,7 @@ let exec_run_direct ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
      invalid_prefix ("_build/" ^ target.name);
      invalid_prefix ("_build/install/" ^ target.name);
   end;
-  let env = Context.extend_env ~vars:env_extra ~env:ectx.env in
+  let env = Env.extend_env ~vars:env_extra ~env:ectx.env in
   Process.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to ~stderr_to
     ~purpose:ectx.purpose
     (Path.reach_for_running ~from:dir prog) args
@@ -743,7 +741,7 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
     exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
   | Setenv (var, value, t) ->
     exec t ~ectx ~dir ~stdout_to ~stderr_to
-      ~env_extra:(Env_var_map.add env_extra var value)
+      ~env_extra:(Env.Map.add env_extra var value)
   | Redirect (Stdout, fn, Echo s) ->
     Io.write_file (Path.to_string fn) s;
     Fiber.return ()
@@ -894,13 +892,13 @@ and exec_list l ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
 let exec ~targets ?context t =
   let env =
     match (context : Context.t option) with
-    | None -> Lazy.force Context.initial_env
+    | None -> Lazy.force Env.initial_env
     | Some c -> c.env
   in
   let targets = Path.Set.to_list targets in
   let purpose = Process.Build_job targets in
   let ectx = { purpose; context; env } in
-  exec t ~ectx ~dir:Path.root ~env_extra:Env_var_map.empty
+  exec t ~ectx ~dir:Path.root ~env_extra:Env.Map.empty
     ~stdout_to:None ~stderr_to:None
 
 let sandbox t ~sandboxed ~deps ~targets =

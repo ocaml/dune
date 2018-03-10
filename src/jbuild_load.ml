@@ -148,7 +148,8 @@ end
            in
          ]}
       *)
-      Process.run Strict ~dir:(Path.to_string dir) ~env:context.env
+      Process.run Strict ~dir:(Path.to_string dir)
+        ~env:(Env.to_unix context.env)
         (Path.to_string context.ocaml)
         args
       >>= fun () ->

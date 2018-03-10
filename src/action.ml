@@ -697,7 +697,7 @@ end
 type exec_context =
   { context : Context.t option
   ; purpose : Process.purpose
-  ; env     : string array
+  ; env     : Env.t
   }
 
 let exec_run_direct ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
@@ -715,8 +715,9 @@ let exec_run_direct ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
      invalid_prefix ("_build/" ^ target.name);
      invalid_prefix ("_build/install/" ^ target.name);
   end;
-  let env = Env.extend_env ~vars:env_extra ~env:ectx.env in
-  Process.run Strict ~dir:(Path.to_string dir) ~env ~stdout_to ~stderr_to
+  let env = Env.extend ectx.env ~vars:env_extra in
+  Process.run Strict ~dir:(Path.to_string dir) ~env:(Env.to_unix env)
+    ~stdout_to ~stderr_to
     ~purpose:ectx.purpose
     (Path.reach_for_running ~from:dir prog) args
 
@@ -892,7 +893,7 @@ and exec_list l ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
 let exec ~targets ?context t =
   let env =
     match (context : Context.t option) with
-    | None -> Lazy.force Env.initial_env
+    | None -> Env.initial ()
     | Some c -> c.env
   in
   let targets = Path.Set.to_list targets in

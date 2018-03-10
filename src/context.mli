@@ -63,7 +63,7 @@ type t =
   ; ocamlmklib : Path.t
 
   ; (** Environment variables *)
-    env : string array
+    env : Env.t
 
   ; (** Diff between the base environment and [env] *)
     env_extra : string Env.Map.t

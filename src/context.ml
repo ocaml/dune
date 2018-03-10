@@ -123,9 +123,9 @@ let opam_config_var ~env ~cache var =
 let which ~cache ~path x =
   Hashtbl.find_or_add cache x ~f:(Bin.which ~path)
 
-let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
+let create ~(kind : Kind.t) ~path ~env_extra ~name ~merlin
       ~targets () =
-  let env = Env.extend base_env ~vars:env_extra in
+  let env = Env.extend (Env.initial ()) ~vars:env_extra in
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
    | Opam { root; _ } ->
@@ -346,13 +346,7 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
 let opam_config_var t var = opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
 let default ?(merlin=true) ~targets () =
-  let env = Env.initial () in
-  let path =
-    match Env.get_var env "PATH" with
-    | Some s -> Bin.parse_path s
-    | None -> []
-  in
-  create ~kind:Default ~path ~base_env:env ~env_extra:Env.Map.empty
+  create ~kind:Default ~path:Bin.path ~env_extra:Env.Map.empty
     ~name:"default" ~merlin ~targets ()
 
 let create_for_opam ?root ~targets ~switch ~name ?(merlin=false) () =
@@ -391,9 +385,8 @@ let create_for_opam ?root ~targets ~switch ~name ?(merlin=false) () =
       | None -> Bin.path
       | Some s -> Bin.parse_path s
     in
-    let env = Env.initial () in
     create ~kind:(Opam { root; switch }) ~targets
-      ~path ~base_env:env ~env_extra:vars ~name ~merlin ()
+      ~path ~env_extra:vars ~name ~merlin ()
 
 let create ?merlin def =
   match (def : Workspace.Context.t) with

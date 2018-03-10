@@ -747,6 +747,10 @@ In addition, ``(action ...)`` fields support the following special variables:
   file
 - ``read-strings:<path>`` expands to the list of lines in the given
   file, unescaped using OCaml lexical convention
+- ``build-number`` expands to the number of times a build has been
+  started. This counter is reset when ``jbuilder clean`` is called. Using
+  this variable in an action will effectively cause it to be
+  executed everytime jbuilder runs
 
 The ``${<kind>:...}`` forms are what allows you to write custom rules that work
 transparently whether things are installed or not.

@@ -408,3 +408,13 @@
      (progn
       (run ${exe:cram.exe} run.t)
       (diff? run.t run.t.corrected)))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/build-number)))
+  (action
+   (chdir test-cases/build-number
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))

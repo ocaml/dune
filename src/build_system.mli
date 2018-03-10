@@ -159,6 +159,10 @@ val do_build
 
 (** {2 Other queries} *)
 
+(** File that contains the number of times {!do_build} was
+    called. This counter is resett by [jbuilder clean]. *)
+val build_number_file : Path.t
+
 val is_target : t -> Path.t -> bool
 
 (** Return all the library dependencies (as written by the user)

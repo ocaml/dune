@@ -537,6 +537,9 @@ module Action = struct
             | Alias -> Loc.fail loc "You cannot use ${@} in aliases."
             | Static l -> Some (Paths (l, Split))
           end
+        | "build-number" ->
+          add_ddep acc ~key
+            (Build.contents Build_system.build_number_file >>^ str_exp)
         | _ ->
           match String.lsplit2 var ~on:':' with
           | Some ("path-no-dep", s) ->

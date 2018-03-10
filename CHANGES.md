@@ -35,6 +35,8 @@ next
 - Make sure modules in the current directory always have precedence
   over included directories (#597)
 
+- Add a `${build-number}` variable counting the number of builds. This
+  can be used to force running an action on every run of jbuilder
 
 1.0+beta18 (25/02/2018)
 -----------------------

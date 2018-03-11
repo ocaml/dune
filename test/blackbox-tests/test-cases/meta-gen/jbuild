@@ -7,12 +7,9 @@
   (synopsis "contains \"quotes\"")))
 
 (library
- ((name privatelib)))
-
-(library
  ((name foobar_baz)
   (public_name foobar.baz)
-  (libraries (bytes privatelib))
+  (libraries (bytes))
   (modes (byte))
   (synopsis "sub library with modes set to byte")))
 

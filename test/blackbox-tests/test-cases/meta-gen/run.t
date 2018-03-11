@@ -8,7 +8,7 @@
   package "baz" (
     directory = "baz"
     description = "sub library with modes set to byte"
-    requires = "bytes privatelib"
+    requires = "bytes"
     archive(byte) = "foobar_baz.cma"
     archive(native) = "foobar_baz.cmxa"
     plugin(byte) = "foobar_baz.cma"

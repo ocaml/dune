@@ -32,3 +32,10 @@ Unless they introduce private runtime dependencies:
       ocamlopt .ppx/private_ppx@mylib/ppx.exe
            ppx mylib.pp.ml
       ocamldep mylib.pp.ml.d
+
+However, public binaries may accept private dependencies
+  $ $JBUILDER build -j1 --display short --root exes 2>&1 | grep -v Entering
+      ocamldep publicbin.ml.d
+        ocamlc .publicbin.eobjs/publicbin.{cmi,cmo,cmt}
+      ocamlopt .publicbin.eobjs/publicbin.{cmx,o}
+      ocamlopt publicbin.exe

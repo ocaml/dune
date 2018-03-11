@@ -339,7 +339,8 @@ type t =
   ; file_tree   : File_tree.t
   ; mutable local_mkdirs : Path.Local.Set.t
   ; mutable dirs : (Path.t, Dir_status.t) Hashtbl.t
-  ; mutable gen_rules : (dir:Path.t -> string list -> extra_sub_directories_to_keep) String_map.t
+  ; mutable gen_rules :
+      (dir:Path.t -> string list -> extra_sub_directories_to_keep) String_map.t
   ; mutable load_dir_stack : Path.t list
   ; (* Set of directories under _build that have at least one rule and
        all their ancestors. *)
@@ -1173,8 +1174,22 @@ let eval_request t ~request ~process_target =
        let dyn_deps = Build_exec.exec_nop t request () in
        process_targets (Pset.diff dyn_deps static_deps))
 
+let build_number_file = Path.relative Path.build_dir ".build-number"
+
+let increment_build_number t =
+  let fname = Path.to_string build_number_file in
+  let build_number =
+    if Sys.file_exists fname then
+      Sexp.Of_sexp.int (Sexp.load ~mode:Single ~fname) + 1
+    else
+      0
+  in
+  make_local_dirs t (Pset.singleton Path.build_dir);
+  Io.write_file fname (Sexp.to_string (Sexp.To_sexp.int build_number))
+
 let do_build t ~request =
   entry_point t ~f:(fun () ->
+    increment_build_number t;
     eval_request t ~request ~process_target:(wait_for_file t))
 
 module Ir_set = Set.Make(Internal_rule)

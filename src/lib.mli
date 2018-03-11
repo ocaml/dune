@@ -151,7 +151,7 @@ module Error : sig
   module Private_deps_not_allowed : sig
     type nonrec t =
       { private_dep : t
-      ; public_lib : t option
+      ; pd_loc      : Loc.t
       }
   end
 
@@ -258,9 +258,13 @@ module DB : sig
     -> string list
     -> (lib list, exn) result
 
-  val find_even_when_hidden : t -> string -> lib option
+  val find_even_when_hidden
+    :  t
+    -> string
+    -> allow_private_deps:bool
+    -> lib option
 
-  val available : t -> string -> bool
+  val available : t -> string -> allow_private_deps:bool -> bool
 
   (** Retreive the compile informations for the given library. Works
       for libraries that are optional and not available as well. *)
@@ -298,7 +302,7 @@ end with type lib := t
 
 (** {1 Transitive closure} *)
 
-val closure : L.t -> (L.t, exn) result
+val closure : L.t -> allow_private_deps:bool -> (L.t, exn) result
 
 (** {1 Sub-systems} *)
 

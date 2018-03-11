@@ -80,3 +80,6 @@ let extend t ~vars =
         | Some _ -> v2
         | None -> v1)
     )
+
+let add t ~var ~value =
+  make ~base:t.base ~extra:(Map.add t.extra var value)

@@ -561,7 +561,6 @@ module Gen(P : Install_rules.Params) = struct
 
     let compile_info =
       Lib.DB.get_compile_info (Scope.libs scope) lib.name
-        ~allow_private_deps:(Option.is_none lib.public)
         ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
     in
     let requires, real_requires =

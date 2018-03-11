@@ -697,10 +697,9 @@ end
 type exec_context =
   { context : Context.t option
   ; purpose : Process.purpose
-  ; env     : Env.t
   }
 
-let exec_run_direct ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
+let exec_run_direct ~ectx ~dir ~env ~stdout_to ~stderr_to prog args =
   begin match ectx.context with
    | None
    | Some { Context.for_host = None; _ } -> ()
@@ -715,7 +714,6 @@ let exec_run_direct ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args =
      invalid_prefix ("_build/" ^ target.name);
      invalid_prefix ("_build/install/" ^ target.name);
   end;
-  let env = Env.extend ectx.env ~vars:env_extra in
   Process.run Strict ~dir:(Path.to_string dir) ~env
     ~stdout_to ~stderr_to
     ~purpose:ectx.purpose
@@ -732,17 +730,17 @@ let exec_echo stdout_to str =
      | None -> print_string str; flush stdout
      | Some (_, oc) -> output_string oc str)
 
-let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
+let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
   match t with
   | Run (Error e, _) ->
     Prog.Not_found.raise e
   | Run (Ok prog, args) ->
-    exec_run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args
+    exec_run ~ectx ~dir ~env ~stdout_to ~stderr_to prog args
   | Chdir (dir, t) ->
-    exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
+    exec t ~ectx ~dir ~env ~stdout_to ~stderr_to
   | Setenv (var, value, t) ->
     exec t ~ectx ~dir ~stdout_to ~stderr_to
-      ~env_extra:(Env.Map.add env_extra var value)
+      ~env:(Env.add env ~var ~value)
   | Redirect (Stdout, fn, Echo s) ->
     Io.write_file (Path.to_string fn) s;
     Fiber.return ()
@@ -754,13 +752,13 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
       | Stderr -> (get_std_output stdout_to, out)
       | Outputs -> (out, out)
     in
-    exec_run_direct ~ectx ~dir ~env_extra ~stdout_to ~stderr_to prog args
+    exec_run_direct ~ectx ~dir ~env ~stdout_to ~stderr_to prog args
   | Redirect (outputs, fn, t) ->
-    redirect ~ectx ~dir outputs fn t ~env_extra ~stdout_to ~stderr_to
+    redirect ~ectx ~dir outputs fn t ~env ~stdout_to ~stderr_to
   | Ignore (outputs, t) ->
-    redirect ~ectx ~dir outputs Config.dev_null t ~env_extra ~stdout_to ~stderr_to
+    redirect ~ectx ~dir outputs Config.dev_null t ~env ~stdout_to ~stderr_to
   | Progn l ->
-    exec_list l ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
+    exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to
   | Echo str -> exec_echo stdout_to str
   | Cat fn ->
     Io.with_file_in (Path.to_string fn) ~f:(fun ic ->
@@ -813,9 +811,9 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
     let path, arg =
       Utils.system_shell_exn ~needed_to:"interpret (system ...) actions"
     in
-    exec_run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to path [arg; cmd]
+    exec_run ~ectx ~dir ~env ~stdout_to ~stderr_to path [arg; cmd]
   | Bash cmd ->
-    exec_run ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
+    exec_run ~ectx ~dir ~env ~stdout_to ~stderr_to
       (Utils.bash_exn ~needed_to:"interpret (bash ...) actions")
       ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
   | Write_file (fn, s) ->
@@ -867,7 +865,7 @@ let rec exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
       Print_diff.print file1 file2
     end
 
-and redirect outputs fn t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
+and redirect outputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to =
   let fn = Path.to_string fn in
   let oc = Io.open_out fn in
   let out = Some (fn, oc) in
@@ -877,18 +875,18 @@ and redirect outputs fn t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
     | Stderr -> (stdout_to, out)
     | Outputs -> (out, out)
   in
-  exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to >>| fun () ->
+  exec t ~ectx ~dir ~env ~stdout_to ~stderr_to >>| fun () ->
   close_out oc
 
-and exec_list l ~ectx ~dir ~env_extra ~stdout_to ~stderr_to =
+and exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to =
   match l with
   | [] ->
     Fiber.return ()
   | [t] ->
-    exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
+    exec t ~ectx ~dir ~env ~stdout_to ~stderr_to
   | t :: rest ->
-    exec t ~ectx ~dir ~env_extra ~stdout_to ~stderr_to >>= fun () ->
-    exec_list rest ~ectx ~dir ~env_extra ~stdout_to ~stderr_to
+    exec t ~ectx ~dir ~env ~stdout_to ~stderr_to >>= fun () ->
+    exec_list rest ~ectx ~dir ~env ~stdout_to ~stderr_to
 
 let exec ~targets ?context t =
   let env =
@@ -898,9 +896,8 @@ let exec ~targets ?context t =
   in
   let targets = Path.Set.to_list targets in
   let purpose = Process.Build_job targets in
-  let ectx = { purpose; context; env } in
-  exec t ~ectx ~dir:Path.root ~env_extra:Env.Map.empty
-    ~stdout_to:None ~stderr_to:None
+  let ectx = { purpose; context } in
+  exec t ~ectx ~dir:Path.root ~env ~stdout_to:None ~stderr_to:None
 
 let sandbox t ~sandboxed ~deps ~targets =
   Progn

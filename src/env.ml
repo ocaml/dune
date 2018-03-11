@@ -55,7 +55,7 @@ let get_env_base env var =
   in
   loop 0
 
-let get_var t v =
+let get t v =
   match Map.find t.extra v with
   | None -> get_env_base t.base v
   | Some _ as v -> v

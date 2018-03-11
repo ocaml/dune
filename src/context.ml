@@ -251,7 +251,7 @@ let create ~(kind : Kind.t) ~path ~env_extra ~name ~merlin
       && version >= (4, 03, 0)
       && version <  (4, 05, 0) then
         let value =
-          match Env.get_var env "OCAMLPARAM" with
+          match Env.get env "OCAMLPARAM" with
           | None -> "color=always,_"
           | Some s -> "color=always," ^ s
         in
@@ -274,7 +274,7 @@ let create ~(kind : Kind.t) ~path ~env_extra ~name ~merlin
       ; build_dir
       ; path
       ; toplevel_path =
-          Option.map (Env.get_var env "OCAML_TOPLEVEL_PATH") ~f:Path.absolute
+          Option.map (Env.get env "OCAML_TOPLEVEL_PATH") ~f:Path.absolute
 
       ; ocaml_bin  = dir
       ; ocaml      = (match which "ocaml" with Some p -> p | None -> prog_not_found_in_path "ocaml")
@@ -422,7 +422,7 @@ let env_for_exec t =
   let cwd = Sys.getcwd () in
   let extend_var var v =
     let v = Filename.concat cwd (Path.to_string v) in
-    match Env.get_var t.env var with
+    match Env.get t.env var with
     | None -> (var, v)
     | Some prev -> (var, sprintf "%s%c%s" v sep prev)
   in

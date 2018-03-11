@@ -110,8 +110,7 @@ let opam_config_var ~env ~cache var =
     match Bin.opam with
     | None -> Fiber.return None
     | Some fn ->
-      Process.run_capture (Accept All) (Path.to_string fn)
-        ~env:(Env.to_unix env)
+      Process.run_capture (Accept All) (Path.to_string fn) ~env
         ["config"; "var"; var]
       >>| function
       | Ok s ->
@@ -146,7 +145,7 @@ let create ~(kind : Kind.t) ~path ~env_extra ~name ~merlin
       match Sys.getenv "OCAMLFIND_CONF" with
       | s -> Fiber.return (Path.absolute s)
       | exception Not_found ->
-        Process.run_capture_line ~env:(Env.to_unix env) Strict
+        Process.run_capture_line ~env Strict
           (Path.to_string fn) ["printconf"; "conf"]
         >>| Path.absolute)
   in
@@ -208,9 +207,7 @@ let create ~(kind : Kind.t) ~path ~env_extra ~name ~merlin
             | None -> args
             | Some s -> "-toolchain" :: s :: args
           in
-          Process.run_capture_lines
-            ~env:(Env.to_unix env)
-            Strict (Path.to_string fn) args
+          Process.run_capture_lines ~env Strict (Path.to_string fn) args
           >>| List.map ~f:Path.absolute
         | None ->
           (* If there no ocamlfind in the PATH, check if we have opam
@@ -233,7 +230,7 @@ let create ~(kind : Kind.t) ~path ~env_extra ~name ~merlin
     Fiber.fork_and_join
       findlib_path
       (fun () ->
-         Process.run_capture_lines ~env:(Env.to_unix env) Strict
+         Process.run_capture_lines ~env Strict
            (Path.to_string ocamlc) ["-config"]
          >>| fun lines ->
          let open Result.O in
@@ -409,7 +406,7 @@ let install_ocaml_libdir t =
     (* If ocamlfind is present, it has precedence over everything else. *)
     match which t "ocamlfind" with
     | Some fn ->
-      (Process.run_capture_line ~env:(Env.to_unix t.env) Strict
+      (Process.run_capture_line ~env:t.env Strict
          (Path.to_string fn) ["printconf"; "destdir"]
        >>| fun s ->
        Some (Path.absolute s))

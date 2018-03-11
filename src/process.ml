@@ -243,7 +243,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose
       Unix.create_process prog argv
         Unix.stdin stdout stderr
     | Some env ->
-      Unix.create_process_env prog argv env
+      Unix.create_process_env prog argv (Env.to_unix env)
         Unix.stdin stdout stderr
   in
   let pid =

@@ -30,13 +30,6 @@ module Kind : sig
   type t = Default | Opam of Opam.t
 end
 
-module Env_var : sig
-  type t = string
-  val compare : t -> t -> Ordering.t
-end
-
-module Env_var_map : Map.S with type key := Env_var.t
-
 type t =
   { name : string
   ; kind : Kind.t
@@ -70,10 +63,7 @@ type t =
   ; ocamlmklib : Path.t
 
   ; (** Environment variables *)
-    env : string array
-
-  ; (** Diff between the base environment and [env] *)
-    env_extra : string Env_var_map.t
+    env : Env.t
 
   ; findlib : Findlib.t
   ; findlib_toolchain : string option
@@ -135,16 +125,12 @@ val create
 
 val which : t -> string -> Path.t option
 
-val extend_env : vars:string Env_var_map.t -> env:string array -> string array
-
 val opam_config_var : t -> string -> string option Fiber.t
 
 val install_prefix : t -> Path.t Fiber.t
 val install_ocaml_libdir : t -> Path.t option Fiber.t
 
 val env_for_exec : t -> string array
-
-val initial_env : string array Lazy.t
 
 (** Return the compiler needed for this compilation mode *)
 val compiler : t -> Mode.t -> Path.t option

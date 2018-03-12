@@ -2,11 +2,12 @@ open Import
 
 module Var = struct
   type t = string
-  let compare a b =
-    if Sys.win32 then
-      String.compare (String.lowercase a) (String.lowercase b)
-    else
-      String.compare a b
+  let compare =
+    if Sys.win32 then (
+      fun a b -> String.compare (String.lowercase a) (String.lowercase b)
+    ) else (
+      String.compare
+    )
 
   let equal a b =
     match compare a b with

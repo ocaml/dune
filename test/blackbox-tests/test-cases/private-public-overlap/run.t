@@ -1,14 +1,10 @@
 public libraries may not have private dependencies
 
   $ $JBUILDER build -j1 --display short --root private-dep 2>&1 | grep -v Entering
-  Error: exception Failure("private/public overlap")
-  Backtrace:
-  Raised at file "src/dep_path.ml" (inlined), line 46, characters 24-55
-  Called from file "src/build_system.ml", line 91, characters 6-48
-  Called from file "src/fiber/fiber.ml", line 303, characters 6-18
-  
-  -> required by library "publiclib" in _build/default
-      ocamldep publiclib.ml.d
+  File "jbuild", line 10, characters 14-24:
+  Error: Library "privatelib" is private, it cannot be a dependency of
+  "publiclib" as the latter is a public library. You need to give "privatelib" a
+  public name.
 
 On the other hand, public libraries may have private preprocessors
   $ $JBUILDER build -j1 --display short --root private-rewriter 2>&1 | grep -v Entering

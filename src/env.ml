@@ -15,31 +15,13 @@ module Map = Map.Make(Var)
 type t =
   { base : string array
   ; extra : string Map.t
-  ; combined : string array Lazy.t
+  ; mutable unix : string array option
   }
 
 let make ~base ~extra =
   { base
   ; extra
-  ; combined = lazy (
-      if Map.is_empty extra then
-        base
-      else
-        let imported =
-          Array.to_list base
-          |> List.filter ~f:(fun s ->
-            match String.index s '=' with
-            | None -> true
-            | Some i ->
-              let key = String.sub s ~pos:0 ~len:i in
-              not (Map.mem extra key))
-        in
-        List.rev_append
-          (List.map (Map.to_list extra)
-             ~f:(fun (k, v) -> sprintf "%s=%s" k v))
-          imported
-        |> Array.of_list
-    )
+  ; unix = None
   }
 
 let get_env_base env var =
@@ -60,7 +42,30 @@ let get t v =
   | None -> get_env_base t.base v
   | Some _ as v -> v
 
-let to_unix t = Lazy.force t.combined
+let to_unix t =
+  match t.unix with
+  | Some v -> v
+  | None ->
+    let res =
+      if Map.is_empty t.extra then
+        t.base
+      else
+        let imported =
+          Array.to_list t.base
+          |> List.filter ~f:(fun s ->
+            match String.index s '=' with
+            | None -> true
+            | Some i ->
+              let key = String.sub s ~pos:0 ~len:i in
+              not (Map.mem t.extra key))
+        in
+        List.rev_append
+          (List.map (Map.to_list t.extra)
+             ~f:(fun (k, v) -> sprintf "%s=%s" k v))
+          imported
+        |> Array.of_list in
+    t.unix <- Some res;
+    res
 
 let initial =
   let i =

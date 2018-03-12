@@ -37,6 +37,8 @@ module Status : sig
     | Installed
     | Public
     | Private of Jbuild.Scope_info.Name.t
+
+  val pp : t Fmt.t
 end
 
 val status : t -> Status.t
@@ -146,12 +148,20 @@ module Error : sig
       }
   end
 
+  module Private_deps_not_allowed : sig
+    type nonrec t =
+      { private_dep : t
+      ; pd_loc      : Loc.t
+      }
+  end
+
   type t =
     | Library_not_available        of Library_not_available.t
     | No_solution_found_for_select of No_solution_found_for_select.t
     | Dependency_cycle             of (Path.t * string) list
     | Conflict                     of Conflict.t
     | Overlap                      of Overlap.t
+    | Private_deps_not_allowed     of Private_deps_not_allowed.t
 end
 
 exception Error of Error.t

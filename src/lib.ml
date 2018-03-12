@@ -10,6 +10,18 @@ module Status = struct
     | Installed
     | Public
     | Private of Jbuild.Scope_info.Name.t
+
+  let pp ppf t =
+    Format.pp_print_string ppf
+      (match t with
+       | Installed -> "installed"
+       | Public -> "public"
+       | Private s ->
+         sprintf "private (%s)" (Jbuild.Scope_info.Name.to_string s))
+
+  let is_private = function
+    | Private _ -> true
+    | Installed | Public -> false
 end
 
 module Info = struct
@@ -254,6 +266,7 @@ and error =
   | Dependency_cycle             of (Path.t * string) list
   | Conflict                     of conflict
   | Overlap                      of overlap
+  | Private_deps_not_allowed     of private_deps_not_allowed
 
 and resolve_result =
   | Not_found
@@ -269,6 +282,11 @@ and conflict =
 and overlap =
   { in_workspace : t
   ; installed    : t * Dep_path.Entry.t list
+  }
+
+and private_deps_not_allowed =
+  { private_dep    : t
+  ; pd_loc         : Loc.t
   }
 
 and 'a or_error = ('a, exn) result
@@ -292,12 +310,20 @@ module Error = struct
       }
   end
 
+  module Private_deps_not_allowed = struct
+    type nonrec t = private_deps_not_allowed =
+      { private_dep : t
+      ; pd_loc      : Loc.t
+      }
+  end
+
   type t = error =
     | Library_not_available        of Library_not_available.t
     | No_solution_found_for_select of No_solution_found_for_select.t
     | Dependency_cycle             of (Path.t * string) list
     | Conflict                     of Conflict.t
     | Overlap                      of Overlap.t
+    | Private_deps_not_allowed     of Private_deps_not_allowed.t
 end
 
 exception Error of Error.t
@@ -522,6 +548,13 @@ module Dep_stack = struct
          }
 end
 
+let check_private_deps ~(lib : lib) ~loc ~allow_private_deps =
+  if (not allow_private_deps) && Status.is_private lib.status then
+    Result.Error (Error (
+      Private_deps_not_allowed { private_dep = lib ; pd_loc = loc }))
+  else
+    Ok lib
+
 let already_in_table (info : Info.t) name x =
   let to_sexp = Sexp.To_sexp.(pair Path.sexp_of_t string) in
   let sexp =
@@ -560,11 +593,13 @@ let rec instantiate db name (info : Info.t) ~stack ~hidden =
   (* Add [id] to the table, to detect loops *)
   Hashtbl.add db.table name (St_initializing id);
 
+  let allow_private_deps = Status.is_private info.status in
+
   let requires, pps, resolved_selects =
-    resolve_user_deps db info.requires ~pps:info.pps ~stack
+    resolve_user_deps db info.requires ~allow_private_deps ~pps:info.pps ~stack
   in
   let ppx_runtime_deps =
-    resolve_simple_deps db info.ppx_runtime_deps ~stack
+    resolve_simple_deps db info.ppx_runtime_deps ~allow_private_deps ~stack
   in
   let map_error x =
     Result.map_error x ~f:(fun e ->
@@ -572,7 +607,8 @@ let rec instantiate db name (info : Info.t) ~stack ~hidden =
   in
   let requires         = map_error requires         in
   let ppx_runtime_deps = map_error ppx_runtime_deps in
-  let resolve (loc, name) = resolve_dep db name ~loc ~stack in
+  let resolve (loc, name) =
+    resolve_dep db name ~allow_private_deps ~loc ~stack in
   let t =
     { loc               = info.loc
     ; name              = name
@@ -633,12 +669,11 @@ and find_internal db name ~stack : status =
   | Some x -> x
   | None   -> resolve_name db name ~stack
 
-and resolve_dep db name ~loc ~stack : (t, exn) result =
+and resolve_dep db name ~allow_private_deps ~loc ~stack : (t, exn) result =
   match find_internal db name ~stack with
   | St_initializing id ->
     Error (Dep_stack.dependency_cycle stack id)
-  | St_found t ->
-    Ok t
+  | St_found lib -> check_private_deps ~lib ~loc ~allow_private_deps
   | St_not_found ->
     Error (Error (Library_not_available { loc; name; reason = Not_found }))
   | St_hidden (_, hidden) ->
@@ -677,27 +712,27 @@ and resolve_name db name ~stack =
       instantiate db name info ~stack ~hidden:(Some hidden)
 
 and available_internal db name ~stack =
-  match resolve_dep db name ~loc:Loc.none ~stack with
+  match resolve_dep db name ~allow_private_deps:true ~loc:Loc.none ~stack with
   | Ok    _ -> true
   | Error _ -> false
 
-and resolve_simple_deps db names ~stack =
+and resolve_simple_deps db names ~allow_private_deps ~stack =
   let rec loop acc = function
     | [] -> Ok (List.rev acc)
     | (loc, name) :: names ->
-      resolve_dep db name ~loc ~stack >>= fun x ->
+      resolve_dep db name ~allow_private_deps ~loc ~stack >>= fun x ->
       loop (x :: acc) names
   in
   loop [] names
 
-and resolve_complex_deps db deps ~stack =
+and resolve_complex_deps db deps ~allow_private_deps ~stack =
   let res, resolved_selects =
     List.fold_left deps ~init:(Ok [], []) ~f:(fun (acc_res, acc_selects) dep ->
       let res, acc_selects =
         match (dep : Jbuild.Lib_dep.t) with
         | Direct (loc, name) ->
           let res =
-            resolve_dep db name ~loc ~stack >>| fun x -> [x]
+            resolve_dep db name ~allow_private_deps ~loc ~stack >>| fun x -> [x]
           in
           (res, acc_selects)
         | Select { result_fn; choices; loc } ->
@@ -713,7 +748,7 @@ and resolve_complex_deps db deps ~stack =
                       String_set.fold required ~init:[] ~f:(fun x acc ->
                         (Loc.none, x) :: acc)
                     in
-                    resolve_simple_deps db deps ~stack
+                    resolve_simple_deps ~allow_private_deps db deps ~stack
                   with
                   | Ok ts -> Some (ts, file)
                   | Error _ -> None)
@@ -742,28 +777,42 @@ and resolve_complex_deps db deps ~stack =
   in
   (res, resolved_selects)
 
-and resolve_deps db deps ~stack =
+and resolve_deps db deps ~allow_private_deps ~stack =
   match (deps : Info.Deps.t) with
-  | Simple  names -> (resolve_simple_deps  db names ~stack, [])
-  | Complex names ->  resolve_complex_deps db names ~stack
+  | Simple  names ->
+    (resolve_simple_deps db names ~allow_private_deps ~stack, [])
+  | Complex names ->
+    resolve_complex_deps ~allow_private_deps db names ~stack
 
-and resolve_user_deps db deps ~pps ~stack =
-  let deps, resolved_selects = resolve_deps db deps ~stack in
+and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
+  let deps, resolved_selects =
+    resolve_deps db deps ~allow_private_deps ~stack in
   let deps, pps =
     match pps with
     | [] -> (deps, Ok [])
-    | pps ->
+    | first :: others as pps ->
+      (* Location of the list of ppx rewriters *)
+      let loc =
+        let last = Option.value (List.last others) ~default:first in
+        { (fst first) with stop = (fst last).stop }
+      in
       let pps =
         let pps = (pps : (Loc.t * Jbuild.Pp.t) list :> (Loc.t * string) list) in
-        resolve_simple_deps db pps ~stack >>= fun pps ->
+        resolve_simple_deps db pps ~allow_private_deps:true ~stack
+        >>= fun pps ->
         closure_with_overlap_checks None pps ~stack
       in
       let deps =
-        let rec loop acc = function
+        let rec check_runtime_deps acc pps = function
+          | [] -> loop acc pps
+          | lib :: ppx_rts ->
+            check_private_deps ~lib ~loc ~allow_private_deps >>= fun rt ->
+            check_runtime_deps (rt :: acc) pps ppx_rts
+        and loop acc = function
           | [] -> Ok acc
           | pp :: pps ->
             pp.ppx_runtime_deps >>= fun rt_deps ->
-            loop (List.rev_append rt_deps acc) pps
+            check_runtime_deps acc pps rt_deps
         in
         deps >>= fun deps ->
         pps  >>= fun pps  ->
@@ -996,7 +1045,7 @@ module DB = struct
   let resolve_user_written_deps t ?(allow_overlaps=false) deps ~pps =
     let res, pps, resolved_selects =
       resolve_user_deps t (Info.Deps.of_lib_deps deps) ~pps
-        ~stack:Dep_stack.empty
+        ~stack:Dep_stack.empty ~allow_private_deps:true
     in
     let requires =
       res
@@ -1014,7 +1063,7 @@ module DB = struct
     }
 
   let resolve_pps t pps =
-    resolve_simple_deps t
+    resolve_simple_deps t ~allow_private_deps:true
       (pps : (Loc.t *Jbuild.Pp.t) list :> (Loc.t * string) list)
       ~stack:Dep_stack.empty
 
@@ -1103,6 +1152,12 @@ let report_lib_error ppf (e : Error.t) =
          Format.fprintf ppf "-> %S in %s"
            name (Path.to_string_maybe_quoted path)))
       cycle
+  | Private_deps_not_allowed t ->
+    Format.fprintf ppf
+      "@{<error>Error@}: Library %S is private, it cannot be a dependency of \
+       a public library.\nYou need to give %S a public name.\n"
+      t.private_dep.name
+      t.private_dep.name
 
 let () =
   Report_error.register (fun exn ->
@@ -1116,6 +1171,8 @@ let () =
            | [] -> (* during bootstrap *) None
            | l ->
              Some (List.map l ~f:quote_for_shell |> String.concat ~sep:" "))
+        | Private_deps_not_allowed t ->
+          (Some t.pd_loc, None)
         | _ -> (None, None)
       in
       Some

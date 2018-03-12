@@ -19,6 +19,41 @@ rule file = parse
  | ([^'\n']* as str) eol        { Comment str :: file lexbuf }
 
 {
+  type version = int * int * int
+
+  let parse_version s =
+    Scanf.sscanf s "%d.%d.%d" (fun a b c -> a, b, c)
+
+  type test =
+    | Eq
+    | Le
+    | Ge
+    | Lt
+    | Gt
+
+  let tests =
+    [ "=" , Eq
+    ; "<=", Le
+    ; ">=", Ge
+    ; "<" , Lt
+    ; ">" , Gt
+    ; ""  , Eq
+    ]
+
+  let test = function
+    | Eq -> (=)
+    | Ge -> (>=)
+    | Le -> (<=)
+    | Lt -> (<)
+    | Gt -> (>)
+
+  let parse_skip_versions s =
+    List.map (String.split s ~on:',') ~f:(fun x ->
+      Option.value_exn
+        (List.find_map tests ~f:(fun (prefix, test) ->
+           Option.map (String.drop_prefix x ~prefix)
+             ~f:(fun x -> (test, parse_version x)))))
+
   let () =
     let ocaml_version = ref None in
     let skip_versions = ref [] in
@@ -30,10 +65,10 @@ rule file = parse
       | Some _ -> raise (Arg.Bad "test must only be given once") in
     Arg.parse
       [ "-ocamlv"
-      , Arg.String (fun s -> ocaml_version := Some s)
+      , Arg.String (fun s -> ocaml_version := Some (parse_version s))
       , "Version of ocaml being used"
       ; "-skip-versions"
-      , Arg.String (fun s -> skip_versions := String.split s ~on:',')
+      , Arg.String (fun s -> skip_versions := parse_skip_versions s)
       , "Comma separated versions of ocaml where to skip test"
       ] anon usage;
     let expect_test =
@@ -43,7 +78,8 @@ rule file = parse
     begin match !ocaml_version, !skip_versions with
     | None, [] -> ()
     | None, _::_ -> raise (Arg.Bad "provide -ocaml along with -skip-versions")
-    | Some v, skip -> if List.mem v ~set:skip then exit 0
+    | Some v, skip ->
+      if List.exists skip ~f:(fun (op, v') -> test op v v')  then exit 0
     end;
     Test_common.run_expect_test expect_test ~f:(fun file_contents lexbuf ->
       let items = file lexbuf in
@@ -70,5 +106,3 @@ rule file = parse
           if n <> 0 then Printf.bprintf buf "  [%d]\n" n);
       Buffer.contents buf)
 }
-
-

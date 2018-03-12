@@ -46,7 +46,9 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target pps =
       | Ok    l -> List.last l
       | Error _ -> None
     in
-    (driver, Result.bind resolved_pps ~f:Lib.closure |> Build.of_result)
+    (driver,
+     Result.bind resolved_pps ~f:Lib.closure
+     |> Build.of_result)
   in
   let libs =
     Build.record_lib_deps ~kind:dep_kind

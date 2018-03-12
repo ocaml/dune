@@ -264,11 +264,7 @@ module DB : sig
 
   (** Retreive the compile informations for the given library. Works
       for libraries that are optional and not available as well. *)
-  val get_compile_info
-    :  t
-    -> ?allow_overlaps:bool
-    -> string
-    -> Compile.t
+  val get_compile_info : t -> ?allow_overlaps:bool -> string -> Compile.t
 
   val resolve : t -> Loc.t * string -> (lib, exn) result
 

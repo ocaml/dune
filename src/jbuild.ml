@@ -978,6 +978,7 @@ module Rule = struct
     }
 
   let v1 sexp =
+    let loc = Sexp.Ast.loc sexp in
     match sexp with
     | List (_, (Atom _ :: _)) ->
       { targets  = Infer
@@ -985,7 +986,7 @@ module Rule = struct
       ; action   = Action.Unexpanded.t sexp
       ; mode     = Standard
       ; locks    = []
-      ; loc      = Loc.none
+      ; loc      = loc
       }
     | _ ->
       record
@@ -1012,7 +1013,7 @@ module Rule = struct
                 ; action
                 ; mode
                 ; locks
-                ; loc = Loc.none
+                ; loc
                 })
         sexp
 

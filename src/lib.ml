@@ -549,12 +549,11 @@ module Dep_stack = struct
 end
 
 let check_private_deps ~(lib : lib) ~loc ~allow_private_deps =
-  if (not allow_private_deps) && Status.is_private lib.status then (
+  if (not allow_private_deps) && Status.is_private lib.status then
     Result.Error (Error (
       Private_deps_not_allowed { private_dep = lib ; pd_loc = loc }))
-  ) else (
+  else
     Ok lib
-  )
 
 let already_in_table (info : Info.t) name x =
   let to_sexp = Sexp.To_sexp.(pair Path.sexp_of_t string) in

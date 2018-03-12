@@ -8,83 +8,92 @@ module Var = struct
     else
       String.compare a b
 
+  let equal a b =
+    match compare a b with
+    | Ordering.Eq -> true
+    | _ -> false
+
+  let hash =
+    if Sys.win32 then
+      fun x -> Hashtbl.hash (String.lowercase x)
+    else
+      Hashtbl.hash
 end
 
 module Map = Map.Make(Var)
 
+module Table = Hashtbl.Make(Var)
+
 type t =
-  { base : string array
-  ; extra : string Map.t
+  { vars : (Var.t * string) list
   ; mutable unix : string array option
   }
 
-let make ~base ~extra =
-  { base
-  ; extra
+let make vars =
+  { vars
   ; unix = None
   }
 
-let get_env_base env var =
-  let rec loop i =
-    if i = Array.length env then
-      None
-    else
-      let entry = env.(i) in
-      match String.lsplit2 entry ~on:'=' with
-      | Some (key, value) when Var.compare key var = Eq ->
-        Some value
-      | _ -> loop (i + 1)
-  in
-  loop 0
-
-let get t v =
-  match Map.find t.extra v with
-  | None -> get_env_base t.base v
-  | Some _ as v -> v
+let get t k =
+  List.find_map t.vars ~f:(fun (k', v) ->
+    match Var.compare k k' with
+    | Ordering.Eq -> Some v
+    | _ -> None)
 
 let to_unix t =
   match t.unix with
   | Some v -> v
   | None ->
     let res =
-      if Map.is_empty t.extra then
-        t.base
-      else
-        let imported =
-          Array.to_list t.base
-          |> List.filter ~f:(fun s ->
-            match String.index s '=' with
-            | None -> true
-            | Some i ->
-              let key = String.sub s ~pos:0 ~len:i in
-              not (Map.mem t.extra key))
-        in
-        List.rev_append
-          (List.map (Map.to_list t.extra)
-             ~f:(fun (k, v) -> sprintf "%s=%s" k v))
-          imported
-        |> Array.of_list in
+      let seen = Table.create 16 in
+      t.vars
+      |> List.fold_left ~init:[] ~f:(fun uniques (k, v) ->
+        if Table.mem seen k then (
+          uniques
+        ) else (
+          Table.add seen ~key:k ~data:();
+          (k, v) :: uniques
+        ))
+      |> List.rev_map ~f:(fun (k, v) -> sprintf "%s=%s" k v)
+      |> Array.of_list in
     t.unix <- Some res;
     res
+
+let of_unix arr =
+  Array.to_list arr
+  |> List.map ~f:(fun s ->
+    match String.lsplit2 s ~on:'=' with
+    | None -> (s, "")
+    | Some (k, v) -> (k, v))
 
 let initial =
   let i =
     lazy (
-      make
-        ~base:(Lazy.force Colors.setup_env_for_colors;
-               Unix.environment ())
-        ~extra:Map.empty
+      make (Lazy.force Colors.setup_env_for_colors;
+            Unix.environment ()
+            |> of_unix)
     ) in
   fun () -> Lazy.force i
 
-let extend t ~vars =
-  make ~base:t.base
-    ~extra:(
-      Map.merge t.extra vars ~f:(fun _ v1 v2 ->
-        match v2 with
-        | Some _ -> v2
-        | None -> v1)
-    )
-
 let add t ~var ~value =
-  make ~base:t.base ~extra:(Map.add t.extra var value)
+  { vars = (var, value) :: t.vars
+  ; unix = None
+  }
+
+let extend t ~vars =
+  { vars = Map.foldi ~init:t.vars ~f:(fun k v t -> (k, v) :: t) vars
+  ; unix = None
+  }
+
+let sexp_of_t t =
+  let open Sexp.To_sexp in
+  (list (pair string string)) t.vars
+
+let diff x y =
+  let to_map b = Map.of_list_reduce b ~f:(fun old _new -> old) in
+  Map.merge (to_map x.vars) (to_map y.vars) ~f:(fun _k vx vy ->
+    match vy with
+    | Some _ -> None
+    | None -> vx)
+  |> Map.to_list
+  |> make

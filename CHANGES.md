@@ -1,5 +1,5 @@
-next
-----
+1.0+beta19 (13/03/2018)
+-----------------------
 
 - Ignore errors during the generation of the .merlin (#569, fixes #568 and #51)
 
@@ -41,7 +41,10 @@ next
 - Add a `best` mode which is native with fallback to byte-code when
   native compilation is not available (#23)
 
-- Fix locations reported in error messages (609)
+- Fix locations reported in error messages (#609)
+
+- Report error when a public library has a private dependency. Previously, this
+  would be silently ignored and install broken artifacts (#607).
 
 1.0+beta18 (25/02/2018)
 -----------------------

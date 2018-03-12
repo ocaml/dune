@@ -38,8 +38,8 @@ Errors:
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
         ocamlc foo.cma
   $ $JBUILDER build --display short --root c -j1 foo.cma 2>&1 | grep -v Entering
-  File "jbuild", line 1, characters 0-58:
+  File "jbuild", line 3, characters 35-36:
   Error: Module X doesn't exist.
   $ $JBUILDER build --display short --root d -j1 foo.cma 2>&1 | grep -v Entering
-  File "jbuild", line 1, characters 0-58:
+  File "jbuild", line 3, characters 35-36:
   Error: Module X has an implementation, it cannot be listed here

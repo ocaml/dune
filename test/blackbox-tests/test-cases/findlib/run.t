@@ -7,7 +7,7 @@
 Reproduction case for #484. The error should point to src/jbuild
 
   $ $JBUILDER build --root . -j1 --display quiet @install
-  File "src/jbuild", line 1, characters 0-66:
+  File "src/jbuild", line 4, characters 16-17:
   Error: Library "a" not found.
   Hint: try: jbuilder external-lib-deps --missing --root . @install
   [1]

@@ -406,7 +406,8 @@
    (chdir test-cases/output-obj
     (setenv JBUILDER ${bin:jbuilder}
      (progn
-      (run ${exe:cram.exe} run.t)
+      (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions <4.06.0
+       run.t)
       (diff? run.t run.t.corrected)))))))
 
 (alias

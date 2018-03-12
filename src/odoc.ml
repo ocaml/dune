@@ -214,8 +214,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
   let doc_dir = Doc.dir sctx lib in
   let obj_dir, lib_unique_name =
     let lib =
-      Option.value_exn (Lib.DB.find_even_when_hidden (Scope.libs scope) lib.name
-                       ~allow_private_deps:(Option.is_none lib.public))
+      Option.value_exn (Lib.DB.find_even_when_hidden (Scope.libs scope) lib.name)
     in
     let name =
       let name = Lib.name lib in

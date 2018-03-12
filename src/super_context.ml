@@ -111,10 +111,7 @@ let create
         List.filter_map stanzas ~f:(fun stanza ->
           let keep =
             match (stanza : Stanza.t) with
-            | Library lib ->
-              Lib.DB.available (Scope.libs scope)
-                ~allow_private_deps:(Option.is_none lib.public)
-                lib.name
+            | Library lib -> Lib.DB.available (Scope.libs scope) lib.name
             | Install _   -> true
             | _           -> false
           in
@@ -481,8 +478,7 @@ module Action = struct
         end
       | Some ("lib-available", lib) ->
         add_lib_dep acc lib Optional;
-        Some (str_exp (string_of_bool (
-          Lib.DB.available ~allow_private_deps:true (Scope.libs scope) lib)))
+        Some (str_exp (string_of_bool (Lib.DB.available (Scope.libs scope) lib)))
       | Some ("version", s) -> begin
           match Scope_info.resolve (Scope.info scope)
                   (Package.Name.of_string s) with

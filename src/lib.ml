@@ -586,13 +586,11 @@ let rec instantiate db name (info : Info.t) ~stack ~hidden =
   (* Add [id] to the table, to detect loops *)
   Hashtbl.add db.table name (St_initializing id);
 
-  let allow_private_deps = Status.is_private info.status in
-
   let requires, pps, resolved_selects =
-    resolve_user_deps db info.requires ~allow_private_deps ~pps:info.pps ~stack
+    resolve_user_deps db info.requires ~pps:info.pps ~stack
   in
   let ppx_runtime_deps =
-    resolve_simple_deps db info.ppx_runtime_deps ~allow_private_deps ~stack
+    resolve_simple_deps db info.ppx_runtime_deps ~stack
   in
   let map_error x =
     Result.map_error x ~f:(fun e ->
@@ -600,8 +598,7 @@ let rec instantiate db name (info : Info.t) ~stack ~hidden =
   in
   let requires         = map_error requires         in
   let ppx_runtime_deps = map_error ppx_runtime_deps in
-  let resolve (loc, name) =
-    resolve_dep ~allow_private_deps db name ~loc ~stack in
+  let resolve (loc, name) = resolve_dep db name ~loc ~stack in
   let t =
     { loc               = info.loc
     ; name              = name
@@ -662,14 +659,24 @@ and find_internal db name ~stack : status =
   | Some x -> x
   | None   -> resolve_name db name ~stack
 
-and resolve_dep db name ~loc ~allow_private_deps ~stack : (t, exn) result =
+and resolve_dep db name ~loc ~stack : (t, exn) result =
   match find_internal db name ~stack with
   | St_initializing id ->
     Error (Dep_stack.dependency_cycle stack id)
   | St_found t ->
-    if (not allow_private_deps) && Status.is_private (status t) then (
-      Error (Error (Private_deps_not_allowed
-                      { pd_loc = loc ; private_dep = t }))
+    if t.status = Status.Public then (
+      let find_private_dep = function
+        | Result.Error _ -> None
+        | Ok l -> List.find ~f:(fun l -> Status.is_private l.status) l
+      in
+      let private_dep =
+        match find_private_dep t.requires with
+        | Some _ as d -> d
+        | None -> find_private_dep t.ppx_runtime_deps in
+      match private_dep with
+      | Some private_dep ->
+        Error (Error (Private_deps_not_allowed { pd_loc = loc ; private_dep }))
+      | None -> Ok t
     ) else (
       Ok t
     )
@@ -715,23 +722,23 @@ and available_internal db name ~stack =
   | Ok    _ -> true
   | Error _ -> false
 
-and resolve_simple_deps db names ~allow_private_deps ~stack =
+and resolve_simple_deps db names ~stack =
   let rec loop acc = function
     | [] -> Ok (List.rev acc)
     | (loc, name) :: names ->
-      resolve_dep ~allow_private_deps db name ~loc ~stack >>= fun x ->
+      resolve_dep db name ~loc ~stack >>= fun x ->
       loop (x :: acc) names
   in
   loop [] names
 
-and resolve_complex_deps db deps ~allow_private_deps ~stack =
+and resolve_complex_deps db deps ~stack =
   let res, resolved_selects =
     List.fold_left deps ~init:(Ok [], []) ~f:(fun (acc_res, acc_selects) dep ->
       let res, acc_selects =
         match (dep : Jbuild.Lib_dep.t) with
         | Direct (loc, name) ->
           let res =
-            resolve_dep db name ~allow_private_deps ~loc ~stack >>| fun x -> [x]
+            resolve_dep db name ~loc ~stack >>| fun x -> [x]
           in
           (res, acc_selects)
         | Select { result_fn; choices; loc } ->
@@ -739,7 +746,7 @@ and resolve_complex_deps db deps ~allow_private_deps ~stack =
             match
               List.find_map choices ~f:(fun { required; forbidden; file } ->
                 if String_set.exists forbidden
-                     ~f:(available_internal db ~allow_private_deps ~stack) then
+                     ~f:(available_internal db ~stack) then
                   None
                 else
                   match
@@ -747,7 +754,7 @@ and resolve_complex_deps db deps ~allow_private_deps ~stack =
                       String_set.fold required ~init:[] ~f:(fun x acc ->
                         (Loc.none, x) :: acc)
                     in
-                    resolve_simple_deps db deps ~allow_private_deps ~stack
+                    resolve_simple_deps db deps ~stack
                   with
                   | Ok ts -> Some (ts, file)
                   | Error _ -> None)
@@ -776,20 +783,20 @@ and resolve_complex_deps db deps ~allow_private_deps ~stack =
   in
   (res, resolved_selects)
 
-and resolve_deps db deps ~allow_private_deps ~stack =
+and resolve_deps db deps ~stack =
   match (deps : Info.Deps.t) with
-  | Simple  names -> (resolve_simple_deps  db names ~allow_private_deps ~stack, [])
-  | Complex names ->  resolve_complex_deps db names ~allow_private_deps ~stack
+  | Simple  names -> (resolve_simple_deps  db names ~stack, [])
+  | Complex names ->  resolve_complex_deps db names ~stack
 
-and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
-  let deps, resolved_selects = resolve_deps db deps ~allow_private_deps ~stack in
+and resolve_user_deps db deps ~pps ~stack =
+  let deps, resolved_selects = resolve_deps db deps ~stack in
   let deps, pps =
     match pps with
     | [] -> (deps, Ok [])
     | pps ->
       let pps =
         let pps = (pps : (Loc.t * Jbuild.Pp.t) list :> (Loc.t * string) list) in
-        resolve_simple_deps db pps ~allow_private_deps:true ~stack >>= fun pps ->
+        resolve_simple_deps db pps ~stack >>= fun pps ->
         closure_with_overlap_checks None pps ~stack
       in
       let deps =
@@ -1021,13 +1028,16 @@ module DB = struct
       Sexp.code_error "Lib.DB.get_compile_info got library that doesn't exist"
         [ "name", Sexp.To_sexp.string name ]
     | Some lib ->
+      resolve_simple_deps t [lib.loc, name] ~stack:Dep_stack.empty
+      |> Result.ok_exn
+      |> ignore;
       let t = Option.some_if (not allow_overlaps) t in
       Compile.for_lib t lib
 
   let resolve_user_written_deps t ?(allow_overlaps=false) deps ~pps =
     let res, pps, resolved_selects =
       resolve_user_deps t (Info.Deps.of_lib_deps deps) ~pps
-        ~stack:Dep_stack.empty ~allow_private_deps:true
+        ~stack:Dep_stack.empty
     in
     let requires =
       res
@@ -1047,7 +1057,7 @@ module DB = struct
   let resolve_pps t pps =
     resolve_simple_deps t
       (pps : (Loc.t *Jbuild.Pp.t) list :> (Loc.t * string) list)
-      ~stack:Dep_stack.empty ~allow_private_deps:true
+      ~stack:Dep_stack.empty
 
   let rec all ?(recursive=false) t =
     let l =

@@ -46,9 +46,7 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target pps =
       | Ok    l -> List.last l
       | Error _ -> None
     in
-    (driver,
-     Result.bind resolved_pps ~f:(Lib.closure ~allow_private_deps:true)
-     |> Build.of_result)
+    (driver, Result.bind resolved_pps ~f:Lib.closure |> Build.of_result)
   in
   let libs =
     Build.record_lib_deps ~kind:dep_kind
@@ -81,9 +79,7 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target pps =
   (* Provide a better error for migrate_driver_main given that this
      is an implicit dependency *)
   let libs =
-    match
-      Lib.DB.available ~allow_private_deps:true lib_db migrate_driver_main
-    with
+    match Lib.DB.available lib_db migrate_driver_main with
     | false ->
       Build.fail { fail = fun () ->
         die "@{<error>Error@}: I couldn't find '%s'.\n\

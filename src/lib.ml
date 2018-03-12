@@ -548,6 +548,14 @@ module Dep_stack = struct
          }
 end
 
+let check_private_deps ~(lib : lib) ~loc ~allow_private_deps =
+  if (not allow_private_deps) && Status.is_private lib.status then (
+    Result.Error (Error (
+      Private_deps_not_allowed { private_dep = lib ; pd_loc = loc }))
+  ) else (
+    Ok lib
+  )
+
 let already_in_table (info : Info.t) name x =
   let to_sexp = Sexp.To_sexp.(pair Path.sexp_of_t string) in
   let sexp =
@@ -666,12 +674,7 @@ and resolve_dep db name ~allow_private_deps ~loc ~stack : (t, exn) result =
   match find_internal db name ~stack with
   | St_initializing id ->
     Error (Dep_stack.dependency_cycle stack id)
-  | St_found t ->
-    if (not allow_private_deps) && Status.is_private t.status then (
-      failwith ""
-    ) else (
-      Ok t
-    )
+  | St_found lib -> check_private_deps ~lib ~loc ~allow_private_deps
   | St_not_found ->
     Error (Error (Library_not_available { loc; name; reason = Not_found }))
   | St_hidden (_, hidden) ->
@@ -778,7 +781,7 @@ and resolve_complex_deps db deps ~allow_private_deps ~stack =
 and resolve_deps db deps ~allow_private_deps ~stack =
   match (deps : Info.Deps.t) with
   | Simple  names ->
-    (resolve_simple_deps  db names ~allow_private_deps ~stack, [])
+    (resolve_simple_deps db names ~allow_private_deps ~stack, [])
   | Complex names ->
     resolve_complex_deps ~allow_private_deps db names ~stack
 
@@ -791,15 +794,21 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
     | pps ->
       let pps =
         let pps = (pps : (Loc.t * Jbuild.Pp.t) list :> (Loc.t * string) list) in
-        resolve_simple_deps db pps ~allow_private_deps ~stack >>= fun pps ->
+        resolve_simple_deps db pps ~allow_private_deps:true ~stack
+        >>= fun pps ->
         closure_with_overlap_checks None pps ~stack
       in
       let deps =
-        let rec loop acc = function
+        let rec check_deps acc pps ~loc = function
+          | [] -> loop acc pps
+          | lib :: ppx_rts ->
+            check_private_deps ~lib ~loc ~allow_private_deps >>= fun rt ->
+            check_deps (rt :: acc) pps ~loc ppx_rts
+        and loop acc = function
           | [] -> Ok acc
           | pp :: pps ->
             pp.ppx_runtime_deps >>= fun rt_deps ->
-            loop (List.rev_append rt_deps acc) pps
+            check_deps acc pps ~loc:pp.loc rt_deps
         in
         deps >>= fun deps ->
         pps  >>= fun pps  ->
@@ -1141,9 +1150,10 @@ let report_lib_error ppf (e : Error.t) =
       cycle
   | Private_deps_not_allowed (t : private_deps_not_allowed) ->
     Format.fprintf ppf
-      "%a@{<error>Error@}: Public libraries may not have private dependencies.\
-       \nPrivate dependency %S encountered in public library:\n"
+      "%a@{<error>Error@}: Library %S is private, it cannot be a dependency of\
+       a public library.\nYou need to give %S a public name.\n"
       Loc.print t.pd_loc
+      t.private_dep.name
       t.private_dep.name
 
 let () =

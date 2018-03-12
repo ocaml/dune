@@ -35,10 +35,7 @@ let make vars =
   }
 
 let get t k =
-  List.find_map t.vars ~f:(fun (k', v) ->
-    match Var.compare k k' with
-    | Ordering.Eq -> Some v
-    | _ -> None)
+  List.find_map t.vars ~f:(fun (k', v) -> Option.some_if (Var.equal k k') v)
 
 let to_unix t =
   match t.unix with

@@ -191,6 +191,26 @@ module Sub_system_info : sig
   val get : Sub_system_name.t -> (module S)
 end
 
+module Mode_conf : sig
+  type t =
+    | Byte
+    | Native
+    | Best (** [Native] if available and [Byte] if not *)
+
+  val t : t Sexp.Of_sexp.t
+  val compare : t -> t -> Ordering.t
+
+  module Set : sig
+    include Set.S with type elt = t
+    val t : t Sexp.Of_sexp.t
+
+    (** Both Byte and Native *)
+    val default : t
+
+    val eval : t -> has_native:bool -> Mode.Dict.Set.t
+  end
+end
+
 module Library : sig
   module Kind : sig
     type t =
@@ -205,7 +225,7 @@ module Library : sig
     ; synopsis                 : string option
     ; install_c_headers        : string list
     ; ppx_runtime_libraries    : (Loc.t * string) list
-    ; modes                    : Mode.Dict.Set.t
+    ; modes                    : Mode_conf.Set.t
     ; kind                     : Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
     ; c_names                  : string list
@@ -242,11 +262,28 @@ module Install_conf : sig
 end
 
 module Executables : sig
+  module Link_mode : sig
+    type t =
+      { mode : Mode_conf.t
+      ; kind : Binary_kind.t
+      }
+
+    val exe           : t
+    val object_       : t
+    val shared_object : t
+    val byte          : t
+    val native        : t
+
+    val compare : t -> t -> Ordering.t
+
+    module Set : Set.S with type elt = t
+  end
+
   type t =
     { names            : (Loc.t * string) list
     ; link_executables : bool
     ; link_flags       : Ordered_set_lang.Unexpanded.t
-    ; modes            : Mode.Dict.Set.t
+    ; modes            : Link_mode.Set.t
     ; buildable        : Buildable.t
     }
 end
@@ -267,11 +304,12 @@ module Rule : sig
       | Promote
       (** Same as [Promote] but [jbuilder clean] must delete the file *)
       | Promote_but_delete_on_clean
-      (** Same as [Standard] however this is not a rule stanza, so it is not possible to
-          add a [(fallback)] field to the rule. *)
+      (** Same as [Standard] however this is not a rule stanza, so it
+          is not possible to add a [(fallback)] field to the rule. *)
       | Not_a_rule_stanza
-      (** Just ignore the source files entirely. This is for cases where the targets are
-          promoted only in a specific context, such as for .install files. *)
+      (** Just ignore the source files entirely. This is for cases
+          where the targets are promoted only in a specific context,
+          such as for .install files. *)
       | Ignore_source_files
   end
 

@@ -603,6 +603,44 @@ module Sub_system_info = struct
   let get name = Option.value_exn (Sub_system_name.Table.get all name)
 end
 
+module Mode_conf = struct
+  module T = struct
+    type t =
+      | Byte
+      | Native
+      | Best
+    let compare (a : t) b = compare a b
+  end
+  include T
+
+  let t =
+    enum
+      [ "byte"  , Byte
+      ; "native", Native
+      ; "best"  , Best
+      ]
+
+  module Set = struct
+    include Set.Make(T)
+
+    let t sexp = of_list (list t sexp)
+
+    let default = of_list [Byte; Best]
+
+    let eval t ~has_native =
+      let best : Mode.t =
+        if has_native then
+          Native
+        else
+          Byte
+      in
+      let has_best = mem t Best in
+      let byte = mem t Byte || (has_best && best = Byte) in
+      let native = best = Native && (mem t Native || has_best) in
+      { Mode.Dict.byte; native }
+  end
+end
+
 module Library = struct
   module Kind = struct
     type t =
@@ -624,7 +662,7 @@ module Library = struct
     ; synopsis                 : string option
     ; install_c_headers        : string list
     ; ppx_runtime_libraries    : (Loc.t * string) list
-    ; modes                    : Mode.Dict.Set.t
+    ; modes                    : Mode_conf.Set.t
     ; kind                     : Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
     ; c_names                  : string list
@@ -657,7 +695,7 @@ module Library = struct
        field_oslu "library_flags"                                          >>= fun library_flags            ->
        field_oslu "c_library_flags"                                        >>= fun c_library_flags          ->
        field      "virtual_deps" (list (located string)) ~default:[]       >>= fun virtual_deps             ->
-       field      "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all       >>= fun modes                    ->
+       field      "modes" Mode_conf.Set.t ~default:Mode_conf.Set.default   >>= fun modes                    ->
        field      "kind" Kind.t ~default:Kind.Normal                       >>= fun kind                     ->
        field      "wrapped" bool ~default:true                             >>= fun wrapped                  ->
        field_b    "optional"                                               >>= fun optional                 ->
@@ -737,11 +775,96 @@ module Install_conf = struct
 end
 
 module Executables = struct
+
+  module Link_mode = struct
+    module T = struct
+      type t =
+        { mode : Mode_conf.t
+        ; kind : Binary_kind.t
+        }
+
+      let compare a b =
+        match compare a.mode b.mode with
+        | Eq -> compare a.kind b.kind
+        | ne -> ne
+    end
+    include T
+
+    let make mode kind =
+      { mode
+      ; kind
+      }
+
+    let exe           = make Best Exe
+    let object_       = make Best Object
+    let shared_object = make Best Shared_object
+
+    let byte_exe           = make Byte Exe
+
+    let native_exe           = make Native Exe
+    let native_object        = make Native Object
+    let native_shared_object = make Native Shared_object
+
+    let byte   = byte_exe
+    let native = native_exe
+
+    let simple =
+      let open Sexp.Of_sexp in
+      enum
+        [ "exe"           , exe
+        ; "object"        , object_
+        ; "shared_object" , shared_object
+        ; "byte"          , byte
+        ; "native"        , native
+        ]
+
+    let t sexp =
+      match sexp with
+      | List _ ->
+        let mode, kind = pair Mode_conf.t Binary_kind.t sexp in
+        { mode; kind }
+      | _ -> simple sexp
+
+    module Set = struct
+      include Set.Make(T)
+
+      let t sexp : t =
+        match list t sexp with
+        | [] -> of_sexp_error sexp "No linking mode defined"
+        | l ->
+          let t = of_list l in
+          if (mem t native_exe           && mem t exe          ) ||
+             (mem t native_object        && mem t object_      ) ||
+             (mem t native_shared_object && mem t shared_object) then
+            of_sexp_error sexp
+              "It is not allowed use both native and best \
+               for the same binary kind."
+          else
+            t
+
+      let default =
+        of_list
+          [ byte
+          ; exe
+          ]
+
+      let best_install_mode t =
+        if mem t exe then
+          Some exe
+        else if mem t native then
+          Some native
+        else if mem t byte then
+          Some byte
+        else
+          None
+    end
+  end
+
   type t =
     { names            : (Loc.t * string) list
     ; link_executables : bool
     ; link_flags       : Ordered_set_lang.Unexpanded.t
-    ; modes            : Mode.Dict.Set.t
+    ; modes            : Link_mode.Set.t
     ; buildable        : Buildable.t
     }
 
@@ -749,12 +872,7 @@ module Executables = struct
     Buildable.v1 >>= fun buildable ->
     field      "link_executables"   bool ~default:true >>= fun link_executables ->
     field_oslu "link_flags"                            >>= fun link_flags ->
-    map_validate (field "modes" Mode.Dict.Set.t ~default:Mode.Dict.Set.all)
-      ~f:(fun modes ->
-        if Mode.Dict.Set.is_empty modes then
-          Error "No compilation mode defined."
-        else
-          Ok modes)
+    field "modes" Link_mode.Set.t ~default:Link_mode.Set.default
     >>= fun modes ->
     let t =
       { names
@@ -765,20 +883,31 @@ module Executables = struct
       }
     in
     let to_install =
-      let ext = if modes.native then ".exe" else ".bc" in
-      List.map2 names public_names
-        ~f:(fun (_, name) pub ->
-          match pub with
-          | None -> None
-          | Some pub -> Some ({ Install_conf. src = name ^ ext; dst = Some pub }))
-      |> List.filter_map ~f:(fun x -> x)
+      match Link_mode.Set.best_install_mode t.modes with
+      | None -> []
+      | Some mode ->
+        let ext =
+          match mode.mode with
+          | Native | Best -> ".exe"
+          | Byte -> ".bc"
+        in
+        List.map2 names public_names
+          ~f:(fun (_, name) pub ->
+            match pub with
+            | None -> None
+            | Some pub -> Some ({ Install_conf.
+                                  src = name ^ ext
+                                ; dst = Some pub
+                                }))
+        |> List.filter_map ~f:(fun x -> x)
     in
     match to_install with
     | [] ->
       (field_o "package" Sexp.Ast.loc >>= function
        | None -> return (t, None)
        | Some loc ->
-         Loc.warn loc "This field is useless without a (public_name%s ...) field."
+         Loc.warn loc
+           "This field is useless without a (public_name%s ...) field."
            (if multi then "s" else "");
          return (t, None))
     | files ->

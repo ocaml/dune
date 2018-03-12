@@ -280,12 +280,12 @@ let create ~(kind : Kind.t) ~path ~base_env ~env_extra ~name ~merlin
          ocaml_config_ok_exn
            (Ocaml_config.Vars.of_lines lines >>= Ocaml_config.make))
     >>= fun (findlib_path, ocfg) ->
-      let version = Ocaml_config.version ocfg in
-      let env, env_extra =
-        (* See comment in ansi_color.ml for setup_env_for_colors. For
-           OCaml < 4.05, OCAML_COLOR is not supported so we use
-           OCAMLPARAM. OCaml 4.02 doesn't support 'color' in
-           OCAMLPARAM, so we just don't force colors with 4.02. *)
+    let version = Ocaml_config.version ocfg in
+    let env, env_extra =
+      (* See comment in ansi_color.ml for setup_env_for_colors. For
+         OCaml < 4.05, OCAML_COLOR is not supported so we use
+         OCAMLPARAM. OCaml 4.02 doesn't support 'color' in OCAMLPARAM,
+         so we just don't force colors with 4.02. *)
       if !Clflags.capture_outputs
       && Lazy.force Colors.stderr_supports_colors
       && version >= (4, 03, 0)

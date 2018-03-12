@@ -116,8 +116,11 @@ modules you want.
   that must be installed, you must list them in this field, with the ``.h``
   extension
 
-- ``(modes (<modes>))`` modes (``byte`` and ``native``) which should be built by
-  default. This is only useful when writing libraries for the OCaml toplevel
+- ``(modes (<modes>))`` modes which should be built by default. The
+  most common use for this feature is to disable native compilation
+  when writing libraries for the OCaml toplevel. The following modes
+  are available: ``byte``, ``native`` and ``best``. ``best`` is
+  ``native`` or ``byte`` when native compilation is not available
 
 - ``(no_dynlink)`` is to disable dynamic linking of the library. This is for
   advanced use only, by default you shouldn't set this option
@@ -218,8 +221,10 @@ built, and so requires additional setup such as setting specific
 environment variables and jbuilder doesn't do at the moment.
 
 Native compilation is considered not available when there is no ``ocamlopt``
-binary at the same place as where ``ocamlc`` was found, or when there is a
-``(modes (...))`` field not listing ``native``.
+binary at the same place as where ``ocamlc`` was found.
+
+Executables can also be linked as object or shared object files. See
+`linking modes`_ for more information.
 
 ``<optional-fields>`` are:
 
@@ -248,9 +253,8 @@ binary at the same place as where ``ocamlc`` was found, or when there is a
   the current stanza. It is interpreted in the same way as the ``(modules
   ...)`` field of `library`_
 
-- ``(modes (<modes>))`` modes (``byte`` and ``native``) which should be built by
-  default. If the stanza has a ``(public_name ...)`` field and ``native`` is not
-  listed here, the byte-code version will be installed instead.
+- ``(modes (<modes>))`` sets the `linking modes`_. The default is
+  ``(byte exe)``
 
 - ``(preprocess <preprocess-spec>)`` is the same as the ``(preprocess ...)``
   field of `library`_
@@ -268,6 +272,80 @@ binary at the same place as where ``ocamlc`` was found, or when there is a
 
 - ``(allow_overlapping_dependencies)`` is the same as the
   corresponding field of `library`_
+
+Linking modes
+~~~~~~~~~~~~~
+
+The ``modes`` field allows to select what linking modes should be used
+to link executables. Each mode is a pair ``(<compilation-mode>
+<binary-kind>)`` where ``<compilation-mode>`` describes whether the
+byte code or native code backend of the OCaml compiler should be used
+and ``<binary-kind>`` describes what kind of file should be produced.
+
+``<compilation-mode>`` must be ``byte``, ``native`` or ``best``, where
+``best`` is ``native`` with a fallback to byte-code when native
+compilation is not available.
+
+``<binary-kind>`` is one of:
+
+- ``exe`` for normal executables
+- ``object`` for producing static object files that can be manually
+  linked into C applications
+- ``shared_object`` for producing object files that can be dynamically
+  loaded into an application. This mode can be used to write a plugin
+  in OCaml for a non-OCaml application.
+
+For instance the following ``executables`` stanza will produce byte
+code executables and native shared objects:
+
+.. code:: scheme
+
+          (executables
+           ((names (a b c))
+            (modes ((byte exe) (native shared_object)))))
+
+Additionally, you can use the following short-hands:
+
+- ``exe`` for ``(best exe)``
+- ``object`` for ``(best object)``
+- ``shared_object`` for ``(best shared_object)``
+- ``byte`` for ``(byte exe)``
+- ``native`` for ``(native exe)``
+
+For instance the following ``modes`` fields are all equivalent:
+
+.. code:: scheme
+
+          (modes (exe object shared_object))
+          (modes ((best exe)
+                  (best object)
+                  (best shared_object)))
+
+The extensions for the various linking modes are choosen as follow:
+
+================ ============= =================
+compilation mode binary kind   extensions
+---------------- ------------- -----------------
+byte             exe           .bc and .bc.js
+native/best      exe           .exe
+byte             object        .bc${ext_obj}
+native/best      object        .exe${ext_obj}
+byte             shared_object .bc${ext_dll}
+native/best      shared_object ${ext_dll}
+================ ============= =================
+
+Where ``${ext_obj}`` and ``${ext_dll}`` are the extensions for object
+and shared object files. Their value depends on the OS, for instance
+on Unix ``${ext_obj}`` is usually ``.o`` and ``${ext_dll}`` is usually
+``.so`` while on Windows ``${ext_obj}`` is ``.obj`` and ``${ext_dll}``
+is ``.dll``.
+
+Note that when ``(byte exe)`` is specified but neither ``(best exe)``
+nor ``(native exe)`` are specified, Jbuilkd still knows how to build
+an executable with the extension ``.exe``. In such case, the ``.exe``
+version is the same as the ``.bc`` one except that it is linked with
+the ``-custom`` option of the compiler. You should always use the
+``.exe`` rather that the ``.bc`` inside build rules.
 
 executables
 -----------

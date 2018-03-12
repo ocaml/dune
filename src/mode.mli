@@ -33,6 +33,7 @@ module Dict : sig
   val make_both : 'a -> 'a t
 
   module Set : sig
+
     type nonrec t = bool t
     val t : t Sexp.Of_sexp.t
     val all : t

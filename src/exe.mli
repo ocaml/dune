@@ -28,6 +28,8 @@ module Linkage : sig
     -> ?flags:string list
     -> unit
     -> t
+
+  val of_user_config : Context.t -> Jbuild.Executables.Link_mode.t -> t
 end
 
 (** {1 High-level functions} *)

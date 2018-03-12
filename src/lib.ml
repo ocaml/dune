@@ -647,27 +647,23 @@ let rec instantiate db name (info : Info.t) ~stack ~hidden =
   Hashtbl.replace db.table ~key:name ~data:res;
   res
 
-and find db name ~allow_private_deps
-  : (t, Error.Library_not_available.Reason.t) result =
-  result_of_resolve_status (find_internal db name ~allow_private_deps
-                              ~stack:Dep_stack.empty)
+and find db name : (t, Error.Library_not_available.Reason.t) result =
+  result_of_resolve_status (find_internal db name ~stack:Dep_stack.empty)
 
-and find_even_when_hidden db name ~allow_private_deps =
-  match
-    find_internal db name ~allow_private_deps ~stack:Dep_stack.empty
-  with
+and find_even_when_hidden db name =
+  match find_internal db name ~stack:Dep_stack.empty with
   | St_initializing _     -> assert false
   | St_found t            -> Some t
   | St_not_found          -> None
   | St_hidden (t, _)      -> Some t
 
-and find_internal db name ~allow_private_deps ~stack : status =
+and find_internal db name ~stack : status =
   match Hashtbl.find db.table name with
   | Some x -> x
-  | None   -> resolve_name db name ~allow_private_deps ~stack
+  | None   -> resolve_name db name ~stack
 
 and resolve_dep db name ~loc ~allow_private_deps ~stack : (t, exn) result =
-  match find_internal db name ~allow_private_deps ~stack with
+  match find_internal db name ~stack with
   | St_initializing id ->
     Error (Dep_stack.dependency_cycle stack id)
   | St_found t ->
@@ -682,11 +678,11 @@ and resolve_dep db name ~loc ~allow_private_deps ~stack : (t, exn) result =
   | St_hidden (_, hidden) ->
     Error (Error (Library_not_available { loc; name; reason = Hidden hidden }))
 
-and resolve_name db name ~allow_private_deps ~stack =
+and resolve_name db name ~stack =
   match db.resolve name with
   | Redirect (db', name') -> begin
       let db' = Option.value db' ~default:db in
-      match find_internal db' name' ~allow_private_deps ~stack with
+      match find_internal db' name' ~stack with
       | St_initializing _ as x -> x
       | x ->
         Hashtbl.add db.table name x;
@@ -698,7 +694,7 @@ and resolve_name db name ~allow_private_deps ~stack =
     let res =
       match db.parent with
       | None    -> St_not_found
-      | Some db -> find_internal db name ~allow_private_deps ~stack
+      | Some db -> find_internal db name ~stack
     in
     Hashtbl.add db.table name res;
     res
@@ -706,7 +702,7 @@ and resolve_name db name ~allow_private_deps ~stack =
     match
       match db.parent with
       | None    -> St_not_found
-      | Some db -> find_internal db name ~allow_private_deps ~stack
+      | Some db -> find_internal db name ~stack
     with
     | St_found _ as x ->
       Hashtbl.add db.table name x;
@@ -714,8 +710,8 @@ and resolve_name db name ~allow_private_deps ~stack =
     | _ ->
       instantiate db name info ~stack ~hidden:(Some hidden)
 
-and available_internal db name ~allow_private_deps ~stack =
-  match resolve_dep db name ~allow_private_deps ~loc:Loc.none ~stack with
+and available_internal db name ~stack =
+  match resolve_dep db name ~loc:Loc.none ~stack with
   | Ok    _ -> true
   | Error _ -> false
 
@@ -793,8 +789,8 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
     | pps ->
       let pps =
         let pps = (pps : (Loc.t * Jbuild.Pp.t) list :> (Loc.t * string) list) in
-        resolve_simple_deps db pps ~allow_private_deps ~stack >>= fun pps ->
-        closure_with_overlap_checks None pps ~allow_private_deps ~stack
+        resolve_simple_deps db pps ~allow_private_deps:true ~stack >>= fun pps ->
+        closure_with_overlap_checks None pps ~stack
       in
       let deps =
         let rec loop acc = function
@@ -811,7 +807,7 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
   in
   (deps, pps, resolved_selects)
 
-and closure_with_overlap_checks db ts ~allow_private_deps ~stack =
+and closure_with_overlap_checks db ts ~stack =
   let visited = ref String_map.empty in
   let res = ref [] in
   let orig_stack = stack in
@@ -832,7 +828,7 @@ and closure_with_overlap_checks db ts ~allow_private_deps ~stack =
        | None ->
          Ok ()
        | Some db ->
-         match find_internal db t.name ~allow_private_deps ~stack with
+         match find_internal db t.name ~stack with
          | St_found t' ->
            if t.unique_id = t'.unique_id then
              Ok ()
@@ -885,7 +881,7 @@ module Compile = struct
 
   let make libs =
     { direct_requires   = libs
-    ; requires          = libs >>= closure ~allow_private_deps:true
+    ; requires          = libs >>= closure
     ; resolved_selects  = []
     ; pps               = Ok []
     ; optional          = false
@@ -893,10 +889,9 @@ module Compile = struct
     ; sub_systems       = Sub_system_name.Map.empty
     }
 
-  let for_lib db (t : lib) ~allow_private_deps =
+  let for_lib db (t : lib) =
     { direct_requires   = t.requires
-    ; requires          =
-        t.requires >>= closure_with_overlap_checks db ~allow_private_deps
+    ; requires          = t.requires >>= closure_with_overlap_checks db
     ; resolved_selects  = t.resolved_selects
     ; pps               = t.pps
     ; optional          = t.optional
@@ -996,7 +991,7 @@ module DB = struct
         Findlib.all_packages findlib
         |> List.map ~f:Findlib.Package.name)
 
-  let find = find ~allow_private_deps:true
+  let find = find
   let find_even_when_hidden = find_even_when_hidden
 
   let resolve t (loc, name) =
@@ -1020,14 +1015,14 @@ module DB = struct
 
   let available t name = available_internal t name ~stack:Dep_stack.empty
 
-  let get_compile_info t ?(allow_overlaps=false) ~allow_private_deps name =
-    match find_even_when_hidden t name ~allow_private_deps with
+  let get_compile_info t ?(allow_overlaps=false) name =
+    match find_even_when_hidden t name with
     | None ->
       Sexp.code_error "Lib.DB.get_compile_info got library that doesn't exist"
         [ "name", Sexp.To_sexp.string name ]
     | Some lib ->
       let t = Option.some_if (not allow_overlaps) t in
-      Compile.for_lib t lib ~allow_private_deps
+      Compile.for_lib t lib
 
   let resolve_user_written_deps t ?(allow_overlaps=false) deps ~pps =
     let res, pps, resolved_selects =
@@ -1037,8 +1032,7 @@ module DB = struct
     let requires =
       res
       >>=
-      closure_with_overlap_checks ~allow_private_deps:true
-        (Option.some_if (not allow_overlaps) t)
+      closure_with_overlap_checks (Option.some_if (not allow_overlaps) t)
     in
     { Compile.
       direct_requires = res
@@ -1074,7 +1068,7 @@ end
 module Meta = struct
   let requires_exn         t = to_exn t.requires
   let ppx_runtime_deps_exn t = to_exn t.ppx_runtime_deps
-  let closure_exn          l = to_exn (closure l ~allow_private_deps:false)
+  let closure_exn          l = to_exn (closure l)
 
   let to_names ts =
     List.fold_left ts ~init:String_set.empty ~f:(fun acc t ->

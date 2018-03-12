@@ -75,12 +75,27 @@ let create
       ~build_system
   =
   let installed_libs = Lib.DB.create_from_findlib context.findlib in
+  let stanzas =
+    match context.coverage with
+    | None -> stanzas
+    | Some coverage ->
+      List.map stanzas ~f:(fun (dir, scope, stanzas) ->
+        ( dir
+        , scope
+        , List.map stanzas ~f:(fun stanza ->
+            match (stanza : Stanza.t) with
+            | Library lib ->
+              Stanza.Library (Coverage.apply_for_compile_info coverage ~lib)
+            | s -> s))
+      )
+  in
   let internal_libs =
     List.concat_map stanzas ~f:(fun (dir, _, stanzas) ->
       let ctx_dir = Path.append context.build_dir dir in
       List.filter_map stanzas ~f:(fun stanza ->
         match (stanza : Stanza.t) with
-        | Library lib -> Some (ctx_dir, lib)
+        | Library lib ->
+          Some (ctx_dir, lib)
         | _ -> None))
   in
   let scopes, public_libs =

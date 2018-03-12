@@ -2,28 +2,18 @@ open Import
 open Sexp.Of_sexp
 
 module Context = struct
-  module Derived = struct
-    type t =
-      { from: string
-      ; name: string
-      ; instrumented: Coverage0.Context.t
-      }
-
-    let t =
-      field "from" string >>= fun from ->
-      field "name" string >>= fun name ->
-      field "instrumented" Coverage0.Context.t >>= fun instrumented ->
-      return
-        { from
-        ; name
-        ; instrumented
-        }
-  end
-
   module Target = struct
+    module Derived = struct
+      type t =
+        { name: string
+        ; instrumented: Coverage0.Context.t
+        }
+    end
+
     type t =
       | Native
       | Named of string
+      | Derived of Derived.t
 
     let t sexp =
       match string sexp with
@@ -57,39 +47,94 @@ module Context = struct
   type t =
     | Default of Target.t list
     | Opam of Opam.t
-    | Derived of Derived.t
-
-  let t = function
-    | Atom (_, A "default") -> Default [Native]
-    | List (_, List _ :: _) as sexp -> Opam (record Opam.t sexp)
-    | sexp ->
-      sum
-        [ cstr_record "default"
-            (field "targets" (list Target.t) ~default:[Target.Native]
-             >>= fun targets ->
-             return (Default targets))
-        ; cstr_record "opam"
-            (Opam.t >>= fun x -> return (Opam x))
-        ; cstr_record "derived"
-            (Derived.t >>= fun x -> return (Derived x))
-        ]
-        sexp
 
   let name = function
     | Default _ -> "default"
     | Opam    o -> o.name
-    | Derived d -> d.name
 
-  let targets = function
-    | Default l -> l
-    | Opam    o -> o.targets
-    | Derived _ -> []
+  module Unresolved = struct
+    module Derived = struct
+      type t =
+        { from: string
+        ; name: string
+        ; instrumented: Coverage0.Context.t
+        }
 
-  let all_names t =
-    let n = name t in
-    n :: List.filter_map (targets t) ~f:(function
-      | Native -> None
-      | Named s -> Some (n ^ "." ^ s))
+      let t =
+        field "from" string >>= fun from ->
+        field "name" string >>= fun name ->
+        field "instrumented" Coverage0.Context.t >>= fun instrumented ->
+        return
+          { from
+          ; name
+          ; instrumented
+          }
+    end
+    type t =
+      | Default of Target.t list
+      | Opam of Opam.t
+      | Derived of Derived.t
+
+    let name = function
+      | Default _ -> "default"
+      | Opam o -> o.name
+      | Derived d -> d.name
+
+    let targets = function
+      | Default ts -> ts
+      | Opam o -> o.targets
+      | Derived _ -> []
+
+    let all_names t =
+      let n = name t in
+      n :: List.filter_map (targets t) ~f:(function
+        | Native -> None
+        | Named s -> Some (n ^ "." ^ s)
+        | Derived d -> Some d.name)
+
+    let t = function
+      | Atom (_, A "default") -> Default [Native]
+      | List (_, List _ :: _) as sexp -> Opam (record Opam.t sexp)
+      | sexp ->
+        sum
+          [ cstr_record "default"
+              (field "targets" (list Target.t) ~default:[Target.Native]
+               >>= fun targets ->
+               return (Default targets))
+          ; cstr_record "opam"
+              (Opam.t >>= fun x -> return (Opam x))
+          ; cstr_record "derived"
+              (Derived.t >>= fun x -> return (Derived x))
+          ]
+          sexp
+  end
+
+  let resolve (uns : Unresolved.t list) =
+    let resolved, derived =
+      List.partition_map uns ~f:(function
+        | Unresolved.Opam x -> Left (Opam x)
+        | Unresolved.Default x -> Left (Default x)
+        | Derived d -> Right d) in
+    let resolved =
+      resolved
+      |> List.map ~f:(fun c -> name c, c)
+      |> String_map.of_list
+      |> function
+      | Ok s -> s
+      | Error (_, _, _) -> failwith "TODO" in
+    let make_target (d : Unresolved.Derived.t) : Target.t =
+      Target.Derived { name = d.name ; instrumented = d.instrumented } in
+    List.fold_left ~init:resolved derived
+      ~f:(fun r (d : Unresolved.Derived.t) ->
+        String_map.update r d.from ~f:(function
+          | None ->
+            failwith "context derives from non-existent"
+          | Some (Default ts) ->
+            Some (Default (make_target d :: ts))
+          | Some (Opam ts) ->
+            Some (Opam { ts with targets = make_target d :: ts.targets }))
+      )
+    |> String_map.values
 end
 
 type t =
@@ -99,11 +144,11 @@ type t =
 
 let t ?x sexps =
   let defined_names = ref String_set.empty in
-  let merlin_ctx, contexts =
+  let merlin_ctx, (contexts : Context.Unresolved.t list) =
     List.fold_left sexps ~init:(None, []) ~f:(fun (merlin_ctx, ctxs) sexp ->
       let ctx =
         sum
-          [ cstr "context" (Context.t @> nil) (fun x -> x) ]
+          [ cstr "context" (Context.Unresolved.t @> nil) (fun x -> x) ]
           sexp
       in
       let ctx =
@@ -120,9 +165,9 @@ let t ?x sexps =
           match ctx with
           | Default targets -> Default (add_target target targets)
           | Opam o -> Opam { o with targets = add_target target o.targets }
-          | Derived _ -> failwith "TODO derived/?x"
+          | Derived _ as d -> d
       in
-      let name = Context.name ctx in
+      let name = Context.Unresolved.name ctx in
       if name = "" ||
          String.is_prefix name ~prefix:"." ||
          name = "log" ||
@@ -132,8 +177,9 @@ let t ?x sexps =
         of_sexp_errorf sexp "%S is not allowed as a build context name" name;
       if String_set.mem !defined_names name then
         of_sexp_errorf sexp "second definition of build context %S" name;
-      defined_names := String_set.union !defined_names
-                         (String_set.of_list (Context.all_names ctx));
+      defined_names :=
+        String_set.union !defined_names
+          (String_set.of_list (Context.Unresolved.all_names ctx));
       match ctx, merlin_ctx with
       | Opam { merlin = true; _ }, Some _ ->
         of_sexp_errorf sexp "you can only have one context for merlin"
@@ -143,9 +189,9 @@ let t ?x sexps =
         (merlin_ctx, ctx :: ctxs))
   in
   let contexts =
-    match contexts with
+    match Context.resolve contexts with
     | [] -> [Context.Default [Native]]
-    | _  -> contexts
+    | contexts  -> contexts
   in
   let merlin_ctx =
     match merlin_ctx with

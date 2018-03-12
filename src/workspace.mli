@@ -3,17 +3,17 @@
 open! Import
 
 module Context : sig
-  module Derived : sig
-    type t =
-      { from: string
-      ; name: string
-      ; instrumented: Coverage0.Context.t
-      }
-  end
   module Target : sig
+    module Derived : sig
+      type t =
+        { name: string
+        ; instrumented: Coverage0.Context.t
+        }
+    end
     type t =
       | Native
       | Named of string
+      | Derived of Derived.t
   end
   module Opam : sig
     type t =
@@ -28,7 +28,6 @@ module Context : sig
   type t =
     | Default of Target.t list
     | Opam of Opam.t
-    | Derived of Derived.t
 
   val name : t -> string
 end

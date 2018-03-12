@@ -148,7 +148,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
         >>| Path.absolute)
   in
 
-  let create_one ~name ~implicit ?findlib_toolchain ?host ~merlin () =
+  let create_one ~name ~implicit ?coverage ?findlib_toolchain ?host ~merlin () =
     (match findlib_toolchain with
      | None -> Fiber.return None
      | Some toolchain ->
@@ -321,7 +321,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
       ; cmt_magic_number        = Ocaml_config.cmt_magic_number        ocfg
 
       ; which_cache
-      ; coverage = None
+      ; coverage
       }
   in
 
@@ -333,6 +333,10 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
       let name = sprintf "%s.%s" name findlib_toolchain in
       create_one () ~implicit:false ~name ~findlib_toolchain ~host:native
         ~merlin:false
+      >>| fun x -> Some x
+    | Derived d ->
+      create_one () ~implicit:false ~name:d.name ~host:native
+        ~merlin:false ~coverage:d.instrumented
       >>| fun x -> Some x)
   >>| fun others ->
   native :: List.filter_map others ~f:(fun x -> x)
@@ -387,7 +391,6 @@ let create ?merlin def =
   | Default targets -> default ~targets ?merlin ()
   | Opam { name; switch; root; targets; _ } ->
     create_for_opam ?root ~switch ~name ?merlin ~targets ()
-  | Derived _ -> assert false
 
 let which t s = which ~cache:t.which_cache ~path:t.path s
 

@@ -34,6 +34,44 @@ let lib_covered (t : Coverage0.Context.t) ~(lib : Jbuild.Library.t) =
     | None -> false
     | Some p -> String_map.mem covered p.name)
 
+let apply_for_compile_info
+      (t : Coverage0.Context.t)
+      ~(lib : Jbuild.Library.t) =
+  if lib_covered t ~lib then (
+    let pp_coverage =
+      { Jbuild.Preprocess.
+        pps = [Loc.none, Jbuild.Pp.of_string t.coverage]
+      ; flags = []
+      } in
+    let instrumented = ref false in
+    let lib =
+      { lib with
+        buildable =
+          { lib.buildable
+            with preprocess = (
+              Jbuild.Per_module.map ~f:(fun pp ->
+                match (pp : Jbuild.Preprocess.t) with
+                | No_preprocessing ->
+                  instrumented := true;
+                  Jbuild.Preprocess.Pps pp_coverage
+                | Pps pp ->
+                  instrumented := true;
+                  Pps { pps = pp_coverage.pps @ pp.pps
+                      ; flags = pp_coverage.flags @ pp.flags }
+                | Action _ -> pp
+              ) lib.buildable.preprocess
+            )
+          }
+      } in
+    if !instrumented then
+      lib
+    else
+      die "Unable to add instrumentation to library %S" lib.name
+  ) else (
+    lib
+  )
+
+
 let apply_instrumented
       (t : Coverage0.Context.t)
       ~(lib : Jbuild.Library.t)
@@ -73,8 +111,8 @@ let apply_instrumented
           | Action _, Some _ ->
             Loc.fail lib.buildable.loc "Unable to add bisect pp"
           | Pps pp, Some cpps ->
-            Pps { pps = pp.pps @ cpps.pps
-                ; flags = pp.flags @ cpps.flags })
+            Pps { pps = cpps.pps @ pp.pps
+                ; flags = cpps.flags @ pp.flags })
         ~default:Jbuild.Preprocess.No_preprocessing
     in
     { lib with

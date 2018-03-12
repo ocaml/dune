@@ -24,6 +24,7 @@ module type S = sig
 end
 
 module Make(Key : Comparable.S) : S with type key = Key.t = struct
+  module Int_map = Map.Make(Int)
   module Map = Map.Make(Key)
 
   type key = Key.t
@@ -68,6 +69,7 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
 
   let is_constant t = Array.length t.values = 1
 
+  (* TODO this is wrong *)
   let merge x y ~default ~f =
     Map.merge x.map y.map ~f:(fun key _ _ ->
       Some (f key (get x key) (get y key)))

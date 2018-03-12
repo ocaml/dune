@@ -8,25 +8,12 @@ module Var = struct
     ) else (
       String.compare
     )
-
-  let equal a b =
-    match compare a b with
-    | Ordering.Eq -> true
-    | _ -> false
-
-  let hash =
-    if Sys.win32 then
-      fun x -> Hashtbl.hash (String.lowercase x)
-    else
-      Hashtbl.hash
 end
 
 module Map = Map.Make(Var)
 
-module Table = Hashtbl.Make(Var)
-
 type t =
-  { vars : (Var.t * string) list
+  { vars : string Map.t
   ; mutable unix : string array option
   }
 
@@ -35,24 +22,16 @@ let make vars =
   ; unix = None
   }
 
-let get t k =
-  List.find_map t.vars ~f:(fun (k', v) -> Option.some_if (Var.equal k k') v)
+let get t k = Map.find t.vars k
 
 let to_unix t =
   match t.unix with
   | Some v -> v
   | None ->
     let res =
-      let seen = Table.create 16 in
-      t.vars
-      |> List.fold_left ~init:[] ~f:(fun uniques (k, v) ->
-        if Table.mem seen k then (
-          uniques
-        ) else (
-          Table.add seen ~key:k ~data:();
-          (k, v) :: uniques
-        ))
-      |> List.rev_map ~f:(fun (k, v) -> sprintf "%s=%s" k v)
+      Map.foldi ~init:[] ~f:(fun k v acc ->
+        (sprintf "%s=%s" k v)::acc
+      ) t.vars
       |> Array.of_list in
     t.unix <- Some res;
     res
@@ -61,8 +40,11 @@ let of_unix arr =
   Array.to_list arr
   |> List.map ~f:(fun s ->
     match String.lsplit2 s ~on:'=' with
-    | None -> (s, "")
+    | None ->
+      Sexp.code_error "Env.of_unix doesn't support env vars without '='"
+        ["var", Sexp.To_sexp.string s]
     | Some (k, v) -> (k, v))
+  |> Map.of_list_exn
 
 let initial =
   let i =
@@ -74,24 +56,18 @@ let initial =
   fun () -> Lazy.force i
 
 let add t ~var ~value =
-  { vars = (var, value) :: t.vars
-  ; unix = None
-  }
+  make (Map.add t.vars var value)
 
 let extend t ~vars =
-  { vars = Map.foldi ~init:t.vars ~f:(fun k v t -> (k, v) :: t) vars
-  ; unix = None
-  }
+  make (Map.union t.vars vars ~f:(fun _ _ v -> Some v))
 
 let sexp_of_t t =
   let open Sexp.To_sexp in
-  (list (pair string string)) t.vars
+  (list (pair string string)) (Map.to_list t.vars)
 
 let diff x y =
-  let to_map b = Map.of_list_reduce b ~f:(fun old _new -> old) in
-  Map.merge (to_map x.vars) (to_map y.vars) ~f:(fun _k vx vy ->
+  Map.merge x.vars y.vars ~f:(fun _k vx vy ->
     match vy with
     | Some _ -> None
     | None -> vx)
-  |> Map.to_list
   |> make

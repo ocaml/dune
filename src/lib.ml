@@ -798,16 +798,16 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
         closure_with_overlap_checks None pps ~stack
       in
       let deps =
-        let rec check_deps acc pps ~loc = function
+        let rec check_runtime_deps acc pps ~loc = function
           | [] -> loop acc pps
           | lib :: ppx_rts ->
             check_private_deps ~lib ~loc ~allow_private_deps >>= fun rt ->
-            check_deps (rt :: acc) pps ~loc ppx_rts
+            check_runtime_deps (rt :: acc) pps ~loc ppx_rts
         and loop acc = function
           | [] -> Ok acc
           | pp :: pps ->
             pp.ppx_runtime_deps >>= fun rt_deps ->
-            check_deps acc pps ~loc:pp.loc rt_deps
+            check_runtime_deps acc pps ~loc:pp.loc rt_deps
         in
         deps >>= fun deps ->
         pps  >>= fun pps  ->

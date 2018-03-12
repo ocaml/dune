@@ -41,6 +41,8 @@ next
 - Add a `best` mode which is native with fallback to byte-code when
   native compilation is not available (#23)
 
+- Fix locations reported in error messages (609)
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

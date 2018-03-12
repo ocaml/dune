@@ -1,0 +1,9 @@
+(jbuild_version 1)
+
+(library
+ ((name privatelib)))
+
+(library
+ ((name publiclib)
+  (public_name publiclib)
+  (libraries (privatelib))))

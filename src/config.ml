@@ -27,12 +27,14 @@ module Display = struct
     | Short
     | Verbose
     | Quiet
+    | Wait
 
   let all =
       [ "progress" , Progress
       ; "verbose"  , Verbose
       ; "short"    , Short
       ; "quiet"    , Quiet
+      ; "wait"     , Wait
       ]
 
   let t = enum all

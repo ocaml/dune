@@ -76,6 +76,13 @@ let report_with_backtrace exn =
 
 let reported = ref String_set.empty
 
+let error_table = Hashtbl.create 1024
+
+let print_all_errors_to_console () =
+  Hashtbl.iter error_table ~f:(fun ~key:(_:string) ~data ->
+    print_to_console data
+  )
+
 let report exn =
   let exn, dependency_path = Dep_path.unwrap_exn exn in
   match exn with
@@ -125,5 +132,9 @@ let report exn =
       Format.pp_print_flush ppf ();
       let s = Buffer.contents err_buf in
       Buffer.clear err_buf;
-      print_to_console s
+      Hashtbl.add error_table hash s;
+      if true then
+        print_to_console s
+      else
+        ()
     end

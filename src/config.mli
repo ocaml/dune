@@ -22,10 +22,11 @@ val inside_emacs : bool
 
 module Display : sig
   type t =
-    | Progress (** Single interactive status line *)
-    | Short    (** One line per command           *)
-    | Verbose  (** Display all commands fully     *)
-    | Quiet    (** Only display errors            *)
+    | Progress (** Single interactive status line                      *)
+    | Short    (** One line per command                                *)
+    | Verbose  (** Display all commands fully                          *)
+    | Quiet    (** Only display errors                                 *)
+    | Wait     (** Wait to show errors so they can be printed in order *)
 
   val t : t Sexp.Of_sexp.t
   val all : (string * t) list

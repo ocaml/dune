@@ -478,8 +478,8 @@ module Action = struct
         end
       | Some ("lib-available", lib) ->
         add_lib_dep acc lib Optional;
-        Some (str_exp (string_of_bool (
-          Lib.DB.available (Scope.libs scope) lib)))
+        Some (str_exp (
+          string_of_bool (Lib.DB.available (Scope.libs scope) lib)))
       | Some ("version", s) -> begin
           match Scope_info.resolve (Scope.info scope)
                   (Package.Name.of_string s) with

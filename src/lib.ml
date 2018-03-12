@@ -10,6 +10,18 @@ module Status = struct
     | Installed
     | Public
     | Private of Jbuild.Scope_info.Name.t
+
+  let pp ppf t =
+    Format.pp_print_string ppf
+      (match t with
+       | Installed -> "installed"
+       | Public -> "public"
+       | Private s ->
+         sprintf "private (%s)" (Jbuild.Scope_info.Name.to_string s))
+
+  let is_private = function
+    | Private _ -> true
+    | Installed | Public -> false
 end
 
 module Info = struct
@@ -254,6 +266,7 @@ and error =
   | Dependency_cycle             of (Path.t * string) list
   | Conflict                     of conflict
   | Overlap                      of overlap
+  | Private_deps_not_allowed     of private_deps_not_allowed
 
 and resolve_result =
   | Not_found
@@ -269,6 +282,11 @@ and conflict =
 and overlap =
   { in_workspace : t
   ; installed    : t * Dep_path.Entry.t list
+  }
+
+and private_deps_not_allowed =
+  { private_dep    : t
+  ; pd_loc         : Loc.t
   }
 
 and 'a or_error = ('a, exn) result
@@ -292,12 +310,20 @@ module Error = struct
       }
   end
 
+  module Private_deps_not_allowed = struct
+    type nonrec t = private_deps_not_allowed =
+      { private_dep : t
+      ; pd_loc      : Loc.t
+      }
+  end
+
   type t = error =
     | Library_not_available        of Library_not_available.t
     | No_solution_found_for_select of No_solution_found_for_select.t
     | Dependency_cycle             of (Path.t * string) list
     | Conflict                     of Conflict.t
     | Overlap                      of Overlap.t
+    | Private_deps_not_allowed     of Private_deps_not_allowed.t
 end
 
 exception Error of Error.t
@@ -638,7 +664,22 @@ and resolve_dep db name ~loc ~stack : (t, exn) result =
   | St_initializing id ->
     Error (Dep_stack.dependency_cycle stack id)
   | St_found t ->
-    Ok t
+    if t.status = Status.Public then (
+      let find_private_dep = function
+        | Result.Error _ -> None
+        | Ok l -> List.find ~f:(fun l -> Status.is_private l.status) l
+      in
+      let private_dep =
+        match find_private_dep t.requires with
+        | Some _ as d -> d
+        | None -> find_private_dep t.ppx_runtime_deps in
+      match private_dep with
+      | Some private_dep ->
+        Error (Error (Private_deps_not_allowed { pd_loc = loc ; private_dep }))
+      | None -> Ok t
+    ) else (
+      Ok t
+    )
   | St_not_found ->
     Error (Error (Library_not_available { loc; name; reason = Not_found }))
   | St_hidden (_, hidden) ->
@@ -791,7 +832,8 @@ and closure_with_overlap_checks db ts ~stack =
     | None ->
       visited := String_map.add !visited t.name (t, stack);
       (match db with
-       | None -> Ok ()
+       | None ->
+         Ok ()
        | Some db ->
          match find_internal db t.name ~stack with
          | St_found t' ->
@@ -830,10 +872,6 @@ let to_exn res =
   match res with
   | Ok    x -> x
   | Error e -> raise e
-
-let requires_exn         t = to_exn t.requires
-let ppx_runtime_deps_exn t = to_exn t.ppx_runtime_deps
-let closure_exn          l = to_exn (closure l)
 
 module Compile = struct
   module Resolved_select = Resolved_select
@@ -990,6 +1028,9 @@ module DB = struct
       Sexp.code_error "Lib.DB.get_compile_info got library that doesn't exist"
         [ "name", Sexp.To_sexp.string name ]
     | Some lib ->
+      resolve_simple_deps t [lib.loc, name] ~stack:Dep_stack.empty
+      |> Result.ok_exn
+      |> ignore;
       let t = Option.some_if (not allow_overlaps) t in
       Compile.for_lib t lib
 
@@ -1035,6 +1076,10 @@ end
    +-----------------------------------------------------------------+ *)
 
 module Meta = struct
+  let requires_exn         t = to_exn t.requires
+  let ppx_runtime_deps_exn t = to_exn t.ppx_runtime_deps
+  let closure_exn          l = to_exn (closure l)
+
   let to_names ts =
     List.fold_left ts ~init:String_set.empty ~f:(fun acc t ->
       String_set.add acc t.name)
@@ -1103,6 +1148,12 @@ let report_lib_error ppf (e : Error.t) =
          Format.fprintf ppf "-> %S in %s"
            name (Path.to_string_maybe_quoted path)))
       cycle
+  | Private_deps_not_allowed (t : private_deps_not_allowed) ->
+    Format.fprintf ppf
+      "%a@{<error>Error@}: Public libraries may not have private dependencies.\
+       \nPrivate dependency %S encountered in public library:\n"
+      Loc.print t.pd_loc
+      t.private_dep.name
 
 let () =
   Report_error.register (fun exn ->

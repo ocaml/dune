@@ -34,7 +34,6 @@ type t =
   ; ocamldep                : Path.t
   ; ocamlmklib              : Path.t
   ; env                     : Env.t
-  ; env_extra               : string Env.Map.t
   ; findlib                 : Findlib.t
   ; findlib_toolchain       : string option
   ; arch_sixtyfour          : bool
@@ -92,7 +91,7 @@ let sexp_of_t t =
     ; "ocamlopt", option path t.ocamlopt
     ; "ocamldep", path t.ocamldep
     ; "ocamlmklib", path t.ocamlmklib
-    ; "env", list (pair string string) (Env.Map.to_list t.env_extra)
+    ; "env", Env.sexp_of_t (Env.diff t.env (Env.initial ()))
     ; "findlib_path", list path (Findlib.path t.findlib)
     ; "arch_sixtyfour", bool t.arch_sixtyfour
     ; "natdynlink_supported", bool t.natdynlink_supported
@@ -122,9 +121,7 @@ let opam_config_var ~env ~cache var =
 let which ~cache ~path x =
   Hashtbl.find_or_add cache x ~f:(Bin.which ~path)
 
-let create ~(kind : Kind.t) ~path ~env_extra ~name ~merlin
-      ~targets () =
-  let env = Env.extend (Env.initial ()) ~vars:env_extra in
+let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
    | Opam { root; _ } ->
@@ -238,7 +235,7 @@ let create ~(kind : Kind.t) ~path ~env_extra ~name ~merlin
            (Ocaml_config.Vars.of_lines lines >>= Ocaml_config.make))
     >>= fun (findlib_path, ocfg) ->
     let version = Ocaml_config.version ocfg in
-    let env, env_extra =
+    let env =
       (* See comment in ansi_color.ml for setup_env_for_colors. For
          OCaml < 4.05, OCAML_COLOR is not supported so we use
          OCAMLPARAM. OCaml 4.02 doesn't support 'color' in OCAMLPARAM,
@@ -252,10 +249,9 @@ let create ~(kind : Kind.t) ~path ~env_extra ~name ~merlin
           | None -> "color=always,_"
           | Some s -> "color=always," ^ s
         in
-        Env.extend env ~vars:(Env.Map.singleton "OCAMLPARAM" value),
-        (Env.Map.add env_extra "OCAMLPARAM" value)
+        Env.add env ~var:"OCAMLPARAM" ~value
       else
-        env,env_extra
+        env
     in
     let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
@@ -281,7 +277,6 @@ let create ~(kind : Kind.t) ~path ~env_extra ~name ~merlin
       ; ocamlmklib = get_ocaml_tool_exn "ocamlmklib"
 
       ; env
-      ; env_extra
       ; findlib = Findlib.create ~stdlib_dir ~path:findlib_path
       ; findlib_toolchain
       ; arch_sixtyfour
@@ -343,7 +338,7 @@ let create ~(kind : Kind.t) ~path ~env_extra ~name ~merlin
 let opam_config_var t var = opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
 let default ?(merlin=true) ~targets () =
-  create ~kind:Default ~path:Bin.path ~env_extra:Env.Map.empty
+  create ~kind:Default ~path:Bin.path ~env:(Env.initial ())
     ~name:"default" ~merlin ~targets ()
 
 let create_for_opam ?root ~targets ~switch ~name ?(merlin=false) () =
@@ -382,8 +377,8 @@ let create_for_opam ?root ~targets ~switch ~name ?(merlin=false) () =
       | None -> Bin.path
       | Some s -> Bin.parse_path s
     in
-    create ~kind:(Opam { root; switch }) ~targets
-      ~path ~env_extra:vars ~name ~merlin ()
+    let env = Env.extend (Env.initial ()) ~vars in
+    create ~kind:(Opam { root; switch }) ~targets ~path ~env ~name ~merlin ()
 
 let create ?merlin def =
   match (def : Workspace.Context.t) with

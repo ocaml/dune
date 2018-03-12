@@ -65,9 +65,6 @@ type t =
   ; (** Environment variables *)
     env : Env.t
 
-  ; (** Diff between the base environment and [env] *)
-    env_extra : string Env.Map.t
-
   ; findlib : Findlib.t
   ; findlib_toolchain : string option
 

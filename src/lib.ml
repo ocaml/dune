@@ -1147,11 +1147,10 @@ let report_lib_error ppf (e : Error.t) =
          Format.fprintf ppf "-> %S in %s"
            name (Path.to_string_maybe_quoted path)))
       cycle
-  | Private_deps_not_allowed (t : private_deps_not_allowed) ->
+  | Private_deps_not_allowed t ->
     Format.fprintf ppf
-      "%a@{<error>Error@}: Library %S is private, it cannot be a dependency of\
+      "@{<error>Error@}: Library %S is private, it cannot be a dependency of \
        a public library.\nYou need to give %S a public name.\n"
-      Loc.print t.pd_loc
       t.private_dep.name
       t.private_dep.name
 
@@ -1167,6 +1166,8 @@ let () =
            | [] -> (* during bootstrap *) None
            | l ->
              Some (List.map l ~f:quote_for_shell |> String.concat ~sep:" "))
+        | Private_deps_not_allowed t ->
+          (Some t.pd_loc, None)
         | _ -> (None, None)
       in
       Some

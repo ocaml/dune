@@ -2,8 +2,8 @@ public libraries may not have private dependencies
 
   $ $JBUILDER build -j1 --display short --root private-dep 2>&1 | grep -v Entering
   File "jbuild", line 1, characters 0-155:
-  Error: Library "privatelib" is private, it cannot be a dependency ofa public library. You need to give "privatelib" a public name
-  -> required by library "publiclib" in _build/default
+  Error: Library "privatelib" is private, it cannot be a dependency of a public library.
+  You need to give "privatelib" a public name.
       ocamldep publiclib.ml.d
 
 On the other hand, public libraries may have private preprocessors
@@ -23,8 +23,8 @@ On the other hand, public libraries may have private preprocessors
 Unless they introduce private runtime dependencies:
   $ $JBUILDER build -j1 --display short --root private-runtime-deps 2>&1 | grep -v Entering
   File "jbuild", line 8, characters 1-143:
-  Error: Library "private_runtime_dep" is private, it cannot be a dependency ofa public library. You need to give "private_runtime_dep" a public name
-  -> required by library "mylib" in _build/default
+  Error: Library "private_runtime_dep" is private, it cannot be a dependency of a public library.
+  You need to give "private_runtime_dep" a public name.
         ocamlc .private_ppx.objs/private_ppx.{cmi,cmo,cmt}
       ocamlopt .private_ppx.objs/private_ppx.{cmx,o}
       ocamlopt private_ppx.{a,cmxa}

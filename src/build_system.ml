@@ -1177,6 +1177,8 @@ let eval_request t ~request ~process_target =
 let universe_file = Path.relative Path.build_dir ".universe-state"
 
 let update_universe t =
+  (* To workaround the fact that [mtime] is not precise enough on OSX *)
+  Utils.Cached_digest.remove universe_file;
   let fname = Path.to_string universe_file in
   let n =
     if Sys.file_exists fname then

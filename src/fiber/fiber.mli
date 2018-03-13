@@ -1,5 +1,7 @@
 (** Concurrency library *)
 
+open Stdune
+
 (** {1 Generals} *)
 
 (** Type of fiber. A fiber represent a suspended computation. Note that using the same

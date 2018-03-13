@@ -29,8 +29,7 @@ end
 
 (* Directories with library names *)
 let dirs =
-  [ "src/stdune/caml/result" , Some "Result"
-  ; "src/stdune/caml"        , Some "Caml"
+  [ "src/stdune/caml"        , Some "Caml"
   ; "src/stdune"             , Some "Stdune"
   ; "src/fiber"              , Some "Fiber"
   ; "src/xdg"                , Some "Xdg"

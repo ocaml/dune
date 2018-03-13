@@ -38,3 +38,7 @@ However, public binaries may accept private dependencies
         ocamlc .publicbin.eobjs/publicbin.{cmi,cmo,cmt}
       ocamlopt .publicbin.eobjs/publicbin.{cmx,o}
       ocamlopt publicbin.exe
+
+Private dependencies shouldn't make the library optional
+  $ $JBUILDER build -j1 --display short --root optional 2>&1 | grep -v Entering
+  [1]

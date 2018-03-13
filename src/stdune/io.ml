@@ -1,5 +1,3 @@
-open Import
-
 module P = Pervasives
 
 let open_in ?(binary=true) fn =
@@ -12,10 +10,10 @@ let close_in  = close_in
 let close_out = close_out
 
 let with_file_in ?binary fn ~f =
-  protectx (open_in ?binary fn) ~finally:close_in ~f
+  Exn.protectx (open_in ?binary fn) ~finally:close_in ~f
 
 let with_file_out ?binary fn ~f =
-  protectx (open_out ?binary fn) ~finally:close_out ~f
+  Exn.protectx (open_out ?binary fn) ~finally:close_out ~f
 
 let with_lexbuf_from_file fn ~f =
   with_file_in fn ~f:(fun ic ->
@@ -68,10 +66,10 @@ let copy_channels =
 let copy_file ~src ~dst =
   with_file_in src ~f:(fun ic ->
     let perm = (Unix.fstat (Unix.descr_of_in_channel ic)).st_perm in
-    protectx (P.open_out_gen
-                [Open_wronly; Open_creat; Open_trunc; Open_binary]
-                perm
-                dst)
+    Exn.protectx (P.open_out_gen
+                    [Open_wronly; Open_creat; Open_trunc; Open_binary]
+                    perm
+                    dst)
       ~finally:close_out
       ~f:(fun oc ->
         copy_channels ic oc))

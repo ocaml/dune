@@ -1,4 +1,4 @@
 (library
  ((name stdune)
   (synopsis "Standard library of Dune")
-  (libraries (caml))))
+  (libraries (caml unix))))

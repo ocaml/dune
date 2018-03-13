@@ -1,7 +1,5 @@
 (** IO operations *)
 
-open Stdune
-
 val open_in  : ?binary:bool (* default true *) -> string -> in_channel
 val open_out : ?binary:bool (* default true *) -> string -> out_channel
 

@@ -15,6 +15,7 @@ module Result     = Result
 module Set        = Set
 module Staged     = Staged
 module String     = String
+module Io         = Io
 
 external reraise : exn -> _ = "%reraise"
 

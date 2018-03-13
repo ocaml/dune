@@ -1,7 +1,6 @@
 open Stdune
 let sprintf = Printf.sprintf
 let eprintf = Printf.eprintf
-module Io = Jbuilder.Io
 
 let ( ^/ ) = Filename.concat
 

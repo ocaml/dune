@@ -1,3 +1,10 @@
 (jbuild_version 1)
 
 (library ((name usexp)))
+
+(rule
+ (with-stdout-to table.ml.gen (run gen/gen_parser_automaton.exe)))
+
+(alias
+ ((name update-sexp-parser)
+  (action (diff table.ml table.ml.gen))))

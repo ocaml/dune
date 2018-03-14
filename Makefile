@@ -65,5 +65,5 @@ DIST_URI = https://github.com/ocaml/dune/releases/download/$(VERSION)/jbuilder-$
 opam-release:
 	topkg distrib --skip-build --skip-lint --skip-tests
 	topkg publish distrib --verbose
-	topkg opam pkg --dist-uri='$DIST_URI'
-	topkg opam submit --dist-uri='$DIST_URI'
+	topkg opam pkg --dist-uri='$(DIST_URI)'
+	topkg opam submit --dist-uri='$(DIST_URI)'

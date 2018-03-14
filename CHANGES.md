@@ -1,16 +1,7 @@
-next
-----
-
-- Add a `(universe)` special dependency to specify that an action
-  depend on everything in the universe. Jbuilder cannot cache the
-  result of an action that depend on the universe (#603, fixes #255)
-
-1.0+beta19 (13/03/2018)
+1.0+beta19 (14/03/2018)
 -----------------------
 
 - Ignore errors during the generation of the .merlin (#569, fixes #568 and #51)
-
-- Reduce the number of simultaneously opened fds (#578)
 
 - Add a workaround for when a library normally installed by the
   compiler is not installed but still has a META file (#574, fixes
@@ -18,12 +9,6 @@ next
 
 - Do not depend on ocamlfind. Instead, hard-code the library path when
   installing from opam (#575)
-
-- Reduce interleaving in the scheduler in an attempt to make Jbuilder
-  keep file descriptors open for less long (#586)
-
-- Accept and ignore `ppx.driver` fields in library stanzas, in
-  preparation for the generic ppx driver system (#588)
 
 - Change the default behavior regarding the check for overlaps between
   local and installed libraries. Now even if there is no link time
@@ -55,8 +40,27 @@ next
 
 - Fix display when output is not a tty (#518)
 
+- Add a `(universe)` special dependency to specify that an action
+  depend on everything in the universe. Jbuilder cannot cache the
+  result of an action that depend on the universe (#603, fixes #255)
+
+1.0+beta18.1 (14/03/2018)
+-------------------------
+
+- Reduce the number of simultaneously opened fds (#578)
+
 - Always produce an implementation for the alias module, for
   non-jbuilder users (Fix #576)
+
+- Reduce interleaving in the scheduler in an attempt to make Jbuilder
+  keep file descriptors open for less long (#586)
+
+- Accept and ignore upcoming new library fields: `ppx.driver`,
+  `inline_tests` and `inline_tests.backend` (#588)
+
+- Add a hack to be able to build ppxlib, until beta20 which will have
+  generic support for ppx drivers
+
 
 1.0+beta18 (25/02/2018)
 -----------------------

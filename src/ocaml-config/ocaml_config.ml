@@ -292,8 +292,8 @@ let make vars =
       | Some { prog; args } -> (* >= 4.06 *)
         let get_flags var = args @ get_words vars var in
         (prog,
-         get_flags "ocamlc_flags",
-         get_flags "ocamlopt_flags")
+         get_flags "ocamlc_cflags",
+         get_flags "ocamlopt_cflags")
       | None ->
         (bytecomp_c_compiler.prog,
          bytecomp_c_compiler.args,

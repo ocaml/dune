@@ -53,6 +53,11 @@ next
 - Report error when a public library has a private dependency. Previously, this
   would be silently ignored and install broken artifacts (#607).
 
+- Fix display when output is not a tty (#518)
+
+- Always produce an implementation for the alias module, for
+  non-jbuilder users (Fix #576)
+
 1.0+beta18 (25/02/2018)
 -----------------------
 

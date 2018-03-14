@@ -301,8 +301,39 @@ module Gen(P : Install_params) = struct
           let install_file = Path.relative path install_fn in
           SC.add_alias_deps sctx install_alias [install_file])
 
+  let init_findlib_conf () =
+    let install_dir = Config.local_install_dir ~context:ctx.name in
+    let findlib_conf =
+      let open Meta in
+      let entry var value =
+        Rule { var; value; action = Set; predicates = [] } in
+      let b = Buffer.create 256 in
+      let fmt = Format.formatter_of_buffer b in
+      let lib_dir =
+        Path.to_absolute_filename (Path.relative install_dir "lib") in
+      [ Some (entry "destir" lib_dir)
+      ; Some (entry "path" (
+          (lib_dir :: (Findlib.path ctx.findlib
+                       |> List.map ~f:Path.to_absolute_filename))
+          |> String.concat ~sep:(String.make 1 Bin.path_sep))
+        )
+      ; Some (entry "ocamlc" (Path.to_absolute_filename ctx.ocamlc))
+      ; (ctx.ocamlopt
+         |> Option.map ~f:(fun o ->
+           entry "ocamlopt" (Path.to_absolute_filename o)))
+      ; Some (entry "ofilescamldep" (Path.to_absolute_filename ctx.ocamldep)) ]
+      |> List.filter_map ~f:(fun x -> x)
+      |> Meta.pp fmt;
+      Format.pp_print_flush fmt ();
+      Buffer.contents b;
+    in
+    SC.add_rule sctx (
+      Build.write_file (Path.relative install_dir "findlib.conf") findlib_conf
+    )
+
   let init () =
     init_meta ();
     init_install ();
-    init_install_files ()
+    init_install_files ();
+    init_findlib_conf ()
 end

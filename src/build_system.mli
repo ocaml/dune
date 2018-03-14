@@ -159,6 +159,9 @@ val do_build
 
 (** {2 Other queries} *)
 
+(** File for the [(universe)] dependency. *)
+val universe_file : Path.t
+
 val is_target : t -> Path.t -> bool
 
 (** Return all the library dependencies (as written by the user)

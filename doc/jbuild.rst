@@ -1052,6 +1052,12 @@ syntax:
   :ref:`glob <glob>` for details
 - ``(files_recursively_in <dir>)``: depend on all files in the subtree with root
   ``<dir>``
+- ``(universe)``: depend on everything in the universe. This is for
+  cases where dependencies are too hard to specify. Note that Jbuilder
+  will not be able to cache the result of actions that depend on the
+  universe. In any case, this is only for dependencies in the
+  installed world, you must still specify all dependencies that come
+  from the workspace.
 
 In all these cases, the argument supports `Variables expansion`_.
 

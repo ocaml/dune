@@ -1,3 +1,10 @@
+next
+----
+
+- Add a `(universe)` special dependency to specify that an action
+  depend on everything in the universe. Jbuilder cannot cache the
+  result of an action that depend on the universe (#603, fixes #255)
+
 1.0+beta19 (13/03/2018)
 -----------------------
 

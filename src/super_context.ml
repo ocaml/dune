@@ -338,6 +338,9 @@ module Deps = struct
       let path = Path.relative dir (expand_vars t ~scope ~dir s) in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
       >>^ Pset.to_list
+    | Universe ->
+      Build.path Build_system.universe_file
+      >>^ fun () -> []
 
   let interpret t ~scope ~dir l =
     Build.all (List.map l ~f:(dep t ~scope ~dir))

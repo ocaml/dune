@@ -430,3 +430,13 @@
      (progn
       (run ${exe:cram.exe} run.t)
       (diff? run.t run.t.corrected)))))))
+
+(alias
+ ((name runtest)
+  (deps ((files_recursively_in test-cases/depend-on-the-universe)))
+  (action
+   (chdir test-cases/depend-on-the-universe
+    (setenv JBUILDER ${bin:jbuilder}
+     (progn
+      (run ${exe:cram.exe} run.t)
+      (diff? run.t run.t.corrected)))))))

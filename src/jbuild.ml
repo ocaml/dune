@@ -230,18 +230,20 @@ module Dep_conf = struct
     | Alias_rec of String_with_vars.t
     | Glob_files of String_with_vars.t
     | Files_recursively_in of String_with_vars.t
+    | Universe
 
   let t =
     let t =
-      let cstr name f =
+      let cstr_sw name f =
         cstr name (String_with_vars.t @> nil) f
       in
       sum
-        [ cstr "file"                 (fun x -> File x)
-        ; cstr "alias"                (fun x -> Alias x)
-        ; cstr "alias_rec"            (fun x -> Alias_rec x)
-        ; cstr "glob_files"           (fun x -> Glob_files x)
-        ; cstr "files_recursively_in" (fun x -> Files_recursively_in x)
+        [ cstr_sw "file"                 (fun x -> File x)
+        ; cstr_sw "alias"                (fun x -> Alias x)
+        ; cstr_sw "alias_rec"            (fun x -> Alias_rec x)
+        ; cstr_sw "glob_files"           (fun x -> Glob_files x)
+        ; cstr_sw "files_recursively_in" (fun x -> Files_recursively_in x)
+        ; cstr    "universe" nil         Universe
         ]
     in
     fun sexp ->
@@ -264,6 +266,8 @@ module Dep_conf = struct
     | Files_recursively_in t ->
        List [Sexp.unsafe_atom_of_string "files_recursively_in" ;
              String_with_vars.sexp_of_t t]
+    | Universe ->
+      Sexp.unsafe_atom_of_string "universe"
 end
 
 module Preprocess = struct

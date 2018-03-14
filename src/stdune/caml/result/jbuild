@@ -1,5 +1,0 @@
-(jbuild_version 1)
-
-(library
- ((name     result)
-  (synopsis "Result type library")))

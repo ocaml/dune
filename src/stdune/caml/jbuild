@@ -1,4 +1,3 @@
 (library
  ((name caml)
-  (synopsis "Wrapped version of the OCaml stdlib")
-  (libraries (result))))
+  (synopsis "Wrapped version of the OCaml stdlib")))

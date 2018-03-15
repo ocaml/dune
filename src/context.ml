@@ -254,13 +254,12 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
         env
     in
     let env =
-      let sep = if Sys.win32 then ';' else ':' in
       let cwd = Sys.getcwd () in
       let extend_var var v =
         let v = Filename.concat cwd (Path.to_string v) in
         match Env.get env var with
         | None -> (var, v)
-        | Some prev -> (var, sprintf "%s%c%s" v sep prev)
+        | Some prev -> (var, sprintf "%s%c%s" v Bin.path_sep prev)
       in
       let vars =
         [ extend_var "CAML_LD_LIBRARY_PATH"

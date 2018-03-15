@@ -132,6 +132,7 @@ module Infer : sig
     type t =
       { deps    : Path.Set.t
       ; targets : Path.Set.t
+      ; aliases : String_set.t
       }
   end
 

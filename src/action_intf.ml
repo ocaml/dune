@@ -22,6 +22,7 @@ module type Ast = sig
 
   type t =
     | Run            of program * string list
+    | Install_run    of program * string list
     | Chdir          of path * t
     | Setenv         of string * string * t
     | Redirect       of Outputs.t * path * t

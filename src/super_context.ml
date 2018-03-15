@@ -603,12 +603,12 @@ module Action = struct
       expand_step1 sctx t ~dir ~dep_kind ~scope
         ~targets_written_by_user ~map_exe ~extra_vars
     in
-    let { Action.Infer.Outcome. deps; targets } =
+    let { Action.Infer.Outcome. deps; targets ; aliases = _ } =
       match targets_written_by_user with
       | Infer -> Action.Infer.partial t ~all_targets:true
       | Static targets_written_by_user ->
         let targets_written_by_user = Pset.of_list targets_written_by_user in
-        let { Action.Infer.Outcome. deps; targets } =
+        let { Action.Infer.Outcome. deps; targets ; aliases } =
           Action.Infer.partial t ~all_targets:false
         in
         (* CR-someday jdimino: should this be an error or not?
@@ -628,12 +628,12 @@ module Action = struct
                   |> String.concat ~sep:"\n");
            ]}
         *)
-        { deps; targets = Pset.union targets targets_written_by_user }
+        { deps; targets = Pset.union targets targets_written_by_user ; aliases }
       | Alias ->
-        let { Action.Infer.Outcome. deps; targets = _ } =
+        let { Action.Infer.Outcome. deps; targets = _ ; aliases} =
           Action.Infer.partial t ~all_targets:false
         in
-        { deps; targets = Pset.empty }
+        { deps; targets = Pset.empty; aliases }
     in
     let targets = Pset.to_list targets in
     List.iter targets ~f:(fun target ->
@@ -670,10 +670,17 @@ module Action = struct
           | Error fail -> Action.Prog.Not_found.raise fail))
       >>>
       Build.dyn_paths (Build.arr (fun action ->
-        let { Action.Infer.Outcome.deps; targets = _ } =
+        let { Action.Infer.Outcome.deps; targets = _; aliases } =
           Action.Infer.infer action
         in
-        Pset.to_list deps))
+        let alias_files =
+          aliases
+          |> String_set.to_list
+          |> List.map ~f:(fun a ->
+            Build_system.Alias.make ~dir:sctx.context.build_dir a
+            |> Build_system.Alias.stamp_file)
+          |> Path.Set.of_list in
+        Pset.to_list (Path.Set.union deps alias_files)))
       >>>
       Build.action_dyn () ~dir ~targets
     in

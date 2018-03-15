@@ -239,24 +239,19 @@ module Gen(P : Install_params) = struct
         (Utils.install_file ~package ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let entries = local_install_rules entries ~package in
-    SC.add_alias_action sctx ~stamp:(List [])
+    let files = Install.files entries in
+    SC.add_alias_deps sctx
       (Alias.package_install ~context:ctx ~pkg:package)
-      (let files =
-         List.map entries ~f:(fun (e : Install.Entry.t) -> e.src)
-         |> Path.Set.of_list
-       in
-       Build.path_set files
-       >>>
-       Build_system.package_deps (SC.build_system sctx) files
-       >>>
-       Build.dyn_paths (Build.arr (fun packages ->
-          Package.Name.Set.remove packages package
-          |> Package.Name.Set.to_list
-          |> List.map ~f:(fun pkg ->
-            Build_system.Alias.package_install
-              ~context:(SC.context sctx) ~pkg
-            |> Build_system.Alias.stamp_file)))
-        >>^ fun _ -> Action.Progn []);
+      (Path.Set.to_list files)
+      ~dyn_deps:
+        (Build_system.package_deps (SC.build_system sctx) files
+         >>^ fun packages ->
+         Package.Name.Set.remove packages package
+         |> Package.Name.Set.to_list
+         |> List.map ~f:(fun pkg ->
+           Build_system.Alias.package_install
+             ~context:(SC.context sctx) ~pkg
+           |> Build_system.Alias.stamp_file));
     SC.add_rule sctx
       ~mode:(if promote_install_file then
                Promote_but_delete_on_clean
@@ -264,7 +259,7 @@ module Gen(P : Install_params) = struct
                (* We must ignore the source file since it might be
                   copied to the source tree by another context. *)
                Ignore_source_files)
-      (Build.path_set (Install.files entries)
+      (Build.path_set files
        >>^ (fun () ->
          let entries =
            match ctx.findlib_toolchain with

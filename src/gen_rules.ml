@@ -708,17 +708,18 @@ module Gen(P : Install_rules.Params) = struct
 
     List.iter Cm_kind.all ~f:(fun cm_kind ->
       let files =
-        Module.Name.Map.fold modules ~init:[] ~f:(fun m acc ->
+        Module.Name.Map.fold modules ~init:Path.Set.empty ~f:(fun m acc ->
           match Module.cm_file m ~obj_dir cm_kind with
           | None -> acc
-          | Some fn -> fn :: acc)
+          | Some fn -> Path.Set.add acc fn)
       in
       SC.Libs.setup_file_deps_alias sctx ~dir lib ~ext:(Cm_kind.ext cm_kind)
         files);
     SC.Libs.setup_file_deps_group_alias sctx ~dir lib ~exts:[".cmi"; ".cmx"];
     SC.Libs.setup_file_deps_alias sctx ~dir lib ~ext:".h"
       (List.map lib.install_c_headers ~f:(fun header ->
-         Path.relative dir (header ^ ".h")));
+         Path.relative dir (header ^ ".h"))
+       |> Path.Set.of_list);
 
     let top_sorted_modules =
       Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl

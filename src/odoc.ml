@@ -210,7 +210,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
         compile_module ~dir ~obj_dir ~includes ~dep_graphs
           ~doc_dir ~pkg_or_lnu)
     in
-    Dep.setup_deps (Lib lib) (List.map modules_and_odoc_files ~f:snd)
+    Dep.setup_deps (Lib lib) (List.map modules_and_odoc_files ~f:snd
+                             |> Path.Set.of_list)
 
   let setup_css_rule () =
     SC.add_rule sctx
@@ -337,13 +338,13 @@ module Gen (S : sig val sctx : SC.t end) = struct
           :: List.map ~f:(fun lib -> Dep.html_alias (Lib lib)) libs
         ) ~f:(fun alias ->
           SC.add_alias_deps sctx alias
-            [ css_file
-            ; toplevel_index
-            ]
+            (Path.Set.of_list [ css_file
+                              ; toplevel_index
+                              ])
         );
         List.combine odocs html_files
         |> List.iter ~f:(fun (odoc, html) ->
-          SC.add_alias_deps sctx odoc.html_alias [html]
+          SC.add_alias_deps sctx odoc.html_alias (Path.Set.singleton html)
         );
       end
 
@@ -387,6 +388,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
           |> Lib.Set.to_list
           |> List.map ~f:(fun lib -> Dep.html_alias (Lib lib)))
       |> List.map ~f:Build_system.Alias.stamp_file
+      |> Path.Set.of_list
     )
 
   let pkg_odoc (pkg : Package.t) = Paths.odocs (Pkg pkg.name)
@@ -449,7 +451,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
         ~doc_dir:(Paths.odocs (Pkg pkg.name))
         ~includes:(Build.arr (fun _ -> Arg_spec.As []))
     ) in
-    Dep.setup_deps (Pkg pkg.name) odocs
+    Dep.setup_deps (Pkg pkg.name) (Path.Set.of_list odocs)
 
   let init ~modules_by_lib ~mlds_of_dir =
     let docs_by_package =
@@ -529,6 +531,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
          ))
        |> List.map ~f:(fun (lib : Lib.t) ->
          Build_system.Alias.stamp_file (Dep.alias (Lib lib)))
+       |> Path.Set.of_list
       )
 
 end

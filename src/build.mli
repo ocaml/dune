@@ -71,6 +71,7 @@ val files_recursively_in
 
 (** Record dynamic dependencies *)
 val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
+val dyn_path_set : ('a, Path.Set.t) t -> ('a, 'a) t
 
 val vpath : 'a Vspec.t  -> (unit, 'a) t
 
@@ -189,7 +190,7 @@ module Repr : sig
     | Contents : Path.t -> ('a, string) t
     | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
-    | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
+    | Dyn_paths : ('a, Path.Set.t) t -> ('a, 'a) t
     | Record_lib_deps : lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t

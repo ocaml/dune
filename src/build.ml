@@ -34,7 +34,7 @@ module Repr = struct
     | Contents : Path.t -> ('a, string) t
     | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
-    | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
+    | Dyn_paths : ('a, Path.Set.t) t -> ('a, 'a) t
     | Record_lib_deps : lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t
@@ -135,7 +135,8 @@ let paths ps = Paths (Pset.of_list ps)
 let path_set ps = Paths ps
 let paths_glob ~loc ~dir re = Paths_glob (ref (G_unevaluated (loc, dir, re)))
 let vpath vp = Vpath vp
-let dyn_paths t = Dyn_paths t
+let dyn_paths t = Dyn_paths (t >>^ Path.Set.of_list)
+let dyn_path_set t = Dyn_paths t
 let paths_for_rule ps = Paths_for_rule ps
 
 let catch t ~on_error = Catch (t, on_error)

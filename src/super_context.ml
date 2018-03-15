@@ -303,7 +303,8 @@ module Libs = struct
       ~ext:(String.concat exts ~sep:"-and-")
       (List.map exts ~f:(fun ext ->
          Alias.stamp_file
-           (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext)))
+           (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext))
+       |> Path.Set.of_list)
 
   let file_deps t ~ext =
     Build.dyn_paths (Build.arr (fun libs ->

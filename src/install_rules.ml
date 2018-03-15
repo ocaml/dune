@@ -242,7 +242,7 @@ module Gen(P : Install_params) = struct
     let files = Install.files entries in
     SC.add_alias_deps sctx
       (Alias.package_install ~context:ctx ~pkg:package)
-      (Path.Set.to_list files)
+      files
       ~dyn_deps:
         (Build_system.package_deps (SC.build_system sctx) files
          >>^ fun packages ->
@@ -251,7 +251,8 @@ module Gen(P : Install_params) = struct
          |> List.map ~f:(fun pkg ->
            Build_system.Alias.package_install
              ~context:(SC.context sctx) ~pkg
-           |> Build_system.Alias.stamp_file));
+           |> Build_system.Alias.stamp_file)
+         |> Path.Set.of_list);
     SC.add_rule sctx
       ~mode:(if promote_install_file then
                Promote_but_delete_on_clean
@@ -314,7 +315,7 @@ module Gen(P : Install_params) = struct
           let path = Path.append ctx.build_dir src_path in
           let install_alias = Alias.install ~dir:path in
           let install_file = Path.relative path install_fn in
-          SC.add_alias_deps sctx install_alias [install_file])
+          SC.add_alias_deps sctx install_alias (Path.Set.singleton install_file))
 
   let init () =
     init_meta ();

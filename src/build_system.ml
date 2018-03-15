@@ -302,7 +302,7 @@ module Dir_status = struct
 
   type alias =
     { mutable deps     : Pset.t
-    ; mutable dyn_deps : (unit, Path.t list) Build.t
+    ; mutable dyn_deps : (unit, Pset.t) Build.t
     ; mutable actions  : alias_action list
     }
 
@@ -458,7 +458,7 @@ module Build_exec = struct
         Option.value_exn file.data
       | Dyn_paths t ->
         let fns = exec dyn_deps t x in
-        dyn_deps := Pset.union !dyn_deps (Pset.of_list fns);
+        dyn_deps := Pset.union !dyn_deps fns;
         x
       | Record_lib_deps _ -> x
       | Fail { fail } -> fail ()
@@ -880,9 +880,9 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
            ~context:None
            (Build.path_set deps >>>
             dyn_deps >>>
-            Build.dyn_paths (Build.arr (fun x -> x))
+            Build.dyn_path_set (Build.arr (fun x -> x))
             >>^ (fun dyn_deps ->
-              let deps = Pset.union deps (Pset.of_list dyn_deps) in
+              let deps = Pset.union deps dyn_deps in
               Action.with_stdout_to path
                 (Action.digest_files (Pset.to_list deps)))
             >>>
@@ -1523,7 +1523,7 @@ module Alias = struct
       let x =
         { Dir_status.
           deps     = Pset.empty
-        ; dyn_deps = Build.return []
+        ; dyn_deps = Build.return Pset.empty
         ; actions  = []
         }
       in
@@ -1533,14 +1533,14 @@ module Alias = struct
 
   let add_deps build_system t ?dyn_deps deps =
     let def = get_alias_def build_system t in
-    def.deps <- Pset.union def.deps (Pset.of_list deps);
+    def.deps <- Pset.union def.deps deps;
     match dyn_deps with
     | None -> ()
     | Some build ->
       let open Build.O in
       def.dyn_deps <-
         Build.fanout def.dyn_deps build >>^ fun (a, b) ->
-        List.rev_append a b
+        Pset.union a b
 
   let add_action build_system t ~context ?(locks=[]) ~stamp action =
     let def = get_alias_def build_system t in

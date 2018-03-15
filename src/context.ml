@@ -253,6 +253,32 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
       else
         env
     in
+    let env =
+      let sep = if Sys.win32 then ';' else ':' in
+      let cwd = Sys.getcwd () in
+      let extend_var var v =
+        let v = Filename.concat cwd (Path.to_string v) in
+        match Env.get env var with
+        | None -> (var, v)
+        | Some prev -> (var, sprintf "%s%c%s" v sep prev)
+      in
+      let vars =
+        [ extend_var "CAML_LD_LIBRARY_PATH"
+            (Path.relative
+               (Config.local_install_dir ~context:name)
+               "lib/stublibs")
+        ; extend_var "OCAMLPATH"
+            (Path.relative
+               (Config.local_install_dir ~context:name)
+               "lib")
+        ; extend_var "PATH"
+            (Config.local_install_bin_dir ~context:name)
+        ; extend_var "MANPATH"
+            (Config.local_install_man_dir ~context:name)
+        ]
+      in
+      Env.extend env ~vars:(Env.Map.of_list_exn vars)
+    in
     let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
     let version        = Ocaml_config.version ocfg        in
@@ -407,33 +433,6 @@ let install_ocaml_libdir t =
        Some (Path.absolute s))
     | None ->
       Fiber.return None
-
-(* CR-someday jdimino: maybe we should just do this for [t.env] directly? *)
-let env_for_exec t =
-  let sep = if Sys.win32 then ';' else ':' in
-  let cwd = Sys.getcwd () in
-  let extend_var var v =
-    let v = Filename.concat cwd (Path.to_string v) in
-    match Env.get t.env var with
-    | None -> (var, v)
-    | Some prev -> (var, sprintf "%s%c%s" v sep prev)
-  in
-  let vars =
-    [ extend_var "CAML_LD_LIBRARY_PATH"
-        (Path.relative
-           (Config.local_install_dir ~context:t.name)
-           "lib/stublibs")
-    ; extend_var "OCAMLPATH"
-        (Path.relative
-           (Config.local_install_dir ~context:t.name)
-           "lib")
-    ; extend_var "PATH"
-        (Config.local_install_bin_dir ~context:t.name)
-    ; extend_var "MANPATH"
-        (Config.local_install_man_dir ~context:t.name)
-    ]
-  in
-  Env.extend t.env ~vars:(Env.Map.of_list_exn vars)
 
 let compiler t (mode : Mode.t) =
   match mode with

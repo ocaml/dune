@@ -735,7 +735,16 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
   | Run (Error e, _) ->
     Prog.Not_found.raise e
   | Run (Ok prog, args) ->
-    exec_run ~ectx ~dir ~env ~stdout_to ~stderr_to prog args
+    exec_run ~ectx ~dir ~env:(
+      match ectx.context with
+      | None ->
+        Sexp.code_error "context isn't available to this run action"
+          [ "action", sexp_of_t t
+          ; "dir", Path.sexp_of_t dir
+          ; "env", Env.sexp_of_t env ]
+      | Some ctx ->
+        Env.extend_env ctx.env env
+    ) ~stdout_to ~stderr_to prog args
   | Chdir (dir, t) ->
     exec t ~ectx ~dir ~env ~stdout_to ~stderr_to
   | Setenv (var, value, t) ->

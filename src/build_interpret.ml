@@ -191,7 +191,7 @@ module Rule = struct
     }
 
   let make ?(sandbox=false) ?(mode=Jbuild.Rule.Mode.Not_a_rule_stanza)
-        ?context ?(locks=[]) ?loc build =
+        ~context ?(locks=[]) ?loc build =
     let targets = targets build in
     let dir =
       match targets with

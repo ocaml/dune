@@ -736,7 +736,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       in
       make_local_dirs t (Action.chdirs action);
       with_locks locks ~f:(fun () ->
-        Action.exec ?context ~targets action) >>| fun () ->
+        Action.exec ~context ~targets action) >>| fun () ->
       Option.iter sandbox_dir ~f:Path.rm_rf;
       (* All went well, these targets are no longer pending *)
       pending_targets := Pset.diff !pending_targets targets;
@@ -783,7 +783,7 @@ and setup_copy_rules t ~ctx_dir ~non_target_source_files =
 
        This allows to keep generated files in tarballs. Maybe we
        should allow it on a case-by-case basis though. *)
-    compile_rule t (Pre_rule.make build) ~copy_source:true)
+    compile_rule t (Pre_rule.make build ~context:None) ~copy_source:true)
 
 and load_dir   t ~dir = ignore (load_dir_and_get_targets t ~dir : Pset.t)
 and targets_of t ~dir =         load_dir_and_get_targets t ~dir
@@ -860,13 +860,14 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
                   ~suffix:("-" ^ Digest.to_hex stamp)
               in
               let rule =
-                Pre_rule.make ~locks
+                Pre_rule.make ~locks ~context:None
                   (Build.progn [ action; Build.create_file path ])
               in
               (rule :: rules, Pset.add deps path))
         in
         let path = Path.extend_basename base_path ~suffix:Alias0.suffix in
         (Pre_rule.make
+           ~context:None
            (Build.path_set deps >>>
             Build.action ~targets:[path]
               (Redirect (Stdout,
@@ -1074,6 +1075,7 @@ let stamp_file_for_files_of t ~dir ~ext =
     compile_rule t
       (let open Build.O in
        Pre_rule.make
+         ~context:None
          (Build.paths files >>>
           Build.action ~targets:[stamp_file]
             (Action.with_stdout_to stamp_file

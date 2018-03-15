@@ -25,7 +25,7 @@ module Rule : sig
   val make
     :  ?sandbox:bool
     -> ?mode:Jbuild.Rule.Mode.t
-    -> ?context:Context.t
+    -> context:Context.t option
     -> ?locks:Path.t list
     -> ?loc:Loc.t
     -> (unit, Action.t) Build.t

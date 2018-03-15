@@ -22,22 +22,29 @@ module type Key = sig
   module Map : Map.S with type key = t
 end
 
-module Make(Key : Key)(Value : Value with type key = Key.t) : sig
-  (** Evaluate an ordered set. [standard] is the interpretation of [:standard] inside the
-      DSL. *)
+module type S = sig
+  (** Evaluate an ordered set. [standard] is the interpretation of [:standard]
+      inside the DSL. *)
+  type value
+  type 'a map
+
   val eval
     :  t
-    -> parse:(loc:Loc.t -> string -> Value.t)
-    -> standard:Value.t list
-    -> Value.t list
+    -> parse:(loc:Loc.t -> string -> value)
+    -> standard:value list
+    -> value list
 
   (** Same as [eval] but the result is unordered *)
   val eval_unordered
     :  t
-    -> parse:(loc:Loc.t -> string -> Value.t)
-    -> standard:Value.t Key.Map.t
-    -> Value.t Key.Map.t
+    -> parse:(loc:Loc.t -> string -> value)
+    -> standard:value map
+    -> value map
 end
+
+module Make(Key : Key)(Value : Value with type key = Key.t)
+  : S with type value = Value.t
+       and type 'a map = 'a Key.Map.t
 
 val standard : t
 val is_standard : t -> bool
@@ -63,3 +70,5 @@ module Unexpanded : sig
     -> f:(String_with_vars.t -> string)
     -> expanded
 end with type expanded := t
+
+module String : S with type value = string and type 'a map = 'a String_map.t

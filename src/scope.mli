@@ -12,7 +12,7 @@ val info : t -> Jbuild.Scope_info.t
 val libs : t -> Lib.DB.t
 
 (** Scope databases *)
- module DB : sig
+module DB : sig
   type scope = t
 
   type t

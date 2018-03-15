@@ -206,6 +206,8 @@ module Gen(P : Install_params) = struct
         Path.append install_dir (Install.Entry.relative_installed_path entry ~package)
       in
       SC.add_rule sctx (Build.symlink ~src:entry.src ~dst);
+      SC.add_alias_deps sctx
+        (Alias.package_install ~context:ctx ~pkg:package) [dst];
       Install.Entry.set_src entry dst)
 
   let promote_install_file =

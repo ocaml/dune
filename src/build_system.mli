@@ -107,6 +107,8 @@ module Alias : sig
   val private_doc : dir:Path.t -> t
   val lint        : dir:Path.t -> t
 
+  val package_install : context:Context.t -> pkg:Package.Name.t -> t
+
   (** Return the underlying stamp file *)
   val stamp_file : t -> Path.t
 

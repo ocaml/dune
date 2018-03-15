@@ -351,6 +351,10 @@ module Deps = struct
       let path = Path.relative dir (expand_vars t ~scope ~dir s) in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
       >>^ Pset.to_list
+    | Package p ->
+      let pkg = Package.Name.of_string (expand_vars t ~scope ~dir p) in
+      Alias.dep (Alias.package_install ~context:t.context ~pkg)
+      >>^ fun () -> []
     | Universe ->
       Build.path Build_system.universe_file
       >>^ fun () -> []

@@ -1,5 +1,7 @@
 (** OCaml binaries *)
 
+val path_sep : char
+
 (** Contents of [PATH] *)
 val path : Path.t list
 

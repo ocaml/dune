@@ -410,13 +410,12 @@ let install_ocaml_libdir t =
 
 (* CR-someday jdimino: maybe we should just do this for [t.env] directly? *)
 let env_for_exec t =
-  let sep = if Sys.win32 then ';' else ':' in
   let cwd = Sys.getcwd () in
   let extend_var var v =
     let v = Filename.concat cwd (Path.to_string v) in
     match Env.get t.env var with
     | None -> (var, v)
-    | Some prev -> (var, sprintf "%s%c%s" v sep prev)
+    | Some prev -> (var, sprintf "%s%c%s" v Bin.path_sep prev)
   in
   let vars =
     [ extend_var "CAML_LD_LIBRARY_PATH"

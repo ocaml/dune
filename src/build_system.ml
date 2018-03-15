@@ -292,6 +292,7 @@ module Dir_status = struct
     { stamp  : Digest.t
     ; action : (unit, Action.t) Build.t
     ; locks  : Path.t list
+    ; context : Context.t
     }
 
 
@@ -736,7 +737,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       in
       make_local_dirs t (Action.chdirs action);
       with_locks locks ~f:(fun () ->
-        Action.exec ?context ~targets action) >>| fun () ->
+        Action.exec ~context ~targets action) >>| fun () ->
       Option.iter sandbox_dir ~f:Path.rm_rf;
       (* All went well, these targets are no longer pending *)
       pending_targets := Pset.diff !pending_targets targets;
@@ -783,7 +784,7 @@ and setup_copy_rules t ~ctx_dir ~non_target_source_files =
 
        This allows to keep generated files in tarballs. Maybe we
        should allow it on a case-by-case basis though. *)
-    compile_rule t (Pre_rule.make build) ~copy_source:true)
+    compile_rule t (Pre_rule.make build ~context:None) ~copy_source:true)
 
 and load_dir   t ~dir = ignore (load_dir_and_get_targets t ~dir : Pset.t)
 and targets_of t ~dir =         load_dir_and_get_targets t ~dir
@@ -854,19 +855,21 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
         let base_path = Path.relative alias_dir name in
         let rules, deps =
           List.fold_left actions ~init:(rules, deps)
-            ~f:(fun (rules, deps) { Dir_status. stamp; action; locks } ->
-              let path =
-                Path.extend_basename base_path
-                  ~suffix:("-" ^ Digest.to_hex stamp)
-              in
-              let rule =
-                Pre_rule.make ~locks
-                  (Build.progn [ action; Build.create_file path ])
-              in
-              (rule :: rules, Pset.add deps path))
+            ~f:(fun (rules, deps)
+                 { Dir_status. stamp; action; locks ; context } ->
+                 let path =
+                   Path.extend_basename base_path
+                     ~suffix:("-" ^ Digest.to_hex stamp)
+                 in
+                 let rule =
+                   Pre_rule.make ~locks ~context:(Some context)
+                     (Build.progn [ action; Build.create_file path ])
+                 in
+                 (rule :: rules, Pset.add deps path))
         in
         let path = Path.extend_basename base_path ~suffix:Alias0.suffix in
         (Pre_rule.make
+           ~context:None
            (Build.path_set deps >>>
             Build.action ~targets:[path]
               (Redirect (Stdout,
@@ -1074,6 +1077,7 @@ let stamp_file_for_files_of t ~dir ~ext =
     compile_rule t
       (let open Build.O in
        Pre_rule.make
+         ~context:None
          (Build.paths files >>>
           Build.action ~targets:[stamp_file]
             (Action.with_stdout_to stamp_file
@@ -1477,11 +1481,12 @@ module Alias = struct
     let def = get_alias_def build_system t in
     def.deps <- Pset.union def.deps (Pset.of_list deps)
 
-  let add_action build_system t ?(locks=[]) ~stamp action =
+  let add_action build_system t ~context ?(locks=[]) ~stamp action =
     let def = get_alias_def build_system t in
     def.actions <- { stamp = Digest.string (Sexp.to_string stamp)
                    ; action
                    ; locks
+                   ; context
                    } :: def.actions
 end
 

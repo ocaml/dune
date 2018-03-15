@@ -209,13 +209,13 @@ let add_rule t ?sandbox ?mode ?locks ?loc build =
   let build = Build.O.(>>>) build t.chdir in
   Build_system.add_rule t.build_system
     (Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
-       ~context:t.context build)
+       ~context:(Some t.context) build)
 
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc build =
   let build = Build.O.(>>>) build t.chdir in
   let rule =
     Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
-      ~context:t.context build
+      ~context:(Some t.context) build
   in
   Build_system.add_rule t.build_system rule;
   List.map rule.targets ~f:Build_interpret.Target.path
@@ -227,7 +227,7 @@ let add_alias_deps t alias deps =
   Alias.add_deps t.build_system alias deps
 
 let add_alias_action t alias ?locks ~stamp action =
-  Alias.add_action t.build_system alias ?locks ~stamp action
+  Alias.add_action t.build_system ~context:t.context alias ?locks ~stamp action
 
 let eval_glob t ~dir re = Build_system.eval_glob t.build_system ~dir re
 let load_dir t ~dir = Build_system.load_dir t.build_system ~dir

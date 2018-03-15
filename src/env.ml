@@ -69,6 +69,9 @@ let add t ~var ~value =
 let extend t ~vars =
   make (Map.union t.vars vars ~f:(fun _ _ v -> Some v))
 
+let extend_env x y =
+  extend x ~vars:y.vars
+
 let sexp_of_t t =
   let open Sexp.To_sexp in
   (list (pair string string)) (Map.to_list t.vars)

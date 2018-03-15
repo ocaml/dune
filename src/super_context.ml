@@ -669,16 +669,6 @@ module Action = struct
     | fail :: _ -> Build.fail fail >>> build
 end
 
-module Eval_strings = Ordered_set_lang.Make(struct
-    type t = string
-    let compare = String.compare
-    module Map = String_map
-  end)(struct
-    type t = string
-    type key = string
-    let key x = x
-  end)
-
 let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
   let open Build.O in
   let f = expand_vars t ~scope ~dir ?extra_vars in
@@ -688,11 +678,11 @@ let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
     let set =
       Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f
     in
-    Build.return (Eval_strings.eval set ~standard ~parse)
+    Build.return (Ordered_set_lang.String.eval set ~standard ~parse)
   | files ->
     let paths = List.map files ~f:(Path.relative dir) in
     Build.all (List.map paths ~f:Build.read_sexp)
     >>^ fun sexps ->
     let files_contents = List.combine files sexps |> String_map.of_list_exn in
     let set = Ordered_set_lang.Unexpanded.expand set ~files_contents ~f in
-    Eval_strings.eval set ~standard ~parse
+    Ordered_set_lang.String.eval set ~standard ~parse

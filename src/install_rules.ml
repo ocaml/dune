@@ -206,8 +206,6 @@ module Gen(P : Install_params) = struct
         Path.append install_dir (Install.Entry.relative_installed_path entry ~package)
       in
       SC.add_rule sctx (Build.symlink ~src:entry.src ~dst);
-      SC.add_alias_deps sctx
-        (Alias.package_install ~context:ctx ~pkg:package) [dst];
       Install.Entry.set_src entry dst)
 
   let promote_install_file =
@@ -239,6 +237,9 @@ module Gen(P : Install_params) = struct
         (Utils.install_file ~package ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let entries = local_install_rules entries ~package in
+    SC.add_alias_deps sctx
+      (Alias.package_install ~context:ctx ~pkg:package)
+      (List.map entries ~f:(fun (e : Install.Entry.t) -> e.src));
     SC.add_rule sctx
       ~mode:(if promote_install_file then
                Promote_but_delete_on_clean

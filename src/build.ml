@@ -27,6 +27,7 @@ module Repr = struct
     | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Pset.t -> ('a, 'a) t
+    | Paths_for_rule : Path.Set.t -> ('a, 'a) t
     | Paths_glob : glob_state ref -> ('a, Path.t list) t
     (* The reference gets decided in Build_interpret.deps *)
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
@@ -135,6 +136,7 @@ let path_set ps = Paths ps
 let paths_glob ~loc ~dir re = Paths_glob (ref (G_unevaluated (loc, dir, re)))
 let vpath vp = Vpath vp
 let dyn_paths t = Dyn_paths t
+let paths_for_rule ps = Paths_for_rule ps
 
 let catch t ~on_error = Catch (t, on_error)
 

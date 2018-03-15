@@ -183,6 +183,7 @@ module Repr : sig
     | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Path.Set.t -> ('a, 'a) t
+    | Paths_for_rule : Path.Set.t -> ('a, 'a) t
     | Paths_glob : glob_state ref -> ('a, Path.t list) t
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
@@ -220,3 +221,6 @@ end
 val repr : ('a, 'b) t -> ('a, 'b) Repr.t
 
 val merge_lib_deps : lib_deps -> lib_deps -> lib_deps
+
+(**/**)
+val paths_for_rule : Path.Set.t -> ('a, 'a) t

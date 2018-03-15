@@ -41,6 +41,7 @@ let file_tree t = t.file_tree
 let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
 let cxx_flags t = t.cxx_flags
 let build_dir t = t.context.build_dir
+let build_system t = t.build_system
 
 let host t = Option.value t.host ~default:t
 
@@ -218,10 +219,10 @@ let create
 let prefix_rules t prefix ~f =
   Build_system.prefix_rules t.build_system prefix ~f
 
-let add_rule t ?sandbox ?mode ?locks ?loc build =
+let add_rule t ?sandbox ?mode ?locks ?loc ?package build =
   let build = Build.O.(>>>) build t.chdir in
   Build_system.add_rule t.build_system
-    (Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
+    (Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc ?package
        ~context:(Some t.context) build)
 
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc build =

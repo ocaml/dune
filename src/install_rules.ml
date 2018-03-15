@@ -205,7 +205,7 @@ module Gen(P : Install_params) = struct
       let dst =
         Path.append install_dir (Install.Entry.relative_installed_path entry ~package)
       in
-      SC.add_rule sctx (Build.symlink ~src:entry.src ~dst);
+      SC.add_rule sctx (Build.symlink ~src:entry.src ~dst) ~package;
       Install.Entry.set_src entry dst)
 
   let promote_install_file =
@@ -237,9 +237,24 @@ module Gen(P : Install_params) = struct
         (Utils.install_file ~package ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let entries = local_install_rules entries ~package in
-    SC.add_alias_deps sctx
+    SC.add_alias_action sctx ~stamp:(List [])
       (Alias.package_install ~context:ctx ~pkg:package)
-      (List.map entries ~f:(fun (e : Install.Entry.t) -> e.src));
+      (let files =
+         List.map entries ~f:(fun (e : Install.Entry.t) -> e.src)
+         |> Path.Set.of_list
+       in
+       Build.path_set files
+       >>>
+       Build_system.package_deps (SC.build_system sctx) files
+       >>>
+       Build.dyn_paths (Build.arr (fun packages ->
+          Package.Name.Set.remove packages package
+          |> Package.Name.Set.to_list
+          |> List.map ~f:(fun pkg ->
+            Build_system.Alias.package_install
+              ~context:(SC.context sctx) ~pkg
+            |> Build_system.Alias.stamp_file)))
+        >>^ fun _ -> Action.Progn []);
     SC.add_rule sctx
       ~mode:(if promote_install_file then
                Promote_but_delete_on_clean

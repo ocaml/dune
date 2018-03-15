@@ -111,14 +111,7 @@ let gen_rules sctx components =
   match components with
   | [key] ->
     let exe = ppx_exe sctx ~key in
-    let (key, lib_db) =
-      match String.rsplit2 key ~on:'@' with
-      | None ->
-        (key, SC.public_libs sctx)
-      | Some (key, scope) ->
-        (key, Scope.libs (SC.find_scope_by_name sctx
-                            (Scope_info.Name.of_string scope)))
-    in
+    let (key, lib_db) = SC.Scope_key.of_string sctx key in
     let names =
       match key with
       | "+none+" -> []
@@ -183,8 +176,7 @@ let get_ppx_driver sctx ~scope pps =
   let key =
     match db with
     | Installed | Public -> key
-    | Private scope_name ->
-      sprintf "%s@%s" key (Scope_info.Name.to_string scope_name)
+    | Private scope_name -> SC.Scope_key.to_string key scope_name
   in
   let sctx = SC.host sctx in
   ppx_exe sctx ~key

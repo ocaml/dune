@@ -292,6 +292,7 @@ module Dir_status = struct
     { stamp  : Digest.t
     ; action : (unit, Action.t) Build.t
     ; locks  : Path.t list
+    ; context : Context.t
     }
 
 
@@ -854,16 +855,17 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
         let base_path = Path.relative alias_dir name in
         let rules, deps =
           List.fold_left actions ~init:(rules, deps)
-            ~f:(fun (rules, deps) { Dir_status. stamp; action; locks } ->
-              let path =
-                Path.extend_basename base_path
-                  ~suffix:("-" ^ Digest.to_hex stamp)
-              in
-              let rule =
-                Pre_rule.make ~locks ~context:None
-                  (Build.progn [ action; Build.create_file path ])
-              in
-              (rule :: rules, Pset.add deps path))
+            ~f:(fun (rules, deps)
+                 { Dir_status. stamp; action; locks ; context } ->
+                 let path =
+                   Path.extend_basename base_path
+                     ~suffix:("-" ^ Digest.to_hex stamp)
+                 in
+                 let rule =
+                   Pre_rule.make ~locks ~context:(Some context)
+                     (Build.progn [ action; Build.create_file path ])
+                 in
+                 (rule :: rules, Pset.add deps path))
         in
         let path = Path.extend_basename base_path ~suffix:Alias0.suffix in
         (Pre_rule.make
@@ -1479,11 +1481,12 @@ module Alias = struct
     let def = get_alias_def build_system t in
     def.deps <- Pset.union def.deps (Pset.of_list deps)
 
-  let add_action build_system t ?(locks=[]) ~stamp action =
+  let add_action build_system t ~context ?(locks=[]) ~stamp action =
     let def = get_alias_def build_system t in
     def.actions <- { stamp = Digest.string (Sexp.to_string stamp)
                    ; action
                    ; locks
+                   ; context
                    } :: def.actions
 end
 

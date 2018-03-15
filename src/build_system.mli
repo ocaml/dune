@@ -140,6 +140,7 @@ module Alias : sig
   val add_action
     :  build_system
     -> t
+    -> context:Context.t
     -> ?locks:Path.t list
     -> stamp:Sexp.t
     -> (unit, Action.t) Build.t

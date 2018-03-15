@@ -1,0 +1,11 @@
+(jbuild_version 1)
+
+(library
+ ((name foo)
+  (public_name foo)
+  (modules (foo))))
+
+(alias
+ ((name runtest)
+  (deps ((package foo)))
+  (action (echo "package foo"))))

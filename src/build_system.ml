@@ -301,8 +301,9 @@ module Dir_status = struct
 
 
   type alias =
-    { mutable deps    : Pset.t
-    ; mutable actions : alias_action list
+    { mutable deps     : Pset.t
+    ; mutable dyn_deps : (unit, Path.t list) Build.t
+    ; mutable actions  : alias_action list
     }
 
   type rules_collector =
@@ -858,7 +859,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
   let alias_rules, alias_stamp_files =
     let open Build.O in
     String_map.foldi collector.aliases ~init:([], Pset.empty)
-      ~f:(fun name { Dir_status. deps; actions } (rules, alias_stamp_files) ->
+      ~f:(fun name { Dir_status. deps; dyn_deps; actions } (rules, alias_stamp_files) ->
         let base_path = Path.relative alias_dir name in
         let rules, deps =
           List.fold_left actions ~init:(rules, deps)
@@ -878,11 +879,14 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
         (Pre_rule.make
            ~context:None
            (Build.path_set deps >>>
-            Build.action ~targets:[path]
-              (Redirect (Stdout,
-                         path,
-                         Digest_files
-                           (Path.Set.to_list deps))))
+            dyn_deps >>>
+            Build.dyn_paths (Build.arr (fun x -> x))
+            >>^ (fun dyn_deps ->
+              let deps = Pset.union deps (Pset.of_list dyn_deps) in
+              Action.with_stdout_to path
+                (Action.digest_files (Pset.to_list deps)))
+            >>>
+            Build.action_dyn () ~targets:[path])
          :: rules,
          Pset.add alias_stamp_files path))
   in
@@ -1516,14 +1520,27 @@ module Alias = struct
     let collector = get_collector build_system ~dir:t.dir in
     match String_map.find collector.aliases t.name with
     | None ->
-      let x = { Dir_status. deps = Pset.empty; actions = [] } in
+      let x =
+        { Dir_status.
+          deps     = Pset.empty
+        ; dyn_deps = Build.return []
+        ; actions  = []
+        }
+      in
       collector.aliases <- String_map.add collector.aliases t.name x;
       x
     | Some x -> x
 
-  let add_deps build_system t deps =
+  let add_deps build_system t ?dyn_deps deps =
     let def = get_alias_def build_system t in
-    def.deps <- Pset.union def.deps (Pset.of_list deps)
+    def.deps <- Pset.union def.deps (Pset.of_list deps);
+    match dyn_deps with
+    | None -> ()
+    | Some build ->
+      let open Build.O in
+      def.dyn_deps <-
+        Build.fanout def.dyn_deps build >>^ fun (a, b) ->
+        List.rev_append a b
 
   let add_action build_system t ~context ?(locks=[]) ~stamp action =
     let def = get_alias_def build_system t in

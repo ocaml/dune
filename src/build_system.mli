@@ -143,9 +143,15 @@ module Alias : sig
     -> contexts:string list
     -> (unit, unit) Build.t
 
-  (** [add_deps store alias deps] arrange things so that all [deps]
-      are built as part of the build of alias [alias]. *)
-  val add_deps : build_system -> t -> Path.t list -> unit
+  (** [add_deps store alias ?dyn_deps deps] arrange things so that all
+      [dyn_deps] and [deps] are built as part of the build of alias
+      [alias]. *)
+  val add_deps
+    :  build_system
+    -> t
+    -> ?dyn_deps:(unit, Path.t list) Build.t
+    -> Path.t list
+    -> unit
 
   (** [add_action store alias ~stamp action] arrange things so that
       [action] is executed as part of the build of alias

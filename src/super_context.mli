@@ -98,6 +98,7 @@ val add_rules
 val add_alias_deps
   :  t
   -> Build_system.Alias.t
+  -> ?dyn_deps:(unit, Path.t list) Build.t
   -> Path.t list
   -> unit
 val add_alias_action

@@ -237,8 +237,8 @@ let add_rule_get_targets t ?sandbox ?mode ?locks ?loc build =
 let add_rules t ?sandbox builds =
   List.iter builds ~f:(add_rule t ?sandbox)
 
-let add_alias_deps t alias deps =
-  Alias.add_deps t.build_system alias deps
+let add_alias_deps t alias ?dyn_deps deps =
+  Alias.add_deps t.build_system alias ?dyn_deps deps
 
 let add_alias_action t alias ?locks ~stamp action =
   Alias.add_action t.build_system ~context:t.context alias ?locks ~stamp action

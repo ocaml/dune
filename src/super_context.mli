@@ -197,3 +197,9 @@ end
 module Pkg_version : sig
   val set : t -> Package.t -> (unit, string option) Build.t -> (unit, string option) Build.t
 end
+
+module Scope_key : sig
+  val of_string : t -> string -> string * Lib.DB.t
+
+  val to_string : string -> Scope_info.Name.t -> string
+end

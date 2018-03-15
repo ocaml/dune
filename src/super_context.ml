@@ -370,6 +370,19 @@ module Pkg_version = struct
     Build.vpath spec
 end
 
+module Scope_key = struct
+  let of_string sctx key =
+    match String.rsplit2 key ~on:'@' with
+    | None ->
+      (key, public_libs sctx)
+    | Some (key, scope) ->
+      ( key
+      , Scope.libs (find_scope_by_name sctx (Scope_info.Name.of_string scope)))
+
+  let to_string key scope =
+    sprintf "%s@%s" key (Scope_info.Name.to_string scope)
+end
+
 let parse_bang var : bool * string =
   let len = String.length var in
   if len > 0 && var.[0] = '!' then

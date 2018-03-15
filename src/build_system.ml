@@ -280,7 +280,7 @@ module Alias0 = struct
   let lint        = make "lint"
 
   let package_install ~(context : Context.t) ~pkg =
-    make (sprintf "install-%s" (Package.Name.to_string pkg))
+    make (sprintf ".%s-files" (Package.Name.to_string pkg))
       ~dir:context.build_dir
 end
 

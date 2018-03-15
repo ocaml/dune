@@ -433,7 +433,7 @@ let env_for_exec t =
         (Config.local_install_man_dir ~context:t.name)
     ]
   in
-  Env.to_unix (Env.extend t.env ~vars:(Env.Map.of_list_exn vars))
+  Env.extend t.env ~vars:(Env.Map.of_list_exn vars)
 
 let compiler t (mode : Mode.t) =
   match mode with

@@ -104,7 +104,7 @@ module Gen(P : Install_rules.Params) = struct
              \n\
              \nThis will become an error in the future."
             (let tag = Sexp.unsafe_atom_of_string
-                       "modules_without_implementation" in
+                         "modules_without_implementation" in
              Sexp.to_string (List [ tag
                                   ; Sexp.To_sexp.(list string) should_be_listed
                                   ]))

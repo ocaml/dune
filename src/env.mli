@@ -17,6 +17,8 @@ val get : t -> Var.t -> string option
 
 val extend : t -> vars:string Map.t -> t
 
+val extend_env : t -> t -> t
+
 val add : t -> var:Var.t -> value:string -> t
 
 val diff : t -> t -> t

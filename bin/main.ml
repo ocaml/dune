@@ -49,6 +49,7 @@ let set_common c ~targets =
       ]
 
 let restore_cwd_and_execve common prog argv env =
+  let env = Env.to_unix env in
   let prog =
     if Filename.is_relative prog then
       Filename.concat common.root prog

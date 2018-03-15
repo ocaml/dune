@@ -80,7 +80,6 @@ val add_rule
   -> ?mode:Jbuild.Rule.Mode.t
   -> ?locks:Path.t list
   -> ?loc:Loc.t
-  -> ?package:Package.Name.t
   -> (unit, Action.t) Build.t
   -> unit
 val add_rule_get_targets

@@ -20,7 +20,6 @@ module Rule : sig
     ; loc      : Loc.t option
     ; (** Directory where all the targets are produced *)
       dir      : Path.t
-    ; package  : Package.Name.t option
     }
 
   val make
@@ -29,7 +28,6 @@ module Rule : sig
     -> context:Context.t option
     -> ?locks:Path.t list
     -> ?loc:Loc.t
-    -> ?package:Package.Name.t
     -> (unit, Action.t) Build.t
     -> t
 end

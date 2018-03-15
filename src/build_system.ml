@@ -161,7 +161,6 @@ module Internal_rule = struct
     ; loc              : Loc.t option
     ; dir              : Path.t
     ; mutable exec     : Exec_status.t
-    ; package          : Package.Name.t option
     }
 
   let compare a b = Id.compare a.id b.id
@@ -354,6 +353,8 @@ type t =
   ; files_of : (Path.t, Files_of.t) Hashtbl.t
   ; mutable prefix : (unit, unit) Build.t option
   ; hook : hook -> unit
+  ; (* Package files are part of *)
+    packages : (Path.t, Package.Name.t) Hashtbl.t
   }
 
 let string_of_paths set =
@@ -652,7 +653,6 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       ; locks
       ; loc
       ; dir
-      ; package
       } =
     pre_rule
   in
@@ -777,7 +777,6 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     ; mode
     ; loc
     ; dir
-    ; package
     }
   in
   create_file_specs t target_specs rule ~copy_source
@@ -1150,6 +1149,7 @@ let create ~contexts ~file_tree ~hook =
   let t =
     { contexts
     ; files      = Hashtbl.create 1024
+    ; packages   = Hashtbl.create 1024
     ; trace      = Trace.load ()
     ; local_mkdirs = Path.Local.Set.empty
     ; dirs       = Hashtbl.create 1024
@@ -1390,30 +1390,33 @@ let build_rules ?recursive t ~request =
   entry_point t ~f:(fun () ->
     build_rules_internal ?recursive t ~request)
 
+let set_package t file package =
+  Hashtbl.add t.packages file package
+
 let package_deps t files =
   let rules_seen = ref Id_set.empty in
   let packages = ref Package.Name.Set.empty in
   let rec loop fn =
-    let dir = Path.parent fn in
-    if Path.is_in_build_dir dir then load_dir t ~dir;
-    match Hashtbl.find t.files fn with
-    | None -> ()
-    | Some (File_spec.T { rule = ir; _ }) ->
-      if not (Id_set.mem !rules_seen ir.id) then begin
-        rules_seen := Id_set.add !rules_seen ir.id;
-        let _, dyn_deps =
-          match ir.exec with
-          | Running { rule_evaluation; _ }
-          | Evaluating_rule { rule_evaluation; _ } ->
-            Option.value_exn (Fiber.Future.peek rule_evaluation)
-          | Not_started _ -> assert false
-        in
-        match ir.package with
-        | None ->
+    match Hashtbl.find t.packages fn with
+    | Some p ->
+      packages := Package.Name.Set.add !packages p
+    | None ->
+      let dir = Path.parent fn in
+      if Path.is_in_build_dir dir then load_dir t ~dir;
+      match Hashtbl.find t.files fn with
+      | None -> ()
+      | Some (File_spec.T { rule = ir; _ }) ->
+        if not (Id_set.mem !rules_seen ir.id) then begin
+          rules_seen := Id_set.add !rules_seen ir.id;
+          let _, dyn_deps =
+            match ir.exec with
+            | Running { rule_evaluation; _ }
+            | Evaluating_rule { rule_evaluation; _ } ->
+              Option.value_exn (Fiber.Future.peek rule_evaluation)
+            | Not_started _ -> assert false
+          in
           Pset.iter (Pset.union ir.static_deps dyn_deps) ~f:loop
-        | Some p ->
-          packages := Package.Name.Set.add !packages p
-      end
+        end
   in
   let open Build.O in
   Build.paths_for_rule files >>^ fun () ->

@@ -219,10 +219,10 @@ let create
 let prefix_rules t prefix ~f =
   Build_system.prefix_rules t.build_system prefix ~f
 
-let add_rule t ?sandbox ?mode ?locks ?loc ?package build =
+let add_rule t ?sandbox ?mode ?locks ?loc build =
   let build = Build.O.(>>>) build t.chdir in
   Build_system.add_rule t.build_system
-    (Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc ?package
+    (Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
        ~context:(Some t.context) build)
 
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc build =

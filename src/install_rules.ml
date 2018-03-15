@@ -203,9 +203,11 @@ module Gen(P : Install_params) = struct
     let install_dir = Config.local_install_dir ~context:ctx.name in
     List.map entries ~f:(fun entry ->
       let dst =
-        Path.append install_dir (Install.Entry.relative_installed_path entry ~package)
+        Path.append install_dir
+          (Install.Entry.relative_installed_path entry ~package)
       in
-      SC.add_rule sctx (Build.symlink ~src:entry.src ~dst) ~package;
+      Build_system.set_package (SC.build_system sctx) entry.src package;
+      SC.add_rule sctx (Build.symlink ~src:entry.src ~dst);
       Install.Entry.set_src entry dst)
 
   let promote_install_file =

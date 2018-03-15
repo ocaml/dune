@@ -192,11 +192,10 @@ module Rule = struct
     ; locks    : Path.t list
     ; loc      : Loc.t option
     ; dir      : Path.t
-    ; package  : Package.Name.t option
     }
 
   let make ?(sandbox=false) ?(mode=Jbuild.Rule.Mode.Not_a_rule_stanza)
-        ~context ?(locks=[]) ?loc ?package build =
+        ~context ?(locks=[]) ?loc build =
     let targets = targets build in
     let dir =
       match targets with
@@ -230,6 +229,5 @@ module Rule = struct
     ; locks
     ; loc
     ; dir
-    ; package
     }
 end

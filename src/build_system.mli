@@ -77,6 +77,9 @@ val on_load_dir : t -> dir:Path.t -> f:(unit -> unit) -> unit
 (** Stamp file that depends on all files of [dir] with extension [ext]. *)
 val stamp_file_for_files_of : t -> dir:Path.t -> ext:string -> Path.t
 
+(** Sets the package this file is part of *)
+val set_package : t -> Path.t -> Package.Name.t -> unit
+
 (** Scan the transitive dependencies of the following files and return
     set of packages these files are part of. Do not scan packages
     recursively. *)

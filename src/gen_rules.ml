@@ -11,6 +11,8 @@ open! No_io
 module Gen(P : Install_rules.Params) = struct
   module Alias = Build_system.Alias
   module SC = Super_context
+  module Odoc = Odoc.Gen(P)
+
   open P
 
   let ctx = SC.context sctx
@@ -760,13 +762,7 @@ module Gen(P : Install_rules.Params) = struct
         SC.add_rule sctx build
       );
 
-    (* Odoc *)
-    let mld_files =
-      String_set.fold files ~init:[] ~f:(fun fn acc ->
-        if Filename.check_suffix fn ".mld" then fn :: acc else acc)
-    in
-    Odoc.setup_library_rules sctx lib ~dir ~requires ~modules ~dep_graphs
-      ~mld_files ~scope
+    Odoc.setup_library_odoc_rules lib ~dir ~requires ~modules ~dep_graphs ~scope
     ;
 
     let flags =
@@ -983,7 +979,7 @@ module Gen(P : Install_rules.Params) = struct
     (match components with
      | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
                            sctx rest
-     | "_doc" :: rest -> Odoc.gen_rules sctx rest ~dir
+     | "_doc" :: rest -> Odoc.gen_rules rest ~dir
      | ".ppx"  :: rest -> Preprocessing.gen_rules sctx rest
      | _ ->
        match Path.Map.find stanzas_per_dir dir with
@@ -1006,7 +1002,13 @@ module Gen(P : Install_rules.Params) = struct
         let module_names_of_lib = module_names_of_lib
         let mlds_of_dir = mlds_of_dir
       end) in
-    Install_rules.init ()
+    Install_rules.init ();
+    Odoc.init ~modules_by_lib:(fun ~dir lib ->
+      let m = modules_by_lib ~dir lib in
+      match m.alias_module with
+      | Some m -> [m]
+      | None -> Module.Name.Map.values m.modules
+    ) ~mlds_of_dir
 end
 
 module type Gen = sig

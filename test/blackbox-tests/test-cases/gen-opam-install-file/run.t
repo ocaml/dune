@@ -43,3 +43,6 @@
     "_build/install/default/share/foo/bar.ml"
     "_build/install/default/share/foo/baz.ml" {"baz.ml"}
   ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-pages/doc.mld" {"odoc-pages/doc.mld"}
+  ]

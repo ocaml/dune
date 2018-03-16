@@ -20,5 +20,5 @@
 
 (alias
  ((name runtest)
-  (deps (_doc/index.html))
-  (action (echo "${read:_doc/index.html}"))))
+  (deps (_doc/_html/index.html))
+  (action (echo "${read:_doc/_html/index.html}"))))

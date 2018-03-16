@@ -29,11 +29,13 @@ type t =
   ; vars                             : Action.Var_expansion.t String_map.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
+  ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
   }
 
 let context t = t.context
 let stanzas t = t.stanzas
 let packages t = t.packages
+let libs_by_package t = t.libs_by_package
 let artifacts t = t.artifacts
 let file_tree t = t.file_tree
 let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
@@ -200,6 +202,16 @@ let create
       match action with
       | Chdir _ -> action
       | _ -> Chdir (context.build_dir, action))
+  ; libs_by_package =
+    Lib.DB.all public_libs
+    |> Lib.Set.to_list
+    |> List.map ~f:(fun lib ->
+      (Option.value_exn (Lib.package lib), lib))
+    |> Package.Name.Map.of_list_multi
+    |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
+      let pkg  = Option.value_exn pkg          in
+      let libs = Option.value libs ~default:[] in
+      Some (pkg, Lib.Set.of_list libs))
   }
 
 let prefix_rules t prefix ~f =

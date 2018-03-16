@@ -44,17 +44,9 @@ module Gen(P : Install_params) = struct
              (lib_dune_file ~dir:(Lib.src_dir lib) ~name:(Lib.name lib)))
 
   let init_meta () =
-    let public_libs = Lib.DB.all (SC.public_libs sctx) in
-    Lib.Set.iter public_libs ~f:gen_lib_dune_file;
-    Lib.Set.to_list public_libs
-    |> List.map ~f:(fun lib ->
-      (Package.Name.of_string (Findlib.root_package_name (Lib.name lib)), lib))
-    |> Package.Name.Map.of_list_multi
-    |> Package.Name.Map.merge (SC.packages sctx) ~f:(fun _name pkg libs ->
-      let pkg  = Option.value_exn pkg          in
-      let libs = Option.value libs ~default:[] in
-      Some (pkg, libs))
+    SC.libs_by_package sctx
     |> Package.Name.Map.iter ~f:(fun ((pkg : Package.t), libs) ->
+        Lib.Set.iter libs ~f:gen_lib_dune_file;
       let path = Path.append ctx.build_dir pkg.path in
       SC.on_load_dir sctx ~dir:path ~f:(fun () ->
         let meta_fn = "META." ^ (Package.Name.to_string pkg.name) in
@@ -97,7 +89,7 @@ module Gen(P : Install_params) = struct
           Gen_meta.gen
             ~package:(Package.Name.to_string pkg.name)
             ~version
-            libs
+            (Lib.Set.to_list libs)
         in
         SC.add_rule sctx
           (Build.fanout meta_contents template

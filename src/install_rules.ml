@@ -10,6 +10,7 @@ end
 module type Install_params = sig
   include Params
   val module_names_of_lib : Library.t -> dir:Path.t -> Module.t list
+  val mlds_of_dir : Documentation.t -> dir:Path.t -> Path.t list
 end
 
 module Archives(P : Params) = struct
@@ -269,6 +270,13 @@ module Gen(P : Install_params) = struct
             List.map files ~f:(fun { Install_conf. src; dst } ->
               (package.name,
                Install.Entry.make section (Path.relative dir src) ?dst))
+          | Documentation ({ package; _ } as d) ->
+            List.map ~f:(fun mld ->
+              (package.name,
+               (Install.Entry.make
+                  ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
+                  Install.Section.Doc mld))
+            ) (mlds_of_dir d ~dir)
           | _ -> [])
       |> Package.Name.Map.of_list_multi
     in

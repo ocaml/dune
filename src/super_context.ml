@@ -114,6 +114,7 @@ let create
           let keep =
             match (stanza : Stanza.t) with
             | Library lib -> Lib.DB.available (Scope.libs scope) lib.name
+            | Documentation _
             | Install _   -> true
             | _           -> false
           in

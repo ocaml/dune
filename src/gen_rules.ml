@@ -150,6 +150,25 @@ module Gen(P : Install_rules.Params) = struct
       modules
     end
 
+  let parse_mlds ~dir ~(all_mlds : string String_map.t) ~mlds_written_by_user =
+    if Ordered_set_lang.is_standard mlds_written_by_user then
+      all_mlds
+    else
+      let mlds =
+        Ordered_set_lang.String.eval_unordered
+          mlds_written_by_user
+          ~parse:(fun ~loc s ->
+            match String_map.find all_mlds s with
+            | Some s ->
+              s
+            | None ->
+              Loc.fail loc "%s.mld doesn't exist in %s" s
+                (Path.to_string_maybe_quoted
+                   (Path.drop_optional_build_context dir))
+          )
+          ~standard:all_mlds in
+      mlds
+
   (* +-----------------------------------------------------------------+
      | User rules & copy files                                         |
      +-----------------------------------------------------------------+ *)
@@ -291,6 +310,28 @@ module Gen(P : Install_rules.Params) = struct
         ; obj_name = ""
         }
     )
+
+  let guess_mlds ~files =
+    String_set.to_list files
+    |> List.filter_map ~f:(fun fn ->
+      match String.lsplit2 fn ~on:'.' with
+      | Some (s, "mld") -> Some (s, fn)
+      | _ -> None)
+    |> String_map.of_list_exn
+
+  let mlds_by_dir =
+    let cache = Hashtbl.create 32 in
+    fun ~dir ->
+      Hashtbl.find_or_add cache dir ~f:(fun dir ->
+        let files = text_files ~dir in
+        guess_mlds ~files)
+
+  let mlds_of_dir (doc : Documentation.t) ~dir =
+    parse_mlds ~dir
+      ~all_mlds:(mlds_by_dir ~dir)
+      ~mlds_written_by_user:doc.mld_files
+    |> String_map.values
+    |> List.map ~f:(Path.relative dir)
 
   let modules_by_dir =
     let cache = Hashtbl.create 32 in
@@ -963,6 +1004,7 @@ module Gen(P : Install_rules.Params) = struct
       Install_rules.Gen(struct
         include P
         let module_names_of_lib = module_names_of_lib
+        let mlds_of_dir = mlds_of_dir
       end) in
     Install_rules.init ()
 end
@@ -1010,7 +1052,8 @@ let gen ~contexts ~build_system
              match (stanza : Stanza.t) with
              | Library { public = Some { package; _ }; _ }
              | Alias { package = Some package ;  _ }
-             | Install { package; _ } ->
+             | Install { package; _ }
+             | Documentation { package; _ } ->
                Package.Name.Set.mem pkgs package.name
              | _ -> true)))
     in

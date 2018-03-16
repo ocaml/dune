@@ -43,6 +43,8 @@ end
 
 val status : t -> Status.t
 
+val package : t -> Package.Name.t option
+
 (** Operations on list of libraries *)
 module L : sig
   type nonrec t = t list

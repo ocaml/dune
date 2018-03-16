@@ -353,6 +353,15 @@ let is_local t = Path.is_local t.obj_dir
 
 let status t = t.status
 
+let package t =
+  match t.status with
+  | Installed ->
+    Some (Findlib.root_package_name t.name
+          |> Package.Name.of_string)
+  | Public p -> Some p.name
+  | Private _ ->
+    None
+
 let to_id t : Id.t =
   { unique_id = t.unique_id
   ; path      = t.src_dir

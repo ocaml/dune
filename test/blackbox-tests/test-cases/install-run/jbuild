@@ -1,0 +1,18 @@
+(jbuild_version 1)
+
+(executable
+ ((name bar)
+  (public_name bar)
+  (package foo)
+  (modules (bar))))
+
+(executable
+ ((name foo)
+  (public_name foo)
+  (package foo)
+  (modules (foo))
+  (libraries (unix))))
+
+(alias
+ ((name runtest)
+  (action (install-run ./foo.exe))))

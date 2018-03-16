@@ -31,6 +31,7 @@ struct
     let path = Path.t and string = String.t in
     sum
       [ cstr_rest "run" (Program.t @> nil) string (fun prog args -> Run (prog, args))
+      ; cstr_rest "install-run" (Program.t @> nil) string (fun prog args -> Install_run (prog, args))
       ; cstr "chdir"    (path @> t @> nil)        (fun dn t -> Chdir (dn, t))
       ; cstr "setenv"   (string @> string @> t @> nil)   (fun k v t -> Setenv (k, v, t))
       ; cstr "with-stdout-to"  (path @> t @> nil) (fun fn t -> Redirect (Stdout, fn, t))
@@ -69,6 +70,8 @@ struct
     function
     | Run (a, xs) -> List (Sexp.unsafe_atom_of_string "run"
                            :: Program.sexp_of_t a :: List.map xs ~f:string)
+    | Install_run (a, xs) -> List (Sexp.unsafe_atom_of_string "install-run"
+                                   :: Program.sexp_of_t a :: List.map xs ~f:string)
     | Chdir (a, r) -> List [Sexp.unsafe_atom_of_string "chdir" ;
                             path a ; sexp_of_t r]
     | Setenv (k, v, r) -> List [Sexp.unsafe_atom_of_string "setenv" ;
@@ -140,6 +143,8 @@ module Make_mapper
     match t with
     | Run (prog, args) ->
       Run (f_program ~dir prog, List.map args ~f:(f_string ~dir))
+    | Install_run (prog, args) ->
+      Install_run (f_program ~dir prog, List.map args ~f:(f_string ~dir))
     | Chdir (fn, t) ->
       Chdir (f_path ~dir fn, map t ~dir:fn ~f_program ~f_string ~f_path)
     | Setenv (var, value, t) ->
@@ -408,6 +413,15 @@ module Unexpanded = struct
           | This path -> This (map_exe path)
         in
         Run (prog, more_args @ args)
+      | Install_run (prog, args) ->
+        let args = List.concat_map args ~f:(E.strings ~dir ~f) in
+        let prog, more_args = E.prog_and_args ~dir ~f prog in
+        let prog =
+          match prog with
+          | Search _ -> prog
+          | This path -> This (map_exe path)
+        in
+        Install_run (prog, more_args @ args)
       | Chdir (fn, t) ->
         let fn = E.path ~dir ~f fn in
         Chdir (fn, expand t ~dir:fn ~map_exe ~f)
@@ -501,6 +515,26 @@ module Unexpanded = struct
         | Right _ as prog ->
           Run (prog, args)
       end
+    | Install_run (prog, args) ->
+      let args =
+        List.concat_map args ~f:(fun arg ->
+          match E.strings ~dir ~f arg with
+          | Left args -> List.map args ~f:(fun x -> Left x)
+          | Right _ as x -> [x])
+      in
+      begin
+        match E.prog_and_args ~dir ~f prog with
+        | Left (prog, more_args) ->
+          let more_args = List.map more_args ~f:(fun x -> Left x) in
+          let prog =
+            match prog with
+            | Search _ -> prog
+            | This path -> This (map_exe path)
+          in
+          Install_run (Left prog, more_args @ args)
+        | Right _ as prog ->
+          Install_run (prog, args)
+      end
     | Chdir (fn, t) -> begin
         let res = E.path ~dir ~f fn in
         match res with
@@ -558,6 +592,7 @@ let fold_one_step t ~init:acc ~f =
   | Ignore (_, t) -> f acc t
   | Progn l -> List.fold_left l ~init:acc ~f
   | Run _
+  | Install_run _
   | Echo _
   | Cat _
   | Copy _
@@ -736,6 +771,14 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     Prog.Not_found.raise e
   | Run (Ok prog, args) ->
     exec_run ~ectx ~dir ~env ~stdout_to ~stderr_to prog args
+  | Install_run (Error e, _) ->
+    Prog.Not_found.raise e
+  | Install_run (Ok prog, args) ->
+    exec_run ~ectx ~dir ~env:(
+      match ectx.context with
+      | None -> die "No context attached to action: %a@." Sexp.pp (sexp_of_t t)
+      | Some c -> Env.extend_env env (Context.env_for_exec c)
+    ) ~stdout_to ~stderr_to prog args
   | Chdir (dir, t) ->
     exec t ~ectx ~dir ~env ~stdout_to ~stderr_to
   | Setenv (var, value, t) ->
@@ -924,6 +967,7 @@ module Infer = struct
     type t =
       { deps    : S.t
       ; targets : S.t
+      ; aliases : String_set.t
       }
   end
   open Outcome
@@ -939,6 +983,7 @@ module Infer = struct
     type t =
       { deps    : path_set
       ; targets : path_set
+      ; aliases : String_set.t
       }
   end
 
@@ -949,6 +994,7 @@ module Infer = struct
     val ( +@ ) : outcome -> path -> outcome
     val ( +< ) : outcome -> path -> outcome
     val ( +<! ) : outcome -> program -> outcome
+    val add_alias : outcome -> string -> outcome
   end
 
   module Make
@@ -966,6 +1012,7 @@ module Infer = struct
     let rec infer acc t =
       match t with
       | Run (prog, _) -> acc +<! prog
+      | Install_run (prog, _) -> add_alias (acc +<! prog) "install"
       | Redirect (_, fn, t)  -> infer (acc +@ fn) t
       | Cat fn               -> acc +< fn
       | Write_file (fn, _)  -> acc +@ fn
@@ -987,8 +1034,10 @@ module Infer = struct
       | Mkdir _ -> acc
 
     let infer t =
-      let { deps; targets } =
-        infer { deps = Pset.empty; targets = Pset.empty } t
+      let { deps; targets; aliases } =
+        infer { deps = Pset.empty
+              ; targets = Pset.empty
+              ; aliases = String_set.empty } t
       in
       (* A file can be inferred as both a dependency and a target,
          for instance:
@@ -997,7 +1046,7 @@ module Infer = struct
            (progn (copy a b) (copy b c))
          ]}
       *)
-      { deps = Pset.diff deps targets; targets }
+      { deps = Pset.diff deps targets; targets; aliases }
   end [@@inline always]
 
   include Make(Ast)(S)(Outcome)(struct
@@ -1007,6 +1056,8 @@ module Infer = struct
         match prog with
         | Ok p -> acc +< p
         | Error _ -> acc
+      let add_alias acc alias =
+        { acc with aliases = String_set.add acc.aliases alias }
     end)
 
   module Partial = Make(Unexpanded.Partial.Past)(S)(Outcome)(struct
@@ -1022,6 +1073,8 @@ module Infer = struct
         match (fn : Unexpanded.Partial.program) with
         | Left  (This fn) -> { acc with deps = S.add acc.deps fn }
         | Left  (Search _) | Right _ -> acc
+      let add_alias acc alias =
+        { acc with aliases = String_set.add acc.aliases alias }
     end)
 
   module Partial_with_all_targets = Make(Unexpanded.Partial.Past)(S)(Outcome)(struct
@@ -1038,6 +1091,8 @@ module Infer = struct
         match (fn : Unexpanded.Partial.program) with
         | Left  (This fn) -> { acc with deps = S.add acc.deps fn }
         | Left  (Search _) | Right _ -> acc
+      let add_alias acc alias =
+        { acc with aliases = String_set.add acc.aliases alias }
     end)
 
   let partial ~all_targets t =
@@ -1056,6 +1111,7 @@ module Infer = struct
     type t =
       { deps    : S_unexp.t
       ; targets : S_unexp.t
+      ; aliases : String_set.t
       }
   end
 
@@ -1064,6 +1120,8 @@ module Infer = struct
       let ( +@ ) acc fn = { acc with targets = fn :: acc.targets }
       let ( +< ) acc _ = acc
       let ( +<! )= ( +< )
+      let add_alias acc alias =
+        { acc with aliases = String_set.add acc.aliases alias }
     end)
 
   let unexpanded_targets t =

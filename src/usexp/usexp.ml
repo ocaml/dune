@@ -15,17 +15,18 @@ module A = Parser_automaton_internal
 module Atom = struct
  type t = Sexp_ast.atom = A of string [@@unboxed]
 
-  let is_valid s =
-    if s = "" then false
-    else
-      try
-        for i = 0 to String.length s - 1 do
-          match String.unsafe_get s i with
-          | ' ' .. '~' -> ()
-          | _ -> raise Exit
-        done;
-        true
-      with Exit -> false
+ let is_valid str =
+   let len = String.length str in
+   len = 0 ||
+   let rec loop ix =
+     match str.[ix] with
+     | '"' | '(' | ')' | ';' | '\\' -> true
+     | '|' -> ix > 0 && let next = ix - 1 in Char.equal str.[next] '#' || loop next
+     | '#' -> ix > 0 && let next = ix - 1 in Char.equal str.[next] '|' || loop next
+     | '\000' .. '\032' | '\127' .. '\255' -> true
+     | _ -> ix > 0 && loop (ix - 1)
+   in
+   not (loop (len - 1))
 
  (* XXX eventually we want to report a nice error message to the user
      at the point the conversion is made. *)

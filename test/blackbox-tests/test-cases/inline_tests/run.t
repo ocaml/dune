@@ -35,11 +35,11 @@
         -))
       (generate_runner
        ((progn
-         (echo let () = print_int 41)
+         (echo "let () = print_int 41")
          (echo "\n")
-         (echo let () = print_int 42)
+         (echo "let () = print_int 42")
          (echo "\n")
-         (echo let () = print_int 43;;))))
+         (echo "let () = print_int 43;;"))))
       (extends ())))))
            run alias dune-file/runtest
   414243

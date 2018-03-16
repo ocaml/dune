@@ -35,7 +35,7 @@ module Set : Set.S with type elt = t
 module Status : sig
   type t =
     | Installed
-    | Public
+    | Public  of Package.t
     | Private of Jbuild.Scope_info.Name.t
 
   val pp : t Fmt.t

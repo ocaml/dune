@@ -35,7 +35,7 @@ module Doc = struct
             dir_internal t
               (match Lib.status lib with
                | Installed -> assert false
-               | Public    -> Public (Lib.name lib)
+               | Public _  -> Public (Lib.name lib)
                | Private s -> Private (Lib.name lib, s))
           in
           Build_system.Alias.stamp_file (alias ~dir) :: acc
@@ -220,7 +220,7 @@ let setup_library_rules sctx (lib : Library.t) ~dir ~scope ~modules ~mld_files
       let name = Lib.name lib in
       match Lib.status lib with
       | Installed -> assert false
-      | Public    -> name
+      | Public _  -> name
       | Private scope_name ->
         sprintf "%s@%s" name (Scope_info.Name.to_string scope_name)
     in

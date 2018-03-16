@@ -19,3 +19,27 @@
   $ $JBUILDER runtest many-backends-choose -j1 --display quiet --root .
            run alias many-backends-choose/runtest
   backend_mbc1
+
+  $ $JBUILDER runtest dune-file -j1 --display quiet --root .
+  (dune
+   1
+   ((inline_tests.backend
+     1.0
+     ((runner_libraries (ppx_inline_test.runner.lib))
+      (flags
+       (inline-test-runner
+        ${library-name}
+        -source-tree-root
+        ${ROOT}
+        -diff-cmd
+        -))
+      (generate_runner
+       ((progn
+         (echo let () = print_int 41)
+         (echo "\n")
+         (echo let () = print_int 42)
+         (echo "\n")
+         (echo let () = print_int 43;;))))
+      (extends ())))))
+           run alias dune-file/runtest
+  414243

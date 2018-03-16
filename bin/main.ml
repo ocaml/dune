@@ -1131,9 +1131,8 @@ let exec =
       raise Already_reported
     | Some real_prog, _ ->
       let real_prog = Path.to_string real_prog     in
-      let env       = Context.env_for_exec context in
       let argv      = Array.of_list (prog :: args) in
-      restore_cwd_and_execve common real_prog argv env
+      restore_cwd_and_execve common real_prog argv context.env
   in
   ( Term.(const go
           $ common
@@ -1233,7 +1232,7 @@ let utop =
       ) |> Scheduler.go ~log ~common in
     Build_system.finalize build_system;
     restore_cwd_and_execve common utop_path (Array.of_list (utop_path :: args))
-      (Context.env_for_exec context)
+      context.env
   in
   let name_ = Arg.info [] ~docv:"PATH" in
   ( Term.(const go

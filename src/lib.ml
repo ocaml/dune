@@ -374,6 +374,12 @@ struct
   let compare x y = compare x.unique_id y.unique_id
 end)
 
+module Map = Map.Make(
+struct
+  type nonrec t = t
+  let compare x y = compare x.unique_id y.unique_id
+end)
+
 module L = struct
   type nonrec t = t list
 

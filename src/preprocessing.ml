@@ -126,15 +126,6 @@ let gen_rules sctx components =
     build_ppx_driver sctx pps ~lib_db ~dep_kind:Required ~target:exe
   | _ -> ()
 
-let most_specific_db (a : Lib.Status.t) (b : Lib.Status.t) =
-  match a, b with
-  | Private x, Private y -> assert (x = y); a
-  | Private _, _         -> a
-  | _        , Private _ -> b
-  | Public   , _
-  | _        , Public    -> Public
-  | Installed, Installed -> Installed
-
 let get_ppx_driver sctx ~scope pps =
   let driver, names =
     match List.rev_map pps ~f:(fun (_loc, pp) -> Pp.to_string pp) with
@@ -142,25 +133,34 @@ let get_ppx_driver sctx ~scope pps =
     | driver :: rest -> (Some driver, rest)
   in
   let sctx = SC.host sctx in
-  let name_and_db name =
+  let name_and_scope_for_key name =
     match Lib.DB.find (Scope.libs scope) name with
     | Error _ ->
       (* XXX unknown but assume it's public *)
-      (name, Lib.Status.Installed)
+      (name, None)
     | Ok lib ->
-      (Lib.name lib, Lib.status lib)
+      (Lib.name lib,
+       match Lib.status lib with
+       | Private scope_name   -> Some scope_name
+       | Public _ | Installed -> None)
   in
-  let driver, driver_db =
+  let driver, scope_for_key =
     match driver with
-    | None -> (None, Lib.Status.Installed)
+    | None -> (None, None)
     | Some driver ->
-      let name, db = name_and_db driver in
-      (Some name, db)
+      let name, scope_for_key = name_and_scope_for_key driver in
+      (Some name, scope_for_key)
   in
-  let names, db =
-    List.fold_left names ~init:([], driver_db) ~f:(fun (names, db) lib ->
-      let name, db' = name_and_db lib in
-      (name :: names, most_specific_db db db'))
+  let names, scope_for_key =
+    List.fold_left names ~init:([], scope_for_key)
+      ~f:(fun (names, scope_for_key) lib ->
+        let name, scope_for_key' = name_and_scope_for_key lib in
+        (name :: names,
+         match scope_for_key, scope_for_key' with
+         | Some a, Some b -> assert (a = b); scope_for_key
+         | Some _, None   -> scope_for_key
+         | None  , Some _ -> scope_for_key'
+         | None  , None   -> None))
   in
   let names = List.sort ~compare:String.compare names in
   let names =
@@ -174,9 +174,9 @@ let get_ppx_driver sctx ~scope pps =
     | _  -> String.concat names ~sep:"+"
   in
   let key =
-    match db with
-    | Installed | Public -> key
-    | Private scope_name -> SC.Scope_key.to_string key scope_name
+    match scope_for_key with
+    | None            -> key
+    | Some scope_name -> SC.Scope_key.to_string key scope_name
   in
   let sctx = SC.host sctx in
   ppx_exe sctx ~key

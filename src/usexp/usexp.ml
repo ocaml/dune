@@ -21,8 +21,8 @@ module Atom = struct
    let rec loop ix =
      match str.[ix] with
      | '"' | '(' | ')' | ';' | '\\' -> true
-     | '|' -> ix > 0 && let next = ix - 1 in Char.equal str.[next] '#' || loop next
-     | '#' -> ix > 0 && let next = ix - 1 in Char.equal str.[next] '|' || loop next
+     | '|' -> ix > 0 && let next = ix - 1 in str.[next] = '#' || loop next
+     | '#' -> ix > 0 && let next = ix - 1 in str.[next] = '|' || loop next
      | '\000' .. '\032' | '\127' .. '\255' -> true
      | _ -> ix > 0 && loop (ix - 1)
    in

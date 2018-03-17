@@ -3,7 +3,7 @@
   (public_name foo)
   (modules ())
   (inline_tests.backend
-   ((runner_libraries (ppx_inline_test.runner.lib))
+   ((runner_libraries (str))
     (generate_runner
      (progn
       (echo "let () = print_int 41")

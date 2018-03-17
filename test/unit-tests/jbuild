@@ -9,6 +9,15 @@
 
 (ocamllex (expect_test))
 
+(executable
+ ((name sexp_tests)
+  (modules (sexp_tests))
+  (libraries (stdune usexp))))
+
+(alias
+ ((name runtest)
+  (action (run ./sexp_tests.exe))))
+
 (alias
  ((name runtest)
   (deps (tests.mlt

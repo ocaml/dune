@@ -18,12 +18,27 @@ let () =
         | Atom (_, A s') -> s = s'
         | _              -> false
       in
-      if Usexp.Atom.is_valid s && not parser_recognizes_as_atom then begin
+      let printed_as_atom =
+        match Usexp.atom_or_quoted_string s with
+        | Atom _ -> true
+        | _      -> false
+      in
+      if Usexp.Atom.is_valid s <> parser_recognizes_as_atom then begin
         Printf.eprintf
           "Usexp.Atom.is_valid error:\n\
            - s = %S\n\
-           - Usexp.Atom.is_Valid s = %B\n"
-          s (Usexp.Atom.is_valid s);
+           - Usexp.Atom.is_valid s = %B\n\
+           - parser_recognizes_as_atom = %B\n"
+          s (Usexp.Atom.is_valid s) parser_recognizes_as_atom;
+        exit 1
+      end;
+      if printed_as_atom && not parser_recognizes_as_atom then begin
+        Printf.eprintf
+          "Usexp.Atom.atom_or_quoted_string error:\n\
+           - s = %S\n\
+           - printed_as_atom = %B\n\
+           - parser_recognizes_as_atom = %B\n"
+          s printed_as_atom parser_recognizes_as_atom;
         exit 1
       end
     done

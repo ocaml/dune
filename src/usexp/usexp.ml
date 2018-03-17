@@ -17,7 +17,7 @@ module Atom = struct
 
  let is_valid str =
    let len = String.length str in
-   len = 0 ||
+   len > 0 &&
    let rec loop ix =
      match str.[ix] with
      | '"' | '(' | ')' | ';' | '\\' -> true

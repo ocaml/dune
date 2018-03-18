@@ -227,8 +227,8 @@ such libraries using a ``libraries`` field, such as:
             (inline_tests ((backend qtest)
                            (libraries (bar))))))
 
-Defining you own inline test backend
-------------------------------------
+Defining your own inline test backend
+-------------------------------------
 
 If you are writing a test framework, or for specific cases, you might
 want to define your own inline tests backend. If your framework is

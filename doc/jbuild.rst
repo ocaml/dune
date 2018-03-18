@@ -1058,6 +1058,9 @@ syntax:
   universe. In any case, this is only for dependencies in the
   installed world, you must still specify all dependencies that come
   from the workspace.
+- ``(package <pkg>)`` depend on all files installed by ``<package>``, as well
+  as on the transitive package dependencies of ``<package>``. This can be used
+  to test a command against the files that will be installed
 
 In all these cases, the argument supports `Variables expansion`_.
 

@@ -1,6 +1,6 @@
-*********************************
-Running and writing running tests
-*********************************
+*************************
+Writing and running tests
+*************************
 
 Jbuilder tries to streamline the testing story as much as possible, so
 that you can focus on the tests themselves and not bother with setting

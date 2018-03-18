@@ -1399,17 +1399,24 @@ let set_package t file package =
 
 let package_deps t pkg files =
   let rules_seen = ref Id_set.empty in
-  let packages = ref Package.Name.Set.empty in
-  let rec loop fn =
-    match Hashtbl.find t.packages fn with
-    | Some p when p <> pkg ->
-      packages := Package.Name.Set.add !packages p
-    | _ -> loop_deps fn
-  and loop_deps fn =
+  let rec loop fn acc =
+    match Hashtbl.find_all t.packages fn with
+    | [] -> loop_deps fn acc
+    | [p] when p = pkg -> loop_deps fn acc
+    | pkgs ->
+      List.fold_left pkgs ~init:acc ~f:add_package
+  and add_package acc p =
+    if p = pkg then
+      acc
+    else
+      Package.Name.Set.add acc p
+  and loop_deps fn acc =
     match Hashtbl.find t.files fn with
-    | None -> ()
+    | None -> acc
     | Some (File_spec.T { rule = ir; _ }) ->
-      if not (Id_set.mem !rules_seen ir.id) then begin
+      if Id_set.mem !rules_seen ir.id then
+        acc
+      else begin
         rules_seen := Id_set.add !rules_seen ir.id;
         let _, dyn_deps =
           match ir.exec with
@@ -1418,15 +1425,14 @@ let package_deps t pkg files =
             Option.value_exn (Fiber.Future.peek rule_evaluation)
           | Not_started _ -> assert false
         in
-        Pset.iter (Pset.union ir.static_deps dyn_deps) ~f:loop
+        Pset.fold (Pset.union ir.static_deps dyn_deps) ~init:acc ~f:loop
       end
   in
   let open Build.O in
   Build.paths_for_rule files >>^ fun () ->
   (* We know that at this point of execution, all the relevant ivars
      have been filled *)
-  Pset.iter files ~f:loop_deps;
-  !packages
+  Pset.fold files ~init:Package.Name.Set.empty ~f:loop_deps
 
 (* +-----------------------------------------------------------------+
    | Adding rules to the system                                      |

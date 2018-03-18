@@ -4,6 +4,8 @@ next
 - Add a `documentation` stanza. This stanza allows one to attach .mld files to
   opam packages. (#570 @rgrinberg)
 
+- Execute all actions (defined using `(action ..)`) in the context's
+  environment. (#623 @rgrinberg)
 
 1.0+beta19 (14/03/2018)
 -----------------------

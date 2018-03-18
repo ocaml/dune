@@ -34,6 +34,7 @@ val create
 val context   : t -> Context.t
 val stanzas   : t -> Dir_with_jbuild.t list
 val packages  : t -> Package.t Package.Name.Map.t
+val libs_by_package : t -> (Package.t * Lib.Set.t) Package.Name.Map.t
 val file_tree : t -> File_tree.t
 val artifacts : t -> Artifacts.t
 val stanzas_to_consider_for_install : t -> (Path.t * Scope.t * Stanza.t) list

@@ -8,7 +8,9 @@
       ocamlopt .bar.objs/bar.{cmx,o}
       ocamlopt bar.{a,cmxa}
       ocamlopt bar.cmxs
-     ocamlfind test.exe (exit 2)
-  (cd _build/default && /Users/rgrinberg/.opam/4.05.0/bin/ocamlfind ocamlc -linkpkg -package bar -o test.exe test.ml)
-  ocamlfind: Package `foo' not found - required by `bar'
-  [1]
+      ocamlopt foo.{a,cmxa}
+      ocamlopt foo.cmxs
+        ocamlc foo.cma
+     ocamlfind test.exe
+          test alias runtest
+  42 42

@@ -24,7 +24,7 @@
   (echo "let () = Printf.printf \"%d %s\" Foo.x Bar.x")))
 
 (rule
- ((deps    ((package bar)))
+ ((deps    (test.ml (package bar)))
   (targets (test.exe))
   (action  (run ocamlfind ocamlc -linkpkg -package bar -o test.exe test.ml))))
 

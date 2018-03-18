@@ -80,11 +80,12 @@ val stamp_file_for_files_of : t -> dir:Path.t -> ext:string -> Path.t
 (** Sets the package this file is part of *)
 val set_package : t -> Path.t -> Package.Name.t -> unit
 
-(** Scan the transitive dependencies of the following files and return
-    set of packages these files are part of. Do not scan packages
-    recursively. *)
+(** Assuming [files] is the list of files in [_build/install] that
+    belong to package [pkg], [package_deps t pkg files] is the set of
+    direct package dependencies of [package]. *)
 val package_deps
   :  t
+  -> Package.Name.t
   -> Path.Set.t
   -> (unit, Package.Name.Set.t) Build.t
 

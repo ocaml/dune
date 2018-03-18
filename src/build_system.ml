@@ -1397,36 +1397,35 @@ let build_rules ?recursive t ~request =
 let set_package t file package =
   Hashtbl.add t.packages file package
 
-let package_deps t files =
+let package_deps t pkg files =
   let rules_seen = ref Id_set.empty in
   let packages = ref Package.Name.Set.empty in
   let rec loop fn =
     match Hashtbl.find t.packages fn with
-    | Some p ->
+    | Some p when p <> pkg ->
       packages := Package.Name.Set.add !packages p
-    | None ->
-      let dir = Path.parent fn in
-      if Path.is_in_build_dir dir then load_dir t ~dir;
-      match Hashtbl.find t.files fn with
-      | None -> ()
-      | Some (File_spec.T { rule = ir; _ }) ->
-        if not (Id_set.mem !rules_seen ir.id) then begin
-          rules_seen := Id_set.add !rules_seen ir.id;
-          let _, dyn_deps =
-            match ir.exec with
-            | Running { rule_evaluation; _ }
-            | Evaluating_rule { rule_evaluation; _ } ->
-              Option.value_exn (Fiber.Future.peek rule_evaluation)
-            | Not_started _ -> assert false
-          in
-          Pset.iter (Pset.union ir.static_deps dyn_deps) ~f:loop
-        end
+    | _ -> loop_deps fn
+  and loop_deps fn =
+    match Hashtbl.find t.files fn with
+    | None -> ()
+    | Some (File_spec.T { rule = ir; _ }) ->
+      if not (Id_set.mem !rules_seen ir.id) then begin
+        rules_seen := Id_set.add !rules_seen ir.id;
+        let _, dyn_deps =
+          match ir.exec with
+          | Running { rule_evaluation; _ }
+          | Evaluating_rule { rule_evaluation; _ } ->
+            Option.value_exn (Fiber.Future.peek rule_evaluation)
+          | Not_started _ -> assert false
+        in
+        Pset.iter (Pset.union ir.static_deps dyn_deps) ~f:loop
+      end
   in
   let open Build.O in
   Build.paths_for_rule files >>^ fun () ->
-  (* This is a bit ugly, we know that at this point of execution, all
-     the relevant ivars have been filled *)
-  Pset.iter files ~f:loop;
+  (* We know that at this point of execution, all the relevant ivars
+     have been filled *)
+  Pset.iter files ~f:loop_deps;
   !packages
 
 (* +-----------------------------------------------------------------+

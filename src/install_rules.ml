@@ -244,10 +244,9 @@ module Gen(P : Install_params) = struct
       (Alias.package_install ~context:ctx ~pkg:package)
       files
       ~dyn_deps:
-        (Build_system.package_deps (SC.build_system sctx) files
+        (Build_system.package_deps (SC.build_system sctx) package files
          >>^ fun packages ->
-         Package.Name.Set.remove packages package
-         |> Package.Name.Set.to_list
+         Package.Name.Set.to_list packages
          |> List.map ~f:(fun pkg ->
            Build_system.Alias.package_install
              ~context:(SC.context sctx) ~pkg

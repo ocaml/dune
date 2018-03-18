@@ -203,8 +203,10 @@ module Gen(P : Install_params) = struct
     let install_dir = Config.local_install_dir ~context:ctx.name in
     List.map entries ~f:(fun entry ->
       let dst =
-        Path.append install_dir (Install.Entry.relative_installed_path entry ~package)
+        Path.append install_dir
+          (Install.Entry.relative_installed_path entry ~package)
       in
+      Build_system.set_package (SC.build_system sctx) entry.src package;
       SC.add_rule sctx (Build.symlink ~src:entry.src ~dst);
       Install.Entry.set_src entry dst)
 
@@ -237,6 +239,19 @@ module Gen(P : Install_params) = struct
         (Utils.install_file ~package ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let entries = local_install_rules entries ~package in
+    let files = Install.files entries in
+    SC.add_alias_deps sctx
+      (Alias.package_install ~context:ctx ~pkg:package)
+      files
+      ~dyn_deps:
+        (Build_system.package_deps (SC.build_system sctx) package files
+         >>^ fun packages ->
+         Package.Name.Set.to_list packages
+         |> List.map ~f:(fun pkg ->
+           Build_system.Alias.package_install
+             ~context:(SC.context sctx) ~pkg
+           |> Build_system.Alias.stamp_file)
+         |> Path.Set.of_list);
     SC.add_rule sctx
       ~mode:(if promote_install_file then
                Promote_but_delete_on_clean
@@ -244,7 +259,7 @@ module Gen(P : Install_params) = struct
                (* We must ignore the source file since it might be
                   copied to the source tree by another context. *)
                Ignore_source_files)
-      (Build.path_set (Install.files entries)
+      (Build.path_set files
        >>^ (fun () ->
          let entries =
            match ctx.findlib_toolchain with
@@ -299,7 +314,7 @@ module Gen(P : Install_params) = struct
           let path = Path.append ctx.build_dir src_path in
           let install_alias = Alias.install ~dir:path in
           let install_file = Path.relative path install_fn in
-          SC.add_alias_deps sctx install_alias [install_file])
+          SC.add_alias_deps sctx install_alias (Path.Set.singleton install_file))
 
   let init () =
     init_meta ();

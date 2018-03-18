@@ -40,6 +40,9 @@ module Future : sig
 
   (** Wait for the given future to yield a value. *)
   val wait : 'a t -> 'a fiber
+
+  (** Return [Some x] if [t] has already returned. *)
+  val peek : 'a t -> 'a option
 end with type 'a fiber := 'a t
 
 (** [fork f] creates a sub-fiber and return a [Future.t] to wait its result. *)
@@ -226,6 +229,9 @@ module Ivar : sig
   (** Fill the ivar with the following value. This can only be called
       once for a given ivar. *)
   val fill : 'a t -> 'a -> unit fiber
+
+  (** Return [Some x] is [fill t x] has been called previously. *)
+  val peek : 'a t -> 'a option
 end with type 'a fiber := 'a t
 
 module Mutex : sig

@@ -71,6 +71,7 @@ val files_recursively_in
 
 (** Record dynamic dependencies *)
 val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
+val dyn_path_set : ('a, Path.Set.t) t -> ('a, 'a) t
 
 val vpath : 'a Vspec.t  -> (unit, 'a) t
 
@@ -183,12 +184,13 @@ module Repr : sig
     | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Path.Set.t -> ('a, 'a) t
+    | Paths_for_rule : Path.Set.t -> ('a, 'a) t
     | Paths_glob : glob_state ref -> ('a, Path.t list) t
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
     | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
-    | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
+    | Dyn_paths : ('a, Path.Set.t) t -> ('a, 'a) t
     | Record_lib_deps : lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t
@@ -220,3 +222,6 @@ end
 val repr : ('a, 'b) t -> ('a, 'b) Repr.t
 
 val merge_lib_deps : lib_deps -> lib_deps -> lib_deps
+
+(**/**)
+val paths_for_rule : Path.Set.t -> ('a, 'a) t

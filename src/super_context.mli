@@ -41,6 +41,7 @@ val stanzas_to_consider_for_install : t -> (Path.t * Scope.t * Stanza.t) list
 val cxx_flags : t -> string list
 val build_dir : t -> Path.t
 val host : t -> t
+val build_system : t -> Build_system.t
 
 (** All public libraries of the workspace *)
 val public_libs : t -> Lib.DB.t
@@ -97,7 +98,8 @@ val add_rules
 val add_alias_deps
   :  t
   -> Build_system.Alias.t
-  -> Path.t list
+  -> ?dyn_deps:(unit, Path.Set.t) Build.t
+  -> Path.Set.t
   -> unit
 val add_alias_action
   :  t
@@ -150,7 +152,7 @@ module Libs : sig
     -> dir:Path.t
     -> ext:string
     -> Library.t
-    -> Path.t list
+    -> Path.Set.t
     -> unit
 
   (** Setup an alias that depend on all files with the given extensions.

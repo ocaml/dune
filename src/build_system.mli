@@ -77,6 +77,18 @@ val on_load_dir : t -> dir:Path.t -> f:(unit -> unit) -> unit
 (** Stamp file that depends on all files of [dir] with extension [ext]. *)
 val stamp_file_for_files_of : t -> dir:Path.t -> ext:string -> Path.t
 
+(** Sets the package this file is part of *)
+val set_package : t -> Path.t -> Package.Name.t -> unit
+
+(** Assuming [files] is the list of files in [_build/install] that
+    belong to package [pkg], [package_deps t pkg files] is the set of
+    direct package dependencies of [package]. *)
+val package_deps
+  :  t
+  -> Package.Name.t
+  -> Path.Set.t
+  -> (unit, Package.Name.Set.t) Build.t
+
 (** {2 Aliases} *)
 
 module Alias : sig
@@ -107,6 +119,10 @@ module Alias : sig
   val private_doc : dir:Path.t -> t
   val lint        : dir:Path.t -> t
 
+  (** Alias for all the files in [_build/install] that belong to this
+      package *)
+  val package_install : context:Context.t -> pkg:Package.Name.t -> t
+
   (** Return the underlying stamp file *)
   val stamp_file : t -> Path.t
 
@@ -128,9 +144,15 @@ module Alias : sig
     -> contexts:string list
     -> (unit, unit) Build.t
 
-  (** [add_deps store alias deps] arrange things so that all [deps]
-      are built as part of the build of alias [alias]. *)
-  val add_deps : build_system -> t -> Path.t list -> unit
+  (** [add_deps store alias ?dyn_deps deps] arrange things so that all
+      [dyn_deps] and [deps] are built as part of the build of alias
+      [alias]. *)
+  val add_deps
+    :  build_system
+    -> t
+    -> ?dyn_deps:(unit, Path.Set.t) Build.t
+    -> Path.Set.t
+    -> unit
 
   (** [add_action store alias ~stamp action] arrange things so that
       [action] is executed as part of the build of alias

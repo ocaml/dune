@@ -230,6 +230,7 @@ module Dep_conf = struct
     | Alias_rec of String_with_vars.t
     | Glob_files of String_with_vars.t
     | Files_recursively_in of String_with_vars.t
+    | Package of String_with_vars.t
     | Universe
 
   let t =
@@ -243,6 +244,7 @@ module Dep_conf = struct
         ; cstr_sw "alias_rec"            (fun x -> Alias_rec x)
         ; cstr_sw "glob_files"           (fun x -> Glob_files x)
         ; cstr_sw "files_recursively_in" (fun x -> Files_recursively_in x)
+        ; cstr_sw "package"              (fun x -> Package x)
         ; cstr    "universe" nil         Universe
         ]
     in
@@ -266,6 +268,9 @@ module Dep_conf = struct
     | Files_recursively_in t ->
        List [Sexp.unsafe_atom_of_string "files_recursively_in" ;
              String_with_vars.sexp_of_t t]
+    | Package t ->
+      List [Sexp.unsafe_atom_of_string "package" ;
+            String_with_vars.sexp_of_t t]
     | Universe ->
       Sexp.unsafe_atom_of_string "universe"
 end

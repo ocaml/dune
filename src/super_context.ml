@@ -41,6 +41,7 @@ let file_tree t = t.file_tree
 let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
 let cxx_flags t = t.cxx_flags
 let build_dir t = t.context.build_dir
+let build_system t = t.build_system
 
 let host t = Option.value t.host ~default:t
 
@@ -236,8 +237,8 @@ let add_rule_get_targets t ?sandbox ?mode ?locks ?loc build =
 let add_rules t ?sandbox builds =
   List.iter builds ~f:(add_rule t ?sandbox)
 
-let add_alias_deps t alias deps =
-  Alias.add_deps t.build_system alias deps
+let add_alias_deps t alias ?dyn_deps deps =
+  Alias.add_deps t.build_system alias ?dyn_deps deps
 
 let add_alias_action t alias ?locks ~stamp action =
   Alias.add_action t.build_system ~context:t.context alias ?locks ~stamp action
@@ -302,7 +303,8 @@ module Libs = struct
       ~ext:(String.concat exts ~sep:"-and-")
       (List.map exts ~f:(fun ext ->
          Alias.stamp_file
-           (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext)))
+           (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext))
+       |> Path.Set.of_list)
 
   let file_deps t ~ext =
     Build.dyn_paths (Build.arr (fun libs ->
@@ -351,6 +353,10 @@ module Deps = struct
       let path = Path.relative dir (expand_vars t ~scope ~dir s) in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
       >>^ Pset.to_list
+    | Package p ->
+      let pkg = Package.Name.of_string (expand_vars t ~scope ~dir p) in
+      Alias.dep (Alias.package_install ~context:t.context ~pkg)
+      >>^ fun () -> []
     | Universe ->
       Build.path Build_system.universe_file
       >>^ fun () -> []

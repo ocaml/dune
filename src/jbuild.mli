@@ -125,6 +125,7 @@ module Dep_conf : sig
     | Alias_rec of String_with_vars.t
     | Glob_files of String_with_vars.t
     | Files_recursively_in of String_with_vars.t
+    | Package of String_with_vars.t
     | Universe
 
   val t : t Sexp.Of_sexp.t

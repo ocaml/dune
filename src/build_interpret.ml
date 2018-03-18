@@ -63,6 +63,8 @@ let static_deps t ~all_targets ~file_tree =
     | Split (a, b) -> loop a (loop b acc)
     | Fanout (a, b) -> loop a (loop b acc)
     | Paths fns -> { acc with action_deps = Pset.union fns acc.action_deps }
+    | Paths_for_rule fns ->
+      { acc with rule_deps = Pset.union fns acc.rule_deps }
     | Paths_glob state -> begin
         match !state with
         | G_evaluated l ->
@@ -129,6 +131,7 @@ let lib_deps =
       | Split (a, b) -> loop a (loop b acc)
       | Fanout (a, b) -> loop a (loop b acc)
       | Paths _ -> acc
+      | Paths_for_rule _ -> acc
       | Vpath _ -> acc
       | Paths_glob _ -> acc
       | Dyn_paths t -> loop t acc
@@ -156,6 +159,7 @@ let targets =
     | Split (a, b) -> loop a (loop b acc)
     | Fanout (a, b) -> loop a (loop b acc)
     | Paths _ -> acc
+    | Paths_for_rule _ -> acc
     | Vpath _ -> acc
     | Paths_glob _ -> acc
     | Dyn_paths t -> loop t acc

@@ -7,6 +7,10 @@ next
 - Execute all actions (defined using `(action ..)`) in the context's
   environment. (#623 @rgrinberg)
 
+- Add a `(universe)` special dependency to specify that an action depend on
+  everything in the universe. Jbuilder cannot cache the result of an action that
+  depend on the universe (#603, fixes #255 @diml)
+
 1.0+beta19 (14/03/2018)
 -----------------------
 
@@ -48,10 +52,6 @@ next
   would be silently ignored and install broken artifacts (#607).
 
 - Fix display when output is not a tty (#518)
-
-- Add a `(universe)` special dependency to specify that an action
-  depend on everything in the universe. Jbuilder cannot cache the
-  result of an action that depend on the universe (#603, fixes #255)
 
 1.0+beta18.1 (14/03/2018)
 -------------------------

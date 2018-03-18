@@ -48,6 +48,7 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target pps =
     in
     (driver,
      Result.bind resolved_pps ~f:Lib.closure
+     |> Result.map ~f:Build.return
      |> Build.of_result)
   in
   let libs =

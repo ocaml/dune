@@ -1,3 +1,10 @@
+next
+----
+
+- Add a `documentation` stanza. This stanza allows one to attach .mld files to
+  opam packages. (#570 @rgrinberg)
+
+
 1.0+beta19 (14/03/2018)
 -----------------------
 

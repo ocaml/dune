@@ -47,7 +47,8 @@ module Linkage = struct
     }
 
   let  o_flags = ["-output-complete-obj"]
-  let so_flags = ["-output-complete-obj"; "-runtime-variant"; "_pic"]
+  let so_flags_windows = o_flags
+  let so_flags_unix    = ["-output-complete-obj"; "-runtime-variant"; "_pic"]
 
   let of_user_config (ctx : Context.t) (m : Jbuild.Executables.Link_mode.t) =
     let wanted_mode : Mode.t =
@@ -80,6 +81,12 @@ module Linkage = struct
           []
       | Object -> o_flags
       | Shared_object ->
+        let so_flags =
+          if ctx.os_type = "Win32" then
+            so_flags_windows
+          else
+            so_flags_unix
+        in
         if real_mode = Native then
           (* The compiler doesn't pass these flags in native mode. This
              looks like a bug in the compiler. *)

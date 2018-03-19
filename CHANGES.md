@@ -11,6 +11,8 @@ next
   everything in the universe. Jbuilder cannot cache the result of an action that
   depend on the universe (#603, fixes #255 @diml)
 
+- Don't pass `-runtime-variant _pic` on Windows (#635)
+
 1.0+beta19 (14/03/2018)
 -----------------------
 

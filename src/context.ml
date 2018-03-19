@@ -374,7 +374,7 @@ let create_for_opam ?root ~targets ~switch ~name ?(merlin=false) () =
     in
     let path =
       match Env.Map.find vars "PATH" with
-      | None -> Bin.path
+      | None   -> Bin.path
       | Some s -> Bin.parse_path s
     in
     let env = Env.extend (Env.initial ()) ~vars in
@@ -415,7 +415,7 @@ let env_for_exec t =
     let v = Filename.concat cwd (Path.to_string v) in
     match Env.get t.env var with
     | None -> (var, v)
-    | Some prev -> (var, sprintf "%s%c%s" v Bin.path_sep prev)
+    | Some prev -> (var, sprintf "%s%c%s" v ocamlpath_sep prev)
   in
   let vars =
     [ extend_var "CAML_LD_LIBRARY_PATH"

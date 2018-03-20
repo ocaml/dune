@@ -26,7 +26,8 @@ next
 - Use ';' as the path separator for OCAMLPATH on Cygwin (#630 fixed by #636
   @diml).
 
-- Respect OCAMLPATH even if the ocamlfind binary is absent. (#642 @diml)
+- Use the contents of the `OCAMLPATH` environment variable when not relying on
+  `ocamlfind` (#642 @diml)
 
 1.0+beta19 (14/03/2018)
 -----------------------

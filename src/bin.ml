@@ -5,25 +5,14 @@ let path_sep =
     ';'
   else
     ':'
-;;
 
-let parse_path s =
-  let rec loop i j =
-    if j = String.length s then
-      [Path.absolute (String.sub s ~pos:i ~len:(j - i))]
-    else if s.[j] = path_sep then
-      Path.absolute (String.sub s ~pos:i ~len:(j - i)) :: loop (j + 1) (j + 1)
-    else
-      loop i (j + 1)
-  in
-  loop 0 0
-;;
+let parse_path ?(sep=path_sep) s =
+  List.map (String.split s ~on:sep) ~f:Path.absolute
 
 let path =
   match Sys.getenv "PATH" with
   | exception Not_found -> []
   | s -> parse_path s
-;;
 
 let exe = if Sys.win32 then ".exe" else ""
 

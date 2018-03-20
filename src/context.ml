@@ -121,6 +121,13 @@ let opam_config_var ~env ~cache var =
 let which ~cache ~path x =
   Hashtbl.find_or_add cache x ~f:(Bin.which ~path)
 
+let ocamlpath_sep =
+  if Sys.cygwin then
+    (* because that's what ocamlfind expects *)
+    ';'
+  else
+    Bin.path_sep
+
 let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
@@ -190,10 +197,30 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
     in
 
     let build_dir = Path.of_string (sprintf "_build/%s" name) in
+    let ocamlpath =
+      match
+        let var = "OCAMLPATH" in
+        match kind, findlib_toolchain with
+        | Default, None -> Env.get env var
+        | _ ->
+          (* If we are not in the default context, we can only use the
+             OCAMLPATH variable if it is specific to this build
+             context *)
+          (* CR-someday diml: maybe we should actually clear OCAMLPATH
+             in other build contexts *)
+          match Env.get env var, Env.get (Env.initial ()) var with
+          | None  , None   -> None
+          | Some s, None   -> Some s
+          | None  , Some _ -> None
+          | Some x, Some y -> Option.some_if (x <> y) x
+      with
+      | None -> []
+      | Some s -> Bin.parse_path s ~sep:ocamlpath_sep
+    in
     let findlib_path () =
       match kind, findlib_toolchain, Setup.library_path with
       | Default, None, Some l ->
-        Fiber.return (List.map l ~f:Path.absolute)
+        Fiber.return (ocamlpath @ List.map l ~f:Path.absolute)
       | _ ->
         (* If ocamlfind is present, it has precedence over everything else. *)
         match which "ocamlfind" with
@@ -205,17 +232,20 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
             | Some s -> "-toolchain" :: s :: args
           in
           Process.run_capture_lines ~env Strict (Path.to_string fn) args
-          >>| List.map ~f:Path.absolute
+          >>| fun l ->
+          (* Don't prepend the contents of [OCAMLPATH] since findlib
+             does it already *)
+          List.map l ~f:Path.absolute
         | None ->
           (* If there no ocamlfind in the PATH, check if we have opam
              and assume a standard opam setup *)
           opam_config_var ~env ~cache:opam_var_cache "lib"
           >>| function
-          | Some s -> [Path.absolute s]
+          | Some s -> ocamlpath @ [Path.absolute s]
           | None ->
             (* If neither opam neither ocamlfind are present, assume
                that libraries are [dir ^ "/../lib"] *)
-            [Path.relative (Path.parent dir) "lib"]
+            ocamlpath @ [Path.relative (Path.parent dir) "lib"]
     in
     let ocaml_config_ok_exn = function
       | Ok x -> x
@@ -255,13 +285,6 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
     in
     let env =
       let cwd = Sys.getcwd () in
-      let ocamlpath_sep =
-        if Sys.cygwin then
-          (* because that's what ocamlfind expects *)
-          ';'
-        else
-          Bin.path_sep
-      in
       let extend_var var ?(path_sep=Bin.path_sep) v =
         let v = Filename.concat cwd (Path.to_string v) in
         match Env.get env var with

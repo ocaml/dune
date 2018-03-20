@@ -19,3 +19,5 @@ Welcome to jbuilder's documentation!
    api-doc
    usage
    advanced-topics
+   faq
+   known-issues

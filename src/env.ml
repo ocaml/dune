@@ -44,15 +44,10 @@ let of_unix arr =
       Sexp.code_error "Env.of_unix: entry without '=' found in the environ"
         ["var", Sexp.To_sexp.string s]
     | Some (k, v) -> (k, v))
-  |> Map.of_list
-  |> function
-  | Ok x -> x
-  | Error (var, v1, v2) ->
-    Sexp.code_error "Env.of_unix: duplicated variable found in the environment"
-      [ "var"   , Sexp.To_sexp.string var
-      ; "value1", Sexp.To_sexp.string v1
-      ; "value2", Sexp.To_sexp.string v2
-      ]
+  |> Map.of_list_multi
+  |> Map.map ~f:(function
+    | [] -> assert false
+    | x::_ -> x)
 
 let initial =
   let i =

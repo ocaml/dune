@@ -255,18 +255,25 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
     in
     let env =
       let cwd = Sys.getcwd () in
-      let extend_var var v =
+      let ocamlpath_sep =
+        if Sys.cygwin then
+          (* because that's what ocamlfind expects *)
+          ';'
+        else
+          Bin.path_sep
+      in
+      let extend_var var ?(path_sep=Bin.path_sep) v =
         let v = Filename.concat cwd (Path.to_string v) in
         match Env.get env var with
         | None -> (var, v)
-        | Some prev -> (var, sprintf "%s%c%s" v Bin.path_sep prev)
+        | Some prev -> (var, sprintf "%s%c%s" v path_sep prev)
       in
       let vars =
         [ extend_var "CAML_LD_LIBRARY_PATH"
             (Path.relative
                (Config.local_install_dir ~context:name)
                "lib/stublibs")
-        ; extend_var "OCAMLPATH"
+        ; extend_var "OCAMLPATH" ~path_sep:ocamlpath_sep
             (Path.relative
                (Config.local_install_dir ~context:name)
                "lib")
@@ -399,7 +406,7 @@ let create_for_opam ?root ~targets ~switch ~name ?(merlin=false) () =
     in
     let path =
       match Env.Map.find vars "PATH" with
-      | None -> Bin.path
+      | None   -> Bin.path
       | Some s -> Bin.parse_path s
     in
     let env = Env.extend (Env.initial ()) ~vars in

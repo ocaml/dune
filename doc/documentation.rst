@@ -2,6 +2,9 @@
 Generating Documentation
 ************************
 
+Prerequisites
+=============
+
 Documentation in jbuilder is done courtesy of the odoc_ tool. Therefore, to
 generate documentation in jbuilder, you will need to install this tool. This
 should likely be done with opam:
@@ -9,6 +12,16 @@ should likely be done with opam:
 ::
 
   $ opam install odoc
+
+Writing Documentation
+=====================
+
+Documentation comments will be automatically extracted from your OCaml source
+files following the syntax described in the the section ``Text formatting`` of
+the `OCaml manual <http://caml.inria.fr/pub/docs/manual-ocaml/ocamldoc.html>`_.
+
+Additional documentation pages may by attached to a package can be attached
+using the :ref:`doc-stanza`.
 
 Building Documentation
 ======================
@@ -37,12 +50,15 @@ But this libraries will not be in the main html listing above, since they do not
 belong to any particular package. But the generated html will still be found in
 ``_build/default/_doc/_html/<library>``.
 
-Attaching Documentation
-=======================
+.. _doc-stanza:
+
+Docmentation Stanza
+===================
 
 Documentation pages will be automatically generated for from .ml and .mli files
 that include ocamldoc fragments. Additional manual pages may be attached to
-packages using the ``documentation`` stanza.
+packages using the ``documentation`` stanza. These .mld files must contain text
+in the same syntax as ocamldoc comments.
 
 .. code-block:: lisp
 

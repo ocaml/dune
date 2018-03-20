@@ -206,6 +206,8 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
           (* If we are not in the default context, we can only use the
              OCAMLPATH variable if it is specific to this build
              context *)
+          (* CR-someday diml: maybe we should actually clear OCAMLPATH
+             in other build contexts *)
           match Env.get env var, Env.get (Env.initial ()) var with
           | None  , None   -> None
           | Some s, None   -> Some s

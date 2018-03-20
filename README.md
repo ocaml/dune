@@ -148,17 +148,6 @@ Status
 Jbuilder is now in beta testing stage. Once a bit more testing has
 been done, it will be released in 1.0.
 
-Roadmap
--------
-
-See [the roadmap](ROADMAP.md) for the current plan. Help on any of
-these points is welcome!
-
-https://github.com/ocaml/dune/issues/567
-
-So, while they are supported, you should be careful where you use
-them. Using a `.ml` only module is still preferable.
-
 Implementation details
 ----------------------
 

@@ -1,3 +1,19 @@
+1.0+beta19.1 (21/03/2018)
+-------------------------
+
+- Missing asm in ocaml -config on bytecode only architecture is no longer fatal
+  (#637 fixed by #639 @rgrinberg)
+
+- Fix regression introduced by beta19 where duplicate environment variables in
+  Unix.environ would cause a fatal error. The first defined environment variable
+  is now chosen. (#638 fixed by #640)
+
+- Use ';' as the path separator for OCAMLPATH on Cygwin (#630 fixed by #636
+  @diml).
+
+- Use the contents of the `OCAMLPATH` environment variable when not relying on
+  `ocamlfind` (#642 @diml)
+
 1.0+beta19 (14/03/2018)
 -----------------------
 
@@ -39,10 +55,6 @@
   would be silently ignored and install broken artifacts (#607).
 
 - Fix display when output is not a tty (#518)
-
-- Add a `(universe)` special dependency to specify that an action
-  depend on everything in the universe. Jbuilder cannot cache the
-  result of an action that depend on the universe (#603, fixes #255)
 
 1.0+beta18.1 (14/03/2018)
 -------------------------

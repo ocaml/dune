@@ -40,7 +40,9 @@ belong to any particular package. But the generated html will still be found in
 Attaching Documentation
 =======================
 
-Attaching documentation to packages can be done using the ``documentation`` stanza.
+Documentation pages will be automatically generated for from .ml and .mli files
+that include ocamldoc fragments. Additional manual pages may be attached to
+packages using the ``documentation`` stanza.
 
 .. code-block:: lisp
 

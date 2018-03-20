@@ -145,6 +145,9 @@ ocaml-core@googlegroups.com or [open a ticket on github][issues].
 Status
 ------
 
-Jbuilder is now in beta testing stage. Once a bit more testing has
-been done, it will be released in 1.0.
+Dune is now fairly stable and is used by the majority of packages on opam.
+Nevertheless, breaking changes are expected until 1.0. The release of 1.0 will
+also include the jbuilder to dune renaming. This renaming will do away with the
+old name entirely. While this will be a breaking change, dune will provide a
+tool to automatically migrate pre 1.0 projects.
 

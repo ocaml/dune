@@ -7,7 +7,8 @@ val path_sep : char
 (** Contents of [PATH] *)
 val path : Path.t list
 
-val parse_path : string -> Path.t list
+(** Parse a [PATH] like variable *)
+val parse_path : ?sep:char -> string -> Path.t list
 
 (** The opam tool *)
 val opam : Path.t option

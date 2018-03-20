@@ -49,7 +49,13 @@ module To_sexp : sig
 
   type field
 
-  val field : string -> 'a t -> 'a -> field
+  val field
+    :  string
+    -> 'a t
+    -> ?equal:('a -> 'a -> bool)
+    -> ?default:'a
+    -> 'a
+    -> field
   val field_o : string -> 'a t-> 'a option -> field
 
   val record_fields : field list t

@@ -16,6 +16,7 @@ Welcome to jbuilder's documentation!
    jbuild
    tests
    documentation
-   api-doc
    usage
    advanced-topics
+   faq
+   known-issues

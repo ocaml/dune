@@ -13,6 +13,9 @@ next
 
 - Don't pass `-runtime-variant _pic` on Windows (#635)
 
+- Use the contents of the `OCAMLPATH` environment variable when not
+  relying on `ocamlfind`
+
 1.0+beta19 (14/03/2018)
 -----------------------
 

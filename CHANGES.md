@@ -13,6 +13,21 @@ next
 
 - Don't pass `-runtime-variant _pic` on Windows (#635)
 
+1.0+beta19.1 (21/03/2018)
+-------------------------
+
+- Missing asm in ocaml -config on bytecode only architecture is no longer fatal
+  (#637 fixed by #639 @rgrinberg)
+
+- Fix regression introduced by beta19 where duplicate environment variables in
+  Unix.environ would cause a fatal error. The first defined environment variable
+  is now chosen. (#638 fixed by #640)
+
+- Use ';' as the path separator for OCAMLPATH on Cygwin (#630 fixed by #636
+  @diml).
+
+- Respect OCAMLPATH even if the ocamlfind binary is absent. (#642 @diml)
+
 1.0+beta19 (14/03/2018)
 -----------------------
 

@@ -61,8 +61,10 @@ Where ``<optional-fields>`` are:
   ``.mld`` files in the stanza's directory.
 
 The ``index.mld`` file (specified as ``index`` in ``mld_files``) is treated
-specially by odoc. This will be the file used to generate the entry page for the
-package.
+specially by jbulder. This will be the file used to generate the entry page for
+the package. This is the page that will be linked from the main package listing.
+If you omit writing an ``index.mld``, jbuilder will generate one with the entry
+modules for your package. But this generated will not be installed.
 
 All mld files attached to a package will be included in the generated
 ``.install`` file for that package, and hence will be installed by opam.

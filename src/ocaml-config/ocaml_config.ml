@@ -314,10 +314,13 @@ let make vars =
     let architecture             = get vars "architecture" in
     let model                    = get vars "model" in
     let system                   = get vars "system" in
-    let asm                      = get_prog_and_args vars "asm" in
     let asm_cfi_supported        = get_bool vars "asm_cfi_supported" in
     let with_frame_pointers      = get_bool vars "with_frame_pointers" in
-
+    let asm =
+      match get_prog_and_args_opt vars "asm" with
+      | Some asm -> asm
+      | None -> { prog = "asm-not-found-in-ocaml-config"; args = [] }
+    in
     let word_size =
       match get_int_opt vars "word_size" with
       | Some n -> n

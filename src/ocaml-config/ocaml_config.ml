@@ -252,16 +252,20 @@ module Vars = struct
     | None   -> []
     | Some s -> String.extract_blank_separated_words s
 
-  let get_prog_and_args t var =
-    split_prog (get t var)
+  let get_prog_or_dummy t var =
+    Option.map (get_opt t var) ~f:(fun v ->
+      match split_prog v with
+      | None ->
+        { prog = Printf.sprintf "%s-not-found-in-ocaml-config" var
+        ; args = []
+        }
+      | Some s -> s
+    )
 
-  let get_prog_and_args_exn t var =
-    match get_prog_and_args t var with
-    | None -> fail "Variable %S contains only spaces." var
-    | Some prog -> prog
-
-  let get_prog_and_args_opt t var =
-    Option.bind (get_opt t var) ~f:split_prog
+  let get_prog_or_dummy_exn t var =
+    match get_prog_or_dummy t var with
+    | None -> fail "Variable %S not found." var
+    | Some s -> s
 end
 
 let get_arch_sixtyfour stdlib_dir =
@@ -287,13 +291,11 @@ let make vars =
   match
     let open Vars in
     let bytecomp_c_compiler =
-      get_prog_and_args_exn vars "bytecomp_c_compiler"
-    in
+      get_prog_or_dummy_exn vars "bytecomp_c_compiler" in
     let native_c_compiler =
-      get_prog_and_args_exn vars "native_c_compiler"
-    in
+      get_prog_or_dummy_exn vars "native_c_compiler" in
     let c_compiler, ocamlc_cflags, ocamlopt_cflags =
-      match get_prog_and_args_opt vars "c_compiler" with
+      match get_prog_or_dummy vars "c_compiler" with
       | Some { prog; args } -> (* >= 4.06 *)
         let get_flags var = args @ get_words vars var in
         (prog,
@@ -321,11 +323,7 @@ let make vars =
     let system                   = get vars "system" in
     let asm_cfi_supported        = get_bool vars "asm_cfi_supported" in
     let with_frame_pointers      = get_bool vars "with_frame_pointers" in
-    let asm =
-      match get_prog_and_args_opt vars "asm" with
-      | Some asm -> asm
-      | None -> { prog = "asm-not-found-in-ocaml-config"; args = [] }
-    in
+    let asm                      = get_prog_or_dummy_exn vars "asm" in
     let word_size =
       match get_int_opt vars "word_size" with
       | Some n -> n

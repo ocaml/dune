@@ -193,10 +193,10 @@ exception E of string
 let fail fmt =
   Printf.ksprintf (fun msg -> raise (E msg)) fmt
 
-let split_prog ~var s =
+let split_prog s =
   match String.extract_blank_separated_words s with
-  | []           -> fail "Variable %S contains only spaces." var
-  | prog :: args -> { prog; args }
+  | []           -> None
+  | prog :: args -> Some { prog; args }
 
 module Vars = struct
   module M = Map.Make(String)
@@ -253,10 +253,15 @@ module Vars = struct
     | Some s -> String.extract_blank_separated_words s
 
   let get_prog_and_args t var =
-    split_prog ~var (get t var)
+    split_prog (get t var)
+
+  let get_prog_and_args_exn t var =
+    match get_prog_and_args t var with
+    | None -> fail "Variable %S contains only spaces." var
+    | Some prog -> prog
 
   let get_prog_and_args_opt t var =
-    Option.map (get_opt t var) ~f:(split_prog ~var)
+    Option.bind (get_opt t var) ~f:split_prog
 end
 
 let get_arch_sixtyfour stdlib_dir =
@@ -282,10 +287,10 @@ let make vars =
   match
     let open Vars in
     let bytecomp_c_compiler =
-      get_prog_and_args vars "bytecomp_c_compiler"
+      get_prog_and_args_exn vars "bytecomp_c_compiler"
     in
     let native_c_compiler =
-      get_prog_and_args vars "native_c_compiler"
+      get_prog_and_args_exn vars "native_c_compiler"
     in
     let c_compiler, ocamlc_cflags, ocamlopt_cflags =
       match get_prog_and_args_opt vars "c_compiler" with

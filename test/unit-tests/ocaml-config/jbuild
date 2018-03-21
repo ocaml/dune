@@ -1,0 +1,10 @@
+(jbuild_version 1)
+
+(executable
+ ((name gh637)
+  (libraries (ocaml_config))))
+
+(alias
+ ((name runtest)
+  (deps (./gh637.exe))
+  (action (run ${<}))))

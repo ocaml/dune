@@ -1,4 +1,7 @@
   $ $JBUILDER build @doc -j1 --display short --root .
+          odoc _doc/_odoc/pkg/bar/page-index.odoc
+          odoc _doc/_html/bar/index.html
+          odoc _doc/_html/odoc.css
       ocamldep foo.ml.d
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/foo/foo.odoc
@@ -8,7 +11,6 @@
           odoc _doc/_html/foo/Foo/.jbuilder-keep,_doc/_html/foo/Foo/index.html
           odoc _doc/_odoc/pkg/foo/page-index.odoc
           odoc _doc/_html/foo/index.html
-          odoc _doc/_html/odoc.css
           odoc _doc/_html/foo/Foo_byte/.jbuilder-keep,_doc/_html/foo/Foo_byte/index.html
   $ $JBUILDER runtest -j1 --display short --root .
   <!DOCTYPE html>
@@ -23,6 +25,7 @@
       <div class="by-name">
       <h2>OCaml package documentation</h2>
       <ol>
+      <li><a href="bar/index.html">bar</a></li>
       <li><a href="foo/index.html">foo</a></li>
       </ol>
       </div>

@@ -12,12 +12,6 @@
   (modes (byte))
   (public_name foo.byte)))
 
-(executables
- ((names (bar))
-  (modules (bar))
-  (public_names (bar))
-  (libraries (foo))))
-
 (alias
  ((name runtest)
   (deps (_doc/_html/index.html))

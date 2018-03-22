@@ -406,7 +406,10 @@ module Gen (S : sig val sctx : SC.t end) = struct
 
   let default_index entry_modules =
     let b = Buffer.create 512 in
-    Lib.Map.iteri entry_modules ~f:(fun lib modules ->
+    Lib.Map.to_list entry_modules
+    |> List.sort ~compare:(fun (x, _) (y, _) ->
+      String.compare (Lib.name x) (Lib.name y))
+    |> List.iter ~f:(fun (lib, modules) ->
       Buffer.add_string b (
         sprintf
           "{1 Library %s}\n\
@@ -414,6 +417,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
            {!modules:%s}.\n"
           (Lib.name lib)
           (modules
+           |> List.sort ~compare:(fun x y ->
+             Module.Name.compare (Module.name x) (Module.name y))
            |> List.map ~f:(fun m -> Module.Name.to_string (Module.name m))
            |> String.concat ~sep:" ")
       )

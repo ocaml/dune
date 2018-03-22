@@ -99,11 +99,7 @@ module Config = struct
     if not (Path.exists conf_file) then
       die "@{<error>Error@}: ocamlfind toolchain %s isn't defined in %a \
            (context: %s)" toolchain Path.pp path context;
-    let vars =
-      (Meta.simplify { name = ""
-                     ; entries = Meta.load (Path.to_string conf_file)
-                     }).vars
-    in
+    let vars = (Meta.load ~name:"" ~fn:(Path.to_string conf_file)).vars in
     { vars = String_map.map vars ~f:Rules.of_meta_rules
     ; preds = Ps.make [toolchain]
     }
@@ -167,7 +163,7 @@ end
 type t =
   { stdlib_dir : Path.t
   ; path       : Path.t list
-  ; builtins   : Meta.t String_map.t
+  ; builtins   : Meta.Simplified.t String_map.t
   ; packages   : (string, (Package.t, Unavailable_reason.t) result) Hashtbl.t
   }
 
@@ -233,7 +229,7 @@ let parse_package t ~meta_file ~name ~parent_dir ~vars =
 
 (* Parse all the packages defined in a META file and add them to
    [t.packages] *)
-let parse_and_acknowledge_meta t ~dir ~meta_file (meta : Meta.t) =
+let parse_and_acknowledge_meta t ~dir ~meta_file (meta : Meta.Simplified.t) =
   let rec loop ~dir ~full_name (meta : Meta.Simplified.t) =
     let vars = String_map.map meta.vars ~f:Rules.of_meta_rules in
     let dir, res =
@@ -243,13 +239,13 @@ let parse_and_acknowledge_meta t ~dir ~meta_file (meta : Meta.t) =
     List.iter meta.subs ~f:(fun (meta : Meta.Simplified.t) ->
       loop ~dir ~full_name:(sprintf "%s.%s" full_name meta.name) meta)
   in
-  loop ~dir ~full_name:meta.name (Meta.simplify meta)
+  loop ~dir ~full_name:meta.name meta
 
 (* Search for a <package>/META file in the findlib search path, parse
    it and add its contents to [t.packages] *)
 let find_and_acknowledge_meta t ~fq_name =
   let root_name = root_package_name fq_name in
-  let rec loop dirs : (Path.t * Path.t * Meta.t) option =
+  let rec loop dirs : (Path.t * Path.t * Meta.Simplified.t) option =
     match dirs with
     | dir :: dirs ->
       let sub_dir = Path.relative dir root_name in
@@ -257,18 +253,14 @@ let find_and_acknowledge_meta t ~fq_name =
       if Path.exists fn then
         Some (sub_dir,
               fn,
-              { name    = root_name
-              ; entries = Meta.load (Path.to_string fn)
-              })
+              Meta.load ~name:root_name ~fn:(Path.to_string fn))
       else
         (* Alternative layout *)
         let fn = Path.relative dir ("META." ^ root_name) in
         if Path.exists fn then
           Some (dir,
                 fn,
-                { name    = root_name
-                ; entries = Meta.load (Path.to_string fn)
-                })
+                Meta.load ~fn:(Path.to_string fn) ~name:root_name)
         else
           loop dirs
     | [] ->

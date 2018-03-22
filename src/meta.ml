@@ -102,10 +102,6 @@ module Parse = struct
       error lb "'package' or variable name expected"
 end
 
-let load fn =
-  Io.with_lexbuf_from_file fn ~f:(fun lb ->
-      Parse.entries lb 0 [])
-
 module Simplified = struct
   module Rules = struct
     type t =
@@ -144,6 +140,14 @@ let rec simplify t =
           | Add -> { rules with add_rules = rule :: rules.add_rules }
         in
         { pkg with vars = String_map.add pkg.vars rule.var rules })
+
+let load ~fn ~name =
+  { name
+  ; entries =
+      Io.with_lexbuf_from_file fn ~f:(fun lb ->
+        Parse.entries lb 0 [])
+  }
+  |> simplify
 
 let rule var predicates action value =
   Rule { var; predicates; action; value }
@@ -225,7 +229,7 @@ let builtins ~stdlib_dir =
     else
       [ compiler_libs; str; unix; bigarray; threads ]
   in
-  List.map libs ~f:(fun t -> t.name, t)
+  List.map libs ~f:(fun t -> t.name, simplify t)
   |> String_map.of_list_exn
 
 let string_of_action = function

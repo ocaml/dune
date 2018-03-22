@@ -11,7 +11,14 @@ let ksprintf = Printf.ksprintf
 let initial_cwd = Sys.getcwd ()
 
 module String_set = Set.Make(String)
-module String_map = Map.Make(String)
+module String_map = struct
+  include Map.Make(String)
+
+  let pp f fmt t =
+    Format.pp_print_list (fun fmt (k, v) ->
+      Format.fprintf fmt "@[<hov 2>(%s@ =@ %a)@]" k f v
+    ) fmt (to_list t)
+end
 
 module Int_set = Set.Make(Int)
 module Int_map = Map.Make(Int)

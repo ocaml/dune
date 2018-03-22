@@ -25,8 +25,6 @@ and predicate =
   | Pos of string
   | Neg of string
 
-val load : string -> entry list
-
 module Simplified : sig
   module Rules : sig
     type t =
@@ -42,10 +40,10 @@ module Simplified : sig
     }
 end
 
-val simplify : t -> Simplified.t
+val load : fn:string -> name:string -> Simplified.t
 
 (** Builtin META files for libraries distributed with the compiler. For when ocamlfind is
     not installed. *)
-val builtins : stdlib_dir:Path.t -> t String_map.t
+val builtins : stdlib_dir:Path.t -> Simplified.t String_map.t
 
 val pp : Format.formatter -> entry list -> unit

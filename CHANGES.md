@@ -11,6 +11,11 @@ next
   everything in the universe. Jbuilder cannot cache the result of an action that
   depend on the universe (#603, fixes #255 @diml)
 
+- Add a `(package <package>)` dependency specification to indicate
+  dependency on a whole package. Rules depending on whole pacakge will
+  be executed in an environment similar to the one we get once the
+  package is installed (#624, @rgrinberg and @diml)
+
 - Don't pass `-runtime-variant _pic` on Windows (#635)
 
 1.0+beta19.1 (21/03/2018)

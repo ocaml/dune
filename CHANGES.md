@@ -18,6 +18,9 @@ next
 
 - Don't pass `-runtime-variant _pic` on Windows (#635)
 
+- Display documentation in alphabetical order. This is relevant to packages,
+  libraries, and modules. (#647, fixes #606 @rgrinberg)
+
 1.0+beta19.1 (21/03/2018)
 -------------------------
 

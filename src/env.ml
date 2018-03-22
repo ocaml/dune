@@ -77,3 +77,6 @@ let diff x y =
     | Some _ -> None
     | None -> vx)
   |> make
+
+let update t ~var ~f =
+  make (Map.update t.vars var ~f)

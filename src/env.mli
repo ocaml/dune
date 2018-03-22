@@ -23,4 +23,7 @@ val add : t -> var:Var.t -> value:string -> t
 
 val diff : t -> t -> t
 
+val update : t -> var:string -> f:(string option -> string option) -> t
+
 val sexp_of_t : t -> Sexp.t
+

@@ -21,11 +21,12 @@ next
 - Display documentation in alphabetical order. This is relevant to packages,
   libraries, and modules. (#647, fixes #606 @rgrinberg)
 
+- Missing asm in ocaml -config on bytecode only architecture is no longer fatal.
+  The same kind of fix is preemptively applied to C compilers being absent.
+  (#646, fixes $637 @rgrinberg)
+
 1.0+beta19.1 (21/03/2018)
 -------------------------
-
-- Missing asm in ocaml -config on bytecode only architecture is no longer fatal
-  (#637 fixed by #639 @rgrinberg)
 
 - Fix regression introduced by beta19 where duplicate environment variables in
   Unix.environ would cause a fatal error. The first defined environment variable

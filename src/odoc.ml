@@ -203,7 +203,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       Build.memoize "includes"
         (requires
          >>> Dep.deps
-         >>^ Lib.L.include_flags ~stdlib_dir:context.stdlib_dir)
+         >>^ odoc_include_flags)
     in
     let modules_and_odoc_files =
       List.map (Module.Name.Map.values modules) ~f:(

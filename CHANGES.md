@@ -28,6 +28,10 @@ next
 - Use the host's PATH variable when running actions during cross compilation
   (#649, fixes #625 @rgrinberg)
 
+- Fix incorrect include (`-I`) flags being passed to odoc. These flags should be
+  directories that include .odoc files, rather than the include flags of the
+  libraries. (#652 fixes #651 @rgrinberg)
+
 1.0+beta19.1 (21/03/2018)
 -------------------------
 

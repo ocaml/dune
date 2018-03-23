@@ -763,7 +763,7 @@ module Gen(P : Install_rules.Params) = struct
         SC.add_rule sctx build
       );
 
-    Odoc.setup_library_odoc_rules lib ~dir ~requires ~modules ~dep_graphs ~scope
+    Odoc.setup_library_odoc_rules lib ~requires ~modules ~dep_graphs ~scope
     ;
 
     let flags =

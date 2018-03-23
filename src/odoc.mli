@@ -6,7 +6,6 @@ module Gen (S : sig val sctx : Super_context.t end) : sig
 
   val setup_library_odoc_rules
     :  Library.t
-    -> dir:Path.t
     -> scope:Scope.t
     -> modules:Module.t Module.Name.Map.t
     -> requires:(unit, Lib.t list) Build.t

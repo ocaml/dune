@@ -43,12 +43,12 @@
   $ $JBUILDER build @foo-mld -j1 --display short --root .
   {1 Library foo}
   This library exposes the following toplevel modules:
-  {!modules:Foo Foo2}
+  {!modules:Foo Foo2}.
   {1 Library foo.byte}
-  This library exposes the following toplevel modules:
-  {!modules:Foo_byte}
+  The entry point of this library is the module:
+  {!module-Foo_byte}.
 
   $ $JBUILDER build @bar-mld -j1 --display short --root .
   {1 Library bar}
-  This library exposes the following toplevel modules:
-  {!modules:Bar}
+  The entry point of this library is the module:
+  {!module-Bar}.

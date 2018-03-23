@@ -25,6 +25,9 @@ next
   The same kind of fix is preemptively applied to C compilers being absent.
   (#646, fixes $637 @rgrinberg)
 
+- Use the host's PATH variable when running actions during cross compilation
+  (#649, fixes #625 @rgrinberg)
+
 1.0+beta19.1 (21/03/2018)
 -------------------------
 

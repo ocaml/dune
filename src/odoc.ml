@@ -107,7 +107,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
            Ocamldep.Dep_graph.deps_of dep_graphs.impl m)
        >>^ List.map ~f:(Module.odoc_file ~doc_dir))
 
-  let compile_module (m : Module.t) ~dir ~obj_dir ~includes ~dep_graphs
+  let compile_module (m : Module.t) ~obj_dir ~includes ~dep_graphs
         ~doc_dir ~pkg_or_lnu =
     let odoc_file = Module.odoc_file m ~doc_dir in
     SC.add_rule sctx
@@ -117,7 +117,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
        >>>
        Build.run ~context ~dir:doc_dir odoc
          [ A "compile"
-         ; A "-I"; Path dir
+         ; A "-I"; Path doc_dir
          ; Dyn (fun x -> x)
          ; As ["--pkg"; pkg_or_lnu]
          ; A "-o"; Target odoc_file
@@ -189,7 +189,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
 
   let toplevel_index = Paths.html_root ++ "index.html"
 
-  let setup_library_odoc_rules (library : Library.t) ~dir ~scope ~modules
+  let setup_library_odoc_rules (library : Library.t) ~scope ~modules
         ~requires ~(dep_graphs:Ocamldep.Dep_graph.t Ml_kind.Dict.t) =
     let lib =
       Option.value_exn (Lib.DB.find_even_when_hidden (Scope.libs scope)
@@ -203,11 +203,11 @@ module Gen (S : sig val sctx : SC.t end) = struct
       Build.memoize "includes"
         (requires
          >>> Dep.deps
-         >>^ Lib.L.include_flags ~stdlib_dir:context.stdlib_dir)
+         >>^ odoc_include_flags)
     in
     let modules_and_odoc_files =
       List.map (Module.Name.Map.values modules) ~f:(
-        compile_module ~dir ~obj_dir ~includes ~dep_graphs
+        compile_module ~obj_dir ~includes ~dep_graphs
           ~doc_dir ~pkg_or_lnu)
     in
     Dep.setup_deps (Lib lib) (List.map modules_and_odoc_files ~f:snd

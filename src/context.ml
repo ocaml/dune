@@ -300,13 +300,20 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
             (Path.relative
                (Config.local_install_dir ~context:name)
                "lib")
-        ; extend_var "PATH"
-            (Config.local_install_bin_dir ~context:name)
         ; extend_var "MANPATH"
             (Config.local_install_man_dir ~context:name)
         ]
       in
       Env.extend env ~vars:(Env.Map.of_list_exn vars)
+      |> Env.update ~var:"PATH" ~f:(fun _ ->
+        match host with
+        | None ->
+          let _key, path =
+            extend_var "PATH" (Config.local_install_bin_dir ~context:name) in
+          Some path
+        | Some host ->
+          Env.get host.env "PATH"
+      )
     in
     let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in

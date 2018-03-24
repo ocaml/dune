@@ -284,8 +284,10 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose
           "@{<warning>Warning@}: Command [@{<id>%d@}] exited with code %d, \
            but I'm ignoring it, hope that's OK.\n" id n
     end else if output <> "" ||
-                (display = Short && purpose <> Internal_job) then
-      print "@{<ok>%12s@} %a\n%s" progname Fancy.pp_purpose purpose output;
+                (display = Short && purpose <> Internal_job) then begin
+      let pad = String.make (max 0 (12 - String.length progname)) ' ' in
+      print "%s@{<ok>%s@} %a\n%s" pad progname Fancy.pp_purpose purpose output
+    end;
     n
   | WEXITED n ->
     if display = Verbose then

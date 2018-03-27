@@ -52,7 +52,7 @@ belong to any particular package. But the generated html will still be found in
 
 .. _doc-stanza:
 
-Docmentation Stanza
+Documentation Stanza
 ===================
 
 Documentation pages will be automatically generated for from .ml and .mli files

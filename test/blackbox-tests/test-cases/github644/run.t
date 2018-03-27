@@ -4,6 +4,8 @@
   Hint: try: jbuilder external-lib-deps --missing --root . @runtest
   [1]
 
-This should print something:
+These should print something:
+
+  $ $JBUILDER external-lib-deps --root . -j 1 --display quiet @runtest
 
   $ $JBUILDER external-lib-deps --root . -j 1 --display quiet --missing @runtest

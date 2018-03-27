@@ -34,3 +34,5 @@ val last : 'a t -> 'a option
 
 val        sort : 'a t -> compare:('a -> 'a -> Ordering.t) -> 'a t
 val stable_sort : 'a t -> compare:('a -> 'a -> Ordering.t) -> 'a t
+
+val compare : 'a t -> 'a t -> compare:('a -> 'a -> Ordering.t) -> Ordering.t

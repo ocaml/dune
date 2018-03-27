@@ -32,6 +32,10 @@ next
   directories that include .odoc files, rather than the include flags of the
   libraries. (#652 fixes #651 @rgrinberg)
 
+- Fix a regression introduced by beta19 where the generated merlin
+  files didn't include the right `-ppx` flags in some cases (#658
+  fixess #657 @diml)
+
 1.0+beta19.1 (21/03/2018)
 -------------------------
 

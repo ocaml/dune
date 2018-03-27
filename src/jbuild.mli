@@ -47,6 +47,7 @@ module Pp : sig
   type t = private string
   val of_string : string -> t
   val to_string : t -> string
+  val compare : t -> t -> Ordering.t
 end
 
 module Preprocess : sig

@@ -411,8 +411,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
       Buffer.add_string b (
         sprintf
           "{1 Library %s}\n\
-           This library exposes the following toplevel modules: \
-           {!modules:%s}.\n"
+           This library exposes the following toplevel modules:\n\
+           {!modules:%s}\n"
           (Lib.name lib)
           (modules
            |> List.sort ~compare:(fun x y ->

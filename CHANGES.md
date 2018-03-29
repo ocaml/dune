@@ -34,7 +34,10 @@ next
 
 - Fix a regression introduced by beta19 where the generated merlin
   files didn't include the right `-ppx` flags in some cases (#658
-  fixess #657 @diml)
+  fixes #657 @diml)
+
+- Fix error messaage when a public library is defined twice. Before
+  jbuilder would raise an uncaught exception (Fixes #661, @diml)
 
 1.0+beta19.1 (21/03/2018)
 -------------------------

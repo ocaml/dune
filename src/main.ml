@@ -90,25 +90,30 @@ let setup ?(log=Log.no_log)
     ; file_tree = conf.file_tree
     }
 
+let find_context_exn t ~name =
+  match List.find t.contexts ~f:(fun c -> c.name = name) with
+  | Some ctx -> ctx
+  | None ->
+    die "@{<Error>Error@}: Context %S not found!@." name
+
 let external_lib_deps ?log ~packages () =
   Scheduler.go ?log
     (setup () ~filter_out_optional_stanzas_with_missing_deps:false
      >>| fun setup ->
+     let context = find_context_exn setup ~name:"default" in
      let install_files =
        List.map packages ~f:(fun pkg ->
          match package_install_file setup pkg with
-         | Ok path -> path
+         | Ok path -> Path.append context.build_dir path
          | Error () -> die "Unknown package %S" (Package.Name.to_string pkg))
      in
-     match String_map.find setup.stanzas "default" with
-     | None -> die "You need to set a default context to use external-lib-deps"
-     | Some stanzas ->
-       let internals = Jbuild.Stanzas.lib_names stanzas in
-       Path.Map.map
-         (Build_system.all_lib_deps setup.build_system
-            ~request:(Build.paths install_files))
-         ~f:(String_map.filteri ~f:(fun name _ ->
-           not (String_set.mem internals name))))
+     let stanzas = Option.value_exn (String_map.find setup.stanzas "default") in
+     let internals = Jbuild.Stanzas.lib_names stanzas in
+     Path.Map.map
+       (Build_system.all_lib_deps setup.build_system
+          ~request:(Build.paths install_files))
+       ~f:(String_map.filteri ~f:(fun name _ ->
+         not (String_set.mem internals name))))
 
 let ignored_during_bootstrap =
   Path.Set.of_list

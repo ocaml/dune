@@ -91,7 +91,7 @@ let sexp_of_t t =
     ; "ocamlopt", option path t.ocamlopt
     ; "ocamldep", path t.ocamldep
     ; "ocamlmklib", path t.ocamlmklib
-    ; "env", Env.sexp_of_t (Env.diff t.env (Env.initial ()))
+    ; "env", Env.sexp_of_t (Env.diff t.env Env.initial)
     ; "findlib_path", list path (Findlib.path t.findlib)
     ; "arch_sixtyfour", bool t.arch_sixtyfour
     ; "natdynlink_supported", bool t.natdynlink_supported
@@ -143,12 +143,13 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
     match which "ocamlfind" with
     | None -> prog_not_found_in_path "ocamlfind"
     | Some fn ->
-      (* When OCAMLFIND_CONF is set, "ocamlfind printconf" does print the contents of the
-         variable, but "ocamlfind printconf conf" still prints the configuration file set
-         at the configuration time of ocamlfind, sigh... *)
-      match Sys.getenv "OCAMLFIND_CONF" with
-      | s -> Fiber.return (Path.absolute s)
-      | exception Not_found ->
+      (* When OCAMLFIND_CONF is set, "ocamlfind printconf" does print
+         the contents of the variable, but "ocamlfind printconf conf"
+         still prints the configuration file set at the configuration
+         time of ocamlfind, sigh... *)
+      match Env.get env "OCAMLFIND_CONF" with
+      | Some s -> Fiber.return (Path.absolute s)
+      | None ->
         Process.run_capture_line ~env Strict
           (Path.to_string fn) ["printconf"; "conf"]
         >>| Path.absolute)
@@ -208,7 +209,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
              context *)
           (* CR-someday diml: maybe we should actually clear OCAMLPATH
              in other build contexts *)
-          match Env.get env var, Env.get (Env.initial ()) var with
+          match Env.get env var, Env.get Env.initial var with
           | None  , None   -> None
           | Some s, None   -> Some s
           | None  , Some _ -> None
@@ -399,20 +400,20 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
 
 let opam_config_var t var = opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
-let default ?(merlin=true) ~targets () =
-  create ~kind:Default ~path:Bin.path ~env:(Env.initial ())
-    ~name:"default" ~merlin ~targets ()
+let default ?(merlin=true) ~env ~targets () =
+  create ~kind:Default ~path:Bin.path ~env ~name:"default" ~merlin ~targets ()
 
-let create_for_opam ?root ~targets ~switch ~name ?(merlin=false) () =
+let create_for_opam ?root ~env ~targets ~switch ~name ?(merlin=false) () =
   match Bin.opam with
   | None -> Utils.program_not_found "opam"
   | Some fn ->
     (match root with
      | Some root -> Fiber.return root
      | None ->
-       Process.run_capture_line Strict (Path.to_string fn) ["config"; "var"; "root"])
+       Process.run_capture_line Strict ~env
+         (Path.to_string fn) ["config"; "var"; "root"])
     >>= fun root ->
-    Process.run_capture Strict (Path.to_string fn)
+    Process.run_capture ~env Strict (Path.to_string fn)
       ["config"; "env"; "--root"; root; "--switch"; switch; "--sexp"]
     >>= fun s ->
     let vars =
@@ -439,14 +440,14 @@ let create_for_opam ?root ~targets ~switch ~name ?(merlin=false) () =
       | None   -> Bin.path
       | Some s -> Bin.parse_path s
     in
-    let env = Env.extend (Env.initial ()) ~vars in
+    let env = Env.extend env ~vars in
     create ~kind:(Opam { root; switch }) ~targets ~path ~env ~name ~merlin ()
 
-let create ?merlin def =
+let create ?merlin ~env def =
   match (def : Workspace.Context.t) with
-  | Default targets -> default ~targets ?merlin ()
+  | Default targets -> default ~env ~targets ?merlin ()
   | Opam { name; switch; root; targets; _ } ->
-    create_for_opam ?root ~switch ~name ?merlin ~targets ()
+    create_for_opam ?root ~env ~switch ~name ?merlin ~targets ()
 
 let which t s = which ~cache:t.which_cache ~path:t.path s
 

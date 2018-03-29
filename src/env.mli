@@ -9,7 +9,8 @@ type t
 
 module Map : Map.S with type key = Var.t
 
-val initial : unit -> t
+(** The environment when the process started *)
+val initial : t
 
 val to_unix : t -> string array
 

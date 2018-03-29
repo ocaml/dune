@@ -87,9 +87,9 @@ let load_user_config_file () =
     default
 
 let inside_emacs =
-  match Sys.getenv "INSIDE_EMACS" with
-  | (_ : string) -> true
-  | exception Not_found -> false
+  match Env.get Env.initial "INSIDE_EMACS" with
+  | Some _ -> true
+  | None   -> false
 
 let adapt_display config ~output_is_a_tty =
   if config.display = Progress &&

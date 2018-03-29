@@ -153,7 +153,6 @@ let rec go_rec t =
 
 let go ?(log=Log.no_log) ?(config=Config.default)
       ?(gen_status_line=fun () -> None) fiber =
-  Lazy.force Colors.setup_env_for_colors;
   Log.info log ("Workspace root: " ^ !Clflags.workspace_root);
   let cwd = Sys.getcwd () in
   if cwd <> initial_cwd then

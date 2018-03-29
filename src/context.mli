@@ -120,6 +120,7 @@ val compare : t -> t -> Ordering.t
 
 val create
   :  ?merlin:bool
+  -> env:Env.t
   -> Workspace.Context.t
   -> t list Fiber.t
 

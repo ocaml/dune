@@ -1,4 +1,4 @@
-  $ jbuilder build @doc -j1 --display short --root .
+  $ jbuilder build @doc --display short
       ocamldep bar.ml.d
         ocamlc .bar.objs/bar.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/bar/bar.odoc
@@ -20,7 +20,7 @@
           odoc _doc/_html/foo/index.html
           odoc _doc/_html/foo/Foo_byte/.jbuilder-keep,_doc/_html/foo/Foo_byte/index.html
           odoc _doc/_html/foo/Foo2/.jbuilder-keep,_doc/_html/foo/Foo2/index.html
-  $ jbuilder runtest -j1 --display short --root .
+  $ jbuilder runtest --display short
   <!DOCTYPE html>
   <html xmlns="http://www.w3.org/1999/xhtml">
     <head>
@@ -40,7 +40,7 @@
     </body>
   </html>
 
-  $ jbuilder build @foo-mld -j1 --display short --root .
+  $ jbuilder build @foo-mld --display short
   {1 Library foo}
   This library exposes the following toplevel modules:
   {!modules:Foo Foo2}
@@ -48,7 +48,7 @@
   This library exposes the following toplevel modules:
   {!modules:Foo_byte}
 
-  $ jbuilder build @bar-mld -j1 --display short --root .
+  $ jbuilder build @bar-mld --display short
   {1 Library bar}
   This library exposes the following toplevel modules:
   {!modules:Bar}

@@ -1,4 +1,4 @@
-  $ jbuilder build -j1 test.exe .merlin --display short --root . --debug-dependency-path
+  $ jbuilder build test.exe .merlin --display short --debug-dependency-path
       ocamllex lexers/lexer1.ml
       ocamldep lexer1.ml.d
       ocamldep test.ml.d
@@ -13,6 +13,6 @@
       ocamlopt .test.eobjs/test.{cmx,o}
       ocamlopt foo.{a,cmxa}
       ocamlopt test.exe
-  $ jbuilder build -j1 @bar-source --display short --root .
+  $ jbuilder build @bar-source --display short
   #line 1 "include/bar.h"
   int foo () {return 42;}

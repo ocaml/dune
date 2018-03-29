@@ -1,11 +1,11 @@
-  $ jbuilder runtest --root . -j 1 --display quiet
+  $ jbuilder runtest
   File "jbuild", line 4, characters 20-42:
   Error: Library "ppx_that_doesn't_exist" not found.
-  Hint: try: jbuilder external-lib-deps --missing --root . @runtest
+  Hint: try: jbuilder external-lib-deps --missing @runtest
   [1]
 
 These should print something:
 
-  $ jbuilder external-lib-deps --root . -j 1 --display quiet @runtest
+  $ jbuilder external-lib-deps @runtest
 
-  $ jbuilder external-lib-deps --root . -j 1 --display quiet --missing @runtest
+  $ jbuilder external-lib-deps --missing @runtest

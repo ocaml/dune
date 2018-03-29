@@ -1,4 +1,4 @@
-  $ jbuilder build @install -j1 --display short --root .
+  $ jbuilder build @install --display short
       ocamldep a1/a.ml.d
         ocamlc a1/.a.objs/a.{cmi,cmo,cmt}
       ocamlopt a1/.a.objs/a.{cmx,o}

@@ -1,5 +1,5 @@
 Duplicate mld's in the same scope
-  $ jbuilder build @doc -j1 --display short --root ./same-scope 2>&1 | grep -v Entering
+  $ jbuilder build @doc --display short --root ./same-scope 2>&1 | grep -v Entering
           odoc _doc/_html/odoc.css
         ocamlc lib1/.root_lib1.objs/root_lib1.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/root.lib1/root_lib1.odoc
@@ -12,7 +12,7 @@ Duplicate mld's in the same scope
 
 Duplicate mld's in different scope
   $ rm -rf diff-scope/_build
-  $ jbuilder build @doc -j1 --display short --root ./diff-scope 2>&1 | grep -v Entering
+  $ jbuilder build @doc --display short --root ./diff-scope 2>&1 | grep -v Entering
           odoc _doc/_html/odoc.css
         ocamlc scope1/.scope1.objs/scope1.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/scope1/scope1.odoc

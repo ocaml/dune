@@ -1,4 +1,4 @@
-  $ jbuilder build -j1 --display short --root . @install
+  $ jbuilder build --display short @install
       ocamldep alib/alib.ml.d
       ocamldep alib/main.ml.d
         ocamlc alib/.alib.objs/alib__.{cmi,cmo,cmt}

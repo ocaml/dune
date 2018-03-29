@@ -1,4 +1,4 @@
-  $ jbuilder runtest -j1 --display short --root .
+  $ jbuilder runtest --display short
       ocamldep bar.ml.d
       ocamldep foo_byte.ml.d
         ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}

@@ -1,4 +1,4 @@
-  $ jbuilder exec -j1 ./qnativerun/run.exe --display short --root .
+  $ jbuilder exec ./qnativerun/run.exe --display short
       ocamldep qnativerun/run.ml.d
         ocamlc q/q_stub.o
     ocamlmklib q/dllq_stubs.so,q/libq_stubs.a
@@ -11,4 +11,4 @@
       ocamlopt qnativerun/.run.eobjs/run.{cmx,o}
       ocamlopt qnativerun/run.exe
   42
-#  $ jbuilder exec -j1 ./qbyterun/run.bc --display short --root .
+#  $ jbuilder exec ./qbyterun/run.bc --display short

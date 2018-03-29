@@ -1,4 +1,4 @@
-  $ jbuilder build --display short --root . -j 1
+  $ jbuilder build --display short
   File "jbuild", line 2, characters 0-15:
   Error: Recursive inclusion of jbuild files detected:
   File a.inc is included from c.inc:2

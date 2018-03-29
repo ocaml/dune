@@ -6,14 +6,14 @@ problem. So jbuilder shouldn't crash because of "plop.ca-marche-pas"
 
 We need ocamlfind to run this test
 
-  $ $JBUILDER build -j1 @install --display short --root . --only hello
+  $ jbuilder build -j1 @install --display short --root . --only hello
         ocamlc .hello.objs/hello.{cmi,cmo,cmt}
       ocamlopt .hello.objs/hello.{cmx,o}
       ocamlopt hello.{a,cmxa}
       ocamlopt hello.cmxs
         ocamlc hello.cma
 
-  $ $JBUILDER build -j1 @install --display short --root . --only pas-de-bol 2>&1 | sed 's/[^ "]*findlib-packages/.../'
+  $ jbuilder build -j1 @install --display short --root . --only pas-de-bol 2>&1 | sed 's/[^ "]*findlib-packages/.../'
       ocamldep a.ml.d
   File ".../plop/META", line 1, characters 0-0:
   Error: Library "une-lib-qui-nexiste-pas" not found.

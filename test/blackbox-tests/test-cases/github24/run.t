@@ -1,1 +1,1 @@
-  $ $JBUILDER build -j1 @install --display short --root . --debug-dependency-path
+  $ jbuilder build -j1 @install --display short --root . --debug-dependency-path

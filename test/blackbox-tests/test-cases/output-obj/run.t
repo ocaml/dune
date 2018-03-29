@@ -1,4 +1,4 @@
-  $ $JBUILDER build -j1 --root . --display short @all
+  $ jbuilder build -j1 --root . --display short @all
       ocamldep test.ml.d
         ocamlc .test.eobjs/test.{cmi,cmo,cmt}
         ocamlc test.bc.o
@@ -11,7 +11,7 @@
       ocamlopt test.exe
       ocamlopt test.so
 
-  $ $JBUILDER build -j1 --root . --display quiet @runtest
+  $ jbuilder build -j1 --root . --display quiet @runtest
         static alias runtest
   OK: ./static.bc
        dynamic alias runtest

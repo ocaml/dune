@@ -1,4 +1,4 @@
-  $ $JBUILDER build --display short --root . -j 1 a
+  $ jbuilder build --display short --root . -j 1 a
           true x
           true y
   Dependency cycle between the following files:
@@ -11,14 +11,14 @@ This second example is slightly more complicated as we request result1
 but the cycle doesn't involve result1. We must make sure the output
 does show a cycle.
 
-  $ $JBUILDER build --display short --root . -j 1 result1
+  $ jbuilder build --display short --root . -j 1 result1
   Dependency cycle between the following files:
       _build/default/result2
   --> _build/default/input
   --> _build/default/result2
   [1]
 
-  $ $JBUILDER build --display short --root . -j 1 result1 --debug-dependency-path
+  $ jbuilder build --display short --root . -j 1 result1 --debug-dependency-path
   Dependency cycle between the following files:
       _build/default/result2
   --> _build/default/input

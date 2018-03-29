@@ -218,7 +218,11 @@ let common =
     let root, to_cwd =
       match root with
       | Some dn -> (dn, [])
-      | None -> find_root ()
+      | None ->
+        if Config.inside_dune then
+          (".", [])
+        else
+          find_root ()
     in
     let orig_args =
       List.concat

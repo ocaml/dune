@@ -19,6 +19,9 @@ let dev_null = Path.of_string (if Sys.win32 then "nul" else "/dev/null")
 
 let jbuilder_keep_fname = ".jbuilder-keep"
 
+let inside_emacs = Option.is_some (Env.get Env.initial "INSIDE_EMACS")
+let inside_dune  = Option.is_some (Env.get Env.initial "INSIDE_DUNE")
+
 open Sexp.Of_sexp
 
 module Display = struct
@@ -61,8 +64,8 @@ let merge t (partial : Partial.t) =
   }
 
 let default =
-  { display     = Progress
-  ; concurrency = 4
+  { display     = if inside_dune then Quiet else Progress
+  ; concurrency = if inside_dune then 1     else 4
   }
 
 let t =
@@ -85,11 +88,6 @@ let load_user_config_file () =
     load_config_file ~fname:user_config_file
   else
     default
-
-let inside_emacs =
-  match Env.get Env.initial "INSIDE_EMACS" with
-  | Some _ -> true
-  | None   -> false
 
 let adapt_display config ~output_is_a_tty =
   if config.display = Progress &&

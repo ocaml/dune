@@ -40,5 +40,6 @@ val setup_env : capture_outputs:bool -> Env.t
 
 (**/**)
 
-(* This is used to bootstrap jbuilder itself. It is not part of the public API. *)
+(* This is used to bootstrap jbuilder itself. It is not part of the
+   public API. *)
 val bootstrap : unit -> unit

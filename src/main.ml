@@ -20,10 +20,13 @@ let package_install_file { packages; _ } pkg =
           (Utils.install_file ~package:p.name ~findlib_toolchain:None))
 
 let setup_env ~capture_outputs =
-  if capture_outputs || not (Lazy.force Colors.stderr_supports_colors) then
-    Env.initial
-  else
-    Colors.setup_env_for_colors Env.initial
+  let env =
+    if capture_outputs || not (Lazy.force Colors.stderr_supports_colors) then
+      Env.initial
+    else
+      Colors.setup_env_for_colors Env.initial
+  in
+  Env.add env ~var:"INSIDE_DUNE" ~value:"1"
 
 let setup ?(log=Log.no_log)
       ?filter_out_optional_stanzas_with_missing_deps

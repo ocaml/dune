@@ -610,6 +610,7 @@ module Gen(P : Install_rules.Params) = struct
       Lib.DB.get_compile_info (Scope.libs scope) lib.name
         ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
     in
+    SC.Libs.gen_select_rules sctx compile_info ~dir;
     let requires =
       SC.Libs.requires sctx compile_info
         ~dir ~has_dot_merlin:true
@@ -881,6 +882,7 @@ module Gen(P : Install_rules.Params) = struct
         ~pps:(Jbuild.Preprocess_map.pps exes.buildable.preprocess)
         ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
     in
+    SC.Libs.gen_select_rules sctx compile_info ~dir;
     let requires =
       SC.Libs.requires sctx ~dir
         ~has_dot_merlin:true

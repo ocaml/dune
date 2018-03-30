@@ -139,6 +139,9 @@ module Libs : sig
     -> Lib.Compile.t
     -> (unit, Lib.L.t) Build.t
 
+  (** Generate the rules for the [(select ...)] forms in library dependencies *)
+  val gen_select_rules : t -> dir:Path.t -> Lib.Compile.t -> unit
+
   (** [file_deps ~ext] is an arrow that record dependencies on all the
       files with extension [ext] of the libraries given as input. *)
   val file_deps : t -> ext:string -> (Lib.t list, Lib.t list) Build.t

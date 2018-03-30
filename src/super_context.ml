@@ -255,8 +255,8 @@ let source_files t ~src_path =
 module Libs = struct
   open Build.O
 
-  let add_select_rules t ~dir resolved_selects =
-    List.iter resolved_selects ~f:(fun rs ->
+  let gen_select_rules t ~dir compile_info =
+    List.iter (Lib.Compile.resolved_selects compile_info) ~f:(fun rs ->
       let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
       let dst = Path.relative dir dst_fn in
       add_rule t
@@ -271,7 +271,6 @@ module Libs = struct
              }))
 
   let requires t ~dir ~has_dot_merlin compile_info =
-    add_select_rules t ~dir (Lib.Compile.resolved_selects compile_info);
     let requires =
       Build.of_result_map (Lib.Compile.requires compile_info)
         ~f:Build.return

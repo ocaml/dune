@@ -1,9 +1,11 @@
 (** Merlin rules *)
 
+open Import
+
 type t
 
 val make
-  :  ?requires:(unit, Lib.t list) Build.t
+  :  ?requires:(Lib.t list, exn) result
   -> ?flags:(unit, string list) Build.t
   -> ?preprocess:Jbuild.Preprocess.t
   -> ?libname:string

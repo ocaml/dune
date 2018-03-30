@@ -194,7 +194,7 @@ include Sub_system.Register_end_point(
         (Action.Var_expansion.Strings ([lib.name], Concat))
     in
 
-    let runner_libs, _ =
+    let runner_libs =
       let open Result.O in
       Lib.Compile.make
         (Result.concat_map backends

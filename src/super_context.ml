@@ -284,15 +284,12 @@ module Libs = struct
                  Required)
       >>> requires
     in
-    let requires_with_merlin =
-      if t.context.merlin && has_dot_merlin then
-        Build.path (Path.relative dir ".merlin-exists")
-        >>>
-        requires
-      else
-        requires
-    in
-    (requires_with_merlin, requires)
+    if t.context.merlin && has_dot_merlin then
+      Build.path (Path.relative dir ".merlin-exists")
+      >>>
+      requires
+    else
+      requires
 
   let lib_files_alias ~dir ~name ~ext =
     Alias.make (sprintf "lib-%s%s-all" name ext) ~dir

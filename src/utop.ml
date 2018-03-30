@@ -62,7 +62,7 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
         ; intf = None
         ; obj_name = "" } in
     let utop_exe_dir = utop_exe_dir ~dir in
-    let requires, _ =
+    let requires =
       Lib.DB.find_many (Scope.libs scope)
         ("utop" :: List.map libs ~f:(fun (lib : Library.t) -> lib.name))
       |> Lib.Compile.make

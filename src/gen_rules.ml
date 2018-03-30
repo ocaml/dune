@@ -610,7 +610,7 @@ module Gen(P : Install_rules.Params) = struct
       Lib.DB.get_compile_info (Scope.libs scope) lib.name
         ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
     in
-    let requires, real_requires =
+    let requires =
       SC.Libs.requires sctx compile_info
         ~dir ~has_dot_merlin:true
     in
@@ -795,7 +795,7 @@ module Gen(P : Install_rules.Params) = struct
       };
 
     Merlin.make ()
-      ~requires:real_requires
+      ~requires:(Lib.Compile.requires compile_info)
       ~flags
       ~preprocess:(Buildable.single_preprocess lib.buildable)
       ~libname:lib.name
@@ -823,7 +823,8 @@ module Gen(P : Install_rules.Params) = struct
         SC.Deps.interpret sctx exes.buildable.preprocessor_deps
           ~scope ~dir
       in
-      Preprocessing.pp_and_lint_modules sctx ~dir ~dep_kind:Required ~modules ~scope
+      Preprocessing.pp_and_lint_modules sctx ~dir ~dep_kind:Required ~modules
+        ~scope
         ~preprocess:exes.buildable.preprocess
         ~preprocessor_deps
         ~lint:exes.buildable.lint
@@ -880,7 +881,7 @@ module Gen(P : Install_rules.Params) = struct
         ~pps:(Jbuild.Preprocess_map.pps exes.buildable.preprocess)
         ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
     in
-    let requires, real_requires =
+    let requires =
       SC.Libs.requires sctx ~dir
         ~has_dot_merlin:true
         compile_info
@@ -905,7 +906,7 @@ module Gen(P : Install_rules.Params) = struct
       ~js_of_ocaml:exes.buildable.js_of_ocaml;
 
     Merlin.make ()
-      ~requires:real_requires
+      ~requires:(Lib.Compile.requires compile_info)
       ~flags:(Ocaml_flags.common flags)
       ~preprocess:(Buildable.single_preprocess exes.buildable)
       ~objs_dirs:(Path.Set.singleton obj_dir)

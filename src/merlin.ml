@@ -32,7 +32,7 @@ module Preprocess = struct
 end
 
 type t =
-  { requires   : (unit, Lib.t list) Build.t
+  { requires   : Lib.Set.t
   ; flags      : (unit, string list) Build.t
   ; preprocess : Preprocess.t
   ; libname    : string option
@@ -41,7 +41,7 @@ type t =
   }
 
 let make
-      ?(requires=Build.return [])
+      ?(requires=Ok [])
       ?(flags=Build.return [])
       ?(preprocess=Jbuild.Preprocess.No_preprocessing)
       ?libname
@@ -49,7 +49,12 @@ let make
       ?(objs_dirs=Path.Set.empty)
       () =
   (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
-  { requires   = Build.catch requires ~on_error:(fun _ -> [])
+  let requires =
+    match requires with
+    | Ok    l -> Lib.Set.of_list l
+    | Error _ -> Lib.Set.empty
+  in
+  { requires
   ; flags      = Build.catch flags    ~on_error:(fun _ -> [])
   ; preprocess = Preprocess.make preprocess
   ; libname
@@ -92,11 +97,11 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
        >>>
        Build.create_file (Path.relative dir ".merlin-exists"));
     SC.add_rule sctx ~mode:Promote_but_delete_on_clean (
-      requires &&& flags
-      >>^ (fun (libs, flags) ->
+      flags
+      >>^ (fun flags ->
         let ppx_flags = ppx_flags sctx ~dir ~scope ~src_dir:remaindir t in
         let libs =
-          List.fold_left ~f:(fun acc (lib : Lib.t) ->
+          Lib.Set.fold requires ~init:[] ~f:(fun (lib : Lib.t) acc ->
             let serialize_path = Path.reach ~from:remaindir in
             let bpath = serialize_path (Lib.obj_dir lib) in
             let spath =
@@ -105,7 +110,7 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
               |> serialize_path
             in
             ("B " ^ bpath) :: ("S " ^ spath) :: acc
-          ) libs ~init:[]
+          )
         in
         let source_dirs =
           Path.Set.fold t.source_dirs ~init:[] ~f:(fun path acc ->
@@ -147,10 +152,7 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
     ()
 
 let merge_two a b =
-  { requires =
-      (Build.fanout a.requires b.requires
-       >>^ fun (x, y) ->
-       Lib.L.remove_dups (x @ y))
+  { requires = Lib.Set.union a.requires b.requires
   ; flags = a.flags &&& b.flags >>^ (fun (a, b) -> a @ b)
   ; preprocess = Preprocess.merge a.preprocess b.preprocess
   ; libname =

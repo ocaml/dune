@@ -131,15 +131,13 @@ val resolve_program
 
 module Libs : sig
   (** Returns the closed list of dependencies for a dependency list in
-      a stanza. The second arrow is the same as the first one but with
-      an added dependency on the [.merlin] if [(context t).merlin &&
-      has_dot_merlin] is [true]. *)
+      a stanza. *)
   val requires
     :  t
     -> dir:Path.t
     -> has_dot_merlin:bool
     -> Lib.Compile.t
-    -> (unit, Lib.L.t) Build.t * (unit, Lib.L.t) Build.t
+    -> (unit, Lib.L.t) Build.t
 
   (** [file_deps ~ext] is an arrow that record dependencies on all the
       files with extension [ext] of the libraries given as input. *)

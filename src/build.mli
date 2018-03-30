@@ -116,12 +116,12 @@ val fail : ?targets:Path.t list -> fail -> (_, _) t
 
 val of_result
   :  ?targets:Path.t list
-  -> (('a, 'b) t, exn) Result.t
+  -> ('a, 'b) t Or_exn.t
   -> ('a, 'b) t
 
 val of_result_map
   : ?targets:Path.t list
-  -> ('a, exn) Result.t
+  -> 'a Or_exn.t
   -> f:('a -> ('b, 'c) t)
   -> ('b, 'c) t
 

@@ -232,9 +232,9 @@ type t =
   ; plugins           : Path.t list Mode.Dict.t
   ; foreign_archives  : Path.t list Mode.Dict.t
   ; jsoo_runtime      : Path.t list
-  ; requires          : t list or_error
-  ; ppx_runtime_deps  : t list or_error
-  ; pps               : t list or_error
+  ; requires          : t list Or_exn.t
+  ; ppx_runtime_deps  : t list Or_exn.t
+  ; pps               : t list Or_exn.t
   ; resolved_selects  : Resolved_select.t list
   ; optional          : bool
   ; user_written_deps : Jbuild.Lib_deps.t
@@ -288,8 +288,6 @@ and private_deps_not_allowed =
   { private_dep    : t
   ; pd_loc         : Loc.t
   }
-
-and 'a or_error = ('a, exn) result
 
 type lib = t
 
@@ -919,9 +917,9 @@ module Compile = struct
   module Resolved_select = Resolved_select
 
   type nonrec t =
-    { direct_requires   : t list or_error
-    ; requires          : t list or_error
-    ; pps               : t list or_error
+    { direct_requires   : t list Or_exn.t
+    ; requires          : t list Or_exn.t
+    ; pps               : t list Or_exn.t
     ; resolved_selects  : Resolved_select.t list
     ; optional          : bool
     ; user_written_deps : Jbuild.Lib_deps.t

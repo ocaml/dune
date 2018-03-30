@@ -11,7 +11,7 @@ module type S = sig
 
   (** Create an instance of the sub-system *)
   val instantiate
-    :  resolve:(Loc.t * string -> (Lib.t, exn) result)
+    :  resolve:(Loc.t * string -> Lib.t Or_exn.t)
     -> get:(Lib.t -> t option)
     -> Lib.t
     -> Info.t
@@ -43,7 +43,7 @@ module type Registered_backend = sig
   val get : Lib.t -> t option
 
   (** Resolve a backend name *)
-  val resolve : Lib.DB.t -> Loc.t * string -> (t, exn) result
+  val resolve : Lib.DB.t -> Loc.t * string -> t Or_exn.t
 
   (** Choose a backend by either using the ones written by the user or
       by scanning the dependencies.
@@ -55,9 +55,9 @@ module type Registered_backend = sig
   val select_extensible_backends
     :  loc:Loc.t
     -> ?written_by_user:t list
-    -> extends:(t -> (t list, exn) result)
+    -> extends:(t -> t list Or_exn.t)
     -> Lib.t list
-    -> (t list, exn) result
+    -> t list Or_exn.t
 
   (** Choose a backend by either using the ones written by the user or
       by scanning the dependencies.
@@ -66,9 +66,9 @@ module type Registered_backend = sig
   val select_replaceable_backend
     :  loc:Loc.t
     -> ?written_by_user:t list
-    -> replaces:(t -> (t list, exn) result)
+    -> replaces:(t -> t list Or_exn.t)
     -> Lib.t list
-    -> (t, exn) result
+    -> t Or_exn.t
 end
 
 (* This is probably what we'll give to plugins *)
@@ -89,7 +89,7 @@ module type End_point = sig
     include Registered_backend
 
     (** Backends that this backends extends *)
-    val extends : t -> (t list, exn) result
+    val extends : t -> t list Or_exn.t
   end
 
   module Info : sig

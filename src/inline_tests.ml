@@ -56,8 +56,8 @@ module Backend = struct
     type t =
       { info             : Info.t
       ; lib              : Lib.t
-      ; runner_libraries : (Lib.t list, exn) result
-      ; extends          : (    t list, exn) result
+      ; runner_libraries : Lib.t list Or_exn.t
+      ; extends          :     t list Or_exn.t
       }
 
     let desc ~plural = "inline tests backend" ^ if plural then "s" else ""

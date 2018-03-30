@@ -271,10 +271,6 @@ module Libs = struct
              }))
 
   let with_lib_deps t compile_info ~dir ~has_dot_merlin ~f =
-    let requires =
-      Build.of_result_map (Lib.Compile.requires compile_info)
-        ~f:Build.return
-    in
     let prefix =
       Build.record_lib_deps (Lib.Compile.user_written_deps compile_info)
         ~kind:(if Lib.Compile.optional compile_info then
@@ -290,7 +286,7 @@ module Libs = struct
       else
         prefix
     in
-    prefix_rules t prefix ~f:(fun () -> f requires)
+    prefix_rules t prefix ~f
 
   let lib_files_alias ~dir ~name ~ext =
     Alias.make (sprintf "lib-%s%s-all" name ext) ~dir
@@ -307,18 +303,16 @@ module Libs = struct
            (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext))
        |> Path.Set.of_list)
 
-  let file_deps t ~ext =
-    Build.dyn_paths (Build.arr (fun libs ->
-      List.fold_left libs ~init:[] ~f:(fun acc (lib : Lib.t) ->
-        let x =
-          if Lib.is_local lib then
-            Alias.stamp_file
-              (lib_files_alias ~dir:(Lib.src_dir lib) ~name:(Lib.name lib) ~ext)
-          else
-            Build_system.stamp_file_for_files_of t.build_system
-              ~dir:(Lib.obj_dir lib) ~ext
-        in
-        x :: acc)))
+  let file_deps t libs ~ext =
+    Build.of_result_map libs ~f:(fun libs ->
+      Build.paths
+        (List.rev_map libs ~f:(fun (lib : Lib.t) ->
+           if Lib.is_local lib then
+             Alias.stamp_file
+               (lib_files_alias ~dir:(Lib.src_dir lib) ~name:(Lib.name lib) ~ext)
+           else
+             Build_system.stamp_file_for_files_of t.build_system
+               ~dir:(Lib.obj_dir lib) ~ext)))
 end
 
 module Deps = struct

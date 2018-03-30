@@ -137,40 +137,41 @@ let link_exe
         artifacts modules ~ext:ctx.ext_obj))
   in
   SC.add_rule sctx
-    (Build.fanout4
-       requires
+    (Build.fanout3
        (register_native_objs_deps modules_and_cm_files >>^ snd)
        (Ocaml_flags.get flags mode)
        link_flags
      >>>
-     Build.dyn_paths (Build.arr (fun (libs, _, _, _) ->
-       Lib.L.archive_files libs ~mode ~ext_lib:ctx.ext_lib))
+     Build.of_result_map requires ~f:(fun libs ->
+       Build.paths (Lib.L.archive_files libs ~mode ~ext_lib:ctx.ext_lib))
      >>>
      Build.run ~context:ctx
        (Ok compiler)
-       [ Dyn (fun (_, _, flags,_) -> As flags)
+       [ Dyn (fun (_, flags,_) -> As flags)
        ; A "-o"; Target exe
        ; As linkage.flags
-       ; Dyn (fun (_, _, _, link_flags) -> As link_flags)
-       ; Dyn (fun (libs, _, _, _) ->
+       ; Dyn (fun (_, _, link_flags) -> As link_flags)
+       ; Arg_spec.of_result_map requires ~f:(fun libs ->
            Lib.L.link_flags libs ~mode ~stdlib_dir:ctx.stdlib_dir)
-       ; Dyn (fun (_, cm_files, _, _) -> Deps cm_files)
+       ; Dyn (fun (cm_files, _, _) -> Deps cm_files)
        ]);
   if linkage.ext = ".bc" then
-    let rules = Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe in
-    let libs_and_cm_and_flags =
-      (requires &&& (modules_and_cm_files >>^ snd))
-      &&&
-      SC.expand_and_eval_set sctx ~scope ~dir js_of_ocaml.flags
-        ~standard:(Js_of_ocaml_rules.standard ())
+    let rules =
+      Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe ~requires
     in
-    SC.add_rules sctx (List.map rules ~f:(fun r -> libs_and_cm_and_flags >>> r))
+    let cm_and_flags =
+      Build.fanout
+        (modules_and_cm_files >>^ snd)
+        (SC.expand_and_eval_set sctx ~scope ~dir js_of_ocaml.flags
+           ~standard:(Js_of_ocaml_rules.standard ()))
+    in
+    SC.add_rules sctx (List.map rules ~f:(fun r -> cm_and_flags >>> r))
 
 let build_and_link_many
       ~dir ~obj_dir ~programs ~modules
       ~scope
       ~linkages
-      ?(requires=Build.return [])
+      ?(requires=Ok [])
       ?already_used
       ?(flags=Ocaml_flags.empty)
       ?link_flags

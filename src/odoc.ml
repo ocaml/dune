@@ -56,16 +56,15 @@ module Gen (S : sig val sctx : SC.t end) = struct
 
     let alias = Build_system.Alias.make ".odoc-all"
 
-    let deps =
-      Build.dyn_paths (Build.arr (
-        List.fold_left ~init:[] ~f:(fun acc (lib : Lib.t) ->
-          if Lib.is_local lib then (
-            let dir = Paths.odocs (Lib lib) in
-            Build_system.Alias.stamp_file (alias ~dir) :: acc
-          ) else (
-            acc
-          )
-        )))
+    let deps requires =
+      Build.of_result_map requires ~f:(fun libs ->
+        Build.path_set (
+          List.fold_left libs ~init:Path.Set.empty ~f:(fun acc (lib : Lib.t) ->
+            if Lib.is_local lib then
+              let dir = Paths.odocs (Lib lib) in
+              Path.Set.add acc (Build_system.Alias.stamp_file (alias ~dir))
+            else
+              acc)))
 
     let alias m = alias ~dir:(Paths.odocs m)
 
@@ -107,18 +106,18 @@ module Gen (S : sig val sctx : SC.t end) = struct
            Ocamldep.Dep_graph.deps_of dep_graphs.impl m)
        >>^ List.map ~f:(Module.odoc_file ~doc_dir))
 
-  let compile_module (m : Module.t) ~obj_dir ~includes ~dep_graphs
-        ~doc_dir ~pkg_or_lnu =
+  let compile_module (m : Module.t) ~obj_dir ~includes:(file_deps, iflags)
+        ~dep_graphs ~doc_dir ~pkg_or_lnu =
     let odoc_file = Module.odoc_file m ~doc_dir in
     SC.add_rule sctx
-      (module_deps m ~doc_dir ~dep_graphs
+      (file_deps
        >>>
-       includes
+       module_deps m ~doc_dir ~dep_graphs
        >>>
        Build.run ~context ~dir:doc_dir odoc
          [ A "compile"
          ; A "-I"; Path doc_dir
-         ; Dyn (fun x -> x)
+         ; iflags
          ; As ["--pkg"; pkg_or_lnu]
          ; A "-o"; Target odoc_file
          ; Dep (Module.cmti_file m ~obj_dir)
@@ -147,19 +146,20 @@ module Gen (S : sig val sctx : SC.t end) = struct
     ; typ: [`Module | `Mld]
     }
 
-  let odoc_include_flags libs =
-    let paths =
-      libs |> List.fold_left ~f:(fun paths lib ->
-        if Lib.is_local lib then (
-          Path.Set.add paths (Paths.odocs (Lib lib))
-        ) else (
-          paths
-        )
-      ) ~init:Path.Set.empty in
-    Arg_spec.S (List.concat_map (Path.Set.to_list paths)
-                  ~f:(fun dir -> [Arg_spec.A "-I"; Path dir]))
+  let odoc_include_flags requires =
+    Arg_spec.of_result_map requires ~f:(fun libs ->
+      let paths =
+        libs |> List.fold_left ~f:(fun paths lib ->
+          if Lib.is_local lib then (
+            Path.Set.add paths (Paths.odocs (Lib lib))
+          ) else (
+            paths
+          )
+        ) ~init:Path.Set.empty in
+      Arg_spec.S (List.concat_map (Path.Set.to_list paths)
+                    ~f:(fun dir -> [Arg_spec.A "-I"; Path dir])))
 
-  let to_html (odoc_file : odoc) ~deps =
+  let to_html (odoc_file : odoc) ~deps ~requires =
     let to_remove, jbuilder_keep =
       match odoc_file.typ with
       | `Mld -> odoc_file.html_file, []
@@ -170,13 +170,14 @@ module Gen (S : sig val sctx : SC.t end) = struct
     in
     SC.add_rule sctx
       (deps
-       >>> Build.progn (
+       >>>
+       Build.progn (
          Build.remove_tree to_remove
          :: Build.mkdir odoc_file.html_dir
          :: Build.run ~context ~dir:Paths.html_root
               odoc ~extra_targets:[odoc_file.html_file]
               [ A "html"
-              ; Dyn odoc_include_flags
+              ; odoc_include_flags requires
               ; A "-o"; Path Paths.html_root
               ; Dep odoc_file.odoc_input
               ]
@@ -199,19 +200,14 @@ module Gen (S : sig val sctx : SC.t end) = struct
     let pkg_or_lnu = pkg_or_lnu lib in
     let doc_dir = Paths.odocs (Lib lib) in
     let obj_dir = Lib.obj_dir lib in
-    let includes =
-      Build.memoize "includes"
-        (requires
-         >>> Dep.deps
-         >>^ odoc_include_flags)
-    in
+    let includes = (Dep.deps requires, odoc_include_flags requires) in
     let modules_and_odoc_files =
       List.map (Module.Name.Map.values modules) ~f:(
         compile_module ~obj_dir ~includes ~dep_graphs
           ~doc_dir ~pkg_or_lnu)
     in
     Dep.setup_deps (Lib lib) (List.map modules_and_odoc_files ~f:snd
-                             |> Path.Set.of_list)
+                              |> Path.Set.of_list)
 
   let setup_css_rule () =
     SC.add_rule sctx
@@ -310,12 +306,12 @@ module Gen (S : sig val sctx : SC.t end) = struct
       }
 
   let setup_pkg_html_rules =
-    let loaded = Package.Name.Table.create ~default_value:None in
+    let loaded = Package.Name.Table.create ~default_value:false in
     let odoc_glob =
       Re.compile (Re.seq [Re.(rep1 any) ; Re.str ".odoc" ; Re.eos]) in
     fun ~pkg ~libs ->
-      if Package.Name.Table.get loaded pkg = None then begin
-        Package.Name.Table.set loaded ~key:pkg ~data:(Some ());
+      if not (Package.Name.Table.get loaded pkg) then begin
+        Package.Name.Table.set loaded ~key:pkg ~data:true;
         let odocs =
           let odocs target =
             let dir = Paths.odocs target in
@@ -330,9 +326,14 @@ module Gen (S : sig val sctx : SC.t end) = struct
           let closure =
             match Lib.closure libs with
             | Ok closure -> closure
-            | Error _ -> libs in
-          let deps = Build.return closure >>> Dep.deps in
-          List.map odocs ~f:(to_html ~deps) in
+            | Error _ ->
+              (* CR diml for rgrinberg: this branch needs a comment, I
+                 don't understand why we fallback to not taking the
+                 transitive closure in case of error. *)
+              libs
+          in
+          let deps = Dep.deps (Ok closure) in
+          List.map odocs ~f:(to_html ~deps ~requires:(Ok closure)) in
         List.iter (
           Dep.html_alias (Pkg pkg)
           :: List.map ~f:(fun lib -> Dep.html_alias (Lib lib)) libs

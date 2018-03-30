@@ -21,19 +21,20 @@ let pp_ml fmt include_dirs =
 let add_module_rules sctx ~dir lib_requires =
   let path = Path.relative dir main_module_filename in
   let utop_ml =
-    lib_requires
-    >>^ (fun libs ->
-      let include_paths =
-        let ctx = Super_context.context sctx in
-        Path.Set.to_list
-          (Lib.L.include_paths libs ~stdlib_dir:ctx.stdlib_dir)
-      in
-      let b = Buffer.create 64 in
-      let fmt = Format.formatter_of_buffer b in
-      pp_ml fmt include_paths;
-      Format.pp_print_flush fmt ();
-      Buffer.contents b)
-    >>> Build.write_file_dyn path in
+    Build.of_result_map lib_requires ~f:(fun libs ->
+      Build.arr (fun () ->
+        let include_paths =
+          let ctx = Super_context.context sctx in
+          Path.Set.to_list
+            (Lib.L.include_paths libs ~stdlib_dir:ctx.stdlib_dir)
+        in
+        let b = Buffer.create 64 in
+        let fmt = Format.formatter_of_buffer b in
+        pp_ml fmt include_paths;
+        Format.pp_print_flush fmt ();
+        Buffer.contents b))
+    >>> Build.write_file_dyn path
+  in
   Super_context.add_rule sctx utop_ml
 
 let utop_exe_dir ~dir = Path.relative dir ".utop"
@@ -64,11 +65,9 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
     let utop_exe_dir = utop_exe_dir ~dir in
     let requires =
       let open Result.O in
-      Build.of_result
-        (Lib.DB.find_many (Scope.libs scope)
-           ("utop" :: List.map libs ~f:(fun (lib : Library.t) -> lib.name))
-         >>= Lib.closure
-         >>| Build.return)
+      Lib.DB.find_many (Scope.libs scope)
+        ("utop" :: List.map libs ~f:(fun (lib : Library.t) -> lib.name))
+      >>= Lib.closure
     in
     Exe.build_and_link sctx
       ~dir:utop_exe_dir

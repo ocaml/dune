@@ -629,7 +629,7 @@ module Gen(P : Install_rules.Params) = struct
         ~dep_graphs:(Ocamldep.Dep_graphs.dummy m)
         ~requires:(
           let requires =
-            if Module.Name.Map.is_empty modules then
+            if Module.Name.Map.is_empty source_modules then
               (* Just so that we setup lib dependencies for empty libraries *)
               requires
             else

@@ -725,12 +725,19 @@ module Gen(P : Install_rules.Params) = struct
          Path.relative dir (header ^ ".h"))
        |> Path.Set.of_list);
 
-    (let modules = Module.Name.Map.values modules in
+    (let modules =
+       Module.Name.Map.fold modules ~init:[] ~f:(fun m acc ->
+         if Module.has_impl m then
+           m :: acc
+         else
+           acc)
+     in
      let top_sorted_modules =
        Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules
      in
      List.iter Mode.all ~f:(fun mode ->
-       build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules ~modules));
+       build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules
+         ~modules));
     (* Build *.cma.js *)
     SC.add_rules sctx (
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in

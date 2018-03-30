@@ -270,25 +270,27 @@ module Libs = struct
                  raise (Lib.Error (No_solution_found_for_select e))
              }))
 
-  let requires t ~dir ~has_dot_merlin compile_info =
+  let with_lib_deps t compile_info ~dir ~has_dot_merlin ~f =
     let requires =
       Build.of_result_map (Lib.Compile.requires compile_info)
         ~f:Build.return
     in
-    let requires =
+    let prefix =
       Build.record_lib_deps (Lib.Compile.user_written_deps compile_info)
         ~kind:(if Lib.Compile.optional compile_info then
                  Optional
                else
                  Required)
-      >>> requires
     in
-    if t.context.merlin && has_dot_merlin then
-      Build.path (Path.relative dir ".merlin-exists")
-      >>>
-      requires
-    else
-      requires
+    let prefix =
+      if t.context.merlin && has_dot_merlin then
+        Build.path (Path.relative dir ".merlin-exists")
+        >>>
+        prefix
+      else
+        prefix
+    in
+    prefix_rules t prefix ~f:(fun () -> f requires)
 
   let lib_files_alias ~dir ~name ~ext =
     Alias.make (sprintf "lib-%s%s-all" name ext) ~dir

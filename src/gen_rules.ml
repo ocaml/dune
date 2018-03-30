@@ -549,7 +549,8 @@ module Gen(P : Install_rules.Params) = struct
      it references are built after. *)
   let alias_module_build_sandbox = ctx.version < (4, 03, 0)
 
-  let library_rules (lib : Library.t) ~modules_partitioner ~dir ~files ~scope =
+  let library_rules (lib : Library.t) ~modules_partitioner ~dir ~files ~scope
+        ~requires ~compile_info =
     let obj_dir = Utils.library_object_directory ~dir lib.name in
     let dep_kind = if lib.optional then Build.Optional else Required in
     let flags = Ocaml_flags.make lib.buildable sctx ~scope ~dir in
@@ -606,20 +607,11 @@ module Gen(P : Install_rules.Params) = struct
             |> String.concat ~sep:"\n")
          >>> Build.write_file_dyn (Path.relative dir file.name)));
 
-    let compile_info =
-      Lib.DB.get_compile_info (Scope.libs scope) lib.name
-        ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
-    in
-    SC.Libs.gen_select_rules sctx compile_info ~dir;
-    let requires =
-      SC.Libs.requires sctx compile_info
-        ~dir ~has_dot_merlin:true
-    in
 
-    let dynlink = lib.dynlink in
-    let js_of_ocaml = lib.buildable.js_of_ocaml in
-    Module_compilation.build_modules sctx
-      ~js_of_ocaml ~dynlink ~flags ~scope ~dir ~obj_dir ~dep_graphs
+        let dynlink = lib.dynlink in
+        let js_of_ocaml = lib.buildable.js_of_ocaml in
+        Module_compilation.build_modules sctx
+          ~js_of_ocaml ~dynlink ~flags ~scope ~dir ~obj_dir ~dep_graphs
       ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
       let flags = Ocaml_flags.default () in
@@ -802,12 +794,24 @@ module Gen(P : Install_rules.Params) = struct
       ~libname:lib.name
       ~objs_dirs:(Path.Set.singleton obj_dir)
 
+  let library_rules (lib : Library.t) ~modules_partitioner ~dir ~files ~scope =
+    let compile_info =
+      Lib.DB.get_compile_info (Scope.libs scope) lib.name
+        ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
+    in
+    SC.Libs.gen_select_rules sctx compile_info ~dir;
+    SC.Libs.with_lib_deps sctx compile_info ~dir ~has_dot_merlin:true
+      ~f:(fun requires ->
+        library_rules lib ~modules_partitioner ~dir ~files ~scope
+          ~requires ~compile_info)
+
   (* +-----------------------------------------------------------------+
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
   let executables_rules ~dir ~all_modules
-        ?modules_partitioner ~scope (exes : Executables.t) =
+        ?modules_partitioner ~scope ~requires ~compile_info
+        (exes : Executables.t) =
     let modules =
       parse_modules ~all_modules ~buildable:exes.buildable
     in
@@ -876,19 +880,6 @@ module Gen(P : Install_rules.Params) = struct
         ~standard:[]
     in
 
-    let compile_info =
-      Lib.DB.resolve_user_written_deps (Scope.libs scope)
-        exes.buildable.libraries
-        ~pps:(Jbuild.Preprocess_map.pps exes.buildable.preprocess)
-        ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-    in
-    SC.Libs.gen_select_rules sctx compile_info ~dir;
-    let requires =
-      SC.Libs.requires sctx ~dir
-        ~has_dot_merlin:true
-        compile_info
-    in
-
     (* Use "eobjs" rather than "objs" to avoid a potential conflict
        with a library of the same name *)
     let obj_dir =
@@ -912,6 +903,20 @@ module Gen(P : Install_rules.Params) = struct
       ~flags:(Ocaml_flags.common flags)
       ~preprocess:(Buildable.single_preprocess exes.buildable)
       ~objs_dirs:(Path.Set.singleton obj_dir)
+
+  let executables_rules ~dir ~all_modules
+        ?modules_partitioner ~scope (exes : Executables.t) =
+    let compile_info =
+      Lib.DB.resolve_user_written_deps (Scope.libs scope)
+        exes.buildable.libraries
+        ~pps:(Jbuild.Preprocess_map.pps exes.buildable.preprocess)
+        ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+    in
+    SC.Libs.gen_select_rules sctx compile_info ~dir;
+    SC.Libs.with_lib_deps sctx compile_info ~dir ~has_dot_merlin:true
+      ~f:(fun requires ->
+        executables_rules exes ~dir ~all_modules
+          ?modules_partitioner ~scope ~requires ~compile_info)
 
   (* +-----------------------------------------------------------------+
      | Aliases                                                         |

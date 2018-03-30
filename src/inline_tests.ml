@@ -196,7 +196,7 @@ include Sub_system.Register_end_point(
 
     let runner_libs =
       let open Result.O in
-      Lib.Compile.make
+      Build.of_result
         (Result.concat_map backends
            ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
          >>= fun libs ->
@@ -206,8 +206,8 @@ include Sub_system.Register_end_point(
            (List.map info.libraries
               ~f:(Lib.DB.resolve (Scope.libs scope)))
          >>= fun more_libs ->
-         Ok (lib @ libs @ more_libs))
-      |> Super_context.Libs.requires sctx ~dir ~has_dot_merlin:false
+         Lib.closure (lib @ libs @ more_libs)
+         >>| Build.return)
     in
 
     (* Generate the runner file *)

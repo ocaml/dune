@@ -130,14 +130,16 @@ val resolve_program
   -> Action.Prog.t
 
 module Libs : sig
-  (** Returns the closed list of dependencies for a dependency list in
-      a stanza. *)
-  val requires
+  (** Make sure all rules produces by [f] record the library
+      dependencies for [jbuilder external-lib-deps] and depend on the
+      generation of the .merlin file. *)
+  val with_lib_deps
     :  t
+    -> Lib.Compile.t
     -> dir:Path.t
     -> has_dot_merlin:bool
-    -> Lib.Compile.t
-    -> (unit, Lib.L.t) Build.t
+    -> f:((unit, Lib.L.t) Build.t -> 'a)
+    -> 'a
 
   (** Generate the rules for the [(select ...)] forms in library dependencies *)
   val gen_select_rules : t -> dir:Path.t -> Lib.Compile.t -> unit

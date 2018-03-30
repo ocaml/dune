@@ -486,32 +486,31 @@ module Gen(P : Install_rules.Params) = struct
            ; Dyn (fun (cm_files, _, _, _) -> Deps cm_files)
            ]))
 
-  let build_c_file (lib : Library.t) ~scope ~dir ~requires ~h_files c_name =
+  let build_c_file (lib : Library.t) ~scope ~dir ~requires ~h_file_deps c_name =
     let src = Path.relative dir (c_name ^ ".c") in
     let dst = Path.relative dir (c_name ^ ctx.ext_obj) in
     SC.add_rule sctx
-      (Build.paths h_files
+      (h_file_deps
        >>>
-       Build.fanout
-         (SC.expand_and_eval_set sctx ~scope ~dir lib.c_flags ~standard:(Context.cc_g ctx))
-         requires
+       SC.expand_and_eval_set sctx ~scope ~dir lib.c_flags
+         ~standard:(Context.cc_g ctx)
        >>>
        Build.run ~context:ctx
-         (* We have to execute the rule in the library directory as the .o is produced in
-            the current directory *)
+         (* We have to execute the rule in the library directory as
+            the .o is produced in the current directory *)
          ~dir
          (Ok ctx.ocamlc)
          [ As (Utils.g ())
-         ; Dyn (fun (c_flags, libs) ->
-             S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
-               ; Arg_spec.quote_args "-ccopt" c_flags
-               ])
+         ; Arg_spec.of_result_map requires ~f:(fun libs ->
+             Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir)
+         ; Dyn (fun c_flags -> Arg_spec.quote_args "-ccopt" c_flags)
          ; A "-o"; Target dst
          ; Dep src
          ]);
     dst
 
-  let build_cxx_file (lib : Library.t) ~scope ~dir ~requires ~h_files c_name =
+  let build_cxx_file (lib : Library.t) ~scope ~dir ~requires ~h_file_deps
+        c_name =
     let src = Path.relative dir (c_name ^ ".cpp") in
     let dst = Path.relative dir (c_name ^ ctx.ext_obj) in
     let open Arg_spec in
@@ -522,36 +521,35 @@ module Gen(P : Install_rules.Params) = struct
         [A "-o"; Target dst]
     in
     SC.add_rule sctx
-      (Build.paths h_files
+      (h_file_deps
        >>>
-       Build.fanout
-         (SC.expand_and_eval_set sctx ~scope ~dir lib.cxx_flags ~standard:(Context.cc_g ctx))
-         requires
+       SC.expand_and_eval_set sctx ~scope ~dir lib.cxx_flags
+         ~standard:(Context.cc_g ctx)
        >>>
        Build.run ~context:ctx
-         (* We have to execute the rule in the library directory as the .o is produced in
-            the current directory *)
+         (* We have to execute the rule in the library directory as
+            the .o is produced in the current directory *)
          ~dir
          (SC.resolve_program sctx ctx.c_compiler)
          ([ S [A "-I"; Path ctx.stdlib_dir]
           ; As (SC.cxx_flags sctx)
-          ; Dyn (fun (cxx_flags, libs) ->
-              S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
-                ; As cxx_flags
-                ])
+          ; Arg_spec.of_result_map requires ~f:(fun libs ->
+              Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir)
+          ; Dyn (fun cxx_flags -> As cxx_flags)
           ] @ output_param @
           [ A "-c"; Dep src
           ]));
     dst
 
-  (* In 4.02, the compiler reads the cmi for module alias even with [-w -49
-     -no-alias-deps], so we must sandbox the build of the alias module since the modules
-     it references are built after. *)
+  (* In 4.02, the compiler reads the cmi for module alias even with
+     [-w -49 -no-alias-deps], so we must sandbox the build of the
+     alias module since the modules it references are built after. *)
   let alias_module_build_sandbox = ctx.version < (4, 03, 0)
 
   let library_rules (lib : Library.t) ~modules_partitioner ~dir ~files ~scope
-        ~requires ~compile_info =
+        ~compile_info =
     let obj_dir = Utils.library_object_directory ~dir lib.name in
+    let requires = Lib.Compile.requires compile_info in
     let dep_kind = if lib.optional then Build.Optional else Required in
     let flags = Ocaml_flags.make lib.buildable sctx ~scope ~dir in
     let { modules; main_module_name; alias_module } = modules_by_lib ~dir lib in
@@ -624,35 +622,25 @@ module Gen(P : Install_rules.Params) = struct
         ~dir
         ~obj_dir
         ~dep_graphs:(Ocamldep.Dep_graphs.dummy m)
-        ~requires:(
-          let requires =
-            if Module.Name.Map.is_empty source_modules then
-              (* Just so that we setup lib dependencies for empty libraries *)
-              requires
-            else
-              Build.return []
-          in
-          Cm_kind.Dict.of_func (fun ~cm_kind:_ -> requires))
+        ~requires:(Ok [])
+        ~lib_file_deps:(Cm_kind.Dict.make_all (Build.return ()))
         ~alias_module:None);
 
     if Library.has_stubs lib then begin
       let h_files =
-        String_set.to_list files
-        |> List.filter_map ~f:(fun fn ->
-          if String.is_suffix fn ~suffix:".h" then
-            Some (Path.relative dir fn)
-          else
-            None)
+        Path.Set.of_string_set ~f:(Path.relative dir)
+          (String_set.filter files ~f:(String.is_suffix ~suffix:".h"))
       in
       let o_files =
-        let requires =
-          Build.memoize "header files"
-            (requires >>> SC.Libs.file_deps sctx ~ext:".h")
+        let h_file_deps =
+          Build.path_set h_files
+          >>>
+          SC.Libs.file_deps sctx requires ~ext:".h"
         in
         List.map lib.c_names ~f:(
-          build_c_file   lib ~scope ~dir ~requires ~h_files
+          build_c_file   lib ~scope ~dir ~requires ~h_file_deps
         ) @ List.map lib.cxx_names ~f:(
-          build_cxx_file lib ~scope ~dir ~requires ~h_files
+          build_cxx_file lib ~scope ~dir ~requires ~h_file_deps
         )
       in
       match lib.self_build_stubs_archive with
@@ -767,8 +755,7 @@ module Gen(P : Install_rules.Params) = struct
         SC.add_rule sctx build
       );
 
-    Odoc.setup_library_odoc_rules lib ~requires ~modules ~dep_graphs ~scope
-    ;
+    Odoc.setup_library_odoc_rules lib ~requires ~modules ~dep_graphs ~scope;
 
     let flags =
       match alias_module with
@@ -801,17 +788,17 @@ module Gen(P : Install_rules.Params) = struct
     in
     SC.Libs.gen_select_rules sctx compile_info ~dir;
     SC.Libs.with_lib_deps sctx compile_info ~dir ~has_dot_merlin:true
-      ~f:(fun requires ->
-        library_rules lib ~modules_partitioner ~dir ~files ~scope
-          ~requires ~compile_info)
+      ~f:(fun () ->
+        library_rules lib ~modules_partitioner ~dir ~files ~scope ~compile_info)
 
   (* +-----------------------------------------------------------------+
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
   let executables_rules ~dir ~all_modules
-        ?modules_partitioner ~scope ~requires ~compile_info
+        ?modules_partitioner ~scope ~compile_info
         (exes : Executables.t) =
+    let requires = Lib.Compile.requires compile_info in
     let modules =
       parse_modules ~all_modules ~buildable:exes.buildable
     in
@@ -914,9 +901,9 @@ module Gen(P : Install_rules.Params) = struct
     in
     SC.Libs.gen_select_rules sctx compile_info ~dir;
     SC.Libs.with_lib_deps sctx compile_info ~dir ~has_dot_merlin:true
-      ~f:(fun requires ->
+      ~f:(fun () ->
         executables_rules exes ~dir ~all_modules
-          ?modules_partitioner ~scope ~requires ~compile_info)
+          ?modules_partitioner ~scope ~compile_info)
 
   (* +-----------------------------------------------------------------+
      | Aliases                                                         |

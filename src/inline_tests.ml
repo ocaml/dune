@@ -196,18 +196,16 @@ include Sub_system.Register_end_point(
 
     let runner_libs =
       let open Result.O in
-      Build.of_result
-        (Result.concat_map backends
-           ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
-         >>= fun libs ->
-         Lib.DB.find_many (Scope.libs scope) [lib.name]
-         >>= fun lib ->
-         Result.all
-           (List.map info.libraries
-              ~f:(Lib.DB.resolve (Scope.libs scope)))
-         >>= fun more_libs ->
-         Lib.closure (lib @ libs @ more_libs)
-         >>| Build.return)
+      Result.concat_map backends
+        ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
+      >>= fun libs ->
+      Lib.DB.find_many (Scope.libs scope) [lib.name]
+      >>= fun lib ->
+      Result.all
+        (List.map info.libraries
+           ~f:(Lib.DB.resolve (Scope.libs scope)))
+      >>= fun more_libs ->
+      Lib.closure (lib @ libs @ more_libs)
     in
 
     (* Generate the runner file *)

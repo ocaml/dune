@@ -1,5 +1,6 @@
 (** Odoc rules *)
 
+open Import
 open Jbuild
 
 module Gen (S : sig val sctx : Super_context.t end) : sig
@@ -8,7 +9,7 @@ module Gen (S : sig val sctx : Super_context.t end) : sig
     :  Library.t
     -> scope:Scope.t
     -> modules:Module.t Module.Name.Map.t
-    -> requires:(unit, Lib.t list) Build.t
+    -> requires:Lib.t list Or_exn.t
     -> dep_graphs:Ocamldep.Dep_graphs.t
     -> unit
 

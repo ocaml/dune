@@ -138,15 +138,15 @@ module Libs : sig
     -> Lib.Compile.t
     -> dir:Path.t
     -> has_dot_merlin:bool
-    -> f:((unit, Lib.L.t) Build.t -> 'a)
+    -> f:(unit -> 'a)
     -> 'a
 
   (** Generate the rules for the [(select ...)] forms in library dependencies *)
   val gen_select_rules : t -> dir:Path.t -> Lib.Compile.t -> unit
 
-  (** [file_deps ~ext] is an arrow that record dependencies on all the
-      files with extension [ext] of the libraries given as input. *)
-  val file_deps : t -> ext:string -> (Lib.t list, Lib.t list) Build.t
+  (** [file_deps t libs ~ext] is an arrow that record dependencies on
+      all the files with extension [ext] of libraries [libs]. *)
+  val file_deps : t -> Lib.L.t Or_exn.t -> ext:string -> ('a, 'a) Build.t
 
   (** Setup the alias that depends on all files with a given extension
       for a library *)

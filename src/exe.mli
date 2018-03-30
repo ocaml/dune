@@ -1,5 +1,7 @@
 (** Compilation and linking of executables *)
 
+open Import
+
 module Program : sig
   type t =
     { name             : string
@@ -43,7 +45,7 @@ val build_and_link
   -> modules:Module.t Module.Name.Map.t
   -> scope:Scope.t
   -> linkages:Linkage.t list
-  -> ?requires:(unit, Lib.L.t) Build.t
+  -> ?requires:Lib.t list Or_exn.t
   -> ?already_used:Module.Name.Set.t
   -> ?flags:Ocaml_flags.t
   -> ?link_flags:(unit, string list) Build.t
@@ -58,7 +60,7 @@ val build_and_link_many
   -> modules:Module.t Module.Name.Map.t
   -> scope:Scope.t
   -> linkages:Linkage.t list
-  -> ?requires:(unit, Lib.L.t) Build.t
+  -> ?requires:Lib.t list Or_exn.t
   -> ?already_used:Module.Name.Set.t
   -> ?flags:Ocaml_flags.t
   -> ?link_flags:(unit, string list) Build.t
@@ -73,7 +75,7 @@ val link_exe
   :  dir:Path.t
   -> obj_dir:Path.t
   -> scope:Scope.t
-  -> requires:(unit, Lib.t list) Build.t
+  -> requires:Lib.t list Or_exn.t
   -> name:string
   -> linkage:Linkage.t
   -> top_sorted_modules:(unit, Module.t list) Build.t

@@ -1,9 +1,11 @@
 (** OCaml module compilation *)
 
+open Import
+
 (** Setup rules to build a single module.
 
-    [requires] must declare dependencies on files of libraries.
-*)
+    [lib_file_deps] represent the dependencies on files of library
+    dependencies. *)
 val build_module
   :  Super_context.t
   -> ?sandbox:bool
@@ -15,7 +17,8 @@ val build_module
   -> dir:Path.t
   -> obj_dir:Path.t
   -> dep_graphs:Ocamldep.Dep_graphs.t
-  -> requires:(unit, Lib.t list) Build.t Cm_kind.Dict.t
+  -> requires:Lib.t list Or_exn.t
+  -> lib_file_deps:(unit, unit) Build.t Cm_kind.Dict.t
   -> alias_module:Module.t option
   -> unit
 
@@ -30,6 +33,6 @@ val build_modules
   -> obj_dir:Path.t
   -> dep_graphs:Ocamldep.Dep_graphs.t
   -> modules:Module.t Module.Name.Map.t
-  -> requires:(unit, Lib.t list) Build.t
+  -> requires:Lib.t list Or_exn.t
   -> alias_module:Module.t option
   -> unit

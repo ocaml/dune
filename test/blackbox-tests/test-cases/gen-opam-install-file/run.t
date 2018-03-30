@@ -1,14 +1,14 @@
   $ jbuilder runtest --display short
       ocamldep bar.ml.d
-      ocamldep foo_byte.ml.d
-        ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
-        ocamlc foo_byte.cma
       ocamldep foo.ml.d
       ocamldep foo.mli.d
         ocamlc .foo.objs/foo.{cmi,cmti}
       ocamlopt .foo.objs/foo.{cmx,o}
       ocamlopt foo.{a,cmxa}
       ocamlopt foo.cmxs
+      ocamldep foo_byte.ml.d
+        ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
+        ocamlc foo_byte.cma
         ocamlc .foo.objs/foo.{cmo,cmt}
         ocamlc foo.cma
         ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}

@@ -6,11 +6,11 @@
       ocamldep foo.ml.d
       ocamldep foo.mli.d
         ocamlc .foo.objs/foo.{cmi,cmti}
-        ocamlc .foo.objs/foo.{cmo,cmt}
-        ocamlc foo.cma
       ocamlopt .foo.objs/foo.{cmx,o}
       ocamlopt foo.{a,cmxa}
       ocamlopt foo.cmxs
+        ocamlc .foo.objs/foo.{cmo,cmt}
+        ocamlc foo.cma
         ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}
       ocamlopt .bar.eobjs/bar.{cmx,o}
       ocamlopt bar.exe

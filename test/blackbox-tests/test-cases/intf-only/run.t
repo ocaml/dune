@@ -11,11 +11,11 @@ Successes:
       ocamlopt .foo.objs/foo.{cmx,o}
       ocamlopt foo.{a,cmxa}
       ocamlopt foo.cmxs
+        ocamlc foo.cma
         ocamlc test/.bar.objs/bar.{cmi,cmo,cmt}
       ocamlopt test/.bar.objs/bar.{cmx,o}
       ocamlopt test/bar.{a,cmxa}
       ocamlopt test/bar.cmxs
-        ocamlc foo.cma
         ocamlc test/bar.cma
 
 Errors:

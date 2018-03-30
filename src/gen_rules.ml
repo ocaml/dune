@@ -429,7 +429,7 @@ module Gen(P : Install_rules.Params) = struct
     List.map cclibs ~f
 
   let build_lib (lib : Library.t) ~scope ~flags ~dir ~obj_dir ~mode
-        ~top_sorted_modules =
+        ~top_sorted_modules ~modules =
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
@@ -451,17 +451,21 @@ module Gen(P : Install_rules.Params) = struct
       let artifacts ~ext modules =
         List.map modules ~f:(Module.obj_file ~obj_dir ~ext)
       in
-      let register_native_objs_deps build =
+      let obj_deps =
+        Build.paths (artifacts modules ~ext:(Cm_kind.ext (Mode.cm_kind mode)))
+      in
+      let obj_deps =
         match mode with
-        | Byte   -> build
+        | Byte   -> obj_deps
         | Native ->
-          build >>>
-          Build.dyn_paths (Build.arr (artifacts ~ext:ctx.ext_obj))
+          obj_deps >>>
+          Build.paths (artifacts modules ~ext:ctx.ext_obj)
       in
       SC.add_rule sctx
-        (Build.fanout4
-           (register_native_objs_deps top_sorted_modules
-            >>^ artifacts ~ext:(Cm_kind.ext (Mode.cm_kind mode)))
+        (obj_deps
+         >>>
+         Build.fanout4
+           (top_sorted_modules >>^ artifacts ~ext:(Cm_kind.ext (Mode.cm_kind mode)))
            (SC.expand_and_eval_set sctx ~scope ~dir lib.c_library_flags ~standard:[])
            (Ocaml_flags.get flags mode)
            (SC.expand_and_eval_set sctx ~scope ~dir lib.library_flags ~standard:[])
@@ -721,12 +725,12 @@ module Gen(P : Install_rules.Params) = struct
          Path.relative dir (header ^ ".h"))
        |> Path.Set.of_list);
 
-    let top_sorted_modules =
-      Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl
-        (Module.Name.Map.values modules)
-    in
-    List.iter Mode.all ~f:(fun mode ->
-      build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules);
+    (let modules = Module.Name.Map.values modules in
+     let top_sorted_modules =
+       Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl modules
+     in
+     List.iter Mode.all ~f:(fun mode ->
+       build_lib lib ~scope ~flags ~dir ~obj_dir ~mode ~top_sorted_modules ~modules));
     (* Build *.cma.js *)
     SC.add_rules sctx (
       let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in

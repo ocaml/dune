@@ -39,6 +39,9 @@ next
 - Fix error messaage when a public library is defined twice. Before
   jbuilder would raise an uncaught exception (Fixes #661, @diml)
 
+- Fix several cases where `external-lib-deps` was returning too little
+  dependencies (#667, fixes #644 @diml)
+
 1.0+beta19.1 (21/03/2018)
 -------------------------
 

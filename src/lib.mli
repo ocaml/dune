@@ -193,10 +193,6 @@ type sub_system = ..
 module Compile : sig
   type t
 
-  (** Create a compilation context from a list of libraries. The list
-      doesn't have to be transitively closed. *)
-  val make : L.t Or_exn.t -> t
-
   (** Return the list of dependencies needed for compiling this library *)
   val requires : t -> L.t Or_exn.t
 

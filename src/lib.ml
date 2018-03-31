@@ -926,16 +926,6 @@ module Compile = struct
     ; sub_systems       : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
     }
 
-  let make libs =
-    { direct_requires   = libs
-    ; requires          = libs >>= closure
-    ; resolved_selects  = []
-    ; pps               = Ok []
-    ; optional          = false
-    ; user_written_deps = []
-    ; sub_systems       = Sub_system_name.Map.empty
-    }
-
   let for_lib db (t : lib) =
     { direct_requires   = t.requires
     ; requires          = t.requires >>= closure_with_overlap_checks db

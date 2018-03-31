@@ -74,10 +74,12 @@ let create
       ~file_tree
       ~packages
       ~stanzas
-      ~filter_out_optional_stanzas_with_missing_deps
+      ~external_lib_deps_mode
       ~build_system
   =
-  let installed_libs = Lib.DB.create_from_findlib context.findlib in
+  let installed_libs =
+    Lib.DB.create_from_findlib context.findlib ~external_lib_deps_mode
+  in
   let internal_libs =
     List.concat_map stanzas ~f:(fun (dir, _, stanzas) ->
       let ctx_dir = Path.append context.build_dir dir in
@@ -109,7 +111,7 @@ let create
         })
   in
   let stanzas_to_consider_for_install =
-    if filter_out_optional_stanzas_with_missing_deps then
+    if not external_lib_deps_mode then
       List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; _ } ->
         List.filter_map stanzas ~f:(fun stanza ->
           let keep =

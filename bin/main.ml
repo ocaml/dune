@@ -72,12 +72,12 @@ let restore_cwd_and_execve common prog argv env =
 module Main = struct
   include Jbuilder.Main
 
-  let setup ~log ?filter_out_optional_stanzas_with_missing_deps common =
+  let setup ~log ?external_lib_deps_mode common =
     setup
       ~log
       ?workspace_file:common.workspace_file
       ?only_packages:common.only_packages
-      ?filter_out_optional_stanzas_with_missing_deps
+      ?external_lib_deps_mode
       ?x:common.x
       ~ignore_promoted_rules:common.ignore_promoted_rules
       ~capture_outputs:common.capture_outputs
@@ -752,7 +752,7 @@ let external_lib_deps =
     set_common common ~targets:[];
     let log = Log.create common in
     Scheduler.go ~log ~common
-      (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
+      (Main.setup ~log common ~external_lib_deps_mode:true
        >>= fun setup ->
        let targets = resolve_targets_exn ~log common setup targets in
        let request = request_of_targets setup targets in
@@ -858,7 +858,7 @@ let rules =
     set_common common ~targets;
     let log = Log.create common in
     Scheduler.go ~log ~common
-      (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
+      (Main.setup ~log common ~external_lib_deps_mode:true
        >>= fun setup ->
        let request =
          match targets with

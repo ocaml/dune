@@ -29,7 +29,7 @@ let setup_env ~capture_outputs =
   Env.add env ~var:"INSIDE_DUNE" ~value:"1"
 
 let setup ?(log=Log.no_log)
-      ?filter_out_optional_stanzas_with_missing_deps
+      ?external_lib_deps_mode
       ?workspace ?(workspace_file="jbuild-workspace")
       ?only_packages
       ?extra_ignored_subtrees
@@ -92,7 +92,7 @@ let setup ?(log=Log.no_log)
     ~build_system
     ~contexts
     ?only_packages
-    ?filter_out_optional_stanzas_with_missing_deps
+    ?external_lib_deps_mode
   >>= fun stanzas ->
   Scheduler.set_status_line_generator gen_status_line
   >>>
@@ -113,7 +113,7 @@ let find_context_exn t ~name =
 
 let external_lib_deps ?log ~packages () =
   Scheduler.go ?log
-    (setup () ~filter_out_optional_stanzas_with_missing_deps:false
+    (setup () ~external_lib_deps_mode:true
      >>| fun setup ->
      let context = find_context_exn setup ~name:"default" in
      let install_files =

@@ -18,7 +18,7 @@ val package_install_file : setup -> Package.Name.t -> (Path.t, unit) result
     it. *)
 val setup
   :  ?log:Log.t
-  -> ?filter_out_optional_stanzas_with_missing_deps:bool
+  -> ?external_lib_deps_mode:bool
   -> ?workspace:Workspace.t
   -> ?workspace_file:string
   -> ?only_packages:Package.Name.Set.t

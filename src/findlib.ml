@@ -174,6 +174,19 @@ let root_package_name s =
   | None -> s
   | Some i -> String.sub s ~pos:0 ~len:i
 
+let dummy_package t ~name =
+  let dir =
+    match t.path with
+    | [] -> t.stdlib_dir
+    | dir :: _ -> Path.relative dir (root_package_name name)
+  in
+  { Package.
+    meta_file = Path.relative dir "META"
+  ; name      = name
+  ; dir       = dir
+  ; vars      = String_map.empty
+  }
+
 (* Parse a single package from a META file *)
 let parse_package t ~meta_file ~name ~parent_dir ~vars =
   let pkg_dir = Vars.get vars "directory" Ps.empty in

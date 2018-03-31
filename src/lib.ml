@@ -1013,14 +1013,20 @@ module DB = struct
         | Some x -> x)
       ~all:(fun () -> String_map.keys map)
 
-  let create_from_findlib findlib =
+  let create_from_findlib ?(external_lib_deps_mode=false) findlib =
     create ()
       ~resolve:(fun name ->
         match Findlib.find findlib name with
         | Ok pkg -> Found (Info.of_findlib_package pkg)
         | Error e ->
           match e with
-          | Not_found -> Not_found
+          | Not_found ->
+            if external_lib_deps_mode then
+              Found
+                (Info.of_findlib_package
+                   (Findlib.dummy_package findlib ~name))
+            else
+              Not_found
           | Hidden pkg ->
             Hidden (Info.of_findlib_package pkg,
                     "unsatisfied 'exist_if'"))

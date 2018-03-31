@@ -1027,7 +1027,7 @@ module type Gen = sig
 end
 
 let gen ~contexts ~build_system
-      ?(filter_out_optional_stanzas_with_missing_deps=true)
+      ?(external_lib_deps_mode=false)
       ?only_packages conf =
   let open Fiber.O in
   let { Jbuild_load. file_tree; jbuilds; packages; scopes } = conf in
@@ -1075,7 +1075,7 @@ let gen ~contexts ~build_system
         ~scopes
         ~file_tree
         ~packages
-        ~filter_out_optional_stanzas_with_missing_deps
+        ~external_lib_deps_mode
         ~stanzas
     in
     let module M = Gen(struct let sctx = sctx end) in

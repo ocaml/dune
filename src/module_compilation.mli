@@ -2,10 +2,7 @@
 
 open Import
 
-(** Setup rules to build a single module.
-
-    [lib_file_deps] represent the dependencies on files of library
-    dependencies. *)
+(** Setup rules to build a single module. *)
 val build_module
   :  Super_context.t
   -> ?sandbox:bool
@@ -17,8 +14,7 @@ val build_module
   -> dir:Path.t
   -> obj_dir:Path.t
   -> dep_graphs:Ocamldep.Dep_graphs.t
-  -> requires:Lib.t list Or_exn.t
-  -> lib_file_deps:(unit, unit) Build.t Cm_kind.Dict.t
+  -> includes:string list Arg_spec.t Cm_kind.Dict.t
   -> alias_module:Module.t option
   -> unit
 

@@ -304,15 +304,13 @@ module Libs = struct
        |> Path.Set.of_list)
 
   let file_deps t libs ~ext =
-    Build.of_result_map libs ~f:(fun libs ->
-      Build.paths
-        (List.rev_map libs ~f:(fun (lib : Lib.t) ->
-           if Lib.is_local lib then
-             Alias.stamp_file
-               (lib_files_alias ~dir:(Lib.src_dir lib) ~name:(Lib.name lib) ~ext)
-           else
-             Build_system.stamp_file_for_files_of t.build_system
-               ~dir:(Lib.obj_dir lib) ~ext)))
+    List.rev_map libs ~f:(fun (lib : Lib.t) ->
+      if Lib.is_local lib then
+        Alias.stamp_file
+          (lib_files_alias ~dir:(Lib.src_dir lib) ~name:(Lib.name lib) ~ext)
+      else
+        Build_system.stamp_file_for_files_of t.build_system
+          ~dir:(Lib.obj_dir lib) ~ext)
 end
 
 module Deps = struct

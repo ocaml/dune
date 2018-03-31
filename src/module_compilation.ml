@@ -19,7 +19,7 @@ end = struct
 end
 
 let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
-      ~requires ~lib_file_deps ~dir ~obj_dir ~alias_module (m : Module.t) =
+      ~includes ~dir ~obj_dir ~alias_module (m : Module.t) =
   let ctx = SC.context sctx in
   Option.iter (Mode.of_cm_kind cm_kind |> Context.compiler ctx) ~f:(fun compiler ->
     Option.iter (Module.cm_source ~dir m cm_kind) ~f:(fun src ->
@@ -87,8 +87,7 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
           As []
       in
       SC.add_rule sctx ?sandbox
-        (lib_file_deps >>>
-         Build.paths extra_deps >>>
+        (Build.paths extra_deps >>>
          other_cm_files >>>
          Ocaml_flags.get_for_cm flags ~cm_kind >>>
          Build.run ~context:ctx (Ok compiler)
@@ -96,8 +95,7 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
            [ Dyn (fun ocaml_flags -> As ocaml_flags)
            ; cmt_args
            ; A "-I"; Path obj_dir
-           ; Arg_spec.of_result_map requires
-               ~f:(Lib.L.include_flags ~stdlib_dir:ctx.stdlib_dir)
+           ; includes
            ; As extra_args
            ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"
            ; A "-no-alias-deps"; opaque
@@ -110,11 +108,11 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
            ])))
 
 let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~scope ~dir
-      ~obj_dir ~dep_graphs ~requires ~lib_file_deps ~alias_module =
+      ~obj_dir ~dep_graphs ~includes ~alias_module =
   List.iter Cm_kind.all ~f:(fun cm_kind ->
-    let lib_file_deps = Cm_kind.Dict.get lib_file_deps cm_kind in
+    let includes = Cm_kind.Dict.get includes cm_kind in
     build_cm sctx ?sandbox ~dynlink ~flags ~dir ~obj_dir ~dep_graphs m ~cm_kind
-      ~requires ~lib_file_deps ~alias_module);
+      ~includes ~alias_module);
   (* Build *.cmo.js *)
   let src = Module.cm_file_unsafe m ~obj_dir Cm_kind.Cmo in
   let target =
@@ -126,17 +124,29 @@ let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~scope ~dir
 
 let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~scope ~dir ~obj_dir
       ~dep_graphs ~modules ~requires ~alias_module =
-  let cmi_file_deps =
-    SC.Libs.file_deps sctx requires ~ext:".cmi"
-  in
-  let cmi_and_cmx_file_deps =
-    SC.Libs.file_deps sctx requires ~ext:".cmi-and-.cmx"
-  in
-  let lib_file_deps : _ Cm_kind.Dict.t =
-    { cmi = cmi_file_deps
-    ; cmo = cmi_file_deps
-    ; cmx = cmi_and_cmx_file_deps
-    }
+  let includes : _ Cm_kind.Dict.t =
+    match requires with
+    | Error exn -> Cm_kind.Dict.make_all (Arg_spec.Dyn (fun _ -> raise exn))
+    | Ok libs ->
+      let iflags =
+        Lib.L.include_flags libs ~stdlib_dir:(SC.context sctx).stdlib_dir
+      in
+      let cmi_includes =
+        Arg_spec.S [ iflags
+                   ; Hidden_deps
+                       (SC.Libs.file_deps sctx libs ~ext:".cmi")
+                   ]
+      in
+      let cmi_and_cmx_includes =
+        Arg_spec.S [ iflags
+                   ; Hidden_deps
+                       (SC.Libs.file_deps sctx libs ~ext:".cmi-and-.cmx")
+                   ]
+      in
+      { cmi = cmi_includes
+      ; cmo = cmi_includes
+      ; cmx = cmi_and_cmx_includes
+      }
   in
   Module.Name.Map.iter
     (match alias_module with
@@ -144,4 +154,4 @@ let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~scope ~dir ~obj_dir
      | Some (m : Module.t) -> Module.Name.Map.remove modules m.name)
     ~f:(fun m ->
       build_module sctx m ~dynlink ~js_of_ocaml ~flags ~scope ~dir ~obj_dir
-        ~dep_graphs ~requires ~lib_file_deps ~alias_module)
+        ~dep_graphs ~includes ~alias_module)

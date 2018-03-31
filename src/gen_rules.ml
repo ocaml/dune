@@ -486,13 +486,11 @@ module Gen(P : Install_rules.Params) = struct
            ; Dyn (fun (cm_files, _, _, _) -> Deps cm_files)
            ]))
 
-  let build_c_file (lib : Library.t) ~scope ~dir ~requires ~h_file_deps c_name =
+  let build_c_file (lib : Library.t) ~scope ~dir ~includes c_name =
     let src = Path.relative dir (c_name ^ ".c") in
     let dst = Path.relative dir (c_name ^ ctx.ext_obj) in
     SC.add_rule sctx
-      (h_file_deps
-       >>>
-       SC.expand_and_eval_set sctx ~scope ~dir lib.c_flags
+      (SC.expand_and_eval_set sctx ~scope ~dir lib.c_flags
          ~standard:(Context.cc_g ctx)
        >>>
        Build.run ~context:ctx
@@ -501,16 +499,14 @@ module Gen(P : Install_rules.Params) = struct
          ~dir
          (Ok ctx.ocamlc)
          [ As (Utils.g ())
-         ; Arg_spec.of_result_map requires ~f:(fun libs ->
-             Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir)
+         ; includes
          ; Dyn (fun c_flags -> Arg_spec.quote_args "-ccopt" c_flags)
          ; A "-o"; Target dst
          ; Dep src
          ]);
     dst
 
-  let build_cxx_file (lib : Library.t) ~scope ~dir ~requires ~h_file_deps
-        c_name =
+  let build_cxx_file (lib : Library.t) ~scope ~dir ~includes c_name =
     let src = Path.relative dir (c_name ^ ".cpp") in
     let dst = Path.relative dir (c_name ^ ctx.ext_obj) in
     let open Arg_spec in
@@ -521,9 +517,7 @@ module Gen(P : Install_rules.Params) = struct
         [A "-o"; Target dst]
     in
     SC.add_rule sctx
-      (h_file_deps
-       >>>
-       SC.expand_and_eval_set sctx ~scope ~dir lib.cxx_flags
+      (SC.expand_and_eval_set sctx ~scope ~dir lib.cxx_flags
          ~standard:(Context.cc_g ctx)
        >>>
        Build.run ~context:ctx
@@ -533,8 +527,7 @@ module Gen(P : Install_rules.Params) = struct
          (SC.resolve_program sctx ctx.c_compiler)
          ([ S [A "-I"; Path ctx.stdlib_dir]
           ; As (SC.cxx_flags sctx)
-          ; Arg_spec.of_result_map requires ~f:(fun libs ->
-              Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir)
+          ; includes
           ; Dyn (fun cxx_flags -> As cxx_flags)
           ] @ output_param @
           [ A "-c"; Dep src
@@ -622,25 +615,32 @@ module Gen(P : Install_rules.Params) = struct
         ~dir
         ~obj_dir
         ~dep_graphs:(Ocamldep.Dep_graphs.dummy m)
-        ~requires:(Ok [])
-        ~lib_file_deps:(Cm_kind.Dict.make_all (Build.return ()))
+        ~includes:(Cm_kind.Dict.make_all (Arg_spec.As []))
         ~alias_module:None);
 
     if Library.has_stubs lib then begin
       let h_files =
-        Path.Set.of_string_set ~f:(Path.relative dir)
-          (String_set.filter files ~f:(String.is_suffix ~suffix:".h"))
+        String_set.to_list files
+        |> List.filter_map ~f:(fun fn ->
+          if String.is_suffix fn ~suffix:".h" then
+            Some (Path.relative dir fn)
+          else
+            None)
       in
       let o_files =
-        let h_file_deps =
-          Build.path_set h_files
-          >>>
-          SC.Libs.file_deps sctx requires ~ext:".h"
+        let includes =
+          Arg_spec.S
+            [ Hidden_deps h_files
+            ; Arg_spec.of_result_map requires ~f:(fun libs ->
+                S [ Lib.L.c_include_flags libs ~stdlib_dir:ctx.stdlib_dir
+                  ; Hidden_deps (SC.Libs.file_deps sctx libs ~ext:".h")
+                  ])
+            ]
         in
         List.map lib.c_names ~f:(
-          build_c_file   lib ~scope ~dir ~requires ~h_file_deps
+          build_c_file   lib ~scope ~dir ~includes
         ) @ List.map lib.cxx_names ~f:(
-          build_cxx_file lib ~scope ~dir ~requires ~h_file_deps
+          build_cxx_file lib ~scope ~dir ~includes
         )
       in
       match lib.self_build_stubs_archive with

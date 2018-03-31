@@ -67,7 +67,7 @@ module Info = struct
     }
 
   let user_written_deps t =
-    List.fold_left t.virtual_deps
+    List.fold_left (t.virtual_deps @ t.ppx_runtime_deps)
       ~init:(Deps.to_lib_deps t.requires)
       ~f:(fun acc s -> Jbuild.Lib_dep.Direct s :: acc)
 

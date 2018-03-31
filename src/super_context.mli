@@ -27,7 +27,7 @@ val create
   -> file_tree:File_tree.t
   -> packages:Package.t Package.Name.Map.t
   -> stanzas:(Path.t * Scope_info.t * Stanzas.t) list
-  -> filter_out_optional_stanzas_with_missing_deps:bool
+  -> external_lib_deps_mode:bool
   -> build_system:Build_system.t
   -> t
 

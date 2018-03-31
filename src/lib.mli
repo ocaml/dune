@@ -257,7 +257,10 @@ module DB : sig
     -> (Path.t * Jbuild.Library.t) list
     -> t
 
-  val create_from_findlib : Findlib.t -> t
+  val create_from_findlib
+    :  ?external_lib_deps_mode:bool
+    -> Findlib.t
+    -> t
 
   val find : t -> string -> (lib, Error.Library_not_available.Reason.t) result
   val find_many

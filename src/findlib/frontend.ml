@@ -1998,6 +1998,17 @@ let meta_pkg meta_name =
     close_in f;
     failwith ("Cannot parse '" ^ meta_name ^ "': " ^ s)
 
+let char_lowercase_ascii c =
+  (* Char.lowercase_ascii and String.lowercase_ascii first available in
+     OCaml-4.03, but we want to support earlier versions too
+   *)
+  if (c >= 'A' && c <= 'Z')
+  then Char.unsafe_chr(Char.code c + 32)
+  else c
+
+let string_lowercase_ascii =
+  String.map char_lowercase_ascii
+
 
 let install_package () =
   let destdir = ref (default_location()) in
@@ -2181,17 +2192,15 @@ let install_package () =
     (* FIXME: We have to be careful with case-insensitive filesystems. 
        Currently, we only check for Win32, but also OS X may have ci 
        filesystems. So some better check would be nice.
-       Furthermore, String.lowercase assumes that the encoding of file names is
-       ISO-8859-1. This is probably plainly wrong.
      *)
     let lines = read_ldconf !ldconf in
     let dlldir_norm = Fl_split.norm_dir dlldir in
-    let dlldir_norm_lc = String.lowercase dlldir_norm in
+    let dlldir_norm_lc = string_lowercase_ascii dlldir_norm in
     let ci_filesys = (Sys.os_type = "Win32") in
     let check_dir d =
       let d' = Fl_split.norm_dir d in
       (d' = dlldir_norm) || 
-	(ci_filesys && String.lowercase d' = dlldir_norm_lc) in
+        (ci_filesys && string_lowercase_ascii d' = dlldir_norm_lc) in
     if not (List.exists check_dir lines) then
       prerr_endline("ocamlfind: [WARNING] You have installed DLLs but the directory " ^ dlldir_norm ^ " is not mentioned in ld.conf");
   end;

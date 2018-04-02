@@ -410,18 +410,25 @@ module Gen (S : sig val sctx : SC.t end) = struct
     |> List.sort ~compare:(fun (x, _) (y, _) ->
       String.compare (Lib.name x) (Lib.name y))
     |> List.iter ~f:(fun (lib, modules) ->
-      Buffer.add_string b (
-        sprintf
-          "{1 Library %s}\n\
-           This library exposes the following toplevel modules: \
-           {!modules:%s}.\n"
-          (Lib.name lib)
-          (modules
-           |> List.sort ~compare:(fun x y ->
-             Module.Name.compare (Module.name x) (Module.name y))
-           |> List.map ~f:(fun m -> Module.Name.to_string (Module.name m))
-           |> String.concat ~sep:" ")
-      )
+      Buffer.add_string b (sprintf "{1 Library %s}\n" (Lib.name lib));
+      match modules with
+      | [ x ] ->
+        Buffer.add_string b (
+          sprintf
+            "The entry point of this library is the module {!module-%s}.\n"
+            (Module.Name.to_string (Module.name x))
+        )
+      | _ ->
+        Buffer.add_string b (
+          sprintf
+            "This library exposes the following toplevel modules: \
+             {!modules:%s}"
+            (modules
+             |> List.sort ~compare:(fun x y ->
+               Module.Name.compare (Module.name x) (Module.name y))
+             |> List.map ~f:(fun m -> Module.Name.to_string (Module.name m))
+             |> String.concat ~sep:" ")
+        )
     );
     Buffer.contents b
 

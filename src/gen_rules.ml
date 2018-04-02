@@ -1018,7 +1018,9 @@ module Gen(P : Install_rules.Params) = struct
     Odoc.init ~modules_by_lib:(fun ~dir lib ->
       let m = modules_by_lib ~dir lib in
       match m.alias_module with
-      | Some m -> [m]
+      | Some alias_mod ->
+        [Option.value ~default:alias_mod
+           (Module.Name.Map.find m.modules m.main_module_name)]
       | None -> Module.Name.Map.values m.modules
     ) ~mlds_of_dir
 end

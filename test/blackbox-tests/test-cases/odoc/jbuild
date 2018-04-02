@@ -16,3 +16,8 @@
  ((name runtest)
   (deps (_doc/_html/index.html))
   (action (echo "${read:_doc/_html/index.html}"))))
+
+(alias
+ ((name foo-mld)
+  (deps (_doc/_mlds/foo/index.mld))
+  (action (echo "${read:_doc/_mlds/foo/index.mld}"))))

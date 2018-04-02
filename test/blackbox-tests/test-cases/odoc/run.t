@@ -31,3 +31,9 @@
       </div>
     </body>
   </html>
+
+  $ $JBUILDER build @foo-mld -j1 --display short --root .
+  {1 Library foo}
+  This library exposes the following toplevel modules: {!modules:Foo}.
+  {1 Library foo.byte}
+  This library exposes the following toplevel modules: {!modules:Foo_byte}.

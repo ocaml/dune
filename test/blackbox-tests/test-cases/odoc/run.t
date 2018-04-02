@@ -33,5 +33,7 @@
   </html>
 
   $ $JBUILDER build @foo-mld -j1 --display short --root .
-  No rule found for _doc/_mlds/foo/index.mld
-  [1]
+  {1 Library foo}
+  This library exposes the following toplevel modules: {!modules:Foo}.
+  {1 Library foo.byte}
+  This library exposes the following toplevel modules: {!modules:Foo_byte}.

@@ -501,17 +501,19 @@ module Gen (S : sig val sctx : SC.t end) = struct
     in
     SC.packages sctx
     |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
-      SC.on_load_dir sctx
-        ~dir:(Paths.odocs (Pkg pkg.name))
-        ~f:(fun () ->
-          setup_package_odoc_rules
-            ~pkg
-            ~mlds:(
-              docs_by_package pkg
-              |> List.concat_map ~f:(fun (dir, doc) -> mlds_of_dir doc ~dir)
-            )
-            ~entry_modules_by_lib:modules_by_lib
-        );
+      let rules = lazy (
+        setup_package_odoc_rules
+          ~pkg
+          ~mlds:(
+            docs_by_package pkg
+            |> List.concat_map ~f:(fun (dir, doc) -> mlds_of_dir doc ~dir)
+          )
+          ~entry_modules_by_lib:modules_by_lib
+      ) in
+      List.iter [ Paths.odocs (Pkg pkg.name)
+                ; Paths.gen_mld_dir pkg ]
+        ~f:(fun dir ->
+          SC.on_load_dir sctx ~dir ~f:(fun () -> Lazy.force rules));
       (* setup @doc to build the correct html for the package *)
       setup_package_aliases pkg;
     );

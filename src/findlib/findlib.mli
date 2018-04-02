@@ -36,6 +36,7 @@ val init :
       ?env_ocamlfind_metadir: string ->
       ?env_ocamlfind_commands: string ->
       ?env_ocamlfind_ignore_dups_in: string ->
+      ?env_ocamlfind_ignore_dups_in_list: string list ->
       ?env_camllib: string ->
       ?env_ldconf: string ->
       ?config: string -> 
@@ -47,7 +48,8 @@ val init :
    * function reads the file specified at compile time, but you can also
    * pass a different file name in the [config] argument.
    *   Furthermore, the environment variables OCAMLPATH, OCAMLFIND_DESTDIR, 
-   * OCAMLFIND_COMMANDS, and CAMLLIB are interpreted. By default, the function takes
+   * OCAMLFIND_COMMANDS, OCAMLFIND_IGNORE_DUPS_IN, and CAMLLIB are interpreted.
+   * By default, the function takes
    * the values found in the environment, but you can pass different values
    * using the [env_*] arguments. By setting these values to empty strings 
    * they are no longer considered.
@@ -76,6 +78,14 @@ val init :
    *   the environment variable OCAMLFIND_LDCONF, or if unset or empty, the
    *   value of the configuration variable [ldconf], or if unset the
    *   built-in location.
+   * - The ocamlfind tool doesn't emit warnings about double cmi files
+   *   for the directories listed in OCAMLFIND_IGNORE_DUPS_IN. Since
+   *   findlib-1.8 this variable is interpreted as colon-separated path.
+   *   (Before, only one directory could be given.) If the variable is not
+   *   set there are no exceptions, and the warnings are always printed.
+   *   Note that both the parameters [env_ocamlfind_ignore_dups_in] (a
+   *   single directory) and [env_ocamlfind_ignore_dups_in_list] (a list
+   *   of directories) override the default.
    *)
 
 
@@ -90,6 +100,7 @@ val init_manually :
       ?ocamlbrowser_command: string -> (* default: "ocamlbrowser"   *)
       ?ocamldoc_command: string ->     (* default: "ocamldoc"   *)
       ?ignore_dups_in:string ->        (* default: None *)
+      ?ignore_dups_in_list:string list ->  (* default: [] *)
       ?stdlib: string ->               (* default: taken from Findlib_config *)
       ?ldconf: string ->
       ?config: string -> 
@@ -141,9 +152,12 @@ val package_directory : string -> string
 val package_meta_file : string -> string
   (** Get the absolute path of the META file of the given package *)
 
-val ignore_dups_in : unit -> string option
+val ignore_dups_in : unit -> string list
   (** If [Some d], duplicate packages below [d] are ignored, and do not
     * produce warnings.  (Only affects the generation of warnings.)
+    *
+    * Since findlib-1.8 this configuration is a list. Before, it was a
+    * [string option].
    *)
 
 val package_property : string list -> string -> string -> string

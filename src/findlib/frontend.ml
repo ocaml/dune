@@ -839,6 +839,7 @@ let query_package () =
                          -separator <s>   |
                          -descendants     | -recursive  ] package ...";
 
+  ignore(config_file());  (* ensure findlib is initialized *)
   try
     let predicates1 =
       if !pp then

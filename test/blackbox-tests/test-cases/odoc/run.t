@@ -31,3 +31,7 @@
       </div>
     </body>
   </html>
+
+  $ $JBUILDER build @foo-mld -j1 --display short --root .
+  No rule found for _doc/_mlds/foo/index.mld
+  [1]

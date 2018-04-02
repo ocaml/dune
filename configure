@@ -191,7 +191,7 @@ for tool in sed awk ocaml ocamlc uname rm make cat m4 dirname basename; do
     fi
 done
 
-lib_suffix=`ocamlc -config 2>/dev/null|grep '^ext_lib'|sed 's/ext_lib: //'`
+lib_suffix=`ocamlc -config 2>/dev/null|tr -d '\015'|sed -n -e 's/^ext_lib: //p'`
 
 # Check for Cygwin:
 
@@ -225,7 +225,7 @@ use_cygpath=0
 # Whether we have to translate Unix paths to/from Windows paths.
 
 if [ -z "$system" ]; then
-    system=`ocamlc -config 2>/dev/null|grep '^system'|sed 's/system: //'`
+    system=`ocamlc -config 2>/dev/null|tr -d '\015'|sed -n -e 's/^system: //p'`
     # This may be
     # - mingw or mingw64
     # - win32

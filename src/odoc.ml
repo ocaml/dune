@@ -391,8 +391,6 @@ module Gen (S : sig val sctx : SC.t end) = struct
       |> Path.Set.of_list
     )
 
-  let pkg_odoc (pkg : Package.t) = Paths.odocs (Pkg pkg.name)
-
   let entry_modules ~(pkg : Package.t) ~entry_modules_by_lib =
     libs_of_pkg ~pkg:pkg.name
     |> Lib.Set.to_list
@@ -504,7 +502,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
     SC.packages sctx
     |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
       SC.on_load_dir sctx
-        ~dir:(pkg_odoc pkg)
+        ~dir:(Paths.odocs (Pkg pkg.name))
         ~f:(fun () ->
           setup_package_odoc_rules
             ~pkg

@@ -106,6 +106,13 @@ struct
       List [Sexp.unsafe_atom_of_string "diff"; path file1; path file2]
     | Diff { optional = true; file1; file2 } ->
       List [Sexp.unsafe_atom_of_string "diff?"; path file1; path file2]
+    | Merge_files_into (srcs, extras, target) ->
+      List
+        [ Sexp.unsafe_atom_of_string "merge-files-into"
+        ; List (List.map ~f:path srcs)
+        ; List (List.map ~f:string extras)
+        ; path target
+        ]
 
   let run prog args = Run (prog, args)
   let chdir path t = Chdir (path, t)
@@ -165,6 +172,11 @@ module Make_mapper
     | Digest_files x -> Digest_files (List.map x ~f:(f_path ~dir))
     | Diff { optional; file1; file2 } ->
       Diff { optional; file1 = f_path ~dir file1; file2 = f_path ~dir file2 }
+    | Merge_files_into (sources, extras, target) ->
+      Merge_files_into
+        (List.map sources ~f:(f_path ~dir),
+         List.map extras ~f:(f_string ~dir),
+         f_path ~dir target)
 end
 
 module Prog = struct
@@ -449,6 +461,11 @@ module Unexpanded = struct
              ; file1 = E.path ~dir ~f file1
              ; file2 = E.path ~dir ~f file2
              }
+      | Merge_files_into (sources, extras, target) ->
+        Merge_files_into
+          (List.map ~f:(E.path ~dir ~f) sources,
+           List.map ~f:(E.string ~dir ~f) extras,
+           E.path ~dir ~f target)
   end
 
   module E = struct
@@ -548,6 +565,11 @@ module Unexpanded = struct
            ; file1 = E.path ~dir ~f file1
            ; file2 = E.path ~dir ~f file2
            }
+    | Merge_files_into (sources, extras, target) ->
+      Merge_files_into
+        (List.map sources ~f:(E.path ~dir ~f),
+         List.map extras ~f:(E.string ~dir ~f),
+         E.path ~dir ~f target)
 end
 
 let fold_one_step t ~init:acc ~f =
@@ -570,7 +592,8 @@ let fold_one_step t ~init:acc ~f =
   | Remove_tree _
   | Mkdir _
   | Digest_files _
-  | Diff _ -> acc
+  | Diff _
+  | Merge_files_into _ -> acc
 
 include Make_mapper(Ast)(Ast)
 
@@ -864,6 +887,22 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       end;
       Print_diff.print file1 file2
     end
+  | Merge_files_into (sources, extras, target) ->
+    let lines =
+      List.fold_left
+        ~init:(String_set.of_list extras)
+        ~f:(fun set source_path ->
+          Path.to_string source_path
+          |> Io.lines_of_file
+          |> String_set.of_list
+          |> String_set.union set
+        )
+        sources
+    in
+    Io.write_lines
+      (Path.to_string target)
+      (String_set.to_list lines);
+    Fiber.return ()
 
 and redirect outputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to =
   let fn = Path.to_string fn in
@@ -980,6 +1019,8 @@ module Infer = struct
       | Digest_files l -> List.fold_left l ~init:acc ~f:(+<)
       | Diff { optional; file1; file2 } ->
         if optional then acc else acc +< file1 +< file2
+      | Merge_files_into (sources, _extras, target) ->
+        List.fold_left sources ~init:acc ~f:(+<) +@ target
       | Echo _
       | System _
       | Bash _

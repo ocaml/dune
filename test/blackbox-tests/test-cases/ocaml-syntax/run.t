@@ -1,2 +1,2 @@
-  $ $JBUILDER runtest --force -j1 --display short --root .
+  $ jbuilder runtest --force --display short
   ocaml syntax

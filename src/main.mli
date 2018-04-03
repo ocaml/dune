@@ -8,6 +8,7 @@ type setup =
   ; contexts     : Context.t list
   ; packages     : Package.t Package.Name.Map.t
   ; file_tree    : File_tree.t
+  ; env          : Env.t
   }
 
 (* Returns [Error ()] if [pkg] is unknown *)
@@ -23,6 +24,7 @@ val setup
   -> ?only_packages:Package.Name.Set.t
   -> ?x:string
   -> ?ignore_promoted_rules:bool
+  -> ?capture_outputs:bool
   -> unit
   -> setup Fiber.t
 val external_lib_deps
@@ -33,7 +35,11 @@ val external_lib_deps
 
 val find_context_exn : setup -> name:string -> Context.t
 
+(** Setup the environment *)
+val setup_env : capture_outputs:bool -> Env.t
+
 (**/**)
 
-(* This is used to bootstrap jbuilder itself. It is not part of the public API. *)
+(* This is used to bootstrap jbuilder itself. It is not part of the
+   public API. *)
 val bootstrap : unit -> unit

@@ -9,6 +9,7 @@ type setup =
   ; contexts     : Context.t list
   ; packages     : Package.t Package.Name.Map.t
   ; file_tree    : File_tree.t
+  ; env          : Env.t
   }
 
 let package_install_file { packages; _ } pkg =
@@ -18,6 +19,15 @@ let package_install_file { packages; _ } pkg =
     Ok (Path.relative p.path
           (Utils.install_file ~package:p.name ~findlib_toolchain:None))
 
+let setup_env ~capture_outputs =
+  let env =
+    if capture_outputs || not (Lazy.force Colors.stderr_supports_colors) then
+      Env.initial
+    else
+      Colors.setup_env_for_colors Env.initial
+  in
+  Env.add env ~var:"INSIDE_DUNE" ~value:"1"
+
 let setup ?(log=Log.no_log)
       ?filter_out_optional_stanzas_with_missing_deps
       ?workspace ?(workspace_file="jbuild-workspace")
@@ -25,8 +35,12 @@ let setup ?(log=Log.no_log)
       ?extra_ignored_subtrees
       ?x
       ?ignore_promoted_rules
+      ?(capture_outputs=true)
       () =
-  let conf = Jbuild_load.load ?extra_ignored_subtrees ?ignore_promoted_rules () in
+  let env = setup_env ~capture_outputs in
+  let conf =
+    Jbuild_load.load ?extra_ignored_subtrees ?ignore_promoted_rules ()
+  in
   Option.iter only_packages ~f:(fun set ->
     Package.Name.Set.iter set ~f:(fun pkg ->
       if not (Package.Name.Map.mem conf.packages pkg) then
@@ -55,7 +69,7 @@ let setup ?(log=Log.no_log)
 
   Fiber.parallel_map workspace.contexts ~f:(fun ctx_def ->
     let name = Workspace.Context.name ctx_def in
-    Context.create ctx_def ~merlin:(workspace.merlin_context = Some name))
+    Context.create ctx_def ~env ~merlin:(workspace.merlin_context = Some name))
   >>= fun contexts ->
   let contexts = List.concat contexts in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
@@ -88,6 +102,7 @@ let setup ?(log=Log.no_log)
     ; contexts
     ; packages = conf.packages
     ; file_tree = conf.file_tree
+    ; env
     }
 
 let find_context_exn t ~name =

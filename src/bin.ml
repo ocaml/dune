@@ -10,9 +10,9 @@ let parse_path ?(sep=path_sep) s =
   List.map (String.split s ~on:sep) ~f:Path.absolute
 
 let path =
-  match Sys.getenv "PATH" with
-  | exception Not_found -> []
-  | s -> parse_path s
+  match Env.get Env.initial "PATH" with
+  | None   -> []
+  | Some s -> parse_path s
 
 let exe = if Sys.win32 then ".exe" else ""
 

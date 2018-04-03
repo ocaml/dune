@@ -49,14 +49,7 @@ let of_unix arr =
     | [] -> assert false
     | x::_ -> x)
 
-let initial =
-  let i =
-    lazy (
-      make (Lazy.force Colors.setup_env_for_colors;
-            Unix.environment ()
-            |> of_unix)
-    ) in
-  fun () -> Lazy.force i
+let initial = make (of_unix (Unix.environment ()))
 
 let add t ~var ~value =
   make (Map.add t.vars var value)

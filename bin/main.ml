@@ -80,6 +80,7 @@ module Main = struct
       ?filter_out_optional_stanzas_with_missing_deps
       ?x:common.x
       ~ignore_promoted_rules:common.ignore_promoted_rules
+      ~capture_outputs:common.capture_outputs
       ()
 end
 
@@ -217,7 +218,11 @@ let common =
     let root, to_cwd =
       match root with
       | Some dn -> (dn, [])
-      | None -> find_root ()
+      | None ->
+        if Config.inside_dune then
+          (".", [])
+        else
+          find_root ()
     in
     let orig_args =
       List.concat
@@ -491,8 +496,9 @@ let installed_libraries =
   let doc = "Print out libraries installed on the system." in
   let go common na =
     set_common common ~targets:[];
+    let env = Main.setup_env ~capture_outputs:common.capture_outputs in
     Scheduler.go ~log:(Log.create common) ~common
-      (Context.create (Default [Native])  >>= fun ctxs ->
+      (Context.create (Default [Native]) ~env >>= fun ctxs ->
        let ctx = List.hd ctxs in
        let findlib = ctx.findlib in
        if na then begin
@@ -996,7 +1002,8 @@ let install_uninstall ~what =
            >>= fun libdir ->
            Fiber.parallel_iter install_files ~f:(fun path ->
              let purpose = Process.Build_job install_files in
-             Process.run ~purpose Strict (Path.to_string opam_installer)
+             Process.run ~purpose ~env:setup.env Strict
+               (Path.to_string opam_installer)
                ([ sprintf "-%c" what.[0]
                 ; Path.to_string path
                 ; "--prefix"

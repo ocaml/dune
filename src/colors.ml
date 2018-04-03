@@ -29,10 +29,10 @@ let colorize =
 let stderr_supports_colors = lazy(
   not Sys.win32        &&
   Unix.(isatty stderr) &&
-  match Sys.getenv "TERM" with
-  | exception Not_found -> false
-  | "dumb" -> false
-  | _ -> true
+  match Env.get Env.initial "TERM" with
+  | None        -> false
+  | Some "dumb" -> false
+  | Some _      -> true
 )
 
 let strip_colors_for_stderr s =
@@ -45,17 +45,15 @@ let strip_colors_for_stderr s =
    tools will disable colors. Since we support colors in the output of
    commands, we force it via specific environment variables if stderr
    supports colors. *)
-let setup_env_for_colors = lazy(
-  if !Clflags.capture_outputs && Lazy.force stderr_supports_colors then begin
-    let set var value =
-      match Sys.getenv var with
-      | exception Not_found -> Unix.putenv var value
-      | (_ : string) -> ()
-    in
-    set "OPAMCOLOR" "always";
-    set "OCAML_COLOR" "always";
-  end
-)
+let setup_env_for_colors env =
+  let set env var value =
+    Env.update env ~var ~f:(function
+      | None   -> Some value
+      | Some s -> Some s)
+  in
+  let env = set env "OPAMCOLOR"   "always" in
+  let env = set env "OCAML_COLOR" "always" in
+  env
 
 module Style = struct
   open Ansi_color.Style

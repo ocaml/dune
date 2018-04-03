@@ -1,4 +1,4 @@
-  $ $JBUILDER build @print-merlins -j1 --display short --root .
+  $ jbuilder build @print-merlins --display short
       ocamldep sanitize-dot-merlin/sanitize_dot_merlin.ml.d
         ocamlc sanitize-dot-merlin/.sanitize_dot_merlin.eobjs/sanitize_dot_merlin.{cmi,cmo,cmt}
       ocamlopt sanitize-dot-merlin/.sanitize_dot_merlin.eobjs/sanitize_dot_merlin.{cmx,o}

@@ -1,10 +1,10 @@
-  $ $JBUILDER build --root . -j 1 --display quiet @x
+  $ jbuilder build @x
   Hello, world!
-  $ $JBUILDER build --root . -j 1 --display quiet @x
+  $ jbuilder build @x
   Hello, world!
-  $ $JBUILDER build --root . -j 1 --display quiet @x
+  $ jbuilder build @x
   Hello, world!
-  $ $JBUILDER build --root . -j 1 --display quiet @x
+  $ jbuilder build @x
   Hello, world!
-  $ $JBUILDER build --root . -j 1 --display quiet @x
+  $ jbuilder build @x
   Hello, world!

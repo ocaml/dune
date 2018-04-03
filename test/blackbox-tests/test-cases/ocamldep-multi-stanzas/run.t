@@ -1,4 +1,4 @@
-  $ $JBUILDER exec ./test.exe -j1 --debug-dep --display short --root .
+  $ jbuilder exec ./test.exe --debug-dep --display short
   File "jbuild", line 1, characters 0-0:
   Warning: Module "Lib" is used in several stanzas:
   - jbuild:8
@@ -13,7 +13,7 @@
   - <internal location>
   [1]
 
-  $ $JBUILDER build src/a.cma -j1 --debug-dep --display short --root .
+  $ jbuilder build src/a.cma --debug-dep --display short
   File "src/jbuild", line 1, characters 0-0:
   Warning: Module "X" is used in several stanzas:
   - src/jbuild:4

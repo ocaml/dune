@@ -1,4 +1,4 @@
-  $ $JBUILDER runtest --display short -j1 -p lib1 --debug-dependency-path
+  $ jbuilder runtest --display short -p lib1 --debug-dependency-path
       ocamldep test1.ml.d
       ocamldep lib1.ml.d
         ocamlc .lib1.objs/lib1.{cmi,cmo,cmt}

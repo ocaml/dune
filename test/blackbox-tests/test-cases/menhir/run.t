@@ -8,10 +8,10 @@
       ocamldep src/test_base.ml.d
         menhir src/test_menhir1.{ml,mli}
       ocamldep src/test_menhir1.ml.d
+      ocamldep src/test_base.mli.d
       ocamldep src/test_menhir1.mli.d
         ocamlc src/.test.eobjs/test_menhir1.{cmi,cmti}
         ocamlc src/.test.eobjs/lexer1.{cmi,cmo,cmt}
-      ocamldep src/test_base.mli.d
         ocamlc src/.test.eobjs/test_base.{cmi,cmti}
         ocamlc src/.test.eobjs/lexer2.{cmi,cmo,cmt}
         ocamlc src/.test.eobjs/test.{cmi,cmo,cmt}

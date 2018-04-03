@@ -58,7 +58,15 @@ module Dep_graphs = struct
     Ml_kind.Dict.make_both (Dep_graph.dummy m)
 end
 
-let parse_deps ~dir ~file ~(unit : Module.t)
+let parse_module_names ~(unit : Module.t) ~modules words =
+  List.filter_map words ~f:(fun m ->
+    let m = Module.Name.of_string m in
+    if m = unit.name then
+      None
+    else
+      Module.Name.Map.find modules m)
+
+let parse_deps ~dir ~file ~unit
       ~modules ~alias_module ~lib_interface_module lines =
   let invalid () =
     die "ocamldep returned unexpected output for %s:\n\
@@ -81,12 +89,7 @@ let parse_deps ~dir ~file ~(unit : Module.t)
       let deps =
         String.extract_blank_separated_words
           (String.sub line ~pos:(i + 1) ~len:(String.length line - (i + 1)))
-        |> List.filter_map ~f:(fun m ->
-          let m = Module.Name.of_string m in
-          if m = unit.name then
-            None
-          else
-            Module.Name.Map.find modules m)
+        |> parse_module_names ~unit ~modules
       in
       (match lib_interface_module with
        | None -> ()
@@ -109,12 +112,9 @@ let parse_deps ~dir ~file ~(unit : Module.t)
              Module.Name.pp unit.name (Path.to_string dir)
              Module.Name.pp m.name
              Module.Name.pp m.name);
-      let deps =
-        match alias_module with
-        | None -> deps
-        | Some m -> m :: deps
-      in
-      deps
+      match alias_module with
+      | None -> deps
+      | Some m -> m :: deps
 
 let rules ~(ml_kind:Ml_kind.t) ~dir ~modules
       ?(already_used=Module.Name.Set.empty)
@@ -124,17 +124,42 @@ let rules ~(ml_kind:Ml_kind.t) ~dir ~modules
       match Module.file ~dir unit ml_kind with
       | None -> Build.return []
       | Some file ->
-        let ocamldep_output = Path.extend_basename file ~suffix:".d" in
+        let all_deps_path file =
+          Path.extend_basename file ~suffix:".all-deps"
+        in
         let context = SC.context sctx in
+        let all_deps_file = all_deps_path file in
+        let ocamldep_output = Path.extend_basename file ~suffix:".d" in
         if not (Module.Name.Set.mem already_used unit.name) then
-          SC.add_rule sctx
-            (Build.run ~context (Ok context.ocamldep)
-               [A "-modules"; Ml_kind.flag ml_kind; Dep file]
-               ~stdout_to:ocamldep_output);
-        Build.memoize (Path.to_string ocamldep_output)
-          (Build.lines_of ocamldep_output
-           >>^ parse_deps ~dir ~file ~unit ~modules ~alias_module
-                 ~lib_interface_module))
+          begin
+            SC.add_rule sctx
+              ( Build.run ~context (Ok context.ocamldep)
+                  [A "-modules"; Ml_kind.flag ml_kind; Dep file]
+                  ~stdout_to:ocamldep_output
+              );
+            let build_paths dependencies =
+              let dependency_file_path m =
+                Option.map
+                  (Module.file ~dir m Ml_kind.Intf)
+                 ~f:all_deps_path
+              in
+              List.filter_map dependencies ~f:dependency_file_path
+            in
+            SC.add_rule sctx
+              ( Build.lines_of ocamldep_output
+                >>^ parse_deps
+                      ~dir ~file ~unit ~modules ~alias_module
+                      ~lib_interface_module
+                >>^ (fun modules ->
+                  (build_paths modules,
+                   List.map modules ~f:(fun m ->
+                     Module.Name.to_string (Module.name m))
+                  ))
+                >>> Build.merge_files_dyn ~target:all_deps_file)
+          end;
+        Build.memoize (Path.to_string all_deps_file)
+          ( Build.lines_of all_deps_file
+          >>^ parse_module_names ~unit ~modules))
   in
   let per_module =
     match alias_module with

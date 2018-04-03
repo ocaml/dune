@@ -234,3 +234,5 @@ val merge_lib_deps : lib_deps -> lib_deps -> lib_deps
 
 (**/**)
 val paths_for_rule : Path.Set.t -> ('a, 'a) t
+
+val merge_files_dyn : target:Path.t -> (Path.t list * string list, Action.t) t

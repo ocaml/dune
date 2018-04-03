@@ -278,3 +278,9 @@ let mkdir dir =
 let progn ts =
   all ts >>^ fun actions ->
   Action.Progn actions
+
+let merge_files_dyn ~target =
+  dyn_paths (arr fst)
+  >>^ (fun (sources, extras) ->
+    Action.Merge_files_into (sources, extras, target))
+  >>> action_dyn ~targets:[target] ()

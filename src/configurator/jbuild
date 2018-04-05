@@ -1,5 +1,6 @@
 (library
  ((name configurator)
+  (public_name jbuilder.configurator)
   (libraries (stdune ocaml_config))
   (flags (:standard -safe-string (:include flags/flags.sexp)))
   (preprocess no_preprocessing)))

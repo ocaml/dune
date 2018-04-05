@@ -1,4 +1,5 @@
 (library
  ((name stdune)
+  (public_name jbuilder.stdune)
   (synopsis "Standard library of Dune")
   (libraries (caml unix))))

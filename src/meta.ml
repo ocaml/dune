@@ -102,12 +102,34 @@ module Parse = struct
       error lb "'package' or variable name expected"
 end
 
+let pp_action fmt = function
+  | Set -> Format.pp_print_string fmt "Set"
+  | Add -> Format.pp_print_string fmt "Add"
+
+let pp_predicate fmt = function
+  | Pos s -> Format.fprintf fmt "%S" ("+" ^ s)
+  | Neg s -> Format.fprintf fmt "%S" ("-" ^ s)
+
+let pp_rule fmt (t : rule) =
+  Fmt.record fmt
+    [ "var", (Fmt.const Fmt.quoted t.var)
+    ; "predicates", (Fmt.const (Fmt.ocaml_list pp_predicate) t.predicates)
+    ; "action", (Fmt.const pp_action t.action)
+    ; "value", (Fmt.const Fmt.quoted t.value)
+    ]
+
 module Simplified = struct
   module Rules = struct
     type t =
       { set_rules : rule list
       ; add_rules : rule list
       }
+
+    let pp fmt t =
+      Fmt.record fmt
+        [ "set_rules", Fmt.const (Fmt.ocaml_list pp_rule) t.set_rules
+        ; "add_rules", Fmt.const (Fmt.ocaml_list pp_rule) t.add_rules
+        ]
   end
 
   type t =
@@ -115,6 +137,13 @@ module Simplified = struct
     ; vars : Rules.t String_map.t
     ; subs : t list
     }
+
+  let rec pp fmt t =
+    Fmt.record fmt
+      [ "name", Fmt.const Fmt.quoted t.name
+      ; "vars", Fmt.const (String_map.pp Rules.pp) t.vars
+      ; "subs", Fmt.const (Fmt.ocaml_list pp) t.subs
+      ]
 end
 
 let rec simplify t =

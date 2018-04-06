@@ -1,3 +1,5 @@
+(ocamllex (extract_obj))
+
 (library
  ((name configurator)
   (public_name jbuilder.configurator)

@@ -447,9 +447,10 @@ let main ?(args=[]) ~name f =
   try
     f t
   with exn ->
+    let bt = Printexc.get_raw_backtrace () in
     List.iter (List.rev !log_db) ~f:(eprintf "%s\n");
     match exn with
     | Fatal_error msg ->
       eprintf "Error: %s\n%!" msg;
       exit 1
-    | _ -> Exn.reraise exn
+    | _ -> Exn.raise_with_backtrace exn bt

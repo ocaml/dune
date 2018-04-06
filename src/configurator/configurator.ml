@@ -452,4 +452,4 @@ let main ?(args=[]) ~name f =
     | Fatal_error msg ->
       eprintf "Error: %s\n%!" msg;
       exit 1
-    | exn -> raise exn
+    | _ -> Exn.reraise exn

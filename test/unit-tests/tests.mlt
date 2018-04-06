@@ -49,21 +49,30 @@ Findlib.Package.requires pkg;;
    +-----------------------------------------------------------------+ *)
 
 open Meta
+#install_printer Simplified.pp;;
 
 let meta =
   Meta.load ~name:"foo" ~fn:"test/unit-tests/findlib-db/foo/META"
 
 [%%expect{|
 val meta : Jbuilder.Meta.Simplified.t =
-  {Jbuilder.Meta.Simplified.name = "foo";
-   vars =
-    (requires =
-      {Jbuilder.Meta.Simplified.Rules.set_rules =
-        [{Jbuilder__Meta.var = "requires"; predicates = [];
-          action = Jbuilder__Meta.Set; value = "bar"};
-         {Jbuilder__Meta.var = "requires";
-          predicates = [Jbuilder__Meta.Pos "ppx_driver"];
-          action = Jbuilder__Meta.Set; value = "baz"}];
-       add_rules = []});
-   subs = []}
+  { name = "foo"
+  ; vars =
+     (requires =
+       { set_rules =
+          [ { var = "requires"
+            ; predicates = []
+            ; action = Set
+            ; value = "bar"
+            }
+          ; { var = "requires"
+            ; predicates = [ "+ppx_driver" ]
+            ; action = Set
+            ; value = "baz"
+            }
+          ]
+       ; add_rules = []
+       })
+  ; subs = []
+  }
 |}]

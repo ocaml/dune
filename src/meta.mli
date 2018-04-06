@@ -38,6 +38,8 @@ module Simplified : sig
     ; vars : Rules.t String_map.t
     ; subs : t list
     }
+
+  val pp : Format.formatter -> t -> unit
 end
 
 val load : fn:string -> name:string -> Simplified.t

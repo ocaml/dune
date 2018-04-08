@@ -26,7 +26,7 @@ let conf_search_path = ref [];;
 let conf_command = ref [];;
 let conf_stdlib = ref "";;
 let conf_ldconf = ref "";;
-let conf_ignore_dups_in = ref (None : string option);;
+let conf_ignore_dups_in = ref ([] : string list);;
 
 let ocamlc_default = "ocamlc";;
 let ocamlopt_default = "ocamlopt";;
@@ -50,6 +50,7 @@ let init_manually
       ?(ocamlbrowser_command = ocamlbrowser_default)
       ?(ocamldoc_command = ocamldoc_default)
       ?ignore_dups_in
+      ?(ignore_dups_in_list = [])
       ?(stdlib = Findlib_config.ocaml_stdlib)
       ?(ldconf = Findlib_config.ocaml_ldconf)
       ?(config = Findlib_config.config_file)
@@ -72,7 +73,11 @@ let init_manually
   conf_meta_directory := meta_dir;
   conf_stdlib := stdlib;
   conf_ldconf := ldconf;
-  conf_ignore_dups_in := ignore_dups_in;
+  conf_ignore_dups_in :=
+    ( match ignore_dups_in with
+        | None -> []
+        | Some d -> [d]
+    ) @ ignore_dups_in_list;
   Fl_package_base.init !conf_search_path stdlib !conf_ignore_dups_in;
   init_called := true
 ;;
@@ -110,7 +115,7 @@ let auto_config_file() =
 let init
       ?env_ocamlpath ?env_ocamlfind_destdir ?env_ocamlfind_metadir
       ?env_ocamlfind_commands ?env_ocamlfind_ignore_dups_in
-      ?env_camllib ?env_ldconf
+      ?env_ocamlfind_ignore_dups_in_list ?env_camllib ?env_ldconf
       ?config ?toolchain () =
   
   let config_file =
@@ -260,12 +265,14 @@ let init
       | None ->
 	  try Sys.getenv "OCAMLFIND_LDCONF" with Not_found -> ""
   in
-  let ignore_dups_in =
-    match  env_ocamlfind_ignore_dups_in with
-      | Some x -> Some x
-      | None ->
-	  try Some(Sys.getenv "OCAMLFIND_IGNORE_DUPS_IN") 
-	  with Not_found -> None in
+  let ignore_dups_in_list =
+    match env_ocamlfind_ignore_dups_in, env_ocamlfind_ignore_dups_in_list with
+      | Some x0, Some l -> x0 :: l
+      | None, Some l -> l
+      | Some x0, None -> [x0]
+      | None, None ->
+          try Fl_split.path (Sys.getenv "OCAMLFIND_IGNORE_DUPS_IN")
+          with Not_found -> [] in
 
   let ocamlc, ocamlopt, ocamlcp, ocamloptp, ocamlmklib, ocamlmktop,
       ocamldep, ocamlbrowser, ocamldoc,
@@ -296,7 +303,7 @@ let init
     ~ocamldep_command: ocamldep
     ~ocamlbrowser_command: ocamlbrowser
     ~ocamldoc_command: ocamldoc
-    ?ignore_dups_in
+    ~ignore_dups_in_list
     ~stdlib: stdlib
     ~ldconf: ldconf
     ~config: config_file

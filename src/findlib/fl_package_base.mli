@@ -25,10 +25,11 @@ type package =
 and package_priv
 
 
-val init : string list -> string -> string option -> unit
+val init : string list -> string -> string list -> unit
   (** This function must be called before [Fl_package_base] can be used.
    * The first string corresponds to the [OCAMLPATH] setting, the second
-   * string is the location of the standard library.
+   * string is the location of the standard library. The second is the
+   * list of directories with ignored duplicate cmi files.
    *
    * This function is called by {!Findlib.init} and {!Findlib.init_manually},
    * so it is already sufficient to initialize the [Findlib] module.

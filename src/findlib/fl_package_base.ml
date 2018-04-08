@@ -51,7 +51,7 @@ let has_prefix s pref =
 let ocamlpath = ref [];;
 let ocamlstdlib = ref "";;
 
-let conf_ignore_dups_in = ref (None : string option)
+let conf_ignore_dups_in = ref ([] : string list)
 
 let store = Fl_metastore.create();;
   (* We collect here only nodes, but no relations. First copy [store]
@@ -451,11 +451,12 @@ let in_report_search_path identify_dir d =
   (* Whether package dir d is to be considered for generating reports.
      d is sorted out when the ignore_dups_in option is set
    *)
-  match !conf_ignore_dups_in with
-    | None -> true
-    | Some id ->
-	try identify_dir d <> identify_dir id 
-	with _ -> Fl_split.norm_dir d <> Fl_split.norm_dir id
+  List.for_all
+    (fun id ->
+      try identify_dir d <> identify_dir id
+      with _ -> Fl_split.norm_dir d <> Fl_split.norm_dir id
+    )
+    !conf_ignore_dups_in
 ;;
 
 

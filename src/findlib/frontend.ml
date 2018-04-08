@@ -830,7 +830,7 @@ let query_package () =
       "-qo", Arg.Set qo,
           "              do not print regular output";
     ]
-    (fun p -> packages := !packages @ [p])
+    (fun p -> packages := !packages @ Fl_split.in_words p)
 "usage: ocamlfind query [ -predicates <p>  | -format <f> |
                          -long-format     | -i-format   |
                          -l-format        | -a-format   |

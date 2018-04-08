@@ -9,8 +9,8 @@ dnl This file is input of the m4 macro processor.
 
 `browse_interfaces = "'interfaces`"'
 
-`error(-mt) = "Missing -thread or -vmthread switch"'
-`error(-mt_vm,-mt_posix) = "Missing -thread or -vmthread switch"'
+`warning(-mt) = "Linking problems may arise because of the missing -thread or -vmthread switch"'
+`warning(-mt_vm,-mt_posix) = "Linking problems may arise because of the missing -thread or -vmthread switch"'
 
 `package "vm" ('
 `  # --- Bytecode-only threads:'

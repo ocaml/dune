@@ -265,6 +265,14 @@ an error message is printed. The message is the value of the variable.
 </para>
 </listitem>
 
+<listitem>
+<para>
+The variable "warning" can be used to signal warnings. When
+this variable is applicable, the warning is printed, but the
+compilation continues. The message is the value of the variable.
+</para>
+</listitem>
+
 <listitem> 
 <para> 
 The variable "exists_if" can be used to disable subpackages. The

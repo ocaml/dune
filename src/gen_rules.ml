@@ -787,7 +787,7 @@ module Gen(P : Install_rules.Params) = struct
         ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
     in
     SC.Libs.gen_select_rules sctx compile_info ~dir;
-    SC.Libs.with_lib_deps sctx compile_info ~dir ~has_dot_merlin:true
+    SC.Libs.with_lib_deps sctx compile_info ~dir
       ~f:(fun () ->
         library_rules lib ~modules_partitioner ~dir ~files ~scope ~compile_info)
 
@@ -900,7 +900,7 @@ module Gen(P : Install_rules.Params) = struct
         ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
     in
     SC.Libs.gen_select_rules sctx compile_info ~dir;
-    SC.Libs.with_lib_deps sctx compile_info ~dir ~has_dot_merlin:true
+    SC.Libs.with_lib_deps sctx compile_info ~dir
       ~f:(fun () ->
         executables_rules exes ~dir ~all_modules
           ?modules_partitioner ~scope ~compile_info)

@@ -1,3 +1,4 @@
 (library
  ((name caml)
-  (synopsis "Wrapped version of the OCaml stdlib")))
+  (public_name jbuilder.caml)
+  (synopsis "[Internal] Wrapped version of the OCaml stdlib")))

@@ -1,4 +1,6 @@
-(** Parsing of s-expressions *)
+(** Parsing of s-expressions.
+
+    This library is internal to jbuilder and guarantees no API stability.*)
 
 module Atom : sig
   type t = private A of string [@@unboxed]

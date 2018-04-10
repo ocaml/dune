@@ -1,3 +1,5 @@
+(** This library is internal to jbuilder and guarantees no API stability. *)
+
 module Filename = Filename
 module String   = String
 module Char     = Char

@@ -2,6 +2,7 @@
 
 (library
  ((name usexp)
+  (synopsis "[Internal] S-expression library")
   (public_name jbuilder.usexp)))
 
 (rule

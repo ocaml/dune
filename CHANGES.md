@@ -16,7 +16,7 @@
   be executed in an environment similar to the one we get once the
   package is installed (#624, @rgrinberg and @diml)
 
-- Don't pass `-runtime-variant _pic` on Windows (#635)
+- Don't pass `-runtime-variant _pic` on Windows (#635, fixes #573 @diml)
 
 - Display documentation in alphabetical order. This is relevant to packages,
   libraries, and modules. (#647, fixes #606 @rgrinberg)

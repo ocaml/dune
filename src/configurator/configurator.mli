@@ -45,7 +45,7 @@ module C_define : sig
   val import
     :  t
     -> ?c_flags:   string list
-    -> ?link_flags:string list
+    -> ?link_flags:string list (** @deprecated, this argument is ignored *)
     -> includes:   string list
     -> (string * Type.t ) list
     -> (string * Value.t) list

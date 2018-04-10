@@ -2,5 +2,6 @@
 
 (library
  ((name      ocaml_config)
+  (public_name jbuilder.ocaml_config)
   (libraries (stdune usexp))
   (synopsis  "Interpret the output of 'ocamlc -config'")))

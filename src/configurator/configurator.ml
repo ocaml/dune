@@ -1,4 +1,84 @@
 open Stdune
+
+module Extract_from_c : sig
+  val extract : string -> string
+
+  val integer : ?extra_headers:string -> string -> string
+
+  val string : ?extra_headers:string -> string -> string
+
+  val switch : ?extra_headers:string -> string -> string
+end = struct
+  let find_from haystack pos needle =
+    Str.(search_forward (regexp_string needle) haystack pos)
+
+  let prefix = "BEGIN-"
+  let suffix = "-END"
+
+  let extract s =
+    let begin_pos = find_from s 0 prefix + String.length prefix in
+    let end_pos   = find_from s 0 suffix in
+    String.sub s ~pos:begin_pos ~len:(end_pos - begin_pos)
+
+  let headers = "\
+#include <stdint.h>
+#include <stdbool.h>
+#include <complex.h>
+#include <inttypes.h>
+#include <caml/mlvalues.h>
+"
+
+  let integer ?(extra_headers="") expression =
+    Printf.sprintf "%s
+%s
+
+#define alignof(T) (offsetof(struct { char c; T t; }, t))
+
+#define D0(x) ('0'+(x/1         )%%10)
+#define D1(x) ('0'+(x/10        )%%10), D0(x)
+#define D2(x) ('0'+(x/100       )%%10), D1(x)
+#define D3(x) ('0'+(x/1000      )%%10), D2(x)
+#define D4(x) ('0'+(x/10000     )%%10), D3(x)
+#define D5(x) ('0'+(x/100000    )%%10), D4(x)
+#define D6(x) ('0'+(x/1000000   )%%10), D5(x)
+#define D7(x) ('0'+(x/10000000  )%%10), D6(x)
+#define D8(x) ('0'+(x/100000000 )%%10), D7(x)
+#define D9(x) ('0'+(x/1000000000)%%10), D8(x)
+const char s[] = {
+  'B', 'E', 'G', 'I', 'N', '-',
+  D9((%s)),
+  '-', 'E', 'N', 'D'
+};
+" headers extra_headers expression
+
+  let string ?(extra_headers="") expression =
+    Printf.sprintf "%s
+%s
+
+#define STRINGIFY1(x) #x
+#define STRINGIFY(x) STRINGIFY1(x)
+
+#if __USE_MINGW_ANSI_STDIO && defined(__MINGW64__)
+#define REAL_ARCH_INTNAT_PRINTF_FORMAT \"ll\"
+#else
+#define REAL_ARCH_INTNAT_PRINTF_FORMAT ARCH_INTNAT_PRINTF_FORMAT
+#endif
+
+const char *s = \"BEGIN-\" %s \"-END\";
+" headers extra_headers expression
+
+  let switch ?(extra_headers="") s =
+    Printf.sprintf {|%s
+%s
+
+#ifdef %s
+const char *s = "BEGIN-true-END";
+#else
+const char *s = "BEGIN-false-END";
+#endif
+|} headers extra_headers s
+end
+
 let sprintf = Printf.sprintf
 let eprintf = Printf.eprintf
 
@@ -232,12 +312,13 @@ let need_to_compile_and_link_separately t =
   | _      -> false
 
 let compile_c_prog t ?(c_flags=[]) ?(link_flags=[]) code =
+  ignore link_flags;
   let dir = t.dest_dir ^/ sprintf "c-test-%d" (gen_id t) in
   Unix.mkdir dir 0o777;
   let base = dir ^/ "test" in
   let c_fname = base ^ ".c" in
   let obj_fname = base ^ t.ext_obj in
-  let exe_fname = base ^ ".exe" in
+  (* let exe_fname = base ^ ".exe" in *)
   Io.write_file c_fname code;
   logf t "compiling c program:";
   List.iter (String.split_lines code) ~f:(logf t " | %s");
@@ -248,20 +329,49 @@ let compile_c_prog t ?(c_flags=[]) ?(link_flags=[]) code =
   in
   let ok =
     if need_to_compile_and_link_separately t then
-      run_ok (c_flags @ ["-I"; t.stdlib_dir; "-c"; c_fname]) &&
-      run_ok ("-o" :: exe_fname :: obj_fname :: link_flags)
+      run_ok (c_flags @ ["-I"; t.stdlib_dir; "-c"; c_fname])
+      (* run_ok ("-o" :: exe_fname :: obj_fname :: link_flags) *)
     else
       run_ok
         (List.concat
            [ c_flags
            ; [ "-I"; t.stdlib_dir
-             ; "-o"; exe_fname
+             ; "-c"
              ; c_fname
              ]
-           ; link_flags
            ])
   in
-  if ok then Ok exe_fname else Error ()
+  if ok then Ok obj_fname else Error ()
+
+(* let pp_c_prog t ?(c_flags=[]) code =
+ *   let c_flags = "-E" :: c_flags in
+ *   let dir = t.dest_dir ^/ sprintf "c-test-%d" (gen_id t) in
+ *   Unix.mkdir dir 0o777;
+ *   let base = dir ^/ "test" in
+ *   let c_fname = base ^ ".c" in
+ *   Io.write_file c_fname code;
+ *   logf t "preprocessing c program:";
+ *   List.iter (String.split_lines code) ~f:(logf t " | %s");
+ *   let run_ok args =
+ *     try
+ *       Ok (
+ *         run_capture_exn t ~dir
+ *           (String.concat ~sep:" "
+ *              (t.c_compiler :: List.map args ~f:Filename.quote))
+ *       )
+ *     with e ->
+ *       Error e
+ *   in
+ *   if need_to_compile_and_link_separately t then
+ *     run_ok (c_flags @ ["-I"; t.stdlib_dir; "-c"; c_fname])
+ *   else
+ *     run_ok
+ *       (List.concat
+ *          [ c_flags
+ *          ; [ "-I"; t.stdlib_dir
+ *            ; c_fname
+ *            ]
+ *          ]) *)
 
 let c_test t ?c_flags ?link_flags code =
   match compile_c_prog t ?c_flags ?link_flags code with
@@ -284,41 +394,26 @@ module C_define = struct
   end
 
   let import t ?c_flags ?link_flags ~includes vars =
-    let buf = Buffer.create 1024 in
-    let pr fmt = Printf.bprintf buf (fmt ^^ "\n") in
-    let includes = "stdio.h" :: includes in
-    List.iter includes ~f:(pr "#include <%s>");
-    pr "";
-    pr "int main()";
-    pr "{";
-    List.iter vars ~f:(fun (name, (kind : Type.t)) ->
-      match kind with
-      | Switch ->
-        pr {|#if defined(%s)|} name;
-        pr {|  printf("%s=b:true\n");|} name;
-        pr {|#else|};
-        pr {|  printf("%s=b:false\n");|} name;
-        pr {|#endif|}
-      | Int ->
-        pr {|  printf("%s=i:%%d\n", %s);|} name name
-      | String ->
-        pr {|  printf("%s=s:%%s\n", %s);|} name name);
-    pr "  return 0;";
-    pr "}";
-    let code = Buffer.contents buf in
-    match compile_c_prog t ?c_flags ?link_flags code with
-    | Error () -> die "failed to compile program"
-    | Ok exe ->
-      run_capture_exn t ~dir:(Filename.dirname exe) (command_line exe [])
-      |> String.split_lines
-      |> List.map ~f:(fun s ->
-        let var, data = String.lsplit2_exn s ~on:'=' in
-        (var,
-         match String.lsplit2_exn data ~on:':' with
-         | "b", s -> Value.Switch (bool_of_string s)
-         | "i", s -> Int    (int_of_string s)
-         | "s", s -> String s
-         | _ -> assert false))
+    let extra_headers =
+      ("stdio.h" :: includes)
+      |> List.map ~f:(sprintf "#include <%s>")
+      |> String.concat ~sep:"\n" in
+    List.map vars ~f:(fun (name, (kind : Type.t)) ->
+      let code =
+        match kind with
+        | Type.Switch -> Extract_from_c.switch ~extra_headers name
+        | Int -> Extract_from_c.integer ~extra_headers name
+        | String -> Extract_from_c.string ~extra_headers name in
+      match compile_c_prog t ?c_flags ?link_flags code with
+      | Error _ -> die "failed to compile program"
+      | Ok obj ->
+        let extracted = Extract_from_c.extract (Io.read_file obj) in
+        ( name
+        , (match kind with
+           | Type.Switch -> Value.Switch (bool_of_string extracted)
+           | Int -> Int (int_of_string extracted)
+           | String -> String extracted)))
+
 
   let gen_header_file t ~fname ?protection_var vars =
     let protection_var =
@@ -355,7 +450,6 @@ module C_define = struct
     Io.write_lines tmp_fname lines;
     Sys.rename tmp_fname fname
 end
-
 
 let find_in_path t prog =
   logf t "find_in_path: %s" prog;

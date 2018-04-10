@@ -137,7 +137,6 @@ module Libs : sig
     :  t
     -> Lib.Compile.t
     -> dir:Path.t
-    -> has_dot_merlin:bool
     -> f:(unit -> 'a)
     -> 'a
 

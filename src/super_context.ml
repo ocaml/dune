@@ -272,7 +272,7 @@ module Libs = struct
                  raise (Lib.Error (No_solution_found_for_select e))
              }))
 
-  let with_lib_deps t compile_info ~dir ~has_dot_merlin ~f =
+  let with_lib_deps t compile_info ~dir ~f =
     let prefix =
       Build.record_lib_deps (Lib.Compile.user_written_deps compile_info)
         ~kind:(if Lib.Compile.optional compile_info then
@@ -281,7 +281,7 @@ module Libs = struct
                  Required)
     in
     let prefix =
-      if t.context.merlin && has_dot_merlin then
+      if t.context.merlin then
         Build.path (Path.relative dir ".merlin-exists")
         >>>
         prefix

@@ -599,10 +599,10 @@ module Gen(P : Install_rules.Params) = struct
          >>> Build.write_file_dyn (Path.relative dir file.name)));
 
 
-        let dynlink = lib.dynlink in
-        let js_of_ocaml = lib.buildable.js_of_ocaml in
-        Module_compilation.build_modules sctx
-          ~js_of_ocaml ~dynlink ~flags ~scope ~dir ~obj_dir ~dep_graphs
+    let dynlink = lib.dynlink in
+    let js_of_ocaml = lib.buildable.js_of_ocaml in
+    Module_compilation.build_modules sctx
+      ~js_of_ocaml ~dynlink ~flags ~scope ~dir ~obj_dir ~dep_graphs
       ~modules ~requires ~alias_module;
     Option.iter alias_module ~f:(fun m ->
       let flags = Ocaml_flags.default () in

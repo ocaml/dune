@@ -1,5 +1,5 @@
-next
-----
+1.0+beta20 (10/04/2018)
+-----------------------
 
 - Add a `documentation` stanza. This stanza allows one to attach .mld files to
   opam packages. (#570 @rgrinberg)
@@ -41,6 +41,10 @@ next
 
 - Fix several cases where `external-lib-deps` was returning too little
   dependencies (#667, fixes #644 @diml)
+
+- Place module list on own line in generated entry point mld (#670 @antron)
+
+- Cosmetic improvements to generated entry point mld (#653 @trefis)
 
 1.0+beta19.1 (21/03/2018)
 -------------------------

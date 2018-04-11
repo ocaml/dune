@@ -28,7 +28,8 @@ Usage
 =====
 
 We'll describe configurator with a simple example. Everything else can be easily
-learned by studying configurator's API.
+learned by studying `configurator's API
+<https://github.com/ocaml/dune/blob/master/src/configurator/v1.mli>`__.
 
 To use configurator, we write an executable that will query the system using
 configurator's API and output a set of targets reflecting the results. For

@@ -17,8 +17,8 @@ Configurator allows you to query for the following features:
 
 * Extract compile time information such as ``#define`` variables.
 
-Configurator is designed to be cross compilation friendly and avoids running any
-compiled code to extract any of the information above.
+Configurator is designed to be cross compilation friendly and avoids _running_
+any compiled code to extract any of the information above.
 
 Configurator started as an `independent library
 <https://github.com/janestreet/configurator>`__, but now lives in dune. You do

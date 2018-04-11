@@ -303,6 +303,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
                "lib")
         ; extend_var "MANPATH"
             (Config.local_install_man_dir ~context:name)
+        ; "DUNE_CONFIGURATOR", (Path.to_string ocamlc)
         ]
       in
       Env.extend env ~vars:(Env.Map.of_list_exn vars)

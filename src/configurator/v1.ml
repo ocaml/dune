@@ -419,13 +419,14 @@ module Pkg_config = struct
 end
 
 let main ?(args=[]) ~name f =
-  let ocamlc  = ref None  in
+  let ocamlc  = ref (Sys.getenv_opt "DUNE_CONFIGURATOR") in
   let verbose = ref false in
   let dest_dir = ref None in
   let args =
     Arg.align
       ([ "-ocamlc", Arg.String (fun s -> ocamlc := Some s),
-         "PATH ocamlc command to use"
+         "PATH ocamlc command to use. \
+          This value is set automatically when configurator is invoked by dune."
        ; "-verbose", Arg.Set verbose,
          " be verbose"
        ; "-dest-dir", Arg.String (fun s -> dest_dir := Some s),

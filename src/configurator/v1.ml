@@ -419,7 +419,10 @@ module Pkg_config = struct
 end
 
 let main ?(args=[]) ~name f =
-  let ocamlc  = ref (Sys.getenv_opt "DUNE_CONFIGURATOR") in
+  let ocamlc  = ref (
+    match Sys.getenv "DUNE_CONFIGURATOR" with
+    | s -> Some s
+    | exception Not_found -> None) in
   let verbose = ref false in
   let dest_dir = ref None in
   let args =

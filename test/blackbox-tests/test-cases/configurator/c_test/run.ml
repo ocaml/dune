@@ -1,3 +1,4 @@
+module Configurator = Configurator.V1
 
 let () =
   Configurator.main ~name:"c_test" (fun t ->

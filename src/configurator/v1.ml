@@ -427,7 +427,14 @@ let main ?(args=[]) ~name f =
   let dest_dir = ref None in
   let args =
     Arg.align
-      ([ "-ocamlc", Arg.String (fun s -> ocamlc := Some s),
+      ([ "-ocamlc", Arg.String (fun s ->
+         Option.iter !ocamlc ~f:(fun _ ->
+           Format.eprintf
+             "ocamlc is already passed through DUNE_CONFIGURATOR. \
+              There's no need to pass it manually through -ocamlc.@."
+         );
+         ocamlc := Some s
+       ),
          "PATH ocamlc command to use. \
           This value is set automatically when configurator is invoked by dune."
        ; "-verbose", Arg.Set verbose,

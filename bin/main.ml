@@ -235,7 +235,11 @@ let common =
       match config_file with
       | No_config  -> Config.default
       | This fname -> Config.load_config_file ~fname
-      | Default    -> Config.load_user_config_file ()
+      | Default    ->
+        if Config.inside_dune then
+          Config.default
+        else
+          Config.load_user_config_file ()
     in
     let config =
       Config.merge config

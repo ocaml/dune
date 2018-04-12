@@ -1,3 +1,9 @@
+next
+----
+
+- Do not load the user configuration file when running inside dune
+  (#..., @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

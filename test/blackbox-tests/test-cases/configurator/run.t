@@ -1,5 +1,6 @@
 Show that config values are present
   $ jbuilder exec config/run.exe
+  DUNE_CONFIGURATOR is present
   version is present
 
 We're able to compile C program sucessfully

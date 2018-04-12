@@ -9,11 +9,11 @@ stubs, but there are no limitations on this.
 
 Configurator allows you to query for the following features:
 
-* Variables defined in ``ocamlc - config``
+* Variables defined in ``ocamlc - config``,
 
-* pkg-config_ flags for packages
+* pkg-config_ flags for packages,
 
-* Test features by compiling C code
+* Test features by compiling C code,
 
 * Extract compile time information such as ``#define`` variables.
 
@@ -88,17 +88,17 @@ The old configurator is the independent `configurator
 and users are encouraged to migrate to dune's own configurator. The advantage of
 the transition include:
 
-* No extra dependencies
+* No extra dependencies,
 
-* No need to manually pass ``-ocamlc`` flag
+* No need to manually pass ``-ocamlc`` flag,
 
-* New configurator is cross compilation compatible
+* New configurator is cross compilation compatible.
 
 The following steps must be taken to transition from the old configurator:
 
-* Mentions of the ``configurator`` opam package should be removed
+* Mentions of the ``configurator`` opam package should be removed.
 
-* The library name ``configurator`` should be changed ``jbuilder.configurator``
+* The library name ``configurator`` should be changed ``jbuilder.configurator``.
 
 * The ``-ocamlc`` flag in rules that run configurator scripts should be removed.
   This information is now passed automatically by dune.

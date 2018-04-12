@@ -139,9 +139,13 @@ let rules ~(ml_kind:Ml_kind.t) ~dir ~modules
               );
             let build_paths dependencies =
               let dependency_file_path m =
-                Option.map
-                  (Module.file ~dir m Ml_kind.Intf)
-                 ~f:all_deps_path
+                let path =
+                  match Module.file ~dir m Ml_kind.Intf with
+                  | Some _ as x -> x
+                  | None when Option.is_some alias_module -> None
+                  | None -> Module.file ~dir m Ml_kind.Impl
+                in
+                Option.map path ~f:all_deps_path
               in
               List.filter_map dependencies ~f:dependency_file_path
             in

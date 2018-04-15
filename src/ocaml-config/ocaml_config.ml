@@ -193,10 +193,10 @@ exception E of string
 let fail fmt =
   Printf.ksprintf (fun msg -> raise (E msg)) fmt
 
-let split_prog ~var s =
+let split_prog s =
   match String.extract_blank_separated_words s with
-  | []           -> fail "Variable %S contains only spaces." var
-  | prog :: args -> { prog; args }
+  | []           -> None
+  | prog :: args -> Some { prog; args }
 
 module Vars = struct
   module M = Map.Make(String)
@@ -252,11 +252,20 @@ module Vars = struct
     | None   -> []
     | Some s -> String.extract_blank_separated_words s
 
-  let get_prog_and_args t var =
-    split_prog ~var (get t var)
+  let get_prog_or_dummy t var =
+    Option.map (get_opt t var) ~f:(fun v ->
+      match split_prog v with
+      | None ->
+        { prog = Printf.sprintf "%s-not-found-in-ocaml-config" var
+        ; args = []
+        }
+      | Some s -> s
+    )
 
-  let get_prog_and_args_opt t var =
-    Option.map (get_opt t var) ~f:(split_prog ~var)
+  let get_prog_or_dummy_exn t var =
+    match get_prog_or_dummy t var with
+    | None -> fail "Variable %S not found." var
+    | Some s -> s
 end
 
 let get_arch_sixtyfour stdlib_dir =
@@ -282,18 +291,16 @@ let make vars =
   match
     let open Vars in
     let bytecomp_c_compiler =
-      get_prog_and_args vars "bytecomp_c_compiler"
-    in
+      get_prog_or_dummy_exn vars "bytecomp_c_compiler" in
     let native_c_compiler =
-      get_prog_and_args vars "native_c_compiler"
-    in
+      get_prog_or_dummy_exn vars "native_c_compiler" in
     let c_compiler, ocamlc_cflags, ocamlopt_cflags =
-      match get_prog_and_args_opt vars "c_compiler" with
+      match get_prog_or_dummy vars "c_compiler" with
       | Some { prog; args } -> (* >= 4.06 *)
         let get_flags var = args @ get_words vars var in
         (prog,
-         get_flags "ocamlc_flags",
-         get_flags "ocamlopt_flags")
+         get_flags "ocamlc_cflags",
+         get_flags "ocamlopt_cflags")
       | None ->
         (bytecomp_c_compiler.prog,
          bytecomp_c_compiler.args,
@@ -314,10 +321,9 @@ let make vars =
     let architecture             = get vars "architecture" in
     let model                    = get vars "model" in
     let system                   = get vars "system" in
-    let asm                      = get_prog_and_args vars "asm" in
     let asm_cfi_supported        = get_bool vars "asm_cfi_supported" in
     let with_frame_pointers      = get_bool vars "with_frame_pointers" in
-
+    let asm                      = get_prog_or_dummy_exn vars "asm" in
     let word_size =
       match get_int_opt vars "word_size" with
       | Some n -> n

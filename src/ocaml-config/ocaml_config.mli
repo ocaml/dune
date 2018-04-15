@@ -1,4 +1,6 @@
-(** Represent the output of [ocamlc -config] *)
+(** Represent the output of [ocamlc -config].
+
+    This library is internal to jbuilder and guarantees no API stability. *)
 
 open Stdune
 

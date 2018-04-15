@@ -18,6 +18,9 @@ val jbuilder_keep_fname : string
 (** Are we running inside an emacs shell? *)
 val inside_emacs : bool
 
+(** Are we running insinde Dune? *)
+val inside_dune : bool
+
 (** Jbuilder configuration *)
 
 module Display : sig

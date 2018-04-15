@@ -1,5 +1,6 @@
 (** Generate rules for js_of_ocaml *)
 
+open Import
 open Jbuild
 
 val build_cm
@@ -16,7 +17,8 @@ val build_exe
   -> dir:Path.t
   -> js_of_ocaml:Js_of_ocaml.t
   -> src:Path.t
-  -> ((Lib.t list * Path.t list) * string list, Action.t) Build.t list
+  -> requires:Lib.t list Or_exn.t
+  -> (Path.t list * string list, Action.t) Build.t list
 
 val setup_separate_compilation_rules
   :  Super_context.t

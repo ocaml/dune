@@ -4,17 +4,44 @@ open! No_io
 
 module SC = Super_context
 
+module Preprocess = struct
+  type t =
+    | Pps of Jbuild.Preprocess.pps
+    | Other
+
+  let make : Jbuild.Preprocess.t -> t = function
+    | Pps pps -> Pps pps
+    | _       -> Other
+
+  let merge a b =
+    match a, b with
+    | Other, Other -> Other
+    | Pps _, Other -> a
+    | Other, Pps _ -> b
+    | Pps { pps = pps1; flags = flags1 },
+      Pps { pps = pps2; flags = flags2 } ->
+      match
+        match List.compare flags1 flags2 ~compare:String.compare with
+        | Eq ->
+          List.compare pps1 pps2 ~compare:(fun (_, a) (_, b) ->
+            Jbuild.Pp.compare a b)
+        | ne -> ne
+      with
+      | Eq -> a
+      | _  -> Other
+end
+
 type t =
-  { requires   : (unit, Lib.t list) Build.t
+  { requires   : Lib.Set.t
   ; flags      : (unit, string list) Build.t
-  ; preprocess : Jbuild.Preprocess.t
+  ; preprocess : Preprocess.t
   ; libname    : string option
   ; source_dirs: Path.Set.t
   ; objs_dirs  : Path.Set.t
   }
 
 let make
-      ?(requires=Build.return [])
+      ?(requires=Ok [])
       ?(flags=Build.return [])
       ?(preprocess=Jbuild.Preprocess.No_preprocessing)
       ?libname
@@ -22,9 +49,14 @@ let make
       ?(objs_dirs=Path.Set.empty)
       () =
   (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
-  { requires = Build.catch requires ~on_error:(fun _ -> [])
-  ; flags    = Build.catch flags    ~on_error:(fun _ -> [])
-  ; preprocess
+  let requires =
+    match requires with
+    | Ok    l -> Lib.Set.of_list l
+    | Error _ -> Lib.Set.empty
+  in
+  { requires
+  ; flags      = Build.catch flags    ~on_error:(fun _ -> [])
+  ; preprocess = Preprocess.make preprocess
   ; libname
   ; source_dirs
   ; objs_dirs
@@ -46,7 +78,7 @@ let ppx_flags sctx ~dir:_ ~scope ~src_dir:_ { preprocess; libname; _ } =
       |> String.concat ~sep:" "
     in
     [sprintf "FLG -ppx %s" (Filename.quote command)]
-  | _ -> []
+  | Other -> []
 
 let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
   match Path.drop_build_context dir with
@@ -65,11 +97,11 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
        >>>
        Build.create_file (Path.relative dir ".merlin-exists"));
     SC.add_rule sctx ~mode:Promote_but_delete_on_clean (
-      requires &&& flags
-      >>^ (fun (libs, flags) ->
+      flags
+      >>^ (fun flags ->
         let ppx_flags = ppx_flags sctx ~dir ~scope ~src_dir:remaindir t in
         let libs =
-          List.fold_left ~f:(fun acc (lib : Lib.t) ->
+          Lib.Set.fold requires ~init:[] ~f:(fun (lib : Lib.t) acc ->
             let serialize_path = Path.reach ~from:remaindir in
             let bpath = serialize_path (Lib.obj_dir lib) in
             let spath =
@@ -78,7 +110,7 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
               |> serialize_path
             in
             ("B " ^ bpath) :: ("S " ^ spath) :: acc
-          ) libs ~init:[]
+          )
         in
         let source_dirs =
           Path.Set.fold t.source_dirs ~init:[] ~f:(fun path acc ->
@@ -120,16 +152,9 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
     ()
 
 let merge_two a b =
-  { requires =
-      (Build.fanout a.requires b.requires
-       >>^ fun (x, y) ->
-       Lib.L.remove_dups (x @ y))
+  { requires = Lib.Set.union a.requires b.requires
   ; flags = a.flags &&& b.flags >>^ (fun (a, b) -> a @ b)
-  ; preprocess =
-      if a.preprocess = b.preprocess then
-        a.preprocess
-      else
-        No_preprocessing
+  ; preprocess = Preprocess.merge a.preprocess b.preprocess
   ; libname =
       (match a.libname with
        | Some _ as x -> x

@@ -176,9 +176,9 @@ type 'a epsilon_action = 'a state ->         stack -> stack
 let current_pos ?(delta=0) state : Lexing.position =
   let offset = state.offset + delta in
   { pos_fname = state.fname
-  ; pos_lnum   = state.line_number
-  ; pos_cnum   = offset
-  ; pos_bol    = state.bol_offset
+  ; pos_lnum  = state.line_number
+  ; pos_cnum  = offset
+  ; pos_bol   = state.bol_offset
   }
 
 let set_automaton_state state x = state.automaton_state <- x
@@ -211,16 +211,13 @@ let check_new_sexp_allowed : type a. a state -> unit = fun state ->
 let add_first_char state char stack =
   check_new_sexp_allowed state;
   Buffer.add_char state.atom_buffer char;
-  (* For non-quoted atoms, we save both positions at the end. We can always determine the
-     start position from the end position and the atom length for non-quoted atoms.
-
-     Doing it this way allows us to detect single characater atoms for which we need to
-     save the position twice. *)
+  state.token_start_pos <- current_pos state;
   stack
 
 let eps_add_first_char_hash state stack =
   check_new_sexp_allowed state;
   Buffer.add_char state.atom_buffer '#';
+  state.token_start_pos <- current_pos state ~delta:(-1);
   stack
 
 let start_quoted_string state _char stack =

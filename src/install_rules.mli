@@ -11,6 +11,7 @@ end
 module type Install_params = sig
   include Params
   val module_names_of_lib : Jbuild.Library.t -> dir:Path.t -> Module.t list
+  val mlds_of_dir : Jbuild.Documentation.t -> dir:Path.t -> Path.t list
 end
 
 (** Generate install rules for META and .install files *)

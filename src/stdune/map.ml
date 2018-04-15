@@ -78,8 +78,8 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
       | [] -> Result.Ok acc
       | (k, v) :: l ->
         match find acc k with
-        | None    -> loop (add acc k v) l
-        | Some v' -> Error (k, v, v')
+        | None       -> loop (add acc k v) l
+        | Some v_old -> Error (k, v_old, v)
     in
     fun l -> loop empty l
 

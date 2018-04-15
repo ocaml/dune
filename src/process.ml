@@ -209,7 +209,7 @@ let gen_id =
   let next = ref (-1) in
   fun () -> incr next; !next
 
-let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose
+let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
       fail_mode prog args =
   Scheduler.wait_for_available_job ()
   >>= fun scheduler ->
@@ -238,13 +238,8 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose
   let stdout, close_stdout = get_std_output stdout_to ~default:stdout_fd in
   let stderr, close_stderr = get_std_output stderr_to ~default:stderr_fd in
   let run () =
-    match env with
-    | None ->
-      Unix.create_process prog argv
-        Unix.stdin stdout stderr
-    | Some env ->
-      Unix.create_process_env prog argv (Env.to_unix env)
-        Unix.stdin stdout stderr
+    Unix.create_process_env prog argv (Env.to_unix env)
+      Unix.stdin stdout stderr
   in
   let pid =
     match dir with
@@ -284,8 +279,10 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose
           "@{<warning>Warning@}: Command [@{<id>%d@}] exited with code %d, \
            but I'm ignoring it, hope that's OK.\n" id n
     end else if output <> "" ||
-                (display = Short && purpose <> Internal_job) then
-      print "@{<ok>%12s@} %a\n%s" progname Fancy.pp_purpose purpose output;
+                (display = Short && purpose <> Internal_job) then begin
+      let pad = String.make (max 0 (12 - String.length progname)) ' ' in
+      print "%s@{<ok>%s@} %a\n%s" pad progname Fancy.pp_purpose purpose output
+    end;
     n
   | WEXITED n ->
     if display = Verbose then
@@ -317,16 +314,16 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ?env ~purpose
         output
   | WSTOPPED _ -> assert false
 
-let run ?dir ?stdout_to ?stderr_to ?env ?(purpose=Internal_job) fail_mode
+let run ?dir ?stdout_to ?stderr_to ~env ?(purpose=Internal_job) fail_mode
       prog args =
   map_result fail_mode
-    (run_internal ?dir ?stdout_to ?stderr_to ?env ~purpose fail_mode prog args)
+    (run_internal ?dir ?stdout_to ?stderr_to ~env ~purpose fail_mode prog args)
     ~f:ignore
 
-let run_capture_gen ?dir ?env ?(purpose=Internal_job) fail_mode prog args ~f =
+let run_capture_gen ?dir ~env ?(purpose=Internal_job) fail_mode prog args ~f =
   let fn = Temp.create "jbuild" ".output" in
   map_result fail_mode
-    (run_internal ?dir ~stdout_to:(File fn) ?env ~purpose fail_mode prog args)
+    (run_internal ?dir ~stdout_to:(File fn) ~env ~purpose fail_mode prog args)
     ~f:(fun () ->
       let x = f fn in
       Temp.destroy fn;
@@ -335,8 +332,8 @@ let run_capture_gen ?dir ?env ?(purpose=Internal_job) fail_mode prog args ~f =
 let run_capture       = run_capture_gen ~f:Io.read_file
 let run_capture_lines = run_capture_gen ~f:Io.lines_of_file
 
-let run_capture_line ?dir ?env ?(purpose=Internal_job) fail_mode prog args =
-  run_capture_gen ?dir ?env ~purpose fail_mode prog args ~f:(fun fn ->
+let run_capture_line ?dir ~env ?(purpose=Internal_job) fail_mode prog args =
+  run_capture_gen ?dir ~env ~purpose fail_mode prog args ~f:(fun fn ->
     match Io.lines_of_file fn with
     | [x] -> x
     | l ->

@@ -230,18 +230,22 @@ module Dep_conf = struct
     | Alias_rec of String_with_vars.t
     | Glob_files of String_with_vars.t
     | Files_recursively_in of String_with_vars.t
+    | Package of String_with_vars.t
+    | Universe
 
   let t =
     let t =
-      let cstr name f =
+      let cstr_sw name f =
         cstr name (String_with_vars.t @> nil) f
       in
       sum
-        [ cstr "file"                 (fun x -> File x)
-        ; cstr "alias"                (fun x -> Alias x)
-        ; cstr "alias_rec"            (fun x -> Alias_rec x)
-        ; cstr "glob_files"           (fun x -> Glob_files x)
-        ; cstr "files_recursively_in" (fun x -> Files_recursively_in x)
+        [ cstr_sw "file"                 (fun x -> File x)
+        ; cstr_sw "alias"                (fun x -> Alias x)
+        ; cstr_sw "alias_rec"            (fun x -> Alias_rec x)
+        ; cstr_sw "glob_files"           (fun x -> Glob_files x)
+        ; cstr_sw "files_recursively_in" (fun x -> Files_recursively_in x)
+        ; cstr_sw "package"              (fun x -> Package x)
+        ; cstr    "universe" nil         Universe
         ]
     in
     fun sexp ->
@@ -264,6 +268,11 @@ module Dep_conf = struct
     | Files_recursively_in t ->
        List [Sexp.unsafe_atom_of_string "files_recursively_in" ;
              String_with_vars.sexp_of_t t]
+    | Package t ->
+      List [Sexp.unsafe_atom_of_string "package" ;
+            String_with_vars.sexp_of_t t]
+    | Universe ->
+      Sexp.unsafe_atom_of_string "universe"
 end
 
 module Preprocess = struct
@@ -461,6 +470,9 @@ module Lib_deps = struct
             String_set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
       : kind String_map.t);
     t
+
+  let of_pps pps =
+    List.map pps ~f:(fun pp -> Lib_dep.of_pp (Loc.none, pp))
 end
 
 module Buildable = struct
@@ -1156,6 +1168,24 @@ module Copy_files = struct
   let v1 = String_with_vars.t
 end
 
+module Documentation = struct
+  type t =
+    { package: Package.t
+    ; mld_files: Ordered_set_lang.t
+    }
+
+  let v1 pkgs =
+    record
+      (Scope_info.package_field pkgs >>= fun package ->
+       field "mld_files" Ordered_set_lang.t ~default:Ordered_set_lang.standard
+       >>= fun mld_files ->
+       return
+         { package
+         ; mld_files
+         }
+      )
+end
+
 module Stanza = struct
   type t =
     | Library     of Library.t
@@ -1166,6 +1196,7 @@ module Stanza = struct
     | Alias       of Alias_conf.t
     | Copy_files  of Copy_files.t
     | Menhir      of Menhir.t
+    | Documentation of Documentation.t
 end
 
 module Stanzas = struct
@@ -1215,6 +1246,8 @@ module Stanzas = struct
             raise (Include_loop (file, include_stack));
           let sexps = Sexp.load ~fname:(Path.to_string file) ~mode:Many in
           parse pkgs sexps ~default_version:Jbuild_version.V1 ~file ~include_stack)
+      ; cstr "documentation" (Documentation.v1 pkgs @> nil)
+          (fun d -> [Documentation d])
       ]
 
   and select

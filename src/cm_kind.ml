@@ -28,4 +28,10 @@ module Dict = struct
     ; cmo = f ~cm_kind:Cmo
     ; cmx = f ~cm_kind:Cmx
     }
+
+  let make_all x =
+    { cmi = x
+    ; cmo = x
+    ; cmx = x
+    }
 end

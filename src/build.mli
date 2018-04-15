@@ -71,6 +71,7 @@ val files_recursively_in
 
 (** Record dynamic dependencies *)
 val dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
+val dyn_path_set : ('a, Path.Set.t) t -> ('a, 'a) t
 
 val vpath : 'a Vspec.t  -> (unit, 'a) t
 
@@ -109,11 +110,20 @@ val if_file_exists : Path.t -> then_:('a, 'b) t -> else_:('a, 'b) t -> ('a, 'b) 
 *)
 val file_exists_opt : Path.t -> ('a, 'b) t -> ('a, 'b option) t
 
-(** Always fail when executed. We pass a function rather than an exception to get a proper
-    backtrace *)
+(** Always fail when executed. We pass a function rather than an
+    exception to get a proper backtrace *)
 val fail : ?targets:Path.t list -> fail -> (_, _) t
 
-val of_result : ('a, exn) Result.t -> (unit, 'a) t
+val of_result
+  :  ?targets:Path.t list
+  -> ('a, 'b) t Or_exn.t
+  -> ('a, 'b) t
+
+val of_result_map
+  : ?targets:Path.t list
+  -> 'a Or_exn.t
+  -> f:('a -> ('b, 'c) t)
+  -> ('b, 'c) t
 
 (** [memoize name t] is an arrow that behaves like [t] except that its
     result is computed only once. *)
@@ -183,12 +193,13 @@ module Repr : sig
     | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Path.Set.t -> ('a, 'a) t
+    | Paths_for_rule : Path.Set.t -> ('a, 'a) t
     | Paths_glob : glob_state ref -> ('a, Path.t list) t
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
     | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
-    | Dyn_paths : ('a, Path.t list) t -> ('a, 'a) t
+    | Dyn_paths : ('a, Path.Set.t) t -> ('a, 'a) t
     | Record_lib_deps : lib_deps -> ('a, 'a) t
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t
@@ -220,3 +231,6 @@ end
 val repr : ('a, 'b) t -> ('a, 'b) Repr.t
 
 val merge_lib_deps : lib_deps -> lib_deps -> lib_deps
+
+(**/**)
+val paths_for_rule : Path.Set.t -> ('a, 'a) t

@@ -1,12 +1,12 @@
-  $ $JBUILDER clean -j1 --display short --root .
-  $ $JBUILDER runtest -j1 --display short --root .
+  $ jbuilder clean --display short
+  $ jbuilder runtest --display short
       ocamldep f.ml.d
         ocamlc .f.eobjs/f.{cmi,cmo,cmt}
       ocamlopt .f.eobjs/f.{cmx,o}
       ocamlopt f.exe
              f alias runtest
   Foo Bar
-  $ $JBUILDER runtest -j1 --display short --root .
-  $ $JBUILDER runtest --force -j1 --display short --root .
+  $ jbuilder runtest --display short
+  $ jbuilder runtest --force --display short
              f alias runtest
   Foo Bar

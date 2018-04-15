@@ -120,6 +120,7 @@ val compare : t -> t -> Ordering.t
 
 val create
   :  ?merlin:bool
+  -> env:Env.t
   -> Workspace.Context.t
   -> t list Fiber.t
 
@@ -129,8 +130,6 @@ val opam_config_var : t -> string -> string option Fiber.t
 
 val install_prefix : t -> Path.t Fiber.t
 val install_ocaml_libdir : t -> Path.t option Fiber.t
-
-val env_for_exec : t -> string array
 
 (** Return the compiler needed for this compilation mode *)
 val compiler : t -> Mode.t -> Path.t option

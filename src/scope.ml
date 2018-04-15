@@ -77,7 +77,24 @@ module DB = struct
           match lib.public with
           | None -> None
           | Some p -> Some (p.name, lib.scope_name))
-        |> String_map.of_list_exn
+        |> String_map.of_list
+        |> function
+        | Ok x -> x
+        | Error (name, _, _) ->
+          match
+            List.filter_map internal_libs ~f:(fun (_dir, lib) ->
+              match lib.public with
+              | None   -> None
+              | Some p -> Option.some_if (name = p.name) lib.buildable.loc)
+          with
+          | [] | [_] -> assert false
+          | loc1 :: loc2 :: _ ->
+            die "Public library %S is defined twice:\n\
+                 - %s\n\
+                 - %s"
+              name
+              (Loc.to_file_colon_line loc1)
+              (Loc.to_file_colon_line loc2)
       in
       Lib.DB.create ()
         ~parent:installed_libs

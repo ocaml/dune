@@ -888,10 +888,10 @@ and exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to =
     exec t ~ectx ~dir ~env ~stdout_to ~stderr_to >>= fun () ->
     exec_list rest ~ectx ~dir ~env ~stdout_to ~stderr_to
 
-let exec ~targets ?context t =
+let exec ~targets ~context t =
   let env =
     match (context : Context.t option) with
-    | None -> Env.initial ()
+    | None   -> Env.initial
     | Some c -> c.env
   in
   let targets = Path.Set.to_list targets in

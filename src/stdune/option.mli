@@ -17,6 +17,7 @@ val iter : 'a t -> f:('a -> unit) -> unit
 val value : 'a t -> default:'a -> 'a
 val value_exn : 'a t -> 'a
 
+val some : 'a -> 'a t
 val some_if : bool -> 'a -> 'a t
 
 val is_some : _ t -> bool

@@ -44,30 +44,21 @@ let of_unix arr =
       Sexp.code_error "Env.of_unix: entry without '=' found in the environ"
         ["var", Sexp.To_sexp.string s]
     | Some (k, v) -> (k, v))
-  |> Map.of_list
-  |> function
-  | Ok x -> x
-  | Error (var, v1, v2) ->
-    Sexp.code_error "Env.of_unix: duplicated variable found in the environment"
-      [ "var"   , Sexp.To_sexp.string var
-      ; "value1", Sexp.To_sexp.string v1
-      ; "value2", Sexp.To_sexp.string v2
-      ]
+  |> Map.of_list_multi
+  |> Map.map ~f:(function
+    | [] -> assert false
+    | x::_ -> x)
 
-let initial =
-  let i =
-    lazy (
-      make (Lazy.force Colors.setup_env_for_colors;
-            Unix.environment ()
-            |> of_unix)
-    ) in
-  fun () -> Lazy.force i
+let initial = make (of_unix (Unix.environment ()))
 
 let add t ~var ~value =
   make (Map.add t.vars var value)
 
 let extend t ~vars =
   make (Map.union t.vars vars ~f:(fun _ _ v -> Some v))
+
+let extend_env x y =
+  extend x ~vars:y.vars
 
 let sexp_of_t t =
   let open Sexp.To_sexp in
@@ -79,3 +70,6 @@ let diff x y =
     | Some _ -> None
     | None -> vx)
   |> make
+
+let update t ~var ~f =
+  make (Map.update t.vars var ~f)

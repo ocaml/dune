@@ -386,12 +386,18 @@ module Ivar = struct
     | Full  x -> k x
     | Empty q ->
       Queue.push { Handler. run = k; ctx } q
+
+  let peek t =
+    match t.state with
+    | Full  x -> Some x
+    | Empty _ -> None
 end
 
 module Future = struct
   type 'a t = 'a Ivar.t
 
   let wait = Ivar.read
+  let peek = Ivar.peek
 end
 
 let fork f ctx k =

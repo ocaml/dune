@@ -112,7 +112,7 @@ module Unexpanded : sig
     -> Partial.t
 end
 
-val exec : targets:Path.Set.t -> ?context:Context.t -> t -> unit Fiber.t
+val exec : targets:Path.Set.t -> context:Context.t option -> t -> unit Fiber.t
 
 (* Return a sandboxed version of an action *)
 val sandbox

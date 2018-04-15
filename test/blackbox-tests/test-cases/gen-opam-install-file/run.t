@@ -1,16 +1,16 @@
-  $ $JBUILDER runtest -j1 --display short --root .
+  $ jbuilder runtest --display short
       ocamldep bar.ml.d
-      ocamldep foo_byte.ml.d
-        ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
-        ocamlc foo_byte.cma
       ocamldep foo.ml.d
       ocamldep foo.mli.d
         ocamlc .foo.objs/foo.{cmi,cmti}
-        ocamlc .foo.objs/foo.{cmo,cmt}
-        ocamlc foo.cma
       ocamlopt .foo.objs/foo.{cmx,o}
       ocamlopt foo.{a,cmxa}
       ocamlopt foo.cmxs
+      ocamldep foo_byte.ml.d
+        ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
+        ocamlc foo_byte.cma
+        ocamlc .foo.objs/foo.{cmo,cmt}
+        ocamlc foo.cma
         ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}
       ocamlopt .bar.eobjs/bar.{cmx,o}
       ocamlopt bar.exe
@@ -42,4 +42,7 @@
   share: [
     "_build/install/default/share/foo/bar.ml"
     "_build/install/default/share/foo/baz.ml" {"baz.ml"}
+  ]
+  doc: [
+    "_build/install/default/doc/foo/odoc-pages/doc.mld" {"odoc-pages/doc.mld"}
   ]

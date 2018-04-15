@@ -8,3 +8,5 @@ external reraise       : exn -> _ = "%reraise"
 
 val protect : f:(unit -> 'a) -> finally:(unit -> unit) -> 'a
 val protectx : 'a -> f:('a -> 'b) -> finally:('a -> unit) -> 'b
+
+val raise_with_backtrace: exn -> Printexc.raw_backtrace -> _

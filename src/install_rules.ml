@@ -10,6 +10,7 @@ end
 module type Install_params = sig
   include Params
   val module_names_of_lib : Library.t -> dir:Path.t -> Module.t list
+  val mlds_of_dir : Documentation.t -> dir:Path.t -> Path.t list
 end
 
 module Archives(P : Params) = struct
@@ -44,17 +45,9 @@ module Gen(P : Install_params) = struct
              (lib_dune_file ~dir:(Lib.src_dir lib) ~name:(Lib.name lib)))
 
   let init_meta () =
-    let public_libs = Lib.DB.all (SC.public_libs sctx) in
-    Lib.Set.iter public_libs ~f:gen_lib_dune_file;
-    Lib.Set.to_list public_libs
-    |> List.map ~f:(fun lib ->
-      (Package.Name.of_string (Findlib.root_package_name (Lib.name lib)), lib))
-    |> Package.Name.Map.of_list_multi
-    |> Package.Name.Map.merge (SC.packages sctx) ~f:(fun _name pkg libs ->
-      let pkg  = Option.value_exn pkg          in
-      let libs = Option.value libs ~default:[] in
-      Some (pkg, libs))
+    SC.libs_by_package sctx
     |> Package.Name.Map.iter ~f:(fun ((pkg : Package.t), libs) ->
+        Lib.Set.iter libs ~f:gen_lib_dune_file;
       let path = Path.append ctx.build_dir pkg.path in
       SC.on_load_dir sctx ~dir:path ~f:(fun () ->
         let meta_fn = "META." ^ (Package.Name.to_string pkg.name) in
@@ -97,7 +90,7 @@ module Gen(P : Install_params) = struct
           Gen_meta.gen
             ~package:(Package.Name.to_string pkg.name)
             ~version
-            libs
+            (Lib.Set.to_list libs)
         in
         SC.add_rule sctx
           (Build.fanout meta_contents template
@@ -210,8 +203,10 @@ module Gen(P : Install_params) = struct
     let install_dir = Config.local_install_dir ~context:ctx.name in
     List.map entries ~f:(fun entry ->
       let dst =
-        Path.append install_dir (Install.Entry.relative_installed_path entry ~package)
+        Path.append install_dir
+          (Install.Entry.relative_installed_path entry ~package)
       in
+      Build_system.set_package (SC.build_system sctx) entry.src package;
       SC.add_rule sctx (Build.symlink ~src:entry.src ~dst);
       Install.Entry.set_src entry dst)
 
@@ -244,6 +239,19 @@ module Gen(P : Install_params) = struct
         (Utils.install_file ~package ~findlib_toolchain:ctx.findlib_toolchain)
     in
     let entries = local_install_rules entries ~package in
+    let files = Install.files entries in
+    SC.add_alias_deps sctx
+      (Alias.package_install ~context:ctx ~pkg:package)
+      files
+      ~dyn_deps:
+        (Build_system.package_deps (SC.build_system sctx) package files
+         >>^ fun packages ->
+         Package.Name.Set.to_list packages
+         |> List.map ~f:(fun pkg ->
+           Build_system.Alias.package_install
+             ~context:(SC.context sctx) ~pkg
+           |> Build_system.Alias.stamp_file)
+         |> Path.Set.of_list);
     SC.add_rule sctx
       ~mode:(if promote_install_file then
                Promote_but_delete_on_clean
@@ -251,7 +259,7 @@ module Gen(P : Install_params) = struct
                (* We must ignore the source file since it might be
                   copied to the source tree by another context. *)
                Ignore_source_files)
-      (Build.path_set (Install.files entries)
+      (Build.path_set files
        >>^ (fun () ->
          let entries =
            match ctx.findlib_toolchain with
@@ -277,6 +285,13 @@ module Gen(P : Install_params) = struct
             List.map files ~f:(fun { Install_conf. src; dst } ->
               (package.name,
                Install.Entry.make section (Path.relative dir src) ?dst))
+          | Documentation ({ package; _ } as d) ->
+            List.map ~f:(fun mld ->
+              (package.name,
+               (Install.Entry.make
+                  ~dst:(sprintf "odoc-pages/%s" (Path.basename mld))
+                  Install.Section.Doc mld))
+            ) (mlds_of_dir d ~dir)
           | _ -> [])
       |> Package.Name.Map.of_list_multi
     in
@@ -299,7 +314,7 @@ module Gen(P : Install_params) = struct
           let path = Path.append ctx.build_dir src_path in
           let install_alias = Alias.install ~dir:path in
           let install_file = Path.relative path install_fn in
-          SC.add_alias_deps sctx install_alias [install_file])
+          SC.add_alias_deps sctx install_alias (Path.Set.singleton install_file))
 
   let init () =
     init_meta ();

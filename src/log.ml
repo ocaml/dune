@@ -17,9 +17,9 @@ let create ?(display=Config.default.display) () =
   let oc = Io.open_out "_build/log" in
   Printf.fprintf oc "# %s\n# OCAMLPARAM: %s\n%!"
     (String.concat (List.map (Array.to_list Sys.argv) ~f:quote_for_shell) ~sep:" ")
-    (match Sys.getenv "OCAMLPARAM" with
-     | s -> Printf.sprintf "%S" s
-     | exception Not_found -> "unset");
+    (match Env.get Env.initial "OCAMLPARAM" with
+     | Some s -> Printf.sprintf "%S" s
+     | None   -> "unset");
   let buf = Buffer.create 1024 in
   let ppf = Format.formatter_of_buffer buf in
   Some { oc; buf; ppf; display }

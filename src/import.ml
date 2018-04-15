@@ -11,7 +11,14 @@ let ksprintf = Printf.ksprintf
 let initial_cwd = Sys.getcwd ()
 
 module String_set = Set.Make(String)
-module String_map = Map.Make(String)
+module String_map = struct
+  include Map.Make(String)
+
+  let pp f fmt t =
+    Format.pp_print_list (fun fmt (k, v) ->
+      Format.fprintf fmt "@[<hov 2>(%s@ =@ %a)@]" k f v
+    ) fmt (to_list t)
+end
 
 module Int_set = Set.Make(Int)
 module Int_map = Map.Make(Int)
@@ -131,6 +138,29 @@ module Fmt = struct
   let nl = Format.pp_print_newline
 
   let prefix f g ppf x = f ppf; g ppf x
+
+  let ocaml_list pp fmt = function
+    | [] -> Format.pp_print_string fmt "[]"
+    | l ->
+      Format.fprintf fmt "@[<hv>[ %a@ ]@]"
+        (list ~pp_sep:(fun fmt () -> Format.fprintf fmt "@,; ")
+           pp) l
+
+  let quoted fmt = Format.fprintf fmt "%S"
+
+  let const
+    : 'a t -> 'a -> unit t
+    = fun pp a' fmt () -> pp fmt a'
+
+  let record fmt = function
+    | [] -> Format.pp_print_string fmt "{}"
+    | xs ->
+      let pp fmt (field, pp) =
+        Format.fprintf fmt "@[<hov 1>%s@ =@ %a@]"
+          field pp () in
+      let pp_sep fmt () = Format.fprintf fmt "@,; " in
+      Format.fprintf fmt "@[<hv>{ %a@ }@]"
+        (Format.pp_print_list ~pp_sep pp) xs
 end
 
 (* This is ugly *)

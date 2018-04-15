@@ -15,6 +15,8 @@ Welcome to jbuilder's documentation!
    project-layout-specification
    jbuild
    tests
-   api-doc
+   documentation
    usage
    advanced-topics
+   faq
+   known-issues

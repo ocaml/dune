@@ -1,22 +1,26 @@
-  $ $JBUILDER build @doc -j1 --display short --root .
+  $ jbuilder build @doc --display short
+      ocamldep bar.ml.d
+        ocamlc .bar.objs/bar.{cmi,cmo,cmt}
+          odoc _doc/_odoc/lib/bar/bar.odoc
+          odoc _doc/_html/bar/Bar/.jbuilder-keep,_doc/_html/bar/Bar/index.html
+          odoc _doc/_odoc/pkg/bar/page-index.odoc
+          odoc _doc/_html/bar/index.html
+          odoc _doc/_html/odoc.css
       ocamldep foo_byte.ml.d
         ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
-          odoc _doc/foo.byte/foo_byte.odoc
-          odoc _doc/foo.byte/page-index.odoc
-          odoc _doc/foo.byte/page-test.odoc
-          odoc _doc/foo.byte/Foo_byte/.jbuilder-keep,_doc/foo.byte/Foo_byte/index.html
+          odoc _doc/_odoc/lib/foo.byte/foo_byte.odoc
       ocamldep foo.ml.d
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
-          odoc _doc/foo/foo.odoc
-          odoc _doc/foo/page-index.odoc
-          odoc _doc/foo/page-test.odoc
-          odoc _doc/foo/Foo/.jbuilder-keep,_doc/foo/Foo/index.html
-          odoc _doc/odoc.css
-          odoc _doc/foo.byte/index.html
-          odoc _doc/foo.byte/test.html
-          odoc _doc/foo/index.html
-          odoc _doc/foo/test.html
-  $ $JBUILDER runtest -j1 --display short --root .
+          odoc _doc/_odoc/lib/foo/foo.odoc
+      ocamldep foo2.ml.d
+        ocamlc .foo.objs/foo2.{cmi,cmo,cmt}
+          odoc _doc/_odoc/lib/foo/foo2.odoc
+          odoc _doc/_html/foo/Foo/.jbuilder-keep,_doc/_html/foo/Foo/index.html
+          odoc _doc/_odoc/pkg/foo/page-index.odoc
+          odoc _doc/_html/foo/index.html
+          odoc _doc/_html/foo/Foo_byte/.jbuilder-keep,_doc/_html/foo/Foo_byte/index.html
+          odoc _doc/_html/foo/Foo2/.jbuilder-keep,_doc/_html/foo/Foo2/index.html
+  $ jbuilder runtest --display short
   <!DOCTYPE html>
   <html xmlns="http://www.w3.org/1999/xhtml">
     <head>
@@ -29,8 +33,22 @@
       <div class="by-name">
       <h2>OCaml package documentation</h2>
       <ol>
+      <li><a href="bar/index.html">bar</a></li>
       <li><a href="foo/index.html">foo</a></li>
-      <li><a href="foo.byte/index.html">foo.byte</a></li>
       </ol>
-   </body>
-   </html>
+      </div>
+    </body>
+  </html>
+
+  $ jbuilder build @foo-mld --display short
+  {1 Library foo}
+  This library exposes the following toplevel modules:
+  {!modules:Foo Foo2}.
+  {1 Library foo.byte}
+  The entry point of this library is the module:
+  {!module-Foo_byte}.
+
+  $ jbuilder build @bar-mld --display short
+  {1 Library bar}
+  The entry point of this library is the module:
+  {!module-Bar}.

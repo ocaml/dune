@@ -46,6 +46,19 @@ module To_sexp : sig
   include Combinators with type 'a t = 'a -> t
 
   val record : (string * sexp) list -> sexp
+
+  type field
+
+  val field
+    :  string
+    -> 'a t
+    -> ?equal:('a -> 'a -> bool)
+    -> ?default:'a
+    -> 'a
+    -> field
+  val field_o : string -> 'a t-> 'a option -> field
+
+  val record_fields : field list t
 end with type sexp := t
 
 module Of_sexp : sig

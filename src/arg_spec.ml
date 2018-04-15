@@ -12,13 +12,15 @@ type 'a t =
   | Target   of Path.t
   | Path     of Path.t
   | Paths    of Path.t list
+  | Hidden_deps of Path.t list
   | Dyn      of ('a -> nothing t)
 
 let rec add_deps ts set =
   List.fold_left ts ~init:set ~f:(fun set t ->
     match t with
-    | Dep  fn  -> Pset.add set fn
-    | Deps fns -> Pset.union set (Pset.of_list fns)
+    | Dep fn -> Pset.add set fn
+    | Deps        fns
+    | Hidden_deps fns -> Pset.union set (Pset.of_list fns)
     | S ts
     | Concat (_, ts) -> add_deps ts set
     | _ -> set)
@@ -51,6 +53,9 @@ let expand ~dir ts x =
     | Concat (sep, ts) -> [String.concat ~sep (loop_dyn (S ts))]
     | Target _ -> die "Target not allowed under Dyn"
     | Dyn _ -> assert false
+    | Hidden_deps l ->
+      dyn_deps := Pset.union !dyn_deps (Pset.of_list l);
+      []
   in
   let rec loop = function
     | A s  -> [s]
@@ -61,6 +66,7 @@ let expand ~dir ts x =
     | Concat (sep, ts) -> [String.concat ~sep (loop (S ts))]
     | Target fn -> [Path.reach fn ~from:dir]
     | Dyn f -> loop_dyn (f x)
+    | Hidden_deps _ -> []
   in
   let l = List.concat_map ts ~f:loop in
   (l, !dyn_deps)
@@ -71,3 +77,12 @@ let quote_args =
     | arg :: args -> quote :: arg :: loop quote args
   in
   fun quote args -> As (loop quote args)
+
+let of_result = function
+  | Ok x -> x
+  | Error e -> Dyn (fun _ -> raise e)
+
+let of_result_map res ~f =
+  match res with
+  | Ok    x -> f x
+  | Error e -> Dyn (fun _ -> raise e)

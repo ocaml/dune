@@ -17,4 +17,6 @@ module Dict : sig
   val get : 'a t -> cm_kind -> 'a
 
   val of_func : (cm_kind:cm_kind -> 'a) -> 'a t
+
+  val make_all : 'a -> 'a t
 end with type cm_kind := t

@@ -27,19 +27,21 @@ val create
   -> file_tree:File_tree.t
   -> packages:Package.t Package.Name.Map.t
   -> stanzas:(Path.t * Scope_info.t * Stanzas.t) list
-  -> filter_out_optional_stanzas_with_missing_deps:bool
+  -> external_lib_deps_mode:bool
   -> build_system:Build_system.t
   -> t
 
 val context   : t -> Context.t
 val stanzas   : t -> Dir_with_jbuild.t list
 val packages  : t -> Package.t Package.Name.Map.t
+val libs_by_package : t -> (Package.t * Lib.Set.t) Package.Name.Map.t
 val file_tree : t -> File_tree.t
 val artifacts : t -> Artifacts.t
 val stanzas_to_consider_for_install : t -> (Path.t * Scope.t * Stanza.t) list
 val cxx_flags : t -> string list
 val build_dir : t -> Path.t
 val host : t -> t
+val build_system : t -> Build_system.t
 
 (** All public libraries of the workspace *)
 val public_libs : t -> Lib.DB.t
@@ -96,7 +98,8 @@ val add_rules
 val add_alias_deps
   :  t
   -> Build_system.Alias.t
-  -> Path.t list
+  -> ?dyn_deps:(unit, Path.Set.t) Build.t
+  -> Path.Set.t
   -> unit
 val add_alias_action
   :  t
@@ -127,20 +130,22 @@ val resolve_program
   -> Action.Prog.t
 
 module Libs : sig
-  (** Returns the closed list of dependencies for a dependency list in
-      a stanza. The second arrow is the same as the first one but with
-      an added dependency on the [.merlin] if [(context t).merlin &&
-      has_dot_merlin] is [true]. *)
-  val requires
+  (** Make sure all rules produces by [f] record the library
+      dependencies for [jbuilder external-lib-deps] and depend on the
+      generation of the .merlin file. *)
+  val with_lib_deps
     :  t
-    -> dir:Path.t
-    -> has_dot_merlin:bool
     -> Lib.Compile.t
-    -> (unit, Lib.L.t) Build.t * (unit, Lib.L.t) Build.t
+    -> dir:Path.t
+    -> f:(unit -> 'a)
+    -> 'a
 
-  (** [file_deps ~ext] is an arrow that record dependencies on all the
-      files with extension [ext] of the libraries given as input. *)
-  val file_deps : t -> ext:string -> (Lib.t list, Lib.t list) Build.t
+  (** Generate the rules for the [(select ...)] forms in library dependencies *)
+  val gen_select_rules : t -> dir:Path.t -> Lib.Compile.t -> unit
+
+  (** [file_deps t libs ~ext] returns a list of path dependencies for
+      all the files with extension [ext] of libraries [libs]. *)
+  val file_deps : t -> Lib.L.t -> ext:string -> Path.t list
 
   (** Setup the alias that depends on all files with a given extension
       for a library *)
@@ -149,7 +154,7 @@ module Libs : sig
     -> dir:Path.t
     -> ext:string
     -> Library.t
-    -> Path.t list
+    -> Path.Set.t
     -> unit
 
   (** Setup an alias that depend on all files with the given extensions.
@@ -196,4 +201,10 @@ end
 
 module Pkg_version : sig
   val set : t -> Package.t -> (unit, string option) Build.t -> (unit, string option) Build.t
+end
+
+module Scope_key : sig
+  val of_string : t -> string -> string * Lib.DB.t
+
+  val to_string : string -> Scope_info.Name.t -> string
 end

@@ -1,9 +1,74 @@
 next
 ----
 
-- Ignore errors during the generation of the .merlin (#569, fixes #568 and #51)
+- Do not load the user configuration file when running inside dune
+  (#..., @diml)
 
-- Reduce the number of simultaneously opened fds (#578)
+1.0+beta20 (10/04/2018)
+-----------------------
+
+- Add a `documentation` stanza. This stanza allows one to attach .mld files to
+  opam packages. (#570 @rgrinberg)
+
+- Execute all actions (defined using `(action ..)`) in the context's
+  environment. (#623 @rgrinberg)
+
+- Add a `(universe)` special dependency to specify that an action depend on
+  everything in the universe. Jbuilder cannot cache the result of an action that
+  depend on the universe (#603, fixes #255 @diml)
+
+- Add a `(package <package>)` dependency specification to indicate
+  dependency on a whole package. Rules depending on whole pacakge will
+  be executed in an environment similar to the one we get once the
+  package is installed (#624, @rgrinberg and @diml)
+
+- Don't pass `-runtime-variant _pic` on Windows (#635, fixes #573 @diml)
+
+- Display documentation in alphabetical order. This is relevant to packages,
+  libraries, and modules. (#647, fixes #606 @rgrinberg)
+
+- Missing asm in ocaml -config on bytecode only architecture is no longer fatal.
+  The same kind of fix is preemptively applied to C compilers being absent.
+  (#646, fixes $637 @rgrinberg)
+
+- Use the host's PATH variable when running actions during cross compilation
+  (#649, fixes #625 @rgrinberg)
+
+- Fix incorrect include (`-I`) flags being passed to odoc. These flags should be
+  directories that include .odoc files, rather than the include flags of the
+  libraries. (#652 fixes #651 @rgrinberg)
+
+- Fix a regression introduced by beta19 where the generated merlin
+  files didn't include the right `-ppx` flags in some cases (#658
+  fixes #657 @diml)
+
+- Fix error messaage when a public library is defined twice. Before
+  jbuilder would raise an uncaught exception (Fixes #661, @diml)
+
+- Fix several cases where `external-lib-deps` was returning too little
+  dependencies (#667, fixes #644 @diml)
+
+- Place module list on own line in generated entry point mld (#670 @antron)
+
+- Cosmetic improvements to generated entry point mld (#653 @trefis)
+
+1.0+beta19.1 (21/03/2018)
+-------------------------
+
+- Fix regression introduced by beta19 where duplicate environment variables in
+  Unix.environ would cause a fatal error. The first defined environment variable
+  is now chosen. (#638 fixed by #640)
+
+- Use ';' as the path separator for OCAMLPATH on Cygwin (#630 fixed by #636
+  @diml).
+
+- Use the contents of the `OCAMLPATH` environment variable when not relying on
+  `ocamlfind` (#642 @diml)
+
+1.0+beta19 (14/03/2018)
+-----------------------
+
+- Ignore errors during the generation of the .merlin (#569, fixes #568 and #51)
 
 - Add a workaround for when a library normally installed by the
   compiler is not installed but still has a META file (#574, fixes
@@ -11,12 +76,6 @@ next
 
 - Do not depend on ocamlfind. Instead, hard-code the library path when
   installing from opam (#575)
-
-- Reduce interleaving in the scheduler in an attempt to make Jbuilder
-  keep file descriptors open for less long (#586)
-
-- Accept and ignore `ppx.driver` fields in library stanzas, in
-  preparation for the generic ppx driver system (#588)
 
 - Change the default behavior regarding the check for overlaps between
   local and installed libraries. Now even if there is no link time
@@ -40,6 +99,31 @@ next
 
 - Add a `best` mode which is native with fallback to byte-code when
   native compilation is not available (#23)
+
+- Fix locations reported in error messages (#609)
+
+- Report error when a public library has a private dependency. Previously, this
+  would be silently ignored and install broken artifacts (#607).
+
+- Fix display when output is not a tty (#518)
+
+1.0+beta18.1 (14/03/2018)
+-------------------------
+
+- Reduce the number of simultaneously opened fds (#578)
+
+- Always produce an implementation for the alias module, for
+  non-jbuilder users (Fix #576)
+
+- Reduce interleaving in the scheduler in an attempt to make Jbuilder
+  keep file descriptors open for less long (#586)
+
+- Accept and ignore upcoming new library fields: `ppx.driver`,
+  `inline_tests` and `inline_tests.backend` (#588)
+
+- Add a hack to be able to build ppxlib, until beta20 which will have
+  generic support for ppx drivers
+
 
 1.0+beta18 (25/02/2018)
 -----------------------

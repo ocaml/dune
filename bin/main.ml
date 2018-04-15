@@ -49,6 +49,7 @@ let set_common c ~targets =
       ]
 
 let restore_cwd_and_execve common prog argv env =
+  let env = Env.to_unix env in
   let prog =
     if Filename.is_relative prog then
       Filename.concat common.root prog
@@ -71,14 +72,15 @@ let restore_cwd_and_execve common prog argv env =
 module Main = struct
   include Jbuilder.Main
 
-  let setup ~log ?filter_out_optional_stanzas_with_missing_deps common =
+  let setup ~log ?external_lib_deps_mode common =
     setup
       ~log
       ?workspace_file:common.workspace_file
       ?only_packages:common.only_packages
-      ?filter_out_optional_stanzas_with_missing_deps
+      ?external_lib_deps_mode
       ?x:common.x
       ~ignore_promoted_rules:common.ignore_promoted_rules
+      ~capture_outputs:common.capture_outputs
       ()
 end
 
@@ -216,7 +218,11 @@ let common =
     let root, to_cwd =
       match root with
       | Some dn -> (dn, [])
-      | None -> find_root ()
+      | None ->
+        if Config.inside_dune then
+          (".", [])
+        else
+          find_root ()
     in
     let orig_args =
       List.concat
@@ -229,7 +235,11 @@ let common =
       match config_file with
       | No_config  -> Config.default
       | This fname -> Config.load_config_file ~fname
-      | Default    -> Config.load_user_config_file ()
+      | Default    ->
+        if Config.inside_dune then
+          Config.default
+        else
+          Config.load_user_config_file ()
     in
     let config =
       Config.merge config
@@ -490,8 +500,9 @@ let installed_libraries =
   let doc = "Print out libraries installed on the system." in
   let go common na =
     set_common common ~targets:[];
+    let env = Main.setup_env ~capture_outputs:common.capture_outputs in
     Scheduler.go ~log:(Log.create common) ~common
-      (Context.create (Default [Native])  >>= fun ctxs ->
+      (Context.create (Default [Native]) ~env >>= fun ctxs ->
        let ctx = List.hd ctxs in
        let findlib = ctx.findlib in
        if na then begin
@@ -745,7 +756,7 @@ let external_lib_deps =
     set_common common ~targets:[];
     let log = Log.create common in
     Scheduler.go ~log ~common
-      (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
+      (Main.setup ~log common ~external_lib_deps_mode:true
        >>= fun setup ->
        let targets = resolve_targets_exn ~log common setup targets in
        let request = request_of_targets setup targets in
@@ -851,7 +862,7 @@ let rules =
     set_common common ~targets;
     let log = Log.create common in
     Scheduler.go ~log ~common
-      (Main.setup ~log common ~filter_out_optional_stanzas_with_missing_deps:false
+      (Main.setup ~log common ~external_lib_deps_mode:true
        >>= fun setup ->
        let request =
          match targets with
@@ -995,7 +1006,8 @@ let install_uninstall ~what =
            >>= fun libdir ->
            Fiber.parallel_iter install_files ~f:(fun path ->
              let purpose = Process.Build_job install_files in
-             Process.run ~purpose Strict (Path.to_string opam_installer)
+             Process.run ~purpose ~env:setup.env Strict
+               (Path.to_string opam_installer)
                ([ sprintf "-%c" what.[0]
                 ; Path.to_string path
                 ; "--prefix"
@@ -1130,9 +1142,8 @@ let exec =
       raise Already_reported
     | Some real_prog, _ ->
       let real_prog = Path.to_string real_prog     in
-      let env       = Context.env_for_exec context in
       let argv      = Array.of_list (prog :: args) in
-      restore_cwd_and_execve common real_prog argv env
+      restore_cwd_and_execve common real_prog argv context.env
   in
   ( Term.(const go
           $ common
@@ -1232,7 +1243,7 @@ let utop =
       ) |> Scheduler.go ~log ~common in
     Build_system.finalize build_system;
     restore_cwd_and_execve common utop_path (Array.of_list (utop_path :: args))
-      (Context.env_for_exec context)
+      context.env
   in
   let name_ = Arg.info [] ~docv:"PATH" in
   ( Term.(const go

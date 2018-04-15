@@ -10,6 +10,7 @@ let print_pkg ppf pkg =
 ;;
 
 #install_printer print_pkg;;
+#install_printer String_map.pp;;
 
 [%%expect{|
 val print_pkg : Format.formatter -> Jbuilder.Findlib.Package.t -> unit =
@@ -48,18 +49,30 @@ Findlib.Package.requires pkg;;
    +-----------------------------------------------------------------+ *)
 
 open Meta
+#install_printer Simplified.pp;;
 
 let meta =
-  { name = "foo"
-  ; entries = Meta.load "test/unit-tests/findlib-db/foo/META"
-  }
+  Meta.load ~name:"foo" ~fn:"test/unit-tests/findlib-db/foo/META"
 
 [%%expect{|
-val meta : Jbuilder.Meta.t =
-  {name = "foo";
-   entries =
-    [Rule {var = "requires"; predicates = []; action = Set; value = "bar"};
-     Rule
-      {var = "requires"; predicates = [Pos "ppx_driver"]; action = Set;
-       value = "baz"}]}
+val meta : Jbuilder.Meta.Simplified.t =
+  { name = "foo"
+  ; vars =
+     (requires =
+       { set_rules =
+          [ { var = "requires"
+            ; predicates = []
+            ; action = Set
+            ; value = "bar"
+            }
+          ; { var = "requires"
+            ; predicates = [ "+ppx_driver" ]
+            ; action = Set
+            ; value = "baz"
+            }
+          ]
+       ; add_rules = []
+       })
+  ; subs = []
+  }
 |}]

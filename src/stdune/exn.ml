@@ -10,3 +10,13 @@ let protectx x ~f ~finally =
   | exception e -> finally x; raise e
 
 let protect ~f ~finally = protectx () ~f ~finally
+
+include
+  ((struct
+    [@@@warning "-32-3"]
+    let raise_with_backtrace exn _ = reraise exn
+    include Printexc
+    let raise_with_backtrace exn bt = raise_with_backtrace exn bt
+  end) : (sig
+     val raise_with_backtrace: exn -> Printexc.raw_backtrace -> _
+   end))

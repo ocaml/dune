@@ -1,4 +1,4 @@
-  $ env OCAMLFIND_CONF=$PWD/etc/findlib.conf $JBUILDER build --display short --root . -j1 -x foo file @install
+  $ env OCAMLFIND_CONF=$PWD/etc/findlib.conf jbuilder build --display short -x foo file @install
       ocamldep bin/blah.ml.d [default.foo]
       ocamldep lib/p.ml.d [default.foo]
         ocamlc lib/.p.objs/p.{cmi,cmo,cmt} [default.foo]
@@ -8,14 +8,14 @@
       ocamldep bin/blah.ml.d
       ocamldep lib/p.ml.d
         ocamlc lib/.p.objs/p.{cmi,cmo,cmt}
-        ocamlc bin/.blah.eobjs/blah.{cmi,cmo,cmt}
+      ocamlopt lib/.p.objs/p.{cmx,o}
+      ocamlopt lib/p.{a,cmxa}
+        ocamlc lib/p.cma [default.foo]
         ocamlc bin/.blah.eobjs/blah.{cmi,cmo,cmt} [default.foo]
       ocamlopt bin/.blah.eobjs/blah.{cmx,o} [default.foo]
       ocamlopt bin/blah.exe [default.foo]
-        ocamlc lib/p.cma [default.foo]
-      ocamlopt lib/.p.objs/p.{cmx,o}
+        ocamlc bin/.blah.eobjs/blah.{cmi,cmo,cmt}
       ocamlopt bin/.blah.eobjs/blah.{cmx,o}
-      ocamlopt lib/p.{a,cmxa}
       ocamlopt bin/blah.exe
           blah file [default.foo]
           blah file

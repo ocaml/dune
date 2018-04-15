@@ -104,6 +104,22 @@ module To_sexp = struct
     string_map f
       (Hashtbl.foldi h ~init:String_map.empty ~f:(fun key data acc ->
          String_map.add acc key data))
+
+  type field = string * Usexp.t option
+
+  let field name f ?(equal=(=)) ?default v =
+    match default with
+    | None -> (name, Some (f v))
+    | Some d ->
+      if equal d v then
+        (name, None)
+      else
+        (name, Some (f v))
+  let field_o name f v = (name, Option.map ~f v)
+
+  let record_fields (l : field list) =
+    List (List.filter_map l ~f:(fun (k, v) ->
+      Option.map v ~f:(fun v -> List[Atom (Atom.of_string k); v])))
 end
 
 module Of_sexp = struct

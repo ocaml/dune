@@ -6,15 +6,18 @@ module Exn        = Exn
 module Filename   = Filename
 module Hashtbl    = Hashtbl
 module Int        = Int
+module Io         = Io
 module List       = List
 module Map        = Map
 module Option     = Option
+module Or_exn     = Or_exn
 module Ordering   = Ordering
 module Pp         = Pp
 module Result     = Result
 module Set        = Set
 module Staged     = Staged
 module String     = String
+module Char       = Char
 
 external reraise : exn -> _ = "%reraise"
 

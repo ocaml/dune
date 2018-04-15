@@ -1,7 +1,6 @@
 open Stdune
 let sprintf = Printf.sprintf
 let eprintf = Printf.eprintf
-module Io = Jbuilder.Io
 
 let ( ^/ ) = Filename.concat
 
@@ -420,14 +419,18 @@ module Pkg_config = struct
 end
 
 let main ?(args=[]) ~name f =
-  let ocamlc  = ref None  in
+  let ocamlc  = ref (
+    match Sys.getenv "DUNE_CONFIGURATOR" with
+    | s -> Some s
+    | exception Not_found ->
+      die "Configurator scripts must be ran with jbuilder. \
+           To manually run a script, use $ jbuilder exec."
+  ) in
   let verbose = ref false in
   let dest_dir = ref None in
   let args =
     Arg.align
-      ([ "-ocamlc", Arg.String (fun s -> ocamlc := Some s),
-         "PATH ocamlc command to use"
-       ; "-verbose", Arg.Set verbose,
+      ([ "-verbose", Arg.Set verbose,
          " be verbose"
        ; "-dest-dir", Arg.String (fun s -> dest_dir := Some s),
          "DIR save temporary files to this directory"
@@ -448,9 +451,10 @@ let main ?(args=[]) ~name f =
   try
     f t
   with exn ->
+    let bt = Printexc.get_raw_backtrace () in
     List.iter (List.rev !log_db) ~f:(eprintf "%s\n");
     match exn with
     | Fatal_error msg ->
       eprintf "Error: %s\n%!" msg;
       exit 1
-    | exn -> raise exn
+    | _ -> Exn.raise_with_backtrace exn bt

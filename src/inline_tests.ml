@@ -15,7 +15,7 @@ module Backend = struct
         ; runner_libraries : (Loc.t * string) list
         ; flags            : Ordered_set_lang.Unexpanded.t
         ; generate_runner  : Action.Unexpanded.t option
-        ; extends          : (Loc.t * string) list option
+        ; extends          : (Loc.t * string) list
         }
 
       type Jbuild.Sub_system_info.t += T of t
@@ -33,7 +33,8 @@ module Backend = struct
            Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
            field_o "generate_runner" Action.Unexpanded.t
            >>= fun generate_runner ->
-           field_o "extends" (list (located string)) >>= fun extends ->
+           field "extends" (list (located string)) ~default:[]
+           >>= fun extends ->
            return
              { loc
              ; runner_libraries
@@ -55,33 +56,32 @@ module Backend = struct
     type t =
       { info             : Info.t
       ; lib              : Lib.t
-      ; runner_libraries : (Lib.t list, exn) result
-      ; extends          : (    t list, exn) result option
+      ; runner_libraries : Lib.t list Or_exn.t
+      ; extends          :     t list Or_exn.t
       }
 
     let desc ~plural = "inline tests backend" ^ if plural then "s" else ""
     let desc_article = "an"
 
     let lib  t = t.lib
-    let deps t = t.extends
+    let extends t = t.extends
 
     let instantiate ~resolve ~get lib (info : Info.t) =
       { info
       ; lib
-      ; runner_libraries = Result.all (List.map info.runner_libraries ~f:resolve)
+      ; runner_libraries =
+          Result.all (List.map info.runner_libraries ~f:resolve)
       ; extends =
           let open Result.O in
-          Option.map info.extends
-            ~f:(fun l ->
-              Result.all
-                (List.map l
-                   ~f:(fun ((loc, name) as x) ->
-                     resolve x >>= fun lib ->
-                     match get lib with
-                     | None ->
-                       Error (Loc.exnf loc "%S is not an %s" name
-                                (desc ~plural:false))
-                     | Some t -> Ok t)))
+          Result.all
+            (List.map info.extends
+               ~f:(fun ((loc, name) as x) ->
+                 resolve x >>= fun lib ->
+                 match get lib with
+                 | None ->
+                   Error (Loc.exnf loc "%S is not an %s" name
+                            (desc ~plural:false))
+                 | Some t -> Ok t))
       }
 
     let to_sexp t =
@@ -89,14 +89,13 @@ module Backend = struct
       let lib x = string (Lib.name x) in
       let f x = string (Lib.name x.lib) in
       ((1, 0),
-       record
-         [ "runner_libraries", list lib (Result.ok_exn t.runner_libraries)
-         ; "flags"           , Ordered_set_lang.Unexpanded.sexp_of_t
-                                 t.info.flags
-         ; "generate_runner" , option Action.Unexpanded.sexp_of_t
-                                 t.info.generate_runner
-         ; "extends"         , option (list f)
-                                 (Option.map t.extends ~f:Result.ok_exn)
+       record_fields
+         [ field "runner_libraries" (list lib)
+             (Result.ok_exn t.runner_libraries)
+         ; field "flags" Ordered_set_lang.Unexpanded.sexp_of_t t.info.flags
+         ; field_o "generate_runner" Action.Unexpanded.sexp_of_t
+             t.info.generate_runner
+         ; field "extends" (list f) (Result.ok_exn t.extends) ~default:[]
          ])
   end
   include M
@@ -195,20 +194,18 @@ include Sub_system.Register_end_point(
         (Action.Var_expansion.Strings ([lib.name], Concat))
     in
 
-    let runner_libs, _ =
+    let runner_libs =
       let open Result.O in
-      Lib.Compile.make
-        (Result.concat_map backends
-           ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
-         >>= fun libs ->
-         Lib.DB.find_many (Scope.libs scope) [lib.name]
-         >>= fun lib ->
-         Result.all
-           (List.map info.libraries
-              ~f:(Lib.DB.resolve (Scope.libs scope)))
-         >>= fun more_libs ->
-         Ok (lib @ libs @ more_libs))
-      |> Super_context.Libs.requires sctx ~dir ~has_dot_merlin:false
+      Result.concat_map backends
+        ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
+      >>= fun libs ->
+      Lib.DB.find_many (Scope.libs scope) [lib.name]
+      >>= fun lib ->
+      Result.all
+        (List.map info.libraries
+           ~f:(Lib.DB.resolve (Scope.libs scope)))
+      >>= fun more_libs ->
+      Lib.closure (lib @ libs @ more_libs)
     in
 
     (* Generate the runner file *)

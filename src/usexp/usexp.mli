@@ -1,9 +1,11 @@
-(** Parsing of s-expressions *)
+(** Parsing of s-expressions.
+
+    This library is internal to jbuilder and guarantees no API stability.*)
 
 module Atom : sig
   type t = private A of string [@@unboxed]
-  (** Acceptable atoms are composed of chars in the range [' ' .. '~']
-     and must be nonempty. *)
+  (** Acceptable atoms are composed of chars in the range ['!' .. '~'] excluding
+      [' ' '"' '(' ')' ';' '\\'], and must be nonempty. *)
 
   val is_valid : string -> bool
   (** [is_valid s] checks that [s] respects the constraints to be an atom. *)

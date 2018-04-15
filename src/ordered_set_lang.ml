@@ -19,7 +19,6 @@ type 'ast generic =
 
 type ast_expanded = (Loc.t * string, Ast.expanded) Ast.t
 type t = ast_expanded generic
-
 let loc t = t.loc
 
 let parse_general sexp ~f =
@@ -66,6 +65,23 @@ module type Key = sig
   type t
   val compare : t -> t -> Ordering.t
   module Map : Map.S with type key = t
+end
+
+module type S = sig
+  type value
+  type 'a map
+
+  val eval
+    :  t
+    -> parse:(loc:Loc.t -> string -> value)
+    -> standard:value list
+    -> value list
+
+  val eval_unordered
+    :  t
+    -> parse:(loc:Loc.t -> string -> value)
+    -> standard:value map
+    -> value map
 end
 
 module Make(Key : Key)(Value : Value with type key = Key.t) = struct
@@ -128,6 +144,9 @@ module Make(Key : Key)(Value : Value with type key = Key.t) = struct
           | Some _, None -> x
           | _ -> None)
     end)
+
+  type value = Value.t
+  type 'a map = 'a Key.Map.t
 
   let eval t ~parse ~standard =
     if is_standard t then
@@ -231,3 +250,13 @@ module Unexpanded = struct
     in
     { t with ast = expand t.ast }
 end
+
+module String = Make(struct
+    type t = string
+    let compare = String.compare
+    module Map = String_map
+  end)(struct
+    type t = string
+    type key = string
+    let key x = x
+  end)

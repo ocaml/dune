@@ -32,14 +32,20 @@ val unique_id : t -> int
 
 module Set : Set.S with type elt = t
 
+module Map : Map.S with type key = t
+
 module Status : sig
   type t =
     | Installed
-    | Public
+    | Public  of Package.t
     | Private of Jbuild.Scope_info.Name.t
+
+  val pp : t Fmt.t
 end
 
 val status : t -> Status.t
+
+val package : t -> Package.Name.t option
 
 (** Operations on list of libraries *)
 module L : sig
@@ -51,6 +57,13 @@ module L : sig
   val c_include_flags : t -> stdlib_dir:Path.t -> _ Arg_spec.t
 
   val link_flags : t -> mode:Mode.t -> stdlib_dir:Path.t -> _ Arg_spec.t
+
+  val compile_and_link_flags
+    :  compile:t
+    -> link:t
+    -> mode:Mode.t
+    -> stdlib_dir:Path.t
+    -> _ Arg_spec.t
 
   (** All the library archive files (.a, .cmxa, _stubs.a, ...)  that
       should be linked in when linking an executable. *)
@@ -146,12 +159,20 @@ module Error : sig
       }
   end
 
+  module Private_deps_not_allowed : sig
+    type nonrec t =
+      { private_dep : t
+      ; pd_loc      : Loc.t
+      }
+  end
+
   type t =
     | Library_not_available        of Library_not_available.t
     | No_solution_found_for_select of No_solution_found_for_select.t
     | Dependency_cycle             of (Path.t * string) list
     | Conflict                     of Conflict.t
     | Overlap                      of Overlap.t
+    | Private_deps_not_allowed     of Private_deps_not_allowed.t
 end
 
 exception Error of Error.t
@@ -172,15 +193,11 @@ type sub_system = ..
 module Compile : sig
   type t
 
-  (** Create a compilation context from a list of libraries. The list
-      doesn't have to be transitively closed. *)
-  val make : (L.t, exn) result -> t
-
   (** Return the list of dependencies needed for compiling this library *)
-  val requires : t -> (L.t, exn) result
+  val requires : t -> L.t Or_exn.t
 
   (** Dependencies listed by the user + runtime dependencies from ppx *)
-  val direct_requires : t -> (L.t, exn) result
+  val direct_requires : t -> L.t Or_exn.t
 
   module Resolved_select : sig
     type t =
@@ -193,7 +210,7 @@ module Compile : sig
   val resolved_selects : t -> Resolved_select.t list
 
   (** Transitive closure of all used ppx rewriters *)
-  val pps : t -> (L.t, exn) result
+  val pps : t -> L.t Or_exn.t
 
   val optional          : t -> bool
   val user_written_deps : t -> Jbuild.Lib_deps.t
@@ -240,13 +257,16 @@ module DB : sig
     -> (Path.t * Jbuild.Library.t) list
     -> t
 
-  val create_from_findlib : Findlib.t -> t
+  val create_from_findlib
+    :  ?external_lib_deps_mode:bool
+    -> Findlib.t
+    -> t
 
   val find : t -> string -> (lib, Error.Library_not_available.Reason.t) result
   val find_many
     :  t
     -> string list
-    -> (lib list, exn) result
+    -> lib list Or_exn.t
 
   val find_even_when_hidden : t -> string -> lib option
 
@@ -256,7 +276,7 @@ module DB : sig
       for libraries that are optional and not available as well. *)
   val get_compile_info : t -> ?allow_overlaps:bool -> string -> Compile.t
 
-  val resolve : t -> Loc.t * string -> (lib, exn) result
+  val resolve : t -> Loc.t * string -> lib Or_exn.t
 
   (** Resolve libraries written by the user in a jbuild file. The
       resulting list of libraries is transitively closed and sorted by
@@ -273,7 +293,7 @@ module DB : sig
   val resolve_pps
     :  t
     -> (Loc.t * Jbuild.Pp.t) list
-    -> (L.t, exn) result
+    -> L.t Or_exn.t
 
   (** Return the list of all libraries in this database. If
       [recursive] is true, also include libraries in parent databases
@@ -283,7 +303,7 @@ end with type lib := t
 
 (** {1 Transitive closure} *)
 
-val closure : L.t -> (L.t, exn) result
+val closure : L.t -> L.t Or_exn.t
 
 (** {1 Sub-systems} *)
 
@@ -297,7 +317,7 @@ module Sub_system : sig
     type t
     type sub_system += T of t
     val instantiate
-      :  resolve:(Loc.t * string -> (lib, exn) result)
+      :  resolve:(Loc.t * string -> lib Or_exn.t)
       -> get:(lib -> t option)
       -> lib
       -> Info.t

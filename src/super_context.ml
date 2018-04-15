@@ -29,16 +29,19 @@ type t =
   ; vars                             : Action.Var_expansion.t String_map.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
+  ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
   }
 
 let context t = t.context
 let stanzas t = t.stanzas
 let packages t = t.packages
+let libs_by_package t = t.libs_by_package
 let artifacts t = t.artifacts
 let file_tree t = t.file_tree
 let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
 let cxx_flags t = t.cxx_flags
 let build_dir t = t.context.build_dir
+let build_system t = t.build_system
 
 let host t = Option.value t.host ~default:t
 
@@ -71,10 +74,12 @@ let create
       ~file_tree
       ~packages
       ~stanzas
-      ~filter_out_optional_stanzas_with_missing_deps
+      ~external_lib_deps_mode
       ~build_system
   =
-  let installed_libs = Lib.DB.create_from_findlib context.findlib in
+  let installed_libs =
+    Lib.DB.create_from_findlib context.findlib ~external_lib_deps_mode
+  in
   let internal_libs =
     List.concat_map stanzas ~f:(fun (dir, _, stanzas) ->
       let ctx_dir = Path.append context.build_dir dir in
@@ -106,12 +111,13 @@ let create
         })
   in
   let stanzas_to_consider_for_install =
-    if filter_out_optional_stanzas_with_missing_deps then
+    if not external_lib_deps_mode then
       List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; _ } ->
         List.filter_map stanzas ~f:(fun stanza ->
           let keep =
             match (stanza : Stanza.t) with
             | Library lib -> Lib.DB.available (Scope.libs scope) lib.name
+            | Documentation _
             | Install _   -> true
             | _           -> false
           in
@@ -200,6 +206,16 @@ let create
       match action with
       | Chdir _ -> action
       | _ -> Chdir (context.build_dir, action))
+  ; libs_by_package =
+    Lib.DB.all public_libs
+    |> Lib.Set.to_list
+    |> List.map ~f:(fun lib ->
+      (Option.value_exn (Lib.package lib), lib))
+    |> Package.Name.Map.of_list_multi
+    |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
+      let pkg  = Option.value_exn pkg          in
+      let libs = Option.value libs ~default:[] in
+      Some (pkg, Lib.Set.of_list libs))
   }
 
 let prefix_rules t prefix ~f =
@@ -209,13 +225,13 @@ let add_rule t ?sandbox ?mode ?locks ?loc build =
   let build = Build.O.(>>>) build t.chdir in
   Build_system.add_rule t.build_system
     (Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
-       ~context:t.context build)
+       ~context:(Some t.context) build)
 
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc build =
   let build = Build.O.(>>>) build t.chdir in
   let rule =
     Build_interpret.Rule.make ?sandbox ?mode ?locks ?loc
-      ~context:t.context build
+      ~context:(Some t.context) build
   in
   Build_system.add_rule t.build_system rule;
   List.map rule.targets ~f:Build_interpret.Target.path
@@ -223,11 +239,11 @@ let add_rule_get_targets t ?sandbox ?mode ?locks ?loc build =
 let add_rules t ?sandbox builds =
   List.iter builds ~f:(add_rule t ?sandbox)
 
-let add_alias_deps t alias deps =
-  Alias.add_deps t.build_system alias deps
+let add_alias_deps t alias ?dyn_deps deps =
+  Alias.add_deps t.build_system alias ?dyn_deps deps
 
 let add_alias_action t alias ?locks ~stamp action =
-  Alias.add_action t.build_system alias ?locks ~stamp action
+  Alias.add_action t.build_system ~context:t.context alias ?locks ~stamp action
 
 let eval_glob t ~dir re = Build_system.eval_glob t.build_system ~dir re
 let load_dir t ~dir = Build_system.load_dir t.build_system ~dir
@@ -241,8 +257,8 @@ let source_files t ~src_path =
 module Libs = struct
   open Build.O
 
-  let add_select_rules t ~dir resolved_selects =
-    List.iter resolved_selects ~f:(fun rs ->
+  let gen_select_rules t ~dir compile_info =
+    List.iter (Lib.Compile.resolved_selects compile_info) ~f:(fun rs ->
       let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
       let dst = Path.relative dir dst_fn in
       add_rule t
@@ -256,26 +272,23 @@ module Libs = struct
                  raise (Lib.Error (No_solution_found_for_select e))
              }))
 
-  let requires t ~dir ~has_dot_merlin compile_info =
-    add_select_rules t ~dir (Lib.Compile.resolved_selects compile_info);
-    let requires = Build.of_result (Lib.Compile.requires compile_info) in
-    let requires =
+  let with_lib_deps t compile_info ~dir ~f =
+    let prefix =
       Build.record_lib_deps (Lib.Compile.user_written_deps compile_info)
         ~kind:(if Lib.Compile.optional compile_info then
                  Optional
                else
                  Required)
-      >>> requires
     in
-    let requires_with_merlin =
-      if t.context.merlin && has_dot_merlin then
+    let prefix =
+      if t.context.merlin then
         Build.path (Path.relative dir ".merlin-exists")
         >>>
-        requires
+        prefix
       else
-        requires
+        prefix
     in
-    (requires_with_merlin, requires)
+    prefix_rules t prefix ~f
 
   let lib_files_alias ~dir ~name ~ext =
     Alias.make (sprintf "lib-%s%s-all" name ext) ~dir
@@ -289,20 +302,17 @@ module Libs = struct
       ~ext:(String.concat exts ~sep:"-and-")
       (List.map exts ~f:(fun ext ->
          Alias.stamp_file
-           (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext)))
+           (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext))
+       |> Path.Set.of_list)
 
-  let file_deps t ~ext =
-    Build.dyn_paths (Build.arr (fun libs ->
-      List.fold_left libs ~init:[] ~f:(fun acc (lib : Lib.t) ->
-        let x =
-          if Lib.is_local lib then
-            Alias.stamp_file
-              (lib_files_alias ~dir:(Lib.src_dir lib) ~name:(Lib.name lib) ~ext)
-          else
-            Build_system.stamp_file_for_files_of t.build_system
-              ~dir:(Lib.obj_dir lib) ~ext
-        in
-        x :: acc)))
+  let file_deps t libs ~ext =
+    List.rev_map libs ~f:(fun (lib : Lib.t) ->
+      if Lib.is_local lib then
+        Alias.stamp_file
+          (lib_files_alias ~dir:(Lib.src_dir lib) ~name:(Lib.name lib) ~ext)
+      else
+        Build_system.stamp_file_for_files_of t.build_system
+          ~dir:(Lib.obj_dir lib) ~ext)
 end
 
 module Deps = struct
@@ -338,6 +348,13 @@ module Deps = struct
       let path = Path.relative dir (expand_vars t ~scope ~dir s) in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
       >>^ Pset.to_list
+    | Package p ->
+      let pkg = Package.Name.of_string (expand_vars t ~scope ~dir p) in
+      Alias.dep (Alias.package_install ~context:t.context ~pkg)
+      >>^ fun () -> []
+    | Universe ->
+      Build.path Build_system.universe_file
+      >>^ fun () -> []
 
   let interpret t ~scope ~dir l =
     Build.all (List.map l ~f:(dep t ~scope ~dir))
@@ -365,6 +382,19 @@ module Pkg_version = struct
     let spec = spec sctx p in
     add_rule sctx (get >>> Build.store_vfile spec);
     Build.vpath spec
+end
+
+module Scope_key = struct
+  let of_string sctx key =
+    match String.rsplit2 key ~on:'@' with
+    | None ->
+      (key, public_libs sctx)
+    | Some (key, scope) ->
+      ( key
+      , Scope.libs (find_scope_by_name sctx (Scope_info.Name.of_string scope)))
+
+  let to_string key scope =
+    sprintf "%s@%s" key (Scope_info.Name.to_string scope)
 end
 
 let parse_bang var : bool * string =
@@ -666,16 +696,6 @@ module Action = struct
     | fail :: _ -> Build.fail fail >>> build
 end
 
-module Eval_strings = Ordered_set_lang.Make(struct
-    type t = string
-    let compare = String.compare
-    module Map = String_map
-  end)(struct
-    type t = string
-    type key = string
-    let key x = x
-  end)
-
 let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
   let open Build.O in
   let f = expand_vars t ~scope ~dir ?extra_vars in
@@ -685,11 +705,11 @@ let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
     let set =
       Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f
     in
-    Build.return (Eval_strings.eval set ~standard ~parse)
+    Build.return (Ordered_set_lang.String.eval set ~standard ~parse)
   | files ->
     let paths = List.map files ~f:(Path.relative dir) in
     Build.all (List.map paths ~f:Build.read_sexp)
     >>^ fun sexps ->
     let files_contents = List.combine files sexps |> String_map.of_list_exn in
     let set = Ordered_set_lang.Unexpanded.expand set ~files_contents ~f in
-    Eval_strings.eval set ~standard ~parse
+    Ordered_set_lang.String.eval set ~standard ~parse

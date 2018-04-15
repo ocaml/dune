@@ -1,4 +1,4 @@
-  $ $JBUILDER runtest --force -j1 --display short --root .
+  $ jbuilder runtest --force --display short
   description = "contains \"quotes\""
   requires = "bytes"
   archive(byte) = "foobar.cma"
@@ -8,7 +8,7 @@
   package "baz" (
     directory = "baz"
     description = "sub library with modes set to byte"
-    requires = "bytes privatelib"
+    requires = "bytes"
     archive(byte) = "foobar_baz.cma"
     archive(native) = "foobar_baz.cmxa"
     plugin(byte) = "foobar_baz.cma"

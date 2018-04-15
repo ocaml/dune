@@ -54,5 +54,16 @@ livedoc:
 update-jbuilds: $(BIN)
 	$(BIN) build --dev @doc/runtest --auto-promote
 
+update-sexp-parser:
+	$(BIN) build --dev @update-sexp-parser --auto-promote
+
 .PHONY: default install uninstall reinstall clean test doc
-.PHONY: promote accept-corrections
+.PHONY: promote accept-corrections opam-release
+
+VERSION ?= $(shell git describe --tags --abbrev=0)
+DIST_URI = https://github.com/ocaml/dune/releases/download/$(VERSION)/jbuilder-$(subst +,.,$(VERSION)).tbz
+opam-release:
+	topkg distrib --skip-build --skip-lint --skip-tests
+	topkg publish distrib --verbose
+	topkg opam pkg --dist-uri='$(DIST_URI)'
+	topkg opam submit --dist-uri='$(DIST_URI)'

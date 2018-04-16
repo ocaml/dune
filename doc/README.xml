@@ -110,8 +110,19 @@ configuration files, and library routines in detail.</p>
     <ul>
 
     <li>
-      <p><em>git version:</em> Fix reinstallation of "num" for OCaml-4.06.
+      <p><em>1.8.0:</em> Fix reinstallation of "num" for OCaml-4.06.
       </p>
+      <p>Fix build with OCaml-4.07.</p>
+      <p>The installation of graphics/META is now optional.</p>
+      <p>Fix "ocamlfind query -d".</p>
+      <p>The environment variable OCAMLFIND_IGNORE_DUPS_IN is now interpreted
+      as a list of directories.</p>
+      <p>Packages for "ocamlfind query" may now be separated by commas, too.</p>
+      <p>New "warning" property for packages.</p>
+      <p>Forgetting to pass -thread/-vmthread only prints a warning now,
+      but doesn't stop the build.</p>
+      <p>For dealing with case-sensitive filesystems it is now only tried to
+      match ASCII characters, but not encoding-dependent characters.</p>
     </li>
       
     <li>

@@ -7,7 +7,7 @@
 
 #set -x
 
-version="1.7.3"
+version="1.8.0"
 
 # Remember the old IFS value:
 oldifs="$IFS"
@@ -328,7 +328,11 @@ if [ -z "${ocamlfind_config}" ]; then
     d="$ocaml_core_bin"
     case "$d" in
         */bin)
-	    ocamlfind_config=`dirname "$d"`/etc/findlib.conf
+            if [ -f `dirname "$d"`/lib/findlib.conf ]; then
+	        ocamlfind_config=`dirname "$d"`/lib/findlib.conf
+            else
+	        ocamlfind_config=`dirname "$d"`/etc/findlib.conf
+            fi
 	    ;;
 	*)
 	    ocamlfind_config=/usr/local/etc/findlib.conf

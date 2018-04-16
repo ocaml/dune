@@ -4,7 +4,7 @@ author:       "Gerd Stolpmann <gerd@gerd-stolpmann.de>"
 homepage:     "http://projects.camlcity.org/projects/findlib.html"
 bug-reports:  "https://gitlab.camlcity.org/gerd/lib-findlib/issues"
 dev-repo:     "https://gitlab.camlcity.org/gerd/lib-findlib.git"
-version:      "1.7.1.git"
+version:      "1.8.0.git"
 
 build: [
   ["./configure" "-bindir" bin "-sitelib" lib "-mandir" man "-config" "%{lib}%/findlib.conf" "-no-custom" "-no-topfind" {preinstalled}]

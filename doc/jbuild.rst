@@ -1157,8 +1157,7 @@ automatically handled by Jbuilder.
 The DSL is currently quite limited, so if you want to do something complicated
 it is recommended to write a small OCaml program and use the DSL to invoke it.
 You can use `shexp <https://github.com/janestreet/shexp>`__ to write portable
-scripts or `configurator <https://github.com/janestreet/configurator>`__ for
-configuration related tasks.
+scripts or `Configurator`_ for configuration related tasks.
 
 The following constructions are available:
 

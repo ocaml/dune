@@ -44,6 +44,9 @@ module C_define : sig
   *)
   val import
     :  t
+    -> ?prelude: string
+    (** Define extra code be used with extracting values below. Note that the
+        compiled code is never executed. *)
     -> ?c_flags:   string list
     -> ?link_flags:string list
     -> includes:   string list

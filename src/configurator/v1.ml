@@ -283,12 +283,13 @@ module C_define = struct
       | String of string
   end
 
-  let import t ?c_flags ?link_flags ~includes vars =
+  let import t ?prelude ?c_flags ?link_flags ~includes vars =
     let buf = Buffer.create 1024 in
     let pr fmt = Printf.bprintf buf (fmt ^^ "\n") in
     let includes = "stdio.h" :: includes in
     List.iter includes ~f:(pr "#include <%s>");
     pr "";
+    Option.iter prelude ~f:(pr "%s");
     pr "int main()";
     pr "{";
     List.iter vars ~f:(fun (name, (kind : Type.t)) ->

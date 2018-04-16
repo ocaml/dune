@@ -11,4 +11,4 @@ Importing #define's from code is successful
   $ jbuilder exec import-define/run.exe
   CAML_CONFIG_H=true
   Page_log=12
-  __func__=main
+  CONFIGURATOR_TESTING=foobar

@@ -7,7 +7,7 @@
 (ocamllex (cram))
 
 (alias
- ((name   runtest)
+ ((name   redirections)
   (deps   ((package jbuilder)
            (files_recursively_in test-cases/redirections)))
   (action
@@ -17,7 +17,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name misc)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/misc)))
   (action
@@ -27,7 +27,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name github20)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/github20)))
   (action
@@ -37,7 +37,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest-js)
+ ((name js_of_ocaml)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/js_of_ocaml)))
   (action
@@ -48,7 +48,7 @@
       (diff? run.t run.t.corrected)))))))
 
 (alias
- ((name runtest)
+ ((name github24)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/github24)))
   (action
@@ -58,7 +58,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name menhir)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/menhir)))
   (action
@@ -68,7 +68,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name root)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/github25)))
   (action
@@ -79,7 +79,7 @@
       (diff? run.t run.t.corrected)))))))
 
 (alias
- ((name runtest)
+ ((name lib-available)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/lib-available)))
   (action
@@ -89,7 +89,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name copy_files)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/copy_files)))
   (action
@@ -99,7 +99,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name aliases)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/aliases)))
   (action
@@ -109,7 +109,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name force-test)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/force-test)))
   (action
@@ -119,7 +119,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name meta-gen)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/meta-gen)))
   (action
@@ -129,7 +129,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name exec-cmd)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/exec-cmd)))
   (action
@@ -139,7 +139,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name ocaml-syntax)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/ocaml-syntax)))
   (action
@@ -149,7 +149,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name gen-opam-install-file)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/gen-opam-install-file)))
   (action
@@ -159,7 +159,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest-skipped)
+ ((name reason-skipped)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/reason)))
   (action
@@ -169,7 +169,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name odoc)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/odoc)))
   (action
@@ -179,7 +179,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name select)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/select)))
   (action
@@ -189,7 +189,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name multiple-private-libs)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/multiple-private-libs)))
   (action
@@ -199,7 +199,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name ppx-rewriter)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/ppx-rewriter)))
   (action
@@ -209,7 +209,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name utop)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/utop)))
   (action
@@ -219,7 +219,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name c-stubs)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/c-stubs)))
   (action
@@ -229,7 +229,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name cross-compilation)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/cross-compilation)))
   (action
@@ -239,7 +239,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name promote)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/promote)))
   (action
@@ -249,7 +249,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name include-loop)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/include-loop)))
   (action
@@ -259,7 +259,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name scope-bug)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/scope-bug)))
   (action
@@ -269,7 +269,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name scope-ppx-bug)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/scope-ppx-bug)))
   (action
@@ -279,7 +279,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name loop)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/loop)))
   (action
@@ -289,7 +289,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name intf-only)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/intf-only)))
   (action
@@ -299,7 +299,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name installable-dup-private-libs)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/installable-dup-private-libs)))
   (action
@@ -309,7 +309,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name inline_tests)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/inline_tests)))
   (action
@@ -319,7 +319,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name byte-code-only)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/byte-code-only)))
   (action
@@ -329,7 +329,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name merlin-tests)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/merlin-tests)))
   (action
@@ -339,7 +339,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name findlib)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/findlib)))
   (action
@@ -350,7 +350,7 @@
       (diff? run.t run.t.corrected)))))))
 
 (alias
- ((name runtest)
+ ((name odoc-unique-mlds)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/odoc-unique-mlds)))
   (action
@@ -360,7 +360,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name ocamldep-multi-stanzas)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/ocamldep-multi-stanzas)))
   (action
@@ -370,7 +370,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name exclude-missing-module)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/exclude-missing-module)))
   (action
@@ -380,7 +380,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name github534)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/github534)))
   (action
@@ -390,7 +390,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name github568)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/github568)))
   (action
@@ -400,7 +400,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name output-obj)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/output-obj)))
   (action
@@ -411,7 +411,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name github597)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/github597)))
   (action
@@ -421,7 +421,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name private-public-overlap)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/private-public-overlap)))
   (action
@@ -431,7 +431,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name depend-on-the-universe)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/depend-on-the-universe)))
   (action
@@ -441,7 +441,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name package-dep)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/package-dep)))
   (action
@@ -451,7 +451,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name github644)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/github644)))
   (action
@@ -461,7 +461,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name configurator)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/configurator)))
   (action
@@ -471,7 +471,7 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
- ((name runtest)
+ ((name quoting)
   (deps ((package jbuilder)
          (files_recursively_in test-cases/quoting)))
   (action
@@ -480,3 +480,96 @@
      (run ${exe:cram.exe} run.t)
      (diff? run.t run.t.corrected))))))
 
+(alias
+ ((name runtest-js)
+  (deps ((alias js_of_ocaml)))))
+
+(alias
+ ((name runtest)
+  (deps ((alias redirections)
+         (alias misc)
+         (alias github20)
+         (alias github24)
+         (alias menhir)
+         (alias root)
+         (alias lib-available)
+         (alias copy_files)
+         (alias aliases)
+         (alias force-test)
+         (alias meta-gen)
+         (alias exec-cmd)
+         (alias ocaml-syntax)
+         (alias gen-opam-install-file)
+         (alias odoc)
+         (alias select)
+         (alias multiple-private-libs)
+         (alias ppx-rewriter)
+         (alias utop)
+         (alias c-stubs)
+         (alias cross-compilation)
+         (alias promote)
+         (alias include-loop)
+         (alias scope-bug)
+         (alias scope-ppx-bug)
+         (alias loop)
+         (alias intf-only)
+         (alias installable-dup-private-libs)
+         (alias inline_tests)
+         (alias byte-code-only)
+         (alias merlin-tests)
+         (alias findlib)
+         (alias odoc-unique-mlds)
+         (alias ocamldep-multi-stanzas)
+         (alias exclude-missing-module)
+         (alias github534)
+         (alias github568)
+         (alias output-obj)
+         (alias github597)
+         (alias private-public-overlap)
+         (alias depend-on-the-universe)
+         (alias package-dep)
+         (alias github644)
+         (alias configurator)
+         (alias quoting)
+         (alias runtest-js)))))
+
+(alias
+ ((name runtest-no-external)
+  (deps ((alias redirections)
+         (alias misc)
+         (alias github20)
+         (alias github24)
+         (alias root)
+         (alias lib-available)
+         (alias copy_files)
+         (alias aliases)
+         (alias force-test)
+         (alias meta-gen)
+         (alias exec-cmd)
+         (alias ocaml-syntax)
+         (alias gen-opam-install-file)
+         (alias select)
+         (alias c-stubs)
+         (alias cross-compilation)
+         (alias promote)
+         (alias include-loop)
+         (alias scope-bug)
+         (alias loop)
+         (alias intf-only)
+         (alias installable-dup-private-libs)
+         (alias inline_tests)
+         (alias byte-code-only)
+         (alias merlin-tests)
+         (alias findlib)
+         (alias ocamldep-multi-stanzas)
+         (alias exclude-missing-module)
+         (alias github534)
+         (alias github568)
+         (alias output-obj)
+         (alias github597)
+         (alias private-public-overlap)
+         (alias depend-on-the-universe)
+         (alias package-dep)
+         (alias github644)
+         (alias configurator)
+         (alias quoting)))))

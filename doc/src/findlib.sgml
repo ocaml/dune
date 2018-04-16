@@ -2447,6 +2447,18 @@ error(pkg_q) = "Package p is incompatible with package q"
 
 This also works with subpackages (e.g. <literal>pkg_q.q_sub</literal>).
 	    </para>
+          </listitem>
+
+          <listitem>
+            <para>If an error is too much, it might be a good idea to
+              just inform the user about possible problems. In this case
+              you can emit a warning instead:
+            </para>
+
+<programlisting>
+warning(pkg_q) = "Using package p and q together is a really bad idea"
+</programlisting>
+
 	</itemizedlist>
 
 <para>Note that such error conditions should only be added if there is

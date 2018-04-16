@@ -1153,6 +1153,18 @@ let ocamlc which () =
   (* Add the pkg_<name> predicates: *)
   predicates := List.map (fun pkg -> "pkg_" ^ pkg) eff_packages @ !predicates;
 
+  (* Check on [warning] directives: *)
+  List.iter
+    (fun pkg ->
+       try
+         let warning = package_property !predicates pkg "warning" in
+         prerr_endline("ocamlfind: [WARNING] Package `" ^ pkg ^
+                         "': " ^ warning)
+       with
+	   Not_found -> ()
+    )
+    eff_packages;
+
   (* Check on [error] directives: *)
   List.iter
     (fun pkg ->

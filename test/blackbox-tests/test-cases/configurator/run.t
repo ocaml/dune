@@ -9,4 +9,6 @@ We're able to compile C program sucessfully
 
 Importing #define's from code is successful
   $ jbuilder exec import-define/run.exe
-  Successfully import #define's
+  CAML_CONFIG_H=true
+  Page_log=12
+  __func__=main

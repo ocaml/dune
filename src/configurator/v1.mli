@@ -88,6 +88,11 @@ module Pkg_config : sig
   val query : t -> package:string -> package_conf option
 end with type configurator := t
 
+val write_flags : string -> string list -> unit
+(** [write_flags fname s] write the list of strings [s] to the file
+   [fname] in an appropriate format so that it can used in jbuild
+   files with "(:include [fname])". *)
+
 (** Typical entry point for configurator programs *)
 val main
   :  ?args:(Arg.key * Arg.spec * Arg.doc) list

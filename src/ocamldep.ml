@@ -119,9 +119,15 @@ let parse_deps ~dir ~file ~unit
 let rules ~(ml_kind:Ml_kind.t) ~dir ~modules
       ?(already_used=Module.Name.Set.empty)
       ~alias_module ~lib_interface_module sctx =
+  let is_alias_module (m : Module.t) =
+    match alias_module with
+    | None -> false
+    | Some (alias : Module.t) -> alias.name = m.name
+  in
   let per_module =
     Module.Name.Map.map modules ~f:(fun unit ->
       match Module.file ~dir unit ml_kind with
+      | _ when is_alias_module unit -> Build.return []
       | None -> Build.return []
       | Some file ->
         let all_deps_path file =
@@ -141,8 +147,8 @@ let rules ~(ml_kind:Ml_kind.t) ~dir ~modules
               let dependency_file_path m =
                 let path =
                   match Module.file ~dir m Ml_kind.Intf with
+                  | _ when is_alias_module m -> None
                   | Some _ as x -> x
-                  | None when Option.is_some alias_module -> None
                   | None -> Module.file ~dir m Ml_kind.Impl
                 in
                 Option.map path ~f:all_deps_path
@@ -164,11 +170,6 @@ let rules ~(ml_kind:Ml_kind.t) ~dir ~modules
         Build.memoize (Path.to_string all_deps_file)
           ( Build.lines_of all_deps_file
           >>^ parse_module_names ~unit ~modules))
-  in
-  let per_module =
-    match alias_module with
-    | None -> per_module
-    | Some m -> Module.Name.Map.add per_module m.name (Build.return [])
   in
   { Dep_graph.
     dir

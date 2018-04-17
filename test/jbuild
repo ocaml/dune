@@ -24,9 +24,7 @@
 
 ;; execute this to test locks
 ;;
-;; $ ./_build/default/bin/main.exe build -j10 @test/locks
-;;
-
+;; $ ./_build/default/bin/main.exe build -j10 @test/locks ;;
 (alias
  ((name   locks)
   (deps   ((glob_files *.{foo,bar})))
@@ -74,3 +72,8 @@ Printf.fprintf (open_out Sys.argv.(2)) \"%g\n%!\" (Sys.time ())
 (rule ((targets (08.bar)) (action (run ./incr.exe y ${@})) (locks (m))))
 (rule ((targets (09.bar)) (action (run ./incr.exe y ${@})) (locks (m))))
 (rule ((targets (10.bar)) (action (run ./incr.exe y ${@})) (locks (m))))
+
+(alias
+ ((name runtest-no-external)
+  (deps ((alias_rec blackbox-tests/runtest-no-external)
+         (alias_rec unit-tests/runtest)))))

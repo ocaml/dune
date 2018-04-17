@@ -480,3 +480,12 @@
      (run ${exe:cram.exe} run.t)
      (diff? run.t run.t.corrected))))))
 
+(alias
+ ((name runtest)
+  (deps ((package jbuilder)
+         (files_recursively_in test-cases/null-dep)))
+  (action
+   (chdir test-cases/null-dep
+    (progn
+     (run ${exe:cram.exe} run.t)
+     (diff? run.t run.t.corrected))))))

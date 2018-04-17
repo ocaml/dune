@@ -1061,7 +1061,11 @@ module Infer = struct
 
   module Unexp = Make(Unexpanded.Uast)(S_unexp)(Outcome_unexp)(struct
       open Outcome_unexp
-      let ( +@ ) acc fn = { acc with targets = fn :: acc.targets }
+      let ( +@ ) acc fn =
+        if SW.is_var fn ~name:"null" then
+          acc
+        else
+          { acc with targets = fn :: acc.targets }
       let ( +< ) acc _ = acc
       let ( +<! )= ( +< )
     end)

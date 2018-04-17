@@ -198,3 +198,8 @@ let to_string t =
     |> String.concat ~sep:""
 
 let sexp_of_t t = Sexp.To_sexp.string (to_string t)
+
+let is_var t ~name =
+  match t.items with
+  | [Var (_, v)] -> v = name
+  | _ -> false

@@ -1,0 +1,5 @@
+(jbuild_version 1)
+
+(alias
+ ((name runtest)
+  (action (with-stdout-to ${null} (echo "hello world")))))

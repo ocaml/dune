@@ -43,6 +43,8 @@ val iter : t -> f:(Loc.t -> string -> unit) -> unit
 (** [iter t ~f] iterates [f] over all variables of [t], the text
    portions being ignored. *)
 
+val is_var : t -> name:string -> bool
+
 module type EXPANSION = sig
   type t
   (** The value to which variables are expanded. *)

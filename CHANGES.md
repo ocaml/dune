@@ -2,7 +2,14 @@ next
 ----
 
 - Do not load the user configuration file when running inside dune
-  (#..., @diml)
+  (#700 @diml)
+
+- Do not infer ${null} to be a target (#693 fixes #694 @rgrinberg)
+
+- Introduce jbuilder.configurator library. This is a revived version of
+  janestreet's configurator library with better cross compilation support, a
+  versioned API, and no external dependencies. (#673, #678 #692, #695
+  @rgrinberg)
 
 1.0+beta20 (10/04/2018)
 -----------------------

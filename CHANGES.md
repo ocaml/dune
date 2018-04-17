@@ -11,6 +11,10 @@ next
   versioned API, and no external dependencies. (#673, #678 #692, #695
   @rgrinberg)
 
+- Register the transitive dependencies of compilation units as the
+  compiler might read `.cm*` files recursively (#666, fixes #660,
+  @emillon)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

@@ -80,6 +80,11 @@ this flag file using ``:include``:
     (c_names (foo))
     (c_library_flags (:include (flags.sexp)))))
 
+For this, generate the list of flags for your library — for example
+using ``Configurator.V1.Pkg_config`` — and then write them to a file,
+in the above example ``flags.sexp``, with
+``Configurator.V1.write_flags "flags.sexp" flags``.
+
 Upgrading from the old Configurator
 ===================================
 

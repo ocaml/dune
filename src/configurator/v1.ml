@@ -419,6 +419,10 @@ module Pkg_config = struct
       None
 end
 
+let write_flags fname s =
+  let sexp = Usexp.List(List.map ~f:Usexp.atom_or_quoted_string s) in
+  Io.write_file fname (Usexp.to_string sexp)
+
 let main ?(args=[]) ~name f =
   let ocamlc  = ref (
     match Sys.getenv "DUNE_CONFIGURATOR" with

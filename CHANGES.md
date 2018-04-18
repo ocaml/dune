@@ -28,10 +28,10 @@ next
   everything in the universe. Jbuilder cannot cache the result of an action that
   depend on the universe (#603, fixes #255 @diml)
 
-- Add a `(package <package>)` dependency specification to indicate
-  dependency on a whole package. Rules depending on whole pacakge will
-  be executed in an environment similar to the one we get once the
-  package is installed (#624, @rgrinberg and @diml)
+- Add a `(package <package>)` dependency specification to indicate dependency on
+  a whole package. Rules depending on whole package will be executed in an
+  environment similar to the one we get once the package is installed (#624,
+  @rgrinberg and @diml)
 
 - Don't pass `-runtime-variant _pic` on Windows (#635, fixes #573 @diml)
 
@@ -53,7 +53,7 @@ next
   files didn't include the right `-ppx` flags in some cases (#658
   fixes #657 @diml)
 
-- Fix error messaage when a public library is defined twice. Before
+- Fix error message when a public library is defined twice. Before
   jbuilder would raise an uncaught exception (Fixes #661, @diml)
 
 - Fix several cases where `external-lib-deps` was returning too little
@@ -159,14 +159,13 @@ next
   execution after an error was encountered. Now it continues until
   all branches have been explored (#477)
 
-- Add supprot for a user configuration file (#490)
+- Add support for a user configuration file (#490)
 
 - Add more display modes and change the default display of
   Jbuilder. The mode can be set from the command line or from the
   configuration file (#490)
 
-- Allow to set the concurency level (`-j N`) from the configuration
-  file (#491)
+- Allow to set the concurrency level (`-j N`) from the configuration file (#491)
 
 - Store artifacts for libraries and executables in separate
   directories. This ensure that Two libraries defined in the same
@@ -187,7 +186,7 @@ next
 - Refactor internal library management. It should now be possible to
   run `jbuilder build @lint` in Base for instance (#516)
 
-- Fix invalid warning about non-existent direcotry (#536, fixes #534)
+- Fix invalid warning about non-existent directory (#536, fixes #534)
 
 1.0+beta17 (01/02/2018)
 -----------------------
@@ -252,7 +251,7 @@ next
   workspaces (#370)
 
 - Now longer generate a `META.pkg.from-jbuilder` file. Now the only
-  way to customise the generated `META` file is through
+  way to customize the generated `META` file is through
   `META.pkg.template`. This feature was unused and was making the code
   complicated (#370)
 
@@ -313,7 +312,7 @@ next
 - Add (copy_files <glob>) and (copy_files# <glob>) stanzas. These
   stanzas setup rules for copying files from a sub-directory to the
   current directory. This provides a reasonable way to support
-  multi-directory library/executables in jbuilder (#35, Francois Bobot)
+  multi-directory library/executables in jbuilder (#35, @bobot)
 
 - An empty `jbuild-workspace` file is now interpreted the same as one
   containing just `(context default)`
@@ -327,7 +326,7 @@ next
 
 - Fix a bug related to `menhir` stanzas: `menhir` stanzas with a
   `merge_into` field that were in `jbuild` files in sub-directories
-  where incorectly interpreted (#264)
+  where incorrectly interpreted (#264)
 
 - Add support for locks in actions, for tests that can't be run
   concurrently (#263)
@@ -337,17 +336,17 @@ next
 1.0+beta13 (05/09/2017)
 -----------------------
 
-- Generate toplevel html index for documentation (#224, Thomas Gazagnaire)
+- Generate toplevel html index for documentation (#224, @samoht)
 
 - Fix recompilation of native artifacts. Regression introduced in the last
   version (1.0+beta12) when digests replaces timestamps for checking staleness
-  (#238, David Allsopp)
+  (#238, @dra27)
 
 1.0+beta12 (18/08/2017)
 -----------------------
 
 - Fix the quoting of `FLG` lines in generated `.merlin` files (#200,
-  Marcello Seri)
+  @mseri)
 
 - Use the full path of archive files when linking. Before jbuilder
   would do: `-I <path> file.cmxa`, now it does `-I <path>
@@ -361,14 +360,13 @@ next
   `ocamlfind` is present in the `PATH` and the user didn't pass
   `--prefix` or `--libdir` explicitly, use the output of `ocamlfind
   printconf destdir` as destination directory for library files (#179,
-  Francois Bobot)
+  @bobot)
 
-- Allow `(:include ...)` forms in all `*flags` fields (#153, David
-  Allsopp)
+- Allow `(:include ...)` forms in all `*flags` fields (#153, @dra27)
 
-- Add a `utop` subsommand. Running `jbuilder utop` in a directory
+- Add a `utop` subcommand. Running `jbuilder utop` in a directory
   builds and executes a custom `utop` toplevel with all libraries
-  defined in the current directory (#183, Rudi Grinberg)
+  defined in the current directory (#183, @rgrinberg)
 
 - Do not accept `per_file` anymore in `preprocess` field. `per_file`
   was renamed `per_module` and it is planned to reuse `per_file` for
@@ -412,7 +410,7 @@ next
 1.0+beta10 (08/06/2017)
 -----------------------
 
-- Add a `clean` subcommand (Richard Davison, #89)
+- Add a `clean` subcommand (@rdavison, #89)
 
 - Add support for generating API documentation with odoc (#74)
 
@@ -455,8 +453,7 @@ next
 - When exiting prematurely because of a failure, if there are other
   background processes running and they fail, print these failures
 
-- With msvc, `-lfoo` is transparently replaced by `foo.lib` (David
-  Allsopp, #127)
+- With msvc, `-lfoo` is transparently replaced by `foo.lib` (@dra27, #127)
 
 - Automatically add the `.exe` when installing executables on Windows
   (#123)
@@ -480,23 +477,22 @@ next
 1.0+beta9 (19/05/2017)
 ----------------------
 
-- Add support for building Reason projects (Rudi Grinberg, #58)
+- Add support for building Reason projects (@rgrinberg, #58)
 
-- Add support for building javascript with js-of-ocaml (Hugo Heuzard,
-  #60)
+- Add support for building javascript with js-of-ocaml (@hhugo, #60)
 
 - Better support for topkg release workflow. See
   [topkg-jbuilder](https://github.com/diml/topkg-jbuilder) for more
   details
 
 - Port the manual to rst and setup a jbuilder project on
-  readthedocs.org (Rudi Grinberg, #78)
+  readthedocs.org (@rgrinberg, #78)
 
 - Hint for mistyped targets. Only suggest correction on the basename
   for now, otherwise it's slow when the workspace is big
 
 - Add a `(package ...)` field for aliases, so that one can restrict
-  tests to a specific package (Rudi Grinberg, #64)
+  tests to a specific package (@rgrinberg, #64)
 
 - Fix a couple of bugs on Windows:
   + fix parsing of end of lines in some cases
@@ -510,7 +506,7 @@ next
 
 - Better error messages for invalid dependency list in jbuild files
 
-- Severel improvements/fixes regarding the handling of findlib packages:
+- Several improvements/fixes regarding the handling of findlib packages:
   + Better error messages when a findlib package is unavailable
   + Don't crash when an installed findlib package has missing
     dependencies
@@ -555,15 +551,15 @@ next
 ----------------------
 
 - Make the output quieter by default and add a `--verbose` argument
-  (Stephen Dolan, #40)
+  (@stedolan, #40)
 
-- Various documentation fixes (Adrien Guatto, #41)
+- Various documentation fixes (@adrieng, #41)
 
 - Make `@install` the default target when no targets are specified
-  (Stephen Dolan, #47)
+  (@stedolan, #47)
 
 - Add predefined support for menhir, similar to ocamlyacc support
-  (Rudi Grinberg, #42)
+  (@rgrinberg, #42)
 
 - Add internal support for sandboxing actions and sandbox the build of
   the alias module with 4.02 to workaround the compiler trying to read
@@ -683,8 +679,7 @@ next
 
 - Support incremental compilation
 
-- Switched the CLI to cmdliner and added a `build` command (#5, Rudi
-  Grinberg)
+- Switched the CLI to cmdliner and added a `build` command (#5, @rgrinberg)
 
 - Added a few commands:
   + `runtest`
@@ -696,7 +691,7 @@ next
 - Removed the `build-package` command in favor of a `--only-packages`
   option that is common to all commands
 
-- Automatically generate `.merlin` files (#2, Richard Davison)
+- Automatically generate `.merlin` files (#2, @rdavison)
 
 - Improve the output of jbuilder, in particular don't mangle the
   output of commands when using `-j N` with `N > 1`
@@ -711,7 +706,7 @@ next
   order to use ppx rewriters with Jbuilder, they need to use
   `ocaml-migrate-parsetree.driver`
 
-- Added support for aliases (#7, Rudi Grinberg)
+- Added support for aliases (#7, @rgrinberg)
 
 - Added support for compiling against multiple opam switch
   simultaneously by writing a `jbuild-worspace` file
@@ -730,7 +725,7 @@ next
   + ...
 
 - Removed all implicit uses of bash or the system shell. Now one has
-  to write explicitely `(bash "...")` or `(system "...")`
+  to write explicitly `(bash "...")` or `(system "...")`
 
 - Generate meaningful versions in `META` files
 

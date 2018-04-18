@@ -48,7 +48,6 @@ module C_define : sig
     (** Define extra code be used with extracting values below. Note that the
         compiled code is never executed. *)
     -> ?c_flags:   string list
-    -> ?link_flags:string list
     -> includes:   string list
     -> (string * Type.t ) list
     -> (string * Value.t) list

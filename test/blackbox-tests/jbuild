@@ -175,8 +175,7 @@
   (action
    (chdir test-cases/odoc
     (progn
-     (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3
-      -test run.t)
+     (run ${exe:cram.exe} -skip-versions 4.02.3 -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -196,8 +195,7 @@
   (action
    (chdir test-cases/multiple-private-libs
     (progn
-     (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3
-      -test run.t)
+     (run ${exe:cram.exe} -skip-versions 4.02.3 -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -207,8 +205,7 @@
   (action
    (chdir test-cases/ppx-rewriter
     (progn
-     (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3
-      -test run.t)
+     (run ${exe:cram.exe} -skip-versions 4.02.3 -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -359,8 +356,7 @@
   (action
    (chdir test-cases/odoc-unique-mlds
     (progn
-     (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3
-      -test run.t)
+     (run ${exe:cram.exe} -skip-versions 4.02.3 -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -410,8 +406,7 @@
   (action
    (chdir test-cases/output-obj
     (progn
-     (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions <4.06.0
-      -test run.t)
+     (run ${exe:cram.exe} -skip-versions <4.06.0 -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias

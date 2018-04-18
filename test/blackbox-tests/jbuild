@@ -13,7 +13,7 @@
   (action
    (chdir test-cases/redirections
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -23,7 +23,7 @@
   (action
    (chdir test-cases/misc
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -33,7 +33,7 @@
   (action
    (chdir test-cases/github20
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -44,7 +44,7 @@
    (chdir test-cases/js_of_ocaml
     (setenv NODE ${bin:node}
      (progn
-      (run ${exe:cram.exe} run.t)
+      (run ${exe:cram.exe} -test run.t)
       (diff? run.t run.t.corrected)))))))
 
 (alias
@@ -54,7 +54,7 @@
   (action
    (chdir test-cases/github24
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -64,7 +64,7 @@
   (action
    (chdir test-cases/menhir
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -75,7 +75,7 @@
    (chdir test-cases/github25/root
     (setenv OCAMLPATH ../findlib-packages
      (progn
-      (run ${exe:cram.exe} run.t)
+      (run ${exe:cram.exe} -test run.t)
       (diff? run.t run.t.corrected)))))))
 
 (alias
@@ -85,7 +85,7 @@
   (action
    (chdir test-cases/lib-available
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -95,7 +95,7 @@
   (action
    (chdir test-cases/copy_files
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -105,7 +105,7 @@
   (action
    (chdir test-cases/aliases
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -115,7 +115,7 @@
   (action
    (chdir test-cases/force-test
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -125,7 +125,7 @@
   (action
    (chdir test-cases/meta-gen
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -135,7 +135,7 @@
   (action
    (chdir test-cases/exec-cmd
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -145,7 +145,7 @@
   (action
    (chdir test-cases/ocaml-syntax
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -155,7 +155,7 @@
   (action
    (chdir test-cases/gen-opam-install-file
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -165,7 +165,7 @@
   (action
    (chdir test-cases/reason
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -175,7 +175,8 @@
   (action
    (chdir test-cases/odoc
     (progn
-     (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3 run.t)
+     (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3
+      -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -185,7 +186,7 @@
   (action
    (chdir test-cases/select
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -195,7 +196,8 @@
   (action
    (chdir test-cases/multiple-private-libs
     (progn
-     (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3 run.t)
+     (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3
+      -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -205,7 +207,8 @@
   (action
    (chdir test-cases/ppx-rewriter
     (progn
-     (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3 run.t)
+     (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3
+      -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -215,7 +218,7 @@
   (action
    (chdir test-cases/utop
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -225,7 +228,7 @@
   (action
    (chdir test-cases/c-stubs
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -235,7 +238,7 @@
   (action
    (chdir test-cases/cross-compilation
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -245,7 +248,7 @@
   (action
    (chdir test-cases/promote
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -255,7 +258,7 @@
   (action
    (chdir test-cases/include-loop
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -265,7 +268,7 @@
   (action
    (chdir test-cases/scope-bug
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -275,7 +278,7 @@
   (action
    (chdir test-cases/scope-ppx-bug
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -285,7 +288,7 @@
   (action
    (chdir test-cases/loop
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -295,7 +298,7 @@
   (action
    (chdir test-cases/intf-only
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -305,7 +308,7 @@
   (action
    (chdir test-cases/installable-dup-private-libs
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -315,7 +318,7 @@
   (action
    (chdir test-cases/inline_tests
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -325,7 +328,7 @@
   (action
    (chdir test-cases/byte-code-only
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -335,7 +338,7 @@
   (action
    (chdir test-cases/merlin-tests
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -346,7 +349,7 @@
    (chdir test-cases/findlib
     (setenv OCAMLPATH findlib-packages
      (progn
-      (run ${exe:cram.exe} run.t)
+      (run ${exe:cram.exe} -test run.t)
       (diff? run.t run.t.corrected)))))))
 
 (alias
@@ -356,7 +359,8 @@
   (action
    (chdir test-cases/odoc-unique-mlds
     (progn
-     (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3 run.t)
+     (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions 4.02.3
+      -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -366,7 +370,7 @@
   (action
    (chdir test-cases/ocamldep-multi-stanzas
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -376,7 +380,7 @@
   (action
    (chdir test-cases/exclude-missing-module
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -386,7 +390,7 @@
   (action
    (chdir test-cases/github534
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -396,7 +400,7 @@
   (action
    (chdir test-cases/github568
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -407,7 +411,7 @@
    (chdir test-cases/output-obj
     (progn
      (run ${exe:cram.exe} -ocamlv ${ocaml_version} -skip-versions <4.06.0
-      run.t)
+      -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -417,7 +421,7 @@
   (action
    (chdir test-cases/github597
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -427,7 +431,7 @@
   (action
    (chdir test-cases/private-public-overlap
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -437,7 +441,7 @@
   (action
    (chdir test-cases/depend-on-the-universe
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -447,7 +451,7 @@
   (action
    (chdir test-cases/package-dep
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -457,7 +461,7 @@
   (action
    (chdir test-cases/github644
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -467,7 +471,7 @@
   (action
    (chdir test-cases/configurator
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -477,7 +481,7 @@
   (action
    (chdir test-cases/quoting
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -487,7 +491,7 @@
   (action
    (chdir test-cases/null-dep
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias
@@ -497,5 +501,5 @@
   (action
    (chdir test-cases/github660
     (progn
-     (run ${exe:cram.exe} run.t)
+     (run ${exe:cram.exe} -test run.t)
      (diff? run.t run.t.corrected))))))

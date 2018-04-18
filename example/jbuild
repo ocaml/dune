@@ -6,7 +6,7 @@
   (action
    (chdir sample-projects/hello_world
     (setenv JBUILDER ${bin:jbuilder}
-     (run ${exe:../test/blackbox-tests/cram.exe} run.t))))))
+     (run ${exe:../test/blackbox-tests/cram.exe} -test run.t))))))
 
 (alias
  ((name runtest)
@@ -14,6 +14,6 @@
   (action
    (chdir sample-projects/with-configure-step
     (setenv JBUILDER ${bin:jbuilder}
-     (run ${exe:../test/blackbox-tests/cram.exe} run.t))))))
+     (run ${exe:../test/blackbox-tests/cram.exe} -test run.t))))))
 
 

@@ -70,13 +70,13 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
           let fn = Option.value_exn (Target.cmt m ml_kind) in
           (fn :: other_targets, A "-bin-annot")
       in
-      let extra_targets = List.map other_targets ~f:(Target.file obj_dir) in
+      let hidden_targets = List.map other_targets ~f:(Target.file obj_dir) in
       if obj_dir <> dir then begin
         (* Symlink the object files in the original directory for
            backward compatibility *)
         let old_dst = Module.cm_file_unsafe m ~obj_dir:dir cm_kind in
         SC.add_rule sctx (Build.symlink ~src:dst ~dst:old_dst) ;
-        List.iter2 extra_targets other_targets ~f:(fun in_obj_dir target ->
+        List.iter2 hidden_targets other_targets ~f:(fun in_obj_dir target ->
           let in_dir = Target.file dir target in
           SC.add_rule sctx (Build.symlink ~src:in_obj_dir ~dst:in_dir))
       end;
@@ -91,7 +91,6 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
          other_cm_files >>>
          Ocaml_flags.get_for_cm flags ~cm_kind >>>
          Build.run ~context:ctx (Ok compiler)
-           ~extra_targets
            [ Dyn (fun ocaml_flags -> As ocaml_flags)
            ; cmt_args
            ; A "-I"; Path obj_dir
@@ -105,6 +104,7 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
                 As ["-open"; Module.Name.to_string m.name])
            ; A "-o"; Target dst
            ; A "-c"; Ml_kind.flag ml_kind; Dep src
+           ; Hidden_targets hidden_targets
            ])))
 
 let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~scope ~dir

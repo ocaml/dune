@@ -28,12 +28,12 @@ let gen_rules sctx ~dir ~scope (t : Jbuild.Menhir.t) =
   let menhir_binary =
     SC.resolve_program sctx "menhir" ~hint:"opam install menhir"
   in
-  (* [extra_targets] is to tell Jbuilder about generated files that do
-     not appear in the menhir command line. *)
-  let menhir ~extra_targets args =
+  (* [hidden_targets] is to tell Jbuilder about generated files that
+     do not appear in the menhir command line. *)
+  let menhir args =
     flags
     >>>
-    Build.run ~extra_targets
+    Build.run
       menhir_binary
       ~dir
       ~context:(SC.context sctx)
@@ -48,16 +48,16 @@ let gen_rules sctx ~dir ~scope (t : Jbuild.Menhir.t) =
     List.concat_map t.modules ~f:(fun name ->
       add_rule_get_targets (
         menhir
-          ~extra_targets:(targets name)
           [ Dyn (fun x -> As x)
           ; Dep (mly name)
+          ; Hidden_targets (targets name)
           ]))
   | Some merge_into ->
     add_rule_get_targets (
       menhir
-        ~extra_targets:(targets merge_into)
         [ A "--base" ; A merge_into
         ; Dyn (fun x -> As x)
         ; Deps (List.map ~f:mly t.modules)
-        ]
+        ; Hidden_targets (targets merge_into)
+      ]
     )

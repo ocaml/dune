@@ -133,7 +133,6 @@ val run
   :  context:Context.t
   -> ?dir:Path.t (* default: [context.build_dir] *)
   -> ?stdout_to:Path.t
-  -> ?extra_targets:Path.t list
   -> Action.Prog.t
   -> 'a Arg_spec.t list
   -> ('a, Action.t) t

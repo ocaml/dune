@@ -2,7 +2,7 @@
 
 (executable
  ((name cram)
-  (libraries (test_common jbuilder))))
+  (libraries (test_common jbuilder configurator))))
 
 (ocamllex (cram))
 

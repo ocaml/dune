@@ -175,11 +175,12 @@ module Gen (S : sig val sctx : SC.t end) = struct
          Build.remove_tree to_remove
          :: Build.mkdir odoc_file.html_dir
          :: Build.run ~context ~dir:Paths.html_root
-              odoc ~extra_targets:[odoc_file.html_file]
+              odoc
               [ A "html"
               ; odoc_include_flags requires
               ; A "-o"; Path Paths.html_root
               ; Dep odoc_file.odoc_input
+              ; Hidden_targets [odoc_file.html_file]
               ]
          :: jbuilder_keep
        )
@@ -213,9 +214,10 @@ module Gen (S : sig val sctx : SC.t end) = struct
     SC.add_rule sctx
       (Build.run ~context
          ~dir:context.build_dir
-         ~extra_targets:[css_file]
          odoc
-         [ A "css"; A "-o"; Path Paths.html_root ])
+         [ A "css"; A "-o"; Path Paths.html_root
+         ; Hidden_targets [css_file]
+         ])
 
   let sp = Printf.sprintf
 

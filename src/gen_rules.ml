@@ -471,10 +471,6 @@ module Gen(P : Install_rules.Params) = struct
            (SC.expand_and_eval_set sctx ~scope ~dir lib.library_flags ~standard:[])
          >>>
          Build.run ~context:ctx (Ok compiler)
-           ~extra_targets:(
-             match mode with
-             | Byte -> []
-             | Native -> [lib_archive lib ~dir ~ext:ctx.ext_lib])
            [ Dyn (fun (_, _, flags, _) -> As flags)
            ; A "-a"; A "-o"; Target target
            ; As stubs_flags
@@ -484,6 +480,10 @@ module Gen(P : Install_rules.Params) = struct
                | Normal -> []
                | Ppx_deriver | Ppx_rewriter -> ["-linkall"])
            ; Dyn (fun (cm_files, _, _, _) -> Deps cm_files)
+           ; Hidden_targets
+               (match mode with
+                | Byte -> []
+                | Native -> [lib_archive lib ~dir ~ext:ctx.ext_lib])
            ]))
 
   let build_c_file (lib : Library.t) ~scope ~dir ~includes c_name =
@@ -652,7 +652,6 @@ module Gen(P : Install_rules.Params) = struct
                lib.c_library_flags ~standard:[]
              >>>
              Build.run ~context:ctx
-               ~extra_targets:targets
                (Ok ctx.ocamlmklib)
                [ As (Utils.g ())
                ; if custom then A "-custom" else As []
@@ -667,6 +666,7 @@ module Gen(P : Install_rules.Params) = struct
                    else
                      As cclibs
                  )
+               ; Hidden_targets targets
                ])
         in
         let static = stubs_archive lib ~dir in

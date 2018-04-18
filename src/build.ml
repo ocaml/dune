@@ -211,14 +211,8 @@ let prog_and_args ?(dir=Path.root) prog args =
     >>>
     arr fst))
 
-let run ~context ?(dir=context.Context.build_dir) ?stdout_to ?(extra_targets=[])
-      prog args =
-  let extra_targets =
-    match stdout_to with
-    | None -> extra_targets
-    | Some fn -> fn :: extra_targets
-  in
-  let targets = Arg_spec.add_targets args extra_targets in
+let run ~context ?(dir=context.Context.build_dir) ?stdout_to prog args =
+  let targets = Arg_spec.add_targets args (Option.to_list stdout_to) in
   prog_and_args ~dir prog args
   >>>
   Targets targets

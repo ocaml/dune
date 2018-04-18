@@ -38,7 +38,8 @@ type 'a t =
   | Target   of Path.t
   | Path     of Path.t
   | Paths    of Path.t list
-  | Hidden_deps of Path.t list
+  | Hidden_deps    of Path.t list
+  | Hidden_targets of Path.t list
   (** Register dependencies but produce no argument *)
   | Dyn      of ('a -> nothing t)
 

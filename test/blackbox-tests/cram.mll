@@ -91,14 +91,10 @@ and postprocess tbl b = parse
              ~f:(fun x -> (test, parse_version x)))))
 
   let () =
-    let ocaml_version = ref None in
     let skip_versions = ref [] in
     let expect_test = ref None in
     let args =
-      [ "-ocamlv"
-      , Arg.String (fun s -> ocaml_version := Some (parse_version s))
-      , "Version of ocaml being used"
-      ; "-skip-versions"
+      [ "-skip-versions"
       , Arg.String (fun s -> skip_versions := parse_skip_versions s)
       , "Comma separated versions of ocaml where to skip test"
       ; "-test"
@@ -110,11 +106,13 @@ and postprocess tbl b = parse
         match !expect_test with
         | None -> raise (Arg.Bad "expect test file must be passed")
         | Some p -> p in
-      begin match !ocaml_version, !skip_versions with
-      | None, [] -> ()
-      | None, _::_ -> raise (Arg.Bad "provide -ocaml along with -skip-versions")
-      | Some v, skip ->
-        if List.exists skip ~f:(fun (op, v') -> test op v v')  then exit 0
+      let ocaml_version =
+        Configurator.ocaml_config_var_exn configurator "version"
+        |> parse_version in
+      begin
+        if List.exists !skip_versions ~f:(fun (op, v') ->
+          test op ocaml_version v') then
+          exit 0
       end;
       Test_common.run_expect_test expect_test ~f:(fun file_contents lexbuf ->
         let items = file lexbuf in

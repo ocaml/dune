@@ -95,7 +95,7 @@ let exclusions =
   ; make "multiple-private-libs"  ~skip_ocaml:"4.02.3"
   ; make "ppx-rewriter" ~skip_ocaml:"4.02.3" ~external_deps:true
   ; make "odoc-unique-mlds" ~skip_ocaml:"4.02.3" ~external_deps:true
-  ; make "output-obj" ~skip_platforms:[Mac; Win]
+  ; make "output-obj" ~skip_platforms:[Mac; Win] ~skip_ocaml:"<4.06.0"
   ; make "github644" ~external_deps:true
   ; make "private-public-overlap" ~external_deps:true
   ; make "reason" ~enabled:false

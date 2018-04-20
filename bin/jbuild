@@ -1,5 +1,18 @@
 (executable
  ((name        main)
   (public_name jbuilder)
-  (libraries (unix jbuilder jbuilder_cmdliner))
-  (preprocess no_preprocessing)))
+  (modules     (:standard \ cmdliner_gen))
+  (libraries   (unix jbuilder jbuilder_cmdliner))
+  (preprocess  no_preprocessing)))
+
+(executable
+ ((name        cmdliner_gen)
+  (modules     (cmdliner_gen))
+  (libraries   (stdune jbuilder_cmdliner))
+  (preprocess  no_preprocessing)))
+
+(rule
+ (with-stdout-to arg_info.ml
+  (run ./cmdliner_gen.exe
+   ${path:doc/common.txt}
+)))

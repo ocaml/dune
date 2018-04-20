@@ -329,7 +329,14 @@
    (chdir
     test-cases/output-obj
     (progn
-     (run ${exe:cram.exe} -skip-platforms macosx,win -test run.t)
+     (run
+      ${exe:cram.exe}
+      -skip-versions
+      <4.06.0
+      -skip-platforms
+      macosx,win
+      -test
+      run.t)
      (diff? run.t run.t.corrected))))))
 
 (alias

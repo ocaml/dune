@@ -46,7 +46,15 @@ and postprocess tbl b = parse
       ] in
       (* need to special case exe since we can only remove this extension in
          general *)
-      match var "ext_exe" with
+      match (
+        match Configurator.ocaml_config_var config "ext_exe" with
+        | Some s -> s
+        | None ->
+          begin match Configurator.ocaml_config_var_exn config "system" with
+          | "Win32" -> ".exe"
+          | _ -> ""
+          end
+      ) with
       | "" -> exts
       | ext -> (ext, "") :: exts
     in

@@ -74,10 +74,10 @@ module Rules = struct
 end
 
 module Vars = struct
-  type t = Rules.t String_map.t
+  type t = Rules.t String.Map.t
 
   let get (t : t) var preds =
-    match String_map.find t var with
+    match String.Map.find t var with
     | None -> None
     | Some rules -> Some (Rules.interpret rules ~preds)
 
@@ -100,7 +100,7 @@ module Config = struct
       die "@{<error>Error@}: ocamlfind toolchain %s isn't defined in %a \
            (context: %s)" toolchain Path.pp path context;
     let vars = (Meta.load ~name:"" ~fn:(Path.to_string conf_file)).vars in
-    { vars = String_map.map vars ~f:Rules.of_meta_rules
+    { vars = String.Map.map vars ~f:Rules.of_meta_rules
     ; preds = Ps.make [toolchain]
     }
 
@@ -163,7 +163,7 @@ end
 type t =
   { stdlib_dir : Path.t
   ; path       : Path.t list
-  ; builtins   : Meta.Simplified.t String_map.t
+  ; builtins   : Meta.Simplified.t String.Map.t
   ; packages   : (string, (Package.t, Unavailable_reason.t) result) Hashtbl.t
   }
 
@@ -184,7 +184,7 @@ let dummy_package t ~name =
     meta_file = Path.relative dir "META"
   ; name      = name
   ; dir       = dir
-  ; vars      = String_map.empty
+  ; vars      = String.Map.empty
   }
 
 (* Parse a single package from a META file *)
@@ -217,7 +217,7 @@ let parse_package t ~meta_file ~name ~parent_dir ~vars =
       List.for_all exists_if ~f:(fun fn ->
         Path.exists (Path.relative dir fn))
     | [] ->
-      if not (String_map.mem t.builtins (root_package_name name)) then
+      if not (String.Map.mem t.builtins (root_package_name name)) then
         true
       else
         (* The META files for installed packages are sometimes broken,
@@ -244,7 +244,7 @@ let parse_package t ~meta_file ~name ~parent_dir ~vars =
    [t.packages] *)
 let parse_and_acknowledge_meta t ~dir ~meta_file (meta : Meta.Simplified.t) =
   let rec loop ~dir ~full_name (meta : Meta.Simplified.t) =
-    let vars = String_map.map meta.vars ~f:Rules.of_meta_rules in
+    let vars = String.Map.map meta.vars ~f:Rules.of_meta_rules in
     let dir, res =
       parse_package t ~meta_file ~name:full_name ~parent_dir:dir ~vars
     in
@@ -277,7 +277,7 @@ let find_and_acknowledge_meta t ~fq_name =
         else
           loop dirs
     | [] ->
-      match String_map.find t.builtins root_name with
+      match String.Map.find t.builtins root_name with
       | Some meta -> Some (t.stdlib_dir, Path.of_string "<internal>", meta)
       | None -> None
   in
@@ -315,7 +315,7 @@ let root_packages t =
   in
   let pkgs =
     String.Set.union pkgs
-      (String.Set.of_list (String_map.keys t.builtins))
+      (String.Set.of_list (String.Map.keys t.builtins))
   in
   String.Set.to_list pkgs
 

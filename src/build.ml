@@ -9,7 +9,7 @@ end
 type lib_dep_kind =
   | Optional
   | Required
-type lib_deps = lib_dep_kind String_map.t
+type lib_deps = lib_dep_kind String.Map.t
 
 let merge_lib_dep_kind a b =
   match a, b with
@@ -73,7 +73,7 @@ include Repr
 let repr t = t
 
 let merge_lib_deps a b =
-  String_map.merge a b ~f:(fun _ a b ->
+  String.Map.merge a b ~f:(fun _ a b ->
     match a, b with
     | None, None -> None
     | x, None | None, x -> x
@@ -93,7 +93,7 @@ let record_lib_deps ~kind lib_deps =
          List.concat_map choices ~f:(fun c ->
            String.Set.to_list c.Jbuild.Lib_dep.required
            |> List.map ~f:(fun d -> (d, Optional))))
-     |> String_map.of_list_reduce ~f:merge_lib_dep_kind)
+     |> String.Map.of_list_reduce ~f:merge_lib_dep_kind)
 
 module O = struct
   let ( >>> ) a b =

@@ -190,7 +190,7 @@ include Sub_system.Register_end_point(
     in
 
     let extra_vars =
-      String_map.singleton "library-name"
+      String.Map.singleton "library-name"
         (Action.Var_expansion.Strings ([lib.name], Concat))
     in
 
@@ -224,7 +224,7 @@ include Sub_system.Register_end_point(
           ; "intf-files", files Intf
           ]
           ~init:extra_vars
-          ~f:(fun acc (k, v) -> String_map.add acc k v)
+          ~f:(fun acc (k, v) -> String.Map.add acc k v)
       in
       Build.return []
       >>>

@@ -36,7 +36,7 @@ type extra_sub_directories_to_keep =
 
     It is expected that [f] only generate rules whose targets are
    descendant of [dir]. *)
-val set_rule_generators : t -> (dir:Path.t -> string list -> extra_sub_directories_to_keep) String_map.t -> unit
+val set_rule_generators : t -> (dir:Path.t -> string list -> extra_sub_directories_to_keep) String.Map.t -> unit
 
 (** All other functions in this section must be called inside the rule generator
     callback. *)
@@ -199,7 +199,7 @@ val all_lib_deps
 val all_lib_deps_by_context
   :  t
   -> request:(unit, unit) Build.t
-  -> Build.lib_deps String_map.t
+  -> Build.lib_deps String.Map.t
 
 (** List of all buildable targets *)
 val all_targets : t -> Path.t list

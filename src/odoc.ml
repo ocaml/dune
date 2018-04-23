@@ -434,7 +434,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
   let check_mlds_no_dupes ~pkg ~mlds =
     match
       List.map mlds ~f:(fun mld -> (Path.basename mld, mld))
-      |> String_map.of_list
+      |> String.Map.of_list
     with
     | Ok m -> m
     | Error (_, p1, p2) ->
@@ -446,7 +446,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
   let setup_package_odoc_rules ~pkg ~mlds ~entry_modules_by_lib =
     let mlds = check_mlds_no_dupes ~pkg ~mlds in
     let mlds =
-      if String_map.mem mlds "index" then
+      if String.Map.mem mlds "index" then
         mlds
       else
         let entry_modules = entry_modules ~pkg ~entry_modules_by_lib in
@@ -454,8 +454,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
         SC.add_rule sctx (
           Build.write_file gen_mld (default_index entry_modules)
         );
-        String_map.add mlds "index" gen_mld in
-    let odocs = List.map (String_map.values mlds) ~f:(fun mld ->
+        String.Map.add mlds "index" gen_mld in
+    let odocs = List.map (String.Map.values mlds) ~f:(fun mld ->
       compile_mld
         (Mld.create mld)
         ~pkg:pkg.name

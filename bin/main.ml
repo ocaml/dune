@@ -735,7 +735,7 @@ let clean =
   , Term.info "clean" ~doc ~man)
 
 let format_external_libs libs =
-  String_map.to_list libs
+  String.Map.to_list libs
   |> List.map ~f:(fun (name, kind) ->
     match (kind : Build.lib_dep_kind) with
     | Optional -> sprintf "- %s (optional)" name
@@ -761,17 +761,17 @@ let external_lib_deps =
        let targets = resolve_targets_exn ~log common setup targets in
        let request = request_of_targets setup targets in
        let failure =
-         String_map.foldi ~init:false
+         String.Map.foldi ~init:false
            (Build_system.all_lib_deps_by_context setup.build_system ~request)
            ~f:(fun context_name lib_deps acc ->
              let internals =
                Jbuild.Stanzas.lib_names
-                 (match String_map.find setup.Main.stanzas context_name with
+                 (match String.Map.find setup.Main.stanzas context_name with
                   | None -> assert false
                   | Some x -> x)
              in
              let externals =
-               String_map.filteri lib_deps ~f:(fun name _ ->
+               String.Map.filteri lib_deps ~f:(fun name _ ->
                  not (String.Set.mem internals name))
              in
              if only_missing then begin
@@ -783,12 +783,12 @@ let external_lib_deps =
                  | Some c -> c
                in
                let missing =
-                 String_map.filteri externals ~f:(fun name _ ->
+                 String.Map.filteri externals ~f:(fun name _ ->
                    not (Findlib.available context.findlib name))
                in
-               if String_map.is_empty missing then
+               if String.Map.is_empty missing then
                  acc
-               else if String_map.for_alli missing
+               else if String.Map.for_alli missing
                          ~f:(fun _ kind -> kind = Build.Optional)
                then begin
                  Format.eprintf
@@ -806,7 +806,7 @@ let external_lib_deps =
                     Hint: try: opam install %s@."
                    context_name
                    (format_external_libs missing)
-                   (String_map.to_list missing
+                   (String.Map.to_list missing
                     |> List.filter_map ~f:(fun (name, kind) ->
                       match (kind : Build.lib_dep_kind) with
                       | Optional -> None

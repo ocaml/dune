@@ -226,7 +226,7 @@ module Set = struct
   let of_string_set = map
 end
 
-module Map = String_map
+module Map = String.Map
 
 module Kind = struct
   type t =

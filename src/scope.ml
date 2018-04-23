@@ -77,7 +77,7 @@ module DB = struct
           match lib.public with
           | None -> None
           | Some p -> Some (p.name, lib.scope_name))
-        |> String_map.of_list
+        |> String.Map.of_list
         |> function
         | Ok x -> x
         | Error (name, _, _) ->
@@ -99,14 +99,14 @@ module DB = struct
       Lib.DB.create ()
         ~parent:installed_libs
         ~resolve:(fun name ->
-          match String_map.find public_libs name with
+          match String.Map.find public_libs name with
           | None -> Not_found
           | Some scope_name ->
             let scope =
               Option.value_exn (Scope_name_map.find !by_name_cell scope_name)
             in
             Redirect (Some scope.db, name))
-        ~all:(fun () -> String_map.keys public_libs)
+        ~all:(fun () -> String.Map.keys public_libs)
     in
     let by_name =
       Scope_name_map.merge scopes_info_by_name libs_by_scope_name

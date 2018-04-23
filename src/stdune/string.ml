@@ -176,3 +176,4 @@ let exists s ~f =
     true
 
 module Set = Set.Make(T)
+module Map = Map.Make(T)

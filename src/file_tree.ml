@@ -4,7 +4,7 @@ module Dir = struct
   type t =
     { path     : Path.t
     ; files    : String.Set.t
-    ; sub_dirs : t String_map.t
+    ; sub_dirs : t String.Map.t
     ; ignored  : bool
     }
 
@@ -17,11 +17,11 @@ module Dir = struct
     Path.Set.of_string_set t.files ~f:(Path.relative t.path)
 
   let sub_dir_names t =
-    String_map.foldi t.sub_dirs ~init:String.Set.empty
+    String.Map.foldi t.sub_dirs ~init:String.Set.empty
       ~f:(fun s _ acc -> String.Set.add acc s)
 
   let sub_dir_paths t =
-    String_map.foldi t.sub_dirs ~init:Path.Set.empty
+    String.Map.foldi t.sub_dirs ~init:Path.Set.empty
       ~f:(fun s _ acc -> Path.Set.add acc (Path.relative t.path s))
 
   let rec fold t ~traverse_ignored_dirs ~init:acc ~f =
@@ -29,7 +29,7 @@ module Dir = struct
       acc
     else
       let acc = f t acc in
-      String_map.fold t.sub_dirs ~init:acc ~f:(fun t acc ->
+      String.Map.fold t.sub_dirs ~init:acc ~f:(fun t acc ->
         fold t ~traverse_ignored_dirs ~init:acc ~f)
 end
 
@@ -87,7 +87,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
           || Path.Set.mem extra_ignored_subtrees path
         in
         (fn, walk path ~ignored))
-      |> String_map.of_list_exn
+      |> String.Map.of_list_exn
     in
     { path
     ; files

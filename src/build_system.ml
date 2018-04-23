@@ -315,7 +315,7 @@ module Dir_status = struct
 
   type rules_collector =
     { mutable rules   : Build_interpret.Rule.t list
-    ; mutable aliases : alias String_map.t
+    ; mutable aliases : alias String.Map.t
     ; mutable stage   : collection_stage
     }
 
@@ -328,9 +328,9 @@ end
 
 module Files_of = struct
   type t =
-    { files_by_ext   : Path.t list String_map.t
+    { files_by_ext   : Path.t list String.Map.t
     ; dir_hash       : string
-    ; mutable stamps : Path.t String_map.t
+    ; mutable stamps : Path.t String.Map.t
     }
 end
 
@@ -345,7 +345,7 @@ type hook =
 type t =
   { (* File specification by targets *)
     files       : (Path.t, File_spec.packed) Hashtbl.t
-  ; contexts    : Context.t String_map.t
+  ; contexts    : Context.t String.Map.t
   ; (* Table from target to digest of
        [(deps (filename + contents), targets (filename only), action)] *)
     trace       : (Path.t, Digest.t) Hashtbl.t
@@ -353,7 +353,7 @@ type t =
   ; mutable local_mkdirs : Path.Local.Set.t
   ; mutable dirs : (Path.t, Dir_status.t) Hashtbl.t
   ; mutable gen_rules :
-      (dir:Path.t -> string list -> extra_sub_directories_to_keep) String_map.t
+      (dir:Path.t -> string list -> extra_sub_directories_to_keep) String.Map.t
   ; mutable load_dir_stack : Path.t list
   ; (* Set of directories under _build that have at least one rule and
        all their ancestors. *)
@@ -373,7 +373,7 @@ let string_of_paths set =
   |> String.concat ~sep:"\n"
 
 let set_rule_generators t generators =
-  assert (String_map.keys generators = String_map.keys t.contexts);
+  assert (String.Map.keys generators = String.Map.keys t.contexts);
   t.gen_rules <- generators
 
 let get_dir_status t ~dir =
@@ -393,12 +393,12 @@ let get_dir_status t ~dir =
       let (ctx, sub_dir) = Option.value_exn (Path.extract_build_context dir) in
       if ctx = ".aliases" then
         Forward (Path.(append build_dir) sub_dir)
-      else if ctx <> "install" && not (String_map.mem t.contexts ctx) then
+      else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
         Dir_status.Loaded Pset.empty
       else
         Collecting_rules
           { rules   = []
-          ; aliases = String_map.empty
+          ; aliases = String.Map.empty
           ; stage   = Pending { lazy_generators = [] }
           }
     end)
@@ -643,13 +643,13 @@ let no_rule_found =
     match Path.extract_build_context fn with
     | None -> fail fn
     | Some (ctx, _) ->
-      if String_map.mem t.contexts ctx then
+      if String.Map.mem t.contexts ctx then
         fail fn
       else
         die "Trying to build %s but build context %s doesn't exist.%s"
           (Path.to_string_maybe_quoted fn)
           ctx
-          (hint ctx (String_map.keys t.contexts))
+          (hint ctx (String.Map.keys t.contexts))
 
 let rec compile_rule t ?(copy_source=false) pre_rule =
   let { Pre_rule.
@@ -856,7 +856,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
     if context_name = "install" then
       These String.Set.empty
     else
-      let gen_rules = Option.value_exn (String_map.find t.gen_rules context_name) in
+      let gen_rules = Option.value_exn (String.Map.find t.gen_rules context_name) in
       gen_rules ~dir (Option.value_exn (Path.explode sub_dir))
   in
   let rules = collector.rules in
@@ -865,7 +865,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
   let alias_dir = Path.append (Path.relative alias_dir context_name) sub_dir in
   let alias_rules, alias_stamp_files =
     let open Build.O in
-    String_map.foldi collector.aliases ~init:([], Pset.empty)
+    String.Map.foldi collector.aliases ~init:([], Pset.empty)
       ~f:(fun name { Dir_status. deps; dyn_deps; actions } (rules, alias_stamp_files) ->
         let base_path = Path.relative alias_dir name in
         let rules, deps =
@@ -925,7 +925,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
        String.Set.empty)
     | ctx_name ->
       (* This condition is [true] because of [get_dir_status] *)
-      assert (String_map.mem t.contexts ctx_name);
+      assert (String.Map.mem t.contexts ctx_name);
       let files, subdirs =
         match File_tree.find_dir t.file_tree sub_dir with
         | None -> (Pset.empty, String.Set.empty)
@@ -1076,20 +1076,20 @@ let stamp_file_for_files_of t ~dir ~ext =
         targets_of t ~dir
         |> Path.Set.to_list
         |> List.map ~f:(fun fn -> Filename.extension (Path.to_string fn), fn)
-        |> String_map.of_list_multi
+        |> String.Map.of_list_multi
       in
       { files_by_ext
       ; dir_hash = Path.to_string dir |> Digest.string |> Digest.to_hex
-      ; stamps = String_map.empty
+      ; stamps = String.Map.empty
       })
   in
-  match String_map.find files_of_dir.stamps ext with
+  match String.Map.find files_of_dir.stamps ext with
   | Some fn -> fn
   | None ->
     let stamp_file = Path.relative misc_dir (files_of_dir.dir_hash ^ ext) in
     let files =
       Option.value
-        (String_map.find files_of_dir.files_by_ext ext)
+        (String.Map.find files_of_dir.files_by_ext ext)
         ~default:[]
     in
     compile_rule t
@@ -1100,7 +1100,7 @@ let stamp_file_for_files_of t ~dir ~ext =
           Build.action ~targets:[stamp_file]
             (Action.with_stdout_to stamp_file
                (Action.digest_files files))));
-    files_of_dir.stamps <- String_map.add files_of_dir.stamps ext stamp_file;
+    files_of_dir.stamps <- String.Map.add files_of_dir.stamps ext stamp_file;
     stamp_file
 
 module Trace = struct
@@ -1136,7 +1136,7 @@ module Trace = struct
 end
 
 let all_targets t =
-  String_map.iter t.contexts ~f:(fun ctx ->
+  String.Map.iter t.contexts ~f:(fun ctx ->
     File_tree.fold t.file_tree ~traverse_ignored_dirs:true ~init:()
       ~f:(fun dir () ->
         load_dir t
@@ -1155,7 +1155,7 @@ let create ~contexts ~file_tree ~hook =
   Utils.Cached_digest.load ();
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
-    |> String_map.of_list_exn
+    |> String.Map.of_list_exn
   in
   let t =
     { contexts
@@ -1166,7 +1166,7 @@ let create ~contexts ~file_tree ~hook =
     ; dirs       = Hashtbl.create 1024
     ; load_dir_stack = []
     ; file_tree
-    ; gen_rules = String_map.map contexts ~f:(fun _ ~dir:_ ->
+    ; gen_rules = String.Map.map contexts ~f:(fun _ ~dir:_ ->
         die "gen_rules called too early")
     ; build_dirs_to_keep = Pset.empty
     ; files_of = Hashtbl.create 1024
@@ -1261,7 +1261,7 @@ let all_lib_deps t ~request =
   List.fold_left (rules_for_targets t targets) ~init:Pmap.empty
     ~f:(fun acc (rule : Internal_rule.t) ->
       let deps = Build_interpret.lib_deps rule.build in
-      if String_map.is_empty deps then
+      if String.Map.is_empty deps then
         acc
       else
         let deps =
@@ -1276,15 +1276,15 @@ let all_lib_deps_by_context t ~request =
   let rules = rules_for_targets t targets in
   List.fold_left rules ~init:[] ~f:(fun acc (rule : Internal_rule.t) ->
     let deps = Build_interpret.lib_deps rule.build in
-    if String_map.is_empty deps then
+    if String.Map.is_empty deps then
       acc
     else
       match Path.extract_build_context rule.dir with
       | None -> acc
       | Some (context, _) -> (context, deps) :: acc)
-  |> String_map.of_list_multi
-  |> String_map.map ~f:(function
-    | [] -> String_map.empty
+  |> String.Map.of_list_multi
+  |> String.Map.map ~f:(function
+    | [] -> String.Map.empty
     | x :: l -> List.fold_left l ~init:x ~f:Build.merge_lib_deps)
 
 module Rule = struct
@@ -1443,7 +1443,7 @@ let rec add_build_dir_to_keep t ~dir =
 let get_collector t ~dir =
   match get_dir_status t ~dir with
   | Collecting_rules collector ->
-    if collector.rules = [] && String_map.is_empty collector.aliases then
+    if collector.rules = [] && String.Map.is_empty collector.aliases then
       add_build_dir_to_keep t ~dir;
     collector
   | Failed_to_load -> raise Already_reported
@@ -1497,7 +1497,7 @@ let on_load_dir t ~dir ~f =
     let lazy_generators = p.lazy_generators in
     if lazy_generators = [] &&
        collector.rules = [] &&
-       String_map.is_empty collector.aliases then
+       String.Map.is_empty collector.aliases then
       add_build_dir_to_keep t ~dir;
     p.lazy_generators <- f :: lazy_generators
 
@@ -1517,7 +1517,7 @@ module Alias = struct
 
   let get_alias_def build_system t =
     let collector = get_collector build_system ~dir:t.dir in
-    match String_map.find collector.aliases t.name with
+    match String.Map.find collector.aliases t.name with
     | None ->
       let x =
         { Dir_status.
@@ -1526,7 +1526,7 @@ module Alias = struct
         ; actions  = []
         }
       in
-      collector.aliases <- String_map.add collector.aliases t.name x;
+      collector.aliases <- String.Map.add collector.aliases t.name x;
       x
     | Some x -> x
 

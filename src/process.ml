@@ -158,8 +158,8 @@ module Fancy = struct
       let target_names, contexts = split_paths [] [] targets in
       let target_names_grouped_by_prefix =
         List.map target_names ~f:Filename.split_extension_after_dot
-        |> String_map.of_list_multi
-        |> String_map.to_list
+        |> String.Map.of_list_multi
+        |> String.Map.to_list
       in
       let pp_comma ppf () = Format.fprintf ppf "," in
       let pp_group ppf (prefix, suffixes) =

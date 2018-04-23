@@ -66,9 +66,9 @@ module Unexpanded : sig
       [Map.find files_contents fn]. Every element is converted to a string using [f]. *)
   val expand
     :  t
-    -> files_contents:Sexp.Ast.t String_map.t
+    -> files_contents:Sexp.Ast.t String.Map.t
     -> f:(String_with_vars.t -> string)
     -> expanded
 end with type expanded := t
 
-module String : S with type value = string and type 'a map = 'a String_map.t
+module String : S with type value = string and type 'a map = 'a String.Map.t

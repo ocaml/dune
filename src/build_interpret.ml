@@ -144,7 +144,7 @@ let lib_deps =
       | Memo m -> loop m.t acc
       | Catch (t, _) -> loop t acc
   in
-  fun t -> loop (Build.repr t) String_map.empty
+  fun t -> loop (Build.repr t) String.Map.empty
 
 let targets =
   let rec loop : type a b. (a, b) t -> Target.t list -> Target.t list = fun t acc ->

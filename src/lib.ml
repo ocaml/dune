@@ -852,11 +852,11 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
   (deps, pps, resolved_selects)
 
 and closure_with_overlap_checks db ts ~stack =
-  let visited = ref String_map.empty in
+  let visited = ref String.Map.empty in
   let res = ref [] in
   let orig_stack = stack in
   let rec loop t ~stack =
-    match String_map.find !visited t.name with
+    match String.Map.find !visited t.name with
     | Some (t', stack') ->
       if t.unique_id = t'.unique_id then
         Ok ()
@@ -867,7 +867,7 @@ and closure_with_overlap_checks db ts ~stack =
                            ; lib2 = (t , req_by stack )
                            }))
     | None ->
-      visited := String_map.add !visited t.name (t, stack);
+      visited := String.Map.add !visited t.name (t, stack);
       (match db with
        | None -> Ok ()
        | Some db ->
@@ -984,7 +984,7 @@ module DB = struct
             [ p.name   , Found info
             ; conf.name, Redirect (None, p.name)
             ])
-      |> String_map.of_list
+      |> String.Map.of_list
       |> function
       | Ok x -> x
       | Error (name, _, _) ->
@@ -1008,10 +1008,10 @@ module DB = struct
     in
     create () ?parent
       ~resolve:(fun name ->
-        match String_map.find map name with
+        match String.Map.find map name with
         | None   -> Not_found
         | Some x -> x)
-      ~all:(fun () -> String_map.keys map)
+      ~all:(fun () -> String.Map.keys map)
 
   let create_from_findlib ?(external_lib_deps_mode=false) findlib =
     create ()

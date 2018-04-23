@@ -32,7 +32,7 @@ module type Combinators = sig
   val string_set : String.Set.t            t
   (** [atom_set] is a conversion to/from a set of strings representing atoms. *)
 
-  val string_map : 'a t -> 'a String_map.t   t
+  val string_map : 'a t -> 'a String.Map.t   t
   (** [atom_map conv]: given a conversion [conv] to/from ['a], returns
      a conversion to/from a map where the keys are atoms and the
      values are of type ['a]. *)

@@ -4,7 +4,7 @@ open Jbuild
 type setup =
   { build_system : Build_system.t
   ; (* Evaluated jbuilds per context names *)
-    stanzas      : (Path.t * Scope_info.t * Stanzas.t) list String_map.t
+    stanzas      : (Path.t * Scope_info.t * Stanzas.t) list String.Map.t
   ; contexts     : Context.t list
   ; packages     : Package.t Package.Name.Map.t
   ; file_tree    : File_tree.t

@@ -199,9 +199,7 @@ let split_prog s =
   | prog :: args -> Some { prog; args }
 
 module Vars = struct
-  module M = Map.Make(String)
-
-  type t = string M.t
+  type t = string String.Map.t
 
   let of_lines lines =
     let rec loop acc = function
@@ -218,10 +216,10 @@ module Vars = struct
           Error (Printf.sprintf "Unrecognized line: %S" line)
     in
     loop [] lines >>= fun vars ->
-    Result.map_error (M.of_list vars) ~f:(fun (var, _, _) ->
+    Result.map_error (String.Map.of_list vars) ~f:(fun (var, _, _) ->
       Printf.sprintf "Variable %S present twice." var)
 
-  let get_opt t var = M.find t var
+  let get_opt t var = String.Map.find t var
 
   let get t var =
     match get_opt t var with

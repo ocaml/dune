@@ -102,7 +102,7 @@ module Make(Key : Key)(Value : Value with type key = Key.t) = struct
           let x = parse ~loc s in
           M.singleton x
         | Special (loc, name) -> begin
-            match String_map.find special_values name with
+            match String.Map.find special_values name with
             | Some x -> x
             | None   -> Loc.fail loc "undefined symbol %s" name
           end
@@ -153,14 +153,14 @@ module Make(Key : Key)(Value : Value with type key = Key.t) = struct
       standard (* inline common case *)
     else
       Ordered.eval t ~parse
-        ~special_values:(String_map.singleton "standard" standard)
+        ~special_values:(String.Map.singleton "standard" standard)
 
   let eval_unordered t ~parse ~standard =
     if is_standard t then
       standard (* inline common case *)
     else
       Unordered.eval t ~parse
-        ~special_values:(String_map.singleton "standard" standard)
+        ~special_values:(String.Map.singleton "standard" standard)
 end
 
 let standard =
@@ -232,14 +232,14 @@ module Unexpanded = struct
       | Include fn ->
         let sexp =
           let fn = f fn in
-          match String_map.find files_contents fn with
+          match String.Map.find files_contents fn with
           | Some x -> x
           | None ->
             Sexp.code_error
               "Ordered_set_lang.Unexpanded.expand"
               [ "included-file", Quoted_string fn
               ; "files", Sexp.To_sexp.(list string)
-                           (String_map.keys files_contents)
+                           (String.Map.keys files_contents)
               ]
         in
         parse_general sexp ~f:(fun sexp ->
@@ -254,7 +254,7 @@ end
 module String = Make(struct
     type t = string
     let compare = String.compare
-    module Map = String_map
+    module Map = String.Map
   end)(struct
     type t = string
     type key = string

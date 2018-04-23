@@ -243,7 +243,7 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
         else
           jbuilds
       in
-      String_map.fold sub_dirs ~init:jbuilds
+      String.Map.fold sub_dirs ~init:jbuilds
         ~f:(fun dir jbuilds -> walk dir jbuilds scope)
     end
   in

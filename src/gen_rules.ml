@@ -152,7 +152,7 @@ module Gen(P : Install_rules.Params) = struct
       modules
     end
 
-  let parse_mlds ~dir ~(all_mlds : string String_map.t) ~mlds_written_by_user =
+  let parse_mlds ~dir ~(all_mlds : string String.Map.t) ~mlds_written_by_user =
     if Ordered_set_lang.is_standard mlds_written_by_user then
       all_mlds
     else
@@ -160,7 +160,7 @@ module Gen(P : Install_rules.Params) = struct
         Ordered_set_lang.String.eval_unordered
           mlds_written_by_user
           ~parse:(fun ~loc s ->
-            match String_map.find all_mlds s with
+            match String.Map.find all_mlds s with
             | Some s ->
               s
             | None ->
@@ -319,7 +319,7 @@ module Gen(P : Install_rules.Params) = struct
       match String.lsplit2 fn ~on:'.' with
       | Some (s, "mld") -> Some (s, fn)
       | _ -> None)
-    |> String_map.of_list_exn
+    |> String.Map.of_list_exn
 
   let mlds_by_dir =
     let cache = Hashtbl.create 32 in
@@ -332,7 +332,7 @@ module Gen(P : Install_rules.Params) = struct
     parse_mlds ~dir
       ~all_mlds:(mlds_by_dir ~dir)
       ~mlds_written_by_user:doc.mld_files
-    |> String_map.values
+    |> String.Map.values
     |> List.map ~f:(Path.relative dir)
 
   let modules_by_dir =
@@ -1086,8 +1086,8 @@ let gen ~contexts ~build_system
     (context.name, ((module M : Gen), stanzas))
   in
   Fiber.parallel_map contexts ~f:make_sctx >>| fun l ->
-  let map = String_map.of_list_exn l in
+  let map = String.Map.of_list_exn l in
   Build_system.set_rule_generators build_system
-    (String_map.map map ~f:(fun ((module M : Gen), _) -> M.gen_rules));
-  String_map.iter map ~f:(fun ((module M : Gen), _) -> M.init ());
-  String_map.map map ~f:snd
+    (String.Map.map map ~f:(fun ((module M : Gen), _) -> M.gen_rules));
+  String.Map.iter map ~f:(fun ((module M : Gen), _) -> M.init ());
+  String.Map.map map ~f:snd

@@ -154,8 +154,8 @@ let gen ~package ~version libs =
     in
     let entries = List.concat entries in
     let subs =
-      String_map.of_list_multi sub_pkgs
-      |> String_map.to_list
+      String.Map.of_list_multi sub_pkgs
+      |> String.Map.to_list
       |> List.map ~f:(fun (name, pkgs) ->
         let pkg = loop name pkgs in
         Package { pkg with

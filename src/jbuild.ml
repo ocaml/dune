@@ -443,8 +443,8 @@ module Lib_deps = struct
   let t sexp =
     let t = list Lib_dep.t sexp in
     let add kind name acc =
-      match String_map.find acc name with
-      | None -> String_map.add acc name kind
+      match String.Map.find acc name with
+      | None -> String.Map.add acc name kind
       | Some kind' ->
         match kind, kind' with
         | Required, Required ->
@@ -461,14 +461,14 @@ module Lib_deps = struct
             name
     in
     ignore (
-      List.fold_left t ~init:String_map.empty ~f:(fun acc x ->
+      List.fold_left t ~init:String.Map.empty ~f:(fun acc x ->
         match x with
         | Lib_dep.Direct (_, s) -> add Required s acc
         | Select { choices; _ } ->
           List.fold_left choices ~init:acc ~f:(fun acc c ->
             let acc = String.Set.fold c.Lib_dep.required ~init:acc ~f:(add Optional) in
             String.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
-      : kind String_map.t);
+      : kind String.Map.t);
     t
 
   let of_pps pps =

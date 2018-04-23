@@ -56,7 +56,7 @@ val expand_vars
   :  t
   -> scope:Scope.t
   -> dir:Path.t
-  -> ?extra_vars:Action.Var_expansion.t String_map.t
+  -> ?extra_vars:Action.Var_expansion.t String.Map.t
   -> String_with_vars.t
   -> string
 
@@ -64,7 +64,7 @@ val expand_and_eval_set
   :  t
   -> scope:Scope.t
   -> dir:Path.t
-  -> ?extra_vars:Action.Var_expansion.t String_map.t
+  -> ?extra_vars:Action.Var_expansion.t String.Map.t
   -> Ordered_set_lang.Unexpanded.t
   -> standard:string list
   -> (unit, string list) Build.t
@@ -190,7 +190,7 @@ module Action : sig
   (** The arrow takes as input the list of actual dependencies *)
   val run
     :  t
-    -> ?extra_vars:Action.Var_expansion.t String_map.t
+    -> ?extra_vars:Action.Var_expansion.t String.Map.t
     -> Action.Unexpanded.t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind

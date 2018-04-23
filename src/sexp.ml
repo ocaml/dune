@@ -78,7 +78,7 @@ module type Combinators = sig
   val array      : 'a t -> 'a array          t
   val option     : 'a t -> 'a option         t
   val string_set : String.Set.t              t
-  val string_map : 'a t -> 'a String_map.t   t
+  val string_map : 'a t -> 'a String.Map.t   t
   val string_hashtbl : 'a t -> (string, 'a) Hashtbl.t t
 end
 
@@ -97,13 +97,13 @@ module To_sexp = struct
     | None -> List []
     | Some x -> List [f x]
   let string_set set = list atom (String.Set.to_list set)
-  let string_map f map = list (pair atom f) (String_map.to_list map)
+  let string_map f map = list (pair atom f) (String.Map.to_list map)
   let record l =
     List (List.map l ~f:(fun (n, v) -> List [Atom(Atom.of_string n); v]))
   let string_hashtbl f h =
     string_map f
-      (Hashtbl.foldi h ~init:String_map.empty ~f:(fun key data acc ->
-         String_map.add acc key data))
+      (Hashtbl.foldi h ~init:String.Map.empty ~f:(fun key data acc ->
+         String.Map.add acc key data))
 
   type field = string * Usexp.t option
 
@@ -183,15 +183,15 @@ module Of_sexp = struct
 
   let string_set sexp = String.Set.of_list (list string sexp)
   let string_map f sexp =
-    match String_map.of_list (list (pair string f) sexp) with
+    match String.Map.of_list (list (pair string f) sexp) with
     | Ok x -> x
     | Error (key, _v1, _v2) ->
       of_sexp_error sexp (sprintf "key %S present multiple times" key)
 
   let string_hashtbl f sexp =
     let map = string_map f sexp in
-    let tbl = Hashtbl.create (String_map.cardinal map + 32) in
-    String_map.iteri map ~f:(Hashtbl.add tbl);
+    let tbl = Hashtbl.create (String.Map.cardinal map + 32) in
+    String.Map.iteri map ~f:(Hashtbl.add tbl);
     tbl
 
   type unparsed_field =

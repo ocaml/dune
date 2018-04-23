@@ -95,8 +95,8 @@ end
 
 module Lib_dep : sig
   type choice =
-    { required  : String_set.t
-    ; forbidden : String_set.t
+    { required  : String.Set.t
+    ; forbidden : String.Set.t
     ; file      : string
     }
 
@@ -392,5 +392,5 @@ module Stanzas : sig
     -> Scope_info.t
     -> Sexp.Ast.t list
     -> t
-  val lib_names : (_ * _ * t) list -> String_set.t
+  val lib_names : (_ * _ * t) list -> String.Set.t
 end

@@ -10,9 +10,8 @@ let ksprintf = Printf.ksprintf
 
 let initial_cwd = Sys.getcwd ()
 
-module String_set = Set.Make(String)
 module String_map = struct
-  include Map.Make(String)
+  include String.Map
 
   let pp f fmt t =
     Format.pp_print_list (fun fmt (k, v) ->

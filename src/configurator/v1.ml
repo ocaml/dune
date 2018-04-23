@@ -7,7 +7,6 @@ let ( ^/ ) = Filename.concat
 
 exception Fatal_error of string
 
-module String_map = Stdune.Map.Make(Stdune.String)
 module Int_map = Stdune.Map.Make(Stdune.Int)
 
 let die fmt =
@@ -25,7 +24,7 @@ type t =
   ; c_compiler        : string
   ; stdlib_dir        : string
   ; ccomp_type        : string
-  ; ocamlc_config     : string String_map.t
+  ; ocamlc_config     : string String.Map.t
   ; ocamlc_config_cmd : string
   }
 
@@ -166,11 +165,11 @@ let run_capture_exn t ~dir cmd =
 let run_ok t ~dir cmd = (run t ~dir cmd).exit_code = 0
 
 let get_ocaml_config_var_exn ~ocamlc_config_cmd map var =
-  match String_map.find map var with
+  match String.Map.find map var with
   | None -> die "variable %S not found in the output of `%s`" var ocamlc_config_cmd
   | Some s -> s
 
-let ocaml_config_var t var = String_map.find t.ocamlc_config var
+let ocaml_config_var t var = String.Map.find t.ocamlc_config var
 let ocaml_config_var_exn t var =
   get_ocaml_config_var_exn t.ocamlc_config var
     ~ocamlc_config_cmd:t.ocamlc_config_cmd
@@ -197,7 +196,7 @@ let create ?dest_dir ?ocamlc ?(log=ignore) name =
     ; c_compiler    = ""
     ; stdlib_dir    = ""
     ; ccomp_type    = ""
-    ; ocamlc_config = String_map.empty
+    ; ocamlc_config = String.Map.empty
     ; ocamlc_config_cmd
     }
   in
@@ -215,7 +214,7 @@ let create ?dest_dir ?ocamlc ?(log=ignore) name =
   in
   let get = get_ocaml_config_var_exn ocamlc_config ~ocamlc_config_cmd in
   let c_compiler =
-    match String_map.find ocamlc_config "c_compiler" with
+    match String.Map.find ocamlc_config "c_compiler" with
     | Some c_comp -> c_comp ^ " " ^ get "ocamlc_cflags"
     | None -> get "bytecomp_c_compiler"
   in

@@ -4,11 +4,11 @@ module Dir : sig
   type t
 
   val path     : t -> Path.t
-  val files    : t -> String_set.t
+  val files    : t -> String.Set.t
   val file_paths    : t -> Path.Set.t
-  val sub_dirs : t -> t String_map.t
+  val sub_dirs : t -> t String.Map.t
   val sub_dir_paths : t -> Path.Set.t
-  val sub_dir_names : t -> String_set.t
+  val sub_dir_names : t -> String.Set.t
 
   (** Whether this directory is ignored by a [jbuild-ignore] file in
       one of its ancestor directories. *)

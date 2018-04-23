@@ -39,3 +39,6 @@ val longest : string list -> int
 val longest_map : 'a list -> f:('a -> string) -> int
 
 val exists : t -> f:(char -> bool) -> bool
+
+module Set : Set.S with type elt = t
+module Map : Map.S with type key = t

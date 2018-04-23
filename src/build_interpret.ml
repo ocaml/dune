@@ -144,7 +144,7 @@ let lib_deps =
       | Memo m -> loop m.t acc
       | Catch (t, _) -> loop t acc
   in
-  fun t -> loop (Build.repr t) String_map.empty
+  fun t -> loop (Build.repr t) String.Map.empty
 
 let targets =
   let rec loop : type a b. (a, b) t -> Target.t list -> Target.t list = fun t acc ->
@@ -208,7 +208,7 @@ module Rule = struct
           if Path.parent path <> dir then
             match loc with
             | None ->
-              Sexp.code_error "rule has targets in different directories"
+              Exn.code_error "rule has targets in different directories"
                 [ "targets", Sexp.To_sexp.list Path.sexp_of_t
                                (List.map targets ~f:Target.path)
                 ]

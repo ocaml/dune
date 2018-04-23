@@ -174,7 +174,7 @@ val record_lib_deps
   -> Jbuild.Lib_dep.t list
   -> ('a, 'a) t
 
-type lib_deps = lib_dep_kind String_map.t
+type lib_deps = lib_dep_kind String.Map.t
 
 val record_lib_deps_simple : lib_deps -> ('a, 'a) t
 

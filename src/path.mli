@@ -42,7 +42,7 @@ val compare : t -> t -> Ordering.t
 module Set : sig
   include Set.S with type elt = t
   val sexp_of_t : t Sexp.To_sexp.t
-  val of_string_set : String_set.t -> f:(string -> elt) -> t
+  val of_string_set : String.Set.t -> f:(string -> elt) -> t
 end
 
 module Map : Map.S with type key = t

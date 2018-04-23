@@ -26,7 +26,7 @@ type t =
   ; artifacts                        : Artifacts.t
   ; stanzas_to_consider_for_install  : (Path.t * Scope.t * Stanza.t) list
   ; cxx_flags                        : string list
-  ; vars                             : Action.Var_expansion.t String_map.t
+  ; vars                             : Action.Var_expansion.t String.Map.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
@@ -51,9 +51,9 @@ let installed_libs t = t.installed_libs
 let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
-let expand_var_no_root t var = String_map.find t.vars var
+let expand_var_no_root t var = String.Map.find t.vars var
 
-let expand_vars t ~scope ~dir ?(extra_vars=String_map.empty) s =
+let expand_vars t ~scope ~dir ?(extra_vars=String.Map.empty) s =
   String_with_vars.expand s ~f:(fun _loc -> function
     | "ROOT" -> Some (Path.reach ~from:dir t.context.build_dir)
     | "SCOPE_ROOT" ->
@@ -62,7 +62,7 @@ let expand_vars t ~scope ~dir ?(extra_vars=String_map.empty) s =
       Option.map ~f:(fun e -> Action.Var_expansion.to_string dir e)
         (match expand_var_no_root t var with
          | Some _ as x -> x
-         | None -> String_map.find extra_vars var))
+         | None -> String.Map.find extra_vars var))
 
 let resolve_program t ?hint bin =
   Artifacts.binary ?hint t.artifacts bin
@@ -185,7 +185,7 @@ let create
          | Words  x -> strings x
          | Prog_and_args x -> strings (x.prog :: x.args)))
     in
-    match String_map.of_list vars with
+    match String.Map.of_list vars with
     | Ok    x -> x
     | Error _ -> assert false
   in
@@ -251,7 +251,7 @@ let on_load_dir t ~dir ~f = Build_system.on_load_dir t.build_system ~dir ~f
 
 let source_files t ~src_path =
   match File_tree.find_dir t.file_tree src_path with
-  | None -> String_set.empty
+  | None -> String.Set.empty
   | Some dir -> File_tree.Dir.files dir
 
 module Libs = struct
@@ -421,18 +421,18 @@ module Action = struct
     ; (* Static deps from ${...} variables. For instance ${exe:...} *)
       mutable sdeps     : Pset.t
     ; (* Dynamic deps from ${...} variables. For instance ${read:...} *)
-      mutable ddeps     : (unit, Action.Var_expansion.t) Build.t String_map.t
+      mutable ddeps     : (unit, Action.Var_expansion.t) Build.t String.Map.t
     }
 
   let add_lib_dep acc lib kind =
-    acc.lib_deps <- String_map.add acc.lib_deps lib kind
+    acc.lib_deps <- String.Map.add acc.lib_deps lib kind
 
   let add_fail acc fail =
     acc.failures <- fail :: acc.failures;
     None
 
   let add_ddep acc ~key dep =
-    acc.ddeps <- String_map.add acc.ddeps key dep;
+    acc.ddeps <- String.Map.add acc.ddeps key dep;
     None
 
   let path_exp path = Action.Var_expansion.Paths   ([path], Concat)
@@ -458,9 +458,9 @@ module Action = struct
         ~map_exe ~extra_vars t =
     let acc =
       { failures  = []
-      ; lib_deps  = String_map.empty
+      ; lib_deps  = String.Map.empty
       ; sdeps     = Pset.empty
-      ; ddeps     = String_map.empty
+      ; ddeps     = String.Map.empty
       }
     in
     let open Action.Var_expansion in
@@ -550,7 +550,7 @@ module Action = struct
       | _ ->
         match expand_var_no_root sctx var with
         | Some _ as x -> x
-        | None -> String_map.find extra_vars var
+        | None -> String.Map.find extra_vars var
     in
     let t =
       U.partial_expand t ~dir ~map_exe ~f:(fun loc key ->
@@ -584,7 +584,7 @@ module Action = struct
   let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
     let open Action.Var_expansion in
     U.Partial.expand t ~dir ~map_exe ~f:(fun loc key ->
-      match String_map.find dynamic_expansions key with
+      match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
         let _, var = parse_bang key in
@@ -601,7 +601,7 @@ module Action = struct
         | "^" -> Some (Paths (deps_written_by_user, Split))
         | _ -> None)
 
-  let run sctx ?(extra_vars=String_map.empty)
+  let run sctx ?(extra_vars=String.Map.empty)
         t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
     : (Path.t list, Action.t) Build.t =
     let map_exe = map_exe sctx in
@@ -667,12 +667,12 @@ module Action = struct
       >>>
       Build.arr (fun paths -> ((), paths))
       >>>
-      let ddeps = String_map.to_list forms.ddeps in
+      let ddeps = String.Map.to_list forms.ddeps in
       Build.first (Build.all (List.map ddeps ~f:snd))
       >>^ (fun (vals, deps_written_by_user) ->
         let dynamic_expansions =
-          List.fold_left2 ddeps vals ~init:String_map.empty
-            ~f:(fun acc (var, _) value -> String_map.add acc var value)
+          List.fold_left2 ddeps vals ~init:String.Map.empty
+            ~f:(fun acc (var, _) value -> String.Map.add acc var value)
         in
         let unresolved =
           expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe
@@ -700,16 +700,16 @@ let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
   let open Build.O in
   let f = expand_vars t ~scope ~dir ?extra_vars in
   let parse ~loc:_ s = s in
-  match Ordered_set_lang.Unexpanded.files set ~f |> String_set.to_list with
+  match Ordered_set_lang.Unexpanded.files set ~f |> String.Set.to_list with
   | [] ->
     let set =
-      Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f
+      Ordered_set_lang.Unexpanded.expand set ~files_contents:String.Map.empty ~f
     in
     Build.return (Ordered_set_lang.String.eval set ~standard ~parse)
   | files ->
     let paths = List.map files ~f:(Path.relative dir) in
     Build.all (List.map paths ~f:Build.read_sexp)
     >>^ fun sexps ->
-    let files_contents = List.combine files sexps |> String_map.of_list_exn in
+    let files_contents = List.combine files sexps |> String.Map.of_list_exn in
     let set = Ordered_set_lang.Unexpanded.expand set ~files_contents ~f in
     Ordered_set_lang.String.eval set ~standard ~parse

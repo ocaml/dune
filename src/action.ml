@@ -852,7 +852,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     (match Path.kind path with
      | External _ ->
        (* Internally we make sure never to do that, and [Unexpanded.*expand] check that *)
-       Sexp.code_error
+       Exn.code_error
          "(mkdir ...) is not supported for paths outside of the workspace"
          [ "mkdir", Path.sexp_of_t path ]
      | Local path ->
@@ -890,18 +890,18 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
   | Merge_files_into (sources, extras, target) ->
     let lines =
       List.fold_left
-        ~init:(String_set.of_list extras)
+        ~init:(String.Set.of_list extras)
         ~f:(fun set source_path ->
           Path.to_string source_path
           |> Io.lines_of_file
-          |> String_set.of_list
-          |> String_set.union set
+          |> String.Set.of_list
+          |> String.Set.union set
         )
         sources
     in
     Io.write_lines
       (Path.to_string target)
-      (String_set.to_list lines);
+      (String.Set.to_list lines);
     Fiber.return ()
 
 and redirect outputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to =

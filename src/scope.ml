@@ -27,7 +27,7 @@ module DB = struct
       | Some scope -> scope
       | None ->
         if Path.is_root d || not (Path.is_local d) then
-          Sexp.code_error "Scope.DB.find_by_dir got an invalid path"
+          Exn.code_error "Scope.DB.find_by_dir got an invalid path"
             [ "dir"    , Path.sexp_of_t dir
             ; "context", Sexp.To_sexp.string t.context
             ];
@@ -41,7 +41,7 @@ module DB = struct
     match Scope_name_map.find t.by_name name with
     | Some x -> x
     | None ->
-      Sexp.code_error "Scope.DB.find_by_name"
+      Exn.code_error "Scope.DB.find_by_name"
         [ "name"   , Sexp.To_sexp.(option string) name
         ; "context", Sexp.To_sexp.string t.context
         ; "names",
@@ -60,7 +60,7 @@ module DB = struct
           Sexp.To_sexp.(pair (option string) Path.sexp_of_t)
             (scope.name, scope.root)
         in
-        Sexp.code_error "Scope.DB.create got two scopes with the same name"
+        Exn.code_error "Scope.DB.create got two scopes with the same name"
           [ "scope1", to_sexp scope1
           ; "scope2", to_sexp scope2
           ]
@@ -77,7 +77,7 @@ module DB = struct
           match lib.public with
           | None -> None
           | Some p -> Some (p.name, lib.scope_name))
-        |> String_map.of_list
+        |> String.Map.of_list
         |> function
         | Ok x -> x
         | Error (name, _, _) ->
@@ -99,14 +99,14 @@ module DB = struct
       Lib.DB.create ()
         ~parent:installed_libs
         ~resolve:(fun name ->
-          match String_map.find public_libs name with
+          match String.Map.find public_libs name with
           | None -> Not_found
           | Some scope_name ->
             let scope =
               Option.value_exn (Scope_name_map.find !by_name_cell scope_name)
             in
             Redirect (Some scope.db, name))
-        ~all:(fun () -> String_map.keys public_libs)
+        ~all:(fun () -> String.Map.keys public_libs)
     in
     let by_name =
       Scope_name_map.merge scopes_info_by_name libs_by_scope_name

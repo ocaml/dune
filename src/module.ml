@@ -14,8 +14,8 @@ module Name = struct
   let pp = Format.pp_print_string
   let pp_quote fmt x = Format.fprintf fmt "%S" x
 
-  module Set = String_set
-  module Map = String_map
+  module Set = String.Set
+  module Map = String.Map
   module Top_closure = Top_closure.String
 end
 

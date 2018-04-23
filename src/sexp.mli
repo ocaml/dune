@@ -2,8 +2,6 @@ open Import
 
 include module type of struct include Usexp end with module Loc := Usexp.Loc
 
-val code_error : string -> (string * t) list -> _
-
 val load : fname:string -> mode:'a Parser.Mode.t -> 'a
 val load_many_as_one : fname:string -> Ast.t
 
@@ -29,10 +27,10 @@ module type Combinators = sig
   val array      : 'a t -> 'a array          t
   val option     : 'a t -> 'a option         t
 
-  val string_set : String_set.t            t
+  val string_set : String.Set.t            t
   (** [atom_set] is a conversion to/from a set of strings representing atoms. *)
 
-  val string_map : 'a t -> 'a String_map.t   t
+  val string_map : 'a t -> 'a String.Map.t   t
   (** [atom_map conv]: given a conversion [conv] to/from ['a], returns
      a conversion to/from a map where the keys are atoms and the
      values are of type ['a]. *)

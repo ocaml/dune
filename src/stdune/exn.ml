@@ -1,5 +1,7 @@
 type t = exn
 
+exception Code_error of Usexp.t
+
 external raise         : exn -> _ = "%raise"
 external raise_notrace : exn -> _ = "%raise_notrace"
 external reraise       : exn -> _ = "%reraise"
@@ -10,6 +12,13 @@ let protectx x ~f ~finally =
   | exception e -> finally x; raise e
 
 let protect ~f ~finally = protectx () ~f ~finally
+
+let code_error message vars =
+  Code_error
+    (Usexp.List (Usexp.atom_or_quoted_string message
+                 :: List.map vars ~f:(fun (name, value) ->
+                   Usexp.List [Usexp.atom_or_quoted_string name; value])))
+  |> raise
 
 include
   ((struct

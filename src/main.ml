@@ -5,7 +5,7 @@ let () = Inline_tests.linkme
 
 type setup =
   { build_system : Build_system.t
-  ; stanzas      : (Path.t * Jbuild.Scope_info.t * Jbuild.Stanzas.t) list String_map.t
+  ; stanzas      : (Path.t * Jbuild.Scope_info.t * Jbuild.Stanzas.t) list String.Map.t
   ; contexts     : Context.t list
   ; packages     : Package.t Package.Name.Map.t
   ; file_tree    : File_tree.t
@@ -122,13 +122,13 @@ let external_lib_deps ?log ~packages () =
          | Ok path -> Path.append context.build_dir path
          | Error () -> die "Unknown package %S" (Package.Name.to_string pkg))
      in
-     let stanzas = Option.value_exn (String_map.find setup.stanzas "default") in
+     let stanzas = Option.value_exn (String.Map.find setup.stanzas "default") in
      let internals = Jbuild.Stanzas.lib_names stanzas in
      Path.Map.map
        (Build_system.all_lib_deps setup.build_system
           ~request:(Build.paths install_files))
-       ~f:(String_map.filteri ~f:(fun name _ ->
-         not (String_set.mem internals name))))
+       ~f:(String.Map.filteri ~f:(fun name _ ->
+         not (String.Set.mem internals name))))
 
 let ignored_during_bootstrap =
   Path.Set.of_list

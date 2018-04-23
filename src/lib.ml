@@ -600,7 +600,7 @@ let already_in_table (info : Info.t) name x =
       List [Sexp.unsafe_atom_of_string "Hidden";
             Path.sexp_of_t path; Sexp.atom reason]
   in
-  Sexp.code_error
+  Exn.code_error
     "Lib_db.DB: resolver returned name that's already in the table"
     [ "name"            , Sexp.atom name
     ; "returned_lib"    , to_sexp (info.src_dir, name)
@@ -768,13 +768,13 @@ and resolve_complex_deps db deps ~allow_private_deps ~stack =
           let res, src_fn =
             match
               List.find_map choices ~f:(fun { required; forbidden; file } ->
-                if String_set.exists forbidden
+                if String.Set.exists forbidden
                      ~f:(available_internal db ~stack) then
                   None
                 else
                   match
                     let deps =
-                      String_set.fold required ~init:[] ~f:(fun x acc ->
+                      String.Set.fold required ~init:[] ~f:(fun x acc ->
                         (Loc.none, x) :: acc)
                     in
                     resolve_simple_deps ~allow_private_deps db deps ~stack
@@ -852,11 +852,11 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
   (deps, pps, resolved_selects)
 
 and closure_with_overlap_checks db ts ~stack =
-  let visited = ref String_map.empty in
+  let visited = ref String.Map.empty in
   let res = ref [] in
   let orig_stack = stack in
   let rec loop t ~stack =
-    match String_map.find !visited t.name with
+    match String.Map.find !visited t.name with
     | Some (t', stack') ->
       if t.unique_id = t'.unique_id then
         Ok ()
@@ -867,7 +867,7 @@ and closure_with_overlap_checks db ts ~stack =
                            ; lib2 = (t , req_by stack )
                            }))
     | None ->
-      visited := String_map.add !visited t.name (t, stack);
+      visited := String.Map.add !visited t.name (t, stack);
       (match db with
        | None -> Ok ()
        | Some db ->
@@ -984,7 +984,7 @@ module DB = struct
             [ p.name   , Found info
             ; conf.name, Redirect (None, p.name)
             ])
-      |> String_map.of_list
+      |> String.Map.of_list
       |> function
       | Ok x -> x
       | Error (name, _, _) ->
@@ -1008,10 +1008,10 @@ module DB = struct
     in
     create () ?parent
       ~resolve:(fun name ->
-        match String_map.find map name with
+        match String.Map.find map name with
         | None   -> Not_found
         | Some x -> x)
-      ~all:(fun () -> String_map.keys map)
+      ~all:(fun () -> String.Map.keys map)
 
   let create_from_findlib ?(external_lib_deps_mode=false) findlib =
     create ()
@@ -1061,7 +1061,7 @@ module DB = struct
   let get_compile_info t ?(allow_overlaps=false) name =
     match find_even_when_hidden t name with
     | None ->
-      Sexp.code_error "Lib.DB.get_compile_info got library that doesn't exist"
+      Exn.code_error "Lib.DB.get_compile_info got library that doesn't exist"
         [ "name", Sexp.To_sexp.string name ]
     | Some lib ->
       let t = Option.some_if (not allow_overlaps) t in
@@ -1110,8 +1110,8 @@ end
 
 module Meta = struct
   let to_names ts =
-    List.fold_left ts ~init:String_set.empty ~f:(fun acc t ->
-      String_set.add acc t.name)
+    List.fold_left ts ~init:String.Set.empty ~f:(fun acc t ->
+      String.Set.add acc t.name)
 
   (* For the deprecated method, we need to put all the runtime
      dependencies of the transitive closure.

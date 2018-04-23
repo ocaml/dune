@@ -219,7 +219,7 @@ module Gen(P : Install_params) = struct
   let install_file package_path package entries =
     let entries =
       let files = SC.source_files sctx ~src_path:Path.root in
-      String_set.fold files ~init:entries ~f:(fun fn acc ->
+      String.Set.fold files ~init:entries ~f:(fun fn acc ->
         if is_odig_doc_file fn then
           Install.Entry.make Doc (Path.relative ctx.build_dir fn) :: acc
         else

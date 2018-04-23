@@ -20,7 +20,7 @@ end
 
 (** Represent the parsed but uninterpreted output of [ocamlc -config] *)
 module Vars : sig
-  type t = string Map.Make(String).t
+  type t = string String.Map.t
 
   (** Parse the output of [ocamlc -config] given as a list of lines. *)
   val of_lines : string list -> (t, string) Result.t

@@ -28,6 +28,8 @@ module Loc : sig
     { start : Lexing.position
     ; stop  : Lexing.position
     }
+
+  val in_file : string -> t
 end
 
 (** The S-expression type *)

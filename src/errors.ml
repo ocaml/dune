@@ -12,8 +12,5 @@ let kerrf fmt ~f =
        f s)
     err_ppf fmt
 
-let code_errorf fmt =
-  kerrf fmt ~f:(fun s -> Stdune.Exn.code_error s [])
-
 let die fmt =
   kerrf fmt ~f:(fun s -> raise (Fatal_error s))

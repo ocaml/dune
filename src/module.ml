@@ -31,7 +31,8 @@ module File = struct
 
   let to_ocaml t =
     match t.syntax with
-    | OCaml -> code_errorf "to_ocaml: can only convert reason Files" ()
+    | OCaml -> Exn.code_error "to_ocaml: can only convert reason Files"
+                 ["t.name", Sexp.To_sexp.string t.name]
     | Reason ->
       { syntax = OCaml
       ; name =
@@ -40,7 +41,9 @@ module File = struct
           (match Filename.extension t.name with
            | ".re" -> ".ml"
            | ".rei" -> ".mli"
-           | _ -> code_errorf "to_ocaml: unrecognized extension %s" ext ())
+           | _ -> Exn.code_error "to_ocaml: unrecognized extension"
+                    [ "name", Sexp.To_sexp.string t.name
+                    ; "ext", Sexp.To_sexp.string ext ])
       }
 end
 

@@ -78,7 +78,7 @@ module Local = struct
 
   let parent = function
     | "" ->
-      code_errorf "Path.Local.parent called on the root"
+      Exn.code_error "Path.Local.parent called on the root" []
     | t ->
       match String.rindex_from t (String.length t - 1) '/' with
       | exception Not_found -> ""
@@ -86,7 +86,7 @@ module Local = struct
 
   let basename = function
     | "" ->
-      code_errorf "Path.Local.basename called on the root"
+      Exn.code_error "Path.Local.basename called on the root" []
     | t ->
       let len = String.length t in
       match String.rindex_from t (len - 1) '/' with

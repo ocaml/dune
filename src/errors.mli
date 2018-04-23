@@ -22,9 +22,6 @@ exception Already_reported
 (** Raise a [Fatal_error] exception *)
 val die : ('a, Format.formatter, unit, 'b) format4 -> 'a
 
-(** Raise a [Code_error] exception *)
-val code_errorf : ('a, Format.formatter, unit, 'b) format4 -> 'a
-
 (**/**)
 (* Referenced in Ansi_color and Report_error *)
 val err_buf : Buffer.t

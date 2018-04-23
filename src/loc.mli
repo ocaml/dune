@@ -3,6 +3,8 @@ type t = Usexp.Loc.t =
   ; stop  : Lexing.position
   }
 
+val sexp_of_t : t -> Usexp.t
+
 val of_lexbuf : Lexing.lexbuf -> t
 
 exception Error of t * string

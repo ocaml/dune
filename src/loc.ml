@@ -5,6 +5,28 @@ type t = Usexp.Loc.t =
   ; stop  : Lexing.position
   }
 
+(* TODO get rid of all this stuff once this parsing code moves to Usexp and
+   there will be no circular dependency *)
+let int n = Usexp.Atom (Usexp.Atom.of_int n)
+let string = Usexp.atom_or_quoted_string
+let record l =
+  let open Usexp in
+  List (List.map l ~f:(fun (n, v) -> List [Atom(Atom.of_string n); v]))
+
+let sexp_of_position_no_file (p : Lexing.position) =
+  record
+    [ "pos_lnum", int p.pos_lnum
+    ; "pos_bol", int p.pos_bol
+    ; "pos_cnum", int p.pos_cnum
+    ]
+
+let sexp_of_t t =
+  record (* TODO handle when pos_fname differs *)
+    [ "pos_fname", string t.start.pos_fname
+    ; "start", sexp_of_position_no_file t.start
+    ; "stop", sexp_of_position_no_file t.stop
+    ]
+
 let of_lexbuf lb =
   { start = Lexing.lexeme_start_p lb
   ; stop  = Lexing.lexeme_end_p   lb

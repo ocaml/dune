@@ -40,5 +40,9 @@ val longest_map : 'a list -> f:('a -> string) -> int
 
 val exists : t -> f:(char -> bool) -> bool
 
+(** [maybe_quoted s] is [s] if [s] doesn't need escaping according to OCaml
+    lexing conventions and [sprintf "%S" s] otherwise. *)
+val maybe_quoted : t -> t
+
 module Set : Set.S with type elt = t
 module Map : Map.S with type key = t

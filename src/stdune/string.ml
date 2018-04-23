@@ -175,5 +175,13 @@ let exists s ~f =
   with Exit ->
     true
 
+let maybe_quoted s =
+  let escaped = escaped s in
+  if s == escaped || s = escaped then
+    s
+  else
+    Printf.sprintf {|"%s"|} escaped
+
+
 module Set = Set.Make(T)
 module Map = Map.Make(T)

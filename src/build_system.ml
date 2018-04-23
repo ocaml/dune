@@ -519,7 +519,7 @@ let add_spec t fn spec ~copy_source =
          As a result, the rule is currently ignored, however this will become an error \
          in the future.\n\
          %t"
-        (maybe_quoted (Path.basename fn))
+        (String.maybe_quoted (Path.basename fn))
         (fun ppf ->
            match rule.mode with
            | Not_a_rule_stanza ->

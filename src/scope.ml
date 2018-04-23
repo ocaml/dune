@@ -27,7 +27,7 @@ module DB = struct
       | Some scope -> scope
       | None ->
         if Path.is_root d || not (Path.is_local d) then
-          Sexp.code_error "Scope.DB.find_by_dir got an invalid path"
+          Exn.code_error "Scope.DB.find_by_dir got an invalid path"
             [ "dir"    , Path.sexp_of_t dir
             ; "context", Sexp.To_sexp.string t.context
             ];
@@ -41,7 +41,7 @@ module DB = struct
     match Scope_name_map.find t.by_name name with
     | Some x -> x
     | None ->
-      Sexp.code_error "Scope.DB.find_by_name"
+      Exn.code_error "Scope.DB.find_by_name"
         [ "name"   , Sexp.To_sexp.(option string) name
         ; "context", Sexp.To_sexp.string t.context
         ; "names",
@@ -60,7 +60,7 @@ module DB = struct
           Sexp.To_sexp.(pair (option string) Path.sexp_of_t)
             (scope.name, scope.root)
         in
-        Sexp.code_error "Scope.DB.create got two scopes with the same name"
+        Exn.code_error "Scope.DB.create got two scopes with the same name"
           [ "scope1", to_sexp scope1
           ; "scope2", to_sexp scope2
           ]

@@ -596,7 +596,7 @@ module Sub_system_info = struct
     let () =
       match Sub_system_name.Table.get all name with
       | Some _ ->
-        Sexp.code_error "Sub_system_info.register: already registered"
+        Exn.code_error "Sub_system_info.register: already registered"
           [ "name", Sexp.To_sexp.string (Sub_system_name.to_string name) ];
       | None ->
         Sub_system_name.Table.set all ~key:name ~data:(Some (module M : S));

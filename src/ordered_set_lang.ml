@@ -235,7 +235,7 @@ module Unexpanded = struct
           match String.Map.find files_contents fn with
           | Some x -> x
           | None ->
-            Sexp.code_error
+            Exn.code_error
               "Ordered_set_lang.Unexpanded.expand"
               [ "included-file", Quoted_string fn
               ; "files", Sexp.To_sexp.(list string)

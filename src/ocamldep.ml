@@ -13,7 +13,7 @@ module Dep_graph = struct
     match Module.Name.Map.find t.per_module m.name with
     | Some x -> x
     | None ->
-      Sexp.code_error "Ocamldep.Dep_graph.deps_of"
+      Exn.code_error "Ocamldep.Dep_graph.deps_of"
         [ "dir", Path.sexp_of_t t.dir
         ; "modules", Sexp.To_sexp.(list Module.Name.t)
                        (Module.Name.Map.keys t.per_module)

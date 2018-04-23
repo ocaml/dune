@@ -290,7 +290,7 @@ let reach t ~from =
   match is_local t, is_local from with
   | false, _ -> t
   | true, false ->
-    Sexp.code_error "Path.reach called with invalid combination"
+    Exn.code_error "Path.reach called with invalid combination"
       [ "t"   , sexp_of_t t
       ; "from", sexp_of_t from
       ]
@@ -300,7 +300,7 @@ let reach_for_running t ~from =
   match is_local t, is_local from with
   | false, _ -> t
   | true, false ->
-    Sexp.code_error "Path.reach_for_running called with invalid combination"
+    Exn.code_error "Path.reach_for_running called with invalid combination"
       [ "t"   , sexp_of_t t
       ; "from", sexp_of_t from
       ]
@@ -325,7 +325,7 @@ let is_descendant t ~of_ =
 
 let append a b =
   if not (is_local b) then
-    Sexp.code_error "Path.append called with non-local second path"
+    Exn.code_error "Path.append called with non-local second path"
       [ "a", sexp_of_t a
       ; "b", sexp_of_t b
       ];
@@ -391,7 +391,7 @@ let drop_build_context t =
 
 let drop_build_context_exn t =
   match extract_build_context t with
-  | None -> Sexp.code_error "Path.drop_build_context_exn" [ "t", sexp_of_t t ]
+  | None -> Exn.code_error "Path.drop_build_context_exn" [ "t", sexp_of_t t ]
   | Some (_, t) -> t
 
 let drop_optional_build_context t =
@@ -424,7 +424,7 @@ let explode_exn t =
   else if is_local t then
     String.split t ~on:'/'
   else
-    Sexp.code_error "Path.explode_exn"
+    Exn.code_error "Path.explode_exn"
       ["path", Sexp.atom_or_quoted_string t]
 
 let exists t = Sys.file_exists (to_string t)
@@ -456,7 +456,7 @@ let extend_basename t ~suffix = t ^ suffix
 
 let insert_after_build_dir_exn =
   let error a b =
-    Sexp.code_error
+    Exn.code_error
       "Path.insert_after_build_dir_exn"
       [ "path"  , Sexp.unsafe_atom_of_string a
       ; "insert", Sexp.unsafe_atom_of_string b

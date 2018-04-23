@@ -2,8 +2,6 @@ open Import
 
 include module type of struct include Usexp end with module Loc := Usexp.Loc
 
-val code_error : string -> (string * t) list -> _
-
 val load : fname:string -> mode:'a Parser.Mode.t -> 'a
 val load_many_as_one : fname:string -> Ast.t
 

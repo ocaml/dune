@@ -1448,7 +1448,7 @@ let get_collector t ~dir =
     collector
   | Failed_to_load -> raise Already_reported
   | Loaded _ | Forward _ ->
-    Sexp.code_error
+    Exn.code_error
       (if Path.is_in_source_tree dir then
          "Build_system.get_collector called on source directory"
        else if dir = Path.build_dir then
@@ -1477,7 +1477,7 @@ let prefix_rules t prefix ~f =
   begin match Build_interpret.targets prefix with
   | [] -> ()
   | targets ->
-    Sexp.code_error "Build_system.prefix_rules' prefix contains targets"
+    Exn.code_error "Build_system.prefix_rules' prefix contains targets"
       ["targets", Path.Set.sexp_of_t (Build_interpret.Target.paths targets)]
   end;
   let prefix =

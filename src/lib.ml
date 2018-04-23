@@ -600,7 +600,7 @@ let already_in_table (info : Info.t) name x =
       List [Sexp.unsafe_atom_of_string "Hidden";
             Path.sexp_of_t path; Sexp.atom reason]
   in
-  Sexp.code_error
+  Exn.code_error
     "Lib_db.DB: resolver returned name that's already in the table"
     [ "name"            , Sexp.atom name
     ; "returned_lib"    , to_sexp (info.src_dir, name)
@@ -1061,7 +1061,7 @@ module DB = struct
   let get_compile_info t ?(allow_overlaps=false) name =
     match find_even_when_hidden t name with
     | None ->
-      Sexp.code_error "Lib.DB.get_compile_info got library that doesn't exist"
+      Exn.code_error "Lib.DB.get_compile_info got library that doesn't exist"
         [ "name", Sexp.To_sexp.string name ]
     | Some lib ->
       let t = Option.some_if (not allow_overlaps) t in

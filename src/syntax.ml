@@ -26,14 +26,14 @@ module Versioned_parser = struct
 
   let make l =
     if List.is_empty l then
-      Sexp.code_error "Syntax.Versioned_parser.make got empty list" [];
+      Exn.code_error "Syntax.Versioned_parser.make got empty list" [];
     match
       List.map l ~f:(fun ((major, minor), p) -> (major, (minor, p)))
       |> Int_map.of_list
     with
     | Ok x -> x
     | Error _ ->
-      Sexp.code_error
+      Exn.code_error
         "Syntax.Versioned_parser.make"
         [ "versions", Sexp.To_sexp.list Version.sexp_of_t (List.map l ~f:fst) ]
 

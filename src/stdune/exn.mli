@@ -1,5 +1,11 @@
 (** Exceptions *)
 
+(** An programming error, that should be reported upstream. The error message
+    shouldn't try to be developer friendly rather than user friendly. *)
+exception Code_error of Usexp.t
+
+val code_error : string -> (string * Usexp.t) list -> _
+
 type t = exn
 
 external raise         : exn -> _ = "%raise"

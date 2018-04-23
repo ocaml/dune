@@ -208,7 +208,7 @@ module Rule = struct
           if Path.parent path <> dir then
             match loc with
             | None ->
-              Sexp.code_error "rule has targets in different directories"
+              Exn.code_error "rule has targets in different directories"
                 [ "targets", Sexp.To_sexp.list Path.sexp_of_t
                                (List.map targets ~f:Target.path)
                 ]

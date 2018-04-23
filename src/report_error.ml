@@ -49,14 +49,14 @@ let report_with_backtrace exn =
           else
             Format.fprintf ppf "%s\n" (String.capitalize msg)
       }
-    | Code_error msg ->
+    | Stdune.Exn.Code_error sexp ->
       { p with
         backtrace = true
       ; pp = fun ppf ->
           Format.fprintf ppf "@{<error>Internal error, please report upstream \
                               including the contents of _build/log.@}\n\
-                              Description: %s\n"
-            msg
+                              Description: %a\n"
+            Usexp.pp sexp
       }
     | Unix.Unix_error (err, func, fname) ->
       { p with pp = fun ppf ->

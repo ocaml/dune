@@ -3,12 +3,6 @@ open Import
 include (Usexp : module type of struct include Usexp end
          with module Loc := Usexp.Loc)
 
-let code_error message vars =
-  code_errorf "%a" pp
-    (List (Usexp.atom_or_quoted_string message
-           :: List.map vars ~f:(fun (name, value) ->
-             List [Usexp.atom_or_quoted_string name; value])))
-
 let buf_len = 65_536
 
 let load ~fname ~mode =

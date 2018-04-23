@@ -1,4 +1,4 @@
-open Import
+open Stdune
 
 include (Usexp : module type of struct include Usexp end
          with module Loc := Usexp.Loc)
@@ -135,7 +135,7 @@ module Of_sexp = struct
     (Ast.loc sexp, f sexp)
 
   let of_sexp_error ?hint sexp str = raise (Of_sexp (Ast.loc sexp, str, hint))
-  let of_sexp_errorf ?hint sexp fmt = ksprintf (of_sexp_error ?hint sexp) fmt
+  let of_sexp_errorf ?hint sexp fmt = Printf.ksprintf (of_sexp_error ?hint sexp) fmt
 
   let raw x = x
 
@@ -187,7 +187,7 @@ module Of_sexp = struct
     match String.Map.of_list (list (pair string f) sexp) with
     | Ok x -> x
     | Error (key, _v1, _v2) ->
-      of_sexp_error sexp (sprintf "key %S present multiple times" key)
+      of_sexp_error sexp (Printf.sprintf "key %S present multiple times" key)
 
   let string_hashtbl f sexp =
     let map = string_map f sexp in

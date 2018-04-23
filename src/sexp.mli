@@ -1,4 +1,4 @@
-open Import
+open Stdune
 
 include module type of struct include Usexp end with module Loc := Usexp.Loc
 

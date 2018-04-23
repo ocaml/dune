@@ -122,13 +122,20 @@ module Of_sexp = struct
     | Quoted_string of Loc.t * string
     | List of Loc.t * ast list
 
+  type hint =
+    { on: string
+    ; candidates: string list
+    }
+
+  exception Of_sexp of Loc.t * string * hint option
+
   type 'a t = ast -> 'a
 
   let located f sexp =
     (Ast.loc sexp, f sexp)
 
-  let of_sexp_error sexp str = raise (Loc.Error (Ast.loc sexp, str))
-  let of_sexp_errorf sexp fmt = ksprintf (of_sexp_error sexp) fmt
+  let of_sexp_error ?hint sexp str = raise (Of_sexp (Ast.loc sexp, str, hint))
+  let of_sexp_errorf ?hint sexp fmt = ksprintf (of_sexp_error ?hint sexp) fmt
 
   let raw x = x
 
@@ -338,8 +345,8 @@ module Of_sexp = struct
         | List (_, s :: _) -> s
         | _ -> assert false
       in
-      of_sexp_errorf name_sexp
-        "Unknown field %s%s" name (hint name state.known)
+      of_sexp_errorf ~hint:({ on = name ; candidates = state.known})
+        name_sexp "Unknown field %s" name
 
   type ('a, 'b) rest =
     | No_rest : ('a, 'a) rest
@@ -413,11 +420,11 @@ module Of_sexp = struct
     | Some cstr -> cstr
     | None ->
       of_sexp_errorf sexp
-        "Unknown constructor %s%s" name
-        (hint
-           (String.uncapitalize name)
-           (List.map cstrs ~f:(fun c ->
-              String.uncapitalize (C.name c))))
+        ~hint:{ on = String.uncapitalize name
+              ; candidates = List.map cstrs ~f:(fun c ->
+                  String.uncapitalize (C.name c))
+              }
+        "Unknown constructor %s" name
 
   let sum cstrs sexp =
     match sexp with
@@ -447,9 +454,8 @@ module Of_sexp = struct
       | Some (_, value) -> value
       | None ->
         of_sexp_errorf sexp
-          "Unknown value %s%s" s
-          (hint
-             (String.uncapitalize s)
-             (List.map cstrs ~f:(fun (name, _) ->
-                String.uncapitalize name)))
+          ~hint:{ on = String.uncapitalize s
+                ; candidates =List.map cstrs ~f:(fun (name, _) ->
+                    String.uncapitalize name) }
+          "Unknown value %s" s
 end

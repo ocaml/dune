@@ -65,10 +65,17 @@ module Of_sexp : sig
     | Quoted_string of Loc.t * string
     | List of Loc.t * ast list
 
+  type hint =
+    { on: string
+    ; candidates: string list
+    }
+
+  exception Of_sexp of Loc.t * string * hint option
+
   include Combinators with type 'a t = Ast.t -> 'a
 
-  val of_sexp_error  : Ast.t -> string -> _
-  val of_sexp_errorf : Ast.t -> ('a, unit, string, 'b) format4 -> 'a
+  val of_sexp_error  : ?hint:hint -> Ast.t -> string -> _
+  val of_sexp_errorf : ?hint:hint -> Ast.t -> ('a, unit, string, 'b) format4 -> 'a
 
   val located : 'a t -> (Loc.t * 'a) t
 

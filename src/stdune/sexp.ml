@@ -1,7 +1,4 @@
-open Stdune
-
-include (Usexp : module type of struct include Usexp end
-         with module Loc := Usexp.Loc)
+include Usexp
 
 let buf_len = 65_536
 
@@ -137,6 +134,9 @@ module Of_sexp = struct
   let of_sexp_error ?hint sexp str = raise (Of_sexp (Ast.loc sexp, str, hint))
   let of_sexp_errorf ?hint sexp fmt = Printf.ksprintf (of_sexp_error ?hint sexp) fmt
 
+  let of_sexp_errorf_loc loc fmt =
+    Printf.ksprintf (fun s -> raise (Of_sexp (loc, s, None))) fmt
+
   let raw x = x
 
   let unit = function
@@ -262,14 +262,15 @@ module Of_sexp = struct
         match
           Name_map.values parsed
           |> List.map ~f:(fun f -> Ast.loc f.entry)
-          |> List.sort ~compare:(fun a b -> compare a.Loc.start.pos_cnum b.start.pos_cnum)
+          |> List.sort ~compare:(fun a b ->
+            Int.compare a.Loc.start.pos_cnum b.start.pos_cnum)
         with
         | [] -> state.loc
         | first :: l ->
           let last = List.fold_left l ~init:first ~f:(fun _ x -> x) in
           { first with stop = last.stop }
       in
-      Loc.fail loc "%s" msg
+      of_sexp_errorf_loc loc "%s" msg
 
   module Short_syntax = struct
     type 'a t =
@@ -279,8 +280,7 @@ module Of_sexp = struct
 
     let parse t entry name =
       match t with
-      | Not_allowed ->
-        Loc.fail (Ast.loc entry) "field %s needs a value" name
+      | Not_allowed -> of_sexp_errorf entry "field %s needs a value" name
       | This    x -> x
       | Located f -> f (Ast.loc entry)
   end
@@ -297,7 +297,7 @@ module Of_sexp = struct
       match default with
       | Some v -> (v, add_known name state)
       | None ->
-        Loc.fail state.loc "field %s missing" name
+        of_sexp_errorf_loc state.loc "field %s missing" name
 
   let field_o name ?(short=Short_syntax.Not_allowed) value_of_sexp state =
     match Name_map.find state.unparsed name with

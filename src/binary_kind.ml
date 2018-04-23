@@ -1,3 +1,5 @@
+open Stdune
+
 type t =
   | Exe
   | Object

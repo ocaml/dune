@@ -1,5 +1,3 @@
-open Stdune
-
 include module type of struct include Usexp end with module Loc := Usexp.Loc
 
 val load : fname:string -> mode:'a Parser.Mode.t -> 'a
@@ -58,6 +56,8 @@ module To_sexp : sig
 
   val record_fields : field list t
 end with type sexp := t
+
+module Loc = Usexp.Loc
 
 module Of_sexp : sig
   type ast = Ast.t =

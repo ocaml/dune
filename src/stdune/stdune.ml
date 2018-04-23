@@ -18,6 +18,7 @@ module Set        = Set
 module Staged     = Staged
 module String     = String
 module Char       = Char
+module Sexp       = Sexp
 
 external reraise : exn -> _ = "%reraise"
 

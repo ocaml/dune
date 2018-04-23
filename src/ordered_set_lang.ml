@@ -215,13 +215,13 @@ module Unexpanded = struct
       | Element _
       | Special _ -> acc
       | Include fn ->
-        String_set.add acc (f fn)
+        String.Set.add acc (f fn)
       | Union l ->
         List.fold_left l ~init:acc ~f:loop
       | Diff (l, r) ->
         loop (loop acc l) r
     in
-    loop String_set.empty t.ast
+    loop String.Set.empty t.ast
 
   let expand t ~files_contents ~f  =
     let rec expand (t : ast) : ast_expanded =

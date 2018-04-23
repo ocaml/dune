@@ -22,7 +22,7 @@ val create
 
 type extra_sub_directories_to_keep =
   | All
-  | These of String_set.t
+  | These of String.Set.t
 
 (** Set the rule generators callback. There must be one callback per
    build context name.

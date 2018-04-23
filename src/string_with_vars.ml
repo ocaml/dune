@@ -97,7 +97,7 @@ let iter t ~f = List.iter t.items ~f:(function
                     | Text _ -> ()
                     | Var (_, v) -> f t.loc v)
 
-let vars t = fold t ~init:String_set.empty ~f:(fun acc _ x -> String_set.add acc x)
+let vars t = fold t ~init:String.Set.empty ~f:(fun acc _ x -> String.Set.add acc x)
 
 let string_of_var syntax v =
   match syntax with

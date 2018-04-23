@@ -29,7 +29,7 @@ module type Combinators = sig
   val array      : 'a t -> 'a array          t
   val option     : 'a t -> 'a option         t
 
-  val string_set : String_set.t            t
+  val string_set : String.Set.t            t
   (** [atom_set] is a conversion to/from a set of strings representing atoms. *)
 
   val string_map : 'a t -> 'a String_map.t   t

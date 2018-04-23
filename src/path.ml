@@ -59,7 +59,7 @@ module Local = struct
 
   let compare = String.compare
 
-  module Set = String_set
+  module Set = String.Set
 
   let to_list =
     let rec loop t acc i j =
@@ -221,8 +221,8 @@ type t = string
 let compare = String.compare
 
 module Set = struct
-  include String_set
-  let sexp_of_t t = Sexp.To_sexp.(list string) (String_set.to_list t)
+  include String.Set
+  let sexp_of_t t = Sexp.To_sexp.(list string) (String.Set.to_list t)
   let of_string_set = map
 end
 

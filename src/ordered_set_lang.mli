@@ -59,7 +59,7 @@ module Unexpanded : sig
   val field : ?default:t -> string -> t Sexp.Of_sexp.record_parser
 
   (** List of files needed to expand this set *)
-  val files : t -> f:(String_with_vars.t -> string) -> String_set.t
+  val files : t -> f:(String_with_vars.t -> string) -> String.Set.t
 
   (** Expand [t] using with the given file contents. [file_contents] is a map from
       filenames to their parsed contents. Every [(:include fn)] in [t] is replaced by

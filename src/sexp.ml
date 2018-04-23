@@ -77,7 +77,7 @@ module type Combinators = sig
   val list       : 'a t -> 'a list           t
   val array      : 'a t -> 'a array          t
   val option     : 'a t -> 'a option         t
-  val string_set : String_set.t            t
+  val string_set : String.Set.t              t
   val string_map : 'a t -> 'a String_map.t   t
   val string_hashtbl : 'a t -> (string, 'a) Hashtbl.t t
 end
@@ -96,7 +96,7 @@ module To_sexp = struct
   let option f = function
     | None -> List []
     | Some x -> List [f x]
-  let string_set set = list atom (String_set.to_list set)
+  let string_set set = list atom (String.Set.to_list set)
   let string_map f map = list (pair atom f) (String_map.to_list map)
   let record l =
     List (List.map l ~f:(fun (n, v) -> List [Atom(Atom.of_string n); v]))
@@ -181,7 +181,7 @@ module Of_sexp = struct
     | List (_, [x]) -> Some (f x)
     | sexp -> of_sexp_error sexp "S-expression of the form () or (_) expected"
 
-  let string_set sexp = String_set.of_list (list string sexp)
+  let string_set sexp = String.Set.of_list (list string sexp)
   let string_map f sexp =
     match String_map.of_list (list (pair string f) sexp) with
     | Ok x -> x

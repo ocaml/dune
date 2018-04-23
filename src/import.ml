@@ -10,7 +10,6 @@ let ksprintf = Printf.ksprintf
 
 let initial_cwd = Sys.getcwd ()
 
-module String_set = Set.Make(String)
 module String_map = struct
   include Map.Make(String)
 

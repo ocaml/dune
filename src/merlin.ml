@@ -141,8 +141,8 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
             ]
         in
         dot_merlin
-        |> String_set.of_list
-        |> String_set.to_list
+        |> String.Set.of_list
+        |> String.Set.to_list
         |> List.map ~f:(Printf.sprintf "%s\n")
         |> String.concat ~sep:"")
       >>>

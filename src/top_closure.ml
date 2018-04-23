@@ -47,4 +47,4 @@ module Make(Keys : Keys) = struct
 end
 
 module Int    = Make(Int_set)
-module String = Make(String_set)
+module String = Make(String.Set)

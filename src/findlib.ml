@@ -311,13 +311,13 @@ let root_packages t =
       |> Array.to_list
       |> List.filter ~f:(fun name ->
         Path.exists (Path.relative dir (name ^ "/META"))))
-    |> String_set.of_list
+    |> String.Set.of_list
   in
   let pkgs =
-    String_set.union pkgs
-      (String_set.of_list (String_map.keys t.builtins))
+    String.Set.union pkgs
+      (String.Set.of_list (String_map.keys t.builtins))
   in
-  String_set.to_list pkgs
+  String.Set.to_list pkgs
 
 let load_all_packages t =
   List.iter (root_packages t) ~f:(fun pkg ->

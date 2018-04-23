@@ -768,13 +768,13 @@ and resolve_complex_deps db deps ~allow_private_deps ~stack =
           let res, src_fn =
             match
               List.find_map choices ~f:(fun { required; forbidden; file } ->
-                if String_set.exists forbidden
+                if String.Set.exists forbidden
                      ~f:(available_internal db ~stack) then
                   None
                 else
                   match
                     let deps =
-                      String_set.fold required ~init:[] ~f:(fun x acc ->
+                      String.Set.fold required ~init:[] ~f:(fun x acc ->
                         (Loc.none, x) :: acc)
                     in
                     resolve_simple_deps ~allow_private_deps db deps ~stack
@@ -1110,8 +1110,8 @@ end
 
 module Meta = struct
   let to_names ts =
-    List.fold_left ts ~init:String_set.empty ~f:(fun acc t ->
-      String_set.add acc t.name)
+    List.fold_left ts ~init:String.Set.empty ~f:(fun acc t ->
+      String.Set.add acc t.name)
 
   (* For the deprecated method, we need to put all the runtime
      dependencies of the transitive closure.

@@ -32,7 +32,7 @@ val virt       : ?quoted: bool -> (string * int * int * int) -> string -> t
 val virt_var   : ?quoted: bool -> (string * int * int * int) -> string -> t
 val virt_text  : (string * int * int * int) -> string -> t
 
-val vars : t -> String_set.t
+val vars : t -> String.Set.t
 (** [vars t] returns the set of all variables in [t]. *)
 
 val fold : t -> init:'a -> f:('a -> Loc.t -> string -> 'a) -> 'a

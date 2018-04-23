@@ -3,7 +3,7 @@ open! Import
 module Dir = struct
   type t =
     { path     : Path.t
-    ; files    : String_set.t
+    ; files    : String.Set.t
     ; sub_dirs : t String_map.t
     ; ignored  : bool
     }
@@ -17,8 +17,8 @@ module Dir = struct
     Path.Set.of_string_set t.files ~f:(Path.relative t.path)
 
   let sub_dir_names t =
-    String_map.foldi t.sub_dirs ~init:String_set.empty
-      ~f:(fun s _ acc -> String_set.add acc s)
+    String_map.foldi t.sub_dirs ~init:String.Set.empty
+      ~f:(fun s _ acc -> String.Set.add acc s)
 
   let sub_dir_paths t =
     String_map.foldi t.sub_dirs ~init:Path.Set.empty
@@ -59,9 +59,9 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
         else
           Left fn)
     in
-    let files = String_set.of_list files in
+    let files = String.Set.of_list files in
     let ignored_sub_dirs =
-      if not ignored && String_set.mem files "jbuild-ignore" then
+      if not ignored && String.Set.mem files "jbuild-ignore" then
         let ignore_file = Path.to_string (Path.relative path "jbuild-ignore") in
         let files =
           Io.lines_of_file ignore_file
@@ -75,15 +75,15 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             false
           end
         in
-        String_set.of_list (List.filteri ~f:remove_subdirs files)
+        String.Set.of_list (List.filteri ~f:remove_subdirs files)
       else
-        String_set.empty
+        String.Set.empty
     in
     let sub_dirs =
       List.map sub_dirs ~f:(fun (fn, path) ->
         let ignored =
           ignored
-          || String_set.mem ignored_sub_dirs fn
+          || String.Set.mem ignored_sub_dirs fn
           || Path.Set.mem extra_ignored_subtrees path
         in
         (fn, walk path ~ignored))
@@ -119,7 +119,7 @@ let files_of t path =
 let file_exists t path fn =
   match Path.Map.find t.dirs path with
   | None -> false
-  | Some { files; _ } -> String_set.mem files fn
+  | Some { files; _ } -> String.Set.mem files fn
 
 let exists t path =
   Path.Map.mem t.dirs path ||
@@ -132,5 +132,5 @@ let files_recursively_in t ?(prefix_with=Path.root) path =
     Dir.fold dir ~init:Path.Set.empty ~traverse_ignored_dirs:true
       ~f:(fun dir acc ->
         let path = Path.append prefix_with (Dir.path dir) in
-        String_set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->
+        String.Set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->
           Path.Set.add acc (Path.relative path fn)))

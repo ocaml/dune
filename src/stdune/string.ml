@@ -13,6 +13,11 @@ include StringLabels
 
 let compare a b = Ordering.of_int (String.compare a b)
 
+module T = struct
+  type t = StringLabels.t
+  let compare = compare
+end
+
 let capitalize   = capitalize_ascii
 let uncapitalize = uncapitalize_ascii
 let uppercase    = uppercase_ascii
@@ -169,3 +174,5 @@ let exists s ~f =
     false
   with Exit ->
     true
+
+module Set = Set.Make(T)

@@ -114,7 +114,7 @@ val eval_glob : t -> dir:Path.t -> Re.re -> string list
 val load_dir : t -> dir:Path.t -> unit
 val on_load_dir : t -> dir:Path.t -> f:(unit -> unit) -> unit
 
-val source_files : t -> src_path:Path.t -> String_set.t
+val source_files : t -> src_path:Path.t -> String.Set.t
 
 (** [prog_spec t ?hint name] resolve a program. [name] is looked up in the
     workspace, if it is not found in the tree is is looked up in the PATH. If it

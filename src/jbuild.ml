@@ -36,7 +36,7 @@ let module_name sexp =
       | _ -> invalid_module_name name sexp);
     String.capitalize s
 
-let module_names sexp = String_set.of_list (list module_name sexp)
+let module_names sexp = String.Set.of_list (list module_name sexp)
 
 let invalid_lib_name sexp =
   of_sexp_error sexp "invalid library name"
@@ -304,7 +304,7 @@ module Per_module = struct
     | List (_, Atom (_, A "per_module") :: rest) -> begin
       List.map rest ~f:(fun sexp ->
         let pp, names = pair a module_names sexp in
-        (List.map ~f:Module.Name.of_string (String_set.to_list names), pp))
+        (List.map ~f:Module.Name.of_string (String.Set.to_list names), pp))
       |> of_mapping ~default
       |> function
       | Ok t -> t
@@ -367,8 +367,8 @@ end
 
 module Lib_dep = struct
   type choice =
-    { required  : String_set.t
-    ; forbidden : String_set.t
+    { required  : String.Set.t
+    ; forbidden : String.Set.t
     ; file      : string
     }
 
@@ -386,8 +386,8 @@ module Lib_dep = struct
     | List (_, l) as sexp ->
       let rec loop required forbidden = function
         | [Atom (_, A "->"); fsexp] ->
-          let common = String_set.inter required forbidden in
-          Option.iter (String_set.choose common) ~f:(fun name ->
+          let common = String.Set.inter required forbidden in
+          Option.iter (String.Set.choose common) ~f:(fun name ->
             of_sexp_errorf sexp
               "library %S is both required and forbidden in this clause"
               name);
@@ -402,11 +402,11 @@ module Lib_dep = struct
           let len = String.length s in
           if len > 0 && s.[0] = '!' then
             let s = String.sub s ~pos:1 ~len:(len - 1) in
-            loop required (String_set.add forbidden s) l
+            loop required (String.Set.add forbidden s) l
           else
-            loop (String_set.add required s) forbidden l
+            loop (String.Set.add required s) forbidden l
       in
-      loop String_set.empty String_set.empty l
+      loop String.Set.empty String.Set.empty l
     | sexp -> of_sexp_error sexp "(<library-name> <code>) expected"
 
   let t = function
@@ -423,9 +423,9 @@ module Lib_dep = struct
   let to_lib_names = function
     | Direct (_, s) -> [s]
     | Select s ->
-      List.fold_left s.choices ~init:String_set.empty ~f:(fun acc x ->
-        String_set.union acc (String_set.union x.required x.forbidden))
-      |> String_set.to_list
+      List.fold_left s.choices ~init:String.Set.empty ~f:(fun acc x ->
+        String.Set.union acc (String.Set.union x.required x.forbidden))
+      |> String.Set.to_list
 
   let direct x = Direct x
 
@@ -466,8 +466,8 @@ module Lib_deps = struct
         | Lib_dep.Direct (_, s) -> add Required s acc
         | Select { choices; _ } ->
           List.fold_left choices ~init:acc ~f:(fun acc c ->
-            let acc = String_set.fold c.Lib_dep.required ~init:acc ~f:(add Optional) in
-            String_set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
+            let acc = String.Set.fold c.Lib_dep.required ~init:acc ~f:(add Optional) in
+            String.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
       : kind String_map.t);
     t
 
@@ -1298,14 +1298,14 @@ module Stanzas = struct
                 (line_loc x))))
 
   let lib_names ts =
-    List.fold_left ts ~init:String_set.empty ~f:(fun acc (_, _, stanzas) ->
+    List.fold_left ts ~init:String.Set.empty ~f:(fun acc (_, _, stanzas) ->
       List.fold_left stanzas ~init:acc ~f:(fun acc -> function
         | Stanza.Library lib ->
           let acc =
             match lib.public with
              | None -> acc
-             | Some { name; _ } -> String_set.add acc name
+             | Some { name; _ } -> String.Set.add acc name
           in
-          String_set.add acc lib.name
+          String.Set.add acc lib.name
         | _ -> acc))
 end

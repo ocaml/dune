@@ -49,22 +49,22 @@ type purpose =
   | Build_job of Path.t list
 
 module Temp = struct
-  let tmp_files = ref String_set.empty
+  let tmp_files = ref String.Set.empty
   let () =
     at_exit (fun () ->
       let fns = !tmp_files in
-      tmp_files := String_set.empty;
-      String_set.iter fns ~f:(fun fn ->
+      tmp_files := String.Set.empty;
+      String.Set.iter fns ~f:(fun fn ->
         try Sys.force_remove fn with _ -> ()))
 
   let create prefix suffix =
     let fn = Filename.temp_file prefix suffix in
-    tmp_files := String_set.add !tmp_files fn;
+    tmp_files := String.Set.add !tmp_files fn;
     fn
 
   let destroy fn =
     (try Sys.force_remove fn with Sys_error _ -> ());
-    tmp_files := String_set.remove !tmp_files fn
+    tmp_files := String.Set.remove !tmp_files fn
 end
 
 module Fancy = struct
@@ -142,7 +142,7 @@ module Fancy = struct
       Format.fprintf ppf "(internal)"
     | Build_job targets ->
       let rec split_paths targets_acc ctxs_acc = function
-        | [] -> List.rev targets_acc, String_set.(to_list (of_list ctxs_acc))
+        | [] -> List.rev targets_acc, String.Set.(to_list (of_list ctxs_acc))
         | path :: rest ->
           let add_ctx ctx acc = if ctx = "default" then acc else ctx :: acc in
           match Utils.analyse_target path with

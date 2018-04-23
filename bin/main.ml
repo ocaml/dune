@@ -131,10 +131,10 @@ let do_build (setup : Main.setup) targets =
 let find_root () =
   let cwd = Sys.getcwd () in
   let rec loop counter ~candidates ~to_cwd dir =
-    let files = Sys.readdir dir |> Array.to_list |> String_set.of_list in
-    if String_set.mem files "jbuild-workspace" then
+    let files = Sys.readdir dir |> Array.to_list |> String.Set.of_list in
+    if String.Set.mem files "jbuild-workspace" then
       cont counter ~candidates:((0, dir, to_cwd) :: candidates) dir ~to_cwd
-    else if String_set.exists files ~f:(fun fn ->
+    else if String.Set.exists files ~f:(fun fn ->
         String.is_prefix fn ~prefix:"jbuild-workspace") then
       cont counter ~candidates:((1, dir, to_cwd) :: candidates) dir ~to_cwd
     else
@@ -571,12 +571,12 @@ let target_hint (setup : Main.setup) path =
       else
         None)
   in
-  let candidates = String_set.of_list candidates |> String_set.to_list in
+  let candidates = String.Set.of_list candidates |> String.Set.to_list in
   hint (Path.to_string path) candidates
 
 let check_path contexts =
   let contexts =
-    String_set.of_list (List.map contexts ~f:(fun c -> c.Context.name))
+    String.Set.of_list (List.map contexts ~f:(fun c -> c.Context.name))
   in
   fun path ->
     let internal path =
@@ -588,11 +588,11 @@ let check_path contexts =
       | None -> internal path
       | Some (name, _) ->
         if name = "" || name.[0] = '.' then internal path;
-        if not (name = "install" || String_set.mem contexts name) then
+        if not (name = "install" || String.Set.mem contexts name) then
           die "%s refers to unknown build context: %s%s"
             (Path.to_string_maybe_quoted path)
             name
-            (hint name (String_set.to_list contexts))
+            (hint name (String.Set.to_list contexts))
 
 let resolve_targets ~log common (setup : Main.setup) user_targets =
   match user_targets with
@@ -772,7 +772,7 @@ let external_lib_deps =
              in
              let externals =
                String_map.filteri lib_deps ~f:(fun name _ ->
-                 not (String_set.mem internals name))
+                 not (String.Set.mem internals name))
              in
              if only_missing then begin
                let context =
@@ -811,8 +811,8 @@ let external_lib_deps =
                       match (kind : Build.lib_dep_kind) with
                       | Optional -> None
                       | Required -> Some (Findlib.root_package_name name))
-                    |> String_set.of_list
-                    |> String_set.to_list
+                    |> String.Set.of_list
+                    |> String.Set.to_list
                     |> String.concat ~sep:" ");
                  true
                end

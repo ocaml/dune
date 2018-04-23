@@ -73,7 +73,7 @@ type t =
   }
 
 let t ?x sexps =
-  let defined_names = ref String_set.empty in
+  let defined_names = ref String.Set.empty in
   let merlin_ctx, contexts =
     List.fold_left sexps ~init:(None, []) ~f:(fun (merlin_ctx, ctxs) sexp ->
       let ctx =
@@ -104,10 +104,10 @@ let t ?x sexps =
          String.contains name '/' ||
          String.contains name '\\' then
         of_sexp_errorf sexp "%S is not allowed as a build context name" name;
-      if String_set.mem !defined_names name then
+      if String.Set.mem !defined_names name then
         of_sexp_errorf sexp "second definition of build context %S" name;
-      defined_names := String_set.union !defined_names
-                         (String_set.of_list (Context.all_names ctx));
+      defined_names := String.Set.union !defined_names
+                         (String.Set.of_list (Context.all_names ctx));
       match ctx, merlin_ctx with
       | Opam { merlin = true; _ }, Some _ ->
         of_sexp_errorf sexp "you can only have one context for merlin"

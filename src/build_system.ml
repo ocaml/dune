@@ -336,7 +336,7 @@ end
 
 type extra_sub_directories_to_keep =
   | All
-  | These of String_set.t
+  | These of String.Set.t
 
 type hook =
   | Rule_started
@@ -624,7 +624,7 @@ let remove_old_artifacts t ~dir ~subdirs_to_keep =
             match subdirs_to_keep with
             | All -> ()
             | These set ->
-              if String_set.mem set fn ||
+              if String.Set.mem set fn ||
                  Pset.mem t.build_dirs_to_keep path then
                 ()
               else
@@ -854,7 +854,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
   (* Load all the rules *)
   let extra_subdirs_to_keep =
     if context_name = "install" then
-      These String_set.empty
+      These String.Set.empty
     else
       let gen_rules = Option.value_exn (String_map.find t.gen_rules context_name) in
       gen_rules ~dir (Option.value_exn (Path.explode sub_dir))
@@ -922,13 +922,13 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
     | "install" ->
       (user_rule_targets,
        None,
-       String_set.empty)
+       String.Set.empty)
     | ctx_name ->
       (* This condition is [true] because of [get_dir_status] *)
       assert (String_map.mem t.contexts ctx_name);
       let files, subdirs =
         match File_tree.find_dir t.file_tree sub_dir with
-        | None -> (Pset.empty, String_set.empty)
+        | None -> (Pset.empty, String.Set.empty)
         | Some dir ->
           (File_tree.Dir.file_paths    dir,
            File_tree.Dir.sub_dir_names dir)
@@ -946,7 +946,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
   let subdirs_to_keep =
     match extra_subdirs_to_keep with
     | All -> All
-    | These set -> These (String_set.union subdirs_to_keep set)
+    | These set -> These (String.Set.union subdirs_to_keep set)
   in
 
   (* Filter out fallback rules *)
@@ -1507,8 +1507,8 @@ let eval_glob t ~dir re =
     match File_tree.find_dir t.file_tree dir with
     | None -> targets
     | Some d ->
-      String_set.union (String_set.of_list targets) (File_tree.Dir.files d)
-      |> String_set.to_list
+      String.Set.union (String.Set.of_list targets) (File_tree.Dir.files d)
+      |> String.Set.to_list
   in
   List.filter files ~f:(Re.execp re)
 

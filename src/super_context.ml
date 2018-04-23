@@ -251,7 +251,7 @@ let on_load_dir t ~dir ~f = Build_system.on_load_dir t.build_system ~dir ~f
 
 let source_files t ~src_path =
   match File_tree.find_dir t.file_tree src_path with
-  | None -> String_set.empty
+  | None -> String.Set.empty
   | Some dir -> File_tree.Dir.files dir
 
 module Libs = struct
@@ -700,7 +700,7 @@ let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
   let open Build.O in
   let f = expand_vars t ~scope ~dir ?extra_vars in
   let parse ~loc:_ s = s in
-  match Ordered_set_lang.Unexpanded.files set ~f |> String_set.to_list with
+  match Ordered_set_lang.Unexpanded.files set ~f |> String.Set.to_list with
   | [] ->
     let set =
       Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f

@@ -1,4 +1,4 @@
-open Import
+open Stdune
 
 let explode_path =
   let rec loop path acc =
@@ -272,6 +272,8 @@ let of_string ?error_loc s =
 let t sexp = of_string (Sexp.Of_sexp.string sexp) ~error_loc:(Sexp.Ast.loc sexp)
 let sexp_of_t t = Sexp.atom_or_quoted_string (to_string t)
 
+let initial_cwd = Sys.getcwd ()
+
 let absolute fn =
   if is_local fn then
     Filename.concat initial_cwd fn
@@ -466,7 +468,7 @@ let insert_after_build_dir_exn =
     if not (is_local a) || String.contains b '/' then error a b;
     match String.lsplit2 a ~on:'/' with
     | Some ("_build", rest) ->
-      sprintf "_build/%s/%s" b rest
+      Printf.sprintf "_build/%s/%s" b rest
     | _ ->
       error a b
 

@@ -7,8 +7,8 @@
                 stdune
                 fiber
                 xdg
-                jbuilder_re
-                jbuilder_opam_file_format
+                re
+                opam_file_format
                 usexp
                 ocaml_config))
   (synopsis    "Internal Jbuilder library, do not use!")))

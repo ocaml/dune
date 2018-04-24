@@ -1,6 +1,4 @@
 open Import
-open Jbuilder_opam_file_format
-
 open Fiber.O
 
 let is_a_source_file fn =

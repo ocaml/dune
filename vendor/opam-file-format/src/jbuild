@@ -1,7 +1,8 @@
 (jbuild_version 1)
 
 (library
- ((name jbuilder_opam_file_format)))
+ ((name opam_file_format)
+  (wrapped false)))
 
 (ocamllex (opamLexer))
 (ocamlyacc (opamBaseParser))

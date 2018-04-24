@@ -1,6 +1,6 @@
 (** Parsing and interpretation of opam files *)
 
-open Jbuilder_opam_file_format.OpamParserTypes
+open OpamParserTypes
 
 (** Type of opam files *)
 type t = opamfile

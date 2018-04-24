@@ -1,5 +1,4 @@
 include Stdune
-include Jbuilder_re
 include Errors
 
 (* To make bug reports usable *)

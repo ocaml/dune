@@ -1,5 +1,7 @@
 (** Scopes *)
 
+open Stdune
+
 (** Representation of a Scope. It contain a library database for all
     the private libraries in the scope. *)
 type t

@@ -1,5 +1,7 @@
 (** Linking modes for binaries *)
 
+open Stdune
+
 type t =
   | Exe
   | Object

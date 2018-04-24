@@ -1,5 +1,7 @@
 (** Information about a package defined in the workspace *)
 
+open Stdune
+
 module Name : sig
   type t
 

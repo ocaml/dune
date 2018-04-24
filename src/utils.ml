@@ -117,7 +117,7 @@ let executable_object_directory ~dir name =
 
 let program_not_found ?context ?hint prog =
   die "@{<error>Error@}: Program %s not found in the tree or in PATH%s%a"
-    (maybe_quoted prog)
+    (String.maybe_quoted prog)
     (match context with
      | None -> ""
      | Some name -> sprintf " (context: %s)" name)
@@ -127,7 +127,7 @@ let program_not_found ?context ?hint prog =
     hint
 
 let library_not_found ?context ?hint lib =
-  die "@{<error>Error@}: Library %s not found%s%a" (maybe_quoted lib)
+  die "@{<error>Error@}: Library %s not found%s%a" (String.maybe_quoted lib)
     (match context with
      | None -> ""
      | Some name -> sprintf " (context: %s)" name)

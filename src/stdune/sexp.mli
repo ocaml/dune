@@ -1,5 +1,3 @@
-open Import
-
 include module type of struct include Usexp end with module Loc := Usexp.Loc
 
 val load : fname:string -> mode:'a Parser.Mode.t -> 'a
@@ -59,16 +57,25 @@ module To_sexp : sig
   val record_fields : field list t
 end with type sexp := t
 
+module Loc = Usexp.Loc
+
 module Of_sexp : sig
   type ast = Ast.t =
     | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
     | List of Loc.t * ast list
 
+  type hint =
+    { on: string
+    ; candidates: string list
+    }
+
+  exception Of_sexp of Loc.t * string * hint option
+
   include Combinators with type 'a t = Ast.t -> 'a
 
-  val of_sexp_error  : Ast.t -> string -> _
-  val of_sexp_errorf : Ast.t -> ('a, unit, string, 'b) format4 -> 'a
+  val of_sexp_error  : ?hint:hint -> Ast.t -> string -> _
+  val of_sexp_errorf : ?hint:hint -> Ast.t -> ('a, unit, string, 'b) format4 -> 'a
 
   val located : 'a t -> (Loc.t * 'a) t
 
@@ -102,7 +109,10 @@ module Of_sexp : sig
     -> 'a option record_parser
   val field_b : string -> bool record_parser
 
-  val map_validate : 'a record_parser -> f:('a -> ('b, string) result) -> 'b record_parser
+  val map_validate
+    :  'a record_parser
+    -> f:('a -> ('b, string) Result.result)
+    -> 'b record_parser
 
   val ignore_fields : string list -> unit record_parser
 

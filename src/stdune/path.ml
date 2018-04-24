@@ -1,5 +1,3 @@
-open Import
-
 let explode_path =
   let rec loop path acc =
     let dir  = Filename.dirname  path in
@@ -78,7 +76,7 @@ module Local = struct
 
   let parent = function
     | "" ->
-      code_errorf "Path.Local.parent called on the root"
+      Exn.code_error "Path.Local.parent called on the root" []
     | t ->
       match String.rindex_from t (String.length t - 1) '/' with
       | exception Not_found -> ""
@@ -86,7 +84,7 @@ module Local = struct
 
   let basename = function
     | "" ->
-      code_errorf "Path.Local.basename called on the root"
+      Exn.code_error "Path.Local.basename called on the root" []
     | t ->
       let len = String.length t in
       match String.rindex_from t (len - 1) '/' with
@@ -96,11 +94,11 @@ module Local = struct
   let relative ?error_loc t path =
     let rec loop t components =
       match components with
-      | [] -> Ok t
+      | [] -> Result.Ok t
       | "." :: rest -> loop t rest
       | ".." :: rest ->
         begin match t with
-        | "" -> Error ()
+        | "" -> Result.Error ()
         | t -> loop (parent t) rest
         end
       | fn :: rest ->
@@ -109,9 +107,9 @@ module Local = struct
         | _ -> loop (t ^ "/" ^ fn) rest
     in
     match loop t (explode_path path) with
-    | Ok t -> t
+    | Result.Ok t -> t
     | Error () ->
-       Loc.fail_opt error_loc "path outside the workspace: %s from %s" path
+       Exn.fatalf ?loc:error_loc "path outside the workspace: %s from %s" path
          (to_string t)
 
   let is_canonicalized =
@@ -247,7 +245,7 @@ let to_string = function
   | t  -> t
 
 let to_string_maybe_quoted t =
-  maybe_quoted (to_string t)
+  String.maybe_quoted (to_string t)
 
 let root = ""
 
@@ -272,15 +270,16 @@ let of_string ?error_loc s =
 let t sexp = of_string (Sexp.Of_sexp.string sexp) ~error_loc:(Sexp.Ast.loc sexp)
 let sexp_of_t t = Sexp.atom_or_quoted_string (to_string t)
 
+let initial_cwd = Sys.getcwd ()
+
 let absolute fn =
   if is_local fn then
     Filename.concat initial_cwd fn
   else
     fn
 
-let to_absolute_filename t =
+let to_absolute_filename t ~root =
   if is_local t then begin
-    let root = !Clflags.workspace_root in
     assert (not (Filename.is_relative root));
     Filename.concat root (to_string t)
   end else
@@ -466,7 +465,7 @@ let insert_after_build_dir_exn =
     if not (is_local a) || String.contains b '/' then error a b;
     match String.lsplit2 a ~on:'/' with
     | Some ("_build", rest) ->
-      sprintf "_build/%s/%s" b rest
+      Printf.sprintf "_build/%s/%s" b rest
     | _ ->
       error a b
 

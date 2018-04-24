@@ -1,7 +1,4 @@
-open Import
-
-include (Usexp : module type of struct include Usexp end
-         with module Loc := Usexp.Loc)
+include Usexp
 
 let buf_len = 65_536
 
@@ -122,13 +119,23 @@ module Of_sexp = struct
     | Quoted_string of Loc.t * string
     | List of Loc.t * ast list
 
+  type hint =
+    { on: string
+    ; candidates: string list
+    }
+
+  exception Of_sexp of Loc.t * string * hint option
+
   type 'a t = ast -> 'a
 
   let located f sexp =
     (Ast.loc sexp, f sexp)
 
-  let of_sexp_error sexp str = raise (Loc.Error (Ast.loc sexp, str))
-  let of_sexp_errorf sexp fmt = ksprintf (of_sexp_error sexp) fmt
+  let of_sexp_error ?hint sexp str = raise (Of_sexp (Ast.loc sexp, str, hint))
+  let of_sexp_errorf ?hint sexp fmt = Printf.ksprintf (of_sexp_error ?hint sexp) fmt
+
+  let of_sexp_errorf_loc loc fmt =
+    Printf.ksprintf (fun s -> raise (Of_sexp (loc, s, None))) fmt
 
   let raw x = x
 
@@ -178,9 +185,9 @@ module Of_sexp = struct
   let string_set sexp = String.Set.of_list (list string sexp)
   let string_map f sexp =
     match String.Map.of_list (list (pair string f) sexp) with
-    | Ok x -> x
+    | Result.Ok x -> x
     | Error (key, _v1, _v2) ->
-      of_sexp_error sexp (sprintf "key %S present multiple times" key)
+      of_sexp_error sexp (Printf.sprintf "key %S present multiple times" key)
 
   let string_hashtbl f sexp =
     let map = string_map f sexp in
@@ -243,7 +250,7 @@ module Of_sexp = struct
   let map_validate parse ~f state =
     let x, state' = parse state in
     match f x with
-    | Ok x -> x, state'
+    | Result.Ok x -> x, state'
     | Error msg ->
       let parsed =
         Name_map.merge state.unparsed state'.unparsed ~f:(fun _key before after ->
@@ -255,14 +262,15 @@ module Of_sexp = struct
         match
           Name_map.values parsed
           |> List.map ~f:(fun f -> Ast.loc f.entry)
-          |> List.sort ~compare:(fun a b -> compare a.Loc.start.pos_cnum b.start.pos_cnum)
+          |> List.sort ~compare:(fun a b ->
+            Int.compare a.Loc.start.pos_cnum b.start.pos_cnum)
         with
         | [] -> state.loc
         | first :: l ->
           let last = List.fold_left l ~init:first ~f:(fun _ x -> x) in
           { first with stop = last.stop }
       in
-      Loc.fail loc "%s" msg
+      of_sexp_errorf_loc loc "%s" msg
 
   module Short_syntax = struct
     type 'a t =
@@ -272,8 +280,7 @@ module Of_sexp = struct
 
     let parse t entry name =
       match t with
-      | Not_allowed ->
-        Loc.fail (Ast.loc entry) "field %s needs a value" name
+      | Not_allowed -> of_sexp_errorf entry "field %s needs a value" name
       | This    x -> x
       | Located f -> f (Ast.loc entry)
   end
@@ -290,7 +297,7 @@ module Of_sexp = struct
       match default with
       | Some v -> (v, add_known name state)
       | None ->
-        Loc.fail state.loc "field %s missing" name
+        of_sexp_errorf_loc state.loc "field %s missing" name
 
   let field_o name ?(short=Short_syntax.Not_allowed) value_of_sexp state =
     match Name_map.find state.unparsed name with
@@ -338,8 +345,8 @@ module Of_sexp = struct
         | List (_, s :: _) -> s
         | _ -> assert false
       in
-      of_sexp_errorf name_sexp
-        "Unknown field %s%s" name (hint name state.known)
+      of_sexp_errorf ~hint:({ on = name ; candidates = state.known})
+        name_sexp "Unknown field %s" name
 
   type ('a, 'b) rest =
     | No_rest : ('a, 'a) rest
@@ -413,11 +420,11 @@ module Of_sexp = struct
     | Some cstr -> cstr
     | None ->
       of_sexp_errorf sexp
-        "Unknown constructor %s%s" name
-        (hint
-           (String.uncapitalize name)
-           (List.map cstrs ~f:(fun c ->
-              String.uncapitalize (C.name c))))
+        ~hint:{ on = String.uncapitalize name
+              ; candidates = List.map cstrs ~f:(fun c ->
+                  String.uncapitalize (C.name c))
+              }
+        "Unknown constructor %s" name
 
   let sum cstrs sexp =
     match sexp with
@@ -447,9 +454,8 @@ module Of_sexp = struct
       | Some (_, value) -> value
       | None ->
         of_sexp_errorf sexp
-          "Unknown value %s%s" s
-          (hint
-             (String.uncapitalize s)
-             (List.map cstrs ~f:(fun (name, _) ->
-                String.uncapitalize name)))
+          ~hint:{ on = String.uncapitalize s
+                ; candidates =List.map cstrs ~f:(fun (name, _) ->
+                    String.uncapitalize name) }
+          "Unknown value %s" s
 end

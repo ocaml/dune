@@ -407,9 +407,11 @@ let entry_point t ~f =
   (match t.load_dir_stack with
    | [] ->
      ()
-   | _ :: _ ->
-     code_errorf
-       "Build_system.entry_point: called inside the rule generator callback");
+   | stack ->
+     Exn.code_error
+       "Build_system.entry_point: called inside the rule generator callback"
+       ["stack", Sexp.To_sexp.list Path.sexp_of_t stack]
+  );
   f ()
 
 module Target = Build_interpret.Target
@@ -517,7 +519,7 @@ let add_spec t fn spec ~copy_source =
          As a result, the rule is currently ignored, however this will become an error \
          in the future.\n\
          %t"
-        (maybe_quoted (Path.basename fn))
+        (String.maybe_quoted (Path.basename fn))
         (fun ppf ->
            match rule.mode with
            | Not_a_rule_stanza ->

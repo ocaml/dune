@@ -1,5 +1,7 @@
 (** Opam install file *)
 
+open Stdune
+
 module Section : sig
   type t =
     | Lib

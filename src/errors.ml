@@ -1,4 +1,5 @@
-exception Fatal_error of string
+open Stdune
+
 exception Already_reported
 
 let err_buf = Buffer.create 128
@@ -12,8 +13,5 @@ let kerrf fmt ~f =
        f s)
     err_ppf fmt
 
-let code_errorf fmt =
-  kerrf fmt ~f:(fun s -> Stdune.Exn.code_error s [])
-
 let die fmt =
-  kerrf fmt ~f:(fun s -> raise (Fatal_error s))
+  kerrf fmt ~f:(fun s -> raise (Exn.Fatal_error s))

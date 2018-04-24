@@ -169,13 +169,19 @@ let targets =
     | Fail _ -> acc
     | If_file_exists (_, state) -> begin
         match !state with
-        | Decided _ -> code_errorf "Build_interpret.targets got decided if_file_exists"
+        | Decided (v, _) ->
+          Exn.code_error "Build_interpret.targets got decided if_file_exists"
+            ["exists", Sexp.To_sexp.bool v]
         | Undecided (a, b) ->
           match loop a [], loop b [] with
           | [], [] -> acc
-          | _ ->
-            code_errorf "Build_interpret.targets: cannot have targets \
-                         under a [if_file_exists]"
+          | a, b ->
+            let targets x = Path.Set.sexp_of_t (Target.paths x) in
+            Exn.code_error "Build_interpret.targets: cannot have targets \
+                            under a [if_file_exists]"
+              [ "targets-a", targets a
+              ; "targets-b", targets b
+              ]
       end
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc

@@ -25,13 +25,26 @@ let report_with_backtrace exn =
   | Some p -> p
   | None ->
     match exn with
-    | Loc.Error (loc, msg) ->
+    | Exn.Loc_error (loc, msg) ->
       let loc =
         { loc with
           start = { loc.start with pos_fname = !map_fname loc.start.pos_fname }
         }
       in
       let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
+      { p with loc = Some loc; pp }
+    | Sexp.Of_sexp.Of_sexp (loc, msg, hint') ->
+      let loc =
+        { loc with
+          start = { loc.start with pos_fname = !map_fname loc.start.pos_fname }
+        }
+      in
+      let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s%s\n" msg
+                     (match hint' with
+                      | None -> ""
+                      | Some { Sexp.Of_sexp. on; candidates } ->
+                        hint on candidates)
+      in
       { p with loc = Some loc; pp }
     | Usexp.Parser.Error e ->
       let pos = Usexp.Parser.Error.position e in
@@ -42,7 +55,7 @@ let report_with_backtrace exn =
         loc = Some loc
       ; pp  = fun ppf -> Format.fprintf ppf "@{<error>Error@}: %s\n" msg
       }
-    | Fatal_error msg ->
+    | Exn.Fatal_error msg ->
       { p with pp = fun ppf ->
           if msg.[String.length msg - 1] = '\n' then
             Format.fprintf ppf "%s" msg

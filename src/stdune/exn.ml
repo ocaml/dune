@@ -2,9 +2,20 @@ type t = exn
 
 exception Code_error of Usexp.t
 
+exception Fatal_error of string
+
+exception Loc_error of Usexp.Loc.t * string
+
 external raise         : exn -> _ = "%raise"
 external raise_notrace : exn -> _ = "%raise_notrace"
 external reraise       : exn -> _ = "%reraise"
+
+let fatalf ?loc fmt =
+  Format.ksprintf (fun s ->
+    match loc with
+    | None -> raise (Fatal_error s)
+    | Some loc -> raise (Loc_error (loc, s))
+  ) fmt
 
 let protectx x ~f ~finally =
   match f x with

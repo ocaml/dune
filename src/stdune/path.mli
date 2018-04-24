@@ -1,5 +1,3 @@
-open Import
-
 (** In the current workspace (anything under the current project root) *)
 module Local : sig
   type t
@@ -50,7 +48,7 @@ module Map : Map.S with type key = t
 
 val kind : t -> Kind.t
 
-val of_string : ?error_loc:Loc.t -> string -> t
+val of_string : ?error_loc:Usexp.Loc.t -> string -> t
 val to_string : t -> string
 
 (** [to_string_maybe_quoted t] is [maybe_quoted (to_string t)] *)
@@ -61,15 +59,15 @@ val is_root : t -> bool
 
 val is_local : t -> bool
 
-val relative : ?error_loc:Loc.t -> t -> string -> t
+val relative : ?error_loc:Usexp.Loc.t -> t -> string -> t
 
 (** Create an external path. If the argument is relative, assume it is
     relative to the initial directory jbuilder was launched in. *)
 val absolute : string -> t
 
-(** Convert a path to an absolute filename. Must be called after the
-    workspace root has been set. *)
-val to_absolute_filename : t -> string
+(** Convert a path to an absolute filename. Must be called after the workspace
+    root has been set. [root] is the root directory of local paths *)
+val to_absolute_filename : t -> root:string -> string
 
 val reach : t -> from:t -> string
 val reach_for_running : t -> from:t -> string
@@ -147,4 +145,4 @@ val extension : t -> string
 *)
 val drop_prefix : t -> prefix:t -> string option
 
-val pp : t Fmt.t
+val pp : Format.formatter -> t -> unit

@@ -1,5 +1,7 @@
 (** Dependency path *)
 
+open Stdune
+
 module Entry : sig
   type t =
     | Path of Path.t

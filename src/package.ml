@@ -1,3 +1,4 @@
+open Stdune
 
 module Name = struct
   include Interned.Make()

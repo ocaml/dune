@@ -19,7 +19,7 @@ let is_a_source_file fn =
   | _ -> true
 
 let make_watermark_map ~name ~version ~commit =
-  let opam_file = Opam_file.load (name ^ ".opam") in
+  let opam_file = Opam_file.load (Path.of_string (name ^ ".opam")) in
   let version_num =
     if String.is_prefix version ~prefix:"v" then
       String.sub version ~pos:1 ~len:(String.length version - 1)
@@ -62,7 +62,7 @@ let make_watermark_map ~name ~version ~commit =
     ; "PKG_REPO"       , opam_var "dev-repo"    " "
     ]
 
-let subst_string s ~fname ~map =
+let subst_string s path ~map =
   let len = String.length s in
   let longest_var = String.longest (String.Map.keys map) in
   let loc_of_offset ~ofs ~len =
@@ -70,7 +70,7 @@ let subst_string s ~fname ~map =
       if i = ofs then
         let pos =
           { Lexing.
-            pos_fname = fname
+            pos_fname = Path.to_string path
           ; pos_cnum  = i
           ; pos_lnum  = lnum
           ; pos_bol   = bol
@@ -151,17 +151,18 @@ let subst_string s ~fname ~map =
     Buffer.add_substring buf s pos (len - pos);
     Some (Buffer.contents buf)
 
-let subst_file fn ~map =
-  let s = Io.read_file fn in
+let subst_file path ~map =
+  let s = Io.read_file path in
   let s =
-    if Filename.dirname fn = "." && String.is_suffix fn ~suffix:".opam" then
+    if Path.is_root path
+    && String.is_suffix (Path.to_string path) ~suffix:".opam" then
       "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s
     else
       s
   in
-  match subst_string s ~map ~fname:fn with
+  match subst_string s ~map path with
   | None -> ()
-  | Some s -> Io.write_file fn s
+  | Some s -> Io.write_file path s
 
 let get_name ~files ?name () =
   let package_names =
@@ -223,7 +224,7 @@ let subst_git ?name () =
   let watermarks = make_watermark_map ~name ~version ~commit in
   List.iter files ~f:(fun fn ->
     if is_a_source_file fn then
-      subst_file fn ~map:watermarks);
+      subst_file (Path.of_string fn) ~map:watermarks);
   Fiber.return ()
 
 let subst ?name () =

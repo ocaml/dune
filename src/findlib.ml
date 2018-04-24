@@ -99,7 +99,7 @@ module Config = struct
     if not (Path.exists conf_file) then
       die "@{<error>Error@}: ocamlfind toolchain %s isn't defined in %a \
            (context: %s)" toolchain Path.pp path context;
-    let vars = (Meta.load ~name:"" ~fn:(Path.to_string conf_file)).vars in
+    let vars = (Meta.load ~name:"" conf_file).vars in
     { vars = String.Map.map vars ~f:Rules.of_meta_rules
     ; preds = Ps.make [toolchain]
     }
@@ -266,14 +266,14 @@ let find_and_acknowledge_meta t ~fq_name =
       if Path.exists fn then
         Some (sub_dir,
               fn,
-              Meta.load ~name:root_name ~fn:(Path.to_string fn))
+              Meta.load ~name:root_name fn)
       else
         (* Alternative layout *)
         let fn = Path.relative dir ("META." ^ root_name) in
         if Path.exists fn then
           Some (dir,
                 fn,
-                Meta.load ~fn:(Path.to_string fn) ~name:root_name)
+                Meta.load fn ~name:root_name)
         else
           loop dirs
     | [] ->

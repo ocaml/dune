@@ -62,7 +62,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
     let files = String.Set.of_list files in
     let ignored_sub_dirs =
       if not ignored && String.Set.mem files "jbuild-ignore" then
-        let ignore_file = Path.to_string (Path.relative path "jbuild-ignore") in
+        let ignore_file = Path.relative path "jbuild-ignore" in
         let files =
           Io.lines_of_file ignore_file
         in
@@ -70,7 +70,8 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
           if Filename.dirname fn = Filename.current_dir_name then
             true
           else begin
-            Loc.(warn (of_pos (ignore_file, index + 1, 0, String.length fn))
+            Loc.(warn (of_pos ( Path.to_string ignore_file
+                              , index + 1, 0, String.length fn))
             "subdirectory expression %s ignored" fn);
             false
           end

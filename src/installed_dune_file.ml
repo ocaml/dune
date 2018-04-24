@@ -39,7 +39,7 @@ let of_sexp =
         (fun () l -> parse_sub_systems l)
     ]
 
-let load ~fname = of_sexp (Io.Sexp.load ~mode:Single ~fname)
+let load fname = of_sexp (Io.Sexp.load ~mode:Single fname)
 
 let gen confs =
   let sexps =

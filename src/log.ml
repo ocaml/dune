@@ -14,7 +14,7 @@ let no_log = None
 let create ?(display=Config.default.display) () =
   if not (Sys.file_exists "_build") then
     Unix.mkdir "_build" 0o777;
-  let oc = Io.open_out "_build/log" in
+  let oc = Io.open_out (Path.of_string "_build/log") in
   Printf.fprintf oc "# %s\n# OCAMLPARAM: %s\n%!"
     (String.concat (List.map (Array.to_list Sys.argv) ~f:quote_for_shell) ~sep:" ")
     (match Env.get Env.initial "OCAMLPARAM" with

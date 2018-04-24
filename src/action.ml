@@ -641,17 +641,15 @@ module Promotion = struct
       Format.eprintf "Promoting %s to %s.@."
         (Path.to_string_maybe_quoted src)
         (Path.to_string_maybe_quoted dst);
-      Io.copy_file
-        ~src:(Path.to_string src)
-        ~dst:(Path.to_string dst)
+      Io.copy_file ~src ~dst
   end
 
-  let db_file = "_build/.to-promote"
+  let db_file = Path.of_string "_build/.to-promote"
 
   let dump_db db =
     if Sys.file_exists "_build" then begin
       match db with
-      | [] -> if Sys.file_exists db_file then Sys.remove db_file
+      | [] -> if Path.is_file db_file then Path.unlink_no_err db_file
       | l ->
         Io.write_file db_file
           (String.concat ~sep:""
@@ -659,8 +657,8 @@ module Promotion = struct
     end
 
   let load_db () =
-    if Sys.file_exists db_file then
-      Io.Sexp.load ~fname:db_file ~mode:Many
+    if Path.is_file db_file then
+      Io.Sexp.load db_file ~mode:Many
       |> List.map ~f:File.t
     else
       []
@@ -765,7 +763,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     exec t ~ectx ~dir ~stdout_to ~stderr_to
       ~env:(Env.add env ~var ~value)
   | Redirect (Stdout, fn, Echo s) ->
-    Io.write_file (Path.to_string fn) s;
+    Io.write_file fn s;
     Fiber.return ()
   | Redirect (outputs, fn, Run (Ok prog, args)) ->
     let out = Process.File (Path.to_string fn) in
@@ -784,7 +782,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to
   | Echo str -> exec_echo stdout_to str
   | Cat fn ->
-    Io.with_file_in (Path.to_string fn) ~f:(fun ic ->
+    Io.with_file_in fn ~f:(fun ic ->
       let oc =
         match stdout_to with
         | None -> stdout
@@ -793,11 +791,11 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       Io.copy_channels ic oc);
     Fiber.return ()
   | Copy (src, dst) ->
-    Io.copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst);
+    Io.copy_file ~src ~dst;
     Fiber.return ()
   | Symlink (src, dst) ->
     if Sys.win32 then
-      Io.copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst)
+      Io.copy_file ~src ~dst
     else begin
       let src =
         if Path.is_root dst then
@@ -818,8 +816,8 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     end;
     Fiber.return ()
   | Copy_and_add_line_directive (src, dst) ->
-    Io.with_file_in (Path.to_string src) ~f:(fun ic ->
-      Io.with_file_out (Path.to_string dst) ~f:(fun oc ->
+    Io.with_file_in src ~f:(fun ic ->
+      Io.with_file_out dst ~f:(fun oc ->
         let fn = Path.drop_optional_build_context src in
         let directive =
           if List.mem (Path.extension fn) ~set:[".c"; ".cpp"; ".h"] then
@@ -840,7 +838,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       (Utils.bash_exn ~needed_to:"interpret (bash ...) actions")
       ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
   | Write_file (fn, s) ->
-    Io.write_file (Path.to_string fn) s;
+    Io.write_file fn s;
     Fiber.return ()
   | Rename (src, dst) ->
     Unix.rename (Path.to_string src) (Path.to_string dst);
@@ -870,7 +868,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     exec_echo stdout_to s
   | Diff { optional; file1; file2 } ->
     if (optional && not (Path.exists file1 && Path.exists file2)) ||
-       Io.compare_files (Path.to_string file1) (Path.to_string file2) = Eq then
+       Io.compare_files file1 file2 = Eq then
       Fiber.return ()
     else begin
       let is_copied_from_source_tree file =
@@ -892,21 +890,18 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       List.fold_left
         ~init:(String.Set.of_list extras)
         ~f:(fun set source_path ->
-          Path.to_string source_path
-          |> Io.lines_of_file
+          Io.lines_of_file source_path
           |> String.Set.of_list
           |> String.Set.union set
         )
         sources
     in
-    Io.write_lines
-      (Path.to_string target)
-      (String.Set.to_list lines);
+    Io.write_lines target (String.Set.to_list lines);
     Fiber.return ()
 
 and redirect outputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to =
-  let fn = Path.to_string fn in
   let oc = Io.open_out fn in
+  let fn = Path.to_string fn in
   let out = Some (fn, oc) in
   let stdout_to, stderr_to =
     match outputs with

@@ -170,10 +170,10 @@ let rec simplify t =
         in
         { pkg with vars = String.Map.add pkg.vars rule.var rules })
 
-let load ~fn ~name =
+let load p ~name =
   { name
   ; entries =
-      Io.with_lexbuf_from_file fn ~f:(fun lb ->
+      Io.with_lexbuf_from_file p ~f:(fun lb ->
         Parse.entries lb 0 [])
   }
   |> simplify

@@ -143,7 +143,9 @@ and postprocess tbl b = parse
               | _ -> 255
             in
             let ext_replace = make_ext_replace configurator in
-            List.iter (Io.lines_of_file temp_file) ~f:(fun line ->
+            Path.of_string temp_file
+            |> Io.lines_of_file
+            |> List.iter ~f:(fun line ->
               Printf.bprintf buf "  %s\n"
                 (ext_replace (Ansi_color.strip line)));
             if n <> 0 then Printf.bprintf buf "  [%d]\n" n);

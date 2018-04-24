@@ -255,7 +255,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
     match output_filename with
     | None -> ""
     | Some fn ->
-      let s = Io.read_file fn in
+      let s = Io.read_file (Path.of_string fn) in
       Temp.destroy fn;
       let len = String.length s in
       if len > 0 && s.[len - 1] <> '\n' then
@@ -329,11 +329,14 @@ let run_capture_gen ?dir ~env ?(purpose=Internal_job) fail_mode prog args ~f =
       Temp.destroy fn;
       x)
 
-let run_capture       = run_capture_gen ~f:Io.read_file
-let run_capture_lines = run_capture_gen ~f:Io.lines_of_file
+let run_capture =
+  run_capture_gen ~f:(fun p -> Io.read_file (Path.of_string p))
+let run_capture_lines =
+  run_capture_gen ~f:(fun p -> Io.lines_of_file (Path.of_string p))
 
 let run_capture_line ?dir ~env ?(purpose=Internal_job) fail_mode prog args =
   run_capture_gen ?dir ~env ~purpose fail_mode prog args ~f:(fun fn ->
+    let fn = Path.of_string fn in
     match Io.lines_of_file fn with
     | [x] -> x
     | l ->

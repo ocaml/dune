@@ -1244,7 +1244,7 @@ module Stanzas = struct
               (Path.to_string_maybe_quoted file);
           if List.exists include_stack ~f:(fun (_, f) -> f = file) then
             raise (Include_loop (file, include_stack));
-          let sexps = Io.Sexp.load ~fname:(Path.to_string file) ~mode:Many in
+          let sexps = Io.Sexp.load file ~mode:Many in
           parse pkgs sexps ~default_version:Jbuild_version.V1 ~file ~include_stack)
       ; cstr "documentation" (Documentation.v1 pkgs @> nil)
           (fun d -> [Documentation d])

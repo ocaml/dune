@@ -185,7 +185,7 @@ module Of_sexp = struct
   let string_set sexp = String.Set.of_list (list string sexp)
   let string_map f sexp =
     match String.Map.of_list (list (pair string f) sexp) with
-    | Ok x -> x
+    | Result.Ok x -> x
     | Error (key, _v1, _v2) ->
       of_sexp_error sexp (Printf.sprintf "key %S present multiple times" key)
 
@@ -250,7 +250,7 @@ module Of_sexp = struct
   let map_validate parse ~f state =
     let x, state' = parse state in
     match f x with
-    | Ok x -> x, state'
+    | Result.Ok x -> x, state'
     | Error msg ->
       let parsed =
         Name_map.merge state.unparsed state'.unparsed ~f:(fun _key before after ->

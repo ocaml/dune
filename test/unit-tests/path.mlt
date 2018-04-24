@@ -1,6 +1,5 @@
 (* -*- tuareg -*- *)
-open Jbuilder;;
-open Import;;
+open Stdune;;
 
 let r = Path.(relative root);;
 
@@ -8,44 +7,44 @@ let r = Path.(relative root);;
 
 Path.(let p = relative root "foo" in descendant p ~of_:p)
 [%%expect{|
-val r : string -> Jbuilder.Import.Path.t = <fun>
-- : Jbuilder.Import.Path.t option = Some foo
+val r : string -> Stdune.Path.t = <fun>
+- : Stdune.Path.t option = Some foo
 |}]
 
 (* different strings but same length *)
 Path.(descendant (relative root "foo") ~of_:(relative root "bar"))
 [%%expect{|
-- : Jbuilder.Import.Path.t option = None
+- : Stdune.Path.t option = None
 |}]
 
 Path.(descendant (r "foo") ~of_:(r "foo/"))
 [%%expect{|
-- : Jbuilder.Import.Path.t option = Some foo
+- : Stdune.Path.t option = Some foo
 |}]
 
 Path.(descendant (r "foo/") ~of_:(r "foo"))
 [%%expect{|
-- : Jbuilder.Import.Path.t option = Some foo
+- : Stdune.Path.t option = Some foo
 |}]
 
 Path.(descendant (r "foo/bar") ~of_:(r "foo"))
 [%%expect{|
-- : Jbuilder.Import.Path.t option = Some bar
+- : Stdune.Path.t option = Some bar
 |}]
 
 Path.(descendant Path.root ~of_:(r "foo"))
 [%%expect{|
-- : Jbuilder.Import.Path.t option = None
+- : Stdune.Path.t option = None
 |}]
 
 Path.(descendant Path.root ~of_:Path.root)
 [%%expect{|
-- : Jbuilder.Import.Path.t option = Some .
+- : Stdune.Path.t option = Some .
 |}]
 
 Path.(descendant (r "foo") ~of_:Path.root)
 [%%expect{|
-- : Jbuilder.Import.Path.t option = Some foo
+- : Stdune.Path.t option = Some foo
 |}]
 
 Path.explode (Path.of_string "a/b/c");

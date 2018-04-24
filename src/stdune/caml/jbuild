@@ -1,4 +1,4 @@
 (library
  ((name caml)
-  (public_name jbuilder.caml)
+  (public_name dune.caml)
   (synopsis "[Internal] Wrapped version of the OCaml stdlib")))

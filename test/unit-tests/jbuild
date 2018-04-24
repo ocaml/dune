@@ -5,7 +5,7 @@
   (modules (expect_test))
   (link_flags (-linkall))
   (modes (byte))
-  (libraries (unix jbuilder compiler-libs.toplevel test_common))))
+  (libraries (unix dune compiler-libs.toplevel test_common))))
 
 (ocamllex (expect_test))
 
@@ -21,7 +21,7 @@
 (alias
  ((name runtest)
   (deps (tests.mlt
-         (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)
+         (glob_files ${SCOPE_ROOT}/src/.dune.objs/*.cmi)
          (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)
          (files_recursively_in toolchain.d)
          (files_recursively_in findlib-db)))
@@ -33,7 +33,7 @@
 (alias
  ((name runtest)
   (deps (filename.mlt
-         (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)
+         (glob_files ${SCOPE_ROOT}/src/.dune.objs/*.cmi)
          (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)))
   (action (chdir ${SCOPE_ROOT}
            (progn
@@ -43,7 +43,7 @@
 (alias
  ((name runtest)
   (deps (import_dot_map.mlt
-         (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)
+         (glob_files ${SCOPE_ROOT}/src/.dune.objs/*.cmi)
          (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)))
   (action (chdir ${SCOPE_ROOT}
            (progn
@@ -53,7 +53,7 @@
 (alias
  ((name runtest)
   (deps (action.mlt
-         (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)
+         (glob_files ${SCOPE_ROOT}/src/.dune.objs/*.cmi)
          (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)))
   (action (chdir ${SCOPE_ROOT}
            (progn
@@ -63,7 +63,7 @@
 (alias
  ((name runtest)
   (deps (path.mlt
-         (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)
+         (glob_files ${SCOPE_ROOT}/src/.dune.objs/*.cmi)
          (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)))
   (action (chdir ${SCOPE_ROOT}
            (progn

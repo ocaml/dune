@@ -1,5 +1,5 @@
 (executable
  ((name        main)
   (public_name jbuilder)
-  (libraries (unix jbuilder cmdliner))
+  (libraries (unix dune cmdliner))
   (preprocess no_preprocessing)))

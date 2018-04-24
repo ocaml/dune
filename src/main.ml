@@ -248,7 +248,7 @@ let bootstrap () =
          ()
        >>= fun { build_system = bs; _ } ->
        Build_system.do_build bs
-         ~request:(Build.path (Path.of_string "_build/default/jbuilder.install")))
+         ~request:(Build.path (Path.of_string "_build/default/dune.install")))
   in
   try
     main ()

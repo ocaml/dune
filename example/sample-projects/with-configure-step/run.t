@@ -1,4 +1,4 @@
-  $ $JBUILDER build -j1 --root . @install @runtest
+  $ jbuilder build @install @runtest
          ocaml config.full
       ocamldep src/plop.depends.ocamldep-output
         ocamlc src/config.{cmi,cmo,cmt}

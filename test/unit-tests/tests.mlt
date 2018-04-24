@@ -2,7 +2,7 @@
 
 #warnings "-40";;
 
-open Jbuilder
+open Dune
 open Import
 
 let print_pkg ppf pkg =
@@ -13,8 +13,7 @@ let print_pkg ppf pkg =
 #install_printer String_map.pp;;
 
 [%%expect{|
-val print_pkg : Format.formatter -> Jbuilder.Findlib.Package.t -> unit =
-  <fun>
+val print_pkg : Format.formatter -> Dune.Findlib.Package.t -> unit = <fun>
 |}]
 
 let findlib =
@@ -25,7 +24,7 @@ let findlib =
 ;;
 
 [%%expect{|
-val findlib : Jbuilder.Findlib.t = <abstr>
+val findlib : Dune.Findlib.t = <abstr>
 |}]
 
 let pkg =
@@ -34,7 +33,7 @@ let pkg =
   | Error _ -> assert false;;
 
 [%%expect{|
-val pkg : Jbuilder.Findlib.Package.t = <package:foo>
+val pkg : Dune.Findlib.Package.t = <package:foo>
 |}]
 
 (* "foo" should depend on "baz" *)
@@ -56,7 +55,7 @@ let meta =
   |> Meta.load ~name:"foo"
 
 [%%expect{|
-val meta : Jbuilder.Meta.Simplified.t =
+val meta : Dune.Meta.Simplified.t =
   { name = "foo"
   ; vars =
      (requires =

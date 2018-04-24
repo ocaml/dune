@@ -1,13 +1,18 @@
 (jbuild_version 1)
 
 (rule
+ ((targets (dune.1))
+  (action  (with-stdout-to ${@}
+            (run ${bin:dune} --help=groff)))))
+
+(rule
  ((targets (jbuilder.1))
   (action  (with-stdout-to ${@}
             (run ${bin:jbuilder} --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder.1))))
+  (files (dune.1 jbuilder.1))))
 
 (rule
  ((targets (dune-config.5))
@@ -18,12 +23,27 @@
  ((section man)
   (files (dune-config.5))))
 
-(include jbuild.inc)
+(include jbuild.inc.dune)
+(include jbuild.inc.jbuilder)
 
 (rule
- (with-stdout-to jbuild.inc.gen
-  (run bash ${path:update-jbuild.sh} ${bin:jbuilder})))
+ ((targets (jbuild.inc.dune.gen))
+  (deps    ((package dune)))
+  (action
+   (with-stdout-to ${@}
+    (run bash ${path:update-jbuild.sh} dune)))))
+
+(rule
+ ((targets (jbuild.inc.jbuilder.gen))
+  (deps    ((package dune)))
+  (action
+   (with-stdout-to ${@}
+    (run bash ${path:update-jbuild.sh} jbuilder)))))
 
 (alias
  ((name runtest)
-  (action (diff jbuild.inc jbuild.inc.gen))))
+  (action (diff jbuild.inc.dune jbuild.inc.dune.gen))))
+
+(alias
+ ((name runtest)
+  (action (diff jbuild.inc.jbuilder jbuild.inc.jbuilder.gen))))

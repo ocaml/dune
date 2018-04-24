@@ -1,4 +1,4 @@
-open Jbuilder
+open Dune
 open Import
 open Cmdliner
 open Fiber.O
@@ -70,7 +70,7 @@ let restore_cwd_and_execve common prog argv env =
     Unix.execve prog argv env
 
 module Main = struct
-  include Jbuilder.Main
+  include Dune.Main
 
   let setup ~log ?external_lib_deps_mode common =
     setup
@@ -85,14 +85,14 @@ module Main = struct
 end
 
 module Log = struct
-  include Jbuilder.Log
+  include Dune.Log
 
   let create common =
     Log.create ~display:common.config.display ()
 end
 
 module Scheduler = struct
-  include Jbuilder.Scheduler
+  include Dune.Scheduler
 
   let go ?log ~common fiber =
     let fiber =

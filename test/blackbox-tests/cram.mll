@@ -1,7 +1,7 @@
 (* Mini implementation of cram tests *)
 
 {
-open Jbuilder
+open Dune
 open Import
 
 type item =
@@ -132,7 +132,7 @@ and postprocess tbl b = parse
       end;
       Test_common.run_expect_test expect_test ~f:(fun file_contents lexbuf ->
         let items = file lexbuf in
-        let temp_file = Filename.temp_file "jbuilder-test" ".output" in
+        let temp_file = Filename.temp_file "dune-test" ".output" in
         at_exit (fun () -> Sys.remove temp_file);
         let buf = Buffer.create (String.length file_contents + 1024) in
         List.iter items ~f:(function

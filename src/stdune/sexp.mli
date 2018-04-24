@@ -1,8 +1,5 @@
 include module type of struct include Usexp end with module Loc := Usexp.Loc
 
-val load : fname:string -> mode:'a Parser.Mode.t -> 'a
-val load_many_as_one : fname:string -> Ast.t
-
 module type Combinators = sig
   type 'a t
   val unit       : unit                      t
@@ -155,7 +152,3 @@ module Of_sexp : sig
 
   val enum : (string * 'a) list -> 'a t
 end
-
-(**/**)
-(* used in jbuild_load *)
-val buf_len : int

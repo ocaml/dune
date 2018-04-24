@@ -660,7 +660,7 @@ module Promotion = struct
 
   let load_db () =
     if Sys.file_exists db_file then
-      Sexp.load ~fname:db_file ~mode:Many
+      Io.Sexp.load ~fname:db_file ~mode:Many
       |> List.map ~f:File.t
     else
       []

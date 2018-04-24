@@ -157,7 +157,7 @@ end
         die "@{<error>Error:@} %s failed to produce a valid jbuild file.\n\
              Did you forgot to call [Jbuild_plugin.V*.send]?"
           (Path.to_string file);
-      let sexps = Sexp.load ~fname:(Path.to_string generated_jbuild) ~mode:Many in
+      let sexps = Io.Sexp.load ~fname:(Path.to_string generated_jbuild) ~mode:Many in
       Fiber.return (dir, scope, Stanzas.parse scope sexps ~file:generated_jbuild
                                 |> filter_stanzas ~ignore_promoted_rules))
     >>| fun dynamic ->
@@ -184,14 +184,14 @@ module Sexp_io = struct
   let load_many_or_ocaml_script fname =
     Io.with_file_in fname ~f:(fun ic ->
       let state = Parser.create ~fname ~mode:Many in
-      let buf = Bytes.create buf_len in
+      let buf = Bytes.create Io.buf_len in
       let rec loop stack =
-        match input ic buf 0 buf_len with
+        match input ic buf 0 Io.buf_len with
         | 0 -> Parser.feed_eoi state stack
         | n -> loop (Parser.feed_subbytes state buf ~pos:0 ~len:n stack)
       in
       let rec loop0 stack i =
-        match input ic buf i (buf_len - i) with
+        match input ic buf i (Io.buf_len - i) with
         | 0 ->
           let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
           Sexps (Parser.feed_eoi state stack)

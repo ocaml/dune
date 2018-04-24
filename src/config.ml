@@ -81,7 +81,7 @@ let t =
 let user_config_file = Filename.concat Xdg.config_dir "dune/config"
 
 let load_config_file ~fname =
-  t (Sexp.load_many_as_one ~fname)
+  t (Io.Sexp.load_many_as_one ~fname)
 
 let load_user_config_file () =
   if Sys.file_exists user_config_file then

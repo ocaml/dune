@@ -25,3 +25,12 @@ val copy_channels : in_channel -> out_channel -> unit
 val copy_file : src:string -> dst:string -> unit
 
 val read_all : in_channel -> string
+
+module Sexp : sig
+  val load : fname:string -> mode:'a Sexp.Parser.Mode.t -> 'a
+  val load_many_as_one : fname:string -> Sexp.Ast.t
+end
+
+(**/**)
+(* used in jbuild_load *)
+val buf_len : int

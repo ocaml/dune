@@ -204,7 +204,7 @@ module Cached_digest = struct
 
   let load () =
     if Sys.file_exists db_file then begin
-      let sexp = Sexp.load ~fname:db_file ~mode:Single in
+      let sexp = Io.Sexp.load ~fname:db_file ~mode:Single in
       let bindings =
         let open Sexp.Of_sexp in
         list

@@ -20,7 +20,7 @@ module Promoted_to_delete = struct
 
   let load () =
     if Sys.file_exists fn then
-      Sexp.load ~fname:fn ~mode:Many
+      Io.Sexp.load ~fname:fn ~mode:Many
       |> List.map ~f:Path.t
     else
       []
@@ -1126,7 +1126,7 @@ module Trace = struct
   let load () =
     let trace = Hashtbl.create 1024 in
     if Sys.file_exists file then begin
-      let sexp = Sexp.load ~fname:file ~mode:Single in
+      let sexp = Io.Sexp.load ~fname:file ~mode:Single in
       let bindings =
         let open Sexp.Of_sexp in
         list (pair Path.t (fun s -> Digest.from_hex (string s))) sexp
@@ -1207,7 +1207,7 @@ let update_universe t =
   let fname = Path.to_string universe_file in
   let n =
     if Sys.file_exists fname then
-      Sexp.Of_sexp.int (Sexp.load ~mode:Single ~fname) + 1
+      Sexp.Of_sexp.int (Io.Sexp.load ~mode:Single ~fname) + 1
     else
       0
   in

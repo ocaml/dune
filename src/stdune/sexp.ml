@@ -1,26 +1,5 @@
 include Usexp
 
-let buf_len = 65_536
-
-let load ~fname ~mode =
-  Io.with_file_in fname ~f:(fun ic ->
-    let state = Parser.create ~fname ~mode in
-    let buf = Bytes.create buf_len in
-    let rec loop stack =
-      match input ic buf 0 buf_len with
-      | 0 -> Parser.feed_eoi state stack
-      | n -> loop (Parser.feed_subbytes state buf ~pos:0 ~len:n stack)
-    in
-    loop Parser.Stack.empty)
-
-let load_many_as_one ~fname =
-  match load ~fname ~mode:Many with
-  | [] -> Ast.List (Loc.in_file fname, [])
-  | x :: l ->
-    let last = Option.value (List.last l) ~default:x in
-    let loc = { (Ast.loc x) with stop = (Ast.loc last).stop } in
-    Ast.List (loc, x :: l)
-
 module type Combinators = sig
   type 'a t
   val unit       : unit                      t

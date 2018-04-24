@@ -55,7 +55,7 @@ struct
   let to_string path x = To_sexp.t path x |> Sexp.to_string
 
   let load path =
-    Of_sexp.t path (Sexp.load ~fname:(Path.to_string path) ~mode:Single)
+    Of_sexp.t path (Io.Sexp.load ~fname:(Path.to_string path) ~mode:Single)
 end
 
 

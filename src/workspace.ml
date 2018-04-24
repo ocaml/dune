@@ -135,4 +135,4 @@ let t ?x sexps =
   ; contexts       = List.rev contexts
   }
 
-let load ?x fname = t ?x (Sexp.load ~fname ~mode:Many)
+let load ?x fname = t ?x (Io.Sexp.load ~fname ~mode:Many)

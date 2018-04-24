@@ -1,5 +1,5 @@
-(executable
- ((name        main)
-  (public_name jbuilder)
+(executables
+ ((names        (main_dune main_jbuilder))
+  (public_names (     dune      jbuilder))
   (libraries (unix dune cmdliner))
   (preprocess no_preprocessing)))

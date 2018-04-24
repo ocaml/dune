@@ -1,4 +1,4 @@
-open Jbuild
+open Stdune
 
 module Jbuilds : sig
   type t
@@ -6,14 +6,14 @@ module Jbuilds : sig
   val eval
     :  t
     -> context:Context.t
-    -> (Path.t * Scope_info.t * Stanzas.t) list Fiber.t
+    -> (Path.t * Jbuild.Scope_info.t * Jbuild.Stanzas.t) list Fiber.t
 end
 
 type conf =
   { file_tree : File_tree.t
   ; jbuilds   : Jbuilds.t
   ; packages  : Package.t Package.Name.Map.t
-  ; scopes    : Scope_info.t list
+  ; scopes    : Jbuild.Scope_info.t list
   }
 
 val load

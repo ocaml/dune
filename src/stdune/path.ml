@@ -1,5 +1,3 @@
-open Stdune
-
 let explode_path =
   let rec loop path acc =
     let dir  = Filename.dirname  path in
@@ -96,11 +94,11 @@ module Local = struct
   let relative ?error_loc t path =
     let rec loop t components =
       match components with
-      | [] -> Ok t
+      | [] -> Result.Ok t
       | "." :: rest -> loop t rest
       | ".." :: rest ->
         begin match t with
-        | "" -> Error ()
+        | "" -> Result.Error ()
         | t -> loop (parent t) rest
         end
       | fn :: rest ->
@@ -109,9 +107,9 @@ module Local = struct
         | _ -> loop (t ^ "/" ^ fn) rest
     in
     match loop t (explode_path path) with
-    | Ok t -> t
+    | Result.Ok t -> t
     | Error () ->
-       Loc.fail_opt error_loc "path outside the workspace: %s from %s" path
+       Exn.fatalf ?loc:error_loc "path outside the workspace: %s from %s" path
          (to_string t)
 
   let is_canonicalized =
@@ -280,9 +278,8 @@ let absolute fn =
   else
     fn
 
-let to_absolute_filename t =
+let to_absolute_filename t ~root =
   if is_local t then begin
-    let root = !Clflags.workspace_root in
     assert (not (Filename.is_relative root));
     Filename.concat root (to_string t)
   end else

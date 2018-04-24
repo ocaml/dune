@@ -136,7 +136,7 @@ end
         List.concat
           [ [ "-I"; "+compiler-libs" ]
           ; cmas
-          ; [ Path.to_absolute_filename wrapper ]
+          ; [ Path.to_absolute_filename wrapper ~root:!Clflags.workspace_root ]
           ]
       in
       (* CR-someday jdimino: if we want to allow plugins to use findlib:

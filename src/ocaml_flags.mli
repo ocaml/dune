@@ -1,5 +1,7 @@
 (** OCaml flags *)
 
+open Stdune
+
 type t
 
 val make

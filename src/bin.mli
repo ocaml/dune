@@ -1,5 +1,7 @@
 (** OCaml binaries *)
 
+open Stdune
+
 (** Character used to separate entries in [PATH] and similar
     environment variables *)
 val path_sep : char

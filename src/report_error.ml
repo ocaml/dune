@@ -25,7 +25,7 @@ let report_with_backtrace exn =
   | Some p -> p
   | None ->
     match exn with
-    | Loc.Error (loc, msg) ->
+    | Exn.Loc_error (loc, msg) ->
       let loc =
         { loc with
           start = { loc.start with pos_fname = !map_fname loc.start.pos_fname }
@@ -55,7 +55,7 @@ let report_with_backtrace exn =
         loc = Some loc
       ; pp  = fun ppf -> Format.fprintf ppf "@{<error>Error@}: %s\n" msg
       }
-    | Fatal_error msg ->
+    | Exn.Fatal_error msg ->
       { p with pp = fun ppf ->
           if msg.[String.length msg - 1] = '\n' then
             Format.fprintf ppf "%s" msg

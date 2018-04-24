@@ -1,5 +1,7 @@
 (** Checks modules partitioning inside a directory *)
 
+open Stdune
+
 type t
 
 val create

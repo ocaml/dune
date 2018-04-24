@@ -1,3 +1,5 @@
+open Stdune
+
 module Outputs = struct
   type t =
     | Stdout

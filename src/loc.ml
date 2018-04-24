@@ -32,16 +32,14 @@ let of_lexbuf lb =
   ; stop  = Lexing.lexeme_end_p   lb
   }
 
-exception Error of t * string
-
 let exnf t fmt =
   Format.pp_print_as err_ppf 7 ""; (* "Error: " *)
-  kerrf fmt ~f:(fun s -> Error (t, s))
+  kerrf fmt ~f:(fun s -> Exn.Loc_error (t, s))
 
 let fail t fmt =
   Format.pp_print_as err_ppf 7 ""; (* "Error: " *)
   kerrf fmt ~f:(fun s ->
-    raise (Error (t, s)))
+    raise (Exn.Loc_error (t, s)))
 
 let fail_lex lb fmt =
   fail (of_lexbuf lb) fmt

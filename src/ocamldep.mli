@@ -1,5 +1,7 @@
 (** ocamldep management *)
 
+open Stdune
+
 module Dep_graph : sig
   type t
 

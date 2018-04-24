@@ -171,9 +171,48 @@ type conf =
   ; scopes    : Scope_info.t list
   }
 
+module Sexp_io = struct
+  open Sexp
+
+  let ocaml_script_prefix = "(* -*- tuareg -*- *)"
+  let ocaml_script_prefix_len = String.length ocaml_script_prefix
+
+  type sexps_or_ocaml_script =
+    | Sexps of Ast.t list
+    | Ocaml_script
+
+  let load_many_or_ocaml_script fname =
+    Io.with_file_in fname ~f:(fun ic ->
+      let state = Parser.create ~fname ~mode:Many in
+      let buf = Bytes.create buf_len in
+      let rec loop stack =
+        match input ic buf 0 buf_len with
+        | 0 -> Parser.feed_eoi state stack
+        | n -> loop (Parser.feed_subbytes state buf ~pos:0 ~len:n stack)
+      in
+      let rec loop0 stack i =
+        match input ic buf i (buf_len - i) with
+        | 0 ->
+          let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
+          Sexps (Parser.feed_eoi state stack)
+        | n ->
+          let i = i + n in
+          if i < ocaml_script_prefix_len then
+            loop0 stack i
+          else if Bytes.sub_string buf 0 ocaml_script_prefix_len
+                    [@warning "-6"]
+                  = ocaml_script_prefix then
+            Ocaml_script
+          else
+            let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
+            Sexps (loop stack)
+      in
+      loop0 Parser.Stack.empty 0)
+end
+
 let load ~dir ~scope ~ignore_promoted_rules =
   let file = Path.relative dir "jbuild" in
-  match Sexp.load_many_or_ocaml_script (Path.to_string file) with
+  match Sexp_io.load_many_or_ocaml_script (Path.to_string file) with
   | Sexps sexps ->
     Jbuilds.Literal (dir, scope,
                      Stanzas.parse scope sexps ~file

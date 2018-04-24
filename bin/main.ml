@@ -147,9 +147,12 @@ module Make(M : sig val which : which end) = struct
       let files = Sys.readdir dir |> Array.to_list |> String.Set.of_list in
       if String.Set.mem files "jbuild-workspace" then
         cont counter ~candidates:((0, dir, to_cwd) :: candidates) dir ~to_cwd
-      else if String.Set.exists files ~f:(fun fn ->
-        String.is_prefix fn ~prefix:"jbuild-workspace") then
+      else if M.which = Jbuilder &&
+              String.Set.exists files ~f:(fun fn ->
+                String.is_prefix fn ~prefix:"jbuild-workspace") then
         cont counter ~candidates:((1, dir, to_cwd) :: candidates) dir ~to_cwd
+      else if String.Set.mem files "dune-project" then
+        cont counter ~candidates:((2, dir, to_cwd) :: candidates) dir ~to_cwd
       else
         cont counter ~candidates dir ~to_cwd
     and cont counter ~candidates ~to_cwd dir =

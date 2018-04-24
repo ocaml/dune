@@ -31,8 +31,8 @@ The following sections describe the available stanzas and their meaning.
 jbuild_version
 --------------
 
-``(jbuild_version 1)`` specifies that we are using the version 1 of
-the Jbuilder metadata format in this ``jbuild`` file.
+Deprecated. This stanza is no longer used and will be removed in the
+future.
 
 library
 -------

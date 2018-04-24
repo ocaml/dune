@@ -15,7 +15,8 @@ jbuild-workspace
 ----------------
 
 The root of the current workspace is determined by looking up a
-``jbuild-workspace`` file in the current directory and parent directories.
+``jbuild-workspace`` or ``dune-project`` file in the current directory
+and parent directories.
 
 ``jbuilder`` prints out the root when starting if it is not the
 current directory:
@@ -49,6 +50,8 @@ this file.
 
 jbuild-workspace\*
 ------------------
+
+The following is deprecated and no longer works with ``dune``.
 
 In addition to the previous rule, if no ``jbuild-workspace`` file is found,
 ``jbuilder`` will look for any file whose name starts with ``jbuild-workspace``

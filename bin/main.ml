@@ -1,11 +1,11 @@
 open Jbuilder
 open Import
-open Jbuilder_cmdliner.Cmdliner
+open Cmdliner
 open Fiber.O
 
 (* Things in src/ don't depend on cmdliner to speed up the bootstrap, so we set this
    reference here *)
-let () = suggest_function := Jbuilder_cmdliner.Cmdliner_suggest.value
+let () = suggest_function := Cmdliner_suggest.value
 
 type common =
   { debug_dep_path        : bool

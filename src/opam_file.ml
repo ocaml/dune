@@ -1,5 +1,4 @@
 open Import
-open Jbuilder_opam_file_format
 open OpamParserTypes
 
 type t = opamfile

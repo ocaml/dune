@@ -9,7 +9,7 @@
         ocamlc test.bc
         ocamlc test.bc.so
       ocamlopt test.exe
-      ocamlopt test.so
+      ocamlopt test$ext_dll
 
   $ jbuilder build @runtest
         static alias runtest
@@ -19,4 +19,4 @@
         static alias runtest
   OK: ./static.exe
        dynamic alias runtest
-  OK: ./dynamic.exe ./test.so
+  OK: ./dynamic.exe ./test$ext_dll

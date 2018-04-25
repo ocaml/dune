@@ -613,7 +613,7 @@ open Fiber.O
 let get_std_output : _ -> Process.std_output_to = function
   | None          -> Terminal
   | Some (fn, oc) ->
-    Opened_file { filename = (Path.of_string fn)
+    Opened_file { filename = fn
                 ; tail = false
                 ; desc = Channel oc }
 
@@ -904,7 +904,6 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
 
 and redirect outputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to =
   let oc = Io.open_out fn in
-  let fn = Path.to_string fn in
   let out = Some (fn, oc) in
   let stdout_to, stderr_to =
     match outputs with

@@ -1,5 +1,7 @@
 (** dune-project files *)
 
+open Import
+
 type t =
   { name : string
   }

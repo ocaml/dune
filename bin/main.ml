@@ -15,6 +15,11 @@ module Make(M : sig val which : which end) = struct
     | Jbuilder -> "jbuilder"
     | Dune     -> "dune"
 
+  let workspace_file =
+    match M.which with
+    | Jbuilder -> "jbuild-workspace"
+    | Dune     -> "dune-workspace"
+
   type common =
     { debug_dep_path        : bool
     ; debug_findlib         : bool
@@ -83,7 +88,11 @@ module Make(M : sig val which : which end) = struct
     let setup ~log ?external_lib_deps_mode common =
       setup
         ~log
-        ?workspace_file:(Option.map ~f:Path.of_string common.workspace_file)
+        ~workspace_file:(
+          Path.of_string (
+            match common.workspace_file with
+            | Some fn -> fn
+            | None    -> workspace_file))
         ?only_packages:common.only_packages
         ?external_lib_deps_mode
         ?x:common.x
@@ -145,13 +154,13 @@ module Make(M : sig val which : which end) = struct
     let cwd = Sys.getcwd () in
     let rec loop counter ~candidates ~to_cwd dir =
       let files = Sys.readdir dir |> Array.to_list |> String.Set.of_list in
-      if String.Set.mem files "jbuild-workspace" then
+      if String.Set.mem files workspace_file then
         cont counter ~candidates:((0, dir, to_cwd) :: candidates) dir ~to_cwd
       else if M.which = Jbuilder &&
               String.Set.exists files ~f:(fun fn ->
-                String.is_prefix fn ~prefix:"jbuild-workspace") then
+                String.is_prefix fn ~prefix:workspace_file) then
         cont counter ~candidates:((1, dir, to_cwd) :: candidates) dir ~to_cwd
-      else if String.Set.mem files "dune-project" then
+      else if String.Set.mem files Dune_project.filename then
         cont counter ~candidates:((2, dir, to_cwd) :: candidates) dir ~to_cwd
       else
         cont counter ~candidates dir ~to_cwd
@@ -479,7 +488,7 @@ module Make(M : sig val which : which end) = struct
                    else
                      []
                  ; (match config_file with
-                    | This fn   -> ["--config-file"; fn]
+                    | This fn   -> ["--config-file"; Path.to_string fn]
                     | No_config -> ["--no-config"]
                     | Default   -> [])
                  ]

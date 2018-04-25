@@ -30,7 +30,7 @@ let setup_env ~capture_outputs =
 
 let setup ?(log=Log.no_log)
       ?external_lib_deps_mode
-      ?workspace ?(workspace_file=Path.of_string "jbuild-workspace")
+      ?workspace ?workspace_file
       ?only_packages
       ?extra_ignored_subtrees
       ?x
@@ -55,9 +55,10 @@ let setup ?(log=Log.no_log)
     match workspace with
     | Some w -> w
     | None ->
-      if Path.exists workspace_file then
-        Workspace.load ?x workspace_file
-      else
+      match workspace_file with
+      | Some p when Path.exists p ->
+        Workspace.load ?x p
+      | _ ->
         { merlin_context = Some "default"
         ; contexts = [Default [
             match x with

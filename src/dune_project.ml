@@ -34,8 +34,8 @@ module Acc = struct
 end
 
 let load ~dir =
-  let fname = Path.to_string (Path.relative dir filename) in
-  let sexps = Sexp.load ~fname ~mode:Many in
+  let fname = Path.relative dir filename in
+  let sexps = Io.Sexp.load fname ~mode:Many in
   let langs, sexps =
     List.partition_map sexps ~f:(function
       | List (loc, Atom (_, A "lang") :: _) as sexp ->
@@ -45,7 +45,7 @@ let load ~dir =
   let _lang =
     match langs with
     | [] ->
-      Loc.fail (Loc.in_file fname)
+      Loc.fail (Loc.in_file (Path.to_string fname))
         "language not specified, you need to add (lang dune 0.1)"
     | [(v, _)] -> v
     | _ :: (_, loc) :: _ ->

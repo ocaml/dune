@@ -426,7 +426,9 @@ let explode_exn t =
     Exn.code_error "Path.explode_exn"
       ["path", Sexp.atom_or_quoted_string t]
 
-let exists t = Sys.file_exists (to_string t)
+let exists t =
+  try Sys.file_exists (to_string t)
+  with Sys_error _ -> false
 let readdir t = Sys.readdir (to_string t) |> Array.to_list
 let is_directory t =
   try Sys.is_directory (to_string t)

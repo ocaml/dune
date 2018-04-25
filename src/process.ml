@@ -121,7 +121,7 @@ module Fancy = struct
     let s =
       match dir with
       | None -> s
-      | Some dir -> sprintf "(cd %s && %s)" dir s
+      | Some dir -> sprintf "(cd %s && %s)" (Path.to_string dir) s
     in
     match stdout_to, stderr_to with
     | (File fn1 | Opened_file { filename = fn1; _ }),
@@ -216,8 +216,12 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
   let display = Scheduler.display scheduler in
   let dir =
     match dir with
-    | Some "." -> None
-    | _ -> dir
+    | Some p ->
+      if Path.is_root p then
+        None
+      else
+        Some p
+    | None -> dir
   in
   let id = gen_id () in
   let ok_codes = accepted_codes fail_mode in
@@ -344,7 +348,7 @@ let run_capture_line ?dir ~env ?(purpose=Internal_job) fail_mode prog args =
         let s = String.concat (prog :: args) ~sep:" " in
         match dir with
         | None -> s
-        | Some dir -> sprintf "cd %s && %s" dir s
+        | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) s
       in
       match l with
       | [] ->

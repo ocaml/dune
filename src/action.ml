@@ -735,7 +735,7 @@ let exec_run_direct ~ectx ~dir ~env ~stdout_to ~stderr_to prog args =
      invalid_prefix ("_build/" ^ target.name);
      invalid_prefix ("_build/install/" ^ target.name);
   end;
-  Process.run Strict ~dir:(Path.to_string dir) ~env
+  Process.run Strict ~dir ~env
     ~stdout_to ~stderr_to
     ~purpose:ectx.purpose
     (Path.reach_for_running ~from:dir prog) args

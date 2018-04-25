@@ -72,7 +72,7 @@ let log t = t.log
 let display t = t.display
 
 let with_chdir t ~dir ~f =
-  Sys.chdir dir;
+  Sys.chdir (Path.to_string dir);
   protectx () ~finally:(fun () -> Sys.chdir t.original_cwd) ~f
 
 let hide_status_line s =

@@ -1,5 +1,7 @@
 (** Scheduling *)
 
+open Stdune
+
 (** [go ?log ?config ?gen_status_line fiber] runs the following fiber until it
     terminates. [gen_status_line] is used to print a status line when [config.display =
     Progress]. *)
@@ -27,7 +29,7 @@ val wait_for_available_job : unit -> t Fiber.t
 val log : t -> Log.t
 
 (** Execute the given callback with current directory temporarily changed *)
-val with_chdir : t -> dir:string -> f:(unit -> 'a) -> 'a
+val with_chdir : t -> dir:Path.t -> f:(unit -> 'a) -> 'a
 
 (** Display mode for this scheduler *)
 val display : t -> Config.Display.t

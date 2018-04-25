@@ -147,7 +147,7 @@ end
            in
          ]}
       *)
-      Process.run Strict ~dir:(Path.to_string dir)
+      Process.run Strict ~dir
         ~env:context.env
         (Path.to_string context.ocaml)
         args

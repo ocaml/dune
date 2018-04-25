@@ -647,7 +647,7 @@ module Promotion = struct
       Io.copy_file ~src ~dst
   end
 
-  let db_file = Path.relative_build_dir ".to-promote"
+  let db_file = Path.relative_to_build_dir ".to-promote"
 
   let dump_db db =
     if Path.build_dir_exists () then begin

@@ -14,7 +14,7 @@ let misc_dir = Path.(relative build_dir) ".misc"
 module Promoted_to_delete = struct
   let db = ref []
 
-  let fn = Path.relative_build_dir ".to-delete-in-source-tree"
+  let fn = Path.relative_to_build_dir ".to-delete-in-source-tree"
 
   let add p = db := p :: !db
 
@@ -1106,7 +1106,7 @@ let stamp_file_for_files_of t ~dir ~ext =
 module Trace = struct
   type t = (Path.t, Digest.t) Hashtbl.t
 
-  let file = Path.relative_build_dir ".db"
+  let file = Path.relative_to_build_dir ".db"
 
   let dump (trace : t) =
     let sexp =

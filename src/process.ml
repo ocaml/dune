@@ -31,11 +31,11 @@ let map_result
 
 type std_output_to =
   | Terminal
-  | File        of string
+  | File        of Path.t
   | Opened_file of opened_file
 
 and opened_file =
-  { filename : string
+  { filename : Path.t
   ; desc     : opened_file_desc
   ; tail     : bool
   }
@@ -126,16 +126,18 @@ module Fancy = struct
     match stdout_to, stderr_to with
     | (File fn1 | Opened_file { filename = fn1; _ }),
       (File fn2 | Opened_file { filename = fn2; _ }) when fn1 = fn2 ->
-      sprintf "%s &> %s" s fn1
+      sprintf "%s &> %s" s (Path.to_string fn1)
     | _ ->
       let s =
         match stdout_to with
         | Terminal -> s
-        | File fn | Opened_file { filename = fn; _ } -> sprintf "%s > %s" s fn
+        | File fn | Opened_file { filename = fn; _ } ->
+          sprintf "%s > %s" s (Path.to_string fn)
       in
       match stderr_to with
       | Terminal -> s
-      | File fn | Opened_file { filename = fn; _ } -> sprintf "%s 2> %s" s fn
+      | File fn | Opened_file { filename = fn; _ } ->
+        sprintf "%s 2> %s" s (Path.to_string fn)
 
   let pp_purpose ppf = function
     | Internal_job ->
@@ -190,7 +192,8 @@ end
 let get_std_output ~default = function
   | Terminal -> (default, None)
   | File fn ->
-    let fd = Unix.openfile fn [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666 in
+    let fd = Unix.openfile (Path.to_string fn)
+               [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666 in
     (fd, Some (Fd fd))
   | Opened_file { desc; tail; _ } ->
     let fd =
@@ -328,7 +331,7 @@ let run ?dir ?stdout_to ?stderr_to ~env ?(purpose=Internal_job) fail_mode
 let run_capture_gen ?dir ~env ?(purpose=Internal_job) fail_mode prog args ~f =
   let fn = Temp.create "jbuild" ".output" in
   map_result fail_mode
-    (run_internal ?dir ~stdout_to:(File (Path.to_string fn))
+    (run_internal ?dir ~stdout_to:(File fn)
        ~env ~purpose fail_mode prog args)
     ~f:(fun () ->
       let x = f fn in

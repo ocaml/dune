@@ -612,7 +612,10 @@ open Fiber.O
 
 let get_std_output : _ -> Process.std_output_to = function
   | None          -> Terminal
-  | Some (fn, oc) -> Opened_file { filename = fn; tail = false; desc = Channel oc }
+  | Some (fn, oc) ->
+    Opened_file { filename = (Path.of_string fn)
+                ; tail = false
+                ; desc = Channel oc }
 
 module Promotion = struct
   module File = struct
@@ -766,7 +769,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     Io.write_file fn s;
     Fiber.return ()
   | Redirect (outputs, fn, Run (Ok prog, args)) ->
-    let out = Process.File (Path.to_string fn) in
+    let out = Process.File fn in
     let stdout_to, stderr_to =
       match outputs with
       | Stdout -> (out, get_std_output stderr_to)

@@ -17,11 +17,11 @@ type ('a, 'b) failure_mode =
 (** Where to redirect standard output *)
 type std_output_to =
   | Terminal
-  | File        of string
+  | File        of Path.t
   | Opened_file of opened_file
 
 and opened_file =
-  { filename : string
+  { filename : Path.t
   ; desc     : opened_file_desc
   ; tail     : bool
   (** If [true], the descriptor is closed after starting the command *)

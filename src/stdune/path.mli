@@ -146,3 +146,9 @@ val extension : t -> string
 val drop_prefix : t -> prefix:t -> string option
 
 val pp : Format.formatter -> t -> unit
+
+val build_dir_exists : unit -> bool
+
+val ensure_build_dir_exists : unit -> unit
+
+val relative_build_dir : string -> t

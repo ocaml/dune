@@ -183,7 +183,7 @@ module Cached_digest = struct
 
   let remove fn = Hashtbl.remove cache fn
 
-  let db_file = Path.of_string "_build/.digest-db"
+  let db_file = Path.relative_build_dir ".digest-db"
 
   let dump () =
     let module Pmap = Path.Map in
@@ -199,7 +199,7 @@ module Cached_digest = struct
                               (Int64.bits_of_float file.timestamp))
                     ]))
     in
-    if Sys.file_exists "_build" then
+    if Path.build_dir_exists () then
       Io.write_file db_file (Sexp.to_string sexp)
 
   let load () =

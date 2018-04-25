@@ -453,6 +453,12 @@ let unlink t =
   unlink_operation (to_string t)
 let unlink_no_err t = try unlink t with _ -> ()
 
+let build_dir_exists () = is_directory build_dir
+
+let ensure_build_dir_exists () = Local.mkdir_p build_dir
+
+let relative_build_dir = relative build_dir
+
 let extend_basename t ~suffix = t ^ suffix
 
 let insert_after_build_dir_exn =

@@ -647,10 +647,10 @@ module Promotion = struct
       Io.copy_file ~src ~dst
   end
 
-  let db_file = Path.of_string "_build/.to-promote"
+  let db_file = Path.relative_build_dir ".to-promote"
 
   let dump_db db =
-    if Sys.file_exists "_build" then begin
+    if Path.build_dir_exists () then begin
       match db with
       | [] -> if Path.exists db_file then Path.unlink_no_err db_file
       | l ->

@@ -1285,6 +1285,7 @@ let all_lib_deps_by_context t ~request =
       | None -> acc
       | Some (context, _) -> (context, deps) :: acc)
   |> String.Map.of_list_multi
+  |> String.Map.filteri ~f:(fun ctx _ -> String.Map.mem t.contexts ctx)
   |> String.Map.map ~f:(function
     | [] -> String.Map.empty
     | x :: l -> List.fold_left l ~init:x ~f:Build.merge_lib_deps)

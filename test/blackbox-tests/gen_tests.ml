@@ -90,7 +90,7 @@ end
 let exclusions =
   let open Test in
   [ make "js_of_ocaml" ~js:true ~env:("NODE", "${bin:node}")
-  ; make "github25" ~env:("OCAMLPATH", "../findlib-packages")
+  ; make "github25" ~env:("OCAMLPATH", "./findlib-packages")
   ; make "odoc" ~external_deps:true ~skip_ocaml:"4.02.3"
   ; make "multiple-private-libs"  ~skip_ocaml:"4.02.3"
   ; make "ppx-rewriter" ~skip_ocaml:"4.02.3" ~external_deps:true

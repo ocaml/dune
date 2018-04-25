@@ -19,7 +19,7 @@ module Promoted_to_delete = struct
   let add p = db := p :: !db
 
   let load () =
-    if Path.is_file fn then
+    if Path.exists fn then
       Io.Sexp.load fn ~mode:Many
       |> List.map ~f:Path.t
     else
@@ -1123,7 +1123,7 @@ module Trace = struct
 
   let load () =
     let trace = Hashtbl.create 1024 in
-    if Path.is_file file then begin
+    if Path.exists file then begin
       let sexp = Io.Sexp.load file ~mode:Single in
       let bindings =
         let open Sexp.Of_sexp in
@@ -1203,7 +1203,7 @@ let update_universe t =
   (* To workaround the fact that [mtime] is not precise enough on OSX *)
   Utils.Cached_digest.remove universe_file;
   let n =
-    if Path.is_file universe_file then
+    if Path.exists universe_file then
       Sexp.Of_sexp.int (Io.Sexp.load ~mode:Single universe_file) + 1
     else
       0

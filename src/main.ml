@@ -55,7 +55,7 @@ let setup ?(log=Log.no_log)
     match workspace with
     | Some w -> w
     | None ->
-      if Path.is_file workspace_file then
+      if Path.exists workspace_file then
         Workspace.load ?x workspace_file
       else
         { merlin_context = Some "default"

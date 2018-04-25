@@ -649,7 +649,7 @@ module Promotion = struct
   let dump_db db =
     if Sys.file_exists "_build" then begin
       match db with
-      | [] -> if Path.is_file db_file then Path.unlink_no_err db_file
+      | [] -> if Path.exists db_file then Path.unlink_no_err db_file
       | l ->
         Io.write_file db_file
           (String.concat ~sep:""
@@ -657,7 +657,7 @@ module Promotion = struct
     end
 
   let load_db () =
-    if Path.is_file db_file then
+    if Path.exists db_file then
       Io.Sexp.load db_file ~mode:Many
       |> List.map ~f:File.t
     else

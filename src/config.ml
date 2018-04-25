@@ -85,7 +85,7 @@ let load_config_file p =
   t (Io.Sexp.load_many_as_one p)
 
 let load_user_config_file () =
-  if Path.is_file user_config_file then
+  if Path.exists user_config_file then
     load_config_file user_config_file
   else
     default

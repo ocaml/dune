@@ -1007,8 +1007,7 @@ let install_uninstall ~what =
            >>= fun libdir ->
            Fiber.parallel_iter install_files ~f:(fun path ->
              let purpose = Process.Build_job install_files in
-             Process.run ~purpose ~env:setup.env Strict
-               (Path.to_string opam_installer)
+             Process.run ~purpose ~env:setup.env Strict opam_installer
                ([ sprintf "-%c" what.[0]
                 ; Path.to_string path
                 ; "--prefix"

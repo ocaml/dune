@@ -147,9 +147,7 @@ end
            in
          ]}
       *)
-      Process.run Strict ~dir
-        ~env:context.env
-        (Path.to_string context.ocaml)
+      Process.run Strict ~dir ~env:context.env context.ocaml
         args
       >>= fun () ->
       if not (Path.exists generated_jbuild) then

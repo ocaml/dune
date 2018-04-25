@@ -24,8 +24,7 @@ let print path1 path2 =
     | None -> fallback ()
     | Some prog ->
       Format.eprintf "%a@?" Loc.print loc;
-      Process.run ~dir ~env:Env.initial Strict (Path.to_string prog)
-        ["-u"; file1; file2]
+      Process.run ~dir ~env:Env.initial Strict prog ["-u"; file1; file2]
       >>= fun () ->
       fallback ()
   in
@@ -35,7 +34,7 @@ let print path1 path2 =
     let cmd =
       sprintf "%s %s %s" cmd (quote_for_shell file1) (quote_for_shell file2)
     in
-    Process.run ~dir ~env:Env.initial Strict (Path.to_string sh) [arg; cmd]
+    Process.run ~dir ~env:Env.initial Strict sh [arg; cmd]
     >>= fun () ->
     die "command reported no differences: %s"
       (if Path.is_root dir then
@@ -46,7 +45,7 @@ let print path1 path2 =
     match Bin.which "patdiff" with
     | None -> normal_diff ()
     | Some prog ->
-      Process.run ~dir ~env:Env.initial Strict (Path.to_string prog)
+      Process.run ~dir ~env:Env.initial Strict prog
         [ "-keep-whitespace"
         ; "-location-style"; "omake"
         ; if Lazy.force Colors.stderr_supports_colors then

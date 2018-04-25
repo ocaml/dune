@@ -201,7 +201,7 @@ let subst_git ?name () =
   let rev = "HEAD" in
   let git =
     match Bin.which "git" with
-    | Some x -> Path.to_string x
+    | Some x -> x
     | None -> Utils.program_not_found "git"
   in
   let env = Env.initial in

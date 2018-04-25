@@ -44,7 +44,7 @@ val run
   -> env:Env.t
   -> ?purpose:purpose
   -> (unit, 'a) failure_mode
-  -> string
+  -> Path.t
   -> string list
   -> 'a Fiber.t
 
@@ -54,7 +54,7 @@ val run_capture
   -> env:Env.t
   -> ?purpose:purpose
   -> (string, 'a) failure_mode
-  -> string
+  -> Path.t
   -> string list
   -> 'a Fiber.t
 val run_capture_line
@@ -62,7 +62,7 @@ val run_capture_line
   -> env:Env.t
   -> ?purpose:purpose
   -> (string, 'a) failure_mode
-  -> string
+  -> Path.t
   -> string list
   -> 'a Fiber.t
 val run_capture_lines
@@ -70,7 +70,7 @@ val run_capture_lines
   -> env:Env.t
   -> ?purpose:purpose
   -> (string list, 'a) failure_mode
-  -> string
+  -> Path.t
   -> string list
   -> 'a Fiber.t
 

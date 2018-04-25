@@ -14,20 +14,20 @@ let misc_dir = Path.(relative build_dir) ".misc"
 module Promoted_to_delete = struct
   let db = ref []
 
-  let fn = "_build/.to-delete-in-source-tree"
+  let fn = Path.relative_to_build_dir ".to-delete-in-source-tree"
 
   let add p = db := p :: !db
 
   let load () =
-    if Sys.file_exists fn then
-      Sexp.load ~fname:fn ~mode:Many
+    if Path.exists fn then
+      Io.Sexp.load fn ~mode:Many
       |> List.map ~f:Path.t
     else
       []
 
   let dump () =
     let db = Pset.union (Pset.of_list !db) (Pset.of_list (load ())) in
-    if Sys.file_exists "_build" then
+    if Path.build_dir_exists () then
       Io.write_file fn
         (String.concat ~sep:""
            (List.map (Pset.to_list db) ~f:(fun p ->
@@ -460,8 +460,8 @@ module Build_exec = struct
       | Paths _ -> x
       | Paths_for_rule _ -> x
       | Paths_glob state -> get_glob_result_exn state
-      | Contents p -> Io.read_file (Path.to_string p)
-      | Lines_of p -> Io.lines_of_file (Path.to_string p)
+      | Contents p -> Io.read_file p
+      | Lines_of p -> Io.lines_of_file p
       | Vpath (Vspec.T (fn, kind)) ->
         let file : b File_spec.t = get_file bs fn (Sexp_file kind) in
         Option.value_exn file.data
@@ -766,9 +766,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
            let in_source_tree = Option.value_exn (Path.drop_build_context path) in
            if mode = Promote_but_delete_on_clean then
              Promoted_to_delete.add in_source_tree;
-           Io.copy_file
-             ~src:(Path.to_string path)
-             ~dst:(Path.to_string in_source_tree)));
+           Io.copy_file ~src:path ~dst:in_source_tree));
       t.hook Rule_completed
     end else begin
       t.hook Rule_completed;
@@ -1108,7 +1106,7 @@ let stamp_file_for_files_of t ~dir ~ext =
 module Trace = struct
   type t = (Path.t, Digest.t) Hashtbl.t
 
-  let file = "_build/.db"
+  let file = Path.relative_to_build_dir ".db"
 
   let dump (trace : t) =
     let sexp =
@@ -1120,13 +1118,13 @@ module Trace = struct
                Sexp.List [ Path.sexp_of_t path;
                            Atom (Sexp.Atom.of_digest hash) ]))
     in
-    if Sys.file_exists "_build" then
+    if Path.build_dir_exists () then
       Io.write_file file (Sexp.to_string sexp)
 
   let load () =
     let trace = Hashtbl.create 1024 in
-    if Sys.file_exists file then begin
-      let sexp = Sexp.load ~fname:file ~mode:Single in
+    if Path.exists file then begin
+      let sexp = Io.Sexp.load file ~mode:Single in
       let bindings =
         let open Sexp.Of_sexp in
         list (pair Path.t (fun s -> Digest.from_hex (string s))) sexp
@@ -1204,15 +1202,14 @@ let universe_file = Path.relative Path.build_dir ".universe-state"
 let update_universe t =
   (* To workaround the fact that [mtime] is not precise enough on OSX *)
   Utils.Cached_digest.remove universe_file;
-  let fname = Path.to_string universe_file in
   let n =
-    if Sys.file_exists fname then
-      Sexp.Of_sexp.int (Sexp.load ~mode:Single ~fname) + 1
+    if Path.exists universe_file then
+      Sexp.Of_sexp.int (Io.Sexp.load ~mode:Single universe_file) + 1
     else
       0
   in
   make_local_dirs t (Pset.singleton Path.build_dir);
-  Io.write_file fname (Sexp.to_string (Sexp.To_sexp.int n))
+  Io.write_file universe_file (Sexp.to_string (Sexp.To_sexp.int n))
 
 let do_build t ~request =
   entry_point t ~f:(fun () ->
@@ -1455,7 +1452,7 @@ let get_collector t ~dir =
       (if Path.is_in_source_tree dir then
          "Build_system.get_collector called on source directory"
        else if dir = Path.build_dir then
-         "Build_system.get_collector called on _build"
+         "Build_system.get_collector called on build_dir"
        else if not (Path.is_local dir) then
          "Build_system.get_collector called on external directory"
        else

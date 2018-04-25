@@ -426,7 +426,9 @@ let explode_exn t =
     Exn.code_error "Path.explode_exn"
       ["path", Sexp.atom_or_quoted_string t]
 
-let exists t = Sys.file_exists (to_string t)
+let exists t =
+  try Sys.file_exists (to_string t)
+  with Sys_error _ -> false
 let readdir t = Sys.readdir (to_string t) |> Array.to_list
 let is_directory t =
   try Sys.is_directory (to_string t)
@@ -450,6 +452,12 @@ let unlink_operation =
 let unlink t =
   unlink_operation (to_string t)
 let unlink_no_err t = try unlink t with _ -> ()
+
+let build_dir_exists () = is_directory build_dir
+
+let ensure_build_dir_exists () = Local.mkdir_p build_dir
+
+let relative_to_build_dir = relative build_dir
 
 let extend_basename t ~suffix = t ^ suffix
 

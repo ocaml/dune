@@ -1,14 +1,5 @@
 include module type of struct include Usexp end with module Loc := Usexp.Loc
 
-val load : fname:string -> mode:'a Parser.Mode.t -> 'a
-val load_many_as_one : fname:string -> Ast.t
-
-type sexps_or_ocaml_script =
-  | Sexps of Ast.t list
-  | Ocaml_script
-
-val load_many_or_ocaml_script : string -> sexps_or_ocaml_script
-
 module type Combinators = sig
   type 'a t
   val unit       : unit                      t

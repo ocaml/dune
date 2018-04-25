@@ -31,11 +31,11 @@ let map_result
 
 type std_output_to =
   | Terminal
-  | File        of string
+  | File        of Path.t
   | Opened_file of opened_file
 
 and opened_file =
-  { filename : string
+  { filename : Path.t
   ; desc     : opened_file_desc
   ; tail     : bool
   }
@@ -49,22 +49,21 @@ type purpose =
   | Build_job of Path.t list
 
 module Temp = struct
-  let tmp_files = ref String.Set.empty
+  let tmp_files = ref Path.Set.empty
   let () =
     at_exit (fun () ->
       let fns = !tmp_files in
-      tmp_files := String.Set.empty;
-      String.Set.iter fns ~f:(fun fn ->
-        try Sys.force_remove fn with _ -> ()))
+      tmp_files := Path.Set.empty;
+      Path.Set.iter fns ~f:Path.unlink_no_err)
 
   let create prefix suffix =
-    let fn = Filename.temp_file prefix suffix in
-    tmp_files := String.Set.add !tmp_files fn;
+    let fn = Path.of_string (Filename.temp_file prefix suffix) in
+    tmp_files := Path.Set.add !tmp_files fn;
     fn
 
   let destroy fn =
-    (try Sys.force_remove fn with Sys_error _ -> ());
-    tmp_files := String.Set.remove !tmp_files fn
+    Path.unlink_no_err fn;
+    tmp_files := Path.Set.remove !tmp_files fn
 end
 
 module Fancy = struct
@@ -113,6 +112,7 @@ module Fancy = struct
     | x :: rest -> x :: colorize_args rest
 
   let command_line ~prog ~args ~dir ~stdout_to ~stderr_to =
+    let prog = Path.to_string prog in
     let quote = quote_for_shell in
     let prog = colorize_prog (quote prog) in
     let s =
@@ -121,21 +121,23 @@ module Fancy = struct
     let s =
       match dir with
       | None -> s
-      | Some dir -> sprintf "(cd %s && %s)" dir s
+      | Some dir -> sprintf "(cd %s && %s)" (Path.to_string dir) s
     in
     match stdout_to, stderr_to with
     | (File fn1 | Opened_file { filename = fn1; _ }),
       (File fn2 | Opened_file { filename = fn2; _ }) when fn1 = fn2 ->
-      sprintf "%s &> %s" s fn1
+      sprintf "%s &> %s" s (Path.to_string fn1)
     | _ ->
       let s =
         match stdout_to with
         | Terminal -> s
-        | File fn | Opened_file { filename = fn; _ } -> sprintf "%s > %s" s fn
+        | File fn | Opened_file { filename = fn; _ } ->
+          sprintf "%s > %s" s (Path.to_string fn)
       in
       match stderr_to with
       | Terminal -> s
-      | File fn | Opened_file { filename = fn; _ } -> sprintf "%s 2> %s" s fn
+      | File fn | Opened_file { filename = fn; _ } ->
+        sprintf "%s 2> %s" s (Path.to_string fn)
 
   let pp_purpose ppf = function
     | Internal_job ->
@@ -190,7 +192,8 @@ end
 let get_std_output ~default = function
   | Terminal -> (default, None)
   | File fn ->
-    let fd = Unix.openfile fn [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666 in
+    let fd = Unix.openfile (Path.to_string fn)
+               [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666 in
     (fd, Some (Fd fd))
   | Opened_file { desc; tail; _ } ->
     let fd =
@@ -216,8 +219,12 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
   let display = Scheduler.display scheduler in
   let dir =
     match dir with
-    | Some "." -> None
-    | _ -> dir
+    | Some p ->
+      if Path.is_root p then
+        None
+      else
+        Some p
+    | None -> dir
   in
   let id = gen_id () in
   let ok_codes = accepted_codes fail_mode in
@@ -225,12 +232,13 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
   if display = Verbose then
     Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
       (Colors.strip_colors_for_stderr command_line);
+  let prog = Path.to_string prog in
   let argv = Array.of_list (prog :: args) in
   let output_filename, stdout_fd, stderr_fd, to_close =
     match stdout_to, stderr_to with
     | (Terminal, _ | _, Terminal) when !Clflags.capture_outputs ->
       let fn = Temp.create "jbuilder" ".output" in
-      let fd = Unix.openfile fn [O_WRONLY; O_SHARE_DELETE] 0 in
+      let fd = Unix.openfile (Path.to_string fn) [O_WRONLY; O_SHARE_DELETE] 0 in
       (Some fn, fd, fd, Some fd)
     | _ ->
       (None, Unix.stdout, Unix.stderr, None)
@@ -323,13 +331,14 @@ let run ?dir ?stdout_to ?stderr_to ~env ?(purpose=Internal_job) fail_mode
 let run_capture_gen ?dir ~env ?(purpose=Internal_job) fail_mode prog args ~f =
   let fn = Temp.create "jbuild" ".output" in
   map_result fail_mode
-    (run_internal ?dir ~stdout_to:(File fn) ~env ~purpose fail_mode prog args)
+    (run_internal ?dir ~stdout_to:(File fn)
+       ~env ~purpose fail_mode prog args)
     ~f:(fun () ->
       let x = f fn in
       Temp.destroy fn;
       x)
 
-let run_capture       = run_capture_gen ~f:Io.read_file
+let run_capture = run_capture_gen ~f:Io.read_file
 let run_capture_lines = run_capture_gen ~f:Io.lines_of_file
 
 let run_capture_line ?dir ~env ?(purpose=Internal_job) fail_mode prog args =
@@ -338,10 +347,11 @@ let run_capture_line ?dir ~env ?(purpose=Internal_job) fail_mode prog args =
     | [x] -> x
     | l ->
       let cmdline =
+        let prog = Path.to_string prog in
         let s = String.concat (prog :: args) ~sep:" " in
         match dir with
         | None -> s
-        | Some dir -> sprintf "cd %s && %s" dir s
+        | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) s
       in
       match l with
       | [] ->

@@ -33,7 +33,7 @@ module Jbuilds = struct
 
   type requires = No_requires | Unix
 
-  let extract_requires ~fname str =
+  let extract_requires path str =
     let rec loop n lines acc =
       match lines with
       | [] -> acc
@@ -48,7 +48,7 @@ module Jbuilds = struct
             | _ ->
               let start =
                 { Lexing.
-                  pos_fname = fname
+                  pos_fname = Path.to_string path
                 ; pos_lnum  = n
                 ; pos_cnum  = 0
                 ; pos_bol   = 0
@@ -64,9 +64,8 @@ module Jbuilds = struct
     loop 1 (String.split str ~on:'\n') No_requires
 
   let create_plugin_wrapper (context : Context.t) ~exec_dir ~plugin ~wrapper ~target =
-    let plugin = Path.to_string plugin in
     let plugin_contents = Io.read_file plugin in
-    Io.with_file_out (Path.to_string wrapper) ~f:(fun oc ->
+    Io.with_file_out wrapper ~f:(fun oc ->
       let ocamlc_config =
         let vars =
           Ocaml_config.to_list context.ocaml_config
@@ -105,8 +104,8 @@ end
         context.version_string
         ocamlc_config
         (Path.reach ~from:exec_dir target)
-        plugin plugin_contents);
-    extract_requires ~fname:plugin plugin_contents
+        (Path.to_string plugin) plugin_contents);
+    extract_requires plugin plugin_contents
 
   let eval { jbuilds; ignore_promoted_rules } ~(context : Context.t) =
     let open Fiber.O in
@@ -148,16 +147,14 @@ end
            in
          ]}
       *)
-      Process.run Strict ~dir:(Path.to_string dir)
-        ~env:context.env
-        (Path.to_string context.ocaml)
+      Process.run Strict ~dir ~env:context.env context.ocaml
         args
       >>= fun () ->
       if not (Path.exists generated_jbuild) then
         die "@{<error>Error:@} %s failed to produce a valid jbuild file.\n\
              Did you forgot to call [Jbuild_plugin.V*.send]?"
           (Path.to_string file);
-      let sexps = Sexp.load ~fname:(Path.to_string generated_jbuild) ~mode:Many in
+      let sexps = Io.Sexp.load generated_jbuild ~mode:Many in
       Fiber.return (dir, scope, Stanzas.parse scope sexps ~file:generated_jbuild
                                 |> filter_stanzas ~ignore_promoted_rules))
     >>| fun dynamic ->
@@ -171,9 +168,48 @@ type conf =
   ; scopes    : Scope_info.t list
   }
 
+module Sexp_io = struct
+  open Sexp
+
+  let ocaml_script_prefix = "(* -*- tuareg -*- *)"
+  let ocaml_script_prefix_len = String.length ocaml_script_prefix
+
+  type sexps_or_ocaml_script =
+    | Sexps of Ast.t list
+    | Ocaml_script
+
+  let load_many_or_ocaml_script fname =
+    Io.with_file_in fname ~f:(fun ic ->
+      let state = Parser.create ~fname:(Path.to_string fname) ~mode:Many in
+      let buf = Bytes.create Io.buf_len in
+      let rec loop stack =
+        match input ic buf 0 Io.buf_len with
+        | 0 -> Parser.feed_eoi state stack
+        | n -> loop (Parser.feed_subbytes state buf ~pos:0 ~len:n stack)
+      in
+      let rec loop0 stack i =
+        match input ic buf i (Io.buf_len - i) with
+        | 0 ->
+          let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
+          Sexps (Parser.feed_eoi state stack)
+        | n ->
+          let i = i + n in
+          if i < ocaml_script_prefix_len then
+            loop0 stack i
+          else if Bytes.sub_string buf 0 ocaml_script_prefix_len
+                    [@warning "-6"]
+                  = ocaml_script_prefix then
+            Ocaml_script
+          else
+            let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
+            Sexps (loop stack)
+      in
+      loop0 Parser.Stack.empty 0)
+end
+
 let load ~dir ~scope ~ignore_promoted_rules =
   let file = Path.relative dir "jbuild" in
-  match Sexp.load_many_or_ocaml_script (Path.to_string file) with
+  match Sexp_io.load_many_or_ocaml_script file with
   | Sexps sexps ->
     Jbuilds.Literal (dir, scope,
                      Stanzas.parse scope sexps ~file
@@ -191,7 +227,7 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
         match Filename.split_extension fn with
         | (pkg, ".opam") when pkg <> "" ->
           let version_from_opam_file =
-            let opam = Opam_file.load (Path.relative path fn |> Path.to_string) in
+            let opam = Opam_file.load (Path.relative path fn) in
             match Opam_file.get_field opam "version" with
             | Some (String (_, s)) -> Some s
             | _ -> None

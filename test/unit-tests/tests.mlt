@@ -52,7 +52,8 @@ open Meta
 #install_printer Simplified.pp;;
 
 let meta =
-  Meta.load ~name:"foo" ~fn:"test/unit-tests/findlib-db/foo/META"
+  Path.of_string "test/unit-tests/findlib-db/foo/META"
+  |> Meta.load ~name:"foo"
 
 [%%expect{|
 val meta : Jbuilder.Meta.Simplified.t =

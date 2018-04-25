@@ -20,7 +20,7 @@ val setup
   :  ?log:Log.t
   -> ?external_lib_deps_mode:bool
   -> ?workspace:Workspace.t
-  -> ?workspace_file:string
+  -> ?workspace_file:Path.t
   -> ?only_packages:Package.Name.Set.t
   -> ?x:string
   -> ?ignore_promoted_rules:bool

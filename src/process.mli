@@ -17,11 +17,11 @@ type ('a, 'b) failure_mode =
 (** Where to redirect standard output *)
 type std_output_to =
   | Terminal
-  | File        of string
+  | File        of Path.t
   | Opened_file of opened_file
 
 and opened_file =
-  { filename : string
+  { filename : Path.t
   ; desc     : opened_file_desc
   ; tail     : bool
   (** If [true], the descriptor is closed after starting the command *)
@@ -38,39 +38,39 @@ type purpose =
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its termination *)
 val run
-  :  ?dir:string
+  :  ?dir:Path.t
   -> ?stdout_to:std_output_to
   -> ?stderr_to:std_output_to
   -> env:Env.t
   -> ?purpose:purpose
   -> (unit, 'a) failure_mode
-  -> string
+  -> Path.t
   -> string list
   -> 'a Fiber.t
 
 (** Run a command and capture its output *)
 val run_capture
-  :  ?dir:string
+  :  ?dir:Path.t
   -> env:Env.t
   -> ?purpose:purpose
   -> (string, 'a) failure_mode
-  -> string
+  -> Path.t
   -> string list
   -> 'a Fiber.t
 val run_capture_line
-  :  ?dir:string
+  :  ?dir:Path.t
   -> env:Env.t
   -> ?purpose:purpose
   -> (string, 'a) failure_mode
-  -> string
+  -> Path.t
   -> string list
   -> 'a Fiber.t
 val run_capture_lines
-  :  ?dir:string
+  :  ?dir:Path.t
   -> env:Env.t
   -> ?purpose:purpose
   -> (string list, 'a) failure_mode
-  -> string
+  -> Path.t
   -> string list
   -> 'a Fiber.t
 

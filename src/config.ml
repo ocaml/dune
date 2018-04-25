@@ -78,14 +78,15 @@ let t =
             ; concurrency
             })
 
-let user_config_file = Filename.concat Xdg.config_dir "dune/config"
+let user_config_file =
+  Path.relative (Path.of_string Xdg.config_dir) "dune/config"
 
-let load_config_file ~fname =
-  t (Sexp.load_many_as_one ~fname)
+let load_config_file p =
+  t (Io.Sexp.load_many_as_one p)
 
 let load_user_config_file () =
-  if Sys.file_exists user_config_file then
-    load_config_file ~fname:user_config_file
+  if Path.exists user_config_file then
+    load_config_file user_config_file
   else
     default
 

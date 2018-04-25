@@ -42,7 +42,7 @@ module Simplified : sig
   val pp : Format.formatter -> t -> unit
 end
 
-val load : fn:string -> name:string -> Simplified.t
+val load : Path.t -> name:string -> Simplified.t
 
 (** Builtin META files for libraries distributed with the compiler. For when ocamlfind is
     not installed. *)

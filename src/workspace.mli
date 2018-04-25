@@ -28,4 +28,4 @@ type t =
   ; contexts       : Context.t list
   }
 
-val load : ?x:string -> string -> t
+val load : ?x:string -> Path.t -> t

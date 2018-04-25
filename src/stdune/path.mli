@@ -70,7 +70,7 @@ val absolute : string -> t
 val to_absolute_filename : t -> root:string -> string
 
 val reach : t -> from:t -> string
-val reach_for_running : t -> from:t -> string
+val reach_for_running : t -> from:t -> t
 
 val descendant : t -> of_:t -> t option
 val is_descendant : t -> of_:t -> bool
@@ -146,3 +146,9 @@ val extension : t -> string
 val drop_prefix : t -> prefix:t -> string option
 
 val pp : Format.formatter -> t -> unit
+
+val build_dir_exists : unit -> bool
+
+val ensure_build_dir_exists : unit -> unit
+
+val relative_to_build_dir : string -> t

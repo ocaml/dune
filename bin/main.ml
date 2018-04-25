@@ -75,7 +75,7 @@ module Main = struct
   let setup ~log ?external_lib_deps_mode common =
     setup
       ~log
-      ?workspace_file:common.workspace_file
+      ?workspace_file:(Option.map ~f:Path.of_string common.workspace_file)
       ?only_packages:common.only_packages
       ?external_lib_deps_mode
       ?x:common.x
@@ -182,7 +182,7 @@ let help_secs =
 type config_file =
   | No_config
   | Default
-  | This of string
+  | This of Path.t
 
 let incompatible a b =
   `Error (true,
@@ -234,7 +234,7 @@ let common =
     let config =
       match config_file with
       | No_config  -> Config.default
-      | This fname -> Config.load_config_file ~fname
+      | This fname -> Config.load_config_file fname
       | Default    ->
         if Config.inside_dune then
           Config.default
@@ -410,7 +410,7 @@ let common =
       let merge config_file no_config =
         match config_file, no_config with
         | None   , false -> `Ok (None                , Default)
-        | Some fn, false -> `Ok (Some "--config-file", This fn)
+        | Some fn, false -> `Ok (Some "--config-file", This (Path.of_string fn))
         | None   , true  -> `Ok (Some "--no-config"  , No_config)
         | Some _ , true  -> incompatible "--no-config" "--config-file"
       in
@@ -455,7 +455,7 @@ let common =
                  else
                    []
                ; (match config_file with
-                  | This fn   -> ["--config-file"; fn]
+                  | This fn   -> ["--config-file"; Path.to_string fn]
                   | No_config -> ["--no-config"]
                   | Default   -> [])
                ]
@@ -728,7 +728,7 @@ let clean =
       set_common common ~targets:[];
       Build_system.files_in_source_tree_to_delete ()
       |> List.iter ~f:Path.unlink_no_err;
-      Path.(rm_rf (append root (of_string "_build")))
+      Path.rm_rf Path.build_dir
     end
   in
   ( Term.(const go $ common)
@@ -859,6 +859,7 @@ let rules =
     ]
   in
   let go common out recursive makefile_syntax targets =
+    let out = Option.map ~f:Path.of_string out in
     set_common common ~targets;
     let log = Log.create common in
     Scheduler.go ~log ~common
@@ -1006,8 +1007,7 @@ let install_uninstall ~what =
            >>= fun libdir ->
            Fiber.parallel_iter install_files ~f:(fun path ->
              let purpose = Process.Build_job install_files in
-             Process.run ~purpose ~env:setup.env Strict
-               (Path.to_string opam_installer)
+             Process.run ~purpose ~env:setup.env Strict opam_installer
                ([ sprintf "-%c" what.[0]
                 ; Path.to_string path
                 ; "--prefix"

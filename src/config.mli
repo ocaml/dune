@@ -52,9 +52,9 @@ val t : t Sexp.Of_sexp.t
 val merge : t -> Partial.t -> t
 
 val default : t
-val user_config_file : string
+val user_config_file : Path.t
 val load_user_config_file : unit -> t
-val load_config_file : fname:string -> t
+val load_config_file : Path.t -> t
 
 (** Set display mode to [Quiet] if it is [Progress], the output is not
     a tty and we are not running inside emacs. *)

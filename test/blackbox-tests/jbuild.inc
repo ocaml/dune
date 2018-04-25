@@ -125,7 +125,7 @@
   (action
    (setenv
     OCAMLPATH
-    ../findlib-packages
+    ./findlib-packages
     (chdir
      test-cases/github25
      (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))))

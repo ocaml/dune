@@ -49,22 +49,21 @@ type purpose =
   | Build_job of Path.t list
 
 module Temp = struct
-  let tmp_files = ref String.Set.empty
+  let tmp_files = ref Path.Set.empty
   let () =
     at_exit (fun () ->
       let fns = !tmp_files in
-      tmp_files := String.Set.empty;
-      String.Set.iter fns ~f:(fun fn ->
-        try Sys.force_remove fn with _ -> ()))
+      tmp_files := Path.Set.empty;
+      Path.Set.iter fns ~f:Path.unlink_no_err)
 
   let create prefix suffix =
-    let fn = Filename.temp_file prefix suffix in
-    tmp_files := String.Set.add !tmp_files fn;
+    let fn = Path.of_string (Filename.temp_file prefix suffix) in
+    tmp_files := Path.Set.add !tmp_files fn;
     fn
 
   let destroy fn =
-    (try Sys.force_remove fn with Sys_error _ -> ());
-    tmp_files := String.Set.remove !tmp_files fn
+    Path.unlink_no_err fn;
+    tmp_files := Path.Set.remove !tmp_files fn
 end
 
 module Fancy = struct
@@ -234,7 +233,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
     match stdout_to, stderr_to with
     | (Terminal, _ | _, Terminal) when !Clflags.capture_outputs ->
       let fn = Temp.create "jbuilder" ".output" in
-      let fd = Unix.openfile fn [O_WRONLY; O_SHARE_DELETE] 0 in
+      let fd = Unix.openfile (Path.to_string fn) [O_WRONLY; O_SHARE_DELETE] 0 in
       (Some fn, fd, fd, Some fd)
     | _ ->
       (None, Unix.stdout, Unix.stderr, None)
@@ -259,7 +258,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
     match output_filename with
     | None -> ""
     | Some fn ->
-      let s = Io.read_file (Path.of_string fn) in
+      let s = Io.read_file fn in
       Temp.destroy fn;
       let len = String.length s in
       if len > 0 && s.[len - 1] <> '\n' then
@@ -327,20 +326,18 @@ let run ?dir ?stdout_to ?stderr_to ~env ?(purpose=Internal_job) fail_mode
 let run_capture_gen ?dir ~env ?(purpose=Internal_job) fail_mode prog args ~f =
   let fn = Temp.create "jbuild" ".output" in
   map_result fail_mode
-    (run_internal ?dir ~stdout_to:(File fn) ~env ~purpose fail_mode prog args)
+    (run_internal ?dir ~stdout_to:(File (Path.to_string fn))
+       ~env ~purpose fail_mode prog args)
     ~f:(fun () ->
       let x = f fn in
       Temp.destroy fn;
       x)
 
-let run_capture =
-  run_capture_gen ~f:(fun p -> Io.read_file (Path.of_string p))
-let run_capture_lines =
-  run_capture_gen ~f:(fun p -> Io.lines_of_file (Path.of_string p))
+let run_capture = run_capture_gen ~f:Io.read_file
+let run_capture_lines = run_capture_gen ~f:Io.lines_of_file
 
 let run_capture_line ?dir ~env ?(purpose=Internal_job) fail_mode prog args =
   run_capture_gen ?dir ~env ~purpose fail_mode prog args ~f:(fun fn ->
-    let fn = Path.of_string fn in
     match Io.lines_of_file fn with
     | [x] -> x
     | l ->

@@ -35,7 +35,7 @@ promote:
 accept-corrections: promote
 
 all-supported-ocaml-versions:
-	$(BIN) build --dev @install @runtest --workspace jbuild-workspace.dev --root .
+	$(BIN) build --dev @install @runtest --workspace dune-workspace.dev --root .
 
 clean:
 	$(BIN) clean

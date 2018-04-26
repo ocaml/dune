@@ -48,6 +48,9 @@ case "$TARGET" in
         eval $(opam config env)
         opam install utop ppx_driver odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler--yes
         opam remove jbuilder `opam list --depends-on jbuilder --installed --short` --yes
+        if opam info dune &> /dev/null; then
+            opam remove dune `opam list --depends-on dune --installed --short` --yes
+        fi
       fi
       cp -a ~/.opam ~/.opam-start
       echo -en "travis_fold:end:opam.init\r"
@@ -63,6 +66,10 @@ case "$TARGET" in
         UPDATE_OPAM=1
         opam pin remove jbuilder --no-action --yes
         opam remove jbuilder --yes
+        if opam pin list -s | grep dune; then
+            opam pin remove dune --no-action --yes
+            opam remove dune --yes
+        fi
       fi
       if [ ! -e ~/.opam/last-update ] || [ $(cat ~/.opam/last-update) != $DATE ] ; then
         opam update --yes
@@ -71,22 +78,34 @@ case "$TARGET" in
         opam upgrade --yes
       fi
       opam list
-      echo "version: \"1.0+dev$DATE\"" >> jbuilder.opam
+      echo "version: \"1.0+dev$DATE\"" >> dune.opam
+      cat > jbuilder.opam <<EOF
+version: "1.0+dev$DATE"
+opam-version: "1.2"
+maintainer: "opensource@janestreet.com"
+authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
+homepage: "https://github.com/ocaml/dune"
+bug-reports: "https://github.com/ocaml/dune/issues"
+dev-repo: "https://github.com/ocaml/dune.git"
+license: "Apache-2.0"
+depends: [ "dune" ]
+EOF
+      opam pin add dune     . --no-action --yes
       opam pin add jbuilder . --no-action --yes
       opam install utop ppx_driver odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler --yes
       echo -en "travis_fold:end:opam.deps\r"
     fi
-    echo -en "travis_fold:start:jbuilder.bootstrap\r"
+    echo -en "travis_fold:start:dune.bootstrap\r"
     ocaml bootstrap.ml
-    echo -en "travis_fold:end:jbuilder.bootstrap\r"
+    echo -en "travis_fold:end:dune.bootstrap\r"
     ./boot.exe --subst
-    echo -en "travis_fold:start:jbuilder.boot\r"
+    echo -en "travis_fold:start:dune.boot\r"
     ./boot.exe --dev
-    echo -en "travis_fold:end:jbuilder.boot\r"
+    echo -en "travis_fold:end:dune.boot\r"
     if [ $WITH_OPAM -eq 1 ] ; then
-      _build/install/default/bin/jbuilder runtest && \
-      _build/install/default/bin/jbuilder build @test/blackbox-tests/runtest-js && \
-      ! _build/install/default/bin/jbuilder build @test/fail-with-background-jobs-running
+      _build/install/default/bin/dune runtest && \
+      _build/install/default/bin/dune build @test/blackbox-tests/runtest-js && \
+      ! _build/install/default/bin/dune build @test/fail-with-background-jobs-running
       RESULT=$?
       if [ $UPDATE_OPAM -eq 0 ] ; then
         rm -rf ~/.opam

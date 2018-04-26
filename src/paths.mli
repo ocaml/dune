@@ -19,3 +19,5 @@ val misc : unit -> Path.t
 val universe_file : unit -> Path.t
 
 val install_dir : unit -> Path.t
+
+val sandbox_dir : unit -> Path.t

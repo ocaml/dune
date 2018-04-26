@@ -592,8 +592,6 @@ let make_local_parent_dirs t paths ~map_path =
       end
     | _ -> ())
 
-let sandbox_dir = Path.of_string "_build/.sandbox"
-
 let locks : (Path.t, Fiber.Mutex.t) Hashtbl.t = Hashtbl.create 32
 
 let rec with_locks mutexes ~f =
@@ -699,7 +697,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     in
     let sandbox_dir =
       if sandbox then
-        Some (Path.relative sandbox_dir (Digest.to_hex hash))
+        Some (Path.relative (Paths.sandbox_dir ()) (Digest.to_hex hash))
       else
         None
     in

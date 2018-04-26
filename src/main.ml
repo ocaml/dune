@@ -194,7 +194,7 @@ let bootstrap () =
   let main () =
     let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
     let subst () =
-      Scheduler.go (Watermarks.subst () ~name:"jbuilder");
+      Scheduler.go (Watermarks.subst () ~name:"dune");
       exit 0
     in
     let display = ref None in

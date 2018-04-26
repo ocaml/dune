@@ -22,6 +22,7 @@ type common =
   ; auto_promote          : bool
   ; force                 : bool
   ; ignore_promoted_rules : bool
+  ; build_dir             : string
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args             : string list
   ; config                : Config.t
@@ -46,7 +47,8 @@ let set_common c ~targets =
       [ ["jbuilder"; "external-lib-deps"; "--missing"]
       ; c.orig_args
       ; targets
-      ]
+      ];
+  Path.set_build_dir (Path.of_string c.build_dir)
 
 let restore_cwd_and_execve common prog argv env =
   let env = Env.to_unix env in
@@ -214,7 +216,9 @@ let common =
          orig)
         x
         display
+        build_dir
     =
+    let build_dir = Option.value ~default:"_build" build_dir in
     let root, to_cwd =
       match root with
       | Some dn -> (dn, [])
@@ -270,6 +274,7 @@ let common =
             List.map ~f:Package.Name.of_string (String.split s ~on:',')))
     ; x
     ; config
+    ; build_dir
     }
   in
   let docs = copts_sect in
@@ -480,6 +485,13 @@ let common =
          & info ["diff-command"] ~docs
              ~doc:"Shell command to use to diff files")
   in
+  let build_dir =
+    let doc = "Specified build directory. _build if unspecified" in
+    Arg.(value
+         & opt (some file) None
+         & info ["build-dir"] ~docs ~docv:"FILE"
+             ~env:(Arg.env_var ~doc "DUNE_BUILD_DIR")
+             ~doc) in
   Term.(const make
         $ concurrency
         $ ddep_path
@@ -494,6 +506,7 @@ let common =
         $ merged_options
         $ x
         $ display
+        $ build_dir
        )
 
 let installed_libraries =

@@ -345,9 +345,32 @@ let parent t =
   else
     Filename.dirname t
 
-let build_prefix () = "_build/"
+let (build_dir, set_build_dir) =
+  let build_dir = ref None in
+  let set_build_dir new_build_dir =
+    match !build_dir with
+    | None -> build_dir := Some new_build_dir
+    | Some build_dir ->
+      Exn.code_error "set_build_dir: cannot set build_dir more than once"
+        [ "build_dir", sexp_of_t build_dir
+        ; "New_build_dir", sexp_of_t new_build_dir ]
+  in
+  let build_dir () =
+    match !build_dir with
+    | None ->
+      Exn.code_error "build_dir: cannot use build dir before it's set" []
+    | Some build_dir -> build_dir in
+  (build_dir, set_build_dir)
 
-let build_dir () = "_build"
+let build_prefix =
+  let v = lazy (
+    let build_dir = build_dir () in
+    if String.is_suffix build_dir ~suffix:"/" then
+      build_dir
+    else
+      build_dir ^ "/"
+  ) in
+  fun () -> Lazy.force v
 
 let is_in_build_dir t =
   String.is_prefix t ~prefix:(build_prefix ())
@@ -459,7 +482,7 @@ let build_dir_exists () = is_directory (build_dir ())
 
 let ensure_build_dir_exists () = Local.mkdir_p (build_dir ())
 
-let relative_to_build_dir = relative (build_dir ())
+let relative_to_build_dir s = relative (build_dir ()) s
 
 let extend_basename t ~suffix = t ^ suffix
 

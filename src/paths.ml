@@ -1,8 +1,8 @@
 open Stdune
 
 let make s =
-  let d = Path.relative_to_build_dir s in
-  fun () -> d
+  let d = lazy (Path.relative_to_build_dir s) in
+  fun () -> Lazy.force d
 
 let digest_db             = make ".digest-db"
 let db                    = make ".db"

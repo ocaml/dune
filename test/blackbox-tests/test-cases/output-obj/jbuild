@@ -33,7 +33,7 @@
 (rule
  ((targets (dynamic.exe))
   (deps (dynamic.c))
-  (action (run ${CC} -o ${@} ${<} -ldl))))
+  (action (run ${CC} -o ${@} ${<} ${ocaml-config:native_c_libraries}))))
 
 (alias
  ((name runtest)

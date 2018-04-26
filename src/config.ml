@@ -41,12 +41,41 @@ module Display = struct
   let t = enum all
 end
 
+module Concurrency = struct
+  type t =
+    | Fixed of int
+    | Auto
+
+  let error =
+    Error "invalid concurrency value, must be 'auto' or a positive number"
+
+  let of_string = function
+    | "auto" -> Ok Auto
+    | s ->
+      match int_of_string s with
+      | exception _ -> error
+      | n ->
+        if n >= 1 then
+          Ok (Fixed n)
+        else
+          error
+
+  let t sexp =
+    match of_string (string sexp) with
+    | Ok t -> t
+    | Error msg -> of_sexp_error sexp msg
+
+  let to_string = function
+    | Auto -> "auto"
+    | Fixed n -> string_of_int n
+end
+
 module type S = sig
   type 'a field
 
   type t =
-    { display     : Display.t field
-    ; concurrency : int       field
+    { display     : Display.t     field
+    ; concurrency : Concurrency.t field
     }
 end
 
@@ -64,15 +93,15 @@ let merge t (partial : Partial.t) =
   }
 
 let default =
-  { display     = if inside_dune then Quiet else Progress
-  ; concurrency = if inside_dune then 1     else 4
+  { display     = if inside_dune then Quiet   else Progress
+  ; concurrency = if inside_dune then Fixed 1 else Auto
   }
 
 let t =
   record
     (field "display" Display.t ~default:default.display
      >>= fun display ->
-     field "jobs" int ~default:default.concurrency
+     field "jobs" Concurrency.t ~default:default.concurrency
      >>= fun concurrency ->
      return { display
             ; concurrency

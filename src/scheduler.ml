@@ -62,7 +62,7 @@ type t =
   { log                       : Log.t
   ; original_cwd              : string
   ; display                   : Config.Display.t
-  ; concurrency               : int
+  ; mutable concurrency       : int
   ; waiting_for_available_job : t Fiber.Ivar.t Queue.t
   ; mutable status_line       : string
   ; mutable gen_status_line   : unit -> string option
@@ -94,6 +94,10 @@ let t_var : t Fiber.Var.t = Fiber.Var.create ()
 let set_status_line_generator f =
   Fiber.Var.get_exn t_var >>| fun t ->
   t.gen_status_line <- f
+
+let set_concurrency n =
+  Fiber.Var.get_exn t_var >>| fun t ->
+  t.concurrency <- n
 
 let wait_for_available_job () =
   Fiber.Var.get_exn t_var >>= fun t ->
@@ -162,7 +166,7 @@ let go ?(log=Log.no_log) ?(config=Config.default)
     ; gen_status_line
     ; original_cwd = cwd
     ; display      = config.display
-    ; concurrency  = config.concurrency
+    ; concurrency  = (match config.concurrency with Auto -> 1 | Fixed n -> n)
     ; status_line  = ""
     ; waiting_for_available_job = Queue.create ()
     }

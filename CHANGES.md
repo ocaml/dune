@@ -18,6 +18,9 @@ next
 - Fix a bug causing `jbuilder external-lib-deps` to crash (#723,
   @diml)
 
+- `-j` now defaults to the number of processing units available rather
+  4 (#726, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

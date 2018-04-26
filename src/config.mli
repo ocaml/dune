@@ -34,12 +34,21 @@ module Display : sig
   val all : (string * t) list
 end
 
+module Concurrency : sig
+  type t =
+    | Fixed of int
+    | Auto
+
+  val of_string : string -> (t, string) result
+  val to_string : t -> string
+end
+
 module type S = sig
   type 'a field
 
   type t =
-    { display     : Display.t field
-    ; concurrency : int       field
+    { display     : Display.t     field
+    ; concurrency : Concurrency.t field
     }
 end
 

@@ -18,6 +18,8 @@ val wait_for_process : int -> Unix.process_status Fiber.t
 (** Set the status line generator for the current scheduler *)
 val set_status_line_generator : (unit -> string option) -> unit Fiber.t
 
+val set_concurrency : int -> unit Fiber.t
+
 (** Scheduler informations *)
 type t
 

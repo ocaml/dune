@@ -95,6 +95,11 @@ module Scheduler = struct
   include Jbuilder.Scheduler
 
   let go ?log ~common fiber =
+    let fiber =
+      Main.set_concurrency ?log common.config
+      >>= fun () ->
+      fiber
+    in
     Scheduler.go ?log ~config:common.config fiber
 end
 
@@ -274,8 +279,16 @@ let common =
   in
   let docs = copts_sect in
   let concurrency =
+    let arg =
+      Arg.conv
+        ((fun s ->
+           Result.map_error (Config.Concurrency.of_string s)
+             ~f:(fun s -> `Msg s)),
+         fun pp x ->
+           Format.pp_print_string pp (Config.Concurrency.to_string x))
+    in
     Arg.(value
-         & opt (some int) None
+         & opt (some arg) None
          & info ["j"] ~docs ~docv:"JOBS"
              ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|}
         )

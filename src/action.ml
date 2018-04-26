@@ -647,21 +647,21 @@ module Promotion = struct
       Io.copy_file ~src ~dst
   end
 
-  let db_file = Path.relative_to_build_dir ".to-promote"
-
   let dump_db db =
     if Path.build_dir_exists () then begin
       match db with
-      | [] -> if Path.exists db_file then Path.unlink_no_err db_file
+      | [] ->
+        if Path.exists (Paths.to_promote ()) then
+          Path.unlink_no_err (Paths.to_promote ())
       | l ->
-        Io.write_file db_file
+        Io.write_file (Paths.to_promote ())
           (String.concat ~sep:""
              (List.map l ~f:(fun x -> Sexp.to_string (File.sexp_of_t x) ^ "\n")))
     end
 
   let load_db () =
-    if Path.exists db_file then
-      Io.Sexp.load db_file ~mode:Many
+    if Path.exists (Paths.to_promote ()) then
+      Io.Sexp.load (Paths.to_promote ()) ~mode:Many
       |> List.map ~f:File.t
     else
       []

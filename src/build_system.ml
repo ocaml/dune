@@ -262,7 +262,7 @@ module Alias0 = struct
     | Some dir ->
       let open Build.O in
       Build.all (List.map contexts ~f:(fun ctx ->
-        let ctx_dir = Path.(relative build_dir) ctx in
+        let ctx_dir = Path.(relative (build_dir ())) ctx in
         dep_rec_internal ~name ~dir ~ctx_dir))
       >>^ fun is_empty_list ->
       let is_empty = List.for_all is_empty_list ~f:(fun x -> x) in
@@ -373,7 +373,7 @@ let get_dir_status t ~dir =
   Hashtbl.find_or_add t.dirs dir ~f:(fun _ ->
     if Path.is_in_source_tree dir then
       Dir_status.Loaded (File_tree.files_of t.file_tree dir)
-    else if dir = Path.build_dir then
+    else if dir = Path.(build_dir ()) then
       (* Not allowed to look here *)
       Dir_status.Loaded Pset.empty
     else if not (Path.is_local dir) then
@@ -385,7 +385,7 @@ let get_dir_status t ~dir =
     else begin
       let (ctx, sub_dir) = Option.value_exn (Path.extract_build_context dir) in
       if ctx = ".aliases" then
-        Forward (Path.(append build_dir) sub_dir)
+        Forward (Path.(append (build_dir ())) sub_dir)
       else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
         Dir_status.Loaded Pset.empty
       else
@@ -931,7 +931,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
       if Pset.is_empty files then
         (user_rule_targets, None, subdirs)
       else
-        let ctx_path = Path.(relative build_dir) context_name in
+        let ctx_path = Path.(relative (build_dir ())) context_name in
         (Pset.union user_rule_targets
            (Pset.map files ~f:(Path.append ctx_path)),
          Some (ctx_path, files),
@@ -1199,7 +1199,7 @@ let update_universe t =
     else
       0
   in
-  make_local_dirs t (Pset.singleton Path.build_dir);
+  make_local_dirs t (Pset.singleton (Path.build_dir ()));
   Io.write_file (Paths.universe_file ()) (Sexp.to_string (Sexp.To_sexp.int n))
 
 let do_build t ~request =
@@ -1442,7 +1442,7 @@ let get_collector t ~dir =
     Exn.code_error
       (if Path.is_in_source_tree dir then
          "Build_system.get_collector called on source directory"
-       else if dir = Path.build_dir then
+       else if dir = Path.build_dir () then
          "Build_system.get_collector called on build_dir"
        else if not (Path.is_local dir) then
          "Build_system.get_collector called on external directory"

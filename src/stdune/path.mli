@@ -109,7 +109,7 @@ val explode : t -> string list option
 val explode_exn : t -> string list
 
 (** The build directory *)
-val build_dir : t
+val build_dir : unit -> t
 
 (** [is_in_build_dir t = is_descendant t ~of:build_dir] *)
 val is_in_build_dir : t -> bool

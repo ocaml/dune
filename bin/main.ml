@@ -728,7 +728,7 @@ let clean =
       set_common common ~targets:[];
       Build_system.files_in_source_tree_to_delete ()
       |> List.iter ~f:Path.unlink_no_err;
-      Path.rm_rf Path.build_dir
+      Path.rm_rf (Path.build_dir ())
     end
   in
   ( Term.(const go $ common)

@@ -676,14 +676,14 @@ module Promotion = struct
   let do_promote db =
     let by_targets = group_by_targets db  in
     let potential_build_contexts =
-      match Path.readdir Path.build_dir with
+      match Path.readdir (Path.build_dir ()) with
       | exception _ -> []
       | files ->
         List.filter_map files ~f:(fun fn ->
           if fn = "" || fn.[0] = '.' || fn = "install" then
             None
           else
-            let path = Path.(relative build_dir) fn in
+            let path = Path.(relative (build_dir ())) fn in
             Option.some_if (Path.is_directory path) path)
     in
     let dirs_to_clear_from_cache = Path.root :: potential_build_contexts in

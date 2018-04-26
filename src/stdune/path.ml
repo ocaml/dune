@@ -345,12 +345,12 @@ let parent t =
   else
     Filename.dirname t
 
-let build_prefix = "_build/"
+let build_prefix () = "_build/"
 
-let build_dir = "_build"
+let build_dir () = "_build"
 
 let is_in_build_dir t =
-  String.is_prefix t ~prefix:build_prefix
+  String.is_prefix t ~prefix:(build_prefix ())
 
 let is_in_source_tree t = is_local t && not (is_in_build_dir t)
 
@@ -358,6 +358,7 @@ let is_alias_stamp_file t =
   String.is_prefix t ~prefix:"_build/.aliases/"
 
 let extract_build_context t =
+  let build_prefix = build_prefix () in
   if String.is_prefix t ~prefix:build_prefix then
     let i = String.length build_prefix in
     match String.index_from t i '/' with
@@ -373,6 +374,7 @@ let extract_build_context t =
     None
 
 let extract_build_context_dir t =
+  let build_prefix = build_prefix () in
   if String.is_prefix t ~prefix:build_prefix then
     let i = String.length build_prefix in
     match String.index_from t i '/' with
@@ -453,11 +455,11 @@ let unlink t =
   unlink_operation (to_string t)
 let unlink_no_err t = try unlink t with _ -> ()
 
-let build_dir_exists () = is_directory build_dir
+let build_dir_exists () = is_directory (build_dir ())
 
-let ensure_build_dir_exists () = Local.mkdir_p build_dir
+let ensure_build_dir_exists () = Local.mkdir_p (build_dir ())
 
-let relative_to_build_dir = relative build_dir
+let relative_to_build_dir = relative (build_dir ())
 
 let extend_basename t ~suffix = t ^ suffix
 

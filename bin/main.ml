@@ -488,7 +488,7 @@ let common =
   let build_dir =
     let doc = "Specified build directory. _build if unspecified" in
     Arg.(value
-         & opt (some file) None
+         & opt (some string) None
          & info ["build-dir"] ~docs ~docv:"FILE"
              ~env:(Arg.env_var ~doc "DUNE_BUILD_DIR")
              ~doc) in

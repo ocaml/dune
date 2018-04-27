@@ -172,7 +172,7 @@ module Fancy = struct
           Format.fprintf ppf "%s{%a}"
             prefix
             (Format.pp_print_list ~pp_sep:pp_comma Format.pp_print_string)
-            suffixes
+            (List.sort ~compare:String.compare suffixes)
       in
       let pp_contexts ppf = function
         | [] -> ()

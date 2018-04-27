@@ -513,7 +513,6 @@
     (alias merlin-tests)
     (alias meta-gen)
     (alias misc)
-    (alias multiple-private-libs)
     (alias null-dep)
     (alias ocaml-syntax)
     (alias ocamldep-multi-stanzas)

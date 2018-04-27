@@ -92,7 +92,7 @@ let exclusions =
   [ make "js_of_ocaml" ~external_deps:true ~js:true ~env:("NODE", "${bin:node}")
   ; make "github25" ~env:("OCAMLPATH", "./findlib-packages")
   ; make "odoc" ~external_deps:true ~skip_ocaml:"4.02.3"
-  ; make "multiple-private-libs"  ~skip_ocaml:"4.02.3"
+  ; make "multiple-private-libs" ~external_deps:true ~skip_ocaml:"4.02.3"
   ; make "ppx-rewriter" ~skip_ocaml:"4.02.3" ~external_deps:true
   ; make "odoc-unique-mlds" ~skip_ocaml:"4.02.3" ~external_deps:true
   ; make "output-obj" ~skip_platforms:[Mac; Win] ~skip_ocaml:"<4.06.0"

@@ -4,11 +4,11 @@
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
         ocamlc .bar.objs/bar.{cmi,cmo,cmt}
         ocamlc bar.cma
-      ocamlopt .foo.objs/foo.{cmx,o}
-      ocamlopt .bar.objs/bar.{cmx,o}
-      ocamlopt bar.{a,cmxa}
+      ocamlopt .foo.objs/foo.{cmx,$ext_obj}
+      ocamlopt .bar.objs/bar.{cmx,$ext_obj}
+      ocamlopt bar.{$ext_lib,cmxa}
       ocamlopt bar.cmxs
-      ocamlopt foo.{a,cmxa}
+      ocamlopt foo.{$ext_lib,cmxa}
       ocamlopt foo.cmxs
         ocamlc foo.cma
      ocamlfind test.exe

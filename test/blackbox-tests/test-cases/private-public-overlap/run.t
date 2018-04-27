@@ -9,14 +9,14 @@ public libraries may not have private dependencies
 On the other hand, public libraries may have private preprocessors
   $ jbuilder build --display short --root private-rewriter 2>&1 | grep -v Entering
         ocamlc .ppx_internal.objs/ppx_internal.{cmi,cmo,cmt}
-      ocamlopt .ppx_internal.objs/ppx_internal.{cmx,o}
-      ocamlopt ppx_internal.{a,cmxa}
+      ocamlopt .ppx_internal.objs/ppx_internal.{cmx,$ext_obj}
+      ocamlopt ppx_internal.{$ext_lib,cmxa}
       ocamlopt .ppx/ppx_internal@mylib/ppx.exe
            ppx mylib.pp.ml
       ocamldep mylib.pp.ml.d
         ocamlc .mylib.objs/mylib.{cmi,cmo,cmt}
-      ocamlopt .mylib.objs/mylib.{cmx,o}
-      ocamlopt mylib.{a,cmxa}
+      ocamlopt .mylib.objs/mylib.{cmx,$ext_obj}
+      ocamlopt mylib.{$ext_lib,cmxa}
       ocamlopt mylib.cmxs
         ocamlc mylib.cma
 
@@ -26,8 +26,8 @@ Unless they introduce private runtime dependencies:
   Error: Library "private_runtime_dep" is private, it cannot be a dependency of a public library.
   You need to give "private_runtime_dep" a public name.
         ocamlc .private_ppx.objs/private_ppx.{cmi,cmo,cmt}
-      ocamlopt .private_ppx.objs/private_ppx.{cmx,o}
-      ocamlopt private_ppx.{a,cmxa}
+      ocamlopt .private_ppx.objs/private_ppx.{cmx,$ext_obj}
+      ocamlopt private_ppx.{$ext_lib,cmxa}
       ocamlopt .ppx/private_ppx@mylib/ppx.exe
            ppx mylib.pp.ml
       ocamldep mylib.pp.ml.d
@@ -36,7 +36,7 @@ However, public binaries may accept private dependencies
   $ jbuilder build --display short --root exes 2>&1 | grep -v Entering
       ocamldep publicbin.ml.d
         ocamlc .publicbin.eobjs/publicbin.{cmi,cmo,cmt}
-      ocamlopt .publicbin.eobjs/publicbin.{cmx,o}
+      ocamlopt .publicbin.eobjs/publicbin.{cmx,$ext_obj}
       ocamlopt publicbin.exe
 
 Private dependencies shouldn't make the library optional

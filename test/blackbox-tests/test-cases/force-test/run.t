@@ -2,7 +2,7 @@
   $ jbuilder runtest --display short
       ocamldep f.ml.d
         ocamlc .f.eobjs/f.{cmi,cmo,cmt}
-      ocamlopt .f.eobjs/f.{cmx,o}
+      ocamlopt .f.eobjs/f.{cmx,$ext_obj}
       ocamlopt f.exe
              f alias runtest
   Foo Bar

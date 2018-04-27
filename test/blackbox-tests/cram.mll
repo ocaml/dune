@@ -8,11 +8,16 @@ type item =
   | Output  of string
   | Command of string
   | Comment of string
+
+let maybe_replace_ext tbl buf e =
+  match List.assoc e tbl with
+  | res -> Buffer.add_string buf res
+  | exception Not_found -> Buffer.add_string buf e
 }
 
 let eol = '\n' | eof
 
-let ext = '.' ['a'-'z' 'A'-'Z' '0'-'9']+
+let ext = ['a'-'z' 'A'-'Z' '0'-'9']+
 
 rule file = parse
  | eof { [] }
@@ -22,14 +27,27 @@ rule file = parse
 
 and postprocess tbl b = parse
   | eof { Buffer.contents b }
-  | ([^ '/'] as c) (ext as e)
+  | ([^ '/'] as c) '.' (ext as e)
       { Buffer.add_char b c;
-        begin match List.assoc e tbl with
-        | res -> Buffer.add_string b res
-        | exception Not_found -> Buffer.add_string b e
-        end;
+        Buffer.add_char b '.';
+        maybe_replace_ext tbl b e;
         postprocess tbl b lexbuf
       }
+  | ".{" as s { Buffer.add_string b s; in_braces tbl b lexbuf }
+  | _ as c { Buffer.add_char b c; postprocess tbl b lexbuf }
+
+and in_braces tbl b = parse
+  | eof { Buffer.contents b }
+  | (ext as e) ','
+    { maybe_replace_ext tbl b e;
+      Buffer.add_char b ',';
+      in_braces tbl b lexbuf
+    }
+  | (ext as e) '}'
+    { maybe_replace_ext tbl b e;
+      Buffer.add_char b '}';
+      postprocess tbl b lexbuf
+    }
   | _ as c { Buffer.add_char b c; postprocess tbl b lexbuf }
 
 {
@@ -37,21 +55,24 @@ and postprocess tbl b = parse
 
   let make_ext_replace config =
     let tbl =
-      let var = Configurator.ocaml_config_var_exn config in
+      let ext_var s =
+        let e = Configurator.ocaml_config_var_exn config s in
+        Option.value ~default:e (String.drop_prefix ~prefix:"." e)
+      in
       let exts =
-      [ var "ext_dll", "$ext_dll"
-      ; var "ext_asm", "$ext_asm"
-      ; var "ext_lib", "$ext_lib"
-      ; var "ext_obj", "$ext_obj"
+      [ ext_var "ext_dll", "$ext_dll"
+      ; ext_var "ext_asm", "$ext_asm"
+      ; ext_var "ext_lib", "$ext_lib"
+      ; ext_var "ext_obj", "$ext_obj"
       ] in
       (* need to special case exe since we can only remove this extension in
          general *)
       match (
-        match Configurator.ocaml_config_var config "ext_exe" with
-        | Some s -> s
-        | None ->
+        match ext_var "ext_exe" with
+        | s -> s
+        | exception Not_found ->
           begin match Configurator.ocaml_config_var_exn config "system" with
-          | "Win32" -> ".exe"
+          | "Win32" -> "exe"
           | _ -> ""
           end
       ) with

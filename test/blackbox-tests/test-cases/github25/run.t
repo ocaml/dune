@@ -8,8 +8,8 @@ We need ocamlfind to run this test
 
   $ jbuilder build @install --display short --only hello
         ocamlc root/.hello.objs/hello.{cmi,cmo,cmt}
-      ocamlopt root/.hello.objs/hello.{cmx,o}
-      ocamlopt root/hello.{a,cmxa}
+      ocamlopt root/.hello.objs/hello.{cmx,$ext_obj}
+      ocamlopt root/hello.{$ext_lib,cmxa}
       ocamlopt root/hello.cmxs
         ocamlc root/hello.cma
 
@@ -21,4 +21,4 @@ We need ocamlfind to run this test
   Hint: try: jbuilder external-lib-deps --missing --only-packages pas-de-bol @install
       ocamldep root/b.ml.d
         ocamlc root/.pas_de_bol.objs/pas_de_bol.{cmi,cmo,cmt}
-      ocamlopt root/.pas_de_bol.objs/pas_de_bol.{cmx,o}
+      ocamlopt root/.pas_de_bol.objs/pas_de_bol.{cmx,$ext_obj}

@@ -7,18 +7,18 @@
         ocamlc blib/.blib.objs/blib.{cmi,cmo,cmt}
         ocamlc blib/blib.cma
         ocamlc alib/.alib.objs/alib__.{cmi,cmo,cmt}
-      ocamlopt alib/.alib.objs/alib__.{cmx,o}
-      ocamlopt blib/sub/.sub.objs/sub.{cmx,o}
-      ocamlopt blib/.blib.objs/blib.{cmx,o}
-      ocamlopt blib/blib.{a,cmxa}
+      ocamlopt alib/.alib.objs/alib__.{cmx,$ext_obj}
+      ocamlopt blib/sub/.sub.objs/sub.{cmx,$ext_obj}
+      ocamlopt blib/.blib.objs/blib.{cmx,$ext_obj}
+      ocamlopt blib/blib.{$ext_lib,cmxa}
       ocamlopt blib/blib.cmxs
         ocamlc blib/sub/sub.cma
         ocamlc alib/.alib.objs/alib.{cmi,cmo,cmt}
-      ocamlopt alib/.alib.objs/alib.{cmx,o}
+      ocamlopt alib/.alib.objs/alib.{cmx,$ext_obj}
         ocamlc alib/.alib.objs/alib__Main.{cmi,cmo,cmt}
-      ocamlopt alib/.alib.objs/alib__Main.{cmx,o}
-      ocamlopt alib/alib.{a,cmxa}
+      ocamlopt alib/.alib.objs/alib__Main.{cmx,$ext_obj}
+      ocamlopt alib/alib.{$ext_lib,cmxa}
       ocamlopt alib/alib.cmxs
-      ocamlopt blib/sub/sub.{a,cmxa}
+      ocamlopt blib/sub/sub.{$ext_lib,cmxa}
       ocamlopt blib/sub/sub.cmxs
         ocamlc alib/alib.cma

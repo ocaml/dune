@@ -11,4 +11,7 @@ build: [
   ["./boot.exe" "--subst"] {pinned}
   ["./boot.exe" "-j" jobs]
 ]
+build-test:[
+  ["./_build/default/bin/main.exe" "-j" jobs "build" "@runtest-no-deps"]
+]
 available: [ ocaml-version >= "4.02.3" ]

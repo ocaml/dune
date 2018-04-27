@@ -8,6 +8,7 @@ build_script:
   - cd "%APPVEYOR_BUILD_FOLDER%"
   - ocaml bootstrap.ml
   - boot.exe --dev
+  - _build\default\bin\main.exe build --dev @runtest-no-deps
 
 artifacts:
   - path: _build/log

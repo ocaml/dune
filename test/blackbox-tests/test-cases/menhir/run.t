@@ -15,9 +15,9 @@
         ocamlc src/.test.eobjs/test_base.{cmi,cmti}
         ocamlc src/.test.eobjs/lexer2.{cmi,cmo,cmt}
         ocamlc src/.test.eobjs/test.{cmi,cmo,cmt}
-      ocamlopt src/.test.eobjs/test_menhir1.{cmx,o}
-      ocamlopt src/.test.eobjs/lexer1.{cmx,o}
-      ocamlopt src/.test.eobjs/test_base.{cmx,o}
-      ocamlopt src/.test.eobjs/lexer2.{cmx,o}
-      ocamlopt src/.test.eobjs/test.{cmx,o}
+      ocamlopt src/.test.eobjs/test_menhir1.{cmx,$ext_obj}
+      ocamlopt src/.test.eobjs/lexer1.{cmx,$ext_obj}
+      ocamlopt src/.test.eobjs/test_base.{cmx,$ext_obj}
+      ocamlopt src/.test.eobjs/lexer2.{cmx,$ext_obj}
+      ocamlopt src/.test.eobjs/test.{cmx,$ext_obj}
       ocamlopt src/test.exe

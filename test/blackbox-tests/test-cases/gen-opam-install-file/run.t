@@ -3,8 +3,8 @@
       ocamldep foo.ml.d
       ocamldep foo.mli.d
         ocamlc .foo.objs/foo.{cmi,cmti}
-      ocamlopt .foo.objs/foo.{cmx,o}
-      ocamlopt foo.{a,cmxa}
+      ocamlopt .foo.objs/foo.{cmx,$ext_obj}
+      ocamlopt foo.{$ext_lib,cmxa}
       ocamlopt foo.cmxs
       ocamldep foo_byte.ml.d
         ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
@@ -12,7 +12,7 @@
         ocamlc .foo.objs/foo.{cmo,cmt}
         ocamlc foo.cma
         ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}
-      ocamlopt .bar.eobjs/bar.{cmx,o}
+      ocamlopt .bar.eobjs/bar.{cmx,$ext_obj}
       ocamlopt bar.exe
   lib: [
     "_build/install/default/lib/foo/META" {"META"}
@@ -25,7 +25,7 @@
     "_build/install/default/lib/foo/foo.ml" {"foo.ml"}
     "_build/install/default/lib/foo/foo.cma" {"foo.cma"}
     "_build/install/default/lib/foo/foo.cmxa" {"foo.cmxa"}
-    "_build/install/default/lib/foo/foo$ext_lib" {"foo$ext_lib"}
+    "_build/install/default/lib/foo/foo.$ext_lib" {"foo.$ext_lib"}
     "_build/install/default/lib/foo/foo.cmxs" {"foo.cmxs"}
     "_build/install/default/lib/foo/foo.js" {"foo.js"}
     "_build/install/default/lib/foo/cfoo.h" {"cfoo.h"}

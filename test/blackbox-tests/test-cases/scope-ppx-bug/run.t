@@ -1,11 +1,11 @@
   $ jbuilder build --display short @install --debug-dep
         ocamlc a/ppx/.a.objs/a.{cmi,cmo,cmt}
-      ocamlopt a/ppx/.a.objs/a.{cmx,o}
-      ocamlopt a/ppx/a.{a,cmxa}
+      ocamlopt a/ppx/.a.objs/a.{cmx,$ext_obj}
+      ocamlopt a/ppx/a.{$ext_lib,cmxa}
       ocamlopt a/ppx/a.cmxs
         ocamlc a/kernel/.a_kernel.objs/a_kernel.{cmi,cmo,cmt}
-      ocamlopt a/kernel/.a_kernel.objs/a_kernel.{cmx,o}
-      ocamlopt a/kernel/a_kernel.{a,cmxa}
+      ocamlopt a/kernel/.a_kernel.objs/a_kernel.{cmx,$ext_obj}
+      ocamlopt a/kernel/a_kernel.{$ext_lib,cmxa}
       ocamlopt a/kernel/a_kernel.cmxs
         ocamlc a/ppx/a.cma
         ocamlc a/kernel/a_kernel.cma
@@ -14,7 +14,7 @@
            ppx b/b.pp.ml
       ocamldep b/b.pp.ml.d
         ocamlc b/.b.objs/b.{cmi,cmo,cmt}
-      ocamlopt b/.b.objs/b.{cmx,o}
-      ocamlopt b/b.{a,cmxa}
+      ocamlopt b/.b.objs/b.{cmx,$ext_obj}
+      ocamlopt b/b.{$ext_lib,cmxa}
       ocamlopt b/b.cmxs
         ocamlc b/b.cma

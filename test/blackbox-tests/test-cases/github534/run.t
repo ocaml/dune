@@ -2,6 +2,6 @@
           echo main.ml
       ocamldep main.ml.d
         ocamlc .main.eobjs/main.{cmi,cmo,cmt}
-      ocamlopt .main.eobjs/main.{cmx,o}
+      ocamlopt .main.eobjs/main.{cmx,$ext_obj}
       ocamlopt main.exe
   Hello World

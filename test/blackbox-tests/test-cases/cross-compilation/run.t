@@ -2,20 +2,20 @@
       ocamldep bin/blah.ml.d [default.foo]
       ocamldep lib/p.ml.d [default.foo]
         ocamlc lib/.p.objs/p.{cmi,cmo,cmt} [default.foo]
-      ocamlopt lib/.p.objs/p.{cmx,o} [default.foo]
-      ocamlopt lib/p.{a,cmxa} [default.foo]
+      ocamlopt lib/.p.objs/p.{cmx,$ext_obj} [default.foo]
+      ocamlopt lib/p.{$ext_lib,cmxa} [default.foo]
       ocamlopt lib/p.cmxs [default.foo]
       ocamldep bin/blah.ml.d
       ocamldep lib/p.ml.d
         ocamlc lib/.p.objs/p.{cmi,cmo,cmt}
-      ocamlopt lib/.p.objs/p.{cmx,o}
-      ocamlopt lib/p.{a,cmxa}
+      ocamlopt lib/.p.objs/p.{cmx,$ext_obj}
+      ocamlopt lib/p.{$ext_lib,cmxa}
         ocamlc lib/p.cma [default.foo]
         ocamlc bin/.blah.eobjs/blah.{cmi,cmo,cmt} [default.foo]
-      ocamlopt bin/.blah.eobjs/blah.{cmx,o} [default.foo]
+      ocamlopt bin/.blah.eobjs/blah.{cmx,$ext_obj} [default.foo]
       ocamlopt bin/blah.exe [default.foo]
         ocamlc bin/.blah.eobjs/blah.{cmi,cmo,cmt}
-      ocamlopt bin/.blah.eobjs/blah.{cmx,o}
+      ocamlopt bin/.blah.eobjs/blah.{cmx,$ext_obj}
       ocamlopt bin/blah.exe
           blah file [default.foo]
           blah file
@@ -33,7 +33,7 @@
     "_build/install/default.foo/lib/p/p.ml" {"../../foo-sysroot/lib/p/p.ml"}
     "_build/install/default.foo/lib/p/p.cma" {"../../foo-sysroot/lib/p/p.cma"}
     "_build/install/default.foo/lib/p/p.cmxa" {"../../foo-sysroot/lib/p/p.cmxa"}
-    "_build/install/default.foo/lib/p/p$ext_lib" {"../../foo-sysroot/lib/p/p$ext_lib"}
+    "_build/install/default.foo/lib/p/p.$ext_lib" {"../../foo-sysroot/lib/p/p.$ext_lib"}
     "_build/install/default.foo/lib/p/p.cmxs" {"../../foo-sysroot/lib/p/p.cmxs"}
     "_build/install/default.foo/lib/p/p.dune" {"../../foo-sysroot/lib/p/p.dune"}
   ]

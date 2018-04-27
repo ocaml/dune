@@ -1,7 +1,7 @@
   $ jbuilder build @print-merlins --display short
       ocamldep sanitize-dot-merlin/sanitize_dot_merlin.ml.d
         ocamlc sanitize-dot-merlin/.sanitize_dot_merlin.eobjs/sanitize_dot_merlin.{cmi,cmo,cmt}
-      ocamlopt sanitize-dot-merlin/.sanitize_dot_merlin.eobjs/sanitize_dot_merlin.{cmx,o}
+      ocamlopt sanitize-dot-merlin/.sanitize_dot_merlin.eobjs/sanitize_dot_merlin.{cmx,$ext_obj}
       ocamlopt sanitize-dot-merlin/sanitize_dot_merlin.exe
   sanitize_dot_merlin alias print-merlins
   # Processing exe/.merlin

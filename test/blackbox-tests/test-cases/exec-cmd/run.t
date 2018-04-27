@@ -5,12 +5,12 @@
   $ jbuilder exec ./foo.exe --display short
       ocamldep foo.ml.d
         ocamlc .foo.eobjs/foo.{cmi,cmo,cmt}
-      ocamlopt .foo.eobjs/foo.{cmx,o}
+      ocamlopt .foo.eobjs/foo.{cmx,$ext_obj}
       ocamlopt foo.exe
   Foo
   $ jbuilder exec --dev ./foo.exe --display short
         ocamlc .foo.eobjs/foo.{cmi,cmo,cmt}
-      ocamlopt .foo.eobjs/foo.{cmx,o}
+      ocamlopt .foo.eobjs/foo.{cmx,$ext_obj}
       ocamlopt foo.exe
   Foo
   $ jbuilder exec dunetestbar --no-build --display short
@@ -19,6 +19,6 @@
   $ jbuilder exec dunetestbar --display short
       ocamldep bar.ml.d
         ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}
-      ocamlopt .bar.eobjs/bar.{cmx,o}
+      ocamlopt .bar.eobjs/bar.{cmx,$ext_obj}
       ocamlopt bar.exe
   Bar

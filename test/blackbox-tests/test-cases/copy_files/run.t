@@ -4,14 +4,14 @@
       ocamldep test.ml.d
       ocamldep dummy.ml.d
         ocamlc .foo.objs/dummy.{cmi,cmo,cmt}
-      ocamlopt .foo.objs/dummy.{cmx,o}
-      ocamlopt foo.{a,cmxa}
-        ocamlc bar$ext_obj
-    ocamlmklib dllfoo_stubs$ext_dll,libfoo_stubs$ext_lib
+      ocamlopt .foo.objs/dummy.{cmx,$ext_obj}
+      ocamlopt foo.{$ext_lib,cmxa}
+        ocamlc bar.$ext_obj
+    ocamlmklib dllfoo_stubs.$ext_dll,libfoo_stubs.$ext_lib
         ocamlc .test.eobjs/lexer1.{cmi,cmo,cmt}
-      ocamlopt .test.eobjs/lexer1.{cmx,o}
+      ocamlopt .test.eobjs/lexer1.{cmx,$ext_obj}
         ocamlc .test.eobjs/test.{cmi,cmo,cmt}
-      ocamlopt .test.eobjs/test.{cmx,o}
+      ocamlopt .test.eobjs/test.{cmx,$ext_obj}
       ocamlopt test.exe
   $ jbuilder build @bar-source --display short
   #line 1 "include/bar.h"

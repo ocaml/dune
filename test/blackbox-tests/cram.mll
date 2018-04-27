@@ -59,25 +59,11 @@ and in_braces tbl b = parse
         let e = Configurator.ocaml_config_var_exn config s in
         Option.value ~default:e (String.drop_prefix ~prefix:"." e)
       in
-      let exts =
       [ ext_var "ext_dll", "$ext_dll"
       ; ext_var "ext_asm", "$ext_asm"
       ; ext_var "ext_lib", "$ext_lib"
       ; ext_var "ext_obj", "$ext_obj"
-      ] in
-      (* need to special case exe since we can only remove this extension in
-         general *)
-      match (
-        match ext_var "ext_exe" with
-        | s -> s
-        | exception Not_found ->
-          begin match Configurator.ocaml_config_var_exn config "system" with
-          | "Win32" -> "exe"
-          | _ -> ""
-          end
-      ) with
-      | "" -> exts
-      | ext -> (ext, "") :: exts
+      ]
     in
     List.iter tbl ~f:(fun (e, _) -> assert (e <> ""));
     fun s ->

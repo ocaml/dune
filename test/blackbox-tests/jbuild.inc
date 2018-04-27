@@ -508,7 +508,6 @@
     (alias inline_tests)
     (alias installable-dup-private-libs)
     (alias intf-only)
-    (alias js_of_ocaml)
     (alias lib-available)
     (alias loop)
     (alias merlin-tests)
@@ -525,8 +524,7 @@
     (alias redirections)
     (alias scope-bug)
     (alias scope-ppx-bug)
-    (alias select)
-    (alias utop)))))
+    (alias select)))))
 
 (alias ((name runtest-disabled) (deps ((alias reason)))))
 

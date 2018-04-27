@@ -89,7 +89,7 @@ end
 
 let exclusions =
   let open Test in
-  [ make "js_of_ocaml" ~js:true ~env:("NODE", "${bin:node}")
+  [ make "js_of_ocaml" ~external_deps:true ~js:true ~env:("NODE", "${bin:node}")
   ; make "github25" ~env:("OCAMLPATH", "./findlib-packages")
   ; make "odoc" ~external_deps:true ~skip_ocaml:"4.02.3"
   ; make "multiple-private-libs"  ~skip_ocaml:"4.02.3"
@@ -100,6 +100,7 @@ let exclusions =
   ; make "private-public-overlap" ~external_deps:true
   ; make "reason" ~enabled:false
   ; make "menhir"~external_deps:true
+  ; make "utop"~external_deps:true
   ; make "configurator" ~skip_platforms:[Win]
   ]
 

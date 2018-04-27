@@ -89,10 +89,10 @@ end
 
 let exclusions =
   let open Test in
-  [ make "js_of_ocaml" ~js:true ~env:("NODE", "${bin:node}")
+  [ make "js_of_ocaml" ~external_deps:true ~js:true ~env:("NODE", "${bin:node}")
   ; make "github25" ~env:("OCAMLPATH", "./findlib-packages")
   ; make "odoc" ~external_deps:true ~skip_ocaml:"4.02.3"
-  ; make "multiple-private-libs"  ~skip_ocaml:"4.02.3"
+  ; make "multiple-private-libs" ~external_deps:true ~skip_ocaml:"4.02.3"
   ; make "ppx-rewriter" ~skip_ocaml:"4.02.3" ~external_deps:true
   ; make "odoc-unique-mlds" ~skip_ocaml:"4.02.3" ~external_deps:true
   ; make "output-obj" ~skip_platforms:[Mac; Win] ~skip_ocaml:"<4.06.0"
@@ -100,6 +100,7 @@ let exclusions =
   ; make "private-public-overlap" ~external_deps:true
   ; make "reason" ~enabled:false
   ; make "menhir"~external_deps:true
+  ; make "utop"~external_deps:true
   ; make "configurator" ~skip_platforms:[Win]
   ]
 

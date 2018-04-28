@@ -171,6 +171,17 @@
     (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
 
 (alias
+ ((name github717-odoc-index)
+  (deps
+   ((package jbuilder) (files_recursively_in test-cases/github717-odoc-index)))
+  (action
+   (chdir
+    test-cases/github717-odoc-index
+    (progn
+     (run ${exe:cram.exe} -skip-versions 4.02.3 -test run.t)
+     (diff? run.t run.t.corrected))))))
+
+(alias
  ((name include-loop)
   (deps ((package jbuilder) (files_recursively_in test-cases/include-loop)))
   (action
@@ -454,6 +465,7 @@
     (alias github597)
     (alias github644)
     (alias github660)
+    (alias github717-odoc-index)
     (alias include-loop)
     (alias inline_tests)
     (alias installable-dup-private-libs)

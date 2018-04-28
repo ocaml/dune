@@ -21,6 +21,8 @@ next
 - `-j` now defaults to the number of processing units available rather
   4 (#726, @diml)
 
+- Fix attaching index.mld to documentation (#731, fixes #717 @rgrinberg)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

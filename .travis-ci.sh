@@ -68,7 +68,7 @@ case "$TARGET" in
         opam remove jbuilder --yes
         if opam pin list -s | grep dune; then
             opam pin remove dune --no-action --yes
-            opam remove dune --yes
+            opam remove dune --yes || true
         fi
       fi
       if [ ! -e ~/.opam/last-update ] || [ $(cat ~/.opam/last-update) != $DATE ] ; then

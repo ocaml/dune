@@ -1,0 +1,1 @@
+  $ jbuilder build @doc

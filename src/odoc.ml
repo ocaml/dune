@@ -433,7 +433,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
 
   let check_mlds_no_dupes ~pkg ~mlds =
     match
-      List.map mlds ~f:(fun mld -> (Path.basename mld, mld))
+      List.map mlds ~f:(fun mld ->
+        (Filename.chop_extension (Path.basename mld), mld))
       |> String.Map.of_list
     with
     | Ok m -> m

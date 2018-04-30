@@ -1,3 +1,5 @@
+(** Dune representation of the source tree *)
+
 open! Import
 
 module Dir : sig
@@ -22,10 +24,17 @@ module Dir : sig
     -> 'a
 end
 
+(** A [t] value represent a view of the source tree. It is lazily
+    constructed by scanning the file system and interpreting [.dune-fs]
+    files, as well as [jbuild-ignore] files for backward
+    compatibility. *)
 type t
 
 val load : ?extra_ignored_subtrees:Path.Set.t -> Path.t -> t
 
+(** Passing [~traverse_ignored_dirs:true] to this functions causes the
+    whole source tree to be deeply scanned, including ignored
+    directories. *)
 val fold
   :  t
   -> traverse_ignored_dirs:bool
@@ -39,7 +48,10 @@ val find_dir : t -> Path.t -> Dir.t option
 
 val files_of : t -> Path.t -> Path.Set.t
 
+(** [true] iff the path is either a directory or a file *)
 val exists : t -> Path.t -> bool
+
+(** [true] iff the path is a file *)
 val file_exists : t -> Path.t -> string -> bool
 
 val files_recursively_in : t -> ?prefix_with:Path.t -> Path.t -> Path.Set.t

@@ -45,21 +45,23 @@ module Rules = struct
     ; add_rules : Rule.t list
     }
 
-  let interpret t ~preds =
+  let interpret' t ~preds =
     let rec find_set_rule = function
-      | [] -> ""
+      | [] -> None
       | rule :: rules ->
         if Rule.matches rule ~preds then
-          rule.value
+          Some rule.value
         else
           find_set_rule rules
     in
     let v = find_set_rule t.set_rules in
     List.fold_left t.add_rules ~init:v ~f:(fun v rule ->
       if Rule.matches rule ~preds then
-        v ^ " " ^ rule.value
+        Some ((Option.value ~default:"" v) ^ " " ^ rule.value)
       else
         v)
+
+  let interpret t ~preds = Option.value ~default:"" (interpret' t ~preds)
 
   let of_meta_rules (rules : Meta.Simplified.Rules.t) =
     let add_rules = List.map rules.add_rules ~f:Rule.make in
@@ -106,6 +108,13 @@ module Config = struct
 
   let get { vars; preds } var =
     Vars.get vars var preds
+
+  let env t =
+    let preds = Ps.add t.preds (P.make "env") in
+    String.Map.filter_map ~f:(fun rules ->
+      Rules.interpret' rules ~preds
+    ) t.vars
+    |> Env.of_string_map
 end
 
 module Package = struct

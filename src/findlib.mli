@@ -62,4 +62,6 @@ module Config : sig
   type t
   val load : Path.t -> toolchain:string -> context:string -> t
   val get : t -> string -> string option
+
+  val env : t -> Env.t
 end

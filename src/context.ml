@@ -315,6 +315,10 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
         | Some host ->
           Env.get host.env "PATH"
       )
+      |> Env.extend_env (
+        Option.value ~default:Env.empty
+          (Option.map findlib_config ~f:Findlib.Config.env)
+      )
     in
     let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in

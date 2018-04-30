@@ -9,6 +9,8 @@ type t
 
 module Map : Map.S with type key = Var.t
 
+val empty : t
+
 (** The environment when the process started *)
 val initial : t
 
@@ -28,3 +30,4 @@ val update : t -> var:string -> f:(string option -> string option) -> t
 
 val sexp_of_t : t -> Sexp.t
 
+val of_string_map : string String.Map.t -> t

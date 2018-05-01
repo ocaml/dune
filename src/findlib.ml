@@ -45,7 +45,7 @@ module Rules = struct
     ; add_rules : Rule.t list
     }
 
-  let interpret' t ~preds =
+  let interpret t ~preds =
     let rec find_set_rule = function
       | [] -> None
       | rule :: rules ->
@@ -60,8 +60,6 @@ module Rules = struct
         Some ((Option.value ~default:"" v) ^ " " ^ rule.value)
       else
         v)
-
-  let interpret t ~preds = Option.value ~default:"" (interpret' t ~preds)
 
   let of_meta_rules (rules : Meta.Simplified.Rules.t) =
     let add_rules = List.map rules.add_rules ~f:Rule.make in
@@ -79,9 +77,8 @@ module Vars = struct
   type t = Rules.t String.Map.t
 
   let get (t : t) var preds =
-    match String.Map.find t var with
-    | None -> None
-    | Some rules -> Some (Rules.interpret rules ~preds)
+    Option.map (String.Map.find t var) ~f:(fun r ->
+      Option.value ~default:"" (Rules.interpret r ~preds))
 
   let get_words t var preds =
     match get t var preds with
@@ -111,9 +108,7 @@ module Config = struct
 
   let env t =
     let preds = Ps.add t.preds (P.make "env") in
-    String.Map.filter_map ~f:(fun rules ->
-      Rules.interpret' rules ~preds
-    ) t.vars
+    String.Map.filter_map ~f:(Rules.interpret ~preds) t.vars
     |> Env.of_string_map
 end
 

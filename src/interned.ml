@@ -9,6 +9,8 @@ module type S = sig
   module Set : sig
     include Set.S with type elt = t
     val make : string list -> t
+
+    val pp : t Fmt.t
   end
   module Map : Map.S with type key = t
   module Table : sig
@@ -72,11 +74,15 @@ module Make() = struct
 
   let to_string t = Table.get names t
 
+  let pp fmt t = Format.fprintf fmt "%S" (to_string t)
+
   module Set = struct
     include Int_set
 
     let make l =
       List.fold_left l ~init:empty ~f:(fun acc s -> add acc (make s))
+
+    let pp fmt (t : t) = Fmt.ocaml_list pp fmt (to_list t)
   end
 
   module Map = Int_map

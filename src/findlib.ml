@@ -11,6 +11,14 @@ module Rule = struct
     ; value           : string
     }
 
+  let pp fmt { preds_required; preds_forbidden; value } =
+    Fmt.record fmt
+      [ "preds_required", Fmt.const Ps.pp preds_required
+      ; "preds_forbidden", Fmt.const Ps.pp preds_forbidden
+      ; "value", Fmt.const (fun fmt -> Format.fprintf fmt "%S") value
+      ]
+
+
   let formal_predicates_count t =
     Ps.cardinal t.preds_required + Ps.cardinal t.preds_forbidden
 
@@ -45,19 +53,25 @@ module Rules = struct
     ; add_rules : Rule.t list
     }
 
+  let pp fmt { set_rules; add_rules } =
+    Fmt.record fmt
+      [ "set_rules", (fun fmt () -> Fmt.ocaml_list Rule.pp fmt set_rules)
+      ; "add_rules", (fun fmt () -> Fmt.ocaml_list Rule.pp fmt add_rules)
+      ]
+
   let interpret t ~preds =
     let rec find_set_rule = function
-      | [] -> ""
+      | [] -> None
       | rule :: rules ->
         if Rule.matches rule ~preds then
-          rule.value
+          Some rule.value
         else
           find_set_rule rules
     in
     let v = find_set_rule t.set_rules in
     List.fold_left t.add_rules ~init:v ~f:(fun v rule ->
       if Rule.matches rule ~preds then
-        v ^ " " ^ rule.value
+        Some ((Option.value ~default:"" v) ^ " " ^ rule.value)
       else
         v)
 
@@ -77,9 +91,8 @@ module Vars = struct
   type t = Rules.t String.Map.t
 
   let get (t : t) var preds =
-    match String.Map.find t var with
-    | None -> None
-    | Some rules -> Some (Rules.interpret rules ~preds)
+    Option.map (String.Map.find t var) ~f:(fun r ->
+      Option.value ~default:"" (Rules.interpret r ~preds))
 
   let get_words t var preds =
     match get t var preds with
@@ -92,6 +105,15 @@ module Config = struct
     { vars  : Vars.t
     ; preds : Ps.t
     }
+
+  let pp fmt { vars; preds } =
+    Fmt.record fmt
+      [ "vars"
+      , Fmt.const (Fmt.ocaml_list (Fmt.tuple Format.pp_print_string Rules.pp))
+          (String.Map.to_list vars)
+      ; "preds"
+      , Fmt.const Ps.pp preds
+      ]
 
   let load path ~toolchain ~context =
     let path = Path.extend_basename path ~suffix:".d" in
@@ -106,6 +128,11 @@ module Config = struct
 
   let get { vars; preds } var =
     Vars.get vars var preds
+
+  let env t =
+    let preds = Ps.add t.preds (P.make "env") in
+    String.Map.filter_map ~f:(Rules.interpret ~preds) t.vars
+    |> Env.of_string_map
 end
 
 module Package = struct

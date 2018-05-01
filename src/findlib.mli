@@ -1,6 +1,6 @@
 (** Findlib database *)
 
-open Stdune
+open Import
 
 (** Findlib database *)
 type t
@@ -60,6 +60,11 @@ val dummy_package : t -> name:string -> Package.t
 
 module Config : sig
   type t
+
+  val pp : t Fmt.t
+
   val load : Path.t -> toolchain:string -> context:string -> t
   val get : t -> string -> string option
+
+  val env : t -> Env.t
 end

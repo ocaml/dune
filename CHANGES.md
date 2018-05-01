@@ -23,6 +23,8 @@ next
 
 - Fix attaching index.mld to documentation (#731, fixes #717 @rgrinberg)
 
+- Scan the file system lazily (#732, fixes #718 and #228, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

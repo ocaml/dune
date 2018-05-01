@@ -1,4 +1,4 @@
-  $ jbuilder runtest --display short
+  $ dune runtest --display short
       ocamldep bar.ml.d
       ocamldep bar_no_unix.ml.d
       ocamldep bar_unix.ml.d

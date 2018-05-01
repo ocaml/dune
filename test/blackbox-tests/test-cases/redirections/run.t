@@ -1,4 +1,4 @@
-  $ jbuilder runtest --display short 2>&1 | sed "s/ cmd /  sh /"
+  $ dune runtest --display short 2>&1 | sed "s/ cmd /  sh /"
             sh stderr,stdout
             sh stderr,stdout
           diff alias runtest

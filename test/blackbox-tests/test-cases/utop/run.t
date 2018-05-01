@@ -1,4 +1,4 @@
-  $ jbuilder utop --display short forutop -- init_forutop.ml
+  $ dune utop --display short forutop -- init_forutop.ml
       ocamldep forutop/.utop/utop.ml.d
       ocamldep forutop/forutop.ml.d
         ocamlc forutop/.forutop.objs/forutop.{cmi,cmo,cmt}

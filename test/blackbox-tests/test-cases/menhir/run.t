@@ -1,4 +1,4 @@
-  $ jbuilder build src/test.exe --display short --debug-dependency-path
+  $ dune build src/test.exe --display short --debug-dependency-path
       ocamllex src/lexer1.ml
       ocamldep src/lexer1.ml.d
       ocamllex src/lexer2.ml

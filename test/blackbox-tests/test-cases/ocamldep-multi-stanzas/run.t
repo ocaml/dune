@@ -1,4 +1,4 @@
-  $ jbuilder exec ./test.exe --debug-dep --display short
+  $ dune exec ./test.exe --debug-dep --display short
   File "jbuild", line 1, characters 0-0:
   Warning: Module "Lib" is used in several stanzas:
   - jbuild:8
@@ -13,7 +13,7 @@
   - <internal location>
   [1]
 
-  $ jbuilder build src/a.cma --debug-dep --display short
+  $ dune build src/a.cma --debug-dep --display short
   File "src/jbuild", line 1, characters 0-0:
   Warning: Module "X" is used in several stanzas:
   - src/jbuild:4

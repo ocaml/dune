@@ -84,7 +84,7 @@ let conf =
                         ~toolchain:"tlc" ~context:"<context>"
 
 [%%expect{|
-val conf : Jbuilder.Findlib.Config.t =
+val conf : Dune.Findlib.Config.t =
   { vars =
      [ (FOO_BAR, { set_rules =
                     [ { preds_required = [ "tlc"; "env" ]
@@ -103,11 +103,11 @@ let env_pp fmt env = Sexp.pp fmt (Env.sexp_of_t env);;
 #install_printer env_pp;;
 
 [%%expect{|
-val env_pp : Format.formatter -> Jbuilder.Env.t -> unit = <fun>
+val env_pp : Format.formatter -> Dune.Env.t -> unit = <fun>
 |}]
 
 let env = Findlib.Config.env conf
 
 [%%expect{|
-val env : Jbuilder.Env.t = ((FOO_BAR "my variable"))
+val env : Dune.Env.t = ((FOO_BAR "my variable"))
 |}]

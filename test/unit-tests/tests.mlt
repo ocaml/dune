@@ -77,3 +77,38 @@ val meta : Jbuilder.Meta.Simplified.t =
   ; subs = []
   }
 |}]
+
+#install_printer Findlib.Config.pp;;
+
+let conf =
+  Findlib.Config.load (Path.of_string "test/unit-tests/toolchain")
+                        ~toolchain:"tlc" ~context:"<context>"
+
+[%%expect{|
+val conf : Jbuilder.Findlib.Config.t =
+  { vars =
+     [ (FOO_BAR, { set_rules =
+                    [ { preds_required = [ "tlc"; "env" ]
+                      ; preds_forbidden = []
+                      ; value = "my variable"
+                      }
+                    ]
+                 ; add_rules = []
+                 })
+     ]
+  ; preds = [ "tlc" ]
+  }
+|}]
+
+let env_pp fmt env = Sexp.pp fmt (Env.sexp_of_t env);;
+#install_printer env_pp;;
+
+[%%expect{|
+val env_pp : Format.formatter -> Jbuilder.Env.t -> unit = <fun>
+|}]
+
+let env = Findlib.Config.env conf
+
+[%%expect{|
+val env : Jbuilder.Env.t = ((FOO_BAR "my variable"))
+|}]

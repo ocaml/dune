@@ -23,6 +23,7 @@
   (deps (tests.mlt
          (glob_files ${SCOPE_ROOT}/src/.jbuilder.objs/*.cmi)
          (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)
+         (files_recursively_in toolchain.d)
          (files_recursively_in findlib-db)))
   (action (chdir ${SCOPE_ROOT}
            (progn

@@ -132,7 +132,7 @@ let rec find_dir t path =
       | None ->
         (* We don't cache failures in [t.dirs]. The expectation is
            that these only happen when the user writes an invalid path
-           in a jbuild file, so there is no need to chache them. *)
+           in a jbuild file, so there is no need to cache them. *)
         None
 
 let files_of t path =

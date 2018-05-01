@@ -2,7 +2,7 @@
 (rule
  ((targets (dune-build.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:dune} build --help=groff)))))
+            (run dune build --help=groff)))))
 
 (install
  ((section man)
@@ -11,7 +11,7 @@
 (rule
  ((targets (dune-clean.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:dune} clean --help=groff)))))
+            (run dune clean --help=groff)))))
 
 (install
  ((section man)
@@ -20,7 +20,7 @@
 (rule
  ((targets (dune-exec.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:dune} exec --help=groff)))))
+            (run dune exec --help=groff)))))
 
 (install
  ((section man)
@@ -29,7 +29,7 @@
 (rule
  ((targets (dune-external-lib-deps.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:dune} external-lib-deps --help=groff)))))
+            (run dune external-lib-deps --help=groff)))))
 
 (install
  ((section man)
@@ -38,7 +38,7 @@
 (rule
  ((targets (dune-help.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:dune} help --help=groff)))))
+            (run dune help --help=groff)))))
 
 (install
  ((section man)
@@ -47,7 +47,7 @@
 (rule
  ((targets (dune-install.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:dune} install --help=groff)))))
+            (run dune install --help=groff)))))
 
 (install
  ((section man)
@@ -56,7 +56,7 @@
 (rule
  ((targets (dune-installed-libraries.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:dune} installed-libraries --help=groff)))))
+            (run dune installed-libraries --help=groff)))))
 
 (install
  ((section man)
@@ -65,7 +65,7 @@
 (rule
  ((targets (dune-promote.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:dune} promote --help=groff)))))
+            (run dune promote --help=groff)))))
 
 (install
  ((section man)
@@ -74,7 +74,7 @@
 (rule
  ((targets (dune-rules.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:dune} rules --help=groff)))))
+            (run dune rules --help=groff)))))
 
 (install
  ((section man)
@@ -83,7 +83,7 @@
 (rule
  ((targets (dune-runtest.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:dune} runtest --help=groff)))))
+            (run dune runtest --help=groff)))))
 
 (install
  ((section man)
@@ -92,7 +92,7 @@
 (rule
  ((targets (dune-subst.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:dune} subst --help=groff)))))
+            (run dune subst --help=groff)))))
 
 (install
  ((section man)
@@ -101,7 +101,7 @@
 (rule
  ((targets (dune-uninstall.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:dune} uninstall --help=groff)))))
+            (run dune uninstall --help=groff)))))
 
 (install
  ((section man)
@@ -110,7 +110,7 @@
 (rule
  ((targets (dune-utop.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:dune} utop --help=groff)))))
+            (run dune utop --help=groff)))))
 
 (install
  ((section man)

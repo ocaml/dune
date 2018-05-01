@@ -56,16 +56,26 @@ let setup ?(log=Log.no_log)
     | Some w -> w
     | None ->
       match workspace_file with
-      | Some p when Path.exists p ->
+      | Some p ->
         Workspace.load ?x p
       | _ ->
-        { merlin_context = Some "default"
-        ; contexts = [Default [
-            match x with
-            | None -> Native
-            | Some x -> Named x
-          ]]
-        }
+        match
+          List.find_map ["dune-workspace"; "jbuild-workspace"] ~f:(fun fn ->
+            let p = Path.of_string fn in
+            if Path.exists p then
+              Some p
+            else
+              None)
+        with
+        | Some p -> Workspace.load ?x p
+        | None ->
+          { merlin_context = Some "default"
+          ; contexts = [Default [
+              match x with
+              | None -> Native
+              | Some x -> Named x
+            ]]
+          }
   in
 
   Fiber.parallel_map workspace.contexts ~f:(fun ctx_def ->

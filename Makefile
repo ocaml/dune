@@ -1,5 +1,5 @@
 INSTALL_ARGS := $(if $(PREFIX),--prefix $(PREFIX),)
-BIN := ./_build/default/bin/main_dune.exe
+BIN := ./_build/default/bin/main.exe
 
 -include Makefile.dev
 

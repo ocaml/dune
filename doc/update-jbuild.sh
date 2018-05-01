@@ -4,22 +4,20 @@
 
 set -e -o pipefail
 
-prog=$1
-
-CMDS=$($prog --help=plain | \
+CMDS=$(dune --help=plain | \
            sed -n '/COMMANDS/,/OPTIONS/p' | sed -En 's/^       ([a-z-]+)/\1/p')
 
 for cmd in $CMDS; do
     cat <<EOF
 
 (rule
- ((targets ($prog-$cmd.1))
+ ((targets (dune-$cmd.1))
   (action  (with-stdout-to \${@}
-            (run \${bin:$prog} $cmd --help=groff)))))
+            (run dune $cmd --help=groff)))))
 
 (install
  ((section man)
-  (files ($prog-$cmd.1))))
+  (files (dune-$cmd.1))))
 EOF
 done
 

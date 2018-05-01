@@ -11,6 +11,14 @@ module Rule = struct
     ; value           : string
     }
 
+  let pp fmt { preds_required; preds_forbidden; value } =
+    Fmt.record fmt
+      [ "preds_required", Fmt.const Ps.pp preds_required
+      ; "preds_forbidden", Fmt.const Ps.pp preds_forbidden
+      ; "value", Fmt.const (fun fmt -> Format.fprintf fmt "%S") value
+      ]
+
+
   let formal_predicates_count t =
     Ps.cardinal t.preds_required + Ps.cardinal t.preds_forbidden
 
@@ -44,6 +52,12 @@ module Rules = struct
     { set_rules : Rule.t list
     ; add_rules : Rule.t list
     }
+
+  let pp fmt { set_rules; add_rules } =
+    Fmt.record fmt
+      [ "set_rules", (fun fmt () -> Fmt.ocaml_list Rule.pp fmt set_rules)
+      ; "add_rules", (fun fmt () -> Fmt.ocaml_list Rule.pp fmt add_rules)
+      ]
 
   let interpret t ~preds =
     let rec find_set_rule = function
@@ -91,6 +105,15 @@ module Config = struct
     { vars  : Vars.t
     ; preds : Ps.t
     }
+
+  let pp fmt { vars; preds } =
+    Fmt.record fmt
+      [ "vars"
+      , Fmt.const (Fmt.ocaml_list (Fmt.tuple Format.pp_print_string Rules.pp))
+          (String.Map.to_list vars)
+      ; "preds"
+      , Fmt.const Ps.pp preds
+      ]
 
   let load path ~toolchain ~context =
     let path = Path.extend_basename path ~suffix:".d" in

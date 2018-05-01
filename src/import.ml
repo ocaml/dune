@@ -150,6 +150,9 @@ module Fmt = struct
       let pp_sep fmt () = Format.fprintf fmt "@,; " in
       Format.fprintf fmt "@[<hv>{ %a@ }@]"
         (Format.pp_print_list ~pp_sep pp) xs
+
+  let tuple ppfa ppfb fmt (a, b) =
+    Format.fprintf fmt "@[<hv>(%a, %a)@]" ppfa a ppfb b
 end
 
 (* This is ugly *)

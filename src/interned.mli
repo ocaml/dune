@@ -17,6 +17,8 @@ module type S = sig
     include Set.S with type elt = t
 
     val make : string list -> t
+
+    val pp : t Fmt.t
   end
 
   module Map : Map.S with type key = t

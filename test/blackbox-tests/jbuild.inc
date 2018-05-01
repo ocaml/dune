@@ -169,7 +169,7 @@
 (alias
  ((name github717-odoc-index)
   (deps
-   ((package jbuilder) (files_recursively_in test-cases/github717-odoc-index)))
+   ((package dune) (files_recursively_in test-cases/github717-odoc-index)))
   (action
    (chdir
     test-cases/github717-odoc-index

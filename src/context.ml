@@ -197,7 +197,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets () =
       | Some fn -> fn
     in
 
-    let build_dir = Path.of_string (sprintf "_build/%s" name) in
+    let build_dir = Path.relative_to_build_dir name in
     let ocamlpath =
       match
         let var = "OCAMLPATH" in

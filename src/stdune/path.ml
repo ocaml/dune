@@ -355,7 +355,7 @@ let is_in_build_dir t =
 let is_in_source_tree t = is_local t && not (is_in_build_dir t)
 
 let is_alias_stamp_file t =
-  String.is_prefix t ~prefix:"_build/.aliases/"
+  String.is_prefix t ~prefix:(relative build_dir ".aliases")
 
 let extract_build_context t =
   if String.is_prefix t ~prefix:build_prefix then
@@ -472,8 +472,8 @@ let insert_after_build_dir_exn =
   fun a b ->
     if not (is_local a) || String.contains b '/' then error a b;
     match String.lsplit2 a ~on:'/' with
-    | Some ("_build", rest) ->
-      Printf.sprintf "_build/%s/%s" b rest
+    | Some (bp, rest) when bp = build_dir ->
+      relative build_dir (Printf.sprintf "%s/%s" b rest)
     | _ ->
       error a b
 

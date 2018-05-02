@@ -181,8 +181,6 @@ module Cached_digest = struct
 
   let remove fn = Hashtbl.remove cache fn
 
-  let db_file = Path.relative_to_build_dir ".digest-db"
-
   let dump () =
     let module Pmap = Path.Map in
     let sexp =
@@ -198,11 +196,11 @@ module Cached_digest = struct
                     ]))
     in
     if Path.build_dir_exists () then
-      Io.write_file db_file (Sexp.to_string sexp)
+      Io.write_file Paths.digest_db (Sexp.to_string sexp)
 
   let load () =
-    if Path.exists db_file then begin
-      let sexp = Io.Sexp.load db_file ~mode:Single in
+    if Path.exists Paths.db then begin
+      let sexp = Io.Sexp.load Paths.digest_db ~mode:Single in
       let bindings =
         let open Sexp.Of_sexp in
         list

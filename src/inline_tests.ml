@@ -14,7 +14,7 @@ module Backend = struct
         { loc              : Loc.t
         ; runner_libraries : (Loc.t * string) list
         ; flags            : Ordered_set_lang.Unexpanded.t
-        ; generate_runner  : Action.Unexpanded.t option
+        ; generate_runner  : (Loc.t * Action.Unexpanded.t) option
         ; extends          : (Loc.t * string) list
         }
 
@@ -31,7 +31,7 @@ module Backend = struct
            field "runner_libraries" (list (located string)) ~default:[]
            >>= fun runner_libraries ->
            Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
-           field_o "generate_runner" Action.Unexpanded.t
+           field_o "generate_runner" (located Action.Unexpanded.t)
            >>= fun generate_runner ->
            field "extends" (list (located string)) ~default:[]
            >>= fun extends ->
@@ -94,7 +94,7 @@ module Backend = struct
              (Result.ok_exn t.runner_libraries)
          ; field "flags" Ordered_set_lang.Unexpanded.sexp_of_t t.info.flags
          ; field_o "generate_runner" Action.Unexpanded.sexp_of_t
-             t.info.generate_runner
+             (Option.map t.info.generate_runner ~f:snd)
          ; field "extends" (list f) (Result.ok_exn t.extends) ~default:[]
          ])
   end
@@ -230,8 +230,8 @@ include Sub_system.Register_end_point(
       >>>
       Build.all
         (List.filter_map backends ~f:(fun (backend : Backend.t) ->
-           Option.map backend.info.generate_runner ~f:(fun action ->
-             SC.Action.run sctx action
+           Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
+             SC.Action.run sctx action ~loc
                ~extra_vars ~dir ~dep_kind:Required ~targets:Alias ~scope)))
       >>^ (fun actions ->
         Action.with_stdout_to target

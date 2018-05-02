@@ -246,7 +246,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope = Staged.stage (
     Per_module.map lint ~f:(function
       | Preprocess.No_preprocessing ->
         (fun ~source:_ ~ast:_ -> ())
-      | Action action ->
+      | Action (loc, action) ->
         (fun ~source ~ast:_ ->
            let action = Action.Unexpanded.Chdir (root_var, action) in
            Module.iter source ~f:(fun _ (src : Module.File.t) ->
@@ -256,6 +256,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope = Staged.stage (
                 >>^ (fun _ -> [src_path])
                 >>> SC.Action.run sctx
                       action
+                      ~loc
                       ~dir
                       ~dep_kind
                       ~targets:(Static [])
@@ -309,7 +310,7 @@ let pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~lint ~preprocess
            let ast = setup_reason_rules sctx ~dir m in
            lint_module ~ast ~source:m;
            ast)
-      | Action action ->
+      | Action (loc, action) ->
         (fun m ->
            let ast =
              pped_module m ~dir ~f:(fun _kind src dst ->
@@ -325,6 +326,7 @@ let pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~lint ~preprocess
                         target_var,
                         Chdir (root_var,
                                action)))
+                    ~loc
                     ~dir
                     ~dep_kind
                     ~targets:(Static [dst])

@@ -12,9 +12,6 @@ val bash_exn : needed_to:string -> Path.t
 (** Convert a signal number to a name: INT, TERM, ... *)
 val signal_name : int -> string
 
-(** [jbuild_file_in ~dir = Path.relative dir "jbuild"]. *)
-val jbuild_file_in : dir:Path.t -> Path.t
-
 (** Nice description of a target *)
 val describe_target : Path.t -> string
 

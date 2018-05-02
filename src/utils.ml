@@ -64,8 +64,6 @@ let signal_name =
     | exception Not_found -> sprintf "%d\n" n
     | s -> s
 
-let jbuild_file_in ~dir = Path.relative dir "jbuild"
-
 type target_kind =
   | Regular of string * Path.t
   | Alias   of string * Path.t

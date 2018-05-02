@@ -190,6 +190,7 @@ module Action : sig
   (** The arrow takes as input the list of actual dependencies *)
   val run
     :  t
+    -> loc:Loc.t
     -> ?extra_vars:Action.Var_expansion.t String.Map.t
     -> Action.Unexpanded.t
     -> dir:Path.t

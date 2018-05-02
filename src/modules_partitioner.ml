@@ -1,14 +1,12 @@
 open Import
 
 type t =
-  { dir          : Path.t
-  ; all_modules  : Module.t Module.Name.Map.t
+  { all_modules  : Module.t Module.Name.Map.t
   ; mutable used : Loc.t list Module.Name.Map.t
   }
 
-let create ~dir ~all_modules =
-  { dir
-  ; all_modules
+let create ~all_modules =
+  { all_modules
   ; used = Module.Name.Map.empty
   }
 
@@ -27,13 +25,11 @@ let acknowledge t ~loc ~modules =
   already_used
 
 let emit_warnings t =
-  let loc =
-    Utils.jbuild_file_in ~dir:t.dir
-    |> Path.to_string
-    |> Loc.in_file
-  in
   Module.Name.Map.iteri t.used ~f:(fun name locs ->
-    if List.length locs > 1 then
+    match locs with
+    | [] | [_] -> ()
+    | loc :: _ ->
+      let loc = Loc.in_file loc.start.pos_fname in
       Loc.warn loc
         "Module %a is used in several stanzas:@\n\
          @[<v>%a@]@\n\

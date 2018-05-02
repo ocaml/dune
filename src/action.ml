@@ -647,7 +647,7 @@ module Promotion = struct
       Io.copy_file ~src ~dst
   end
 
-  let db_file = Path.relative_to_build_dir ".to-promote"
+  let db_file = Path.relative Path.build_dir ".to-promote"
 
   let dump_db db =
     if Path.build_dir_exists () then begin
@@ -729,14 +729,14 @@ let exec_run_direct ~ectx ~dir ~env ~stdout_to ~stderr_to prog args =
    | Some { Context.for_host = None; _ } -> ()
    | Some ({ Context.for_host = Some host; _ } as target) ->
      let invalid_prefix prefix =
-       match Path.descendant prog ~of_:(Path.of_string prefix) with
+       match Path.descendant prog ~of_:prefix with
        | None -> ()
        | Some _ ->
          die "Context %s has a host %s.@.It's not possible to execute binary %a \
               in it.@.@.This is a bug and should be reported upstream."
            target.name host.name Path.pp prog in
-     invalid_prefix ("_build/" ^ target.name);
-     invalid_prefix ("_build/install/" ^ target.name);
+     invalid_prefix (Path.relative Path.build_dir target.name);
+     invalid_prefix (Path.relative Path.build_dir ("install/" ^ target.name));
   end;
   Process.run Strict ~dir ~env
     ~stdout_to ~stderr_to

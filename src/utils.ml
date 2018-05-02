@@ -183,7 +183,7 @@ module Cached_digest = struct
 
   let remove fn = Hashtbl.remove cache fn
 
-  let db_file = Path.relative_to_build_dir ".digest-db"
+  let db_file = Path.relative Path.build_dir ".digest-db"
 
   let dump () =
     let module Pmap = Path.Map in

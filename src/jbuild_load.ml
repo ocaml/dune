@@ -24,7 +24,7 @@ module Jbuilds = struct
     ; ignore_promoted_rules : bool
     }
 
-  let generated_jbuilds_dir = Path.(relative root) "_build/.jbuilds"
+  let generated_jbuilds_dir = Path.relative Path.build_dir ".jbuilds"
 
   let ensure_parent_dir_exists path =
     match Path.kind path with

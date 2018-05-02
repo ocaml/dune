@@ -140,8 +140,8 @@ module Of_sexp = struct
     tbl
 
   type unparsed_field =
-    { value : Ast.t option
-    ; entry : Ast.t
+    { values : Ast.t list
+    ; entry  : Ast.t
     }
 
   module Name = struct
@@ -229,27 +229,36 @@ module Of_sexp = struct
       | Located f -> f (Ast.loc entry)
   end
 
+  let too_many_values name field =
+    of_sexp_errorf_loc (Ast.loc field.entry) "too many values for field %s" name
+
+  let field_missing state name =
+    of_sexp_errorf_loc state.loc "field %s missing" name
+
   let field name ?(short=Short_syntax.Not_allowed)
         ?default value_of_sexp state =
     match Name_map.find state.unparsed name with
-    | Some { value = Some value; _ } ->
+    | Some { values = [value]; _ } ->
       (value_of_sexp value, consume name state)
-    | Some { value = None; entry } ->
+    | Some { values = []; entry } ->
       (Short_syntax.parse short entry name,
        consume name state)
+    | Some f ->
+      too_many_values name f
     | None ->
       match default with
       | Some v -> (v, add_known name state)
-      | None ->
-        of_sexp_errorf_loc state.loc "field %s missing" name
+      | None -> field_missing state name
 
   let field_o name ?(short=Short_syntax.Not_allowed) value_of_sexp state =
     match Name_map.find state.unparsed name with
-    | Some { value = Some value; _ } ->
+    | Some { values = [value]; _ } ->
       (Some (value_of_sexp value), consume name state)
-    | Some { value = None; entry } ->
+    | Some { values = []; entry } ->
       (Some (Short_syntax.parse short entry name),
        consume name state)
+    | Some f ->
+      too_many_values name f
     | None -> (None, add_known name state)
 
   let field_b name = field name bool ~default:false ~short:(This true)
@@ -261,17 +270,16 @@ module Of_sexp = struct
       let unparsed =
         List.fold_left sexps ~init:Name_map.empty ~f:(fun acc sexp ->
           match sexp with
-          | List (_, [Atom (_, A name)]) ->
-            Name_map.add acc name { value = None; entry = sexp }
-          | List (_, [name_sexp; value]) -> begin
+          | List (_, name_sexp :: values) -> begin
               match name_sexp with
               | Atom (_, A name) ->
-                Name_map.add acc name { value = Some value; entry = sexp }
+                Name_map.add acc name { values; entry = sexp }
               | List _ | Quoted_string _ ->
                 of_sexp_error name_sexp "Atom expected"
             end
           | _ ->
-            of_sexp_error sexp "S-expression of the form (_ _) expected")
+            of_sexp_error sexp
+              "S-expression of the form (<name> <values>...) expected")
       in
       { loc    = loc
       ; known  = []
@@ -316,6 +324,16 @@ module Of_sexp = struct
 
   let nil = Constructor_args_spec.Nil
   let ( @> ) a b = Constructor_args_spec.Cons (a, b)
+
+  let field_multi name ?default args_spec f state =
+    match Name_map.find state.unparsed name with
+    | Some { values; entry } ->
+      (Constructor_args_spec.convert args_spec No_rest entry values f,
+       consume name state)
+    | None ->
+      match default with
+      | Some v -> (v, add_known name state)
+      | None -> field_missing state name
 
   module Constructor_spec = struct
     type ('a, 'b, 'c) tuple =

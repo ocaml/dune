@@ -651,17 +651,17 @@ module Promotion = struct
     if Path.build_dir_exists () then begin
       match db with
       | [] ->
-        if Path.exists (Paths.to_promote ()) then
-          Path.unlink_no_err (Paths.to_promote ())
+        if Path.exists Paths.to_promote then
+          Path.unlink_no_err Paths.to_promote
       | l ->
-        Io.write_file (Paths.to_promote ())
+        Io.write_file Paths.to_promote
           (String.concat ~sep:""
              (List.map l ~f:(fun x -> Sexp.to_string (File.sexp_of_t x) ^ "\n")))
     end
 
   let load_db () =
-    if Path.exists (Paths.to_promote ()) then
-      Io.Sexp.load (Paths.to_promote ()) ~mode:Many
+    if Path.exists Paths.to_promote then
+      Io.Sexp.load Paths.to_promote ~mode:Many
       |> List.map ~f:File.t
     else
       []

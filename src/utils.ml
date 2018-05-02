@@ -198,11 +198,11 @@ module Cached_digest = struct
                     ]))
     in
     if Path.build_dir_exists () then
-      Io.write_file (Paths.digest_db ()) (Sexp.to_string sexp)
+      Io.write_file Paths.digest_db (Sexp.to_string sexp)
 
   let load () =
-    if Path.exists (Paths.db ()) then begin
-      let sexp = Io.Sexp.load (Paths.digest_db ()) ~mode:Single in
+    if Path.exists Paths.db then begin
+      let sexp = Io.Sexp.load Paths.digest_db ~mode:Single in
       let bindings =
         let open Sexp.Of_sexp in
         list

@@ -11,9 +11,8 @@ module Promoted_to_delete = struct
   let add p = db := p :: !db
 
   let load () =
-    let fn = Paths.to_delete_source_tree () in
-    if Path.exists fn then
-      Io.Sexp.load fn ~mode:Many
+    if Path.exists Paths.to_delete_source_tree then
+      Io.Sexp.load Paths.to_delete_source_tree ~mode:Many
       |> List.map ~f:Path.t
     else
       []
@@ -21,7 +20,7 @@ module Promoted_to_delete = struct
   let dump () =
     let db = Pset.union (Pset.of_list !db) (Pset.of_list (load ())) in
     if Path.build_dir_exists () then
-      Io.write_file (Paths.to_delete_source_tree ())
+      Io.write_file Paths.to_delete_source_tree
         (String.concat ~sep:""
            (List.map (Pset.to_list db) ~f:(fun p ->
               Sexp.to_string (Path.sexp_of_t p) ^ "\n")))
@@ -697,7 +696,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     in
     let sandbox_dir =
       if sandbox then
-        Some (Path.relative (Paths.sandbox_dir ()) (Digest.to_hex hash))
+        Some (Path.relative Paths.sandbox_dir (Digest.to_hex hash))
       else
         None
     in
@@ -854,7 +853,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
 
   (* Compute alias rules *)
   let alias_dir =
-    Path.append (Path.relative (Paths.aliases ()) context_name) sub_dir in
+    Path.append (Path.relative Paths.aliases context_name) sub_dir in
   let alias_rules, alias_stamp_files =
     let open Build.O in
     String.Map.foldi collector.aliases ~init:([], Pset.empty)
@@ -1079,7 +1078,7 @@ let stamp_file_for_files_of t ~dir ~ext =
   | Some fn -> fn
   | None ->
     let stamp_file =
-      Path.relative (Paths.misc ()) (files_of_dir.dir_hash ^ ext) in
+      Path.relative Paths.misc (files_of_dir.dir_hash ^ ext) in
     let files =
       Option.value
         (String.Map.find files_of_dir.files_by_ext ext)
@@ -1110,12 +1109,12 @@ module Trace = struct
                            Atom (Sexp.Atom.of_digest hash) ]))
     in
     if Path.build_dir_exists () then
-      Io.write_file (Paths.db ()) (Sexp.to_string sexp)
+      Io.write_file Paths.db (Sexp.to_string sexp)
 
   let load () =
     let trace = Hashtbl.create 1024 in
-    if Path.exists (Paths.db ()) then begin
-      let sexp = Io.Sexp.load (Paths.db ()) ~mode:Single in
+    if Path.exists Paths.db then begin
+      let sexp = Io.Sexp.load Paths.db ~mode:Single in
       let bindings =
         let open Sexp.Of_sexp in
         list (pair Path.t (fun s -> Digest.from_hex (string s))) sexp
@@ -1190,15 +1189,15 @@ let eval_request t ~request ~process_target =
 
 let update_universe t =
   (* To workaround the fact that [mtime] is not precise enough on OSX *)
-  Utils.Cached_digest.remove (Paths.universe_file ());
+  Utils.Cached_digest.remove Paths.universe_file;
   let n =
-    if Path.exists (Paths.universe_file ()) then
-      Sexp.Of_sexp.int (Io.Sexp.load ~mode:Single (Paths.universe_file ())) + 1
+    if Path.exists Paths.universe_file then
+      Sexp.Of_sexp.int (Io.Sexp.load ~mode:Single Paths.universe_file) + 1
     else
       0
   in
   make_local_dirs t (Pset.singleton Path.build_dir);
-  Io.write_file (Paths.universe_file ()) (Sexp.to_string (Sexp.To_sexp.int n))
+  Io.write_file Paths.universe_file (Sexp.to_string (Sexp.To_sexp.int n))
 
 let do_build t ~request =
   entry_point t ~f:(fun () ->

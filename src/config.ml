@@ -1,7 +1,7 @@
 open! Import
 
 let local_install_dir ~context =
-  Path.relative (Paths.install_dir ()) context
+  Path.relative Paths.install_dir context
 
 let local_install_bin_dir ~context =
   Path.relative (local_install_dir ~context) "bin"

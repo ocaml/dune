@@ -2,4 +2,4 @@
 
 (executable
  ((name run)
-  (libraries (jbuilder.configurator))))
+  (libraries (dune.configurator))))

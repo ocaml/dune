@@ -2,7 +2,7 @@
 
 #warnings "-40";;
 
-open Jbuilder;;
+open Dune;;
 open Import;;
 open Action.Infer.Outcome;;
 
@@ -12,8 +12,8 @@ let infer (a : Action.t) =
   (List.map (Path.Set.to_list x.deps) ~f:Path.to_string,
    List.map (Path.Set.to_list x.targets) ~f:Path.to_string)
 [%%expect{|
-val p : ?error_loc:Usexp.Loc.t -> string -> Jbuilder.Import.Path.t = <fun>
-val infer : Jbuilder.Action.t -> string list * string list = <fun>
+val p : ?error_loc:Usexp.Loc.t -> string -> Dune.Import.Path.t = <fun>
+val infer : Dune.Action.t -> string list * string list = <fun>
 |}]
 
 infer (Copy (p "a", p "b"));;

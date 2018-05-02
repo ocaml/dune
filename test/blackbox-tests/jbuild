@@ -8,7 +8,7 @@
 (executable
  ((name cram)
   (modules (cram))
-  (libraries (test_common platform jbuilder configurator))))
+  (libraries (test_common platform dune configurator))))
 
 (ocamllex (cram))
 

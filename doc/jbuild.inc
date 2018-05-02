@@ -1,118 +1,118 @@
 
 (rule
- ((targets (jbuilder-build.1))
+ ((targets (dune-build.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} build --help=groff)))))
+            (run dune build --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder-build.1))))
+  (files (dune-build.1))))
 
 (rule
- ((targets (jbuilder-clean.1))
+ ((targets (dune-clean.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} clean --help=groff)))))
+            (run dune clean --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder-clean.1))))
+  (files (dune-clean.1))))
 
 (rule
- ((targets (jbuilder-exec.1))
+ ((targets (dune-exec.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} exec --help=groff)))))
+            (run dune exec --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder-exec.1))))
+  (files (dune-exec.1))))
 
 (rule
- ((targets (jbuilder-external-lib-deps.1))
+ ((targets (dune-external-lib-deps.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} external-lib-deps --help=groff)))))
+            (run dune external-lib-deps --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder-external-lib-deps.1))))
+  (files (dune-external-lib-deps.1))))
 
 (rule
- ((targets (jbuilder-help.1))
+ ((targets (dune-help.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} help --help=groff)))))
+            (run dune help --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder-help.1))))
+  (files (dune-help.1))))
 
 (rule
- ((targets (jbuilder-install.1))
+ ((targets (dune-install.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} install --help=groff)))))
+            (run dune install --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder-install.1))))
+  (files (dune-install.1))))
 
 (rule
- ((targets (jbuilder-installed-libraries.1))
+ ((targets (dune-installed-libraries.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} installed-libraries --help=groff)))))
+            (run dune installed-libraries --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder-installed-libraries.1))))
+  (files (dune-installed-libraries.1))))
 
 (rule
- ((targets (jbuilder-promote.1))
+ ((targets (dune-promote.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} promote --help=groff)))))
+            (run dune promote --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder-promote.1))))
+  (files (dune-promote.1))))
 
 (rule
- ((targets (jbuilder-rules.1))
+ ((targets (dune-rules.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} rules --help=groff)))))
+            (run dune rules --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder-rules.1))))
+  (files (dune-rules.1))))
 
 (rule
- ((targets (jbuilder-runtest.1))
+ ((targets (dune-runtest.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} runtest --help=groff)))))
+            (run dune runtest --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder-runtest.1))))
+  (files (dune-runtest.1))))
 
 (rule
- ((targets (jbuilder-subst.1))
+ ((targets (dune-subst.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} subst --help=groff)))))
+            (run dune subst --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder-subst.1))))
+  (files (dune-subst.1))))
 
 (rule
- ((targets (jbuilder-uninstall.1))
+ ((targets (dune-uninstall.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} uninstall --help=groff)))))
+            (run dune uninstall --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder-uninstall.1))))
+  (files (dune-uninstall.1))))
 
 (rule
- ((targets (jbuilder-utop.1))
+ ((targets (dune-utop.1))
   (action  (with-stdout-to ${@}
-            (run ${bin:jbuilder} utop --help=groff)))))
+            (run dune utop --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder-utop.1))))
+  (files (dune-utop.1))))
 

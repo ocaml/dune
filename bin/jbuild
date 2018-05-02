@@ -1,5 +1,9 @@
 (executable
  ((name        main)
-  (public_name jbuilder)
-  (libraries (unix jbuilder cmdliner))
+  (public_name dune)
+  (libraries (unix dune cmdliner))
   (preprocess no_preprocessing)))
+
+(install
+ ((section bin)
+  (files   ((main.exe as jbuilder)))))

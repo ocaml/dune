@@ -1,4 +1,4 @@
-  $ jbuilder exec ./main.exe --display short
+  $ dune exec ./main.exe --display short
           echo main.ml
       ocamldep main.ml.d
         ocamlc .main.eobjs/main.{cmi,cmo,cmt}

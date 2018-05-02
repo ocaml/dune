@@ -1,1 +1,1 @@
-  $ jbuilder build @doc
+  $ dune build @doc

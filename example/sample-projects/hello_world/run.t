@@ -1,4 +1,4 @@
-  $ $JBUILDER build -j1 --root . @install @runtest
+  $ jbuilder build @install @runtest
       ocamldep bin/main.depends.ocamldep-output
       ocamldep lib/hello_world.depends.ocamldep-output
         ocamlc lib/hello_world.{cmi,cmo,cmt}

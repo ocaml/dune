@@ -79,7 +79,7 @@ module Test = struct
              ; action ] in
     alias t.name
       ~deps:(
-        [ Sexp.strings ["package"; "jbuilder"]
+        [ Sexp.strings ["package"; "dune"]
         ; Sexp.strings [ "files_recursively_in"
                        ; sprintf "test-cases/%s" t.name]
         ]

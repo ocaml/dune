@@ -3,7 +3,7 @@
 (library
  ((name usexp)
   (synopsis "[Internal] S-expression library")
-  (public_name jbuilder.usexp)))
+  (public_name dune.usexp)))
 
 (rule
  (with-stdout-to table.ml.gen (run gen/gen_parser_automaton.exe)))

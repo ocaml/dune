@@ -1,1 +1,1 @@
-  $ jbuilder runtest --debug-dependency-path
+  $ dune runtest --debug-dependency-path

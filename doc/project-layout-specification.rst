@@ -2,9 +2,10 @@
 Project Layout and Metadata Specification
 *****************************************
 
-A typical jbuilder project will have one or more ``<package>.opam`` file
-at toplevel as well as ``jbuild`` files wherever interesting things are:
-libraries, executables, tests, documents to install, etc...
+A typical jbuilder project will have a ```dune-project`` and one or
+more ``<package>.opam`` file at toplevel as well as ``jbuild`` files
+wherever interesting things are: libraries, executables, tests,
+documents to install, etc...
 
 It is recommended to organize your project so that you have exactly one
 library per directory. You can have several executables in the same
@@ -83,10 +84,10 @@ Examples
 
     this_is_an_atom_123'&^%!  ; this is a comment
     "another atom in an OCaml-string \"string in a string\" \123"
-    
+
     ; empty list follows below
     ()
-    
+
     ; a more complex example
     (
       (
@@ -102,6 +103,33 @@ Examples
 
 
 .. _opam-files:
+
+dune-project files
+==================
+
+These files are used to mark the root of projects as well as define
+project-wide parameters. These files are required to have a ``lang``
+which controls the names and contents of all configuration files read
+by Dune. The ``lang`` stanza looks like:
+
+.. code:: scheme
+
+          (lang dune 0.1)
+
+The 0.1 version of the language is exactly the same as the Jbuilder
+language. So to convert a Jbuilder project to Dune, simply write this
+file at the root of your project.
+
+Additionally, they can contains the following stanzas.
+
+name
+----
+
+Sets the name of the project:
+
+.. code:: scheme
+
+    (name <name>)
 
 <package>.opam files
 ====================

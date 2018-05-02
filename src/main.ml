@@ -30,7 +30,7 @@ let setup_env ~capture_outputs =
 
 let setup ?(log=Log.no_log)
       ?external_lib_deps_mode
-      ?workspace ?(workspace_file=Path.of_string "jbuild-workspace")
+      ?workspace ?workspace_file
       ?only_packages
       ?extra_ignored_subtrees
       ?x
@@ -55,16 +55,27 @@ let setup ?(log=Log.no_log)
     match workspace with
     | Some w -> w
     | None ->
-      if Path.exists workspace_file then
-        Workspace.load ?x workspace_file
-      else
-        { merlin_context = Some "default"
-        ; contexts = [Default [
-            match x with
-            | None -> Native
-            | Some x -> Named x
-          ]]
-        }
+      match workspace_file with
+      | Some p ->
+        Workspace.load ?x p
+      | _ ->
+        match
+          List.find_map ["dune-workspace"; "jbuild-workspace"] ~f:(fun fn ->
+            let p = Path.of_string fn in
+            if Path.exists p then
+              Some p
+            else
+              None)
+        with
+        | Some p -> Workspace.load ?x p
+        | None ->
+          { merlin_context = Some "default"
+          ; contexts = [Default [
+              match x with
+              | None -> Native
+              | Some x -> Named x
+            ]]
+          }
   in
 
   Fiber.parallel_map workspace.contexts ~f:(fun ctx_def ->
@@ -193,7 +204,7 @@ let bootstrap () =
   let main () =
     let anon s = raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s)) in
     let subst () =
-      Scheduler.go (Watermarks.subst () ~name:"jbuilder");
+      Scheduler.go (Watermarks.subst () ~name:"dune");
       exit 0
     in
     let display = ref None in
@@ -248,7 +259,7 @@ let bootstrap () =
          ()
        >>= fun { build_system = bs; _ } ->
        Build_system.do_build bs
-         ~request:(Build.path (Path.of_string "_build/default/jbuilder.install")))
+         ~request:(Build.path (Path.of_string "_build/default/dune.install")))
   in
   try
     main ()

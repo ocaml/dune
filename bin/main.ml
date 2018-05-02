@@ -1,10 +1,10 @@
-open Jbuilder
+open Dune
 open Import
 open Cmdliner
 open Fiber.O
 
-(* Things in src/ don't depend on cmdliner to speed up the bootstrap, so we set this
-   reference here *)
+(* Things in src/ don't depend on cmdliner to speed up the
+   bootstrap, so we set this reference here *)
 let () = suggest_function := Cmdliner_suggest.value
 
 type common =
@@ -43,7 +43,7 @@ let set_common c ~targets =
   Clflags.force := c.force;
   Clflags.external_lib_deps_hint :=
     List.concat
-      [ ["jbuilder"; "external-lib-deps"; "--missing"]
+      [ ["dune"; "external-lib-deps"; "--missing"]
       ; c.orig_args
       ; targets
       ]
@@ -70,12 +70,13 @@ let restore_cwd_and_execve common prog argv env =
     Unix.execve prog argv env
 
 module Main = struct
-  include Jbuilder.Main
+  include Dune.Main
 
   let setup ~log ?external_lib_deps_mode common =
     setup
       ~log
-      ?workspace_file:(Option.map ~f:Path.of_string common.workspace_file)
+      ?workspace_file:(
+        Option.map common.workspace_file ~f:Path.of_string)
       ?only_packages:common.only_packages
       ?external_lib_deps_mode
       ?x:common.x
@@ -85,14 +86,14 @@ module Main = struct
 end
 
 module Log = struct
-  include Jbuilder.Log
+  include Dune.Log
 
   let create common =
     Log.create ~display:common.config.display ()
 end
 
 module Scheduler = struct
-  include Jbuilder.Scheduler
+  include Dune.Scheduler
 
   let go ?log ~common fiber =
     let fiber =
@@ -137,11 +138,14 @@ let find_root () =
   let cwd = Sys.getcwd () in
   let rec loop counter ~candidates ~to_cwd dir =
     let files = Sys.readdir dir |> Array.to_list |> String.Set.of_list in
-    if String.Set.mem files "jbuild-workspace" then
+    if String.Set.mem files "dune-workspace"   ||
+       String.Set.mem files "jbuild-workspace" then
       cont counter ~candidates:((0, dir, to_cwd) :: candidates) dir ~to_cwd
     else if String.Set.exists files ~f:(fun fn ->
-        String.is_prefix fn ~prefix:"jbuild-workspace") then
+      String.is_prefix fn ~prefix:"jbuild-workspace") then
       cont counter ~candidates:((1, dir, to_cwd) :: candidates) dir ~to_cwd
+    else if String.Set.mem files Dune_project.filename then
+      cont counter ~candidates:((2, dir, to_cwd) :: candidates) dir ~to_cwd
     else
       cont counter ~candidates dir ~to_cwd
   and cont counter ~candidates ~to_cwd dir =
@@ -342,7 +346,7 @@ let common =
       Arg.(value
            & opt (some (enum Config.Display.all)) None
            & info ["display"] ~docs ~docv:"MODE"
-               ~doc:{|Control the display mode of Jbuilder.
+               ~doc:{|Control the display mode of Dune.
                       See $(b,dune-config\(5\)) for more details.|})
     in
     let merge verbose display =
@@ -358,8 +362,8 @@ let common =
     Arg.(value
          & flag
          & info ["no-buffer"] ~docs ~docv:"DIR"
-             ~doc:{|Do not buffer the output of commands executed by jbuilder.
-                    By default jbuilder buffers the output of subcommands, in order
+             ~doc:{|Do not buffer the output of commands executed by dune.
+                    By default dune buffers the output of subcommands, in order
                     to prevent interleaving when multiple commands are executed
                     in parallel. However, this can be an issue when debugging
                     long running tests. With $(b,--no-buffer), commands have direct
@@ -382,7 +386,7 @@ let common =
          & flag
          & info ["auto-promote"] ~docs
              ~doc:"Automatically promote files. This is similar to running
-                   $(b,jbuilder promote) after the build.")
+                   $(b,dune promote) after the build.")
   in
   let force =
     Arg.(value
@@ -556,7 +560,7 @@ let resolve_package_install setup pkg =
     die "Unknown package %s!%s" pkg
       (hint pkg
          (Package.Name.Map.keys setup.packages
-         |> List.map ~f:Package.Name.to_string))
+          |> List.map ~f:Package.Name.to_string))
 
 let target_hint (setup : Main.setup) path =
   assert (Path.is_local path);
@@ -593,7 +597,7 @@ let check_path contexts =
   in
   fun path ->
     let internal path =
-      die "This path is internal to jbuilder: %s"
+      die "This path is internal to dune: %s"
         (Path.to_string_maybe_quoted path)
     in
     if Path.is_in_build_dir path then
@@ -701,7 +705,7 @@ let runtest =
   let man =
     [ `S "DESCRIPTION"
     ; `P {|This is a short-hand for calling:|}
-    ; `Pre {|  jbuilder build @runtest|}
+    ; `Pre {|  dune build @runtest|}
     ; `Blocks help_secs
     ]
   in
@@ -732,7 +736,7 @@ let clean =
   let doc = "Clean the project." in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|Removes files added by jbuilder such as _build, <package>.install, and .merlin|}
+    ; `P {|Removes files added by dune such as _build, <package>.install, and .merlin|}
     ; `Blocks help_secs
     ]
   in
@@ -856,7 +860,7 @@ let rules =
   let doc = "Dump internal rules." in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|Dump Jbuilder internal rules for the given targets.
+    ; `P {|Dump Dune internal rules for the given targets.
            If no targets are given, dump all the internal rules.|}
     ; `P {|By default the output is a list of S-expressions,
            one S-expression per rule. Each S-expression is of the form:|}
@@ -996,7 +1000,7 @@ let install_uninstall ~what =
        if missing_install_files <> [] then begin
          die "The following <package>.install are missing:\n\
               %s\n\
-              You need to run: jbuilder build @install"
+              You need to run: dune build @install"
            (String.concat ~sep:"\n"
               (List.map missing_install_files
                  ~f:(fun p -> sprintf "- %s" (Path.to_string p))))
@@ -1068,11 +1072,11 @@ let exec =
   in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|$(b,jbuilder exec -- COMMAND) should behave in the same way as if you
+    ; `P {|$(b,dune exec -- COMMAND) should behave in the same way as if you
            do:|}
-    ; `Pre "  \\$ jbuilder install\n\
+    ; `Pre "  \\$ dune install\n\
            \  \\$ COMMAND"
-    ; `P {|In particular if you run $(b,jbuilder exec ocaml), you will have
+    ; `P {|In particular if you run $(b,dune exec ocaml), you will have
            access to the libraries defined in the workspace using your usual
            directives ($(b,#require) for instance)|}
     ; `P {|When a leading / is present in the command (absolute path), then the
@@ -1191,7 +1195,7 @@ let subst =
            by the version obtained from the vcs. Currently only git is supported and
            the version is obtained from the output of:|}
     ; `Pre {|  \$ git describe --always --dirty|}
-    ; `P {|$(b,jbuilder subst) substitutes the variables that topkg substitutes with
+    ; `P {|$(b,dune subst) substitutes the variables that topkg substitutes with
            the defatult configuration:|}
     ; var "NAME" "the name of the package"
     ; var "VERSION" "output of $(b,git describe --always --dirty)"
@@ -1211,9 +1215,9 @@ let subst =
            heuristic: if all the $(b,<package>.opam) files in the current directory are
            prefixed by the shortest package name, this prefix is used. Otherwise you must
            specify a name with the $(b,-n) command line option.|}
-    ; `P {|In order to call $(b,jbuilder subst) when your package is pinned, add this line
+    ; `P {|In order to call $(b,dune subst) when your package is pinned, add this line
            to the $(b,build:) field of your opam file:|}
-    ; `Pre {|  ["jbuilder" "subst"] {pinned}|}
+    ; `Pre {|  [dune "subst"] {pinned}|}
     ; `Blocks help_secs
     ]
   in
@@ -1234,7 +1238,7 @@ let utop =
   let doc = "Load library in utop" in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|$(b,jbuilder utop DIR) build and run utop toplevel with libraries defined in DIR|}
+    ; `P {|$(b,dune utop DIR) build and run utop toplevel with libraries defined in DIR|}
     ; `Blocks help_secs
     ] in
   let go common dir ctx_name args =
@@ -1271,12 +1275,12 @@ let promote =
   let man =
     [ `S "DESCRIPTION"
     ; `P {|Considering all actions of the form $(b,(diff a b)) that failed
-           in the last run of jbuilder, $(b,jbuilder promote) does the following:
+           in the last run of dune, $(b,dune promote) does the following:
 
            If $(b,a) is present in the source tree but $(b,b) isn't, $(b,b) is
            copied over to $(b,a) in the source tree. The idea behind this is that
            you might use $(b,(diff file.expected file.generated)) and then call
-           $(b,jbuilder promote) to promote the generated file.
+           $(b,dune promote) to promote the generated file.
          |}
     ; `Blocks help_secs
     ] in
@@ -1294,13 +1298,13 @@ let promote =
 
 module Help = struct
   let config =
-    ("dune-config", 5, "", "Jbuilder", "Jbuilder manual"),
+    ("dune-config", 5, "", "Dune", "Dune manual"),
     [ `S Manpage.s_synopsis
     ; `Pre "~/.config/dune/config"
     ; `S Manpage.s_description
-    ; `P {|Unless $(b,--no-config) or $(b,-p) is passed, Jbuilder will read a
+    ; `P {|Unless $(b,--no-config) or $(b,-p) is passed, Dune will read a
            configuration file from the user home directory. This file is used
-           to control various aspects of the behavior of Jbuilder.|}
+           to control various aspects of the behavior of Dune.|}
     ; `P {|The configuration file is normally $(b,~/.config/dune/config) on
            Unix systems and $(b,Local Settings/dune/config) in the User home
            directory on Windows. However, it is possible to specify an
@@ -1309,13 +1313,13 @@ module Help = struct
            a list of stanzas. The following sections describe the stanzas available.|}
     ; `S "DISPLAY MODES"
     ; `P {|Syntax: $(b,\(display MODE\))|}
-    ; `P {|This stanza controls how Jbuilder reports what it is doing to the user.
+    ; `P {|This stanza controls how Dune reports what it is doing to the user.
            This parameter can also be set from the command line via $(b,--display MODE).
            The following display modes are available:|}
     ; `Blocks
         (List.map ~f:(fun (x, desc) -> `I (sprintf "$(b,%s)" x, desc))
            [ "progress",
-             {|This is the default, Jbuilder shows and update a
+             {|This is the default, Dune shows and update a
                status line as build goals are being completed.|}
            ; "quiet",
              {|Only display errors.|}
@@ -1325,13 +1329,13 @@ module Help = struct
                on the right.|}
            ; "verbose",
              {|Print the full command lines of programs being
-               executed by Jbuilder, with some colors to help differentiate
+               executed by Dune, with some colors to help differentiate
                programs.|}
            ])
     ; `P {|Note that when the selected display mode is $(b,progress) and the
            output is not a terminal then the $(b,quiet) mode is selected
-           instead. This rule doesn't apply when running Jbuilder inside Emacs.
-           Jbuilder detects whether it is executed from inside Emacs or not by
+           instead. This rule doesn't apply when running Dune inside Emacs.
+           Dune detects whether it is executed from inside Emacs or not by
            looking at the environment variable $(b,INSIDE_EMACS) that is set by
            Emacs. If you want the same behavior with another editor, you can set
            this variable. If your editor already sets another variable,
@@ -1339,7 +1343,7 @@ module Help = struct
            add support for it.|}
     ; `S "JOBS"
     ; `P {|Syntax: $(b,\(jobs NUMBER\))|}
-    ; `P {|Set the maximum number of jobs Jbuilder might run in parallel.
+    ; `P {|Set the maximum number of jobs Dune might run in parallel.
            This can also be set from the command line via $(b,-j NUMBER).|}
     ; `P {|The default for this value is 4.|}
     ; common_footer
@@ -1355,10 +1359,10 @@ module Help = struct
     ]
 
   let help =
-    let doc = "Additional Jbuilder help" in
+    let doc = "Additional Dune help" in
     let man =
       [ `S "DESCRIPTION"
-      ; `P {|$(b,jbuilder help TOPIC) provides additional help on the given topic.
+      ; `P {|$(b,dune help TOPIC) provides additional help on the given topic.
              The following topics are available:|}
       ; `Blocks (List.concat_map commands ~f:(fun (s, what) ->
           match what with
@@ -1413,13 +1417,13 @@ let all =
 let default =
   let doc = "composable build system for OCaml" in
   ( Term.(ret (const (fun _ -> `Help (`Pager, None)) $ common))
-  , Term.info "jbuilder" ~doc ~version:"%%VERSION%%"
+  , Term.info "dune" ~doc ~version:"%%VERSION%%"
       ~man:
         [ `S "DESCRIPTION"
-        ; `P {|Jbuilder is a build system designed for OCaml projects only. It
+        ; `P {|Dune is a build system designed for OCaml projects only. It
                focuses on providing the user with a consistent experience and takes
                care of most of the low-level details of OCaml compilation. All you
-               have to do is provide a description of your project and Jbuilder will
+               have to do is provide a description of your project and Dune will
                do the rest.
              |}
         ; `P {|The scheme it implements is inspired from the one used inside Jane

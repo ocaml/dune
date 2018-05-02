@@ -258,6 +258,31 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
     |> Path.Map.of_list_multi
     |> Path.Map.map ~f:Scope_info.make
   in
+
+  let projects =
+    File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[]
+      ~f:(fun dir acc ->
+        let path = File_tree.Dir.path dir in
+        let files = File_tree.Dir.files dir in
+        if String.Set.mem files Dune_project.filename then begin
+          (path, Dune_project.load ~dir:path) :: acc
+        end else
+          acc)
+    |> Path.Map.of_list_exn
+  in
+  let scopes =
+    Path.Map.merge scopes projects ~f:(fun path scope project ->
+      match scope, project with
+      | None, None -> assert false
+      | Some _, None -> scope
+      | None, Some { name } ->
+        Some { name     = Some name
+             ; packages = Package.Name.Map.empty
+             ; root     = path
+             }
+      | Some scope, Some { name } -> Some { scope with name = Some name })
+  in
+
   let scopes =
     if Path.Map.mem scopes Path.root then
       scopes

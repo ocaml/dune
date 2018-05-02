@@ -275,12 +275,17 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
       match scope, project with
       | None, None -> assert false
       | Some _, None -> scope
-      | None, Some { name } ->
+      | None, Some { name; version } ->
         Some { name     = Some name
              ; packages = Package.Name.Map.empty
              ; root     = path
+             ; version
              }
-      | Some scope, Some { name } -> Some { scope with name = Some name })
+      | Some scope, Some { name; version } ->
+        Some { scope with
+               name = Some name
+             ; version
+             })
   in
 
   let scopes =

@@ -6,7 +6,7 @@ val db : Path.t
 
 val log : Path.t
 
-val to_delete_source_tree : Path.t
+val to_delete_in_source_tree : Path.t
 
 val to_promote : Path.t
 

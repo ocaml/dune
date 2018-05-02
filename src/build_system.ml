@@ -11,8 +11,8 @@ module Promoted_to_delete = struct
   let add p = db := p :: !db
 
   let load () =
-    if Path.exists Paths.to_delete_source_tree then
-      Io.Sexp.load Paths.to_delete_source_tree ~mode:Many
+    if Path.exists Paths.to_delete_in_source_tree then
+      Io.Sexp.load Paths.to_delete_in_source_tree ~mode:Many
       |> List.map ~f:Path.t
     else
       []
@@ -20,7 +20,7 @@ module Promoted_to_delete = struct
   let dump () =
     let db = Pset.union (Pset.of_list !db) (Pset.of_list (load ())) in
     if Path.build_dir_exists () then
-      Io.write_file Paths.to_delete_source_tree
+      Io.write_file Paths.to_delete_in_source_tree
         (String.concat ~sep:""
            (List.map (Pset.to_list db) ~f:(fun p ->
               Sexp.to_string (Path.sexp_of_t p) ^ "\n")))

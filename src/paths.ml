@@ -10,5 +10,5 @@ let universe_file = Path.relative_to_build_dir ".universe-state"
 let install_dir   = Path.relative_to_build_dir "install"
 let sandbox_dir   = Path.relative_to_build_dir ".sandbox"
 
-let to_delete_source_tree =
+let to_delete_in_source_tree =
   Path.relative_to_build_dir ".to-delete-in-source-tree"

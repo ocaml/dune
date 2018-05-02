@@ -123,6 +123,14 @@ module Of_sexp : sig
     -> ('b, 'c) Constructor_args_spec.t
     -> ('a -> 'b, 'c) Constructor_args_spec.t
 
+  (** Field that takes multiple values *)
+  val field_multi
+    :  string
+    -> ?default:'b
+    -> ('a, 'b) Constructor_args_spec.t
+    -> 'a
+    -> 'b record_parser
+
   val cstr : string -> ('a, 'b) Constructor_args_spec.t -> 'a -> 'b Constructor_spec.t
   val cstr_rest
     :  string

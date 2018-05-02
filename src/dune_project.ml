@@ -2,7 +2,8 @@ open Import
 open Sexp.Of_sexp
 
 type t =
-  { name : string
+  { name    : string
+  ; version : string option
   }
 
 let filename = "dune-project"
@@ -32,7 +33,8 @@ let parse ~dir =
   record
     (lang >>= fun Dune_0_1 ->
      name ~dir >>= fun name ->
-     return { name })
+     field_o "version" string >>= fun version ->
+     return { name; version })
 
 let load ~dir =
   let fname = Path.relative dir filename in

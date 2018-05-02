@@ -3,7 +3,8 @@
 open Import
 
 type t =
-  { name : string
+  { name    : string
+  ; version : string option
   }
 
 val load : dir:Path.t -> t

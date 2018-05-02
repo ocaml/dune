@@ -92,15 +92,17 @@ module Scope_info = struct
     { name     : Name.t
     ; packages : Package.t Package.Name.Map.t
     ; root     : Path.t
+    ; version  : string option
     }
 
   let anonymous =
     { name     = None
     ; packages = Package.Name.Map.empty
     ; root     = Path.root
+    ; version  = None
     }
 
-  let make = function
+  let make ?version = function
     | [] -> anonymous
     | pkg :: rest as pkgs ->
       let name =
@@ -114,6 +116,7 @@ module Scope_info = struct
           Package.Name.Map.of_list_exn (List.map pkgs ~f:(fun pkg ->
             pkg.Package.name, pkg))
       ; root
+      ; version
       }
 
   let package_listing packages =

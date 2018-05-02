@@ -123,7 +123,8 @@ let request_of_targets (setup : Main.setup) targets =
         | None -> (contexts, dir)
         | Some ("install", _) ->
           die "Invalid alias: %s.\n\
-               There are no aliases in _build/install."
+               There are no aliases in %s."
+            (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
             (Path.to_string_maybe_quoted path)
         | Some (ctx, dir) -> ([ctx], dir)
       in

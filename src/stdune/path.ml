@@ -457,8 +457,6 @@ let build_dir_exists () = is_directory build_dir
 
 let ensure_build_dir_exists () = Local.mkdir_p build_dir
 
-let relative_to_build_dir = relative build_dir
-
 let extend_basename t ~suffix = t ^ suffix
 
 let insert_after_build_dir_exn =

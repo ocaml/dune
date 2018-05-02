@@ -150,5 +150,3 @@ val pp : Format.formatter -> t -> unit
 val build_dir_exists : unit -> bool
 
 val ensure_build_dir_exists : unit -> unit
-
-val relative_to_build_dir : string -> t

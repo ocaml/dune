@@ -10,9 +10,6 @@ module Entry : sig
     | Preprocess of string list
     | Loc of Loc.t
 
-  (** [jbuild_file_in ~dir = Path (Path.relative dir "jbuild")] *)
-  val jbuild_file_in : dir:Path.t -> t
-
   val to_string : t -> string
   val pp : Format.formatter -> t -> unit
 end

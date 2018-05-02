@@ -8,8 +8,6 @@ module Entry = struct
     | Preprocess of string list
     | Loc of Loc.t
 
-  let jbuild_file_in ~dir = Path (Utils.jbuild_file_in ~dir)
-
   let to_string = function
     | Path p -> Utils.describe_target p
     | Alias p -> "alias " ^ Utils.describe_target p

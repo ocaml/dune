@@ -601,7 +601,7 @@ module Action = struct
         | "^" -> Some (Paths (deps_written_by_user, Split))
         | _ -> None)
 
-  let run sctx ?(extra_vars=String.Map.empty)
+  let run sctx ~loc ?(extra_vars=String.Map.empty)
         t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
     : (Path.t list, Action.t) Build.t =
     let map_exe = map_exe sctx in
@@ -652,9 +652,9 @@ module Action = struct
     let targets = Pset.to_list targets in
     List.iter targets ~f:(fun target ->
       if Path.parent target <> dir then
-        Loc.fail (Loc.in_file (Utils.describe_target (Utils.jbuild_file_in ~dir)))
-          "A rule in this jbuild has targets in a different directory \
-           than the current one, this is not allowed by Jbuilder at the moment:\n%s"
+        Loc.fail loc
+          "This action has targets in a different directory than the current \
+           one, this is not allowed by Jbuilder at the moment:\n%s"
           (List.map targets ~f:(fun target ->
              sprintf "- %s" (Utils.describe_target target))
            |> String.concat ~sep:"\n"));

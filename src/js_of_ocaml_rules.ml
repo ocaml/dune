@@ -17,10 +17,10 @@ let in_build_dir ~ctx =
   let init = Path.relative ctx.Context.build_dir ".js" in
   List.fold_left ~init ~f:Path.relative
 
-let runtime_file ~sctx ~dir fname =
+let runtime_file ~sctx fname =
   match
     Artifacts.file_of_lib (SC.artifacts sctx)
-      ~loc:(Loc.in_file (Utils.jbuild_file_in ~dir |> Path.to_string))
+      ~loc:Loc.none
       ~lib:"js_of_ocaml-compiler" ~file:fname
   with
   | Error _ ->
@@ -32,7 +32,7 @@ let runtime_file ~sctx ~dir fname =
 
 let js_of_ocaml_rule ~sctx ~dir ~flags ~spec ~target =
   let jsoo = SC.resolve_program sctx ~hint:install_jsoo_hint "js_of_ocaml" in
-  let runtime = runtime_file ~sctx ~dir "runtime.js" in
+  let runtime = runtime_file ~sctx "runtime.js" in
   Build.run ~context:(SC.context sctx) ~dir
     jsoo
     [ Arg_spec.Dyn flags

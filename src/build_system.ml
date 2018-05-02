@@ -5,20 +5,13 @@ module Pset  = Path.Set
 module Pmap  = Path.Map
 module Vspec = Build.Vspec
 
-(* Where we store stamp files for aliases *)
-let alias_dir = Path.(relative build_dir) ".aliases"
-
-(* Where we store stamp files for [stamp_file_for_files_of] *)
-let misc_dir = Path.(relative build_dir) ".misc"
-
 module Promoted_to_delete = struct
   let db = ref []
-
-  let fn = Path.relative_to_build_dir ".to-delete-in-source-tree"
 
   let add p = db := p :: !db
 
   let load () =
+    let fn = Paths.to_delete_source_tree () in
     if Path.exists fn then
       Io.Sexp.load fn ~mode:Many
       |> List.map ~f:Path.t
@@ -28,7 +21,7 @@ module Promoted_to_delete = struct
   let dump () =
     let db = Pset.union (Pset.of_list !db) (Pset.of_list (load ())) in
     if Path.build_dir_exists () then
-      Io.write_file fn
+      Io.write_file (Paths.to_delete_source_tree ())
         (String.concat ~sep:""
            (List.map (Pset.to_list db) ~f:(fun p ->
               Sexp.to_string (Path.sexp_of_t p) ^ "\n")))
@@ -269,7 +262,7 @@ module Alias0 = struct
     | Some dir ->
       let open Build.O in
       Build.all (List.map contexts ~f:(fun ctx ->
-        let ctx_dir = Path.(relative build_dir) ctx in
+        let ctx_dir = Path.(relative (build_dir ())) ctx in
         dep_rec_internal ~name ~dir ~ctx_dir))
       >>^ fun is_empty_list ->
       let is_empty = List.for_all is_empty_list ~f:(fun x -> x) in
@@ -380,7 +373,7 @@ let get_dir_status t ~dir =
   Hashtbl.find_or_add t.dirs dir ~f:(fun _ ->
     if Path.is_in_source_tree dir then
       Dir_status.Loaded (File_tree.files_of t.file_tree dir)
-    else if dir = Path.build_dir then
+    else if dir = Path.(build_dir ()) then
       (* Not allowed to look here *)
       Dir_status.Loaded Pset.empty
     else if not (Path.is_local dir) then
@@ -392,7 +385,7 @@ let get_dir_status t ~dir =
     else begin
       let (ctx, sub_dir) = Option.value_exn (Path.extract_build_context dir) in
       if ctx = ".aliases" then
-        Forward (Path.(append build_dir) sub_dir)
+        Forward (Path.(append (build_dir ())) sub_dir)
       else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
         Dir_status.Loaded Pset.empty
       else
@@ -599,8 +592,6 @@ let make_local_parent_dirs t paths ~map_path =
       end
     | _ -> ())
 
-let sandbox_dir = Path.of_string "_build/.sandbox"
-
 let locks : (Path.t, Fiber.Mutex.t) Hashtbl.t = Hashtbl.create 32
 
 let rec with_locks mutexes ~f =
@@ -706,7 +697,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     in
     let sandbox_dir =
       if sandbox then
-        Some (Path.relative sandbox_dir (Digest.to_hex hash))
+        Some (Path.relative (Paths.sandbox_dir ()) (Digest.to_hex hash))
       else
         None
     in
@@ -862,7 +853,8 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
   let rules = collector.rules in
 
   (* Compute alias rules *)
-  let alias_dir = Path.append (Path.relative alias_dir context_name) sub_dir in
+  let alias_dir =
+    Path.append (Path.relative (Paths.aliases ()) context_name) sub_dir in
   let alias_rules, alias_stamp_files =
     let open Build.O in
     String.Map.foldi collector.aliases ~init:([], Pset.empty)
@@ -937,7 +929,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
       if Pset.is_empty files then
         (user_rule_targets, None, subdirs)
       else
-        let ctx_path = Path.(relative build_dir) context_name in
+        let ctx_path = Path.(relative (build_dir ())) context_name in
         (Pset.union user_rule_targets
            (Pset.map files ~f:(Path.append ctx_path)),
          Some (ctx_path, files),
@@ -1086,7 +1078,8 @@ let stamp_file_for_files_of t ~dir ~ext =
   match String.Map.find files_of_dir.stamps ext with
   | Some fn -> fn
   | None ->
-    let stamp_file = Path.relative misc_dir (files_of_dir.dir_hash ^ ext) in
+    let stamp_file =
+      Path.relative (Paths.misc ()) (files_of_dir.dir_hash ^ ext) in
     let files =
       Option.value
         (String.Map.find files_of_dir.files_by_ext ext)
@@ -1106,8 +1099,6 @@ let stamp_file_for_files_of t ~dir ~ext =
 module Trace = struct
   type t = (Path.t, Digest.t) Hashtbl.t
 
-  let file = Path.relative_to_build_dir ".db"
-
   let dump (trace : t) =
     let sexp =
       Sexp.List (
@@ -1119,12 +1110,12 @@ module Trace = struct
                            Atom (Sexp.Atom.of_digest hash) ]))
     in
     if Path.build_dir_exists () then
-      Io.write_file file (Sexp.to_string sexp)
+      Io.write_file (Paths.db ()) (Sexp.to_string sexp)
 
   let load () =
     let trace = Hashtbl.create 1024 in
-    if Path.exists file then begin
-      let sexp = Io.Sexp.load file ~mode:Single in
+    if Path.exists (Paths.db ()) then begin
+      let sexp = Io.Sexp.load (Paths.db ()) ~mode:Single in
       let bindings =
         let open Sexp.Of_sexp in
         list (pair Path.t (fun s -> Digest.from_hex (string s))) sexp
@@ -1197,19 +1188,17 @@ let eval_request t ~request ~process_target =
        let dyn_deps = Build_exec.exec_nop t request () in
        process_targets (Pset.diff dyn_deps static_deps))
 
-let universe_file = Path.relative Path.build_dir ".universe-state"
-
 let update_universe t =
   (* To workaround the fact that [mtime] is not precise enough on OSX *)
-  Utils.Cached_digest.remove universe_file;
+  Utils.Cached_digest.remove (Paths.universe_file ());
   let n =
-    if Path.exists universe_file then
-      Sexp.Of_sexp.int (Io.Sexp.load ~mode:Single universe_file) + 1
+    if Path.exists (Paths.universe_file ()) then
+      Sexp.Of_sexp.int (Io.Sexp.load ~mode:Single (Paths.universe_file ())) + 1
     else
       0
   in
-  make_local_dirs t (Pset.singleton Path.build_dir);
-  Io.write_file universe_file (Sexp.to_string (Sexp.To_sexp.int n))
+  make_local_dirs t (Pset.singleton (Path.build_dir ()));
+  Io.write_file (Paths.universe_file ()) (Sexp.to_string (Sexp.To_sexp.int n))
 
 let do_build t ~request =
   entry_point t ~f:(fun () ->
@@ -1451,7 +1440,7 @@ let get_collector t ~dir =
     Exn.code_error
       (if Path.is_in_source_tree dir then
          "Build_system.get_collector called on source directory"
-       else if dir = Path.build_dir then
+       else if dir = Path.build_dir () then
          "Build_system.get_collector called on build_dir"
        else if not (Path.is_local dir) then
          "Build_system.get_collector called on external directory"

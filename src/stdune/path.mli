@@ -108,8 +108,11 @@ val drop_optional_build_context : t -> t
 val explode : t -> string list option
 val explode_exn : t -> string list
 
+(** Setting the build directory is allowed only once *)
+val set_build_dir : t -> unit
+
 (** The build directory *)
-val build_dir : t
+val build_dir : unit -> t
 
 (** [is_in_build_dir t = is_descendant t ~of:build_dir] *)
 val is_in_build_dir : t -> bool

@@ -345,19 +345,43 @@ let parent t =
   else
     Filename.dirname t
 
-let build_prefix = "_build/"
+let (build_dir, set_build_dir) =
+  let build_dir = ref None in
+  let set_build_dir new_build_dir =
+    match !build_dir with
+    | None -> build_dir := Some new_build_dir
+    | Some build_dir ->
+      Exn.code_error "set_build_dir: cannot set build_dir more than once"
+        [ "build_dir", sexp_of_t build_dir
+        ; "New_build_dir", sexp_of_t new_build_dir ]
+  in
+  let build_dir () =
+    match !build_dir with
+    | None ->
+      Exn.code_error "build_dir: cannot use build dir before it's set" []
+    | Some build_dir -> build_dir in
+  (build_dir, set_build_dir)
 
-let build_dir = "_build"
+let build_prefix =
+  let v = lazy (
+    let build_dir = build_dir () in
+    if String.is_suffix build_dir ~suffix:"/" then
+      build_dir
+    else
+      build_dir ^ "/"
+  ) in
+  fun () -> Lazy.force v
 
 let is_in_build_dir t =
-  String.is_prefix t ~prefix:build_prefix
+  String.is_prefix t ~prefix:(build_prefix ())
 
 let is_in_source_tree t = is_local t && not (is_in_build_dir t)
 
 let is_alias_stamp_file t =
-  String.is_prefix t ~prefix:"_build/.aliases/"
+  String.is_prefix t ~prefix:(relative (build_dir ()) ".aliases")
 
 let extract_build_context t =
+  let build_prefix = build_prefix () in
   if String.is_prefix t ~prefix:build_prefix then
     let i = String.length build_prefix in
     match String.index_from t i '/' with
@@ -373,6 +397,7 @@ let extract_build_context t =
     None
 
 let extract_build_context_dir t =
+  let build_prefix = build_prefix () in
   if String.is_prefix t ~prefix:build_prefix then
     let i = String.length build_prefix in
     match String.index_from t i '/' with
@@ -453,11 +478,11 @@ let unlink t =
   unlink_operation (to_string t)
 let unlink_no_err t = try unlink t with _ -> ()
 
-let build_dir_exists () = is_directory build_dir
+let build_dir_exists () = is_directory (build_dir ())
 
-let ensure_build_dir_exists () = Local.mkdir_p build_dir
+let ensure_build_dir_exists () = Local.mkdir_p (build_dir ())
 
-let relative_to_build_dir = relative build_dir
+let relative_to_build_dir s = relative (build_dir ()) s
 
 let extend_basename t ~suffix = t ^ suffix
 
@@ -472,8 +497,8 @@ let insert_after_build_dir_exn =
   fun a b ->
     if not (is_local a) || String.contains b '/' then error a b;
     match String.lsplit2 a ~on:'/' with
-    | Some ("_build", rest) ->
-      Printf.sprintf "_build/%s/%s" b rest
+    | Some (bp, rest) when bp = (build_dir ()) ->
+      relative (build_dir ()) (Printf.sprintf "%s/%s" b rest)
     | _ ->
       error a b
 

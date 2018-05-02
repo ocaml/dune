@@ -249,6 +249,7 @@ let bootstrap () =
       Config.adapt_display config
         ~output_is_a_tty:(Lazy.force Colors.stderr_supports_colors)
     in
+    Path.set_build_dir (Path.of_string "_build");
     let log = Log.create ~display:config.display () in
     Scheduler.go ~log ~config
       (set_concurrency config

@@ -4,7 +4,7 @@ authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
 homepage: "https://github.com/ocaml/dune"
 bug-reports: "https://github.com/ocaml/dune/issues"
 dev-repo: "https://github.com/ocaml/dune.git"
-license: "Apache-2.0"
+license: "MIT"
 build: [
   ["ocaml" "configure.ml" "--libdir" lib]
   ["ocaml" "bootstrap.ml"]

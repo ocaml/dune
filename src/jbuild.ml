@@ -282,13 +282,14 @@ module Preprocess = struct
   type pps = { pps : (Loc.t * Pp.t) list; flags : string list }
   type t =
     | No_preprocessing
-    | Action of Action.Unexpanded.t
+    | Action of Loc.t * Action.Unexpanded.t
     | Pps    of pps
 
   let t =
     sum
       [ cstr "no_preprocessing" nil No_preprocessing
-      ; cstr "action" (Action.Unexpanded.t @> nil) (fun x -> Action x)
+      ; cstr "action" (located Action.Unexpanded.t @> nil)
+          (fun (loc, x) -> Action (loc, x))
       ; cstr "pps" (list Pp_or_flags.t @> nil) (fun l ->
           let pps, flags = Pp_or_flags.split l in
           Pps { pps; flags })
@@ -986,7 +987,7 @@ module Rule = struct
   type t =
     { targets  : Targets.t
     ; deps     : Dep_conf.t list
-    ; action   : Action.Unexpanded.t
+    ; action   : Loc.t * Action.Unexpanded.t
     ; mode     : Mode.t
     ; locks    : String_with_vars.t list
     ; loc      : Loc.t
@@ -995,10 +996,10 @@ module Rule = struct
   let v1 sexp =
     let loc = Sexp.Ast.loc sexp in
     match sexp with
-    | List (_, (Atom _ :: _)) ->
+    | List (loc, (Atom _ :: _)) ->
       { targets  = Infer
       ; deps     = []
-      ; action   = Action.Unexpanded.t sexp
+      ; action   = (loc, Action.Unexpanded.t sexp)
       ; mode     = Standard
       ; locks    = []
       ; loc      = loc
@@ -1007,7 +1008,7 @@ module Rule = struct
       record
         (field "targets" (list file_in_current_dir)    >>= fun targets ->
          field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
-         field "action"  Action.Unexpanded.t           >>= fun action ->
+         field "action"  (located Action.Unexpanded.t) >>= fun action ->
          field "locks"   (list String_with_vars.t) ~default:[] >>= fun locks ->
          map_validate
            (field_b "fallback" >>= fun fallback ->
@@ -1060,14 +1061,15 @@ module Rule = struct
       { targets = Static [dst]
       ; deps    = [File (S.virt_text __POS__ src)]
       ; action  =
-          Chdir
-            (S.virt_var __POS__ "ROOT",
-             Run (S.virt_text __POS__ "ocamllex",
-                  [ S.virt_text __POS__ "-q"
-                  ; S.virt_text __POS__ "-o"
-                  ; S.virt_var __POS__ "@"
-                  ; S.virt_var __POS__"<"
-                  ]))
+          (loc,
+           Chdir
+             (S.virt_var __POS__ "ROOT",
+              Run (S.virt_text __POS__ "ocamllex",
+                   [ S.virt_text __POS__ "-q"
+                   ; S.virt_text __POS__ "-o"
+                   ; S.virt_var __POS__ "@"
+                   ; S.virt_var __POS__"<"
+                   ])))
       ; mode
       ; locks = []
       ; loc
@@ -1080,10 +1082,11 @@ module Rule = struct
       { targets = Static [name ^ ".ml"; name ^ ".mli"]
       ; deps    = [File (S.virt_text __POS__ src)]
       ; action  =
-          Chdir
-            (S.virt_var __POS__ "ROOT",
-             Run (S.virt_text __POS__ "ocamlyacc",
-                  [S.virt_var __POS__ "<"]))
+          (loc,
+           Chdir
+             (S.virt_var __POS__ "ROOT",
+              Run (S.virt_text __POS__ "ocamlyacc",
+                   [S.virt_var __POS__ "<"])))
       ; mode
       ; locks = []
       ; loc
@@ -1142,7 +1145,7 @@ module Alias_conf = struct
   type t =
     { name    : string
     ; deps    : Dep_conf.t list
-    ; action  : Action.Unexpanded.t option
+    ; action  : (Loc.t * Action.Unexpanded.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option
     }
@@ -1152,7 +1155,7 @@ module Alias_conf = struct
       (field "name" string                              >>= fun name ->
        field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
        field_o "package" (Scope_info.package pkgs)      >>= fun package ->
-       field_o "action" Action.Unexpanded.t  >>= fun action ->
+       field_o "action" (located Action.Unexpanded.t)   >>= fun action ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
        return
          { name

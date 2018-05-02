@@ -1,12 +1,11 @@
 (** Checks modules partitioning inside a directory *)
 
-open Stdune
+open! Stdune
 
 type t
 
 val create
-  :  dir:Path.t
-  -> all_modules:Module.t Module.Name.Map.t
+  :  all_modules:Module.t Module.Name.Map.t
   -> t
 
 (** [acknowledge t ~loc ~modules] registers the fact that [modules]

@@ -1203,7 +1203,10 @@ module Env = struct
     | Profile of string
     | Any
 
-  type t = (pattern * config) list
+  type t =
+    { loc   : Loc.t
+    ; rules : (pattern * config) list
+    }
 
   let config =
     record
@@ -1212,18 +1215,17 @@ module Env = struct
        field_oslu "ocamlopt_flags" >>= fun ocamlopt_flags ->
        return { flags; ocamlc_flags; ocamlopt_flags })
 
-  let t sexps =
-    List.map sexps ~f:(function
-      | List (loc, Atom (_, A pat) :: fields) ->
-        let pat =
-          match pat with
-          | "_" -> Any
-          | s   -> Profile s
-        in
-        (pat, config (List (loc, fields)))
-      | sexp ->
-        of_sexp_error sexp
-          "S-expression of the form (<profile> <fields>) expected")
+  let rule = function
+    | List (loc, Atom (_, A pat) :: fields) ->
+      let pat =
+        match pat with
+        | "_" -> Any
+        | s   -> Profile s
+      in
+      (pat, config (List (loc, fields)))
+    | sexp ->
+      of_sexp_error sexp
+        "S-expression of the form (<profile> <fields>) expected"
 end
 
 module Stanza = struct
@@ -1274,8 +1276,8 @@ module Stanzas = struct
           (fun glob -> [Copy_files {add_line_directive = false; glob}])
       ; cstr "copy_files#" (Copy_files.v1 @> nil)
           (fun glob -> [Copy_files {add_line_directive = true; glob}])
-      ; cstr_rest "env" nil (fun x -> x)
-          (fun x -> [Env (Env.t x)])
+      ; cstr_rest_loc "env" nil Env.rule
+          (fun loc rules -> [Env { loc; rules }])
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ; cstr_loc "include" (relative_file @> nil) (fun loc fn ->
@@ -1315,7 +1317,13 @@ module Stanzas = struct
       | _ :: (_, loc) :: _ ->
         Loc.fail loc "jbuild_version specified too many times"
     in
-    List.concat_map sexps ~f:(select version pkgs ~file ~include_stack)
+    let l =
+      List.concat_map sexps ~f:(select version pkgs ~file ~include_stack)
+    in
+    match List.filter_map l ~f:(function Env e -> Some e | _ -> None) with
+    | _ :: e :: _ ->
+      Loc.fail e.loc "The 'env' stanza cannot appear more than once"
+    | _ -> l
 
   let parse ?(default_version=Jbuild_version.latest_stable) ~file pkgs sexps =
     try

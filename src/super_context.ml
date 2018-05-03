@@ -137,7 +137,7 @@ module Env = struct
           | Some (lazy node) -> loop t node
         in
         let flags =
-          match List.find_map node.config ~f:(fun (pat, cfg) ->
+          match List.find_map node.config.rules ~f:(fun (pat, cfg) ->
             match (pat : Env.pattern), profile t with
             | Any, _ -> Some cfg
             | Profile a, b -> Option.some_if (a = b) cfg)
@@ -350,7 +350,7 @@ let create
         dir          = context.build_dir
       ; inherit_from = None
       ; scope        = Scope.DB.find_by_dir scopes context.build_dir
-      ; config       = []
+      ; config       = { loc = Loc.none; rules = [] }
       ; ocaml_flags  = None
       };
   t

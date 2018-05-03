@@ -380,7 +380,10 @@ module Env : sig
     | Profile of string
     | Any
 
-  type t = (pattern * config) list
+  type t =
+    { loc   : Loc.t
+    ; rules : (pattern * config) list
+    }
 end
 
 module Stanza : sig

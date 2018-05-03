@@ -12,6 +12,7 @@ let filter_stanzas ~ignore_promoted_rules stanzas =
 module Jbuilds = struct
   type script =
     { dir   : Path.t
+    ; file  : Path.t
     ; scope : Scope_info.t
     }
 
@@ -114,8 +115,7 @@ end
         | Literal x -> Left  x
         | Script  x -> Right x)
     in
-    Fiber.parallel_map dynamic ~f:(fun { dir; scope } ->
-      let file = Path.relative dir "jbuild" in
+    Fiber.parallel_map dynamic ~f:(fun { dir; file; scope } ->
       let generated_jbuild =
         Path.append (Path.relative generated_jbuilds_dir context.name) file
       in
@@ -207,15 +207,15 @@ module Sexp_io = struct
       loop0 Parser.Stack.empty 0)
 end
 
-let load ~dir ~scope ~ignore_promoted_rules =
-  let file = Path.relative dir "jbuild" in
+let load ~dir ~scope ~ignore_promoted_rules ~fname =
+  let file = Path.relative dir fname in
   match Sexp_io.load_many_or_ocaml_script file with
   | Sexps sexps ->
     Jbuilds.Literal (dir, scope,
                      Stanzas.parse scope sexps ~file
                      |> filter_stanzas ~ignore_promoted_rules)
   | Ocaml_script ->
-    Script { dir; scope }
+    Script { dir; scope; file }
 
 let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
   let ftree = File_tree.load Path.root ?extra_ignored_subtrees in
@@ -303,8 +303,15 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
       let sub_dirs = File_tree.Dir.sub_dirs dir in
       let scope = Option.value (Path.Map.find scopes path) ~default:scope in
       let jbuilds =
-        if String.Set.mem files "jbuild" then
-          let jbuild = load ~dir:path ~scope ~ignore_promoted_rules in
+        if String.Set.mem files "dune" then
+          let jbuild =
+            load ~dir:path ~scope ~ignore_promoted_rules ~fname:"dune"
+          in
+          jbuild :: jbuilds
+        else if String.Set.mem files "jbuild" then
+          let jbuild =
+            load ~dir:path ~scope ~ignore_promoted_rules ~fname:"jbuild"
+          in
           jbuild :: jbuilds
         else
           jbuilds

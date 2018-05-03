@@ -237,7 +237,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
   let output_filename, stdout_fd, stderr_fd, to_close =
     match stdout_to, stderr_to with
     | (Terminal, _ | _, Terminal) when !Clflags.capture_outputs ->
-      let fn = Temp.create "jbuilder" ".output" in
+      let fn = Temp.create "dune" ".output" in
       let fd = Unix.openfile (Path.to_string fn) [O_WRONLY; O_SHARE_DELETE] 0 in
       (Some fn, fd, fd, Some fd)
     | _ ->
@@ -329,7 +329,7 @@ let run ?dir ?stdout_to ?stderr_to ~env ?(purpose=Internal_job) fail_mode
     ~f:ignore
 
 let run_capture_gen ?dir ~env ?(purpose=Internal_job) fail_mode prog args ~f =
-  let fn = Temp.create "jbuild" ".output" in
+  let fn = Temp.create "dune" ".output" in
   map_result fail_mode
     (run_internal ?dir ~stdout_to:(File fn)
        ~env ~purpose fail_mode prog args)

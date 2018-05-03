@@ -17,13 +17,13 @@
   (libraries (stdune platform usexp))
   (modules (gen_tests))))
 
-(include jbuild.inc)
+(include dune.inc)
 
 (rule
- ((targets (jbuild.inc.gen))
+ ((targets (dune.inc.gen))
   (deps ((files_recursively_in test-cases)))
   (action (with-stdout-to ${@} (run ./gen_tests.exe)))))
 
 (alias
  ((name runtest)
-  (action (diff jbuild.inc jbuild.inc.gen))))
+  (action (diff dune.inc dune.inc.gen))))

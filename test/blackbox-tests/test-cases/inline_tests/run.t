@@ -5,12 +5,12 @@
   [1]
 
   $ dune runtest missing-backend
-  File "missing-backend/jbuild", line 3, characters 2-16:
+  File "missing-backend/dune", line 3, characters 2-16:
   Error: No inline tests backend found.
   [1]
 
   $ dune runtest too-many-backends
-  File "too-many-backends/jbuild", line 17, characters 2-16:
+  File "too-many-backends/dune", line 17, characters 2-16:
   Error: Too many independant inline tests backends found:
   - "backend_tmb1" in _build/default/too-many-backends
   - "backend_tmb2" in _build/default/too-many-backends

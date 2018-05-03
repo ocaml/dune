@@ -1,5 +1,5 @@
   $ dune runtest
-  File "jbuild", line 4, characters 20-42:
+  File "dune", line 4, characters 20-42:
   Error: Library "ppx_that_doesn't_exist" not found.
   Hint: try: dune external-lib-deps --missing @runtest
   [1]

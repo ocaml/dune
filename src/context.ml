@@ -149,12 +149,10 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets ~profile () =
          the contents of the variable, but "ocamlfind printconf conf"
          still prints the configuration file set at the configuration
          time of ocamlfind, sigh... *)
-      match Env.get env "OCAMLFIND_CONF" with
-      | Some s -> Fiber.return (Path.absolute s)
-      | None ->
-        Process.run_capture_line ~env Strict
-          fn ["printconf"; "conf"]
-        >>| Path.absolute)
+      (match Env.get env "OCAMLFIND_CONF" with
+       | Some s -> Fiber.return s
+       | None -> Process.run_capture_line ~env Strict fn ["printconf"; "conf"])
+      >>| Path.absolute)
   in
 
   let create_one ~name ~implicit ?findlib_toolchain ?host ~merlin () =

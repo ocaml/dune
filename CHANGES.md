@@ -25,6 +25,9 @@ next
 
 - Scan the file system lazily (#732, fixes #718 and #228, @diml)
 
+- Add support for setting the default ocaml flags and for build
+  profiles (#419, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

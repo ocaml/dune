@@ -18,10 +18,10 @@
  ((section man)
   (files (dune-config.5))))
 
-(include jbuild.inc)
+(include dune.inc)
 
 (rule
- ((targets (jbuild.inc.gen))
+ ((targets (dune.inc.gen))
   (deps    ((package dune)))
   (action
    (with-stdout-to ${@}
@@ -29,4 +29,4 @@
 
 (alias
  ((name runtest)
-  (action (diff jbuild.inc jbuild.inc.gen))))
+  (action (diff dune.inc dune.inc.gen))))

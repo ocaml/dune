@@ -418,13 +418,10 @@ let explode t =
     None
 
 let explode_exn t =
-  if is_root t then
-    []
-  else if is_local t then
-    String.split t ~on:'/'
-  else
-    Exn.code_error "Path.explode_exn"
-      ["path", Sexp.atom_or_quoted_string t]
+  match explode t with
+  | Some s -> s
+  | None -> Exn.code_error "Path.explode_exn"
+              ["path", Sexp.atom_or_quoted_string t]
 
 let exists t =
   try Sys.file_exists (to_string t)

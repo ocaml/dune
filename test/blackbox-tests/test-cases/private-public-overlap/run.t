@@ -1,7 +1,7 @@
 public libraries may not have private dependencies
 
   $ dune build --display short --root private-dep 2>&1 | grep -v Entering
-  File "jbuild", line 10, characters 14-24:
+  File "dune", line 10, characters 14-24:
   Error: Library "privatelib" is private, it cannot be a dependency of a public library.
   You need to give "privatelib" a public name.
       ocamldep publiclib.ml.d
@@ -22,7 +22,7 @@ On the other hand, public libraries may have private preprocessors
 
 Unless they introduce private runtime dependencies:
   $ dune build --display short --root private-runtime-deps 2>&1 | grep -v Entering
-  File "jbuild", line 16, characters 20-31:
+  File "dune", line 16, characters 20-31:
   Error: Library "private_runtime_dep" is private, it cannot be a dependency of a public library.
   You need to give "private_runtime_dep" a public name.
         ocamlc .private_ppx.objs/private_ppx.{cmi,cmo,cmt}

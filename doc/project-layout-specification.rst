@@ -171,7 +171,7 @@ Typically, any given project will define a single scope. Libraries and
 executables that are not meant to be installed will be visible inside
 this scope only.
 
-Because scopes are exclusive, if you whish to include the dependencies
+Because scopes are exclusive, if you wish to include the dependencies
 of the project you are currently working on into your workspace, you
 may copy them in a ``vendor`` directory, or any other name of your
 choice. Jbuilder will look for them there rather than in the installed

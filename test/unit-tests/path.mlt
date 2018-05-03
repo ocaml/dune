@@ -66,3 +66,18 @@ Path.explode (Path.of_string "");
 [%%expect{|
 - : string list option = Some []
 |}]
+
+Path.reach (Path.of_string "/foo/baz") ~from:(Path.of_string "/foo/bar");
+[%%expect{|
+- : string = "/foo/baz"
+|}]
+
+Path.reach (Path.of_string "/foo/bar") ~from:(Path.of_string "baz")
+[%%expect{|
+- : string = "/foo/bar"
+|}]
+
+Path.reach (Path.of_string "bar/foo") ~from:(Path.of_string "bar/baz/y")
+[%%expect{|
+- : string = "../../foo"
+|}]

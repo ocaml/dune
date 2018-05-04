@@ -117,7 +117,7 @@ Path.(descendant (r "foo") ~of_:Path.root)
 
 Path.(descendant (relative build_dir "foo") ~of_:root)
 [%%expect{|
-- : Stdune.Path.t option = Some _build/foo
+Exception: Stdune__Exn.Code_error <abstr>.
 |}]
 
 Path.(descendant (relative build_dir "foo") ~of_:(absolute "/foo/bar"))
@@ -127,17 +127,17 @@ Path.(descendant (relative build_dir "foo") ~of_:(absolute "/foo/bar"))
 
 Path.(descendant (relative build_dir "foo/bar") ~of_:build_dir)
 [%%expect{|
-- : Stdune.Path.t option = Some foo/bar
+- : Stdune.Path.t option = Some _build/foo/bar
 |}]
 
 Path.(descendant (relative build_dir "foo/bar") ~of_:(relative build_dir "foo"))
 [%%expect{|
-- : Stdune.Path.t option = Some bar
+- : Stdune.Path.t option = Some _build/bar
 |}]
 
 Path.(descendant (relative build_dir "foo/bar") ~of_:(relative build_dir "foo"))
 [%%expect{|
-- : Stdune.Path.t option = Some bar
+- : Stdune.Path.t option = Some _build/bar
 |}]
 
 Path.(descendant (absolute "/foo/bar") ~of_:(absolute "/foo"))
@@ -237,7 +237,7 @@ Path.append Path.build_dir (Path.relative Path.build_dir "foo")
 
 Path.append Path.root (Path.relative Path.build_dir "foo")
 [%%expect{|
-- : Stdune.Path.t = _build/foo
+Exception: Stdune__Exn.Code_error <abstr>.
 |}]
 
 Path.append Path.root (Path.relative Path.root "foo")
@@ -277,7 +277,7 @@ Path.drop_build_context (Path.absolute "/foo/bar")
 
 Path.drop_build_context Path.build_dir
 [%%expect{|
-- : Stdune.Path.t option = None
+- : Stdune.Path.t option = Some .
 |}]
 
 Path.is_in_build_dir Path.build_dir

@@ -502,12 +502,3 @@ let extension = Filename.extension
 
 let pp ppf t = Format.pp_print_string ppf (to_string t)
 
-let drop_prefix t ~prefix =
-  let t = to_string t in
-  let prefix =
-    to_string (
-      if String.is_suffix prefix ~suffix:"/" then
-        prefix
-      else
-        prefix ^ "/") in
-  String.drop_prefix t ~prefix

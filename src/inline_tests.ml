@@ -261,7 +261,7 @@ include Sub_system.Register_end_point(
             ~scope
             ~dir
             ~extra_vars
-            ~standard:[]))
+            ~standard:(Build.return [])))
       >>^ List.concat
     in
 

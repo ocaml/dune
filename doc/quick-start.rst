@@ -116,6 +116,27 @@ Outside of the library, module ``Foo`` will be accessible as
 You can then use this library in any other directory by adding ``mylib``
 to the ``(libraries ...)`` field.
 
+Setting the OCaml compilation flags globally
+============================================
+
+Write this jbuild at the root of your project:
+
+.. code:: scheme
+
+    (env
+     (dev
+      (flags (:standard -w +42)))
+     (release
+      (flags (:standard -O3))))
+
+`dev` and `release` correspond to build profiles. The build profile
+can be selected from the command line with `--profile foo` or from a
+`dune-workspace` file by writing:
+
+.. code:: scheme
+
+    (profile foo)
+
 Using cppo
 ==========
 

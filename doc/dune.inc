@@ -63,6 +63,15 @@
   (files (dune-installed-libraries.1))))
 
 (rule
+ ((targets (dune-printenv.1))
+  (action  (with-stdout-to ${@}
+            (run dune printenv --help=groff)))))
+
+(install
+ ((section man)
+  (files (dune-printenv.1))))
+
+(rule
  ((targets (dune-promote.1))
   (action  (with-stdout-to ${@}
             (run dune promote --help=groff)))))

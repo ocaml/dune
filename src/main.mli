@@ -1,11 +1,9 @@
 open! Import
-open Jbuild
 
 type setup =
   { build_system : Build_system.t
-  ; (* Evaluated jbuilds per context names *)
-    stanzas      : (Path.t * Scope_info.t * Stanzas.t) list String.Map.t
   ; contexts     : Context.t list
+  ; scontexts    : Super_context.t String_map.t
   ; packages     : Package.t Package.Name.Map.t
   ; file_tree    : File_tree.t
   ; env          : Env.t
@@ -25,6 +23,7 @@ val setup
   -> ?x:string
   -> ?ignore_promoted_rules:bool
   -> ?capture_outputs:bool
+  -> ?profile:string
   -> unit
   -> setup Fiber.t
 val external_lib_deps

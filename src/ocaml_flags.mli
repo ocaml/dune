@@ -5,13 +5,16 @@ open Stdune
 type t
 
 val make
-  :  Jbuild.Buildable.t
-  -> Super_context.t
-  -> scope:Scope.t
-  -> dir:Path.t
+  :  flags          : Ordered_set_lang.Unexpanded.t
+  -> ocamlc_flags   : Ordered_set_lang.Unexpanded.t
+  -> ocamlopt_flags : Ordered_set_lang.Unexpanded.t
+  -> default:t
+  -> eval:(Ordered_set_lang.Unexpanded.t
+           -> standard:(unit, string list) Build.t
+           -> (unit, string list) Build.t)
   -> t
 
-val default : unit -> t
+val default : profile:string -> t
 
 val empty : t
 
@@ -24,3 +27,5 @@ val append_common : t -> string list -> t
 val prepend_common : string list -> t -> t
 
 val common : t -> (unit, string list) Build.t
+
+val dump : t -> (unit, Sexp.t list) Build.t

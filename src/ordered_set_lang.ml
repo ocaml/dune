@@ -223,6 +223,20 @@ module Unexpanded = struct
     in
     loop String.Set.empty t.ast
 
+  let has_special_forms t =
+    let rec loop (t : ast) =
+      let open Ast in
+      match t with
+      | Special _ | Include _ -> true
+      | Element _ -> false
+      | Union l ->
+        List.exists l ~f:loop
+      | Diff (l, r) ->
+        loop l ||
+        loop r
+    in
+    loop t.ast
+
   let expand t ~files_contents ~f  =
     let rec expand (t : ast) : ast_expanded =
       let open Ast in

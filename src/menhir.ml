@@ -24,7 +24,10 @@ module SC = Super_context
 let gen_rules sctx ~dir ~scope (t : Jbuild.Menhir.t) =
   let targets n = List.map ~f:(Path.relative dir) [n ^ ".ml"; n ^ ".mli"] in
   (* This expands special variables such as ${ROOT} in the flags *)
-  let flags = SC.expand_and_eval_set sctx ~scope ~dir t.flags ~standard:[] in
+  let flags =
+    SC.expand_and_eval_set sctx ~scope ~dir t.flags
+      ~standard:(Build.return [])
+  in
   let menhir_binary =
     SC.resolve_program sctx "menhir" ~hint:"opam install menhir"
   in

@@ -92,6 +92,12 @@ module Local = struct
       | i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1)
 
   let relative ?error_loc t path =
+    if not (Filename.is_relative path) then (
+      Exn.code_error "Local.relative: received absolute path"
+        [ "t", Usexp.atom_or_quoted_string t
+        ; "path", Usexp.atom_or_quoted_string path
+        ]
+    );
     let rec loop t components =
       match components with
       | [] -> Result.Ok t

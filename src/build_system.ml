@@ -1463,7 +1463,7 @@ let rec add_build_dir_to_keep t ~dir =
   if not (Pset.mem t.build_dirs_to_keep dir) then begin
     t.build_dirs_to_keep <- Pset.add t.build_dirs_to_keep dir;
     let dir = Path.parent dir in
-    if dir <> Path.root then
+    if not (Path.is_root dir) then
       add_build_dir_to_keep t ~dir
   end
 

@@ -233,6 +233,11 @@ module Alias0 = struct
 
   let make name ~dir =
     assert (not (String.contains name '/'));
+    if not (Path.is_in_build_dir dir) then
+      Exn.code_error "Alias0.make: Invalid alias"
+        [ "name", Sexp.To_sexp.string name
+        ; "dir", Path.sexp_of_t dir
+        ];
     { dir; name }
 
   let stamp_file t =

@@ -81,3 +81,23 @@ Path.reach (Path.of_string "bar/foo") ~from:(Path.of_string "bar/baz/y")
 [%%expect{|
 - : string = "../../foo"
 |}]
+
+Path.relative (Path.of_string "relative") "/absolute/path"
+[%%expect{|
+- : Stdune.Path.t = /absolute/path
+|}]
+
+Path.relative (Path.of_string "/abs1") "/abs2"
+[%%expect{|
+- : Stdune.Path.t = /abs2
+|}]
+
+Path.relative (Path.of_string "/abs1") ""
+[%%expect{|
+- : Stdune.Path.t = /abs1
+|}]
+
+Path.relative Path.root "/absolute/path"
+[%%expect{|
+- : Stdune.Path.t = /absolute/path
+|}]

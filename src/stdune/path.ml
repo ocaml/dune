@@ -274,6 +274,9 @@ end = struct
     ) else if not (Filename.is_relative s) then (
       Exn.code_error "in_source_tree: absolute path"
         [ "s", Sexp.To_sexp.string s ]
+    ) else if String.is_prefix s ~prefix:".aliases/" then (
+      Exn.code_error "in_source_tree: alias exist only in build dir"
+        ["s", Sexp.To_sexp.string s]
     );
     In_source_tree s
   let external_ e = External e

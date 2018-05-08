@@ -12,13 +12,14 @@ module Dir : sig
   val sub_dir_paths : t -> Path.Set.t
   val sub_dir_names : t -> String.Set.t
 
-  (** Whether this directory is ignored by a [jbuild-ignore] file in
-      one of its ancestor directories. *)
-  val ignored : t -> bool
+  (** Whether this directory contains raw data, as configured by a
+      [.dune-fs] or [jbuild-ignore] file in one of its ancestor
+      directories. *)
+  val raw_data : t -> bool
 
   val fold
     :  t
-    -> traverse_ignored_dirs:bool
+    -> traverse_raw_data_dirs:bool
     -> init:'a
     -> f:(t -> 'a -> 'a)
     -> 'a
@@ -35,12 +36,12 @@ type t
 
 val load : ?extra_ignored_subtrees:Path.Set.t -> Path.t -> t
 
-(** Passing [~traverse_ignored_dirs:true] to this functions causes the
-    whole source tree to be deeply scanned, including ignored
+(** Passing [~traverse_raw_data_dirs:true] to this functions causes the
+    whole source tree to be deeply scanned, including raw_data
     directories. *)
 val fold
   :  t
-  -> traverse_ignored_dirs:bool
+  -> traverse_raw_data_dirs:bool
   -> init:'a
   -> f:(Dir.t -> 'a -> 'a)
   -> 'a

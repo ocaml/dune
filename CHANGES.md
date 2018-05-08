@@ -31,6 +31,8 @@ next
 - Display a better error messages when writing `(inline_tests)` in an
   executable stanza (#748, @diml)
 
+- Add support for .dune-fs files (#750, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

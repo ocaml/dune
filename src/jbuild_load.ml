@@ -219,7 +219,7 @@ let load ~dir ~scope ~ignore_promoted_rules ~file =
 let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
   let ftree = File_tree.load Path.root ?extra_ignored_subtrees in
   let packages =
-    File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[] ~f:(fun dir pkgs ->
+    File_tree.fold ftree ~traverse_raw_data_dirs:false ~init:[] ~f:(fun dir pkgs ->
       let path = File_tree.Dir.path dir in
       let files = File_tree.Dir.files dir in
       String.Set.fold files ~init:pkgs ~f:(fun fn acc ->
@@ -259,7 +259,7 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
   in
 
   let projects =
-    File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[]
+    File_tree.fold ftree ~traverse_raw_data_dirs:false ~init:[]
       ~f:(fun dir acc ->
         let path = File_tree.Dir.path dir in
         let files = File_tree.Dir.files dir in
@@ -294,7 +294,7 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
       Path.Map.add scopes Path.root Scope_info.anonymous
   in
   let rec walk dir jbuilds scope =
-    if File_tree.Dir.ignored dir then
+    if File_tree.Dir.raw_data dir then
       jbuilds
     else begin
       let path = File_tree.Dir.path dir in

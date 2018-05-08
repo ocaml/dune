@@ -890,6 +890,15 @@ module Executables = struct
     field_oslu "link_flags"                            >>= fun link_flags ->
     field "modes" Link_mode.Set.t ~default:Link_mode.Set.default
     >>= fun modes ->
+    map_validate
+      (field "inline_tests" (fun _ -> true) ~default:false ~short:(This true))
+      ~f:(function
+        | false -> Ok ()
+        | true  ->
+          Error
+            "Inline tests are only allowed in libraries.\n\
+             See https://github.com/ocaml/dune/issues/745 for more details.")
+    >>= fun () ->
     let t =
       { names
       ; link_executables

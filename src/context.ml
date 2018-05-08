@@ -181,7 +181,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets ~profile () =
         | Some x -> x
         | None -> prog_not_found_in_path "ocamlc"
     in
-    let dir = Path.parent ocamlc in
+    let dir = Path.parent_exn ocamlc in
     let ocaml_tool_not_found prog =
       die "ocamlc found in %s, but %s/%s doesn't exist (context: %s)"
         (Path.to_string dir) (Path.to_string dir) prog name
@@ -246,7 +246,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets ~profile () =
           | None ->
             (* If neither opam neither ocamlfind are present, assume
                that libraries are [dir ^ "/../lib"] *)
-            ocamlpath @ [Path.relative (Path.parent dir) "lib"]
+            ocamlpath @ [Path.relative (Path.parent_exn dir) "lib"]
     in
     let ocaml_config_ok_exn = function
       | Ok x -> x
@@ -460,7 +460,7 @@ let which t s = which ~cache:t.which_cache ~path:t.path s
 let install_prefix t =
   opam_config_var t "prefix" >>| function
   | Some x -> Path.absolute x
-  | None   -> Path.parent t.ocaml_bin
+  | None   -> Path.parent_exn t.ocaml_bin
 
 let install_ocaml_libdir t =
   match t.kind, t.findlib_toolchain, Setup.library_destdir with

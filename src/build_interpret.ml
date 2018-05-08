@@ -45,7 +45,7 @@ let inspect_path file_tree path =
       if Path.is_root path then
         Some Dir
       else if File_tree.file_exists file_tree
-                (Path.parent   path)
+                (Path.parent_exn path)
                 (Path.basename path) then
         Some Reg
       else
@@ -97,7 +97,7 @@ let static_deps t ~all_targets ~file_tree =
         match !state with
         | Decided (_, t) -> loop t acc
         | Undecided (then_, else_) ->
-          let dir = Path.parent p in
+          let dir = Path.parent_exn p in
           let targets = all_targets ~dir in
           if Pset.mem targets p then begin
             state := Decided (true, then_);
@@ -208,10 +208,10 @@ module Rule = struct
       | [] ->
         invalid_arg "Build_interpret.Rule.make: rule has no targets"
       | x :: l ->
-        let dir = Path.parent (Target.path x) in
+        let dir = Path.parent_exn (Target.path x) in
         List.iter l ~f:(fun target ->
           let path = Target.path target in
-          if Path.parent path <> dir then
+          if Path.parent_exn path <> dir then
             match loc with
             | None ->
               Exn.code_error "rule has targets in different directories"

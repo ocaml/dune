@@ -801,10 +801,9 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       Io.copy_file ~src ~dst
     else begin
       let src =
-        if Path.is_root dst then
-          Path.to_string src
-        else
-          Path.reach ~from:(Path.parent dst) src
+        match Path.parent dst with
+        | None -> Path.to_string src
+        | Some from -> Path.reach ~from src
       in
       let dst = Path.to_string dst in
       match Unix.readlink dst with

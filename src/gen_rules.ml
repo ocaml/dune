@@ -211,7 +211,7 @@ module Gen(P : Install_rules.Params) = struct
       Loc.fail loc "%s is not a sub-directory of %s"
         (Path.to_string_maybe_quoted glob_in_src) (Path.to_string_maybe_quoted src_dir);
     let glob = Path.basename glob_in_src in
-    let src_in_src = Path.parent glob_in_src in
+    let src_in_src = Path.parent_exn glob_in_src in
     let re =
       match Glob_lexer.parse_string glob with
       | Ok re ->
@@ -967,7 +967,7 @@ module Gen(P : Install_rules.Params) = struct
         let src_dir =
           let loc = String_with_vars.loc glob in
           let src_glob = SC.expand_vars sctx ~dir glob ~scope in
-          Path.parent (Path.relative src_dir src_glob ~error_loc:loc)
+          Path.parent_exn (Path.relative src_dir src_glob ~error_loc:loc)
         in
         Some
           (Merlin.make ()
@@ -997,7 +997,7 @@ module Gen(P : Install_rules.Params) = struct
             Option.is_none
               (File_tree.find_dir (SC.file_tree sctx)
                  (Path.drop_build_context_exn dir)) then
-           SC.load_dir sctx ~dir:(Path.parent dir));
+           SC.load_dir sctx ~dir:(Path.parent_exn dir));
     match components with
     | [] -> These (String.Set.of_list [".js"; "_doc"; ".ppx"])
     | [(".js"|"_doc"|".ppx")] -> All

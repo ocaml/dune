@@ -341,8 +341,20 @@ let basename t =
 
 let parent t =
   match kind t with
-  | Local t -> Local.parent t
-  | External t -> Filename.dirname t
+  | Local "" -> None
+  | Local t -> Some (Local.parent t)
+  | External t ->
+    let parent = Filename.dirname t in
+    if parent = t then
+      None
+    else
+      Some parent
+
+let parent_exn t =
+  match parent t with
+  | Some p -> p
+  | None -> Exn.code_error "Path.parent_exn: t is root"
+              ["t", sexp_of_t t]
 
 let build_prefix = "_build/"
 

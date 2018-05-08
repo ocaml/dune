@@ -40,6 +40,8 @@ next
 - Fix a crash when using c files from another directory (#758, fixes
   #734, @diml)
 
+- Add support for .dune-fs files (#750, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

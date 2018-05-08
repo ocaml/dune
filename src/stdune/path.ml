@@ -468,12 +468,16 @@ let insert_after_build_dir_exn =
       ]
   in
   fun a b ->
-    if not (is_local a) || String.contains b '/' then error a b;
-    match String.lsplit2 a ~on:'/' with
-    | Some ("_build", rest) ->
-      Printf.sprintf "_build/%s/%s" b rest
-    | _ ->
+    if not (is_local a) then
       error a b
+    else if a = build_dir then
+      relative build_dir b
+    else
+      match String.lsplit2 a ~on:'/' with
+      | Some (build_dir', rest) when build_dir = build_dir' ->
+        Local.append (relative build_dir b) rest
+      | _ ->
+        error a b
 
 let rm_rf =
   let rec loop dir =

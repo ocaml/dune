@@ -38,6 +38,15 @@ module Dir = struct
       let acc = f t acc in
       String.Map.fold (sub_dirs t) ~init:acc ~f:(fun t acc ->
         fold t ~traverse_ignored_dirs ~init:acc ~f)
+
+  let dune_file t =
+    let (lazy { files; _ }) = t.contents in
+    if String.Set.mem files "dune" then
+      Some (Path.relative t.path "dune")
+    else if String.Set.mem files "jbuild" then
+      Some (Path.relative t.path "jbuild")
+    else
+      None
 end
 
 type t =

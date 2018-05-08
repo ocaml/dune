@@ -1,5 +1,7 @@
 (jbuild_version 1)
 
+(ignored_subdirs (test-cases))
+
 (library
  ((name platform)
   (modules (platform))

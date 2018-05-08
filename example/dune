@@ -1,5 +1,7 @@
 (jbuild_version 1)
 
+(ignored_subdirs (sample-projects))
+
 (alias
  ((name runtest)
   (deps ((package dune)

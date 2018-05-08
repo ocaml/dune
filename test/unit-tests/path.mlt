@@ -101,3 +101,13 @@ Path.relative Path.root "/absolute/path"
 [%%expect{|
 - : Stdune.Path.t = /absolute/path
 |}]
+
+Path.absolute "/absolute/path"
+[%%expect{|
+- : Stdune.Path.t = /absolute/path
+|}]
+
+Path.is_local (Path.absolute "relative/path")
+[%%expect{|
+- : bool = false
+|}]

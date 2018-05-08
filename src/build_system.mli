@@ -99,7 +99,7 @@ module Alias : sig
 
   val make : string -> dir:Path.t -> t
 
-  val of_path : Path.t -> t
+  val of_user_written_path : loc:Loc.t -> Path.t -> t
 
   (** The following always holds:
 

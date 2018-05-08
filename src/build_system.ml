@@ -238,9 +238,10 @@ module Alias0 = struct
 
   let suffix = "-" ^ String.make 32 '0'
 
-  let of_path path =
+  let of_user_written_path ~loc path =
     if not (Path.is_in_build_dir path) then
-      die "Invalid alias!\nTried to reference alias %S"
+      Loc.fail loc "Invalid alias!\n\
+                    Tried to reference path outside build dir: %S"
         (Path.to_string_maybe_quoted path);
     make ~dir:(Path.parent path) (Path.basename path)
 

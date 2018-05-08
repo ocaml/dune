@@ -28,6 +28,9 @@ next
 - Add support for setting the default ocaml flags and for build
   profiles (#419, @diml)
 
+- Display a better error messages when writing `(inline_tests)` in an
+  executable stanza (#748, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

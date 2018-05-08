@@ -461,7 +461,8 @@ module Deps = struct
 
   let dep t ~scope ~dir = function
     | File  s ->
-      let path = Path.relative dir (expand_vars t ~scope ~dir s) in
+      let path = Path.relative ~error_loc:(String_with_vars.loc s) dir
+                   (expand_vars t ~scope ~dir s) in
       Build.path path
       >>^ fun () -> [path]
     | Alias s ->
@@ -472,8 +473,9 @@ module Deps = struct
         (make_alias t ~scope ~dir s)
       >>^ fun () -> []
     | Glob_files s -> begin
-        let path = Path.relative dir (expand_vars t ~scope ~dir s) in
         let loc = String_with_vars.loc s in
+        let path =
+          Path.relative ~error_loc:loc dir (expand_vars t ~scope ~dir s) in
         match Glob_lexer.parse_string (Path.basename path) with
         | Ok re ->
           let dir = Path.parent path in
@@ -482,7 +484,8 @@ module Deps = struct
           Loc.fail loc "invalid glob: %s" msg
       end
     | Files_recursively_in s ->
-      let path = Path.relative dir (expand_vars t ~scope ~dir s) in
+      let path = Path.relative ~error_loc:(String_with_vars.loc s)
+                   dir (expand_vars t ~scope ~dir s) in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
       >>^ Pset.to_list
     | Package p ->

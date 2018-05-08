@@ -121,9 +121,7 @@ Called from file "toplevel/toploop.ml", line 180, characters 17-56
 
 Path.insert_after_build_dir_exn Path.build_dir "foobar"
 [%%expect{|
-Exception: Stdune__Exn.Code_error <abstr>.
-Raised at file "src/stdune/exn.ml", line 30, characters 37-131
-Called from file "toplevel/toploop.ml", line 180, characters 17-56
+- : Stdune.Path.t = _build/foobar
 |}]
 
 Path.insert_after_build_dir_exn (Path.relative Path.build_dir "qux") "foobar"

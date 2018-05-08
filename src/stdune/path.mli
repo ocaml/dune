@@ -141,6 +141,7 @@ val change_extension : ext:string -> t -> t
 val extension : t -> string
 
 val pp : Format.formatter -> t -> unit
+val pp_debug : Format.formatter -> t -> unit
 
 val build_dir_exists : unit -> bool
 

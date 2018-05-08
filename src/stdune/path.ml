@@ -620,6 +620,11 @@ let extension t = Filename.extension (to_string t)
 
 let pp ppf t = Format.pp_print_string ppf (to_string t)
 
+let pp_debug ppf = function
+  | In_source_tree s -> Format.fprintf ppf "(In_source_tree %S)" s
+  | In_build_dir s -> Format.fprintf ppf "(In_build_dir %S)" s
+  | External s -> Format.fprintf ppf "(External %S)" s
+
 module Set = struct
   include Set.Make(T)
   let sexp_of_t t = Sexp.To_sexp.(list sexp_of_t) (to_list t)

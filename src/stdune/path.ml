@@ -279,31 +279,32 @@ let absolute fn =
     fn
 
 let to_absolute_filename t ~root =
-  if is_local t then begin
+  match kind t with
+  | Local t ->
     assert (not (Filename.is_relative root));
-    Filename.concat root (to_string t)
-  end else
-    t
+    Filename.concat root (Local.to_string t)
+  | External t -> t
 
 let reach t ~from =
-  match is_local t, is_local from with
-  | false, _ -> t
-  | true, false ->
+  match kind t, kind from with
+  | External _, _ -> t
+  | Local _, External _ ->
     Exn.code_error "Path.reach called with invalid combination"
       [ "t"   , sexp_of_t t
       ; "from", sexp_of_t from
       ]
-  | true, true -> Local.reach t ~from
+  | Local t, Local from ->
+    Local.reach t ~from
 
 let reach_for_running t ~from =
-  match is_local t, is_local from with
-  | false, _ -> t
-  | true, false ->
+  match kind t, kind from with
+  | External _, _ -> t
+  | Local _, External _ ->
     Exn.code_error "Path.reach_for_running called with invalid combination"
       [ "t"   , sexp_of_t t
       ; "from", sexp_of_t from
       ]
-  | true, true ->
+  | Local t, Local from ->
     let s = Local.reach t ~from in
     if String.is_prefix s ~prefix:"../" then
       s
@@ -311,46 +312,46 @@ let reach_for_running t ~from =
       "./" ^ s
 
 let descendant t ~of_ =
-  if is_local t && is_local of_ then
-    Local.descendant t ~of_
-  else
-    None
+  match kind t, kind of_ with
+  | Local t, Local of_ -> Local.descendant t ~of_
+  | _, _ -> None
 
 let is_descendant t ~of_ =
-  if is_local t && is_local of_ then
-    Local.is_descendant t ~of_
-  else
-    false
+  match kind t, kind of_ with
+  | Local t, Local of_ -> Local.is_descendant t ~of_
+  | _, _ -> false
 
 let append a b =
-  if not (is_local b) then
+  match kind b with
+  | External _ ->
     Exn.code_error "Path.append called with non-local second path"
       [ "a", sexp_of_t a
       ; "b", sexp_of_t b
-      ];
-  if is_local a then
-    Local.append a b
-  else
-    Filename.concat a b
+      ]
+  | Local b ->
+    begin match kind a with
+    | Local a -> Local.append a b
+    | External a -> Filename.concat a b
+    end
 
 let basename t =
-  if is_local t then
-    Local.basename t
-  else
-    Filename.basename t
+  match kind t with
+  | Local t -> Local.basename t
+  | External t -> Filename.basename t
 
 let parent t =
-  if is_local t then
-    Local.parent t
-  else
-    Filename.dirname t
+  match kind t with
+  | Local t -> Local.parent t
+  | External t -> Filename.dirname t
 
 let build_prefix = "_build/"
 
 let build_dir = "_build"
 
 let is_in_build_dir t =
-  String.is_prefix t ~prefix:build_prefix
+  match kind t with
+  | Local t -> String.is_prefix t ~prefix:build_prefix
+  | External _ -> false
 
 let is_in_source_tree t = is_local t && not (is_in_build_dir t)
 
@@ -399,32 +400,28 @@ let drop_optional_build_context t =
   | Some (_, t) -> t
 
 let split_first_component t =
-  if is_local t && not (is_root t)then
-    match String.index t '/' with
+  match kind t, is_root t with
+  | Local t, false ->
+    begin match String.index t '/' with
     | None -> Some (t, root)
     | Some i ->
       Some
         (String.sub t ~pos:0 ~len:i,
          String.sub t ~pos:(i + 1) ~len:(String.length t - i - 1))
-  else
-    None
+    end
+  | _, _ -> None
 
 let explode t =
-  if is_root t then
-    Some []
-  else if is_local t then
-    Some (String.split t ~on:'/')
-  else
-    None
+  match kind t with
+  | Local "" -> Some []
+  | Local s -> Some (String.split s ~on:'/')
+  | External _ -> None
 
 let explode_exn t =
-  if is_root t then
-    []
-  else if is_local t then
-    String.split t ~on:'/'
-  else
-    Exn.code_error "Path.explode_exn"
-      ["path", Sexp.atom_or_quoted_string t]
+  match explode t with
+  | Some s -> s
+  | None -> Exn.code_error "Path.explode_exn"
+              ["path", Sexp.atom_or_quoted_string t]
 
 let exists t =
   try Sys.file_exists (to_string t)

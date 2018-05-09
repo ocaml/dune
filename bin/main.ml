@@ -116,7 +116,7 @@ let request_of_targets (setup : Main.setup) targets =
     match target with
     | File path -> Build.path path
     | Alias_rec path ->
-      let dir = Path.parent path in
+      let dir = Path.parent_exn path in
       let name = Path.basename path in
       let contexts, dir =
         match Path.extract_build_context dir with
@@ -594,11 +594,7 @@ let resolve_package_install setup pkg =
 
 let target_hint (setup : Main.setup) path =
   assert (Path.is_local path);
-  let sub_dir =
-    if Path.is_root path then
-      path
-    else
-      Path.parent path in
+  let sub_dir = Option.value ~default:path (Path.parent path) in
   let candidates = Build_system.all_targets setup.build_system in
   let candidates =
     if Path.is_in_build_dir path then
@@ -613,7 +609,7 @@ let target_hint (setup : Main.setup) path =
     (* Only suggest hints for the basename, otherwise it's slow when there are lots of
        files *)
     List.filter_map candidates ~f:(fun path ->
-      if Path.parent path = sub_dir then
+      if Path.parent_exn path = sub_dir then
         Some (Path.to_string path)
       else
         None)

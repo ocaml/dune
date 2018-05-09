@@ -85,7 +85,7 @@ let analyse_target fn =
               assert (String.length digest = 32);
               name
           in
-          Alias (ctx, Path.relative (Path.parent fn) basename)
+          Alias (ctx, Path.relative (Path.parent_exn fn) basename)
     end
   | Some ("install", _) -> Other fn
   | Some (ctx, sub) -> Regular (ctx, sub)

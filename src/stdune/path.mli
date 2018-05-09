@@ -78,7 +78,8 @@ val is_descendant : t -> of_:t -> bool
 val append : t -> t -> t
 
 val basename : t -> string
-val parent : t -> t
+val parent : t -> t option
+val parent_exn : t -> t
 
 val extend_basename : t -> suffix:string -> t
 

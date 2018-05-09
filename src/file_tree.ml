@@ -131,7 +131,8 @@ let rec find_dir t path =
     | None ->
       match
         let open Option.O in
-        find_dir t (Path.parent path)
+        Path.parent path
+        >>= find_dir t
         >>= fun parent ->
         String.Map.find (Dir.sub_dirs parent) (Path.basename path)
       with
@@ -159,7 +160,7 @@ let dir_exists t path = Option.is_some (find_dir t path)
 
 let exists t path =
   dir_exists t path ||
-  file_exists t (Path.parent path) (Path.basename path)
+  file_exists t (Path.parent_exn path) (Path.basename path)
 
 let files_recursively_in t ?(prefix_with=Path.root) path =
   match find_dir t path with

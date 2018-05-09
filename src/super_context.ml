@@ -113,10 +113,13 @@ module Env = struct
   let rec get t ~dir =
     match Hashtbl.find t.env dir with
     | None ->
-      if Path.is_root dir then raise_notrace Exit;
-      let node = get t ~dir:(Path.parent dir) in
-      Hashtbl.add t.env dir node;
-      node
+      begin match Path.parent dir with
+      | None -> raise_notrace Exit
+      | Some parent ->
+        let node = get t ~dir:parent in
+        Hashtbl.add t.env dir node;
+        node
+      end
     | Some node -> node
 
   let get t ~dir =
@@ -334,7 +337,7 @@ let create
             if ctx_dir = Scope.root scope then
               None
             else
-              Some (lazy (Env.get t ~dir:(Path.parent ctx_dir)))
+              Some (lazy (Env.get t ~dir:(Path.parent_exn ctx_dir)))
           in
           Hashtbl.add t.env ctx_dir
             { dir          = ctx_dir
@@ -480,7 +483,7 @@ module Deps = struct
           Path.relative ~error_loc:loc dir (expand_vars t ~scope ~dir s) in
         match Glob_lexer.parse_string (Path.basename path) with
         | Ok re ->
-          let dir = Path.parent path in
+          let dir = Path.parent_exn path in
           Build.paths_glob ~loc ~dir (Re.compile re)
         | Error (_pos, msg) ->
           Loc.fail loc "invalid glob: %s" msg
@@ -793,7 +796,7 @@ module Action = struct
     in
     let targets = Pset.to_list targets in
     List.iter targets ~f:(fun target ->
-      if Path.parent target <> dir then
+      if Path.parent_exn target <> dir then
         Loc.fail loc
           "This action has targets in a different directory than the current \
            one, this is not allowed by Jbuilder at the moment:\n%s"

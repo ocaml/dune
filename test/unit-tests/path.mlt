@@ -112,11 +112,10 @@ Path.is_local (Path.absolute "relative/path")
 - : bool = false
 |}]
 
-Path.insert_after_build_dir_exn Path.root "foobar"
+try Ok (Path.insert_after_build_dir_exn Path.root "foobar")
+with e -> Error e
 [%%expect{|
-Exception: Stdune__Exn.Code_error <abstr>.
-Raised at file "src/stdune/exn.ml", line 30, characters 37-131
-Called from file "toplevel/toploop.ml", line 180, characters 17-56
+- : (Stdune.Path.t, exn) Stdune.result = Error (Stdune__Exn.Code_error _)
 |}]
 
 Path.insert_after_build_dir_exn Path.build_dir "foobar"
@@ -159,10 +158,8 @@ Path.append (Path.of_string "/root") (Path.relative Path.build_dir "foo")
 - : Stdune.Path.t = /root/_build/foo
 |}]
 
-Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz")
+try Ok (Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz"))
+with e -> Error e
 [%%expect{|
-Exception: Stdune__Exn.Code_error <abstr>.
-Raised at file "src/stdune/exn.ml", line 30, characters 37-131
-Called from file "src/stdune/path.ml", line 496, characters 4-127
-Called from file "toplevel/toploop.ml", line 180, characters 17-56
+- : (unit, exn) Stdune.result = Error (Stdune__Exn.Code_error _)
 |}]

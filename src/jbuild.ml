@@ -1291,7 +1291,7 @@ module Stanzas = struct
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ; cstr_loc "include" (relative_file @> nil) (fun loc fn ->
           let include_stack = (loc, file) :: include_stack in
-          let dir = Path.parent file in
+          let dir = Path.parent_exn file in
           let file = Path.relative dir fn in
           if not (Path.exists file) then
             Loc.fail loc "File %s doesn't exist."

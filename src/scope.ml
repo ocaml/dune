@@ -31,7 +31,7 @@ module DB = struct
             [ "dir"    , Path.sexp_of_t dir
             ; "context", Sexp.To_sexp.string t.context
             ];
-        let scope = loop (Path.parent d) in
+        let scope = loop (Path.parent_exn d) in
         Hashtbl.add t.by_dir d scope;
         scope
     in

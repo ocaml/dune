@@ -489,6 +489,10 @@ let rm_rf =
     Unix.rmdir dir
   in
   fun t ->
+    if not (is_local t) then (
+      Exn.code_error "Path.rm_rf called on external dir"
+        ["t", sexp_of_t t]
+    );
     let fn = to_string t in
     match Unix.lstat fn with
     | exception Unix.Unix_error(ENOENT, _, _) -> ()

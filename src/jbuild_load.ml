@@ -207,8 +207,7 @@ module Sexp_io = struct
       loop0 Parser.Stack.empty 0)
 end
 
-let load ~dir ~scope ~ignore_promoted_rules ~fname =
-  let file = Path.relative dir fname in
+let load ~dir ~scope ~ignore_promoted_rules ~file =
   match Sexp_io.load_many_or_ocaml_script file with
   | Sexps sexps ->
     Jbuilds.Literal (dir, scope,
@@ -299,22 +298,16 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
       jbuilds
     else begin
       let path = File_tree.Dir.path dir in
-      let files = File_tree.Dir.files dir in
       let sub_dirs = File_tree.Dir.sub_dirs dir in
       let scope = Option.value (Path.Map.find scopes path) ~default:scope in
       let jbuilds =
-        if String.Set.mem files "dune" then
+        match File_tree.Dir.dune_file dir with
+        | None -> jbuilds
+        | Some file ->
           let jbuild =
-            load ~dir:path ~scope ~ignore_promoted_rules ~fname:"dune"
+            load ~dir:path ~scope ~ignore_promoted_rules ~file
           in
           jbuild :: jbuilds
-        else if String.Set.mem files "jbuild" then
-          let jbuild =
-            load ~dir:path ~scope ~ignore_promoted_rules ~fname:"jbuild"
-          in
-          jbuild :: jbuilds
-        else
-          jbuilds
       in
       String.Map.fold sub_dirs ~init:jbuilds
         ~f:(fun dir jbuilds -> walk dir jbuilds scope)

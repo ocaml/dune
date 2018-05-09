@@ -129,17 +129,15 @@ let rule_loc ~file_tree ~loc ~dir =
   | Some loc -> loc
   | None ->
     let dir = Path.drop_optional_build_context dir in
-    let fname =
-      if File_tree.file_exists file_tree dir "dune" then
-        "dune"
-      else if File_tree.file_exists file_tree dir "jbuild" then
-        "jbuild"
-      else
-        "_unknown_"
+    let file =
+      match
+        Option.bind (File_tree.find_dir file_tree dir)
+          ~f:File_tree.Dir.dune_file
+      with
+      | Some file -> file
+      | None      -> Path.relative dir "_unknown_"
     in
-    Loc.in_file
-      (Path.to_string
-         (Path.drop_optional_build_context (Path.relative dir fname)))
+    Loc.in_file (Path.to_string file)
 
 module Internal_rule = struct
   module Id : sig

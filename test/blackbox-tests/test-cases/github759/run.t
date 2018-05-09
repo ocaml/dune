@@ -6,9 +6,12 @@
   $ rm -f .merlin
   $ jbuilder build foo.cma
   $ cat .merlin
-  cat: .merlin: No such file or directory
-  [1]
+  B _build/default/.foo.objs
+  FLG -open Foo -w -40
+  S .
   $ echo toto > .merlin
   $ jbuilder build foo.cma
   $ cat .merlin
-  toto
+  B _build/default/.foo.objs
+  FLG -open Foo -w -40
+  S .

@@ -31,6 +31,9 @@ next
 - Display a better error messages when writing `(inline_tests)` in an
   executable stanza (#748, @diml)
 
+- Restore promoted files when they are deleted or changed in the
+  source tree (#760, fix #759, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

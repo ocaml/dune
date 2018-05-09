@@ -37,6 +37,9 @@ next
 - Fix a crash when using an invalid alias name (#762, fixes #761,
   @diml)
 
+- Fix a crash when using c files from another directory (#758, fixes
+  #734, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

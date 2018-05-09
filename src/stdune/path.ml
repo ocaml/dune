@@ -314,10 +314,11 @@ module Kind = struct
     | Local _ -> true
 end
 
-let build_dir_prefix = "_build/"
+let build_dir_relative_to_source = "_build"
+let build_dir_prefix = build_dir_relative_to_source ^ "/"
 
 let kind = function
-  | In_build_dir s -> Kind.Local (Local.relative "_build" s)
+  | In_build_dir s -> Kind.Local (Local.relative build_dir_relative_to_source s)
   | In_source_tree s -> Kind.Local s
   | External s -> Kind.External s
 

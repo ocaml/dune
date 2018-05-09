@@ -93,6 +93,7 @@ module Scope_info = struct
     ; packages : Package.t Package.Name.Map.t
     ; root     : Path.t
     ; version  : string option
+    ; project  : Dune_project.t option
     }
 
   let anonymous =
@@ -100,24 +101,16 @@ module Scope_info = struct
     ; packages = Package.Name.Map.empty
     ; root     = Path.root
     ; version  = None
+    ; project  = None
     }
 
-  let make ?version = function
-    | [] -> anonymous
-    | pkg :: rest as pkgs ->
-      let name =
-        List.fold_left rest ~init:pkg.Package.name ~f:(fun acc pkg ->
-          min acc pkg.Package.name)
-      in
-      let root = pkg.path in
-      List.iter rest ~f:(fun pkg -> assert (pkg.Package.path = root));
-      { name = Some (Package.Name.to_string name)
-      ; packages =
-          Package.Name.Map.of_list_exn (List.map pkgs ~f:(fun pkg ->
-            pkg.Package.name, pkg))
-      ; root
-      ; version
-      }
+  let make (project : Dune_project.t) =
+    { name     = Some project.name
+    ; packages = project.packages
+    ; root     = project.root
+    ; version  = project.version
+    ; project  = Some project
+    }
 
   let package_listing packages =
     let longest_pkg =

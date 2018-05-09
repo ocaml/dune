@@ -26,6 +26,36 @@ let filteri l ~f =
   in
   filteri l 0
 
+let rev_filter_map =
+  let rec loop acc l ~f =
+    match l with
+    | [] -> acc
+    | x :: l ->
+      let acc =
+        match f x with
+        | None -> acc
+        | Some y -> y :: acc
+      in
+      loop acc l ~f
+  in
+  fun l ~f ->
+    loop [] l ~f
+
+let rev_filter_mapi =
+  let rec loop acc l ~f i =
+    match l with
+    | [] -> acc
+    | x :: l ->
+      let acc =
+        match f i x with
+        | None -> acc
+        | Some y -> y :: acc
+      in
+      loop acc l ~f (i + 1)
+  in
+  fun l ~f ->
+    loop [] l ~f 0
+
 let concat_map l ~f = concat (map l ~f)
 
 let rev_partition_map =

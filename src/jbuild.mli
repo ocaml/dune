@@ -29,9 +29,10 @@ module Scope_info : sig
     ; packages : Package.t Package.Name.Map.t
     ; root     : Path.t
     ; version  : string option
+    ; project  : Dune_project.t option
     }
 
-  val make : ?version:string -> Package.t list -> t
+  val make : Dune_project.t -> t
 
   (** The anonymous represent the scope at the root of the workspace
       when the root of the workspace contains no [<package>.opam]

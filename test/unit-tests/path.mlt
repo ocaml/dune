@@ -1,12 +1,15 @@
 (* -*- tuareg -*- *)
 open Stdune;;
 
+Printexc.record_backtrace false;;
+
 let r = Path.(relative root);;
 
 #install_printer Path.pp;;
 
 Path.(let p = relative root "foo" in descendant p ~of_:p)
 [%%expect{|
+- : unit = ()
 val r : string -> Stdune.Path.t = <fun>
 - : Stdune.Path.t option = Some foo
 |}]

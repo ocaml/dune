@@ -457,7 +457,9 @@ module Deps = struct
   open Dep_conf
 
   let make_alias t ~scope ~dir s =
-    Alias.of_path (Path.relative dir (expand_vars t ~scope ~dir s))
+    let loc = String_with_vars.loc s in
+    Alias.of_user_written_path ~loc
+      (Path.relative ~error_loc:loc dir (expand_vars t ~scope ~dir s))
 
   let dep t ~scope ~dir = function
     | File  s ->

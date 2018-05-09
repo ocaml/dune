@@ -7,6 +7,14 @@
     (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
 
 (alias
+ ((name bad-alias-error)
+  (deps ((package dune) (files_recursively_in test-cases/bad-alias-error)))
+  (action
+   (chdir
+    test-cases/bad-alias-error
+    (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+
+(alias
  ((name byte-code-only)
   (deps ((package dune) (files_recursively_in test-cases/byte-code-only)))
   (action
@@ -446,6 +454,7 @@
  ((name runtest)
   (deps
    ((alias aliases)
+    (alias bad-alias-error)
     (alias byte-code-only)
     (alias c-stubs)
     (alias configurator)
@@ -499,6 +508,7 @@
  ((name runtest-no-deps)
   (deps
    ((alias aliases)
+    (alias bad-alias-error)
     (alias byte-code-only)
     (alias c-stubs)
     (alias configurator)

@@ -212,28 +212,46 @@ module File_spec = struct
 end
 
 module Alias0 = struct
-  type t = { dir : Path.t; name : string }
+  module T : sig
+    type t = private
+      { dir : Path.t
+      ; name : string
+      }
+    val make : string -> dir:Path.t -> t
+    val of_user_written_path : loc:Loc.t -> Path.t -> t
+  end = struct
+    type t =
+      { dir : Path.t
+      ; name : string
+      }
+
+    let make name ~dir =
+      if not (Path.is_in_build_dir dir) || String.contains name '/' then
+        Exn.code_error "Alias0.make: Invalid alias"
+          [ "name", Sexp.To_sexp.string name
+          ; "dir", Path.sexp_of_t dir
+          ];
+      { dir; name }
+
+    let of_user_written_path ~loc path =
+      if not (Path.is_in_build_dir path) then
+        Loc.fail loc "Invalid alias!\n\
+                      Tried to reference path outside build dir: %S"
+          (Path.to_string_maybe_quoted path);
+      { dir = Path.parent path
+      ; name = Path.basename path
+      }
+  end
+  include T
 
   let pp fmt t = Path.pp fmt (Path.relative t.dir t.name)
 
   let suffix = "-" ^ String.make 32 '0'
 
-  let of_path path =
-    if not (Path.is_in_build_dir path) then
-      die "Invalid alias!\nTried to reference alias %S"
-        (Path.to_string_maybe_quoted path);
-    { dir  = Path.parent path
-    ; name = Path.basename path
-    }
-
   let name t = t.name
   let dir  t = t.dir
 
   let fully_qualified_name t = Path.relative t.dir t.name
-
-  let make name ~dir =
-    assert (not (String.contains name '/'));
-    { dir; name }
 
   let stamp_file t =
     Path.relative (Path.insert_after_build_dir_exn t.dir ".aliases") (t.name ^ suffix)

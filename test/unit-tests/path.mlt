@@ -158,3 +158,8 @@ Path.append (Path.of_string "/root") (Path.relative Path.build_dir "foo")
 [%%expect{|
 - : Stdune.Path.t = /root/_build/foo
 |}]
+
+Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz")
+[%%expect{|
+- : unit = ()
+|}]

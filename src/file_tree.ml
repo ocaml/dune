@@ -106,6 +106,7 @@ module Dir = struct
     { files    : String.Set.t
     ; sub_dirs : t String.Map.t
     ; dune_fs  : Dune_fs.t
+    ; project  : Dune_project.t option
     }
 
   let contents t = Lazy.force t.contents
@@ -115,6 +116,7 @@ module Dir = struct
 
   let files    t = (contents t).files
   let sub_dirs t = (contents t).sub_dirs
+  let project  t = (contents t).project
 
   let file_paths t =
     Path.Set.of_string_set (files t) ~f:(Path.relative t.path)
@@ -154,7 +156,7 @@ type t =
 let root t = t.root
 
 let load ?(extra_ignored_subtrees=Path.Set.empty) path =
-  let rec walk path ~raw_data : Dir.t =
+  let rec walk path ~project ~raw_data : Dir.t =
     let contents = lazy (
       let files, sub_dirs =
         Path.readdir path
@@ -166,6 +168,11 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             Left fn)
       in
       let files = String.Set.of_list files in
+      let project =
+        match Dune_project.load ~dir:path ~files with
+        | Some _ as x -> x
+        | None        -> project
+      in
       let dune_fs =
         if String.Set.mem files ".dune-fs" then
           Dune_fs.load (Path.relative path ".dune-fs")
@@ -190,16 +197,17 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             | Raw_data -> Some true
           with
           | None -> acc
-          | Some raw_data -> String.Map.add acc fn (walk path ~raw_data))
+          | Some raw_data ->
+            String.Map.add acc fn (walk path ~raw_data ~project))
       in
-      { Dir. files; sub_dirs; dune_fs })
+      { Dir. files; sub_dirs; dune_fs; project })
     in
     { path
     ; contents
     ; raw_data
     }
   in
-  let root = walk path ~raw_data:false in
+  let root = walk path ~raw_data:false ~project:None in
   let dirs = Hashtbl.create 1024      in
   Hashtbl.add dirs Path.root root;
   { root; dirs }

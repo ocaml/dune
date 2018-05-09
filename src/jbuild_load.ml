@@ -218,73 +218,31 @@ let load ~dir ~scope ~ignore_promoted_rules ~file =
 
 let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
   let ftree = File_tree.load Path.root ?extra_ignored_subtrees in
-  let packages =
-    File_tree.fold ftree ~traverse_raw_data_dirs:false ~init:[] ~f:(fun dir pkgs ->
-      let path = File_tree.Dir.path dir in
-      let files = File_tree.Dir.files dir in
-      String.Set.fold files ~init:pkgs ~f:(fun fn acc ->
-        match Filename.split_extension fn with
-        | (pkg, ".opam") when pkg <> "" ->
-          let version_from_opam_file =
-            let opam = Opam_file.load (Path.relative path fn) in
-            match Opam_file.get_field opam "version" with
-            | Some (String (_, s)) -> Some s
-            | _ -> None
-          in
-          let name = Package.Name.of_string pkg in
-          (name,
-           { Package. name
-           ; path
-           ; version_from_opam_file
-           }) :: acc
-        | _ -> acc))
-  in
-  let packages =
-    Package.Name.Map.of_list_multi packages
-    |> Package.Name.Map.mapi ~f:(fun name pkgs ->
-      match pkgs with
-      | [pkg] -> pkg
-      | _ ->
-        die "Too many opam files for package %S:\n%s"
-          (Package.Name.to_string name)
-          (String.concat ~sep:"\n"
-             (List.map pkgs ~f:(fun pkg ->
-                sprintf "- %s" (Path.to_string (Package.opam_file pkg))))))
-  in
-  let scopes =
-    Package.Name.Map.values packages
-    |> List.map ~f:(fun pkg -> (pkg.Package.path, pkg))
-    |> Path.Map.of_list_multi
-    |> Path.Map.map ~f:Scope_info.make
-  in
-
   let projects =
     File_tree.fold ftree ~traverse_raw_data_dirs:false ~init:[]
       ~f:(fun dir acc ->
-        let path = File_tree.Dir.path dir in
-        let files = File_tree.Dir.files dir in
-        if String.Set.mem files Dune_project.filename then begin
-          (path, Dune_project.load ~dir:path) :: acc
-        end else
-          acc)
-    |> Path.Map.of_list_exn
+        match File_tree.Dir.project dir with
+        | Some p when p.root = File_tree.Dir.path dir -> p :: acc
+        | _ -> acc)
+  in
+  let packages =
+    List.fold_left projects ~init:Package.Name.Map.empty
+      ~f:(fun acc (p : Dune_project.t) ->
+        Package.Name.Map.merge acc p.packages ~f:(fun name a b ->
+          match a, b with
+          | None, None -> None
+          | None, Some _ -> b
+          | Some _, None -> a
+          | Some a, Some b ->
+            die "Too many opam files for package %S:\n- %s\n- %s"
+              (Package.Name.to_string name)
+              (Path.to_string_maybe_quoted (Package.opam_file a))
+              (Path.to_string_maybe_quoted (Package.opam_file b))))
   in
   let scopes =
-    Path.Map.merge scopes projects ~f:(fun path scope project ->
-      match scope, project with
-      | None, None -> assert false
-      | Some _, None -> scope
-      | None, Some { name; version } ->
-        Some { name     = Some name
-             ; packages = Package.Name.Map.empty
-             ; root     = path
-             ; version
-             }
-      | Some scope, Some { name; version } ->
-        Some { scope with
-               name = Some name
-             ; version
-             })
+    List.map projects ~f:(fun (p : Dune_project.t) ->
+      (p.root, Scope_info.make p))
+    |> Path.Map.of_list_exn
   in
 
   let scopes =

@@ -218,6 +218,7 @@ module Alias0 = struct
       ; name : string
       }
     val make : string -> dir:Path.t -> t
+    val of_user_written_path : loc:Loc.t -> Path.t -> t
   end = struct
     type t =
       { dir : Path.t
@@ -231,19 +232,21 @@ module Alias0 = struct
           ; "dir", Path.sexp_of_t dir
           ];
       { dir; name }
+
+    let of_user_written_path ~loc path =
+      if not (Path.is_in_build_dir path) then
+        Loc.fail loc "Invalid alias!\n\
+                      Tried to reference path outside build dir: %S"
+          (Path.to_string_maybe_quoted path);
+      { dir = Path.parent path
+      ; name = Path.basename path
+      }
   end
   include T
 
   let pp fmt t = Path.pp fmt (Path.relative t.dir t.name)
 
   let suffix = "-" ^ String.make 32 '0'
-
-  let of_user_written_path ~loc path =
-    if not (Path.is_in_build_dir path) then
-      Loc.fail loc "Invalid alias!\n\
-                    Tried to reference path outside build dir: %S"
-        (Path.to_string_maybe_quoted path);
-    make ~dir:(Path.parent path) (Path.basename path)
 
   let name t = t.name
   let dir  t = t.dir

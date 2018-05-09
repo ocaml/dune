@@ -72,6 +72,23 @@ let relative_file sexp =
     of_sexp_error sexp "relative filename expected";
   fn
 
+let c_name, cxx_name =
+  let make what ext sexp =
+    let s = string sexp in
+    if match s with
+      | "" | "." | ".."  -> true
+      | _ -> Filename.basename s <> s then
+      of_sexp_errorf sexp
+        "%S is not a valid %s name.\n\
+         Hint: To use %s files from another directory, use a \
+         (copy_files <dir>/*.c) stanza instead."
+        s what what ext
+    else
+      s
+  in
+  (make "C"   "c",
+   make "C++" "cpp")
+
 module Scope_info = struct
   module Name = struct
     type t = string option
@@ -706,8 +723,8 @@ module Library = struct
        field      "ppx_runtime_libraries" (list (located string)) ~default:[] >>= fun ppx_runtime_libraries    ->
        field_oslu "c_flags"                                                >>= fun c_flags                  ->
        field_oslu "cxx_flags"                                              >>= fun cxx_flags                ->
-       field      "c_names" (list string) ~default:[]                      >>= fun c_names                  ->
-       field      "cxx_names" (list string) ~default:[]                    >>= fun cxx_names                ->
+       field      "c_names" (list c_name) ~default:[]                      >>= fun c_names                  ->
+       field      "cxx_names" (list cxx_name) ~default:[]                  >>= fun cxx_names                ->
        field_oslu "library_flags"                                          >>= fun library_flags            ->
        field_oslu "c_library_flags"                                        >>= fun c_library_flags          ->
        field      "virtual_deps" (list (located string)) ~default:[]       >>= fun virtual_deps             ->

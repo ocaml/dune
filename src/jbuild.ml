@@ -1159,9 +1159,16 @@ module Alias_conf = struct
     ; package : Package.t option
     }
 
+  let alias_name sexp =
+    let s = string sexp in
+    if Filename.basename s <> s then
+      of_sexp_errorf sexp "%S is not a valid alias name" s
+    else
+      s
+
   let v1 pkgs =
     record
-      (field "name" string                              >>= fun name ->
+      (field "name" alias_name                          >>= fun name ->
        field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
        field_o "package" (Scope_info.package pkgs)      >>= fun package ->
        field_o "action" (located Action.Unexpanded.t)   >>= fun action ->

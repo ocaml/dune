@@ -34,6 +34,9 @@ next
 - Restore promoted files when they are deleted or changed in the
   source tree (#760, fix #759, @diml)
 
+- Fix a crash when using an invalid alias name (#762, fixes #761,
+  @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

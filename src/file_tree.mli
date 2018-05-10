@@ -4,9 +4,9 @@ open! Import
 
 module Dune_file : sig
   module Plain : sig
-    (** [sexps] is mutable as we get of the S-expressions once they
-        have been parsed, in order to release the memory as soon as we
-        don't need them. *)
+    (** [sexps] is mutable as we get rid of the S-expressions once
+        they have been parsed, in order to release the memory as soon
+        as we don't need them. *)
     type t =
       { path          : Path.t
       ; mutable sexps : Sexp.Ast.t list

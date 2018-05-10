@@ -753,48 +753,54 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
       !Clflags.force &&
       List.exists targets_as_list ~f:Path.is_alias_stamp_file
     in
-    if deps_or_rule_changed || targets_missing || force then begin
-      List.iter targets_as_list ~f:Path.unlink_no_err;
-      pending_targets := Pset.union targets !pending_targets;
-      let action =
-        match sandbox_dir with
-        | Some sandbox_dir ->
-          Path.rm_rf sandbox_dir;
-          let sandboxed path =
-            if Path.is_local path then
-              Path.append sandbox_dir path
-            else
-              path
-          in
-          make_local_parent_dirs t all_deps ~map_path:sandboxed;
-          make_local_parent_dirs t targets  ~map_path:sandboxed;
-          Action.sandbox action
-            ~sandboxed
-            ~deps:all_deps_as_list
-            ~targets:targets_as_list
-        | None ->
-          action
-      in
-      make_local_dirs t (Action.chdirs action);
-      with_locks locks ~f:(fun () ->
-        Action.exec ~context ~targets action) >>| fun () ->
-      Option.iter sandbox_dir ~f:Path.rm_rf;
-      (* All went well, these targets are no longer pending *)
-      pending_targets := Pset.diff !pending_targets targets;
-      clear_targets_digests_after_rule_execution targets_as_list;
-      (match mode with
-       | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files -> ()
-       | Promote | Promote_but_delete_on_clean ->
-         Pset.iter targets ~f:(fun path ->
-           let in_source_tree = Option.value_exn (Path.drop_build_context path) in
-           if mode = Promote_but_delete_on_clean then
-             Promoted_to_delete.add in_source_tree;
-           Io.copy_file ~src:path ~dst:in_source_tree));
-      t.hook Rule_completed
-    end else begin
-      t.hook Rule_completed;
-      Fiber.return ()
-    end
+    begin
+      if deps_or_rule_changed || targets_missing || force then begin
+        List.iter targets_as_list ~f:Path.unlink_no_err;
+        pending_targets := Pset.union targets !pending_targets;
+        let action =
+          match sandbox_dir with
+          | Some sandbox_dir ->
+            Path.rm_rf sandbox_dir;
+            let sandboxed path =
+              if Path.is_local path then
+                Path.append sandbox_dir path
+              else
+                path
+            in
+            make_local_parent_dirs t all_deps ~map_path:sandboxed;
+            make_local_parent_dirs t targets  ~map_path:sandboxed;
+            Action.sandbox action
+              ~sandboxed
+              ~deps:all_deps_as_list
+              ~targets:targets_as_list
+          | None ->
+            action
+        in
+        make_local_dirs t (Action.chdirs action);
+        with_locks locks ~f:(fun () ->
+          Action.exec ~context ~targets action) >>| fun () ->
+        Option.iter sandbox_dir ~f:Path.rm_rf;
+        (* All went well, these targets are no longer pending *)
+        pending_targets := Pset.diff !pending_targets targets;
+        clear_targets_digests_after_rule_execution targets_as_list
+      end else
+        Fiber.return ()
+    end >>| fun () ->
+    begin
+      match mode with
+      | Standard | Fallback | Not_a_rule_stanza | Ignore_source_files -> ()
+      | Promote | Promote_but_delete_on_clean ->
+        Pset.iter targets ~f:(fun path ->
+          let in_source_tree = Option.value_exn (Path.drop_build_context path) in
+          if not (Path.exists in_source_tree) ||
+             (Utils.Cached_digest.file path <>
+              Utils.Cached_digest.file in_source_tree) then begin
+            if mode = Promote_but_delete_on_clean then
+              Promoted_to_delete.add in_source_tree;
+            Io.copy_file ~src:path ~dst:in_source_tree
+          end)
+    end;
+    t.hook Rule_completed
   in
   let rule =
     { Internal_rule.

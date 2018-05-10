@@ -204,45 +204,52 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             Left fn)
       in
       let files = String.Set.of_list files in
-      let dune_file =
-        match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
-        | [] -> None
-        | [fn] -> Some (Dune_file.load (Path.relative path fn))
-        | _ ->
-          die "Directory %s has both a 'dune' and 'jbuild' file.\n\
-               This is not allowed"
-            (Path.to_string_maybe_quoted path)
-      in
       let dune_file, dune_fs =
-        match dune_file with
-        | None | Some (Ocaml_script _) -> (dune_file, None)
-        | Some (Plain { path; sexps }) ->
-          let fs_stanzas, other =
-            List.partition_map sexps ~f:(function
-              | List (loc, Atom (_, A "fs") :: sexps) -> Left (loc, sexps)
-              | x -> Right x)
-          in
-          match fs_stanzas with
-          | [] -> (dune_file, None)
-          | _ :: (loc, _) :: _ ->
-            Loc.fail loc "Too many fs stanzas."
-          | [(loc, sexps)] ->
-            (Some (Plain { path; sexps = other }), Some (loc, Dune_fs.t sexps))
-      in
-      let dune_fs =
-        if String.Set.mem files "jbuild-ignore" then
-          let file = Path.relative path "jbuild-ignore" in
-          match dune_fs with
-          | None ->
-            Dune_fs.load_jbuild_ignore file
-          | Some (loc, _) ->
-            Loc.fail loc
-              "It is not allowed to have both a fs stanza and a \
-               jbuild-ignore file in the same directory."
+        if raw_data then
+          (None, Dune_fs.default)
         else
-          match dune_fs with
-          | None -> Dune_fs.default
-          | Some (_, x) -> x
+          let dune_file =
+            match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
+            | [] -> None
+            | [fn] -> Some (Dune_file.load (Path.relative path fn))
+            | _ ->
+              die "Directory %s has both a 'dune' and 'jbuild' file.\n\
+                   This is not allowed"
+                (Path.to_string_maybe_quoted path)
+          in
+          let dune_file, dune_fs =
+            match dune_file with
+            | None | Some (Ocaml_script _) -> (dune_file, None)
+            | Some (Plain { path; sexps }) ->
+              let fs_stanzas, other =
+                List.partition_map sexps ~f:(function
+                  | List (loc, Atom (_, A "fs") :: sexps) -> Left (loc, sexps)
+                  | x -> Right x)
+              in
+              match fs_stanzas with
+              | [] -> (dune_file, None)
+              | _ :: (loc, _) :: _ ->
+                Loc.fail loc "Too many fs stanzas."
+              | [(loc, sexps)] ->
+                (Some (Plain { path; sexps = other }),
+                 Some (loc, Dune_fs.t sexps))
+          in
+          let dune_fs =
+            if String.Set.mem files "jbuild-ignore" then
+              let file = Path.relative path "jbuild-ignore" in
+              match dune_fs with
+              | None ->
+                Dune_fs.load_jbuild_ignore file
+              | Some (loc, _) ->
+                Loc.fail loc
+                  "It is not allowed to have both a fs stanza and a \
+                   jbuild-ignore file in the same directory."
+            else
+              match dune_fs with
+              | None -> Dune_fs.default
+              | Some (_, x) -> x
+          in
+          (dune_file, dune_fs)
       in
       let files =
         String.Set.filter files ~f:(fun fn ->

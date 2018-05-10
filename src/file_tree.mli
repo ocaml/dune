@@ -3,8 +3,18 @@
 open! Import
 
 module Dune_file : sig
+  module Plain : sig
+    (** [sexps] is mutable as we get of the S-expressions once they
+        have been parsed, in order to release the memory as soon as we
+        don't need them. *)
+    type t =
+      { path          : Path.t
+      ; mutable sexps : Sexp.Ast.t list
+      }
+  end
+
   type t =
-    | Sexps        of Path.t * Sexp.Ast.t list
+    | Plain of Plain.t
     | Ocaml_script of Path.t
 
   val path : t -> Path.t

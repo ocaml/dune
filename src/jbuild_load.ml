@@ -171,10 +171,14 @@ type conf =
 let interpret ~dir ~scope ~ignore_promoted_rules
       ~(dune_file:File_tree.Dune_file.t) =
   match dune_file with
-  | Sexps (file, sexps) ->
-    Jbuilds.Literal (dir, scope,
-                     Stanzas.parse scope sexps ~file
-                     |> filter_stanzas ~ignore_promoted_rules)
+  | Plain p ->
+    let jbuild =
+      Jbuilds.Literal (dir, scope,
+                       Stanzas.parse scope p.sexps ~file:p.path
+                       |> filter_stanzas ~ignore_promoted_rules)
+    in
+    p.sexps <- [];
+    jbuild
   | Ocaml_script file ->
     Script { dir; scope; file }
 

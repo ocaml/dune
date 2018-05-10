@@ -1,14 +1,21 @@
 open! Import
 
 module Dune_file = struct
+  module Plain = struct
+    type t =
+      { path          : Path.t
+      ; mutable sexps : Sexp.Ast.t list
+      }
+  end
+
   type t =
-    | Sexps        of Path.t * Sexp.Ast.t list
+    | Plain of Plain.t
     | Ocaml_script of Path.t
 
   let path = function
-    | Sexps        (p, _) -> p
-    | Ocaml_script  p     -> p
-  
+    | Plain x -> x.path
+    | Ocaml_script  p -> p
+
   let ocaml_script_prefix = "(* -*- tuareg -*- *)"
   let ocaml_script_prefix_len = String.length ocaml_script_prefix
 
@@ -26,7 +33,7 @@ module Dune_file = struct
         match input ic buf i (Io.buf_len - i) with
         | 0 ->
           let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
-          Sexps (file, Parser.feed_eoi state stack)
+          Plain { path = file; sexps = Parser.feed_eoi state stack }
         | n ->
           let i = i + n in
           if i < ocaml_script_prefix_len then
@@ -37,7 +44,7 @@ module Dune_file = struct
             Ocaml_script file
           else
             let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
-            Sexps (file, loop stack)
+            Plain { path = file; sexps = loop stack }
       in
       loop0 Parser.Stack.empty 0)
 end
@@ -209,9 +216,9 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
       let dune_file, dune_fs =
         match dune_file with
         | None | Some (Ocaml_script _) -> (dune_file, None)
-        | Some (Sexps (file, l)) ->
+        | Some (Plain { path; sexps }) ->
           let fs_stanzas, other =
-            List.partition_map l ~f:(function
+            List.partition_map sexps ~f:(function
               | List (loc, Atom (_, A "fs") :: sexps) -> Left (loc, sexps)
               | x -> Right x)
           in
@@ -220,7 +227,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
           | _ :: (loc, _) :: _ ->
             Loc.fail loc "Too many fs stanzas."
           | [(loc, sexps)] ->
-            (Some (Sexps (file, other)), Some (loc, Dune_fs.t sexps))
+            (Some (Plain { path; sexps = other }), Some (loc, Dune_fs.t sexps))
       in
       let dune_fs =
         if String.Set.mem files "jbuild-ignore" then

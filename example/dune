@@ -1,5 +1,8 @@
 (jbuild_version 1)
 
+(fs
+ (dir sample-projects raw_data))
+
 (alias
  ((name runtest)
   (deps ((package dune)

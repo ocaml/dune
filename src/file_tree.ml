@@ -1,5 +1,47 @@
 open! Import
 
+module Dune_file = struct
+  type t =
+    | Sexps        of Path.t * Sexp.Ast.t list
+    | Ocaml_script of Path.t
+
+  let path = function
+    | Sexps        (p, _) -> p
+    | Ocaml_script  p     -> p
+  
+  let ocaml_script_prefix = "(* -*- tuareg -*- *)"
+  let ocaml_script_prefix_len = String.length ocaml_script_prefix
+
+  let load file =
+    Io.with_file_in file ~f:(fun ic ->
+      let open Sexp in
+      let state = Parser.create ~fname:(Path.to_string file) ~mode:Many in
+      let buf = Bytes.create Io.buf_len in
+      let rec loop stack =
+        match input ic buf 0 Io.buf_len with
+        | 0 -> Parser.feed_eoi state stack
+        | n -> loop (Parser.feed_subbytes state buf ~pos:0 ~len:n stack)
+      in
+      let rec loop0 stack i =
+        match input ic buf i (Io.buf_len - i) with
+        | 0 ->
+          let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
+          Sexps (file, Parser.feed_eoi state stack)
+        | n ->
+          let i = i + n in
+          if i < ocaml_script_prefix_len then
+            loop0 stack i
+          else if Bytes.sub_string buf 0 ocaml_script_prefix_len
+                    [@warning "-6"]
+                  = ocaml_script_prefix then
+            Ocaml_script file
+          else
+            let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
+            Sexps (file, loop stack)
+      in
+      loop0 Parser.Stack.empty 0)
+end
+
 module Dune_fs = struct
   open Sexp.Of_sexp
 
@@ -73,9 +115,6 @@ module Dune_fs = struct
     let rev_entries = List.rev_map sexps ~f:entry in
     { rev_entries }
 
-  let load path =
-    t (Io.Sexp.load path ~mode:Many)
-
   let load_jbuild_ignore path =
     let rev_entries =
       List.rev_filter_mapi (Io.lines_of_file path) ~f:(fun i fn ->
@@ -103,9 +142,10 @@ module Dir = struct
     }
 
   and contents =
-    { files    : String.Set.t
-    ; sub_dirs : t String.Map.t
-    ; dune_fs  : Dune_fs.t
+    { files     : String.Set.t
+    ; sub_dirs  : t String.Map.t
+    ; dune_fs   : Dune_fs.t
+    ; dune_file : Dune_file.t option
     }
 
   let contents t = Lazy.force t.contents
@@ -113,8 +153,9 @@ module Dir = struct
   let path t = t.path
   let raw_data t = t.raw_data
 
-  let files    t = (contents t).files
-  let sub_dirs t = (contents t).sub_dirs
+  let files     t = (contents t).files
+  let sub_dirs  t = (contents t).sub_dirs
+  let dune_file t = (contents t).dune_file
 
   let file_paths t =
     Path.Set.of_string_set (files t) ~f:(Path.relative t.path)
@@ -134,16 +175,6 @@ module Dir = struct
       let acc = f t acc in
       String.Map.fold (sub_dirs t) ~init:acc ~f:(fun t acc ->
         fold t ~traverse_raw_data_dirs ~init:acc ~f)
-
-  let dune_file t =
-    let (lazy { files; dune_fs; _ }) = t.contents in
-    List.find_map ["dune"; "jbuild"] ~f:(fun fn ->
-      if String.Set.mem files fn then
-        match Dune_fs.find dune_fs fn ~is_directory:false with
-        | Standard -> Some (Path.relative t.path fn)
-        | _        -> None
-      else
-        None)
 end
 
 type t =
@@ -166,13 +197,45 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             Left fn)
       in
       let files = String.Set.of_list files in
+      let dune_file =
+        match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
+        | [] -> None
+        | [fn] -> Some (Dune_file.load (Path.relative path fn))
+        | _ ->
+          die "Directory %s has both a 'dune' and 'jbuild' file.\n\
+               This is not allowed"
+            (Path.to_string_maybe_quoted path)
+      in
+      let dune_file, dune_fs =
+        match dune_file with
+        | None | Some (Ocaml_script _) -> (dune_file, None)
+        | Some (Sexps (file, l)) ->
+          let fs_stanzas, other =
+            List.partition_map l ~f:(function
+              | List (loc, Atom (_, A "fs") :: sexps) -> Left (loc, sexps)
+              | x -> Right x)
+          in
+          match fs_stanzas with
+          | [] -> (dune_file, None)
+          | _ :: (loc, _) :: _ ->
+            Loc.fail loc "Too many fs stanzas."
+          | [(loc, sexps)] ->
+            (Some (Sexps (file, other)), Some (loc, Dune_fs.t sexps))
+      in
       let dune_fs =
-        if String.Set.mem files ".dune-fs" then
-          Dune_fs.load (Path.relative path ".dune-fs")
-        else if String.Set.mem files "jbuild-ignore" then
-          Dune_fs.load_jbuild_ignore (Path.relative path "jbuild-ignore")
+        if String.Set.mem files "jbuild-ignore" then
+          let file = Path.relative path "jbuild-ignore" in
+          match dune_fs with
+          | None ->
+            Dune_fs.load_jbuild_ignore file
+          | Some (loc, _) ->
+            Loc.fail loc
+              "It is not allowed to have both a fs stanza and a \
+               jbuild-ignore file in the same directory."
         else
-          Dune_fs.default
+          match dune_fs with
+          | None -> Dune_fs.default
+          | Some (_, x) -> x
       in
       let files =
         String.Set.filter files ~f:(fun fn ->
@@ -192,7 +255,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
           | None -> acc
           | Some raw_data -> String.Map.add acc fn (walk path ~raw_data))
       in
-      { Dir. files; sub_dirs; dune_fs })
+      { Dir. files; sub_dirs; dune_fs; dune_file })
     in
     { path
     ; contents

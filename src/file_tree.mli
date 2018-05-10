@@ -2,6 +2,14 @@
 
 open! Import
 
+module Dune_file : sig
+  type t =
+    | Sexps        of Path.t * Sexp.Ast.t list
+    | Ocaml_script of Path.t
+
+  val path : t -> Path.t
+end
+
 module Dir : sig
   type t
 
@@ -24,8 +32,8 @@ module Dir : sig
     -> f:(t -> 'a -> 'a)
     -> 'a
 
-  (** Return the dune (or jbuild) file in this directory *)
-  val dune_file : t -> Path.t option
+  (** Return the contents of the dune (or jbuild) file in this directory *)
+  val dune_file : t -> Dune_file.t option
 end
 
 (** A [t] value represent a view of the source tree. It is lazily

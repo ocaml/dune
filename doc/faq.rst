@@ -20,7 +20,7 @@ convenience, for the following reasons:
 How to add a configure step to a jbuilder project?
 ==================================================
 
-[example/sample-projects/with-configure-step](../example/sample-projects/with-configure-step)
+[example/sample-projects/with-configure-step](https://github.com/ocaml/dune/tree/master/example/sample-projects/with-configure-step)
 shows one way to do it which preserves composability; i.e. it doesn't require
 manually running `./configure` script when working on multiple projects at the
 same time.

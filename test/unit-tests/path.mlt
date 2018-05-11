@@ -161,8 +161,10 @@ Path.append (Path.of_string "/root") (Path.relative Path.build_dir "foo")
 - : Stdune.Path.t = /root/_build/foo
 |}]
 
-try Ok (Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz"))
-with e -> Error e
+Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz")
+[%%expect{|
+Exception: Stdune__Exn.Code_error <abstr>.
+|}]
 [%%expect{|
 - : (unit, exn) Stdune.result = Error (Stdune__Exn.Code_error _)
 |}]

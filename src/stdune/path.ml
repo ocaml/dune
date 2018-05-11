@@ -239,6 +239,9 @@ module Local = struct
     loop (to_list t) (to_list from)
 end
 
+let build_dir_relative_to_source = "_build"
+let build_dir_prefix = build_dir_relative_to_source ^ "/"
+
 module T : sig
   type t = private
     | External of External.t
@@ -268,7 +271,7 @@ end = struct
 
   let in_build_dir s = In_build_dir s
   let in_source_tree s =
-    if String.is_prefix s ~prefix:"_build/" then (
+    if String.is_prefix s ~prefix:build_dir_prefix then (
       Exn.code_error "in_source_tree: build dir isn't in source"
         [ "s", Sexp.To_sexp.string s ]
     ) else if not (Filename.is_relative s) then (
@@ -313,9 +316,6 @@ module Kind = struct
     | External _ -> false
     | Local _ -> true
 end
-
-let build_dir_relative_to_source = "_build"
-let build_dir_prefix = build_dir_relative_to_source ^ "/"
 
 let kind = function
   | In_build_dir s -> Kind.Local (Local.relative build_dir_relative_to_source s)

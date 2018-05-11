@@ -311,10 +311,6 @@ module Kind = struct
     | Local "" -> "."
     | Local t
     | External t -> t
-
-  let is_local = function
-    | External _ -> false
-    | Local _ -> true
 end
 
 let kind = function
@@ -324,7 +320,10 @@ let kind = function
 
 let is_local_fn t = t = "" || Filename.is_relative t
 
-let is_local t = Kind.is_local (kind t)
+let is_local = function
+  | In_build_dir _
+  | In_source_tree _ -> true
+  | External _ -> false
 
 let to_string t = Kind.to_string (kind t)
 

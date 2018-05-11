@@ -165,6 +165,23 @@ Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz")
 [%%expect{|
 Exception: Stdune__Exn.Code_error <abstr>.
 |}]
+
+Path.drop_build_context (Path.relative Path.build_dir "foo/bar")
 [%%expect{|
-- : (unit, exn) Stdune.result = Error (Stdune__Exn.Code_error _)
+- : Stdune.Path.t option = Some bar
+|}]
+
+Path.drop_build_context (Path.of_string "foo/bar")
+[%%expect{|
+- : Stdune.Path.t option = None
+|}]
+
+Path.drop_build_context (Path.absolute "/foo/bar")
+[%%expect{|
+- : Stdune.Path.t option = None
+|}]
+
+Path.drop_build_context Path.build_dir
+[%%expect{|
+- : Stdune.Path.t option = None
 |}]

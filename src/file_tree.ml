@@ -1,24 +1,168 @@
 open! Import
 
+module Dune_file = struct
+  module Plain = struct
+    type t =
+      { path          : Path.t
+      ; mutable sexps : Sexp.Ast.t list
+      }
+  end
+
+  type t =
+    | Plain of Plain.t
+    | Ocaml_script of Path.t
+
+  let path = function
+    | Plain x -> x.path
+    | Ocaml_script  p -> p
+
+  let ocaml_script_prefix = "(* -*- tuareg -*- *)"
+  let ocaml_script_prefix_len = String.length ocaml_script_prefix
+
+  let load file =
+    Io.with_file_in file ~f:(fun ic ->
+      let open Sexp in
+      let state = Parser.create ~fname:(Path.to_string file) ~mode:Many in
+      let buf = Bytes.create Io.buf_len in
+      let rec loop stack =
+        match input ic buf 0 Io.buf_len with
+        | 0 -> Parser.feed_eoi state stack
+        | n -> loop (Parser.feed_subbytes state buf ~pos:0 ~len:n stack)
+      in
+      let rec loop0 stack i =
+        match input ic buf i (Io.buf_len - i) with
+        | 0 ->
+          let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
+          Plain { path = file; sexps = Parser.feed_eoi state stack }
+        | n ->
+          let i = i + n in
+          if i < ocaml_script_prefix_len then
+            loop0 stack i
+          else if Bytes.sub_string buf 0 ocaml_script_prefix_len
+                    [@warning "-6"]
+                  = ocaml_script_prefix then
+            Ocaml_script file
+          else
+            let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
+            Plain { path = file; sexps = loop stack }
+      in
+      loop0 Parser.Stack.empty 0)
+end
+
+module Dune_fs = struct
+  open Sexp.Of_sexp
+
+  type kind =
+    | File
+    | Dir
+    | Any
+
+  type what =
+    | Standard
+    | Raw_data
+    | Ignore
+
+  type entry =
+    { kind : kind
+    ; glob : Re.re
+    ; what : what
+    }
+
+  type t = { rev_entries : entry list } [@@unboxed]
+
+  let find =
+    let rec aux rev_entries fn ~is_directory =
+      match rev_entries with
+      | [] ->
+        if fn = "" || fn = "." ||
+           (is_directory && (fn.[0] = '.' || fn.[0] = '_')) ||
+           (fn.[0] = '.' && fn.[1] = '#')
+        then
+          Ignore
+        else
+          Standard
+      | e :: rest ->
+        if (match e.kind with
+          | File -> not is_directory
+          | Dir  -> is_directory
+          | Any  -> true) &&
+           Re.execp e.glob fn then
+          e.what
+        else
+          aux rest fn ~is_directory
+    in
+    fun t fn ~is_directory ->
+      aux t.rev_entries fn ~is_directory
+
+  let kind =
+    enum
+      [ "file" , File
+      ; "dir"  , Dir
+      ; "_"    , Any
+      ]
+
+  let what =
+    enum
+      [ "standard" , Standard
+      ; "raw_data" , Raw_data
+      ; "ignore"   , Ignore
+      ]
+
+  let glob sexp =
+    let s = string sexp in
+    match Glob_lexer.parse_string s with
+    | Ok re -> Re.compile re
+    | Error (_pos, msg) -> of_sexp_errorf sexp "invalid glob: %s" msg
+
+  let entry sexp =
+    let kind, glob, what = triple kind glob what sexp in
+    { kind; glob; what }
+
+  let t sexps =
+    let rev_entries = List.rev_map sexps ~f:entry in
+    { rev_entries }
+
+  let load_jbuild_ignore path =
+    let rev_entries =
+      List.rev_filter_mapi (Io.lines_of_file path) ~f:(fun i fn ->
+        if Filename.dirname fn = Filename.current_dir_name then
+          Some { kind = Dir; glob = Re.compile (Re.str fn); what = Raw_data }
+        else begin
+          Loc.(warn (of_pos ( Path.to_string path
+                            , i + 1, 0
+                            , String.length fn
+                            ))
+                 "subdirectory expression %s ignored" fn);
+          None
+        end)
+    in
+    { rev_entries }
+
+  let default = { rev_entries = [] }
+end
+
 module Dir = struct
   type t =
     { path     : Path.t
-    ; ignored  : bool
+    ; raw_data : bool
     ; contents : contents Lazy.t
     }
 
   and contents =
-    { files    : String.Set.t
-    ; sub_dirs : t String.Map.t
+    { files     : String.Set.t
+    ; sub_dirs  : t String.Map.t
+    ; dune_fs   : Dune_fs.t
+    ; dune_file : Dune_file.t option
     }
 
   let contents t = Lazy.force t.contents
 
   let path t = t.path
-  let ignored t = t.ignored
+  let raw_data t = t.raw_data
 
-  let files    t = (contents t).files
-  let sub_dirs t = (contents t).sub_dirs
+  let files     t = (contents t).files
+  let sub_dirs  t = (contents t).sub_dirs
+  let dune_file t = (contents t).dune_file
 
   let file_paths t =
     Path.Set.of_string_set (files t) ~f:(Path.relative t.path)
@@ -31,22 +175,13 @@ module Dir = struct
     String.Map.foldi (sub_dirs t) ~init:Path.Set.empty
       ~f:(fun s _ acc -> Path.Set.add acc (Path.relative t.path s))
 
-  let rec fold t ~traverse_ignored_dirs ~init:acc ~f =
-    if not traverse_ignored_dirs && t.ignored then
+  let rec fold t ~traverse_raw_data_dirs ~init:acc ~f =
+    if not traverse_raw_data_dirs && t.raw_data then
       acc
     else
       let acc = f t acc in
       String.Map.fold (sub_dirs t) ~init:acc ~f:(fun t acc ->
-        fold t ~traverse_ignored_dirs ~init:acc ~f)
-
-  let dune_file t =
-    let (lazy { files; _ }) = t.contents in
-    if String.Set.mem files "dune" then
-      Some (Path.relative t.path "dune")
-    else if String.Set.mem files "jbuild" then
-      Some (Path.relative t.path "jbuild")
-    else
-      None
+        fold t ~traverse_raw_data_dirs ~init:acc ~f)
 end
 
 type t =
@@ -56,71 +191,98 @@ type t =
 
 let root t = t.root
 
-let ignore_file fn ~is_directory =
-  fn = "" || fn = "." ||
-  (is_directory && (fn.[0] = '.' || fn.[0] = '_')) ||
-  (fn.[0] = '.' && fn.[1] = '#')
-
 let load ?(extra_ignored_subtrees=Path.Set.empty) path =
-  let rec walk path ~ignored : Dir.t =
+  let rec walk path ~raw_data : Dir.t =
     let contents = lazy (
       let files, sub_dirs =
         Path.readdir path
-        |> List.filter_partition_map ~f:(fun fn ->
+        |> List.partition_map ~f:(fun fn ->
           let path = Path.relative path fn in
-          let is_directory = Path.is_directory path in
-          if ignore_file fn ~is_directory then
-            Skip
-          else if is_directory then
+          if Path.is_directory path then
             Right (fn, path)
           else
             Left fn)
       in
       let files = String.Set.of_list files in
-      let ignored_sub_dirs =
-        if not ignored && String.Set.mem files "jbuild-ignore" then
-          let ignore_file = Path.relative path "jbuild-ignore" in
-          let files =
-            Io.lines_of_file ignore_file
-          in
-          let remove_subdirs index fn =
-            if Filename.dirname fn = Filename.current_dir_name then
-              true
-            else begin
-              Loc.(warn (of_pos ( Path.to_string ignore_file
-                                , index + 1, 0, String.length fn))
-                     "subdirectory expression %s ignored" fn);
-              false
-            end
-          in
-          String.Set.of_list (List.filteri ~f:remove_subdirs files)
+      let dune_file, dune_fs =
+        if raw_data then
+          (None, Dune_fs.default)
         else
-          String.Set.empty
+          let dune_file =
+            match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
+            | [] -> None
+            | [fn] -> Some (Dune_file.load (Path.relative path fn))
+            | _ ->
+              die "Directory %s has both a 'dune' and 'jbuild' file.\n\
+                   This is not allowed"
+                (Path.to_string_maybe_quoted path)
+          in
+          let dune_file, dune_fs =
+            match dune_file with
+            | None | Some (Ocaml_script _) -> (dune_file, None)
+            | Some (Plain { path; sexps }) ->
+              let fs_stanzas, other =
+                List.partition_map sexps ~f:(function
+                  | List (loc, Atom (_, A "fs") :: sexps) -> Left (loc, sexps)
+                  | x -> Right x)
+              in
+              match fs_stanzas with
+              | [] -> (dune_file, None)
+              | _ :: (loc, _) :: _ ->
+                Loc.fail loc "Too many fs stanzas."
+              | [(loc, sexps)] ->
+                (Some (Plain { path; sexps = other }),
+                 Some (loc, Dune_fs.t sexps))
+          in
+          let dune_fs =
+            if String.Set.mem files "jbuild-ignore" then
+              let file = Path.relative path "jbuild-ignore" in
+              match dune_fs with
+              | None ->
+                Dune_fs.load_jbuild_ignore file
+              | Some (loc, _) ->
+                Loc.fail loc
+                  "It is not allowed to have both a fs stanza and a \
+                   jbuild-ignore file in the same directory."
+            else
+              match dune_fs with
+              | None -> Dune_fs.default
+              | Some (_, x) -> x
+          in
+          (dune_file, dune_fs)
+      in
+      let files =
+        String.Set.filter files ~f:(fun fn ->
+          match Dune_fs.find dune_fs fn ~is_directory:false with
+          | Ignore              -> false
+          | Standard | Raw_data -> true)
       in
       let sub_dirs =
-        List.map sub_dirs ~f:(fun (fn, path) ->
-          let ignored =
-            ignored
-            || String.Set.mem ignored_sub_dirs fn
-            || Path.Set.mem extra_ignored_subtrees path
-          in
-          (fn, walk path ~ignored))
-        |> String.Map.of_list_exn
+        List.fold_left sub_dirs ~init:String.Map.empty ~f:(fun acc (fn, path) ->
+          match
+            match Dune_fs.find dune_fs fn ~is_directory:true with
+            | Ignore   -> None
+            | Standard -> Some (raw_data ||
+                                Path.Set.mem extra_ignored_subtrees path)
+            | Raw_data -> Some true
+          with
+          | None -> acc
+          | Some raw_data -> String.Map.add acc fn (walk path ~raw_data))
       in
-      { Dir. files; sub_dirs })
+      { Dir. files; sub_dirs; dune_fs; dune_file })
     in
     { path
     ; contents
-    ; ignored
+    ; raw_data
     }
   in
-  let root = walk path ~ignored:false in
+  let root = walk path ~raw_data:false in
   let dirs = Hashtbl.create 1024      in
   Hashtbl.add dirs Path.root root;
   { root; dirs }
 
-let fold t ~traverse_ignored_dirs ~init ~f =
-  Dir.fold t.root ~traverse_ignored_dirs ~init ~f
+let fold t ~traverse_raw_data_dirs ~init ~f =
+  Dir.fold t.root ~traverse_raw_data_dirs ~init ~f
 
 let rec find_dir t path =
   if not (Path.is_local path) then
@@ -166,7 +328,7 @@ let files_recursively_in t ?(prefix_with=Path.root) path =
   match find_dir t path with
   | None -> Path.Set.empty
   | Some dir ->
-    Dir.fold dir ~init:Path.Set.empty ~traverse_ignored_dirs:true
+    Dir.fold dir ~init:Path.Set.empty ~traverse_raw_data_dirs:true
       ~f:(fun dir acc ->
         let path = Path.append prefix_with (Dir.path dir) in
         String.Set.fold (Dir.files dir) ~init:acc ~f:(fun fn acc ->

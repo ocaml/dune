@@ -107,6 +107,14 @@
     (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
 
 (alias
+ ((name fs-stanza)
+  (deps ((package dune) (files_recursively_in test-cases/fs-stanza)))
+  (action
+   (chdir
+    test-cases/fs-stanza
+    (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+
+(alias
  ((name gen-opam-install-file)
   (deps
    ((package dune) (files_recursively_in test-cases/gen-opam-install-file)))
@@ -490,6 +498,7 @@
     (alias exec-cmd)
     (alias findlib)
     (alias force-test)
+    (alias fs-stanza)
     (alias gen-opam-install-file)
     (alias github20)
     (alias github24)
@@ -547,6 +556,7 @@
     (alias exec-cmd)
     (alias findlib)
     (alias force-test)
+    (alias fs-stanza)
     (alias gen-opam-install-file)
     (alias github20)
     (alias github24)

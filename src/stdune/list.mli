@@ -8,6 +8,9 @@ val filter_map : 'a t -> f:('a -> 'b option) -> 'b t
 
 val filteri : 'a t -> f:(int -> 'a -> bool) -> 'a t
 
+val rev_filter_map  : 'a t -> f:(       'a -> 'b option) -> 'b t
+val rev_filter_mapi : 'a t -> f:(int -> 'a -> 'b option) -> 'b t
+
 val concat_map : 'a t -> f:('a -> 'b t) -> 'b t
 
 val     partition_map : 'a t -> f:('a -> ('b, 'c) Either.t) -> 'b t * 'c t

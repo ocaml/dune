@@ -134,7 +134,7 @@ let rule_loc ~file_tree ~loc ~dir =
         Option.bind (File_tree.find_dir file_tree dir)
           ~f:File_tree.Dir.dune_file
       with
-      | Some file -> file
+      | Some file -> File_tree.Dune_file.path file
       | None      -> Path.relative dir "_unknown_"
     in
     Loc.in_file (Path.to_string file)
@@ -263,7 +263,7 @@ module Alias0 = struct
   open Build.O
 
   let dep_rec_internal ~name ~dir ~ctx_dir =
-    File_tree.Dir.fold dir ~traverse_ignored_dirs:false ~init:(Build.return true)
+    File_tree.Dir.fold dir ~traverse_raw_data_dirs:false ~init:(Build.return true)
       ~f:(fun dir acc ->
         let path = Path.append ctx_dir (File_tree.Dir.path dir) in
         let fn = stamp_file (make ~dir:path name) in
@@ -1168,7 +1168,7 @@ end
 
 let all_targets t =
   String.Map.iter t.contexts ~f:(fun ctx ->
-    File_tree.fold t.file_tree ~traverse_ignored_dirs:true ~init:()
+    File_tree.fold t.file_tree ~traverse_raw_data_dirs:true ~init:()
       ~f:(fun dir () ->
         load_dir t
           ~dir:(Path.append ctx.Context.build_dir (File_tree.Dir.path dir))));

@@ -168,58 +168,24 @@ type conf =
   ; scopes    : Scope_info.t list
   }
 
-module Sexp_io = struct
-  open Sexp
-
-  let ocaml_script_prefix = "(* -*- tuareg -*- *)"
-  let ocaml_script_prefix_len = String.length ocaml_script_prefix
-
-  type sexps_or_ocaml_script =
-    | Sexps of Ast.t list
-    | Ocaml_script
-
-  let load_many_or_ocaml_script fname =
-    Io.with_file_in fname ~f:(fun ic ->
-      let state = Parser.create ~fname:(Path.to_string fname) ~mode:Many in
-      let buf = Bytes.create Io.buf_len in
-      let rec loop stack =
-        match input ic buf 0 Io.buf_len with
-        | 0 -> Parser.feed_eoi state stack
-        | n -> loop (Parser.feed_subbytes state buf ~pos:0 ~len:n stack)
-      in
-      let rec loop0 stack i =
-        match input ic buf i (Io.buf_len - i) with
-        | 0 ->
-          let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
-          Sexps (Parser.feed_eoi state stack)
-        | n ->
-          let i = i + n in
-          if i < ocaml_script_prefix_len then
-            loop0 stack i
-          else if Bytes.sub_string buf 0 ocaml_script_prefix_len
-                    [@warning "-6"]
-                  = ocaml_script_prefix then
-            Ocaml_script
-          else
-            let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
-            Sexps (loop stack)
-      in
-      loop0 Parser.Stack.empty 0)
-end
-
-let load ~dir ~scope ~ignore_promoted_rules ~file =
-  match Sexp_io.load_many_or_ocaml_script file with
-  | Sexps sexps ->
-    Jbuilds.Literal (dir, scope,
-                     Stanzas.parse scope sexps ~file
-                     |> filter_stanzas ~ignore_promoted_rules)
-  | Ocaml_script ->
+let interpret ~dir ~scope ~ignore_promoted_rules
+      ~(dune_file:File_tree.Dune_file.t) =
+  match dune_file with
+  | Plain p ->
+    let jbuild =
+      Jbuilds.Literal (dir, scope,
+                       Stanzas.parse scope p.sexps ~file:p.path
+                       |> filter_stanzas ~ignore_promoted_rules)
+    in
+    p.sexps <- [];
+    jbuild
+  | Ocaml_script file ->
     Script { dir; scope; file }
 
 let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
   let ftree = File_tree.load Path.root ?extra_ignored_subtrees in
   let packages =
-    File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[] ~f:(fun dir pkgs ->
+    File_tree.fold ftree ~traverse_raw_data_dirs:false ~init:[] ~f:(fun dir pkgs ->
       let path = File_tree.Dir.path dir in
       let files = File_tree.Dir.files dir in
       String.Set.fold files ~init:pkgs ~f:(fun fn acc ->
@@ -259,7 +225,7 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
   in
 
   let projects =
-    File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[]
+    File_tree.fold ftree ~traverse_raw_data_dirs:false ~init:[]
       ~f:(fun dir acc ->
         let path = File_tree.Dir.path dir in
         let files = File_tree.Dir.files dir in
@@ -294,7 +260,7 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
       Path.Map.add scopes Path.root Scope_info.anonymous
   in
   let rec walk dir jbuilds scope =
-    if File_tree.Dir.ignored dir then
+    if File_tree.Dir.raw_data dir then
       jbuilds
     else begin
       let path = File_tree.Dir.path dir in
@@ -303,9 +269,9 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
       let jbuilds =
         match File_tree.Dir.dune_file dir with
         | None -> jbuilds
-        | Some file ->
+        | Some dune_file ->
           let jbuild =
-            load ~dir:path ~scope ~ignore_promoted_rules ~file
+            interpret ~dir:path ~scope ~ignore_promoted_rules ~dune_file
           in
           jbuild :: jbuilds
       in

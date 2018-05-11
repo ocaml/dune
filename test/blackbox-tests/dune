@@ -1,5 +1,8 @@
 (jbuild_version 1)
 
+(fs
+ (dir test-cases raw_data))
+
 (library
  ((name platform)
   (modules (platform))

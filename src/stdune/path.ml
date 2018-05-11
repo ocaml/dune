@@ -206,7 +206,7 @@ module Local = struct
       let of_len = String.length of_ in
       let t_len = String.length t in
       (t_len = of_len && t = of_) ||
-      (t_len >= of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_)
+      (t_len > of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_)
 
   let reach t ~from =
     let rec loop t from =

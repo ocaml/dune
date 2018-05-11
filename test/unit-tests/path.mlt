@@ -20,6 +20,71 @@ Path.(descendant (relative root "foo") ~of_:(relative root "bar"))
 - : Stdune.Path.t option = None
 |}]
 
+Path.(is_descendant (r "foo") ~of_:(r "foo"))
+[%%expect{|
+- : bool = true
+|}]
+
+Path.(is_descendant (r "foo") ~of_:(r "foo/"))
+[%%expect{|
+- : bool = true
+|}]
+
+Path.(is_descendant (r "foo/") ~of_:(r "foo"))
+[%%expect{|
+- : bool = true
+|}]
+
+Path.(is_descendant (r "foo") ~of_:(r "bar"))
+[%%expect{|
+- : bool = false
+|}]
+
+Path.(is_descendant (r "foo") ~of_:(r "bar/"))
+[%%expect{|
+- : bool = false
+|}]
+
+Path.(is_descendant (r "foo/") ~of_:(r "bar"))
+[%%expect{|
+- : bool = false
+|}]
+
+Path.(is_descendant (r "glob/foo") ~of_:(r "glob"))
+[%%expect{|
+- : bool = true
+|}]
+
+Path.(is_descendant (r "glob/foo") ~of_:(r "glob/"))
+[%%expect{|
+- : bool = true
+|}]
+
+Path.(is_descendant (Path.absolute "/foo/bar") ~of_:(Path.absolute "/foo"))
+[%%expect{|
+- : bool = false
+|}]
+
+Path.(is_descendant (Path.absolute "/foo/bar") ~of_:(Path.absolute "/foo/bar"))
+[%%expect{|
+- : bool = false
+|}]
+
+Path.(is_descendant (Path.absolute "/foo/bar") ~of_:(Path.absolute "/foo/bar/"))
+[%%expect{|
+- : bool = false
+|}]
+
+Path.(is_descendant (Path.absolute "/foo/bar/") ~of_:(Path.absolute "/foo/bar"))
+[%%expect{|
+- : bool = false
+|}]
+
+Path.(is_descendant (Path.absolute "/foo/bar") ~of_:(Path.absolute "/"))
+[%%expect{|
+- : bool = false
+|}]
+
 Path.(descendant (r "foo") ~of_:(r "foo/"))
 [%%expect{|
 - : Stdune.Path.t option = Some foo

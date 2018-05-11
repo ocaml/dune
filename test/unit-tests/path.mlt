@@ -37,17 +37,17 @@ Path.(is_descendant (r "foo/") ~of_:(r "foo"))
 
 Path.(is_descendant (r "foo") ~of_:(r "bar"))
 [%%expect{|
-Exception: Invalid_argument "index out of bounds".
+- : bool = false
 |}]
 
 Path.(is_descendant (r "foo") ~of_:(r "bar/"))
 [%%expect{|
-Exception: Invalid_argument "index out of bounds".
+- : bool = false
 |}]
 
 Path.(is_descendant (r "foo/") ~of_:(r "bar"))
 [%%expect{|
-Exception: Invalid_argument "index out of bounds".
+- : bool = false
 |}]
 
 Path.(is_descendant (r "glob/foo") ~of_:(r "glob"))

@@ -156,7 +156,16 @@ let ignore_file fn ~is_directory =
   (fn.[0] = '.' && fn.[1] = '#')
 
 let load ?(extra_ignored_subtrees=Path.Set.empty) path =
-  let rec walk path ~project ~ignored : Dir.t =
+  let rec walk seen_real_paths path ~project ~ignored : Dir.t =
+    let realpath =
+      try Path.of_string (Unix.readlink (Path.to_string path))
+      with Unix.Unix_error (_, _, _) -> path
+    in
+    if List.mem realpath ~set:seen_real_paths then
+      die "Path %s has already been scanned. \
+           Cannot scan it again through symlink %s"
+        (Path.to_string_maybe_quoted realpath)
+        (Path.to_string_maybe_quoted path);
     let contents = lazy (
       let files, sub_dirs =
         Path.readdir path
@@ -209,7 +218,8 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             || String.Set.mem ignored_subdirs fn
             || Path.Set.mem extra_ignored_subtrees path
           in
-          String.Map.add acc fn (walk path ~project ~ignored))
+          String.Map.add acc fn
+            (walk (realpath :: seen_real_paths) path ~project ~ignored))
       in
       { Dir. files; sub_dirs; dune_file; project })
     in
@@ -218,7 +228,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
     ; ignored
     }
   in
-  let root = walk path ~ignored:false ~project:None in
+  let root = walk [] path ~ignored:false ~project:None in
   let dirs = Hashtbl.create 1024      in
   Hashtbl.add dirs Path.root root;
   { root; dirs }

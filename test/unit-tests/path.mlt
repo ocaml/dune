@@ -115,6 +115,36 @@ Path.(descendant (r "foo") ~of_:Path.root)
 - : Stdune.Path.t option = Some foo
 |}]
 
+Path.(descendant (relative build_dir "foo") ~of_:root)
+[%%expect{|
+- : Stdune.Path.t option = Some _build/foo
+|}]
+
+Path.(descendant (relative build_dir "foo") ~of_:(absolute "/foo/bar"))
+[%%expect{|
+- : Stdune.Path.t option = None
+|}]
+
+Path.(descendant (relative build_dir "foo/bar") ~of_:build_dir)
+[%%expect{|
+- : Stdune.Path.t option = Some foo/bar
+|}]
+
+Path.(descendant (relative build_dir "foo/bar") ~of_:(relative build_dir "foo"))
+[%%expect{|
+- : Stdune.Path.t option = Some bar
+|}]
+
+Path.(descendant (relative build_dir "foo/bar") ~of_:(relative build_dir "foo"))
+[%%expect{|
+- : Stdune.Path.t option = Some bar
+|}]
+
+Path.(descendant (absolute "/foo/bar") ~of_:(absolute "/foo"))
+[%%expect{|
+- : Stdune.Path.t option = None
+|}]
+
 Path.explode (Path.of_string "a/b/c");
 [%%expect{|
 - : string list option = Some ["a"; "b"; "c"]

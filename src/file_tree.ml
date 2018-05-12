@@ -1,5 +1,104 @@
 open! Import
 
+module Dune_file = struct
+  module Plain = struct
+    type t =
+      { path          : Path.t
+      ; mutable sexps : Sexp.Ast.t list
+      }
+  end
+
+  type t =
+    | Plain of Plain.t
+    | Ocaml_script of Path.t
+
+  let path = function
+    | Plain x -> x.path
+    | Ocaml_script  p -> p
+
+  let ocaml_script_prefix = "(* -*- tuareg -*- *)"
+  let ocaml_script_prefix_len = String.length ocaml_script_prefix
+
+  let extract_ignored_subdirs =
+    let stanza =
+      let open Sexp.Of_sexp in
+      let sub_dir sexp =
+        let dn = string sexp in
+        if Filename.dirname dn <> Filename.current_dir_name ||
+           match string sexp with
+           | "" | "." | ".." -> true
+           | _ -> false
+        then
+          of_sexp_errorf sexp "Invalid sub-directory name %S" dn
+        else
+          dn
+      in
+      sum
+        [ cstr "ignored_subdirs" (list sub_dir @> nil) String.Set.of_list
+        ]
+    in
+    fun sexps ->
+      let ignored_subdirs, sexps =
+        List.partition_map sexps ~f:(fun sexp ->
+          match (sexp : Sexp.Ast.t) with
+          | List (_, (Atom (_, A "ignored_subdirs") :: _)) ->
+            Left (stanza sexp)
+          | _ -> Right sexp)
+      in
+      let ignored_subdirs =
+        List.fold_left ignored_subdirs ~init:String.Set.empty ~f:String.Set.union
+      in
+      (ignored_subdirs, sexps)
+
+  let load file =
+    Io.with_file_in file ~f:(fun ic ->
+      let open Sexp in
+      let state = Parser.create ~fname:(Path.to_string file) ~mode:Many in
+      let buf = Bytes.create Io.buf_len in
+      let rec loop stack =
+        match input ic buf 0 Io.buf_len with
+        | 0 -> stack
+        | n -> loop (Parser.feed_subbytes state buf ~pos:0 ~len:n stack)
+      in
+      let finish stack =
+        let sexps = Parser.feed_eoi state stack in
+        let ignored_subdirs, sexps = extract_ignored_subdirs sexps in
+        (Plain { path = file; sexps },
+         ignored_subdirs)
+      in
+     let rec loop0 stack i =
+        match input ic buf i (Io.buf_len - i) with
+        | 0 ->
+          finish (Parser.feed_subbytes state buf ~pos:0 ~len:i stack)
+        | n ->
+          let i = i + n in
+          if i < ocaml_script_prefix_len then
+            loop0 stack i
+          else if Bytes.sub_string buf 0 ocaml_script_prefix_len
+                    [@warning "-6"]
+                  = ocaml_script_prefix then
+            (Ocaml_script file, String.Set.empty)
+          else
+            let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
+            finish (loop stack)
+      in
+      loop0 Parser.Stack.empty 0)
+end
+
+let load_jbuild_ignore path =
+  List.filteri (Io.lines_of_file path) ~f:(fun i fn ->
+    if Filename.dirname fn = Filename.current_dir_name then
+      true
+    else begin
+      Loc.(warn (of_pos ( Path.to_string path
+                        , i + 1, 0
+                        , String.length fn
+                        ))
+             "subdirectory expression %s ignored" fn);
+      false
+    end)
+  |> String.Set.of_list
+
 module Dir = struct
   type t =
     { path     : Path.t
@@ -8,8 +107,9 @@ module Dir = struct
     }
 
   and contents =
-    { files    : String.Set.t
-    ; sub_dirs : t String.Map.t
+    { files     : String.Set.t
+    ; sub_dirs  : t String.Map.t
+    ; dune_file : Dune_file.t option
     }
 
   let contents t = Lazy.force t.contents
@@ -17,8 +117,9 @@ module Dir = struct
   let path t = t.path
   let ignored t = t.ignored
 
-  let files    t = (contents t).files
-  let sub_dirs t = (contents t).sub_dirs
+  let files     t = (contents t).files
+  let sub_dirs  t = (contents t).sub_dirs
+  let dune_file t = (contents t).dune_file
 
   let file_paths t =
     Path.Set.of_string_set (files t) ~f:(Path.relative t.path)
@@ -38,15 +139,6 @@ module Dir = struct
       let acc = f t acc in
       String.Map.fold (sub_dirs t) ~init:acc ~f:(fun t acc ->
         fold t ~traverse_ignored_dirs ~init:acc ~f)
-
-  let dune_file t =
-    let (lazy { files; _ }) = t.contents in
-    if String.Set.mem files "dune" then
-      Some (Path.relative t.path "dune")
-    else if String.Set.mem files "jbuild" then
-      Some (Path.relative t.path "jbuild")
-    else
-      None
 end
 
 type t =
@@ -77,37 +169,42 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             Left fn)
       in
       let files = String.Set.of_list files in
-      let ignored_sub_dirs =
-        if not ignored && String.Set.mem files "jbuild-ignore" then
-          let ignore_file = Path.relative path "jbuild-ignore" in
-          let files =
-            Io.lines_of_file ignore_file
-          in
-          let remove_subdirs index fn =
-            if Filename.dirname fn = Filename.current_dir_name then
-              true
-            else begin
-              Loc.(warn (of_pos ( Path.to_string ignore_file
-                                , index + 1, 0, String.length fn))
-                     "subdirectory expression %s ignored" fn);
-              false
-            end
-          in
-          String.Set.of_list (List.filteri ~f:remove_subdirs files)
+      let dune_file, ignored_subdirs =
+        if ignored then
+          (None, String.Set.empty)
         else
-          String.Set.empty
+          let dune_file, ignored_subdirs =
+            match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
+            | [] -> (None, String.Set.empty)
+            | [fn] ->
+              let dune_file, ignored_subdirs =
+                Dune_file.load (Path.relative path fn)
+              in
+              (Some dune_file, ignored_subdirs)
+            | _ ->
+              die "Directory %s has both a 'dune' and 'jbuild' file.\n\
+                   This is not allowed"
+                (Path.to_string_maybe_quoted path)
+          in
+          let ignored_subdirs =
+            if String.Set.mem files "jbuild-ignore" then
+              String.Set.union ignored_subdirs
+                (load_jbuild_ignore (Path.relative path "jbuild-ignore"))
+            else
+              ignored_subdirs
+          in
+          (dune_file, ignored_subdirs)
       in
       let sub_dirs =
-        List.map sub_dirs ~f:(fun (fn, path) ->
+        List.fold_left sub_dirs ~init:String.Map.empty ~f:(fun acc (fn, path) ->
           let ignored =
             ignored
-            || String.Set.mem ignored_sub_dirs fn
+            || String.Set.mem ignored_subdirs fn
             || Path.Set.mem extra_ignored_subtrees path
           in
-          (fn, walk path ~ignored))
-        |> String.Map.of_list_exn
+          String.Map.add acc fn (walk path ~ignored))
       in
-      { Dir. files; sub_dirs })
+      { Dir. files; sub_dirs; dune_file })
     in
     { path
     ; contents

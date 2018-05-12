@@ -218,6 +218,14 @@
     (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
 
 (alias
+ ((name ignored_subdirs)
+  (deps ((package dune) (files_recursively_in test-cases/ignored_subdirs)))
+  (action
+   (chdir
+    test-cases/ignored_subdirs
+    (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+
+(alias
  ((name include-loop)
   (deps ((package dune) (files_recursively_in test-cases/include-loop)))
   (action
@@ -503,6 +511,7 @@
     (alias github734)
     (alias github759)
     (alias github761)
+    (alias ignored_subdirs)
     (alias include-loop)
     (alias inline_tests)
     (alias installable-dup-private-libs)
@@ -558,6 +567,7 @@
     (alias github734)
     (alias github759)
     (alias github761)
+    (alias ignored_subdirs)
     (alias include-loop)
     (alias inline_tests)
     (alias installable-dup-private-libs)

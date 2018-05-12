@@ -732,6 +732,21 @@ directory. You can use ``_`` to match any build profile.
 Currently ``<settings>`` can be any OCaml flags field, see `OCaml
 flags`_ for more details.
 
+ignored_subdirs
+---------------
+
+The ``ignored_subdirs`` stanza allows to tell Dune to ignore one or
+more sub-directories. The syntax is as follow:
+
+.. code:: scheme
+
+     (ignored_subdirs (<sub-dir1> <sub-dir2> ...))
+
+A directory that is ignored will not be eagerly scanned by Dune. Any
+``dune`` or other special files in it won't be interpreted either and
+will be treated as raw data. It is however possible to depend on files
+inside ignored sub-directories.
+
 Common items
 ============
 

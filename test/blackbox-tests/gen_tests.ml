@@ -104,6 +104,7 @@ let exclusions =
   ; make "menhir"~external_deps:true
   ; make "utop"~external_deps:true
   ; make "configurator" ~skip_platforms:[Win]
+  ; make "github764" ~skip_platforms:[Win]
   ]
 
 let all_tests = lazy (

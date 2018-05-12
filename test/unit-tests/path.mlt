@@ -210,10 +210,9 @@ Path.is_local (Path.absolute "relative/path")
 - : bool = false
 |}]
 
-try Ok (Path.insert_after_build_dir_exn Path.root "foobar")
-with e -> Error e
+Path.insert_after_build_dir_exn Path.root "foobar"
 [%%expect{|
-- : (Stdune.Path.t, exn) Stdune.result = Error (Stdune__Exn.Code_error _)
+Exception: Stdune__Exn.Code_error <abstr>.
 |}]
 
 Path.insert_after_build_dir_exn Path.build_dir "foobar"

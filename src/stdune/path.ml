@@ -391,7 +391,9 @@ let relative ?error_loc t fn =
   if fn = "" then
     t
   else if not (Filename.is_relative fn) then
-    external_ fn
+    match drop_build_dir fn with
+    | None -> external_ fn
+    | Some fn -> in_build_dir fn
   else
     match t with
     | In_source_tree "" ->

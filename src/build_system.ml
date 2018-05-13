@@ -373,7 +373,7 @@ type t =
        [(deps (filename + contents), targets (filename only), action)] *)
     trace       : (Path.t, Digest.t) Hashtbl.t
   ; file_tree   : File_tree.t
-  ; mutable local_mkdirs : Path.Local.Set.t
+  ; mutable local_mkdirs : Path.Set.t
   ; mutable dirs : (Path.t, Dir_status.t) Hashtbl.t
   ; mutable gen_rules :
       (dir:Path.t -> string list -> extra_sub_directories_to_keep) String.Map.t
@@ -601,24 +601,25 @@ let clear_targets_digests_after_rule_execution targets =
 
 let make_local_dirs t paths =
   Path.Set.iter paths ~f:(fun path ->
-    match Path.kind path with
-    | Local path ->
-      if not (Path.Local.Set.mem t.local_mkdirs path) then begin
-        Path.Local.mkdir_p path;
-        t.local_mkdirs <- Path.Local.Set.add t.local_mkdirs path
+    if Path.is_local path then (
+      if not (Path.Set.mem t.local_mkdirs path) then begin
+        Path.mkdir_p path;
+        t.local_mkdirs <- Path.Set.add t.local_mkdirs path
       end
-    | _ -> ())
+    )
+  )
 
 let make_local_parent_dirs t paths ~map_path =
   Path.Set.iter paths ~f:(fun path ->
-    match Path.kind (map_path path) with
-    | Local path when not (Path.Local.is_root path) ->
-      let parent = Path.Local.parent path in
-      if not (Path.Local.Set.mem t.local_mkdirs parent) then begin
-        Path.Local.mkdir_p parent;
-        t.local_mkdirs <- Path.Local.Set.add t.local_mkdirs parent
-      end
-    | _ -> ())
+    if Path.is_local (map_path path) then (
+      Option.iter (Path.parent path) ~f:(fun parent ->
+        if not (Path.Set.mem t.local_mkdirs parent) then begin
+          Path.mkdir_p parent;
+          t.local_mkdirs <- Path.Set.add t.local_mkdirs parent
+        end
+      )
+    )
+  )
 
 let sandbox_dir = Path.relative Path.build_dir ".sandbox"
 
@@ -1191,7 +1192,7 @@ let create ~contexts ~file_tree ~hook =
     ; files      = Hashtbl.create 1024
     ; packages   = Hashtbl.create 1024
     ; trace      = Trace.load ()
-    ; local_mkdirs = Path.Local.Set.empty
+    ; local_mkdirs = Path.Set.empty
     ; dirs       = Hashtbl.create 1024
     ; load_dir_stack = []
     ; file_tree

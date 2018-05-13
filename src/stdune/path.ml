@@ -56,6 +56,17 @@ module External = struct
 *)
 
   let relative = Filename.concat
+
+  let rec mkdir_p t =
+    let p = Filename.dirname t in
+    if p <> t then
+      try
+        Unix.mkdir t 0o777
+      with
+      | Unix.Unix_error (EEXIST, _, _) -> ()
+      | Unix.Unix_error (ENOENT, _, _) ->
+        mkdir_p p;
+        Unix.mkdir t 0o777
 end
 
 module Local = struct
@@ -264,6 +275,10 @@ module Kind = struct
     match t with
     | Local t -> Local (Local.relative ?error_loc t fn)
     | External t -> External (External.relative t fn)
+
+  let mkdir_p = function
+    | Local t -> Local.mkdir_p t
+    | External t -> External.mkdir_p t
 end
 
 let build_dir_kind = Kind.Local "_build"
@@ -600,7 +615,15 @@ let build_dir_exists () = is_directory build_dir
 let ensure_build_dir_exists () =
   match kind build_dir with
   | Local p -> Local.mkdir_p p
-  | External _ -> failwith ""
+  | External p ->
+    try
+      Unix.mkdir p 0o777
+    with
+    | Unix.Unix_error (EEXIST, _, _) -> ()
+    | Unix.Unix_error (ENOENT, _, _) ->
+      Exn.fatalf "Cannot create external build directory %s. \
+                  Make sure that the parent dir %s exists."
+        p (Filename.dirname p)
 
 let map_s t ~f =
   match t with
@@ -648,6 +671,15 @@ let change_extension ~ext =
     let t = try Filename.chop_extension t with Not_found -> t in
     t ^ ext
   )
+
+let mkdir_p = function
+  | External s ->
+    Exn.code_error "Path.mkdir_p cannot create external path"
+      ["s", Sexp.To_sexp.string s]
+  | In_source_tree s ->
+    Exn.code_error "Path.mkdir_p cannot dir in source"
+      ["s", Sexp.To_sexp.string s]
+  | In_build_dir k -> Kind.mkdir_p (Kind.relative build_dir_kind k)
 
 let extension t = Filename.extension (to_string t)
 

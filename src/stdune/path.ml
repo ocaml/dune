@@ -286,7 +286,9 @@ let build_dir_kind = Kind.Local "_build"
 let drop_build_dir p =
   match build_dir_kind, Kind.of_string p with
   | Kind.External bd, Kind.External p ->
+    let open Option.O in
     String.drop_prefix ~prefix:bd p
+    >>= String.drop_prefix ~prefix:"/"
   | Kind.Local of_, Kind.Local p ->
     let open Option.O in
     Local.descendant p ~of_ >>| fun p ->

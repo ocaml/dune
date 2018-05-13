@@ -330,18 +330,9 @@ end = struct
     | In_build_dir _, In_source_tree _ -> Ordering.Lt
     | In_build_dir x, In_build_dir y -> Local.compare x y
 
-  let in_build_dir s =
-    if String.is_prefix s ~prefix:"_build" then (
-      Exn.code_error "in_build_dir: path is in build dir"
-        [ "s", Sexp.To_sexp.string s ]
-    );
-    In_build_dir s
+  let in_build_dir s = In_build_dir s
 
   let in_source_tree s =
-    if String.is_prefix s ~prefix:"_build" then (
-      Exn.code_error "in_source_tree: path is in build dir"
-        [ "s", Sexp.To_sexp.string s ]
-    );
     if in_build_path s then (
       Exn.code_error "in_source_tree: path is in build dir"
         [ "s", Sexp.To_sexp.string s ]

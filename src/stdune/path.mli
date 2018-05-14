@@ -27,6 +27,8 @@ module Kind : sig
   type t =
     | External of External.t
     | Local    of Local.t
+
+  val of_string : string -> t
 end
 
 type t
@@ -147,3 +149,7 @@ val pp_debug : Format.formatter -> t -> unit
 val build_dir_exists : unit -> bool
 
 val ensure_build_dir_exists : unit -> unit
+
+(** set the build directory. Can only be called once and must be done before
+    paths are converted to strings elsewhere. *)
+val set_build_dir : Kind.t -> unit

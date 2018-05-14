@@ -265,6 +265,8 @@ module Kind = struct
     | Local t
     | External t -> t
 
+  let sexp_of_t t = Sexp.atom_or_quoted_string (to_string t)
+
   let of_string s =
     if s = "" || Filename.is_relative s then
       Local s
@@ -281,10 +283,27 @@ module Kind = struct
     | External t -> External.mkdir_p t
 end
 
-let build_dir_kind = Kind.Local "_build"
+let (build_dir_kind, set_build_dir) =
+  let build_dir = ref None in
+  let set_build_dir new_build_dir =
+    match !build_dir with
+    | None -> build_dir := Some new_build_dir
+    | Some build_dir ->
+      Exn.code_error "set_build_dir: cannot set build_dir more than once"
+        [ "build_dir", Kind.sexp_of_t build_dir
+        ; "New_build_dir", Kind.sexp_of_t new_build_dir ]
+  in
+  let build_dir () =
+    match !build_dir with
+    | None ->
+      Exn.code_error "build_dir: cannot use build dir before it's set" []
+    | Some build_dir -> build_dir in
+  (build_dir, set_build_dir)
+
+let () = set_build_dir (Kind.Local "_build")
 
 let drop_build_dir p =
-  match build_dir_kind, Kind.of_string p with
+  match build_dir_kind (), Kind.of_string p with
   | Kind.External bd, Kind.External p ->
     let open Option.O in
     String.drop_prefix ~prefix:bd p
@@ -297,7 +316,7 @@ let drop_build_dir p =
   | Kind.External _, Kind.Local _ -> None
 
 let in_build_path s =
-  match build_dir_kind, Kind.of_string s with
+  match build_dir_kind (), Kind.of_string s with
   | Kind.Local p, Kind.Local s -> Local.is_descendant s ~of_:p
   | Kind.External _, Kind.External _
   | Kind.Local _, Kind.External _
@@ -360,7 +379,7 @@ let is_root = function
 module Map = Map.Make(T)
 
 let kind = function
-  | In_build_dir p -> Kind.relative build_dir_kind p
+  | In_build_dir p -> Kind.relative (build_dir_kind ()) p
   | In_source_tree s -> Kind.Local s
   | External s -> Kind.External s
 
@@ -674,7 +693,7 @@ let mkdir_p = function
   | In_source_tree s ->
     Exn.code_error "Path.mkdir_p cannot dir in source"
       ["s", Sexp.To_sexp.string s]
-  | In_build_dir k -> Kind.mkdir_p (Kind.relative build_dir_kind k)
+  | In_build_dir k -> Kind.mkdir_p (Kind.relative (build_dir_kind ()) k)
 
 let extension t = Filename.extension (to_string t)
 

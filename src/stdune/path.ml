@@ -315,13 +315,6 @@ let drop_build_dir p =
   | Kind.Local _, Kind.External _
   | Kind.External _, Kind.Local _ -> None
 
-let in_build_path s =
-  match build_dir_kind (), Kind.of_string s with
-  | Kind.Local p, Kind.Local s -> Local.is_descendant s ~of_:p
-  | Kind.External _, Kind.External _
-  | Kind.Local _, Kind.External _
-  | Kind.External _, Kind.Local _ -> false
-
 module T : sig
   type t = private
     | External of External.t
@@ -352,15 +345,9 @@ end = struct
   let in_build_dir s = In_build_dir s
 
   let in_source_tree s =
-    if in_build_path s then (
-      Exn.code_error "in_source_tree: path is in build dir"
-        [ "s", Sexp.To_sexp.string s ]
-    ) else if not (Filename.is_relative s) then (
+    if not (Filename.is_relative s) then (
       Exn.code_error "in_source_tree: absolute path"
         [ "s", Sexp.To_sexp.string s ]
-    ) else if String.is_prefix s ~prefix:".aliases/" then (
-      Exn.code_error "in_source_tree: alias exist only in build dir"
-        ["s", Sexp.To_sexp.string s]
     );
     In_source_tree s
   let external_ e = External e

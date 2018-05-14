@@ -1,5 +1,6 @@
 (* -*- tuareg -*- *)
 open Stdune;;
+Path.set_build_dir (Path.Kind.of_string "_build");
 
 Printexc.record_backtrace false;;
 
@@ -117,7 +118,7 @@ Path.(descendant (r "foo") ~of_:Path.root)
 
 Path.(descendant (relative build_dir "foo") ~of_:root)
 [%%expect{|
-Exception: Stdune__Exn.Code_error <abstr>.
+- : Stdune.Path.t option = Some _build/foo
 |}]
 
 Path.(descendant (relative build_dir "foo") ~of_:(absolute "/foo/bar"))
@@ -237,7 +238,7 @@ Path.append Path.build_dir (Path.relative Path.build_dir "foo")
 
 Path.append Path.root (Path.relative Path.build_dir "foo")
 [%%expect{|
-Exception: Stdune__Exn.Code_error <abstr>.
+- : Stdune.Path.t = _build/foo
 |}]
 
 Path.append Path.root (Path.relative Path.root "foo")

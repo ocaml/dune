@@ -153,3 +153,6 @@ val ensure_build_dir_exists : unit -> unit
 (** set the build directory. Can only be called once and must be done before
     paths are converted to strings elsewhere. *)
 val set_build_dir : Kind.t -> unit
+
+(** paths guaranteed to be in the source directory *)
+val in_source : string -> t

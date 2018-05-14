@@ -147,7 +147,7 @@ let external_lib_deps ?log ~packages () =
 
 let ignored_during_bootstrap =
   Path.Set.of_list
-    (List.map ~f:Path.of_string
+    (List.map ~f:Path.in_source
        [ "test"
        ; "example"
        ])

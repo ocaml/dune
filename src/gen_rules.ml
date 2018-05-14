@@ -871,7 +871,7 @@ module Gen(P : Install_rules.Params) = struct
     (* Use "eobjs" rather than "objs" to avoid a potential conflict
        with a library of the same name *)
     let obj_dir =
-      Path.relative dir ("." ^ (List.hd programs).name ^ ".eobjs")
+      Utils.executable_object_directory ~dir (List.hd programs).name
     in
     Exe.build_and_link_many sctx
       ~dir

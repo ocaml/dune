@@ -300,8 +300,6 @@ let (build_dir_kind, set_build_dir) =
     | Some build_dir -> build_dir in
   (build_dir, set_build_dir)
 
-let () = set_build_dir (Kind.Local "_build")
-
 let drop_build_dir p =
   match build_dir_kind (), Kind.of_string p with
   | Kind.External bd, Kind.External p ->

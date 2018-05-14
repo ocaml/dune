@@ -232,7 +232,7 @@ Path.append Path.build_dir (Path.relative Path.root "foo")
 
 Path.append Path.build_dir (Path.relative Path.build_dir "foo")
 [%%expect{|
-Exception: Stdune__Exn.Code_error <abstr>.
+- : Stdune.Path.t = _build/_build/foo
 |}]
 
 Path.append Path.root (Path.relative Path.build_dir "foo")

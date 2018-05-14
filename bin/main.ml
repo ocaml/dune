@@ -1283,8 +1283,8 @@ let utop =
     ; `Blocks help_secs
     ] in
   let go common dir ctx_name args =
+    set_common common ~targets:[dir];
     let utop_target = dir |> Path.of_string |> Utop.utop_exe |> Path.to_string in
-    set_common common ~targets:[utop_target];
     let log = Log.create common in
     let (build_system, context, utop_path) =
       (Main.setup ~log common >>= fun setup ->

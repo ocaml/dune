@@ -279,3 +279,8 @@ Path.drop_build_context Path.build_dir
 [%%expect{|
 - : Stdune.Path.t option = None
 |}]
+
+Path.is_in_build_dir Path.build_dir
+[%%expect{|
+- : bool = false
+|}]

@@ -57,6 +57,14 @@
     (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
 
 (alias
+ ((name custom-build-dir)
+  (deps ((package dune) (files_recursively_in test-cases/custom-build-dir)))
+  (action
+   (chdir
+    test-cases/custom-build-dir
+    (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+
+(alias
  ((name depend-on-the-universe)
   (deps
    ((package dune) (files_recursively_in test-cases/depend-on-the-universe)))
@@ -510,6 +518,7 @@
     (alias configurator)
     (alias copy_files)
     (alias cross-compilation)
+    (alias custom-build-dir)
     (alias depend-on-the-universe)
     (alias env)
     (alias exclude-missing-module)
@@ -570,6 +579,7 @@
     (alias configurator)
     (alias copy_files)
     (alias cross-compilation)
+    (alias custom-build-dir)
     (alias depend-on-the-universe)
     (alias env)
     (alias exclude-missing-module)

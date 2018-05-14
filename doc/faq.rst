@@ -34,7 +34,8 @@ more details.
 here can I find some examples of projects using Jbuilder?
 =========================================================
 
-The [dune-universe](https://github.com/dune-universe/dune-universe) repository
-contains a snapshot of the latest versions of all opam packages depending on
-jbuilder. It is therefore a useful reference to search through to find different
-approaches to constructing build rules.
+The `dune-universe https://github.com/dune-universe/dune-universe`__
+repository contains a snapshot of the latest versions of all opam
+packages depending on jbuilder. It is therefore a useful reference to
+search through to find different approaches to constructing build
+rules.

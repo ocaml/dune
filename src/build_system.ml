@@ -601,13 +601,10 @@ let clear_targets_digests_after_rule_execution targets =
 
 let make_local_dirs t paths =
   Path.Set.iter paths ~f:(fun path ->
-    if Path.is_local path then (
-      if not (Path.Set.mem t.local_mkdirs path) then begin
-        Path.mkdir_p path;
-        t.local_mkdirs <- Path.Set.add t.local_mkdirs path
-      end
-    )
-  )
+    if Path.is_local path && not (Path.Set.mem t.local_mkdirs path) then begin
+      Path.mkdir_p path;
+      t.local_mkdirs <- Path.Set.add t.local_mkdirs path
+    end)
 
 let make_local_parent_dirs t paths ~map_path =
   Path.Set.iter paths ~f:(fun path ->
@@ -617,10 +614,7 @@ let make_local_parent_dirs t paths ~map_path =
         if not (Path.Set.mem t.local_mkdirs parent) then begin
           Path.mkdir_p parent;
           t.local_mkdirs <- Path.Set.add t.local_mkdirs parent
-        end
-      )
-    )
-  )
+        end)))
 
 let sandbox_dir = Path.relative Path.build_dir ".sandbox"
 

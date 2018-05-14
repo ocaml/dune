@@ -431,11 +431,7 @@ let to_absolute_filename t ~root = Kind.to_absolute_filename (kind t) ~root
 let reach t ~from =
   match kind t, kind from with
   | External t, _ -> t
-  | Local _, External _ ->
-    Exn.code_error "Path.reach called with invalid combination"
-      [ "t"   , sexp_of_t t
-      ; "from", sexp_of_t from
-      ]
+  | (Local _) as l, External _ -> Kind.to_absolute_filename l ~root:initial_cwd
   | Local t, Local from -> Local.reach t ~from
 
 let reach_for_running ?(from=root) t =

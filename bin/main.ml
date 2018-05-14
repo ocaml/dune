@@ -607,7 +607,7 @@ let resolve_package_install setup pkg =
           |> List.map ~f:Package.Name.to_string))
 
 let target_hint (setup : Main.setup) path =
-  assert (Path.is_local path);
+  assert (Path.is_managed path);
   let sub_dir = Option.value ~default:path (Path.parent path) in
   let candidates = Build_system.all_targets setup.build_system in
   let candidates =
@@ -664,7 +664,7 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
           check_path path;
           if Path.is_root path then
             die "@@ on the command line must be followed by a valid alias name"
-          else if not (Path.is_local path) then
+          else if not (Path.is_managed path) then
             die "@@ on the command line must be followed by a relative path"
           else
             Ok [Alias_rec path]
@@ -674,7 +674,7 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
           let can't_build path =
             Error (path, target_hint setup path);
           in
-          if not (Path.is_local path) then
+          if not (Path.is_managed path) then
             Ok [File path]
           else if Path.is_in_build_dir path then begin
             if Build_system.is_target setup.build_system path then

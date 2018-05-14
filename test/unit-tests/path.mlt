@@ -206,7 +206,7 @@ Path.absolute "/absolute/path"
 - : Stdune.Path.t = /absolute/path
 |}]
 
-Path.is_local (Path.absolute "relative/path")
+Path.is_managed (Path.absolute "relative/path")
 [%%expect{|
 - : bool = false
 |}]

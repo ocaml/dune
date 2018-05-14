@@ -358,7 +358,7 @@ module Unexpanded = struct
     | List _ -> t sexp
 
   let check_mkdir loc path =
-    if not (Path.is_local path) then
+    if not (Path.is_managed path) then
       Loc.fail loc
         "(mkdir ...) is not supported for paths outside of the workspace:\n\
         \  %a\n"
@@ -936,7 +936,7 @@ let exec ~targets ~context t =
 let sandbox t ~sandboxed ~deps ~targets =
   Progn
     [ Progn (List.filter_map deps ~f:(fun path ->
-        if Path.is_local path then
+        if Path.is_managed path then
           Some (Ast.Symlink (path, sandboxed path))
         else
           None))
@@ -946,7 +946,7 @@ let sandbox t ~sandboxed ~deps ~targets =
         ~f_path:(fun ~dir:_ p -> sandboxed p)
         ~f_program:(fun ~dir:_ x -> Result.map x ~f:sandboxed)
     ; Progn (List.filter_map targets ~f:(fun path ->
-        if Path.is_local path then
+        if Path.is_managed path then
           Some (Ast.Rename (sandboxed path, path))
         else
           None))

@@ -406,7 +406,7 @@ let get_dir_status t ~dir =
     else if dir = Path.build_dir then
       (* Not allowed to look here *)
       Dir_status.Loaded Path.Set.empty
-    else if not (Path.is_local dir) then
+    else if not (Path.is_managed dir) then
       Dir_status.Loaded
         (match Path.readdir dir with
          | exception _ -> Path.Set.empty
@@ -601,7 +601,7 @@ let clear_targets_digests_after_rule_execution targets =
 
 let make_local_dirs t paths =
   Path.Set.iter paths ~f:(fun path ->
-    if Path.is_local path && not (Path.Set.mem t.local_mkdirs path) then begin
+    if Path.is_managed path && not (Path.Set.mem t.local_mkdirs path) then begin
       Path.mkdir_p path;
       t.local_mkdirs <- Path.Set.add t.local_mkdirs path
     end)
@@ -609,7 +609,7 @@ let make_local_dirs t paths =
 let make_local_parent_dirs t paths ~map_path =
   Path.Set.iter paths ~f:(fun path ->
     let path = map_path path in
-    if Path.is_local path then (
+    if Path.is_managed path then (
       Option.iter (Path.parent path) ~f:(fun parent ->
         if not (Path.Set.mem t.local_mkdirs parent) then begin
           Path.mkdir_p parent;
@@ -756,7 +756,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
           | Some sandbox_dir ->
             Path.rm_rf sandbox_dir;
             let sandboxed path =
-              if Path.is_local path then
+              if Path.is_managed path then
                 Path.append sandbox_dir path
               else
                 path
@@ -1479,7 +1479,7 @@ let get_collector t ~dir =
          "Build_system.get_collector called on source directory"
        else if dir = Path.build_dir then
          "Build_system.get_collector called on build_dir"
-       else if not (Path.is_local dir) then
+       else if not (Path.is_managed dir) then
          "Build_system.get_collector called on external directory"
        else
          "Build_system.get_collector called on closed directory")

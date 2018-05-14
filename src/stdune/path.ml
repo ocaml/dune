@@ -370,7 +370,7 @@ let kind = function
 
 let is_local_fn t = t = "" || Filename.is_relative t
 
-let is_local = function
+let is_managed = function
   | In_build_dir _
   | In_source_tree _ -> true
   | External _ -> false
@@ -652,7 +652,7 @@ let rm_rf =
     Unix.rmdir dir
   in
   fun t ->
-    if not (is_local t) then (
+    if not (is_managed t) then (
       Exn.code_error "Path.rm_rf called on external dir"
         ["t", sexp_of_t t]
     );

@@ -59,7 +59,7 @@ val to_string_maybe_quoted : t -> string
 val root : t
 val is_root : t -> bool
 
-val is_local : t -> bool
+val is_managed : t -> bool
 
 val relative : ?error_loc:Usexp.Loc.t -> t -> string -> t
 
@@ -119,7 +119,7 @@ val build_dir : t
 (** [is_in_build_dir t = is_descendant t ~of:build_dir] *)
 val is_in_build_dir : t -> bool
 
-(** [is_in_build_dir t = is_local t && not (is_in_build_dir t)] *)
+(** [is_in_build_dir t = is_managed t && not (is_in_build_dir t)] *)
 val is_in_source_tree : t -> bool
 
 val is_alias_stamp_file : t -> bool

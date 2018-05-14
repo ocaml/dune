@@ -276,7 +276,7 @@ let fold t ~traverse_ignored_dirs ~init ~f =
   Dir.fold t.root ~traverse_ignored_dirs ~init ~f
 
 let rec find_dir t path =
-  if not (Path.is_local path) then
+  if not (Path.is_managed path) then
     None
   else
     match Hashtbl.find t.dirs path with

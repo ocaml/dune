@@ -611,7 +611,8 @@ let make_local_dirs t paths =
 
 let make_local_parent_dirs t paths ~map_path =
   Path.Set.iter paths ~f:(fun path ->
-    if Path.is_local (map_path path) then (
+    let path = map_path path in
+    if Path.is_local path then (
       Option.iter (Path.parent path) ~f:(fun parent ->
         if not (Path.Set.mem t.local_mkdirs parent) then begin
           Path.mkdir_p parent;

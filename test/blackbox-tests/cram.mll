@@ -151,7 +151,7 @@ and postprocess tbl b = parse
               | _ -> 255
             in
             let ext_replace = make_ext_replace configurator in
-            Path.of_string temp_file
+            Path.absolute temp_file
             |> Io.lines_of_file
             |> List.iter ~f:(fun line ->
               Printf.bprintf buf "  %s\n"

@@ -51,7 +51,7 @@ open Meta
 #install_printer Simplified.pp;;
 
 let meta =
-  Path.of_string "test/unit-tests/findlib-db/foo/META"
+  Path.in_source "test/unit-tests/findlib-db/foo/META"
   |> Meta.load ~name:"foo"
 
 [%%expect{|
@@ -80,8 +80,8 @@ val meta : Dune.Meta.Simplified.t =
 #install_printer Findlib.Config.pp;;
 
 let conf =
-  Findlib.Config.load (Path.of_string "test/unit-tests/toolchain")
-                        ~toolchain:"tlc" ~context:"<context>"
+  Findlib.Config.load (Path.in_source "test/unit-tests/toolchain")
+    ~toolchain:"tlc" ~context:"<context>"
 
 [%%expect{|
 val conf : Dune.Findlib.Config.t =

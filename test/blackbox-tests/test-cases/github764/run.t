@@ -3,3 +3,4 @@
   [1]
   $ mkdir -p c2 && cd c2 && ln -s x ../../ && jbuilder build
   $ mkdir -p c3 && cd c3 && ln -s x y && ln -s y x && jbuilder build
+  $ cd symlink-outside-root && ln -s ../sample-exe sample && jbuilder exec --root . -- sample/foo.exe

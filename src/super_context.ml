@@ -179,7 +179,7 @@ let resolve_program t ?hint bin =
 let create
       ~(context:Context.t)
       ?host
-      ~scopes
+      ~projects
       ~file_tree
       ~packages
       ~stanzas
@@ -198,25 +198,25 @@ let create
         | _ -> None))
   in
   let scopes, public_libs =
-    let scopes =
-      List.map scopes ~f:(fun (scope : Scope_info.t) ->
-        { scope with root = Path.append context.build_dir scope.root })
+    let projects =
+      List.map projects ~f:(fun (project : Dune_project.t) ->
+        { project with root = Path.append context.build_dir project.root })
     in
     Scope.DB.create
-      ~scopes
+      ~projects
       ~context:context.name
       ~installed_libs
       internal_libs
   in
   let stanzas =
     List.map stanzas
-      ~f:(fun (dir, scope, stanzas) ->
+      ~f:(fun (dir, project, stanzas) ->
         let ctx_dir = Path.append context.build_dir dir in
         { Dir_with_jbuild.
           src_dir = dir
         ; ctx_dir
         ; stanzas
-        ; scope = Scope.DB.find_by_name scopes scope.Scope_info.name
+        ; scope = Scope.DB.find_by_name scopes project.Dune_project.name
         })
   in
   let stanzas_to_consider_for_install =
@@ -536,10 +536,10 @@ module Scope_key = struct
       (key, public_libs sctx)
     | Some (key, scope) ->
       ( key
-      , Scope.libs (find_scope_by_name sctx (Scope_info.Name.decode scope)))
+      , Scope.libs (find_scope_by_name sctx (Dune_project.Name.decode scope)))
 
   let to_string key scope =
-    sprintf "%s@%s" key (Scope_info.Name.encode scope)
+    sprintf "%s@%s" key (Dune_project.Name.encode scope)
 end
 
 let parse_bang var : bool * string =
@@ -656,17 +656,19 @@ module Action = struct
         Some (str_exp (string_of_bool (
           Lib.DB.available (Scope.libs scope) lib)))
       | Some ("version", s) -> begin
-          match Scope_info.resolve (Scope.info scope)
+          match Package.Name.Map.find (Scope.project scope).packages
                   (Package.Name.of_string s) with
-          | Ok p ->
+          | Some p ->
             let x =
               Pkg_version.read sctx p >>^ function
               | None   -> Strings ([""], Concat)
               | Some s -> Strings ([s],  Concat)
             in
             add_ddep acc ~key x
-          | Error s ->
-            add_fail acc { fail = fun () -> Loc.fail loc "%s" s }
+          | None ->
+            add_fail acc { fail = fun () ->
+              Loc.fail loc "Package %S doesn't exist in the current project." s
+            }
         end
       | Some ("read", s) -> begin
           let path = Path.relative dir s in

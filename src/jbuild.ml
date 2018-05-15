@@ -89,34 +89,9 @@ let c_name, cxx_name =
   (make "C"   "c",
    make "C++" "cpp")
 
-module Scope_info = struct
-  module Name = Dune_project.Name
-
-  type t =
-    { name     : Name.t
-    ; packages : Package.t Package.Name.Map.t
-    ; root     : Path.t
-    ; version  : string option
-    ; project  : Dune_project.t option
-    }
-
-  let anonymous =
-    { name     = Name.anonymous_root
-    ; packages = Package.Name.Map.empty
-    ; root     = Path.root
-    ; version  = None
-    ; project  = None
-    }
-
-  let make (project : Dune_project.t) =
-    { name     = project.name
-    ; packages = project.packages
-    ; root     = project.root
-    ; version  = project.version
-    ; project  = Some project
-    }
-
-  let package_listing packages =
+(* Parse and resolve "package" fields *)
+module Pkg = struct
+  let listing packages =
     let longest_pkg =
       String.longest_map packages ~f:(fun p ->
         Package.Name.to_string p.Package.name)
@@ -127,12 +102,12 @@ module Scope_info = struct
            (Package.Name.to_string pkg.Package.name)
            (Path.to_string (Package.opam_file pkg))))
 
-  let default t =
-    match Package.Name.Map.values t.packages with
+  let default (project : Dune_project.t) =
+    match Package.Name.Map.values project.packages with
     | [pkg] -> Ok pkg
     | [] ->
       Error
-        "The current scope defines no packages.\n\
+        "The current project (%S declared in  defines no packages.\n\
          What do you want me to do with this (install ...) stanzas?.\n\
          You need to add a <package>.opam file at the root \
          of your project so that\n\
@@ -144,15 +119,15 @@ module Scope_info = struct
             stanza is for. I have the choice between these ones:\n\
             %s\n\
             You need to add a (package ...) field in this (install ...) stanza"
-           (package_listing (Package.Name.Map.values t.packages)))
+           (listing (Package.Name.Map.values project.packages)))
 
-  let resolve t name =
-    match Package.Name.Map.find t.packages name with
+  let resolve (project : Dune_project.t) name =
+    match Package.Name.Map.find project.packages name with
     | Some pkg ->
       Ok pkg
     | None ->
       let name_s = Package.Name.to_string name in
-      if Package.Name.Map.is_empty t.packages then
+      if Package.Name.Map.is_empty project.packages then
         Error (sprintf
                  "You cannot declare items to be installed without \
                   adding a <package>.opam file at the root of your project.\n\
@@ -166,21 +141,20 @@ module Scope_info = struct
                   elements to be installed in this directory are:\n\
                   %s%s"
                  name_s
-                 (package_listing (Package.Name.Map.values t.packages))
-                 (hint name_s (Package.Name.Map.keys t.packages
-                              |> List.map ~f:Package.Name.to_string)))
+                 (listing (Package.Name.Map.values project.packages))
+                 (hint name_s (Package.Name.Map.keys project.packages
+                               |> List.map ~f:Package.Name.to_string)))
 
-  let package t sexp =
-    match resolve t (Package.Name.of_string (string sexp)) with
+  let t p sexp =
+    match resolve p (Package.Name.of_string (string sexp)) with
     | Ok p -> p
     | Error s -> Loc.fail (Sexp.Ast.loc sexp) "%s" s
 
-  let package_field t =
+  let field p =
     map_validate (field_o "package" string) ~f:(function
-      | None -> default t
-      | Some name -> resolve t (Package.Name.of_string name))
+      | None -> default p
+      | Some name -> resolve p (Package.Name.of_string name))
 end
-
 
 module Pp : sig
   type t = private string
@@ -545,18 +519,20 @@ module Public_lib = struct
     ; sub_dir : string option
     }
 
-  let public_name_field pkgs =
+  let public_name_field project =
     map_validate (field_o "public_name" string) ~f:(function
       | None -> Ok None
       | Some s ->
         match String.split s ~on:'.' with
         | [] -> assert false
         | pkg :: rest ->
-          match Scope_info.resolve pkgs (Package.Name.of_string pkg) with
+          match Pkg.resolve project (Package.Name.of_string pkg) with
           | Ok pkg ->
             Ok (Some
                   { package = pkg
-                  ; sub_dir = if rest = [] then None else Some (String.concat rest ~sep:"/")
+                  ; sub_dir =
+                      if rest = [] then None else
+                        Some (String.concat rest ~sep:"/")
                   ; name    = s
                   })
           | Error _ as e -> e)
@@ -689,15 +665,15 @@ module Library = struct
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
-    ; scope_name               : Scope_info.Name.t
+    ; project_name             : Dune_project.Name.t
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     }
 
-  let v1 pkgs =
+  let v1 project =
     record
       (Buildable.v1 >>= fun buildable ->
        field      "name" library_name                                      >>= fun name                     ->
-       Public_lib.public_name_field pkgs                                   >>= fun public                   ->
+       Public_lib.public_name_field project                                >>= fun public                   ->
        field_o    "synopsis" string                                        >>= fun synopsis                 ->
        field      "install_c_headers" (list string) ~default:[]            >>= fun install_c_headers        ->
        field      "ppx_runtime_libraries" (list (located string)) ~default:[] >>= fun ppx_runtime_libraries    ->
@@ -736,7 +712,7 @@ module Library = struct
          ; optional
          ; buildable
          ; dynlink = not no_dynlink
-         ; scope_name = pkgs.name
+         ; project_name = project.name
          ; sub_systems
          })
 
@@ -775,11 +751,11 @@ module Install_conf = struct
     ; package : Package.t
     }
 
-  let v1 pkgs =
+  let v1 project =
     record
       (field   "section" Install.Section.t >>= fun section ->
        field   "files"   (list file)       >>= fun files ->
-       Scope_info.package_field pkgs             >>= fun package ->
+       Pkg.field project                   >>= fun package ->
        return
          { section
          ; files
@@ -881,7 +857,7 @@ module Executables = struct
     ; buildable        : Buildable.t
     }
 
-  let common_v1 pkgs names public_names ~multi =
+  let common_v1 project names public_names ~multi =
     Buildable.v1 >>= fun buildable ->
     field      "link_executables"   bool ~default:true >>= fun link_executables ->
     field_oslu "link_flags"                            >>= fun link_flags ->
@@ -933,7 +909,7 @@ module Executables = struct
            (if multi then "s" else "");
          return (t, None))
     | files ->
-      Scope_info.package_field pkgs >>= fun package ->
+      Pkg.field project >>= fun package ->
       return (t, Some { Install_conf. section = Bin; files; package })
 
   let public_name sexp =
@@ -941,7 +917,7 @@ module Executables = struct
     | "-" -> None
     | s   -> Some s
 
-  let v1_multi pkgs =
+  let v1_multi project =
     record
       (field "names" (list (located string)) >>= fun names ->
        map_validate (field_o "public_names" (list public_name)) ~f:(function
@@ -953,13 +929,13 @@ module Executables = struct
              Error "The list of public names must be of the same \
                     length as the list of names")
        >>= fun public_names ->
-       common_v1 pkgs names public_names ~multi:true)
+       common_v1 project names public_names ~multi:true)
 
-  let v1_single pkgs =
+  let v1_single project =
     record
       (field   "name" (located string) >>= fun name ->
        field_o "public_name" string >>= fun public_name ->
-       common_v1 pkgs [name] [public_name] ~multi:false)
+       common_v1 project [name] [public_name] ~multi:false)
 end
 
 module Rule = struct
@@ -1163,11 +1139,11 @@ module Alias_conf = struct
     else
       s
 
-  let v1 pkgs =
+  let v1 project =
     record
       (field "name" alias_name                          >>= fun name ->
        field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
-       field_o "package" (Scope_info.package pkgs)      >>= fun package ->
+       field_o "package" (Pkg.t project)                >>= fun package ->
        field_o "action" (located Action.Unexpanded.t)   >>= fun action ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
        return
@@ -1193,9 +1169,9 @@ module Documentation = struct
     ; mld_files: Ordered_set_lang.t
     }
 
-  let v1 pkgs =
+  let v1 project =
     record
-      (Scope_info.package_field pkgs >>= fun package ->
+      (Pkg.field project >>= fun package ->
        field "mld_files" Ordered_set_lang.t ~default:Ordered_set_lang.standard
        >>= fun mld_files ->
        return
@@ -1271,11 +1247,11 @@ module Stanzas = struct
 
   exception Include_loop of Path.t * (Loc.t * Path.t) list
 
-  let rec v1 pkgs ~file ~include_stack : Stanza.t list Sexp.Of_sexp.t =
+  let rec v1 project ~file ~include_stack : Stanza.t list Sexp.Of_sexp.t =
     sum
-      [ cstr "library"     (Library.v1 pkgs @> nil) (fun x -> [Library x])
-      ; cstr "executable"  (Executables.v1_single pkgs @> nil) execs
-      ; cstr "executables" (Executables.v1_multi  pkgs @> nil) execs
+      [ cstr "library"     (Library.v1 project @> nil) (fun x -> [Library x])
+      ; cstr "executable"  (Executables.v1_single project @> nil) execs
+      ; cstr "executables" (Executables.v1_multi  project @> nil) execs
       ; cstr_loc "rule"      (Rule.v1     @> nil) (fun loc x -> [Rule { x with loc }])
       ; cstr_loc "ocamllex" (Rule.ocamllex_v1 @> nil)
           (fun loc x -> rules (Rule.ocamllex_to_rule loc x))
@@ -1283,8 +1259,8 @@ module Stanzas = struct
           (fun loc x -> rules (Rule.ocamlyacc_to_rule loc x))
       ; cstr_loc "menhir" (Menhir.v1 @> nil)
           (fun loc x -> [Menhir { x with loc }])
-      ; cstr "install"     (Install_conf.v1 pkgs @> nil) (fun x -> [Install     x])
-      ; cstr "alias"       (Alias_conf.v1 pkgs @> nil)   (fun x -> [Alias       x])
+      ; cstr "install"     (Install_conf.v1 project @> nil) (fun x -> [Install     x])
+      ; cstr "alias"       (Alias_conf.v1 project @> nil)   (fun x -> [Alias       x])
       ; cstr "copy_files" (Copy_files.v1 @> nil)
           (fun glob -> [Copy_files {add_line_directive = false; glob}])
       ; cstr "copy_files#" (Copy_files.v1 @> nil)
@@ -1303,20 +1279,20 @@ module Stanzas = struct
           if List.exists include_stack ~f:(fun (_, f) -> f = file) then
             raise (Include_loop (file, include_stack));
           let sexps = Io.Sexp.load file ~mode:Many in
-          parse pkgs sexps ~default_version:Jbuild_version.V1 ~file ~include_stack)
-      ; cstr "documentation" (Documentation.v1 pkgs @> nil)
+          parse project sexps ~default_version:Jbuild_version.V1 ~file ~include_stack)
+      ; cstr "documentation" (Documentation.v1 project @> nil)
           (fun d -> [Documentation d])
       ]
 
   and select
     :  Jbuild_version.t
-    -> Scope_info.t
+    -> Dune_project.t
     -> file:Path.t
     -> include_stack:(Loc.t * Path.t) list
     -> Stanza.t list Sexp.Of_sexp.t = function
     | V1  -> v1
 
-  and parse ~default_version ~file ~include_stack pkgs sexps =
+  and parse ~default_version ~file ~include_stack project sexps =
     let versions, sexps =
       List.partition_map sexps ~f:(function
         | List (loc, [Atom (_, A "jbuild_version"); ver]) ->
@@ -1331,16 +1307,16 @@ module Stanzas = struct
         Loc.fail loc "jbuild_version specified too many times"
     in
     let l =
-      List.concat_map sexps ~f:(select version pkgs ~file ~include_stack)
+      List.concat_map sexps ~f:(select version project ~file ~include_stack)
     in
     match List.filter_map l ~f:(function Env e -> Some e | _ -> None) with
     | _ :: e :: _ ->
       Loc.fail e.loc "The 'env' stanza cannot appear more than once"
     | _ -> l
 
-  let parse ?(default_version=Jbuild_version.latest_stable) ~file pkgs sexps =
+  let parse ?(default_version=Jbuild_version.latest_stable) ~file project sexps =
     try
-      parse pkgs sexps ~default_version ~include_stack:[] ~file
+      parse project sexps ~default_version ~include_stack:[] ~file
     with
     | Include_loop (_, []) -> assert false
     | Include_loop (file, last :: rest) ->

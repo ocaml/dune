@@ -5,6 +5,8 @@ module Lang = struct
   type t =
     | Jbuilder
     | Dune of Syntax.Version.t
+
+  let latest = Dune (0, 1)
 end
 
 module Name : sig
@@ -117,6 +119,14 @@ type t =
   ; root     : Path.t
   ; version  : string option
   ; packages : Package.t Package.Name.Map.t
+  }
+
+let anonymous =
+  { lang     = Lang.latest
+  ; name     = Name.anonymous_root
+  ; packages = Package.Name.Map.empty
+  ; root     = Path.root
+  ; version  = None
   }
 
 let filename = "dune-project"

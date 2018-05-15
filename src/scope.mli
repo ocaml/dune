@@ -1,14 +1,14 @@
 (** Scopes *)
 
+(** A scope is a project + a library database  *)
+
 open Stdune
 
-(** Representation of a Scope. It contain a library database for all
-    the private libraries in the scope. *)
 type t
 
 val root : t -> Path.t
 val name : t -> Dune_project.Name.t
-val info : t -> Jbuild.Scope_info.t
+val project : t -> Dune_project.t
 
 (** Return the library database associated to this scope *)
 val libs : t -> Lib.DB.t
@@ -22,7 +22,7 @@ module DB : sig
   (** Return the new scope database as well as the public libraries
       database *)
   val create
-    :  scopes:Jbuild.Scope_info.t list
+    :  projects:Dune_project.t list
     -> context:string
     -> installed_libs:Lib.DB.t
     -> (Path.t * Jbuild.Library.t) list

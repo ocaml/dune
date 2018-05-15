@@ -1,23 +1,23 @@
 open Import
 
 type t =
-  { info : Jbuild.Scope_info.t
-  ; db   : Lib.DB.t
+  { project : Dune_project.t
+  ; db      : Lib.DB.t
   }
 
-let root t = t.info.root
-let name t = t.info.name
-let info t = t.info
+let root t = t.project.root
+let name t = t.project.name
+let project t = t.project
 let libs t = t.db
 
 module DB = struct
   type scope = t
 
-  module Scope_name_map = Map.Make(Jbuild.Scope_info.Name)
+  module Project_name_map = Map.Make(Dune_project.Name)
 
   type t =
     { by_dir  : (Path.t, scope) Hashtbl.t
-    ; by_name : scope Scope_name_map.t
+    ; by_name : scope Project_name_map.t
     ; context : string
     }
 
@@ -38,7 +38,7 @@ module DB = struct
     loop dir
 
   let find_by_name t name =
-    match Scope_name_map.find t.by_name name with
+    match Project_name_map.find t.by_name name with
     | Some x -> x
     | None ->
       Exn.code_error "Scope.DB.find_by_name"
@@ -46,38 +46,38 @@ module DB = struct
         ; "context", Sexp.To_sexp.string t.context
         ; "names",
           Sexp.To_sexp.(list Dune_project.Name.sexp_of_t)
-            (Scope_name_map.keys t.by_name)
+            (Project_name_map.keys t.by_name)
         ]
 
-  let create ~scopes ~context ~installed_libs internal_libs =
-    let scopes_info_by_name =
-      List.map scopes ~f:(fun (scope : Jbuild.Scope_info.t) ->
-        (scope.name, scope))
-      |> Scope_name_map.of_list
+  let create ~projects ~context ~installed_libs internal_libs =
+    let projects_by_name =
+      List.map projects ~f:(fun (project : Dune_project.t) ->
+        (project.name, project))
+      |> Project_name_map.of_list
       |> function
       | Ok x -> x
-      | Error (_name, scope1, scope2) ->
-        let to_sexp (scope : Jbuild.Scope_info.t) =
+      | Error (_name, project1, project2) ->
+        let to_sexp (project : Dune_project.t) =
           Sexp.To_sexp.(pair Dune_project.Name.sexp_of_t Path.sexp_of_t)
-            (scope.name, scope.root)
+            (project.name, project.root)
         in
-        Exn.code_error "Scope.DB.create got two scopes with the same name"
-          [ "scope1", to_sexp scope1
-          ; "scope2", to_sexp scope2
+        Exn.code_error "Scope.DB.create got two projects with the same name"
+          [ "project1", to_sexp project1
+          ; "project2", to_sexp project2
           ]
     in
-    let libs_by_scope_name =
+    let libs_by_project_name =
       List.map internal_libs ~f:(fun (dir, (lib : Jbuild.Library.t)) ->
-        (lib.scope_name, (dir, lib)))
-      |> Scope_name_map.of_list_multi
+        (lib.project_name, (dir, lib)))
+      |> Project_name_map.of_list_multi
     in
-    let by_name_cell = ref Scope_name_map.empty in
+    let by_name_cell = ref Project_name_map.empty in
     let public_libs =
       let public_libs =
         List.filter_map internal_libs ~f:(fun (_dir, lib) ->
           match lib.public with
           | None -> None
-          | Some p -> Some (p.name, lib.scope_name))
+          | Some p -> Some (p.name, lib.project_name))
         |> String.Map.of_list
         |> function
         | Ok x -> x
@@ -102,26 +102,26 @@ module DB = struct
         ~resolve:(fun name ->
           match String.Map.find public_libs name with
           | None -> Not_found
-          | Some scope_name ->
+          | Some project_name ->
             let scope =
-              Option.value_exn (Scope_name_map.find !by_name_cell scope_name)
+              Option.value_exn (Project_name_map.find !by_name_cell project_name)
             in
             Redirect (Some scope.db, name))
         ~all:(fun () -> String.Map.keys public_libs)
     in
     let by_name =
-      Scope_name_map.merge scopes_info_by_name libs_by_scope_name
-        ~f:(fun _name info libs ->
-          let info = Option.value_exn info         in
+      Project_name_map.merge projects_by_name libs_by_project_name
+        ~f:(fun _name project libs ->
+          let project = Option.value_exn project in
           let libs = Option.value libs ~default:[] in
           let db =
             Lib.DB.create_from_library_stanzas libs ~parent:public_libs
           in
-          Some { info; db })
+          Some { project; db })
     in
     by_name_cell := by_name;
     let by_dir = Hashtbl.create 1024 in
-    Scope_name_map.iter by_name ~f:(fun scope ->
-      Hashtbl.add by_dir scope.info.root scope);
+    Project_name_map.iter by_name ~f:(fun scope ->
+      Hashtbl.add by_dir scope.project.root scope);
     ({ by_name; by_dir; context }, public_libs)
 end

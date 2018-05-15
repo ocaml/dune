@@ -23,10 +23,10 @@ type t
 val create
   :  context:Context.t
   -> ?host:t
-  -> scopes:Scope_info.t list
+  -> projects:Dune_project.t list
   -> file_tree:File_tree.t
   -> packages:Package.t Package.Name.Map.t
-  -> stanzas:(Path.t * Scope_info.t * Stanzas.t) list
+  -> stanzas:(Path.t * Dune_project.t * Stanzas.t) list
   -> external_lib_deps_mode:bool
   -> build_system:Build_system.t
   -> t
@@ -224,5 +224,5 @@ end
 module Scope_key : sig
   val of_string : t -> string -> string * Lib.DB.t
 
-  val to_string : string -> Scope_info.Name.t -> string
+  val to_string : string -> Dune_project.Name.t -> string
 end

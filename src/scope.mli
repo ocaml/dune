@@ -7,7 +7,7 @@ open Stdune
 type t
 
 val root : t -> Path.t
-val name : t -> string option
+val name : t -> Dune_project.Name.t
 val info : t -> Jbuild.Scope_info.t
 
 (** Return the library database associated to this scope *)
@@ -28,6 +28,6 @@ module DB : sig
     -> (Path.t * Jbuild.Library.t) list
     -> t * Lib.DB.t
 
-  val find_by_dir  : t -> Path.t        -> scope
-  val find_by_name : t -> string option -> scope
+  val find_by_dir  : t -> Path.t              -> scope
+  val find_by_name : t -> Dune_project.Name.t -> scope
 end with type scope := t

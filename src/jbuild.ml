@@ -90,20 +90,7 @@ let c_name, cxx_name =
    make "C++" "cpp")
 
 module Scope_info = struct
-  module Name = struct
-    type t = string option
-
-    let compare : t -> t -> Ordering.t = compare
-
-    let of_string = function
-      | "" -> None
-      | s  -> Some s
-
-    let to_string = function
-      | None -> ""
-      | Some "" -> assert false
-      | Some s -> s
-  end
+  module Name = Dune_project.Name
 
   type t =
     { name     : Name.t
@@ -114,7 +101,7 @@ module Scope_info = struct
     }
 
   let anonymous =
-    { name     = None
+    { name     = Name.anonymous_root
     ; packages = Package.Name.Map.empty
     ; root     = Path.root
     ; version  = None
@@ -122,7 +109,7 @@ module Scope_info = struct
     }
 
   let make (project : Dune_project.t) =
-    { name     = Some project.name
+    { name     = project.name
     ; packages = project.packages
     ; root     = project.root
     ; version  = project.version

@@ -23,7 +23,7 @@
   B $LIB_PREFIX/lib/findlib
   B $LIB_PREFIX/lib/ocaml
   FLG -open Foo -w -40 -open Bar -w -40
-  FLG -ppx '$PPX/fooppx@/ppx.exe --as-ppx --cookie '\''library-name="foo"'\'''
+  FLG -ppx '$PPX/fooppx@./ppx.exe --as-ppx --cookie '\''library-name="foo"'\'''
   S .
   S $LIB_PREFIX/lib/bytes
   S $LIB_PREFIX/lib/findlib

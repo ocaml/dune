@@ -17,7 +17,7 @@ module Status = struct
        | Installed -> "installed"
        | Public _ -> "public"
        | Private s ->
-         sprintf "private (%s)" (Jbuild.Scope_info.Name.to_string s))
+         sprintf "private (%s)" (Jbuild.Scope_info.Name.to_string_hum s))
 
   let is_private = function
     | Private _ -> true

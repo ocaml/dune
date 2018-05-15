@@ -8,9 +8,33 @@ module Lang : sig
     | Dune of Syntax.Version.t
 end
 
+module Name : sig
+  (** Invariants:
+      - Named     s -> s <> "" and s does not contain '.' or '/'
+      - Anonymous p -> p is a local path in the source tree
+  *)
+  type t = private
+    | Named     of string
+    | Anonymous of Path.t
+
+  val compare : t -> t -> Ordering.t
+
+  (** Convert to a string that is suitable for human readable messages *)
+  val to_string_hum : t -> string
+
+  val sexp_of_t : t -> Sexp.t
+
+  (** Convert to/from an encoded string that is suitable to use in filenames *)
+  val encode : t -> string
+  val decode : string -> t
+
+  (** [Anonymous Path.root] *)
+  val anonymous_root : t
+end
+
 type t =
   { lang     : Lang.t
-  ; name     : string
+  ; name     : Name.t
   ; root     : Path.t
   ; version  : string option
   ; packages : Package.t Package.Name.Map.t

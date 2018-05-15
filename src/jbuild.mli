@@ -10,22 +10,10 @@ module Jbuild_version : sig
 end
 
 module Scope_info : sig
-  module Name : sig
-    (* CR-someday diml: change to [private string] and encode [None]
-       as [""] *)
-    (** [None] is the for the {!anonymous} scope *)
-    type t = string option
-
-    val compare : t -> t -> Ordering.t
-
-    val of_string : string -> t
-    val to_string : t -> string
-  end
+  module Name = Dune_project.Name
 
   type t =
-    { name     : string option (** First package name in alphabetical
-                                   order. [None] for the global
-                                   scope. *)
+    { name     : Name.t
     ; packages : Package.t Package.Name.Map.t
     ; root     : Path.t
     ; version  : string option

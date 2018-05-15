@@ -42,10 +42,11 @@ module DB = struct
     | Some x -> x
     | None ->
       Exn.code_error "Scope.DB.find_by_name"
-        [ "name"   , Sexp.To_sexp.(option string) name
+        [ "name"   , Dune_project.Name.sexp_of_t name
         ; "context", Sexp.To_sexp.string t.context
         ; "names",
-          Sexp.To_sexp.(list (option string)) (Scope_name_map.keys t.by_name)
+          Sexp.To_sexp.(list Dune_project.Name.sexp_of_t)
+            (Scope_name_map.keys t.by_name)
         ]
 
   let create ~scopes ~context ~installed_libs internal_libs =
@@ -57,7 +58,7 @@ module DB = struct
       | Ok x -> x
       | Error (_name, scope1, scope2) ->
         let to_sexp (scope : Jbuild.Scope_info.t) =
-          Sexp.To_sexp.(pair (option string) Path.sexp_of_t)
+          Sexp.To_sexp.(pair Dune_project.Name.sexp_of_t Path.sexp_of_t)
             (scope.name, scope.root)
         in
         Exn.code_error "Scope.DB.create got two scopes with the same name"

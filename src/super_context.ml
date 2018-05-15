@@ -536,10 +536,10 @@ module Scope_key = struct
       (key, public_libs sctx)
     | Some (key, scope) ->
       ( key
-      , Scope.libs (find_scope_by_name sctx (Scope_info.Name.of_string scope)))
+      , Scope.libs (find_scope_by_name sctx (Scope_info.Name.decode scope)))
 
   let to_string key scope =
-    sprintf "%s@%s" key (Scope_info.Name.to_string scope)
+    sprintf "%s@%s" key (Scope_info.Name.encode scope)
 end
 
 let parse_bang var : bool * string =

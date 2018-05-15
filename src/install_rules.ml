@@ -194,7 +194,7 @@ module Gen(P : Install_params) = struct
             | "ppx_driver" | "ppx_type_conv" -> true
             | _ -> false) then
             pps @ [match Scope.name scope with
-              | Some "ppxlib" ->
+              | Named "ppxlib" ->
                 Loc.none, Pp.of_string "ppxlib.runner"
               | _ ->
                 Loc.none, Pp.of_string "ppx_driver.runner"]

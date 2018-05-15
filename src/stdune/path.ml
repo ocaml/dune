@@ -521,3 +521,21 @@ let extension = Filename.extension
 
 let pp ppf t = Format.pp_print_string ppf (to_string t)
 
+let follow_symlink p =
+  match (
+    match Unix.readlink (to_string p) with
+    | p -> Some p
+    | exception Unix.Unix_error (Unix.EINVAL, "readlink", _) -> None
+  ) with
+  | None -> p
+  | Some realpath ->
+    if not (is_local realpath) then
+      of_string realpath
+    else
+      match parent p with
+      | Some p -> relative p realpath
+      | None ->
+        Exn.code_error "follow_symlink: p cannot be a symlink to root"
+          [ "p", sexp_of_t p
+          ; "realpath", sexp_of_t realpath ]
+

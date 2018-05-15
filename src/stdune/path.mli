@@ -143,3 +143,5 @@ val pp : Format.formatter -> t -> unit
 val build_dir_exists : unit -> bool
 
 val ensure_build_dir_exists : unit -> unit
+
+val follow_symlink : t -> t

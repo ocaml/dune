@@ -157,10 +157,7 @@ let ignore_file fn ~is_directory =
 
 let load ?(extra_ignored_subtrees=Path.Set.empty) path =
   let rec walk seen_real_paths path ~project ~ignored : Dir.t =
-    let realpath =
-      try Path.of_string (Unix.readlink (Path.to_string path))
-      with Unix.Unix_error (_, _, _) -> path
-    in
+    let realpath = Path.follow_symlink path in
     if List.mem realpath ~set:seen_real_paths then
       die "Path %s has already been scanned. \
            Cannot scan it again through symlink %s"

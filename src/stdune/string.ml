@@ -166,14 +166,24 @@ let longest_map l ~f =
 
 let longest l = longest_map l ~f:(fun x -> x)
 
-let exists s ~f =
-  try
-    for i=0 to length s - 1 do
-      if (f s.[i]) then raise_notrace Exit
-    done;
-    false
-  with Exit ->
-    true
+
+let exists =
+  let rec loop s i len f =
+    if i = len then
+      false
+    else
+      f (unsafe_get s i) || loop s (i + 1) len f
+  in
+  fun s ~f ->
+    loop s 0 (length s) f
+
+let for_all =
+  let rec loop s i len f =
+    i = len ||
+    (f (unsafe_get s i) && loop s (i + 1) len f)
+  in
+  fun s ~f ->
+    loop s 0 (length s) f
 
 let maybe_quoted s =
   let escaped = escaped s in
@@ -181,7 +191,6 @@ let maybe_quoted s =
     s
   else
     Printf.sprintf {|"%s"|} escaped
-
 
 module Set = Set.Make(T)
 module Map = Map.Make(T)

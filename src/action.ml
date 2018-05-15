@@ -849,14 +849,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     Path.rm_rf path;
     Fiber.return ()
   | Mkdir path ->
-    (match Path.kind path with
-     | External _ ->
-       (* Internally we make sure never to do that, and [Unexpanded.*expand] check that *)
-       Exn.code_error
-         "(mkdir ...) is not supported for paths outside of the workspace"
-         [ "mkdir", Path.sexp_of_t path ]
-     | Local path ->
-       Path.Local.mkdir_p path);
+    Path.mkdir_p path;
     Fiber.return ()
   | Digest_files paths ->
     let s =

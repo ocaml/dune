@@ -47,9 +47,6 @@ end
 
 module Map : Map.S with type key = t
 
-
-val kind : t -> Kind.t
-
 val of_string : ?error_loc:Usexp.Loc.t -> string -> t
 val to_string : t -> string
 

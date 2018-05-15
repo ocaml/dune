@@ -28,9 +28,8 @@ module Jbuilds = struct
   let generated_jbuilds_dir = Path.relative Path.build_dir ".jbuilds"
 
   let ensure_parent_dir_exists path =
-    match Path.kind path with
-    | Local path -> Path.Local.ensure_parent_directory_exists path
-    | External _ -> ()
+    if Path.is_in_build_dir path then
+      Option.iter (Path.parent path) ~f:Path.mkdir_p
 
   type requires = No_requires | Unix
 

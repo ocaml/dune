@@ -190,7 +190,7 @@ module Cached_digest = struct
           Path.Map.add acc key data)
         |> Path.Map.to_list
         |> List.map ~f:(fun (path, file) ->
-          Sexp.List [ Quoted_string (Path.to_string path)
+          Sexp.List [ Path.sexp_of_t path
                     ; Atom (Sexp.Atom.of_digest file.digest)
                     ; Atom (Sexp.Atom.of_int64
                               (Int64.bits_of_float file.timestamp))

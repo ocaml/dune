@@ -411,8 +411,24 @@ let of_string ?error_loc s =
         external_ s
     end
 
-let t sexp = of_string (Sexp.Of_sexp.string sexp) ~error_loc:(Sexp.Ast.loc sexp)
-let sexp_of_t t = Sexp.atom_or_quoted_string (to_string t)
+let t = function
+  (* the first 2 cases are necessary for old build dirs *)
+  | Sexp.Ast.Atom (_, A s)
+  | Quoted_string (_, s) -> of_string s
+  | s ->
+    let open Sexp.Of_sexp in
+    sum
+      [ cstr "In_build_dir" (string @> nil) in_build_dir
+      ; cstr "In_source_tree" (string @> nil) in_source_tree
+      ; cstr "External" (string @> nil) external_
+      ] s
+
+let sexp_of_t t =
+  let constr x y = Sexp.To_sexp.(pair string string) (x, y) in
+  match t with
+  | In_build_dir s -> constr "In_build_dir" s
+  | In_source_tree s -> constr "In_source_tree" s
+  | External s -> constr "External" s
 
 let initial_cwd = Sys.getcwd ()
 

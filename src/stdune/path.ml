@@ -331,13 +331,13 @@ end = struct
 
   let compare x y =
     match x, y with
-    | External x, External y -> External.compare x y
-    | External _, (In_source_tree _ | In_build_dir _) -> Gt
-    | (In_source_tree _ | In_build_dir _), External _  -> Lt
+    | External x      , External y       -> External.compare x y
+    | External _      , _                -> Lt
+    | _               , External _       -> Gt
     | In_source_tree x, In_source_tree y -> Local.compare x y
-    | In_source_tree _, In_build_dir _ -> Gt
-    | In_build_dir _, In_source_tree _ -> Lt
-    | In_build_dir x, In_build_dir y -> Local.compare x y
+    | In_source_tree _, _                -> Lt
+    | _               , In_source_tree _ -> Gt
+    | In_build_dir x  , In_build_dir y   -> Local.compare x y
 
   let in_build_dir s = In_build_dir s
 

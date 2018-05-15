@@ -301,17 +301,16 @@ let (build_dir_kind, set_build_dir) =
   (build_dir, set_build_dir)
 
 let drop_build_dir p =
+  let open Option.O in
   match build_dir_kind (), Kind.of_string p with
-  | Kind.External bd, Kind.External p ->
-    let open Option.O in
+  | External bd, External p ->
     String.drop_prefix ~prefix:bd p
     >>= String.drop_prefix ~prefix:"/"
-  | Kind.Local of_, Kind.Local p ->
-    let open Option.O in
+  | Local of_, Local p ->
     Local.descendant p ~of_ >>| fun p ->
     if p = of_ then "" else p
-  | Kind.Local _, Kind.External _
-  | Kind.External _, Kind.Local _ -> None
+  | Local _, External _
+  | External _, Local _ -> None
 
 module T : sig
   type t = private
@@ -333,20 +332,19 @@ end = struct
   let compare x y =
     match x, y with
     | External x, External y -> External.compare x y
-    | External _, (In_source_tree _ | In_build_dir _) -> Ordering.Gt
-    | (In_source_tree _ | In_build_dir _), External _  -> Ordering.Lt
+    | External _, (In_source_tree _ | In_build_dir _) -> Gt
+    | (In_source_tree _ | In_build_dir _), External _  -> Lt
     | In_source_tree x, In_source_tree y -> Local.compare x y
-    | In_source_tree _, In_build_dir _ -> Ordering.Gt
-    | In_build_dir _, In_source_tree _ -> Ordering.Lt
+    | In_source_tree _, In_build_dir _ -> Gt
+    | In_build_dir _, In_source_tree _ -> Lt
     | In_build_dir x, In_build_dir y -> Local.compare x y
 
   let in_build_dir s = In_build_dir s
 
   let in_source_tree s =
-    if not (Filename.is_relative s) then (
+    if not (Filename.is_relative s) then
       Exn.code_error "in_source_tree: absolute path"
-        [ "s", Sexp.To_sexp.string s ]
-    );
+        [ "s", Sexp.To_sexp.string s ];
     In_source_tree s
   let external_ e = External e
 end

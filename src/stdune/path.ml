@@ -522,13 +522,27 @@ let extension = Filename.extension
 let pp ppf t = Format.pp_print_string ppf (to_string t)
 
 let follow_symlink p =
-  match (
-    match Unix.readlink (to_string p) with
-    | p -> Some p
-    | exception Unix.Unix_error (Unix.EINVAL, "readlink", _) -> None
-  ) with
-  | None -> p
-  | Some realpath ->
+  let readlink fn =
+    match Unix.readlink fn with
+    | exception Unix.Unix_error ((EINVAL | ENOENT), "readlink", _) -> None
+    | p -> Some p in
+  match readlink p with
+  | None -> Result.Ok p
+  | Some p ->
+    let rec follow n fn =
+      if n = 0 then
+        Result.Error `Maximum_depth_exceeded
+      else
+        match readlink fn with
+        | None -> Result.Ok fn
+        | Some p ->
+          if p = fn then
+            Result.Error `Cycle_detected
+          else
+            follow (pred n) p
+    in
+    let open Result.O in
+    follow 256 (to_string p) >>| fun realpath ->
     if not (is_local realpath) then
       of_string realpath
     else

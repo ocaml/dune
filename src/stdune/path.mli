@@ -144,4 +144,6 @@ val build_dir_exists : unit -> bool
 
 val ensure_build_dir_exists : unit -> unit
 
-val follow_symlink : t -> t
+val follow_symlink
+  :  t
+  -> (t, [ `Cycle_detected | `Maximum_depth_exceeded ]) Result.t

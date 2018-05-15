@@ -157,7 +157,16 @@ let ignore_file fn ~is_directory =
 
 let load ?(extra_ignored_subtrees=Path.Set.empty) path =
   let rec walk seen_real_paths path ~project ~ignored : Dir.t =
-    let realpath = Path.follow_symlink path in
+    let realpath =
+      Path.follow_symlink path
+      |> Result.map_error ~f:(function
+        | `Maximum_depth_exceeded ->
+          die "maximum symlink depth exceeded while scanning %s"
+            (Path.to_string_maybe_quoted path)
+        | `Cycle_detected ->
+          die "cycle detected while scanning %s"
+            (Path.to_string_maybe_quoted path))
+      |> Result.ok_exn in
     if List.mem realpath ~set:seen_real_paths then
       die "Path %s has already been scanned. \
            Cannot scan it again through symlink %s"

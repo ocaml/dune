@@ -110,6 +110,7 @@ module Dir = struct
     { files     : String.Set.t
     ; sub_dirs  : t String.Map.t
     ; dune_file : Dune_file.t option
+    ; project   : Dune_project.t option
     }
 
   let contents t = Lazy.force t.contents
@@ -120,6 +121,7 @@ module Dir = struct
   let files     t = (contents t).files
   let sub_dirs  t = (contents t).sub_dirs
   let dune_file t = (contents t).dune_file
+  let project   t = (contents t).project
 
   let file_paths t =
     Path.Set.of_string_set (files t) ~f:(Path.relative t.path)
@@ -154,7 +156,7 @@ let ignore_file fn ~is_directory =
   (fn.[0] = '.' && fn.[1] = '#')
 
 let load ?(extra_ignored_subtrees=Path.Set.empty) path =
-  let rec walk path ~ignored : Dir.t =
+  let rec walk path ~project ~ignored : Dir.t =
     let contents = lazy (
       let files, sub_dirs =
         Path.readdir path
@@ -169,6 +171,11 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             Left fn)
       in
       let files = String.Set.of_list files in
+      let project =
+        match Dune_project.load ~dir:path ~files with
+        | Some _ as x -> x
+        | None        -> project
+      in
       let dune_file, ignored_subdirs =
         if ignored then
           (None, String.Set.empty)
@@ -202,16 +209,16 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             || String.Set.mem ignored_subdirs fn
             || Path.Set.mem extra_ignored_subtrees path
           in
-          String.Map.add acc fn (walk path ~ignored))
+          String.Map.add acc fn (walk path ~project ~ignored))
       in
-      { Dir. files; sub_dirs; dune_file })
+      { Dir. files; sub_dirs; dune_file; project })
     in
     { path
     ; contents
     ; ignored
     }
   in
-  let root = walk path ~ignored:false in
+  let root = walk path ~ignored:false ~project:None in
   let dirs = Hashtbl.create 1024      in
   Hashtbl.add dirs Path.root root;
   { root; dirs }

@@ -43,6 +43,9 @@ module Dir : sig
 
   (** Return the contents of the dune (or jbuild) file in this directory *)
   val dune_file : t -> Dune_file.t option
+
+  (** Return the project this directory is part of *)
+  val project : t -> Dune_project.t option
 end
 
 (** A [t] value represent a view of the source tree. It is lazily

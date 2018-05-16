@@ -1,5 +1,3 @@
-  $ rm -rf x c* symlink*
-
   $ mkdir -p c1
   $ cd c1 && ln -s . x
   $ cd c1 && ln -s . y

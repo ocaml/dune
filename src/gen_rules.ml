@@ -1034,7 +1034,7 @@ let gen ~contexts ~build_system
       ?(external_lib_deps_mode=false)
       ?only_packages conf =
   let open Fiber.O in
-  let { Jbuild_load. file_tree; jbuilds; packages; scopes } = conf in
+  let { Jbuild_load. file_tree; jbuilds; packages; projects } = conf in
   let packages =
     match only_packages with
     | None -> packages
@@ -1076,7 +1076,7 @@ let gen ~contexts ~build_system
         ?host
         ~build_system
         ~context
-        ~scopes
+        ~projects
         ~file_tree
         ~packages
         ~external_lib_deps_mode

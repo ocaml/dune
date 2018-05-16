@@ -9,15 +9,15 @@ module Status = struct
   type t =
     | Installed
     | Public  of Package.t
-    | Private of Jbuild.Scope_info.Name.t
+    | Private of Dune_project.Name.t
 
   let pp ppf t =
     Format.pp_print_string ppf
       (match t with
        | Installed -> "installed"
        | Public _ -> "public"
-       | Private s ->
-         sprintf "private (%s)" (Jbuild.Scope_info.Name.to_string_hum s))
+       | Private name ->
+         sprintf "private (%s)" (Dune_project.Name.to_string_hum name))
 
   let is_private = function
     | Private _ -> true
@@ -88,7 +88,7 @@ module Info = struct
     in
     let status =
       match conf.public with
-      | None   -> Status.Private conf.scope_name
+      | None   -> Status.Private conf.project_name
       | Some p -> Public p.package
     in
     let foreign_archives =

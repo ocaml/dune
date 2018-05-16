@@ -9,29 +9,6 @@ module Jbuild_version : sig
   val latest_stable : t
 end
 
-module Scope_info : sig
-  module Name = Dune_project.Name
-
-  type t =
-    { name     : Name.t
-    ; packages : Package.t Package.Name.Map.t
-    ; root     : Path.t
-    ; version  : string option
-    ; project  : Dune_project.t option
-    }
-
-  val make : Dune_project.t -> t
-
-  (** The anonymous represent the scope at the root of the workspace
-      when the root of the workspace contains no [<package>.opam]
-      files. *)
-  val anonymous : t
-
-  (** [resolve t package_name] looks up [package_name] in [t] and returns the
-      package description if it exists, otherwise it returns an error. *)
-  val resolve : t -> Package.Name.t -> (Package.t, string) result
-end
-
 (** Ppx preprocessors  *)
 module Pp : sig
   type t = private string
@@ -233,7 +210,7 @@ module Library : sig
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
-    ; scope_name               : Scope_info.Name.t
+    ; project_name             : Dune_project.Name.t
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     }
 
@@ -397,7 +374,7 @@ module Stanzas : sig
   val parse
     :  ?default_version:Jbuild_version.t
     -> file:Path.t
-    -> Scope_info.t
+    -> Dune_project.t
     -> Sexp.Ast.t list
     -> t
 end

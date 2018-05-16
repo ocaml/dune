@@ -38,7 +38,7 @@ module Status : sig
   type t =
     | Installed
     | Public  of Package.t
-    | Private of Jbuild.Scope_info.Name.t
+    | Private of Dune_project.Name.t
 
   val pp : t Fmt.t
 end

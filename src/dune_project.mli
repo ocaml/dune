@@ -27,9 +27,6 @@ module Name : sig
   (** Convert to/from an encoded string that is suitable to use in filenames *)
   val encode : t -> string
   val decode : string -> t
-
-  (** [Anonymous Path.root] *)
-  val anonymous_root : t
 end
 
 type t =
@@ -46,3 +43,7 @@ val load : dir:Path.t -> files:String.Set.t -> t option
 
 (** "dune-project" *)
 val filename : string
+
+(** Represent the scope at the root of the workspace when the root of
+    the workspace contains no [dune-project] or [<package>.opam] files. *)
+val anonymous : t

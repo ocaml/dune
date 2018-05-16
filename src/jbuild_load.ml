@@ -11,13 +11,13 @@ let filter_stanzas ~ignore_promoted_rules stanzas =
 
 module Jbuilds = struct
   type script =
-    { dir   : Path.t
-    ; file  : Path.t
-    ; scope : Scope_info.t
+    { dir     : Path.t
+    ; file    : Path.t
+    ; project : Dune_project.t
     }
 
   type one =
-    | Literal of (Path.t * Scope_info.t * Stanza.t list)
+    | Literal of (Path.t * Dune_project.t * Stanza.t list)
     | Script of script
 
   type t =
@@ -115,7 +115,7 @@ end
         | Literal x -> Left  x
         | Script  x -> Right x)
     in
-    Fiber.parallel_map dynamic ~f:(fun { dir; file; scope } ->
+    Fiber.parallel_map dynamic ~f:(fun { dir; file; project } ->
       let generated_jbuild =
         Path.append (Path.relative generated_jbuilds_dir context.name) file
       in
@@ -155,8 +155,9 @@ end
              Did you forgot to call [Jbuild_plugin.V*.send]?"
           (Path.to_string file);
       let sexps = Io.Sexp.load generated_jbuild ~mode:Many in
-      Fiber.return (dir, scope, Stanzas.parse scope sexps ~file:generated_jbuild
-                                |> filter_stanzas ~ignore_promoted_rules))
+      Fiber.return (dir, project,
+                    Stanzas.parse project sexps ~file:generated_jbuild
+                    |> filter_stanzas ~ignore_promoted_rules))
     >>| fun dynamic ->
     static @ dynamic
 end
@@ -165,22 +166,22 @@ type conf =
   { file_tree : File_tree.t
   ; jbuilds   : Jbuilds.t
   ; packages  : Package.t Package.Name.Map.t
-  ; scopes    : Scope_info.t list
+  ; projects  : Dune_project.t list
   }
 
-let interpret ~dir ~scope ~ignore_promoted_rules
+let interpret ~dir ~project ~ignore_promoted_rules
       ~(dune_file:File_tree.Dune_file.t) =
   match dune_file with
   | Plain p ->
     let jbuild =
-      Jbuilds.Literal (dir, scope,
-                       Stanzas.parse scope p.sexps ~file:p.path
+      Jbuilds.Literal (dir, project,
+                       Stanzas.parse project p.sexps ~file:p.path
                        |> filter_stanzas ~ignore_promoted_rules)
     in
     p.sexps <- [];
     jbuild
   | Ocaml_script file ->
-    Script { dir; scope; file }
+    Script { dir; project; file }
 
 let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
   let ftree = File_tree.load Path.root ?extra_ignored_subtrees in
@@ -205,41 +206,41 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
               (Path.to_string_maybe_quoted (Package.opam_file a))
               (Path.to_string_maybe_quoted (Package.opam_file b))))
   in
-  let scopes =
+  let projects =
     List.map projects ~f:(fun (p : Dune_project.t) ->
-      (p.root, Scope_info.make p))
+      (p.root, p))
     |> Path.Map.of_list_exn
   in
 
-  let scopes =
-    if Path.Map.mem scopes Path.root then
-      scopes
+  let projects =
+    if Path.Map.mem projects Path.root then
+      projects
     else
-      Path.Map.add scopes Path.root Scope_info.anonymous
+      Path.Map.add projects Path.root Dune_project.anonymous
   in
-  let rec walk dir jbuilds scope =
+  let rec walk dir jbuilds project =
     if File_tree.Dir.ignored dir then
       jbuilds
     else begin
       let path = File_tree.Dir.path dir in
       let sub_dirs = File_tree.Dir.sub_dirs dir in
-      let scope = Option.value (Path.Map.find scopes path) ~default:scope in
+      let project = Option.value (Path.Map.find projects path) ~default:project in
       let jbuilds =
         match File_tree.Dir.dune_file dir with
         | None -> jbuilds
         | Some dune_file ->
           let jbuild =
-            interpret ~dir:path ~scope ~ignore_promoted_rules ~dune_file
+            interpret ~dir:path ~project ~ignore_promoted_rules ~dune_file
           in
           jbuild :: jbuilds
       in
       String.Map.fold sub_dirs ~init:jbuilds
-        ~f:(fun dir jbuilds -> walk dir jbuilds scope)
+        ~f:(fun dir jbuilds -> walk dir jbuilds project)
     end
   in
-  let jbuilds = walk (File_tree.root ftree) [] Scope_info.anonymous in
+  let jbuilds = walk (File_tree.root ftree) [] Dune_project.anonymous in
   { file_tree = ftree
   ; jbuilds = { jbuilds; ignore_promoted_rules }
   ; packages
-  ; scopes = Path.Map.values scopes
+  ; projects = Path.Map.values projects
   }

@@ -87,9 +87,11 @@ module External = struct
         mkdir_p p;
         Unix.mkdir t 0o777
 
- 
-  [@@@ocaml.warning "-32"]
-  let normalize = normalize_to_base "/"
+  let normalize ?error_loc p =
+    normalize_to_base "/" p
+    |> Result.map_error ~f:(fun () ->
+      Exn.fatalf ?loc:error_loc "Invalid external path: %S" p)
+    |> Result.ok_exn
 end
 
 module Local = struct

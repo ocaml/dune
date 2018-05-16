@@ -47,6 +47,7 @@ let set_common c ~targets =
       ; c.orig_args
       ; targets
       ];
+  Path.set_root !Clflags.workspace_root;
   Path.set_build_dir (Path.Kind.of_string c.build_dir)
 
 let restore_cwd_and_execve common prog argv env =

@@ -261,6 +261,28 @@ module Local = struct
     loop (to_list t) (to_list from)
 end
 
+let (abs_root, set_root) =
+  let root_dir = ref None in
+  let set_root new_root =
+    match !root_dir with
+    | None ->
+      if Filename.is_relative new_root then
+        Exn.code_error "set_root: root must be absolute"
+          ["new_root", Sexp.To_sexp.string new_root];
+      root_dir := Some (External.normalize new_root)
+    | Some root_dir ->
+      Exn.code_error "set_root: cannot set root_dir more than once"
+        [ "root_dir", Sexp.To_sexp.string root_dir
+        ; "New_root_dir", Sexp.To_sexp.string  new_root ]
+  in
+  let abs_root () =
+    match !root_dir with
+    | None ->
+      Exn.code_error "root_dir: cannot use build dir before it's set" []
+    | Some root_dir -> root_dir in
+  (abs_root, set_root)
+
+
 module Kind = struct
   type t =
     | External of External.t

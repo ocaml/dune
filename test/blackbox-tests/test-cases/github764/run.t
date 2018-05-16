@@ -26,3 +26,10 @@
   $ cd symlink-outside-root2/root && dune build
   Path b has already been scanned. Cannot scan it again through symlink src/a/x/x/x
   [1]
+
+  $ mkdir -p symlink-outside-root3/{root,other}
+  $ cd symlink-outside-root3 && ln -s ../other root/src
+  $ cd symlink-outside-root3 && ln -s ../other other/foo
+  $ cd symlink-outside-root3/root && dune build
+  Path other has already been scanned. Cannot scan it again through symlink src/foo
+  [1]

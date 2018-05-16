@@ -520,36 +520,3 @@ let change_extension ~ext t =
 let extension = Filename.extension
 
 let pp ppf t = Format.pp_print_string ppf (to_string t)
-
-let follow_symlink p =
-  let readlink fn =
-    match Unix.readlink fn with
-    | exception Unix.Unix_error ((EINVAL | ENOENT), "readlink", _) -> None
-    | p -> Some p in
-  match readlink p with
-  | None -> Result.Ok p
-  | Some p ->
-    let rec follow n fn =
-      if n = 0 then
-        Result.Error `Maximum_depth_exceeded
-      else
-        match readlink fn with
-        | None -> Result.Ok fn
-        | Some p ->
-          if p = fn then
-            Result.Error `Cycle_detected
-          else
-            follow (pred n) p
-    in
-    let open Result.O in
-    follow 256 (to_string p) >>| fun realpath ->
-    if not (is_local realpath) then
-      of_string realpath
-    else
-      match parent p with
-      | Some p -> relative p realpath
-      | None ->
-        Exn.code_error "follow_symlink: p cannot be a symlink to root"
-          [ "p", sexp_of_t p
-          ; "realpath", sexp_of_t realpath ]
-

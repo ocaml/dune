@@ -2,11 +2,12 @@ let explode_path =
   let rec loop path acc =
     let dir  = Filename.dirname  path in
     let base = Filename.basename path in
-    let acc = base :: acc in
     if dir = Filename.current_dir_name then
+      base :: acc
+    else if dir = path then
       acc
     else
-      loop dir acc
+      loop dir (base :: acc)
   in
   fun path -> loop path []
 

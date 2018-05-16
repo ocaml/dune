@@ -92,6 +92,19 @@ module External = struct
     |> Result.map_error ~f:(fun () ->
       Exn.fatalf ?loc:error_loc "Invalid external path: %S" p)
     |> Result.ok_exn
+
+  let descendant t ~of_ =
+    match of_ with
+    | "/" -> Some t
+    | _ ->
+      let of_len = String.length of_ in
+      let t_len = String.length t in
+      if t_len = of_len then
+        Option.some_if (t = of_) t
+      else if (t_len >= of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_) then
+        Some (String.sub t ~pos:(of_len + 1) ~len:(t_len - of_len - 1))
+      else
+        None
 end
 
 module Local = struct

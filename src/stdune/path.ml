@@ -280,7 +280,12 @@ module Kind = struct
     if s = "" || Filename.is_relative s then
       Local s
     else
-      External s
+      External (
+        External.normalize s
+        |> Result.map_error ~f:(fun () ->
+          Exn.fatalf "Invalid external path: %S" s)
+        |> Result.ok_exn
+      )
 
   let relative ?error_loc t fn =
     match t with

@@ -330,6 +330,13 @@ module Kind = struct
   let mkdir_p = function
     | Local t -> Local.mkdir_p t
     | External t -> External.mkdir_p t
+
+  let descendant t ~of_ =
+    match t, of_ with
+    | Local t, Local of_ -> Local.descendant t ~of_
+    | External t, External of_ -> External.descendant t ~of_
+    | Local _, External _
+    | External _, Local _ -> None
 end
 
 let (build_dir_kind, set_build_dir) =
@@ -349,17 +356,10 @@ let (build_dir_kind, set_build_dir) =
     | Some build_dir -> build_dir in
   (build_dir, set_build_dir)
 
-let drop_build_dir p =
-  let open Option.O in
-  match build_dir_kind (), Kind.of_string p with
-  | External bd, External p ->
-    String.drop_prefix ~prefix:bd p
-    >>= String.drop_prefix ~prefix:"/"
-  | Local of_, Local p ->
-    Local.descendant p ~of_ >>| fun p ->
-    if p = of_ then "" else p
-  | Local _, External _
-  | External _, Local _ -> None
+let as_relative_to_build_dir p =
+  let of_ = build_dir_kind () in
+  Kind.descendant ~of_ (Kind.of_string p)
+  |> Option.map ~f:(fun p -> if p = Kind.to_string of_ then "" else p)
 
 module T : sig
   type t = private
@@ -433,13 +433,13 @@ let relative ?error_loc t fn =
   if fn = "" then
     t
   else if not (Filename.is_relative fn) then
-    match drop_build_dir fn with
+    match as_relative_to_build_dir fn with
     | None -> external_ fn
     | Some fn -> in_build_dir fn
   else
     match t with
     | In_source_tree "" ->
-      begin match drop_build_dir fn with
+      begin match as_relative_to_build_dir fn with
       | None -> in_source_tree (Local.relative "" fn ?error_loc)
       | Some fn -> in_build_dir (Local.relative "" fn ?error_loc)
       end
@@ -451,7 +451,7 @@ let of_string ?error_loc s =
   match s with
   | "" -> in_source_tree ""
   | s  ->
-    begin match drop_build_dir s with
+    begin match as_relative_to_build_dir s with
     | Some s -> in_build_dir (Local.of_string s ?error_loc)
     | None ->
       if Filename.is_relative s then

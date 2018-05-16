@@ -24,7 +24,7 @@ module External : sig
 end
 
 module Kind : sig
-  type t =
+  type t = private
     | External of External.t
     | Local    of Local.t
 

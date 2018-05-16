@@ -8,8 +8,8 @@
   [1]
 
   $ mkdir -p c2/{a,b}
-  $ cd c2 && ln -s ../b a/x
-  $ cd c2 && ln -s ../a b/x
+  $ cd c2/a && ln -s ../b x
+  $ cd c2/b && ln -s ../a x
   $ cd c2 && dune build
   Path a has already been scanned. Cannot scan it again through symlink a/x/x
   [1]
@@ -20,16 +20,16 @@
   foo
 
   $ mkdir -p symlink-outside-root2/{root,other/{a,b}}
-  $ cd symlink-outside-root2 && ln -s ../b other/a/x
-  $ cd symlink-outside-root2 && ln -s ../a other/b/x
-  $ cd symlink-outside-root2 && ln -s ../other root/src
+  $ cd symlink-outside-root2/other/a && ln -s ../b x
+  $ cd symlink-outside-root2/other/b && ln -s ../a x
+  $ cd symlink-outside-root2/root && ln -s ../other src
   $ cd symlink-outside-root2/root && dune build
   Path src/a has already been scanned. Cannot scan it again through symlink src/a/x/x
   [1]
 
   $ mkdir -p symlink-outside-root3/{root,other}
-  $ cd symlink-outside-root3 && ln -s ../other root/src
-  $ cd symlink-outside-root3 && ln -s ../other other/foo
+  $ cd symlink-outside-root3/root  && ln -s ../other src
+  $ cd symlink-outside-root3/other && ln -s ../other foo
   $ cd symlink-outside-root3/root && dune build
   Path src has already been scanned. Cannot scan it again through symlink src/foo
   [1]

@@ -291,7 +291,7 @@ let (abs_root, set_root) =
   let abs_root () =
     match !root_dir with
     | None ->
-      Exn.code_error "root_dir: cannot use build dir before it's set" []
+      Exn.code_error "root_dir: cannot use root dir before it's set" []
     | Some root_dir -> root_dir in
   (abs_root, set_root)
 

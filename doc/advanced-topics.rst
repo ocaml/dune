@@ -124,7 +124,7 @@ In particular:
   in the list of targets
 - to build Android binaries using opam-cross-android, write
   ``android`` in the list of targets
-- to build Android binaries using opam-cross-ios, write ``ios`` in the
+- to build IOS binaries using opam-cross-ios, write ``ios`` in the
   list of targets
 
 For example, the following workspace file defines three different

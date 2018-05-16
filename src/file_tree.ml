@@ -155,18 +155,46 @@ let ignore_file fn ~is_directory =
   (is_directory && (fn.[0] = '.' || fn.[0] = '_')) ||
   (fn.[0] = '.' && fn.[1] = '#')
 
+module File = struct
+  type t =
+    { ino : int
+    ; dev : int
+    }
+
+  let compare a b =
+    match Int.compare a.ino b.ino with
+    | Eq -> Int.compare a.dev b.dev
+    | ne -> ne
+
+  let dummy = { ino = 0; dev = 0 }
+
+  let of_stats (st : Unix.stats) =
+    { ino = st.st_ino
+    ; dev = st.st_dev
+    }
+end
+
+module File_map = Map.Make(File)
+
 let load ?(extra_ignored_subtrees=Path.Set.empty) path =
-  let rec walk path ~project ~ignored : Dir.t =
+  let rec walk path ~dirs_visited ~project ~ignored : Dir.t =
     let contents = lazy (
       let files, sub_dirs =
         Path.readdir path
         |> List.filter_partition_map ~f:(fun fn ->
           let path = Path.relative path fn in
-          let is_directory = Path.is_directory path in
+          let is_directory, file =
+            match Unix.stat (Path.to_string path) with
+            | exception _ -> (false, File.dummy)
+            | { st_kind = S_DIR; _ } as st ->
+              (true, File.of_stats st)
+            | _ ->
+              (false, File.dummy)
+          in
           if ignore_file fn ~is_directory then
             Skip
           else if is_directory then
-            Right (fn, path)
+            Right (fn, path, file)
           else
             Left fn)
       in
@@ -203,13 +231,27 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
           (dune_file, ignored_subdirs)
       in
       let sub_dirs =
-        List.fold_left sub_dirs ~init:String.Map.empty ~f:(fun acc (fn, path) ->
-          let ignored =
-            ignored
-            || String.Set.mem ignored_subdirs fn
-            || Path.Set.mem extra_ignored_subtrees path
-          in
-          String.Map.add acc fn (walk path ~project ~ignored))
+        List.fold_left sub_dirs ~init:String.Map.empty
+          ~f:(fun acc (fn, path, file) ->
+            let dirs_visited =
+              if Sys.win32 then
+                dirs_visited
+              else
+                match File_map.find dirs_visited file with
+                | None -> File_map.add dirs_visited file path
+                | Some first_path ->
+                  die "Path %s has already been scanned. \
+                       Cannot scan it again through symlink %s"
+                    (Path.to_string_maybe_quoted first_path)
+                    (Path.to_string_maybe_quoted path)
+            in
+            let ignored =
+              ignored
+              || String.Set.mem ignored_subdirs fn
+              || Path.Set.mem extra_ignored_subtrees path
+            in
+            String.Map.add acc fn
+              (walk path ~dirs_visited ~project ~ignored))
       in
       { Dir. files; sub_dirs; dune_file; project })
     in
@@ -218,7 +260,14 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
     ; ignored
     }
   in
-  let root = walk path ~ignored:false ~project:None in
+  let root =
+    walk path
+      ~dirs_visited:(File_map.singleton
+                       (File.of_stats (Unix.stat (Path.to_string path)))
+                       path)
+      ~ignored:false
+      ~project:None
+  in
   let dirs = Hashtbl.create 1024      in
   Hashtbl.add dirs Path.root root;
   { root; dirs }

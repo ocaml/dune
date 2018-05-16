@@ -20,8 +20,8 @@
   foo
 
   $ mkdir -p symlink-outside-root2/root
-  $ mkdir -p symlink-outside-root2/root/other/a
-  $ mkdir -p symlink-outside-root2/root/other/b
+  $ mkdir -p symlink-outside-root2/other/a
+  $ mkdir -p symlink-outside-root2/other/b
   $ cd symlink-outside-root2/other/a && ln -s ../b x
   $ cd symlink-outside-root2/other/b && ln -s ../a x
   $ cd symlink-outside-root2/root && ln -s ../other src

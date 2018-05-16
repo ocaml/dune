@@ -7,7 +7,7 @@
   Path . has already been scanned. Cannot scan it again through symlink x
   [1]
 
-  $ mkdir -p c2/{a,b}
+  $ mkdir -p c2/a c2/b
   $ cd c2/a && ln -s ../b x
   $ cd c2/b && ln -s ../a x
   $ cd c2 && dune build
@@ -19,7 +19,9 @@
   $ cd symlink-outside-root && jbuilder exec --root . -- sample/foo.exe
   foo
 
-  $ mkdir -p symlink-outside-root2/{root,other/{a,b}}
+  $ mkdir -p symlink-outside-root2/root
+  $ mkdir -p symlink-outside-root2/root/other/a
+  $ mkdir -p symlink-outside-root2/root/other/b
   $ cd symlink-outside-root2/other/a && ln -s ../b x
   $ cd symlink-outside-root2/other/b && ln -s ../a x
   $ cd symlink-outside-root2/root && ln -s ../other src
@@ -27,7 +29,8 @@
   Path src/a has already been scanned. Cannot scan it again through symlink src/a/x/x
   [1]
 
-  $ mkdir -p symlink-outside-root3/{root,other}
+  $ mkdir -p symlink-outside-root3/root
+  $ mkdir -p symlink-outside-root3/other
   $ cd symlink-outside-root3/root  && ln -s ../other src
   $ cd symlink-outside-root3/other && ln -s ../other foo
   $ cd symlink-outside-root3/root && dune build

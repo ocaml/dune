@@ -92,19 +92,6 @@ module External = struct
     |> Result.map_error ~f:(fun () ->
       Exn.fatalf ?loc:error_loc "Invalid external path: %S" p)
     |> Result.ok_exn
-
-  let descendant t ~of_ =
-    match of_ with
-    | "/" -> Some t
-    | _ ->
-      let of_len = String.length of_ in
-      let t_len = String.length t in
-      if t_len = of_len then
-        Option.some_if (t = of_) t
-      else if (t_len >= of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_) then
-        Some (String.sub t ~pos:(of_len + 1) ~len:(t_len - of_len - 1))
-      else
-        None
 end
 
 module Local = struct
@@ -274,6 +261,7 @@ module Local = struct
     loop (to_list t) (to_list from)
 end
 
+[@@@ocaml.warning "-32"]
 let (abs_root, set_root) =
   let root_dir = ref None in
   let set_root new_root =
@@ -294,7 +282,6 @@ let (abs_root, set_root) =
       Exn.code_error "root_dir: cannot use root dir before it's set" []
     | Some root_dir -> root_dir in
   (abs_root, set_root)
-
 
 module Kind = struct
   type t =
@@ -317,10 +304,7 @@ module Kind = struct
     if s = "" || Filename.is_relative s then
       Local s
     else
-      let path = External.normalize s in
-      match External.descendant path ~of_:(abs_root ()) with
-      | None -> External path
-      | Some path -> Local path
+      External s
 
   let relative ?error_loc t fn =
     match t with
@@ -330,13 +314,6 @@ module Kind = struct
   let mkdir_p = function
     | Local t -> Local.mkdir_p t
     | External t -> External.mkdir_p t
-
-  let descendant t ~of_ =
-    match t, of_ with
-    | Local t, Local of_ -> Local.descendant t ~of_
-    | External t, External of_ -> External.descendant t ~of_
-    | Local _, External _
-    | External _, Local _ -> None
 end
 
 let (build_dir_kind, set_build_dir) =
@@ -357,9 +334,14 @@ let (build_dir_kind, set_build_dir) =
   (build_dir, set_build_dir)
 
 let as_relative_to_build_dir p =
-  let of_ = build_dir_kind () in
-  Kind.descendant ~of_ (Kind.of_string p)
-  |> Option.map ~f:(fun p -> if p = Kind.to_string of_ then "" else p)
+  if not (Filename.is_relative p) then
+    None
+  else
+    match build_dir_kind () with
+    | External _ -> None
+    | Local of_ ->
+      Local.descendant ~of_ p
+      |> Option.map ~f:(fun p -> if p = of_ then "" else p)
 
 module T : sig
   type t = private

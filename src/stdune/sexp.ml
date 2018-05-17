@@ -273,6 +273,8 @@ module Of_sexp = struct
           | List (_, name_sexp :: values) -> begin
               match name_sexp with
               | Atom (_, A name) ->
+                if Name_map.mem acc name then
+                  of_sexp_errorf sexp "Field %S is present too many times" name;
                 Name_map.add acc name { values; entry = sexp }
               | List _ | Quoted_string _ ->
                 of_sexp_error name_sexp "Atom expected"

@@ -43,6 +43,9 @@ next
 - Add an `ignored_subdirs` stanza to replace `jbuild-ignore` files
   (#767, @diml)
 
+- Fix a bug where Dune ignored previous occurences of duplicated
+  fields (#779, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

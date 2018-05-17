@@ -232,7 +232,8 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
   if display = Verbose then
     Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
       (Colors.strip_colors_for_stderr command_line);
-  let prog = Path.reach_for_running prog ~from:(Option.value ~default:Path.build_dir dir) in
+  let prog = Path.reach_for_running prog
+               ~from:(Option.value ~default:Path.root dir) in
   let argv = Array.of_list (prog :: args) in
   let output_filename, stdout_fd, stderr_fd, to_close =
     match stdout_to, stderr_to with

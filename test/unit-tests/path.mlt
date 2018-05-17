@@ -287,19 +287,19 @@ Path.is_in_build_dir Path.build_dir
 
 Path.reach_for_running Path.build_dir ~from:Path.root
 [%%expect{|
-- : Stdune.Path.t = ./_build
+- : string = "./_build"
 |}]
 
 Path.(reach_for_running (relative build_dir "foo/baz")
         ~from:(relative build_dir "foo/bar/baz"))
 [%%expect{|
-- : Stdune.Path.t = ../../baz
+- : string = "../../baz"
 |}]
 
 Path.(reach_for_running (Path.absolute "/fake/path")
         ~from:(relative build_dir "foo/bar/baz"))
 [%%expect{|
-- : Stdune.Path.t = /fake/path
+- : string = "/fake/path"
 |}]
 
 Path.(reach_for_running (relative build_dir "foo/baz")
@@ -310,5 +310,5 @@ Exception: Stdune__Exn.Code_error <abstr>.
 
 Path.(reach_for_running (relative root "foo") ~from:(Path.relative root "foo"))
 [%%expect{|
-- : Stdune.Path.t = ./.
+- : string = "./."
 |}]

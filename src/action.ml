@@ -741,7 +741,7 @@ let exec_run_direct ~ectx ~dir ~env ~stdout_to ~stderr_to prog args =
   Process.run Strict ~dir ~env
     ~stdout_to ~stderr_to
     ~purpose:ectx.purpose
-    (Path.reach_for_running ~from:dir prog) args
+    prog args
 
 let exec_run ~stdout_to ~stderr_to =
   let stdout_to = get_std_output stdout_to in

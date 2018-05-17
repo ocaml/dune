@@ -142,6 +142,7 @@ module Of_sexp = struct
   type unparsed_field =
     { values : Ast.t list
     ; entry  : Ast.t
+    ; prev   : unparsed_field option (* Previous occurrence of this field *)
     }
 
   module Name = struct
@@ -235,12 +236,29 @@ module Of_sexp = struct
   let field_missing state name =
     of_sexp_errorf_loc state.loc "field %s missing" name
 
+  let rec multiple_occurrences ~name ~last ~prev =
+    match prev.prev with
+    | Some prev_prev ->
+      (* Make the error message point to the second occurrence *)
+      multiple_occurrences ~name ~last:prev ~prev:prev_prev
+    | None ->
+      of_sexp_errorf last.entry "Field %S is present too many times" name
+  [@@inline never]
+
+  let find_single state name =
+    let res = Name_map.find state.unparsed name in
+    (match res with
+     | Some ({ prev = Some prev; _ } as last) ->
+       multiple_occurrences ~name ~last ~prev
+     | _ -> ());
+    res
+
   let field name ?(short=Short_syntax.Not_allowed)
         ?default value_of_sexp state =
-    match Name_map.find state.unparsed name with
+    match find_single state name with
     | Some { values = [value]; _ } ->
       (value_of_sexp value, consume name state)
-    | Some { values = []; entry } ->
+    | Some { values = []; entry; _ } ->
       (Short_syntax.parse short entry name,
        consume name state)
     | Some f ->
@@ -251,10 +269,10 @@ module Of_sexp = struct
       | None -> field_missing state name
 
   let field_o name ?(short=Short_syntax.Not_allowed) value_of_sexp state =
-    match Name_map.find state.unparsed name with
+    match find_single state name with
     | Some { values = [value]; _ } ->
       (Some (value_of_sexp value), consume name state)
-    | Some { values = []; entry } ->
+    | Some { values = []; entry; _ } ->
       (Some (Short_syntax.parse short entry name),
        consume name state)
     | Some f ->
@@ -262,6 +280,20 @@ module Of_sexp = struct
     | None -> (None, add_known name state)
 
   let field_b name = field name bool ~default:false ~short:(This true)
+
+  let dup_field name ?(short=Short_syntax.Not_allowed) value_of_sexp state =
+    let rec loop acc field =
+      match field with
+      | None -> acc
+      | Some { values = [value]; prev; _ } ->
+        loop (value_of_sexp value :: acc) prev
+      | Some { values = []; entry; prev } ->
+        loop (Short_syntax.parse short entry name :: acc) prev
+      | Some f ->
+        too_many_values name f
+    in
+    let res = loop [] (Name_map.find state.unparsed name) in
+    (res, consume name state)
 
   let make_record_parser_state sexp =
     match sexp with
@@ -273,9 +305,11 @@ module Of_sexp = struct
           | List (_, name_sexp :: values) -> begin
               match name_sexp with
               | Atom (_, A name) ->
-                if Name_map.mem acc name then
-                  of_sexp_errorf sexp "Field %S is present too many times" name;
-                Name_map.add acc name { values; entry = sexp }
+                Name_map.add acc name
+                  { values
+                  ; entry = sexp
+                  ; prev  = Name_map.find acc name
+                  }
               | List _ | Quoted_string _ ->
                 of_sexp_error name_sexp "Atom expected"
             end
@@ -328,14 +362,27 @@ module Of_sexp = struct
   let ( @> ) a b = Constructor_args_spec.Cons (a, b)
 
   let field_multi name ?default args_spec f state =
-    match Name_map.find state.unparsed name with
-    | Some { values; entry } ->
+    match find_single state name with
+    | Some { values; entry; _ } ->
       (Constructor_args_spec.convert args_spec No_rest entry values f,
        consume name state)
     | None ->
       match default with
       | Some v -> (v, add_known name state)
       | None -> field_missing state name
+
+  let dup_field_multi name args_spec f state =
+    let rec loop acc field =
+      match field with
+      | None -> acc
+      | Some { values; entry; prev } ->
+        let x =
+          Constructor_args_spec.convert args_spec No_rest entry values f
+        in
+        loop (x :: acc) prev
+    in
+    let res = loop [] (Name_map.find state.unparsed name) in
+    (res, consume name state)
 
   module Constructor_spec = struct
     type ('a, 'b, 'c) tuple =

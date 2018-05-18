@@ -86,26 +86,39 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
         else
           As []
       in
+      let shared_flags =
+        [ Arg_spec.Dyn (fun ocaml_flags -> As ocaml_flags)
+        ; A "-I"; Path obj_dir
+        ; includes
+        ; (match alias_module with
+           | None -> S []
+           | Some (m : Module.t) ->
+             As ["-open"; Module.Name.to_string m.name])
+        ] in
+      begin match cm_kind with
+      | Cmi | Cmx -> ()
+      | Cmo ->
+        let dst = Module.inferred_mli m ~obj_dir in
+        SC.add_rule sctx ?sandbox
+          (other_cm_files >>>
+           Ocaml_flags.get_for_cm flags ~cm_kind >>>
+           Build.run ~stdout_to:dst ~context:ctx (Ok compiler)
+             (shared_flags @ [ A "-i"; Dep src]))
+      end;
       SC.add_rule sctx ?sandbox
         (Build.paths extra_deps >>>
          other_cm_files >>>
          Ocaml_flags.get_for_cm flags ~cm_kind >>>
          Build.run ~context:ctx (Ok compiler)
-           [ Dyn (fun ocaml_flags -> As ocaml_flags)
-           ; cmt_args
-           ; A "-I"; Path obj_dir
-           ; includes
-           ; As extra_args
-           ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"
-           ; A "-no-alias-deps"; opaque
-           ; (match alias_module with
-              | None -> S []
-              | Some (m : Module.t) ->
-                As ["-open"; Module.Name.to_string m.name])
-           ; A "-o"; Target dst
-           ; A "-c"; Ml_kind.flag ml_kind; Dep src
-           ; Hidden_targets hidden_targets
-           ])))
+           (shared_flags
+            @ [ cmt_args
+              ; As extra_args
+              ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"
+              ; A "-no-alias-deps"; opaque
+              ; A "-o"; Target dst
+              ; A "-c"; Ml_kind.flag ml_kind; Dep src
+              ; Hidden_targets hidden_targets
+              ]))))
 
 let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~scope ~dir
       ~obj_dir ~dep_graphs ~includes ~alias_module =

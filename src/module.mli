@@ -60,6 +60,8 @@ val cm_file_unsafe : t -> obj_dir:Path.t -> Cm_kind.t -> Path.t
 
 val odoc_file : t -> doc_dir:Path.t -> Path.t
 
+val inferred_mli : t -> obj_dir:Path.t -> Path.t
+
 (** Either the .cmti, or .cmt if the module has no interface *)
 val cmti_file : t -> obj_dir:Path.t -> Path.t
 

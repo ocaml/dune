@@ -87,6 +87,9 @@ let cmt_file t ~obj_dir (kind : Ml_kind.t) =
 
 let odoc_file t ~doc_dir = obj_file t ~obj_dir:doc_dir~ext:".odoc"
 
+let inferred_mli t ~obj_dir =
+  Path.relative obj_dir (t.obj_name ^ ".inferred.mli")
+
 let cmti_file t ~obj_dir =
   match t.intf with
   | None   -> obj_file t ~obj_dir ~ext:".cmt"

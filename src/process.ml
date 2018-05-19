@@ -112,7 +112,11 @@ module Fancy = struct
     | x :: rest -> x :: colorize_args rest
 
   let command_line ~prog ~args ~dir ~stdout_to ~stderr_to =
-    let prog = Path.to_string prog in
+    let prog =
+      match dir with
+      | None -> Path.to_string prog
+      | Some from -> Path.reach_for_running prog ~from
+    in
     let quote = quote_for_shell in
     let prog = colorize_prog (quote prog) in
     let s =

@@ -103,7 +103,7 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
           (other_cm_files >>>
            Ocaml_flags.get_for_cm flags ~cm_kind >>>
            Build.run ~stdout_to:dst ~context:ctx (Ok compiler)
-             (shared_flags @ [ A "-i"; Dep src]))
+             (Arg_spec.A "-short-paths" :: shared_flags @ [ A "-i"; Dep src]))
       end;
       SC.add_rule sctx ?sandbox
         (Build.paths extra_deps >>>

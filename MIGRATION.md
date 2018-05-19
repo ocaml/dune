@@ -2,8 +2,8 @@ Migrating from Jbuilder to Dune
 ===============================
 
 Dune was initially called Jbuilder. Up to mid-2018, the package was
-still called `jbuilder` and it was only installing a `jbuilder`
-binary. This document explain how the migration to Dune will happen.
+still called `jbuilder` which only installed a `jbuilder` binary. This
+document explain how the migration to Dune will happen.
 
 Timeline
 --------
@@ -19,7 +19,7 @@ The plan is as follow:
 ### July 2018: release of Dune 1.0.0
 
 First release of the opam package `dune`. The `jbuilder` package
-becomes a transition package that depends on `dune`.
+becomes a transitional package that depends on `dune`.
 
 The `dune` package installs two binaries: `dune` and `jbuilder`. These
 two binaries are exactly the same and they work on both Jbuilder and
@@ -44,6 +44,10 @@ Dune.
 message on startup. `dune` no longer reads `jbuild` or other Jbuidler
 configuration files but still prints a warning when encountering
 them.
+
+At this point, a conflict with newer versions of `dune` will be added
+to all opam packages that rely on the `jbuilder` binary or Jbuilder
+configuration files.
 
 ### January 2020: the jbuilder binary goes away
 
@@ -77,9 +81,9 @@ Jbuilder configuration files and the Dune ones.
 
 ### dune-project files
 
-These are a new kind of files. With Jbuilder, projects used to be
+These are a new kind of file. With Jbuilder, projects used to be
 identified by the presence of at least one `<package>.opam` file in a
-directory. This will still be supported until July 2019, however has
+directory. This will still be supported until July 2019, however as
 Jbuilder evolved it became clear that we needed project files, so Dune
 introduces `dune-project` files to mark the root of projects.
 
@@ -92,7 +96,7 @@ The purpose of this file is to:
   the Dune language in use or specification of extra features
   (plugins) used in the project
 
-Eventually, for users who whishes to do so it should be possible to
+Eventually, for users who wish to do so it should be possible to
 centralize all the configuration of a project in this file.
 
 ### dune files

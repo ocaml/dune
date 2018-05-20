@@ -112,11 +112,7 @@ module Fancy = struct
     | x :: rest -> x :: colorize_args rest
 
   let command_line ~prog ~args ~dir ~stdout_to ~stderr_to =
-    let prog =
-      match dir with
-      | None -> Path.to_string prog
-      | Some from -> Path.reach_for_running prog ~from
-    in
+    let prog = Path.reach_for_running ?from:dir prog in
     let quote = quote_for_shell in
     let prog = colorize_prog (quote prog) in
     let s =
@@ -236,8 +232,7 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
   if display = Verbose then
     Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
       (Colors.strip_colors_for_stderr command_line);
-  let prog = Path.reach_for_running prog
-               ~from:(Option.value ~default:Path.root dir) in
+  let prog = Path.reach_for_running ?from:dir prog in
   let argv = Array.of_list (prog :: args) in
   let output_filename, stdout_fd, stderr_fd, to_close =
     match stdout_to, stderr_to with
@@ -352,11 +347,11 @@ let run_capture_line ?dir ~env ?(purpose=Internal_job) fail_mode prog args =
     | [x] -> x
     | l ->
       let cmdline =
-        let prog_display p = String.concat (p :: args) ~sep:" " in
+        let prog = Path.reach_for_running ?from:dir prog in
+        let prog_display = String.concat (prog :: args) ~sep:" " in
         match dir with
-        | None -> prog_display (Path.to_string prog)
-        | Some dir -> sprintf "cd %s && %s" (Path.to_string dir)
-                        (prog_display (Path.reach_for_running prog ~from:dir))
+        | None -> prog_display
+        | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
       in
       match l with
       | [] ->

@@ -70,7 +70,9 @@ val absolute : string -> t
 val to_absolute_filename : t -> root:string -> string
 
 val reach : t -> from:t -> string
-val reach_for_running : t -> from:t -> string
+
+(** [from] defaults to [Path.root] *)
+val reach_for_running : ?from:t -> t -> string
 
 val descendant : t -> of_:t -> t option
 val is_descendant : t -> of_:t -> bool

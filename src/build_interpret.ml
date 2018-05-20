@@ -206,7 +206,10 @@ module Rule = struct
     let dir =
       match targets with
       | [] ->
-        invalid_arg "Build_interpret.Rule.make: rule has no targets"
+        begin match loc with
+        | Some loc -> Loc.fail loc "Rule has no targets specified"
+        | None -> Exn.code_error "Build_interpret.Rule.make: no targets" []
+        end
       | x :: l ->
         let dir = Path.parent_exn (Target.path x) in
         List.iter l ~f:(fun target ->

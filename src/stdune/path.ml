@@ -302,7 +302,7 @@ let reach t ~from =
   | Local t, Local from ->
     Local.reach t ~from
 
-let reach_for_running t ~from =
+let reach_for_running ?(from=root) t =
   match kind t, kind from with
   | External _, _ -> t
   | Local _, External _ ->

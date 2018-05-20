@@ -157,7 +157,8 @@ let rec go_rec t =
 
 let go ?(log=Log.no_log) ?(config=Config.default)
       ?(gen_status_line=fun () -> None) fiber =
-  Log.info log ("Workspace root: " ^ !Clflags.workspace_root);
+  Log.info log ("Workspace root: "
+                ^ (Path.External.to_string !Clflags.workspace_root));
   let cwd = Sys.getcwd () in
   if cwd <> initial_cwd then
     Printf.eprintf "Entering directory '%s'\n%!" cwd;

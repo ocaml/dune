@@ -49,12 +49,36 @@ let normalize_to_base base path =
   in
   loop base (explode_path path)
 
-module External = struct
+module External : sig
+  type t
+
+  val compare : t -> t -> Ordering.t
+  val t : t Sexp.Of_sexp.t
+  val sexp_of_t : t Sexp.To_sexp.t
+  val to_string : t -> string
+  val of_string : string -> t
+  val normalize : ?error_loc:Usexp.Loc.t -> t -> t
+  val relative : t -> string -> t
+  val mkdir_p : t -> unit
+  val basename : t -> string
+  val parent : t -> t
+  val initial_cwd : t
+  val cwd : unit -> t
+end = struct
   type t = string
 
   let compare = String.compare
 
   let to_string t = t
+
+  let of_string t =
+    if Filename.is_relative t then
+      Exn.code_error "Path.External.of_string: relative path given"
+        [ "t", Sexp.To_sexp.string t ];
+    t
+
+  let sexp_of_t = Sexp.To_sexp.string
+  let t = Sexp.Of_sexp.string
 (*
   let rec cd_dot_dot t =
     match Unix.readlink t with
@@ -92,6 +116,12 @@ module External = struct
     |> Result.map_error ~f:(fun () ->
       Exn.fatalf ?loc:error_loc "Invalid external path: %S" p)
     |> Result.ok_exn
+
+  let basename = Filename.basename
+  let parent = Filename.dirname
+
+  let cwd = Sys.getcwd
+  let initial_cwd = cwd ()
 end
 
 module Local : sig
@@ -289,15 +319,12 @@ let (abs_root, set_root) =
   let root_dir = ref None in
   let set_root new_root =
     match !root_dir with
-    | None ->
-      if Filename.is_relative new_root then
-        Exn.code_error "set_root: root must be absolute"
-          ["new_root", Sexp.To_sexp.string new_root];
-      root_dir := Some (External.normalize new_root)
+    | None -> root_dir := Some (External.normalize new_root)
     | Some root_dir ->
       Exn.code_error "set_root: cannot set root_dir more than once"
-        [ "root_dir", Sexp.To_sexp.string root_dir
-        ; "New_root_dir", Sexp.To_sexp.string  new_root ]
+        [ "root_dir", External.sexp_of_t root_dir
+        ; "new_root_dir", External.sexp_of_t new_root
+        ]
   in
   let abs_root () =
     match !root_dir with
@@ -313,12 +340,12 @@ module Kind = struct
 
   let to_absolute_filename t ~root =
     match t with
-    | External s -> s
-    | Local l -> Filename.concat root (Local.to_string l)
+    | External s -> External.to_string s
+    | Local l -> External.to_string (External.relative root (Local.to_string l))
 
   let to_string = function
     | Local t -> Local.to_string t
-    | External t -> t
+    | External t -> External.to_string t
 
   let sexp_of_t t = Sexp.atom_or_quoted_string (to_string t)
 
@@ -326,7 +353,7 @@ module Kind = struct
     if s = "" || Filename.is_relative s then
       Local (Local.of_string s)
     else
-      External s
+      External (External.of_string s)
 
   let relative ?error_loc t fn =
     match t with
@@ -438,7 +465,7 @@ let relative ?error_loc t fn =
     t
   else if not (Filename.is_relative fn) then
     match as_relative_to_build_dir fn with
-    | None -> external_ fn
+    | None -> external_ (External.of_string fn)
     | Some fn -> in_build_dir fn
   else
     match t with
@@ -461,7 +488,7 @@ let of_string ?error_loc s =
       if Filename.is_relative s then
         in_source_tree (Local.of_string s ?error_loc)
       else
-        external_ s
+        external_ (External.of_string s)
     end
 
 let t = function
@@ -473,7 +500,7 @@ let t = function
     sum
       [ cstr "In_build_dir" (Local.t @> nil) in_build_dir
       ; cstr "In_source_tree" (Local.t @> nil) in_source_tree
-      ; cstr "External" (string @> nil) external_
+      ; cstr "External" (External.t @> nil) external_
       ] s
 
 let sexp_of_t t =
@@ -481,29 +508,28 @@ let sexp_of_t t =
   match t with
   | In_build_dir s -> constr Local.sexp_of_t "In_build_dir" s
   | In_source_tree s -> constr Local.sexp_of_t "In_source_tree" s
-  | External s -> constr Sexp.To_sexp.string "External" s
-
-let initial_cwd = Sys.getcwd ()
+  | External s -> constr External.sexp_of_t "External" s
 
 let absolute fn =
   external_ (
     if is_local_fn fn then
-      Filename.concat initial_cwd fn
+      External.relative External.initial_cwd fn
     else
-      fn
+      External.of_string fn
   )
 
 let to_absolute_filename t ~root = Kind.to_absolute_filename (kind t) ~root
 
 let reach t ~from =
   match kind t, kind from with
-  | External t, _ -> t
-  | (Local _) as l, External _ -> Kind.to_absolute_filename l ~root:initial_cwd
+  | External t, _ -> External.to_string t
+  | (Local _) as l, External _ ->
+    Kind.to_absolute_filename l ~root:External.initial_cwd
   | Local t, Local from -> Local.to_string (Local.reach t ~from)
 
 let reach_for_running ?(from=root) t =
   match kind t, kind from with
-  | External t, _ -> t
+  | External t, _ -> External.to_string t
   | Local _, External _ ->
     Exn.code_error "Path.reach_for_running called with invalid combination"
       [ "t"   , sexp_of_t t
@@ -538,17 +564,17 @@ let append a b =
     begin match a with
     | In_source_tree a -> in_source_tree (Local.append a b)
     | In_build_dir a -> in_build_dir (Local.append a b)
-    | External a -> external_ (Filename.concat a (Local.to_string b))
+    | External a -> external_ (External.relative a (Local.to_string b))
     end
 
 let basename t =
   match kind t with
   | Local t -> Local.basename t
-  | External t -> Filename.basename t
+  | External t -> External.basename t
 
 let parent = function
   | External s ->
-    let parent = Filename.dirname s in
+    let parent = External.parent s in
     if parent = s then
       None
     else
@@ -685,6 +711,7 @@ let ensure_build_dir_exists () =
   match kind build_dir with
   | Local p -> Local.mkdir_p p
   | External p ->
+    let p = External.to_string p in
     try
       Unix.mkdir p 0o777
     with
@@ -698,7 +725,7 @@ let map_s t ~f =
   match t with
   | In_source_tree t -> in_source_tree (Local.of_string (f (Local.to_string t)))
   | In_build_dir t -> in_build_dir (Local.of_string (f (Local.to_string t)))
-  | External t -> external_ (f t)
+  | External t -> external_ (External.of_string (f (External.to_string t)))
 
 let extend_basename t ~suffix = map_s t ~f:(fun t -> t ^ suffix)
 
@@ -744,7 +771,7 @@ let change_extension ~ext =
 let mkdir_p = function
   | External s ->
     Exn.code_error "Path.mkdir_p cannot create external path"
-      ["s", Sexp.To_sexp.string s]
+      ["s", External.sexp_of_t s]
   | In_source_tree s ->
     Exn.code_error "Path.mkdir_p cannot dir in source"
       ["s", Local.sexp_of_t s]
@@ -759,7 +786,7 @@ let pp_debug ppf = function
     Format.fprintf ppf "(In_source_tree %S)" (Local.to_string s)
   | In_build_dir s ->
     Format.fprintf ppf "(In_build_dir %S)" (Local.to_string s)
-  | External s -> Format.fprintf ppf "(External %S)" s
+  | External s -> Format.fprintf ppf "(External %S)" (External.to_string s)
 
 module Set = struct
   include Set.Make(T)

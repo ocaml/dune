@@ -21,6 +21,10 @@ module External : sig
   type t
 
   val to_string : t -> string
+  val of_string : string -> t
+  val initial_cwd : t
+
+  val cwd : unit -> t
 end
 
 module Kind : sig
@@ -66,7 +70,7 @@ val absolute : string -> t
 
 (** Convert a path to an absolute filename. Must be called after the workspace
     root has been set. [root] is the root directory of local paths *)
-val to_absolute_filename : t -> root:string -> string
+val to_absolute_filename : t -> root:External.t -> string
 
 val reach : t -> from:t -> string
 
@@ -156,4 +160,4 @@ val in_source : string -> t
 
 (** Set the workspace root. Can onyl be called once and the path must be
     absolute *)
-val set_root : string -> unit
+val set_root : External.t -> unit

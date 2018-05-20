@@ -1,3 +1,5 @@
+open Stdune
+
 (** Command line flags *)
 
 (** Compilation flags for OCaml files *)
@@ -16,7 +18,7 @@ val debug_findlib : bool ref
 val warnings : string ref
 
 (** The path to the workspace root *)
-val workspace_root : string ref
+val workspace_root : Path.External.t ref
 
 (** The command line for "Hint: try: jbuilder external-lib-deps ..." *)
 val external_lib_deps_hint : string list ref

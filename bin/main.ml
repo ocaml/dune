@@ -37,7 +37,7 @@ let set_common c ~targets =
   Clflags.capture_outputs := c.capture_outputs;
   if c.root <> Filename.current_dir_name then
     Sys.chdir c.root;
-  Clflags.workspace_root := Sys.getcwd ();
+  Clflags.workspace_root := Path.External.cwd ();
   Clflags.diff_command := c.diff_command;
   Clflags.auto_promote := c.auto_promote;
   Clflags.force := c.force;

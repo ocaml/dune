@@ -100,6 +100,13 @@ module Of_sexp : sig
     -> 'a option record_parser
   val field_b : string -> bool record_parser
 
+  (** A field that can appear multiple times *)
+  val dup_field
+    :  string
+    -> ?short:'a Short_syntax.t
+    -> 'a t
+    -> 'a list record_parser
+
   val map_validate
     :  'a record_parser
     -> f:('a -> ('b, string) Result.result)
@@ -130,6 +137,14 @@ module Of_sexp : sig
     -> ('a, 'b) Constructor_args_spec.t
     -> 'a
     -> 'b record_parser
+
+  (** A field that can appear multiple times and each time takes
+      multiple values *)
+  val dup_field_multi
+    :  string
+    -> ('a, 'b) Constructor_args_spec.t
+    -> 'a
+    -> 'b list record_parser
 
   val cstr : string -> ('a, 'b) Constructor_args_spec.t -> 'a -> 'b Constructor_spec.t
   val cstr_rest

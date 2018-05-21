@@ -127,9 +127,20 @@ module Local : sig
   val ensure_parent_directory_exists : t -> unit
   val extend_basename : t -> suffix:string -> t
   module Set : Set.S with type elt = t
+
+  module Prefix : sig
+    type local = t
+    type t
+
+    val make : local -> t
+    val drop : t -> local -> local option
+
+    (* for all local path p, drop (invalid p = None) *)
+    val invalid : t
+  end with type local := t
 end = struct
-  (* either "" for root, either a '/' separated list of components other that ".", ".."
-     and not containing '/'. *)
+  (* either "" for root, either a '/' separated list of components
+     other that ".", ".."  and not containing '/'. *)
   type t = string
 
   let root = ""
@@ -313,6 +324,36 @@ end = struct
     loop (to_list t) (to_list from)
 
   let extend_basename t ~suffix = t ^ suffix
+
+  module Prefix = struct
+    type t =
+      { len        : int
+      ; path       : string
+      ; path_slash : string
+      }
+
+    let make p =
+      if is_root p then
+        Exn.code_error "Path.Local.Prefix.make"
+          [ "path", sexp_of_t p ];
+      { len        = String.length p
+      ; path       = p
+      ; path_slash = p ^ "/"
+      }
+
+    let drop t p =
+      let len = String.length p in
+      if len = t.len && p = t.path then
+        Some root
+      else
+        String.drop_prefix p ~prefix:t.path_slash
+
+    let invalid =
+      { len        = -1
+      ; path       = "/"
+      ; path_slash = "/"
+      }
+  end
 end
 
 let (_abs_root, set_root) =
@@ -371,11 +412,17 @@ module Kind = struct
 
 end
 
-let (build_dir_kind, set_build_dir) =
+let (build_dir_kind, build_dir_prefix, set_build_dir) =
   let build_dir = ref None in
-  let set_build_dir new_build_dir =
+  let build_dir_prefix = ref None in
+  let set_build_dir (new_build_dir : Kind.t) =
     match !build_dir with
-    | None -> build_dir := Some new_build_dir
+    | None ->
+      build_dir := Some new_build_dir;
+      build_dir_prefix :=
+        Some (match new_build_dir with
+          | Local    p -> Local.Prefix.make p
+          | External _ -> Local.Prefix.invalid)
     | Some build_dir ->
       Exn.code_error "set_build_dir: cannot set build_dir more than once"
         [ "build_dir", Kind.sexp_of_t build_dir
@@ -385,8 +432,15 @@ let (build_dir_kind, set_build_dir) =
     match !build_dir with
     | None ->
       Exn.code_error "build_dir: cannot use build dir before it's set" []
-    | Some build_dir -> build_dir in
-  (build_dir, set_build_dir)
+    | Some build_dir -> build_dir
+  in
+  let build_dir_prefix () =
+    match !build_dir_prefix with
+    | None ->
+      Exn.code_error "build_dir: cannot use build dir before it's set" []
+    | Some prefix -> prefix
+  in
+  (build_dir, build_dir_prefix, set_build_dir)
 
 module T : sig
   type t = private
@@ -451,12 +505,9 @@ let to_string_maybe_quoted t =
 let root = in_source_tree Local.root
 
 let make_local_path p =
-  match build_dir_kind () with
-  | External _ -> in_source_tree p
-  | Local build_dir ->
-    match Local.descendant p ~of_:build_dir with
-    | None -> in_source_tree p
-    | Some p -> in_build_dir p
+  match Local.Prefix.drop (build_dir_prefix ()) p with
+  | None -> in_source_tree p
+  | Some p -> in_build_dir p
 
 let relative ?error_loc t fn =
   if fn = "" then

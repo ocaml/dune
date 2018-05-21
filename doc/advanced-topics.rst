@@ -89,7 +89,7 @@ set of predicates:
   version
 
 - ``mt_posix``: forces the use of posix threads rather than VM
-  threads. VM threadws are deprecated and are likely to go away soon
+  threads. VM threads are deprecated and are likely to go away soon
 
 - ``ppx_driver``: when a library acts differently depending on whether
   it is linked as part of a driver or meant to add a ``-ppx`` argument

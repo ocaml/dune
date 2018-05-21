@@ -44,8 +44,11 @@ module External : sig
   val parent : t -> t
   val initial_cwd : t
   val cwd : unit -> t
+  val extend_basename : t -> suffix:string -> t
 end = struct
   type t = string
+
+  let extend_basename t ~suffix = t ^ suffix
 
   let compare = String.compare
 
@@ -122,6 +125,7 @@ module Local : sig
   val reach : t -> from:t -> t
   val basename : t -> string
   val ensure_parent_directory_exists : t -> unit
+  val extend_basename : t -> suffix:string -> t
   module Set : Set.S with type elt = t
 end = struct
   (* either "" for root, either a '/' separated list of components other that ".", ".."
@@ -307,6 +311,8 @@ end = struct
         | l -> String.concat l ~sep:"/"
     in
     loop (to_list t) (to_list from)
+
+  let extend_basename t ~suffix = t ^ suffix
 end
 
 let (_abs_root, set_root) =
@@ -715,13 +721,11 @@ let ensure_build_dir_exists () =
                   Make sure that the parent dir %s exists."
         p (Filename.dirname p)
 
-let map_s t ~f =
+let extend_basename t ~suffix =
   match t with
-  | In_source_tree t -> in_source_tree (Local.of_string (f (Local.to_string t)))
-  | In_build_dir t -> in_build_dir (Local.of_string (f (Local.to_string t)))
-  | External t -> external_ (External.of_string (f (External.to_string t)))
-
-let extend_basename t ~suffix = map_s t ~f:(fun t -> t ^ suffix)
+  | In_source_tree t -> in_source_tree (Local.extend_basename t ~suffix)
+  | In_build_dir t -> in_build_dir (Local.extend_basename t ~suffix)
+  | External t -> external_ (External.extend_basename t ~suffix)
 
 let insert_after_build_dir_exn =
   let error a b =
@@ -755,12 +759,6 @@ let rm_rf =
     match Unix.lstat fn with
     | exception Unix.Unix_error(ENOENT, _, _) -> ()
     | _ -> loop fn
-
-let change_extension ~ext =
-  map_s ~f:(fun t ->
-    let t = try Filename.chop_extension t with Not_found -> t in
-    t ^ ext
-  )
 
 let mkdir_p = function
   | External s ->

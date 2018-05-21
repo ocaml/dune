@@ -30,25 +30,6 @@ let explode_path =
       | "." :: xs -> xs
       | xs -> xs
 
-let normalize_to_base base path =
-  let parent p =
-    match p with
-    | "" -> None
-    | p ->
-      let parent = Filename.dirname p in
-      Option.some_if (parent <> p) parent in
-  let rec loop base = function
-    | [] -> Result.Ok base
-    | "." :: rest -> loop base rest
-    | ".." :: rest ->
-      begin match parent base with
-      | Some parent -> loop parent rest
-      | None -> Result.Error ()
-      end
-    | fn :: rest -> loop (Filename.concat base fn) rest
-  in
-  loop base (explode_path path)
-
 module External : sig
   type t
 
@@ -57,7 +38,6 @@ module External : sig
   val sexp_of_t : t Sexp.To_sexp.t
   val to_string : t -> string
   val of_string : string -> t
-  val normalize : ?error_loc:Usexp.Loc.t -> t -> t
   val relative : t -> string -> t
   val mkdir_p : t -> unit
   val basename : t -> string
@@ -110,12 +90,6 @@ end = struct
       | Unix.Unix_error (ENOENT, _, _) ->
         mkdir_p p;
         Unix.mkdir t 0o777
-
-  let normalize ?error_loc p =
-    normalize_to_base "/" p
-    |> Result.map_error ~f:(fun () ->
-      Exn.fatalf ?loc:error_loc "Invalid external path: %S" p)
-    |> Result.ok_exn
 
   let basename = Filename.basename
   let parent = Filename.dirname
@@ -205,7 +179,21 @@ end = struct
         ; "path", Usexp.atom_or_quoted_string path
         ]
     );
-    match normalize_to_base t path with
+    let rec loop t components =
+      match components with
+      | [] -> Result.Ok t
+      | "." :: rest -> loop t rest
+      | ".." :: rest ->
+        begin match t with
+        | "" -> Result.Error ()
+        | t -> loop (parent t) rest
+        end
+      | fn :: rest ->
+        match t with
+        | "" -> loop fn rest
+        | _ -> loop (t ^ "/" ^ fn) rest
+    in
+    match loop t (explode_path path) with
     | Result.Ok t -> t
     | Error () ->
        Exn.fatalf ?loc:error_loc "path outside the workspace: %s from %s" path
@@ -319,7 +307,7 @@ let (abs_root, set_root) =
   let root_dir = ref None in
   let set_root new_root =
     match !root_dir with
-    | None -> root_dir := Some (External.normalize new_root)
+    | None -> root_dir := Some new_root
     | Some root_dir ->
       Exn.code_error "set_root: cannot set root_dir more than once"
         [ "root_dir", External.sexp_of_t root_dir

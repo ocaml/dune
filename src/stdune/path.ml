@@ -57,8 +57,13 @@ end = struct
         [ "t", Sexp.To_sexp.string t ];
     t
 
-  let sexp_of_t = Sexp.To_sexp.string
-  let t = Sexp.Of_sexp.string
+  let sexp_of_t t = Sexp.To_sexp.string (to_string t)
+  let t sexp =
+    let t = Sexp.Of_sexp.string sexp in
+    if Filename.is_relative t then
+      Sexp.Of_sexp.of_sexp_error sexp "Absolute path expected";
+    t
+
 (*
   let rec cd_dot_dot t =
     match Unix.readlink t with
@@ -122,9 +127,6 @@ end = struct
   (* either "" for root, either a '/' separated list of components other that ".", ".."
      and not containing '/'. *)
   type t = string
-
-  let t = Sexp.Of_sexp.string
-  let sexp_of_t = Sexp.To_sexp.string
 
   let root = ""
 
@@ -243,6 +245,11 @@ end = struct
       s
     else
       relative "" s ?error_loc
+
+  let sexp_of_t t = Sexp.To_sexp.string (to_string t)
+  let t sexp =
+    of_string (Sexp.Of_sexp.string sexp)
+      ~error_loc:(Sexp.Ast.loc sexp)
 
   let rec mkdir_p = function
     | "" -> ()

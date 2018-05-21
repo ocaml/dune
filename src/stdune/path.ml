@@ -379,7 +379,7 @@ let (build_dir_kind, set_build_dir) =
     | Some build_dir ->
       Exn.code_error "set_build_dir: cannot set build_dir more than once"
         [ "build_dir", Kind.sexp_of_t build_dir
-        ; "New_build_dir", Kind.sexp_of_t new_build_dir ]
+        ; "new_build_dir", Kind.sexp_of_t new_build_dir ]
   in
   let build_dir () =
     match !build_dir with

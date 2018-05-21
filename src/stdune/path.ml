@@ -367,11 +367,12 @@ let (_abs_root, set_root) =
         ; "new_root_dir", External.sexp_of_t new_root
         ]
   in
-  let abs_root () =
+  let abs_root = lazy (
     match !root_dir with
     | None ->
       Exn.code_error "root_dir: cannot use root dir before it's set" []
-    | Some root_dir -> root_dir in
+    | Some root_dir -> root_dir)
+  in
   (abs_root, set_root)
 
 module Kind = struct
@@ -428,17 +429,17 @@ let (build_dir_kind, build_dir_prefix, set_build_dir) =
         [ "build_dir", Kind.sexp_of_t build_dir
         ; "new_build_dir", Kind.sexp_of_t new_build_dir ]
   in
-  let build_dir () =
+  let build_dir = lazy (
     match !build_dir with
     | None ->
       Exn.code_error "build_dir: cannot use build dir before it's set" []
-    | Some build_dir -> build_dir
+    | Some build_dir -> build_dir)
   in
-  let build_dir_prefix () =
+  let build_dir_prefix = lazy (
     match !build_dir_prefix with
     | None ->
       Exn.code_error "build_dir: cannot use build dir before it's set" []
-    | Some prefix -> prefix
+    | Some prefix -> prefix)
   in
   (build_dir, build_dir_prefix, set_build_dir)
 
@@ -486,7 +487,7 @@ let is_root = function
 module Map = Map.Make(T)
 
 let kind = function
-  | In_build_dir p -> Kind.append_local (build_dir_kind ()) p
+  | In_build_dir p -> Kind.append_local (Lazy.force build_dir_kind) p
   | In_source_tree s -> Kind.Local s
   | External s -> Kind.External s
 
@@ -505,7 +506,7 @@ let to_string_maybe_quoted t =
 let root = in_source_tree Local.root
 
 let make_local_path p =
-  match Local.Prefix.drop (build_dir_prefix ()) p with
+  match Local.Prefix.drop (Lazy.force build_dir_prefix) p with
   | None -> in_source_tree p
   | Some p -> in_build_dir p
 
@@ -809,7 +810,8 @@ let mkdir_p = function
   | In_source_tree s ->
     Exn.code_error "Path.mkdir_p cannot dir in source"
       ["s", Local.sexp_of_t s]
-  | In_build_dir k -> Kind.mkdir_p (Kind.append_local (build_dir_kind ()) k)
+  | In_build_dir k ->
+    Kind.mkdir_p (Kind.append_local (Lazy.force build_dir_kind) k)
 
 let extension t = Filename.extension (to_string t)
 

@@ -355,7 +355,7 @@ module Kind = struct
     else
       External (External.of_string s)
 
-  let relative ?error_loc t fn =
+  let _relative ?error_loc t fn =
     match t with
     | Local t -> Local (Local.relative ?error_loc t fn)
     | External t -> External (External.relative t fn)
@@ -442,7 +442,7 @@ let is_root = function
 module Map = Map.Make(T)
 
 let kind = function
-  | In_build_dir p -> Kind.relative (build_dir_kind ()) (Local.to_string p)
+  | In_build_dir p -> Kind.append_local (build_dir_kind ()) p
   | In_source_tree s -> Kind.Local s
   | External s -> Kind.External s
 

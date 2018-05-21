@@ -309,8 +309,7 @@ end = struct
     loop (to_list t) (to_list from)
 end
 
-[@@@ocaml.warning "-32"]
-let (abs_root, set_root) =
+let (_abs_root, set_root) =
   let root_dir = ref None in
   let set_root new_root =
     match !root_dir with

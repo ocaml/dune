@@ -388,16 +388,6 @@ let (build_dir_kind, set_build_dir) =
     | Some build_dir -> build_dir in
   (build_dir, set_build_dir)
 
-let as_relative_to_build_dir p =
-  if not (Filename.is_relative p) then
-    None
-  else
-    match build_dir_kind () with
-    | External _ -> None
-    | Local of_ ->
-      Local.descendant ~of_ (Local.of_string p)
-      |> Option.map ~f:(fun p -> if p = of_ then Local.root else p)
-
 module T : sig
   type t = private
     | External of External.t
@@ -460,36 +450,37 @@ let to_string_maybe_quoted t =
 
 let root = in_source_tree Local.root
 
+let make_local_path p =
+  match build_dir_kind () with
+  | External _ -> in_source_tree p
+  | Local build_dir ->
+    match Local.descendant p ~of_:build_dir with
+    | None -> in_source_tree p
+    | Some p -> in_build_dir p
+
 let relative ?error_loc t fn =
   if fn = "" then
     t
   else if not (Filename.is_relative fn) then
-    match as_relative_to_build_dir fn with
-    | None -> external_ (External.of_string fn)
-    | Some fn -> in_build_dir fn
+    external_ (External.of_string fn)
   else
     match t with
-    | In_source_tree p when Local.is_root p ->
-      begin match as_relative_to_build_dir fn with
-      | None -> in_source_tree (Local.relative Local.root fn ?error_loc)
-      | Some fn -> in_build_dir fn
-      end
-    | In_source_tree s -> in_source_tree (Local.relative s fn ?error_loc)
-    | In_build_dir s -> in_build_dir (Local.relative s fn ?error_loc)
+    | In_source_tree p ->
+      if Local.is_root p then
+        make_local_path (Local.of_string fn ?error_loc)
+      else
+        in_source_tree (Local.relative p fn ?error_loc)
+    | In_build_dir p -> in_build_dir (Local.relative p fn ?error_loc)
     | External s -> external_ (External.relative s fn)
 
 let of_string ?error_loc s =
   match s with
   | "" -> in_source_tree Local.root
   | s  ->
-    begin match as_relative_to_build_dir s with
-    | Some s -> in_build_dir s
-    | None ->
-      if Filename.is_relative s then
-        in_source_tree (Local.of_string s ?error_loc)
-      else
-        external_ (External.of_string s)
-    end
+    if not (Filename.is_relative s) then
+      external_ (External.of_string s)
+    else
+      make_local_path (Local.of_string s ?error_loc)
 
 let t = function
   (* the first 2 cases are necessary for old build dirs *)

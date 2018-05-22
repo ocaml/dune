@@ -133,6 +133,9 @@ module Of_sexp : sig
   (** Parse all remaining arguments using the following parser *)
   val rest : 'a t -> ('a list -> 'b, 'b) Constructor_args_spec.t
 
+  (** Parse all remaining arguments using the following record parser *)
+  val rest_as_record : 'a record_parser -> ('a -> 'b, 'b) Constructor_args_spec.t
+
   (** Capture the location of the constructor *)
   val cstr_loc
     :  ('a, 'b) Constructor_args_spec.t
@@ -159,10 +162,6 @@ module Of_sexp : sig
     -> ('a, 'b) Constructor_args_spec.t
     -> 'a
     -> 'b Constructor_spec.t
-  val cstr_record
-    :  string
-    -> 'a record_parser
-    -> 'a Constructor_spec.t
 
   val sum
     :  'a Constructor_spec.t list

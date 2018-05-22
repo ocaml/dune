@@ -129,6 +129,7 @@ module Of_sexp : sig
     :  'a t
     -> ('b, 'c) Constructor_args_spec.t
     -> ('a -> 'b, 'c) Constructor_args_spec.t
+  val rest : 'a t -> ('a list -> 'b, 'b) Constructor_args_spec.t
 
   (** Field that takes multiple values *)
   val field_multi
@@ -147,12 +148,6 @@ module Of_sexp : sig
     -> 'b list record_parser
 
   val cstr : string -> ('a, 'b) Constructor_args_spec.t -> 'a -> 'b Constructor_spec.t
-  val cstr_rest
-    :  string
-    -> ('a, 'b list -> 'c) Constructor_args_spec.t
-    -> 'b t
-    -> 'a
-    -> 'c Constructor_spec.t
 
   val cstr_record : string -> 'a record_parser -> 'a Constructor_spec.t
 
@@ -161,13 +156,6 @@ module Of_sexp : sig
     -> ('a, 'b) Constructor_args_spec.t
     -> (Loc.t -> 'a)
     -> 'b Constructor_spec.t
-
-  val cstr_rest_loc
-    :  string
-    -> ('a, 'b list -> 'c) Constructor_args_spec.t
-    -> 'b t
-    -> (Loc.t -> 'a)
-    -> 'c Constructor_spec.t
 
   val sum
     :  'a Constructor_spec.t list

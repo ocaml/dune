@@ -30,7 +30,7 @@ struct
   let rec t sexp =
     let path = Path.t and string = String.t in
     sum
-      [ cstr_rest "run" (Program.t @> nil) string (fun prog args -> Run (prog, args))
+      [ cstr "run" (Program.t @> rest string) (fun prog args -> Run (prog, args))
       ; cstr "chdir"    (path @> t @> nil)        (fun dn t -> Chdir (dn, t))
       ; cstr "setenv"   (string @> string @> t @> nil)   (fun k v t -> Setenv (k, v, t))
       ; cstr "with-stdout-to"  (path @> t @> nil) (fun fn t -> Redirect (Stdout, fn, t))
@@ -39,7 +39,7 @@ struct
       ; cstr "ignore-stdout"   (t @> nil)      (fun t -> Ignore (Stdout, t))
       ; cstr "ignore-stderr"   (t @> nil)      (fun t -> Ignore (Stderr, t))
       ; cstr "ignore-outputs"  (t @> nil)      (fun t -> Ignore (Outputs, t))
-      ; cstr_rest "progn"      nil t         (fun l -> Progn l)
+      ; cstr "progn"           (rest t)        (fun l -> Progn l)
       ; cstr "echo"           (string @> nil)         (fun x -> Echo x)
       ; cstr "cat"            (path @> nil)         (fun x -> Cat x)
       ; cstr "copy" (path @> path @> nil)              (fun src dst -> Copy (src, dst))

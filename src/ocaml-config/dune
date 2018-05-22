@@ -1,5 +1,3 @@
-(jbuild_version 1)
-
 (library
  ((name      ocaml_config)
   (public_name dune.ocaml_config)

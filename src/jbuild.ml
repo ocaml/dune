@@ -1278,38 +1278,52 @@ module Stanzas = struct
 
   type Stanza.t += Include of Loc.t * string
 
-  let t project : Stanza.t list Sexp.Of_sexp.t =
-    sum
-      [ cstr "library"     (Library.v1 project @> nil) (fun x -> [Library x])
-      ; cstr "executable"  (Executables.v1_single project @> nil) execs
-      ; cstr "executables" (Executables.v1_multi  project @> nil) execs
-      ; cstr "rule"        (cstr_loc (Rule.v1 @> nil)) (fun loc x -> [Rule { x with loc }])
-      ; cstr "ocamllex"    (cstr_loc (Rule.ocamllex_v1 @> nil))
-          (fun loc x -> rules (Rule.ocamllex_to_rule loc x))
-      ; cstr "ocamlyacc"   (cstr_loc (Rule.ocamlyacc_v1 @> nil))
-          (fun loc x -> rules (Rule.ocamlyacc_to_rule loc x))
-      ; cstr "menhir"      (cstr_loc (Menhir.v1 @> nil))
-          (fun loc x -> [Menhir { x with loc }])
-      ; cstr "install"     (Install_conf.v1 project @> nil) (fun x -> [Install     x])
-      ; cstr "alias"       (Alias_conf.v1 project @> nil)   (fun x -> [Alias       x])
-      ; cstr "copy_files" (Copy_files.v1 @> nil)
-          (fun glob -> [Copy_files {add_line_directive = false; glob}])
-      ; cstr "copy_files#" (Copy_files.v1 @> nil)
-          (fun glob -> [Copy_files {add_line_directive = true; glob}])
-      ; cstr "env" (cstr_loc (rest Env.rule))
-          (fun loc rules -> [Env { loc; rules }])
-      (* Just for validation and error messages *)
-      ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
-      ; cstr "include" (cstr_loc (relative_file @> nil)) (fun loc fn ->
-          [Include (loc, fn)])
-      ; cstr "documentation" (Documentation.v1 project @> nil)
-          (fun d -> [Documentation d])
+  type constructors = Stanza.t list Sexp.Of_sexp.Constructor_spec.t list
+
+  let common project : constructors =
+    [ cstr "library"     (Library.v1 project @> nil) (fun x -> [Library x])
+    ; cstr "executable"  (Executables.v1_single project @> nil) execs
+    ; cstr "executables" (Executables.v1_multi  project @> nil) execs
+    ; cstr "rule"        (cstr_loc (Rule.v1 @> nil)) (fun loc x -> [Rule { x with loc }])
+    ; cstr "ocamllex"    (cstr_loc (Rule.ocamllex_v1 @> nil))
+        (fun loc x -> rules (Rule.ocamllex_to_rule loc x))
+    ; cstr "ocamlyacc"   (cstr_loc (Rule.ocamlyacc_v1 @> nil))
+        (fun loc x -> rules (Rule.ocamlyacc_to_rule loc x))
+    ; cstr "menhir"      (cstr_loc (Menhir.v1 @> nil))
+        (fun loc x -> [Menhir { x with loc }])
+    ; cstr "install"     (Install_conf.v1 project @> nil) (fun x -> [Install     x])
+    ; cstr "alias"       (Alias_conf.v1 project @> nil)   (fun x -> [Alias       x])
+    ; cstr "copy_files" (Copy_files.v1 @> nil)
+        (fun glob -> [Copy_files {add_line_directive = false; glob}])
+    ; cstr "copy_files#" (Copy_files.v1 @> nil)
+        (fun glob -> [Copy_files {add_line_directive = true; glob}])
+    ; cstr "include" (cstr_loc (relative_file @> nil)) (fun loc fn ->
+        [Include (loc, fn)])
+    ; cstr "documentation" (Documentation.v1 project @> nil)
+        (fun d -> [Documentation d])
+    ]
+
+  let dune project =
+    common project @
+    [ cstr "env" (cstr_loc (rest Env.rule))
+        (fun loc rules -> [Env { loc; rules }])
+    ]
+
+  let jbuild project =
+    common project @
+    [ cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
+    ]
+
+  let () =
+    let open Dune_project.Lang in
+    register "dune"
+      [ make (1, 0) dune
       ]
 
   exception Include_loop of Path.t * (Loc.t * Path.t) list
 
-  let rec parse t ~current_file ~include_stack sexps =
-    List.concat_map sexps ~f:t
+  let rec parse stanza_parser ~current_file ~include_stack sexps =
+    List.concat_map sexps ~f:stanza_parser
     |> List.concat_map ~f:(function
       | Include (loc, fn) ->
         let include_stack = (loc, current_file) :: include_stack in
@@ -1321,13 +1335,18 @@ module Stanzas = struct
         if List.exists include_stack ~f:(fun (_, f) -> f = current_file) then
           raise (Include_loop (current_file, include_stack));
         let sexps = Io.Sexp.load current_file ~mode:Many in
-        parse t sexps ~current_file ~include_stack
+        parse stanza_parser sexps ~current_file ~include_stack
       | stanza -> [stanza])
 
-  let parse ~file project sexps =
+  let parse ~file ~kind (project : Dune_project.t) sexps =
+    let stanza_parser =
+      match (kind : File_tree.Dune_file.Kind.t) with
+      | Jbuild -> sum (jbuild project)
+      | Dune   -> project.stanza_parser
+    in
     let stanzas =
       try
-        parse (t project) sexps ~include_stack:[] ~current_file:file
+        parse stanza_parser sexps ~include_stack:[] ~current_file:file
       with
       | Include_loop (_, []) -> assert false
       | Include_loop (file, last :: rest) ->

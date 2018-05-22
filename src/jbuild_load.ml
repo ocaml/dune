@@ -166,7 +166,7 @@ end
       let stanzas =
         Io.Sexp.load generated_jbuild ~mode:Many
           ~lexer:(File_tree.Dune_file.Kind.lexer kind)
-        |> Stanzas.parse project ~file:generated_jbuild
+        |> Stanzas.parse project ~file:generated_jbuild ~kind
         |> filter_stanzas ~ignore_promoted_rules
       in
       Fiber.return
@@ -192,7 +192,7 @@ let interpret ~dir ~project ~ignore_promoted_rules
   match dune_file.contents with
   | Plain p ->
     let stanzas =
-      Stanzas.parse project p.sexps ~file:p.path
+      Stanzas.parse project p.sexps ~file:p.path ~kind:dune_file.kind
       |> filter_stanzas ~ignore_promoted_rules
     in
     let jbuild =
@@ -213,9 +213,11 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
   let projects =
     File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[]
       ~f:(fun dir acc ->
-        match File_tree.Dir.project dir with
-        | Some p when p.root = File_tree.Dir.path dir -> p :: acc
-        | _ -> acc)
+        let p = File_tree.Dir.project dir in
+        if p.root = File_tree.Dir.path dir then
+          p :: acc
+        else
+          acc)
   in
   let packages =
     List.fold_left projects ~init:Package.Name.Map.empty
@@ -236,13 +238,8 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
       (p.root, p))
     |> Path.Map.of_list_exn
   in
+  assert (Path.Map.mem projects Path.root);
 
-  let projects =
-    if Path.Map.mem projects Path.root then
-      projects
-    else
-      Path.Map.add projects Path.root Dune_project.anonymous
-  in
   let rec walk dir jbuilds project =
     if File_tree.Dir.ignored dir then
       jbuilds
@@ -263,7 +260,10 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
         ~f:(fun dir jbuilds -> walk dir jbuilds project)
     end
   in
-  let jbuilds = walk (File_tree.root ftree) [] Dune_project.anonymous in
+  let jbuilds =
+    let project = Option.value_exn (Path.Map.find projects Path.root) in
+    walk (File_tree.root ftree) [] project
+  in
   { file_tree = ftree
   ; jbuilds = { jbuilds; ignore_promoted_rules }
   ; packages

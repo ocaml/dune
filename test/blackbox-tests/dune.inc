@@ -91,6 +91,15 @@
     (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
 
 (alias
+ ((name dune-project-edition)
+  (deps
+   ((package dune) (files_recursively_in test-cases/dune-project-edition)))
+  (action
+   (chdir
+    test-cases/dune-project-edition
+    (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+
+(alias
  ((name env)
   (deps ((package dune) (files_recursively_in test-cases/env)))
   (action
@@ -556,6 +565,7 @@
     (alias custom-build-dir)
     (alias depend-on-the-universe)
     (alias dune-ppx-driver-system)
+    (alias dune-project-edition)
     (alias env)
     (alias exclude-missing-module)
     (alias exec-cmd)
@@ -621,6 +631,7 @@
     (alias custom-build-dir)
     (alias depend-on-the-universe)
     (alias dune-ppx-driver-system)
+    (alias dune-project-edition)
     (alias env)
     (alias exclude-missing-module)
     (alias exec-cmd)

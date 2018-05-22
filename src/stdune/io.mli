@@ -13,8 +13,8 @@ val with_lexbuf_from_file : Path.t -> f:(Lexing.lexbuf -> 'a) -> 'a
 
 val lines_of_file : Path.t -> string list
 
-val read_file : Path.t -> string
-val write_file : Path.t -> string -> unit
+val read_file : ?binary:bool -> Path.t -> string
+val write_file : ?binary:bool -> Path.t -> string -> unit
 
 val compare_files : Path.t -> Path.t -> Ordering.t
 

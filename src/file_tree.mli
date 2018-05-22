@@ -58,7 +58,7 @@ module Dir : sig
   val dune_file : t -> Dune_file.t option
 
   (** Return the project this directory is part of *)
-  val project : t -> Dune_project.t option
+  val project : t -> Dune_project.t
 end
 
 (** A [t] value represent a view of the source tree. It is lazily

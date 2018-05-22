@@ -124,6 +124,8 @@ module Of_sexp : sig
 
   module Constructor_args_spec : sig
     type ('a, 'b) t
+
+    val parse : ('a, 'b) t -> Ast.t -> 'a -> 'b
   end
 
   val nil : ('a, 'a) Constructor_args_spec.t

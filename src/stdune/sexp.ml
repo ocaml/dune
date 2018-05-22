@@ -363,6 +363,12 @@ module Of_sexp = struct
         | Cons (conv, t), s :: l -> convert t sexp l (f (conv s))
         | Cons _, [] -> of_sexp_error sexp "not enough arguments"
         | Nil, _ :: _ -> of_sexp_error sexp "too many arguments"
+
+    let parse t sexp f =
+      match sexp with
+      | Atom _ | Quoted_string _ ->
+        of_sexp_error sexp "List expected"
+      | List (_, l) -> convert t sexp l f
   end
 
   let nil = Constructor_args_spec.Nil

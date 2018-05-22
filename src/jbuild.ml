@@ -1265,7 +1265,7 @@ module Stanzas = struct
           (fun glob -> [Copy_files {add_line_directive = false; glob}])
       ; cstr "copy_files#" (Copy_files.v1 @> nil)
           (fun glob -> [Copy_files {add_line_directive = true; glob}])
-      ; cstr_rest_loc "env" nil Env.rule
+      ; cstr_loc "env" (rest Env.rule)
           (fun loc rules -> [Env { loc; rules }])
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])

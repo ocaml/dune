@@ -341,13 +341,15 @@ module Of_sexp = struct
     type ('a, 'b) t =
       | Nil  : ('a, 'a) t
       | Rest : 'a conv -> ('a  list -> 'b, 'b) t
+      | Loc  : ('a, 'b) t -> (Loc.t -> 'a, 'b) t
       | Cons : 'a conv * ('b, 'c) t -> ('a -> 'b, 'c) t
 
     let rec convert : type a b. (a, b) t -> Ast.t -> Ast.t list -> a -> b
       = fun t sexp sexps f ->
         match t, sexps with
         | Nil, [] -> f
-        | Rest conv, l  -> f (List.map l ~f:conv)
+        | Rest conv, l -> f (List.map l ~f:conv)
+        | Loc t, sexps -> convert t sexp sexps (f (Ast.loc sexp))
         | Cons (conv, t), s :: sexps -> convert t sexp sexps (f (conv s))
         | Cons _, [] -> of_sexp_error sexp "not enough arguments"
         | Nil, _ :: _ -> of_sexp_error sexp "too many arguments"
@@ -356,6 +358,7 @@ module Of_sexp = struct
   let nil = Constructor_args_spec.Nil
   let ( @> ) a b = Constructor_args_spec.Cons (a, b)
   let rest f = Constructor_args_spec.Rest f
+  let cstr_loc x = Constructor_args_spec.Loc x
 
   let field_multi name ?default args_spec f state =
     match find_single state name with
@@ -384,7 +387,7 @@ module Of_sexp = struct
     type ('a, 'b) tuple =
       { name : string
       ; args : ('a, 'b) Constructor_args_spec.t
-      ; make : Loc.t -> 'a
+      ; make : 'a
       }
 
     type 'a record =
@@ -402,14 +405,11 @@ module Of_sexp = struct
   end
   module C = Constructor_spec
 
-  let cstr_loc name args make =
+  let cstr name args make =
     C.Tuple { name; args; make }
 
   let cstr_record name parse =
     C.Record { name; parse }
-
-  let cstr name args make =
-    cstr_loc name args (fun _ -> make)
 
   let equal_cstr_name a b = Name.compare a b = Eq
 
@@ -429,9 +429,9 @@ module Of_sexp = struct
 
   let sum cstrs sexp =
     match sexp with
-    | Atom (loc, A s) -> begin
+    | Atom (_, A s) -> begin
         match find_cstr cstrs sexp s with
-        | C.Tuple  t -> Constructor_args_spec.convert t.args sexp [] (t.make loc)
+        | C.Tuple  t -> Constructor_args_spec.convert t.args sexp [] t.make
         | C.Record _ -> of_sexp_error sexp "'%s' expect arguments"
       end
     | Quoted_string _ -> of_sexp_error sexp "Atom expected"
@@ -441,8 +441,7 @@ module Of_sexp = struct
       | Quoted_string _ | List _ -> of_sexp_error name_sexp "Atom expected"
       | Atom (_, A s) ->
         match find_cstr cstrs sexp s with
-        | C.Tuple  t -> Constructor_args_spec.convert t.args sexp args
-                          (t.make loc)
+        | C.Tuple  t -> Constructor_args_spec.convert t.args sexp args t.make
         | C.Record r -> record r.parse (List (loc, args))
 
   let enum cstrs sexp =

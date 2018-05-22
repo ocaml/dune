@@ -95,7 +95,7 @@ type item = Context of Sexp.Ast.t | Profile of Loc.t * string
 let item_of_sexp =
   sum
     [ cstr "context" (raw @> nil) (fun x -> Context x)
-    ; cstr_loc "profile" (string @> nil) (fun loc x -> Profile (loc, x))
+    ; cstr "profile" (cstr_loc (string @> nil)) (fun loc x -> Profile (loc, x))
     ]
 
 let t ?x ?profile:cmdline_profile sexps =

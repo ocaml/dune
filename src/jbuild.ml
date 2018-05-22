@@ -1252,12 +1252,12 @@ module Stanzas = struct
       [ cstr "library"     (Library.v1 project @> nil) (fun x -> [Library x])
       ; cstr "executable"  (Executables.v1_single project @> nil) execs
       ; cstr "executables" (Executables.v1_multi  project @> nil) execs
-      ; cstr_loc "rule"      (Rule.v1     @> nil) (fun loc x -> [Rule { x with loc }])
-      ; cstr_loc "ocamllex" (Rule.ocamllex_v1 @> nil)
+      ; cstr "rule"        (cstr_loc (Rule.v1 @> nil)) (fun loc x -> [Rule { x with loc }])
+      ; cstr "ocamllex"    (cstr_loc (Rule.ocamllex_v1 @> nil))
           (fun loc x -> rules (Rule.ocamllex_to_rule loc x))
-      ; cstr_loc "ocamlyacc" (Rule.ocamlyacc_v1 @> nil)
+      ; cstr "ocamlyacc"   (cstr_loc (Rule.ocamlyacc_v1 @> nil))
           (fun loc x -> rules (Rule.ocamlyacc_to_rule loc x))
-      ; cstr_loc "menhir" (Menhir.v1 @> nil)
+      ; cstr "menhir"      (cstr_loc (Menhir.v1 @> nil))
           (fun loc x -> [Menhir { x with loc }])
       ; cstr "install"     (Install_conf.v1 project @> nil) (fun x -> [Install     x])
       ; cstr "alias"       (Alias_conf.v1 project @> nil)   (fun x -> [Alias       x])
@@ -1265,11 +1265,11 @@ module Stanzas = struct
           (fun glob -> [Copy_files {add_line_directive = false; glob}])
       ; cstr "copy_files#" (Copy_files.v1 @> nil)
           (fun glob -> [Copy_files {add_line_directive = true; glob}])
-      ; cstr_loc "env" (rest Env.rule)
+      ; cstr "env" (cstr_loc (rest Env.rule))
           (fun loc rules -> [Env { loc; rules }])
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
-      ; cstr_loc "include" (relative_file @> nil) (fun loc fn ->
+      ; cstr "include" (cstr_loc (relative_file @> nil)) (fun loc fn ->
           let include_stack = (loc, file) :: include_stack in
           let dir = Path.parent_exn file in
           let file = Path.relative dir fn in

@@ -49,7 +49,7 @@ struct
       *)
       ; cstr "copy#" (path @> path @> nil) (fun src dst ->
           Copy_and_add_line_directive (src, dst))
-      ; cstr_loc "copy-and-add-line-directive" (path @> path @> nil) (fun loc src dst ->
+      ; cstr "copy-and-add-line-directive" (cstr_loc (path @> path @> nil)) (fun loc src dst ->
           Loc.warn loc "copy-and-add-line-directive is deprecated, use copy# instead";
           Copy_and_add_line_directive (src, dst))
       ; cstr "copy#" (path @> path @> nil) (fun src dst ->

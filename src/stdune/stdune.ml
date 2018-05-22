@@ -20,6 +20,7 @@ module String     = String
 module Char       = Char
 module Sexp       = Sexp
 module Path       = Path
+module Fmt        = Fmt
 
 external reraise : exn -> _ = "%reraise"
 

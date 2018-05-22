@@ -4,7 +4,7 @@ open Jbuild
 let filter_stanzas ~ignore_promoted_rules stanzas =
   if ignore_promoted_rules then
     List.filter stanzas ~f:(function
-      | Stanza.Rule { mode = Promote; _ } -> false
+      | Rule { mode = Promote; _ } -> false
       | _ -> true)
   else
     stanzas

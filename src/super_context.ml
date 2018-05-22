@@ -60,7 +60,7 @@ let internal_lib_names t =
   List.fold_left t.stanzas ~init:String.Set.empty
     ~f:(fun acc { Dir_with_jbuild. stanzas; _ } ->
       List.fold_left stanzas ~init:acc ~f:(fun acc -> function
-        | Stanza.Library lib ->
+        | Library lib ->
           String.Set.add
             (match lib.public with
              | None -> acc
@@ -331,7 +331,7 @@ let create
   List.iter stanzas
     ~f:(fun { Dir_with_jbuild. ctx_dir; scope; stanzas; _ } ->
       List.iter stanzas ~f:(function
-        | Stanza.Env config ->
+        | Env config ->
           let inherit_from =
             if ctx_dir = Scope.root scope then
               None

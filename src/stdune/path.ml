@@ -152,9 +152,7 @@ end = struct
     | "" -> true
     | _  -> false
 
-  let to_string = function
-    | "" -> "."
-    | t  -> t
+  let to_string t = if is_root t then "." else t
 
   let compare = String.compare
 
@@ -169,24 +167,25 @@ end = struct
         | '/' -> loop t (String.sub t ~pos:i ~len:(j - i) :: acc) (i - 1) (i - 1)
         | _   -> loop t acc (i - 1) j
     in
-    function
-    | "" -> []
-    | t  ->
-      let len = String.length t in
-      loop t [] len len
+    fun t ->
+      if is_root t then
+        []
+      else
+        let len = String.length t in
+        loop t [] len len
 
-  let parent = function
-    | "" ->
+  let parent t =
+    if is_root t then
       Exn.code_error "Path.Local.parent called on the root" []
-    | t ->
+    else
       match String.rindex_from t (String.length t - 1) '/' with
-      | exception Not_found -> ""
+      | exception Not_found -> root
       | i -> String.sub t ~pos:0 ~len:i
 
-  let basename = function
-    | "" ->
+  let basename t =
+    if is_root t then
       Exn.code_error "Path.Local.basename called on the root" []
-    | t ->
+    else
       let len = String.length t in
       match String.rindex_from t (len - 1) '/' with
       | exception Not_found -> t
@@ -204,20 +203,21 @@ end = struct
       | [] -> Result.Ok t
       | "." :: rest -> loop t rest
       | ".." :: rest ->
-        begin match t with
-        | "" -> Result.Error ()
-        | t -> loop (parent t) rest
-        end
+        if is_root t then
+          Result.Error ()
+        else
+          loop (parent t) rest
       | fn :: rest ->
-        match t with
-        | "" -> loop fn rest
-        | _ -> loop (t ^ "/" ^ fn) rest
+        if is_root t then
+          loop fn rest
+        else
+          loop (t ^ "/" ^ fn) rest
     in
     match loop t (explode_path path) with
     | Result.Ok t -> t
     | Error () ->
-       Exn.fatalf ?loc:error_loc "path outside the workspace: %s from %s" path
-         (to_string t)
+      Exn.fatalf ?loc:error_loc "path outside the workspace: %s from %s" path
+        (to_string t)
 
   let is_canonicalized =
     let rec before_slash s i =
@@ -262,16 +262,17 @@ end = struct
     if is_canonicalized s then
       s
     else
-      relative "" s ?error_loc
+      relative root s ?error_loc
 
   let sexp_of_t t = Sexp.To_sexp.string (to_string t)
   let t sexp =
     of_string (Sexp.Of_sexp.string sexp)
       ~error_loc:(Sexp.Ast.loc sexp)
 
-  let rec mkdir_p = function
-    | "" -> ()
-    | t ->
+  let rec mkdir_p t =
+    if is_root t then
+      ()
+    else
       try
         Unix.mkdir t 0o777
       with
@@ -283,19 +284,22 @@ end = struct
           mkdir_p p;
           Unix.mkdir t 0o777
 
-  let ensure_parent_directory_exists = function
-    | "" -> ()
-    | t -> mkdir_p (parent t)
+  let ensure_parent_directory_exists t =
+    if is_root t then
+      ()
+    else
+      mkdir_p (parent t)
 
   let append a b =
-    match a, b with
-    | "", x | x, "" -> x
-    | _ -> a ^ "/" ^ b
+    match is_root a, is_root b with
+    | true, _ -> b
+    | _, true -> a
+    | _, _ -> a ^ "/" ^ b
 
   let descendant t ~of_ =
-    match of_ with
-    | "" -> Some t
-    | _ ->
+    if is_root of_ then
+      Some t
+    else
       let of_len = String.length of_ in
       let t_len = String.length t in
       if t_len = of_len then
@@ -306,9 +310,9 @@ end = struct
         None
 
   let is_descendant t ~of_ =
-    match of_ with
-    | "" -> true
-    | _ ->
+    if is_root of_ then
+      true
+    else
       let of_len = String.length of_ in
       let t_len = String.length t in
       (t_len = of_len && t = of_) ||

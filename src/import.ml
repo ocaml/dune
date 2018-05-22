@@ -18,9 +18,6 @@ module String_map = struct
     ) fmt (to_list t)
 end
 
-module Int_set = Set.Make(Int)
-module Int_map = Map.Make(Int)
-
 module Sys = struct
   include Sys
 

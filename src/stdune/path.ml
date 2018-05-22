@@ -46,26 +46,27 @@ module External : sig
   val cwd : unit -> t
   val extend_basename : t -> suffix:string -> t
 end = struct
-  type t = string
+  include Interned.Make()
 
-  let extend_basename t ~suffix = t ^ suffix
+  let as_string x ~f =
+    to_string x
+    |> f
+    |> make
 
-  let compare = String.compare
-
-  let to_string t = t
+  let extend_basename t ~suffix = as_string t ~f:(fun t -> t ^ suffix)
 
   let of_string t =
     if Filename.is_relative t then
       Exn.code_error "Path.External.of_string: relative path given"
         [ "t", Sexp.To_sexp.string t ];
-    t
+    make t
 
   let sexp_of_t t = Sexp.To_sexp.string (to_string t)
   let t sexp =
     let t = Sexp.Of_sexp.string sexp in
     if Filename.is_relative t then
       Sexp.Of_sexp.of_sexp_error sexp "Absolute path expected";
-    t
+    of_string t
 
 (*
   let rec cd_dot_dot t =
@@ -86,23 +87,25 @@ end = struct
     loop initial_t (explode_path path)
 *)
 
-  let relative = Filename.concat
+  let relative x y = make (Filename.concat (to_string x) y)
 
   let rec mkdir_p t =
-    let p = Filename.dirname t in
+    let t_s = to_string t in
+    let p_s = Filename.dirname t_s in
+    let p = make p_s in
     if p <> t then
       try
-        Unix.mkdir t 0o777
+        Unix.mkdir t_s 0o777
       with
       | Unix.Unix_error (EEXIST, _, _) -> ()
       | Unix.Unix_error (ENOENT, _, _) ->
         mkdir_p p;
-        Unix.mkdir t 0o777
+        Unix.mkdir t_s 0o777
 
-  let basename = Filename.basename
-  let parent = Filename.dirname
+  let basename t = Filename.basename (to_string t)
+  let parent t = as_string ~f:Filename.dirname t
 
-  let cwd = Sys.getcwd
+  let cwd () = make (Sys.getcwd ())
   let initial_cwd = cwd ()
 end
 

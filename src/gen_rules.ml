@@ -267,8 +267,7 @@ module Gen(P : Install_rules.Params) = struct
                   match (dep : Jbuild.Lib_dep.t) with
                   | Direct _ -> None
                   | Select s -> Some s.result_fn)
-              | Documentation _ | Alias _ | Provides _ | Install _
-              | Env _ -> [])
+              | _ -> [])
             |> String.Set.of_list
           in
           String.Set.union generated_files
@@ -978,7 +977,7 @@ module Gen(P : Install_rules.Params) = struct
     |> Option.iter ~f:(Merlin.add_rules sctx ~dir:ctx_dir ~scope);
     Utop.setup sctx ~dir:ctx_dir ~libs:(
       List.filter_map stanzas ~f:(function
-        | Stanza.Library lib -> Some lib
+        | Library lib -> Some lib
         | _ -> None)
     ) ~scope;
     Modules_partitioner.emit_warnings modules_partitioner

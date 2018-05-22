@@ -1217,26 +1217,22 @@ module Env = struct
         "S-expression of the form (<profile> <fields>) expected"
 end
 
-module Stanza = struct
-  type t =
-    | Library     of Library.t
-    | Executables of Executables.t
-    | Rule        of Rule.t
-    | Provides    of Provides.t
-    | Install     of Install_conf.t
-    | Alias       of Alias_conf.t
-    | Copy_files  of Copy_files.t
-    | Menhir      of Menhir.t
-    | Documentation of Documentation.t
-    | Env         of Env.t
-end
+type Stanza.t +=
+  | Library     of Library.t
+  | Executables of Executables.t
+  | Rule        of Rule.t
+  | Provides    of Provides.t
+  | Install     of Install_conf.t
+  | Alias       of Alias_conf.t
+  | Copy_files  of Copy_files.t
+  | Menhir      of Menhir.t
+  | Documentation of Documentation.t
+  | Env         of Env.t
 
 module Stanzas = struct
   type t = Stanza.t list
 
   type syntax = OCaml | Plain
-
-  open Stanza
 
   let rules l = List.map l ~f:(fun x -> Rule x)
 

@@ -63,10 +63,12 @@ module Context = struct
     | List (_, List _ :: _) as sexp -> Opam (record (Opam.t ~profile) sexp)
     | sexp ->
       sum
-        [ cstr_record "default"
-            (Default.t ~profile >>= fun x -> return (Default x))
-        ; cstr_record "opam"
-            (Opam.t ~profile >>= fun x -> return (Opam x))
+        [ cstr "default"
+            (rest_as_record (Default.t ~profile))
+            (fun x -> Default x)
+        ; cstr "opam"
+            (rest_as_record (Opam.t ~profile))
+            (fun x -> Opam x)
         ]
         sexp
 

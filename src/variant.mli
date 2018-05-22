@@ -6,7 +6,7 @@
     They are directly mapped to findlib predicates.
 *)
 
-include Interned.S
+include Stdune.Interned.S
 
 (** Well-known variants *)
 val ppx_driver : t

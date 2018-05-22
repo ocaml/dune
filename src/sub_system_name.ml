@@ -1,1 +1,1 @@
-include Interned.Make ()
+include Stdune.Interned.Make ()

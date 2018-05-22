@@ -67,3 +67,5 @@ let foldi t ~init ~f = fold  t ~init ~f:(fun ~key ~data acc -> f key data acc)
 let fold  t ~init ~f = foldi t ~init ~f:(fun _ x -> f x)
 
 let iter t ~f = iter ~f t
+
+let keys t = foldi t ~init:[] ~f:(fun key _ acc -> key :: acc)

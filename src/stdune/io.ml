@@ -41,11 +41,12 @@ let read_all ic =
   let len = in_channel_length ic in
   really_input_string ic len
 
-let read_file fn = with_file_in fn ~f:read_all
+let read_file ?binary fn = with_file_in fn ~f:read_all ?binary
 
 let lines_of_file fn = with_file_in fn ~f:input_lines ~binary:false
 
-let write_file fn data = with_file_out fn ~f:(fun oc -> output_string oc data)
+let write_file ?binary fn data =
+  with_file_out ?binary fn ~f:(fun oc -> output_string oc data)
 
 let write_lines fn lines =
   with_file_out fn ~f:(fun oc ->

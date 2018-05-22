@@ -376,6 +376,7 @@ module Stanzas : sig
 
   val parse
     :  file:Path.t
+    -> kind:File_tree.Dune_file.Kind.t
     -> Dune_project.t
     -> Sexp.Ast.t list
     -> t

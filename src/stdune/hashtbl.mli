@@ -25,3 +25,5 @@ val fold  : ('a, 'b) t -> init:'c -> f:(      'b -> 'c -> 'c) -> 'c
 val foldi : ('a, 'b) t -> init:'c -> f:('a -> 'b -> 'c -> 'c) -> 'c
 
 val mem : ('a, _) t -> 'a -> bool
+
+val keys : ('a, _) t -> 'a list

@@ -12,3 +12,4 @@ build: [
   ["./boot.exe" "-j" jobs]
 ]
 available: [ ocaml-version >= "4.02.3" ]
+conflicts: [ "jbuilder" {!= "transition"} ]

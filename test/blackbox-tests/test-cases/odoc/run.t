@@ -41,14 +41,14 @@
   </html>
 
   $ dune build @foo-mld --display short
-  {1 Library foo}
+  {2 Library foo}
   This library exposes the following toplevel modules:
-  {!modules:Foo Foo2}.
-  {1 Library foo.byte}
+  {!modules:Foo Foo2}
+  {2 Library foo.byte}
   The entry point of this library is the module:
   {!module-Foo_byte}.
 
   $ dune build @bar-mld --display short
-  {1 Library bar}
+  {2 Library bar}
   The entry point of this library is the module:
   {!module-Bar}.

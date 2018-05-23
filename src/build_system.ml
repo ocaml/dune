@@ -714,8 +714,8 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     let hash =
       let trace =
         (List.map all_deps_as_list ~f:(fun fn ->
-           (fn, Utils.Cached_digest.file fn)),
-         targets_as_list,
+           (Path.to_string fn, Utils.Cached_digest.file fn)),
+         List.map targets_as_list ~f:Path.to_string,
          Option.map context ~f:(fun c -> c.name),
          action)
       in

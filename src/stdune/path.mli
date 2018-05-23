@@ -1,19 +1,6 @@
 (** In the current workspace (anything under the current project root) *)
 module Local : sig
   type t
-
-  val compare : t -> t -> Ordering.t
-
-  module Set : Set.S with type elt = t
-
-  val root : t
-  val is_root : t -> bool
-  val to_string : t -> string
-  val mkdir_p : t -> unit
-  val ensure_parent_directory_exists : t -> unit
-  val append : t -> t -> t
-  val descendant : t -> of_:t -> t option
-  val parent : t -> t
 end
 
 (** In the outside world *)

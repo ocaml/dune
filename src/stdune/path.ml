@@ -127,7 +127,6 @@ module Local : sig
   val is_descendant : t -> of_:t -> bool
   val reach : t -> from:t -> t
   val basename : t -> string
-  val ensure_parent_directory_exists : t -> unit
   val extend_basename : t -> suffix:string -> t
   module Set : Set.S with type elt = t
 
@@ -286,12 +285,6 @@ end = struct
           mkdir_p parent;
           Unix.mkdir t_s 0o777
         end
-
-  let ensure_parent_directory_exists t =
-    if is_root t then
-      ()
-    else
-      mkdir_p (parent t)
 
   let append a b =
     match is_root a, is_root b with

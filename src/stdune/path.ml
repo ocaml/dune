@@ -257,10 +257,7 @@ end = struct
     in
     fun s ->
       let len = String.length s in
-      if len = 0 then
-        true
-      else
-        before_slash s (len - 1)
+      len = 0 || before_slash s (len - 1)
 
   let of_string ?error_loc s =
     if is_canonicalized s then
@@ -319,17 +316,14 @@ end = struct
         None
 
   let is_descendant t ~of_ =
-    if is_root of_ then
-      true
-    else
-    if compare t of_ = Ordering.Eq then
-      true
-    else
+    is_root of_
+    || compare t of_ = Ordering.Eq
+    || (
       let t = to_istring t in
       let of_ = to_istring of_ in
       let of_len = String.length of_ in
       let t_len = String.length t in
-      (t_len > of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_)
+      (t_len > of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_))
 
   let reach t ~from =
     let rec loop t from =

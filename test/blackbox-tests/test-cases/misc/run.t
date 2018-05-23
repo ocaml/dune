@@ -5,8 +5,8 @@
           diff alias runtest
           diff alias runtest (exit 1)
   (cd _build/default && /usr/bin/diff -u result2 expected2)
-  --- result2	2018-05-23 20:44:05.000000000 +0700
-  +++ expected2	2018-05-23 20:44:05.000000000 +0700
+  --- result2	2018-05-23 23:14:28.000000000 +0700
+  +++ expected2	2018-05-23 23:14:28.000000000 +0700
   @@ -1 +1 @@
   -sub-tree/dir/b sub-tree/a
   \ No newline at end of file

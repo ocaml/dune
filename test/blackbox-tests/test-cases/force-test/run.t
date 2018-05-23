@@ -7,7 +7,6 @@
              f alias runtest
   Foo Bar
   $ dune runtest --display short
-        ocamlc .f.eobjs/f.{cmi,cmo,cmt}
   $ dune runtest --force --display short
              f alias runtest
   Foo Bar

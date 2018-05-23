@@ -713,11 +713,14 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     let targets_as_list  = Path.Set.to_list targets  in
     let hash =
       let trace =
-        (List.map all_deps_as_list ~f:(fun fn ->
-           (Path.to_string fn, Utils.Cached_digest.file fn)),
-         List.map targets_as_list ~f:Path.to_string,
-         Option.map context ~f:(fun c -> c.name),
-         Action.for_shell action)
+        ( all_deps_as_list
+          |> List.sort ~compare:Path.compare_val
+          |> List.map ~f:(fun fn ->
+            (Path.to_string fn, Utils.Cached_digest.file fn)),
+          List.sort ~compare:Path.compare_val targets_as_list
+          |> List.map ~f:Path.to_string,
+          Option.map context ~f:(fun c -> c.name),
+          Action.for_shell action)
       in
       Digest.string (Marshal.to_string trace [])
     in

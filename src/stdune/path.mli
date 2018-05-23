@@ -145,3 +145,5 @@ val in_source : string -> t
 (** Set the workspace root. Can onyl be called once and the path must be
     absolute *)
 val set_root : External.t -> unit
+
+val compare_val : t -> t -> Ordering.t

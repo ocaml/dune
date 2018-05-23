@@ -34,6 +34,7 @@ module External : sig
   type t
 
   val compare : t -> t -> Ordering.t
+  val compare_val : t -> t -> Ordering.t
   val t : t Sexp.Of_sexp.t
   val sexp_of_t : t Sexp.To_sexp.t
   val to_string : t -> string
@@ -47,6 +48,8 @@ module External : sig
   val extend_basename : t -> suffix:string -> t
 end = struct
   include Interned.Make()
+
+  let compare_val x y = String.compare (to_string x) (to_string y)
 
   let as_string x ~f =
     to_string x
@@ -117,6 +120,7 @@ module Local : sig
   val root : t
   val is_root : t -> bool
   val compare : t -> t -> Ordering.t
+  val compare_val : t -> t -> Ordering.t
   val of_string : ?error_loc:Usexp.Loc.t -> string -> t
   val to_string : t -> string
   val relative : ?error_loc:Usexp.Loc.t -> t -> string -> t
@@ -144,6 +148,8 @@ end = struct
   (* either "" for root, either a '/' separated list of components
      other that ".", ".."  and not containing '/'. *)
   include Interned.Make()
+
+  let compare_val x y = String.compare (to_string x) (to_string y)
 
   let root = make ""
 
@@ -848,3 +854,13 @@ module Set = struct
 end
 
 let in_source s = in_source_tree (Local.of_string s)
+
+let compare_val x y =
+  match x, y with
+  | External x      , External y       -> External.compare_val x y
+  | External _      , _                -> Lt
+  | _               , External _       -> Gt
+  | In_source_tree x, In_source_tree y -> Local.compare_val x y
+  | In_source_tree _, _                -> Lt
+  | _               , In_source_tree _ -> Gt
+  | In_build_dir x  , In_build_dir y   -> Local.compare_val x y

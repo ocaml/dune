@@ -46,7 +46,7 @@ and opened_file_desc =
 
 type purpose =
   | Internal_job
-  | Build_job of Path.t list
+  | Build_job of Path.Set.t
 
 module Temp = struct
   let tmp_files = ref Path.Set.empty
@@ -157,6 +157,7 @@ module Fancy = struct
             split_paths (("alias " ^ Path.to_string name) :: targets_acc)
               (add_ctx ctx ctxs_acc) rest
       in
+      let targets = Path.Set.to_list targets in
       let target_names, contexts = split_paths [] [] targets in
       let target_names_grouped_by_prefix =
         List.map target_names ~f:Filename.split_extension_after_dot

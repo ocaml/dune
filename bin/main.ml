@@ -1044,12 +1044,13 @@ let install_uninstall ~what =
        in
        Fiber.parallel_iter install_files_by_context
          ~f:(fun (context, install_files) ->
+           let install_files_set = Path.Set.of_list install_files in
            get_prefix context ~from_command_line:prefix_from_command_line
            >>= fun prefix ->
            get_libdir context ~libdir_from_command_line
            >>= fun libdir ->
            Fiber.parallel_iter install_files ~f:(fun path ->
-             let purpose = Process.Build_job install_files in
+             let purpose = Process.Build_job install_files_set in
              Process.run ~purpose ~env:setup.env Strict opam_installer
                ([ sprintf "-%c" what.[0]
                 ; Path.to_string path

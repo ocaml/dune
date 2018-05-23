@@ -717,7 +717,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
            (Path.to_string fn, Utils.Cached_digest.file fn)),
          List.map targets_as_list ~f:Path.to_string,
          Option.map context ~f:(fun c -> c.name),
-         action)
+         Action.for_shell action)
       in
       Digest.string (Marshal.to_string trace [])
     in

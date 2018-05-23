@@ -4,7 +4,7 @@
   [1]
   $ dune exec ./foo.exe --display short
       ocamldep foo.ml.d
-        ocamlc .foo.eobjs/foo.{cmi,cmo,cmt}
+        ocamlc .foo.eobjs/foo.{cmo,cmt,cmi}
       ocamlopt .foo.eobjs/foo.{cmx,o}
       ocamlopt foo.exe
   Foo
@@ -18,7 +18,7 @@
   [1]
   $ dune exec dunetestbar --display short
       ocamldep bar.ml.d
-        ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}
+        ocamlc .bar.eobjs/bar.{cmo,cmt,cmi}
       ocamlopt .bar.eobjs/bar.{cmx,o}
       ocamlopt bar.exe
   Bar

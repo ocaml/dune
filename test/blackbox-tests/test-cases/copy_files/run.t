@@ -3,14 +3,14 @@
       ocamldep lexer1.ml.d
       ocamldep test.ml.d
       ocamldep dummy.ml.d
-        ocamlc .foo.objs/dummy.{cmi,cmo,cmt}
+        ocamlc .foo.objs/dummy.{cmo,cmt,cmi}
       ocamlopt .foo.objs/dummy.{cmx,o}
-      ocamlopt foo.{a,cmxa}
+      ocamlopt foo.{cmxa,a}
         ocamlc bar$ext_obj
     ocamlmklib dllfoo_stubs$ext_dll,libfoo_stubs$ext_lib
-        ocamlc .test.eobjs/lexer1.{cmi,cmo,cmt}
+        ocamlc .test.eobjs/lexer1.{cmo,cmt,cmi}
       ocamlopt .test.eobjs/lexer1.{cmx,o}
-        ocamlc .test.eobjs/test.{cmi,cmo,cmt}
+        ocamlc .test.eobjs/test.{cmo,cmt,cmi}
       ocamlopt .test.eobjs/test.{cmx,o}
       ocamlopt test.exe
   $ dune build @bar-source --display short

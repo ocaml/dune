@@ -3,19 +3,19 @@ Successes:
   $ dune build --display short --root foo --debug-dep 2>&1 | grep -v Entering
       ocamldep test/bar.ml.d
       ocamldep foo.ml.d
-        ocamlc .foo.objs/foo__.{cmi,cmo,cmt}
+        ocamlc .foo.objs/foo__.{cmt,cmi,cmo}
       ocamlopt .foo.objs/foo__.{cmx,o}
       ocamldep intf.mli.d
-        ocamlc .foo.objs/foo__Intf.{cmi,cmti}
-        ocamlc .foo.objs/foo.{cmi,cmo,cmt}
-        ocamlc test/.bar.objs/bar.{cmi,cmo,cmt}
+        ocamlc .foo.objs/foo__Intf.{cmti,cmi}
+        ocamlc .foo.objs/foo.{cmt,cmi,cmo}
+        ocamlc test/.bar.objs/bar.{cmt,cmi,cmo}
         ocamlc test/bar.cma
       ocamlopt .foo.objs/foo.{cmx,o}
       ocamlopt test/.bar.objs/bar.{cmx,o}
-      ocamlopt test/bar.{a,cmxa}
+      ocamlopt test/bar.{cmxa,a}
       ocamlopt test/bar.cmxs
         ocamlc foo.cma
-      ocamlopt foo.{a,cmxa}
+      ocamlopt foo.{cmxa,a}
       ocamlopt foo.cmxs
 
 Errors:
@@ -28,14 +28,14 @@ Errors:
     (modules_without_implementation (x y))
   
   This will become an error in the future.
-        ocamlc .foo.objs/foo.{cmi,cmo,cmt}
+        ocamlc .foo.objs/foo.{cmo,cmt,cmi}
         ocamlc foo.cma
   $ dune build --display short --root b foo.cma 2>&1 | grep -v Entering
   File "dune", line 3, characters 34-37:
   Warning: The following modules must be listed here as they don't have an implementation:
   - y
   This will become an error in the future.
-        ocamlc .foo.objs/foo.{cmi,cmo,cmt}
+        ocamlc .foo.objs/foo.{cmo,cmt,cmi}
         ocamlc foo.cma
   $ dune build --display short --root c foo.cma 2>&1 | grep -v Entering
   File "dune", line 3, characters 35-36:

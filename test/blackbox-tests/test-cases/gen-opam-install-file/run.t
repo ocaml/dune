@@ -2,16 +2,16 @@
       ocamldep bar.ml.d
       ocamldep foo.ml.d
       ocamldep foo.mli.d
-        ocamlc .foo.objs/foo.{cmi,cmti}
+        ocamlc .foo.objs/foo.{cmti,cmi}
       ocamlopt .foo.objs/foo.{cmx,o}
-      ocamlopt foo.{a,cmxa}
+      ocamlopt foo.{cmxa,a}
       ocamlopt foo.cmxs
       ocamldep foo_byte.ml.d
-        ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
+        ocamlc .foo_byte.objs/foo_byte.{cmt,cmi,cmo}
         ocamlc foo_byte.cma
-        ocamlc .foo.objs/foo.{cmo,cmt}
+        ocamlc .foo.objs/foo.{cmt,cmo}
         ocamlc foo.cma
-        ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}
+        ocamlc .bar.eobjs/bar.{cmo,cmt,cmi}
       ocamlopt .bar.eobjs/bar.{cmx,o}
       ocamlopt bar.exe
   lib: [

@@ -2,7 +2,6 @@ open Import
 open Jbuild
 
 module A = Action
-module Pset = Path.Set
 module Alias = Build_system.Alias
 
 module Dir_with_jbuild = struct
@@ -492,7 +491,7 @@ module Deps = struct
       let path = Path.relative ~error_loc:(String_with_vars.loc s)
                    dir (expand_vars t ~scope ~dir s) in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
-      >>^ Pset.to_list
+      >>^ Path.Set.to_list
     | Package p ->
       let pkg = Package.Name.of_string (expand_vars t ~scope ~dir p) in
       Alias.dep (Alias.package_install ~context:t.context ~pkg)
@@ -564,7 +563,7 @@ module Action = struct
     ; (* All "name" for ${lib:name:...}/${lib-available:name} forms *)
       mutable lib_deps  : Build.lib_deps
     ; (* Static deps from ${...} variables. For instance ${exe:...} *)
-      mutable sdeps     : Pset.t
+      mutable sdeps     : Path.Set.t
     ; (* Dynamic deps from ${...} variables. For instance ${read:...} *)
       mutable ddeps     : (unit, Action.Var_expansion.t) Build.t String.Map.t
     }
@@ -604,7 +603,7 @@ module Action = struct
     let acc =
       { failures  = []
       ; lib_deps  = String.Map.empty
-      ; sdeps     = Pset.empty
+      ; sdeps     = Path.Set.empty
       ; ddeps     = String.Map.empty
       }
     in
@@ -722,7 +721,7 @@ module Action = struct
             let exp = expand loc key var x in
             (match exp with
              | Some (Paths (ps, _)) ->
-               acc.sdeps <- Pset.union (Pset.of_list ps) acc.sdeps
+               acc.sdeps <- Path.Set.union (Path.Set.of_list ps) acc.sdeps
              | _ -> ());
             exp)
     in
@@ -768,7 +767,7 @@ module Action = struct
       match targets_written_by_user with
       | Infer -> Action.Infer.partial t ~all_targets:true
       | Static targets_written_by_user ->
-        let targets_written_by_user = Pset.of_list targets_written_by_user in
+        let targets_written_by_user = Path.Set.of_list targets_written_by_user in
         let { Action.Infer.Outcome. deps; targets } =
           Action.Infer.partial t ~all_targets:false
         in
@@ -780,23 +779,23 @@ module Action = struct
            so that it can report better errors.
 
            {[
-             let missing = Pset.diff targets targets_written_by_user in
-             if not (Pset.is_empty missing) then
+             let missing = Path.Set.diff targets targets_written_by_user in
+             if not (Path.Set.is_empty missing) then
                Loc.warn (Loc.in_file (Utils.jbuild_name_in ~dir))
                  "Missing targets in user action:\n%s"
-                 (List.map (Pset.elements missing) ~f:(fun target ->
+                 (List.map (Path.Set.elements missing) ~f:(fun target ->
                     sprintf "- %s" (Utils.describe_target target))
                   |> String.concat ~sep:"\n");
            ]}
         *)
-        { deps; targets = Pset.union targets targets_written_by_user }
+        { deps; targets = Path.Set.union targets targets_written_by_user }
       | Alias ->
         let { Action.Infer.Outcome. deps; targets = _ } =
           Action.Infer.partial t ~all_targets:false
         in
-        { deps; targets = Pset.empty }
+        { deps; targets = Path.Set.empty }
     in
-    let targets = Pset.to_list targets in
+    let targets = Path.Set.to_list targets in
     List.iter targets ~f:(fun target ->
       if Path.parent_exn target <> dir then
         Loc.fail loc

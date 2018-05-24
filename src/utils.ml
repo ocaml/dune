@@ -184,11 +184,10 @@ module Cached_digest = struct
   let db_file = Path.relative Path.build_dir ".digest-db"
 
   let dump () =
-    let module Pmap = Path.Map in
     let sexp =
       Sexp.List (
-        Hashtbl.foldi cache ~init:Pmap.empty ~f:(fun key data acc ->
-          Pmap.add acc key data)
+        Hashtbl.foldi cache ~init:Path.Map.empty ~f:(fun key data acc ->
+          Path.Map.add acc key data)
         |> Path.Map.to_list
         |> List.map ~f:(fun (path, file) ->
           Sexp.List [ Quoted_string (Path.to_string path)

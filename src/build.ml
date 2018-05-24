@@ -1,7 +1,5 @@
 open Import
 
-module Pset = Path.Set
-
 module Vspec = struct
   type 'a t = T : Path.t * 'a Vfile_kind.t -> 'a t
 end
@@ -26,7 +24,7 @@ module Repr = struct
     | Second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t
     | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
-    | Paths : Pset.t -> ('a, 'a) t
+    | Paths : Path.Set.t -> ('a, 'a) t
     | Paths_for_rule : Path.Set.t -> ('a, 'a) t
     | Paths_glob : glob_state ref -> ('a, Path.t list) t
     (* The reference gets decided in Build_interpret.deps *)
@@ -134,8 +132,8 @@ let rec all = function
     >>>
     arr (fun (x, y) -> x :: y)
 
-let path p = Paths (Pset.singleton p)
-let paths ps = Paths (Pset.of_list ps)
+let path p = Paths (Path.Set.singleton p)
+let paths ps = Paths (Path.Set.of_list ps)
 let path_set ps = Paths ps
 let paths_glob ~loc ~dir re = Paths_glob (ref (G_unevaluated (loc, dir, re)))
 let vpath vp = Vpath vp
@@ -206,7 +204,7 @@ let get_prog = function
     >>> dyn_paths (arr (function Error _ -> [] | Ok x -> [x]))
 
 let prog_and_args ?(dir=Path.root) prog args =
-  Paths (Arg_spec.add_deps args Pset.empty)
+  Paths (Arg_spec.add_deps args Path.Set.empty)
   >>>
   (get_prog prog &&&
    (arr (Arg_spec.expand ~dir args)

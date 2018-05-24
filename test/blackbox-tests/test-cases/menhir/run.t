@@ -11,10 +11,10 @@
       ocamldep src/test_base.mli.d
       ocamldep src/test_menhir1.mli.d
         ocamlc src/.test.eobjs/test_menhir1.{cmi,cmti}
-        ocamlc src/.test.eobjs/lexer1.{cmo,cmt,cmi}
+        ocamlc src/.test.eobjs/lexer1.{cmi,cmo,cmt}
         ocamlc src/.test.eobjs/test_base.{cmi,cmti}
-        ocamlc src/.test.eobjs/lexer2.{cmo,cmt,cmi}
-        ocamlc src/.test.eobjs/test.{cmo,cmt,cmi}
+        ocamlc src/.test.eobjs/lexer2.{cmi,cmo,cmt}
+        ocamlc src/.test.eobjs/test.{cmi,cmo,cmt}
       ocamlopt src/.test.eobjs/test_menhir1.{cmx,o}
       ocamlopt src/.test.eobjs/lexer1.{cmx,o}
       ocamlopt src/.test.eobjs/test_base.{cmx,o}

@@ -157,7 +157,7 @@ module Fancy = struct
             split_paths (("alias " ^ Path.to_string name) :: targets_acc)
               (add_ctx ctx ctxs_acc) rest
       in
-      let targets = Path.Set.to_list targets in
+      let targets = Path.Set.to_alpha_list targets in
       let target_names, contexts = split_paths [] [] targets in
       let target_names_grouped_by_prefix =
         List.map target_names ~f:Filename.split_extension_after_dot

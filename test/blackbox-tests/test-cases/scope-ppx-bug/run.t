@@ -1,17 +1,17 @@
   $ dune build --display short @install --debug-dep
-        ocamlc a/ppx/.a.objs/a.{cmt,cmi,cmo}
+        ocamlc a/ppx/.a.objs/a.{cmi,cmo,cmt}
       ocamlopt a/ppx/.a.objs/a.{cmx,o}
-      ocamlopt a/ppx/a.{cmxa,a}
+      ocamlopt a/ppx/a.{a,cmxa}
       ocamlopt a/ppx/a.cmxs
-        ocamlc a/kernel/.a_kernel.objs/a_kernel.{cmt,cmi,cmo}
+        ocamlc a/kernel/.a_kernel.objs/a_kernel.{cmi,cmo,cmt}
       ocamlopt a/kernel/.a_kernel.objs/a_kernel.{cmx,o}
-      ocamlopt a/kernel/a_kernel.{cmxa,a}
+      ocamlopt a/kernel/a_kernel.{a,cmxa}
       ocamlopt .ppx/a/ppx.exe
            ppx b/b.pp.ml
       ocamldep b/b.pp.ml.d
-        ocamlc b/.b.objs/b.{cmt,cmi,cmo}
+        ocamlc b/.b.objs/b.{cmi,cmo,cmt}
       ocamlopt b/.b.objs/b.{cmx,o}
-      ocamlopt b/b.{cmxa,a}
+      ocamlopt b/b.{a,cmxa}
       ocamlopt b/b.cmxs
         ocamlc a/ppx/a.cma
         ocamlc a/kernel/a_kernel.cma

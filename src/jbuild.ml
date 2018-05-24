@@ -1241,9 +1241,9 @@ module Stanzas = struct
     | None -> [Executables exe]
     | Some i -> [Executables exe; Install i]
 
-  exception Include_loop of Path.t * (Loc.t * Path.t) list
+  type Stanza.t += Include of Loc.t * string
 
-  let rec t project ~file ~include_stack : Stanza.t list Sexp.Of_sexp.t =
+  let t project : Stanza.t list Sexp.Of_sexp.t =
     sum
       [ cstr "library"     (Library.v1 project @> nil) (fun x -> [Library x])
       ; cstr "executable"  (Executables.v1_single project @> nil) execs
@@ -1266,49 +1266,55 @@ module Stanzas = struct
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
       ; cstr "include" (cstr_loc (relative_file @> nil)) (fun loc fn ->
-          let include_stack = (loc, file) :: include_stack in
-          let dir = Path.parent_exn file in
-          let file = Path.relative dir fn in
-          if not (Path.exists file) then
-            Loc.fail loc "File %s doesn't exist."
-              (Path.to_string_maybe_quoted file);
-          if List.exists include_stack ~f:(fun (_, f) -> f = file) then
-            raise (Include_loop (file, include_stack));
-          let sexps = Io.Sexp.load file ~mode:Many in
-          parse project sexps ~file ~include_stack)
+          [Include (loc, fn)])
       ; cstr "documentation" (Documentation.v1 project @> nil)
           (fun d -> [Documentation d])
       ]
 
-  and parse ~file ~include_stack project sexps =
-    let l =
-      List.concat_map sexps ~f:(t project ~file ~include_stack)
-    in
-    match List.filter_map l ~f:(function Env e -> Some e | _ -> None) with
-    | _ :: e :: _ ->
-      Loc.fail e.loc "The 'env' stanza cannot appear more than once"
-    | _ -> l
+  exception Include_loop of Path.t * (Loc.t * Path.t) list
+
+  let rec parse t ~current_file ~include_stack sexps =
+    List.concat_map sexps ~f:t
+    |> List.concat_map ~f:(function
+      | Include (loc, fn) ->
+        let include_stack = (loc, current_file) :: include_stack in
+        let dir = Path.parent_exn current_file in
+        let current_file = Path.relative dir fn in
+        if not (Path.exists current_file) then
+          Loc.fail loc "File %s doesn't exist."
+            (Path.to_string_maybe_quoted current_file);
+        if List.exists include_stack ~f:(fun (_, f) -> f = current_file) then
+          raise (Include_loop (current_file, include_stack));
+        let sexps = Io.Sexp.load current_file ~mode:Many in
+        parse t sexps ~current_file ~include_stack
+      | stanza -> [stanza])
 
   let parse ~file project sexps =
-    try
-      parse project sexps ~include_stack:[] ~file
-    with
-    | Include_loop (_, []) -> assert false
-    | Include_loop (file, last :: rest) ->
-      let loc = fst (Option.value (List.last rest) ~default:last) in
-      let line_loc (loc, file) =
-        sprintf "%s:%d"
+    let stanzas =
+      try
+        parse (t project) sexps ~include_stack:[] ~current_file:file
+      with
+      | Include_loop (_, []) -> assert false
+      | Include_loop (file, last :: rest) ->
+        let loc = fst (Option.value (List.last rest) ~default:last) in
+        let line_loc (loc, file) =
+          sprintf "%s:%d"
+            (Path.to_string_maybe_quoted file)
+            loc.Loc.start.pos_lnum
+        in
+        Loc.fail loc
+          "Recursive inclusion of jbuild files detected:\n\
+           File %s is included from %s%s"
           (Path.to_string_maybe_quoted file)
-          loc.Loc.start.pos_lnum
-      in
-      Loc.fail loc
-        "Recursive inclusion of jbuild files detected:\n\
-         File %s is included from %s%s"
-        (Path.to_string_maybe_quoted file)
-        (line_loc last)
-        (String.concat ~sep:""
-           (List.map rest ~f:(fun x ->
-              sprintf
-                "\n--> included from %s"
-                (line_loc x))))
+          (line_loc last)
+          (String.concat ~sep:""
+             (List.map rest ~f:(fun x ->
+                sprintf
+                  "\n--> included from %s"
+                  (line_loc x))))
+    in
+    match List.filter_map stanzas ~f:(function Env e -> Some e | _ -> None) with
+    | _ :: e :: _ ->
+      Loc.fail e.loc "The 'env' stanza cannot appear more than once"
+    | _ -> stanzas
 end

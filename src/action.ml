@@ -953,11 +953,10 @@ let sandbox t ~sandboxed ~deps ~targets =
     ]
 
 module Infer = struct
-  module S = Path.Set
   module Outcome = struct
     type t =
-      { deps    : S.t
-      ; targets : S.t
+      { deps    : Path.Set.t
+      ; targets : Path.Set.t
       }
   end
   open Outcome
@@ -1036,43 +1035,43 @@ module Infer = struct
       { deps = Pset.diff deps targets; targets }
   end [@@inline always]
 
-  include Make(Ast)(S)(Outcome)(struct
-      let ( +@ ) acc fn = { acc with targets = S.add acc.targets fn }
-      let ( +< ) acc fn = { acc with deps    = S.add acc.deps    fn }
+  include Make(Ast)(Path.Set)(Outcome)(struct
+      let ( +@ ) acc fn = { acc with targets = Path.Set.add acc.targets fn }
+      let ( +< ) acc fn = { acc with deps    = Path.Set.add acc.deps    fn }
       let ( +<! ) acc prog =
         match prog with
         | Ok p -> acc +< p
         | Error _ -> acc
     end)
 
-  module Partial = Make(Unexpanded.Partial.Past)(S)(Outcome)(struct
+  module Partial = Make(Unexpanded.Partial.Past)(Path.Set)(Outcome)(struct
       let ( +@ ) acc fn =
         match fn with
-        | Left  fn -> { acc with targets = S.add acc.targets fn }
+        | Left  fn -> { acc with targets = Path.Set.add acc.targets fn }
         | Right _  -> acc
       let ( +< ) acc fn =
         match fn with
-        | Left  fn -> { acc with deps    = S.add acc.deps fn }
+        | Left  fn -> { acc with deps    = Path.Set.add acc.deps fn }
         | Right _  -> acc
       let ( +<! ) acc fn =
         match (fn : Unexpanded.Partial.program) with
-        | Left  (This fn) -> { acc with deps = S.add acc.deps fn }
+        | Left  (This fn) -> { acc with deps = Path.Set.add acc.deps fn }
         | Left  (Search _) | Right _ -> acc
     end)
 
-  module Partial_with_all_targets = Make(Unexpanded.Partial.Past)(S)(Outcome)(struct
+  module Partial_with_all_targets = Make(Unexpanded.Partial.Past)(Path.Set)(Outcome)(struct
       let ( +@ ) acc fn =
         match fn with
-        | Left  fn -> { acc with targets = S.add acc.targets fn }
+        | Left  fn -> { acc with targets = Path.Set.add acc.targets fn }
         | Right sw ->
           Loc.fail (SW.loc sw) "Cannot determine this target statically."
       let ( +< ) acc fn =
         match fn with
-        | Left  fn -> { acc with deps    = S.add acc.deps fn }
+        | Left  fn -> { acc with deps    = Path.Set.add acc.deps fn }
         | Right _  -> acc
       let ( +<! ) acc fn =
         match (fn : Unexpanded.Partial.program) with
-        | Left  (This fn) -> { acc with deps = S.add acc.deps fn }
+        | Left  (This fn) -> { acc with deps = Path.Set.add acc.deps fn }
         | Left  (Search _) | Right _ -> acc
     end)
 

@@ -1,7 +1,5 @@
 open Import
 
-module Pset = Path.Set
-
 type 'a t =
   | A        of string
   | As       of string list
@@ -19,9 +17,9 @@ type 'a t =
 let rec add_deps ts set =
   List.fold_left ts ~init:set ~f:(fun set t ->
     match t with
-    | Dep fn -> Pset.add set fn
+    | Dep fn -> Path.Set.add set fn
     | Deps        fns
-    | Hidden_deps fns -> Pset.union set (Pset.of_list fns)
+    | Hidden_deps fns -> Path.Set.union set (Path.Set.of_list fns)
     | S ts
     | Concat (_, ts) -> add_deps ts set
     | _ -> set)
@@ -56,7 +54,7 @@ let expand ~dir ts x =
     | Target _ | Hidden_targets _ -> die "Target not allowed under Dyn"
     | Dyn _ -> assert false
     | Hidden_deps l ->
-      dyn_deps := Pset.union !dyn_deps (Pset.of_list l);
+      dyn_deps := Path.Set.union !dyn_deps (Path.Set.of_list l);
       []
   in
   let rec loop = function

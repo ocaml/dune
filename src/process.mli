@@ -34,7 +34,7 @@ and opened_file_desc =
 (** Why a Fiber.t was run *)
 type purpose =
   | Internal_job
-  | Build_job of Path.t list
+  | Build_job of Path.Set.t
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its termination *)
 val run

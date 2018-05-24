@@ -30,7 +30,7 @@ struct
   let rec t sexp =
     let path = Path.t and string = String.t in
     sum
-      [ cstr_rest "run" (Program.t @> nil) string (fun prog args -> Run (prog, args))
+      [ cstr "run" (Program.t @> rest string) (fun prog args -> Run (prog, args))
       ; cstr "chdir"    (path @> t @> nil)        (fun dn t -> Chdir (dn, t))
       ; cstr "setenv"   (string @> string @> t @> nil)   (fun k v t -> Setenv (k, v, t))
       ; cstr "with-stdout-to"  (path @> t @> nil) (fun fn t -> Redirect (Stdout, fn, t))
@@ -39,7 +39,7 @@ struct
       ; cstr "ignore-stdout"   (t @> nil)      (fun t -> Ignore (Stdout, t))
       ; cstr "ignore-stderr"   (t @> nil)      (fun t -> Ignore (Stderr, t))
       ; cstr "ignore-outputs"  (t @> nil)      (fun t -> Ignore (Outputs, t))
-      ; cstr_rest "progn"      nil t         (fun l -> Progn l)
+      ; cstr "progn"           (rest t)        (fun l -> Progn l)
       ; cstr "echo"           (string @> nil)         (fun x -> Echo x)
       ; cstr "cat"            (path @> nil)         (fun x -> Cat x)
       ; cstr "copy" (path @> path @> nil)              (fun src dst -> Copy (src, dst))
@@ -49,7 +49,7 @@ struct
       *)
       ; cstr "copy#" (path @> path @> nil) (fun src dst ->
           Copy_and_add_line_directive (src, dst))
-      ; cstr_loc "copy-and-add-line-directive" (path @> path @> nil) (fun loc src dst ->
+      ; cstr "copy-and-add-line-directive" (cstr_loc (path @> path @> nil)) (fun loc src dst ->
           Loc.warn loc "copy-and-add-line-directive is deprecated, use copy# instead";
           Copy_and_add_line_directive (src, dst))
       ; cstr "copy#" (path @> path @> nil) (fun src dst ->
@@ -929,7 +929,6 @@ let exec ~targets ~context t =
     | None   -> Env.initial
     | Some c -> c.env
   in
-  let targets = Path.Set.to_list targets in
   let purpose = Process.Build_job targets in
   let ectx = { purpose; context } in
   exec t ~ectx ~dir:Path.root ~env ~stdout_to:None ~stderr_to:None
@@ -954,11 +953,10 @@ let sandbox t ~sandboxed ~deps ~targets =
     ]
 
 module Infer = struct
-  module S = Path.Set
   module Outcome = struct
     type t =
-      { deps    : S.t
-      ; targets : S.t
+      { deps    : Path.Set.t
+      ; targets : Path.Set.t
       }
   end
   open Outcome
@@ -1037,43 +1035,43 @@ module Infer = struct
       { deps = Pset.diff deps targets; targets }
   end [@@inline always]
 
-  include Make(Ast)(S)(Outcome)(struct
-      let ( +@ ) acc fn = { acc with targets = S.add acc.targets fn }
-      let ( +< ) acc fn = { acc with deps    = S.add acc.deps    fn }
+  include Make(Ast)(Path.Set)(Outcome)(struct
+      let ( +@ ) acc fn = { acc with targets = Path.Set.add acc.targets fn }
+      let ( +< ) acc fn = { acc with deps    = Path.Set.add acc.deps    fn }
       let ( +<! ) acc prog =
         match prog with
         | Ok p -> acc +< p
         | Error _ -> acc
     end)
 
-  module Partial = Make(Unexpanded.Partial.Past)(S)(Outcome)(struct
+  module Partial = Make(Unexpanded.Partial.Past)(Path.Set)(Outcome)(struct
       let ( +@ ) acc fn =
         match fn with
-        | Left  fn -> { acc with targets = S.add acc.targets fn }
+        | Left  fn -> { acc with targets = Path.Set.add acc.targets fn }
         | Right _  -> acc
       let ( +< ) acc fn =
         match fn with
-        | Left  fn -> { acc with deps    = S.add acc.deps fn }
+        | Left  fn -> { acc with deps    = Path.Set.add acc.deps fn }
         | Right _  -> acc
       let ( +<! ) acc fn =
         match (fn : Unexpanded.Partial.program) with
-        | Left  (This fn) -> { acc with deps = S.add acc.deps fn }
+        | Left  (This fn) -> { acc with deps = Path.Set.add acc.deps fn }
         | Left  (Search _) | Right _ -> acc
     end)
 
-  module Partial_with_all_targets = Make(Unexpanded.Partial.Past)(S)(Outcome)(struct
+  module Partial_with_all_targets = Make(Unexpanded.Partial.Past)(Path.Set)(Outcome)(struct
       let ( +@ ) acc fn =
         match fn with
-        | Left  fn -> { acc with targets = S.add acc.targets fn }
+        | Left  fn -> { acc with targets = Path.Set.add acc.targets fn }
         | Right sw ->
           Loc.fail (SW.loc sw) "Cannot determine this target statically."
       let ( +< ) acc fn =
         match fn with
-        | Left  fn -> { acc with deps    = S.add acc.deps fn }
+        | Left  fn -> { acc with deps    = Path.Set.add acc.deps fn }
         | Right _  -> acc
       let ( +<! ) acc fn =
         match (fn : Unexpanded.Partial.program) with
-        | Left  (This fn) -> { acc with deps = S.add acc.deps fn }
+        | Left  (This fn) -> { acc with deps = Path.Set.add acc.deps fn }
         | Left  (Search _) | Right _ -> acc
     end)
 

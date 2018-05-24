@@ -833,6 +833,16 @@ let mkdir_p = function
   | In_build_dir k ->
     Kind.mkdir_p (Kind.append_local (Lazy.force build_dir_kind) k)
 
+let compare_val x y =
+  match x, y with
+  | External x      , External y       -> External.compare_val x y
+  | External _      , _                -> Lt
+  | _               , External _       -> Gt
+  | In_source_tree x, In_source_tree y -> Local.compare_val x y
+  | In_source_tree _, _                -> Lt
+  | _               , In_source_tree _ -> Gt
+  | In_build_dir x  , In_build_dir y   -> Local.compare_val x y
+
 let extension t = Filename.extension (to_string t)
 
 let pp ppf t = Format.pp_print_string ppf (to_string t)
@@ -851,16 +861,8 @@ module Set = struct
     String.Set.to_list ss
     |> List.map ~f
     |> of_list
+
+  let to_alpha_list t = List.sort (to_list t) ~compare:compare_val
 end
 
 let in_source s = in_source_tree (Local.of_string s)
-
-let compare_val x y =
-  match x, y with
-  | External x      , External y       -> External.compare_val x y
-  | External _      , _                -> Lt
-  | _               , External _       -> Gt
-  | In_source_tree x, In_source_tree y -> Local.compare_val x y
-  | In_source_tree _, _                -> Lt
-  | _               , In_source_tree _ -> Gt
-  | In_build_dir x  , In_build_dir y   -> Local.compare_val x y

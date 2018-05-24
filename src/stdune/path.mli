@@ -34,6 +34,8 @@ module Set : sig
   include Set.S with type elt = t
   val sexp_of_t : t Sexp.To_sexp.t
   val of_string_set : String.Set.t -> f:(string -> elt) -> t
+
+  val to_alpha_list : t -> elt list
 end
 
 module Map : Map.S with type key = t
@@ -145,5 +147,3 @@ val in_source : string -> t
 (** Set the workspace root. Can onyl be called once and the path must be
     absolute *)
 val set_root : External.t -> unit
-
-val compare_val : t -> t -> Ordering.t

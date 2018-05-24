@@ -830,11 +830,11 @@ module Action = struct
           | Ok path    -> path
           | Error fail -> Action.Prog.Not_found.raise fail))
       >>>
-      Build.dyn_paths (Build.arr (fun action ->
+      Build.dyn_path_set (Build.arr (fun action ->
         let { Action.Infer.Outcome.deps; targets = _ } =
           Action.Infer.infer action
         in
-        Pset.to_list deps))
+        deps))
       >>>
       Build.action_dyn () ~dir ~targets
     in

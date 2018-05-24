@@ -370,8 +370,7 @@ module Stanzas : sig
   type syntax = OCaml | Plain
 
   val parse
-    :  ?default_version:Jbuild_version.t
-    -> file:Path.t
+    :  file:Path.t
     -> Dune_project.t
     -> Sexp.Ast.t list
     -> t

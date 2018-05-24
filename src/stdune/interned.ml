@@ -20,7 +20,15 @@ module type S = sig
   end with type key := t
 end
 
-module Make() = struct
+type resize_policy = Conservative | Greedy
+
+let new_size ~next ~size = function
+  | Conservative ->
+    let increment_size = 512 in
+    (next land (lnot (increment_size - 1))) + (increment_size * 2)
+  | Greedy -> size * 2
+
+module Make(R : sig val resize_policy : resize_policy end) = struct
   type t = int
 
   let ids = Hashtbl.create 1024
@@ -40,8 +48,8 @@ module Make() = struct
       }
 
     let resize t =
-      let increment_size = 512 in
-      let n = (!next land (lnot (increment_size - 1))) + (increment_size * 2) in
+      let n =
+        new_size ~next:!next ~size:(Array.length t.data) R.resize_policy in
       let old_data = t.data                       in
       let new_data = Array.make n t.default_value in
       t.data <- new_data;

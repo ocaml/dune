@@ -1,7 +1,7 @@
 open Stdune
 
 module Name = struct
-  include Interned.Make()
+  include Interned.Make(struct let resize_policy = Interned.Conservative end)
 
   let of_string = make
 

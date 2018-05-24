@@ -34,4 +34,6 @@ module type S = sig
   end with type key := t
 end
 
-module Make() : S
+type resize_policy = Conservative | Greedy
+
+module Make(R : sig val resize_policy : resize_policy end) : S

@@ -929,7 +929,6 @@ let exec ~targets ~context t =
     | None   -> Env.initial
     | Some c -> c.env
   in
-  let targets = Path.Set.to_list targets in
   let purpose = Process.Build_job targets in
   let ectx = { purpose; context } in
   exec t ~ectx ~dir:Path.root ~env ~stdout_to:None ~stderr_to:None

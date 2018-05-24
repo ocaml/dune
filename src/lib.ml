@@ -436,12 +436,12 @@ module L = struct
       match l with
       | [] -> acc
       | x :: l ->
-        if Int_set.mem seen x.unique_id then
+        if Int.Set.mem seen x.unique_id then
           loop acc l seen
         else
-          loop (x :: acc) l (Int_set.add seen x.unique_id)
+          loop (x :: acc) l (Int.Set.add seen x.unique_id)
     in
-    loop [] l Int_set.empty
+    loop [] l Int.Set.empty
 end
 
 (* +-----------------------------------------------------------------+
@@ -523,12 +523,12 @@ let gen_unique_id =
 module Dep_stack = struct
   type t =
     { stack : Id.t list
-    ; seen  : Int_set.t
+    ; seen  : Int.Set.t
     }
 
   let empty =
     { stack = []
-    ; seen  = Int_set.empty
+    ; seen  = Int.Set.empty
     }
 
   let to_required_by t ~stop_at =
@@ -545,7 +545,7 @@ module Dep_stack = struct
     loop [] t.stack
 
   let dependency_cycle t (last : Id.t) =
-    assert (Int_set.mem t.seen last.unique_id);
+    assert (Int.Set.mem t.seen last.unique_id);
     let rec build_loop acc stack =
       match stack with
       | [] -> assert false
@@ -564,15 +564,15 @@ module Dep_stack = struct
     let init = { Id. unique_id; name; path } in
     (init,
      { stack = init :: t.stack
-     ; seen  = Int_set.add t.seen unique_id
+     ; seen  = Int.Set.add t.seen unique_id
      })
 
   let push t (x : Id.t) : (_, _) result =
-    if Int_set.mem t.seen x.unique_id then
+    if Int.Set.mem t.seen x.unique_id then
       Error (dependency_cycle t x)
     else
       Ok { stack = x :: t.stack
-         ; seen  = Int_set.add t.seen x.unique_id
+         ; seen  = Int.Set.add t.seen x.unique_id
          }
 end
 

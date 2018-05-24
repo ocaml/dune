@@ -7,8 +7,6 @@ let ( ^/ ) = Filename.concat
 
 exception Fatal_error of string
 
-module Int_map = Stdune.Map.Make(Stdune.Int)
-
 let die fmt =
   Printf.ksprintf (fun s ->
     raise (Fatal_error s);
@@ -363,12 +361,12 @@ const char *s%i = "BEGIN-%i-false-END";
   let extract_values obj_file vars =
     let values =
       Io.with_lexbuf_from_file obj_file ~f:(Extract_obj.extract [])
-      |> Int_map.of_list_exn
+      |> Int.Map.of_list_exn
     in
     List.mapi vars ~f:(fun i (name, t) ->
       let value =
         let raw_val =
-          match Int_map.find values i with
+          match Int.Map.find values i with
           | None -> die "Unable to get value for %s" name
           | Some v -> v in
         match t with

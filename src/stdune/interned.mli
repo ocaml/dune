@@ -1,7 +1,5 @@
 (** Interned strings *)
 
-open! Import
-
 module type S = sig
   type t
   val compare : t -> t -> Ordering.t
@@ -36,4 +34,9 @@ module type S = sig
   end with type key := t
 end
 
-module Make() : S
+type resize_policy = Conservative | Greedy
+
+module Make(R : sig
+    val initial_size : int
+    val resize_policy : resize_policy
+  end) : S

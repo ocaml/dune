@@ -1,5 +1,3 @@
-open Import
-
 module type S = sig
   type t
   val compare : t -> t -> Ordering.t
@@ -22,11 +20,25 @@ module type S = sig
   end with type key := t
 end
 
-module Make() = struct
-  include Int
+type resize_policy = Conservative | Greedy
+
+let new_size ~next ~size = function
+  | Conservative ->
+    let increment_size = 512 in
+    (next land (lnot (increment_size - 1))) + (increment_size * 2)
+  | Greedy -> size * 2
+
+module Make(R : sig
+    val resize_policy : resize_policy
+    val initial_size  : int
+  end)
+= struct
+  type t = int
 
   let ids = Hashtbl.create 1024
   let next = ref 0
+
+  let compare = Int.compare
 
   module Table = struct
     type 'a t =
@@ -36,12 +48,12 @@ module Make() = struct
 
     let create ~default_value =
       { default_value
-      ; data = [||]
+      ; data = Array.make R.initial_size default_value
       }
 
     let resize t =
-      let increment_size = 512 in
-      let n = (!next land (lnot (increment_size - 1))) + (increment_size * 2) in
+      let n =
+        new_size ~next:!next ~size:(Array.length t.data) R.resize_policy in
       let old_data = t.data                       in
       let new_data = Array.make n t.default_value in
       t.data <- new_data;
@@ -77,7 +89,7 @@ module Make() = struct
   let pp fmt t = Format.fprintf fmt "%S" (to_string t)
 
   module Set = struct
-    include Int_set
+    include Int.Set
 
     let make l =
       List.fold_left l ~init:empty ~f:(fun acc s -> add acc (make s))
@@ -85,5 +97,5 @@ module Make() = struct
     let pp fmt (t : t) = Fmt.ocaml_list pp fmt (to_list t)
   end
 
-  module Map = Int_map
+  module Map = Int.Map
 end

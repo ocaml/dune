@@ -47,7 +47,10 @@ module External : sig
   val cwd : unit -> t
   val extend_basename : t -> suffix:string -> t
 end = struct
-  include Interned.Make()
+  include Interned.Make(struct
+      let initial_size = 512
+      let resize_policy = Interned.Greedy
+    end)
 
   let compare_val x y = String.compare (to_string x) (to_string y)
 
@@ -147,7 +150,10 @@ module Local : sig
 end = struct
   (* either "" for root, either a '/' separated list of components
      other that ".", ".."  and not containing '/'. *)
-  include Interned.Make()
+  include Interned.Make(struct
+      let initial_size = 512
+      let resize_policy = Interned.Greedy
+    end)
 
   let compare_val x y = String.compare (to_string x) (to_string y)
 

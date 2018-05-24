@@ -87,7 +87,7 @@ let static_deps t ~all_targets ~file_tree =
               (* diml: we should probably warn in this case as well *)
               ()
           end;
-          state := G_evaluated (Path.Set.to_list result);
+          state := G_evaluated (Path.Set.to_alpha_list result);
           let action_deps = Path.Set.union result acc.action_deps in
           { acc with action_deps }
       end

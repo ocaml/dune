@@ -491,7 +491,7 @@ module Deps = struct
       let path = Path.relative ~error_loc:(String_with_vars.loc s)
                    dir (expand_vars t ~scope ~dir s) in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
-      >>^ Path.Set.to_list
+      >>^ Path.Set.to_alpha_list
     | Package p ->
       let pkg = Package.Name.of_string (expand_vars t ~scope ~dir p) in
       Alias.dep (Alias.package_install ~context:t.context ~pkg)

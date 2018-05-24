@@ -211,7 +211,7 @@ let prog_and_args ?(dir=Path.root) prog args =
   (get_prog prog &&&
    (arr (Arg_spec.expand ~dir args)
     >>>
-    dyn_paths (arr (fun (_args, deps) -> Path.Set.to_list deps))
+    dyn_path_set (arr (fun (_args, deps) -> deps))
     >>>
     arr fst))
 

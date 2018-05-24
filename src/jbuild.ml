@@ -1243,7 +1243,7 @@ module Stanzas = struct
 
   exception Include_loop of Path.t * (Loc.t * Path.t) list
 
-  let rec v1 project ~file ~include_stack : Stanza.t list Sexp.Of_sexp.t =
+  let rec t project ~file ~include_stack : Stanza.t list Sexp.Of_sexp.t =
     sum
       [ cstr "library"     (Library.v1 project @> nil) (fun x -> [Library x])
       ; cstr "executable"  (Executables.v1_single project @> nil) execs
@@ -1275,44 +1275,23 @@ module Stanzas = struct
           if List.exists include_stack ~f:(fun (_, f) -> f = file) then
             raise (Include_loop (file, include_stack));
           let sexps = Io.Sexp.load file ~mode:Many in
-          parse project sexps ~default_version:Jbuild_version.V1 ~file ~include_stack)
+          parse project sexps ~file ~include_stack)
       ; cstr "documentation" (Documentation.v1 project @> nil)
           (fun d -> [Documentation d])
       ]
 
-  and select
-    :  Jbuild_version.t
-    -> Dune_project.t
-    -> file:Path.t
-    -> include_stack:(Loc.t * Path.t) list
-    -> Stanza.t list Sexp.Of_sexp.t = function
-    | V1  -> v1
-
-  and parse ~default_version ~file ~include_stack project sexps =
-    let versions, sexps =
-      List.partition_map sexps ~f:(function
-        | List (loc, [Atom (_, A "jbuild_version"); ver]) ->
-          Left (Jbuild_version.t ver, loc)
-        | sexp -> Right sexp)
-    in
-    let version =
-      match versions with
-      | [] -> default_version
-      | [(v, _)] -> v
-      | _ :: (_, loc) :: _ ->
-        Loc.fail loc "jbuild_version specified too many times"
-    in
+  and parse ~file ~include_stack project sexps =
     let l =
-      List.concat_map sexps ~f:(select version project ~file ~include_stack)
+      List.concat_map sexps ~f:(t project ~file ~include_stack)
     in
     match List.filter_map l ~f:(function Env e -> Some e | _ -> None) with
     | _ :: e :: _ ->
       Loc.fail e.loc "The 'env' stanza cannot appear more than once"
     | _ -> l
 
-  let parse ?(default_version=Jbuild_version.latest_stable) ~file project sexps =
+  let parse ~file project sexps =
     try
-      parse project sexps ~default_version ~include_stack:[] ~file
+      parse project sexps ~include_stack:[] ~file
     with
     | Include_loop (_, []) -> assert false
     | Include_loop (file, last :: rest) ->

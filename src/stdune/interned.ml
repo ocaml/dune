@@ -28,7 +28,11 @@ let new_size ~next ~size = function
     (next land (lnot (increment_size - 1))) + (increment_size * 2)
   | Greedy -> size * 2
 
-module Make(R : sig val resize_policy : resize_policy end) = struct
+module Make(R : sig
+    val resize_policy : resize_policy
+    val initial_size  : int
+  end)
+= struct
   type t = int
 
   let ids = Hashtbl.create 1024
@@ -44,7 +48,7 @@ module Make(R : sig val resize_policy : resize_policy end) = struct
 
     let create ~default_value =
       { default_value
-      ; data = [||]
+      ; data = Array.make R.initial_size default_value
       }
 
     let resize t =

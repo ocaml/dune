@@ -555,8 +555,8 @@ module Gen(P : Install_rules.Params) = struct
     in
     (* Preprocess before adding the alias module as it doesn't need
        preprocessing *)
-    let modules =
-      Preprocessing.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
+    let pp =
+      Preprocessing.make sctx ~dir ~dep_kind ~scope
         ~preprocess:lib.buildable.preprocess
         ~preprocessor_deps:
           (SC.Deps.interpret sctx ~scope ~dir
@@ -564,6 +564,7 @@ module Gen(P : Install_rules.Params) = struct
         ~lint:lib.buildable.lint
         ~lib_name:(Some lib.name)
     in
+    let modules = Preprocessing.pp_modules pp modules in
 
     let modules =
       match alias_module with
@@ -817,12 +818,15 @@ module Gen(P : Install_rules.Params) = struct
         SC.Deps.interpret sctx exes.buildable.preprocessor_deps
           ~scope ~dir
       in
-      Preprocessing.pp_and_lint_modules sctx ~dir ~dep_kind:Required ~modules
-        ~scope
-        ~preprocess:exes.buildable.preprocess
-        ~preprocessor_deps
-        ~lint:exes.buildable.lint
-        ~lib_name:None
+      let pp =
+        Preprocessing.make sctx ~dir ~dep_kind:Required
+          ~scope
+          ~preprocess:exes.buildable.preprocess
+          ~preprocessor_deps
+          ~lint:exes.buildable.lint
+          ~lib_name:None
+      in
+      Preprocessing.pp_modules pp modules
     in
 
     let programs =

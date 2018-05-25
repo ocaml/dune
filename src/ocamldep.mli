@@ -42,3 +42,13 @@ val rules
   -> lib_interface_module:Module.t option
   -> Super_context.t
   -> Dep_graphs.t
+
+(** Compute the dependencies of an auxiliary module. *)
+val rules_for_auxiliary_module
+  :  dir:Path.t
+  -> modules:Module.t Module.Name.Map.t
+  -> alias_module:Module.t option
+  -> lib_interface_module:Module.t option
+  -> Super_context.t
+  -> Module.t
+  -> Dep_graphs.t

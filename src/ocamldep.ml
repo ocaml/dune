@@ -66,6 +66,11 @@ let parse_module_names ~(unit : Module.t) ~modules words =
     else
       Module.Name.Map.find modules m)
 
+let is_alias_module ~(alias_module : Module.t option) (m : Module.t) =
+  match alias_module with
+  | None -> false
+  | Some alias -> alias.name = m.name
+
 let parse_deps ~dir ~file ~unit
       ~modules ~alias_module ~lib_interface_module lines =
   let invalid () =
@@ -94,12 +99,7 @@ let parse_deps ~dir ~file ~unit
       (match lib_interface_module with
        | None -> ()
        | Some (m : Module.t) ->
-         let is_alias_module =
-           match alias_module with
-           | None -> false
-           | Some (m : Module.t) -> unit.name = m.name
-         in
-         if unit.name <> m.name && not is_alias_module &&
+         if unit.name <> m.name && not (is_alias_module unit ~alias_module) &&
             List.exists deps ~f:(fun x -> Module.name x = m.name) then
            die "Module %a in directory %s depends on %a.\n\
                 This doesn't make sense to me.\n\
@@ -116,60 +116,64 @@ let parse_deps ~dir ~file ~unit
       | None -> deps
       | Some m -> m :: deps
 
-let rules ~(ml_kind:Ml_kind.t) ~dir ~modules
-      ?(already_used=Module.Name.Set.empty)
-      ~alias_module ~lib_interface_module sctx =
-  let is_alias_module (m : Module.t) =
-    match alias_module with
-    | None -> false
-    | Some (alias : Module.t) -> alias.name = m.name
-  in
-  let per_module =
-    Module.Name.Map.map modules ~f:(fun unit ->
-      match Module.file ~dir unit ml_kind with
-      | _ when is_alias_module unit -> Build.return []
-      | None -> Build.return []
-      | Some file ->
-        let all_deps_path file =
-          Path.extend_basename file ~suffix:".all-deps"
-        in
-        let context = SC.context sctx in
-        let all_deps_file = all_deps_path file in
-        let ocamldep_output = Path.extend_basename file ~suffix:".d" in
-        if not (Module.Name.Set.mem already_used unit.name) then
-          begin
-            SC.add_rule sctx
-              ( Build.run ~context (Ok context.ocamldep)
-                  [A "-modules"; Ml_kind.flag ml_kind; Dep file]
-                  ~stdout_to:ocamldep_output
-              );
-            let build_paths dependencies =
-              let dependency_file_path m =
-                let path =
+let deps_of ~ml_kind ~dir ~modules ~already_used
+      ~alias_module ~lib_interface_module sctx unit =
+  if is_alias_module unit ~alias_module then
+    Build.return []
+  else
+    match Module.file ~dir unit ml_kind with
+    | None -> Build.return []
+    | Some file ->
+      let all_deps_path file =
+        Path.extend_basename file ~suffix:".all-deps"
+      in
+      let context = SC.context sctx in
+      let all_deps_file = all_deps_path file in
+      let ocamldep_output = Path.extend_basename file ~suffix:".d" in
+      if not (Module.Name.Set.mem already_used unit.name) then
+        begin
+          SC.add_rule sctx
+            ( Build.run ~context (Ok context.ocamldep)
+                [A "-modules"; Ml_kind.flag ml_kind; Dep file]
+                ~stdout_to:ocamldep_output
+            );
+          let build_paths dependencies =
+            let dependency_file_path m =
+              let path =
+                if is_alias_module m ~alias_module then
+                  None
+                else
                   match Module.file ~dir m Ml_kind.Intf with
-                  | _ when is_alias_module m -> None
                   | Some _ as x -> x
                   | None -> Module.file ~dir m Ml_kind.Impl
-                in
-                Option.map path ~f:all_deps_path
               in
-              List.filter_map dependencies ~f:dependency_file_path
+              Option.map path ~f:all_deps_path
             in
-            SC.add_rule sctx
-              ( Build.lines_of ocamldep_output
-                >>^ parse_deps
-                      ~dir ~file ~unit ~modules ~alias_module
-                      ~lib_interface_module
-                >>^ (fun modules ->
-                  (build_paths modules,
-                   List.map modules ~f:(fun m ->
-                     Module.Name.to_string (Module.name m))
-                  ))
-                >>> Build.merge_files_dyn ~target:all_deps_file)
-          end;
-        Build.memoize (Path.to_string all_deps_file)
-          ( Build.lines_of all_deps_file
-          >>^ parse_module_names ~unit ~modules))
+            List.filter_map dependencies ~f:dependency_file_path
+          in
+          SC.add_rule sctx
+            ( Build.lines_of ocamldep_output
+              >>^ parse_deps
+                    ~dir ~file ~unit ~modules ~alias_module
+                    ~lib_interface_module
+              >>^ (fun modules ->
+                (build_paths modules,
+                 List.map modules ~f:(fun m ->
+                   Module.Name.to_string (Module.name m))
+                ))
+              >>> Build.merge_files_dyn ~target:all_deps_file)
+        end;
+      Build.memoize (Path.to_string all_deps_file)
+        ( Build.lines_of all_deps_file
+          >>^ parse_module_names ~unit ~modules)
+
+let rules_generic ~(ml_kind:Ml_kind.t) ~dir ~modules ~for_modules
+      ?(already_used=Module.Name.Set.empty)
+      ~alias_module ~lib_interface_module sctx =
+  let per_module =
+    Module.Name.Map.map for_modules
+      ~f:(deps_of ~ml_kind ~dir ~modules ~already_used
+            ~alias_module ~lib_interface_module sctx)
   in
   { Dep_graph.
     dir
@@ -177,5 +181,13 @@ let rules ~(ml_kind:Ml_kind.t) ~dir ~modules
   }
 
 let rules ~dir ~modules ?already_used ~alias_module ~lib_interface_module sctx =
-  Ml_kind.Dict.of_func (rules sctx ~dir ~modules ?already_used ~alias_module
-                          ~lib_interface_module)
+  Ml_kind.Dict.of_func
+    (rules_generic sctx ~dir ~modules ~for_modules:modules
+       ?already_used ~alias_module ~lib_interface_module)
+
+let rules_for_auxiliary_module ~dir ~modules ~alias_module
+      ~lib_interface_module sctx (m : Module.t) =
+  let for_modules = Module.Name.Map.singleton m.name m in
+  Ml_kind.Dict.of_func
+    (rules_generic sctx ~dir ~modules ~for_modules
+       ?already_used:None ~alias_module ~lib_interface_module)

@@ -2,19 +2,26 @@
 
 open! Import
 
-(** Setup pre-processing and linting rules and return the list of
-    pre-processed modules *)
-val pp_and_lint_modules
+(** Preprocessing object *)
+type t
+
+val make
   :  Super_context.t
   -> dir:Path.t
   -> dep_kind:Build.lib_dep_kind
-  -> modules:Module.t Module.Name.Map.t
   -> lint:Jbuild.Preprocess_map.t
   -> preprocess:Jbuild.Preprocess_map.t
   -> preprocessor_deps:(unit, Path.t list) Build.t
   -> lib_name:string option
   -> scope:Scope.t
-  -> Module.t Module.Name.Map.t 
+  -> t
+
+(** Setup the preprocessing rules for the following modules and
+    returns the translated modules *)
+val pp_modules
+  :  t
+  -> Module.t Module.Name.Map.t
+  -> Module.t Module.Name.Map.t
 
 (** Get a path to a cached ppx driver *)
 val get_ppx_driver

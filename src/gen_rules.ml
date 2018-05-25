@@ -572,14 +572,26 @@ module Gen(P : Install_rules.Params) = struct
       | Some m -> Module.Name.Map.add modules m.name m
     in
 
-    let dep_graphs =
-      Ocamldep.rules sctx ~dir ~modules ~already_used ~alias_module
-        ~lib_interface_module:(
-          if lib.wrapped then
-            Module.Name.Map.find modules main_module_name
-          else
-            None)
+    let lib_interface_module =
+      if lib.wrapped then
+        Module.Name.Map.find modules main_module_name
+      else
+        None
     in
+    let cctx =
+      Compilation_context.create ()
+        ~super_context:sctx
+        ~scope
+        ~dir
+        ~obj_dir
+        ~modules
+        ?alias_module
+        ?lib_interface_module
+        ~flags
+        ~requires
+        ~preprocessing:pp
+    in
+    let dep_graphs = Ocamldep.rules cctx ~already_used in
 
     Option.iter alias_module ~f:(fun m ->
       let file =
@@ -604,23 +616,14 @@ module Gen(P : Install_rules.Params) = struct
 
     let dynlink = lib.dynlink in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
-    Module_compilation.build_modules sctx
-      ~js_of_ocaml ~dynlink ~flags ~scope ~dir ~obj_dir ~dep_graphs
-      ~modules ~alias_module
-      ~includes:(Module_compilation.Includes.make sctx ~requires);
+    Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
     Option.iter alias_module ~f:(fun m ->
-      let flags = Ocaml_flags.default ~profile:(SC.profile sctx) in
-      Module_compilation.build_module sctx m
+      let cctx = Compilation_context.for_alias_module cctx in
+      Module_compilation.build_module cctx m
         ~js_of_ocaml
         ~dynlink
         ~sandbox:alias_module_build_sandbox
-        ~flags:(Ocaml_flags.append_common flags ["-w"; "-49"])
-        ~scope
-        ~dir
-        ~obj_dir
-        ~dep_graphs:(Ocamldep.Dep_graphs.dummy m)
-        ~includes:Module_compilation.Includes.empty
-        ~alias_module:None);
+        ~dep_graphs:(Ocamldep.Dep_graphs.dummy m));
 
     if Library.has_stubs lib then begin
       let h_files =
@@ -814,20 +817,22 @@ module Gen(P : Install_rules.Params) = struct
           ~loc:exes.buildable.loc ~modules
     in
 
+    let preprocessor_deps =
+      SC.Deps.interpret sctx exes.buildable.preprocessor_deps
+        ~scope ~dir
+    in
+    let pp =
+      Preprocessing.make sctx ~dir ~dep_kind:Required
+        ~scope
+        ~preprocess:exes.buildable.preprocess
+        ~preprocessor_deps
+        ~lint:exes.buildable.lint
+        ~lib_name:None
+    in
     let modules =
-      let preprocessor_deps =
-        SC.Deps.interpret sctx exes.buildable.preprocessor_deps
-          ~scope ~dir
-      in
-      let pp =
-        Preprocessing.make sctx ~dir ~dep_kind:Required
-          ~scope
-          ~preprocess:exes.buildable.preprocess
-          ~preprocessor_deps
-          ~lint:exes.buildable.lint
-          ~lib_name:None
-      in
-      Preprocessing.pp_modules pp modules
+      Module.Name.Map.map modules ~f:(fun m ->
+        Preprocessing.pp_module_as pp m.name m
+        |> Module.set_obj_name ~wrapper:None)
     in
 
     let programs =
@@ -877,16 +882,23 @@ module Gen(P : Install_rules.Params) = struct
     let obj_dir =
       Utils.executable_object_directory ~dir (List.hd programs).name
     in
-    Exe.build_and_link_many sctx
-      ~dir
-      ~obj_dir
+
+    let cctx =
+      Compilation_context.create ()
+        ~super_context:sctx
+        ~scope
+        ~dir
+        ~obj_dir
+        ~modules
+        ~flags
+        ~requires
+        ~preprocessing:pp
+    in
+
+    Exe.build_and_link_many cctx
       ~programs
-      ~modules
       ~already_used
-      ~scope
       ~linkages
-      ~requires
-      ~flags
       ~link_flags
       ~js_of_ocaml:exes.buildable.js_of_ocaml;
 

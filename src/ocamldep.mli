@@ -1,7 +1,5 @@
 (** ocamldep management *)
 
-open Stdune
-
 module Dep_graph : sig
   type t
 
@@ -22,33 +20,18 @@ module Dep_graphs : sig
   val dummy : Module.t -> t
 end
 
-(** Generate ocamldep rules for the given modules. [item] is either
-    the internal name of a library of the first name of a list of
-    executables.
-
-    For wrapped libraries, [lib_interface_module] is the main module
-    of the library.
+(** Generate ocamldep rules for all the modules in the context.
 
     [already_used] represents the modules that are used by another
     stanzas in the same directory. No [.d] rule will be generated for
-    such modules.
-
-    Return arrows that evaluate to the dependency graphs.  *)
+    such modules. *)
 val rules
-  :  dir:Path.t
-  -> modules:Module.t Module.Name.Map.t
-  -> ?already_used:Module.Name.Set.t
-  -> alias_module:Module.t option
-  -> lib_interface_module:Module.t option
-  -> Super_context.t
+  :  ?already_used:Module.Name.Set.t
+  -> Compilation_context.t
   -> Dep_graphs.t
 
 (** Compute the dependencies of an auxiliary module. *)
 val rules_for_auxiliary_module
-  :  dir:Path.t
-  -> modules:Module.t Module.Name.Map.t
-  -> alias_module:Module.t option
-  -> lib_interface_module:Module.t option
-  -> Super_context.t
+  :  Compilation_context.t
   -> Module.t
   -> Dep_graphs.t

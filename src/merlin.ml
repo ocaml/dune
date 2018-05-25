@@ -32,43 +32,26 @@ module Preprocess = struct
 end
 
 module Dot_file = struct
-  type t =
-    { build_dirs: Path.Set.t
-    ; src_dirs: Path.Set.t
-    ; flags: string list
-    ; ppx: string list
-    ; remaindir: Path.t
-    }
-
-  let create ~flags ~ppx ~remaindir =
-    { remaindir
-    ; build_dirs = Path.Set.empty
-    ; src_dirs = Path.Set.empty
-    ; ppx
-    ; flags
-    }
-
-  let serialize_path t p = Path.reach p ~from:t.remaindir
-
   let b = Buffer.create 256
 
   let printf = Printf.bprintf b
   let print = Buffer.add_string b
 
-  let to_string t =
+  let to_string ~obj_dirs ~src_dirs ~flags ~ppx ~remaindir =
+    let serialize_path = Path.reach ~from:remaindir in
     Buffer.clear b;
-    Path.Set.iter t.build_dirs ~f:(fun p ->
-      printf "B %s\n" (serialize_path t p)
+    Path.Set.iter obj_dirs ~f:(fun p ->
+      printf "B %s\n" (serialize_path p)
     );
-    Path.Set.iter t.src_dirs ~f:(fun p ->
-      printf "S %s\n" (serialize_path t p)
+    Path.Set.iter src_dirs ~f:(fun p ->
+      printf "S %s\n" (serialize_path p)
     );
-    begin match t.ppx with
+    begin match ppx with
     | [] -> ()
     | ppx ->
       printf "FLG -ppx %s\n" (Filename.quote (String.concat ~sep:" " ppx));
     end;
-    begin match t.flags with
+    begin match flags with
     | [] -> ()
     | flags ->
       print "FLG";
@@ -144,29 +127,23 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
     SC.add_rule sctx ~mode:Promote_but_delete_on_clean (
       flags
       >>^ (fun flags ->
-        let dot_file =
-          Dot_file.create ~flags
-            ~ppx:(ppx_flags sctx ~dir ~scope ~src_dir:remaindir t)
-            ~remaindir in
-        let dot_file =
-          Lib.Set.fold requires ~init:dot_file ~f:(fun (lib : Lib.t) acc ->
-            { acc with
-              Dot_file.
-              src_dirs = Path.Set.add acc.src_dirs (Lib.src_dir lib)
-            ; build_dirs = Path.Set.add acc.build_dirs (
-                Lib.obj_dir lib
-                |> Path.drop_optional_build_context
+        let (src_dirs, obj_dirs) =
+          Lib.Set.fold requires ~init:(Path.Set.empty, Path.Set.empty)
+            ~f:(fun (lib : Lib.t) (src_dirs, build_dirs) ->
+              ( Path.Set.add src_dirs (Lib.src_dir lib)
+              , Path.Set.add build_dirs (
+                  Lib.obj_dir lib
+                  |> Path.drop_optional_build_context
+                )
               )
-            })
-        in
-        let dot_file =
-          { dot_file with
-            Dot_file.
-            src_dirs = Path.Set.union t.source_dirs dot_file.src_dirs
-          ; build_dirs = Path.Set.union t.objs_dirs dot_file.build_dirs
-          }
-        in
-        Dot_file.to_string dot_file)
+            ) in
+        Dot_file.to_string
+          ~remaindir
+          ~ppx:(ppx_flags sctx ~dir ~scope ~src_dir:remaindir t)
+          ~flags
+          ~src_dirs:(Path.Set.union src_dirs t.source_dirs)
+          ~obj_dirs:(Path.Set.union obj_dirs t.objs_dirs)
+      )
       >>>
       Build.write_file_dyn merlin_file
     )

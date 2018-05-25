@@ -1,6 +1,7 @@
 open Import
 open Build.O
 
+module CC = Compilation_context
 module SC = Super_context
 
 module Program = struct
@@ -103,19 +104,18 @@ module Linkage = struct
 end
 
 let link_exe
-      ~dir
-      ~obj_dir
-      ~scope
-      ~requires
       ~name
       ~(linkage:Linkage.t)
       ~top_sorted_modules
-      ?(flags=Ocaml_flags.empty)
       ?(link_flags=Build.arr (fun _ -> []))
       ?(js_of_ocaml=Jbuild.Js_of_ocaml.default)
-      sctx
+      cctx
   =
-  let ctx = SC.context sctx in
+  let sctx     = CC.super_context cctx in
+  let ctx      = SC.context       sctx in
+  let dir      = CC.dir           cctx in
+  let obj_dir  = CC.obj_dir       cctx in
+  let requires = CC.requires      cctx in
   let mode = linkage.mode in
   let exe = Path.relative dir (name ^ linkage.ext) in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
@@ -139,7 +139,7 @@ let link_exe
   SC.add_rule sctx
     (Build.fanout3
        (register_native_objs_deps modules_and_cm_files >>^ snd)
-       (Ocaml_flags.get flags mode)
+       (Ocaml_flags.get (CC.flags cctx) mode)
        link_flags
      >>>
      Build.of_result_map requires ~f:(fun libs ->
@@ -162,57 +162,39 @@ let link_exe
     let cm_and_flags =
       Build.fanout
         (modules_and_cm_files >>^ snd)
-        (SC.expand_and_eval_set sctx ~scope ~dir js_of_ocaml.flags
+        (SC.expand_and_eval_set sctx ~scope:(CC.scope cctx) ~dir
+           js_of_ocaml.flags
            ~standard:(Build.return (Js_of_ocaml_rules.standard sctx)))
     in
     SC.add_rules sctx (List.map rules ~f:(fun r -> cm_and_flags >>> r))
 
 let build_and_link_many
-      ~dir ~obj_dir ~programs ~modules
-      ~scope
+      ~programs
       ~linkages
-      ?(requires=Ok [])
       ?already_used
-      ?(flags=Ocaml_flags.empty)
       ?link_flags
       ?(js_of_ocaml=Jbuild.Js_of_ocaml.default)
-      sctx
+      cctx
   =
-  let modules =
-    Module.Name.Map.map modules ~f:(Module.set_obj_name ~wrapper:None)
-  in
-
-  let dep_graphs =
-    Ocamldep.rules sctx ~dir ~modules ?already_used
-      ~alias_module:None ~lib_interface_module:None
-  in
+  let dep_graphs = Ocamldep.rules cctx ?already_used in
 
   (* CR-someday jdimino: this should probably say [~dynlink:false] *)
-  Module_compilation.build_modules sctx
-    ~js_of_ocaml
-    ~dynlink:true ~flags ~scope ~dir ~obj_dir ~dep_graphs ~modules
-    ~alias_module:None
-    ~includes:(Module_compilation.Includes.make sctx ~requires);
+  Module_compilation.build_modules cctx ~js_of_ocaml ~dep_graphs;
 
   List.iter programs ~f:(fun { Program.name; main_module_name } ->
     let top_sorted_modules =
       let main = Option.value_exn
-                   (Module.Name.Map.find modules main_module_name) in
+                   (Module.Name.Map.find (CC.modules cctx) main_module_name) in
       Ocamldep.Dep_graph.top_closed_implementations dep_graphs.impl
         [main]
     in
     List.iter linkages ~f:(fun linkage ->
-      link_exe sctx
-        ~dir
-        ~obj_dir
-        ~scope
-        ~requires
+      link_exe cctx
         ~name
         ~linkage
         ~top_sorted_modules
         ~js_of_ocaml
-        ~flags
         ?link_flags))
 
-let build_and_link ~dir ~obj_dir ~program =
-  build_and_link_many ~dir ~obj_dir ~programs:[program]
+let build_and_link ~program =
+  build_and_link_many ~programs:[program]

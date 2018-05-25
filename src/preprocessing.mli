@@ -5,6 +5,8 @@ open! Import
 (** Preprocessing object *)
 type t
 
+val dummy : t
+
 val make
   :  Super_context.t
   -> dir:Path.t

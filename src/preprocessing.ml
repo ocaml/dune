@@ -295,6 +295,8 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope = Staged.stage (
 
 type t = (Module.t -> lint:bool -> Module.t) Per_module.t
 
+let dummy = Per_module.for_all (fun m ~lint:_ -> m)
+
 let make sctx ~dir ~dep_kind ~lint ~preprocess
       ~preprocessor_deps ~lib_name ~scope =
   let preprocessor_deps =

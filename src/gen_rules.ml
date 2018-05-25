@@ -606,7 +606,8 @@ module Gen(P : Install_rules.Params) = struct
     let js_of_ocaml = lib.buildable.js_of_ocaml in
     Module_compilation.build_modules sctx
       ~js_of_ocaml ~dynlink ~flags ~scope ~dir ~obj_dir ~dep_graphs
-      ~modules ~requires ~alias_module;
+      ~modules ~alias_module
+      ~includes:(Module_compilation.Includes.make sctx ~requires);
     Option.iter alias_module ~f:(fun m ->
       let flags = Ocaml_flags.default ~profile:(SC.profile sctx) in
       Module_compilation.build_module sctx m
@@ -618,7 +619,7 @@ module Gen(P : Install_rules.Params) = struct
         ~dir
         ~obj_dir
         ~dep_graphs:(Ocamldep.Dep_graphs.dummy m)
-        ~includes:(Cm_kind.Dict.make_all (Arg_spec.As []))
+        ~includes:Module_compilation.Includes.empty
         ~alias_module:None);
 
     if Library.has_stubs lib then begin

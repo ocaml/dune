@@ -191,7 +191,8 @@ let build_and_link_many
   Module_compilation.build_modules sctx
     ~js_of_ocaml
     ~dynlink:true ~flags ~scope ~dir ~obj_dir ~dep_graphs ~modules
-    ~requires ~alias_module:None;
+    ~alias_module:None
+    ~includes:(Module_compilation.Includes.make sctx ~requires);
 
   List.iter programs ~f:(fun { Program.name; main_module_name } ->
     let top_sorted_modules =

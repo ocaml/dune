@@ -49,7 +49,10 @@ module Dot_file = struct
     begin match ppx with
     | [] -> ()
     | ppx ->
-      printf "FLG -ppx %s\n" (Filename.quote (String.concat ~sep:" " ppx));
+      printf "FLG -ppx %s\n"
+        (List.map ppx ~f:quote_for_shell
+         |> String.concat ~sep:" "
+         |> Filename.quote)
     end;
     begin match flags with
     | [] -> ()

@@ -26,7 +26,7 @@
   S $LIB_PREFIX/lib/findlib
   S $LIB_PREFIX/lib/ocaml
   S .
-  FLG -ppx '$PPX/fooppx@./ppx.exe --as-ppx --cookie library-name="foo"'
+  FLG -ppx '$PPX/fooppx@./ppx.exe --as-ppx --cookie '\''library-name="foo"'\'''
   FLG -open Foo -w -40 -open Bar -w -40
 
 Make sure a ppx directive is generated

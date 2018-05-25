@@ -293,7 +293,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope = Staged.stage (
   fun ~(source : Module.t) ~ast ->
     Per_module.get lint source.name ~source ~ast)
 
-type t = (Module.t -> Module.t) Per_module.t
+type t = (Module.t -> lint:bool -> Module.t) Per_module.t
 
 let make sctx ~dir ~dep_kind ~lint ~preprocess
       ~preprocessor_deps ~lib_name ~scope =
@@ -305,12 +305,12 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
   in
   Per_module.map preprocess ~f:(function
     | Preprocess.No_preprocessing ->
-      (fun m ->
+      (fun m ~lint ->
          let ast = setup_reason_rules sctx ~dir m in
-         lint_module ~ast ~source:m;
+         if lint then lint_module ~ast ~source:m;
          ast)
     | Action (loc, action) ->
-      (fun m ->
+      (fun m ~lint ->
          let ast =
            pped_module m ~dir ~f:(fun _kind src dst ->
              SC.add_rule sctx
@@ -331,7 +331,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
                   ~targets:(Static [dst])
                   ~scope))
            |> setup_reason_rules sctx ~dir in
-         lint_module ~ast ~source:m;
+         if lint then lint_module ~ast ~source:m;
          ast)
     | Pps { pps; flags } ->
       let ppx_exe = get_ppx_driver sctx ~scope pps in
@@ -343,9 +343,9 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
           ; As (if uses_ppx_driver then ["-diff-cmd"; "-"] else [])
           ]
       in
-      (fun m ->
+      (fun m ~lint ->
          let ast = setup_reason_rules sctx ~dir m in
-         lint_module ~ast ~source:m;
+         if lint then lint_module ~ast ~source:m;
          pped_module ast ~dir ~f:(fun kind src dst ->
            SC.add_rule sctx
              (promote_correction ~uses_ppx_driver
@@ -359,6 +359,9 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
                    ; Ml_kind.ppx_driver_flag kind; Dep src
                    ])))))
 
-let pp_modules t modules =
+let pp_modules t ?(lint=true) modules =
   Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
-    Per_module.get t m.name m)
+    Per_module.get t m.name m ~lint)
+
+let pp_module_as t ?(lint=true) name m =
+  Per_module.get t name m ~lint

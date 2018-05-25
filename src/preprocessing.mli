@@ -20,8 +20,18 @@ val make
     returns the translated modules *)
 val pp_modules
   :  t
+  -> ?lint:bool
   -> Module.t Module.Name.Map.t
   -> Module.t Module.Name.Map.t
+
+(** Preprocess a single module, using the configuration for the given
+    module name. *)
+val pp_module_as
+  :  t
+  -> ?lint:bool
+  -> Module.Name.t
+  -> Module.t
+  -> Module.t
 
 (** Get a path to a cached ppx driver *)
 val get_ppx_driver

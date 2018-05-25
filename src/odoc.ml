@@ -411,7 +411,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
     |> List.sort ~compare:(fun (x, _) (y, _) ->
       String.compare (Lib.name x) (Lib.name y))
     |> List.iter ~f:(fun (lib, modules) ->
-      Printf.bprintf b "{1 Library %s}\n" (Lib.name lib);
+      Printf.bprintf b "{2 Library %s}\n" (Lib.name lib);
       Buffer.add_string b (
         match modules with
         | [ x ] ->
@@ -421,7 +421,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
         | _ ->
           sprintf
             "This library exposes the following toplevel modules:\n\
-             {!modules:%s}.\n"
+             {!modules:%s}\n"
             (modules
              |> List.sort ~compare:(fun x y ->
                Module.Name.compare (Module.name x) (Module.name y))

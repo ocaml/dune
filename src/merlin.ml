@@ -41,11 +41,9 @@ module Dot_file = struct
     let serialize_path = Path.reach ~from:remaindir in
     Buffer.clear b;
     Path.Set.iter obj_dirs ~f:(fun p ->
-      printf "B %s\n" (serialize_path p)
-    );
+      printf "B %s\n" (serialize_path p));
     Path.Set.iter src_dirs ~f:(fun p ->
-      printf "S %s\n" (serialize_path p)
-    );
+      printf "S %s\n" (serialize_path p));
     begin match ppx with
     | [] -> ()
     | ppx ->
@@ -58,9 +56,7 @@ module Dot_file = struct
     | [] -> ()
     | flags ->
       print "FLG";
-      List.iter flags ~f:(fun f ->
-        printf " %s" (quote_for_shell f)
-      );
+      List.iter flags ~f:(fun f -> printf " %s" (quote_for_shell f));
       print "\n"
     end;
     Buffer.contents b
@@ -136,20 +132,16 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
               ( Path.Set.add src_dirs (Lib.src_dir lib)
               , Path.Set.add build_dirs (
                   Lib.obj_dir lib
-                  |> Path.drop_optional_build_context
-                )
-              )
-            ) in
+                  |> Path.drop_optional_build_context)))
+        in
         Dot_file.to_string
           ~remaindir
           ~ppx:(ppx_flags sctx ~dir ~scope ~src_dir:remaindir t)
           ~flags
           ~src_dirs:(Path.Set.union src_dirs t.source_dirs)
-          ~obj_dirs:(Path.Set.union obj_dirs t.objs_dirs)
-      )
+          ~obj_dirs:(Path.Set.union obj_dirs t.objs_dirs))
       >>>
-      Build.write_file_dyn merlin_file
-    )
+      Build.write_file_dyn merlin_file)
 
 let merge_two a b =
   { requires = Lib.Set.union a.requires b.requires

@@ -4,6 +4,37 @@ open! No_io
 
 module SC = Super_context
 
+module Includes = struct
+  type t = string list Arg_spec.t Cm_kind.Dict.t
+
+  let make sctx ~requires : _ Cm_kind.Dict.t =
+    match requires with
+    | Error exn -> Cm_kind.Dict.make_all (Arg_spec.Dyn (fun _ -> raise exn))
+    | Ok libs ->
+      let iflags =
+        Lib.L.include_flags libs ~stdlib_dir:(SC.context sctx).stdlib_dir
+      in
+      let cmi_includes =
+        Arg_spec.S [ iflags
+                   ; Hidden_deps
+                       (SC.Libs.file_deps sctx libs ~ext:".cmi")
+                   ]
+      in
+      let cmi_and_cmx_includes =
+        Arg_spec.S [ iflags
+                   ; Hidden_deps
+                       (SC.Libs.file_deps sctx libs ~ext:".cmi-and-.cmx")
+                   ]
+      in
+      { cmi = cmi_includes
+      ; cmo = cmi_includes
+      ; cmx = cmi_and_cmx_includes
+      }
+
+  let empty =
+    Cm_kind.Dict.make_all (Arg_spec.As [])
+end
+
 module Target : sig
   type t
   val cm : Module.t -> Cm_kind.t -> t
@@ -107,47 +138,24 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
            ; Hidden_targets hidden_targets
            ])))
 
-let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~scope ~dir
+let build_module sctx ?sandbox ~dynlink ?js_of_ocaml ~flags m ~scope ~dir
       ~obj_dir ~dep_graphs ~includes ~alias_module =
   List.iter Cm_kind.all ~f:(fun cm_kind ->
     let includes = Cm_kind.Dict.get includes cm_kind in
     build_cm sctx ?sandbox ~dynlink ~flags ~dir ~obj_dir ~dep_graphs m ~cm_kind
       ~includes ~alias_module);
-  (* Build *.cmo.js *)
-  let src = Module.cm_file_unsafe m ~obj_dir Cm_kind.Cmo in
-  let target =
-    Path.extend_basename (Module.cm_file_unsafe m ~obj_dir:dir Cm_kind.Cmo)
-      ~suffix:".js"
-  in
-  SC.add_rules sctx
-    (Js_of_ocaml_rules.build_cm sctx ~scope ~dir ~js_of_ocaml ~src ~target)
+  Option.iter js_of_ocaml ~f:(fun js_of_ocaml ->
+    (* Build *.cmo.js *)
+    let src = Module.cm_file_unsafe m ~obj_dir Cm_kind.Cmo in
+    let target =
+      Path.extend_basename (Module.cm_file_unsafe m ~obj_dir:dir Cm_kind.Cmo)
+        ~suffix:".js"
+    in
+    SC.add_rules sctx
+      (Js_of_ocaml_rules.build_cm sctx ~scope ~dir ~js_of_ocaml ~src ~target))
 
 let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~scope ~dir ~obj_dir
-      ~dep_graphs ~modules ~requires ~alias_module =
-  let includes : _ Cm_kind.Dict.t =
-    match requires with
-    | Error exn -> Cm_kind.Dict.make_all (Arg_spec.Dyn (fun _ -> raise exn))
-    | Ok libs ->
-      let iflags =
-        Lib.L.include_flags libs ~stdlib_dir:(SC.context sctx).stdlib_dir
-      in
-      let cmi_includes =
-        Arg_spec.S [ iflags
-                   ; Hidden_deps
-                       (SC.Libs.file_deps sctx libs ~ext:".cmi")
-                   ]
-      in
-      let cmi_and_cmx_includes =
-        Arg_spec.S [ iflags
-                   ; Hidden_deps
-                       (SC.Libs.file_deps sctx libs ~ext:".cmi-and-.cmx")
-                   ]
-      in
-      { cmi = cmi_includes
-      ; cmo = cmi_includes
-      ; cmx = cmi_and_cmx_includes
-      }
-  in
+      ~dep_graphs ~modules ~includes ~alias_module =
   Module.Name.Map.iter
     (match alias_module with
      | None -> modules

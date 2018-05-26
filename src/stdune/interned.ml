@@ -31,7 +31,7 @@ let new_size ~next ~size = function
 module Make(R : sig
     val resize_policy : resize_policy
     val initial_size  : int
-  end)
+  end)()
 = struct
   type t = int
 

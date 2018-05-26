@@ -80,10 +80,8 @@ module Run (P : PARAMS) = struct
   let menhir (args : args) =
     flags >>> Build.run menhir_binary ~dir ~context args
 
-  (* The function [rule] adds a rule and returns the list of its targets. *)
-
-  let rule : (unit, Action.t) Build.t -> Path.t list =
-    SC.add_rule_get_targets sctx ~mode:stanza.mode ~loc:stanza.loc
+  let rule : (unit, Action.t) Build.t -> unit =
+    SC.add_rule sctx ~mode:stanza.mode ~loc:stanza.loc
 
   (* If there is no [base] clause, then a stanza that mentions several modules
      is equivalent to a list of stanzas, each of which mentions one module, so
@@ -119,7 +117,7 @@ module Run (P : PARAMS) = struct
 
    *)
 
-  let process (stanza : stanza) : Path.t list =
+  let process (stanza : stanza) =
     let base : string = Option.value_exn stanza.merge_into in
     let args : args =
       [ Dyn (fun flags -> As flags)
@@ -132,8 +130,8 @@ module Run (P : PARAMS) = struct
 
   (* The main side effect. *)
 
-  let targets =
-    List.concat_map ~f:process stanzas
+  let () =
+    List.iter ~f:process stanzas
 
 end
 
@@ -141,11 +139,22 @@ end
 
 (* The final glue. *)
 
-let gen_rules sctx ~dir ~scope stanza =
+let targets (stanza : Jbuild.Menhir.t) =
+  let f m = [m ^ ".ml"; m ^ ".mli"] in
+  match stanza.merge_into with
+  | Some m -> f m
+  | None -> List.concat_map stanza.modules ~f
+
+let module_names (stanza : Jbuild.Menhir.t) =
+  match stanza.merge_into with
+  | Some m -> [Module.Name.of_string m]
+  | None -> List.map stanza.modules ~f:Module.Name.of_string
+
+let gen_rules cctx stanza =
   let module R = Run(struct
-    let sctx = sctx
-    let dir = dir
-    let scope = scope
+    let sctx = Compilation_context.super_context cctx
+    let dir = Compilation_context.dir cctx
+    let scope = Compilation_context.scope cctx
     let stanza = stanza
   end) in
-  R.targets
+  ()

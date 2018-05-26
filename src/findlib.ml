@@ -340,14 +340,11 @@ let root_packages t =
         Path.exists (Path.relative dir (name ^ "/META"))))
     |> String.Set.of_list
   in
-  let pkgs =
-    String.Set.union pkgs
-      (String.Set.of_list (String.Map.keys t.builtins))
-  in
-  String.Set.to_list pkgs
+  String.Set.union pkgs
+    (String.Set.of_list (String.Map.keys t.builtins))
 
 let load_all_packages t =
-  List.iter (root_packages t) ~f:(fun pkg ->
+  String.Set.iter (root_packages t) ~f:(fun pkg ->
     find_and_acknowledge_meta t ~fq_name:pkg)
 
 let all_packages t =

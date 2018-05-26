@@ -29,17 +29,24 @@ let break s ~pos =
 
 let is_empty s = length s = 0
 
+let rec check_prefix s ~prefix len i =
+  i = len || s.[i] = prefix.[i] && check_prefix s ~prefix len (i + 1)
+
+let rec check_suffix s ~suffix suffix_len offset i =
+  i = suffix_len ||
+  s.[offset + i] = suffix.[i] &&
+  check_suffix s ~suffix suffix_len offset (i + 1)
+
 let is_prefix s ~prefix =
   let len = length s in
   let prefix_len = length prefix in
-  len >= prefix_len &&
-  sub s ~pos:0 ~len:prefix_len = prefix
+  len >= prefix_len && (check_prefix s ~prefix prefix_len 0)
 
 let is_suffix s ~suffix =
   let len = length s in
   let suffix_len = length suffix in
   len >= suffix_len &&
-  sub s ~pos:(len - suffix_len) ~len:suffix_len = suffix
+  (check_suffix s ~suffix suffix_len (len - suffix_len) 0)
 
 let drop_prefix s ~prefix =
   if is_prefix s ~prefix then

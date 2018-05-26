@@ -10,6 +10,7 @@ open! No_io
 
 module Gen(P : Install_rules.Params) = struct
   module Alias = Build_system.Alias
+  module CC = Compilation_context
   module SC = Super_context
   module Odoc = Odoc.Gen(P)
 
@@ -253,8 +254,7 @@ module Gen(P : Install_rules.Params) = struct
             List.concat_map stanzas ~f:(fun stanza ->
               match (stanza : Stanza.t) with
               | Menhir menhir ->
-                Menhir_rules.gen_rules sctx ~dir ~scope menhir
-                |> List.map ~f:Path.basename
+                Menhir_rules.targets menhir
               | Rule rule ->
                 List.map (user_rule rule  ~dir ~scope) ~f:Path.basename
               | Copy_files def ->
@@ -549,10 +549,6 @@ module Gen(P : Install_rules.Params) = struct
     let flags = SC.ocaml_flags sctx ~scope ~dir lib.buildable in
     let { modules; main_module_name; alias_module } = modules_by_lib ~dir lib in
     let source_modules = modules in
-    let already_used =
-      Modules_partitioner.acknowledge modules_partitioner
-        ~loc:lib.buildable.loc ~modules
-    in
     (* Preprocess before adding the alias module as it doesn't need
        preprocessing *)
     let pp =
@@ -590,6 +586,11 @@ module Gen(P : Install_rules.Params) = struct
         ~flags
         ~requires
         ~preprocessing:pp
+    in
+
+    let already_used =
+      Modules_partitioner.acknowledge modules_partitioner cctx
+        ~loc:lib.buildable.loc ~modules:source_modules
     in
     let dep_graphs = Ocamldep.rules cctx ~already_used in
 
@@ -803,18 +804,11 @@ module Gen(P : Install_rules.Params) = struct
      +-----------------------------------------------------------------+ *)
 
   let executables_rules ~dir ~all_modules
-        ?modules_partitioner ~scope ~compile_info
+        ~modules_partitioner ~scope ~compile_info
         (exes : Executables.t) =
     let requires = Lib.Compile.requires compile_info in
     let modules =
       parse_modules ~all_modules ~buildable:exes.buildable
-    in
-    let already_used =
-      match modules_partitioner with
-      | None -> Module.Name.Set.empty
-      | Some mp ->
-        Modules_partitioner.acknowledge mp
-          ~loc:exes.buildable.loc ~modules
     in
 
     let preprocessor_deps =
@@ -894,6 +888,10 @@ module Gen(P : Install_rules.Params) = struct
         ~requires
         ~preprocessing:pp
     in
+    let already_used =
+      Modules_partitioner.acknowledge modules_partitioner cctx
+        ~loc:exes.buildable.loc ~modules
+    in
 
     Exe.build_and_link_many cctx
       ~programs
@@ -909,7 +907,7 @@ module Gen(P : Install_rules.Params) = struct
       ~objs_dirs:(Path.Set.singleton obj_dir)
 
   let executables_rules ~dir ~all_modules
-        ?modules_partitioner ~scope (exes : Executables.t) =
+        ~modules_partitioner ~scope (exes : Executables.t) =
     let compile_info =
       Lib.DB.resolve_user_written_deps (Scope.libs scope)
         exes.buildable.libraries
@@ -920,7 +918,7 @@ module Gen(P : Install_rules.Params) = struct
     SC.Libs.with_lib_deps sctx compile_info ~dir
       ~f:(fun () ->
         executables_rules exes ~dir ~all_modules
-          ?modules_partitioner ~scope ~compile_info)
+          ~modules_partitioner ~scope ~compile_info)
 
   (* +-----------------------------------------------------------------+
      | Aliases                                                         |
@@ -967,39 +965,56 @@ module Gen(P : Install_rules.Params) = struct
     (* This interprets "rule" and "copy_files" stanzas. *)
     let files = text_files ~dir:ctx_dir in
     let all_modules = modules_by_dir ~dir:ctx_dir in
-    let modules_partitioner = Modules_partitioner.create ~all_modules in
-    List.filter_map stanzas ~f:(fun stanza ->
-      let dir = ctx_dir in
-      match (stanza : Stanza.t) with
-      | Library lib ->
-        Some (library_rules lib ~dir ~files ~scope ~modules_partitioner)
-      | Executables exes ->
-        Some (executables_rules exes ~dir ~all_modules ~scope
-                ~modules_partitioner)
-      | Alias alias ->
-        alias_rules alias ~dir ~scope;
-        None
-      | Copy_files { glob; _ } ->
-        let src_dir =
-          let loc = String_with_vars.loc glob in
-          let src_glob = SC.expand_vars sctx ~dir glob ~scope in
-          Path.parent_exn (Path.relative src_dir src_glob ~error_loc:loc)
-        in
-        Some
-          (Merlin.make ()
-             ~source_dirs:(Path.Set.singleton src_dir))
-      | _ -> None)
-    |> Merlin.merge_all
-    |> Option.map ~f:(fun m -> Merlin.add_source_dir m src_dir)
-    |> Option.iter ~f:(Merlin.add_rules sctx ~dir:ctx_dir ~scope);
-    Utop.setup sctx ~dir:ctx_dir ~libs:(
+    let modules_partitioner = Modules_partitioner.create () in
+    let merlins =
+      List.filter_map stanzas ~f:(fun stanza ->
+        let dir = ctx_dir in
+        match (stanza : Stanza.t) with
+        | Library lib ->
+          Some (library_rules lib ~dir ~files ~scope ~modules_partitioner)
+        | Executables exes ->
+          Some (executables_rules exes ~dir ~all_modules ~scope
+                  ~modules_partitioner)
+        | Alias alias ->
+          alias_rules alias ~dir ~scope;
+          None
+        | Copy_files { glob; _ } ->
+          let src_dir =
+            let loc = String_with_vars.loc glob in
+            let src_glob = SC.expand_vars sctx ~dir glob ~scope in
+            Path.parent_exn (Path.relative src_dir src_glob ~error_loc:loc)
+          in
+          Some
+            (Merlin.make ()
+               ~source_dirs:(Path.Set.singleton src_dir))
+        | _ -> None)
+    in
+    Option.iter (Merlin.merge_all merlins) ~f:(fun m ->
+      Merlin.add_rules sctx ~dir:ctx_dir ~scope
+        (Merlin.add_source_dir m src_dir));
+    Utop.setup sctx ~dir:ctx_dir ~scope ~libs:(
       List.filter_map stanzas ~f:(function
         | Library lib -> Some lib
-        | _ -> None)
-    ) ~scope;
+        | _ -> None));
+    List.iter stanzas ~f:(fun stanza ->
+      match (stanza : Stanza.t) with
+      | Menhir m ->
+        let cctx =
+          match
+            List.find_map (Menhir_rules.module_names m)
+              ~f:(Modules_partitioner.find modules_partitioner)
+          with
+          | None ->
+            Loc.fail m.loc
+              "I can't determine what library/executable the files produced \
+               by this stanza are part of."
+          | Some cctx -> cctx
+        in
+        Menhir_rules.gen_rules cctx m
+      | _ -> ());
     Modules_partitioner.emit_warnings modules_partitioner
 
-  let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
+     let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
     (match components with
      | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
                            sctx rest

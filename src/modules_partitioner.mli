@@ -2,24 +2,26 @@
 
 open! Stdune
 
-type t
+type 'a t
 
-val create
-  :  all_modules:Module.t Module.Name.Map.t
-  -> t
+val create : unit -> 'a t
 
-(** [acknowledge t ~loc ~modules] registers the fact that [modules]
+(** [acknowledge t partition ~loc ~modules] registers the fact that [modules]
     are associated with [loc].
 
     Returns the set of modules that are already used at another
     location.
 *)
 val acknowledge
-  :  t
+  :  'a t
+  -> 'a
   -> loc:Loc.t
   -> modules:Module.t Module.Name.Map.t
   -> Module.Name.Set.t
 
+(** Find which partition a module is part of *)
+val find : 'a t -> Module.Name.t -> 'a option
+
 (** To be called after processing a directory. Emit warnings about
     detected problems *)
-val emit_warnings : t -> unit
+val emit_warnings : _ t -> unit

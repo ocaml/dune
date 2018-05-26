@@ -133,3 +133,33 @@ let build_modules ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx =
      | None -> CC.modules cctx
      | Some (m : Module.t) -> Module.Name.Map.remove (CC.modules cctx) m.name)
     ~f:(build_module cctx ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs)
+
+let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
+  let sctx     = CC.super_context cctx in
+  let dir      = CC.dir           cctx in
+  let obj_dir  = CC.obj_dir       cctx in
+  let ctx      = SC.context       sctx in
+  let src = Option.value_exn (Module.file ~dir m Impl) in
+  let dep_graph = Ml_kind.Dict.get dep_graphs Impl in
+  let cm_deps =
+    Build.dyn_paths
+      (Ocamldep.Dep_graph.deps_of dep_graph m >>^ fun deps ->
+       List.concat_map deps
+         ~f:(fun m -> [Module.cm_file_unsafe m ~obj_dir Cmi]))
+  in
+  SC.add_rule sctx ?sandbox
+    (cm_deps >>>
+     Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo >>>
+     Build.run ~context:ctx (Ok ctx.ocamlc)
+       [ Dyn (fun ocaml_flags -> As ocaml_flags)
+       ; A "-I"; Path obj_dir
+       ; Cm_kind.Dict.get (CC.includes cctx) Cmo
+       ; (match CC.alias_module cctx with
+          | None -> S []
+          | Some (m : Module.t) ->
+            As ["-open"; Module.Name.to_string m.name])
+       ; As flags
+       ; A "-i"; Ml_kind.flag Impl; Dep src
+       ]
+     >>^ (fun act -> Action.with_stdout_to output act)
+     >>> Build.action_dyn () ~targets:[output])

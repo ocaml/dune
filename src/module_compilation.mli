@@ -20,3 +20,12 @@ val build_modules
   -> dep_graphs:Ocamldep.Dep_graphs.t
   -> Compilation_context.t
   -> unit
+
+val ocamlc_i
+  :  ?sandbox:bool
+  -> ?flags:string list
+  -> dep_graphs:Ocamldep.Dep_graphs.t
+  -> Compilation_context.t
+  -> Module.t
+  -> output:Path.t
+  -> unit

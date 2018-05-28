@@ -1249,13 +1249,14 @@ let do_build t ~request =
 
 module Ir_set = Set.Make(Internal_rule)
 
+
 let rules_for_files t paths =
-  List.filter_map paths ~f:(fun path ->
+  Path.Set.fold paths ~init:[] ~f:(fun path acc ->
     if Path.is_in_build_dir path then
       load_dir t ~dir:(Path.parent_exn path);
     match Hashtbl.find t.files path with
-    | None -> None
-    | Some (File_spec.T { rule; _ }) -> Some rule)
+    | None -> acc
+    | Some (File_spec.T { rule; _ }) -> rule :: acc)
   |> Ir_set.of_list
   |> Ir_set.to_list
 
@@ -1264,11 +1265,7 @@ let rules_for_targets t targets =
     Internal_rule.Id.Top_closure.top_closure (rules_for_files t targets)
       ~key:(fun (r : Internal_rule.t) -> r.id)
       ~deps:(fun (r : Internal_rule.t) ->
-        rules_for_files t
-          (Path.Set.to_list
-             (Path.Set.union
-                r.static_deps
-                r.rule_deps)))
+        rules_for_files t (Path.Set.union r.static_deps r.rule_deps))
   with
   | Ok l -> l
   | Error cycle ->
@@ -1285,7 +1282,7 @@ let static_deps_of_request t request =
       } = Build_interpret.static_deps request ~all_targets:(targets_of t)
             ~file_tree:t.file_tree
   in
-  Path.Set.to_list (Path.Set.union rule_deps action_deps)
+  Path.Set.union rule_deps action_deps
 
 let all_lib_deps t ~request =
   let targets = static_deps_of_request t request in
@@ -1336,7 +1333,7 @@ end
 module Rule_set = Set.Make(Rule)
 
 let rules_for_files rules paths =
-  List.fold_left paths ~init:Rule_set.empty ~f:(fun acc path ->
+  Path.Set.fold paths ~init:Rule_set.empty ~f:(fun path acc ->
     match Path.Map.find rules path with
     | None -> acc
     | Some rule -> Rule_set.add acc rule)
@@ -1405,10 +1402,10 @@ let build_rules_internal ?(recursive=false) t ~request =
   in
   match
     Rule.Id.Top_closure.top_closure
-      (rules_for_files rules (Path.Set.to_list !targets))
+      (rules_for_files rules !targets)
       ~key:(fun (r : Rule.t) -> r.id)
       ~deps:(fun (r : Rule.t) ->
-        rules_for_files rules (Path.Set.to_list r.deps))
+        rules_for_files rules r.deps)
   with
   | Ok l -> l
   | Error cycle ->

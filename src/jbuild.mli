@@ -352,19 +352,17 @@ module Env : sig
     }
 end
 
-module Stanza : sig
-  type t =
-    | Library     of Library.t
-    | Executables of Executables.t
-    | Rule        of Rule.t
-    | Provides    of Provides.t
-    | Install     of Install_conf.t
-    | Alias       of Alias_conf.t
-    | Copy_files  of Copy_files.t
-    | Menhir      of Menhir.t
-    | Documentation of Documentation.t
-    | Env         of Env.t
-end
+type Stanza.t +=
+  | Library     of Library.t
+  | Executables of Executables.t
+  | Rule        of Rule.t
+  | Provides    of Provides.t
+  | Install     of Install_conf.t
+  | Alias       of Alias_conf.t
+  | Copy_files  of Copy_files.t
+  | Menhir      of Menhir.t
+  | Documentation of Documentation.t
+  | Env         of Env.t
 
 module Stanzas : sig
   type t = Stanza.t list
@@ -372,8 +370,7 @@ module Stanzas : sig
   type syntax = OCaml | Plain
 
   val parse
-    :  ?default_version:Jbuild_version.t
-    -> file:Path.t
+    :  file:Path.t
     -> Dune_project.t
     -> Sexp.Ast.t list
     -> t

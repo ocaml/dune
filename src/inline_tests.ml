@@ -185,7 +185,7 @@ include Sub_system.Register_end_point(
                       ; syntax = OCaml
                       }
         ; intf = None
-        ; obj_name = ""
+        ; obj_name = name
         }
     in
 
@@ -239,16 +239,19 @@ include Sub_system.Register_end_point(
       >>>
       Build.action_dyn ~targets:[target] ());
 
-    Exe.build_and_link sctx
-      ~dir:inline_test_dir
-      ~obj_dir:inline_test_dir
+    let cctx =
+      Compilation_context.create ()
+        ~super_context:sctx
+        ~scope
+        ~dir:inline_test_dir
+        ~modules
+        ~requires:runner_libs
+        ~flags:(Ocaml_flags.of_list ["-w"; "-24"]);
+    in
+    Exe.build_and_link cctx
       ~program:{ name; main_module_name }
-      ~modules
-      ~scope
       ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
-      ~requires:runner_libs
-      ~link_flags:(Build.return ["-linkall"])
-      ~flags:(Ocaml_flags.of_list ["-w"; "-24"]);
+      ~link_flags:(Build.return ["-linkall"]);
 
     let flags =
       let flags =

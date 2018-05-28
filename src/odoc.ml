@@ -471,7 +471,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
         SC.stanzas sctx
         |> List.concat_map ~f:(fun (w : SC.Dir_with_jbuild.t) ->
           List.filter_map w.stanzas ~f:(function
-            | Jbuild.Stanza.Documentation (d : Jbuild.Documentation.t) ->
+            | Documentation (d : Jbuild.Documentation.t) ->
               Some (d.package.name, (w.ctx_dir, d))
             | _ ->
               None
@@ -494,7 +494,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
         SC.stanzas sctx
         |> List.concat_map ~f:(fun (w : SC.Dir_with_jbuild.t) ->
           List.filter_map w.stanzas ~f:(function
-            | Jbuild.Stanza.Library (l : Library.t) ->
+            | Jbuild.Library (l : Library.t) ->
               Some ((w.ctx_dir, Library.best_name l), l)
             | _ ->
               None
@@ -532,7 +532,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       (SC.stanzas sctx
        |> List.concat_map ~f:(fun (w : SC.Dir_with_jbuild.t) ->
          List.filter_map w.stanzas ~f:(function
-           | Jbuild.Stanza.Library (l : Jbuild.Library.t) ->
+           | Jbuild.Library (l : Jbuild.Library.t) ->
              begin match l.public with
              | Some _ -> None
              | None ->
@@ -541,7 +541,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
                  Lib.DB.find_even_when_hidden (Scope.libs scope) l.name)
                )
              end
-           | (_ : Jbuild.Stanza.t) -> None
+           | _ -> None
          ))
        |> List.map ~f:(fun (lib : Lib.t) ->
          Build_system.Alias.stamp_file (Dep.alias (Lib lib)))

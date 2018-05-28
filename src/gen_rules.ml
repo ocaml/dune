@@ -10,6 +10,7 @@ open! No_io
 
 module Gen(P : Install_rules.Params) = struct
   module Alias = Build_system.Alias
+  module CC = Compilation_context
   module SC = Super_context
   module Odoc = Odoc.Gen(P)
 
@@ -253,8 +254,7 @@ module Gen(P : Install_rules.Params) = struct
             List.concat_map stanzas ~f:(fun stanza ->
               match (stanza : Stanza.t) with
               | Menhir menhir ->
-                Menhir_rules.gen_rules sctx ~dir ~scope menhir
-                |> List.map ~f:Path.basename
+                Menhir_rules.targets menhir
               | Rule rule ->
                 List.map (user_rule rule  ~dir ~scope) ~f:Path.basename
               | Copy_files def ->
@@ -267,8 +267,7 @@ module Gen(P : Install_rules.Params) = struct
                   match (dep : Jbuild.Lib_dep.t) with
                   | Direct _ -> None
                   | Select s -> Some s.result_fn)
-              | Documentation _ | Alias _ | Provides _ | Install _
-              | Env _ -> [])
+              | _ -> [])
             |> String.Set.of_list
           in
           String.Set.union generated_files
@@ -550,14 +549,10 @@ module Gen(P : Install_rules.Params) = struct
     let flags = SC.ocaml_flags sctx ~scope ~dir lib.buildable in
     let { modules; main_module_name; alias_module } = modules_by_lib ~dir lib in
     let source_modules = modules in
-    let already_used =
-      Modules_partitioner.acknowledge modules_partitioner
-        ~loc:lib.buildable.loc ~modules
-    in
     (* Preprocess before adding the alias module as it doesn't need
        preprocessing *)
-    let modules =
-      Preprocessing.pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~scope
+    let pp =
+      Preprocessing.make sctx ~dir ~dep_kind ~scope
         ~preprocess:lib.buildable.preprocess
         ~preprocessor_deps:
           (SC.Deps.interpret sctx ~scope ~dir
@@ -565,6 +560,7 @@ module Gen(P : Install_rules.Params) = struct
         ~lint:lib.buildable.lint
         ~lib_name:(Some lib.name)
     in
+    let modules = Preprocessing.pp_modules pp modules in
 
     let modules =
       match alias_module with
@@ -572,14 +568,31 @@ module Gen(P : Install_rules.Params) = struct
       | Some m -> Module.Name.Map.add modules m.name m
     in
 
-    let dep_graphs =
-      Ocamldep.rules sctx ~dir ~modules ~already_used ~alias_module
-        ~lib_interface_module:(
-          if lib.wrapped then
-            Module.Name.Map.find modules main_module_name
-          else
-            None)
+    let lib_interface_module =
+      if lib.wrapped then
+        Module.Name.Map.find modules main_module_name
+      else
+        None
     in
+    let cctx =
+      Compilation_context.create ()
+        ~super_context:sctx
+        ~scope
+        ~dir
+        ~obj_dir
+        ~modules
+        ?alias_module
+        ?lib_interface_module
+        ~flags
+        ~requires
+        ~preprocessing:pp
+    in
+
+    let already_used =
+      Modules_partitioner.acknowledge modules_partitioner cctx
+        ~loc:lib.buildable.loc ~modules:source_modules
+    in
+    let dep_graphs = Ocamldep.rules cctx ~already_used in
 
     Option.iter alias_module ~f:(fun m ->
       let file =
@@ -604,22 +617,14 @@ module Gen(P : Install_rules.Params) = struct
 
     let dynlink = lib.dynlink in
     let js_of_ocaml = lib.buildable.js_of_ocaml in
-    Module_compilation.build_modules sctx
-      ~js_of_ocaml ~dynlink ~flags ~scope ~dir ~obj_dir ~dep_graphs
-      ~modules ~requires ~alias_module;
+    Module_compilation.build_modules cctx ~js_of_ocaml ~dynlink ~dep_graphs;
     Option.iter alias_module ~f:(fun m ->
-      let flags = Ocaml_flags.default ~profile:(SC.profile sctx) in
-      Module_compilation.build_module sctx m
+      let cctx = Compilation_context.for_alias_module cctx in
+      Module_compilation.build_module cctx m
         ~js_of_ocaml
         ~dynlink
         ~sandbox:alias_module_build_sandbox
-        ~flags:(Ocaml_flags.append_common flags ["-w"; "-49"])
-        ~scope
-        ~dir
-        ~obj_dir
-        ~dep_graphs:(Ocamldep.Dep_graphs.dummy m)
-        ~includes:(Cm_kind.Dict.make_all (Arg_spec.As []))
-        ~alias_module:None);
+        ~dep_graphs:(Ocamldep.Dep_graphs.dummy m));
 
     if Library.has_stubs lib then begin
       let h_files =
@@ -799,31 +804,29 @@ module Gen(P : Install_rules.Params) = struct
      +-----------------------------------------------------------------+ *)
 
   let executables_rules ~dir ~all_modules
-        ?modules_partitioner ~scope ~compile_info
+        ~modules_partitioner ~scope ~compile_info
         (exes : Executables.t) =
     let requires = Lib.Compile.requires compile_info in
     let modules =
       parse_modules ~all_modules ~buildable:exes.buildable
     in
-    let already_used =
-      match modules_partitioner with
-      | None -> Module.Name.Set.empty
-      | Some mp ->
-        Modules_partitioner.acknowledge mp
-          ~loc:exes.buildable.loc ~modules
-    in
 
-    let modules =
-      let preprocessor_deps =
-        SC.Deps.interpret sctx exes.buildable.preprocessor_deps
-          ~scope ~dir
-      in
-      Preprocessing.pp_and_lint_modules sctx ~dir ~dep_kind:Required ~modules
+    let preprocessor_deps =
+      SC.Deps.interpret sctx exes.buildable.preprocessor_deps
+        ~scope ~dir
+    in
+    let pp =
+      Preprocessing.make sctx ~dir ~dep_kind:Required
         ~scope
         ~preprocess:exes.buildable.preprocess
         ~preprocessor_deps
         ~lint:exes.buildable.lint
         ~lib_name:None
+    in
+    let modules =
+      Module.Name.Map.map modules ~f:(fun m ->
+        Preprocessing.pp_module_as pp m.name m
+        |> Module.set_obj_name ~wrapper:None)
     in
 
     let programs =
@@ -873,16 +876,27 @@ module Gen(P : Install_rules.Params) = struct
     let obj_dir =
       Utils.executable_object_directory ~dir (List.hd programs).name
     in
-    Exe.build_and_link_many sctx
-      ~dir
-      ~obj_dir
+
+    let cctx =
+      Compilation_context.create ()
+        ~super_context:sctx
+        ~scope
+        ~dir
+        ~obj_dir
+        ~modules
+        ~flags
+        ~requires
+        ~preprocessing:pp
+    in
+    let already_used =
+      Modules_partitioner.acknowledge modules_partitioner cctx
+        ~loc:exes.buildable.loc ~modules
+    in
+
+    Exe.build_and_link_many cctx
       ~programs
-      ~modules
       ~already_used
-      ~scope
       ~linkages
-      ~requires
-      ~flags
       ~link_flags
       ~js_of_ocaml:exes.buildable.js_of_ocaml;
 
@@ -893,7 +907,7 @@ module Gen(P : Install_rules.Params) = struct
       ~objs_dirs:(Path.Set.singleton obj_dir)
 
   let executables_rules ~dir ~all_modules
-        ?modules_partitioner ~scope (exes : Executables.t) =
+        ~modules_partitioner ~scope (exes : Executables.t) =
     let compile_info =
       Lib.DB.resolve_user_written_deps (Scope.libs scope)
         exes.buildable.libraries
@@ -904,7 +918,7 @@ module Gen(P : Install_rules.Params) = struct
     SC.Libs.with_lib_deps sctx compile_info ~dir
       ~f:(fun () ->
         executables_rules exes ~dir ~all_modules
-          ?modules_partitioner ~scope ~compile_info)
+          ~modules_partitioner ~scope ~compile_info)
 
   (* +-----------------------------------------------------------------+
      | Aliases                                                         |
@@ -951,39 +965,56 @@ module Gen(P : Install_rules.Params) = struct
     (* This interprets "rule" and "copy_files" stanzas. *)
     let files = text_files ~dir:ctx_dir in
     let all_modules = modules_by_dir ~dir:ctx_dir in
-    let modules_partitioner = Modules_partitioner.create ~all_modules in
-    List.filter_map stanzas ~f:(fun stanza ->
-      let dir = ctx_dir in
-      match (stanza : Stanza.t) with
-      | Library lib ->
-        Some (library_rules lib ~dir ~files ~scope ~modules_partitioner)
-      | Executables exes ->
-        Some (executables_rules exes ~dir ~all_modules ~scope
-                ~modules_partitioner)
-      | Alias alias ->
-        alias_rules alias ~dir ~scope;
-        None
-      | Copy_files { glob; _ } ->
-        let src_dir =
-          let loc = String_with_vars.loc glob in
-          let src_glob = SC.expand_vars sctx ~dir glob ~scope in
-          Path.parent_exn (Path.relative src_dir src_glob ~error_loc:loc)
-        in
-        Some
-          (Merlin.make ()
-             ~source_dirs:(Path.Set.singleton src_dir))
-      | _ -> None)
-    |> Merlin.merge_all
-    |> Option.map ~f:(fun m -> Merlin.add_source_dir m src_dir)
-    |> Option.iter ~f:(Merlin.add_rules sctx ~dir:ctx_dir ~scope);
-    Utop.setup sctx ~dir:ctx_dir ~libs:(
-      List.filter_map stanzas ~f:(function
-        | Stanza.Library lib -> Some lib
+    let modules_partitioner = Modules_partitioner.create () in
+    let merlins =
+      List.filter_map stanzas ~f:(fun stanza ->
+        let dir = ctx_dir in
+        match (stanza : Stanza.t) with
+        | Library lib ->
+          Some (library_rules lib ~dir ~files ~scope ~modules_partitioner)
+        | Executables exes ->
+          Some (executables_rules exes ~dir ~all_modules ~scope
+                  ~modules_partitioner)
+        | Alias alias ->
+          alias_rules alias ~dir ~scope;
+          None
+        | Copy_files { glob; _ } ->
+          let src_dir =
+            let loc = String_with_vars.loc glob in
+            let src_glob = SC.expand_vars sctx ~dir glob ~scope in
+            Path.parent_exn (Path.relative src_dir src_glob ~error_loc:loc)
+          in
+          Some
+            (Merlin.make ()
+               ~source_dirs:(Path.Set.singleton src_dir))
         | _ -> None)
-    ) ~scope;
+    in
+    Option.iter (Merlin.merge_all merlins) ~f:(fun m ->
+      Merlin.add_rules sctx ~dir:ctx_dir ~scope
+        (Merlin.add_source_dir m src_dir));
+    Utop.setup sctx ~dir:ctx_dir ~scope ~libs:(
+      List.filter_map stanzas ~f:(function
+        | Library lib -> Some lib
+        | _ -> None));
+    List.iter stanzas ~f:(fun stanza ->
+      match (stanza : Stanza.t) with
+      | Menhir m ->
+        let cctx =
+          match
+            List.find_map (Menhir_rules.module_names m)
+              ~f:(Modules_partitioner.find modules_partitioner)
+          with
+          | None ->
+            Loc.fail m.loc
+              "I can't determine what library/executable the files produced \
+               by this stanza are part of."
+          | Some cctx -> cctx
+        in
+        Menhir_rules.gen_rules cctx m
+      | _ -> ());
     Modules_partitioner.emit_warnings modules_partitioner
 
-  let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
+     let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
     (match components with
      | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
                            sctx rest

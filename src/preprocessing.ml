@@ -293,9 +293,11 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope = Staged.stage (
   fun ~(source : Module.t) ~ast ->
     Per_module.get lint source.name ~source ~ast)
 
-(* Generate rules to build the .pp files and return a new module map
-   where all filenames point to the .pp files *)
-let pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~lint ~preprocess
+type t = (Module.t -> lint:bool -> Module.t) Per_module.t
+
+let dummy = Per_module.for_all (fun m ~lint:_ -> m)
+
+let make sctx ~dir ~dep_kind ~lint ~preprocess
       ~preprocessor_deps ~lib_name ~scope =
   let preprocessor_deps =
     Build.memoize "preprocessor deps" preprocessor_deps
@@ -303,62 +305,65 @@ let pp_and_lint_modules sctx ~dir ~dep_kind ~modules ~lint ~preprocess
   let lint_module =
     Staged.unstage (lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope)
   in
-  let preprocess =
-    Per_module.map preprocess ~f:(function
-      | Preprocess.No_preprocessing ->
-        (fun m ->
-           let ast = setup_reason_rules sctx ~dir m in
-           lint_module ~ast ~source:m;
-           ast)
-      | Action (loc, action) ->
-        (fun m ->
-           let ast =
-             pped_module m ~dir ~f:(fun _kind src dst ->
-               SC.add_rule sctx
-                 (preprocessor_deps
-                  >>>
-                  Build.path src
-                  >>^ (fun _ -> [src])
-                  >>>
-                  SC.Action.run sctx
-                    (Redirect
-                       (Stdout,
-                        target_var,
-                        Chdir (root_var,
-                               action)))
-                    ~loc
-                    ~dir
-                    ~dep_kind
-                    ~targets:(Static [dst])
-                    ~scope))
-             |> setup_reason_rules sctx ~dir in
-           lint_module ~ast ~source:m;
-           ast)
-      | Pps { pps; flags } ->
-        let ppx_exe = get_ppx_driver sctx ~scope pps in
-        let uses_ppx_driver = uses_ppx_driver ~pps in
-        let args : _ Arg_spec.t =
-          S [ As flags
-            ; A "--dump-ast"
-            ; As (cookie_library_name lib_name)
-            ; As (if uses_ppx_driver then ["-diff-cmd"; "-"] else [])
-            ]
-        in
-        (fun m ->
-           let ast = setup_reason_rules sctx ~dir m in
-           lint_module ~ast ~source:m;
-           pped_module ast ~dir ~f:(fun kind src dst ->
+  Per_module.map preprocess ~f:(function
+    | Preprocess.No_preprocessing ->
+      (fun m ~lint ->
+         let ast = setup_reason_rules sctx ~dir m in
+         if lint then lint_module ~ast ~source:m;
+         ast)
+    | Action (loc, action) ->
+      (fun m ~lint ->
+         let ast =
+           pped_module m ~dir ~f:(fun _kind src dst ->
              SC.add_rule sctx
-               (promote_correction ~uses_ppx_driver
-                  (Option.value_exn (Module.file m ~dir kind))
-                  (preprocessor_deps
-                   >>>
-                   Build.run ~context:(SC.context sctx)
-                     (Ok ppx_exe)
-                     [ args
-                     ; A "-o"; Target dst
-                     ; Ml_kind.ppx_driver_flag kind; Dep src
-                     ])))))
-  in
- Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
-    Per_module.get preprocess m.name m)
+               (preprocessor_deps
+                >>>
+                Build.path src
+                >>^ (fun _ -> [src])
+                >>>
+                SC.Action.run sctx
+                  (Redirect
+                     (Stdout,
+                      target_var,
+                      Chdir (root_var,
+                             action)))
+                  ~loc
+                  ~dir
+                  ~dep_kind
+                  ~targets:(Static [dst])
+                  ~scope))
+           |> setup_reason_rules sctx ~dir in
+         if lint then lint_module ~ast ~source:m;
+         ast)
+    | Pps { pps; flags } ->
+      let ppx_exe = get_ppx_driver sctx ~scope pps in
+      let uses_ppx_driver = uses_ppx_driver ~pps in
+      let args : _ Arg_spec.t =
+        S [ As flags
+          ; A "--dump-ast"
+          ; As (cookie_library_name lib_name)
+          ; As (if uses_ppx_driver then ["-diff-cmd"; "-"] else [])
+          ]
+      in
+      (fun m ~lint ->
+         let ast = setup_reason_rules sctx ~dir m in
+         if lint then lint_module ~ast ~source:m;
+         pped_module ast ~dir ~f:(fun kind src dst ->
+           SC.add_rule sctx
+             (promote_correction ~uses_ppx_driver
+                (Option.value_exn (Module.file m ~dir kind))
+                (preprocessor_deps
+                 >>>
+                 Build.run ~context:(SC.context sctx)
+                   (Ok ppx_exe)
+                   [ args
+                   ; A "-o"; Target dst
+                   ; Ml_kind.ppx_driver_flag kind; Dep src
+                   ])))))
+
+let pp_modules t ?(lint=true) modules =
+  Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
+    Per_module.get t m.name m ~lint)
+
+let pp_module_as t ?(lint=true) name m =
+  Per_module.get t name m ~lint

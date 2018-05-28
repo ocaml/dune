@@ -91,8 +91,8 @@ dev-repo: "https://github.com/ocaml/dune.git"
 license: "Apache-2.0"
 depends: [ "dune" ]
 EOF
-      opam pin add dune     .           --no-action --yes
       opam pin add jbuilder ../jbuilder --no-action --yes
+      opam pin add dune     .           --no-action --yes
       opam install utop ppx_driver odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler --yes
       echo -en "travis_fold:end:opam.deps\r"
     fi

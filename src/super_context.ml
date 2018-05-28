@@ -484,6 +484,7 @@ module Deps = struct
         | Ok re ->
           let dir = Path.parent_exn path in
           Build.paths_glob ~loc ~dir (Re.compile re)
+          >>^ Path.Set.to_list
         | Error (_pos, msg) ->
           Loc.fail loc "invalid glob: %s" msg
       end

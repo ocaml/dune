@@ -13,7 +13,7 @@ Path.(let p = relative root "foo" in descendant p ~of_:p)
 [%%expect{|
 - : unit = ()
 val r : string -> Stdune.Path.t = <fun>
-- : Stdune.Path.t option = Some (In_source_tree "foo")
+- : Stdune.Path.t option = Some (In_source_tree ".")
 |}]
 
 (* different strings but same length *)
@@ -89,12 +89,12 @@ Path.(is_descendant (Path.absolute "/foo/bar") ~of_:(Path.absolute "/"))
 
 Path.(descendant (r "foo") ~of_:(r "foo/"))
 [%%expect{|
-- : Stdune.Path.t option = Some (In_source_tree "foo")
+- : Stdune.Path.t option = Some (In_source_tree ".")
 |}]
 
 Path.(descendant (r "foo/") ~of_:(r "foo"))
 [%%expect{|
-- : Stdune.Path.t option = Some (In_source_tree "foo")
+- : Stdune.Path.t option = Some (In_source_tree ".")
 |}]
 
 Path.(descendant (r "foo/bar") ~of_:(r "foo"))

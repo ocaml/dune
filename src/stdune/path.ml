@@ -302,7 +302,7 @@ end = struct
     if is_root of_ then
       Some t
     else if t = of_ then
-      Some t
+      Some root
     else
       let t = to_string t in
       let of_ = to_string of_ in

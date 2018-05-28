@@ -1,7 +1,8 @@
 let is_dir_sep =
-  match Sys.os_type with
-  | "Win32" | "Cygwin" -> fun c -> c = '/' || c = '\\' || c = ':'
-  | _ -> fun c -> c = '/'
+  if Sys.win32 || Sys.cygwin then
+    fun c -> c = '/' || c = '\\' || c = ':'
+  else
+    fun c -> c = '/'
 
 let explode_path =
   let rec start acc path i =

@@ -868,7 +868,7 @@ module Set = struct
     |> List.map ~f
     |> of_list
 
-  let to_alpha_list t = List.sort (to_list t) ~compare:compare_val
+  let to_alpha_list t = to_list t
 end
 
 let in_source s = in_source_tree (Local.of_string s)

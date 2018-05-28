@@ -50,7 +50,7 @@ end = struct
   include Interned.Make(struct
       let initial_size = 512
       let resize_policy = Interned.Greedy
-    end)
+    end)()
 
   let compare_val x y = String.compare (to_string x) (to_string y)
 
@@ -153,7 +153,7 @@ end = struct
   include Interned.Make(struct
       let initial_size = 512
       let resize_policy = Interned.Greedy
-    end)
+    end)()
 
   let compare_val x y = String.compare (to_string x) (to_string y)
 

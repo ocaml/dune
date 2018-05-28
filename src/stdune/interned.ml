@@ -99,3 +99,44 @@ module Make(R : sig
 
   module Map = Int.Map
 end
+
+module type Settings = sig
+  val initial_size : int
+  val resize_policy : resize_policy
+end
+
+module No_interning(R : Settings)() = struct
+  type t = string
+
+  let compare = String.compare
+  let make s = s
+  let to_string s = s
+  let get s = Some s
+
+  module Set = struct
+    include String.Set
+    let make = of_list
+    let pp fmt t = Fmt.ocaml_list Format.pp_print_string fmt (to_list t)
+  end
+  module Map = String.Map
+
+  module Table = struct
+    type 'a t =
+      { default_value: 'a
+      ; data: (string, 'a) Hashtbl.t
+      }
+
+    let create ~default_value =
+      { default_value
+      ; data = Hashtbl.create R.initial_size
+      }
+
+    let get t k =
+      match Hashtbl.find t.data k with
+      | None -> t.default_value
+      | Some s -> s
+
+    let set t ~key ~data =
+      Hashtbl.replace t.data ~key ~data
+  end
+end

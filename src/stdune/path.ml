@@ -47,7 +47,7 @@ module External : sig
   val cwd : unit -> t
   val extend_basename : t -> suffix:string -> t
 end = struct
-  include Interned.Make(struct
+  include Interned.No_interning(struct
       let initial_size = 512
       let resize_policy = Interned.Greedy
     end)()
@@ -150,7 +150,7 @@ module Local : sig
 end = struct
   (* either "" for root, either a '/' separated list of components
      other that ".", ".."  and not containing '/'. *)
-  include Interned.Make(struct
+  include Interned.No_interning(struct
       let initial_size = 512
       let resize_policy = Interned.Greedy
     end)()

@@ -36,7 +36,11 @@ end
 
 type resize_policy = Conservative | Greedy
 
-module Make(R : sig
-    val initial_size : int
-    val resize_policy : resize_policy
-  end)() : S
+module type Settings = sig
+  val initial_size : int
+  val resize_policy : resize_policy
+end
+
+module Make(R : Settings)() : S
+
+module No_interning(R : Settings)() : S

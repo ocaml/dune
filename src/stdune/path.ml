@@ -1,14 +1,34 @@
+let is_dir_sep =
+  match Sys.os_type with
+  | "Win32" | "Cygwin" -> fun c -> c = '/' || c = '\\' || c = ':'
+  | _ -> fun c -> c = '/'
+
 let explode_path =
-  let rec loop path acc =
-    let dir  = Filename.dirname  path in
-    let base = Filename.basename path in
-    let acc = base :: acc in
-    if dir = Filename.current_dir_name then
+  let rec start acc path i =
+    if i < 0 then
       acc
+    else if is_dir_sep (String.unsafe_get path i) then
+      start acc path (i - 1)
     else
-      loop dir acc
+      component acc path i (i - 1)
+  and component acc path end_ i =
+    if i < 0 then
+      String.sub path ~pos:0 ~len:(end_ + 1)::acc
+    else if is_dir_sep (String.unsafe_get path i) then
+      start
+        (String.sub path ~pos:(i + 1) ~len:(end_ - i)::acc)
+        path
+        (i - 1)
+    else
+      component acc path end_ (i - 1)
   in
-  fun path -> loop path []
+  fun path ->
+    if path = Filename.current_dir_name then
+      [path]
+    else
+      match start [] path (String.length path - 1) with
+      | "." :: xs -> xs
+      | xs -> xs
 
 module External = struct
   type t = string

@@ -159,10 +159,7 @@ end = struct
 
   let root = make "."
 
-  let is_root t =
-    match compare root t with
-    | Ordering.Eq -> true
-    | Ordering.Lt | Gt -> false
+  let is_root t = t = root
 
   let to_list =
     let rec loop t acc i j =
@@ -304,7 +301,7 @@ end = struct
   let descendant t ~of_ =
     if is_root of_ then
       Some t
-    else if compare t of_ = Ordering.Eq then
+    else if t = of_ then
       Some t
     else
       let t = to_string t in
@@ -319,7 +316,7 @@ end = struct
 
   let is_descendant t ~of_ =
     is_root of_
-    || compare t of_ = Ordering.Eq
+    || t = of_
     || (
       let t = to_string t in
       let of_ = to_string of_ in

@@ -79,6 +79,7 @@ case "$TARGET" in
       fi
       opam list
       echo "version: \"1.0+dev$DATE\"" >> dune.opam
+      echo "depends: [\"dune\"]" >> jbuilder.opam
       opam pin add dune     . --no-action --yes
       opam pin add jbuilder . --no-action --yes
       opam install utop ppx_driver odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler --yes

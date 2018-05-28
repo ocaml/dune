@@ -148,7 +148,7 @@ module Local : sig
     val invalid : t
   end with type local := t
 end = struct
-  (* either "" for root, either a '/' separated list of components
+  (* either "." for root, either a '/' separated list of components
      other that ".", ".."  and not containing '/'. *)
   include Interned.No_interning(struct
       let initial_size = 512
@@ -157,16 +157,12 @@ end = struct
 
   let compare_val x y = String.compare (to_string x) (to_string y)
 
-  let root = make ""
-
-  let to_istring = to_string
+  let root = make "."
 
   let is_root t =
     match compare root t with
     | Ordering.Eq -> true
     | Ordering.Lt | Gt -> false
-
-  let to_string t = if is_root t then "." else to_istring t
 
   let to_list =
     let rec loop t acc i j =
@@ -181,7 +177,7 @@ end = struct
       if is_root t then
         []
       else
-        let t = to_istring t in
+        let t = to_string t in
         let len = String.length t in
         loop t [] len len
 
@@ -189,7 +185,7 @@ end = struct
     if is_root t then
       Exn.code_error "Path.Local.parent called on the root" []
     else
-      let t = to_istring t in
+      let t = to_string t in
       match String.rindex_from t (String.length t - 1) '/' with
       | exception Not_found -> root
       | i -> make (String.sub t ~pos:0 ~len:i)
@@ -198,13 +194,13 @@ end = struct
     if is_root t then
       Exn.code_error "Path.Local.basename called on the root" []
     else
-      let t = to_istring t in
+      let t = to_string t in
       let len = String.length t in
       match String.rindex_from t (len - 1) '/' with
       | exception Not_found -> t
       | i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1)
 
-  let sexp_of_t t = Sexp.To_sexp.string (to_istring t)
+  let sexp_of_t t = Sexp.To_sexp.string (to_string t)
 
   let relative ?error_loc t path =
     if not (Filename.is_relative path) then (
@@ -226,7 +222,7 @@ end = struct
         if is_root t then
           loop (make fn) rest
         else
-          loop (make (to_istring t ^ "/" ^ fn)) rest
+          loop (make (to_string t ^ "/" ^ fn)) rest
     in
     match loop t (explode_path path) with
     | Result.Ok t -> t
@@ -271,9 +267,10 @@ end = struct
       len = 0 || before_slash s (len - 1)
 
   let of_string ?error_loc s =
-    if is_canonicalized s then
-      make s
-    else
+    match s with
+    | "" | "." -> root
+    | _ when is_canonicalized s -> make s
+    | _ ->
       relative root s ?error_loc
 
   let t sexp =
@@ -302,7 +299,7 @@ end = struct
     match is_root a, is_root b with
     | true, _ -> b
     | _, true -> a
-    | _, _ -> make ((to_istring a) ^ "/" ^ (to_istring b))
+    | _, _ -> make ((to_string a) ^ "/" ^ (to_string b))
 
   let descendant t ~of_ =
     if is_root of_ then
@@ -310,8 +307,8 @@ end = struct
     else if compare t of_ = Ordering.Eq then
       Some t
     else
-      let t = to_istring t in
-      let of_ = to_istring of_ in
+      let t = to_string t in
+      let of_ = to_string of_ in
       let of_len = String.length of_ in
       let t_len = String.length t in
       if (t_len > of_len && t.[of_len] = '/'
@@ -324,8 +321,8 @@ end = struct
     is_root of_
     || compare t of_ = Ordering.Eq
     || (
-      let t = to_istring t in
-      let of_ = to_istring of_ in
+      let t = to_string t in
+      let of_ = to_string of_ in
       let of_len = String.length of_ in
       let t_len = String.length t in
       (t_len > of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_))
@@ -344,7 +341,7 @@ end = struct
     in
     loop (to_list t) (to_list from)
 
-  let extend_basename t ~suffix = make (to_istring t ^ suffix)
+  let extend_basename t ~suffix = make (to_string t ^ suffix)
 
   module Prefix = struct
     let make_path = make
@@ -359,14 +356,14 @@ end = struct
       if is_root p then
         Exn.code_error "Path.Local.Prefix.make"
           [ "path", sexp_of_t p ];
-      let p = to_istring p in
+      let p = to_string p in
       { len        = String.length p
       ; path       = p
       ; path_slash = p ^ "/"
       }
 
     let drop t p =
-      let p = to_istring p in
+      let p = to_string p in
       let len = String.length p in
       if len = t.len && p = t.path then
         Some root
@@ -418,10 +415,15 @@ module Kind = struct
   let sexp_of_t t = Sexp.atom_or_quoted_string (to_string t)
 
   let of_string s =
-    if s = "" || Filename.is_relative s then
+    if Filename.is_relative s then
       Local (Local.of_string s)
     else
       External (External.of_string s)
+
+  let _ =
+    let root = Local Local.root in
+    assert (of_string ""  = root);
+    assert (of_string "." = root)
 
   let _relative ?error_loc t fn =
     match t with
@@ -517,8 +519,6 @@ let kind = function
   | In_source_tree s -> Kind.Local s
   | External s -> Kind.External s
 
-let is_local_fn t = t = "" || Filename.is_relative t
-
 let is_managed = function
   | In_build_dir _
   | In_source_tree _ -> true
@@ -537,11 +537,12 @@ let make_local_path p =
   | Some p -> in_build_dir p
 
 let relative ?error_loc t fn =
-  if fn = "" then
+  match fn with
+  | "" | "." ->
     t
-  else if not (Filename.is_relative fn) then
+  | _ when not (Filename.is_relative fn) ->
     external_ (External.of_string fn)
-  else
+  |_ ->
     match t with
     | In_source_tree p ->
       if Local.is_root p then
@@ -553,7 +554,7 @@ let relative ?error_loc t fn =
 
 let of_string ?error_loc s =
   match s with
-  | "" -> in_source_tree Local.root
+  | "" | "." -> in_source_tree Local.root
   | s  ->
     if not (Filename.is_relative s) then
       external_ (External.of_string s)
@@ -581,7 +582,7 @@ let sexp_of_t t =
 
 let absolute fn =
   external_ (
-    if is_local_fn fn then
+    if Filename.is_relative fn then
       External.relative External.initial_cwd fn
     else
       External.of_string fn

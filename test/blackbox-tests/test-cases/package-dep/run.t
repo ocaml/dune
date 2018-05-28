@@ -8,9 +8,9 @@
       ocamlopt .bar.objs/bar.{cmx,o}
       ocamlopt bar.{a,cmxa}
       ocamlopt bar.cmxs
-        ocamlc foo.cma
       ocamlopt foo.{a,cmxa}
       ocamlopt foo.cmxs
+        ocamlc foo.cma
      ocamlfind test.exe
           test alias runtest
   42 42

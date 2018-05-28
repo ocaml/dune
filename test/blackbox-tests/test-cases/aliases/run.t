@@ -3,14 +3,14 @@
   running in src
   $ dune clean --display short
   $ dune build --display short @everywhere
-  running in src/foo/baz
   running in src/foo/bar
+  running in src/foo/baz
   running in src
   $ dune clean --display short
   $ dune build --display short @x
-  running in src
   running in src/foo/bar
   running in src/foo/baz
+  running in src
   $ dune build --display short @plop
   From the command line:
   Error: Alias plop is empty.

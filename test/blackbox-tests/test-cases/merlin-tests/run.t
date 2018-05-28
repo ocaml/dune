@@ -8,13 +8,13 @@
   B $LIB_PREFIX/lib/bytes
   B $LIB_PREFIX/lib/findlib
   B $LIB_PREFIX/lib/ocaml
-  B ../_build/default/exe/.x.eobjs
   B ../lib/.foo.objs
+  B ../_build/default/exe/.x.eobjs
   S $LIB_PREFIX/lib/bytes
   S $LIB_PREFIX/lib/findlib
   S $LIB_PREFIX/lib/ocaml
-  S ../_build/default/lib
   S .
+  S ../_build/default/lib
   FLG -w -40
   # Processing lib/.merlin
   B $LIB_PREFIX/lib/bytes

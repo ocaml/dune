@@ -55,6 +55,18 @@ val install_file
   -> findlib_toolchain:string option
   -> string
 
+module type Persistent_desc = sig
+  type t
+  val name : string
+  val version : int
+end
+
+(** Persistent value stored on disk *)
+module Persistent(D : Persistent_desc) : sig
+  val dump : Path.t -> D.t -> unit
+  val load : Path.t -> D.t option
+end
+
 (** Digest files with caching *)
 module Cached_digest : sig
   (** Digest the contents of the following file *)

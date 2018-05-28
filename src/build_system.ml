@@ -1429,9 +1429,11 @@ let package_deps t pkg files =
   let rec loop fn acc =
     match Hashtbl.find_all t.packages fn with
     | [] -> loop_deps fn acc
-    | [p] when p = pkg -> loop_deps fn acc
     | pkgs ->
-      List.fold_left pkgs ~init:acc ~f:add_package
+      if List.mem pkg ~set:pkgs then
+        loop_deps fn acc
+      else
+        List.fold_left pkgs ~init:acc ~f:add_package
   and add_package acc p =
     if p = pkg then
       acc

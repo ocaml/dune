@@ -26,7 +26,7 @@ module Repr = struct
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Path.Set.t -> ('a, 'a) t
     | Paths_for_rule : Path.Set.t -> ('a, 'a) t
-    | Paths_glob : glob_state ref -> ('a, Path.t list) t
+    | Paths_glob : glob_state ref -> ('a, Path.Set.t) t
     (* The reference gets decided in Build_interpret.deps *)
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
@@ -55,7 +55,7 @@ module Repr = struct
 
   and glob_state =
     | G_unevaluated of Loc.t * Path.t * Re.re
-    | G_evaluated   of Path.t list
+    | G_evaluated   of Path.Set.t
 
   let get_if_file_exists_exn state =
     match !state with

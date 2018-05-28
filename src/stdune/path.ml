@@ -839,7 +839,7 @@ let mkdir_p = function
   | In_build_dir k ->
     Kind.mkdir_p (Kind.append_local (Lazy.force build_dir_kind) k)
 
-let compare_val x y =
+let compare x y =
   match x, y with
   | External x      , External y       -> External.compare_val x y
   | External _      , _                -> Lt

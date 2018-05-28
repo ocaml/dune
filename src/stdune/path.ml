@@ -132,7 +132,7 @@ module Local : sig
   val mkdir_p : t -> unit
   val descendant : t -> of_:t -> t option
   val is_descendant : t -> of_:t -> bool
-  val reach : t -> from:t -> t
+  val reach : t -> from:t -> string
   val basename : t -> string
   val extend_basename : t -> suffix:string -> t
   module Set : Set.S with type elt = t
@@ -330,11 +330,9 @@ end = struct
       | a :: t, b :: from when a = b ->
         loop t from
       | _ ->
-        make (
-          match List.fold_left from ~init:t ~f:(fun acc _ -> ".." :: acc) with
-          | [] -> "."
-          | l -> (String.concat l ~sep:"/")
-        )
+        match List.fold_left from ~init:t ~f:(fun acc _ -> ".." :: acc) with
+        | [] -> "."
+        | l -> (String.concat l ~sep:"/")
     in
     loop (to_list t) (to_list from)
 
@@ -376,7 +374,7 @@ end = struct
   end
 end
 
-let (_abs_root, set_root) =
+let (abs_root, set_root) =
   let root_dir = ref None in
   let set_root new_root =
     match !root_dir with
@@ -521,7 +519,18 @@ let is_managed = function
   | In_source_tree _ -> true
   | External _ -> false
 
-let to_string t = Kind.to_string (kind t)
+let to_string t =
+  match t with
+  | In_source_tree p -> Local.to_string p
+  | External       p -> External.to_string p
+  | In_build_dir   p ->
+    match Lazy.force build_dir_kind with
+    | Local    b -> Local.to_string (Local.append b p)
+    | External b ->
+      if Local.is_root p then
+        External.to_string b
+      else
+        Filename.concat (External.to_string b) (Local.to_string p)
 
 let to_string_maybe_quoted t =
   String.maybe_quoted (to_string t)
@@ -587,28 +596,38 @@ let absolute fn =
 
 let to_absolute_filename t ~root = Kind.to_absolute_filename (kind t) ~root
 
+let external_of_local x ~root =
+  External.to_string (External.relative root (Local.to_string x))
+
+let external_of_in_source_tree x =
+  external_of_local x ~root:(Lazy.force abs_root)
+
 let reach t ~from =
-  match kind t, kind from with
+  match t, from with
   | External t, _ -> External.to_string t
-  | (Local _) as l, External _ ->
-    Kind.to_absolute_filename l ~root:External.initial_cwd
-  | Local t, Local from -> Local.to_string (Local.reach t ~from)
+  | In_source_tree t, In_source_tree from
+  | In_build_dir   t, In_build_dir   from -> Local.reach t ~from
+  | In_source_tree t, In_build_dir from -> begin
+      match Lazy.force build_dir_kind with
+      | Local    b -> Local.reach t ~from:(Local.append b from)
+      | External _ -> external_of_in_source_tree t
+    end
+  | In_build_dir t, In_source_tree from -> begin
+      match Lazy.force build_dir_kind with
+      | Local    b -> Local.reach (Local.append b t) ~from
+      | External b -> external_of_local t ~root:b
+    end
+  | In_source_tree t, External _ -> external_of_in_source_tree t
+  | In_build_dir t, External _ ->
+    match Lazy.force build_dir_kind with
+    | Local    b -> external_of_in_source_tree (Local.append b t)
+    | External b -> external_of_local t ~root:b
 
 let reach_for_running ?(from=root) t =
-  match kind t, kind from with
-  | External t, _ -> External.to_string t
-  | Local _, External _ ->
-    Exn.code_error "Path.reach_for_running called with invalid combination"
-      [ "t"   , sexp_of_t t
-      ; "from", sexp_of_t from
-      ]
-  | Local t, Local from ->
-    let reach = Local.reach t ~from in
-    let s = Local.to_string reach in
-    if String.is_prefix s ~prefix:"../" then
-      s
-    else
-      "./" ^ s
+  let fn = reach t ~from in
+  match Filename.analyze_program_name fn with
+  | In_path -> "./" ^ fn
+  | _       -> fn
 
 let descendant t ~of_ =
   match kind t, kind of_ with

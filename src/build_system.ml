@@ -1333,7 +1333,7 @@ end
 module Rule_set = Set.Make(Rule)
 
 let rules_for_files rules paths =
-  List.fold_left paths ~init:Rule_set.empty ~f:(fun acc path ->
+  Path.Set.fold paths ~init:Rule_set.empty ~f:(fun path acc ->
     match Path.Map.find rules path with
     | None -> acc
     | Some rule -> Rule_set.add acc rule)
@@ -1402,10 +1402,10 @@ let build_rules_internal ?(recursive=false) t ~request =
   in
   match
     Rule.Id.Top_closure.top_closure
-      (rules_for_files rules (Path.Set.to_list !targets))
+      (rules_for_files rules !targets)
       ~key:(fun (r : Rule.t) -> r.id)
       ~deps:(fun (r : Rule.t) ->
-        rules_for_files rules (Path.Set.to_list r.deps))
+        rules_for_files rules r.deps)
   with
   | Ok l -> l
   | Error cycle ->

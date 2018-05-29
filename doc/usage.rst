@@ -188,8 +188,9 @@ with locally defined libraries loaded.
 
 Where ``<dir>`` is a directory containing a ``jbuild`` file defining all the
 libraries that will be loaded (using the ``library`` stanza). ``<args>`` will be
-passed as arguments to the utop command itself. For example, to launch it in
-emacs mode.
+passed as arguments to the utop command itself. For example, ``jbuilder utop lib
+-- -implicit-bindings`` will start ``utop`` with the libraries defined in
+``lib`` and implicit bindings for toplevel expressions.
 
 Requirements & Limitations
 --------------------------

@@ -1420,6 +1420,7 @@ let default =
 
 let () =
   Colors.setup_err_formatter_colors ();
+  at_exit (fun () -> Report_error.flush ());
   try
     match Term.eval_choice default all ~catch:false with
     | `Error _ -> exit 1

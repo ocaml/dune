@@ -11,3 +11,4 @@ let debug_backtraces = ref false
 let diff_command = ref None
 let auto_promote = ref false
 let force = ref false
+let show_errors_at_end = ref false

@@ -38,3 +38,6 @@ val auto_promote : bool ref
 
 (** Force re-running actions associated to aliases *)
 val force : bool ref
+
+(** Report errors in a deterministic order *)
+val show_errors_at_end : bool ref

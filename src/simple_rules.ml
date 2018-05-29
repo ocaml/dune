@@ -70,32 +70,45 @@ let add_alias sctx ~dir ~name ~stamp ?(locks=[]) build =
   SC.add_alias_action sctx alias ~locks ~stamp build
 
 let alias sctx ~dir ~scope (alias_conf : Alias_conf.t) =
-  let stamp =
-    let module S = Sexp.To_sexp in
-    Sexp.List
-      [ Sexp.unsafe_atom_of_string "user-alias"
-      ; Jbuild.Bindings.sexp_of_t Jbuild.Dep_conf.sexp_of_t alias_conf.deps
-      ; S.option Action.Unexpanded.sexp_of_t
-          (Option.map alias_conf.action ~f:snd)
-      ]
+  let enabled =
+    match alias_conf.enabled_if with
+    | None -> true
+    | Some blang ->
+      let f : String_with_vars.t Blang.expander =
+        { f = fun ~mode sw ->
+            ( String_with_vars.loc sw
+            , Super_context.expand_vars sctx ~scope ~mode ~dir sw
+            )
+        } in
+      Blang.eval_bool blang ~dir ~f
   in
-  add_alias sctx
-    ~dir
-    ~name:alias_conf.name
-    ~stamp
-    ~locks:(interpret_locks sctx ~dir ~scope alias_conf.locks)
-    (SC.Deps.interpret_named sctx ~scope ~dir alias_conf.deps
-     >>>
-     match alias_conf.action with
-     | None -> Build.progn []
-     | Some (loc, action) ->
-       SC.Action.run
-         sctx
-         action
-         ~loc
-         ~dir
-         ~dep_kind:Required
-         ~bindings:(Pform.Map.of_bindings alias_conf.deps)
-         ~targets:Alias
-         ~targets_dir:dir
-         ~scope)
+  if enabled then
+    let stamp =
+      let module S = Sexp.To_sexp in
+      Sexp.List
+        [ Sexp.unsafe_atom_of_string "user-alias"
+        ; Jbuild.Bindings.sexp_of_t Jbuild.Dep_conf.sexp_of_t alias_conf.deps
+        ; S.option Action.Unexpanded.sexp_of_t
+            (Option.map alias_conf.action ~f:snd)
+        ]
+    in
+    add_alias sctx
+      ~dir
+      ~name:alias_conf.name
+      ~stamp
+      ~locks:(interpret_locks sctx ~dir ~scope alias_conf.locks)
+      (SC.Deps.interpret_named sctx ~scope ~dir alias_conf.deps
+       >>>
+       match alias_conf.action with
+       | None -> Build.progn []
+       | Some (loc, action) ->
+         SC.Action.run
+           sctx
+           action
+           ~loc
+           ~dir
+           ~dep_kind:Required
+           ~bindings:(Pform.Map.of_bindings alias_conf.deps)
+           ~targets:Alias
+           ~targets_dir:dir
+           ~scope)

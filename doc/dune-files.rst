@@ -569,6 +569,10 @@ The syntax is as follows:
 - ``(locks (<lock-names>))`` specify that the action must be run while
   holding the following locks. See the `Locks`_ section for more details.
 
+- ``(enabled_if <blang expression>)`` specifies the boolean condition that must
+  be true for the tests to run. The condition is specified using the blang_, and
+  the field allows for variables_ to appear in the expressions.
+
 The typical use of the ``alias`` stanza is to define tests:
 
 .. code:: scheme
@@ -823,6 +827,36 @@ doesn't start by `-`, you can simply quote it: ``("x" y z)``.
 
 Most fields using the ordered set language also support `Variables expansion`_.
 Variables are expanded after the set language is interpreted.
+
+.. _blang:
+
+Boolean Language
+----------------
+
+The boolean language allows the user to define simple boolean expressions that
+dune can evaluate. Here's a semi formal specification of the language:
+
+.. code::
+
+   op := '=' | '<' | '>' | '<>' | '>=' | '<='
+
+   expr := (and <expr>+)
+         | (or <expr>+)
+         | (<op> <template> <template>)
+         | <template>
+
+After an expression is evaluated, it must be exactly the string ``true`` or
+``false`` to be considered as a boolean. Any other value will be treated as an
+error.
+
+Here's a simple example of a condition that expresses running on OSX and having
+an flambda compiler with the help of variable expansion:
+
+.. code:: scheme
+
+   (and %{ocamlc-config:flambda} (= %{ocamlc-config:system} macosx))
+
+.. _variables:
 
 Variables expansion
 -------------------

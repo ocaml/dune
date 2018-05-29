@@ -1352,6 +1352,46 @@ module Alias_conf = struct
          })
 end
 
+module Tests = struct
+  type t =
+    { exes    : Executables.t
+    ; aliases : Alias_conf.t list
+    }
+
+  let t =
+    record
+      (Buildable.t >>= fun buildable ->
+       field_oslu "link_flags"                             >>= fun link_flags ->
+       field "names" (list (located string))               >>= fun names ->
+       field "deps" (list Dep_conf.t) ~default:[]          >>= fun deps ->
+       field_o "package" Pkg.t                             >>= fun package ->
+       field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
+       field "modes" Executables.Link_mode.Set.t
+         ~default:Executables.Link_mode.Set.default >>= fun modes ->
+       return
+         { exes =
+             { Executables.
+               link_flags
+             ; link_deps = []
+             ; modes
+             ; buildable
+             ; names
+             }
+         ; aliases = List.map names ~f:(fun (loc, name) ->
+             { Alias_conf.
+               name = "runtest"
+             ; locks
+             ; package
+             ; deps =
+                 Dep_conf.File (String_with_vars.make loc (name ^ ".exe"))::deps
+             ; action =
+                 Some (loc, Action.Unexpanded.Run
+                              (String_with_vars.make loc "${<}", []))
+             }
+           )
+         })
+end
+
 module Copy_files = struct
   type t = { add_line_directive : bool
            ; glob : String_with_vars.t
@@ -1483,6 +1523,8 @@ module Stanzas = struct
     ; "jbuild_version",
       (Syntax.deleted_in Stanza.syntax (1, 0) >>= fun () ->
        Jbuild_version.t >>| fun _ -> [])
+    ; "tests", (Tests.t >>| fun t ->
+               Executables t.exes::(List.map t.aliases ~f:(fun x -> Alias x)))
     ; "env",
       (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
        loc >>= fun loc ->

@@ -46,5 +46,5 @@ module Make(Keys : Keys) = struct
     | Error elts -> Error elts
 end
 
-module Int    = Make(Int_set)
-module String = Make(String_set)
+module Int    = Make(Int.Set)
+module String = Make(String.Set)

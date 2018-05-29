@@ -30,7 +30,7 @@ struct
   let rec t sexp =
     let path = Path.t and string = String.t in
     sum
-      [ cstr_rest "run" (Program.t @> nil) string (fun prog args -> Run (prog, args))
+      [ cstr "run" (Program.t @> rest string) (fun prog args -> Run (prog, args))
       ; cstr "chdir"    (path @> t @> nil)        (fun dn t -> Chdir (dn, t))
       ; cstr "setenv"   (string @> string @> t @> nil)   (fun k v t -> Setenv (k, v, t))
       ; cstr "with-stdout-to"  (path @> t @> nil) (fun fn t -> Redirect (Stdout, fn, t))
@@ -39,7 +39,7 @@ struct
       ; cstr "ignore-stdout"   (t @> nil)      (fun t -> Ignore (Stdout, t))
       ; cstr "ignore-stderr"   (t @> nil)      (fun t -> Ignore (Stderr, t))
       ; cstr "ignore-outputs"  (t @> nil)      (fun t -> Ignore (Outputs, t))
-      ; cstr_rest "progn"      nil t         (fun l -> Progn l)
+      ; cstr "progn"           (rest t)        (fun l -> Progn l)
       ; cstr "echo"           (string @> nil)         (fun x -> Echo x)
       ; cstr "cat"            (path @> nil)         (fun x -> Cat x)
       ; cstr "copy" (path @> path @> nil)              (fun src dst -> Copy (src, dst))
@@ -49,7 +49,7 @@ struct
       *)
       ; cstr "copy#" (path @> path @> nil) (fun src dst ->
           Copy_and_add_line_directive (src, dst))
-      ; cstr_loc "copy-and-add-line-directive" (path @> path @> nil) (fun loc src dst ->
+      ; cstr "copy-and-add-line-directive" (cstr_loc (path @> path @> nil)) (fun loc src dst ->
           Loc.warn loc "copy-and-add-line-directive is deprecated, use copy# instead";
           Copy_and_add_line_directive (src, dst))
       ; cstr "copy#" (path @> path @> nil) (fun src dst ->
@@ -106,6 +106,13 @@ struct
       List [Sexp.unsafe_atom_of_string "diff"; path file1; path file2]
     | Diff { optional = true; file1; file2 } ->
       List [Sexp.unsafe_atom_of_string "diff?"; path file1; path file2]
+    | Merge_files_into (srcs, extras, target) ->
+      List
+        [ Sexp.unsafe_atom_of_string "merge-files-into"
+        ; List (List.map ~f:path srcs)
+        ; List (List.map ~f:string extras)
+        ; path target
+        ]
 
   let run prog args = Run (prog, args)
   let chdir path t = Chdir (path, t)
@@ -165,6 +172,11 @@ module Make_mapper
     | Digest_files x -> Digest_files (List.map x ~f:(f_path ~dir))
     | Diff { optional; file1; file2 } ->
       Diff { optional; file1 = f_path ~dir file1; file2 = f_path ~dir file2 }
+    | Merge_files_into (sources, extras, target) ->
+      Merge_files_into
+        (List.map sources ~f:(f_path ~dir),
+         List.map extras ~f:(f_string ~dir),
+         f_path ~dir target)
 end
 
 module Prog = struct
@@ -449,6 +461,11 @@ module Unexpanded = struct
              ; file1 = E.path ~dir ~f file1
              ; file2 = E.path ~dir ~f file2
              }
+      | Merge_files_into (sources, extras, target) ->
+        Merge_files_into
+          (List.map ~f:(E.path ~dir ~f) sources,
+           List.map ~f:(E.string ~dir ~f) extras,
+           E.path ~dir ~f target)
   end
 
   module E = struct
@@ -548,6 +565,11 @@ module Unexpanded = struct
            ; file1 = E.path ~dir ~f file1
            ; file2 = E.path ~dir ~f file2
            }
+    | Merge_files_into (sources, extras, target) ->
+      Merge_files_into
+        (List.map sources ~f:(E.path ~dir ~f),
+         List.map extras ~f:(E.string ~dir ~f),
+         E.path ~dir ~f target)
 end
 
 let fold_one_step t ~init:acc ~f =
@@ -570,7 +592,8 @@ let fold_one_step t ~init:acc ~f =
   | Remove_tree _
   | Mkdir _
   | Digest_files _
-  | Diff _ -> acc
+  | Diff _
+  | Merge_files_into _ -> acc
 
 include Make_mapper(Ast)(Ast)
 
@@ -589,7 +612,10 @@ open Fiber.O
 
 let get_std_output : _ -> Process.std_output_to = function
   | None          -> Terminal
-  | Some (fn, oc) -> Opened_file { filename = fn; tail = false; desc = Channel oc }
+  | Some (fn, oc) ->
+    Opened_file { filename = fn
+                ; tail = false
+                ; desc = Channel oc }
 
 module Promotion = struct
   module File = struct
@@ -618,17 +644,15 @@ module Promotion = struct
       Format.eprintf "Promoting %s to %s.@."
         (Path.to_string_maybe_quoted src)
         (Path.to_string_maybe_quoted dst);
-      Io.copy_file
-        ~src:(Path.to_string src)
-        ~dst:(Path.to_string dst)
+      Io.copy_file ~src ~dst
   end
 
-  let db_file = "_build/.to-promote"
+  let db_file = Path.relative Path.build_dir ".to-promote"
 
   let dump_db db =
-    if Sys.file_exists "_build" then begin
+    if Path.build_dir_exists () then begin
       match db with
-      | [] -> if Sys.file_exists db_file then Sys.remove db_file
+      | [] -> if Path.exists db_file then Path.unlink_no_err db_file
       | l ->
         Io.write_file db_file
           (String.concat ~sep:""
@@ -636,8 +660,8 @@ module Promotion = struct
     end
 
   let load_db () =
-    if Sys.file_exists db_file then
-      Sexp.load ~fname:db_file ~mode:Many
+    if Path.exists db_file then
+      Io.Sexp.load db_file ~mode:Many
       |> List.map ~f:File.t
     else
       []
@@ -705,19 +729,19 @@ let exec_run_direct ~ectx ~dir ~env ~stdout_to ~stderr_to prog args =
    | Some { Context.for_host = None; _ } -> ()
    | Some ({ Context.for_host = Some host; _ } as target) ->
      let invalid_prefix prefix =
-       match Path.descendant prog ~of_:(Path.of_string prefix) with
+       match Path.descendant prog ~of_:prefix with
        | None -> ()
        | Some _ ->
          die "Context %s has a host %s.@.It's not possible to execute binary %a \
               in it.@.@.This is a bug and should be reported upstream."
            target.name host.name Path.pp prog in
-     invalid_prefix ("_build/" ^ target.name);
-     invalid_prefix ("_build/install/" ^ target.name);
+     invalid_prefix (Path.relative Path.build_dir target.name);
+     invalid_prefix (Path.relative Path.build_dir ("install/" ^ target.name));
   end;
-  Process.run Strict ~dir:(Path.to_string dir) ~env
+  Process.run Strict ~dir ~env
     ~stdout_to ~stderr_to
     ~purpose:ectx.purpose
-    (Path.reach_for_running ~from:dir prog) args
+    prog args
 
 let exec_run ~stdout_to ~stderr_to =
   let stdout_to = get_std_output stdout_to in
@@ -742,10 +766,10 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     exec t ~ectx ~dir ~stdout_to ~stderr_to
       ~env:(Env.add env ~var ~value)
   | Redirect (Stdout, fn, Echo s) ->
-    Io.write_file (Path.to_string fn) s;
+    Io.write_file fn s;
     Fiber.return ()
   | Redirect (outputs, fn, Run (Ok prog, args)) ->
-    let out = Process.File (Path.to_string fn) in
+    let out = Process.File fn in
     let stdout_to, stderr_to =
       match outputs with
       | Stdout -> (out, get_std_output stderr_to)
@@ -761,7 +785,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to
   | Echo str -> exec_echo stdout_to str
   | Cat fn ->
-    Io.with_file_in (Path.to_string fn) ~f:(fun ic ->
+    Io.with_file_in fn ~f:(fun ic ->
       let oc =
         match stdout_to with
         | None -> stdout
@@ -770,17 +794,16 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       Io.copy_channels ic oc);
     Fiber.return ()
   | Copy (src, dst) ->
-    Io.copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst);
+    Io.copy_file ~src ~dst;
     Fiber.return ()
   | Symlink (src, dst) ->
     if Sys.win32 then
-      Io.copy_file ~src:(Path.to_string src) ~dst:(Path.to_string dst)
+      Io.copy_file ~src ~dst
     else begin
       let src =
-        if Path.is_root dst then
-          Path.to_string src
-        else
-          Path.reach ~from:(Path.parent dst) src
+        match Path.parent dst with
+        | None -> Path.to_string src
+        | Some from -> Path.reach ~from src
       in
       let dst = Path.to_string dst in
       match Unix.readlink dst with
@@ -795,8 +818,8 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     end;
     Fiber.return ()
   | Copy_and_add_line_directive (src, dst) ->
-    Io.with_file_in (Path.to_string src) ~f:(fun ic ->
-      Io.with_file_out (Path.to_string dst) ~f:(fun oc ->
+    Io.with_file_in src ~f:(fun ic ->
+      Io.with_file_out dst ~f:(fun oc ->
         let fn = Path.drop_optional_build_context src in
         let directive =
           if List.mem (Path.extension fn) ~set:[".c"; ".cpp"; ".h"] then
@@ -817,7 +840,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       (Utils.bash_exn ~needed_to:"interpret (bash ...) actions")
       ["-e"; "-u"; "-o"; "pipefail"; "-c"; cmd]
   | Write_file (fn, s) ->
-    Io.write_file (Path.to_string fn) s;
+    Io.write_file fn s;
     Fiber.return ()
   | Rename (src, dst) ->
     Unix.rename (Path.to_string src) (Path.to_string dst);
@@ -829,7 +852,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     (match Path.kind path with
      | External _ ->
        (* Internally we make sure never to do that, and [Unexpanded.*expand] check that *)
-       Sexp.code_error
+       Exn.code_error
          "(mkdir ...) is not supported for paths outside of the workspace"
          [ "mkdir", Path.sexp_of_t path ]
      | Local path ->
@@ -847,7 +870,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     exec_echo stdout_to s
   | Diff { optional; file1; file2 } ->
     if (optional && not (Path.exists file1 && Path.exists file2)) ||
-       Io.compare_files (Path.to_string file1) (Path.to_string file2) = Eq then
+       Io.compare_files file1 file2 = Eq then
       Fiber.return ()
     else begin
       let is_copied_from_source_tree file =
@@ -864,9 +887,21 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       end;
       Print_diff.print file1 file2
     end
+  | Merge_files_into (sources, extras, target) ->
+    let lines =
+      List.fold_left
+        ~init:(String.Set.of_list extras)
+        ~f:(fun set source_path ->
+          Io.lines_of_file source_path
+          |> String.Set.of_list
+          |> String.Set.union set
+        )
+        sources
+    in
+    Io.write_lines target (String.Set.to_list lines);
+    Fiber.return ()
 
 and redirect outputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to =
-  let fn = Path.to_string fn in
   let oc = Io.open_out fn in
   let out = Some (fn, oc) in
   let stdout_to, stderr_to =
@@ -894,7 +929,6 @@ let exec ~targets ~context t =
     | None   -> Env.initial
     | Some c -> c.env
   in
-  let targets = Path.Set.to_list targets in
   let purpose = Process.Build_job targets in
   let ectx = { purpose; context } in
   exec t ~ectx ~dir:Path.root ~env ~stdout_to:None ~stderr_to:None
@@ -919,11 +953,10 @@ let sandbox t ~sandboxed ~deps ~targets =
     ]
 
 module Infer = struct
-  module S = Path.Set
   module Outcome = struct
     type t =
-      { deps    : S.t
-      ; targets : S.t
+      { deps    : Path.Set.t
+      ; targets : Path.Set.t
       }
   end
   open Outcome
@@ -980,6 +1013,8 @@ module Infer = struct
       | Digest_files l -> List.fold_left l ~init:acc ~f:(+<)
       | Diff { optional; file1; file2 } ->
         if optional then acc else acc +< file1 +< file2
+      | Merge_files_into (sources, _extras, target) ->
+        List.fold_left sources ~init:acc ~f:(+<) +@ target
       | Echo _
       | System _
       | Bash _
@@ -1000,43 +1035,43 @@ module Infer = struct
       { deps = Pset.diff deps targets; targets }
   end [@@inline always]
 
-  include Make(Ast)(S)(Outcome)(struct
-      let ( +@ ) acc fn = { acc with targets = S.add acc.targets fn }
-      let ( +< ) acc fn = { acc with deps    = S.add acc.deps    fn }
+  include Make(Ast)(Path.Set)(Outcome)(struct
+      let ( +@ ) acc fn = { acc with targets = Path.Set.add acc.targets fn }
+      let ( +< ) acc fn = { acc with deps    = Path.Set.add acc.deps    fn }
       let ( +<! ) acc prog =
         match prog with
         | Ok p -> acc +< p
         | Error _ -> acc
     end)
 
-  module Partial = Make(Unexpanded.Partial.Past)(S)(Outcome)(struct
+  module Partial = Make(Unexpanded.Partial.Past)(Path.Set)(Outcome)(struct
       let ( +@ ) acc fn =
         match fn with
-        | Left  fn -> { acc with targets = S.add acc.targets fn }
+        | Left  fn -> { acc with targets = Path.Set.add acc.targets fn }
         | Right _  -> acc
       let ( +< ) acc fn =
         match fn with
-        | Left  fn -> { acc with deps    = S.add acc.deps fn }
+        | Left  fn -> { acc with deps    = Path.Set.add acc.deps fn }
         | Right _  -> acc
       let ( +<! ) acc fn =
         match (fn : Unexpanded.Partial.program) with
-        | Left  (This fn) -> { acc with deps = S.add acc.deps fn }
+        | Left  (This fn) -> { acc with deps = Path.Set.add acc.deps fn }
         | Left  (Search _) | Right _ -> acc
     end)
 
-  module Partial_with_all_targets = Make(Unexpanded.Partial.Past)(S)(Outcome)(struct
+  module Partial_with_all_targets = Make(Unexpanded.Partial.Past)(Path.Set)(Outcome)(struct
       let ( +@ ) acc fn =
         match fn with
-        | Left  fn -> { acc with targets = S.add acc.targets fn }
+        | Left  fn -> { acc with targets = Path.Set.add acc.targets fn }
         | Right sw ->
           Loc.fail (SW.loc sw) "Cannot determine this target statically."
       let ( +< ) acc fn =
         match fn with
-        | Left  fn -> { acc with deps    = S.add acc.deps fn }
+        | Left  fn -> { acc with deps    = Path.Set.add acc.deps fn }
         | Right _  -> acc
       let ( +<! ) acc fn =
         match (fn : Unexpanded.Partial.program) with
-        | Left  (This fn) -> { acc with deps = S.add acc.deps fn }
+        | Left  (This fn) -> { acc with deps = Path.Set.add acc.deps fn }
         | Left  (Search _) | Right _ -> acc
     end)
 
@@ -1061,7 +1096,11 @@ module Infer = struct
 
   module Unexp = Make(Unexpanded.Uast)(S_unexp)(Outcome_unexp)(struct
       open Outcome_unexp
-      let ( +@ ) acc fn = { acc with targets = fn :: acc.targets }
+      let ( +@ ) acc fn =
+        if SW.is_var fn ~name:"null" then
+          acc
+        else
+          { acc with targets = fn :: acc.targets }
       let ( +< ) acc _ = acc
       let ( +<! )= ( +< )
     end)

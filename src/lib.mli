@@ -38,7 +38,7 @@ module Status : sig
   type t =
     | Installed
     | Public  of Package.t
-    | Private of Jbuild.Scope_info.Name.t
+    | Private of Dune_project.Name.t
 
   val pp : t Fmt.t
 end
@@ -336,7 +336,7 @@ end with type lib := t
 (** {1 Dependencies for META files} *)
 
 module Meta : sig
-  val requires                               : t -> String_set.t
-  val ppx_runtime_deps                       : t -> String_set.t
-  val ppx_runtime_deps_for_deprecated_method : t -> String_set.t
+  val requires                               : t -> String.Set.t
+  val ppx_runtime_deps                       : t -> String.Set.t
+  val ppx_runtime_deps_for_deprecated_method : t -> String.Set.t
 end

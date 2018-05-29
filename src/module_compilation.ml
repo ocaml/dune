@@ -2,6 +2,7 @@ open Import
 open Build.O
 open! No_io
 
+module CC = Compilation_context
 module SC = Super_context
 
 module Target : sig
@@ -18,9 +19,11 @@ end = struct
   let file dir t = Path.append dir t
 end
 
-let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
-      ~includes ~dir ~obj_dir ~alias_module (m : Module.t) =
-  let ctx = SC.context sctx in
+let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
+  let sctx     = CC.super_context cctx in
+  let dir      = CC.dir           cctx in
+  let obj_dir  = CC.obj_dir       cctx in
+  let ctx      = SC.context       sctx in
   Option.iter (Mode.of_cm_kind cm_kind |> Context.compiler ctx) ~f:(fun compiler ->
     Option.iter (Module.cm_source ~dir m cm_kind) ~f:(fun src ->
       let ml_kind = Cm_kind.source cm_kind in
@@ -70,13 +73,13 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
           let fn = Option.value_exn (Target.cmt m ml_kind) in
           (fn :: other_targets, A "-bin-annot")
       in
-      let extra_targets = List.map other_targets ~f:(Target.file obj_dir) in
+      let hidden_targets = List.map other_targets ~f:(Target.file obj_dir) in
       if obj_dir <> dir then begin
         (* Symlink the object files in the original directory for
            backward compatibility *)
         let old_dst = Module.cm_file_unsafe m ~obj_dir:dir cm_kind in
         SC.add_rule sctx (Build.symlink ~src:dst ~dst:old_dst) ;
-        List.iter2 extra_targets other_targets ~f:(fun in_obj_dir target ->
+        List.iter2 hidden_targets other_targets ~f:(fun in_obj_dir target ->
           let in_dir = Target.file dir target in
           SC.add_rule sctx (Build.symlink ~src:in_obj_dir ~dst:in_dir))
       end;
@@ -89,69 +92,74 @@ let build_cm sctx ?sandbox ~dynlink ~flags ~cm_kind ~dep_graphs
       SC.add_rule sctx ?sandbox
         (Build.paths extra_deps >>>
          other_cm_files >>>
-         Ocaml_flags.get_for_cm flags ~cm_kind >>>
+         Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind >>>
          Build.run ~context:ctx (Ok compiler)
-           ~extra_targets
            [ Dyn (fun ocaml_flags -> As ocaml_flags)
            ; cmt_args
            ; A "-I"; Path obj_dir
-           ; includes
+           ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
            ; As extra_args
            ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"
            ; A "-no-alias-deps"; opaque
-           ; (match alias_module with
+           ; (match CC.alias_module cctx with
               | None -> S []
               | Some (m : Module.t) ->
                 As ["-open"; Module.Name.to_string m.name])
            ; A "-o"; Target dst
            ; A "-c"; Ml_kind.flag ml_kind; Dep src
+           ; Hidden_targets hidden_targets
            ])))
 
-let build_module sctx ?sandbox ~dynlink ~js_of_ocaml ~flags m ~scope ~dir
-      ~obj_dir ~dep_graphs ~includes ~alias_module =
+let build_module ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx m =
   List.iter Cm_kind.all ~f:(fun cm_kind ->
-    let includes = Cm_kind.Dict.get includes cm_kind in
-    build_cm sctx ?sandbox ~dynlink ~flags ~dir ~obj_dir ~dep_graphs m ~cm_kind
-      ~includes ~alias_module);
-  (* Build *.cmo.js *)
-  let src = Module.cm_file_unsafe m ~obj_dir Cm_kind.Cmo in
-  let target =
-    Path.extend_basename (Module.cm_file_unsafe m ~obj_dir:dir Cm_kind.Cmo)
-      ~suffix:".js"
-  in
-  SC.add_rules sctx
-    (Js_of_ocaml_rules.build_cm sctx ~scope ~dir ~js_of_ocaml ~src ~target)
+    build_cm cctx m ?sandbox ?dynlink ~dep_graphs ~cm_kind);
+  Option.iter js_of_ocaml ~f:(fun js_of_ocaml ->
+    (* Build *.cmo.js *)
+    let sctx     = CC.super_context cctx in
+    let scope    = CC.scope         cctx in
+    let dir      = CC.dir           cctx in
+    let obj_dir  = CC.obj_dir       cctx in
+    let src = Module.cm_file_unsafe m ~obj_dir Cm_kind.Cmo in
+    let target =
+      Path.extend_basename (Module.cm_file_unsafe m ~obj_dir:dir Cm_kind.Cmo)
+        ~suffix:".js"
+    in
+    SC.add_rules sctx
+      (Js_of_ocaml_rules.build_cm sctx ~scope ~dir ~js_of_ocaml ~src ~target))
 
-let build_modules sctx ~dynlink ~js_of_ocaml ~flags ~scope ~dir ~obj_dir
-      ~dep_graphs ~modules ~requires ~alias_module =
-  let includes : _ Cm_kind.Dict.t =
-    match requires with
-    | Error exn -> Cm_kind.Dict.make_all (Arg_spec.Dyn (fun _ -> raise exn))
-    | Ok libs ->
-      let iflags =
-        Lib.L.include_flags libs ~stdlib_dir:(SC.context sctx).stdlib_dir
-      in
-      let cmi_includes =
-        Arg_spec.S [ iflags
-                   ; Hidden_deps
-                       (SC.Libs.file_deps sctx libs ~ext:".cmi")
-                   ]
-      in
-      let cmi_and_cmx_includes =
-        Arg_spec.S [ iflags
-                   ; Hidden_deps
-                       (SC.Libs.file_deps sctx libs ~ext:".cmi-and-.cmx")
-                   ]
-      in
-      { cmi = cmi_includes
-      ; cmo = cmi_includes
-      ; cmx = cmi_and_cmx_includes
-      }
-  in
+let build_modules ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx =
   Module.Name.Map.iter
-    (match alias_module with
-     | None -> modules
-     | Some (m : Module.t) -> Module.Name.Map.remove modules m.name)
-    ~f:(fun m ->
-      build_module sctx m ~dynlink ~js_of_ocaml ~flags ~scope ~dir ~obj_dir
-        ~dep_graphs ~includes ~alias_module)
+    (match CC.alias_module cctx with
+     | None -> CC.modules cctx
+     | Some (m : Module.t) -> Module.Name.Map.remove (CC.modules cctx) m.name)
+    ~f:(build_module cctx ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs)
+
+let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
+  let sctx     = CC.super_context cctx in
+  let dir      = CC.dir           cctx in
+  let obj_dir  = CC.obj_dir       cctx in
+  let ctx      = SC.context       sctx in
+  let src = Option.value_exn (Module.file ~dir m Impl) in
+  let dep_graph = Ml_kind.Dict.get dep_graphs Impl in
+  let cm_deps =
+    Build.dyn_paths
+      (Ocamldep.Dep_graph.deps_of dep_graph m >>^ fun deps ->
+       List.concat_map deps
+         ~f:(fun m -> [Module.cm_file_unsafe m ~obj_dir Cmi]))
+  in
+  SC.add_rule sctx ?sandbox
+    (cm_deps >>>
+     Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo >>>
+     Build.run ~context:ctx (Ok ctx.ocamlc)
+       [ Dyn (fun ocaml_flags -> As ocaml_flags)
+       ; A "-I"; Path obj_dir
+       ; Cm_kind.Dict.get (CC.includes cctx) Cmo
+       ; (match CC.alias_module cctx with
+          | None -> S []
+          | Some (m : Module.t) ->
+            As ["-open"; Module.Name.to_string m.name])
+       ; As flags
+       ; A "-i"; Ml_kind.flag Impl; Dep src
+       ]
+     >>^ (fun act -> Action.with_stdout_to output act)
+     >>> Build.action_dyn () ~targets:[output])

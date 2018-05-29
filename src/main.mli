@@ -1,11 +1,9 @@
 open! Import
-open Jbuild
 
 type setup =
   { build_system : Build_system.t
-  ; (* Evaluated jbuilds per context names *)
-    stanzas      : (Path.t * Scope_info.t * Stanzas.t) list String_map.t
   ; contexts     : Context.t list
+  ; scontexts    : Super_context.t String_map.t
   ; packages     : Package.t Package.Name.Map.t
   ; file_tree    : File_tree.t
   ; env          : Env.t
@@ -20,11 +18,12 @@ val setup
   :  ?log:Log.t
   -> ?external_lib_deps_mode:bool
   -> ?workspace:Workspace.t
-  -> ?workspace_file:string
+  -> ?workspace_file:Path.t
   -> ?only_packages:Package.Name.Set.t
   -> ?x:string
   -> ?ignore_promoted_rules:bool
   -> ?capture_outputs:bool
+  -> ?profile:string
   -> unit
   -> setup Fiber.t
 val external_lib_deps
@@ -37,6 +36,9 @@ val find_context_exn : setup -> name:string -> Context.t
 
 (** Setup the environment *)
 val setup_env : capture_outputs:bool -> Env.t
+
+(** Set the concurrency level according to the user configuration *)
+val set_concurrency : ?log:Log.t -> Config.t -> unit Fiber.t
 
 (**/**)
 

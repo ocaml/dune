@@ -1,5 +1,0 @@
-(library
- ((name stdune)
-  (public_name jbuilder.stdune)
-  (synopsis "[Internal] Standard library of Dune")
-  (libraries (caml unix))))

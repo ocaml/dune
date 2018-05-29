@@ -1,5 +1,4 @@
 include Stdune
-include Jbuilder_re
 include Errors
 
 (* To make bug reports usable *)
@@ -10,18 +9,14 @@ let ksprintf = Printf.ksprintf
 
 let initial_cwd = Sys.getcwd ()
 
-module String_set = Set.Make(String)
 module String_map = struct
-  include Map.Make(String)
+  include String.Map
 
   let pp f fmt t =
     Format.pp_print_list (fun fmt (k, v) ->
       Format.fprintf fmt "@[<hov 2>(%s@ =@ %a)@]" k f v
     ) fmt (to_list t)
 end
-
-module Int_set = Set.Make(Int)
-module Int_map = Map.Make(Int)
 
 module Sys = struct
   include Sys
@@ -87,15 +82,6 @@ let hint name candidates =
     sprintf "\nHint: did you mean %s?" (mk_hint l)
 
 
-(* [maybe_quoted s] is [s] if [s] doesn't need escaping according to OCaml lexing
-   conventions and [sprintf "%S" s] otherwise. *)
-let maybe_quoted s =
-  let escaped = String.escaped s in
-  if s == escaped || s = escaped then
-    s
-  else
-    sprintf {|"%s"|} escaped
-
 (* Disable file operations to force to use the IO module *)
 let open_in      = `Use_Io
 let open_in_bin  = `Use_Io
@@ -108,59 +94,6 @@ let open_out_gen = `Use_Io
    Io manually *)
 module No_io = struct
   module Io = struct end
-end
-
-module Fmt = struct
-  (* CR-someday diml: we should define a GADT for this:
-
-     {[
-       type 'a t =
-         | Int : int t
-         | Box : ...
-         | Colored : ...
-     ]}
-
-     This way we could separate the creation of messages from the
-     actual rendering.
-  *)
-  type 'a t = Format.formatter -> 'a -> unit
-
-  let kstrf f fmt =
-    let buf = Buffer.create 17 in
-    let f fmt = Format.pp_print_flush fmt () ; f (Buffer.contents buf) in
-    Format.kfprintf f (Format.formatter_of_buffer buf) fmt
-
-  let failwith fmt = kstrf failwith fmt
-
-  let list = Format.pp_print_list
-  let string s ppf = Format.pp_print_string ppf s
-
-  let nl = Format.pp_print_newline
-
-  let prefix f g ppf x = f ppf; g ppf x
-
-  let ocaml_list pp fmt = function
-    | [] -> Format.pp_print_string fmt "[]"
-    | l ->
-      Format.fprintf fmt "@[<hv>[ %a@ ]@]"
-        (list ~pp_sep:(fun fmt () -> Format.fprintf fmt "@,; ")
-           pp) l
-
-  let quoted fmt = Format.fprintf fmt "%S"
-
-  let const
-    : 'a t -> 'a -> unit t
-    = fun pp a' fmt () -> pp fmt a'
-
-  let record fmt = function
-    | [] -> Format.pp_print_string fmt "{}"
-    | xs ->
-      let pp fmt (field, pp) =
-        Format.fprintf fmt "@[<hov 1>%s@ =@ %a@]"
-          field pp () in
-      let pp_sep fmt () = Format.fprintf fmt "@,; " in
-      Format.fprintf fmt "@[<hv>{ %a@ }@]"
-        (Format.pp_print_list ~pp_sep pp) xs
 end
 
 (* This is ugly *)

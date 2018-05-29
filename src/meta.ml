@@ -134,7 +134,7 @@ module Simplified = struct
 
   type t =
     { name : string
-    ; vars : Rules.t String_map.t
+    ; vars : Rules.t String.Map.t
     ; subs : t list
     }
 
@@ -150,7 +150,7 @@ let rec simplify t =
   List.fold_right t.entries
     ~init:
       { name = t.name
-      ; vars = String_map.empty
+      ; vars = String.Map.empty
       ; subs = []
       }
     ~f:(fun entry (pkg : Simplified.t) ->
@@ -160,7 +160,7 @@ let rec simplify t =
         { pkg with subs = simplify sub :: pkg.subs }
       | Rule rule ->
         let rules =
-          Option.value (String_map.find pkg.vars rule.var)
+          Option.value (String.Map.find pkg.vars rule.var)
             ~default:{ set_rules = []; add_rules = [] }
         in
         let rules =
@@ -168,12 +168,12 @@ let rec simplify t =
           | Set -> { rules with set_rules = rule :: rules.set_rules }
           | Add -> { rules with add_rules = rule :: rules.add_rules }
         in
-        { pkg with vars = String_map.add pkg.vars rule.var rules })
+        { pkg with vars = String.Map.add pkg.vars rule.var rules })
 
-let load ~fn ~name =
+let load p ~name =
   { name
   ; entries =
-      Io.with_lexbuf_from_file fn ~f:(fun lb ->
+      Io.with_lexbuf_from_file p ~f:(fun lb ->
         Parse.entries lb 0 [])
   }
   |> simplify
@@ -259,7 +259,7 @@ let builtins ~stdlib_dir =
       [ compiler_libs; str; unix; bigarray; threads ]
   in
   List.map libs ~f:(fun t -> t.name, simplify t)
-  |> String_map.of_list_exn
+  |> String.Map.of_list_exn
 
 let string_of_action = function
   | Set -> "="

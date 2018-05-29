@@ -11,7 +11,8 @@ let pp_ml fmt include_dirs =
   let pp_include fmt =
     let pp_sep fmt () = Format.fprintf fmt "@ ; " in
     Format.pp_print_list ~pp_sep (fun fmt p ->
-      Format.fprintf fmt "%S" (Path.to_absolute_filename p)
+      Format.fprintf fmt "%S" (Path.to_absolute_filename p
+                                 ~root:!Clflags.workspace_root)
     ) fmt
   in
   Format.fprintf fmt "@[<v 2>Clflags.include_dirs :=@ [ %a@ ]@];@."
@@ -61,7 +62,7 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
                       ; syntax = Module.Syntax.OCaml
                       }
         ; intf = None
-        ; obj_name = "" } in
+        ; obj_name = exe_name } in
     let utop_exe_dir = utop_exe_dir ~dir in
     let requires =
       let open Result.O in
@@ -69,14 +70,19 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
         ("utop" :: List.map libs ~f:(fun (lib : Library.t) -> lib.name))
       >>= Lib.closure
     in
-    Exe.build_and_link sctx
-      ~dir:utop_exe_dir
-      ~obj_dir:utop_exe_dir
+    let cctx =
+      Compilation_context.create ()
+        ~super_context:sctx
+        ~scope
+        ~dir:utop_exe_dir
+        ~modules
+        ~requires
+        ~flags:(Ocaml_flags.append_common
+                  (Ocaml_flags.default ~profile:(Super_context.profile sctx))
+                  ["-w"; "-24"])
+    in
+    Exe.build_and_link cctx
       ~program:{ name = exe_name ; main_module_name }
-      ~modules
-      ~scope
       ~linkages:[Exe.Linkage.custom]
-      ~requires
-      ~flags:(Ocaml_flags.append_common (Ocaml_flags.default ()) ["-w"; "-24"])
       ~link_flags:(Build.return ["-linkall"; "-warn-error"; "-31"]);
     add_module_rules sctx ~dir:utop_exe_dir requires

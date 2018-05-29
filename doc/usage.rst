@@ -15,7 +15,8 @@ jbuild-workspace
 ----------------
 
 The root of the current workspace is determined by looking up a
-``jbuild-workspace`` file in the current directory and parent directories.
+``jbuild-workspace`` or ``dune-project`` file in the current directory
+and parent directories.
 
 ``jbuilder`` prints out the root when starting if it is not the
 current directory:
@@ -49,6 +50,8 @@ this file.
 
 jbuild-workspace\*
 ------------------
+
+The following is deprecated and no longer works with ``dune``.
 
 In addition to the previous rule, if no ``jbuild-workspace`` file is found,
 ``jbuilder`` will look for any file whose name starts with ``jbuild-workspace``
@@ -222,8 +225,8 @@ follows:
 
     build: [["jbuilder" "build" "-p" name "-j" jobs]]
 
-``-p pkg`` is a shorthand for ``--root . --only-packages pkg --promote
-ignore``. ``-p`` is the short version of
+``-p pkg`` is a shorthand for ``--root . --only-packages pkg --profile
+release``. ``-p`` is the short version of
 ``--for-release-of-packages``.
 
 This has the following effects:
@@ -231,7 +234,7 @@ This has the following effects:
 -  it tells jbuilder to build everything that is installable and to
    ignore packages other than ``name`` defined in your project
 -  it sets the root to prevent jbuilder from looking it up
--  it ignores promotion to cut down dependencies and speed up the build
+-  it sets the build profile to ``release``
 -  it uses whatever concurrency option opam provides
 
 Note that ``name`` and ``jobs`` are variables expanded by opam. ``name``
@@ -352,6 +355,19 @@ as one containing exactly:
 This allows you to use an empty ``jbuild-workspace`` file to mark
 the root of your project.
 
+profile
+~~~~~~~
+
+The build profile can be selected in the ``jbuild-workspace`` file by
+write a ``(profile ...)`` stanza. For instance:
+
+.. code:: scheme
+
+    (profile dev)
+
+Note that the command line option ``--profile`` has precedence over
+this stanza.
+
 context
 ~~~~~~~
 
@@ -375,6 +391,10 @@ context or can be the description of an opam switch, as follows:
 
 - ``(merlin)`` instructs Jbuilder to use this build context for
    merlin
+
+- ``(profile <profile>)`` to set a different profile for a build
+  context. This has precedence over the command line option
+  ``--profile``
 
 Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field
 in order to setup cross compilation. See `Cross Compilation`_ for more

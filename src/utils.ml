@@ -64,8 +64,6 @@ let signal_name =
     | exception Not_found -> sprintf "%d\n" n
     | s -> s
 
-let jbuild_file_in ~dir = Path.relative dir "jbuild"
-
 type target_kind =
   | Regular of string * Path.t
   | Alias   of string * Path.t
@@ -87,7 +85,7 @@ let analyse_target fn =
               assert (String.length digest = 32);
               name
           in
-          Alias (ctx, Path.relative (Path.parent fn) basename)
+          Alias (ctx, Path.relative (Path.parent_exn fn) basename)
     end
   | Some ("install", _) -> Other fn
   | Some (ctx, sub) -> Regular (ctx, sub)
@@ -117,7 +115,7 @@ let executable_object_directory ~dir name =
 
 let program_not_found ?context ?hint prog =
   die "@{<error>Error@}: Program %s not found in the tree or in PATH%s%a"
-    (maybe_quoted prog)
+    (String.maybe_quoted prog)
     (match context with
      | None -> ""
      | Some name -> sprintf " (context: %s)" name)
@@ -127,7 +125,7 @@ let program_not_found ?context ?hint prog =
     hint
 
 let library_not_found ?context ?hint lib =
-  die "@{<error>Error@}: Library %s not found%s%a" (maybe_quoted lib)
+  die "@{<error>Error@}: Library %s not found%s%a" (String.maybe_quoted lib)
     (match context with
      | None -> ""
      | Some name -> sprintf " (context: %s)" name)
@@ -183,14 +181,13 @@ module Cached_digest = struct
 
   let remove fn = Hashtbl.remove cache fn
 
-  let db_file = "_build/.digest-db"
+  let db_file = Path.relative Path.build_dir ".digest-db"
 
   let dump () =
-    let module Pmap = Path.Map in
     let sexp =
       Sexp.List (
-        Hashtbl.foldi cache ~init:Pmap.empty ~f:(fun key data acc ->
-          Pmap.add acc key data)
+        Hashtbl.foldi cache ~init:Path.Map.empty ~f:(fun key data acc ->
+          Path.Map.add acc key data)
         |> Path.Map.to_list
         |> List.map ~f:(fun (path, file) ->
           Sexp.List [ Quoted_string (Path.to_string path)
@@ -199,12 +196,12 @@ module Cached_digest = struct
                               (Int64.bits_of_float file.timestamp))
                     ]))
     in
-    if Sys.file_exists "_build" then
+    if Path.build_dir_exists () then
       Io.write_file db_file (Sexp.to_string sexp)
 
   let load () =
-    if Sys.file_exists db_file then begin
-      let sexp = Sexp.load ~fname:db_file ~mode:Single in
+    if Path.exists db_file then begin
+      let sexp = Io.Sexp.load db_file ~mode:Single in
       let bindings =
         let open Sexp.Of_sexp in
         list

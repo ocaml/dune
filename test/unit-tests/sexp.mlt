@@ -1,0 +1,40 @@
+(* -*- tuareg -*- *)
+open Stdune;;
+open Sexp.Of_sexp;;
+
+let pp_sexp_ast ppf sexp =
+  Sexp.pp ppf (Sexp.Ast.remove_locs sexp)
+;;
+#install_printer pp_sexp_ast;;
+[%%expect{|
+val pp_sexp_ast : Format.formatter -> Stdune.Sexp.Ast.t -> unit = <fun>
+|}]
+
+Printexc.record_backtrace false;;
+[%%expect{|
+- : unit = ()
+|}]
+
+let sexp = Sexp.parse_string ~fname:"" ~mode:Single {|
+((foo 1)
+ (foo 2))
+|}
+[%%expect{|
+val sexp : Usexp.Ast.t = ((foo 1) (foo 2))
+|}]
+
+let of_sexp = record (field "foo" int)
+let x = of_sexp sexp
+[%%expect{|
+val of_sexp : int Stdune.Sexp.Of_sexp.t = <fun>
+Exception:
+Stdune__Sexp.Of_sexp.Of_sexp (<abstr>,
+ "Field \"foo\" is present too many times", None).
+|}]
+
+let of_sexp = record (dup_field "foo" int)
+let x = of_sexp sexp
+[%%expect{|
+val of_sexp : int list Stdune.Sexp.Of_sexp.t = <fun>
+val x : int list = [1; 2]
+|}]

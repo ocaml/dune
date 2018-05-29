@@ -1,7 +1,0 @@
-(jbuild_version 1)
-
-(library
- ((name      ocaml_config)
-  (public_name jbuilder.ocaml_config)
-  (libraries (stdune usexp))
-  (synopsis  "[Internal] Interpret the output of 'ocamlc -config'")))

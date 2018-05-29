@@ -1,3 +1,4 @@
+open Stdune
 (** Versioned syntaxes *)
 
 module Version : sig

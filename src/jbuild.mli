@@ -9,39 +9,6 @@ module Jbuild_version : sig
   val latest_stable : t
 end
 
-module Scope_info : sig
-  module Name : sig
-    (* CR-someday diml: change to [private string] and encode [None]
-       as [""] *)
-    (** [None] is the for the {!anonymous} scope *)
-    type t = string option
-
-    val compare : t -> t -> Ordering.t
-
-    val of_string : string -> t
-    val to_string : t -> string
-  end
-
-  type t =
-    { name     : string option (** First package name in alphabetical
-                                   order. [None] for the global
-                                   scope. *)
-    ; packages : Package.t Package.Name.Map.t
-    ; root     : Path.t
-    }
-
-  val make : Package.t list -> t
-
-  (** The anonymous represent the scope at the root of the workspace
-      when the root of the workspace contains no [<package>.opam]
-      files. *)
-  val anonymous : t
-
-  (** [resolve t package_name] looks up [package_name] in [t] and returns the
-      package description if it exists, otherwise it returns an error. *)
-  val resolve : t -> Package.Name.t -> (Package.t, string) result
-end
-
 (** Ppx preprocessors  *)
 module Pp : sig
   type t = private string
@@ -58,7 +25,7 @@ module Preprocess : sig
 
   type t =
     | No_preprocessing
-    | Action of Action.Unexpanded.t
+    | Action of Loc.t * Action.Unexpanded.t
     | Pps    of pps
 end
 
@@ -95,8 +62,8 @@ end
 
 module Lib_dep : sig
   type choice =
-    { required  : String_set.t
-    ; forbidden : String_set.t
+    { required  : String.Set.t
+    ; forbidden : String.Set.t
     ; file      : string
     }
 
@@ -243,7 +210,7 @@ module Library : sig
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
-    ; scope_name               : Scope_info.Name.t
+    ; project_name             : Dune_project.Name.t
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     }
 
@@ -320,7 +287,7 @@ module Rule : sig
   type t =
     { targets  : Targets.t
     ; deps     : Dep_conf.t list
-    ; action   : Action.Unexpanded.t
+    ; action   : Loc.t * Action.Unexpanded.t
     ; mode     : Mode.t
     ; locks    : String_with_vars.t list
     ; loc      : Loc.t
@@ -348,7 +315,7 @@ module Alias_conf : sig
   type t =
     { name    : string
     ; deps    : Dep_conf.t list
-    ; action  : Action.Unexpanded.t option
+    ; action  : (Loc.t * Action.Unexpanded.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option
     }
@@ -368,18 +335,34 @@ module Documentation : sig
     }
 end
 
-module Stanza : sig
+module Env : sig
+  type config =
+    { flags          : Ordered_set_lang.Unexpanded.t
+    ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
+    ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
+    }
+
+  type pattern =
+    | Profile of string
+    | Any
+
   type t =
-    | Library     of Library.t
-    | Executables of Executables.t
-    | Rule        of Rule.t
-    | Provides    of Provides.t
-    | Install     of Install_conf.t
-    | Alias       of Alias_conf.t
-    | Copy_files  of Copy_files.t
-    | Menhir      of Menhir.t
-    | Documentation of Documentation.t
+    { loc   : Loc.t
+    ; rules : (pattern * config) list
+    }
 end
+
+type Stanza.t +=
+  | Library     of Library.t
+  | Executables of Executables.t
+  | Rule        of Rule.t
+  | Provides    of Provides.t
+  | Install     of Install_conf.t
+  | Alias       of Alias_conf.t
+  | Copy_files  of Copy_files.t
+  | Menhir      of Menhir.t
+  | Documentation of Documentation.t
+  | Env         of Env.t
 
 module Stanzas : sig
   type t = Stanza.t list
@@ -387,10 +370,8 @@ module Stanzas : sig
   type syntax = OCaml | Plain
 
   val parse
-    :  ?default_version:Jbuild_version.t
-    -> file:Path.t
-    -> Scope_info.t
+    :  file:Path.t
+    -> Dune_project.t
     -> Sexp.Ast.t list
     -> t
-  val lib_names : (_ * _ * t) list -> String_set.t
 end

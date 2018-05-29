@@ -1,5 +1,4 @@
 open Import
-open Jbuilder_opam_file_format
 open OpamParserTypes
 
 type t = opamfile
@@ -7,7 +6,7 @@ type t = opamfile
 let load fn =
   Io.with_lexbuf_from_file fn ~f:(fun lb ->
     try
-      OpamBaseParser.main OpamLexer.token lb fn
+      OpamBaseParser.main OpamLexer.token lb (Path.to_string fn)
     with
     | OpamLexer.Error msg ->
       Loc.fail_lex lb "%s" msg

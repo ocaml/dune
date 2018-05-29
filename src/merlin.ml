@@ -31,6 +31,37 @@ module Preprocess = struct
       | _  -> Other
 end
 
+module Dot_file = struct
+  let b = Buffer.create 256
+
+  let printf = Printf.bprintf b
+  let print = Buffer.add_string b
+
+  let to_string ~obj_dirs ~src_dirs ~flags ~ppx ~remaindir =
+    let serialize_path = Path.reach ~from:remaindir in
+    Buffer.clear b;
+    Path.Set.iter obj_dirs ~f:(fun p ->
+      printf "B %s\n" (serialize_path p));
+    Path.Set.iter src_dirs ~f:(fun p ->
+      printf "S %s\n" (serialize_path p));
+    begin match ppx with
+    | [] -> ()
+    | ppx ->
+      printf "FLG -ppx %s\n"
+        (List.map ppx ~f:quote_for_shell
+         |> String.concat ~sep:" "
+         |> Filename.quote)
+    end;
+    begin match flags with
+    | [] -> ()
+    | flags ->
+      print "FLG";
+      List.iter flags ~f:(fun f -> printf " %s" (quote_for_shell f));
+      print "\n"
+    end;
+    Buffer.contents b
+end
+
 type t =
   { requires   : Lib.Set.t
   ; flags      : (unit, string list) Build.t
@@ -69,19 +100,15 @@ let ppx_flags sctx ~dir:_ ~scope ~src_dir:_ { preprocess; libname; _ } =
   match preprocess with
   | Pps { pps; flags } ->
     let exe = Preprocessing.get_ppx_driver sctx ~scope pps in
-    let command =
-      List.map (Path.to_absolute_filename exe
-                :: "--as-ppx"
-                :: Preprocessing.cookie_library_name libname
-                @ flags)
-        ~f:quote_for_shell
-      |> String.concat ~sep:" "
-    in
-    [sprintf "FLG -ppx %s" (Filename.quote command)]
+    (Path.to_absolute_filename exe ~root:!Clflags.workspace_root
+     :: "--as-ppx"
+     :: Preprocessing.cookie_library_name libname
+     @ flags)
   | Other -> []
 
 let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
   match Path.drop_build_context dir with
+  | None -> ()
   | Some remaindir ->
     let merlin_file = Path.relative dir ".merlin" in
     (* We make the compilation of .ml/.mli files depend on the
@@ -99,57 +126,22 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
     SC.add_rule sctx ~mode:Promote_but_delete_on_clean (
       flags
       >>^ (fun flags ->
-        let ppx_flags = ppx_flags sctx ~dir ~scope ~src_dir:remaindir t in
-        let libs =
-          Lib.Set.fold requires ~init:[] ~f:(fun (lib : Lib.t) acc ->
-            let serialize_path = Path.reach ~from:remaindir in
-            let bpath = serialize_path (Lib.obj_dir lib) in
-            let spath =
-              Lib.src_dir lib
-              |> Path.drop_optional_build_context
-              |> serialize_path
-            in
-            ("B " ^ bpath) :: ("S " ^ spath) :: acc
-          )
+        let (src_dirs, obj_dirs) =
+          Lib.Set.fold requires ~init:(Path.Set.empty, Path.Set.empty)
+            ~f:(fun (lib : Lib.t) (src_dirs, build_dirs) ->
+              ( Path.Set.add src_dirs (Lib.src_dir lib)
+              , Path.Set.add build_dirs (
+                  Lib.obj_dir lib
+                  |> Path.drop_optional_build_context)))
         in
-        let source_dirs =
-          Path.Set.fold t.source_dirs ~init:[] ~f:(fun path acc ->
-            let path = Path.reach path ~from:remaindir in
-            ("S " ^ path)::acc
-          )
-        in
-        let objs_dirs =
-          Path.Set.fold t.objs_dirs ~init:[] ~f:(fun path acc ->
-            let path = Path.reach path ~from:remaindir in
-            ("B " ^ path)::acc
-          )
-        in
-        let flags =
-          match flags with
-          | [] -> []
-          | _  ->
-            let escaped_flags = List.map ~f:quote_for_shell flags in
-            ["FLG " ^ String.concat escaped_flags ~sep:" "]
-        in
-        let dot_merlin =
-          List.concat
-            [ source_dirs
-            ; objs_dirs
-            ; libs
-            ; flags
-            ; ppx_flags
-            ]
-        in
-        dot_merlin
-        |> String_set.of_list
-        |> String_set.to_list
-        |> List.map ~f:(Printf.sprintf "%s\n")
-        |> String.concat ~sep:"")
+        Dot_file.to_string
+          ~remaindir
+          ~ppx:(ppx_flags sctx ~dir ~scope ~src_dir:remaindir t)
+          ~flags
+          ~src_dirs:(Path.Set.union src_dirs t.source_dirs)
+          ~obj_dirs:(Path.Set.union obj_dirs t.objs_dirs))
       >>>
-      Build.write_file_dyn merlin_file
-    )
-  | _ ->
-    ()
+      Build.write_file_dyn merlin_file)
 
 let merge_two a b =
   { requires = Lib.Set.union a.requires b.requires

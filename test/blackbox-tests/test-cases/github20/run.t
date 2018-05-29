@@ -1,1 +1,1 @@
-  $ jbuilder build .merlin --display short
+  $ dune build .merlin --display short

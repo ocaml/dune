@@ -10,15 +10,23 @@ module Context : sig
   end
   module Opam : sig
     type t =
-      { name   : string
-      ; switch : string
-      ; root   : string option
-      ; merlin : bool
+      { name    : string
+      ; profile : string
+      ; switch  : string
+      ; root    : string option
+      ; merlin  : bool
       ; targets : Target.t list
       }
   end
 
-  type t = Default of Target.t list | Opam of Opam.t
+  module Default : sig
+    type t =
+      { profile : string
+      ; targets : Target.t list
+      }
+  end
+
+  type t = Default of Default.t | Opam of Opam.t
 
   val name : t -> string
 end
@@ -28,4 +36,4 @@ type t =
   ; contexts       : Context.t list
   }
 
-val load : ?x:string -> string -> t
+val load : ?x:string -> ?profile:string -> Path.t -> t

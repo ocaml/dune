@@ -1,0 +1,20 @@
+(jbuild_version 1)
+
+(library
+ ((name        dune)
+  (libraries   (unix
+                stdune
+                fiber
+                xdg
+                re
+                opam_file_format
+                usexp
+                ocaml_config))
+  (synopsis    "Internal Dune library, do not use!")))
+
+(ocamllex (meta_lexer glob_lexer))
+
+(rule
+ ((targets (setup.ml))
+  (mode    fallback)
+  (action  (copy# setup.defaults.ml setup.ml))))

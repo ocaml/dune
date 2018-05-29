@@ -1,22 +1,22 @@
-  $ jbuilder clean --display short
-  $ jbuilder build --display short @just-in-src
+  $ dune clean --display short
+  $ dune build --display short @just-in-src
   running in src
-  $ jbuilder clean --display short
-  $ jbuilder build --display short @everywhere
+  $ dune clean --display short
+  $ dune build --display short @everywhere
   running in src/foo/bar
   running in src/foo/baz
   running in src
-  $ jbuilder clean --display short
-  $ jbuilder build --display short @x
+  $ dune clean --display short
+  $ dune build --display short @x
   running in src/foo/bar
   running in src/foo/baz
   running in src
-  $ jbuilder build --display short @plop
+  $ dune build --display short @plop
   From the command line:
   Error: Alias plop is empty.
   It is not defined in . or any of its descendants.
   [1]
-  $ jbuilder build --display short @truc/x
+  $ dune build --display short @truc/x
   From the command line:
   Error: Don't know about directory truc!
   [1]

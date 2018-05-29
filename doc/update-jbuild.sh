@@ -4,22 +4,21 @@
 
 set -e -o pipefail
 
-jbuilder=$1
-
-CMDS=$($jbuilder --help=plain | \
+CMDS=$(dune --help=plain | \
            sed -n '/COMMANDS/,/OPTIONS/p' | sed -En 's/^       ([a-z-]+)/\1/p')
 
 for cmd in $CMDS; do
     cat <<EOF
 
 (rule
- ((targets (jbuilder-$cmd.1))
+ ((targets (dune-$cmd.1))
   (action  (with-stdout-to \${@}
-            (run \${bin:jbuilder} $cmd --help=groff)))))
+            (run dune $cmd --help=groff)))))
 
 (install
  ((section man)
-  (files (jbuilder-$cmd.1))))
+  (package dune)
+  (files (dune-$cmd.1))))
 EOF
 done
 

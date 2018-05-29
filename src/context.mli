@@ -8,7 +8,7 @@
 
     - opam switch contexts, where one opam switch correspond to one context
 
-    each context is built into a sub-directory of "_build":
+    each context is built into a sub-directory of Path.build_dir (usually _build):
 
     - _build/default for the default context
     - _build/<switch> for other contexts
@@ -33,6 +33,8 @@ end
 type t =
   { name : string
   ; kind : Kind.t
+
+  ; profile : string
 
   ; (** [true] if this context is used for the .merlin files *)
     merlin : bool

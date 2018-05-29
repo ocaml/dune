@@ -31,11 +31,11 @@ let map_result
 
 type std_output_to =
   | Terminal
-  | File        of string
+  | File        of Path.t
   | Opened_file of opened_file
 
 and opened_file =
-  { filename : string
+  { filename : Path.t
   ; desc     : opened_file_desc
   ; tail     : bool
   }
@@ -46,25 +46,24 @@ and opened_file_desc =
 
 type purpose =
   | Internal_job
-  | Build_job of Path.t list
+  | Build_job of Path.Set.t
 
 module Temp = struct
-  let tmp_files = ref String_set.empty
+  let tmp_files = ref Path.Set.empty
   let () =
     at_exit (fun () ->
       let fns = !tmp_files in
-      tmp_files := String_set.empty;
-      String_set.iter fns ~f:(fun fn ->
-        try Sys.force_remove fn with _ -> ()))
+      tmp_files := Path.Set.empty;
+      Path.Set.iter fns ~f:Path.unlink_no_err)
 
   let create prefix suffix =
-    let fn = Filename.temp_file prefix suffix in
-    tmp_files := String_set.add !tmp_files fn;
+    let fn = Path.of_string (Filename.temp_file prefix suffix) in
+    tmp_files := Path.Set.add !tmp_files fn;
     fn
 
   let destroy fn =
-    (try Sys.force_remove fn with Sys_error _ -> ());
-    tmp_files := String_set.remove !tmp_files fn
+    Path.unlink_no_err fn;
+    tmp_files := Path.Set.remove !tmp_files fn
 end
 
 module Fancy = struct
@@ -113,6 +112,7 @@ module Fancy = struct
     | x :: rest -> x :: colorize_args rest
 
   let command_line ~prog ~args ~dir ~stdout_to ~stderr_to =
+    let prog = Path.reach_for_running ?from:dir prog in
     let quote = quote_for_shell in
     let prog = colorize_prog (quote prog) in
     let s =
@@ -121,28 +121,30 @@ module Fancy = struct
     let s =
       match dir with
       | None -> s
-      | Some dir -> sprintf "(cd %s && %s)" dir s
+      | Some dir -> sprintf "(cd %s && %s)" (Path.to_string dir) s
     in
     match stdout_to, stderr_to with
     | (File fn1 | Opened_file { filename = fn1; _ }),
       (File fn2 | Opened_file { filename = fn2; _ }) when fn1 = fn2 ->
-      sprintf "%s &> %s" s fn1
+      sprintf "%s &> %s" s (Path.to_string fn1)
     | _ ->
       let s =
         match stdout_to with
         | Terminal -> s
-        | File fn | Opened_file { filename = fn; _ } -> sprintf "%s > %s" s fn
+        | File fn | Opened_file { filename = fn; _ } ->
+          sprintf "%s > %s" s (Path.to_string fn)
       in
       match stderr_to with
       | Terminal -> s
-      | File fn | Opened_file { filename = fn; _ } -> sprintf "%s 2> %s" s fn
+      | File fn | Opened_file { filename = fn; _ } ->
+        sprintf "%s 2> %s" s (Path.to_string fn)
 
   let pp_purpose ppf = function
     | Internal_job ->
       Format.fprintf ppf "(internal)"
     | Build_job targets ->
       let rec split_paths targets_acc ctxs_acc = function
-        | [] -> List.rev targets_acc, String_set.(to_list (of_list ctxs_acc))
+        | [] -> List.rev targets_acc, String.Set.(to_list (of_list ctxs_acc))
         | path :: rest ->
           let add_ctx ctx acc = if ctx = "default" then acc else ctx :: acc in
           match Utils.analyse_target path with
@@ -155,11 +157,12 @@ module Fancy = struct
             split_paths (("alias " ^ Path.to_string name) :: targets_acc)
               (add_ctx ctx ctxs_acc) rest
       in
+      let targets = Path.Set.to_list targets in
       let target_names, contexts = split_paths [] [] targets in
       let target_names_grouped_by_prefix =
         List.map target_names ~f:Filename.split_extension_after_dot
-        |> String_map.of_list_multi
-        |> String_map.to_list
+        |> String.Map.of_list_multi
+        |> String.Map.to_list
       in
       let pp_comma ppf () = Format.fprintf ppf "," in
       let pp_group ppf (prefix, suffixes) =
@@ -190,7 +193,8 @@ end
 let get_std_output ~default = function
   | Terminal -> (default, None)
   | File fn ->
-    let fd = Unix.openfile fn [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666 in
+    let fd = Unix.openfile (Path.to_string fn)
+               [O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE] 0o666 in
     (fd, Some (Fd fd))
   | Opened_file { desc; tail; _ } ->
     let fd =
@@ -216,8 +220,12 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
   let display = Scheduler.display scheduler in
   let dir =
     match dir with
-    | Some "." -> None
-    | _ -> dir
+    | Some p ->
+      if Path.is_root p then
+        None
+      else
+        Some p
+    | None -> dir
   in
   let id = gen_id () in
   let ok_codes = accepted_codes fail_mode in
@@ -225,12 +233,13 @@ let run_internal ?dir ?(stdout_to=Terminal) ?(stderr_to=Terminal) ~env ~purpose
   if display = Verbose then
     Format.eprintf "@{<kwd>Running@}[@{<id>%d@}]: %s@." id
       (Colors.strip_colors_for_stderr command_line);
+  let prog = Path.reach_for_running ?from:dir prog in
   let argv = Array.of_list (prog :: args) in
   let output_filename, stdout_fd, stderr_fd, to_close =
     match stdout_to, stderr_to with
     | (Terminal, _ | _, Terminal) when !Clflags.capture_outputs ->
-      let fn = Temp.create "jbuilder" ".output" in
-      let fd = Unix.openfile fn [O_WRONLY; O_SHARE_DELETE] 0 in
+      let fn = Temp.create "dune" ".output" in
+      let fd = Unix.openfile (Path.to_string fn) [O_WRONLY; O_SHARE_DELETE] 0 in
       (Some fn, fd, fd, Some fd)
     | _ ->
       (None, Unix.stdout, Unix.stderr, None)
@@ -321,15 +330,16 @@ let run ?dir ?stdout_to ?stderr_to ~env ?(purpose=Internal_job) fail_mode
     ~f:ignore
 
 let run_capture_gen ?dir ~env ?(purpose=Internal_job) fail_mode prog args ~f =
-  let fn = Temp.create "jbuild" ".output" in
+  let fn = Temp.create "dune" ".output" in
   map_result fail_mode
-    (run_internal ?dir ~stdout_to:(File fn) ~env ~purpose fail_mode prog args)
+    (run_internal ?dir ~stdout_to:(File fn)
+       ~env ~purpose fail_mode prog args)
     ~f:(fun () ->
       let x = f fn in
       Temp.destroy fn;
       x)
 
-let run_capture       = run_capture_gen ~f:Io.read_file
+let run_capture = run_capture_gen ~f:Io.read_file
 let run_capture_lines = run_capture_gen ~f:Io.lines_of_file
 
 let run_capture_line ?dir ~env ?(purpose=Internal_job) fail_mode prog args =
@@ -338,10 +348,11 @@ let run_capture_line ?dir ~env ?(purpose=Internal_job) fail_mode prog args =
     | [x] -> x
     | l ->
       let cmdline =
-        let s = String.concat (prog :: args) ~sep:" " in
+        let prog = Path.reach_for_running ?from:dir prog in
+        let prog_display = String.concat (prog :: args) ~sep:" " in
         match dir with
-        | None -> s
-        | Some dir -> sprintf "cd %s && %s" dir s
+        | None -> prog_display
+        | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
       in
       match l with
       | [] ->

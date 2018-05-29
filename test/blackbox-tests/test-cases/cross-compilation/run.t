@@ -33,7 +33,7 @@
     "_build/install/default.foo/lib/p/p.ml" {"../../foo-sysroot/lib/p/p.ml"}
     "_build/install/default.foo/lib/p/p.cma" {"../../foo-sysroot/lib/p/p.cma"}
     "_build/install/default.foo/lib/p/p.cmxa" {"../../foo-sysroot/lib/p/p.cmxa"}
-    "_build/install/default.foo/lib/p/p.a" {"../../foo-sysroot/lib/p/p.a"}
+    "_build/install/default.foo/lib/p/p$ext_lib" {"../../foo-sysroot/lib/p/p$ext_lib"}
     "_build/install/default.foo/lib/p/p.cmxs" {"../../foo-sysroot/lib/p/p.cmxs"}
     "_build/install/default.foo/lib/p/p.dune" {"../../foo-sysroot/lib/p/p.dune"}
   ]

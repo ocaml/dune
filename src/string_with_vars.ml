@@ -97,7 +97,7 @@ let iter t ~f = List.iter t.items ~f:(function
                     | Text _ -> ()
                     | Var (_, v) -> f t.loc v)
 
-let vars t = fold t ~init:String_set.empty ~f:(fun acc _ x -> String_set.add acc x)
+let vars t = fold t ~init:String.Set.empty ~f:(fun acc _ x -> String.Set.add acc x)
 
 let string_of_var syntax v =
   match syntax with
@@ -198,3 +198,8 @@ let to_string t =
     |> String.concat ~sep:""
 
 let sexp_of_t t = Sexp.To_sexp.string (to_string t)
+
+let is_var t ~name =
+  match t.items with
+  | [Var (_, v)] -> v = name
+  | _ -> false

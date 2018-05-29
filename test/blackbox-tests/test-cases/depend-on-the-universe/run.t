@@ -1,10 +1,10 @@
-  $ jbuilder build @x
+  $ dune build @x
   Hello, world!
-  $ jbuilder build @x
+  $ dune build @x
   Hello, world!
-  $ jbuilder build @x
+  $ dune build @x
   Hello, world!
-  $ jbuilder build @x
+  $ dune build @x
   Hello, world!
-  $ jbuilder build @x
+  $ dune build @x
   Hello, world!

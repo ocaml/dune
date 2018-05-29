@@ -1,8 +1,6 @@
 open Import
 open Build.Repr
 
-module Pset = Path.Set
-module Pmap = Path.Map
 module Vspec = Build.Vspec
 
 module Target = struct
@@ -15,8 +13,8 @@ module Target = struct
     | Vfile (Vspec.T (p, _)) -> p
 
   let paths ts =
-    List.fold_left ts ~init:Pset.empty ~f:(fun acc t ->
-      Pset.add acc (path t))
+    List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
+      Path.Set.add acc (path t))
 end
 
 module Static_deps = struct
@@ -45,7 +43,7 @@ let inspect_path file_tree path =
       if Path.is_root path then
         Some Dir
       else if File_tree.file_exists file_tree
-                (Path.parent   path)
+                (Path.parent_exn path)
                 (Path.basename path) then
         Some Reg
       else
@@ -62,20 +60,20 @@ let static_deps t ~all_targets ~file_tree =
     | Second t -> loop t acc
     | Split (a, b) -> loop a (loop b acc)
     | Fanout (a, b) -> loop a (loop b acc)
-    | Paths fns -> { acc with action_deps = Pset.union fns acc.action_deps }
+    | Paths fns -> { acc with action_deps = Path.Set.union fns acc.action_deps }
     | Paths_for_rule fns ->
-      { acc with rule_deps = Pset.union fns acc.rule_deps }
+      { acc with rule_deps = Path.Set.union fns acc.rule_deps }
     | Paths_glob state -> begin
         match !state with
         | G_evaluated l ->
-          { acc with action_deps = Pset.union acc.action_deps (Pset.of_list l) }
+          { acc with action_deps = Path.Set.union acc.action_deps l }
         | G_unevaluated (loc, dir, re) ->
           let targets = all_targets ~dir in
           let result =
-            Pset.filter targets ~f:(fun path ->
+            Path.Set.filter targets ~f:(fun path ->
               Re.execp re (Path.basename path))
           in
-          if Pset.is_empty result then begin
+          if Path.Set.is_empty result then begin
             match inspect_path file_tree dir with
             | None ->
               Loc.warn loc "Directory %s doesn't exist."
@@ -89,17 +87,17 @@ let static_deps t ~all_targets ~file_tree =
               (* diml: we should probably warn in this case as well *)
               ()
           end;
-          state := G_evaluated (Pset.to_list result);
-          let action_deps = Pset.union result acc.action_deps in
+          state := G_evaluated result;
+          let action_deps = Path.Set.union result acc.action_deps in
           { acc with action_deps }
       end
     | If_file_exists (p, state) -> begin
         match !state with
         | Decided (_, t) -> loop t acc
         | Undecided (then_, else_) ->
-          let dir = Path.parent p in
+          let dir = Path.parent_exn p in
           let targets = all_targets ~dir in
-          if Pset.mem targets p then begin
+          if Path.Set.mem targets p then begin
             state := Decided (true, then_);
             loop then_ acc
           end else begin
@@ -108,15 +106,15 @@ let static_deps t ~all_targets ~file_tree =
           end
       end
     | Dyn_paths t -> loop t acc
-    | Vpath (Vspec.T (p, _)) -> { acc with rule_deps = Pset.add acc.rule_deps p }
-    | Contents p -> { acc with rule_deps = Pset.add acc.rule_deps p }
-    | Lines_of p -> { acc with rule_deps = Pset.add acc.rule_deps p }
+    | Vpath (Vspec.T (p, _)) -> { acc with rule_deps = Path.Set.add acc.rule_deps p }
+    | Contents p -> { acc with rule_deps = Path.Set.add acc.rule_deps p }
+    | Lines_of p -> { acc with rule_deps = Path.Set.add acc.rule_deps p }
     | Record_lib_deps _ -> acc
     | Fail _ -> acc
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
   in
-  loop (Build.repr t) { rule_deps = Pset.empty; action_deps = Pset.empty }
+  loop (Build.repr t) { rule_deps = Path.Set.empty; action_deps = Path.Set.empty }
 
 let lib_deps =
   let rec loop : type a b. (a, b) t -> Build.lib_deps -> Build.lib_deps
@@ -144,7 +142,7 @@ let lib_deps =
       | Memo m -> loop m.t acc
       | Catch (t, _) -> loop t acc
   in
-  fun t -> loop (Build.repr t) String_map.empty
+  fun t -> loop (Build.repr t) String.Map.empty
 
 let targets =
   let rec loop : type a b. (a, b) t -> Target.t list -> Target.t list = fun t acc ->
@@ -169,13 +167,19 @@ let targets =
     | Fail _ -> acc
     | If_file_exists (_, state) -> begin
         match !state with
-        | Decided _ -> code_errorf "Build_interpret.targets got decided if_file_exists"
+        | Decided (v, _) ->
+          Exn.code_error "Build_interpret.targets got decided if_file_exists"
+            ["exists", Sexp.To_sexp.bool v]
         | Undecided (a, b) ->
           match loop a [], loop b [] with
           | [], [] -> acc
-          | _ ->
-            code_errorf "Build_interpret.targets: cannot have targets \
-                         under a [if_file_exists]"
+          | a, b ->
+            let targets x = Path.Set.sexp_of_t (Target.paths x) in
+            Exn.code_error "Build_interpret.targets: cannot have targets \
+                            under a [if_file_exists]"
+              [ "targets-a", targets a
+              ; "targets-b", targets b
+              ]
       end
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
@@ -200,15 +204,18 @@ module Rule = struct
     let dir =
       match targets with
       | [] ->
-        invalid_arg "Build_interpret.Rule.make: rule has no targets"
+        begin match loc with
+        | Some loc -> Loc.fail loc "Rule has no targets specified"
+        | None -> Exn.code_error "Build_interpret.Rule.make: no targets" []
+        end
       | x :: l ->
-        let dir = Path.parent (Target.path x) in
+        let dir = Path.parent_exn (Target.path x) in
         List.iter l ~f:(fun target ->
           let path = Target.path target in
-          if Path.parent path <> dir then
+          if Path.parent_exn path <> dir then
             match loc with
             | None ->
-              Sexp.code_error "rule has targets in different directories"
+              Exn.code_error "rule has targets in different directories"
                 [ "targets", Sexp.To_sexp.list Path.sexp_of_t
                                (List.map targets ~f:Target.path)
                 ]

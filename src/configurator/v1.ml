@@ -1,12 +1,11 @@
 open Stdune
+
 let sprintf = Printf.sprintf
 let eprintf = Printf.eprintf
 
 let ( ^/ ) = Filename.concat
 
 exception Fatal_error of string
-
-module String_map = Stdune.Map.Make(Stdune.String)
 
 let die fmt =
   Printf.ksprintf (fun s ->
@@ -23,7 +22,7 @@ type t =
   ; c_compiler        : string
   ; stdlib_dir        : string
   ; ccomp_type        : string
-  ; ocamlc_config     : string String_map.t
+  ; ocamlc_config     : string String.Map.t
   ; ocamlc_config_cmd : string
   }
 
@@ -143,8 +142,8 @@ let run t ~dir cmd =
       (Filename.quote stdout_fn)
       (Filename.quote stderr_fn)
   in
-  let stdout = Io.read_file stdout_fn in
-  let stderr = Io.read_file stderr_fn in
+  let stdout = Io.read_file (Path.of_string stdout_fn) in
+  let stderr = Io.read_file (Path.of_string stderr_fn) in
   logf t "-> process exited with code %d" exit_code;
   logf t "-> stdout:";
   List.iter (String.split_lines stdout) ~f:(logf t " | %s");
@@ -164,11 +163,11 @@ let run_capture_exn t ~dir cmd =
 let run_ok t ~dir cmd = (run t ~dir cmd).exit_code = 0
 
 let get_ocaml_config_var_exn ~ocamlc_config_cmd map var =
-  match String_map.find map var with
+  match String.Map.find map var with
   | None -> die "variable %S not found in the output of `%s`" var ocamlc_config_cmd
   | Some s -> s
 
-let ocaml_config_var t var = String_map.find t.ocamlc_config var
+let ocaml_config_var t var = String.Map.find t.ocamlc_config var
 let ocaml_config_var_exn t var =
   get_ocaml_config_var_exn t.ocamlc_config var
     ~ocamlc_config_cmd:t.ocamlc_config_cmd
@@ -195,7 +194,7 @@ let create ?dest_dir ?ocamlc ?(log=ignore) name =
     ; c_compiler    = ""
     ; stdlib_dir    = ""
     ; ccomp_type    = ""
-    ; ocamlc_config = String_map.empty
+    ; ocamlc_config = String.Map.empty
     ; ocamlc_config_cmd
     }
   in
@@ -213,7 +212,7 @@ let create ?dest_dir ?ocamlc ?(log=ignore) name =
   in
   let get = get_ocaml_config_var_exn ocamlc_config ~ocamlc_config_cmd in
   let c_compiler =
-    match String_map.find ocamlc_config "c_compiler" with
+    match String.Map.find ocamlc_config "c_compiler" with
     | Some c_comp -> c_comp ^ " " ^ get "ocamlc_cflags"
     | None -> get "bytecomp_c_compiler"
   in
@@ -231,14 +230,14 @@ let need_to_compile_and_link_separately t =
   | "msvc" -> true
   | _      -> false
 
-let compile_c_prog t ?(c_flags=[]) ?(link_flags=[]) code =
+let compile_and_link_c_prog t ?(c_flags=[]) ?(link_flags=[]) code =
   let dir = t.dest_dir ^/ sprintf "c-test-%d" (gen_id t) in
   Unix.mkdir dir 0o777;
   let base = dir ^/ "test" in
   let c_fname = base ^ ".c" in
   let obj_fname = base ^ t.ext_obj in
   let exe_fname = base ^ ".exe" in
-  Io.write_file c_fname code;
+  Io.write_file (Path.of_string c_fname) code;
   logf t "compiling c program:";
   List.iter (String.split_lines code) ~f:(logf t " | %s");
   let run_ok args =
@@ -248,23 +247,47 @@ let compile_c_prog t ?(c_flags=[]) ?(link_flags=[]) code =
   in
   let ok =
     if need_to_compile_and_link_separately t then
-      run_ok (c_flags @ ["-I"; t.stdlib_dir; "-c"; c_fname]) &&
-      run_ok ("-o" :: exe_fname :: obj_fname :: link_flags)
+      run_ok (c_flags @ ["-I"; t.stdlib_dir; "-c"; c_fname])
+      && run_ok ("-o" :: exe_fname :: obj_fname :: link_flags)
     else
       run_ok
         (List.concat
            [ c_flags
-           ; [ "-I"; t.stdlib_dir
-             ; "-o"; exe_fname
+           ; [ "-I" ; t.stdlib_dir
+             ; "-o" ; exe_fname
              ; c_fname
              ]
-           ; link_flags
            ])
   in
-  if ok then Ok exe_fname else Error ()
+  if ok then Ok () else Error ()
+
+let compile_c_prog t ?(c_flags=[]) code =
+  let dir = t.dest_dir ^/ sprintf "c-test-%d" (gen_id t) in
+  Unix.mkdir dir 0o777;
+  let base = dir ^/ "test" in
+  let c_fname = base ^ ".c" in
+  let obj_fname = base ^ t.ext_obj in
+  Io.write_file (Path.of_string c_fname) code;
+  logf t "compiling c program:";
+  List.iter (String.split_lines code) ~f:(logf t " | %s");
+  let run_ok args =
+    run_ok t ~dir
+      (String.concat ~sep:" "
+         (t.c_compiler :: List.map args ~f:Filename.quote))
+  in
+  let ok =
+    run_ok (List.concat
+              [ c_flags
+              ; [ "-I" ; t.stdlib_dir
+                ; "-o" ; obj_fname
+                ; "-c" ; c_fname
+                ]
+              ])
+  in
+  if ok then Ok (Path.of_string obj_fname) else Error ()
 
 let c_test t ?c_flags ?link_flags code =
-  match compile_c_prog t ?c_flags ?link_flags code with
+  match compile_and_link_c_prog t ?c_flags ?link_flags code with
   | Ok    _ -> true
   | Error _ -> false
 
@@ -283,42 +306,80 @@ module C_define = struct
       | String of string
   end
 
-  let import t ?c_flags ?link_flags ~includes vars =
+  let extract_program ?prelude includes vars =
+    let has_type t = List.exists vars ~f:(fun (_, t') -> t = t') in
     let buf = Buffer.create 1024 in
     let pr fmt = Printf.bprintf buf (fmt ^^ "\n") in
-    let includes = "stdio.h" :: includes in
     List.iter includes ~f:(pr "#include <%s>");
     pr "";
-    pr "int main()";
-    pr "{";
-    List.iter vars ~f:(fun (name, (kind : Type.t)) ->
-      match kind with
-      | Switch ->
-        pr {|#if defined(%s)|} name;
-        pr {|  printf("%s=b:true\n");|} name;
-        pr {|#else|};
-        pr {|  printf("%s=b:false\n");|} name;
-        pr {|#endif|}
-      | Int ->
-        pr {|  printf("%s=i:%%d\n", %s);|} name name
+    Option.iter prelude ~f:(pr "%s");
+    if has_type Type.Int then (
+      pr {|
+#define D0(x) ('0'+(x/1         )%%10)
+#define D1(x) ('0'+(x/10        )%%10), D0(x)
+#define D2(x) ('0'+(x/100       )%%10), D1(x)
+#define D3(x) ('0'+(x/1000      )%%10), D2(x)
+#define D4(x) ('0'+(x/10000     )%%10), D3(x)
+#define D5(x) ('0'+(x/100000    )%%10), D4(x)
+#define D6(x) ('0'+(x/1000000   )%%10), D5(x)
+#define D7(x) ('0'+(x/10000000  )%%10), D6(x)
+#define D8(x) ('0'+(x/100000000 )%%10), D7(x)
+#define D9(x) ('0'+(x/1000000000)%%10), D8(x)
+|}
+    );
+    List.iteri vars ~f:(fun i (name, t) ->
+      match t with
+      | Type.Int ->
+        let c_arr_i =
+          let b = Buffer.create 8 in
+          let is = string_of_int i in
+          for i=0 to String.length is - 1 do
+            Printf.bprintf b "'%c', " is.[i]
+          done;
+          Buffer.contents b
+        in
+        pr {|
+const char s%i[] = {
+  'B', 'E', 'G', 'I', 'N', '-', %s'-',
+  D9((%s)),
+  '-', 'E', 'N', 'D'
+};
+|} i c_arr_i name
       | String ->
-        pr {|  printf("%s=s:%%s\n", %s);|} name name);
-    pr "  return 0;";
-    pr "}";
-    let code = Buffer.contents buf in
-    match compile_c_prog t ?c_flags ?link_flags code with
-    | Error () -> die "failed to compile program"
-    | Ok exe ->
-      run_capture_exn t ~dir:(Filename.dirname exe) (command_line exe [])
-      |> String.split_lines
-      |> List.map ~f:(fun s ->
-        let var, data = String.lsplit2_exn s ~on:'=' in
-        (var,
-         match String.lsplit2_exn data ~on:':' with
-         | "b", s -> Value.Switch (bool_of_string s)
-         | "i", s -> Int    (int_of_string s)
-         | "s", s -> String s
-         | _ -> assert false))
+        pr {|const char *s%i = "BEGIN-%i-" %s "-END";|} i i name;
+      | Switch ->
+        pr {|
+#ifdef %s
+const char *s%i = "BEGIN-%i-true-END";
+#else
+const char *s%i = "BEGIN-%i-false-END";
+#endif
+|} name i i i i
+    );
+    Buffer.contents buf
+
+  let extract_values obj_file vars =
+    let values =
+      Io.with_lexbuf_from_file obj_file ~f:(Extract_obj.extract [])
+      |> Int.Map.of_list_exn
+    in
+    List.mapi vars ~f:(fun i (name, t) ->
+      let value =
+        let raw_val =
+          match Int.Map.find values i with
+          | None -> die "Unable to get value for %s" name
+          | Some v -> v in
+        match t with
+        | Type.Switch -> Value.Switch (bool_of_string raw_val)
+        | Int -> Int (int_of_string raw_val)
+        | String -> String raw_val in
+      (name, value))
+
+  let import t ?prelude ?c_flags ~includes vars =
+    let program = extract_program ?prelude ("stdio.h" :: includes) vars in
+    match compile_c_prog t ?c_flags program with
+    | Error _ -> die "failed to compile program"
+    | Ok obj -> extract_values obj vars
 
   let gen_header_file t ~fname ?protection_var vars =
     let protection_var =
@@ -352,10 +413,9 @@ module C_define = struct
     logf t "writing header file %s" fname;
     List.iter lines ~f:(logf t " | %s");
     let tmp_fname = fname ^ ".tmp" in
-    Io.write_lines tmp_fname lines;
+    Io.write_lines (Path.of_string tmp_fname) lines;
     Sys.rename tmp_fname fname
 end
-
 
 let find_in_path t prog =
   logf t "find_in_path: %s" prog;
@@ -417,6 +477,11 @@ module Pkg_config = struct
     else
       None
 end
+
+let write_flags fname s =
+  let path = Path.of_string fname in
+  let sexp = Usexp.List(List.map ~f:Usexp.atom_or_quoted_string s) in
+  Io.write_file path (Usexp.to_string sexp)
 
 let main ?(args=[]) ~name f =
   let ocamlc  = ref (

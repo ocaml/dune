@@ -1,6 +1,6 @@
-  $ jbuilder build --display short --dev bin/technologic.bc.js @install lib/x.cma.js lib/x__Y.cmo.js bin/z.cmo.js
-        ocamlc lib/stubs.o
-    ocamlmklib lib/dllx_stubs.so,lib/libx_stubs.a
+  $ dune build --display short --dev bin/technologic.bc.js @install lib/x.cma.js lib/x__Y.cmo.js bin/z.cmo.js
+        ocamlc lib/stubs$ext_obj
+    ocamlmklib lib/dllx_stubs$ext_dll,lib/libx_stubs$ext_lib
       ocamlopt .ppx/js_of_ocaml-ppx/ppx.exe
            ppx lib/x.pp.ml
       ocamldep lib/x.pp.ml.d
@@ -34,7 +34,7 @@
   use it
   break it
   fix it
-  $ jbuilder build --display short bin/technologic.bc.js @install
+  $ dune build --display short bin/technologic.bc.js @install
         ocamlc lib/.x.objs/x__.{cmi,cmo,cmt}
         ocamlc lib/.x.objs/x__Y.{cmi,cmo,cmt}
         ocamlc lib/.x.objs/x.{cmi,cmo,cmt}

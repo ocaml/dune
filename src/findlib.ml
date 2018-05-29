@@ -11,6 +11,14 @@ module Rule = struct
     ; value           : string
     }
 
+  let pp fmt { preds_required; preds_forbidden; value } =
+    Fmt.record fmt
+      [ "preds_required", Fmt.const Ps.pp preds_required
+      ; "preds_forbidden", Fmt.const Ps.pp preds_forbidden
+      ; "value", Fmt.const (fun fmt -> Format.fprintf fmt "%S") value
+      ]
+
+
   let formal_predicates_count t =
     Ps.cardinal t.preds_required + Ps.cardinal t.preds_forbidden
 
@@ -45,19 +53,25 @@ module Rules = struct
     ; add_rules : Rule.t list
     }
 
+  let pp fmt { set_rules; add_rules } =
+    Fmt.record fmt
+      [ "set_rules", (fun fmt () -> Fmt.ocaml_list Rule.pp fmt set_rules)
+      ; "add_rules", (fun fmt () -> Fmt.ocaml_list Rule.pp fmt add_rules)
+      ]
+
   let interpret t ~preds =
     let rec find_set_rule = function
-      | [] -> ""
+      | [] -> None
       | rule :: rules ->
         if Rule.matches rule ~preds then
-          rule.value
+          Some rule.value
         else
           find_set_rule rules
     in
     let v = find_set_rule t.set_rules in
     List.fold_left t.add_rules ~init:v ~f:(fun v rule ->
       if Rule.matches rule ~preds then
-        v ^ " " ^ rule.value
+        Some ((Option.value ~default:"" v) ^ " " ^ rule.value)
       else
         v)
 
@@ -74,12 +88,11 @@ module Rules = struct
 end
 
 module Vars = struct
-  type t = Rules.t String_map.t
+  type t = Rules.t String.Map.t
 
   let get (t : t) var preds =
-    match String_map.find t var with
-    | None -> None
-    | Some rules -> Some (Rules.interpret rules ~preds)
+    Option.map (String.Map.find t var) ~f:(fun r ->
+      Option.value ~default:"" (Rules.interpret r ~preds))
 
   let get_words t var preds =
     match get t var preds with
@@ -93,19 +106,33 @@ module Config = struct
     ; preds : Ps.t
     }
 
+  let pp fmt { vars; preds } =
+    Fmt.record fmt
+      [ "vars"
+      , Fmt.const (Fmt.ocaml_list (Fmt.tuple Format.pp_print_string Rules.pp))
+          (String.Map.to_list vars)
+      ; "preds"
+      , Fmt.const Ps.pp preds
+      ]
+
   let load path ~toolchain ~context =
     let path = Path.extend_basename path ~suffix:".d" in
     let conf_file = Path.relative path (toolchain ^ ".conf") in
     if not (Path.exists conf_file) then
       die "@{<error>Error@}: ocamlfind toolchain %s isn't defined in %a \
            (context: %s)" toolchain Path.pp path context;
-    let vars = (Meta.load ~name:"" ~fn:(Path.to_string conf_file)).vars in
-    { vars = String_map.map vars ~f:Rules.of_meta_rules
+    let vars = (Meta.load ~name:"" conf_file).vars in
+    { vars = String.Map.map vars ~f:Rules.of_meta_rules
     ; preds = Ps.make [toolchain]
     }
 
   let get { vars; preds } var =
     Vars.get vars var preds
+
+  let env t =
+    let preds = Ps.add t.preds (P.make "env") in
+    String.Map.filter_map ~f:(Rules.interpret ~preds) t.vars
+    |> Env.of_string_map
 end
 
 module Package = struct
@@ -163,7 +190,7 @@ end
 type t =
   { stdlib_dir : Path.t
   ; path       : Path.t list
-  ; builtins   : Meta.Simplified.t String_map.t
+  ; builtins   : Meta.Simplified.t String.Map.t
   ; packages   : (string, (Package.t, Unavailable_reason.t) result) Hashtbl.t
   }
 
@@ -184,7 +211,7 @@ let dummy_package t ~name =
     meta_file = Path.relative dir "META"
   ; name      = name
   ; dir       = dir
-  ; vars      = String_map.empty
+  ; vars      = String.Map.empty
   }
 
 (* Parse a single package from a META file *)
@@ -217,7 +244,7 @@ let parse_package t ~meta_file ~name ~parent_dir ~vars =
       List.for_all exists_if ~f:(fun fn ->
         Path.exists (Path.relative dir fn))
     | [] ->
-      if not (String_map.mem t.builtins (root_package_name name)) then
+      if not (String.Map.mem t.builtins (root_package_name name)) then
         true
       else
         (* The META files for installed packages are sometimes broken,
@@ -244,7 +271,7 @@ let parse_package t ~meta_file ~name ~parent_dir ~vars =
    [t.packages] *)
 let parse_and_acknowledge_meta t ~dir ~meta_file (meta : Meta.Simplified.t) =
   let rec loop ~dir ~full_name (meta : Meta.Simplified.t) =
-    let vars = String_map.map meta.vars ~f:Rules.of_meta_rules in
+    let vars = String.Map.map meta.vars ~f:Rules.of_meta_rules in
     let dir, res =
       parse_package t ~meta_file ~name:full_name ~parent_dir:dir ~vars
     in
@@ -266,18 +293,18 @@ let find_and_acknowledge_meta t ~fq_name =
       if Path.exists fn then
         Some (sub_dir,
               fn,
-              Meta.load ~name:root_name ~fn:(Path.to_string fn))
+              Meta.load ~name:root_name fn)
       else
         (* Alternative layout *)
         let fn = Path.relative dir ("META." ^ root_name) in
         if Path.exists fn then
           Some (dir,
                 fn,
-                Meta.load ~fn:(Path.to_string fn) ~name:root_name)
+                Meta.load fn ~name:root_name)
         else
           loop dirs
     | [] ->
-      match String_map.find t.builtins root_name with
+      match String.Map.find t.builtins root_name with
       | Some meta -> Some (t.stdlib_dir, Path.of_string "<internal>", meta)
       | None -> None
   in
@@ -311,16 +338,13 @@ let root_packages t =
       |> Array.to_list
       |> List.filter ~f:(fun name ->
         Path.exists (Path.relative dir (name ^ "/META"))))
-    |> String_set.of_list
+    |> String.Set.of_list
   in
-  let pkgs =
-    String_set.union pkgs
-      (String_set.of_list (String_map.keys t.builtins))
-  in
-  String_set.to_list pkgs
+  String.Set.union pkgs
+    (String.Set.of_list (String.Map.keys t.builtins))
 
 let load_all_packages t =
-  List.iter (root_packages t) ~f:(fun pkg ->
+  String.Set.iter (root_packages t) ~f:(fun pkg ->
     find_and_acknowledge_meta t ~fq_name:pkg)
 
 let all_packages t =

@@ -1,4 +1,4 @@
-  $ jbuilder build @runtest @install-file --display short
+  $ dune build @runtest @install-file --display short
          refmt bar.re.ml
       ocamldep pp/reasononlypp.depends.ocamldep-output
       ocamldep ppx/reasonppx.depends.ocamldep-output

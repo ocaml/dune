@@ -1,4 +1,4 @@
-  $ jbuilder runtest --display short
+  $ dune runtest --display short
       ocamldep bar.ml.d
       ocamldep foo.ml.d
       ocamldep foo.mli.d
@@ -25,7 +25,7 @@
     "_build/install/default/lib/foo/foo.ml" {"foo.ml"}
     "_build/install/default/lib/foo/foo.cma" {"foo.cma"}
     "_build/install/default/lib/foo/foo.cmxa" {"foo.cmxa"}
-    "_build/install/default/lib/foo/foo.a" {"foo.a"}
+    "_build/install/default/lib/foo/foo$ext_lib" {"foo$ext_lib"}
     "_build/install/default/lib/foo/foo.cmxs" {"foo.cmxs"}
     "_build/install/default/lib/foo/foo.js" {"foo.js"}
     "_build/install/default/lib/foo/cfoo.h" {"cfoo.h"}

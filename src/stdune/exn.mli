@@ -1,5 +1,28 @@
 (** Exceptions *)
 
+(** An programming error, that should be reported upstream. The error message
+    shouldn't try to be developer friendly rather than user friendly. *)
+exception Code_error of Usexp.t
+
+
+(* CR-soon diml:
+   - Rename to [User_error]
+   - change the [string] argument to [Loc.t option * string] and get rid of
+   [Loc.Error]. The two are a bit confusing
+   - change [string] to [Colors.Style.t Pp.t]
+*)
+(** A fatal error, that should be reported to the user in a nice way *)
+exception Fatal_error of string
+
+exception Loc_error of Usexp.Loc.t * string
+
+val fatalf
+  :  ?loc:Usexp.Loc.t
+  -> ('a, unit, string, string, string, 'b) format6
+  -> 'a
+
+val code_error : string -> (string * Usexp.t) list -> _
+
 type t = exn
 
 external raise         : exn -> _ = "%raise"

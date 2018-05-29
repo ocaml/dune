@@ -35,17 +35,17 @@ module Simplified : sig
 
   type t =
     { name : string
-    ; vars : Rules.t String_map.t
+    ; vars : Rules.t String.Map.t
     ; subs : t list
     }
 
   val pp : Format.formatter -> t -> unit
 end
 
-val load : fn:string -> name:string -> Simplified.t
+val load : Path.t -> name:string -> Simplified.t
 
 (** Builtin META files for libraries distributed with the compiler. For when ocamlfind is
     not installed. *)
-val builtins : stdlib_dir:Path.t -> Simplified.t String_map.t
+val builtins : stdlib_dir:Path.t -> Simplified.t String.Map.t
 
 val pp : Format.formatter -> entry list -> unit

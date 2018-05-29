@@ -1,0 +1,543 @@
+let is_dir_sep =
+  if Sys.win32 || Sys.cygwin then
+    fun c -> c = '/' || c = '\\' || c = ':'
+  else
+    fun c -> c = '/'
+
+let explode_path =
+  let rec start acc path i =
+    if i < 0 then
+      acc
+    else if is_dir_sep (String.unsafe_get path i) then
+      start acc path (i - 1)
+    else
+      component acc path i (i - 1)
+  and component acc path end_ i =
+    if i < 0 then
+      String.sub path ~pos:0 ~len:(end_ + 1)::acc
+    else if is_dir_sep (String.unsafe_get path i) then
+      start
+        (String.sub path ~pos:(i + 1) ~len:(end_ - i)::acc)
+        path
+        (i - 1)
+    else
+      component acc path end_ (i - 1)
+  in
+  fun path ->
+    if path = Filename.current_dir_name then
+      [path]
+    else
+      match start [] path (String.length path - 1) with
+      | "." :: xs -> xs
+      | xs -> xs
+
+module External = struct
+  type t = string
+
+  let to_string t = t
+(*
+  let rec cd_dot_dot t =
+    match Unix.readlink t with
+    | exception _ -> Filename.dirname t
+    | t -> cd_dot_dot t
+
+  let relative initial_t path =
+    let rec loop t components =
+      match components with
+      | [] | ["." | ".."] ->
+        die "invalid filename concatenation: %s / %s" initial_t path
+      | [fn] -> Filename.concat t fn
+      | "."  :: rest -> loop t rest
+      | ".." :: rest -> loop (cd_dot_dot t) rest
+      | comp :: rest -> loop (Filename.concat t comp) rest
+    in
+    loop initial_t (explode_path path)
+*)
+
+  let relative = Filename.concat
+end
+
+let is_root = function
+  | "" -> true
+  | _  -> false
+
+module Local = struct
+  (* either "" for root, either a '/' separated list of components other that ".", ".."
+     and not containing '/'. *)
+  type t = string
+
+  let root = ""
+
+  let is_root = function
+    | "" -> true
+    | _  -> false
+
+  let to_string = function
+    | "" -> "."
+    | t  -> t
+
+  let compare = String.compare
+
+  module Set = String.Set
+
+  let to_list =
+    let rec loop t acc i j =
+      if i = 0 then
+        String.sub t ~pos:0 ~len:j :: acc
+      else
+        match t.[i - 1] with
+        | '/' -> loop t (String.sub t ~pos:i ~len:(j - i) :: acc) (i - 1) (i - 1)
+        | _   -> loop t acc (i - 1) j
+    in
+    function
+    | "" -> []
+    | t  ->
+      let len = String.length t in
+      loop t [] len len
+
+  let parent = function
+    | "" ->
+      Exn.code_error "Path.Local.parent called on the root" []
+    | t ->
+      match String.rindex_from t (String.length t - 1) '/' with
+      | exception Not_found -> ""
+      | i -> String.sub t ~pos:0 ~len:i
+
+  let basename = function
+    | "" ->
+      Exn.code_error "Path.Local.basename called on the root" []
+    | t ->
+      let len = String.length t in
+      match String.rindex_from t (len - 1) '/' with
+      | exception Not_found -> t
+      | i -> String.sub t ~pos:(i + 1) ~len:(len - i - 1)
+
+  let relative ?error_loc t path =
+    if not (Filename.is_relative path) then (
+      Exn.code_error "Local.relative: received absolute path"
+        [ "t", Usexp.atom_or_quoted_string t
+        ; "path", Usexp.atom_or_quoted_string path
+        ]
+    );
+    let rec loop t components =
+      match components with
+      | [] -> Result.Ok t
+      | "." :: rest -> loop t rest
+      | ".." :: rest ->
+        begin match t with
+        | "" -> Result.Error ()
+        | t -> loop (parent t) rest
+        end
+      | fn :: rest ->
+        match t with
+        | "" -> loop fn rest
+        | _ -> loop (t ^ "/" ^ fn) rest
+    in
+    match loop t (explode_path path) with
+    | Result.Ok t -> t
+    | Error () ->
+       Exn.fatalf ?loc:error_loc "path outside the workspace: %s from %s" path
+         (to_string t)
+
+  let is_canonicalized =
+    let rec before_slash s i =
+      if i < 0 then
+        false
+      else
+        match s.[i] with
+        | '/' -> false
+        | '.' -> before_dot_slash s (i - 1)
+        | _   -> in_component     s (i - 1)
+    and before_dot_slash s i =
+      if i < 0 then
+        false
+      else
+        match s.[i] with
+        | '/' -> false
+        | '.' -> before_dot_dot_slash s (i - 1)
+        | _   -> in_component         s (i - 1)
+    and before_dot_dot_slash s i =
+      if i < 0 then
+        false
+      else
+        match s.[i] with
+        | '/' -> false
+        | _   -> in_component s (i - 1)
+    and in_component s i =
+      if i < 0 then
+        true
+      else
+        match s.[i] with
+        | '/' -> before_slash s (i - 1)
+        | _   -> in_component s (i - 1)
+    in
+    fun s ->
+      let len = String.length s in
+      if len = 0 then
+        true
+      else
+        before_slash s (len - 1)
+
+  let of_string ?error_loc s =
+    if is_canonicalized s then
+      s
+    else
+      relative "" s ?error_loc
+
+  let rec mkdir_p = function
+    | "" -> ()
+    | t ->
+      try
+        Unix.mkdir t 0o777
+      with
+      | Unix.Unix_error (EEXIST, _, _) -> ()
+      | Unix.Unix_error (ENOENT, _, _) as e ->
+        match parent t with
+        | "" -> raise e
+        | p ->
+          mkdir_p p;
+          Unix.mkdir t 0o777
+
+  let ensure_parent_directory_exists = function
+    | "" -> ()
+    | t -> mkdir_p (parent t)
+
+  let append a b =
+    match a, b with
+    | "", x | x, "" -> x
+    | _ -> a ^ "/" ^ b
+
+  let descendant t ~of_ =
+    match of_ with
+    | "" -> Some t
+    | _ ->
+      let of_len = String.length of_ in
+      let t_len = String.length t in
+      if t_len = of_len then
+        Option.some_if (t = of_) t
+      else if (t_len >= of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_) then
+        Some (String.sub t ~pos:(of_len + 1) ~len:(t_len - of_len - 1))
+      else
+        None
+
+  let is_descendant t ~of_ =
+    match of_ with
+    | "" -> true
+    | _ ->
+      let of_len = String.length of_ in
+      let t_len = String.length t in
+      (t_len = of_len && t = of_) ||
+      (t_len > of_len && t.[of_len] = '/' && String.is_prefix t ~prefix:of_)
+
+  let reach t ~from =
+    let rec loop t from =
+      match t, from with
+      | a :: t, b :: from when a = b ->
+        loop t from
+      | _ ->
+        match List.fold_left from ~init:t ~f:(fun acc _ -> ".." :: acc) with
+        | [] -> "."
+        | l -> String.concat l ~sep:"/"
+    in
+    loop (to_list t) (to_list from)
+end
+
+type t = string
+let compare = String.compare
+
+module Set = struct
+  include String.Set
+  let sexp_of_t t = Sexp.To_sexp.(list string) (String.Set.to_list t)
+  let of_string_set = map
+end
+
+module Map = String.Map
+
+module Kind = struct
+  type t =
+    | External of External.t
+    | Local    of Local.t
+end
+
+let is_local t = is_root t || Filename.is_relative t
+
+let kind t : Kind.t =
+  if is_local t then
+    Local t
+  else
+    External t
+
+let to_string = function
+  | "" -> "."
+  | t  -> t
+
+let to_string_maybe_quoted t =
+  String.maybe_quoted (to_string t)
+
+let root = ""
+
+let relative ?error_loc t fn =
+  if fn = "" then
+    t
+  else
+    match is_local t, is_local fn with
+    | true, true  -> Local.relative t fn ?error_loc
+    | _   , false -> fn
+    | false, true -> External.relative t fn
+
+let of_string ?error_loc s =
+  match s with
+  | "" -> ""
+  | s  ->
+    if Filename.is_relative s then
+      Local.of_string s ?error_loc
+    else
+      s
+
+let t sexp = of_string (Sexp.Of_sexp.string sexp) ~error_loc:(Sexp.Ast.loc sexp)
+let sexp_of_t t = Sexp.atom_or_quoted_string (to_string t)
+
+let initial_cwd = Sys.getcwd ()
+
+let absolute fn =
+  if is_local fn then
+    Filename.concat initial_cwd fn
+  else
+    fn
+
+let to_absolute_filename t ~root =
+  match kind t with
+  | Local t ->
+    assert (not (Filename.is_relative root));
+    Filename.concat root (Local.to_string t)
+  | External t -> t
+
+let reach t ~from =
+  match kind t, kind from with
+  | External _, _ -> t
+  | Local _, External _ ->
+    Exn.code_error "Path.reach called with invalid combination"
+      [ "t"   , sexp_of_t t
+      ; "from", sexp_of_t from
+      ]
+  | Local t, Local from ->
+    Local.reach t ~from
+
+let reach_for_running ?(from=root) t =
+  match kind t, kind from with
+  | External _, _ -> t
+  | Local _, External _ ->
+    Exn.code_error "Path.reach_for_running called with invalid combination"
+      [ "t"   , sexp_of_t t
+      ; "from", sexp_of_t from
+      ]
+  | Local t, Local from ->
+    let s = Local.reach t ~from in
+    if String.is_prefix s ~prefix:"../" then
+      s
+    else
+      "./" ^ s
+
+let descendant t ~of_ =
+  match kind t, kind of_ with
+  | Local t, Local of_ -> Local.descendant t ~of_
+  | _, _ -> None
+
+let is_descendant t ~of_ =
+  match kind t, kind of_ with
+  | Local t, Local of_ -> Local.is_descendant t ~of_
+  | _, _ -> false
+
+let append a b =
+  match kind b with
+  | External _ ->
+    Exn.code_error "Path.append called with non-local second path"
+      [ "a", sexp_of_t a
+      ; "b", sexp_of_t b
+      ]
+  | Local b ->
+    begin match kind a with
+    | Local a -> Local.append a b
+    | External a -> Filename.concat a b
+    end
+
+let basename t =
+  match kind t with
+  | Local t -> Local.basename t
+  | External t -> Filename.basename t
+
+let parent t =
+  match kind t with
+  | Local "" -> None
+  | Local t -> Some (Local.parent t)
+  | External t ->
+    let parent = Filename.dirname t in
+    if parent = t then
+      None
+    else
+      Some parent
+
+let parent_exn t =
+  match parent t with
+  | Some p -> p
+  | None -> Exn.code_error "Path.parent_exn: t is root"
+              ["t", sexp_of_t t]
+
+let build_prefix = "_build/"
+
+let build_dir = "_build"
+
+let is_in_build_dir t =
+  match kind t with
+  | Local t -> String.is_prefix t ~prefix:build_prefix
+  | External _ -> false
+
+let is_in_source_tree t = is_local t && not (is_in_build_dir t)
+
+let is_alias_stamp_file t =
+  String.is_prefix t ~prefix:"_build/.aliases/"
+
+let extract_build_context t =
+  if String.is_prefix t ~prefix:build_prefix then
+    let i = String.length build_prefix in
+    match String.index_from t i '/' with
+    | exception _ ->
+      Some
+        (String.sub t ~pos:i ~len:(String.length t - i),
+         "")
+    | j ->
+      Some
+        (String.sub t ~pos:i ~len:(j - i),
+         String.sub t ~pos:(j + 1) ~len:(String.length t - j - 1))
+  else
+    None
+
+let extract_build_context_dir t =
+  if String.is_prefix t ~prefix:build_prefix then
+    let i = String.length build_prefix in
+    match String.index_from t i '/' with
+    | exception _ ->
+      Some (t, "")
+    | j ->
+      Some
+        (String.sub t ~pos:0 ~len:j,
+         String.sub t ~pos:(j + 1) ~len:(String.length t - j - 1))
+  else
+    None
+
+let drop_build_context t =
+  Option.map (extract_build_context t) ~f:snd
+
+let drop_build_context_exn t =
+  match extract_build_context t with
+  | None -> Exn.code_error "Path.drop_build_context_exn" [ "t", sexp_of_t t ]
+  | Some (_, t) -> t
+
+let drop_optional_build_context t =
+  match extract_build_context t with
+  | None -> t
+  | Some (_, t) -> t
+
+let split_first_component t =
+  match kind t, is_root t with
+  | Local t, false ->
+    begin match String.index t '/' with
+    | None -> Some (t, root)
+    | Some i ->
+      Some
+        (String.sub t ~pos:0 ~len:i,
+         String.sub t ~pos:(i + 1) ~len:(String.length t - i - 1))
+    end
+  | _, _ -> None
+
+let explode t =
+  match kind t with
+  | Local "" -> Some []
+  | Local s -> Some (String.split s ~on:'/')
+  | External _ -> None
+
+let explode_exn t =
+  match explode t with
+  | Some s -> s
+  | None -> Exn.code_error "Path.explode_exn"
+              ["path", Sexp.atom_or_quoted_string t]
+
+let exists t =
+  try Sys.file_exists (to_string t)
+  with Sys_error _ -> false
+let readdir t = Sys.readdir (to_string t) |> Array.to_list
+let is_directory t =
+  try Sys.is_directory (to_string t)
+  with Sys_error _ -> false
+let rmdir t = Unix.rmdir (to_string t)
+let win32_unlink fn =
+  try
+    Unix.unlink fn
+  with Unix.Unix_error (Unix.EACCES, _, _) as e ->
+    (* Try removing the read-only attribute *)
+    try
+      Unix.chmod fn 0o666;
+      Unix.unlink fn
+    with _ ->
+      raise e
+let unlink_operation =
+  if Sys.win32 then
+    win32_unlink
+  else
+    Unix.unlink
+let unlink t =
+  unlink_operation (to_string t)
+let unlink_no_err t = try unlink t with _ -> ()
+
+let build_dir_exists () = is_directory build_dir
+
+let ensure_build_dir_exists () = Local.mkdir_p build_dir
+
+let extend_basename t ~suffix = t ^ suffix
+
+let insert_after_build_dir_exn =
+  let error a b =
+    Exn.code_error
+      "Path.insert_after_build_dir_exn"
+      [ "path"  , Sexp.unsafe_atom_of_string a
+      ; "insert", Sexp.unsafe_atom_of_string b
+      ]
+  in
+  fun a b ->
+    if not (is_local a) then
+      error a b
+    else if a = build_dir then
+      relative build_dir b
+    else
+      match String.lsplit2 a ~on:'/' with
+      | Some (build_dir', rest) when build_dir = build_dir' ->
+        Local.append (relative build_dir b) rest
+      | _ ->
+        error a b
+
+let rm_rf =
+  let rec loop dir =
+    Array.iter (Sys.readdir dir) ~f:(fun fn ->
+      let fn = Filename.concat dir fn in
+      match Unix.lstat fn with
+      | { st_kind = S_DIR; _ } -> loop fn
+      | _                      -> unlink_operation fn);
+    Unix.rmdir dir
+  in
+  fun t ->
+    if not (is_local t) then (
+      Exn.code_error "Path.rm_rf called on external dir"
+        ["t", sexp_of_t t]
+    );
+    let fn = to_string t in
+    match Unix.lstat fn with
+    | exception Unix.Unix_error(ENOENT, _, _) -> ()
+    | _ -> loop fn
+
+let change_extension ~ext t =
+  let t = try Filename.chop_extension t with Not_found -> t in
+  t ^ ext
+
+let extension = Filename.extension
+
+let pp ppf t = Format.pp_print_string ppf (to_string t)

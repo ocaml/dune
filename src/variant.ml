@@ -1,4 +1,9 @@
-include Interned.Make()
+open Stdune
+
+include Interned.Make(struct
+    let initial_size = 256
+    let resize_policy = Interned.Conservative
+  end)()
 
 let ppx_driver = make "ppx_driver"
 let mt         = make "mt"

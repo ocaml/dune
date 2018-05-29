@@ -44,6 +44,15 @@ module Gen(P : Install_params) = struct
        >>> Build.write_file_dyn
              (lib_dune_file ~dir:(Lib.src_dir lib) ~name:(Lib.name lib)))
 
+  let version_from_dune_project (pkg : Package.t) =
+    let dir = Path.append (SC.build_dir sctx) pkg.path in
+    let project = Scope.project (SC.find_scope_by_dir sctx dir) in
+    project.version
+
+  type version_method =
+    | File of string
+    | From_dune_project
+
   let init_meta () =
     SC.libs_by_package sctx
     |> Package.Name.Map.iter ~f:(fun ((pkg : Package.t), libs) ->
@@ -63,18 +72,25 @@ module Gen(P : Install_params) = struct
               let rec loop = function
                 | [] -> Build.return None
                 | candidate :: rest ->
-                  let p = Path.relative path candidate in
-                  Build.if_file_exists p
-                    ~then_:(Build.lines_of p
-                            >>^ function
-                            | ver :: _ -> Some ver
-                            | _ -> Some "")
-                    ~else_:(loop rest)
+                  match candidate with
+                  | File fn ->
+                    let p = Path.relative path fn in
+                    Build.if_file_exists p
+                      ~then_:(Build.lines_of p
+                              >>^ function
+                              | ver :: _ -> Some ver
+                              | _ -> Some "")
+                      ~else_:(loop rest)
+                  | From_dune_project ->
+                    match version_from_dune_project pkg with
+                    | None -> loop rest
+                    | Some _ as x -> Build.return x
               in
               loop
-                [ (Package.Name.to_string pkg.name) ^ ".version"
-                ; "version"
-                ; "VERSION"
+                [ File ((Package.Name.to_string pkg.name) ^ ".version")
+                ; From_dune_project
+                ; File "version"
+                ; File "VERSION"
                 ]
           in
           Super_context.Pkg_version.set sctx pkg get
@@ -178,7 +194,7 @@ module Gen(P : Install_params) = struct
             | "ppx_driver" | "ppx_type_conv" -> true
             | _ -> false) then
             pps @ [match Scope.name scope with
-              | Some "ppxlib" ->
+              | Named "ppxlib" ->
                 Loc.none, Pp.of_string "ppxlib.runner"
               | _ ->
                 Loc.none, Pp.of_string "ppx_driver.runner"]
@@ -219,7 +235,7 @@ module Gen(P : Install_params) = struct
   let install_file package_path package entries =
     let entries =
       let files = SC.source_files sctx ~src_path:Path.root in
-      String_set.fold files ~init:entries ~f:(fun fn acc ->
+      String.Set.fold files ~init:entries ~f:(fun fn acc ->
         if is_odig_doc_file fn then
           Install.Entry.make Doc (Path.relative ctx.build_dir fn) :: acc
         else

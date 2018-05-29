@@ -59,7 +59,7 @@ val path_set : Path.Set.t -> ('a, 'a) t
 
 (** Evaluate a glob and record all the matched files as dependencies
     of the action produced by the build arrow. *)
-val paths_glob : loc:Loc.t -> dir:Path.t -> Re.re -> ('a, Path.t list) t
+val paths_glob : loc:Loc.t -> dir:Path.t -> Re.re -> ('a, Path.Set.t) t
 
 (* CR-someday diml: rename to [source_files_recursively_in] *)
 (** Compute the set of source of all files present in the sub-tree
@@ -133,7 +133,6 @@ val run
   :  context:Context.t
   -> ?dir:Path.t (* default: [context.build_dir] *)
   -> ?stdout_to:Path.t
-  -> ?extra_targets:Path.t list
   -> Action.Prog.t
   -> 'a Arg_spec.t list
   -> ('a, Action.t) t
@@ -175,7 +174,7 @@ val record_lib_deps
   -> Jbuild.Lib_dep.t list
   -> ('a, 'a) t
 
-type lib_deps = lib_dep_kind String_map.t
+type lib_deps = lib_dep_kind String.Map.t
 
 val record_lib_deps_simple : lib_deps -> ('a, 'a) t
 
@@ -194,7 +193,7 @@ module Repr : sig
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
     | Paths : Path.Set.t -> ('a, 'a) t
     | Paths_for_rule : Path.Set.t -> ('a, 'a) t
-    | Paths_glob : glob_state ref -> ('a, Path.t list) t
+    | Paths_glob : glob_state ref -> ('a, Path.Set.t) t
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
     | Lines_of : Path.t -> ('a, string list) t
@@ -222,10 +221,10 @@ module Repr : sig
 
   and glob_state =
     | G_unevaluated of Loc.t * Path.t * Re.re
-    | G_evaluated   of Path.t list
+    | G_evaluated   of Path.Set.t
 
   val get_if_file_exists_exn : ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
-  val get_glob_result_exn : glob_state ref -> Path.t list
+  val get_glob_result_exn : glob_state ref -> Path.Set.t
 end
 
 val repr : ('a, 'b) t -> ('a, 'b) Repr.t
@@ -234,3 +233,5 @@ val merge_lib_deps : lib_deps -> lib_deps -> lib_deps
 
 (**/**)
 val paths_for_rule : Path.Set.t -> ('a, 'a) t
+
+val merge_files_dyn : target:Path.t -> (Path.t list * string list, Action.t) t

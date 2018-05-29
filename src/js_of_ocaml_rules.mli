@@ -25,4 +25,4 @@ val setup_separate_compilation_rules
   -> string list
   -> unit
 
-val standard : unit -> string list
+val standard : Super_context.t -> string list

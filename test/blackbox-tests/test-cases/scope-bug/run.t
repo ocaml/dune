@@ -1,4 +1,4 @@
-  $ jbuilder build --display short @install
+  $ dune build --display short @install
       ocamldep alib/alib.ml.d
       ocamldep alib/main.ml.d
       ocamldep blib/blib.ml.d

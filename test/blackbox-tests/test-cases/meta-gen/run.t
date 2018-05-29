@@ -1,4 +1,4 @@
-  $ jbuilder runtest --force --display short
+  $ dune runtest --force --display short
   description = "contains \"quotes\""
   requires = "bytes"
   archive(byte) = "foobar.cma"

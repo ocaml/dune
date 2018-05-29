@@ -45,8 +45,6 @@ module Binding = struct
   type t = T : 'a Var0.t * 'a -> t
 end
 
-module Int_map = Map.Make(Int)
-
 module Execution_context : sig
   type t
 
@@ -68,14 +66,14 @@ module Execution_context : sig
     -> on_error:(exn -> unit)
     -> t
 
-  val vars : t -> Binding.t Int_map.t
-  val set_vars : t -> Binding.t Int_map.t -> t
+  val vars : t -> Binding.t Int.Map.t
+  val set_vars : t -> Binding.t Int.Map.t -> t
 end = struct
   type t =
     { on_error : exn -> unit (* This callback must never raise *)
     ; fibers   : int ref (* Number of fibers running in this execution
                             context *)
-    ; vars     : Binding.t Int_map.t
+    ; vars     : Binding.t Int.Map.t
     ; on_release : unit -> unit
     }
 
@@ -85,7 +83,7 @@ end = struct
   let create_initial () =
     { on_error   = reraise
     ; fibers     = ref 1
-    ; vars       = Int_map.empty
+    ; vars       = Int.Map.empty
     ; on_release = ignore
     }
 
@@ -274,14 +272,14 @@ module Var = struct
   include Var0
 
   let find ctx var =
-    match Int_map.find (EC.vars ctx) (id var) with
+    match Int.Map.find (EC.vars ctx) (id var) with
     | None -> None
     | Some (Binding.T (var', v)) ->
       let eq = eq var' var in
       Some (Eq.cast eq v)
 
   let find_exn ctx var =
-    match Int_map.find (EC.vars ctx) (id var) with
+    match Int.Map.find (EC.vars ctx) (id var) with
     | None -> failwith "Fiber.Var.find_exn"
     | Some (Binding.T (var', v)) ->
       let eq = eq var' var in
@@ -293,7 +291,7 @@ module Var = struct
   let set (type a) (var : a t) x fiber ctx k =
     let (module M) = var in
     let data = Binding.T (var, x) in
-    let ctx = EC.set_vars ctx (Int_map.add (EC.vars ctx) M.id data) in
+    let ctx = EC.set_vars ctx (Int.Map.add (EC.vars ctx) M.id data) in
     fiber ctx k
 end
 

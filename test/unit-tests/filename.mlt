@@ -2,7 +2,7 @@
 
 #warnings "-40";;
 
-open Jbuilder;;
+open Dune;;
 open Import;;
 
 Filename.extension "toto.titi";;

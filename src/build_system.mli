@@ -22,7 +22,7 @@ val create
 
 type extra_sub_directories_to_keep =
   | All
-  | These of String_set.t
+  | These of String.Set.t
 
 (** Set the rule generators callback. There must be one callback per
    build context name.
@@ -36,7 +36,7 @@ type extra_sub_directories_to_keep =
 
     It is expected that [f] only generate rules whose targets are
    descendant of [dir]. *)
-val set_rule_generators : t -> (dir:Path.t -> string list -> extra_sub_directories_to_keep) String_map.t -> unit
+val set_rule_generators : t -> (dir:Path.t -> string list -> extra_sub_directories_to_keep) String.Map.t -> unit
 
 (** All other functions in this section must be called inside the rule generator
     callback. *)
@@ -99,7 +99,7 @@ module Alias : sig
 
   val make : string -> dir:Path.t -> t
 
-  val of_path : Path.t -> t
+  val of_user_written_path : loc:Loc.t -> Path.t -> t
 
   (** The following always holds:
 
@@ -177,8 +177,8 @@ end with type build_system := t
 (** Do the actual build *)
 val do_build
   :  t
-  -> request:(unit, unit) Build.t
-  -> unit Fiber.t
+  -> request:(unit, 'a) Build.t
+  -> 'a Fiber.t
 
 (** {2 Other queries} *)
 
@@ -199,7 +199,7 @@ val all_lib_deps
 val all_lib_deps_by_context
   :  t
   -> request:(unit, unit) Build.t
-  -> Build.lib_deps String_map.t
+  -> Build.lib_deps String.Map.t
 
 (** List of all buildable targets *)
 val all_targets : t -> Path.t list

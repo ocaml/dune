@@ -1,0 +1,34 @@
+(jbuild_version 1)
+
+(rule
+ ((targets (dune.1))
+  (action  (with-stdout-to ${@}
+            (run ${bin:dune} --help=groff)))))
+
+(install
+ ((section man)
+  (package dune)
+  (files (dune.1))))
+
+(rule
+ ((targets (dune-config.5))
+  (action  (with-stdout-to ${@}
+            (run ${bin:jbuilder} help config --man-format=groff)))))
+
+(install
+ ((section man)
+  (package dune)
+  (files (dune-config.5))))
+
+(include dune.inc)
+
+(rule
+ ((targets (dune.inc.gen))
+  (deps    ((package dune)))
+  (action
+   (with-stdout-to ${@}
+    (run bash ${path:update-jbuild.sh})))))
+
+(alias
+ ((name runtest)
+  (action (diff dune.inc dune.inc.gen))))

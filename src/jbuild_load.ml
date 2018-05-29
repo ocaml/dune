@@ -4,19 +4,20 @@ open Jbuild
 let filter_stanzas ~ignore_promoted_rules stanzas =
   if ignore_promoted_rules then
     List.filter stanzas ~f:(function
-      | Stanza.Rule { mode = Promote; _ } -> false
+      | Rule { mode = Promote; _ } -> false
       | _ -> true)
   else
     stanzas
 
 module Jbuilds = struct
   type script =
-    { dir   : Path.t
-    ; scope : Scope_info.t
+    { dir     : Path.t
+    ; file    : Path.t
+    ; project : Dune_project.t
     }
 
   type one =
-    | Literal of (Path.t * Scope_info.t * Stanza.t list)
+    | Literal of (Path.t * Dune_project.t * Stanza.t list)
     | Script of script
 
   type t =
@@ -24,7 +25,7 @@ module Jbuilds = struct
     ; ignore_promoted_rules : bool
     }
 
-  let generated_jbuilds_dir = Path.(relative root) "_build/.jbuilds"
+  let generated_jbuilds_dir = Path.relative Path.build_dir ".jbuilds"
 
   let ensure_parent_dir_exists path =
     match Path.kind path with
@@ -33,7 +34,7 @@ module Jbuilds = struct
 
   type requires = No_requires | Unix
 
-  let extract_requires ~fname str =
+  let extract_requires path str =
     let rec loop n lines acc =
       match lines with
       | [] -> acc
@@ -48,7 +49,7 @@ module Jbuilds = struct
             | _ ->
               let start =
                 { Lexing.
-                  pos_fname = fname
+                  pos_fname = Path.to_string path
                 ; pos_lnum  = n
                 ; pos_cnum  = 0
                 ; pos_bol   = 0
@@ -64,9 +65,8 @@ module Jbuilds = struct
     loop 1 (String.split str ~on:'\n') No_requires
 
   let create_plugin_wrapper (context : Context.t) ~exec_dir ~plugin ~wrapper ~target =
-    let plugin = Path.to_string plugin in
     let plugin_contents = Io.read_file plugin in
-    Io.with_file_out (Path.to_string wrapper) ~f:(fun oc ->
+    Io.with_file_out wrapper ~f:(fun oc ->
       let ocamlc_config =
         let vars =
           Ocaml_config.to_list context.ocaml_config
@@ -105,8 +105,8 @@ end
         context.version_string
         ocamlc_config
         (Path.reach ~from:exec_dir target)
-        plugin plugin_contents);
-    extract_requires ~fname:plugin plugin_contents
+        (Path.to_string plugin) plugin_contents);
+    extract_requires plugin plugin_contents
 
   let eval { jbuilds; ignore_promoted_rules } ~(context : Context.t) =
     let open Fiber.O in
@@ -115,8 +115,7 @@ end
         | Literal x -> Left  x
         | Script  x -> Right x)
     in
-    Fiber.parallel_map dynamic ~f:(fun { dir; scope } ->
-      let file = Path.relative dir "jbuild" in
+    Fiber.parallel_map dynamic ~f:(fun { dir; file; project } ->
       let generated_jbuild =
         Path.append (Path.relative generated_jbuilds_dir context.name) file
       in
@@ -136,7 +135,7 @@ end
         List.concat
           [ [ "-I"; "+compiler-libs" ]
           ; cmas
-          ; [ Path.to_absolute_filename wrapper ]
+          ; [ Path.to_absolute_filename wrapper ~root:!Clflags.workspace_root ]
           ]
       in
       (* CR-someday jdimino: if we want to allow plugins to use findlib:
@@ -148,18 +147,17 @@ end
            in
          ]}
       *)
-      Process.run Strict ~dir:(Path.to_string dir)
-        ~env:context.env
-        (Path.to_string context.ocaml)
+      Process.run Strict ~dir ~env:context.env context.ocaml
         args
       >>= fun () ->
       if not (Path.exists generated_jbuild) then
         die "@{<error>Error:@} %s failed to produce a valid jbuild file.\n\
              Did you forgot to call [Jbuild_plugin.V*.send]?"
           (Path.to_string file);
-      let sexps = Sexp.load ~fname:(Path.to_string generated_jbuild) ~mode:Many in
-      Fiber.return (dir, scope, Stanzas.parse scope sexps ~file:generated_jbuild
-                                |> filter_stanzas ~ignore_promoted_rules))
+      let sexps = Io.Sexp.load generated_jbuild ~mode:Many in
+      Fiber.return (dir, project,
+                    Stanzas.parse project sexps ~file:generated_jbuild
+                    |> filter_stanzas ~ignore_promoted_rules))
     >>| fun dynamic ->
     static @ dynamic
 end
@@ -168,88 +166,81 @@ type conf =
   { file_tree : File_tree.t
   ; jbuilds   : Jbuilds.t
   ; packages  : Package.t Package.Name.Map.t
-  ; scopes    : Scope_info.t list
+  ; projects  : Dune_project.t list
   }
 
-let load ~dir ~scope ~ignore_promoted_rules =
-  let file = Path.relative dir "jbuild" in
-  match Sexp.load_many_or_ocaml_script (Path.to_string file) with
-  | Sexps sexps ->
-    Jbuilds.Literal (dir, scope,
-                     Stanzas.parse scope sexps ~file
-                     |> filter_stanzas ~ignore_promoted_rules)
-  | Ocaml_script ->
-    Script { dir; scope }
+let interpret ~dir ~project ~ignore_promoted_rules
+      ~(dune_file:File_tree.Dune_file.t) =
+  match dune_file with
+  | Plain p ->
+    let jbuild =
+      Jbuilds.Literal (dir, project,
+                       Stanzas.parse project p.sexps ~file:p.path
+                       |> filter_stanzas ~ignore_promoted_rules)
+    in
+    p.sexps <- [];
+    jbuild
+  | Ocaml_script file ->
+    Script { dir; project; file }
 
 let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
   let ftree = File_tree.load Path.root ?extra_ignored_subtrees in
-  let packages =
-    File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[] ~f:(fun dir pkgs ->
-      let path = File_tree.Dir.path dir in
-      let files = File_tree.Dir.files dir in
-      String_set.fold files ~init:pkgs ~f:(fun fn acc ->
-        match Filename.split_extension fn with
-        | (pkg, ".opam") when pkg <> "" ->
-          let version_from_opam_file =
-            let opam = Opam_file.load (Path.relative path fn |> Path.to_string) in
-            match Opam_file.get_field opam "version" with
-            | Some (String (_, s)) -> Some s
-            | _ -> None
-          in
-          let name = Package.Name.of_string pkg in
-          (name,
-           { Package. name
-           ; path
-           ; version_from_opam_file
-           }) :: acc
-        | _ -> acc))
+  let projects =
+    File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[]
+      ~f:(fun dir acc ->
+        match File_tree.Dir.project dir with
+        | Some p when p.root = File_tree.Dir.path dir -> p :: acc
+        | _ -> acc)
   in
   let packages =
-    Package.Name.Map.of_list_multi packages
-    |> Package.Name.Map.mapi ~f:(fun name pkgs ->
-      match pkgs with
-      | [pkg] -> pkg
-      | _ ->
-        die "Too many opam files for package %S:\n%s"
-          (Package.Name.to_string name)
-          (String.concat ~sep:"\n"
-             (List.map pkgs ~f:(fun pkg ->
-                sprintf "- %s" (Path.to_string (Package.opam_file pkg))))))
+    List.fold_left projects ~init:Package.Name.Map.empty
+      ~f:(fun acc (p : Dune_project.t) ->
+        Package.Name.Map.merge acc p.packages ~f:(fun name a b ->
+          match a, b with
+          | None, None -> None
+          | None, Some _ -> b
+          | Some _, None -> a
+          | Some a, Some b ->
+            die "Too many opam files for package %S:\n- %s\n- %s"
+              (Package.Name.to_string name)
+              (Path.to_string_maybe_quoted (Package.opam_file a))
+              (Path.to_string_maybe_quoted (Package.opam_file b))))
   in
-  let scopes =
-    Package.Name.Map.values packages
-    |> List.map ~f:(fun pkg -> (pkg.Package.path, pkg))
-    |> Path.Map.of_list_multi
-    |> Path.Map.map ~f:Scope_info.make
+  let projects =
+    List.map projects ~f:(fun (p : Dune_project.t) ->
+      (p.root, p))
+    |> Path.Map.of_list_exn
   in
-  let scopes =
-    if Path.Map.mem scopes Path.root then
-      scopes
+
+  let projects =
+    if Path.Map.mem projects Path.root then
+      projects
     else
-      Path.Map.add scopes Path.root Scope_info.anonymous
+      Path.Map.add projects Path.root Dune_project.anonymous
   in
-  let rec walk dir jbuilds scope =
+  let rec walk dir jbuilds project =
     if File_tree.Dir.ignored dir then
       jbuilds
     else begin
       let path = File_tree.Dir.path dir in
-      let files = File_tree.Dir.files dir in
       let sub_dirs = File_tree.Dir.sub_dirs dir in
-      let scope = Option.value (Path.Map.find scopes path) ~default:scope in
+      let project = Option.value (Path.Map.find projects path) ~default:project in
       let jbuilds =
-        if String_set.mem files "jbuild" then
-          let jbuild = load ~dir:path ~scope ~ignore_promoted_rules in
+        match File_tree.Dir.dune_file dir with
+        | None -> jbuilds
+        | Some dune_file ->
+          let jbuild =
+            interpret ~dir:path ~project ~ignore_promoted_rules ~dune_file
+          in
           jbuild :: jbuilds
-        else
-          jbuilds
       in
-      String_map.fold sub_dirs ~init:jbuilds
-        ~f:(fun dir jbuilds -> walk dir jbuilds scope)
+      String.Map.fold sub_dirs ~init:jbuilds
+        ~f:(fun dir jbuilds -> walk dir jbuilds project)
     end
   in
-  let jbuilds = walk (File_tree.root ftree) [] Scope_info.anonymous in
+  let jbuilds = walk (File_tree.root ftree) [] Dune_project.anonymous in
   { file_tree = ftree
   ; jbuilds = { jbuilds; ignore_promoted_rules }
   ; packages
-  ; scopes = Path.Map.values scopes
+  ; projects = Path.Map.values projects
   }

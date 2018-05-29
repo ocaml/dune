@@ -1,4 +1,4 @@
-  $ jbuilder build --display short @all
+  $ dune build --display short @all
       ocamldep test.ml.d
         ocamlc .test.eobjs/test.{cmi,cmo,cmt}
         ocamlc test.bc.o
@@ -9,9 +9,9 @@
         ocamlc test.bc
         ocamlc test.bc.so
       ocamlopt test.exe
-      ocamlopt test.so
+      ocamlopt test$ext_dll
 
-  $ jbuilder build @runtest
+  $ dune build @runtest
         static alias runtest
   OK: ./static.bc
        dynamic alias runtest
@@ -19,4 +19,4 @@
         static alias runtest
   OK: ./static.exe
        dynamic alias runtest
-  OK: ./dynamic.exe ./test.so
+  OK: ./dynamic.exe ./test$ext_dll

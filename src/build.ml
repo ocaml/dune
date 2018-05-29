@@ -1,7 +1,5 @@
 open Import
 
-module Pset = Path.Set
-
 module Vspec = struct
   type 'a t = T : Path.t * 'a Vfile_kind.t -> 'a t
 end
@@ -9,7 +7,7 @@ end
 type lib_dep_kind =
   | Optional
   | Required
-type lib_deps = lib_dep_kind String_map.t
+type lib_deps = lib_dep_kind String.Map.t
 
 let merge_lib_dep_kind a b =
   match a, b with
@@ -26,9 +24,9 @@ module Repr = struct
     | Second : ('a, 'b) t -> ('c * 'a, 'c * 'b) t
     | Split : ('a, 'b) t * ('c, 'd) t -> ('a * 'c, 'b * 'd) t
     | Fanout : ('a, 'b) t * ('a, 'c) t -> ('a, 'b * 'c) t
-    | Paths : Pset.t -> ('a, 'a) t
+    | Paths : Path.Set.t -> ('a, 'a) t
     | Paths_for_rule : Path.Set.t -> ('a, 'a) t
-    | Paths_glob : glob_state ref -> ('a, Path.t list) t
+    | Paths_glob : glob_state ref -> ('a, Path.Set.t) t
     (* The reference gets decided in Build_interpret.deps *)
     | If_file_exists : Path.t * ('a, 'b) if_file_exists_state ref -> ('a, 'b) t
     | Contents : Path.t -> ('a, string) t
@@ -57,23 +55,27 @@ module Repr = struct
 
   and glob_state =
     | G_unevaluated of Loc.t * Path.t * Re.re
-    | G_evaluated   of Path.t list
+    | G_evaluated   of Path.Set.t
 
   let get_if_file_exists_exn state =
     match !state with
     | Decided (_, t) -> t
-    | Undecided _ -> code_errorf "Build.get_if_file_exists_exn: got undecided"
+    | Undecided _ ->
+      Exn.code_error "Build.get_if_file_exists_exn: got undecided" []
 
   let get_glob_result_exn state =
     match !state with
     | G_evaluated l -> l
-    | G_unevaluated _ -> code_errorf "Build.get_glob_result_exn: got unevaluated"
+    | G_unevaluated (loc, path, _) ->
+      Exn.code_error "Build.get_glob_result_exn: got unevaluated"
+        [ "loc", Loc.sexp_of_t loc
+        ; "path", Path.sexp_of_t path ]
 end
 include Repr
 let repr t = t
 
 let merge_lib_deps a b =
-  String_map.merge a b ~f:(fun _ a b ->
+  String.Map.merge a b ~f:(fun _ a b ->
     match a, b with
     | None, None -> None
     | x, None | None, x -> x
@@ -91,9 +93,9 @@ let record_lib_deps ~kind lib_deps =
        | Jbuild.Lib_dep.Direct (_, s) -> [(s, kind)]
        | Select { choices; _ } ->
          List.concat_map choices ~f:(fun c ->
-           String_set.to_list c.Jbuild.Lib_dep.required
+           String.Set.to_list c.Jbuild.Lib_dep.required
            |> List.map ~f:(fun d -> (d, Optional))))
-     |> String_map.of_list_reduce ~f:merge_lib_dep_kind)
+     |> String.Map.of_list_reduce ~f:merge_lib_dep_kind)
 
 module O = struct
   let ( >>> ) a b =
@@ -130,8 +132,8 @@ let rec all = function
     >>>
     arr (fun (x, y) -> x :: y)
 
-let path p = Paths (Pset.singleton p)
-let paths ps = Paths (Pset.of_list ps)
+let path p = Paths (Path.Set.singleton p)
+let paths ps = Paths (Path.Set.of_list ps)
 let path_set ps = Paths ps
 let paths_glob ~loc ~dir re = Paths_glob (ref (G_unevaluated (loc, dir, re)))
 let vpath vp = Vpath vp
@@ -202,23 +204,17 @@ let get_prog = function
     >>> dyn_paths (arr (function Error _ -> [] | Ok x -> [x]))
 
 let prog_and_args ?(dir=Path.root) prog args =
-  Paths (Arg_spec.add_deps args Pset.empty)
+  Paths (Arg_spec.add_deps args Path.Set.empty)
   >>>
   (get_prog prog &&&
    (arr (Arg_spec.expand ~dir args)
     >>>
-    dyn_paths (arr (fun (_args, deps) -> Path.Set.to_list deps))
+    dyn_path_set (arr (fun (_args, deps) -> deps))
     >>>
     arr fst))
 
-let run ~context ?(dir=context.Context.build_dir) ?stdout_to ?(extra_targets=[])
-      prog args =
-  let extra_targets =
-    match stdout_to with
-    | None -> extra_targets
-    | Some fn -> fn :: extra_targets
-  in
-  let targets = Arg_spec.add_targets args extra_targets in
+let run ~context ?(dir=context.Context.build_dir) ?stdout_to prog args =
+  let targets = Arg_spec.add_targets args (Option.to_list stdout_to) in
   prog_and_args ~dir prog args
   >>>
   Targets targets
@@ -278,3 +274,9 @@ let mkdir dir =
 let progn ts =
   all ts >>^ fun actions ->
   Action.Progn actions
+
+let merge_files_dyn ~target =
+  dyn_paths (arr fst)
+  >>^ (fun (sources, extras) ->
+    Action.Merge_files_into (sources, extras, target))
+  >>> action_dyn ~targets:[target] ()

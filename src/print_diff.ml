@@ -9,9 +9,9 @@ let print path1 path2 =
       Path.extract_build_context_dir path2
     with
     | Some (dir1, f1), Some (dir2, f2) when dir1 = dir2 ->
-      (Path.to_string dir1, Path.to_string f1, Path.to_string f2)
+      (dir1, Path.to_string f1, Path.to_string f2)
     | _ ->
-      (".", Path.to_string path1, Path.to_string path2)
+      (Path.root, Path.to_string path1, Path.to_string path2)
   in
   let loc = Loc.in_file file1 in
   let fallback () =
@@ -24,8 +24,7 @@ let print path1 path2 =
     | None -> fallback ()
     | Some prog ->
       Format.eprintf "%a@?" Loc.print loc;
-      Process.run ~dir ~env:Env.initial Strict (Path.to_string prog)
-        ["-u"; file1; file2]
+      Process.run ~dir ~env:Env.initial Strict prog ["-u"; file1; file2]
       >>= fun () ->
       fallback ()
   in
@@ -35,18 +34,18 @@ let print path1 path2 =
     let cmd =
       sprintf "%s %s %s" cmd (quote_for_shell file1) (quote_for_shell file2)
     in
-    Process.run ~dir ~env:Env.initial Strict (Path.to_string sh) [arg; cmd]
+    Process.run ~dir ~env:Env.initial Strict sh [arg; cmd]
     >>= fun () ->
     die "command reported no differences: %s"
-      (if dir = "." then
+      (if Path.is_root dir then
          cmd
        else
-         sprintf "cd %s && %s" (quote_for_shell dir) cmd)
+         sprintf "cd %s && %s" (quote_for_shell (Path.to_string dir)) cmd)
   | None ->
     match Bin.which "patdiff" with
     | None -> normal_diff ()
     | Some prog ->
-      Process.run ~dir ~env:Env.initial Strict (Path.to_string prog)
+      Process.run ~dir ~env:Env.initial Strict prog
         [ "-keep-whitespace"
         ; "-location-style"; "omake"
         ; if Lazy.force Colors.stderr_supports_colors then

@@ -14,8 +14,8 @@ module Name = struct
   let pp = Format.pp_print_string
   let pp_quote fmt x = Format.fprintf fmt "%S" x
 
-  module Set = String_set
-  module Map = String_map
+  module Set = String.Set
+  module Map = String.Map
   module Top_closure = Top_closure.String
 end
 
@@ -31,7 +31,8 @@ module File = struct
 
   let to_ocaml t =
     match t.syntax with
-    | OCaml -> code_errorf "to_ocaml: can only convert reason Files" ()
+    | OCaml -> Exn.code_error "to_ocaml: can only convert reason Files"
+                 ["t.name", Sexp.To_sexp.string t.name]
     | Reason ->
       { syntax = OCaml
       ; name =
@@ -40,7 +41,9 @@ module File = struct
           (match Filename.extension t.name with
            | ".re" -> ".ml"
            | ".rei" -> ".mli"
-           | _ -> code_errorf "to_ocaml: unrecognized extension %s" ext ())
+           | _ -> Exn.code_error "to_ocaml: unrecognized extension"
+                    [ "name", Sexp.To_sexp.string t.name
+                    ; "ext", Sexp.To_sexp.string ext ])
       }
 end
 

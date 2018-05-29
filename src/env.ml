@@ -22,6 +22,8 @@ let make vars =
   ; unix = None
   }
 
+let empty = make Map.empty
+
 let get t k = Map.find t.vars k
 
 let to_unix t =
@@ -41,7 +43,7 @@ let of_unix arr =
   |> List.map ~f:(fun s ->
     match String.lsplit2 s ~on:'=' with
     | None ->
-      Sexp.code_error "Env.of_unix: entry without '=' found in the environ"
+      Exn.code_error "Env.of_unix: entry without '=' found in the environ"
         ["var", Sexp.To_sexp.string s]
     | Some (k, v) -> (k, v))
   |> Map.of_list_multi
@@ -73,3 +75,6 @@ let diff x y =
 
 let update t ~var ~f =
   make (Map.update t.vars var ~f)
+
+let of_string_map m =
+  make (String.Map.foldi ~init:Map.empty ~f:(fun k v acc -> Map.add acc k v) m)

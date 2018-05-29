@@ -31,8 +31,8 @@ The following sections describe the available stanzas and their meaning.
 jbuild_version
 --------------
 
-``(jbuild_version 1)`` specifies that we are using the version 1 of
-the Jbuilder metadata format in this ``jbuild`` file.
+Deprecated. This stanza is no longer used and will be removed in the
+future.
 
 library
 -------
@@ -711,6 +711,42 @@ With this jbuild file, running jbuilder as follow will replace the
 
     $ jbuilder build @runtest --auto-promote
 
+env
+---
+
+The ``env`` stanza allows to modify the environment. The syntax is as
+follow:
+
+.. code:: scheme
+
+     (env
+      (<profile1> <settings1>)
+      (<profile2> <settings2>)
+      ...
+      (<profilen> <settingsn>))
+
+The first form ``(<profile> <settings>)`` that correspond to the
+selected build profile will be used to modify the environment in this
+directory. You can use ``_`` to match any build profile.
+
+Currently ``<settings>`` can be any OCaml flags field, see `OCaml
+flags`_ for more details.
+
+ignored_subdirs
+---------------
+
+The ``ignored_subdirs`` stanza allows to tell Dune to ignore one or
+more sub-directories. The syntax is as follow:
+
+.. code:: scheme
+
+     (ignored_subdirs (<sub-dir1> <sub-dir2> ...))
+
+A directory that is ignored will not be eagerly scanned by Dune. Any
+``dune`` or other special files in it won't be interpreted either and
+will be treated as raw data. It is however possible to depend on files
+inside ignored sub-directories.
+
 Common items
 ============
 
@@ -1097,8 +1133,8 @@ The glob syntax is interpreted as follows:
 OCaml flags
 -----------
 
-In ``library`` and ``executables`` stanzas, you can specify OCaml compilation
-flags using the following fields:
+In ``library``, ``executable``, ``executables`` and ``env`` stanzas,
+you can specify OCaml compilation flags using the following fields:
 
 - ``(flags <flags>)`` to specify flags passed to both ``ocamlc`` and
   ``ocamlopt``
@@ -1108,15 +1144,13 @@ flags using the following fields:
 For all these fields, ``<flags>`` is specified in the `Ordered set language`_.
 These fields all support ``(:include ...)`` forms.
 
-The default value for ``(flags ...)`` includes some ``-w`` options to set
-warnings. The exact set depends on whether ``--dev`` is passed to Jbuilder. As a
-result it is recommended to write ``(flags ...)`` fields as follows:
+The default value for ``(flags ...)`` is taken from the environment,
+as a result it is recommended to write ``(flags ...)`` fields as
+follows:
 
-::
+.. code:: scheme
 
     (flags (:standard <my options>))
-
-.. _jbuild-jsoo:
 
 js_of_ocaml
 -----------
@@ -1157,8 +1191,7 @@ automatically handled by Jbuilder.
 The DSL is currently quite limited, so if you want to do something complicated
 it is recommended to write a small OCaml program and use the DSL to invoke it.
 You can use `shexp <https://github.com/janestreet/shexp>`__ to write portable
-scripts or `configurator <https://github.com/janestreet/configurator>`__ for
-configuration related tasks.
+scripts or `Configurator`_ for configuration related tasks.
 
 The following constructions are available:
 

@@ -2,7 +2,6 @@ open Import
 open Jbuild
 
 module A = Action
-module Pset = Path.Set
 module Alias = Build_system.Alias
 
 module Dir_with_jbuild = struct
@@ -11,6 +10,16 @@ module Dir_with_jbuild = struct
     ; ctx_dir : Path.t
     ; stanzas : Stanzas.t
     ; scope   : Scope.t
+    }
+end
+
+module Env_node = struct
+  type t =
+    { dir                 : Path.t
+    ; inherit_from        : t Lazy.t option
+    ; scope               : Scope.t
+    ; config              : Env.t
+    ; mutable ocaml_flags : Ocaml_flags.t option
     }
 end
 
@@ -26,10 +35,11 @@ type t =
   ; artifacts                        : Artifacts.t
   ; stanzas_to_consider_for_install  : (Path.t * Scope.t * Stanza.t) list
   ; cxx_flags                        : string list
-  ; vars                             : Action.Var_expansion.t String_map.t
+  ; vars                             : Action.Var_expansion.t String.Map.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
+  ; env                              : (Path.t, Env_node.t) Hashtbl.t
   }
 
 let context t = t.context
@@ -41,9 +51,22 @@ let file_tree t = t.file_tree
 let stanzas_to_consider_for_install t = t.stanzas_to_consider_for_install
 let cxx_flags t = t.cxx_flags
 let build_dir t = t.context.build_dir
+let profile t = t.context.profile
 let build_system t = t.build_system
 
 let host t = Option.value t.host ~default:t
+
+let internal_lib_names t =
+  List.fold_left t.stanzas ~init:String.Set.empty
+    ~f:(fun acc { Dir_with_jbuild. stanzas; _ } ->
+      List.fold_left stanzas ~init:acc ~f:(fun acc -> function
+        | Library lib ->
+          String.Set.add
+            (match lib.public with
+             | None -> acc
+             | Some { name; _ } -> String.Set.add acc name)
+            lib.name
+        | _ -> acc))
 
 let public_libs    t = t.public_libs
 let installed_libs t = t.installed_libs
@@ -51,9 +74,9 @@ let installed_libs t = t.installed_libs
 let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
-let expand_var_no_root t var = String_map.find t.vars var
+let expand_var_no_root t var = String.Map.find t.vars var
 
-let expand_vars t ~scope ~dir ?(extra_vars=String_map.empty) s =
+let expand_vars t ~scope ~dir ?(extra_vars=String.Map.empty) s =
   String_with_vars.expand s ~f:(fun _loc -> function
     | "ROOT" -> Some (Path.reach ~from:dir t.context.build_dir)
     | "SCOPE_ROOT" ->
@@ -62,7 +85,92 @@ let expand_vars t ~scope ~dir ?(extra_vars=String_map.empty) s =
       Option.map ~f:(fun e -> Action.Var_expansion.to_string dir e)
         (match expand_var_no_root t var with
          | Some _ as x -> x
-         | None -> String_map.find extra_vars var))
+         | None -> String.Map.find extra_vars var))
+
+let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
+  let open Build.O in
+  let f = expand_vars t ~scope ~dir ?extra_vars in
+  let parse ~loc:_ s = s in
+  match Ordered_set_lang.Unexpanded.files set ~f |> String.Set.to_list with
+  | [] ->
+    let set =
+      Ordered_set_lang.Unexpanded.expand set ~files_contents:String.Map.empty ~f
+    in
+    standard >>^ fun standard ->
+    Ordered_set_lang.String.eval set ~standard ~parse
+  | files ->
+    let paths = List.map files ~f:(Path.relative dir) in
+    Build.fanout standard (Build.all (List.map paths ~f:Build.read_sexp))
+    >>^ fun (standard, sexps) ->
+    let files_contents = List.combine files sexps |> String.Map.of_list_exn in
+    let set = Ordered_set_lang.Unexpanded.expand set ~files_contents ~f in
+    Ordered_set_lang.String.eval set ~standard ~parse
+
+module Env = struct
+  open Env_node
+
+  let rec get t ~dir =
+    match Hashtbl.find t.env dir with
+    | None ->
+      begin match Path.parent dir with
+      | None -> raise_notrace Exit
+      | Some parent ->
+        let node = get t ~dir:parent in
+        Hashtbl.add t.env dir node;
+        node
+      end
+    | Some node -> node
+
+  let get t ~dir =
+    match get t ~dir with
+    | node -> node
+    | exception Exit ->
+      Exn.code_error "Super_context.Env.get called on invalid directory"
+        [ "dir", Path.sexp_of_t dir ]
+
+  let ocaml_flags t ~dir =
+    let rec loop t node =
+      match node.ocaml_flags with
+      | Some x -> x
+      | None ->
+        let default =
+          match node.inherit_from with
+          | None -> Ocaml_flags.default ~profile:(profile t)
+          | Some (lazy node) -> loop t node
+        in
+        let flags =
+          match List.find_map node.config.rules ~f:(fun (pat, cfg) ->
+            match (pat : Env.pattern), profile t with
+            | Any, _ -> Some cfg
+            | Profile a, b -> Option.some_if (a = b) cfg)
+          with
+          | None -> default
+          | Some cfg ->
+            Ocaml_flags.make
+              ~flags:cfg.flags
+              ~ocamlc_flags:cfg.ocamlc_flags
+              ~ocamlopt_flags:cfg.ocamlopt_flags
+              ~default
+              ~eval:(expand_and_eval_set t ~scope:node.scope ~dir:node.dir
+                       ?extra_vars:None)
+        in
+        node.ocaml_flags <- Some flags;
+        flags
+    in
+    loop t (get t ~dir)
+
+end
+
+let ocaml_flags t ~dir ~scope (x : Buildable.t) =
+  Ocaml_flags.make
+    ~flags:x.flags
+    ~ocamlc_flags:x.ocamlc_flags
+    ~ocamlopt_flags:x.ocamlopt_flags
+    ~default:(Env.ocaml_flags t ~dir)
+    ~eval:(expand_and_eval_set t ~scope ~dir ?extra_vars:None)
+
+let dump_env t ~dir =
+  Ocaml_flags.dump (Env.ocaml_flags t ~dir)
 
 let resolve_program t ?hint bin =
   Artifacts.binary ?hint t.artifacts bin
@@ -70,7 +178,7 @@ let resolve_program t ?hint bin =
 let create
       ~(context:Context.t)
       ?host
-      ~scopes
+      ~projects
       ~file_tree
       ~packages
       ~stanzas
@@ -89,25 +197,25 @@ let create
         | _ -> None))
   in
   let scopes, public_libs =
-    let scopes =
-      List.map scopes ~f:(fun (scope : Scope_info.t) ->
-        { scope with root = Path.append context.build_dir scope.root })
+    let projects =
+      List.map projects ~f:(fun (project : Dune_project.t) ->
+        { project with root = Path.append context.build_dir project.root })
     in
     Scope.DB.create
-      ~scopes
+      ~projects
       ~context:context.name
       ~installed_libs
       internal_libs
   in
   let stanzas =
     List.map stanzas
-      ~f:(fun (dir, scope, stanzas) ->
+      ~f:(fun (dir, project, stanzas) ->
         let ctx_dir = Path.append context.build_dir dir in
         { Dir_with_jbuild.
           src_dir = dir
         ; ctx_dir
         ; stanzas
-        ; scope = Scope.DB.find_by_name scopes scope.Scope_info.name
+        ; scope = Scope.DB.find_by_name scopes project.Dune_project.name
         })
   in
   let stanzas_to_consider_for_install =
@@ -185,38 +293,69 @@ let create
          | Words  x -> strings x
          | Prog_and_args x -> strings (x.prog :: x.args)))
     in
-    match String_map.of_list vars with
+    match String.Map.of_list vars with
     | Ok    x -> x
     | Error _ -> assert false
   in
-  { context
-  ; host
-  ; build_system
-  ; scopes
-  ; public_libs
-  ; installed_libs
-  ; stanzas
-  ; packages
-  ; file_tree
-  ; stanzas_to_consider_for_install
-  ; artifacts
-  ; cxx_flags
-  ; vars
-  ; chdir = Build.arr (fun (action : Action.t) ->
-      match action with
-      | Chdir _ -> action
-      | _ -> Chdir (context.build_dir, action))
-  ; libs_by_package =
-    Lib.DB.all public_libs
-    |> Lib.Set.to_list
-    |> List.map ~f:(fun lib ->
-      (Option.value_exn (Lib.package lib), lib))
-    |> Package.Name.Map.of_list_multi
-    |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
-      let pkg  = Option.value_exn pkg          in
-      let libs = Option.value libs ~default:[] in
-      Some (pkg, Lib.Set.of_list libs))
-  }
+  let t =
+    { context
+    ; host
+    ; build_system
+    ; scopes
+    ; public_libs
+    ; installed_libs
+    ; stanzas
+    ; packages
+    ; file_tree
+    ; stanzas_to_consider_for_install
+    ; artifacts
+    ; cxx_flags
+    ; vars
+    ; chdir = Build.arr (fun (action : Action.t) ->
+        match action with
+        | Chdir _ -> action
+        | _ -> Chdir (context.build_dir, action))
+    ; libs_by_package =
+        Lib.DB.all public_libs
+        |> Lib.Set.to_list
+        |> List.map ~f:(fun lib ->
+          (Option.value_exn (Lib.package lib), lib))
+        |> Package.Name.Map.of_list_multi
+        |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
+          let pkg  = Option.value_exn pkg          in
+          let libs = Option.value libs ~default:[] in
+          Some (pkg, Lib.Set.of_list libs))
+    ; env = Hashtbl.create 128
+    }
+  in
+  List.iter stanzas
+    ~f:(fun { Dir_with_jbuild. ctx_dir; scope; stanzas; _ } ->
+      List.iter stanzas ~f:(function
+        | Env config ->
+          let inherit_from =
+            if ctx_dir = Scope.root scope then
+              None
+            else
+              Some (lazy (Env.get t ~dir:(Path.parent_exn ctx_dir)))
+          in
+          Hashtbl.add t.env ctx_dir
+            { dir          = ctx_dir
+            ; inherit_from = inherit_from
+            ; scope        = scope
+            ; config       = config
+            ; ocaml_flags  = None
+            }
+        | _ -> ()));
+  if not (Hashtbl.mem t.env context.build_dir) then
+    Hashtbl.add t.env context.build_dir
+      { Env_node.
+        dir          = context.build_dir
+      ; inherit_from = None
+      ; scope        = Scope.DB.find_by_dir scopes context.build_dir
+      ; config       = { loc = Loc.none; rules = [] }
+      ; ocaml_flags  = None
+      };
+  t
 
 let prefix_rules t prefix ~f =
   Build_system.prefix_rules t.build_system prefix ~f
@@ -251,7 +390,7 @@ let on_load_dir t ~dir ~f = Build_system.on_load_dir t.build_system ~dir ~f
 
 let source_files t ~src_path =
   match File_tree.find_dir t.file_tree src_path with
-  | None -> String_set.empty
+  | None -> String.Set.empty
   | Some dir -> File_tree.Dir.files dir
 
 module Libs = struct
@@ -320,11 +459,14 @@ module Deps = struct
   open Dep_conf
 
   let make_alias t ~scope ~dir s =
-    Alias.of_path (Path.relative dir (expand_vars t ~scope ~dir s))
+    let loc = String_with_vars.loc s in
+    Alias.of_user_written_path ~loc
+      (Path.relative ~error_loc:loc dir (expand_vars t ~scope ~dir s))
 
   let dep t ~scope ~dir = function
     | File  s ->
-      let path = Path.relative dir (expand_vars t ~scope ~dir s) in
+      let path = Path.relative ~error_loc:(String_with_vars.loc s) dir
+                   (expand_vars t ~scope ~dir s) in
       Build.path path
       >>^ fun () -> [path]
     | Alias s ->
@@ -335,19 +477,22 @@ module Deps = struct
         (make_alias t ~scope ~dir s)
       >>^ fun () -> []
     | Glob_files s -> begin
-        let path = Path.relative dir (expand_vars t ~scope ~dir s) in
         let loc = String_with_vars.loc s in
+        let path =
+          Path.relative ~error_loc:loc dir (expand_vars t ~scope ~dir s) in
         match Glob_lexer.parse_string (Path.basename path) with
         | Ok re ->
-          let dir = Path.parent path in
+          let dir = Path.parent_exn path in
           Build.paths_glob ~loc ~dir (Re.compile re)
+          >>^ Path.Set.to_list
         | Error (_pos, msg) ->
           Loc.fail loc "invalid glob: %s" msg
       end
     | Files_recursively_in s ->
-      let path = Path.relative dir (expand_vars t ~scope ~dir s) in
+      let path = Path.relative ~error_loc:(String_with_vars.loc s)
+                   dir (expand_vars t ~scope ~dir s) in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
-      >>^ Pset.to_list
+      >>^ Path.Set.to_list
     | Package p ->
       let pkg = Package.Name.of_string (expand_vars t ~scope ~dir p) in
       Alias.dep (Alias.package_install ~context:t.context ~pkg)
@@ -391,10 +536,10 @@ module Scope_key = struct
       (key, public_libs sctx)
     | Some (key, scope) ->
       ( key
-      , Scope.libs (find_scope_by_name sctx (Scope_info.Name.of_string scope)))
+      , Scope.libs (find_scope_by_name sctx (Dune_project.Name.decode scope)))
 
   let to_string key scope =
-    sprintf "%s@%s" key (Scope_info.Name.to_string scope)
+    sprintf "%s@%s" key (Dune_project.Name.encode scope)
 end
 
 let parse_bang var : bool * string =
@@ -419,20 +564,20 @@ module Action = struct
     ; (* All "name" for ${lib:name:...}/${lib-available:name} forms *)
       mutable lib_deps  : Build.lib_deps
     ; (* Static deps from ${...} variables. For instance ${exe:...} *)
-      mutable sdeps     : Pset.t
+      mutable sdeps     : Path.Set.t
     ; (* Dynamic deps from ${...} variables. For instance ${read:...} *)
-      mutable ddeps     : (unit, Action.Var_expansion.t) Build.t String_map.t
+      mutable ddeps     : (unit, Action.Var_expansion.t) Build.t String.Map.t
     }
 
   let add_lib_dep acc lib kind =
-    acc.lib_deps <- String_map.add acc.lib_deps lib kind
+    acc.lib_deps <- String.Map.add acc.lib_deps lib kind
 
   let add_fail acc fail =
     acc.failures <- fail :: acc.failures;
     None
 
   let add_ddep acc ~key dep =
-    acc.ddeps <- String_map.add acc.ddeps key dep;
+    acc.ddeps <- String.Map.add acc.ddeps key dep;
     None
 
   let path_exp path = Action.Var_expansion.Paths   ([path], Concat)
@@ -458,9 +603,9 @@ module Action = struct
         ~map_exe ~extra_vars t =
     let acc =
       { failures  = []
-      ; lib_deps  = String_map.empty
-      ; sdeps     = Pset.empty
-      ; ddeps     = String_map.empty
+      ; lib_deps  = String.Map.empty
+      ; sdeps     = Path.Set.empty
+      ; ddeps     = String.Map.empty
       }
     in
     let open Action.Var_expansion in
@@ -511,17 +656,19 @@ module Action = struct
         Some (str_exp (string_of_bool (
           Lib.DB.available (Scope.libs scope) lib)))
       | Some ("version", s) -> begin
-          match Scope_info.resolve (Scope.info scope)
+          match Package.Name.Map.find (Scope.project scope).packages
                   (Package.Name.of_string s) with
-          | Ok p ->
+          | Some p ->
             let x =
               Pkg_version.read sctx p >>^ function
               | None   -> Strings ([""], Concat)
               | Some s -> Strings ([s],  Concat)
             in
             add_ddep acc ~key x
-          | Error s ->
-            add_fail acc { fail = fun () -> Loc.fail loc "%s" s }
+          | None ->
+            add_fail acc { fail = fun () ->
+              Loc.fail loc "Package %S doesn't exist in the current project." s
+            }
         end
       | Some ("read", s) -> begin
           let path = Path.relative dir s in
@@ -550,7 +697,7 @@ module Action = struct
       | _ ->
         match expand_var_no_root sctx var with
         | Some _ as x -> x
-        | None -> String_map.find extra_vars var
+        | None -> String.Map.find extra_vars var
     in
     let t =
       U.partial_expand t ~dir ~map_exe ~f:(fun loc key ->
@@ -575,7 +722,7 @@ module Action = struct
             let exp = expand loc key var x in
             (match exp with
              | Some (Paths (ps, _)) ->
-               acc.sdeps <- Pset.union (Pset.of_list ps) acc.sdeps
+               acc.sdeps <- Path.Set.union (Path.Set.of_list ps) acc.sdeps
              | _ -> ());
             exp)
     in
@@ -584,7 +731,7 @@ module Action = struct
   let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
     let open Action.Var_expansion in
     U.Partial.expand t ~dir ~map_exe ~f:(fun loc key ->
-      match String_map.find dynamic_expansions key with
+      match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
         let _, var = parse_bang key in
@@ -601,7 +748,7 @@ module Action = struct
         | "^" -> Some (Paths (deps_written_by_user, Split))
         | _ -> None)
 
-  let run sctx ?(extra_vars=String_map.empty)
+  let run sctx ~loc ?(extra_vars=String.Map.empty)
         t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
     : (Path.t list, Action.t) Build.t =
     let map_exe = map_exe sctx in
@@ -621,7 +768,7 @@ module Action = struct
       match targets_written_by_user with
       | Infer -> Action.Infer.partial t ~all_targets:true
       | Static targets_written_by_user ->
-        let targets_written_by_user = Pset.of_list targets_written_by_user in
+        let targets_written_by_user = Path.Set.of_list targets_written_by_user in
         let { Action.Infer.Outcome. deps; targets } =
           Action.Infer.partial t ~all_targets:false
         in
@@ -633,28 +780,28 @@ module Action = struct
            so that it can report better errors.
 
            {[
-             let missing = Pset.diff targets targets_written_by_user in
-             if not (Pset.is_empty missing) then
+             let missing = Path.Set.diff targets targets_written_by_user in
+             if not (Path.Set.is_empty missing) then
                Loc.warn (Loc.in_file (Utils.jbuild_name_in ~dir))
                  "Missing targets in user action:\n%s"
-                 (List.map (Pset.elements missing) ~f:(fun target ->
+                 (List.map (Path.Set.elements missing) ~f:(fun target ->
                     sprintf "- %s" (Utils.describe_target target))
                   |> String.concat ~sep:"\n");
            ]}
         *)
-        { deps; targets = Pset.union targets targets_written_by_user }
+        { deps; targets = Path.Set.union targets targets_written_by_user }
       | Alias ->
         let { Action.Infer.Outcome. deps; targets = _ } =
           Action.Infer.partial t ~all_targets:false
         in
-        { deps; targets = Pset.empty }
+        { deps; targets = Path.Set.empty }
     in
-    let targets = Pset.to_list targets in
+    let targets = Path.Set.to_list targets in
     List.iter targets ~f:(fun target ->
-      if Path.parent target <> dir then
-        Loc.fail (Loc.in_file (Utils.describe_target (Utils.jbuild_file_in ~dir)))
-          "A rule in this jbuild has targets in a different directory \
-           than the current one, this is not allowed by Jbuilder at the moment:\n%s"
+      if Path.parent_exn target <> dir then
+        Loc.fail loc
+          "This action has targets in a different directory than the current \
+           one, this is not allowed by Jbuilder at the moment:\n%s"
           (List.map targets ~f:(fun target ->
              sprintf "- %s" (Utils.describe_target target))
            |> String.concat ~sep:"\n"));
@@ -667,12 +814,12 @@ module Action = struct
       >>>
       Build.arr (fun paths -> ((), paths))
       >>>
-      let ddeps = String_map.to_list forms.ddeps in
+      let ddeps = String.Map.to_list forms.ddeps in
       Build.first (Build.all (List.map ddeps ~f:snd))
       >>^ (fun (vals, deps_written_by_user) ->
         let dynamic_expansions =
-          List.fold_left2 ddeps vals ~init:String_map.empty
-            ~f:(fun acc (var, _) value -> String_map.add acc var value)
+          List.fold_left2 ddeps vals ~init:String.Map.empty
+            ~f:(fun acc (var, _) value -> String.Map.add acc var value)
         in
         let unresolved =
           expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe
@@ -683,11 +830,11 @@ module Action = struct
           | Ok path    -> path
           | Error fail -> Action.Prog.Not_found.raise fail))
       >>>
-      Build.dyn_paths (Build.arr (fun action ->
+      Build.dyn_path_set (Build.arr (fun action ->
         let { Action.Infer.Outcome.deps; targets = _ } =
           Action.Infer.infer action
         in
-        Pset.to_list deps))
+        deps))
       >>>
       Build.action_dyn () ~dir ~targets
     in
@@ -695,21 +842,3 @@ module Action = struct
     | [] -> build
     | fail :: _ -> Build.fail fail >>> build
 end
-
-let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
-  let open Build.O in
-  let f = expand_vars t ~scope ~dir ?extra_vars in
-  let parse ~loc:_ s = s in
-  match Ordered_set_lang.Unexpanded.files set ~f |> String_set.to_list with
-  | [] ->
-    let set =
-      Ordered_set_lang.Unexpanded.expand set ~files_contents:String_map.empty ~f
-    in
-    Build.return (Ordered_set_lang.String.eval set ~standard ~parse)
-  | files ->
-    let paths = List.map files ~f:(Path.relative dir) in
-    Build.all (List.map paths ~f:Build.read_sexp)
-    >>^ fun sexps ->
-    let files_contents = List.combine files sexps |> String_map.of_list_exn in
-    let set = Ordered_set_lang.Unexpanded.expand set ~files_contents ~f in
-    Ordered_set_lang.String.eval set ~standard ~parse

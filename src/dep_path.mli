@@ -1,5 +1,7 @@
 (** Dependency path *)
 
+open Stdune
+
 module Entry : sig
   type t =
     | Path of Path.t
@@ -7,9 +9,6 @@ module Entry : sig
     | Library of Path.t * string
     | Preprocess of string list
     | Loc of Loc.t
-
-  (** [jbuild_file_in ~dir = Path (Path.relative dir "jbuild")] *)
-  val jbuild_file_in : dir:Path.t -> t
 
   val to_string : t -> string
   val pp : Format.formatter -> t -> unit

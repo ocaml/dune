@@ -1,0 +1,21 @@
+(jbuild_version 1)
+
+(ignored_subdirs (sample-projects))
+
+(alias
+ ((name runtest)
+  (deps ((package dune)
+         (files_recursively_in sample-projects/hello_world)))
+  (action
+   (chdir sample-projects/hello_world
+    (run ${exe:../test/blackbox-tests/cram.exe} -test run.t)))))
+
+(alias
+ ((name runtest)
+  (deps ((package dune)
+         (files_recursively_in sample-projects/with-configure-step)))
+  (action
+   (chdir sample-projects/with-configure-step
+    (run ${exe:../test/blackbox-tests/cram.exe} -test run.t)))))
+
+

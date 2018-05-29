@@ -13,6 +13,11 @@ include StringLabels
 
 let compare a b = Ordering.of_int (String.compare a b)
 
+module T = struct
+  type t = StringLabels.t
+  let compare = compare
+end
+
 let capitalize   = capitalize_ascii
 let uncapitalize = uncapitalize_ascii
 let uppercase    = uppercase_ascii
@@ -24,17 +29,24 @@ let break s ~pos =
 
 let is_empty s = length s = 0
 
+let rec check_prefix s ~prefix len i =
+  i = len || s.[i] = prefix.[i] && check_prefix s ~prefix len (i + 1)
+
+let rec check_suffix s ~suffix suffix_len offset i =
+  i = suffix_len ||
+  s.[offset + i] = suffix.[i] &&
+  check_suffix s ~suffix suffix_len offset (i + 1)
+
 let is_prefix s ~prefix =
   let len = length s in
   let prefix_len = length prefix in
-  len >= prefix_len &&
-  sub s ~pos:0 ~len:prefix_len = prefix
+  len >= prefix_len && (check_prefix s ~prefix prefix_len 0)
 
 let is_suffix s ~suffix =
   let len = length s in
   let suffix_len = length suffix in
   len >= suffix_len &&
-  sub s ~pos:(len - suffix_len) ~len:suffix_len = suffix
+  (check_suffix s ~suffix suffix_len (len - suffix_len) 0)
 
 let drop_prefix s ~prefix =
   if is_prefix s ~prefix then
@@ -161,11 +173,31 @@ let longest_map l ~f =
 
 let longest l = longest_map l ~f:(fun x -> x)
 
-let exists s ~f =
-  try
-    for i=0 to length s - 1 do
-      if (f s.[i]) then raise_notrace Exit
-    done;
-    false
-  with Exit ->
-    true
+
+let exists =
+  let rec loop s i len f =
+    if i = len then
+      false
+    else
+      f (unsafe_get s i) || loop s (i + 1) len f
+  in
+  fun s ~f ->
+    loop s 0 (length s) f
+
+let for_all =
+  let rec loop s i len f =
+    i = len ||
+    (f (unsafe_get s i) && loop s (i + 1) len f)
+  in
+  fun s ~f ->
+    loop s 0 (length s) f
+
+let maybe_quoted s =
+  let escaped = escaped s in
+  if s == escaped || s = escaped then
+    s
+  else
+    Printf.sprintf {|"%s"|} escaped
+
+module Set = Set.Make(T)
+module Map = Map.Make(T)

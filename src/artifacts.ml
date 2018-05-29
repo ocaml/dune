@@ -3,14 +3,14 @@ open Jbuild
 
 type t =
   { context     : Context.t
-  ; local_bins  : Path.t String_map.t
+  ; local_bins  : Path.t String.Map.t
   ; public_libs : Lib.DB.t
   }
 
 let create (context : Context.t) ~public_libs l ~f =
   let bin_dir = Config.local_install_bin_dir ~context:context.name in
   let local_bins =
-    List.fold_left l ~init:String_map.empty ~f:(fun acc x ->
+    List.fold_left l ~init:String.Map.empty ~f:(fun acc x ->
       List.fold_left (f x) ~init:acc ~f:(fun local_bins stanza ->
         match (stanza : Stanza.t) with
         | Install { section = Bin; files; _ } ->
@@ -42,7 +42,7 @@ let create (context : Context.t) ~public_libs l ~f =
                 in
                 Path.relative bin_dir fn
               in
-              String_map.add acc key in_bin_dir)
+              String.Map.add acc key in_bin_dir)
         | _ ->
           local_bins))
   in
@@ -55,7 +55,7 @@ let binary t ?hint name =
   if not (Filename.is_relative name) then
     Ok (Path.absolute name)
   else
-    match String_map.find t.local_bins name with
+    match String.Map.find t.local_bins name with
     | Some path -> Ok path
     | None ->
       match Context.which t.context name with

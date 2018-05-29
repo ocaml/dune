@@ -1,3 +1,5 @@
+open Stdune
+
 module Outputs = struct
   type t =
     | Stdout
@@ -40,6 +42,7 @@ module type Ast = sig
     | Mkdir          of path
     | Digest_files   of path list
     | Diff           of Diff.t
+    | Merge_files_into of path list * string list * path
 end
 
 module type Helpers = sig

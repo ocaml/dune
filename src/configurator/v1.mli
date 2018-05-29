@@ -44,8 +44,10 @@ module C_define : sig
   *)
   val import
     :  t
+    -> ?prelude: string
+    (** Define extra code be used with extracting values below. Note that the
+        compiled code is never executed. *)
     -> ?c_flags:   string list
-    -> ?link_flags:string list
     -> includes:   string list
     -> (string * Type.t ) list
     -> (string * Value.t) list
@@ -84,6 +86,11 @@ module Pkg_config : sig
   (** Returns [None] if [package] is not available *)
   val query : t -> package:string -> package_conf option
 end with type configurator := t
+
+val write_flags : string -> string list -> unit
+(** [write_flags fname s] write the list of strings [s] to the file
+   [fname] in an appropriate format so that it can used in jbuild
+   files with "(:include [fname])". *)
 
 (** Typical entry point for configurator programs *)
 val main

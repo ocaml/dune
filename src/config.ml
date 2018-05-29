@@ -1,7 +1,7 @@
 open! Import
 
 let local_install_dir =
-  let dir = Path.(relative root) "_build/install" in
+  let dir = Path.relative Path.build_dir "install" in
   fun ~context -> Path.relative dir context
 
 let local_install_bin_dir ~context =
@@ -43,12 +43,41 @@ module Display = struct
   let t = enum all
 end
 
+module Concurrency = struct
+  type t =
+    | Fixed of int
+    | Auto
+
+  let error =
+    Error "invalid concurrency value, must be 'auto' or a positive number"
+
+  let of_string = function
+    | "auto" -> Ok Auto
+    | s ->
+      match int_of_string s with
+      | exception _ -> error
+      | n ->
+        if n >= 1 then
+          Ok (Fixed n)
+        else
+          error
+
+  let t sexp =
+    match of_string (string sexp) with
+    | Ok t -> t
+    | Error msg -> of_sexp_error sexp msg
+
+  let to_string = function
+    | Auto -> "auto"
+    | Fixed n -> string_of_int n
+end
+
 module type S = sig
   type 'a field
 
   type t =
-    { display     : Display.t field
-    ; concurrency : int       field
+    { display     : Display.t     field
+    ; concurrency : Concurrency.t field
     }
 end
 
@@ -66,28 +95,29 @@ let merge t (partial : Partial.t) =
   }
 
 let default =
-  { display     = if inside_dune then Quiet else Progress
-  ; concurrency = if inside_dune then 1     else 4
+  { display     = if inside_dune then Quiet   else Progress
+  ; concurrency = if inside_dune then Fixed 1 else Auto
   }
 
 let t =
   record
     (field "display" Display.t ~default:default.display
      >>= fun display ->
-     field "jobs" int ~default:default.concurrency
+     field "jobs" Concurrency.t ~default:default.concurrency
      >>= fun concurrency ->
      return { display
             ; concurrency
             })
 
-let user_config_file = Filename.concat Xdg.config_dir "dune/config"
+let user_config_file =
+  Path.relative (Path.of_string Xdg.config_dir) "dune/config"
 
-let load_config_file ~fname =
-  t (Sexp.load_many_as_one ~fname)
+let load_config_file p =
+  t (Io.Sexp.load_many_as_one p)
 
 let load_user_config_file () =
-  if Sys.file_exists user_config_file then
-    load_config_file ~fname:user_config_file
+  if Path.exists user_config_file then
+    load_config_file user_config_file
   else
     default
 

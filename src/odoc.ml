@@ -175,11 +175,12 @@ module Gen (S : sig val sctx : SC.t end) = struct
          Build.remove_tree to_remove
          :: Build.mkdir odoc_file.html_dir
          :: Build.run ~context ~dir:Paths.html_root
-              odoc ~extra_targets:[odoc_file.html_file]
+              odoc
               [ A "html"
               ; odoc_include_flags requires
               ; A "-o"; Path Paths.html_root
               ; Dep odoc_file.odoc_input
+              ; Hidden_targets [odoc_file.html_file]
               ]
          :: jbuilder_keep
        )
@@ -213,9 +214,10 @@ module Gen (S : sig val sctx : SC.t end) = struct
     SC.add_rule sctx
       (Build.run ~context
          ~dir:context.build_dir
-         ~extra_targets:[css_file]
          odoc
-         [ A "css"; A "-o"; Path Paths.html_root ])
+         [ A "css"; A "-o"; Path Paths.html_root
+         ; Hidden_targets [css_file]
+         ])
 
   let sp = Printf.sprintf
 
@@ -409,7 +411,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
     |> List.sort ~compare:(fun (x, _) (y, _) ->
       String.compare (Lib.name x) (Lib.name y))
     |> List.iter ~f:(fun (lib, modules) ->
-      Printf.bprintf b "{1 Library %s}\n" (Lib.name lib);
+      Printf.bprintf b "{2 Library %s}\n" (Lib.name lib);
       Buffer.add_string b (
         match modules with
         | [ x ] ->
@@ -419,7 +421,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
         | _ ->
           sprintf
             "This library exposes the following toplevel modules:\n\
-             {!modules:%s}.\n"
+             {!modules:%s}\n"
             (modules
              |> List.sort ~compare:(fun x y ->
                Module.Name.compare (Module.name x) (Module.name y))
@@ -431,8 +433,9 @@ module Gen (S : sig val sctx : SC.t end) = struct
 
   let check_mlds_no_dupes ~pkg ~mlds =
     match
-      List.map mlds ~f:(fun mld -> (Path.basename mld, mld))
-      |> String_map.of_list
+      List.map mlds ~f:(fun mld ->
+        (Filename.chop_extension (Path.basename mld), mld))
+      |> String.Map.of_list
     with
     | Ok m -> m
     | Error (_, p1, p2) ->
@@ -444,7 +447,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
   let setup_package_odoc_rules ~pkg ~mlds ~entry_modules_by_lib =
     let mlds = check_mlds_no_dupes ~pkg ~mlds in
     let mlds =
-      if String_map.mem mlds "index" then
+      if String.Map.mem mlds "index" then
         mlds
       else
         let entry_modules = entry_modules ~pkg ~entry_modules_by_lib in
@@ -452,8 +455,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
         SC.add_rule sctx (
           Build.write_file gen_mld (default_index entry_modules)
         );
-        String_map.add mlds "index" gen_mld in
-    let odocs = List.map (String_map.values mlds) ~f:(fun mld ->
+        String.Map.add mlds "index" gen_mld in
+    let odocs = List.map (String.Map.values mlds) ~f:(fun mld ->
       compile_mld
         (Mld.create mld)
         ~pkg:pkg.name
@@ -468,7 +471,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
         SC.stanzas sctx
         |> List.concat_map ~f:(fun (w : SC.Dir_with_jbuild.t) ->
           List.filter_map w.stanzas ~f:(function
-            | Jbuild.Stanza.Documentation (d : Jbuild.Documentation.t) ->
+            | Documentation (d : Jbuild.Documentation.t) ->
               Some (d.package.name, (w.ctx_dir, d))
             | _ ->
               None
@@ -491,7 +494,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
         SC.stanzas sctx
         |> List.concat_map ~f:(fun (w : SC.Dir_with_jbuild.t) ->
           List.filter_map w.stanzas ~f:(function
-            | Jbuild.Stanza.Library (l : Library.t) ->
+            | Jbuild.Library (l : Library.t) ->
               Some ((w.ctx_dir, Library.best_name l), l)
             | _ ->
               None
@@ -529,7 +532,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       (SC.stanzas sctx
        |> List.concat_map ~f:(fun (w : SC.Dir_with_jbuild.t) ->
          List.filter_map w.stanzas ~f:(function
-           | Jbuild.Stanza.Library (l : Jbuild.Library.t) ->
+           | Jbuild.Library (l : Jbuild.Library.t) ->
              begin match l.public with
              | Some _ -> None
              | None ->
@@ -538,7 +541,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
                  Lib.DB.find_even_when_hidden (Scope.libs scope) l.name)
                )
              end
-           | (_ : Jbuild.Stanza.t) -> None
+           | _ -> None
          ))
        |> List.map ~f:(fun (lib : Lib.t) ->
          Build_system.Alias.stamp_file (Dep.alias (Lib lib)))

@@ -1,23 +1,23 @@
-  $ jbuilder exec ./test.exe --debug-dep --display short
-  File "jbuild", line 1, characters 0-0:
+  $ dune exec ./test.exe --debug-dep --display short
+  File "dune", line 1, characters 0-0:
   Warning: Module "Lib" is used in several stanzas:
-  - jbuild:8
-  - jbuild:4
+  - dune:8
+  - dune:4
   To remove this warning, you must specify an explicit "modules" field in every
   library, executable, and executables stanzas in this jbuild file. Note that
   each module cannot appear in more than one "modules" field - it must belong
   to a single library or executable.
   This warning will become an error in the future.
-  Multiple rules generated for _build/default/lib.o:
+  Multiple rules generated for _build/default/lib$ext_obj:
   - <internal location>
   - <internal location>
   [1]
 
-  $ jbuilder build src/a.cma --debug-dep --display short
-  File "src/jbuild", line 1, characters 0-0:
+  $ dune build src/a.cma --debug-dep --display short
+  File "src/dune", line 1, characters 0-0:
   Warning: Module "X" is used in several stanzas:
-  - src/jbuild:4
-  - src/jbuild:3
+  - src/dune:4
+  - src/dune:3
   To remove this warning, you must specify an explicit "modules" field in every
   library, executable, and executables stanzas in this jbuild file. Note that
   each module cannot appear in more than one "modules" field - it must belong

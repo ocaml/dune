@@ -35,12 +35,21 @@ module Display : sig
   val all : (string * t) list
 end
 
+module Concurrency : sig
+  type t =
+    | Fixed of int
+    | Auto
+
+  val of_string : string -> (t, string) result
+  val to_string : t -> string
+end
+
 module type S = sig
   type 'a field
 
   type t =
-    { display     : Display.t field
-    ; concurrency : int       field
+    { display     : Display.t     field
+    ; concurrency : Concurrency.t field
     }
 end
 
@@ -53,9 +62,9 @@ val t : t Sexp.Of_sexp.t
 val merge : t -> Partial.t -> t
 
 val default : t
-val user_config_file : string
+val user_config_file : Path.t
 val load_user_config_file : unit -> t
-val load_config_file : fname:string -> t
+val load_config_file : Path.t -> t
 
 (** Set display mode to [Quiet] if it is [Progress], the output is not
     a tty and we are not running inside emacs. *)

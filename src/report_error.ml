@@ -25,13 +25,26 @@ let report_with_backtrace exn =
   | Some p -> p
   | None ->
     match exn with
-    | Loc.Error (loc, msg) ->
+    | Exn.Loc_error (loc, msg) ->
       let loc =
         { loc with
           start = { loc.start with pos_fname = !map_fname loc.start.pos_fname }
         }
       in
       let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s\n" msg in
+      { p with loc = Some loc; pp }
+    | Sexp.Of_sexp.Of_sexp (loc, msg, hint') ->
+      let loc =
+        { loc with
+          start = { loc.start with pos_fname = !map_fname loc.start.pos_fname }
+        }
+      in
+      let pp ppf = Format.fprintf ppf "@{<error>Error@}: %s%s\n" msg
+                     (match hint' with
+                      | None -> ""
+                      | Some { Sexp.Of_sexp. on; candidates } ->
+                        hint on candidates)
+      in
       { p with loc = Some loc; pp }
     | Usexp.Parser.Error e ->
       let pos = Usexp.Parser.Error.position e in
@@ -42,21 +55,21 @@ let report_with_backtrace exn =
         loc = Some loc
       ; pp  = fun ppf -> Format.fprintf ppf "@{<error>Error@}: %s\n" msg
       }
-    | Fatal_error msg ->
+    | Exn.Fatal_error msg ->
       { p with pp = fun ppf ->
           if msg.[String.length msg - 1] = '\n' then
             Format.fprintf ppf "%s" msg
           else
             Format.fprintf ppf "%s\n" (String.capitalize msg)
       }
-    | Code_error msg ->
+    | Stdune.Exn.Code_error sexp ->
       { p with
         backtrace = true
       ; pp = fun ppf ->
           Format.fprintf ppf "@{<error>Internal error, please report upstream \
                               including the contents of _build/log.@}\n\
-                              Description: %s\n"
-            msg
+                              Description: %a\n"
+            Usexp.pp sexp
       }
     | Unix.Unix_error (err, func, fname) ->
       { p with pp = fun ppf ->
@@ -74,7 +87,7 @@ let report_with_backtrace exn =
             Format.fprintf ppf "@{<error>Error@}: exception %s\n" s
       }
 
-let reported = ref String_set.empty
+let reported = ref String.Set.empty
 
 let error_table = Hashtbl.create 1024
 
@@ -98,10 +111,10 @@ let report exn =
     let s = Buffer.contents err_buf in
     (* Hash to avoid keeping huge errors in memory *)
     let hash = Digest.string s in
-    if String_set.mem !reported hash then
+    if String.Set.mem !reported hash then
       Buffer.clear err_buf
     else begin
-      reported := String_set.add !reported hash;
+      reported := String.Set.add !reported hash;
       if p.backtrace || !Clflags.debug_backtraces then
         Format.fprintf ppf "Backtrace:\n%s"
           (Printexc.raw_backtrace_to_string backtrace);

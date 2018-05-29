@@ -1,17 +1,17 @@
-open Jbuilder
+open Dune
 open Import
-open Jbuilder_cmdliner.Cmdliner
+open Cmdliner
 open Fiber.O
 
-(* Things in src/ don't depend on cmdliner to speed up the bootstrap, so we set this
-   reference here *)
-let () = suggest_function := Jbuilder_cmdliner.Cmdliner_suggest.value
+(* Things in src/ don't depend on cmdliner to speed up the
+   bootstrap, so we set this reference here *)
+let () = suggest_function := Cmdliner_suggest.value
 
 type common =
   { debug_dep_path        : bool
   ; debug_findlib         : bool
   ; debug_backtraces      : bool
-  ; dev_mode              : bool
+  ; profile               : string option
   ; workspace_file        : string option
   ; root                  : string
   ; target_prefix         : string
@@ -33,7 +33,6 @@ let set_common c ~targets =
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces := c.debug_backtraces;
-  Clflags.dev_mode := c.dev_mode;
   Clflags.capture_outputs := c.capture_outputs;
   if c.root <> Filename.current_dir_name then
     Sys.chdir c.root;
@@ -43,7 +42,7 @@ let set_common c ~targets =
   Clflags.force := c.force;
   Clflags.external_lib_deps_hint :=
     List.concat
-      [ ["jbuilder"; "external-lib-deps"; "--missing"]
+      [ ["dune"; "external-lib-deps"; "--missing"]
       ; c.orig_args
       ; targets
       ]
@@ -70,31 +69,38 @@ let restore_cwd_and_execve common prog argv env =
     Unix.execve prog argv env
 
 module Main = struct
-  include Jbuilder.Main
+  include Dune.Main
 
   let setup ~log ?external_lib_deps_mode common =
     setup
       ~log
-      ?workspace_file:common.workspace_file
+      ?workspace_file:(
+        Option.map common.workspace_file ~f:Path.of_string)
       ?only_packages:common.only_packages
       ?external_lib_deps_mode
       ?x:common.x
+      ?profile:common.profile
       ~ignore_promoted_rules:common.ignore_promoted_rules
       ~capture_outputs:common.capture_outputs
       ()
 end
 
 module Log = struct
-  include Jbuilder.Log
+  include Dune.Log
 
   let create common =
     Log.create ~display:common.config.display ()
 end
 
 module Scheduler = struct
-  include Jbuilder.Scheduler
+  include Dune.Scheduler
 
   let go ?log ~common fiber =
+    let fiber =
+      Main.set_concurrency ?log common.config
+      >>= fun () ->
+      fiber
+    in
     Scheduler.go ?log ~config:common.config fiber
 end
 
@@ -110,14 +116,15 @@ let request_of_targets (setup : Main.setup) targets =
     match target with
     | File path -> Build.path path
     | Alias_rec path ->
-      let dir = Path.parent path in
+      let dir = Path.parent_exn path in
       let name = Path.basename path in
       let contexts, dir =
         match Path.extract_build_context dir with
         | None -> (contexts, dir)
         | Some ("install", _) ->
           die "Invalid alias: %s.\n\
-               There are no aliases in _build/install."
+               There are no aliases in %s."
+            (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
             (Path.to_string_maybe_quoted path)
         | Some (ctx, dir) -> ([ctx], dir)
       in
@@ -131,12 +138,15 @@ let do_build (setup : Main.setup) targets =
 let find_root () =
   let cwd = Sys.getcwd () in
   let rec loop counter ~candidates ~to_cwd dir =
-    let files = Sys.readdir dir |> Array.to_list |> String_set.of_list in
-    if String_set.mem files "jbuild-workspace" then
+    let files = Sys.readdir dir |> Array.to_list |> String.Set.of_list in
+    if String.Set.mem files "dune-workspace"   ||
+       String.Set.mem files "jbuild-workspace" then
       cont counter ~candidates:((0, dir, to_cwd) :: candidates) dir ~to_cwd
-    else if String_set.exists files ~f:(fun fn ->
-        String.is_prefix fn ~prefix:"jbuild-workspace") then
+    else if String.Set.exists files ~f:(fun fn ->
+      String.is_prefix fn ~prefix:"jbuild-workspace") then
       cont counter ~candidates:((1, dir, to_cwd) :: candidates) dir ~to_cwd
+    else if String.Set.mem files Dune_project.filename then
+      cont counter ~candidates:((2, dir, to_cwd) :: candidates) dir ~to_cwd
     else
       cont counter ~candidates dir ~to_cwd
   and cont counter ~candidates ~to_cwd dir =
@@ -182,7 +192,7 @@ let help_secs =
 type config_file =
   | No_config
   | Default
-  | This of string
+  | This of Path.t
 
 let incompatible a b =
   `Error (true,
@@ -201,7 +211,6 @@ let common =
         debug_dep_path
         debug_findlib
         debug_backtraces
-        dev_mode
         no_buffer
         workspace_file
         diff_command
@@ -211,6 +220,7 @@ let common =
          only_packages,
          ignore_promoted_rules,
          config_file,
+         profile,
          orig)
         x
         display
@@ -226,7 +236,7 @@ let common =
     in
     let orig_args =
       List.concat
-        [ if dev_mode then ["--dev"] else []
+        [ dump_opt "--profile" profile
         ; dump_opt "--workspace" workspace_file
         ; orig
         ]
@@ -234,7 +244,7 @@ let common =
     let config =
       match config_file with
       | No_config  -> Config.default
-      | This fname -> Config.load_config_file ~fname
+      | This fname -> Config.load_config_file fname
       | Default    ->
         if Config.inside_dune then
           Config.default
@@ -254,7 +264,7 @@ let common =
     { debug_dep_path
     ; debug_findlib
     ; debug_backtraces
-    ; dev_mode
+    ; profile
     ; capture_outputs = not no_buffer
     ; workspace_file
     ; root
@@ -274,8 +284,16 @@ let common =
   in
   let docs = copts_sect in
   let concurrency =
+    let arg =
+      Arg.conv
+        ((fun s ->
+           Result.map_error (Config.Concurrency.of_string s)
+             ~f:(fun s -> `Msg s)),
+         fun pp x ->
+           Format.pp_print_string pp (Config.Concurrency.to_string x))
+    in
     Arg.(value
-         & opt (some int) None
+         & opt (some arg) None
          & info ["j"] ~docs ~docv:"JOBS"
              ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|}
         )
@@ -316,7 +334,27 @@ let common =
     Arg.(value
          & flag
          & info ["dev"] ~docs
-             ~doc:{|Use stricter compilation flags by default.|})
+             ~doc:{|Same as $(b,--profile dev)|})
+  in
+  let profile =
+    Arg.(value
+         & opt (some string) None
+         & info ["profile"] ~docs
+             ~doc:{|Select the build profile, for instance $(b,dev) or $(b,release).
+                    The default is $(b,default).|})
+  in
+  let profile =
+    let merge dev profile =
+      match dev, profile with
+      | false, x    -> `Ok x
+      | true , None -> `Ok (Some "dev")
+      | true , Some _ ->
+        `Error (true,
+                "Cannot use --dev and --profile simultaneously")
+    in
+    Term.(ret (const merge
+               $ dev
+               $ profile))
   in
   let display =
     let verbose =
@@ -329,7 +367,7 @@ let common =
       Arg.(value
            & opt (some (enum Config.Display.all)) None
            & info ["display"] ~docs ~docv:"MODE"
-               ~doc:{|Control the display mode of Jbuilder.
+               ~doc:{|Control the display mode of Dune.
                       See $(b,dune-config\(5\)) for more details.|})
     in
     let merge verbose display =
@@ -345,8 +383,8 @@ let common =
     Arg.(value
          & flag
          & info ["no-buffer"] ~docs ~docv:"DIR"
-             ~doc:{|Do not buffer the output of commands executed by jbuilder.
-                    By default jbuilder buffers the output of subcommands, in order
+             ~doc:{|Do not buffer the output of commands executed by dune.
+                    By default dune buffers the output of subcommands, in order
                     to prevent interleaving when multiple commands are executed
                     in parallel. However, this can be an issue when debugging
                     long running tests. With $(b,--no-buffer), commands have direct
@@ -369,7 +407,7 @@ let common =
          & flag
          & info ["auto-promote"] ~docs
              ~doc:"Automatically promote files. This is similar to running
-                   $(b,jbuilder promote) after the build.")
+                   $(b,dune promote) after the build.")
   in
   let force =
     Arg.(value
@@ -410,7 +448,7 @@ let common =
       let merge config_file no_config =
         match config_file, no_config with
         | None   , false -> `Ok (None                , Default)
-        | Some fn, false -> `Ok (Some "--config-file", This fn)
+        | Some fn, false -> `Ok (Some "--config-file", This (Path.of_string fn))
         | None   , true  -> `Ok (Some "--no-config"  , No_config)
         | Some _ , true  -> incompatible "--no-config" "--config-file"
       in
@@ -422,40 +460,45 @@ let common =
            & opt (some string) None
            & info ["p"; for_release] ~docs ~docv:"PACKAGES"
                ~doc:{|Shorthand for $(b,--root . --only-packages PACKAGE
-                      --promote ignore --no-config).
+                      --promote ignore --no-config --profile release).
                       You must use this option in your $(i,<package>.opam) files, in order
                       to build only what's necessary when your project contains multiple
                       packages as well as getting reproducible builds.|})
     in
     let merge root only_packages ignore_promoted_rules
-          (config_file_opt, config_file) release =
+          (config_file_opt, config_file) profile release =
       let fail opt = incompatible ("-p/--" ^ for_release) opt in
-      match release, root, only_packages, ignore_promoted_rules, config_file_opt with
-      | Some _, Some _, _, _, _      -> fail "--root"
-      | Some _, _, Some _, _, _      -> fail "--only-packages"
-      | Some _, _, _, true  , _      -> fail "--ignore-promoted-rules"
-      | Some _, _, _, _     , Some s -> fail s
-      | Some pkgs, None, None, false, None ->
+      match release, root, only_packages, ignore_promoted_rules,
+            profile, config_file_opt with
+      | Some _, Some _, _, _, _, _ -> fail "--root"
+      | Some _, _, Some _, _, _, _ -> fail "--only-packages"
+      | Some _, _, _, true  , _, _ -> fail "--ignore-promoted-rules"
+      | Some _, _, _, _, Some _, _ -> fail "--profile"
+      | Some _, _, _, _, _, Some s -> fail s
+      | Some pkgs, None, None, false, None, None ->
         `Ok (Some ".",
              Some pkgs,
              true,
              No_config,
+             Some "release",
              ["-p"; pkgs]
             )
-      | None, _, _, _, _ ->
+      | None, _, _, _, _, _ ->
         `Ok (root,
              only_packages,
              ignore_promoted_rules,
              config_file,
+             profile,
              List.concat
                [ dump_opt "--root" root
                ; dump_opt "--only-packages" only_packages
+               ; dump_opt "--profile" profile
                ; if ignore_promoted_rules then
                    ["--ignore-promoted-rules"]
                  else
                    []
                ; (match config_file with
-                  | This fn   -> ["--config-file"; fn]
+                  | This fn   -> ["--config-file"; Path.to_string fn]
                   | No_config -> ["--no-config"]
                   | Default   -> [])
                ]
@@ -466,6 +509,7 @@ let common =
                $ only_packages
                $ ignore_promoted_rules
                $ config_file
+               $ profile
                $ frop))
   in
   let x =
@@ -485,7 +529,6 @@ let common =
         $ ddep_path
         $ dfindlib
         $ dbacktraces
-        $ dev
         $ no_buffer
         $ workspace_file
         $ diff_command
@@ -502,7 +545,11 @@ let installed_libraries =
     set_common common ~targets:[];
     let env = Main.setup_env ~capture_outputs:common.capture_outputs in
     Scheduler.go ~log:(Log.create common) ~common
-      (Context.create (Default [Native]) ~env >>= fun ctxs ->
+      (Context.create
+         (Default { targets = [Native]
+                  ; profile = "default" })
+         ~env
+       >>= fun ctxs ->
        let ctx = List.hd ctxs in
        let findlib = ctx.findlib in
        if na then begin
@@ -543,15 +590,11 @@ let resolve_package_install setup pkg =
     die "Unknown package %s!%s" pkg
       (hint pkg
          (Package.Name.Map.keys setup.packages
-         |> List.map ~f:Package.Name.to_string))
+          |> List.map ~f:Package.Name.to_string))
 
 let target_hint (setup : Main.setup) path =
   assert (Path.is_local path);
-  let sub_dir =
-    if Path.is_root path then
-      path
-    else
-      Path.parent path in
+  let sub_dir = Option.value ~default:path (Path.parent path) in
   let candidates = Build_system.all_targets setup.build_system in
   let candidates =
     if Path.is_in_build_dir path then
@@ -566,21 +609,21 @@ let target_hint (setup : Main.setup) path =
     (* Only suggest hints for the basename, otherwise it's slow when there are lots of
        files *)
     List.filter_map candidates ~f:(fun path ->
-      if Path.parent path = sub_dir then
+      if Path.parent_exn path = sub_dir then
         Some (Path.to_string path)
       else
         None)
   in
-  let candidates = String_set.of_list candidates |> String_set.to_list in
+  let candidates = String.Set.of_list candidates |> String.Set.to_list in
   hint (Path.to_string path) candidates
 
 let check_path contexts =
   let contexts =
-    String_set.of_list (List.map contexts ~f:(fun c -> c.Context.name))
+    String.Set.of_list (List.map contexts ~f:(fun c -> c.Context.name))
   in
   fun path ->
     let internal path =
-      die "This path is internal to jbuilder: %s"
+      die "This path is internal to dune: %s"
         (Path.to_string_maybe_quoted path)
     in
     if Path.is_in_build_dir path then
@@ -588,11 +631,11 @@ let check_path contexts =
       | None -> internal path
       | Some (name, _) ->
         if name = "" || name.[0] = '.' then internal path;
-        if not (name = "install" || String_set.mem contexts name) then
+        if not (name = "install" || String.Set.mem contexts name) then
           die "%s refers to unknown build context: %s%s"
             (Path.to_string_maybe_quoted path)
             name
-            (hint name (String_set.to_list contexts))
+            (hint name (String.Set.to_list contexts))
 
 let resolve_targets ~log common (setup : Main.setup) user_targets =
   match user_targets with
@@ -688,7 +731,7 @@ let runtest =
   let man =
     [ `S "DESCRIPTION"
     ; `P {|This is a short-hand for calling:|}
-    ; `Pre {|  jbuilder build @runtest|}
+    ; `Pre {|  dune build @runtest|}
     ; `Blocks help_secs
     ]
   in
@@ -719,7 +762,7 @@ let clean =
   let doc = "Clean the project." in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|Removes files added by jbuilder such as _build, <package>.install, and .merlin|}
+    ; `P {|Removes files added by dune such as _build, <package>.install, and .merlin|}
     ; `Blocks help_secs
     ]
   in
@@ -728,14 +771,14 @@ let clean =
       set_common common ~targets:[];
       Build_system.files_in_source_tree_to_delete ()
       |> List.iter ~f:Path.unlink_no_err;
-      Path.(rm_rf (append root (of_string "_build")))
+      Path.rm_rf Path.build_dir
     end
   in
   ( Term.(const go $ common)
   , Term.info "clean" ~doc ~man)
 
 let format_external_libs libs =
-  String_map.to_list libs
+  String.Map.to_list libs
   |> List.map ~f:(fun (name, kind) ->
     match (kind : Build.lib_dep_kind) with
     | Optional -> sprintf "- %s (optional)" name
@@ -761,18 +804,18 @@ let external_lib_deps =
        let targets = resolve_targets_exn ~log common setup targets in
        let request = request_of_targets setup targets in
        let failure =
-         String_map.foldi ~init:false
+         String.Map.foldi ~init:false
            (Build_system.all_lib_deps_by_context setup.build_system ~request)
            ~f:(fun context_name lib_deps acc ->
              let internals =
-               Jbuild.Stanzas.lib_names
-                 (match String_map.find setup.Main.stanzas context_name with
+               Super_context.internal_lib_names
+                 (match String.Map.find setup.Main.scontexts context_name with
                   | None -> assert false
                   | Some x -> x)
              in
              let externals =
-               String_map.filteri lib_deps ~f:(fun name _ ->
-                 not (String_set.mem internals name))
+               String.Map.filteri lib_deps ~f:(fun name _ ->
+                 not (String.Set.mem internals name))
              in
              if only_missing then begin
                let context =
@@ -783,12 +826,12 @@ let external_lib_deps =
                  | Some c -> c
                in
                let missing =
-                 String_map.filteri externals ~f:(fun name _ ->
+                 String.Map.filteri externals ~f:(fun name _ ->
                    not (Findlib.available context.findlib name))
                in
-               if String_map.is_empty missing then
+               if String.Map.is_empty missing then
                  acc
-               else if String_map.for_alli missing
+               else if String.Map.for_alli missing
                          ~f:(fun _ kind -> kind = Build.Optional)
                then begin
                  Format.eprintf
@@ -806,13 +849,13 @@ let external_lib_deps =
                     Hint: try: opam install %s@."
                    context_name
                    (format_external_libs missing)
-                   (String_map.to_list missing
+                   (String.Map.to_list missing
                     |> List.filter_map ~f:(fun (name, kind) ->
                       match (kind : Build.lib_dep_kind) with
                       | Optional -> None
                       | Required -> Some (Findlib.root_package_name name))
-                    |> String_set.of_list
-                    |> String_set.to_list
+                    |> String.Set.of_list
+                    |> String.Set.to_list
                     |> String.concat ~sep:" ");
                  true
                end
@@ -843,7 +886,7 @@ let rules =
   let doc = "Dump internal rules." in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|Dump Jbuilder internal rules for the given targets.
+    ; `P {|Dump Dune internal rules for the given targets.
            If no targets are given, dump all the internal rules.|}
     ; `P {|By default the output is a list of S-expressions,
            one S-expression per rule. Each S-expression is of the form:|}
@@ -859,6 +902,7 @@ let rules =
     ]
   in
   let go common out recursive makefile_syntax targets =
+    let out = Option.map ~f:Path.of_string out in
     set_common common ~targets;
     let log = Log.create common in
     Scheduler.go ~log ~common
@@ -982,7 +1026,7 @@ let install_uninstall ~what =
        if missing_install_files <> [] then begin
          die "The following <package>.install are missing:\n\
               %s\n\
-              You need to run: jbuilder build @install"
+              You need to run: dune build @install"
            (String.concat ~sep:"\n"
               (List.map missing_install_files
                  ~f:(fun p -> sprintf "- %s" (Path.to_string p))))
@@ -1000,14 +1044,14 @@ let install_uninstall ~what =
        in
        Fiber.parallel_iter install_files_by_context
          ~f:(fun (context, install_files) ->
+           let install_files_set = Path.Set.of_list install_files in
            get_prefix context ~from_command_line:prefix_from_command_line
            >>= fun prefix ->
            get_libdir context ~libdir_from_command_line
            >>= fun libdir ->
            Fiber.parallel_iter install_files ~f:(fun path ->
-             let purpose = Process.Build_job install_files in
-             Process.run ~purpose ~env:setup.env Strict
-               (Path.to_string opam_installer)
+             let purpose = Process.Build_job install_files_set in
+             Process.run ~purpose ~env:setup.env Strict opam_installer
                ([ sprintf "-%c" what.[0]
                 ; Path.to_string path
                 ; "--prefix"
@@ -1055,11 +1099,11 @@ let exec =
   in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|$(b,jbuilder exec -- COMMAND) should behave in the same way as if you
+    ; `P {|$(b,dune exec -- COMMAND) should behave in the same way as if you
            do:|}
-    ; `Pre "  \\$ jbuilder install\n\
+    ; `Pre "  \\$ dune install\n\
            \  \\$ COMMAND"
-    ; `P {|In particular if you run $(b,jbuilder exec ocaml), you will have
+    ; `P {|In particular if you run $(b,dune exec ocaml), you will have
            access to the libraries defined in the workspace using your usual
            directives ($(b,#require) for instance)|}
     ; `P {|When a leading / is present in the command (absolute path), then the
@@ -1178,7 +1222,7 @@ let subst =
            by the version obtained from the vcs. Currently only git is supported and
            the version is obtained from the output of:|}
     ; `Pre {|  \$ git describe --always --dirty|}
-    ; `P {|$(b,jbuilder subst) substitutes the variables that topkg substitutes with
+    ; `P {|$(b,dune subst) substitutes the variables that topkg substitutes with
            the defatult configuration:|}
     ; var "NAME" "the name of the package"
     ; var "VERSION" "output of $(b,git describe --always --dirty)"
@@ -1198,9 +1242,9 @@ let subst =
            heuristic: if all the $(b,<package>.opam) files in the current directory are
            prefixed by the shortest package name, this prefix is used. Otherwise you must
            specify a name with the $(b,-n) command line option.|}
-    ; `P {|In order to call $(b,jbuilder subst) when your package is pinned, add this line
+    ; `P {|In order to call $(b,dune subst) when your package is pinned, add this line
            to the $(b,build:) field of your opam file:|}
-    ; `Pre {|  ["jbuilder" "subst"] {pinned}|}
+    ; `Pre {|  [dune "subst"] {pinned}|}
     ; `Blocks help_secs
     ]
   in
@@ -1221,7 +1265,7 @@ let utop =
   let doc = "Load library in utop" in
   let man =
     [ `S "DESCRIPTION"
-    ; `P {|$(b,jbuilder utop DIR) build and run utop toplevel with libraries defined in DIR|}
+    ; `P {|$(b,dune utop DIR) build and run utop toplevel with libraries defined in DIR|}
     ; `Blocks help_secs
     ] in
   let go common dir ctx_name args =
@@ -1258,12 +1302,12 @@ let promote =
   let man =
     [ `S "DESCRIPTION"
     ; `P {|Considering all actions of the form $(b,(diff a b)) that failed
-           in the last run of jbuilder, $(b,jbuilder promote) does the following:
+           in the last run of dune, $(b,dune promote) does the following:
 
            If $(b,a) is present in the source tree but $(b,b) isn't, $(b,b) is
            copied over to $(b,a) in the source tree. The idea behind this is that
            you might use $(b,(diff file.expected file.generated)) and then call
-           $(b,jbuilder promote) to promote the generated file.
+           $(b,dune promote) to promote the generated file.
          |}
     ; `Blocks help_secs
     ] in
@@ -1279,15 +1323,68 @@ let promote =
           $ common)
   , Term.info "promote" ~doc ~man )
 
+let printenv =
+  let doc = "Print the environment of a directory" in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P {|$(b,dune printenv DIR) prints the environment of a directory|}
+    ; `Blocks help_secs
+    ] in
+  let go common dir =
+    set_common common ~targets:[];
+    let log = Log.create common in
+    Scheduler.go ~log ~common (
+      Main.setup ~log common >>= fun setup ->
+      let dir = Path.of_string dir in
+      check_path setup.contexts dir;
+      let request =
+        let dump sctx ~dir =
+          let open Build.O in
+          Super_context.dump_env sctx ~dir
+          >>^ fun env ->
+          ((Super_context.context sctx).name, env)
+        in
+        Build.all (
+          match Path.extract_build_context dir with
+          | Some (ctx, _) ->
+            let sctx =
+              String_map.find setup.scontexts ctx |> Option.value_exn
+            in
+            [dump sctx ~dir]
+          | None ->
+            String_map.values setup.scontexts
+            |> List.map ~f:(fun sctx ->
+              let dir =
+                Path.append (Super_context.context sctx).build_dir dir
+              in
+              dump sctx ~dir)
+        )
+      in
+      Build_system.do_build setup.build_system ~request
+      >>| fun l ->
+      let pp ppf = Format.fprintf ppf "@[<v1>(@,@[<v>%a@]@]@,)" (Format.pp_print_list Sexp.pp) in
+      match l with
+      | [(_, env)] ->
+        Format.printf "%a@." pp env
+      | l ->
+        List.iter l ~f:(fun (name, env) ->
+          Format.printf "@[<v2>Environment for context %s:@,%a@]@." name pp env)
+    )
+  in
+  ( Term.(const go
+          $ common
+          $ Arg.(value & pos 0 dir "" & info [] ~docv:"PATH"))
+  , Term.info "printenv" ~doc ~man )
+
 module Help = struct
   let config =
-    ("dune-config", 5, "", "Jbuilder", "Jbuilder manual"),
+    ("dune-config", 5, "", "Dune", "Dune manual"),
     [ `S Manpage.s_synopsis
     ; `Pre "~/.config/dune/config"
     ; `S Manpage.s_description
-    ; `P {|Unless $(b,--no-config) or $(b,-p) is passed, Jbuilder will read a
+    ; `P {|Unless $(b,--no-config) or $(b,-p) is passed, Dune will read a
            configuration file from the user home directory. This file is used
-           to control various aspects of the behavior of Jbuilder.|}
+           to control various aspects of the behavior of Dune.|}
     ; `P {|The configuration file is normally $(b,~/.config/dune/config) on
            Unix systems and $(b,Local Settings/dune/config) in the User home
            directory on Windows. However, it is possible to specify an
@@ -1296,13 +1393,13 @@ module Help = struct
            a list of stanzas. The following sections describe the stanzas available.|}
     ; `S "DISPLAY MODES"
     ; `P {|Syntax: $(b,\(display MODE\))|}
-    ; `P {|This stanza controls how Jbuilder reports what it is doing to the user.
+    ; `P {|This stanza controls how Dune reports what it is doing to the user.
            This parameter can also be set from the command line via $(b,--display MODE).
            The following display modes are available:|}
     ; `Blocks
         (List.map ~f:(fun (x, desc) -> `I (sprintf "$(b,%s)" x, desc))
            [ "progress",
-             {|This is the default, Jbuilder shows and update a
+             {|This is the default, Dune shows and update a
                status line as build goals are being completed.|}
            ; "quiet",
              {|Only display errors.|}
@@ -1312,13 +1409,13 @@ module Help = struct
                on the right.|}
            ; "verbose",
              {|Print the full command lines of programs being
-               executed by Jbuilder, with some colors to help differentiate
+               executed by Dune, with some colors to help differentiate
                programs.|}
            ])
     ; `P {|Note that when the selected display mode is $(b,progress) and the
            output is not a terminal then the $(b,quiet) mode is selected
-           instead. This rule doesn't apply when running Jbuilder inside Emacs.
-           Jbuilder detects whether it is executed from inside Emacs or not by
+           instead. This rule doesn't apply when running Dune inside Emacs.
+           Dune detects whether it is executed from inside Emacs or not by
            looking at the environment variable $(b,INSIDE_EMACS) that is set by
            Emacs. If you want the same behavior with another editor, you can set
            this variable. If your editor already sets another variable,
@@ -1326,7 +1423,7 @@ module Help = struct
            add support for it.|}
     ; `S "JOBS"
     ; `P {|Syntax: $(b,\(jobs NUMBER\))|}
-    ; `P {|Set the maximum number of jobs Jbuilder might run in parallel.
+    ; `P {|Set the maximum number of jobs Dune might run in parallel.
            This can also be set from the command line via $(b,-j NUMBER).|}
     ; `P {|The default for this value is 4.|}
     ; common_footer
@@ -1342,10 +1439,10 @@ module Help = struct
     ]
 
   let help =
-    let doc = "Additional Jbuilder help" in
+    let doc = "Additional Dune help" in
     let man =
       [ `S "DESCRIPTION"
-      ; `P {|$(b,jbuilder help TOPIC) provides additional help on the given topic.
+      ; `P {|$(b,dune help TOPIC) provides additional help on the given topic.
              The following topics are available:|}
       ; `Blocks (List.concat_map commands ~f:(fun (s, what) ->
           match what with
@@ -1394,19 +1491,20 @@ let all =
   ; rules
   ; utop
   ; promote
+  ; printenv
   ; Help.help
   ]
 
 let default =
   let doc = "composable build system for OCaml" in
   ( Term.(ret (const (fun _ -> `Help (`Pager, None)) $ common))
-  , Term.info "jbuilder" ~doc ~version:"%%VERSION%%"
+  , Term.info "dune" ~doc ~version:"%%VERSION%%"
       ~man:
         [ `S "DESCRIPTION"
-        ; `P {|Jbuilder is a build system designed for OCaml projects only. It
+        ; `P {|Dune is a build system designed for OCaml projects only. It
                focuses on providing the user with a consistent experience and takes
                care of most of the low-level details of OCaml compilation. All you
-               have to do is provide a description of your project and Jbuilder will
+               have to do is provide a description of your project and Dune will
                do the rest.
              |}
         ; `P {|The scheme it implements is inspired from the one used inside Jane

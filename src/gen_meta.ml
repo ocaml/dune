@@ -31,7 +31,7 @@ module Pub_name = struct
   let to_string t = String.concat ~sep:"." (to_list t)
 end
 
-let string_of_deps deps = String_set.to_list deps |> String.concat ~sep:" "
+let string_of_deps deps = String.Set.to_list deps |> String.concat ~sep:" "
 
 let rule var predicates action value =
   Rule { var; predicates; action; value }
@@ -81,7 +81,7 @@ let gen_lib pub_name lib ~version =
       ; requires ~preds lib_deps
       ]
     ; archives ~preds lib
-    ; if String_set.is_empty ppx_rt_deps then
+    ; if String.Set.is_empty ppx_rt_deps then
         []
       else
         [ Comment "This is what jbuilder uses to find out the runtime \
@@ -154,8 +154,8 @@ let gen ~package ~version libs =
     in
     let entries = List.concat entries in
     let subs =
-      String_map.of_list_multi sub_pkgs
-      |> String_map.to_list
+      String.Map.of_list_multi sub_pkgs
+      |> String.Map.to_list
       |> List.map ~f:(fun (name, pkgs) ->
         let pkg = loop name pkgs in
         Package { pkg with

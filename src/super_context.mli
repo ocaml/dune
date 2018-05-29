@@ -23,10 +23,10 @@ type t
 val create
   :  context:Context.t
   -> ?host:t
-  -> scopes:Scope_info.t list
+  -> projects:Dune_project.t list
   -> file_tree:File_tree.t
   -> packages:Package.t Package.Name.Map.t
-  -> stanzas:(Path.t * Scope_info.t * Stanzas.t) list
+  -> stanzas:(Path.t * Dune_project.t * Stanzas.t) list
   -> external_lib_deps_mode:bool
   -> build_system:Build_system.t
   -> t
@@ -40,6 +40,7 @@ val artifacts : t -> Artifacts.t
 val stanzas_to_consider_for_install : t -> (Path.t * Scope.t * Stanza.t) list
 val cxx_flags : t -> string list
 val build_dir : t -> Path.t
+val profile   : t -> string
 val host : t -> t
 val build_system : t -> Build_system.t
 
@@ -49,14 +50,29 @@ val public_libs : t -> Lib.DB.t
 (** Installed libraries that are not part of the workspace *)
 val installed_libs : t -> Lib.DB.t
 
-val find_scope_by_dir  : t -> Path.t        -> Scope.t
-val find_scope_by_name : t -> string option -> Scope.t
+(** All non-public library names *)
+val internal_lib_names : t -> String.Set.t
+
+(** Compute the ocaml flags based on the directory environment and a
+    buildable stanza *)
+val ocaml_flags
+  :  t
+  -> dir:Path.t
+  -> scope:Scope.t
+  -> Buildable.t
+  -> Ocaml_flags.t
+
+(** Dump a directory environment in a readable form *)
+val dump_env : t -> dir:Path.t -> (unit, Sexp.t list) Build.t
+
+val find_scope_by_dir  : t -> Path.t              -> Scope.t
+val find_scope_by_name : t -> Dune_project.Name.t -> Scope.t
 
 val expand_vars
   :  t
   -> scope:Scope.t
   -> dir:Path.t
-  -> ?extra_vars:Action.Var_expansion.t String_map.t
+  -> ?extra_vars:Action.Var_expansion.t String.Map.t
   -> String_with_vars.t
   -> string
 
@@ -64,16 +80,17 @@ val expand_and_eval_set
   :  t
   -> scope:Scope.t
   -> dir:Path.t
-  -> ?extra_vars:Action.Var_expansion.t String_map.t
+  -> ?extra_vars:Action.Var_expansion.t String.Map.t
   -> Ordered_set_lang.Unexpanded.t
-  -> standard:string list
+  -> standard:(unit, string list) Build.t
   -> (unit, string list) Build.t
 
 val prefix_rules
-  : t
+  :  t
   -> (unit, unit) Build.t
   -> f:(unit -> 'a)
   -> 'a
+
 val add_rule
   :  t
   -> ?sandbox:bool
@@ -114,7 +131,7 @@ val eval_glob : t -> dir:Path.t -> Re.re -> string list
 val load_dir : t -> dir:Path.t -> unit
 val on_load_dir : t -> dir:Path.t -> f:(unit -> unit) -> unit
 
-val source_files : t -> src_path:Path.t -> String_set.t
+val source_files : t -> src_path:Path.t -> String.Set.t
 
 (** [prog_spec t ?hint name] resolve a program. [name] is looked up in the
     workspace, if it is not found in the tree is is looked up in the PATH. If it
@@ -190,7 +207,8 @@ module Action : sig
   (** The arrow takes as input the list of actual dependencies *)
   val run
     :  t
-    -> ?extra_vars:Action.Var_expansion.t String_map.t
+    -> loc:Loc.t
+    -> ?extra_vars:Action.Var_expansion.t String.Map.t
     -> Action.Unexpanded.t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
@@ -206,5 +224,5 @@ end
 module Scope_key : sig
   val of_string : t -> string -> string * Lib.DB.t
 
-  val to_string : string -> Scope_info.Name.t -> string
+  val to_string : string -> Dune_project.Name.t -> string
 end

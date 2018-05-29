@@ -20,7 +20,7 @@ convenience, for the following reasons:
 How to add a configure step to a jbuilder project?
 ==================================================
 
-[example/sample-projects/with-configure-step](example/sample-projects/with-configure-step)
+`example/sample-projects/with-configure-step https://github.com/ocaml/dune/tree/master/example/sample-projects/with-configure-step`__
 shows one way to do it which preserves composability; i.e. it doesn't require
 manually running `./configure` script when working on multiple projects at the
 same time.
@@ -28,13 +28,14 @@ same time.
 Can I use topkg with jbuilder?
 ==============================
 
-Yes, have a look at the [topkg-jbuilder][topkg-jbuilder] project for
+Yes, have a look at the `topkg-jbuilder https://github.com/samoht/topkg-jbuilder`__ project for
 more details.
 
 here can I find some examples of projects using Jbuilder?
 =========================================================
 
-The [dune-universe](https://github.com/dune-universe/dune-universe) repository
-contains a snapshot of the latest versions of all opam packages depending on
-jbuilder. It is therefore a useful reference to search through to find different
-approaches to constructing build rules.
+The `dune-universe https://github.com/dune-universe/dune-universe`__
+repository contains a snapshot of the latest versions of all opam
+packages depending on jbuilder. It is therefore a useful reference to
+search through to find different approaches to constructing build
+rules.

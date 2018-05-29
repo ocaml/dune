@@ -3,9 +3,9 @@ type t = Usexp.Loc.t =
   ; stop  : Lexing.position
   }
 
-val of_lexbuf : Lexing.lexbuf -> t
+val sexp_of_t : t -> Usexp.t
 
-exception Error of t * string
+val of_lexbuf : Lexing.lexbuf -> t
 
 val exnf     : t             -> ('a, Format.formatter, unit, exn) format4 -> 'a
 val fail     : t             -> ('a, Format.formatter, unit, 'b ) format4 -> 'a

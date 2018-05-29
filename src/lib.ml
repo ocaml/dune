@@ -9,15 +9,15 @@ module Status = struct
   type t =
     | Installed
     | Public  of Package.t
-    | Private of Jbuild.Scope_info.Name.t
+    | Private of Dune_project.Name.t
 
   let pp ppf t =
     Format.pp_print_string ppf
       (match t with
        | Installed -> "installed"
        | Public _ -> "public"
-       | Private s ->
-         sprintf "private (%s)" (Jbuild.Scope_info.Name.to_string s))
+       | Private name ->
+         sprintf "private (%s)" (Dune_project.Name.to_string_hum name))
 
   let is_private = function
     | Private _ -> true
@@ -88,7 +88,7 @@ module Info = struct
     in
     let status =
       match conf.public with
-      | None   -> Status.Private conf.scope_name
+      | None   -> Status.Private conf.project_name
       | Some p -> Public p.package
     in
     let foreign_archives =
@@ -123,8 +123,7 @@ module Info = struct
     let sub_systems =
       match P.dune_file pkg with
       | None -> Sub_system_name.Map.empty
-      | Some fn ->
-        Installed_dune_file.load ~fname:(Path.to_string fn)
+      | Some fn -> Installed_dune_file.load fn
     in
     { loc              = loc
     ; kind             = Normal
@@ -437,12 +436,12 @@ module L = struct
       match l with
       | [] -> acc
       | x :: l ->
-        if Int_set.mem seen x.unique_id then
+        if Int.Set.mem seen x.unique_id then
           loop acc l seen
         else
-          loop (x :: acc) l (Int_set.add seen x.unique_id)
+          loop (x :: acc) l (Int.Set.add seen x.unique_id)
     in
-    loop [] l Int_set.empty
+    loop [] l Int.Set.empty
 end
 
 (* +-----------------------------------------------------------------+
@@ -524,12 +523,12 @@ let gen_unique_id =
 module Dep_stack = struct
   type t =
     { stack : Id.t list
-    ; seen  : Int_set.t
+    ; seen  : Int.Set.t
     }
 
   let empty =
     { stack = []
-    ; seen  = Int_set.empty
+    ; seen  = Int.Set.empty
     }
 
   let to_required_by t ~stop_at =
@@ -546,7 +545,7 @@ module Dep_stack = struct
     loop [] t.stack
 
   let dependency_cycle t (last : Id.t) =
-    assert (Int_set.mem t.seen last.unique_id);
+    assert (Int.Set.mem t.seen last.unique_id);
     let rec build_loop acc stack =
       match stack with
       | [] -> assert false
@@ -565,15 +564,15 @@ module Dep_stack = struct
     let init = { Id. unique_id; name; path } in
     (init,
      { stack = init :: t.stack
-     ; seen  = Int_set.add t.seen unique_id
+     ; seen  = Int.Set.add t.seen unique_id
      })
 
   let push t (x : Id.t) : (_, _) result =
-    if Int_set.mem t.seen x.unique_id then
+    if Int.Set.mem t.seen x.unique_id then
       Error (dependency_cycle t x)
     else
       Ok { stack = x :: t.stack
-         ; seen  = Int_set.add t.seen x.unique_id
+         ; seen  = Int.Set.add t.seen x.unique_id
          }
 end
 
@@ -600,7 +599,7 @@ let already_in_table (info : Info.t) name x =
       List [Sexp.unsafe_atom_of_string "Hidden";
             Path.sexp_of_t path; Sexp.atom reason]
   in
-  Sexp.code_error
+  Exn.code_error
     "Lib_db.DB: resolver returned name that's already in the table"
     [ "name"            , Sexp.atom name
     ; "returned_lib"    , to_sexp (info.src_dir, name)
@@ -768,13 +767,13 @@ and resolve_complex_deps db deps ~allow_private_deps ~stack =
           let res, src_fn =
             match
               List.find_map choices ~f:(fun { required; forbidden; file } ->
-                if String_set.exists forbidden
+                if String.Set.exists forbidden
                      ~f:(available_internal db ~stack) then
                   None
                 else
                   match
                     let deps =
-                      String_set.fold required ~init:[] ~f:(fun x acc ->
+                      String.Set.fold required ~init:[] ~f:(fun x acc ->
                         (Loc.none, x) :: acc)
                     in
                     resolve_simple_deps ~allow_private_deps db deps ~stack
@@ -852,11 +851,11 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
   (deps, pps, resolved_selects)
 
 and closure_with_overlap_checks db ts ~stack =
-  let visited = ref String_map.empty in
+  let visited = ref String.Map.empty in
   let res = ref [] in
   let orig_stack = stack in
   let rec loop t ~stack =
-    match String_map.find !visited t.name with
+    match String.Map.find !visited t.name with
     | Some (t', stack') ->
       if t.unique_id = t'.unique_id then
         Ok ()
@@ -867,7 +866,7 @@ and closure_with_overlap_checks db ts ~stack =
                            ; lib2 = (t , req_by stack )
                            }))
     | None ->
-      visited := String_map.add !visited t.name (t, stack);
+      visited := String.Map.add !visited t.name (t, stack);
       (match db with
        | None -> Ok ()
        | Some db ->
@@ -984,7 +983,7 @@ module DB = struct
             [ p.name   , Found info
             ; conf.name, Redirect (None, p.name)
             ])
-      |> String_map.of_list
+      |> String.Map.of_list
       |> function
       | Ok x -> x
       | Error (name, _, _) ->
@@ -1008,10 +1007,10 @@ module DB = struct
     in
     create () ?parent
       ~resolve:(fun name ->
-        match String_map.find map name with
+        match String.Map.find map name with
         | None   -> Not_found
         | Some x -> x)
-      ~all:(fun () -> String_map.keys map)
+      ~all:(fun () -> String.Map.keys map)
 
   let create_from_findlib ?(external_lib_deps_mode=false) findlib =
     create ()
@@ -1061,7 +1060,7 @@ module DB = struct
   let get_compile_info t ?(allow_overlaps=false) name =
     match find_even_when_hidden t name with
     | None ->
-      Sexp.code_error "Lib.DB.get_compile_info got library that doesn't exist"
+      Exn.code_error "Lib.DB.get_compile_info got library that doesn't exist"
         [ "name", Sexp.To_sexp.string name ]
     | Some lib ->
       let t = Option.some_if (not allow_overlaps) t in
@@ -1110,8 +1109,8 @@ end
 
 module Meta = struct
   let to_names ts =
-    List.fold_left ts ~init:String_set.empty ~f:(fun acc t ->
-      String_set.add acc t.name)
+    List.fold_left ts ~init:String.Set.empty ~f:(fun acc t ->
+      String.Set.add acc t.name)
 
   (* For the deprecated method, we need to put all the runtime
      dependencies of the transitive closure.

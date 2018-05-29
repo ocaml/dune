@@ -1,0 +1,31 @@
+(jbuild_version 1)
+
+(ignored_subdirs (test-cases))
+
+(library
+ ((name platform)
+  (modules (platform))
+  (libraries (stdune))))
+
+(executable
+ ((name cram)
+  (modules (cram))
+  (libraries (test_common platform dune configurator))))
+
+(ocamllex (cram))
+
+(executable
+ ((name gen_tests)
+  (libraries (stdune platform usexp))
+  (modules (gen_tests))))
+
+(include dune.inc)
+
+(rule
+ ((targets (dune.inc.gen))
+  (deps ((files_recursively_in test-cases)))
+  (action (with-stdout-to ${@} (run ./gen_tests.exe)))))
+
+(alias
+ ((name runtest)
+  (action (diff dune.inc dune.inc.gen))))

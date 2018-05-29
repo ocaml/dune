@@ -1,18 +1,14 @@
 open Import
 
-type t =
-  { dir          : Path.t
-  ; all_modules  : Module.t Module.Name.Map.t
-  ; mutable used : Loc.t list Module.Name.Map.t
+type 'a t =
+  { mutable used : ('a * Loc.t list) Module.Name.Map.t
   }
 
-let create ~dir ~all_modules =
-  { dir
-  ; all_modules
-  ; used = Module.Name.Map.empty
+let create () =
+  { used = Module.Name.Map.empty
   }
 
-let acknowledge t ~loc ~modules =
+let acknowledge t part ~loc ~modules =
   let already_used =
     Module.Name.Map.merge modules t.used ~f:(fun _name x l ->
       Option.some_if (Option.is_some x && Option.is_some l) ())
@@ -20,20 +16,24 @@ let acknowledge t ~loc ~modules =
     |> Module.Name.Set.of_list
   in
   t.used <-
-    Module.Name.Map.merge modules t.used ~f:(fun _name x l ->
+    Module.Name.Map.merge modules t.used ~f:(fun _name x y ->
       match x with
-      | None -> l
-      | Some _ -> Some (loc :: Option.value l ~default:[]));
+      | None -> y
+      | Some _ ->
+        Some (part,
+              loc :: match y with
+              | None -> []
+              | Some (_, l) -> l));
   already_used
 
+let find t name = Option.map (Module.Name.Map.find t.used name) ~f:fst
+
 let emit_warnings t =
-  let loc =
-    Utils.jbuild_file_in ~dir:t.dir
-    |> Path.to_string
-    |> Loc.in_file
-  in
-  Module.Name.Map.iteri t.used ~f:(fun name locs ->
-    if List.length locs > 1 then
+  Module.Name.Map.iteri t.used ~f:(fun name (_, locs) ->
+    match locs with
+    | [] | [_] -> ()
+    | loc :: _ ->
+      let loc = Loc.in_file loc.start.pos_fname in
       Loc.warn loc
         "Module %a is used in several stanzas:@\n\
          @[<v>%a@]@\n\

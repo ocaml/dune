@@ -36,7 +36,7 @@ let module_name sexp =
       | _ -> invalid_module_name name sexp);
     String.capitalize s
 
-let module_names sexp = String_set.of_list (list module_name sexp)
+let module_names sexp = String.Set.of_list (list module_name sexp)
 
 let invalid_lib_name sexp =
   of_sexp_error sexp "invalid library name"
@@ -72,51 +72,26 @@ let relative_file sexp =
     of_sexp_error sexp "relative filename expected";
   fn
 
-module Scope_info = struct
-  module Name = struct
-    type t = string option
+let c_name, cxx_name =
+  let make what ext sexp =
+    let s = string sexp in
+    if match s with
+      | "" | "." | ".."  -> true
+      | _ -> Filename.basename s <> s then
+      of_sexp_errorf sexp
+        "%S is not a valid %s name.\n\
+         Hint: To use %s files from another directory, use a \
+         (copy_files <dir>/*.c) stanza instead."
+        s what what ext
+    else
+      s
+  in
+  (make "C"   "c",
+   make "C++" "cpp")
 
-    let compare : t -> t -> Ordering.t = compare
-
-    let of_string = function
-      | "" -> None
-      | s  -> Some s
-
-    let to_string = function
-      | None -> ""
-      | Some "" -> assert false
-      | Some s -> s
-  end
-
-  type t =
-    { name     : Name.t
-    ; packages : Package.t Package.Name.Map.t
-    ; root     : Path.t
-    }
-
-  let anonymous =
-    { name     = None
-    ; packages = Package.Name.Map.empty
-    ; root     = Path.root
-    }
-
-  let make = function
-    | [] -> anonymous
-    | pkg :: rest as pkgs ->
-      let name =
-        List.fold_left rest ~init:pkg.Package.name ~f:(fun acc pkg ->
-          min acc pkg.Package.name)
-      in
-      let root = pkg.path in
-      List.iter rest ~f:(fun pkg -> assert (pkg.Package.path = root));
-      { name = Some (Package.Name.to_string name)
-      ; packages =
-          Package.Name.Map.of_list_exn (List.map pkgs ~f:(fun pkg ->
-            pkg.Package.name, pkg))
-      ; root
-      }
-
-  let package_listing packages =
+(* Parse and resolve "package" fields *)
+module Pkg = struct
+  let listing packages =
     let longest_pkg =
       String.longest_map packages ~f:(fun p ->
         Package.Name.to_string p.Package.name)
@@ -127,12 +102,12 @@ module Scope_info = struct
            (Package.Name.to_string pkg.Package.name)
            (Path.to_string (Package.opam_file pkg))))
 
-  let default t =
-    match Package.Name.Map.values t.packages with
+  let default (project : Dune_project.t) =
+    match Package.Name.Map.values project.packages with
     | [pkg] -> Ok pkg
     | [] ->
       Error
-        "The current scope defines no packages.\n\
+        "The current project (%S declared in  defines no packages.\n\
          What do you want me to do with this (install ...) stanzas?.\n\
          You need to add a <package>.opam file at the root \
          of your project so that\n\
@@ -144,15 +119,15 @@ module Scope_info = struct
             stanza is for. I have the choice between these ones:\n\
             %s\n\
             You need to add a (package ...) field in this (install ...) stanza"
-           (package_listing (Package.Name.Map.values t.packages)))
+           (listing (Package.Name.Map.values project.packages)))
 
-  let resolve t name =
-    match Package.Name.Map.find t.packages name with
+  let resolve (project : Dune_project.t) name =
+    match Package.Name.Map.find project.packages name with
     | Some pkg ->
       Ok pkg
     | None ->
       let name_s = Package.Name.to_string name in
-      if Package.Name.Map.is_empty t.packages then
+      if Package.Name.Map.is_empty project.packages then
         Error (sprintf
                  "You cannot declare items to be installed without \
                   adding a <package>.opam file at the root of your project.\n\
@@ -166,21 +141,20 @@ module Scope_info = struct
                   elements to be installed in this directory are:\n\
                   %s%s"
                  name_s
-                 (package_listing (Package.Name.Map.values t.packages))
-                 (hint name_s (Package.Name.Map.keys t.packages
-                              |> List.map ~f:Package.Name.to_string)))
+                 (listing (Package.Name.Map.values project.packages))
+                 (hint name_s (Package.Name.Map.keys project.packages
+                               |> List.map ~f:Package.Name.to_string)))
 
-  let package t sexp =
-    match resolve t (Package.Name.of_string (string sexp)) with
+  let t p sexp =
+    match resolve p (Package.Name.of_string (string sexp)) with
     | Ok p -> p
     | Error s -> Loc.fail (Sexp.Ast.loc sexp) "%s" s
 
-  let package_field t =
+  let field p =
     map_validate (field_o "package" string) ~f:(function
-      | None -> default t
-      | Some name -> resolve t (Package.Name.of_string name))
+      | None -> default p
+      | Some name -> resolve p (Package.Name.of_string name))
 end
-
 
 module Pp : sig
   type t = private string
@@ -279,13 +253,14 @@ module Preprocess = struct
   type pps = { pps : (Loc.t * Pp.t) list; flags : string list }
   type t =
     | No_preprocessing
-    | Action of Action.Unexpanded.t
+    | Action of Loc.t * Action.Unexpanded.t
     | Pps    of pps
 
   let t =
     sum
       [ cstr "no_preprocessing" nil No_preprocessing
-      ; cstr "action" (Action.Unexpanded.t @> nil) (fun x -> Action x)
+      ; cstr "action" (located Action.Unexpanded.t @> nil)
+          (fun (loc, x) -> Action (loc, x))
       ; cstr "pps" (list Pp_or_flags.t @> nil) (fun l ->
           let pps, flags = Pp_or_flags.split l in
           Pps { pps; flags })
@@ -304,7 +279,7 @@ module Per_module = struct
     | List (_, Atom (_, A "per_module") :: rest) -> begin
       List.map rest ~f:(fun sexp ->
         let pp, names = pair a module_names sexp in
-        (List.map ~f:Module.Name.of_string (String_set.to_list names), pp))
+        (List.map ~f:Module.Name.of_string (String.Set.to_list names), pp))
       |> of_mapping ~default
       |> function
       | Ok t -> t
@@ -367,8 +342,8 @@ end
 
 module Lib_dep = struct
   type choice =
-    { required  : String_set.t
-    ; forbidden : String_set.t
+    { required  : String.Set.t
+    ; forbidden : String.Set.t
     ; file      : string
     }
 
@@ -386,8 +361,8 @@ module Lib_dep = struct
     | List (_, l) as sexp ->
       let rec loop required forbidden = function
         | [Atom (_, A "->"); fsexp] ->
-          let common = String_set.inter required forbidden in
-          Option.iter (String_set.choose common) ~f:(fun name ->
+          let common = String.Set.inter required forbidden in
+          Option.iter (String.Set.choose common) ~f:(fun name ->
             of_sexp_errorf sexp
               "library %S is both required and forbidden in this clause"
               name);
@@ -402,11 +377,11 @@ module Lib_dep = struct
           let len = String.length s in
           if len > 0 && s.[0] = '!' then
             let s = String.sub s ~pos:1 ~len:(len - 1) in
-            loop required (String_set.add forbidden s) l
+            loop required (String.Set.add forbidden s) l
           else
-            loop (String_set.add required s) forbidden l
+            loop (String.Set.add required s) forbidden l
       in
-      loop String_set.empty String_set.empty l
+      loop String.Set.empty String.Set.empty l
     | sexp -> of_sexp_error sexp "(<library-name> <code>) expected"
 
   let t = function
@@ -423,9 +398,9 @@ module Lib_dep = struct
   let to_lib_names = function
     | Direct (_, s) -> [s]
     | Select s ->
-      List.fold_left s.choices ~init:String_set.empty ~f:(fun acc x ->
-        String_set.union acc (String_set.union x.required x.forbidden))
-      |> String_set.to_list
+      List.fold_left s.choices ~init:String.Set.empty ~f:(fun acc x ->
+        String.Set.union acc (String.Set.union x.required x.forbidden))
+      |> String.Set.to_list
 
   let direct x = Direct x
 
@@ -443,8 +418,8 @@ module Lib_deps = struct
   let t sexp =
     let t = list Lib_dep.t sexp in
     let add kind name acc =
-      match String_map.find acc name with
-      | None -> String_map.add acc name kind
+      match String.Map.find acc name with
+      | None -> String.Map.add acc name kind
       | Some kind' ->
         match kind, kind' with
         | Required, Required ->
@@ -461,14 +436,14 @@ module Lib_deps = struct
             name
     in
     ignore (
-      List.fold_left t ~init:String_map.empty ~f:(fun acc x ->
+      List.fold_left t ~init:String.Map.empty ~f:(fun acc x ->
         match x with
         | Lib_dep.Direct (_, s) -> add Required s acc
         | Select { choices; _ } ->
           List.fold_left choices ~init:acc ~f:(fun acc c ->
-            let acc = String_set.fold c.Lib_dep.required ~init:acc ~f:(add Optional) in
-            String_set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
-      : kind String_map.t);
+            let acc = String.Set.fold c.Lib_dep.required ~init:acc ~f:(add Optional) in
+            String.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
+      : kind String.Map.t);
     t
 
   let of_pps pps =
@@ -544,18 +519,20 @@ module Public_lib = struct
     ; sub_dir : string option
     }
 
-  let public_name_field pkgs =
+  let public_name_field project =
     map_validate (field_o "public_name" string) ~f:(function
       | None -> Ok None
       | Some s ->
         match String.split s ~on:'.' with
         | [] -> assert false
         | pkg :: rest ->
-          match Scope_info.resolve pkgs (Package.Name.of_string pkg) with
+          match Pkg.resolve project (Package.Name.of_string pkg) with
           | Ok pkg ->
             Ok (Some
                   { package = pkg
-                  ; sub_dir = if rest = [] then None else Some (String.concat rest ~sep:"/")
+                  ; sub_dir =
+                      if rest = [] then None else
+                        Some (String.concat rest ~sep:"/")
                   ; name    = s
                   })
           | Error _ as e -> e)
@@ -596,7 +573,7 @@ module Sub_system_info = struct
     let () =
       match Sub_system_name.Table.get all name with
       | Some _ ->
-        Sexp.code_error "Sub_system_info.register: already registered"
+        Exn.code_error "Sub_system_info.register: already registered"
           [ "name", Sexp.To_sexp.string (Sub_system_name.to_string name) ];
       | None ->
         Sub_system_name.Table.set all ~key:name ~data:(Some (module M : S));
@@ -688,22 +665,22 @@ module Library = struct
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
-    ; scope_name               : Scope_info.Name.t
+    ; project_name             : Dune_project.Name.t
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     }
 
-  let v1 pkgs =
+  let v1 project =
     record
       (Buildable.v1 >>= fun buildable ->
        field      "name" library_name                                      >>= fun name                     ->
-       Public_lib.public_name_field pkgs                                   >>= fun public                   ->
+       Public_lib.public_name_field project                                >>= fun public                   ->
        field_o    "synopsis" string                                        >>= fun synopsis                 ->
        field      "install_c_headers" (list string) ~default:[]            >>= fun install_c_headers        ->
        field      "ppx_runtime_libraries" (list (located string)) ~default:[] >>= fun ppx_runtime_libraries    ->
        field_oslu "c_flags"                                                >>= fun c_flags                  ->
        field_oslu "cxx_flags"                                              >>= fun cxx_flags                ->
-       field      "c_names" (list string) ~default:[]                      >>= fun c_names                  ->
-       field      "cxx_names" (list string) ~default:[]                    >>= fun cxx_names                ->
+       field      "c_names" (list c_name) ~default:[]                      >>= fun c_names                  ->
+       field      "cxx_names" (list cxx_name) ~default:[]                  >>= fun cxx_names                ->
        field_oslu "library_flags"                                          >>= fun library_flags            ->
        field_oslu "c_library_flags"                                        >>= fun c_library_flags          ->
        field      "virtual_deps" (list (located string)) ~default:[]       >>= fun virtual_deps             ->
@@ -735,7 +712,7 @@ module Library = struct
          ; optional
          ; buildable
          ; dynlink = not no_dynlink
-         ; scope_name = pkgs.name
+         ; project_name = project.name
          ; sub_systems
          })
 
@@ -774,11 +751,11 @@ module Install_conf = struct
     ; package : Package.t
     }
 
-  let v1 pkgs =
+  let v1 project =
     record
       (field   "section" Install.Section.t >>= fun section ->
        field   "files"   (list file)       >>= fun files ->
-       Scope_info.package_field pkgs             >>= fun package ->
+       Pkg.field project                   >>= fun package ->
        return
          { section
          ; files
@@ -880,12 +857,21 @@ module Executables = struct
     ; buildable        : Buildable.t
     }
 
-  let common_v1 pkgs names public_names ~multi =
+  let common_v1 project names public_names ~multi =
     Buildable.v1 >>= fun buildable ->
     field      "link_executables"   bool ~default:true >>= fun link_executables ->
     field_oslu "link_flags"                            >>= fun link_flags ->
     field "modes" Link_mode.Set.t ~default:Link_mode.Set.default
     >>= fun modes ->
+    map_validate
+      (field "inline_tests" (fun _ -> true) ~default:false ~short:(This true))
+      ~f:(function
+        | false -> Ok ()
+        | true  ->
+          Error
+            "Inline tests are only allowed in libraries.\n\
+             See https://github.com/ocaml/dune/issues/745 for more details.")
+    >>= fun () ->
     let t =
       { names
       ; link_executables
@@ -923,7 +909,7 @@ module Executables = struct
            (if multi then "s" else "");
          return (t, None))
     | files ->
-      Scope_info.package_field pkgs >>= fun package ->
+      Pkg.field project >>= fun package ->
       return (t, Some { Install_conf. section = Bin; files; package })
 
   let public_name sexp =
@@ -931,7 +917,7 @@ module Executables = struct
     | "-" -> None
     | s   -> Some s
 
-  let v1_multi pkgs =
+  let v1_multi project =
     record
       (field "names" (list (located string)) >>= fun names ->
        map_validate (field_o "public_names" (list public_name)) ~f:(function
@@ -943,13 +929,13 @@ module Executables = struct
              Error "The list of public names must be of the same \
                     length as the list of names")
        >>= fun public_names ->
-       common_v1 pkgs names public_names ~multi:true)
+       common_v1 project names public_names ~multi:true)
 
-  let v1_single pkgs =
+  let v1_single project =
     record
       (field   "name" (located string) >>= fun name ->
        field_o "public_name" string >>= fun public_name ->
-       common_v1 pkgs [name] [public_name] ~multi:false)
+       common_v1 project [name] [public_name] ~multi:false)
 end
 
 module Rule = struct
@@ -983,7 +969,7 @@ module Rule = struct
   type t =
     { targets  : Targets.t
     ; deps     : Dep_conf.t list
-    ; action   : Action.Unexpanded.t
+    ; action   : Loc.t * Action.Unexpanded.t
     ; mode     : Mode.t
     ; locks    : String_with_vars.t list
     ; loc      : Loc.t
@@ -992,10 +978,10 @@ module Rule = struct
   let v1 sexp =
     let loc = Sexp.Ast.loc sexp in
     match sexp with
-    | List (_, (Atom _ :: _)) ->
+    | List (loc, (Atom _ :: _)) ->
       { targets  = Infer
       ; deps     = []
-      ; action   = Action.Unexpanded.t sexp
+      ; action   = (loc, Action.Unexpanded.t sexp)
       ; mode     = Standard
       ; locks    = []
       ; loc      = loc
@@ -1004,7 +990,7 @@ module Rule = struct
       record
         (field "targets" (list file_in_current_dir)    >>= fun targets ->
          field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
-         field "action"  Action.Unexpanded.t           >>= fun action ->
+         field "action"  (located Action.Unexpanded.t) >>= fun action ->
          field "locks"   (list String_with_vars.t) ~default:[] >>= fun locks ->
          map_validate
            (field_b "fallback" >>= fun fallback ->
@@ -1057,14 +1043,15 @@ module Rule = struct
       { targets = Static [dst]
       ; deps    = [File (S.virt_text __POS__ src)]
       ; action  =
-          Chdir
-            (S.virt_var __POS__ "ROOT",
-             Run (S.virt_text __POS__ "ocamllex",
-                  [ S.virt_text __POS__ "-q"
-                  ; S.virt_text __POS__ "-o"
-                  ; S.virt_var __POS__ "@"
-                  ; S.virt_var __POS__"<"
-                  ]))
+          (loc,
+           Chdir
+             (S.virt_var __POS__ "ROOT",
+              Run (S.virt_text __POS__ "ocamllex",
+                   [ S.virt_text __POS__ "-q"
+                   ; S.virt_text __POS__ "-o"
+                   ; S.virt_var __POS__ "@"
+                   ; S.virt_var __POS__"<"
+                   ])))
       ; mode
       ; locks = []
       ; loc
@@ -1077,10 +1064,11 @@ module Rule = struct
       { targets = Static [name ^ ".ml"; name ^ ".mli"]
       ; deps    = [File (S.virt_text __POS__ src)]
       ; action  =
-          Chdir
-            (S.virt_var __POS__ "ROOT",
-             Run (S.virt_text __POS__ "ocamlyacc",
-                  [S.virt_var __POS__ "<"]))
+          (loc,
+           Chdir
+             (S.virt_var __POS__ "ROOT",
+              Run (S.virt_text __POS__ "ocamlyacc",
+                   [S.virt_var __POS__ "<"])))
       ; mode
       ; locks = []
       ; loc
@@ -1139,17 +1127,24 @@ module Alias_conf = struct
   type t =
     { name    : string
     ; deps    : Dep_conf.t list
-    ; action  : Action.Unexpanded.t option
+    ; action  : (Loc.t * Action.Unexpanded.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option
     }
 
-  let v1 pkgs =
+  let alias_name sexp =
+    let s = string sexp in
+    if Filename.basename s <> s then
+      of_sexp_errorf sexp "%S is not a valid alias name" s
+    else
+      s
+
+  let v1 project =
     record
-      (field "name" string                              >>= fun name ->
+      (field "name" alias_name                          >>= fun name ->
        field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
-       field_o "package" (Scope_info.package pkgs)      >>= fun package ->
-       field_o "action" Action.Unexpanded.t  >>= fun action ->
+       field_o "package" (Pkg.t project)                >>= fun package ->
+       field_o "action" (located Action.Unexpanded.t)   >>= fun action ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
        return
          { name
@@ -1174,9 +1169,9 @@ module Documentation = struct
     ; mld_files: Ordered_set_lang.t
     }
 
-  let v1 pkgs =
+  let v1 project =
     record
-      (Scope_info.package_field pkgs >>= fun package ->
+      (Pkg.field project >>= fun package ->
        field "mld_files" Ordered_set_lang.t ~default:Ordered_set_lang.standard
        >>= fun mld_files ->
        return
@@ -1186,25 +1181,58 @@ module Documentation = struct
       )
 end
 
-module Stanza = struct
+module Env = struct
+  type config =
+    { flags          : Ordered_set_lang.Unexpanded.t
+    ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
+    ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
+    }
+
+  type pattern =
+    | Profile of string
+    | Any
+
   type t =
-    | Library     of Library.t
-    | Executables of Executables.t
-    | Rule        of Rule.t
-    | Provides    of Provides.t
-    | Install     of Install_conf.t
-    | Alias       of Alias_conf.t
-    | Copy_files  of Copy_files.t
-    | Menhir      of Menhir.t
-    | Documentation of Documentation.t
+    { loc   : Loc.t
+    ; rules : (pattern * config) list
+    }
+
+  let config =
+    record
+      (field_oslu "flags"          >>= fun flags          ->
+       field_oslu "ocamlc_flags"   >>= fun ocamlc_flags   ->
+       field_oslu "ocamlopt_flags" >>= fun ocamlopt_flags ->
+       return { flags; ocamlc_flags; ocamlopt_flags })
+
+  let rule = function
+    | List (loc, Atom (_, A pat) :: fields) ->
+      let pat =
+        match pat with
+        | "_" -> Any
+        | s   -> Profile s
+      in
+      (pat, config (List (loc, fields)))
+    | sexp ->
+      of_sexp_error sexp
+        "S-expression of the form (<profile> <fields>) expected"
 end
+
+type Stanza.t +=
+  | Library     of Library.t
+  | Executables of Executables.t
+  | Rule        of Rule.t
+  | Provides    of Provides.t
+  | Install     of Install_conf.t
+  | Alias       of Alias_conf.t
+  | Copy_files  of Copy_files.t
+  | Menhir      of Menhir.t
+  | Documentation of Documentation.t
+  | Env         of Env.t
 
 module Stanzas = struct
   type t = Stanza.t list
 
   type syntax = OCaml | Plain
-
-  open Stanza
 
   let rules l = List.map l ~f:(fun x -> Rule x)
 
@@ -1213,99 +1241,80 @@ module Stanzas = struct
     | None -> [Executables exe]
     | Some i -> [Executables exe; Install i]
 
-  exception Include_loop of Path.t * (Loc.t * Path.t) list
+  type Stanza.t += Include of Loc.t * string
 
-  let rec v1 pkgs ~file ~include_stack : Stanza.t list Sexp.Of_sexp.t =
+  let t project : Stanza.t list Sexp.Of_sexp.t =
     sum
-      [ cstr "library"     (Library.v1 pkgs @> nil) (fun x -> [Library x])
-      ; cstr "executable"  (Executables.v1_single pkgs @> nil) execs
-      ; cstr "executables" (Executables.v1_multi  pkgs @> nil) execs
-      ; cstr_loc "rule"      (Rule.v1     @> nil) (fun loc x -> [Rule { x with loc }])
-      ; cstr_loc "ocamllex" (Rule.ocamllex_v1 @> nil)
+      [ cstr "library"     (Library.v1 project @> nil) (fun x -> [Library x])
+      ; cstr "executable"  (Executables.v1_single project @> nil) execs
+      ; cstr "executables" (Executables.v1_multi  project @> nil) execs
+      ; cstr "rule"        (cstr_loc (Rule.v1 @> nil)) (fun loc x -> [Rule { x with loc }])
+      ; cstr "ocamllex"    (cstr_loc (Rule.ocamllex_v1 @> nil))
           (fun loc x -> rules (Rule.ocamllex_to_rule loc x))
-      ; cstr_loc "ocamlyacc" (Rule.ocamlyacc_v1 @> nil)
+      ; cstr "ocamlyacc"   (cstr_loc (Rule.ocamlyacc_v1 @> nil))
           (fun loc x -> rules (Rule.ocamlyacc_to_rule loc x))
-      ; cstr_loc "menhir" (Menhir.v1 @> nil)
+      ; cstr "menhir"      (cstr_loc (Menhir.v1 @> nil))
           (fun loc x -> [Menhir { x with loc }])
-      ; cstr "install"     (Install_conf.v1 pkgs @> nil) (fun x -> [Install     x])
-      ; cstr "alias"       (Alias_conf.v1 pkgs @> nil)   (fun x -> [Alias       x])
+      ; cstr "install"     (Install_conf.v1 project @> nil) (fun x -> [Install     x])
+      ; cstr "alias"       (Alias_conf.v1 project @> nil)   (fun x -> [Alias       x])
       ; cstr "copy_files" (Copy_files.v1 @> nil)
           (fun glob -> [Copy_files {add_line_directive = false; glob}])
       ; cstr "copy_files#" (Copy_files.v1 @> nil)
           (fun glob -> [Copy_files {add_line_directive = true; glob}])
+      ; cstr "env" (cstr_loc (rest Env.rule))
+          (fun loc rules -> [Env { loc; rules }])
       (* Just for validation and error messages *)
       ; cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
-      ; cstr_loc "include" (relative_file @> nil) (fun loc fn ->
-          let include_stack = (loc, file) :: include_stack in
-          let dir = Path.parent file in
-          let file = Path.relative dir fn in
-          if not (Path.exists file) then
-            Loc.fail loc "File %s doesn't exist."
-              (Path.to_string_maybe_quoted file);
-          if List.exists include_stack ~f:(fun (_, f) -> f = file) then
-            raise (Include_loop (file, include_stack));
-          let sexps = Sexp.load ~fname:(Path.to_string file) ~mode:Many in
-          parse pkgs sexps ~default_version:Jbuild_version.V1 ~file ~include_stack)
-      ; cstr "documentation" (Documentation.v1 pkgs @> nil)
+      ; cstr "include" (cstr_loc (relative_file @> nil)) (fun loc fn ->
+          [Include (loc, fn)])
+      ; cstr "documentation" (Documentation.v1 project @> nil)
           (fun d -> [Documentation d])
       ]
 
-  and select
-    :  Jbuild_version.t
-    -> Scope_info.t
-    -> file:Path.t
-    -> include_stack:(Loc.t * Path.t) list
-    -> Stanza.t list Sexp.Of_sexp.t = function
-    | V1  -> v1
+  exception Include_loop of Path.t * (Loc.t * Path.t) list
 
-  and parse ~default_version ~file ~include_stack pkgs sexps =
-    let versions, sexps =
-      List.partition_map sexps ~f:(function
-        | List (loc, [Atom (_, A "jbuild_version"); ver]) ->
-          Left (Jbuild_version.t ver, loc)
-        | sexp -> Right sexp)
-    in
-    let version =
-      match versions with
-      | [] -> default_version
-      | [(v, _)] -> v
-      | _ :: (_, loc) :: _ ->
-        Loc.fail loc "jbuild_version specified too many times"
-    in
-    List.concat_map sexps ~f:(select version pkgs ~file ~include_stack)
+  let rec parse t ~current_file ~include_stack sexps =
+    List.concat_map sexps ~f:t
+    |> List.concat_map ~f:(function
+      | Include (loc, fn) ->
+        let include_stack = (loc, current_file) :: include_stack in
+        let dir = Path.parent_exn current_file in
+        let current_file = Path.relative dir fn in
+        if not (Path.exists current_file) then
+          Loc.fail loc "File %s doesn't exist."
+            (Path.to_string_maybe_quoted current_file);
+        if List.exists include_stack ~f:(fun (_, f) -> f = current_file) then
+          raise (Include_loop (current_file, include_stack));
+        let sexps = Io.Sexp.load current_file ~mode:Many in
+        parse t sexps ~current_file ~include_stack
+      | stanza -> [stanza])
 
-  let parse ?(default_version=Jbuild_version.latest_stable) ~file pkgs sexps =
-    try
-      parse pkgs sexps ~default_version ~include_stack:[] ~file
-    with
-    | Include_loop (_, []) -> assert false
-    | Include_loop (file, last :: rest) ->
-      let loc = fst (Option.value (List.last rest) ~default:last) in
-      let line_loc (loc, file) =
-        sprintf "%s:%d"
+  let parse ~file project sexps =
+    let stanzas =
+      try
+        parse (t project) sexps ~include_stack:[] ~current_file:file
+      with
+      | Include_loop (_, []) -> assert false
+      | Include_loop (file, last :: rest) ->
+        let loc = fst (Option.value (List.last rest) ~default:last) in
+        let line_loc (loc, file) =
+          sprintf "%s:%d"
+            (Path.to_string_maybe_quoted file)
+            loc.Loc.start.pos_lnum
+        in
+        Loc.fail loc
+          "Recursive inclusion of jbuild files detected:\n\
+           File %s is included from %s%s"
           (Path.to_string_maybe_quoted file)
-          loc.Loc.start.pos_lnum
-      in
-      Loc.fail loc
-        "Recursive inclusion of jbuild files detected:\n\
-         File %s is included from %s%s"
-        (Path.to_string_maybe_quoted file)
-        (line_loc last)
-        (String.concat ~sep:""
-           (List.map rest ~f:(fun x ->
-              sprintf
-                "\n--> included from %s"
-                (line_loc x))))
-
-  let lib_names ts =
-    List.fold_left ts ~init:String_set.empty ~f:(fun acc (_, _, stanzas) ->
-      List.fold_left stanzas ~init:acc ~f:(fun acc -> function
-        | Stanza.Library lib ->
-          let acc =
-            match lib.public with
-             | None -> acc
-             | Some { name; _ } -> String_set.add acc name
-          in
-          String_set.add acc lib.name
-        | _ -> acc))
+          (line_loc last)
+          (String.concat ~sep:""
+             (List.map rest ~f:(fun x ->
+                sprintf
+                  "\n--> included from %s"
+                  (line_loc x))))
+    in
+    match List.filter_map stanzas ~f:(function Env e -> Some e | _ -> None) with
+    | _ :: e :: _ ->
+      Loc.fail e.loc "The 'env' stanza cannot appear more than once"
+    | _ -> stanzas
 end

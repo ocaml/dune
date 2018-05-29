@@ -14,7 +14,7 @@ module Backend = struct
         { loc              : Loc.t
         ; runner_libraries : (Loc.t * string) list
         ; flags            : Ordered_set_lang.Unexpanded.t
-        ; generate_runner  : Action.Unexpanded.t option
+        ; generate_runner  : (Loc.t * Action.Unexpanded.t) option
         ; extends          : (Loc.t * string) list
         }
 
@@ -31,7 +31,7 @@ module Backend = struct
            field "runner_libraries" (list (located string)) ~default:[]
            >>= fun runner_libraries ->
            Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
-           field_o "generate_runner" Action.Unexpanded.t
+           field_o "generate_runner" (located Action.Unexpanded.t)
            >>= fun generate_runner ->
            field "extends" (list (located string)) ~default:[]
            >>= fun extends ->
@@ -94,7 +94,7 @@ module Backend = struct
              (Result.ok_exn t.runner_libraries)
          ; field "flags" Ordered_set_lang.Unexpanded.sexp_of_t t.info.flags
          ; field_o "generate_runner" Action.Unexpanded.sexp_of_t
-             t.info.generate_runner
+             (Option.map t.info.generate_runner ~f:snd)
          ; field "extends" (list f) (Result.ok_exn t.extends) ~default:[]
          ])
   end
@@ -185,12 +185,12 @@ include Sub_system.Register_end_point(
                       ; syntax = OCaml
                       }
         ; intf = None
-        ; obj_name = ""
+        ; obj_name = name
         }
     in
 
     let extra_vars =
-      String_map.singleton "library-name"
+      String.Map.singleton "library-name"
         (Action.Var_expansion.Strings ([lib.name], Concat))
     in
 
@@ -224,14 +224,14 @@ include Sub_system.Register_end_point(
           ; "intf-files", files Intf
           ]
           ~init:extra_vars
-          ~f:(fun acc (k, v) -> String_map.add acc k v)
+          ~f:(fun acc (k, v) -> String.Map.add acc k v)
       in
       Build.return []
       >>>
       Build.all
         (List.filter_map backends ~f:(fun (backend : Backend.t) ->
-           Option.map backend.info.generate_runner ~f:(fun action ->
-             SC.Action.run sctx action
+           Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
+             SC.Action.run sctx action ~loc
                ~extra_vars ~dir ~dep_kind:Required ~targets:Alias ~scope)))
       >>^ (fun actions ->
         Action.with_stdout_to target
@@ -239,16 +239,19 @@ include Sub_system.Register_end_point(
       >>>
       Build.action_dyn ~targets:[target] ());
 
-    Exe.build_and_link sctx
-      ~dir:inline_test_dir
-      ~obj_dir:inline_test_dir
+    let cctx =
+      Compilation_context.create ()
+        ~super_context:sctx
+        ~scope
+        ~dir:inline_test_dir
+        ~modules
+        ~requires:runner_libs
+        ~flags:(Ocaml_flags.of_list ["-w"; "-24"]);
+    in
+    Exe.build_and_link cctx
       ~program:{ name; main_module_name }
-      ~modules
-      ~scope
       ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
-      ~requires:runner_libs
-      ~link_flags:(Build.return ["-linkall"])
-      ~flags:(Ocaml_flags.of_list ["-w"; "-24"]);
+      ~link_flags:(Build.return ["-linkall"]);
 
     let flags =
       let flags =
@@ -261,7 +264,7 @@ include Sub_system.Register_end_point(
             ~scope
             ~dir
             ~extra_vars
-            ~standard:[]))
+            ~standard:(Build.return [])))
       >>^ List.concat
     in
 

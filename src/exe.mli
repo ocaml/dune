@@ -1,7 +1,5 @@
 (** Compilation and linking of executables *)
 
-open Import
-
 module Program : sig
   type t =
     { name             : string
@@ -39,48 +37,31 @@ end
 (** Build and link one or more executables *)
 
 val build_and_link
-  :  dir:Path.t
-  -> obj_dir:Path.t
-  -> program:Program.t
-  -> modules:Module.t Module.Name.Map.t
-  -> scope:Scope.t
+  :  program:Program.t
   -> linkages:Linkage.t list
-  -> ?requires:Lib.t list Or_exn.t
   -> ?already_used:Module.Name.Set.t
-  -> ?flags:Ocaml_flags.t
   -> ?link_flags:(unit, string list) Build.t
   -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
-  -> Super_context.t
+  -> Compilation_context.t
   -> unit
 
 val build_and_link_many
-  :  dir:Path.t
-  -> obj_dir:Path.t
-  -> programs:Program.t list
-  -> modules:Module.t Module.Name.Map.t
-  -> scope:Scope.t
+  :  programs:Program.t list
   -> linkages:Linkage.t list
-  -> ?requires:Lib.t list Or_exn.t
   -> ?already_used:Module.Name.Set.t
-  -> ?flags:Ocaml_flags.t
   -> ?link_flags:(unit, string list) Build.t
   -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
-  -> Super_context.t
+  -> Compilation_context.t
   -> unit
 
 (** {1 Low-level functions} *)
 
 (** Link a single executable *)
 val link_exe
-  :  dir:Path.t
-  -> obj_dir:Path.t
-  -> scope:Scope.t
-  -> requires:Lib.t list Or_exn.t
-  -> name:string
+  :  name:string
   -> linkage:Linkage.t
   -> top_sorted_modules:(unit, Module.t list) Build.t
-  -> ?flags:Ocaml_flags.t
   -> ?link_flags:(unit, string list) Build.t
   -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
-  -> Super_context.t
+  -> Compilation_context.t
   -> unit

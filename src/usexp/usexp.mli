@@ -74,63 +74,53 @@ module Ast : sig
   val loc : t -> Loc.t
 
   val remove_locs : t -> sexp
-
-  module Token : sig
-    type t =
-      | Atom   of Loc.t * Atom.t
-      | String of Loc.t * string
-      | Lparen of Loc.t
-      | Rparen of Loc.t
-  end
-
-  val tokenize : t -> Token.t list
 end with type sexp := t
 
 val add_loc : t -> loc:Loc.t -> Ast.t
 
-module Parser : sig
-  module Error : sig
-    type t
+module Parse_error : sig
+  type t
 
-    val position : t -> Lexing.position
-    val message  : t -> string
+  val loc     : t -> Loc.t
+  val message : t -> string
+end
+
+(** Exception raised in case of a parsing error *)
+exception Parse_error of Parse_error.t
+
+module Lexer : sig
+  module Token : sig
+    type t =
+      | Atom          of Atom.t
+      | Quoted_string of string
+      | Lparen
+      | Rparen
+      | Sexp_comment (** "#;", only used in the jbuild syntax *)
+      | Eof
   end
 
-  (** Exception raised in case of a parsing error *)
-  exception Error of Error.t
+  type t = Lexing.lexbuf -> Token.t
 
+  val token : t
+end
+
+module Parser : sig
   module Mode : sig
-    type sexp = t
     type 'a t =
       | Single : Ast.t t
       | Many   : Ast.t list t
-  end with type sexp := t
-
-  module Stack : sig
-    (** Parser stack. The stack is not in [state] for optimization purposes. *)
-    type t
-
-    val empty : t
   end
 
-  type 'a t
-
-  (** Create a new parser state. [fname] is the filename the input is from. *)
-  val create : fname:string -> mode:'a Mode.t -> 'a t
-
-  (** Feed one character to the parser. In case of error, it raises [Parse_error] *)
-  val feed : _ t -> char -> Stack.t -> Stack.t
-
-  (** Instruct the parser that the end of input was reached. In case of error, it raises
-      [Parse_error] *)
-  val feed_eoi : 'a t -> Stack.t -> 'a
-
-  (** {3 Convenience functions} *)
-
-  val feed_string    : _ t -> string                       -> Stack.t -> Stack.t
-  val feed_substring : _ t -> string -> pos:int -> len:int -> Stack.t -> Stack.t
-  val feed_bytes     : _ t -> bytes                        -> Stack.t -> Stack.t
-  val feed_subbytes  : _ t -> bytes -> pos:int -> len:int  -> Stack.t -> Stack.t
+  val parse
+    :  mode:'a Mode.t
+    -> ?lexer:Lexer.t
+    -> Lexing.lexbuf
+    -> 'a
 end
 
-val parse_string : fname:string -> mode:'a Parser.Mode.t -> string -> 'a
+val parse_string
+  :  fname:string
+  -> mode:'a Parser.Mode.t
+  -> ?lexer:Lexer.t
+  -> string
+  -> 'a

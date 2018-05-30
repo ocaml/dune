@@ -12,7 +12,7 @@
                 ocaml_config))
   (synopsis    "Internal Dune library, do not use!")))
 
-(ocamllex (meta_lexer glob_lexer))
+(ocamllex (meta_lexer glob_lexer dune_lexer))
 
 (rule
  ((targets (setup.ml))

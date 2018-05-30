@@ -127,19 +127,19 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
       flags
       >>^ (fun flags ->
         let (src_dirs, obj_dirs) =
-          Lib.Set.fold requires ~init:(Path.Set.empty, Path.Set.empty)
-            ~f:(fun (lib : Lib.t) (src_dirs, build_dirs) ->
+          Lib.Set.fold requires ~init:(t.source_dirs, t.objs_dirs)
+            ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
               ( Path.Set.add src_dirs (
                   Lib.src_dir lib
                   |> Path.drop_optional_build_context)
-              , Path.Set.add build_dirs (Lib.obj_dir lib)))
+              , Path.Set.add obj_dirs (Lib.obj_dir lib)))
         in
         Dot_file.to_string
           ~remaindir
           ~ppx:(ppx_flags sctx ~dir ~scope ~src_dir:remaindir t)
           ~flags
-          ~src_dirs:(Path.Set.union src_dirs t.source_dirs)
-          ~obj_dirs:(Path.Set.union obj_dirs t.objs_dirs))
+          ~src_dirs
+          ~obj_dirs)
       >>>
       Build.write_file_dyn merlin_file)
 

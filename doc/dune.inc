@@ -6,6 +6,7 @@
 
 (install
  ((section man)
+  (package dune)
   (files (dune-build.1))))
 
 (rule
@@ -15,6 +16,7 @@
 
 (install
  ((section man)
+  (package dune)
   (files (dune-clean.1))))
 
 (rule
@@ -24,6 +26,7 @@
 
 (install
  ((section man)
+  (package dune)
   (files (dune-exec.1))))
 
 (rule
@@ -33,6 +36,7 @@
 
 (install
  ((section man)
+  (package dune)
   (files (dune-external-lib-deps.1))))
 
 (rule
@@ -42,6 +46,7 @@
 
 (install
  ((section man)
+  (package dune)
   (files (dune-help.1))))
 
 (rule
@@ -51,6 +56,7 @@
 
 (install
  ((section man)
+  (package dune)
   (files (dune-install.1))))
 
 (rule
@@ -60,6 +66,7 @@
 
 (install
  ((section man)
+  (package dune)
   (files (dune-installed-libraries.1))))
 
 (rule
@@ -69,6 +76,7 @@
 
 (install
  ((section man)
+  (package dune)
   (files (dune-printenv.1))))
 
 (rule
@@ -78,6 +86,7 @@
 
 (install
  ((section man)
+  (package dune)
   (files (dune-promote.1))))
 
 (rule
@@ -87,6 +96,7 @@
 
 (install
  ((section man)
+  (package dune)
   (files (dune-rules.1))))
 
 (rule
@@ -96,6 +106,7 @@
 
 (install
  ((section man)
+  (package dune)
   (files (dune-runtest.1))))
 
 (rule
@@ -105,6 +116,7 @@
 
 (install
  ((section man)
+  (package dune)
   (files (dune-subst.1))))
 
 (rule
@@ -114,6 +126,7 @@
 
 (install
  ((section man)
+  (package dune)
   (files (dune-uninstall.1))))
 
 (rule
@@ -123,5 +136,6 @@
 
 (install
  ((section man)
+  (package dune)
   (files (dune-utop.1))))
 

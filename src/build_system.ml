@@ -1137,31 +1137,19 @@ module Trace = struct
 
   let file = Path.relative Path.build_dir ".db"
 
-  let dump (trace : t) =
-    let sexp =
-      Sexp.List (
-        Hashtbl.foldi trace ~init:Path.Map.empty ~f:(fun key data acc ->
-          Path.Map.add acc key data)
-        |> Path.Map.to_list
-        |> List.map ~f:(fun (path, hash) ->
-               Sexp.List [ Path.sexp_of_t path;
-                           Atom (Sexp.Atom.of_digest hash) ]))
-    in
-    if Path.build_dir_exists () then
-      Io.write_file file (Sexp.to_string sexp)
+  module P = Utils.Persistent(struct
+      type nonrec t = t
+      let name = "INCREMENTAL-DB"
+      let version = 1
+    end)
+
+  let dump t =
+    if Path.build_dir_exists () then P.dump file t
 
   let load () =
-    let trace = Hashtbl.create 1024 in
-    if Path.exists file then begin
-      let sexp = Io.Sexp.load file ~mode:Single in
-      let bindings =
-        let open Sexp.Of_sexp in
-        list (pair Path.t (fun s -> Digest.from_hex (string s))) sexp
-      in
-      List.iter bindings ~f:(fun (path, hash) ->
-        Hashtbl.add trace path hash);
-    end;
-    trace
+    match P.load file with
+    | Some t -> t
+    | None -> Hashtbl.create 1024
 end
 
 let all_targets t =

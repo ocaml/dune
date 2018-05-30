@@ -572,6 +572,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name tests-stanza)
+ (deps (package dune) (source_tree test-cases/tests-stanza))
+ (action
+  (chdir
+   test-cases/tests-stanza
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name use-meta)
  (deps (package dune) (source_tree test-cases/use-meta))
  (action
@@ -672,6 +680,7 @@
   (alias scope-ppx-bug)
   (alias select)
   (alias syntax-versioning)
+  (alias tests-stanza)
   (alias use-meta)
   (alias utop)
   (alias windows-diff)
@@ -738,6 +747,7 @@
   (alias scope-ppx-bug)
   (alias select)
   (alias syntax-versioning)
+  (alias tests-stanza)
   (alias use-meta)
   (alias windows-diff)
   (alias workspaces)))

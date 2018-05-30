@@ -199,6 +199,11 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             Left fn)
       in
       let files = String.Set.of_list files in
+      let sub_dirs =
+        List.sort
+          ~compare:(fun (a, _, _) (b, _, _) -> String.compare a b)
+          sub_dirs
+      in
       let project =
         match Dune_project.load ~dir:path ~files with
         | Some _ as x -> x

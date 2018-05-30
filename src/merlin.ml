@@ -129,10 +129,10 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
         let (src_dirs, obj_dirs) =
           Lib.Set.fold requires ~init:(Path.Set.empty, Path.Set.empty)
             ~f:(fun (lib : Lib.t) (src_dirs, build_dirs) ->
-              ( Path.Set.add src_dirs (Lib.src_dir lib)
-              , Path.Set.add build_dirs (
-                  Lib.obj_dir lib
-                  |> Path.drop_optional_build_context)))
+              ( Path.Set.add src_dirs (
+                  Lib.src_dir lib
+                  |> Path.drop_optional_build_context)
+              , Path.Set.add build_dirs (Lib.obj_dir lib)))
         in
         Dot_file.to_string
           ~remaindir

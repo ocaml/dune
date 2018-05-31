@@ -66,7 +66,7 @@ let static_deps t ~all_targets ~file_tree =
     | Paths_glob state -> begin
         match !state with
         | G_evaluated l ->
-          { acc with action_deps = Path.Set.union acc.action_deps (Path.Set.of_list l) }
+          { acc with action_deps = Path.Set.union acc.action_deps l }
         | G_unevaluated (loc, dir, re) ->
           let targets = all_targets ~dir in
           let result =
@@ -87,7 +87,7 @@ let static_deps t ~all_targets ~file_tree =
               (* diml: we should probably warn in this case as well *)
               ()
           end;
-          state := G_evaluated (Path.Set.to_list result);
+          state := G_evaluated result;
           let action_deps = Path.Set.union result acc.action_deps in
           { acc with action_deps }
       end

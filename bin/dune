@@ -1,9 +1,11 @@
 (executable
  ((name        main)
   (public_name dune)
+  (package     dune)
   (libraries (unix dune cmdliner))
   (preprocess no_preprocessing)))
 
 (install
  ((section bin)
+  (package dune)
   (files   ((main.exe as jbuilder)))))

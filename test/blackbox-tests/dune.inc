@@ -501,6 +501,14 @@
     (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
 
 (alias
+ ((name use-meta)
+  (deps ((package dune) (files_recursively_in test-cases/use-meta)))
+  (action
+   (chdir
+    test-cases/use-meta
+    (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+
+(alias
  ((name utop)
   (deps ((package dune) (files_recursively_in test-cases/utop)))
   (action
@@ -567,6 +575,7 @@
     (alias scope-bug)
     (alias scope-ppx-bug)
     (alias select)
+    (alias use-meta)
     (alias utop)))))
 
 (alias
@@ -619,7 +628,8 @@
     (alias redirections)
     (alias scope-bug)
     (alias scope-ppx-bug)
-    (alias select)))))
+    (alias select)
+    (alias use-meta)))))
 
 (alias ((name runtest-disabled) (deps ((alias reason)))))
 

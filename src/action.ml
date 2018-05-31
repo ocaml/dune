@@ -676,7 +676,7 @@ module Promotion = struct
   let do_promote db =
     let by_targets = group_by_targets db  in
     let potential_build_contexts =
-      match Path.readdir Path.build_dir with
+      match Path.readdir_unsorted Path.build_dir with
       | exception _ -> []
       | files ->
         List.filter_map files ~f:(fun fn ->

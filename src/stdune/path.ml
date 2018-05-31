@@ -1,7 +1,8 @@
 let is_dir_sep =
-  match Sys.os_type with
-  | "Win32" | "Cygwin" -> fun c -> c = '/' || c = '\\' || c = ':'
-  | _ -> fun c -> c = '/'
+  if Sys.win32 || Sys.cygwin then
+    fun c -> c = '/' || c = '\\' || c = ':'
+  else
+    fun c -> c = '/'
 
 let explode_path =
   let rec start acc path i =
@@ -773,7 +774,7 @@ let explode_exn t =
 let exists t =
   try Sys.file_exists (to_string t)
   with Sys_error _ -> false
-let readdir t = Sys.readdir (to_string t) |> Array.to_list
+let readdir_unsorted t = Sys.readdir (to_string t) |> Array.to_list
 let is_directory t =
   try Sys.is_directory (to_string t)
   with Sys_error _ -> false

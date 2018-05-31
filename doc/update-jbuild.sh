@@ -17,6 +17,7 @@ for cmd in $CMDS; do
 
 (install
  ((section man)
+  (package dune)
   (files (dune-$cmd.1))))
 EOF
 done

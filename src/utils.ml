@@ -146,19 +146,55 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
   | None -> package ^ ".install"
   | Some x -> sprintf "%s-%s.install" package x
 
+module type Persistent_desc = sig
+  type t
+  val name : string
+  val version : int
+end
+
+module Persistent(D : Persistent_desc) = struct
+  let magic = sprintf "DUNE-%sv%d:" D.name D.version
+
+  let dump file (v : D.t) =
+    Io.with_file_out file ~f:(fun oc ->
+      output_string oc magic;
+      Marshal.to_channel oc v [])
+
+  let load file =
+    if Path.exists file then
+      Io.with_file_in file ~f:(fun ic ->
+        match really_input_string ic (String.length magic) with
+        | exception End_of_file -> None
+        | s ->
+          if s = magic then
+            Some (Marshal.from_channel ic : D.t)
+          else
+            None)
+    else
+      None
+end
+
 module Cached_digest = struct
   type file =
     { mutable digest            : Digest.t
     ; mutable timestamp         : float
-    ; mutable timestamp_checked : bool
+    ; mutable timestamp_checked : int
     }
 
-  let cache = Hashtbl.create 1024
+  type t =
+    { mutable checked_key : int
+    ; mutable table       : (Path.t, file) Hashtbl.t
+    }
+
+  let cache =
+    { checked_key = 0
+    ; table       = Hashtbl.create 1024
+    }
 
   let file fn =
-    match Hashtbl.find cache fn with
+    match Hashtbl.find cache.table fn with
     | Some x ->
-      if x.timestamp_checked then
+      if x.timestamp_checked = cache.checked_key then
         x.digest
       else begin
         let mtime = (Unix.stat (Path.to_string fn)).st_mtime in
@@ -167,55 +203,35 @@ module Cached_digest = struct
           x.digest    <- digest;
           x.timestamp <- mtime;
         end;
-        x.timestamp_checked <- true;
+        x.timestamp_checked <- cache.checked_key;
         x.digest
       end
     | None ->
       let digest = Digest.file (Path.to_string fn) in
-      Hashtbl.add cache fn
+      Hashtbl.add cache.table fn
         { digest
         ; timestamp = (Unix.stat (Path.to_string fn)).st_mtime
-        ; timestamp_checked = true
+        ; timestamp_checked = cache.checked_key
         };
       digest
 
-  let remove fn = Hashtbl.remove cache fn
+  let remove fn = Hashtbl.remove cache.table fn
 
   let db_file = Path.relative Path.build_dir ".digest-db"
 
+  module P = Persistent(struct
+      type nonrec t = t
+      let name = "DIGEST-DB"
+      let version = 1
+    end)
+
   let dump () =
-    let sexp =
-      Sexp.List (
-        Hashtbl.foldi cache ~init:Path.Map.empty ~f:(fun key data acc ->
-          Path.Map.add acc key data)
-        |> Path.Map.to_list
-        |> List.map ~f:(fun (path, file) ->
-          Sexp.List [ Path.sexp_of_t path
-                    ; Atom (Sexp.Atom.of_digest file.digest)
-                    ; Atom (Sexp.Atom.of_int64
-                              (Int64.bits_of_float file.timestamp))
-                    ]))
-    in
-    if Path.build_dir_exists () then
-      Io.write_file db_file (Sexp.to_string sexp)
+    if Path.build_dir_exists () then P.dump db_file cache
 
   let load () =
-    if Path.exists db_file then begin
-      let sexp = Io.Sexp.load db_file ~mode:Single in
-      let bindings =
-        let open Sexp.Of_sexp in
-        list
-          (triple
-             Path.t
-             (fun s -> Digest.from_hex (string s))
-             (fun s -> Int64.float_of_bits (Int64.of_string (string s)))
-          ) sexp
-      in
-      List.iter bindings ~f:(fun (path, digest, timestamp) ->
-        Hashtbl.add cache path
-          { digest
-          ; timestamp
-          ; timestamp_checked = false
-          });
-    end
+    match P.load db_file with
+    | None -> ()
+    | Some c ->
+      cache.checked_key <- c.checked_key + 1;
+      cache.table <- c.table
 end

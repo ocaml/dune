@@ -46,7 +46,7 @@ case "$TARGET" in
         rm -rf ~/.opam
         opam init --yes
         eval $(opam config env)
-        opam install utop ppx_driver odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler--yes
+        opam install ocamlfind utop ppx_driver odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler--yes
         opam remove jbuilder `opam list --depends-on jbuilder --installed --short` --yes
         if opam info dune &> /dev/null; then
             opam remove dune `opam list --depends-on dune --installed --short` --yes
@@ -79,21 +79,10 @@ case "$TARGET" in
       fi
       opam list
       echo "version: \"1.0+dev$DATE\"" >> dune.opam
-      mkdir -p ../jbuilder
-      cat > ../jbuilder/jbuilder.opam <<EOF
-version: "1.0+dev$DATE"
-opam-version: "1.2"
-maintainer: "opensource@janestreet.com"
-authors: ["Jane Street Group, LLC <opensource@janestreet.com>"]
-homepage: "https://github.com/ocaml/dune"
-bug-reports: "https://github.com/ocaml/dune/issues"
-dev-repo: "https://github.com/ocaml/dune.git"
-license: "Apache-2.0"
-depends: [ "dune" ]
-EOF
-      opam pin add dune     .           --no-action --yes
-      opam pin add jbuilder ../jbuilder --no-action --yes
-      opam install utop ppx_driver odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler --yes
+      echo "depends: [\"dune\"]" >> jbuilder.opam
+      opam pin add dune     . --no-action --yes
+      opam pin add jbuilder . --no-action --yes
+      opam install ocamlfind utop ppx_driver odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler --yes
       echo -en "travis_fold:end:opam.deps\r"
     fi
     echo -en "travis_fold:start:dune.bootstrap\r"

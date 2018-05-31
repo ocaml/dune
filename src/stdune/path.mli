@@ -118,7 +118,7 @@ val split_first_component : t -> (string * t) option
 val insert_after_build_dir_exn : t -> string -> t
 
 val exists : t -> bool
-val readdir : t -> string list
+val readdir_unsorted : t -> string list
 val is_directory : t -> bool
 val rmdir : t -> unit
 val unlink : t -> unit

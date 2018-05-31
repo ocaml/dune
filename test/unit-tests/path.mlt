@@ -6,6 +6,7 @@ Path.set_build_dir (Path.Kind.of_string "_build");
 Printexc.record_backtrace false;;
 
 let r = Path.(relative root);;
+let e = Path.of_filename_relative_to_initial_cwd;;
 
 #install_printer Path.pp_debug;;
 
@@ -13,6 +14,7 @@ Path.(let p = relative root "foo" in descendant p ~of_:p)
 [%%expect{|
 - : unit = ()
 val r : string -> Stdune.Path.t = <fun>
+val e : string -> Stdune.Path.t = <fun>
 - : Stdune.Path.t option = Some (In_source_tree ".")
 |}]
 
@@ -62,27 +64,27 @@ Path.(is_descendant (r "glob/foo") ~of_:(r "glob/"))
 - : bool = true
 |}]
 
-Path.(is_descendant (Path.absolute "/foo/bar") ~of_:(Path.absolute "/foo"))
+Path.(is_descendant (e "/foo/bar") ~of_:(e "/foo"))
 [%%expect{|
 - : bool = false
 |}]
 
-Path.(is_descendant (Path.absolute "/foo/bar") ~of_:(Path.absolute "/foo/bar"))
+Path.(is_descendant (e "/foo/bar") ~of_:(e "/foo/bar"))
 [%%expect{|
 - : bool = false
 |}]
 
-Path.(is_descendant (Path.absolute "/foo/bar") ~of_:(Path.absolute "/foo/bar/"))
+Path.(is_descendant (e "/foo/bar") ~of_:(e "/foo/bar/"))
 [%%expect{|
 - : bool = false
 |}]
 
-Path.(is_descendant (Path.absolute "/foo/bar/") ~of_:(Path.absolute "/foo/bar"))
+Path.(is_descendant (e "/foo/bar/") ~of_:(e "/foo/bar"))
 [%%expect{|
 - : bool = false
 |}]
 
-Path.(is_descendant (Path.absolute "/foo/bar") ~of_:(Path.absolute "/"))
+Path.(is_descendant (e "/foo/bar") ~of_:(e "/"))
 [%%expect{|
 - : bool = false
 |}]
@@ -124,7 +126,8 @@ Path.(descendant (relative build_dir "foo") ~of_:root)
 
 Path.(descendant (relative build_dir "foo") ~of_:(absolute "/foo/bar"))
 [%%expect{|
-- : Stdune.Path.t option = None
+File "test/unit-tests/path.mlt", line 127, characters 50-58:
+Error: Unbound value absolute
 |}]
 
 Path.(descendant (relative build_dir "foo/bar") ~of_:build_dir)
@@ -144,7 +147,8 @@ Path.(descendant (relative build_dir "foo/bar") ~of_:(relative build_dir "foo"))
 
 Path.(descendant (absolute "/foo/bar") ~of_:(absolute "/foo"))
 [%%expect{|
-- : Stdune.Path.t option = None
+File "test/unit-tests/path.mlt", line 148, characters 18-26:
+Error: Unbound value absolute
 |}]
 
 Path.explode (Path.of_string "a/b/c");
@@ -202,12 +206,12 @@ Path.relative Path.root "/absolute/path"
 - : Stdune.Path.t = (External "/absolute/path")
 |}]
 
-Path.absolute "/absolute/path"
+e "/absolute/path"
 [%%expect{|
 - : Stdune.Path.t = (External "/absolute/path")
 |}]
 
-Path.is_managed (Path.absolute "relative/path")
+Path.is_managed (e "relative/path")
 [%%expect{|
 - : bool = false
 |}]
@@ -272,7 +276,7 @@ Path.drop_build_context (Path.of_string "foo/bar")
 - : Stdune.Path.t option = None
 |}]
 
-Path.drop_build_context (Path.absolute "/foo/bar")
+Path.drop_build_context (e "/foo/bar")
 [%%expect{|
 - : Stdune.Path.t option = None
 |}]
@@ -298,7 +302,7 @@ Path.(reach_for_running (relative build_dir "foo/baz")
 - : string = "../../baz"
 |}]
 
-Path.(reach_for_running (Path.absolute "/fake/path")
+Path.(reach_for_running (e "/fake/path")
         ~from:(relative build_dir "foo/bar/baz"))
 [%%expect{|
 - : string = "/fake/path"

@@ -17,7 +17,7 @@ val print_pkg : Format.formatter -> Dune.Findlib.Package.t -> unit = <fun>
 |}]
 
 let findlib =
-  let cwd = Path.absolute (Sys.getcwd ()) in
+  let cwd = Path.of_filename_relative_to_initial_cwd (Sys.getcwd ()) in
     Findlib.create
     ~stdlib_dir:cwd
     ~path:[Path.relative cwd "test/unit-tests/findlib-db"]

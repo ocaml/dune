@@ -408,7 +408,7 @@ let get_dir_status t ~dir =
       Dir_status.Loaded Path.Set.empty
     else if not (Path.is_local dir) then
       Dir_status.Loaded
-        (match Path.readdir dir with
+        (match Path.readdir_unsorted dir with
          | exception _ -> Path.Set.empty
          | files ->
            Path.Set.of_list (List.map files ~f:(Path.relative dir)))
@@ -637,7 +637,7 @@ let remove_old_artifacts t ~dir ~subdirs_to_keep =
      Hashtbl.mem t.files (Path.relative dir Config.jbuilder_keep_fname) then
     ()
   else
-    match Path.readdir dir with
+    match Path.readdir_unsorted dir with
     | exception _ -> ()
     | files ->
       List.iter files ~f:(fun fn ->

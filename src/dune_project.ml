@@ -131,22 +131,6 @@ let anonymous =
 
 let filename = "dune-project"
 
-type lang =
-  | Dune_0_1
-
-let lang =
-  let name =
-    enum
-      [ ("dune", ()) ]
-  in
-  let version ver =
-    match string ver with
-    | "0.1" -> Dune_0_1
-    | _ ->
-      of_sexp_error ver "unsupported version of the dune language"
-  in
-  field_multi "lang" (name @> version @> nil) (fun () v -> v)
-
 let default_name ~dir ~packages =
   match Package.Name.Map.choose packages with
   | None -> Option.value_exn (Name.anonymous dir)
@@ -173,8 +157,7 @@ let name ~dir ~packages =
 
 let parse ~dir packages =
   record
-    (lang >>= fun Dune_0_1 ->
-     name ~dir ~packages >>= fun name ->
+    (name ~dir ~packages >>= fun name ->
      field_o "version" string >>= fun version ->
      return { lang = Dune (0, 1)
             ; name
@@ -185,8 +168,20 @@ let parse ~dir packages =
 
 let load_dune_project ~dir packages =
   let fname = Path.relative dir filename in
-  let sexp = Io.Sexp.load_many_as_one fname in
-  parse ~dir packages sexp
+  Io.with_lexbuf_from_file fname ~f:(fun lb ->
+    let { Dune_lexer. lang; version } = Dune_lexer.first_line lb in
+    (match lang with
+     | _, "dune" -> ()
+     | loc, s ->
+       Loc.fail loc "%s is not a supported langauge. \
+                     Only the dune language is supported." s);
+    (match version with
+     | _, "0.1" -> ()
+     | loc, s ->
+       Loc.fail loc "Unsupported version of the dune language. \
+                     The only supported version is 0.1." s);
+    let sexp = Sexp.Parser.parse lb ~mode:Many_as_one in
+    parse ~dir packages sexp)
 
 let make_jbuilder_project ~dir packages =
   { lang = Jbuilder

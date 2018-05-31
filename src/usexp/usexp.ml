@@ -267,7 +267,7 @@ module Ast = struct
     if should_be_atom s then Atom (loc, A s)
     else Quoted_string (loc, s)
 
-let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)) = loc
+  let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)) = loc
 
   let rec remove_locs : t -> sexp = function
     | Atom (_, s) -> Atom s
@@ -306,19 +306,28 @@ module Parser = struct
 
   module Mode = struct
     type 'a t =
-      | Single : Ast.t t
-      | Many   : Ast.t list t
+      | Single      : Ast.t t
+      | Many        : Ast.t list t
+      | Many_as_one : Ast.t t
 
     let make_result : type a. a t -> Lexing.lexbuf -> Ast.t list -> a
       = fun t lexbuf sexps ->
         match t with
-        | Many -> sexps
-        | Single ->
+        | Single -> begin
           match sexps with
           | [sexp] -> sexp
           | [] -> error (make_loc lexbuf) "no s-expression found in input"
           | _ :: sexp :: _ ->
             error (Ast.loc sexp) "too many s-expressions found in input"
+        end
+        | Many -> sexps
+        | Many_as_one ->
+          match sexps with
+          | [] -> List (Loc.in_file lexbuf.lex_curr_p.pos_fname, [])
+          | x :: l ->
+            let last = List.fold_left l ~init:x ~f:(fun _ x -> x) in
+            let loc = { (Ast.loc x) with stop = (Ast.loc last).stop } in
+            List (loc, x :: l)
   end
 
   let rec loop depth lexer lexbuf acc =

@@ -87,8 +87,7 @@ module Unexpanded : sig
     with type path    := String_with_vars.t
     with type string  := String_with_vars.t
 
-  val t : t Sexp.Of_sexp.t
-  val sexp_of_t : t Sexp.To_sexp.t
+  include Sexp.Sexpable with type t := t
 
   module Partial : sig
     include Action_intf.Ast

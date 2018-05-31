@@ -7,7 +7,7 @@ module Version = struct
 
   let sexp_of_t t = Sexp.unsafe_atom_of_string (to_string t)
 
-  let t_of_sexp : t Sexp.Of_sexp.t = function
+  let t : t Sexp.Of_sexp.t = function
     | Atom (loc, A s) -> begin
         try
           Scanf.sscanf s "%u.%u" (fun a b -> (a, b))

@@ -1,5 +1,3 @@
-open Stdune
-
 (*let ocaml_comp_flags = ref ["-g"]*)
 let g = ref true
 let debug_findlib = ref false

@@ -30,14 +30,17 @@ type common =
 
 let prefix_target common s = common.target_prefix ^ s
 
-let set_common c ~targets =
+let set_dirs c =
+  if c.root <> Filename.current_dir_name then
+    Sys.chdir c.root;
+  Path.set_root (Path.External.cwd ());
+  Path.set_build_dir (Path.Kind.of_string c.build_dir)
+
+let set_common_other c ~targets =
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces := c.debug_backtraces;
   Clflags.capture_outputs := c.capture_outputs;
-  if c.root <> Filename.current_dir_name then
-    Sys.chdir c.root;
-  Clflags.workspace_root := Path.External.cwd ();
   Clflags.diff_command := c.diff_command;
   Clflags.auto_promote := c.auto_promote;
   Clflags.force := c.force;
@@ -46,9 +49,11 @@ let set_common c ~targets =
       [ ["dune"; "external-lib-deps"; "--missing"]
       ; c.orig_args
       ; targets
-      ];
-  Path.set_root !Clflags.workspace_root;
-  Path.set_build_dir (Path.Kind.of_string c.build_dir)
+      ]
+
+let set_common c ~targets =
+  set_dirs c;
+  set_common_other c ~targets
 
 let restore_cwd_and_execve common prog argv env =
   let env = Env.to_unix env in
@@ -1284,8 +1289,9 @@ let utop =
     ; `Blocks help_secs
     ] in
   let go common dir ctx_name args =
-    set_common common ~targets:[dir];
+    set_dirs common;
     let utop_target = dir |> Path.of_string |> Utop.utop_exe |> Path.to_string in
+    set_common_other common ~targets:[utop_target];
     let log = Log.create common in
     let (build_system, context, utop_path) =
       (Main.setup ~log common >>= fun setup ->

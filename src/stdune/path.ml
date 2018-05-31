@@ -93,7 +93,10 @@ end = struct
     loop initial_t (explode_path path)
 *)
 
-  let relative x y = make (Filename.concat (to_string x) y)
+  let relative x y =
+    match y with
+    | "." -> x
+    | _   -> make (Filename.concat (to_string x) y)
 
   let rec mkdir_p t =
     let t_s = to_string t in

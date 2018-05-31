@@ -879,8 +879,16 @@ module Executables = struct
       ; buildable
       }
     in
+    let has_public_name =
+      List.exists ~f:Option.is_some public_names
+    in
     let to_install =
       match Link_mode.Set.best_install_mode t.modes with
+      | None when has_public_name ->
+        Loc.fail
+          buildable.loc
+          "No installable mode found for %s."
+          (if multi then "these executables" else "this executable")
       | None -> []
       | Some mode ->
         let ext =

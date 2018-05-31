@@ -449,6 +449,15 @@ let (build_dir_kind, build_dir_prefix, set_build_dir) =
   let set_build_dir (new_build_dir : Kind.t) =
     match !build_dir with
     | None ->
+      (match new_build_dir with
+       | External _ -> ()
+       | Local p ->
+         if Local.is_root p || Local.parent p <> Local.root then
+           Exn.fatalf
+             "@{<error>Error@}: Invalid build directory: %s\n\
+              The build directory must be an absolute path or \
+              a sub-directory of the root of the workspace."
+             (Local.to_string p |> String.maybe_quoted));
       build_dir := Some new_build_dir;
       build_dir_prefix :=
         Some (match new_build_dir with

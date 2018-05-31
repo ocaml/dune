@@ -10,16 +10,10 @@ module Outputs = struct
     | Outputs -> "outputs"
 end
 
-module type Sexpable = sig
-  type t
-  val t : t Sexp.Of_sexp.t
-  val sexp_of_t : t Sexp.To_sexp.t
-end
-
 module Make_ast
-    (Program : Sexpable)
-    (Path    : Sexpable)
-    (String  : Sexpable)
+    (Program : Sexp.Sexpable)
+    (Path    : Sexp.Sexpable)
+    (String  : Sexp.Sexpable)
     (Ast : Action_intf.Ast
      with type program := Program.t
      with type path    := Path.t
@@ -676,7 +670,7 @@ module Promotion = struct
   let do_promote db =
     let by_targets = group_by_targets db  in
     let potential_build_contexts =
-      match Path.readdir Path.build_dir with
+      match Path.readdir_unsorted Path.build_dir with
       | exception _ -> []
       | files ->
         List.filter_map files ~f:(fun fn ->

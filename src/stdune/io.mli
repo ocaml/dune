@@ -28,7 +28,6 @@ val read_all : in_channel -> string
 
 module Sexp : sig
   val load : ?lexer:Usexp.Lexer.t -> Path.t -> mode:'a Sexp.Parser.Mode.t -> 'a
-  val load_many_as_one : ?lexer:Usexp.Lexer.t -> Path.t -> Sexp.Ast.t
 end
 
 (**/**)

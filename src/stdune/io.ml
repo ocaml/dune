@@ -82,16 +82,6 @@ let compare_files fn1 fn2 = String.compare (read_file fn1) (read_file fn2)
 let buf_len = 65_536
 
 module Sexp = struct
-  open Sexp
-
   let load ?lexer path ~mode =
     with_lexbuf_from_file path ~f:(Usexp.Parser.parse ~mode ?lexer)
-
-  let load_many_as_one ?lexer path =
-    match load ?lexer path ~mode:Many with
-    | [] -> Ast.List (Loc.in_file (Path.to_string path), [])
-    | x :: l ->
-      let last = Option.value (List.last l) ~default:x in
-      let loc = { (Ast.loc x) with stop = (Ast.loc last).stop } in
-      Ast.List (loc, x :: l)
 end

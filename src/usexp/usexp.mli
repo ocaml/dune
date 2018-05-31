@@ -107,8 +107,9 @@ end
 module Parser : sig
   module Mode : sig
     type 'a t =
-      | Single : Ast.t t
-      | Many   : Ast.t list t
+      | Single      : Ast.t t
+      | Many        : Ast.t list t
+      | Many_as_one : Ast.t t
   end
 
   val parse

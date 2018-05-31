@@ -389,7 +389,7 @@ type t =
   }
 
 let string_of_paths set =
-  Path.Set.to_alpha_list set
+  Path.Set.to_list set
   |> List.map ~f:(fun p -> sprintf "- %s"
                              (Path.to_string_maybe_quoted
                                 (Path.drop_optional_build_context p)))
@@ -709,8 +709,8 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     >>= fun (action, dyn_deps) ->
     make_local_parent_dirs t targets ~map_path:(fun x -> x);
     let all_deps = Path.Set.union static_deps dyn_deps in
-    let all_deps_as_list = Path.Set.to_alpha_list all_deps in
-    let targets_as_list  = Path.Set.to_alpha_list targets  in
+    let all_deps_as_list = Path.Set.to_list all_deps in
+    let targets_as_list  = Path.Set.to_list targets  in
     let hash =
       let trace =
         ( all_deps_as_list

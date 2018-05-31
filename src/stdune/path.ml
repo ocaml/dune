@@ -890,8 +890,6 @@ module Set = struct
     String.Set.to_list ss
     |> List.map ~f
     |> of_list
-
-  let to_alpha_list t = to_list t
 end
 
 let in_source s = in_source_tree (Local.of_string s)

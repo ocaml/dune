@@ -34,8 +34,6 @@ module Set : sig
   include Set.S with type elt = t
   val sexp_of_t : t Sexp.To_sexp.t
   val of_string_set : String.Set.t -> f:(string -> elt) -> t
-
-  val to_alpha_list : t -> elt list
 end
 
 module Map : Map.S with type key = t

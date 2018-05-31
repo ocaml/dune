@@ -312,3 +312,14 @@ Path.(reach_for_running (relative root "foo") ~from:(Path.relative root "foo"))
 [%%expect{|
 - : string = "./."
 |}]
+
+Path.relative Path.root "_build"
+[%%expect{|
+- : Stdune.Path.t = (In_build_dir ".")
+|}]
+
+(* This is not right, but kind of annoying to fix :/ *)
+Path.relative (r "foo") "../_build"
+[%%expect{|
+- : Stdune.Path.t = (In_source_tree "_build")
+|}]

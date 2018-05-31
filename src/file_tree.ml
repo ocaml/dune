@@ -180,7 +180,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
   let rec walk path ~dirs_visited ~project ~ignored : Dir.t =
     let contents = lazy (
       let files, sub_dirs =
-        Path.readdir path
+        Path.readdir_unsorted path
         |> List.filter_partition_map ~f:(fun fn ->
           let path = Path.relative path fn in
           let is_directory, file =

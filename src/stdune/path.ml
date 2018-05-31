@@ -398,10 +398,13 @@ module Kind = struct
     | External of External.t
     | Local    of Local.t
 
-  let to_absolute_filename t ~root =
+  let to_absolute_filename t =
     match t with
     | External s -> External.to_string s
-    | Local l -> External.to_string (External.relative root (Local.to_string l))
+    | Local l ->
+      External.to_string
+        (External.relative (Lazy.force abs_root)
+           (Local.to_string l))
 
   let to_string = function
     | Local t -> Local.to_string t
@@ -594,7 +597,7 @@ let absolute fn =
       External.of_string fn
   )
 
-let to_absolute_filename t ~root = Kind.to_absolute_filename (kind t) ~root
+let to_absolute_filename t = Kind.to_absolute_filename (kind t)
 
 let external_of_local x ~root =
   External.to_string (External.relative root (Local.to_string x))

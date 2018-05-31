@@ -59,7 +59,7 @@ val absolute : string -> t
 
 (** Convert a path to an absolute filename. Must be called after the workspace
     root has been set. [root] is the root directory of local paths *)
-val to_absolute_filename : t -> root:External.t -> string
+val to_absolute_filename : t -> string
 
 val reach : t -> from:t -> string
 

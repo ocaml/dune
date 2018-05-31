@@ -592,7 +592,7 @@ let sexp_of_t t =
   | In_source_tree s -> constr Local.sexp_of_t "In_source_tree" s
   | External s -> constr External.sexp_of_t "External" s
 
-let absolute fn =
+let of_filename_relative_to_initial_cwd fn =
   external_ (
     if Filename.is_relative fn then
       External.relative External.initial_cwd fn

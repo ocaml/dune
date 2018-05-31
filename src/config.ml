@@ -15,7 +15,9 @@ let local_install_lib_dir ~context ~package =
     (Path.relative (local_install_dir ~context) "lib")
     package
 
-let dev_null = Path.absolute (if Sys.win32 then "nul" else "/dev/null")
+let dev_null =
+  Path.of_filename_relative_to_initial_cwd
+    (if Sys.win32 then "nul" else "/dev/null")
 
 let jbuilder_keep_fname = ".jbuilder-keep"
 
@@ -108,7 +110,8 @@ let t =
             })
 
 let user_config_file =
-  Path.relative (Path.absolute Xdg.config_dir) "dune/config"
+  Path.relative (Path.of_filename_relative_to_initial_cwd Xdg.config_dir)
+    "dune/config"
 
 let load_config_file p =
   t (Io.Sexp.load_many_as_one p)

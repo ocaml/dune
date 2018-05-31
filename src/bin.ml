@@ -7,7 +7,7 @@ let path_sep =
     ':'
 
 let parse_path ?(sep=path_sep) s =
-  List.map (String.split s ~on:sep) ~f:Path.absolute
+  List.map (String.split s ~on:sep) ~f:Path.of_filename_relative_to_initial_cwd
 
 let path =
   match Env.get Env.initial "PATH" with

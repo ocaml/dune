@@ -53,7 +53,7 @@ val relative : ?error_loc:Usexp.Loc.t -> t -> string -> t
 
 (** Create an external path. If the argument is relative, assume it is
     relative to the initial directory jbuilder was launched in. *)
-val absolute : string -> t
+val of_filename_relative_to_initial_cwd : string -> t
 
 (** Convert a path to an absolute filename. Must be called after the workspace
     root has been set. [root] is the root directory of local paths *)

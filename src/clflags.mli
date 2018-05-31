@@ -37,4 +37,4 @@ val auto_promote : bool ref
 val force : bool ref
 
 (** Report errors in a deterministic order *)
-val show_errors_at_end : bool ref
+val print_errors_at_end : bool ref

@@ -45,7 +45,8 @@ let set_common c ~targets =
       [ ["dune"; "external-lib-deps"; "--missing"]
       ; c.orig_args
       ; targets
-      ]
+      ];
+  Clflags.print_errors_at_end := (c.config.display = Config.Display.Wait)
 
 let restore_cwd_and_execve common prog argv env =
   let env = Env.to_unix env in
@@ -1411,6 +1412,9 @@ module Help = struct
              {|Print the full command lines of programs being
                executed by Dune, with some colors to help differentiate
                programs.|}
+           ; "wait",
+             {|Wait until the end to print all errors.  This is to ensure errors
+               are printed in a deterministic order.|}
            ])
     ; `P {|Note that when the selected display mode is $(b,progress) and the
            output is not a terminal then the $(b,quiet) mode is selected

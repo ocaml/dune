@@ -145,14 +145,14 @@ let report exn =
       Format.pp_print_flush ppf ();
       let s = Buffer.contents err_buf in
       Buffer.clear err_buf;
-      if !Clflags.show_errors_at_end then
+      if !Clflags.print_errors_at_end then
         Hashtbl.add error_table hash s
       else
         print_to_console s
     end
 
 let flush () =
-  if !Clflags.show_errors_at_end then
+  if !Clflags.print_errors_at_end then
     print_all_errors_to_console ()
   else
     ()

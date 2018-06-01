@@ -452,3 +452,9 @@ module Of_sexp = struct
                     String.uncapitalize name) }
           "Unknown value %s" s
 end
+
+module type Sexpable = sig
+  type t
+  val t : t Of_sexp.t
+  val sexp_of_t : t To_sexp.t
+end

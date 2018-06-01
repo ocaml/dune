@@ -102,6 +102,7 @@ module Lexer : sig
   type t = Lexing.lexbuf -> Token.t
 
   val token : t
+  val jbuild_token : t
 end
 
 module Parser : sig

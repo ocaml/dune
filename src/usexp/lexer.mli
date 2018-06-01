@@ -15,6 +15,7 @@ end
 type t = Lexing.lexbuf -> Token.t
 
 val token : t
+val jbuild_token : t
 
 module Error : sig
   type t =

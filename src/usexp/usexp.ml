@@ -10,10 +10,8 @@ module Bytes = struct
     UnlabeledBytes.blit_string src src_pos dst dst_pos len
 end
 
-module A = Parser_automaton_internal
-
 module Atom = struct
- type t = Sexp_ast.atom = A of string [@@unboxed]
+ type t = Lexer.Atom.t = A of string [@@unboxed]
 
  let is_valid str =
    let len = String.length str in
@@ -241,7 +239,10 @@ let prepare_formatter ppf =
     }
 
 module Loc = struct
-  include Sexp_ast.Loc
+  type t =
+    { start : Lexing.position
+    ; stop  : Lexing.position
+    }
 
   let in_file fn =
     let pos : Lexing.position =
@@ -257,7 +258,7 @@ module Loc = struct
 end
 
 module Ast = struct
-  type t = Sexp_ast.t =
+  type t =
     | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
     | List of Loc.t * t list
@@ -266,38 +267,12 @@ module Ast = struct
     if should_be_atom s then Atom (loc, A s)
     else Quoted_string (loc, s)
 
-let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)) = loc
+  let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)) = loc
 
   let rec remove_locs : t -> sexp = function
     | Atom (_, s) -> Atom s
     | Quoted_string (_, s) -> Quoted_string s
     | List (_, l) -> List (List.map l ~f:remove_locs)
-
-  module Token = struct
-    type t =
-      | Atom   of Loc.t * Atom.t
-      | String of Loc.t * string
-      | Lparen of Loc.t
-      | Rparen of Loc.t
-  end
-
-  let tokenize =
-    let rec loop acc t =
-      match t with
-      | Atom (loc, s) -> Token.Atom (loc, s) :: acc
-      | Quoted_string (loc, s) -> Token.String (loc, s) :: acc
-      | List (loc, l) ->
-        let shift (pos : Lexing.position) delta =
-          { pos with pos_cnum = pos.pos_cnum + delta }
-        in
-        let l_loc = { loc with stop  = shift loc.start  1  } in
-        let r_loc = { loc with start = shift loc.stop (-1) } in
-        let acc = Token.Lparen l_loc :: acc in
-        let acc = List.fold_left l ~init:acc ~f:loop in
-        let acc = Token.Rparen r_loc :: acc in
-        acc
-    in
-    fun t -> loop [] t |> List.rev
 end
 
 let rec add_loc t ~loc : Ast.t =
@@ -306,78 +281,98 @@ let rec add_loc t ~loc : Ast.t =
   | Quoted_string s -> Quoted_string (loc, s)
   | List l -> List (loc, List.map l ~f:(add_loc ~loc))
 
+module Parse_error = struct
+  include Lexer.Error
+
+  let loc t : Loc.t = { start = t.start; stop = t.stop }
+  let message t = t.message
+end
+exception Parse_error = Lexer.Error
+
+module Lexer = Lexer
+
 module Parser = struct
-  module Error = A.Error
-  exception Error = A.Parse_error
+  let error (loc : Loc.t) message =
+    raise (Parse_error
+             { start = loc.start
+             ; stop  = loc.stop
+             ; message
+             })
+
+  let make_loc lexbuf : Loc.t =
+    { start = Lexing.lexeme_start_p lexbuf
+    ; stop  = Lexing.lexeme_end_p   lexbuf
+    }
 
   module Mode = struct
-    type 'a t = 'a A.mode =
-      | Single : Ast.t t
-      | Many   : Ast.t list t
+    type 'a t =
+      | Single      : Ast.t t
+      | Many        : Ast.t list t
+      | Many_as_one : Ast.t t
+
+    let make_result : type a. a t -> Lexing.lexbuf -> Ast.t list -> a
+      = fun t lexbuf sexps ->
+        match t with
+        | Single -> begin
+          match sexps with
+          | [sexp] -> sexp
+          | [] -> error (make_loc lexbuf) "no s-expression found in input"
+          | _ :: sexp :: _ ->
+            error (Ast.loc sexp) "too many s-expressions found in input"
+        end
+        | Many -> sexps
+        | Many_as_one ->
+          match sexps with
+          | [] -> List (Loc.in_file lexbuf.lex_curr_p.pos_fname, [])
+          | x :: l ->
+            let last = List.fold_left l ~init:x ~f:(fun _ x -> x) in
+            let loc = { (Ast.loc x) with stop = (Ast.loc last).stop } in
+            List (loc, x :: l)
   end
 
-  module Stack = struct
-    type t = A.stack
-    let empty = A.empty_stack
-  end
+  let rec loop depth lexer lexbuf acc =
+    match (lexer lexbuf : Lexer.Token.t) with
+    | Atom a ->
+      let loc = make_loc lexbuf in
+      loop depth lexer lexbuf (Ast.Atom (loc, a) :: acc)
+    | Quoted_string s ->
+      let loc = make_loc lexbuf in
+      loop depth lexer lexbuf (Quoted_string (loc, s) :: acc)
+    | Lparen ->
+      let start = Lexing.lexeme_start_p lexbuf in
+      let sexps = loop (depth + 1) lexer lexbuf [] in
+      let stop = Lexing.lexeme_end_p lexbuf in
+      loop depth lexer lexbuf (List ({ start; stop }, sexps) :: acc)
+    | Rparen ->
+      if depth = 0 then
+        error (make_loc lexbuf)
+          "right parenthesis without matching left parenthesis";
+      List.rev acc
+    | Sexp_comment ->
+      let sexps =
+        let loc = make_loc lexbuf in
+        match loop depth lexer lexbuf [] with
+        | _ :: sexps -> sexps
+        | [] -> error loc "s-expression missing after #;"
+      in
+      List.rev_append acc sexps
+    | Eof ->
+      if depth > 0 then
+        error (make_loc lexbuf)
+          "unclosed parenthesis at end of input";
+      List.rev acc
 
-  type 'a t = 'a A.state
-  let create ~fname ~mode = A.new_state ~fname mode
-
-  let feed : type a. a A.action = fun state char stack ->
-    let idx = (A.automaton_state state lsl 8) lor (Char.code char) in
-    (* We need an Obj.magic as the type of the array can't be generalized.
-       This problem will go away when we get immutable arrays. *)
-    (Obj.magic (Table.transitions.(idx) : Obj.t A.action) : a A.action) state char stack
-  [@@inline always]
-
-  let feed_eoi : type a. a t -> Stack.t -> a = fun state stack ->
-    let stack =
-      (Obj.magic (Table.transitions_eoi.(A.automaton_state state)
-                  : Obj.t A.epsilon_action)
-       : a A.epsilon_action) state stack
-    in
-    A.set_error_state state;
-    match A.mode state with
-    | Mode.Single -> A.sexp_of_stack stack
-    | Mode.Many   -> A.sexps_of_stack stack
-
-  let rec feed_substring_unsafe str state stack i stop =
-    if i < stop then
-      let c = String.unsafe_get str i in
-      let stack = feed state c stack in
-      feed_substring_unsafe str state stack (i + 1) stop
-    else
-      stack
-
-  let rec feed_subbytes_unsafe str state stack i stop =
-    if i < stop then
-      let c = Bytes.unsafe_get str i in
-      let stack = feed state c stack in
-      feed_subbytes_unsafe str state stack (i + 1) stop
-    else
-      stack
-
-  let feed_substring state str ~pos ~len stack =
-    let str_len = String.length str in
-    if pos < 0 || len < 0 || pos > str_len - len then
-      invalid_arg "Jbuilder_sexp.feed_substring";
-    feed_substring_unsafe str state stack pos (pos + len)
-
-  let feed_subbytes state str ~pos ~len stack =
-    let str_len = Bytes.length str in
-    if pos < 0 || len < 0 || pos > str_len - len then
-      invalid_arg "Jbuilder_sexp.feed_subbytes";
-    feed_subbytes_unsafe str state stack pos (pos + len)
-
-  let feed_string state str stack =
-    feed_substring_unsafe str state stack 0 (String.length str)
-
-  let feed_bytes state str stack =
-    feed_subbytes_unsafe str state stack 0 (Bytes.length str)
+  let parse ~mode ?(lexer=Lexer.token) lexbuf =
+    loop 0 lexer lexbuf []
+    |> Mode.make_result mode lexbuf
 end
 
-let parse_string ~fname ~mode str =
-  let p = Parser.create ~fname ~mode in
-  let stack = Parser.feed_string p str Parser.Stack.empty in
-  Parser.feed_eoi p stack
+let parse_string ~fname ~mode ?lexer str =
+  let lb = Lexing.from_string str in
+  lb.lex_curr_p <-
+    { pos_fname = fname
+    ; pos_lnum  = 1
+    ; pos_bol   = 0
+    ; pos_cnum  = 0
+    };
+  Parser.parse ~mode ?lexer lb

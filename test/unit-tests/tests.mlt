@@ -5,6 +5,11 @@
 open Dune
 open Import
 
+let () =
+  Path.set_root (Path.External.cwd ());
+  Path.set_build_dir (Path.Kind.of_string "_build")
+;;
+
 let print_pkg ppf pkg =
   Format.fprintf ppf "<package:%s>" (Findlib.Package.name pkg)
 ;;

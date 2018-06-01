@@ -566,11 +566,7 @@ let relative ?error_loc t fn =
     external_ (External.of_string fn)
   |_ ->
     match t with
-    | In_source_tree p ->
-      if Local.is_root p then
-        make_local_path (Local.of_string fn ?error_loc)
-      else
-        in_source_tree (Local.relative p fn ?error_loc)
+    | In_source_tree p -> make_local_path (Local.relative p fn ?error_loc)
     | In_build_dir p -> in_build_dir (Local.relative p fn ?error_loc)
     | External s -> external_ (External.relative s fn)
 

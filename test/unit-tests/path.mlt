@@ -321,5 +321,5 @@ Path.relative Path.root "_build"
 (* This is not right, but kind of annoying to fix :/ *)
 Path.relative (r "foo") "../_build"
 [%%expect{|
-- : Stdune.Path.t = (In_source_tree "_build")
+- : Stdune.Path.t = (In_build_dir ".")
 |}]

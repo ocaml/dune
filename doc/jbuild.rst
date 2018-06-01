@@ -641,6 +641,8 @@ where ``<destination>`` describe how the file will be installed. For
 instance, to install a file ``mylib.el`` as
 ``emacs/site-lisp/mylib.el`` in the ``share_root`` section:
 
+.. code:: scheme
+
     (install
       ((section share_root)
        (files   ((mylib.el as emacs/site-lisp/mylib.el)))))

@@ -13,10 +13,10 @@ boot.exe: bootstrap.ml
 	ocaml bootstrap.ml
 
 install:
-	$(BIN) install $(INSTALL_ARGS)
+	$(BIN) install $(INSTALL_ARGS) dune
 
 uninstall:
-	$(BIN) uninstall $(INSTALL_ARGS)
+	$(BIN) uninstall $(INSTALL_ARGS) dune
 
 reinstall: uninstall reinstall
 

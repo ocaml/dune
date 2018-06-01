@@ -1,6 +1,19 @@
 open! Import
 
 module Dune_file = struct
+  module Kind = struct
+    type t = Dune | Jbuild
+
+    let of_basename = function
+      | "dune"   -> Dune
+      | "jbuild" -> Jbuild
+      | _ -> assert false
+
+    let lexer = function
+      | Dune   -> Sexp.Lexer.token
+      | Jbuild -> Sexp.Lexer.jbuild_token
+  end
+
   module Plain = struct
     type t =
       { path          : Path.t
@@ -8,12 +21,20 @@ module Dune_file = struct
       }
   end
 
-  type t =
-    | Plain of Plain.t
-    | Ocaml_script of Path.t
+  module Contents = struct
+    type t =
+      | Plain of Plain.t
+      | Ocaml_script of Path.t
+  end
 
-  let path = function
-    | Plain x -> x.path
+  type t =
+    { contents : Contents.t
+    ; kind     : Kind.t
+    }
+
+  let path t =
+    match t.contents with
+    | Plain         x -> x.path
     | Ocaml_script  p -> p
 
   let extract_ignored_subdirs =
@@ -47,14 +68,19 @@ module Dune_file = struct
       in
       (ignored_subdirs, sexps)
 
-  let load ?lexer file =
+  let load file ~kind =
     Io.with_lexbuf_from_file file ~f:(fun lb ->
-      if Dune_lexer.is_script lb then
-        (Ocaml_script file, String.Set.empty)
-      else
-        let sexps = Usexp.Parser.parse lb ?lexer ~mode:Many in
-        let ignored_subdirs, sexps = extract_ignored_subdirs sexps in
-        (Plain { path = file; sexps }, ignored_subdirs))
+      let contents, ignored_subdirs =
+        if Dune_lexer.is_script lb then
+          (Contents.Ocaml_script file, String.Set.empty)
+        else
+          let sexps =
+            Usexp.Parser.parse lb ~lexer:(Kind.lexer kind) ~mode:Many
+          in
+          let ignored_subdirs, sexps = extract_ignored_subdirs sexps in
+          (Plain { path = file; sexps }, ignored_subdirs)
+      in
+      ({ contents; kind }, ignored_subdirs))
 end
 
 let load_jbuild_ignore path =
@@ -195,9 +221,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             | [fn] ->
               let dune_file, ignored_subdirs =
                 Dune_file.load (Path.relative path fn)
-                  ~lexer:(match fn with
-                    | "jbuild" -> Sexp.Lexer.jbuild_token
-                    | _        -> Sexp.Lexer.token)
+                  ~kind:(Dune_file.Kind.of_basename fn)
               in
               (Some dune_file, ignored_subdirs)
             | _ ->

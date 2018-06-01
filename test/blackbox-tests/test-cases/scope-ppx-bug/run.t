@@ -9,8 +9,8 @@
       ocamlopt a/kernel/a_kernel.cmxs
         ocamlc a/ppx/a.cma
         ocamlc a/kernel/a_kernel.cma
-      ocamlopt .ppx/a.kernel/ppx.exe
-      ocamlopt .ppx/a/ppx.exe
+      ocamlopt .ppx/jbuild/a.kernel/ppx.exe
+      ocamlopt .ppx/jbuild/a/ppx.exe
            ppx b/b.pp.ml
       ocamldep b/b.pp.ml.d
         ocamlc b/.b.objs/b.{cmi,cmo,cmt}

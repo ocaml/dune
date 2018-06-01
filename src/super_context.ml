@@ -10,6 +10,16 @@ module Dir_with_jbuild = struct
     ; ctx_dir : Path.t
     ; stanzas : Stanzas.t
     ; scope   : Scope.t
+    ; kind    : File_tree.Dune_file.Kind.t
+    }
+end
+
+module Installable = struct
+  type t =
+    { dir    : Path.t
+    ; scope  : Scope.t
+    ; stanza : Stanza.t
+    ; kind   : File_tree.Dune_file.Kind.t
     }
 end
 
@@ -33,7 +43,7 @@ type t =
   ; packages                         : Package.t Package.Name.Map.t
   ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
-  ; stanzas_to_consider_for_install  : (Path.t * Scope.t * Stanza.t) list
+  ; stanzas_to_consider_for_install  : Installable.t list
   ; cxx_flags                        : string list
   ; vars                             : Action.Var_expansion.t String.Map.t
   ; chdir                            : (Action.t, Action.t) Build.t
@@ -189,7 +199,7 @@ let create
     Lib.DB.create_from_findlib context.findlib ~external_lib_deps_mode
   in
   let internal_libs =
-    List.concat_map stanzas ~f:(fun (dir, _, stanzas) ->
+    List.concat_map stanzas ~f:(fun { Jbuild_load.Jbuild. dir; stanzas; _ } ->
       let ctx_dir = Path.append context.build_dir dir in
       List.filter_map stanzas ~f:(fun stanza ->
         match (stanza : Stanza.t) with
@@ -209,18 +219,19 @@ let create
   in
   let stanzas =
     List.map stanzas
-      ~f:(fun (dir, project, stanzas) ->
+      ~f:(fun { Jbuild_load.Jbuild. dir; project; stanzas; kind } ->
         let ctx_dir = Path.append context.build_dir dir in
         { Dir_with_jbuild.
           src_dir = dir
         ; ctx_dir
         ; stanzas
         ; scope = Scope.DB.find_by_name scopes project.Dune_project.name
+        ; kind
         })
   in
   let stanzas_to_consider_for_install =
     if not external_lib_deps_mode then
-      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; _ } ->
+      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; kind; _ } ->
         List.filter_map stanzas ~f:(fun stanza ->
           let keep =
             match (stanza : Stanza.t) with
@@ -229,10 +240,21 @@ let create
             | Install _   -> true
             | _           -> false
           in
-          Option.some_if keep (ctx_dir, scope, stanza)))
+          Option.some_if keep { Installable.
+                                dir = ctx_dir
+                              ; scope
+                              ; stanza
+                              ; kind
+                              }))
     else
-      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; _ } ->
-        List.map stanzas ~f:(fun s -> (ctx_dir, scope, s)))
+      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; kind; _ } ->
+        List.map stanzas ~f:(fun stanza ->
+          { Installable.
+            dir = ctx_dir
+          ; scope
+          ; stanza
+          ; kind
+          }))
   in
   let artifacts =
     Artifacts.create context ~public_libs stanzas

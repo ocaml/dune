@@ -3,6 +3,12 @@
 open! Import
 
 module Dune_file : sig
+  module Kind : sig
+    type t = Dune | Jbuild
+
+    val lexer : t -> Sexp.Lexer.t
+  end
+
   module Plain : sig
     (** [sexps] is mutable as we get rid of the S-expressions once
         they have been parsed, in order to release the memory as soon
@@ -13,9 +19,16 @@ module Dune_file : sig
       }
   end
 
+  module Contents : sig
+    type t =
+      | Plain of Plain.t
+      | Ocaml_script of Path.t
+  end
+
   type t =
-    | Plain of Plain.t
-    | Ocaml_script of Path.t
+    { contents : Contents.t
+    ; kind     : Kind.t
+    }
 
   val path : t -> Path.t
 end

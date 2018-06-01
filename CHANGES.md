@@ -57,7 +57,7 @@ next
   format blocks of texts (#837, @diml)
 
 - Remove hard-coded knowledge of ppx_driver and
-  ocaml-migrate-parsetree (#576, @diml)
+  ocaml-migrate-parsetree when using a `dune` file (#576, @diml)
 
 1.0+beta20 (10/04/2018)
 -----------------------

@@ -476,7 +476,7 @@ And that if your project contains several packages, then all the
 package names must be prefixed by the shortest one.
 
 Watermarking
-~~~~~~~~~~~~
+============
 
 One of the feature topkg provides is watermarking; it replaces various
 strings of the form ``%%ID%%`` in all files of your project before
@@ -498,7 +498,7 @@ watermarks when the package is pinned by the user. To help with this,
 jbuilder provides the ``subst`` sub-command.
 
 jbuilder subst
-~~~~~~~~~~~~~~
+==============
 
 ``jbuilder subst`` performs the same substitution ``topkg`` does with
 the default configuration. i.e. calling ``jbuilder subst`` at the root

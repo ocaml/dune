@@ -1166,7 +1166,7 @@ using ``(js_of_ocaml (<js_of_ocaml-options>))``.
 - ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
   runtime files.
 
-=<flags>= is specified in the `Ordered set language`_.
+``<flags>`` is specified in the `Ordered set language`_.
 
 The default value for ``(flags ...)`` depends on whether ``--dev`` is passed to
 Jbuilder. ``--dev`` will enable sourcemap and the pretty JavaScript output.

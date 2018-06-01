@@ -53,7 +53,7 @@ belong to any particular package. But the generated html will still be found in
 .. _doc-stanza:
 
 Documentation Stanza
-===================
+====================
 
 Documentation pages will be automatically generated for from .ml and .mli files
 that include ocamldoc fragments. Additional manual pages may be attached to

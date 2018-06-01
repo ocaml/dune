@@ -1,12 +1,10 @@
-  $ jbuilder build foo --build-dir _foobar/ && find _foobar
+  $ jbuilder build foo --build-dir _foobar/ && find _foobar | grep -v '/[.]' | LANG=C sort
   _foobar
   _foobar/default
   _foobar/default/foo
-  _foobar/.digest-db
-  _foobar/.universe-state
   _foobar/log
-  _foobar/.to-delete-in-source-tree
-  _foobar/.db
+
+  $ rm -rf _foobar
 
   $ jbuilder build foo --build-dir .
   Error: Invalid build directory: .
@@ -30,12 +28,16 @@ Maybe this case should be supported?
 Test with build directory being an absolute path
 
   $ X=$PWD/build; cd project && jbuilder build foo --build-dir $X
-  $ find build
+  $ find build | grep -v '/[.]' | LANG=C sort
   build
   build/default
   build/default/foo
-  build/.digest-db
-  build/.universe-state
   build/log
-  build/.to-delete-in-source-tree
-  build/.db
+
+  $ rm -rf build
+
+Test with a build directory that doesn't start with _
+
+  $ touch pkg.opam
+  $ dune build --build-dir build pkg.opam
+  $ dune build --build-dir build

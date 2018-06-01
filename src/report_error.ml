@@ -46,11 +46,17 @@ let report_with_backtrace exn =
                         hint on candidates)
       in
       { p with loc = Some loc; pp }
-    | Usexp.Parser.Error e ->
-      let pos = Usexp.Parser.Error.position e in
-      let msg = Usexp.Parser.Error.message e in
-      let pos = { pos with pos_fname = !map_fname pos.pos_fname } in
-      let loc = { Loc. start = pos; stop = pos } in
+    | Sexp.Parse_error e ->
+      let loc = Sexp.Parse_error.loc     e in
+      let msg = Sexp.Parse_error.message e in
+      let map_pos (pos : Lexing.position) =
+        { pos with pos_fname = !map_fname pos.pos_fname }
+      in
+      let loc : Loc.t =
+        { start = map_pos loc.start
+        ; stop  = map_pos loc.stop
+        }
+      in
       { p with
         loc = Some loc
       ; pp  = fun ppf -> Format.fprintf ppf "@{<error>Error@}: %s\n" msg

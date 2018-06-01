@@ -3,7 +3,7 @@ open Import
 let parse_sub_systems sexps =
   List.filter_map sexps ~f:(fun sexp ->
     let name, ver, data =
-      Sexp.Of_sexp.(triple string (located Syntax.Version.t_of_sexp) raw) sexp
+      Sexp.Of_sexp.(triple string (located Syntax.Version.t) raw) sexp
     in
     match Sub_system_name.get name with
     | None ->

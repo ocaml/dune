@@ -16,9 +16,6 @@ module Dune_file = struct
     | Plain x -> x.path
     | Ocaml_script  p -> p
 
-  let ocaml_script_prefix = "(* -*- tuareg -*- *)"
-  let ocaml_script_prefix_len = String.length ocaml_script_prefix
-
   let extract_ignored_subdirs =
     let stanza =
       let open Sexp.Of_sexp in
@@ -50,39 +47,14 @@ module Dune_file = struct
       in
       (ignored_subdirs, sexps)
 
-  let load file =
-    Io.with_file_in file ~f:(fun ic ->
-      let open Sexp in
-      let state = Parser.create ~fname:(Path.to_string file) ~mode:Many in
-      let buf = Bytes.create Io.buf_len in
-      let rec loop stack =
-        match input ic buf 0 Io.buf_len with
-        | 0 -> stack
-        | n -> loop (Parser.feed_subbytes state buf ~pos:0 ~len:n stack)
-      in
-      let finish stack =
-        let sexps = Parser.feed_eoi state stack in
+  let load ?lexer file =
+    Io.with_lexbuf_from_file file ~f:(fun lb ->
+      if Dune_lexer.is_script lb then
+        (Ocaml_script file, String.Set.empty)
+      else
+        let sexps = Usexp.Parser.parse lb ?lexer ~mode:Many in
         let ignored_subdirs, sexps = extract_ignored_subdirs sexps in
-        (Plain { path = file; sexps },
-         ignored_subdirs)
-      in
-     let rec loop0 stack i =
-        match input ic buf i (Io.buf_len - i) with
-        | 0 ->
-          finish (Parser.feed_subbytes state buf ~pos:0 ~len:i stack)
-        | n ->
-          let i = i + n in
-          if i < ocaml_script_prefix_len then
-            loop0 stack i
-          else if Bytes.sub_string buf 0 ocaml_script_prefix_len
-                    [@warning "-6"]
-                  = ocaml_script_prefix then
-            (Ocaml_script file, String.Set.empty)
-          else
-            let stack = Parser.feed_subbytes state buf ~pos:0 ~len:i stack in
-            finish (loop stack)
-      in
-      loop0 Parser.Stack.empty 0)
+        (Plain { path = file; sexps }, ignored_subdirs))
 end
 
 let load_jbuild_ignore path =

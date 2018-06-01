@@ -52,8 +52,8 @@ val is_standard : t -> bool
 module Unexpanded : sig
   type expanded = t
   type t
-  val t : t Sexp.Of_sexp.t
-  val sexp_of_t : t Sexp.To_sexp.t
+
+  include Sexp.Sexpable with type t := t
   val standard : t
 
   val field : ?default:t -> string -> t Sexp.Of_sexp.record_parser

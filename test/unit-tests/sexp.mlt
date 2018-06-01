@@ -38,3 +38,33 @@ let x = of_sexp sexp
 val of_sexp : int list Stdune.Sexp.Of_sexp.t = <fun>
 val x : int list = [1; 2]
 |}]
+
+let parse s =
+  try
+    Sexp.parse_string ~fname:"" ~mode:Many s
+  with Sexp.Parse_error e ->
+    failwith (Sexp.Parse_error.message e)
+[%%expect{|
+val parse : string -> Usexp.Ast.t list = <fun>
+|}]
+
+parse {| # ## x##y x||y a#b|c#d copy# |}
+[%%expect{|
+- : Usexp.Ast.t list = [#; ##; x##y; x||y; a#b|c#d; copy#]
+|}]
+
+
+parse {|x #| comment |# y|}
+[%%expect{|
+- : Usexp.Ast.t list = [x; y]
+|}]
+
+parse {|x#|y|}
+[%%expect{|
+Exception: Failure "atoms cannot contain #|".
+|}]
+
+parse {|x|#y|}
+[%%expect{|
+Exception: Failure "atoms cannot contain |#".
+|}]

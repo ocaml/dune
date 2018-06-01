@@ -808,9 +808,7 @@ module Action = struct
     let build =
       Build.record_lib_deps_simple forms.lib_deps
       >>>
-      Build.path_set deps
-      >>>
-      Build.path_set forms.sdeps
+      Build.path_set (Path.Set.union deps forms.sdeps)
       >>>
       Build.arr (fun paths -> ((), paths))
       >>>

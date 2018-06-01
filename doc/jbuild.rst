@@ -184,9 +184,10 @@ modules you want.
   overlap with libraries that are present in the workspace
 
 Note that when binding C libraries, Jbuilder doesn't provide special support for
-tools such as ``pkg-config``, however it integrates easily with `configurator
-<https://github.com/janestreet/configurator>`__ by using ``(c_flags (:include
-...))`` and ``(c_library_flags (:include ...))``.
+tools such as ``pkg-config``, however it integrates easily with configurator_ by
+using ``(c_flags (:include ...))`` and ``(c_library_flags (:include ...))``.
+
+.. _configurator: https://github.com/janestreet/configurator
 
 executable
 ----------
@@ -1191,7 +1192,7 @@ automatically handled by Jbuilder.
 The DSL is currently quite limited, so if you want to do something complicated
 it is recommended to write a small OCaml program and use the DSL to invoke it.
 You can use `shexp <https://github.com/janestreet/shexp>`__ to write portable
-scripts or `Configurator`_ for configuration related tasks.
+scripts or configurator_ for configuration related tasks.
 
 The following constructions are available:
 

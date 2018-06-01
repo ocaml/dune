@@ -49,6 +49,13 @@ next
 - Allow setting custom build directories using the `--build-dir` flag or
   `DUNE_BUILD_DIR` environment variable (#846, fix #291, @diml @rgrinberg)
 
+- In dune files, remove support for block (`#| ... |#)`) and sexp
+  (`#;`) comments. These were very rarely used and complicate the
+  language (#837, @diml)
+
+- In dune files, add support for block strings, allowing to nicely
+  format blocks of texts (#837, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

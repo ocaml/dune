@@ -483,13 +483,18 @@ let write_flags fname s =
   let sexp = Usexp.List(List.map ~f:Usexp.atom_or_quoted_string s) in
   Io.write_file path (Usexp.to_string sexp)
 
+let write_lines fname s =
+  let path = Path.of_string fname in
+  let buf = String.concat ~sep:"\n" s in
+  Io.write_file path buf
+
 let main ?(args=[]) ~name f =
   let ocamlc  = ref (
     match Sys.getenv "DUNE_CONFIGURATOR" with
     | s -> Some s
     | exception Not_found ->
-      die "Configurator scripts must be ran with jbuilder. \
-           To manually run a script, use $ jbuilder exec."
+      die "Configurator scripts must be run with Dune. \
+           To manually run a script, use $ dune exec."
   ) in
   let verbose = ref false in
   let dest_dir = ref None in

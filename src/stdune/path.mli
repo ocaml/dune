@@ -112,6 +112,10 @@ val is_in_source_tree : t -> bool
 
 val is_alias_stamp_file : t -> bool
 
+(** [is_strict_descendant_of_build_dir t = is_in_build_dir t && t <>
+    build_dir] *)
+val is_strict_descendant_of_build_dir : t -> bool
+
 (**  Split after the first component if [t] is local *)
 val split_first_component : t -> (string * t) option
 

@@ -687,8 +687,13 @@ let parent_exn t =
   | None -> Exn.code_error "Path.parent:exn t is root"
               ["t", sexp_of_t t]
 
-let is_in_build_dir = function
+let is_strict_descendant_of_build_dir = function
   | In_build_dir p -> not (Local.is_root p)
+  | In_source_tree _
+  | External _ -> false
+
+let is_in_build_dir = function
+  | In_build_dir _ -> true
   | In_source_tree _
   | External _ -> false
 

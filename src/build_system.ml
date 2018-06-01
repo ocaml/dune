@@ -1058,7 +1058,7 @@ and wait_for_file t fn =
   | Some file -> wait_for_file_found fn file
   | None ->
     let dir = Path.parent_exn fn in
-    if Path.is_in_build_dir dir then begin
+    if Path.is_strict_descendant_of_build_dir dir then begin
       load_dir t ~dir;
       match Hashtbl.find t.files fn with
       | Some file -> wait_for_file_found fn file

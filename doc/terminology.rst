@@ -53,14 +53,14 @@ Terminology
    -  ``runtest`` which runs user defined tests
    -  ``install`` which depends on everything that should be installed
    -  ``doc``     which depends on the generated HTML
-      documentation. See :ref:`apidoc` for details
+      documentation. See :ref:`documentation` for details.
 
 - **environment**: in Jbuilder, each directory has an environment
   attached to it. The environment determines the default values of
   various parameters, such as the compilation flags. Inside a scope,
   each directory inherit the environment from its parent. At the root
   of every scope, a default environment is used. At any point, the
-  environment can be altered using an `env`_ stanza.
+  environment can be altered using an :ref:`jbuild-env` stanza.
 
 - **build profile**: a global setting that influence various
   defaults. It can be set from the command line using ``--profile

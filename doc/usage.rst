@@ -398,8 +398,8 @@ context or can be the description of an opam switch, as follows:
   ``--profile``
 
 Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field
-in order to setup cross compilation. See `Cross Compilation`_ for more
-information.
+in order to setup cross compilation. See :ref:`advanced-cross-compilation`
+for more information.
 
 Merlin reads compilation artifacts and it can only read the
 compilation artifacts of a single context.  Usually, you should use

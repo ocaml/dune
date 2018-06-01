@@ -712,6 +712,8 @@ With this jbuild file, running jbuilder as follow will replace the
 
     $ jbuilder build @runtest --auto-promote
 
+.. _jbuild-env:
+
 env
 ---
 
@@ -732,6 +734,8 @@ directory. You can use ``_`` to match any build profile.
 
 Currently ``<settings>`` can be any OCaml flags field, see `OCaml
 flags`_ for more details.
+
+.. _jbuild-ignored_subdirs:
 
 ignored_subdirs
 ---------------
@@ -1152,6 +1156,8 @@ follows:
 .. code:: scheme
 
     (flags (:standard <my options>))
+
+.. _jbuild-jsoo:
 
 js_of_ocaml
 -----------

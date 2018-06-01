@@ -95,6 +95,8 @@ set of predicates:
   it is linked as part of a driver or meant to add a ``-ppx`` argument
   to the compiler, choose the former behavior
 
+.. _advanced-cross-compilation:
+
 Cross Compilation
 =================
 

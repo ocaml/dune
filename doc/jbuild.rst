@@ -184,9 +184,10 @@ modules you want.
   overlap with libraries that are present in the workspace
 
 Note that when binding C libraries, Jbuilder doesn't provide special support for
-tools such as ``pkg-config``, however it integrates easily with `configurator
-<https://github.com/janestreet/configurator>`__ by using ``(c_flags (:include
-...))`` and ``(c_library_flags (:include ...))``.
+tools such as ``pkg-config``, however it integrates easily with configurator_ by
+using ``(c_flags (:include ...))`` and ``(c_library_flags (:include ...))``.
+
+.. _configurator: https://github.com/janestreet/configurator
 
 executable
 ----------
@@ -640,6 +641,8 @@ where ``<destination>`` describe how the file will be installed. For
 instance, to install a file ``mylib.el`` as
 ``emacs/site-lisp/mylib.el`` in the ``share_root`` section:
 
+.. code:: scheme
+
     (install
       ((section share_root)
        (files   ((mylib.el as emacs/site-lisp/mylib.el)))))
@@ -711,6 +714,8 @@ With this jbuild file, running jbuilder as follow will replace the
 
     $ jbuilder build @runtest --auto-promote
 
+.. _jbuild-env:
+
 env
 ---
 
@@ -731,6 +736,8 @@ directory. You can use ``_`` to match any build profile.
 
 Currently ``<settings>`` can be any OCaml flags field, see `OCaml
 flags`_ for more details.
+
+.. _jbuild-ignored_subdirs:
 
 ignored_subdirs
 ---------------
@@ -791,7 +798,7 @@ Jbuilder supports the following variables:
    the toplevel directory of your project and as long as you have at
    least one ``<package>.opam`` file there, ``SCOPE_ROOT`` is
    independent of the workspace configuration
-- ``CC`` is the C compiler command line (list made of the compiler
+-  ``CC`` is the C compiler command line (list made of the compiler
    name followed by its flags) that was used to compile OCaml in the
    current build context
 -  ``CXX`` is the C++ compiler command line being used in the
@@ -806,7 +813,7 @@ Jbuilder supports the following variables:
 -  ``ARCH_SIXTYFOUR`` is ``true`` if using a compiler targeting a
    64 bit architecture and ``false`` otherwise
 -  ``null`` is ``/dev/null`` on Unix or ``nul`` on Windows
-- ``ext_obj``, ``ext_asm``, ``ext_lib``, ``ext_dll`` and ``ext_exe``
+-  ``ext_obj``, ``ext_asm``, ``ext_lib``, ``ext_dll`` and ``ext_exe``
    are the file extension used for various artifacts
 - ``ocaml-config:v`` for every variable ``v`` in the output of
   ``ocamlc -config``. Note that output Jbuilder processes the output
@@ -1152,6 +1159,8 @@ follows:
 
     (flags (:standard <my options>))
 
+.. _jbuild-jsoo:
+
 js_of_ocaml
 -----------
 
@@ -1166,7 +1175,7 @@ using ``(js_of_ocaml (<js_of_ocaml-options>))``.
 - ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
   runtime files.
 
-=<flags>= is specified in the `Ordered set language`_.
+``<flags>`` is specified in the `Ordered set language`_.
 
 The default value for ``(flags ...)`` depends on whether ``--dev`` is passed to
 Jbuilder. ``--dev`` will enable sourcemap and the pretty JavaScript output.
@@ -1191,7 +1200,7 @@ automatically handled by Jbuilder.
 The DSL is currently quite limited, so if you want to do something complicated
 it is recommended to write a small OCaml program and use the DSL to invoke it.
 You can use `shexp <https://github.com/janestreet/shexp>`__ to write portable
-scripts or `Configurator`_ for configuration related tasks.
+scripts or configurator_ for configuration related tasks.
 
 The following constructions are available:
 

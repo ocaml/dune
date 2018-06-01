@@ -107,11 +107,10 @@ module Pkg = struct
     | [pkg] -> Ok pkg
     | [] ->
       Error
-        "The current project (%S declared in  defines no packages.\n\
-         What do you want me to do with this (install ...) stanzas?.\n\
-         You need to add a <package>.opam file at the root \
-         of your project so that\n\
-         I know that you want to install things as part of package <package>."
+        "The current project defines some public elements, \
+         but no opam packages are defined.\n\
+         Please add a <package>.opam file at the project root \
+         so that these elements are installed into it."
     | _ :: _ :: _ ->
       Error
         (sprintf

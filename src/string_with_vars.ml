@@ -62,7 +62,7 @@ let items_of_string s = of_tokens (Token.tokenise s)
 let t : Sexp.Of_sexp.ast -> t = function
   | Atom(loc, A s) -> { items = items_of_string s;  loc;  quoted = false }
   | Quoted_string (loc, s) ->
-     { items = items_of_string s;  loc;  quoted = true }
+    { items = items_of_string s;  loc;  quoted = true }
   | List _ as sexp -> Sexp.Of_sexp.of_sexp_error sexp "Atom expected"
 
 let loc t = t.loc
@@ -89,13 +89,13 @@ let sexp_of_ast t = Sexp.To_sexp.list sexp_of_item t.items
 
 let fold t ~init ~f =
   List.fold_left t.items ~init ~f:(fun acc item ->
-      match item with
-      | Text _ -> acc
-      | Var (_, v) -> f acc t.loc v)
+    match item with
+    | Text _ -> acc
+    | Var (_, v) -> f acc t.loc v)
 
 let iter t ~f = List.iter t.items ~f:(function
-                    | Text _ -> ()
-                    | Var (_, v) -> f t.loc v)
+  | Text _ -> ()
+  | Var (_, v) -> f t.loc v)
 
 let vars t = fold t ~init:String.Set.empty ~f:(fun acc _ x -> String.Set.add acc x)
 
@@ -153,20 +153,20 @@ module Expand_to(V: EXPANSION) = struct
         end
       | Text s :: items -> loop (s :: acc_text) acc items
       | Var (syntax, v) as it :: items ->
-         match f t.loc v with
-         | None -> loop [] (it :: commit_text acc_text acc) items
-         | Some x ->
-            if not t.quoted && V.is_multivalued x then
-           Loc.fail t.loc "please quote the string containing the \
-                           list variable %s" (string_of_var syntax v)
-         else loop (V.to_string ctx x :: acc_text) acc items
+        match f t.loc v with
+        | None -> loop [] (it :: commit_text acc_text acc) items
+        | Some x ->
+          if not t.quoted && V.is_multivalued x then
+            Loc.fail t.loc "please quote the string containing the \
+                            list variable %s" (string_of_var syntax v)
+          else loop (V.to_string ctx x :: acc_text) acc items
     in
     match t.items with
     | [Var (_, v)] when not t.quoted ->
-       (* Unquoted single var *)
-       (match f t.loc v with
-        | Some e -> Left (Left e)
-        | None   -> Right t)
+      (* Unquoted single var *)
+      (match f t.loc v with
+       | Some e -> Left (Left e)
+       | None   -> Right t)
     | _ -> loop [] [] t.items
 end
 

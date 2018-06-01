@@ -9,16 +9,26 @@ let filter_stanzas ~ignore_promoted_rules stanzas =
   else
     stanzas
 
+module Jbuild = struct
+  type t =
+    { dir     : Path.t
+    ; project : Dune_project.t
+    ; stanzas : Stanzas.t
+    ; kind    : File_tree.Dune_file.Kind.t
+    }
+end
+
 module Jbuilds = struct
   type script =
     { dir     : Path.t
     ; file    : Path.t
     ; project : Dune_project.t
+    ; kind    : File_tree.Dune_file.Kind.t
     }
 
   type one =
-    | Literal of (Path.t * Dune_project.t * Stanza.t list)
-    | Script of script
+    | Literal of Jbuild.t
+    | Script  of script
 
   type t =
     { jbuilds               : one list
@@ -114,7 +124,7 @@ end
         | Literal x -> Left  x
         | Script  x -> Right x)
     in
-    Fiber.parallel_map dynamic ~f:(fun { dir; file; project } ->
+    Fiber.parallel_map dynamic ~f:(fun { dir; file; project; kind } ->
       let generated_jbuild =
         Path.append (Path.relative generated_jbuilds_dir context.name) file
       in
@@ -153,10 +163,19 @@ end
         die "@{<error>Error:@} %s failed to produce a valid jbuild file.\n\
              Did you forgot to call [Jbuild_plugin.V*.send]?"
           (Path.to_string file);
-      let sexps = Io.Sexp.load generated_jbuild ~mode:Many in
-      Fiber.return (dir, project,
-                    Stanzas.parse project sexps ~file:generated_jbuild
-                    |> filter_stanzas ~ignore_promoted_rules))
+      let stanzas =
+        Io.Sexp.load generated_jbuild ~mode:Many
+          ~lexer:(File_tree.Dune_file.Kind.lexer kind)
+        |> Stanzas.parse project ~file:generated_jbuild
+        |> filter_stanzas ~ignore_promoted_rules
+      in
+      Fiber.return
+        { Jbuild.
+          dir
+        ; project
+        ; kind
+        ; stanzas
+        })
     >>| fun dynamic ->
     static @ dynamic
 end
@@ -170,17 +189,24 @@ type conf =
 
 let interpret ~dir ~project ~ignore_promoted_rules
       ~(dune_file:File_tree.Dune_file.t) =
-  match dune_file with
+  match dune_file.contents with
   | Plain p ->
+    let stanzas =
+      Stanzas.parse project p.sexps ~file:p.path
+      |> filter_stanzas ~ignore_promoted_rules
+    in
     let jbuild =
-      Jbuilds.Literal (dir, project,
-                       Stanzas.parse project p.sexps ~file:p.path
-                       |> filter_stanzas ~ignore_promoted_rules)
+      Jbuilds.Literal
+        { dir
+        ; project
+        ; stanzas
+        ; kind = dune_file.kind
+        }
     in
     p.sexps <- [];
     jbuild
   | Ocaml_script file ->
-    Script { dir; project; file }
+    Script { dir; project; file; kind = dune_file.kind }
 
 let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
   let ftree = File_tree.load Path.root ?extra_ignored_subtrees in

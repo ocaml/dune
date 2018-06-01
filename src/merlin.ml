@@ -96,10 +96,10 @@ let make
 let add_source_dir t dir =
   { t with source_dirs = Path.Set.add t.source_dirs dir }
 
-let ppx_flags sctx ~dir:_ ~scope ~src_dir:_ { preprocess; libname; _ } =
+let ppx_flags sctx ~dir:_ ~scope ~dir_kind { preprocess; libname; _ } =
   match preprocess with
   | Pps { loc = _; pps; flags } -> begin
-    match Preprocessing.get_ppx_driver sctx ~scope pps with
+    match Preprocessing.get_ppx_driver sctx ~scope ~dir_kind pps with
     | Ok exe ->
       (Path.to_absolute_filename exe
        :: "--as-ppx"
@@ -109,7 +109,7 @@ let ppx_flags sctx ~dir:_ ~scope ~src_dir:_ { preprocess; libname; _ } =
   end
   | Other -> []
 
-let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
+let dot_merlin sctx ~dir ~scope ~dir_kind ({ requires; flags; _ } as t) =
   match Path.drop_build_context dir with
   | None -> ()
   | Some remaindir ->
@@ -139,7 +139,7 @@ let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
         in
         Dot_file.to_string
           ~remaindir
-          ~ppx:(ppx_flags sctx ~dir ~scope ~src_dir:remaindir t)
+          ~ppx:(ppx_flags sctx ~dir ~scope ~dir_kind t)
           ~flags
           ~src_dirs
           ~obj_dirs)
@@ -162,6 +162,6 @@ let merge_all = function
   | [] -> None
   | init::ts -> Some (List.fold_left ~init ~f:merge_two ts)
 
-let add_rules sctx ~dir ~scope merlin =
+let add_rules sctx ~dir ~scope ~dir_kind merlin =
   if (SC.context sctx).merlin then
-    dot_merlin sctx ~dir ~scope merlin
+    dot_merlin sctx ~dir ~scope ~dir_kind merlin

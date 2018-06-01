@@ -130,7 +130,7 @@ module Gen(P : Install_params) = struct
            >>>
            Build.write_file_dyn meta)))
 
-  let lib_install_files ~dir ~sub_dir ~name (lib : Library.t) =
+  let lib_install_files ~dir ~sub_dir ~name ~scope ~dir_kind (lib : Library.t) =
     let obj_dir = Utils.library_object_directory ~dir lib.name in
     let make_entry section ?dst fn =
       Install.Entry.make section fn
@@ -184,7 +184,30 @@ module Gen(P : Install_params) = struct
       match lib.kind with
       | Normal | Ppx_deriver -> []
       | Ppx_rewriter ->
-        [Preprocessing.get_ppx_driver_for_public_lib sctx ~name]
+        match (dir_kind : File_tree.Dune_file.Kind.t) with
+        | Dune ->
+          [Preprocessing.get_ppx_driver_for_public_lib sctx ~name ~dir_kind]
+        | Jbuild ->
+          let pps = [(lib.buildable.loc, Pp.of_string lib.name)] in
+          let pps =
+            let deps =
+              List.concat_map lib.buildable.libraries ~f:Lib_dep.to_lib_names
+            in
+            if List.exists deps ~f:(function
+              | "ppx_driver" | "ppx_type_conv" -> true
+              | _ -> false) then
+              pps @ [match Scope.name scope with
+                | Named "ppxlib" ->
+                  Loc.none, Pp.of_string "ppxlib.runner"
+                | _ ->
+                  Loc.none, Pp.of_string "ppx_driver.runner"]
+            else
+              pps
+          in
+          match Preprocessing.get_ppx_driver sctx ~scope ~dir_kind pps with
+          | Ok    x -> [x]
+          | Error _ ->
+            [Preprocessing.get_ppx_driver_for_public_lib sctx ~name ~dir_kind]
     in
     List.concat
       [ List.map files ~f:(make_entry Lib    )
@@ -274,10 +297,12 @@ module Gen(P : Install_params) = struct
   let init_install () =
     let entries_per_package =
       List.concat_map (SC.stanzas_to_consider_for_install sctx)
-        ~f:(fun (dir, _scope, stanza) ->
+        ~f:(fun { SC.Installable. dir; stanza; kind = dir_kind; scope; _ } ->
           match stanza with
-          | Library ({ public = Some { package; sub_dir; name; _ }; _ } as lib) ->
-            List.map (lib_install_files ~dir ~sub_dir ~name lib)
+          | Library ({ public = Some { package; sub_dir; name; _ }
+                     ; _ } as lib) ->
+            List.map (lib_install_files ~dir ~sub_dir ~name lib ~scope
+                        ~dir_kind)
               ~f:(fun x -> package.name, x)
           | Install { section; files; package}->
             List.map files ~f:(fun { Install_conf. src; dst } ->

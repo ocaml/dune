@@ -66,21 +66,26 @@ module Driver = struct
           ]
     end
 
+    (* The [lib] field is lazy so that we don't need to fill it for
+       hardcoded [t] values used to implement the jbuild style
+       handling of drivers.
+
+       See [Jbuild_driver] below for details. *)
     type t =
       { info     : Info.t
-      ; lib      : Lib.t
+      ; lib      : Lib.t Lazy.t
       ; replaces : t list Or_exn.t
       }
 
     let desc ~plural = "ppx driver" ^ if plural then "s" else ""
     let desc_article = "a"
 
-    let lib      t = t.lib
+    let lib      t = Lazy.force t.lib
     let replaces t = t.replaces
 
     let instantiate ~resolve ~get lib (info : Info.t) =
       { info
-      ; lib
+      ; lib = lazy lib
       ; replaces =
           let open Result.O in
           Result.all
@@ -96,7 +101,7 @@ module Driver = struct
 
     let to_sexp t =
       let open Sexp.To_sexp in
-      let f x = string (Lib.name x.lib) in
+      let f x = string (Lib.name (Lazy.force x.lib)) in
       ((1, 0),
        record
          [ "flags"            , Ordered_set_lang.Unexpanded.sexp_of_t
@@ -111,8 +116,78 @@ module Driver = struct
   include Sub_system.Register_backend(M)
 end
 
-let ppx_exe sctx ~key =
-  Path.relative (SC.build_dir sctx) (".ppx/" ^ key ^ "/ppx.exe")
+module Jbuild_driver = struct
+  (* This module is used to implement the jbuild handling of ppx
+     drivers.  It doesn't implement exactly the same algorithm, but it
+     should be enough for all jbuilder packages out there.
+
+     It works as follow: given the list of ppx rewriters specified by
+     the user, check whether the last one is named [ppxlib.runner] or
+     [ppx_driver.runner]. If it isn't, assume the driver is
+     ocaml-migrate-parsetree and use some hard-coded driver
+     information. If it is, use the corresponding hardcoded driver
+     information. *)
+
+  let make name info : (Pp.t * Driver.t) Lazy.t = lazy (
+    let info =
+      Sexp.parse_string ~mode:Single ~fname:"<internal>" info
+      |> Driver.Info.parse
+    in
+    (Pp.of_string name,
+     { info
+     ; lib = lazy (assert false)
+     ; replaces = Ok []
+     }))
+  let omp = make "ocaml-migrate-parsetree" {|
+    ((main       Migrate_parsetree.Driver.run_main)
+     (flags      (--dump-ast))
+     (lint_flags (--null)))
+  |}
+  let ppxlib = make "ppxlib" {|
+    ((main       Ppxlib.Driver.standalone)
+     (flags      (-diff-cmd - -dump-ast))
+     (lint_flags (-diff-cmd - -null    )))
+  |}
+  let ppx_driver = make "ppx_driver" {|
+    ((main       Ppx_driver.standalone)
+     (flags      (-diff-cmd - -dump-ast))
+     (lint_flags (-diff-cmd - -null    )))
+  |}
+
+  let drivers =
+    [ Pp.of_string "ocaml-migrate-parsetree.driver-main" , omp
+    ; Pp.of_string "ppxlib.runner"                       , ppxlib
+    ; Pp.of_string "ppx_driver.runner"                   , ppx_driver
+    ]
+
+  let get_driver pps =
+    let driver =
+      match List.last pps with
+      | None -> omp
+      | Some (_, pp) -> Option.value (List.assoc drivers pp) ~default:omp
+    in
+    snd (Lazy.force driver)
+
+  (* For building the driver *)
+  let analyse_pps pps =
+    let driver, rev_others =
+      match List.rev pps with
+      | [] -> (omp, [])
+      | pp :: rev_rest as rev_pps ->
+        match List.assoc drivers pp with
+        | None        -> (omp   , rev_pps )
+        | Some driver -> (driver, rev_rest)
+    in
+    let driver_pp, driver = Lazy.force driver in
+    (driver, List.rev (driver_pp :: rev_others))
+end
+
+let ppx_exe sctx ~key ~dir_kind =
+  match (dir_kind : File_tree.Dune_file.Kind.t) with
+  | Dune ->
+    Path.relative (SC.build_dir sctx) (".ppx/" ^ key ^ "/ppx.exe")
+  | Jbuild ->
+    Path.relative (SC.build_dir sctx) (".ppx/jbuild/" ^ key ^ "/ppx.exe")
 
 let no_driver_error pps =
   let has name =
@@ -130,10 +205,17 @@ let no_driver_error pps =
       "No ppx driver found.\n\
        It seems that these ppx rewriters are not compatible with jbuilder."
 
-let build_ppx_driver sctx ~lib_db ~dep_kind ~target pps =
+let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
   let ctx = SC.context sctx in
   let mode = Context.best_mode ctx in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
+  let jbuild_driver, pps =
+    match (dir_kind : File_tree.Dune_file.Kind.t) with
+    | Dune -> (None, pps)
+    | Jbuild ->
+      let driver, pps = Jbuild_driver.analyse_pps pps in
+      (Some driver, pps)
+  in
   let driver_and_libs =
     let open Result.O in
     Result.map_error ~f:(fun e ->
@@ -145,11 +227,15 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target pps =
          (List.map pps ~f:(fun x -> (Loc.none, x)))
        >>= Lib.closure
        >>= fun resolved_pps ->
-       Driver.select_replaceable_backend resolved_pps ~loc:Loc.none
-         ~replaces:Driver.replaces
-         ~no_backend_error:no_driver_error
-       >>| fun driver ->
-       (driver, resolved_pps))
+       match jbuild_driver with
+       | None ->
+         Driver.select_replaceable_backend resolved_pps ~loc:Loc.none
+           ~replaces:Driver.replaces
+           ~no_backend_error:no_driver_error
+         >>| fun driver ->
+         (driver, resolved_pps)
+       | Some driver ->
+         Ok (driver, resolved_pps))
   in
   (* CR-someday diml: what we should do is build the .cmx/.cmo once
      and for all at the point where the driver is defined. *)
@@ -175,26 +261,29 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target pps =
        ; Dep ml
        ])
 
+let get_rules sctx key ~dir_kind =
+  let exe = ppx_exe sctx ~key ~dir_kind in
+  let (key, lib_db) = SC.Scope_key.of_string sctx key in
+  let names =
+    match key with
+    | "+none+" -> []
+    | _ -> String.split key ~on:'+'
+  in
+  let names =
+    match List.rev names with
+    | [] -> []
+    | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
+  in
+  let pps = List.map names ~f:Jbuild.Pp.of_string in
+  build_ppx_driver sctx pps ~lib_db ~dep_kind:Required ~target:exe ~dir_kind
+
 let gen_rules sctx components =
   match components with
-  | [key] ->
-    let exe = ppx_exe sctx ~key in
-    let (key, lib_db) = SC.Scope_key.of_string sctx key in
-    let names =
-      match key with
-      | "+none+" -> []
-      | _ -> String.split key ~on:'+'
-    in
-    let names =
-      match List.rev names with
-      | [] -> []
-      | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
-    in
-    let pps = List.map names ~f:Jbuild.Pp.of_string in
-    build_ppx_driver sctx pps ~lib_db ~dep_kind:Required ~target:exe
+  | [key] -> get_rules sctx key ~dir_kind:Dune
+  | ["jbuild"; key] -> get_rules sctx key ~dir_kind:Jbuild
   | _ -> ()
 
-let ppx_driver_exe sctx libs =
+let ppx_driver_exe sctx libs ~dir_kind =
   let names =
     List.rev_map libs ~f:Lib.name
     |> List.sort ~compare:String.compare
@@ -222,22 +311,29 @@ let ppx_driver_exe sctx libs =
     | None            -> key
     | Some scope_name -> SC.Scope_key.to_string key scope_name
   in
-  ppx_exe sctx ~key
+  ppx_exe sctx ~key ~dir_kind
 
-let get_ppx_driver_for_public_lib sctx ~name =
-  ppx_exe sctx ~key:name
+let get_ppx_driver_for_public_lib sctx ~name ~dir_kind =
+  ppx_exe sctx ~key:name ~dir_kind
 
-let get_ppx_driver sctx ~loc ~scope pps =
+let get_ppx_driver sctx ~loc ~scope ~dir_kind pps =
   let sctx = SC.host sctx in
   let open Result.O in
-  Lib.DB.resolve_pps (Scope.libs scope) pps
-  >>= fun libs ->
-  Lib.closure libs
-  >>=
-  Driver.select_replaceable_backend ~loc ~replaces:Driver.replaces
-    ~no_backend_error:no_driver_error
-  >>= fun driver ->
-  Ok (ppx_driver_exe sctx libs, driver)
+  match (dir_kind : File_tree.Dune_file.Kind.t) with
+  | Dune ->
+    Lib.DB.resolve_pps (Scope.libs scope) pps
+    >>= fun libs ->
+    Lib.closure libs
+    >>=
+    Driver.select_replaceable_backend ~loc ~replaces:Driver.replaces
+      ~no_backend_error:no_driver_error
+    >>= fun driver ->
+    Ok (ppx_driver_exe sctx libs ~dir_kind, driver)
+  | Jbuild ->
+    let driver = Jbuild_driver.get_driver pps in
+    Lib.DB.resolve_pps (Scope.libs scope) pps
+    >>= fun libs ->
+    Ok (ppx_driver_exe sctx libs ~dir_kind, driver)
 
 let target_var = String_with_vars.virt_var __POS__ "@"
 let root_var   = String_with_vars.virt_var __POS__ "ROOT"
@@ -282,85 +378,88 @@ let promote_correction fn build ~suffix =
            (Path.extend_basename fn ~suffix))
     ]
 
-let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope = Staged.stage (
-  let alias = Build_system.Alias.lint ~dir in
-  let add_alias fn build =
-    SC.add_alias_action sctx alias build
-      ~stamp:(List [ Sexp.unsafe_atom_of_string "lint"
-                   ; Sexp.To_sexp.(option string) lib_name
-                   ; Sexp.atom fn
-                   ])
-  in
-  let lint =
-    Per_module.map lint ~f:(function
-      | Preprocess.No_preprocessing ->
-        (fun ~source:_ ~ast:_ -> ())
-      | Action (loc, action) ->
-        (fun ~source ~ast:_ ->
-           let action = Action.Unexpanded.Chdir (root_var, action) in
-           Module.iter source ~f:(fun _ (src : Module.File.t) ->
-             let src_path = Path.relative dir src.name in
-             add_alias src.name
-               (Build.path src_path
-                >>^ (fun _ -> [src_path])
-                >>> SC.Action.run sctx
-                      action
-                      ~loc
-                      ~dir
-                      ~dep_kind
-                      ~targets:(Static [])
-                      ~scope)))
-      | Pps { loc; pps; flags } ->
-        let args : _ Arg_spec.t =
-          S [ As flags
-            ; As (cookie_library_name lib_name)
-            ]
-        in
-        let corrected_suffix = ".lint-corrected" in
-        let driver_and_flags =
-          let open Result.O in
-          get_ppx_driver sctx ~loc ~scope pps >>| fun (exe, driver) ->
-          (exe,
-           let extra_vars =
-             String_map.singleton "corrected-suffix"
-               (Action.Var_expansion.Strings ([corrected_suffix], Split))
-           in
-           Build.memoize "ppx flags"
-             (SC.expand_and_eval_set sctx driver.info.lint_flags
-                ~scope
-                ~dir
-                ~extra_vars
-                ~standard:(Build.return [])))
-        in
-        (fun ~source ~ast ->
-           Module.iter ast ~f:(fun kind src ->
-             add_alias src.name
-               (promote_correction ~suffix:corrected_suffix
-                  (Option.value_exn (Module.file ~dir source kind))
-                  (Build.of_result_map driver_and_flags ~f:(fun (exe, flags) ->
-                     flags >>>
-                     Build.run ~context:(SC.context sctx)
-                       (Ok exe)
-                       [ args
-                       ; Ml_kind.ppx_driver_flag kind
-                       ; Dep (Path.relative dir src.name)
-                       ; Dyn (fun x -> As x)
-                       ]))))))
-  in
-  fun ~(source : Module.t) ~ast ->
-    Per_module.get lint source.name ~source ~ast)
+let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
+  Staged.stage (
+    let alias = Build_system.Alias.lint ~dir in
+    let add_alias fn build =
+      SC.add_alias_action sctx alias build
+        ~stamp:(List [ Sexp.unsafe_atom_of_string "lint"
+                     ; Sexp.To_sexp.(option string) lib_name
+                     ; Sexp.atom fn
+                     ])
+    in
+    let lint =
+      Per_module.map lint ~f:(function
+        | Preprocess.No_preprocessing ->
+          (fun ~source:_ ~ast:_ -> ())
+        | Action (loc, action) ->
+          (fun ~source ~ast:_ ->
+             let action = Action.Unexpanded.Chdir (root_var, action) in
+             Module.iter source ~f:(fun _ (src : Module.File.t) ->
+               let src_path = Path.relative dir src.name in
+               add_alias src.name
+                 (Build.path src_path
+                  >>^ (fun _ -> [src_path])
+                  >>> SC.Action.run sctx
+                        action
+                        ~loc
+                        ~dir
+                        ~dep_kind
+                        ~targets:(Static [])
+                        ~scope)))
+        | Pps { loc; pps; flags } ->
+          let args : _ Arg_spec.t =
+            S [ As flags
+              ; As (cookie_library_name lib_name)
+              ]
+          in
+          let corrected_suffix = ".lint-corrected" in
+          let driver_and_flags =
+            let open Result.O in
+            get_ppx_driver sctx ~loc ~scope ~dir_kind pps
+            >>| fun (exe, driver) ->
+            (exe,
+             let extra_vars =
+               String_map.singleton "corrected-suffix"
+                 (Action.Var_expansion.Strings ([corrected_suffix], Split))
+             in
+             Build.memoize "ppx flags"
+               (SC.expand_and_eval_set sctx driver.info.lint_flags
+                  ~scope
+                  ~dir
+                  ~extra_vars
+                  ~standard:(Build.return [])))
+          in
+          (fun ~source ~ast ->
+             Module.iter ast ~f:(fun kind src ->
+               add_alias src.name
+                 (promote_correction ~suffix:corrected_suffix
+                    (Option.value_exn (Module.file ~dir source kind))
+                    (Build.of_result_map driver_and_flags ~f:(fun (exe, flags) ->
+                       flags >>>
+                       Build.run ~context:(SC.context sctx)
+                         (Ok exe)
+                         [ args
+                         ; Ml_kind.ppx_driver_flag kind
+                         ; Dep (Path.relative dir src.name)
+                         ; Dyn (fun x -> As x)
+                         ]))))))
+    in
+    fun ~(source : Module.t) ~ast ->
+      Per_module.get lint source.name ~source ~ast)
 
 type t = (Module.t -> lint:bool -> Module.t) Per_module.t
 
 let dummy = Per_module.for_all (fun m ~lint:_ -> m)
 
 let make sctx ~dir ~dep_kind ~lint ~preprocess
-      ~preprocessor_deps ~lib_name ~scope =
+      ~preprocessor_deps ~lib_name ~scope ~dir_kind =
   let preprocessor_deps =
     Build.memoize "preprocessor deps" preprocessor_deps
   in
   let lint_module =
-    Staged.unstage (lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope)
+    Staged.unstage (lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope
+                      ~dir_kind)
   in
   Per_module.map preprocess ~f:(function
     | Preprocess.No_preprocessing ->
@@ -401,7 +500,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
       let corrected_suffix = ".ppx-corrected" in
       let driver_and_flags =
         let open Result.O in
-        get_ppx_driver sctx ~loc ~scope pps >>| fun (exe, driver) ->
+        get_ppx_driver sctx ~loc ~scope ~dir_kind pps >>| fun (exe, driver) ->
         (exe,
          let extra_vars =
            String_map.singleton "corrected-suffix"
@@ -443,9 +542,9 @@ let pp_modules t ?(lint=true) modules =
 let pp_module_as t ?(lint=true) name m =
   Per_module.get t name m ~lint
 
-let get_ppx_driver sctx ~scope pps =
+let get_ppx_driver sctx ~scope ~dir_kind pps =
   let sctx = SC.host sctx in
   let open Result.O in
   Lib.DB.resolve_pps (Scope.libs scope) pps
   >>| fun libs ->
-  ppx_driver_exe sctx libs
+  ppx_driver_exe sctx libs ~dir_kind

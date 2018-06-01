@@ -11,7 +11,7 @@ On the other hand, public libraries may have private preprocessors
         ocamlc .ppx_internal.objs/ppx_internal.{cmi,cmo,cmt}
       ocamlopt .ppx_internal.objs/ppx_internal.{cmx,o}
       ocamlopt ppx_internal.{a,cmxa}
-      ocamlopt .ppx/ppx_internal@mylib/ppx.exe
+      ocamlopt .ppx/jbuild/ppx_internal@mylib/ppx.exe
            ppx mylib.pp.ml
       ocamldep mylib.pp.ml.d
         ocamlc .mylib.objs/mylib.{cmi,cmo,cmt}
@@ -22,13 +22,13 @@ On the other hand, public libraries may have private preprocessors
 
 Unless they introduce private runtime dependencies:
   $ dune build --display short --root private-runtime-deps 2>&1 | grep -v Entering
-  File "dune", line 16, characters 20-31:
+  File "jbuild", line 16, characters 20-31:
   Error: Library "private_runtime_dep" is private, it cannot be a dependency of a public library.
   You need to give "private_runtime_dep" a public name.
         ocamlc .private_ppx.objs/private_ppx.{cmi,cmo,cmt}
       ocamlopt .private_ppx.objs/private_ppx.{cmx,o}
       ocamlopt private_ppx.{a,cmxa}
-      ocamlopt .ppx/private_ppx@mylib/ppx.exe
+      ocamlopt .ppx/jbuild/private_ppx@mylib/ppx.exe
            ppx mylib.pp.ml
       ocamldep mylib.pp.ml.d
 

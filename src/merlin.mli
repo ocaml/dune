@@ -23,5 +23,6 @@ val add_rules
   : Super_context.t
   -> dir:Path.t
   -> scope:Scope.t
+  -> dir_kind:File_tree.Dune_file.Kind.t
   -> t
   -> unit

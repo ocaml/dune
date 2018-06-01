@@ -1,12 +1,21 @@
 open Stdune
 
+module Jbuild : sig
+  type t =
+    { dir     : Path.t
+    ; project : Dune_project.t
+    ; stanzas : Jbuild.Stanzas.t
+    ; kind    : File_tree.Dune_file.Kind.t
+    }
+end
+
 module Jbuilds : sig
   type t
 
   val eval
     :  t
     -> context:Context.t
-    -> (Path.t * Dune_project.t * Jbuild.Stanzas.t) list Fiber.t
+    -> Jbuild.t list Fiber.t
 end
 
 type conf =

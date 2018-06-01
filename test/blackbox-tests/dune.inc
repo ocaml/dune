@@ -15,6 +15,14 @@
     (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
 
 (alias
+ ((name block-strings)
+  (deps ((package dune) (files_recursively_in test-cases/block-strings)))
+  (action
+   (chdir
+    test-cases/block-strings
+    (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+
+(alias
  ((name byte-code-only)
   (deps ((package dune) (files_recursively_in test-cases/byte-code-only)))
   (action
@@ -521,6 +529,7 @@
   (deps
    ((alias aliases)
     (alias bad-alias-error)
+    (alias block-strings)
     (alias byte-code-only)
     (alias c-stubs)
     (alias configurator)
@@ -583,6 +592,7 @@
   (deps
    ((alias aliases)
     (alias bad-alias-error)
+    (alias block-strings)
     (alias byte-code-only)
     (alias c-stubs)
     (alias configurator)

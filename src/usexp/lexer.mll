@@ -56,6 +56,10 @@ type escape_sequence =
   | Other
 
 let escaped_buf = Buffer.create 256
+
+type block_string_line_kind =
+  | With_escape_sequences
+  | Raw
 }
 
 let comment   = ';' [^ '\n' '\r']*
@@ -143,7 +147,8 @@ and quoted_string_after_escaped_newline strict = parse
 
 and escape_sequence strict = parse
   | newline
-    { Newline }
+    { Lexing.new_line lexbuf;
+      Newline }
   | ['\\' '\'' '"' 'n' 't' 'b' 'r'] as c
     { let c =
         match c with
@@ -223,7 +228,7 @@ and token = parse
   | '"'
     { Buffer.clear escaped_buf;
       let start = Lexing.lexeme_start_p lexbuf in
-      let s = quoted_string true lexbuf in
+      let s = dune_quoted_string lexbuf in
       lexbuf.lex_start_p <- start;
       Quoted_string s
     }
@@ -231,3 +236,71 @@ and token = parse
     { Token.Atom (A s) }
   | eof
     { Eof }
+
+and dune_quoted_string = parse
+  | "\\|"
+    { block_string_start With_escape_sequences lexbuf }
+  | "\\>"
+    { block_string_start Raw lexbuf }
+  | ""
+    { quoted_string true lexbuf }
+
+and block_string_start kind = parse
+  | newline as s
+    { Lexing.new_line lexbuf;
+      Buffer.add_string escaped_buf s;
+      block_string_after_newline lexbuf
+    }
+  | ' '
+    { match kind with
+      | With_escape_sequences -> block_string lexbuf
+      | Raw -> raw_block_string lexbuf
+    }
+  | eof
+    { Buffer.contents escaped_buf
+    }
+  | _
+    { error lexbuf "There must be at least one space after \"\\|"
+    }
+
+and block_string = parse
+  | newline as s
+    { Lexing.new_line lexbuf;
+      Buffer.add_string escaped_buf s;
+      block_string_after_newline lexbuf
+    }
+  | '\\'
+    { match escape_sequence true lexbuf with
+      | Newline -> block_string_after_newline lexbuf
+      | Other   -> block_string               lexbuf
+    }
+  | _ as c
+    { Buffer.add_char escaped_buf c;
+      block_string lexbuf
+    }
+  | eof
+    { Buffer.contents escaped_buf
+    }
+
+and block_string_after_newline = parse
+  | blank* "\"\\|"
+    { block_string_start With_escape_sequences lexbuf }
+  | blank* "\"\\>"
+    { block_string_start Raw lexbuf }
+  | ""
+    { Buffer.contents escaped_buf
+    }
+
+and raw_block_string = parse
+  | newline as s
+    { Lexing.new_line lexbuf;
+      Buffer.add_string escaped_buf s;
+      block_string_after_newline lexbuf
+    }
+  | _ as c
+    { Buffer.add_char escaped_buf c;
+      raw_block_string lexbuf
+    }
+  | eof
+    { Buffer.contents escaped_buf
+    }

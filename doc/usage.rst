@@ -59,7 +59,7 @@ in ancestor directories. For instance ``jbuild-workspace.dev``. If such a file
 is found, it will mark the root of the workspace. ``jbuilder`` will however not
 read its contents.
 
- The rationale for this rule is that it is good practice to have a
+The rationale for this rule is that it is good practice to have a
 ``jbuild-workspace.dev`` file at the root of your project.
 
 For quick experiments, simply do this to mark the root:
@@ -391,15 +391,15 @@ context or can be the description of an opam switch, as follows:
    run which is usually ``~/.opam``
 
 - ``(merlin)`` instructs Jbuilder to use this build context for
-   merlin
+  merlin
 
 - ``(profile <profile>)`` to set a different profile for a build
   context. This has precedence over the command line option
   ``--profile``
 
 Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field
-in order to setup cross compilation. See `Cross Compilation`_ for more
-information.
+in order to setup cross compilation. See :ref:`advanced-cross-compilation`
+for more information.
 
 Merlin reads compilation artifacts and it can only read the
 compilation artifacts of a single context.  Usually, you should use
@@ -476,7 +476,7 @@ And that if your project contains several packages, then all the
 package names must be prefixed by the shortest one.
 
 Watermarking
-~~~~~~~~~~~~
+============
 
 One of the feature topkg provides is watermarking; it replaces various
 strings of the form ``%%ID%%`` in all files of your project before
@@ -498,7 +498,7 @@ watermarks when the package is pinned by the user. To help with this,
 jbuilder provides the ``subst`` sub-command.
 
 jbuilder subst
-~~~~~~~~~~~~~~
+==============
 
 ``jbuilder subst`` performs the same substitution ``topkg`` does with
 the default configuration. i.e. calling ``jbuilder subst`` at the root

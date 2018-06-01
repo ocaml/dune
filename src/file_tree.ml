@@ -195,6 +195,9 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             | [fn] ->
               let dune_file, ignored_subdirs =
                 Dune_file.load (Path.relative path fn)
+                  ~lexer:(match fn with
+                    | "jbuild" -> Sexp.Lexer.jbuild_token
+                    | _        -> Sexp.Lexer.token)
               in
               (Some dune_file, ignored_subdirs)
             | _ ->

@@ -61,15 +61,16 @@ let escaped_buf = Buffer.create 256
 let comment   = ';' [^ '\n' '\r']*
 let newline   = '\r'? '\n'
 let blank     = [' ' '\t' '\012']
-let atom_char = [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\012' '|' '#']
+let atom_char = [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\012']
 let digit     = ['0'-'9']
 let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
 
-rule token = parse
+(* rule for jbuild files *)
+rule jbuild_token = parse
   | newline
-    { Lexing.new_line lexbuf; token lexbuf }
+    { Lexing.new_line lexbuf; jbuild_token lexbuf }
   | blank+ | comment
-    { token lexbuf }
+    { jbuild_token lexbuf }
   | '('
     { Token.Lparen }
   | ')'
@@ -82,25 +83,27 @@ rule token = parse
       Quoted_string s
     }
   | "#|"
-    { block_comment lexbuf }
+    { jbuild_block_comment lexbuf;
+      jbuild_token lexbuf
+    }
   | "#;"
     { Sexp_comment }
   | eof
     { Eof }
   | ""
-    { atom "" (Lexing.lexeme_start_p lexbuf) lexbuf }
+    { jbuild_atom "" (Lexing.lexeme_start_p lexbuf) lexbuf }
 
-and atom acc start = parse
+and jbuild_atom acc start = parse
   | '#'+ '|'
     { lexbuf.lex_start_p <- start;
-      error lexbuf "atoms cannot contain #|"
+      error lexbuf "jbuild_atoms cannot contain #|"
     }
   | '|'+ '#'
     { lexbuf.lex_start_p <- start;
-      error lexbuf "atoms cannot contain |#"
+      error lexbuf "jbuild_atoms cannot contain |#"
     }
-  | ('#'+ | '|'+ | atom_char+) as s
-    { atom (if acc = "" then s else acc ^ s) start lexbuf
+  | ('#'+ | '|'+ | (atom_char # ['|' '#'])) as s
+    { jbuild_atom (if acc = "" then s else acc ^ s) start lexbuf
     }
   | ""
     { if acc = "" then
@@ -191,18 +194,40 @@ and escape_sequence strict = parse
       Other
     }
 
-and block_comment = parse
+and jbuild_block_comment = parse
   | '"'
     { Buffer.clear escaped_buf;
       ignore (quoted_string false lexbuf : string);
-      block_comment lexbuf
+      jbuild_block_comment lexbuf
     }
   | "|#"
-    { token lexbuf
+    { ()
     }
   | eof
     { error lexbuf "unterminated block comment"
     }
   | _
-    { block_comment lexbuf
+    { jbuild_block_comment lexbuf
     }
+
+(* rule for dune files *)
+and token = parse
+  | newline
+    { Lexing.new_line lexbuf; token lexbuf }
+  | blank+ | comment
+    { token lexbuf }
+  | '('
+    { Token.Lparen }
+  | ')'
+    { Rparen }
+  | '"'
+    { Buffer.clear escaped_buf;
+      let start = Lexing.lexeme_start_p lexbuf in
+      let s = quoted_string true lexbuf in
+      lexbuf.lex_start_p <- start;
+      Quoted_string s
+    }
+  | atom_char+ as s
+    { Token.Atom (A s) }
+  | eof
+    { Eof }

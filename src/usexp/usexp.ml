@@ -13,18 +13,16 @@ end
 module Atom = struct
  type t = Lexer.Atom.t = A of string [@@unboxed]
 
- let is_valid str =
-   let len = String.length str in
-   len > 0 &&
-   let rec loop ix =
-     match str.[ix] with
-     | '"' | '(' | ')' | ';' -> true
-     | '|' -> ix > 0 && let next = ix - 1 in str.[next] = '#' || loop next
-     | '#' -> ix > 0 && let next = ix - 1 in str.[next] = '|' || loop next
-     | ' ' | '\t' | '\n' | '\012' | '\r' -> true
-     | _ -> ix > 0 && loop (ix - 1)
+ let is_valid =
+   let rec loop s i len =
+     i = len ||
+     match String.unsafe_get s i with
+     | '"' | '(' | ')' | ';' | ' ' | '\t' | '\n' | '\012' | '\r' -> false
+     | _ -> loop s (i + 1) len
    in
-   not (loop (len - 1))
+   fun s ->
+     let len = String.length s in
+     len > 0 && loop s 0 len
 
  (* XXX eventually we want to report a nice error message to the user
      at the point the conversion is made. *)
@@ -54,18 +52,16 @@ let atom s =
 
 let unsafe_atom_of_string s = Atom(A s)
 
-let should_be_atom str =
-  let len = String.length str in
-  len > 0 &&
-  let rec loop ix =
-    match str.[ix] with
-    | '"' | '(' | ')' | ';' | '\\' -> true
-    | '|' -> ix > 0 && let next = ix - 1 in str.[next] = '#' || loop next
-    | '#' -> ix > 0 && let next = ix - 1 in str.[next] = '|' || loop next
-    | '\000' .. '\032' | '\127' .. '\255' -> true
-    | _ -> ix > 0 && loop (ix - 1)
+let should_be_atom =
+  let rec loop s i len =
+    i = len ||
+    match String.unsafe_get s i with
+    | '"' | '(' | ')' | ';' | '\000'..'\032' | '\127'..'\255' -> false
+    | _ -> loop s (i + 1) len
   in
-  not (loop (len - 1))
+  fun s ->
+    let len = String.length s in
+    len > 0 && loop s 0 len
 
 let atom_or_quoted_string s =
   if should_be_atom s then Atom (A s)

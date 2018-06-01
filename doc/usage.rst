@@ -59,7 +59,7 @@ in ancestor directories. For instance ``jbuild-workspace.dev``. If such a file
 is found, it will mark the root of the workspace. ``jbuilder`` will however not
 read its contents.
 
- The rationale for this rule is that it is good practice to have a
+The rationale for this rule is that it is good practice to have a
 ``jbuild-workspace.dev`` file at the root of your project.
 
 For quick experiments, simply do this to mark the root:
@@ -391,7 +391,7 @@ context or can be the description of an opam switch, as follows:
    run which is usually ``~/.opam``
 
 - ``(merlin)`` instructs Jbuilder to use this build context for
-   merlin
+  merlin
 
 - ``(profile <profile>)`` to set a different profile for a build
   context. This has precedence over the command line option

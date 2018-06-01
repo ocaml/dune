@@ -796,7 +796,7 @@ Jbuilder supports the following variables:
    the toplevel directory of your project and as long as you have at
    least one ``<package>.opam`` file there, ``SCOPE_ROOT`` is
    independent of the workspace configuration
-- ``CC`` is the C compiler command line (list made of the compiler
+-  ``CC`` is the C compiler command line (list made of the compiler
    name followed by its flags) that was used to compile OCaml in the
    current build context
 -  ``CXX`` is the C++ compiler command line being used in the
@@ -811,7 +811,7 @@ Jbuilder supports the following variables:
 -  ``ARCH_SIXTYFOUR`` is ``true`` if using a compiler targeting a
    64 bit architecture and ``false`` otherwise
 -  ``null`` is ``/dev/null`` on Unix or ``nul`` on Windows
-- ``ext_obj``, ``ext_asm``, ``ext_lib``, ``ext_dll`` and ``ext_exe``
+-  ``ext_obj``, ``ext_asm``, ``ext_lib``, ``ext_dll`` and ``ext_exe``
    are the file extension used for various artifacts
 - ``ocaml-config:v`` for every variable ``v`` in the output of
   ``ocamlc -config``. Note that output Jbuilder processes the output

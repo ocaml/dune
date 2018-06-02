@@ -97,3 +97,8 @@ let rec compare a b ~compare:f : Ordering.t =
     match (f x y : Ordering.t) with
     | Eq -> compare a b ~compare:f
     | ne -> ne
+
+let rec assoc t x =
+  match t with
+  | [] -> None
+  | (k, v) :: t -> if x = k then Some v else assoc t x

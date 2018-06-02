@@ -24,9 +24,9 @@ and postprocess tbl b = parse
   | eof { Buffer.contents b }
   | ([^ '/'] as c) (ext as e)
       { Buffer.add_char b c;
-        begin match List.assoc e tbl with
-        | res -> Buffer.add_string b res
-        | exception Not_found -> Buffer.add_string b e
+        begin match List.assoc tbl e with
+        | Some res -> Buffer.add_string b res
+        | None     -> Buffer.add_string b e
         end;
         postprocess tbl b lexbuf
       }

@@ -60,9 +60,9 @@ let signal_name =
     ]
   in
   fun n ->
-    match List.assoc n table with
-    | exception Not_found -> sprintf "%d\n" n
-    | s -> s
+    match List.assoc table n with
+    | None -> sprintf "%d\n" n
+    | Some s -> s
 
 type target_kind =
   | Regular of string * Path.t

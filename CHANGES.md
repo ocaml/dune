@@ -46,6 +46,9 @@ next
 - Fix a bug where Dune ignored previous occurences of duplicated
   fields (#779, @diml)
 
+- Allow setting custom build directories using the `--build-dir` flag or
+  `DUNE_BUILD_DIR` environment variable (#846, fix #291, @diml @rgrinberg)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

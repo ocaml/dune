@@ -5,6 +5,11 @@
 open Dune
 open Import
 
+let () =
+  Path.set_root (Path.External.cwd ());
+  Path.set_build_dir (Path.Kind.of_string "_build")
+;;
+
 let print_pkg ppf pkg =
   Format.fprintf ppf "<package:%s>" (Findlib.Package.name pkg)
 ;;
@@ -17,7 +22,7 @@ val print_pkg : Format.formatter -> Dune.Findlib.Package.t -> unit = <fun>
 |}]
 
 let findlib =
-  let cwd = Path.absolute (Sys.getcwd ()) in
+  let cwd = Path.of_filename_relative_to_initial_cwd (Sys.getcwd ()) in
     Findlib.create
     ~stdlib_dir:cwd
     ~path:[Path.relative cwd "test/unit-tests/findlib-db"]
@@ -51,7 +56,7 @@ open Meta
 #install_printer Simplified.pp;;
 
 let meta =
-  Path.of_string "test/unit-tests/findlib-db/foo/META"
+  Path.in_source "test/unit-tests/findlib-db/foo/META"
   |> Meta.load ~name:"foo"
 
 [%%expect{|
@@ -80,8 +85,8 @@ val meta : Dune.Meta.Simplified.t =
 #install_printer Findlib.Config.pp;;
 
 let conf =
-  Findlib.Config.load (Path.of_string "test/unit-tests/toolchain")
-                        ~toolchain:"tlc" ~context:"<context>"
+  Findlib.Config.load (Path.in_source "test/unit-tests/toolchain")
+    ~toolchain:"tlc" ~context:"<context>"
 
 [%%expect{|
 val conf : Dune.Findlib.Config.t =

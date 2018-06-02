@@ -533,3 +533,20 @@ you need to specify the name explicitly via the ``-n`` flag:
 Finally, note that jbuilder doesn't allow you to customize the list of
 substituted watermarks. If you which to do so, you need to configure
 topkg and use it instead of ``jbuilder subst``.
+
+Custom Build Directory
+======================
+
+By default dune places all build artifacts in the ``_build`` directory relative
+to the user's workspace. However, one can customize this directory by using the
+``--build-dir`` flag or the ``DUNE_BUILD_DIR`` environment variable.
+
+.. code:: bash
+
+   $ dune build --build-dir _build-foo
+
+   # this is equivalent to:
+   $ DUNE_BUILD_DIR=_build-foo dune build
+
+   # Absolute paths are also allowed
+   $ dune build --build-dir /tmp/build foo.exe

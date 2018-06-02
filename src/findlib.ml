@@ -227,7 +227,7 @@ let parse_package t ~meta_file ~name ~parent_dir ~vars =
       else if Filename.is_relative pkg_dir then
         Path.relative parent_dir pkg_dir
       else
-        Path.absolute pkg_dir
+        Path.of_filename_relative_to_initial_cwd pkg_dir
   in
   let pkg =
     { Package.

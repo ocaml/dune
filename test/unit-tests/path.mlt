@@ -1,17 +1,21 @@
 (* -*- tuareg -*- *)
 open Stdune;;
+Path.set_root (Path.External.cwd ());
+Path.set_build_dir (Path.Kind.of_string "_build");
 
 Printexc.record_backtrace false;;
 
 let r = Path.(relative root);;
+let e = Path.of_filename_relative_to_initial_cwd;;
 
-#install_printer Path.pp;;
+#install_printer Path.pp_debug;;
 
 Path.(let p = relative root "foo" in descendant p ~of_:p)
 [%%expect{|
 - : unit = ()
 val r : string -> Stdune.Path.t = <fun>
-- : Stdune.Path.t option = Some foo
+val e : string -> Stdune.Path.t = <fun>
+- : Stdune.Path.t option = Some (In_source_tree ".")
 |}]
 
 (* different strings but same length *)
@@ -60,44 +64,44 @@ Path.(is_descendant (r "glob/foo") ~of_:(r "glob/"))
 - : bool = true
 |}]
 
-Path.(is_descendant (Path.absolute "/foo/bar") ~of_:(Path.absolute "/foo"))
+Path.(is_descendant (e "/foo/bar") ~of_:(e "/foo"))
 [%%expect{|
 - : bool = false
 |}]
 
-Path.(is_descendant (Path.absolute "/foo/bar") ~of_:(Path.absolute "/foo/bar"))
+Path.(is_descendant (e "/foo/bar") ~of_:(e "/foo/bar"))
 [%%expect{|
 - : bool = false
 |}]
 
-Path.(is_descendant (Path.absolute "/foo/bar") ~of_:(Path.absolute "/foo/bar/"))
+Path.(is_descendant (e "/foo/bar") ~of_:(e "/foo/bar/"))
 [%%expect{|
 - : bool = false
 |}]
 
-Path.(is_descendant (Path.absolute "/foo/bar/") ~of_:(Path.absolute "/foo/bar"))
+Path.(is_descendant (e "/foo/bar/") ~of_:(e "/foo/bar"))
 [%%expect{|
 - : bool = false
 |}]
 
-Path.(is_descendant (Path.absolute "/foo/bar") ~of_:(Path.absolute "/"))
+Path.(is_descendant (e "/foo/bar") ~of_:(e "/"))
 [%%expect{|
 - : bool = false
 |}]
 
 Path.(descendant (r "foo") ~of_:(r "foo/"))
 [%%expect{|
-- : Stdune.Path.t option = Some foo
+- : Stdune.Path.t option = Some (In_source_tree ".")
 |}]
 
 Path.(descendant (r "foo/") ~of_:(r "foo"))
 [%%expect{|
-- : Stdune.Path.t option = Some foo
+- : Stdune.Path.t option = Some (In_source_tree ".")
 |}]
 
 Path.(descendant (r "foo/bar") ~of_:(r "foo"))
 [%%expect{|
-- : Stdune.Path.t option = Some bar
+- : Stdune.Path.t option = Some (In_source_tree "bar")
 |}]
 
 Path.(descendant Path.root ~of_:(r "foo"))
@@ -107,42 +111,44 @@ Path.(descendant Path.root ~of_:(r "foo"))
 
 Path.(descendant Path.root ~of_:Path.root)
 [%%expect{|
-- : Stdune.Path.t option = Some .
+- : Stdune.Path.t option = Some (In_source_tree ".")
 |}]
 
 Path.(descendant (r "foo") ~of_:Path.root)
 [%%expect{|
-- : Stdune.Path.t option = Some foo
+- : Stdune.Path.t option = Some (In_source_tree "foo")
 |}]
 
 Path.(descendant (relative build_dir "foo") ~of_:root)
 [%%expect{|
-- : Stdune.Path.t option = Some _build/foo
+- : Stdune.Path.t option = Some (In_source_tree "_build/foo")
 |}]
 
 Path.(descendant (relative build_dir "foo") ~of_:(absolute "/foo/bar"))
 [%%expect{|
-- : Stdune.Path.t option = None
+File "test/unit-tests/path.mlt", line 127, characters 50-58:
+Error: Unbound value absolute
 |}]
 
 Path.(descendant (relative build_dir "foo/bar") ~of_:build_dir)
 [%%expect{|
-- : Stdune.Path.t option = Some foo/bar
+- : Stdune.Path.t option = Some (In_source_tree "foo/bar")
 |}]
 
 Path.(descendant (relative build_dir "foo/bar") ~of_:(relative build_dir "foo"))
 [%%expect{|
-- : Stdune.Path.t option = Some bar
+- : Stdune.Path.t option = Some (In_source_tree "bar")
 |}]
 
 Path.(descendant (relative build_dir "foo/bar") ~of_:(relative build_dir "foo"))
 [%%expect{|
-- : Stdune.Path.t option = Some bar
+- : Stdune.Path.t option = Some (In_source_tree "bar")
 |}]
 
 Path.(descendant (absolute "/foo/bar") ~of_:(absolute "/foo"))
 [%%expect{|
-- : Stdune.Path.t option = None
+File "test/unit-tests/path.mlt", line 148, characters 18-26:
+Error: Unbound value absolute
 |}]
 
 Path.explode (Path.of_string "a/b/c");
@@ -182,30 +188,30 @@ Path.reach (Path.of_string "bar/foo") ~from:(Path.of_string "bar/baz/y")
 
 Path.relative (Path.of_string "relative") "/absolute/path"
 [%%expect{|
-- : Stdune.Path.t = /absolute/path
+- : Stdune.Path.t = (External "/absolute/path")
 |}]
 
 Path.relative (Path.of_string "/abs1") "/abs2"
 [%%expect{|
-- : Stdune.Path.t = /abs2
+- : Stdune.Path.t = (External "/abs2")
 |}]
 
 Path.relative (Path.of_string "/abs1") ""
 [%%expect{|
-- : Stdune.Path.t = /abs1
+- : Stdune.Path.t = (External "/abs1")
 |}]
 
 Path.relative Path.root "/absolute/path"
 [%%expect{|
-- : Stdune.Path.t = /absolute/path
+- : Stdune.Path.t = (External "/absolute/path")
 |}]
 
-Path.absolute "/absolute/path"
+e "/absolute/path"
 [%%expect{|
-- : Stdune.Path.t = /absolute/path
+- : Stdune.Path.t = (External "/absolute/path")
 |}]
 
-Path.is_local (Path.absolute "relative/path")
+Path.is_managed (e "relative/path")
 [%%expect{|
 - : bool = false
 |}]
@@ -217,42 +223,42 @@ Exception: Stdune__Exn.Code_error <abstr>.
 
 Path.insert_after_build_dir_exn Path.build_dir "foobar"
 [%%expect{|
-- : Stdune.Path.t = _build/foobar
+- : Stdune.Path.t = (In_build_dir "foobar")
 |}]
 
 Path.insert_after_build_dir_exn (Path.relative Path.build_dir "qux") "foobar"
 [%%expect{|
-- : Stdune.Path.t = _build/foobar/qux
+- : Stdune.Path.t = (In_build_dir "foobar/qux")
 |}]
 
 Path.append Path.build_dir (Path.relative Path.root "foo")
 [%%expect{|
-- : Stdune.Path.t = _build/foo
+- : Stdune.Path.t = (In_build_dir "foo")
 |}]
 
 Path.append Path.build_dir (Path.relative Path.build_dir "foo")
 [%%expect{|
-- : Stdune.Path.t = _build/_build/foo
+- : Stdune.Path.t = (In_build_dir "_build/foo")
 |}]
 
 Path.append Path.root (Path.relative Path.build_dir "foo")
 [%%expect{|
-- : Stdune.Path.t = _build/foo
+- : Stdune.Path.t = (In_source_tree "_build/foo")
 |}]
 
 Path.append Path.root (Path.relative Path.root "foo")
 [%%expect{|
-- : Stdune.Path.t = foo
+- : Stdune.Path.t = (In_source_tree "foo")
 |}]
 
 Path.append (Path.of_string "/root") (Path.relative Path.root "foo")
 [%%expect{|
-- : Stdune.Path.t = /root/foo
+- : Stdune.Path.t = (External "/root/foo")
 |}]
 
 Path.append (Path.of_string "/root") (Path.relative Path.build_dir "foo")
 [%%expect{|
-- : Stdune.Path.t = /root/_build/foo
+- : Stdune.Path.t = (External "/root/_build/foo")
 |}]
 
 Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz")
@@ -262,7 +268,7 @@ Exception: Stdune__Exn.Code_error <abstr>.
 
 Path.drop_build_context (Path.relative Path.build_dir "foo/bar")
 [%%expect{|
-- : Stdune.Path.t option = Some bar
+- : Stdune.Path.t option = Some (In_source_tree "bar")
 |}]
 
 Path.drop_build_context (Path.of_string "foo/bar")
@@ -270,7 +276,7 @@ Path.drop_build_context (Path.of_string "foo/bar")
 - : Stdune.Path.t option = None
 |}]
 
-Path.drop_build_context (Path.absolute "/foo/bar")
+Path.drop_build_context (e "/foo/bar")
 [%%expect{|
 - : Stdune.Path.t option = None
 |}]
@@ -281,6 +287,11 @@ Path.drop_build_context Path.build_dir
 |}]
 
 Path.is_in_build_dir Path.build_dir
+[%%expect{|
+- : bool = true
+|}]
+
+Path.is_strict_descendant_of_build_dir Path.build_dir
 [%%expect{|
 - : bool = false
 |}]
@@ -296,19 +307,24 @@ Path.(reach_for_running (relative build_dir "foo/baz")
 - : string = "../../baz"
 |}]
 
-Path.(reach_for_running (Path.absolute "/fake/path")
+Path.(reach_for_running (e "/fake/path")
         ~from:(relative build_dir "foo/bar/baz"))
 [%%expect{|
 - : string = "/fake/path"
 |}]
 
-Path.(reach_for_running (relative build_dir "foo/baz")
-        ~from:(Path.absolute "/fake/path"))
-[%%expect{|
-Exception: Stdune__Exn.Code_error <abstr>.
-|}]
-
 Path.(reach_for_running (relative root "foo") ~from:(Path.relative root "foo"))
 [%%expect{|
 - : string = "./."
+|}]
+
+Path.relative Path.root "_build"
+[%%expect{|
+- : Stdune.Path.t = (In_build_dir ".")
+|}]
+
+(* This is not right, but kind of annoying to fix :/ *)
+Path.relative (r "foo") "../_build"
+[%%expect{|
+- : Stdune.Path.t = (In_build_dir ".")
 |}]

@@ -26,7 +26,7 @@ module DB = struct
       match Hashtbl.find t.by_dir d with
       | Some scope -> scope
       | None ->
-        if Path.is_root d || not (Path.is_local d) then
+        if Path.is_root d || not (Path.is_managed d) then
           Exn.code_error "Scope.DB.find_by_dir got an invalid path"
             [ "dir"    , Path.sexp_of_t dir
             ; "context", Sexp.To_sexp.string t.context

@@ -352,7 +352,7 @@ module Unexpanded = struct
     | List _ -> t sexp
 
   let check_mkdir loc path =
-    if not (Path.is_local path) then
+    if not (Path.is_managed path) then
       Loc.fail loc
         "(mkdir ...) is not supported for paths outside of the workspace:\n\
         \  %a\n"
@@ -843,20 +843,13 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     Path.rm_rf path;
     Fiber.return ()
   | Mkdir path ->
-    (match Path.kind path with
-     | External _ ->
-       (* Internally we make sure never to do that, and [Unexpanded.*expand] check that *)
-       Exn.code_error
-         "(mkdir ...) is not supported for paths outside of the workspace"
-         [ "mkdir", Path.sexp_of_t path ]
-     | Local path ->
-       Path.Local.mkdir_p path);
+    Path.mkdir_p path;
     Fiber.return ()
   | Digest_files paths ->
     let s =
       let data =
         List.map paths ~f:(fun fn ->
-          (fn, Utils.Cached_digest.file fn))
+          (Path.to_string fn, Utils.Cached_digest.file fn))
       in
       Digest.string
         (Marshal.to_string data [])
@@ -930,7 +923,7 @@ let exec ~targets ~context t =
 let sandbox t ~sandboxed ~deps ~targets =
   Progn
     [ Progn (List.filter_map deps ~f:(fun path ->
-        if Path.is_local path then
+        if Path.is_managed path then
           Some (Ast.Symlink (path, sandboxed path))
         else
           None))
@@ -940,7 +933,7 @@ let sandbox t ~sandboxed ~deps ~targets =
         ~f_path:(fun ~dir:_ p -> sandboxed p)
         ~f_program:(fun ~dir:_ x -> Result.map x ~f:sandboxed)
     ; Progn (List.filter_map targets ~f:(fun path ->
-        if Path.is_local path then
+        if Path.is_managed path then
           Some (Ast.Rename (sandboxed path, path))
         else
           None))

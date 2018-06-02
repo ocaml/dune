@@ -100,7 +100,7 @@ let ppx_flags sctx ~dir:_ ~scope ~src_dir:_ { preprocess; libname; _ } =
   match preprocess with
   | Pps { pps; flags } ->
     let exe = Preprocessing.get_ppx_driver sctx ~scope pps in
-    (Path.to_absolute_filename exe ~root:!Clflags.workspace_root
+    (Path.to_absolute_filename exe
      :: "--as-ppx"
      :: Preprocessing.cookie_library_name libname
      @ flags)

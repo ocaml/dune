@@ -155,20 +155,24 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
         Path.readdir_unsorted path
         |> List.filter_partition_map ~f:(fun fn ->
           let path = Path.relative path fn in
-          let is_directory, file =
-            match Unix.stat (Path.to_string path) with
-            | exception _ -> (false, File.dummy)
-            | { st_kind = S_DIR; _ } as st ->
-              (true, File.of_stats st)
-            | _ ->
-              (false, File.dummy)
-          in
-          if ignore_file fn ~is_directory then
+          if Path.is_in_build_dir path then
             Skip
-          else if is_directory then
-            Right (fn, path, file)
-          else
-            Left fn)
+          else begin
+            let is_directory, file =
+              match Unix.stat (Path.to_string path) with
+              | exception _ -> (false, File.dummy)
+              | { st_kind = S_DIR; _ } as st ->
+                (true, File.of_stats st)
+              | _ ->
+                (false, File.dummy)
+            in
+            if ignore_file fn ~is_directory then
+              Skip
+            else if is_directory then
+              Right (fn, path, file)
+            else
+              Left fn
+          end)
       in
       let files = String.Set.of_list files in
       let sub_dirs =
@@ -253,7 +257,7 @@ let fold t ~traverse_ignored_dirs ~init ~f =
   Dir.fold t.root ~traverse_ignored_dirs ~init ~f
 
 let rec find_dir t path =
-  if not (Path.is_local path) then
+  if not (Path.is_managed path) then
     None
   else
     match Hashtbl.find t.dirs path with

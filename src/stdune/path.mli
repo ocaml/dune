@@ -1,19 +1,6 @@
 (** In the current workspace (anything under the current project root) *)
 module Local : sig
   type t
-
-  val compare : t -> t -> Ordering.t
-
-  module Set : Set.S with type elt = t
-
-  val root : t
-  val is_root : t -> bool
-  val to_string : t -> string
-  val mkdir_p : t -> unit
-  val ensure_parent_directory_exists : t -> unit
-  val append : t -> t -> t
-  val descendant : t -> of_:t -> t option
-  val parent : t -> t
 end
 
 (** In the outside world *)
@@ -21,12 +8,18 @@ module External : sig
   type t
 
   val to_string : t -> string
+  val of_string : string -> t
+  val initial_cwd : t
+
+  val cwd : unit -> t
 end
 
 module Kind : sig
-  type t =
+  type t = private
     | External of External.t
     | Local    of Local.t
+
+  val of_string : string -> t
 end
 
 type t
@@ -45,9 +38,6 @@ end
 
 module Map : Map.S with type key = t
 
-
-val kind : t -> Kind.t
-
 val of_string : ?error_loc:Usexp.Loc.t -> string -> t
 val to_string : t -> string
 
@@ -57,17 +47,17 @@ val to_string_maybe_quoted : t -> string
 val root : t
 val is_root : t -> bool
 
-val is_local : t -> bool
+val is_managed : t -> bool
 
 val relative : ?error_loc:Usexp.Loc.t -> t -> string -> t
 
 (** Create an external path. If the argument is relative, assume it is
     relative to the initial directory jbuilder was launched in. *)
-val absolute : string -> t
+val of_filename_relative_to_initial_cwd : string -> t
 
 (** Convert a path to an absolute filename. Must be called after the workspace
     root has been set. [root] is the root directory of local paths *)
-val to_absolute_filename : t -> root:string -> string
+val to_absolute_filename : t -> string
 
 val reach : t -> from:t -> string
 
@@ -117,10 +107,14 @@ val build_dir : t
 (** [is_in_build_dir t = is_descendant t ~of:build_dir] *)
 val is_in_build_dir : t -> bool
 
-(** [is_in_build_dir t = is_local t && not (is_in_build_dir t)] *)
+(** [is_in_build_dir t = is_managed t && not (is_in_build_dir t)] *)
 val is_in_source_tree : t -> bool
 
 val is_alias_stamp_file : t -> bool
+
+(** [is_strict_descendant_of_build_dir t = is_in_build_dir t && t <>
+    build_dir] *)
+val is_strict_descendant_of_build_dir : t -> bool
 
 (**  Split after the first component if [t] is local *)
 val split_first_component : t -> (string * t) option
@@ -134,14 +128,24 @@ val rmdir : t -> unit
 val unlink : t -> unit
 val unlink_no_err : t -> unit
 val rm_rf : t -> unit
-
-(** Changes the extension of the filename (or adds an extension if there was none) *)
-val change_extension : ext:string -> t -> t
+val mkdir_p : t -> unit
 
 val extension : t -> string
 
 val pp : Format.formatter -> t -> unit
+val pp_debug : Format.formatter -> t -> unit
 
 val build_dir_exists : unit -> bool
 
 val ensure_build_dir_exists : unit -> unit
+
+(** set the build directory. Can only be called once and must be done before
+    paths are converted to strings elsewhere. *)
+val set_build_dir : Kind.t -> unit
+
+(** paths guaranteed to be in the source directory *)
+val in_source : string -> t
+
+(** Set the workspace root. Can onyl be called once and the path must be
+    absolute *)
+val set_root : External.t -> unit

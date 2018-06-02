@@ -62,7 +62,7 @@ let items_of_string s = of_tokens (Token.tokenise s)
 let t : Sexp.Of_sexp.ast -> t = function
   | Atom(loc, A s) -> { items = items_of_string s;  loc;  quoted = false }
   | Quoted_string (loc, s) ->
-     { items = items_of_string s;  loc;  quoted = true }
+    { items = items_of_string s;  loc;  quoted = true }
   | List _ as sexp -> Sexp.Of_sexp.of_sexp_error sexp "Atom expected"
 
 let loc t = t.loc
@@ -89,13 +89,13 @@ let sexp_of_ast t = Sexp.To_sexp.list sexp_of_item t.items
 
 let fold t ~init ~f =
   List.fold_left t.items ~init ~f:(fun acc item ->
-      match item with
-      | Text _ -> acc
-      | Var (_, v) -> f acc t.loc v)
+    match item with
+    | Text _ -> acc
+    | Var (_, v) -> f acc t.loc v)
 
 let iter t ~f = List.iter t.items ~f:(function
-                    | Text _ -> ()
-                    | Var (_, v) -> f t.loc v)
+  | Text _ -> ()
+  | Var (_, v) -> f t.loc v)
 
 let vars t = fold t ~init:String.Set.empty ~f:(fun acc _ x -> String.Set.add acc x)
 
@@ -116,6 +116,20 @@ let concat_rev = function
   | [s] -> s
   | l -> String.concat (List.rev l) ~sep:""
 
+module Expand = struct
+  module Full = struct
+    type nonrec 'a t =
+      | Expansion  of 'a
+      | String     of string
+  end
+  module Partial = struct
+    type nonrec 'a t =
+      | Expansion  of 'a
+      | String     of string
+      | Unexpanded of t
+  end
+end
+
 module Expand_to(V: EXPANSION) = struct
 
   let expand ctx t ~f =
@@ -123,10 +137,10 @@ module Expand_to(V: EXPANSION) = struct
     | [Var (syntax, v)] when not t.quoted ->
       (* Unquoted single var *)
       (match f t.loc v with
-       | Some e -> Left e
-       | None -> Right (string_of_var syntax v))
+       | Some e -> Expand.Full.Expansion e
+       | None -> Expand.Full.String (string_of_var syntax v))
     | _ ->
-      Right (List.map t.items ~f:(function
+      Expand.Full.String (List.map t.items ~f:(function
         | Text s -> s
         | Var (syntax, v) ->
           match f t.loc v with
@@ -137,7 +151,7 @@ module Expand_to(V: EXPANSION) = struct
                 (string_of_var syntax v)
             else V.to_string ctx x
           | None -> string_of_var syntax v)
-             |> String.concat ~sep:"")
+               |> String.concat ~sep:"")
 
   let partial_expand ctx t ~f =
     let commit_text acc_text acc =
@@ -148,25 +162,25 @@ module Expand_to(V: EXPANSION) = struct
       match items with
       | [] -> begin
           match acc with
-          | [] -> Left  (Right (concat_rev acc_text))
-          | _  -> Right { t with items = List.rev (commit_text acc_text acc) }
+          | [] -> Expand.Partial.String (concat_rev acc_text)
+          | _  -> Unexpanded { t with items = List.rev (commit_text acc_text acc) }
         end
       | Text s :: items -> loop (s :: acc_text) acc items
       | Var (syntax, v) as it :: items ->
-         match f t.loc v with
-         | None -> loop [] (it :: commit_text acc_text acc) items
-         | Some x ->
-            if not t.quoted && V.is_multivalued x then
-           Loc.fail t.loc "please quote the string containing the \
-                           list variable %s" (string_of_var syntax v)
-         else loop (V.to_string ctx x :: acc_text) acc items
+        match f t.loc v with
+        | None -> loop [] (it :: commit_text acc_text acc) items
+        | Some x ->
+          if not t.quoted && V.is_multivalued x then
+            Loc.fail t.loc "please quote the string containing the \
+                            list variable %s" (string_of_var syntax v)
+          else loop (V.to_string ctx x :: acc_text) acc items
     in
     match t.items with
     | [Var (_, v)] when not t.quoted ->
-       (* Unquoted single var *)
-       (match f t.loc v with
-        | Some e -> Left (Left e)
-        | None   -> Right t)
+      (* Unquoted single var *)
+      (match f t.loc v with
+       | Some e -> Expand.Partial.Expansion e
+       | None   -> Expand.Partial.Unexpanded t)
     | _ -> loop [] [] t.items
 end
 
@@ -180,12 +194,15 @@ end
 module S = Expand_to(String_expansion)
 
 let expand t ~f =
-  match S.expand () t ~f with Left s | Right s -> s
+  match S.expand () t ~f with
+  | Expand.Full.String s
+  | Expansion s -> s
 
 let partial_expand t ~f =
   match S.partial_expand () t ~f with
-  | Left (Left s | Right s) -> Left s
-  | Right _ as x -> x
+  | Expand.Partial.Expansion s -> Left s
+  | String s -> Left s
+  | Unexpanded s -> Right s
 
 let to_string t =
   match t.items with

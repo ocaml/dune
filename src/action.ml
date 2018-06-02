@@ -374,8 +374,8 @@ module Unexpanded = struct
         | Left x -> map x
         | Right template ->
            match To_VE.expand dir template ~f with
-           | Left  e -> special dir e
-           | Right s -> generic dir s
+           | Expansion e -> special dir e
+           | String    s -> generic dir s
       [@@inlined always]
 
       let string ~dir ~f x =
@@ -465,9 +465,9 @@ module Unexpanded = struct
   module E = struct
     let expand ~generic ~special ~dir ~f template =
       match To_VE.partial_expand dir template ~f with
-      | Left (Left  e) -> Left (special dir e)
-      | Left (Right s) -> Left (generic dir s)
-      | Right _ as x -> x
+      | Expansion e -> Left (special dir e)
+      | String s -> Left (generic dir s)
+      | Unexpanded x -> Right x
 
     let string ~dir ~f x =
       expand ~dir ~f x

@@ -159,7 +159,13 @@ val resolve_program
 module Libs : sig
   (** Make sure all rules produces by [f] record the library
       dependencies for [jbuilder external-lib-deps] and depend on the
-      generation of the .merlin file. *)
+      generation of the .merlin file.
+
+      /!\ WARNING /!\: make sure the last function call inside [f] is
+      fully applied, otherwise the function might end up being executed
+      after this function has returned. Consider addin a type
+      annotation to make sure this doesn't happen by mistake.
+  *)
   val with_lib_deps
     :  t
     -> Lib.Compile.t

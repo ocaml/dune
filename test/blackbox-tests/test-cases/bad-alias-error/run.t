@@ -4,4 +4,4 @@
   Tried to reference path outside build dir: "/foo/bar"
   $ dune runtest --root outside-workspace 2>&1 | grep -v Entering
   File "jbuild", line 4, characters 16-39:
-  Error: path outside the workspace: ./../../../foobar from _build/default
+  Error: path outside the workspace: ./../../../foobar from default

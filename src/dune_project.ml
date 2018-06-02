@@ -67,7 +67,7 @@ end = struct
       None
 
   let anonymous path =
-    if Path.is_local path then
+    if Path.is_managed path then
       Some (Anonymous path)
     else
       None
@@ -107,7 +107,7 @@ end = struct
              |> List.tl
              |> String.concat ~sep:"/")
         in
-        if not (Path.is_local p) then invalid s;
+        if not (Path.is_managed p) then invalid s;
         Anonymous p
       | _ when validate s -> Named s
       | _ -> invalid s

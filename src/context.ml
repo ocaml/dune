@@ -152,7 +152,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets ~profile () =
       (match Env.get env "OCAMLFIND_CONF" with
        | Some s -> Fiber.return s
        | None -> Process.run_capture_line ~env Strict fn ["printconf"; "conf"])
-      >>| Path.absolute)
+      >>| Path.of_filename_relative_to_initial_cwd)
   in
 
   let create_one ~name ~implicit ?findlib_toolchain ?host ~merlin () =
@@ -170,7 +170,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets ~profile () =
         | Some s ->
           match Filename.analyze_program_name s with
           | In_path | Relative_to_current_dir -> which s
-          | Absolute -> Some (Path.absolute s))
+          | Absolute -> Some (Path.of_filename_relative_to_initial_cwd s))
     in
 
     let ocamlc =
@@ -221,7 +221,8 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets ~profile () =
     let findlib_path () =
       match kind, findlib_toolchain, Setup.library_path with
       | Default, None, Some l ->
-        Fiber.return (ocamlpath @ List.map l ~f:Path.absolute)
+        Fiber.return
+          (ocamlpath @ List.map l ~f:Path.of_filename_relative_to_initial_cwd)
       | _ ->
         (* If ocamlfind is present, it has precedence over everything else. *)
         match which "ocamlfind" with
@@ -236,13 +237,13 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets ~profile () =
           >>| fun l ->
           (* Don't prepend the contents of [OCAMLPATH] since findlib
              does it already *)
-          List.map l ~f:Path.absolute
+          List.map l ~f:Path.of_filename_relative_to_initial_cwd
         | None ->
           (* If there no ocamlfind in the PATH, check if we have opam
              and assume a standard opam setup *)
           opam_config_var ~env ~cache:opam_var_cache "lib"
           >>| function
-          | Some s -> ocamlpath @ [Path.absolute s]
+          | Some s -> ocamlpath @ [Path.of_filename_relative_to_initial_cwd s]
           | None ->
             (* If neither opam neither ocamlfind are present, assume
                that libraries are [dir ^ "/../lib"] *)
@@ -335,7 +336,8 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets ~profile () =
       ; build_dir
       ; path
       ; toplevel_path =
-          Option.map (Env.get env "OCAML_TOPLEVEL_PATH") ~f:Path.absolute
+          Option.map (Env.get env "OCAML_TOPLEVEL_PATH")
+            ~f:Path.of_filename_relative_to_initial_cwd
 
       ; ocaml_bin  = dir
       ; ocaml      = (match which "ocaml" with Some p -> p | None -> prog_not_found_in_path "ocaml")
@@ -459,20 +461,20 @@ let which t s = which ~cache:t.which_cache ~path:t.path s
 
 let install_prefix t =
   opam_config_var t "prefix" >>| function
-  | Some x -> Path.absolute x
+  | Some x -> Path.of_filename_relative_to_initial_cwd x
   | None   -> Path.parent_exn t.ocaml_bin
 
 let install_ocaml_libdir t =
   match t.kind, t.findlib_toolchain, Setup.library_destdir with
   | Default, None, Some d ->
-    Fiber.return (Some (Path.absolute d))
+    Fiber.return (Some (Path.of_filename_relative_to_initial_cwd d))
   | _ ->
     (* If ocamlfind is present, it has precedence over everything else. *)
     match which t "ocamlfind" with
     | Some fn ->
       (Process.run_capture_line ~env:t.env Strict fn ["printconf"; "destdir"]
        >>| fun s ->
-       Some (Path.absolute s))
+       Some (Path.of_filename_relative_to_initial_cwd s))
     | None ->
       Fiber.return None
 

@@ -346,7 +346,7 @@ let unique_id    t = t.unique_id
 let src_dir t = t.src_dir
 let obj_dir t = t.obj_dir
 
-let is_local t = Path.is_local t.obj_dir
+let is_local t = Path.is_managed t.obj_dir
 
 let status t = t.status
 

@@ -22,6 +22,7 @@ type common =
   ; auto_promote          : bool
   ; force                 : bool
   ; ignore_promoted_rules : bool
+  ; build_dir             : string
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args             : string list
   ; config                : Config.t
@@ -29,14 +30,17 @@ type common =
 
 let prefix_target common s = common.target_prefix ^ s
 
-let set_common c ~targets =
+let set_dirs c =
+  if c.root <> Filename.current_dir_name then
+    Sys.chdir c.root;
+  Path.set_root (Path.External.cwd ());
+  Path.set_build_dir (Path.Kind.of_string c.build_dir)
+
+let set_common_other c ~targets =
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces := c.debug_backtraces;
   Clflags.capture_outputs := c.capture_outputs;
-  if c.root <> Filename.current_dir_name then
-    Sys.chdir c.root;
-  Clflags.workspace_root := Sys.getcwd ();
   Clflags.diff_command := c.diff_command;
   Clflags.auto_promote := c.auto_promote;
   Clflags.force := c.force;
@@ -46,6 +50,10 @@ let set_common c ~targets =
       ; c.orig_args
       ; targets
       ]
+
+let set_common c ~targets =
+  set_dirs c;
+  set_common_other c ~targets
 
 let restore_cwd_and_execve common prog argv env =
   let env = Env.to_unix env in
@@ -224,7 +232,9 @@ let common =
          orig)
         x
         display
+        build_dir
     =
+    let build_dir = Option.value ~default:"_build" build_dir in
     let root, to_cwd =
       match root with
       | Some dn -> (dn, [])
@@ -280,6 +290,7 @@ let common =
             List.map ~f:Package.Name.of_string (String.split s ~on:',')))
     ; x
     ; config
+    ; build_dir
     }
   in
   let docs = copts_sect in
@@ -518,6 +529,14 @@ let common =
          & info ["x"] ~docs
              ~doc:{|Cross-compile using this toolchain.|})
   in
+  let build_dir =
+    let doc = "Specified build directory. _build if unspecified" in
+    Arg.(value
+         & opt (some string) None
+         & info ["build-dir"] ~docs ~docv:"FILE"
+             ~env:(Arg.env_var ~doc "DUNE_BUILD_DIR")
+             ~doc)
+  in
   let diff_command =
     Arg.(value
          & opt (some string) None
@@ -537,6 +556,7 @@ let common =
         $ merged_options
         $ x
         $ display
+        $ build_dir
        )
 
 let installed_libraries =
@@ -593,7 +613,7 @@ let resolve_package_install setup pkg =
           |> List.map ~f:Package.Name.to_string))
 
 let target_hint (setup : Main.setup) path =
-  assert (Path.is_local path);
+  assert (Path.is_managed path);
   let sub_dir = Option.value ~default:path (Path.parent path) in
   let candidates = Build_system.all_targets setup.build_system in
   let candidates =
@@ -650,7 +670,7 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
           check_path path;
           if Path.is_root path then
             die "@@ on the command line must be followed by a valid alias name"
-          else if not (Path.is_local path) then
+          else if not (Path.is_managed path) then
             die "@@ on the command line must be followed by a relative path"
           else
             Ok [Alias_rec path]
@@ -660,7 +680,7 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
           let can't_build path =
             Error (path, target_hint setup path);
           in
-          if not (Path.is_local path) then
+          if not (Path.is_managed path) then
             Ok [File path]
           else if Path.is_in_build_dir path then begin
             if Build_system.is_target setup.build_system path then
@@ -1269,8 +1289,9 @@ let utop =
     ; `Blocks help_secs
     ] in
   let go common dir ctx_name args =
+    set_dirs common;
     let utop_target = dir |> Path.of_string |> Utop.utop_exe |> Path.to_string in
-    set_common common ~targets:[utop_target];
+    set_common_other common ~targets:[utop_target];
     let log = Log.create common in
     let (build_system, context, utop_path) =
       (Main.setup ~log common >>= fun setup ->

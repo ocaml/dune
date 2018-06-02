@@ -5,6 +5,7 @@
 open Dune;;
 open Import;;
 open Action.Infer.Outcome;;
+Stdune.Path.set_build_dir (Path.Kind.of_string "_build");;
 
 let p = Path.of_string;;
 let infer (a : Action.t) =
@@ -12,6 +13,7 @@ let infer (a : Action.t) =
   (List.map (Path.Set.to_list x.deps) ~f:Path.to_string,
    List.map (Path.Set.to_list x.targets) ~f:Path.to_string)
 [%%expect{|
+- : unit = ()
 val p : ?error_loc:Usexp.Loc.t -> string -> Dune.Import.Path.t = <fun>
 val infer : Dune.Action.t -> string list * string list = <fun>
 |}]

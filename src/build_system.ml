@@ -373,7 +373,7 @@ type t =
        [(deps (filename + contents), targets (filename only), action)] *)
     trace       : (Path.t, Digest.t) Hashtbl.t
   ; file_tree   : File_tree.t
-  ; mutable local_mkdirs : Path.Local.Set.t
+  ; mutable local_mkdirs : Path.Set.t
   ; mutable dirs : (Path.t, Dir_status.t) Hashtbl.t
   ; mutable gen_rules :
       (dir:Path.t -> string list -> extra_sub_directories_to_keep) String.Map.t
@@ -406,7 +406,7 @@ let get_dir_status t ~dir =
     else if dir = Path.build_dir then
       (* Not allowed to look here *)
       Dir_status.Loaded Path.Set.empty
-    else if not (Path.is_local dir) then
+    else if not (Path.is_managed dir) then
       Dir_status.Loaded
         (match Path.readdir_unsorted dir with
          | exception _ -> Path.Set.empty
@@ -601,24 +601,20 @@ let clear_targets_digests_after_rule_execution targets =
 
 let make_local_dirs t paths =
   Path.Set.iter paths ~f:(fun path ->
-    match Path.kind path with
-    | Local path ->
-      if not (Path.Local.Set.mem t.local_mkdirs path) then begin
-        Path.Local.mkdir_p path;
-        t.local_mkdirs <- Path.Local.Set.add t.local_mkdirs path
-      end
-    | _ -> ())
+    if Path.is_managed path && not (Path.Set.mem t.local_mkdirs path) then begin
+      Path.mkdir_p path;
+      t.local_mkdirs <- Path.Set.add t.local_mkdirs path
+    end)
 
 let make_local_parent_dirs t paths ~map_path =
   Path.Set.iter paths ~f:(fun path ->
-    match Path.kind (map_path path) with
-    | Local path when not (Path.Local.is_root path) ->
-      let parent = Path.Local.parent path in
-      if not (Path.Local.Set.mem t.local_mkdirs parent) then begin
-        Path.Local.mkdir_p parent;
-        t.local_mkdirs <- Path.Local.Set.add t.local_mkdirs parent
-      end
-    | _ -> ())
+    let path = map_path path in
+    if Path.is_managed path then (
+      Option.iter (Path.parent path) ~f:(fun parent ->
+        if not (Path.Set.mem t.local_mkdirs parent) then begin
+          Path.mkdir_p parent;
+          t.local_mkdirs <- Path.Set.add t.local_mkdirs parent
+        end)))
 
 let sandbox_dir = Path.relative Path.build_dir ".sandbox"
 
@@ -717,11 +713,12 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     let targets_as_list  = Path.Set.to_list targets  in
     let hash =
       let trace =
-        (List.map all_deps_as_list ~f:(fun fn ->
-           (fn, Utils.Cached_digest.file fn)),
-         targets_as_list,
-         Option.map context ~f:(fun c -> c.name),
-         action)
+        ( all_deps_as_list
+          |> List.map ~f:(fun fn ->
+            (Path.to_string fn, Utils.Cached_digest.file fn)),
+          List.map targets_as_list ~f:Path.to_string,
+          Option.map context ~f:(fun c -> c.name),
+          Action.for_shell action)
       in
       Digest.string (Marshal.to_string trace [])
     in
@@ -760,7 +757,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
           | Some sandbox_dir ->
             Path.rm_rf sandbox_dir;
             let sandboxed path =
-              if Path.is_local path then
+              if Path.is_managed path then
                 Path.append sandbox_dir path
               else
                 path
@@ -1061,7 +1058,7 @@ and wait_for_file t fn =
   | Some file -> wait_for_file_found fn file
   | None ->
     let dir = Path.parent_exn fn in
-    if Path.is_in_build_dir dir then begin
+    if Path.is_strict_descendant_of_build_dir dir then begin
       load_dir t ~dir;
       match Hashtbl.find t.files fn with
       | Some file -> wait_for_file_found fn file
@@ -1179,7 +1176,7 @@ let create ~contexts ~file_tree ~hook =
     ; files      = Hashtbl.create 1024
     ; packages   = Hashtbl.create 1024
     ; trace      = Trace.load ()
-    ; local_mkdirs = Path.Local.Set.empty
+    ; local_mkdirs = Path.Set.empty
     ; dirs       = Hashtbl.create 1024
     ; load_dir_stack = []
     ; file_tree
@@ -1473,7 +1470,7 @@ let get_collector t ~dir =
          "Build_system.get_collector called on source directory"
        else if dir = Path.build_dir then
          "Build_system.get_collector called on build_dir"
-       else if not (Path.is_local dir) then
+       else if not (Path.is_managed dir) then
          "Build_system.get_collector called on external directory"
        else
          "Build_system.get_collector called on closed directory")

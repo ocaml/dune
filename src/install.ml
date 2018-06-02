@@ -49,17 +49,17 @@ module Section = struct
       ]
 
   module Paths = struct
-    let lib         = Path.(relative root) "lib"
-    let libexec     = Path.(relative root) "lib"
-    let bin         = Path.(relative root) "bin"
-    let sbin        = Path.(relative root) "sbin"
-    let toplevel    = Path.(relative root) "lib/toplevel"
-    let share       = Path.(relative root) "share"
-    let share_root  = Path.(relative root) "share_root"
-    let etc         = Path.(relative root) "etc"
-    let doc         = Path.(relative root) "doc"
-    let stublibs    = Path.(relative root) "lib/stublibs"
-    let man         = Path.(relative root) "man"
+    let lib         = Path.in_source "lib"
+    let libexec     = Path.in_source "lib"
+    let bin         = Path.in_source "bin"
+    let sbin        = Path.in_source "sbin"
+    let toplevel    = Path.in_source "lib/toplevel"
+    let share       = Path.in_source "share"
+    let share_root  = Path.in_source "share_root"
+    let etc         = Path.in_source "etc"
+    let doc         = Path.in_source "doc"
+    let stublibs    = Path.in_source "lib/stublibs"
+    let man         = Path.in_source "man"
   end
 
   let install_dir t ~(package : Package.Name.t) =

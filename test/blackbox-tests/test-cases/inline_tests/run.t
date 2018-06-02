@@ -1,6 +1,6 @@
   $ env -u OCAMLRUNPARAM jbuilder runtest simple
            run alias simple/runtest (exit 2)
-  (cd _build/default/simple && ./.foo_simple.inline-tests/run.exe)
+  (cd _build/default/simple && .foo_simple.inline-tests/run.exe)
   Fatal error: exception File "simple/.foo_simple.inline-tests/run.ml", line 1, characters 10-16: Assertion failed
   [1]
 

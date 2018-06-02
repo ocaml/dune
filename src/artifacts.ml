@@ -53,7 +53,7 @@ let create (context : Context.t) ~public_libs l ~f =
 
 let binary t ?hint name =
   if not (Filename.is_relative name) then
-    Ok (Path.absolute name)
+    Ok (Path.of_filename_relative_to_initial_cwd name)
   else
     match String.Map.find t.local_bins name with
     | Some path -> Ok path

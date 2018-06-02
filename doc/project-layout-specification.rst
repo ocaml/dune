@@ -26,81 +26,116 @@ files. If no version is specified, the latest one will be used.
 Metadata format
 ===============
 
-Most configuration files read by Jbuilder are using the S-expression
-syntax, which is very simple.  It is described below.
+All configuration files read by Dune are using a syntax similar to the
+one of S-expressions, which is very simple. The Dune langauge can
+represent three kinds of values: atoms, strings and lists. By
+combining these, it is possible to construct arbitrarily complex
+project descriptions.
 
-Note that the format is completely static. However you can do
-meta-programming on jbuilds files by writing them in :ref:`ocaml-syntax`.
-
-
-Lexical conventions of s-expressions
-------------------------------------
-
-Whitespace, which consists of space, newline, horizontal tab, and form
-feed, is ignored unless within an OCaml-string, where it is treated
-according to OCaml-conventions.  The left parenthesis opens a new
-list, the right one closes it.  Lists can be empty.
-
-The double quote denotes the beginning and end of a string using
-similar lexing conventions to the ones of OCaml (see the OCaml-manual
-for details).  Differences are:
-
-- octal escape sequences (``\o123``) are not supported;
-- backslash that's not a part of any escape sequence is kept as it is
-  instead of resulting in parse error;
-- a backslash followed by a space does not form an escape sequence, so
-  it’s interpreted as is, while it is interpreted as just a space by
-  OCaml.
-
-All characters other than double quotes, left- and right parentheses,
-whitespace, carriage return, and comment-introducing characters or
-sequences (see next paragraph) are considered part of a contiguous
-string.
+A Dune configuration file is a sequence of atoms, strings or lists
+separated by spaces, newlines and comments. The other sections of this
+manual describe how each configuration file is interpreted. We
+describe below the syntax of the language.
 
 Comments
 --------
 
-There are three kinds of comments:
+The Dune language only has end of line comments. End of line comments
+are introduced with a semicolon and span up to the end of the end of
+the current line. Everything from the semicolon to the end of the line
+is ignored. For instance:
 
-- line comments are introduced with ``;``, and end at the newline;
-- sexp comments are introduced with ``#;``, and end at the end of the
-  following s-expression;
-- block comments are introduced with ``#|`` and end with ``|#``.
-  These can be nested, and double-quotes within them must be balanced
-  and be lexically correct OCaml strings.
+.. code::
 
-Grammar of s-expressions
-------------------------
+   ; This is a comment
 
-S-expressions are either sequences of non-whitespace characters
-(= atoms), doubly quoted strings or lists. The lists can recursively
-contain further s-expressions or be empty, and must be balanced,
-i.e. parentheses must match.
+Atoms
+-----
 
-Examples
---------
+An atom is a non-empty contiguous sequences of character other than
+special characters. Special characters are:
 
-::
+- spaces, horizontal tabs, newlines and form feed
+- opening and closing parenthesis
+- double quotes
+- semicolons
 
-    this_is_an_atom_123'&^%!  ; this is a comment
-    "another atom in an OCaml-string \"string in a string\" \123"
+For instance ``hello`` or ``+`` are valid atoms.
 
-    ; empty list follows below
-    ()
+Strings
+-------
 
-    ; a more complex example
-    (
-      (
-        list in a list  ; comment within a list
-        (list in a list in a list)
-        42 is the answer to all questions
-        #; (this S-expression
-             (has been commented out)
-           )
-        #| Block comments #| can be "nested" |# |#
-      )
-    )
+A string is a sequence of characters surrounded by double quotes. A
+string represent the exact text between the double quotes, except for
+escape sequences. Escape sequence are introduced by the a backslash
+character. Dune recognizes and interprets the following escape
+sequences:
 
+- ``\n`` to represent a newline character
+- ``\r`` to represent a cariage return (character with ASCII code 13)
+- ``\b`` to represent ASCII character 8
+- ``\t`` to represent a horizontal tab
+- ``\NNN``, a backslash followed by three decimal characters to
+  represent the character with ASCII code ``NNN``
+- ``\xHH``, a backslach followed by two hexidecimal characters to
+  represent the character with ASCII code ``HH`` in hexadecimal
+- ``\\``, a double backslash to represent a single backslash
+
+Additionally, a backslash that comes just before the end of the line
+is used to skip the newline up to the next non-space character. For
+instance the following two strings represent the same text:
+
+.. code::
+
+   "abcdef"
+   "abc\
+      def"
+
+In most places where Dune expect a string, it will also accept an
+atom. As a result it possible to write most Dune configuration file
+using very few double quotes. This is very convenient in practice.
+
+End of line strings
+-------------------
+
+End of line strings are another way to write strings. The are a
+convenient way to write blocks of text inside a Dune file.
+
+End of line strings are introduced by ``"\|`` or ``"\>`` and span up
+the end of the current line. If the next line starts as well by
+``"\|`` or ``"\>`` it is the continuation of the same string. For
+readability, it is necessary that the text that follows the delimiter
+is either empty or starts with a space that is ignored.
+
+For instance:
+
+.. code::
+
+   "\| this is a block
+   "\| of text
+
+represent the same text as the string ``"this is a block\nof text"``.
+
+Escape sequences are interpreted in text that follows ``"\|`` but not
+in text that follows ``"\>``. Both delimiters can be mixed inside the
+same block of text.
+
+Lists
+-----
+
+Lists are sequences of values enclosed by parentheses. For instance
+``(x y z)`` is a list containing the three atoms ``x``, ``y`` and
+``z``. Lists can be empty, for instance: ``()``.
+
+Lists can be nested, allowing to represent arbitrarily complex
+descriptions. For instance:
+
+.. code::
+
+   (html
+    (head (title "Hello world!"))
+    (body
+      This is a simple example of using S-expressions))
 
 .. _opam-files:
 

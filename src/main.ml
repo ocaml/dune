@@ -218,7 +218,7 @@ let bootstrap () =
       Arg.Symbol
         (List.map Config.Display.all ~f:fst,
          fun s ->
-           display := Some (List.assoc s Config.Display.all))
+           display := List.assoc Config.Display.all s)
     in
     let concurrency = ref None in
     let concurrency_arg x =

@@ -27,7 +27,7 @@
         ocamlc ppx-new/foo_ppx_rewriter_dune.cma
       ocamlopt .ppx/foo.ppx_rewriter_dune/ppx.exe
         ocamlc ppx-old/foo_ppx_rewriter_jbuild.cma
-      ocamlopt .ppx/foo.ppx_rewriter_jbuild/ppx.exe
+      ocamlopt .ppx/jbuild/foo.ppx_rewriter_jbuild/ppx.exe
   lib: [
     "_build/install/default/lib/foo/META" {"META"}
     "_build/install/default/lib/foo/opam" {"opam"}

@@ -9,30 +9,46 @@
       ocamldep foo_byte.ml.d
         ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
         ocamlc foo_byte.cma
-      ocamldep ppx-old/foo_ppx_rewriter.ml.d
-        ocamlc ppx-old/.foo_ppx_rewriter.objs/foo_ppx_rewriter.{cmi,cmo,cmt}
-      ocamlopt ppx-old/.foo_ppx_rewriter.objs/foo_ppx_rewriter.{cmx,o}
-      ocamlopt ppx-old/foo_ppx_rewriter.{a,cmxa}
-      ocamlopt ppx-old/foo_ppx_rewriter.cmxs
+      ocamldep ppx-new/foo_ppx_rewriter_dune.ml.d
+        ocamlc ppx-new/.foo_ppx_rewriter_dune.objs/foo_ppx_rewriter_dune.{cmi,cmo,cmt}
+      ocamlopt ppx-new/.foo_ppx_rewriter_dune.objs/foo_ppx_rewriter_dune.{cmx,o}
+      ocamlopt ppx-new/foo_ppx_rewriter_dune.{a,cmxa}
+      ocamlopt ppx-new/foo_ppx_rewriter_dune.cmxs
+      ocamldep ppx-old/foo_ppx_rewriter_jbuild.ml.d
+        ocamlc ppx-old/.foo_ppx_rewriter_jbuild.objs/foo_ppx_rewriter_jbuild.{cmi,cmo,cmt}
+      ocamlopt ppx-old/.foo_ppx_rewriter_jbuild.objs/foo_ppx_rewriter_jbuild.{cmx,o}
+      ocamlopt ppx-old/foo_ppx_rewriter_jbuild.{a,cmxa}
+      ocamlopt ppx-old/foo_ppx_rewriter_jbuild.cmxs
         ocamlc .foo.objs/foo.{cmo,cmt}
         ocamlc foo.cma
         ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}
       ocamlopt .bar.eobjs/bar.{cmx,o}
       ocamlopt bar.exe
-        ocamlc ppx-old/foo_ppx_rewriter.cma
-      ocamlopt .ppx/foo.ppx_rewriter/ppx.exe
+        ocamlc ppx-new/foo_ppx_rewriter_dune.cma
+      ocamlopt .ppx/foo.ppx_rewriter_dune/ppx.exe
+        ocamlc ppx-old/foo_ppx_rewriter_jbuild.cma
+      ocamlopt .ppx/foo.ppx_rewriter_jbuild/ppx.exe
   lib: [
     "_build/install/default/lib/foo/META" {"META"}
     "_build/install/default/lib/foo/opam" {"opam"}
-    "_build/install/default/lib/foo/ppx_rewriter/foo_ppx_rewriter.cmi" {"ppx_rewriter/foo_ppx_rewriter.cmi"}
-    "_build/install/default/lib/foo/ppx_rewriter/foo_ppx_rewriter.cmx" {"ppx_rewriter/foo_ppx_rewriter.cmx"}
-    "_build/install/default/lib/foo/ppx_rewriter/foo_ppx_rewriter.cmt" {"ppx_rewriter/foo_ppx_rewriter.cmt"}
-    "_build/install/default/lib/foo/ppx_rewriter/foo_ppx_rewriter.ml" {"ppx_rewriter/foo_ppx_rewriter.ml"}
-    "_build/install/default/lib/foo/ppx_rewriter/foo_ppx_rewriter.cma" {"ppx_rewriter/foo_ppx_rewriter.cma"}
-    "_build/install/default/lib/foo/ppx_rewriter/foo_ppx_rewriter.cmxa" {"ppx_rewriter/foo_ppx_rewriter.cmxa"}
-    "_build/install/default/lib/foo/ppx_rewriter/foo_ppx_rewriter$ext_lib" {"ppx_rewriter/foo_ppx_rewriter$ext_lib"}
-    "_build/install/default/lib/foo/ppx_rewriter/foo_ppx_rewriter.cmxs" {"ppx_rewriter/foo_ppx_rewriter.cmxs"}
-    "_build/install/default/lib/foo/ppx_rewriter/foo.ppx_rewriter.dune" {"ppx_rewriter/foo.ppx_rewriter.dune"}
+    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmi" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmi"}
+    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmx" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmx"}
+    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmt" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmt"}
+    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.ml" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.ml"}
+    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cma" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cma"}
+    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmxa" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmxa"}
+    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild$ext_lib" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild$ext_lib"}
+    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmxs" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmxs"}
+    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo.ppx_rewriter_jbuild.dune" {"ppx_rewriter_jbuild/foo.ppx_rewriter_jbuild.dune"}
+    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cmi" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cmi"}
+    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cmx" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cmx"}
+    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cmt" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cmt"}
+    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.ml" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.ml"}
+    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cma" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cma"}
+    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cmxa" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cmxa"}
+    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune$ext_lib" {"ppx_rewriter_dune/foo_ppx_rewriter_dune$ext_lib"}
+    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cmxs" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cmxs"}
+    "_build/install/default/lib/foo/ppx_rewriter_dune/foo.ppx_rewriter_dune.dune" {"ppx_rewriter_dune/foo.ppx_rewriter_dune.dune"}
     "_build/install/default/lib/foo/foo.cmi" {"foo.cmi"}
     "_build/install/default/lib/foo/foo.cmx" {"foo.cmx"}
     "_build/install/default/lib/foo/foo.cmt" {"foo.cmt"}
@@ -53,7 +69,8 @@
     "_build/install/default/lib/foo/byte/foo.byte.dune" {"byte/foo.byte.dune"}
   ]
   libexec: [
-    "_build/install/default/lib/foo/ppx_rewriter/ppx.exe" {"ppx_rewriter/ppx.exe"}
+    "_build/install/default/lib/foo/ppx_rewriter_jbuild/ppx.exe" {"ppx_rewriter_jbuild/ppx.exe"}
+    "_build/install/default/lib/foo/ppx_rewriter_dune/ppx.exe" {"ppx_rewriter_dune/ppx.exe"}
   ]
   bin: [
     "_build/install/default/bin/bar" {"bar"}

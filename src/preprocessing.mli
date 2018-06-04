@@ -44,10 +44,19 @@ val get_ppx_driver
   -> (Loc.t * Jbuild.Pp.t) list
   -> Path.t Or_exn.t
 
-val get_ppx_driver_for_public_lib
+module Compat_ppx_exe_kind : sig
+  (** [Dune] for directories using a [dune] file, and [Jbuild driver]
+      for directories using a [jbuild] file. *)
+  type t =
+    | Dune
+    | Jbuild of string option
+end
+
+(** Compatibility [ppx.exe] program for the findlib method. *)
+val get_compat_ppx_exe
   :  Super_context.t
   -> name:string
-  -> dir_kind:File_tree.Dune_file.Kind.t
+  -> kind:Compat_ppx_exe_kind.t
   -> Path.t
 
 (** [cookie_library_name lib_name] is ["--cookie"; lib_name] if [lib_name] is not

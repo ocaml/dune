@@ -1,0 +1,5 @@
+
+(library
+ ((name foo_ppx_rewriter_dune)
+  (public_name foo.ppx_rewriter_dune)
+  (kind ppx_rewriter)))

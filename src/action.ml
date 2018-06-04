@@ -275,6 +275,10 @@ module Var_expansion = struct
     | Paths   of Path.t list
     | Strings of string list
 
+  let length = function
+    | Paths x -> List.length x
+    | Strings x -> List.length x
+
   let is_multivalued = function
     | Paths [_] -> false
     | Strings [_] -> false

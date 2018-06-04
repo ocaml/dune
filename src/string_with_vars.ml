@@ -106,6 +106,7 @@ let string_of_var syntax v =
 
 module type EXPANSION = sig
   type t
+  val length : t -> int
   val is_multivalued : t -> bool
   type context
   val to_string : context -> t -> string
@@ -132,12 +133,12 @@ end
 
 module Expand_to(V: EXPANSION) = struct
 
-  let check_valid_multivalue syntax ~var t ctx =
-    if not t.quoted && V.is_multivalued ctx then
-      Loc.fail t.loc "Variable %s expands to multiple values, \
+  let check_valid_multivalue syntax ~var t x =
+    if not t.quoted && V.is_multivalued x then
+      Loc.fail t.loc "Variable %s expands to %d values, \
                       however a single value is expected here. \
                       Please quote this atom. "
-        (string_of_var syntax var)
+        (string_of_var syntax var) (V.length x)
 
   let expand ctx t ~f =
     match t.items with
@@ -189,6 +190,7 @@ end
 
 module String_expansion = struct
   type t = string
+  let length _ = 1
   let is_multivalued _ = false
   type context = unit
   let to_string () (s: string) = s

@@ -49,6 +49,8 @@ module type EXPANSION = sig
   type t
   (** The value to which variables are expanded. *)
 
+  val length : t -> int
+
   val is_multivalued : t -> bool
   (** Report whether the value is a multivalued one (such as for
       example ${@}) which much be in quoted strings to be concatenated

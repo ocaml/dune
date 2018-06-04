@@ -278,7 +278,7 @@ module Var_expansion = struct
   let is_multivalued = function
     | Paths [_] -> false
     | Strings [_] -> false
-    | _ -> false
+    | _ -> true
 
   type context = Path.t (* For String_with_vars.Expand_to *)
 

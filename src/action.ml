@@ -271,21 +271,14 @@ module Unresolved = struct
 end
 
 module Var_expansion = struct
-  module Concat_or_split = struct
-    type t =
-      | Concat (* default *)
-      | Split  (* the variable is a "split" list of items *)
-  end
-
-  open Concat_or_split
-
   type t =
-    | Paths   of Path.t list * Concat_or_split.t
-    | Strings of string list * Concat_or_split.t
+    | Paths   of Path.t list
+    | Strings of string list
 
   let is_multivalued = function
-    | Paths (_, Split) | Strings (_, Split) -> true
-    | Paths (_, Concat) | Strings (_, Concat) -> false
+    | Paths [_] -> false
+    | Strings [_] -> false
+    | _ -> false
 
   type context = Path.t (* For String_with_vars.Expand_to *)
 
@@ -297,38 +290,25 @@ module Var_expansion = struct
   let path_of_string dir s = Path.relative dir s
 
   let to_strings dir = function
-    | Strings (l, Split ) -> l
-    | Strings (l, Concat) -> [concat l]
-    | Paths   (l, Split ) -> List.map l ~f:(string_of_path ~dir)
-    | Paths   (l, Concat) -> [concat (List.map l ~f:(string_of_path ~dir))]
+    | Strings l -> l
+    | Paths   l -> List.map l ~f:(string_of_path ~dir)
 
   let to_string (dir: context) = function
-    | Strings (l, _) -> concat l
-    | Paths   (l, _) -> concat (List.map l ~f:(string_of_path ~dir))
+    | Strings l -> concat l
+    | Paths   l -> concat (List.map l ~f:(string_of_path ~dir))
 
   let to_path dir = function
-    | Strings (l, _) -> path_of_string dir (concat l)
-    | Paths ([p], _) -> p
-    | Paths (l,   _) ->
+    | Strings l -> path_of_string dir (concat l)
+    | Paths [p] -> p
+    | Paths l ->
       path_of_string dir (concat (List.map l ~f:(string_of_path ~dir)))
 
   let to_prog_and_args dir exp : Unresolved.Program.t * string list =
     let module P = Unresolved.Program in
     match exp with
-    | Paths   ([p], _) -> (This p, [])
-    | Strings ([s], _) -> (P.of_string ~dir s, [])
-    | Paths ([], _) | Strings ([], _) -> (Search "", [])
-    | Paths (l, Concat) ->
-      (This
-         (path_of_string dir
-            (concat (List.map l ~f:(string_of_path ~dir)))),
-       [])
-    | Strings (l, Concat) ->
-      (P.of_string ~dir (concat l), l)
-    | Paths (p :: l, Split) ->
-      (This p, List.map l ~f:(string_of_path ~dir))
-    | Strings (s :: l, Split) ->
-      (P.of_string ~dir s, l)
+    | Paths   (x::xs) -> (This x, to_strings dir (Paths xs))
+    | Strings (s::xs) -> (P.of_string ~dir s, to_strings dir (Strings xs))
+    | Paths [] | Strings [] -> (Search "", [])
 end
 
 module VE = Var_expansion

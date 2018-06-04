@@ -273,15 +273,15 @@ let create
     let open Action.Var_expansion in
     let make =
       match Bin.make with
-      | None   -> Strings (["make"], Split)
-      | Some p -> Paths ([p], Split)
+      | None   -> Strings ["make"]
+      | Some p -> Paths [p]
     in
     let cflags = context.ocamlc_cflags in
-    let strings l = Strings (l  , Split)  in
-    let string  s = Strings ([s], Concat) in
-    let path    p = Paths   ([p], Split)  in
+    let strings l = Strings l  in
+    let string  s = Strings [s] in
+    let path    p = Paths   [p]  in
     let vars =
-      [ "-verbose"       , Strings ([] (*"-verbose";*), Concat)
+      [ "-verbose"       , Strings ([] (*"-verbose";*))
       ; "CPP"            , strings (context.c_compiler :: cflags @ ["-E"])
       ; "PA_CPP"         , strings (context.c_compiler :: cflags
                                     @ ["-undef"; "-traditional";
@@ -602,8 +602,8 @@ module Action = struct
     acc.ddeps <- String.Map.add acc.ddeps key dep;
     None
 
-  let path_exp path = Action.Var_expansion.Paths   ([path], Concat)
-  let str_exp  path = Action.Var_expansion.Strings ([path], Concat)
+  let path_exp path = Action.Var_expansion.Paths   [path]
+  let str_exp  path = Action.Var_expansion.Strings [path]
 
   let map_exe sctx =
     match sctx.host with
@@ -683,8 +683,8 @@ module Action = struct
           | Some p ->
             let x =
               Pkg_version.read sctx p >>^ function
-              | None   -> Strings ([""], Concat)
-              | Some s -> Strings ([s],  Concat)
+              | None   -> Strings [""]
+              | Some s -> Strings [s]
             in
             add_ddep acc ~key x
           | None ->
@@ -696,7 +696,7 @@ module Action = struct
           let path = Path.relative dir s in
           let data =
             Build.contents path
-            >>^ fun s -> Strings ([s], Concat)
+            >>^ fun s -> Strings [s]
           in
           add_ddep acc ~key data
         end
@@ -704,7 +704,7 @@ module Action = struct
           let path = Path.relative dir s in
           let data =
             Build.lines_of path
-            >>^ fun l -> Strings (l, Split)
+            >>^ fun l -> Strings l
           in
           add_ddep acc ~key data
         end
@@ -712,7 +712,7 @@ module Action = struct
           let path = Path.relative dir s in
           let data =
             Build.strings path
-            >>^ fun l -> Strings (l, Split)
+            >>^ fun l -> Strings l
           in
           add_ddep acc ~key data
         end
@@ -734,7 +734,7 @@ module Action = struct
             match targets_written_by_user with
             | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
             | Alias -> Loc.fail loc "You cannot use ${@} in aliases."
-            | Static l -> Some (Paths (l, Split))
+            | Static l -> Some (Paths l)
           end
         | _ ->
           match String.lsplit2 var ~on:':' with
@@ -743,7 +743,7 @@ module Action = struct
           | x ->
             let exp = expand loc key var x in
             (match exp with
-             | Some (Paths (ps, _)) ->
+             | Some (Paths ps) ->
                acc.sdeps <- Path.Set.union (Path.Set.of_list ps) acc.sdeps
              | _ -> ());
             exp)
@@ -764,10 +764,10 @@ module Action = struct
              | [] ->
                 Loc.warn loc "Variable '<' used with no explicit \
                               dependencies@.";
-                Strings ([""], Concat)
+                Strings [""]
              | dep :: _ ->
-               Paths ([dep], Concat))
-        | "^" -> Some (Paths (deps_written_by_user, Split))
+               Paths [dep])
+        | "^" -> Some (Paths deps_written_by_user)
         | _ -> None)
 
   let run sctx ~loc ?(extra_vars=String.Map.empty)

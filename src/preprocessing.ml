@@ -308,8 +308,25 @@ let ppx_driver_exe sctx libs ~dir_kind =
   in
   ppx_exe sctx ~key ~dir_kind
 
-let get_ppx_driver_for_public_lib sctx ~name ~dir_kind =
-  ppx_exe sctx ~key:name ~dir_kind
+module Compat_ppx_exe_kind = struct
+  type t =
+    | Dune
+    | Jbuild of string option
+end
+
+let get_compat_ppx_exe sctx ~name ~kind =
+  match (kind : Compat_ppx_exe_kind.t) with
+  | Dune ->
+    ppx_exe sctx ~key:name ~dir_kind:Dune
+  | Jbuild driver ->
+    (* We know both [name] and [driver] are public libraries, so we
+       don't add the scope key. *)
+    let key =
+      match driver with
+      | None -> name
+      | Some d -> sprintf "%s+%s" name d
+    in
+    ppx_exe sctx ~key ~dir_kind:Jbuild
 
 let get_ppx_driver sctx ~loc ~scope ~dir_kind pps =
   let sctx = SC.host sctx in

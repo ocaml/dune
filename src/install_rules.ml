@@ -186,28 +186,24 @@ module Gen(P : Install_params) = struct
       | Ppx_rewriter ->
         match (dir_kind : File_tree.Dune_file.Kind.t) with
         | Dune ->
-          [Preprocessing.get_ppx_driver_for_public_lib sctx ~name ~dir_kind]
+          [Preprocessing.get_compat_ppx_exe sctx ~name ~kind:Dune]
         | Jbuild ->
-          let pps = [(lib.buildable.loc, Pp.of_string lib.name)] in
-          let pps =
+          let driver =
             let deps =
               List.concat_map lib.buildable.libraries ~f:Lib_dep.to_lib_names
             in
             if List.exists deps ~f:(function
-              | "ppx_driver" | "ppx_type_conv" -> true
+              | "ppx_driver" | "ppxlib" | "ppx_type_conv" -> true
               | _ -> false) then
-              pps @ [match Scope.name scope with
-                | Named "ppxlib" ->
-                  Loc.none, Pp.of_string "ppxlib.runner"
-                | _ ->
-                  Loc.none, Pp.of_string "ppx_driver.runner"]
+              match Scope.name scope with
+              | Named "ppxlib" ->
+                Some "ppxlib.runner"
+              | _ ->
+                Some "ppx_driver.runner"
             else
-              pps
+              None
           in
-          match Preprocessing.get_ppx_driver sctx ~scope ~dir_kind pps with
-          | Ok    x -> [x]
-          | Error _ ->
-            [Preprocessing.get_ppx_driver_for_public_lib sctx ~name ~dir_kind]
+          [Preprocessing.get_compat_ppx_exe sctx ~name ~kind:(Jbuild driver)]
     in
     List.concat
       [ List.map files ~f:(make_entry Lib    )

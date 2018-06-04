@@ -307,10 +307,10 @@ module Var_expansion = struct
     | Paths   (l, _) -> concat (List.map l ~f:(string_of_path ~dir))
 
   let to_path dir = function
-    | Strings (l, _) -> path_of_string dir (concat l)
+    | Strings ([l], _) -> path_of_string dir l
     | Paths ([p], _) -> p
-    | Paths (l,   _) ->
-      path_of_string dir (concat (List.map l ~f:(string_of_path ~dir)))
+    | Paths (_, _) -> die "paths must be quoted"
+    | Strings (_, _) -> die "strings must be quoted"
 
   let to_prog_and_args dir exp : Unresolved.Program.t * string list =
     let module P = Unresolved.Program in

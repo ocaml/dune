@@ -132,6 +132,12 @@ end
 
 module Expand_to(V: EXPANSION) = struct
 
+  let check_valid_multivalue syntax ~var t ctx =
+    if not t.quoted && V.is_multivalued ctx then
+      Loc.fail t.loc "please quote the string \
+                      containing the list variable %s"
+        (string_of_var syntax var)
+
   let expand ctx t ~f =
     match t.items with
     | [Var (syntax, v)] when not t.quoted ->
@@ -140,18 +146,16 @@ module Expand_to(V: EXPANSION) = struct
        | Some e -> Expand.Full.Expansion e
        | None -> Expand.Full.String (string_of_var syntax v))
     | _ ->
-      Expand.Full.String (List.map t.items ~f:(function
-        | Text s -> s
-        | Var (syntax, v) ->
-          match f t.loc v with
-          | Some x ->
-            if not t.quoted && V.is_multivalued x then
-              Loc.fail t.loc "please quote the string \
-                              containing the list variable %s"
-                (string_of_var syntax v)
-            else V.to_string ctx x
-          | None -> string_of_var syntax v)
-               |> String.concat ~sep:"")
+      Expand.Full.String (
+        List.map t.items ~f:(function
+          | Text s -> s
+          | Var (syntax, v) ->
+            match f t.loc v with
+            | Some x ->
+              check_valid_multivalue syntax ~var:v t x;
+              V.to_string ctx x
+            | None -> string_of_var syntax v)
+        |> String.concat ~sep:"")
 
   let partial_expand ctx t ~f =
     let commit_text acc_text acc =
@@ -170,10 +174,8 @@ module Expand_to(V: EXPANSION) = struct
         match f t.loc v with
         | None -> loop [] (it :: commit_text acc_text acc) items
         | Some x ->
-          if not t.quoted && V.is_multivalued x then
-            Loc.fail t.loc "please quote the string containing the \
-                            list variable %s" (string_of_var syntax v)
-          else loop (V.to_string ctx x :: acc_text) acc items
+          check_valid_multivalue syntax ~var:v t x;
+          loop (V.to_string ctx x :: acc_text) acc items
     in
     match t.items with
     | [Var (_, v)] when not t.quoted ->

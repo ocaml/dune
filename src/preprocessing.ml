@@ -203,7 +203,9 @@ let no_driver_error pps =
   | None ->
     sprintf
       "No ppx driver found.\n\
-       It seems that these ppx rewriters are not compatible with jbuilder."
+       It seems that these ppx rewriters are not compatible with Dune.\n\
+       Hint: Examples of ppx rewriters that are compatible with Dune are\n\
+       ones using ocaml-migrate-parsetree, ppxlib or ppx_driver."
 
 let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
   let ctx = SC.context sctx in

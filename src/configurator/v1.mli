@@ -88,9 +88,14 @@ module Pkg_config : sig
 end with type configurator := t
 
 val write_flags : string -> string list -> unit
-(** [write_flags fname s] write the list of strings [s] to the file
+(** [write_flags fname s] writes the list of strings [s] to the file
    [fname] in an appropriate format so that it can used in jbuild
-   files with "(:include [fname])". *)
+   files with [(:include [fname])]. *)
+
+val write_lines : string -> string list -> unit
+(** [write_lines fname s] writes the list of string [s] to the file
+   [fname] with one line per string so that it can be used in jbuild
+   action rules with [${read-lines:<path>}]. *)
 
 (** Typical entry point for configurator programs *)
 val main

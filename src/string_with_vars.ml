@@ -134,8 +134,9 @@ module Expand_to(V: EXPANSION) = struct
 
   let check_valid_multivalue syntax ~var t ctx =
     if not t.quoted && V.is_multivalued ctx then
-      Loc.fail t.loc "please quote the string \
-                      containing the list variable %s"
+      Loc.fail t.loc "Variable %s expands to multiple values, \
+                      however a single value is expected here. \
+                      Please quote this atom. "
         (string_of_var syntax var)
 
   let expand ctx t ~f =

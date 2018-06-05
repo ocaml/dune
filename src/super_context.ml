@@ -45,7 +45,7 @@ type t =
   ; artifacts                        : Artifacts.t
   ; stanzas_to_consider_for_install  : Installable.t list
   ; cxx_flags                        : string list
-  ; vars                             : Action.Var_expansion.t String.Map.t
+  ; vars                             : Var_expansion.t String.Map.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
@@ -92,7 +92,7 @@ let expand_vars t ~scope ~dir ?(extra_vars=String.Map.empty) s =
     | "SCOPE_ROOT" ->
       Some (Path.reach ~from:dir (Scope.root scope))
     | var ->
-      Option.map ~f:(fun e -> Action.Var_expansion.to_string dir e)
+      Option.map ~f:(fun e -> Var_expansion.to_string dir e)
         (match expand_var_no_root t var with
          | Some _ as x -> x
          | None -> String.Map.find extra_vars var))
@@ -270,7 +270,7 @@ let create
       | None -> Path.relative context.ocaml_bin "ocamlopt"
       | Some p -> p
     in
-    let open Action.Var_expansion in
+    let open Var_expansion in
     let make =
       match Bin.make with
       | None   -> Strings ["make"]
@@ -588,7 +588,7 @@ module Action = struct
     ; (* Static deps from ${...} variables. For instance ${exe:...} *)
       mutable sdeps     : Path.Set.t
     ; (* Dynamic deps from ${...} variables. For instance ${read:...} *)
-      mutable ddeps     : (unit, Action.Var_expansion.t) Build.t String.Map.t
+      mutable ddeps     : (unit, Var_expansion.t) Build.t String.Map.t
     }
 
   let add_lib_dep acc lib kind =
@@ -602,8 +602,8 @@ module Action = struct
     acc.ddeps <- String.Map.add acc.ddeps key dep;
     None
 
-  let path_exp path = Action.Var_expansion.Paths   [path]
-  let str_exp  path = Action.Var_expansion.Strings [path]
+  let path_exp path = Var_expansion.Paths   [path]
+  let str_exp  path = Var_expansion.Strings [path]
 
   let map_exe sctx =
     match sctx.host with
@@ -630,7 +630,7 @@ module Action = struct
       ; ddeps     = String.Map.empty
       }
     in
-    let open Action.Var_expansion in
+    let open Var_expansion in
     let expand loc key var = function
       | Some ("exe"     , s) -> Some (path_exp (map_exe (Path.relative dir s)))
       | Some ("path"    , s) -> Some (path_exp          (Path.relative dir s) )
@@ -751,7 +751,7 @@ module Action = struct
     (t, acc)
 
   let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
-    let open Action.Var_expansion in
+    let open Var_expansion in
     U.Partial.expand t ~dir ~map_exe ~f:(fun loc key ->
       match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
@@ -762,9 +762,9 @@ module Action = struct
           Some
             (match deps_written_by_user with
              | [] ->
-                Loc.warn loc "Variable '<' used with no explicit \
-                              dependencies@.";
-                Strings [""]
+               Loc.warn loc "Variable '<' used with no explicit \
+                             dependencies@.";
+               Strings [""]
              | dep :: _ ->
                Paths [dep])
         | "^" -> Some (Paths deps_written_by_user)

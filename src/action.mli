@@ -1,16 +1,5 @@
 open! Import
 
-module Var_expansion : sig
-  type t =
-    | Paths   of Path.t list
-    | Strings of string list
-
-  val to_string : Path.t -> t -> string
-  (** [to_string dir v] convert the variable expansion to a string.
-     If it is a path, the corresponding string will be relative to
-     [dir]. *)
-end
-
 module Outputs : module type of struct include Action_intf.Outputs end
 
 (** result of the lookup of a program, the path to it or information about the

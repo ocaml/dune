@@ -87,15 +87,32 @@ module Pkg_config : sig
   val query : t -> package:string -> package_conf option
 end with type configurator := t
 
-val write_flags : string -> string list -> unit
-(** [write_flags fname s] writes the list of strings [s] to the file
-   [fname] in an appropriate format so that it can used in jbuild
-   files with [(:include [fname])]. *)
+module Flags : sig
 
-val write_lines : string -> string list -> unit
-(** [write_lines fname s] writes the list of string [s] to the file
-   [fname] with one line per string so that it can be used in jbuild
-   action rules with [${read-lines:<path>}]. *)
+  val write_include_flags : string -> string list -> unit
+  (** [write_flags fname s] writes the list of strings [s] to the file
+      [fname] in an appropriate format so that it can used in jbuild
+      files with [(:include [fname])]. *)
+
+  val write_lines : string -> string list -> unit
+  (** [write_lines fname s] writes the list of string [s] to the file
+      [fname] with one line per string so that it can be used in Dune
+      action rules with [${read-lines:<path>}]. *)
+
+  val extract_comma_space_separated_words : string -> string list
+  (** [extract_comma_space_separated_words s] returns a list of words in
+      [s] that are separated by a newline, tab, space or comma character. *)
+
+  val extract_blank_separated_words : string -> string list
+  (** [extract_blank_separated_words s] returns a list of words in [s]
+      that are separated by a tab or space character. *)
+
+  val extract_words : string -> is_word_char:(char -> bool) -> string list
+  (** [extract_words s ~is_word_char] will split the string [s] into
+      a list of words.  A valid word character is defined by the [is_word_char]
+      predicate returning true and anything else is considered a separator.
+      Any blank words are filtered out of the results. *)
+end
 
 (** Typical entry point for configurator programs *)
 val main

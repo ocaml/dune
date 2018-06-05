@@ -61,6 +61,21 @@ module Temp = struct
     dir
 end
 
+module Flags = struct
+  let extract_words = String.extract_words
+  let extract_comma_space_separated_words = String.extract_comma_space_separated_words
+  let extract_blank_separated_words = String.extract_blank_separated_words
+
+  let write_include_flags fname s =
+    let path = Path.of_string fname in
+    let sexp = Usexp.List(List.map ~f:Usexp.atom_or_quoted_string s) in
+    Io.write_file path (Usexp.to_string sexp)
+
+  let write_lines fname s =
+    let path = Path.of_string fname in
+    Io.write_lines path s
+end
+
 module Find_in_path = struct
   let path_sep =
     if Sys.win32 then
@@ -477,15 +492,6 @@ module Pkg_config = struct
     else
       None
 end
-
-let write_flags fname s =
-  let path = Path.of_string fname in
-  let sexp = Usexp.List(List.map ~f:Usexp.atom_or_quoted_string s) in
-  Io.write_file path (Usexp.to_string sexp)
-
-let write_lines fname s =
-  let path = Path.of_string fname in
-  Io.write_lines path s
 
 let main ?(args=[]) ~name f =
   let ocamlc  = ref (

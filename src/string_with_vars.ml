@@ -137,15 +137,18 @@ module Expand_to(V: EXPANSION) = struct
     if not t.quoted && V.is_multivalued x then
       Loc.fail t.loc "Variable %s expands to %d values, \
                       however a single value is expected here. \
-                      Please quote this atom. "
+                      Please quote this atom."
         (string_of_var syntax var) (V.length x)
 
-  let expand ctx t ~f =
+  let expand ctx t ~allow_multivalue ~f =
     match t.items with
     | [Var (syntax, v)] when not t.quoted ->
       (* Unquoted single var *)
       (match f t.loc v with
-       | Some e -> Expand.Full.Expansion e
+       | Some e ->
+         if not allow_multivalue then
+           check_valid_multivalue syntax ~var:v t e;
+         Expand.Full.Expansion e
        | None -> Expand.Full.String (string_of_var syntax v))
     | _ ->
       Expand.Full.String (
@@ -159,7 +162,7 @@ module Expand_to(V: EXPANSION) = struct
             | None -> string_of_var syntax v)
         |> String.concat ~sep:"")
 
-  let partial_expand ctx t ~f =
+  let partial_expand ctx t ~allow_multivalue ~f =
     let commit_text acc_text acc =
       let s = concat_rev acc_text in
       if s = "" then acc else Text s :: acc
@@ -180,10 +183,13 @@ module Expand_to(V: EXPANSION) = struct
           loop (V.to_string ctx x :: acc_text) acc items
     in
     match t.items with
-    | [Var (_, v)] when not t.quoted ->
+    | [Var (syntax, v)] when not t.quoted ->
       (* Unquoted single var *)
       (match f t.loc v with
-       | Some e -> Expand.Partial.Expansion e
+       | Some e ->
+         if not allow_multivalue then
+           check_valid_multivalue syntax ~var:v t e;
+         Expand.Partial.Expansion e
        | None   -> Expand.Partial.Unexpanded t)
     | _ -> loop [] [] t.items
 end
@@ -199,12 +205,12 @@ end
 module S = Expand_to(String_expansion)
 
 let expand t ~f =
-  match S.expand () t ~f with
+  match S.expand () t ~allow_multivalue:true ~f with
   | Expand.Full.String s
   | Expansion s -> s
 
 let partial_expand t ~f =
-  match S.partial_expand () t ~f with
+  match S.partial_expand () t ~allow_multivalue:true ~f with
   | Expand.Partial.Expansion s -> Left s
   | String s -> Left s
   | Unexpanded s -> Right s

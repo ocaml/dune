@@ -83,6 +83,7 @@ module Expand_to(V : EXPANSION) : sig
   val expand
     :  V.context
     -> t
+    -> allow_multivalue:bool
     -> f:(Loc.t -> string -> V.t option)
     -> V.t Expand.Full.t
   (** [expand t ~f] return [t] where all variables have been expanded
@@ -93,6 +94,7 @@ module Expand_to(V : EXPANSION) : sig
   val partial_expand
     :  V.context
     -> t
+    -> allow_multivalue:bool
     -> f:(Loc.t -> string -> V.t option)
     -> V.t Expand.Partial.t
     (** [partial_expand t ~f] is like [expand_generic] where all
@@ -102,12 +104,16 @@ module Expand_to(V : EXPANSION) : sig
         least a variable of [t], it returns a string-with-vars. *)
 end
 
-val expand :
-  t -> f:(Loc.t -> string -> string option) -> string
+val expand
+  :  t
+  -> f:(Loc.t -> string -> string option)
+  -> string
 (** Specialized version [Expand_to.expand] that returns a string (so
     variables are assumed to expand to a single value). *)
 
-val partial_expand :
-  t -> f:(Loc.t -> string -> string option) -> (string, t) Either.t
+val partial_expand
+  :  t
+  -> f:(Loc.t -> string -> string option)
+  -> (string, t) Either.t
 (** [partial_expand] is a specialized version of
     [Expand_to.partial_expand] that returns a string. *)

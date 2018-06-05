@@ -8,6 +8,9 @@ that ${@} is not quoted and doesn't contain exactly 1 element
   - y
   [1]
 
+  $ dune build --root bad x
+  File "dune", line 3, characters 26-30:
+  Error: Variable ${@} expands to 2 values, however a single value is expected here. Please quote this atom.
 
 The targets should only be interpreted as a single path when quoted
 

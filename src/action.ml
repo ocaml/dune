@@ -354,34 +354,38 @@ module Unexpanded = struct
     include Past
 
     module E = struct
-      let expand ~generic ~special ~map ~dir ~f = function
+      let expand ~generic ~special ~map ~dir ~allow_multivalue ~f = function
         | Left x -> map x
         | Right template ->
-           match To_VE.expand dir template ~f with
+           match To_VE.expand dir template ~f ~allow_multivalue with
            | Expansion e -> special dir e
            | String    s -> generic dir s
       [@@inlined always]
 
       let string ~dir ~f x =
         expand ~dir ~f x
+          ~allow_multivalue:false
           ~generic:(fun _dir x -> x)
           ~special:VE.to_string
           ~map:(fun x -> x)
 
       let strings ~dir ~f x =
         expand ~dir ~f x
+          ~allow_multivalue:true
           ~generic:(fun _dir x -> [x])
           ~special:VE.to_strings
           ~map:(fun x -> [x])
 
       let path ~dir ~f x =
         expand ~dir ~f x
+          ~allow_multivalue:false
           ~generic:VE.path_of_string
           ~special:VE.to_path
           ~map:(fun x -> x)
 
       let prog_and_args ~dir ~f x =
         expand ~dir ~f x
+          ~allow_multivalue:true
           ~generic:(fun _dir s -> (Program.of_string ~dir s, []))
           ~special:VE.to_prog_and_args
           ~map:(fun x -> (x, []))
@@ -447,29 +451,33 @@ module Unexpanded = struct
   end
 
   module E = struct
-    let expand ~generic ~special ~dir ~f template =
-      match To_VE.partial_expand dir template ~f with
+    let expand ~generic ~special ~dir ~allow_multivalue ~f template =
+      match To_VE.partial_expand dir template ~allow_multivalue ~f with
       | Expansion e -> Left (special dir e)
       | String s -> Left (generic dir s)
       | Unexpanded x -> Right x
 
     let string ~dir ~f x =
       expand ~dir ~f x
+        ~allow_multivalue:false
         ~generic:(fun _dir x -> x)
         ~special:VE.to_string
 
     let strings ~dir ~f x =
       expand ~dir ~f x
+        ~allow_multivalue:true
         ~generic:(fun _dir x -> [x])
         ~special:VE.to_strings
 
     let path ~dir ~f x =
       expand ~dir ~f x
+        ~allow_multivalue:false
         ~generic:VE.path_of_string
         ~special:VE.to_path
 
     let prog_and_args ~dir ~f x =
       expand ~dir ~f x
+        ~allow_multivalue:true
         ~generic:(fun dir s -> (Unresolved.Program.of_string ~dir s, []))
         ~special:VE.to_prog_and_args
   end

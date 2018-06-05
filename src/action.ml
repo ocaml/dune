@@ -270,13 +270,12 @@ module Unresolved = struct
         | Search s -> Ok (f s))
 end
 
-let var_expansion_to_prog_and_args  dir exp : Unresolved.Program.t * string list =
-  let module P = Unresolved.Program in
-  match (exp : Var_expansion.t) with
-  | Paths   (x::xs) -> (This x, Var_expansion.to_strings dir (Paths xs))
-  | Strings (s::xs) -> ( P.of_string ~dir s
-                       , Var_expansion.to_strings dir (Strings xs))
-  | Paths [] | Strings [] -> (Search "", [])
+let prog_and_args_of_values p ~dir =
+  match p with
+  | [] -> (Unresolved.Program.Search "", [])
+  | Value.Path p :: xs -> (This p, Value.to_strings ~dir xs)
+  | String s :: xs ->
+    (Unresolved.Program.of_string ~dir s, Value.to_strings ~dir xs)
 
 module SW = String_with_vars
 
@@ -315,43 +314,33 @@ module Unexpanded = struct
     include Past
 
     module E = struct
-      let expand ~generic ~special ~map ~dir ~allow_multivalue ~f = function
-        | Left x -> map x
-        | Right template ->
-          match
-            Var_expansion.Expand.expand dir template ~f ~allow_multivalue
-          with
-          | Expansion e -> special dir e
-          | String    s -> generic dir s
-      [@@inlined always]
+      let expand ~dir ~mode ~f ~l ~r =
+        Either.map ~l
+          ~r:(fun s -> r (String_with_vars.expand s ~dir ~f ~mode) ~dir)
 
-      let string ~dir ~f x =
-        expand ~dir ~f x
-          ~allow_multivalue:false
-          ~generic:(fun _dir x -> x)
-          ~special:Var_expansion.to_string
-          ~map:(fun x -> x)
+      let string =
+        expand ~mode:Single
+          ~l:(fun x -> x)
+          ~r:Value.to_string
 
-      let strings ~dir ~f x =
-        expand ~dir ~f x
-          ~allow_multivalue:true
-          ~generic:(fun _dir x -> [x])
-          ~special:Var_expansion.to_strings
-          ~map:(fun x -> [x])
+      let strings =
+        expand ~mode:Many
+          ~l:(fun x -> [x])
+          ~r:Value.to_strings
 
-      let path ~dir ~f x =
-        expand ~dir ~f x
-          ~allow_multivalue:false
-          ~generic:Var_expansion.path_of_string
-          ~special:Var_expansion.to_path
-          ~map:(fun x -> x)
+      let path e =
+        let error_loc =
+          match e with
+          | Left _ -> None
+          | Right r -> Some (String_with_vars.loc r) in
+        expand ~mode:Single
+          ~l:(fun x -> x)
+          ~r:Value.(to_path ?error_loc) e
 
-      let prog_and_args ~dir ~f x =
-        expand ~dir ~f x
-          ~allow_multivalue:true
-          ~generic:(fun _dir s -> (Program.of_string ~dir s, []))
-          ~special:var_expansion_to_prog_and_args
-          ~map:(fun x -> (x, []))
+      let prog_and_args =
+        expand ~mode:Many
+          ~l:(fun x -> (x, []))
+          ~r:prog_and_args_of_values
     end
 
     let rec expand t ~dir ~map_exe ~f : Unresolved.t =
@@ -414,37 +403,17 @@ module Unexpanded = struct
   end
 
   module E = struct
-    let expand ~generic ~special ~dir ~allow_multivalue ~f template =
-      match
-        Var_expansion.Expand.partial_expand dir template ~allow_multivalue ~f
-      with
-      | Expansion e -> Left (special dir e)
-      | String s -> Left (generic dir s)
+    let expand ~dir ~mode ~f ~map x =
+      match String_with_vars.partial_expand ~mode ~dir ~f x with
+      | Expanded e -> Left (map e ~dir)
       | Unexpanded x -> Right x
 
-    let string ~dir ~f x =
-      expand ~dir ~f x
-        ~allow_multivalue:false
-        ~generic:(fun _dir x -> x)
-        ~special:Var_expansion.to_string
-
-    let strings ~dir ~f x =
-      expand ~dir ~f x
-        ~allow_multivalue:true
-        ~generic:(fun _dir x -> [x])
-        ~special:Var_expansion.to_strings
-
-    let path ~dir ~f x =
-      expand ~dir ~f x
-        ~allow_multivalue:false
-        ~generic:Var_expansion.path_of_string
-        ~special:Var_expansion.to_path
-
-    let prog_and_args ~dir ~f x =
-      expand ~dir ~f x
-        ~allow_multivalue:true
-        ~generic:(fun dir s -> (Unresolved.Program.of_string ~dir s, []))
-        ~special:var_expansion_to_prog_and_args
+    let string = expand ~mode:Single ~map:(Value.to_string)
+    let strings = expand ~mode:Many ~map:(Value.to_strings)
+    let path x =
+      let error_loc = String_with_vars.loc x in
+      expand ~mode:Single ~map:(Value.to_path ~error_loc) x
+    let prog_and_args = expand ~mode:Many ~map:(prog_and_args_of_values)
   end
 
   let rec partial_expand t ~dir ~map_exe ~f : Partial.t =

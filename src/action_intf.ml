@@ -29,7 +29,7 @@ module type Ast = sig
     | Redirect       of Outputs.t * path * t
     | Ignore         of Outputs.t * t
     | Progn          of t list
-    | Echo           of string
+    | Echo           of string list
     | Cat            of path
     | Copy           of path * path
     | Symlink        of path * path
@@ -61,7 +61,7 @@ module type Helpers = sig
   val ignore_stderr : t -> t
   val ignore_outputs : t -> t
   val progn : t list -> t
-  val echo : string -> t
+  val echo : string list -> t
   val cat : path -> t
   val copy : path -> path -> t
   val symlink : path -> path -> t

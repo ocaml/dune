@@ -34,7 +34,7 @@ struct
       ; cstr "ignore-stderr"   (t @> nil)      (fun t -> Ignore (Stderr, t))
       ; cstr "ignore-outputs"  (t @> nil)      (fun t -> Ignore (Outputs, t))
       ; cstr "progn"           (rest t)        (fun l -> Progn l)
-      ; cstr "echo"           (string @> nil)         (fun x -> Echo x)
+      ; cstr "echo"      (string @> rest string) (fun x xs -> Echo (x::xs))
       ; cstr "cat"            (path @> nil)         (fun x -> Cat x)
       ; cstr "copy" (path @> path @> nil)              (fun src dst -> Copy (src, dst))
       (*
@@ -78,7 +78,8 @@ struct
            ]
     | Progn l -> List (Sexp.unsafe_atom_of_string "progn"
                        :: List.map l ~f:sexp_of_t)
-    | Echo x -> List [Sexp.unsafe_atom_of_string "echo"; string x]
+    | Echo xs ->
+      List (Sexp.unsafe_atom_of_string "echo" :: List.map xs ~f:string)
     | Cat x -> List [Sexp.unsafe_atom_of_string "cat"; path x]
     | Copy (x, y) ->
       List [Sexp.unsafe_atom_of_string "copy"; path x; path y]
@@ -150,7 +151,7 @@ module Make_mapper
     | Ignore (outputs, t) ->
       Ignore (outputs, map t ~dir ~f_program ~f_string ~f_path)
     | Progn l -> Progn (List.map l ~f:(fun t -> map t ~dir ~f_program ~f_string ~f_path))
-    | Echo x -> Echo (f_string ~dir x)
+    | Echo xs -> Echo (List.map xs ~f:(f_string ~dir))
     | Cat x -> Cat (f_path ~dir x)
     | Copy (x, y) -> Copy (f_path ~dir x, f_path ~dir y)
     | Symlink (x, y) ->
@@ -365,7 +366,7 @@ module Unexpanded = struct
       | Ignore (outputs, t) ->
         Ignore (outputs, expand t ~dir ~map_exe ~f)
       | Progn l -> Progn (List.map l ~f:(fun t -> expand t ~dir ~map_exe ~f))
-      | Echo x -> Echo (E.string ~dir ~f x)
+      | Echo xs -> Echo (List.concat_map xs ~f:(E.strings ~dir ~f))
       | Cat x -> Cat (E.path ~dir ~f x)
       | Copy (x, y) ->
         Copy (E.path ~dir ~f x, E.path ~dir ~f y)
@@ -408,12 +409,13 @@ module Unexpanded = struct
       | Expanded e -> Left (map e ~dir)
       | Unexpanded x -> Right x
 
-    let string = expand ~mode:Single ~map:(Value.to_string)
-    let strings = expand ~mode:Many ~map:(Value.to_strings)
+    let string = expand ~mode:Single ~map:Value.to_string
+    let strings = expand ~mode:Many ~map:Value.to_strings
+    let cat_strings = expand ~mode:Many ~map:Value.concat
     let path x =
       let error_loc = String_with_vars.loc x in
       expand ~mode:Single ~map:(Value.to_path ~error_loc) x
-    let prog_and_args = expand ~mode:Many ~map:(prog_and_args_of_values)
+    let prog_and_args = expand ~mode:Many ~map:prog_and_args_of_values
   end
 
   let rec partial_expand t ~dir ~map_exe ~f : Partial.t =
@@ -457,7 +459,7 @@ module Unexpanded = struct
     | Ignore (outputs, t) ->
       Ignore (outputs, partial_expand t ~dir ~map_exe ~f)
     | Progn l -> Progn (List.map l ~f:(fun t -> partial_expand t ~dir ~map_exe ~f))
-    | Echo x -> Echo (E.string ~dir ~f x)
+    | Echo xs -> Echo (List.map xs ~f:(E.cat_strings ~dir ~f))
     | Cat x -> Cat (E.path ~dir ~f x)
     | Copy (x, y) ->
       Copy (E.path ~dir ~f x, E.path ~dir ~f y)
@@ -686,7 +688,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     exec t ~ectx ~dir ~stdout_to ~stderr_to
       ~env:(Env.add env ~var ~value)
   | Redirect (Stdout, fn, Echo s) ->
-    Io.write_file fn s;
+    Io.write_file fn (String.concat s ~sep:" ");
     Fiber.return ()
   | Redirect (outputs, fn, Run (Ok prog, args)) ->
     let out = Process.File fn in
@@ -703,7 +705,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     redirect ~ectx ~dir outputs Config.dev_null t ~env ~stdout_to ~stderr_to
   | Progn l ->
     exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to
-  | Echo str -> exec_echo stdout_to str
+  | Echo strs -> exec_echo stdout_to (String.concat strs ~sep:" ")
   | Cat fn ->
     Io.with_file_in fn ~f:(fun ic ->
       let oc =

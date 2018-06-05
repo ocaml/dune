@@ -15,3 +15,5 @@ val strings : string list -> t list
 val paths : Path.t list -> t list
 
 val paths_only : t list -> Path.t list
+
+val concat : t list -> dir:Path.t -> string

@@ -21,6 +21,10 @@ let to_path ?error_loc t ~dir =
 let strings = List.map ~f:(fun x -> String x)
 let paths = List.map ~f:(fun x -> Path x)
 
+let concat ts ~dir =
+  List.map ~f:(to_string ~dir) ts
+  |> String.concat ~sep:" "
+
 let paths_only =
   List.filter_map ~f:(function
     | String _ -> None

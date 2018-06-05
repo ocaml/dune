@@ -485,8 +485,7 @@ let write_flags fname s =
 
 let write_lines fname s =
   let path = Path.of_string fname in
-  let buf = String.concat ~sep:"\n" s in
-  Io.write_file path buf
+  Io.write_lines path s
 
 let main ?(args=[]) ~name f =
   let ocamlc  = ref (

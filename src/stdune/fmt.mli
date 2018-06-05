@@ -6,6 +6,8 @@ val failwith : ('a, Format.formatter, unit, 'b) format4 -> 'a
 
 val string : string -> Format.formatter -> unit
 
+val text : string t
+
 val prefix
   : (Format.formatter -> unit)
   -> (Format.formatter -> 'b -> 'c)

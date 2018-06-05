@@ -79,30 +79,36 @@ module Expand : sig
   end
 end
 
-module Expand_to(V : EXPANSION) : sig
+module type Expand_intf = sig
+  type context
+  type expansion
+
   val expand
-    :  V.context
+    :  context
     -> t
     -> allow_multivalue:bool
-    -> f:(Loc.t -> string -> V.t option)
-    -> V.t Expand.Full.t
+    -> f:(Loc.t -> string -> expansion option)
+    -> expansion Expand.Full.t
   (** [expand t ~f] return [t] where all variables have been expanded
       using [f].  If [f loc var] return [Some x], the variable [var] is
       replaced by [x]; otherwise, the variable is inserted using the syntax
       it was originally defined with: ${..} or $(..) *)
 
   val partial_expand
-    :  V.context
+    :  context
     -> t
     -> allow_multivalue:bool
-    -> f:(Loc.t -> string -> V.t option)
-    -> V.t Expand.Partial.t
+    -> f:(Loc.t -> string -> expansion option)
+    -> expansion Expand.Partial.t
     (** [partial_expand t ~f] is like [expand_generic] where all
         variables that could be expanded (i.e., those for which [f]
         returns [Some _]) are.  If all the variables of [t] were
         expanded, a string is returned.  If [f] returns [None] on at
         least a variable of [t], it returns a string-with-vars. *)
 end
+
+module Expand_to(V : EXPANSION) : Expand_intf
+  with type expansion = V.t and type context = V.context
 
 val expand
   :  t

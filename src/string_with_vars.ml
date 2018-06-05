@@ -131,7 +131,28 @@ module Expand = struct
   end
 end
 
+module type Expand_intf = sig
+  type context
+  type expansion
+
+  val expand
+    :  context
+    -> t
+    -> allow_multivalue:bool
+    -> f:(Loc.t -> string -> expansion option)
+    -> expansion Expand.Full.t
+
+  val partial_expand
+    :  context
+    -> t
+    -> allow_multivalue:bool
+    -> f:(Loc.t -> string -> expansion option)
+    -> expansion Expand.Partial.t
+end
+
 module Expand_to(V: EXPANSION) = struct
+  type expansion = V.t
+  type context = V.context
 
   let check_valid_multivalue syntax ~var t x =
     if not t.quoted && V.is_multivalued x then

@@ -305,13 +305,7 @@ module Gen(P : Install_rules.Params) = struct
     let impls = parse_one_set impl_files in
     let intfs = parse_one_set intf_files in
     Module.Name.Map.merge impls intfs ~f:(fun name impl intf ->
-      Some
-        { Module.name
-        ; impl
-        ; intf
-        ; obj_name = ""
-        }
-    )
+      Some (Module.make name ?impl ?intf))
 
   let guess_mlds ~files =
     String.Set.to_list files
@@ -358,14 +352,14 @@ module Gen(P : Install_rules.Params) = struct
         in
         let main_module_name = Module.Name.of_string lib.name in
         let modules =
-          Module.Name.Map.map modules ~f:(fun (m : Module.t) ->
-            let wrapper =
-              if not lib.wrapped || m.name = main_module_name then
-                None
+          if not lib.wrapped then
+            modules
+          else
+            Module.Name.Map.map modules ~f:(fun m ->
+              if m.name = main_module_name then
+                m
               else
-                Some lib.name
-            in
-            Module.set_obj_name m ~wrapper)
+                Module.with_wrapper m ~libname:lib.name)
         in
         let alias_module =
           if not lib.wrapped ||
@@ -378,22 +372,18 @@ module Gen(P : Install_rules.Params) = struct
 
                https://github.com/ocaml/dune/issues/567 *)
             Some
-              { Module.name = Module.Name.add_suffix main_module_name "__"
-              ; intf = None
-              ; impl = Some { name   = sprintf "%s__.ml-gen" lib.name
-                            ; syntax = OCaml
-                            }
-              ; obj_name = lib.name ^ "__"
-              }
+              (Module.make (Module.Name.add_suffix main_module_name "__")
+                 ~impl:{ name   = sprintf "%s__.ml-gen" lib.name
+                       ; syntax = OCaml
+                       }
+                 ~obj_name:(lib.name ^ "__"))
           else
             Some
-              { Module.name = main_module_name
-              ; impl = Some { name   = lib.name ^ ".ml-gen"
-                            ; syntax = OCaml
-                            }
-              ; intf = None
-              ; obj_name = lib.name
-              }
+              (Module.make main_module_name
+                 ~impl:{ name   = lib.name ^ ".ml-gen"
+                       ; syntax = OCaml
+                       }
+                 ~obj_name:lib.name)
         in
         { modules; alias_module; main_module_name })
 
@@ -825,8 +815,7 @@ module Gen(P : Install_rules.Params) = struct
     in
     let modules =
       Module.Name.Map.map modules ~f:(fun m ->
-        Preprocessing.pp_module_as pp m.name m
-        |> Module.set_obj_name ~wrapper:None)
+        Preprocessing.pp_module_as pp m.name m)
     in
 
     let programs =

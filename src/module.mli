@@ -32,15 +32,24 @@ module File : sig
   val to_ocaml : t -> t
 end
 
-type t =
-  { name      : Name.t (** Name of the module. This is always the basename of the filename
-                           without the extension. *)
+(** Representation of a module. It is guaranteed that at least one of
+   [impl] or [intf] is set. *)
+type t = private
+  { name      : Name.t (** Name of the module. This is always the
+                           basename of the filename without the
+                           extension. *)
   ; impl      : File.t option
   ; intf      : File.t option
-
-  ; obj_name  : string (** Object name. It is different from [name] for wrapped
-                           modules. *)
+  ; obj_name  : string (** Object name. It is different from [name]
+                          for wrapped modules. *)
   }
+
+val make
+  :  ?impl:File.t
+  -> ?intf:File.t
+  -> ?obj_name:string
+  -> Name.t
+  -> t
 
 val name : t -> Name.t
 
@@ -67,5 +76,7 @@ val iter : t -> f:(Ml_kind.t -> File.t -> unit) -> unit
 
 val has_impl : t -> bool
 
-(** Set the [obj_name] field of the module. [wrapper] might be a library name. *)
-val set_obj_name : t -> wrapper:string option -> t
+(** Prefix the object name with the library name. *)
+val with_wrapper : t -> libname:string -> t
+
+val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t

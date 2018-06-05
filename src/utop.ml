@@ -54,14 +54,12 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
     let modules =
       Module.Name.Map.singleton
         main_module_name
-        { Module.
-          name = main_module_name
-        ; impl = Some { Module.File.
-                        name = main_module_filename
-                      ; syntax = Module.Syntax.OCaml
-                      }
-        ; intf = None
-        ; obj_name = exe_name } in
+        (Module.make main_module_name
+           ~impl:{ name = main_module_filename
+                 ; syntax = Module.Syntax.OCaml
+                 }
+           ~obj_name:exe_name)
+    in
     let utop_exe_dir = utop_exe_dir ~dir in
     let requires =
       let open Result.O in

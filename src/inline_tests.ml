@@ -179,14 +179,11 @@ include Sub_system.Register_end_point(
     let main_module_name = Module.Name.of_string name in
     let modules =
       Module.Name.Map.singleton main_module_name
-        { Module.
-          name = main_module_name
-        ; impl = Some { name   = main_module_filename
-                      ; syntax = OCaml
-                      }
-        ; intf = None
-        ; obj_name = name
-        }
+        (Module.make main_module_name
+           ~impl:{ name   = main_module_filename
+                 ; syntax = OCaml
+                 }
+           ~obj_name:name)
     in
 
     let extra_vars =

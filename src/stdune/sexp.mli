@@ -46,6 +46,8 @@ module To_sexp : sig
   val field_o : string -> 'a t-> 'a option -> field
 
   val record_fields : field list t
+
+  val unknown : _ t
 end with type sexp := t
 
 module Loc = Usexp.Loc

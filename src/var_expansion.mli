@@ -17,3 +17,18 @@ val to_path : Path.t -> t -> Path.t
 
 module Expand : String_with_vars.Expand_intf
   with type expansion = t and type context = Path.t
+
+(** Specialized expansion that produce only a single value *)
+module Single : sig
+  val path
+    :  dir:Path.t
+    -> String_with_vars.t
+    -> f:(Loc.t -> string -> t option)
+    -> Path.t
+
+  val string
+    :  dir:Path.t
+    -> String_with_vars.t
+    -> f:(Loc.t -> string -> t option)
+    -> string
+end

@@ -86,6 +86,14 @@ val expand_vars
   -> String_with_vars.t
   -> string
 
+val expand_vars_path
+  :  t
+  -> scope:Scope.t
+  -> dir:Path.t
+  -> ?extra_vars:Var_expansion.t String.Map.t
+  -> String_with_vars.t
+  -> Path.t
+
 val expand_and_eval_set
   :  t
   -> scope:Scope.t

@@ -42,3 +42,20 @@ let to_path dir = function
   | Paths [p] -> p
   | Paths l ->
     path_of_string dir (concat (List.map l ~f:(string_of_path ~dir)))
+
+module Single = struct
+  let path ~dir sw ~f =
+    let relative = Path.relative ~error_loc:(String_with_vars.loc sw) in
+    match Expand.expand dir sw ~allow_multivalue:false ~f with
+    | String s
+    | Expansion (Strings [s]) -> relative dir s
+    | Expansion (Paths [s]) -> Path.append dir s
+    | _ -> assert false (* multivalues aren't allowed *)
+
+  let string ~dir sw ~f =
+    match Expand.expand dir sw ~allow_multivalue:false ~f with
+    | String s
+    | Expansion (Strings [s]) -> s
+    | Expansion (Paths [s]) -> string_of_path ~dir s
+    | _ -> assert false (* multivalues aren't allowed *)
+end

@@ -86,16 +86,18 @@ let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
 let expand_var_no_root t var = String.Map.find t.vars var
 
-let expand_vars t ~scope ~dir ?(extra_vars=String.Map.empty) s =
-  String_with_vars.expand s ~f:(fun _loc -> function
-    | "ROOT" -> Some (Path.reach ~from:dir t.context.build_dir)
-    | "SCOPE_ROOT" ->
-      Some (Path.reach ~from:dir (Scope.root scope))
-    | var ->
-      Option.map ~f:(fun e -> Var_expansion.to_string dir e)
+let (expand_vars, expand_vars_path) =
+  let make expander t ~scope ~dir ?(extra_vars=String.Map.empty) s =
+    expander ~dir s ~f:(fun _loc -> function
+      | "ROOT" -> Some (Var_expansion.Paths [t.context.build_dir])
+      | "SCOPE_ROOT" -> Some (Paths [Scope.root scope])
+      | var ->
         (match expand_var_no_root t var with
          | Some _ as x -> x
-         | None -> String.Map.find extra_vars var))
+         | None -> String.Map.find extra_vars var)) in
+  ( make Var_expansion.Single.string
+  , make Var_expansion.Single.path
+  )
 
 let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
   let open Build.O in
@@ -482,13 +484,11 @@ module Deps = struct
 
   let make_alias t ~scope ~dir s =
     let loc = String_with_vars.loc s in
-    Alias.of_user_written_path ~loc
-      (Path.relative ~error_loc:loc dir (expand_vars t ~scope ~dir s))
+    Alias.of_user_written_path ~loc ((expand_vars_path t ~scope ~dir s))
 
   let dep t ~scope ~dir = function
     | File  s ->
-      let path = Path.relative ~error_loc:(String_with_vars.loc s) dir
-                   (expand_vars t ~scope ~dir s) in
+      let path = expand_vars_path t ~scope ~dir s in
       Build.path path
       >>^ fun () -> [path]
     | Alias s ->
@@ -500,19 +500,17 @@ module Deps = struct
       >>^ fun () -> []
     | Glob_files s -> begin
         let loc = String_with_vars.loc s in
-        let path =
-          Path.relative ~error_loc:loc dir (expand_vars t ~scope ~dir s) in
+        let path = expand_vars_path t ~scope ~dir s in
         match Glob_lexer.parse_string (Path.basename path) with
         | Ok re ->
           let dir = Path.parent_exn path in
           Build.paths_glob ~loc ~dir (Re.compile re)
           >>^ Path.Set.to_list
         | Error (_pos, msg) ->
-          Loc.fail loc "invalid glob: %s" msg
+          Loc.fail (String_with_vars.loc s) "invalid glob: %s" msg
       end
     | Files_recursively_in s ->
-      let path = Path.relative ~error_loc:(String_with_vars.loc s)
-                   dir (expand_vars t ~scope ~dir s) in
+      let path = expand_vars_path t ~scope ~dir s in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
       >>^ Path.Set.to_list
     | Package p ->

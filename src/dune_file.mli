@@ -386,7 +386,7 @@ end
 module Menhir : sig
   type t =
     { merge_into : string option
-    ; flags      : Ordered_set_lang.Unexpanded.t
+    ; flags      : string list
     ; modules    : string list
     ; mode       : Rule.Mode.t
     ; loc        : Loc.t

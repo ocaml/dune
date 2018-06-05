@@ -1727,7 +1727,7 @@ end
 module Menhir = struct
   type t =
     { merge_into : string option
-    ; flags      : Ordered_set_lang.Unexpanded.t
+    ; flags      : string list
     ; modules    : string list
     ; mode       : Rule.Mode.t
     ; loc        :  Loc.t
@@ -1742,7 +1742,7 @@ module Menhir = struct
   let decode =
     record
       (let%map merge_into = field_o "merge_into" string
-       and flags = field_oslu "flags"
+       and flags = field "flags" (list string) ~default:[]
        and modules = field "modules" (list string)
        and mode = Rule.Mode.field in
        { merge_into
@@ -1763,7 +1763,7 @@ module Menhir = struct
   let jbuild_syntax =
     record
       (let%map merge_into = field_o "merge_into" string
-       and flags = field_oslu "flags"
+       and flags = field "flags" (list string) ~default:[]
        and modules = field "modules" (list string)
        and mode = Rule.Mode.field in
        { merge_into

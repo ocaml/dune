@@ -475,8 +475,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
             >>| fun (exe, driver) ->
             (exe,
              let extra_vars =
-               String_map.singleton "corrected-suffix"
-                 (Action.Var_expansion.Strings ([corrected_suffix], Split))
+               String_map.singleton "corrected-suffix" [Value.String corrected_suffix]
              in
              Build.memoize "ppx flags"
                (SC.expand_and_eval_set sctx driver.info.lint_flags
@@ -558,8 +557,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
         get_ppx_driver sctx ~loc ~scope ~dir_kind pps >>| fun (exe, driver) ->
         (exe,
          let extra_vars =
-           String_map.singleton "corrected-suffix"
-             (Action.Var_expansion.Strings ([corrected_suffix], Split))
+           String_map.singleton "corrected-suffix" [Value.String corrected_suffix]
          in
          Build.memoize "ppx flags"
            (SC.expand_and_eval_set sctx driver.info.flags

@@ -109,6 +109,68 @@ module Driver = struct
   end
   include M
   include Sub_system.Register_backend(M)
+
+  (* Where are we called from? *)
+  type loc =
+    | User_file of Loc.t * (Loc.t * Pp.t) list
+    | Dot_ppx   of Path.t * Pp.t list
+
+  let make_error loc msg =
+    match loc with
+    | User_file (loc, _) -> Error (Loc.exnf loc "%a" Fmt.text msg)
+    | Dot_ppx (path, pps) ->
+      Error (Loc.exnf (Loc.in_file (Path.to_string path)) "%a" Fmt.text
+               (sprintf
+                  "Failed to create on-demand ppx rewriter for %s; %s"
+                  (String.enumerate_and (List.map pps ~f:Pp.to_string))
+                  (String.uncapitalize msg)))
+
+  let select libs ~loc =
+    match select_replaceable_backend libs ~replaces with
+    | Ok _ as x -> x
+    | Error No_backend_found ->
+      let msg =
+        match libs with
+        | [] ->
+          "You must specify at least one ppx rewriter."
+        | _ ->
+          match
+            List.filter_map libs ~f:(fun lib ->
+              match Lib.name lib with
+              | "ocaml-migrate-parsetree" | "ppxlib" | "ppx_driver" as s ->
+                Some s
+              | _ -> None)
+          with
+          | [] ->
+            let pps =
+              match loc with
+              | User_file (_, pps) -> List.map pps ~f:snd
+              | Dot_ppx (_, pps) -> pps
+            in
+            sprintf
+              "No ppx driver were found. It seems that %s %s not \
+               compatible with Dune. Examples of ppx rewriters that \
+               are compatible with Dune are ones using \
+               ocaml-migrate-parsetree, ppxlib or ppx_driver."
+              (String.enumerate_and (List.map pps ~f:Pp.to_string))
+              (match pps with
+               | [_] -> "is"
+               | _   -> "are")
+          | names ->
+            sprintf
+              "No ppx driver were found.\n\
+               Hint: Try upgrading or reinstalling %s."
+              (String.enumerate_and names)
+      in
+      make_error loc msg
+    | Error (Too_many_backends ts) ->
+      make_error loc
+        (sprintf
+           "Too many incompatible ppx drivers were found: %s."
+           (String.enumerate_and (List.map ts ~f:(fun t ->
+              Lib.name (lib t)))))
+    | Error (Other exn) ->
+      Error exn
 end
 
 module Jbuild_driver = struct
@@ -184,24 +246,6 @@ let ppx_exe sctx ~key ~dir_kind =
   | Jbuild ->
     Path.relative (SC.build_dir sctx) (".ppx/jbuild/" ^ key ^ "/ppx.exe")
 
-let no_driver_error pps =
-  let has name =
-    List.exists pps ~f:(fun lib -> Lib.name lib = name)
-  in
-  match
-    List.find ["ocaml-migrate-parsetree"; "ppxlib"; "ppx_driver"] ~f:has
-  with
-  | Some name ->
-    sprintf
-      "No ppx driver found.\n\
-       Hint: Try upgrading or reinstalling %S." name
-  | None ->
-    sprintf
-      "No ppx driver found.\n\
-       It seems that these ppx rewriters are not compatible with Dune.\n\
-       Hint: Examples of ppx rewriters that are compatible with Dune are\n\
-       ones using ocaml-migrate-parsetree, ppxlib or ppx_driver."
-
 let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
   let ctx = SC.context sctx in
   let mode = Context.best_mode ctx in
@@ -226,9 +270,7 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
        >>= fun resolved_pps ->
        match jbuild_driver with
        | None ->
-         Driver.select_replaceable_backend resolved_pps ~loc:Loc.none
-           ~replaces:Driver.replaces
-           ~no_backend_error:no_driver_error
+         Driver.select resolved_pps ~loc:(Dot_ppx (target, pps))
          >>| fun driver ->
          (driver, resolved_pps)
        | Some driver ->
@@ -339,8 +381,7 @@ let get_ppx_driver sctx ~loc ~scope ~dir_kind pps =
     >>= fun libs ->
     Lib.closure libs
     >>=
-    Driver.select_replaceable_backend ~loc ~replaces:Driver.replaces
-      ~no_backend_error:no_driver_error
+    Driver.select ~loc:(User_file (loc, pps))
     >>= fun driver ->
     Ok (ppx_driver_exe sctx libs ~dir_kind, driver)
   | Jbuild ->

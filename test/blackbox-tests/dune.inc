@@ -82,6 +82,15 @@
     (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
 
 (alias
+ ((name dune-ppx-driver-system)
+  (deps
+   ((package dune) (files_recursively_in test-cases/dune-ppx-driver-system)))
+  (action
+   (chdir
+    test-cases/dune-ppx-driver-system
+    (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+
+(alias
  ((name env)
   (deps ((package dune) (files_recursively_in test-cases/env)))
   (action
@@ -537,6 +546,7 @@
     (alias cross-compilation)
     (alias custom-build-dir)
     (alias depend-on-the-universe)
+    (alias dune-ppx-driver-system)
     (alias env)
     (alias exclude-missing-module)
     (alias exec-cmd)
@@ -600,6 +610,7 @@
     (alias cross-compilation)
     (alias custom-build-dir)
     (alias depend-on-the-universe)
+    (alias dune-ppx-driver-system)
     (alias env)
     (alias exclude-missing-module)
     (alias exec-cmd)

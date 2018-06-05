@@ -33,8 +33,9 @@ let of_lexbuf lb =
   }
 
 let exnf t fmt =
+  Format.pp_open_box err_ppf 0;
   Format.pp_print_as err_ppf 7 ""; (* "Error: " *)
-  kerrf fmt ~f:(fun s -> Exn.Loc_error (t, s))
+  kerrf (fmt^^ "@]") ~f:(fun s -> Exn.Loc_error (t, s))
 
 let fail t fmt =
   Format.pp_print_as err_ppf 7 ""; (* "Error: " *)

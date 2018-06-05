@@ -45,6 +45,16 @@ module type Registered_backend = sig
   (** Resolve a backend name *)
   val resolve : Lib.DB.t -> Loc.t * string -> t Or_exn.t
 
+  module Selection_error : sig
+    type nonrec t =
+      | Too_many_backends of t list
+      | No_backend_found
+      | Other of exn
+
+    val to_exn : t -> loc:Loc.t -> exn
+    val or_exn : ('a, t) result -> loc:Loc.t -> 'a Or_exn.t
+  end
+
   (** Choose a backend by either using the ones written by the user or
       by scanning the dependencies.
 
@@ -53,23 +63,20 @@ module type Registered_backend = sig
       independant, i.e. none of them is in the transitive closure of
       the other one. *)
   val select_extensible_backends
-    :  loc:Loc.t
-    -> ?written_by_user:t list
+    :  ?written_by_user:t list
     -> extends:(t -> t list Or_exn.t)
     -> Lib.t list
-    -> t list Or_exn.t
+    -> (t list, Selection_error.t) result
 
   (** Choose a backend by either using the ones written by the user or
       by scanning the dependencies.
 
       A backend can replace other backends *)
   val select_replaceable_backend
-    :  loc:Loc.t
-    -> ?written_by_user:t list
+    :  ?written_by_user:t list
     -> replaces:(t -> t list Or_exn.t)
-    -> ?no_backend_error:(Lib.t list -> string)
     -> Lib.t list
-    -> t Or_exn.t
+    -> (t, Selection_error.t) result
 end
 
 (* This is probably what we'll give to plugins *)

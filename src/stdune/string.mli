@@ -45,5 +45,11 @@ val for_all : t -> f:(char -> bool) -> bool
     lexing conventions and [sprintf "%S" s] otherwise. *)
 val maybe_quoted : t -> t
 
+(** Produces: "x, y and z" *)
+val enumerate_and : string list -> string
+
+(** Produces: "x, y or z" *)
+val enumerate_or  : string list -> string
+
 module Set : Set.S with type elt = t
 module Map : Map.S with type key = t

@@ -43,39 +43,54 @@ module Register_backend(M : Backend) = struct
                (M.desc ~plural:false))
     | Some t -> Ok t
 
-  let written_by_user_or_scan ~loc ~written_by_user ~to_scan ~no_backend_error =
+  module Selection_error = struct
+    type t =
+      | Too_many_backends of M.t list
+      | No_backend_found
+      | Other of exn
+
+    let to_exn t ~loc =
+      match t with
+      | Too_many_backends backends ->
+        Loc.exnf loc
+          "Too many independant %s found:\n%s"
+          (M.desc ~plural:true)
+          (String.concat ~sep:"\n"
+             (List.map backends ~f:(fun t ->
+                let lib = M.lib t in
+                sprintf "- %S in %s"
+                  (Lib.name lib)
+                  (Path.to_string_maybe_quoted (Lib.src_dir lib)))))
+      | No_backend_found ->
+        Loc.exnf loc "No %s found." (M.desc ~plural:false)
+      | Other exn ->
+        exn
+
+    let or_exn res ~loc =
+      match res with
+      | Ok _ as x -> x
+      | Error t -> Error (to_exn t ~loc)
+
+    let wrap = function
+      | Ok _ as x -> x
+      | Error exn -> Error (Other exn)
+  end
+  open Selection_error
+
+  let written_by_user_or_scan ~written_by_user ~to_scan =
     match
       match written_by_user with
       | Some l -> l
       | None   -> List.filter_map to_scan ~f:get
     with
-    | [] -> begin
-        match no_backend_error with
-        | Some f ->
-          Error (Loc.exnf loc "%s" (f to_scan))
-        | None ->
-          Error
-            (Loc.exnf loc "No %s found." (M.desc ~plural:false))
-      end
+    | [] -> Error No_backend_found
     | l -> Ok l
 
-  let too_many_backends ~loc backends =
-    Loc.exnf loc
-      "Too many independant %s found:\n%s"
-      (M.desc ~plural:true)
-      (String.concat ~sep:"\n"
-         (List.map backends ~f:(fun t ->
-            let lib = M.lib t in
-            sprintf "- %S in %s"
-              (Lib.name lib)
-              (Path.to_string_maybe_quoted (Lib.src_dir lib)))))
-
-  let select_extensible_backends ~loc ?written_by_user ~extends to_scan =
+  let select_extensible_backends ?written_by_user ~extends to_scan =
     let open Result.O in
-    written_by_user_or_scan ~loc ~written_by_user ~to_scan
-      ~no_backend_error:None
+    written_by_user_or_scan ~written_by_user ~to_scan
     >>= fun backends ->
-    top_closure backends ~deps:extends
+    wrap (top_closure backends ~deps:extends)
     >>= fun backends ->
     let roots =
       let all = Set.of_list backends in
@@ -86,21 +101,20 @@ module Register_backend(M : Backend) = struct
     if List.length roots = 1 then
       Ok backends
     else
-      Error (too_many_backends ~loc roots)
+      Error (Too_many_backends roots)
 
-  let select_replaceable_backend ~loc ?written_by_user ~replaces
-        ?no_backend_error to_scan =
+  let select_replaceable_backend ?written_by_user ~replaces to_scan =
     let open Result.O in
-    written_by_user_or_scan ~loc ~written_by_user ~to_scan ~no_backend_error
+    written_by_user_or_scan ~written_by_user ~to_scan
     >>= fun backends ->
-    Result.concat_map backends ~f:replaces
+    wrap (Result.concat_map backends ~f:replaces)
     >>= fun replaced_backends ->
     match
       Set.diff (Set.of_list backends) (Set.of_list replaced_backends)
       |> Set.to_list
     with
     | [b] -> Ok b
-    | l   -> Error (too_many_backends ~loc l)
+    | l   -> Error (Too_many_backends l)
 end
 
 type Lib.Sub_system.t +=
@@ -120,11 +134,11 @@ module Register_end_point(M : End_point) = struct
          Result.all (List.map l ~f:(M.Backend.resolve (Scope.libs c.scope)))
          >>| Option.some)
       >>= fun written_by_user ->
-      M.Backend.select_extensible_backends
-        ~loc:(M.Info.loc info)
-        ?written_by_user
-        ~extends:M.Backend.extends
-        (deps @ pps)
+      M.Backend.Selection_error.or_exn ~loc:(M.Info.loc info)
+        (M.Backend.select_extensible_backends
+           ?written_by_user
+           ~extends:M.Backend.extends
+           (deps @ pps))
     in
     let fail, backends =
       match backends with

@@ -201,3 +201,16 @@ let maybe_quoted s =
 
 module Set = Set.Make(T)
 module Map = Map.Make(T)
+
+let enumerate_gen s =
+  let s = " " ^ s ^ " " in
+  let rec loop = function
+    | [] -> []
+    | [x] -> [x]
+    | [x; y] -> [x; s; y]
+    | x :: l -> x :: ", " :: loop l
+  in
+  fun l -> concat (loop l) ~sep:""
+
+let enumerate_and = enumerate_gen "and"
+let enumerate_or  = enumerate_gen "or"

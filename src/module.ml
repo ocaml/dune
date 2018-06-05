@@ -56,6 +56,33 @@ type t =
 
 let name t = t.name
 
+let make ?impl ?intf ?obj_name name =
+  let file : File.t =
+    match impl, intf with
+    | None, None ->
+      Exn.code_error "Module.make called with no files"
+        [ "name", Sexp.To_sexp.string name
+        ; "impl", Sexp.To_sexp.(option unknown) impl
+        ; "intf", Sexp.To_sexp.(option unknown) intf
+        ]
+    | Some file, _
+    | _, Some file -> file
+  in
+  let obj_name =
+    match obj_name with
+    | Some s -> s
+    | None ->
+      let fn = file.name in
+      match String.index fn '.' with
+      | None   -> fn
+      | Some i -> String.sub fn ~pos:0 ~len:i
+  in
+  { name
+  ; impl
+  ; intf
+  ; obj_name
+  }
+
 let real_unit_name t = Name.of_string (Filename.basename t.obj_name)
 
 let has_impl t = Option.is_some t.impl
@@ -96,18 +123,11 @@ let iter t ~f =
   Option.iter t.impl ~f:(f Ml_kind.Impl);
   Option.iter t.intf ~f:(f Ml_kind.Intf)
 
-let set_obj_name t ~wrapper =
-  match wrapper with
-  | Some s -> { t with obj_name = sprintf "%s__%s" s t.name }
-  | None ->
-    let fn =
-      match t.impl with
-      | Some f -> f.name
-      | None -> (Option.value_exn t.intf).name
-    in
-    let obj_name  =
-      match String.index fn '.' with
-      | None -> fn
-      | Some i -> String.sub fn ~pos:0 ~len:i
-    in
-    { t with obj_name }
+let with_wrapper t ~libname =
+  { t with obj_name = sprintf "%s__%s" libname t.name }
+
+let map_files t ~f =
+  { t with
+    impl = Option.map t.impl ~f:(f Ml_kind.Impl)
+  ; intf = Option.map t.intf ~f:(f Ml_kind.Intf)
+  }

@@ -10,16 +10,11 @@ let pp_fname fn =
      [foo.pp.mli] is the interface for [foo.pp.ml] *)
   fn ^ ".pp" ^ ext
 
-let pped_module ~dir (m : Module.t) ~f =
-  let pped_file (kind : Ml_kind.t) (file : Module.File.t) =
+let pped_module ~dir m ~f =
+  Module.map_files m ~f:(fun kind file ->
     let pp_fname = pp_fname file.name in
     f kind (Path.relative dir file.name) (Path.relative dir pp_fname);
-    {file with name = pp_fname}
-  in
-  { m with
-    impl = Option.map m.impl ~f:(pped_file Impl)
-  ; intf = Option.map m.intf ~f:(pped_file Intf)
-  }
+    { file with name = pp_fname })
 
 module Driver = struct
   module M = struct
@@ -416,18 +411,13 @@ let setup_reason_rules sctx ~dir (m : Module.t) =
       ; A "binary"
       ; Dep src_path ]
       ~stdout_to:(Path.relative dir target) in
-  let to_ml (f : Module.File.t) =
+  Module.map_files m ~f:(fun _ f ->
     match f.syntax with
     | OCaml  -> f
     | Reason ->
       let ml = Module.File.to_ocaml f in
       SC.add_rule sctx (rule f.name ml.name);
-      ml
-  in
-  { m with
-    impl = Option.map m.impl ~f:to_ml
-  ; intf = Option.map m.intf ~f:to_ml
-  }
+      ml)
 
 let promote_correction fn build ~suffix =
   Build.progn

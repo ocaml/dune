@@ -55,6 +55,8 @@ module To_sexp = struct
   let record_fields (l : field list) =
     List (List.filter_map l ~f:(fun (k, v) ->
       Option.map v ~f:(fun v -> List[Atom (Atom.of_string k); v])))
+
+  let unknown _ = unsafe_atom_of_string "<unknown>"
 end
 
 module Of_sexp = struct

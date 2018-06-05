@@ -142,6 +142,14 @@ let invalid_multivalue syntax ~var t x =
                   Please quote this atom."
     (string_of_var syntax var) (List.length x)
 
+let expand_var syntax ~var ~dir ~f t =
+  match f t.loc var, t.quoted with
+  | Some ([] | _::_::_ as e) , false ->
+    invalid_multivalue syntax ~var t e
+  | Some ([_] as t), false
+  | Some t, true -> Some (Value.to_strings ~dir t)
+  | None, _ -> None
+
 let expand t ~mode ~dir ~f =
   match t.items with
   | [Var (syntax, v)] when not t.quoted ->
@@ -159,12 +167,9 @@ let expand t ~mode ~dir ~f =
       List.concat_map t.items ~f:(function
         | Text s -> [s]
         | Var (syntax, v) ->
-          begin match f t.loc v, t.quoted with
-          | Some ([] | _::_::_ as e) , false ->
-            invalid_multivalue syntax ~var:v t e
-          | Some ([_] as t), false
-          | Some t, true -> Value.to_strings ~dir t
-          | None, _ -> [string_of_var syntax v]
+          begin match expand_var syntax ~var:v ~dir ~f t with
+          | Some values -> values
+          | None -> [string_of_var syntax v]
           end)
       |> String.concat ~sep:"")
 
@@ -182,11 +187,8 @@ let partial_expand t ~mode ~dir ~f =
       end
     | Text s :: items -> loop (s :: acc_text) acc items
     | Var (syntax, v) as it :: items ->
-      begin match f t.loc v with
-      | Some (([] | _::_) as e) when not t.quoted ->
-        invalid_multivalue syntax ~var:v t e
-      | Some t ->
-        loop (List.rev_append (Value.to_strings ~dir t) acc_text) acc items
+      begin match expand_var syntax ~var:v ~dir ~f t with
+      | Some values -> loop (List.rev_append values acc_text) acc items
       | None -> loop [] (it :: commit_text acc_text acc) items
       end
   in

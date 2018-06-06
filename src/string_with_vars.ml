@@ -143,35 +143,12 @@ let invalid_multivalue syntax ~var t x =
     (string_of_var syntax var) (List.length x)
 
 let expand_var syntax ~var ~dir ~f t =
-  match f t.loc var, t.quoted with
+  match f syntax t.loc var, t.quoted with
   | Some ([] | _::_::_ as e) , false ->
     invalid_multivalue syntax ~var t e
   | Some ([_] as t), false
   | Some t, true -> Some (Value.to_strings ~dir t)
   | None, _ -> None
-
-let expand t ~mode ~dir ~f =
-  match t.items with
-  | [Var (syntax, v)] when not t.quoted ->
-    (* Unquoted single var *)
-    begin match f t.loc v with
-    | Some e ->
-      begin match Mode.value mode e with
-      | None -> invalid_multivalue syntax ~var:v t e
-      | Some s -> s
-      end
-    | None -> Mode.string mode (string_of_var syntax v)
-    end
-  | _ ->
-    Mode.string mode (
-      List.concat_map t.items ~f:(function
-        | Text s -> [s]
-        | Var (syntax, v) ->
-          begin match expand_var syntax ~var:v ~dir ~f t with
-          | Some values -> values
-          | None -> [string_of_var syntax v]
-          end)
-      |> String.concat ~sep:"")
 
 let partial_expand t ~mode ~dir ~f =
   let commit_text acc_text acc =
@@ -195,7 +172,7 @@ let partial_expand t ~mode ~dir ~f =
   match t.items with
   | [Var (syntax, v)] when not t.quoted ->
     (* Unquoted single var *)
-    begin match f t.loc v with
+    begin match f syntax t.loc v with
     | Some e -> Partial.Expanded (
       match Mode.value mode e with
       | None -> invalid_multivalue syntax ~var:v t e
@@ -203,6 +180,19 @@ let partial_expand t ~mode ~dir ~f =
     | None -> Unexpanded t
     end
   | _ -> loop [] [] t.items
+
+let expand t ~mode ~dir ~f =
+  match
+    partial_expand t ~mode ~dir ~f:(fun syntax loc var ->
+      match f loc var with
+      | None -> Some [Value.String (string_of_var syntax var)]
+      | s -> s)
+  with
+  | Partial.Expanded s -> s
+  | Unexpanded _ -> assert false (* we are expanding every variable *)
+
+let partial_expand t ~mode ~dir ~f =
+  partial_expand t ~mode ~dir ~f:(fun _ loc v -> f loc v)
 
 let to_string t =
   match t.items with

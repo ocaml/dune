@@ -161,7 +161,30 @@ let go ?(log=Log.no_log) ?(config=Config.default)
     (Path.to_absolute_filename Path.root |> String.maybe_quoted);
   let cwd = Sys.getcwd () in
   if cwd <> initial_cwd then
-    Printf.eprintf "Entering directory '%s'\n%!" cwd;
+    Printf.eprintf "Entering directory '%s'\n%!"
+      (if Config.inside_dune then
+         let descendant_simple p ~of_ =
+           match
+             String.drop_prefix p ~prefix:of_
+           with
+           | None | Some "" -> None
+           | Some s -> Some (String.sub s ~pos:1 ~len:(String.length s - 1))
+         in
+         match descendant_simple cwd ~of_:initial_cwd with
+         | Some s -> s
+         | None ->
+           match descendant_simple initial_cwd ~of_:cwd with
+           | None -> cwd
+           | Some s ->
+             let rec loop acc dir =
+               if dir = Filename.current_dir_name then
+                 acc
+               else
+                 loop (Filename.concat acc "..") (Filename.dirname dir)
+             in
+             loop ".." (Filename.dirname s)
+       else
+         cwd);
   let t =
     { log
     ; gen_status_line

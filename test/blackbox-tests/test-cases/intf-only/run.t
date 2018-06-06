@@ -1,6 +1,7 @@
 Successes:
 
-  $ dune build --display short --root foo --debug-dep 2>&1 | grep -v Entering
+  $ dune build --display short --root foo --debug-dep
+  Entering directory 'foo'
       ocamldep test/bar.ml.d
       ocamldep foo.ml.d
         ocamlc .foo.objs/foo__.{cmi,cmo,cmt}
@@ -20,7 +21,8 @@ Successes:
 
 Errors:
 
-  $ dune build --display short --root a foo.cma 2>&1 | grep -v Entering
+  $ dune build --display short --root a foo.cma
+  Entering directory 'a'
   File "dune", line 2, characters 1-13:
   Warning: Some modules don't have an implementation.
   You need to add the following field to this stanza:
@@ -30,16 +32,21 @@ Errors:
   This will become an error in the future.
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
         ocamlc foo.cma
-  $ dune build --display short --root b foo.cma 2>&1 | grep -v Entering
+  $ dune build --display short --root b foo.cma
+  Entering directory 'b'
   File "dune", line 3, characters 34-37:
   Warning: The following modules must be listed here as they don't have an implementation:
   - y
   This will become an error in the future.
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
         ocamlc foo.cma
-  $ dune build --display short --root c foo.cma 2>&1 | grep -v Entering
+  $ dune build --display short --root c foo.cma
+  Entering directory 'c'
   File "dune", line 3, characters 35-36:
   Error: Module X doesn't exist.
-  $ dune build --display short --root d foo.cma 2>&1 | grep -v Entering
+  [1]
+  $ dune build --display short --root d foo.cma
+  Entering directory 'd'
   File "dune", line 3, characters 35-36:
   Error: Module X has an implementation, it cannot be listed here
+  [1]

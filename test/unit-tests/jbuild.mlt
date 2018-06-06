@@ -1,0 +1,67 @@
+open Dune;;
+open Stdune;;
+
+#install_printer Jbuild.Mode_conf.pp;;
+#install_printer Binary_kind.pp;;
+#install_printer Sexp.pp;;
+
+(* Jbuild.Executables.Link_mode.t *)
+let test s =
+  Jbuild.Executables.Link_mode.t
+    (Sexp.parse_string ~fname:"" ~mode:Sexp.Parser.Mode.Single s)
+[%%expect{|
+val test : string -> Dune.Jbuild.Executables.Link_mode.t = <fun>
+|}]
+
+(* Link modes can be read as a (<mode> <kind>) list *)
+test "(best exe)"
+[%%expect{|
+- : Dune.Jbuild.Executables.Link_mode.t =
+{Dune.Jbuild.Executables.Link_mode.mode = best; kind = exe}
+|}]
+
+(* Some shortcuts also exist *)
+test "exe"
+[%%expect{|
+- : Dune.Jbuild.Executables.Link_mode.t =
+{Dune.Jbuild.Executables.Link_mode.mode = best; kind = exe}
+|}]
+test "object"
+[%%expect{|
+- : Dune.Jbuild.Executables.Link_mode.t =
+{Dune.Jbuild.Executables.Link_mode.mode = best; kind = object}
+|}]
+test "shared_object"
+[%%expect{|
+- : Dune.Jbuild.Executables.Link_mode.t =
+{Dune.Jbuild.Executables.Link_mode.mode = best; kind = shared_object}
+|}]
+test "byte"
+[%%expect{|
+- : Dune.Jbuild.Executables.Link_mode.t =
+{Dune.Jbuild.Executables.Link_mode.mode = byte; kind = exe}
+|}]
+test "native"
+[%%expect{|
+- : Dune.Jbuild.Executables.Link_mode.t =
+{Dune.Jbuild.Executables.Link_mode.mode = native; kind = exe}
+|}]
+
+(* Jbuild.Executables.Link_mode.sexp_of_t *)
+let test l =
+  Jbuild.Executables.Link_mode.sexp_of_t l
+[%%expect{|
+val test : Dune.Jbuild.Executables.Link_mode.t -> Stdune__Sexp.t = <fun>
+|}]
+
+(* In the general case, modes are serialized as a list *)
+test {Jbuild.Executables.Link_mode.kind = Shared_object; mode = Byte }
+[%%expect{|
+- : Stdune__Sexp.t = (byte shared_object)
+|}]
+
+(* But the specialized ones are serialized in the minimal version *)
+test Jbuild.Executables.Link_mode.exe
+[%%expect{|
+- : Stdune__Sexp.t = exe
+|}]

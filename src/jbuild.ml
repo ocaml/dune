@@ -608,6 +608,17 @@ module Mode_conf = struct
       ; "best"  , Best
       ]
 
+  let to_string = function
+    | Byte -> "byte"
+    | Native -> "native"
+    | Best -> "best"
+
+  let pp fmt t =
+    Format.pp_print_string fmt (to_string t)
+
+  let sexp_of_t t =
+    Sexp.unsafe_atom_of_string (to_string t)
+
   module Set = struct
     include Set.Make(T)
 
@@ -796,15 +807,19 @@ module Executables = struct
     let byte   = byte_exe
     let native = native_exe
 
+    let installable_modes =
+      [exe; native; byte]
+
+    let simple_representations =
+      [ "exe"           , exe
+      ; "object"        , object_
+      ; "shared_object" , shared_object
+      ; "byte"          , byte
+      ; "native"        , native
+      ]
+
     let simple =
-      let open Sexp.Of_sexp in
-      enum
-        [ "exe"           , exe
-        ; "object"        , object_
-        ; "shared_object" , shared_object
-        ; "byte"          , byte
-        ; "native"        , native
-        ]
+      Sexp.Of_sexp.enum simple_representations
 
     let t sexp =
       match sexp with
@@ -812,6 +827,21 @@ module Executables = struct
         let mode, kind = pair Mode_conf.t Binary_kind.t sexp in
         { mode; kind }
       | _ -> simple sexp
+
+    let simple_sexp_of_t link_mode =
+      let is_ok (_, candidate) =
+        compare candidate link_mode = Eq
+      in
+      match List.find ~f:is_ok simple_representations with
+      | Some (s, _) -> Some (Sexp.unsafe_atom_of_string s)
+      | None -> None
+
+    let sexp_of_t link_mode =
+      match simple_sexp_of_t link_mode with
+      | Some s -> s
+      | None ->
+        let { mode; kind } = link_mode in
+        Sexp.To_sexp.pair Mode_conf.sexp_of_t Binary_kind.sexp_of_t (mode, kind)
 
     module Set = struct
       include Set.Make(T)
@@ -837,14 +867,7 @@ module Executables = struct
           ]
 
       let best_install_mode t =
-        if mem t exe then
-          Some exe
-        else if mem t native then
-          Some native
-        else if mem t byte then
-          Some byte
-        else
-          None
+        List.find ~f:(mem t) installable_modes
     end
   end
 
@@ -885,10 +908,15 @@ module Executables = struct
     let to_install =
       match Link_mode.Set.best_install_mode t.modes with
       | None when has_public_name ->
+        let mode_to_string mode = " - " ^ Sexp.to_string (Link_mode.sexp_of_t mode) in
+        let mode_strings = List.map ~f:mode_to_string Link_mode.installable_modes in
         Loc.fail
           buildable.loc
-          "No installable mode found for %s."
+          "No installable mode found for %s.\n\
+           One of the following modes is required:\n\
+           %s"
           (if multi then "these executables" else "this executable")
+          (String.concat ~sep:"\n" mode_strings)
       | None -> []
       | Some mode ->
         let ext =

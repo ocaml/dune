@@ -4,6 +4,10 @@ message is displayed:
   $ dune build --root=public --display=short
   File "jbuild", line 4, characters 2-74:
   Error: No installable mode found for this executable.
+  One of the following modes is required:
+   - exe
+   - native
+   - byte
   [1]
 
 However, it is possible to build a private one explicitly.

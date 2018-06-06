@@ -54,8 +54,8 @@ module Execution_context : sig
   val add_refs : t -> int -> unit
   val deref : t -> unit
 
-  (* Create a new context with a new referebce count. [on_release] is called when the
-     context is no longer used. *)
+  (* Create a new context with a new reference count. [on_release] is called
+     when the context is no longer used. *)
   val create_sub
     :  t
     -> on_release:(unit -> unit)
@@ -71,8 +71,7 @@ module Execution_context : sig
 end = struct
   type t =
     { on_error : exn -> unit (* This callback must never raise *)
-    ; fibers   : int ref (* Number of fibers running in this execution
-                            context *)
+    ; mutable fibers   : int (* Number of fibers running in this execution context *)
     ; vars     : Binding.t Int.Map.t
     ; on_release : unit -> unit
     }
@@ -82,17 +81,17 @@ end = struct
 
   let create_initial () =
     { on_error   = reraise
-    ; fibers     = ref 1
+    ; fibers     = 1
     ; vars       = Int.Map.empty
     ; on_release = ignore
     }
 
-  let add_refs t n = t.fibers := !(t.fibers) + n
+  let add_refs t n = t.fibers <- t.fibers + n
 
   let deref t =
-    let n = !(t.fibers) - 1 in
+    let n = t.fibers - 1 in
     assert (n >= 0);
-    t.fibers := n;
+    t.fibers <- n;
     if n = 0 then t.on_release ()
 
   let forward_error t exn =
@@ -125,7 +124,7 @@ end = struct
     deref t
 
   let create_sub t ~on_release =
-    { t with on_release; fibers = ref 1 }
+    { t with on_release; fibers = 1 }
 
   let set_error_handler t ~on_error =
     { t with on_error }

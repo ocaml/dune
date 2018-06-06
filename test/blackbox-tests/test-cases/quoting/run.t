@@ -25,3 +25,6 @@ The targets should only be interpreted as a single path when quoted
   Entering directory 'quote-from-context'
     count_args alias runtest
   Number of args: 3
+
+  $ dune runtest --root quotes-multi 2>&1 | grep -v Entering
+  lines: foo bar baz

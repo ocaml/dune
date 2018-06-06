@@ -160,7 +160,7 @@ let partial_expand t ~mode ~dir ~f =
       | Some ([] | _::_::_ as e) when not t.quoted ->
         invalid_multivalue syntax ~var t e
       | Some t ->
-        loop (List.rev_append (Value.to_strings ~dir t) acc_text) acc items
+        loop (List.rev_append (Value.L.to_strings ~dir t) acc_text) acc items
       | None -> loop [] (it :: commit_text acc_text acc) items
       end
   in

@@ -287,7 +287,7 @@ let create
       | Some p -> path p
     in
     let cflags = context.ocamlc_cflags in
-    let strings = Value.strings in
+    let strings = Value.L.strings in
     let vars =
       [ "-verbose"       , []
       ; "CPP"            , strings (context.c_compiler :: cflags @ ["-E"])
@@ -707,7 +707,7 @@ module Action = struct
           let path = Path.relative dir s in
           let data =
             Build.lines_of path
-            >>^ Value.strings
+            >>^ Value.L.strings
           in
           add_ddep acc ~key data
         end
@@ -715,7 +715,7 @@ module Action = struct
           let path = Path.relative dir s in
           let data =
             Build.strings path
-            >>^ Value.strings
+            >>^ Value.L.strings
           in
           add_ddep acc ~key data
         end
@@ -737,7 +737,7 @@ module Action = struct
             match targets_written_by_user with
             | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
             | Alias -> Loc.fail loc "You cannot use ${@} in aliases."
-            | Static l -> Some (Value.paths l)
+            | Static l -> Some (Value.L.paths l)
           end
         | _ ->
           match String.lsplit2 var ~on:':' with
@@ -746,8 +746,8 @@ module Action = struct
           | x ->
             let exp = expand loc key var x in
             Option.iter exp ~f:(fun vs ->
-              acc.sdeps <-
-                Path.Set.union (Path.Set.of_list (Value.paths_only vs)) acc.sdeps;
+              acc.sdeps <- Path.Set.union (Path.Set.of_list
+                                             (Value.L.paths_only vs)) acc.sdeps;
             );
             exp)
     in
@@ -769,7 +769,7 @@ module Action = struct
                [Value.String ""]
              | dep :: _ ->
                [Path dep])
-        | "^" -> Some (Value.paths deps_written_by_user)
+        | "^" -> Some (Value.L.paths deps_written_by_user)
         | _ -> None)
 
   let run sctx ~loc ?(extra_vars=String.Map.empty)

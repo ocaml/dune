@@ -274,9 +274,9 @@ end
 let prog_and_args_of_values p ~dir =
   match p with
   | [] -> (Unresolved.Program.Search "", [])
-  | Value.Path p :: xs -> (This p, Value.to_strings ~dir xs)
+  | Value.Path p :: xs -> (This p, Value.L.to_strings ~dir xs)
   | String s :: xs ->
-    (Unresolved.Program.of_string ~dir s, Value.to_strings ~dir xs)
+    (Unresolved.Program.of_string ~dir s, Value.L.to_strings ~dir xs)
 
 module SW = String_with_vars
 
@@ -327,7 +327,7 @@ module Unexpanded = struct
       let strings =
         expand ~mode:Many
           ~l:(fun x -> [x])
-          ~r:Value.to_strings
+          ~r:Value.L.to_strings
 
       let path e =
         let error_loc =
@@ -410,8 +410,8 @@ module Unexpanded = struct
       | Unexpanded x -> Right x
 
     let string = expand ~mode:Single ~map:Value.to_string
-    let strings = expand ~mode:Many ~map:Value.to_strings
-    let cat_strings = expand ~mode:Many ~map:Value.concat
+    let strings = expand ~mode:Many ~map:Value.L.to_strings
+    let cat_strings = expand ~mode:Many ~map:Value.L.concat
     let path x =
       let error_loc = String_with_vars.loc x in
       expand ~mode:Single ~map:(Value.to_path ~error_loc) x

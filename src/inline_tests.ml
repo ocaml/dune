@@ -209,7 +209,7 @@ include Sub_system.Register_end_point(
       let target = Path.relative inline_test_dir main_module_filename in
       let source_modules = Module.Name.Map.values source_modules in
       let files ml_kind =
-        Value.paths (
+        Value.L.paths (
           List.filter_map source_modules ~f:(fun m ->
             Module.file m ~dir ml_kind))
       in

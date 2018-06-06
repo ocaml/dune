@@ -1,7 +1,7 @@
 open! Import
 
 module Name : sig
-  type t = private string
+  type t
 
   val add_suffix : t -> string -> t
 

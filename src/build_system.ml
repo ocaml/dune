@@ -367,25 +367,25 @@ type hook =
 
 type t =
   { (* File specification by targets *)
-    files       : (Path.t, File_spec.packed) Hashtbl.t
+    files       : File_spec.packed Path.Table.t
   ; contexts    : Context.t String.Map.t
   ; (* Table from target to digest of
        [(deps (filename + contents), targets (filename only), action)] *)
-    trace       : (Path.t, Digest.t) Hashtbl.t
+    trace       : Digest.t Path.Table.t
   ; file_tree   : File_tree.t
   ; mutable local_mkdirs : Path.Set.t
-  ; mutable dirs : (Path.t, Dir_status.t) Hashtbl.t
+  ; mutable dirs : Dir_status.t Path.Table.t
   ; mutable gen_rules :
       (dir:Path.t -> string list -> extra_sub_directories_to_keep) String.Map.t
   ; mutable load_dir_stack : Path.t list
   ; (* Set of directories under _build that have at least one rule and
        all their ancestors. *)
     mutable build_dirs_to_keep : Path.Set.t
-  ; files_of : (Path.t, Files_of.t) Hashtbl.t
+  ; files_of : Files_of.t Path.Table.t
   ; mutable prefix : (unit, unit) Build.t option
   ; hook : hook -> unit
   ; (* Package files are part of *)
-    packages : (Path.t, Package.Name.t) Hashtbl.t
+    packages : Package.Name.t Path.Table.t
   }
 
 let string_of_paths set =
@@ -400,7 +400,7 @@ let set_rule_generators t generators =
   t.gen_rules <- generators
 
 let get_dir_status t ~dir =
-  Hashtbl.find_or_add t.dirs dir ~f:(fun _ ->
+  Path.Table.find_or_add t.dirs dir ~f:(fun _ ->
     if Path.is_in_source_tree dir then
       Dir_status.Loaded (File_tree.files_of t.file_tree dir)
     else if dir = Path.build_dir then
@@ -441,7 +441,7 @@ module Target = Build_interpret.Target
 module Pre_rule = Build_interpret.Rule
 
 let get_file : type a. t -> Path.t -> a File_kind.t -> a File_spec.t = fun t fn kind ->
-  match Hashtbl.find t.files fn with
+  match Path.Table.find t.files fn with
   | None -> die "no rule found for %s" (Path.to_string fn)
   | Some (File_spec.T file) ->
     let Eq = File_kind.eq_exn kind file.kind in
@@ -528,9 +528,9 @@ end
 
 (* [copy_source] is [true] for rules copying files from the source directory *)
 let add_spec t fn spec ~copy_source =
-  match Hashtbl.find t.files fn with
+  match Path.Table.find t.files fn with
   | None ->
-    Hashtbl.add t.files fn spec
+    Path.Table.add t.files fn spec
   | Some (File_spec.T { rule; _ }) ->
     match copy_source, rule.mode with
     | true, (Standard | Not_a_rule_stanza) ->
@@ -551,7 +551,7 @@ let add_spec t fn spec ~copy_source =
                "To keep the current behavior and get rid of this warning, add a field \
                 (fallback) to the rule."
            | _ -> assert false);
-      Hashtbl.add t.files fn spec
+      Path.Table.add t.files fn spec
     | _ ->
       let (File_spec.T { rule = rule2; _ }) = spec in
       let string_of_loc = function
@@ -630,7 +630,7 @@ let rec with_locks mutexes ~f =
 
 let remove_old_artifacts t ~dir ~subdirs_to_keep =
   if not (Path.is_in_build_dir dir) ||
-     Hashtbl.mem t.files (Path.relative dir Config.jbuilder_keep_fname) then
+     Path.Table.mem t.files (Path.relative dir Config.jbuilder_keep_fname) then
     ()
   else
     match Path.readdir_unsorted dir with
@@ -650,9 +650,9 @@ let remove_old_artifacts t ~dir ~subdirs_to_keep =
                 Path.rm_rf path
           end
         | exception _ ->
-          if not (Hashtbl.mem t.files path) then Path.unlink path
+          if not (Path.Table.mem t.files path) then Path.unlink path
         | _ ->
-          if not (Hashtbl.mem t.files path) then Path.unlink path)
+          if not (Path.Table.mem t.files path) then Path.unlink path)
 
 let no_rule_found =
   let fail fn =
@@ -730,12 +730,12 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     in
     let deps_or_rule_changed =
       List.fold_left targets_as_list ~init:false ~f:(fun acc fn ->
-        match Hashtbl.find t.trace fn with
+        match Path.Table.find t.trace fn with
         | None ->
-          Hashtbl.add t.trace fn hash;
+          Path.Table.add t.trace fn hash;
           true
         | Some prev_hash ->
-          Hashtbl.replace t.trace ~key:fn ~data:hash;
+          Path.Table.replace t.trace ~key:fn ~data:hash;
           acc || prev_hash <> hash)
     in
     let targets_missing =
@@ -859,7 +859,7 @@ and load_dir_and_get_targets t ~dir =
     try
       load_dir_step2_exn t ~dir ~collector ~lazy_generators
     with exn ->
-      (match Hashtbl.find t.dirs dir with
+      (match Path.Table.find t.dirs dir with
        | Some (Loaded _) -> ()
        | _ ->
          (match t.load_dir_stack with
@@ -867,7 +867,7 @@ and load_dir_and_get_targets t ~dir =
           | x :: l ->
             t.load_dir_stack <- l;
             assert (x = dir)));
-      Hashtbl.replace t.dirs ~key:dir ~data:Failed_to_load;
+      Path.Table.replace t.dirs ~key:dir ~data:Failed_to_load;
       reraise exn
 
 and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
@@ -921,7 +921,7 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
          :: rules,
          Path.Set.add alias_stamp_files path))
   in
-  Hashtbl.replace t.dirs ~key:alias_dir ~data:(Loaded alias_stamp_files);
+  Path.Table.replace t.dirs ~key:alias_dir ~data:(Loaded alias_stamp_files);
 
   (* Compute the set of targets and the set of source files that must not be copied *)
   let user_rule_targets, source_files_to_ignore =
@@ -1035,7 +1035,7 @@ The following targets are not:
   in
 
   (* Set the directory status to loaded *)
-  Hashtbl.replace t.dirs ~key:dir ~data:(Loaded targets);
+  Path.Table.replace t.dirs ~key:dir ~data:(Loaded targets);
   (match t.load_dir_stack with
    | [] -> assert false
    | x :: l ->
@@ -1054,13 +1054,13 @@ The following targets are not:
   targets
 
 and wait_for_file t fn =
-  match Hashtbl.find t.files fn with
+  match Path.Table.find t.files fn with
   | Some file -> wait_for_file_found fn file
   | None ->
     let dir = Path.parent_exn fn in
     if Path.is_strict_descendant_of_build_dir dir then begin
       load_dir t ~dir;
-      match Hashtbl.find t.files fn with
+      match Path.Table.find t.files fn with
       | Some file -> wait_for_file_found fn file
       | None -> no_rule_found t fn
     end else if Path.exists fn then
@@ -1097,7 +1097,7 @@ and wait_for_deps t deps =
 
 let stamp_file_for_files_of t ~dir ~ext =
   let files_of_dir =
-    Hashtbl.find_or_add t.files_of dir ~f:(fun dir ->
+    Path.Table.find_or_add t.files_of dir ~f:(fun dir ->
       let files_by_ext =
         targets_of t ~dir
         |> Path.Set.to_list
@@ -1130,7 +1130,7 @@ let stamp_file_for_files_of t ~dir ~ext =
     stamp_file
 
 module Trace = struct
-  type t = (Path.t, Digest.t) Hashtbl.t
+  type t = Digest.t Path.Table.t
 
   let file = Path.relative Path.build_dir ".db"
 
@@ -1146,7 +1146,7 @@ module Trace = struct
   let load () =
     match P.load file with
     | Some t -> t
-    | None -> Hashtbl.create 1024
+    | None -> Path.Table.create 1024
 end
 
 let all_targets t =
@@ -1155,7 +1155,7 @@ let all_targets t =
       ~f:(fun dir () ->
         load_dir t
           ~dir:(Path.append ctx.Context.build_dir (File_tree.Dir.path dir))));
-  Hashtbl.foldi t.files ~init:[] ~f:(fun key _ acc -> key :: acc)
+  Path.Table.foldi t.files ~init:[] ~f:(fun key _ acc -> key :: acc)
 
 let finalize t =
   (* Promotion must be handled before dumping the digest cache, as it
@@ -1173,17 +1173,17 @@ let create ~contexts ~file_tree ~hook =
   in
   let t =
     { contexts
-    ; files      = Hashtbl.create 1024
-    ; packages   = Hashtbl.create 1024
+    ; files      = Path.Table.create 1024
+    ; packages   = Path.Table.create 1024
     ; trace      = Trace.load ()
     ; local_mkdirs = Path.Set.empty
-    ; dirs       = Hashtbl.create 1024
+    ; dirs       = Path.Table.create 1024
     ; load_dir_stack = []
     ; file_tree
     ; gen_rules = String.Map.map contexts ~f:(fun _ ~dir:_ ->
         die "gen_rules called too early")
     ; build_dirs_to_keep = Path.Set.empty
-    ; files_of = Hashtbl.create 1024
+    ; files_of = Path.Table.create 1024
     ; prefix = None
     ; hook
     }
@@ -1239,7 +1239,7 @@ let rules_for_files t paths =
   Path.Set.fold paths ~init:[] ~f:(fun path acc ->
     if Path.is_in_build_dir path then
       load_dir t ~dir:(Path.parent_exn path);
-    match Hashtbl.find t.files path with
+    match Path.Table.find t.files path with
     | None -> acc
     | Some (File_spec.T { rule; _ }) -> rule :: acc)
   |> Ir_set.of_list
@@ -1331,7 +1331,7 @@ let build_rules_internal ?(recursive=false) t ~request =
     let dir = Path.parent_exn fn in
     if Path.is_in_build_dir dir then
       load_dir t ~dir;
-    match Hashtbl.find t.files fn with
+    match Path.Table.find t.files fn with
     | Some file ->
       file_found fn file
     | None ->
@@ -1404,12 +1404,12 @@ let build_rules ?recursive t ~request =
     build_rules_internal ?recursive t ~request)
 
 let set_package t file package =
-  Hashtbl.add t.packages file package
+  Path.Table.add t.packages file package
 
 let package_deps t pkg files =
   let rules_seen = ref Rule.Id.Set.empty in
   let rec loop fn acc =
-    match Hashtbl.find_all t.packages fn with
+    match Path.Table.find_all t.packages fn with
     | [] -> loop_deps fn acc
     | pkgs ->
       if List.mem pkg ~set:pkgs then
@@ -1422,7 +1422,7 @@ let package_deps t pkg files =
     else
       Package.Name.Set.add acc p
   and loop_deps fn acc =
-    match Hashtbl.find t.files fn with
+    match Path.Table.find t.files fn with
     | None -> acc
     | Some (File_spec.T { rule = ir; _ }) ->
       if Rule.Id.Set.mem !rules_seen ir.id then

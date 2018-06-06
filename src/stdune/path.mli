@@ -37,6 +37,7 @@ module Set : sig
 end
 
 module Map : Map.S with type key = t
+module Table : Hashtbl.S with type key = t
 
 val of_string : ?error_loc:Usexp.Loc.t -> string -> t
 val to_string : t -> string

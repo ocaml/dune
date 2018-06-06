@@ -489,6 +489,8 @@ module T : sig
     | In_build_dir of Local.t
 
   val compare : t -> t -> Ordering.t
+  val equal : t -> t -> bool
+  val hash : t -> int
 
   val in_build_dir : Local.t -> t
   val in_source_tree : Local.t -> t
@@ -508,6 +510,9 @@ end = struct
     | In_source_tree _, _                -> Lt
     | _               , In_source_tree _ -> Gt
     | In_build_dir x  , In_build_dir y   -> Local.compare x y
+
+  let equal (x : t) (y : t) = x = y
+  let hash = Hashtbl.hash
 
   let in_build_dir s = In_build_dir s
   let in_source_tree s = In_source_tree s
@@ -904,3 +909,5 @@ module Set = struct
 end
 
 let in_source s = in_source_tree (Local.of_string s)
+
+module Table = Hashtbl.Make(T)

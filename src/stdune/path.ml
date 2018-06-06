@@ -511,7 +511,7 @@ end = struct
     | _               , In_source_tree _ -> Gt
     | In_build_dir x  , In_build_dir y   -> Local.compare x y
 
-  let equal x y = compare x y = Ordering.Eq
+  let equal = (=)
   let hash = Hashtbl.hash
 
   let in_build_dir s = In_build_dir s

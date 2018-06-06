@@ -45,67 +45,28 @@ val iter : t -> f:(Loc.t -> string -> unit) -> unit
 
 val is_var : t -> name:string -> bool
 
-module type EXPANSION = sig
-  type t
-  (** The value to which variables are expanded. *)
-
-  val is_multivalued : t -> bool
-  (** Report whether the value is a multivalued one (such as for
-      example ${@}) which much be in quoted strings to be concatenated
-      to text or other variables. *)
-
-  type context
-  (** Context needed to expand values of type [t] to strings. *)
-
-  val to_string : context -> t -> string
-  (** When needing to expand with text portions or if the
-      string-with-vars is quoted, the value is converted to a string
-      using [to_string]. *)
+module Mode : sig
+  type 'a t =
+    | Single : Value.t t
+    | Many : Value.t list t
 end
 
-module Expand : sig
-  module Full : sig
-    type nonrec 'a t =
-      | Expansion  of 'a
-      | String     of string
-  end
-  module Partial : sig
-    type nonrec 'a t =
-      | Expansion  of 'a
-      | String     of string
-      | Unexpanded of t
-  end
+module Partial : sig
+  type nonrec 'a t =
+    | Expanded of 'a
+    | Unexpanded of t
 end
 
-module Expand_to(V : EXPANSION) : sig
-  val expand
-    :  V.context
-    -> t
-    -> f:(Loc.t -> string -> V.t option)
-    -> V.t Expand.Full.t
-  (** [expand t ~f] return [t] where all variables have been expanded
-      using [f].  If [f loc var] return [Some x], the variable [var] is
-      replaced by [x]; otherwise, the variable is inserted using the syntax
-      it was originally defined with: ${..} or $(..) *)
+val expand
+  :  t
+  -> mode:'a Mode.t
+  -> dir:Path.t
+  -> f:(Loc.t -> string -> Value.t list option)
+  -> 'a
 
-  val partial_expand
-    :  V.context
-    -> t
-    -> f:(Loc.t -> string -> V.t option)
-    -> V.t Expand.Partial.t
-    (** [partial_expand t ~f] is like [expand_generic] where all
-        variables that could be expanded (i.e., those for which [f]
-        returns [Some _]) are.  If all the variables of [t] were
-        expanded, a string is returned.  If [f] returns [None] on at
-        least a variable of [t], it returns a string-with-vars. *)
-end
-
-val expand :
-  t -> f:(Loc.t -> string -> string option) -> string
-(** Specialized version [Expand_to.expand] that returns a string (so
-    variables are assumed to expand to a single value). *)
-
-val partial_expand :
-  t -> f:(Loc.t -> string -> string option) -> (string, t) Either.t
-(** [partial_expand] is a specialized version of
-    [Expand_to.partial_expand] that returns a string. *)
+val partial_expand
+  :  t
+  -> mode:'a Mode.t
+  -> dir:Path.t
+  -> f:(Loc.t -> string -> Value.t list option)
+  -> 'a Partial.t

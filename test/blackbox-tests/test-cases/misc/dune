@@ -1,13 +1,11 @@
-(jbuild_version 1)
-
 ;; Test for ${^} with globs in rules
 
 (rule
  ((targets (result expected))
-  (deps    (jbuild (glob_files *.txt)))
+  (deps    (dune (glob_files *.txt)))
   (action  (progn
             (with-stdout-to result   (echo ${^}))
-            (with-stdout-to expected (echo "jbuild a.txt b.txt c.txt"))))))
+            (with-stdout-to expected (echo "dune a.txt b.txt c.txt"))))))
 
 (rule
  ((targets (result2 expected2))
@@ -28,11 +26,11 @@
 
 ;; Test inferred rules
 
-(rule (copy jbuild jbuild-plop))
+(rule (copy dune dune-plop))
 
 (alias
  ((name   runtest)
-  (deps   (jbuild jbuild-plop))
+  (deps   (dune dune-plop))
   (action (run diff -u ${^}))))
 
 ;; For some tests in subdirs

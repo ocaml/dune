@@ -104,105 +104,92 @@ let string_of_var syntax v =
   | Parens -> sprintf "$(%s)" v
   | Braces -> sprintf "${%s}" v
 
-module type EXPANSION = sig
-  type t
-  val is_multivalued : t -> bool
-  type context
-  val to_string : context -> t -> string
-end
-
 let concat_rev = function
   | [] -> ""
   | [s] -> s
   | l -> String.concat (List.rev l) ~sep:""
 
-module Expand = struct
-  module Full = struct
-    type nonrec 'a t =
-      | Expansion  of 'a
-      | String     of string
-  end
-  module Partial = struct
-    type nonrec 'a t =
-      | Expansion  of 'a
-      | String     of string
-      | Unexpanded of t
-  end
+module Mode = struct
+  type 'a t =
+    | Single : Value.t t
+    | Many : Value.t list t
+
+  let string
+    : type a. a t -> string -> a
+    = fun t s ->
+      match t with
+      | Single -> Value.String s
+      | Many -> [Value.String s]
+
+  let value
+    : type a. a t -> Value.t list -> a option
+    = fun t s ->
+      match t, s with
+      | Many, s -> Some s
+      | Single, [s] -> Some s
+      | Single, _ -> None
 end
 
-module Expand_to(V: EXPANSION) = struct
-
-  let expand ctx t ~f =
-    match t.items with
-    | [Var (syntax, v)] when not t.quoted ->
-      (* Unquoted single var *)
-      (match f t.loc v with
-       | Some e -> Expand.Full.Expansion e
-       | None -> Expand.Full.String (string_of_var syntax v))
-    | _ ->
-      Expand.Full.String (List.map t.items ~f:(function
-        | Text s -> s
-        | Var (syntax, v) ->
-          match f t.loc v with
-          | Some x ->
-            if not t.quoted && V.is_multivalued x then
-              Loc.fail t.loc "please quote the string \
-                              containing the list variable %s"
-                (string_of_var syntax v)
-            else V.to_string ctx x
-          | None -> string_of_var syntax v)
-               |> String.concat ~sep:"")
-
-  let partial_expand ctx t ~f =
-    let commit_text acc_text acc =
-      let s = concat_rev acc_text in
-      if s = "" then acc else Text s :: acc
-    in
-    let rec loop acc_text acc items =
-      match items with
-      | [] -> begin
-          match acc with
-          | [] -> Expand.Partial.String (concat_rev acc_text)
-          | _  -> Unexpanded { t with items = List.rev (commit_text acc_text acc) }
-        end
-      | Text s :: items -> loop (s :: acc_text) acc items
-      | Var (syntax, v) as it :: items ->
-        match f t.loc v with
-        | None -> loop [] (it :: commit_text acc_text acc) items
-        | Some x ->
-          if not t.quoted && V.is_multivalued x then
-            Loc.fail t.loc "please quote the string containing the \
-                            list variable %s" (string_of_var syntax v)
-          else loop (V.to_string ctx x :: acc_text) acc items
-    in
-    match t.items with
-    | [Var (_, v)] when not t.quoted ->
-      (* Unquoted single var *)
-      (match f t.loc v with
-       | Some e -> Expand.Partial.Expansion e
-       | None   -> Expand.Partial.Unexpanded t)
-    | _ -> loop [] [] t.items
+module Partial = struct
+  type nonrec 'a t =
+    | Expanded of 'a
+    | Unexpanded of t
 end
 
-module String_expansion = struct
-  type t = string
-  let is_multivalued _ = false
-  type context = unit
-  let to_string () (s: string) = s
-end
+let invalid_multivalue syntax ~var t x =
+  Loc.fail t.loc "Variable %s expands to %d values, \
+                  however a single value is expected here. \
+                  Please quote this atom."
+    (string_of_var syntax var) (List.length x)
 
-module S = Expand_to(String_expansion)
+let partial_expand t ~mode ~dir ~f =
+  let commit_text acc_text acc =
+    let s = concat_rev acc_text in
+    if s = "" then acc else Text s :: acc
+  in
+  let rec loop acc_text acc items =
+    match items with
+    | [] ->
+      begin match acc with
+      | [] -> Partial.Expanded (Mode.string mode (concat_rev acc_text))
+      | _  -> Unexpanded { t with items = List.rev (commit_text acc_text acc) }
+      end
+    | Text s :: items -> loop (s :: acc_text) acc items
+    | Var (syntax, var) as it :: items ->
+      begin match f syntax t.loc var with
+      | Some ([] | _::_::_ as e) when not t.quoted ->
+        invalid_multivalue syntax ~var t e
+      | Some t ->
+        loop (Value.L.concat ~dir t :: acc_text) acc items
+      | None -> loop [] (it :: commit_text acc_text acc) items
+      end
+  in
+  match t.items with
+  | [] -> Partial.Expanded (Mode.string mode "")
+  | [Text s] -> Expanded (Mode.string mode s)
+  | [Var (syntax, v)] when not t.quoted ->
+    (* Unquoted single var *)
+    begin match f syntax t.loc v with
+    | Some e -> Partial.Expanded (
+      match Mode.value mode e with
+      | None -> invalid_multivalue syntax ~var:v t e
+      | Some s -> s)
+    | None -> Unexpanded t
+    end
+  | _ -> loop [] [] t.items
 
-let expand t ~f =
-  match S.expand () t ~f with
-  | Expand.Full.String s
-  | Expansion s -> s
+let expand t ~mode ~dir ~f =
+  match
+    partial_expand t ~mode ~dir ~f:(fun syntax loc var ->
+      match f loc var with
+      | None -> Some [Value.String (string_of_var syntax var)]
+      | s -> s)
+  with
+  | Partial.Expanded s -> s
+  | Unexpanded _ -> assert false (* we are expanding every variable *)
 
-let partial_expand t ~f =
-  match S.partial_expand () t ~f with
-  | Expand.Partial.Expansion s -> Left s
-  | String s -> Left s
-  | Unexpanded s -> Right s
+let partial_expand t ~mode ~dir ~f =
+  partial_expand t ~mode ~dir ~f:(fun _ loc v -> f loc v)
 
 let to_string t =
   match t.items with

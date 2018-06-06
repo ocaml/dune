@@ -187,8 +187,7 @@ include Sub_system.Register_end_point(
     in
 
     let extra_vars =
-      String.Map.singleton "library-name"
-        (Action.Var_expansion.Strings ([lib.name], Concat))
+      String.Map.singleton "library-name" ([Value.String lib.name])
     in
 
     let runner_libs =
@@ -210,10 +209,9 @@ include Sub_system.Register_end_point(
       let target = Path.relative inline_test_dir main_module_filename in
       let source_modules = Module.Name.Map.values source_modules in
       let files ml_kind =
-        Action.Var_expansion.Paths (
+        Value.L.paths (
           List.filter_map source_modules ~f:(fun m ->
-            Module.file m ~dir ml_kind),
-          Split)
+            Module.file m ~dir ml_kind))
       in
       let extra_vars =
         List.fold_left

@@ -324,8 +324,13 @@ let gen_rules sctx components =
 
 let ppx_driver_exe sctx libs ~dir_kind =
   let names =
-    List.rev_map libs ~f:Lib.name
-    |> List.sort ~compare:String.compare
+    let names = List.rev_map libs ~f:Lib.name in
+    match (dir_kind : File_tree.Dune_file.Kind.t) with
+    | Dune -> List.sort names ~compare:String.compare
+    | Jbuild ->
+      match names with
+      | last :: others -> List.sort others ~compare:String.compare @ [last]
+      | [] -> []
   in
   let scope_for_key =
     List.fold_left libs ~init:None ~f:(fun acc lib ->

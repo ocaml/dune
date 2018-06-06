@@ -1,22 +1,22 @@
 open Import
 
 module Name = struct
-  type t = string
+  include Interned.Make(struct
+      let initial_size = 512
+      let resize_policy = Interned.Greedy
+      let order = Interned.Natural
+    end)()
 
-  let t = Sexp.atom
+  let t t = Sexp.atom (to_string t)
 
-  let add_suffix = (^)
+  let add_suffix m x = make ((to_string m) ^ x)
 
-  let compare = compare
-  let of_string = String.capitalize
-  let to_string x = x
+  let of_string s = make (String.capitalize s)
 
-  let pp = Format.pp_print_string
-  let pp_quote fmt x = Format.fprintf fmt "%S" x
+  let pp fmt t = Format.fprintf fmt "%s" (to_string t)
+  let pp_quote fmt x = Format.fprintf fmt "%S" (to_string x)
 
-  module Set = String.Set
-  module Map = String.Map
-  module Top_closure = Top_closure.String
+  module Top_closure = Top_closure.Make(Set)
 end
 
 module Syntax = struct
@@ -61,7 +61,7 @@ let make ?impl ?intf ?obj_name name =
     match impl, intf with
     | None, None ->
       Exn.code_error "Module.make called with no files"
-        [ "name", Sexp.To_sexp.string name
+        [ "name", Name.t name
         ; "impl", Sexp.To_sexp.(option unknown) impl
         ; "intf", Sexp.To_sexp.(option unknown) intf
         ]
@@ -124,7 +124,7 @@ let iter t ~f =
   Option.iter t.intf ~f:(f Ml_kind.Intf)
 
 let with_wrapper t ~libname =
-  { t with obj_name = sprintf "%s__%s" libname t.name }
+  { t with obj_name = sprintf "%s__%s" libname (Name.to_string t.name) }
 
 let map_files t ~f =
   { t with

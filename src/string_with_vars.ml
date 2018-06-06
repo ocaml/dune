@@ -170,6 +170,8 @@ let partial_expand t ~mode ~dir ~f =
       end
   in
   match t.items with
+  | [] -> Partial.Expanded (Mode.string mode "")
+  | [Text s] -> Expanded (Mode.string mode s)
   | [Var (syntax, v)] when not t.quoted ->
     (* Unquoted single var *)
     begin match f syntax t.loc v with

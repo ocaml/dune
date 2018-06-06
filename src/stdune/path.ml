@@ -51,6 +51,7 @@ end = struct
   include Interned.No_interning(struct
       let initial_size = 512
       let resize_policy = Interned.Greedy
+      let order = Interned.Natural
     end)()
 
   let compare_val x y = String.compare (to_string x) (to_string y)
@@ -157,6 +158,7 @@ end = struct
   include Interned.No_interning(struct
       let initial_size = 512
       let resize_policy = Interned.Greedy
+      let order = Interned.Natural
     end)()
 
   let compare_val x y = String.compare (to_string x) (to_string y)

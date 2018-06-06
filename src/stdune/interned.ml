@@ -22,23 +22,25 @@ end
 
 type resize_policy = Conservative | Greedy
 
+type order = Natural | Fast
+
 let new_size ~next ~size = function
   | Conservative ->
     let increment_size = 512 in
     (next land (lnot (increment_size - 1))) + (increment_size * 2)
   | Greedy -> size * 2
 
-module Make(R : sig
-    val resize_policy : resize_policy
-    val initial_size  : int
-  end)()
+module type Settings = sig
+  val initial_size : int
+  val resize_policy : resize_policy
+  val order : order
+end
+
+module Make(R : Settings)()
 = struct
-  type t = int
 
   let ids = Hashtbl.create 1024
   let next = ref 0
-
-  let compare = Int.compare
 
   module Table = struct
     type 'a t =
@@ -86,10 +88,21 @@ module Make(R : sig
 
   let to_string t = Table.get names t
 
+  module T = struct
+    type nonrec t = int
+
+    let compare =
+      match R.order with
+      | Fast -> Int.compare
+      | Natural -> fun x y -> String.compare (to_string x) (to_string y)
+  end
+
+  include T
+
   let pp fmt t = Format.fprintf fmt "%S" (to_string t)
 
   module Set = struct
-    include Int.Set
+    include Set.Make(T)
 
     let make l =
       List.fold_left l ~init:empty ~f:(fun acc s -> add acc (make s))
@@ -97,12 +110,7 @@ module Make(R : sig
     let pp fmt (t : t) = Fmt.ocaml_list pp fmt (to_list t)
   end
 
-  module Map = Int.Map
-end
-
-module type Settings = sig
-  val initial_size : int
-  val resize_policy : resize_policy
+  module Map = Map.Make(T)
 end
 
 module No_interning(R : Settings)() = struct

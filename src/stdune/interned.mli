@@ -36,9 +36,12 @@ end
 
 type resize_policy = Conservative | Greedy
 
+type order = Natural | Fast
+
 module type Settings = sig
   val initial_size : int
   val resize_policy : resize_policy
+  val order : order
 end
 
 module Make(R : Settings)() : S

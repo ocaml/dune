@@ -43,7 +43,7 @@ next
 - Add an `ignored_subdirs` stanza to replace `jbuild-ignore` files
   (#767, @diml)
 
-- Fix a bug where Dune ignored previous occurences of duplicated
+- Fix a bug where Dune ignored previous occurrences of duplicated
   fields (#779, @diml)
 
 - Allow setting custom build directories using the `--build-dir` flag or
@@ -68,6 +68,12 @@ next
 
 - Fix documentation generation for private libraries. (#864, fix #856,
   @rgrinberg)
+
+- Use `Marshal` to store digest and incremental databases. This improves the
+  speed of 0 rebuilds. (#817, @diml)
+
+* Allow setting environment variables in `findlib.conf` for cross compilation
+  contexts. (#733, @rgrinberg)
 
 1.0+beta20 (10/04/2018)
 -----------------------

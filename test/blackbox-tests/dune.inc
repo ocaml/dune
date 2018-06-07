@@ -373,6 +373,15 @@
      (diff? run.t run.t.corrected))))))
 
 (alias
+ ((name no-installable-mode)
+  (deps
+   ((package dune) (files_recursively_in test-cases/no-installable-mode)))
+  (action
+   (chdir
+    test-cases/no-installable-mode
+    (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+
+(alias
  ((name null-dep)
   (deps ((package dune) (files_recursively_in test-cases/null-dep)))
   (action
@@ -579,6 +588,7 @@
     (alias meta-gen)
     (alias misc)
     (alias multiple-private-libs)
+    (alias no-installable-mode)
     (alias null-dep)
     (alias ocaml-syntax)
     (alias ocamldep-multi-stanzas)
@@ -639,6 +649,7 @@
     (alias merlin-tests)
     (alias meta-gen)
     (alias misc)
+    (alias no-installable-mode)
     (alias null-dep)
     (alias ocaml-syntax)
     (alias ocamldep-multi-stanzas)

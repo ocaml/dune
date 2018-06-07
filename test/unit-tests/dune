@@ -79,3 +79,13 @@
            (progn
             (run ${exe:expect_test.exe} ${<})
             (diff? ${<} ${<}.corrected))))))
+
+(alias
+ ((name runtest)
+  (deps (jbuild.mlt
+         (glob_files ${SCOPE_ROOT}/src/.dune.objs/*.cmi)
+         (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)))
+  (action (chdir ${SCOPE_ROOT}
+           (progn
+            (run ${exe:expect_test.exe} ${<})
+            (diff? ${<} ${<}.corrected))))))

@@ -171,6 +171,7 @@ module Mode_conf : sig
 
   val t : t Sexp.Of_sexp.t
   val compare : t -> t -> Ordering.t
+  val pp : Format.formatter -> t -> unit
 
   module Set : sig
     include Set.S with type elt = t
@@ -239,6 +240,9 @@ module Executables : sig
       { mode : Mode_conf.t
       ; kind : Binary_kind.t
       }
+
+    val t : t Sexp.Of_sexp.t
+    val sexp_of_t : t Sexp.To_sexp.t
 
     val exe           : t
     val object_       : t

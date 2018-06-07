@@ -19,5 +19,6 @@ Welcome to jbuilder's documentation!
    usage
    advanced-topics
    configurator
+   menhir
    faq
    known-issues

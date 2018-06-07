@@ -22,13 +22,13 @@ type target =
   | Lib of Lib.t
   | Pkg of Package.Name.t
 
-type typ = Module | Mld
+type source = Module | Mld
 
 type odoc =
   { odoc_input: Path.t
   ; html_dir: Path.t
   ; html_file: Path.t
-  ; typ: typ
+  ; source: source
   }
 
 module Gen (S : sig val sctx : SC.t end) = struct
@@ -163,7 +163,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
   let setup_html (odoc_file : odoc) ~requires =
     let deps = Dep.deps requires in
     let to_remove, jbuilder_keep =
-      match odoc_file.typ with
+      match odoc_file.source with
       | Mld -> odoc_file.html_file, []
       | Module ->
         let jbuilder_keep =
@@ -283,7 +283,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       { odoc_input
       ; html_dir
       ; html_file = html_dir ++ "index.html"
-      ; typ = Module
+      ; source = Module
       }
     | Pkg _ ->
       { odoc_input
@@ -294,7 +294,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
           |> String.drop_prefix ~prefix:"page-"
           |> Option.value_exn
         )
-      ; typ = Mld
+      ; source = Mld
       }
 
   let static_html = [ css_file; toplevel_index ]

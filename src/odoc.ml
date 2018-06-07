@@ -138,12 +138,14 @@ module Gen (S : sig val sctx : SC.t end) = struct
          ]);
     odoc_file
 
+  type typ = Module | Mld
+
   type odoc =
     { odoc_input: Path.t
     ; html_dir: Path.t
     ; html_file: Path.t
     ; html_alias: Build_system.Alias.t
-    ; typ: [`Module | `Mld]
+    ; typ: typ
     }
 
   let odoc_include_flags requires =
@@ -162,8 +164,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
   let to_html (odoc_file : odoc) ~deps ~requires =
     let to_remove, jbuilder_keep =
       match odoc_file.typ with
-      | `Mld -> odoc_file.html_file, []
-      | `Module ->
+      | Mld -> odoc_file.html_file, []
+      | Module ->
         let jbuilder_keep =
           Build.create_file (odoc_file.html_dir ++ Config.jbuilder_keep_fname) in
         odoc_file.html_dir, [jbuilder_keep]
@@ -291,7 +293,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       { odoc_input
       ; html_dir
       ; html_file = html_dir ++ "index.html"
-      ; typ = `Module
+      ; typ = Module
       ; html_alias
       }
     | Pkg _ ->
@@ -303,7 +305,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
           |> String.drop_prefix ~prefix:"page-"
           |> Option.value_exn
         )
-      ; typ = `Mld
+      ; typ = Mld
       ; html_alias
       }
 

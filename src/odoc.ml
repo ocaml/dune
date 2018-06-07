@@ -35,6 +35,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
   open S
 
   let context = SC.context sctx
+  let stanzas = SC.stanzas sctx
 
   module Paths = struct
     let root = context.Context.build_dir ++ "_doc"
@@ -461,7 +462,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
   let init ~modules_by_lib ~mlds_of_dir =
     let docs_by_package =
       let map = lazy (
-        SC.stanzas sctx
+        stanzas
         |> List.concat_map ~f:(fun (w : SC.Dir_with_jbuild.t) ->
           List.filter_map w.stanzas ~f:(function
             | Documentation (d : Jbuild.Documentation.t) ->
@@ -484,7 +485,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
           | o -> o
       end) in
       let lib_to_library = lazy (
-        SC.stanzas sctx
+        stanzas
         |> List.concat_map ~f:(fun (w : SC.Dir_with_jbuild.t) ->
           List.filter_map w.stanzas ~f:(function
             | Jbuild.Library (l : Library.t) ->
@@ -522,7 +523,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
     Super_context.add_alias_deps
       sctx
       (Build_system.Alias.private_doc ~dir:context.build_dir)
-      (SC.stanzas sctx
+      (stanzas
        |> List.concat_map ~f:(fun (w : SC.Dir_with_jbuild.t) ->
          List.filter_map w.stanzas ~f:(function
            | Jbuild.Library (l : Jbuild.Library.t) ->

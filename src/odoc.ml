@@ -22,6 +22,16 @@ type target =
   | Lib of Lib.t
   | Pkg of Package.Name.t
 
+type typ = Module | Mld
+
+type odoc =
+  { odoc_input: Path.t
+  ; html_dir: Path.t
+  ; html_file: Path.t
+  ; html_alias: Build_system.Alias.t
+  ; typ: typ
+  }
+
 module Gen (S : sig val sctx : SC.t end) = struct
   open S
 
@@ -137,16 +147,6 @@ module Gen (S : sig val sctx : SC.t end) = struct
          ; Dep (Mld.odoc_input m)
          ]);
     odoc_file
-
-  type typ = Module | Mld
-
-  type odoc =
-    { odoc_input: Path.t
-    ; html_dir: Path.t
-    ; html_file: Path.t
-    ; html_alias: Build_system.Alias.t
-    ; typ: typ
-    }
 
   let odoc_include_flags requires =
     Arg_spec.of_result_map requires ~f:(fun libs ->

@@ -66,6 +66,9 @@ next
   whether a multi valued variable is allowed is determined by the quoting and
   substitution context it appears in. (#849, fix #701, @rgrinberg)
 
+- Fix documentation generation for private libraries. (#864, fix #856,
+  @rgrinberg)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

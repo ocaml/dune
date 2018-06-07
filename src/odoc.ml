@@ -161,7 +161,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       Arg_spec.S (List.concat_map (Path.Set.to_list paths)
                     ~f:(fun dir -> [Arg_spec.A "-I"; Path dir])))
 
-  let to_html (odoc_file : odoc) ~deps ~requires =
+  let setup_html (odoc_file : odoc) ~deps ~requires =
     let to_remove, jbuilder_keep =
       match odoc_file.typ with
       | Mld -> odoc_file.html_file, []
@@ -329,7 +329,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
         let html_files =
           let closure = Lib.closure libs in
           let deps = Dep.deps closure in
-          List.map odocs ~f:(to_html ~deps ~requires:closure) in
+          List.map odocs ~f:(setup_html ~deps ~requires:closure) in
         List.iter (
           Dep.html_alias (Pkg pkg)
           :: List.map ~f:(fun lib -> Dep.html_alias (Lib lib)) libs

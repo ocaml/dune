@@ -353,21 +353,24 @@ module Gen (S : sig val sctx : SC.t end) = struct
       | Ok lib  -> SC.load_dir sctx ~dir:(Lib.src_dir lib)
       end
     | "_html" :: lib_unique_name_or_pkg :: _ ->
-      let setup_html_rules pkg =
-        setup_pkg_html_rules ~pkg ~libs:(
-          Lib.Set.to_list (load_all_odoc_rules_pkg ~pkg)
-        ) in
       (* TODO we can be a better with the error handling in the case where
          lib_unique_name_or_pkg is neither a valid pkg or lnu *)
       let lib, lib_db = SC.Scope_key.of_string sctx lib_unique_name_or_pkg in
+      let setup_pkg_html_rules pkg =
+        setup_pkg_html_rules ~pkg ~libs:(
+          Lib.Set.to_list (load_all_odoc_rules_pkg ~pkg)) in
       begin match Lib.DB.find lib_db lib with
       | Error _ -> ()
-      | Ok lib  -> setup_lib_html_rules lib ~requires:(Lib.closure [lib])
+      | Ok lib ->
+        begin match Lib.package lib with
+        | None -> setup_lib_html_rules lib ~requires:(Lib.closure [lib])
+        | Some pkg -> setup_pkg_html_rules pkg
+        end
       end;
       Option.iter
         (Package.Name.Map.find (SC.packages sctx)
            (Package.Name.of_string lib_unique_name_or_pkg))
-        ~f:(fun pkg -> setup_html_rules pkg.name)
+        ~f:(fun pkg -> setup_pkg_html_rules pkg.name)
     | _ -> ()
 
   let setup_package_aliases (pkg : Package.t) =

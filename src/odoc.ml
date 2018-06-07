@@ -366,7 +366,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       let lib, lib_db = SC.Scope_key.of_string sctx lib_unique_name_or_pkg in
       begin match Lib.DB.find lib_db lib with
       | Error _ -> ()
-      | Ok lib  -> Option.iter (Lib.package lib) ~f:setup_html_rules
+      | Ok lib  -> setup_lib_html_rules lib ~requires:(Lib.closure [lib])
       end;
       Option.iter
         (Package.Name.Map.find (SC.packages sctx)

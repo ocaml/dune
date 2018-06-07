@@ -327,17 +327,9 @@ module Gen (S : sig val sctx : SC.t end) = struct
             :: (List.map libs ~f:(fun lib -> odocs (Lib lib)))
           ) in
         let html_files =
-          let closure =
-            match Lib.closure libs with
-            | Ok closure -> closure
-            | Error _ ->
-              (* CR diml for rgrinberg: this branch needs a comment, I
-                 don't understand why we fallback to not taking the
-                 transitive closure in case of error. *)
-              libs
-          in
-          let deps = Dep.deps (Ok closure) in
-          List.map odocs ~f:(to_html ~deps ~requires:(Ok closure)) in
+          let closure = Lib.closure libs in
+          let deps = Dep.deps closure in
+          List.map odocs ~f:(to_html ~deps ~requires:closure) in
         List.iter (
           Dep.html_alias (Pkg pkg)
           :: List.map ~f:(fun lib -> Dep.html_alias (Lib lib)) libs

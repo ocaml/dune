@@ -28,7 +28,6 @@ type odoc =
   { odoc_input: Path.t
   ; html_dir: Path.t
   ; html_file: Path.t
-  ; html_alias: Build_system.Alias.t
   ; typ: typ
   }
 
@@ -272,7 +271,6 @@ module Gen (S : sig val sctx : SC.t end) = struct
     pkg_libs
 
   let create_odoc ~target odoc_input =
-    let html_alias = Dep.html_alias target in
     let html_base = Paths.html target in
     match target with
     | Lib _ ->
@@ -286,7 +284,6 @@ module Gen (S : sig val sctx : SC.t end) = struct
       ; html_dir
       ; html_file = html_dir ++ "index.html"
       ; typ = Module
-      ; html_alias
       }
     | Pkg _ ->
       { odoc_input
@@ -298,7 +295,6 @@ module Gen (S : sig val sctx : SC.t end) = struct
           |> Option.value_exn
         )
       ; typ = Mld
-      ; html_alias
       }
 
   let static_html = [ css_file; toplevel_index ]

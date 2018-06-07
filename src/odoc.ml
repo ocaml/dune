@@ -161,7 +161,8 @@ module Gen (S : sig val sctx : SC.t end) = struct
       Arg_spec.S (List.concat_map (Path.Set.to_list paths)
                     ~f:(fun dir -> [Arg_spec.A "-I"; Path dir])))
 
-  let setup_html (odoc_file : odoc) ~deps ~requires =
+  let setup_html (odoc_file : odoc) ~requires =
+    let deps = Dep.deps requires in
     let to_remove, jbuilder_keep =
       match odoc_file.typ with
       | Mld -> odoc_file.html_file, []
@@ -184,10 +185,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
               ; Dep odoc_file.odoc_input
               ; Hidden_targets [odoc_file.html_file]
               ]
-         :: jbuilder_keep
-       )
-      );
-    odoc_file.html_file
+         :: jbuilder_keep))
 
   let css_file = Paths.html_root ++ "odoc.css"
 
@@ -261,12 +259,6 @@ module Gen (S : sig val sctx : SC.t end) = struct
     in
     SC.add_rule sctx @@ Build.write_file toplevel_index html
 
-
-  let html_alias pkg =
-    Build_system.Alias.doc ~dir:(
-      Path.append context.build_dir pkg.Package.path
-    )
-
   let libs_of_pkg ~pkg =
     match Package.Name.Map.find (SC.libs_by_package sctx) pkg with
     | None -> Lib.Set.empty
@@ -309,40 +301,45 @@ module Gen (S : sig val sctx : SC.t end) = struct
       ; html_alias
       }
 
-  let setup_pkg_html_rules =
-    let loaded = Package.Name.Table.create ~default_value:false in
+  let static_html = [ css_file; toplevel_index ]
+
+  let odocs =
     let odoc_glob =
       Re.compile (Re.seq [Re.(rep1 any) ; Re.str ".odoc" ; Re.eos]) in
+    fun target ->
+      let dir = Paths.odocs target in
+      SC.eval_glob sctx ~dir odoc_glob
+      |> List.map ~f:(fun d -> create_odoc (Path.relative dir d) ~target)
+
+  let setup_lib_html_rules =
+    let loaded = ref Lib.Set.empty in
+    fun lib ~requires ->
+      if not (Lib.Set.mem !loaded lib) then begin
+        loaded := Lib.Set.add !loaded lib;
+        let odocs = odocs (Lib lib) in
+        List.iter odocs ~f:(setup_html ~requires);
+        let html_files = List.map ~f:(fun o -> o.html_file) odocs in
+        SC.add_alias_deps sctx (Dep.html_alias (Lib lib))
+          (Path.Set.of_list (List.rev_append static_html html_files));
+      end
+
+  let setup_pkg_html_rules =
+    let loaded = Package.Name.Table.create ~default_value:false in
     fun ~pkg ~libs ->
       if not (Package.Name.Table.get loaded pkg) then begin
         Package.Name.Table.set loaded ~key:pkg ~data:true;
+        let requires = Lib.closure libs in
+        List.iter libs ~f:(setup_lib_html_rules ~requires);
+        let pkg_odocs = odocs (Pkg pkg) in
+        List.iter pkg_odocs ~f:(setup_html ~requires);
         let odocs =
-          let odocs target =
-            let dir = Paths.odocs target in
-            SC.eval_glob sctx ~dir odoc_glob
-            |> List.map ~f:(fun d -> create_odoc (Path.relative dir d) ~target)
-          in
           List.concat (
-            odocs (Pkg pkg)
+            pkg_odocs
             :: (List.map libs ~f:(fun lib -> odocs (Lib lib)))
           ) in
-        let html_files =
-          let closure = Lib.closure libs in
-          let deps = Dep.deps closure in
-          List.map odocs ~f:(setup_html ~deps ~requires:closure) in
-        List.iter (
-          Dep.html_alias (Pkg pkg)
-          :: List.map ~f:(fun lib -> Dep.html_alias (Lib lib)) libs
-        ) ~f:(fun alias ->
-          SC.add_alias_deps sctx alias
-            (Path.Set.of_list [ css_file
-                              ; toplevel_index
-                              ])
-        );
-        List.combine odocs html_files
-        |> List.iter ~f:(fun (odoc, html) ->
-          SC.add_alias_deps sctx odoc.html_alias (Path.Set.singleton html)
-        );
+        let html_files = List.map ~f:(fun o -> o.html_file) odocs in
+        SC.add_alias_deps sctx (Dep.html_alias (Pkg pkg))
+          (Path.Set.of_list (List.rev_append static_html html_files))
       end
 
   let gen_rules ~dir:_ rest =
@@ -378,7 +375,10 @@ module Gen (S : sig val sctx : SC.t end) = struct
     | _ -> ()
 
   let setup_package_aliases (pkg : Package.t) =
-    let alias = html_alias pkg in
+    let alias =
+      Build_system.Alias.doc ~dir:(
+        Path.append context.build_dir pkg.Package.path
+      ) in
     SC.add_alias_deps sctx alias (
       Dep.html_alias (Pkg pkg.name)
       :: (libs_of_pkg ~pkg:pkg.name

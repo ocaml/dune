@@ -534,7 +534,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
            | _ -> None
          ))
        |> List.map ~f:(fun (lib : Lib.t) ->
-         Build_system.Alias.stamp_file (Dep.alias (Lib lib)))
+         Build_system.Alias.stamp_file (Dep.html_alias (Lib lib)))
        |> Path.Set.of_list
       )
 

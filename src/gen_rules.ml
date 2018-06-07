@@ -176,8 +176,7 @@ module Gen(P : Install_rules.Params) = struct
      +-----------------------------------------------------------------+ *)
 
   let interpret_locks ~dir ~scope locks =
-    List.map locks ~f:(fun s ->
-      Path.relative dir (SC.expand_vars sctx ~dir ~scope s))
+    List.map locks ~f:(SC.expand_vars_path sctx ~dir ~scope)
 
   let user_rule (rule : Rule.t) ~dir ~scope =
     let targets : SC.Action.targets =

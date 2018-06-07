@@ -62,6 +62,10 @@ next
 - Make the output of Dune slightly more deterministic when run from
   inside Dune (#855, @diml)
 
+- Simplify quoting behavior of variables. All values are now multi-valued and
+  whether a multi valued variable is allowed is determined by the quoting and
+  substitution context it appears in. (#849, fix #701, @rgrinberg)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

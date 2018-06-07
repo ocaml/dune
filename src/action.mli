@@ -1,22 +1,5 @@
 open! Import
 
-module Var_expansion : sig
-  module Concat_or_split : sig
-    type t =
-      | Concat (** default *)
-      | Split  (** the variable is a "split" list of items *)
-  end
-
-  type t =
-    | Paths   of Path.t list * Concat_or_split.t
-    | Strings of string list * Concat_or_split.t
-
-  val to_string : Path.t -> t -> string
-  (** [to_string dir v] convert the variable expansion to a string.
-     If it is a path, the corresponding string will be relative to
-     [dir]. *)
-end
-
 module Outputs : module type of struct include Action_intf.Outputs end
 
 (** result of the lookup of a program, the path to it or information about the
@@ -99,7 +82,7 @@ module Unexpanded : sig
       :  t
       -> dir:Path.t
       -> map_exe:(Path.t -> Path.t)
-      -> f:(Loc.t -> String.t -> Var_expansion.t option)
+      -> f:(Loc.t -> String.t -> Value.t list option)
       -> Unresolved.t
   end
 
@@ -107,7 +90,7 @@ module Unexpanded : sig
     :  t
     -> dir:Path.t
     -> map_exe:(Path.t -> Path.t)
-    -> f:(Loc.t -> string -> Var_expansion.t option)
+    -> f:(Loc.t -> string -> Value.t list option)
     -> Partial.t
 end
 

@@ -45,7 +45,7 @@ type t =
   ; artifacts                        : Artifacts.t
   ; stanzas_to_consider_for_install  : Installable.t list
   ; cxx_flags                        : string list
-  ; vars                             : Action.Var_expansion.t String.Map.t
+  ; vars                             : Value.t list String.Map.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
@@ -86,16 +86,25 @@ let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
 let expand_var_no_root t var = String.Map.find t.vars var
 
-let expand_vars t ~scope ~dir ?(extra_vars=String.Map.empty) s =
-  String_with_vars.expand s ~f:(fun _loc -> function
-    | "ROOT" -> Some (Path.reach ~from:dir t.context.build_dir)
-    | "SCOPE_ROOT" ->
-      Some (Path.reach ~from:dir (Scope.root scope))
-    | var ->
-      Option.map ~f:(fun e -> Action.Var_expansion.to_string dir e)
+let (expand_vars, expand_vars_path) =
+  let expand t ~scope ~dir ?(extra_vars=String.Map.empty) s =
+    String_with_vars.expand ~mode:Single ~dir s ~f:(fun _loc -> function
+      | "ROOT" -> Some [Value.Path t.context.build_dir]
+      | "SCOPE_ROOT" -> Some [Value.Path (Scope.root scope)]
+      | var ->
         (match expand_var_no_root t var with
          | Some _ as x -> x
          | None -> String.Map.find extra_vars var))
+  in
+  let expand_vars t ~scope ~dir ?extra_vars s =
+    expand t ~scope ~dir ?extra_vars s
+    |> Value.to_string ~dir
+  in
+  let expand_vars_path t ~scope ~dir ?extra_vars s =
+    expand t ~scope ~dir ?extra_vars s
+    |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir
+  in
+  (expand_vars, expand_vars_path)
 
 let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
   let open Build.O in
@@ -270,18 +279,17 @@ let create
       | None -> Path.relative context.ocaml_bin "ocamlopt"
       | Some p -> p
     in
-    let open Action.Var_expansion in
+    let string s = [Value.String s] in
+    let path p = [Value.Path p] in
     let make =
       match Bin.make with
-      | None   -> Strings (["make"], Split)
-      | Some p -> Paths ([p], Split)
+      | None   -> string "make"
+      | Some p -> path p
     in
     let cflags = context.ocamlc_cflags in
-    let strings l = Strings (l  , Split)  in
-    let string  s = Strings ([s], Concat) in
-    let path    p = Paths   ([p], Split)  in
+    let strings = Value.L.strings in
     let vars =
-      [ "-verbose"       , Strings ([] (*"-verbose";*), Concat)
+      [ "-verbose"       , []
       ; "CPP"            , strings (context.c_compiler :: cflags @ ["-E"])
       ; "PA_CPP"         , strings (context.c_compiler :: cflags
                                     @ ["-undef"; "-traditional";
@@ -482,13 +490,11 @@ module Deps = struct
 
   let make_alias t ~scope ~dir s =
     let loc = String_with_vars.loc s in
-    Alias.of_user_written_path ~loc
-      (Path.relative ~error_loc:loc dir (expand_vars t ~scope ~dir s))
+    Alias.of_user_written_path ~loc ((expand_vars_path t ~scope ~dir s))
 
   let dep t ~scope ~dir = function
     | File  s ->
-      let path = Path.relative ~error_loc:(String_with_vars.loc s) dir
-                   (expand_vars t ~scope ~dir s) in
+      let path = expand_vars_path t ~scope ~dir s in
       Build.path path
       >>^ fun () -> [path]
     | Alias s ->
@@ -500,19 +506,17 @@ module Deps = struct
       >>^ fun () -> []
     | Glob_files s -> begin
         let loc = String_with_vars.loc s in
-        let path =
-          Path.relative ~error_loc:loc dir (expand_vars t ~scope ~dir s) in
+        let path = expand_vars_path t ~scope ~dir s in
         match Glob_lexer.parse_string (Path.basename path) with
         | Ok re ->
           let dir = Path.parent_exn path in
           Build.paths_glob ~loc ~dir (Re.compile re)
           >>^ Path.Set.to_list
         | Error (_pos, msg) ->
-          Loc.fail loc "invalid glob: %s" msg
+          Loc.fail (String_with_vars.loc s) "invalid glob: %s" msg
       end
     | Files_recursively_in s ->
-      let path = Path.relative ~error_loc:(String_with_vars.loc s)
-                   dir (expand_vars t ~scope ~dir s) in
+      let path = expand_vars_path t ~scope ~dir s in
       Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
       >>^ Path.Set.to_list
     | Package p ->
@@ -588,7 +592,7 @@ module Action = struct
     ; (* Static deps from ${...} variables. For instance ${exe:...} *)
       mutable sdeps     : Path.Set.t
     ; (* Dynamic deps from ${...} variables. For instance ${read:...} *)
-      mutable ddeps     : (unit, Action.Var_expansion.t) Build.t String.Map.t
+      mutable ddeps     : (unit, Value.t list) Build.t String.Map.t
     }
 
   let add_lib_dep acc lib kind =
@@ -602,8 +606,8 @@ module Action = struct
     acc.ddeps <- String.Map.add acc.ddeps key dep;
     None
 
-  let path_exp path = Action.Var_expansion.Paths   ([path], Concat)
-  let str_exp  path = Action.Var_expansion.Strings ([path], Concat)
+  let path_exp path = [Value.Path path]
+  let str_exp  str  = [Value.String str]
 
   let map_exe sctx =
     match sctx.host with
@@ -630,7 +634,6 @@ module Action = struct
       ; ddeps     = String.Map.empty
       }
     in
-    let open Action.Var_expansion in
     let expand loc key var = function
       | Some ("exe"     , s) -> Some (path_exp (map_exe (Path.relative dir s)))
       | Some ("path"    , s) -> Some (path_exp          (Path.relative dir s) )
@@ -683,8 +686,8 @@ module Action = struct
           | Some p ->
             let x =
               Pkg_version.read sctx p >>^ function
-              | None   -> Strings ([""], Concat)
-              | Some s -> Strings ([s],  Concat)
+              | None   -> [Value.String ""]
+              | Some s -> [String s]
             in
             add_ddep acc ~key x
           | None ->
@@ -696,7 +699,7 @@ module Action = struct
           let path = Path.relative dir s in
           let data =
             Build.contents path
-            >>^ fun s -> Strings ([s], Concat)
+            >>^ fun s -> [Value.String s]
           in
           add_ddep acc ~key data
         end
@@ -704,7 +707,7 @@ module Action = struct
           let path = Path.relative dir s in
           let data =
             Build.lines_of path
-            >>^ fun l -> Strings (l, Split)
+            >>^ Value.L.strings
           in
           add_ddep acc ~key data
         end
@@ -712,7 +715,7 @@ module Action = struct
           let path = Path.relative dir s in
           let data =
             Build.strings path
-            >>^ fun l -> Strings (l, Split)
+            >>^ Value.L.strings
           in
           add_ddep acc ~key data
         end
@@ -734,7 +737,7 @@ module Action = struct
             match targets_written_by_user with
             | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
             | Alias -> Loc.fail loc "You cannot use ${@} in aliases."
-            | Static l -> Some (Paths (l, Split))
+            | Static l -> Some (Value.L.paths l)
           end
         | _ ->
           match String.lsplit2 var ~on:':' with
@@ -742,16 +745,15 @@ module Action = struct
             Some (path_exp (Path.relative dir s))
           | x ->
             let exp = expand loc key var x in
-            (match exp with
-             | Some (Paths (ps, _)) ->
-               acc.sdeps <- Path.Set.union (Path.Set.of_list ps) acc.sdeps
-             | _ -> ());
+            Option.iter exp ~f:(fun vs ->
+              acc.sdeps <- Path.Set.union (Path.Set.of_list
+                                             (Value.L.paths_only vs)) acc.sdeps;
+            );
             exp)
     in
     (t, acc)
 
   let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
-    let open Action.Var_expansion in
     U.Partial.expand t ~dir ~map_exe ~f:(fun loc key ->
       match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
@@ -762,12 +764,12 @@ module Action = struct
           Some
             (match deps_written_by_user with
              | [] ->
-                Loc.warn loc "Variable '<' used with no explicit \
-                              dependencies@.";
-                Strings ([""], Concat)
+               Loc.warn loc "Variable '<' used with no explicit \
+                             dependencies@.";
+               [Value.String ""]
              | dep :: _ ->
-               Paths ([dep], Concat))
-        | "^" -> Some (Paths (deps_written_by_user, Split))
+               [Path dep])
+        | "^" -> Some (Value.L.paths deps_written_by_user)
         | _ -> None)
 
   let run sctx ~loc ?(extra_vars=String.Map.empty)

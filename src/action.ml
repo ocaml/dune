@@ -34,7 +34,7 @@ struct
       ; cstr "ignore-stderr"   (t @> nil)      (fun t -> Ignore (Stderr, t))
       ; cstr "ignore-outputs"  (t @> nil)      (fun t -> Ignore (Outputs, t))
       ; cstr "progn"           (rest t)        (fun l -> Progn l)
-      ; cstr "echo"           (string @> nil)         (fun x -> Echo x)
+      ; cstr "echo"      (string @> rest string) (fun x xs -> Echo (x::xs))
       ; cstr "cat"            (path @> nil)         (fun x -> Cat x)
       ; cstr "copy" (path @> path @> nil)              (fun src dst -> Copy (src, dst))
       (*
@@ -78,7 +78,8 @@ struct
            ]
     | Progn l -> List (Sexp.unsafe_atom_of_string "progn"
                        :: List.map l ~f:sexp_of_t)
-    | Echo x -> List [Sexp.unsafe_atom_of_string "echo"; string x]
+    | Echo xs ->
+      List (Sexp.unsafe_atom_of_string "echo" :: List.map xs ~f:string)
     | Cat x -> List [Sexp.unsafe_atom_of_string "cat"; path x]
     | Copy (x, y) ->
       List [Sexp.unsafe_atom_of_string "copy"; path x; path y]
@@ -150,7 +151,7 @@ module Make_mapper
     | Ignore (outputs, t) ->
       Ignore (outputs, map t ~dir ~f_program ~f_string ~f_path)
     | Progn l -> Progn (List.map l ~f:(fun t -> map t ~dir ~f_program ~f_string ~f_path))
-    | Echo x -> Echo (f_string ~dir x)
+    | Echo xs -> Echo (List.map xs ~f:(f_string ~dir))
     | Cat x -> Cat (f_path ~dir x)
     | Copy (x, y) -> Copy (f_path ~dir x, f_path ~dir y)
     | Symlink (x, y) ->
@@ -270,69 +271,13 @@ module Unresolved = struct
         | Search s -> Ok (f s))
 end
 
-module Var_expansion = struct
-  module Concat_or_split = struct
-    type t =
-      | Concat (* default *)
-      | Split  (* the variable is a "split" list of items *)
-  end
+let prog_and_args_of_values p ~dir =
+  match p with
+  | [] -> (Unresolved.Program.Search "", [])
+  | Value.Path p :: xs -> (This p, Value.L.to_strings ~dir xs)
+  | String s :: xs ->
+    (Unresolved.Program.of_string ~dir s, Value.L.to_strings ~dir xs)
 
-  open Concat_or_split
-
-  type t =
-    | Paths   of Path.t list * Concat_or_split.t
-    | Strings of string list * Concat_or_split.t
-
-  let is_multivalued = function
-    | Paths (_, Split) | Strings (_, Split) -> true
-    | Paths (_, Concat) | Strings (_, Concat) -> false
-
-  type context = Path.t (* For String_with_vars.Expand_to *)
-
-  let concat = function
-    | [s] -> s
-    | l -> String.concat ~sep:" " l
-
-  let string_of_path ~dir p = Path.reach ~from:dir p
-  let path_of_string dir s = Path.relative dir s
-
-  let to_strings dir = function
-    | Strings (l, Split ) -> l
-    | Strings (l, Concat) -> [concat l]
-    | Paths   (l, Split ) -> List.map l ~f:(string_of_path ~dir)
-    | Paths   (l, Concat) -> [concat (List.map l ~f:(string_of_path ~dir))]
-
-  let to_string (dir: context) = function
-    | Strings (l, _) -> concat l
-    | Paths   (l, _) -> concat (List.map l ~f:(string_of_path ~dir))
-
-  let to_path dir = function
-    | Strings (l, _) -> path_of_string dir (concat l)
-    | Paths ([p], _) -> p
-    | Paths (l,   _) ->
-      path_of_string dir (concat (List.map l ~f:(string_of_path ~dir)))
-
-  let to_prog_and_args dir exp : Unresolved.Program.t * string list =
-    let module P = Unresolved.Program in
-    match exp with
-    | Paths   ([p], _) -> (This p, [])
-    | Strings ([s], _) -> (P.of_string ~dir s, [])
-    | Paths ([], _) | Strings ([], _) -> (Search "", [])
-    | Paths (l, Concat) ->
-      (This
-         (path_of_string dir
-            (concat (List.map l ~f:(string_of_path ~dir)))),
-       [])
-    | Strings (l, Concat) ->
-      (P.of_string ~dir (concat l), l)
-    | Paths (p :: l, Split) ->
-      (This p, List.map l ~f:(string_of_path ~dir))
-    | Strings (s :: l, Split) ->
-      (P.of_string ~dir s, l)
-end
-
-module VE = Var_expansion
-module To_VE = String_with_vars.Expand_to(VE)
 module SW = String_with_vars
 
 module Unexpanded = struct
@@ -370,37 +315,33 @@ module Unexpanded = struct
     include Past
 
     module E = struct
-      let expand ~generic ~special ~map ~dir ~f = function
-        | Left x -> map x
-        | Right template ->
-           match To_VE.expand dir template ~f with
-           | Expansion e -> special dir e
-           | String    s -> generic dir s
-      [@@inlined always]
+      let expand ~dir ~mode ~f ~l ~r =
+        Either.map ~l
+          ~r:(fun s -> r (String_with_vars.expand s ~dir ~f ~mode) ~dir)
 
-      let string ~dir ~f x =
-        expand ~dir ~f x
-          ~generic:(fun _dir x -> x)
-          ~special:VE.to_string
-          ~map:(fun x -> x)
+      let string =
+        expand ~mode:Single
+          ~l:(fun x -> x)
+          ~r:Value.to_string
 
-      let strings ~dir ~f x =
-        expand ~dir ~f x
-          ~generic:(fun _dir x -> [x])
-          ~special:VE.to_strings
-          ~map:(fun x -> [x])
+      let strings =
+        expand ~mode:Many
+          ~l:(fun x -> [x])
+          ~r:Value.L.to_strings
 
-      let path ~dir ~f x =
-        expand ~dir ~f x
-          ~generic:VE.path_of_string
-          ~special:VE.to_path
-          ~map:(fun x -> x)
+      let path e =
+        let error_loc =
+          match e with
+          | Left _ -> None
+          | Right r -> Some (String_with_vars.loc r) in
+        expand ~mode:Single
+          ~l:(fun x -> x)
+          ~r:Value.(to_path ?error_loc) e
 
-      let prog_and_args ~dir ~f x =
-        expand ~dir ~f x
-          ~generic:(fun _dir s -> (Program.of_string ~dir s, []))
-          ~special:VE.to_prog_and_args
-          ~map:(fun x -> (x, []))
+      let prog_and_args =
+        expand ~mode:Many
+          ~l:(fun x -> (x, []))
+          ~r:prog_and_args_of_values
     end
 
     let rec expand t ~dir ~map_exe ~f : Unresolved.t =
@@ -425,7 +366,7 @@ module Unexpanded = struct
       | Ignore (outputs, t) ->
         Ignore (outputs, expand t ~dir ~map_exe ~f)
       | Progn l -> Progn (List.map l ~f:(fun t -> expand t ~dir ~map_exe ~f))
-      | Echo x -> Echo (E.string ~dir ~f x)
+      | Echo xs -> Echo (List.concat_map xs ~f:(E.strings ~dir ~f))
       | Cat x -> Cat (E.path ~dir ~f x)
       | Copy (x, y) ->
         Copy (E.path ~dir ~f x, E.path ~dir ~f y)
@@ -463,31 +404,18 @@ module Unexpanded = struct
   end
 
   module E = struct
-    let expand ~generic ~special ~dir ~f template =
-      match To_VE.partial_expand dir template ~f with
-      | Expansion e -> Left (special dir e)
-      | String s -> Left (generic dir s)
+    let expand ~dir ~mode ~f ~map x =
+      match String_with_vars.partial_expand ~mode ~dir ~f x with
+      | Expanded e -> Left (map e ~dir)
       | Unexpanded x -> Right x
 
-    let string ~dir ~f x =
-      expand ~dir ~f x
-        ~generic:(fun _dir x -> x)
-        ~special:VE.to_string
-
-    let strings ~dir ~f x =
-      expand ~dir ~f x
-        ~generic:(fun _dir x -> [x])
-        ~special:VE.to_strings
-
-    let path ~dir ~f x =
-      expand ~dir ~f x
-        ~generic:VE.path_of_string
-        ~special:VE.to_path
-
-    let prog_and_args ~dir ~f x =
-      expand ~dir ~f x
-        ~generic:(fun dir s -> (Unresolved.Program.of_string ~dir s, []))
-        ~special:VE.to_prog_and_args
+    let string = expand ~mode:Single ~map:Value.to_string
+    let strings = expand ~mode:Many ~map:Value.L.to_strings
+    let cat_strings = expand ~mode:Many ~map:Value.L.concat
+    let path x =
+      let error_loc = String_with_vars.loc x in
+      expand ~mode:Single ~map:(Value.to_path ~error_loc) x
+    let prog_and_args = expand ~mode:Many ~map:prog_and_args_of_values
   end
 
   let rec partial_expand t ~dir ~map_exe ~f : Partial.t =
@@ -531,7 +459,7 @@ module Unexpanded = struct
     | Ignore (outputs, t) ->
       Ignore (outputs, partial_expand t ~dir ~map_exe ~f)
     | Progn l -> Progn (List.map l ~f:(fun t -> partial_expand t ~dir ~map_exe ~f))
-    | Echo x -> Echo (E.string ~dir ~f x)
+    | Echo xs -> Echo (List.map xs ~f:(E.cat_strings ~dir ~f))
     | Cat x -> Cat (E.path ~dir ~f x)
     | Copy (x, y) ->
       Copy (E.path ~dir ~f x, E.path ~dir ~f y)
@@ -760,7 +688,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     exec t ~ectx ~dir ~stdout_to ~stderr_to
       ~env:(Env.add env ~var ~value)
   | Redirect (Stdout, fn, Echo s) ->
-    Io.write_file fn s;
+    Io.write_file fn (String.concat s ~sep:" ");
     Fiber.return ()
   | Redirect (outputs, fn, Run (Ok prog, args)) ->
     let out = Process.File fn in
@@ -777,7 +705,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
     redirect ~ectx ~dir outputs Config.dev_null t ~env ~stdout_to ~stderr_to
   | Progn l ->
     exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to
-  | Echo str -> exec_echo stdout_to str
+  | Echo strs -> exec_echo stdout_to (String.concat strs ~sep:" ")
   | Cat fn ->
     Io.with_file_in fn ~f:(fun ic ->
       let oc =

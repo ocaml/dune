@@ -214,3 +214,8 @@ let enumerate_gen s =
 
 let enumerate_and = enumerate_gen "and"
 let enumerate_or  = enumerate_gen "or"
+
+let concat ~sep = function
+  | [] -> ""
+  | [x] -> x
+  | xs -> concat ~sep xs

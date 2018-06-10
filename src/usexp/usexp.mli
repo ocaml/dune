@@ -38,6 +38,35 @@ type t =
   | Quoted_string of string
   | List of t list
 
+module Template : sig
+  type sexp
+
+  type syntax = Dollar_brace | Dollar_paren | Percent
+
+  type var =
+    { loc: Loc.t
+    ; name: string
+    ; payload: string
+    ; syntax: syntax
+    }
+
+  type part =
+    | Text of string
+    | Var of var
+
+  type t =
+    { quoted: bool
+    ; parts: part list
+    ; loc: Loc.t
+    }
+
+  val pp : Format.formatter -> t -> unit
+
+  val sexp_of_t : t -> sexp
+
+  val to_string : t -> string
+end with type sexp = t
+
 val atom : string -> t
 (** [atom s] convert the string [s] to an Atom.
     @raise Invalid_argument if [s] does not satisfy [Atom.is_valid s]. *)
@@ -67,6 +96,7 @@ module Ast : sig
   type t =
     | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
+    | Template of Template.t
     | List of Loc.t * t list
 
   val atom_or_quoted_string : Loc.t -> string -> t

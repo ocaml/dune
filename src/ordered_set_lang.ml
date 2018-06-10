@@ -24,7 +24,8 @@ let loc t = t.loc
 let parse_general sexp ~f =
   let rec of_sexp : Sexp.Ast.t -> _ = function
     | Atom (loc, A "\\") -> Loc.fail loc "unexpected \\"
-    | (Atom (_, A "") | Quoted_string (_, _)) as t -> Ast.Element (f t)
+    | (Atom (_, A "") | Quoted_string (_, _) | Template _ ) as t ->
+      Ast.Element (f t)
     | Atom (loc, A s) as t ->
       if s.[0] = ':' then
         Special (loc, String.sub s ~pos:1 ~len:(String.length s - 1))
@@ -43,6 +44,7 @@ let parse_general sexp ~f =
 let t sexp : t =
   let ast =
     parse_general sexp ~f:(function
+      | Template t -> (t.loc, Usexp.Template.to_string t)
       | Atom (loc, A s) | Quoted_string (loc, s) -> (loc, s)
       | List _ -> assert false)
   in

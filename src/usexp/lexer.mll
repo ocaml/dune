@@ -1,4 +1,8 @@
 {
+module Template = struct
+  type brace = Parens | Braces
+end
+
 module Atom = struct
   type t = A of string [@@unboxed]
 end
@@ -78,6 +82,8 @@ let blank     = [' ' '\t' '\012']
 let atom_char = [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\012']
 let digit     = ['0'-'9']
 let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
+
+let varname_char = atom_char # [ ':' '%' '$' ]
 
 (* rule for jbuild files *)
 rule jbuild_token = parse

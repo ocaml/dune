@@ -2,6 +2,10 @@ module Atom : sig
   type t = A of string [@@unboxed]
 end
 
+module Template : sig
+  type brace = Parens | Braces
+end
+
 module Token : sig
   type t =
     | Atom          of Atom.t

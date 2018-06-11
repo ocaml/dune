@@ -24,3 +24,11 @@ The targets should only be interpreted as a single path when quoted
   $ dune runtest --root quotes-multi
   Entering directory 'quotes-multi'
   lines: foo bar baz
+
+  $ dune build @quoted --root filename-space
+  Entering directory 'filename-space'
+  filename contains spaces
+
+  $ dune build @unquoted --root filename-space
+  Entering directory 'filename-space'
+  ${read:foo bar.txt}

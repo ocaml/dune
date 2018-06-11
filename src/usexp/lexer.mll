@@ -33,6 +33,16 @@ let error ?(delta=0) lexbuf message =
            ; message
            })
 
+(* The difference between the old and new syntax is that the old
+   syntax allows backslash following by any characters other than 'n',
+   'x', ... and interpret it as it. The new syntax is stricter in
+   order to allow introducing new escape sequence in the future if
+   needed. *)
+type escape_mode =
+  | In_block_comment (* Inside #|...|# comments (old syntax) *)
+  | Old_syntax
+  | New_syntax
+
 let eval_decimal_char c = Char.code c - Char.code '0'
 
 let eval_decimal_escape c1 c2 c3 =
@@ -82,7 +92,7 @@ rule jbuild_token = parse
   | '"'
     { Buffer.clear escaped_buf;
       let start = Lexing.lexeme_start_p lexbuf in
-      let s = quoted_string true lexbuf in
+      let s = quoted_string Old_syntax lexbuf in
       lexbuf.lex_start_p <- start;
       Quoted_string s
     }
@@ -117,35 +127,34 @@ and jbuild_atom acc start = parse
       Token.Atom (A acc)
     }
 
-(* If [strict] is false, ignore errors *)
-and quoted_string strict = parse
+and quoted_string mode = parse
   | '"'
     { Buffer.contents escaped_buf }
   | '\\'
-    { match escape_sequence strict lexbuf with
-      | Newline -> quoted_string_after_escaped_newline strict lexbuf
-      | Other   -> quoted_string                       strict lexbuf
+    { match escape_sequence mode lexbuf with
+      | Newline -> quoted_string_after_escaped_newline mode lexbuf
+      | Other   -> quoted_string                       mode lexbuf
     }
   | newline as s
     { Lexing.new_line lexbuf;
       Buffer.add_string escaped_buf s;
-      quoted_string strict lexbuf
+      quoted_string mode lexbuf
     }
   | _ as c
     { Buffer.add_char escaped_buf c;
-      quoted_string strict lexbuf
+      quoted_string mode lexbuf
     }
   | eof
-    { if strict then
+    { if mode <> In_block_comment then
         error lexbuf "unterminated quoted string";
       Buffer.contents escaped_buf
     }
 
-and quoted_string_after_escaped_newline strict = parse
+and quoted_string_after_escaped_newline mode = parse
   | [' ' '\t']*
-    { quoted_string strict lexbuf }
+    { quoted_string mode lexbuf }
 
-and escape_sequence strict = parse
+and escape_sequence mode = parse
   | newline
     { Lexing.new_line lexbuf;
       Newline }
@@ -163,14 +172,14 @@ and escape_sequence strict = parse
     }
   | (digit as c1) (digit as c2) (digit as c3)
     { let v = eval_decimal_escape c1 c2 c3 in
-      if strict && v > 255 then
+      if mode <> In_block_comment && v > 255 then
         error lexbuf "escape sequence in quoted string out of range"
           ~delta:(-1);
       Buffer.add_char escaped_buf (Char.chr v);
       Other
     }
   | digit* as s
-    { if strict then
+    { if mode <> In_block_comment then
         error lexbuf "unterminated decimal escape sequence" ~delta:(-1);
       Buffer.add_char escaped_buf '\\';
       Buffer.add_string escaped_buf s;
@@ -182,19 +191,21 @@ and escape_sequence strict = parse
       Other
     }
   | 'x' hexdigit* as s
-    { if strict then
+    { if mode <> In_block_comment then
         error lexbuf "unterminated hexadecimal escape sequence" ~delta:(-1);
       Buffer.add_char escaped_buf '\\';
       Buffer.add_string escaped_buf s;
       Other
     }
   | _ as c
-    { Buffer.add_char escaped_buf '\\';
+    { if mode = New_syntax then
+        error lexbuf "unknown escape sequence" ~delta:(-1);
+      Buffer.add_char escaped_buf '\\';
       Buffer.add_char escaped_buf c;
       Other
     }
   | eof
-    { if strict then
+    { if mode <> In_block_comment then
         error lexbuf "unterminated escape sequence" ~delta:(-1);
       Other
     }
@@ -202,7 +213,7 @@ and escape_sequence strict = parse
 and jbuild_block_comment = parse
   | '"'
     { Buffer.clear escaped_buf;
-      ignore (quoted_string false lexbuf : string);
+      ignore (quoted_string In_block_comment lexbuf : string);
       jbuild_block_comment lexbuf
     }
   | "|#"
@@ -243,7 +254,7 @@ and dune_quoted_string = parse
   | "\\>"
     { block_string_start Raw lexbuf }
   | ""
-    { quoted_string true lexbuf }
+    { quoted_string New_syntax lexbuf }
 
 and block_string_start kind = parse
   | newline as s
@@ -270,7 +281,7 @@ and block_string = parse
       block_string_after_newline lexbuf
     }
   | '\\'
-    { match escape_sequence true lexbuf with
+    { match escape_sequence New_syntax lexbuf with
       | Newline -> block_string_after_newline lexbuf
       | Other   -> block_string               lexbuf
     }

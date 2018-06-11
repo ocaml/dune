@@ -95,3 +95,15 @@ parse {|x|#y|}
 - : parse_result =
 Different {jbuild = Error "jbuild_atoms cannot contain |#"; dune = Ok [x|#y]}
 |}]
+
+parse {|"\a"|}
+[%%expect{|
+- : parse_result =
+Different {jbuild = Ok ["\\a"]; dune = Error "unknown escape sequence"}
+|}]
+
+parse {|"\%{x}"|}
+[%%expect{|
+- : parse_result =
+Different {jbuild = Ok ["\\%{x}"]; dune = Error "unknown escape sequence"}
+|}]

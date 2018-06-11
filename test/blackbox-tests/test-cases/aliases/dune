@@ -1,5 +1,3 @@
-(jbuild_version 1)
-
 (alias
  ((name just-in-src)
   (deps ((alias src/x)))))

@@ -22,5 +22,3 @@
  ((name runtest)
   (deps (foo.dune))
   (action (echo "${read:foo.dune}"))))
-
-(jbuild_version 1)

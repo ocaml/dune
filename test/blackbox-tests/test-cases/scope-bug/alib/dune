@@ -1,5 +1,3 @@
-(jbuild_version 1)
-
 (library
  ((name alib)
   (public_name alib)

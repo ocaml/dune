@@ -1,5 +1,3 @@
-(jbuild_version 1)
-
 (library
  ((name q)
   (c_names (q_stub))))

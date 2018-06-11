@@ -1,5 +1,3 @@
-(jbuild_version 1)
-
 (rule (copy ${read:x} a))
 (rule (copy ${read:y} b))
 

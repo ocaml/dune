@@ -2,7 +2,7 @@ public libraries may not have private dependencies
 
   $ dune build --display short --root private-dep
   Entering directory 'private-dep'
-  File "dune", line 10, characters 14-24:
+  File "dune", line 8, characters 14-24:
   Error: Library "privatelib" is private, it cannot be a dependency of a public library.
   You need to give "privatelib" a public name.
       ocamldep publiclib.ml.d

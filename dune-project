@@ -1,2 +1,2 @@
-(lang dune 0.1)
+(lang dune 1.0)
 (name dune)

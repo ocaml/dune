@@ -176,10 +176,10 @@ let load_dune_project ~dir packages =
        Loc.fail loc "%s is not a supported langauge. \
                      Only the dune language is supported." s);
     (match version with
-     | _, "0.1" -> ()
+     | _, "1.0" -> ()
      | loc, s ->
        Loc.fail loc "Unsupported version of the dune language. \
-                     The only supported version is 0.1." s);
+                     The only supported version is 1.0." s);
     let sexp = Sexp.Parser.parse lb ~mode:Many_as_one in
     parse ~dir packages sexp)
 

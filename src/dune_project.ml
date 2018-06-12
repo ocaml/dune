@@ -114,7 +114,7 @@ end
 type t =
   { kind                  : Kind.t
   ; name                  : Name.t
-  ; root                  : Path.t
+  ; root                  : Path.Local.t
   ; version               : string option
   ; packages              : Package.t Package.Name.Map.t
   ; mutable stanza_parser : Stanza.t list Sexp.Of_sexp.t
@@ -196,12 +196,17 @@ end
 
 let filename = "dune-project"
 
+let get_local_path p =
+  match Path.kind p with
+  | External _ -> assert false
+  | Local    p -> p
+
 let anonymous = lazy(
   let t =
     { kind          = Dune
     ; name          = Name.anonymous_root
     ; packages      = Package.Name.Map.empty
-    ; root          = Path.root
+    ; root          = get_local_path Path.root
     ; version       = None
     ; stanza_parser = (fun _ -> assert false)
     ; project_file  = None
@@ -248,7 +253,7 @@ let parse ~dir ~lang_stanzas ~packages ~file =
      let t =
        { kind = Dune
        ; name
-       ; root = dir
+       ; root = get_local_path dir
        ; version
        ; packages
        ; stanza_parser = (fun _ -> assert false)
@@ -270,7 +275,7 @@ let make_jbuilder_project ~dir packages =
   let t =
     { kind = Jbuilder
     ; name = default_name ~dir ~packages
-    ; root = dir
+    ; root = get_local_path dir
     ; version = None
     ; packages
     ; stanza_parser = (fun _ -> assert false)
@@ -314,7 +319,7 @@ let project_file t =
   match t.project_file with
   | Some file -> file
   | None ->
-    let file = Path.drop_optional_build_context (Path.relative t.root filename) in
+    let file = Path.relative (Path.of_local t.root) filename in
     let maj, min = fst (Lang.latest "dune") in
     let s = sprintf "(lang dune %d.%d)" maj min in
     notify_user

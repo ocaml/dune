@@ -30,10 +30,10 @@ module Name : sig
 end
 
 (* CR-soon diml: make this abstract *)
-type t =
+type t = private
   { kind                  : Kind.t
   ; name                  : Name.t
-  ; root                  : Path.t
+  ; root                  : Path.Local.t
   ; version               : string option
   ; packages              : Package.t Package.Name.Map.t
   ; mutable stanza_parser : Stanza.t list Sexp.Of_sexp.t

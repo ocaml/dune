@@ -186,7 +186,7 @@ let of_result_map ?targets res ~f =
 let memoize name t =
   Memo { name; t; state = Unevaluated }
 
-let files_recursively_in ~dir ~file_tree =
+let source_tree ~dir ~file_tree =
   let prefix_with, dir =
     match Path.extract_build_context_dir dir with
     | None -> (Path.root, dir)

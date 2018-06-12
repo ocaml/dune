@@ -511,9 +511,9 @@ module Deps = struct
         | Error (_pos, msg) ->
           Loc.fail (String_with_vars.loc s) "invalid glob: %s" msg
       end
-    | Files_recursively_in s ->
+    | Source_tree s ->
       let path = expand_vars_path t ~scope ~dir s in
-      Build.files_recursively_in ~dir:path ~file_tree:t.file_tree
+      Build.source_tree ~dir:path ~file_tree:t.file_tree
       >>^ Path.Set.to_list
     | Package p ->
       let pkg = Package.Name.of_string (expand_vars t ~scope ~dir p) in

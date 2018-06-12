@@ -21,7 +21,7 @@
 
 (rule
  ((targets (dune.inc.gen))
-  (deps ((files_recursively_in test-cases)))
+  (deps ((source_tree test-cases)))
   (action (with-stdout-to ${@} (run ./gen_tests.exe)))))
 
 (alias

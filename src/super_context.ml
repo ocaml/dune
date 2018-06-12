@@ -216,10 +216,6 @@ let create
         | _ -> None))
   in
   let scopes, public_libs =
-    let projects =
-      List.map projects ~f:(fun (project : Dune_project.t) ->
-        { project with root = Path.append context.build_dir project.root })
-    in
     Scope.DB.create
       ~projects
       ~context:context.name

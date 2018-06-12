@@ -564,6 +564,7 @@ let make_local_path p =
   match Local.Prefix.drop (Lazy.force build_dir_prefix) p with
   | None -> in_source_tree p
   | Some p -> in_build_dir p
+let of_local = make_local_path
 
 let relative ?error_loc t fn =
   match fn with
@@ -658,6 +659,12 @@ let is_descendant t ~of_ =
   | Local t, Local of_ -> Local.is_descendant t ~of_
   | _, _ -> false
 
+let append_local a b =
+  match a with
+  | In_source_tree a -> in_source_tree (Local.append a b)
+  | In_build_dir a -> in_build_dir (Local.append a b)
+  | External a -> external_ (External.relative a (Local.to_string b))
+
 let append a b =
   match kind b with
   | External _ ->
@@ -665,12 +672,7 @@ let append a b =
       [ "a", sexp_of_t a
       ; "b", sexp_of_t b
       ]
-  | Local b ->
-    begin match a with
-    | In_source_tree a -> in_source_tree (Local.append a b)
-    | In_build_dir a -> in_build_dir (Local.append a b)
-    | External a -> external_ (External.relative a (Local.to_string b))
-    end
+  | Local b -> append_local a b
 
 let basename t =
   match kind t with

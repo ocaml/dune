@@ -1,6 +1,7 @@
 (** In the current workspace (anything under the current project root) *)
 module Local : sig
   type t
+  val sexp_of_t : t -> Sexp.t
 end
 
 (** In the outside world *)
@@ -45,6 +46,8 @@ val to_string : t -> string
 (** [to_string_maybe_quoted t] is [maybe_quoted (to_string t)] *)
 val to_string_maybe_quoted : t -> string
 
+val kind : t -> Kind.t
+
 val root : t
 val is_root : t -> bool
 
@@ -69,6 +72,7 @@ val descendant : t -> of_:t -> t option
 val is_descendant : t -> of_:t -> bool
 
 val append : t -> t -> t
+val append_local : t -> Local.t -> t
 
 val basename : t -> string
 val parent : t -> t option
@@ -146,6 +150,8 @@ val set_build_dir : Kind.t -> unit
 
 (** paths guaranteed to be in the source directory *)
 val in_source : string -> t
+
+val of_local : Local.t -> t
 
 (** Set the workspace root. Can onyl be called once and the path must be
     absolute *)

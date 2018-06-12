@@ -3,9 +3,10 @@ open Import
 type t =
   { project : Dune_project.t
   ; db      : Lib.DB.t
+  ; root    : Path.t (* Path inside the build directory *)
   }
 
-let root t = t.project.root
+let root t = t.root
 let name t = t.project.name
 let project t = t.project
 let libs t = t.db
@@ -58,7 +59,7 @@ module DB = struct
       | Ok x -> x
       | Error (_name, project1, project2) ->
         let to_sexp (project : Dune_project.t) =
-          Sexp.To_sexp.(pair Dune_project.Name.sexp_of_t Path.sexp_of_t)
+          Sexp.To_sexp.(pair Dune_project.Name.sexp_of_t Path.Local.sexp_of_t)
             (project.name, project.root)
         in
         Exn.code_error "Scope.DB.create got two projects with the same name"
@@ -110,6 +111,7 @@ module DB = struct
         ~all:(fun () -> String.Map.keys public_libs)
     in
     let by_name =
+      let build_context_dir = Path.relative Path.build_dir context in
       Project_name_map.merge projects_by_name libs_by_project_name
         ~f:(fun _name project libs ->
           let project = Option.value_exn project in
@@ -117,11 +119,12 @@ module DB = struct
           let db =
             Lib.DB.create_from_library_stanzas libs ~parent:public_libs
           in
-          Some { project; db })
+          let root = Path.append_local build_context_dir project.root in
+          Some { project; db; root })
     in
     by_name_cell := by_name;
     let by_dir = Hashtbl.create 1024 in
     Project_name_map.iter by_name ~f:(fun scope ->
-      Hashtbl.add by_dir scope.project.root scope);
+      Hashtbl.add by_dir scope.root scope);
     ({ by_name; by_dir; context }, public_libs)
 end

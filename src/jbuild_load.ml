@@ -214,10 +214,9 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
     File_tree.fold ftree ~traverse_ignored_dirs:false ~init:[]
       ~f:(fun dir acc ->
         let p = File_tree.Dir.project dir in
-        if p.root = File_tree.Dir.path dir then
-          p :: acc
-        else
-          acc)
+        match Path.kind (File_tree.Dir.path dir) with
+        | Local d when d = p.root -> p :: acc
+        | _ -> acc)
   in
   let packages =
     List.fold_left projects ~init:Package.Name.Map.empty
@@ -235,7 +234,7 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
   in
   let projects =
     List.map projects ~f:(fun (p : Dune_project.t) ->
-      (p.root, p))
+      (Path.of_local p.root, p))
     |> Path.Map.of_list_exn
   in
   assert (Path.Map.mem projects Path.root);

@@ -569,6 +569,7 @@ module Gen(P : Install_rules.Params) = struct
         ~super_context:sctx
         ~scope
         ~dir
+        ~dir_kind
         ~obj_dir
         ~modules
         ?alias_module
@@ -874,6 +875,7 @@ module Gen(P : Install_rules.Params) = struct
         ~super_context:sctx
         ~scope
         ~dir
+        ~dir_kind
         ~obj_dir
         ~modules
         ~flags

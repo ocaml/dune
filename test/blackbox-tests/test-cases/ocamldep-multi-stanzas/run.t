@@ -8,10 +8,17 @@
   each module cannot appear in more than one "modules" field - it must belong
   to a single library or executable.
   This warning will become an error in the future.
-  Multiple rules generated for _build/default/lib$ext_obj:
-  - <internal location>
-  - <internal location>
-  [1]
+      ocamldep lib.ml.d
+        ocamlc .lib.objs/lib.{cmi,cmo,cmt}
+      ocamlopt .lib.objs/lib.{cmx,o}
+      ocamlopt lib.{a,cmxa}
+      ocamldep test.ml.d
+        ocamlc .test.eobjs/lib.{cmi,cmo,cmt}
+      ocamlopt .test.eobjs/lib.{cmx,o}
+        ocamlc .test.eobjs/test.{cmi,cmo,cmt}
+      ocamlopt .test.eobjs/test.{cmx,o}
+      ocamlopt test.exe
+  foo bar
 
   $ dune build src/a.cma --debug-dep --display short
   File "src/dune", line 1, characters 0-0:

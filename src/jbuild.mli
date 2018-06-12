@@ -257,7 +257,6 @@ module Executables : sig
 
   type t =
     { names            : (Loc.t * string) list
-    ; link_executables : bool
     ; link_flags       : Ordered_set_lang.Unexpanded.t
     ; modes            : Link_mode.Set.t
     ; buildable        : Buildable.t

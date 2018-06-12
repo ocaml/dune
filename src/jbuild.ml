@@ -872,17 +872,22 @@ module Executables = struct
   end
 
   type t =
-    { names            : (Loc.t * string) list
-    ; link_executables : bool
-    ; link_flags       : Ordered_set_lang.Unexpanded.t
-    ; modes            : Link_mode.Set.t
-    ; buildable        : Buildable.t
+    { names      : (Loc.t * string) list
+    ; link_flags : Ordered_set_lang.Unexpanded.t
+    ; modes      : Link_mode.Set.t
+    ; buildable  : Buildable.t
     }
 
-  let common_v1 project names public_names ~multi =
+  let common project names public_names ~syntax ~multi =
     Buildable.v1 >>= fun buildable ->
-    field      "link_executables"   bool ~default:true >>= fun link_executables ->
-    field_oslu "link_flags"                            >>= fun link_flags ->
+    (match (syntax : File_tree.Dune_file.Kind.t) with
+     | Dune ->
+       return ()
+     | Jbuild ->
+       field "link_executables" bool ~default:true >>= fun _ ->
+       return ())
+    >>= fun () ->
+    field_oslu "link_flags" >>= fun link_flags ->
     field "modes" Link_mode.Set.t ~default:Link_mode.Set.default
     >>= fun modes ->
     map_validate
@@ -896,7 +901,6 @@ module Executables = struct
     >>= fun () ->
     let t =
       { names
-      ; link_executables
       ; link_flags
       ; modes
       ; buildable
@@ -952,7 +956,7 @@ module Executables = struct
     | "-" -> None
     | s   -> Some s
 
-  let v1_multi project =
+  let multi ~syntax project =
     record
       (field "names" (list (located string)) >>= fun names ->
        map_validate (field_o "public_names" (list public_name)) ~f:(function
@@ -964,13 +968,13 @@ module Executables = struct
              Error "The list of public names must be of the same \
                     length as the list of names")
        >>= fun public_names ->
-       common_v1 project names public_names ~multi:true)
+       common ~syntax project names public_names ~multi:true)
 
-  let v1_single project =
+  let single ~syntax project =
     record
       (field   "name" (located string) >>= fun name ->
        field_o "public_name" string >>= fun public_name ->
-       common_v1 project [name] [public_name] ~multi:false)
+       common ~syntax project [name] [public_name] ~multi:false)
 end
 
 module Rule = struct
@@ -1256,10 +1260,10 @@ module Stanzas = struct
 
   type constructors = Stanza.t list Sexp.Of_sexp.Constructor_spec.t list
 
-  let common project : constructors =
+  let common project ~syntax : constructors =
     [ cstr "library"     (Library.v1 project @> nil) (fun x -> [Library x])
-    ; cstr "executable"  (Executables.v1_single project @> nil) execs
-    ; cstr "executables" (Executables.v1_multi  project @> nil) execs
+    ; cstr "executable"  (Executables.single project ~syntax @> nil) execs
+    ; cstr "executables" (Executables.multi  project ~syntax @> nil) execs
     ; cstr "rule"        (cstr_loc (Rule.v1 @> nil)) (fun loc x -> [Rule { x with loc }])
     ; cstr "ocamllex"    (cstr_loc (Rule.ocamllex_v1 @> nil))
         (fun loc x -> rules (Rule.ocamllex_to_rule loc x))
@@ -1280,13 +1284,13 @@ module Stanzas = struct
     ]
 
   let dune project =
-    common project @
+    common project ~syntax:Dune @
     [ cstr "env" (cstr_loc (rest Env.rule))
         (fun loc rules -> [Env { loc; rules }])
     ]
 
   let jbuild project =
-    common project @
+    common project ~syntax:Jbuild @
     [ cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
     ]
 

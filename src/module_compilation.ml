@@ -74,7 +74,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
           (fn :: other_targets, A "-bin-annot")
       in
       let hidden_targets = List.map other_targets ~f:(Target.file obj_dir) in
-      if obj_dir <> dir then begin
+      if CC.dir_kind cctx = Jbuild && obj_dir <> dir then begin
         (* Symlink the object files in the original directory for
            backward compatibility *)
         let old_dst = Module.cm_file_unsafe m ~obj_dir:dir cm_kind in

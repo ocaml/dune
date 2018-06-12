@@ -37,6 +37,7 @@ type t =
   { super_context        : Super_context.t
   ; scope                : Scope.t
   ; dir                  : Path.t
+  ; dir_kind             : File_tree.Dune_file.Kind.t
   ; obj_dir              : Path.t
   ; modules              : Module.t Module.Name.Map.t
   ; alias_module         : Module.t option
@@ -50,6 +51,7 @@ type t =
 let super_context        t = t.super_context
 let scope                t = t.scope
 let dir                  t = t.dir
+let dir_kind             t = t.dir_kind
 let obj_dir              t = t.obj_dir
 let modules              t = t.modules
 let alias_module         t = t.alias_module
@@ -59,12 +61,13 @@ let requires             t = t.requires
 let includes             t = t.includes
 let preprocessing        t = t.preprocessing
 
-let create ~super_context ~scope ~dir ?(obj_dir=dir) ~modules ?alias_module
-      ?lib_interface_module ~flags ~requires
-      ?(preprocessing=Preprocessing.dummy) () =
+let create ~super_context ~scope ~dir ?(dir_kind=File_tree.Dune_file.Kind.Dune)
+      ?(obj_dir=dir) ~modules ?alias_module ?lib_interface_module ~flags
+      ~requires ?(preprocessing=Preprocessing.dummy) () =
   { super_context
   ; scope
   ; dir
+  ; dir_kind
   ; obj_dir
   ; modules
   ; alias_module

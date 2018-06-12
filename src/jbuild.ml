@@ -675,7 +675,7 @@ module Library = struct
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
-    ; project_name             : Dune_project.Name.t
+    ; project                  : Dune_project.t
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     }
 
@@ -722,7 +722,7 @@ module Library = struct
          ; optional
          ; buildable
          ; dynlink = not no_dynlink
-         ; project_name = project.name
+         ; project
          ; sub_systems
          })
 

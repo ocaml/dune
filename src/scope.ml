@@ -69,7 +69,7 @@ module DB = struct
     in
     let libs_by_project_name =
       List.map internal_libs ~f:(fun (dir, (lib : Jbuild.Library.t)) ->
-        (lib.project_name, (dir, lib)))
+        (lib.project.name, (dir, lib)))
       |> Project_name_map.of_list_multi
     in
     let by_name_cell = ref Project_name_map.empty in
@@ -78,7 +78,7 @@ module DB = struct
         List.filter_map internal_libs ~f:(fun (_dir, lib) ->
           match lib.public with
           | None -> None
-          | Some p -> Some (p.name, lib.project_name))
+          | Some p -> Some (p.name, lib.project))
         |> String.Map.of_list
         |> function
         | Ok x -> x
@@ -103,9 +103,10 @@ module DB = struct
         ~resolve:(fun name ->
           match String.Map.find public_libs name with
           | None -> Not_found
-          | Some project_name ->
+          | Some project ->
             let scope =
-              Option.value_exn (Project_name_map.find !by_name_cell project_name)
+              Option.value_exn
+                (Project_name_map.find !by_name_cell project.name)
             in
             Redirect (Some scope.db, name))
         ~all:(fun () -> String.Map.keys public_libs)

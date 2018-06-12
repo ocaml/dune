@@ -960,7 +960,7 @@ module Gen(P : Install_rules.Params) = struct
     (* This interprets "rule" and "copy_files" stanzas. *)
     let files = text_files ~dir:ctx_dir in
     let all_modules = modules_by_dir ~dir:ctx_dir in
-    let modules_partitioner = Modules_partitioner.create () in
+    let modules_partitioner = Modules_partitioner.create ~dir_kind:kind in
     let merlins =
       List.filter_map stanzas ~f:(fun stanza ->
         let dir = ctx_dir in
@@ -1008,7 +1008,7 @@ module Gen(P : Install_rules.Params) = struct
         in
         Menhir_rules.gen_rules cctx m
       | _ -> ());
-    Modules_partitioner.emit_warnings modules_partitioner
+    Modules_partitioner.emit_errors modules_partitioner
 
      let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
     (match components with

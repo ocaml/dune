@@ -4,7 +4,7 @@ open! Stdune
 
 type 'a t
 
-val create : unit -> 'a t
+val create : dir_kind:File_tree.Dune_file.Kind.t -> 'a t
 
 (** [acknowledge t partition ~loc ~modules] registers the fact that [modules]
     are associated with [loc].
@@ -22,6 +22,6 @@ val acknowledge
 (** Find which partition a module is part of *)
 val find : 'a t -> Module.Name.t -> 'a option
 
-(** To be called after processing a directory. Emit warnings about
-    detected problems *)
-val emit_warnings : _ t -> unit
+(** To be called after processing a directory. Emit errors or warnings
+    about detected problems *)
+val emit_errors : _ t -> unit

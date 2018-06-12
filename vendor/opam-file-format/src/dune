@@ -1,5 +1,3 @@
-(jbuild_version 1)
-
 (library
  ((name opam_file_format)
   (wrapped false)))

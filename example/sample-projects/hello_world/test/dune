@@ -1,5 +1,3 @@
-(jbuild_version 1)
-
 (rule
  ((targets (hello_world.output))
   (action (with-stdout-to ${@} (run ${bin:hello_world})))))

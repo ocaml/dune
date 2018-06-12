@@ -1,5 +1,3 @@
-(jbuild_version 1)
-
 (library
  ((name scope2)
   (public_name scope2)))

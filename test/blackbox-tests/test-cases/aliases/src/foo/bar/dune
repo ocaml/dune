@@ -1,5 +1,3 @@
-(jbuild_version 1)
-
 (alias
  ((name x)
   (action (chdir ${ROOT} (echo "running in ${path-no-dep:.}\n")))))

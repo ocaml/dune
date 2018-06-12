@@ -1,8 +1,8 @@
   $ dune exec ./test.exe --debug-dep --display short
   File "dune", line 1, characters 0-0:
   Warning: Module "Lib" is used in several stanzas:
-  - dune:8
-  - dune:4
+  - dune:6
+  - dune:2
   To remove this warning, you must specify an explicit "modules" field in every
   library, executable, and executables stanzas in this jbuild file. Note that
   each module cannot appear in more than one "modules" field - it must belong
@@ -16,8 +16,8 @@
   $ dune build src/a.cma --debug-dep --display short
   File "src/dune", line 1, characters 0-0:
   Warning: Module "X" is used in several stanzas:
-  - src/dune:4
-  - src/dune:3
+  - src/dune:2
+  - src/dune:1
   To remove this warning, you must specify an explicit "modules" field in every
   library, executable, and executables stanzas in this jbuild file. Note that
   each module cannot appear in more than one "modules" field - it must belong

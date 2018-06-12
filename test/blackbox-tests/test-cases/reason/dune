@@ -1,5 +1,3 @@
-(jbuild_version 1)
-
 (rule (copy copy-sources/pped.pp.re pped.re))
 (rule (copy copy-sources/pped.rei.pp pped.rei))
 

@@ -1,5 +1,3 @@
-(jbuild_version 1)
-
 (library
  ((name        hello_world)
   (public_name hello_world)))

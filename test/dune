@@ -1,5 +1,3 @@
-(jbuild_version 1)
-
 ;; execute this to check the behavior when background jobs take time to finish:
 ;;
 ;; $ ./_build/default/bin/main.exe build @test/fail-with-background-jobs-running

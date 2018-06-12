@@ -1,4 +1,2 @@
-(jbuild_version 1)
-
 (executable
  ((name reasononlypp)))

@@ -1,5 +1,3 @@
-(jbuild_version 1)
-
 (alias
  ((name print-merlins)
   (deps (lib/.merlin exe/.merlin))

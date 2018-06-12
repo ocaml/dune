@@ -212,7 +212,7 @@ module Library : sig
     ; optional                 : bool
     ; buildable                : Buildable.t
     ; dynlink                  : bool
-    ; project_name             : Dune_project.Name.t
+    ; project                  : Dune_project.t
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     }
 

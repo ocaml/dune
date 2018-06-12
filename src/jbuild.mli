@@ -309,13 +309,6 @@ module Menhir : sig
     }
 end
 
-module Provides : sig
-  type t =
-    { name : string
-    ; file : string
-    }
-end
-
 module Alias_conf : sig
   type t =
     { name    : string
@@ -361,7 +354,6 @@ type Stanza.t +=
   | Library     of Library.t
   | Executables of Executables.t
   | Rule        of Rule.t
-  | Provides    of Provides.t
   | Install     of Install_conf.t
   | Alias       of Alias_conf.t
   | Copy_files  of Copy_files.t

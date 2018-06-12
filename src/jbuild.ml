@@ -1135,29 +1135,6 @@ module Menhir = struct
       )
 end
 
-module Provides = struct
-  type t =
-    { name : string
-    ; file : string
-    }
-
-(*  let v1 sexp =
-    match sexp with
-    | Atom (_, s) ->
-      { name = s
-      ; file =
-          match String.lsplit2 s ~on:':' with
-          | None        -> s
-          | Some (_, s) -> s
-      }
-    | List (_, [Atom (_, s); List (_, [Atom (_, "file"); Atom (_, file)])]) ->
-      { name = s
-      ; file
-      }
-    | sexp ->
-    of_sexp_error sexp "[<name>] or [<name> (file <file>)] expected"*)
-end
-
 module Alias_conf = struct
   type t =
     { name    : string
@@ -1256,7 +1233,6 @@ type Stanza.t +=
   | Library     of Library.t
   | Executables of Executables.t
   | Rule        of Rule.t
-  | Provides    of Provides.t
   | Install     of Install_conf.t
   | Alias       of Alias_conf.t
   | Copy_files  of Copy_files.t

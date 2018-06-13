@@ -74,13 +74,57 @@ module Of_sexp : sig
 
   val raw : ast t
 
-  (* Record parsing monad *)
-  type 'a record_parser
-  val return : 'a -> 'a record_parser
-  val ( >>= ) : 'a record_parser -> ('a -> 'b record_parser) -> 'b record_parser
+  val enum : (string * 'a) list -> 'a t
 
-  (** Return the location of the record being parsed *)
-  val record_loc : Loc.t record_parser
+  (** {2 Parsing lists} *)
+
+  (** Monad for parsing lists *)
+  type ('a, 'kind) list_parser
+
+  type 'a   cstr_parser = ('a, [`Cstr  ]) list_parser
+  type 'a record_parser = ('a, [`Record]) list_parser
+
+  val return : 'a -> ('a, _) list_parser
+  val ( >>= )
+    :  ('a, 'kind) list_parser
+    -> ('a -> ('b, 'kind) list_parser)
+    -> ('b, 'kind) list_parser
+  val ( >>| )
+    :  ('a, 'kind) list_parser
+    -> ('a -> 'b)
+    -> ('b, 'kind) list_parser
+
+  (** Return the location of the list being parsed *)
+  val list_loc : (Loc.t, _) list_parser
+
+  (** Parser that parse a record, i.e. a list of s-expressions of the
+      form [(<atom> <s-exp>)]. *)
+  val record : 'a record_parser -> 'a t
+
+  (** Parser that parse a S-expression of the form [(<atom> <s-exp1>
+      <s-exp2> ...)] or [<atom>]. [<atom>] is looked up in the list and
+      the remaining s-expressions are parsed using the corresponding
+      list parser. *)
+  val sum : (string * 'a cstr_parser) list -> 'a t
+
+  (** Parse and consume the next element of the list *)
+  val next : 'a t -> 'a cstr_parser
+
+  (** Parse and consume the rest of the list as a list of element of
+      the same type. *)
+  val rest : 'a t -> 'a list cstr_parser
+
+  (** Parse all remaining elements as a list of fields *)
+  val rest_as_record : 'a record_parser -> 'a cstr_parser
+
+  (** Check the result of a list parser, and raise a properly located
+      error in case of failure. *)
+  val map_validate
+    :  'a record_parser
+    -> f:('a -> ('b, string) Result.t)
+    -> 'b record_parser
+
+  (** {3 Parsing record fields} *)
 
   module Short_syntax : sig
     type 'a t =
@@ -109,69 +153,19 @@ module Of_sexp : sig
     -> 'a t
     -> 'a list record_parser
 
-  val map_validate
-    :  'a record_parser
-    -> f:('a -> ('b, string) Result.result)
-    -> 'b record_parser
-
-  val ignore_fields : string list -> unit record_parser
-
-  val record : 'a record_parser -> 'a t
-
-  module Constructor_spec : sig
-    type 'a t
-  end
-
-  module Constructor_args_spec : sig
-    type ('a, 'b) t
-
-    val parse : ('a, 'b) t -> Ast.t -> 'a -> 'b
-  end
-
-  val nil : ('a, 'a) Constructor_args_spec.t
-  val ( @> )
-    :  'a t
-    -> ('b, 'c) Constructor_args_spec.t
-    -> ('a -> 'b, 'c) Constructor_args_spec.t
-
-  (** Parse all remaining arguments using the following parser *)
-  val rest : 'a t -> ('a list -> 'b, 'b) Constructor_args_spec.t
-
-  (** Parse all remaining arguments using the following record parser *)
-  val rest_as_record : 'a record_parser -> ('a -> 'b, 'b) Constructor_args_spec.t
-
-  (** Capture the location of the constructor *)
-  val cstr_loc
-    :  ('a, 'b) Constructor_args_spec.t
-    -> (Loc.t -> 'a, 'b) Constructor_args_spec.t
-
   (** Field that takes multiple values *)
   val field_multi
     :  string
-    -> ?default:'b
-    -> ('a, 'b) Constructor_args_spec.t
-    -> 'a
-    -> 'b record_parser
+    -> ?default:'a
+    -> 'a cstr_parser
+    -> 'a record_parser
 
   (** A field that can appear multiple times and each time takes
       multiple values *)
   val dup_field_multi
     :  string
-    -> ('a, 'b) Constructor_args_spec.t
-    -> 'a
-    -> 'b list record_parser
-
-  val cstr
-    :  string
-    -> ('a, 'b) Constructor_args_spec.t
-    -> 'a
-    -> 'b Constructor_spec.t
-
-  val sum
-    :  'a Constructor_spec.t list
-    -> 'a t
-
-  val enum : (string * 'a) list -> 'a t
+    -> 'a cstr_parser
+    -> 'a list record_parser
 end
 
 module type Sexpable = sig

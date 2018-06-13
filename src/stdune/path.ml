@@ -594,10 +594,11 @@ let t = function
   | s ->
     let open Sexp.Of_sexp in
     sum
-      [ cstr "In_build_dir" (Local.t @> nil) in_build_dir
-      ; cstr "In_source_tree" (Local.t @> nil) in_source_tree
-      ; cstr "External" (External.t @> nil) external_
-      ] s
+      [ "In_build_dir"  , next Local.t    >>| in_build_dir
+      ; "In_source_tree", next Local.t    >>| in_source_tree
+      ; "External"      , next External.t >>| external_
+      ]
+      s
 
 let sexp_of_t t =
   let constr f x y = Sexp.To_sexp.(pair string f) (x, y) in

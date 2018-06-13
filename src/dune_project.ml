@@ -159,14 +159,11 @@ module Lang = struct
 end
 
 module Extension = struct
-  type maker =
-      T : ('a, Stanza.Parser.t list) Sexp.Of_sexp.Constructor_args_spec.t *
-          (project -> 'a)
-      -> maker
+  type maker = project -> Stanza.Parser.t list Sexp.Of_sexp.cstr_parser
 
   type t = Syntax.Version.t * maker
 
-  let make ver args_spec f = (ver, T (args_spec, f))
+  let make ver f = (ver, f)
 
   let extensions = Hashtbl.create 32
 
@@ -176,22 +173,13 @@ module Extension = struct
         [ "name", Sexp.To_sexp.string name ];
     Hashtbl.add extensions name (Syntax.Versioned_parser.make versions)
 
-  let parse project entries =
-    match String.Map.of_list entries with
-    | Error (name, _, (loc, _, _)) ->
-      Loc.fail loc "Exntesion %S specified for the second time." name
-    | Ok _ ->
-      List.concat_map entries ~f:(fun (name, (loc, (ver_loc, ver), args)) ->
-        match Hashtbl.find extensions name with
-        | None ->
-          Loc.fail loc "Unknown extension %S.%s" name
-            (hint name (Hashtbl.keys extensions))
-        | Some versions ->
-          let (T (spec, f)) =
-            Syntax.Versioned_parser.find_exn versions
-              ~loc:ver_loc ~data_version:ver
-          in
-          Sexp.Of_sexp.Constructor_args_spec.parse spec args (f project))
+  let lookup (name_loc, name) (ver_loc, ver) =
+    match Hashtbl.find extensions name with
+    | None ->
+      Loc.fail name_loc "Unknown extension %S.%s" name
+        (hint name (Hashtbl.keys extensions))
+    | Some versions ->
+      Syntax.Versioned_parser.find_exn versions ~loc:ver_loc ~data_version:ver
 end
 
 let filename = "dune-project"
@@ -243,13 +231,6 @@ let parse ~dir ~lang_stanzas ~packages ~file =
   record
     (name ~dir ~packages >>= fun name ->
      field_o "version" string >>= fun version ->
-     dup_field_multi "using"
-       (located string
-        @> located Syntax.Version.t
-        @> cstr_loc (rest raw))
-       (fun (loc, name) ver args_loc args ->
-          (name, (loc, ver, Sexp.Ast.List (args_loc, args))))
-     >>= fun extensions ->
      let t =
        { kind = Dune
        ; name
@@ -260,8 +241,21 @@ let parse ~dir ~lang_stanzas ~packages ~file =
        ; project_file  = Some file
        }
      in
-     let extenstions_stanzas = Extension.parse t extensions in
-     t.stanza_parser <- Sexp.Of_sexp.sum (lang_stanzas t @ extenstions_stanzas);
+     dup_field_multi "using"
+       (list_loc >>= fun loc ->
+        next (located string) >>= fun name ->
+        next (located Syntax.Version.t) >>= fun ver ->
+        Extension.lookup name ver t >>= fun stanzas ->
+        return (snd name, (loc, stanzas)))
+     >>= fun extensions ->
+     let extensions_stanzas =
+       match String.Map.of_list extensions with
+       | Error (name, _, (loc, _)) ->
+         Loc.fail loc "Extension %S specified for the second time." name
+       | Ok _ ->
+         List.concat_map extensions ~f:(fun (_, (_, x)) -> x)
+     in
+     t.stanza_parser <- Sexp.Of_sexp.sum (lang_stanzas t @ extensions_stanzas);
      return t)
 
 let load_dune_project ~dir packages =

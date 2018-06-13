@@ -27,7 +27,7 @@ module Backend = struct
       let short = None
       let parse =
         record
-          (record_loc >>= fun loc ->
+          (list_loc >>= fun loc ->
            field "runner_libraries" (list (located string)) ~default:[]
            >>= fun runner_libraries ->
            Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
@@ -135,7 +135,7 @@ include Sub_system.Register_end_point(
     let short = Some empty
     let parse =
       record
-        (record_loc >>= fun loc ->
+        (list_loc >>= fun loc ->
          field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
          Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
          field_o "backend" (located string) >>= fun backend ->

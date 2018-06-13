@@ -73,18 +73,16 @@ module Extension : sig
   (** One version of an extension *)
   type t
 
-  (** [make version args_spec f] defines one version of an
-      extension. Users will enable this extension by writing:
+  (** [make version parser] defines one version of an extension. Users will
+      enable this extension by writing:
 
       {[ (using <name> <version> <args>) ]}
 
-      in their [dune-project] file. [args_spec] is used to describe
-      what [<args>] might be.
-  *)
+      in their [dune-project] file. [parser] is used to describe
+      what [<args>] might be.  *)
   val make
     :  Syntax.Version.t
-    -> ('a, Stanza.Parser.t list) Sexp.Of_sexp.Constructor_args_spec.t
-    -> (project -> 'a)
+    -> (project -> Stanza.Parser.t list Sexp.Of_sexp.cstr_parser)
     -> t
 
   (** Register all the supported versions of an extension *)

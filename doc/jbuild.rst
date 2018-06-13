@@ -248,6 +248,10 @@ Executables can also be linked as object or shared object files. See
 - ``(link_flags <flags>)`` specifies additional flags to pass to the linker.
   This field supports ``(:include ...)`` forms
 
+- ``(link_deps (<deps-conf list>))`` specifies the dependencies used only by the
+  linker, for example when using a version script. See the `Dependency
+  specification`_ section for more details.
+
 - ``(modules <modules>)`` specifies which modules in the current directory
   Jbuilder should consider when building this executable. Modules not listed
   here will be ignored and cannot be used inside the executable described by

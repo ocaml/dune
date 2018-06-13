@@ -256,10 +256,11 @@ module Executables : sig
   end
 
   type t =
-    { names            : (Loc.t * string) list
-    ; link_flags       : Ordered_set_lang.Unexpanded.t
-    ; modes            : Link_mode.Set.t
-    ; buildable        : Buildable.t
+    { names      : (Loc.t * string) list
+    ; link_flags : Ordered_set_lang.Unexpanded.t
+    ; link_deps  : Dep_conf.t list
+    ; modes      : Link_mode.Set.t
+    ; buildable  : Buildable.t
     }
 end
 

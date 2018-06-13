@@ -874,6 +874,7 @@ module Executables = struct
   type t =
     { names      : (Loc.t * string) list
     ; link_flags : Ordered_set_lang.Unexpanded.t
+    ; link_deps  : Dep_conf.t list
     ; modes      : Link_mode.Set.t
     ; buildable  : Buildable.t
     }
@@ -887,6 +888,7 @@ module Executables = struct
        field "link_executables" bool ~default:true >>= fun _ ->
        return ())
     >>= fun () ->
+    field "link_deps" (list Dep_conf.t) ~default:[] >>= fun link_deps ->
     field_oslu "link_flags" >>= fun link_flags ->
     field "modes" Link_mode.Set.t ~default:Link_mode.Set.default
     >>= fun modes ->
@@ -902,6 +904,7 @@ module Executables = struct
     let t =
       { names
       ; link_flags
+      ; link_deps
       ; modes
       ; buildable
       }

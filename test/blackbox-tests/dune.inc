@@ -331,6 +331,14 @@
     (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
 
 (alias
+ ((name link-deps)
+  (deps ((package dune) (files_recursively_in test-cases/link-deps)))
+  (action
+   (chdir
+    test-cases/link-deps
+    (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+
+(alias
  ((name loop)
   (deps ((package dune) (files_recursively_in test-cases/loop)))
   (action
@@ -592,6 +600,7 @@
     (alias installable-dup-private-libs)
     (alias intf-only)
     (alias lib-available)
+    (alias link-deps)
     (alias loop)
     (alias menhir)
     (alias merlin-tests)
@@ -656,6 +665,7 @@
     (alias installable-dup-private-libs)
     (alias intf-only)
     (alias lib-available)
+    (alias link-deps)
     (alias loop)
     (alias merlin-tests)
     (alias meta-gen)

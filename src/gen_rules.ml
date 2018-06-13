@@ -857,7 +857,11 @@ module Gen(P : Install_rules.Params) = struct
     in
 
     let flags = SC.ocaml_flags sctx ~scope ~dir exes.buildable in
+    let link_deps =
+      SC.Deps.interpret sctx ~scope ~dir exes.link_deps
+    in
     let link_flags =
+      link_deps >>^ ignore >>>
       SC.expand_and_eval_set sctx exes.link_flags
         ~scope
         ~dir

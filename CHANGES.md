@@ -75,6 +75,9 @@ next
 * Allow setting environment variables in `findlib.conf` for cross compilation
   contexts. (#733, @rgrinberg)
 
+- Add a `link_deps` field to executables, to specify link-time dependencies
+  like version scripts. (#879, fix #852, @emillon)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

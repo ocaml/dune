@@ -37,7 +37,7 @@ module Driver = struct
       let short = None
       let parse =
         record
-          (record_loc >>= fun loc ->
+          (list_loc >>= fun loc ->
            Ordered_set_lang.Unexpanded.field "flags"      >>= fun      flags ->
            Ordered_set_lang.Unexpanded.field "lint_flags" >>= fun lint_flags ->
            field "main" string >>= fun main ->

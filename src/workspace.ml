@@ -63,12 +63,12 @@ module Context = struct
     | List (_, List _ :: _) as sexp -> Opam (record (Opam.t ~profile) sexp)
     | sexp ->
       sum
-        [ cstr "default"
-            (rest_as_record (Default.t ~profile))
-            (fun x -> Default x)
-        ; cstr "opam"
-            (rest_as_record (Opam.t ~profile))
-            (fun x -> Opam x)
+        [ "default",
+          (rest_as_record (Default.t ~profile) >>| fun x ->
+           Default x)
+        ; "opam",
+          (rest_as_record (Opam.t ~profile) >>| fun x ->
+           Opam x)
         ]
         sexp
 
@@ -96,8 +96,11 @@ type item = Context of Sexp.Ast.t | Profile of Loc.t * string
 
 let item_of_sexp =
   sum
-    [ cstr "context" (raw @> nil) (fun x -> Context x)
-    ; cstr "profile" (cstr_loc (string @> nil)) (fun loc x -> Profile (loc, x))
+    [ "context", (next raw >>|fun x -> Context x)
+    ; "profile",
+      (list_loc >>= fun loc ->
+       next string >>= fun x ->
+       return (Profile (loc, x)))
     ]
 
 let t ?x ?profile:cmdline_profile sexps =

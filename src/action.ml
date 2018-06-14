@@ -24,37 +24,73 @@ struct
   let rec t sexp =
     let path = Path.t and string = String.t in
     sum
-      [ cstr "run" (Program.t @> rest string) (fun prog args -> Run (prog, args))
-      ; cstr "chdir"    (path @> t @> nil)        (fun dn t -> Chdir (dn, t))
-      ; cstr "setenv"   (string @> string @> t @> nil)   (fun k v t -> Setenv (k, v, t))
-      ; cstr "with-stdout-to"  (path @> t @> nil) (fun fn t -> Redirect (Stdout, fn, t))
-      ; cstr "with-stderr-to"  (path @> t @> nil) (fun fn t -> Redirect (Stderr, fn, t))
-      ; cstr "with-outputs-to" (path @> t @> nil) (fun fn t -> Redirect (Outputs, fn, t))
-      ; cstr "ignore-stdout"   (t @> nil)      (fun t -> Ignore (Stdout, t))
-      ; cstr "ignore-stderr"   (t @> nil)      (fun t -> Ignore (Stderr, t))
-      ; cstr "ignore-outputs"  (t @> nil)      (fun t -> Ignore (Outputs, t))
-      ; cstr "progn"           (rest t)        (fun l -> Progn l)
-      ; cstr "echo"      (string @> rest string) (fun x xs -> Echo (x::xs))
-      ; cstr "cat"            (path @> nil)         (fun x -> Cat x)
-      ; cstr "copy" (path @> path @> nil)              (fun src dst -> Copy (src, dst))
-      (*
-         (* We don't expose symlink to the user yet since this might complicate things *)
-         ; cstr "symlink" (a @> a @> nil) (fun src dst -> Symlink (dst, Cat src))
-      *)
-      ; cstr "copy#" (path @> path @> nil) (fun src dst ->
-          Copy_and_add_line_directive (src, dst))
-      ; cstr "copy-and-add-line-directive" (cstr_loc (path @> path @> nil)) (fun loc src dst ->
-          Loc.warn loc "copy-and-add-line-directive is deprecated, use copy# instead";
-          Copy_and_add_line_directive (src, dst))
-      ; cstr "copy#" (path @> path @> nil) (fun src dst ->
-          Copy_and_add_line_directive (src, dst))
-      ; cstr "system" (string @> nil) (fun cmd -> System cmd)
-      ; cstr "bash"   (string @> nil) (fun cmd -> Bash   cmd)
-      ; cstr "write-file" (path @> string @> nil) (fun fn s -> Write_file (fn, s))
-      ; cstr "diff" (path @> path @> nil)
-          (fun file1 file2 -> Diff { optional = false; file1; file2 })
-      ; cstr "diff?" (path @> path @> nil)
-          (fun file1 file2 -> Diff { optional = true ; file1; file2 })
+      [ "run",
+        (next Program.t >>= fun prog ->
+         rest string    >>| fun args ->
+         Run (prog, args))
+      ; "chdir",
+        (next path >>= fun dn ->
+         next t    >>| fun t ->
+         Chdir (dn, t))
+      ; "setenv",
+        (next string >>= fun k ->
+         next string >>= fun v ->
+         next t      >>| fun t ->
+         Setenv (k, v, t))
+      ; "with-stdout-to",
+        (next path >>= fun fn ->
+         next t    >>| fun t ->
+         Redirect (Stdout, fn, t))
+      ; "with-stderr-to",
+        (next path >>= fun fn ->
+         next t    >>| fun t  ->
+         Redirect (Stderr, fn, t))
+      ; "with-outputs-to",
+        (next path >>= fun fn ->
+         next t    >>| fun t  ->
+         Redirect (Outputs, fn, t))
+      ; "ignore-stdout",
+        (next t >>| fun t -> Ignore (Stdout, t))
+      ; "ignore-stderr",
+        (next t >>| fun t -> Ignore (Stderr, t))
+      ; "ignore-outputs",
+        (next t >>| fun t -> Ignore (Outputs, t))
+      ; "progn",
+        (rest t >>| fun l -> Progn l)
+      ; "echo",
+        (next string >>= fun x ->
+         rest string >>| fun xs ->
+         Echo (x :: xs))
+      ; "cat",
+        (next path >>| fun x -> Cat x)
+      ; "copy",
+        (next path >>= fun src ->
+         next path >>| fun dst ->
+         Copy (src, dst))
+      ; "copy#",
+        (next path >>= fun src ->
+         next path >>| fun dst ->
+         Copy_and_add_line_directive (src, dst))
+      ; "copy-and-add-line-directive",
+        (next path >>= fun src ->
+         next path >>| fun dst ->
+         Copy_and_add_line_directive (src, dst))
+      ; "system",
+        (next string >>| fun cmd -> System cmd)
+      ; "bash",
+        (next string >>| fun cmd -> Bash cmd)
+      ; "write-file",
+        (next path >>= fun fn ->
+         next string >>| fun s ->
+         Write_file (fn, s))
+      ; "diff",
+        (next path >>= fun file1 ->
+         next path >>| fun file2 ->
+         Diff { optional = false; file1; file2 })
+      ; "diff?",
+        (next path >>= fun file1 ->
+         next path >>| fun file2 ->
+         Diff { optional = true; file1; file2 })
       ]
       sexp
 

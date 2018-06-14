@@ -208,17 +208,15 @@ module Dep_conf = struct
 
   let t =
     let t =
-      let cstr_sw name f =
-        cstr name (String_with_vars.t @> nil) f
-      in
+      let sw = String_with_vars.t in
       sum
-        [ cstr_sw "file"                 (fun x -> File x)
-        ; cstr_sw "alias"                (fun x -> Alias x)
-        ; cstr_sw "alias_rec"            (fun x -> Alias_rec x)
-        ; cstr_sw "glob_files"           (fun x -> Glob_files x)
-        ; cstr_sw "files_recursively_in" (fun x -> Files_recursively_in x)
-        ; cstr_sw "package"              (fun x -> Package x)
-        ; cstr    "universe" nil         Universe
+        [ "file"                 , (next sw >>| fun x -> File x)
+        ; "alias"                , (next sw >>| fun x -> Alias x)
+        ; "alias_rec"            , (next sw >>| fun x -> Alias_rec x)
+        ; "glob_files"           , (next sw >>| fun x -> Glob_files x)
+        ; "files_recursively_in" , (next sw >>| fun x -> Files_recursively_in x)
+        ; "package"              , (next sw >>| fun x -> Package x)
+        ; "universe"             , return Universe
         ]
     in
     fun sexp ->
@@ -257,12 +255,15 @@ module Preprocess = struct
 
   let t =
     sum
-      [ cstr "no_preprocessing" nil No_preprocessing
-      ; cstr "action" (located Action.Unexpanded.t @> nil) (fun (loc, x) ->
-          Action (loc, x))
-      ; cstr "pps" (cstr_loc (list Pp_or_flags.t @> nil)) (fun loc l ->
-          let pps, flags = Pp_or_flags.split l in
-          Pps { loc; pps; flags })
+      [ "no_preprocessing", return No_preprocessing
+      ; "action",
+        (next (located Action.Unexpanded.t) >>| fun (loc, x) ->
+         Action (loc, x))
+      ; "pps",
+        (list_loc >>= fun loc ->
+         next (list Pp_or_flags.t) >>| fun l ->
+         let pps, flags = Pp_or_flags.split l in
+         Pps { loc; pps; flags })
       ]
 
   let pps = function
@@ -469,7 +470,7 @@ module Buildable = struct
     field name Ordered_set_lang.t ~default:Ordered_set_lang.standard
 
   let v1 =
-    record_loc >>= fun loc ->
+    list_loc >>= fun loc ->
     field "preprocess" Preprocess_map.t ~default:Preprocess_map.default
     >>= fun preprocess ->
     field "preprocessor_deps" (list Dep_conf.t) ~default:[]
@@ -1261,40 +1262,62 @@ module Stanzas = struct
 
   type Stanza.t += Include of Loc.t * string
 
-  type constructors = Stanza.t list Sexp.Of_sexp.Constructor_spec.t list
+  type constructors = (string * Stanza.t list Sexp.Of_sexp.cstr_parser) list
 
   let common project ~syntax : constructors =
-    [ cstr "library"     (Library.v1 project @> nil) (fun x -> [Library x])
-    ; cstr "executable"  (Executables.single project ~syntax @> nil) execs
-    ; cstr "executables" (Executables.multi  project ~syntax @> nil) execs
-    ; cstr "rule"        (cstr_loc (Rule.v1 @> nil)) (fun loc x -> [Rule { x with loc }])
-    ; cstr "ocamllex"    (cstr_loc (Rule.ocamllex_v1 @> nil))
-        (fun loc x -> rules (Rule.ocamllex_to_rule loc x))
-    ; cstr "ocamlyacc"   (cstr_loc (Rule.ocamlyacc_v1 @> nil))
-        (fun loc x -> rules (Rule.ocamlyacc_to_rule loc x))
-    ; cstr "menhir"      (cstr_loc (Menhir.v1 @> nil))
-        (fun loc x -> [Menhir { x with loc }])
-    ; cstr "install"     (Install_conf.v1 project @> nil) (fun x -> [Install     x])
-    ; cstr "alias"       (Alias_conf.v1 project @> nil)   (fun x -> [Alias       x])
-    ; cstr "copy_files" (Copy_files.v1 @> nil)
-        (fun glob -> [Copy_files {add_line_directive = false; glob}])
-    ; cstr "copy_files#" (Copy_files.v1 @> nil)
-        (fun glob -> [Copy_files {add_line_directive = true; glob}])
-    ; cstr "include" (cstr_loc (relative_file @> nil)) (fun loc fn ->
-        [Include (loc, fn)])
-    ; cstr "documentation" (Documentation.v1 project @> nil)
-        (fun d -> [Documentation d])
+    [ "library",
+      (next (Library.v1 project) >>| fun x ->
+       [Library x])
+    ; "executable" , next (Executables.single project ~syntax) >>| execs
+    ; "executables", next (Executables.multi  project ~syntax) >>| execs
+    ; "rule",
+      (list_loc >>= fun loc ->
+       next Rule.v1 >>| fun x ->
+       [Rule { x with loc }])
+    ; "ocamllex",
+      (list_loc >>= fun loc ->
+       next Rule.ocamllex_v1 >>| fun x ->
+       rules (Rule.ocamllex_to_rule loc x))
+    ; "ocamlyacc",
+      (list_loc >>= fun loc ->
+       next Rule.ocamlyacc_v1 >>| fun x ->
+       rules (Rule.ocamlyacc_to_rule loc x))
+    ; "menhir",
+      (list_loc >>= fun loc ->
+       next Menhir.v1 >>| fun x ->
+       [Menhir { x with loc }])
+    ; "install",
+      (next (Install_conf.v1 project) >>| fun x ->
+       [Install x])
+    ; "alias",
+      (next (Alias_conf.v1 project) >>| fun x ->
+       [Alias x])
+    ; "copy_files",
+      (next Copy_files.v1 >>| fun glob ->
+       [Copy_files {add_line_directive = false; glob}])
+    ; "copy_files#",
+      (next Copy_files.v1 >>| fun glob ->
+       [Copy_files {add_line_directive = true; glob}])
+    ; "include",
+      (list_loc >>= fun loc ->
+       next relative_file >>| fun fn ->
+       [Include (loc, fn)])
+    ; "documentation",
+      (next (Documentation.v1 project) >>| fun d ->
+       [Documentation d])
     ]
 
   let dune project =
     common project ~syntax:Dune @
-    [ cstr "env" (cstr_loc (rest Env.rule))
-        (fun loc rules -> [Env { loc; rules }])
+    [ "env",
+      (list_loc >>= fun loc ->
+       rest Env.rule >>| fun rules ->
+       [Env { loc; rules }])
     ]
 
   let jbuild project =
     common project ~syntax:Jbuild @
-    [ cstr "jbuild_version" (Jbuild_version.t @> nil) (fun _ -> [])
+    [ "jbuild_version", (next Jbuild_version.t >>| fun _ -> [])
     ]
 
   let () =

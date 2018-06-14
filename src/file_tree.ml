@@ -52,7 +52,7 @@ module Dune_file = struct
           dn
       in
       sum
-        [ cstr "ignored_subdirs" (list sub_dir @> nil) String.Set.of_list
+        [ "ignored_subdirs", next (list sub_dir) >>| String.Set.of_list
         ]
     in
     fun sexps ->

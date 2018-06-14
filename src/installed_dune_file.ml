@@ -35,8 +35,10 @@ let of_sexp =
       of_sexp_error sexp "Unsupported version, only version 1 is supported"
   in
   sum
-    [ cstr "dune" (version @> list raw @> nil)
-        (fun () l -> parse_sub_systems l)
+    [ "dune",
+      (next version >>= fun () ->
+       next (list raw) >>| fun l ->
+       parse_sub_systems l)
     ]
 
 let load fname = of_sexp (Io.Sexp.load ~mode:Single fname)

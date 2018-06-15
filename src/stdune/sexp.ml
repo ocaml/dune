@@ -91,12 +91,12 @@ module Of_sexp = struct
 
     type error = string * hint option
 
-    let error ?hint str = Error (str, hint)
+    let error ?hint str = Result.Error (str, hint)
     let errorf ?hint fmt = Printf.ksprintf (error ?hint) fmt
 
     let map_validate t ~f ast =
       match f (t ast) with
-      | Ok b -> b
+      | Result.Ok b -> b
       | Error (msg, hint) -> raise (Of_sexp (Ast.loc ast, msg, hint))
   end
 

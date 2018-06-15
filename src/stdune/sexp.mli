@@ -87,7 +87,7 @@ module Of_sexp : sig
 
     val error : ?hint:hint -> string -> (_, error) Result.t
     val errorf
-      : ?hint:hint -> ('b, unit, string, (_, error) result) format4 -> 'b
+      : ?hint:hint -> ('b, unit, string, (_, error) Result.t) format4 -> 'b
     val map_validate : 'a t -> f:('a -> ('b, error) Result.t) -> 'b t
   end
 

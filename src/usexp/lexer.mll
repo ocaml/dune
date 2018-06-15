@@ -1,11 +1,5 @@
 {
-module Template = struct
-  type brace = Parens | Braces
-end
-
-module Atom = struct
-  type t = A of string [@@unboxed]
-end
+open Usexp0
 
 module Token = struct
   type t =

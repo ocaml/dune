@@ -11,10 +11,7 @@ module Bytes = struct
 end
 
 module Loc = struct
-  type t =
-    { start : Lexing.position
-    ; stop  : Lexing.position
-    }
+  include Usexp0.Loc
 
   let in_file fn =
     let pos : Lexing.position =
@@ -30,7 +27,7 @@ module Loc = struct
 end
 
 module Atom = struct
- type t = Lexer.Atom.t = A of string [@@unboxed]
+ include Usexp0.Atom
 
  let is_valid =
    let rec loop s i len =
@@ -58,7 +55,7 @@ module Atom = struct
   let to_string (A s) = s
 end
 
-type t =
+type t = Usexp0.t =
   | Atom of Atom.t
   | Quoted_string of string
   | List of t list
@@ -254,26 +251,7 @@ let prepare_formatter ppf =
     }
 
 module Template = struct
-  type sexp = t
-
-  type syntax = Dollar_brace | Dollar_paren | Percent
-
-  type var =
-    { loc: Loc.t
-    ; name: string
-    ; payload: string
-    ; syntax: syntax
-    }
-
-  type part =
-    | Text of string
-    | Var of var
-
-  type t =
-    { quoted: bool
-    ; parts: part list
-    ; loc: Loc.t
-    }
+  include Usexp0.Template
 
   let sexp_of_string = to_string
 

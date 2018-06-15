@@ -7,10 +7,10 @@ module Context = struct
       | Native
       | Named of string
 
-    let t sexp =
-      match string sexp with
-      | "native" -> Native
-      | s        -> Named s
+    let t =
+      Parser.map string ~f:(function
+        | "native" -> Native
+        | s        -> Named s)
   end
 
   module Opam = struct
@@ -55,22 +55,24 @@ module Context = struct
 
   type t = Default of Default.t | Opam of Opam.t
 
-  let t ~profile = function
+  let t ~profile = Sexp.Of_sexp.make (function
     | Atom (_, A "default") ->
       Default { targets = [Native]
               ; profile
               }
-    | List (_, List _ :: _) as sexp -> Opam (record (Opam.t ~profile) sexp)
+    | List (_, List _ :: _) as sexp ->
+      Opam (Sexp.Of_sexp.parse (record (Opam.t ~profile)) sexp)
     | sexp ->
-      sum
-        [ "default",
-          (rest_as_record (Default.t ~profile) >>| fun x ->
-           Default x)
-        ; "opam",
-          (rest_as_record (Opam.t ~profile) >>| fun x ->
-           Opam x)
-        ]
-        sexp
+      Sexp.Of_sexp.parse
+        (sum
+           [ "default",
+             (rest_as_record (Default.t ~profile) >>| fun x ->
+              Default x)
+           ; "opam",
+             (rest_as_record (Opam.t ~profile) >>| fun x ->
+              Opam x)
+           ])
+        sexp)
 
   let name = function
     | Default _ -> "default"
@@ -107,7 +109,7 @@ let t ?x ?profile:cmdline_profile sexps =
   let defined_names = ref String.Set.empty in
   let profiles, contexts =
     List.partition_map sexps ~f:(fun sexp ->
-      match item_of_sexp sexp with
+      match Sexp.Of_sexp.parse item_of_sexp sexp with
       | Profile (loc, p) -> Left (loc, p)
       | Context c -> Right c)
   in
@@ -126,7 +128,7 @@ let t ?x ?profile:cmdline_profile sexps =
       }
     in
     List.fold_left contexts ~init ~f:(fun t sexp ->
-      let ctx = Context.t ~profile sexp in
+      let ctx = Sexp.Of_sexp.parse (Context.t ~profile) sexp in
       let ctx =
         match x with
         | None -> ctx

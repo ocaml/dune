@@ -19,7 +19,7 @@ module Promoted_to_delete = struct
   let load () =
     if Path.exists fn then
       Io.Sexp.load fn ~mode:Many
-      |> List.map ~f:Path.t
+      |> List.map ~f:(Sexp.Of_sexp.parse Path.t)
     else
       []
 
@@ -1220,7 +1220,7 @@ let update_universe t =
   Utils.Cached_digest.remove universe_file;
   let n =
     if Path.exists universe_file then
-      Sexp.Of_sexp.int (Io.Sexp.load ~mode:Single universe_file) + 1
+      Sexp.Of_sexp.(parse int) (Io.Sexp.load ~mode:Single universe_file) + 1
     else
       0
   in

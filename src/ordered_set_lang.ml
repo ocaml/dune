@@ -40,7 +40,7 @@ let parse_general sexp ~f =
   in
   of_sexp sexp
 
-let t sexp : t =
+let t = Sexp.Of_sexp.make (fun sexp ->
   let ast =
     parse_general sexp ~f:(function
       | Atom (loc, A s) | Quoted_string (loc, s) -> (loc, s)
@@ -48,7 +48,7 @@ let t sexp : t =
   in
   { ast
   ; loc = Some (Sexp.Ast.loc sexp)
-  }
+  })
 
 let is_standard t =
   match (t.ast : ast_expanded) with
@@ -171,13 +171,13 @@ let standard =
 module Unexpanded = struct
   type ast = (Sexp.Ast.t, Ast.unexpanded) Ast.t
   type t = ast generic
-  let t sexp =
+  let t = Sexp.Of_sexp.make (fun sexp ->
     let rec map (t : (Sexp.Ast.t, Ast.expanded) Ast.t) =
       let open Ast in
       match t with
       | Element x -> Element x
       | Union [Special (_, "include"); Element fn] ->
-        Include (String_with_vars.t fn)
+        Include (Sexp.Of_sexp.parse String_with_vars.t fn)
       | Union [Special (loc, "include"); _]
       | Special (loc, "include") ->
         Loc.fail loc "(:include expects a single element (do you need to quote the filename?)"
@@ -189,7 +189,7 @@ module Unexpanded = struct
     in
     { ast = map (parse_general sexp ~f:(fun x -> x))
     ; loc = Some (Sexp.Ast.loc sexp)
-    }
+    })
 
   let sexp_of_t t =
     let open Ast in
@@ -241,7 +241,8 @@ module Unexpanded = struct
     let rec expand (t : ast) : ast_expanded =
       let open Ast in
       match t with
-      | Element s -> Element (Sexp.Ast.loc s, f (String_with_vars.t s))
+      | Element s ->
+        Element (Sexp.Ast.loc s, f (Sexp.Of_sexp.parse String_with_vars.t s))
       | Special (l, s) -> Special (l, s)
       | Include fn ->
         let sexp =
@@ -257,7 +258,7 @@ module Unexpanded = struct
               ]
         in
         parse_general sexp ~f:(fun sexp ->
-          (Sexp.Ast.loc sexp, f (String_with_vars.t sexp)))
+          (Sexp.Ast.loc sexp, f (Sexp.Of_sexp.parse String_with_vars.t sexp)))
       | Union l -> Union (List.map l ~f:expand)
       | Diff (l, r) ->
         Diff (expand l, expand r)

@@ -7,7 +7,7 @@ module Version = struct
 
   let sexp_of_t t = Sexp.unsafe_atom_of_string (to_string t)
 
-  let t : t Sexp.Of_sexp.t = function
+  let t : t Sexp.Of_sexp.t = Sexp.Of_sexp.make (function
     | Atom (loc, A s) -> begin
         try
           Scanf.sscanf s "%u.%u" (fun a b -> (a, b))
@@ -15,7 +15,7 @@ module Version = struct
           Loc.fail loc "atom of the form NNN.NNN expected"
       end
     | sexp ->
-      Sexp.Of_sexp.of_sexp_error sexp "atom expected"
+      Sexp.Of_sexp.of_sexp_error sexp "atom expected")
 
   let can_read ~parser_version:(pa, pb) ~data_version:(da, db) =
     pa = da && db <= pb

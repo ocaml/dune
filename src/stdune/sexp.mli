@@ -65,12 +65,41 @@ module Of_sexp : sig
 
   exception Of_sexp of Loc.t * string * hint option
 
-  include Combinators with type 'a t = Ast.t -> 'a
+  include Combinators
 
+  val parse : 'a t -> ast -> 'a
+
+  val make : (ast -> 'a) -> 'a t
+
+  val discard : unit t
+
+  module Parser : sig
+    val fail : ('a, unit, string, string, string, 'b t) format6 -> 'a
+    val map : 'a t -> f:('a -> 'b) -> 'b t
+    val return : 'a -> 'a t
+
+    module O : sig
+      val (>>|) : 'a t -> ('a -> 'b)   -> 'b t
+      val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
+    end
+
+    type error
+
+    val error : ?hint:hint -> string -> (_, error) Result.t
+    val errorf
+      : ?hint:hint -> ('b, unit, string, (_, error) result) format4 -> 'b
+    val map_validate : 'a t -> f:('a -> ('b, error) Result.t) -> 'b t
+  end
+
+  val fix : ('a t -> 'a t) -> 'a t
+
+  val sexp_error : ?hint:hint -> string -> _ t
   val of_sexp_error  : ?hint:hint -> Ast.t -> string -> _
   val of_sexp_errorf : ?hint:hint -> Ast.t -> ('a, unit, string, 'b) format4 -> 'a
 
   val located : 'a t -> (Loc.t * 'a) t
+
+  val loc : Loc.t t
 
   val raw : ast t
 

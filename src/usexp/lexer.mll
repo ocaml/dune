@@ -75,7 +75,8 @@ type block_string_line_kind =
 let comment   = ';' [^ '\n' '\r']*
 let newline   = '\r'? '\n'
 let blank     = [' ' '\t' '\012']
-let atom_char = [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\012']
+let atom_char =
+  [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\000'-'\032' '\127'-'\255']
 let digit     = ['0'-'9']
 let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
 

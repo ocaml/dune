@@ -4,6 +4,8 @@ type ('a, 'error) t = ('a, 'error) Caml.result =
   | Ok    of 'a
   | Error of 'error
 
+val ok : 'a -> ('a, _) t
+
 val is_ok    : _ t -> bool
 val is_error : _ t -> bool
 

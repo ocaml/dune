@@ -70,12 +70,12 @@ end = struct
     else
       None
 
-  let named_of_sexp sexp =
-    let s = string sexp in
-    if validate s then
-      Named s
-    else
-      of_sexp_error sexp "invalid project name"
+  let named_of_sexp =
+    Sexp.Of_sexp.Parser.map_validate string ~f:(fun s ->
+      if validate s then
+        Ok (Named s)
+      else
+        Sexp.Of_sexp.Parser.error "invalid project name")
 
   let encode = function
     | Named     s -> s
@@ -142,7 +142,9 @@ module Lang = struct
         ; version = (ver_loc, ver)
         } = first_line
     in
-    let ver = Syntax.Version.t (Atom (ver_loc, Sexp.Atom.of_string ver)) in
+    let ver =
+      Sexp.Of_sexp.parse Syntax.Version.t
+        (Atom (ver_loc, Sexp.Atom.of_string ver)) in
     match Hashtbl.find langs name with
     | None ->
       Loc.fail name_loc "Unknown language %S.%s" name
@@ -196,7 +198,7 @@ let anonymous = lazy(
     ; packages      = Package.Name.Map.empty
     ; root          = get_local_path Path.root
     ; version       = None
-    ; stanza_parser = (fun _ -> assert false)
+    ; stanza_parser = Sexp.Of_sexp.make (fun _ -> assert false)
     ; project_file  = None
     }
   in
@@ -237,7 +239,7 @@ let parse ~dir ~lang_stanzas ~packages ~file =
        ; root = get_local_path dir
        ; version
        ; packages
-       ; stanza_parser = (fun _ -> assert false)
+       ; stanza_parser = Sexp.Of_sexp.make (fun _ -> assert false)
        ; project_file  = Some file
        }
      in
@@ -263,7 +265,7 @@ let load_dune_project ~dir packages =
   Io.with_lexbuf_from_file fname ~f:(fun lb ->
     let lang_stanzas = Lang.parse (Dune_lexer.first_line lb) in
     let sexp = Sexp.Parser.parse lb ~mode:Many_as_one in
-    parse ~dir ~lang_stanzas ~packages ~file:fname sexp)
+    Sexp.Of_sexp.parse (parse ~dir ~lang_stanzas ~packages ~file:fname) sexp)
 
 let make_jbuilder_project ~dir packages =
   let t =
@@ -272,7 +274,7 @@ let make_jbuilder_project ~dir packages =
     ; root = get_local_path dir
     ; version = None
     ; packages
-    ; stanza_parser = (fun _ -> assert false)
+    ; stanza_parser = Sexp.Of_sexp.make (fun _ -> assert false)
     ; project_file = None
     }
   in

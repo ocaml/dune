@@ -74,11 +74,46 @@ module Of_sexp = struct
 
   type 'a t = ast -> 'a
 
+  let make f = f
+
+  let parse f a = f a
+
+  module Parser = struct
+    let fail fmt =
+      Printf.ksprintf (fun m ast -> raise (Exn.Loc_error (Ast.loc ast, m))) fmt
+    let map t ~f ast = f (t ast)
+    let return a _ = a
+
+    module O = struct
+      let (>>|) t f = map t ~f
+      let (>>=) t f ast = f (t ast) ast
+    end
+
+    type error = string * hint option
+
+    let error ?hint str = Error (str, hint)
+    let errorf ?hint fmt = Printf.ksprintf (error ?hint) fmt
+
+    let map_validate t ~f ast =
+      match f (t ast) with
+      | Ok b -> b
+      | Error (msg, hint) -> raise (Of_sexp (Ast.loc ast, msg, hint))
+  end
+
+  let fix f =
+    let rec p = lazy (f r)
+    and r ast = (Lazy.force p) ast in
+    r
+
   let located f sexp =
     (Ast.loc sexp, f sexp)
 
+  let loc = Ast.loc
+
   let of_sexp_error ?hint sexp str = raise (Of_sexp (Ast.loc sexp, str, hint))
   let of_sexp_errorf ?hint sexp fmt = Printf.ksprintf (of_sexp_error ?hint sexp) fmt
+
+  let sexp_error ?hint str sexp = of_sexp_error ?hint sexp str
 
   let of_sexp_errorf_loc ?hint loc fmt =
     Printf.ksprintf (fun s -> raise (Of_sexp (loc, s, hint))) fmt
@@ -88,6 +123,8 @@ module Of_sexp = struct
   let unit = function
     | List (_, []) -> ()
     | sexp -> of_sexp_error sexp "() expected"
+
+  let discard (_ : ast) = ()
 
   let string = function
     | Atom (_, A s) -> s

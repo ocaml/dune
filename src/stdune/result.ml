@@ -2,6 +2,8 @@ type ('a, 'error) t = ('a, 'error) Caml.result =
   | Ok    of 'a
   | Error of 'error
 
+let ok x = Ok x
+
 let is_ok = function
   | Ok    _ -> true
   | Error _ -> false

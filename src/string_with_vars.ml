@@ -81,7 +81,7 @@ let _t_dune : Sexp.Of_sexp.ast -> t = function
     Sexp.Of_sexp.of_sexp_error sexp "Atom expected"
 
 let t_jbuild : Sexp.Of_sexp.ast -> t = function
-  | Template _ -> assert false
+  | Template t -> t
   | Atom(loc, A s) -> { parts = items_of_string loc s; loc; quoted = false }
   | Quoted_string (loc, s) ->
     { parts = items_of_string loc s;  loc;  quoted = true }

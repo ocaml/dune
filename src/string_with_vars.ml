@@ -73,21 +73,18 @@ let rec of_tokens
 
 let items_of_string loc s = of_tokens loc (Token.tokenise s)
 
-let _t_dune : Sexp.Of_sexp.ast -> t = function
+let _t : Sexp.Of_sexp.ast -> t = function
   | Template t -> t
-  | Atom(loc, A s) -> literal ~loc ~quoted:false s
-  | Quoted_string (loc, s) -> literal ~loc ~quoted:true s
-  | List _ as sexp ->
-    Sexp.Of_sexp.of_sexp_error sexp "Atom expected"
+  | Atom(loc, A s) -> literal ~quoted:false ~loc s
+  | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
+  | List _ as sexp -> Sexp.Of_sexp.of_sexp_error sexp "Atom expected"
 
-let t_jbuild : Sexp.Of_sexp.ast -> t = function
+let t : Sexp.Of_sexp.ast -> t = function
   | Template t -> t
   | Atom(loc, A s) -> { parts = items_of_string loc s; loc; quoted = false }
   | Quoted_string (loc, s) ->
     { parts = items_of_string loc s;  loc;  quoted = true }
   | List _ as sexp -> Sexp.Of_sexp.of_sexp_error sexp "Atom expected"
-
-let t = t_jbuild
 
 let loc t = t.loc
 

@@ -402,6 +402,8 @@ module Parser = struct
         | [] -> error loc "s-expression missing after #;"
       in
       List.rev_append acc sexps
+    | Template t ->
+      loop depth lexer lexbuf (Ast.Template t :: acc)
     | Eof ->
       if depth > 0 then
         error (make_loc lexbuf)

@@ -8,6 +8,7 @@ module Token : sig
     | Rparen
     | Sexp_comment
     | Eof
+    | Template      of Template.t
 end
 
 type t = Lexing.lexbuf -> Token.t

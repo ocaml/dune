@@ -9,6 +9,7 @@ module Token = struct
     | Rparen
     | Sexp_comment
     | Eof
+    | Template      of Template.t
 end
 
 type t = Lexing.lexbuf -> Token.t
@@ -30,6 +31,35 @@ let error ?(delta=0) lexbuf message =
            ; stop  = Lexing.lexeme_end_p   lexbuf
            ; message
            })
+
+module Template = struct
+  include Usexp0.Template
+
+  let add_text parts s =
+    match parts with
+    | Template.Text s' :: parts -> Template.Text (s' ^ s) :: parts
+    | _ -> Template.Text s :: parts
+
+  let token parts ~quoted ~start (lexbuf : Lexing.lexbuf) =
+    match parts with
+    | [] | [Text ""] ->
+      lexbuf.lex_start_p <- start;
+      error lexbuf "Internal error in the S-expression parser, \
+                    please report upstream."
+    | [Text s] ->
+      lexbuf.lex_start_p <- start;
+      Token.Atom (A s)
+    | _ ->
+      lexbuf.lex_start_p <- start; (* not necessary b/c we set the loc here *)
+      Token.Template
+        { quoted
+        ; loc =
+            { start
+            ; stop = Lexing.lexeme_end_p lexbuf
+            }
+        ; parts = List.rev parts
+        }
+end
 
 (* The difference between the old and new syntax is that the old
    syntax allows backslash following by any characters other than 'n',
@@ -77,7 +107,7 @@ let atom_char = [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\012']
 let digit     = ['0'-'9']
 let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
 
-let varname_char = atom_char # [ ':' '%' '$' ]
+let varname_char = atom_char # [ ':' '%' '$' '{' '}' ]
 
 (* rule for jbuild files *)
 rule jbuild_token = parse
@@ -105,7 +135,33 @@ rule jbuild_token = parse
   | eof
     { Eof }
   | ""
-    { jbuild_atom "" (Lexing.lexeme_start_p lexbuf) lexbuf }
+    { jbuild_atom [] (Lexing.lexeme_start_p lexbuf) lexbuf }
+
+and template_variable syntax = parse
+  | (varname_char+ as name) ':'? (varname_char* as payload) ([')' '}'] as close) {
+    begin match syntax, close with
+    | (Template.Percent | Template.Dollar_brace), '}'
+    | Dollar_paren, ')' ->
+      let (name, payload) =
+        if payload = "" then
+          ("", name)
+        else
+          (name, payload) in
+      Template.Var
+        { loc =
+            { start = Lexing.lexeme_start_p lexbuf
+            ; stop = Lexing.lexeme_end_p lexbuf
+            }
+        ; name
+        ; payload
+        ; syntax }
+    | (Dollar_brace | Dollar_paren), _ ->
+      error lexbuf (Printf.sprintf "Variable delimiters mismatched. \
+                                    Ending delimiter '%c' is incorrect." close)
+    | Percent, _ -> assert false
+    end
+  }
+  | _ { error lexbuf "unexpected variable" }
 
 and jbuild_atom acc start = parse
   | '#'+ '|'
@@ -117,15 +173,10 @@ and jbuild_atom acc start = parse
       error lexbuf "jbuild_atoms cannot contain |#"
     }
   | ('#'+ | '|'+ | (atom_char # ['|' '#'])) as s
-    { jbuild_atom (if acc = "" then s else acc ^ s) start lexbuf
-    }
-  | ""
-    { if acc = "" then
-        error lexbuf "Internal error in the S-expression parser, \
-                      please report upstream.";
-      lexbuf.lex_start_p <- start;
-      Token.Atom (A acc)
-    }
+    { jbuild_atom (Template.add_text acc s) start lexbuf }
+  | "${" {
+      jbuild_atom ((template_variable Dollar_brace lexbuf) :: acc) start lexbuf }
+  | "" { Template.token acc ~quoted:false ~start lexbuf }
 
 and quoted_string mode = parse
   | '"'
@@ -135,6 +186,7 @@ and quoted_string mode = parse
       | Newline -> quoted_string_after_escaped_newline mode lexbuf
       | Other   -> quoted_string                       mode lexbuf
     }
+  | "${"
   | newline as s
     { Lexing.new_line lexbuf;
       Buffer.add_string escaped_buf s;
@@ -158,13 +210,15 @@ and escape_sequence mode = parse
   | newline
     { Lexing.new_line lexbuf;
       Newline }
-  | ['\\' '\'' '"' 'n' 't' 'b' 'r'] as c
+  | ['\\' '\'' '"' '%' '$' 'n' 't' 'b' 'r'] as c
     { let c =
         match c with
         | 'n' -> '\n'
         | 'r' -> '\r'
         | 'b' -> '\b'
         | 't' -> '\t'
+        | '$' when mode = New_syntax ->
+          error lexbuf "unknown escape sequence" ~delta:(-2)
         | _   -> c
       in
       Buffer.add_char escaped_buf c;
@@ -226,6 +280,11 @@ and jbuild_block_comment = parse
     { jbuild_block_comment lexbuf
     }
 
+and dune_atom acc start = parse
+  | atom_char+ as s { dune_atom (Template.add_text acc s) start lexbuf }
+  | "%{" { dune_atom ((template_variable Percent lexbuf) :: acc) start lexbuf }
+  | "" { Template.token acc ~quoted:false ~start lexbuf }
+
 (* rule for dune files *)
 and token = parse
   | newline
@@ -243,8 +302,7 @@ and token = parse
       lexbuf.lex_start_p <- start;
       Quoted_string s
     }
-  | atom_char+ as s
-    { Token.Atom (A s) }
+  | "" { dune_atom [] (Lexing.lexeme_start_p lexbuf) lexbuf }
   | eof
     { Eof }
 

@@ -403,7 +403,8 @@ module Parser = struct
       in
       List.rev_append acc sexps
     | Template t ->
-      loop depth lexer lexbuf (Ast.Template t :: acc)
+      let loc = make_loc lexbuf in
+      loop depth lexer lexbuf (Ast.Template {t with loc} :: acc)
     | Eof ->
       if depth > 0 then
         error (make_loc lexbuf)

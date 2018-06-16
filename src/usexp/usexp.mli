@@ -120,13 +120,7 @@ exception Parse_error of Parse_error.t
 
 module Lexer : sig
   module Token : sig
-    type t =
-      | Atom          of Atom.t
-      | Quoted_string of string
-      | Lparen
-      | Rparen
-      | Sexp_comment (** "#;", only used in the jbuild syntax *)
-      | Eof
+    type t
   end
 
   type t = Lexing.lexbuf -> Token.t

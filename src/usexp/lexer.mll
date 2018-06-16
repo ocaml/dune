@@ -77,35 +77,33 @@ module Template = struct
 
     let state = ref String
 
+    let add_buf_to_parts parts =
+      match take_buf () with
+      | "" -> parts
+      | t -> add_text parts t
+
     let get () =
       match !state with
       | String -> Token.Quoted_string (take_buf ())
       | Template parts ->
         state := String;
-        begin
-          match (
-            match take_buf () with
-            | "" -> parts
-            | t -> add_text parts t
-          ) with
-          | [] -> assert false
-          | [Text s] -> Quoted_string s
-          | parts ->
-            Token.Template
-              { quoted = true
-              ; loc = dummy_loc
-              ; parts = List.rev parts
-              }
+        begin match add_buf_to_parts parts with
+        | [] -> assert false
+        | [Text s] -> Quoted_string s
+        | parts ->
+          Token.Template
+            { quoted = true
+            ; loc = dummy_loc
+            ; parts = List.rev parts
+            }
         end
 
-    let _add_var v =
+    let add_var v =
       match !state with
-      | String -> state := Template [v]
+      | String ->
+        state := Template (v :: add_buf_to_parts []);
       | Template parts ->
-        let parts =
-          match take_buf () with
-          | "" -> parts
-          | t -> add_text parts t in
+        let parts = add_buf_to_parts parts in
         state := Template (v::parts)
 
     let add_text   = Buffer.add_string text_buf
@@ -234,6 +232,24 @@ and quoted_string mode = parse
     { match escape_sequence mode lexbuf with
       | Newline -> quoted_string_after_escaped_newline mode lexbuf
       | Other   -> quoted_string                       mode lexbuf
+    }
+  | (['$' '%'] as varchar) (['{' '('] as delim) {
+      begin match varchar, delim, mode with
+      | '%', '{', New_syntax
+      | '$', _, Old_syntax ->
+        let syntax =
+          if varchar = '%' then
+            Template.Percent
+          else if delim = '{' then
+            Dollar_brace
+          else
+            Dollar_paren in
+        Template.Buffer.add_var (template_variable syntax lexbuf)
+      | _, _, _ ->
+        Template.Buffer.add_text_c varchar;
+        Template.Buffer.add_text_c delim;
+      end;
+      quoted_string mode lexbuf
     }
   | newline as s
     { Lexing.new_line lexbuf;
@@ -387,6 +403,11 @@ and block_string = parse
     { match escape_sequence New_syntax lexbuf with
       | Newline -> block_string_after_newline lexbuf
       | Other   -> block_string               lexbuf
+    }
+  | "%{" {
+      let var = template_variable Percent lexbuf in
+      Template.Buffer.add_var var;
+      block_string lexbuf
     }
   | _ as c
     { Template.Buffer.add_text_c c;

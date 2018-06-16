@@ -298,6 +298,24 @@ module Template = struct
   let to_string t = sexp_of_string (sexp_of_t t)
 
   let pp fmt t = pp fmt (sexp_of_t t)
+
+  let syntax_to_string = function
+    | Percent -> "%"
+    | Dollar_brace -> "${}"
+    | Dollar_paren -> "$()"
+
+  let to_debug_sexp t =
+    let a s = Atom (A s) in
+    let rec loop = function
+      | [] -> []
+      | Text s :: parts -> (List [a "text"; Quoted_string s]) :: loop parts
+      | Var { name; payload; syntax; loc=_ } :: parts ->
+        (List
+          [ List [a "name"; Quoted_string name]
+          ; List [a "payload"; Quoted_string payload]
+          ; List [a "syntax"; Quoted_string (syntax_to_string syntax) ]
+          ]) :: loop parts in
+    List [a "template"; List (loop t.parts)]
 end
 
 module Ast = struct
@@ -319,6 +337,12 @@ module Ast = struct
     | Atom (_, s) -> Atom s
     | Quoted_string (_, s) -> Quoted_string s
     | List (_, l) -> List (List.map l ~f:remove_locs)
+
+  let rec to_debug_sexp : t -> sexp = function
+    | Template t -> Template.to_debug_sexp t
+    | Atom (_, s) -> Atom s
+    | Quoted_string (_, s) -> Quoted_string s
+    | List (_, l) -> List (List.map l ~f:to_debug_sexp)
 end
 
 let rec add_loc t ~loc : Ast.t =

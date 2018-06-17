@@ -47,28 +47,34 @@ module Template = struct
     | _ -> Template.Text s :: parts
 
   let token parts ~quoted ~start (lexbuf : Lexing.lexbuf) =
+    lexbuf.lex_start_p <- start;
     match parts with
     | [] | [Text ""] ->
-      lexbuf.lex_start_p <- start;
       error lexbuf "Internal error in the S-expression parser, \
                     please report upstream."
     | [Text s] ->
-      lexbuf.lex_start_p <- start;
       Token.Atom (A s)
     | _ ->
-      lexbuf.lex_start_p <- start;
       Token.Template
         { quoted
         ; loc = dummy_loc
         ; parts = List.rev parts
         }
 
-  module Buffer = struct
+  module Buffer : sig
+    val new_token : unit -> unit
+    val get : unit -> Token.t
+    val add_var : part -> unit
+    val add_text : string -> unit
+    val add_text_c : char -> unit
+  end = struct
     type state =
       | String
       | Template of Template.part list
 
     let text_buf = Buffer.create 256
+
+    let new_token () = Buffer.clear text_buf
 
     let take_buf () =
       let contents = Buffer.contents text_buf in
@@ -169,6 +175,7 @@ rule jbuild_token = parse
     { Rparen }
   | '"'
     { let start = Lexing.lexeme_start_p lexbuf in
+      Template.Buffer.new_token ();
       let token = quoted_string Old_syntax lexbuf in
       lexbuf.lex_start_p <- start;
       token
@@ -182,12 +189,13 @@ rule jbuild_token = parse
   | eof
     { Eof }
   | ""
-    { jbuild_atom [] (Lexing.lexeme_start_p lexbuf) lexbuf }
+    { Template.Buffer.new_token ();
+      jbuild_atom [] (Lexing.lexeme_start_p lexbuf) lexbuf }
 
 and template_variable syntax = parse
   | (varname_char+ as name) ':'? (varname_char* as payload) ([')' '}'] as close) {
     begin match syntax, close with
-    | (Template.Percent | Template.Dollar_brace), '}'
+    | (Template.Percent | Dollar_brace), '}'
     | Dollar_paren, ')' ->
       let (name, payload) =
         if payload = "" then
@@ -219,10 +227,10 @@ and jbuild_atom acc start = parse
     { lexbuf.lex_start_p <- start;
       error lexbuf "jbuild_atoms cannot contain |#"
     }
-  | ('#'+ | '|'+ | (atom_char # ['|' '#'])) as s
-    { jbuild_atom (Template.add_text acc s) start lexbuf }
   | "${" {
       jbuild_atom ((template_variable Dollar_brace lexbuf) :: acc) start lexbuf }
+  | ('#'+ | '|'+ | (atom_char # ['|' '#'])) as s
+    { jbuild_atom (Template.add_text acc s) start lexbuf }
   | "" { Template.token acc ~quoted:false ~start lexbuf }
 
 and quoted_string mode = parse
@@ -330,7 +338,8 @@ and escape_sequence mode = parse
 
 and jbuild_block_comment = parse
   | '"'
-    { ignore (quoted_string In_block_comment lexbuf : Token.t);
+    { Template.Buffer.new_token ();
+      ignore (quoted_string In_block_comment lexbuf : Token.t);
       jbuild_block_comment lexbuf
     }
   | "|#"
@@ -360,6 +369,7 @@ and token = parse
     { Rparen }
   | '"'
     { let start = Lexing.lexeme_start_p lexbuf in
+      Template.Buffer.new_token ();
       let token = dune_quoted_string lexbuf in
       lexbuf.lex_start_p <- start;
       token

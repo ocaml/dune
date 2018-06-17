@@ -107,13 +107,14 @@ parse {|"\%{x}"|}
 - : parse_result = Same (Ok ["%{x}"])
 |}]
 
-parse {|${foo} $(BAR) "$(baz)" %{FOO}|}
+parse {|${foo} $(BAR) "$(baz)" %{FOO} foo${bar} foo%{bar}|}
 [%%expect{|
 - : parse_result =
 Different
  {jbuild =
    Ok
     [(template (((name "") (payload "foo") (syntax "${}")))); $; (BAR);
-     (template (((name "") (payload "baz") (syntax "$()")))); %{FOO}];
-  dune = Ok [${foo}; $; (BAR); "$(baz)"; %{FOO}]}
+     (template (((name "") (payload "baz") (syntax "$()")))); %{FOO};
+     (template ((text "foo") ((name "") (payload "bar") (syntax "${}"))))];
+  dune = Ok [${foo}; $; (BAR); "$(baz)"; %{FOO}; foo${bar}]}
 |}]

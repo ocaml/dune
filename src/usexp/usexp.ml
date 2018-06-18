@@ -17,7 +17,7 @@ module Atom = struct
    let rec loop s i len =
      i = len ||
      match String.unsafe_get s i with
-     | '%' | '"' | '(' | ')' | ';' | '\000'..'\032' | '\127'..'\255' -> false
+     | '"' | '(' | ')' | ';' | '\000'..'\032' | '\127'..'\255' -> false
      | _ -> loop s (i + 1) len
    in
    fun s ->

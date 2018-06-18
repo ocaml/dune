@@ -3,7 +3,7 @@ open Stdune;;
 open Sexp.Of_sexp;;
 
 let pp_sexp_ast ppf sexp =
-  Sexp.pp ppf (Sexp.Ast.remove_locs sexp)
+  Sexp.pp ppf (Sexp.Ast.to_debug_sexp sexp)
 ;;
 #install_printer pp_sexp_ast;;
 [%%expect{|
@@ -104,8 +104,19 @@ Different {jbuild = Ok ["\\a"]; dune = Error "unknown escape sequence"}
 
 parse {|"\%{x}"|}
 [%%expect{|
+- : parse_result = Same (Ok ["%{x}"])
+|}]
+
+parse {|${foo} $(BAR) "$(baz)" %{FOO} foo${bar} foo%{bar}|}
+[%%expect{|
 - : parse_result =
-Different {jbuild = Ok ["\\%{x}"]; dune = Error "unknown escape sequence"}
+Different
+ {jbuild =
+   Ok
+    [(template (((name "") (payload "foo") (syntax "${}")))); $; (BAR);
+     (template (((name "") (payload "baz") (syntax "$()")))); %{FOO};
+     (template ((text "foo") ((name "") (payload "bar") (syntax "${}"))))];
+  dune = Ok [${foo}; $; (BAR); "$(baz)"; %{FOO}; foo${bar}]}
 |}]
 
 parse {|"$foo"|}

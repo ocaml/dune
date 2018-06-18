@@ -1,0 +1,19 @@
+
+(alias
+ ((name runtest)
+  (deps (foo))
+  (action
+   (progn
+    (echo "contents: $(read:foo) parens\n")
+    (echo "foo:${<}\n")
+    (echo ${ROOT}/bar)
+    (echo "$(ROOT)/bar\n")
+    (echo baz${ROOT}/bar)
+    (echo "contents: ${read:foo} curly\n")
+    (echo ${baz}${bar})
+    (echo "${baz}$(bar)\n")
+    (echo foo:${ROOT})))))
+
+; (alias
+;  ((name runtest)
+;   (action (echo "${ROOT}$(ROOT)")))

@@ -1,6 +1,4 @@
-module Atom : sig
-  type t = A of string [@@unboxed]
-end
+open Usexp0
 
 module Token : sig
   type t =
@@ -10,6 +8,7 @@ module Token : sig
     | Rparen
     | Sexp_comment
     | Eof
+    | Template      of Template.t
 end
 
 type t = Lexing.lexbuf -> Token.t

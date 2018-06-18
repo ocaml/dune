@@ -1,7 +1,5 @@
 {
-module Atom = struct
-  type t = A of string [@@unboxed]
-end
+open Usexp0
 
 module Token = struct
   type t =
@@ -11,6 +9,7 @@ module Token = struct
     | Rparen
     | Sexp_comment
     | Eof
+    | Template      of Template.t
 end
 
 type t = Lexing.lexbuf -> Token.t
@@ -32,6 +31,91 @@ let error ?(delta=0) lexbuf message =
            ; stop  = Lexing.lexeme_end_p   lexbuf
            ; message
            })
+
+module Template = struct
+  include Usexp0.Template
+
+  let dummy_loc =
+    { Loc.
+      start = Lexing.dummy_pos
+    ; stop = Lexing.dummy_pos
+    }
+
+  let add_text parts s =
+    match parts with
+    | Template.Text s' :: parts -> Template.Text (s' ^ s) :: parts
+    | _ -> Template.Text s :: parts
+
+  let token parts ~quoted ~start (lexbuf : Lexing.lexbuf) =
+    lexbuf.lex_start_p <- start;
+    match parts with
+    | [] | [Text ""] ->
+      error lexbuf "Internal error in the S-expression parser, \
+                    please report upstream."
+    | [Text s] ->
+      Token.Atom (A s)
+    | _ ->
+      Token.Template
+        { quoted
+        ; loc = dummy_loc
+        ; parts = List.rev parts
+        }
+
+  module Buffer : sig
+    val new_token : unit -> unit
+    val get : unit -> Token.t
+    val add_var : part -> unit
+    val add_text : string -> unit
+    val add_text_c : char -> unit
+  end = struct
+    type state =
+      | String
+      | Template of Template.part list
+
+    let text_buf = Buffer.create 256
+
+    let new_token () = Buffer.clear text_buf
+
+    let take_buf () =
+      let contents = Buffer.contents text_buf in
+      Buffer.clear text_buf;
+      contents
+
+    let state = ref String
+
+    let add_buf_to_parts parts =
+      match take_buf () with
+      | "" -> parts
+      | t -> add_text parts t
+
+    let get () =
+      match !state with
+      | String -> Token.Quoted_string (take_buf ())
+      | Template parts ->
+        state := String;
+        begin match add_buf_to_parts parts with
+        | [] -> assert false
+        | [Text s] -> Quoted_string s
+        | parts ->
+          Token.Template
+            { quoted = true
+            ; loc = dummy_loc
+            ; parts = List.rev parts
+            }
+        end
+
+    let add_var v =
+      match !state with
+      | String ->
+        state := Template (v :: add_buf_to_parts []);
+      | Template parts ->
+        let parts = add_buf_to_parts parts in
+        state := Template (v::parts)
+
+    let add_text   = Buffer.add_string text_buf
+    let add_text_c = Buffer.add_char text_buf
+  end
+end
 
 (* The difference between the old and new syntax is that the old
    syntax allows backslash following by any characters other than 'n',
@@ -65,8 +149,6 @@ type escape_sequence =
   | Newline
   | Other
 
-let escaped_buf = Buffer.create 256
-
 type block_string_line_kind =
   | With_escape_sequences
   | Raw
@@ -79,6 +161,8 @@ let atom_char = [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\012']
 let digit     = ['0'-'9']
 let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
 
+let varname_char = atom_char # [ ':' '%' '$' '{' '}' ]
+
 (* rule for jbuild files *)
 rule jbuild_token = parse
   | newline
@@ -90,11 +174,11 @@ rule jbuild_token = parse
   | ')'
     { Rparen }
   | '"'
-    { Buffer.clear escaped_buf;
-      let start = Lexing.lexeme_start_p lexbuf in
-      let s = quoted_string Old_syntax lexbuf in
+    { let start = Lexing.lexeme_start_p lexbuf in
+      Template.Buffer.new_token ();
+      let token = quoted_string Old_syntax lexbuf in
       lexbuf.lex_start_p <- start;
-      Quoted_string s
+      token
     }
   | "#|"
     { jbuild_block_comment lexbuf;
@@ -105,7 +189,34 @@ rule jbuild_token = parse
   | eof
     { Eof }
   | ""
-    { jbuild_atom "" (Lexing.lexeme_start_p lexbuf) lexbuf }
+    { Template.Buffer.new_token ();
+      jbuild_atom [] (Lexing.lexeme_start_p lexbuf) lexbuf }
+
+and template_variable syntax = parse
+  | (varname_char+ as name) ':'? (varname_char* as payload) ([')' '}'] as close) {
+    begin match syntax, close with
+    | (Template.Percent | Dollar_brace), '}'
+    | Dollar_paren, ')' ->
+      let (name, payload) =
+        if payload = "" then
+          ("", name)
+        else
+          (name, payload) in
+      Template.Var
+        { loc =
+            { start = Lexing.lexeme_start_p lexbuf
+            ; stop = Lexing.lexeme_end_p lexbuf
+            }
+        ; name
+        ; payload
+        ; syntax }
+    | (Dollar_brace | Dollar_paren), _ ->
+      error lexbuf (Printf.sprintf "Variable delimiters mismatched. \
+                                    Ending delimiter '%c' is incorrect." close)
+    | Percent, _ -> assert false
+    end
+  }
+  | _ { error lexbuf "unexpected variable" }
 
 and jbuild_atom acc start = parse
   | '#'+ '|'
@@ -116,38 +227,51 @@ and jbuild_atom acc start = parse
     { lexbuf.lex_start_p <- start;
       error lexbuf "jbuild_atoms cannot contain |#"
     }
+  | "${" {
+      jbuild_atom ((template_variable Dollar_brace lexbuf) :: acc) start lexbuf }
   | ('#'+ | '|'+ | (atom_char # ['|' '#'])) as s
-    { jbuild_atom (if acc = "" then s else acc ^ s) start lexbuf
-    }
-  | ""
-    { if acc = "" then
-        error lexbuf "Internal error in the S-expression parser, \
-                      please report upstream.";
-      lexbuf.lex_start_p <- start;
-      Token.Atom (A acc)
-    }
+    { jbuild_atom (Template.add_text acc s) start lexbuf }
+  | "" { Template.token acc ~quoted:false ~start lexbuf }
 
 and quoted_string mode = parse
   | '"'
-    { Buffer.contents escaped_buf }
+    { Template.Buffer.get () }
   | '\\'
     { match escape_sequence mode lexbuf with
       | Newline -> quoted_string_after_escaped_newline mode lexbuf
       | Other   -> quoted_string                       mode lexbuf
     }
+  | (['$' '%'] as varchar) (['{' '('] as delim) {
+      begin match varchar, delim, mode with
+      | '%', '{', New_syntax
+      | '$', _, Old_syntax ->
+        let syntax =
+          if varchar = '%' then
+            Template.Percent
+          else if delim = '{' then
+            Dollar_brace
+          else
+            Dollar_paren in
+        Template.Buffer.add_var (template_variable syntax lexbuf)
+      | _, _, _ ->
+        Template.Buffer.add_text_c varchar;
+        Template.Buffer.add_text_c delim;
+      end;
+      quoted_string mode lexbuf
+    }
   | newline as s
     { Lexing.new_line lexbuf;
-      Buffer.add_string escaped_buf s;
+      Template.Buffer.add_text s;
       quoted_string mode lexbuf
     }
   | _ as c
-    { Buffer.add_char escaped_buf c;
+    { Template.Buffer.add_text_c c;
       quoted_string mode lexbuf
     }
   | eof
     { if mode <> In_block_comment then
         error lexbuf "unterminated quoted string";
-      Buffer.contents escaped_buf
+      Template.Buffer.get ()
     }
 
 and quoted_string_after_escaped_newline mode = parse
@@ -158,16 +282,18 @@ and escape_sequence mode = parse
   | newline
     { Lexing.new_line lexbuf;
       Newline }
-  | ['\\' '\'' '"' 'n' 't' 'b' 'r'] as c
+  | ['\\' '\'' '"' '%' '$' 'n' 't' 'b' 'r'] as c
     { let c =
         match c with
         | 'n' -> '\n'
         | 'r' -> '\r'
         | 'b' -> '\b'
         | 't' -> '\t'
+        | '$' when mode = New_syntax ->
+          error lexbuf "unknown escape sequence" ~delta:(-2)
         | _   -> c
       in
-      Buffer.add_char escaped_buf c;
+      Template.Buffer.add_text_c c;
       Other
     }
   | (digit as c1) (digit as c2) (digit as c3)
@@ -175,33 +301,33 @@ and escape_sequence mode = parse
       if mode <> In_block_comment && v > 255 then
         error lexbuf "escape sequence in quoted string out of range"
           ~delta:(-1);
-      Buffer.add_char escaped_buf (Char.chr v);
+      Template.Buffer.add_text_c (Char.chr v);
       Other
     }
   | digit* as s
     { if mode <> In_block_comment then
         error lexbuf "unterminated decimal escape sequence" ~delta:(-1);
-      Buffer.add_char escaped_buf '\\';
-      Buffer.add_string escaped_buf s;
+      Template.Buffer.add_text_c '\\';
+      Template.Buffer.add_text s;
       Other
     }
   | 'x' (hexdigit as c1) (hexdigit as c2)
     { let v = eval_hex_escape c1 c2 in
-      Buffer.add_char escaped_buf (Char.chr v);
+      Template.Buffer.add_text_c (Char.chr v);
       Other
     }
   | 'x' hexdigit* as s
     { if mode <> In_block_comment then
         error lexbuf "unterminated hexadecimal escape sequence" ~delta:(-1);
-      Buffer.add_char escaped_buf '\\';
-      Buffer.add_string escaped_buf s;
+      Template.Buffer.add_text_c '\\';
+      Template.Buffer.add_text s;
       Other
     }
   | _ as c
     { if mode = New_syntax then
         error lexbuf "unknown escape sequence" ~delta:(-1);
-      Buffer.add_char escaped_buf '\\';
-      Buffer.add_char escaped_buf c;
+      Template.Buffer.add_text_c '\\';
+      Template.Buffer.add_text_c c;
       Other
     }
   | eof
@@ -212,8 +338,8 @@ and escape_sequence mode = parse
 
 and jbuild_block_comment = parse
   | '"'
-    { Buffer.clear escaped_buf;
-      ignore (quoted_string In_block_comment lexbuf : string);
+    { Template.Buffer.new_token ();
+      ignore (quoted_string In_block_comment lexbuf : Token.t);
       jbuild_block_comment lexbuf
     }
   | "|#"
@@ -226,6 +352,11 @@ and jbuild_block_comment = parse
     { jbuild_block_comment lexbuf
     }
 
+and dune_atom acc start = parse
+  | atom_char+ as s { dune_atom (Template.add_text acc s) start lexbuf }
+  | "%{" { dune_atom ((template_variable Percent lexbuf) :: acc) start lexbuf }
+  | "" { Template.token acc ~quoted:false ~start lexbuf }
+
 (* rule for dune files *)
 and token = parse
   | newline
@@ -237,14 +368,13 @@ and token = parse
   | ')'
     { Rparen }
   | '"'
-    { Buffer.clear escaped_buf;
-      let start = Lexing.lexeme_start_p lexbuf in
-      let s = dune_quoted_string lexbuf in
+    { let start = Lexing.lexeme_start_p lexbuf in
+      Template.Buffer.new_token ();
+      let token = dune_quoted_string lexbuf in
       lexbuf.lex_start_p <- start;
-      Quoted_string s
+      token
     }
-  | atom_char+ as s
-    { Token.Atom (A s) }
+  | "" { dune_atom [] (Lexing.lexeme_start_p lexbuf) lexbuf }
   | eof
     { Eof }
 
@@ -259,7 +389,7 @@ and dune_quoted_string = parse
 and block_string_start kind = parse
   | newline as s
     { Lexing.new_line lexbuf;
-      Buffer.add_string escaped_buf s;
+      Template.Buffer.add_text s;
       block_string_after_newline lexbuf
     }
   | ' '
@@ -268,8 +398,7 @@ and block_string_start kind = parse
       | Raw -> raw_block_string lexbuf
     }
   | eof
-    { Buffer.contents escaped_buf
-    }
+    { Template.Buffer.get () }
   | _
     { error lexbuf "There must be at least one space after \"\\|"
     }
@@ -277,7 +406,7 @@ and block_string_start kind = parse
 and block_string = parse
   | newline as s
     { Lexing.new_line lexbuf;
-      Buffer.add_string escaped_buf s;
+      Template.Buffer.add_text s;
       block_string_after_newline lexbuf
     }
   | '\\'
@@ -285,12 +414,17 @@ and block_string = parse
       | Newline -> block_string_after_newline lexbuf
       | Other   -> block_string               lexbuf
     }
+  | "%{" {
+      let var = template_variable Percent lexbuf in
+      Template.Buffer.add_var var;
+      block_string lexbuf
+    }
   | _ as c
-    { Buffer.add_char escaped_buf c;
+    { Template.Buffer.add_text_c c;
       block_string lexbuf
     }
   | eof
-    { Buffer.contents escaped_buf
+    { Template.Buffer.get ()
     }
 
 and block_string_after_newline = parse
@@ -299,19 +433,19 @@ and block_string_after_newline = parse
   | blank* "\"\\>"
     { block_string_start Raw lexbuf }
   | ""
-    { Buffer.contents escaped_buf
+    { Template.Buffer.get ()
     }
 
 and raw_block_string = parse
   | newline as s
     { Lexing.new_line lexbuf;
-      Buffer.add_string escaped_buf s;
+      Template.Buffer.add_text s;
       block_string_after_newline lexbuf
     }
   | _ as c
-    { Buffer.add_char escaped_buf c;
+    { Template.Buffer.add_text_c c;
       raw_block_string lexbuf
     }
   | eof
-    { Buffer.contents escaped_buf
+    { Template.Buffer.get ()
     }

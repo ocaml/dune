@@ -10,8 +10,24 @@ module Bytes = struct
     UnlabeledBytes.blit_string src src_pos dst dst_pos len
 end
 
+module Loc = struct
+  include Usexp0.Loc
+
+  let in_file fn =
+    let pos : Lexing.position =
+      { pos_fname = fn
+      ; pos_lnum  = 1
+      ; pos_cnum  = 0
+      ; pos_bol   = 0
+      }
+    in
+    { start = pos
+    ; stop = pos
+    }
+end
+
 module Atom = struct
- type t = Lexer.Atom.t = A of string [@@unboxed]
+ include Usexp0.Atom
 
  let is_valid =
    let rec loop s i len =
@@ -39,7 +55,7 @@ module Atom = struct
   let to_string (A s) = s
 end
 
-type t =
+type t = Usexp0.t =
   | Atom of Atom.t
   | Quoted_string of string
   | List of t list
@@ -234,41 +250,99 @@ let prepare_formatter ppf =
            | _ -> n))
     }
 
-module Loc = struct
-  type t =
-    { start : Lexing.position
-    ; stop  : Lexing.position
-    }
+module Template = struct
+  include Usexp0.Template
 
-  let in_file fn =
-    let pos : Lexing.position =
-      { pos_fname = fn
-      ; pos_lnum  = 1
-      ; pos_cnum  = 0
-      ; pos_bol   = 0
-      }
+  let sexp_of_string = to_string
+
+  let to_string { parts ; _ } =
+    let b = Buffer.create 16 in
+    let with_syntax ~f = function
+      | Percent ->
+        Buffer.add_string b "%{";
+        f ();
+        Buffer.add_string b "}"
+      | Dollar_brace ->
+        Buffer.add_string b "${";
+        f ();
+        Buffer.add_string b "}"
+      | Dollar_paren ->
+        Buffer.add_string b "$(";
+        f ();
+        Buffer.add_string b ")" in
+    let rec add_parts = function
+      | [] -> ()
+      | Text s:: xs ->
+        Buffer.add_string b s; (* TODO escape here *)
+        add_parts xs
+      | Var { loc = _; syntax; name; payload } :: parts ->
+        with_syntax syntax ~f:(fun () ->
+          if name <> "" then begin
+            Buffer.add_string b name;
+            Buffer.add_char b ':';
+          end;
+          Buffer.add_string b payload (* TODO escape here *)
+        );
+        add_parts parts
     in
-    { start = pos
-    ; stop = pos
-    }
+    add_parts parts;
+    Buffer.contents b
+  ;;
+
+  let sexp_of_t t =
+    if t.quoted then
+      Quoted_string (to_string t)
+    else
+      atom_or_quoted_string (to_string t)
+
+  let to_string t = sexp_of_string (sexp_of_t t)
+
+  let pp fmt t = pp fmt (sexp_of_t t)
+
+  let syntax_to_string = function
+    | Percent -> "%"
+    | Dollar_brace -> "${}"
+    | Dollar_paren -> "$()"
+
+  let to_debug_sexp t =
+    let a s = Atom (A s) in
+    let rec loop = function
+      | [] -> []
+      | Text s :: parts -> (List [a "text"; Quoted_string s]) :: loop parts
+      | Var { name; payload; syntax; loc=_ } :: parts ->
+        (List
+          [ List [a "name"; Quoted_string name]
+          ; List [a "payload"; Quoted_string payload]
+          ; List [a "syntax"; Quoted_string (syntax_to_string syntax) ]
+          ]) :: loop parts in
+    List [a "template"; List (loop t.parts)]
 end
 
 module Ast = struct
   type t =
     | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
+    | Template of Template.t
     | List of Loc.t * t list
 
   let atom_or_quoted_string loc s =
     if should_be_atom s then Atom (loc, A s)
     else Quoted_string (loc, s)
 
-  let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)) = loc
+  let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)
+          | Template { loc ; _ }) = loc
 
   let rec remove_locs : t -> sexp = function
+    | Template t -> Template.sexp_of_t t
     | Atom (_, s) -> Atom s
     | Quoted_string (_, s) -> Quoted_string s
     | List (_, l) -> List (List.map l ~f:remove_locs)
+
+  let rec to_debug_sexp : t -> sexp = function
+    | Template t -> Template.to_debug_sexp t
+    | Atom (_, s) -> Atom s
+    | Quoted_string (_, s) -> Quoted_string s
+    | List (_, l) -> List (List.map l ~f:to_debug_sexp)
 end
 
 let rec add_loc t ~loc : Ast.t =
@@ -352,6 +426,9 @@ module Parser = struct
         | [] -> error loc "s-expression missing after #;"
       in
       List.rev_append acc sexps
+    | Template t ->
+      let loc = make_loc lexbuf in
+      loop depth lexer lexbuf (Ast.Template {t with loc} :: acc)
     | Eof ->
       if depth > 0 then
         error (make_loc lexbuf)

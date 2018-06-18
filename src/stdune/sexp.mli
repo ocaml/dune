@@ -56,6 +56,7 @@ module Of_sexp : sig
   type ast = Ast.t =
     | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
+    | Template of Template.t
     | List of Loc.t * ast list
 
   type hint =

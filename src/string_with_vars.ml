@@ -1,21 +1,21 @@
 open! Import
 
-type var_syntax = Parens | Braces
+open Usexp.Template
 
-type item =
-  | Text of string
-  | Var of var_syntax * string
+type t = Usexp.Template.t
 
-type t =
-  { items : item list
-  ; loc : Loc.t
-  ; quoted : bool }
+let literal ~quoted ~loc s =
+  { parts = [Text s]
+  ; quoted
+  ; loc
+  }
 
 module Token = struct
+  type brace = Parens | Braces
   type t =
     | String of string
-    | Open   of var_syntax
-    | Close  of var_syntax
+    | Open   of brace
+    | Close  of brace
 
   let tokenise s =
     let len = String.length s in
@@ -47,62 +47,69 @@ module Token = struct
 end
 
 (* Remark: Consecutive [Text] items are concatenated. *)
-let rec of_tokens : Token.t list -> item list = function
+let rec of_tokens
+  : Loc.t -> Token.t list -> part list = fun loc -> function
   | [] -> []
   | Open a :: String s :: Close b :: rest when a = b ->
-    Var (a, s) :: of_tokens rest
+    let (name, payload) =
+      match String.lsplit2 s ~on:':' with
+      | None -> ("", s)
+      | Some v -> v
+    in
+    Var { loc
+        ; name
+        ; payload
+        ; syntax =
+            begin match a with
+            | Parens -> Dollar_paren
+            | Braces -> Dollar_brace
+            end
+        } :: of_tokens loc rest
   | token :: rest ->
     let s = Token.to_string token in
-    match of_tokens rest with
+    match of_tokens loc rest with
     | Text s' :: l -> Text (s ^ s') :: l
     | l -> Text s :: l
 
-let items_of_string s = of_tokens (Token.tokenise s)
+let items_of_string loc s = of_tokens loc (Token.tokenise s)
+
+let _t : Sexp.Of_sexp.ast -> t = function
+  | Template t -> t
+  | Atom(loc, A s) -> literal ~quoted:false ~loc s
+  | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
+  | List _ as sexp -> Sexp.Of_sexp.of_sexp_error sexp "Atom expected"
 
 let t : Sexp.Of_sexp.ast -> t = function
-  | Atom(loc, A s) -> { items = items_of_string s;  loc;  quoted = false }
+  | Template t -> t
+  | Atom(loc, A s) -> { parts = items_of_string loc s; loc; quoted = false }
   | Quoted_string (loc, s) ->
-    { items = items_of_string s;  loc;  quoted = true }
+    { parts = items_of_string loc s;  loc;  quoted = true }
   | List _ as sexp -> Sexp.Of_sexp.of_sexp_error sexp "Atom expected"
 
 let loc t = t.loc
 
 let virt ?(quoted=false) pos s =
-  { items = items_of_string s;  loc = Loc.of_pos pos;  quoted }
+  let loc = Loc.of_pos pos in
+  { parts = items_of_string loc s;  loc = Loc.of_pos pos;  quoted }
 let virt_var ?(quoted=false) pos s =
-  { items = [Var (Braces, s)];  loc = Loc.of_pos pos;  quoted }
+  assert (String.for_all s ~f:(function ':' -> false | _ -> true));
+  let loc = Loc.of_pos pos in
+  { parts =
+      [Var { payload = s
+           ; name = ""
+           ; syntax = Percent
+           ; loc
+           }]
+  ; loc
+  ; quoted
+  }
 let virt_text pos s =
-  { items = [Text s];  loc = Loc.of_pos pos;  quoted = true }
+  { parts = [Text s];  loc = Loc.of_pos pos;  quoted = true }
 
-let sexp_of_var_syntax = function
-  | Parens -> Sexp.unsafe_atom_of_string "parens"
-  | Braces -> Sexp.unsafe_atom_of_string "braces"
+let sexp_of_ast = Usexp.Template.sexp_of_t
 
-let sexp_of_item =
-  let open Sexp in function
-    | Text s -> List [Sexp.unsafe_atom_of_string "text" ;
-                      Sexp.atom_or_quoted_string s]
-    | Var (vs, s) -> List [sexp_of_var_syntax vs ;
-                           Sexp.atom_or_quoted_string s]
-
-let sexp_of_ast t = Sexp.To_sexp.list sexp_of_item t.items
-
-let fold t ~init ~f =
-  List.fold_left t.items ~init ~f:(fun acc item ->
-    match item with
-    | Text _ -> acc
-    | Var (_, v) -> f acc t.loc v)
-
-let iter t ~f = List.iter t.items ~f:(function
-  | Text _ -> ()
-  | Var (_, v) -> f t.loc v)
-
-let vars t = fold t ~init:String.Set.empty ~f:(fun acc _ x -> String.Set.add acc x)
-
-let string_of_var syntax v =
-  match syntax with
-  | Parens -> sprintf "$(%s)" v
-  | Braces -> sprintf "${%s}" v
+let string_of_var v =
+  to_string { quoted = false; parts = [Var v]; loc = v.loc }
 
 let concat_rev = function
   | [] -> ""
@@ -136,74 +143,87 @@ module Partial = struct
     | Unexpanded of t
 end
 
-let invalid_multivalue syntax ~var t x =
-  Loc.fail t.loc "Variable %s expands to %d values, \
+let invalid_multivalue (v : var) x =
+  Loc.fail v.loc "Variable %s expands to %d values, \
                   however a single value is expected here. \
                   Please quote this atom."
-    (string_of_var syntax var) (List.length x)
+    (string_of_var v) (List.length x)
 
-let partial_expand t ~mode ~dir ~f =
-  let commit_text acc_text acc =
-    let s = concat_rev acc_text in
-    if s = "" then acc else Text s :: acc
-  in
-  let rec loop acc_text acc items =
-    match items with
-    | [] ->
-      begin match acc with
-      | [] -> Partial.Expanded (Mode.string mode (concat_rev acc_text))
-      | _  -> Unexpanded { t with items = List.rev (commit_text acc_text acc) }
+(* let rec rev_append acc = function
+ *   | Nil -> acc
+ *   | Text (s, xs) -> rev_append (Text (s, acc)) xs
+ *   | Var v -> rev_append (Var { v with parts = acc }) v.parts *)
+
+let full_var_name (v : var) =
+  match v.name with
+  | "" -> v.payload
+  | n -> n ^ ":" ^ v.payload
+
+let partial_expand
+  : 'a.t
+  -> mode:'a Mode.t
+  -> dir:Path.t
+  -> f:(var -> string -> Value.t list option)
+  -> 'a Partial.t
+  = fun t ~mode ~dir ~f ->
+    let commit_text acc_text acc =
+      let s = concat_rev acc_text in
+      if s = "" then acc else Text s :: acc
+    in
+    let f var = f var (full_var_name var) in
+    let rec loop acc_text acc items =
+      match items with
+      | [] ->
+        begin match acc with
+        | [] ->
+          Partial.Expanded (Mode.string mode (concat_rev acc_text))
+        | _  ->
+          Unexpanded { t with parts = List.rev (commit_text acc_text acc) }
+        end
+      | Text s :: items -> loop (s :: acc_text) acc items
+      | Var var as it :: items ->
+        begin match f var with
+        | Some ([] | _::_::_ as e) when not t.quoted ->
+          invalid_multivalue var e
+        | Some t ->
+          loop (Value.L.concat ~dir t :: acc_text) acc items
+        | None -> loop [] (it :: commit_text acc_text acc) items
+        end
+    in
+    match t.parts with
+    | [] -> Partial.Expanded (Mode.string mode "")
+    | [Text s] -> Expanded (Mode.string mode s)
+    | [Var var] when not t.quoted ->
+      begin match f var with
+      | None -> Partial.Unexpanded t
+      | Some e -> Expanded (
+        match Mode.value mode e with
+        | None -> invalid_multivalue var e
+        | Some s -> s)
       end
-    | Text s :: items -> loop (s :: acc_text) acc items
-    | Var (syntax, var) as it :: items ->
-      begin match f syntax t.loc var with
-      | Some ([] | _::_::_ as e) when not t.quoted ->
-        invalid_multivalue syntax ~var t e
-      | Some t ->
-        loop (Value.L.concat ~dir t :: acc_text) acc items
-      | None -> loop [] (it :: commit_text acc_text acc) items
-      end
-  in
-  match t.items with
-  | [] -> Partial.Expanded (Mode.string mode "")
-  | [Text s] -> Expanded (Mode.string mode s)
-  | [Var (syntax, v)] when not t.quoted ->
-    (* Unquoted single var *)
-    begin match f syntax t.loc v with
-    | Some e -> Partial.Expanded (
-      match Mode.value mode e with
-      | None -> invalid_multivalue syntax ~var:v t e
-      | Some s -> s)
-    | None -> Unexpanded t
-    end
-  | _ -> loop [] [] t.items
+    | _ -> loop [] [] t.parts
 
 let expand t ~mode ~dir ~f =
   match
-    partial_expand t ~mode ~dir ~f:(fun syntax loc var ->
-      match f loc var with
-      | None -> Some [Value.String (string_of_var syntax var)]
+    partial_expand t ~mode ~dir ~f:(fun var var_val ->
+      match f var.loc var_val with
+      | None ->
+        begin match var.syntax with
+        | Percent -> Loc.fail var.loc "Failed to expand %s" (string_of_var var)
+        | Dollar_brace
+        | Dollar_paren -> Some [Value.String (string_of_var var)]
+        end
       | s -> s)
   with
   | Partial.Expanded s -> s
   | Unexpanded _ -> assert false (* we are expanding every variable *)
 
 let partial_expand t ~mode ~dir ~f =
-  partial_expand t ~mode ~dir ~f:(fun _ loc v -> f loc v)
+  partial_expand t ~mode ~dir ~f:(fun v val_ -> f v.loc val_)
 
-let to_string t =
-  match t.items with
-  (* [to_string is only called from action.ml, always on [t]s of this form *)
-  | [Var (syntax, v)] -> string_of_var syntax v
-  | items ->
-    List.map items ~f:(function
-      | Text s -> s
-      | Var (syntax, v) -> string_of_var syntax v)
-    |> String.concat ~sep:""
+let sexp_of_t t = Usexp.Template.sexp_of_t t
 
-let sexp_of_t t = Sexp.To_sexp.string (to_string t)
-
-let is_var t ~name =
-  match t.items with
-  | [Var (_, v)] -> v = name
+let is_var { parts ; quoted = _; loc = _ } ~name =
+  match parts with
+  | [Var n] -> name = full_var_name n
   | _ -> false

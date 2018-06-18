@@ -184,6 +184,7 @@ module Pp_or_flags = struct
       PP (loc, Pp.of_string s)
 
   let t = function
+    | Template _ as t -> of_sexp_error t "flags cannot contain templates"
     | Atom (loc, A s) | Quoted_string (loc, s) -> of_string ~loc s
     | List (_, l) -> Flags (List.map l ~f:string)
 
@@ -221,7 +222,7 @@ module Dep_conf = struct
     in
     fun sexp ->
       match sexp with
-      | Atom _ | Quoted_string _ -> File (String_with_vars.t sexp)
+      | Template _ | Atom _ | Quoted_string _ -> File (String_with_vars.t sexp)
       | List _ -> t sexp
 
   open Sexp
@@ -360,6 +361,8 @@ module Lib_dep = struct
   let choice = function
     | List (_, l) as sexp ->
       let rec loop required forbidden = function
+        | Template _ as t :: _ ->
+          of_sexp_error t "select cannot contain templates"
         | [Atom (_, A "->"); fsexp] ->
           let common = String.Set.inter required forbidden in
           Option.iter (String.Set.choose common) ~f:(fun name ->

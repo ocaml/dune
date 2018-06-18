@@ -63,10 +63,10 @@ module Concurrency = struct
           error
 
   let t =
-    Parser.map_validate string ~f:(fun s ->
+    plain_string (fun ~loc s ->
       match of_string s with
-      | Error m -> Sexp.Of_sexp.Parser.error m
-      | Ok _ as s -> s)
+      | Error m -> of_sexp_errorf_loc loc "%s" m
+      | Ok s -> s)
 
   let to_string = function
     | Auto -> "auto"

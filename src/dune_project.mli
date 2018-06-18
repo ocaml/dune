@@ -82,7 +82,7 @@ module Extension : sig
       what [<args>] might be.  *)
   val make
     :  Syntax.Version.t
-    -> (project -> Stanza.Parser.t list Sexp.Of_sexp.cstr_parser)
+    -> (project -> Stanza.Parser.t list Sexp.Of_sexp.t)
     -> t
 
   (** Register all the supported versions of an extension *)

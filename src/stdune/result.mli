@@ -28,5 +28,8 @@ val concat_map
   -> f:('a -> ('b list, 'error) t)
   -> ('b list, 'error) t
 
+(** Produce [Error <message>] *)
+val errorf : ('a, unit, string, (_, string) t) format4 -> 'a
+
 (** For compatibility with some other code *)
 type ('a, 'error) result = ('a, 'error) t

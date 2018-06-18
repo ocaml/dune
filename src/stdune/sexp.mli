@@ -65,136 +65,127 @@ module Of_sexp : sig
 
   exception Of_sexp of Loc.t * string * hint option
 
-  include Combinators
+  (** Monad producing a value of type ['a] by parsing an input
+      composed of a sequence of S-expressions.
 
+      The input can be seen either as a plain sequence of
+      S-expressions or a list of fields. The ['kind] parameter
+      indicates how the input is seen:
+
+      - with {['kind = [values]]}, the input is seen as an ordered
+      sequence of S-expressions
+
+      - with {['kind = [fields]]}, the input is seen as an unordered
+      sequence of fields
+
+      A field is a S-expression of the form: [(<atom> <values>...)]
+      where [atom] is a plain atom, i.e. not a quoted string and not
+      containing variables. [values] is a sequence of zero, one or more
+      S-expressions.
+
+      It is possible to switch between the two mode at any time using
+      the approriate combinator. Some primitives can be used in both
+      mode while some are specific to one mode.  *)
+  type ('a, 'kind) parser
+
+  type values
+  type fields
+
+  type 'a t             = ('a, values) parser
+  type 'a fields_parser = ('a, fields) parser
+
+  (** Parse a S-expression using the following parser *)
   val parse : 'a t -> ast -> 'a
 
-  val make : (ast -> 'a) -> 'a t
+  val return : 'a -> ('a, _) parser
+  val (>>=) : ('a, 'k) parser -> ('a -> ('b, 'k) parser) -> ('b, 'k) parser
+  val (>>|) : ('a, 'k) parser -> ('a -> 'b) -> ('b, 'k) parser
+  val (>>>) : (unit, 'k) parser -> ('a, 'k) parser -> ('a, 'k) parser
+  val map : ('a, 'k) parser -> f:('a -> 'b) -> ('b, 'k) parser
 
-  val discard : unit t
+  (** Return the location of the list currently being parsed. *)
+  val loc : (Loc.t, _) parser
 
-  module Parser : sig
-    val fail : ('a, unit, string, string, string, 'b t) format6 -> 'a
-    val map : 'a t -> f:('a -> 'b) -> 'b t
-    val return : 'a -> 'a t
+  (** End of sequence condition. Returns [true] iff they are no more
+      S-expressions to parse *)
+  val eos : (bool, _) parser
 
-    module O : sig
-      val (>>|) : 'a t -> ('a -> 'b)   -> 'b t
-      val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
-    end
+  (** [repeat t] use [t] to consume all remaning elements of the input
+      until the end of sequence is reached. *)
+  val repeat : 'a t -> 'a list t
 
-    type error
+  (** [enter t] expect the next element of the input to be a list and
+      parse its contents with [t]. *)
+  val enter : 'a t -> 'a t
 
-    val error : ?hint:hint -> string -> (_, error) Result.t
-    val errorf
-      : ?hint:hint -> ('b, unit, string, (_, error) Result.t) format4 -> 'b
-    val map_validate : 'a t -> f:('a -> ('b, error) Result.t) -> 'b t
-  end
+  (** [fields fp] converts the rest of the current input to a list of
+      fields and parse them with [fp]. This operation fails if one the
+      S-expression in the input is not of the form [(<atom>
+      <values>...)] *)
+  val fields : 'a fields_parser -> 'a t
+
+  (** [record fp = enter (fields fp)] *)
+  val record : 'a fields_parser -> 'a t
+
+  (** Consume the next element of the input as a string, int, char, ... *)
+  include Combinators with type 'a t := 'a t
+
+  (** Unparsed next element of the input *)
+  val raw : ast t
+
+  (** Inspect the input without consuming it *)
+  val peek : 'a t -> 'a t
+
+  (** Consume and ignore the next element of the input *)
+  val junk : unit t
+
+  (** [plain_string f] expects the next element of the input to be a
+      plain string, i.e. either an atom or a quoted string, but not a
+      template nor a list. *)
+  val plain_string : (loc:Loc.t -> string -> 'a) -> 'a t
 
   val fix : ('a t -> 'a t) -> 'a t
 
-  val sexp_error : ?hint:hint -> string -> _ t
   val of_sexp_error  : ?hint:hint -> Ast.t -> string -> _
   val of_sexp_errorf : ?hint:hint -> Ast.t -> ('a, unit, string, 'b) format4 -> 'a
+  val of_sexp_errorf_loc : ?hint:hint -> Loc.t -> ('a, unit, string, 'b) format4 -> 'a
 
   val located : 'a t -> (Loc.t * 'a) t
 
-  val loc : Loc.t t
-
-  val raw : ast t
-
   val enum : (string * 'a) list -> 'a t
-
-  (** {2 Parsing lists} *)
-
-  (** Monad for parsing lists *)
-  type ('a, 'kind) list_parser
-
-  type 'a   cstr_parser = ('a, [`Cstr  ]) list_parser
-  type 'a record_parser = ('a, [`Record]) list_parser
-
-  val return : 'a -> ('a, _) list_parser
-  val ( >>= )
-    :  ('a, 'kind) list_parser
-    -> ('a -> ('b, 'kind) list_parser)
-    -> ('b, 'kind) list_parser
-  val ( >>| )
-    :  ('a, 'kind) list_parser
-    -> ('a -> 'b)
-    -> ('b, 'kind) list_parser
-
-  (** Return the location of the list being parsed *)
-  val list_loc : (Loc.t, _) list_parser
-
-  (** Parser that parse a record, i.e. a list of s-expressions of the
-      form [(<atom> <s-exp>)]. *)
-  val record : 'a record_parser -> 'a t
 
   (** Parser that parse a S-expression of the form [(<atom> <s-exp1>
       <s-exp2> ...)] or [<atom>]. [<atom>] is looked up in the list and
       the remaining s-expressions are parsed using the corresponding
       list parser. *)
-  val sum : (string * 'a cstr_parser) list -> 'a t
-
-  (** Parse and consume the next element of the list *)
-  val next : 'a t -> 'a cstr_parser
-
-  (** Parse and consume the rest of the list as a list of element of
-      the same type. *)
-  val rest : 'a t -> 'a list cstr_parser
-
-  (** Parse all remaining elements as a list of fields *)
-  val rest_as_record : 'a record_parser -> 'a cstr_parser
+  val sum : (string * 'a t) list -> 'a t
 
   (** Check the result of a list parser, and raise a properly located
       error in case of failure. *)
   val map_validate
-    :  'a record_parser
+    :  'a fields_parser
     -> f:('a -> ('b, string) Result.t)
-    -> 'b record_parser
+    -> 'b fields_parser
 
   (** {3 Parsing record fields} *)
 
-  module Short_syntax : sig
-    type 'a t =
-      | Not_allowed
-      | This    of 'a
-      | Located of (Loc.t -> 'a)
-  end
-
   val field
     :  string
-    -> ?short:'a Short_syntax.t
     -> ?default:'a
     -> 'a t
-    -> 'a record_parser
+    -> 'a fields_parser
   val field_o
     :  string
-    -> ?short:'a Short_syntax.t
     -> 'a t
-    -> 'a option record_parser
-  val field_b : string -> bool record_parser
+    -> 'a option fields_parser
+
+  val field_b : string -> bool fields_parser
 
   (** A field that can appear multiple times *)
-  val dup_field
+  val multi_field
     :  string
-    -> ?short:'a Short_syntax.t
     -> 'a t
-    -> 'a list record_parser
-
-  (** Field that takes multiple values *)
-  val field_multi
-    :  string
-    -> ?default:'a
-    -> 'a cstr_parser
-    -> 'a record_parser
-
-  (** A field that can appear multiple times and each time takes
-      multiple values *)
-  val dup_field_multi
-    :  string
-    -> 'a cstr_parser
-    -> 'a list record_parser
+    -> 'a list fields_parser
 end
 
 module type Sexpable = sig

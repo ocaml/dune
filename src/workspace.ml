@@ -8,7 +8,7 @@ module Context = struct
       | Named of string
 
     let t =
-      Parser.map string ~f:(function
+      map string ~f:(function
         | "native" -> Native
         | s        -> Named s)
   end
@@ -55,24 +55,26 @@ module Context = struct
 
   type t = Default of Default.t | Opam of Opam.t
 
-  let t ~profile = Sexp.Of_sexp.make (function
-    | Atom (_, A "default") ->
-      Default { targets = [Native]
-              ; profile
-              }
-    | List (_, List _ :: _) as sexp ->
-      Opam (Sexp.Of_sexp.parse (record (Opam.t ~profile)) sexp)
-    | sexp ->
-      Sexp.Of_sexp.parse
-        (sum
-           [ "default",
-             (rest_as_record (Default.t ~profile) >>| fun x ->
-              Default x)
-           ; "opam",
-             (rest_as_record (Opam.t ~profile) >>| fun x ->
-              Opam x)
-           ])
-        sexp)
+  let t ~profile =
+    Sexp.Of_sexp.(
+      peek raw >>= function
+      | Atom _ | Quoted_string _ ->
+        enum [ "default",
+               Default { targets = [Native]
+                       ; profile
+                       }
+             ]
+      | List (_, List _ :: _) ->
+        record (Opam.t ~profile) >>| fun x -> Opam x
+      | _ ->
+        sum
+          [ "default",
+            (fields (Default.t ~profile) >>| fun x ->
+             Default x)
+          ; "opam",
+            (fields (Opam.t ~profile) >>| fun x ->
+             Opam x)
+          ])
 
   let name = function
     | Default _ -> "default"
@@ -98,10 +100,10 @@ type item = Context of Sexp.Ast.t | Profile of Loc.t * string
 
 let item_of_sexp =
   sum
-    [ "context", (next raw >>|fun x -> Context x)
+    [ "context", (raw >>|fun x -> Context x)
     ; "profile",
-      (list_loc >>= fun loc ->
-       next string >>= fun x ->
+      (loc >>= fun loc ->
+       string >>= fun x ->
        return (Profile (loc, x)))
     ]
 

@@ -71,11 +71,11 @@ end = struct
       None
 
   let named_of_sexp =
-    Sexp.Of_sexp.Parser.map_validate string ~f:(fun s ->
+    Sexp.Of_sexp.plain_string (fun ~loc s ->
       if validate s then
-        Ok (Named s)
+        Named s
       else
-        Sexp.Of_sexp.Parser.error "invalid project name")
+        Sexp.Of_sexp.of_sexp_errorf_loc loc "invalid project name")
 
   let encode = function
     | Named     s -> s
@@ -161,7 +161,7 @@ module Lang = struct
 end
 
 module Extension = struct
-  type maker = project -> Stanza.Parser.t list Sexp.Of_sexp.cstr_parser
+  type maker = project -> Stanza.Parser.t list Sexp.Of_sexp.t
 
   type t = Syntax.Version.t * maker
 
@@ -191,6 +191,10 @@ let get_local_path p =
   | External _ -> assert false
   | Local    p -> p
 
+let fake_stanza_parser =
+  let open Sexp.Of_sexp in
+  return () >>| fun _ -> assert false
+
 let anonymous = lazy(
   let t =
     { kind          = Dune
@@ -198,7 +202,7 @@ let anonymous = lazy(
     ; packages      = Package.Name.Map.empty
     ; root          = get_local_path Path.root
     ; version       = None
-    ; stanza_parser = Sexp.Of_sexp.make (fun _ -> assert false)
+    ; stanza_parser = fake_stanza_parser
     ; project_file  = None
     }
   in
@@ -239,14 +243,14 @@ let parse ~dir ~lang_stanzas ~packages ~file =
        ; root = get_local_path dir
        ; version
        ; packages
-       ; stanza_parser = Sexp.Of_sexp.make (fun _ -> assert false)
+       ; stanza_parser = fake_stanza_parser
        ; project_file  = Some file
        }
      in
-     dup_field_multi "using"
-       (list_loc >>= fun loc ->
-        next (located string) >>= fun name ->
-        next (located Syntax.Version.t) >>= fun ver ->
+     multi_field "using"
+       (loc >>= fun loc ->
+        located string >>= fun name ->
+        located Syntax.Version.t >>= fun ver ->
         Extension.lookup name ver t >>= fun stanzas ->
         return (snd name, (loc, stanzas)))
      >>= fun extensions ->
@@ -274,7 +278,7 @@ let make_jbuilder_project ~dir packages =
     ; root = get_local_path dir
     ; version = None
     ; packages
-    ; stanza_parser = Sexp.Of_sexp.make (fun _ -> assert false)
+    ; stanza_parser = fake_stanza_parser
     ; project_file = None
     }
   in

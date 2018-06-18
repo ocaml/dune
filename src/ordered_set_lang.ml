@@ -40,7 +40,9 @@ let parse_general sexp ~f =
   in
   of_sexp sexp
 
-let t = Sexp.Of_sexp.make (fun sexp ->
+let t =
+  let open Sexp.Of_sexp in
+  raw >>| fun sexp ->
   let ast =
     parse_general sexp ~f:(function
       | Atom (loc, A s) | Quoted_string (loc, s) -> (loc, s)
@@ -48,7 +50,7 @@ let t = Sexp.Of_sexp.make (fun sexp ->
   in
   { ast
   ; loc = Some (Sexp.Ast.loc sexp)
-  })
+  }
 
 let is_standard t =
   match (t.ast : ast_expanded) with
@@ -171,7 +173,9 @@ let standard =
 module Unexpanded = struct
   type ast = (Sexp.Ast.t, Ast.unexpanded) Ast.t
   type t = ast generic
-  let t = Sexp.Of_sexp.make (fun sexp ->
+  let t =
+    let open Sexp.Of_sexp in
+    raw >>| fun sexp ->
     let rec map (t : (Sexp.Ast.t, Ast.expanded) Ast.t) =
       let open Ast in
       match t with
@@ -189,7 +193,7 @@ module Unexpanded = struct
     in
     { ast = map (parse_general sexp ~f:(fun x -> x))
     ; loc = Some (Sexp.Ast.loc sexp)
-    })
+    }
 
   let sexp_of_t t =
     let open Ast in

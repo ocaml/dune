@@ -24,10 +24,9 @@ module Backend = struct
 
       open Sexp.Of_sexp
 
-      let short = None
       let parse =
         record
-          (list_loc >>= fun loc ->
+          (loc >>= fun loc ->
            field "runner_libraries" (list (located string)) ~default:[]
            >>= fun runner_libraries ->
            Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
@@ -45,11 +44,7 @@ module Backend = struct
 
       let parsers =
         Syntax.Versioned_parser.make
-          [ (1, 0),
-            { Jbuild.Sub_system_info.
-              short
-            ; parse
-            }
+          [ (1, 0), parse
           ]
     end
 
@@ -127,166 +122,164 @@ include Sub_system.Register_end_point(
         ; libraries = []
         }
 
-    let loc      t = t.loc
-    let backends t = Option.map t.backend ~f:(fun x -> [x])
+      let loc      t = t.loc
+      let backends t = Option.map t.backend ~f:(fun x -> [x])
 
-    open Sexp.Of_sexp
+      open Sexp.Of_sexp
 
-    let short = Some empty
-    let parse =
-      record
-        (list_loc >>= fun loc ->
-         field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
-         Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
-         field_o "backend" (located string) >>= fun backend ->
-         field "libraries" (list (located string)) ~default:[]
-         >>= fun libraries ->
-         return
-           { loc
-           ; deps
-           ; flags
-           ; backend
-           ; libraries
-           })
+      let parse =
+        eos >>= function
+        | true -> loc >>| empty
+        | false ->
+          record
+            (loc >>= fun loc ->
+             field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
+             Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
+             field_o "backend" (located string) >>= fun backend ->
+             field "libraries" (list (located string)) ~default:[]
+             >>= fun libraries ->
+             return
+               { loc
+               ; deps
+               ; flags
+               ; backend
+               ; libraries
+               })
 
-    let parsers =
-      Syntax.Versioned_parser.make
-        [ (1, 0),
-          { Jbuild.Sub_system_info.
-            short
-          ; parse
-          }
-        ]
-  end
-
-  let gen_rules c ~(info:Info.t) ~backends =
-    let { Sub_system.Library_compilation_context.
-          super_context = sctx
-        ; dir
-        ; stanza = lib
-        ; scope
-        ; source_modules
-        ; _
-        } = c
-    in
-
-    let inline_test_dir =
-      Path.relative dir (sprintf ".%s.inline-tests" lib.name)
-    in
-
-    let name = "run" in
-    let main_module_filename = name ^ ".ml" in
-    let main_module_name = Module.Name.of_string name in
-    let modules =
-      Module.Name.Map.singleton main_module_name
-        (Module.make main_module_name
-           ~impl:{ name   = main_module_filename
-                 ; syntax = OCaml
-                 }
-           ~obj_name:name)
-    in
-
-    let extra_vars =
-      String.Map.singleton "library-name" ([Value.String lib.name])
-    in
-
-    let runner_libs =
-      let open Result.O in
-      Result.concat_map backends
-        ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
-      >>= fun libs ->
-      Lib.DB.find_many (Scope.libs scope) [lib.name]
-      >>= fun lib ->
-      Result.all
-        (List.map info.libraries
-           ~f:(Lib.DB.resolve (Scope.libs scope)))
-      >>= fun more_libs ->
-      Lib.closure (lib @ libs @ more_libs)
-    in
-
-    (* Generate the runner file *)
-    SC.add_rule sctx (
-      let target = Path.relative inline_test_dir main_module_filename in
-      let source_modules = Module.Name.Map.values source_modules in
-      let files ml_kind =
-        Value.L.paths (
-          List.filter_map source_modules ~f:(fun m ->
-            Module.file m ~dir ml_kind))
-      in
-      let extra_vars =
-        List.fold_left
-          [ "impl-files", files Impl
-          ; "intf-files", files Intf
+      let parsers =
+        Syntax.Versioned_parser.make
+          [ (1, 0), parse
           ]
-          ~init:extra_vars
-          ~f:(fun acc (k, v) -> String.Map.add acc k v)
+    end
+
+    let gen_rules c ~(info:Info.t) ~backends =
+      let { Sub_system.Library_compilation_context.
+            super_context = sctx
+          ; dir
+          ; stanza = lib
+          ; scope
+          ; source_modules
+          ; _
+          } = c
       in
-      Build.return []
-      >>>
-      Build.all
-        (List.filter_map backends ~f:(fun (backend : Backend.t) ->
-           Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
-             SC.Action.run sctx action ~loc
-               ~extra_vars ~dir ~dep_kind:Required ~targets:Alias ~scope)))
-      >>^ (fun actions ->
-        Action.with_stdout_to target
-          (Action.progn actions))
-      >>>
-      Build.action_dyn ~targets:[target] ());
 
-    let cctx =
-      Compilation_context.create ()
-        ~super_context:sctx
-        ~scope
-        ~dir:inline_test_dir
-        ~modules
-        ~requires:runner_libs
-        ~flags:(Ocaml_flags.of_list ["-w"; "-24"]);
-    in
-    Exe.build_and_link cctx
-      ~program:{ name; main_module_name }
-      ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
-      ~link_flags:(Build.return ["-linkall"]);
+      let inline_test_dir =
+        Path.relative dir (sprintf ".%s.inline-tests" lib.name)
+      in
 
-    let flags =
+      let name = "run" in
+      let main_module_filename = name ^ ".ml" in
+      let main_module_name = Module.Name.of_string name in
+      let modules =
+        Module.Name.Map.singleton main_module_name
+          (Module.make main_module_name
+             ~impl:{ name   = main_module_filename
+                   ; syntax = OCaml
+                   }
+             ~obj_name:name)
+      in
+
+      let extra_vars =
+        String.Map.singleton "library-name" ([Value.String lib.name])
+      in
+
+      let runner_libs =
+        let open Result.O in
+        Result.concat_map backends
+          ~f:(fun (backend : Backend.t) -> backend.runner_libraries)
+        >>= fun libs ->
+        Lib.DB.find_many (Scope.libs scope) [lib.name]
+        >>= fun lib ->
+        Result.all
+          (List.map info.libraries
+             ~f:(Lib.DB.resolve (Scope.libs scope)))
+        >>= fun more_libs ->
+        Lib.closure (lib @ libs @ more_libs)
+      in
+
+      (* Generate the runner file *)
+      SC.add_rule sctx (
+        let target = Path.relative inline_test_dir main_module_filename in
+        let source_modules = Module.Name.Map.values source_modules in
+        let files ml_kind =
+          Value.L.paths (
+            List.filter_map source_modules ~f:(fun m ->
+              Module.file m ~dir ml_kind))
+        in
+        let extra_vars =
+          List.fold_left
+            [ "impl-files", files Impl
+            ; "intf-files", files Intf
+            ]
+            ~init:extra_vars
+            ~f:(fun acc (k, v) -> String.Map.add acc k v)
+        in
+        Build.return []
+        >>>
+        Build.all
+          (List.filter_map backends ~f:(fun (backend : Backend.t) ->
+             Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
+               SC.Action.run sctx action ~loc
+                 ~extra_vars ~dir ~dep_kind:Required ~targets:Alias ~scope)))
+        >>^ (fun actions ->
+          Action.with_stdout_to target
+            (Action.progn actions))
+        >>>
+        Build.action_dyn ~targets:[target] ());
+
+      let cctx =
+        Compilation_context.create ()
+          ~super_context:sctx
+          ~scope
+          ~dir:inline_test_dir
+          ~modules
+          ~requires:runner_libs
+          ~flags:(Ocaml_flags.of_list ["-w"; "-24"]);
+      in
+      Exe.build_and_link cctx
+        ~program:{ name; main_module_name }
+        ~linkages:[Exe.Linkage.native_or_custom (SC.context sctx)]
+        ~link_flags:(Build.return ["-linkall"]);
+
       let flags =
-        List.map backends ~f:(fun backend ->
-          backend.Backend.info.flags) @ [info.flags]
+        let flags =
+          List.map backends ~f:(fun backend ->
+            backend.Backend.info.flags) @ [info.flags]
+        in
+        Build.all (
+          List.map flags ~f:(fun flags ->
+            Super_context.expand_and_eval_set sctx flags
+              ~scope
+              ~dir
+              ~extra_vars
+              ~standard:(Build.return [])))
+        >>^ List.concat
       in
-      Build.all (
-        List.map flags ~f:(fun flags ->
-          Super_context.expand_and_eval_set sctx flags
-            ~scope
-            ~dir
-            ~extra_vars
-            ~standard:(Build.return [])))
-      >>^ List.concat
-    in
 
-    SC.add_alias_action sctx
-      (Build_system.Alias.runtest ~dir)
-      ~stamp:(List [ Sexp.unsafe_atom_of_string "ppx-runner"
-                   ; Quoted_string name
-                   ])
-      (let module A = Action in
-       let exe = Path.relative inline_test_dir (name ^ ".exe") in
-       Build.path exe >>>
-       Build.fanout
-         (Super_context.Deps.interpret sctx info.deps ~dir ~scope)
-         flags
-       >>^ fun (_deps, flags) ->
-       A.chdir dir
-         (A.progn
-            (A.run (Ok exe) flags ::
-             (Module.Name.Map.values source_modules
-              |> List.concat_map ~f:(fun m ->
-                [ Module.file m ~dir Impl
-                ; Module.file m ~dir Intf
-                ])
-              |> List.filter_map ~f:(fun x -> x)
-              |> List.map ~f:(fun fn ->
-                A.diff ~optional:true
-                  fn (Path.extend_basename fn ~suffix:".corrected"))))))
-end)
+      SC.add_alias_action sctx
+        (Build_system.Alias.runtest ~dir)
+        ~stamp:(List [ Sexp.unsafe_atom_of_string "ppx-runner"
+                     ; Quoted_string name
+                     ])
+        (let module A = Action in
+         let exe = Path.relative inline_test_dir (name ^ ".exe") in
+         Build.path exe >>>
+         Build.fanout
+           (Super_context.Deps.interpret sctx info.deps ~dir ~scope)
+           flags
+         >>^ fun (_deps, flags) ->
+         A.chdir dir
+           (A.progn
+              (A.run (Ok exe) flags ::
+               (Module.Name.Map.values source_modules
+                |> List.concat_map ~f:(fun m ->
+                  [ Module.file m ~dir Impl
+                  ; Module.file m ~dir Intf
+                  ])
+                |> List.filter_map ~f:(fun x -> x)
+                |> List.map ~f:(fun fn ->
+                  A.diff ~optional:true
+                    fn (Path.extend_basename fn ~suffix:".corrected"))))))
+  end)
 
 let linkme = ()

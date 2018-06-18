@@ -41,18 +41,18 @@ module Dune_file = struct
     let stanza =
       let open Sexp.Of_sexp in
       let sub_dir =
-        Parser.map_validate string ~f:(fun dn ->
+        plain_string (fun ~loc dn ->
           if Filename.dirname dn <> Filename.current_dir_name ||
              match dn with
              | "" | "." | ".." -> true
              | _ -> false
           then
-            Parser.errorf "Invalid sub-directory name %S" dn
+            of_sexp_errorf_loc loc "Invalid sub-directory name %S" dn
           else
-            Ok dn)
+            dn)
       in
       sum
-        [ "ignored_subdirs", next (list sub_dir) >>| String.Set.of_list
+        [ "ignored_subdirs", list sub_dir >>| String.Set.of_list
         ]
     in
     fun sexps ->

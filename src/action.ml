@@ -26,71 +26,71 @@ struct
     Sexp.Of_sexp.fix (fun t ->
       sum
         [ "run",
-          (next Program.t >>= fun prog ->
-           rest string    >>| fun args ->
+          (Program.t     >>= fun prog ->
+           repeat string >>| fun args ->
            Run (prog, args))
         ; "chdir",
-          (next path >>= fun dn ->
-           next t    >>| fun t ->
+          (path >>= fun dn ->
+           t    >>| fun t ->
            Chdir (dn, t))
         ; "setenv",
-          (next string >>= fun k ->
-           next string >>= fun v ->
-           next t      >>| fun t ->
+          (string >>= fun k ->
+           string >>= fun v ->
+           t      >>| fun t ->
            Setenv (k, v, t))
         ; "with-stdout-to",
-          (next path >>= fun fn ->
-           next t    >>| fun t ->
+          (path >>= fun fn ->
+           t    >>| fun t ->
            Redirect (Stdout, fn, t))
         ; "with-stderr-to",
-          (next path >>= fun fn ->
-           next t    >>| fun t  ->
+          (path >>= fun fn ->
+           t    >>| fun t  ->
            Redirect (Stderr, fn, t))
         ; "with-outputs-to",
-          (next path >>= fun fn ->
-           next t    >>| fun t  ->
+          (path >>= fun fn ->
+           t    >>| fun t  ->
            Redirect (Outputs, fn, t))
         ; "ignore-stdout",
-          (next t >>| fun t -> Ignore (Stdout, t))
+          (t >>| fun t -> Ignore (Stdout, t))
         ; "ignore-stderr",
-          (next t >>| fun t -> Ignore (Stderr, t))
+          (t >>| fun t -> Ignore (Stderr, t))
         ; "ignore-outputs",
-          (next t >>| fun t -> Ignore (Outputs, t))
+          (t >>| fun t -> Ignore (Outputs, t))
         ; "progn",
-          (rest t >>| fun l -> Progn l)
+          (repeat t >>| fun l -> Progn l)
         ; "echo",
-          (next string >>= fun x ->
-           rest string >>| fun xs ->
+          (string >>= fun x ->
+           repeat string >>| fun xs ->
            Echo (x :: xs))
         ; "cat",
-          (next path >>| fun x -> Cat x)
+          (path >>| fun x -> Cat x)
         ; "copy",
-          (next path >>= fun src ->
-           next path >>| fun dst ->
+          (path >>= fun src ->
+           path >>| fun dst ->
            Copy (src, dst))
         ; "copy#",
-          (next path >>= fun src ->
-           next path >>| fun dst ->
+          (path >>= fun src ->
+           path >>| fun dst ->
            Copy_and_add_line_directive (src, dst))
         ; "copy-and-add-line-directive",
-          (next path >>= fun src ->
-           next path >>| fun dst ->
+          (path >>= fun src ->
+           path >>| fun dst ->
            Copy_and_add_line_directive (src, dst))
         ; "system",
-          (next string >>| fun cmd -> System cmd)
+          (string >>| fun cmd -> System cmd)
         ; "bash",
-          (next string >>| fun cmd -> Bash cmd)
+          (string >>| fun cmd -> Bash cmd)
         ; "write-file",
-          (next path >>= fun fn ->
-           next string >>| fun s ->
+          (path >>= fun fn ->
+           string >>| fun s ->
            Write_file (fn, s))
         ; "diff",
-          (next path >>= fun file1 ->
-           next path >>| fun file2 ->
+          (path >>= fun file1 ->
+           path >>| fun file2 ->
            Diff { optional = false; file1; file2 })
         ; "diff?",
-          (next path >>= fun file1 ->
-           next path >>| fun file2 ->
+          (path >>= fun file1 ->
+           path >>| fun file2 ->
            Diff { optional = true; file1; file2 })
         ])
 
@@ -224,7 +224,7 @@ module Prog = struct
 
   type t = (Path.t, Not_found.t) result
 
-  let t : t Sexp.Of_sexp.t = Sexp.Of_sexp.Parser.map ~f:Result.ok Path.t
+  let t : t Sexp.Of_sexp.t = Sexp.Of_sexp.map Path.t ~f:Result.ok
 
   let sexp_of_t = function
     | Ok s -> Path.sexp_of_t s
@@ -325,11 +325,13 @@ module Unexpanded = struct
 
   include Make_ast(String_with_vars)(String_with_vars)(String_with_vars)(Uast)
 
-  let t = Sexp.Of_sexp.make (function
+  let t =
+    let open Sexp.Of_sexp in
+    peek raw >>= function
     | Atom _ | Quoted_string _ as sexp ->
       of_sexp_errorf sexp
         "if you meant for this to be executed with bash, write (bash \"...\") instead"
-    | List _ as sexp -> Sexp.Of_sexp.parse t sexp)
+    | List _ -> t
 
   let check_mkdir loc path =
     if not (Path.is_managed path) then
@@ -581,14 +583,17 @@ module Promotion = struct
       ; dst : Path.t
       }
 
-    let t = Sexp.Of_sexp.make (function
-      | Sexp.Ast.List (_, [src; Atom (_, A "as"); dst]) ->
-        let open Sexp.Of_sexp in
-        { src = parse Path.t src
-        ; dst = parse Path.t dst
-        }
+    let t =
+      let open Sexp.Of_sexp in
+      peek raw >>= function
+      | List (_, [_; Atom (_, A "as"); _]) ->
+        enter
+          (Path.t >>= fun src ->
+           junk >>= fun () ->
+           Path.t >>= fun dst ->
+           return { src; dst })
       | sexp ->
-        Sexp.Of_sexp.of_sexp_errorf sexp "(<file> as <file>) expected")
+        Sexp.Of_sexp.of_sexp_errorf sexp "(<file> as <file>) expected"
 
     let sexp_of_t { src; dst } =
       Sexp.List [Path.sexp_of_t src; Sexp.unsafe_atom_of_string "as";
@@ -619,8 +624,8 @@ module Promotion = struct
 
   let load_db () =
     if Path.exists db_file then
-      Io.Sexp.load db_file ~mode:Many
-      |> List.map ~f:(Sexp.Of_sexp.parse File.t)
+      Sexp.Of_sexp.(
+        parse (list File.t) (Io.Sexp.load db_file ~mode:Many_as_one))
     else
       []
 

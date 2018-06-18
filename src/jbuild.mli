@@ -137,12 +137,6 @@ module Sub_system_info : sig
   type t = ..
   type sub_system = t = ..
 
-  type 'a parser =
-    { short : (Loc.t -> 'a) option (** Value when the sub-system has
-                                       no argument *)
-    ; parse : 'a Sexp.Of_sexp.t    (** Parse the argument *)
-    }
-
   (** What the user must provide in order to define the parsing part
       of a sub-system. *)
   module type S = sig
@@ -155,7 +149,7 @@ module Sub_system_info : sig
     (** Location of the S-expression passed to [of_sexp] or [short]. *)
     val loc : t -> Loc.t
 
-    val parsers : t parser Syntax.Versioned_parser.t
+    val parsers : t Sexp.Of_sexp.t Syntax.Versioned_parser.t
   end
 
   module Register(M : S) : sig end

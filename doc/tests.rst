@@ -127,7 +127,7 @@ following test elements are clearly identified:
 - the test expectation
 - the test outcome
 
-You can have a look at `this blob post
+You can have a look at `this blog post
 <https://blog.janestreet.com/testing-with-expectations/>`_ to find out
 more about expectation tests. But Back to Jbuilder, the workflow for
 expectation tests is always as follow:

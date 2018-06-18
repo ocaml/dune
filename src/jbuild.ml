@@ -81,7 +81,7 @@ let c_name, cxx_name =
       of_sexp_errorf sexp
         "%S is not a valid %s name.\n\
          Hint: To use %s files from another directory, use a \
-         (copy_files <dir>/*.c) stanza instead."
+         (copy_files <dir>/*.%s) stanza instead."
         s what what ext
     else
       s

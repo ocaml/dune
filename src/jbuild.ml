@@ -21,7 +21,7 @@ module Jbuild_version = struct
 end
 
 let invalid_module_name ~loc =
-  of_sexp_errorf_loc loc "invalid module name: %S"
+  of_sexp_errorf loc "invalid module name: %S"
 
 let module_name =
   plain_string (fun ~loc name ->
@@ -41,7 +41,7 @@ let module_name =
 
 let module_names = list module_name >>| String.Set.of_list
 
-let invalid_lib_name ~loc = of_sexp_errorf_loc loc "invalid library name"
+let invalid_lib_name ~loc = of_sexp_errorf loc "invalid library name"
 
 let library_name =
   plain_string (fun ~loc name ->
@@ -61,17 +61,17 @@ let file =
   plain_string (fun ~loc s ->
     match s with
     | "." | ".." ->
-      of_sexp_errorf_loc loc "'.' and '..' are not valid filenames"
+      of_sexp_errorf loc "'.' and '..' are not valid filenames"
     | fn -> fn)
 
 let file_in_current_dir =
   plain_string (fun ~loc s ->
     match s with
     | "." | ".." ->
-      of_sexp_errorf_loc loc "'.' and '..' are not valid filenames"
+      of_sexp_errorf loc "'.' and '..' are not valid filenames"
     | fn ->
       if Filename.dirname fn <> Filename.current_dir_name then
-        of_sexp_errorf_loc loc "file in current directory expected"
+        of_sexp_errorf loc "file in current directory expected"
       else
         fn)
 
@@ -80,7 +80,7 @@ let relative_file =
     if Filename.is_relative fn then
       fn
     else
-      of_sexp_errorf_loc loc "relative filename expected")
+      of_sexp_errorf loc "relative filename expected")
 
 let c_name, cxx_name =
   let make what ext =
@@ -88,7 +88,7 @@ let c_name, cxx_name =
       if match s with
         | "" | "." | ".."  -> true
         | _ -> Filename.basename s <> s then
-        of_sexp_errorf_loc loc
+        of_sexp_errorf loc
           "%S is not a valid %s name.\n\
            Hint: To use %s files from another directory, use a \
            (copy_files <dir>/*.%s) stanza instead."
@@ -301,7 +301,7 @@ module Per_module = struct
             |> function
             | Ok t -> t
             | Error (name, _, _) ->
-              of_sexp_errorf_loc loc
+              of_sexp_errorf loc
                 "module %s present in two different sets"
                 (Module.Name.to_string name)
           ]
@@ -384,7 +384,7 @@ module Lib_dep = struct
           junk >>> file >>| fun file ->
           let common = String.Set.inter required forbidden in
           Option.iter (String.Set.choose common) ~f:(fun name ->
-            of_sexp_errorf_loc loc
+            of_sexp_errorf loc
               "library %S is both required and forbidden in this clause"
               name);
           { required
@@ -392,7 +392,7 @@ module Lib_dep = struct
           ; file
           }
         | List _ ->
-          of_sexp_errorf_loc loc "(<[!]libraries>... -> <file>) expected"
+          of_sexp_errorf loc "(<[!]libraries>... -> <file>) expected"
         | (Atom (_, A s) | Quoted_string (_, s)) ->
           junk >>= fun () ->
           let len = String.length s in
@@ -417,7 +417,7 @@ module Lib_dep = struct
          repeat choice >>= fun choices ->
          return (Select { result_fn; choices; loc }))
     | sexp ->
-      of_sexp_error sexp
+      of_sexp_error (Sexp.Ast.loc sexp)
         "<library> or (select <module> from <libraries...>) expected"
 
   let to_lib_names = function
@@ -450,16 +450,16 @@ module Lib_deps = struct
         | Some kind' ->
           match kind, kind' with
           | Required, Required ->
-            of_sexp_errorf_loc loc "library %S is present twice" name
+            of_sexp_errorf loc "library %S is present twice" name
           | (Optional|Forbidden), (Optional|Forbidden) ->
             acc
           | Optional, Required | Required, Optional ->
-            of_sexp_errorf_loc loc
+            of_sexp_errorf loc
               "library %S is present both as an optional \
                and required dependency"
               name
           | Forbidden, Required | Required, Forbidden ->
-            of_sexp_errorf_loc loc
+            of_sexp_errorf loc
               "library %S is present both as a forbidden \
                and required dependency"
               name
@@ -773,7 +773,7 @@ module Install_conf = struct
     | List (_, [Atom (_, A src); Atom (_, A "as"); Atom (_, A dst)]) ->
       junk >>> return { src; dst = Some dst }
     | sexp ->
-      of_sexp_error sexp
+      of_sexp_error (Sexp.Ast.loc sexp)
         "invalid format, <name> or (<name> as <install-as>) expected"
 
   type t =
@@ -871,13 +871,13 @@ module Executables = struct
       let t =
         located (list t) >>| fun (loc, l) ->
         match l with
-        | [] -> of_sexp_errorf_loc loc "No linking mode defined"
+        | [] -> of_sexp_errorf loc "No linking mode defined"
         | l ->
           let t = of_list l in
           if (mem t native_exe           && mem t exe          ) ||
              (mem t native_object        && mem t object_      ) ||
              (mem t native_shared_object && mem t shared_object) then
-            of_sexp_errorf_loc loc
+            of_sexp_errorf loc
               "It is not allowed use both native and best \
                for the same binary kind."
           else
@@ -1177,7 +1177,7 @@ module Alias_conf = struct
   let alias_name =
     plain_string (fun ~loc s ->
       if Filename.basename s <> s then
-        of_sexp_errorf_loc loc "%S is not a valid alias name" s
+        of_sexp_errorf loc "%S is not a valid alias name" s
       else
         s)
 
@@ -1258,7 +1258,7 @@ module Env = struct
         in
         return (pat, configs))
     | sexp ->
-      of_sexp_error sexp
+      of_sexp_error (Sexp.Ast.loc sexp)
         "S-expression of the form (<profile> <fields>) expected"
 end
 

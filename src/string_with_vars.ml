@@ -66,7 +66,7 @@ let t =
   | Atom(loc, A s) -> { items = items_of_string s;  loc;  quoted = false }
   | Quoted_string (loc, s) ->
     { items = items_of_string s;  loc;  quoted = true }
-  | List _ as sexp -> of_sexp_error sexp "Atom or quoted string expected"
+  | List (loc, _) -> of_sexp_error loc "Atom or quoted string expected"
 
 let loc t = t.loc
 

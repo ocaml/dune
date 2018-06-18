@@ -47,7 +47,7 @@ module Dune_file = struct
              | "" | "." | ".." -> true
              | _ -> false
           then
-            of_sexp_errorf_loc loc "Invalid sub-directory name %S" dn
+            of_sexp_errorf loc "Invalid sub-directory name %S" dn
           else
             dn)
       in

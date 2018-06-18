@@ -72,7 +72,7 @@ end = struct
   let sexp_of_t t = Sexp.To_sexp.string (to_string t)
   let t = Sexp.Of_sexp.plain_string (fun ~loc t ->
     if Filename.is_relative t then
-      Sexp.Of_sexp.of_sexp_errorf_loc loc "Absolute path expected"
+      Sexp.Of_sexp.of_sexp_errorf loc "Absolute path expected"
     else
       of_string t)
 

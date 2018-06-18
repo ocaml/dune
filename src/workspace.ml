@@ -155,14 +155,17 @@ let t ?x ?profile:cmdline_profile sexps =
          name = "install" ||
          String.contains name '/' ||
          String.contains name '\\' then
-        of_sexp_errorf sexp "%S is not allowed as a build context name" name;
+        of_sexp_errorf (Sexp.Ast.loc sexp)
+          "%S is not allowed as a build context name" name;
       if String.Set.mem !defined_names name then
-        of_sexp_errorf sexp "second definition of build context %S" name;
+        of_sexp_errorf (Sexp.Ast.loc sexp)
+          "second definition of build context %S" name;
       defined_names := String.Set.union !defined_names
                          (String.Set.of_list (Context.all_names ctx));
       match ctx, t.merlin_context with
       | Opam { merlin = true; _ }, Some _ ->
-        of_sexp_errorf sexp "you can only have one context for merlin"
+        of_sexp_errorf (Sexp.Ast.loc sexp)
+          "you can only have one context for merlin"
       | Opam { merlin = true; _ }, None ->
         { merlin_context = Some name; contexts = ctx :: t.contexts }
       | _ ->

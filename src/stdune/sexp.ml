@@ -72,12 +72,10 @@ module Of_sexp = struct
 
   exception Of_sexp of Loc.t * string * hint option
 
-  let of_sexp_error sexp ?hint msg =
-    raise (Of_sexp (Ast.loc sexp, msg, hint))
-  let of_sexp_errorf sexp ?hint fmt =
-    Printf.ksprintf (fun msg -> of_sexp_error sexp ?hint msg) fmt
-  let of_sexp_errorf_loc loc ?hint fmt =
-    Printf.ksprintf (fun msg -> raise (Of_sexp (loc, msg, hint))) fmt
+  let of_sexp_error ?hint loc msg =
+    raise (Of_sexp (loc, msg, hint))
+  let of_sexp_errorf ?hint loc fmt =
+    Printf.ksprintf (fun msg -> of_sexp_error loc ?hint msg) fmt
 
   type unparsed_field =
     { values : Ast.t list
@@ -154,21 +152,21 @@ module Of_sexp = struct
           | sexp :: _ ->
             match cstr with
             | None ->
-              of_sexp_errorf sexp "This value is unused"
+              of_sexp_errorf (Ast.loc sexp) "This value is unused"
             | Some s ->
-              of_sexp_errorf sexp "Too many argument for %s" s
+              of_sexp_errorf (Ast.loc sexp) "Too many argument for %s" s
         end
       | Fields _ -> begin
           match Name_map.choose state.unparsed with
           | None -> v
           | Some (name, { entry; _ }) ->
-            let name_sexp =
+            let name_loc =
               match entry with
-              | List (_, s :: _) -> s
+              | List (_, s :: _) -> Ast.loc s
               | _ -> assert false
             in
             of_sexp_errorf ~hint:{ on = name; candidates = state.known }
-              name_sexp "Unknown field %s" name
+              name_loc "Unknown field %s" name
         end
 
   let parse t sexp =
@@ -179,9 +177,9 @@ module Of_sexp = struct
     match cstr with
     | None ->
       let loc = { loc with start = loc.stop } in
-      of_sexp_errorf_loc loc "Premature end of list"
+      of_sexp_errorf loc "Premature end of list"
     | Some s ->
-      of_sexp_errorf_loc loc "Not enough arguments for %s" s
+      of_sexp_errorf loc "Not enough arguments for %s" s
   [@@inline never]
 
   let next f ctx sexps =
@@ -200,7 +198,7 @@ module Of_sexp = struct
   let plain_string f =
     next (function
       | Atom (loc, A s) | Quoted_string (loc, s) -> f ~loc s
-      | List _ as sexp -> of_sexp_error sexp "Atom or quoted string expected")
+      | List (loc, _) -> of_sexp_error loc "Atom or quoted string expected")
 
   let enter t =
     next (function
@@ -208,7 +206,7 @@ module Of_sexp = struct
         let ctx = Values (loc, None) in
         result ctx (t ctx l)
       | sexp ->
-        of_sexp_error sexp "List expected")
+        of_sexp_error (Ast.loc sexp) "List expected")
 
   let fix f =
     let rec p = lazy (f r)
@@ -238,29 +236,22 @@ module Of_sexp = struct
       in
       search sexp rest
 
-  let of_sexp_error ?hint sexp str = raise (Of_sexp (Ast.loc sexp, str, hint))
-  let of_sexp_errorf ?hint sexp fmt =
-    Printf.ksprintf (of_sexp_error ?hint sexp) fmt
-
-  let of_sexp_errorf_loc ?hint loc fmt =
-    Printf.ksprintf (fun s -> raise (Of_sexp (loc, s, hint))) fmt
-
   let raw = next (fun x -> x)
 
   let unit =
     next
       (function
         | List (_, []) -> ()
-        | sexp -> of_sexp_error sexp "() expected")
+        | sexp -> of_sexp_error (Ast.loc sexp) "() expected")
 
   let basic desc f =
     next (function
       | List (loc, _) | Quoted_string (loc, _) ->
-        of_sexp_errorf_loc loc "%s expected" desc
+        of_sexp_errorf loc "%s expected" desc
       | Atom (loc, s)  ->
         match f (Atom.to_string s) with
         | Error () ->
-          of_sexp_errorf_loc loc "%s expected" desc
+          of_sexp_errorf loc "%s expected" desc
         | Ok x -> x)
 
   let string = plain_string (fun ~loc:_ x -> x)
@@ -306,7 +297,7 @@ module Of_sexp = struct
     | Ok x -> return x
     | Error (key, _v1, _v2) ->
       loc >>= fun loc ->
-      of_sexp_errorf_loc loc "key %s present multiple times" key
+      of_sexp_errorf loc "key %s present multiple times" key
 
   let string_hashtbl t =
     string_map t >>| fun map ->
@@ -320,7 +311,7 @@ module Of_sexp = struct
     | Some t ->
       result ctx (t ctx values)
     | None ->
-      of_sexp_errorf_loc loc
+      of_sexp_errorf loc
         ~hint:{ on         = name
               ; candidates = List.map cstrs ~f:fst
               }
@@ -331,25 +322,26 @@ module Of_sexp = struct
       match sexp with
       | Atom (loc, A s) ->
         find_cstr cstrs loc s (Values (loc, Some s)) []
-      | Quoted_string _ ->
-        of_sexp_error sexp "Atom expected"
-      | List (_, []) ->
-        of_sexp_error sexp "Non-empty list expected"
+      | Quoted_string (loc, _) ->
+        of_sexp_error loc "Atom expected"
+      | List (loc, []) ->
+        of_sexp_error loc "Non-empty list expected"
       | List (loc, name :: args) ->
         match name with
-        | Quoted_string _ | List _ -> of_sexp_error name "Atom expected"
+        | Quoted_string (loc, _) | List (loc, _) ->
+          of_sexp_error loc "Atom expected"
         | Atom (s_loc, A s) ->
           find_cstr cstrs s_loc s (Values (loc, Some s)) args)
 
   let enum cstrs =
-    next (fun sexp ->
-      match sexp with
-      | Quoted_string _ | List _ -> of_sexp_error sexp "Atom expected"
-      | Atom (_, A s) ->
+    next (function
+      | Quoted_string (loc, _)
+      | List (loc, _) -> of_sexp_error loc "Atom expected"
+      | Atom (loc, A s) ->
         match List.assoc cstrs s with
         | Some value -> value
         | None ->
-          of_sexp_errorf sexp
+          of_sexp_errorf loc
             ~hint:{ on         = s
                   ; candidates = List.map cstrs ~f:fst
                   }
@@ -391,10 +383,10 @@ module Of_sexp = struct
           let last = List.fold_left l ~init:first ~f:(fun _ x -> x) in
           { first with stop = last.stop }
       in
-      of_sexp_errorf_loc loc "%s" msg
+      of_sexp_errorf loc "%s" msg
 
   let field_missing (Fields (loc, _)) name =
-    of_sexp_errorf_loc loc "field %s missing" name
+    of_sexp_errorf loc "field %s missing" name
   [@@inline never]
 
   let rec multiple_occurrences ~name ~last ~prev =
@@ -403,7 +395,8 @@ module Of_sexp = struct
       (* Make the error message point to the second occurrence *)
       multiple_occurrences ~name ~last:prev ~prev:prev_prev
     | None ->
-      of_sexp_errorf last.entry "Field %S is present too many times" name
+      of_sexp_errorf (Ast.loc last.entry) "Field %S is present too many times"
+        name
   [@@inline never]
 
   let find_single state name =
@@ -464,11 +457,11 @@ module Of_sexp = struct
                 ; entry = sexp
                 ; prev  = Name_map.find acc name
                 }
-            | List _ | Quoted_string _ ->
-              of_sexp_error name_sexp "Atom expected"
+            | List (loc, _) | Quoted_string (loc, _) ->
+              of_sexp_error loc "Atom expected"
           end
         | _ ->
-          of_sexp_error sexp
+          of_sexp_error (Ast.loc sexp)
             "S-expression of the form (<name> <values>...) expected")
     in
     let ctx = Fields (loc, cstr) in

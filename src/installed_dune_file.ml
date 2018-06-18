@@ -32,7 +32,7 @@ let of_sexp =
     plain_string (fun ~loc -> function
       | "1" -> ()
       | _ ->
-        of_sexp_errorf_loc loc
+        of_sexp_errorf loc
           "Unsupported version, only version 1 is supported")
   in
   sum

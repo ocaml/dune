@@ -17,7 +17,7 @@ module Version = struct
           Loc.fail loc "Atom of the form NNN.NNN expected"
       end
     | sexp ->
-      of_sexp_error sexp "Atom expected"
+      of_sexp_error (Sexp.Ast.loc sexp) "Atom expected"
 
   let can_read ~parser_version:(pa, pb) ~data_version:(da, db) =
     pa = da && db <= pb

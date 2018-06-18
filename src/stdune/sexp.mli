@@ -146,9 +146,16 @@ module Of_sexp : sig
 
   val fix : ('a t -> 'a t) -> 'a t
 
-  val of_sexp_error  : ?hint:hint -> Ast.t -> string -> _
-  val of_sexp_errorf : ?hint:hint -> Ast.t -> ('a, unit, string, 'b) format4 -> 'a
-  val of_sexp_errorf_loc : ?hint:hint -> Loc.t -> ('a, unit, string, 'b) format4 -> 'a
+  val of_sexp_error
+    :  ?hint:hint
+    -> Loc.t
+    -> string
+    -> _
+  val of_sexp_errorf
+    :  ?hint:hint
+    -> Loc.t
+    -> ('a, unit, string, 'b) format4
+    -> 'a
 
   val located : 'a t -> (Loc.t * 'a) t
 

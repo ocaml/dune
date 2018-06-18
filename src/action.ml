@@ -329,7 +329,7 @@ module Unexpanded = struct
     let open Sexp.Of_sexp in
     peek raw >>= function
     | Atom _ | Quoted_string _ as sexp ->
-      of_sexp_errorf sexp
+      of_sexp_errorf (Sexp.Ast.loc sexp)
         "if you meant for this to be executed with bash, write (bash \"...\") instead"
     | List _ -> t
 
@@ -593,7 +593,8 @@ module Promotion = struct
            Path.t >>= fun dst ->
            return { src; dst })
       | sexp ->
-        Sexp.Of_sexp.of_sexp_errorf sexp "(<file> as <file>) expected"
+        Sexp.Of_sexp.of_sexp_errorf (Sexp.Ast.loc sexp)
+          "(<file> as <file>) expected"
 
     let sexp_of_t { src; dst } =
       Sexp.List [Path.sexp_of_t src; Sexp.unsafe_atom_of_string "as";

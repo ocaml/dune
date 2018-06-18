@@ -65,7 +65,7 @@ module Concurrency = struct
   let t =
     plain_string (fun ~loc s ->
       match of_string s with
-      | Error m -> of_sexp_errorf_loc loc "%s" m
+      | Error m -> of_sexp_errorf loc "%s" m
       | Ok s -> s)
 
   let to_string = function

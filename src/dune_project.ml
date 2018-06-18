@@ -75,7 +75,7 @@ end = struct
       if validate s then
         Named s
       else
-        Sexp.Of_sexp.of_sexp_errorf_loc loc "invalid project name")
+        Sexp.Of_sexp.of_sexp_errorf loc "invalid project name")
 
   let encode = function
     | Named     s -> s

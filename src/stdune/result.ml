@@ -31,6 +31,9 @@ let map_error x ~f =
   | Ok _ as res -> res
   | Error x -> Error (f x)
 
+let errorf fmt =
+  Printf.ksprintf (fun x -> Error x) fmt
+
 module O = struct
   let ( >>= ) t f = bind t ~f
   let ( >>| ) t f = map  t ~f

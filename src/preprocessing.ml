@@ -34,10 +34,9 @@ module Driver = struct
 
       open Sexp.Of_sexp
 
-      let short = None
       let parse =
         record
-          (list_loc >>= fun loc ->
+          (loc >>= fun loc ->
            Ordered_set_lang.Unexpanded.field "flags"      >>= fun      flags ->
            Ordered_set_lang.Unexpanded.field "lint_flags" >>= fun lint_flags ->
            field "main" string >>= fun main ->
@@ -53,12 +52,7 @@ module Driver = struct
 
       let parsers =
         Syntax.Versioned_parser.make
-          [ (1, 0),
-            { Jbuild.Sub_system_info.
-              short
-            ; parse
-            }
-          ]
+          [ (1, 0), parse ]
     end
 
     (* The [lib] field is lazy so that we don't need to fill it for

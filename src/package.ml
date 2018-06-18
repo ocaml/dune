@@ -13,7 +13,7 @@ module Name = struct
 
   let pp fmt t = Format.pp_print_string fmt (to_string t)
 
-  let t = Sexp.Of_sexp.(Parser.map ~f:of_string string)
+  let t = Sexp.Of_sexp.(map string ~f:of_string)
 end
 
 

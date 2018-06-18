@@ -24,19 +24,21 @@ let parse_sub_systems sexps =
       Syntax.Versioned_parser.find_exn M.parsers ~loc:vloc
         ~data_version:ver
     in
-    M.T (Sexp.Of_sexp.parse parser.parse data))
+    M.T (Sexp.Of_sexp.parse parser data))
 
 let of_sexp =
   let open Sexp.Of_sexp in
   let version =
-    Parser.map_validate string ~f:(function
-      | "1" -> Ok ()
-      | _  -> Parser.error "Unsupported version, only version 1 is supported")
+    plain_string (fun ~loc -> function
+      | "1" -> ()
+      | _ ->
+        of_sexp_errorf_loc loc
+          "Unsupported version, only version 1 is supported")
   in
   sum
     [ "dune",
-      (next version >>= fun () ->
-       next (list raw) >>| fun l ->
+      (version >>= fun () ->
+       list raw >>| fun l ->
        parse_sub_systems l)
     ]
 

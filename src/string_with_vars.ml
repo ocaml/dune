@@ -60,11 +60,13 @@ let rec of_tokens : Token.t list -> item list = function
 let items_of_string s = of_tokens (Token.tokenise s)
 
 let t =
-  Sexp.Of_sexp.make (function
-    | Atom(loc, A s) -> { items = items_of_string s;  loc;  quoted = false }
-    | Quoted_string (loc, s) ->
-      { items = items_of_string s;  loc;  quoted = true }
-    | List _ as sexp -> Sexp.Of_sexp.of_sexp_error sexp "Atom expected")
+  let open Sexp.Of_sexp in
+  raw >>| fun sexp ->
+  match sexp with
+  | Atom(loc, A s) -> { items = items_of_string s;  loc;  quoted = false }
+  | Quoted_string (loc, s) ->
+    { items = items_of_string s;  loc;  quoted = true }
+  | List _ as sexp -> of_sexp_error sexp "Atom or quoted string expected"
 
 let loc t = t.loc
 

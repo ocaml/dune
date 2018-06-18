@@ -75,10 +75,13 @@ type block_string_line_kind =
 let comment   = ';' [^ '\n' '\r']*
 let newline   = '\r'? '\n'
 let blank     = [' ' '\t' '\012']
-let atom_char =
-  [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\000'-'\032' '\127'-'\255']
 let digit     = ['0'-'9']
 let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
+
+let atom_char_jbuild =
+  [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\012']
+let atom_char_dune =
+  [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\000'-'\032' '\127'-'\255']
 
 (* rule for jbuild files *)
 rule jbuild_token = parse
@@ -117,7 +120,7 @@ and jbuild_atom acc start = parse
     { lexbuf.lex_start_p <- start;
       error lexbuf "jbuild_atoms cannot contain |#"
     }
-  | ('#'+ | '|'+ | (atom_char # ['|' '#'])) as s
+  | ('#'+ | '|'+ | (atom_char_jbuild # ['|' '#'])) as s
     { jbuild_atom (if acc = "" then s else acc ^ s) start lexbuf
     }
   | ""
@@ -244,7 +247,7 @@ and token = parse
       lexbuf.lex_start_p <- start;
       Quoted_string s
     }
-  | atom_char+ as s
+  | atom_char_dune+ as s
     { Token.Atom (A s) }
   | eof
     { Eof }

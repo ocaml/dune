@@ -508,6 +508,16 @@ module Of_sexp = struct
     (x, [])
 
   let record t = enter (fields t)
+
+  type kind =
+    | Values of Loc.t * string option
+    | Fields of Loc.t * string option
+
+  let kind : type k. k context -> k -> kind * k
+    = fun ctx state ->
+      match ctx with
+      | Values (loc, cstr, _) -> (Values (loc, cstr), state)
+      | Fields (loc, cstr, _) -> (Fields (loc, cstr), state)
 end
 
 module type Sexpable = sig

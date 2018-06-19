@@ -118,6 +118,14 @@ module Of_sexp : sig
       S-expressions to parse *)
   val eos : (bool, _) parser
 
+  (** What is currently being parsed. The second argument is the atom
+      at the beginnig of the list when inside a [sum ...] or [field
+      ...]. *)
+  type kind =
+    | Values of Loc.t * string option
+    | Fields of Loc.t * string option
+  val kind : (kind, _) parser
+
   (** [repeat t] use [t] to consume all remaning elements of the input
       until the end of sequence is reached. *)
   val repeat : 'a t -> 'a list t

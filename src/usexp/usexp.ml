@@ -17,7 +17,7 @@ module Atom = struct
    let rec loop s i len =
      i = len ||
      match String.unsafe_get s i with
-     | '"' | '(' | ')' | ';' | ' ' | '\t' | '\n' | '\012' | '\r' -> false
+     | '"' | '(' | ')' | ';' | '\000'..'\032' | '\127'..'\255' -> false
      | _ -> loop s (i + 1) len
    in
    fun s ->
@@ -52,19 +52,8 @@ let atom s =
 
 let unsafe_atom_of_string s = Atom(A s)
 
-let should_be_atom =
-  let rec loop s i len =
-    i = len ||
-    match String.unsafe_get s i with
-    | '"' | '(' | ')' | ';' | '\000'..'\032' | '\127'..'\255' -> false
-    | _ -> loop s (i + 1) len
-  in
-  fun s ->
-    let len = String.length s in
-    len > 0 && loop s 0 len
-
 let atom_or_quoted_string s =
-  if should_be_atom s then Atom (A s)
+  if Atom.is_valid s then Atom (A s)
   else Quoted_string s
 
 let quote_length s =
@@ -260,7 +249,7 @@ module Ast = struct
     | List of Loc.t * t list
 
   let atom_or_quoted_string loc s =
-    if should_be_atom s then Atom (loc, A s)
+    if Atom.is_valid s then Atom (loc, A s)
     else Quoted_string (loc, s)
 
   let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)) = loc

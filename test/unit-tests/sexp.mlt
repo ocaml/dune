@@ -137,3 +137,28 @@ parse {|"$bar%foo%"|}
 [%%expect{|
 - : parse_result = Same (Ok ["$bar%foo%"])
 |}]
+
+parse {|\%{foo}|}
+[%%expect{|
+- : parse_result = Same (Ok [\%{foo}])
+|}]
+
+parse {|\${foo}|}
+[%%expect{|
+- : parse_result = Same (Ok [\${foo}])
+|}]
+
+parse {|\$bar%foo%|}
+[%%expect{|
+- : parse_result = Same (Ok [\$bar%foo%])
+|}]
+
+parse {|\$bar\%foo%|}
+[%%expect{|
+- : parse_result = Same (Ok [\$bar\%foo%])
+|}]
+
+parse {|\$bar\%foo%{bar}|}
+[%%expect{|
+- : parse_result = Same (Ok [\$bar\%foo%{bar}])
+|}]

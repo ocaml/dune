@@ -299,13 +299,13 @@ module Of_sexp = struct
     basic "Integer" (fun s ->
       match int_of_string (s Atom.Dune) with
       | x -> Ok x
-      | exception _ -> Error ())
+      | exception _ -> Result.Error ())
 
   let float =
     basic "Float" (fun s ->
       match float_of_string (s Atom.Dune) with
       | x -> Ok x
-      | exception _ -> Error ())
+      | exception _ -> Result.Error ())
 
   let pair a b =
     enter
@@ -334,7 +334,7 @@ module Of_sexp = struct
   let string_map t =
     list (pair string t) >>= fun bindings ->
     match String.Map.of_list bindings with
-    | Ok x -> return x
+    | Result.Ok x -> return x
     | Error (key, _v1, _v2) ->
       loc >>= fun loc ->
       of_sexp_errorf loc "key %s present multiple times" key

@@ -32,6 +32,14 @@ module Driver = struct
 
       let loc t = t.loc
 
+      (* The syntax of the driver sub-system is part of the main dune
+         syntax, so we simply don't create a new one.
+
+         If we wanted to make the ppx system an extension, then we
+         would create a new one.
+      *)
+      let syntax = Jbuild.syntax
+
       open Sexp.Of_sexp
 
       let parse =
@@ -49,10 +57,6 @@ module Driver = struct
              ; main
              ; replaces
              })
-
-      let parsers =
-        Syntax.Versioned_parser.make
-          [ (1, 0), parse ]
     end
 
     (* The [lib] field is lazy so that we don't need to fill it for

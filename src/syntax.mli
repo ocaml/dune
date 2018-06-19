@@ -1,5 +1,6 @@
+(** Management of syntaxes *)
+
 open Stdune
-(** Versioned syntaxes *)
 
 module Version : sig
   (** A syntax version.
@@ -11,20 +12,33 @@ module Version : sig
 
   include Sexp.Sexpable with type t := t
 
+  val to_string : t -> string
+
   (** Whether the parser can read the data or not *)
   val can_read : parser_version:t -> data_version:t -> bool
 end
 
-module Versioned_parser : sig
-  (** Versioned parser *)
-  type 'a t
+type t
 
-  (** Create a versionned parser. There must be exactly one parser per
-      major version. *)
-  val make : (Version.t * 'a) list -> 'a t
+(** [create ~name supported_versions] defines a new
+    syntax. [supported_version] is the list of the last minor version
+    of each supported major version. *)
+val create : name:string -> Version.t list -> t
 
-  val last : 'a t -> Version.t * 'a
+(** Return the name of the syntax. *)
+val name : t -> string
 
-  (** Find a parser that can parse data of this version *)
-  val find_exn : 'a t -> loc:Loc.t -> data_version:Version.t -> 'a
-end
+(** Check that the given version is supported and raise otherwise. *)
+val check_supported : t -> Loc.t * Version.t -> unit
+
+val greatest_supported_version : t -> Version.t
+
+val set
+  :  t
+  -> Version.t
+  -> ('a, 'k) Sexp.Of_sexp.parser
+  -> ('a, 'k) Sexp.Of_sexp.parser
+
+val get_exn : t -> (Version.t, 'k) Sexp.Of_sexp.parser
+
+val key : t -> Version.t Univ_map.Key.t

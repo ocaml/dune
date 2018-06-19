@@ -22,6 +22,14 @@ module Backend = struct
 
       let loc t = t.loc
 
+      (* The syntax of the driver sub-system is part of the main dune
+         syntax, so we simply don't create a new one.
+
+         If we wanted to make the ppx system an extension, then we
+         would create a new one.
+      *)
+      let syntax = Jbuild.syntax
+
       open Sexp.Of_sexp
 
       let parse =
@@ -41,11 +49,6 @@ module Backend = struct
              ; generate_runner
              ; extends
              })
-
-      let parsers =
-        Syntax.Versioned_parser.make
-          [ (1, 0), parse
-          ]
     end
 
     type t =
@@ -125,6 +128,8 @@ include Sub_system.Register_end_point(
       let loc      t = t.loc
       let backends t = Option.map t.backend ~f:(fun x -> [x])
 
+      let syntax = Jbuild.syntax
+
       open Sexp.Of_sexp
 
       let parse =
@@ -145,11 +150,6 @@ include Sub_system.Register_end_point(
                ; backend
                ; libraries
                })
-
-      let parsers =
-        Syntax.Versioned_parser.make
-          [ (1, 0), parse
-          ]
     end
 
     let gen_rules c ~(info:Info.t) ~backends =

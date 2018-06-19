@@ -5,6 +5,12 @@ open Sexp.Of_sexp
    syntax for the various supported version of the specification.
 *)
 
+let syntax =
+  Syntax.create ~name:"dune"
+    [ (0, 0) (* Jbuild syntax *)
+    ; (1, 0)
+    ]
+
 (* Deprecated *)
 module Jbuild_version = struct
   type t =
@@ -575,9 +581,10 @@ module Sub_system_info = struct
   module type S = sig
     type t
     type sub_system += T of t
-    val name    : Sub_system_name.t
-    val loc     : t -> Loc.t
-    val parsers : t Sexp.Of_sexp.t Syntax.Versioned_parser.t
+    val name   : Sub_system_name.t
+    val loc    : t -> Loc.t
+    val syntax : Syntax.t
+    val parse  : t Sexp.Of_sexp.t
   end
 
   let all = Sub_system_name.Table.create ~default_value:None
@@ -587,8 +594,6 @@ module Sub_system_info = struct
 
   module Register(M : S) : sig end = struct
     open M
-
-    let parse = snd (Syntax.Versioned_parser.last M.parsers)
 
     let () =
       match Sub_system_name.Table.get all name with
@@ -1346,10 +1351,7 @@ module Stanzas = struct
     ]
 
   let () =
-    let open Dune_project.Lang in
-    register "dune"
-      [ make (1, 0) dune
-      ]
+    Dune_project.Lang.register syntax dune
 
   exception Include_loop of Path.t * (Loc.t * Path.t) list
 

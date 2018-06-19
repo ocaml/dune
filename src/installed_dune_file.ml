@@ -20,12 +20,11 @@ let parse_sub_systems sexps =
       Loc.fail loc "%S present twice" (Sub_system_name.to_string name))
   |> Sub_system_name.Map.mapi ~f:(fun name (_, version, data) ->
     let (module M) = Jbuild.Sub_system_info.get name in
-    let vloc, ver = version in
-    let parser =
-      Syntax.Versioned_parser.find_exn M.parsers ~loc:vloc
-        ~data_version:ver
+    Syntax.check_supported M.syntax version;
+    let parsing_context =
+      Univ_map.singleton (Syntax.key M.syntax) (snd version)
     in
-    M.T (Sexp.Of_sexp.parse parser Univ_map.empty data))
+    M.T (Sexp.Of_sexp.parse M.parse parsing_context data))
 
 let of_sexp =
   let open Sexp.Of_sexp in

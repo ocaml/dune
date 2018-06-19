@@ -23,38 +23,71 @@ module Version = struct
     pa = da && db <= pb
 end
 
-module Versioned_parser = struct
-  type 'a t = (int * 'a) Int.Map.t
+module Supported_versions = struct
+  type t = int Int.Map.t
 
-  let make l =
-    if List.is_empty l then
-      Exn.code_error "Syntax.Versioned_parser.make got empty list" [];
+  let make l : t =
     match
-      List.map l ~f:(fun ((major, minor), p) -> (major, (minor, p)))
+      List.map l ~f:(fun (major, minor) -> (major, minor))
       |> Int.Map.of_list
     with
     | Ok x -> x
     | Error _ ->
       Exn.code_error
-        "Syntax.Versioned_parser.make"
-        [ "versions", Sexp.To_sexp.list Version.sexp_of_t (List.map l ~f:fst) ]
+        "Syntax.create"
+        [ "versions", Sexp.To_sexp.list Version.sexp_of_t l ]
 
-  let last t =
-    let major, (minor, p) = Option.value_exn (Int.Map.max_binding t) in
-    ((major, minor), p)
+  let greatest_supported_version t = Option.value_exn (Int.Map.max_binding t)
 
-  let find_exn t ~loc ~data_version:(major, minor) =
-    match
-      Option.bind (Int.Map.find t major) ~f:(fun (minor', p) ->
-        Option.some_if (minor' >= minor) p)
-    with
-    | None ->
-      Loc.fail loc "Version %s is not supported.\n\
-                    Supported versions:\n\
-                    %s"
-        (Version.to_string (major, minor))
-        (String.concat ~sep:"\n"
-           (Int.Map.to_list t |> List.map ~f:(fun (major, (minor, _)) ->
-              sprintf "- %u.0 to %u.%u" major major minor)))
-    | Some p -> p
+  let is_supported t (major, minor) =
+    match Int.Map.find t major with
+    | Some minor' -> minor' >= minor
+    | None -> false
+
+  let supported_ranges t =
+    Int.Map.to_list t |> List.map ~f:(fun (major, minor) ->
+      ((major, 0), (major, minor)))
 end
+
+type t =
+  { name : string
+  ; key  : Version.t Univ_map.Key.t
+  ; supported_versions : Supported_versions.t
+  }
+
+let create ~name supported_versions =
+  { name
+  ; key = Univ_map.Key.create ()
+  ; supported_versions = Supported_versions.make supported_versions
+  }
+
+let name t = t.name
+
+let check_supported t (loc, ver) =
+  if not (Supported_versions.is_supported t.supported_versions ver) then
+    Loc.fail loc "Version %s of %s is not supported.\n\
+                  Supported versions:\n\
+                  %s"
+      (Version.to_string ver) t.name
+      (String.concat ~sep:"\n"
+         (List.map (Supported_versions.supported_ranges t.supported_versions)
+            ~f:(fun (a, b) ->
+              sprintf "- %s to %s"
+                (Version.to_string a)
+                (Version.to_string b))))
+
+let greatest_supported_version t =
+  Supported_versions.greatest_supported_version t.supported_versions
+
+let key t = t.key
+
+let set t ver parser =
+  Sexp.Of_sexp.set t.key ver parser
+
+let get_exn t =
+  let open Sexp.Of_sexp in
+  get t.key >>| function
+  | Some x -> x
+  | None ->
+    Exn.code_error "Syntax identifier is unset"
+      [ "name", Sexp.To_sexp.string t.name ]

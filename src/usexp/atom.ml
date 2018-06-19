@@ -12,8 +12,12 @@ let (is_valid_jbuild, is_valid_dune) =
   let rec jbuild s i len =
     i = len ||
     match String.unsafe_get s i with
+    | '#' -> disallow_next '|' s (i + 1) len
+    | '|' -> disallow_next '#' s (i + 1) len
     | '"' | '(' | ')' | ';' | '\000'..'\032' | '\127'..'\255' -> false
     | _ -> jbuild s (i + 1) len
+  and disallow_next c s i len =
+    i = len || String.unsafe_get s i <> c && jbuild s i len
   in
   let rec dune s i len =
     i = len ||

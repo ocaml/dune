@@ -51,12 +51,14 @@ end
 
 type t =
   { name : string
+  ; desc : string
   ; key  : Version.t Univ_map.Key.t
   ; supported_versions : Supported_versions.t
   }
 
-let create ~name supported_versions =
+let create ~name ~desc supported_versions =
   { name
+  ; desc
   ; key = Univ_map.Key.create ()
   ; supported_versions = Supported_versions.make supported_versions
   }
@@ -81,13 +83,55 @@ let greatest_supported_version t =
 
 let key t = t.key
 
+open Sexp.Of_sexp
+
 let set t ver parser =
-  Sexp.Of_sexp.set t.key ver parser
+  set t.key ver parser
 
 let get_exn t =
-  let open Sexp.Of_sexp in
   get t.key >>| function
   | Some x -> x
   | None ->
     Exn.code_error "Syntax identifier is unset"
       [ "name", Sexp.To_sexp.string t.name ]
+
+let desc () =
+  kind >>| fun kind ->
+  match kind with
+  | Values (loc, None) -> (loc, "This syntax")
+  | Fields (loc, None) -> (loc, "This field")
+  | Values (loc, Some s) -> (loc, sprintf "'%s'" s)
+  | Fields (loc, Some s) -> (loc, sprintf "Field '%s'" s)
+
+let deleted_in t ver =
+  get_exn t >>= fun current_ver ->
+  if current_ver < ver then
+    return ()
+  else begin
+    desc () >>= fun (loc, what) ->
+    Loc.fail loc
+      "%s was deleted in version %s of %s" what
+      (Version.to_string ver) t.desc
+  end
+
+let renamed_in t ver ~to_ =
+  get_exn t >>= fun current_ver ->
+  if current_ver < ver then
+    return ()
+  else begin
+    desc () >>= fun (loc, what) ->
+    Loc.fail loc
+      "%s was renamed to '%s' in %s of %s" what to_
+      (Version.to_string ver) t.desc
+  end
+
+let since t ver =
+  get_exn t >>= fun current_ver ->
+  if current_ver >= ver then
+    return ()
+  else begin
+    desc () >>= fun (loc, what) ->
+    Loc.fail loc
+      "%s is only available since version %s of %s" what
+      (Version.to_string ver) t.desc
+  end

@@ -20,10 +20,11 @@ end
 
 type t
 
-(** [create ~name supported_versions] defines a new
+(** [create ~name ~desc supported_versions] defines a new
     syntax. [supported_version] is the list of the last minor version
-    of each supported major version. *)
-val create : name:string -> Version.t list -> t
+    of each supported major version. [desc] is used to describe what
+    this syntax represent in error messages. *)
+val create : name:string -> desc:string -> Version.t list -> t
 
 (** Return the name of the syntax. *)
 val name : t -> string
@@ -32,6 +33,24 @@ val name : t -> string
 val check_supported : t -> Loc.t * Version.t -> unit
 
 val greatest_supported_version : t -> Version.t
+
+(** {1 S-expression parsing} *)
+
+(** {2 High-level functions} *)
+
+(** Indicate the field/constructor being parsed was deleted in the
+    given version *)
+val deleted_in : t -> Version.t -> (unit, _) Sexp.Of_sexp.parser
+
+(** Indicate the field/constructor being parsed was renamed in the
+    given version *)
+val renamed_in : t -> Version.t -> to_:string ->  (unit, _) Sexp.Of_sexp.parser
+
+(** Indicate the field/constructor being parsed was introduced in the
+    given version *)
+val since : t -> Version.t ->  (unit, _) Sexp.Of_sexp.parser
+
+(** {2 Low-level functions} *)
 
 val set
   :  t

@@ -544,6 +544,14 @@
     (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
 
 (alias
+ ((name syntax-versioning)
+  (deps ((package dune) (files_recursively_in test-cases/syntax-versioning)))
+  (action
+   (chdir
+    test-cases/syntax-versioning
+    (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+
+(alias
  ((name use-meta)
   (deps ((package dune) (files_recursively_in test-cases/use-meta)))
   (action
@@ -623,6 +631,7 @@
     (alias scope-bug)
     (alias scope-ppx-bug)
     (alias select)
+    (alias syntax-versioning)
     (alias use-meta)
     (alias utop)))))
 
@@ -682,6 +691,7 @@
     (alias scope-bug)
     (alias scope-ppx-bug)
     (alias select)
+    (alias syntax-versioning)
     (alias use-meta)))))
 
 (alias ((name runtest-disabled) (deps ((alias reason)))))

@@ -122,6 +122,9 @@ module Of_sexp : sig
       until the end of sequence is reached. *)
   val repeat : 'a t -> 'a list t
 
+  (** Capture the rest of the input for later parsing *)
+  val capture : ('a t -> 'a) t
+
   (** [enter t] expect the next element of the input to be a list and
       parse its contents with [t]. *)
   val enter : 'a t -> 'a t

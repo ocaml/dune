@@ -199,6 +199,12 @@ module Of_sexp = struct
     let ctx = Values (Ast.loc sexp, None, context) in
     result ctx (t ctx [sexp])
 
+  let capture ctx state =
+    let f t =
+      result ctx (t ctx state)
+    in
+    (f, [])
+
   let end_of_list (Values (loc, cstr, _)) =
     match cstr with
     | None ->

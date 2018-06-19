@@ -1,13 +1,11 @@
 open Import
 open Sexp.Of_sexp
 
-(* This file defines the jbuild types as well as the S-expression syntax for the various
-   supported version of the specification.
-
-   [vN] is for the version [N] of the specification and [vjs] is for the rolling
-   [jane_street] version, when needed.
+(* This file defines the jbuild types as well as the S-expression
+   syntax for the various supported version of the specification.
 *)
 
+(* Deprecated *)
 module Jbuild_version = struct
   type t =
     | V1
@@ -16,8 +14,6 @@ module Jbuild_version = struct
     enum
       [ "1", V1
       ]
-
-  let latest_stable = V1
 end
 
 let invalid_module_name ~loc =
@@ -502,7 +498,7 @@ module Buildable = struct
   let modules_field name =
     field name Ordered_set_lang.t ~default:Ordered_set_lang.standard
 
-  let v1 =
+  let t =
     loc >>= fun loc ->
     field "preprocess" Preprocess_map.t ~default:Preprocess_map.default
     >>= fun preprocess ->
@@ -704,9 +700,9 @@ module Library = struct
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     }
 
-  let v1 =
+  let t =
     record
-      (Buildable.v1 >>= fun buildable ->
+      (Buildable.t >>= fun buildable ->
        field      "name" library_name                                      >>= fun name                     ->
        Public_lib.public_name_field                                        >>= fun public                   ->
        field_o    "synopsis" string                                        >>= fun synopsis                 ->
@@ -786,7 +782,7 @@ module Install_conf = struct
     ; package : Package.t
     }
 
-  let v1 =
+  let t =
     record
       (field   "section" Install.Section.t >>= fun section ->
        field   "files"   (list file)       >>= fun files ->
@@ -907,7 +903,7 @@ module Executables = struct
     }
 
   let common names public_names ~syntax ~multi =
-    Buildable.v1 >>= fun buildable ->
+    Buildable.t >>= fun buildable ->
     (match (syntax : File_tree.Dune_file.Kind.t) with
      | Dune ->
        return ()
@@ -1044,7 +1040,7 @@ module Rule = struct
     ; loc      : Loc.t
     }
 
-  let v1 =
+  let t =
     peek raw >>= function
     | List (_, (Atom _ :: _)) ->
       located Action.Unexpanded.t >>| fun (loc, action) ->
@@ -1089,7 +1085,7 @@ module Rule = struct
     ; mode    : Mode.t
     }
 
-  let ocamllex_v1 =
+  let ocamllex =
     peek raw >>= function
     | List (_, List (_, _) :: _) ->
       record
@@ -1102,7 +1098,7 @@ module Rule = struct
       ; mode  = Standard
       }
 
-  let ocamlyacc_v1 = ocamllex_v1
+  let ocamlyacc = ocamllex
 
   let ocamllex_to_rule loc { modules; mode } =
     let module S = String_with_vars in
@@ -1153,7 +1149,7 @@ module Menhir = struct
     ; loc        :  Loc.t
     }
 
-  let v1 =
+  let t =
     record
       (field_o "merge_into" string >>= fun merge_into ->
        field_oslu "flags" >>= fun flags ->
@@ -1185,7 +1181,7 @@ module Alias_conf = struct
       else
         s)
 
-  let v1 =
+  let t =
     record
       (field "name" alias_name                          >>= fun name ->
        field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
@@ -1206,7 +1202,7 @@ module Copy_files = struct
            ; glob : String_with_vars.t
            }
 
-  let v1 = String_with_vars.t
+  let t = String_with_vars.t
 end
 
 module Documentation = struct
@@ -1215,7 +1211,7 @@ module Documentation = struct
     ; mld_files: Ordered_set_lang.t
     }
 
-  let v1 =
+  let t =
     record
       (Pkg.field >>= fun package ->
        field "mld_files" Ordered_set_lang.t ~default:Ordered_set_lang.standard
@@ -1295,44 +1291,44 @@ module Stanzas = struct
 
   let common ~syntax : constructors =
     [ "library",
-      (Library.v1 >>| fun x ->
+      (Library.t >>| fun x ->
        [Library x])
     ; "executable" , Executables.single ~syntax >>| execs
     ; "executables", Executables.multi  ~syntax >>| execs
     ; "rule",
       (loc >>= fun loc ->
-       Rule.v1 >>| fun x ->
+       Rule.t >>| fun x ->
        [Rule { x with loc }])
     ; "ocamllex",
       (loc >>= fun loc ->
-       Rule.ocamllex_v1 >>| fun x ->
+       Rule.ocamllex >>| fun x ->
        rules (Rule.ocamllex_to_rule loc x))
     ; "ocamlyacc",
       (loc >>= fun loc ->
-       Rule.ocamlyacc_v1 >>| fun x ->
+       Rule.ocamlyacc >>| fun x ->
        rules (Rule.ocamlyacc_to_rule loc x))
     ; "menhir",
       (loc >>= fun loc ->
-       Menhir.v1 >>| fun x ->
+       Menhir.t >>| fun x ->
        [Menhir { x with loc }])
     ; "install",
-      (Install_conf.v1 >>| fun x ->
+      (Install_conf.t >>| fun x ->
        [Install x])
     ; "alias",
-      (Alias_conf.v1 >>| fun x ->
+      (Alias_conf.t >>| fun x ->
        [Alias x])
     ; "copy_files",
-      (Copy_files.v1 >>| fun glob ->
+      (Copy_files.t >>| fun glob ->
        [Copy_files {add_line_directive = false; glob}])
     ; "copy_files#",
-      (Copy_files.v1 >>| fun glob ->
+      (Copy_files.t >>| fun glob ->
        [Copy_files {add_line_directive = true; glob}])
     ; "include",
       (loc >>= fun loc ->
        relative_file >>| fun fn ->
        [Include (loc, fn)])
     ; "documentation",
-      (Documentation.v1 >>| fun d ->
+      (Documentation.t >>| fun d ->
        [Documentation d])
     ]
 

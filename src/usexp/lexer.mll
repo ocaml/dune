@@ -81,7 +81,7 @@ let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
 let atom_char_jbuild =
   [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\012']
 let atom_char_dune =
-  [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\000'-'\032' '\127'-'\255']
+  [^ ';' '(' ')' '"' '\000'-'\032' '\127'-'\255']
 
 (* rule for jbuild files *)
 rule jbuild_token = parse

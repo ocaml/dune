@@ -8,7 +8,7 @@ open Stdune;;
 
 (* Jbuild.Executables.Link_mode.t *)
 let test s =
-  Sexp.Of_sexp.parse Jbuild.Executables.Link_mode.t
+  Sexp.Of_sexp.parse Jbuild.Executables.Link_mode.t Univ_map.empty
     (Sexp.parse_string ~fname:"" ~mode:Sexp.Parser.Mode.Single s)
 [%%expect{|
 val test : string -> Dune.Jbuild.Executables.Link_mode.t = <fun>

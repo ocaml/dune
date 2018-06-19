@@ -94,14 +94,21 @@ module Of_sexp : sig
   type 'a t             = ('a, values) parser
   type 'a fields_parser = ('a, fields) parser
 
-  (** Parse a S-expression using the following parser *)
-  val parse : 'a t -> ast -> 'a
+  (** [parse parser context sexp] parse a S-expression using the
+      following parser. The input consist of a single
+      S-expression. [context] allows to pass extra informations such as
+      versions to individual parsers. *)
+  val parse : 'a t -> Univ_map.t -> ast -> 'a
 
   val return : 'a -> ('a, _) parser
   val (>>=) : ('a, 'k) parser -> ('a -> ('b, 'k) parser) -> ('b, 'k) parser
   val (>>|) : ('a, 'k) parser -> ('a -> 'b) -> ('b, 'k) parser
   val (>>>) : (unit, 'k) parser -> ('a, 'k) parser -> ('a, 'k) parser
   val map : ('a, 'k) parser -> f:('a -> 'b) -> ('b, 'k) parser
+
+  (** Access to the context *)
+  val get : 'a Univ_map.Key.t -> ('a option, _) parser
+  val set : 'a Univ_map.Key.t -> 'a -> ('b, 'k) parser -> ('b, 'k) parser
 
   (** Return the location of the list currently being parsed. *)
   val loc : (Loc.t, _) parser

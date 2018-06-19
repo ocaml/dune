@@ -182,7 +182,7 @@ module Jbuild_driver = struct
   let make name info : (Pp.t * Driver.t) Lazy.t = lazy (
     let info =
       Sexp.parse_string ~mode:Single ~fname:"<internal>" info
-      |> Sexp.Of_sexp.parse Driver.Info.parse
+      |> Sexp.Of_sexp.parse Driver.Info.parse Univ_map.empty
     in
     (Pp.of_string name,
      { info

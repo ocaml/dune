@@ -111,7 +111,7 @@ let t ?x ?profile:cmdline_profile sexps =
   let defined_names = ref String.Set.empty in
   let profiles, contexts =
     List.partition_map sexps ~f:(fun sexp ->
-      match Sexp.Of_sexp.parse item_of_sexp sexp with
+      match Sexp.Of_sexp.parse item_of_sexp Univ_map.empty sexp with
       | Profile (loc, p) -> Left (loc, p)
       | Context c -> Right c)
   in
@@ -130,7 +130,7 @@ let t ?x ?profile:cmdline_profile sexps =
       }
     in
     List.fold_left contexts ~init ~f:(fun t sexp ->
-      let ctx = Sexp.Of_sexp.parse (Context.t ~profile) sexp in
+      let ctx = Sexp.Of_sexp.parse (Context.t ~profile) Univ_map.empty sexp in
       let ctx =
         match x with
         | None -> ctx

@@ -1354,7 +1354,7 @@ module Stanzas = struct
   exception Include_loop of Path.t * (Loc.t * Path.t) list
 
   let rec parse stanza_parser ~current_file ~include_stack sexps =
-    List.concat_map sexps ~f:(Sexp.Of_sexp.parse stanza_parser)
+    List.concat_map sexps ~f:(Sexp.Of_sexp.parse stanza_parser Univ_map.empty)
     |> List.concat_map ~f:(function
       | Include (loc, fn) ->
         let include_stack = (loc, current_file) :: include_stack in

@@ -3,7 +3,8 @@ open Import
 let parse_sub_systems sexps =
   List.filter_map sexps ~f:(fun sexp ->
     let name, ver, data =
-      Sexp.Of_sexp.(parse (triple string (located Syntax.Version.t) raw)) sexp
+      Sexp.Of_sexp.(parse (triple string (located Syntax.Version.t) raw)
+                      Univ_map.empty) sexp
     in
     match Sub_system_name.get name with
     | None ->
@@ -24,7 +25,7 @@ let parse_sub_systems sexps =
       Syntax.Versioned_parser.find_exn M.parsers ~loc:vloc
         ~data_version:ver
     in
-    M.T (Sexp.Of_sexp.parse parser data))
+    M.T (Sexp.Of_sexp.parse parser Univ_map.empty data))
 
 let of_sexp =
   let open Sexp.Of_sexp in
@@ -42,7 +43,8 @@ let of_sexp =
        parse_sub_systems l)
     ]
 
-let load fname = Sexp.Of_sexp.parse of_sexp (Io.Sexp.load ~mode:Single fname)
+let load fname =
+  Sexp.Of_sexp.parse of_sexp Univ_map.empty (Io.Sexp.load ~mode:Single fname)
 
 let gen confs =
   let sexps =

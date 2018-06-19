@@ -143,7 +143,7 @@ module Lang = struct
         } = first_line
     in
     let ver =
-      Sexp.Of_sexp.parse Syntax.Version.t
+      Sexp.Of_sexp.parse Syntax.Version.t Univ_map.empty
         (Atom (ver_loc, Sexp.Atom.of_string ver)) in
     match Hashtbl.find langs name with
     | None ->
@@ -269,7 +269,8 @@ let load_dune_project ~dir packages =
   Io.with_lexbuf_from_file fname ~f:(fun lb ->
     let lang_stanzas = Lang.parse (Dune_lexer.first_line lb) in
     let sexp = Sexp.Parser.parse lb ~mode:Many_as_one in
-    Sexp.Of_sexp.parse (parse ~dir ~lang_stanzas ~packages ~file:fname) sexp)
+    Sexp.Of_sexp.parse (parse ~dir ~lang_stanzas ~packages ~file:fname)
+      Univ_map.empty sexp)
 
 let make_jbuilder_project ~dir packages =
   let t =

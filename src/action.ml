@@ -626,7 +626,8 @@ module Promotion = struct
   let load_db () =
     if Path.exists db_file then
       Sexp.Of_sexp.(
-        parse (list File.t) (Io.Sexp.load db_file ~mode:Many_as_one))
+        parse (list File.t) Univ_map.empty
+          (Io.Sexp.load db_file ~mode:Many_as_one))
     else
       []
 

@@ -115,7 +115,7 @@ let user_config_file =
     "dune/config"
 
 let load_config_file p =
-  (Sexp.Of_sexp.parse t) (Io.Sexp.load p ~mode:Many_as_one)
+  (Sexp.Of_sexp.parse t Univ_map.empty) (Io.Sexp.load p ~mode:Many_as_one)
 
 let load_user_config_file () =
   if Path.exists user_config_file then

@@ -22,6 +22,7 @@ module Sexp       = Sexp
 module Path       = Path
 module Fmt        = Fmt
 module Interned   = Interned
+module Univ_map   = Univ_map
 
 external reraise : exn -> _ = "%reraise"
 

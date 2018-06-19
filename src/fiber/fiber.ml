@@ -1,50 +1,5 @@
 open Stdune
 
-module Eq = struct
-  type ('a, 'b) t = T : ('a, 'a) t
-
-  let cast (type a) (type b) (T : (a, b) t) (x : a) : b = x
-end
-
-module Var0 = struct
-  module Key = struct
-    type 'a t = ..
-  end
-
-  module type T = sig
-    type t
-    type 'a Key.t += T : t Key.t
-    val id : int
-  end
-
-  type 'a t = (module T with type t = 'a)
-
-  let next = ref 0
-
-  let create (type a) () =
-    let n = !next in
-    next := n + 1;
-    let module M = struct
-      type t = a
-      type 'a Key.t += T : t Key.t
-      let id = n
-    end in
-    (module M : T with type t = a)
-
-  let id (type a) (module M : T with type t = a) = M.id
-
-  let eq (type a) (type b)
-        (module A : T with type t = a)
-        (module B : T with type t = b) : (a, b) Eq.t =
-    match A.T with
-    | B.T -> Eq.T
-    | _ -> assert false
-end
-
-module Binding = struct
-  type t = T : 'a Var0.t * 'a -> t
-end
-
 module Execution_context : sig
   type t
 
@@ -66,14 +21,14 @@ module Execution_context : sig
     -> on_error:(exn -> unit)
     -> t
 
-  val vars : t -> Binding.t Int.Map.t
-  val set_vars : t -> Binding.t Int.Map.t -> t
+  val vars : t -> Univ_map.t
+  val set_vars : t -> Univ_map.t -> t
 end = struct
   type t =
     { on_error : exn -> unit (* This callback must never raise *)
     ; fibers   : int ref (* Number of fibers running in this execution
                             context *)
-    ; vars     : Binding.t Int.Map.t
+    ; vars     : Univ_map.t
     ; on_release : unit -> unit
     }
 
@@ -83,7 +38,7 @@ end = struct
   let create_initial () =
     { on_error   = reraise
     ; fibers     = ref 1
-    ; vars       = Int.Map.empty
+    ; vars       = Univ_map.empty
     ; on_release = ignore
     }
 
@@ -269,29 +224,13 @@ let parallel_iter l ~f ctx k =
         EC.forward_error ctx exn)
 
 module Var = struct
-  include Var0
+  include Univ_map.Key
 
-  let find ctx var =
-    match Int.Map.find (EC.vars ctx) (id var) with
-    | None -> None
-    | Some (Binding.T (var', v)) ->
-      let eq = eq var' var in
-      Some (Eq.cast eq v)
+  let get     var ctx k = k (Univ_map.find     (EC.vars ctx) var)
+  let get_exn var ctx k = k (Univ_map.find_exn (EC.vars ctx) var)
 
-  let find_exn ctx var =
-    match Int.Map.find (EC.vars ctx) (id var) with
-    | None -> failwith "Fiber.Var.find_exn"
-    | Some (Binding.T (var', v)) ->
-      let eq = eq var' var in
-      Eq.cast eq v
-
-  let get     var ctx k = k (find     ctx var)
-  let get_exn var ctx k = k (find_exn ctx var)
-
-  let set (type a) (var : a t) x fiber ctx k =
-    let (module M) = var in
-    let data = Binding.T (var, x) in
-    let ctx = EC.set_vars ctx (Int.Map.add (EC.vars ctx) M.id data) in
+  let set var x fiber ctx k =
+    let ctx = EC.set_vars ctx (Univ_map.add (EC.vars ctx) var x) in
     fiber ctx k
 end
 

@@ -72,74 +72,10 @@ module Of_sexp = struct
 
   exception Of_sexp of Loc.t * string * hint option
 
-  type 'a t = ast -> 'a
-
-  let located f sexp =
-    (Ast.loc sexp, f sexp)
-
-  let of_sexp_error ?hint sexp str = raise (Of_sexp (Ast.loc sexp, str, hint))
-  let of_sexp_errorf ?hint sexp fmt = Printf.ksprintf (of_sexp_error ?hint sexp) fmt
-
-  let of_sexp_errorf_loc ?hint loc fmt =
-    Printf.ksprintf (fun s -> raise (Of_sexp (loc, s, hint))) fmt
-
-  let raw x = x
-
-  let unit = function
-    | List (_, []) -> ()
-    | sexp -> of_sexp_error sexp "() expected"
-
-  let string = function
-    | Atom (_, A s) -> s
-    | Quoted_string (_, s) -> s
-    | List _ as sexp -> of_sexp_error sexp "Atom or quoted string expected"
-
-  let int sexp = match sexp with
-    | Atom (_, A s) -> (try int_of_string s
-                        with _ -> of_sexp_error sexp "Integer expected")
-    | _ -> of_sexp_error sexp "Integer expected"
-
-  let float sexp = match sexp with
-    | Atom (_, A s) -> (try float_of_string s
-                        with _ -> of_sexp_error sexp "Float expected")
-    | _ -> of_sexp_error sexp "Float expected"
-
-  let bool = function
-    | Atom (_, A "true") -> true
-    | Atom (_, A "false") -> false
-    | sexp -> of_sexp_error sexp "'true' or 'false' expected"
-
-  let pair fa fb = function
-    | List (_, [a; b]) -> (fa a, fb b)
-    | sexp -> of_sexp_error sexp "S-expression of the form (_ _) expected"
-
-  let triple fa fb fc = function
-    | List (_, [a; b; c]) -> (fa a, fb b, fc c)
-    | sexp -> of_sexp_error sexp "S-expression of the form (_ _ _) expected"
-
-  let list f = function
-    | (Atom _ | Quoted_string _) as sexp -> of_sexp_error sexp "List expected"
-    | List (_, l) -> List.map l ~f
-
-  let array f sexp = Array.of_list (list f sexp)
-
-  let option f = function
-    | List (_, []) -> None
-    | List (_, [x]) -> Some (f x)
-    | sexp -> of_sexp_error sexp "S-expression of the form () or (_) expected"
-
-  let string_set sexp = String.Set.of_list (list string sexp)
-  let string_map f sexp =
-    match String.Map.of_list (list (pair string f) sexp) with
-    | Result.Ok x -> x
-    | Error (key, _v1, _v2) ->
-      of_sexp_error sexp (Printf.sprintf "key %S present multiple times" key)
-
-  let string_hashtbl f sexp =
-    let map = string_map f sexp in
-    let tbl = Hashtbl.create (String.Map.cardinal map + 32) in
-    String.Map.iteri map ~f:(Hashtbl.add tbl);
-    tbl
+  let of_sexp_error ?hint loc msg =
+    raise (Of_sexp (loc, msg, hint))
+  let of_sexp_errorf ?hint loc fmt =
+    Printf.ksprintf (fun msg -> of_sexp_error loc ?hint msg) fmt
 
   type unparsed_field =
     { values : Ast.t list
@@ -158,56 +94,280 @@ module Of_sexp = struct
 
   module Name_map = Map.Make(Name)
 
-  (* Either:
+  type values = Ast.t list
+  type fields =
+    { unparsed : unparsed_field Name_map.t
+    ; known    : string list
+    }
 
-     - [Sum (<list location>, <constructor name>, <elements>)]
-     - [Record (<list location>, <unparsed fields>, <known field names>)]
-  *)
-  type 'kind list_parser_state =
-    | Cstr
-      : Loc.t * string * Ast.t list -> [`Cstr] list_parser_state
-    | Record
-      : Loc.t * unparsed_field Name_map.t * string list
-      -> [`Record] list_parser_state
+  (* The two arguments are the location of the whole list as well as
+     the first atom when either parsing a constructor or a field. *)
+  type 'kind context =
+    | Values : Loc.t * string option -> values context
+    | Fields : Loc.t * string option -> fields context
 
-  type ('a, 'kind) list_parser
-    = 'kind list_parser_state -> 'a * 'kind list_parser_state
+  type ('a, 'kind) parser =  'kind context -> 'kind -> 'a * 'kind
 
-  type 'a   cstr_parser = ('a, [`Cstr  ]) list_parser
-  type 'a record_parser = ('a, [`Record]) list_parser
+  type 'a t             = ('a, values) parser
+  type 'a fields_parser = ('a, fields) parser
 
-  let return x state = (x, state)
-  let (>>=) m f state =
-    let x, state = m state in
-    f x state
-  let (>>|) m f state =
-    let x, state = m state in
+  let return x _ctx state = (x, state)
+  let (>>=) t f ctx state =
+    let x, state = t ctx state in
+    f x ctx state
+  let (>>|) t f ctx state =
+    let x, state = t ctx state in
     (f x, state)
+  let (>>>) a b ctx state =
+    let (), state = a ctx state in
+    b ctx state
+  let map t ~f = t >>| f
 
-  let get_loc : type k. k list_parser_state -> Loc.t = function
-    | Cstr   (loc, _, _) -> loc
-    | Record (loc, _, _) -> loc
+  let loc : type k. k context -> k -> Loc.t * k = fun ctx state ->
+    match ctx with
+    | Values (loc, _) -> (loc, state)
+    | Fields (loc, _) -> (loc, state)
 
-  let list_loc state = (get_loc state, state)
+  let eos : type k. k context -> k -> bool * k = fun ctx state ->
+    match ctx with
+    | Values _ -> (state = [], state)
+    | Fields _ -> (Name_map.is_empty state.unparsed, state)
 
-  let consume name (Record (loc, unparsed, known)) =
-    Record (loc, Name_map.remove unparsed name, name :: known)
+  let repeat : 'a t -> 'a list t =
+    let rec loop t acc ctx l =
+      match l with
+      | [] -> (List.rev acc, [])
+      | _ ->
+        let x, l = t ctx l in
+        loop t (x :: acc) ctx l
+    in
+    fun t ctx state -> loop t [] ctx state
 
-  let add_known name (Record (loc, unparsed, known)) =
-    (Record (loc, unparsed, name :: known))
+  let result : type a k. k context -> a * k -> a =
+    fun ctx (v, state) ->
+      match ctx with
+      | Values (_, cstr) -> begin
+          match state with
+          | [] -> v
+          | sexp :: _ ->
+            match cstr with
+            | None ->
+              of_sexp_errorf (Ast.loc sexp) "This value is unused"
+            | Some s ->
+              of_sexp_errorf (Ast.loc sexp) "Too many argument for %s" s
+        end
+      | Fields _ -> begin
+          match Name_map.choose state.unparsed with
+          | None -> v
+          | Some (name, { entry; _ }) ->
+            let name_loc =
+              match entry with
+              | List (_, s :: _) -> Ast.loc s
+              | _ -> assert false
+            in
+            of_sexp_errorf ~hint:{ on = name; candidates = state.known }
+              name_loc "Unknown field %s" name
+        end
 
-  let map_validate parse ~f state1 =
-    let x, state2 = parse state1 in
+  let parse t sexp =
+    let ctx = Values (Ast.loc sexp, None) in
+    result ctx (t ctx [sexp])
+
+  let end_of_list (Values (loc, cstr)) =
+    match cstr with
+    | None ->
+      let loc = { loc with start = loc.stop } in
+      of_sexp_errorf loc "Premature end of list"
+    | Some s ->
+      of_sexp_errorf loc "Not enough arguments for %s" s
+  [@@inline never]
+
+  let next f ctx sexps =
+    match sexps with
+    | [] -> end_of_list ctx
+    | sexp :: sexps -> (f sexp, sexps)
+  [@@inline always]
+
+  let peek t ctx sexps =
+    let x, _ = t ctx sexps in
+    (x, sexps)
+  [@@inline always]
+
+  let junk = next ignore
+
+  let plain_string f =
+    next (function
+      | Atom (loc, A s) | Quoted_string (loc, s) -> f ~loc s
+      | List (loc, _) -> of_sexp_error loc "Atom or quoted string expected")
+
+  let enter t =
+    next (function
+      | List (loc, l) ->
+        let ctx = Values (loc, None) in
+        result ctx (t ctx l)
+      | sexp ->
+        of_sexp_error (Ast.loc sexp) "List expected")
+
+  let fix f =
+    let rec p = lazy (f r)
+    and r ast = (Lazy.force p) ast in
+    r
+
+  let located t ctx state1 =
+    let x, state2 = t ctx state1 in
+    match state1 with
+    | sexp :: rest when rest == state2 -> (* common case *)
+      ((Ast.loc sexp, x), state2)
+    | [] ->
+      let (Values (loc, _)) = ctx in
+      (({ loc with start = loc.stop }, x), state2)
+    | sexp :: rest ->
+      let loc = Ast.loc sexp in
+      let rec search last l =
+        if l == state2 then
+          (({ loc with stop = (Ast.loc last).stop }, x), state2)
+        else
+          match l with
+          | [] ->
+            let (Values (loc, _)) = ctx in
+            (({ (Ast.loc sexp) with stop = loc.stop }, x), state2)
+          | sexp :: rest ->
+            search sexp rest
+      in
+      search sexp rest
+
+  let raw = next (fun x -> x)
+
+  let unit =
+    next
+      (function
+        | List (_, []) -> ()
+        | sexp -> of_sexp_error (Ast.loc sexp) "() expected")
+
+  let basic desc f =
+    next (function
+      | List (loc, _) | Quoted_string (loc, _) ->
+        of_sexp_errorf loc "%s expected" desc
+      | Atom (loc, s)  ->
+        match f (Atom.to_string s) with
+        | Error () ->
+          of_sexp_errorf loc "%s expected" desc
+        | Ok x -> x)
+
+  let string = plain_string (fun ~loc:_ x -> x)
+  let int =
+    basic "Integer" (fun s ->
+      match int_of_string s with
+      | x -> Ok x
+      | exception _ -> Error ())
+
+  let float =
+    basic "Float" (fun s ->
+      match float_of_string s with
+      | x -> Ok x
+      | exception _ -> Error ())
+
+  let pair a b =
+    enter
+      (a >>= fun a ->
+       b >>= fun b ->
+       return (a, b))
+
+  let triple a b c =
+    enter
+      (a >>= fun a ->
+       b >>= fun b ->
+       c >>= fun c ->
+       return (a, b, c))
+
+  let list t = enter (repeat t)
+
+  let array t = list t >>| Array.of_list
+
+  let option t =
+    enter
+      (eos >>= function
+       | true -> return None
+       | false -> t >>| Option.some)
+
+  let string_set = list string >>| String.Set.of_list
+  let string_map t =
+    list (pair string t) >>= fun bindings ->
+    match String.Map.of_list bindings with
+    | Ok x -> return x
+    | Error (key, _v1, _v2) ->
+      loc >>= fun loc ->
+      of_sexp_errorf loc "key %s present multiple times" key
+
+  let string_hashtbl t =
+    string_map t >>| fun map ->
+    let tbl = Hashtbl.create (String.Map.cardinal map + 32) in
+    String.Map.iteri map ~f:(Hashtbl.add tbl);
+    tbl
+
+
+  let find_cstr cstrs loc name ctx values =
+    match List.assoc cstrs name with
+    | Some t ->
+      result ctx (t ctx values)
+    | None ->
+      of_sexp_errorf loc
+        ~hint:{ on         = name
+              ; candidates = List.map cstrs ~f:fst
+              }
+        "Unknown constructor %s" name
+
+  let sum cstrs =
+    next (fun sexp ->
+      match sexp with
+      | Atom (loc, A s) ->
+        find_cstr cstrs loc s (Values (loc, Some s)) []
+      | Quoted_string (loc, _) ->
+        of_sexp_error loc "Atom expected"
+      | List (loc, []) ->
+        of_sexp_error loc "Non-empty list expected"
+      | List (loc, name :: args) ->
+        match name with
+        | Quoted_string (loc, _) | List (loc, _) ->
+          of_sexp_error loc "Atom expected"
+        | Atom (s_loc, A s) ->
+          find_cstr cstrs s_loc s (Values (loc, Some s)) args)
+
+  let enum cstrs =
+    next (function
+      | Quoted_string (loc, _)
+      | List (loc, _) -> of_sexp_error loc "Atom expected"
+      | Atom (loc, A s) ->
+        match List.assoc cstrs s with
+        | Some value -> value
+        | None ->
+          of_sexp_errorf loc
+            ~hint:{ on         = s
+                  ; candidates = List.map cstrs ~f:fst
+                  }
+            "Unknown value %s" s)
+
+  let bool = enum [ ("true", true); ("false", false) ]
+
+  let consume name state =
+    { unparsed = Name_map.remove state.unparsed name
+    ; known    = name :: state.known
+    }
+
+  let add_known name state =
+    { state with known = name :: state.known }
+
+  let map_validate t ~f ctx state1 =
+    let x, state2 = t ctx state1 in
     match f x with
-    | Result.Ok x -> x, state2
+    | Result.Ok x -> (x, state2)
     | Error msg ->
-      let (Record (_, unparsed1, _)) = state1 in
-      let (Record (_, unparsed2, _)) = state2 in
       let parsed =
-        Name_map.merge unparsed1 unparsed2 ~f:(fun _key before after ->
-          match before, after with
-          | Some _, None -> before
-          | _ -> None)
+        Name_map.merge state1.unparsed state2.unparsed
+          ~f:(fun _key before after ->
+            match before, after with
+            | Some _, None -> before
+            | _ -> None)
       in
       let loc =
         match
@@ -216,31 +376,18 @@ module Of_sexp = struct
           |> List.sort ~compare:(fun a b ->
             Int.compare a.Loc.start.pos_cnum b.start.pos_cnum)
         with
-        | [] -> get_loc state1
+        | [] ->
+          let (Fields (loc, _)) = ctx in
+          loc
         | first :: l ->
           let last = List.fold_left l ~init:first ~f:(fun _ x -> x) in
           { first with stop = last.stop }
       in
-      of_sexp_errorf_loc loc "%s" msg
+      of_sexp_errorf loc "%s" msg
 
-  module Short_syntax = struct
-    type 'a t =
-      | Not_allowed
-      | This    of 'a
-      | Located of (Loc.t -> 'a)
-
-    let parse t entry name =
-      match t with
-      | Not_allowed -> of_sexp_errorf entry "field %s needs a value" name
-      | This    x -> x
-      | Located f -> f (Ast.loc entry)
-  end
-
-  let too_many_values name field =
-    of_sexp_errorf_loc (Ast.loc field.entry) "too many values for field %s" name
-
-  let field_missing state name =
-    of_sexp_errorf_loc (get_loc state) "field %s missing" name
+  let field_missing (Fields (loc, _)) name =
+    of_sexp_errorf loc "field %s missing" name
+  [@@inline never]
 
   let rec multiple_occurrences ~name ~last ~prev =
     match prev.prev with
@@ -248,61 +395,57 @@ module Of_sexp = struct
       (* Make the error message point to the second occurrence *)
       multiple_occurrences ~name ~last:prev ~prev:prev_prev
     | None ->
-      of_sexp_errorf last.entry "Field %S is present too many times" name
+      of_sexp_errorf (Ast.loc last.entry) "Field %S is present too many times"
+        name
   [@@inline never]
 
-  let find_single (Record (_, unparsed, _)) name =
-    let res = Name_map.find unparsed name in
+  let find_single state name =
+    let res = Name_map.find state.unparsed name in
     (match res with
      | Some ({ prev = Some prev; _ } as last) ->
        multiple_occurrences ~name ~last ~prev
      | _ -> ());
     res
 
-  let field name ?(short=Short_syntax.Not_allowed)
-        ?default value_of_sexp state =
+  let field name ?default t ctx state =
     match find_single state name with
-    | Some { values = [value]; _ } ->
-      (value_of_sexp value, consume name state)
-    | Some { values = []; entry; _ } ->
-      (Short_syntax.parse short entry name,
-       consume name state)
-    | Some f ->
-      too_many_values name f
+    | Some { values; entry; _ } ->
+      let ctx = Values (Ast.loc entry, Some name) in
+      let x = result ctx (t ctx values) in
+      (x, consume name state)
     | None ->
       match default with
       | Some v -> (v, add_known name state)
-      | None -> field_missing state name
+      | None -> field_missing ctx name
 
-  let field_o name ?(short=Short_syntax.Not_allowed) value_of_sexp state =
+  let field_o name t _ctx state =
     match find_single state name with
-    | Some { values = [value]; _ } ->
-      (Some (value_of_sexp value), consume name state)
-    | Some { values = []; entry; _ } ->
-      (Some (Short_syntax.parse short entry name),
-       consume name state)
-    | Some f ->
-      too_many_values name f
-    | None -> (None, add_known name state)
+    | Some { values; entry; _ } ->
+      let ctx = Values (Ast.loc entry, Some name) in
+      let x = result ctx (t ctx values) in
+      (Some x, consume name state)
+    | None ->
+      (None, add_known name state)
 
-  let field_b name = field name bool ~default:false ~short:(This true)
+  let field_b name =
+    field name ~default:false
+      (eos >>= function
+       | true -> return true
+       | _ -> bool)
 
-  let dup_field name ?(short=Short_syntax.Not_allowed) value_of_sexp state =
+  let multi_field name t _ctx state =
     let rec loop acc field =
       match field with
       | None -> acc
-      | Some { values = [value]; prev; _ } ->
-        loop (value_of_sexp value :: acc) prev
-      | Some { values = []; entry; prev } ->
-        loop (Short_syntax.parse short entry name :: acc) prev
-      | Some f ->
-        too_many_values name f
+      | Some { values; prev; entry } ->
+        let ctx = Values (Ast.loc entry, Some name) in
+        let x = result ctx (t ctx values) in
+        loop (x :: acc) prev
     in
-    let (Record (_, unparsed, _)) = state in
-    let res = loop [] (Name_map.find unparsed name) in
+    let res = loop [] (Name_map.find state.unparsed name) in
     (res, consume name state)
 
-  let parse_fields m loc sexps =
+  let fields t (Values (loc, cstr)) sexps =
     let unparsed =
       List.fold_left sexps ~init:Name_map.empty ~f:(fun acc sexp ->
         match sexp with
@@ -314,106 +457,18 @@ module Of_sexp = struct
                 ; entry = sexp
                 ; prev  = Name_map.find acc name
                 }
-            | List _ | Quoted_string _ ->
-              of_sexp_error name_sexp "Atom expected"
+            | List (loc, _) | Quoted_string (loc, _) ->
+              of_sexp_error loc "Atom expected"
           end
         | _ ->
-          of_sexp_error sexp
+          of_sexp_error (Ast.loc sexp)
             "S-expression of the form (<name> <values>...) expected")
     in
-    let v, (Record (_, unparsed, known)) = m (Record (loc, unparsed, [])) in
-    match Name_map.choose unparsed with
-    | None -> v
-    | Some (name, { entry; _ }) ->
-      let name_sexp =
-        match entry with
-        | List (_, s :: _) -> s
-        | _ -> assert false
-      in
-      of_sexp_errorf ~hint:({ on = name ; candidates = known})
-        name_sexp "Unknown field %s" name
+    let ctx = Fields (loc, cstr) in
+    let x = result ctx (t ctx { unparsed; known = [] }) in
+    (x, [])
 
-  let record m sexp =
-    match sexp with
-    | Atom _ | Quoted_string _ -> of_sexp_error sexp "List expected"
-    | List (loc, sexps) -> parse_fields m loc sexps
-
-  let next t (Cstr (loc, cstr, sexps)) =
-    match sexps with
-    | [] -> of_sexp_errorf_loc loc "Not enough arguments for %s" cstr
-    | sexp :: sexps ->
-      let v = t sexp in
-      (v, Cstr (loc, cstr, sexps))
-
-  let rest t (Cstr (loc, cstr, sexps)) =
-    (List.map sexps ~f:t,
-     Cstr (loc, cstr, []))
-
-  let rest_as_record m (Cstr (loc, cstr, sexps)) =
-    let v = parse_fields m loc sexps in
-    (v, Cstr (loc, cstr, []))
-
-  let sum_result (v, Cstr (loc, cstr, sexps)) =
-    match sexps with
-    | [] -> v
-    | _ :: _ -> of_sexp_errorf_loc loc "Too many arguments for %s" cstr
-
-  let find_cstr cstrs loc name state =
-    match List.assoc cstrs name with
-    | Some m -> sum_result (m state)
-    | None ->
-      of_sexp_errorf_loc loc
-        ~hint:{ on         = name
-              ; candidates = List.map cstrs ~f:fst
-              }
-        "Unknown constructor %s" name
-
-  let sum cstrs sexp =
-    match sexp with
-    | Atom (loc, A s) ->
-      find_cstr cstrs loc s (Cstr (loc, s, []))
-    | Quoted_string _ -> of_sexp_error sexp "Atom expected"
-    | List (_, []) -> of_sexp_error sexp "non-empty list expected"
-    | List (loc, name :: args) ->
-      match name with
-      | Quoted_string _ | List _ -> of_sexp_error name "Atom expected"
-      | Atom (s_loc, A s) ->
-        find_cstr cstrs s_loc s (Cstr (loc, s, args))
-
-  let field_multi name ?default m state =
-    match find_single state name with
-    | Some { values; entry; _ } ->
-      (sum_result (m (Cstr (Ast.loc entry, name, values))),
-       consume name state)
-    | None ->
-      match default with
-      | Some v -> (v, add_known name state)
-      | None -> field_missing state name
-
-  let dup_field_multi name m state =
-    let rec loop acc field =
-      match field with
-      | None -> acc
-      | Some { values; entry; prev } ->
-        let x = sum_result (m (Cstr (Ast.loc entry, name, values))) in
-        loop (x :: acc) prev
-    in
-    let (Record (_, unparsed, _)) = state in
-    let res = loop [] (Name_map.find unparsed name) in
-    (res, consume name state)
-
-  let enum cstrs sexp =
-    match sexp with
-    | Quoted_string _ | List _ -> of_sexp_error sexp "Atom expected"
-    | Atom (_, A s) ->
-      match List.assoc cstrs s with
-      | Some value -> value
-      | None ->
-        of_sexp_errorf sexp
-          ~hint:{ on         = s
-                ; candidates = List.map cstrs ~f:fst
-                }
-          "Unknown value %s" s
+  let record t = enter (fields t)
 end
 
 module type Sexpable = sig

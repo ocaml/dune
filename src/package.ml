@@ -12,6 +12,8 @@ module Name = struct
   let opam_fn (t : t) = to_string t ^ ".opam"
 
   let pp fmt t = Format.pp_print_string fmt (to_string t)
+
+  let t = Sexp.Of_sexp.(map string ~f:of_string)
 end
 
 

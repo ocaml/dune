@@ -3,7 +3,7 @@ open Import
 let parse_sub_systems sexps =
   List.filter_map sexps ~f:(fun sexp ->
     let name, ver, data =
-      Sexp.Of_sexp.(triple string (located Syntax.Version.t) raw) sexp
+      Sexp.Of_sexp.(parse (triple string (located Syntax.Version.t) raw)) sexp
     in
     match Sub_system_name.get name with
     | None ->
@@ -24,24 +24,25 @@ let parse_sub_systems sexps =
       Syntax.Versioned_parser.find_exn M.parsers ~loc:vloc
         ~data_version:ver
     in
-    M.T (parser.parse data))
+    M.T (Sexp.Of_sexp.parse parser data))
 
 let of_sexp =
   let open Sexp.Of_sexp in
-  let version sexp =
-    match string sexp with
-    | "1" -> ()
-    | _  ->
-      of_sexp_error sexp "Unsupported version, only version 1 is supported"
+  let version =
+    plain_string (fun ~loc -> function
+      | "1" -> ()
+      | _ ->
+        of_sexp_errorf loc
+          "Unsupported version, only version 1 is supported")
   in
   sum
     [ "dune",
-      (next version >>= fun () ->
-       next (list raw) >>| fun l ->
+      (version >>= fun () ->
+       list raw >>| fun l ->
        parse_sub_systems l)
     ]
 
-let load fname = of_sexp (Io.Sexp.load ~mode:Single fname)
+let load fname = Sexp.Of_sexp.parse of_sexp (Io.Sexp.load ~mode:Single fname)
 
 let gen confs =
   let sexps =

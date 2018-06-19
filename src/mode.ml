@@ -73,7 +73,7 @@ module Dict = struct
       ; native = List.mem Native ~set:l
       }
 
-    let t sexp = of_list (Sexp.Of_sexp.list t sexp)
+    let t = Sexp.Of_sexp.(map (list t) ~f:of_list)
 
     let is_empty t = not (t.byte || t.native)
 

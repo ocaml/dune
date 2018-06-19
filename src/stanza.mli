@@ -9,5 +9,5 @@ module Parser : sig
 
       Each stanza in a configuration file might produce several values
       of type [t], hence the [t list] here. *)
-  type nonrec t = string * t list Sexp.Of_sexp.cstr_parser
+  type nonrec t = string * t list Sexp.Of_sexp.t
 end

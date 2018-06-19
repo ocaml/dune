@@ -2,6 +2,8 @@ type ('a, 'error) t = ('a, 'error) Caml.result =
   | Ok    of 'a
   | Error of 'error
 
+let ok x = Ok x
+
 let is_ok = function
   | Ok    _ -> true
   | Error _ -> false
@@ -28,6 +30,9 @@ let map_error x ~f =
   match x with
   | Ok _ as res -> res
   | Error x -> Error (f x)
+
+let errorf fmt =
+  Printf.ksprintf (fun x -> Error x) fmt
 
 module O = struct
   let ( >>= ) t f = bind t ~f

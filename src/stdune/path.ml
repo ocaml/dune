@@ -70,11 +70,11 @@ end = struct
     make t
 
   let sexp_of_t t = Sexp.To_sexp.string (to_string t)
-  let t sexp =
-    let t = Sexp.Of_sexp.string sexp in
+  let t = Sexp.Of_sexp.plain_string (fun ~loc t ->
     if Filename.is_relative t then
-      Sexp.Of_sexp.of_sexp_error sexp "Absolute path expected";
-    of_string t
+      Sexp.Of_sexp.of_sexp_errorf loc "Absolute path expected"
+    else
+      of_string t)
 
 (*
   let rec cd_dot_dot t =
@@ -276,9 +276,9 @@ end = struct
     | _ ->
       relative root s ?error_loc
 
-  let t sexp =
-    of_string (Sexp.Of_sexp.string sexp)
-      ~error_loc:(Sexp.Ast.loc sexp)
+  let t =
+    Sexp.Of_sexp.plain_string (fun ~loc:error_loc s ->
+      of_string s ~error_loc)
 
   let rec mkdir_p t =
     if is_root t then
@@ -587,18 +587,18 @@ let of_string ?error_loc s =
     else
       make_local_path (Local.of_string s ?error_loc)
 
-let t = function
-  (* the first 2 cases are necessary for old build dirs *)
-  | Sexp.Ast.Atom (_, A s)
-  | Quoted_string (_, s) -> of_string s
-  | s ->
-    let open Sexp.Of_sexp in
-    sum
-      [ "In_build_dir"  , next Local.t    >>| in_build_dir
-      ; "In_source_tree", next Local.t    >>| in_source_tree
-      ; "External"      , next External.t >>| external_
-      ]
-      s
+let t =
+  Sexp.Of_sexp.(
+    peek raw >>= function
+    | Atom _ | Quoted_string _ ->
+      (* necessary for old build dirs *)
+      plain_string (fun ~loc:_ s -> of_string s)
+    | List _ ->
+      sum
+        [ "In_build_dir"  , Local.t    >>| in_build_dir
+        ; "In_source_tree", Local.t    >>| in_source_tree
+        ; "External"      , External.t >>| external_
+        ])
 
 let sexp_of_t t =
   let constr f x y = Sexp.To_sexp.(pair string f) (x, y) in

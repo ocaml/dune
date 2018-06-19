@@ -70,12 +70,12 @@ end = struct
     else
       None
 
-  let named_of_sexp sexp =
-    let s = string sexp in
-    if validate s then
-      Named s
-    else
-      of_sexp_error sexp "invalid project name"
+  let named_of_sexp =
+    Sexp.Of_sexp.plain_string (fun ~loc s ->
+      if validate s then
+        Named s
+      else
+        Sexp.Of_sexp.of_sexp_errorf loc "invalid project name")
 
   let encode = function
     | Named     s -> s
@@ -142,7 +142,9 @@ module Lang = struct
         ; version = (ver_loc, ver)
         } = first_line
     in
-    let ver = Syntax.Version.t (Atom (ver_loc, Sexp.Atom.of_string ver)) in
+    let ver =
+      Sexp.Of_sexp.parse Syntax.Version.t
+        (Atom (ver_loc, Sexp.Atom.of_string ver)) in
     match Hashtbl.find langs name with
     | None ->
       Loc.fail name_loc "Unknown language %S.%s" name
@@ -159,7 +161,7 @@ module Lang = struct
 end
 
 module Extension = struct
-  type maker = project -> Stanza.Parser.t list Sexp.Of_sexp.cstr_parser
+  type maker = project -> Stanza.Parser.t list Sexp.Of_sexp.t
 
   type t = Syntax.Version.t * maker
 
@@ -189,6 +191,10 @@ let get_local_path p =
   | External _ -> assert false
   | Local    p -> p
 
+let fake_stanza_parser =
+  let open Sexp.Of_sexp in
+  return () >>| fun _ -> assert false
+
 let anonymous = lazy(
   let t =
     { kind          = Dune
@@ -196,7 +202,7 @@ let anonymous = lazy(
     ; packages      = Package.Name.Map.empty
     ; root          = get_local_path Path.root
     ; version       = None
-    ; stanza_parser = (fun _ -> assert false)
+    ; stanza_parser = fake_stanza_parser
     ; project_file  = None
     }
   in
@@ -237,14 +243,14 @@ let parse ~dir ~lang_stanzas ~packages ~file =
        ; root = get_local_path dir
        ; version
        ; packages
-       ; stanza_parser = (fun _ -> assert false)
+       ; stanza_parser = fake_stanza_parser
        ; project_file  = Some file
        }
      in
-     dup_field_multi "using"
-       (list_loc >>= fun loc ->
-        next (located string) >>= fun name ->
-        next (located Syntax.Version.t) >>= fun ver ->
+     multi_field "using"
+       (loc >>= fun loc ->
+        located string >>= fun name ->
+        located Syntax.Version.t >>= fun ver ->
         Extension.lookup name ver t >>= fun stanzas ->
         return (snd name, (loc, stanzas)))
      >>= fun extensions ->
@@ -263,7 +269,7 @@ let load_dune_project ~dir packages =
   Io.with_lexbuf_from_file fname ~f:(fun lb ->
     let lang_stanzas = Lang.parse (Dune_lexer.first_line lb) in
     let sexp = Sexp.Parser.parse lb ~mode:Many_as_one in
-    parse ~dir ~lang_stanzas ~packages ~file:fname sexp)
+    Sexp.Of_sexp.parse (parse ~dir ~lang_stanzas ~packages ~file:fname) sexp)
 
 let make_jbuilder_project ~dir packages =
   let t =
@@ -272,7 +278,7 @@ let make_jbuilder_project ~dir packages =
     ; root = get_local_path dir
     ; version = None
     ; packages
-    ; stanza_parser = (fun _ -> assert false)
+    ; stanza_parser = fake_stanza_parser
     ; project_file = None
     }
   in

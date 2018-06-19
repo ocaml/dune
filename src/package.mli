@@ -12,6 +12,8 @@ module Name : sig
   val pp : Format.formatter -> t -> unit
 
   include Interned.S with type t := t
+
+  val t : t Sexp.Of_sexp.t
 end
 
 type t =

@@ -62,10 +62,11 @@ module Concurrency = struct
         else
           error
 
-  let t sexp =
-    match of_string (string sexp) with
-    | Ok t -> t
-    | Error msg -> of_sexp_error sexp msg
+  let t =
+    plain_string (fun ~loc s ->
+      match of_string s with
+      | Error m -> of_sexp_errorf loc "%s" m
+      | Ok s -> s)
 
   let to_string = function
     | Auto -> "auto"
@@ -114,7 +115,7 @@ let user_config_file =
     "dune/config"
 
 let load_config_file p =
-  t (Io.Sexp.load p ~mode:Many_as_one)
+  (Sexp.Of_sexp.parse t) (Io.Sexp.load p ~mode:Many_as_one)
 
 let load_user_config_file () =
   if Path.exists user_config_file then

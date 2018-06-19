@@ -7,10 +7,10 @@ module Context = struct
       | Native
       | Named of string
 
-    let t sexp =
-      match string sexp with
-      | "native" -> Native
-      | s        -> Named s
+    let t =
+      map string ~f:(function
+        | "native" -> Native
+        | s        -> Named s)
   end
 
   module Opam = struct
@@ -55,22 +55,26 @@ module Context = struct
 
   type t = Default of Default.t | Opam of Opam.t
 
-  let t ~profile = function
-    | Atom (_, A "default") ->
-      Default { targets = [Native]
-              ; profile
-              }
-    | List (_, List _ :: _) as sexp -> Opam (record (Opam.t ~profile) sexp)
-    | sexp ->
-      sum
-        [ "default",
-          (rest_as_record (Default.t ~profile) >>| fun x ->
-           Default x)
-        ; "opam",
-          (rest_as_record (Opam.t ~profile) >>| fun x ->
-           Opam x)
-        ]
-        sexp
+  let t ~profile =
+    Sexp.Of_sexp.(
+      peek raw >>= function
+      | Atom _ | Quoted_string _ ->
+        enum [ "default",
+               Default { targets = [Native]
+                       ; profile
+                       }
+             ]
+      | List (_, List _ :: _) ->
+        record (Opam.t ~profile) >>| fun x -> Opam x
+      | _ ->
+        sum
+          [ "default",
+            (fields (Default.t ~profile) >>| fun x ->
+             Default x)
+          ; "opam",
+            (fields (Opam.t ~profile) >>| fun x ->
+             Opam x)
+          ])
 
   let name = function
     | Default _ -> "default"
@@ -96,10 +100,10 @@ type item = Context of Sexp.Ast.t | Profile of Loc.t * string
 
 let item_of_sexp =
   sum
-    [ "context", (next raw >>|fun x -> Context x)
+    [ "context", (raw >>|fun x -> Context x)
     ; "profile",
-      (list_loc >>= fun loc ->
-       next string >>= fun x ->
+      (loc >>= fun loc ->
+       string >>= fun x ->
        return (Profile (loc, x)))
     ]
 
@@ -107,7 +111,7 @@ let t ?x ?profile:cmdline_profile sexps =
   let defined_names = ref String.Set.empty in
   let profiles, contexts =
     List.partition_map sexps ~f:(fun sexp ->
-      match item_of_sexp sexp with
+      match Sexp.Of_sexp.parse item_of_sexp sexp with
       | Profile (loc, p) -> Left (loc, p)
       | Context c -> Right c)
   in
@@ -126,7 +130,7 @@ let t ?x ?profile:cmdline_profile sexps =
       }
     in
     List.fold_left contexts ~init ~f:(fun t sexp ->
-      let ctx = Context.t ~profile sexp in
+      let ctx = Sexp.Of_sexp.parse (Context.t ~profile) sexp in
       let ctx =
         match x with
         | None -> ctx
@@ -151,14 +155,17 @@ let t ?x ?profile:cmdline_profile sexps =
          name = "install" ||
          String.contains name '/' ||
          String.contains name '\\' then
-        of_sexp_errorf sexp "%S is not allowed as a build context name" name;
+        of_sexp_errorf (Sexp.Ast.loc sexp)
+          "%S is not allowed as a build context name" name;
       if String.Set.mem !defined_names name then
-        of_sexp_errorf sexp "second definition of build context %S" name;
+        of_sexp_errorf (Sexp.Ast.loc sexp)
+          "second definition of build context %S" name;
       defined_names := String.Set.union !defined_names
                          (String.Set.of_list (Context.all_names ctx));
       match ctx, t.merlin_context with
       | Opam { merlin = true; _ }, Some _ ->
-        of_sexp_errorf sexp "you can only have one context for merlin"
+        of_sexp_errorf (Sexp.Ast.loc sexp)
+          "you can only have one context for merlin"
       | Opam { merlin = true; _ }, None ->
         { merlin_context = Some name; contexts = ctx :: t.contexts }
       | _ ->

@@ -40,19 +40,19 @@ module Dune_file = struct
   let extract_ignored_subdirs =
     let stanza =
       let open Sexp.Of_sexp in
-      let sub_dir sexp =
-        let dn = string sexp in
-        if Filename.dirname dn <> Filename.current_dir_name ||
-           match string sexp with
-           | "" | "." | ".." -> true
-           | _ -> false
-        then
-          of_sexp_errorf sexp "Invalid sub-directory name %S" dn
-        else
-          dn
+      let sub_dir =
+        plain_string (fun ~loc dn ->
+          if Filename.dirname dn <> Filename.current_dir_name ||
+             match dn with
+             | "" | "." | ".." -> true
+             | _ -> false
+          then
+            of_sexp_errorf loc "Invalid sub-directory name %S" dn
+          else
+            dn)
       in
       sum
-        [ "ignored_subdirs", next (list sub_dir) >>| String.Set.of_list
+        [ "ignored_subdirs", list sub_dir >>| String.Set.of_list
         ]
     in
     fun sexps ->
@@ -60,7 +60,7 @@ module Dune_file = struct
         List.partition_map sexps ~f:(fun sexp ->
           match (sexp : Sexp.Ast.t) with
           | List (_, (Atom (_, A "ignored_subdirs") :: _)) ->
-            Left (stanza sexp)
+            Left (Sexp.Of_sexp.parse stanza sexp)
           | _ -> Right sexp)
       in
       let ignored_subdirs =

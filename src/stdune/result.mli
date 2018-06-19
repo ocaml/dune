@@ -4,6 +4,8 @@ type ('a, 'error) t = ('a, 'error) Caml.result =
   | Ok    of 'a
   | Error of 'error
 
+val ok : 'a -> ('a, _) t
+
 val is_ok    : _ t -> bool
 val is_error : _ t -> bool
 
@@ -25,6 +27,9 @@ val concat_map
   :  'a list
   -> f:('a -> ('b list, 'error) t)
   -> ('b list, 'error) t
+
+(** Produce [Error <message>] *)
+val errorf : ('a, unit, string, (_, string) t) format4 -> 'a
 
 (** For compatibility with some other code *)
 type ('a, 'error) result = ('a, 'error) t

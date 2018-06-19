@@ -17,3 +17,4 @@ val add      : t -> 'a Key.t -> 'a -> t
 val remove   : t -> 'a Key.t -> t
 val find     : t -> 'a Key.t -> 'a option
 val find_exn : t -> 'a Key.t -> 'a
+val singleton : 'a Key.t -> 'a -> t

@@ -250,7 +250,7 @@ module Of_sexp = struct
         of_sexp_errorf loc "%s expected" desc
       | Atom (loc, s)  ->
         match f (Atom.to_string s) with
-        | Error () ->
+        | Result.Error () ->
           of_sexp_errorf loc "%s expected" desc
         | Ok x -> x)
 

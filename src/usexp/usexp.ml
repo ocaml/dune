@@ -10,34 +10,7 @@ module Bytes = struct
     UnlabeledBytes.blit_string src src_pos dst dst_pos len
 end
 
-module Atom = struct
- type t = Lexer.Atom.t = A of string [@@unboxed]
-
- let is_valid =
-   let rec loop s i len =
-     i = len ||
-     match String.unsafe_get s i with
-     | '"' | '(' | ')' | ';' | '\000'..'\032' | '\127'..'\255' -> false
-     | _ -> loop s (i + 1) len
-   in
-   fun s ->
-     let len = String.length s in
-     len > 0 && loop s 0 len
-
- (* XXX eventually we want to report a nice error message to the user
-     at the point the conversion is made. *)
-  let of_string s =
-    if is_valid s then A s
-    else invalid_arg(Printf.sprintf "Usexp.Atom.of_string: %S" s)
-
-  let of_int i = A (string_of_int i)
-  let of_float x = A (string_of_float x)
-  let of_bool x = A (string_of_bool x)
-  let of_int64 i = A (Int64.to_string i)
-  let of_digest d = A (Digest.to_hex d)
-
-  let to_string (A s) = s
-end
+module Atom = Atom
 
 type t =
   | Atom of Atom.t
@@ -46,15 +19,14 @@ type t =
 
 type sexp = t
 
-let atom s =
-  if Atom.is_valid s then Atom (A s)
-  else invalid_arg "Usexp.atom"
+let atom s = Atom (Atom.of_string_exn Dune s)
 
-let unsafe_atom_of_string s = Atom(A s)
+let unsafe_atom_of_string s = atom s
 
 let atom_or_quoted_string s =
-  if Atom.is_valid s then Atom (A s)
-  else Quoted_string s
+  match Atom.of_string Atom.Dune s with
+  | None -> Quoted_string s
+  | Some a -> Atom a
 
 let quote_length s =
   let n = ref 0 in
@@ -117,13 +89,13 @@ let quoted s =
   Bytes.unsafe_to_string s'
 
 let rec to_string = function
-  | Atom (A s) -> s
+  | Atom a -> Atom.to_string a Atom.Dune
   | Quoted_string s -> quoted s
   | List l -> Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
 
 let rec pp ppf = function
-  | Atom (A s) ->
-    Format.pp_print_string ppf s
+  | Atom s ->
+    Format.pp_print_string ppf (Atom.to_string s Atom.Dune)
   | Quoted_string s ->
     Format.pp_print_string ppf (quoted s)
   | List [] ->
@@ -164,7 +136,7 @@ let pp_print_quoted_string ppf s =
     Format.pp_print_string ppf (quoted s)
 
 let rec pp_split_strings ppf = function
-  | Atom (A s) -> Format.pp_print_string ppf s
+  | Atom s -> Format.pp_print_string ppf (Atom.to_string s Atom.Dune)
   | Quoted_string s -> pp_print_quoted_string ppf s
   | List [] ->
     Format.pp_print_string ppf "()"
@@ -249,8 +221,9 @@ module Ast = struct
     | List of Loc.t * t list
 
   let atom_or_quoted_string loc s =
-    if Atom.is_valid s then Atom (loc, A s)
-    else Quoted_string (loc, s)
+    match Atom.of_string Atom.Dune s with
+    | None -> Quoted_string (loc, s)
+    | Some a -> Atom (loc, a)
 
   let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)) = loc
 

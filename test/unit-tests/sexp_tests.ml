@@ -23,13 +23,15 @@ let () =
         | Atom _ -> true
         | _      -> false
       in
-      if Usexp.Atom.is_valid s <> parser_recognizes_as_atom then begin
+      let valid_dune_atom =
+        Option.is_some (Usexp.Atom.of_string Dune s) in
+      if valid_dune_atom <> parser_recognizes_as_atom then begin
         Printf.eprintf
           "Usexp.Atom.is_valid error:\n\
            - s = %S\n\
            - Usexp.Atom.is_valid s = %B\n\
            - parser_recognizes_as_atom = %B\n"
-          s (Usexp.Atom.is_valid s) parser_recognizes_as_atom;
+          s valid_dune_atom parser_recognizes_as_atom;
         exit 1
       end;
       if printed_as_atom && not parser_recognizes_as_atom then begin

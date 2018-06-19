@@ -1,8 +1,4 @@
 {
-module Atom = struct
-  type t = A of string [@@unboxed]
-end
-
 module Token = struct
   type t =
     | Atom          of Atom.t
@@ -128,7 +124,7 @@ and jbuild_atom acc start = parse
         error lexbuf "Internal error in the S-expression parser, \
                       please report upstream.";
       lexbuf.lex_start_p <- start;
-      Token.Atom (A acc)
+      Token.Atom (Atom.of_string_exn Jbuild acc)
     }
 
 and quoted_string mode = parse
@@ -248,7 +244,7 @@ and token = parse
       Quoted_string s
     }
   | atom_char_dune+ as s
-    { Token.Atom (A s) }
+    { Token.Atom (Atom.of_string_exn Dune s) }
   | eof
     { Eof }
 

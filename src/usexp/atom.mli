@@ -1,0 +1,15 @@
+type t = private A of string [@@unboxed]
+
+type syntax = Jbuild | Dune
+
+val of_string : syntax -> string -> t option
+
+val of_string_exn : syntax -> string -> t
+
+val to_string : t -> syntax -> string
+
+val of_int : int -> t
+val of_float : float -> t
+val of_bool : bool -> t
+val of_int64 : Int64.t -> t
+val of_digest : Digest.t -> t

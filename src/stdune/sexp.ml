@@ -34,7 +34,8 @@ module To_sexp = struct
   let string_set set = list atom (String.Set.to_list set)
   let string_map f map = list (pair atom f) (String.Map.to_list map)
   let record l =
-    List (List.map l ~f:(fun (n, v) -> List [Atom(Atom.of_string n); v]))
+    List (List.map l ~f:(fun (n, v) ->
+      List [Atom(Atom.of_string_exn Usexp.Atom.Dune n); v]))
   let string_hashtbl f h =
     string_map f
       (Hashtbl.foldi h ~init:String.Map.empty ~f:(fun key data acc ->
@@ -54,7 +55,7 @@ module To_sexp = struct
 
   let record_fields (l : field list) =
     List (List.filter_map l ~f:(fun (k, v) ->
-      Option.map v ~f:(fun v -> List[Atom (Atom.of_string k); v])))
+      Option.map v ~f:(fun v -> List[Atom (Atom.of_string_exn Atom.Dune k); v])))
 
   let unknown _ = unsafe_atom_of_string "<unknown>"
 end
@@ -296,13 +297,13 @@ module Of_sexp = struct
   let string = plain_string (fun ~loc:_ x -> x)
   let int =
     basic "Integer" (fun s ->
-      match int_of_string s with
+      match int_of_string (s Atom.Dune) with
       | x -> Ok x
       | exception _ -> Error ())
 
   let float =
     basic "Float" (fun s ->
-      match float_of_string s with
+      match float_of_string (s Atom.Dune) with
       | x -> Ok x
       | exception _ -> Error ())
 

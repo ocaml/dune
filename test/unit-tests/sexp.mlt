@@ -24,7 +24,7 @@ val sexp : Usexp.Ast.t = ((foo 1) (foo 2))
 |}]
 
 let of_sexp = record (field "foo" int)
-let x = parse of_sexp sexp
+let x = parse of_sexp Univ_map.empty sexp
 [%%expect{|
 val of_sexp : int Stdune.Sexp.Of_sexp.t = <abstr>
 Exception:
@@ -33,7 +33,7 @@ Stdune__Sexp.Of_sexp.Of_sexp (<abstr>,
 |}]
 
 let of_sexp = record (multi_field "foo" int)
-let x = parse of_sexp sexp
+let x = parse of_sexp Univ_map.empty sexp
 [%%expect{|
 val of_sexp : int list Stdune.Sexp.Of_sexp.t = <abstr>
 val x : int list = [1; 2]

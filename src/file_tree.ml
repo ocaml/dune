@@ -60,7 +60,7 @@ module Dune_file = struct
         List.partition_map sexps ~f:(fun sexp ->
           match (sexp : Sexp.Ast.t) with
           | List (_, (Atom (_, A "ignored_subdirs") :: _)) ->
-            Left (Sexp.Of_sexp.parse stanza sexp)
+            Left (Sexp.Of_sexp.parse stanza Univ_map.empty sexp)
           | _ -> Right sexp)
       in
       let ignored_subdirs =

@@ -66,7 +66,7 @@ module Make
 struct
   module Of_sexp = struct
     include F(Sexp.Of_sexp)
-    let t _ sexp = Sexp.Of_sexp.parse t sexp
+    let t _ sexp = Sexp.Of_sexp.parse t Univ_map.empty sexp
   end
   module To_sexp = struct
     include F(Sexp.To_sexp)

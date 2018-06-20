@@ -100,11 +100,15 @@ module Of_sexp = struct
     ; known    : string list
     }
 
-  (* The two arguments are the location of the whole list as well as
-     the first atom when either parsing a constructor or a field. *)
+  (* Arguments are:
+
+     - the location of the whole list
+     - the first atom when parsing a constructor or a field
+     - the universal map holding the user context
+  *)
   type 'kind context =
-    | Values : Loc.t * string option -> values context
-    | Fields : Loc.t * string option -> fields context
+    | Values : Loc.t * string option * Univ_map.t -> values context
+    | Fields : Loc.t * string option * Univ_map.t -> fields context
 
   type ('a, 'kind) parser =  'kind context -> 'kind -> 'a * 'kind
 
@@ -123,10 +127,24 @@ module Of_sexp = struct
     b ctx state
   let map t ~f = t >>| f
 
+  let get_user_context : type k. k context -> Univ_map.t = function
+    | Values (_, _, uc) -> uc
+    | Fields (_, _, uc) -> uc
+
+  let get key ctx state = (Univ_map.find (get_user_context ctx) key, state)
+
+  let set : type a b k. a Univ_map.Key.t -> a -> (b, k) parser -> (b, k) parser
+    = fun key v t ctx state ->
+      match ctx with
+      | Values (loc, cstr, uc) ->
+        t (Values (loc, cstr, Univ_map.add uc key v)) state
+      | Fields (loc, cstr, uc) ->
+        t (Fields (loc, cstr, Univ_map.add uc key v)) state
+
   let loc : type k. k context -> k -> Loc.t * k = fun ctx state ->
     match ctx with
-    | Values (loc, _) -> (loc, state)
-    | Fields (loc, _) -> (loc, state)
+    | Values (loc, _, _) -> (loc, state)
+    | Fields (loc, _, _) -> (loc, state)
 
   let eos : type k. k context -> k -> bool * k = fun ctx state ->
     match ctx with
@@ -146,7 +164,7 @@ module Of_sexp = struct
   let result : type a k. k context -> a * k -> a =
     fun ctx (v, state) ->
       match ctx with
-      | Values (_, cstr) -> begin
+      | Values (_, cstr, _) -> begin
           match state with
           | [] -> v
           | sexp :: _ ->
@@ -169,11 +187,11 @@ module Of_sexp = struct
               name_loc "Unknown field %s" name
         end
 
-  let parse t sexp =
-    let ctx = Values (Ast.loc sexp, None) in
+  let parse t context sexp =
+    let ctx = Values (Ast.loc sexp, None, context) in
     result ctx (t ctx [sexp])
 
-  let end_of_list (Values (loc, cstr)) =
+  let end_of_list (Values (loc, cstr, _)) =
     match cstr with
     | None ->
       let loc = { loc with start = loc.stop } in
@@ -186,6 +204,12 @@ module Of_sexp = struct
     match sexps with
     | [] -> end_of_list ctx
     | sexp :: sexps -> (f sexp, sexps)
+  [@@inline always]
+
+  let next_with_user_context f ctx sexps =
+    match sexps with
+    | [] -> end_of_list ctx
+    | sexp :: sexps -> (f (get_user_context ctx) sexp, sexps)
   [@@inline always]
 
   let peek t ctx sexps =
@@ -201,9 +225,10 @@ module Of_sexp = struct
       | List (loc, _) -> of_sexp_error loc "Atom or quoted string expected")
 
   let enter t =
-    next (function
+    next_with_user_context (fun uc sexp ->
+      match sexp with
       | List (loc, l) ->
-        let ctx = Values (loc, None) in
+        let ctx = Values (loc, None, uc) in
         result ctx (t ctx l)
       | sexp ->
         of_sexp_error (Ast.loc sexp) "List expected")
@@ -219,7 +244,7 @@ module Of_sexp = struct
     | sexp :: rest when rest == state2 -> (* common case *)
       ((Ast.loc sexp, x), state2)
     | [] ->
-      let (Values (loc, _)) = ctx in
+      let (Values (loc, _, _)) = ctx in
       (({ loc with start = loc.stop }, x), state2)
     | sexp :: rest ->
       let loc = Ast.loc sexp in
@@ -229,7 +254,7 @@ module Of_sexp = struct
         else
           match l with
           | [] ->
-            let (Values (loc, _)) = ctx in
+            let (Values (loc, _, _)) = ctx in
             (({ (Ast.loc sexp) with stop = loc.stop }, x), state2)
           | sexp :: rest ->
             search sexp rest
@@ -318,10 +343,10 @@ module Of_sexp = struct
         "Unknown constructor %s" name
 
   let sum cstrs =
-    next (fun sexp ->
+    next_with_user_context (fun uc sexp ->
       match sexp with
       | Atom (loc, A s) ->
-        find_cstr cstrs loc s (Values (loc, Some s)) []
+        find_cstr cstrs loc s (Values (loc, Some s, uc)) []
       | Quoted_string (loc, _) ->
         of_sexp_error loc "Atom expected"
       | List (loc, []) ->
@@ -331,7 +356,7 @@ module Of_sexp = struct
         | Quoted_string (loc, _) | List (loc, _) ->
           of_sexp_error loc "Atom expected"
         | Atom (s_loc, A s) ->
-          find_cstr cstrs s_loc s (Values (loc, Some s)) args)
+          find_cstr cstrs s_loc s (Values (loc, Some s, uc)) args)
 
   let enum cstrs =
     next (function
@@ -377,7 +402,7 @@ module Of_sexp = struct
             Int.compare a.Loc.start.pos_cnum b.start.pos_cnum)
         with
         | [] ->
-          let (Fields (loc, _)) = ctx in
+          let (Fields (loc, _, _)) = ctx in
           loc
         | first :: l ->
           let last = List.fold_left l ~init:first ~f:(fun _ x -> x) in
@@ -385,7 +410,7 @@ module Of_sexp = struct
       in
       of_sexp_errorf loc "%s" msg
 
-  let field_missing (Fields (loc, _)) name =
+  let field_missing loc name =
     of_sexp_errorf loc "field %s missing" name
   [@@inline never]
 
@@ -407,21 +432,21 @@ module Of_sexp = struct
      | _ -> ());
     res
 
-  let field name ?default t ctx state =
+  let field name ?default t (Fields (loc, _, uc)) state =
     match find_single state name with
     | Some { values; entry; _ } ->
-      let ctx = Values (Ast.loc entry, Some name) in
+      let ctx = Values (Ast.loc entry, Some name, uc) in
       let x = result ctx (t ctx values) in
       (x, consume name state)
     | None ->
       match default with
       | Some v -> (v, add_known name state)
-      | None -> field_missing ctx name
+      | None -> field_missing loc name
 
-  let field_o name t _ctx state =
+  let field_o name t (Fields (_, _, uc)) state =
     match find_single state name with
     | Some { values; entry; _ } ->
-      let ctx = Values (Ast.loc entry, Some name) in
+      let ctx = Values (Ast.loc entry, Some name, uc) in
       let x = result ctx (t ctx values) in
       (Some x, consume name state)
     | None ->
@@ -433,19 +458,19 @@ module Of_sexp = struct
        | true -> return true
        | _ -> bool)
 
-  let multi_field name t _ctx state =
+  let multi_field name t (Fields (_, _, uc)) state =
     let rec loop acc field =
       match field with
       | None -> acc
       | Some { values; prev; entry } ->
-        let ctx = Values (Ast.loc entry, Some name) in
+        let ctx = Values (Ast.loc entry, Some name, uc) in
         let x = result ctx (t ctx values) in
         loop (x :: acc) prev
     in
     let res = loop [] (Name_map.find state.unparsed name) in
     (res, consume name state)
 
-  let fields t (Values (loc, cstr)) sexps =
+  let fields t (Values (loc, cstr, uc)) sexps =
     let unparsed =
       List.fold_left sexps ~init:Name_map.empty ~f:(fun acc sexp ->
         match sexp with
@@ -464,7 +489,7 @@ module Of_sexp = struct
           of_sexp_error (Ast.loc sexp)
             "S-expression of the form (<name> <values>...) expected")
     in
-    let ctx = Fields (loc, cstr) in
+    let ctx = Fields (loc, cstr, uc) in
     let x = result ctx (t ctx { unparsed; known = [] }) in
     (x, [])
 

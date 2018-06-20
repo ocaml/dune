@@ -1,13 +1,11 @@
 open Import
 open Sexp.Of_sexp
 
-(* This file defines the jbuild types as well as the S-expression syntax for the various
-   supported version of the specification.
-
-   [vN] is for the version [N] of the specification and [vjs] is for the rolling
-   [jane_street] version, when needed.
+(* This file defines the jbuild types as well as the S-expression
+   syntax for the various supported version of the specification.
 *)
 
+(* Deprecated *)
 module Jbuild_version = struct
   type t =
     | V1
@@ -16,8 +14,6 @@ module Jbuild_version = struct
     enum
       [ "1", V1
       ]
-
-  let latest_stable = V1
 end
 
 let invalid_module_name ~loc =
@@ -154,13 +150,15 @@ module Pkg = struct
                  (hint name_s (Package.Name.Map.keys project.packages
                                |> List.map ~f:Package.Name.to_string)))
 
-  let t p =
+  let t =
+    Dune_project.get_exn () >>= fun p ->
     located Package.Name.t >>| fun (loc, name) ->
     match resolve p name with
     | Ok    x -> x
     | Error e -> Loc.fail loc "%s" e
 
-  let field p =
+  let field =
+    Dune_project.get_exn () >>= fun p ->
     map_validate (field_o "package" string) ~f:(function
       | None -> default p
       | Some name -> resolve p (Package.Name.of_string name))
@@ -500,7 +498,7 @@ module Buildable = struct
   let modules_field name =
     field name Ordered_set_lang.t ~default:Ordered_set_lang.standard
 
-  let v1 =
+  let t =
     loc >>= fun loc ->
     field "preprocess" Preprocess_map.t ~default:Preprocess_map.default
     >>= fun preprocess ->
@@ -550,7 +548,8 @@ module Public_lib = struct
     ; sub_dir : string option
     }
 
-  let public_name_field project =
+  let public_name_field =
+    Dune_project.get_exn () >>= fun project ->
     map_validate (field_o "public_name" string) ~f:(function
       | None -> Ok None
       | Some s ->
@@ -701,11 +700,11 @@ module Library = struct
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     }
 
-  let v1 project =
+  let t =
     record
-      (Buildable.v1 >>= fun buildable ->
+      (Buildable.t >>= fun buildable ->
        field      "name" library_name                                      >>= fun name                     ->
-       Public_lib.public_name_field project                                >>= fun public                   ->
+       Public_lib.public_name_field                                        >>= fun public                   ->
        field_o    "synopsis" string                                        >>= fun synopsis                 ->
        field      "install_c_headers" (list string) ~default:[]            >>= fun install_c_headers        ->
        field      "ppx_runtime_libraries" (list (located string)) ~default:[] >>= fun ppx_runtime_libraries    ->
@@ -723,6 +722,7 @@ module Library = struct
        field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
        field_b    "no_dynlink"                                             >>= fun no_dynlink               ->
        Sub_system_info.record_parser () >>= fun sub_systems ->
+       Dune_project.get_exn () >>= fun project ->
        return
          { name
          ; public
@@ -782,11 +782,11 @@ module Install_conf = struct
     ; package : Package.t
     }
 
-  let v1 project =
+  let t =
     record
       (field   "section" Install.Section.t >>= fun section ->
        field   "files"   (list file)       >>= fun files ->
-       Pkg.field project                   >>= fun package ->
+       Pkg.field                           >>= fun package ->
        return
          { section
          ; files
@@ -902,8 +902,8 @@ module Executables = struct
     ; buildable  : Buildable.t
     }
 
-  let common project names public_names ~syntax ~multi =
-    Buildable.v1 >>= fun buildable ->
+  let common names public_names ~syntax ~multi =
+    Buildable.t >>= fun buildable ->
     (match (syntax : File_tree.Dune_file.Kind.t) with
      | Dune ->
        return ()
@@ -974,7 +974,7 @@ module Executables = struct
            (if multi then "s" else "");
          return (t, None))
     | files ->
-      Pkg.field project >>= fun package ->
+      Pkg.field >>= fun package ->
       return (t, Some { Install_conf. section = Bin; files; package })
 
   let public_name =
@@ -982,7 +982,7 @@ module Executables = struct
     | "-" -> None
     | s   -> Some s
 
-  let multi ~syntax project =
+  let multi ~syntax =
     record
       (field "names" (list (located string)) >>= fun names ->
        map_validate (field_o "public_names" (list public_name)) ~f:(function
@@ -994,13 +994,13 @@ module Executables = struct
              Error "The list of public names must be of the same \
                     length as the list of names")
        >>= fun public_names ->
-       common ~syntax project names public_names ~multi:true)
+       common ~syntax names public_names ~multi:true)
 
-  let single ~syntax project =
+  let single ~syntax =
     record
       (field   "name" (located string) >>= fun name ->
        field_o "public_name" string >>= fun public_name ->
-       common ~syntax project [name] [public_name] ~multi:false)
+       common ~syntax [name] [public_name] ~multi:false)
 end
 
 module Rule = struct
@@ -1040,7 +1040,7 @@ module Rule = struct
     ; loc      : Loc.t
     }
 
-  let v1 =
+  let t =
     peek raw >>= function
     | List (_, (Atom _ :: _)) ->
       located Action.Unexpanded.t >>| fun (loc, action) ->
@@ -1085,7 +1085,7 @@ module Rule = struct
     ; mode    : Mode.t
     }
 
-  let ocamllex_v1 =
+  let ocamllex =
     peek raw >>= function
     | List (_, List (_, _) :: _) ->
       record
@@ -1098,7 +1098,7 @@ module Rule = struct
       ; mode  = Standard
       }
 
-  let ocamlyacc_v1 = ocamllex_v1
+  let ocamlyacc = ocamllex
 
   let ocamllex_to_rule loc { modules; mode } =
     let module S = String_with_vars in
@@ -1149,7 +1149,7 @@ module Menhir = struct
     ; loc        :  Loc.t
     }
 
-  let v1 =
+  let t =
     record
       (field_o "merge_into" string >>= fun merge_into ->
        field_oslu "flags" >>= fun flags ->
@@ -1181,11 +1181,11 @@ module Alias_conf = struct
       else
         s)
 
-  let v1 project =
+  let t =
     record
       (field "name" alias_name                          >>= fun name ->
        field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
-       field_o "package" (Pkg.t project)                >>= fun package ->
+       field_o "package" Pkg.t                          >>= fun package ->
        field_o "action" (located Action.Unexpanded.t)   >>= fun action ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
        return
@@ -1202,7 +1202,7 @@ module Copy_files = struct
            ; glob : String_with_vars.t
            }
 
-  let v1 = String_with_vars.t
+  let t = String_with_vars.t
 end
 
 module Documentation = struct
@@ -1211,9 +1211,9 @@ module Documentation = struct
     ; mld_files: Ordered_set_lang.t
     }
 
-  let v1 project =
+  let t =
     record
-      (Pkg.field project >>= fun package ->
+      (Pkg.field >>= fun package ->
        field "mld_files" Ordered_set_lang.t ~default:Ordered_set_lang.standard
        >>= fun mld_files ->
        return
@@ -1289,59 +1289,59 @@ module Stanzas = struct
 
   type constructors = (string * Stanza.t list Sexp.Of_sexp.t) list
 
-  let common project ~syntax : constructors =
+  let common ~syntax : constructors =
     [ "library",
-      (Library.v1 project >>| fun x ->
+      (Library.t >>| fun x ->
        [Library x])
-    ; "executable" , Executables.single project ~syntax >>| execs
-    ; "executables", Executables.multi  project ~syntax >>| execs
+    ; "executable" , Executables.single ~syntax >>| execs
+    ; "executables", Executables.multi  ~syntax >>| execs
     ; "rule",
       (loc >>= fun loc ->
-       Rule.v1 >>| fun x ->
+       Rule.t >>| fun x ->
        [Rule { x with loc }])
     ; "ocamllex",
       (loc >>= fun loc ->
-       Rule.ocamllex_v1 >>| fun x ->
+       Rule.ocamllex >>| fun x ->
        rules (Rule.ocamllex_to_rule loc x))
     ; "ocamlyacc",
       (loc >>= fun loc ->
-       Rule.ocamlyacc_v1 >>| fun x ->
+       Rule.ocamlyacc >>| fun x ->
        rules (Rule.ocamlyacc_to_rule loc x))
     ; "menhir",
       (loc >>= fun loc ->
-       Menhir.v1 >>| fun x ->
+       Menhir.t >>| fun x ->
        [Menhir { x with loc }])
     ; "install",
-      (Install_conf.v1 project >>| fun x ->
+      (Install_conf.t >>| fun x ->
        [Install x])
     ; "alias",
-      (Alias_conf.v1 project >>| fun x ->
+      (Alias_conf.t >>| fun x ->
        [Alias x])
     ; "copy_files",
-      (Copy_files.v1 >>| fun glob ->
+      (Copy_files.t >>| fun glob ->
        [Copy_files {add_line_directive = false; glob}])
     ; "copy_files#",
-      (Copy_files.v1 >>| fun glob ->
+      (Copy_files.t >>| fun glob ->
        [Copy_files {add_line_directive = true; glob}])
     ; "include",
       (loc >>= fun loc ->
        relative_file >>| fun fn ->
        [Include (loc, fn)])
     ; "documentation",
-      (Documentation.v1 project >>| fun d ->
+      (Documentation.t >>| fun d ->
        [Documentation d])
     ]
 
-  let dune project =
-    common project ~syntax:Dune @
+  let dune =
+    common ~syntax:Dune @
     [ "env",
       (loc >>= fun loc ->
        repeat Env.rule >>| fun rules ->
        [Env { loc; rules }])
     ]
 
-  let jbuild project =
-    common project ~syntax:Jbuild @
+  let jbuild =
+    common ~syntax:Jbuild @
     [ "jbuild_version", (Jbuild_version.t >>| fun _ -> [])
     ]
 
@@ -1354,7 +1354,7 @@ module Stanzas = struct
   exception Include_loop of Path.t * (Loc.t * Path.t) list
 
   let rec parse stanza_parser ~current_file ~include_stack sexps =
-    List.concat_map sexps ~f:(Sexp.Of_sexp.parse stanza_parser)
+    List.concat_map sexps ~f:(Sexp.Of_sexp.parse stanza_parser Univ_map.empty)
     |> List.concat_map ~f:(function
       | Include (loc, fn) ->
         let include_stack = (loc, current_file) :: include_stack in
@@ -1371,9 +1371,10 @@ module Stanzas = struct
 
   let parse ~file ~kind (project : Dune_project.t) sexps =
     let stanza_parser =
-      match (kind : File_tree.Dune_file.Kind.t) with
-      | Jbuild -> sum (jbuild project)
-      | Dune   -> project.stanza_parser
+      Dune_project.set project
+        (match (kind : File_tree.Dune_file.Kind.t) with
+         | Jbuild -> sum jbuild
+         | Dune   -> project.stanza_parser)
     in
     let stanzas =
       try

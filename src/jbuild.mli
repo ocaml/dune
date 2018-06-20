@@ -2,13 +2,6 @@
 
 open Import
 
-module Jbuild_version : sig
-  type t = V1
-  val t : t Sexp.Of_sexp.t
-
-  val latest_stable : t
-end
-
 (** Ppx preprocessors  *)
 module Pp : sig
   type t = private string

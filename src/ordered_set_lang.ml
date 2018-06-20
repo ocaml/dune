@@ -181,7 +181,7 @@ module Unexpanded = struct
       match t with
       | Element x -> Element x
       | Union [Special (_, "include"); Element fn] ->
-        Include (Sexp.Of_sexp.parse String_with_vars.t fn)
+        Include (Sexp.Of_sexp.parse String_with_vars.t Univ_map.empty fn)
       | Union [Special (loc, "include"); _]
       | Special (loc, "include") ->
         Loc.fail loc "(:include expects a single element (do you need to quote the filename?)"
@@ -246,7 +246,8 @@ module Unexpanded = struct
       let open Ast in
       match t with
       | Element s ->
-        Element (Sexp.Ast.loc s, f (Sexp.Of_sexp.parse String_with_vars.t s))
+        Element (Sexp.Ast.loc s,
+                 f (Sexp.Of_sexp.parse String_with_vars.t Univ_map.empty s))
       | Special (l, s) -> Special (l, s)
       | Include fn ->
         let sexp =
@@ -262,7 +263,8 @@ module Unexpanded = struct
               ]
         in
         parse_general sexp ~f:(fun sexp ->
-          (Sexp.Ast.loc sexp, f (Sexp.Of_sexp.parse String_with_vars.t sexp)))
+          (Sexp.Ast.loc sexp,
+           f (Sexp.Of_sexp.parse String_with_vars.t Univ_map.empty sexp)))
       | Union l -> Union (List.map l ~f:expand)
       | Diff (l, r) ->
         Diff (expand l, expand r)

@@ -112,19 +112,17 @@ end = struct
 end
 
 type t =
-  { kind                  : Kind.t
-  ; name                  : Name.t
-  ; root                  : Path.Local.t
-  ; version               : string option
-  ; packages              : Package.t Package.Name.Map.t
-  ; mutable stanza_parser : Stanza.t list Sexp.Of_sexp.t
-  ; mutable project_file  : Path.t option
+  { kind                 : Kind.t
+  ; name                 : Name.t
+  ; root                 : Path.Local.t
+  ; version              : string option
+  ; packages             : Package.t Package.Name.Map.t
+  ; stanza_parser        : Stanza.t list Sexp.Of_sexp.t
+  ; mutable project_file : Path.t option
   }
 
-type project = t
-
 module Lang = struct
-  type t = Syntax.Version.t * (project -> Stanza.Parser.t list)
+  type t = Syntax.Version.t * Stanza.Parser.t list
 
   let make ver f = (ver, f)
 
@@ -143,7 +141,7 @@ module Lang = struct
         } = first_line
     in
     let ver =
-      Sexp.Of_sexp.parse Syntax.Version.t
+      Sexp.Of_sexp.parse Syntax.Version.t Univ_map.empty
         (Atom (ver_loc, Sexp.Atom.of_string ver)) in
     match Hashtbl.find langs name with
     | None ->
@@ -161,9 +159,7 @@ module Lang = struct
 end
 
 module Extension = struct
-  type maker = project -> Stanza.Parser.t list Sexp.Of_sexp.t
-
-  type t = Syntax.Version.t * maker
+  type t = Syntax.Version.t * Stanza.Parser.t list Sexp.Of_sexp.t
 
   let make ver f = (ver, f)
 
@@ -184,6 +180,15 @@ module Extension = struct
       Syntax.Versioned_parser.find_exn versions ~loc:ver_loc ~data_version:ver
 end
 
+let key = Univ_map.Key.create ()
+let set t = Sexp.Of_sexp.set key t
+let get_exn () =
+  let open Sexp.Of_sexp in
+  get key >>| function
+  | Some t -> t
+  | None ->
+    Exn.code_error "Current project is unset" []
+
 let filename = "dune-project"
 
 let get_local_path p =
@@ -191,23 +196,15 @@ let get_local_path p =
   | External _ -> assert false
   | Local    p -> p
 
-let fake_stanza_parser =
-  let open Sexp.Of_sexp in
-  return () >>| fun _ -> assert false
-
-let anonymous = lazy(
-  let t =
-    { kind          = Dune
-    ; name          = Name.anonymous_root
-    ; packages      = Package.Name.Map.empty
-    ; root          = get_local_path Path.root
-    ; version       = None
-    ; stanza_parser = fake_stanza_parser
-    ; project_file  = None
-    }
-  in
-  t.stanza_parser <- Sexp.Of_sexp.sum (snd (Lang.latest "dune") t);
-  t)
+let anonymous = lazy (
+  { kind          = Dune
+  ; name          = Name.anonymous_root
+  ; packages      = Package.Name.Map.empty
+  ; root          = get_local_path Path.root
+  ; version       = None
+  ; stanza_parser = Sexp.Of_sexp.sum (snd (Lang.latest "dune"))
+  ; project_file  = None
+  })
 
 let default_name ~dir ~packages =
   match Package.Name.Map.choose packages with
@@ -237,21 +234,11 @@ let parse ~dir ~lang_stanzas ~packages ~file =
   record
     (name ~dir ~packages >>= fun name ->
      field_o "version" string >>= fun version ->
-     let t =
-       { kind = Dune
-       ; name
-       ; root = get_local_path dir
-       ; version
-       ; packages
-       ; stanza_parser = fake_stanza_parser
-       ; project_file  = Some file
-       }
-     in
      multi_field "using"
        (loc >>= fun loc ->
         located string >>= fun name ->
         located Syntax.Version.t >>= fun ver ->
-        Extension.lookup name ver t >>= fun stanzas ->
+        Extension.lookup name ver >>= fun stanzas ->
         return (snd name, (loc, stanzas)))
      >>= fun extensions ->
      let extensions_stanzas =
@@ -261,29 +248,33 @@ let parse ~dir ~lang_stanzas ~packages ~file =
        | Ok _ ->
          List.concat_map extensions ~f:(fun (_, (_, x)) -> x)
      in
-     t.stanza_parser <- Sexp.Of_sexp.sum (lang_stanzas t @ extensions_stanzas);
-     return t)
+     return
+       { kind = Dune
+       ; name
+       ; root = get_local_path dir
+       ; version
+       ; packages
+       ; stanza_parser = Sexp.Of_sexp.sum (lang_stanzas @ extensions_stanzas)
+       ; project_file  = Some file
+       })
 
 let load_dune_project ~dir packages =
   let fname = Path.relative dir filename in
   Io.with_lexbuf_from_file fname ~f:(fun lb ->
     let lang_stanzas = Lang.parse (Dune_lexer.first_line lb) in
     let sexp = Sexp.Parser.parse lb ~mode:Many_as_one in
-    Sexp.Of_sexp.parse (parse ~dir ~lang_stanzas ~packages ~file:fname) sexp)
+    Sexp.Of_sexp.parse (parse ~dir ~lang_stanzas ~packages ~file:fname)
+      Univ_map.empty sexp)
 
 let make_jbuilder_project ~dir packages =
-  let t =
-    { kind = Jbuilder
-    ; name = default_name ~dir ~packages
-    ; root = get_local_path dir
-    ; version = None
-    ; packages
-    ; stanza_parser = fake_stanza_parser
-    ; project_file = None
-    }
-  in
-  t.stanza_parser <- Sexp.Of_sexp.sum (snd (Lang.latest "dune") t);
-  t
+  { kind = Jbuilder
+  ; name = default_name ~dir ~packages
+  ; root = get_local_path dir
+  ; version = None
+  ; packages
+  ; stanza_parser = Sexp.Of_sexp.sum (snd (Lang.latest "dune"))
+  ; project_file = None
+  }
 
 let load ~dir ~files =
   let packages =
@@ -343,4 +334,3 @@ let append_to_project_file t str =
       output_string oc s;
       let len = String.length s in
       if len > 0 && s.[len - 1] <> '\n' then output_char oc '\n'))
-

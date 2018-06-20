@@ -31,18 +31,16 @@ end
 
 (* CR-soon diml: make this abstract *)
 type t = private
-  { kind                  : Kind.t
-  ; name                  : Name.t
-  ; root                  : Path.Local.t
-  ; version               : string option
-  ; packages              : Package.t Package.Name.Map.t
-  ; mutable stanza_parser : Stanza.t list Sexp.Of_sexp.t
-  ; mutable project_file  : Path.t option
+  { kind                 : Kind.t
+  ; name                 : Name.t
+  ; root                 : Path.Local.t
+  ; version              : string option
+  ; packages             : Package.t Package.Name.Map.t
+  ; stanza_parser        : Stanza.t list Sexp.Of_sexp.t
+  ; mutable project_file : Path.t option
   }
 
 module Lang : sig
-  type project = t
-
   (** One version of a language *)
   type t
 
@@ -53,10 +51,7 @@ module Lang : sig
 
       as the first line of their [dune-project] file. [stanza_parsers]
       defines what stanzas the user can write in [dune] files. *)
-  val make
-    :  Syntax.Version.t
-    -> (project -> Stanza.Parser.t list)
-    -> t
+  val make : Syntax.Version.t -> Stanza.Parser.t list -> t
 
   val version : t -> Syntax.Version.t
 
@@ -65,11 +60,9 @@ module Lang : sig
 
   (** Latest version of the following language *)
   val latest : string -> t
-end with type project := t
+end
 
 module Extension : sig
-  type project = t
-
   (** One version of an extension *)
   type t
 
@@ -80,14 +73,11 @@ module Extension : sig
 
       in their [dune-project] file. [parser] is used to describe
       what [<args>] might be.  *)
-  val make
-    :  Syntax.Version.t
-    -> (project -> Stanza.Parser.t list Sexp.Of_sexp.t)
-    -> t
+  val make : Syntax.Version.t -> Stanza.Parser.t list Sexp.Of_sexp.t -> t
 
   (** Register all the supported versions of an extension *)
   val register : string -> t list -> unit
-end with type project := t
+end
 
 (** Load a project description from the following directory. [files]
     is the set of files in this directory. *)
@@ -105,3 +95,7 @@ val ensure_project_file_exists : t -> unit
 
 (** Append the following text to the project file *)
 val append_to_project_file : t -> string -> unit
+
+(** Set the project we are currently parsing dune files for *)
+val set : t -> ('a, 'k) Sexp.Of_sexp.parser -> ('a, 'k) Sexp.Of_sexp.parser
+val get_exn : unit -> (t, 'k) Sexp.Of_sexp.parser

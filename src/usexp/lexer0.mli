@@ -24,18 +24,9 @@ val escaped_buf : Buffer.t
 
 exception Error of Error.t
 
-type escape_mode =
-  | In_block_comment (* Inside #|...|# comments (old syntax) *)
-  | Old_syntax
-  | New_syntax
-
 type escape_sequence =
   | Newline
   | Other
-
-type block_string_line_kind =
-  | With_escape_sequences
-  | Raw
 
 val eval_decimal_char : char -> int
 

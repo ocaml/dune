@@ -1,5 +1,14 @@
 {
   open Lexer0
+
+(* The difference between the old and new syntax is that the old
+   syntax allows backslash following by any characters other than 'n',
+   'x', ... and interpret it as it. The new syntax is stricter in
+   order to allow introducing new escape sequence in the future if
+   needed. *)
+type escape_mode =
+  | In_block_comment (* Inside #|...|# comments (old syntax) *)
+  | In_quoted_string
 }
 
 let comment   = ';' [^ '\n' '\r']*
@@ -24,7 +33,7 @@ rule token = parse
   | '"'
     { Buffer.clear escaped_buf;
       let start = Lexing.lexeme_start_p lexbuf in
-      let s = quoted_string Old_syntax lexbuf in
+      let s = quoted_string In_quoted_string lexbuf in
       lexbuf.lex_start_p <- start;
       Quoted_string s
     }
@@ -77,7 +86,7 @@ and quoted_string mode = parse
       quoted_string mode lexbuf
     }
   | eof
-    { if mode <> In_block_comment then
+    { if mode = In_block_comment then
         error lexbuf "unterminated quoted string";
       Buffer.contents escaped_buf
     }
@@ -120,14 +129,14 @@ and escape_sequence mode = parse
     }
   | (digit as c1) (digit as c2) (digit as c3)
     { let v = eval_decimal_escape c1 c2 c3 in
-      if mode <> In_block_comment && v > 255 then
+      if mode = In_quoted_string && v > 255 then
         error lexbuf "escape sequence in quoted string out of range"
           ~delta:(-1);
       Buffer.add_char escaped_buf (Char.chr v);
       Other
     }
   | digit* as s
-    { if mode <> In_block_comment then
+    { if mode = In_quoted_string then
         error lexbuf "unterminated decimal escape sequence" ~delta:(-1);
       Buffer.add_char escaped_buf '\\';
       Buffer.add_string escaped_buf s;
@@ -139,21 +148,19 @@ and escape_sequence mode = parse
       Other
     }
   | 'x' hexdigit* as s
-    { if mode <> In_block_comment then
+    { if mode = In_quoted_string then
         error lexbuf "unterminated hexadecimal escape sequence" ~delta:(-1);
       Buffer.add_char escaped_buf '\\';
       Buffer.add_string escaped_buf s;
       Other
     }
   | _ as c
-    { if mode = New_syntax then
-        error lexbuf "unknown escape sequence" ~delta:(-1);
-      Buffer.add_char escaped_buf '\\';
+    { Buffer.add_char escaped_buf '\\';
       Buffer.add_char escaped_buf c;
       Other
     }
   | eof
-    { if mode <> In_block_comment then
+    { if mode = In_quoted_string then
         error lexbuf "unterminated escape sequence" ~delta:(-1);
       Other
     }

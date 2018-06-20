@@ -1,5 +1,9 @@
 {
-  open Lexer0
+open Lexer0
+
+type block_string_line_kind =
+  | With_escape_sequences
+  | Raw
 }
 
 let comment   = ';' [^ '\n' '\r']*

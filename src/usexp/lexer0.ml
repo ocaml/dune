@@ -31,23 +31,9 @@ let error ?(delta=0) lexbuf message =
 
 let escaped_buf = Buffer.create 256
 
-(* The difference between the old and new syntax is that the old
-   syntax allows backslash following by any characters other than 'n',
-   'x', ... and interpret it as it. The new syntax is stricter in
-   order to allow introducing new escape sequence in the future if
-   needed. *)
-type escape_mode =
-  | In_block_comment (* Inside #|...|# comments (old syntax) *)
-  | Old_syntax
-  | New_syntax
-
 type escape_sequence =
   | Newline
   | Other
-
-type block_string_line_kind =
-  | With_escape_sequences
-  | Raw
 
 let eval_decimal_char c = Char.code c - Char.code '0'
 

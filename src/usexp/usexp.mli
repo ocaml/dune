@@ -4,8 +4,6 @@
 
 module Atom : sig
   type t = private A of string [@@unboxed]
-  (** Acceptable atoms are composed of chars in the range ['!' .. '~'] excluding
-      [' ' '"' '(' ')' ';' '\\'], and must be nonempty. *)
 
   type syntax = Jbuild | Dune
 

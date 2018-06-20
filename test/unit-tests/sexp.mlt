@@ -145,7 +145,7 @@ parse {|\%{foo}|}
 Different
  {jbuild =
    Ok
-    [<printer pp_sexp_ast raised an exception: Invalid_argument("Jbuild atom '\\%{foo}' cannot be printed")>];
+    [<printer pp_sexp_ast raised an exception: Invalid_argument("atom '\\%{foo}' cannot be in dune syntax")>];
   dune = Error "Invalid atom character '%'"}
 |}]
 
@@ -160,7 +160,7 @@ parse {|\$bar%foo%|}
 Different
  {jbuild =
    Ok
-    [<printer pp_sexp_ast raised an exception: Invalid_argument("Jbuild atom '\\$bar%foo%' cannot be printed")>];
+    [<printer pp_sexp_ast raised an exception: Invalid_argument("atom '\\$bar%foo%' cannot be in dune syntax")>];
   dune = Error "Invalid atom character '%'"}
 |}]
 
@@ -170,7 +170,7 @@ parse {|\$bar\%foo%|}
 Different
  {jbuild =
    Ok
-    [<printer pp_sexp_ast raised an exception: Invalid_argument("Jbuild atom '\\$bar\\%foo%' cannot be printed")>];
+    [<printer pp_sexp_ast raised an exception: Invalid_argument("atom '\\$bar\\%foo%' cannot be in dune syntax")>];
   dune = Error "Invalid atom character '%'"}
 |}]
 
@@ -180,6 +180,6 @@ parse {|\$bar\%foo%{bar}|}
 Different
  {jbuild =
    Ok
-    [<printer pp_sexp_ast raised an exception: Invalid_argument("Jbuild atom '\\$bar\\%foo%{bar}' cannot be printed")>];
+    [<printer pp_sexp_ast raised an exception: Invalid_argument("atom '\\$bar\\%foo%{bar}' cannot be in dune syntax")>];
   dune = Error "Invalid atom character '%'"}
 |}]

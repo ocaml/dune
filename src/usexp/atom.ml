@@ -31,18 +31,17 @@ let is_valid_jbuild str =
 let of_string s = A s
 let to_string (A s) = s
 
-let print (A t) syntax =
-  match syntax with
-  | Jbuild ->
-    if is_valid_jbuild t then
-      t
-    else
-      invalid_argf "Dune atom '%s' cannot be printed" t
-  | Dune ->
-    if is_valid_dune t then
-      t
-    else
-      invalid_argf "Jbuild atom '%s' cannot be printed" t
+let is_valid (A t) = function
+  | Jbuild -> is_valid_jbuild t
+  | Dune   -> is_valid_dune t
+
+let print ((A s) as t) syntax =
+  if is_valid t syntax then
+    s
+  else
+    match syntax with
+    | Jbuild -> invalid_argf "atom '%s' cannot be printed in jbuild syntax" s
+    | Dune -> invalid_argf "atom '%s' cannot be in dune syntax" s
 
 let of_int i = of_string (string_of_int i)
 let of_float x = of_string (string_of_float x)

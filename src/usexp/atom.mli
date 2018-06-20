@@ -5,8 +5,9 @@ type syntax = Jbuild | Dune
 val is_valid_dune : string -> bool
 
 val of_string : string -> t
+val to_string : t -> string
 
-val to_string : t -> syntax -> string
+val print : t -> syntax -> string
 
 val of_int : int -> t
 val of_float : float -> t

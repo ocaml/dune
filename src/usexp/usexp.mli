@@ -12,8 +12,7 @@ module Atom : sig
   val is_valid_dune : string -> bool
 
   val of_string : string -> t
-
-  val to_string : t -> syntax -> string
+  val to_string : t -> string
 
   val of_int : int -> t
   val of_float : float -> t

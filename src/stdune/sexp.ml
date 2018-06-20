@@ -296,13 +296,13 @@ module Of_sexp = struct
   let string = plain_string (fun ~loc:_ x -> x)
   let int =
     basic "Integer" (fun s ->
-      match int_of_string (s Atom.Dune) with
+      match int_of_string s with
       | x -> Ok x
       | exception _ -> Result.Error ())
 
   let float =
     basic "Float" (fun s ->
-      match float_of_string (s Atom.Dune) with
+      match float_of_string s with
       | x -> Ok x
       | exception _ -> Result.Error ())
 

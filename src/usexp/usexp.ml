@@ -90,13 +90,13 @@ let quoted s =
   Bytes.unsafe_to_string s'
 
 let rec to_string = function
-  | Atom a -> Atom.to_string a Atom.Dune
+  | Atom a -> Atom.print a Atom.Dune
   | Quoted_string s -> quoted s
   | List l -> Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
 
 let rec pp ppf = function
   | Atom s ->
-    Format.pp_print_string ppf (Atom.to_string s Atom.Dune)
+    Format.pp_print_string ppf (Atom.print s Atom.Dune)
   | Quoted_string s ->
     Format.pp_print_string ppf (quoted s)
   | List [] ->
@@ -137,7 +137,7 @@ let pp_print_quoted_string ppf s =
     Format.pp_print_string ppf (quoted s)
 
 let rec pp_split_strings ppf = function
-  | Atom s -> Format.pp_print_string ppf (Atom.to_string s Atom.Dune)
+  | Atom s -> Format.pp_print_string ppf (Atom.print s Atom.Dune)
   | Quoted_string s -> pp_print_quoted_string ppf s
   | List [] ->
     Format.pp_print_string ppf "()"

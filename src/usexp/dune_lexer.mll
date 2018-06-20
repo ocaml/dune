@@ -1,5 +1,5 @@
 {
-open Lexer0
+open Lexer_shared
 
 type block_string_line_kind =
   | With_escape_sequences

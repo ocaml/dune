@@ -1,4 +1,3 @@
-
 module Token = struct
   type t =
     | Atom          of Atom.t

@@ -1,5 +1,5 @@
 {
-  open Lexer0
+  open Lexer_shared
 
 (* The difference between the old and new syntax is that the old
    syntax allows backslash following by any characters other than 'n',

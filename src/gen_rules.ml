@@ -252,7 +252,7 @@ module Gen(P : Install_rules.Params) = struct
           let generated_files =
             List.concat_map stanzas ~f:(fun stanza ->
               match (stanza : Stanza.t) with
-              | Menhir menhir ->
+              | Menhir.T menhir ->
                 Menhir_rules.targets menhir
               | Rule rule ->
                 List.map (user_rule rule  ~dir ~scope) ~f:Path.basename
@@ -998,7 +998,7 @@ module Gen(P : Install_rules.Params) = struct
         | _ -> None));
     List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
-      | Menhir m ->
+      | Menhir.T m ->
         let cctx =
           match
             List.find_map (Menhir_rules.module_names m)

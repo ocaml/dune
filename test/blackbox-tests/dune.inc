@@ -1,6 +1,6 @@
 (alias
  ((name aliases)
-  (deps ((package dune) (files_recursively_in test-cases/aliases)))
+  (deps ((package dune) (source_tree test-cases/aliases)))
   (action
    (chdir
     test-cases/aliases
@@ -8,7 +8,7 @@
 
 (alias
  ((name bad-alias-error)
-  (deps ((package dune) (files_recursively_in test-cases/bad-alias-error)))
+  (deps ((package dune) (source_tree test-cases/bad-alias-error)))
   (action
    (chdir
     test-cases/bad-alias-error
@@ -16,7 +16,7 @@
 
 (alias
  ((name block-strings)
-  (deps ((package dune) (files_recursively_in test-cases/block-strings)))
+  (deps ((package dune) (source_tree test-cases/block-strings)))
   (action
    (chdir
     test-cases/block-strings
@@ -24,7 +24,7 @@
 
 (alias
  ((name byte-code-only)
-  (deps ((package dune) (files_recursively_in test-cases/byte-code-only)))
+  (deps ((package dune) (source_tree test-cases/byte-code-only)))
   (action
    (chdir
     test-cases/byte-code-only
@@ -32,7 +32,7 @@
 
 (alias
  ((name c-stubs)
-  (deps ((package dune) (files_recursively_in test-cases/c-stubs)))
+  (deps ((package dune) (source_tree test-cases/c-stubs)))
   (action
    (chdir
     test-cases/c-stubs
@@ -40,7 +40,7 @@
 
 (alias
  ((name configurator)
-  (deps ((package dune) (files_recursively_in test-cases/configurator)))
+  (deps ((package dune) (source_tree test-cases/configurator)))
   (action
    (chdir
     test-cases/configurator
@@ -50,7 +50,7 @@
 
 (alias
  ((name copy_files)
-  (deps ((package dune) (files_recursively_in test-cases/copy_files)))
+  (deps ((package dune) (source_tree test-cases/copy_files)))
   (action
    (chdir
     test-cases/copy_files
@@ -58,7 +58,7 @@
 
 (alias
  ((name cross-compilation)
-  (deps ((package dune) (files_recursively_in test-cases/cross-compilation)))
+  (deps ((package dune) (source_tree test-cases/cross-compilation)))
   (action
    (chdir
     test-cases/cross-compilation
@@ -66,7 +66,7 @@
 
 (alias
  ((name custom-build-dir)
-  (deps ((package dune) (files_recursively_in test-cases/custom-build-dir)))
+  (deps ((package dune) (source_tree test-cases/custom-build-dir)))
   (action
    (chdir
     test-cases/custom-build-dir
@@ -74,8 +74,7 @@
 
 (alias
  ((name depend-on-the-universe)
-  (deps
-   ((package dune) (files_recursively_in test-cases/depend-on-the-universe)))
+  (deps ((package dune) (source_tree test-cases/depend-on-the-universe)))
   (action
    (chdir
     test-cases/depend-on-the-universe
@@ -83,8 +82,7 @@
 
 (alias
  ((name dune-ppx-driver-system)
-  (deps
-   ((package dune) (files_recursively_in test-cases/dune-ppx-driver-system)))
+  (deps ((package dune) (source_tree test-cases/dune-ppx-driver-system)))
   (action
    (chdir
     test-cases/dune-ppx-driver-system
@@ -92,8 +90,7 @@
 
 (alias
  ((name dune-project-edition)
-  (deps
-   ((package dune) (files_recursively_in test-cases/dune-project-edition)))
+  (deps ((package dune) (source_tree test-cases/dune-project-edition)))
   (action
    (chdir
     test-cases/dune-project-edition
@@ -101,7 +98,7 @@
 
 (alias
  ((name env)
-  (deps ((package dune) (files_recursively_in test-cases/env)))
+  (deps ((package dune) (source_tree test-cases/env)))
   (action
    (chdir
     test-cases/env
@@ -109,8 +106,7 @@
 
 (alias
  ((name exclude-missing-module)
-  (deps
-   ((package dune) (files_recursively_in test-cases/exclude-missing-module)))
+  (deps ((package dune) (source_tree test-cases/exclude-missing-module)))
   (action
    (chdir
     test-cases/exclude-missing-module
@@ -118,7 +114,7 @@
 
 (alias
  ((name exec-cmd)
-  (deps ((package dune) (files_recursively_in test-cases/exec-cmd)))
+  (deps ((package dune) (source_tree test-cases/exec-cmd)))
   (action
    (chdir
     test-cases/exec-cmd
@@ -126,7 +122,7 @@
 
 (alias
  ((name findlib)
-  (deps ((package dune) (files_recursively_in test-cases/findlib)))
+  (deps ((package dune) (source_tree test-cases/findlib)))
   (action
    (chdir
     test-cases/findlib
@@ -134,7 +130,7 @@
 
 (alias
  ((name force-test)
-  (deps ((package dune) (files_recursively_in test-cases/force-test)))
+  (deps ((package dune) (source_tree test-cases/force-test)))
   (action
    (chdir
     test-cases/force-test
@@ -142,8 +138,7 @@
 
 (alias
  ((name gen-opam-install-file)
-  (deps
-   ((package dune) (files_recursively_in test-cases/gen-opam-install-file)))
+  (deps ((package dune) (source_tree test-cases/gen-opam-install-file)))
   (action
    (chdir
     test-cases/gen-opam-install-file
@@ -151,7 +146,7 @@
 
 (alias
  ((name github20)
-  (deps ((package dune) (files_recursively_in test-cases/github20)))
+  (deps ((package dune) (source_tree test-cases/github20)))
   (action
    (chdir
     test-cases/github20
@@ -159,7 +154,7 @@
 
 (alias
  ((name github24)
-  (deps ((package dune) (files_recursively_in test-cases/github24)))
+  (deps ((package dune) (source_tree test-cases/github24)))
   (action
    (chdir
     test-cases/github24
@@ -167,7 +162,7 @@
 
 (alias
  ((name github25)
-  (deps ((package dune) (files_recursively_in test-cases/github25)))
+  (deps ((package dune) (source_tree test-cases/github25)))
   (action
    (setenv
     OCAMLPATH
@@ -178,7 +173,7 @@
 
 (alias
  ((name github534)
-  (deps ((package dune) (files_recursively_in test-cases/github534)))
+  (deps ((package dune) (source_tree test-cases/github534)))
   (action
    (chdir
     test-cases/github534
@@ -186,7 +181,7 @@
 
 (alias
  ((name github568)
-  (deps ((package dune) (files_recursively_in test-cases/github568)))
+  (deps ((package dune) (source_tree test-cases/github568)))
   (action
    (chdir
     test-cases/github568
@@ -194,7 +189,7 @@
 
 (alias
  ((name github597)
-  (deps ((package dune) (files_recursively_in test-cases/github597)))
+  (deps ((package dune) (source_tree test-cases/github597)))
   (action
    (chdir
     test-cases/github597
@@ -202,7 +197,7 @@
 
 (alias
  ((name github644)
-  (deps ((package dune) (files_recursively_in test-cases/github644)))
+  (deps ((package dune) (source_tree test-cases/github644)))
   (action
    (chdir
     test-cases/github644
@@ -210,7 +205,7 @@
 
 (alias
  ((name github660)
-  (deps ((package dune) (files_recursively_in test-cases/github660)))
+  (deps ((package dune) (source_tree test-cases/github660)))
   (action
    (chdir
     test-cases/github660
@@ -218,8 +213,7 @@
 
 (alias
  ((name github717-odoc-index)
-  (deps
-   ((package dune) (files_recursively_in test-cases/github717-odoc-index)))
+  (deps ((package dune) (source_tree test-cases/github717-odoc-index)))
   (action
    (chdir
     test-cases/github717-odoc-index
@@ -229,7 +223,7 @@
 
 (alias
  ((name github734)
-  (deps ((package dune) (files_recursively_in test-cases/github734)))
+  (deps ((package dune) (source_tree test-cases/github734)))
   (action
    (chdir
     test-cases/github734
@@ -237,7 +231,7 @@
 
 (alias
  ((name github759)
-  (deps ((package dune) (files_recursively_in test-cases/github759)))
+  (deps ((package dune) (source_tree test-cases/github759)))
   (action
    (chdir
     test-cases/github759
@@ -245,7 +239,7 @@
 
 (alias
  ((name github761)
-  (deps ((package dune) (files_recursively_in test-cases/github761)))
+  (deps ((package dune) (source_tree test-cases/github761)))
   (action
    (chdir
     test-cases/github761
@@ -253,7 +247,7 @@
 
 (alias
  ((name github764)
-  (deps ((package dune) (files_recursively_in test-cases/github764)))
+  (deps ((package dune) (source_tree test-cases/github764)))
   (action
    (chdir
     test-cases/github764
@@ -263,7 +257,7 @@
 
 (alias
  ((name github784)
-  (deps ((package dune) (files_recursively_in test-cases/github784)))
+  (deps ((package dune) (source_tree test-cases/github784)))
   (action
    (chdir
     test-cases/github784
@@ -271,7 +265,7 @@
 
 (alias
  ((name ignored_subdirs)
-  (deps ((package dune) (files_recursively_in test-cases/ignored_subdirs)))
+  (deps ((package dune) (source_tree test-cases/ignored_subdirs)))
   (action
    (chdir
     test-cases/ignored_subdirs
@@ -279,7 +273,7 @@
 
 (alias
  ((name include-loop)
-  (deps ((package dune) (files_recursively_in test-cases/include-loop)))
+  (deps ((package dune) (source_tree test-cases/include-loop)))
   (action
    (chdir
     test-cases/include-loop
@@ -287,7 +281,7 @@
 
 (alias
  ((name inline_tests)
-  (deps ((package dune) (files_recursively_in test-cases/inline_tests)))
+  (deps ((package dune) (source_tree test-cases/inline_tests)))
   (action
    (chdir
     test-cases/inline_tests
@@ -296,8 +290,7 @@
 (alias
  ((name installable-dup-private-libs)
   (deps
-   ((package dune)
-    (files_recursively_in test-cases/installable-dup-private-libs)))
+   ((package dune) (source_tree test-cases/installable-dup-private-libs)))
   (action
    (chdir
     test-cases/installable-dup-private-libs
@@ -305,7 +298,7 @@
 
 (alias
  ((name intf-only)
-  (deps ((package dune) (files_recursively_in test-cases/intf-only)))
+  (deps ((package dune) (source_tree test-cases/intf-only)))
   (action
    (chdir
     test-cases/intf-only
@@ -313,7 +306,7 @@
 
 (alias
  ((name js_of_ocaml)
-  (deps ((package dune) (files_recursively_in test-cases/js_of_ocaml)))
+  (deps ((package dune) (source_tree test-cases/js_of_ocaml)))
   (action
    (setenv
     NODE
@@ -324,7 +317,7 @@
 
 (alias
  ((name lib-available)
-  (deps ((package dune) (files_recursively_in test-cases/lib-available)))
+  (deps ((package dune) (source_tree test-cases/lib-available)))
   (action
    (chdir
     test-cases/lib-available
@@ -332,7 +325,7 @@
 
 (alias
  ((name link-deps)
-  (deps ((package dune) (files_recursively_in test-cases/link-deps)))
+  (deps ((package dune) (source_tree test-cases/link-deps)))
   (action
    (chdir
     test-cases/link-deps
@@ -340,7 +333,7 @@
 
 (alias
  ((name loop)
-  (deps ((package dune) (files_recursively_in test-cases/loop)))
+  (deps ((package dune) (source_tree test-cases/loop)))
   (action
    (chdir
     test-cases/loop
@@ -348,7 +341,7 @@
 
 (alias
  ((name menhir)
-  (deps ((package dune) (files_recursively_in test-cases/menhir)))
+  (deps ((package dune) (source_tree test-cases/menhir)))
   (action
    (chdir
     test-cases/menhir
@@ -356,7 +349,7 @@
 
 (alias
  ((name merlin-tests)
-  (deps ((package dune) (files_recursively_in test-cases/merlin-tests)))
+  (deps ((package dune) (source_tree test-cases/merlin-tests)))
   (action
    (chdir
     test-cases/merlin-tests
@@ -364,7 +357,7 @@
 
 (alias
  ((name meta-gen)
-  (deps ((package dune) (files_recursively_in test-cases/meta-gen)))
+  (deps ((package dune) (source_tree test-cases/meta-gen)))
   (action
    (chdir
     test-cases/meta-gen
@@ -372,7 +365,7 @@
 
 (alias
  ((name misc)
-  (deps ((package dune) (files_recursively_in test-cases/misc)))
+  (deps ((package dune) (source_tree test-cases/misc)))
   (action
    (chdir
     test-cases/misc
@@ -380,8 +373,7 @@
 
 (alias
  ((name multiple-private-libs)
-  (deps
-   ((package dune) (files_recursively_in test-cases/multiple-private-libs)))
+  (deps ((package dune) (source_tree test-cases/multiple-private-libs)))
   (action
    (chdir
     test-cases/multiple-private-libs
@@ -391,8 +383,7 @@
 
 (alias
  ((name no-installable-mode)
-  (deps
-   ((package dune) (files_recursively_in test-cases/no-installable-mode)))
+  (deps ((package dune) (source_tree test-cases/no-installable-mode)))
   (action
    (chdir
     test-cases/no-installable-mode
@@ -400,7 +391,7 @@
 
 (alias
  ((name null-dep)
-  (deps ((package dune) (files_recursively_in test-cases/null-dep)))
+  (deps ((package dune) (source_tree test-cases/null-dep)))
   (action
    (chdir
     test-cases/null-dep
@@ -408,7 +399,7 @@
 
 (alias
  ((name ocaml-syntax)
-  (deps ((package dune) (files_recursively_in test-cases/ocaml-syntax)))
+  (deps ((package dune) (source_tree test-cases/ocaml-syntax)))
   (action
    (chdir
     test-cases/ocaml-syntax
@@ -416,8 +407,7 @@
 
 (alias
  ((name ocamldep-multi-stanzas)
-  (deps
-   ((package dune) (files_recursively_in test-cases/ocamldep-multi-stanzas)))
+  (deps ((package dune) (source_tree test-cases/ocamldep-multi-stanzas)))
   (action
    (chdir
     test-cases/ocamldep-multi-stanzas
@@ -425,7 +415,7 @@
 
 (alias
  ((name odoc)
-  (deps ((package dune) (files_recursively_in test-cases/odoc)))
+  (deps ((package dune) (source_tree test-cases/odoc)))
   (action
    (chdir
     test-cases/odoc
@@ -435,7 +425,7 @@
 
 (alias
  ((name odoc-unique-mlds)
-  (deps ((package dune) (files_recursively_in test-cases/odoc-unique-mlds)))
+  (deps ((package dune) (source_tree test-cases/odoc-unique-mlds)))
   (action
    (chdir
     test-cases/odoc-unique-mlds
@@ -445,7 +435,7 @@
 
 (alias
  ((name output-obj)
-  (deps ((package dune) (files_recursively_in test-cases/output-obj)))
+  (deps ((package dune) (source_tree test-cases/output-obj)))
   (action
    (chdir
     test-cases/output-obj
@@ -462,7 +452,7 @@
 
 (alias
  ((name package-dep)
-  (deps ((package dune) (files_recursively_in test-cases/package-dep)))
+  (deps ((package dune) (source_tree test-cases/package-dep)))
   (action
    (chdir
     test-cases/package-dep
@@ -470,7 +460,7 @@
 
 (alias
  ((name ppx-rewriter)
-  (deps ((package dune) (files_recursively_in test-cases/ppx-rewriter)))
+  (deps ((package dune) (source_tree test-cases/ppx-rewriter)))
   (action
    (chdir
     test-cases/ppx-rewriter
@@ -480,8 +470,7 @@
 
 (alias
  ((name private-public-overlap)
-  (deps
-   ((package dune) (files_recursively_in test-cases/private-public-overlap)))
+  (deps ((package dune) (source_tree test-cases/private-public-overlap)))
   (action
    (chdir
     test-cases/private-public-overlap
@@ -489,7 +478,7 @@
 
 (alias
  ((name promote)
-  (deps ((package dune) (files_recursively_in test-cases/promote)))
+  (deps ((package dune) (source_tree test-cases/promote)))
   (action
    (chdir
     test-cases/promote
@@ -497,7 +486,7 @@
 
 (alias
  ((name quoting)
-  (deps ((package dune) (files_recursively_in test-cases/quoting)))
+  (deps ((package dune) (source_tree test-cases/quoting)))
   (action
    (chdir
     test-cases/quoting
@@ -505,7 +494,7 @@
 
 (alias
  ((name reason)
-  (deps ((package dune) (files_recursively_in test-cases/reason)))
+  (deps ((package dune) (source_tree test-cases/reason)))
   (action
    (chdir
     test-cases/reason
@@ -513,7 +502,7 @@
 
 (alias
  ((name redirections)
-  (deps ((package dune) (files_recursively_in test-cases/redirections)))
+  (deps ((package dune) (source_tree test-cases/redirections)))
   (action
    (chdir
     test-cases/redirections
@@ -521,7 +510,7 @@
 
 (alias
  ((name scope-bug)
-  (deps ((package dune) (files_recursively_in test-cases/scope-bug)))
+  (deps ((package dune) (source_tree test-cases/scope-bug)))
   (action
    (chdir
     test-cases/scope-bug
@@ -529,7 +518,7 @@
 
 (alias
  ((name scope-ppx-bug)
-  (deps ((package dune) (files_recursively_in test-cases/scope-ppx-bug)))
+  (deps ((package dune) (source_tree test-cases/scope-ppx-bug)))
   (action
    (chdir
     test-cases/scope-ppx-bug
@@ -537,7 +526,7 @@
 
 (alias
  ((name select)
-  (deps ((package dune) (files_recursively_in test-cases/select)))
+  (deps ((package dune) (source_tree test-cases/select)))
   (action
    (chdir
     test-cases/select
@@ -545,7 +534,7 @@
 
 (alias
  ((name syntax-versioning)
-  (deps ((package dune) (files_recursively_in test-cases/syntax-versioning)))
+  (deps ((package dune) (source_tree test-cases/syntax-versioning)))
   (action
    (chdir
     test-cases/syntax-versioning
@@ -553,7 +542,7 @@
 
 (alias
  ((name use-meta)
-  (deps ((package dune) (files_recursively_in test-cases/use-meta)))
+  (deps ((package dune) (source_tree test-cases/use-meta)))
   (action
    (chdir
     test-cases/use-meta
@@ -561,7 +550,7 @@
 
 (alias
  ((name utop)
-  (deps ((package dune) (files_recursively_in test-cases/utop)))
+  (deps ((package dune) (source_tree test-cases/utop)))
   (action
    (chdir
     test-cases/utop

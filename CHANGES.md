@@ -78,6 +78,9 @@ next
 - Add a `link_deps` field to executables, to specify link-time dependencies
   like version scripts. (#879, fix #852, @emillon)
 
+- Rename `files_recursively_in` to `source_tree` to make it clearer it
+  doesn't include generated files (#899, fix #843, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

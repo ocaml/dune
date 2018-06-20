@@ -218,7 +218,7 @@ module Dep_conf = struct
     | Alias of String_with_vars.t
     | Alias_rec of String_with_vars.t
     | Glob_files of String_with_vars.t
-    | Files_recursively_in of String_with_vars.t
+    | Source_tree of String_with_vars.t
     | Package of String_with_vars.t
     | Universe
 
@@ -226,13 +226,18 @@ module Dep_conf = struct
     let t =
       let sw = String_with_vars.t in
       sum
-        [ "file"                 , (sw >>| fun x -> File x)
-        ; "alias"                , (sw >>| fun x -> Alias x)
-        ; "alias_rec"            , (sw >>| fun x -> Alias_rec x)
-        ; "glob_files"           , (sw >>| fun x -> Glob_files x)
-        ; "files_recursively_in" , (sw >>| fun x -> Files_recursively_in x)
-        ; "package"              , (sw >>| fun x -> Package x)
-        ; "universe"             , return Universe
+        [ "file"       , (sw >>| fun x -> File x)
+        ; "alias"      , (sw >>| fun x -> Alias x)
+        ; "alias_rec"  , (sw >>| fun x -> Alias_rec x)
+        ; "glob_files" , (sw >>| fun x -> Glob_files x)
+        ; "package"    , (sw >>| fun x -> Package x)
+        ; "universe"   , return Universe
+        ; "files_recursively_in",
+          (Syntax.renamed_in syntax (1, 0) ~to_:"source_tree" >>= fun () ->
+           sw >>| fun x -> Source_tree x)
+        ; "source_tree",
+          (Syntax.since syntax (1, 0) >>= fun () ->
+           sw >>| fun x -> Source_tree x)
         ]
     in
     peek raw >>= function
@@ -252,7 +257,7 @@ module Dep_conf = struct
     | Glob_files t ->
        List [Sexp.unsafe_atom_of_string "glob_files" ;
              String_with_vars.sexp_of_t t]
-    | Files_recursively_in t ->
+    | Source_tree t ->
        List [Sexp.unsafe_atom_of_string "files_recursively_in" ;
              String_with_vars.sexp_of_t t]
     | Package t ->

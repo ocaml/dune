@@ -80,7 +80,7 @@ module Test = struct
     alias t.name
       ~deps:(
         [ Sexp.strings ["package"; "dune"]
-        ; Sexp.strings [ "files_recursively_in"
+        ; Sexp.strings [ "source_tree"
                        ; sprintf "test-cases/%s" t.name]
         ]
       ) ~action

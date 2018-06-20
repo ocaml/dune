@@ -557,6 +557,14 @@
     (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
 
 (alias
+ ((name windows-diff)
+  (deps ((package dune) (source_tree test-cases/windows-diff)))
+  (action
+   (chdir
+    test-cases/windows-diff
+    (progn (run ${exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+
+(alias
  ((name runtest)
   (deps
    ((alias aliases)
@@ -622,7 +630,8 @@
     (alias select)
     (alias syntax-versioning)
     (alias use-meta)
-    (alias utop)))))
+    (alias utop)
+    (alias windows-diff)))))
 
 (alias
  ((name runtest-no-deps)
@@ -681,7 +690,8 @@
     (alias scope-ppx-bug)
     (alias select)
     (alias syntax-versioning)
-    (alias use-meta)))))
+    (alias use-meta)
+    (alias windows-diff)))))
 
 (alias ((name runtest-disabled) (deps ((alias reason)))))
 

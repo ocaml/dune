@@ -1209,6 +1209,9 @@ The following constructions are available:
 - ``(diff? <file1> <file2>)`` is the same as ``(diff <file1>
   <file2>)`` except that it is ignored when ``<file1>`` or ``<file2>``
   doesn't exists
+- ``(cmp <file1> <file2>)`` is similar to ``(run cmp <file1>
+  <file2>)`` but allows promotion.  See `Diffing and promotion`_ for
+  more details
 
 As mentioned ``copy#`` inserts a line directive at the beginning of
 the destination file. More precisely, it inserts the following line:
@@ -1348,6 +1351,9 @@ However, it is different for the following reason:
 
      $ opam install patdiff
 
+- on Windows, both ``(diff a b)`` and ``(diff? a b)`` normalize the end of
+  lines before comparing the files
+
 - since ``(diff a b)`` is a builtin action, Jbuilder knowns that ``a``
   and ``b`` are needed and so you don't need to specify them
   explicitly as dependencies
@@ -1357,6 +1363,10 @@ However, it is different for the following reason:
   *corrected* file
 
 - it allows promotion. See below
+
+Note that ``(cmp a b)`` does no end of lines normalization and doesn't
+print a diff when the files differ. ``cmp`` is meant to be used with
+binary files.
 
 Promotion
 ~~~~~~~~~

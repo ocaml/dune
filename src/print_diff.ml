@@ -2,7 +2,7 @@ open Import
 
 open Fiber.O
 
-let print path1 path2 =
+let print ?(skip_trailing_cr=Sys.win32) path1 path2 =
   let dir, file1, file2 =
     match
       Path.extract_build_context_dir path1,
@@ -24,7 +24,12 @@ let print path1 path2 =
     | None -> fallback ()
     | Some prog ->
       Format.eprintf "%a@?" Loc.print loc;
-      Process.run ~dir ~env:Env.initial Strict prog ["-u"; file1; file2]
+      Process.run ~dir ~env:Env.initial Strict prog
+        (List.concat
+           [ ["-u"]
+           ; if skip_trailing_cr then ["--strip-trailing-cr"] else []
+           ; [ file1; file2 ]
+           ])
       >>= fun () ->
       fallback ()
   in

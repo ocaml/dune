@@ -3,4 +3,4 @@
   (synopsis "[Internal] S-expression library")
   (public_name dune.usexp)))
 
-(ocamllex (lexer))
+(ocamllex (dune_lexer jbuild_lexer))

@@ -4,28 +4,29 @@ let invalid_argf fmt = Printf.ksprintf invalid_arg fmt
 
 type syntax = Jbuild | Dune
 
-let (is_valid_jbuild, is_valid_dune) =
-  let rec jbuild s i len =
-    i = len ||
-    match String.unsafe_get s i with
-    | '#' -> disallow_next '|' s (i + 1) len
-    | '|' -> disallow_next '#' s (i + 1) len
-    | '"' | '(' | ')' | ';' | '\000'..'\032' | '\127'..'\255' -> false
-    | _ -> jbuild s (i + 1) len
-  and disallow_next c s i len =
-    i = len || String.unsafe_get s i <> c && jbuild s i len
-  in
-  let rec dune s i len =
+let is_valid_dune =
+  let rec loop s i len =
     i = len ||
     match String.unsafe_get s i with
     | '%' | '"' | '(' | ')' | ';' | '\000'..'\032' | '\127'..'\255' -> false
-    | _ -> dune s (i + 1) len
+    | _ -> loop s (i + 1) len
   in
-  let make looper s =
+  fun s ->
     let len = String.length s in
-    len > 0 && looper s 0 len
+    len > 0 && loop s 0 len
+
+let is_valid_jbuild str =
+  let len = String.length str in
+  len > 0 &&
+  let rec loop ix =
+    match str.[ix] with
+    | '"' | '(' | ')' | ';' -> true
+    | '|' -> ix > 0 && let next = ix - 1 in str.[next] = '#' || loop next
+    | '#' -> ix > 0 && let next = ix - 1 in str.[next] = '|' || loop next
+    | ' ' | '\t' | '\n' | '\012' | '\r' -> true
+    | _ -> ix > 0 && loop (ix - 1)
   in
-  (make jbuild, make dune)
+  not (loop (len - 1))
 
 let of_string s = A s
 

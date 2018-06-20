@@ -107,14 +107,14 @@ parse {|x#|y|}
 [%%expect{|
 - : parse_result =
 Different
- {jbuild = Error "jbuild_atoms cannot contain #|"; dune = Ok [(atom x#|y)]}
+ {jbuild = Error "jbuild atoms cannot contain #|"; dune = Ok [(atom x#|y)]}
 |}]
 
 parse {|x|#y|}
 [%%expect{|
 - : parse_result =
 Different
- {jbuild = Error "jbuild_atoms cannot contain |#"; dune = Ok [(atom x|#y)]}
+ {jbuild = Error "jbuild atoms cannot contain |#"; dune = Ok [(atom x|#y)]}
 |}]
 
 parse {|"\a"|}

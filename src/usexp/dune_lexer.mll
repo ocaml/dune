@@ -8,10 +8,9 @@ let blank     = [' ' '\t' '\012']
 let digit     = ['0'-'9']
 let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
 
-let atom_char_dune =
+let atom_char =
   [^ '%' ';' '(' ')' '"' '\000'-'\032' '\127'-'\255']
 
-(* rule for dune files *)
 rule token = parse
   | newline
     { Lexing.new_line lexbuf; token lexbuf }
@@ -24,17 +23,17 @@ rule token = parse
   | '"'
     { Buffer.clear escaped_buf;
       let start = Lexing.lexeme_start_p lexbuf in
-      let s = dune_quoted_string lexbuf in
+      let s = start_quoted_string lexbuf in
       lexbuf.lex_start_p <- start;
       Quoted_string s
     }
-  | atom_char_dune+ as s
+  | atom_char+ as s
     { Token.Atom (Atom.of_string s) }
   | _ as c { error lexbuf (Printf.sprintf "Invalid atom character '%c'" c) }
   | eof
     { Eof }
 
-and dune_quoted_string = parse
+and start_quoted_string = parse
   | "\\|"
     { block_string_start With_escape_sequences lexbuf }
   | "\\>"

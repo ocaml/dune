@@ -8,7 +8,7 @@ let blank     = [' ' '\t' '\012']
 let digit     = ['0'-'9']
 let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
 
-let atom_char_jbuild =
+let atom_char =
   [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\012']
 
 (* rule for jbuild files *)
@@ -29,7 +29,7 @@ rule token = parse
       Quoted_string s
     }
   | "#|"
-    { jbuild_block_comment lexbuf;
+    { block_comment lexbuf;
       token lexbuf
     }
   | "#;"
@@ -37,19 +37,19 @@ rule token = parse
   | eof
     { Eof }
   | ""
-    { jbuild_atom "" (Lexing.lexeme_start_p lexbuf) lexbuf }
+    { atom "" (Lexing.lexeme_start_p lexbuf) lexbuf }
 
-and jbuild_atom acc start = parse
+and atom acc start = parse
   | '#'+ '|'
     { lexbuf.lex_start_p <- start;
-      error lexbuf "jbuild_atoms cannot contain #|"
+      error lexbuf "jbuild atoms cannot contain #|"
     }
   | '|'+ '#'
     { lexbuf.lex_start_p <- start;
-      error lexbuf "jbuild_atoms cannot contain |#"
+      error lexbuf "jbuild atoms cannot contain |#"
     }
-  | ('#'+ | '|'+ | (atom_char_jbuild # ['|' '#'])) as s
-    { jbuild_atom (if acc = "" then s else acc ^ s) start lexbuf
+  | ('#'+ | '|'+ | (atom_char # ['|' '#'])) as s
+    { atom (if acc = "" then s else acc ^ s) start lexbuf
     }
   | ""
     { if acc = "" then
@@ -86,11 +86,11 @@ and quoted_string_after_escaped_newline mode = parse
   | [' ' '\t']*
     { quoted_string mode lexbuf }
 
-and jbuild_block_comment = parse
+and block_comment = parse
   | '"'
     { Buffer.clear escaped_buf;
       ignore (quoted_string In_block_comment lexbuf : string);
-      jbuild_block_comment lexbuf
+      block_comment lexbuf
     }
   | "|#"
     { ()
@@ -99,7 +99,7 @@ and jbuild_block_comment = parse
     { error lexbuf "unterminated block comment"
     }
   | _
-    { jbuild_block_comment lexbuf
+    { block_comment lexbuf
     }
 
 and escape_sequence mode = parse

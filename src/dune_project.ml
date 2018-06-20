@@ -149,8 +149,7 @@ module Lang = struct
     in
     let ver =
       Sexp.Of_sexp.parse Syntax.Version.t Univ_map.empty
-        (Atom (ver_loc, Sexp.Atom.of_string ver))
-    in
+        (Atom (ver_loc, Sexp.Atom.of_string ver)) in
     match Hashtbl.find langs name with
     | None ->
       Loc.fail name_loc "Unknown language %S.%s" name

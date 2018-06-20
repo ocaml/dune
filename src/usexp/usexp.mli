@@ -4,23 +4,19 @@
 
 module Atom : sig
   type t = private A of string [@@unboxed]
-  (** Acceptable atoms are composed of chars in the range ['!' .. '~'] excluding
-      [' ' '"' '(' ')' ';' '\\'], and must be nonempty. *)
 
-  val is_valid : string -> bool
-  (** [is_valid s] checks that [s] respects the constraints to be an atom. *)
+  type syntax = Jbuild | Dune
 
- val of_string : string -> t
-  (** Convert a string to an atom.  If the string contains invalid
-     characters, raise [Invalid_argument]. *)
+  val is_valid : t -> syntax -> bool
+
+  val of_string : string -> t
+  val to_string : t -> string
 
   val of_int : int -> t
   val of_float : float -> t
   val of_bool : bool -> t
   val of_int64 : Int64.t -> t
   val of_digest : Digest.t -> t
-
-  val to_string : t -> string
 end
 
 module Loc : sig

@@ -1,7 +1,3 @@
-module Atom : sig
-  type t = A of string [@@unboxed]
-end
-
 module Token : sig
   type t =
     | Atom          of Atom.t

@@ -2,9 +2,21 @@
 open Stdune;;
 open Sexp.Of_sexp;;
 
-let pp_sexp_ast ppf sexp =
-  Sexp.pp ppf (Sexp.Ast.remove_locs sexp)
+let pp_sexp_ast =
+  let rec subst_atoms ~f (s : Sexp.t) =
+    match s with
+    | Atom a -> f a
+    | Quoted_string _ -> s
+    | List xs -> List (List.map ~f:(subst_atoms ~f) xs)
+  in
+  fun ppf sexp ->
+    sexp
+    |> Sexp.Ast.remove_locs
+    |> subst_atoms ~f:(fun (A s) ->
+      List [(Sexp.atom "atom"); Sexp.atom_or_quoted_string s])
+    |> Sexp.pp ppf
 ;;
+
 #install_printer pp_sexp_ast;;
 [%%expect{|
 val pp_sexp_ast : Format.formatter -> Stdune.Sexp.Ast.t -> unit = <fun>
@@ -20,7 +32,7 @@ let sexp = Sexp.parse_string ~fname:"" ~mode:Single {|
  (foo 2))
 |}
 [%%expect{|
-val sexp : Usexp.Ast.t = ((foo 1) (foo 2))
+val sexp : Usexp.Ast.t = (((atom foo) (atom 1)) ((atom foo) (atom 2)))
 |}]
 
 let of_sexp = record (field "foo" int)
@@ -52,8 +64,9 @@ let parse s =
   let f ~lexer =
     try
       Ok (Sexp.parse_string ~fname:"" ~mode:Many ~lexer s)
-    with Sexp.Parse_error e ->
-      Error (Sexp.Parse_error.message e)
+    with
+    | Sexp.Parse_error e -> Error (Sexp.Parse_error.message e)
+    | Invalid_argument e -> Error e
   in
   let jbuild = f ~lexer:Sexp.Lexer.jbuild_token in
   let dune   = f ~lexer:Sexp.Lexer.token        in
@@ -74,26 +87,34 @@ val parse : string -> parse_result = <fun>
 
 parse {| # ## x##y x||y a#b|c#d copy# |}
 [%%expect{|
-- : parse_result = Same (Ok [#; ##; x##y; x||y; a#b|c#d; copy#])
+- : parse_result =
+Same
+ (Ok
+   [(atom #); (atom ##); (atom x##y); (atom x||y); (atom a#b|c#d);
+    (atom copy#)])
 |}]
 
 
 parse {|x #| comment |# y|}
 [%%expect{|
 - : parse_result =
-Different {jbuild = Ok [x; y]; dune = Ok [x; #|; comment; |#; y]}
+Different
+ {jbuild = Ok [(atom x); (atom y)];
+  dune = Ok [(atom x); (atom #|); (atom comment); (atom |#); (atom y)]}
 |}]
 
 parse {|x#|y|}
 [%%expect{|
 - : parse_result =
-Different {jbuild = Error "jbuild_atoms cannot contain #|"; dune = Ok [x#|y]}
+Different
+ {jbuild = Error "jbuild_atoms cannot contain #|"; dune = Ok [(atom x#|y)]}
 |}]
 
 parse {|x|#y|}
 [%%expect{|
 - : parse_result =
-Different {jbuild = Error "jbuild_atoms cannot contain |#"; dune = Ok [x|#y]}
+Different
+ {jbuild = Error "jbuild_atoms cannot contain |#"; dune = Ok [(atom x|#y)]}
 |}]
 
 parse {|"\a"|}
@@ -138,27 +159,38 @@ parse {|"$bar%foo%"|}
 - : parse_result = Same (Ok ["$bar%foo%"])
 |}]
 
-parse {|\%{foo}|}
-[%%expect{|
-- : parse_result = Same (Ok [\%{foo}])
-|}]
-
 parse {|\${foo}|}
 [%%expect{|
-- : parse_result = Same (Ok [\${foo}])
+- : parse_result = Same (Ok [(atom \${foo})])
+|}]
+
+parse {|\%{foo}|}
+[%%expect{|
+- : parse_result =
+Different
+ {jbuild = Ok [(atom "\\%{foo}")]; dune = Error "Invalid atom character '%'"}
 |}]
 
 parse {|\$bar%foo%|}
 [%%expect{|
-- : parse_result = Same (Ok [\$bar%foo%])
+- : parse_result =
+Different
+ {jbuild = Ok [(atom "\\$bar%foo%")];
+  dune = Error "Invalid atom character '%'"}
 |}]
 
 parse {|\$bar\%foo%|}
 [%%expect{|
-- : parse_result = Same (Ok [\$bar\%foo%])
+- : parse_result =
+Different
+ {jbuild = Ok [(atom "\\$bar\\%foo%")];
+  dune = Error "Invalid atom character '%'"}
 |}]
 
 parse {|\$bar\%foo%{bar}|}
 [%%expect{|
-- : parse_result = Same (Ok [\$bar\%foo%{bar}])
+- : parse_result =
+Different
+ {jbuild = Ok [(atom "\\$bar\\%foo%{bar}")];
+  dune = Error "Invalid atom character '%'"}
 |}]

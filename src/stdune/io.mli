@@ -17,6 +17,7 @@ val read_file : ?binary:bool -> Path.t -> string
 val write_file : ?binary:bool -> Path.t -> string -> unit
 
 val compare_files : Path.t -> Path.t -> Ordering.t
+val compare_text_files : Path.t -> Path.t -> Ordering.t
 
 val write_lines : Path.t -> string list -> unit
 
@@ -29,7 +30,3 @@ val read_all : in_channel -> string
 module Sexp : sig
   val load : ?lexer:Usexp.Lexer.t -> Path.t -> mode:'a Sexp.Parser.Mode.t -> 'a
 end
-
-(**/**)
-(* used in jbuild_load *)
-val buf_len : int

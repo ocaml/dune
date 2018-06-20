@@ -8,6 +8,8 @@ build_script:
   - cd "%APPVEYOR_BUILD_FOLDER%"
   - ocaml bootstrap.ml
   - boot.exe --dev
+  - copy _build\install\default\bin\dune.exe dune.exe
+  - dune.exe build @test\blackbox-tests\windows-diff
 
 artifacts:
   - path: _build/log

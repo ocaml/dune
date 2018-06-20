@@ -7,6 +7,13 @@ module Outputs = struct
     | Outputs (** Both Stdout and Stderr *)
 end
 
+module Diff_mode = struct
+  type t =
+    | Binary      (** no diffing, just raw comparison      *)
+    | Text        (** diffing after newline normalization  *)
+    | Text_jbuild (** diffing but no newline normalization *)
+end
+
 module type Ast = sig
   type program
   type path
@@ -17,6 +24,7 @@ module type Ast = sig
 
     type t =
       { optional : bool
+      ; mode     : Diff_mode.t
       ; file1    : path
       ; file2    : path
       }
@@ -73,5 +81,5 @@ module type Helpers = sig
   val remove_tree : path -> t
   val mkdir : path -> t
   val digest_files : path list -> t
-  val diff : ?optional:bool -> Path.t -> Path.t -> t
+  val diff : ?optional:bool -> ?mode:Diff_mode.t -> Path.t -> Path.t -> t
 end

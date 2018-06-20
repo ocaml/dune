@@ -10,6 +10,8 @@ module Outputs = struct
     | Outputs -> "outputs"
 end
 
+module Diff_mode = Action_intf.Diff_mode
+
 module Make_ast
     (Program : Sexp.Sexpable)
     (Path    : Sexp.Sexpable)
@@ -86,12 +88,21 @@ struct
            Write_file (fn, s))
         ; "diff",
           (path >>= fun file1 ->
-           path >>| fun file2 ->
-           Diff { optional = false; file1; file2 })
+           path >>= fun file2 ->
+           Syntax.get_exn Stanza.syntax >>| fun ver ->
+           let mode = if ver < (1, 0) then Diff_mode.Text_jbuild else Text in
+           Diff { optional = false; file1; file2; mode })
         ; "diff?",
           (path >>= fun file1 ->
+           path >>= fun file2 ->
+           Syntax.get_exn Stanza.syntax >>| fun ver ->
+           let mode = if ver < (1, 0) then Diff_mode.Text_jbuild else Text in
+           Diff { optional = true; file1; file2; mode })
+        ; "cmp",
+          (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
+           path >>= fun file1 ->
            path >>| fun file2 ->
-           Diff { optional = true; file1; file2 })
+           Diff { optional = false; file1; file2; mode = Binary })
         ])
 
   let rec sexp_of_t : _ -> Sexp.t =
@@ -133,9 +144,12 @@ struct
     | Mkdir x       -> List [Sexp.unsafe_atom_of_string "mkdir"; path x]
     | Digest_files paths -> List [Sexp.unsafe_atom_of_string "digest-files";
                                   List (List.map paths ~f:path)]
-    | Diff { optional = false; file1; file2 } ->
+    | Diff { optional; file1; file2; mode = Binary} ->
+      assert (not optional);
+      List [Sexp.unsafe_atom_of_string "cmp"; path file1; path file2]
+    | Diff { optional = false; file1; file2; mode = _ } ->
       List [Sexp.unsafe_atom_of_string "diff"; path file1; path file2]
-    | Diff { optional = true; file1; file2 } ->
+    | Diff { optional = true; file1; file2; mode = _ } ->
       List [Sexp.unsafe_atom_of_string "diff?"; path file1; path file2]
     | Merge_files_into (srcs, extras, target) ->
       List
@@ -167,7 +181,8 @@ struct
   let remove_tree path = Remove_tree path
   let mkdir path = Mkdir path
   let digest_files files = Digest_files files
-  let diff ?(optional=false) file1 file2 = Diff { optional; file1; file2 }
+  let diff ?(optional=false) ?(mode=Diff_mode.Text) file1 file2 =
+    Diff { optional; file1; file2; mode }
 end
 
 module Make_mapper
@@ -201,8 +216,12 @@ module Make_mapper
     | Remove_tree x -> Remove_tree (f_path ~dir x)
     | Mkdir x -> Mkdir (f_path ~dir x)
     | Digest_files x -> Digest_files (List.map x ~f:(f_path ~dir))
-    | Diff { optional; file1; file2 } ->
-      Diff { optional; file1 = f_path ~dir file1; file2 = f_path ~dir file2 }
+    | Diff { optional; file1; file2; mode } ->
+      Diff { optional
+           ; file1 = f_path ~dir file1
+           ; file2 = f_path ~dir file2
+           ; mode
+           }
     | Merge_files_into (sources, extras, target) ->
       Merge_files_into
         (List.map sources ~f:(f_path ~dir),
@@ -428,10 +447,11 @@ module Unexpanded = struct
         end
       | Digest_files x ->
         Digest_files (List.map x ~f:(E.path ~dir ~f))
-      | Diff { optional; file1; file2 } ->
+      | Diff { optional; file1; file2; mode } ->
         Diff { optional
              ; file1 = E.path ~dir ~f file1
              ; file2 = E.path ~dir ~f file2
+             ; mode
              }
       | Merge_files_into (sources, extras, target) ->
         Merge_files_into
@@ -519,10 +539,11 @@ module Unexpanded = struct
       Mkdir res
     | Digest_files x ->
       Digest_files (List.map x ~f:(E.path ~dir ~f))
-    | Diff { optional; file1; file2 } ->
+    | Diff { optional; file1; file2; mode } ->
       Diff { optional
            ; file1 = E.path ~dir ~f file1
            ; file2 = E.path ~dir ~f file2
+           ; mode
            }
     | Merge_files_into (sources, extras, target) ->
       Merge_files_into
@@ -826,9 +847,14 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
         (Marshal.to_string data [])
     in
     exec_echo stdout_to s
-  | Diff { optional; file1; file2 } ->
+  | Diff { optional; file1; file2; mode } ->
+    let compare_files =
+      match mode with
+      | Text_jbuild | Binary -> Io.compare_files
+      | Text -> Io.compare_text_files
+    in
     if (optional && not (Path.exists file1 && Path.exists file2)) ||
-       Io.compare_files file1 file2 = Eq then
+       compare_files file1 file2 = Eq then
       Fiber.return ()
     else begin
       let is_copied_from_source_tree file =
@@ -843,7 +869,13 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
           ; dst = Option.value_exn (Path.drop_build_context file1)
           }
       end;
-      Print_diff.print file1 file2
+      if mode = Binary then
+        die "@{<error>Error@}: Files %s and %s differ."
+          (Path.to_string_maybe_quoted file1)
+          (Path.to_string_maybe_quoted file2)
+      else
+        Print_diff.print file1 file2
+          ~skip_trailing_cr:(mode = Text && Sys.win32)
     end
   | Merge_files_into (sources, extras, target) ->
     let lines =
@@ -969,7 +1001,7 @@ module Infer = struct
       | Ignore (_, t) -> infer acc t
       | Progn l -> List.fold_left l ~init:acc ~f:infer
       | Digest_files l -> List.fold_left l ~init:acc ~f:(+<)
-      | Diff { optional; file1; file2 } ->
+      | Diff { optional; file1; file2; mode = _ } ->
         if optional then acc else acc +< file1 +< file2
       | Merge_files_into (sources, _extras, target) ->
         List.fold_left sources ~init:acc ~f:(+<) +@ target

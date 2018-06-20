@@ -82,7 +82,7 @@ next
   doesn't include generated files (#899, fix #843, @diml)
 
 - Present the `menhir` stanza as an extension with its own version
-  (#..., @diml)
+  (#901, @diml)
 
 1.0+beta20 (10/04/2018)
 -----------------------

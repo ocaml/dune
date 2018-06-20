@@ -111,14 +111,21 @@ end = struct
       | _ -> invalid s
 end
 
+module Project_file = struct
+  type t =
+    { file           : Path.t
+    ; mutable exists : bool
+    }
+end
+
 type t =
-  { kind                 : Kind.t
-  ; name                 : Name.t
-  ; root                 : Path.Local.t
-  ; version              : string option
-  ; packages             : Package.t Package.Name.Map.t
-  ; stanza_parser        : Stanza.t list Sexp.Of_sexp.t
-  ; mutable project_file : Path.t option
+  { kind          : Kind.t
+  ; name          : Name.t
+  ; root          : Path.Local.t
+  ; version       : string option
+  ; packages      : Package.t Package.Name.Map.t
+  ; stanza_parser : Stanza.t list Sexp.Of_sexp.t
+  ; project_file  : Project_file.t
   }
 
 module Lang = struct
@@ -167,6 +174,46 @@ module Lang = struct
     }
 end
 
+module Project_file_edit = struct
+  open Project_file
+
+  let notify_user s =
+    kerrf ~f:print_to_console "@{<warning>Info@}: %s\n" s
+
+  let ensure_exists t =
+    if not t.exists then begin
+      let ver = (Lang.get_exn "dune").version in
+      let s = sprintf "(lang dune %s)" (Syntax.Version.to_string ver) in
+      notify_user
+        (sprintf "creating file %s with this contents: %s"
+           (Path.to_string_maybe_quoted t.file) s);
+      Io.write_file t.file (s ^ "\n") ~binary:false;
+      t.exists <- true
+    end
+
+  let get t =
+    ensure_exists t;
+    t.file
+
+  let append t str =
+    let file = get t in
+    let prev = Io.read_file file ~binary:false in
+    notify_user
+      (sprintf "appending this line to %s: %s"
+         (Path.to_string_maybe_quoted file) str);
+    Io.with_file_out file ~binary:false ~f:(fun oc ->
+      List.iter [prev; str] ~f:(fun s ->
+        output_string oc s;
+        let len = String.length s in
+        if len > 0 && s.[len - 1] <> '\n' then output_char oc '\n'))
+end
+
+let ensure_project_file_exists t =
+  Project_file_edit.ensure_exists t.project_file
+
+let append_to_project_file t str =
+  Project_file_edit.append t.project_file str
+
 module Extension = struct
   type t =
     { syntax  : Syntax.t
@@ -201,6 +248,39 @@ module Extension = struct
       ; loc
       ; parse_args
       }
+
+  (* Extensions that are not selected in the dune-project file are
+     automatically available at their latest version.  When used, dune
+     will automatically edit the dune-project file. *)
+  let automatic ~project_file ~f =
+    Hashtbl.foldi extensions ~init:[] ~f:(fun name ext acc ->
+      if f name then
+        let version = Syntax.greatest_supported_version ext.syntax in
+        let parse_args p =
+          let open Sexp.Of_sexp in
+          let dune_project_edited = ref false in
+          parse p Univ_map.empty (List (Loc.none, []))
+          |> List.map ~f:(fun (name, p) ->
+            (name,
+             return () >>= fun () ->
+             if not !dune_project_edited then begin
+               dune_project_edited := true;
+               Project_file_edit.append project_file
+                 (Sexp.to_string
+                    (List [ Sexp.atom "using"
+                          ; Sexp.atom name
+                          ; Sexp.atom (Syntax.Version.to_string version)
+                          ]))
+             end;
+             p))
+        in
+        { extension = ext
+        ; version
+        ; loc = Loc.none
+        ; parse_args
+        } :: acc
+      else
+        acc)
 end
 
 let make_parsing_context ~(lang : Lang.instance) ~extensions =
@@ -235,7 +315,7 @@ let anonymous = lazy (
   ; version       = None
   ; stanza_parser =
       Sexp.Of_sexp.(set_many parsing_context (sum lang.lang.stanzas))
-  ; project_file  = None
+  ; project_file  = { file = Path.relative Path.root filename; exists = false }
   })
 
 let default_name ~dir ~packages =
@@ -282,7 +362,13 @@ let parse ~dir ~lang ~packages ~file =
      with
      | Error (name, _, loc) ->
        Loc.fail loc "Extension %S specified for the second time." name
-     | Ok _ ->
+     | Ok map ->
+       let project_file : Project_file.t = { file; exists = true } in
+       let extensions =
+         extensions @
+         Extension.automatic ~project_file
+           ~f:(fun name -> not (String.Map.mem map name))
+       in
        let parsing_context = make_parsing_context ~lang ~extensions in
        let stanzas =
          List.concat
@@ -298,7 +384,7 @@ let parse ~dir ~lang ~packages ~file =
          ; version
          ; packages
          ; stanza_parser = Sexp.Of_sexp.(set_many parsing_context (sum stanzas))
-         ; project_file  = Some file
+         ; project_file
          })
 
 let load_dune_project ~dir packages =
@@ -319,7 +405,7 @@ let make_jbuilder_project ~dir packages =
   ; packages
   ; stanza_parser =
       Sexp.Of_sexp.(set_many parsing_context (sum lang.lang.stanzas))
-  ; project_file = None
+  ; project_file = { file = Path.relative dir filename; exists = false }
   }
 
 let load ~dir ~files =
@@ -348,35 +434,3 @@ let load ~dir ~files =
     Some (make_jbuilder_project ~dir packages)
   else
     None
-
-let notify_user s =
-  kerrf ~f:print_to_console "@{<warning>Info@}: %s\n" s
-
-let project_file t =
-  match t.project_file with
-  | Some file -> file
-  | None ->
-    let file = Path.relative (Path.of_local t.root) filename in
-    let ver = (Lang.get_exn "dune").version in
-    let s = sprintf "(lang dune %s)" (Syntax.Version.to_string ver) in
-    notify_user
-      (sprintf "creating file %s with this contents: %s"
-         (Path.to_string_maybe_quoted file) s);
-    Io.write_file file (s ^ "\n") ~binary:false;
-    t.project_file <- Some file;
-    file
-
-let ensure_project_file_exists t =
-  ignore (project_file t : Path.t)
-
-let append_to_project_file t str =
-  let file = project_file t in
-  let prev = Io.read_file file ~binary:false in
-  notify_user
-    (sprintf "appending this line to %s: %s"
-       (Path.to_string_maybe_quoted file) str);
-  Io.with_file_out file ~binary:false ~f:(fun oc ->
-    List.iter [prev; str] ~f:(fun s ->
-      output_string oc s;
-      let len = String.length s in
-      if len > 0 && s.[len - 1] <> '\n' then output_char oc '\n'))

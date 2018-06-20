@@ -5,6 +5,12 @@ open Sexp.Of_sexp
    syntax for the various supported version of the specification.
 *)
 
+let syntax =
+  Syntax.create ~name:"dune" ~desc:"the dune language"
+    [ (0, 0) (* Jbuild syntax *)
+    ; (1, 0)
+    ]
+
 (* Deprecated *)
 module Jbuild_version = struct
   type t =
@@ -575,9 +581,10 @@ module Sub_system_info = struct
   module type S = sig
     type t
     type sub_system += T of t
-    val name    : Sub_system_name.t
-    val loc     : t -> Loc.t
-    val parsers : t Sexp.Of_sexp.t Syntax.Versioned_parser.t
+    val name   : Sub_system_name.t
+    val loc    : t -> Loc.t
+    val syntax : Syntax.t
+    val parse  : t Sexp.Of_sexp.t
   end
 
   let all = Sub_system_name.Table.create ~default_value:None
@@ -587,8 +594,6 @@ module Sub_system_info = struct
 
   module Register(M : S) : sig end = struct
     open M
-
-    let parse = snd (Syntax.Versioned_parser.last M.parsers)
 
     let () =
       match Sub_system_name.Table.get all name with
@@ -902,15 +907,11 @@ module Executables = struct
     ; buildable  : Buildable.t
     }
 
-  let common names public_names ~syntax ~multi =
+  let common names public_names ~multi =
     Buildable.t >>= fun buildable ->
-    (match (syntax : File_tree.Dune_file.Kind.t) with
-     | Dune ->
-       return ()
-     | Jbuild ->
-       field "link_executables" bool ~default:true >>= fun _ ->
-       return ())
-    >>= fun () ->
+    field "link_executables" ~default:true
+      (Syntax.deleted_in syntax (1, 0) >>> bool)
+    >>= fun (_ : bool) ->
     field "link_deps" (list Dep_conf.t) ~default:[] >>= fun link_deps ->
     field_oslu "link_flags" >>= fun link_flags ->
     field "modes" Link_mode.Set.t ~default:Link_mode.Set.default
@@ -982,7 +983,7 @@ module Executables = struct
     | "-" -> None
     | s   -> Some s
 
-  let multi ~syntax =
+  let multi =
     record
       (field "names" (list (located string)) >>= fun names ->
        map_validate (field_o "public_names" (list public_name)) ~f:(function
@@ -994,13 +995,13 @@ module Executables = struct
              Error "The list of public names must be of the same \
                     length as the list of names")
        >>= fun public_names ->
-       common ~syntax names public_names ~multi:true)
+       common names public_names ~multi:true)
 
-  let single ~syntax =
+  let single =
     record
       (field   "name" (located string) >>= fun name ->
        field_o "public_name" string >>= fun public_name ->
-       common ~syntax [name] [public_name] ~multi:false)
+       common [name] [public_name] ~multi:false)
 end
 
 module Rule = struct
@@ -1289,12 +1290,12 @@ module Stanzas = struct
 
   type constructors = (string * Stanza.t list Sexp.Of_sexp.t) list
 
-  let common ~syntax : constructors =
+  let stanzas : constructors =
     [ "library",
       (Library.t >>| fun x ->
        [Library x])
-    ; "executable" , Executables.single ~syntax >>| execs
-    ; "executables", Executables.multi  ~syntax >>| execs
+    ; "executable" , Executables.single >>| execs
+    ; "executables", Executables.multi  >>| execs
     ; "rule",
       (loc >>= fun loc ->
        Rule.t >>| fun x ->
@@ -1330,26 +1331,21 @@ module Stanzas = struct
     ; "documentation",
       (Documentation.t >>| fun d ->
        [Documentation d])
-    ]
-
-  let dune =
-    common ~syntax:Dune @
-    [ "env",
-      (loc >>= fun loc ->
+    ; "jbuild_version",
+      (Syntax.deleted_in syntax (1, 0) >>= fun () ->
+       Jbuild_version.t >>| fun _ -> [])
+    ; "env",
+      (Syntax.since syntax (1, 0) >>= fun () ->
+       loc >>= fun loc ->
        repeat Env.rule >>| fun rules ->
        [Env { loc; rules }])
     ]
 
-  let jbuild =
-    common ~syntax:Jbuild @
-    [ "jbuild_version", (Jbuild_version.t >>| fun _ -> [])
-    ]
+  let jbuild_parser =
+    Syntax.set syntax (0, 0) (sum stanzas)
 
   let () =
-    let open Dune_project.Lang in
-    register "dune"
-      [ make (1, 0) dune
-      ]
+    Dune_project.Lang.register syntax stanzas
 
   exception Include_loop of Path.t * (Loc.t * Path.t) list
 
@@ -1373,7 +1369,7 @@ module Stanzas = struct
     let stanza_parser =
       Dune_project.set project
         (match (kind : File_tree.Dune_file.Kind.t) with
-         | Jbuild -> sum jbuild
+         | Jbuild -> jbuild_parser
          | Dune   -> project.stanza_parser)
     in
     let stanzas =

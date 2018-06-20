@@ -41,42 +41,25 @@ type t = private
   }
 
 module Lang : sig
-  (** One version of a language *)
-  type t
-
-  (** [make version stanzas_parser] defines one version of a
-      language. Users will select this language by writing:
+  (** [register id stanzas_parser] register a new language. Users will
+      select this language by writing:
 
       {[ (lang <name> <version>) ]}
 
       as the first line of their [dune-project] file. [stanza_parsers]
       defines what stanzas the user can write in [dune] files. *)
-  val make : Syntax.Version.t -> Stanza.Parser.t list -> t
-
-  val version : t -> Syntax.Version.t
-
-  (** Register all the supported versions of a language *)
-  val register : string -> t list -> unit
-
-  (** Latest version of the following language *)
-  val latest : string -> t
+  val register : Syntax.t -> Stanza.Parser.t list -> unit
 end
 
 module Extension : sig
-  (** One version of an extension *)
-  type t
-
-  (** [make version parser] defines one version of an extension. Users will
+  (** [register id parser] registers a new extension. Users will
       enable this extension by writing:
 
       {[ (using <name> <version> <args>) ]}
 
       in their [dune-project] file. [parser] is used to describe
-      what [<args>] might be.  *)
-  val make : Syntax.Version.t -> Stanza.Parser.t list Sexp.Of_sexp.t -> t
-
-  (** Register all the supported versions of an extension *)
-  val register : string -> t list -> unit
+      what [<args>] might be. *)
+  val register : Syntax.t -> Stanza.Parser.t list Sexp.Of_sexp.t -> unit
 end
 
 (** Load a project description from the following directory. [files]

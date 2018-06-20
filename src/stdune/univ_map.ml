@@ -71,3 +71,6 @@ let find_exn t key =
     let eq = Key.eq key' key in
     Eq.cast eq v
 
+let singleton key v = Int.Map.singleton (Key.id key) (Binding.T (key, v))
+
+let superpose = Int.Map.superpose

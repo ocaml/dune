@@ -122,63 +122,93 @@ type t =
   }
 
 module Lang = struct
-  type t = Syntax.Version.t * Stanza.Parser.t list
+  type t =
+    { syntax  : Syntax.t
+    ; stanzas : Stanza.Parser.t list
+    }
 
-  let make ver f = (ver, f)
+  type instance =
+    { lang    : t
+    ; version : Syntax.Version.t
+    }
 
   let langs = Hashtbl.create 32
 
-  let register name versions =
+  let register syntax stanzas =
+    let name = Syntax.name syntax in
     if Hashtbl.mem langs name then
       Exn.code_error "Dune_project.Lang.register: already registered"
         [ "name", Sexp.To_sexp.string name ];
-    Hashtbl.add langs name (Syntax.Versioned_parser.make versions)
+    Hashtbl.add langs name { syntax; stanzas }
 
   let parse first_line =
     let { Dune_lexer.
-          lang = (name_loc, name)
+          lang    = (name_loc, name)
         ; version = (ver_loc, ver)
         } = first_line
     in
     let ver =
       Sexp.Of_sexp.parse Syntax.Version.t Univ_map.empty
-        (Atom (ver_loc, Sexp.Atom.of_string ver)) in
+        (Atom (ver_loc, Sexp.Atom.of_string ver))
+    in
     match Hashtbl.find langs name with
     | None ->
       Loc.fail name_loc "Unknown language %S.%s" name
         (hint name (Hashtbl.keys langs))
-    | Some versions ->
-      Syntax.Versioned_parser.find_exn versions
-        ~loc:ver_loc ~data_version:ver
+    | Some t ->
+      Syntax.check_supported t.syntax (ver_loc, ver);
+      { lang = t
+      ; version = ver
+      }
 
-  let latest name =
-    let versions = Option.value_exn (Hashtbl.find langs name) in
-    Syntax.Versioned_parser.last versions
-
-  let version = fst
+  let get_exn name =
+    let lang = Option.value_exn (Hashtbl.find langs name) in
+    { lang
+    ; version = Syntax.greatest_supported_version lang.syntax
+    }
 end
 
 module Extension = struct
-  type t = Syntax.Version.t * Stanza.Parser.t list Sexp.Of_sexp.t
+  type t =
+    { syntax  : Syntax.t
+    ; stanzas : Stanza.Parser.t list Sexp.Of_sexp.t
+    }
 
-  let make ver f = (ver, f)
+  type instance =
+    { extension  : t
+    ; version    : Syntax.Version.t
+    ; loc        : Loc.t
+    ; parse_args : Stanza.Parser.t list Sexp.Of_sexp.t -> Stanza.Parser.t list
+    }
 
   let extensions = Hashtbl.create 32
 
-  let register name versions =
+  let register syntax stanzas =
+    let name = Syntax.name syntax in
     if Hashtbl.mem extensions name then
       Exn.code_error "Dune_project.Extension.register: already registered"
         [ "name", Sexp.To_sexp.string name ];
-    Hashtbl.add extensions name (Syntax.Versioned_parser.make versions)
+    Hashtbl.add extensions name { syntax; stanzas }
 
-  let lookup (name_loc, name) (ver_loc, ver) =
+  let instantiate ~loc ~parse_args (name_loc, name) (ver_loc, ver) =
     match Hashtbl.find extensions name with
     | None ->
       Loc.fail name_loc "Unknown extension %S.%s" name
         (hint name (Hashtbl.keys extensions))
-    | Some versions ->
-      Syntax.Versioned_parser.find_exn versions ~loc:ver_loc ~data_version:ver
+    | Some t ->
+      Syntax.check_supported t.syntax (ver_loc, ver);
+      { extension = t
+      ; version = ver
+      ; loc
+      ; parse_args
+      }
 end
+
+let make_parsing_context ~(lang : Lang.instance) ~extensions =
+  let acc = Univ_map.singleton (Syntax.key lang.lang.syntax) lang.version in
+  List.fold_left extensions ~init:acc
+    ~f:(fun acc (ext : Extension.instance) ->
+      Univ_map.add acc (Syntax.key ext.extension.syntax) ext.version)
 
 let key = Univ_map.Key.create ()
 let set t = Sexp.Of_sexp.set key t
@@ -197,12 +227,15 @@ let get_local_path p =
   | Local    p -> p
 
 let anonymous = lazy (
+  let lang = Lang.get_exn "dune" in
+  let parsing_context = make_parsing_context ~lang ~extensions:[] in
   { kind          = Dune
   ; name          = Name.anonymous_root
   ; packages      = Package.Name.Map.empty
   ; root          = get_local_path Path.root
   ; version       = None
-  ; stanza_parser = Sexp.Of_sexp.sum (snd (Lang.latest "dune"))
+  ; stanza_parser =
+      Sexp.Of_sexp.(set_many parsing_context (sum lang.lang.stanzas))
   ; project_file  = None
   })
 
@@ -230,7 +263,7 @@ let name ~dir ~packages =
   | Some x -> return x
   | None   -> return (default_name ~dir ~packages)
 
-let parse ~dir ~lang_stanzas ~packages ~file =
+let parse ~dir ~lang ~packages ~file =
   record
     (name ~dir ~packages >>= fun name ->
      field_o "version" string >>= fun version ->
@@ -238,41 +271,55 @@ let parse ~dir ~lang_stanzas ~packages ~file =
        (loc >>= fun loc ->
         located string >>= fun name ->
         located Syntax.Version.t >>= fun ver ->
-        Extension.lookup name ver >>= fun stanzas ->
-        return (snd name, (loc, stanzas)))
+        (* We don't parse the arguments quite yet as we want to set
+           the version of extensions before parsing them. *)
+        capture >>= fun parse_args ->
+        return (Extension.instantiate ~loc ~parse_args name ver))
      >>= fun extensions ->
-     let extensions_stanzas =
-       match String.Map.of_list extensions with
-       | Error (name, _, (loc, _)) ->
-         Loc.fail loc "Extension %S specified for the second time." name
-       | Ok _ ->
-         List.concat_map extensions ~f:(fun (_, (_, x)) -> x)
-     in
-     return
-       { kind = Dune
-       ; name
-       ; root = get_local_path dir
-       ; version
-       ; packages
-       ; stanza_parser = Sexp.Of_sexp.sum (lang_stanzas @ extensions_stanzas)
-       ; project_file  = Some file
-       })
+     match
+       String.Map.of_list
+         (List.map extensions ~f:(fun (e : Extension.instance) ->
+            (Syntax.name e.extension.syntax, e.loc)))
+     with
+     | Error (name, _, loc) ->
+       Loc.fail loc "Extension %S specified for the second time." name
+     | Ok _ ->
+       let parsing_context = make_parsing_context ~lang ~extensions in
+       let stanzas =
+         List.concat
+           (lang.lang.stanzas ::
+            List.map extensions ~f:(fun (ext : Extension.instance) ->
+              ext.parse_args
+                (Sexp.Of_sexp.set_many parsing_context ext.extension.stanzas)))
+       in
+       return
+         { kind = Dune
+         ; name
+         ; root = get_local_path dir
+         ; version
+         ; packages
+         ; stanza_parser = Sexp.Of_sexp.(set_many parsing_context (sum stanzas))
+         ; project_file  = Some file
+         })
 
 let load_dune_project ~dir packages =
   let fname = Path.relative dir filename in
   Io.with_lexbuf_from_file fname ~f:(fun lb ->
-    let lang_stanzas = Lang.parse (Dune_lexer.first_line lb) in
+    let lang = Lang.parse (Dune_lexer.first_line lb) in
     let sexp = Sexp.Parser.parse lb ~mode:Many_as_one in
-    Sexp.Of_sexp.parse (parse ~dir ~lang_stanzas ~packages ~file:fname)
+    Sexp.Of_sexp.parse (parse ~dir ~lang ~packages ~file:fname)
       Univ_map.empty sexp)
 
 let make_jbuilder_project ~dir packages =
+  let lang = Lang.get_exn "dune" in
+  let parsing_context = make_parsing_context ~lang ~extensions:[] in
   { kind = Jbuilder
   ; name = default_name ~dir ~packages
   ; root = get_local_path dir
   ; version = None
   ; packages
-  ; stanza_parser = Sexp.Of_sexp.sum (snd (Lang.latest "dune"))
+  ; stanza_parser =
+      Sexp.Of_sexp.(set_many parsing_context (sum lang.lang.stanzas))
   ; project_file = None
   }
 
@@ -311,8 +358,8 @@ let project_file t =
   | Some file -> file
   | None ->
     let file = Path.relative (Path.of_local t.root) filename in
-    let maj, min = fst (Lang.latest "dune") in
-    let s = sprintf "(lang dune %d.%d)" maj min in
+    let ver = (Lang.get_exn "dune").version in
+    let s = sprintf "(lang dune %s)" (Syntax.Version.to_string ver) in
     notify_user
       (sprintf "creating file %s with this contents: %s"
          (Path.to_string_maybe_quoted file) s);

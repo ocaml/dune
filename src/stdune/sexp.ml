@@ -141,6 +141,14 @@ module Of_sexp = struct
       | Fields (loc, cstr, uc) ->
         t (Fields (loc, cstr, Univ_map.add uc key v)) state
 
+  let set_many : type a k. Univ_map.t -> (a, k) parser -> (a, k) parser
+    = fun map t ctx state ->
+      match ctx with
+      | Values (loc, cstr, uc) ->
+        t (Values (loc, cstr, Univ_map.superpose uc map)) state
+      | Fields (loc, cstr, uc) ->
+        t (Fields (loc, cstr, Univ_map.superpose uc map)) state
+
   let loc : type k. k context -> k -> Loc.t * k = fun ctx state ->
     match ctx with
     | Values (loc, _, _) -> (loc, state)
@@ -190,6 +198,12 @@ module Of_sexp = struct
   let parse t context sexp =
     let ctx = Values (Ast.loc sexp, None, context) in
     result ctx (t ctx [sexp])
+
+  let capture ctx state =
+    let f t =
+      result ctx (t ctx state)
+    in
+    (f, [])
 
   let end_of_list (Values (loc, cstr, _)) =
     match cstr with
@@ -494,6 +508,16 @@ module Of_sexp = struct
     (x, [])
 
   let record t = enter (fields t)
+
+  type kind =
+    | Values of Loc.t * string option
+    | Fields of Loc.t * string option
+
+  let kind : type k. k context -> k -> kind * k
+    = fun ctx state ->
+      match ctx with
+      | Values (loc, cstr, _) -> (Values (loc, cstr), state)
+      | Fields (loc, cstr, _) -> (Fields (loc, cstr), state)
 end
 
 module type Sexpable = sig

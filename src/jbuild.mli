@@ -2,6 +2,11 @@
 
 open Import
 
+(** Syntax identifier for the Dune language. [(0, X)] correspond to
+    the Jbuild language while versions from [(1, 0)] correspond to the
+    Dune one. *)
+val syntax : Syntax.t
+
 (** Ppx preprocessors  *)
 module Pp : sig
   type t = private string
@@ -139,10 +144,14 @@ module Sub_system_info : sig
     (** Name of the sub-system *)
     val name : Sub_system_name.t
 
-    (** Location of the S-expression passed to [of_sexp] or [short]. *)
+    (** Location of the parameters in the jbuild/dune file. *)
     val loc : t -> Loc.t
 
-    val parsers : t Sexp.Of_sexp.t Syntax.Versioned_parser.t
+    (** Syntax for jbuild/dune files *)
+    val syntax : Syntax.t
+
+    (** Parse parameters written by the user in jbuid/dune files *)
+    val parse : t Sexp.Of_sexp.t
   end
 
   module Register(M : S) : sig end

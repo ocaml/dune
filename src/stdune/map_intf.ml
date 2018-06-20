@@ -21,6 +21,10 @@ module type S = sig
     -> f:(key -> 'a -> 'a -> 'a option)
     -> 'a t
 
+  (** [superpose a b] is [b] augmented with bindings of [a] that are
+      not in [b]. *)
+  val superpose : 'a t -> 'a t -> 'a t
+
   val compare : 'a t -> 'a t -> compare:('a -> 'a -> Ordering.t) -> Ordering.t
   val equal   : 'a t -> 'a t -> equal:('a -> 'a -> bool) -> bool
 

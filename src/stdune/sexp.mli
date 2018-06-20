@@ -109,6 +109,7 @@ module Of_sexp : sig
   (** Access to the context *)
   val get : 'a Univ_map.Key.t -> ('a option, _) parser
   val set : 'a Univ_map.Key.t -> 'a -> ('b, 'k) parser -> ('b, 'k) parser
+  val set_many : Univ_map.t -> ('a, 'k) parser -> ('a, 'k) parser
 
   (** Return the location of the list currently being parsed. *)
   val loc : (Loc.t, _) parser
@@ -117,9 +118,20 @@ module Of_sexp : sig
       S-expressions to parse *)
   val eos : (bool, _) parser
 
+  (** What is currently being parsed. The second argument is the atom
+      at the beginnig of the list when inside a [sum ...] or [field
+      ...]. *)
+  type kind =
+    | Values of Loc.t * string option
+    | Fields of Loc.t * string option
+  val kind : (kind, _) parser
+
   (** [repeat t] use [t] to consume all remaning elements of the input
       until the end of sequence is reached. *)
   val repeat : 'a t -> 'a list t
+
+  (** Capture the rest of the input for later parsing *)
+  val capture : ('a t -> 'a) t
 
   (** [enter t] expect the next element of the input to be a list and
       parse its contents with [t]. *)

@@ -116,4 +116,7 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
       | None      -> assert false
       | Some data -> f key data)
   let filter_map t ~f = filter_mapi t ~f:(fun _ x -> f x)
+
+  let superpose a b =
+    union a b ~f:(fun _ _ y -> Some y)
 end

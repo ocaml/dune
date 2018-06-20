@@ -29,15 +29,19 @@ module Name : sig
   val decode : string -> t
 end
 
+module Project_file : sig
+  type t
+end
+
 (* CR-soon diml: make this abstract *)
 type t = private
-  { kind                 : Kind.t
-  ; name                 : Name.t
-  ; root                 : Path.Local.t
-  ; version              : string option
-  ; packages             : Package.t Package.Name.Map.t
-  ; stanza_parser        : Stanza.t list Sexp.Of_sexp.t
-  ; mutable project_file : Path.t option
+  { kind          : Kind.t
+  ; name          : Name.t
+  ; root          : Path.Local.t
+  ; version       : string option
+  ; packages      : Package.t Package.Name.Map.t
+  ; stanza_parser : Stanza.t list Sexp.Of_sexp.t
+  ; project_file  : Project_file.t
   }
 
 module Lang : sig

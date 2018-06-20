@@ -1155,7 +1155,34 @@ module Menhir = struct
     ; loc        :  Loc.t
     }
 
+  let syntax =
+    Syntax.create
+      ~name:"menhir"
+      ~desc:"the menhir extension"
+      [ (1, 0) ]
+
   let t =
+    record
+      (field_o "merge_into" string >>= fun merge_into ->
+       field_oslu "flags" >>= fun flags ->
+       field "modules" (list string) >>= fun modules ->
+       Rule.Mode.field >>= fun mode ->
+       return
+         { merge_into
+         ; flags
+         ; modules
+         ; mode
+         ; loc = Loc.none
+         })
+
+  type Stanza.t += T of t
+
+  let () =
+    Dune_project.Extension.register syntax
+      (return [ "menhir", t >>| fun x -> [T x] ])
+
+  (* Syntax for jbuild files *)
+  let jbuild_syntax =
     record
       (field_o "merge_into" string >>= fun merge_into ->
        field_oslu "flags" >>= fun flags ->
@@ -1275,7 +1302,6 @@ type Stanza.t +=
   | Install     of Install_conf.t
   | Alias       of Alias_conf.t
   | Copy_files  of Copy_files.t
-  | Menhir      of Menhir.t
   | Documentation of Documentation.t
   | Env         of Env.t
 
@@ -1313,10 +1339,6 @@ module Stanzas = struct
       (loc >>= fun loc ->
        Rule.ocamlyacc >>| fun x ->
        rules (Rule.ocamlyacc_to_rule loc x))
-    ; "menhir",
-      (loc >>= fun loc ->
-       Menhir.t >>| fun x ->
-       [Menhir { x with loc }])
     ; "install",
       (Install_conf.t >>| fun x ->
        [Install x])
@@ -1347,6 +1369,17 @@ module Stanzas = struct
     ]
 
   let jbuild_parser =
+    (* The menhir stanza was part of the vanilla jbuild
+       syntax. Starting from Dune 1.0, it is presented as an
+       extension with its own version. *)
+    let stanzas =
+      stanzas @
+      [ "menhir",
+        (loc >>= fun loc ->
+         Menhir.jbuild_syntax >>| fun x ->
+         [Menhir.T { x with loc }])
+      ]
+    in
     Syntax.set syntax (0, 0) (sum stanzas)
 
   let () =

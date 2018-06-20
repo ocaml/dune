@@ -303,6 +303,8 @@ module Menhir : sig
     ; mode       : Rule.Mode.t
     ; loc        : Loc.t
     }
+
+  type Stanza.t += T of t
 end
 
 module Alias_conf : sig
@@ -353,7 +355,6 @@ type Stanza.t +=
   | Install     of Install_conf.t
   | Alias       of Alias_conf.t
   | Copy_files  of Copy_files.t
-  | Menhir      of Menhir.t
   | Documentation of Documentation.t
   | Env         of Env.t
 

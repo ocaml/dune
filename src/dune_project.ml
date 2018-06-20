@@ -259,7 +259,7 @@ module Extension = struct
         let parse_args p =
           let open Sexp.Of_sexp in
           let dune_project_edited = ref false in
-          parse p Univ_map.empty (List (Loc.none, []))
+          parse (enter p) Univ_map.empty (List (Loc.of_pos __POS__, []))
           |> List.map ~f:(fun (name, p) ->
             (name,
              return () >>= fun () ->

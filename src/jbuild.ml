@@ -1349,7 +1349,7 @@ module Stanzas = struct
 
   exception Include_loop of Path.t * (Loc.t * Path.t) list
 
-  let rec parse stanza_parser ~current_file ~include_stack sexps =
+  let rec parse stanza_parser ~lexer ~current_file ~include_stack sexps =
     List.concat_map sexps ~f:(Sexp.Of_sexp.parse stanza_parser Univ_map.empty)
     |> List.concat_map ~f:(function
       | Include (loc, fn) ->
@@ -1361,20 +1361,22 @@ module Stanzas = struct
             (Path.to_string_maybe_quoted current_file);
         if List.exists include_stack ~f:(fun (_, f) -> f = current_file) then
           raise (Include_loop (current_file, include_stack));
-        let sexps = Io.Sexp.load current_file ~mode:Many in
-        parse stanza_parser sexps ~current_file ~include_stack
+        let sexps = Io.Sexp.load ~lexer current_file ~mode:Many in
+        parse stanza_parser sexps ~lexer ~current_file ~include_stack
       | stanza -> [stanza])
 
   let parse ~file ~kind (project : Dune_project.t) sexps =
-    let stanza_parser =
-      Dune_project.set project
-        (match (kind : File_tree.Dune_file.Kind.t) with
-         | Jbuild -> jbuild_parser
-         | Dune   -> project.stanza_parser)
+    let (stanza_parser, lexer) =
+      let (parser, lexer) =
+        match (kind : File_tree.Dune_file.Kind.t) with
+        | Jbuild -> (jbuild_parser, Usexp.Lexer.jbuild_token)
+        | Dune   -> (project.stanza_parser, Usexp.Lexer.token)
+      in
+      (Dune_project.set project parser, lexer)
     in
     let stanzas =
       try
-        parse stanza_parser sexps ~include_stack:[] ~current_file:file
+        parse stanza_parser sexps ~lexer ~include_stack:[] ~current_file:file
       with
       | Include_loop (_, []) -> assert false
       | Include_loop (file, last :: rest) ->

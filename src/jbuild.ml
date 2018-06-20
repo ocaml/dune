@@ -191,6 +191,8 @@ module Pps_and_flags = struct
 
     let item =
       peek raw >>= function
+      | Template { loc; _ } ->
+        no_templates loc "in the preprocessors field"
       | Atom _ | Quoted_string _ -> plain_string of_string
       | List _ -> list string >>| fun l -> Right l
 
@@ -260,7 +262,7 @@ module Dep_conf = struct
         ]
     in
     peek raw >>= function
-    | Atom _ | Quoted_string _ ->
+    | Template _ | Atom _ | Quoted_string _ ->
       String_with_vars.t >>| fun x -> File x
     | List _ -> t
 
@@ -363,9 +365,7 @@ module Lint = struct
   let no_lint = default
 end
 
-let field_oslu name =
-  field name Ordered_set_lang.Unexpanded.t
-    ~default:Ordered_set_lang.Unexpanded.standard
+let field_oslu name = Ordered_set_lang.Unexpanded.field name
 
 module Js_of_ocaml = struct
 
@@ -419,6 +419,7 @@ module Lib_dep = struct
           ; forbidden
           ; file
           }
+        | Template _ -> no_templates loc "in the select form"
         | List _ ->
           of_sexp_errorf loc "(<[!]libraries>... -> <file>) expected"
         | (Atom (_, A s) | Quoted_string (_, s)) ->
@@ -529,8 +530,7 @@ module Buildable = struct
     ; allow_overlapping_dependencies : bool
     }
 
-  let modules_field name =
-    field name Ordered_set_lang.t ~default:Ordered_set_lang.standard
+  let modules_field name = Ordered_set_lang.field name
 
   let t =
     loc >>= fun loc ->
@@ -972,7 +972,8 @@ module Executables = struct
     let to_install =
       match Link_mode.Set.best_install_mode t.modes with
       | None when has_public_name ->
-        let mode_to_string mode = " - " ^ Sexp.to_string (Link_mode.sexp_of_t mode) in
+        let mode_to_string mode =
+          " - " ^ Sexp.to_string ~syntax:Dune (Link_mode.sexp_of_t mode) in
         let mode_strings = List.map ~f:mode_to_string Link_mode.installable_modes in
         Loc.fail
           buildable.loc
@@ -1362,7 +1363,7 @@ module Documentation = struct
   let t =
     record
       (Pkg.field >>= fun package ->
-       field "mld_files" Ordered_set_lang.t ~default:Ordered_set_lang.standard
+       Ordered_set_lang.field "mld_files"
        >>= fun mld_files ->
        return
          { package

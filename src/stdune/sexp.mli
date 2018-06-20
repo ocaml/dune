@@ -56,6 +56,7 @@ module Of_sexp : sig
   type ast = Ast.t =
     | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
+    | Template of Template.t
     | List of Loc.t * ast list
 
   type hint =
@@ -110,6 +111,8 @@ module Of_sexp : sig
   val get : 'a Univ_map.Key.t -> ('a option, _) parser
   val set : 'a Univ_map.Key.t -> 'a -> ('b, 'k) parser -> ('b, 'k) parser
   val set_many : Univ_map.t -> ('a, 'k) parser -> ('a, 'k) parser
+
+  val context : (Univ_map.t, _) parser
 
   (** Return the location of the list currently being parsed. *)
   val loc : (Loc.t, _) parser
@@ -172,6 +175,12 @@ module Of_sexp : sig
     -> _
   val of_sexp_errorf
     :  ?hint:hint
+    -> Loc.t
+    -> ('a, unit, string, 'b) format4
+    -> 'a
+
+  val no_templates
+    : ?hint:hint
     -> Loc.t
     -> ('a, unit, string, 'b) format4
     -> 'a

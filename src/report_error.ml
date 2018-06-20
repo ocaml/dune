@@ -74,8 +74,8 @@ let report_with_backtrace exn =
       ; pp = fun ppf ->
           Format.fprintf ppf "@{<error>Internal error, please report upstream \
                               including the contents of _build/log.@}\n\
-                              Description: %a\n"
-            Usexp.pp sexp
+                              Description:%a\n"
+            (Usexp.pp Dune) sexp
       }
     | Unix.Unix_error (err, func, fname) ->
       { p with pp = fun ppf ->

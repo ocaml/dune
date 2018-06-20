@@ -29,7 +29,7 @@ module Promoted_to_delete = struct
       Io.write_file fn
         (String.concat ~sep:""
            (List.map (Path.Set.to_list db) ~f:(fun p ->
-              Sexp.to_string (Path.sexp_of_t p) ^ "\n")))
+              Sexp.to_string ~syntax:Dune (Path.sexp_of_t p) ^ "\n")))
 end
 
 let files_in_source_tree_to_delete () =
@@ -1226,7 +1226,7 @@ let update_universe t =
       0
   in
   make_local_dirs t (Path.Set.singleton Path.build_dir);
-  Io.write_file universe_file (Sexp.to_string (Sexp.To_sexp.int n))
+  Io.write_file universe_file (Sexp.to_string ~syntax:Dune (Sexp.To_sexp.int n))
 
 let do_build t ~request =
   entry_point t ~f:(fun () ->
@@ -1561,7 +1561,7 @@ module Alias = struct
 
   let add_action build_system t ~context ?(locks=[]) ~stamp action =
     let def = get_alias_def build_system t in
-    def.actions <- { stamp = Digest.string (Sexp.to_string stamp)
+    def.actions <- { stamp = Digest.string (Sexp.to_string ~syntax:Dune stamp)
                    ; action
                    ; locks
                    ; context

@@ -2,7 +2,7 @@ open! Import
 
 module Dune_file = struct
   module Kind = struct
-    type t = Dune | Jbuild
+    type t = Usexp.syntax = Jbuild | Dune
 
     let of_basename = function
       | "dune"   -> Dune

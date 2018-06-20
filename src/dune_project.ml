@@ -279,7 +279,7 @@ module Extension = struct
              if not !dune_project_edited then begin
                dune_project_edited := true;
                Project_file_edit.append project_file
-                 (Sexp.to_string
+                 (Sexp.to_string ~syntax:Dune
                     (List [ Sexp.atom "using"
                           ; Sexp.atom name
                           ; Sexp.atom (Syntax.Version.to_string version)

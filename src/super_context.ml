@@ -88,7 +88,8 @@ let expand_var_no_root t var = String.Map.find t.vars var
 
 let (expand_vars, expand_vars_path) =
   let expand t ~scope ~dir ?(extra_vars=String.Map.empty) s =
-    String_with_vars.expand ~mode:Single ~dir s ~f:(fun _loc -> function
+    String_with_vars.expand ~mode:Single ~dir s ~f:(fun v ->
+      match String_with_vars.Var.full_name v with
       | "ROOT" -> Some [Value.Path t.context.build_dir]
       | "SCOPE_ROOT" -> Some [Value.Path (Scope.root scope)]
       | var ->
@@ -110,7 +111,8 @@ let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
   let open Build.O in
   let f = expand_vars t ~scope ~dir ?extra_vars in
   let parse ~loc:_ s = s in
-  match Ordered_set_lang.Unexpanded.files set ~f |> String.Set.to_list with
+  let (syntax, files) = Ordered_set_lang.Unexpanded.files set ~f in
+  match String.Set.to_list files with
   | [] ->
     let set =
       Ordered_set_lang.Unexpanded.expand set ~files_contents:String.Map.empty ~f
@@ -119,7 +121,8 @@ let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
     Ordered_set_lang.String.eval set ~standard ~parse
   | files ->
     let paths = List.map files ~f:(Path.relative dir) in
-    Build.fanout standard (Build.all (List.map paths ~f:Build.read_sexp))
+    Build.fanout standard (Build.all (List.map paths ~f:(fun f ->
+      Build.read_sexp f syntax)))
     >>^ fun (standard, sexps) ->
     let files_contents = List.combine files sexps |> String.Map.of_list_exn in
     let set = Ordered_set_lang.Unexpanded.expand set ~files_contents ~f in
@@ -564,13 +567,6 @@ module Scope_key = struct
     sprintf "%s@%s" key (Dune_project.Name.encode scope)
 end
 
-let parse_bang var : bool * string =
-  let len = String.length var in
-  if len > 0 && var.[0] = '!' then
-    (true, String.sub var ~pos:1 ~len:(len - 1))
-  else
-    (false, var)
-
 module Action = struct
   open Build.O
   module U = Action.Unexpanded
@@ -630,10 +626,13 @@ module Action = struct
       ; ddeps     = String.Map.empty
       }
     in
-    let expand loc key var = function
-      | Some ("exe"     , s) -> Some (path_exp (map_exe (Path.relative dir s)))
-      | Some ("path"    , s) -> Some (path_exp          (Path.relative dir s) )
-      | Some ("bin"     , s) -> begin
+    let expand var =
+      let loc = String_with_vars.Var.loc var in
+      let key = String_with_vars.Var.full_name var in
+      match String_with_vars.Var.destruct var with
+      | Pair ("exe"     , s) -> Some (path_exp (map_exe (Path.relative dir s)))
+      | Pair ("path"    , s) -> Some (path_exp          (Path.relative dir s) )
+      | Pair ("bin"     , s) -> begin
           let sctx = host sctx in
           match Artifacts.binary (artifacts sctx) s with
           | Ok path -> Some (path_exp path)
@@ -642,7 +641,7 @@ module Action = struct
         end
       (* "findlib" for compatibility with Jane Street packages which are not yet updated
          to convert "findlib" to "lib" *)
-      | Some (("lib"|"findlib"), s) -> begin
+      | Pair (("lib"|"findlib"), s) -> begin
           let lib_dep, file = parse_lib_file ~loc s in
           add_lib_dep acc lib_dep dep_kind;
           match
@@ -651,7 +650,7 @@ module Action = struct
           | Ok path -> Some (path_exp path)
           | Error fail -> add_fail acc fail
         end
-      | Some ("libexec" , s) -> begin
+      | Pair ("libexec" , s) -> begin
           let sctx = host sctx in
           let lib_dep, file = parse_lib_file ~loc s in
           add_lib_dep acc lib_dep dep_kind;
@@ -672,11 +671,11 @@ module Action = struct
               add_ddep acc ~key dep
             end
         end
-      | Some ("lib-available", lib) ->
+      | Pair ("lib-available", lib) ->
         add_lib_dep acc lib Optional;
         Some (str_exp (string_of_bool (
           Lib.DB.available (Scope.libs scope) lib)))
-      | Some ("version", s) -> begin
+      | Pair ("version", s) -> begin
           match Package.Name.Map.find (Scope.project scope).packages
                   (Package.Name.of_string s) with
           | Some p ->
@@ -691,7 +690,7 @@ module Action = struct
               Loc.fail loc "Package %S doesn't exist in the current project." s
             }
         end
-      | Some ("read", s) -> begin
+      | Pair ("read", s) -> begin
           let path = Path.relative dir s in
           let data =
             Build.contents path
@@ -699,7 +698,7 @@ module Action = struct
           in
           add_ddep acc ~key data
         end
-      | Some ("read-lines", s) -> begin
+      | Pair ("read-lines", s) -> begin
           let path = Path.relative dir s in
           let data =
             Build.lines_of path
@@ -707,7 +706,7 @@ module Action = struct
           in
           add_ddep acc ~key data
         end
-      | Some ("read-strings", s) -> begin
+      | Pair ("read-strings", s) -> begin
           let path = Path.relative dir s in
           let data =
             Build.strings path
@@ -716,17 +715,15 @@ module Action = struct
           add_ddep acc ~key data
         end
       | _ ->
-        match expand_var_no_root sctx var with
+        match expand_var_no_root sctx key with
         | Some _ as x -> x
-        | None -> String.Map.find extra_vars var
+        | None -> String.Map.find extra_vars key
     in
     let t =
-      U.partial_expand t ~dir ~map_exe ~f:(fun loc key ->
-        let has_bang, var = parse_bang key in
-        if has_bang then
-          Loc.warn loc "The use of the variable prefix '!' is deprecated, \
-                        simply use '${%s}'@." var;
-        match var with
+      U.partial_expand t ~dir ~map_exe ~f:(fun var ->
+        let var_name = String_with_vars.Var.full_name var in
+        let loc = String_with_vars.Var.loc var in
+        match var_name with
         | "ROOT" -> Some (path_exp sctx.context.build_dir)
         | "SCOPE_ROOT" -> Some (path_exp (Scope.root scope))
         | "@" -> begin
@@ -736,11 +733,11 @@ module Action = struct
             | Static l -> Some (Value.L.paths l)
           end
         | _ ->
-          match String.lsplit2 var ~on:':' with
-          | Some ("path-no-dep", s) ->
+          match String_with_vars.Var.destruct var with
+          | Pair ("path-no-dep", s) ->
             Some (path_exp (Path.relative dir s))
-          | x ->
-            let exp = expand loc key var x in
+          | _ ->
+            let exp = expand var in
             Option.iter exp ~f:(fun vs ->
               acc.sdeps <- Path.Set.union (Path.Set.of_list
                                              (Value.L.paths_only vs)) acc.sdeps;
@@ -750,12 +747,13 @@ module Action = struct
     (t, acc)
 
   let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
-    U.Partial.expand t ~dir ~map_exe ~f:(fun loc key ->
+    U.Partial.expand t ~dir ~map_exe ~f:(fun var ->
+      let key = String_with_vars.Var.full_name var in
+      let loc = String_with_vars.Var.loc var in
       match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
-        let _, var = parse_bang key in
-        match var with
+        match key with
         | "<" ->
           Some
             (match deps_written_by_user with

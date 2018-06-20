@@ -52,7 +52,7 @@ struct
 
   let id = Id.create ()
 
-  let to_string path x = To_sexp.t path x |> Sexp.to_string
+  let to_string path x = To_sexp.t path x |> Sexp.to_string ~syntax:Dune
 
   let load path =
     Of_sexp.t path (Io.Sexp.load path ~mode:Single)

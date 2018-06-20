@@ -4,7 +4,7 @@ open! Import
 
 module Dune_file : sig
   module Kind : sig
-    type t = Dune | Jbuild
+    type t = Usexp.syntax = Jbuild | Dune
 
     val lexer : t -> Sexp.Lexer.t
   end

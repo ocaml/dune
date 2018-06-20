@@ -12,6 +12,10 @@ module Sexp = struct
 
   let constr name args =
     Usexp.List (Usexp.atom name :: args)
+
+  let parse s =
+    Usexp.parse_string ~fname:"gen_tests.ml" ~mode:Single s
+    |> Usexp.Ast.remove_locs
 end
 
 let alias ?action name ~deps =
@@ -26,7 +30,7 @@ let alias ?action name ~deps =
 module Test = struct
   type t =
     { name           : string
-    ; env            : (string * string) option
+    ; env            : (string * Usexp.t) option
     ; skip_ocaml     : string option
     ; skip_platforms : Platform.t list
     ; enabled        : bool
@@ -59,10 +63,13 @@ module Test = struct
         ; atom (sprintf "test-cases/%s" t.name)
         ; List
             [ atom "progn"
-            ; Sexp.strings (["run"; "${exe:cram.exe}"]
-                            @ skip_version
-                            @ skip_platforms
-                            @ ["-test"; "run.t"])
+            ; Usexp.List
+                ([ atom "run"
+                 ; Sexp.parse "%{exe:cram.exe}" ]
+                 @ (List.map ~f:Usexp.atom_or_quoted_string
+                      (skip_version
+                       @ skip_platforms
+                       @ ["-test"; "run.t"])))
             ; Sexp.strings ["diff?"; "run.t"; "run.t.corrected"]
             ]
 
@@ -74,7 +81,7 @@ module Test = struct
       | Some (k, v) ->
         List [ atom "setenv"
              ; atom_or_quoted_string k
-             ; atom_or_quoted_string v
+             ; v
              ; action ] in
     alias t.name
       ~deps:(
@@ -83,14 +90,15 @@ module Test = struct
                        ; sprintf "test-cases/%s" t.name]
         ]
       ) ~action
-    |> Usexp.pp fmt
+    |> Usexp.pp Dune fmt
 end
 
 let exclusions =
   let open Test in
   let odoc = make ~external_deps:true ~skip_ocaml:"4.02.3" in
-  [ make "js_of_ocaml" ~external_deps:true ~js:true ~env:("NODE", "${bin:node}")
-  ; make "github25" ~env:("OCAMLPATH", "./findlib-packages")
+  [ make "js_of_ocaml" ~external_deps:true ~js:true
+      ~env:("NODE", Sexp.parse "%{bin:node}")
+  ; make "github25" ~env:("OCAMLPATH", Usexp.atom "./findlib-packages")
   ; odoc "odoc"
   ; odoc "odoc-unique-mlds"
   ; odoc "github717-odoc-index"
@@ -122,7 +130,7 @@ let pp_group fmt (name, tests) =
   alias name ~deps:(
     (List.map tests ~f:(fun (t : Test.t) ->
        Sexp.strings ["alias"; t.name])))
-  |> Usexp.pp fmt
+  |> Usexp.pp Dune fmt
 
 let () =
   let tests = Lazy.force all_tests in

@@ -151,10 +151,12 @@ let strings p =
   >>^ fun l ->
   List.map l ~f:Scanf.unescaped
 
-let read_sexp p =
+let read_sexp p syntax =
   contents p
   >>^ fun s ->
-  Usexp.parse_string s ~fname:(Path.to_string p) ~mode:Single
+  Usexp.parse_string s
+    ~lexer:(File_tree.Dune_file.Kind.lexer syntax)
+    ~fname:(Path.to_string p) ~mode:Single
 
 let if_file_exists p ~then_ ~else_ =
   If_file_exists (p, ref (Undecided (then_, else_)))

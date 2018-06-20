@@ -63,6 +63,7 @@ module Of_sexp = struct
   type ast = Ast.t =
     | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
+    | Template of Template.t
     | List of Loc.t * ast list
 
   type hint =
@@ -76,6 +77,9 @@ module Of_sexp = struct
     raise (Of_sexp (loc, msg, hint))
   let of_sexp_errorf ?hint loc fmt =
     Printf.ksprintf (fun msg -> of_sexp_error loc ?hint msg) fmt
+  let no_templates ?hint loc fmt =
+    Printf.ksprintf (fun msg ->
+      of_sexp_error loc ?hint ("No variables allowed " ^ msg)) fmt
 
   type unparsed_field =
     { values : Ast.t list
@@ -132,6 +136,8 @@ module Of_sexp = struct
     | Fields (_, _, uc) -> uc
 
   let get key ctx state = (Univ_map.find (get_user_context ctx) key, state)
+
+  let context ctx state = (get_user_context ctx, state)
 
   let set : type a b k. a Univ_map.Key.t -> a -> (b, k) parser -> (b, k) parser
     = fun key v t ctx state ->
@@ -236,7 +242,8 @@ module Of_sexp = struct
   let plain_string f =
     next (function
       | Atom (loc, A s) | Quoted_string (loc, s) -> f ~loc s
-      | List (loc, _) -> of_sexp_error loc "Atom or quoted string expected")
+      | Template { loc ; _ } | List (loc, _) ->
+        of_sexp_error loc "Atom or quoted string expected")
 
   let enter t =
     next_with_user_context (fun uc sexp ->
@@ -285,7 +292,7 @@ module Of_sexp = struct
 
   let basic desc f =
     next (function
-      | List (loc, _) | Quoted_string (loc, _) ->
+      | Template { loc; _ } | List (loc, _) | Quoted_string (loc, _) ->
         of_sexp_errorf loc "%s expected" desc
       | Atom (loc, s)  ->
         match f (Atom.to_string s) with
@@ -361,13 +368,14 @@ module Of_sexp = struct
       match sexp with
       | Atom (loc, A s) ->
         find_cstr cstrs loc s (Values (loc, Some s, uc)) []
+      | Template { loc; _ }
       | Quoted_string (loc, _) ->
         of_sexp_error loc "Atom expected"
       | List (loc, []) ->
         of_sexp_error loc "Non-empty list expected"
       | List (loc, name :: args) ->
         match name with
-        | Quoted_string (loc, _) | List (loc, _) ->
+        | Quoted_string (loc, _) | List (loc, _) | Template { loc; _ } ->
           of_sexp_error loc "Atom expected"
         | Atom (s_loc, A s) ->
           find_cstr cstrs s_loc s (Values (loc, Some s, uc)) args)
@@ -375,6 +383,7 @@ module Of_sexp = struct
   let enum cstrs =
     next (function
       | Quoted_string (loc, _)
+      | Template { loc; _ }
       | List (loc, _) -> of_sexp_error loc "Atom expected"
       | Atom (loc, A s) ->
         match List.assoc cstrs s with
@@ -496,7 +505,7 @@ module Of_sexp = struct
                 ; entry = sexp
                 ; prev  = Name_map.find acc name
                 }
-            | List (loc, _) | Quoted_string (loc, _) ->
+            | List (loc, _) | Quoted_string (loc, _) | Template { loc; _ } ->
               of_sexp_error loc "Atom expected"
           end
         | _ ->

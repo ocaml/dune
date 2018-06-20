@@ -15,6 +15,7 @@ end
 type 'ast generic =
   { ast : 'ast
   ; loc : Loc.t option
+  ; context: Univ_map.t
   }
 
 type ast_expanded = (Loc.t * string, Ast.expanded) Ast.t
@@ -24,7 +25,8 @@ let loc t = t.loc
 let parse_general sexp ~f =
   let rec of_sexp : Sexp.Ast.t -> _ = function
     | Atom (loc, A "\\") -> Loc.fail loc "unexpected \\"
-    | (Atom (_, A "") | Quoted_string (_, _)) as t -> Ast.Element (f t)
+    | (Atom (_, A "") | Quoted_string (_, _) | Template _ ) as t ->
+      Ast.Element (f t)
     | Atom (loc, A s) as t ->
       if s.[0] = ':' then
         Special (loc, String.sub s ~pos:1 ~len:(String.length s - 1))
@@ -42,14 +44,17 @@ let parse_general sexp ~f =
 
 let t =
   let open Sexp.Of_sexp in
+  context >>= fun context ->
   raw >>| fun sexp ->
   let ast =
     parse_general sexp ~f:(function
+      | Template t -> no_templates t.loc "here"
       | Atom (loc, A s) | Quoted_string (loc, s) -> (loc, s)
       | List _ -> assert false)
   in
   { ast
   ; loc = Some (Sexp.Ast.loc sexp)
+  ; context
   }
 
 let is_standard t =
@@ -168,20 +173,24 @@ end
 let standard =
   { ast = Ast.Special (Loc.none, "standard")
   ; loc = None
+  ; context = Univ_map.empty
   }
+
+let field ?(default=standard) name = Sexp.Of_sexp.field name t ~default
 
 module Unexpanded = struct
   type ast = (Sexp.Ast.t, Ast.unexpanded) Ast.t
   type t = ast generic
   let t =
     let open Sexp.Of_sexp in
+    context >>= fun context ->
     raw >>| fun sexp ->
     let rec map (t : (Sexp.Ast.t, Ast.expanded) Ast.t) =
       let open Ast in
       match t with
       | Element x -> Element x
       | Union [Special (_, "include"); Element fn] ->
-        Include (Sexp.Of_sexp.parse String_with_vars.t Univ_map.empty fn)
+        Include (Sexp.Of_sexp.parse String_with_vars.t context fn)
       | Union [Special (loc, "include"); _]
       | Special (loc, "include") ->
         Loc.fail loc "(:include expects a single element (do you need to quote the filename?)"
@@ -193,6 +202,7 @@ module Unexpanded = struct
     in
     { ast = map (parse_general sexp ~f:(fun x -> x))
     ; loc = Some (Sexp.Ast.loc sexp)
+    ; context
     }
 
   let sexp_of_t t =
@@ -225,7 +235,12 @@ module Unexpanded = struct
       | Diff (l, r) ->
         loop (loop acc l) r
     in
-    loop String.Set.empty t.ast
+    let syntax =
+      match Univ_map.find t.context (Syntax.key Stanza.syntax) with
+      | Some (0, _)-> File_tree.Dune_file.Kind.Jbuild
+      | None | Some (_, _) -> Dune
+    in
+    (syntax, loop String.Set.empty t.ast)
 
   let has_special_forms t =
     let rec loop (t : ast) =
@@ -242,12 +257,14 @@ module Unexpanded = struct
     loop t.ast
 
   let expand t ~files_contents ~f  =
+    let context = t.context in
     let rec expand (t : ast) : ast_expanded =
       let open Ast in
       match t with
       | Element s ->
-        Element (Sexp.Ast.loc s,
-                 f (Sexp.Of_sexp.parse String_with_vars.t Univ_map.empty s))
+        Element ( Sexp.Ast.loc s
+                , f (Sexp.Of_sexp.parse String_with_vars.t context s)
+                )
       | Special (l, s) -> Special (l, s)
       | Include fn ->
         let sexp =
@@ -264,7 +281,7 @@ module Unexpanded = struct
         in
         parse_general sexp ~f:(fun sexp ->
           (Sexp.Ast.loc sexp,
-           f (Sexp.Of_sexp.parse String_with_vars.t Univ_map.empty sexp)))
+           f (Sexp.Of_sexp.parse String_with_vars.t context sexp)))
       | Union l -> Union (List.map l ~f:expand)
       | Diff (l, r) ->
         Diff (expand l, expand r)

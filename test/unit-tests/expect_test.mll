@@ -38,13 +38,48 @@ and expectation txt = parse
   }
 
 {
+module Outcometree_cleaner = struct
+  open Outcometree
+
+  let lid s =
+    match String.rindex s '.' with
+    | exception Not_found -> s
+    | i ->
+      let pos = i + 1 in
+      let len = String.length s in
+      String.sub s ~pos ~len:(len - pos)
+
+  let ident = function
+    | Oide_dot (_, s) -> Oide_ident (lid s)
+    | Oide_ident s -> Oide_ident (lid s)
+    | id -> id
+
+  let rec value = function
+    | Oval_array l -> Oval_array (values l)
+    | Oval_constr (id, l) -> Oval_constr (ident id, values l)
+    | Oval_list l -> Oval_list (values l)
+    | Oval_record l ->
+      Oval_record (List.map l ~f:(fun (id, v) -> ident id, value v))
+    | Oval_tuple l -> Oval_tuple (values l)
+    | Oval_variant (s, Some v) -> Oval_variant (s, Some (value v))
+    | v -> v
+
+  and values l = List.map l ~f:value
+
+  let () =
+    let print_out_value = !Toploop.print_out_value in
+    Toploop.print_out_value := (fun ppf v -> print_out_value ppf (value v))
+end
+
 let main () =
+  Clflags.real_paths := false;
   Test_common.run_expect_test Sys.argv.(1) ~f:(fun file_contents lexbuf ->
     let chunks = code file_contents lexbuf.lex_curr_p lexbuf in
 
     Toploop.initialize_toplevel_env ();
     List.iter
-      [ "src/stdune/.stdune.objs"
+      [ "src/usexp/.usexp.objs"
+      ; "src/stdune/.stdune.objs"
       ; "src/.dune.objs"
       ]
       ~f:Topdirs.dir_directory;

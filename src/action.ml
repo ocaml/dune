@@ -341,8 +341,6 @@ let prog_and_args_of_values p ~dir =
   | String s :: xs ->
     (Unresolved.Program.of_string ~dir s, Value.L.to_strings ~dir xs)
 
-module SW = String_with_vars
-
 module Unexpanded = struct
   module type Uast = Action_intf.Ast
     with type program = String_with_vars.t
@@ -355,7 +353,7 @@ module Unexpanded = struct
   let t =
     let open Sexp.Of_sexp in
     peek raw >>= function
-    | Atom _ | Quoted_string _ as sexp ->
+    | Template _ | Atom _ | Quoted_string _ as sexp ->
       of_sexp_errorf (Sexp.Ast.loc sexp)
         "if you meant for this to be executed with bash, write (bash \"...\") instead"
     | List _ -> t
@@ -365,7 +363,8 @@ module Unexpanded = struct
       Loc.fail loc
         "(mkdir ...) is not supported for paths outside of the workspace:\n\
         \  %a\n"
-        Sexp.pp (List [Sexp.unsafe_atom_of_string "mkdir"; Path.sexp_of_t path])
+        (Sexp.pp Dune)
+        (List [Sexp.unsafe_atom_of_string "mkdir"; Path.sexp_of_t path])
 
   module Partial = struct
     module Program = Unresolved.Program
@@ -450,7 +449,7 @@ module Unexpanded = struct
           | Left  path -> Mkdir path
           | Right tmpl ->
             let path = E.path ~dir ~f x in
-            check_mkdir (SW.loc tmpl) path;
+            check_mkdir (String_with_vars.loc tmpl) path;
             Mkdir path
         end
       | Digest_files x ->
@@ -511,7 +510,7 @@ module Unexpanded = struct
         | Left dir ->
           Chdir (res, partial_expand t ~dir ~map_exe ~f)
         | Right fn ->
-          let loc = SW.loc fn in
+          let loc = String_with_vars.loc fn in
           Loc.fail loc
             "This directory cannot be evaluated statically.\n\
              This is not allowed by jbuilder"
@@ -542,7 +541,7 @@ module Unexpanded = struct
     | Mkdir x ->
       let res = E.path ~dir ~f x in
       (match res with
-       | Left path -> check_mkdir (SW.loc x) path
+       | Left path -> check_mkdir (String_with_vars.loc x) path
        | Right _   -> ());
       Mkdir res
     | Digest_files x ->
@@ -649,7 +648,8 @@ module Promotion = struct
       | l ->
         Io.write_file db_file
           (String.concat ~sep:""
-             (List.map l ~f:(fun x -> Sexp.to_string (File.sexp_of_t x) ^ "\n")))
+             (List.map l ~f:(fun x ->
+                Sexp.to_string ~syntax:Dune (File.sexp_of_t x) ^ "\n")))
     end
 
   let load_db () =
@@ -1062,7 +1062,8 @@ module Infer = struct
         match fn with
         | Left  fn -> { acc with targets = Path.Set.add acc.targets fn }
         | Right sw ->
-          Loc.fail (SW.loc sw) "Cannot determine this target statically."
+          Loc.fail (String_with_vars.loc sw)
+            "Cannot determine this target statically."
       let ( +< ) acc fn =
         match fn with
         | Left  fn -> { acc with deps    = Path.Set.add acc.deps fn }
@@ -1095,7 +1096,7 @@ module Infer = struct
   module Unexp = Make(Unexpanded.Uast)(S_unexp)(Outcome_unexp)(struct
       open Outcome_unexp
       let ( +@ ) acc fn =
-        if SW.is_var fn ~name:"null" then
+        if String_with_vars.is_var fn ~name:"null" then
           acc
         else
           { acc with targets = fn :: acc.targets }

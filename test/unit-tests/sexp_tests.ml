@@ -5,13 +5,13 @@ let () = Printexc.record_backtrace true
 (* Test that all strings of length <= 3 such that [Usexp.Atom.is_valid
    s] are recignized as atoms by the parser *)
 
-let string_of_syntax (x : Usexp.Atom.syntax) =
+let string_of_syntax (x : Usexp.syntax) =
   match x with
   | Dune -> "dune"
   | Jbuild -> "jbuild"
 
 let () =
-  [ Usexp.Atom.Dune, Usexp.Lexer.token, (fun s -> Usexp.Atom.is_valid s Dune)
+  [ Usexp.Dune, Usexp.Lexer.token, (fun s -> Usexp.Atom.is_valid s Dune)
   ; Jbuild, Usexp.Lexer.jbuild_token, (fun s -> Usexp.Atom.is_valid s Jbuild)
   ]
   |> List.iter ~f:(fun (syntax, lexer, validator) ->

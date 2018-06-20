@@ -52,8 +52,9 @@ let parse s =
   let f ~lexer =
     try
       Ok (Sexp.parse_string ~fname:"" ~mode:Many ~lexer s)
-    with Sexp.Parse_error e ->
-      Error (Sexp.Parse_error.message e)
+    with
+    | Sexp.Parse_error e -> Error (Sexp.Parse_error.message e)
+    | Invalid_argument e -> Error e
   in
   let jbuild = f ~lexer:Sexp.Lexer.jbuild_token in
   let dune   = f ~lexer:Sexp.Lexer.token        in
@@ -140,7 +141,12 @@ parse {|"$bar%foo%"|}
 
 parse {|\%{foo}|}
 [%%expect{|
-Exception: Invalid_argument "'\\%{foo}' is not a valid dune atom".
+- : parse_result =
+Different
+ {jbuild =
+   Ok
+    [<printer pp_sexp_ast raised an exception: Invalid_argument("Jbuild atom '\\%{foo}' cannot be printed")>];
+  dune = Error "Invalid atom character '%'"}
 |}]
 
 parse {|\${foo}|}
@@ -150,15 +156,30 @@ parse {|\${foo}|}
 
 parse {|\$bar%foo%|}
 [%%expect{|
-Exception: Invalid_argument "'\\$bar%foo%' is not a valid dune atom".
+- : parse_result =
+Different
+ {jbuild =
+   Ok
+    [<printer pp_sexp_ast raised an exception: Invalid_argument("Jbuild atom '\\$bar%foo%' cannot be printed")>];
+  dune = Error "Invalid atom character '%'"}
 |}]
 
 parse {|\$bar\%foo%|}
 [%%expect{|
-Exception: Invalid_argument "'\\$bar\\%foo%' is not a valid dune atom".
+- : parse_result =
+Different
+ {jbuild =
+   Ok
+    [<printer pp_sexp_ast raised an exception: Invalid_argument("Jbuild atom '\\$bar\\%foo%' cannot be printed")>];
+  dune = Error "Invalid atom character '%'"}
 |}]
 
 parse {|\$bar\%foo%{bar}|}
 [%%expect{|
-Exception: Invalid_argument "'\\$bar\\%foo%{bar}' is not a valid dune atom".
+- : parse_result =
+Different
+ {jbuild =
+   Ok
+    [<printer pp_sexp_ast raised an exception: Invalid_argument("Jbuild atom '\\$bar\\%foo%{bar}' cannot be printed")>];
+  dune = Error "Invalid atom character '%'"}
 |}]

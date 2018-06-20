@@ -11,8 +11,7 @@ let int n = Usexp.Atom (Usexp.Atom.of_int n)
 let string = Usexp.atom_or_quoted_string
 let record l =
   let open Usexp in
-  List (List.map l ~f:(fun (n, v) ->
-    List [Atom(Atom.of_string_exn Atom.Dune n); v]))
+  List (List.map l ~f:(fun (n, v) -> List [Atom(Atom.of_string n); v]))
 
 let sexp_of_position_no_file (p : Lexing.position) =
   record

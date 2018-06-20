@@ -23,8 +23,7 @@ let () =
         | Atom _ -> true
         | _      -> false
       in
-      let valid_dune_atom =
-        Option.is_some (Usexp.Atom.of_string Dune s) in
+      let valid_dune_atom = Usexp.Atom.is_valid_dune s in
       if valid_dune_atom <> parser_recognizes_as_atom then begin
         Printf.eprintf
           "Usexp.Atom.is_valid error:\n\

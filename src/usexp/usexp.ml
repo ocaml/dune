@@ -19,14 +19,15 @@ type t =
 
 type sexp = t
 
-let atom s = Atom (Atom.of_string_exn Dune s)
+let atom s = Atom (Atom.of_string s)
 
 let unsafe_atom_of_string s = atom s
 
 let atom_or_quoted_string s =
-  match Atom.of_string Atom.Dune s with
-  | None -> Quoted_string s
-  | Some a -> Atom a
+  if Atom.is_valid_dune s then
+    Atom (Atom.of_string s)
+  else
+    Quoted_string s
 
 let quote_length s =
   let n = ref 0 in
@@ -221,9 +222,10 @@ module Ast = struct
     | List of Loc.t * t list
 
   let atom_or_quoted_string loc s =
-    match Atom.of_string Atom.Dune s with
-    | None -> Quoted_string (loc, s)
-    | Some a -> Atom (loc, a)
+    match atom_or_quoted_string s with
+    | Atom a -> Atom (loc, a)
+    | Quoted_string s -> Quoted_string (loc, s)
+    | List _ -> assert false
 
   let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)) = loc
 

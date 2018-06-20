@@ -2,9 +2,9 @@ type t = private A of string [@@unboxed]
 
 type syntax = Jbuild | Dune
 
-val of_string : syntax -> string -> t option
+val is_valid_dune : string -> bool
 
-val of_string_exn : syntax -> string -> t
+val of_string : string -> t
 
 val to_string : t -> syntax -> string
 

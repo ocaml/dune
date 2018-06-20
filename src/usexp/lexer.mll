@@ -77,7 +77,7 @@ let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
 let atom_char_jbuild =
   [^ ';' '(' ')' '"' ' ' '\t' '\r' '\n' '\012']
 let atom_char_dune =
-  [^ ';' '(' ')' '"' '\000'-'\032' '\127'-'\255']
+  [^ '%' ';' '(' ')' '"' '\000'-'\032' '\127'-'\255']
 
 (* rule for jbuild files *)
 rule jbuild_token = parse
@@ -124,7 +124,7 @@ and jbuild_atom acc start = parse
         error lexbuf "Internal error in the S-expression parser, \
                       please report upstream.";
       lexbuf.lex_start_p <- start;
-      Token.Atom (Atom.of_string_exn Jbuild acc)
+      Token.Atom (Atom.of_string acc)
     }
 
 and quoted_string mode = parse
@@ -244,7 +244,8 @@ and token = parse
       Quoted_string s
     }
   | atom_char_dune+ as s
-    { Token.Atom (Atom.of_string_exn Dune s) }
+    { Token.Atom (Atom.of_string s) }
+  | _ as c { error lexbuf (Printf.sprintf "Invalid atom character '%c'" c) }
   | eof
     { Eof }
 

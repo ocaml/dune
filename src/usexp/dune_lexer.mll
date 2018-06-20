@@ -8,8 +8,7 @@ let blank     = [' ' '\t' '\012']
 let digit     = ['0'-'9']
 let hexdigit  = ['0'-'9' 'a'-'f' 'A'-'F']
 
-let atom_char =
-  [^ '%' ';' '(' ')' '"' '\000'-'\032' '\127'-'\255']
+let atom_char = [^ '%' ';' '(' ')' '"' '\000'-'\032' '\127'-'\255']
 
 rule token = parse
   | newline
@@ -39,7 +38,7 @@ and start_quoted_string = parse
   | "\\>"
     { block_string_start Raw lexbuf }
   | ""
-    { quoted_string New_syntax lexbuf }
+    { quoted_string lexbuf }
 
 and block_string_start kind = parse
   | newline as s
@@ -66,7 +65,7 @@ and block_string = parse
       block_string_after_newline lexbuf
     }
   | '\\'
-    { match escape_sequence New_syntax lexbuf with
+    { match escape_sequence lexbuf with
       | Newline -> block_string_after_newline lexbuf
       | Other   -> block_string               lexbuf
     }
@@ -101,30 +100,28 @@ and raw_block_string = parse
     { Buffer.contents escaped_buf
     }
 
-and quoted_string mode = parse
+and quoted_string = parse
   | '"'
     { Buffer.contents escaped_buf }
   | '\\'
-    { match escape_sequence mode lexbuf with
-      | Newline -> quoted_string_after_escaped_newline mode lexbuf
-      | Other   -> quoted_string                       mode lexbuf
+    { match escape_sequence lexbuf with
+      | Newline -> quoted_string_after_escaped_newline lexbuf
+      | Other   -> quoted_string                       lexbuf
     }
   | newline as s
     { Lexing.new_line lexbuf;
       Buffer.add_string escaped_buf s;
-      quoted_string mode lexbuf
+      quoted_string lexbuf
     }
   | _ as c
     { Buffer.add_char escaped_buf c;
-      quoted_string mode lexbuf
+      quoted_string lexbuf
     }
   | eof
-    { if mode <> In_block_comment then
-        error lexbuf "unterminated quoted string";
-      Buffer.contents escaped_buf
+    { error lexbuf "unterminated quoted string"
     }
 
-and escape_sequence mode = parse
+and escape_sequence = parse
   | newline
     { Lexing.new_line lexbuf;
       Newline }
@@ -142,44 +139,33 @@ and escape_sequence mode = parse
     }
   | (digit as c1) (digit as c2) (digit as c3)
     { let v = eval_decimal_escape c1 c2 c3 in
-      if mode <> In_block_comment && v > 255 then
+      if v > 255 then
         error lexbuf "escape sequence in quoted string out of range"
           ~delta:(-1);
       Buffer.add_char escaped_buf (Char.chr v);
       Other
     }
-  | digit* as s
-    { if mode <> In_block_comment then
-        error lexbuf "unterminated decimal escape sequence" ~delta:(-1);
-      Buffer.add_char escaped_buf '\\';
-      Buffer.add_string escaped_buf s;
-      Other
+  | digit digit digit
+    { error lexbuf "escape sequence in quoted string out of range" ~delta:(-1);
+    }
+  | digit*
+    { error lexbuf "unterminated decimal escape sequence" ~delta:(-1);
     }
   | 'x' (hexdigit as c1) (hexdigit as c2)
     { let v = eval_hex_escape c1 c2 in
       Buffer.add_char escaped_buf (Char.chr v);
       Other
     }
-  | 'x' hexdigit* as s
-    { if mode <> In_block_comment then
-        error lexbuf "unterminated hexadecimal escape sequence" ~delta:(-1);
-      Buffer.add_char escaped_buf '\\';
-      Buffer.add_string escaped_buf s;
-      Other
+  | 'x' hexdigit*
+    { error lexbuf "unterminated hexadecimal escape sequence" ~delta:(-1);
     }
-  | _ as c
-    { if mode = New_syntax then
-        error lexbuf "unknown escape sequence" ~delta:(-1);
-      Buffer.add_char escaped_buf '\\';
-      Buffer.add_char escaped_buf c;
-      Other
+  | _
+    { error lexbuf "unknown escape sequence" ~delta:(-1);
     }
   | eof
-    { if mode <> In_block_comment then
-        error lexbuf "unterminated escape sequence" ~delta:(-1);
-      Other
+    { error lexbuf "unterminated escape sequence" ~delta:(-1);
     }
 
-and quoted_string_after_escaped_newline mode = parse
+and quoted_string_after_escaped_newline = parse
   | [' ' '\t']*
-    { quoted_string mode lexbuf }
+    { quoted_string lexbuf }

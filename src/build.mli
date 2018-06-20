@@ -61,10 +61,9 @@ val path_set : Path.Set.t -> ('a, 'a) t
     of the action produced by the build arrow. *)
 val paths_glob : loc:Loc.t -> dir:Path.t -> Re.re -> ('a, Path.Set.t) t
 
-(* CR-someday diml: rename to [source_files_recursively_in] *)
 (** Compute the set of source of all files present in the sub-tree
     starting at [dir] and record them as dependencies. *)
-val files_recursively_in
+val source_tree
   :  dir:Path.t
   -> file_tree:File_tree.t
   -> ('a, Path.Set.t) t

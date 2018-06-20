@@ -9,7 +9,7 @@
 
 (rule
  ((targets (result2 expected2))
-  (deps    ((files_recursively_in sub-tree)))
+  (deps    ((source_tree sub-tree)))
   (action  (progn
             (with-stdout-to result2   (echo ${^}))
             (with-stdout-to expected2 (echo "sub-tree/a sub-tree/dir/b"))))))

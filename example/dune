@@ -3,7 +3,7 @@
 (alias
  ((name runtest)
   (deps ((package dune)
-         (files_recursively_in sample-projects/hello_world)))
+         (source_tree sample-projects/hello_world)))
   (action
    (chdir sample-projects/hello_world
     (run ${exe:../test/blackbox-tests/cram.exe} -test run.t)))))
@@ -11,7 +11,7 @@
 (alias
  ((name runtest)
   (deps ((package dune)
-         (files_recursively_in sample-projects/with-configure-step)))
+         (source_tree sample-projects/with-configure-step)))
   (action
    (chdir sample-projects/with-configure-step
     (run ${exe:../test/blackbox-tests/cram.exe} -test run.t)))))

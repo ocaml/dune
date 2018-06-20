@@ -92,7 +92,7 @@ module Dep_conf : sig
     | Alias of String_with_vars.t
     | Alias_rec of String_with_vars.t
     | Glob_files of String_with_vars.t
-    | Files_recursively_in of String_with_vars.t
+    | Source_tree of String_with_vars.t
     | Package of String_with_vars.t
     | Universe
 

@@ -28,7 +28,7 @@ module Backend = struct
          If we wanted to make the ppx system an extension, then we
          would create a new one.
       *)
-      let syntax = Jbuild.syntax
+      let syntax = Stanza.syntax
 
       open Sexp.Of_sexp
 
@@ -128,7 +128,7 @@ include Sub_system.Register_end_point(
       let loc      t = t.loc
       let backends t = Option.map t.backend ~f:(fun x -> [x])
 
-      let syntax = Jbuild.syntax
+      let syntax = Stanza.syntax
 
       open Sexp.Of_sexp
 

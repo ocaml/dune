@@ -11,3 +11,8 @@ module Parser : sig
       of type [t], hence the [t list] here. *)
   type nonrec t = string * t list Sexp.Of_sexp.t
 end
+
+(** Syntax identifier for the Dune language. [(0, X)] correspond to
+    the Jbuild language while versions from [(1, 0)] correspond to the
+    Dune one. *)
+val syntax : Syntax.t

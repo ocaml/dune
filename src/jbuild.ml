@@ -5,12 +5,6 @@ open Sexp.Of_sexp
    syntax for the various supported version of the specification.
 *)
 
-let syntax =
-  Syntax.create ~name:"dune" ~desc:"the dune language"
-    [ (0, 0) (* Jbuild syntax *)
-    ; (1, 0)
-    ]
-
 (* Deprecated *)
 module Jbuild_version = struct
   type t =
@@ -233,10 +227,11 @@ module Dep_conf = struct
         ; "package"    , (sw >>| fun x -> Package x)
         ; "universe"   , return Universe
         ; "files_recursively_in",
-          (Syntax.renamed_in syntax (1, 0) ~to_:"source_tree" >>= fun () ->
+          (Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
+           >>= fun () ->
            sw >>| fun x -> Source_tree x)
         ; "source_tree",
-          (Syntax.since syntax (1, 0) >>= fun () ->
+          (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
            sw >>| fun x -> Source_tree x)
         ]
     in
@@ -915,7 +910,7 @@ module Executables = struct
   let common names public_names ~multi =
     Buildable.t >>= fun buildable ->
     field "link_executables" ~default:true
-      (Syntax.deleted_in syntax (1, 0) >>> bool)
+      (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
     >>= fun (_ : bool) ->
     field "link_deps" (list Dep_conf.t) ~default:[] >>= fun link_deps ->
     field_oslu "link_flags" >>= fun link_flags ->
@@ -1359,10 +1354,10 @@ module Stanzas = struct
       (Documentation.t >>| fun d ->
        [Documentation d])
     ; "jbuild_version",
-      (Syntax.deleted_in syntax (1, 0) >>= fun () ->
+      (Syntax.deleted_in Stanza.syntax (1, 0) >>= fun () ->
        Jbuild_version.t >>| fun _ -> [])
     ; "env",
-      (Syntax.since syntax (1, 0) >>= fun () ->
+      (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
        loc >>= fun loc ->
        repeat Env.rule >>| fun rules ->
        [Env { loc; rules }])
@@ -1380,10 +1375,10 @@ module Stanzas = struct
          [Menhir.T { x with loc }])
       ]
     in
-    Syntax.set syntax (0, 0) (sum stanzas)
+    Syntax.set Stanza.syntax (0, 0) (sum stanzas)
 
   let () =
-    Dune_project.Lang.register syntax stanzas
+    Dune_project.Lang.register Stanza.syntax stanzas
 
   exception Include_loop of Path.t * (Loc.t * Path.t) list
 

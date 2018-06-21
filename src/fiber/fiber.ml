@@ -232,6 +232,9 @@ module Var = struct
   let set var x fiber ctx k =
     let ctx = EC.set_vars ctx (Univ_map.add (EC.vars ctx) var x) in
     fiber ctx k
+
+  let create () =
+    create ~name:"var" (fun _ -> Sexp.atom_or_quoted_string "var")
 end
 
 let with_error_handler f ~on_error ctx k =

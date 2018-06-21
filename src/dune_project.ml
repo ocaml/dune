@@ -5,6 +5,12 @@ module Kind = struct
   type t =
     | Dune
     | Jbuilder
+
+  let sexp_of_t t =
+    Sexp.atom_or_quoted_string
+      (match t with
+       | Dune -> "dune"
+       | Jbuilder -> "jbuilder")
 end
 
 module Name : sig
@@ -116,6 +122,13 @@ module Project_file = struct
     { file           : Path.t
     ; mutable exists : bool
     }
+
+  let sexp_of_t { file; exists } =
+    Sexp.To_sexp.(
+      record
+        [ "file", Path.sexp_of_t file
+        ; "exists", bool exists
+        ])
 end
 
 type t =
@@ -289,7 +302,18 @@ let make_parsing_context ~(lang : Lang.instance) ~extensions =
     ~f:(fun acc (ext : Extension.instance) ->
       Univ_map.add acc (Syntax.key ext.extension.syntax) ext.version)
 
-let key = Univ_map.Key.create ()
+let key =
+  Univ_map.Key.create ~name:"dune-project"
+    (fun { name; root; version; project_file; kind
+         ; stanza_parser = _; packages = _ } ->
+      Sexp.To_sexp.record
+        [ "name", Name.sexp_of_t name
+        ; "root", Path.Local.sexp_of_t root
+        ; "version", Sexp.To_sexp.(option string) version
+        ; "project_file", Project_file.sexp_of_t project_file
+        ; "kind", Kind.sexp_of_t kind
+        ])
+
 let set t = Sexp.Of_sexp.set key t
 let get_exn () =
   let open Sexp.Of_sexp in

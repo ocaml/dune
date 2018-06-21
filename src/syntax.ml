@@ -59,7 +59,7 @@ type t =
 let create ~name ~desc supported_versions =
   { name
   ; desc
-  ; key = Univ_map.Key.create ()
+  ; key = Univ_map.Key.create ~name Version.sexp_of_t
   ; supported_versions = Supported_versions.make supported_versions
   }
 

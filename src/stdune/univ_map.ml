@@ -13,19 +13,23 @@ module Key = struct
     type t
     type 'a Witness.t += T : t Witness.t
     val id : int
+    val name : string
+    val sexp_of_t : t -> Usexp.t
   end
 
   type 'a t = (module T with type t = 'a)
 
   let next = ref 0
 
-  let create (type a) () =
+  let create (type a) ~name sexp_of_t =
     let n = !next in
     next := n + 1;
     let module M = struct
       type t = a
       type 'a Witness.t += T : t Witness.t
       let id = n
+      let sexp_of_t = sexp_of_t
+      let name = name
     end in
     (module M : T with type t = a)
 
@@ -74,3 +78,14 @@ let find_exn t key =
 let singleton key v = Int.Map.singleton (Key.id key) (Binding.T (key, v))
 
 let superpose = Int.Map.superpose
+
+let sexp_of_t (t : t) =
+  let open Usexp in
+  List (
+    Int.Map.to_list t
+    |> List.map ~f:(fun (_, (Binding.T (key, v))) ->
+      let (module K) = key in
+      List
+        [ atom_or_quoted_string K.name
+        ; K.sexp_of_t v
+        ]))

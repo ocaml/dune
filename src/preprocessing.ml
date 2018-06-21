@@ -38,7 +38,7 @@ module Driver = struct
          If we wanted to make the ppx system an extension, then we
          would create a new one.
       *)
-      let syntax = Jbuild.syntax
+      let syntax = Stanza.syntax
 
       open Sexp.Of_sexp
 

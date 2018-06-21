@@ -2,11 +2,6 @@
 
 open Import
 
-(** Syntax identifier for the Dune language. [(0, X)] correspond to
-    the Jbuild language while versions from [(1, 0)] correspond to the
-    Dune one. *)
-val syntax : Syntax.t
-
 (** Ppx preprocessors  *)
 module Pp : sig
   type t = private string

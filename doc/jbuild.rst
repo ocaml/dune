@@ -975,7 +975,7 @@ Jbuilder accepts three kinds of preprocessing:
 - ``no_preprocessing``, meaning that files are given as it to the compiler, this
   is the default
 - ``(action <action>)`` to preprocess files using the given action
-- ``(pps (<ppx-rewriters-and-flags>))`` to preprocess files using the given list
+- ``(pps <ppx-rewriters-and-flags>)`` to preprocess files using the given list
   of ppx rewriters
 
 Note that in any cases, files are preprocessed only once. Jbuilder doesn't use
@@ -1006,14 +1006,15 @@ The equivalent of a ``-pp <command>`` option passed to the OCaml compiler is
 Preprocessing with ppx rewriters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``<ppx-rewriters-and-flags>`` is expected to be a list where each element is
-either a command line flag if starting with a ``-`` or the name of a library.
-Additionally, any sub-list will be treated as a list of command line arguments.
-So for instance from the following ``preprocess`` field:
+``<ppx-rewriters-and-flags>`` is expected to be a sequence where each
+element is either a command line flag if starting with a ``-`` or the
+name of a library.  If you want to pass command line flags that do not
+start with a ``-``, you can separate library names from flags using
+``--``. So for instance from the following ``preprocess`` field:
 
    .. code:: scheme
 
-       (preprocess (pps (ppx1 -foo ppx2 (-bar 42))))
+       (preprocess (pps ppx1 -foo ppx2 -- -bar 42))
 
 The list of libraries will be ``ppx1`` and ``ppx2`` and the command line
 arguments will be: ``-foo -bar 42``.

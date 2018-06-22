@@ -2,9 +2,9 @@
  ((name foo)
   (libraries (bytes unix findlib))
   (modules ())
-  (preprocess (pps (fooppx)))))
+  (preprocess (pps fooppx))))
 
 (library
  ((name bar)
   (modules ())
-  (preprocess (pps (fooppx)))))
+  (preprocess (pps fooppx))))

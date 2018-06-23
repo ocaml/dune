@@ -139,6 +139,8 @@ next
 
 - Cosmetic improvements to generated entry point mld (#653 @trefis)
 
+- Remove most useless parentheses from the syntax (#915, @diml)
+
 1.0+beta19.1 (21/03/2018)
 -------------------------
 

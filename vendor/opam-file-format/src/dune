@@ -1,11 +1,7 @@
 (library
- ((name opam_file_format)
-  (wrapped false)))
+ (name opam_file_format)
+ (modules_without_implementation opamParserTypes)
+ (wrapped false))
 
-(ocamllex (opamLexer))
-(ocamlyacc (opamBaseParser))
-
-(rule
- ((targets (opamParserTypes.ml))
-  (deps    (opamParserTypes.mli))
-  (action  (copy# ${<} ${@}))))
+(ocamllex opamLexer)
+(ocamlyacc opamBaseParser)

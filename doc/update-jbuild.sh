@@ -11,14 +11,13 @@ for cmd in $CMDS; do
     cat <<EOF
 
 (rule
- ((targets (dune-$cmd.1))
-  (action  (with-stdout-to \${@}
-            (run dune $cmd --help=groff)))))
+ (with-stdout-to dune-$cmd.1
+  (run dune $cmd --help=groff)))
 
 (install
- ((section man)
-  (package dune)
-  (files (dune-$cmd.1))))
+ (section man)
+ (package dune)
+ (files   dune-$cmd.1))
 EOF
 done
 

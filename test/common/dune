@@ -1,2 +1,2 @@
 (library
- ((name test_common)))
+ (name test_common))

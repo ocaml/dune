@@ -31,16 +31,17 @@ module Backend = struct
       let syntax = Stanza.syntax
 
       open Sexp.Of_sexp
+      open Stanza.Of_sexp_helpers
 
       let parse =
-        record
+        inline_record
           (loc >>= fun loc ->
-           field "runner_libraries" (list (located string)) ~default:[]
+           field "runner_libraries" (inline_list (located string)) ~default:[]
            >>= fun runner_libraries ->
            Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
            field_o "generate_runner" (located Action.Unexpanded.t)
            >>= fun generate_runner ->
-           field "extends" (list (located string)) ~default:[]
+           field "extends" (inline_list (located string)) ~default:[]
            >>= fun extends ->
            return
              { loc
@@ -131,12 +132,13 @@ include Sub_system.Register_end_point(
       let syntax = Stanza.syntax
 
       open Sexp.Of_sexp
+      open Stanza.Of_sexp_helpers
 
       let parse =
         eos >>= function
         | true -> loc >>| empty
         | false ->
-          record
+          inline_record
             (loc >>= fun loc ->
              field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
              Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->

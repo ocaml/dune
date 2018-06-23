@@ -22,7 +22,9 @@ let parse_sub_systems sexps =
     let (module M) = Jbuild.Sub_system_info.get name in
     Syntax.check_supported M.syntax version;
     let parsing_context =
-      Univ_map.singleton (Syntax.key M.syntax) (snd version)
+      Univ_map.singleton (Syntax.key M.syntax)
+        (* This is wrong, see #909 *)
+        (0, 0)
     in
     M.T (Sexp.Of_sexp.parse M.parse parsing_context data))
 

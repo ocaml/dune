@@ -22,3 +22,4 @@ Welcome to jbuilder's documentation!
    menhir
    faq
    known-issues
+   migration

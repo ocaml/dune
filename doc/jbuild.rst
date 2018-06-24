@@ -1070,8 +1070,12 @@ syntax:
   ``(alias src/runtest)``, ``(alias src/foo/bar/runtest)``, ...
 - ``(glob_files <glob>)``: depend on all files matched by ``<glob>``, see the
   :ref:`glob <glob>` for details
+
+.. _source_tree:
+
 - ``(source_tree <dir>)``: depend on all source files in the subtree with root
   ``<dir>``
+
 - ``(universe)``: depend on everything in the universe. This is for
   cases where dependencies are too hard to specify. Note that Jbuilder
   will not be able to cache the result of actions that depend on the

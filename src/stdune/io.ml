@@ -77,10 +77,52 @@ let copy_file ~src ~dst =
       ~f:(fun oc ->
         copy_channels ic oc))
 
-(* TODO: diml: improve this *)
-let compare_files fn1 fn2 = String.compare (read_file fn1) (read_file fn2)
+let compare_files fn1 fn2 =
+  let s1 = read_file fn1 in
+  let s2 = read_file fn2 in
+  String.compare s1 s2
 
-let buf_len = 65_536
+let read_file_and_normalize_eols fn =
+  if not Sys.win32 then
+    read_file fn
+  else begin
+    let src = read_file fn in
+    let len = String.length src in
+    let dst = Bytes.create len in
+    let rec find_next_crnl i =
+      match String.index_from src i '\r' with
+      | exception Not_found -> None
+      | j ->
+        if j + 1 < len && src.[j + 1] = '\n' then
+          Some j
+        else
+          find_next_crnl (j + 1)
+    in
+    let rec loop src_pos dst_pos =
+      match find_next_crnl src_pos with
+      | None ->
+        let len =
+          if len > src_pos && src.[len - 1] = '\r' then
+            len - 1 - src_pos
+          else
+            len - src_pos
+        in
+        Bytes.blit_string src src_pos dst dst_pos len;
+        Bytes.sub_string dst 0 (dst_pos + len)
+      | Some i ->
+        let len = i - src_pos in
+        Bytes.blit_string src src_pos dst dst_pos len;
+        let dst_pos = dst_pos + len in
+        Bytes.set dst dst_pos '\n';
+        loop (i + 2) (dst_pos + 1)
+    in
+    loop 0 0
+  end
+
+let compare_text_files fn1 fn2 =
+  let s1 = read_file_and_normalize_eols fn1 in
+  let s2 = read_file_and_normalize_eols fn2 in
+  String.compare s1 s2
 
 module Sexp = struct
   let load ?lexer path ~mode =

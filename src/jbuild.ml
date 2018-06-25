@@ -181,29 +181,53 @@ end = struct
   let compare = String.compare
 end
 
-module Pp_or_flags = struct
-  type t =
-    | PP of Loc.t * Pp.t
-    | Flags of string list
+module Pps_and_flags = struct
+  module Jbuild_syntax = struct
+    let of_string ~loc s =
+      if String.is_prefix s ~prefix:"-" then
+        Right [s]
+      else
+        Left (loc, Pp.of_string s)
 
-  let of_string ~loc s =
-    if String.is_prefix s ~prefix:"-" then
-      Flags [s]
-    else
-      PP (loc, Pp.of_string s)
+    let item =
+      peek raw >>= function
+      | Atom _ | Quoted_string _ -> plain_string of_string
+      | List _ -> list string >>| fun l -> Right l
+
+    let split l =
+      let pps, flags =
+        List.partition_map l ~f:(fun x -> x)
+      in
+      (pps, List.concat flags)
+
+    let t = list item >>| split
+  end
+
+  module Dune_syntax = struct
+    let rec parse acc_pps acc_flags =
+      eos >>= function
+      | true ->
+        return (List.rev acc_pps, List.rev acc_flags)
+      | false ->
+        plain_string (fun ~loc s -> (loc, s)) >>= fun (loc, s) ->
+        match s with
+        | "--" ->
+          repeat string >>= fun flags ->
+          return (List.rev acc_pps, List.rev_append acc_flags flags)
+        | s when String.is_prefix s ~prefix:"-" ->
+          parse acc_pps (s :: acc_flags)
+        | _ ->
+          parse ((loc, Pp.of_string s) :: acc_pps) acc_flags
+
+    let t = parse [] []
+  end
 
   let t =
-    peek raw >>= function
-    | Atom _ | Quoted_string _ -> plain_string of_string
-    | List _ -> list string >>| fun l -> Flags l
-
-  let split l =
-    let pps, flags =
-      List.partition_map l ~f:(function
-        | PP (loc, pp) -> Left (loc, pp)
-        | Flags s      -> Right s)
-    in
-    (pps, List.concat flags)
+    Syntax.get_exn Stanza.syntax >>= fun ver ->
+    if ver < (1, 0) then
+      Jbuild_syntax.t
+    else
+      Dune_syntax.t
 end
 
 module Dep_conf = struct
@@ -277,8 +301,7 @@ module Preprocess = struct
          Action (loc, x))
       ; "pps",
         (loc >>= fun loc ->
-         list Pp_or_flags.t >>| fun l ->
-         let pps, flags = Pp_or_flags.split l in
+         Pps_and_flags.t >>| fun (pps, flags) ->
          Pps { loc; pps; flags })
       ]
 

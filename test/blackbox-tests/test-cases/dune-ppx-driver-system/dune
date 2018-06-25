@@ -3,21 +3,21 @@
  ((name foo1)
   (public_name foo.1)
   (modules (foo1))
-  (preprocess (pps ()))))
+  (preprocess (pps))))
 
 ; Too many drivers
 (library
  ((name foo2)
   (public_name foo.2)
   (modules (foo2))
-  (preprocess (pps (ppx1 ppx2)))))
+  (preprocess (pps ppx1 ppx2))))
 
 ; Incompatible with Dune
 (library
  ((name foo3)
   (public_name foo.3)
   (modules (foo3))
-  (preprocess (pps (ppx_other)))))
+  (preprocess (pps ppx_other))))
 
 (rule (with-stdout-to foo1.ml (echo "")))
 (rule (with-stdout-to foo2.ml (echo "")))
@@ -54,3 +54,15 @@
   (public_name foo.ppx-other)
   (modules ())
   (kind ppx_rewriter)))
+
+(library
+ ((name driver_print_args)
+  (modules ())
+  (ppx.driver ((main "(fun () -> Array.iter print_endline Sys.argv)")))))
+
+(rule (with-stdout-to test_ppx_args.ml (echo "")))
+
+(library
+ ((name test_ppx_args)
+  (modules (test_ppx_args))
+  (preprocess (pps -arg1 driver_print_args -arg2 -- -foo bar))))

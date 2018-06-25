@@ -11,3 +11,12 @@ let syntax =
     [ (0, 0) (* Jbuild syntax *)
     ; (1, 0)
     ]
+
+module File_kind = struct
+  type t = Jbuild | Dune
+end
+
+let file_kind () =
+  let open Sexp.Of_sexp in
+  Syntax.get_exn syntax >>| fun ver ->
+  if ver < (1, 0) then File_kind.Jbuild else Dune

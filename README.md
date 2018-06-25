@@ -142,6 +142,13 @@ Support
 If you have questions about jbuilder, you can send an email to
 ocaml-core@googlegroups.com or [open a ticket on github][issues].
 
+
+Migration from jbuilder
+-----------------------
+
+Migration from jbuilder to dune is described in the
+[manual](http://dune.readthedocs.io/en/latest/migration.html).
+
 Status
 ------
 

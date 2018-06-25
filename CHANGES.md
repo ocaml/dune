@@ -84,6 +84,10 @@ next
 - Present the `menhir` stanza as an extension with its own version
   (#901, @diml)
 
+- Improve the syntax of flags in `(pps ...)`. Now instead of `(pps
+  (ppx1 -arg1 ppx2 (-foo x)))` one should write `(pps ppx1 -arg ppx2
+  -- -foo x)` which looks nicer (#..., @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

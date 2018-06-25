@@ -89,14 +89,22 @@ struct
         ; "diff",
           (path >>= fun file1 ->
            path >>= fun file2 ->
-           Syntax.get_exn Stanza.syntax >>| fun ver ->
-           let mode = if ver < (1, 0) then Diff_mode.Text_jbuild else Text in
+           Stanza.file_kind () >>| fun kind ->
+           let mode =
+             match kind with
+             | Jbuild -> Diff_mode.Text_jbuild
+             | Dune   -> Text
+           in
            Diff { optional = false; file1; file2; mode })
         ; "diff?",
           (path >>= fun file1 ->
            path >>= fun file2 ->
-           Syntax.get_exn Stanza.syntax >>| fun ver ->
-           let mode = if ver < (1, 0) then Diff_mode.Text_jbuild else Text in
+           Stanza.file_kind () >>| fun kind ->
+           let mode =
+             match kind with
+             | Jbuild -> Diff_mode.Text_jbuild
+             | Dune   -> Text
+           in
            Diff { optional = true; file1; file2; mode })
         ; "cmp",
           (Syntax.since Stanza.syntax (1, 0) >>= fun () ->

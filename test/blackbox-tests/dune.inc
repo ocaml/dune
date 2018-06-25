@@ -129,6 +129,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name findlib-error)
+ (deps (package dune) (source_tree test-cases/findlib-error))
+ (action
+  (chdir
+   test-cases/findlib-error
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name force-test)
  (deps (package dune) (source_tree test-cases/force-test))
  (action
@@ -582,6 +590,7 @@
   (alias exclude-missing-module)
   (alias exec-cmd)
   (alias findlib)
+  (alias findlib-error)
   (alias force-test)
   (alias gen-opam-install-file)
   (alias github20)
@@ -651,6 +660,7 @@
   (alias exclude-missing-module)
   (alias exec-cmd)
   (alias findlib)
+  (alias findlib-error)
   (alias force-test)
   (alias gen-opam-install-file)
   (alias github20)

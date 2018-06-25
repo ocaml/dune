@@ -16,3 +16,10 @@ end
     the Jbuild language while versions from [(1, 0)] correspond to the
     Dune one. *)
 val syntax : Syntax.t
+
+module File_kind : sig
+  type t = Jbuild | Dune
+end
+
+(** Whether we are parsing a [jbuild] or [dune] file. *)
+val file_kind : unit -> (File_kind.t, _) Sexp.Of_sexp.parser

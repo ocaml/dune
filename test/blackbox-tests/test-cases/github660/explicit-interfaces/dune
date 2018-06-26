@@ -1,6 +1,6 @@
 (alias
- ((name runtest)
-  (deps (main.exe))
-  (action (run ${<}))))
+ (name runtest)
+ (deps main.exe)
+ (action (run ${<})))
 
-(executable ((name main)))
+(executable (name main))

@@ -1,4 +1,4 @@
 (executable
- ((name blah)
-  (public_name blah)
-  (libraries (p))))
+ (name blah)
+ (public_name blah)
+ (libraries p))

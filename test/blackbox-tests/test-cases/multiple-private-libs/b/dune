@@ -1,1 +1,1 @@
-(library ((name test)))
+(library (name test))

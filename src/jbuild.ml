@@ -673,7 +673,7 @@ module Mode_conf = struct
   module Set = struct
     include Set.Make(T)
 
-    let t = list t >>| of_list
+    let t = inline_list t >>| of_list
 
     let default = of_list [Byte; Best]
 

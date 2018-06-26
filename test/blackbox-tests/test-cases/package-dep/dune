@@ -1,13 +1,13 @@
 (library
- ((name        foo)
-  (public_name foo)
-  (modules     (foo))))
+ (name        foo)
+ (public_name foo)
+ (modules     (foo)))
 
 (library
- ((name        bar)
-  (public_name bar)
-  (libraries   (foo))
-  (modules     (bar))))
+ (name        bar)
+ (public_name bar)
+ (libraries   foo)
+ (modules     (bar)))
 
 (rule
  (with-stdout-to foo.ml
@@ -22,10 +22,10 @@
   (echo "let () = Printf.printf \"%d %s\" Foo.x Bar.x")))
 
 (rule
- ((deps    (test.ml (package bar)))
-  (targets (test.exe))
-  (action  (run ocamlfind ocamlc -linkpkg -package bar -o test.exe test.ml))))
+ (deps    test.ml (package bar))
+ (targets test.exe)
+ (action  (run ocamlfind ocamlc -linkpkg -package bar -o test.exe test.ml)))
 
 (alias
- ((name   runtest)
-  (action (run ./test.exe))))
+ (name   runtest)
+ (action (run ./test.exe)))

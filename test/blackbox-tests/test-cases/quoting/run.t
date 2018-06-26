@@ -3,7 +3,7 @@ that ${@} is not quoted and doesn't contain exactly 1 element
 
   $ dune build --root bad x
   Entering directory 'bad'
-  File "dune", line 3, characters 26-30:
+  File "dune", line 3, characters 25-29:
   Error: Variable ${@} expands to 2 values, however a single value is expected here. Please quote this atom.
   [1]
 

@@ -1,14 +1,14 @@
 No ppx driver found
 
   $ dune build foo1.cma
-  File "dune", line 6, characters 14-19:
+  File "dune", line 6, characters 13-18:
   Error: You must specify at least one ppx rewriter.
   [1]
 
 Too many drivers
 
   $ dune build foo2.cma
-  File "dune", line 13, characters 14-29:
+  File "dune", line 13, characters 13-28:
   Error: Too many incompatible ppx drivers were found: foo.driver2 and
   foo.driver1.
   [1]
@@ -16,7 +16,7 @@ Too many drivers
 Not compatible with Dune
 
   $ dune build foo3.cma
-  File "dune", line 20, characters 14-29:
+  File "dune", line 20, characters 13-28:
   Error: No ppx driver were found. It seems that ppx_other is not compatible
   with Dune. Examples of ppx rewriters that are compatible with Dune are ones
   using ocaml-migrate-parsetree, ppxlib or ppx_driver.

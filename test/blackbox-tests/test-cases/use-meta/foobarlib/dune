@@ -1,4 +1,4 @@
 (library
- ((name foobarlib)
-  (public_name foobarlib)
-  (libraries (str))))
+ (name foobarlib)
+ (public_name foobarlib)
+ (libraries str))

@@ -1,3 +1,3 @@
 (library
- ((name scope1)
-  (public_name scope1)))
+ (name scope1)
+ (public_name scope1))

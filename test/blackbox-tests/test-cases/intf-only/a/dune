@@ -1,2 +1,2 @@
 (library
- ((name foo)))
+ (name foo))

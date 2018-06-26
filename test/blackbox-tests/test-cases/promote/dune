@@ -1,5 +1,5 @@
 (rule (with-stdout-to x.gen (echo "toto")))
 
 (alias
- ((name blah)
-  (action (diff x x.gen))))
+ (name blah)
+ (action (diff x x.gen)))

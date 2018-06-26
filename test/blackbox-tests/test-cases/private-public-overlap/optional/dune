@@ -1,10 +1,10 @@
 (library
- ((name privatelib)
-  (modules (privatelib))))
+ (name privatelib)
+ (modules (privatelib)))
 
 (library
- ((name publiclib)
-  (public_name publiclib)
-  (modules (publiclib))
-  (libraries (privatelib))
-  (optional)))
+ (name publiclib)
+ (public_name publiclib)
+ (modules (publiclib))
+ (libraries privatelib)
+ (optional))

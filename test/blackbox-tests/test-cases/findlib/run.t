@@ -7,7 +7,7 @@
 Reproduction case for #484. The error should point to src/jbuild
 
   $ dune build @install
-  File "src/dune", line 4, characters 16-17:
+  File "src/dune", line 4, characters 14-15:
   Error: Library "a" not found.
   Hint: try: dune external-lib-deps --missing @install
   [1]

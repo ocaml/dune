@@ -5,7 +5,7 @@ let sprintf = Printf.sprintf
 module Sexp = struct
   let fields fields =
     List.map fields ~f:(fun (k, s) ->
-      Usexp.List [Usexp.atom k; s])
+      Usexp.List (Usexp.atom k :: s))
 
   let strings fields =
     Usexp.List (List.map fields ~f:Usexp.atom_or_quoted_string)
@@ -17,11 +17,11 @@ end
 let alias ?action name ~deps =
   Sexp.constr "alias"
     (Sexp.fields (
-       [ "name", Usexp.atom name
-       ; "deps", Usexp.List deps
+       [ "name", [Usexp.atom name]
+       ; "deps", deps
        ] @ (match action with
          | None -> []
-         | Some a -> ["action", a])))
+         | Some a -> ["action", [a]])))
 
 module Test = struct
   type t =

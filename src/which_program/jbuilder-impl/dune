@@ -1,0 +1,7 @@
+(library
+ (name        which_program_jbuilder)
+ (public_name dune.which-program.jbuilder)
+ (wrapped     false)
+ (flags       (:standard (:include ../no-keep-locs))))
+
+(rule (copy# ../which_program.mli which_program.mli))

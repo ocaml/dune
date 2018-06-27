@@ -90,7 +90,7 @@ case "$TARGET" in
     echo -en "travis_fold:end:dune.bootstrap\r"
     ./boot.exe --subst
     echo -en "travis_fold:start:dune.boot\r"
-    ./boot.exe --dev
+    ./boot.exe
     echo -en "travis_fold:end:dune.boot\r"
     if [ $WITH_OPAM -eq 1 ] ; then
       _build/install/default/bin/dune runtest && \

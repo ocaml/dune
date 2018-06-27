@@ -1,11 +1,20 @@
+(library
+ (name      main)
+ (modules   (main))
+ (libraries unix dune cmdliner))
+
 (executable
- (name        main)
+ (name        main_dune)
  (public_name dune)
  (package     dune)
- (libraries   unix dune cmdliner)
+ (modules     (main_dune))
+ (libraries   which_program_dune main)
  (preprocess  no_preprocessing))
 
-(install
- (section bin)
- (package dune)
- (files   (main.exe as jbuilder)))
+(executable
+ (name        main_jbuilder)
+ (public_name jbuilder)
+ (package     dune)
+ (modules     (main_jbuilder))
+ (libraries   which_program_jbuilder main)
+ (preprocess  no_preprocessing))

@@ -589,9 +589,8 @@ let of_string ?error_loc s =
 
 let t =
   Sexp.Of_sexp.(
-    peek raw >>= function
-    | Template _
-    | Atom _ | Quoted_string _ ->
+    peek_exn >>= function
+    | Template _ | Atom _ | Quoted_string _ ->
       (* necessary for old build dirs *)
       plain_string (fun ~loc:_ s -> of_string s)
     | List _ ->

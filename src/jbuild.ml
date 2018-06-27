@@ -190,7 +190,7 @@ module Pps_and_flags = struct
         Left (loc, Pp.of_string s)
 
     let item =
-      peek raw >>= function
+      peek_exn >>= function
       | Template { loc; _ } ->
         no_templates loc "in the preprocessors field"
       | Atom _ | Quoted_string _ -> plain_string of_string
@@ -261,7 +261,7 @@ module Dep_conf = struct
            sw >>| fun x -> Source_tree x)
         ]
     in
-    peek raw >>= function
+    peek_exn >>= function
     | Template _ | Atom _ | Quoted_string _ ->
       String_with_vars.t >>| fun x -> File x
     | List _ -> t
@@ -316,7 +316,7 @@ module Per_module = struct
   include Per_item.Make(Module.Name)
 
   let t ~default a =
-    peek raw >>= function
+    peek_exn >>= function
     | List (loc, Atom (_, A "per_module") :: _) ->
       sum [ "per_module",
             repeat
@@ -407,7 +407,7 @@ module Lib_dep = struct
     enter (
       loc >>= fun loc ->
       let rec loop required forbidden =
-        peek raw >>= function
+        peek_exn >>= function
         | Atom (_, A "->") ->
           junk >>> file >>| fun file ->
           let common = String.Set.inter required forbidden in
@@ -435,7 +435,7 @@ module Lib_dep = struct
     )
 
   let t =
-    peek raw >>= function
+    peek_exn >>= function
     | Atom _ | Quoted_string _ ->
       plain_string (fun ~loc s -> Direct (loc, s))
     | List (loc, Atom (_, A "select") :: _ :: Atom (_, A "from") :: _) ->
@@ -806,7 +806,7 @@ module Install_conf = struct
     }
 
   let file =
-    peek raw >>= function
+    peek_exn >>= function
     | Atom (_, A src) -> junk >>| fun () -> { src; dst = None }
     | List (_, [Atom (_, A src); Atom (_, A "as"); Atom (_, A dst)]) ->
       junk >>> return { src; dst = Some dst }
@@ -881,7 +881,7 @@ module Executables = struct
       Sexp.Of_sexp.enum simple_representations
 
     let t =
-      peek raw >>= function
+      peek_exn >>= function
       | List _ ->
         enter (Mode_conf.t >>= fun mode ->
                Binary_kind.t >>= fun kind ->
@@ -1148,12 +1148,12 @@ module Rule = struct
            }
 
   let jbuild_syntax =
-    peek raw >>= function
+    peek_exn >>= function
     | List (_, (Atom _ :: _)) -> short_form
     | _ -> record long_form
 
   let dune_syntax =
-    peek raw >>= function
+    peek_exn >>= function
     | List (_, Atom (loc, A s) :: _) -> begin
       match String.Map.find atom_table s with
       | None ->
@@ -1181,7 +1181,7 @@ module Rule = struct
     }
 
   let ocamllex_jbuild =
-    peek raw >>= function
+    peek_exn >>= function
     | List (_, List (_, _) :: _) ->
       record
         (field "modules" (list string) >>= fun modules ->
@@ -1194,20 +1194,18 @@ module Rule = struct
       }
 
   let ocamllex_dune =
-    eos >>= function
-    | true ->
+    peek >>= function
+    | None ->
       return
         { modules = []
         ; mode  = Standard
         }
-    | false ->
-    peek raw >>= function
-    | List _ ->
+    | Some (List _) ->
       fields
         (field "modules" (list string) >>= fun modules ->
          Mode.field >>= fun mode ->
          return { modules; mode })
-    | _ ->
+    | Some _ ->
       repeat string >>| fun modules ->
       { modules
       ; mode  = Standard
@@ -1395,7 +1393,7 @@ module Env = struct
     return { flags; ocamlc_flags; ocamlopt_flags }
 
   let rule =
-    peek raw >>= function
+    peek_exn >>= function
     | List (_, Atom (_, A pat) :: _) ->
       enter (
         junk >>= fun () ->

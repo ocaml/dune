@@ -155,8 +155,11 @@ module Of_sexp : sig
   (** Unparsed next element of the input *)
   val raw : ast t
 
-  (** Inspect the input without consuming it *)
-  val peek : 'a t -> 'a t
+  (** Inspect the next element of the input without consuming it *)
+  val peek : ast option t
+
+  (** Same as [peek] but fail if the end of input is reached *)
+  val peek_exn : ast t
 
   (** Consume and ignore the next element of the input *)
   val junk : unit t

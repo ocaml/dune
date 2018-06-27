@@ -1538,7 +1538,7 @@ let default =
         ]
   )
 
-let () =
+let main () =
   Colors.setup_err_formatter_colors ();
   try
     match Term.eval_choice default all ~catch:false with

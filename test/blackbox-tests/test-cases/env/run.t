@@ -1,34 +1,34 @@
-  $ dune printenv .
+  $ dune printenv --profile default .
   (
    (flags (-w -40 -plop))
    (ocamlc_flags (-g))
    (ocamlopt_flags (-g))
   )
-  $ dune printenv src
+  $ dune printenv --profile default src
   (
    (flags (-w -40 -plop -truc))
    (ocamlc_flags (-g))
    (ocamlopt_flags (-g))
   )
-  $ dune printenv bin
+  $ dune printenv --profile default bin
   (
    (flags (-machin))
    (ocamlc_flags (-g))
    (ocamlopt_flags (-g))
   )
-  $ dune printenv vendor
+  $ dune printenv --profile default vendor
   (
    (flags (-w -40 -plop))
    (ocamlc_flags (-g))
    (ocamlopt_flags (-g))
   )
-  $ dune printenv vendor/a
+  $ dune printenv --profile default vendor/a
   (
    (flags (-w -40 -bidule))
    (ocamlc_flags (-g))
    (ocamlopt_flags (-g))
   )
-  $ dune printenv vendor/a/src
+  $ dune printenv --profile default vendor/a/src
   (
    (flags (-w -40 -bidule -pouet))
    (ocamlc_flags (-g))

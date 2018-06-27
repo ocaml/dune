@@ -21,6 +21,8 @@ val inside_emacs : bool
 (** Are we running insinde Dune? *)
 val inside_dune : bool
 
+val default_build_profile : string
+
 (** Jbuilder configuration *)
 
 module Display : sig

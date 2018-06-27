@@ -24,6 +24,11 @@ let jbuilder_keep_fname = ".jbuilder-keep"
 let inside_emacs = Option.is_some (Env.get Env.initial "INSIDE_EMACS")
 let inside_dune  = Option.is_some (Env.get Env.initial "INSIDE_DUNE")
 
+let default_build_profile =
+  match Which_program.t with
+  | Dune     -> "dev"
+  | Jbuilder -> "release"
+
 open Sexp.Of_sexp
 
 module Display = struct

@@ -91,6 +91,8 @@ next
 - Make `(diff a b)` ignore trailing cr on Windows and add `(cmp a b)` for
   comparing binary files (#904, fix #844, @diml)
 
+- Make `dev` the default build profile (#920, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

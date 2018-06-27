@@ -77,7 +77,9 @@ let setup ?(log=Log.no_log)
                               | None   -> Native
                               | Some x -> Named x
                             ]
-                          ; profile = Option.value profile ~default:"default"
+                          ; profile =
+                              Option.value profile
+                                ~default:Config.default_build_profile
                           }]
           }
   in
@@ -229,8 +231,8 @@ let bootstrap () =
     let profile = ref None in
     Arg.parse
       [ "-j"           , String concurrency_arg, "JOBS concurrency"
-      ; "--dev"        , Unit (fun () -> profile := Some "dev"),
-        " set development mode"
+      ; "--release"        , Unit (fun () -> profile := Some "release"),
+        " set release mode"
       ; "--display"    , display_mode          , " set the display mode"
       ; "--subst"      , Unit subst            ,
         " substitute watermarks in source files"
@@ -242,7 +244,7 @@ let bootstrap () =
     Clflags.debug_dep_path := true;
     let config =
       (* Only load the configuration with --dev *)
-      if !profile = Some "dev" then
+      if !profile <> Some "release" then
         Config.load_user_config_file ()
       else
         Config.default

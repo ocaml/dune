@@ -1,4 +1,4 @@
-  $ dune build @print-merlins --display short
+  $ dune build @print-merlins --display short --profile release
       ocamldep sanitize-dot-merlin/.sanitize_dot_merlin.eobjs/sanitize_dot_merlin.ml.d
         ocamlc sanitize-dot-merlin/.sanitize_dot_merlin.eobjs/sanitize_dot_merlin.{cmi,cmo,cmt}
       ocamlopt sanitize-dot-merlin/.sanitize_dot_merlin.eobjs/sanitize_dot_merlin.{cmx,o}

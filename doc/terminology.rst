@@ -64,9 +64,9 @@ Terminology
 
 - **build profile**: a global setting that influence various
   defaults. It can be set from the command line using ``--profile
-  <profile>`` or from ``jbuild-workspace`` files. The following
+  <profile>`` or from ``dune-workspace`` files. The following
   profiles are standard:
 
-  -  ``default`` which is the default profile when none is set explicitely
   -  ``release`` which is the profile used for opam releases
-  -  ``dev`` which has stricter warnings
+  -  ``dev`` which is the default profile when none is set explicitely, it
+     has stricter warnings that the ``release`` one

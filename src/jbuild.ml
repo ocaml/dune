@@ -1074,8 +1074,7 @@ module Rule = struct
   type action_or_field = Action | Field
 
   let atom_table =
-    List.fold_left ~init:String.Map.empty
-      ~f:(fun acc (name, kind) -> String.Map.add acc name kind)
+    String.Map.of_list_exn
       [ "run"                         , Action
       ; "chdir"                       , Action
       ; "setenv"                      , Action

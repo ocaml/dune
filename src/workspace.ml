@@ -57,7 +57,7 @@ module Context = struct
 
   let t ~profile =
     Sexp.Of_sexp.(
-      peek raw >>= function
+      peek_exn >>= function
       | Atom _ | Quoted_string _ ->
         enum [ "default",
                Default { targets = [Native]

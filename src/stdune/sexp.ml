@@ -232,9 +232,16 @@ module Of_sexp = struct
     | sexp :: sexps -> (f (get_user_context ctx) sexp, sexps)
   [@@inline always]
 
-  let peek t ctx sexps =
-    let x, _ = t ctx sexps in
-    (x, sexps)
+  let peek _ctx sexps =
+    match sexps with
+    | [] -> (None, sexps)
+    | sexp :: _ -> (Some sexp, sexps)
+  [@@inline always]
+
+  let peek_exn ctx sexps =
+    match sexps with
+    | [] -> end_of_list ctx
+    | sexp :: _ -> (sexp, sexps)
   [@@inline always]
 
   let junk = next ignore

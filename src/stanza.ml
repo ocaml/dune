@@ -21,27 +21,20 @@ let file_kind () =
   Syntax.get_exn syntax >>| fun ver ->
   if ver < (1, 0) then File_kind.Jbuild else Dune
 
-module Of_sexp_helpers = struct
-  open Sexp.Of_sexp
+module Of_sexp = struct
+  include Sexp.Of_sexp
 
-  let inline_record parse =
+  let record parse =
     Syntax.get_exn syntax >>= fun ver ->
     if ver < (1, 0) then
       record parse
     else
       fields parse
 
-  let inline_list parse =
+  let list parse =
     Syntax.get_exn syntax >>= fun ver ->
     if ver < (1, 0) then
       list parse
     else
       repeat parse
-
-  let inline_enter parse =
-    Syntax.get_exn syntax >>= fun ver ->
-    if ver < (1, 0) then
-      enter parse
-    else
-      parse
 end

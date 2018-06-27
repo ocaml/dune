@@ -40,16 +40,15 @@ module Driver = struct
       *)
       let syntax = Stanza.syntax
 
-      open Sexp.Of_sexp
-      open Stanza.Of_sexp_helpers
+      open Stanza.Of_sexp
 
       let parse =
-        inline_record
+        record
           (loc >>= fun loc ->
            Ordered_set_lang.Unexpanded.field "flags"      >>= fun      flags ->
            Ordered_set_lang.Unexpanded.field "lint_flags" >>= fun lint_flags ->
            field "main" string >>= fun main ->
-           field "replaces" (inline_list (located string)) ~default:[]
+           field "replaces" (list (located string)) ~default:[]
            >>= fun replaces ->
            return
              { loc

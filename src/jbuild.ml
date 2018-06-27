@@ -1,6 +1,5 @@
 open Import
-open Sexp.Of_sexp
-open Stanza.Of_sexp_helpers
+open Stanza.Of_sexp
 
 (* This file defines the jbuild types as well as the S-expression
    syntax for the various supported version of the specification.
@@ -36,7 +35,7 @@ let module_name =
       with Exit ->
         invalid_module_name ~loc name)
 
-let module_names = inline_list module_name >>| String.Set.of_list
+let module_names = list module_name >>| String.Set.of_list
 
 let invalid_lib_name ~loc = of_sexp_errorf loc "invalid library name"
 
@@ -376,9 +375,9 @@ module Js_of_ocaml = struct
     }
 
   let t =
-    inline_record
+    record
       (field_oslu "flags" >>= fun flags ->
-       field     "javascript_files" (inline_list string) ~default:[]
+       field     "javascript_files" (list string) ~default:[]
        >>= fun javascript_files ->
        return { flags; javascript_files })
 
@@ -470,41 +469,45 @@ module Lib_deps = struct
     | Forbidden
 
   let t =
-    inline_enter (
-      loc >>= fun loc ->
-      repeat Lib_dep.t >>= fun t ->
-      let add kind name acc =
-        match String.Map.find acc name with
-        | None -> String.Map.add acc name kind
-        | Some kind' ->
-          match kind, kind' with
-          | Required, Required ->
-            of_sexp_errorf loc "library %S is present twice" name
-          | (Optional|Forbidden), (Optional|Forbidden) ->
-            acc
-          | Optional, Required | Required, Optional ->
-            of_sexp_errorf loc
-              "library %S is present both as an optional \
-               and required dependency"
-              name
-          | Forbidden, Required | Required, Forbidden ->
-            of_sexp_errorf loc
-              "library %S is present both as a forbidden \
-               and required dependency"
-              name
-      in
-      ignore (
-        List.fold_left t ~init:String.Map.empty ~f:(fun acc x ->
-          match x with
-          | Lib_dep.Direct (_, s) -> add Required s acc
-          | Select { choices; _ } ->
-            List.fold_left choices ~init:acc ~f:(fun acc c ->
-              let acc =
-                String.Set.fold c.Lib_dep.required ~init:acc ~f:(add Optional)
-              in
-              String.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
-        : kind String.Map.t);
-      return t)
+    loc >>= fun loc ->
+    repeat Lib_dep.t >>= fun t ->
+    let add kind name acc =
+      match String.Map.find acc name with
+      | None -> String.Map.add acc name kind
+      | Some kind' ->
+        match kind, kind' with
+        | Required, Required ->
+          of_sexp_errorf loc "library %S is present twice" name
+        | (Optional|Forbidden), (Optional|Forbidden) ->
+          acc
+        | Optional, Required | Required, Optional ->
+          of_sexp_errorf loc
+            "library %S is present both as an optional \
+             and required dependency"
+            name
+        | Forbidden, Required | Required, Forbidden ->
+          of_sexp_errorf loc
+            "library %S is present both as a forbidden \
+             and required dependency"
+            name
+    in
+    ignore (
+      List.fold_left t ~init:String.Map.empty ~f:(fun acc x ->
+        match x with
+        | Lib_dep.Direct (_, s) -> add Required s acc
+        | Select { choices; _ } ->
+          List.fold_left choices ~init:acc ~f:(fun acc c ->
+            let acc =
+              String.Set.fold c.Lib_dep.required ~init:acc ~f:(add Optional)
+            in
+            String.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
+      : kind String.Map.t);
+    return t
+
+  let t =
+    Stanza.file_kind () >>= function
+    | Dune -> t
+    | Jbuild -> enter t
 
   let of_pps pps =
     List.map pps ~f:(fun pp -> Lib_dep.of_pp (Loc.none, pp))
@@ -533,7 +536,7 @@ module Buildable = struct
     loc >>= fun loc ->
     field "preprocess" Preprocess_map.t ~default:Preprocess_map.default
     >>= fun preprocess ->
-    field "preprocessor_deps" (inline_list Dep_conf.t) ~default:[]
+    field "preprocessor_deps" (list Dep_conf.t) ~default:[]
     >>= fun preprocessor_deps ->
     field "lint" Lint.t ~default:Lint.default
     >>= fun lint ->
@@ -673,7 +676,7 @@ module Mode_conf = struct
   module Set = struct
     include Set.Make(T)
 
-    let t = inline_list t >>| of_list
+    let t = list t >>| of_list
 
     let default = of_list [Byte; Best]
 
@@ -731,25 +734,25 @@ module Library = struct
     }
 
   let t =
-    inline_record
+    record
       (Buildable.t >>= fun buildable ->
        field      "name" library_name                                      >>= fun name                     ->
        Public_lib.public_name_field                                        >>= fun public                   ->
        field_o    "synopsis" string                                        >>= fun synopsis                 ->
-       field      "install_c_headers" (inline_list string) ~default:[]
+       field      "install_c_headers" (list string) ~default:[]
        >>= fun install_c_headers ->
-       field      "ppx_runtime_libraries" (inline_list (located string))
+       field      "ppx_runtime_libraries" (list (located string))
          ~default:[]
        >>= fun ppx_runtime_libraries    ->
        field_oslu "c_flags"                                                >>= fun c_flags                  ->
        field_oslu "cxx_flags"                                              >>= fun cxx_flags                ->
-       field      "c_names" (inline_list c_name) ~default:[]
+       field      "c_names" (list c_name) ~default:[]
        >>= fun c_names ->
-       field      "cxx_names" (inline_list cxx_name) ~default:[]
+       field      "cxx_names" (list cxx_name) ~default:[]
        >>= fun cxx_names ->
        field_oslu "library_flags"                                          >>= fun library_flags            ->
        field_oslu "c_library_flags"                                        >>= fun c_library_flags          ->
-       field      "virtual_deps" (inline_list (located string)) ~default:[]       >>= fun virtual_deps             ->
+       field      "virtual_deps" (list (located string)) ~default:[]       >>= fun virtual_deps             ->
        field      "modes" Mode_conf.Set.t ~default:Mode_conf.Set.default   >>= fun modes                    ->
        field      "kind" Kind.t ~default:Kind.Normal                       >>= fun kind                     ->
        field      "wrapped" bool ~default:true                             >>= fun wrapped                  ->
@@ -818,9 +821,9 @@ module Install_conf = struct
     }
 
   let t =
-    inline_record
+    record
       (field   "section" Install.Section.t >>= fun section ->
-       field   "files"   (inline_list file)       >>= fun files ->
+       field   "files"   (list file)       >>= fun files ->
        Pkg.field                           >>= fun package ->
        return
          { section
@@ -904,7 +907,7 @@ module Executables = struct
       include Set.Make(T)
 
       let t =
-        located (inline_list t) >>| fun (loc, l) ->
+        located (list t) >>| fun (loc, l) ->
         match l with
         | [] -> of_sexp_errorf loc "No linking mode defined"
         | l ->
@@ -942,7 +945,7 @@ module Executables = struct
     field "link_executables" ~default:true
       (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
     >>= fun (_ : bool) ->
-    field "link_deps" (inline_list Dep_conf.t) ~default:[] >>= fun link_deps ->
+    field "link_deps" (list Dep_conf.t) ~default:[] >>= fun link_deps ->
     field_oslu "link_flags" >>= fun link_flags ->
     field "modes" Link_mode.Set.t ~default:Link_mode.Set.default
     >>= fun modes ->
@@ -1014,9 +1017,9 @@ module Executables = struct
     | s   -> Some s
 
   let multi =
-    inline_record
-      (field "names" (inline_list (located string)) >>= fun names ->
-       map_validate (field_o "public_names" (inline_list public_name)) ~f:(function
+    record
+      (field "names" (list (located string)) >>= fun names ->
+       map_validate (field_o "public_names" (list public_name)) ~f:(function
          | None -> Ok (List.map names ~f:(fun _ -> None))
          | Some public_names ->
            if List.length public_names = List.length names then
@@ -1028,7 +1031,7 @@ module Executables = struct
        common names public_names ~multi:true)
 
   let single =
-    inline_record
+    record
       (field   "name" (located string) >>= fun name ->
        field_o "public_name" string >>= fun public_name ->
        common [name] [public_name] ~multi:false)
@@ -1117,10 +1120,10 @@ module Rule = struct
     loc >>= fun loc ->
     field "action"  (located Action.Unexpanded.t)
     >>= fun action ->
-    field "targets" (inline_list file_in_current_dir)
+    field "targets" (list file_in_current_dir)
     >>= fun targets ->
-    field "deps"    (inline_list Dep_conf.t) ~default:[] >>= fun deps ->
-    field "locks"   (inline_list String_with_vars.t) ~default:[] >>= fun locks ->
+    field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
+    field "locks"   (list String_with_vars.t) ~default:[] >>= fun locks ->
     map_validate
       (field_b "fallback" >>= fun fallback ->
        field_o "mode" Mode.t >>= fun mode ->
@@ -1180,7 +1183,7 @@ module Rule = struct
     peek raw >>= function
     | List (_, List (_, _) :: _) ->
       record
-        (field "modules" (inline_list string) >>= fun modules ->
+        (field "modules" (list string) >>= fun modules ->
          Mode.field >>= fun mode ->
          return { modules; mode })
     | _ ->
@@ -1200,7 +1203,7 @@ module Rule = struct
     peek raw >>= function
     | List _ ->
       fields
-        (field "modules" (inline_list string) >>= fun modules ->
+        (field "modules" (list string) >>= fun modules ->
          Mode.field >>= fun mode ->
          return { modules; mode })
     | _ ->
@@ -1274,10 +1277,10 @@ module Menhir = struct
       [ (1, 0) ]
 
   let t =
-    inline_record
+    record
       (field_o "merge_into" string >>= fun merge_into ->
        field_oslu "flags" >>= fun flags ->
-       field "modules" (inline_list string) >>= fun modules ->
+       field "modules" (list string) >>= fun modules ->
        Rule.Mode.field >>= fun mode ->
        return
          { merge_into
@@ -1298,7 +1301,7 @@ module Menhir = struct
     record
       (field_o "merge_into" string >>= fun merge_into ->
        field_oslu "flags" >>= fun flags ->
-       field "modules" (inline_list string) >>= fun modules ->
+       field "modules" (list string) >>= fun modules ->
        Rule.Mode.field >>= fun mode ->
        return
          { merge_into
@@ -1327,12 +1330,12 @@ module Alias_conf = struct
         s)
 
   let t =
-    inline_record
+    record
       (field "name" alias_name                          >>= fun name ->
-       field "deps" (inline_list Dep_conf.t) ~default:[]       >>= fun deps ->
+       field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
        field_o "package" Pkg.t                          >>= fun package ->
        field_o "action" (located Action.Unexpanded.t)   >>= fun action ->
-       field "locks" (inline_list String_with_vars.t) ~default:[] >>= fun locks ->
+       field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
        return
          { name
          ; deps
@@ -1357,7 +1360,7 @@ module Documentation = struct
     }
 
   let t =
-    inline_record
+    record
       (Pkg.field >>= fun package ->
        field "mld_files" Ordered_set_lang.t ~default:Ordered_set_lang.standard
        >>= fun mld_files ->

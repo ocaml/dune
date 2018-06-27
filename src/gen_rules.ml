@@ -580,11 +580,9 @@ module Gen(P : Install_rules.Params) = struct
         ~preprocessing:pp
     in
 
-    let already_used =
-      Modules_partitioner.acknowledge modules_partitioner cctx
-        ~loc:lib.buildable.loc ~modules:source_modules
-    in
-    let dep_graphs = Ocamldep.rules cctx ~already_used in
+    Modules_partitioner.acknowledge modules_partitioner cctx
+      ~loc:lib.buildable.loc ~modules:source_modules;
+    let dep_graphs = Ocamldep.rules cctx in
 
     Option.iter alias_module ~f:(fun m ->
       let file =
@@ -887,14 +885,11 @@ module Gen(P : Install_rules.Params) = struct
         ~requires
         ~preprocessing:pp
     in
-    let already_used =
-      Modules_partitioner.acknowledge modules_partitioner cctx
-        ~loc:exes.buildable.loc ~modules
-    in
+    Modules_partitioner.acknowledge modules_partitioner cctx
+      ~loc:exes.buildable.loc ~modules;
 
     Exe.build_and_link_many cctx
       ~programs
-      ~already_used
       ~linkages
       ~link_flags
       ~js_of_ocaml:exes.buildable.js_of_ocaml;

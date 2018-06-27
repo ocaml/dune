@@ -2,11 +2,11 @@ Successes:
 
   $ dune build --display short --root foo --debug-dep
   Entering directory 'foo'
-      ocamldep test/bar.ml.d
-      ocamldep foo.ml.d
+      ocamldep test/.bar.objs/bar.ml.d
+      ocamldep .foo.objs/foo.ml.d
         ocamlc .foo.objs/foo__.{cmi,cmo,cmt}
       ocamlopt .foo.objs/foo__.{cmx,o}
-      ocamldep intf.mli.d
+      ocamldep .foo.objs/intf.mli.d
         ocamlc .foo.objs/foo__Intf.{cmi,cmti}
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
         ocamlc test/.bar.objs/bar.{cmi,cmo,cmt}

@@ -3,17 +3,17 @@
     ocamlmklib lib/dllx_stubs$ext_dll,lib/libx_stubs$ext_lib
       ocamlopt .ppx/js_of_ocaml-ppx/ppx.exe
            ppx lib/x.pp.ml
-      ocamldep lib/x.pp.ml.d
+      ocamldep lib/.x.objs/x.pp.ml.d
         ocamlc lib/.x.objs/x__.{cmi,cmo,cmt}
       ocamlopt lib/.x.objs/x__.{cmx,o}
            ppx lib/y.pp.ml
-      ocamldep lib/y.pp.ml.d
+      ocamldep lib/.x.objs/y.pp.ml.d
         ocamlc lib/.x.objs/x__Y.{cmi,cmo,cmt}
       ocamlopt lib/.x.objs/x__Y.{cmx,o}
            ppx bin/technologic.pp.ml
-      ocamldep bin/technologic.pp.ml.d
+      ocamldep bin/.technologic.eobjs/technologic.pp.ml.d
            ppx bin/z.pp.ml
-      ocamldep bin/z.pp.ml.d
+      ocamldep bin/.technologic.eobjs/z.pp.ml.d
    js_of_ocaml .js/js_of_ocaml/js_of_ocaml.cma.js
    js_of_ocaml lib/.x.objs/x__Y.cmo.js
         ocamlc lib/.x.objs/x.{cmi,cmo,cmt}

@@ -1,5 +1,5 @@
   $ dune build --display short @all
-      ocamldep test.ml.d
+      ocamldep .test.eobjs/test.ml.d
         ocamlc .test.eobjs/test.{cmi,cmo,cmt}
         ocamlc test.bc.o
            gcc static.bc

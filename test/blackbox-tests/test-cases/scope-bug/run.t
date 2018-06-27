@@ -1,8 +1,8 @@
   $ dune build --display short @install
-      ocamldep alib/alib.ml.d
-      ocamldep alib/main.ml.d
-      ocamldep blib/blib.ml.d
-      ocamldep blib/sub/sub.ml.d
+      ocamldep alib/.alib.objs/alib.ml.d
+      ocamldep alib/.alib.objs/main.ml.d
+      ocamldep blib/.blib.objs/blib.ml.d
+      ocamldep blib/sub/.sub.objs/sub.ml.d
         ocamlc blib/sub/.sub.objs/sub.{cmi,cmo,cmt}
         ocamlc blib/.blib.objs/blib.{cmi,cmo,cmt}
         ocamlc blib/blib.cma

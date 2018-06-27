@@ -39,7 +39,6 @@ end
 val build_and_link
   :  program:Program.t
   -> linkages:Linkage.t list
-  -> ?already_used:Module.Name.Set.t
   -> ?link_flags:(unit, string list) Build.t
   -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
   -> Compilation_context.t
@@ -48,7 +47,6 @@ val build_and_link
 val build_and_link_many
   :  programs:Program.t list
   -> linkages:Linkage.t list
-  -> ?already_used:Module.Name.Set.t
   -> ?link_flags:(unit, string list) Build.t
   -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
   -> Compilation_context.t

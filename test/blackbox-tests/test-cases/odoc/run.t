@@ -1,18 +1,18 @@
   $ dune build @doc --display short
-      ocamldep bar.ml.d
+      ocamldep .bar.objs/bar.ml.d
         ocamlc .bar.objs/bar.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/bar/bar.odoc
           odoc _doc/_html/bar/Bar/.jbuilder-keep,_doc/_html/bar/Bar/index.html
           odoc _doc/_odoc/pkg/bar/page-index.odoc
           odoc _doc/_html/bar/index.html
           odoc _doc/_html/odoc.css
-      ocamldep foo_byte.ml.d
+      ocamldep .foo_byte.objs/foo_byte.ml.d
         ocamlc .foo_byte.objs/foo_byte.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/foo.byte/foo_byte.odoc
-      ocamldep foo.ml.d
+      ocamldep .foo.objs/foo.ml.d
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/foo/foo.odoc
-      ocamldep foo2.ml.d
+      ocamldep .foo.objs/foo2.ml.d
         ocamlc .foo.objs/foo2.{cmi,cmo,cmt}
           odoc _doc/_odoc/lib/foo/foo2.odoc
           odoc _doc/_html/foo/Foo/.jbuilder-keep,_doc/_html/foo/Foo/index.html

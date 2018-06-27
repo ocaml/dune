@@ -1,6 +1,6 @@
   $ dune runtest --display short
-      ocamldep bar.ml.d
-      ocamldep foo.ml.d
+      ocamldep .bar.objs/bar.ml.d
+      ocamldep .foo.objs/foo.ml.d
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}
         ocamlc .bar.objs/bar.{cmi,cmo,cmt}
         ocamlc bar.cma

@@ -1,3 +1,3 @@
 (library
- ((name a)
-  (public_name a1)))
+ (name a)
+ (public_name a1))

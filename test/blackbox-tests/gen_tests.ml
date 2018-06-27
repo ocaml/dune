@@ -3,26 +3,25 @@ open Stdune
 let sprintf = Printf.sprintf
 
 module Sexp = struct
-  let record fields =
-    Usexp.List
-      (List.map fields ~f:(fun (k, s) ->
-         Usexp.List [Usexp.atom k; s]))
+  let fields fields =
+    List.map fields ~f:(fun (k, s) ->
+      Usexp.List (Usexp.atom k :: s))
 
   let strings fields =
     Usexp.List (List.map fields ~f:Usexp.atom_or_quoted_string)
 
   let constr name args =
-    Usexp.List [Usexp.atom name; args]
+    Usexp.List (Usexp.atom name :: args)
 end
 
 let alias ?action name ~deps =
   Sexp.constr "alias"
-    (Sexp.record (
-       [ "name", Usexp.atom name
-       ; "deps", Usexp.List deps
+    (Sexp.fields (
+       [ "name", [Usexp.atom name]
+       ; "deps", deps
        ] @ (match action with
          | None -> []
-         | Some a -> ["action", a])))
+         | Some a -> ["action", [a]])))
 
 module Test = struct
   type t =

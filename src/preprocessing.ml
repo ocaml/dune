@@ -40,7 +40,7 @@ module Driver = struct
       *)
       let syntax = Stanza.syntax
 
-      open Sexp.Of_sexp
+      open Stanza.Of_sexp
 
       let parse =
         record
@@ -185,8 +185,12 @@ module Jbuild_driver = struct
 
   let make name info : (Pp.t * Driver.t) Lazy.t = lazy (
     let info =
+      let parsing_context =
+        Univ_map.singleton (Syntax.key Stanza.syntax) (0, 0)
+      in
       Sexp.parse_string ~mode:Single ~fname:"<internal>" info
-      |> Sexp.Of_sexp.parse Driver.Info.parse Univ_map.empty
+        ~lexer:Sexp.Lexer.jbuild_token
+      |> Sexp.Of_sexp.parse Driver.Info.parse parsing_context
     in
     (Pp.of_string name,
      { info

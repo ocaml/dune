@@ -1,7 +1,7 @@
 (executable
- ((name f)))
+ (name f))
 
 (alias
- ((name runtest)
-  (deps (f.exe))
-  (action (run ${<}))))
+ (name runtest)
+ (deps f.exe)
+ (action (run ${<})))

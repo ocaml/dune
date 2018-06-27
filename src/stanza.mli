@@ -23,3 +23,12 @@ end
 
 (** Whether we are parsing a [jbuild] or [dune] file. *)
 val file_kind : unit -> (File_kind.t, _) Sexp.Of_sexp.parser
+
+(** Overlay for [Sexp.Of_sexp] where lists and records don't require
+    an extra level of parentheses in Dune files. *)
+module Of_sexp : sig
+  include module type of struct include Sexp.Of_sexp end
+
+  val record : 'a fields_parser -> 'a t
+  val list : 'a t -> 'a list t
+end

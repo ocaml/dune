@@ -1,5 +1,5 @@
 open Import
-open Sexp.Of_sexp
+open Stanza.Of_sexp
 
 (* This file defines the jbuild types as well as the S-expression
    syntax for the various supported version of the specification.
@@ -376,8 +376,9 @@ module Js_of_ocaml = struct
 
   let t =
     record
-      (field_oslu "flags"                                     >>= fun flags ->
-       field     "javascript_files" (list string) ~default:[] >>= fun javascript_files ->
+      (field_oslu "flags" >>= fun flags ->
+       field     "javascript_files" (list string) ~default:[]
+       >>= fun javascript_files ->
        return { flags; javascript_files })
 
   let default =
@@ -468,41 +469,45 @@ module Lib_deps = struct
     | Forbidden
 
   let t =
-    enter (
-      loc >>= fun loc ->
-      repeat Lib_dep.t >>= fun t ->
-      let add kind name acc =
-        match String.Map.find acc name with
-        | None -> String.Map.add acc name kind
-        | Some kind' ->
-          match kind, kind' with
-          | Required, Required ->
-            of_sexp_errorf loc "library %S is present twice" name
-          | (Optional|Forbidden), (Optional|Forbidden) ->
-            acc
-          | Optional, Required | Required, Optional ->
-            of_sexp_errorf loc
-              "library %S is present both as an optional \
-               and required dependency"
-              name
-          | Forbidden, Required | Required, Forbidden ->
-            of_sexp_errorf loc
-              "library %S is present both as a forbidden \
-               and required dependency"
-              name
-      in
-      ignore (
-        List.fold_left t ~init:String.Map.empty ~f:(fun acc x ->
-          match x with
-          | Lib_dep.Direct (_, s) -> add Required s acc
-          | Select { choices; _ } ->
-            List.fold_left choices ~init:acc ~f:(fun acc c ->
-              let acc =
-                String.Set.fold c.Lib_dep.required ~init:acc ~f:(add Optional)
-              in
-              String.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
-        : kind String.Map.t);
-      return t)
+    loc >>= fun loc ->
+    repeat Lib_dep.t >>= fun t ->
+    let add kind name acc =
+      match String.Map.find acc name with
+      | None -> String.Map.add acc name kind
+      | Some kind' ->
+        match kind, kind' with
+        | Required, Required ->
+          of_sexp_errorf loc "library %S is present twice" name
+        | (Optional|Forbidden), (Optional|Forbidden) ->
+          acc
+        | Optional, Required | Required, Optional ->
+          of_sexp_errorf loc
+            "library %S is present both as an optional \
+             and required dependency"
+            name
+        | Forbidden, Required | Required, Forbidden ->
+          of_sexp_errorf loc
+            "library %S is present both as a forbidden \
+             and required dependency"
+            name
+    in
+    ignore (
+      List.fold_left t ~init:String.Map.empty ~f:(fun acc x ->
+        match x with
+        | Lib_dep.Direct (_, s) -> add Required s acc
+        | Select { choices; _ } ->
+          List.fold_left choices ~init:acc ~f:(fun acc c ->
+            let acc =
+              String.Set.fold c.Lib_dep.required ~init:acc ~f:(add Optional)
+            in
+            String.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
+      : kind String.Map.t);
+    return t
+
+  let t =
+    Stanza.file_kind () >>= function
+    | Dune -> t
+    | Jbuild -> enter t
 
   let of_pps pps =
     List.map pps ~f:(fun pp -> Lib_dep.of_pp (Loc.none, pp))
@@ -734,12 +739,17 @@ module Library = struct
        field      "name" library_name                                      >>= fun name                     ->
        Public_lib.public_name_field                                        >>= fun public                   ->
        field_o    "synopsis" string                                        >>= fun synopsis                 ->
-       field      "install_c_headers" (list string) ~default:[]            >>= fun install_c_headers        ->
-       field      "ppx_runtime_libraries" (list (located string)) ~default:[] >>= fun ppx_runtime_libraries    ->
+       field      "install_c_headers" (list string) ~default:[]
+       >>= fun install_c_headers ->
+       field      "ppx_runtime_libraries" (list (located string))
+         ~default:[]
+       >>= fun ppx_runtime_libraries    ->
        field_oslu "c_flags"                                                >>= fun c_flags                  ->
        field_oslu "cxx_flags"                                              >>= fun cxx_flags                ->
-       field      "c_names" (list c_name) ~default:[]                      >>= fun c_names                  ->
-       field      "cxx_names" (list cxx_name) ~default:[]                  >>= fun cxx_names                ->
+       field      "c_names" (list c_name) ~default:[]
+       >>= fun c_names ->
+       field      "cxx_names" (list cxx_name) ~default:[]
+       >>= fun cxx_names ->
        field_oslu "library_flags"                                          >>= fun library_flags            ->
        field_oslu "c_library_flags"                                        >>= fun c_library_flags          ->
        field      "virtual_deps" (list (located string)) ~default:[]       >>= fun virtual_deps             ->
@@ -1064,52 +1074,112 @@ module Rule = struct
     ; loc      : Loc.t
     }
 
-  let t =
+  type action_or_field = Action | Field
+
+  let atom_table =
+    String.Map.of_list_exn
+      [ "run"                         , Action
+      ; "chdir"                       , Action
+      ; "setenv"                      , Action
+      ; "with-stdout-to"              , Action
+      ; "with-stderr-to"              , Action
+      ; "with-outputs-to"             , Action
+      ; "ignore-stdout"               , Action
+      ; "ignore-stderr"               , Action
+      ; "ignore-outputs"              , Action
+      ; "progn"                       , Action
+      ; "echo"                        , Action
+      ; "cat"                         , Action
+      ; "copy"                        , Action
+      ; "copy#"                       , Action
+      ; "copy-and-add-line-directive" , Action
+      ; "system"                      , Action
+      ; "bash"                        , Action
+      ; "write-file"                  , Action
+      ; "diff"                        , Action
+      ; "diff?"                       , Action
+      ; "targets"                     , Field
+      ; "deps"                        , Field
+      ; "action"                      , Field
+      ; "locks"                       , Field
+      ; "fallback"                    , Field
+      ; "mode"                        , Field
+      ]
+
+  let short_form =
+    located Action.Unexpanded.t >>| fun (loc, action) ->
+    { targets  = Infer
+    ; deps     = []
+    ; action   = (loc, action)
+    ; mode     = Standard
+    ; locks    = []
+    ; loc      = loc
+    }
+
+  let long_form =
+    loc >>= fun loc ->
+    field "action"  (located Action.Unexpanded.t)
+    >>= fun action ->
+    field "targets" (list file_in_current_dir)
+    >>= fun targets ->
+    field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
+    field "locks"   (list String_with_vars.t) ~default:[] >>= fun locks ->
+    map_validate
+      (field_b "fallback" >>= fun fallback ->
+       field_o "mode" Mode.t >>= fun mode ->
+       return (fallback, mode))
+      ~f:(function
+        | true, Some _ ->
+          Error "Cannot use both (fallback) and (mode ...) at the \
+                 same time.\n\
+                 (fallback) is the same as (mode fallback), \
+                 please use the latter in new code."
+        | false, Some mode -> Ok mode
+        | true, None -> Ok Fallback
+        | false, None -> Ok Standard)
+    >>= fun mode ->
+    return { targets = Static targets
+           ; deps
+           ; action
+           ; mode
+           ; locks
+           ; loc
+           }
+
+  let jbuild_syntax =
     peek raw >>= function
-    | List (_, (Atom _ :: _)) ->
-      located Action.Unexpanded.t >>| fun (loc, action) ->
-      { targets  = Infer
-      ; deps     = []
-      ; action   = (loc, action)
-      ; mode     = Standard
-      ; locks    = []
-      ; loc      = loc
-      }
-    | _ ->
-      record
-        (loc >>= fun loc ->
-         field "targets" (list file_in_current_dir)    >>= fun targets ->
-         field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
-         field "action"  (located Action.Unexpanded.t) >>= fun action ->
-         field "locks"   (list String_with_vars.t) ~default:[] >>= fun locks ->
-         map_validate
-           (field_b "fallback" >>= fun fallback ->
-            field_o "mode" Mode.t >>= fun mode ->
-            return (fallback, mode))
-           ~f:(function
-             | true, Some _ ->
-               Error "Cannot use both (fallback) and (mode ...) at the \
-                      same time.\n\
-                      (fallback) is the same as (mode fallback), \
-                      please use the latter in new code."
-               | false, Some mode -> Ok mode
-               | true, None -> Ok Fallback
-               | false, None -> Ok Standard)
-           >>= fun mode ->
-           return { targets = Static targets
-                  ; deps
-                  ; action
-                  ; mode
-                  ; locks
-                  ; loc
-                  })
+    | List (_, (Atom _ :: _)) -> short_form
+    | _ -> record long_form
+
+  let dune_syntax =
+    peek raw >>= function
+    | List (_, Atom (loc, A s) :: _) -> begin
+      match String.Map.find atom_table s with
+      | None ->
+        of_sexp_errorf loc ~hint:{ on = s
+                                 ; candidates = String.Map.keys atom_table
+                                 }
+          "Unknown action or rule field."
+      | Some Field -> fields long_form
+      | Some Action -> short_form
+    end
+    | sexp ->
+      of_sexp_errorf (Sexp.Ast.loc sexp)
+        "S-expression of the form (<atom> ...) expected"
+
+  let t =
+    Syntax.get_exn Stanza.syntax >>= fun ver ->
+    if ver < (1, 0) then
+      jbuild_syntax
+    else
+      dune_syntax
 
   type lex_or_yacc =
     { modules : string list
     ; mode    : Mode.t
     }
 
-  let ocamllex =
+  let ocamllex_jbuild =
     peek raw >>= function
     | List (_, List (_, _) :: _) ->
       record
@@ -1121,6 +1191,33 @@ module Rule = struct
       { modules
       ; mode  = Standard
       }
+
+  let ocamllex_dune =
+    eos >>= function
+    | true ->
+      return
+        { modules = []
+        ; mode  = Standard
+        }
+    | false ->
+    peek raw >>= function
+    | List _ ->
+      fields
+        (field "modules" (list string) >>= fun modules ->
+         Mode.field >>= fun mode ->
+         return { modules; mode })
+    | _ ->
+      repeat string >>| fun modules ->
+      { modules
+      ; mode  = Standard
+      }
+
+  let ocamllex =
+    Syntax.get_exn Stanza.syntax >>= fun ver ->
+    if ver < (1, 0) then
+      ocamllex_jbuild
+    else
+      ocamllex_dune
 
   let ocamlyacc = ocamllex
 

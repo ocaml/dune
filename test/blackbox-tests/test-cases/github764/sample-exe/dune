@@ -1,2 +1,2 @@
 (executable
- ((name foo)))
+ (name foo))

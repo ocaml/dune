@@ -1,7 +1,7 @@
 (alias
- ((name just-in-src)
-  (deps ((alias src/x)))))
+ (name just-in-src)
+ (deps (alias src/x)))
 
 (alias
- ((name everywhere)
-  (deps ((alias_rec x)))))
+ (name everywhere)
+ (deps (alias_rec x)))

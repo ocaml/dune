@@ -1,9 +1,9 @@
 (library
- ((name foo)
-  (modules (foo))
-  (c_names (stubs/x))))
+ (name foo)
+ (modules (foo))
+ (c_names stubs/x))
 
 (executable
- ((name bar)
-  (modules (bar))
-  (libraries (foo))))
+ (name bar)
+ (modules (bar))
+ (libraries foo))

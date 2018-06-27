@@ -1,1 +1,1 @@
-(ocamllex (lexer1))
+(ocamllex lexer1)

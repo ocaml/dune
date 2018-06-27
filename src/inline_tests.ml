@@ -30,7 +30,7 @@ module Backend = struct
       *)
       let syntax = Stanza.syntax
 
-      open Sexp.Of_sexp
+      open Stanza.Of_sexp
 
       let parse =
         record
@@ -130,7 +130,7 @@ include Sub_system.Register_end_point(
 
       let syntax = Stanza.syntax
 
-      open Sexp.Of_sexp
+      open Stanza.Of_sexp
 
       let parse =
         eos >>= function

@@ -1,4 +1,4 @@
 (library
- ((name        foo)
-  (public_name foo)
-  (libraries   (a b c))))
+ (name        foo)
+ (public_name foo)
+ (libraries   a b c))

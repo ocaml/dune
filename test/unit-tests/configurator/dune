@@ -1,8 +1,8 @@
 (executable
- ((name test_configurator)
-  (libraries (configurator))))
+ (name test_configurator)
+ (libraries configurator))
 
 (alias
- ((name runtest)
-  (deps (./test_configurator.exe))
-  (action (run ${<}))))
+ (name runtest)
+ (deps ./test_configurator.exe)
+ (action (run ${<})))

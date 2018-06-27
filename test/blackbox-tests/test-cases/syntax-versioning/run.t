@@ -10,9 +10,9 @@
   $ dune build
   $ rm -f jbuild
 
-  $ echo '(executable ((name x) (link_executables false)))' > dune
+  $ echo '(executable (name x) (link_executables false))' > dune
   $ dune build
-  File "dune", line 1, characters 22-46:
+  File "dune", line 1, characters 21-45:
   Error: 'link_executables' was deleted in version 1.0 of the dune language
   [1]
   $ rm -f dune

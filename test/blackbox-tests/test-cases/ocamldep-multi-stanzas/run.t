@@ -34,8 +34,8 @@
   Entering directory 'dune'
   File "dune", line 1, characters 0-0:
   Error: Module "Lib" is used in several stanzas:
-  - dune:6
-  - dune:2
+  - dune:5
+  - dune:1
   To fix this error, you must specify an explicit "modules" field in every
   library, executable, and executables stanzas in this dune file. Note that
   each module cannot appear in more than one "modules" field - it must belong

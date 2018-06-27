@@ -1,4 +1,4 @@
 (library
- ((name blib)
-  (public_name blib)
-  (libraries (sub))))
+ (name blib)
+ (public_name blib)
+ (libraries sub))

@@ -8,7 +8,7 @@ let () =
            ; "-arg", Arg.Set_string arg, ""
            ])
     Migrate_parsetree.Versions.ocaml_405
-    (fun _ cookies ->
+    (fun _ _cookies ->
        if not !flag then (
          Format.eprintf "pass -flag to fooppx@.%!";
          exit 1

@@ -7,7 +7,8 @@
               re
               opam_file_format
               usexp
-              ocaml_config)
+              ocaml_config
+              which_program)
  (synopsis    "Internal Dune library, do not use!"))
 
 (ocamllex meta_lexer glob_lexer dune_lexer)

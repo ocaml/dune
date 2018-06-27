@@ -1,4 +1,4 @@
-  $ dune exec ./test.exe --debug-dep --display short --root jbuild
+  $ dune exec ./test.exe --debug-dep --display short --root jbuild --profile release
   Entering directory 'jbuild'
   File "jbuild", line 1, characters 0-0:
   Warning: Module "Lib" is used in several stanzas:

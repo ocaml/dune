@@ -1159,8 +1159,9 @@ using ``(js_of_ocaml (<js_of_ocaml-options>))``.
 
 ``<flags>`` is specified in the `Ordered set language`_.
 
-The default value for ``(flags ...)`` depends on whether ``--dev`` is passed to
-Jbuilder. ``--dev`` will enable sourcemap and the pretty JavaScript output.
+The default value for ``(flags ...)`` depends on the selected build
+profile. The build profile ``dev`` (the default) will enable sourcemap
+and the pretty JavaScript output.
 
 .. _user-actions:
 

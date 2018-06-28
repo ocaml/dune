@@ -164,8 +164,7 @@ module Internal_rule = struct
 
   type t =
     { id               : Id.t
-    ; rule_deps        : Path.Set.t
-    ; static_deps      : Path.Set.t
+    ; static_deps      : Build_interpret.Static_deps.t Lazy.t
     ; targets          : Path.Set.t
     ; context          : Context.t option
     ; build            : (unit, Action.t) Build.t
@@ -178,6 +177,12 @@ module Internal_rule = struct
   let compare a b = Id.compare a.id b.id
 
   let loc ~file_tree ~dir t  = rule_loc ~file_tree ~dir ~loc:t.loc
+
+  let lib_deps t =
+    (* Forcing this lazy ensures that the various globs and
+       [if_file_exists] are resolved inside the [Build.t] value. *)
+    ignore (Lazy.force t.static_deps : Build_interpret.Static_deps.t);
+    Build_interpret.lib_deps t.build
 end
 
 module File_kind = struct
@@ -277,15 +282,17 @@ module Alias0 = struct
   open Build.O
 
   let dep_rec_internal ~name ~dir ~ctx_dir =
-    File_tree.Dir.fold dir ~traverse_ignored_dirs:false ~init:(Build.return true)
-      ~f:(fun dir acc ->
-        let path = Path.append ctx_dir (File_tree.Dir.path dir) in
-        let fn = stamp_file (make ~dir:path name) in
-        acc
-        >>>
-        Build.if_file_exists fn
-          ~then_:(Build.path fn >>^ fun _ -> false)
-          ~else_:(Build.arr (fun x -> x)))
+    Build.lazy_no_targets (lazy (
+      File_tree.Dir.fold dir ~traverse_ignored_dirs:false
+        ~init:(Build.return true)
+        ~f:(fun dir acc ->
+          let path = Path.append ctx_dir (File_tree.Dir.path dir) in
+          let fn = stamp_file (make ~dir:path name) in
+          acc
+          >>>
+          Build.if_file_exists fn
+            ~then_:(Build.path fn >>^ fun _ -> false)
+            ~else_:(Build.arr (fun x -> x)))))
 
   let dep_rec t ~loc ~file_tree =
     let ctx_dir, src_dir =
@@ -300,8 +307,9 @@ module Alias0 = struct
       dep_rec_internal ~name:t.name ~dir ~ctx_dir
       >>^ fun is_empty ->
       if is_empty && not (is_standard t.name) then
-        Loc.fail loc "This alias is empty.\n\
-                      Alias %S is not defined in %s or any of its descendants."
+        Loc.fail loc
+          "This alias is empty.\n\
+           Alias %S is not defined in %s or any of its descendants."
           t.name (Path.to_string_maybe_quoted src_dir)
 
   let dep_rec_multi_contexts ~dir:src_dir ~name ~file_tree ~contexts =
@@ -518,6 +526,8 @@ module Build_exec = struct
           with exn ->
             on_error exn
         end
+      | Lazy_no_targets t ->
+        exec dyn_deps (Lazy.force t) x
       | Memo m ->
         match m.state with
         | Evaluated (x, deps) ->
@@ -709,20 +719,19 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     pre_rule
   in
   let targets = Target.paths target_specs in
-  let { Build_interpret.Static_deps.
-        rule_deps
-      ; action_deps = static_deps
-      } = Build_interpret.static_deps build ~all_targets:(targets_of t)
-            ~file_tree:t.file_tree
+  let static_deps =
+    lazy (Build_interpret.static_deps build ~all_targets:(targets_of t)
+            ~file_tree:t.file_tree)
   in
 
   let eval_rule () =
     t.hook Rule_started;
-    wait_for_deps t rule_deps
+    wait_for_deps t (Lazy.force static_deps).rule_deps
     >>| fun () ->
     Build_exec.exec t build ()
   in
   let exec_rule (rule_evaluation : Exec_status.rule_evaluation) =
+    let static_deps = (Lazy.force static_deps).action_deps in
     Fiber.fork_and_join_unit
       (fun () ->
          wait_for_deps t static_deps)
@@ -826,7 +835,6 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     { Internal_rule.
       id = Internal_rule.Id.gen ()
     ; static_deps
-    ; rule_deps
     ; targets
     ; build
     ; context
@@ -921,17 +929,16 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
       else
         match Path.extract_build_context_dir dir with
         | None -> aliases
-        | Some (_, src_dir) ->
+        | Some (ctx_dir, src_dir) ->
           match File_tree.find_dir t.file_tree src_dir with
           | None -> aliases
-          | Some _ ->
+          | Some dir ->
             String.Map.add aliases "default"
               { deps = Path.Set.empty
               ; dyn_deps =
-                  Alias0.dep_rec (Alias0.install ~dir) ~loc:Loc.none
-                    ~file_tree:t.file_tree
-                  >>>
-                  Build.return Path.Set.empty
+                  (Alias0.dep_rec_internal ~name:"install" ~dir ~ctx_dir
+                   >>^ fun (_ : bool) ->
+                   Path.Set.empty)
               ; actions = []
               }
     in
@@ -1297,7 +1304,8 @@ let rules_for_targets t targets =
     Internal_rule.Id.Top_closure.top_closure (rules_for_files t targets)
       ~key:(fun (r : Internal_rule.t) -> r.id)
       ~deps:(fun (r : Internal_rule.t) ->
-        rules_for_files t (Path.Set.union r.static_deps r.rule_deps))
+        let x = Lazy.force r.static_deps in
+        rules_for_files t (Path.Set.union x.action_deps x.rule_deps))
   with
   | Ok l -> l
   | Error cycle ->
@@ -1319,8 +1327,8 @@ let static_deps_of_request t request =
 let all_lib_deps t ~request =
   let targets = static_deps_of_request t request in
   List.fold_left (rules_for_targets t targets) ~init:Path.Map.empty
-    ~f:(fun acc (rule : Internal_rule.t) ->
-      let deps = Build_interpret.lib_deps rule.build in
+    ~f:(fun acc rule ->
+      let deps = Internal_rule.lib_deps rule in
       if String.Map.is_empty deps then
         acc
       else
@@ -1334,8 +1342,8 @@ let all_lib_deps t ~request =
 let all_lib_deps_by_context t ~request =
   let targets = static_deps_of_request t request in
   let rules = rules_for_targets t targets in
-  List.fold_left rules ~init:[] ~f:(fun acc (rule : Internal_rule.t) ->
-    let deps = Build_interpret.lib_deps rule.build in
+  List.fold_left rules ~init:[] ~f:(fun acc rule ->
+    let deps = Internal_rule.lib_deps rule in
     if String.Map.is_empty deps then
       acc
     else
@@ -1404,9 +1412,10 @@ let build_rules_internal ?(recursive=false) t ~request =
       Fiber.fork (fun () ->
         Fiber.Future.wait rule_evaluation
         >>| fun (action, dyn_deps) ->
+        let static_deps = (Lazy.force ir.static_deps).action_deps in
         { Rule.
           id      = ir.id
-        ; deps    = Path.Set.union ir.static_deps dyn_deps
+        ; deps    = Path.Set.union static_deps dyn_deps
         ; targets = ir.targets
         ; context = ir.context
         ; action  = action
@@ -1483,7 +1492,9 @@ let package_deps t pkg files =
             Option.value_exn (Fiber.Future.peek rule_evaluation)
           | Not_started _ -> assert false
         in
-        Path.Set.fold (Path.Set.union ir.static_deps dyn_deps) ~init:acc ~f:loop
+        Path.Set.fold
+          (Path.Set.union (Lazy.force ir.static_deps).action_deps dyn_deps)
+          ~init:acc ~f:loop
       end
   in
   let open Build.O in

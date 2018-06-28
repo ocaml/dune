@@ -155,6 +155,9 @@ end
 module Persistent(D : Persistent_desc) = struct
   let magic = sprintf "DUNE-%sv%d:" D.name D.version
 
+  let to_out_string (v : D.t) =
+    Marshal.to_string v []
+
   let dump file (v : D.t) =
     Io.with_file_out file ~f:(fun oc ->
       output_string oc magic;

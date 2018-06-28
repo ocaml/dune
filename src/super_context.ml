@@ -535,8 +535,8 @@ module Pkg_version = struct
   open Build.O
 
   module V = Vfile_kind.Make(struct type t = string option end)
-      (functor (C : Sexp.Combinators) -> struct
-        let t = C.option C.string
+      (struct
+        let t = Sexp.To_sexp.(option string)
       end)
 
   let spec sctx (p : Package.t) =

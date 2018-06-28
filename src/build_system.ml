@@ -447,8 +447,8 @@ let get_file : type a. t -> Path.t -> a File_kind.t -> a File_spec.t = fun t fn 
     let Eq = File_kind.eq_exn kind file.kind in
     file
 
-let vfile_to_string (type a) (module K : Vfile_kind.S with type t = a) fn x =
-  K.to_string fn x
+let vfile_to_string (type a) (module K : Vfile_kind.S with type t = a) _fn x =
+  K.to_string x
 
 module Build_exec = struct
   open Build.Repr

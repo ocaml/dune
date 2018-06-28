@@ -83,7 +83,7 @@ module Unexpanded : sig
       :  t
       -> dir:Path.t
       -> map_exe:(Path.t -> Path.t)
-      -> f:(Loc.t -> String.t -> Value.t list option)
+      -> f:(String_with_vars.Var.t -> Value.t list option)
       -> Unresolved.t
   end
 
@@ -91,7 +91,7 @@ module Unexpanded : sig
     :  t
     -> dir:Path.t
     -> map_exe:(Path.t -> Path.t)
-    -> f:(Loc.t -> string -> Value.t list option)
+    -> f:(String_with_vars.Var.t -> Value.t list option)
     -> Partial.t
 end
 

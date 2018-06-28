@@ -14,8 +14,8 @@ let infer (a : Action.t) =
    List.map (Path.Set.to_list x.targets) ~f:Path.to_string)
 [%%expect{|
 - : unit = ()
-val p : ?error_loc:Usexp.Loc.t -> string -> Dune.Import.Path.t = <fun>
-val infer : Dune.Action.t -> string list * string list = <fun>
+val p : ?error_loc:Usexp.Loc.t -> string -> Path.t = <fun>
+val infer : Action.t -> string list * string list = <fun>
 |}]
 
 infer (Copy (p "a", p "b"));;

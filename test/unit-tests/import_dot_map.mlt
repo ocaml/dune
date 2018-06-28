@@ -15,6 +15,5 @@ String.Map.of_list_multi
   ]
 |> String.Map.to_list;;
 [%%expect{|
-- : (Dune.Import.String.Map.key * int list) list =
-[("a", [1; 2; 3]); ("b", [1; 2])]
+- : (string * int list) list = [("a", [1; 2; 3]); ("b", [1; 2])]
 |}]

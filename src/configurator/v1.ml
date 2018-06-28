@@ -488,7 +488,7 @@ end
 let write_flags fname s =
   let path = Path.in_source fname in
   let sexp = Usexp.List(List.map ~f:Usexp.atom_or_quoted_string s) in
-  Io.write_file path (Usexp.to_string sexp)
+  Io.write_file path (Usexp.to_string sexp ~syntax:Dune)
 
 let main ?(args=[]) ~name f =
   let ocamlc  = ref (

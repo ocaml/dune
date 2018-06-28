@@ -62,6 +62,9 @@ special characters. Special characters are:
 
 For instance ``hello`` or ``+`` are valid atoms.
 
+Note that backslashes inside atoms have no special meaning are always
+interpreted as plain backslashes characters.
+
 Strings
 -------
 
@@ -80,6 +83,7 @@ sequences:
 - ``\xHH``, a backslach followed by two hexidecimal characters to
   represent the character with ASCII code ``HH`` in hexadecimal
 - ``\\``, a double backslash to represent a single backslash
+- ``\%{`` to represent ``%{`` (see :ref:`variables`)
 
 Additionally, a backslash that comes just before the end of the line
 is used to skip the newline up to the next non-space character. For
@@ -136,6 +140,29 @@ descriptions. For instance:
     (head (title "Hello world!"))
     (body
       This is a simple example of using S-expressions))
+
+.. _variables:
+
+Variables
+---------
+
+Dune allows variables in a few places. Their interpretation often
+depend on the context in which they appear.
+
+The syntax of variables is as follow:
+
+.. code::
+
+   %{var}
+
+or, for more complex forms that take an argument:
+
+.. code::
+
+   %{fun:arg}
+
+In order to write a plain ``%{``, you need to write ``\%{`` in a
+string.
 
 .. _opam-files:
 

@@ -3,4 +3,4 @@
 
 (alias
  (name runtest)
- (action (run ./count_args.exe ${read-lines:args})))
+ (action (run ./count_args.exe %{read-lines:args})))

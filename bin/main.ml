@@ -1383,7 +1383,8 @@ let printenv =
       in
       Build_system.do_build setup.build_system ~request
       >>| fun l ->
-      let pp ppf = Format.fprintf ppf "@[<v1>(@,@[<v>%a@]@]@,)" (Format.pp_print_list Sexp.pp) in
+      let pp ppf = Format.fprintf ppf "@[<v1>(@,@[<v>%a@]@]@,)"
+                     (Format.pp_print_list (Sexp.pp Dune)) in
       match l with
       | [(_, env)] ->
         Format.printf "%a@." pp env

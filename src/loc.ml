@@ -1,9 +1,6 @@
 open Import
 
-type t = Usexp.Loc.t =
-  { start : Lexing.position
-  ; stop  : Lexing.position
-  }
+include Usexp.Loc
 
 (* TODO get rid of all this stuff once this parsing code moves to Usexp and
    there will be no circular dependency *)
@@ -63,8 +60,6 @@ let of_pos (fname, lnum, cnum, enum) =
   { start = pos
   ; stop  = { pos with pos_cnum = enum }
   }
-
-let none = in_file "<none>"
 
 let print ppf { start; stop } =
   let start_c = start.pos_cnum - start.pos_bol in

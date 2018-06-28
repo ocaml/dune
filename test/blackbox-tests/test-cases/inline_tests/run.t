@@ -28,9 +28,9 @@
      ((runner_libraries (str))
       (flags
        (inline-test-runner
-        ${library-name}
+        %{library-name}
         -source-tree-root
-        ${ROOT}
+        %{ROOT}
         -diff-cmd
         -))
       (generate_runner

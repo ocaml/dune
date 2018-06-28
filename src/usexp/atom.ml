@@ -8,7 +8,14 @@ let is_valid_dune =
   let rec loop s i len =
     i = len ||
     match String.unsafe_get s i with
-    | '%' | '"' | '(' | ')' | ';' | '\000'..'\032' | '\127'..'\255' -> false
+    | '%' -> after_percent s (i + 1) len
+    | '"' | '(' | ')' | ';' | '\000'..'\032' | '\127'..'\255' -> false
+    | _ -> loop s (i + 1) len
+  and after_percent s i len =
+    i = len ||
+    match String.unsafe_get s i with
+    | '%' -> after_percent s (i + 1) len
+    | '"' | '(' | ')' | ';' | '\000'..'\032' | '\127'..'\255' | '{' -> false
     | _ -> loop s (i + 1) len
   in
   fun s ->

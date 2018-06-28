@@ -25,7 +25,7 @@
 (alias
  (name runtest)
  (deps foo.install)
- (action (echo "${read:foo.install}")))
+ (action (echo "%{read:foo.install}")))
 
 (documentation
  (mld_files (doc)))

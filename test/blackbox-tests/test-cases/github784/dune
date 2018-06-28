@@ -1,1 +1,1 @@
-(rule (run ${bin:echo} foo))
+(rule (run %{bin:echo} foo))

@@ -88,7 +88,7 @@ let setup ?(log=Log.no_log)
   >>= fun contexts ->
   let contexts = List.concat contexts in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
-    Log.infof log "@[<1>Jbuilder context:@,%a@]@." Sexp.pp
+    Log.infof log "@[<1>Jbuilder context:@,%a@]@." (Sexp.pp Dune)
       (Context.sexp_of_t ctx));
   let rule_done  = ref 0 in
   let rule_total = ref 0 in

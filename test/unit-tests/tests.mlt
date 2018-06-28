@@ -18,7 +18,7 @@ let print_pkg ppf pkg =
 #install_printer String_map.pp;;
 
 [%%expect{|
-val print_pkg : Format.formatter -> Dune.Findlib.Package.t -> unit = <fun>
+val print_pkg : Format.formatter -> Findlib.Package.t -> unit = <fun>
 |}]
 
 let findlib =
@@ -29,7 +29,7 @@ let findlib =
 ;;
 
 [%%expect{|
-val findlib : Dune.Findlib.t = <abstr>
+val findlib : Findlib.t = <abstr>
 |}]
 
 let pkg =
@@ -38,7 +38,7 @@ let pkg =
   | Error _ -> assert false;;
 
 [%%expect{|
-val pkg : Dune.Findlib.Package.t = <package:foo>
+val pkg : Findlib.Package.t = <package:foo>
 |}]
 
 (* "foo" should depend on "baz" *)
@@ -60,7 +60,7 @@ let meta =
   |> Meta.load ~name:"foo"
 
 [%%expect{|
-val meta : Dune.Meta.Simplified.t =
+val meta : Simplified.t =
   { name = "foo"
   ; vars =
      (requires =
@@ -89,7 +89,7 @@ let conf =
     ~toolchain:"tlc" ~context:"<context>"
 
 [%%expect{|
-val conf : Dune.Findlib.Config.t =
+val conf : Findlib.Config.t =
   { vars =
      [ (FOO_BAR, { set_rules =
                     [ { preds_required = [ "tlc"; "env" ]
@@ -104,15 +104,15 @@ val conf : Dune.Findlib.Config.t =
   }
 |}]
 
-let env_pp fmt env = Sexp.pp fmt (Env.sexp_of_t env);;
+let env_pp fmt env = Sexp.pp Dune fmt (Env.sexp_of_t env);;
 #install_printer env_pp;;
 
 [%%expect{|
-val env_pp : Format.formatter -> Dune.Env.t -> unit = <fun>
+val env_pp : Format.formatter -> Env.t -> unit = <fun>
 |}]
 
 let env = Findlib.Config.env conf
 
 [%%expect{|
-val env : Dune.Env.t = ((FOO_BAR "my variable"))
+val env : Env.t = ((FOO_BAR "my variable"))
 |}]

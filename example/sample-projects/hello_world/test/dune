@@ -1,7 +1,7 @@
 (rule
  ((targets (hello_world.output))
-  (action (with-stdout-to ${@} (run ${bin:hello_world})))))
+  (action (with-stdout-to %{@} (run %{bin:hello_world})))))
 
 (alias
  ((name runtest)
-  (action (run diff -uw ${path:hello_world.expected} ${path:hello_world.output}))))
+  (action (run diff -uw %{path:hello_world.expected} %{path:hello_world.output}))))

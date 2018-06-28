@@ -19,71 +19,71 @@
 (alias
  (name runtest)
  (deps tests.mlt
-       (glob_files ${SCOPE_ROOT}/src/.dune.objs/*.cmi)
-       (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)
-       (source_tree toolchain.d)
-       (source_tree findlib-db))
- (action (chdir ${SCOPE_ROOT}
+  (glob_files %{SCOPE_ROOT}/src/.dune.objs/*.cmi)
+  (glob_files %{SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi)
+  (source_tree toolchain.d)
+  (source_tree findlib-db))
+ (action (chdir %{SCOPE_ROOT}
           (progn
-           (run ${exe:expect_test.exe} ${<})
-           (diff? ${<} ${<}.corrected)))))
+           (run %{exe:expect_test.exe} %{<})
+           (diff? %{<} %{<}.corrected)))))
 
 (alias
  (name runtest)
  (deps filename.mlt
-       (glob_files ${SCOPE_ROOT}/src/.dune.objs/*.cmi)
-       (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi))
- (action (chdir ${SCOPE_ROOT}
+  (glob_files %{SCOPE_ROOT}/src/.dune.objs/*.cmi)
+  (glob_files %{SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi))
+ (action (chdir %{SCOPE_ROOT}
           (progn
-           (run ${exe:expect_test.exe} ${<})
-           (diff? ${<} ${<}.corrected)))))
+           (run %{exe:expect_test.exe} %{<})
+           (diff? %{<} %{<}.corrected)))))
 
 (alias
  (name runtest)
  (deps import_dot_map.mlt
-       (glob_files ${SCOPE_ROOT}/src/.dune.objs/*.cmi)
-       (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi))
- (action (chdir ${SCOPE_ROOT}
+  (glob_files %{SCOPE_ROOT}/src/.dune.objs/*.cmi)
+  (glob_files %{SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi))
+ (action (chdir %{SCOPE_ROOT}
           (progn
-           (run ${exe:expect_test.exe} ${<})
-           (diff? ${<} ${<}.corrected)))))
+           (run %{exe:expect_test.exe} %{<})
+           (diff? %{<} %{<}.corrected)))))
 
 (alias
  (name runtest)
  (deps action.mlt
-       (glob_files ${SCOPE_ROOT}/src/.dune.objs/*.cmi)
-       (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi))
- (action (chdir ${SCOPE_ROOT}
+  (glob_files %{SCOPE_ROOT}/src/.dune.objs/*.cmi)
+  (glob_files %{SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi))
+ (action (chdir %{SCOPE_ROOT}
           (progn
-           (run ${exe:expect_test.exe} ${<})
-           (diff? ${<} ${<}.corrected)))))
+           (run %{exe:expect_test.exe} %{<})
+           (diff? %{<} %{<}.corrected)))))
 
 (alias
  (name runtest)
  (deps path.mlt
-       (glob_files ${SCOPE_ROOT}/src/.dune.objs/*.cmi)
-       (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi))
- (action (chdir ${SCOPE_ROOT}
+  (glob_files %{SCOPE_ROOT}/src/.dune.objs/*.cmi)
+  (glob_files %{SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi))
+ (action (chdir %{SCOPE_ROOT}
           (progn
-           (run ${exe:expect_test.exe} ${<})
-           (diff? ${<} ${<}.corrected)))))
+           (run %{exe:expect_test.exe} %{<})
+           (diff? %{<} %{<}.corrected)))))
 
 (alias
  (name runtest)
  (deps sexp.mlt
-       (glob_files ${SCOPE_ROOT}/src/.dune.objs/*.cmi)
-       (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi))
- (action (chdir ${SCOPE_ROOT}
+  (glob_files %{SCOPE_ROOT}/src/.dune.objs/*.cmi)
+  (glob_files %{SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi))
+ (action (chdir %{SCOPE_ROOT}
           (progn
-           (run ${exe:expect_test.exe} ${<})
-           (diff? ${<} ${<}.corrected)))))
+           (run %{exe:expect_test.exe} %{<})
+           (diff? %{<} %{<}.corrected)))))
 
 (alias
  (name runtest)
  (deps jbuild.mlt
-       (glob_files ${SCOPE_ROOT}/src/.dune.objs/*.cmi)
-       (glob_files ${SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi))
- (action (chdir ${SCOPE_ROOT}
+  (glob_files %{SCOPE_ROOT}/src/.dune.objs/*.cmi)
+  (glob_files %{SCOPE_ROOT}/src/stdune/.stdune.objs/*.cmi))
+ (action (chdir %{SCOPE_ROOT}
           (progn
-           (run ${exe:expect_test.exe} ${<})
-           (diff? ${<} ${<}.corrected)))))
+           (run %{exe:expect_test.exe} %{<})
+           (diff? %{<} %{<}.corrected)))))

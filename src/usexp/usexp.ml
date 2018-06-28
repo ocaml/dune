@@ -1,140 +1,59 @@
-module UnlabeledBytes = Bytes
-open StdLabels
+open Import
 
-module Bytes = struct
-  include StdLabels.Bytes
-
-  (* [blit_string] was forgotten from the labeled version in OCaml
-     4.02—4.04. *)
-  let blit_string ~src ~src_pos ~dst ~dst_pos ~len =
-    UnlabeledBytes.blit_string src src_pos dst dst_pos len
-end
-
+module Loc = Loc
 module Atom = Atom
+module Template = Template
 
-type t =
-  | Atom of Atom.t
-  | Quoted_string of string
-  | List of t list
+type syntax = Atom.syntax = Jbuild | Dune
 
-type sexp = t
+include Sexp
 
 let atom s = Atom (Atom.of_string s)
 
 let unsafe_atom_of_string s = atom s
 
-let atom_or_quoted_string s =
-  if Atom.is_valid_dune s then
-    Atom (Atom.of_string s)
-  else
-    Quoted_string s
+let rec to_string t ~syntax =
+  match t with
+  | Atom a -> Atom.print a syntax
+  | Quoted_string s -> Escape.quoted s ~syntax
+  | List l ->
+    Printf.sprintf "(%s)" (List.map l ~f:(to_string ~syntax)
+                           |> String.concat ~sep:" ")
+  | Template t -> Template.to_string t ~syntax
 
-let quote_length s =
-  let n = ref 0 in
-  for i = 0 to String.length s - 1 do
-    n := !n + (match String.unsafe_get s i with
-               | '\"' | '\\' | '\n' | '\t' | '\r' | '\b' -> 2
-               | ' ' .. '~' -> 1
-               | _ -> 4)
-  done;
-  !n
-
-let escape_to s ~dst:s' ~ofs =
-  let n = ref ofs in
-  for i = 0 to String.length s - 1 do
-    begin match String.unsafe_get s i with
-    | ('\"' | '\\') as c ->
-       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n c
-    | '\n' ->
-       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 'n'
-    | '\t' ->
-       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 't'
-    | '\r' ->
-       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 'r'
-    | '\b' ->
-       Bytes.unsafe_set s' !n '\\'; incr n; Bytes.unsafe_set s' !n 'b'
-    | (' ' .. '~') as c -> Bytes.unsafe_set s' !n c
-    | c ->
-       let a = Char.code c in
-       Bytes.unsafe_set s' !n '\\';
-       incr n;
-       Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + a / 100));
-       incr n;
-       Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + (a / 10) mod 10));
-       incr n;
-       Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + a mod 10));
-    end;
-    incr n
-  done
-
-(* Escape [s] if needed. *)
-let escaped s =
-  let n = quote_length s in
-  if n = 0 || n > String.length s then
-    let s' = Bytes.create n in
-    escape_to s ~dst:s' ~ofs:0;
-    Bytes.unsafe_to_string s'
-  else s
-
-(* Surround [s] with quotes, escaping it if necessary. *)
-let quoted s =
-  let len = String.length s in
-  let n = quote_length s in
-  let s' = Bytes.create (n + 2) in
-  Bytes.unsafe_set s' 0 '"';
-  if len = 0 || n > len then
-    escape_to s ~dst:s' ~ofs:1
-  else
-    Bytes.blit_string ~src:s ~src_pos:0 ~dst:s' ~dst_pos:1 ~len;
-  Bytes.unsafe_set s' (n + 1) '"';
-  Bytes.unsafe_to_string s'
-
-let rec to_string = function
-  | Atom a -> Atom.print a Atom.Dune
-  | Quoted_string s -> quoted s
-  | List l -> Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
-
-let rec pp ppf = function
+let rec pp syntax ppf = function
   | Atom s ->
-    Format.pp_print_string ppf (Atom.print s Atom.Dune)
+    Format.pp_print_string ppf (Atom.print s syntax)
   | Quoted_string s ->
-    Format.pp_print_string ppf (quoted s)
+    Format.pp_print_string ppf (Escape.quoted ~syntax s)
   | List [] ->
     Format.pp_print_string ppf "()"
   | List (first :: rest) ->
     Format.pp_open_box ppf 1;
     Format.pp_print_string ppf "(";
     Format.pp_open_hvbox ppf 0;
-    pp ppf first;
+    pp syntax ppf first;
     List.iter rest ~f:(fun sexp ->
       Format.pp_print_space ppf ();
-      pp ppf sexp);
+      pp syntax ppf sexp);
     Format.pp_close_box ppf ();
     Format.pp_print_string ppf ")";
     Format.pp_close_box ppf ()
-
-let split_string s ~on =
-  let rec loop i j =
-    if j = String.length s then
-      [String.sub s ~pos:i ~len:(j - i)]
-    else if s.[j] = on then
-      String.sub s ~pos:i ~len:(j - i) :: loop (j + 1) (j + 1)
-    else
-      loop i (j + 1)
-  in
-  loop 0 0
+  | Template t -> Template.pp syntax ppf t
 
 let pp_print_quoted_string ppf s =
+  let syntax = Dune in
   if String.contains s '\n' then begin
-    match split_string s ~on:'\n' with
-    | [] -> Format.pp_print_string ppf (quoted s)
+    match String.split_on_char s ~on:'\n' with
+    | [] -> Format.pp_print_string ppf (Escape.quoted ~syntax s)
     | first :: rest ->
-       Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (escaped first);
+       Format.fprintf ppf "@[<hv 1>\"@{<atom>%s"
+         (Escape.escaped ~syntax first);
        List.iter rest ~f:(fun s ->
-           Format.fprintf ppf "@,\\n%s" (escaped s));
+           Format.fprintf ppf "@,\\n%s" (Escape.escaped ~syntax s));
        Format.fprintf ppf "@}\"@]"
   end else
-    Format.pp_print_string ppf (quoted s)
+    Format.pp_print_string ppf (Escape.quoted ~syntax s)
 
 let rec pp_split_strings ppf = function
   | Atom s -> Format.pp_print_string ppf (Atom.print s Atom.Dune)
@@ -152,6 +71,7 @@ let rec pp_split_strings ppf = function
     Format.pp_close_box ppf ();
     Format.pp_print_string ppf ")";
     Format.pp_close_box ppf ()
+  | Template t -> Template.pp_split_strings ppf t
 
 type formatter_state =
   | In_atom
@@ -196,40 +116,26 @@ let prepare_formatter ppf =
            | _ -> n))
     }
 
-module Loc = struct
-  type t =
-    { start : Lexing.position
-    ; stop  : Lexing.position
-    }
-
-  let in_file fn =
-    let pos : Lexing.position =
-      { pos_fname = fn
-      ; pos_lnum  = 1
-      ; pos_cnum  = 0
-      ; pos_bol   = 0
-      }
-    in
-    { start = pos
-    ; stop = pos
-    }
-end
-
 module Ast = struct
   type t =
     | Atom of Loc.t * Atom.t
     | Quoted_string of Loc.t * string
+    | Template of Template.t
     | List of Loc.t * t list
 
   let atom_or_quoted_string loc s =
-    match atom_or_quoted_string s with
+    match Sexp.atom_or_quoted_string s with
     | Atom a -> Atom (loc, a)
     | Quoted_string s -> Quoted_string (loc, s)
+    | Template _
     | List _ -> assert false
 
-  let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)) = loc
+  let loc (Atom (loc, _) | Quoted_string (loc, _) | List (loc, _)
+          | Template { loc ; _ }) = loc
 
-  let rec remove_locs : t -> sexp = function
+  let rec remove_locs t : Sexp.t =
+    match t with
+    | Template t -> Template (Template.remove_locs t)
     | Atom (_, s) -> Atom s
     | Quoted_string (_, s) -> Quoted_string s
     | List (_, l) -> List (List.map l ~f:remove_locs)
@@ -240,6 +146,7 @@ let rec add_loc t ~loc : Ast.t =
   | Atom s -> Atom (loc, s)
   | Quoted_string s -> Quoted_string (loc, s)
   | List l -> List (loc, List.map l ~f:(add_loc ~loc))
+  | Template t -> Template { t with loc }
 
 module Parse_error = struct
   include Lexer.Error
@@ -298,6 +205,9 @@ module Parser = struct
     | Quoted_string s ->
       let loc = make_loc lexbuf in
       loop depth lexer lexbuf (Quoted_string (loc, s) :: acc)
+    | Template t ->
+      let loc = make_loc lexbuf in
+      loop depth lexer lexbuf (Template { t with loc } :: acc)
     | Lparen ->
       let start = Lexing.lexeme_start_p lexbuf in
       let sexps = loop (depth + 1) lexer lexbuf [] in

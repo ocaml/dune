@@ -46,6 +46,7 @@ type t =
   ; requires             : Lib.t list Or_exn.t
   ; includes             : Includes.t
   ; preprocessing        : Preprocessing.t
+  ; no_keep_locs         : bool
   }
 
 let super_context        t = t.super_context
@@ -60,10 +61,11 @@ let flags                t = t.flags
 let requires             t = t.requires
 let includes             t = t.includes
 let preprocessing        t = t.preprocessing
+let no_keep_locs         t = t.no_keep_locs
 
 let create ~super_context ~scope ~dir ?(dir_kind=File_tree.Dune_file.Kind.Dune)
       ?(obj_dir=dir) ~modules ?alias_module ?lib_interface_module ~flags
-      ~requires ?(preprocessing=Preprocessing.dummy) () =
+      ~requires ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false) () =
   { super_context
   ; scope
   ; dir
@@ -76,6 +78,7 @@ let create ~super_context ~scope ~dir ?(dir_kind=File_tree.Dune_file.Kind.Dune)
   ; requires
   ; includes = Includes.make super_context ~requires
   ; preprocessing
+  ; no_keep_locs
   }
 
 let for_alias_module t =

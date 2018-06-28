@@ -3,12 +3,8 @@
  (public_name dune.which-program)
  (synopsis    "[Internal] Standard library of Dune")
  (wrapped     false)
- (flags       (:standard (:include no-keep-locs)))
+ (no_keep_locs)
  (modules_without_implementation which_program))
 
 ; To avoid issues on Windows and OSX
 (rule (with-stdout-to which_program_dummy.ml (echo "")))
-
-(rule
- (with-stdout-to no-keep-locs
-  (run %{OCAML} %{path:gen-no-keep-locs} %{ocaml_version})))

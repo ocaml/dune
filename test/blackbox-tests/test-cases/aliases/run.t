@@ -13,7 +13,7 @@
   running in src
   $ dune build --display short @plop
   From the command line:
-  Error: Alias plop is empty.
+  Error: Alias "plop" is empty.
   It is not defined in . or any of its descendants.
   [1]
   $ dune build --display short @truc/x

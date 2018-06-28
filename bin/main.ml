@@ -114,7 +114,20 @@ end
 
 type target =
   | File      of Path.t
+  | Alias     of Path.t
   | Alias_rec of Path.t
+
+let parse_alias path ~contexts =
+  let dir = Path.parent_exn path in
+  let name = Path.basename path in
+  match Path.extract_build_context dir with
+  | None -> (contexts, dir, name)
+  | Some ("install", _) ->
+    die "Invalid alias: %s.\n\
+         There are no aliases in %s."
+      (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
+      (Path.to_string_maybe_quoted path)
+  | Some (ctx, dir) -> ([ctx], dir, name)
 
 let request_of_targets (setup : Main.setup) targets =
   let open Build.O in
@@ -123,19 +136,12 @@ let request_of_targets (setup : Main.setup) targets =
     acc >>>
     match target with
     | File path -> Build.path path
+    | Alias path ->
+      let contexts, dir, name = parse_alias path ~contexts in
+      Build_system.Alias.dep_multi_contexts ~dir ~name
+        ~file_tree:setup.file_tree ~contexts
     | Alias_rec path ->
-      let dir = Path.parent_exn path in
-      let name = Path.basename path in
-      let contexts, dir =
-        match Path.extract_build_context dir with
-        | None -> (contexts, dir)
-        | Some ("install", _) ->
-          die "Invalid alias: %s.\n\
-               There are no aliases in %s."
-            (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
-            (Path.to_string_maybe_quoted path)
-        | Some (ctx, dir) -> ([ctx], dir)
-      in
+      let contexts, dir, name = parse_alias path ~contexts in
       Build_system.Alias.dep_rec_multi_contexts ~dir ~name
         ~file_tree:setup.file_tree ~contexts)
 
@@ -680,7 +686,13 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
     let targets =
       List.map user_targets ~f:(fun s ->
         if String.is_prefix s ~prefix:"@" then begin
-          let s = String.sub s ~pos:1 ~len:(String.length s - 1) in
+          let pos, is_rec =
+            if String.length s >= 2 && s.[1] = '@' then
+              (2, false)
+            else
+              (1, true)
+          in
+          let s = String.sub s ~pos ~len:(String.length s - pos) in
           let path = Path.relative Path.root (prefix_target common s) in
           check_path path;
           if Path.is_root path then
@@ -688,7 +700,7 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
           else if not (Path.is_managed path) then
             die "@@ on the command line must be followed by a relative path"
           else
-            Ok [Alias_rec path]
+            Ok [if is_rec then Alias_rec path else Alias path]
         end else begin
           let path = Path.relative Path.root (prefix_target common s) in
           check_path path;
@@ -725,6 +737,9 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
       List.iter targets ~f:(function
         | File path ->
           Log.info log @@ "- " ^ (Path.to_string path)
+        | Alias path ->
+          Log.info log @@ "- alias " ^
+                          (Path.to_string_maybe_quoted path)
         | Alias_rec path ->
           Log.info log @@ "- recursive alias " ^
                           (Path.to_string_maybe_quoted path));
@@ -1316,7 +1331,7 @@ let utop =
          match resolve_targets_exn ~log common setup [utop_target] with
          | [] -> die "no libraries defined in %s" dir
          | [File target] -> target
-         | [Alias_rec _] | _::_::_ -> assert false
+         | _ -> assert false
        in
        do_build setup [File target] >>| fun () ->
        (setup.build_system, context, Path.to_string target)

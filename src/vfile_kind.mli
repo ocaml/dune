@@ -23,5 +23,6 @@ module Make
     (T : sig
        type t
        val t : t Sexp.To_sexp.t
+       val name : string
      end)
   : S with type t = T.t

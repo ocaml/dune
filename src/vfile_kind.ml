@@ -46,6 +46,7 @@ module Make
     (T : sig
        type t
        val t : t Sexp.To_sexp.t
+       val name : string
      end)
   : S with type t = T.t =
 struct
@@ -56,7 +57,7 @@ struct
 
   module P = Utils.Persistent(struct
       type nonrec t = t
-      let name = "VFILE_KIND"
+      let name = "VFILE_KIND-" ^ T.name
       let version = 1
     end)
 

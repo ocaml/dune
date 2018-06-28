@@ -6,7 +6,7 @@ module Ast = struct
   type unexpanded = Unexpanded
   type ('a, _) t =
     | Element : 'a -> ('a, _) t
-    | Special : Loc.t * string -> ('a, _) t
+    | Standard : ('a, _) t
     | Union : ('a, 'b) t list -> ('a, 'b) t
     | Diff : ('a, 'b) t * ('a, 'b) t -> ('a, 'b) t
     | Include : String_with_vars.t -> ('a, unexpanded) t
@@ -15,51 +15,75 @@ end
 type 'ast generic =
   { ast : 'ast
   ; loc : Loc.t option
-  ; context: Univ_map.t
+  ; context : Univ_map.t (* Parsing context for Sexp.Of_sexp.parse *)
   }
 
 type ast_expanded = (Loc.t * string, Ast.expanded) Ast.t
 type t = ast_expanded generic
 let loc t = t.loc
 
-let parse_general sexp ~f =
-  let rec of_sexp : Sexp.Ast.t -> _ = function
-    | Atom (loc, A "\\") -> Loc.fail loc "unexpected \\"
-    | (Atom (_, A "") | Quoted_string (_, _) | Template _ ) as t ->
-      Ast.Element (f t)
-    | Atom (loc, A s) as t ->
-      if s.[0] = ':' then
-        Special (loc, String.sub s ~pos:1 ~len:(String.length s - 1))
-      else
-        Element (f t)
-    | List (_, sexps) -> of_sexps [] sexps
-  and of_sexps acc = function
-    | Atom (_, A "\\") :: sexps ->
-       Diff (Union (List.rev acc), of_sexps [] sexps)
-    | elt :: sexps ->
-      of_sexps (of_sexp elt :: acc) sexps
-    | [] -> Union (List.rev acc)
-  in
-  of_sexp sexp
+module Parse = struct
+  open Stanza.Of_sexp
+  open Ast
+
+  let generic ~inc ~elt =
+    let open Stanza.Of_sexp in
+    let rec one () =
+      peek_exn >>= function
+      | Atom (loc, A "\\") -> Loc.fail loc "unexpected \\"
+      | (Atom (_, A "") | Quoted_string (_, _)) | Template _ ->
+        elt >>| fun x -> Element x
+      | Atom (loc, A s) -> begin
+          match s with
+          | ":standard" ->
+            junk >>> return Standard
+          | ":include" ->
+            Loc.fail loc
+              "Invalid use of :include, should be: (:include <filename>)"
+          | _ when s.[0] = ':' ->
+            Loc.fail loc "undefined symbol %s" s
+          | _ ->
+            elt >>| fun x -> Element x
+        end
+      | List (_, Atom (_, A ":include") :: _) -> inc
+      | List _ -> enter (many [])
+    and many acc =
+      peek >>= function
+      | None -> return (Union (List.rev acc))
+      | Some (Atom (_, A "\\")) ->
+        junk >>> many [] >>| fun to_remove ->
+        Diff (Union (List.rev acc), to_remove)
+      | Some _ ->
+        one () >>= fun x ->
+        many (x :: acc)
+    in
+    one ()
+
+  let with_include ~elt =
+    generic ~elt ~inc:(
+      sum [ ":include",
+            String_with_vars.t >>| fun s ->
+            Include s
+          ])
+
+  let without_include ~elt =
+    generic ~elt ~inc:(
+      enter
+        (loc >>= fun loc ->
+         Loc.fail loc "(:include ...) is not allowed here"))
+end
+
 
 let t =
-  let open Sexp.Of_sexp in
-  context >>= fun context ->
-  raw >>| fun sexp ->
-  let ast =
-    parse_general sexp ~f:(function
-      | Template t -> no_templates t.loc "here"
-      | Atom (loc, A s) | Quoted_string (loc, s) -> (loc, s)
-      | List _ -> assert false)
-  in
-  { ast
-  ; loc = Some (Sexp.Ast.loc sexp)
-  ; context
-  }
+  let open Stanza.Of_sexp in
+  get_all >>= fun context ->
+  located (Parse.without_include ~elt:(plain_string (fun ~loc s -> (loc, s))))
+  >>| fun (loc, ast) ->
+  { ast; loc = Some loc; context }
 
 let is_standard t =
   match (t.ast : ast_expanded) with
-  | Ast.Special (_, "standard") -> true
+  | Ast.Standard -> true
   | _ -> false
 
 module type Value = sig
@@ -101,18 +125,14 @@ module Make(Key : Key)(Value : Value with type key = Key.t) = struct
   end
 
   module Make(M : Named_values) = struct
-    let eval t ~parse ~special_values =
+    let eval t ~parse ~standard =
       let rec of_ast (t : ast_expanded) =
         let open Ast in
         match t with
         | Element (loc, s) ->
           let x = parse ~loc s in
           M.singleton x
-        | Special (loc, name) -> begin
-            match String.Map.find special_values name with
-            | Some x -> x
-            | None   -> Loc.fail loc "undefined symbol %s" name
-          end
+        | Standard -> standard
         | Union elts -> M.union (List.map elts ~f:of_ast)
         | Diff (left, right) ->
           let left  = of_ast left  in
@@ -159,19 +179,17 @@ module Make(Key : Key)(Value : Value with type key = Key.t) = struct
     if is_standard t then
       standard (* inline common case *)
     else
-      Ordered.eval t ~parse
-        ~special_values:(String.Map.singleton "standard" standard)
+      Ordered.eval t ~parse ~standard
 
   let eval_unordered t ~parse ~standard =
     if is_standard t then
       standard (* inline common case *)
     else
-      Unordered.eval t ~parse
-        ~special_values:(String.Map.singleton "standard" standard)
+      Unordered.eval t ~parse ~standard
 end
 
 let standard =
-  { ast = Ast.Special (Loc.none, "standard")
+  { ast = Ast.Standard
   ; loc = None
   ; context = Univ_map.empty
   }
@@ -179,55 +197,41 @@ let standard =
 let field ?(default=standard) name = Sexp.Of_sexp.field name t ~default
 
 module Unexpanded = struct
-  type ast = (Sexp.Ast.t, Ast.unexpanded) Ast.t
+  type ast = (String_with_vars.t, Ast.unexpanded) Ast.t
   type t = ast generic
   let t =
-    let open Sexp.Of_sexp in
-    context >>= fun context ->
-    raw >>| fun sexp ->
-    let rec map (t : (Sexp.Ast.t, Ast.expanded) Ast.t) =
-      let open Ast in
-      match t with
-      | Element x -> Element x
-      | Union [Special (_, "include"); Element fn] ->
-        Include (Sexp.Of_sexp.parse String_with_vars.t context fn)
-      | Union [Special (loc, "include"); _]
-      | Special (loc, "include") ->
-        Loc.fail loc "(:include expects a single element (do you need to quote the filename?)"
-      | Special (l, s) -> Special (l, s)
-      | Union l ->
-        Union (List.map l ~f:map)
-      | Diff (l, r) ->
-        Diff (map l, map r)
-    in
-    { ast = map (parse_general sexp ~f:(fun x -> x))
-    ; loc = Some (Sexp.Ast.loc sexp)
+    let open Stanza.Of_sexp in
+    get_all >>= fun context ->
+    located (Parse.with_include ~elt:String_with_vars.t)
+    >>| fun (loc, ast) ->
+    { ast
+    ; loc = Some loc
     ; context
     }
 
   let sexp_of_t t =
     let open Ast in
     let rec loop : ast -> Sexp.t = function
-      | Element sexp -> Usexp.Ast.remove_locs sexp
-      | Special (_, s) -> Sexp.atom (":" ^ s)
+      | Element s -> String_with_vars.sexp_of_t s
+      | Standard -> Sexp.atom ":standard"
       | Union l -> List (List.map l ~f:loop)
       | Diff (a, b) -> List [loop a; Sexp.unsafe_atom_of_string "\\"; loop b]
-      | Include fn -> List [ Sexp.unsafe_atom_of_string ":include"
-                           ; String_with_vars.sexp_of_t fn
-                           ]
+      | Include fn ->
+        List [ Sexp.unsafe_atom_of_string ":include"
+             ; String_with_vars.sexp_of_t fn
+             ]
     in
     loop t.ast
 
   let standard = standard
 
-  let field ?(default=standard) name = Sexp.Of_sexp.field name t ~default
+  let field ?(default=standard) name = Stanza.Of_sexp.field name t ~default
 
   let files t ~f =
     let rec loop acc (t : ast) =
       let open Ast in
       match t with
-      | Element _
-      | Special _ -> acc
+      | Element _ | Standard -> acc
       | Include fn ->
         String.Set.add acc (f fn)
       | Union l ->
@@ -246,7 +250,7 @@ module Unexpanded = struct
     let rec loop (t : ast) =
       let open Ast in
       match t with
-      | Special _ | Include _ -> true
+      | Standard | Include _ -> true
       | Element _ -> false
       | Union l ->
         List.exists l ~f:loop
@@ -261,11 +265,8 @@ module Unexpanded = struct
     let rec expand (t : ast) : ast_expanded =
       let open Ast in
       match t with
-      | Element s ->
-        Element ( Sexp.Ast.loc s
-                , f (Sexp.Of_sexp.parse String_with_vars.t context s)
-                )
-      | Special (l, s) -> Special (l, s)
+      | Element s -> Element (String_with_vars.loc s, f s)
+      | Standard -> Standard
       | Include fn ->
         let sexp =
           let fn = f fn in
@@ -279,9 +280,13 @@ module Unexpanded = struct
                            (String.Map.keys files_contents)
               ]
         in
-        parse_general sexp ~f:(fun sexp ->
-          (Sexp.Ast.loc sexp,
-           f (Sexp.Of_sexp.parse String_with_vars.t context sexp)))
+        let open Stanza.Of_sexp in
+        parse
+          (Parse.without_include
+             ~elt:(String_with_vars.t >>| fun s ->
+                   (String_with_vars.loc s, f s)))
+          context
+          sexp
       | Union l -> Union (List.map l ~f:expand)
       | Diff (l, r) ->
         Diff (expand l, expand r)

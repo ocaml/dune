@@ -37,6 +37,7 @@ module Repr = struct
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t
     | Catch : ('a, 'b) t * (exn -> 'b) -> ('a, 'b) t
+    | Lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
 
   and 'a memo =
     { name          : string
@@ -131,6 +132,8 @@ let rec all = function
     t &&& all ts
     >>>
     arr (fun (x, y) -> x :: y)
+
+let lazy_no_targets t = Lazy_no_targets t
 
 let path p = Paths (Path.Set.singleton p)
 let paths ps = Paths (Path.Set.of_list ps)

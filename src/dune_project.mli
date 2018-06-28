@@ -66,9 +66,12 @@ module Extension : sig
   val register : Syntax.t -> Stanza.Parser.t list Sexp.Of_sexp.t -> unit
 end
 
-(** Load a project description from the following directory. [files]
-    is the set of files in this directory. *)
-val load : dir:Path.t -> files:String.Set.t -> t option
+(** Load a project description from the following directory. Return
+    the s-expressions that were not interpreted in the file, so that
+    they can be interpreted as stanzas latter on.
+
+    [files] is the set of files in this directory. *)
+val load : dir:Path.t -> files:String.Set.t -> (t * Sexp.Ast.t list) option
 
 (** Read the [name] file from a dune-project file *)
 val read_name : Path.t -> string option

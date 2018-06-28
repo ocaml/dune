@@ -206,17 +206,20 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
           ~compare:(fun (a, _, _) (b, _, _) -> String.compare a b)
           sub_dirs
       in
-      let project =
-        match Dune_project.load ~dir:path ~files with
-        | Some x -> x
-        | None   -> project
-      in
-      let dune_files, ignored_subdirs =
+      let project, dune_files, ignored_subdirs =
         if ignored then
-          ([], String.Set.empty)
+          (project, [], String.Set.empty)
         else
+          let project, stanzas_from_project_file =
+            match Dune_project.load ~dir:path ~files with
+            | Some x -> x
+            | None   -> (project, [])
+          in
+          let ignored_subdirs, stanzas_from_project_file =
+            Dune_file.extract_ignored_subdirs stanzas_from_project_file
+          in
           let dune_files, ignored_subdirs =
-            List.fold_left ["jbuild"; "dune"] ~init:([], String.Set.empty)
+            List.fold_left ["jbuild"; "dune"] ~init:([], ignored_subdirs)
               ~f:(fun (dune_files, ignored_subdirs) fn ->
                 if not (String.Set.mem files fn) then
                   (dune_files, ignored_subdirs)
@@ -238,7 +241,19 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             else
               ignored_subdirs
           in
-          (dune_files, ignored_subdirs)
+          let dune_files =
+            match stanzas_from_project_file with
+            | [] -> dune_files
+            | sexps ->
+              { Dune_file.
+                kind = Dune
+              ; contents =
+                  Plain { path = Path.relative path Dune_project.filename
+                        ; sexps
+                        }
+              } :: dune_files
+          in
+          (project, dune_files, ignored_subdirs)
       in
       let sub_dirs =
         List.fold_left sub_dirs ~init:String.Map.empty

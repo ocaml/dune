@@ -325,53 +325,56 @@ let name ~dir ~packages =
   | None   -> return (default_name ~dir ~packages)
 
 let parse ~dir ~lang ~packages ~file =
-  fields
-    (name ~dir ~packages >>= fun name ->
-     field_o "version" string >>= fun version ->
-     multi_field "using"
-       (loc >>= fun loc ->
-        located string >>= fun name ->
-        located Syntax.Version.t >>= fun ver ->
-        (* We don't parse the arguments quite yet as we want to set
-           the version of extensions before parsing them. *)
-        capture >>= fun parse_args ->
-        return (Extension.instantiate ~loc ~parse_args name ver))
-     >>= fun extensions ->
-     match
-       String.Map.of_list
-         (List.map extensions ~f:(fun (e : Extension.instance) ->
-            (Syntax.name e.extension.syntax, e.loc)))
-     with
-     | Error (name, _, loc) ->
-       Loc.fail loc "Extension %S specified for the second time." name
-     | Ok map ->
-       let project_file : Project_file.t = { file; exists = true } in
-       let extensions =
-         extensions @
-         Extension.automatic ~project_file
-           ~f:(fun name -> not (String.Map.mem map name))
-       in
-       let parsing_context = make_parsing_context ~lang ~extensions in
-       let stanzas =
-         List.concat
-           (lang.data ::
-            List.map extensions ~f:(fun (ext : Extension.instance) ->
-              ext.parse_args
-                (Sexp.Of_sexp.set_many parsing_context ext.extension.stanzas)))
-       in
-       return
-         { kind = Dune
-         ; name
-         ; root = get_local_path dir
-         ; version
-         ; packages
-         ; stanza_parser = Sexp.Of_sexp.(set_many parsing_context (sum stanzas))
-         ; project_file
-         })
+  name ~dir ~packages >>= fun name ->
+  field_o "version" string >>= fun version ->
+  multi_field "using"
+    (loc >>= fun loc ->
+     located string >>= fun name ->
+     located Syntax.Version.t >>= fun ver ->
+     (* We don't parse the arguments quite yet as we want to set
+        the version of extensions before parsing them. *)
+     capture >>= fun parse_args ->
+     return (Extension.instantiate ~loc ~parse_args name ver))
+  >>= fun extensions ->
+  match
+    String.Map.of_list
+      (List.map extensions ~f:(fun (e : Extension.instance) ->
+         (Syntax.name e.extension.syntax, e.loc)))
+  with
+  | Error (name, _, loc) ->
+    Loc.fail loc "Extension %S specified for the second time." name
+  | Ok map ->
+    let project_file : Project_file.t = { file; exists = true } in
+    let extensions =
+      extensions @
+      Extension.automatic ~project_file
+        ~f:(fun name -> not (String.Map.mem map name))
+    in
+    let parsing_context = make_parsing_context ~lang ~extensions in
+    let stanzas =
+      List.concat
+        (lang.data ::
+         List.map extensions ~f:(fun (ext : Extension.instance) ->
+           ext.parse_args
+             (Sexp.Of_sexp.set_many parsing_context ext.extension.stanzas)))
+    in
+    return
+      { kind = Dune
+      ; name
+      ; root = get_local_path dir
+      ; version
+      ; packages
+      ; stanza_parser = Sexp.Of_sexp.(set_many parsing_context (sum stanzas))
+      ; project_file
+      }
 
 let load_dune_project ~dir packages =
   let file = Path.relative dir filename in
-  load file ~f:(fun lang -> parse ~dir ~lang ~packages ~file)
+  load file ~f:(fun lang ->
+    fields
+      (parse ~dir ~lang ~packages ~file >>= fun t ->
+       remaining_fields_as_values (repeat raw) >>= fun sexps ->
+       return (t, sexps)))
 
 let make_jbuilder_project ~dir packages =
   let lang = Lang.get_exn "dune" in
@@ -417,6 +420,6 @@ let load ~dir ~files =
   if String.Set.mem files filename then
     Some (load_dune_project ~dir packages)
   else if not (Package.Name.Map.is_empty packages) then
-    Some (make_jbuilder_project ~dir packages)
+    Some (make_jbuilder_project ~dir packages, [])
   else
     None

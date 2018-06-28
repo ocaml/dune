@@ -347,12 +347,26 @@ let common =
          & info ["dev"] ~docs
              ~doc:{|Same as $(b,--profile dev)|})
   in
+  let dev =
+    match Which_program.t with
+    | Jbuilder -> dev
+    | Dune ->
+      let check = function
+        | false -> `Ok false
+        | true ->
+          `Error (true, "--dev is no longer accepted as it is now the default.")
+      in
+      Term.(ret (const check $ dev))
+  in
   let profile =
     Arg.(value
          & opt (some string) None
          & info ["profile"] ~docs
-             ~doc:{|Select the build profile, for instance $(b,dev) or $(b,release).
-                    The default is $(b,default).|})
+             ~doc:
+               (sprintf
+                  {|Select the build profile, for instance $(b,dev) or
+                    $(b,release). The default is $(b,%s).|}
+                  Config.default_build_profile))
   in
   let profile =
     let merge dev profile =
@@ -567,7 +581,7 @@ let installed_libraries =
     Scheduler.go ~log:(Log.create common) ~common
       (Context.create
          (Default { targets = [Native]
-                  ; profile = "default" })
+                  ; profile = Config.default_build_profile })
          ~env
        >>= fun ctxs ->
        let ctx = List.hd ctxs in
@@ -1538,7 +1552,7 @@ let default =
         ]
   )
 
-let () =
+let main () =
   Colors.setup_err_formatter_colors ();
   try
     match Term.eval_choice default all ~catch:false with

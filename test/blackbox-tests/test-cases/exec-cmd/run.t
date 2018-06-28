@@ -8,7 +8,7 @@
       ocamlopt .foo.eobjs/foo.{cmx,o}
       ocamlopt foo.exe
   Foo
-  $ dune exec --dev ./foo.exe --display short
+  $ dune exec --profile release ./foo.exe --display short
         ocamlc .foo.eobjs/foo.{cmi,cmo,cmt}
       ocamlopt .foo.eobjs/foo.{cmx,o}
       ocamlopt foo.exe

@@ -8,8 +8,8 @@ license: "MIT"
 build: [
   ["ocaml" "configure.ml" "--libdir" lib]
   ["ocaml" "bootstrap.ml"]
-  ["./boot.exe" "--subst"] {pinned}
-  ["./boot.exe" "-j" jobs]
+  ["./boot.exe" "--release" "--subst"] {pinned}
+  ["./boot.exe" "--release" "-j" jobs]
 ]
 available: [ ocaml-version >= "4.02.3" ]
 conflicts: [

@@ -1,0 +1,8 @@
+(* -*- tuared -*- *)
+
+let () =
+  let ver = Scanf.sscanf Sys.argv.(1) "%u.%u" (fun a b -> a, b) in
+  if ver >= (4, 03) then
+    print_endline "(-no-keep-locs)"
+  else
+    print_endline "()"

@@ -6,15 +6,15 @@
 # the current test succeeds. It uses inotifywait to detect changes to
 # the test.
 
-DUNE=_build/default/bin/main.exe
+DUNE=_build/default/bin/main_dune.exe
 
 LIST=$(mktemp)
 trap "rm -f $LIST" EXIT
 
 echo "Computing the list of failing tests..."
 $DUNE runtest test/blackbox-tests \
-      --diff-command "echo >> $LIST" --dev &> /dev/null
-TESTS=$(cat /tmp/list |cut -d/ -f4 |sed 's/^//')
+      --diff-command "echo >> $LIST" &> /dev/null
+TESTS=$(cat $LIST |cut -d/ -f4 |sed 's/^//')
 rm -f $LIST
 
 count=0
@@ -32,7 +32,7 @@ for t in $TESTS; do
         echo "$title"
         echo "${title//?/=}"
         echo
-        $DUNE build --dev @test/blackbox-tests/$t && break
+        $DUNE build @test/blackbox-tests/$t && break
         inotifywait $(find test/blackbox-tests/test-cases/$t -type d) \
                     -e modify,attrib,close_write,move,create,delete
     done

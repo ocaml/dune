@@ -120,7 +120,7 @@ let t ?x ?profile:cmdline_profile sexps =
     | _ :: (loc, _) :: _, _ ->
       Loc.fail loc "profile defined too many times"
     | _, Some p -> p
-    | [], None -> "default"
+    | [], None -> Config.default_build_profile
     | [(_, p)], None -> p
   in
   let { merlin_context; contexts } =

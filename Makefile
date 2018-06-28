@@ -1,13 +1,13 @@
 INSTALL_ARGS := $(if $(PREFIX),--prefix $(PREFIX),)
-BIN := ./_build/default/bin/main.exe
+BIN := ./_build/default/bin/main_dune.exe
 
 -include Makefile.dev
 
 default: boot.exe
-	./boot.exe --dev
+	./boot.exe
 
 release: boot.exe
-	./boot.exe
+	./boot.exe --release
 
 boot.exe: bootstrap.ml
 	ocaml bootstrap.ml
@@ -21,13 +21,13 @@ uninstall:
 reinstall: uninstall reinstall
 
 test:
-	$(BIN) runtest --dev
+	$(BIN) runtest
 
 test-js:
-	$(BIN) build @runtest-js --dev
+	$(BIN) build @runtest-js
 
 test-all:
-	$(BIN) build @runtest @runtest-js --dev
+	$(BIN) build @runtest @runtest-js
 
 promote:
 	$(BIN) promote
@@ -35,7 +35,7 @@ promote:
 accept-corrections: promote
 
 all-supported-ocaml-versions:
-	$(BIN) build --dev @install @runtest --workspace dune-workspace.dev --root .
+	$(BIN) build @install @runtest --workspace dune-workspace.dev --root .
 
 clean:
 	$(BIN) clean
@@ -52,7 +52,7 @@ livedoc:
 	  -p 8888 -q  --host $(shell hostname) -r '\.#.*'
 
 update-jbuilds: $(BIN)
-	$(BIN) build --dev @doc/runtest --auto-promote
+	$(BIN) build @doc/runtest --auto-promote
 
 .PHONY: default install uninstall reinstall clean test doc
 .PHONY: promote accept-corrections opam-release

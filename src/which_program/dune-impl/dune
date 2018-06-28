@@ -1,0 +1,7 @@
+(library
+ (name        which_program_dune)
+ (public_name dune.which-program.dune)
+ (wrapped     false)
+ (flags       (:standard (:include ../no-keep-locs))))
+
+(rule (copy# ../which_program.mli which_program.mli))

@@ -224,7 +224,7 @@ follows:
 
 ::
 
-    build: [["jbuilder" "build" "-p" name "-j" jobs]]
+    build: [["dune" "build" "-p" name "-j" jobs]]
 
 ``-p pkg`` is a shorthand for ``--root . --only-packages pkg --profile
 release``. ``-p`` is the short version of
@@ -364,7 +364,7 @@ write a ``(profile ...)`` stanza. For instance:
 
 .. code:: scheme
 
-    (profile dev)
+    (profile release)
 
 Note that the command line option ``--profile`` has precedence over
 this stanza.
@@ -436,8 +436,9 @@ It supports two modes of compilation:
   separately and then linked together. This mode is useful during development as
   it builds more quickly.
 
-The separate compilation mode will be selected when passing ``--dev`` to
-jbuilder. There is currently no other way to control this behaviour.
+The separate compilation mode will be selected when the build profile
+is ``dev``, which is the default. There is currently no other way to
+control this behaviour.
 
 See the section about :ref:`jbuild-jsoo` for passing custom flags to the
 js_of_ocaml compiler

@@ -7,7 +7,7 @@ install:
 build_script:
   - cd "%APPVEYOR_BUILD_FOLDER%"
   - ocaml bootstrap.ml
-  - boot.exe --dev
+  - boot.exe
   - copy _build\install\default\bin\dune.exe dune.exe
   - dune.exe build @test\blackbox-tests\windows-diff
 

@@ -8,27 +8,27 @@
   (lint
    (per_module
     ((pps (reasonppx (-lint true))) (hello cppome))
-    ((action (run ./pp/reasononlypp.exe -lint ${<})) (foo bar pped))))
+    ((action (run ./pp/reasononlypp.exe -lint %{<})) (foo bar pped))))
   (preprocess
    (per_module
     ((pps (reasonppx)) (foo))
     ((pps (reasonppx (-lint false))) (hello))
-    ((action (run ./pp/reasononlypp.exe ${<})) (cppome))))))
+    ((action (run ./pp/reasononlypp.exe %{<})) (cppome))))))
 
 (executable
  ((name rbin)
   (modules (rbin))
-  (lint (action (run ./pp/reasononlypp.exe -lint ${<})))
-  (preprocess (action (run ./pp/reasononlypp.exe ${<})))
+  (lint (action (run ./pp/reasononlypp.exe -lint %{<})))
+  (preprocess (action (run ./pp/reasononlypp.exe %{<})))
   (libraries (rlib))))
 
 ;; we want to make sure that .rei files are present
 (alias
  ((name install-file)
   (deps (rlib.install))
-  (action (echo "${read:rlib.install}"))))
+  (action (echo "%{read:rlib.install}"))))
 
 (alias
  ((name runtest)
   (deps (rbin.exe))
-  (action (run ${<}))))
+  (action (run %{<}))))

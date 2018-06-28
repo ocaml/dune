@@ -1,5 +1,5 @@
-(rule (copy ${read:x} a))
-(rule (copy ${read:y} b))
+(rule (copy %{read:x} a))
+(rule (copy %{read:y} b))
 
 (rule (progn (run true) (with-stdout-to x (echo b))))
 (rule (progn (run true) (with-stdout-to y (echo a))))

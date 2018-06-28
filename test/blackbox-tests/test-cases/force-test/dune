@@ -4,4 +4,4 @@
 (alias
  (name runtest)
  (deps f.exe)
- (action (run ${<})))
+ (action (run %{<})))

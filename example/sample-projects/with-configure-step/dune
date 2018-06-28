@@ -2,9 +2,9 @@
  ((fallback)
   (targets (config))
   (deps    (config.defaults))
-  (action  (copy ${<} ${@}))))
+  (action  (copy %{<} %{@}))))
 
 (rule
  ((targets (config.full))
   (deps    (config_common.ml config))
-  (action  (run ${OCAML} ${path:real_configure.ml}))))
+  (action  (run %{OCAML} %{path:real_configure.ml}))))

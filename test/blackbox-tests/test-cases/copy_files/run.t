@@ -1,8 +1,8 @@
   $ dune build test.exe .merlin --display short --debug-dependency-path
       ocamllex lexers/lexer1.ml
-      ocamldep lexer1.ml.d
-      ocamldep test.ml.d
-      ocamldep dummy.ml.d
+      ocamldep .test.eobjs/lexer1.ml.d
+      ocamldep .test.eobjs/test.ml.d
+      ocamldep .foo.objs/dummy.ml.d
         ocamlc .foo.objs/dummy.{cmi,cmo,cmt}
       ocamlopt .foo.objs/dummy.{cmx,o}
       ocamlopt foo.{a,cmxa}

@@ -11,12 +11,6 @@ let create ~dir_kind =
   }
 
 let acknowledge t part ~loc ~modules =
-  let already_used =
-    Module.Name.Map.merge modules t.used ~f:(fun _name x l ->
-      Option.some_if (Option.is_some x && Option.is_some l) ())
-    |> Module.Name.Map.keys
-    |> Module.Name.Set.of_list
-  in
   t.used <-
     Module.Name.Map.merge modules t.used ~f:(fun _name x y ->
       match x with
@@ -25,8 +19,7 @@ let acknowledge t part ~loc ~modules =
         Some (part,
               loc :: match y with
               | None -> []
-              | Some (_, l) -> l));
-  already_used
+              | Some (_, l) -> l))
 
 let find t name = Option.map (Module.Name.Map.find t.used name) ~f:fst
 

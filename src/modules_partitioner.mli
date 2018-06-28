@@ -7,17 +7,13 @@ type 'a t
 val create : dir_kind:File_tree.Dune_file.Kind.t -> 'a t
 
 (** [acknowledge t partition ~loc ~modules] registers the fact that [modules]
-    are associated with [loc].
-
-    Returns the set of modules that are already used at another
-    location.
-*)
+    are associated with [loc]. *)
 val acknowledge
   :  'a t
   -> 'a
   -> loc:Loc.t
   -> modules:Module.t Module.Name.Map.t
-  -> Module.Name.Set.t
+  -> unit
 
 (** Find which partition a module is part of *)
 val find : 'a t -> Module.Name.t -> 'a option

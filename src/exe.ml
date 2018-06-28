@@ -171,12 +171,11 @@ let link_exe
 let build_and_link_many
       ~programs
       ~linkages
-      ?already_used
       ?link_flags
       ?(js_of_ocaml=Jbuild.Js_of_ocaml.default)
       cctx
   =
-  let dep_graphs = Ocamldep.rules cctx ?already_used in
+  let dep_graphs = Ocamldep.rules cctx in
 
   (* CR-someday jdimino: this should probably say [~dynlink:false] *)
   Module_compilation.build_modules cctx ~js_of_ocaml ~dep_graphs;

@@ -25,7 +25,7 @@
   each module cannot appear in more than one "modules" field - it must belong
   to a single library or executable.
   This warning will become an error in the future.
-      ocamldep src/x.ml.d
+      ocamldep src/.a.objs/x.ml.d
         ocamlc src/.a.objs/a.{cmi,cmo,cmt}
         ocamlc src/.a.objs/a__X.{cmi,cmo,cmt}
         ocamlc src/a.cma

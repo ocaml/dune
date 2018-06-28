@@ -3,7 +3,7 @@
   Error: Program "./foo.exe" isn't built yet you need to buid it first or remove the --no-build option.
   [1]
   $ dune exec ./foo.exe --display short
-      ocamldep foo.ml.d
+      ocamldep .foo.eobjs/foo.ml.d
         ocamlc .foo.eobjs/foo.{cmi,cmo,cmt}
       ocamlopt .foo.eobjs/foo.{cmx,o}
       ocamlopt foo.exe
@@ -17,7 +17,7 @@
   Error: Program "dunetestbar" isn't built yet you need to buid it first or remove the --no-build option.
   [1]
   $ dune exec dunetestbar --display short
-      ocamldep bar.ml.d
+      ocamldep .bar.eobjs/bar.ml.d
         ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}
       ocamlopt .bar.eobjs/bar.{cmx,o}
       ocamlopt bar.exe

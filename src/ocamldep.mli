@@ -20,14 +20,9 @@ module Dep_graphs : sig
   val dummy : Module.t -> t
 end
 
-(** Generate ocamldep rules for all the modules in the context.
-
-    [already_used] represents the modules that are used by another
-    stanzas in the same directory. No [.d] rule will be generated for
-    such modules. *)
+(** Generate ocamldep rules for all the modules in the context. *)
 val rules
-  :  ?already_used:Module.Name.Set.t
-  -> Compilation_context.t
+  :  Compilation_context.t
   -> Dep_graphs.t
 
 (** Compute the dependencies of an auxiliary module. *)

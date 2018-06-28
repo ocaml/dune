@@ -1,15 +1,15 @@
   $ dune build src/test.exe --display short --debug-dependency-path
       ocamllex src/lexer1.ml
-      ocamldep src/lexer1.ml.d
+      ocamldep src/.test.eobjs/lexer1.ml.d
       ocamllex src/lexer2.ml
-      ocamldep src/lexer2.ml.d
-      ocamldep src/test.ml.d
+      ocamldep src/.test.eobjs/lexer2.ml.d
+      ocamldep src/.test.eobjs/test.ml.d
         menhir src/test_base.{ml,mli}
-      ocamldep src/test_base.ml.d
+      ocamldep src/.test.eobjs/test_base.ml.d
         menhir src/test_menhir1.{ml,mli}
-      ocamldep src/test_menhir1.ml.d
-      ocamldep src/test_base.mli.d
-      ocamldep src/test_menhir1.mli.d
+      ocamldep src/.test.eobjs/test_menhir1.ml.d
+      ocamldep src/.test.eobjs/test_base.mli.d
+      ocamldep src/.test.eobjs/test_menhir1.mli.d
         ocamlc src/.test.eobjs/test_menhir1.{cmi,cmti}
         ocamlc src/.test.eobjs/lexer1.{cmi,cmo,cmt}
         ocamlc src/.test.eobjs/test_base.{cmi,cmti}

@@ -43,14 +43,16 @@ let eq (type a) (type b)
   Id.eq A.id B.id
 
 module Make
-    (T : sig type t end)
-    (To_sexp : sig val t : T.t Sexp.To_sexp.t end)
+    (T : sig
+       type t
+       val t : t Sexp.To_sexp.t
+     end)
   : S with type t = T.t =
 struct
   type t = T.t
 
   (* XXX dune dump should make use of this *)
-  let _t = To_sexp.t
+  let _t = T.t
 
   module P = Utils.Persistent(struct
       type nonrec t = t

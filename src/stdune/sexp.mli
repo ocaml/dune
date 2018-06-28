@@ -110,9 +110,8 @@ module Of_sexp : sig
   (** Access to the context *)
   val get : 'a Univ_map.Key.t -> ('a option, _) parser
   val set : 'a Univ_map.Key.t -> 'a -> ('b, 'k) parser -> ('b, 'k) parser
+  val get_all : (Univ_map.t, _) parser
   val set_many : Univ_map.t -> ('a, 'k) parser -> ('a, 'k) parser
-
-  val context : (Univ_map.t, _) parser
 
   (** Return the location of the list currently being parsed. *)
   val loc : (Loc.t, _) parser

@@ -271,7 +271,7 @@ module Alias0 = struct
       stamp_file (make ~dir name)))
 
   let is_standard = function
-    | "runtest" | "install" | "doc" | "doc-private" | "lint" -> true
+    | "runtest" | "install" | "doc" | "doc-private" | "lint" | "default" -> true
     | _ -> false
 
   open Build.O
@@ -318,7 +318,7 @@ module Alias0 = struct
            It is not defined in %s or any of its descendants."
         name (Path.to_string_maybe_quoted src_dir)
 
-  let default     = make "DEFAULT"
+  let default     = make "default"
   let runtest     = make "runtest"
   let install     = make "install"
   let doc         = make "doc"
@@ -914,7 +914,28 @@ and load_dir_step2_exn t ~dir ~collector ~lazy_generators =
   let alias_dir = Path.append (Path.relative alias_dir context_name) sub_dir in
   let alias_rules, alias_stamp_files =
     let open Build.O in
-    String.Map.foldi collector.aliases ~init:([], Path.Set.empty)
+    let aliases = collector.aliases in
+    let aliases =
+      if String.Map.mem collector.aliases "default" then
+        aliases
+      else
+        match Path.extract_build_context_dir dir with
+        | None -> aliases
+        | Some (_, src_dir) ->
+          match File_tree.find_dir t.file_tree src_dir with
+          | None -> aliases
+          | Some _ ->
+            String.Map.add aliases "default"
+              { deps = Path.Set.empty
+              ; dyn_deps =
+                  Alias0.dep_rec (Alias0.install ~dir) ~loc:Loc.none
+                    ~file_tree:t.file_tree
+                  >>>
+                  Build.return Path.Set.empty
+              ; actions = []
+              }
+    in
+    String.Map.foldi aliases ~init:([], Path.Set.empty)
       ~f:(fun name { Dir_status. deps; dyn_deps; actions } (rules, alias_stamp_files) ->
         let base_path = Path.relative alias_dir name in
         let rules, deps =

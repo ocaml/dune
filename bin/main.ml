@@ -26,6 +26,7 @@ type common =
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args             : string list
   ; config                : Config.t
+  ; default_target        : string
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -234,6 +235,7 @@ let common =
          ignore_promoted_rules,
          config_file,
          profile,
+         default_target,
          orig)
         x
         display
@@ -296,6 +298,7 @@ let common =
     ; x
     ; config
     ; build_dir
+    ; default_target
     }
   in
   let docs = copts_sect in
@@ -484,6 +487,20 @@ let common =
       in
       Term.(ret (const merge $ config_file $ no_config))
     in
+    let default_target_default =
+      match Which_program.t with
+      | Dune     -> "@@default"
+      | Jbuilder -> "@install"
+    in
+    let default_target =
+      Arg.(value
+           & opt (some string) None
+           & info ["default-target"] ~docs ~docv:"TARGET"
+               ~doc:(sprintf
+                       {|Set the default target that when none is specified to
+                         $(b,dune build). It defaults to %s.|}
+                       default_target_default))
+    in
     let for_release = "for-release-of-packages" in
     let frop =
       Arg.(value
@@ -496,33 +513,37 @@ let common =
                       packages as well as getting reproducible builds.|})
     in
     let merge root only_packages ignore_promoted_rules
-          (config_file_opt, config_file) profile release =
+          (config_file_opt, config_file) profile default_target release =
       let fail opt = incompatible ("-p/--" ^ for_release) opt in
       match release, root, only_packages, ignore_promoted_rules,
-            profile, config_file_opt with
-      | Some _, Some _, _, _, _, _ -> fail "--root"
-      | Some _, _, Some _, _, _, _ -> fail "--only-packages"
-      | Some _, _, _, true  , _, _ -> fail "--ignore-promoted-rules"
-      | Some _, _, _, _, Some _, _ -> fail "--profile"
-      | Some _, _, _, _, _, Some s -> fail s
-      | Some pkgs, None, None, false, None, None ->
+            profile, default_target, config_file_opt with
+      | Some _, Some _, _, _, _, _, _ -> fail "--root"
+      | Some _, _, Some _, _, _, _, _ -> fail "--only-packages"
+      | Some _, _, _, true  , _, _, _ -> fail "--ignore-promoted-rules"
+      | Some _, _, _, _, Some _, _, _ -> fail "--profile"
+      | Some _, _, _, _, _, Some s, _ -> fail s
+      | Some _, _, _, _, _, _, Some _ -> fail "--default-target"
+      | Some pkgs, None, None, false, None, None, None ->
         `Ok (Some ".",
              Some pkgs,
              true,
              No_config,
              Some "release",
+             "@install",
              ["-p"; pkgs]
             )
-      | None, _, _, _, _, _ ->
+      | None, _, _, _, _, _, _ ->
         `Ok (root,
              only_packages,
              ignore_promoted_rules,
              config_file,
              profile,
+             Option.value default_target ~default:default_target_default,
              List.concat
                [ dump_opt "--root" root
                ; dump_opt "--only-packages" only_packages
                ; dump_opt "--profile" profile
+               ; dump_opt "--default-target" default_target
                ; if ignore_promoted_rules then
                    ["--ignore-promoted-rules"]
                  else
@@ -540,6 +561,7 @@ let common =
                $ ignore_promoted_rules
                $ config_file
                $ profile
+               $ default_target
                $ frop))
   in
   let x =
@@ -771,9 +793,14 @@ let build_targets =
       (Main.setup ~log common >>= fun setup ->
        let targets = resolve_targets_exn ~log common setup targets in
        do_build setup targets) in
+  let default_target =
+    match Which_program.t with
+    | Dune     -> "@@default"
+    | Jbuilder -> "@install"
+  in
   ( Term.(const go
           $ common
-          $ Arg.(value & pos_all string ["@install"] name_))
+          $ Arg.(value & pos_all string [default_target] name_))
   , Term.info "build" ~doc ~man)
 
 let runtest =

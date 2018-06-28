@@ -95,6 +95,13 @@ next
 
 - Version `dune-workspace` and `~/.config/dune/config` files (#..., @diml)
 
+- Add the ability to build an alias non-recursively from the command
+  line by writing `@@alias` (#926, @diml)
+
+- Add a special `default` alias that defaults to `(alias_rec install)`
+  when not defined by the user and make `@@default` be the default
+  target (#926, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

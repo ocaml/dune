@@ -23,9 +23,3 @@ module Make
     (T : sig type t end)
     (F : functor (C : Sexp.Combinators) -> sig val t : T.t C.t end)
   : S with type t = T.t
-
-module Make_full
-    (T : sig type t end)
-    (To_sexp : sig val t : Path.t -> T.t -> Sexp.t end)
-    (Of_sexp : sig val t : Path.t -> Sexp.Ast.t -> T.t end)
-  : S with type t = T.t

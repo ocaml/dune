@@ -11,25 +11,24 @@ let misc_dir = Path.(relative build_dir) ".misc"
 
 module Promoted_to_delete = struct
   module P = Utils.Persistent(struct
-      type t = Path.t list
+      type t = Path.Set.t
       let name = "PROMOTED-TO-DELETE"
       let version = 1
     end)
-  let db = ref []
+
+  let db = ref Path.Set.empty
 
   let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"
 
-  let add p = db := p :: !db
+  let add p = db := Path.Set.add !db p
 
   let load () =
-    Option.value ~default:[] (P.load fn)
+    Option.value ~default:Path.Set.empty (P.load fn)
 
   let dump () =
     if Path.build_dir_exists () then
       load ()
-      |> Path.Set.of_list
-      |> Path.Set.union (Path.Set.of_list !db)
-      |> Path.Set.to_list
+      |> Path.Set.union !db
       |> P.dump fn
 end
 

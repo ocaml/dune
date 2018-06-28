@@ -50,6 +50,9 @@ Terminology
    alias in all children directories recursively. Jbuilder defines the
    following standard aliases:
 
+   -  ``default`` which is the alias build by default when no targets
+      are specified on the command line. See :ref:`default-alias` for
+      details
    -  ``runtest`` which runs user defined tests
    -  ``install`` which depends on everything that should be installed
    -  ``doc``     which depends on the generated HTML

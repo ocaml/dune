@@ -250,9 +250,25 @@ module Alias0 = struct
   let fully_qualified_name t = Path.relative t.dir t.name
 
   let stamp_file t =
-    Path.relative (Path.insert_after_build_dir_exn t.dir ".aliases") (t.name ^ suffix)
+    Path.relative (Path.insert_after_build_dir_exn t.dir ".aliases")
+      (t.name ^ suffix)
 
   let dep t = Build.path (stamp_file t)
+
+  let find_dir_specified_on_command_line ~dir ~file_tree =
+    match File_tree.find_dir file_tree dir with
+    | None ->
+      die "From the command line:\n\
+           @{<error>Error@}: Don't know about directory %s!"
+        (Path.to_string_maybe_quoted dir)
+    | Some dir -> dir
+
+  let dep_multi_contexts ~dir ~name ~file_tree ~contexts =
+    ignore
+      (find_dir_specified_on_command_line ~dir ~file_tree : File_tree.Dir.t);
+    Build.paths (List.map contexts ~f:(fun ctx ->
+      let dir = Path.append (Path.(relative build_dir) ctx) dir in
+      stamp_file (make ~dir name)))
 
   let is_standard = function
     | "runtest" | "install" | "doc" | "doc-private" | "lint" -> true
@@ -272,10 +288,14 @@ module Alias0 = struct
           ~else_:(Build.arr (fun x -> x)))
 
   let dep_rec t ~loc ~file_tree =
-    let ctx_dir, src_dir = Path.extract_build_context_dir t.dir |> Option.value_exn in
+    let ctx_dir, src_dir =
+      Path.extract_build_context_dir t.dir |> Option.value_exn
+    in
     match File_tree.find_dir file_tree src_dir with
-    | None -> Build.fail { fail = fun () ->
-      Loc.fail loc "Don't know about directory %s!" (Path.to_string_maybe_quoted src_dir) }
+    | None ->
+      Build.fail { fail = fun () ->
+        Loc.fail loc "Don't know about directory %s!"
+          (Path.to_string_maybe_quoted src_dir) }
     | Some dir ->
       dep_rec_internal ~name:t.name ~dir ~ctx_dir
       >>^ fun is_empty ->
@@ -285,22 +305,18 @@ module Alias0 = struct
           t.name (Path.to_string_maybe_quoted src_dir)
 
   let dep_rec_multi_contexts ~dir:src_dir ~name ~file_tree ~contexts =
-    match File_tree.find_dir file_tree src_dir with
-    | None ->
+    let open Build.O in
+    let dir = find_dir_specified_on_command_line ~dir:src_dir ~file_tree in
+    Build.all (List.map contexts ~f:(fun ctx ->
+      let ctx_dir = Path.(relative build_dir) ctx in
+      dep_rec_internal ~name ~dir ~ctx_dir))
+    >>^ fun is_empty_list ->
+    let is_empty = List.for_all is_empty_list ~f:(fun x -> x) in
+    if is_empty && not (is_standard name) then
       die "From the command line:\n\
-           @{<error>Error@}: Don't know about directory %s!" (Path.to_string_maybe_quoted src_dir)
-    | Some dir ->
-      let open Build.O in
-      Build.all (List.map contexts ~f:(fun ctx ->
-        let ctx_dir = Path.(relative build_dir) ctx in
-        dep_rec_internal ~name ~dir ~ctx_dir))
-      >>^ fun is_empty_list ->
-      let is_empty = List.for_all is_empty_list ~f:(fun x -> x) in
-      if is_empty && not (is_standard name) then
-        die "From the command line:\n\
-             @{<error>Error@}: Alias %s is empty.\n\
-             It is not defined in %s or any of its descendants."
-          name (Path.to_string_maybe_quoted src_dir)
+           @{<error>Error@}: Alias %S is empty.\n\
+           It is not defined in %s or any of its descendants."
+        name (Path.to_string_maybe_quoted src_dir)
 
   let default     = make "DEFAULT"
   let runtest     = make "runtest"

@@ -121,6 +121,13 @@ So for instance:
    the ``foo`` build context
 -  ``jbuilder build @runtest`` will run the tests for all build contexts
 
+You can also build an alias non-recursively by using ``@@`` instead of
+``@``. For instance to run tests only from the current directory:
+
+.. code::
+
+   dune build @@runtest
+
 Finding external libraries
 ==========================
 

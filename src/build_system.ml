@@ -675,13 +675,22 @@ let no_rule_found =
     die "No rule found for %s" (Utils.describe_target fn)
   in
   fun t fn ->
-    match Path.extract_build_context fn with
-    | None -> fail fn
-    | Some (ctx, _) ->
+    match Utils.analyse_target fn with
+    | Other _ -> fail fn
+    | Regular (ctx, _) ->
       if String.Map.mem t.contexts ctx then
         fail fn
       else
         die "Trying to build %s but build context %s doesn't exist.%s"
+          (Path.to_string_maybe_quoted fn)
+          ctx
+          (hint ctx (String.Map.keys t.contexts))
+    | Alias (ctx, fn') ->
+      if String.Map.mem t.contexts ctx then
+        fail fn
+      else
+        let fn = Path.append (Path.relative Path.build_dir ctx) fn' in
+        die "Trying to build alias %s but build context %s doesn't exist.%s"
           (Path.to_string_maybe_quoted fn)
           ctx
           (hint ctx (String.Map.keys t.contexts))

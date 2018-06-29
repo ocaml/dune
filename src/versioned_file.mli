@@ -31,6 +31,14 @@ module type S = sig
       looks up the language, checks that the version is supported and
       parses the rest of the file with [f]. *)
   val load : Path.t -> f:(Lang.Instance.t -> 'a Sexp.Of_sexp.t) -> 'a
+
+  (** Parse the contents of a versioned file after the first line has
+      been read. *)
+  val parse_contents
+    :  Lexing.lexbuf
+    -> Dune_lexer.first_line
+    -> f:(Lang.Instance.t -> 'a Sexp.Of_sexp.t)
+    -> 'a
 end
 
 module Make(Data : sig type t end) : S with type data := Data.t

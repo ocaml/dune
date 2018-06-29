@@ -15,6 +15,11 @@ module type S = sig
     val get_exn : string -> Instance.t
   end
   val load : Path.t -> f:(Lang.Instance.t -> 'a Sexp.Of_sexp.t) -> 'a
+  val parse_contents
+    :  Lexing.lexbuf
+    -> Dune_lexer.first_line
+    -> f:(Lang.Instance.t -> 'a Sexp.Of_sexp.t)
+    -> 'a
 end
 
 module Make(Data : sig type t end) = struct
@@ -69,12 +74,15 @@ module Make(Data : sig type t end) = struct
       }
   end
 
+  let parse_contents lb first_line ~f =
+    let lang = Lang.parse first_line in
+    let sexp = Sexp.Parser.parse lb ~mode:Many_as_one in
+    let parsing_context =
+      Univ_map.singleton (Syntax.key lang.syntax) lang.version
+    in
+    Sexp.Of_sexp.parse (Sexp.Of_sexp.enter (f lang)) parsing_context sexp
+
   let load fn ~f =
     Io.with_lexbuf_from_file fn ~f:(fun lb ->
-      let lang = Lang.parse (Dune_lexer.first_line lb) in
-      let sexp = Sexp.Parser.parse lb ~mode:Many_as_one in
-      let parsing_context =
-        Univ_map.singleton (Syntax.key lang.syntax) lang.version
-      in
-      Sexp.Of_sexp.parse (Sexp.Of_sexp.enter (f lang)) parsing_context sexp)
+      parse_contents lb (Dune_lexer.first_line lb) ~f)
 end

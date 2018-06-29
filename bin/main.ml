@@ -579,8 +579,10 @@ let installed_libraries =
     let env = Main.setup_env ~capture_outputs:common.capture_outputs in
     Scheduler.go ~log:(Log.create common) ~common
       (Context.create
-         (Default { targets = [Native]
-                  ; profile = Config.default_build_profile })
+         (Default { loc = Loc.of_pos __POS__
+                  ; targets = [Native]
+                  ; profile = Config.default_build_profile
+                  })
          ~env
        >>= fun ctxs ->
        let ctx = List.hd ctxs in

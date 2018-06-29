@@ -453,7 +453,7 @@ let create_for_opam ?root ~env ~targets ~profile ~switch ~name
 
 let create ?merlin ~env def =
   match (def : Workspace.Context.t) with
-  | Default { targets; profile } -> default ~env ~profile ~targets ?merlin ()
+  | Default { targets; profile; _ } -> default ~env ~profile ~targets ?merlin ()
   | Opam { name; switch; root; targets; profile; _ } ->
     create_for_opam ?root ~env ~profile ~switch ~name ?merlin ~targets ()
 

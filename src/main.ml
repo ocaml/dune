@@ -71,7 +71,8 @@ let setup ?(log=Log.no_log)
         | None ->
           { merlin_context = Some "default"
           ; contexts = [Default
-                          { targets = [
+                          { loc = Loc.of_pos __POS__
+                          ; targets = [
                               match x with
                               | None   -> Native
                               | Some x -> Named x
@@ -263,7 +264,8 @@ let bootstrap () =
       (set_concurrency config
        >>= fun () ->
        setup ~log ~workspace:{ merlin_context = Some "default"
-                             ; contexts = [Default { targets = [Native]
+                             ; contexts = [Default { loc = Loc.of_pos __POS__
+                                                   ; targets = [Native]
                                                    ; profile =
                                                        Option.value !profile
                                                          ~default:"dev"

@@ -1,6 +1,10 @@
 open Import
 open Stanza.Of_sexp
 
+(* workspace files use the same version numbers as dune-project files
+   for simplicity *)
+let syntax = Stanza.syntax
+
 module Context = struct
   module Target = struct
     type t =
@@ -127,6 +131,9 @@ type t =
   ; contexts       : Context.t list
   }
 
+include Versioned_file.Make(struct type t = unit end)
+let () = Lang.register syntax ()
+
 let t ?x ?profile:cmdline_profile () =
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
   field "profile" string ~default:Config.default_build_profile
@@ -181,9 +188,19 @@ let t ?x ?profile:cmdline_profile () =
     ; contexts = List.rev contexts
     }
 
+let t ?x ?profile () = fields (t ?x ?profile ())
+
 let load ?x ?profile p =
-  parse (enter (fields (t ?x ?profile ())))
-    Univ_map.empty (Io.Sexp.load p ~mode:Many_as_one)
+  match Which_program.t with
+  | Dune -> load p ~f:(fun _lang -> t ?x ?profile ())
+  | Jbuilder ->
+    let sexp =
+      Io.Sexp.load p ~mode:Many_as_one ~lexer:Sexp.Lexer.jbuild_token
+    in
+    parse
+      (enter (t ?x ?profile ()))
+      (Univ_map.singleton (Syntax.key syntax) (0, 0))
+      sexp
 
 let filename =
   match Which_program.t with

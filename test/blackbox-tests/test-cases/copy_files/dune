@@ -8,12 +8,12 @@
 (library
  (name foo)
  (c_names bar)
- (modules (dummy))
+ (modules dummy)
  (wrapped false))
 
 (executable
  (name test)
- (modules (:standard \ dummy))
+ (modules :standard \ dummy)
  (libraries foo))
 
 (alias

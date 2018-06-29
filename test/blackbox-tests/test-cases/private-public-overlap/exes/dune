@@ -1,9 +1,9 @@
 (library
  (name privatelib)
- (modules (privatelib)))
+ (modules privatelib))
 
 (executable
  (name publicbin)
- (modules (publicbin))
+ (modules publicbin)
  (public_name publicbin)
  (package publicbin))

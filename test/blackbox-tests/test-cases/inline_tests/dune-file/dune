@@ -11,8 +11,8 @@
     (echo "let () = print_int 42")
     (echo "\n")
     (echo "let () = print_int 43;;")))
-  (flags (inline-test-runner %{library-name}
-           -source-tree-root %{ROOT} -diff-cmd -))))
+  (flags inline-test-runner %{library-name}
+          -source-tree-root %{ROOT} -diff-cmd -)))
 
 (library
  (name foo_tests)

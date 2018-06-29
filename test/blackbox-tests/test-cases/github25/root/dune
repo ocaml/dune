@@ -7,5 +7,5 @@
 (library
  (name        pas_de_bol)
  (public_name pas-de-bol)
- (modules (a b))
+ (modules a b)
  (libraries plop.ca-marche-pas))

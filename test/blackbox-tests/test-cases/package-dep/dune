@@ -1,13 +1,13 @@
 (library
  (name        foo)
  (public_name foo)
- (modules     (foo)))
+ (modules     foo))
 
 (library
  (name        bar)
  (public_name bar)
  (libraries   foo)
- (modules     (bar)))
+ (modules     bar))
 
 (rule
  (with-stdout-to foo.ml

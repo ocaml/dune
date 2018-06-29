@@ -9,4 +9,4 @@
  ((name mylib)
   (public_name mylib)
   (preprocess (pps (ppx_internal)))
-  (modules (mylib))))
+  (modules mylib)))

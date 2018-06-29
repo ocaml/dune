@@ -1,6 +1,6 @@
 (library
  (name lib)
- (modules (:standard \ test)))
+ (modules :standard \ test))
 
 (executable
  (name test)

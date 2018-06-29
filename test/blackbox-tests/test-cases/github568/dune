@@ -2,7 +2,7 @@
 (library
  (name lib1)
  (public_name lib1)
- (modules (Lib1)))
+ (modules Lib1))
 
 (alias
  (name runtest)
@@ -12,14 +12,14 @@
 
 (executable
  (name test1)
- (modules (Test1))
+ (modules Test1)
  (libraries lib1))
 
 
 (library
  (name lib2)
  (public_name lib2)
- (modules (Lib2)))
+ (modules Lib2))
 
 (alias
  (name runtest)
@@ -29,5 +29,5 @@
 
 (executable
  (name test2)
- (modules (Test2))
+ (modules Test2)
  (libraries lib2))

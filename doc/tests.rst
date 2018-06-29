@@ -2,13 +2,13 @@
 Writing and running tests
 *************************
 
-Jbuilder tries to streamline the testing story as much as possible, so
+Dune tries to streamline the testing story as much as possible, so
 that you can focus on the tests themselves and not bother with setting
 up with various test frameworks.
 
 In this section, we will explain the workflow to deal with tests in
-Jbuilder. In particular we will see how to run the testsuite of a
-project, how to describe your tests to Jbuilder and how to promote
+dune. In particular we will see how to run the testsuite of a
+project, how to describe your tests to dune and how to promote
 tests result as expectation.
 
 We distinguish two kinds of tests: inline tests and custom
@@ -22,22 +22,22 @@ Running tests
 =============
 
 Whatever the tests of a project are, the usual way to run tests with
-Jbuilder is to call ``jbuilder runtest`` from the shell. This will run
+dune is to call ``dune runtest`` from the shell. This will run
 all the tests defined in the current directory and any sub-directory
 recursively. You can also pass a directory argument to run the tests
-from a sub-tree. For instance ``jbuilder runtest test`` will only run
+from a sub-tree. For instance ``dune runtest test`` will only run
 the tests from the ``test`` directory and any sub-directory of
 ``test`` recursively.
 
-Note that in any case, ``jbuilder runtest`` is simply a short-hand for
-building the ``runtest`` alias, so you can always ask Jbuilder to run
+Note that in any case, ``dune runtest`` is simply a short-hand for
+building the ``runtest`` alias, so you can always ask dune to run
 the tests in conjunction with other targets by passing ``@runtest`` to
-``jbuilder build``. For instance:
+``dune build``. For instance:
 
 .. code:: bash
 
-          $ jbuilder build @install @runtest
-          $ jbuilder build @install @test/runtest
+          $ dune build @install @runtest
+          $ dune build @install @test/runtest
 
 Inline tests
 ============
@@ -45,7 +45,7 @@ Inline tests
 There are several inline tests framework available for OCaml, such as
 ppx_inline_test_ and qtest_. We will use ppx_inline_test_ as an
 example as at the time of writing this document it has the necessary
-setup to be used with Jbuilder out of the box.
+setup to be used with dune out of the box.
 
 ppx_inline_test_ allows to write tests directly inside ml files as
 follow:
@@ -65,7 +65,7 @@ so for instance the ``jbuild`` file might look like this:
            ((name foo)
             (preprocess (pps (ppx_inline_test)))))
 
-In order to instruct Jbuilder that our library contains inline tests,
+In order to instruct dune that our library contains inline tests,
 all we have to do is add an ``inline_tests`` field:
 
 .. code:: scheme
@@ -75,13 +75,12 @@ all we have to do is add an ``inline_tests`` field:
             (inline_tests)
             (preprocess (pps (ppx_inline_test)))))
 
-We can now build and execute this test by running ``jbuilder
-runtest``. For instance, if we make the test fail by replacing ``120``
-by ``0`` we get:
+We can now build and execute this test by running ``dune runtest``. For
+instance, if we make the test fail by replacing ``120`` by ``0`` we get:
 
 .. code:: bash
 
-          $ jbuilder runtest
+          $ dune runtest
           [...]
           File "src/fact.ml", line 3, characters 0-25: <<(fact 5) = 0>> is false.
 
@@ -91,7 +90,7 @@ Note that in this case Jbuild knew how to build and run the tests
 without any special configuration. This is because ppx_inline_test
 defines an inline tests backend and it is used by the library. Some
 other frameworks, such as qtest_ don't have any special library or ppx
-rewriter. To use such a framework, you must tell Jbuilder about it
+rewriter. To use such a framework, you must tell dune about it
 since it cannot guess it. You can do that by adding a ``backend``
 field:
 
@@ -129,15 +128,15 @@ following test elements are clearly identified:
 
 You can have a look at `this blog post
 <https://blog.janestreet.com/testing-with-expectations/>`_ to find out
-more about expectation tests. But Back to Jbuilder, the workflow for
-expectation tests is always as follow:
+more about expectation tests. To dune, the workflow for
+expectation tests is always as follows:
 
 - write the test with some empty expect nodes in it
 - run the tests
 - check the suggested correction and promote it as the original source
   file if you are happy with it
 
-Jbuilder makes this workflow very easy, simply add ``ppx_expect`` to
+Dune makes this workflow very easy, simply add ``ppx_expect`` to
 your list of ppx rewriters as follow:
 
 .. code:: scheme
@@ -147,13 +146,13 @@ your list of ppx rewriters as follow:
             (inline_tests)
             (preprocess (pps (ppx_expect)))))
 
-Then calling ``jbuilder runtest`` will run these tests and in case of
-mismatch Jbuilder will print a diff of the original source file and
+Then calling ``dune runtest`` will run these tests and in case of
+mismatch dune will print a diff of the original source file and
 the suggested correction. For instance:
 
 .. code:: bash
 
-          $ jbuilder runtest
+          $ dune runtest
           [...]
           -src/fact.ml
           +src/fact.ml.corrected
@@ -169,14 +168,14 @@ In order to accept the correction, simply run:
 
 .. code:: bash
 
-          $ jbuilder promote
+          $ dune promote
 
-You can also make Jbuilder automatically accept the correction after
+You can also make dune automatically accept the correction after
 running the tests by typing:
 
 .. code:: bash
 
-          $ jbuilder runtest --auto-promote
+          $ dune runtest --auto-promote
 
 Finally, some editor integration is possible to make the editor do the
 promotion and make the workflow even smoother.
@@ -184,7 +183,7 @@ promotion and make the workflow even smoother.
 Specifying inline test dependencies
 -----------------------------------
 
-If your tests are reading files, you must say it to Jbuilder by adding
+If your tests are reading files, you must say it to dune by adding
 a ``deps`` field the the ``inline_tests`` field. The argument of this
 ``deps`` field follows the usual :ref:`deps-field`. For instance:
 
@@ -198,7 +197,7 @@ a ``deps`` field the the ``inline_tests`` field. The argument of this
 Passing special arguments to the test runner
 --------------------------------------------
 
-Under the hood, a test executable is built by Jbuilder. Depending on
+Under the hood, a test executable is built by dune. Depending on
 the backend used this runner might take useful command line
 arguments. You can specify such flags by using a ``flags`` field, such
 as:
@@ -319,7 +318,7 @@ build as this would cause portability problems.
 Custom tests
 ============
 
-We said in `Running tests`_ that to run tests Jbuilder simply builds
+We said in `Running tests`_ that to run tests dune simply builds
 the ``runtest`` alias. As a result, to define cutsom tests, you simply
 need to add an action to this alias in any directory. For instance if
 you have a binary ``tests.exe`` that you want to run as part of
@@ -335,9 +334,9 @@ Diffing the result
 ------------------
 
 It is often the case that we want to compare the output of a test to
-some expected one. For that, Jbuilder offers the ``diff`` command,
+some expected one. For that, dune offers the ``diff`` command,
 which in essence is the same as running the ``diff`` tool, except that
-it is more integrated in Jbuilder and especially with the ``promote``
+it is more integrated in dune and especially with the ``promote``
 command. For instance let's consider this test:
 
 .. code:: scheme
@@ -350,29 +349,29 @@ command. For instance let's consider this test:
             (action (diff tests.expected test.output))))
 
 After having run ``tests.exe`` and dumping its output to
-``tests.output``, Jbuilder will compare the latter to
-``tests.expected``. In case of mismatch, Jbuilder will print a diff
-and then the ``jbuilder promote`` command can be used to copy over the
+``tests.output``, dune will compare the latter to
+``tests.expected``. In case of mismatch, dune will print a diff
+and then the ``dune promote`` command can be used to copy over the
 generated ``test.output`` file to ``tests.expected`` in the source
 tree. This provides a nice way of dealing with the usual *write code*,
 *run*, *promote* cycle of testing. For instance:
 
 .. code:: bash
 
-          $ jbuilder runtest
+          $ dune runtest
           [...]
           -tests.expected
           +tests.output
           File "tests.expected", line 1, characters 0-1:
           -Hello, world!
           +Good bye!
-          $ jbuilder promote
+          $ dune promote
           Promoting _build/default/tests.output to tests.expected.
 
 Note that if available, the diffing is done using the patdiff_ tool,
 which displays nicer looking diffs that the standard ``diff``
 tool. You can change that by passing ``--diff-command CMD`` to
-Jbuilder.
+dune.
 
 
 .. _ppx_inline_test: https://github.com/janestreet/ppx_inline_test

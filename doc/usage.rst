@@ -2,7 +2,7 @@
 Usage
 *****
 
-This section describe usage of Jbuilder from the shell.
+This section describe usage of dune from the shell.
 
 .. _finding-root:
 
@@ -40,7 +40,7 @@ order:
 -  ``/home/me/code/myproject/src/dune-workspace``
 
 The first entry to match in this list will determine the root. In
-practice this means that if you nest your workspaces, Jbuilder will
+practice this means that if you nest your workspaces, dune will
 always use the outermost one.
 
 In addition to determining the root, ``dune`` will read this file as
@@ -58,7 +58,7 @@ as root.
 Forcing the root (for scripts)
 ------------------------------
 
-You can pass the ``--root`` option to ``jbuilder`` to select the root
+You can pass the ``--root`` option to ``dune`` to select the root
 explicitly. This option is intended for scripts to disable the automatic lookup.
 
 Note that when using the ``--root`` option, targets given on the command line
@@ -75,7 +75,7 @@ the command line. When no targets are specified, ``dune`` builds the
 Resolution
 ----------
 
-All targets that Jbuilder knows how to build live in the ``_build``
+All targets that dune knows how to build live in the ``_build``
 directory.  Although, some are sometimes copied to the source tree for
 the need of external tools. These includes:
 
@@ -83,22 +83,22 @@ the need of external tools. These includes:
 
 - ``<package>.install`` files
 
-As a result, if you want to ask ``jbuilder`` to produce a particular ``.exe``
+As a result, if you want to ask ``dune`` to produce a particular ``.exe``
 file you would have to type:
 
 .. code:: bash
 
-    $ jbuilder build _build/default/bin/prog.exe
+    $ dune build _build/default/bin/prog.exe
 
 However, for convenience when a target on the command line doesn't
-start with ``_build``, ``jbuilder`` will expand it to the
+start with ``_build``, ``dune`` will expand it to the
 corresponding target in all the build contexts where it knows how to
 build it. When using ``--verbose``, It prints out the actual set of
 targets when starting:
 
 .. code:: bash
 
-    $ jbuilder build bin/prog.exe --verbose
+    $ dune build bin/prog.exe --verbose
     ...
     Actual targets:
     - _build/default/bin/prog.exe
@@ -118,9 +118,9 @@ To build and run the tests for a particular build context, use
 
 So for instance:
 
--  ``jbuilder build @_build/foo/runtest`` will run the tests only for
+-  ``dune build @_build/foo/runtest`` will run the tests only for
    the ``foo`` build context
--  ``jbuilder build @runtest`` will run the tests for all build contexts
+-  ``dune build @runtest`` will run the tests for all build contexts
 
 You can also build an alias non-recursively by using ``@@`` instead of
 ``@``. For instance to run tests only from the current directory:
@@ -157,7 +157,7 @@ is installable.
 Finding external libraries
 ==========================
 
-When a library is not available in the workspace, jbuilder will look it
+When a library is not available in the workspace, dune will look it
 up in the installed world, and expect it to be already compiled.
 
 It looks up external libraries using a specific list of search pathes. A
@@ -179,29 +179,29 @@ Running tests
 
 There are two ways to run tests:
 
--  ``jbuilder build @runtest``
--  ``jbuilder runtest``
+-  ``dune build @runtest``
+-  ``dune runtest``
 
 The two commands are equivalent. They will run all the tests defined in
 the current directory and its children recursively. You can also run the
 tests in a specific sub-directory and its children by using:
 
--  ``jbuilder build @foo/bar/runtest``
--  ``jbuilder runtest foo/bar``
+-  ``dune build @foo/bar/runtest``
+-  ``dune runtest foo/bar``
 
 Launching the Toplevel (REPL)
 =============================
 
-jbuilder supports launching a `utop <https://github.com/diml/utop>`__ instance
+Dune supports launching a `utop <https://github.com/diml/utop>`__ instance
 with locally defined libraries loaded.
 
 .. code:: bash
 
-   $ jbuilder utop <dir> -- <args>
+   $ dune utop <dir> -- <args>
 
 Where ``<dir>`` is a directory containing a ``jbuild`` file defining all the
 libraries that will be loaded (using the ``library`` stanza). ``<args>`` will be
-passed as arguments to the utop command itself. For example, ``jbuilder utop lib
+passed as arguments to the utop command itself. For example, ``dune utop lib
 -- -implicit-bindings`` will start ``utop`` with the libraries defined in
 ``lib`` and implicit bindings for toplevel expressions.
 
@@ -218,16 +218,16 @@ Requirements & Limitations
 Restricting the set of packages
 ===============================
 
-You can restrict the set of packages from your workspace that Jbuilder
+You can restrict the set of packages from your workspace that dune
 can see with the ``--only-packages`` option:
 
 .. code:: bash
 
-    $ jbuilder build --only-packages pkg1,pkg2,... @install
+    $ dune build --only-packages pkg1,pkg2,... @install
 
 This option acts as if you went through all the jbuild files and
 commented out the stanzas refering to a package that is not in the list
-given to ``jbuilder``.
+given to ``dune``.
 
 Invocation from opam
 ====================
@@ -245,9 +245,9 @@ release --default-target @install``. ``-p`` is the short version of
 
 This has the following effects:
 
--  it tells jbuilder to build everything that is installable and to
+-  it tells dune to build everything that is installable and to
    ignore packages other than ``name`` defined in your project
--  it sets the root to prevent jbuilder from looking it up
+-  it sets the root to prevent dune from looking it up
 -  it sets the build profile to ``release``
 -  it uses whatever concurrency option opam provides
 -  it sets the default target to ``@install`` rather than ``@@default``
@@ -273,25 +273,25 @@ Installing a package means copying the build artifacts from the build
 directory to the installed word.
 
 When installing via opam, you don't need to worry about this step:
-jbuilder generates a ``<package>.install`` file that opam will
+dune generates a ``<package>.install`` file that opam will
 automatically read to handle installation.
 
 However, when not using opam or doing local development, you can use
-jbuilder to install the artifacts by hands. To do that, use the
+dune to install the artifacts by hands. To do that, use the
 ``install`` command:
 
 ::
 
-    $ jbuilder install [PACKAGE]...
+    $ dune install [PACKAGE]...
 
 without an argument, it will install all the packages available in the
 workspace. With a specific list of packages, it will only install these
 packages. If several build contexts are configured, the installation
 will be performed for all of them.
 
-Note that ``jbuilder install`` is a thin wrapper around the
+Note that ``dune install`` is a thin wrapper around the
 ``opam-installer`` tool, so you will need to install this tool in order
-to be able to use ``jbuilder install``.
+to be able to use ``dune install``.
 
 Destination
 -----------
@@ -319,9 +319,9 @@ are using this mechanism to setup where OCaml library files should be
 copied.
 
 As a result, if none of ``--libdir`` and ``--prefix`` is passed to
-``jbuilder install`` and ``ocamlfind`` is present in the ``PATH``,
+``dune install`` and ``ocamlfind`` is present in the ``PATH``,
 then library files will be copied to the directory reported by
-``ocamlfind printconf destdir``. This ensures that ``jbuilder
+``ocamlfind printconf destdir``. This ensures that ``dune
 install`` can be used without opam. When using opam, ``ocamlfind`` is
 configured to point to the opam directory, so this rule makes no
 difference.
@@ -403,10 +403,10 @@ context or can be the description of an opam switch, as follows:
    where the artifacts for this build context will be stored
 
 -  ``(root <opam-root>)`` is the opam root. By default it will take
-   the opam root defined by the environment in which ``jbuilder`` is
+   the opam root defined by the environment in which ``dune`` is
    run which is usually ``~/.opam``
 
-- ``(merlin)`` instructs Jbuilder to use this build context for
+- ``(merlin)`` instructs dune to use this build context for
   merlin
 
 - ``(profile <profile>)`` to set a different profile for a build
@@ -423,14 +423,14 @@ the artifacts from the ``default`` context, and if you have the
 ``(context default)`` stanza in your ``dune-workspace`` file, that
 is the one Jbuilder will use.
 
-For rare cases where this is not what you want, you can force Jbuilder
+For rare cases where this is not what you want, you can force dune
 to use a different build contexts for merlin by adding the field
 ``(merlin)`` to this context.
 
 Building JavaScript with js_of_ocaml
 ====================================
 
-Jbuilder knows how to generate a JavaScript version of an executable
+Dune knows how to generate a JavaScript version of an executable
 (``<name>.bc.js``) using the js_of_ocaml compiler (the ``js_of_ocaml-compiler``
 opam package must be installed).
 
@@ -452,16 +452,16 @@ js_of_ocaml compiler
 
 .. _using-topkg:
 
-Using topkg with jbuilder
-=========================
+Using topkg with dune
+=====================
 
-Jbuilder provides suport for building and installing your project.
+Dune provides support for building and installing your project.
 However it doesn't provides helpers for distributing it. It is
 recommemded to use `Topkg <https://github.com/dbuenzli/topkg>`__ for
 this purpose.
 
 The `topkg-jbuilder <https://github.com/diml/topkg-jbuilder>`__
-project provides helpers for using Topkg in a Jbuilder project. In
+project provides helpers for using Topkg in a dune project. In
 particular, as long as your project uses the common defaults, just
 write this ``pkg/pkg.ml`` file and you are all set:
 
@@ -471,7 +471,7 @@ write this ``pkg/pkg.ml`` file and you are all set:
     #require "topkg-jbuilder.auto"
 
 It is planned that this file won't be necessary at all soon and topkg
-will work out of the box on jbuilder projects.
+will work out of the box on dune projects.
 
 The common defaults are that your projects include the following
 files:
@@ -500,16 +500,16 @@ you are using git, topkg invokes this command to find out the version:
     $ git describe --always --dirty
     1.0+beta9-79-g29e9b37
 
-Projects using jbuilder usually only need topkg for creating and
+Projects using dune usually only need topkg for creating and
 publishing releases. However they might still want to substitute the
 watermarks when the package is pinned by the user. To help with this,
-jbuilder provides the ``subst`` sub-command.
+dune provides the ``subst`` sub-command.
 
-jbuilder subst
-==============
+dune subst
+==========
 
-``jbuilder subst`` performs the same substitution ``topkg`` does with
-the default configuration. i.e. calling ``jbuilder subst`` at the root
+``dune subst`` performs the same substitution ``topkg`` does with
+the default configuration. i.e. calling ``dune subst`` at the root
 of your project will rewrite in place all the files in your project.
 
 More precisely, it replaces all the following watermarks in source
@@ -536,11 +536,11 @@ you need to specify the name explicitly via the ``-n`` flag:
 
 .. code:: bash
 
-    $ jbuilder subst -n myproject
+    $ dune subst -n myproject
 
-Finally, note that jbuilder doesn't allow you to customize the list of
+Finally, note that dune doesn't allow you to customize the list of
 substituted watermarks. If you which to do so, you need to configure
-topkg and use it instead of ``jbuilder subst``.
+topkg and use it instead of ``dune subst``.
 
 Custom Build Directory
 ======================

@@ -7,8 +7,8 @@ Generating Documentation
 Prerequisites
 =============
 
-Documentation in jbuilder is done courtesy of the odoc_ tool. Therefore, to
-generate documentation in jbuilder, you will need to install this tool. This
+Documentation in dune is done courtesy of the odoc_ tool. Therefore, to
+generate documentation in dune, you will need to install this tool. This
 should likely be done with opam:
 
 ::
@@ -33,7 +33,7 @@ to generate documentation for your project is building this alias:
 
 ::
 
-  $ jbuilder build @doc
+  $ dune build @doc
 
 An index page containing links to all the opam packages in your project can be
 found in:
@@ -46,7 +46,7 @@ Documentation for private libraries may also be built with:
 
 ::
 
-  $ jbuilder build @doc-private
+  $ dune build @doc-private
 
 But this libraries will not be in the main html listing above, since they do not
 belong to any particular package. But the generated html will still be found in
@@ -70,7 +70,7 @@ in the same syntax as ocamldoc comments.
 Where ``<optional-fields>`` are:
 
 - ``(package <name>)`` the package this documentation should be attached to. If
-  this absent, jbuilder will try to infer it based on the location of the
+  this absent, dune will try to infer it based on the location of the
   stanza.
 
 - ``(mld_files <arg>)`` where ``<arg>`` field follows the
@@ -81,7 +81,7 @@ Where ``<optional-fields>`` are:
 The ``index.mld`` file (specified as ``index`` in ``mld_files``) is treated
 specially by jbulder. This will be the file used to generate the entry page for
 the package. This is the page that will be linked from the main package listing.
-If you omit writing an ``index.mld``, jbuilder will generate one with the entry
+If you omit writing an ``index.mld``, dune will generate one with the entry
 modules for your package. But this generated will not be installed.
 
 All mld files attached to a package will be included in the generated

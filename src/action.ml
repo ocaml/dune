@@ -611,7 +611,8 @@ module Promotion = struct
       ; dst : Path.t
       }
 
-    let t =
+    (* XXX these sexp converters will be useful for the dump command *)
+    let _t =
       let open Sexp.Of_sexp in
       peek_exn >>= function
       | List (_, [_; Atom (_, A "as"); _]) ->
@@ -624,7 +625,7 @@ module Promotion = struct
         Sexp.Of_sexp.of_sexp_errorf (Sexp.Ast.loc sexp)
           "(<file> as <file>) expected"
 
-    let sexp_of_t { src; dst } =
+    let _sexp_of_t { src; dst } =
       Sexp.List [Path.sexp_of_t src; Sexp.unsafe_atom_of_string "as";
                  Path.sexp_of_t dst]
 
@@ -639,26 +640,22 @@ module Promotion = struct
       Io.copy_file ~src ~dst
   end
 
+  module P = Utils.Persistent(struct
+      type t = File.t list
+      let name = "TO-PROMOTE"
+      let version = 1
+    end)
+
   let db_file = Path.relative Path.build_dir ".to-promote"
 
   let dump_db db =
     if Path.build_dir_exists () then begin
       match db with
       | [] -> if Path.exists db_file then Path.unlink_no_err db_file
-      | l ->
-        Io.write_file db_file
-          (String.concat ~sep:""
-             (List.map l ~f:(fun x ->
-                Sexp.to_string ~syntax:Dune (File.sexp_of_t x) ^ "\n")))
+      | l -> P.dump db_file l
     end
 
-  let load_db () =
-    if Path.exists db_file then
-      Sexp.Of_sexp.(
-        parse (list File.t) Univ_map.empty
-          (Io.Sexp.load db_file ~mode:Many_as_one))
-    else
-      []
+  let load_db () = Option.value ~default:[] (P.load db_file)
 
   let group_by_targets db =
     List.map db ~f:(fun { File. src; dst } ->

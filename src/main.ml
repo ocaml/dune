@@ -68,20 +68,7 @@ let setup ?(log=Log.no_log)
             None
         with
         | Some p -> Workspace.load ?x ?profile p
-        | None ->
-          { merlin_context = Some "default"
-          ; contexts = [Default
-                          { loc = Loc.of_pos __POS__
-                          ; targets = [
-                              match x with
-                              | None   -> Native
-                              | Some x -> Named x
-                            ]
-                          ; profile =
-                              Option.value profile
-                                ~default:Config.default_build_profile
-                          }]
-          }
+        | None -> Workspace.default ?x ?profile ()
   in
 
   Fiber.parallel_map workspace.contexts ~f:(fun ctx_def ->
@@ -263,15 +250,7 @@ let bootstrap () =
     Scheduler.go ~log ~config
       (set_concurrency config
        >>= fun () ->
-       setup ~log ~workspace:{ merlin_context = Some "default"
-                             ; contexts = [Default { loc = Loc.of_pos __POS__
-                                                   ; targets = [Native]
-                                                   ; profile =
-                                                       Option.value !profile
-                                                         ~default:"dev"
-                                                   }
-                                          ]
-                             }
+       setup ~log ~workspace:(Workspace.default ?profile:!profile ())
          ?profile:!profile
          ~extra_ignored_subtrees:ignored_during_bootstrap
          ()

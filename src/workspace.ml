@@ -128,6 +128,14 @@ module Context = struct
     n :: List.filter_map (targets t) ~f:(function
       | Native -> None
       | Named s -> Some (n ^ "." ^ s))
+
+  let default ?x ?profile () =
+    Default
+      { loc = Loc.of_pos __POS__
+      ; targets = [Option.value x ~default:Target.Native]
+      ; profile = Option.value profile
+                    ~default:Config.default_build_profile
+      }
 end
 
 type t =
@@ -169,11 +177,7 @@ let t ?x ?profile:cmdline_profile () =
   in
   let contexts =
     match contexts with
-    | [] -> [Context.Default
-               { loc = Loc.of_pos __POS__
-               ; targets = Context.Target.add [Context.Target.Native] x
-               ; profile
-               }]
+    | [] -> [Context.default ?x ~profile ()]
     | _  -> contexts
   in
   let merlin_context =
@@ -193,21 +197,18 @@ let t ?x ?profile:cmdline_profile () =
 
 let t ?x ?profile () = fields (t ?x ?profile ())
 
+let default ?x ?profile () =
+  { merlin_context = Some "default"
+  ; contexts = [Context.default ?x ?profile ()]
+  }
+
 let load ?x ?profile p =
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
   match Which_program.t with
   | Dune ->
     Io.with_lexbuf_from_file p ~f:(fun lb ->
       if Dune_lexer.eof_reached lb then
-        { merlin_context = Some "default"
-        ; contexts =
-            [Context.Default
-               { loc = Loc.of_pos __POS__
-               ; targets = Context.Target.add [Context.Target.Native] x
-               ; profile = Option.value profile
-                             ~default:Config.default_build_profile
-               }]
-        }
+        default ?x ?profile ()
       else
         let first_line = Dune_lexer.first_line lb in
         parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
@@ -219,6 +220,10 @@ let load ?x ?profile p =
       (enter (t ?x ?profile ()))
       (Univ_map.singleton (Syntax.key syntax) (0, 0))
       sexp
+
+let default ?x ?profile () =
+  let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
+  default ?x ?profile ()
 
 let filename =
   match Which_program.t with

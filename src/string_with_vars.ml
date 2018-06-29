@@ -272,3 +272,8 @@ let is_var { template; syntax_version = _ } ~name =
   match template.parts with
   | [Var n] -> name = Var.full_name n
   | _ -> false
+
+let text_only t =
+  match t.template.parts with
+  | [Text s] -> Some s
+  | _ -> None

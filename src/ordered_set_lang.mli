@@ -76,6 +76,17 @@ module Unexpanded : sig
     -> files_contents:Sexp.Ast.t String.Map.t
     -> f:(String_with_vars.t -> string)
     -> expanded
+
+  type position = Pos | Neg
+
+  (** Fold a function over all strings in a set. The callback receive
+      whether the string is in position or negative position, i.e. on
+      the left or right of a [\] operator. *)
+  val fold_strings
+    :  t
+    -> init:'a
+    -> f:(position -> String_with_vars.t -> 'a -> 'a)
+    -> 'a
 end with type expanded := t
 
 module String : S with type value = string and type 'a map = 'a String.Map.t

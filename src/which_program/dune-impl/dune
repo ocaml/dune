@@ -2,6 +2,6 @@
  (name        which_program_dune)
  (public_name dune.which-program.dune)
  (wrapped     false)
- (flags       (:standard (:include ../no-keep-locs))))
+ (no_keep_locs))
 
-(rule (copy# ../which_program.mli which_program.mli))
+(rule (copy ../which_program.mli which_program.mli))

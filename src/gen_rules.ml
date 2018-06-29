@@ -578,6 +578,7 @@ module Gen(P : Install_rules.Params) = struct
         ~flags
         ~requires
         ~preprocessing:pp
+        ~no_keep_locs:lib.no_keep_locs
     in
 
     Modules_partitioner.acknowledge modules_partitioner cctx

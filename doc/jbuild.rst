@@ -183,6 +183,9 @@ modules you want.
 - ``(allow_overlapping_dependencies)`` allows external dependencies to
   overlap with libraries that are present in the workspace
 
+- ``(no_keep_locs)`` undocumented, it is a necessary hack until this
+  is implemented: https://github.com/ocaml/dune/issues/921
+
 Note that when binding C libraries, Jbuilder doesn't provide special support for
 tools such as ``pkg-config``, however it integrates easily with configurator_ by
 using ``(c_flags (:include ...))`` and ``(c_library_flags (:include ...))``.

@@ -205,6 +205,7 @@ module Library : sig
     ; dynlink                  : bool
     ; project                  : Dune_project.t
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
+    ; no_keep_locs             : bool
     }
 
   val has_stubs : t -> bool

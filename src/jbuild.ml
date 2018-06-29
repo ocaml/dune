@@ -731,6 +731,7 @@ module Library = struct
     ; dynlink                  : bool
     ; project                  : Dune_project.t
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
+    ; no_keep_locs             : bool
     }
 
   let t =
@@ -759,6 +760,7 @@ module Library = struct
        field_b    "optional"                                               >>= fun optional                 ->
        field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
        field_b    "no_dynlink"                                             >>= fun no_dynlink               ->
+       field_b "no_keep_locs" >>= fun no_keep_locs ->
        Sub_system_info.record_parser () >>= fun sub_systems ->
        Dune_project.get_exn () >>= fun project ->
        return
@@ -783,6 +785,7 @@ module Library = struct
          ; dynlink = not no_dynlink
          ; project
          ; sub_systems
+         ; no_keep_locs
          })
 
   let has_stubs t =

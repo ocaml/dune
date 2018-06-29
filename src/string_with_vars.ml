@@ -2,7 +2,10 @@ open! Import
 
 open Usexp.Template
 
-type t = Usexp.Template.t
+type t =
+  { template : Usexp.Template.t
+  ; syntax_version : Syntax.Version.t
+  }
 
 let literal ~quoted ~loc s =
   { parts = [Text s]
@@ -13,7 +16,7 @@ let literal ~quoted ~loc s =
 (* This module implements the "old" template parsing that is only used in jbuild
    files *)
 module Jbuild : sig
-  val parse : string -> loc:Loc.t -> quoted:bool -> t
+  val parse : string -> loc:Loc.t -> quoted:bool -> Usexp.Template.t
 end = struct
   type var_syntax = Parens | Braces
   module Token = struct
@@ -101,30 +104,44 @@ let t =
     | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
     | List (loc, _) -> Sexp.Of_sexp.of_sexp_error loc "Unexpected list"
   in
-  Syntax.get_exn Stanza.syntax >>= function
-  | (0, _) -> jbuild
-  | (_, _) -> dune
+  Syntax.get_exn Stanza.syntax >>= fun syntax_version ->
+  let template =
+    match syntax_version with
+    | (0, _) -> jbuild
+    | (_, _) -> dune
+  in
+  template >>| fun template ->
+  {template; syntax_version}
 
-let loc t = t.loc
+let loc t = t.template.loc
+
+let syntax_version t = t.syntax_version
+
+let virt_syntax = (0, 0)
 
 let virt ?(quoted=false) pos s =
-  Jbuild.parse ~quoted ~loc:(Loc.of_pos pos) s
+  let template = Jbuild.parse ~quoted ~loc:(Loc.of_pos pos) s in
+  {template; syntax_version = virt_syntax}
 
 let virt_var ?(quoted=false) pos s =
   assert (String.for_all s ~f:(function ':' -> false | _ -> true));
   let loc = Loc.of_pos pos in
-  { parts =
-      [Var { payload = None
-           ; name = s
-           ; syntax = Percent
-           ; loc
-           }]
-  ; loc
-  ; quoted
-  }
+  let template =
+    { parts =
+        [Var { payload = None
+             ; name = s
+             ; syntax = Percent
+             ; loc
+             }]
+    ; loc
+    ; quoted
+    }
+  in
+  {template; syntax_version = virt_syntax}
 
 let virt_text pos s =
-  { parts = [Text s];  loc = Loc.of_pos pos;  quoted = true }
+  let template = { parts = [Text s];  loc = Loc.of_pos pos;  quoted = true } in
+  {template; syntax_version = virt_syntax}
 
 let concat_rev = function
   | [] -> ""
@@ -188,9 +205,9 @@ let partial_expand
   : 'a.t
   -> mode:'a Mode.t
   -> dir:Path.t
-  -> f:(Var.t -> Value.t list option)
+  -> f:(Var.t -> Syntax.Version.t -> Value.t list option)
   -> 'a Partial.t
-  = fun t ~mode ~dir ~f ->
+  = fun ({template; syntax_version} as t) ~mode ~dir ~f ->
     let commit_text acc_text acc =
       let s = concat_rev acc_text in
       if s = "" then acc else Text s :: acc
@@ -202,35 +219,36 @@ let partial_expand
         | [] ->
           Partial.Expanded (Mode.string mode (concat_rev acc_text))
         | _  ->
-          Unexpanded { t with parts = List.rev (commit_text acc_text acc) }
+          let template = {template with parts = List.rev (commit_text acc_text acc)} in
+          Unexpanded {template; syntax_version}
         end
       | Text s :: items -> loop (s :: acc_text) acc items
       | Var var as it :: items ->
-        begin match f var with
-        | Some ([] | _::_::_ as e) when not t.quoted ->
+        begin match f var syntax_version with
+        | Some ([] | _::_::_ as e) when not template.quoted ->
           invalid_multivalue var e
         | Some t ->
           loop (Value.L.concat ~dir t :: acc_text) acc items
         | None -> loop [] (it :: commit_text acc_text acc) items
         end
     in
-    match t.parts with
+    match template.parts with
     | [] -> Partial.Expanded (Mode.string mode "")
     | [Text s] -> Expanded (Mode.string mode s)
-    | [Var var] when not t.quoted ->
-      begin match f var with
+    | [Var var] when not template.quoted ->
+      begin match f var syntax_version with
       | None -> Partial.Unexpanded t
       | Some e -> Expanded (
         match Mode.value mode e with
         | None -> invalid_multivalue var e
         | Some s -> s)
       end
-    | _ -> loop [] [] t.parts
+    | _ -> loop [] [] template.parts
 
 let expand t ~mode ~dir ~f =
   match
-    partial_expand t ~mode ~dir ~f:(fun var ->
-      match f var with
+    partial_expand t ~mode ~dir ~f:(fun var syntax_version ->
+      match f var syntax_version with
       | None ->
         begin match var.syntax with
         | Percent ->
@@ -248,9 +266,9 @@ let expand t ~mode ~dir ~f =
 
 let partial_expand t ~mode ~dir ~f = partial_expand t ~mode ~dir ~f
 
-let sexp_of_t t = Usexp.Template t
+let sexp_of_t t = Usexp.Template t.template
 
-let is_var { parts ; quoted = _; loc = _ } ~name =
-  match parts with
+let is_var { template; syntax_version = _ } ~name =
+  match template.parts with
   | [Var n] -> name = Var.full_name n
   | _ -> false

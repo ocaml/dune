@@ -88,7 +88,7 @@ let expand_var_no_root t var = String.Map.find t.vars var
 
 let (expand_vars, expand_vars_path) =
   let expand t ~scope ~dir ?(extra_vars=String.Map.empty) s =
-    String_with_vars.expand ~mode:Single ~dir s ~f:(fun v ->
+    String_with_vars.expand ~mode:Single ~dir s ~f:(fun v _syntax_version ->
       match String_with_vars.Var.full_name v with
       | "ROOT" -> Some [Value.Path t.context.build_dir]
       | "SCOPE_ROOT" -> Some [Value.Path (Scope.root scope)]
@@ -627,7 +627,7 @@ module Action = struct
       ; ddeps     = String.Map.empty
       }
     in
-    let expand var =
+    let expand var syntax_version =
       let loc = String_with_vars.Var.loc var in
       let key = String_with_vars.Var.full_name var in
       match String_with_vars.Var.destruct var with
@@ -640,9 +640,14 @@ module Action = struct
           | Error e ->
             add_fail acc ({ fail = fun () -> Action.Prog.Not_found.raise e })
         end
-      (* "findlib" for compatibility with Jane Street packages which are not yet updated
-         to convert "findlib" to "lib" *)
-      | Pair (("lib"|"findlib"), s) -> begin
+      | Pair ("findlib", s) when syntax_version >= (1, 0) ->
+        Loc.fail
+          loc
+          "The findlib special variable is not supported anymore, please use lib instead:\n\
+           %%{lib:%s}"
+          s
+      | Pair ("findlib", s)
+      | Pair ("lib", s) -> begin
           let lib_dep, file = parse_lib_file ~loc s in
           add_lib_dep acc lib_dep dep_kind;
           match
@@ -721,7 +726,7 @@ module Action = struct
         | None -> String.Map.find extra_vars key
     in
     let t =
-      U.partial_expand t ~dir ~map_exe ~f:(fun var ->
+      U.partial_expand t ~dir ~map_exe ~f:(fun var syntax_version ->
         let var_name = String_with_vars.Var.full_name var in
         let loc = String_with_vars.Var.loc var in
         match var_name with
@@ -738,7 +743,7 @@ module Action = struct
           | Pair ("path-no-dep", s) ->
             Some (path_exp (Path.relative dir s))
           | _ ->
-            let exp = expand var in
+            let exp = expand var syntax_version in
             Option.iter exp ~f:(fun vs ->
               acc.sdeps <- Path.Set.union (Path.Set.of_list
                                              (Value.L.paths_only vs)) acc.sdeps;
@@ -748,7 +753,7 @@ module Action = struct
     (t, acc)
 
   let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
-    U.Partial.expand t ~dir ~map_exe ~f:(fun var ->
+    U.Partial.expand t ~dir ~map_exe ~f:(fun var _syntax_version ->
       let key = String_with_vars.Var.full_name var in
       let loc = String_with_vars.Var.loc var in
       match String.Map.find dynamic_expansions key with

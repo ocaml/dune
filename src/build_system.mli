@@ -204,11 +204,11 @@ val all_lib_deps_by_context
 (** List of all buildable targets *)
 val all_targets : t -> Path.t list
 
-(** Return the list of files that were created in the source tree and
+(** Return the set of files that were created in the source tree and
     needs to be deleted *)
 val files_in_source_tree_to_delete
   :  unit
-  -> Path.t list
+  -> Path.Set.t
 
 (** {2 Build rules} *)
 

@@ -10,26 +10,26 @@ let alias_dir = Path.(relative build_dir) ".aliases"
 let misc_dir = Path.(relative build_dir) ".misc"
 
 module Promoted_to_delete = struct
-  let db = ref []
+  module P = Utils.Persistent(struct
+      type t = Path.Set.t
+      let name = "PROMOTED-TO-DELETE"
+      let version = 1
+    end)
+
+  let db = ref Path.Set.empty
 
   let fn = Path.relative Path.build_dir ".to-delete-in-source-tree"
 
-  let add p = db := p :: !db
+  let add p = db := Path.Set.add !db p
 
   let load () =
-    if Path.exists fn then
-      Io.Sexp.load fn ~mode:Many
-      |> List.map ~f:(Sexp.Of_sexp.parse Path.t Univ_map.empty)
-    else
-      []
+    Option.value ~default:Path.Set.empty (P.load fn)
 
   let dump () =
-    let db = Path.Set.union (Path.Set.of_list !db) (Path.Set.of_list (load ())) in
     if Path.build_dir_exists () then
-      Io.write_file fn
-        (String.concat ~sep:""
-           (List.map (Path.Set.to_list db) ~f:(fun p ->
-              Sexp.to_string ~syntax:Dune (Path.sexp_of_t p) ^ "\n")))
+      load ()
+      |> Path.Set.union !db
+      |> P.dump fn
 end
 
 let files_in_source_tree_to_delete () =
@@ -447,8 +447,8 @@ let get_file : type a. t -> Path.t -> a File_kind.t -> a File_spec.t = fun t fn 
     let Eq = File_kind.eq_exn kind file.kind in
     file
 
-let vfile_to_string (type a) (module K : Vfile_kind.S with type t = a) fn x =
-  K.to_string fn x
+let vfile_to_string (type a) (module K : Vfile_kind.S with type t = a) _fn x =
+  K.to_string x
 
 module Build_exec = struct
   open Build.Repr

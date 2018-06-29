@@ -74,9 +74,12 @@ let check_supported t (loc, ver) =
       (String.concat ~sep:"\n"
          (List.map (Supported_versions.supported_ranges t.supported_versions)
             ~f:(fun (a, b) ->
-              sprintf "- %s to %s"
-                (Version.to_string a)
-                (Version.to_string b))))
+              if a = b then
+                sprintf "- %s" (Version.to_string a)
+              else
+                sprintf "- %s to %s"
+                  (Version.to_string a)
+                  (Version.to_string b))))
 
 let greatest_supported_version t =
   Supported_versions.greatest_supported_version t.supported_versions

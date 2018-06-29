@@ -534,10 +534,11 @@ end
 module Pkg_version = struct
   open Build.O
 
-  module V = Vfile_kind.Make(struct type t = string option end)
-      (functor (C : Sexp.Combinators) -> struct
-        let t = C.option C.string
-      end)
+  module V = Vfile_kind.Make(struct
+      type t = string option
+      let t = Sexp.To_sexp.(option string)
+      let name = "Pkg_version"
+    end)
 
   let spec sctx (p : Package.t) =
     let fn =

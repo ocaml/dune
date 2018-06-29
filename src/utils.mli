@@ -63,6 +63,7 @@ end
 
 (** Persistent value stored on disk *)
 module Persistent(D : Persistent_desc) : sig
+  val to_out_string : D.t -> string
   val dump : Path.t -> D.t -> unit
   val load : Path.t -> D.t option
 end

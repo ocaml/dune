@@ -89,12 +89,22 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
         else
           As []
       in
+      let dir, no_keep_locs =
+        if CC.no_keep_locs cctx && cm_kind = Cmi then begin
+          if ctx.version < (4, 03, 0) then
+            (obj_dir, Arg_spec.As [])
+          else
+            (ctx.build_dir, As ["-no-keep-locs"])
+        end else
+          (ctx.build_dir, As [])
+      in
       SC.add_rule sctx ?sandbox
         (Build.paths extra_deps >>>
          other_cm_files >>>
          Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind >>>
-         Build.run ~context:ctx (Ok compiler)
+         Build.run ~dir ~context:ctx (Ok compiler)
            [ Dyn (fun ocaml_flags -> As ocaml_flags)
+           ; no_keep_locs
            ; cmt_args
            ; A "-I"; Path obj_dir
            ; Cm_kind.Dict.get (CC.includes cctx) cm_kind

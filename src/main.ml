@@ -267,7 +267,7 @@ let bootstrap () =
                              ; contexts = [Default { targets = [Native]
                                                    ; profile =
                                                        Option.value !profile
-                                                         ~default:"default"
+                                                         ~default:"dev"
                                                    }
                                           ]
                              }

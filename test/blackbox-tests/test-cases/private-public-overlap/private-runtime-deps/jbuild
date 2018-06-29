@@ -2,7 +2,7 @@
 
 (library
  ((name private_runtime_dep)
-  (modules (private_runtime_dep))))
+  (modules private_runtime_dep)))
 
 (library
  ((name private_ppx)
@@ -14,4 +14,4 @@
  ((name mylib)
   (public_name mylib)
   (preprocess (pps (private_ppx)))
-  (modules (mylib))))
+  (modules mylib)))

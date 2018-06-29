@@ -28,7 +28,7 @@ module Parse = struct
 
   let generic ~inc ~elt =
     let open Stanza.Of_sexp in
-    let rec one () =
+    let rec one (kind : Stanza.File_kind.t) =
       peek_exn >>= function
       | Atom (loc, A "\\") -> Loc.fail loc "unexpected \\"
       | (Atom (_, A "") | Quoted_string (_, _)) | Template _ ->
@@ -45,19 +45,30 @@ module Parse = struct
           | _ ->
             elt >>| fun x -> Element x
         end
-      | List (_, Atom (_, A ":include") :: _) -> inc
-      | List _ -> enter (many [])
-    and many acc =
+      | List (_, Atom (loc, A s) :: _) -> begin
+          match s, kind with
+          | ":include", _ -> inc
+          | s, Dune when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
+            Loc.fail loc
+              "This atom must be quoted because it is the first element \
+               of a list and doesn't start with - or :"
+          | _ -> enter (many [] kind)
+        end
+      | List _ -> enter (many [] kind)
+    and many acc kind =
       peek >>= function
       | None -> return (Union (List.rev acc))
       | Some (Atom (_, A "\\")) ->
-        junk >>> many [] >>| fun to_remove ->
+        junk >>> many [] kind >>| fun to_remove ->
         Diff (Union (List.rev acc), to_remove)
       | Some _ ->
-        one () >>= fun x ->
-        many (x :: acc)
+        one kind >>= fun x ->
+        many (x :: acc) kind
     in
-    one ()
+    Stanza.file_kind () >>= fun kind ->
+    match kind with
+    | Dune -> many [] kind
+    | Jbuild -> one kind
 
   let with_include ~elt =
     generic ~elt ~inc:(

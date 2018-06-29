@@ -147,10 +147,9 @@ let find_root () =
   let cwd = Sys.getcwd () in
   let rec loop counter ~candidates ~to_cwd dir =
     let files = Sys.readdir dir |> Array.to_list |> String.Set.of_list in
-    if String.Set.mem files "dune-workspace"   ||
-       String.Set.mem files "jbuild-workspace" then
+    if String.Set.mem files Workspace.filename then
       cont counter ~candidates:((0, dir, to_cwd) :: candidates) dir ~to_cwd
-    else if String.Set.exists files ~f:(fun fn ->
+    else if Which_program.t = Jbuilder && String.Set.exists files ~f:(fun fn ->
       String.is_prefix fn ~prefix:"jbuild-workspace") then
       cont counter ~candidates:((1, dir, to_cwd) :: candidates) dir ~to_cwd
     else if String.Set.mem files Dune_project.filename then

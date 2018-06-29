@@ -191,3 +191,8 @@ let t ?x ?profile:cmdline_profile sexps =
   }
 
 let load ?x ?profile p = t ?x ?profile (Io.Sexp.load p ~mode:Many)
+
+let filename =
+  match Which_program.t with
+  | Dune     -> "dune-workspace"
+  | Jbuilder -> "jbuild-workspace"

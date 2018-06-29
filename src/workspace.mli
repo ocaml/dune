@@ -37,3 +37,6 @@ type t =
   }
 
 val load : ?x:string -> ?profile:string -> Path.t -> t
+
+(** Default name of workspace files *)
+val filename : string

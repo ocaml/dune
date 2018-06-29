@@ -139,7 +139,6 @@ include Versioned_file.Make(struct type t = unit end)
 let () = Lang.register syntax ()
 
 let t ?x ?profile:cmdline_profile () =
-  let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
   field "profile" string ~default:Config.default_build_profile
   >>= fun profile ->
   let profile = Option.value cmdline_profile ~default:profile in
@@ -195,8 +194,23 @@ let t ?x ?profile:cmdline_profile () =
 let t ?x ?profile () = fields (t ?x ?profile ())
 
 let load ?x ?profile p =
+  let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
   match Which_program.t with
-  | Dune -> load p ~f:(fun _lang -> t ?x ?profile ())
+  | Dune ->
+    Io.with_lexbuf_from_file p ~f:(fun lb ->
+      if Dune_lexer.eof_reached lb then
+        { merlin_context = Some "default"
+        ; contexts =
+            [Context.Default
+               { loc = Loc.of_pos __POS__
+               ; targets = Context.Target.add [Context.Target.Native] x
+               ; profile = Option.value profile
+                             ~default:Config.default_build_profile
+               }]
+        }
+      else
+        let first_line = Dune_lexer.first_line lb in
+        parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
   | Jbuilder ->
     let sexp =
       Io.Sexp.load p ~mode:Many_as_one ~lexer:Sexp.Lexer.jbuild_token

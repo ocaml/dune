@@ -112,16 +112,16 @@ building executables needed by the other contexts.
 With such a setup, calling ``jbuilder build @install`` will build all
 the packages three times.
 
-Note that instead of writing a ``jbuild-workspace`` file, you can also
-use the ``-x`` command line option. Passing ``-x foo`` to ``jbuilder``
-without having a ``jbuild-workspace`` file is the same as writing the
-following ``jbuild-workspace`` file:
+Note that instead of writing a ``dune-workspace`` file, you can also
+use the ``-x`` command line option. Passing ``-x foo`` to ``dune``
+without having a ``dune-workspace`` file is the same as writing the
+following ``dune-workspace`` file:
 
 .. code:: scheme
 
    (context (default (targets (foo))))
 
-If you have a ``jbuild-workspace`` and pass a ``-x foo`` option,
+If you have a ``dune-workspace`` and pass a ``-x foo`` option,
 ``foo`` will be added as target of all context stanzas.
 
 How does it work?

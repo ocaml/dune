@@ -1426,8 +1426,11 @@ module Help = struct
            Unix systems and $(b,Local Settings/dune/config) in the User home
            directory on Windows. However, it is possible to specify an
            alternative configuration file with the $(b,--config-file) option.|}
-    ; `P {|This file must be written in S-expression syntax and be composed of
-           a list of stanzas. The following sections describe the stanzas available.|}
+    ; `P {|The first line of the file must be of the form (lang dune X.Y) \
+           where X.Y is the version of the dune language used in the file.|}
+    ; `P {|The rest of the file must be written in S-expression syntax and be \
+           composed of a list of stanzas. The following sections describe \
+           the stanzas available.|}
     ; `S "DISPLAY MODES"
     ; `P {|Syntax: $(b,\(display MODE\))|}
     ; `P {|This stanza controls how Dune reports what it is doing to the user.

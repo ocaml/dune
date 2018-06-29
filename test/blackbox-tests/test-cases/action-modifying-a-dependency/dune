@@ -1,0 +1,5 @@
+;; This test erroneously modify one of its dependencies
+(alias
+ (name   x)
+ (deps   data (universe))
+ (action (system "echo hello >> data")))

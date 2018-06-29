@@ -106,9 +106,13 @@ module Context = struct
       ]
 
   let t ~profile ~x =
-    peek_exn >>= function
-    | List (_, List _ :: _) ->
-      record (Opam.t ~profile ~x) >>| fun x -> Opam x
+    Syntax.get_exn syntax >>= function
+    | (0, _) ->
+      (* jbuild-workspace files *)
+      (peek_exn >>= function
+       | List (_, List _ :: _) ->
+         Sexp.Of_sexp.record (Opam.t ~profile ~x) >>| fun x -> Opam x
+       | _ -> t ~profile ~x)
     | _ -> t ~profile ~x
 
   let name = function

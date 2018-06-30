@@ -30,7 +30,7 @@ specifying the workspace file is possible:
   Raised by primitive operation at file "pervasives.ml", line 389, characters 28-54
   Called from file "src/stdune/io.ml", line 15, characters 15-35
   Called from file "src/main.ml", line 61, characters 8-36
-  Called from file "src/main.ml", line 270, characters 12-56
+  Called from file "src/main.ml", line 267, characters 12-56
   Called from file "bin/main.ml", line 756, characters 7-29
   Called from file "vendor/cmdliner/src/cmdliner_term.ml", line 27, characters 19-24
   Called from file "vendor/cmdliner/src/cmdliner.ml", line 106, characters 32-39

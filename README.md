@@ -85,7 +85,7 @@ $ jbuilder build --only-packages <package-name> @install
 
 Jbuilder is able to build a given source code repository against
 several configurations simultaneously. This helps maintaining packages
-across several versions of OCaml as you can tests them all at once
+across several versions of OCaml as you can test them all at once
 without hassle.
 
 This feature should make cross-compilation easy, see details in the

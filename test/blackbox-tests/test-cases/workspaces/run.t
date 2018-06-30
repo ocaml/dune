@@ -31,7 +31,6 @@ specifying the workspace file is possible:
 Workspaces let you set custom profiles
 
   $ dune runtest --root custom-profile
-  Info: creating file dune-project with this contents: (lang dune 1.0)
   Entering directory 'custom-profile'
   build profile: foobar
 

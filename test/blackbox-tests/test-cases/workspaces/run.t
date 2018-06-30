@@ -34,11 +34,10 @@ Workspaces let you set custom profiles
   Entering directory 'custom-profile'
   build profile: foobar
 
-A workspace context can ve defined using an opam switch. Note that this test is
-a bit limited since we can't mock opam switches.
+A workspace context can ve defined using an opam switch. This test is disabled
+because we don't really have a way to mock an opam switch.
 
-  $ dune build --root opam --display quiet 2>&1 | grep -v "opam (internal)\|To make opam select\|OPAMSWITCH"
-  Entering directory 'opam'
+#  $ dune build --root opam --display quiet 2>&1
 
 Workspaces also allow you to set "target" for cross compilation. This feature is
 a bit hard to test since it requires mocking more than one context. But we can

@@ -807,15 +807,18 @@ end
 
 module Install_conf = struct
   type file =
-    { src : string
-    ; dst : string option
+    { src : String_with_vars.t
+    ; dst : String_with_vars.t option
     }
 
   let file =
     peek_exn >>= function
-    | Atom (_, A src) -> junk >>| fun () -> { src; dst = None }
-    | List (_, [Atom (_, A src); Atom (_, A "as"); Atom (_, A dst)]) ->
-      junk >>> return { src; dst = Some dst }
+    | Atom (_, A _) -> String_with_vars.t >>| fun src -> { src; dst = None }
+    | List (_, [Atom (_, A _); Atom (_, A "as"); Atom (_, A _)]) ->
+      String_with_vars.t >>= fun src ->
+      junk >>= fun () ->
+      String_with_vars.t >>| fun dst ->
+      { src; dst = Some dst }
     | sexp ->
       of_sexp_error (Sexp.Ast.loc sexp)
         "invalid format, <name> or (<name> as <install-as>) expected"
@@ -1000,8 +1003,8 @@ module Executables = struct
             match pub with
             | None -> None
             | Some pub -> Some ({ Install_conf.
-                                  src = name ^ ext
-                                ; dst = Some pub
+                                  src = String_with_vars.virt_text ("", 0, 0, 0) (name ^ ext) (* TODO(ins): how to grab a sensible position? *)
+                                ; dst = Some (String_with_vars.virt_text ("", 0, 0, 0) pub)
                                 }))
         |> List.filter_map ~f:(fun x -> x)
     in
@@ -1021,7 +1024,15 @@ module Executables = struct
   let public_name =
     string >>| function
     | "-" -> None
-    | s   -> Some s
+    | s -> Some s
+
+    (*
+    peek_exn >>= function
+    | Atom (_, A "-") -> junk >>| fun () -> None
+    | Atom (_, A _) -> String_with_vars.t >>| fun s -> Some s
+    | sexp ->
+      of_sexp_error (Sexp.Ast.loc sexp)
+       "invalid format, <name> or (<name> as <install-as>) expected" *)
 
   let multi =
     record

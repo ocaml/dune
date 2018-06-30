@@ -58,6 +58,9 @@ let setup ?(log=Log.no_log)
     | None ->
       match workspace_file with
       | Some p ->
+        if not (Path.exists p) then
+          die "@{<error>Error@}: workspace file %s does not exist"
+            (Path.to_string_maybe_quoted p);
         Workspace.load ?x ?profile p
       | None ->
         match

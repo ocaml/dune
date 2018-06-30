@@ -25,18 +25,7 @@ analogously, jbuilder will ignore it
 specifying the workspace file is possible:
 
   $ dune build --root custom-workspace --workspace custom-workspace/dune-workspace.dev
-  Error: exception Sys_error("custom-workspace/dune-workspace.dev: No such file or directory")
-  Backtrace:
-  Raised by primitive operation at file "pervasives.ml", line 389, characters 28-54
-  Called from file "src/stdune/io.ml", line 15, characters 15-35
-  Called from file "src/main.ml", line 61, characters 8-36
-  Called from file "src/main.ml", line 267, characters 12-56
-  Called from file "bin/main.ml", line 756, characters 7-29
-  Called from file "vendor/cmdliner/src/cmdliner_term.ml", line 27, characters 19-24
-  Called from file "vendor/cmdliner/src/cmdliner.ml", line 106, characters 32-39
-  Called from file "vendor/cmdliner/src/cmdliner.ml", line 136, characters 18-36
-  Called from file "vendor/cmdliner/src/cmdliner.ml", line 251, characters 22-48
-  Called from file "bin/main.ml", line 1562, characters 10-51
+  Error: workspace file custom-workspace/dune-workspace.dev does not exist
   [1]
 
 Workspaces let you set custom profiles

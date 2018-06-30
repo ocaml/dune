@@ -580,6 +580,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name workspaces)
+ (deps (package dune) (source_tree test-cases/workspaces))
+ (action
+  (chdir
+   test-cases/workspaces
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name runtest)
  (deps
   (alias action-modifying-a-dependency)
@@ -648,7 +656,8 @@
   (alias syntax-versioning)
   (alias use-meta)
   (alias utop)
-  (alias windows-diff)))
+  (alias windows-diff)
+  (alias workspaces)))
 
 (alias
  (name runtest-no-deps)
@@ -710,7 +719,8 @@
   (alias select)
   (alias syntax-versioning)
   (alias use-meta)
-  (alias windows-diff)))
+  (alias windows-diff)
+  (alias workspaces)))
 
 (alias (name runtest-disabled) (deps (alias reason)))
 

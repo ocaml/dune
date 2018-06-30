@@ -59,7 +59,7 @@ let setup ?(log=Log.no_log)
       match workspace_file with
       | Some p ->
         Workspace.load ?x ?profile p
-      | _ ->
+      | None ->
         match
           let p = Path.of_string Workspace.filename in
           Option.some_if (Path.exists p) p

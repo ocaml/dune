@@ -29,7 +29,11 @@ let default_build_profile =
   | Dune     -> "dev"
   | Jbuilder -> "release"
 
-open Sexp.Of_sexp
+open Stanza.Of_sexp
+
+(* the configuration file use the same version numbers as dune-project
+   files for simplicity *)
+let syntax = Stanza.syntax
 
 module Display = struct
   type t =
@@ -106,21 +110,35 @@ let default =
   }
 
 let t =
-  record
-    (field "display" Display.t ~default:default.display
-     >>= fun display ->
-     field "jobs" Concurrency.t ~default:default.concurrency
-     >>= fun concurrency ->
-     return { display
-            ; concurrency
-            })
+  field "display" Display.t ~default:default.display
+  >>= fun display ->
+  field "jobs" Concurrency.t ~default:default.concurrency
+  >>= fun concurrency ->
+  return { display
+         ; concurrency
+         }
+
+let t = fields t
 
 let user_config_file =
   Path.relative (Path.of_filename_relative_to_initial_cwd Xdg.config_dir)
     "dune/config"
 
+include Versioned_file.Make(struct type t = unit end)
+let () = Lang.register syntax ()
+
 let load_config_file p =
-  (Sexp.Of_sexp.parse t Univ_map.empty) (Io.Sexp.load p ~mode:Many_as_one)
+  match Which_program.t with
+  | Dune -> load p ~f:(fun _lang -> t)
+  | Jbuilder ->
+    Io.with_lexbuf_from_file p ~f:(fun lb ->
+      match Dune_lexer.maybe_first_line lb with
+      | None ->
+        parse (enter t)
+          (Univ_map.singleton (Syntax.key syntax) (0, 0))
+          (Io.Sexp.load p ~mode:Many_as_one ~lexer:Sexp.Lexer.jbuild_token)
+      | Some first_line ->
+        parse_contents lb first_line ~f:(fun _lang -> t))
 
 let load_user_config_file () =
   if Path.exists user_config_file then

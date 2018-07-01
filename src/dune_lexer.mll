@@ -61,6 +61,10 @@ and to_eol = parse
     { ()
     }
 
+and eof_reached = parse
+  | eof { true  }
+  | ""  { false }
+
 {
   let first_line lb =
     match maybe_first_line lb with

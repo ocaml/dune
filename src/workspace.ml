@@ -1,5 +1,9 @@
 open Import
-open Sexp.Of_sexp
+open Stanza.Of_sexp
+
+(* workspace files use the same version numbers as dune-project files
+   for simplicity *)
+let syntax = Stanza.syntax
 
 module Context = struct
   module Target = struct
@@ -11,11 +15,35 @@ module Context = struct
       map string ~f:(function
         | "native" -> Native
         | s        -> Named s)
+
+    let add ts x =
+      match x with
+      | None -> ts
+      | Some t ->
+        if List.mem t ~set:ts then
+          ts
+        else
+          ts @ [t]
+  end
+
+  module Name = struct
+    let t =
+      plain_string (fun ~loc name ->
+        if name = "" ||
+           String.is_prefix name ~prefix:"." ||
+           name = "log" ||
+           name = "install" ||
+           String.contains name '/' ||
+           String.contains name '\\' then
+          of_sexp_errorf loc
+            "%S is not allowed as a build context name" name;
+        name)
   end
 
   module Opam = struct
     type t =
-      { name    : string
+      { loc     : Loc.t
+      ; name    : string
       ; profile : string
       ; switch  : string
       ; root    : string option
@@ -23,58 +51,69 @@ module Context = struct
       ; targets : Target.t list
       }
 
-    let t ~profile =
+    let t ~profile ~x =
       field   "switch"  string                                    >>= fun switch ->
-      field   "name"    string ~default:switch                    >>= fun name ->
+      field   "name"    Name.t ~default:switch                    >>= fun name ->
       field   "targets" (list Target.t) ~default:[Target.Native]  >>= fun targets ->
       field_o "root"    string                                    >>= fun root ->
       field_b "merlin"                                            >>= fun merlin ->
       field   "profile" string ~default:profile                   >>= fun profile ->
-      return { switch
+      loc >>= fun loc ->
+      return { loc
+             ; switch
              ; name
              ; root
              ; merlin
-             ; targets
+             ; targets = Target.add targets x
              ; profile
              }
   end
 
   module Default = struct
     type t =
-      { profile : string
+      { loc     : Loc.t
+      ; profile : string
       ; targets : Target.t list
       }
 
-    let t ~profile =
+    let t ~profile ~x =
       field "targets" (list Target.t) ~default:[Target.Native]
       >>= fun targets ->
       field "profile" string ~default:profile
       >>= fun profile ->
-      return { targets; profile }
+      loc
+      >>= fun loc ->
+      return { loc
+             ; targets = Target.add targets x
+             ; profile
+             }
   end
 
   type t = Default of Default.t | Opam of Opam.t
 
-  let t ~profile =
-    Sexp.Of_sexp.(
-      peek_exn >>= function
-      | Atom _ | Quoted_string _ ->
-        enum [ "default",
-               Default { targets = [Native]
-                       ; profile
-                       }
-             ]
-      | List (_, List _ :: _) ->
-        record (Opam.t ~profile) >>| fun x -> Opam x
-      | _ ->
-        sum
-          [ "default",
-            (fields (Default.t ~profile) >>| fun x ->
-             Default x)
-          ; "opam",
-            (fields (Opam.t ~profile) >>| fun x ->
-             Opam x)
-          ])
+  let loc = function
+    | Default x -> x.loc
+    | Opam    x -> x.loc
+
+  let t ~profile ~x =
+    sum
+      [ "default",
+        (fields (Default.t ~profile ~x) >>| fun x ->
+         Default x)
+      ; "opam",
+        (fields (Opam.t ~profile ~x) >>| fun x ->
+         Opam x)
+      ]
+
+  let t ~profile ~x =
+    Syntax.get_exn syntax >>= function
+    | (0, _) ->
+      (* jbuild-workspace files *)
+      (peek_exn >>= function
+       | List (_, List _ :: _) ->
+         Sexp.Of_sexp.record (Opam.t ~profile ~x) >>| fun x -> Opam x
+       | _ -> t ~profile ~x)
+    | _ -> t ~profile ~x
 
   let name = function
     | Default _ -> "default"
@@ -89,6 +128,14 @@ module Context = struct
     n :: List.filter_map (targets t) ~f:(function
       | Native -> None
       | Named s -> Some (n ^ "." ^ s))
+
+  let default ?x ?profile () =
+    Default
+      { loc = Loc.of_pos __POS__
+      ; targets = [Option.value x ~default:Target.Native]
+      ; profile = Option.value profile
+                    ~default:Config.default_build_profile
+      }
 end
 
 type t =
@@ -96,75 +143,32 @@ type t =
   ; contexts       : Context.t list
   }
 
-type item = Context of Sexp.Ast.t | Profile of Loc.t * string
+include Versioned_file.Make(struct type t = unit end)
+let () = Lang.register syntax ()
 
-let item_of_sexp =
-  sum
-    [ "context", (raw >>|fun x -> Context x)
-    ; "profile",
-      (loc >>= fun loc ->
-       string >>= fun x ->
-       return (Profile (loc, x)))
-    ]
-
-let t ?x ?profile:cmdline_profile sexps =
+let t ?x ?profile:cmdline_profile () =
+  field "profile" string ~default:Config.default_build_profile
+  >>= fun profile ->
+  let profile = Option.value cmdline_profile ~default:profile in
+  multi_field "context" (Context.t ~profile ~x)
+  >>= fun contexts ->
   let defined_names = ref String.Set.empty in
-  let profiles, contexts =
-    List.partition_map sexps ~f:(fun sexp ->
-      match Sexp.Of_sexp.parse item_of_sexp Univ_map.empty sexp with
-      | Profile (loc, p) -> Left (loc, p)
-      | Context c -> Right c)
-  in
-  let profile =
-    match profiles, cmdline_profile with
-    | _ :: (loc, _) :: _, _ ->
-      Loc.fail loc "profile defined too many times"
-    | _, Some p -> p
-    | [], None -> Config.default_build_profile
-    | [(_, p)], None -> p
-  in
   let { merlin_context; contexts } =
     let init =
       { merlin_context = None
       ; contexts       = []
       }
     in
-    List.fold_left contexts ~init ~f:(fun t sexp ->
-      let ctx = Sexp.Of_sexp.parse (Context.t ~profile) Univ_map.empty sexp in
-      let ctx =
-        match x with
-        | None -> ctx
-        | Some s ->
-          let target = Context.Target.Named s in
-          let add_target target targets =
-            if List.mem target ~set:targets then
-              targets
-            else
-              targets @ [target]
-          in
-          match ctx with
-          | Default d ->
-            Default { d with targets = add_target target d.targets }
-          | Opam o ->
-            Opam    { o with targets = add_target target o.targets }
-      in
+    List.fold_left contexts ~init ~f:(fun t ctx ->
       let name = Context.name ctx in
-      if name = "" ||
-         String.is_prefix name ~prefix:"." ||
-         name = "log" ||
-         name = "install" ||
-         String.contains name '/' ||
-         String.contains name '\\' then
-        of_sexp_errorf (Sexp.Ast.loc sexp)
-          "%S is not allowed as a build context name" name;
       if String.Set.mem !defined_names name then
-        of_sexp_errorf (Sexp.Ast.loc sexp)
+        Loc.fail (Context.loc ctx)
           "second definition of build context %S" name;
       defined_names := String.Set.union !defined_names
                          (String.Set.of_list (Context.all_names ctx));
       match ctx, t.merlin_context with
       | Opam { merlin = true; _ }, Some _ ->
-        of_sexp_errorf (Sexp.Ast.loc sexp)
+        Loc.fail (Context.loc ctx)
           "you can only have one context for merlin"
       | Opam { merlin = true; _ }, None ->
         { merlin_context = Some name; contexts = ctx :: t.contexts }
@@ -173,7 +177,7 @@ let t ?x ?profile:cmdline_profile sexps =
   in
   let contexts =
     match contexts with
-    | [] -> [Context.Default { targets = [Native]; profile }]
+    | [] -> [Context.default ?x ~profile ()]
     | _  -> contexts
   in
   let merlin_context =
@@ -186,11 +190,40 @@ let t ?x ?profile:cmdline_profile sexps =
       else
         None
   in
-  { merlin_context
-  ; contexts = List.rev contexts
+  return
+    { merlin_context
+    ; contexts = List.rev contexts
+    }
+
+let t ?x ?profile () = fields (t ?x ?profile ())
+
+let default ?x ?profile () =
+  { merlin_context = Some "default"
+  ; contexts = [Context.default ?x ?profile ()]
   }
 
-let load ?x ?profile p = t ?x ?profile (Io.Sexp.load p ~mode:Many)
+let load ?x ?profile p =
+  let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
+  match Which_program.t with
+  | Dune ->
+    Io.with_lexbuf_from_file p ~f:(fun lb ->
+      if Dune_lexer.eof_reached lb then
+        default ?x ?profile ()
+      else
+        let first_line = Dune_lexer.first_line lb in
+        parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
+  | Jbuilder ->
+    let sexp =
+      Io.Sexp.load p ~mode:Many_as_one ~lexer:Sexp.Lexer.jbuild_token
+    in
+    parse
+      (enter (t ?x ?profile ()))
+      (Univ_map.singleton (Syntax.key syntax) (0, 0))
+      sexp
+
+let default ?x ?profile () =
+  let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
+  default ?x ?profile ()
 
 let filename =
   match Which_program.t with

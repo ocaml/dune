@@ -58,29 +58,17 @@ let setup ?(log=Log.no_log)
     | None ->
       match workspace_file with
       | Some p ->
+        if not (Path.exists p) then
+          die "@{<error>Error@}: workspace file %s does not exist"
+            (Path.to_string_maybe_quoted p);
         Workspace.load ?x ?profile p
-      | _ ->
+      | None ->
         match
           let p = Path.of_string Workspace.filename in
-          if Path.exists p then
-            Some p
-          else
-            None
+          Option.some_if (Path.exists p) p
         with
         | Some p -> Workspace.load ?x ?profile p
-        | None ->
-          { merlin_context = Some "default"
-          ; contexts = [Default
-                          { targets = [
-                              match x with
-                              | None   -> Native
-                              | Some x -> Named x
-                            ]
-                          ; profile =
-                              Option.value profile
-                                ~default:Config.default_build_profile
-                          }]
-          }
+        | None -> Workspace.default ?x ?profile ()
   in
 
   Fiber.parallel_map workspace.contexts ~f:(fun ctx_def ->
@@ -262,14 +250,7 @@ let bootstrap () =
     Scheduler.go ~log ~config
       (set_concurrency config
        >>= fun () ->
-       setup ~log ~workspace:{ merlin_context = Some "default"
-                             ; contexts = [Default { targets = [Native]
-                                                   ; profile =
-                                                       Option.value !profile
-                                                         ~default:"dev"
-                                                   }
-                                          ]
-                             }
+       setup ~log ~workspace:(Workspace.default ?profile:!profile ())
          ?profile:!profile
          ~extra_ignored_subtrees:ignored_during_bootstrap
          ()

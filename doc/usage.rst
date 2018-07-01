@@ -9,71 +9,51 @@ This section describe usage of Jbuilder from the shell.
 Finding the root
 ================
 
-.. _jbuild-workspace:
+.. _dune-workspace:
 
-jbuild-workspace
-----------------
+dune-workspace
+--------------
 
 The root of the current workspace is determined by looking up a
-``jbuild-workspace`` or ``dune-project`` file in the current directory
+``dune-workspace`` or ``dune-project`` file in the current directory
 and parent directories.
 
-``jbuilder`` prints out the root when starting if it is not the
-current directory:
+``dune`` prints out the root when starting if it is not the current
+directory:
 
 .. code:: bash
 
-    $ jbuilder runtest
-    Entering directory '/home/jdimino/code/jbuilder'
+    $ dune runtest
+    Entering directory '/home/jdimino/code/dune'
     ...
 
 More precisely, it will choose the outermost ancestor directory containing a
-``jbuild-workspace`` file as root. For instance if you are in
+``dune-workspace`` file as root. For instance if you are in
 ``/home/me/code/myproject/src``, then jbuilder will look for all these files in
 order:
 
--  ``/jbuild-workspace``
--  ``/home/jbuild-workspace``
--  ``/home/me/jbuild-workspace``
--  ``/home/me/code/jbuild-workspace``
--  ``/home/me/code/myproject/jbuild-workspace``
--  ``/home/me/code/myproject/src/jbuild-workspace``
+-  ``/dune-workspace``
+-  ``/home/dune-workspace``
+-  ``/home/me/dune-workspace``
+-  ``/home/me/code/dune-workspace``
+-  ``/home/me/code/myproject/dune-workspace``
+-  ``/home/me/code/myproject/src/dune-workspace``
 
 The first entry to match in this list will determine the root. In
 practice this means that if you nest your workspaces, Jbuilder will
 always use the outermost one.
 
-In addition to determining the root, ``jbuilder`` will read this file as to
-setup the configuration of the workspace unless the ``--workspace`` command line
-option is used. See the section `Workspace configuration`_ for the syntax of
-this file.
-
-jbuild-workspace\*
-------------------
-
-The following is deprecated and no longer works with ``dune``.
-
-In addition to the previous rule, if no ``jbuild-workspace`` file is found,
-``jbuilder`` will look for any file whose name starts with ``jbuild-workspace``
-in ancestor directories. For instance ``jbuild-workspace.dev``. If such a file
-is found, it will mark the root of the workspace. ``jbuilder`` will however not
-read its contents.
-
-The rationale for this rule is that it is good practice to have a
-``jbuild-workspace.dev`` file at the root of your project.
-
-For quick experiments, simply do this to mark the root:
-
-.. code:: bash
-
-    $ touch jbuild-workspace.here
+In addition to determining the root, ``dune`` will read this file as
+to setup the configuration of the workspace unless the ``--workspace``
+command line option is used. See the section `Workspace
+configuration`_ for the syntax of this file.
 
 Current directory
 -----------------
 
-If none of the two previous rules appies, i.e. no ancestor directories
-have a file whose name starts with ``jbuild-workspace``, then the
-current directory will be used as root.
+If the previous rule doesn't apply, i.e. no ancestor directory has a
+file named ``dune-workspace``, then the current directory will be used
+as root.
 
 Forcing the root (for scripts)
 ------------------------------
@@ -319,47 +299,49 @@ Workspace configuration
 =======================
 
 By default, a workspace has only one build context named ``default``
-which correspond to the environment in which ``jbuilder`` is run. You
-can define more contexts by writing a ``jbuild-workspace`` file.
+which correspond to the environment in which ``dune`` is run. You can
+define more contexts by writing a ``dune-workspace`` file.
 
-You can point ``jbuilder`` to an explicit ``jbuild-workspace`` file with
+You can point ``dune`` to an explicit ``dune-workspace`` file with
 the ``--workspace`` option. For instance it is good practice to write a
-``jbuild-workspace.dev`` in your project with all the version of OCaml
+``dune-workspace.dev`` in your project with all the version of OCaml
 your projects support. This way developers can tests that the code
 builds with all version of OCaml by simply running:
 
 .. code:: bash
 
-    $ jbuilder build --workspace jbuild-workspace.dev @install @runtest
+    $ dune build --workspace dune-workspace.dev @install @runtest
 
-jbuild-workspace
-----------------
+dune-workspace
+--------------
 
-The ``jbuild-workspace`` file uses the S-expression syntax. This is what
-a typical ``jbuild-workspace`` file looks like:
+The ``dune-workspace`` file uses the S-expression syntax. This is what
+a typical ``dune-workspace`` file looks like:
 
 .. code:: scheme
 
+    (lang dune 1.0)
     (context (opam (switch 4.02.3)))
     (context (opam (switch 4.03.0)))
     (context (opam (switch 4.04.0)))
 
 The rest of this section describe the stanzas available.
 
-Note that an empty ``jbuild-workspace`` file is interpreted the same
+Note that an empty ``dune-workspace`` file is interpreted the same
 as one containing exactly:
 
 .. code:: scheme
 
+    (lang dune 1.0)
     (context default)
 
-This allows you to use an empty ``jbuild-workspace`` file to mark
+This allows you to use an empty ``dune-workspace`` file to mark
 the root of your project.
 
 profile
 ~~~~~~~
 
-The build profile can be selected in the ``jbuild-workspace`` file by
+The build profile can be selected in the ``dune-workspace`` file by
 write a ``(profile ...)`` stanza. For instance:
 
 .. code:: scheme
@@ -404,21 +386,12 @@ for more information.
 Merlin reads compilation artifacts and it can only read the
 compilation artifacts of a single context.  Usually, you should use
 the artifacts from the ``default`` context, and if you have the
-``(context default)`` stanza in your ``jbuild-workspace`` file, that
+``(context default)`` stanza in your ``dune-workspace`` file, that
 is the one Jbuilder will use.
 
 For rare cases where this is not what you want, you can force Jbuilder
 to use a different build contexts for merlin by adding the field
 ``(merlin)`` to this context.
-
-Note that the following syntax is still accepted but is deprecated:
-
-.. code:: scheme
-
-    (context ((switch <opam-switch-name>)
-              <optional-fields>))
-
-it is interpreted the same as ``(context (opam (switch ...) ...))``.
 
 Building JavaScript with js_of_ocaml
 ====================================

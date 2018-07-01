@@ -63,15 +63,13 @@ let load fname =
       | _ ->
         Loc.fail (Sexp.Loc.of_lexbuf lexbuf) "%s" bad_dune_file
     in
-    match version with
-    | "1" ->
-      Sexp.Of_sexp.parse of_sexp Univ_map.empty
-        (Io.Sexp.load ~lexer:Sexp.Lexer.jbuild_token ~mode:Single fname)
-    | "2" ->
-      Sexp.Of_sexp.parse of_sexp Univ_map.empty
-        (Io.Sexp.load ~lexer:Sexp.Lexer.token ~mode:Single fname)
-    | _ ->
-      Loc.fail version_loc "unknown version %S" version)
+    let lexer =
+      match version with
+      | "1" -> Sexp.Lexer.jbuild_token
+      | "2" -> Sexp.Lexer.token
+      | _   -> Loc.fail version_loc "unknown version %S" version
+    in
+    Sexp.Of_sexp.parse of_sexp Univ_map.empty lexer ~mode:Single fname
 
 let gen confs =
   let sexps =

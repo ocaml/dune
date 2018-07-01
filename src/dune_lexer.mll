@@ -23,18 +23,16 @@ rule is_script = parse
   | "(* -*- tuareg -*- *)" { true }
   | ""                     { false }
 
-and first_line = parse
+and maybe_first_line = parse
   | '(' blank* "lang"
     { let start = Lexing.lexeme_start_p lexbuf in
       let lang    = atom start lexbuf in
       let version = atom start lexbuf in
       first_line_end start lexbuf;
-      { lang; version }
+      Some { lang; version }
     }
   | ""
-    { let start = Lexing.lexeme_start_p lexbuf in
-      to_eol lexbuf;
-      invalid_lang_line start lexbuf
+    { None
     }
 
 and atom start = parse
@@ -62,3 +60,17 @@ and to_eol = parse
   | [^'\r' '\n']*
     { ()
     }
+
+and eof_reached = parse
+  | eof { true  }
+  | ""  { false }
+
+{
+  let first_line lb =
+    match maybe_first_line lb with
+    | Some x -> x
+    | None ->
+      let start = Lexing.lexeme_start_p lb in
+      to_eol lb;
+      invalid_lang_line start lb
+}

@@ -10,7 +10,8 @@ module Context : sig
   end
   module Opam : sig
     type t =
-      { name    : string
+      { loc     : Loc.t
+      ; name    : string
       ; profile : string
       ; switch  : string
       ; root    : string option
@@ -21,7 +22,8 @@ module Context : sig
 
   module Default : sig
     type t =
-      { profile : string
+      { loc     : Loc.t
+      ; profile : string
       ; targets : Target.t list
       }
   end
@@ -37,3 +39,9 @@ type t =
   }
 
 val load : ?x:string -> ?profile:string -> Path.t -> t
+
+(** Default name of workspace files *)
+val filename : string
+
+(** Default configuration *)
+val default : ?x:string -> ?profile:string -> unit -> t

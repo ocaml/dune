@@ -265,7 +265,7 @@ Different
    | Printing tests                                                  |
    +-----------------------------------------------------------------+ *)
 
-let loc = Sexp.Loc.in_file "<none>"
+let loc = Sexp.Loc.none
 let a = Sexp.atom
 let s x = Sexp.Quoted_string x
 let t  x = Sexp.Template { quoted = false; parts = x; loc }

@@ -38,7 +38,7 @@ Terminology
    specific configuration from the user, there is always a ``default``
    build context, which corresponds to the environment in which Jbuilder
    is executed. Build contexts can be specified by writing a
-   :ref:`jbuild-workspace` file
+   :ref:`dune-workspace` file
 
 -  **build context root**: the root of a build context named ``foo`` is
    ``<root>/_build/<foo>``

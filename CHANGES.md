@@ -93,6 +93,8 @@ next
 
 - Make `dev` the default build profile (#920, @diml)
 
+- Version `dune-workspace` and `~/.config/dune/config` files (#..., @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

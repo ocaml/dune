@@ -147,10 +147,9 @@ let find_root () =
   let cwd = Sys.getcwd () in
   let rec loop counter ~candidates ~to_cwd dir =
     let files = Sys.readdir dir |> Array.to_list |> String.Set.of_list in
-    if String.Set.mem files "dune-workspace"   ||
-       String.Set.mem files "jbuild-workspace" then
+    if String.Set.mem files Workspace.filename then
       cont counter ~candidates:((0, dir, to_cwd) :: candidates) dir ~to_cwd
-    else if String.Set.exists files ~f:(fun fn ->
+    else if Which_program.t = Jbuilder && String.Set.exists files ~f:(fun fn ->
       String.is_prefix fn ~prefix:"jbuild-workspace") then
       cont counter ~candidates:((1, dir, to_cwd) :: candidates) dir ~to_cwd
     else if String.Set.mem files Dune_project.filename then
@@ -580,8 +579,10 @@ let installed_libraries =
     let env = Main.setup_env ~capture_outputs:common.capture_outputs in
     Scheduler.go ~log:(Log.create common) ~common
       (Context.create
-         (Default { targets = [Native]
-                  ; profile = Config.default_build_profile })
+         (Default { loc = Loc.of_pos __POS__
+                  ; targets = [Native]
+                  ; profile = Config.default_build_profile
+                  })
          ~env
        >>= fun ctxs ->
        let ctx = List.hd ctxs in
@@ -1425,8 +1426,11 @@ module Help = struct
            Unix systems and $(b,Local Settings/dune/config) in the User home
            directory on Windows. However, it is possible to specify an
            alternative configuration file with the $(b,--config-file) option.|}
-    ; `P {|This file must be written in S-expression syntax and be composed of
-           a list of stanzas. The following sections describe the stanzas available.|}
+    ; `P {|The first line of the file must be of the form (lang dune X.Y) \
+           where X.Y is the version of the dune language used in the file.|}
+    ; `P {|The rest of the file must be written in S-expression syntax and be \
+           composed of a list of stanzas. The following sections describe \
+           the stanzas available.|}
     ; `S "DISPLAY MODES"
     ; `P {|Syntax: $(b,\(display MODE\))|}
     ; `P {|This stanza controls how Dune reports what it is doing to the user.

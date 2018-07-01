@@ -271,6 +271,26 @@ module Unexpanded = struct
     in
     loop t.ast
 
+  type position = Pos | Neg
+
+  let fold_strings t ~init ~f =
+    let rec loop (t : ast) pos acc =
+      let open Ast in
+      match t with
+      | Standard | Include _ -> acc
+      | Element x -> f pos x acc
+      | Union l -> List.fold_left l ~init:acc ~f:(fun acc x -> loop x pos acc)
+      | Diff (l, r) ->
+        let acc = loop l pos acc in
+        let pos =
+          match pos with
+          | Pos -> Neg
+          | Neg -> Pos
+        in
+        loop r pos acc
+    in
+    loop t.ast Pos init
+
   let expand t ~files_contents ~f  =
     let context = t.context in
     let rec expand (t : ast) : ast_expanded =

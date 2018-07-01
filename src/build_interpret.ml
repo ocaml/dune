@@ -49,17 +49,23 @@ let inspect_path file_tree path =
       else
         None
 
+let no_targets_allowed () =
+  Exn.code_error "No targets allowed under a [Build.lazy_no_targets] \
+                  or [Build.if_file_exists]" []
+[@@inline never]
+
 let static_deps t ~all_targets ~file_tree =
-  let rec loop : type a b. (a, b) t -> Static_deps.t -> Static_deps.t = fun t acc ->
+  let rec loop : type a b. (a, b) t -> Static_deps.t -> bool -> Static_deps.t
+    = fun t acc targets_allowed ->
     match t with
     | Arr _ -> acc
-    | Targets _ -> acc
-    | Store_vfile _ -> acc
-    | Compose (a, b) -> loop a (loop b acc)
-    | First t -> loop t acc
-    | Second t -> loop t acc
-    | Split (a, b) -> loop a (loop b acc)
-    | Fanout (a, b) -> loop a (loop b acc)
+    | Targets _ -> if not targets_allowed then no_targets_allowed (); acc
+    | Store_vfile _ -> if not targets_allowed then no_targets_allowed (); acc
+    | Compose (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
+    | First t -> loop t acc targets_allowed
+    | Second t -> loop t acc targets_allowed
+    | Split (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
+    | Fanout (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
     | Paths fns -> { acc with action_deps = Path.Set.union fns acc.action_deps }
     | Paths_for_rule fns ->
       { acc with rule_deps = Path.Set.union fns acc.rule_deps }
@@ -93,28 +99,34 @@ let static_deps t ~all_targets ~file_tree =
       end
     | If_file_exists (p, state) -> begin
         match !state with
-        | Decided (_, t) -> loop t acc
+        | Decided (_, t) -> loop t acc false
         | Undecided (then_, else_) ->
           let dir = Path.parent_exn p in
           let targets = all_targets ~dir in
           if Path.Set.mem targets p then begin
             state := Decided (true, then_);
-            loop then_ acc
+            loop then_ acc false
           end else begin
             state := Decided (false, else_);
-            loop else_ acc
+            loop else_ acc false
           end
       end
-    | Dyn_paths t -> loop t acc
-    | Vpath (Vspec.T (p, _)) -> { acc with rule_deps = Path.Set.add acc.rule_deps p }
+    | Dyn_paths t -> loop t acc targets_allowed
+    | Vpath (Vspec.T (p, _)) ->
+      { acc with rule_deps = Path.Set.add acc.rule_deps p }
     | Contents p -> { acc with rule_deps = Path.Set.add acc.rule_deps p }
     | Lines_of p -> { acc with rule_deps = Path.Set.add acc.rule_deps p }
     | Record_lib_deps _ -> acc
     | Fail _ -> acc
-    | Memo m -> loop m.t acc
-    | Catch (t, _) -> loop t acc
+    | Memo m -> loop m.t acc targets_allowed
+    | Catch (t, _) -> loop t acc targets_allowed
+    | Lazy_no_targets t -> loop (Lazy.force t) acc false
   in
-  loop (Build.repr t) { rule_deps = Path.Set.empty; action_deps = Path.Set.empty }
+  loop (Build.repr t)
+    { rule_deps = Path.Set.empty
+    ; action_deps = Path.Set.empty
+    }
+    true
 
 let lib_deps =
   let rec loop : type a b. (a, b) t -> Build.lib_deps -> Build.lib_deps
@@ -141,6 +153,7 @@ let lib_deps =
         loop (get_if_file_exists_exn state) acc
       | Memo m -> loop m.t acc
       | Catch (t, _) -> loop t acc
+      | Lazy_no_targets t -> loop (Lazy.force t) acc
   in
   fun t -> loop (Build.repr t) String.Map.empty
 
@@ -183,6 +196,7 @@ let targets =
       end
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
+    | Lazy_no_targets _ -> acc
   in
   fun t -> loop (Build.repr t) []
 

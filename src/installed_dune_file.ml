@@ -61,10 +61,7 @@ let load fname =
       | [Lparen; Atom (A "dune"); Atom s] ->
         (Sexp.Loc.of_lexbuf lexbuf, Sexp.Atom.to_string s)
       | _ ->
-        Loc.fail
-          { start = Lexing.lexeme_start_p lexbuf
-          ; stop = Lexing.lexeme_end_p lexbuf
-          } "%s" bad_dune_file
+        Loc.fail (Sexp.Loc.of_lexbuf lexbuf) "%s" bad_dune_file
     in
     match version with
     | "1" ->

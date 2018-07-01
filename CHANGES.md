@@ -102,6 +102,8 @@ next
   when not defined by the user and make `@@default` be the default
   target (#926, @diml)
 
+- Forbid `#require` in `dune` files in OCaml syntax (#938, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

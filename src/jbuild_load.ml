@@ -73,7 +73,8 @@ module Jbuilds = struct
     in
     loop 1 (String.split str ~on:'\n') No_requires
 
-  let create_plugin_wrapper (context : Context.t) ~exec_dir ~plugin ~wrapper ~target =
+  let create_plugin_wrapper (context : Context.t) ~exec_dir ~plugin ~wrapper
+        ~target ~kind =
     let plugin_contents = Io.read_file plugin in
     Io.with_file_out wrapper ~f:(fun oc ->
       let ocamlc_config =
@@ -115,7 +116,9 @@ end
         ocamlc_config
         (Path.reach ~from:exec_dir target)
         (Path.to_string plugin) plugin_contents);
-    extract_requires plugin plugin_contents
+    match (kind : File_tree.Dune_file.Kind.t) with
+    | Jbuild -> extract_requires plugin plugin_contents
+    | Dune   -> No_requires
 
   let eval { jbuilds; ignore_promoted_rules } ~(context : Context.t) =
     let open Fiber.O in
@@ -132,7 +135,7 @@ end
       ensure_parent_dir_exists generated_jbuild;
       let requires =
         create_plugin_wrapper context ~exec_dir:dir ~plugin:file ~wrapper
-          ~target:generated_jbuild
+          ~target:generated_jbuild ~kind
       in
       let context = Option.value context.for_host ~default:context in
       let cmas =

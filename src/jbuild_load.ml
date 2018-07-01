@@ -43,7 +43,7 @@ module Jbuilds = struct
 
   type requires = No_requires | Unix
 
-  let extract_requires path str =
+  let extract_requires path str ~kind =
     let rec loop n lines acc =
       match lines with
       | [] -> acc
@@ -52,20 +52,31 @@ module Jbuilds = struct
           match Scanf.sscanf line "#require %S" (fun x -> x) with
           | exception _ -> acc
           | s ->
-            match String.split s ~on:',' with
-            | [] -> acc
-            | ["unix"] -> Unix
-            | _ ->
-              let start =
-                { Lexing.
-                  pos_fname = Path.to_string path
+            let loc : Loc.t =
+              let start : Lexing.position =
+                { pos_fname = Path.to_string path
                 ; pos_lnum  = n
                 ; pos_cnum  = 0
                 ; pos_bol   = 0
                 }
               in
-              Loc.fail
-                { start; stop = { start with pos_cnum = String.length line } }
+              { start; stop = { start with pos_cnum = String.length line } }
+            in
+            (match (kind : File_tree.Dune_file.Kind.t) with
+             | Jbuild -> ()
+             | Dune ->
+               Loc.fail loc
+                 "#require is no longer supported in dune files.\n\
+                  You can use the following function instead of \
+                  Unix.open_process_in:\n\
+                  \n\
+                 \  (** Execute a command and read it's output *)\n\
+                 \  val run_and_read_lines : string -> string list");
+            match String.split s ~on:',' with
+            | [] -> acc
+            | ["unix"] -> Unix
+            | _ ->
+              Loc.fail loc
                 "Using libraries other that \"unix\" is not supported.\n\
                  See the manual for details.";
         in
@@ -107,6 +118,29 @@ module Jbuild_plugin = struct
       let oc = open_out_bin %S in
       output_string oc s;
       close_out oc
+
+    let run_and_read_lines cmd =
+      let tmp_fname = Filename.temp_file "dune" ".output" in
+      at_exit (fun () -> Sys.remove tmp_fname);
+      let n =
+        Printf.ksprintf Sys.command "%%s > %%s" cmd (Filename.quote tmp_fname)
+      in
+      let rec loop ic acc =
+        match input_line ic with
+        | exception End_of_file -> close_in ic; List.rev acc
+        | line -> loop ic (line :: acc)
+      in
+      let output = loop (open_in tmp_fname) [] in
+      if n = 0 then
+        output
+      else begin
+        Printf.ksprintf failwith
+          "Command failed: %%s\n\
+           Exit code: %%d\n\
+           Output:\n\
+           %%s"
+          cmd n (String.concat "\n" output)
+      end
   end
 end
 # 1 %S
@@ -116,9 +150,7 @@ end
         ocamlc_config
         (Path.reach ~from:exec_dir target)
         (Path.to_string plugin) plugin_contents);
-    match (kind : File_tree.Dune_file.Kind.t) with
-    | Jbuild -> extract_requires plugin plugin_contents
-    | Dune   -> No_requires
+    extract_requires plugin plugin_contents ~kind
 
   let eval { jbuilds; ignore_promoted_rules } ~(context : Context.t) =
     let open Fiber.O in

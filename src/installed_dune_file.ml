@@ -1,6 +1,6 @@
 open Import
 
-let parse_sub_systems sexps =
+let parse_sub_systems ~parsing_context sexps =
   List.filter_map sexps ~f:(fun sexp ->
     let name, ver, data =
       Sexp.Of_sexp.(parse (triple string (located Syntax.Version.t) raw)
@@ -21,11 +21,6 @@ let parse_sub_systems sexps =
   |> Sub_system_name.Map.mapi ~f:(fun name (_, version, data) ->
     let (module M) = Jbuild.Sub_system_info.get name in
     Syntax.check_supported M.syntax version;
-    let parsing_context =
-      Univ_map.singleton (Syntax.key M.syntax)
-        (* This is wrong, see #909 *)
-        (0, 0)
-    in
     M.T (Sexp.Of_sexp.parse M.parse parsing_context data))
 
 let of_sexp =
@@ -40,8 +35,9 @@ let of_sexp =
   sum
     [ "dune",
       (version >>= fun () ->
-       list raw >>| fun l ->
-       parse_sub_systems l)
+       get_all >>= fun parsing_context ->
+       list raw >>|
+       parse_sub_systems ~parsing_context)
     ]
 
 let load fname =

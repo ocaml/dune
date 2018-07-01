@@ -45,7 +45,36 @@ let of_sexp =
     ]
 
 let load fname =
-  Sexp.Of_sexp.parse of_sexp Univ_map.empty (Io.Sexp.load ~mode:Single fname)
+  Io.with_lexbuf_from_file fname ~f:(fun lexbuf ->
+    let (version_loc, version) =
+      let bad_dune_file = "Unable to read (dune x.y ..) line file" in
+      let rec loop = function
+        | [_; _; _] as a -> List.rev a
+        | acc ->
+          begin match (Sexp.Lexer.token lexbuf : Sexp.Lexer.Token.t) with
+          | Eof ->
+            Loc.fail (Loc.in_file (Path.to_string fname)) "%s" bad_dune_file
+          | t -> loop (t :: acc)
+          end
+      in
+      match loop [] with
+      | [Lparen; Atom (A "dune"); Atom s] ->
+        (Sexp.Loc.of_lexbuf lexbuf, Sexp.Atom.to_string s)
+      | _ ->
+        Loc.fail
+          { start = Lexing.lexeme_start_p lexbuf
+          ; stop = Lexing.lexeme_end_p lexbuf
+          } "%s" bad_dune_file
+    in
+    match version with
+    | "1" ->
+      Sexp.Of_sexp.parse of_sexp Univ_map.empty
+        (Io.Sexp.load ~lexer:Sexp.Lexer.jbuild_token ~mode:Single fname)
+    | "2" ->
+      Sexp.Of_sexp.parse of_sexp Univ_map.empty
+        (Io.Sexp.load ~lexer:Sexp.Lexer.token ~mode:Single fname)
+    | _ ->
+      Loc.fail version_loc "unknown version %S" version)
 
 let gen confs =
   let sexps =

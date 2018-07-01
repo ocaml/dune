@@ -508,9 +508,7 @@ module Sub_system = struct
   let dump_config lib =
     Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun (lazy inst) ->
       let (Sub_system0.Instance.T ((module M), t)) = inst in
-      match M.to_sexp with
-      | None -> None
-      | Some f -> Some (f t))
+      Option.map ~f:(fun f -> f t) M.to_sexp)
 end
 
 (* +-----------------------------------------------------------------+

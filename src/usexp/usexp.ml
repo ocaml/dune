@@ -166,11 +166,6 @@ module Parser = struct
              ; message
              })
 
-  let make_loc lexbuf : Loc.t =
-    { start = Lexing.lexeme_start_p lexbuf
-    ; stop  = Lexing.lexeme_end_p   lexbuf
-    }
-
   module Mode = struct
     type 'a t =
       | Single      : Ast.t t
@@ -183,7 +178,7 @@ module Parser = struct
         | Single -> begin
           match sexps with
           | [sexp] -> sexp
-          | [] -> error (make_loc lexbuf) "no s-expression found in input"
+          | [] -> error (Loc.of_lexbuf lexbuf) "no s-expression found in input"
           | _ :: sexp :: _ ->
             error (Ast.loc sexp) "too many s-expressions found in input"
         end
@@ -200,13 +195,13 @@ module Parser = struct
   let rec loop depth lexer lexbuf acc =
     match (lexer lexbuf : Lexer.Token.t) with
     | Atom a ->
-      let loc = make_loc lexbuf in
+      let loc = Loc.of_lexbuf lexbuf in
       loop depth lexer lexbuf (Ast.Atom (loc, a) :: acc)
     | Quoted_string s ->
-      let loc = make_loc lexbuf in
+      let loc = Loc.of_lexbuf lexbuf in
       loop depth lexer lexbuf (Quoted_string (loc, s) :: acc)
     | Template t ->
-      let loc = make_loc lexbuf in
+      let loc = Loc.of_lexbuf lexbuf in
       loop depth lexer lexbuf (Template { t with loc } :: acc)
     | Lparen ->
       let start = Lexing.lexeme_start_p lexbuf in
@@ -215,12 +210,12 @@ module Parser = struct
       loop depth lexer lexbuf (List ({ start; stop }, sexps) :: acc)
     | Rparen ->
       if depth = 0 then
-        error (make_loc lexbuf)
+        error (Loc.of_lexbuf lexbuf)
           "right parenthesis without matching left parenthesis";
       List.rev acc
     | Sexp_comment ->
       let sexps =
-        let loc = make_loc lexbuf in
+        let loc = Loc.of_lexbuf lexbuf in
         match loop depth lexer lexbuf [] with
         | _ :: sexps -> sexps
         | [] -> error loc "s-expression missing after #;"
@@ -228,7 +223,7 @@ module Parser = struct
       List.rev_append acc sexps
     | Eof ->
       if depth > 0 then
-        error (make_loc lexbuf)
+        error (Loc.of_lexbuf lexbuf)
           "unclosed parenthesis at end of input";
       List.rev acc
 

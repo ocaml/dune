@@ -57,11 +57,10 @@ let load fname =
           | t -> loop (t :: acc)
           end
       in
+      let loc = Sexp.Loc.of_lexbuf lexbuf in
       match loop [] with
-      | [Lparen; Atom (A "dune"); Atom s] ->
-        (Sexp.Loc.of_lexbuf lexbuf, Sexp.Atom.to_string s)
-      | _ ->
-        Loc.fail (Sexp.Loc.of_lexbuf lexbuf) "%s" bad_dune_file
+      | [Lparen; Atom (A "dune"); Atom s] -> (loc, Sexp.Atom.to_string s)
+      | _ -> Loc.fail loc "%s" bad_dune_file
     in
     let (lexer, syntax) =
       match version with

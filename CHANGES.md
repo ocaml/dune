@@ -93,7 +93,7 @@ next
 
 - Make `dev` the default build profile (#920, @diml)
 
-- Version `dune-workspace` and `~/.config/dune/config` files (#..., @diml)
+- Version `dune-workspace` and `~/.config/dune/config` files (#932, @diml)
 
 - Add the ability to build an alias non-recursively from the command
   line by writing `@@alias` (#926, @diml)

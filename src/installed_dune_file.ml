@@ -27,10 +27,10 @@ let of_sexp =
   let open Sexp.Of_sexp in
   let version =
     plain_string (fun ~loc -> function
-      | "1" -> ()
-      | _ ->
+      | "1" | "2" -> ()
+      | v ->
         of_sexp_errorf loc
-          "Unsupported version, only version 1 is supported")
+          "Unsupported version %S, only version 1 is supported" v)
   in
   sum
     [ "dune",
@@ -68,7 +68,7 @@ let load fname =
       (Univ_map.singleton (Syntax.key Stanza.syntax) syntax)
       (Io.Sexp.load ~lexer ~mode:Single fname))
 
-let gen confs =
+let gen ~(lang : File_tree.Dune_file.Kind.t) confs =
   let sexps =
     Sub_system_name.Map.to_list confs
     |> List.map ~f:(fun (name, (ver, conf)) ->
@@ -80,6 +80,9 @@ let gen confs =
   in
   Sexp.List
     [ Sexp.unsafe_atom_of_string "dune"
-    ; Sexp.unsafe_atom_of_string "1"
+    ; Sexp.unsafe_atom_of_string
+        (match lang with
+         | Jbuild -> "1"
+         | Dune -> "2")
     ; List sexps
     ]

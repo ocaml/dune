@@ -23,7 +23,7 @@ val write_lines : Path.t -> string list -> unit
 
 val copy_channels : in_channel -> out_channel -> unit
 
-val copy_file : src:Path.t -> dst:Path.t -> unit
+val copy_file : ?chmod:(int -> int) -> src:Path.t -> dst:Path.t -> unit -> unit
 
 val read_all : in_channel -> string
 

@@ -826,7 +826,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
               Utils.Cached_digest.file in_source_tree) then begin
             if mode = Promote_but_delete_on_clean then
               Promoted_to_delete.add in_source_tree;
-            Io.copy_file ~src:path ~dst:in_source_tree
+            Io.copy_file ~src:path ~dst:in_source_tree ()
           end)
     end;
     t.hook Rule_completed

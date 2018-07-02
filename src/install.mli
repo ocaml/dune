@@ -18,6 +18,33 @@ module Section : sig
     | Misc
 
   val t : t Sexp.Of_sexp.t
+
+  module Paths : sig
+    type section = t
+
+    type t =
+      { lib         : Path.t
+      ; libexec     : Path.t
+      ; bin         : Path.t
+      ; sbin        : Path.t
+      ; toplevel    : Path.t
+      ; share       : Path.t
+      ; share_root  : Path.t
+      ; etc         : Path.t
+      ; doc         : Path.t
+      ; stublibs    : Path.t
+      ; man         : Path.t
+      }
+
+    val make
+      :  package:Package.Name.t
+      -> destdir:Path.t
+      -> ?libdir:Path.t
+      -> unit
+      -> t
+
+    val get : t -> section -> Path.t
+  end with type section := t
 end
 
 module Entry : sig
@@ -30,8 +57,8 @@ module Entry : sig
   val make : Section.t -> ?dst:string -> Path.t -> t
   val set_src : t -> Path.t -> t
 
-  val relative_installed_path : t -> package:Package.Name.t -> Path.t
-  val add_install_prefix : t -> package:Package.Name.t -> prefix:Path.t -> t
+  val relative_installed_path : t -> paths:Section.Paths.t -> Path.t
+  val add_install_prefix : t -> paths:Section.Paths.t -> prefix:Path.t -> t
 end
 
 val files : Entry.t list -> Path.Set.t

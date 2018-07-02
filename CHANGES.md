@@ -106,6 +106,8 @@ next
 
 - Add `%{profile}` variable. (#938, @rgrinberg)
 
+- Do not require opam-installer anymore (#941, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

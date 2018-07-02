@@ -63,7 +63,7 @@ module Info = struct
     ; pps              : (Loc.t * Jbuild.Pp.t) list
     ; optional         : bool
     ; virtual_deps     : (Loc.t * string) list
-    ; defined_using_lang : File_tree.Dune_file.Kind.t option
+    ; dune_version : Syntax.Version.t option
     ; sub_systems      : Jbuild.Sub_system_info.t Sub_system_name.Map.t
     }
 
@@ -115,11 +115,7 @@ module Info = struct
     ; ppx_runtime_deps = conf.ppx_runtime_libraries
     ; pps = Jbuild.Preprocess_map.pps conf.buildable.preprocess
     ; sub_systems = conf.sub_systems
-    ; defined_using_lang =
-        Some
-          (match conf.project.kind with
-           | Dune -> Dune
-           | Jbuilder -> Jbuild)
+    ; dune_version = Some conf.dune_version
     }
 
   let of_findlib_package pkg =
@@ -149,7 +145,7 @@ module Info = struct
     ; (* We don't know how these are named for external libraries *)
       foreign_archives = Mode.Dict.make_both []
     ; sub_systems      = sub_systems
-    ; defined_using_lang = None
+    ; dune_version = None
     }
 end
 
@@ -244,7 +240,7 @@ type t =
   ; resolved_selects  : Resolved_select.t list
   ; optional          : bool
   ; user_written_deps : Jbuild.Lib_deps.t
-  ; defined_using_lang : File_tree.Dune_file.Kind.t option
+  ; dune_version : Syntax.Version.t option
   ; (* This is mutable to avoid this error:
 
        {[
@@ -351,7 +347,7 @@ let plugins      t = t.plugins
 let jsoo_runtime t = t.jsoo_runtime
 let unique_id    t = t.unique_id
 
-let defined_using_lang t = t.defined_using_lang
+let dune_version t = t.dune_version
 
 let src_dir t = t.src_dir
 let obj_dir t = t.obj_dir
@@ -672,7 +668,7 @@ let rec instantiate db name (info : Info.t) ~stack ~hidden =
     ; optional          = info.optional
     ; user_written_deps = Info.user_written_deps info
     ; sub_systems       = Sub_system_name.Map.empty
-    ; defined_using_lang = info.defined_using_lang
+    ; dune_version = info.dune_version
     }
   in
   t.sub_systems <-

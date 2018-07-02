@@ -66,7 +66,7 @@ let load fname =
       (Univ_map.singleton (Syntax.key Stanza.syntax) syntax)
       (Io.Sexp.load ~lexer ~mode:Single fname))
 
-let gen ~(lang : File_tree.Dune_file.Kind.t) confs =
+let gen ~(dune_version : Syntax.Version.t) confs =
   let sexps =
     Sub_system_name.Map.to_list confs
     |> List.map ~f:(fun (name, (ver, conf)) ->
@@ -79,8 +79,11 @@ let gen ~(lang : File_tree.Dune_file.Kind.t) confs =
   Sexp.List
     [ Sexp.unsafe_atom_of_string "dune"
     ; Sexp.unsafe_atom_of_string
-        (match lang with
-         | Jbuild -> "1"
-         | Dune -> "2")
+        (match dune_version with
+         | (0, 0) -> "1"
+         | (1, 0) -> "2"
+         | _ ->
+           Exn.code_error "Cannot generate dune with unknown version"
+             ["dune_version", Syntax.Version.sexp_of_t dune_version])
     ; List sexps
     ]

@@ -21,6 +21,17 @@ let parse_sub_systems ~parsing_context sexps =
   |> Sub_system_name.Map.mapi ~f:(fun name (_, version, data) ->
     let (module M) = Jbuild.Sub_system_info.get name in
     Syntax.check_supported M.syntax version;
+    let parsing_context =
+      (* We set the syntax to the version used when generating this subsystem.
+         We cannot do this for jbuild defined subsystems however since those use
+         1.0 as the version. Which would correspond to the dune syntax (because
+         subsystems share the syntax of the dune lang) *)
+      match Univ_map.find_exn parsing_context (Syntax.key Stanza.syntax) with
+      | (0, 0) ->
+        parsing_context
+      | (_, _) ->
+        Univ_map.add parsing_context (Syntax.key M.syntax) (snd version)
+    in
     M.T (Sexp.Of_sexp.parse M.parse parsing_context data))
 
 let of_sexp =

@@ -820,6 +820,7 @@ Jbuilder supports the following variables:
   not be exactly the same as what you can see in the output of
   ``ocamlc -config``. In particular, variables added in new versions
   of OCaml needs to be registered in Jbuilder before they can be used
+- ``profile`` the profile selected via ``--profile``
 
 In addition, ``(action ...)`` fields support the following special variables:
 

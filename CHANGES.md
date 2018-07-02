@@ -95,6 +95,8 @@ next
 
 - Version `dune-workspace` and `~/.config/dune/config` files (#..., @diml)
 
+- Add `%{profile}` variable. (#938, @rgrinberg)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

@@ -732,6 +732,7 @@ module Library = struct
     ; project                  : Dune_project.t
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     ; no_keep_locs             : bool
+    ; dune_version             : Syntax.Version.t
     }
 
   let t =
@@ -763,6 +764,7 @@ module Library = struct
        field_b "no_keep_locs" >>= fun no_keep_locs ->
        Sub_system_info.record_parser () >>= fun sub_systems ->
        Dune_project.get_exn () >>= fun project ->
+       Syntax.get_exn Stanza.syntax >>= fun dune_version ->
        return
          { name
          ; public
@@ -786,6 +788,7 @@ module Library = struct
          ; project
          ; sub_systems
          ; no_keep_locs
+         ; dune_version
          })
 
   let has_stubs t =

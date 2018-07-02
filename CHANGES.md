@@ -102,6 +102,8 @@ next
   when not defined by the user and make `@@default` be the default
   target (#926, @diml)
 
+- Add `%{profile}` variable. (#938, @rgrinberg)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

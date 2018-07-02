@@ -129,6 +129,14 @@ module Alias : sig
   (** [dep t = Build.path (stamp_file t)] *)
   val dep : t -> ('a, 'a) Build.t
 
+  (** Implements [@@alias] on the command line *)
+  val dep_multi_contexts
+    :  dir:Path.t
+    -> name:string
+    -> file_tree:File_tree.t
+    -> contexts:string list
+    -> (unit, unit) Build.t
+
   (** Implements [(alias_rec ...)] in dependency specification *)
   val dep_rec
     :  t

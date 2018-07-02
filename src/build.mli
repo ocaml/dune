@@ -34,6 +34,10 @@ val fanout4 : ('a, 'b) t -> ('a, 'c) t -> ('a, 'd) t -> ('a, 'e) t -> ('a, 'b * 
 
 val all : ('a, 'b) t list -> ('a, 'b list) t
 
+(** Optimization to avoiding eagerly computing a [Build.t] value,
+    assume it contains no targets. *)
+val lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
+
 (* CR-someday diml: this API is not great, what about:
 
    {[
@@ -202,6 +206,7 @@ module Repr : sig
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t
     | Catch : ('a, 'b) t * (exn -> 'b) -> ('a, 'b) t
+    | Lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
 
   and 'a memo =
     { name          : string

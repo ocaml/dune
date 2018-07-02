@@ -26,6 +26,7 @@ type common =
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args             : string list
   ; config                : Config.t
+  ; default_target        : string
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -114,7 +115,20 @@ end
 
 type target =
   | File      of Path.t
+  | Alias     of Path.t
   | Alias_rec of Path.t
+
+let parse_alias path ~contexts =
+  let dir = Path.parent_exn path in
+  let name = Path.basename path in
+  match Path.extract_build_context dir with
+  | None -> (contexts, dir, name)
+  | Some ("install", _) ->
+    die "Invalid alias: %s.\n\
+         There are no aliases in %s."
+      (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
+      (Path.to_string_maybe_quoted path)
+  | Some (ctx, dir) -> ([ctx], dir, name)
 
 let request_of_targets (setup : Main.setup) targets =
   let open Build.O in
@@ -123,19 +137,12 @@ let request_of_targets (setup : Main.setup) targets =
     acc >>>
     match target with
     | File path -> Build.path path
+    | Alias path ->
+      let contexts, dir, name = parse_alias path ~contexts in
+      Build_system.Alias.dep_multi_contexts ~dir ~name
+        ~file_tree:setup.file_tree ~contexts
     | Alias_rec path ->
-      let dir = Path.parent_exn path in
-      let name = Path.basename path in
-      let contexts, dir =
-        match Path.extract_build_context dir with
-        | None -> (contexts, dir)
-        | Some ("install", _) ->
-          die "Invalid alias: %s.\n\
-               There are no aliases in %s."
-            (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
-            (Path.to_string_maybe_quoted path)
-        | Some (ctx, dir) -> ([ctx], dir)
-      in
+      let contexts, dir, name = parse_alias path ~contexts in
       Build_system.Alias.dep_rec_multi_contexts ~dir ~name
         ~file_tree:setup.file_tree ~contexts)
 
@@ -228,6 +235,7 @@ let common =
          ignore_promoted_rules,
          config_file,
          profile,
+         default_target,
          orig)
         x
         display
@@ -290,6 +298,7 @@ let common =
     ; x
     ; config
     ; build_dir
+    ; default_target
     }
   in
   let docs = copts_sect in
@@ -478,6 +487,20 @@ let common =
       in
       Term.(ret (const merge $ config_file $ no_config))
     in
+    let default_target_default =
+      match Which_program.t with
+      | Dune     -> "@@default"
+      | Jbuilder -> "@install"
+    in
+    let default_target =
+      Arg.(value
+           & opt (some string) None
+           & info ["default-target"] ~docs ~docv:"TARGET"
+               ~doc:(sprintf
+                       {|Set the default target that when none is specified to
+                         $(b,dune build). It defaults to %s.|}
+                       default_target_default))
+    in
     let for_release = "for-release-of-packages" in
     let frop =
       Arg.(value
@@ -490,33 +513,37 @@ let common =
                       packages as well as getting reproducible builds.|})
     in
     let merge root only_packages ignore_promoted_rules
-          (config_file_opt, config_file) profile release =
+          (config_file_opt, config_file) profile default_target release =
       let fail opt = incompatible ("-p/--" ^ for_release) opt in
       match release, root, only_packages, ignore_promoted_rules,
-            profile, config_file_opt with
-      | Some _, Some _, _, _, _, _ -> fail "--root"
-      | Some _, _, Some _, _, _, _ -> fail "--only-packages"
-      | Some _, _, _, true  , _, _ -> fail "--ignore-promoted-rules"
-      | Some _, _, _, _, Some _, _ -> fail "--profile"
-      | Some _, _, _, _, _, Some s -> fail s
-      | Some pkgs, None, None, false, None, None ->
+            profile, default_target, config_file_opt with
+      | Some _, Some _, _, _, _, _, _ -> fail "--root"
+      | Some _, _, Some _, _, _, _, _ -> fail "--only-packages"
+      | Some _, _, _, true  , _, _, _ -> fail "--ignore-promoted-rules"
+      | Some _, _, _, _, Some _, _, _ -> fail "--profile"
+      | Some _, _, _, _, _, Some s, _ -> fail s
+      | Some _, _, _, _, _, _, Some _ -> fail "--default-target"
+      | Some pkgs, None, None, false, None, None, None ->
         `Ok (Some ".",
              Some pkgs,
              true,
              No_config,
              Some "release",
+             "@install",
              ["-p"; pkgs]
             )
-      | None, _, _, _, _, _ ->
+      | None, _, _, _, _, _, _ ->
         `Ok (root,
              only_packages,
              ignore_promoted_rules,
              config_file,
              profile,
+             Option.value default_target ~default:default_target_default,
              List.concat
                [ dump_opt "--root" root
                ; dump_opt "--only-packages" only_packages
                ; dump_opt "--profile" profile
+               ; dump_opt "--default-target" default_target
                ; if ignore_promoted_rules then
                    ["--ignore-promoted-rules"]
                  else
@@ -534,6 +561,7 @@ let common =
                $ ignore_promoted_rules
                $ config_file
                $ profile
+               $ default_target
                $ frop))
   in
   let x =
@@ -680,7 +708,13 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
     let targets =
       List.map user_targets ~f:(fun s ->
         if String.is_prefix s ~prefix:"@" then begin
-          let s = String.sub s ~pos:1 ~len:(String.length s - 1) in
+          let pos, is_rec =
+            if String.length s >= 2 && s.[1] = '@' then
+              (2, false)
+            else
+              (1, true)
+          in
+          let s = String.sub s ~pos ~len:(String.length s - pos) in
           let path = Path.relative Path.root (prefix_target common s) in
           check_path path;
           if Path.is_root path then
@@ -688,7 +722,7 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
           else if not (Path.is_managed path) then
             die "@@ on the command line must be followed by a relative path"
           else
-            Ok [Alias_rec path]
+            Ok [if is_rec then Alias_rec path else Alias path]
         end else begin
           let path = Path.relative Path.root (prefix_target common s) in
           check_path path;
@@ -725,6 +759,9 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
       List.iter targets ~f:(function
         | File path ->
           Log.info log @@ "- " ^ (Path.to_string path)
+        | Alias path ->
+          Log.info log @@ "- alias " ^
+                          (Path.to_string_maybe_quoted path)
         | Alias_rec path ->
           Log.info log @@ "- recursive alias " ^
                           (Path.to_string_maybe_quoted path));
@@ -756,9 +793,14 @@ let build_targets =
       (Main.setup ~log common >>= fun setup ->
        let targets = resolve_targets_exn ~log common setup targets in
        do_build setup targets) in
+  let default_target =
+    match Which_program.t with
+    | Dune     -> "@@default"
+    | Jbuilder -> "@install"
+  in
   ( Term.(const go
           $ common
-          $ Arg.(value & pos_all string ["@install"] name_))
+          $ Arg.(value & pos_all string [default_target] name_))
   , Term.info "build" ~doc ~man)
 
 let runtest =
@@ -1316,7 +1358,7 @@ let utop =
          match resolve_targets_exn ~log common setup [utop_target] with
          | [] -> die "no libraries defined in %s" dir
          | [File target] -> target
-         | [Alias_rec _] | _::_::_ -> assert false
+         | _ -> assert false
        in
        do_build setup [File target] >>| fun () ->
        (setup.build_system, context, Path.to_string target)
@@ -1426,10 +1468,10 @@ module Help = struct
            Unix systems and $(b,Local Settings/dune/config) in the User home
            directory on Windows. However, it is possible to specify an
            alternative configuration file with the $(b,--config-file) option.|}
-    ; `P {|The first line of the file must be of the form (lang dune X.Y) \
+    ; `P {|The first line of the file must be of the form (lang dune X.Y)
            where X.Y is the version of the dune language used in the file.|}
-    ; `P {|The rest of the file must be written in S-expression syntax and be \
-           composed of a list of stanzas. The following sections describe \
+    ; `P {|The rest of the file must be written in S-expression syntax and be
+           composed of a list of stanzas. The following sections describe
            the stanzas available.|}
     ; `S "DISPLAY MODES"
     ; `P {|Syntax: $(b,\(display MODE\))|}

@@ -68,8 +68,9 @@ directory as this is normally the case.
 Interpretation of targets
 =========================
 
-This section describes how ``jbuilder`` interprets the targets given on
-the command line.
+This section describes how ``dune`` interprets the targets given on
+the command line. When no targets are specified, ``dune`` builds the
+``default`` alias, see :ref:`default-alias` for more details.
 
 Resolution
 ----------
@@ -120,6 +121,38 @@ So for instance:
 -  ``jbuilder build @_build/foo/runtest`` will run the tests only for
    the ``foo`` build context
 -  ``jbuilder build @runtest`` will run the tests for all build contexts
+
+You can also build an alias non-recursively by using ``@@`` instead of
+``@``. For instance to run tests only from the current directory:
+
+.. code::
+
+   dune build @@runtest
+
+.. _default-alias:
+
+Default alias
+-------------
+
+When no targets are given to ``dune build``, it builds the special
+``default`` alias. Effectively ``dune build`` is equivalent to:
+
+.. code::
+
+   dune build @@default
+
+When a directory doesn't explicitly define what the ``default`` alias
+means via an :ref:`alias-stanza` stanza, the following implicit
+definition is assumed:
+
+.. code::
+
+   (alias
+    (name default)
+    (deps (alias_rec install)))
+
+Which means that by default ``dune build`` will build everything that
+is installable.
 
 Finding external libraries
 ==========================
@@ -207,7 +240,7 @@ follows:
     build: [["dune" "build" "-p" name "-j" jobs]]
 
 ``-p pkg`` is a shorthand for ``--root . --only-packages pkg --profile
-release``. ``-p`` is the short version of
+release --default-target @install``. ``-p`` is the short version of
 ``--for-release-of-packages``.
 
 This has the following effects:
@@ -217,6 +250,7 @@ This has the following effects:
 -  it sets the root to prevent jbuilder from looking it up
 -  it sets the build profile to ``release``
 -  it uses whatever concurrency option opam provides
+-  it sets the default target to ``@install`` rather than ``@@default``
 
 Note that ``name`` and ``jobs`` are variables expanded by opam. ``name``
 expands to the package name and ``jobs`` to the number of jobs available

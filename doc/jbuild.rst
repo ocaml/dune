@@ -531,6 +531,8 @@ menhir
 A ``menhir`` stanza is available to support the menhir_ parser generator. See
 the :ref:`menhir-main` section for details.
 
+.. _alias-stanza:
+
 alias
 -----
 

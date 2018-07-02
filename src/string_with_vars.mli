@@ -30,6 +30,9 @@ val virt_text  : (string * int * int * int) -> string -> t
 
 val is_var : t -> name:string -> bool
 
+(** If [t] contains no variable, returns the contents of [t]. *)
+val text_only : t -> string option
+
 module Mode : sig
   type 'a t =
     | Single : Value.t t

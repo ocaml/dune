@@ -2,7 +2,7 @@
 Project Layout and Metadata Specification
 *****************************************
 
-A typical jbuilder project will have a ```dune-project`` and one or
+A typical dune project will have a ```dune-project`` and one or
 more ``<package>.opam`` file at toplevel as well as ``jbuild`` files
 wherever interesting things are: libraries, executables, tests,
 documents to install, etc...
@@ -14,9 +14,9 @@ like to have multiple executables with different configurations in the
 same directory, you will have to make an explicit module list for every
 executable using ``modules``.
 
-The next sections describe the format of Jbuilder metadata files.
+The next sections describe the format of dune metadata files.
 
-Note that the Jbuilder metadata format is versioned in order to ensure
+Note that the dune metadata format is versioned in order to ensure
 forward compatibility. There is currently only one version available,
 but to be future proof, you should still specify it in your ``jbuild``
 files. If no version is specified, the latest one will be used.
@@ -205,17 +205,17 @@ Sets the version of the project:
 <package>.opam files
 ====================
 
-When a ``<package>.opam`` file is present, Jbuilder will know that the
+When a ``<package>.opam`` file is present, dune will know that the
 package named ``<package>`` exists. It will know how to construct a
 ``<package>.install`` file in the same directory to handle installation
-via `opam <https://opam.ocaml.org/>`__. Jbuilder also defines the
+via `opam <https://opam.ocaml.org/>`__. Dune also defines the
 recursive ``install`` alias, which depends on all the buildable
 ``<package>.install`` files in the workspace. So for instance to build
 everything that is installable in a workspace, run at the root:
 
 ::
 
-    $ jbuilder build @install
+    $ dune build @install
 
 Declaring a package this way will allow you to add elements such as
 libraries, executables, documentation, ... to your package by declaring
@@ -245,18 +245,18 @@ this scope only.
 Because scopes are exclusive, if you wish to include the dependencies
 of the project you are currently working on into your workspace, you
 may copy them in a ``vendor`` directory, or any other name of your
-choice. Jbuilder will look for them there rather than in the installed
+choice. Dune will look for them there rather than in the installed
 world and there will be no overlap between the various scopes.
 
 Package version
 ---------------
 
-Note that Jbuilder will try to determine the version number of packages
-defined in the workspace. While Jbuilder itself makes no use of version
+Note that dune will try to determine the version number of packages
+defined in the workspace. While dune itself makes no use of version
 numbers, it can be use by external tools such as
 `ocamlfind <http://projects.camlcity.org/projects/findlib.html>`__.
 
-Jbuilder determines the version of a package by trying the following
+Dune determines the version of a package by trying the following
 methods in order:
 
 - it looks in the ``<package>.opam`` file for a ``version`` variable
@@ -269,12 +269,12 @@ methods in order:
 ``<package>.version``, ``version`` and ``VERSION`` files may be
 generated.
 
-If the version can't be determined, Jbuilder just won't assign one.
+If the version can't be determined, dune just won't assign one.
 
 Odig conventions
 ----------------
 
-Jbuilder follows the `odig <http://erratique.ch/software/odig>`__
+Dune follows the `odig <http://erratique.ch/software/odig>`__
 conventions and automatically installs any README\*, CHANGE\*, HISTORY\*
 and LICENSE\* files in the same directory as the ``<package>.opam`` file
 to a location where odig will find them.

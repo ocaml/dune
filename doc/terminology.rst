@@ -8,17 +8,17 @@ Terminology
 -  **project**: a project is a source tree, maybe containing one or more
    packages
 
--  **root**: the root is the directory from where Jbuilder can build
-   things. Jbuilder knows how to build targets that are descendents of
+-  **root**: the root is the directory from where dune can build
+   things. Dune knows how to build targets that are descendents of
    the root. Anything outside of the tree starting from the root is
    considered part of the **installed world**. How the root is
    determined is explained in :ref:`finding-root`.
 
 -  **workspace**: the workspace is the subtree starting from the root.
    It can contain any number of projects that will be built
-   simultaneously by jbuilder
+   simultaneously by dune
 
--  **installed world**: anything outside of the workspace, that Jbuilder
+-  **installed world**: anything outside of the workspace, that dune
    takes for granted and doesn't know how to build
 
 -  **installation**: this is the action of copying build artifacts or
@@ -27,7 +27,7 @@ Terminology
 
 -  **scope**: a scope determines where private items are
    visible. Private items include libraries or binaries that will not
-   be installed. In Jbuilder, scopes are sub-trees rooted where at
+   be installed. In dune, scopes are sub-trees rooted where at
    least one ``<package>.opam`` file is present. Moreover, scopes are
    exclusive. Typically, every project defines a single scope. See
    :ref:`scopes` for more details
@@ -36,7 +36,7 @@ Terminology
    ``<root>/_build`` directory. It contains all the build artifacts of
    the workspace built against a specific configuration. Without
    specific configuration from the user, there is always a ``default``
-   build context, which corresponds to the environment in which Jbuilder
+   build context, which corresponds to the environment in which dune
    is executed. Build contexts can be specified by writing a
    :ref:`dune-workspace` file
 
@@ -47,7 +47,7 @@ Terminology
    and has configurable dependencies. Aliases are
    per-directory. However, on the command line, asking for an alias to
    be built in a given directory will trigger the construction of the
-   alias in all children directories recursively. Jbuilder defines the
+   alias in all children directories recursively. Dune defines the
    following standard aliases:
 
    -  ``default`` which is the alias build by default when no targets
@@ -58,7 +58,7 @@ Terminology
    -  ``doc``     which depends on the generated HTML
       documentation. See :ref:`documentation` for details.
 
-- **environment**: in Jbuilder, each directory has an environment
+- **environment**: in dune, each directory has an environment
   attached to it. The environment determines the default values of
   various parameters, such as the compilation flags. Inside a scope,
   each directory inherit the environment from its parent. At the root

@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to jbuilder's documentation!
-====================================
+Welcome to dune's documentation!
+================================
 
 .. toctree::
    :maxdepth: 3
@@ -13,7 +13,7 @@ Welcome to jbuilder's documentation!
    overview
    terminology
    project-layout-specification
-   jbuild
+   dune-files
    tests
    documentation
    usage

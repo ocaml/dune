@@ -2,9 +2,9 @@
 Quickstart
 **********
 
-This document gives simple usage examples of Jbuilder. You can also look at
+This document gives simple usage examples of dune. You can also look at
 `examples <https://github.com/ocaml/dune/tree/master/example>`__ for
-complete examples of projects using Jbuilder.
+complete examples of projects using dune.
 
 Building a hello world program
 ==============================
@@ -29,7 +29,7 @@ And build it with:
 
 .. code:: bash
 
-    jbuilder build hello_world.exe
+    dune build hello_world.exe
 
 The executable will be built as ``_build/default/hello_world.exe``. Note that
 native code executables will have the ``.exe`` extension on all platforms
@@ -58,7 +58,7 @@ And build it with:
 
 .. code:: bash
 
-    jbuilder build hello_world.exe
+    dune build hello_world.exe
 
 The executable will be built as ``_build/default/hello_world.exe``
 
@@ -91,7 +91,7 @@ And build it with:
 
 .. code:: bash
 
-    jbuilder build hello_world.exe
+    dune build hello_world.exe
 
 The executable will be built as ``_build/default/hello_world.exe``
 
@@ -278,7 +278,7 @@ And run the tests with:
 
 .. code:: bash
 
-    jbuilder runtest
+    dune runtest
 
 Building a custom toplevel
 ==========================

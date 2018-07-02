@@ -137,7 +137,7 @@ Variable Syntax
 
 ``${foo} and $(foo)`` are no longer valid variable syntax in dune files.
 Variables are defined as ``%{foo}``. This change is done to simplify
-interoperability with bash commands which also use teh ``${foo}`` syntax.
+interoperability with bash commands which also use the ``${foo}`` syntax.
 
 ``(files_recursively_in ..)`` is removed
 ----------------------------------------
@@ -161,12 +161,17 @@ supported in dune files.
 Renamed Variables
 -----------------
 
-The following table consists of variables than have been renamed in dune:
+All existing variables have been lowercased for consistency. Other variables
+have always been renamed. Refer to this table for details:
 
-========  ===========
-Jbuild    Dune
-========  ===========
-``${@}``  ``%{targets}``
-``${^}``  ``%{deps}``
-``${<}``  ``%{deps[0]}``
-========  ===========
+======================== ============
+Jbuild                    Dune
+======================== ============
+``${@}``                  ``%{targets}``
+``${^}``                  ``%{deps}``
+``${<}``                  ``%{deps[0]}``
+``${path:file}``          ``%{dep:file}``
+``${path-no-dep:file}``   ``%{path:file}``
+``${SCOPE_ROOT}``         ``%{project_root}``
+``${findlib:..}``         ``%{lib:..}``
+======================== ============

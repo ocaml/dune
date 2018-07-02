@@ -43,20 +43,18 @@ let of_sexp =
 let load fname =
   Io.with_lexbuf_from_file fname ~f:(fun lexbuf ->
     let (version_loc, version) =
-      let bad_dune_file = "Unable to read (dune x.y ..) line file" in
       let rec loop = function
         | [_; _; _] as a -> List.rev a
         | acc ->
           begin match (Sexp.Lexer.token lexbuf : Sexp.Lexer.Token.t) with
-          | Eof ->
-            Loc.fail (Loc.in_file (Path.to_string fname)) "%s" bad_dune_file
+          | Eof -> List.rev acc
           | t -> loop (t :: acc)
           end
       in
       let loc = Sexp.Loc.of_lexbuf lexbuf in
       match loop [] with
       | [Lparen; Atom (A "dune"); Atom s] -> (loc, Sexp.Atom.to_string s)
-      | _ -> Loc.fail loc "%s" bad_dune_file
+      | _ -> Loc.fail loc "Unable to read (dune x.y ..) line file"
     in
     let (lexer, syntax) =
       match version with

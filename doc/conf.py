@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# jbuilder documentation build configuration file, created by
+# dune documentation build configuration file, created by
 # sphinx-quickstart on Tue Apr 11 21:24:42 2017.
 #
 # This file is execfile()d with the current directory set to its
@@ -46,7 +46,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'jbuilder'
+project = 'dune'
 copyright = u'2017, Jérémie Dimino'
 author = u'Jérémie Dimino'
 
@@ -91,7 +91,7 @@ html_theme_options = {'navigation_depth': 6}
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'jbuilderdoc'
+htmlhelp_basename = 'dunedoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -118,7 +118,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'jbuilder.tex', 'jbuilder Documentation',
+    (master_doc, 'dune.tex', 'dune Documentation',
      u'Jérémie Dimino', 'manual'),
 ]
 
@@ -128,7 +128,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'jbuilder', 'jbuilder Documentation',
+    (master_doc, 'dune', 'dune Documentation',
      [author], 1)
 ]
 
@@ -139,8 +139,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'jbuilder', 'jbuilder Documentation',
-     author, 'jbuilder', 'One line description of project.',
+    (master_doc, 'dune', 'dune Documentation',
+     author, 'dune', 'One line description of project.',
      'Miscellaneous'),
 ]
 

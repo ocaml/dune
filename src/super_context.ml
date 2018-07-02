@@ -309,7 +309,7 @@ let create
       ; "ext_lib"        , string context.ext_lib
       ; "ext_dll"        , string context.ext_dll
       ; "ext_exe"        , string context.ext_exe
-      ; "build_profile"  , string context.profile
+      ; "profile"        , string context.profile
       ]
     in
     let vars =

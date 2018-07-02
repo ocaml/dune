@@ -104,6 +104,8 @@ next
 
 - Forbid `#require` in `dune` files in OCaml syntax (#938, @diml)
 
+- Add `%{profile}` variable. (#938, @rgrinberg)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

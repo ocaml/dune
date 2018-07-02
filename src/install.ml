@@ -31,6 +31,21 @@ module Section = struct
     | Man        -> "man"
     | Misc       -> "misc"
 
+  let of_string = function
+    | "lib"        -> Some Lib
+    | "libexec"    -> Some Libexec
+    | "bin"        -> Some Bin
+    | "sbin"       -> Some Sbin
+    | "toplevel"   -> Some Toplevel
+    | "share"      -> Some Share
+    | "share_root" -> Some Share_root
+    | "etc"        -> Some Etc
+    | "doc"        -> Some Doc
+    | "stublibs"   -> Some Stublibs
+    | "man"        -> Some Man
+    | "misc"       -> Some Misc
+    | _            -> None
+
   let t =
     let open Sexp.Of_sexp in
     enum
@@ -165,3 +180,62 @@ let gen_install_file entries =
         | Some dst -> pr "  %S {%S}" src dst);
     pr "]");
   Buffer.contents buf
+
+let pos_of_opam_value : OpamParserTypes.value -> OpamParserTypes.pos = function
+  | Bool         (pos, _)       -> pos
+  | Int          (pos, _)       -> pos
+  | String       (pos, _)       -> pos
+  | Relop        (pos, _, _, _) -> pos
+  | Prefix_relop (pos, _, _)    -> pos
+  | Logop        (pos, _, _, _) -> pos
+  | Pfxop        (pos, _, _)    -> pos
+  | Ident        (pos, _)       -> pos
+  | List         (pos, _)       -> pos
+  | Group        (pos, _)       -> pos
+  | Option       (pos, _, _)    -> pos
+  | Env_binding  (pos, _, _, _) -> pos
+
+let load_install_file path =
+  let open OpamParserTypes in
+  let file = Opam_file.load path in
+  let fail (fname, line, col) fmt =
+    let pos : Lexing.position =
+      { pos_fname = fname
+      ; pos_lnum = line
+      ; pos_bol = 0
+      ; pos_cnum = col
+      }
+    in
+    Loc.fail { start =  pos; stop = pos } fmt
+  in
+  List.concat_map file.file_contents ~f:(function
+    | Variable (pos, section, files) -> begin
+        match Section.of_string section with
+        | None -> fail pos "Unknown install section"
+        | Some section -> begin
+            match files with
+            | List (_, l) ->
+              List.map l ~f:(function
+                | String (_, src) ->
+                  { Entry.
+                    src = Path.of_string src
+                  ; dst = None
+                  ; section
+                  }
+                | Option (_, String (_, src),
+                          [String (_, dst)]) ->
+                  { Entry.
+                    src = Path.of_string src
+                  ; dst = Some dst
+                  ; section
+                  }
+                | v ->
+                  fail (pos_of_opam_value v)
+                    "Invalid value in .install file")
+            | v ->
+              fail (pos_of_opam_value v)
+                "Invalid value for install section"
+          end
+      end
+    | Section (pos, _) ->
+      fail pos "Sections are not allowed in .install file")

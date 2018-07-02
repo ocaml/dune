@@ -1130,6 +1130,10 @@ module Rule = struct
     field "locks"   (list String_with_vars.t) ~default:[] >>= fun locks ->
     map_validate
       (field_b "fallback" >>= fun fallback ->
+       (if fallback then
+          Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"(mode fallback)"
+        else
+          return ()) >>= fun () ->
        field_o "mode" Mode.t >>= fun mode ->
        return (fallback, mode))
       ~f:(function

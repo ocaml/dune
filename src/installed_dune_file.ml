@@ -4,7 +4,7 @@ let parse_sub_systems ~parsing_context sexps =
   List.filter_map sexps ~f:(fun sexp ->
     let name, ver, data =
       Sexp.Of_sexp.(parse (triple string (located Syntax.Version.t) raw)
-                      Univ_map.empty) sexp
+                      parsing_context) sexp
     in
     match Sub_system_name.get name with
     | None ->

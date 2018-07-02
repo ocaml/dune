@@ -110,6 +110,8 @@ next
 
 - Add the `lib_root` and `libexec_root` install sections (#947, @diml)
 
+- Rename `path:file` to `dep:file` (#944, @emillon)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

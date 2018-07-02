@@ -37,25 +37,6 @@
 
 (rule (with-stdout-to 023e1a58-4d08-11e7-a041-aa000008c8a6 (echo "plop")))
 
-;; Test for %{path-no-dep}
-
-(rule
- (progn
-  (with-stdout-to pnd-result
-   (chdir sub-tree/dir
-    (progn
-     (echo "%{path-no-dep:file-that-doesn't-exist}\n")
-     (echo "%{path-no-dep:.}\n"))))
-  (with-stdout-to pnd-expected
-   (progn
-    (echo "../../file-that-doesn't-exist\n")
-    (echo "../..\n")))))
-
-(alias
- (name   runtest)
- (deps   pnd-result pnd-expected)
- (action (run diff -u %{^})))
-
 ;; Test for globs
 
 (alias

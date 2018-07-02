@@ -631,10 +631,23 @@ module Action = struct
     let expand var syntax_version =
       let loc = String_with_vars.Var.loc var in
       let key = String_with_vars.Var.full_name var in
+      let path_with_dep s =
+        Some (path_exp (Path.relative dir s) )
+      in
       match String_with_vars.Var.destruct var with
-      | Pair ("exe"     , s) -> Some (path_exp (map_exe (Path.relative dir s)))
-      | Pair ("path"    , s) -> Some (path_exp          (Path.relative dir s) )
-      | Pair ("bin"     , s) -> begin
+      | Pair ("exe", s) -> Some (path_exp (map_exe (Path.relative dir s)))
+      | Pair ("path", s) when syntax_version < (1, 0) ->
+        path_with_dep s
+      | Pair ("dep", s) when syntax_version >= (1, 0) ->
+        path_with_dep s
+      | Pair ("dep", s) ->
+          Loc.fail
+            loc
+            "${dep:%s} is not supported in jbuild files.\n\
+             Did you mean: ${path:%s}"
+            s
+            s
+      | Pair ("bin", s) -> begin
           let sctx = host sctx in
           match Artifacts.binary (artifacts sctx) s with
           | Ok path -> Some (path_exp path)

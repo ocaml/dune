@@ -4,4 +4,4 @@
 
 (alias
  ((name runtest)
-  (action (run diff -uw %{path:hello_world.expected} %{path:hello_world.output}))))
+  (action (run diff -uw %{dep:hello_world.expected} %{dep:hello_world.output}))))

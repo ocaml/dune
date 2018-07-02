@@ -22,7 +22,7 @@
  (deps    (package dune))
  (action
   (with-stdout-to %{@}
-   (run bash %{path:update-jbuild.sh}))))
+   (run bash %{dep:update-jbuild.sh}))))
 
 (alias
  (name runtest)

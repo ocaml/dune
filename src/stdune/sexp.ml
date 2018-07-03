@@ -481,9 +481,10 @@ module Of_sexp = struct
     | None ->
       (None, add_known name state)
 
-  let field_b name =
+  let field_b ?check name =
     field name ~default:false
-      (eos >>= function
+      (Option.value check ~default:(return ()) >>= fun () ->
+        eos >>= function
        | true -> return true
        | _ -> bool)
 

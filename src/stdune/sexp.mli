@@ -216,7 +216,7 @@ module Of_sexp : sig
     -> 'a t
     -> 'a option fields_parser
 
-  val field_b : string -> bool fields_parser
+  val field_b : ?check:(unit t) -> string -> bool fields_parser
 
   (** A field that can appear multiple times *)
   val multi_field

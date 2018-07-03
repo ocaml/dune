@@ -38,52 +38,50 @@ let of_sexp =
   let open Sexp.Of_sexp in
   let version =
     plain_string (fun ~loc -> function
-      | "1" | "2" -> ()
+      | "1" -> (0, 0)
+      | "2" -> (1, 0)
       | v ->
         of_sexp_errorf loc
           "Unsupported version %S, only version 1 is supported" v)
   in
   sum
     [ "dune",
-      (version >>= fun () ->
-       get_all >>= fun parsing_context ->
-       list raw >>|
-       parse_sub_systems ~parsing_context)
+      (version >>= fun version ->
+       set (Syntax.key Stanza.syntax) version
+         (get_all >>= fun parsing_context ->
+          list raw >>|
+          parse_sub_systems ~parsing_context))
     ]
 
 let load fname =
   Io.with_lexbuf_from_file fname ~f:(fun lexbuf ->
-    let (tokens, version_loc, version) =
-      let rec loop = function
-        | [_; _; _] as a -> List.rev a
-        | acc ->
-          begin match (Sexp.Lexer.token lexbuf : Sexp.Lexer.Token.t) with
-          | Eof -> List.rev acc
-          | t -> loop (t :: acc)
-          end
-      in
-      let loc = Sexp.Loc.of_lexbuf lexbuf in
-      match loop [] with
-      | [Lparen; Atom (A "dune"); Atom s] as tokens ->
-        (tokens, loc, Sexp.Atom.to_string s)
-      | _ -> Loc.fail loc "Unable to read (dune x.y ..) line file"
+    (* Installed dune files are versioned but they don't use the
+       [(lang ...)] line which was introduced after. Installed dune
+       files in version 1 are using the jbuild syntax and version 2
+       are using the dune syntax, so we start by lexing the first
+       tokens with the dune lexer until we reach the file version, at
+       which point we can decide what lexer to use for the reset of
+       the file. *)
+    let state = ref 0 in
+    let lexer = ref Sexp.Lexer.token in
+    let lexer lb =
+      let token : Sexp.Lexer.Token.t = !lexer lb in
+      (match !state, token with
+       | 0, Lparen -> state := 1
+       | 1, Atom (A "dune") -> state := 2
+       | 2, Atom (A "1") -> state := 3; lexer := Sexp.Lexer.jbuild_token
+       | 2, Atom (A "2") -> state := 3; lexer := Sexp.Lexer.token
+       | 2, Atom (A version) ->
+         Loc.fail (Sexp.Loc.of_lexbuf lexbuf) "Unsupported version %S" version
+       | 3, _ -> ()
+       | _ ->
+         Loc.fail (Sexp.Loc.of_lexbuf lexbuf)
+           "This <lib>.dune file looks invalid, it should \
+            contain a S-expression of the form (dune x.y ..)"
+      );
+      token
     in
-    let (lexer, syntax) =
-      match version with
-      | "1" -> (Sexp.Lexer.jbuild_token, (0, 0))
-      | "2" -> (Sexp.Lexer.token, (1, 0))
-      | _   -> Loc.fail version_loc "unknown version %S" version
-    in
-    (* push back the tokens that we already read *)
-    let lexer =
-      let pending_tokens = ref tokens in
-      fun lb ->
-        match !pending_tokens with
-        | [] -> lexer lb
-        | x :: xs -> pending_tokens := xs; x
-    in
-    Sexp.Of_sexp.parse of_sexp
-      (Univ_map.singleton (Syntax.key Stanza.syntax) syntax)
+    Sexp.Of_sexp.parse of_sexp Univ_map.empty
       (Sexp.Parser.parse ~lexer ~mode:Single lexbuf))
 
 let gen ~(dune_version : Syntax.Version.t) confs =

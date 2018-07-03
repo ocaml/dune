@@ -603,7 +603,9 @@ The syntax is as follows:
 manual. The following sections are available:
 
 -  ``lib``
+-  ``lib_root``
 -  ``libexec``
+-  ``libexec_root``
 -  ``bin``
 -  ``sbin``
 -  ``toplevel``

@@ -5,7 +5,9 @@ open Stdune
 module Section : sig
   type t =
     | Lib
+    | Lib_root
     | Libexec
+    | Libexec_root
     | Bin
     | Sbin
     | Toplevel
@@ -27,17 +29,19 @@ module Section : sig
     type section = t
 
     type t =
-      { lib         : Path.t
-      ; libexec     : Path.t
-      ; bin         : Path.t
-      ; sbin        : Path.t
-      ; toplevel    : Path.t
-      ; share       : Path.t
-      ; share_root  : Path.t
-      ; etc         : Path.t
-      ; doc         : Path.t
-      ; stublibs    : Path.t
-      ; man         : Path.t
+      { lib          : Path.t
+      ; lib_root     : Path.t
+      ; libexec      : Path.t
+      ; libexec_root : Path.t
+      ; bin          : Path.t
+      ; sbin         : Path.t
+      ; toplevel     : Path.t
+      ; share        : Path.t
+      ; share_root   : Path.t
+      ; etc          : Path.t
+      ; doc          : Path.t
+      ; stublibs     : Path.t
+      ; man          : Path.t
       }
 
     val make

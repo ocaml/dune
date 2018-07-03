@@ -1142,8 +1142,7 @@ let install_uninstall ~what =
                in
                let dir = Path.parent_exn dst in
                if what = "install" then begin
-                 Printf.eprintf "Installing %s as %s\n%!"
-                   (Path.to_string src)
+                 Printf.eprintf "Installing %s\n%!"
                    (Path.to_string_maybe_quoted dst);
                  Path.mkdir_p dir;
                  Io.copy_file () ~src ~dst

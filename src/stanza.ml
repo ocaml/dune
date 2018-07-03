@@ -16,7 +16,7 @@ module File_kind = struct
   type t = Sexp.syntax = Jbuild | Dune
 
   let of_syntax = function
-    | (0, 0) -> Jbuild
+    | (0, _) -> Jbuild
     | (_, _) -> Dune
 end
 

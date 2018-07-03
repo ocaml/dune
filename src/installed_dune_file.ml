@@ -99,8 +99,8 @@ let gen ~(dune_version : Syntax.Version.t) confs =
     ; Sexp.unsafe_atom_of_string
         (match dune_version with
          | (0, 0) -> "1"
-         | (1, 0) -> "2"
-         | _ ->
+         | (x, _) when x >= 1 -> "2"
+         | (_, _) ->
            Exn.code_error "Cannot generate dune with unknown version"
              ["dune_version", Syntax.Version.sexp_of_t dune_version])
     ; List sexps

@@ -1070,6 +1070,9 @@ let print_unix_error f =
     Format.eprintf "@{<error>Error@}: %s@."
       (Unix.error_message e)
 
+let set_executable_bits   x = x lor  0o111
+let clear_executable_bits x = x land (lnot 0o111)
+
 let install_uninstall ~what =
   let doc =
     sprintf "%s packages using opam-installer." (String.capitalize what)
@@ -1144,9 +1147,11 @@ let install_uninstall ~what =
                    (Path.to_string_maybe_quoted dst);
                  Path.mkdir_p dir;
                  Io.copy_file () ~src ~dst
-                   ~chmod:(match section with
-                     | Libexec -> (fun x -> x lor 0o111)
-                     | _ -> (fun x -> x))
+                   ~chmod:(
+                     if Install.Section.should_set_executable_bit section then
+                       set_executable_bits
+                     else
+                       clear_executable_bits)
                end else begin
                  if Path.exists dst then begin
                    Printf.eprintf "Deleting %s\n%!"

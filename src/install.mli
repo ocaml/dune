@@ -19,6 +19,10 @@ module Section : sig
 
   val t : t Sexp.Of_sexp.t
 
+  (** [true] iff the executable bit should be set for files installed
+      in this location. *)
+  val should_set_executable_bit : t -> bool
+
   module Paths : sig
     type section = t
 

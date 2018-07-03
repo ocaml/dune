@@ -63,6 +63,20 @@ module Section = struct
       ; "misc"       , Misc
       ]
 
+  let should_set_executable_bit = function
+    | Lib        -> false
+    | Libexec    -> true
+    | Bin        -> true
+    | Sbin       -> true
+    | Toplevel   -> false
+    | Share      -> false
+    | Share_root -> false
+    | Etc        -> false
+    | Doc        -> false
+    | Stublibs   -> true
+    | Man        -> false
+    | Misc       -> false
+
   module Paths = struct
     type t =
       { lib         : Path.t

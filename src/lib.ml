@@ -63,6 +63,7 @@ module Info = struct
     ; pps              : (Loc.t * Jbuild.Pp.t) list
     ; optional         : bool
     ; virtual_deps     : (Loc.t * string) list
+    ; dune_version : Syntax.Version.t option
     ; sub_systems      : Jbuild.Sub_system_info.t Sub_system_name.Map.t
     }
 
@@ -114,6 +115,7 @@ module Info = struct
     ; ppx_runtime_deps = conf.ppx_runtime_libraries
     ; pps = Jbuild.Preprocess_map.pps conf.buildable.preprocess
     ; sub_systems = conf.sub_systems
+    ; dune_version = Some conf.dune_version
     }
 
   let of_findlib_package pkg =
@@ -143,6 +145,7 @@ module Info = struct
     ; (* We don't know how these are named for external libraries *)
       foreign_archives = Mode.Dict.make_both []
     ; sub_systems      = sub_systems
+    ; dune_version = None
     }
 end
 
@@ -237,6 +240,7 @@ type t =
   ; resolved_selects  : Resolved_select.t list
   ; optional          : bool
   ; user_written_deps : Jbuild.Lib_deps.t
+  ; dune_version : Syntax.Version.t option
   ; (* This is mutable to avoid this error:
 
        {[
@@ -342,6 +346,8 @@ let archives     t = t.archives
 let plugins      t = t.plugins
 let jsoo_runtime t = t.jsoo_runtime
 let unique_id    t = t.unique_id
+
+let dune_version t = t.dune_version
 
 let src_dir t = t.src_dir
 let obj_dir t = t.obj_dir
@@ -508,9 +514,7 @@ module Sub_system = struct
   let dump_config lib =
     Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun (lazy inst) ->
       let (Sub_system0.Instance.T ((module M), t)) = inst in
-      match M.to_sexp with
-      | None -> None
-      | Some f -> Some (f t))
+      Option.map ~f:(fun f -> f t) M.to_sexp)
 end
 
 (* +-----------------------------------------------------------------+
@@ -664,6 +668,7 @@ let rec instantiate db name (info : Info.t) ~stack ~hidden =
     ; optional          = info.optional
     ; user_written_deps = Info.user_written_deps info
     ; sub_systems       = Sub_system_name.Map.empty
+    ; dune_version = info.dune_version
     }
   in
   t.sub_systems <-

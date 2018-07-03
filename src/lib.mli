@@ -26,6 +26,8 @@ val archives     : t -> Path.t list Mode.Dict.t
 val plugins      : t -> Path.t list Mode.Dict.t
 val jsoo_runtime : t -> Path.t list
 
+val dune_version : t -> Syntax.Version.t option
+
 (** A unique integer identifier. It is only unique for the duration of
     the process *)
 val unique_id : t -> int
@@ -103,6 +105,7 @@ module Info : sig
     ; pps              : (Loc.t * Jbuild.Pp.t) list
     ; optional         : bool
     ; virtual_deps     : (Loc.t * string) list
+    ; dune_version : Syntax.Version.t option
     ; sub_systems      : Jbuild.Sub_system_info.t Sub_system_name.Map.t
     }
 

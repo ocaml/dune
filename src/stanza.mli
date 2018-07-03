@@ -18,7 +18,9 @@ end
 val syntax : Syntax.t
 
 module File_kind : sig
-  type t = Jbuild | Dune
+  type t = Sexp.syntax = Jbuild | Dune
+
+  val of_syntax : Syntax.Version.t -> t
 end
 
 (** Whether we are parsing a [jbuild] or [dune] file. *)

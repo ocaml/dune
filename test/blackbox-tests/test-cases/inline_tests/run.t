@@ -22,7 +22,7 @@
 
   $ dune runtest dune-file
   (dune
-   1
+   2
    ((inline_tests.backend
      1.0
      ((runner_libraries (str))

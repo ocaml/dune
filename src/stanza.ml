@@ -13,7 +13,11 @@ let syntax =
     ]
 
 module File_kind = struct
-  type t = Jbuild | Dune
+  type t = Sexp.syntax = Jbuild | Dune
+
+  let of_syntax = function
+    | (0, _) -> Jbuild
+    | (_, _) -> Dune
 end
 
 let file_kind () =

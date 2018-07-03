@@ -16,3 +16,8 @@ let in_file fn =
   }
 
 let none = in_file "<none>"
+
+let of_lexbuf lexbuf : t =
+  { start = Lexing.lexeme_start_p lexbuf
+  ; stop  = Lexing.lexeme_end_p   lexbuf
+  }

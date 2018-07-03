@@ -28,6 +28,8 @@ module Loc : sig
   val in_file : string -> t
 
   val none : t
+
+  val of_lexbuf : Lexing.lexbuf -> t
 end
 
 module Template : sig
@@ -112,7 +114,18 @@ end
 exception Parse_error of Parse_error.t
 
 module Lexer : sig
-  type t
+  module Token : sig
+    type t =
+      | Atom          of Atom.t
+      | Quoted_string of string
+      | Lparen
+      | Rparen
+      | Sexp_comment
+      | Eof
+      | Template of Template.t
+  end
+
+  type t = Lexing.lexbuf -> Token.t
 
   val token : t
   val jbuild_token : t

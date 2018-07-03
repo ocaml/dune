@@ -90,6 +90,7 @@ module Dep_conf : sig
     | Source_tree of String_with_vars.t
     | Package of String_with_vars.t
     | Universe
+    | List of t list
 
   val t : t Sexp.Of_sexp.t
   val sexp_of_t : t -> Sexp.t

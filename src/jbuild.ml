@@ -241,25 +241,30 @@ module Dep_conf = struct
     | Source_tree of String_with_vars.t
     | Package of String_with_vars.t
     | Universe
+    | List of t list
 
   let t =
     let t =
       let sw = String_with_vars.t in
-      sum
-        [ "file"       , (sw >>| fun x -> File x)
-        ; "alias"      , (sw >>| fun x -> Alias x)
-        ; "alias_rec"  , (sw >>| fun x -> Alias_rec x)
-        ; "glob_files" , (sw >>| fun x -> Glob_files x)
-        ; "package"    , (sw >>| fun x -> Package x)
-        ; "universe"   , return Universe
-        ; "files_recursively_in",
-          (Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
-           >>= fun () ->
-           sw >>| fun x -> Source_tree x)
-        ; "source_tree",
-          (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
-           sw >>| fun x -> Source_tree x)
-        ]
+      fix (fun t ->
+        sum
+          [ "file"       , (sw >>| fun x -> File x)
+          ; "alias"      , (sw >>| fun x -> Alias x)
+          ; "alias_rec"  , (sw >>| fun x -> Alias_rec x)
+          ; "glob_files" , (sw >>| fun x -> Glob_files x)
+          ; "package"    , (sw >>| fun x -> Package x)
+          ; "universe"   , return Universe
+          ; "files_recursively_in",
+            (Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
+             >>= fun () ->
+             sw >>| fun x -> Source_tree x)
+          ; "source_tree",
+            (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
+             sw >>| fun x -> Source_tree x)
+          ; "list",
+            (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
+             (repeat t) >>| fun x -> List x)
+          ])
     in
     peek_exn >>= function
     | Template _ | Atom _ | Quoted_string _ ->
@@ -267,7 +272,7 @@ module Dep_conf = struct
     | List _ -> t
 
   open Sexp
-  let sexp_of_t = function
+  let rec sexp_of_t = function
     | File t ->
        List [Sexp.unsafe_atom_of_string "file" ; String_with_vars.sexp_of_t t]
     | Alias t ->
@@ -286,6 +291,9 @@ module Dep_conf = struct
             String_with_vars.sexp_of_t t]
     | Universe ->
       Sexp.unsafe_atom_of_string "universe"
+    | List ts ->
+      List (Sexp.unsafe_atom_of_string "list"
+            :: (List.map ~f:sexp_of_t ts))
 end
 
 module Preprocess = struct

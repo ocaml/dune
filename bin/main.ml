@@ -1160,6 +1160,8 @@ let install_uninstall ~what =
                  files_deleted_in := Path.Set.add !files_deleted_in dir;
                end;
                Path.Set.to_list !files_deleted_in
+               (* This [List.rev] is to ensure we process children
+                  directories before their parents *)
                |> List.rev
                |> List.iter ~f:(fun dir ->
                  if Path.exists dir then

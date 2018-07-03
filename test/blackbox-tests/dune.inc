@@ -129,6 +129,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name fallback-dune)
+ (deps (package dune) (source_tree test-cases/fallback-dune))
+ (action
+  (chdir
+   test-cases/fallback-dune
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name findlib)
  (deps (package dune) (source_tree test-cases/findlib))
  (action
@@ -606,6 +614,7 @@
   (alias env)
   (alias exclude-missing-module)
   (alias exec-cmd)
+  (alias fallback-dune)
   (alias findlib)
   (alias findlib-error)
   (alias force-test)
@@ -678,6 +687,7 @@
   (alias env)
   (alias exclude-missing-module)
   (alias exec-cmd)
+  (alias fallback-dune)
   (alias findlib)
   (alias findlib-error)
   (alias force-test)

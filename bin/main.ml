@@ -1067,11 +1067,8 @@ let print_unix_error f =
   try
     f ()
   with Unix.Unix_error (e, _, _) ->
-    Format.fprintf err_ppf "@{<error>Error@}: %s@."
-      (Unix.error_message e);
-    let s = Buffer.contents err_buf in
-    Buffer.clear err_buf;
-    Printf.eprintf "%s%!" s
+    Format.eprintf "@{<error>Error@}: %s@."
+      (Unix.error_message e)
 
 let install_uninstall ~what =
   let doc =

@@ -112,6 +112,8 @@ next
 
 - Rename `path:file` to `dep:file` (#944, @emillon)
 
+- Remove `path-no-dep:file` (#948, @emillon)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

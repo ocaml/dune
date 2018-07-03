@@ -830,12 +830,8 @@ In addition, ``(action ...)`` fields support the following special variables:
 - ``<`` expands to the first dependency, or the empty string if there are no
   dependencies
 - ``^`` expands to the list of dependencies, separated by spaces
-- ``dep:<path>`` expands to ``<path>``
-- ``path-no-dep:<path>`` is the same as ``path:<path>``, except that
-  ``<path>`` is not considered as a dependency of the action. For instance
-  ``(chdir ${ROOT} (run foo --base ${path-no-dep:bar}))`` in ``src/blah/jbuild``
-  will expand to ``(chdir ../.. (run foo --base src/blah/bar))`` where
-  ``src/blah/bar`` doesn't have to be an existing or buildable file
+- ``dep:<path>`` expands to ``<path>`` (and adds ``<path>`` as a dependency of
+  the action)
 - ``exe:<path>`` is the same as ``<path>``, except when cross-compiling, in
   which case it will expand to ``<path>`` from the host build context
 - ``bin:<program>`` expands to a path to ``program``. If ``program``

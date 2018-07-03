@@ -482,6 +482,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name path-variables)
+ (deps (package dune) (source_tree test-cases/path-variables))
+ (action
+  (chdir
+   test-cases/path-variables
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name ppx-rewriter)
  (deps (package dune) (source_tree test-cases/ppx-rewriter))
  (action
@@ -654,6 +662,7 @@
   (alias odoc-unique-mlds)
   (alias output-obj)
   (alias package-dep)
+  (alias path-variables)
   (alias ppx-rewriter)
   (alias private-public-overlap)
   (alias promote)
@@ -721,6 +730,7 @@
   (alias ocamldep-multi-stanzas)
   (alias output-obj)
   (alias package-dep)
+  (alias path-variables)
   (alias promote)
   (alias quoting)
   (alias redirections)

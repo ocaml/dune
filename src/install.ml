@@ -3,7 +3,9 @@ open Import
 module Section = struct
   type t =
     | Lib
+    | Lib_root
     | Libexec
+    | Libexec_root
     | Bin
     | Sbin
     | Toplevel
@@ -18,109 +20,130 @@ module Section = struct
   let compare : t -> t -> Ordering.t = compare
 
   let to_string = function
-    | Lib        -> "lib"
-    | Libexec    -> "libexec"
-    | Bin        -> "bin"
-    | Sbin       -> "sbin"
-    | Toplevel   -> "toplevel"
-    | Share      -> "share"
-    | Share_root -> "share_root"
-    | Etc        -> "etc"
-    | Doc        -> "doc"
-    | Stublibs   -> "stublibs"
-    | Man        -> "man"
-    | Misc       -> "misc"
+    | Lib          -> "lib"
+    | Lib_root     -> "lib_root"
+    | Libexec      -> "libexec"
+    | Libexec_root -> "libexec_root"
+    | Bin          -> "bin"
+    | Sbin         -> "sbin"
+    | Toplevel     -> "toplevel"
+    | Share        -> "share"
+    | Share_root   -> "share_root"
+    | Etc          -> "etc"
+    | Doc          -> "doc"
+    | Stublibs     -> "stublibs"
+    | Man          -> "man"
+    | Misc         -> "misc"
 
   let of_string = function
-    | "lib"        -> Some Lib
-    | "libexec"    -> Some Libexec
-    | "bin"        -> Some Bin
-    | "sbin"       -> Some Sbin
-    | "toplevel"   -> Some Toplevel
-    | "share"      -> Some Share
-    | "share_root" -> Some Share_root
-    | "etc"        -> Some Etc
-    | "doc"        -> Some Doc
-    | "stublibs"   -> Some Stublibs
-    | "man"        -> Some Man
-    | "misc"       -> Some Misc
-    | _            -> None
+    |"lib"          -> Some Lib
+    |"lib_root"     -> Some Lib_root
+    |"libexec"      -> Some Libexec
+    |"libexec_root" -> Some Libexec_root
+    |"bin"          -> Some Bin
+    |"sbin"         -> Some Sbin
+    |"toplevel"     -> Some Toplevel
+    |"share"        -> Some Share
+    |"share_root"   -> Some Share_root
+    |"etc"          -> Some Etc
+    |"doc"          -> Some Doc
+    |"stublibs"     -> Some Stublibs
+    |"man"          -> Some Man
+    |"misc"         -> Some Misc
+    | _             -> None
 
   let t =
     let open Sexp.Of_sexp in
     enum
-      [ "lib"        , Lib
-      ; "libexec"    , Libexec
-      ; "bin"        , Bin
-      ; "sbin"       , Sbin
-      ; "toplevel"   , Toplevel
-      ; "share"      , Share
-      ; "share_root" , Share_root
-      ; "etc"        , Etc
-      ; "doc"        , Doc
-      ; "stublibs"   , Stublibs
-      ; "man"        , Man
-      ; "misc"       , Misc
+      [ "lib"          , Lib
+      ; "lib_root"     , Lib_root
+      ; "libexec"      , Libexec
+      ; "libexec_root" , Libexec_root
+      ; "bin"          , Bin
+      ; "sbin"         , Sbin
+      ; "toplevel"     , Toplevel
+      ; "share"        , Share
+      ; "share_root"   , Share_root
+      ; "etc"          , Etc
+      ; "doc"          , Doc
+      ; "stublibs"     , Stublibs
+      ; "man"          , Man
+      ; "misc"         , Misc
       ]
 
   let should_set_executable_bit = function
-    | Lib        -> false
-    | Libexec    -> true
-    | Bin        -> true
-    | Sbin       -> true
-    | Toplevel   -> false
-    | Share      -> false
-    | Share_root -> false
-    | Etc        -> false
-    | Doc        -> false
-    | Stublibs   -> true
-    | Man        -> false
-    | Misc       -> false
+    | Lib
+    | Lib_root
+    | Toplevel
+    | Share
+    | Share_root
+    | Etc
+    | Doc
+    | Man
+    | Misc
+      -> false
+    | Libexec
+    | Libexec_root
+    | Bin
+    | Sbin
+    | Stublibs
+      -> true
 
   module Paths = struct
     type t =
-      { lib         : Path.t
-      ; libexec     : Path.t
-      ; bin         : Path.t
-      ; sbin        : Path.t
-      ; toplevel    : Path.t
-      ; share       : Path.t
-      ; share_root  : Path.t
-      ; etc         : Path.t
-      ; doc         : Path.t
-      ; stublibs    : Path.t
-      ; man         : Path.t
+      { lib          : Path.t
+      ; lib_root     : Path.t
+      ; libexec      : Path.t
+      ; libexec_root : Path.t
+      ; bin          : Path.t
+      ; sbin         : Path.t
+      ; toplevel     : Path.t
+      ; share        : Path.t
+      ; share_root   : Path.t
+      ; etc          : Path.t
+      ; doc          : Path.t
+      ; stublibs     : Path.t
+      ; man          : Path.t
       }
 
     let make ~package ~destdir ?(libdir=Path.relative destdir "lib") () =
       let package = Package.Name.to_string package in
-      { bin        = Path.relative destdir "bin"
-      ; sbin       = Path.relative destdir "sbin"
-      ; toplevel   = Path.relative libdir  "toplevel"
-      ; share_root = Path.relative libdir  "share"
-      ; stublibs   = Path.relative libdir  "lib/stublibs"
-      ; man        = Path.relative destdir "man"
-      ; lib        = Path.relative libdir  package
-      ; libexec    = Path.relative libdir  package
-      ; share      = Path.relative destdir ("share/" ^ package)
-      ; etc        = Path.relative destdir ("etc/"   ^ package)
-      ; doc        = Path.relative destdir ("doc/"   ^ package)
+      let lib_root     = libdir                        in
+      let libexec_root = libdir                        in
+      let share_root   = Path.relative destdir "share" in
+      let etc_root     = Path.relative destdir "etc"   in
+      let doc_root     = Path.relative destdir "doc"   in
+      { lib_root
+      ; libexec_root
+      ; share_root
+      ; bin          = Path.relative destdir "bin"
+      ; sbin         = Path.relative destdir "sbin"
+      ; man          = Path.relative destdir "man"
+      ; toplevel     = Path.relative libdir  "toplevel"
+      ; stublibs     = Path.relative libdir  "stublibs"
+      ; lib          = Path.relative lib_root     package
+      ; libexec      = Path.relative libexec_root package
+      ; share        = Path.relative share_root   package
+      ; etc          = Path.relative etc_root     package
+      ; doc          = Path.relative doc_root     package
       }
 
     let get t section =
       match section with
-      | Lib        -> t.lib
-      | Libexec    -> t.libexec
-      | Bin        -> t.bin
-      | Sbin       -> t.sbin
-      | Toplevel   -> t.toplevel
-      | Share      -> t.share
-      | Share_root -> t.share_root
-      | Etc        -> t.etc
-      | Doc        -> t.doc
-      | Stublibs   -> t.stublibs
-      | Man        -> t.man
-      | Misc       -> invalid_arg "Install.Paths.get"
+      | Lib          -> t.lib
+      | Lib_root     -> t.lib_root
+      | Libexec      -> t.libexec
+      | Libexec_root -> t.libexec_root
+      | Bin          -> t.bin
+      | Sbin         -> t.sbin
+      | Toplevel     -> t.toplevel
+      | Share        -> t.share
+      | Share_root   -> t.share_root
+      | Etc          -> t.etc
+      | Doc          -> t.doc
+      | Stublibs     -> t.stublibs
+      | Man          -> t.man
+      | Misc         -> invalid_arg"Install.Paths.get"
   end
 end
 

@@ -108,6 +108,8 @@ next
 
 - Do not require opam-installer anymore (#941, @diml)
 
+- Add the `lib_root` and `libexec_root` install sections (#947, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

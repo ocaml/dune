@@ -874,9 +874,7 @@ let rm_rf =
     | _ -> loop fn
 
 let mkdir_p = function
-  | External s ->
-    Exn.code_error "Path.mkdir_p cannot create external path"
-      ["s", External.sexp_of_t s]
+  | External s -> External.mkdir_p s
   | In_source_tree s ->
     Exn.code_error "Path.mkdir_p cannot dir in source"
       ["s", Local.sexp_of_t s]

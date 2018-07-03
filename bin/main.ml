@@ -1053,16 +1053,6 @@ let rules =
                  & Arg.info [] ~docv:"TARGET"))
   , Term.info "rules" ~doc ~man)
 
-let opam_installer () =
-  match Bin.which "opam-installer" with
-  | None ->
-    die "\
-Sorry, you need the opam-installer tool to be able to install or
-uninstall packages.
-
-I couldn't find the opam-installer binary :-("
-  | Some fn -> fn
-
 let get_prefix context ~from_command_line =
   match from_command_line with
   | Some p -> Fiber.return (Path.of_string p)
@@ -1073,6 +1063,16 @@ let get_libdir context ~libdir_from_command_line =
   | Some p -> Fiber.return (Some (Path.of_string p))
   | None -> Context.install_ocaml_libdir context
 
+let print_unix_error f =
+  try
+    f ()
+  with Unix.Unix_error (e, _, _) ->
+    Format.eprintf "@{<error>Error@}: %s@."
+      (Unix.error_message e)
+
+let set_executable_bits   x = x lor  0o111
+let clear_executable_bits x = x land (lnot 0o111)
+
 let install_uninstall ~what =
   let doc =
     sprintf "%s packages using opam-installer." (String.capitalize what)
@@ -1080,7 +1080,6 @@ let install_uninstall ~what =
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let go common prefix_from_command_line libdir_from_command_line pkgs =
     set_common common ~targets:[];
-    let opam_installer = opam_installer () in
     let log = Log.create common in
     Scheduler.go ~log ~common
       (Main.setup ~log common >>= fun setup ->
@@ -1095,7 +1094,7 @@ let install_uninstall ~what =
            List.map setup.contexts ~f:(fun ctx ->
              let fn = Path.append ctx.Context.build_dir fn in
              if Path.exists fn then
-               Left (ctx, fn)
+               Left (ctx, (pkg, fn))
              else
                Right fn))
          |> List.partition_map ~f:(fun x -> x)
@@ -1121,23 +1120,57 @@ let install_uninstall ~what =
        in
        Fiber.parallel_iter install_files_by_context
          ~f:(fun (context, install_files) ->
-           let install_files_set = Path.Set.of_list install_files in
            get_prefix context ~from_command_line:prefix_from_command_line
            >>= fun prefix ->
            get_libdir context ~libdir_from_command_line
-           >>= fun libdir ->
-           Fiber.parallel_iter install_files ~f:(fun path ->
-             let purpose = Process.Build_job install_files_set in
-             Process.run ~purpose ~env:setup.env Strict opam_installer
-               ([ sprintf "-%c" what.[0]
-                ; Path.to_string path
-                ; "--prefix"
-                ; Path.to_string prefix
-                ] @
-                match libdir with
-                | None -> []
-                | Some p -> [ "--libdir"; Path.to_string p ]
-               ))))
+           >>| fun libdir ->
+           List.iter install_files ~f:(fun (package, path) ->
+             let entries = Install.load_install_file path in
+             let paths =
+               Install.Section.Paths.make
+                 ~package
+                 ~destdir:prefix
+                 ?libdir
+                 ()
+             in
+             let files_deleted_in = ref Path.Set.empty in
+             List.iter entries ~f:(fun { Install.Entry. src; dst; section } ->
+               let src = src in
+               let dst = Option.value dst ~default:(Path.basename src) in
+               let dst =
+                 Path.relative (Install.Section.Paths.get paths section) dst
+               in
+               let dir = Path.parent_exn dst in
+               if what = "install" then begin
+                 Printf.eprintf "Installing %s\n%!"
+                   (Path.to_string_maybe_quoted dst);
+                 Path.mkdir_p dir;
+                 Io.copy_file () ~src ~dst
+                   ~chmod:(
+                     if Install.Section.should_set_executable_bit section then
+                       set_executable_bits
+                     else
+                       clear_executable_bits)
+               end else begin
+                 if Path.exists dst then begin
+                   Printf.eprintf "Deleting %s\n%!"
+                     (Path.to_string_maybe_quoted dst);
+                   print_unix_error (fun () -> Path.unlink dst)
+                 end;
+                 files_deleted_in := Path.Set.add !files_deleted_in dir;
+               end;
+               Path.Set.to_list !files_deleted_in
+               (* This [List.rev] is to ensure we process children
+                  directories before their parents *)
+               |> List.rev
+               |> List.iter ~f:(fun dir ->
+                 if Path.exists dir then
+                   match Path.readdir_unsorted dir with
+                   | [] ->
+                     Printf.eprintf "Deleting empty directory %s\n%!"
+                       (Path.to_string_maybe_quoted dst);
+                     print_unix_error (fun () -> Path.rmdir dir)
+                   | _  -> ())))))
   in
   ( Term.(const go
           $ common

@@ -637,7 +637,7 @@ module Promotion = struct
       Format.eprintf "Promoting %s to %s.@."
         (Path.to_string_maybe_quoted src)
         (Path.to_string_maybe_quoted dst);
-      Io.copy_file ~src ~dst
+      Io.copy_file ~src ~dst ()
   end
 
   module P = Utils.Persistent(struct
@@ -785,11 +785,11 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to =
       Io.copy_channels ic oc);
     Fiber.return ()
   | Copy (src, dst) ->
-    Io.copy_file ~src ~dst;
+    Io.copy_file ~src ~dst ();
     Fiber.return ()
   | Symlink (src, dst) ->
     if Sys.win32 then
-      Io.copy_file ~src ~dst
+      Io.copy_file ~src ~dst ()
     else begin
       let src =
         match Path.parent dst with

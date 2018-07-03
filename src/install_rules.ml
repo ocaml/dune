@@ -216,12 +216,13 @@ module Gen(P : Install_params) = struct
     List.exists [ "README"; "LICENSE"; "CHANGE"; "HISTORY"]
       ~f:(fun prefix -> String.is_prefix fn ~prefix)
 
-  let local_install_rules (entries : Install.Entry.t list) ~package =
+  let local_install_rules (entries : Install.Entry.t list)
+        ~install_paths ~package =
     let install_dir = Config.local_install_dir ~context:ctx.name in
     List.map entries ~f:(fun entry ->
       let dst =
         Path.append install_dir
-          (Install.Entry.relative_installed_path entry ~package)
+          (Install.Entry.relative_installed_path entry ~paths:install_paths)
       in
       Build_system.set_package (SC.build_system sctx) entry.src package;
       SC.add_rule sctx (Build.symlink ~src:entry.src ~dst);
@@ -255,7 +256,10 @@ module Gen(P : Install_params) = struct
       Path.relative (Path.append ctx.build_dir package_path)
         (Utils.install_file ~package ~findlib_toolchain:ctx.findlib_toolchain)
     in
-    let entries = local_install_rules entries ~package in
+    let install_paths =
+      Install.Section.Paths.make ~package ~destdir:Path.root ()
+    in
+    let entries = local_install_rules entries ~package ~install_paths in
     let files = Install.files entries in
     SC.add_alias_deps sctx
       (Alias.package_install ~context:ctx ~pkg:package)
@@ -284,7 +288,8 @@ module Gen(P : Install_params) = struct
            | Some toolchain ->
              let prefix = Path.of_string (toolchain ^ "-sysroot") in
              List.map entries
-               ~f:(Install.Entry.add_install_prefix ~prefix ~package)
+               ~f:(Install.Entry.add_install_prefix
+                     ~paths:install_paths ~prefix)
          in
          Install.gen_install_file entries)
        >>>

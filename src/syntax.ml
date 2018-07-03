@@ -124,7 +124,7 @@ let renamed_in t ver ~to_ =
   else begin
     desc () >>= fun (loc, what) ->
     Loc.fail loc
-      "%s was renamed to '%s' in %s of %s" what to_
+      "%s was renamed to '%s' in the %s version of %s" what to_
       (Version.to_string ver) t.desc
   end
 

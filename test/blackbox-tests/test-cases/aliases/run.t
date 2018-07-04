@@ -1,16 +1,16 @@
   $ dune clean --display short
   $ dune build --display short @just-in-src
-  running in src
+  running in .
   $ dune clean --display short
   $ dune build --display short @everywhere
-  running in src/foo/bar
-  running in src/foo/baz
-  running in src
+  running in bar
+  running in baz
+  running in .
   $ dune clean --display short
   $ dune build --display short @x
-  running in src/foo/bar
-  running in src/foo/baz
-  running in src
+  running in bar
+  running in baz
+  running in .
   $ dune build --display short @plop
   From the command line:
   Error: Alias "plop" is empty.

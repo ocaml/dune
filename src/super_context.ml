@@ -644,7 +644,7 @@ module Action = struct
           Loc.fail
             loc
             "${dep:%s} is not supported in jbuild files.\n\
-             Did you mean: ${path:%s}"
+             Hint: Did you mean ${path:%s} instead?"
             s
             s
       | Pair ("bin", s) -> begin
@@ -755,7 +755,12 @@ module Action = struct
         | _ ->
           match String_with_vars.Var.destruct var with
           | Pair ("path-no-dep", s) ->
-            Some (path_exp (Path.relative dir s))
+              if syntax_version < (1, 0) then
+                Some (path_exp (Path.relative dir s))
+              else
+                Loc.fail
+                  loc
+                  "The ${path-no-dep:...} syntax has been removed from dune."
           | _ ->
             let exp = expand var syntax_version in
             Option.iter exp ~f:(fun vs ->

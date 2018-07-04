@@ -13,12 +13,13 @@ In expands to a file name, and registers this as a dependency.
 %{path-no-dep:string}
 ---------------------
 
-It expands to a file name, but does not register it as a dependency.
+This form does not exist, but displays an hint:
 
-  $ dune build --root dune @test-path-no-dep
-  Entering directory 'dune'
-  ../../file-that-does-not-exist
-  ../..
+  $ dune build --root dune-invalid @test-path-no-dep
+  Entering directory 'dune-invalid'
+  File "dune", line 7, characters 17-54:
+  Error: The ${path-no-dep:...} syntax has been removed from dune.
+  [1]
 
 jbuild files
 ============
@@ -51,5 +52,5 @@ This form does not exist, but displays an hint:
   Entering directory 'jbuild-invalid'
   File "jbuild", line 5, characters 16-37:
   Error: ${dep:generated-file} is not supported in jbuild files.
-  Did you mean: ${path:generated-file}
+  Hint: Did you mean ${path:generated-file} instead?
   [1]

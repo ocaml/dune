@@ -171,7 +171,11 @@ Jbuild                    Dune
 ``${^}``                  ``%{deps}``
 ``${<}``                  ``%{deps[0]}``
 ``${path:file}``          ``%{dep:file}``
-``${path-no-dep:file}``   ``%{path:file}``
 ``${SCOPE_ROOT}``         ``%{project_root}``
 ``${findlib:..}``         ``%{lib:..}``
 ======================== ============
+
+Removed Variables
+-----------------
+
+``${path-no-dep:file}`` has been removed.

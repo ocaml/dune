@@ -219,6 +219,13 @@ module Deps : sig
     -> dir:Path.t
     -> Dep_conf.t list
     -> (unit, Path.t list) Build.t
+
+  val interpret_bindings
+    :  t
+    -> scope:Scope.t
+    -> dir:Path.t
+    -> Dep_conf.bindings
+    -> (unit, Path.t list) Build.t
 end
 
 (** Interpret action written in jbuild files *)

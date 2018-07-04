@@ -233,7 +233,7 @@ module Pps_and_flags = struct
 end
 
 module Dep_conf = struct
-  type dep =
+  type t =
     | File of String_with_vars.t
     | Alias of String_with_vars.t
     | Alias_rec of String_with_vars.t
@@ -242,9 +242,15 @@ module Dep_conf = struct
     | Package of String_with_vars.t
     | Universe
 
-  type t =
-    | Unnamed of dep list
-    | Named of string * dep list
+  type bindings =
+    { named : (Loc.t * t list) String.Map.t
+    ; unnamed : t list
+    }
+
+  let empty_bindings =
+    { named = String.Map.empty
+    ; unnamed = []
+    }
 
   let dep_cons =
     let sw = String_with_vars.t in
@@ -269,31 +275,43 @@ module Dep_conf = struct
       String_with_vars.t >>| fun x -> single (File x)
     | List _ -> many
 
-  let dep =
-    let dep =
-      let dep_no_list =
-        make_dep_parser ~single:(fun x -> x) ~many:(sum dep_cons) in
-      sum (("list", repeat dep_no_list)
-           :: (List.map dep_cons ~f:(fun (n, d) -> (n, d >>| List.singleton))))
-    in
-    make_dep_parser ~single:List.singleton ~many:dep
-
   let t =
-    peek_exn >>= function
-    | Atom (loc, A s) when String.length s > 1 && s.[0] = ':' ->
-      begin
-        string >>= fun name ->
-        peek >>= function
-        | None -> of_sexp_errorf loc "Naked binding %s" s
-        | Some _ -> dep
-          >>| fun deps ->
-          Named (name, deps)
-      end
-    | _ ->
-      dep >>| fun dep -> Unnamed dep
+    make_dep_parser ~single:(fun x -> x) ~many:(sum dep_cons)
+
+  let bindings =
+    let dep =
+      make_dep_parser ~single:List.singleton ~many:(
+        ("list", repeat t)
+        :: List.map dep_cons ~f:(fun (n, d) -> (n, d >>| List.singleton))
+        |> sum)
+    in
+    let binding =
+      peek_exn >>= function
+      | Atom (loc, A s) when String.length s > 1 && s.[0] = ':' ->
+        begin
+          string >>= fun name ->
+          peek >>= function
+          | None -> of_sexp_errorf loc "Naked binding %s" s
+          | Some _ -> dep
+            >>| fun deps ->
+            Left (name, (loc, deps))
+        end
+      | _ ->
+        dep >>| fun dep -> Right dep
+    in
+    list binding >>| (fun bindings ->
+      let (named, unnamed) = List.partition_map bindings ~f:(fun x -> x) in
+      { unnamed = List.flatten unnamed
+      ; named =
+          match String.Map.of_list named with
+          | Ok x -> x
+          | Error (name, (l1, _), (l2, _)) ->
+            of_sexp_errorf l1 "Variable %s is already defined in %s"
+              name (Loc.to_file_colon_line l2)
+      })
 
   open Sexp
-  let sexp_of_dep = function
+  let sexp_of_t = function
     | File t ->
        List [Sexp.unsafe_atom_of_string "file" ; String_with_vars.sexp_of_t t]
     | Alias t ->
@@ -313,11 +331,13 @@ module Dep_conf = struct
     | Universe ->
       Sexp.unsafe_atom_of_string "universe"
 
-  let sexp_of_t =
-    let open Sexp.To_sexp in
-    function
-    | Unnamed dep -> (list sexp_of_dep) dep
-    | Named (name, dep) -> List [Sexp.atom name; (list sexp_of_dep) dep]
+  let sexp_of_bindings { unnamed; named } =
+    let unnamed = List.map ~f:sexp_of_t unnamed in
+    let named =
+      String.Map.foldi ~init:[] named ~f:(fun n (_, d) acc ->
+        Sexp.unsafe_atom_of_string (":" ^ n) :: (List.map ~f:sexp_of_t d) @ acc)
+    in
+    List (unnamed @ named)
 end
 
 module Preprocess = struct
@@ -1103,7 +1123,7 @@ module Rule = struct
 
   type t =
     { targets  : Targets.t
-    ; deps     : Dep_conf.t list
+    ; deps     : Dep_conf.bindings
     ; action   : Loc.t * Action.Unexpanded.t
     ; mode     : Mode.t
     ; locks    : String_with_vars.t list
@@ -1145,7 +1165,7 @@ module Rule = struct
   let short_form =
     located Action.Unexpanded.t >>| fun (loc, action) ->
     { targets  = Infer
-    ; deps     = []
+    ; deps     = Dep_conf.empty_bindings
     ; action   = (loc, action)
     ; mode     = Standard
     ; locks    = []
@@ -1158,7 +1178,8 @@ module Rule = struct
     >>= fun action ->
     field "targets" (list file_in_current_dir)
     >>= fun targets ->
-    field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
+    field "deps" (Dep_conf.bindings) ~default:Dep_conf.empty_bindings
+    >>= fun deps ->
     field "locks"   (list String_with_vars.t) ~default:[] >>= fun locks ->
     map_validate
       (field_b
@@ -1263,7 +1284,9 @@ module Rule = struct
       let src = name ^ ".mll" in
       let dst = name ^ ".ml"  in
       { targets = Static [dst]
-      ; deps    = [Unnamed [File (S.virt_text __POS__ src)]]
+      ; deps    = { Dep_conf.empty_bindings with
+                    unnamed = [File (S.virt_text __POS__ src)]
+                  }
       ; action  =
           (loc,
            Chdir
@@ -1284,7 +1307,10 @@ module Rule = struct
     List.map modules ~f:(fun name ->
       let src = name ^ ".mly" in
       { targets = Static [name ^ ".ml"; name ^ ".mli"]
-      ; deps    = [Unnamed [File (S.virt_text __POS__ src)]]
+      ; deps    =
+          { Dep_conf.empty_bindings with
+            unnamed = [File (S.virt_text __POS__ src)]
+          }
       ; action  =
           (loc,
            Chdir
@@ -1352,7 +1378,7 @@ end
 module Alias_conf = struct
   type t =
     { name    : string
-    ; deps    : Dep_conf.t list
+    ; deps    : Dep_conf.bindings
     ; action  : (Loc.t * Action.Unexpanded.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option
@@ -1368,10 +1394,11 @@ module Alias_conf = struct
   let t =
     record
       (field "name" alias_name                          >>= fun name ->
-       field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
        field_o "package" Pkg.t                          >>= fun package ->
        field_o "action" (located Action.Unexpanded.t)   >>= fun action ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
+       field "deps" Dep_conf.bindings ~default:Dep_conf.empty_bindings
+       >>= fun deps ->
        return
          { name
          ; deps

@@ -523,9 +523,14 @@ module Deps = struct
       >>^ fun () -> []
 
   let interpret t ~scope ~dir l =
-    List.concat_map l ~f:(function
-      | Unnamed d
-      | Named (_, d) -> List.map ~f:(dep t ~scope ~dir) d)
+    List.map l ~f:(dep t ~scope ~dir)
+    |> Build.all
+    >>^ List.concat
+
+  let interpret_bindings t ~scope ~dir { unnamed; named } =
+    String.Map.fold ~init:unnamed named ~f:(fun (_, ds) acc ->
+      List.rev_append ds acc)
+    |> List.map ~f:(dep t ~scope ~dir)
     |> Build.all
     >>^ List.concat
 end

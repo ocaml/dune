@@ -233,7 +233,7 @@ module Pps_and_flags = struct
 end
 
 module Dep_conf = struct
-  type t =
+  type dep =
     | File of String_with_vars.t
     | Alias of String_with_vars.t
     | Alias_rec of String_with_vars.t
@@ -241,38 +241,59 @@ module Dep_conf = struct
     | Source_tree of String_with_vars.t
     | Package of String_with_vars.t
     | Universe
-    | List of t list
 
-  let t =
-    let t =
-      let sw = String_with_vars.t in
-      fix (fun t ->
-        sum
-          [ "file"       , (sw >>| fun x -> File x)
-          ; "alias"      , (sw >>| fun x -> Alias x)
-          ; "alias_rec"  , (sw >>| fun x -> Alias_rec x)
-          ; "glob_files" , (sw >>| fun x -> Glob_files x)
-          ; "package"    , (sw >>| fun x -> Package x)
-          ; "universe"   , return Universe
-          ; "files_recursively_in",
-            (Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
-             >>= fun () ->
-             sw >>| fun x -> Source_tree x)
-          ; "source_tree",
-            (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
-             sw >>| fun x -> Source_tree x)
-          ; "list",
-            (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
-             (repeat t) >>| fun x -> List x)
-          ])
-    in
+  type t =
+    | Unnamed of dep list
+    | Named of string * dep list
+
+  let dep_cons =
+    let sw = String_with_vars.t in
+    [ "file"       , (sw >>| fun x -> File x)
+    ; "alias"      , (sw >>| fun x -> Alias x)
+    ; "alias_rec"  , (sw >>| fun x -> Alias_rec x)
+    ; "glob_files" , (sw >>| fun x -> Glob_files x)
+    ; "package"    , (sw >>| fun x -> Package x)
+    ; "universe"   , return Universe
+    ; "files_recursively_in",
+      (Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
+       >>= fun () ->
+       sw >>| fun x -> Source_tree x)
+    ; "source_tree",
+      (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
+       sw >>| fun x -> Source_tree x)
+    ]
+
+  let make_dep_parser ~single ~many =
     peek_exn >>= function
     | Template _ | Atom _ | Quoted_string _ ->
-      String_with_vars.t >>| fun x -> File x
-    | List _ -> t
+      String_with_vars.t >>| fun x -> single (File x)
+    | List _ -> many
+
+  let dep =
+    let dep =
+      let dep_no_list =
+        make_dep_parser ~single:(fun x -> x) ~many:(sum dep_cons) in
+      sum (("list", repeat dep_no_list)
+           :: (List.map dep_cons ~f:(fun (n, d) -> (n, d >>| List.singleton))))
+    in
+    make_dep_parser ~single:List.singleton ~many:dep
+
+  let t =
+    peek_exn >>= function
+    | Atom (loc, A s) when String.length s > 1 && s.[0] = ':' ->
+      begin
+        string >>= fun name ->
+        peek >>= function
+        | None -> of_sexp_errorf loc "Naked binding %s" s
+        | Some _ -> dep
+          >>| fun deps ->
+          Named (name, deps)
+      end
+    | _ ->
+      dep >>| fun dep -> Unnamed dep
 
   open Sexp
-  let rec sexp_of_t = function
+  let sexp_of_dep = function
     | File t ->
        List [Sexp.unsafe_atom_of_string "file" ; String_with_vars.sexp_of_t t]
     | Alias t ->
@@ -291,9 +312,12 @@ module Dep_conf = struct
             String_with_vars.sexp_of_t t]
     | Universe ->
       Sexp.unsafe_atom_of_string "universe"
-    | List ts ->
-      List (Sexp.unsafe_atom_of_string "list"
-            :: (List.map ~f:sexp_of_t ts))
+
+  let sexp_of_t =
+    let open Sexp.To_sexp in
+    function
+    | Unnamed dep -> (list sexp_of_dep) dep
+    | Named (name, dep) -> List [Sexp.atom name; (list sexp_of_dep) dep]
 end
 
 module Preprocess = struct
@@ -1239,7 +1263,7 @@ module Rule = struct
       let src = name ^ ".mll" in
       let dst = name ^ ".ml"  in
       { targets = Static [dst]
-      ; deps    = [File (S.virt_text __POS__ src)]
+      ; deps    = [Unnamed [File (S.virt_text __POS__ src)]]
       ; action  =
           (loc,
            Chdir
@@ -1260,7 +1284,7 @@ module Rule = struct
     List.map modules ~f:(fun name ->
       let src = name ^ ".mly" in
       { targets = Static [name ^ ".ml"; name ^ ".mli"]
-      ; deps    = [File (S.virt_text __POS__ src)]
+      ; deps    = [Unnamed [File (S.virt_text __POS__ src)]]
       ; action  =
           (loc,
            Chdir

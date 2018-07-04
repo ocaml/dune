@@ -82,7 +82,7 @@ module Lib_deps : sig
 end
 
 module Dep_conf : sig
-  type t =
+  type dep =
     | File of String_with_vars.t
     | Alias of String_with_vars.t
     | Alias_rec of String_with_vars.t
@@ -90,7 +90,10 @@ module Dep_conf : sig
     | Source_tree of String_with_vars.t
     | Package of String_with_vars.t
     | Universe
-    | List of t list
+
+  type t =
+    | Unnamed of dep list
+    | Named of string * dep list
 
   val t : t Sexp.Of_sexp.t
   val sexp_of_t : t -> Sexp.t

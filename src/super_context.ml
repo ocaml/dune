@@ -487,7 +487,7 @@ module Deps = struct
     let loc = String_with_vars.loc s in
     Alias.of_user_written_path ~loc ((expand_vars_path t ~scope ~dir s))
 
-  let rec dep t ~scope ~dir = function
+  let dep t ~scope ~dir = function
     | File  s ->
       let path = expand_vars_path t ~scope ~dir s in
       Build.path path
@@ -521,12 +521,12 @@ module Deps = struct
     | Universe ->
       Build.path Build_system.universe_file
       >>^ fun () -> []
-    | List ts ->
-      Build.all (List.map ~f:(dep t ~scope ~dir) ts)
-      >>^ List.concat
 
   let interpret t ~scope ~dir l =
-    Build.all (List.map l ~f:(dep t ~scope ~dir))
+    List.concat_map l ~f:(function
+      | Unnamed d
+      | Named (_, d) -> List.map ~f:(dep t ~scope ~dir) d)
+    |> Build.all
     >>^ List.concat
 end
 

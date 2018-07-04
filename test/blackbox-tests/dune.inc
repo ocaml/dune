@@ -81,6 +81,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dep-vars)
+ (deps (package dune) (source_tree test-cases/dep-vars))
+ (action
+  (chdir
+   test-cases/dep-vars
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name depend-on-the-universe)
  (deps (package dune) (source_tree test-cases/depend-on-the-universe))
  (action
@@ -680,6 +688,7 @@
   (alias copy_files)
   (alias cross-compilation)
   (alias custom-build-dir)
+  (alias dep-vars)
   (alias depend-on-the-universe)
   (alias dune-jbuild-var-case)
   (alias dune-ppx-driver-system)
@@ -762,6 +771,7 @@
   (alias copy_files)
   (alias cross-compilation)
   (alias custom-build-dir)
+  (alias dep-vars)
   (alias depend-on-the-universe)
   (alias dune-jbuild-var-case)
   (alias dune-ppx-driver-system)

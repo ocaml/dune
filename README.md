@@ -107,7 +107,7 @@ Requirements
 
 Jbuilder requires OCaml version 4.02.3 or greater.
 
-installation
+Installation
 ------------
 
 The recommended way to install jbuilder is via the

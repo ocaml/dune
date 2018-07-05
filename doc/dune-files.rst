@@ -140,7 +140,7 @@ modules you want.
   dependencies here. You don't need to do so unless you use dune to
   synthesize the ``depends`` and ``depopts`` sections of your opam file
 
-- ``js_of_ocaml``. See the section about :ref:`jbuild-jsoo`
+- ``js_of_ocaml``. See the section about :ref:`dune-jsoo`
 
 - ``flags``, ``ocamlc_flags`` and ``ocamlopt_flags``. See the section about
   `OCaml flags`_
@@ -1156,7 +1156,7 @@ follows:
 
     (flags (:standard <my options>))
 
-.. _jbuild-jsoo:
+.. _dune-jsoo:
 
 js_of_ocaml
 -----------

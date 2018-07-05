@@ -16,13 +16,13 @@ Stanzas
 .. code:: scheme
 
     (library
-     ((name mylib)
-      (libraries (base lwt))))
+     (name mylib)
+     (libraries base lwt))
 
     (rule
-     ((targets (foo.ml))
-      (deps    (generator/gen.exe))
-      (action  (run ${<} -o ${@}))))
+     (targets foo.ml)
+     (deps    generator/gen.exe)
+     (action  (run ${<} -o ${@})))
 
 The following sections describe the available stanzas and their meaning.
 
@@ -40,10 +40,10 @@ format of library stanzas is as follows:
 
 .. code:: scheme
 
-    (library
-      ((name <library-name>)
+    library
+      (name <library-name>
        <optional-fields>
-      ))
+      )
 
 ``<library-name>`` is the real name of the library. It determines the
 names of the archive files generated for the library as well as the
@@ -79,7 +79,7 @@ modules you want.
   letter. For instance to exclude module ``Foo``: ``(modules (:standard \
   foo))``
 
-- ``(libraries (<library-dependencies>))`` is used to specify the dependencies
+- ``(libraries <library-dependencies>)`` is used to specify the dependencies
   of the library. See the section about `Library dependencies`_ for more details
 
 - ``(wrapped <boolean>)`` specifies whether the modules of the library should be
@@ -114,7 +114,7 @@ modules you want.
   that must be installed, you must list them in this field, with the ``.h``
   extension
 
-- ``(modes (<modes>))`` modes which should be built by default. The
+- ``(modes <modes>)`` modes which should be built by default. The
   most common use for this feature is to disable native compilation
   when writing libraries for the OCaml toplevel. The following modes
   are available: ``byte``, ``native`` and ``best``. ``best`` is
@@ -237,13 +237,13 @@ Executables can also be linked as object or shared object files. See
    .. code:: scheme
 
        (install
-        ((section bin)
-         (files ((<name>.exe as <public-name>)))))
+        (section bin)
+        (files (<name>.exe as <public-name>)))
 
 - ``(package <package>)`` if there is a ``(public_name ...)`` field, this
   specifies the package the executables are part of
 
-- ``(libraries (<library-dependencies>))`` specifies the library dependencies.
+- ``(libraries <library-dependencies>)`` specifies the library dependencies.
   See the section about `Library dependencies`_ for more details
 
 - ``(link_flags <flags>)`` specifies additional flags to pass to the linker.
@@ -362,11 +362,11 @@ it is used to describe several executables sharing the same configuration.
 It shares the same fields as the ``executable`` stanza, except that instead of
 ``(name ...)`` and ``(public_name ...)`` you must use:
 
-- ``(names (<names>))`` where ``<names>`` is a list of entry point names. As for
+- ``(names <names>)`` where ``<names>`` is a list of entry point names. As for
   ``executable`` you only need to specify the modules containing the entry point
   of each executable
 
-- ``(public_names (<names>))`` describes under what name each executable should
+- ``(public_names <names>)`` describes under what name each executable should
   be installed. The list of names must be of the same length as the list in the
   ``(names ...)`` field. Moreover you can use ``-`` for executables that
   shouldn't be installed
@@ -382,9 +382,9 @@ The syntax is as follows:
 .. code:: scheme
 
     (rule
-      ((targets (<filenames>))
-       (action  <action>)
-       <optional-fields>))
+      (targets <filenames>)
+      (action  <action>)
+      <optional-fields>)
 
 ``<filenames>`` is a list of file names. Note that currently dune only
 support user rules with targets in the current directory.
@@ -394,7 +394,7 @@ See the `User actions`_ section for more details.
 
 ``<optional-fields>`` are:
 
-- ``(deps (<deps-conf list>))`` to specify the dependencies of the
+- ``(deps <deps-conf list>)`` to specify the dependencies of the
   rule. See the `Dependency specification`_ section for more details.
 
 - ``(mode <mode>)`` to specify how to handle the targets, see `modes`_
@@ -455,9 +455,9 @@ For instance:
 .. code:: scheme
 
     (rule
-      ((targets (b)
-       (deps    (a)
-       (action  (copy ${<} ${@}))))))
+      (targets b
+      (deps    a
+      (action  (copy ${<} ${@})))))
 
 In this example it is obvious by inspecting the action what the
 dependencies and targets are. When this is the case you can use the
@@ -491,17 +491,17 @@ ocamllex
 .. code:: scheme
 
     (rule
-      ((targets (<name>.ml))
-       (deps    (<name>.mll))
-       (action  (chdir ${ROOT} (run ${bin:ocamllex} -q -o ${<})))))
+      (targets <name>.ml)
+      (deps    <name>.mll)
+      (action  (chdir ${ROOT} (run ${bin:ocamllex} -q -o ${<}))))
 
 To use a different rule mode, use the long form:
 
 .. code:: scheme
 
     (ocamllex
-      ((modules (<names>))
-       (mode    <mode>)))
+      (modules (<names>))
+      (mode    <mode>))
 
 ocamlyacc
 ---------
@@ -511,17 +511,17 @@ ocamlyacc
 .. code:: scheme
 
     (rule
-      ((targets (<name>.ml <name>.mli))
-       (deps    (<name>.mly))
-       (action  (chdir ${ROOT} (run ${bin:ocamlyacc} ${<})))))
+      (targets <name>.ml <name>.mli)
+      (deps    <name>.mly)
+      (action  (chdir ${ROOT} (run ${bin:ocamlyacc} ${<}))))
 
 To use a different rule mode, use the long form:
 
 .. code:: scheme
 
     (ocamlyacc
-      ((modules (<names>))
-       (mode    <mode>)))
+      (modules (<names>))
+      (mode    <mode>))
 
 menhir
 ------
@@ -542,10 +542,9 @@ The syntax is as follows:
 .. code:: scheme
 
     (alias
-      ((name    <alias-name>)
-       (deps    (<deps-conf list>))
-       <optional-fields>
-       ))
+     (name    <alias-name>)
+     (deps    <deps-conf list>)
+      <optional-fields>)
 
 ``<name>`` is an alias name such as ``runtest``.
 
@@ -569,8 +568,8 @@ The typical use of the ``alias`` stanza is to define tests:
 .. code:: scheme
 
     (alias
-      ((name   runtest)
-       (action (run ${exe:my-test-program.exe} blah))))
+     (name   runtest)
+     (action (run ${exe:my-test-program.exe} blah)))
 
 See the section about :ref:`running-tests` for details.
 
@@ -594,10 +593,9 @@ The syntax is as follows:
 .. code:: scheme
 
     (install
-      ((section <section>)
-       (files   (<filenames>))
-       <optional-fields>
-      ))
+      (section <section>)
+       (files   <filenames>)
+       <optional-fields>)
 
 ``<section>`` is the installation section, as described in the opam
 manual. The following sections are available:
@@ -631,8 +629,8 @@ instance, to install a file ``mylib.el`` as
 .. code:: scheme
 
     (install
-      ((section share_root)
-       (files   ((mylib.el as emacs/site-lisp/mylib.el)))))
+     (section share_root)
+     (files   (mylib.el as emacs/site-lisp/mylib.el)))
 
 ``<optional-fields>`` are:
 
@@ -690,8 +688,8 @@ For instance:
     (rule (with-stdout-to dune.inc.gen (run ./gen-dune.exe)))
 
     (alias
-     ((name   runtest)
-      (action (diff dune.inc dune.inc.gen))))
+     (name   runtest)
+     (action (diff dune.inc dune.inc.gen)))
 
 With this dune file, running dune as follow will replace the
 ``dune.inc`` file in the source tree by the generated one:
@@ -914,18 +912,18 @@ used as a program name, for instance:
 .. code:: scheme
 
     (rule
-     ((targets (result.txt))
-      (deps    (foo.exe (glob_files *.txt)))
-      (action  (run ${^}))))
+     (targets result.txt)
+     (deps    foo.exe (glob_files *.txt))
+     (action  (run ${^})))
 
 Here is another example:
 
 .. code:: scheme
 
     (rule
-     ((targets (foo.exe))
-      (deps    (foo.c))
-      (action  (run ${CC} -o ${@} ${<} -lfoolib))))
+     (targets foo.exe)
+     (deps    foo.c)
+     (action  (run ${CC} -o ${@} ${<} -lfoolib)))
 
 
 Library dependencies
@@ -934,11 +932,10 @@ Library dependencies
 Dependencies on libraries are specified using ``(libraries ...)`` fields in
 ``library`` and ``executables`` stanzas.
 
-For libraries defined in the current scope, you can use either the
-real name or the public name. For libraries that are part of the
-installed world, or for libraries that are part of the current
-workspace but in another scope, you need to use the public name. For
-instance: ``(libraries (base re))``.
+For libraries defined in the current scope, you can use either the real name or
+the public name. For libraries that are part of the installed world, or for
+libraries that are part of the current workspace but in another scope, you need
+to use the public name. For instance: ``(libraries base re)``.
 
 When resolving libraries, libraries that are part of the workspace are always
 preferred to ones that are part of the installed world.
@@ -1010,9 +1007,9 @@ you had setup a rule for every file of the form:
    .. code:: scheme
 
        (rule
-        ((targets (file.pp.ml))
-         (deps    (file.ml))
-         (action  (with-stdout-to ${@} (chdir ${ROOT} <action>)))))
+        (targets file.pp.ml)
+        (deps    file.ml)
+        (action  (with-stdout-to ${@} (chdir ${ROOT} <action>))))
 
 The equivalent of a ``-pp <command>`` option passed to the OCaml compiler is
 ``(system "<command> ${<}")``.
@@ -1185,8 +1182,8 @@ User actions
 ``(action ...)`` fields describe user actions.
 
 User actions are always run from the same subdirectory of the current build
-context as the jbuild they are defined in. So for instance an action defined in
-``src/foo/jbuild`` will be run from ``_build/<context>/src/foo``.
+context as the dune file they are defined in. So for instance an action defined
+in ``src/foo/dune`` will be run from ``_build/<context>/src/foo``.
 
 The argument of ``(action ...)`` fields is a small DSL that is interpreted by
 dune directly and doesn't require an external shell. All atoms in the DSL
@@ -1251,26 +1248,26 @@ something shorter.
 
 Note: expansion of the special ``${<kind>:...}`` is done relative to the current
 working directory of the part of the DSL being executed. So for instance if you
-have this action in a ``src/foo/jbuild``:
+have this action in a ``src/foo/dune``:
 
 .. code:: scheme
 
-    (action (chdir ../../.. (echo ${path:jbuild})))
+    (action (chdir ../../.. (echo ${path:dune})))
 
-Then ``${path:jbuild}`` will expand to ``src/foo/jbuild``. When you run various
+Then ``${path:dune}`` will expand to ``src/foo/dune``. When you run various
 tools, they often use the filename given on the command line in error messages.
 As a result, if you execute the command from the original directory, it will
 only see the basename.
 
-To understand why this is important, let's consider this jbuild living in
+To understand why this is important, let's consider this dune file living in
 ``src/foo``:
 
 ::
 
     (rule
-     ((targets (blah.ml))
-      (deps    (blah.mll))
-      (action  (run ocamllex -o ${@} ${<}))))
+     (targets blah.ml)
+     (deps    blah.mll)
+     (action  (run ocamllex -o ${@} ${<})))
 
 Here the command that will be executed is:
 
@@ -1292,9 +1289,9 @@ of your project. What you should write instead is:
 ::
 
     (rule
-     ((targets (blah.ml))
-      (deps    (blah.mll))
-      (action  (chdir ${ROOT} (run ocamllex -o ${@} ${<})))))
+     (targets blah.ml)
+     (deps    blah.mll)
+     (action  (chdir ${ROOT} (run ocamllex -o ${@} ${<}))))
 
 Locks
 -----
@@ -1314,37 +1311,36 @@ same lock:
 .. code:: scheme
 
     (alias
-     ((name   runtest)
-      (deps   (foo))
-      (locks  (m))
-      (action (run test.exe ${<}))))
+     (name   runtest)
+     (deps   foo)
+     (locks  m)
+     (action (run test.exe ${<})))
 
     (alias
-     ((name   runtest)
-      (deps   (bar))
-      (locks  (m))
-      (action (run test.exe ${<}))))
+     (name   runtest)
+     (deps   bar)
+     (locks  m)
+     (action (run test.exe ${<})))
 
 Dune will make sure that the executions of ``test.exe foo`` and
 ``test.exe bar`` are serialized.
 
-Although they don't live in the filesystem, lock names are interpreted
-as file names. So for instance ``(with-lock m ...)`` in ``src/jbuild``
-and ``(with-lock ../src/m)`` in ``test/jbuild`` refer to the same
-lock.
+Although they don't live in the filesystem, lock names are interpreted as file
+names. So for instance ``(with-lock m ...)`` in ``src/dune`` and ``(with-lock
+../src/m)`` in ``test/dune`` refer to the same lock.
 
-Note also that locks are per build context. So if your workspace has
-two build contexts setup, the same rule might still be executed
-concurrently between the two build contexts. If you want a lock that
-is global to all build contexts, simply use an absolute filename:
+Note also that locks are per build context. So if your workspace has two build
+contexts setup, the same rule might still be executed concurrently between the
+two build contexts. If you want a lock that is global to all build contexts,
+simply use an absolute filename:
 
 .. code:: scheme
 
     (alias
-     ((name   runtest)
-      (deps   (foo))
-      (locks  (/tcp-port/1042))
-      (action (run test.exe ${<}))))
+     (name   runtest)
+     (deps   foo)
+     (locks  /tcp-port/1042)
+     (action (run test.exe ${<})))
 
 .. _ocaml-syntax:
 

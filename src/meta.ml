@@ -195,6 +195,11 @@ let archives name =
 
 let builtins ~stdlib_dir =
   let version = version "[distributed with Ocaml]" in
+  let sep_libraries =
+    List.exists [ ".cma"; ".cmxa" ] ~f:(fun suf ->
+      Path.exists (Path.relative (Path.relative stdlib_dir "stdlib") ("stdlib" ^ suf))
+    )
+  in
   let simple name ?dir ?(archive_name=name) deps =
     let archives = archives archive_name in
     { name
@@ -207,24 +212,30 @@ let builtins ~stdlib_dir =
     }
   in
   let compiler_libs =
-    let sub name deps =
-      Package (simple name deps ~archive_name:("ocaml" ^ name))
+    let sub ?dir name deps =
+      Package (simple name ?dir deps ~archive_name:("ocaml" ^ name))
     in
     { name = "compiler-libs"
     ; entries =
         [ requires []
         ; version
-        ; directory "+compiler-libs"
-        ; sub "common" []
-        ; sub "bytecomp" ["compiler-libs.common"  ]
-        ; sub "optcomp"  ["compiler-libs.common"  ]
+        ]
+        @ (if sep_libraries then [] else [ directory "+compiler-libs" ])
+        @
+        [ sub "common" []
+              ?dir:(if sep_libraries then Some "+ocamlcommon" else None)
+        ; sub "bytecomp" ["compiler-libs.common"]
+              ?dir:(if sep_libraries then Some "+ocamlbytecomp" else None)
+        ; sub "optcomp"  ["compiler-libs.common"]
+              ?dir:(if sep_libraries then Some "+ocamloptcomp" else None)
         ; sub "toplevel" ["compiler-libs.bytecomp"]
+              ?dir:(if sep_libraries then Some "+ocamltoplevel" else None)
         ]
     }
   in
-  let str = simple "str" [] ~dir:"+" in
-  let unix = simple "unix" [] ~dir:"+" in
-  let bigarray = simple "bigarray" ["unix"] ~dir:"+" in
+  let str = simple "str" [] ~dir:(if sep_libraries then "+str" else "+") in
+  let unix = simple "unix" [] ~dir:(if sep_libraries then "+unix" else "+") in
+  let bigarray = simple "bigarray" ["unix"] ~dir:(if sep_libraries then "+bigarray" else "+") in
   let threads =
     { name = "threads"
     ; entries =

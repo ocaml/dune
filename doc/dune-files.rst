@@ -676,11 +676,10 @@ as the difference between the ``copy`` and ``copy#`` action. See the
 include
 -------
 
-The ``include`` stanza allows to include the contents of another file
-into the current jbuild file. Currently, the included file cannot be
-generated and must be present in the source tree. This feature is
-intended to be used in conjunction with promotion, when parts of a
-jbuild file are to be generated.
+The ``include`` stanza allows to include the contents of another file into the
+current dune file. Currently, the included file cannot be generated and must be
+present in the source tree. This feature is intended to be used in conjunction
+with promotion, when parts of a dune file are to be generated.
 
 For instance:
 
@@ -1396,7 +1395,7 @@ Whenever an action ``(diff <file1> <file2>)`` or ``(diff?  <file1>
 you to promote ``<file2>`` as ``<file1>`` if ``<file1>`` is a source
 file and ``<file2>`` is a generated file.
 
-More precisely, let's consider the following jbuild file:
+More precisely, let's consider the following dune file:
 
 .. code:: scheme
 

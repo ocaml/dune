@@ -527,7 +527,7 @@ module Deps = struct
     |> Build.all
     >>^ List.concat
 
-  let interpret_bindings t ~scope ~dir { unnamed; named } =
+  let interpret_named t ~scope ~dir { Named.unnamed; named } =
     String.Map.fold ~init:unnamed named ~f:(fun (_, ds) acc ->
       List.rev_append ds acc)
     |> List.map ~f:(dep t ~scope ~dir)

@@ -220,11 +220,11 @@ module Deps : sig
     -> Dep_conf.t list
     -> (unit, Path.t list) Build.t
 
-  val interpret_bindings
+  val interpret_named
     :  t
     -> scope:Scope.t
     -> dir:Path.t
-    -> Dep_conf.bindings
+    -> Dep_conf.t Named.t
     -> (unit, Path.t list) Build.t
 end
 

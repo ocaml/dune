@@ -187,7 +187,7 @@ module Gen(P : Install_rules.Params) = struct
     in
     SC.add_rule_get_targets sctx ~mode:rule.mode ~loc:rule.loc
       ~locks:(interpret_locks ~dir ~scope rule.locks)
-      (SC.Deps.interpret_bindings sctx ~scope ~dir rule.deps
+      (SC.Deps.interpret_named sctx ~scope ~dir rule.deps
        >>>
        SC.Action.run
          sctx
@@ -929,7 +929,7 @@ module Gen(P : Install_rules.Params) = struct
       let module S = Sexp.To_sexp in
       Sexp.List
         [ Sexp.unsafe_atom_of_string "user-alias"
-        ; Jbuild.Dep_conf.sexp_of_bindings alias_conf.deps
+        ; Jbuild.Named.sexp_of_t Jbuild.Dep_conf.sexp_of_t alias_conf.deps
         ; S.option Action.Unexpanded.sexp_of_t
             (Option.map alias_conf.action ~f:snd)
         ]
@@ -939,7 +939,7 @@ module Gen(P : Install_rules.Params) = struct
       ~name:alias_conf.name
       ~stamp
       ~locks:(interpret_locks ~dir ~scope alias_conf.locks)
-      (SC.Deps.interpret_bindings sctx ~scope ~dir alias_conf.deps
+      (SC.Deps.interpret_named sctx ~scope ~dir alias_conf.deps
        >>>
        match alias_conf.action with
        | None -> Build.progn []

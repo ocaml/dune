@@ -81,6 +81,15 @@ module Lib_deps : sig
   val of_pps : Pp.t list -> t
 end
 
+module Named : sig
+  type 'a t =
+    { named : (Loc.t * 'a list) String.Map.t
+    ; unnamed : 'a list
+    }
+
+  val sexp_of_t : ('a -> Usexp.t) -> 'a t -> Usexp.t
+end
+
 module Dep_conf : sig
   type t =
     | File of String_with_vars.t
@@ -91,16 +100,8 @@ module Dep_conf : sig
     | Package of String_with_vars.t
     | Universe
 
-  type bindings =
-    { named: (Loc.t * t list) String.Map.t
-    ; unnamed : t list
-    }
-
-  val bindings : bindings Sexp.Of_sexp.t
-
   val t : t Sexp.Of_sexp.t
   val sexp_of_t : t -> Sexp.t
-  val sexp_of_bindings : bindings -> Sexp.t
 end
 
 module Buildable : sig
@@ -292,7 +293,7 @@ module Rule : sig
 
   type t =
     { targets  : Targets.t
-    ; deps     : Dep_conf.bindings
+    ; deps     : Dep_conf.t Named.t
     ; action   : Loc.t * Action.Unexpanded.t
     ; mode     : Mode.t
     ; locks    : String_with_vars.t list
@@ -315,7 +316,7 @@ end
 module Alias_conf : sig
   type t =
     { name    : string
-    ; deps    : Dep_conf.bindings
+    ; deps    : Dep_conf.t Named.t
     ; action  : (Loc.t * Action.Unexpanded.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option

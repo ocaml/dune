@@ -33,7 +33,7 @@ Using topkg with dune is not recommended. Instead, have a look at the
 dune-release_ project for providing the same functionality but catered to dune
 projects.
 
-.. _topkg-jbuilder: https://github.com/samoht/dune-release
+.. _dune-release: https://github.com/samoht/dune-release
 
 here can I find some examples of projects using dune?
 =====================================================

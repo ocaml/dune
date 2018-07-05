@@ -701,7 +701,7 @@ With this jbuild file, running dune as follow will replace the
 
     $ dune build @runtest --auto-promote
 
-.. _jbuild-env:
+.. _dune-env:
 
 env
 ---

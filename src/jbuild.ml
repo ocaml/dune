@@ -1355,7 +1355,9 @@ end
 module Tests = struct
   type t =
     { exes    : Executables.t
-    ; aliases : Alias_conf.t list
+    ; locks   : String_with_vars.t list
+    ; package : Package.t option
+    ; deps    : Dep_conf.t list
     }
 
   let t =
@@ -1377,19 +1379,9 @@ module Tests = struct
              ; buildable
              ; names
              }
-         ; aliases = List.map names ~f:(fun (loc, name) ->
-             { Alias_conf.
-               name = "runtest"
-             ; locks
-             ; package
-             ; deps =
-                 Dep_conf.File
-                   (String_with_vars.make_text loc (name ^ ".exe"))::deps
-             ; action =
-                 Some (loc, Action.Unexpanded.Run
-                              (String_with_vars.make_var loc "<", []))
-             }
-           )
+         ; locks
+         ; package
+         ; deps
          })
 end
 
@@ -1467,6 +1459,7 @@ type Stanza.t +=
   | Copy_files  of Copy_files.t
   | Documentation of Documentation.t
   | Env         of Env.t
+  | Tests       of Tests.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -1524,8 +1517,7 @@ module Stanzas = struct
     ; "jbuild_version",
       (Syntax.deleted_in Stanza.syntax (1, 0) >>= fun () ->
        Jbuild_version.t >>| fun _ -> [])
-    ; "tests", (Tests.t >>| fun t ->
-               Executables t.exes::(List.map t.aliases ~f:(fun x -> Alias x)))
+    ; "tests", (Tests.t >>| fun t -> [Tests t])
     ; "env",
       (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
        loc >>= fun loc ->

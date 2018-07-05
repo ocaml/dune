@@ -287,4 +287,4 @@ jbuild-ignore (deprecated)
 ==========================
 
 ``jbuild-ignore`` files are deprecated and replaced by
-:ref:`jbuild-ignored_subdirs` stanzas in ``dune`` files.
+:ref:`dune-ignored_subdirs` stanzas in ``dune`` files.

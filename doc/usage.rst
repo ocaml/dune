@@ -447,7 +447,7 @@ The separate compilation mode will be selected when the build profile
 is ``dev``, which is the default. There is currently no other way to
 control this behaviour.
 
-See the section about :ref:`jbuild-jsoo` for passing custom flags to the
+See the section about :ref:`dune-jsoo` for passing custom flags to the
 js_of_ocaml compiler
 
 .. _using-topkg:

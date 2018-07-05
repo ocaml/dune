@@ -88,10 +88,18 @@ let expand_var_no_root t var = String.Map.find t.vars var
 
 let (expand_vars, expand_vars_path) =
   let expand t ~scope ~dir ?(extra_vars=String.Map.empty) s =
-    String_with_vars.expand ~mode:Single ~dir s ~f:(fun v _syntax_version ->
+    String_with_vars.expand ~mode:Single ~dir s ~f:(fun v syntax_version ->
       match String_with_vars.Var.full_name v with
       | "ROOT" -> Some [Value.Path t.context.build_dir]
-      | "SCOPE_ROOT" -> Some [Value.Path (Scope.root scope)]
+      | "SCOPE_ROOT" ->
+        if syntax_version >= (1, 0) then
+          Loc.fail (String_with_vars.Var.loc v)
+            "Variable %%{SCOPE_ROOT} has been renamed to %%{project_root} \
+             in dune files"
+        else
+          Some [Value.Path (Scope.root scope)]
+      | "project_root" when syntax_version >= (1, 0) ->
+        Some [Value.Path (Scope.root scope)]
       | var ->
         (match expand_var_no_root t var with
          | Some _ as x -> x
@@ -641,12 +649,12 @@ module Action = struct
       | Pair ("dep", s) when syntax_version >= (1, 0) ->
         path_with_dep s
       | Pair ("dep", s) ->
-          Loc.fail
-            loc
-            "${dep:%s} is not supported in jbuild files.\n\
-             Hint: Did you mean ${path:%s} instead?"
-            s
-            s
+        Loc.fail
+          loc
+          "${dep:%s} is not supported in jbuild files.\n\
+           Hint: Did you mean ${path:%s} instead?"
+          s
+          s
       | Pair ("bin", s) -> begin
           let sctx = host sctx in
           match Artifacts.binary (artifacts sctx) s with
@@ -745,7 +753,15 @@ module Action = struct
         let loc = String_with_vars.Var.loc var in
         match var_name with
         | "ROOT" -> Some (path_exp sctx.context.build_dir)
-        | "SCOPE_ROOT" -> Some (path_exp (Scope.root scope))
+        | "SCOPE_ROOT" ->
+          if syntax_version >= (1, 0) then
+            Loc.fail (String_with_vars.Var.loc var)
+              "Variable %%{SCOPE_ROOT} has been renamed to %%{project_root} \
+               in dune files"
+          else
+            Some (path_exp (Scope.root scope))
+        | "project_root" when syntax_version >= (1, 0) ->
+          Some (path_exp (Scope.root scope))
         | "@" -> begin
             match targets_written_by_user with
             | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
@@ -755,12 +771,12 @@ module Action = struct
         | _ ->
           match String_with_vars.Var.destruct var with
           | Pair ("path-no-dep", s) ->
-              if syntax_version < (1, 0) then
-                Some (path_exp (Path.relative dir s))
-              else
-                Loc.fail
-                  loc
-                  "The ${path-no-dep:...} syntax has been removed from dune."
+            if syntax_version < (1, 0) then
+              Some (path_exp (Path.relative dir s))
+            else
+              Loc.fail
+                loc
+                "The ${path-no-dep:...} syntax has been removed from dune."
           | _ ->
             let exp = expand var syntax_version in
             Option.iter exp ~f:(fun vs ->

@@ -1517,7 +1517,9 @@ module Stanzas = struct
     ; "jbuild_version",
       (Syntax.deleted_in Stanza.syntax (1, 0) >>= fun () ->
        Jbuild_version.t >>| fun _ -> [])
-    ; "tests", (Tests.t >>| fun t -> [Tests t])
+    ; "tests",
+      (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
+       (Tests.t >>| fun t -> [Tests t]))
     ; "env",
       (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
        loc >>= fun loc ->

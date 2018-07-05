@@ -173,6 +173,14 @@ Jbuild                    Dune
 ``${path:file}``          ``%{dep:file}``
 ``${SCOPE_ROOT}``         ``%{project_root}``
 ``${findlib:..}``         ``%{lib:..}``
+``${CPP}``                ``%{cpp}``
+``${CC}``                 ``%{cc}``
+``${CXX}``                ``%{cxx}``
+``${OCAML}``              ``%{ocaml}``
+``${OCAMLC}``             ``%{ocamlc}``
+``${OCAMLOPT}``           ``%{ocamlopt}``
+``${ARCH_SIXTYFOUR}``     ``%{arch_sixtyfour}``
+``${MAKE}``               ``%{make}``
 ======================== ============
 
 Removed Variables

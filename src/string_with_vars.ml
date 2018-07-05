@@ -7,8 +7,27 @@ type t =
   ; syntax_version : Syntax.Version.t
   }
 
-let make ?(quoted=false) loc s =
-  { template = { quoted; loc; parts = [Text s] }
+let make_text ?(quoted=false) loc s =
+  { template =
+      { parts = [Text s]
+      ; quoted
+      ; loc
+      }
+  ; syntax_version = (1, 0)
+  }
+
+let make_var ?(quoted=false) loc name =
+  { template =
+      { quoted
+      ; loc
+      ; parts =
+          [Var
+             { loc
+             ; name
+             ; payload = None
+             ; syntax = Percent
+             }]
+      }
   ; syntax_version = (1, 0)
   }
 

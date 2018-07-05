@@ -1383,10 +1383,11 @@ module Tests = struct
              ; locks
              ; package
              ; deps =
-                 Dep_conf.File (String_with_vars.make loc (name ^ ".exe"))::deps
+                 Dep_conf.File
+                   (String_with_vars.make_text loc (name ^ ".exe"))::deps
              ; action =
                  Some (loc, Action.Unexpanded.Run
-                              (String_with_vars.make loc "${<}", []))
+                              (String_with_vars.make_var loc "<", []))
              }
            )
          })

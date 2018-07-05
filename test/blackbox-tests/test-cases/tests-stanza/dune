@@ -1,2 +1,2 @@
 (tests
- ((names (bar foo))))
+ (names bar foo))

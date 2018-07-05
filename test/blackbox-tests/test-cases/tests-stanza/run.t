@@ -1,12 +1,12 @@
   $ dune runtest --display short
-      ocamldep .bar.eobjs/bar.ml.d
-      ocamldep .bar.eobjs/foo.ml.d
-        ocamlc .bar.eobjs/foo.{cmi,cmo,cmt}
-      ocamlopt .bar.eobjs/foo.{cmx,o}
-      ocamlopt foo.exe
-           foo alias runtest
-  test foo
-        ocamlc .bar.eobjs/bar.{cmi,cmo,cmt}
-      ocamlopt .bar.eobjs/bar.{cmx,o}
-      ocamlopt bar.exe
-           bar bar.output
+      ocamldep .expect_test.eobjs/expect_test.ml.d
+      ocamldep .expect_test.eobjs/regular_test.ml.d
+        ocamlc .expect_test.eobjs/regular_test.{cmi,cmo,cmt}
+      ocamlopt .expect_test.eobjs/regular_test.{cmx,o}
+      ocamlopt regular_test.exe
+  regular_test alias runtest
+  regular test
+        ocamlc .expect_test.eobjs/expect_test.{cmi,cmo,cmt}
+      ocamlopt .expect_test.eobjs/expect_test.{cmx,o}
+      ocamlopt expect_test.exe
+   expect_test expect_test.output

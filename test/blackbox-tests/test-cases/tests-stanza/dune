@@ -1,2 +1,2 @@
 (tests
- (names bar foo))
+ (names expect_test regular_test))

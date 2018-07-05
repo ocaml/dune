@@ -723,7 +723,7 @@ directory. You can use ``_`` to match any build profile.
 Currently ``<settings>`` can be any OCaml flags field, see `OCaml
 flags`_ for more details.
 
-.. _jbuild-ignored_subdirs:
+.. _dune-ignored_subdirs:
 
 ignored_subdirs
 ---------------
@@ -1403,8 +1403,8 @@ More precisely, let's consider the following dune file:
     (with-stdout-to data.out (run ./test.exe)))
 
    (alias
-    ((name   runtest)
-     (action (diff data.expected data.out))))
+    (name   runtest)
+    (action (diff data.expected data.out)))
 
 Where ``data.expected`` is a file committed in the source
 repository. You can use the following workflow to update your test:

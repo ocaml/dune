@@ -326,21 +326,23 @@ module Dep_conf = struct
   open Sexp
   let sexp_of_t = function
     | File t ->
-       List [Sexp.unsafe_atom_of_string "file" ; String_with_vars.sexp_of_t t]
+      List [ Sexp.unsafe_atom_of_string "file"
+           ; String_with_vars.sexp_of_t t ]
     | Alias t ->
-       List [Sexp.unsafe_atom_of_string "alias" ; String_with_vars.sexp_of_t t]
+      List [ Sexp.unsafe_atom_of_string "alias"
+           ; String_with_vars.sexp_of_t t ]
     | Alias_rec t ->
-       List [Sexp.unsafe_atom_of_string "alias_rec" ;
-             String_with_vars.sexp_of_t t]
+      List [ Sexp.unsafe_atom_of_string "alias_rec"
+           ; String_with_vars.sexp_of_t t ]
     | Glob_files t ->
-       List [Sexp.unsafe_atom_of_string "glob_files" ;
-             String_with_vars.sexp_of_t t]
+      List [ Sexp.unsafe_atom_of_string "glob_files"
+           ; String_with_vars.sexp_of_t t ]
     | Source_tree t ->
-       List [Sexp.unsafe_atom_of_string "files_recursively_in" ;
-             String_with_vars.sexp_of_t t]
+      List [ Sexp.unsafe_atom_of_string "files_recursively_in"
+           ; String_with_vars.sexp_of_t t ]
     | Package t ->
-      List [Sexp.unsafe_atom_of_string "package" ;
-            String_with_vars.sexp_of_t t]
+      List [ Sexp.unsafe_atom_of_string "package"
+           ; String_with_vars.sexp_of_t t]
     | Universe ->
       Sexp.unsafe_atom_of_string "universe"
 end

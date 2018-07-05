@@ -16,21 +16,6 @@ let make_text ?(quoted=false) loc s =
   ; syntax_version = (1, 0)
   }
 
-let make_var ?(quoted=false) loc name =
-  { template =
-      { quoted
-      ; loc
-      ; parts =
-          [Var
-             { loc
-             ; name
-             ; payload = None
-             ; syntax = Percent
-             }]
-      }
-  ; syntax_version = (1, 0)
-  }
-
 let literal ~quoted ~loc s =
   { parts = [Text s]
   ; quoted

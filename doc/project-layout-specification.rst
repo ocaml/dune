@@ -2,24 +2,23 @@
 Project Layout and Metadata Specification
 *****************************************
 
-A typical dune project will have a ```dune-project`` and one or
-more ``<package>.opam`` file at toplevel as well as ``jbuild`` files
-wherever interesting things are: libraries, executables, tests,
-documents to install, etc...
+A typical dune project will have a ```dune-project`` and one or more
+``<package>.opam`` file at toplevel as well as ``dune`` files wherever
+interesting things are: libraries, executables, tests, documents to install,
+etc...
 
-It is recommended to organize your project so that you have exactly one
-library per directory. You can have several executables in the same
-directory, as long as they share the same build configuration. If you'd
-like to have multiple executables with different configurations in the
-same directory, you will have to make an explicit module list for every
-executable using ``modules``.
+It is recommended to organize your project so that you have exactly one library
+per directory. You can have several executables in the same directory, as long
+as they share the same build configuration. If you'd like to have multiple
+executables with different configurations in the same directory, you will have
+to make an explicit module list for every executable using ``modules``.
 
 The next sections describe the format of dune metadata files.
 
-Note that the dune metadata format is versioned in order to ensure
-forward compatibility. There is currently only one version available,
-but to be future proof, you should still specify it in your ``jbuild``
-files. If no version is specified, the latest one will be used.
+Note that the dune metadata format is versioned in order to ensure forward
+compatibility. There is currently only one version available, but to be future
+proof, you should still specify it in your ``dune`` files. If no version is
+specified, the latest one will be used.
 
 .. _metadata-format:
 
@@ -169,18 +168,18 @@ string.
 dune-project files
 ==================
 
-These files are used to mark the root of projects as well as define
-project-wide parameters. These files are required to have a ``lang``
-which controls the names and contents of all configuration files read
-by Dune. The ``lang`` stanza looks like:
+These files are used to mark the root of projects as well as define project-wide
+parameters. These files are required to have a ``lang`` which controls the names
+and contents of all configuration files read by Dune. The ``lang`` stanza looks
+like:
 
 .. code:: scheme
 
           (lang dune 0.1)
 
-The 0.1 version of the language is exactly the same as the Jbuilder
-language. So to convert a Jbuilder project to Dune, simply write this
-file at the root of your project.
+The 0.1 version of the language is exactly the same as the Jbuilder language. So
+to convert a Jbuilder project to Dune, simply write this file at the root of
+your project.
 
 Additionally, they can contains the following stanzas.
 
@@ -217,9 +216,9 @@ everything that is installable in a workspace, run at the root:
 
     $ dune build @install
 
-Declaring a package this way will allow you to add elements such as
-libraries, executables, documentation, ... to your package by declaring
-them in ``jbuild`` files.
+Declaring a package this way will allow you to add elements such as libraries,
+executables, documentation, ... to your package by declaring them in ``dune``
+files.
 
 Such elements can only be declared in the scope defined by the
 corresponding ``<package>.opam`` file. Typically, your

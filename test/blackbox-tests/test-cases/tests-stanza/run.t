@@ -1,4 +1,10 @@
   $ dune runtest --display short
+      ocamldep .singular.eobjs/singular.ml.d
+        ocamlc .singular.eobjs/singular.{cmi,cmo,cmt}
+      ocamlopt .singular.eobjs/singular.{cmx,o}
+      ocamlopt singular.exe
+      singular alias runtest
+  singular test
       ocamldep .expect_test.eobjs/expect_test.ml.d
       ocamldep .expect_test.eobjs/regular_test.ml.d
         ocamlc .expect_test.eobjs/regular_test.{cmi,cmo,cmt}

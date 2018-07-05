@@ -1360,11 +1360,11 @@ module Tests = struct
     ; deps    : Dep_conf.t list
     }
 
-  let t =
+  let gen_parse names =
     record
-      (Buildable.t >>= fun buildable ->
+      (Buildable.t                                         >>= fun buildable ->
        field_oslu "link_flags"                             >>= fun link_flags ->
-       field "names" (list (located string))               >>= fun names ->
+       names                                               >>= fun names ->
        field "deps" (list Dep_conf.t) ~default:[]          >>= fun deps ->
        field_o "package" Pkg.t                             >>= fun package ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
@@ -1383,6 +1383,10 @@ module Tests = struct
          ; package
          ; deps
          })
+
+  let multi = gen_parse (field "names" (list (located string)))
+
+  let single = gen_parse (field "name" (located string) >>| List.singleton)
 end
 
 module Copy_files = struct
@@ -1519,7 +1523,10 @@ module Stanzas = struct
        Jbuild_version.t >>| fun _ -> [])
     ; "tests",
       (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
-       (Tests.t >>| fun t -> [Tests t]))
+       (Tests.multi >>| fun t -> [Tests t]))
+    ; "test",
+      (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
+       (Tests.single >>| fun t -> [Tests t]))
     ; "env",
       (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
        loc >>= fun loc ->

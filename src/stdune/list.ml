@@ -102,3 +102,5 @@ let rec assoc t x =
   match t with
   | [] -> None
   | (k, v) :: t -> if x = k then Some v else assoc t x
+
+let singleton x = [x]

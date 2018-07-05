@@ -46,6 +46,7 @@ type t =
   ; stanzas_to_consider_for_install  : Installable.t list
   ; cxx_flags                        : string list
   ; vars                             : Value.t list String.Map.t
+  ; uppercase_vars                   : Value.t list String.Map.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
@@ -84,7 +85,19 @@ let installed_libs t = t.installed_libs
 let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
-let expand_var_no_root t var = String.Map.find t.vars var
+let expand_var_no_root t loc syntax_version var =
+  match String.Map.find t.vars var with
+  | Some _ as v -> v
+  | None ->
+    begin match String.Map.find t.uppercase_vars var with
+    | None -> None
+    | Some _ as v ->
+      if syntax_version < (1, 0) then
+        v
+      else
+        Loc.fail loc "Uppercase variables are removed in dune files. Use: %%{%s}"
+          (String.lowercase var)
+    end
 
 let (expand_vars, expand_vars_path) =
   let expand t ~scope ~dir ?(extra_vars=String.Map.empty) s =
@@ -101,7 +114,9 @@ let (expand_vars, expand_vars_path) =
       | "project_root" when syntax_version >= (1, 0) ->
         Some [Value.Path (Scope.root scope)]
       | var ->
-        (match expand_var_no_root t var with
+        (match
+           expand_var_no_root t (String_with_vars.Var.loc v) syntax_version var
+         with
          | Some _ as x -> x
          | None -> String.Map.find extra_vars var))
   in
@@ -280,7 +295,7 @@ let create
     List.filter context.ocamlc_cflags
       ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
-  let vars =
+  let (vars, uppercase_vars) =
     let ocamlopt =
       match context.ocamlopt with
       | None -> Path.relative context.ocaml_bin "ocamlopt"
@@ -295,30 +310,38 @@ let create
     in
     let cflags = context.ocamlc_cflags in
     let strings = Value.L.strings in
+    let lowercased =
+      [ "cpp"            , strings (context.c_compiler :: cflags @ ["-E"])
+      ; "cc"             , strings (context.c_compiler :: cflags)
+      ; "cxx"            , strings (context.c_compiler :: cxx_flags)
+      ; "ocaml"          , path context.ocaml
+      ; "ocamlc"         , path context.ocamlc
+      ; "ocamlopt"       , path ocamlopt
+      ; "arch_sixtyfour" , string (string_of_bool context.arch_sixtyfour)
+      ; "make"           , make
+      ] in
     let vars =
-      [ "-verbose"       , []
-      ; "CPP"            , strings (context.c_compiler :: cflags @ ["-E"])
-      ; "PA_CPP"         , strings (context.c_compiler :: cflags
-                                    @ ["-undef"; "-traditional";
-                                       "-x"; "c"; "-E"])
-      ; "CC"             , strings (context.c_compiler :: cflags)
-      ; "CXX"            , strings (context.c_compiler :: cxx_flags)
-      ; "ocaml_bin"      , path context.ocaml_bin
-      ; "OCAML"          , path context.ocaml
-      ; "OCAMLC"         , path context.ocamlc
-      ; "OCAMLOPT"       , path ocamlopt
-      ; "ocaml_version"  , string context.version_string
-      ; "ocaml_where"    , string (Path.to_string context.stdlib_dir)
-      ; "ARCH_SIXTYFOUR" , string (string_of_bool context.arch_sixtyfour)
-      ; "MAKE"           , make
-      ; "null"           , string (Path.to_string Config.dev_null)
-      ; "ext_obj"        , string context.ext_obj
-      ; "ext_asm"        , string context.ext_asm
-      ; "ext_lib"        , string context.ext_lib
-      ; "ext_dll"        , string context.ext_dll
-      ; "ext_exe"        , string context.ext_exe
-      ; "profile"        , string context.profile
-      ]
+      lowercased
+      @ [ "-verbose"       , []
+        ; "pa_cpp"         , strings (context.c_compiler :: cflags
+                                      @ ["-undef"; "-traditional";
+                                         "-x"; "c"; "-E"])
+        ; "ocaml_bin"      , path context.ocaml_bin
+        ; "ocaml_version"  , string context.version_string
+        ; "ocaml_where"    , string (Path.to_string context.stdlib_dir)
+        ; "null"           , string (Path.to_string Config.dev_null)
+        ; "ext_obj"        , string context.ext_obj
+        ; "ext_asm"        , string context.ext_asm
+        ; "ext_lib"        , string context.ext_lib
+        ; "ext_dll"        , string context.ext_dll
+        ; "ext_exe"        , string context.ext_exe
+        ; "profile"        , string context.profile
+        ]
+    in
+    let uppercase_vars =
+      lowercased
+      |> List.map ~f:(fun (k, v) -> (String.uppercase k, v))
+      |> String.Map.of_list_exn
     in
     let vars =
       vars @
@@ -331,9 +354,7 @@ let create
          | Words  x -> strings x
          | Prog_and_args x -> strings (x.prog :: x.args)))
     in
-    match String.Map.of_list vars with
-    | Ok    x -> x
-    | Error _ -> assert false
+    (String.Map.of_list_exn vars, uppercase_vars)
   in
   let t =
     { context
@@ -348,6 +369,7 @@ let create
     ; stanzas_to_consider_for_install
     ; artifacts
     ; cxx_flags
+    ; uppercase_vars
     ; vars
     ; chdir = Build.arr (fun (action : Action.t) ->
         match action with
@@ -743,7 +765,7 @@ module Action = struct
           add_ddep acc ~key data
         end
       | _ ->
-        match expand_var_no_root sctx key with
+        match expand_var_no_root sctx loc syntax_version key with
         | Some _ as x -> x
         | None -> String.Map.find extra_vars key
     in

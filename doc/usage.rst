@@ -29,7 +29,7 @@ directory:
 
 More precisely, it will choose the outermost ancestor directory containing a
 ``dune-workspace`` file as root. For instance if you are in
-``/home/me/code/myproject/src``, then jbuilder will look for all these files in
+``/home/me/code/myproject/src``, then dune will look for all these files in
 order:
 
 -  ``/dune-workspace``
@@ -199,7 +199,7 @@ with locally defined libraries loaded.
 
    $ dune utop <dir> -- <args>
 
-Where ``<dir>`` is a directory containing a ``jbuild`` file defining all the
+Where ``<dir>`` is a directory containing a ``dune`` file defining all the
 libraries that will be loaded (using the ``library`` stanza). ``<args>`` will be
 passed as arguments to the utop command itself. For example, ``dune utop lib
 -- -implicit-bindings`` will start ``utop`` with the libraries defined in
@@ -225,7 +225,7 @@ can see with the ``--only-packages`` option:
 
     $ dune build --only-packages pkg1,pkg2,... @install
 
-This option acts as if you went through all the jbuild files and
+This option acts as if you went through all the dune files and
 commented out the stanzas refering to a package that is not in the list
 given to ``dune``.
 
@@ -264,7 +264,7 @@ your ``<package>.opam`` file:
 
 ::
 
-    build-test: [["jbuilder" "runtest" "-p" name "-j" jobs]]
+    build-test: [["dune" "runtest" "-p" name "-j" jobs]]
 
 Installation
 ============
@@ -417,11 +417,10 @@ Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field
 in order to setup cross compilation. See :ref:`advanced-cross-compilation`
 for more information.
 
-Merlin reads compilation artifacts and it can only read the
-compilation artifacts of a single context.  Usually, you should use
-the artifacts from the ``default`` context, and if you have the
-``(context default)`` stanza in your ``dune-workspace`` file, that
-is the one Jbuilder will use.
+Merlin reads compilation artifacts and it can only read the compilation
+artifacts of a single context. Usually, you should use the artifacts from the
+``default`` context, and if you have the ``(context default)`` stanza in your
+``dune-workspace`` file, that is the one dune will use.
 
 For rare cases where this is not what you want, you can force dune
 to use a different build contexts for merlin by adding the field
@@ -450,28 +449,12 @@ control this behaviour.
 See the section about :ref:`dune-jsoo` for passing custom flags to the
 js_of_ocaml compiler
 
-.. _using-topkg:
-
-Using topkg with dune
+Distributing Projects
 =====================
 
-Dune provides support for building and installing your project.
-However it doesn't provides helpers for distributing it. It is
-recommemded to use `Topkg <https://github.com/dbuenzli/topkg>`__ for
-this purpose.
-
-The `topkg-jbuilder <https://github.com/diml/topkg-jbuilder>`__
-project provides helpers for using Topkg in a dune project. In
-particular, as long as your project uses the common defaults, just
-write this ``pkg/pkg.ml`` file and you are all set:
-
-.. code:: ocaml
-
-    #use "topfind"
-    #require "topkg-jbuilder.auto"
-
-It is planned that this file won't be necessary at all soon and topkg
-will work out of the box on dune projects.
+Dune provides support for building and installing your project. However it
+doesn't provides helpers for distributing it. It is recommemded to use
+`dune-release <https://github.com/samoht/dune-release>`__ for this purpose.
 
 The common defaults are that your projects include the following
 files:
@@ -508,9 +491,9 @@ dune provides the ``subst`` sub-command.
 dune subst
 ==========
 
-``dune subst`` performs the same substitution ``topkg`` does with
-the default configuration. i.e. calling ``dune subst`` at the root
-of your project will rewrite in place all the files in your project.
+``dune subst`` performs the same substitution ``topkg`` does with the default
+configuration. i.e. calling ``dune subst`` at the root of your project will
+rewrite in place all the files in your project.
 
 More precisely, it replaces all the following watermarks in source
 files:

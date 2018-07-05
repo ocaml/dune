@@ -29,9 +29,11 @@ script when working on multiple projects at the same time.
 Can I use topkg with dune?
 ==========================
 
-Yes, have a look at the topkg-jbuilder_ project for more details.
+Using topkg with dune is not recommended. Instead, have a look at the
+dune-release_ project for providing the same functionality but catered to dune
+projects.
 
-.. _topkg-jbuilder: https://github.com/samoht/topkg-jbuilder
+.. _topkg-jbuilder: https://github.com/samoht/dune-release
 
 here can I find some examples of projects using dune?
 =====================================================

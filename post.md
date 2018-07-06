@@ -6,7 +6,7 @@ jbuilder projects?
 
 The good news is that dune is fully backward compatible with
 jbuilder. The `dune` package in opam will install both `dune` and
-`jbuilder` binaires and both will be usable on existing jbuilder
+`jbuilder` binaries and both will be usable on existing jbuilder
 projects.
 
 We do want to stop supporting jbuilder projects eventually, so the
@@ -14,7 +14,7 @@ plan is to continue to support the `jbuilder` binary and `jbuild`
 files for another year. 6 months from now dune will start displaying
 warnings when using the `jbuilder` binary or `jbuild` files. A more
 detailied [migration plan][mp] is available in the manual. In
-particular in contains a precise list of things to do to migrate a
+particular it contains a precise list of things to do to migrate a
 jbuilder project to a dune project.
 
 We hope that the new features in Dune 1.0.0 and subsequent releases
@@ -31,10 +31,10 @@ the important changes to expect when switching from `jbuilder` to
 A big part of the work in Dune 1.0.0 was getting the versioning story
 right. With jbuilder it was hard for us to make the language evolve
 without breaking the build of existing projects. Dune can handle that
-gracefuly and in the future it will be much easier to introduce
+gracefully and in the future it will be much easier to introduce
 breaking changes.
 
-The versioning of all dune file in a project is controlled via a
+The versioning of all dune files in a project is controlled via a
 single `dune-project` file at the root of the project. This file
 contains the version of the dune language and extensions used in the
 project.
@@ -47,9 +47,9 @@ creating a `dune` file (the new `jbuild` files) and dune will take
 care of the rest.
 
 Note that the syntax inside `dune`, `dune-project`, ... files is
-slightly different from the one insde `jbuild` files. In particular
-the language requires many less parentheses and the syntax of
-varialbes changed from `${...}` to `%{...}` to avoid issues with shell
+slightly different from the one inside `jbuild` files. In particular
+the language requires fewer parentheses and the syntax of varialbes
+changed from `${...}` to `%{...}` to avoid issues with shell
 commands. This is detailed in the [migration plan][mp] as well.
 
 ### Build profiles and default settings

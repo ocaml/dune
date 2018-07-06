@@ -29,7 +29,7 @@ directory:
 
 More precisely, it will choose the outermost ancestor directory containing a
 ``dune-workspace`` file as root. For instance if you are in
-``/home/me/code/myproject/src``, then jbuilder will look for all these files in
+``/home/me/code/myproject/src``, then dune will look for all these files in
 order:
 
 -  ``/dune-workspace``
@@ -182,9 +182,9 @@ There are two ways to run tests:
 -  ``dune build @runtest``
 -  ``dune runtest``
 
-The two commands are equivalent. They will run all the tests defined in
-the current directory and its children recursively. You can also run the
-tests in a specific sub-directory and its children by using:
+The two commands are equivalent. They will run all the tests defined in the
+current directory and its children recursively. You can also run the tests in a
+specific sub-directory and its children by using:
 
 -  ``dune build @foo/bar/runtest``
 -  ``dune runtest foo/bar``
@@ -199,11 +199,11 @@ with locally defined libraries loaded.
 
    $ dune utop <dir> -- <args>
 
-Where ``<dir>`` is a directory containing a ``jbuild`` file defining all the
+Where ``<dir>`` is a directory containing a ``dune`` file defining all the
 libraries that will be loaded (using the ``library`` stanza). ``<args>`` will be
-passed as arguments to the utop command itself. For example, ``dune utop lib
--- -implicit-bindings`` will start ``utop`` with the libraries defined in
-``lib`` and implicit bindings for toplevel expressions.
+passed as arguments to the utop command itself. For example, ``dune utop lib --
+-implicit-bindings`` will start ``utop`` with the libraries defined in ``lib``
+and implicit bindings for toplevel expressions.
 
 Requirements & Limitations
 --------------------------
@@ -218,14 +218,14 @@ Requirements & Limitations
 Restricting the set of packages
 ===============================
 
-You can restrict the set of packages from your workspace that dune
-can see with the ``--only-packages`` option:
+You can restrict the set of packages from your workspace that dune can see with
+the ``--only-packages`` option:
 
 .. code:: bash
 
     $ dune build --only-packages pkg1,pkg2,... @install
 
-This option acts as if you went through all the jbuild files and
+This option acts as if you went through all the dune files and
 commented out the stanzas refering to a package that is not in the list
 given to ``dune``.
 
@@ -252,33 +252,32 @@ This has the following effects:
 -  it uses whatever concurrency option opam provides
 -  it sets the default target to ``@install`` rather than ``@@default``
 
-Note that ``name`` and ``jobs`` are variables expanded by opam. ``name``
-expands to the package name and ``jobs`` to the number of jobs available
-to build the package.
+Note that ``name`` and ``jobs`` are variables expanded by opam. ``name`` expands
+to the package name and ``jobs`` to the number of jobs available to build the
+package.
 
 Tests
 =====
 
-To setup the building and running of tests in opam, add this line to
-your ``<package>.opam`` file:
+To setup the building and running of tests in opam, add this line to your
+``<package>.opam`` file:
 
 ::
 
-    build-test: [["jbuilder" "runtest" "-p" name "-j" jobs]]
+    build-test: [["dune" "runtest" "-p" name "-j" jobs]]
 
 Installation
 ============
 
-Installing a package means copying the build artifacts from the build
-directory to the installed word.
+Installing a package means copying the build artifacts from the build directory
+to the installed word.
 
-When installing via opam, you don't need to worry about this step:
-dune generates a ``<package>.install`` file that opam will
-automatically read to handle installation.
+When installing via opam, you don't need to worry about this step: dune
+generates a ``<package>.install`` file that opam will automatically read to
+handle installation.
 
-However, when not using opam or doing local development, you can use
-dune to install the artifacts by hands. To do that, use the
-``install`` command:
+However, when not using opam or doing local development, you can use dune to
+install the artifacts by hands. To do that, use the ``install`` command:
 
 ::
 
@@ -286,61 +285,57 @@ dune to install the artifacts by hands. To do that, use the
 
 without an argument, it will install all the packages available in the
 workspace. With a specific list of packages, it will only install these
-packages. If several build contexts are configured, the installation
-will be performed for all of them.
+packages. If several build contexts are configured, the installation will be
+performed for all of them.
 
-Note that ``dune install`` is a thin wrapper around the
-``opam-installer`` tool, so you will need to install this tool in order
-to be able to use ``dune install``.
+Note that ``dune install`` is a thin wrapper around the ``opam-installer`` tool,
+so you will need to install this tool in order to be able to use ``dune
+install``.
 
 Destination
 -----------
 
-The place where the build artifacts are copied, usually referred as
-**prefix**, is determined as follow for a given build context:
+The place where the build artifacts are copied, usually referred as **prefix**,
+is determined as follow for a given build context:
 
 #. if an explicit ``--prefix <path>`` argument is passed, use this path
 #. if ``opam`` is present in the ``PATH`` and is configured, use the
    output of ``opam config var prefix``
 #. otherwise, take the parent of the directory where ``ocamlc`` was found.
 
-As an exception to this rule, library files might be copied to a
-different location. The reason for this is that they often need to be
-copied to a particular location for the various build system used in
-OCaml projects to find them and this location might be different from
-``<prefix>/lib`` on some systems.
+As an exception to this rule, library files might be copied to a different
+location. The reason for this is that they often need to be copied to a
+particular location for the various build system used in OCaml projects to find
+them and this location might be different from ``<prefix>/lib`` on some systems.
 
-Historically, the location where to store OCaml library files was
-configured through `findlib
-<http://projects.camlcity.org/projects/findlib.html>`__ and the
-``ocamlfind`` command line tool was used to both install these files
-and locate them. Many Linux distributions or other packaging systems
-are using this mechanism to setup where OCaml library files should be
-copied.
+Historically, the location where to store OCaml library files was configured
+through `findlib <http://projects.camlcity.org/projects/findlib.html>`__ and the
+``ocamlfind`` command line tool was used to both install these files and locate
+them. Many Linux distributions or other packaging systems are using this
+mechanism to setup where OCaml library files should be copied.
 
-As a result, if none of ``--libdir`` and ``--prefix`` is passed to
-``dune install`` and ``ocamlfind`` is present in the ``PATH``,
-then library files will be copied to the directory reported by
-``ocamlfind printconf destdir``. This ensures that ``dune
-install`` can be used without opam. When using opam, ``ocamlfind`` is
-configured to point to the opam directory, so this rule makes no
-difference.
+As a result, if none of ``--libdir`` and ``--prefix`` is passed to ``dune
+install`` and ``ocamlfind`` is present in the ``PATH``, then library files will
+be copied to the directory reported by ``ocamlfind printconf destdir``. This
+ensures that ``dune install`` can be used without opam. When using opam,
+``ocamlfind`` is configured to point to the opam directory, so this rule makes
+no difference.
 
-Note that ``--prefix`` and ``--libdir`` are only supported if a single
-build context is in use.
+Note that ``--prefix`` and ``--libdir`` are only supported if a single build
+context is in use.
 
 Workspace configuration
 =======================
 
-By default, a workspace has only one build context named ``default``
-which correspond to the environment in which ``dune`` is run. You can
-define more contexts by writing a ``dune-workspace`` file.
+By default, a workspace has only one build context named ``default`` which
+correspond to the environment in which ``dune`` is run. You can define more
+contexts by writing a ``dune-workspace`` file.
 
-You can point ``dune`` to an explicit ``dune-workspace`` file with
-the ``--workspace`` option. For instance it is good practice to write a
-``dune-workspace.dev`` in your project with all the version of OCaml
-your projects support. This way developers can tests that the code
-builds with all version of OCaml by simply running:
+You can point ``dune`` to an explicit ``dune-workspace`` file with the
+``--workspace`` option. For instance it is good practice to write a
+``dune-workspace.dev`` in your project with all the version of OCaml your
+projects support. This way developers can tests that the code builds with all
+version of OCaml by simply running:
 
 .. code:: bash
 
@@ -361,29 +356,28 @@ a typical ``dune-workspace`` file looks like:
 
 The rest of this section describe the stanzas available.
 
-Note that an empty ``dune-workspace`` file is interpreted the same
-as one containing exactly:
+Note that an empty ``dune-workspace`` file is interpreted the same as one
+containing exactly:
 
 .. code:: scheme
 
     (lang dune 1.0)
     (context default)
 
-This allows you to use an empty ``dune-workspace`` file to mark
-the root of your project.
+This allows you to use an empty ``dune-workspace`` file to mark the root of your
+project.
 
 profile
 ~~~~~~~
 
-The build profile can be selected in the ``dune-workspace`` file by
-write a ``(profile ...)`` stanza. For instance:
+The build profile can be selected in the ``dune-workspace`` file by write a
+``(profile ...)`` stanza. For instance:
 
 .. code:: scheme
 
     (profile release)
 
-Note that the command line option ``--profile`` has precedence over
-this stanza.
+Note that the command line option ``--profile`` has precedence over this stanza.
 
 context
 ~~~~~~~
@@ -413,19 +407,18 @@ context or can be the description of an opam switch, as follows:
   context. This has precedence over the command line option
   ``--profile``
 
-Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field
-in order to setup cross compilation. See :ref:`advanced-cross-compilation`
-for more information.
+Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field in order to
+setup cross compilation. See :ref:`advanced-cross-compilation` for more
+information.
 
-Merlin reads compilation artifacts and it can only read the
-compilation artifacts of a single context.  Usually, you should use
-the artifacts from the ``default`` context, and if you have the
-``(context default)`` stanza in your ``dune-workspace`` file, that
-is the one Jbuilder will use.
+Merlin reads compilation artifacts and it can only read the compilation
+artifacts of a single context. Usually, you should use the artifacts from the
+``default`` context, and if you have the ``(context default)`` stanza in your
+``dune-workspace`` file, that is the one dune will use.
 
-For rare cases where this is not what you want, you can force dune
-to use a different build contexts for merlin by adding the field
-``(merlin)`` to this context.
+For rare cases where this is not what you want, you can force dune to use a
+different build contexts for merlin by adding the field ``(merlin)`` to this
+context.
 
 Building JavaScript with js_of_ocaml
 ====================================
@@ -443,77 +436,58 @@ It supports two modes of compilation:
   separately and then linked together. This mode is useful during development as
   it builds more quickly.
 
-The separate compilation mode will be selected when the build profile
-is ``dev``, which is the default. There is currently no other way to
-control this behaviour.
+The separate compilation mode will be selected when the build profile is
+``dev``, which is the default. There is currently no other way to control this
+behaviour.
 
 See the section about :ref:`dune-jsoo` for passing custom flags to the
 js_of_ocaml compiler
 
-.. _using-topkg:
-
-Using topkg with dune
+Distributing Projects
 =====================
 
-Dune provides support for building and installing your project.
-However it doesn't provides helpers for distributing it. It is
-recommemded to use `Topkg <https://github.com/dbuenzli/topkg>`__ for
-this purpose.
+Dune provides support for building and installing your project. However it
+doesn't provide helpers for distributing it. It is recommended to use
+`dune-release <https://github.com/samoht/dune-release>`__ for this purpose.
 
-The `topkg-jbuilder <https://github.com/diml/topkg-jbuilder>`__
-project provides helpers for using Topkg in a dune project. In
-particular, as long as your project uses the common defaults, just
-write this ``pkg/pkg.ml`` file and you are all set:
-
-.. code:: ocaml
-
-    #use "topfind"
-    #require "topkg-jbuilder.auto"
-
-It is planned that this file won't be necessary at all soon and topkg
-will work out of the box on dune projects.
-
-The common defaults are that your projects include the following
-files:
+The common defaults are that your projects include the following files:
 
 - ``README.md``
 - ``CHANGES.md``
 - ``LICENSE.md``
 
-And that if your project contains several packages, then all the
-package names must be prefixed by the shortest one.
+And that if your project contains several packages, then all the package names
+must be prefixed by the shortest one.
 
 Watermarking
 ============
 
-One of the feature topkg provides is watermarking; it replaces various
-strings of the form ``%%ID%%`` in all files of your project before
-creating a release tarball or when the package is pinned by the user
-using opam.
+One of the feature topkg provides is watermarking; it replaces various strings
+of the form ``%%ID%%`` in all files of your project before creating a release
+tarball or when the package is pinned by the user using opam.
 
-This is especially interesting for the ``VERSION`` watermark, which
-gets replaced by the version obtained from the vcs. For instance if
-you are using git, topkg invokes this command to find out the version:
+This is especially interesting for the ``VERSION`` watermark, which gets
+replaced by the version obtained from the vcs. For instance if you are using
+git, topkg invokes this command to find out the version:
 
 .. code:: bash
 
     $ git describe --always --dirty
     1.0+beta9-79-g29e9b37
 
-Projects using dune usually only need topkg for creating and
-publishing releases. However they might still want to substitute the
-watermarks when the package is pinned by the user. To help with this,
-dune provides the ``subst`` sub-command.
+Projects using dune usually only need topkg for creating and publishing
+releases. However they might still want to substitute the watermarks when the
+package is pinned by the user. To help with this, dune provides the ``subst``
+sub-command.
 
 dune subst
 ==========
 
-``dune subst`` performs the same substitution ``topkg`` does with
-the default configuration. i.e. calling ``dune subst`` at the root
-of your project will rewrite in place all the files in your project.
+``dune subst`` performs the same substitution ``topkg`` does with the default
+configuration. i.e. calling ``dune subst`` at the root of your project will
+rewrite in place all the files in your project.
 
-More precisely, it replaces all the following watermarks in source
-files:
+More precisely, it replaces all the following watermarks in source files:
 
 - ``NAME``, the name of the project
 - ``VERSION``, output of ``git describe --always --dirty``
@@ -529,18 +503,18 @@ files:
 - ``PKG_LICENSE``, contents of the ``license`` field from the opam file
 - ``PKG_REPO``, contents of the ``repo`` field from the opam file
 
-Note that if your project contains several packages, ``NAME`` will
-be replaced by the shorted package name as long as it is a prefix of
-all the package names. If your package names don't follow this rule,
-you need to specify the name explicitly via the ``-n`` flag:
+Note that if your project contains several packages, ``NAME`` will be replaced
+by the shorted package name as long as it is a prefix of all the package names.
+If your package names don't follow this rule, you need to specify the name
+explicitly via the ``-n`` flag:
 
 .. code:: bash
 
     $ dune subst -n myproject
 
-Finally, note that dune doesn't allow you to customize the list of
-substituted watermarks. If you which to do so, you need to configure
-topkg and use it instead of ``dune subst``.
+Finally, note that dune doesn't allow you to customize the list of substituted
+watermarks. If you which to do so, you need to configure topkg and use it
+instead of ``dune subst``.
 
 Custom Build Directory
 ======================

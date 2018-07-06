@@ -29,9 +29,16 @@ script when working on multiple projects at the same time.
 Can I use topkg with dune?
 ==========================
 
-Yes, have a look at the topkg-jbuilder_ project for more details.
+It's possible using the topkg-jbuilder_ but it's not recommended. dune-release_
+subsumes topkg-jbuilder and is specifically tailored to dune projects.
 
-.. _topkg-jbuilder: https://github.com/samoht/topkg-jbuilder
+
+How do I publish my packages with dune?
+=======================================
+
+Dune is just a build system and considers publishing outside of its scope.
+However, the dune-release_ project is specifically designed for releasing dune
+projects to opam. We recommend using tool for publishing dune packages.
 
 here can I find some examples of projects using dune?
 =====================================================
@@ -41,3 +48,5 @@ opam packages depending on dune. It is therefore a useful reference to
 search through to find different approaches to constructing build rules.
 
 .. _dune-universe: https://github.com/dune-universe/dune-universe
+.. _topkg-jbuilder: https://github.com/samoht/topkg-jbuilder
+.. _dune-release: https://github.com/samoht/dune-release

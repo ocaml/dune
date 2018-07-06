@@ -64,7 +64,7 @@ invoke it as an executable and tell dune about the targets that it produces:
 
   (executable
    ((name discover)
-    (libraries (jbuilder.configurator))))
+    (libraries (dune.configurator))))
 
   (rule
    ((targets (config.h))
@@ -103,7 +103,7 @@ The following steps must be taken to transition from the old configurator:
 
 * Mentions of the ``configurator`` opam package should be removed.
 
-* The library name ``configurator`` should be changed ``jbuilder.configurator``.
+* The library name ``configurator`` should be changed ``dune.configurator``.
 
 * The ``-ocamlc`` flag in rules that run configurator scripts should be removed.
   This information is now passed automatically by dune.

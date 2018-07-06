@@ -48,7 +48,7 @@ care of the rest.
 
 Note that the syntax inside `dune`, `dune-project`, ... files is
 slightly different from the one inside `jbuild` files. In particular
-the language requires fewer parentheses and the syntax of varialbes
+the language requires fewer parentheses and the syntax of variables
 changed from `${...}` to `%{...}` to avoid issues with shell
 commands. This is detailed in the [migration plan][mp] as well.
 

@@ -9,10 +9,10 @@ All builtin variables are lower cased in Dune:
   Error: Uppercase variables are removed in dune files. Use: %{make}
   [1]
 
-jbuilder retains the old names:
+jbuild files retain the the old names:
 
-  $ jbuilder runtest --root jbuilder-upper
+  $ dune runtest --root jbuilder-upper
   Entering directory 'jbuilder-upper'
 
-  $ jbuilder runtest --root jbuilder-upper
+  $ dune runtest --root jbuilder-upper
   Entering directory 'jbuilder-upper'

@@ -179,3 +179,9 @@ Removed Variables
 -----------------
 
 ``${path-no-dep:file}`` has been removed.
+
+
+``# JBUILDER_GEN`` renamed
+--------------------------
+
+``# DUNE_GEN`` should be used instead of ``# JBUILDER_GEN`` in META templates.

@@ -330,6 +330,14 @@ running your testsuite, simply add this to a jbuild file:
            ((name   runtest)
             (action (run ./tests.exe))))
 
+Hence to define an a test a pair of alias and executable stanzas are required.
+To simplify this common pattern, dune provides a :ref:`tests-stanza` stanza to
+define multiple tests and their aliases at once:
+
+.. code:: scheme
+
+   (tests (names test1 test2))
+
 Diffing the result
 ------------------
 
@@ -348,12 +356,21 @@ command. For instance let's consider this test:
            ((name runtest)
             (action (diff tests.expected test.output))))
 
-After having run ``tests.exe`` and dumping its output to
-``tests.output``, dune will compare the latter to
-``tests.expected``. In case of mismatch, dune will print a diff
-and then the ``dune promote`` command can be used to copy over the
-generated ``test.output`` file to ``tests.expected`` in the source
-tree. This provides a nice way of dealing with the usual *write code*,
+After having run ``tests.exe`` and dumping its output to ``tests.output``, dune
+will compare the latter to ``tests.expected``. In case of mismatch, dune will
+print a diff and then the ``dune promote`` command can be used to copy over the
+generated ``test.output`` file to ``tests.expected`` in the source tree.
+
+Alternatively, the :ref:`tests-stanza` also supports this style of tests.
+
+.. code:: scheme
+
+   (tests (names tests))
+
+Where dune expects a ``tests.expected`` file to exist to infer that this is an
+expect tests.
+
+This provides a nice way of dealing with the usual *write code*,
 *run*, *promote* cycle of testing. For instance:
 
 .. code:: bash

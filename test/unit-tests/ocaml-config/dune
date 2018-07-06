@@ -5,4 +5,4 @@
 (alias
  (name runtest)
  (deps ./gh637.exe)
- (action (run %{<})))
+ (action (run %{first-dep})))

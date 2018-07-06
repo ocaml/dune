@@ -508,6 +508,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name project-root)
+ (deps (package dune) (source_tree test-cases/project-root))
+ (action
+  (chdir
+   test-cases/project-root
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name promote)
  (deps (package dune) (source_tree test-cases/promote))
  (action
@@ -673,6 +681,7 @@
   (alias path-variables)
   (alias ppx-rewriter)
   (alias private-public-overlap)
+  (alias project-root)
   (alias promote)
   (alias quoting)
   (alias redirections)
@@ -740,6 +749,7 @@
   (alias output-obj)
   (alias package-dep)
   (alias path-variables)
+  (alias project-root)
   (alias promote)
   (alias quoting)
   (alias redirections)

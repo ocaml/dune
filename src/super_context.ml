@@ -88,10 +88,18 @@ let expand_var_no_root t var = String.Map.find t.vars var
 
 let (expand_vars, expand_vars_path) =
   let expand t ~scope ~dir ?(extra_vars=String.Map.empty) s =
-    String_with_vars.expand ~mode:Single ~dir s ~f:(fun v _syntax_version ->
+    String_with_vars.expand ~mode:Single ~dir s ~f:(fun v syntax_version ->
       match String_with_vars.Var.full_name v with
       | "ROOT" -> Some [Value.Path t.context.build_dir]
-      | "SCOPE_ROOT" -> Some [Value.Path (Scope.root scope)]
+      | "SCOPE_ROOT" ->
+        if syntax_version >= (1, 0) then
+          Loc.fail (String_with_vars.Var.loc v)
+            "Variable %%{SCOPE_ROOT} has been renamed to %%{project_root} \
+             in dune files"
+        else
+          Some [Value.Path (Scope.root scope)]
+      | "project_root" when syntax_version >= (1, 0) ->
+        Some [Value.Path (Scope.root scope)]
       | var ->
         (match expand_var_no_root t var with
          | Some _ as x -> x
@@ -641,12 +649,12 @@ module Action = struct
       | Pair ("dep", s) when syntax_version >= (1, 0) ->
         path_with_dep s
       | Pair ("dep", s) ->
-          Loc.fail
-            loc
-            "${dep:%s} is not supported in jbuild files.\n\
-             Hint: Did you mean ${path:%s} instead?"
-            s
-            s
+        Loc.fail
+          loc
+          "${dep:%s} is not supported in jbuild files.\n\
+           Hint: Did you mean ${path:%s} instead?"
+          s
+          s
       | Pair ("bin", s) -> begin
           let sctx = host sctx in
           match Artifacts.binary (artifacts sctx) s with
@@ -657,8 +665,8 @@ module Action = struct
       | Pair ("findlib", s) when syntax_version >= (1, 0) ->
         Loc.fail
           loc
-          "The findlib special variable is not supported anymore, please use lib instead:\n\
-           %%{lib:%s}"
+          "The findlib special variable is not supported in jbuild files, \
+           please use lib instead:\n%%{lib:%s} in dune files"
           s
       | Pair ("findlib", s)
       | Pair ("lib", s) -> begin
@@ -739,28 +747,49 @@ module Action = struct
         | Some _ as x -> x
         | None -> String.Map.find extra_vars key
     in
+    let targets loc name =
+      let var =
+        match name with
+        | "@" -> sprintf "${%s}" name
+        | "targets" -> sprintf "%%{%s}" name
+        | _ -> assert false
+      in
+      match targets_written_by_user with
+      | Infer -> Loc.fail loc "You cannot use %s with inferred rules." var
+      | Alias -> Loc.fail loc "You cannot use %s in aliases." var
+      | Static l -> Some (Value.L.paths l)
+    in
     let t =
       U.partial_expand t ~dir ~map_exe ~f:(fun var syntax_version ->
         let var_name = String_with_vars.Var.full_name var in
         let loc = String_with_vars.Var.loc var in
         match var_name with
         | "ROOT" -> Some (path_exp sctx.context.build_dir)
-        | "SCOPE_ROOT" -> Some (path_exp (Scope.root scope))
-        | "@" -> begin
-            match targets_written_by_user with
-            | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
-            | Alias -> Loc.fail loc "You cannot use ${@} in aliases."
-            | Static l -> Some (Value.L.paths l)
-          end
+        | "SCOPE_ROOT" ->
+          if syntax_version >= (1, 0) then
+            Loc.fail loc
+              "Variable %%{SCOPE_ROOT} has been renamed to %%{project_root} \
+               in dune files"
+          else
+            Some (path_exp (Scope.root scope))
+        | "project_root" when syntax_version >= (1, 0) ->
+          Some (path_exp (Scope.root scope))
+        | "@" ->
+          if syntax_version < (1, 0) then
+            targets loc var_name
+          else
+            Loc.fail loc (* variable substitution to avoid ugly escaping *)
+              "Variable %s has been renamed to %%{targets} in dune files" "%{@}"
+        | "targets" when syntax_version >= (1, 0) -> targets loc var_name
         | _ ->
           match String_with_vars.Var.destruct var with
           | Pair ("path-no-dep", s) ->
-              if syntax_version < (1, 0) then
-                Some (path_exp (Path.relative dir s))
-              else
-                Loc.fail
-                  loc
-                  "The ${path-no-dep:...} syntax has been removed from dune."
+            if syntax_version < (1, 0) then
+              Some (path_exp (Path.relative dir s))
+            else
+              Loc.fail
+                loc
+                "The ${path-no-dep:...} syntax has been removed from dune."
           | _ ->
             let exp = expand var syntax_version in
             Option.iter exp ~f:(fun vs ->
@@ -772,23 +801,37 @@ module Action = struct
     (t, acc)
 
   let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
-    U.Partial.expand t ~dir ~map_exe ~f:(fun var _syntax_version ->
+    U.Partial.expand t ~dir ~map_exe ~f:(fun var syntax_version ->
       let key = String_with_vars.Var.full_name var in
       let loc = String_with_vars.Var.loc var in
       match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
+        let first_dep () =
+          Some (
+            match deps_written_by_user with
+            | [] ->
+              Loc.warn loc "Variable '%s' used with no explicit \
+                            dependencies@." key;
+              [Value.String ""]
+            | v :: _  -> [Path v]
+          )
+        in
         match key with
         | "<" ->
-          Some
-            (match deps_written_by_user with
-             | [] ->
-               Loc.warn loc "Variable '<' used with no explicit \
-                             dependencies@.";
-               [Value.String ""]
-             | dep :: _ ->
-               [Path dep])
-        | "^" -> Some (Value.L.paths deps_written_by_user)
+          if syntax_version < (1, 0) then
+            first_dep ()
+          else
+            Loc.fail loc "Variable '<' is renamed to 'first-dep' in dune files"
+        | "first-dep" when syntax_version >= (1, 0) -> first_dep ()
+        | "^" ->
+          if syntax_version < (1, 0) then
+            Some (Value.L.paths deps_written_by_user)
+          else
+            Loc.fail loc
+              "Variable %%{^} has been renamed to %%{deps} in dune files"
+        | "deps" when syntax_version >= (1, 0) ->
+          Some (Value.L.paths deps_written_by_user)
         | _ -> None)
 
   let run sctx ~loc ?(extra_vars=String.Map.empty)
@@ -800,8 +843,9 @@ module Action = struct
       | [] -> ()
       | x :: _ ->
         let loc = String_with_vars.loc x in
-        Loc.warn loc "Aliases must not have targets, this target will be ignored.\n\
-                      This will become an error in the future.";
+        Loc.warn loc
+          "Aliases must not have targets, this target will be ignored.\n\
+           This will become an error in the future.";
     end;
     let t, forms =
       expand_step1 sctx t ~dir ~dep_kind ~scope

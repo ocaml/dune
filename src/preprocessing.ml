@@ -397,7 +397,7 @@ let get_ppx_driver sctx ~loc ~scope ~dir_kind pps =
     >>= fun libs ->
     Ok (ppx_driver_exe sctx libs ~dir_kind, driver)
 
-let target_var = String_with_vars.virt_var __POS__ "@"
+let target_var = String_with_vars.virt_var __POS__ "targets"
 let root_var   = String_with_vars.virt_var __POS__ "ROOT"
 
 let cookie_library_name lib_name =

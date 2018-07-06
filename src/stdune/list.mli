@@ -40,3 +40,5 @@ val compare : 'a t -> 'a t -> compare:('a -> 'a -> Ordering.t) -> Ordering.t
 val assoc : ('a * 'b) t -> 'a -> 'b option
 
 val singleton : 'a -> 'a t
+
+val nth : 'a t -> int -> 'a option

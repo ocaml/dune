@@ -104,3 +104,9 @@ let rec assoc t x =
   | (k, v) :: t -> if x = k then Some v else assoc t x
 
 let singleton x = [x]
+
+let rec nth t i =
+  match t, i with
+  | [], _ -> None
+  | x :: _, 0 -> Some x
+  | _ :: xs, i -> nth xs (i - 1)

@@ -21,19 +21,19 @@
 (rule
  (targets static.exe)
  (deps test.exe%{ext_obj} static.c)
- (action (run %{CC} -o %{@} -I %{ocaml_where} -I . %{^}
+ (action (run %{CC} -o %{targets} -I %{ocaml_where} -I . %{deps}
           %{ocaml-config:native_c_libraries})))
 
 (rule
  (targets static.bc)
  (deps test.bc%{ext_obj} static.c)
- (action (run %{CC} -o %{@} -I %{ocaml_where} -I . %{^}
+ (action (run %{CC} -o %{targets} -I %{ocaml_where} -I . %{deps}
           %{ocaml-config:bytecomp_c_libraries})))
 
 (rule
  (targets dynamic.exe)
  (deps dynamic.c)
- (action (run %{CC} -o %{@} %{<} %{ocaml-config:native_c_libraries})))
+ (action (run %{CC} -o %{targets} %{first-dep} %{ocaml-config:native_c_libraries})))
 
 (alias
  (name runtest)
@@ -48,9 +48,9 @@
 (alias
  (name   runtest)
  (deps   test.bc%{ext_dll})
- (action (run ./dynamic.exe ./%{<})))
+ (action (run ./dynamic.exe ./%{first-dep})))
 
 (alias
  (name   runtest)
  (deps   test%{ext_dll})
- (action (run ./dynamic.exe ./%{<})))
+ (action (run ./dynamic.exe ./%{first-dep})))

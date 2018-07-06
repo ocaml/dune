@@ -169,7 +169,7 @@ Jbuild                    Dune
 ======================== ============
 ``${@}``                  ``%{targets}``
 ``${^}``                  ``%{deps}``
-``${<}``                  ``%{deps[0]}``
+``${<}``                  ``%{first-dep}``
 ``${path:file}``          ``%{dep:file}``
 ``${SCOPE_ROOT}``         ``%{project_root}``
 ``${findlib:..}``         ``%{lib:..}``

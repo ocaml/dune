@@ -817,7 +817,7 @@ module Action = struct
             let exp = expand var syntax_version in
             Option.iter exp ~f:(fun vs ->
               acc.sdeps <- Path.Set.union (Path.Set.of_list
-                                             (Value.L.paths_only vs)) acc.sdeps;
+                                             (Value.L.deps_only vs)) acc.sdeps;
             );
             exp)
     in

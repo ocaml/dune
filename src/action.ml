@@ -337,6 +337,9 @@ end
 let prog_and_args_of_values p ~dir =
   match p with
   | [] -> (Unresolved.Program.Search "", [])
+  | Value.Dir p :: _ ->
+    die "%s is a directory and cannot be used as an executable"
+      (Path.to_string_maybe_quoted p)
   | Value.Path p :: xs -> (This p, Value.L.to_strings ~dir xs)
   | String s :: xs ->
     (Unresolved.Program.of_string ~dir s, Value.L.to_strings ~dir xs)

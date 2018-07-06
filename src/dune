@@ -11,7 +11,7 @@
               which_program)
  (synopsis    "Internal Dune library, do not use!"))
 
-(ocamllex meta_lexer glob_lexer dune_lexer)
+(ocamllex meta_lexer glob_lexer dune_lexer dune_vars)
 
 (rule
  (targets setup.ml)

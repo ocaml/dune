@@ -33,7 +33,7 @@
 (rule
  (targets dynamic.exe)
  (deps dynamic.c)
- (action (run %{CC} -o %{targets} %{<} %{ocaml-config:native_c_libraries})))
+ (action (run %{CC} -o %{targets} %{deps[0]} %{ocaml-config:native_c_libraries})))
 
 (alias
  (name runtest)
@@ -48,9 +48,9 @@
 (alias
  (name   runtest)
  (deps   test.bc%{ext_dll})
- (action (run ./dynamic.exe ./%{<})))
+ (action (run ./dynamic.exe ./%{deps[0]})))
 
 (alias
  (name   runtest)
  (deps   test%{ext_dll})
- (action (run ./dynamic.exe ./%{<})))
+ (action (run ./dynamic.exe ./%{deps[0]})))

@@ -5,4 +5,4 @@
 (alias
  (name runtest)
  (deps ./test_configurator.exe)
- (action (run %{<})))
+ (action (run %{deps[0]})))

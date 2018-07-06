@@ -1,6 +1,6 @@
 (alias
  (name runtest)
  (deps main.exe)
- (action (run %{<})))
+ (action (run %{deps[0]})))
 
 (executable (name main))

@@ -155,7 +155,7 @@ Write this in your ``dune`` file:
     (rule
      (targets foo.ml)
      (deps    foo.cppo.ml <other files that foo.ml includes>)
-     (action  (run %{bin:cppo} %{<} -o %{@})))
+     (action  (run %{bin:cppo} %{<} -o %{targets})))
 
 Defining a library with C stubs
 ===============================
@@ -241,7 +241,7 @@ To generate a file ``foo.ml`` using a program from another directory:
     (rule
      (targets foo.ml)
      (deps    ../generator/gen.exe)
-     (action  (run %{<} -o %{@})))
+     (action  (run %{<} -o %{targets})))
 
 Defining tests
 ==============

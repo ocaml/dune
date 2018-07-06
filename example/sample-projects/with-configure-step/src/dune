@@ -8,5 +8,5 @@
 (rule
  ((targets (config.ml))
   (deps    (../config.full))
-  (action  (copy %{<} %{@}))))
+  (action  (copy %{<} %{targets}))))
 

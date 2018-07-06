@@ -15,15 +15,15 @@
 
 (rule
  (targets stdout.expected)
- (action  (with-stdout-to %{@} (echo "toto\n"))))
+ (action  (with-stdout-to %{targets} (echo "toto\n"))))
 
 (rule
  (targets stderr.expected)
- (action  (with-stdout-to %{@} (echo "titi\n"))))
+ (action  (with-stdout-to %{targets} (echo "titi\n"))))
 
 (rule
  (targets both.expected)
- (action  (with-stdout-to %{@} (echo "toto\ntiti\n"))))
+ (action  (with-stdout-to %{targets} (echo "toto\ntiti\n"))))
 
 (alias
  (name runtest)

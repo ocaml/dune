@@ -1242,7 +1242,7 @@ module Rule = struct
               Run (S.virt_text __POS__ "ocamllex",
                    [ S.virt_text __POS__ "-q"
                    ; S.virt_text __POS__ "-o"
-                   ; S.virt_var __POS__ "@"
+                   ; S.virt_var __POS__ "targets"
                    ; S.virt_var __POS__"<"
                    ])))
       ; mode

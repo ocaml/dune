@@ -1,6 +1,6 @@
 (rule
  ((targets (hello_world.output))
-  (action (with-stdout-to %{@} (run %{bin:hello_world})))))
+  (action (with-stdout-to %{targets} (run %{bin:hello_world})))))
 
 (alias
  ((name runtest)

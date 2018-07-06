@@ -3,8 +3,8 @@ that ${@} is not quoted and doesn't contain exactly 1 element
 
   $ dune build --root bad x
   Entering directory 'bad'
-  File "dune", line 3, characters 27-29:
-  Error: Variable %{@} expands to 2 values, however a single value is expected here. Please quote this atom.
+  File "dune", line 3, characters 27-35:
+  Error: Variable %{targets} expands to 2 values, however a single value is expected here. Please quote this atom.
   [1]
 
 The targets should only be interpreted as a single path when quoted

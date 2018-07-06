@@ -21,7 +21,7 @@
  (targets dune.inc.gen)
  (deps    (package dune))
  (action
-  (with-stdout-to %{@}
+  (with-stdout-to %{targets}
    (run bash %{dep:update-jbuild.sh}))))
 
 (alias

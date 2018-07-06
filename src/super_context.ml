@@ -747,6 +747,18 @@ module Action = struct
         | Some _ as x -> x
         | None -> String.Map.find extra_vars key
     in
+    let targets loc name =
+      let var =
+        match name with
+        | "@" -> sprintf "${%s}" name
+        | "targets" -> sprintf "%%{%s}" name
+        | _ -> assert false
+      in
+      match targets_written_by_user with
+      | Infer -> Loc.fail loc "You cannot use %s with inferred rules." var
+      | Alias -> Loc.fail loc "You cannot use %s in aliases." var
+      | Static l -> Some (Value.L.paths l)
+    in
     let t =
       U.partial_expand t ~dir ~map_exe ~f:(fun var syntax_version ->
         let var_name = String_with_vars.Var.full_name var in
@@ -755,19 +767,20 @@ module Action = struct
         | "ROOT" -> Some (path_exp sctx.context.build_dir)
         | "SCOPE_ROOT" ->
           if syntax_version >= (1, 0) then
-            Loc.fail (String_with_vars.Var.loc var)
+            Loc.fail loc
               "Variable %%{SCOPE_ROOT} has been renamed to %%{project_root} \
                in dune files"
           else
             Some (path_exp (Scope.root scope))
         | "project_root" when syntax_version >= (1, 0) ->
           Some (path_exp (Scope.root scope))
-        | "@" -> begin
-            match targets_written_by_user with
-            | Infer -> Loc.fail loc "You cannot use ${@} with inferred rules."
-            | Alias -> Loc.fail loc "You cannot use ${@} in aliases."
-            | Static l -> Some (Value.L.paths l)
-          end
+        | "@" ->
+          if syntax_version >= (1, 0) then
+            targets loc var_name
+          else
+            Loc.fail loc (* variable substitution to avoid ugly escaping *)
+              "Variable %s has been renamed to %%{targets} in dune files" "%{@}"
+        | "targets" when syntax_version >= (1, 0) -> targets loc var_name
         | _ ->
           match String_with_vars.Var.destruct var with
           | Pair ("path-no-dep", s) ->

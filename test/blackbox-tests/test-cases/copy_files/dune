@@ -3,7 +3,7 @@
 
 (rule
  (targets dummy.ml)
- (action (with-stdout-to %{@} (echo ""))))
+ (action (with-stdout-to %{targets} (echo ""))))
 
 (library
  (name foo)

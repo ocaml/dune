@@ -6,5 +6,5 @@
  (deps (glob_files optional.ml)
        (glob_files *optional.ml))
  (action
-  (with-stdout-to %{@}
+  (with-stdout-to %{targets}
    (run echo "let () = print_endline \"Hello World\""))))

@@ -126,7 +126,7 @@ let loc t = t.template.loc
 
 let syntax_version t = t.syntax_version
 
-let virt_syntax = (0, 0)
+let virt_syntax = (1, 0)
 
 let virt ?(quoted=false) pos s =
   let template = Jbuild.parse ~quoted ~loc:(Loc.of_pos pos) s in

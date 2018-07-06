@@ -83,6 +83,15 @@ run in parallel to the number of processing units available. The
 previous default was 4. For opam files, you should remember to add
 `"-j" jobs` in order to let opam decide.
 
+## Future of Dune
+
+Now that we have a good versioning story and with the new testing
+tools that are emerging, I'm hoping that at some point we will be able
+to declare that the master of Dune is stable. At this point opam
+releases will just become a monthly or even weekly formality. This
+should make the experience nicer for both developers and users of
+Dune.
+
 [mp]:    https://dune.readthedocs.io/en/latest/migration.html
 [env]:   https://dune.readthedocs.io/en/latest/dune-files.html#env
 [defal]: https://dune.readthedocs.io/en/latest/usage.html#default-alias

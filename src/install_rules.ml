@@ -102,7 +102,7 @@ module Gen(P : Install_params) = struct
         let template =
           Build.if_file_exists meta_template
             ~then_:(Build.lines_of meta_template)
-            ~else_:(Build.return ["# JBUILDER_GEN"])
+            ~else_:(Build.return ["# DUNE_GEN"])
         in
         let meta_contents =
           version >>^ fun version ->
@@ -123,7 +123,8 @@ module Gen(P : Install_params) = struct
                    String.extract_blank_separated_words
                      (String.sub s ~pos:1 ~len:(String.length s - 1))
                  with
-                 | ["JBUILDER_GEN"] -> Format.fprintf ppf "%a@," Meta.pp meta.entries
+                 | ["JBUILDER_GEN" | "DUNE_GEN"] ->
+                   Format.fprintf ppf "%a@," Meta.pp meta.entries
                  | _ -> Format.fprintf ppf "%s@," s
                else
                  Format.fprintf ppf "%s@," s);

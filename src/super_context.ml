@@ -665,8 +665,8 @@ module Action = struct
       | Pair ("findlib", s) when syntax_version >= (1, 0) ->
         Loc.fail
           loc
-          "The findlib special variable is not supported anymore, please use lib instead:\n\
-           %%{lib:%s}"
+          "The findlib special variable is not supported in jbuild files, \
+           please use lib instead:\n%%{lib:%s} in dune files"
           s
       | Pair ("findlib", s)
       | Pair ("lib", s) -> begin
@@ -822,13 +822,14 @@ module Action = struct
           if syntax_version < (1, 0) then
             first_dep ()
           else
-            Loc.fail loc "Variable '<' is renamed to 'first-dep' in dune"
+            Loc.fail loc "Variable '<' is renamed to 'first-dep' in dune files"
         | "first-dep" when syntax_version >= (1, 0) -> first_dep ()
         | "^" ->
           if syntax_version < (1, 0) then
             Some (Value.L.paths deps_written_by_user)
           else
-            Loc.fail loc "Variable %%{^} has been renamed to %%{deps}"
+            Loc.fail loc
+              "Variable %%{^} has been renamed to %%{deps} in dune files"
         | "deps" when syntax_version >= (1, 0) ->
           Some (Value.L.paths deps_written_by_user)
         | _ -> None)
@@ -842,8 +843,9 @@ module Action = struct
       | [] -> ()
       | x :: _ ->
         let loc = String_with_vars.loc x in
-        Loc.warn loc "Aliases must not have targets, this target will be ignored.\n\
-                      This will become an error in the future.";
+        Loc.warn loc
+          "Aliases must not have targets, this target will be ignored.\n\
+           This will become an error in the future.";
     end;
     let t, forms =
       expand_step1 sctx t ~dir ~dep_kind ~scope

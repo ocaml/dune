@@ -25,8 +25,8 @@
   (source_tree findlib-db))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{deps[0]})
-           (diff? %{deps[0]} %{deps[0]}.corrected)))))
+           (run %{exe:expect_test.exe} %{first-dep})
+           (diff? %{first-dep} %{first-dep}.corrected)))))
 
 (alias
  (name runtest)
@@ -35,8 +35,8 @@
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{deps[0]})
-           (diff? %{deps[0]} %{deps[0]}.corrected)))))
+           (run %{exe:expect_test.exe} %{first-dep})
+           (diff? %{first-dep} %{first-dep}.corrected)))))
 
 (alias
  (name runtest)
@@ -45,8 +45,8 @@
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{deps[0]})
-           (diff? %{deps[0]} %{deps[0]}.corrected)))))
+           (run %{exe:expect_test.exe} %{first-dep})
+           (diff? %{first-dep} %{first-dep}.corrected)))))
 
 (alias
  (name runtest)
@@ -55,8 +55,8 @@
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{deps[0]})
-           (diff? %{deps[0]} %{deps[0]}.corrected)))))
+           (run %{exe:expect_test.exe} %{first-dep})
+           (diff? %{first-dep} %{first-dep}.corrected)))))
 
 (alias
  (name runtest)
@@ -65,8 +65,8 @@
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{deps[0]})
-           (diff? %{deps[0]} %{deps[0]}.corrected)))))
+           (run %{exe:expect_test.exe} %{first-dep})
+           (diff? %{first-dep} %{first-dep}.corrected)))))
 
 (alias
  (name runtest)
@@ -75,8 +75,8 @@
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{deps[0]})
-           (diff? %{deps[0]} %{deps[0]}.corrected)))))
+           (run %{exe:expect_test.exe} %{first-dep})
+           (diff? %{first-dep} %{first-dep}.corrected)))))
 
 (alias
  (name runtest)
@@ -85,5 +85,5 @@
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{deps[0]})
-           (diff? %{deps[0]} %{deps[0]}.corrected)))))
+           (run %{exe:expect_test.exe} %{first-dep})
+           (diff? %{first-dep} %{first-dep}.corrected)))))

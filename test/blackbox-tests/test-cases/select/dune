@@ -11,4 +11,4 @@
 (alias
  (name runtest)
  (deps main.exe)
- (action (run %{deps[0]})))
+ (action (run %{first-dep})))

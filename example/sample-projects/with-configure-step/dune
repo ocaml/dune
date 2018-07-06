@@ -2,7 +2,7 @@
  ((fallback)
   (targets (config))
   (deps    (config.defaults))
-  (action  (copy %{deps[0]} %{targets}))))
+  (action  (copy %{first-dep} %{targets}))))
 
 (rule
  ((targets (config.full))

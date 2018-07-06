@@ -8,18 +8,18 @@
   (lint
    (per_module
     ((pps (reasonppx (-lint true))) (hello cppome))
-    ((action (run ./pp/reasononlypp.exe -lint %{deps[0]})) (foo bar pped))))
+    ((action (run ./pp/reasononlypp.exe -lint %{first-dep})) (foo bar pped))))
   (preprocess
    (per_module
     ((pps (reasonppx)) (foo))
     ((pps (reasonppx (-lint false))) (hello))
-    ((action (run ./pp/reasononlypp.exe %{deps[0]})) (cppome))))))
+    ((action (run ./pp/reasononlypp.exe %{first-dep})) (cppome))))))
 
 (executable
  ((name rbin)
   (modules rbin)
-  (lint (action (run ./pp/reasononlypp.exe -lint %{deps[0]})))
-  (preprocess (action (run ./pp/reasononlypp.exe %{deps[0]})))
+  (lint (action (run ./pp/reasononlypp.exe -lint %{first-dep})))
+  (preprocess (action (run ./pp/reasononlypp.exe %{first-dep})))
   (libraries (rlib))))
 
 ;; we want to make sure that .rei files are present
@@ -31,4 +31,4 @@
 (alias
  ((name runtest)
   (deps (rbin.exe))
-  (action (run %{deps[0]}))))
+  (action (run %{first-dep}))))

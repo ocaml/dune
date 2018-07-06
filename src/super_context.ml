@@ -807,20 +807,23 @@ module Action = struct
       match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
-        let dep i =
-          match List.nth deps_written_by_user i with
-          | None ->
-            Loc.warn loc "Variable '%s' used with no explicit \
-                          dependencies@." key;
-            [Value.String ""]
-          | Some v -> [Path v]
+        let first_dep () =
+          Some (
+            match deps_written_by_user with
+            | [] ->
+              Loc.warn loc "Variable '%s' used with no explicit \
+                            dependencies@." key;
+              [Value.String ""]
+            | v :: _  -> [Path v]
+          )
         in
         match key with
         | "<" ->
           if syntax_version < (1, 0) then
-            Some (dep 0)
+            first_dep ()
           else
-            Loc.fail loc "Variable '<' is renamed to 'deps[0]' in dune"
+            Loc.fail loc "Variable '<' is renamed to 'first-dep' in dune"
+        | "first-dep" when syntax_version >= (1, 0) -> first_dep ()
         | "^" ->
           if syntax_version < (1, 0) then
             Some (Value.L.paths deps_written_by_user)
@@ -828,11 +831,7 @@ module Action = struct
             Loc.fail loc "Variable %%{^} has been renamed to %%{deps}"
         | "deps" when syntax_version >= (1, 0) ->
           Some (Value.L.paths deps_written_by_user)
-        | _ ->
-          if syntax_version < (1, 0) then
-            None
-          else
-            Option.map (Dune_vars.deps key) ~f:dep)
+        | _ -> None)
 
   let run sctx ~loc ?(extra_vars=String.Map.empty)
         t ~dir ~dep_kind ~targets:targets_written_by_user ~scope

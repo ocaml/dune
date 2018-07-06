@@ -163,6 +163,9 @@ module Of_sexp : sig
   (** Consume and ignore the next element of the input *)
   val junk : unit t
 
+  (** Ignore all the rest of the input *)
+  val junk_everything : (unit, _) parser
+
   (** [plain_string f] expects the next element of the input to be a
       plain string, i.e. either an atom or a quoted string, but not a
       template nor a list. *)

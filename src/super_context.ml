@@ -104,7 +104,6 @@ let (expand_vars, expand_vars_path) =
   let expand t ~scope ~dir ?(extra_vars=String.Map.empty) s =
     String_with_vars.expand ~mode:Single ~dir s ~f:(fun v syntax_version ->
       match String_with_vars.Var.full_name v with
-      | "ROOT" -> Some [Value.Path t.context.build_dir]
       | "SCOPE_ROOT" ->
         if syntax_version >= (1, 0) then
           Loc.fail (String_with_vars.Var.loc v)
@@ -320,6 +319,7 @@ let create
       ; "ocamlopt"       , path ocamlopt
       ; "arch_sixtyfour" , string (string_of_bool context.arch_sixtyfour)
       ; "make"           , make
+      ; "root"           , [Value.Dir context.build_dir]
       ] in
     let vars =
       lowercased
@@ -787,7 +787,6 @@ module Action = struct
         let var_name = String_with_vars.Var.full_name var in
         let loc = String_with_vars.Var.loc var in
         match var_name with
-        | "ROOT" -> Some (path_exp sctx.context.build_dir)
         | "SCOPE_ROOT" ->
           if syntax_version >= (1, 0) then
             Loc.fail loc

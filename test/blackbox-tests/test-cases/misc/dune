@@ -1,17 +1,17 @@
-;; Test for %{^} with globs in rules
+;; Test for %{deps} with globs in rules
 
 (rule
  (targets result expected)
  (deps    dune (glob_files *.txt))
  (action  (progn
-           (with-stdout-to result   (echo %{^}))
+           (with-stdout-to result   (echo %{deps}))
            (with-stdout-to expected (echo "dune a.txt b.txt c.txt")))))
 
 (rule
  (targets result2 expected2)
  (deps    (source_tree sub-tree))
  (action  (progn
-           (with-stdout-to result2   (echo %{^}))
+           (with-stdout-to result2   (echo %{deps}))
            (with-stdout-to expected2 (echo "sub-tree/a sub-tree/dir/b")))))
 
 (alias
@@ -31,7 +31,7 @@
 (alias
  (name   runtest)
  (deps   dune dune-plop)
- (action (run diff -u %{^})))
+ (action (run diff -u %{deps})))
 
 ;; For some tests in subdirs
 

@@ -801,7 +801,7 @@ module Action = struct
     (t, acc)
 
   let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
-    U.Partial.expand t ~dir ~map_exe ~f:(fun var _syntax_version ->
+    U.Partial.expand t ~dir ~map_exe ~f:(fun var syntax_version ->
       let key = String_with_vars.Var.full_name var in
       let loc = String_with_vars.Var.loc var in
       match String.Map.find dynamic_expansions key with
@@ -817,7 +817,13 @@ module Action = struct
                [Value.String ""]
              | dep :: _ ->
                [Path dep])
-        | "^" -> Some (Value.L.paths deps_written_by_user)
+        | "^" ->
+          if syntax_version < (1, 0) then
+            Some (Value.L.paths deps_written_by_user)
+          else
+            Loc.fail loc "Variable %%{^} has been renamed to %%{deps}"
+        | "deps" when syntax_version >= (1, 0) ->
+          Some (Value.L.paths deps_written_by_user)
         | _ -> None)
 
   let run sctx ~loc ?(extra_vars=String.Map.empty)

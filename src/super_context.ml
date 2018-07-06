@@ -775,7 +775,7 @@ module Action = struct
         | "project_root" when syntax_version >= (1, 0) ->
           Some (path_exp (Scope.root scope))
         | "@" ->
-          if syntax_version >= (1, 0) then
+          if syntax_version < (1, 0) then
             targets loc var_name
           else
             Loc.fail loc (* variable substitution to avoid ugly escaping *)

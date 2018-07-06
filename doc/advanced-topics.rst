@@ -134,12 +134,12 @@ be executed will come from the ``default`` context. One consequence of
 this is that all preprocessing (ppx or otherwise) will be done using
 binaries built in the ``default`` context.
 
-To clarify this with an example, let's assume that you have the
-following ``src/jbuild`` file:
+To clarify this with an example, let's assume that you have the following
+``src/dune`` file:
 
 .. code:: scheme
 
-    (executable ((name foo)))
+    (executable (name foo))
     (rule (with-stdout-to blah (run ./foo.exe)))
 
 When building ``_build/default/src/blah``, dune will resolve ``./foo.exe`` to
@@ -157,7 +157,7 @@ instance if the ``foo.exe`` program in the previous example was using
 
 .. code:: scheme
 
-  (rule (with-stdout-to blah (run ./foo.exe -os-type ${os_type})))
+  (rule (with-stdout-to blah (run ./foo.exe -os-type %{os_type})))
 
 Classical ppx
 =============

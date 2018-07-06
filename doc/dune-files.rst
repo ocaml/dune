@@ -240,6 +240,8 @@ Executables can also be linked as object or shared object files. See
         (section bin)
         (files (<name>.exe as <public-name>)))
 
+.. _shared-exe-fields:
+
 - ``(package <package>)`` if there is a ``(public_name ...)`` field, this
   specifies the package the executables are part of
 
@@ -548,6 +550,8 @@ The syntax is as follows:
 
 ``<name>`` is an alias name such as ``runtest``.
 
+.. _alias-fields:
+
 ``<deps-conf list>`` specifies the dependencies of the alias. See the
 `Dependency specification`_ section for more details.
 
@@ -697,6 +701,45 @@ With this dune file, running dune as follow will replace the
 .. code:: shell
 
     $ dune build @runtest --auto-promote
+
+.. _tests-stanza:
+
+tests
+-----
+
+The ``tests`` stanza allows one to easily define multiple tests. For example we
+can define two tests at once with:
+
+.. code:: scheme
+
+   (tests
+    (names mytest expect_test)
+    <optional fields>)
+
+This will define an executable named ``mytest.exe`` that will be executed as
+part of the ``runtest`` alias. If the directory also contains an
+``expect_test.expected`` file, then ``expect_test`` will be used to define an
+expect test. That is, the test will be executed and its output will be compared
+to ``expect_test.expected``.
+
+The optional fields that are supported are a subset of the alias and executables
+fields. In particular, all fields except for ``public_names`` are supported from
+the `executables stanza <shared-exe-fields>`_. Alias fields apart from ``name``
+and ``action`` are allowed.
+
+test
+----
+
+The ``test`` stanza is the singular form of ``tests``. The only difference is
+that it's of the form:
+
+.. code:: scheme
+
+   (test
+    (name foo)
+    <optional fields>)
+
+where the ``name`` field is singular. The same optional fields are supported.
 
 .. _dune-env:
 

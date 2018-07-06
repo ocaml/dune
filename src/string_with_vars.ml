@@ -7,6 +7,15 @@ type t =
   ; syntax_version : Syntax.Version.t
   }
 
+let make_text ?(quoted=false) loc s =
+  { template =
+      { parts = [Text s]
+      ; quoted
+      ; loc
+      }
+  ; syntax_version = (1, 0)
+  }
+
 let literal ~quoted ~loc s =
   { parts = [Text s]
   ; quoted

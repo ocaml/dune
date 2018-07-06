@@ -345,6 +345,15 @@ module Env : sig
     }
 end
 
+module Tests : sig
+  type t =
+    { exes    : Executables.t
+    ; locks   : String_with_vars.t list
+    ; package : Package.t option
+    ; deps    : Dep_conf.t list
+    }
+end
+
 type Stanza.t +=
   | Library     of Library.t
   | Executables of Executables.t
@@ -354,6 +363,7 @@ type Stanza.t +=
   | Copy_files  of Copy_files.t
   | Documentation of Documentation.t
   | Env         of Env.t
+  | Tests       of Tests.t
 
 module Stanzas : sig
   type t = Stanza.t list

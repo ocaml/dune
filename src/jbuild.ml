@@ -1352,6 +1352,43 @@ module Alias_conf = struct
          })
 end
 
+module Tests = struct
+  type t =
+    { exes    : Executables.t
+    ; locks   : String_with_vars.t list
+    ; package : Package.t option
+    ; deps    : Dep_conf.t list
+    }
+
+  let gen_parse names =
+    record
+      (Buildable.t                                         >>= fun buildable ->
+       field_oslu "link_flags"                             >>= fun link_flags ->
+       names                                               >>= fun names ->
+       field "deps" (list Dep_conf.t) ~default:[]          >>= fun deps ->
+       field_o "package" Pkg.t                             >>= fun package ->
+       field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
+       field "modes" Executables.Link_mode.Set.t
+         ~default:Executables.Link_mode.Set.default >>= fun modes ->
+       return
+         { exes =
+             { Executables.
+               link_flags
+             ; link_deps = []
+             ; modes
+             ; buildable
+             ; names
+             }
+         ; locks
+         ; package
+         ; deps
+         })
+
+  let multi = gen_parse (field "names" (list (located string)))
+
+  let single = gen_parse (field "name" (located string) >>| List.singleton)
+end
+
 module Copy_files = struct
   type t = { add_line_directive : bool
            ; glob : String_with_vars.t
@@ -1426,6 +1463,7 @@ type Stanza.t +=
   | Copy_files  of Copy_files.t
   | Documentation of Documentation.t
   | Env         of Env.t
+  | Tests       of Tests.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -1483,6 +1521,12 @@ module Stanzas = struct
     ; "jbuild_version",
       (Syntax.deleted_in Stanza.syntax (1, 0) >>= fun () ->
        Jbuild_version.t >>| fun _ -> [])
+    ; "tests",
+      (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
+       (Tests.multi >>| fun t -> [Tests t]))
+    ; "test",
+      (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
+       (Tests.single >>| fun t -> [Tests t]))
     ; "env",
       (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
        loc >>= fun loc ->

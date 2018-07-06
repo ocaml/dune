@@ -953,6 +953,67 @@ module Gen(P : Install_rules.Params) = struct
            ~targets:Alias
            ~scope)
 
+  let tests_rules (t : Tests.t) ~dir ~scope ~all_modules ~modules_partitioner
+        ~dir_kind ~src_dir =
+    let test_kind (loc, name) =
+      let sources = SC.source_files sctx ~src_path:src_dir in
+      let expected_basename = name ^ ".expected" in
+      if String.Set.mem sources expected_basename then
+        `Expect
+          { Action.Unexpanded.Diff.
+            file1 = String_with_vars.make_text loc expected_basename
+          ; file2 = String_with_vars.make_text loc (name ^ ".output")
+          ; optional = false
+          ; mode = Text
+          }
+      else
+        `Regular
+    in
+    let regular_rule run_action alias loc =
+      { alias with Alias_conf.action = Some (loc, run_action) }
+    in
+    let expect_rule run_action (diff : Action.Unexpanded.Diff.t) alias loc =
+      let rule =
+        { Rule.
+          targets = Infer
+        ; deps = []
+        ; action =
+            (loc, Action.Unexpanded.Redirect (Stdout, diff.file2, run_action))
+        ; mode = Standard
+        ; locks = t.locks
+        ; loc
+        } in
+      let alias =
+        { alias with
+          Alias_conf.
+          action = Some (loc, Diff diff)
+        ; locks = t.locks
+        } in
+      (alias, rule)
+    in
+    List.iter t.exes.names ~f:(fun (loc, s) ->
+      let run_action =
+        Action.Unexpanded.Run
+          (String_with_vars.make_text loc ("./" ^ s ^ ".exe"), []) in
+      let base_alias =
+        { Alias_conf.
+          name = "runtest"
+        ; locks = []
+        ; package = t.package
+        ; deps = t.deps
+        ; action = None
+        } in
+      match test_kind (loc, s) with
+      | `Regular ->
+        alias_rules ~dir ~scope (regular_rule run_action base_alias loc)
+      | `Expect diff ->
+        let (alias, rule) =
+          expect_rule run_action diff base_alias loc in
+        alias_rules ~dir ~scope alias;
+        ignore (user_rule ~dir ~scope rule : Path.t list));
+    executables_rules t.exes ~dir ~all_modules ~scope ~dir_kind
+      ~modules_partitioner
+
   (* +-----------------------------------------------------------------+
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
@@ -975,6 +1036,9 @@ module Gen(P : Install_rules.Params) = struct
         | Alias alias ->
           alias_rules alias ~dir ~scope;
           None
+        | Tests tests ->
+          Some (tests_rules tests ~dir ~scope ~all_modules ~src_dir
+                  ~modules_partitioner ~dir_kind:kind)
         | Copy_files { glob; _ } ->
           let src_dir =
             let loc = String_with_vars.loc glob in
@@ -1011,7 +1075,7 @@ module Gen(P : Install_rules.Params) = struct
       | _ -> ());
     Modules_partitioner.emit_errors modules_partitioner
 
-     let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
+  let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
     (match components with
      | ".js"  :: rest -> Js_of_ocaml_rules.setup_separate_compilation_rules
                            sctx rest

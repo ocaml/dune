@@ -1,0 +1,7 @@
+(tests
+ (names expect_test regular_test)
+ (modules :standard \ singular))
+
+(test
+ (name singular)
+ (modules singular))

@@ -95,7 +95,8 @@ let expand_var_no_root t loc syntax_version var =
       if syntax_version < (1, 0) then
         v
       else
-        Loc.fail loc "Uppercase variables are removed in dune files. Use: %%{%s}"
+        Loc.fail loc "Uppercase variables are removed in dune files.@.\
+                      Hint: Did you mean %%{%s} instead?"
           (String.lowercase var)
     end
 

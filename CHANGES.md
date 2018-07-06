@@ -114,7 +114,7 @@ next
 
 - Remove `path-no-dep:file` (#948, @emillon)
 
-- Adapt the behavior of `dune subst` for dune projects (#..., @diml)
+- Adapt the behavior of `dune subst` for dune projects (#960, @diml)
 
 1.0+beta20 (10/04/2018)
 -----------------------

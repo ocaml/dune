@@ -208,6 +208,15 @@ module Var = struct
     match destruct t with
     | Single s -> s
     | Pair (k, v) -> k ^ ":" ^ v
+
+  let to_string = string_of_var
+
+  let fail v ~f = Loc.fail (loc v) "%s" (f (to_string v))
+
+  let sexp_of_t t = Sexp.atom (to_string t)
+
+  let rename t ~new_name =
+    { t with name = new_name }
 end
 
 let partial_expand

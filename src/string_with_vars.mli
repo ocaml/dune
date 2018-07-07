@@ -49,6 +49,8 @@ end
 module Var : sig
   type t
 
+  val sexp_of_t : t -> Sexp.t
+
   val loc : t -> Loc.t
   val full_name : t -> string
 
@@ -57,6 +59,12 @@ module Var : sig
     | Pair of string * string
 
   val destruct : t -> kind
+
+  val fail : t -> f:(string -> string) -> _
+
+  val to_string : t -> string
+
+  val rename : t -> new_name:string -> t
 end
 
 val expand

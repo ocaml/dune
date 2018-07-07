@@ -34,31 +34,6 @@ module Env_node = struct
 end
 
 module Var = struct
-  module Opt = struct
-    type with_value
-    type no_value
-
-    type (_, _) t =
-      | None0 :       (no_value  , _) t
-      | Some0 : 'a -> (with_value, 'a) t
-
-    let some
-      : 'a. (with_value, 'a) t -> 'a option
-      = fun (Some0 x) -> Some x
-
-    let discard
-      : (no_value, _) t -> unit
-      = fun None0 -> ()
-  end
-
-  module Info = struct
-    type _ t =
-      | Nothing    :                              Opt.with_value t
-      | Since      : Syntax.Version.t          -> Opt.with_value t
-      | Deleted_in : Syntax.Version.t          -> Opt.with_value t
-      | Renamed_in : Syntax.Version.t * string -> Opt.no_value   t
-  end
-
   module Kind = struct
     type t =
       | Values of Value.t list
@@ -90,35 +65,19 @@ module Var = struct
       | Path_no_dep
   end
 
-  type ('a, 'b) t' =
-    { kind: ('a, 'b) Opt.t
-    ; info: 'a Info.t
-    }
-
-  type _ t = V : ('a, 'b) t' -> 'b t
+  type 'a t =
+    | Nothing    of 'a
+    | Since      of 'a * Syntax.Version.t
+    | Deleted_in of 'a * Syntax.Version.t
+    | Renamed_in of Syntax.Version.t * string
 
   module Map = struct
     type nonrec 'a t = 'a t String.Map.t
 
-    let values v =
-      V { kind = Some0 (Kind.Values v)
-        ; info = Info.Nothing
-        }
-
-    let renamed_in ~new_name ~version =
-      V { kind = None0
-        ; info = Info.Renamed_in (version, new_name)
-        }
-
-    let deleted_in ~version kind =
-      V { kind = Some0 kind
-        ; info = Info.Deleted_in version
-        }
-
-    let since ~version v =
-      V { kind = Some0 v
-        ; info = Info.Since version
-        }
+    let values v                      = Nothing (Kind.Values v)
+    let renamed_in ~new_name ~version = Renamed_in (version, new_name)
+    let deleted_in ~version kind      = Deleted_in (kind, version)
+    let since ~version v              = Since (v, version)
 
     let static_vars =
       [ "first-dep", since ~version:(1, 0) Kind.First_dep
@@ -133,11 +92,7 @@ module Var = struct
       ]
 
     let forms =
-      let form kind =
-        V { info = Info.Nothing
-          ; kind = Some0 kind
-          }
-      in
+      let form kind = Nothing kind in
       let open Form in
       [ "exe", form Exe
       ; "bin", form Bin
@@ -231,12 +186,11 @@ module Var = struct
         | Single v -> v
         | Pair (v, _) -> v
       in
-      let f (V { kind; info}) =
-        match info with
-        | Info.Nothing -> Opt.some kind
-        | Info.Since min_version ->
+      Option.bind (String.Map.find t name) ~f:(function
+        | Nothing v -> Some v
+        | Since (v, min_version) ->
           if syntax_version >= min_version then
-            Opt.some kind
+            Some v
           else
             String_with_vars.Var.fail var ~f:(fun var ->
               sprintf "Variable %s is available in since version %s. \
@@ -244,8 +198,7 @@ module Var = struct
                 var
                 (Syntax.Version.to_string min_version)
                 (Syntax.Version.to_string syntax_version))
-        | Info.Renamed_in (in_version, new_name) -> begin
-            Opt.discard kind;
+        | Renamed_in (in_version, new_name) -> begin
             if syntax_version >= in_version then
               String_with_vars.Var.fail var ~f:(fun old_name ->
                 sprintf "Variable %s has been renamed to %s since %s"
@@ -256,18 +209,16 @@ module Var = struct
               expand t ~syntax_version:in_version
                 ~var:(String_with_vars.Var.rename var ~new_name)
           end
-        | Info.Deleted_in in_version ->
+        | Deleted_in (v, in_version) ->
           if syntax_version < in_version then
-            Opt.some kind
+            Some v
           else
             String_with_vars.Var.fail var ~f:(fun var ->
               sprintf "Variable %s has been deleted in version %s. \
                        Current version is: %s"
                 var
                 (Syntax.Version.to_string in_version)
-                (Syntax.Version.to_string syntax_version))
-      in
-      Option.bind (String.Map.find t name) ~f
+                (Syntax.Version.to_string syntax_version)))
   end
 end
 

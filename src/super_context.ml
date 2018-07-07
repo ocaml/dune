@@ -274,11 +274,11 @@ let installed_libs t = t.installed_libs
 let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
-let expand_var_no_root t ~syntax_version ~var : Var.Kind.t option =
+let expand_vars t ~syntax_version ~var : Var.Kind.t option =
   begin match String_with_vars.Var.destruct var with
   | Single _ -> ()
   | Pair (_, _) ->
-    Exn.code_error "expand_var_no_root can't expand forms"
+    Exn.code_error "expand_vars can't expand forms"
       [ "var", String_with_vars.Var.sexp_of_t var
       ]
   end;
@@ -288,16 +288,16 @@ let expand_form t ~syntax_version ~var =
   begin match String_with_vars.Var.destruct var with
   | Pair (_, _) -> ()
   | Single _ ->
-    Exn.code_error "expand_var_no_root can't expand single variables"
+    Exn.code_error "expand_vars can't expand single variables"
       [ "var", String_with_vars.Var.sexp_of_t var
       ]
   end;
   Var.Map.expand t.forms ~syntax_version ~var
 
-let (expand_vars, expand_vars_path) =
+let (expand_vars_string, expand_vars_path) =
   let expand t ~scope ~dir ?(extra_vars=String.Map.empty) s =
     String_with_vars.expand ~mode:Single ~dir s ~f:(fun var syntax_version ->
-      match expand_var_no_root t ~syntax_version ~var with
+      match expand_vars t ~syntax_version ~var with
       | None ->
         String.Map.find extra_vars (String_with_vars.Var.full_name var)
       | Some v ->
@@ -320,7 +320,7 @@ let (expand_vars, expand_vars_path) =
 
 let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
   let open Build.O in
-  let f = expand_vars t ~scope ~dir ?extra_vars in
+  let f = expand_vars_string t ~scope ~dir ?extra_vars in
   let parse ~loc:_ s = s in
   let (syntax, files) = Ordered_set_lang.Unexpanded.files set ~f in
   match String.Set.to_list files with
@@ -648,7 +648,7 @@ module Deps = struct
 
   let make_alias t ~scope ~dir s =
     let loc = String_with_vars.loc s in
-    Alias.of_user_written_path ~loc ((expand_vars_path t ~scope ~dir s))
+    Alias.of_user_written_path ~loc (expand_vars_path t ~scope ~dir s)
 
   let dep t ~scope ~dir = function
     | File  s ->
@@ -678,7 +678,7 @@ module Deps = struct
       Build.source_tree ~dir:path ~file_tree:t.file_tree
       >>^ Path.Set.to_list
     | Package p ->
-      let pkg = Package.Name.of_string (expand_vars t ~scope ~dir p) in
+      let pkg = Package.Name.of_string (expand_vars_string t ~scope ~dir p) in
       Alias.dep (Alias.package_install ~context:t.context ~pkg)
       >>^ fun () -> []
     | Universe ->
@@ -897,7 +897,7 @@ module Action = struct
       let res =
         match String_with_vars.Var.destruct var with
         | Single var_name ->
-          begin match expand_var_no_root sctx ~syntax_version ~var with
+          begin match expand_vars sctx ~syntax_version ~var with
           | None -> String.Map.find extra_vars key
           | Some Targets -> targets loc var_name
           | Some v -> Var.Kind.to_value_no_deps_or_targets v ~scope

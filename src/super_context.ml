@@ -34,11 +34,29 @@ module Env_node = struct
 end
 
 module Var = struct
+  module Opt = struct
+    type with_value
+    type no_value
+
+    type (_, _) t =
+      | None0 :       (no_value  , _) t
+      | Some0 : 'a -> (with_value, 'a) t
+
+    let some
+      : 'a. (with_value, 'a) t -> 'a option
+      = fun (Some0 x) -> Some x
+
+    let discard
+      : (no_value, _) t -> unit
+      = fun None0 -> ()
+  end
+
   module Info = struct
-    type t =
-      | Since of Syntax.Version.t
-      | Renamed_in of Syntax.Version.t * string
-      | Deleted_in of Syntax.Version.t
+    type _ t =
+      | Nothing    :                              Opt.with_value t
+      | Since      : Syntax.Version.t          -> Opt.with_value t
+      | Deleted_in : Syntax.Version.t          -> Opt.with_value t
+      | Renamed_in : Syntax.Version.t * string -> Opt.no_value   t
   end
 
   module Kind = struct
@@ -72,33 +90,35 @@ module Var = struct
       | Path_no_dep
   end
 
-  type 'a t =
-    { kind: 'a option
-    ; info: Info.t option
+  type ('a, 'b) t' =
+    { kind: ('a, 'b) Opt.t
+    ; info: 'a Info.t
     }
+
+  type _ t = V : ('a, 'b) t' -> 'b t
 
   module Map = struct
     type nonrec 'a t = 'a t String.Map.t
 
     let values v =
-      { kind = Some (Kind.Values v)
-      ; info = None
-      }
+      V { kind = Some0 (Kind.Values v)
+        ; info = Info.Nothing
+        }
 
     let renamed_in ~new_name ~version =
-      { kind = None
-      ; info = Some (Info.Renamed_in (version, new_name))
-      }
+      V { kind = None0
+        ; info = Info.Renamed_in (version, new_name)
+        }
 
     let deleted_in ~version kind =
-      { kind = Some kind
-      ; info = Some (Info.Deleted_in version)
-      }
+      V { kind = Some0 kind
+        ; info = Info.Deleted_in version
+        }
 
     let since ~version v =
-      { kind = Some v
-      ; info = Some (Info.Since version)
-      }
+      V { kind = Some0 v
+        ; info = Info.Since version
+        }
 
     let static_vars =
       [ "first-dep", since ~version:(1, 0) Kind.First_dep
@@ -114,9 +134,9 @@ module Var = struct
 
     let forms =
       let form kind =
-        { info = None
-        ; kind = Some kind
-        }
+        V { info = Info.Nothing
+          ; kind = Some0 kind
+          }
       in
       let open Form in
       [ "exe", form Exe
@@ -211,12 +231,12 @@ module Var = struct
         | Single v -> v
         | Pair (v, _) -> v
       in
-      Option.bind (String.Map.find t name) ~f:(fun {kind; info} ->
-        match info, kind with
-        | None, Some v -> Some v
-        | Some (Since min_version), Some v ->
+      let f (V { kind; info}) =
+        match info with
+        | Info.Nothing -> Opt.some kind
+        | Info.Since min_version ->
           if syntax_version >= min_version then
-            Some v
+            Opt.some kind
           else
             String_with_vars.Var.fail var ~f:(fun var ->
               sprintf "Variable %s is available in since version %s. \
@@ -224,32 +244,30 @@ module Var = struct
                 var
                 (Syntax.Version.to_string min_version)
                 (Syntax.Version.to_string syntax_version))
-        | Some (Renamed_in (in_version, new_name)), None ->
-          if syntax_version >= in_version then
-            String_with_vars.Var.fail var ~f:(fun old_name ->
-              sprintf "Variable %s has been renamed to %s since %s"
-                old_name
-                (String_with_vars.Var.(to_string (rename var ~new_name)))
-                (Syntax.Version.to_string in_version))
-          else
-            expand t ~syntax_version:in_version
-              ~var:(String_with_vars.Var.rename var ~new_name)
-        | Some (Deleted_in in_version), Some v ->
+        | Info.Renamed_in (in_version, new_name) -> begin
+            Opt.discard kind;
+            if syntax_version >= in_version then
+              String_with_vars.Var.fail var ~f:(fun old_name ->
+                sprintf "Variable %s has been renamed to %s since %s"
+                  old_name
+                  (String_with_vars.Var.(to_string (rename var ~new_name)))
+                  (Syntax.Version.to_string in_version))
+            else
+              expand t ~syntax_version:in_version
+                ~var:(String_with_vars.Var.rename var ~new_name)
+          end
+        | Info.Deleted_in in_version ->
           if syntax_version < in_version then
-            Some v
+            Opt.some kind
           else
             String_with_vars.Var.fail var ~f:(fun var ->
               sprintf "Variable %s has been deleted in version %s. \
                        Current version is: %s"
                 var
                 (Syntax.Version.to_string in_version)
-                (Syntax.Version.to_string syntax_version)
-            )
-        | Some (Renamed_in _), Some _
-        | Some (Since _), None
-        | Some (Deleted_in _), None
-        | None, None -> assert false
-      )
+                (Syntax.Version.to_string syntax_version))
+      in
+      Option.bind (String.Map.find t name) ~f
   end
 end
 

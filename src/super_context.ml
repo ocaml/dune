@@ -334,8 +334,8 @@ let (expand_vars, expand_vars_path) =
         begin match Var.Kind.to_value_no_deps_or_targets ~scope v with
         | Some _ as v -> v
         | None ->
-          String_with_vars.Var.fail var ~f:(fun var ->
-            sprintf "Variable %s is not allowed in this context" var)
+          String_with_vars.Var.fail var
+            ~f:(sprintf "Variable %s is not allowed in this context")
         end)
   in
   let expand_vars t ~scope ~dir ?extra_vars s =
@@ -816,17 +816,33 @@ module Action = struct
       ; ddeps     = String.Map.empty
       }
     in
+    let targets loc name =
+      let var =
+        match name with
+        | "@" -> sprintf "${%s}" name
+        | "targets" -> sprintf "%%{%s}" name
+        | _ -> assert false
+      in
+      match targets_written_by_user with
+      | Infer -> Loc.fail loc "You cannot use %s with inferred rules." var
+      | Alias -> Loc.fail loc "You cannot use %s in aliases." var
+      | Static l -> Some (Value.L.paths l)
+    in
     let expand var syntax_version =
       let loc = String_with_vars.Var.loc var in
       let key = String_with_vars.Var.full_name var in
-      let path_with_dep s =
-        Some (path_exp (Path.relative dir s) )
-      in
+      let path_with_dep s = Some (path_exp (Path.relative dir s)) in
       match String_with_vars.Var.destruct var with
-      | Single _ ->
+      | Single var_name ->
         begin match expand_var_no_root sctx ~syntax_version ~var with
-        | Some x -> Var.Kind.to_value_no_deps_or_targets x ~scope
         | None -> String.Map.find extra_vars key
+        | Some Targets -> targets loc var_name
+        | Some v ->
+          let exp = Var.Kind.to_value_no_deps_or_targets ~scope v in
+          Option.iter exp ~f:(fun v ->
+            acc.sdeps <- Path.Set.union
+                           (Path.Set.of_list (Value.L.deps_only v)) acc.sdeps);
+          exp
         end
       | Pair (_, s)->
         begin match expand_form sctx ~syntax_version ~var with
@@ -916,60 +932,10 @@ module Action = struct
           end
         | Some Path_no_dep -> Some [Value.Dir (Path.relative dir s)]
         | None ->
-          String_with_vars.Var.fail var ~f:(fun var ->
-            sprintf "Unknown form: %s" var)
+          String_with_vars.Var.fail var ~f:(sprintf "Unknown form: %s")
         end
     in
-    let targets loc name =
-      let var =
-        match name with
-        | "@" -> sprintf "${%s}" name
-        | "targets" -> sprintf "%%{%s}" name
-        | _ -> assert false
-      in
-      match targets_written_by_user with
-      | Infer -> Loc.fail loc "You cannot use %s with inferred rules." var
-      | Alias -> Loc.fail loc "You cannot use %s in aliases." var
-      | Static l -> Some (Value.L.paths l)
-    in
-    let t =
-      U.partial_expand t ~dir ~map_exe ~f:(fun var syntax_version ->
-        let var_name = String_with_vars.Var.full_name var in
-        let loc = String_with_vars.Var.loc var in
-        match var_name with
-        | "SCOPE_ROOT" ->
-          if syntax_version >= (1, 0) then
-            Loc.fail loc
-              "Variable %%{SCOPE_ROOT} has been renamed to %%{project_root} \
-               in dune files"
-          else
-            Some (path_exp (Scope.root scope))
-        | "project_root" when syntax_version >= (1, 0) ->
-          Some (path_exp (Scope.root scope))
-        | "@" ->
-          if syntax_version < (1, 0) then
-            targets loc var_name
-          else
-            Loc.fail loc (* variable substitution to avoid ugly escaping *)
-              "Variable %s has been renamed to %%{targets} in dune files" "%{@}"
-        | "targets" when syntax_version >= (1, 0) -> targets loc var_name
-        | _ ->
-          match String_with_vars.Var.destruct var with
-          | Pair ("path-no-dep", s) ->
-            if syntax_version < (1, 0) then
-              Some (path_exp (Path.relative dir s))
-            else
-              Loc.fail
-                loc
-                "The ${path-no-dep:...} syntax has been removed from dune."
-          | _ ->
-            let exp = expand var syntax_version in
-            Option.iter exp ~f:(fun vs ->
-              acc.sdeps <- Path.Set.union (Path.Set.of_list
-                                             (Value.L.deps_only vs)) acc.sdeps;
-            );
-            exp)
-    in
+    let t = U.partial_expand t ~dir ~map_exe ~f:expand in
     (t, acc)
 
   let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =

@@ -20,7 +20,7 @@ This form does not exist, but displays an hint:
   $ dune build --root dune-invalid @test-path-no-dep
   Entering directory 'dune-invalid'
   File "dune", line 7, characters 17-54:
-  Error: The ${path-no-dep:...} syntax has been removed from dune.
+  Error: Variable %{path-no-dep:file-that-does-not-exist} has been deleted in version 1.0. Current version is: 1.0
   [1]
 
 jbuild files

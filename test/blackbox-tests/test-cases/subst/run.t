@@ -1,3 +1,4 @@
+  $ sed 's/%_%/%%/g' file.ml.in > file.ml
   $ git init &> /dev/null
   $ git add . &> /dev/null
   $ git commit -am _ &> /dev/null
@@ -7,7 +8,3 @@
   let name = "foo"
   let authors = "John Doe <john@doe.com>"
   let version = "1.0"
-
-To avoid the issue exposed in ../action-modifying-a-dependency:
-
-  $ git reset --hard &> /dev/null

@@ -16,6 +16,8 @@ let compare a b = Ordering.of_int (String.compare a b)
 module T = struct
   type t = StringLabels.t
   let compare = compare
+  let equal (x : t) (y : t) = x = y
+  let hash (s : t) = Hashtbl.hash s
 end
 
 let capitalize   = capitalize_ascii
@@ -201,6 +203,7 @@ let maybe_quoted s =
 
 module Set = Set.Make(T)
 module Map = Map.Make(T)
+module Table = Hashtbl.Make(T)
 
 let enumerate_gen s =
   let s = " " ^ s ^ " " in

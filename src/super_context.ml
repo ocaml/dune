@@ -122,7 +122,7 @@ end = struct
     | Renamed_in of Syntax.Version.t * string
 
   module Map = struct
-    type nonrec 'a t = 'a t String.Map.t
+    type nonrec 'a t = 'a t String.Table.t
 
     let values v                      = Nothing (Kind.Values v)
     let renamed_in ~new_name ~version = Renamed_in (version, new_name)
@@ -161,7 +161,7 @@ end = struct
 
       ; "path-no-dep", deleted_in ~version:(1, 0) Path_no_dep
       ]
-      |> String.Map.of_list_exn
+      |> String.Table.of_list_exn
 
     let create_vars ~(context : Context.t) ~cxx_flags =
       let ocamlopt =
@@ -226,9 +226,9 @@ end = struct
       ; vars
       ]
       |> List.concat
-      |> String.Map.of_list_exn
+      |> String.Table.of_list_exn
 
-    let static_vars = String.Map.of_list_exn static_vars
+    let static_vars = String.Table.of_list_exn static_vars
 
     let rec expand t ~syntax_version ~var =
       let name =
@@ -236,7 +236,7 @@ end = struct
         | Single v -> v
         | Pair (v, _) -> v
       in
-      Option.bind (String.Map.find t name) ~f:(function
+      Option.bind (String.Table.find t name) ~f:(function
         | Nothing v -> Some v
         | Since (v, min_version) ->
           if syntax_version >= min_version then

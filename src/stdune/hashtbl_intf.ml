@@ -8,4 +8,6 @@ module type S = sig
 
   val fold : 'a t -> init:'b -> f:('a -> 'b -> 'b) -> 'b
   val foldi : 'a t -> init:'b -> f:(key -> 'a -> 'b -> 'b) -> 'b
+
+  val of_list_exn : (key * 'a) list -> 'a t
 end

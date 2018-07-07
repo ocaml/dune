@@ -832,7 +832,6 @@ module Action = struct
     let expand var syntax_version =
       let loc = String_with_vars.Var.loc var in
       let key = String_with_vars.Var.full_name var in
-      let path_with_dep s = Some (path_exp (Path.relative dir s)) in
       match String_with_vars.Var.destruct var with
       | Single var_name ->
         begin match expand_var_no_root sctx ~syntax_version ~var with
@@ -848,7 +847,7 @@ module Action = struct
       | Pair (_, s)->
         begin match expand_form sctx ~syntax_version ~var with
         | Some Var.Form.Exe -> Some (path_exp (map_exe (Path.relative dir s)))
-        | Some Dep -> path_with_dep s
+        | Some Dep -> Some (path_exp (Path.relative dir s))
         | Some Bin -> begin
             let sctx = host sctx in
             match Artifacts.binary (artifacts sctx) s with

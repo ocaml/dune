@@ -33,7 +33,56 @@ module Env_node = struct
     }
 end
 
-module Var = struct
+module Var : sig
+  module Kind : sig
+    type t =
+      | Values of Value.t list
+      | Project_root
+      | First_dep
+      | Deps
+      | Targets
+
+    val to_value_no_deps_or_targets : t -> scope:Scope.t -> Value.t list option
+  end
+
+  module Form : sig
+    type t =
+      | Exe
+      | Dep
+      | Bin
+      | Lib
+      | Libexec
+      | Lib_available
+      | Version
+      | Read
+      | Read_strings
+      | Read_lines
+      | Path_no_dep
+  end
+
+  type 'a t =
+    | Nothing    of 'a
+    | Since      of 'a * Syntax.Version.t
+    | Deleted_in of 'a * Syntax.Version.t
+    | Renamed_in of Syntax.Version.t * string
+
+  module Map : sig
+    type 'a var
+    type 'a t
+
+    val create_vars : context:Context.t -> cxx_flags:string list -> Kind.t t
+
+    val forms : Form.t t
+
+    val static_vars : Kind.t t
+
+    val expand
+      :  'a t
+      -> syntax_version:Syntax.Version.t
+      -> var:String_with_vars.Var.t
+      -> 'a option
+  end with type 'a var := 'a t
+end = struct
   module Kind = struct
     type t =
       | Values of Value.t list
@@ -42,7 +91,8 @@ module Var = struct
       | Deps
       | Targets
 
-    let to_value_no_deps_or_targets ~scope = function
+    let to_value_no_deps_or_targets t ~scope =
+      match t with
       | Values v -> Some v
       | Project_root -> Some [Value.Dir (Scope.root scope)]
       | First_dep
@@ -648,7 +698,7 @@ module Deps = struct
 
   let make_alias t ~scope ~dir s =
     let loc = String_with_vars.loc s in
-    Alias.of_user_written_path ~loc (expand_vars_path t ~scope ~dir s)
+    Alias.of_user_written_path ~loc ((expand_vars_path t ~scope ~dir s))
 
   let dep t ~scope ~dir = function
     | File  s ->

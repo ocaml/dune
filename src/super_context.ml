@@ -203,6 +203,7 @@ module Var = struct
       |> List.concat
       |> String.Map.of_list_exn
 
+    let static_vars = String.Map.of_list_exn static_vars
 
     let rec expand t ~syntax_version ~var =
       let name =
@@ -945,32 +946,20 @@ module Action = struct
       match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
-        let first_dep () =
-          Some (
-            match deps_written_by_user with
+        Var.Map.expand Var.Map.static_vars ~syntax_version ~var
+        |> Option.map ~f:(function
+          | Var.Kind.Deps -> (Value.L.paths deps_written_by_user)
+          | First_dep ->
+            begin match deps_written_by_user with
             | [] ->
               Loc.warn loc "Variable '%s' used with no explicit \
                             dependencies@." key;
               [Value.String ""]
             | v :: _  -> [Path v]
-          )
-        in
-        match key with
-        | "<" ->
-          if syntax_version < (1, 0) then
-            first_dep ()
-          else
-            Loc.fail loc "Variable '<' is renamed to 'first-dep' in dune files"
-        | "first-dep" when syntax_version >= (1, 0) -> first_dep ()
-        | "^" ->
-          if syntax_version < (1, 0) then
-            Some (Value.L.paths deps_written_by_user)
-          else
-            Loc.fail loc
-              "Variable %%{^} has been renamed to %%{deps} in dune files"
-        | "deps" when syntax_version >= (1, 0) ->
-          Some (Value.L.paths deps_written_by_user)
-        | _ -> None)
+            end
+          | _ ->
+            Exn.code_error "Unexpected variable in step2"
+              ["var", String_with_vars.Var.sexp_of_t var]))
 
   let run sctx ~loc ?(extra_vars=String.Map.empty)
         t ~dir ~dep_kind ~targets:targets_written_by_user ~scope

@@ -8,7 +8,9 @@ In expands to a file name, and registers this as a dependency.
 
   $ dune build --root dune @test-dep
   Entering directory 'dune'
-  dynamic-contents
+  File "dune", line 13, characters 17-47:
+  Error: Variable %{path:file-that-does-not-exist} has been renamed to %{dep:file-that-does-not-exist} since 1.0
+  [1]
 
 %{path-no-dep:string}
 ---------------------
@@ -51,6 +53,5 @@ This form does not exist, but displays an hint:
   $ dune build --root jbuild-invalid @test-dep
   Entering directory 'jbuild-invalid'
   File "jbuild", line 5, characters 16-37:
-  Error: ${dep:generated-file} is not supported in jbuild files.
-  Hint: Did you mean ${path:generated-file} instead?
+  Error: Variable ${dep:generated-file} is available in since version 1.0. Current version is 0.0
   [1]

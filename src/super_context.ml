@@ -33,6 +33,225 @@ module Env_node = struct
     }
 end
 
+module Var = struct
+  module Info = struct
+    type t =
+      | Since of Syntax.Version.t
+      | Renamed_in of Syntax.Version.t * string
+      | Deleted_in of Syntax.Version.t
+  end
+
+  module Kind = struct
+    type t =
+      | Values of Value.t list
+      | Project_root
+      | First_dep
+      | Deps
+      | Targets
+
+    let to_value_no_deps_or_targets ~scope = function
+      | Values v -> Some v
+      | Project_root -> Some [Value.Dir (Scope.root scope)]
+      | First_dep
+      | Deps
+      | Targets -> None
+  end
+
+  module Form = struct
+    type t =
+      | Exe
+      | Dep
+      | Bin
+      | Lib
+      | Libexec
+      | Lib_available
+      | Version
+      | Read
+      | Read_strings
+      | Read_lines
+      | Path_no_dep
+  end
+
+  type 'a t =
+    { kind: 'a option
+    ; info: Info.t option
+    }
+
+  module Map = struct
+    type nonrec 'a t = 'a t String.Map.t
+
+    let values v =
+      { kind = Some (Kind.Values v)
+      ; info = None
+      }
+
+    let renamed_in ~new_name ~version =
+      { kind = None
+      ; info = Some (Info.Renamed_in (version, new_name))
+      }
+
+    let deleted_in ~version kind =
+      { kind = Some kind
+      ; info = Some (Info.Deleted_in version)
+      }
+
+    let since ~version v =
+      { kind = Some v
+      ; info = Some (Info.Since version)
+      }
+
+    let static_vars =
+      [ "first-dep", since ~version:(1, 0) Kind.First_dep
+      ; "targets", since ~version:(1, 0) Kind.Targets
+      ; "deps", since ~version:(1, 0) Kind.Deps
+      ; "project_root", since ~version:(1, 0) Kind.Project_root
+
+      ; "<", renamed_in ~version:(1, 0) ~new_name:"first-dep"
+      ; "@", renamed_in ~version:(1, 0) ~new_name:"targets"
+      ; "^", renamed_in ~version:(1, 0) ~new_name:"deps"
+      ; "SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root"
+      ]
+
+    let forms =
+      let form kind =
+        { info = None
+        ; kind = Some kind
+        }
+      in
+      let open Form in
+      [ "exe", form Exe
+      ; "bin", form Bin
+      ; "lib", form Lib
+      ; "libexec", form Libexec
+      ; "lib-available", form Lib_available
+      ; "version", form Version
+      ; "read", form Read
+      ; "read-lines", form Read_lines
+      ; "read-strings", form Read_strings
+
+      ; "dep", since ~version:(1, 0) Dep
+
+      ; "path", renamed_in ~version:(1, 0) ~new_name:"dep"
+      ; "findlib", renamed_in ~version:(1, 0) ~new_name:"lib"
+
+      ; "path-no-dep", deleted_in ~version:(1, 0) Path_no_dep
+      ]
+      |> String.Map.of_list_exn
+
+    let create_vars ~(context : Context.t) ~cxx_flags =
+      let ocamlopt =
+        match context.ocamlopt with
+        | None -> Path.relative context.ocaml_bin "ocamlopt"
+        | Some p -> p
+      in
+      let string s = values [Value.String s] in
+      let path p = values [Value.Path p] in
+      let make =
+        match Bin.make with
+        | None   -> string "make"
+        | Some p -> path p
+      in
+      let cflags = context.ocamlc_cflags in
+      let strings s = values (Value.L.strings s) in
+      let lowercased =
+        [ "cpp"            , strings (context.c_compiler :: cflags @ ["-E"])
+        ; "cc"             , strings (context.c_compiler :: cflags)
+        ; "cxx"            , strings (context.c_compiler :: cxx_flags)
+        ; "ocaml"          , path context.ocaml
+        ; "ocamlc"         , path context.ocamlc
+        ; "ocamlopt"       , path ocamlopt
+        ; "arch_sixtyfour" , string (string_of_bool context.arch_sixtyfour)
+        ; "make"           , make
+        ; "root"           , values [Value.Dir context.build_dir]
+        ] in
+      let uppercased =
+        List.map lowercased ~f:(fun (k, _) ->
+          (String.uppercase k, renamed_in ~new_name:k ~version:(1, 0))) in
+      let vars =
+        [ "-verbose"       , values []
+        ; "pa_cpp"         , strings (context.c_compiler :: cflags
+                                      @ ["-undef"; "-traditional";
+                                         "-x"; "c"; "-E"])
+        ; "ocaml_bin"      , path context.ocaml_bin
+        ; "ocaml_version"  , string context.version_string
+        ; "ocaml_where"    , string (Path.to_string context.stdlib_dir)
+        ; "null"           , string (Path.to_string Config.dev_null)
+        ; "ext_obj"        , string context.ext_obj
+        ; "ext_asm"        , string context.ext_asm
+        ; "ext_lib"        , string context.ext_lib
+        ; "ext_dll"        , string context.ext_dll
+        ; "ext_exe"        , string context.ext_exe
+        ; "profile"        , string context.profile
+        ]
+      in
+      let ocaml_config =
+        List.map (Ocaml_config.to_list context.ocaml_config) ~f:(fun (k, v) ->
+          ("ocaml-config:" ^ k,
+           match (v : Ocaml_config.Value.t) with
+           | Bool   x -> string (string_of_bool x)
+           | Int    x -> string (string_of_int x)
+           | String x -> string x
+           | Words  x -> strings x
+           | Prog_and_args x -> strings (x.prog :: x.args)))
+      in
+      [ ocaml_config
+      ; static_vars
+      ; lowercased
+      ; uppercased
+      ; vars
+      ]
+      |> List.concat
+      |> String.Map.of_list_exn
+
+
+    let rec expand t ~syntax_version ~var =
+      let name =
+        match String_with_vars.Var.destruct var with
+        | Single v -> v
+        | Pair (v, _) -> v
+      in
+      Option.bind (String.Map.find t name) ~f:(fun {kind; info} ->
+        match info, kind with
+        | None, Some v -> Some v
+        | Some (Since min_version), Some v ->
+          if syntax_version >= min_version then
+            Some v
+          else
+            String_with_vars.Var.fail var ~f:(fun var ->
+              sprintf "Variable %s is available in since version %s. \
+                       Current version is %s"
+                var
+                (Syntax.Version.to_string min_version)
+                (Syntax.Version.to_string syntax_version))
+        | Some (Renamed_in (in_version, new_name)), None ->
+          if syntax_version >= in_version then
+            String_with_vars.Var.fail var ~f:(fun old_name ->
+              sprintf "Variable %s has been renamed to %s since %s"
+                old_name
+                (String_with_vars.Var.(to_string (rename var ~new_name)))
+                (Syntax.Version.to_string in_version))
+          else
+            expand t ~syntax_version:in_version
+              ~var:(String_with_vars.Var.rename var ~new_name)
+        | Some (Deleted_in in_version), Some v ->
+          if syntax_version < in_version then
+            Some v
+          else
+            String_with_vars.Var.fail var ~f:(fun var ->
+              sprintf "Variable %s has been deleted in version %s. \
+                       Current version is: %s"
+                var
+                (Syntax.Version.to_string in_version)
+                (Syntax.Version.to_string syntax_version)
+            )
+        | Some (Renamed_in _), Some _
+        | Some (Since _), None
+        | Some (Deleted_in _), None
+        | None, None -> assert false
+      )
+  end
+end
+
 type t =
   { context                          : Context.t
   ; build_system                     : Build_system.t
@@ -45,8 +264,8 @@ type t =
   ; artifacts                        : Artifacts.t
   ; stanzas_to_consider_for_install  : Installable.t list
   ; cxx_flags                        : string list
-  ; vars                             : Value.t list String.Map.t
-  ; uppercase_vars                   : Value.t list String.Map.t
+  ; vars                             : Var.Kind.t Var.Map.t
+  ; forms                            : Var.Form.t Var.Map.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
@@ -85,40 +304,39 @@ let installed_libs t = t.installed_libs
 let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
-let expand_var_no_root t loc syntax_version var =
-  match String.Map.find t.vars var with
-  | Some _ as v -> v
-  | None ->
-    begin match String.Map.find t.uppercase_vars var with
-    | None -> None
-    | Some _ as v ->
-      if syntax_version < (1, 0) then
-        v
-      else
-        Loc.fail loc "Uppercase variables are removed in dune files.@.\
-                      Hint: Did you mean %%{%s} instead?"
-          (String.lowercase var)
-    end
+let expand_var_no_root t ~syntax_version ~var : Var.Kind.t option =
+  begin match String_with_vars.Var.destruct var with
+  | Single _ -> ()
+  | Pair (_, _) ->
+    Exn.code_error "expand_var_no_root can't expand forms"
+      [ "var", String_with_vars.Var.sexp_of_t var
+      ]
+  end;
+  Var.Map.expand t.vars ~syntax_version ~var
+
+let expand_form t ~syntax_version ~var =
+  begin match String_with_vars.Var.destruct var with
+  | Pair (_, _) -> ()
+  | Single _ ->
+    Exn.code_error "expand_var_no_root can't expand single variables"
+      [ "var", String_with_vars.Var.sexp_of_t var
+      ]
+  end;
+  Var.Map.expand t.forms ~syntax_version ~var
 
 let (expand_vars, expand_vars_path) =
   let expand t ~scope ~dir ?(extra_vars=String.Map.empty) s =
-    String_with_vars.expand ~mode:Single ~dir s ~f:(fun v syntax_version ->
-      match String_with_vars.Var.full_name v with
-      | "SCOPE_ROOT" ->
-        if syntax_version >= (1, 0) then
-          Loc.fail (String_with_vars.Var.loc v)
-            "Variable %%{SCOPE_ROOT} has been renamed to %%{project_root} \
-             in dune files"
-        else
-          Some [Value.Path (Scope.root scope)]
-      | "project_root" when syntax_version >= (1, 0) ->
-        Some [Value.Path (Scope.root scope)]
-      | var ->
-        (match
-           expand_var_no_root t (String_with_vars.Var.loc v) syntax_version var
-         with
-         | Some _ as x -> x
-         | None -> String.Map.find extra_vars var))
+    String_with_vars.expand ~mode:Single ~dir s ~f:(fun var syntax_version ->
+      match expand_var_no_root t ~syntax_version ~var with
+      | None ->
+        String.Map.find extra_vars (String_with_vars.Var.full_name var)
+      | Some v ->
+        begin match Var.Kind.to_value_no_deps_or_targets ~scope v with
+        | Some _ as v -> v
+        | None ->
+          String_with_vars.Var.fail var ~f:(fun var ->
+            sprintf "Variable %s is not allowed in this context" var)
+        end)
   in
   let expand_vars t ~scope ~dir ?extra_vars s =
     expand t ~scope ~dir ?extra_vars s
@@ -295,68 +513,7 @@ let create
     List.filter context.ocamlc_cflags
       ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
-  let (vars, uppercase_vars) =
-    let ocamlopt =
-      match context.ocamlopt with
-      | None -> Path.relative context.ocaml_bin "ocamlopt"
-      | Some p -> p
-    in
-    let string s = [Value.String s] in
-    let path p = [Value.Path p] in
-    let make =
-      match Bin.make with
-      | None   -> string "make"
-      | Some p -> path p
-    in
-    let cflags = context.ocamlc_cflags in
-    let strings = Value.L.strings in
-    let lowercased =
-      [ "cpp"            , strings (context.c_compiler :: cflags @ ["-E"])
-      ; "cc"             , strings (context.c_compiler :: cflags)
-      ; "cxx"            , strings (context.c_compiler :: cxx_flags)
-      ; "ocaml"          , path context.ocaml
-      ; "ocamlc"         , path context.ocamlc
-      ; "ocamlopt"       , path ocamlopt
-      ; "arch_sixtyfour" , string (string_of_bool context.arch_sixtyfour)
-      ; "make"           , make
-      ; "root"           , [Value.Dir context.build_dir]
-      ] in
-    let vars =
-      lowercased
-      @ [ "-verbose"       , []
-        ; "pa_cpp"         , strings (context.c_compiler :: cflags
-                                      @ ["-undef"; "-traditional";
-                                         "-x"; "c"; "-E"])
-        ; "ocaml_bin"      , path context.ocaml_bin
-        ; "ocaml_version"  , string context.version_string
-        ; "ocaml_where"    , string (Path.to_string context.stdlib_dir)
-        ; "null"           , string (Path.to_string Config.dev_null)
-        ; "ext_obj"        , string context.ext_obj
-        ; "ext_asm"        , string context.ext_asm
-        ; "ext_lib"        , string context.ext_lib
-        ; "ext_dll"        , string context.ext_dll
-        ; "ext_exe"        , string context.ext_exe
-        ; "profile"        , string context.profile
-        ]
-    in
-    let uppercase_vars =
-      lowercased
-      |> List.map ~f:(fun (k, v) -> (String.uppercase k, v))
-      |> String.Map.of_list_exn
-    in
-    let vars =
-      vars @
-      List.map (Ocaml_config.to_list context.ocaml_config) ~f:(fun (k, v) ->
-        ("ocaml-config:" ^ k,
-         match (v : Ocaml_config.Value.t) with
-         | Bool   x -> string (string_of_bool x)
-         | Int    x -> string (string_of_int x)
-         | String x -> string x
-         | Words  x -> strings x
-         | Prog_and_args x -> strings (x.prog :: x.args)))
-    in
-    (String.Map.of_list_exn vars, uppercase_vars)
-  in
+  let vars = Var.Map.create_vars ~context ~cxx_flags in
   let t =
     { context
     ; host
@@ -370,8 +527,8 @@ let create
     ; stanzas_to_consider_for_install
     ; artifacts
     ; cxx_flags
-    ; uppercase_vars
     ; vars
+    ; forms = Var.Map.forms
     ; chdir = Build.arr (fun (action : Action.t) ->
         match action with
         | Chdir _ -> action
@@ -666,90 +823,82 @@ module Action = struct
         Some (path_exp (Path.relative dir s) )
       in
       match String_with_vars.Var.destruct var with
-      | Pair ("exe", s) -> Some (path_exp (map_exe (Path.relative dir s)))
-      | Pair ("path", s) when syntax_version < (1, 0) ->
-        path_with_dep s
-      | Pair ("dep", s) when syntax_version >= (1, 0) ->
-        path_with_dep s
-      | Pair ("dep", s) ->
-        Loc.fail
-          loc
-          "${dep:%s} is not supported in jbuild files.\n\
-           Hint: Did you mean ${path:%s} instead?"
-          s
-          s
-      | Pair ("bin", s) -> begin
-          let sctx = host sctx in
-          match Artifacts.binary (artifacts sctx) s with
-          | Ok path -> Some (path_exp path)
-          | Error e ->
-            add_fail acc ({ fail = fun () -> Action.Prog.Not_found.raise e })
+      | Single _ ->
+        begin match expand_var_no_root sctx ~syntax_version ~var with
+        | Some x -> Var.Kind.to_value_no_deps_or_targets x ~scope
+        | None -> String.Map.find extra_vars key
         end
-      | Pair ("findlib", s) when syntax_version >= (1, 0) ->
-        Loc.fail
-          loc
-          "The findlib special variable is not supported in jbuild files, \
-           please use lib instead:\n%%{lib:%s} in dune files"
-          s
-      | Pair ("findlib", s)
-      | Pair ("lib", s) -> begin
-          let lib_dep, file = parse_lib_file ~loc s in
-          add_lib_dep acc lib_dep dep_kind;
-          match
-            Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
-          with
-          | Ok path -> Some (path_exp path)
-          | Error fail -> add_fail acc fail
-        end
-      | Pair ("libexec" , s) -> begin
-          let sctx = host sctx in
-          let lib_dep, file = parse_lib_file ~loc s in
-          add_lib_dep acc lib_dep dep_kind;
-          match
-            Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
-          with
-          | Error fail -> add_fail acc fail
-          | Ok path ->
-            if not Sys.win32 || Filename.extension s = ".exe" then begin
-              Some (path_exp path)
-            end else begin
-              let path_exe = Path.extend_basename path ~suffix:".exe" in
-              let dep =
-                Build.if_file_exists path_exe
-                  ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
-                  ~else_:(Build.path path     >>^ fun _ -> path_exp path)
+      | Pair (_, s)->
+        begin match expand_form sctx ~syntax_version ~var with
+        | Some Var.Form.Exe -> Some (path_exp (map_exe (Path.relative dir s)))
+        | Some Dep -> path_with_dep s
+        | Some Bin -> begin
+            let sctx = host sctx in
+            match Artifacts.binary (artifacts sctx) s with
+            | Ok path -> Some (path_exp path)
+            | Error e ->
+              add_fail acc ({ fail = fun () -> Action.Prog.Not_found.raise e })
+          end
+        | Some Lib -> begin
+            let lib_dep, file = parse_lib_file ~loc s in
+            add_lib_dep acc lib_dep dep_kind;
+            match
+              Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
+            with
+            | Ok path -> Some (path_exp path)
+            | Error fail -> add_fail acc fail
+          end
+        | Some Libexec -> begin
+            let sctx = host sctx in
+            let lib_dep, file = parse_lib_file ~loc s in
+            add_lib_dep acc lib_dep dep_kind;
+            match
+              Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
+            with
+            | Error fail -> add_fail acc fail
+            | Ok path ->
+              if not Sys.win32 || Filename.extension s = ".exe" then begin
+                Some (path_exp path)
+              end else begin
+                let path_exe = Path.extend_basename path ~suffix:".exe" in
+                let dep =
+                  Build.if_file_exists path_exe
+                    ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
+                    ~else_:(Build.path path     >>^ fun _ -> path_exp path)
+                in
+                add_ddep acc ~key dep
+              end
+          end
+        | Some Lib_available -> begin
+            let lib = s in
+            add_lib_dep acc lib Optional;
+            Some (str_exp (string_of_bool (
+              Lib.DB.available (Scope.libs scope) lib)))
+          end
+        | Some Version -> begin
+            match Package.Name.Map.find (Scope.project scope).packages
+                    (Package.Name.of_string s) with
+            | Some p ->
+              let x =
+                Pkg_version.read sctx p >>^ function
+                | None   -> [Value.String ""]
+                | Some s -> [String s]
               in
-              add_ddep acc ~key dep
-            end
-        end
-      | Pair ("lib-available", lib) ->
-        add_lib_dep acc lib Optional;
-        Some (str_exp (string_of_bool (
-          Lib.DB.available (Scope.libs scope) lib)))
-      | Pair ("version", s) -> begin
-          match Package.Name.Map.find (Scope.project scope).packages
-                  (Package.Name.of_string s) with
-          | Some p ->
-            let x =
-              Pkg_version.read sctx p >>^ function
-              | None   -> [Value.String ""]
-              | Some s -> [String s]
+              add_ddep acc ~key x
+            | None ->
+              add_fail acc { fail = fun () ->
+                Loc.fail loc "Package %S doesn't exist in the current project." s
+              }
+          end
+        | Some Read -> begin
+            let path = Path.relative dir s in
+            let data =
+              Build.contents path
+              >>^ fun s -> [Value.String s]
             in
-            add_ddep acc ~key x
-          | None ->
-            add_fail acc { fail = fun () ->
-              Loc.fail loc "Package %S doesn't exist in the current project." s
-            }
-        end
-      | Pair ("read", s) -> begin
-          let path = Path.relative dir s in
-          let data =
-            Build.contents path
-            >>^ fun s -> [Value.String s]
-          in
-          add_ddep acc ~key data
-        end
-      | Pair ("read-lines", s) -> begin
+            add_ddep acc ~key data
+          end
+        | Some Read_lines -> begin
           let path = Path.relative dir s in
           let data =
             Build.lines_of path
@@ -757,18 +906,19 @@ module Action = struct
           in
           add_ddep acc ~key data
         end
-      | Pair ("read-strings", s) -> begin
-          let path = Path.relative dir s in
-          let data =
-            Build.strings path
-            >>^ Value.L.strings
-          in
-          add_ddep acc ~key data
+        | Some Read_strings -> begin
+            let path = Path.relative dir s in
+            let data =
+              Build.strings path
+              >>^ Value.L.strings
+            in
+            add_ddep acc ~key data
+          end
+        | Some Path_no_dep -> Some [Value.Dir (Path.relative dir s)]
+        | None ->
+          String_with_vars.Var.fail var ~f:(fun var ->
+            sprintf "Unknown form: %s" var)
         end
-      | _ ->
-        match expand_var_no_root sctx loc syntax_version key with
-        | Some _ as x -> x
-        | None -> String.Map.find extra_vars key
     in
     let targets loc name =
       let var =

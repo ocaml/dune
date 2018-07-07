@@ -3,8 +3,7 @@ We are dropping support for findlib in dune
   $ dune build --root in-dune target.txt
   Entering directory 'in-dune'
   File "dune", line 2, characters 25-37:
-  Error: The findlib special variable is not supported in jbuild files, please use lib instead:
-  %{lib:pkg} in dune files
+  Error: Variable %{findlib:pkg} has been renamed to %{lib:pkg} since 1.0
   [1]
 
 But it must still be available in jbuild files

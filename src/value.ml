@@ -35,4 +35,6 @@ module L = struct
   let strings = List.map ~f:(fun x -> String x)
 
   let paths = List.map ~f:(fun x -> Path x)
+
+  let dirs = List.map ~f:(fun x -> Dir x)
 end

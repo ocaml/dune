@@ -16,6 +16,8 @@ module L : sig
 
   val deps_only : t list -> Path.t list
 
+  val dirs : Path.t list -> t list
+
   val concat : t list -> dir:Path.t -> string
 
   val to_strings : t list -> dir:Path.t -> string list

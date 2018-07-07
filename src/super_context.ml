@@ -845,94 +845,81 @@ module Action = struct
       match targets_written_by_user with
       | Infer -> Loc.fail loc "You cannot use %s with inferred rules." var
       | Alias -> Loc.fail loc "You cannot use %s in aliases." var
-      | Static l -> Some (Value.L.paths l)
+      | Static l -> Some (Value.L.dirs l) (* XXX hack to signal no dep *)
     in
-    let expand var syntax_version =
+    let expand_form s var syntax_version =
       let loc = String_with_vars.Var.loc var in
       let key = String_with_vars.Var.full_name var in
-      match String_with_vars.Var.destruct var with
-      | Single var_name ->
-        begin match expand_var_no_root sctx ~syntax_version ~var with
-        | None -> String.Map.find extra_vars key
-        | Some Targets -> targets loc var_name
-        | Some v ->
-          let exp = Var.Kind.to_value_no_deps_or_targets ~scope v in
-          Option.iter exp ~f:(fun v ->
-            acc.sdeps <- Path.Set.union
-                           (Path.Set.of_list (Value.L.deps_only v)) acc.sdeps);
-          exp
+      begin match expand_form sctx ~syntax_version ~var with
+      | Some Var.Form.Exe -> Some (path_exp (map_exe (Path.relative dir s)))
+      | Some Dep -> Some (path_exp (Path.relative dir s))
+      | Some Bin -> begin
+          let sctx = host sctx in
+          match Artifacts.binary (artifacts sctx) s with
+          | Ok path -> Some (path_exp path)
+          | Error e ->
+            add_fail acc ({ fail = fun () -> Action.Prog.Not_found.raise e })
         end
-      | Pair (_, s)->
-        begin match expand_form sctx ~syntax_version ~var with
-        | Some Var.Form.Exe -> Some (path_exp (map_exe (Path.relative dir s)))
-        | Some Dep -> Some (path_exp (Path.relative dir s))
-        | Some Bin -> begin
-            let sctx = host sctx in
-            match Artifacts.binary (artifacts sctx) s with
-            | Ok path -> Some (path_exp path)
-            | Error e ->
-              add_fail acc ({ fail = fun () -> Action.Prog.Not_found.raise e })
-          end
-        | Some Lib -> begin
-            let lib_dep, file = parse_lib_file ~loc s in
-            add_lib_dep acc lib_dep dep_kind;
-            match
-              Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
-            with
-            | Ok path -> Some (path_exp path)
-            | Error fail -> add_fail acc fail
-          end
-        | Some Libexec -> begin
-            let sctx = host sctx in
-            let lib_dep, file = parse_lib_file ~loc s in
-            add_lib_dep acc lib_dep dep_kind;
-            match
-              Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
-            with
-            | Error fail -> add_fail acc fail
-            | Ok path ->
-              if not Sys.win32 || Filename.extension s = ".exe" then begin
-                Some (path_exp path)
-              end else begin
-                let path_exe = Path.extend_basename path ~suffix:".exe" in
-                let dep =
-                  Build.if_file_exists path_exe
-                    ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
-                    ~else_:(Build.path path     >>^ fun _ -> path_exp path)
-                in
-                add_ddep acc ~key dep
-              end
-          end
-        | Some Lib_available -> begin
-            let lib = s in
-            add_lib_dep acc lib Optional;
-            Some (str_exp (string_of_bool (
-              Lib.DB.available (Scope.libs scope) lib)))
-          end
-        | Some Version -> begin
-            match Package.Name.Map.find (Scope.project scope).packages
-                    (Package.Name.of_string s) with
-            | Some p ->
-              let x =
-                Pkg_version.read sctx p >>^ function
-                | None   -> [Value.String ""]
-                | Some s -> [String s]
+      | Some Lib -> begin
+          let lib_dep, file = parse_lib_file ~loc s in
+          add_lib_dep acc lib_dep dep_kind;
+          match
+            Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
+          with
+          | Ok path -> Some (path_exp path)
+          | Error fail -> add_fail acc fail
+        end
+      | Some Libexec -> begin
+          let sctx = host sctx in
+          let lib_dep, file = parse_lib_file ~loc s in
+          add_lib_dep acc lib_dep dep_kind;
+          match
+            Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
+          with
+          | Error fail -> add_fail acc fail
+          | Ok path ->
+            if not Sys.win32 || Filename.extension s = ".exe" then begin
+              Some (path_exp path)
+            end else begin
+              let path_exe = Path.extend_basename path ~suffix:".exe" in
+              let dep =
+                Build.if_file_exists path_exe
+                  ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
+                  ~else_:(Build.path path     >>^ fun _ -> path_exp path)
               in
-              add_ddep acc ~key x
-            | None ->
-              add_fail acc { fail = fun () ->
-                Loc.fail loc "Package %S doesn't exist in the current project." s
-              }
-          end
-        | Some Read -> begin
-            let path = Path.relative dir s in
-            let data =
-              Build.contents path
-              >>^ fun s -> [Value.String s]
+              add_ddep acc ~key dep
+            end
+        end
+      | Some Lib_available -> begin
+          let lib = s in
+          add_lib_dep acc lib Optional;
+          Some (str_exp (string_of_bool (
+            Lib.DB.available (Scope.libs scope) lib)))
+        end
+      | Some Version -> begin
+          match Package.Name.Map.find (Scope.project scope).packages
+                  (Package.Name.of_string s) with
+          | Some p ->
+            let x =
+              Pkg_version.read sctx p >>^ function
+              | None   -> [Value.String ""]
+              | Some s -> [String s]
             in
-            add_ddep acc ~key data
-          end
-        | Some Read_lines -> begin
+            add_ddep acc ~key x
+          | None ->
+            add_fail acc { fail = fun () ->
+              Loc.fail loc "Package %S doesn't exist in the current project." s
+            }
+        end
+      | Some Read -> begin
+          let path = Path.relative dir s in
+          let data =
+            Build.contents path
+            >>^ fun s -> [Value.String s]
+          in
+          add_ddep acc ~key data
+        end
+      | Some Read_lines -> begin
           let path = Path.relative dir s in
           let data =
             Build.lines_of path
@@ -940,18 +927,37 @@ module Action = struct
           in
           add_ddep acc ~key data
         end
-        | Some Read_strings -> begin
-            let path = Path.relative dir s in
-            let data =
-              Build.strings path
-              >>^ Value.L.strings
-            in
-            add_ddep acc ~key data
-          end
-        | Some Path_no_dep -> Some [Value.Dir (Path.relative dir s)]
-        | None ->
-          String_with_vars.Var.fail var ~f:(sprintf "Unknown form: %s")
+      | Some Read_strings -> begin
+          let path = Path.relative dir s in
+          let data =
+            Build.strings path
+            >>^ Value.L.strings
+          in
+          add_ddep acc ~key data
         end
+      | Some Path_no_dep -> Some [Value.Dir (Path.relative dir s)]
+      | None ->
+        String_with_vars.Var.fail var ~f:(sprintf "Unknown form: %s")
+      end
+    in
+    let expand var syntax_version =
+      let loc = String_with_vars.Var.loc var in
+      let key = String_with_vars.Var.full_name var in
+      let res =
+        match String_with_vars.Var.destruct var with
+        | Single var_name ->
+          begin match expand_var_no_root sctx ~syntax_version ~var with
+          | None -> String.Map.find extra_vars key
+          | Some Targets -> targets loc var_name
+          | Some v -> Var.Kind.to_value_no_deps_or_targets v ~scope
+          end
+        | Pair (_, s) -> expand_form s var syntax_version
+      in
+      Option.iter res ~f:(fun v ->
+        acc.sdeps <- Path.Set.union
+                       (Path.Set.of_list (Value.L.deps_only v)) acc.sdeps
+      );
+      res
     in
     let t = U.partial_expand t ~dir ~map_exe ~f:expand in
     (t, acc)

@@ -17,7 +17,7 @@ module Kind = struct
     | Targets -> None
 end
 
-module Form = struct
+module Macro = struct
   type t =
     | Exe
     | Dep
@@ -58,18 +58,18 @@ module Map = struct
     ; "SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root"
     ]
 
-  let forms =
-    let form kind = No_info kind in
-    let open Form in
-    [ "exe", form Exe
-    ; "bin", form Bin
-    ; "lib", form Lib
-    ; "libexec", form Libexec
-    ; "lib-available", form Lib_available
-    ; "version", form Version
-    ; "read", form Read
-    ; "read-lines", form Read_lines
-    ; "read-strings", form Read_strings
+  let macros =
+    let macro kind = No_info kind in
+    let open Macro in
+    [ "exe", macro Exe
+    ; "bin", macro Bin
+    ; "lib", macro Lib
+    ; "libexec", macro Libexec
+    ; "lib-available", macro Lib_available
+    ; "version", macro Version
+    ; "read", macro Read
+    ; "read-lines", macro Read_lines
+    ; "read-strings", macro Read_strings
 
     ; "dep", since ~version:(1, 0) Dep
 
@@ -152,7 +152,7 @@ module Map = struct
     Option.bind (String.Map.find t name) ~f:(fun v ->
       let what var =
         String_with_vars.Var.to_string (
-          if String_with_vars.Var.is_form var then
+          if String_with_vars.Var.is_macro var then
             String_with_vars.Var.with_payload var ~payload:(Some "..")
           else
             var)

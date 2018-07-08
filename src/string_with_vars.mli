@@ -58,8 +58,8 @@ module Var : sig
   val full_name : t -> string
 
   type kind =
-    | Single of string
-    | Pair of string * string
+    | Var of string
+    | Macro of string * string
 
   val destruct : t -> kind
 
@@ -69,7 +69,7 @@ module Var : sig
 
   val with_payload : t -> payload:string option -> t
 
-  val is_form : t -> bool
+  val is_macro : t -> bool
 end
 
 val expand

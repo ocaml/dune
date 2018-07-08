@@ -9,7 +9,7 @@ module Kind : sig
   val to_value_no_deps_or_targets : t -> scope:Scope.t -> Value.t list option
 end
 
-module Form : sig
+module Macro : sig
   type t =
     | Exe
     | Dep
@@ -36,7 +36,7 @@ module Map : sig
 
   val create_vars : context:Context.t -> cxx_flags:string list -> Kind.t t
 
-  val forms : Form.t t
+  val macros : Macro.t t
 
   val static_vars : Kind.t t
 

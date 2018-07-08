@@ -231,11 +231,7 @@ end = struct
     let static_vars = String.Table.of_list_exn static_vars
 
     let rec expand t ~syntax_version ~var =
-      let name =
-        match String_with_vars.Var.destruct var with
-        | Single v -> v
-        | Pair (v, _) -> v
-      in
+      let name = String_with_vars.Var.name var in
       Option.bind (String.Table.find t name) ~f:(function
         | Nothing v -> Some v
         | Since (v, min_version) ->

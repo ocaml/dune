@@ -53,6 +53,7 @@ module Var : sig
 
   val sexp_of_t : t -> Sexp.t
 
+  val name : t -> string
   val loc : t -> Loc.t
   val full_name : t -> string
 

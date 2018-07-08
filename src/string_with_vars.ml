@@ -204,6 +204,8 @@ module Var = struct
     | None -> Single name
     | Some p -> Pair (name, p)
 
+  let name { name; _ } = name
+
   let full_name t =
     match destruct t with
     | Single s -> s

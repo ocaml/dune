@@ -66,6 +66,8 @@ module Var : sig
   val to_string : t -> string
 
   val rename : t -> new_name:string -> t
+
+  val is_form : t -> bool
 end
 
 val expand

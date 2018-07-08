@@ -219,6 +219,8 @@ module Var = struct
 
   let rename t ~new_name =
     { t with name = new_name }
+
+  let is_form t = Option.is_some t.payload
 end
 
 let partial_expand

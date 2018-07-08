@@ -321,24 +321,18 @@ let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
 let expand_vars t ~syntax_version ~var : Var.Kind.t option =
-  begin match String_with_vars.Var.destruct var with
-  | Single _ -> ()
-  | Pair (_, _) ->
+  if String_with_vars.Var.is_form var then
     Exn.code_error "expand_vars can't expand forms"
-      [ "var", String_with_vars.Var.sexp_of_t var
-      ]
-  end;
-  Var.Map.expand t.vars ~syntax_version ~var
+      [ "var", String_with_vars.Var.sexp_of_t var ]
+  else
+    Var.Map.expand t.vars ~syntax_version ~var
 
 let expand_form t ~syntax_version ~var =
-  begin match String_with_vars.Var.destruct var with
-  | Pair (_, _) -> ()
-  | Single _ ->
+  if String_with_vars.Var.is_form var then
+    Var.Map.expand t.forms ~syntax_version ~var
+  else
     Exn.code_error "expand_vars can't expand single variables"
-      [ "var", String_with_vars.Var.sexp_of_t var
-      ]
-  end;
-  Var.Map.expand t.forms ~syntax_version ~var
+      [ "var", String_with_vars.Var.sexp_of_t var ]
 
 let (expand_vars_string, expand_vars_path) =
   let expand t ~scope ~dir ?(extra_vars=String.Map.empty) s =

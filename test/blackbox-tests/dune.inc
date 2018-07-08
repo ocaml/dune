@@ -169,14 +169,6 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
- (name form-error)
- (deps (package dune) (source_tree test-cases/form-error))
- (action
-  (chdir
-   test-cases/form-error
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(alias
  (name gen-opam-install-file)
  (deps (package dune) (source_tree test-cases/gen-opam-install-file))
  (action
@@ -376,6 +368,14 @@
  (action
   (chdir
    test-cases/loop
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name macro-expand-error)
+ (deps (package dune) (source_tree test-cases/macro-expand-error))
+ (action
+  (chdir
+   test-cases/macro-expand-error
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -667,7 +667,6 @@
   (alias findlib)
   (alias findlib-error)
   (alias force-test)
-  (alias form-error)
   (alias gen-opam-install-file)
   (alias github20)
   (alias github24)
@@ -691,6 +690,7 @@
   (alias lib-available)
   (alias link-deps)
   (alias loop)
+  (alias macro-expand-error)
   (alias menhir)
   (alias merlin-tests)
   (alias meta-gen)
@@ -746,7 +746,6 @@
   (alias findlib)
   (alias findlib-error)
   (alias force-test)
-  (alias form-error)
   (alias gen-opam-install-file)
   (alias github20)
   (alias github24)
@@ -768,6 +767,7 @@
   (alias lib-available)
   (alias link-deps)
   (alias loop)
+  (alias macro-expand-error)
   (alias merlin-tests)
   (alias meta-gen)
   (alias misc)

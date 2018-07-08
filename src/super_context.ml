@@ -87,8 +87,8 @@ let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
 let expand_vars t ~syntax_version ~var =
   if String_with_vars.Var.is_macro var then
-    Exn.code_error "expand_vars can't expand macros"
-      [ "var", String_with_vars.Var.sexp_of_t var ]
+    Loc.fail (String_with_vars.Var.loc var)
+      "macros of the form %%{name:..} cannot be expanded here"
   else
     Pform.Map.expand t.vars ~syntax_version ~var
 

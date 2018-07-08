@@ -100,20 +100,36 @@ let expand_macro t ~syntax_version ~var =
     Exn.code_error "expand_macro can't expand variables"
       [ "var", String_with_vars.Var.sexp_of_t var ]
 
+let expand t ~syntax_version ~var =
+  match
+    match String_with_vars.Var.destruct var with
+    | Var _ -> Left (expand_vars t ~syntax_version ~var)
+    | Macro (_, _) -> Right (expand_macro t ~syntax_version ~var)
+  with
+  | Right None
+  | Left None -> None
+  | Right (Some x) -> Some (Right x)
+  | Left (Some x) -> Some (Left x)
+
 let (expand_vars_string, expand_vars_path) =
   let expand t ~scope ~dir ?(extra_vars=String.Map.empty) s =
     String_with_vars.expand ~mode:Single ~dir s ~f:(fun var syntax_version ->
-      match expand_vars t ~syntax_version ~var with
+      match expand t ~syntax_version ~var with
       | None ->
         String.Map.find extra_vars (String_with_vars.Var.full_name var)
-      | Some v ->
+      | Some (Left v) ->
         begin match Pform.Var.to_value_no_deps_or_targets ~scope v with
         | Some _ as v -> v
         | None ->
           Loc.fail (String_with_vars.Var.loc var)
             "Variable %a is not allowed in this context"
             String_with_vars.Var.pp var
-        end)
+        end
+      | Some (Right Ocaml_config) ->
+        String.Map.find t.ocaml_config (String_with_vars.Var.name var)
+      | Some (Right _) ->
+        Loc.fail (String_with_vars.Var.loc var)
+          "This percent form isn't allowed in this position")
   in
   let expand_vars t ~scope ~dir ?extra_vars s =
     expand t ~scope ~dir ?extra_vars s

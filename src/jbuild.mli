@@ -317,7 +317,8 @@ end
 module Copy_files : sig
   type t =
     { add_line_directive : bool
-    ; glob : String_with_vars.t
+    ; glob               : String_with_vars.t
+    ; dune_version       : Syntax.Version.t
     }
 end
 

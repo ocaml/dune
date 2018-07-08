@@ -16,7 +16,7 @@ val make
   -> preprocessor_deps:(unit, Path.t list) Build.t
   -> lib_name:string option
   -> scope:Scope.t
-  -> dir_kind:File_tree.Dune_file.Kind.t
+  -> kind:File_tree.Dune_file.Kind.t
   -> t
 
 (** Setup the preprocessing rules for the following modules and
@@ -40,7 +40,7 @@ val pp_module_as
 val get_ppx_driver
   :  Super_context.t
   -> scope:Scope.t
-  -> dir_kind:File_tree.Dune_file.Kind.t
+  -> kind:File_tree.Dune_file.Kind.t
   -> (Loc.t * Jbuild.Pp.t) list
   -> Path.t Or_exn.t
 

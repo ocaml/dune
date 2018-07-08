@@ -4,7 +4,7 @@ open! Stdune
 
 type 'a t
 
-val create : dir_kind:File_tree.Dune_file.Kind.t -> 'a t
+val create : unit -> 'a t
 
 (** [acknowledge t partition ~loc ~modules] registers the fact that [modules]
     are associated with [loc]. *)
@@ -13,6 +13,7 @@ val acknowledge
   -> 'a
   -> loc:Loc.t
   -> modules:Module.t Module.Name.Map.t
+  -> dune_version:Syntax.Version.t
   -> unit
 
 (** Find which partition a module is part of *)

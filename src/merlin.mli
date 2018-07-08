@@ -11,6 +11,7 @@ val make
   -> ?libname:string
   -> ?source_dirs: Path.Set.t
   -> ?objs_dirs:Path.Set.t
+  -> dune_version:Syntax.Version.t
   -> unit
   -> t
 
@@ -23,6 +24,5 @@ val add_rules
   : Super_context.t
   -> dir:Path.t
   -> scope:Scope.t
-  -> dir_kind:File_tree.Dune_file.Kind.t
   -> t
   -> unit

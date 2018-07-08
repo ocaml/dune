@@ -1390,9 +1390,11 @@ module Tests = struct
 end
 
 module Copy_files = struct
-  type t = { add_line_directive : bool
-           ; glob : String_with_vars.t
-           }
+  type t =
+    { add_line_directive : bool
+    ; glob               : String_with_vars.t
+    ; dune_version       : Syntax.Version.t
+    }
 
   let t = String_with_vars.t
 end
@@ -1506,11 +1508,21 @@ module Stanzas = struct
       (Alias_conf.t >>| fun x ->
        [Alias x])
     ; "copy_files",
-      (Copy_files.t >>| fun glob ->
-       [Copy_files {add_line_directive = false; glob}])
+      (Copy_files.t >>= fun glob ->
+       Syntax.get_exn Stanza.syntax >>| fun dune_version ->
+       [Copy_files
+          { add_line_directive = false
+          ; glob
+          ; dune_version
+          }])
     ; "copy_files#",
-      (Copy_files.t >>| fun glob ->
-       [Copy_files {add_line_directive = true; glob}])
+      (Copy_files.t >>= fun glob ->
+       Syntax.get_exn Stanza.syntax >>| fun dune_version ->
+       [Copy_files
+          { add_line_directive = true
+          ; glob
+          ; dune_version
+          }])
     ; "include",
       (loc >>= fun loc ->
        relative_file >>| fun fn ->

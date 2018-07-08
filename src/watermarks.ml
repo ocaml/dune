@@ -19,7 +19,7 @@ let is_a_source_file fn =
   | _ -> true
 
 let make_watermark_map ~name ~version ~commit =
-  let opam_file = Opam_file.load (Path.of_string (name ^ ".opam")) in
+  let opam_file = Opam_file.load (Path.in_source (name ^ ".opam")) in
   let version_num =
     if String.is_prefix version ~prefix:"v" then
       String.sub version ~pos:1 ~len:(String.length version - 1)
@@ -164,6 +164,9 @@ let subst_file path ~map =
   | None -> ()
   | Some s -> Io.write_file path s
 
+let read_project_name () =
+  Dune_project.read_name (Path.in_source Dune_project.filename)
+
 let get_name ~files ?name () =
   let package_names =
     List.filter_map files ~f:(fun fn ->
@@ -174,28 +177,53 @@ let get_name ~files ?name () =
       else
         None)
   in
-  if package_names = [] then die "@{<error>Error@}: no <package>.opam files found.";
-  match name with
-  | Some name ->
-    if not (List.mem name ~set:package_names) then
-      die "@{<error>Error@}: file %s.opam doesn't exist." name;
-    name
-  | None ->
-    let shortest =
-      match package_names with
-      | [] -> assert false
-      | first :: rest ->
-        List.fold_left rest ~init:first ~f:(fun acc s ->
-          if String.length s < String.length acc then
-            s
+  if package_names = [] then
+    die "@{<error>Error@}: no <package>.opam files found.";
+  let name =
+    match Which_program.t with
+    | Dune -> begin
+        assert (Option.is_none name);
+        if not (List.mem ~set:files Dune_project.filename) then
+          die "@{<error>Error@}: There is no dune-project file in the current \
+               directory, please add one with a (name <name>) field in it.\n\
+               Hint: dune subst must be executed from the root of the project.";
+        match read_project_name () with
+        | None ->
+          die "@{<error>Error@}: The project name is not defined, please add \
+               a (name <name>) field to your dune-project file."
+        | Some name -> name
+      end
+    | Jbuilder ->
+      match name with
+      | Some name -> name
+      | None ->
+        match
+          if List.mem ~set:files Dune_project.filename then
+            read_project_name ()
           else
-            acc)
-    in
-    if List.for_all package_names ~f:(String.is_prefix ~prefix:shortest) then
-      shortest
-    else
-      die "@{<error>Error@}: cannot determine name automatically.\n\
-           You must pass a [--name] command line argument."
+            None
+        with
+        | Some name -> name
+        | None ->
+          let shortest =
+            match package_names with
+            | [] -> assert false
+            | first :: rest ->
+              List.fold_left rest ~init:first ~f:(fun acc s ->
+                if String.length s < String.length acc then
+                  s
+                else
+                  acc)
+          in
+          if List.for_all package_names ~f:(String.is_prefix ~prefix:shortest) then
+            shortest
+          else
+            die "@{<error>Error@}: cannot determine name automatically.\n\
+                 You must pass a [--name] command line argument."
+  in
+  if not (List.mem name ~set:package_names) then
+    die "@{<error>Error@}: file %s.opam doesn't exist." name;
+  name
 
 let subst_git ?name () =
   let rev = "HEAD" in
@@ -224,7 +252,7 @@ let subst_git ?name () =
   let watermarks = make_watermark_map ~name ~version ~commit in
   List.iter files ~f:(fun fn ->
     if is_a_source_file fn then
-      subst_file (Path.of_string fn) ~map:watermarks);
+      subst_file (Path.in_source fn) ~map:watermarks);
   Fiber.return ()
 
 let subst ?name () =

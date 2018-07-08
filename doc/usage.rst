@@ -462,30 +462,32 @@ must be prefixed by the shortest one.
 Watermarking
 ============
 
-One of the feature topkg provides is watermarking; it replaces various strings
-of the form ``%%ID%%`` in all files of your project before creating a release
-tarball or when the package is pinned by the user using opam.
+One of the feature dune-release provides is watermarking; it replaces
+various strings of the form ``%%ID%%`` in all files of your project
+before creating a release tarball or when the package is pinned by the
+user using opam.
 
 This is especially interesting for the ``VERSION`` watermark, which gets
 replaced by the version obtained from the vcs. For instance if you are using
-git, topkg invokes this command to find out the version:
+git, dune-release invokes this command to find out the version:
 
 .. code:: bash
 
     $ git describe --always --dirty
     1.0+beta9-79-g29e9b37
 
-Projects using dune usually only need topkg for creating and publishing
-releases. However they might still want to substitute the watermarks when the
-package is pinned by the user. To help with this, dune provides the ``subst``
-sub-command.
+Projects using dune usually only need dune-release for creating and
+publishing releases. However they might still want to substitute the
+watermarks when the package is pinned by the user. To help with this,
+dune provides the ``subst`` sub-command.
 
 dune subst
 ==========
 
-``dune subst`` performs the same substitution ``topkg`` does with the default
-configuration. i.e. calling ``dune subst`` at the root of your project will
-rewrite in place all the files in your project.
+``dune subst`` performs the same substitution ``dune-release`` does
+with the default configuration. i.e. calling ``dune subst`` at the
+root of your project will rewrite in place all the files in your
+project.
 
 More precisely, it replaces all the following watermarks in source files:
 
@@ -503,18 +505,15 @@ More precisely, it replaces all the following watermarks in source files:
 - ``PKG_LICENSE``, contents of the ``license`` field from the opam file
 - ``PKG_REPO``, contents of the ``repo`` field from the opam file
 
-Note that if your project contains several packages, ``NAME`` will be replaced
-by the shorted package name as long as it is a prefix of all the package names.
-If your package names don't follow this rule, you need to specify the name
-explicitly via the ``-n`` flag:
+The name of the project is obtained by reading the ``dune-project``
+file in the directory where ``dune subst`` is called. The
+``dune-project`` file must exist and contain a valid ``(name ...)``
+field.
 
-.. code:: bash
-
-    $ dune subst -n myproject
-
-Finally, note that dune doesn't allow you to customize the list of substituted
-watermarks. If you which to do so, you need to configure topkg and use it
-instead of ``dune subst``.
+Note that ``dune subst`` is meant to be called from the opam file and
+in particular behaves a bit different to other ``dune`` commands. In
+particular it doesn't try to detect the root of the workspace and must
+be called from the root of the project.
 
 Custom Build Directory
 ======================

@@ -386,6 +386,13 @@ let make_jbuilder_project ~dir packages =
   ; project_file = { file = Path.relative dir filename; exists = false }
   }
 
+let read_name file =
+  load file ~f:(fun _lang ->
+    fields
+      (field_o "name" string >>= fun name ->
+       junk_everything >>= fun () ->
+       return name))
+
 let load ~dir ~files =
   let packages =
     String.Set.fold files ~init:[] ~f:(fun fn acc ->
@@ -399,7 +406,8 @@ let load ~dir ~files =
         in
         let name = Package.Name.of_string pkg in
         (name,
-         { Package. name
+         { Package.
+           name
          ; path = dir
          ; version_from_opam_file
          }) :: acc

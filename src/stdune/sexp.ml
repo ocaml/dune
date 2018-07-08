@@ -245,6 +245,11 @@ module Of_sexp = struct
 
   let junk = next ignore
 
+  let junk_everything : type k. (unit, k) parser = fun ctx state ->
+    match ctx with
+    | Values _ -> ((), [])
+    | Fields _ -> ((), { state with unparsed = Name_map.empty })
+
   let plain_string f =
     next (function
       | Atom (loc, A s) | Quoted_string (loc, s) -> f ~loc s

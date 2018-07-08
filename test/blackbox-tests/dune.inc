@@ -572,6 +572,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name subst)
+ (deps (package dune) (source_tree test-cases/subst))
+ (action
+  (chdir
+   test-cases/subst
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name syntax-versioning)
  (deps (package dune) (source_tree test-cases/syntax-versioning))
  (action
@@ -688,6 +696,7 @@
   (alias scope-bug)
   (alias scope-ppx-bug)
   (alias select)
+  (alias subst)
   (alias syntax-versioning)
   (alias tests-stanza)
   (alias use-meta)
@@ -756,6 +765,7 @@
   (alias scope-bug)
   (alias scope-ppx-bug)
   (alias select)
+  (alias subst)
   (alias syntax-versioning)
   (alias tests-stanza)
   (alias use-meta)

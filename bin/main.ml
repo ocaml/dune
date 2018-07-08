@@ -1334,7 +1334,7 @@ let subst =
     ; `Pre {|  \$ git describe --always --dirty|}
     ; `P {|$(b,dune subst) substitutes the variables that topkg substitutes with
            the defatult configuration:|}
-    ; var "NAME" "the name of the package"
+    ; var "NAME" "the name of the project (from the dune-project file)"
     ; var "VERSION" "output of $(b,git describe --always --dirty)"
     ; var "VERSION_NUM" "same as $(b,%%VERSION%%) but with a potential leading \
                          'v' or 'V' dropped"
@@ -1346,30 +1346,43 @@ let subst =
     ; opam "doc"
     ; opam "license"
     ; opam "repo"
-    ; `P {|It is not possible to customize this list. If you wish to do so you need to
-           configure topkg instead and use it to perform the substitution.|}
-    ; `P {|Note that the expansion of $(b,%%NAME%%) is guessed using the following
-           heuristic: if all the $(b,<package>.opam) files in the current directory are
-           prefixed by the shortest package name, this prefix is used. Otherwise you must
-           specify a name with the $(b,-n) command line option.|}
     ; `P {|In order to call $(b,dune subst) when your package is pinned, add this line
            to the $(b,build:) field of your opam file:|}
     ; `Pre {|  [dune "subst"] {pinned}|}
+    ; `P {|Note that this command is meant to be called only from opam files and
+           behaves a bit differently from other dune commands. In particular it
+           doesn't try to detect the root and must be called from the root of
+           the project.|}
     ; `Blocks help_secs
     ]
   in
-  let go common name =
-    set_common common ~targets:[];
-    Scheduler.go ~common (Watermarks.subst ?name ())
+  let term =
+    match Which_program.t with
+    | Jbuilder ->
+      let go common name =
+        set_common common ~targets:[];
+        Scheduler.go ~common (Watermarks.subst ?name ())
+      in
+      Term.(const go
+            $ common
+            $ Arg.(value
+                   & opt (some string) None
+                   & info ["n"; "name"] ~docv:"NAME"
+                       ~doc:"Use this project name instead of detecting it."))
+    | Dune ->
+      let go () =
+        let config : Config.t =
+          { display     = Quiet
+          ; concurrency = Fixed 1
+          }
+        in
+        Path.set_root (Path.External.cwd ());
+        Dune.Scheduler.go ~config (Watermarks.subst ())
+      in
+      Term.(const go $ const ())
   in
-  ( Term.(const go
-          $ common
-          $ Arg.(value
-                 & opt (some string) None
-                 & info ["n"; "name"] ~docv:"NAME"
-                     ~doc:"Use this package name instead of detecting it.")
-         )
-  , Term.info "subst" ~doc ~man)
+  (term,
+   Term.info "subst" ~doc ~man)
 
 let utop =
   let doc = "Load library in utop" in

@@ -61,7 +61,7 @@ module Var : sig
   end
 
   type 'a t =
-    | Nothing    of 'a
+    | No_info    of 'a
     | Since      of 'a * Syntax.Version.t
     | Deleted_in of 'a * Syntax.Version.t
     | Renamed_in of Syntax.Version.t * string
@@ -116,7 +116,7 @@ end = struct
   end
 
   type 'a t =
-    | Nothing    of 'a
+    | No_info    of 'a
     | Since      of 'a * Syntax.Version.t
     | Deleted_in of 'a * Syntax.Version.t
     | Renamed_in of Syntax.Version.t * string
@@ -124,7 +124,7 @@ end = struct
   module Map = struct
     type nonrec 'a t = 'a t String.Map.t
 
-    let values v                      = Nothing (Kind.Values v)
+    let values v                      = No_info (Kind.Values v)
     let renamed_in ~new_name ~version = Renamed_in (version, new_name)
     let deleted_in ~version kind      = Deleted_in (kind, version)
     let since ~version v              = Since (v, version)
@@ -142,7 +142,7 @@ end = struct
       ]
 
     let forms =
-      let form kind = Nothing kind in
+      let form kind = No_info kind in
       let open Form in
       [ "exe", form Exe
       ; "bin", form Bin
@@ -233,7 +233,7 @@ end = struct
     let rec expand t ~syntax_version ~var =
       let name = String_with_vars.Var.name var in
       Option.bind (String.Map.find t name) ~f:(function
-        | Nothing v -> Some v
+        | No_info v -> Some v
         | Since (v, min_version) ->
           if syntax_version >= min_version then
             Some v

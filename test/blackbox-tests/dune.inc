@@ -89,6 +89,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dune-jbuild-var-case)
+ (deps (package dune) (source_tree test-cases/dune-jbuild-var-case))
+ (action
+  (chdir
+   test-cases/dune-jbuild-var-case
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dune-ppx-driver-system)
  (deps (package dune) (source_tree test-cases/dune-ppx-driver-system))
  (action
@@ -360,6 +368,14 @@
  (action
   (chdir
    test-cases/loop
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name macro-expand-error)
+ (deps (package dune) (source_tree test-cases/macro-expand-error))
+ (action
+  (chdir
+   test-cases/macro-expand-error
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -641,6 +657,7 @@
   (alias cross-compilation)
   (alias custom-build-dir)
   (alias depend-on-the-universe)
+  (alias dune-jbuild-var-case)
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias env)
@@ -673,6 +690,7 @@
   (alias lib-available)
   (alias link-deps)
   (alias loop)
+  (alias macro-expand-error)
   (alias menhir)
   (alias merlin-tests)
   (alias meta-gen)
@@ -718,6 +736,7 @@
   (alias cross-compilation)
   (alias custom-build-dir)
   (alias depend-on-the-universe)
+  (alias dune-jbuild-var-case)
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias env)
@@ -748,6 +767,7 @@
   (alias lib-available)
   (alias link-deps)
   (alias loop)
+  (alias macro-expand-error)
   (alias merlin-tests)
   (alias meta-gen)
   (alias misc)

@@ -22,7 +22,7 @@ Stanzas
     (rule
      (targets foo.ml)
      (deps    generator/gen.exe)
-     (action  (run ${<} -o ${@})))
+     (action  (run %{<} -o %{@})))
 
 The following sections describe the available stanzas and their meaning.
 
@@ -336,16 +336,16 @@ compilation mode binary kind   extensions
 ---------------- ------------- -----------------
 byte             exe           .bc and .bc.js
 native/best      exe           .exe
-byte             object        .bc${ext_obj}
-native/best      object        .exe${ext_obj}
-byte             shared_object .bc${ext_dll}
-native/best      shared_object ${ext_dll}
+byte             object        .bc%{ext_obj}
+native/best      object        .exe%{ext_obj}
+byte             shared_object .bc%{ext_dll}
+native/best      shared_object %{ext_dll}
 ================ ============= =================
 
-Where ``${ext_obj}`` and ``${ext_dll}`` are the extensions for object
+Where ``%{ext_obj}`` and ``%{ext_dll}`` are the extensions for object
 and shared object files. Their value depends on the OS, for instance
-on Unix ``${ext_obj}`` is usually ``.o`` and ``${ext_dll}`` is usually
-``.so`` while on Windows ``${ext_obj}`` is ``.obj`` and ``${ext_dll}``
+on Unix ``%{ext_obj}`` is usually ``.o`` and ``%{ext_dll}`` is usually
+``.so`` while on Windows ``%{ext_obj}`` is ``.obj`` and ``%{ext_dll}``
 is ``.dll``.
 
 Note that when ``(byte exe)`` is specified but neither ``(best exe)``
@@ -459,7 +459,7 @@ For instance:
     (rule
       (targets b
       (deps    a
-      (action  (copy ${<} ${@})))))
+      (action  (copy %{<} %{@})))))
 
 In this example it is obvious by inspecting the action what the
 dependencies and targets are. When this is the case you can use the
@@ -483,7 +483,7 @@ stanza is rejected by dune:
 
 .. code:: scheme
 
-    (rule (copy a b.${read:file}))
+    (rule (copy a b.%{read:file}))
 
 ocamllex
 --------
@@ -495,7 +495,7 @@ ocamllex
     (rule
       (targets <name>.ml)
       (deps    <name>.mll)
-      (action  (chdir ${ROOT} (run ${bin:ocamllex} -q -o ${<}))))
+      (action  (chdir %{root} (run %{bin:ocamllex} -q -o %{<}))))
 
 To use a different rule mode, use the long form:
 
@@ -515,7 +515,7 @@ ocamlyacc
     (rule
       (targets <name>.ml <name>.mli)
       (deps    <name>.mly)
-      (action  (chdir ${ROOT} (run ${bin:ocamlyacc} ${<}))))
+      (action  (chdir %{root} (run %{bin:ocamlyacc} %{<}))))
 
 To use a different rule mode, use the long form:
 
@@ -573,7 +573,7 @@ The typical use of the ``alias`` stanza is to define tests:
 
     (alias
      (name   runtest)
-     (action (run ${exe:my-test-program.exe} blah)))
+     (action (run %{exe:my-test-program.exe} blah)))
 
 See the section about :ref:`running-tests` for details.
 
@@ -825,18 +825,18 @@ Variables are expanded after the set language is interpreted.
 Variables expansion
 -------------------
 
-Some fields can contains variables of the form ``$(var)`` or ``${var}`` that are
+Some fields can contains variables of the form ``$(var)`` or ``%{var}`` that are
 expanded by dune.
 
 Dune supports the following variables:
 
--  ``ROOT`` is the relative path to the root of the build
-   context. Note that ``ROOT`` depends on the worksace
-   configuration. As such you shouldn't use ``ROOT`` to denote the
-   root of your project. Use ``SCOPE_ROOT`` instead for this purpose
--  ``SCOPE_ROOT`` is the root of the current scope. It is typically
+-  ``root`` is the relative path to the root of the build
+   context. Note that ``root`` depends on the workspace
+   configuration. As such you shouldn't use ``root`` to denote the
+   root of your project. Use ``project_root`` instead for this purpose
+-  ``project_root`` is the root of the current scope. It is typically
    the toplevel directory of your project and as long as you have at
-   least one ``<package>.opam`` file there, ``SCOPE_ROOT`` is
+   least one ``<package>.opam`` file there, ``project_root`` is
    independent of the workspace configuration
 -  ``CC`` is the C compiler command line (list made of the compiler
    name followed by its flags) that was used to compile OCaml in the
@@ -844,13 +844,13 @@ Dune supports the following variables:
 -  ``CXX`` is the C++ compiler command line being used in the
    current build context
 -  ``ocaml_bin`` is the path where ``ocamlc`` lives
--  ``OCAML`` is the ``ocaml`` binary
--  ``OCAMLC`` is the ``ocamlc`` binary
--  ``OCAMLOPT`` is the ``ocamlopt`` binary
+-  ``ocaml`` is the ``ocaml`` binary
+-  ``ocamlc`` is the ``ocamlc`` binary
+-  ``ocamlopt`` is the ``ocamlopt`` binary
 -  ``ocaml_version`` is the version of the compiler used in the
    current build context
 -  ``ocaml_where`` is the output of ``ocamlc -where``
--  ``ARCH_SIXTYFOUR`` is ``true`` if using a compiler targeting a
+-  ``arch_sixtyfour`` is ``true`` if using a compiler targeting a
    64 bit architecture and ``false`` otherwise
 -  ``null`` is ``/dev/null`` on Unix or ``nul`` on Windows
 -  ``ext_obj``, ``ext_asm``, ``ext_lib``, ``ext_dll`` and ``ext_exe``
@@ -878,8 +878,8 @@ In addition, ``(action ...)`` fields support the following special variables:
   is installed by a package in the workspace (see `install`_ stanzas),
   the locally built binary will be used, otherwise it will be searched
   in the ``PATH`` of the current build context. Note that ``(run
-  ${bin:program} ...)`` and ``(run program ...)`` behave in the same
-  way. ``${bin:...}`` is only necessary when you are using ``(bash
+  %{bin:program} ...)`` and ``(run program ...)`` behave in the same
+  way. ``%{bin:...}`` is only necessary when you are using ``(bash
   ...)`` or ``(system ...)``
 - ``lib:<public-library-name>:<file>`` expands to a path to file ``<file>`` of
   library ``<public-library-name>``. If ``<public-library-name>`` is available
@@ -906,10 +906,10 @@ In addition, ``(action ...)`` fields support the following special variables:
 - ``read-strings:<path>`` expands to the list of lines in the given
   file, unescaped using OCaml lexical convention
 
-The ``${<kind>:...}`` forms are what allows you to write custom rules that work
+The ``%{<kind>:...}`` forms are what allows you to write custom rules that work
 transparently whether things are installed or not.
 
-Note that aliases are ignored by both ``${<}`` and ``${^}``.
+Note that aliases are ignored by both ``%{<}`` and ``%{^}``.
 
 The intent of this last form is to reliably read a list of strings
 generated by an OCaml program via:
@@ -920,13 +920,13 @@ generated by an OCaml program via:
 
 #. Expansion of lists
 
-Forms that expands to list of items, such as ``${CC}``, ``${^}``,
-``${@}`` or ``${read-lines:...}``, are suitable to be used in, say,
+Forms that expands to list of items, such as ``%{cc}``, ``%{^}``,
+``%{@}`` or ``%{read-lines:...}``, are suitable to be used in, say,
 ``(run <prog> <arguments>)``.  For instance in:
 
 .. code:: scheme
 
-    (run foo ${^})
+    (run foo %{^})
 
 if there are two dependencies ``a`` and ``b``, the produced command
 will be equivalent to the shell command:
@@ -940,7 +940,7 @@ you have to quote the variable as in:
 
 .. code:: scheme
 
-    (run foo "${^}")
+    (run foo "%{^}")
 
 which is equivalent to the following shell command:
 
@@ -949,7 +949,7 @@ which is equivalent to the following shell command:
     $ foo "a b"
 
 (the items of the list are concatenated with space).
-Note that, since ``${^}`` is a list of items, the first one may be
+Note that, since ``%{^}`` is a list of items, the first one may be
 used as a program name, for instance:
 
 .. code:: scheme
@@ -957,7 +957,7 @@ used as a program name, for instance:
     (rule
      (targets result.txt)
      (deps    foo.exe (glob_files *.txt))
-     (action  (run ${^})))
+     (action  (run %{^})))
 
 Here is another example:
 
@@ -966,7 +966,7 @@ Here is another example:
     (rule
      (targets foo.exe)
      (deps    foo.c)
-     (action  (run ${CC} -o ${@} ${<} -lfoolib)))
+     (action  (run %{cc} -o %{@} %{<} -lfoolib)))
 
 
 Library dependencies
@@ -1052,10 +1052,10 @@ you had setup a rule for every file of the form:
        (rule
         (targets file.pp.ml)
         (deps    file.ml)
-        (action  (with-stdout-to ${@} (chdir ${ROOT} <action>))))
+        (action  (with-stdout-to %{@} (chdir %{root} <action>))))
 
 The equivalent of a ``-pp <command>`` option passed to the OCaml compiler is
-``(system "<command> ${<}")``.
+``(system "<command> %{<}")``.
 
 Preprocessing with ppx rewriters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1105,8 +1105,8 @@ For instance:
  .. code:: scheme
 
     (preprocess (per_module
-                   (((action (run ./pp.sh X=1 ${<})) (foo bar)))
-                   (((action (run ./pp.sh X=2 ${<})) (baz)))))
+                   (((action (run ./pp.sh X=1 %{<})) (foo bar)))
+                   (((action (run ./pp.sh X=2 %{<})) (baz)))))
 
 .. _deps-field:
 
@@ -1231,7 +1231,7 @@ in ``src/foo/dune`` will be run from ``_build/<context>/src/foo``.
 The argument of ``(action ...)`` fields is a small DSL that is interpreted by
 dune directly and doesn't require an external shell. All atoms in the DSL
 support `Variables expansion`_. Moreover, you don't need to specify dependencies
-explicitly for the special ``${<kind>:...}`` forms, these are recognized and
+explicitly for the special ``%{<kind>:...}`` forms, these are recognized and
 automatically handled by dune.
 
 The DSL is currently quite limited, so if you want to do something complicated
@@ -1289,15 +1289,15 @@ called ``copy-and-add-line-directive``. However, most of time one
 wants this behavior rather than a bare copy, so it was renamed to
 something shorter.
 
-Note: expansion of the special ``${<kind>:...}`` is done relative to the current
+Note: expansion of the special ``%{<kind>:...}`` is done relative to the current
 working directory of the part of the DSL being executed. So for instance if you
 have this action in a ``src/foo/dune``:
 
 .. code:: scheme
 
-    (action (chdir ../../.. (echo ${path:dune})))
+    (action (chdir ../../.. (echo %{path:dune})))
 
-Then ``${path:dune}`` will expand to ``src/foo/dune``. When you run various
+Then ``%{path:dune}`` will expand to ``src/foo/dune``. When you run various
 tools, they often use the filename given on the command line in error messages.
 As a result, if you execute the command from the original directory, it will
 only see the basename.
@@ -1310,7 +1310,7 @@ To understand why this is important, let's consider this dune file living in
     (rule
      (targets blah.ml)
      (deps    blah.mll)
-     (action  (run ocamllex -o ${@} ${<})))
+     (action  (run ocamllex -o %{@} %{<})))
 
 Here the command that will be executed is:
 
@@ -1334,7 +1334,7 @@ of your project. What you should write instead is:
     (rule
      (targets blah.ml)
      (deps    blah.mll)
-     (action  (chdir ${ROOT} (run ocamllex -o ${@} ${<}))))
+     (action  (chdir %{root} (run ocamllex -o %{@} %{<}))))
 
 Locks
 -----
@@ -1357,13 +1357,13 @@ same lock:
      (name   runtest)
      (deps   foo)
      (locks  m)
-     (action (run test.exe ${<})))
+     (action (run test.exe %{<})))
 
     (alias
      (name   runtest)
      (deps   bar)
      (locks  m)
-     (action (run test.exe ${<})))
+     (action (run test.exe %{<})))
 
 Dune will make sure that the executions of ``test.exe foo`` and
 ``test.exe bar`` are serialized.
@@ -1383,7 +1383,7 @@ simply use an absolute filename:
      (name   runtest)
      (deps   foo)
      (locks  /tcp-port/1042)
-     (action (run test.exe ${<})))
+     (action (run test.exe %{<})))
 
 .. _ocaml-syntax:
 

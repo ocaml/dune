@@ -53,3 +53,4 @@ val enumerate_or  : string list -> string
 
 module Set : Set.S with type elt = t
 module Map : Map.S with type key = t
+module Table : Hashtbl.S with type key = t

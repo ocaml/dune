@@ -201,7 +201,7 @@ module Gen(P : Install_rules.Params) = struct
   let copy_files_rules (def: Copy_files.t) ~src_dir ~dir ~scope =
     let loc = String_with_vars.loc def.glob in
     let glob_in_src =
-      let src_glob = SC.expand_vars sctx ~dir def.glob ~scope in
+      let src_glob = SC.expand_vars_string sctx ~dir def.glob ~scope in
       Path.relative src_dir src_glob ~error_loc:loc
     in
     (* The following condition is required for merlin to work.
@@ -1042,7 +1042,7 @@ module Gen(P : Install_rules.Params) = struct
         | Copy_files { glob; _ } ->
           let src_dir =
             let loc = String_with_vars.loc glob in
-            let src_glob = SC.expand_vars sctx ~dir glob ~scope in
+            let src_glob = SC.expand_vars_string sctx ~dir glob ~scope in
             Path.parent_exn (Path.relative src_dir src_glob ~error_loc:loc)
           in
           Some

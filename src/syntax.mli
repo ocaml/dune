@@ -20,6 +20,14 @@ end
 
 type t
 
+module Error : sig
+  val since      : Loc.t -> t -> Version.t -> what:string -> _
+
+  val renamed_in : Loc.t -> t -> Version.t -> what:string -> to_:string -> _
+
+  val deleted_in : Loc.t -> t -> Version.t -> what:string -> _
+end
+
 (** [create ~name ~desc supported_versions] defines a new
     syntax. [supported_version] is the list of the last minor version
     of each supported major version. [desc] is used to describe what

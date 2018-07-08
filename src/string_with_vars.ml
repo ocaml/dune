@@ -196,18 +196,34 @@ module Var = struct
   let loc (t : t) = t.loc
 
   type kind =
-    | Single of string
-    | Pair of string * string
+    | Var of string
+    | Macro of string * string
 
   let destruct { loc = _ ; name; payload; syntax = _ } =
     match payload with
-    | None -> Single name
-    | Some p -> Pair (name, p)
+    | None -> Var name
+    | Some p -> Macro (name, p)
+
+  let name { name; _ } = name
 
   let full_name t =
     match destruct t with
-    | Single s -> s
-    | Pair (k, v) -> k ^ ":" ^ v
+    | Var s -> s
+    | Macro (k, v) -> k ^ ":" ^ v
+
+  let to_string = string_of_var
+
+  let pp fmt t = Format.pp_print_string fmt (to_string t)
+
+  let sexp_of_t t = Sexp.atom (to_string t)
+
+  let with_payload t ~payload =
+    { t with payload }
+
+  let with_name t ~name =
+    { t with name }
+
+  let is_macro t = Option.is_some t.payload
 end
 
 let partial_expand
@@ -262,8 +278,8 @@ let expand t ~mode ~dir ~f =
         begin match var.syntax with
         | Percent ->
           begin match Var.destruct var with
-          | Single v -> Loc.fail var.loc "unknown variable %S" v
-          | Pair _ -> Loc.fail var.loc "unknown form %s" (string_of_var var)
+          | Var v -> Loc.fail var.loc "unknown variable %S" v
+          | Macro _ -> Loc.fail var.loc "unknown form %s" (string_of_var var)
           end
         | Dollar_brace
         | Dollar_paren -> Some [Value.String (string_of_var var)]

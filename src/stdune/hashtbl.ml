@@ -37,6 +37,24 @@ module Make(H : Hashable.S) = struct
       fold t ~init ~f:(fun ~key ~data acc -> f key data acc)
     let fold  t ~init ~f = foldi t ~init ~f:(fun _ x -> f x)
   end
+
+  let of_list l =
+    let h = create (List.length l) in
+    let rec loop = function
+      | [] -> Result.Ok h
+      | (k, v) :: xs ->
+        begin match find h k with
+        | None -> add h k v; loop xs
+        | Some v' -> Error (k, v', v)
+        end
+    in
+    loop l
+
+  let of_list_exn l =
+    match of_list l with
+    | Result.Ok h -> h
+    | Error (_, _, _) ->
+      Exn.code_error "Hashtbl.of_list_exn duplicate keys" []
 end
 
 open MoreLabels.Hashtbl

@@ -49,14 +49,27 @@ end
 module Var : sig
   type t
 
+  val pp : t Fmt.t
+
+  val sexp_of_t : t -> Sexp.t
+
+  val name : t -> string
   val loc : t -> Loc.t
   val full_name : t -> string
 
   type kind =
-    | Single of string
-    | Pair of string * string
+    | Var of string
+    | Macro of string * string
 
   val destruct : t -> kind
+
+  val to_string : t -> string
+
+  val with_name : t -> name:string -> t
+
+  val with_payload : t -> payload:string option -> t
+
+  val is_macro : t -> bool
 end
 
 val expand

@@ -822,18 +822,6 @@ module Action = struct
       ; ddeps     = String.Map.empty
       }
     in
-    let targets loc name =
-      let var =
-        match name with
-        | "@" -> sprintf "${%s}" name
-        | "targets" -> sprintf "%%{%s}" name
-        | _ -> assert false
-      in
-      match targets_written_by_user with
-      | Infer -> Loc.fail loc "You cannot use %s with inferred rules." var
-      | Alias -> Loc.fail loc "You cannot use %s in aliases." var
-      | Static l -> Some (Value.L.dirs l) (* XXX hack to signal no dep *)
-    in
     let expand_form s var syntax_version =
       let loc = String_with_vars.Var.loc var in
       let key = String_with_vars.Var.full_name var in
@@ -933,13 +921,27 @@ module Action = struct
       let key = String_with_vars.Var.full_name var in
       let res =
         match String_with_vars.Var.destruct var with
+        | Pair (_, s) -> expand_form s var syntax_version
         | Single var_name ->
           begin match expand_vars sctx ~syntax_version ~var with
           | None -> String.Map.find extra_vars key
-          | Some Targets -> targets loc var_name
+          | Some Targets ->
+            let var () =
+              match var_name with
+              | "@" -> sprintf "${%s}" var_name
+              | "targets" -> sprintf "%%{%s}" var_name
+              | _ -> assert false
+            in
+            begin match targets_written_by_user with
+            | Infer ->
+              Loc.fail loc "You cannot use %s with inferred rules." (var ())
+            | Alias ->
+              Loc.fail loc "You cannot use %s in aliases." (var ())
+            | Static l ->
+              Some (Value.L.dirs l) (* XXX hack to signal no dep *)
+            end
           | Some v -> Var.Kind.to_value_no_deps_or_targets v ~scope
           end
-        | Pair (_, s) -> expand_form s var syntax_version
       in
       Option.iter res ~f:(fun v ->
         acc.sdeps <- Path.Set.union

@@ -45,8 +45,8 @@ type t =
   ; artifacts                        : Artifacts.t
   ; stanzas_to_consider_for_install  : Installable.t list
   ; cxx_flags                        : string list
-  ; vars                             : Var.Kind.t Var.Map.t
-  ; macros                           : Var.Macro.t Var.Map.t
+  ; vars                             : Pform.Kind.t Pform.Map.t
+  ; macros                           : Pform.Macro.t Pform.Map.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
@@ -85,16 +85,16 @@ let installed_libs t = t.installed_libs
 let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
-let expand_vars t ~syntax_version ~var : Var.Kind.t option =
+let expand_vars t ~syntax_version ~var =
   if String_with_vars.Var.is_macro var then
     Exn.code_error "expand_vars can't expand macros"
       [ "var", String_with_vars.Var.sexp_of_t var ]
   else
-    Var.Map.expand t.vars ~syntax_version ~var
+    Pform.Map.expand t.vars ~syntax_version ~var
 
 let expand_macro t ~syntax_version ~var =
   if String_with_vars.Var.is_macro var then
-    Var.Map.expand t.macros ~syntax_version ~var
+    Pform.Map.expand t.macros ~syntax_version ~var
   else
     Exn.code_error "expand_macro can't expand variables"
       [ "var", String_with_vars.Var.sexp_of_t var ]
@@ -106,7 +106,7 @@ let (expand_vars_string, expand_vars_path) =
       | None ->
         String.Map.find extra_vars (String_with_vars.Var.full_name var)
       | Some v ->
-        begin match Var.Kind.to_value_no_deps_or_targets ~scope v with
+        begin match Pform.Kind.to_value_no_deps_or_targets ~scope v with
         | Some _ as v -> v
         | None ->
           Loc.fail (String_with_vars.Var.loc var)
@@ -289,7 +289,7 @@ let create
     List.filter context.ocamlc_cflags
       ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
-  let vars = Var.Map.create_vars ~context ~cxx_flags in
+  let vars = Pform.Map.create_vars ~context ~cxx_flags in
   let t =
     { context
     ; host
@@ -304,7 +304,7 @@ let create
     ; artifacts
     ; cxx_flags
     ; vars
-    ; macros = Var.Map.macros
+    ; macros = Pform.Map.macros
     ; chdir = Build.arr (fun (action : Action.t) ->
         match action with
         | Chdir _ -> action
@@ -596,7 +596,7 @@ module Action = struct
       let loc = String_with_vars.Var.loc var in
       let key = String_with_vars.Var.full_name var in
       begin match expand_macro sctx ~syntax_version ~var with
-      | Some Var.Macro.Exe -> Some (path_exp (map_exe (Path.relative dir s)))
+      | Some Pform.Macro.Exe -> Some (path_exp (map_exe (Path.relative dir s)))
       | Some Dep -> Some (path_exp (Path.relative dir s))
       | Some Bin -> begin
           let sctx = host sctx in
@@ -710,7 +710,7 @@ module Action = struct
             | Static l ->
               Some (Value.L.dirs l) (* XXX hack to signal no dep *)
             end
-          | Some v -> Var.Kind.to_value_no_deps_or_targets v ~scope
+          | Some v -> Pform.Kind.to_value_no_deps_or_targets v ~scope
           end
       in
       Option.iter res ~f:(fun v ->
@@ -729,9 +729,9 @@ module Action = struct
       match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
-        Var.Map.expand Var.Map.static_vars ~syntax_version ~var
+        Pform.Map.expand Pform.Map.static_vars ~syntax_version ~var
         |> Option.map ~f:(function
-          | Var.Kind.Deps -> (Value.L.paths deps_written_by_user)
+          | Pform.Kind.Deps -> (Value.L.paths deps_written_by_user)
           | First_dep ->
             begin match deps_written_by_user with
             | [] ->

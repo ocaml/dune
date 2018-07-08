@@ -1420,7 +1420,7 @@ module Tests = struct
     { exes    : Executables.t
     ; locks   : String_with_vars.t list
     ; package : Package.t option
-    ; deps    : Dep_conf.t list
+    ; deps    : Dep_conf.t Named.t
     }
 
   let gen_parse names =
@@ -1428,7 +1428,7 @@ module Tests = struct
       (Buildable.t                                         >>= fun buildable ->
        field_oslu "link_flags"                             >>= fun link_flags ->
        names                                               >>= fun names ->
-       field "deps" (list Dep_conf.t) ~default:[]          >>= fun deps ->
+       field "deps" Dep_conf.bindings ~default:Named.empty >>= fun deps ->
        field_o "package" Pkg.t                             >>= fun package ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
        field "modes" Executables.Link_mode.Set.t

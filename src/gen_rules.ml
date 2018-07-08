@@ -976,7 +976,7 @@ module Gen(P : Install_rules.Params) = struct
       let rule =
         { Rule.
           targets = Infer
-        ; deps = []
+        ; deps = Named.empty
         ; action =
             (loc, Action.Unexpanded.Redirect (Stdout, diff.file2, run_action))
         ; mode = Standard

@@ -87,6 +87,8 @@ module Named : sig
     ; unnamed : 'a list
     }
 
+  val empty : 'a t
+
   val sexp_of_t : ('a -> Usexp.t) -> 'a t -> Usexp.t
 end
 
@@ -359,7 +361,7 @@ module Tests : sig
     { exes    : Executables.t
     ; locks   : String_with_vars.t list
     ; package : Package.t option
-    ; deps    : Dep_conf.t list
+    ; deps    : Dep_conf.t Named.t
     }
 end
 

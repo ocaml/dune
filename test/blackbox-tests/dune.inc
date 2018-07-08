@@ -437,6 +437,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name ocaml-config-macro)
+ (deps (package dune) (source_tree test-cases/ocaml-config-macro))
+ (action
+  (chdir
+   test-cases/ocaml-config-macro
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name ocaml-syntax)
  (deps (package dune) (source_tree test-cases/ocaml-syntax))
  (action
@@ -698,6 +706,7 @@
   (alias multiple-private-libs)
   (alias no-installable-mode)
   (alias null-dep)
+  (alias ocaml-config-macro)
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
   (alias odoc)
@@ -773,6 +782,7 @@
   (alias misc)
   (alias no-installable-mode)
   (alias null-dep)
+  (alias ocaml-config-macro)
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
   (alias output-obj)

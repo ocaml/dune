@@ -1,4 +1,4 @@
-module Kind : sig
+module Var : sig
   type t =
     | Values of Value.t list
     | Project_root
@@ -34,11 +34,11 @@ module Map : sig
   type 'a var
   type 'a t
 
-  val create_vars : context:Context.t -> cxx_flags:string list -> Kind.t t
+  val create_vars : context:Context.t -> cxx_flags:string list -> Var.t t
 
   val macros : Macro.t t
 
-  val static_vars : Kind.t t
+  val static_vars : Var.t t
 
   val expand
     :  'a t

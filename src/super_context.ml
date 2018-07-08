@@ -45,7 +45,7 @@ type t =
   ; artifacts                        : Artifacts.t
   ; stanzas_to_consider_for_install  : Installable.t list
   ; cxx_flags                        : string list
-  ; vars                             : Pform.Kind.t Pform.Map.t
+  ; vars                             : Pform.Var.t Pform.Map.t
   ; macros                           : Pform.Macro.t Pform.Map.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
@@ -106,7 +106,7 @@ let (expand_vars_string, expand_vars_path) =
       | None ->
         String.Map.find extra_vars (String_with_vars.Var.full_name var)
       | Some v ->
-        begin match Pform.Kind.to_value_no_deps_or_targets ~scope v with
+        begin match Pform.Var.to_value_no_deps_or_targets ~scope v with
         | Some _ as v -> v
         | None ->
           Loc.fail (String_with_vars.Var.loc var)
@@ -710,7 +710,7 @@ module Action = struct
             | Static l ->
               Some (Value.L.dirs l) (* XXX hack to signal no dep *)
             end
-          | Some v -> Pform.Kind.to_value_no_deps_or_targets v ~scope
+          | Some v -> Pform.Var.to_value_no_deps_or_targets v ~scope
           end
       in
       Option.iter res ~f:(fun v ->
@@ -731,7 +731,7 @@ module Action = struct
       | None ->
         Pform.Map.expand Pform.Map.static_vars ~syntax_version ~var
         |> Option.map ~f:(function
-          | Pform.Kind.Deps -> (Value.L.paths deps_written_by_user)
+          | Pform.Var.Deps -> (Value.L.paths deps_written_by_user)
           | First_dep ->
             begin match deps_written_by_user with
             | [] ->

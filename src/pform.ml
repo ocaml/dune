@@ -1,6 +1,6 @@
 open Import
 
-module Kind = struct
+module Var = struct
   type t =
     | Values of Value.t list
     | Project_root
@@ -41,16 +41,16 @@ type 'a t =
 module Map = struct
   type nonrec 'a t = 'a t String.Map.t
 
-  let values v                      = No_info (Kind.Values v)
+  let values v                      = No_info (Var.Values v)
   let renamed_in ~new_name ~version = Renamed_in (version, new_name)
   let deleted_in ~version kind      = Deleted_in (kind, version)
   let since ~version v              = Since (v, version)
 
   let static_vars =
-    [ "first-dep", since ~version:(1, 0) Kind.First_dep
-    ; "targets", since ~version:(1, 0) Kind.Targets
-    ; "deps", since ~version:(1, 0) Kind.Deps
-    ; "project_root", since ~version:(1, 0) Kind.Project_root
+    [ "first-dep", since ~version:(1, 0) Var.First_dep
+    ; "targets", since ~version:(1, 0) Var.Targets
+    ; "deps", since ~version:(1, 0) Var.Deps
+    ; "project_root", since ~version:(1, 0) Var.Project_root
 
     ; "<", renamed_in ~version:(1, 0) ~new_name:"first-dep"
     ; "@", renamed_in ~version:(1, 0) ~new_name:"targets"

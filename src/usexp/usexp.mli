@@ -76,6 +76,10 @@ val to_string : t -> syntax:syntax -> string
 (** Serialize a S-expression using indentation to improve readability *)
 val pp : syntax -> Format.formatter -> t -> unit
 
+(** Serialization that never fails because it quotes atoms when necessary
+    TODO remove this once we have a proper sexp type *)
+val pp_quoted : Format.formatter -> t -> unit
+
 (** Same as [pp ~syntax:Dune], but split long strings. The formatter
     must have been prepared with [prepare_formatter]. *)
 val pp_split_strings : Format.formatter -> t -> unit

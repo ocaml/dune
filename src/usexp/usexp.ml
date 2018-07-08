@@ -41,6 +41,18 @@ let rec pp syntax ppf = function
     Format.pp_close_box ppf ()
   | Template t -> Template.pp syntax ppf t
 
+let pp_quoted =
+  let rec loop = function
+    | Atom (A s) as t ->
+      if Atom.is_valid_dune s then
+        t
+      else
+        Quoted_string s
+    | List xs -> List (List.map ~f:loop xs)
+    | (Quoted_string _ | Template _) as t -> t
+  in
+  fun ppf t -> pp Dune ppf (loop t)
+
 let pp_print_quoted_string ppf s =
   let syntax = Dune in
   if String.contains s '\n' then begin

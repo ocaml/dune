@@ -78,7 +78,7 @@ val dump_env : t -> dir:Path.t -> (unit, Sexp.t list) Build.t
 val find_scope_by_dir  : t -> Path.t              -> Scope.t
 val find_scope_by_name : t -> Dune_project.Name.t -> Scope.t
 
-val expand_vars
+val expand_vars_string
   :  t
   -> scope:Scope.t
   -> dir:Path.t

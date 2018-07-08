@@ -8,7 +8,9 @@ In expands to a file name, and registers this as a dependency.
 
   $ dune build --root dune @test-dep
   Entering directory 'dune'
-  dynamic-contents
+  File "dune", line 13, characters 17-47:
+  Error: %{path:..} was renamed to '%{dep:..}' in the 1.0 version of the dune language
+  [1]
 
 %{path-no-dep:string}
 ---------------------
@@ -18,7 +20,7 @@ This form does not exist, but displays an hint:
   $ dune build --root dune-invalid @test-path-no-dep
   Entering directory 'dune-invalid'
   File "dune", line 7, characters 17-54:
-  Error: The ${path-no-dep:...} syntax has been removed from dune.
+  Error: %{path-no-dep:..} was deleted in version 1.0 of the dune language
   [1]
 
 jbuild files
@@ -51,6 +53,5 @@ This form does not exist, but displays an hint:
   $ dune build --root jbuild-invalid @test-dep
   Entering directory 'jbuild-invalid'
   File "jbuild", line 5, characters 16-37:
-  Error: ${dep:generated-file} is not supported in jbuild files.
-  Hint: Did you mean ${path:generated-file} instead?
+  Error: ${dep:..} is only available since version 1.0 of the dune language
   [1]

@@ -56,6 +56,21 @@ type t =
   ; supported_versions : Supported_versions.t
   }
 
+module Error = struct
+  let since loc t ver ~what =
+    Loc.fail loc "%s is only available since version %s of %s"
+      what (Version.to_string ver) t.desc
+
+  let renamed_in loc t ver ~what ~to_ =
+    Loc.fail loc "%s was renamed to '%s' in the %s version of %s"
+      what to_ (Version.to_string ver) t.desc
+
+  let deleted_in loc t ver ~what =
+    Loc.fail loc "%s was deleted in version %s of %s"
+      what (Version.to_string ver) t.desc
+end
+
+
 let create ~name ~desc supported_versions =
   { name
   ; desc
@@ -112,9 +127,7 @@ let deleted_in t ver =
     return ()
   else begin
     desc () >>= fun (loc, what) ->
-    Loc.fail loc
-      "%s was deleted in version %s of %s" what
-      (Version.to_string ver) t.desc
+    Error.deleted_in loc t ver ~what
   end
 
 let renamed_in t ver ~to_ =
@@ -123,9 +136,7 @@ let renamed_in t ver ~to_ =
     return ()
   else begin
     desc () >>= fun (loc, what) ->
-    Loc.fail loc
-      "%s was renamed to '%s' in the %s version of %s" what to_
-      (Version.to_string ver) t.desc
+    Error.renamed_in loc t ver ~what ~to_
   end
 
 let since t ver =
@@ -134,7 +145,5 @@ let since t ver =
     return ()
   else begin
     desc () >>= fun (loc, what) ->
-    Loc.fail loc
-      "%s is only available since version %s of %s" what
-      (Version.to_string ver) t.desc
+    Error.since loc t ver ~what
   end

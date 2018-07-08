@@ -211,7 +211,7 @@ module Var = struct
 
   let to_string = string_of_var
 
-  let fail v ~f = Loc.fail (loc v) "%s" (f (to_string v))
+  let pp fmt t = Format.pp_print_string fmt (to_string t)
 
   let sexp_of_t t = Sexp.atom (to_string t)
 

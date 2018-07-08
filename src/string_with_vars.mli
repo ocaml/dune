@@ -49,6 +49,8 @@ end
 module Var : sig
   type t
 
+  val pp : t Fmt.t
+
   val sexp_of_t : t -> Sexp.t
 
   val loc : t -> Loc.t
@@ -59,8 +61,6 @@ module Var : sig
     | Pair of string * string
 
   val destruct : t -> kind
-
-  val fail : t -> f:(string -> string) -> _
 
   val to_string : t -> string
 

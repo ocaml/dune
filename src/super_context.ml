@@ -242,19 +242,19 @@ end = struct
           if syntax_version >= min_version then
             Some v
           else
-            String_with_vars.Var.fail var ~f:(fun var ->
-              sprintf "Variable %s is available in since version %s. \
-                       Current version is %s"
-                var
-                (Syntax.Version.to_string min_version)
-                (Syntax.Version.to_string syntax_version))
+            Loc.fail (String_with_vars.Var.loc var)
+              "Variable %a is available in since version %s. \
+               Current version is %s"
+              String_with_vars.Var.pp var
+              (Syntax.Version.to_string min_version)
+              (Syntax.Version.to_string syntax_version)
         | Renamed_in (in_version, new_name) -> begin
             if syntax_version >= in_version then
-              String_with_vars.Var.fail var ~f:(fun old_name ->
-                sprintf "Variable %s has been renamed to %s since %s"
-                  old_name
-                  (String_with_vars.Var.(to_string (rename var ~new_name)))
-                  (Syntax.Version.to_string in_version))
+              Loc.fail (String_with_vars.Var.loc var)
+                "Variable %a has been renamed to %s since %s"
+                String_with_vars.Var.pp var
+                (String_with_vars.Var.(to_string (rename var ~new_name)))
+                (Syntax.Version.to_string in_version)
             else
               expand t ~syntax_version:in_version
                 ~var:(String_with_vars.Var.rename var ~new_name)
@@ -263,12 +263,12 @@ end = struct
           if syntax_version < in_version then
             Some v
           else
-            String_with_vars.Var.fail var ~f:(fun var ->
-              sprintf "Variable %s has been deleted in version %s. \
-                       Current version is: %s"
-                var
-                (Syntax.Version.to_string in_version)
-                (Syntax.Version.to_string syntax_version)))
+            Loc.fail (String_with_vars.Var.loc var)
+              "Variable %a has been deleted in version %s. \
+               Current version is: %s"
+              String_with_vars.Var.pp var
+              (Syntax.Version.to_string in_version)
+              (Syntax.Version.to_string syntax_version))
   end
 end
 
@@ -354,8 +354,9 @@ let (expand_vars_string, expand_vars_path) =
         begin match Var.Kind.to_value_no_deps_or_targets ~scope v with
         | Some _ as v -> v
         | None ->
-          String_with_vars.Var.fail var
-            ~f:(sprintf "Variable %s is not allowed in this context")
+          Loc.fail (String_with_vars.Var.loc var)
+            "Variable %a is not allowed in this context"
+            String_with_vars.Var.pp var
         end)
   in
   let expand_vars t ~scope ~dir ?extra_vars s =
@@ -938,7 +939,8 @@ module Action = struct
         end
       | Some Path_no_dep -> Some [Value.Dir (Path.relative dir s)]
       | None ->
-        String_with_vars.Var.fail var ~f:(sprintf "Unknown form: %s")
+        Loc.fail (String_with_vars.Var.loc var) "Unknown form: %a"
+          String_with_vars.Var.pp var
       end
     in
     let expand var syntax_version =

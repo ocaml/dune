@@ -115,7 +115,7 @@ module Info = struct
     ; ppx_runtime_deps = conf.ppx_runtime_libraries
     ; pps = Jbuild.Preprocess_map.pps conf.buildable.preprocess
     ; sub_systems = conf.sub_systems
-    ; dune_version = Some conf.dune_version
+    ; dune_version = Some conf.buildable.dune_version
     }
 
   let of_findlib_package pkg =

@@ -109,6 +109,7 @@ module Buildable : sig
     ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
     ; js_of_ocaml              : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
+    ; dune_version             : Syntax.Version.t
     }
 
   (** Preprocessing specification used by all modules or [No_preprocessing] *)
@@ -206,7 +207,6 @@ module Library : sig
     ; project                  : Dune_project.t
     ; sub_systems              : Sub_system_info.t Sub_system_name.Map.t
     ; no_keep_locs             : bool
-    ; dune_version             : Syntax.Version.t
     }
 
   val has_stubs : t -> bool

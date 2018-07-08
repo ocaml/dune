@@ -47,6 +47,7 @@ type t =
   ; cxx_flags                        : string list
   ; vars                             : Pform.Var.t Pform.Map.t
   ; macros                           : Pform.Macro.t Pform.Map.t
+  ; ocaml_config                     : Value.t list String.Map.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
@@ -290,6 +291,19 @@ let create
       ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
   let vars = Pform.Map.create_vars ~context ~cxx_flags in
+  let ocaml_config =
+    let string s = [Value.String s] in
+    Ocaml_config.to_list context.ocaml_config
+    |> List.map  ~f:(fun (k, v) ->
+      ( k
+      , match (v : Ocaml_config.Value.t) with
+      | Bool          x -> string (string_of_bool x)
+      | Int           x -> string (string_of_int x)
+      | String        x -> string x
+      | Words         x -> Value.L.strings x
+      | Prog_and_args x -> Value.L.strings (x.prog :: x.args)))
+    |> String.Map.of_list_exn
+  in
   let t =
     { context
     ; host
@@ -305,6 +319,7 @@ let create
     ; cxx_flags
     ; vars
     ; macros = Pform.Map.macros
+    ; ocaml_config
     ; chdir = Build.arr (fun (action : Action.t) ->
         match action with
         | Chdir _ -> action
@@ -597,6 +612,7 @@ module Action = struct
       let key = String_with_vars.Var.full_name var in
       begin match expand_macro sctx ~syntax_version ~var with
       | Some Pform.Macro.Exe -> Some (path_exp (map_exe (Path.relative dir s)))
+      | Some Ocaml_config -> String.Map.find sctx.ocaml_config s
       | Some Dep -> Some (path_exp (Path.relative dir s))
       | Some Bin -> begin
           let sctx = host sctx in

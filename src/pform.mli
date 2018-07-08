@@ -22,6 +22,7 @@ module Macro : sig
     | Read_strings
     | Read_lines
     | Path_no_dep
+    | Ocaml_config
 end
 
 type 'a t =

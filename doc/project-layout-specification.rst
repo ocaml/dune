@@ -201,6 +201,12 @@ Sets the version of the project:
 
     (version <version>)
 
+other stanzas
+-------------
+
+``dune-project`` files may contain any of the stanza allowed un
+:ref:`dune-files`.
+
 <package>.opam files
 ====================
 

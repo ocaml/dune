@@ -217,8 +217,11 @@ module Var = struct
 
   let sexp_of_t t = Sexp.atom (to_string t)
 
-  let rename t ~new_name =
-    { t with name = new_name }
+  let with_payload t ~payload =
+    { t with payload }
+
+  let with_name t ~name =
+    { t with name }
 
   let is_form t = Option.is_some t.payload
 end

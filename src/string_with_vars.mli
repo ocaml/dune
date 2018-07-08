@@ -65,7 +65,9 @@ module Var : sig
 
   val to_string : t -> string
 
-  val rename : t -> new_name:string -> t
+  val with_name : t -> name:string -> t
+
+  val with_payload : t -> payload:string option -> t
 
   val is_form : t -> bool
 end

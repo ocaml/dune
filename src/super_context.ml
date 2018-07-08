@@ -232,25 +232,24 @@ end = struct
 
     let rec expand t ~syntax_version ~var =
       let name = String_with_vars.Var.name var in
-      Option.bind (String.Map.find t name) ~f:(function
+      Option.bind (String.Map.find t name) ~f:(fun v ->
+        let what =
+          lazy (sprintf "Variable %s" (String_with_vars.Var.to_string var)) in
+        match v with
         | No_info v -> Some v
         | Since (v, min_version) ->
           if syntax_version >= min_version then
             Some v
           else
-            Loc.fail (String_with_vars.Var.loc var)
-              "Variable %a is available in since version %s. \
-               Current version is %s"
-              String_with_vars.Var.pp var
-              (Syntax.Version.to_string min_version)
-              (Syntax.Version.to_string syntax_version)
+            Syntax.Error.since (String_with_vars.Var.loc var)
+              Stanza.syntax syntax_version
+              ~what:(Lazy.force what)
         | Renamed_in (in_version, new_name) -> begin
             if syntax_version >= in_version then
-              Loc.fail (String_with_vars.Var.loc var)
-                "Variable %a has been renamed to %s since %s"
-                String_with_vars.Var.pp var
-                (String_with_vars.Var.(to_string (rename var ~new_name)))
-                (Syntax.Version.to_string in_version)
+              Syntax.Error.renamed_in (String_with_vars.Var.loc var)
+                Stanza.syntax syntax_version
+                ~what:(Lazy.force what)
+                ~to_:(String_with_vars.Var.(to_string (rename var ~new_name)))
             else
               expand t ~syntax_version:in_version
                 ~var:(String_with_vars.Var.rename var ~new_name)
@@ -259,12 +258,8 @@ end = struct
           if syntax_version < in_version then
             Some v
           else
-            Loc.fail (String_with_vars.Var.loc var)
-              "Variable %a has been deleted in version %s. \
-               Current version is: %s"
-              String_with_vars.Var.pp var
-              (Syntax.Version.to_string in_version)
-              (Syntax.Version.to_string syntax_version))
+            Syntax.Error.deleted_in (String_with_vars.Var.loc var)
+              Stanza.syntax syntax_version ~what:(Lazy.force what))
   end
 end
 

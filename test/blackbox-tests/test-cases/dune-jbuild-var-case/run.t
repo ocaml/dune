@@ -6,7 +6,7 @@ All builtin variables are lower cased in Dune:
   $ dune runtest --root dune-upper
   Entering directory 'dune-upper'
   File "dune", line 3, characters 41-46:
-  Error: Variable %{MAKE} has been renamed to %{make} since 1.0
+  Error: Variable %{MAKE} was renamed to '%{make}' in the 1.0 version of the dune language
   [1]
 
 jbuild files retain the the old names:

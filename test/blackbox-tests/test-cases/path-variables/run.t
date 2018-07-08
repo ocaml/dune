@@ -53,5 +53,5 @@ This form does not exist, but displays an hint:
   $ dune build --root jbuild-invalid @test-dep
   Entering directory 'jbuild-invalid'
   File "jbuild", line 5, characters 16-37:
-  Error: Variable ${dep:generated-file} is only available since version 0.0 of the dune language
+  Error: Variable ${dep:generated-file} is only available since version 1.0 of the dune language
   [1]

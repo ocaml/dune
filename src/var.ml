@@ -159,7 +159,7 @@ module Map = struct
           Some v
         else
           Syntax.Error.since (String_with_vars.Var.loc var)
-            Stanza.syntax syntax_version
+            Stanza.syntax min_version
             ~what:(what var)
       | Renamed_in (in_version, new_name) -> begin
           if syntax_version >= in_version then

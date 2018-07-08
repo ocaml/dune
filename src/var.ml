@@ -151,7 +151,12 @@ module Map = struct
     let name = String_with_vars.Var.name var in
     Option.bind (String.Map.find t name) ~f:(fun v ->
       let what var =
-        sprintf "Variable %s" (String_with_vars.Var.to_string var) in
+        String_with_vars.Var.to_string (
+          if String_with_vars.Var.is_form var then
+            String_with_vars.Var.with_payload var ~payload:(Some "..")
+          else
+            var)
+      in
       match v with
       | No_info v -> Some v
       | Since (v, min_version) ->
@@ -163,17 +168,10 @@ module Map = struct
             ~what:(what var)
       | Renamed_in (in_version, new_name) -> begin
           if syntax_version >= in_version then
-            let var =
-              if String_with_vars.Var.is_form var then
-                String_with_vars.Var.with_payload var ~payload:(Some "..")
-              else
-                var
-            in
             Syntax.Error.renamed_in (String_with_vars.Var.loc var)
               Stanza.syntax syntax_version
               ~what:(what var)
-              ~to_:(let open String_with_vars.Var in
-                    to_string (with_name var ~name:new_name))
+              ~to_:(what (String_with_vars.Var.with_name var ~name:new_name))
           else
             expand t ~syntax_version:in_version
               ~var:(String_with_vars.Var.with_name var ~name:new_name)

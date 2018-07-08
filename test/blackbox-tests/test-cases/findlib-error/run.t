@@ -3,7 +3,7 @@ We are dropping support for findlib in dune
   $ dune build --root in-dune target.txt
   Entering directory 'in-dune'
   File "dune", line 2, characters 25-37:
-  Error: Variable %{findlib:..} was renamed to '%{lib:..}' in the 1.0 version of the dune language
+  Error: %{findlib:..} was renamed to '%{lib:..}' in the 1.0 version of the dune language
   [1]
 
 But it must still be available in jbuild files

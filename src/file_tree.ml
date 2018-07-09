@@ -211,9 +211,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
           (project, None, String.Set.empty)
         else
           let project =
-            match Dune_project.load ~dir:path ~files with
-            | Some x -> x
-            | None   -> project
+            Option.value (Dune_project.load ~dir:path ~files) ~default:project
           in
           let dune_file, ignored_subdirs =
             match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with

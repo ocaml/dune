@@ -233,31 +233,33 @@ module Pps_and_flags = struct
 end
 
 module Named = struct
-  type 'a t =
-    { named: 'a list String.Map.t
-    ; unnamed : 'a list
-    }
+  type 'a one =
+    | Unnamed of 'a
+    | Named of string * 'a list
 
-  let fold { named; unnamed } ~f ~init =
-    let flipped x acc = f acc x in
-    String.Map.fold named
-      ~f:(fun x init -> List.fold_left ~f:flipped ~init x)
-      ~init:(List.fold_left ~f:flipped ~init unnamed)
+  type 'a t = 'a one list
 
-  let first { named; unnamed } =
-    if String.Map.is_empty named then
-      match unnamed with
-      | [] -> Result.Error `Empty
-      | x :: _ -> Ok x
-    else
-      Result.Error `Named_exists
+  let to_list =
+    List.concat_map ~f:(function
+      | Unnamed x -> [x]
+      | Named (_, xs) -> xs)
 
-  let empty =
-    { named = String.Map.empty
-    ; unnamed = []
-    }
+  let find t k =
+    List.find_map t ~f:(function
+      | Unnamed _ -> None
+      | Named (k', x) -> Option.some_if (k = k') x)
 
-  let singleton x = { empty with unnamed = [x] }
+  let first t =
+    let rec loop acc = function
+      | [] -> acc
+      | Unnamed x :: xs -> loop (Result.Ok x) xs
+      | Named (_, _) :: _ -> Result.Error `Named_exists
+    in
+    loop (Result.Error `Empty) t
+
+  let empty = []
+
+  let singleton x = [Unnamed x]
 
   let t elem =
     let binding =
@@ -267,29 +269,32 @@ module Named = struct
         let name = String.sub s ~pos:1 ~len:(String.length s - 1) in
         enter (junk >>= fun () ->
                repeat elem >>| fun values ->
-               Left (name, (loc, values)))
+               Left (loc, name, values))
       | _ ->
         elem >>| fun elem -> Right elem
     in
     list binding >>| (fun bindings ->
-      let (named, unnamed) = List.partition_map bindings ~f:(fun x -> x) in
-      { unnamed
-      ; named =
-          (match String.Map.of_list named with
-           | Ok x -> x
-           | Error (name, (l1, _), (l2, _)) ->
-             of_sexp_errorf l1 "Variable %s is already defined in %s"
-               name (Loc.to_file_colon_line l2))
-          |> String.Map.map ~f:snd
-      })
+      let used_names = Hashtbl.create 8 in
+      List.fold_right bindings ~init:[] ~f:(fun x acc ->
+        match x with
+        | Right x -> Unnamed x :: acc
+        | Left (loc, name, values) ->
+          begin match Hashtbl.find used_names name with
+          | None ->
+            Hashtbl.add used_names name loc;
+            Named (name, values) :: acc
+          | Some loc_old ->
+            of_sexp_errorf loc "Variable %s is already defined in %s"
+              name (Loc.to_file_colon_line loc_old)
+          end))
 
-  let sexp_of_t sexp_of_a { unnamed; named } =
-    let unnamed = List.map ~f:sexp_of_a unnamed in
-    let named =
-      String.Map.foldi ~init:[] named ~f:(fun n d acc ->
-        Sexp.unsafe_atom_of_string (":" ^ n) :: (List.map ~f:sexp_of_a d) @ acc)
-    in
-    Sexp.List (unnamed @ named)
+  let sexp_of_t sexp_of_a bindings =
+    Sexp.List (
+      List.map bindings ~f:(function
+        | Unnamed a -> sexp_of_a a
+        | Named (name, bindings) ->
+          Sexp.List (Sexp.atom (":" ^ name) :: List.map ~f:sexp_of_a bindings))
+    )
 end
 
 module Dep_conf = struct
@@ -1296,9 +1301,7 @@ module Rule = struct
       let src = name ^ ".mll" in
       let dst = name ^ ".ml"  in
       { targets = Static [dst]
-      ; deps    = { Named.empty with
-                    unnamed = [File (S.virt_text __POS__ src)]
-                  }
+      ; deps    = Named.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
           (loc,
            Chdir
@@ -1319,10 +1322,7 @@ module Rule = struct
     List.map modules ~f:(fun name ->
       let src = name ^ ".mly" in
       { targets = Static [name ^ ".ml"; name ^ ".mli"]
-      ; deps    =
-          { Named.empty with
-            unnamed = [File (S.virt_text __POS__ src)]
-          }
+      ; deps    = Named.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
           (loc,
            Chdir

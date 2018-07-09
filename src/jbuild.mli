@@ -82,18 +82,21 @@ module Lib_deps : sig
 end
 
 module Named : sig
-  type 'a t =
-    { named : 'a list String.Map.t
-    ; unnamed : 'a list
-    }
+  type 'a one =
+    | Unnamed of 'a
+    | Named of string * 'a list
+
+  type 'a t = 'a one list
+
+  val find : 'a t -> string -> 'a list option
 
   val empty : 'a t
+
+  val to_list : 'a t -> 'a list
 
   val singleton : 'a -> 'a t
 
   val first : 'a t -> ('a, [`Empty | `Named_exists]) Result.t
-
-  val fold : 'a t -> f:('a -> 'init -> 'init) -> init:'init -> 'init
 
   val sexp_of_t : ('a -> Usexp.t) -> 'a t -> Usexp.t
 end

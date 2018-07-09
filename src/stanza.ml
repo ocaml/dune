@@ -41,4 +41,18 @@ module Of_sexp = struct
       list parse
     else
       repeat parse
+
+  let on_dup parsing_context name entries =
+    match Univ_map.find parsing_context (Syntax.key syntax) with
+    | Some (0, _) ->
+      let last = Option.value_exn (List.last entries) in
+      Loc.warn (Sexp.Ast.loc last)
+        "Field %S is present several times, previous occurrences are ignored."
+        name
+    | _ ->
+      field_present_too_many_times parsing_context name entries
+
+  let field name ?default t = field name ?default t ~on_dup
+  let field_o name t = field_o name t ~on_dup
+  let field_b ?check name = field_b name ?check ~on_dup
 end

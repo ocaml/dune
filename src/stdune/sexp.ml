@@ -448,26 +448,33 @@ module Of_sexp = struct
     of_sexp_errorf loc "field %s missing" name
   [@@inline never]
 
-  let rec multiple_occurrences ~name ~last ~prev =
-    match prev.prev with
-    | Some prev_prev ->
-      (* Make the error message point to the second occurrence *)
-      multiple_occurrences ~name ~last:prev ~prev:prev_prev
-    | None ->
-      of_sexp_errorf (Ast.loc last.entry) "Field %S is present too many times"
+  let field_present_too_many_times _ name entries =
+    match entries with
+    | _ :: second :: _ ->
+      of_sexp_errorf (Ast.loc second) "Field %S is present too many times"
         name
+    | _ -> assert false
+
+  let multiple_occurrences ?(on_dup=field_present_too_many_times) uc name last =
+    let rec collect acc x =
+      let acc = x.entry :: acc in
+      match x.prev with
+      | None -> acc
+      | Some prev -> collect acc prev
+    in
+    on_dup uc name (collect [] last)
   [@@inline never]
 
-  let find_single state name =
+  let find_single ?on_dup uc state name =
     let res = Name_map.find state.unparsed name in
     (match res with
-     | Some ({ prev = Some prev; _ } as last) ->
-       multiple_occurrences ~name ~last ~prev
+     | Some ({ prev = Some _; _ } as last) ->
+       multiple_occurrences uc name last ?on_dup
      | _ -> ());
     res
 
-  let field name ?default t (Fields (loc, _, uc)) state =
-    match find_single state name with
+  let field name ?default ?on_dup t (Fields (loc, _, uc)) state =
+    match find_single uc state name ?on_dup  with
     | Some { values; entry; _ } ->
       let ctx = Values (Ast.loc entry, Some name, uc) in
       let x = result ctx (t ctx values) in
@@ -477,8 +484,8 @@ module Of_sexp = struct
       | Some v -> (v, add_known name state)
       | None -> field_missing loc name
 
-  let field_o name t (Fields (_, _, uc)) state =
-    match find_single state name with
+  let field_o name ?on_dup t (Fields (_, _, uc)) state =
+    match find_single uc state name ?on_dup with
     | Some { values; entry; _ } ->
       let ctx = Values (Ast.loc entry, Some name, uc) in
       let x = result ctx (t ctx values) in
@@ -486,8 +493,8 @@ module Of_sexp = struct
     | None ->
       (None, add_known name state)
 
-  let field_b ?check name =
-    field name ~default:false
+  let field_b ?check ?on_dup name =
+    field name ~default:false ?on_dup
       (Option.value check ~default:(return ()) >>= fun () ->
         eos >>= function
        | true -> return true

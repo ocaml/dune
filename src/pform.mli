@@ -28,7 +28,7 @@ end
 type 'a t =
   | No_info    of 'a
   | Since      of 'a * Syntax.Version.t
-  | Deleted_in of 'a * Syntax.Version.t
+  | Deleted_in of 'a * Syntax.Version.t * string option
   | Renamed_in of Syntax.Version.t * string
 
 module Map : sig

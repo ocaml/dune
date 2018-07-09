@@ -1307,7 +1307,7 @@ module Rule = struct
                    [ S.virt_text __POS__ "-q"
                    ; S.virt_text __POS__ "-o"
                    ; S.virt_var __POS__ "targets"
-                   ; S.virt_var __POS__"first-dep-tmp"
+                   ; S.virt_var __POS__"deps"
                    ])))
       ; mode
       ; locks = []
@@ -1328,7 +1328,7 @@ module Rule = struct
            Chdir
              (S.virt_var __POS__ "root",
               Run (S.virt_text __POS__ "ocamlyacc",
-                   [S.virt_var __POS__ "first-dep-tmp"])))
+                   [S.virt_var __POS__ "deps"])))
       ; mode
       ; locks = []
       ; loc

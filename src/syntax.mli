@@ -25,7 +25,13 @@ module Error : sig
 
   val renamed_in : Loc.t -> t -> Version.t -> what:string -> to_:string -> _
 
-  val deleted_in : Loc.t -> t -> Version.t -> what:string -> _
+  val deleted_in
+    :  Loc.t
+    -> t
+    -> ?repl:string
+    -> Version.t
+    -> what:string
+    -> _
 end
 
 (** [create ~name ~desc supported_versions] defines a new

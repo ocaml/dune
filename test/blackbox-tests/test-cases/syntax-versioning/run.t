@@ -21,6 +21,9 @@
   $ dune build
   File "dune", line 1, characters 40-42:
   Error: %{<} was deleted in version 1.0 of the dune language.
-  Use a named dependency instead: (:<name> <dep>)
+  Use a named dependency instead:
+  
+    (deps (:x <dep>) ...)
+     ... %{x} ...
   [1]
   $ rm -f dune

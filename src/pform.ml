@@ -53,7 +53,10 @@ module Map = struct
     ; "project_root", since ~version:(1, 0) Var.Project_root
 
     ; "<", deleted_in Var.Deps ~version:(1, 0)
-             ~repl:"Use a named dependency instead: (:<name> <dep>)"
+             ~repl:"Use a named dependency instead:\
+                    \n\
+                    \n\  (deps (:x <dep>) ...)\
+                    \n\   ... %{x} ..."
     ; "@", renamed_in ~version:(1, 0) ~new_name:"targets"
     ; "^", renamed_in ~version:(1, 0) ~new_name:"deps"
     ; "SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root"

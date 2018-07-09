@@ -61,6 +61,24 @@ module Temp = struct
     dir
 end
 
+module Flags = struct
+  let extract_words = String.extract_words
+
+  let extract_comma_space_separated_words =
+    String.extract_comma_space_separated_words
+
+  let extract_blank_separated_words = String.extract_blank_separated_words
+
+  let write_lines fname s =
+    let path = Path.of_string fname in
+    Io.write_lines path s
+
+  let write_sexp fname s =
+    let path = Path.in_source fname in
+    let sexp = Usexp.List (List.map s ~f:(fun s -> Usexp.Quoted_string s)) in
+    Io.write_file path (Usexp.to_string sexp ~syntax:Dune)
+end
+
 module Find_in_path = struct
   let path_sep =
     if Sys.win32 then
@@ -485,18 +503,13 @@ module Pkg_config = struct
       None
 end
 
-let write_flags fname s =
-  let path = Path.in_source fname in
-  let sexp = Usexp.List (List.map s ~f:(fun s -> Usexp.Quoted_string s)) in
-  Io.write_file path (Usexp.to_string sexp ~syntax:Dune)
-
 let main ?(args=[]) ~name f =
   let ocamlc  = ref (
     match Sys.getenv "DUNE_CONFIGURATOR" with
     | s -> Some s
     | exception Not_found ->
-      die "Configurator scripts must be ran with jbuilder. \
-           To manually run a script, use $ jbuilder exec."
+      die "Configurator scripts must be run with Dune. \
+           To manually run a script, use $ dune exec."
   ) in
   let verbose = ref false in
   let dest_dir = ref None in

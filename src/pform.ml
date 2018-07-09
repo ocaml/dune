@@ -30,6 +30,7 @@ module Macro = struct
     | Read_strings
     | Read_lines
     | Path_no_dep
+    | Ocaml_config
 end
 
 type 'a t =
@@ -77,6 +78,7 @@ module Map = struct
     ; "findlib", renamed_in ~version:(1, 0) ~new_name:"lib"
 
     ; "path-no-dep", deleted_in ~version:(1, 0) Path_no_dep
+    ; "ocaml-config", macro Ocaml_config
     ]
     |> String.Map.of_list_exn
 
@@ -126,18 +128,7 @@ module Map = struct
       ; "profile"        , string context.profile
       ]
     in
-    let ocaml_config =
-      List.map (Ocaml_config.to_list context.ocaml_config) ~f:(fun (k, v) ->
-        ("ocaml-config:" ^ k,
-         match (v : Ocaml_config.Value.t) with
-         | Bool   x -> string (string_of_bool x)
-         | Int    x -> string (string_of_int x)
-         | String x -> string x
-         | Words  x -> strings x
-         | Prog_and_args x -> strings (x.prog :: x.args)))
-    in
-    [ ocaml_config
-    ; static_vars
+    [ static_vars
     ; lowercased
     ; uppercased
     ; vars

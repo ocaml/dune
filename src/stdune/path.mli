@@ -103,6 +103,10 @@ val drop_build_context_exn : t -> t
 (** Drop the "_build/blah" prefix if present, return [t] otherwise *)
 val drop_optional_build_context : t -> t
 
+(** Transform managed paths so that they are descedant of
+    [sandbox_dir]. *)
+val sandbox_managed_paths : sandbox_dir:t -> t -> t
+
 val explode : t -> string list option
 val explode_exn : t -> string list
 

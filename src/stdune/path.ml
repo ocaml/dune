@@ -764,6 +764,15 @@ let drop_optional_build_context t =
   | None -> t
   | Some (_, t) -> t
 
+let local_src   = Local.of_string "src"
+let local_build = Local.of_string "build"
+
+let sandbox_managed_paths ~sandbox_dir t =
+  match t with
+  | External _ -> t
+  | In_source_tree p -> append_local sandbox_dir (Local.append local_src   p)
+  | In_build_dir   p -> append_local sandbox_dir (Local.append local_build p)
+
 let split_first_component t =
   match kind t, is_root t with
   | Local t, false ->

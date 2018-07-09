@@ -232,7 +232,7 @@ module Pps_and_flags = struct
       Dune_syntax.t
 end
 
-module Named = struct
+module Bindings = struct
   type 'a one =
     | Unnamed of 'a
     | Named of string * 'a list
@@ -1140,7 +1140,7 @@ module Rule = struct
 
   type t =
     { targets  : Targets.t
-    ; deps     : Dep_conf.t Named.t
+    ; deps     : Dep_conf.t Bindings.t
     ; action   : Loc.t * Action.Unexpanded.t
     ; mode     : Mode.t
     ; locks    : String_with_vars.t list
@@ -1182,7 +1182,7 @@ module Rule = struct
   let short_form =
     located Action.Unexpanded.t >>| fun (loc, action) ->
     { targets  = Infer
-    ; deps     = Named.empty
+    ; deps     = Bindings.empty
     ; action   = (loc, action)
     ; mode     = Standard
     ; locks    = []
@@ -1195,7 +1195,7 @@ module Rule = struct
     >>= fun action ->
     field "targets" (list file_in_current_dir)
     >>= fun targets ->
-    field "deps" (Named.t Dep_conf.t) ~default:Named.empty
+    field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
     >>= fun deps ->
     field "locks"   (list String_with_vars.t) ~default:[] >>= fun locks ->
     map_validate
@@ -1301,7 +1301,7 @@ module Rule = struct
       let src = name ^ ".mll" in
       let dst = name ^ ".ml"  in
       { targets = Static [dst]
-      ; deps    = Named.singleton (Dep_conf.File (S.virt_text __POS__ src))
+      ; deps    = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
           (loc,
            Chdir
@@ -1322,7 +1322,7 @@ module Rule = struct
     List.map modules ~f:(fun name ->
       let src = name ^ ".mly" in
       { targets = Static [name ^ ".ml"; name ^ ".mli"]
-      ; deps    = Named.singleton (Dep_conf.File (S.virt_text __POS__ src))
+      ; deps    = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
           (loc,
            Chdir
@@ -1390,7 +1390,7 @@ end
 module Alias_conf = struct
   type t =
     { name    : string
-    ; deps    : Dep_conf.t Named.t
+    ; deps    : Dep_conf.t Bindings.t
     ; action  : (Loc.t * Action.Unexpanded.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option
@@ -1409,7 +1409,7 @@ module Alias_conf = struct
        field_o "package" Pkg.t                          >>= fun package ->
        field_o "action" (located Action.Unexpanded.t)   >>= fun action ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
-       field "deps" (Named.t Dep_conf.t) ~default:Named.empty
+       field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
        >>= fun deps ->
        return
          { name
@@ -1425,7 +1425,7 @@ module Tests = struct
     { exes    : Executables.t
     ; locks   : String_with_vars.t list
     ; package : Package.t option
-    ; deps    : Dep_conf.t Named.t
+    ; deps    : Dep_conf.t Bindings.t
     }
 
   let gen_parse names =
@@ -1433,11 +1433,12 @@ module Tests = struct
       (Buildable.t                                         >>= fun buildable ->
        field_oslu "link_flags"                             >>= fun link_flags ->
        names                                               >>= fun names ->
-       field "deps" (Named.t Dep_conf.t) ~default:Named.empty >>= fun deps ->
        field_o "package" Pkg.t                             >>= fun package ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
        field "modes" Executables.Link_mode.Set.t
          ~default:Executables.Link_mode.Set.default >>= fun modes ->
+       field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
+       >>= fun deps ->
        return
          { exes =
              { Executables.

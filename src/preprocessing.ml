@@ -456,7 +456,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                let src_path = Path.relative dir src.name in
                add_alias src.name
                  (Build.path src_path
-                  >>^ (fun _ -> Jbuild.Named.singleton src_path)
+                  >>^ (fun _ -> Jbuild.Bindings.singleton src_path)
                   >>> SC.Action.run sctx
                         action
                         ~loc
@@ -531,7 +531,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
                (preprocessor_deps
                 >>>
                 Build.path src
-                >>^ (fun _ -> Jbuild.Named.singleton src)
+                >>^ (fun _ -> Jbuild.Bindings.singleton src)
                 >>>
                 SC.Action.run sctx
                   (Redirect

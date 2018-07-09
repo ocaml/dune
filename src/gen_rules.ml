@@ -929,7 +929,7 @@ module Gen(P : Install_rules.Params) = struct
       let module S = Sexp.To_sexp in
       Sexp.List
         [ Sexp.unsafe_atom_of_string "user-alias"
-        ; Jbuild.Named.sexp_of_t Jbuild.Dep_conf.sexp_of_t alias_conf.deps
+        ; Jbuild.Bindings.sexp_of_t Jbuild.Dep_conf.sexp_of_t alias_conf.deps
         ; S.option Action.Unexpanded.sexp_of_t
             (Option.map alias_conf.action ~f:snd)
         ]
@@ -976,7 +976,7 @@ module Gen(P : Install_rules.Params) = struct
       let rule =
         { Rule.
           targets = Infer
-        ; deps = Named.empty
+        ; deps = Bindings.empty
         ; action =
             (loc, Action.Unexpanded.Redirect (Stdout, diff.file2, run_action))
         ; mode = Standard

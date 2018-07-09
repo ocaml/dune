@@ -528,28 +528,18 @@ module Deps = struct
     >>^ List.concat
 
   let interpret_named t ~scope ~dir bindings =
-    let unnamed x = Jbuild.Named.Unnamed x in
+    let unnamed x = Jbuild.Bindings.Unnamed x in
     List.map bindings ~f:(function
-      | Jbuild.Named.Unnamed p ->
+      | Jbuild.Bindings.Unnamed p ->
         dep t ~scope ~dir p >>^ unnamed
       | Named (s, ps) ->
         List.map ~f:(dep t ~scope ~dir) ps
         |> Build.all
-        >>^ (fun deps -> Jbuild.Named.Named (s, deps)))
+        >>^ (fun deps -> Jbuild.Bindings.Named (s, deps)))
     |> Build.all
     >>^ List.concat_map ~f:(function
-      | Jbuild.Named.Unnamed s -> List.map s ~f:unnamed
+      | Jbuild.Bindings.Unnamed s -> List.map s ~f:unnamed
       | Named (s, ps) -> [Named (s, List.concat ps)])
-
-  (* let unnamed = deps (Jbuild.Named.unnamed bindings) in
-     * let named =
-     *   String.Map.to_list named
-     *   |> List.map ~f:(fun (k, d) -> deps d >>^ fun d -> (k, d))
-     *   |> Build.all
-     *   >>^ String.Map.of_list_exn
-     * in
-     * unnamed &&& named >>^ fun (unnamed, named) ->
-     * { Named.unnamed; named } *)
 end
 
 module Pkg_version = struct
@@ -780,7 +770,7 @@ module Action = struct
     (t, acc)
 
   let expand_step2 ~dir ~dynamic_expansions
-        ~(deps_written_by_user : Path.t Jbuild.Named.t)
+        ~(deps_written_by_user : Path.t Jbuild.Bindings.t)
         ~map_exe t =
     U.Partial.expand t ~dir ~map_exe ~f:(fun var syntax_version ->
       let key = String_with_vars.Var.full_name var in
@@ -792,17 +782,17 @@ module Action = struct
           Pform.Map.expand Pform.Map.static_vars ~syntax_version ~var
         with
         | None ->
-          Jbuild.Named.find deps_written_by_user key
+          Jbuild.Bindings.find deps_written_by_user key
           |> Option.map ~f:Value.L.paths
         | Some x ->
           begin match x with
             Pform.Var.Deps ->
             deps_written_by_user
-            |> Jbuild.Named.to_list
+            |> Jbuild.Bindings.to_list
             |> Value.L.paths
             |> Option.some
           | First_dep ->
-            begin match Jbuild.Named.first deps_written_by_user with
+            begin match Jbuild.Bindings.first deps_written_by_user with
             | Error `Named_exists ->
               Loc.fail loc "%%{first-dep} is not allowed with named dependencies"
             | Error `Empty ->
@@ -819,7 +809,7 @@ module Action = struct
 
   let run sctx ~loc ?(extra_vars=String.Map.empty)
         t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
-    : (Path.t Named.t, Action.t) Build.t =
+    : (Path.t Bindings.t, Action.t) Build.t =
     let map_exe = map_exe sctx in
     if targets_written_by_user = Alias then begin
       match Action.Infer.unexpanded_targets t with

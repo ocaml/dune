@@ -173,4 +173,11 @@ module Map = struct
       | Unnamed _ -> acc
       | Named (s, _) -> String.Map.add acc s (No_info Named_local)
     ) ~init:empty
+
+  let input_file path =
+    let value = Values (Value.L.paths [path]) in
+    [ "input-file", since ~version:(1, 0) value
+    ; "<", renamed_in ~new_name:"input-file" ~version:(1, 0)
+    ]
+    |> String.Map.of_list_exn
 end

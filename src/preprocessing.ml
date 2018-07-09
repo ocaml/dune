@@ -454,18 +454,16 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
              let action = Action.Unexpanded.Chdir (root_var, action) in
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
                let src_path = Path.relative dir src.name in
-               let bindings =
-                 [Jbuild.Bindings.Named ("input-file", [src_path])]
-               in
+               let bindings = Pform.Map.input_file src_path in
                add_alias src.name
                  (Build.path src_path
-                  >>^ (fun _ -> bindings)
+                  >>^ (fun _ -> Jbuild.Bindings.empty)
                   >>> SC.Action.run sctx
                         action
                         ~loc
                         ~dir
                         ~dep_kind
-                        ~bindings:(Pform.Map.of_bindings bindings)
+                        ~bindings
                         ~targets:(Static [])
                         ~scope)))
         | Pps { loc; pps; flags } ->
@@ -532,12 +530,12 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
       (fun m ~lint ->
          let ast =
            pped_module m ~dir ~f:(fun _kind src dst ->
-             let bindings = [Jbuild.Bindings.Named ("input-file", [src])] in
+             let bindings = Pform.Map.input_file src in
              SC.add_rule sctx
                (preprocessor_deps
                 >>>
                 Build.path src
-                >>^ (fun _ -> bindings)
+                >>^ (fun _ -> Jbuild.Bindings.empty)
                 >>>
                 SC.Action.run sctx
                   (Redirect
@@ -548,7 +546,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
                   ~loc
                   ~dir
                   ~dep_kind
-                  ~bindings:(Pform.Map.of_bindings bindings)
+                  ~bindings
                   ~targets:(Static [dst])
                   ~scope))
            |> setup_reason_rules sctx ~dir in

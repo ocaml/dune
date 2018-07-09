@@ -1,3 +1,5 @@
+open Stdune
+
 type t =
   (* Variables *)
   | Values of Value.t list
@@ -35,6 +37,8 @@ module Map : sig
   val singleton : string -> pform -> t
 
   val of_list_exn : (string * pform) list -> t
+
+  val input_file : Path.t -> t
 
   val expand
     :  t

@@ -262,31 +262,29 @@ module Bindings = struct
   let singleton x = [Unnamed x]
 
   let t elem =
-    let binding =
-      peek_exn >>= function
-      | List (_, Atom (loc, A s) :: _) when
+    let rec loop vars acc =
+      peek >>= function
+      | None -> return (List.rev acc)
+      | Some (List (_, Atom (loc, A s) :: _)) when
           String.length s > 1 && s.[0] = ':' ->
         let name = String.sub s ~pos:1 ~len:(String.length s - 1) in
-        enter (junk >>= fun () ->
-               repeat elem >>| fun values ->
-               Left (loc, name, values))
+        let vars =
+          if not (String.Set.mem vars name) then
+            String.Set.add vars name
+          else
+            of_sexp_errorf loc "Variable %s is defined for the second time."
+              name
+        in
+        enter (junk >>= fun () -> repeat elem)
+        >>= fun values ->
+        loop vars (Named (name, values) :: acc)
       | _ ->
-        elem >>| fun elem -> Right elem
+        elem >>= fun x ->
+        loop vars (Unnamed x :: acc)
     in
-    list binding >>| (fun bindings ->
-      let used_names = Hashtbl.create 8 in
-      List.fold_right bindings ~init:[] ~f:(fun x acc ->
-        match x with
-        | Right x -> Unnamed x :: acc
-        | Left (loc, name, values) ->
-          begin match Hashtbl.find used_names name with
-          | None ->
-            Hashtbl.add used_names name loc;
-            Named (name, values) :: acc
-          | Some loc_old ->
-            of_sexp_errorf loc "Variable %s is already defined in %s"
-              name (Loc.to_file_colon_line loc_old)
-          end))
+    Stanza.file_kind () >>= function
+    | Jbuild -> list (elem >>| fun x -> Unnamed x)
+    | Dune   -> loop String.Set.empty []
 
   let sexp_of_t sexp_of_a bindings =
     Sexp.List (

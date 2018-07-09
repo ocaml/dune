@@ -212,20 +212,30 @@ module Of_sexp : sig
   val field
     :  string
     -> ?default:'a
+    -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
     -> 'a t
     -> 'a fields_parser
   val field_o
     :  string
+    -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
     -> 'a t
     -> 'a option fields_parser
 
-  val field_b : ?check:(unit t) -> string -> bool fields_parser
+  val field_b
+    :  ?check:(unit t)
+    -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
+    -> string
+    -> bool fields_parser
 
   (** A field that can appear multiple times *)
   val multi_field
     :  string
     -> 'a t
     -> 'a list fields_parser
+
+  (** Default value for [on_dup]. It fails with an appropriate error
+      message. *)
+  val field_present_too_many_times : Univ_map.t -> string -> Ast.t list -> _
 end
 
 module type Sexpable = sig

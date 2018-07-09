@@ -97,21 +97,17 @@ let expand_ocaml_config t pform =
 let (expand_vars_string, expand_vars_path) =
   let expand t ~scope ~dir ?(bindings=Pform.Map.empty) s =
     String_with_vars.expand ~mode:Single ~dir s ~f:(fun pform syntax_version ->
-      match
-        match Pform.Map.expand bindings ~syntax_version ~pform with
-        | None -> Pform.Map.expand t.pforms ~syntax_version ~pform
-        | Some _ as x -> x
-      with
-      | None -> None
-      | Some x ->
-        match x with
-        | Values l     -> Some l
-        | Ocaml_config -> Some (expand_ocaml_config t pform)
-        | Project_root -> Some [Value.Dir (Scope.root scope)]
+      (match Pform.Map.expand bindings ~syntax_version ~pform with
+       | None -> Pform.Map.expand t.pforms ~syntax_version ~pform
+       | Some _ as x -> x)
+      |> Option.map ~f:(function
+        | Pform.Values l     -> l
+        | Ocaml_config -> expand_ocaml_config t pform
+        | Project_root -> [Value.Dir (Scope.root scope)]
         | _ ->
           Loc.fail (String_with_vars.Var.loc pform)
             "%s isn't allowed in this position"
-            (String_with_vars.Var.describe pform))
+            (String_with_vars.Var.describe pform)))
   in
   let expand_vars t ~scope ~dir ?bindings s =
     expand t ~scope ~dir ?bindings s
@@ -624,13 +620,11 @@ module Action = struct
       let key = String_with_vars.Var.full_name pform in
       let s = Option.value (String_with_vars.Var.payload pform) ~default:"" in
       let res =
-        match Pform.Map.expand bindings ~syntax_version ~pform with
-        | None -> None
-        | Some x ->
-          match x with
-          | Values l     -> Some l
-          | Ocaml_config -> Some (expand_ocaml_config sctx pform)
-          | Project_root -> Some [Value.Dir (Scope.root scope)]
+        Pform.Map.expand bindings ~syntax_version ~pform
+        |> Option.bind ~f:(function
+          | Pform.Values l     -> Some l
+          | Ocaml_config       -> Some (expand_ocaml_config sctx pform)
+          | Project_root       -> Some [Value.Dir (Scope.root scope)]
           | First_dep | Deps | Named_local -> None
           | Targets ->
             begin match targets_written_by_user with
@@ -731,7 +725,7 @@ module Action = struct
               in
               add_ddep acc ~key data
             end
-          | Path_no_dep -> Some [Value.Dir (Path.relative dir s)]
+          | Path_no_dep -> Some [Value.Dir (Path.relative dir s)])
       in
       Option.iter res ~f:(fun v ->
         acc.sdeps <- Path.Set.union
@@ -751,12 +745,7 @@ module Action = struct
       match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
-        match
-          Pform.Map.expand bindings ~syntax_version ~pform
-        with
-        | None -> None
-        | Some x ->
-          match x with
+        Option.map (Pform.Map.expand bindings ~syntax_version ~pform) ~f:(function
           | Named_local ->
             begin match Jbuild.Bindings.find deps_written_by_user key with
             | None ->
@@ -765,13 +754,12 @@ module Action = struct
                 ; "deps_written_by_user",
                   Jbuild.Bindings.sexp_of_t Path.sexp_of_t deps_written_by_user
                 ]
-            | Some x -> Some (Value.L.paths x)
+            | Some x -> Value.L.paths x
             end
           | Deps ->
             deps_written_by_user
             |> Jbuild.Bindings.to_list
             |> Value.L.paths
-            |> Option.some
           | First_dep ->
             begin match deps_written_by_user with
             | Named _ :: _ ->
@@ -779,15 +767,15 @@ module Action = struct
                  files and named dependencies are not available in
                  jbuild files *)
               assert false
-            | Unnamed v :: _ -> Some [Path v]
+            | Unnamed v :: _ -> [Path v]
             | [] ->
               Loc.warn loc "Variable '%s' used with no explicit \
                             dependencies@." key;
-              Some [Value.String ""]
+              [Value.String ""]
             end
           | _ ->
             Exn.code_error "Unexpected variable in step2"
-              ["var", String_with_vars.Var.sexp_of_t pform])
+              ["var", String_with_vars.Var.sexp_of_t pform]))
 
   let run sctx ~loc ~bindings t ~dir ~dep_kind
         ~targets:targets_written_by_user ~scope

@@ -262,21 +262,16 @@ module Named = struct
   let t elem =
     let binding =
       peek_exn >>= function
-      | Atom (loc, A s) when String.length s > 1 && s.[0] = ':' ->
-        begin
-          string >>= fun name ->
-          peek >>= function
-          | None -> of_sexp_errorf loc "Naked binding %s" s
-          | Some _ ->
-            elem >>| fun elem ->
-            Left (name, (loc, elem))
-        end
+      | List (_, Atom (loc, A s) :: _) when
+          String.length s > 1 && s.[0] = ':' ->
+        binding elem >>| fun (name, values) ->
+        Left (name, (loc, values))
       | _ ->
         elem >>| fun elem -> Right elem
     in
     list binding >>| (fun bindings ->
       let (named, unnamed) = List.partition_map bindings ~f:(fun x -> x) in
-      { unnamed = List.flatten unnamed
+      { unnamed
       ; named =
           (match String.Map.of_list named with
            | Ok x -> x
@@ -330,15 +325,6 @@ module Dep_conf = struct
 
   let t =
     make_dep_parser ~single:(fun x -> x) ~many:(sum dep_cons)
-
-  let bindings =
-    let dep =
-      make_dep_parser ~single:List.singleton ~many:(
-        ("list", repeat t)
-        :: List.map dep_cons ~f:(fun (n, d) -> (n, d >>| List.singleton))
-        |> sum)
-    in
-    Named.t dep
 
   open Sexp
   let sexp_of_t = function
@@ -1202,7 +1188,7 @@ module Rule = struct
     >>= fun action ->
     field "targets" (list file_in_current_dir)
     >>= fun targets ->
-    field "deps" Dep_conf.bindings ~default:Named.empty
+    field "deps" (Named.t Dep_conf.t) ~default:Named.empty
     >>= fun deps ->
     field "locks"   (list String_with_vars.t) ~default:[] >>= fun locks ->
     map_validate
@@ -1421,7 +1407,7 @@ module Alias_conf = struct
        field_o "package" Pkg.t                          >>= fun package ->
        field_o "action" (located Action.Unexpanded.t)   >>= fun action ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
-       field "deps" Dep_conf.bindings ~default:Named.empty
+       field "deps" (Named.t Dep_conf.t) ~default:Named.empty
        >>= fun deps ->
        return
          { name
@@ -1445,7 +1431,7 @@ module Tests = struct
       (Buildable.t                                         >>= fun buildable ->
        field_oslu "link_flags"                             >>= fun link_flags ->
        names                                               >>= fun names ->
-       field "deps" Dep_conf.bindings ~default:Named.empty >>= fun deps ->
+       field "deps" (Named.t Dep_conf.t) ~default:Named.empty >>= fun deps ->
        field_o "package" Pkg.t                             >>= fun package ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
        field "modes" Executables.Link_mode.Set.t

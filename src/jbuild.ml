@@ -299,31 +299,29 @@ module Dep_conf = struct
     | Package of String_with_vars.t
     | Universe
 
-  let dep_cons =
-    let sw = String_with_vars.t in
-    [ "file"       , (sw >>| fun x -> File x)
-    ; "alias"      , (sw >>| fun x -> Alias x)
-    ; "alias_rec"  , (sw >>| fun x -> Alias_rec x)
-    ; "glob_files" , (sw >>| fun x -> Glob_files x)
-    ; "package"    , (sw >>| fun x -> Package x)
-    ; "universe"   , return Universe
-    ; "files_recursively_in",
-      (Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
-       >>= fun () ->
-       sw >>| fun x -> Source_tree x)
-    ; "source_tree",
-      (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
-       sw >>| fun x -> Source_tree x)
-    ]
-
-  let make_dep_parser ~single ~many =
+  let t =
+    let t =
+      let sw = String_with_vars.t in
+      sum
+        [ "file"       , (sw >>| fun x -> File x)
+        ; "alias"      , (sw >>| fun x -> Alias x)
+        ; "alias_rec"  , (sw >>| fun x -> Alias_rec x)
+        ; "glob_files" , (sw >>| fun x -> Glob_files x)
+        ; "package"    , (sw >>| fun x -> Package x)
+        ; "universe"   , return Universe
+        ; "files_recursively_in",
+          (Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
+           >>= fun () ->
+           sw >>| fun x -> Source_tree x)
+        ; "source_tree",
+          (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
+           sw >>| fun x -> Source_tree x)
+        ]
+    in
     peek_exn >>= function
     | Template _ | Atom _ | Quoted_string _ ->
-      String_with_vars.t >>| fun x -> single (File x)
-    | List _ -> many
-
-  let t =
-    make_dep_parser ~single:(fun x -> x) ~many:(sum dep_cons)
+      String_with_vars.t >>| fun x -> File x
+    | List _ -> t
 
   open Sexp
   let sexp_of_t = function

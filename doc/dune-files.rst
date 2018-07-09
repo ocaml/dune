@@ -457,9 +457,9 @@ For instance:
 .. code:: scheme
 
     (rule
-      (targets b
-      (deps    a
-      (action  (copy %{deps} %{targets})))))
+     (targets b)
+     (deps    a)
+     (action  (copy %{deps} %{targets})))
 
 In this example it is obvious by inspecting the action what the
 dependencies and targets are. When this is the case you can use the

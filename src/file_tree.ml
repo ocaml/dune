@@ -206,15 +206,15 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
           ~compare:(fun (a, _, _) (b, _, _) -> String.compare a b)
           sub_dirs
       in
-      let project =
-        match Dune_project.load ~dir:path ~files with
-        | Some x -> x
-        | None   -> project
-      in
-      let dune_file, ignored_subdirs =
+      let project, dune_file, ignored_subdirs =
         if ignored then
-          (None, String.Set.empty)
+          (project, None, String.Set.empty)
         else
+          let project =
+            match Dune_project.load ~dir:path ~files with
+            | Some x -> x
+            | None   -> project
+          in
           let dune_file, ignored_subdirs =
             match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
             | [] -> (None, String.Set.empty)
@@ -238,7 +238,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             else
               ignored_subdirs
           in
-          (dune_file, ignored_subdirs)
+          (project, dune_file, ignored_subdirs)
       in
       let sub_dirs =
         List.fold_left sub_dirs ~init:String.Map.empty

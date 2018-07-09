@@ -81,6 +81,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dep-vars)
+ (deps (package dune) (source_tree test-cases/dep-vars))
+ (action
+  (chdir
+   test-cases/dep-vars
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name depend-on-the-universe)
  (deps (package dune) (source_tree test-cases/depend-on-the-universe))
  (action
@@ -532,6 +540,14 @@
     (diff? run.t run.t.corrected)))))
 
 (alias
+ (name preprocess-with-action)
+ (deps (package dune) (source_tree test-cases/preprocess-with-action))
+ (action
+  (chdir
+   test-cases/preprocess-with-action
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name private-public-overlap)
  (deps (package dune) (source_tree test-cases/private-public-overlap))
  (action
@@ -601,6 +617,14 @@
  (action
   (chdir
    test-cases/select
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name shadow-bindings)
+ (deps (package dune) (source_tree test-cases/shadow-bindings))
+ (action
+  (chdir
+   test-cases/shadow-bindings
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -680,6 +704,7 @@
   (alias copy_files)
   (alias cross-compilation)
   (alias custom-build-dir)
+  (alias dep-vars)
   (alias depend-on-the-universe)
   (alias dune-jbuild-var-case)
   (alias dune-ppx-driver-system)
@@ -732,6 +757,7 @@
   (alias package-dep)
   (alias path-variables)
   (alias ppx-rewriter)
+  (alias preprocess-with-action)
   (alias private-public-overlap)
   (alias project-root)
   (alias promote)
@@ -740,6 +766,7 @@
   (alias scope-bug)
   (alias scope-ppx-bug)
   (alias select)
+  (alias shadow-bindings)
   (alias subst)
   (alias syntax-versioning)
   (alias tests-stanza)
@@ -762,6 +789,7 @@
   (alias copy_files)
   (alias cross-compilation)
   (alias custom-build-dir)
+  (alias dep-vars)
   (alias depend-on-the-universe)
   (alias dune-jbuild-var-case)
   (alias dune-ppx-driver-system)
@@ -807,6 +835,7 @@
   (alias output-obj)
   (alias package-dep)
   (alias path-variables)
+  (alias preprocess-with-action)
   (alias project-root)
   (alias promote)
   (alias quoting)
@@ -814,6 +843,7 @@
   (alias scope-bug)
   (alias scope-ppx-bug)
   (alias select)
+  (alias shadow-bindings)
   (alias subst)
   (alias syntax-versioning)
   (alias tests-stanza)

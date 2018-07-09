@@ -1,0 +1,5 @@
+
+(alias
+ (name runtest)
+ (deps (:root foo))
+ (action (echo %{root})))

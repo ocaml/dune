@@ -82,7 +82,7 @@ val expand_vars_string
   :  t
   -> scope:Scope.t
   -> dir:Path.t
-  -> ?extra_vars:Value.t list String.Map.t
+  -> ?bindings:Pform.Map.t
   -> String_with_vars.t
   -> string
 
@@ -90,7 +90,7 @@ val expand_vars_path
   :  t
   -> scope:Scope.t
   -> dir:Path.t
-  -> ?extra_vars:Value.t list String.Map.t
+  -> ?bindings:Pform.Map.t
   -> String_with_vars.t
   -> Path.t
 
@@ -98,7 +98,7 @@ val expand_and_eval_set
   :  t
   -> scope:Scope.t
   -> dir:Path.t
-  -> ?extra_vars:Value.t list String.Map.t
+  -> ?bindings:Pform.Map.t
   -> Ordered_set_lang.Unexpanded.t
   -> standard:(unit, string list) Build.t
   -> (unit, string list) Build.t
@@ -219,6 +219,13 @@ module Deps : sig
     -> dir:Path.t
     -> Dep_conf.t list
     -> (unit, Path.t list) Build.t
+
+  val interpret_named
+    :  t
+    -> scope:Scope.t
+    -> dir:Path.t
+    -> Dep_conf.t Bindings.t
+    -> (unit, Path.t Bindings.t) Build.t
 end
 
 (** Interpret action written in jbuild files *)
@@ -232,13 +239,13 @@ module Action : sig
   val run
     :  t
     -> loc:Loc.t
-    -> ?extra_vars:Value.t list String.Map.t
+    -> bindings:Pform.Map.t
     -> Action.Unexpanded.t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
     -> targets:targets
     -> scope:Scope.t
-    -> (Path.t list, Action.t) Build.t
+    -> (Path.t Bindings.t, Action.t) Build.t
 end
 
 module Pkg_version : sig

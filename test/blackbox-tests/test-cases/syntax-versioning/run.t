@@ -16,3 +16,14 @@
   Error: 'link_executables' was deleted in version 1.0 of the dune language
   [1]
   $ rm -f dune
+
+  $ echo '(alias (name x) (deps x) (action (run %{<})))' > dune
+  $ dune build
+  File "dune", line 1, characters 40-42:
+  Error: %{<} was deleted in version 1.0 of the dune language.
+  Use a named dependency instead:
+  
+    (deps (:x <dep>) ...)
+     ... %{x} ...
+  [1]
+  $ rm -f dune

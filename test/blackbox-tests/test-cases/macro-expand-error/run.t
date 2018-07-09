@@ -4,5 +4,5 @@ inappropariate place:
   $ dune build
   Info: creating file dune-project with this contents: (lang dune 1.0)
   File "dune", line 1, characters 14-21:
-  Error: This percent form isn't allowed in this position
+  Error: %{read:..} isn't allowed in this position
   [1]

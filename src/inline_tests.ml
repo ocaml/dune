@@ -179,8 +179,9 @@ include Sub_system.Register_end_point(
              ~obj_name:name)
       in
 
-      let extra_vars =
-        String.Map.singleton "library-name" ([Value.String lib.name])
+      let bindings =
+        Pform.Map.singleton "library-name"
+          (Values [String lib.name])
       in
 
       let runner_libs =
@@ -202,25 +203,24 @@ include Sub_system.Register_end_point(
         let target = Path.relative inline_test_dir main_module_filename in
         let source_modules = Module.Name.Map.values source_modules in
         let files ml_kind =
-          Value.L.paths (
+          Pform.Values (Value.L.paths (
             List.filter_map source_modules ~f:(fun m ->
-              Module.file m ~dir ml_kind))
+              Module.file m ~dir ml_kind)))
         in
-        let extra_vars =
-          List.fold_left
+        let bindings =
+          Pform.Map.of_list_exn
             [ "impl-files", files Impl
             ; "intf-files", files Intf
             ]
-            ~init:extra_vars
-            ~f:(fun acc (k, v) -> String.Map.add acc k v)
         in
-        Build.return []
+        Build.return Bindings.empty
         >>>
         Build.all
           (List.filter_map backends ~f:(fun (backend : Backend.t) ->
              Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
                SC.Action.run sctx action ~loc
-                 ~extra_vars ~dir ~dep_kind:Required ~targets:Alias ~scope)))
+                 ~bindings
+                 ~dir ~dep_kind:Required ~targets:Alias ~scope)))
         >>^ (fun actions ->
           Action.with_stdout_to target
             (Action.progn actions))
@@ -251,7 +251,7 @@ include Sub_system.Register_end_point(
             Super_context.expand_and_eval_set sctx flags
               ~scope
               ~dir
-              ~extra_vars
+              ~bindings
               ~standard:(Build.return [])))
         >>^ List.concat
       in

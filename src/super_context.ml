@@ -45,8 +45,7 @@ type t =
   ; artifacts                        : Artifacts.t
   ; stanzas_to_consider_for_install  : Installable.t list
   ; cxx_flags                        : string list
-  ; vars                             : Pform.Var.t Pform.Map.t
-  ; macros                           : Pform.Macro.t Pform.Map.t
+  ; pforms                           : Pform.Map.t
   ; ocaml_config                     : Value.t list String.Map.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
@@ -86,64 +85,43 @@ let installed_libs t = t.installed_libs
 let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
-let expand_vars t ~syntax_version ~var =
-  if String_with_vars.Var.is_macro var then
-    Loc.fail (String_with_vars.Var.loc var)
-      "macros of the form %%{name:..} cannot be expanded here"
-  else
-    Pform.Map.expand t.vars ~syntax_version ~var
-
-let expand_macro t ~syntax_version ~var =
-  if String_with_vars.Var.is_macro var then
-    Pform.Map.expand t.macros ~syntax_version ~var
-  else
-    Exn.code_error "expand_macro can't expand variables"
-      [ "var", String_with_vars.Var.sexp_of_t var ]
-
-let expand t ~syntax_version ~var =
-  match
-    match String_with_vars.Var.destruct var with
-    | Var _ -> Left (expand_vars t ~syntax_version ~var)
-    | Macro (_, _) -> Right (expand_macro t ~syntax_version ~var)
-  with
-  | Right None
-  | Left None -> None
-  | Right (Some x) -> Some (Right x)
-  | Left (Some x) -> Some (Left x)
+let expand_ocaml_config t pform =
+  let name = Option.value_exn (String_with_vars.Var.payload pform) in
+  match String.Map.find t.ocaml_config name with
+  | Some x -> x
+  | None ->
+    Loc.fail (String_with_vars.Var.loc pform)
+      "Unknown ocaml configuration variable %S"
+      name
 
 let (expand_vars_string, expand_vars_path) =
-  let expand t ~scope ~dir ?(extra_vars=String.Map.empty) s =
-    String_with_vars.expand ~mode:Single ~dir s ~f:(fun var syntax_version ->
-      match expand t ~syntax_version ~var with
-      | None ->
-        String.Map.find extra_vars (String_with_vars.Var.full_name var)
-      | Some (Left v) ->
-        begin match Pform.Var.to_value_no_deps_or_targets ~scope v with
-        | Some _ as v -> v
-        | None ->
-          Loc.fail (String_with_vars.Var.loc var)
-            "Variable %a is not allowed in this context"
-            String_with_vars.Var.pp var
-        end
-      | Some (Right Ocaml_config) ->
-        String.Map.find t.ocaml_config (String_with_vars.Var.name var)
-      | Some (Right _) ->
-        Loc.fail (String_with_vars.Var.loc var)
-          "This percent form isn't allowed in this position")
+  let expand t ~scope ~dir ?(bindings=Pform.Map.empty) s =
+    String_with_vars.expand ~mode:Single ~dir s ~f:(fun pform syntax_version ->
+      (match Pform.Map.expand bindings ~syntax_version ~pform with
+       | None -> Pform.Map.expand t.pforms ~syntax_version ~pform
+       | Some _ as x -> x)
+      |> Option.map ~f:(function
+        | Pform.Values l     -> l
+        | Ocaml_config -> expand_ocaml_config t pform
+        | Project_root -> [Value.Dir (Scope.root scope)]
+        | _ ->
+          Loc.fail (String_with_vars.Var.loc pform)
+            "%s isn't allowed in this position"
+            (String_with_vars.Var.describe pform)))
   in
-  let expand_vars t ~scope ~dir ?extra_vars s =
-    expand t ~scope ~dir ?extra_vars s
+  let expand_vars t ~scope ~dir ?bindings s =
+    expand t ~scope ~dir ?bindings s
     |> Value.to_string ~dir
   in
-  let expand_vars_path t ~scope ~dir ?extra_vars s =
-    expand t ~scope ~dir ?extra_vars s
+  let expand_vars_path t ~scope ~dir ?bindings s =
+    expand t ~scope ~dir ?bindings s
     |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir
   in
   (expand_vars, expand_vars_path)
 
-let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
+let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
   let open Build.O in
-  let f = expand_vars_string t ~scope ~dir ?extra_vars in
+  let f = expand_vars_string t ~scope ~dir ?bindings in
   let parse ~loc:_ s = s in
   let (syntax, files) = Ordered_set_lang.Unexpanded.files set ~f in
   match String.Set.to_list files with
@@ -208,7 +186,7 @@ module Env = struct
               ~ocamlopt_flags:cfg.ocamlopt_flags
               ~default
               ~eval:(expand_and_eval_set t ~scope:node.scope ~dir:node.dir
-                       ?extra_vars:None)
+                       ?bindings:None)
         in
         node.ocaml_flags <- Some flags;
         flags
@@ -223,7 +201,7 @@ let ocaml_flags t ~dir ~scope (x : Buildable.t) =
     ~ocamlc_flags:x.ocamlc_flags
     ~ocamlopt_flags:x.ocamlopt_flags
     ~default:(Env.ocaml_flags t ~dir)
-    ~eval:(expand_and_eval_set t ~scope ~dir ?extra_vars:None)
+    ~eval:(expand_and_eval_set t ~scope ~dir ?bindings:None)
 
 let dump_env t ~dir =
   Ocaml_flags.dump (Env.ocaml_flags t ~dir)
@@ -306,7 +284,7 @@ let create
     List.filter context.ocamlc_cflags
       ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
-  let vars = Pform.Map.create_vars ~context ~cxx_flags in
+  let pforms = Pform.Map.create ~context ~cxx_flags in
   let ocaml_config =
     let string s = [Value.String s] in
     Ocaml_config.to_list context.ocaml_config
@@ -333,8 +311,7 @@ let create
     ; stanzas_to_consider_for_install
     ; artifacts
     ; cxx_flags
-    ; vars
-    ; macros = Pform.Map.macros
+    ; pforms
     ; ocaml_config
     ; chdir = Build.arr (fun (action : Action.t) ->
         match action with
@@ -523,8 +500,23 @@ module Deps = struct
       >>^ fun () -> []
 
   let interpret t ~scope ~dir l =
-    Build.all (List.map l ~f:(dep t ~scope ~dir))
+    List.map l ~f:(dep t ~scope ~dir)
+    |> Build.all
     >>^ List.concat
+
+  let interpret_named t ~scope ~dir bindings =
+    let unnamed x = Jbuild.Bindings.Unnamed x in
+    List.map bindings ~f:(function
+      | Jbuild.Bindings.Unnamed p ->
+        dep t ~scope ~dir p >>^ unnamed
+      | Named (s, ps) ->
+        List.map ~f:(dep t ~scope ~dir) ps
+        |> Build.all
+        >>^ (fun deps -> Jbuild.Bindings.Named (s, deps)))
+    |> Build.all
+    >>^ List.concat_map ~f:(function
+      | Jbuild.Bindings.Unnamed s -> List.map s ~f:unnamed
+      | Named (s, ps) -> [Named (s, List.concat ps)])
 end
 
 module Pkg_version = struct
@@ -615,7 +607,7 @@ module Action = struct
     | Some x -> x
 
   let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user
-        ~map_exe ~extra_vars t =
+        ~map_exe ~bindings t =
     let acc =
       { failures  = []
       ; lib_deps  = String.Map.empty
@@ -623,127 +615,117 @@ module Action = struct
       ; ddeps     = String.Map.empty
       }
     in
-    let expand_form s var syntax_version =
-      let loc = String_with_vars.Var.loc var in
-      let key = String_with_vars.Var.full_name var in
-      begin match expand_macro sctx ~syntax_version ~var with
-      | Some Pform.Macro.Exe -> Some (path_exp (map_exe (Path.relative dir s)))
-      | Some Ocaml_config -> String.Map.find sctx.ocaml_config s
-      | Some Dep -> Some (path_exp (Path.relative dir s))
-      | Some Bin -> begin
-          let sctx = host sctx in
-          match Artifacts.binary (artifacts sctx) s with
-          | Ok path -> Some (path_exp path)
-          | Error e ->
-            add_fail acc ({ fail = fun () -> Action.Prog.Not_found.raise e })
-        end
-      | Some Lib -> begin
-          let lib_dep, file = parse_lib_file ~loc s in
-          add_lib_dep acc lib_dep dep_kind;
-          match
-            Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
-          with
-          | Ok path -> Some (path_exp path)
-          | Error fail -> add_fail acc fail
-        end
-      | Some Libexec -> begin
-          let sctx = host sctx in
-          let lib_dep, file = parse_lib_file ~loc s in
-          add_lib_dep acc lib_dep dep_kind;
-          match
-            Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
-          with
-          | Error fail -> add_fail acc fail
-          | Ok path ->
-            if not Sys.win32 || Filename.extension s = ".exe" then begin
-              Some (path_exp path)
-            end else begin
-              let path_exe = Path.extend_basename path ~suffix:".exe" in
-              let dep =
-                Build.if_file_exists path_exe
-                  ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
-                  ~else_:(Build.path path     >>^ fun _ -> path_exp path)
-              in
-              add_ddep acc ~key dep
-            end
-        end
-      | Some Lib_available -> begin
-          let lib = s in
-          add_lib_dep acc lib Optional;
-          Some (str_exp (string_of_bool (
-            Lib.DB.available (Scope.libs scope) lib)))
-        end
-      | Some Version -> begin
-          match Package.Name.Map.find (Scope.project scope).packages
-                  (Package.Name.of_string s) with
-          | Some p ->
-            let x =
-              Pkg_version.read sctx p >>^ function
-              | None   -> [Value.String ""]
-              | Some s -> [String s]
-            in
-            add_ddep acc ~key x
-          | None ->
-            add_fail acc { fail = fun () ->
-              Loc.fail loc "Package %S doesn't exist in the current project." s
-            }
-        end
-      | Some Read -> begin
-          let path = Path.relative dir s in
-          let data =
-            Build.contents path
-            >>^ fun s -> [Value.String s]
-          in
-          add_ddep acc ~key data
-        end
-      | Some Read_lines -> begin
-          let path = Path.relative dir s in
-          let data =
-            Build.lines_of path
-            >>^ Value.L.strings
-          in
-          add_ddep acc ~key data
-        end
-      | Some Read_strings -> begin
-          let path = Path.relative dir s in
-          let data =
-            Build.strings path
-            >>^ Value.L.strings
-          in
-          add_ddep acc ~key data
-        end
-      | Some Path_no_dep -> Some [Value.Dir (Path.relative dir s)]
-      | None ->
-        Loc.fail (String_with_vars.Var.loc var) "Unknown form: %a"
-          String_with_vars.Var.pp var
-      end
-    in
-    let expand var syntax_version =
-      let loc = String_with_vars.Var.loc var in
-      let key = String_with_vars.Var.full_name var in
+    let expand pform syntax_version =
+      let loc = String_with_vars.Var.loc pform in
+      let key = String_with_vars.Var.full_name pform in
+      let s = Option.value (String_with_vars.Var.payload pform) ~default:"" in
       let res =
-        match String_with_vars.Var.destruct var with
-        | Macro (_, s) -> expand_form s var syntax_version
-        | Var var_name ->
-          begin match expand_vars sctx ~syntax_version ~var with
-          | None -> String.Map.find extra_vars key
-          | Some Targets ->
-            let var () =
-              match var_name with
-              | "@" -> sprintf "${%s}" var_name
-              | "targets" -> sprintf "%%{%s}" var_name
-              | _ -> assert false
-            in
+        Pform.Map.expand bindings ~syntax_version ~pform
+        |> Option.bind ~f:(function
+          | Pform.Values l     -> Some l
+          | Ocaml_config       -> Some (expand_ocaml_config sctx pform)
+          | Project_root       -> Some [Value.Dir (Scope.root scope)]
+          | First_dep | Deps | Named_local -> None
+          | Targets ->
             begin match targets_written_by_user with
             | Infer ->
-              Loc.fail loc "You cannot use %s with inferred rules." (var ())
+              Loc.fail loc "You cannot use %s with inferred rules."
+                (String_with_vars.Var.describe pform)
             | Alias ->
-              Loc.fail loc "You cannot use %s in aliases." (var ())
+              Loc.fail loc "You cannot use %s in aliases."
+                (String_with_vars.Var.describe pform)
             | Static l ->
               Some (Value.L.dirs l) (* XXX hack to signal no dep *)
             end
-          | Some v -> Pform.Var.to_value_no_deps_or_targets v ~scope
-          end
+          | Exe -> Some (path_exp (map_exe (Path.relative dir s)))
+          | Dep -> Some (path_exp (Path.relative dir s))
+          | Bin -> begin
+              let sctx = host sctx in
+              match Artifacts.binary (artifacts sctx) s with
+              | Ok path -> Some (path_exp path)
+              | Error e ->
+                add_fail acc
+                  ({ fail = fun () -> Action.Prog.Not_found.raise e })
+            end
+          | Lib -> begin
+              let lib_dep, file = parse_lib_file ~loc s in
+              add_lib_dep acc lib_dep dep_kind;
+              match
+                Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
+              with
+              | Ok path -> Some (path_exp path)
+              | Error fail -> add_fail acc fail
+            end
+          | Libexec -> begin
+              let sctx = host sctx in
+              let lib_dep, file = parse_lib_file ~loc s in
+              add_lib_dep acc lib_dep dep_kind;
+              match
+                Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
+              with
+              | Error fail -> add_fail acc fail
+              | Ok path ->
+                if not Sys.win32 || Filename.extension s = ".exe" then begin
+                  Some (path_exp path)
+                end else begin
+                  let path_exe = Path.extend_basename path ~suffix:".exe" in
+                  let dep =
+                    Build.if_file_exists path_exe
+                      ~then_:(Build.path path_exe >>^ fun _ ->
+                              path_exp path_exe)
+                      ~else_:(Build.path path >>^ fun _ ->
+                              path_exp path)
+                  in
+                  add_ddep acc ~key dep
+                end
+            end
+          | Lib_available -> begin
+              let lib = s in
+              add_lib_dep acc lib Optional;
+              Some (str_exp (string_of_bool (
+                Lib.DB.available (Scope.libs scope) lib)))
+            end
+          | Version -> begin
+              match Package.Name.Map.find (Scope.project scope).packages
+                      (Package.Name.of_string s) with
+              | Some p ->
+                let x =
+                  Pkg_version.read sctx p >>^ function
+                  | None   -> [Value.String ""]
+                  | Some s -> [String s]
+                in
+                add_ddep acc ~key x
+              | None ->
+                add_fail acc { fail = fun () ->
+                  Loc.fail loc
+                    "Package %S doesn't exist in the current project." s
+                }
+            end
+          | Read -> begin
+              let path = Path.relative dir s in
+              let data =
+                Build.contents path
+                >>^ fun s -> [Value.String s]
+              in
+              add_ddep acc ~key data
+            end
+          | Read_lines -> begin
+              let path = Path.relative dir s in
+              let data =
+                Build.lines_of path
+                >>^ Value.L.strings
+              in
+              add_ddep acc ~key data
+            end
+          | Read_strings -> begin
+              let path = Path.relative dir s in
+              let data =
+                Build.strings path
+                >>^ Value.L.strings
+              in
+              add_ddep acc ~key data
+            end
+          | Path_no_dep -> Some [Value.Dir (Path.relative dir s)])
       in
       Option.iter res ~f:(fun v ->
         acc.sdeps <- Path.Set.union
@@ -754,31 +736,51 @@ module Action = struct
     let t = U.partial_expand t ~dir ~map_exe ~f:expand in
     (t, acc)
 
-  let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
-    U.Partial.expand t ~dir ~map_exe ~f:(fun var syntax_version ->
-      let key = String_with_vars.Var.full_name var in
-      let loc = String_with_vars.Var.loc var in
+  let expand_step2 ~dir ~dynamic_expansions ~bindings
+        ~(deps_written_by_user : Path.t Jbuild.Bindings.t)
+        ~map_exe t =
+    U.Partial.expand t ~dir ~map_exe ~f:(fun pform syntax_version ->
+      let key = String_with_vars.Var.full_name pform in
+      let loc = String_with_vars.Var.loc pform in
       match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
-        Pform.Map.expand Pform.Map.static_vars ~syntax_version ~var
-        |> Option.map ~f:(function
-          | Pform.Var.Deps -> (Value.L.paths deps_written_by_user)
+        Option.map (Pform.Map.expand bindings ~syntax_version ~pform) ~f:(function
+          | Named_local ->
+            begin match Jbuild.Bindings.find deps_written_by_user key with
+            | None ->
+              Exn.code_error "Local named variable not present in named deps"
+                [ "pform", String_with_vars.Var.sexp_of_t pform
+                ; "deps_written_by_user",
+                  Jbuild.Bindings.sexp_of_t Path.sexp_of_t deps_written_by_user
+                ]
+            | Some x -> Value.L.paths x
+            end
+          | Deps ->
+            deps_written_by_user
+            |> Jbuild.Bindings.to_list
+            |> Value.L.paths
           | First_dep ->
             begin match deps_written_by_user with
+            | Named _ :: _ ->
+              (* This case is not possible: ${<} only exist in jbuild
+                 files and named dependencies are not available in
+                 jbuild files *)
+              assert false
+            | Unnamed v :: _ -> [Path v]
             | [] ->
               Loc.warn loc "Variable '%s' used with no explicit \
                             dependencies@." key;
               [Value.String ""]
-            | v :: _  -> [Path v]
             end
           | _ ->
             Exn.code_error "Unexpected variable in step2"
-              ["var", String_with_vars.Var.sexp_of_t var]))
+              ["var", String_with_vars.Var.sexp_of_t pform]))
 
-  let run sctx ~loc ?(extra_vars=String.Map.empty)
-        t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
-    : (Path.t list, Action.t) Build.t =
+  let run sctx ~loc ~bindings t ~dir ~dep_kind
+        ~targets:targets_written_by_user ~scope
+    : (Path.t Bindings.t, Action.t) Build.t =
+    let bindings = Pform.Map.superpose sctx.pforms bindings in
     let map_exe = map_exe sctx in
     if targets_written_by_user = Alias then begin
       match Action.Infer.unexpanded_targets t with
@@ -791,7 +793,7 @@ module Action = struct
     end;
     let t, forms =
       expand_step1 sctx t ~dir ~dep_kind ~scope
-        ~targets_written_by_user ~map_exe ~extra_vars
+        ~targets_written_by_user ~map_exe ~bindings
     in
     let { Action.Infer.Outcome. deps; targets } =
       match targets_written_by_user with
@@ -850,6 +852,7 @@ module Action = struct
         in
         let unresolved =
           expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe
+            ~bindings
         in
         Action.Unresolved.resolve unresolved ~f:(fun prog ->
           let sctx = host sctx in

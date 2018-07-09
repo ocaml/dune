@@ -18,72 +18,72 @@
 
 (alias
  (name runtest)
- (deps tests.mlt
+ (deps (:t tests.mlt)
   (glob_files %{project_root}/src/.dune.objs/*.cmi)
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi)
   (source_tree toolchain.d)
   (source_tree findlib-db))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{first-dep})
-           (diff? %{first-dep} %{first-dep}.corrected)))))
+           (run %{exe:expect_test.exe} %{t})
+           (diff? %{t} %{t}.corrected)))))
 
 (alias
  (name runtest)
- (deps filename.mlt
+ (deps (:t filename.mlt)
   (glob_files %{project_root}/src/.dune.objs/*.cmi)
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{first-dep})
-           (diff? %{first-dep} %{first-dep}.corrected)))))
+           (run %{exe:expect_test.exe} %{t})
+           (diff? %{t} %{t}.corrected)))))
 
 (alias
  (name runtest)
- (deps import_dot_map.mlt
+ (deps (:t import_dot_map.mlt)
   (glob_files %{project_root}/src/.dune.objs/*.cmi)
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{first-dep})
-           (diff? %{first-dep} %{first-dep}.corrected)))))
+           (run %{exe:expect_test.exe} %{t})
+           (diff? %{t} %{t}.corrected)))))
 
 (alias
  (name runtest)
- (deps action.mlt
+ (deps (:t action.mlt)
   (glob_files %{project_root}/src/.dune.objs/*.cmi)
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{first-dep})
-           (diff? %{first-dep} %{first-dep}.corrected)))))
+           (run %{exe:expect_test.exe} %{t})
+           (diff? %{t} %{t}.corrected)))))
 
 (alias
  (name runtest)
- (deps path.mlt
+ (deps (:t path.mlt)
   (glob_files %{project_root}/src/.dune.objs/*.cmi)
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{first-dep})
-           (diff? %{first-dep} %{first-dep}.corrected)))))
+           (run %{exe:expect_test.exe} %{t})
+           (diff? %{t} %{t}.corrected)))))
 
 (alias
  (name runtest)
- (deps sexp.mlt
+ (deps (:t sexp.mlt)
   (glob_files %{project_root}/src/.dune.objs/*.cmi)
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{first-dep})
-           (diff? %{first-dep} %{first-dep}.corrected)))))
+           (run %{exe:expect_test.exe} %{t})
+           (diff? %{t} %{t}.corrected)))))
 
 (alias
  (name runtest)
- (deps jbuild.mlt
+ (deps (:t jbuild.mlt)
   (glob_files %{project_root}/src/.dune.objs/*.cmi)
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}
           (progn
-           (run %{exe:expect_test.exe} %{first-dep})
-           (diff? %{first-dep} %{first-dep}.corrected)))))
+           (run %{exe:expect_test.exe} %{t})
+           (diff? %{t} %{t}.corrected)))))

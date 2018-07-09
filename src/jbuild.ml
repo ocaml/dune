@@ -232,6 +232,63 @@ module Pps_and_flags = struct
       Dune_syntax.t
 end
 
+module Bindings = struct
+  type 'a one =
+    | Unnamed of 'a
+    | Named of string * 'a list
+
+  type 'a t = 'a one list
+
+  let fold t ~f ~init = List.fold_left ~f:(fun acc x -> f x acc) ~init t
+
+  let to_list =
+    List.concat_map ~f:(function
+      | Unnamed x -> [x]
+      | Named (_, xs) -> xs)
+
+  let find t k =
+    List.find_map t ~f:(function
+      | Unnamed _ -> None
+      | Named (k', x) -> Option.some_if (k = k') x)
+
+  let empty = []
+
+  let singleton x = [Unnamed x]
+
+  let t elem =
+    let rec loop vars acc =
+      peek >>= function
+      | None -> return (List.rev acc)
+      | Some (List (_, Atom (loc, A s) :: _)) when
+          String.length s > 1 && s.[0] = ':' ->
+        let name = String.sub s ~pos:1 ~len:(String.length s - 1) in
+        let vars =
+          if not (String.Set.mem vars name) then
+            String.Set.add vars name
+          else
+            of_sexp_errorf loc "Variable %s is defined for the second time."
+              name
+        in
+        enter (junk >>= fun () -> repeat elem)
+        >>= fun values ->
+        loop vars (Named (name, values) :: acc)
+      | _ ->
+        elem >>= fun x ->
+        loop vars (Unnamed x :: acc)
+    in
+    Stanza.file_kind () >>= function
+    | Jbuild -> list (elem >>| fun x -> Unnamed x)
+    | Dune   -> loop String.Set.empty []
+
+  let sexp_of_t sexp_of_a bindings =
+    Sexp.List (
+      List.map bindings ~f:(function
+        | Unnamed a -> sexp_of_a a
+        | Named (name, bindings) ->
+          Sexp.List (Sexp.atom (":" ^ name) :: List.map ~f:sexp_of_a bindings))
+    )
+end
+
 module Dep_conf = struct
   type t =
     | File of String_with_vars.t
@@ -269,21 +326,23 @@ module Dep_conf = struct
   open Sexp
   let sexp_of_t = function
     | File t ->
-       List [Sexp.unsafe_atom_of_string "file" ; String_with_vars.sexp_of_t t]
+      List [ Sexp.unsafe_atom_of_string "file"
+           ; String_with_vars.sexp_of_t t ]
     | Alias t ->
-       List [Sexp.unsafe_atom_of_string "alias" ; String_with_vars.sexp_of_t t]
+      List [ Sexp.unsafe_atom_of_string "alias"
+           ; String_with_vars.sexp_of_t t ]
     | Alias_rec t ->
-       List [Sexp.unsafe_atom_of_string "alias_rec" ;
-             String_with_vars.sexp_of_t t]
+      List [ Sexp.unsafe_atom_of_string "alias_rec"
+           ; String_with_vars.sexp_of_t t ]
     | Glob_files t ->
-       List [Sexp.unsafe_atom_of_string "glob_files" ;
-             String_with_vars.sexp_of_t t]
+      List [ Sexp.unsafe_atom_of_string "glob_files"
+           ; String_with_vars.sexp_of_t t ]
     | Source_tree t ->
-       List [Sexp.unsafe_atom_of_string "files_recursively_in" ;
-             String_with_vars.sexp_of_t t]
+      List [ Sexp.unsafe_atom_of_string "files_recursively_in"
+           ; String_with_vars.sexp_of_t t ]
     | Package t ->
-      List [Sexp.unsafe_atom_of_string "package" ;
-            String_with_vars.sexp_of_t t]
+      List [ Sexp.unsafe_atom_of_string "package"
+           ; String_with_vars.sexp_of_t t]
     | Universe ->
       Sexp.unsafe_atom_of_string "universe"
 end
@@ -1071,7 +1130,7 @@ module Rule = struct
 
   type t =
     { targets  : Targets.t
-    ; deps     : Dep_conf.t list
+    ; deps     : Dep_conf.t Bindings.t
     ; action   : Loc.t * Action.Unexpanded.t
     ; mode     : Mode.t
     ; locks    : String_with_vars.t list
@@ -1113,7 +1172,7 @@ module Rule = struct
   let short_form =
     located Action.Unexpanded.t >>| fun (loc, action) ->
     { targets  = Infer
-    ; deps     = []
+    ; deps     = Bindings.empty
     ; action   = (loc, action)
     ; mode     = Standard
     ; locks    = []
@@ -1126,7 +1185,8 @@ module Rule = struct
     >>= fun action ->
     field "targets" (list file_in_current_dir)
     >>= fun targets ->
-    field "deps"    (list Dep_conf.t) ~default:[] >>= fun deps ->
+    field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
+    >>= fun deps ->
     field "locks"   (list String_with_vars.t) ~default:[] >>= fun locks ->
     map_validate
       (field_b
@@ -1231,7 +1291,7 @@ module Rule = struct
       let src = name ^ ".mll" in
       let dst = name ^ ".ml"  in
       { targets = Static [dst]
-      ; deps    = [File (S.virt_text __POS__ src)]
+      ; deps    = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
           (loc,
            Chdir
@@ -1240,7 +1300,7 @@ module Rule = struct
                    [ S.virt_text __POS__ "-q"
                    ; S.virt_text __POS__ "-o"
                    ; S.virt_var __POS__ "targets"
-                   ; S.virt_var __POS__"first-dep"
+                   ; S.virt_var __POS__"deps"
                    ])))
       ; mode
       ; locks = []
@@ -1252,13 +1312,13 @@ module Rule = struct
     List.map modules ~f:(fun name ->
       let src = name ^ ".mly" in
       { targets = Static [name ^ ".ml"; name ^ ".mli"]
-      ; deps    = [File (S.virt_text __POS__ src)]
+      ; deps    = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
       ; action  =
           (loc,
            Chdir
              (S.virt_var __POS__ "root",
               Run (S.virt_text __POS__ "ocamlyacc",
-                   [S.virt_var __POS__ "first-dep"])))
+                   [S.virt_var __POS__ "deps"])))
       ; mode
       ; locks = []
       ; loc
@@ -1320,7 +1380,7 @@ end
 module Alias_conf = struct
   type t =
     { name    : string
-    ; deps    : Dep_conf.t list
+    ; deps    : Dep_conf.t Bindings.t
     ; action  : (Loc.t * Action.Unexpanded.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option
@@ -1336,10 +1396,11 @@ module Alias_conf = struct
   let t =
     record
       (field "name" alias_name                          >>= fun name ->
-       field "deps" (list Dep_conf.t) ~default:[]       >>= fun deps ->
        field_o "package" Pkg.t                          >>= fun package ->
        field_o "action" (located Action.Unexpanded.t)   >>= fun action ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
+       field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
+       >>= fun deps ->
        return
          { name
          ; deps
@@ -1354,7 +1415,7 @@ module Tests = struct
     { exes    : Executables.t
     ; locks   : String_with_vars.t list
     ; package : Package.t option
-    ; deps    : Dep_conf.t list
+    ; deps    : Dep_conf.t Bindings.t
     }
 
   let gen_parse names =
@@ -1362,11 +1423,12 @@ module Tests = struct
       (Buildable.t                                         >>= fun buildable ->
        field_oslu "link_flags"                             >>= fun link_flags ->
        names                                               >>= fun names ->
-       field "deps" (list Dep_conf.t) ~default:[]          >>= fun deps ->
        field_o "package" Pkg.t                             >>= fun package ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
        field "modes" Executables.Link_mode.Set.t
          ~default:Executables.Link_mode.Set.default >>= fun modes ->
+       field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
+       >>= fun deps ->
        return
          { exes =
              { Executables.

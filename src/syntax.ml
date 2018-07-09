@@ -65,9 +65,12 @@ module Error = struct
     Loc.fail loc "%s was renamed to '%s' in the %s version of %s"
       what to_ (Version.to_string ver) t.desc
 
-  let deleted_in loc t ver ~what =
-    Loc.fail loc "%s was deleted in version %s of %s"
+  let deleted_in loc t ?repl ver ~what =
+    Loc.fail loc "%s was deleted in version %s of %s%s"
       what (Version.to_string ver) t.desc
+      (match repl with
+       | None -> ""
+       | Some s -> ".\n" ^ s)
 end
 
 

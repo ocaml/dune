@@ -169,7 +169,6 @@ Jbuild                    Dune
 ======================== ============
 ``${@}``                  ``%{targets}``
 ``${^}``                  ``%{deps}``
-``${<}``                  ``%{first-dep}``
 ``${path:file}``          ``%{dep:file}``
 ``${SCOPE_ROOT}``         ``%{project_root}``
 ``${findlib:..}``         ``%{lib:..}``
@@ -186,8 +185,26 @@ Jbuild                    Dune
 Removed Variables
 -----------------
 
-``${path-no-dep:file}`` has been removed.
+``${path-no-dep:file}`` and ``${<}`` have been removed.
 
+A named dependency should be used instead of ``${<}``. For instance
+the following jbuild file:
+
+.. code:: scheme
+
+          (alias
+           ((name   runtest)
+            (deps   (input))
+            (action (run ./test.exe %{<}))))
+
+should be rewritten to the following dune file:
+
+.. code:: scheme
+
+          (alias
+           (name   runtest)
+           (deps   (:x input))
+           (action (run ./test.exe %{x})))
 
 ``# JBUILDER_GEN`` renamed
 --------------------------

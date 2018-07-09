@@ -1,68 +1,55 @@
 open Import
 
-module Var = struct
-  type t =
-    | Values of Value.t list
-    | Project_root
-    | First_dep
-    | Deps
-    | Targets
+type t =
+  | Values of Value.t list
+  | Project_root
+  | First_dep
+  | Deps
+  | Targets
+  | Named_local
+  | Exe
+  | Dep
+  | Bin
+  | Lib
+  | Libexec
+  | Lib_available
+  | Version
+  | Read
+  | Read_strings
+  | Read_lines
+  | Path_no_dep
+  | Ocaml_config
 
-  let to_value_no_deps_or_targets t ~scope =
-    match t with
-    | Values v -> Some v
-    | Project_root -> Some [Value.Dir (Scope.root scope)]
-    | First_dep
-    | Deps
-    | Targets -> None
-end
-
-module Macro = struct
-  type t =
-    | Exe
-    | Dep
-    | Bin
-    | Lib
-    | Libexec
-    | Lib_available
-    | Version
-    | Read
-    | Read_strings
-    | Read_lines
-    | Path_no_dep
-    | Ocaml_config
-end
-
-type 'a t =
-  | No_info    of 'a
-  | Since      of 'a * Syntax.Version.t
-  | Deleted_in of 'a * Syntax.Version.t
+type with_info =
+  | No_info    of t
+  | Since      of t * Syntax.Version.t
+  | Deleted_in of t * Syntax.Version.t * string option
   | Renamed_in of Syntax.Version.t * string
 
 module Map = struct
-  type nonrec 'a t = 'a t String.Map.t
+  type t = with_info String.Map.t
 
-  let values v                      = No_info (Var.Values v)
-  let renamed_in ~new_name ~version = Renamed_in (version, new_name)
-  let deleted_in ~version kind      = Deleted_in (kind, version)
-  let since ~version v              = Since (v, version)
+  let values v                       = No_info (Values v)
+  let renamed_in ~new_name ~version  = Renamed_in (version, new_name)
+  let deleted_in ~version ?repl kind = Deleted_in (kind, version, repl)
+  let since ~version v               = Since (v, version)
 
-  let static_vars =
-    [ "first-dep", since ~version:(1, 0) Var.First_dep
-    ; "targets", since ~version:(1, 0) Var.Targets
-    ; "deps", since ~version:(1, 0) Var.Deps
-    ; "project_root", since ~version:(1, 0) Var.Project_root
+  let static =
+    let macro x = No_info x in
+    [ "targets", since ~version:(1, 0) Targets
+    ; "deps", since ~version:(1, 0) Deps
+    ; "project_root", since ~version:(1, 0) Project_root
 
-    ; "<", renamed_in ~version:(1, 0) ~new_name:"first-dep"
+    ; "<", deleted_in First_dep ~version:(1, 0)
+             ~repl:"Use a named dependency instead:\
+                    \n\
+                    \n\  (deps (:x <dep>) ...)\
+                    \n\   ... %{x} ..."
     ; "@", renamed_in ~version:(1, 0) ~new_name:"targets"
     ; "^", renamed_in ~version:(1, 0) ~new_name:"deps"
     ; "SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root"
-    ]
 
-  let macros =
-    let macro kind = No_info kind in
-    let open Macro in
-    [ "exe", macro Exe
+    ; "exe", macro Exe
     ; "bin", macro Bin
     ; "lib", macro Lib
     ; "libexec", macro Libexec
@@ -82,7 +69,7 @@ module Map = struct
     ]
     |> String.Map.of_list_exn
 
-  let create_vars ~(context : Context.t) ~cxx_flags =
+  let create ~(context : Context.t) ~cxx_flags =
     let ocamlopt =
       match context.ocamlopt with
       | None -> Path.relative context.ocaml_bin "ocamlopt"
@@ -107,11 +94,13 @@ module Map = struct
       ; "arch_sixtyfour" , string (string_of_bool context.arch_sixtyfour)
       ; "make"           , make
       ; "root"           , values [Value.Dir context.build_dir]
-      ] in
+      ]
+    in
     let uppercased =
       List.map lowercased ~f:(fun (k, _) ->
-        (String.uppercase k, renamed_in ~new_name:k ~version:(1, 0))) in
-    let vars =
+        (String.uppercase k, renamed_in ~new_name:k ~version:(1, 0)))
+    in
+    let other =
       [ "-verbose"       , values []
       ; "pa_cpp"         , strings (context.c_compiler :: cflags
                                     @ ["-undef"; "-traditional";
@@ -128,49 +117,67 @@ module Map = struct
       ; "profile"        , string context.profile
       ]
     in
-    [ static_vars
-    ; lowercased
-    ; uppercased
-    ; vars
-    ]
-    |> List.concat
-    |> String.Map.of_list_exn
+    String.Map.superpose
+      static
+      (String.Map.of_list_exn
+         (List.concat
+            [ lowercased
+            ; uppercased
+            ; other
+            ]))
 
-  let static_vars = String.Map.of_list_exn static_vars
+  let superpose = String.Map.superpose
 
-  let rec expand t ~syntax_version ~var =
-    let name = String_with_vars.Var.name var in
+  let rec expand t ~syntax_version ~pform =
+    let name = String_with_vars.Var.name pform in
     Option.bind (String.Map.find t name) ~f:(fun v ->
-      let what var =
-        String_with_vars.Var.to_string (
-          if String_with_vars.Var.is_macro var then
-            String_with_vars.Var.with_payload var ~payload:(Some "..")
-          else
-            var)
-      in
+      let describe = String_with_vars.Var.describe in
       match v with
       | No_info v -> Some v
       | Since (v, min_version) ->
         if syntax_version >= min_version then
           Some v
         else
-          Syntax.Error.since (String_with_vars.Var.loc var)
+          Syntax.Error.since (String_with_vars.Var.loc pform)
             Stanza.syntax min_version
-            ~what:(what var)
+            ~what:(describe pform)
       | Renamed_in (in_version, new_name) -> begin
           if syntax_version >= in_version then
-            Syntax.Error.renamed_in (String_with_vars.Var.loc var)
+            Syntax.Error.renamed_in (String_with_vars.Var.loc pform)
               Stanza.syntax syntax_version
-              ~what:(what var)
-              ~to_:(what (String_with_vars.Var.with_name var ~name:new_name))
+              ~what:(describe pform)
+              ~to_:(describe
+                      (String_with_vars.Var.with_name pform ~name:new_name))
           else
             expand t ~syntax_version:in_version
-              ~var:(String_with_vars.Var.with_name var ~name:new_name)
+              ~pform:(String_with_vars.Var.with_name pform ~name:new_name)
         end
-      | Deleted_in (v, in_version) ->
+      | Deleted_in (v, in_version, repl) ->
         if syntax_version < in_version then
           Some v
         else
-          Syntax.Error.deleted_in (String_with_vars.Var.loc var)
-            Stanza.syntax syntax_version ~what:(what var))
+          Syntax.Error.deleted_in (String_with_vars.Var.loc pform)
+            Stanza.syntax syntax_version ~what:(describe pform) ?repl)
+
+  let empty = String.Map.empty
+
+  let singleton k v = String.Map.singleton k (No_info v)
+
+  let of_list_exn pforms =
+    List.map ~f:(fun (k, x) -> (k, No_info x)) pforms
+    |> String.Map.of_list_exn
+
+  let of_bindings =
+    Jbuild.Bindings.fold ~f:(fun x acc ->
+      match x with
+      | Unnamed _ -> acc
+      | Named (s, _) -> String.Map.add acc s (No_info Named_local)
+    ) ~init:empty
+
+  let input_file path =
+    let value = Values (Value.L.paths [path]) in
+    [ "input-file", since ~version:(1, 0) value
+    ; "<", renamed_in ~new_name:"input-file" ~version:(1, 0)
+    ]
+    |> String.Map.of_list_exn
 end

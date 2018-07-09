@@ -1,0 +1,5 @@
+
+(rule
+ (deps (:foo a b) (:baz foo (alias test)) a b c)
+ (targets bar)
+ (action (with-stdout-to bar (echo "foo"))))

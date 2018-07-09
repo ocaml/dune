@@ -1,49 +1,50 @@
-module Var : sig
-  type t =
-    | Values of Value.t list
-    | Project_root
-    | First_dep
-    | Deps
-    | Targets
+open Stdune
 
-  val to_value_no_deps_or_targets : t -> scope:Scope.t -> Value.t list option
-end
+type t =
+  (* Variables *)
+  | Values of Value.t list
+  | Project_root
+  | First_dep
+  | Deps
+  | Targets
+  | Named_local
 
-module Macro : sig
-  type t =
-    | Exe
-    | Dep
-    | Bin
-    | Lib
-    | Libexec
-    | Lib_available
-    | Version
-    | Read
-    | Read_strings
-    | Read_lines
-    | Path_no_dep
-    | Ocaml_config
-end
-
-type 'a t =
-  | No_info    of 'a
-  | Since      of 'a * Syntax.Version.t
-  | Deleted_in of 'a * Syntax.Version.t
-  | Renamed_in of Syntax.Version.t * string
+  (* Macros *)
+  | Exe
+  | Dep
+  | Bin
+  | Lib
+  | Libexec
+  | Lib_available
+  | Version
+  | Read
+  | Read_strings
+  | Read_lines
+  | Path_no_dep
+  | Ocaml_config
 
 module Map : sig
-  type 'a var
-  type 'a t
+  type pform
+  type t
 
-  val create_vars : context:Context.t -> cxx_flags:string list -> Var.t t
+  val create : context:Context.t -> cxx_flags:string list -> t
 
-  val macros : Macro.t t
+  val superpose : t -> t -> t
 
-  val static_vars : Var.t t
+  (** Map with all named values as [Named_local] *)
+  val of_bindings : _ Jbuild.Bindings.t -> t
+
+  val singleton : string -> pform -> t
+
+  val of_list_exn : (string * pform) list -> t
+
+  val input_file : Path.t -> t
 
   val expand
-    :  'a t
+    :  t
     -> syntax_version:Syntax.Version.t
-    -> var:String_with_vars.Var.t
-    -> 'a option
-end with type 'a var := 'a t
+    -> pform:String_with_vars.Var.t
+    -> pform option
+
+  val empty : t
+end with type pform := t

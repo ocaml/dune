@@ -187,13 +187,14 @@ module Gen(P : Install_rules.Params) = struct
     in
     SC.add_rule_get_targets sctx ~mode:rule.mode ~loc:rule.loc
       ~locks:(interpret_locks ~dir ~scope rule.locks)
-      (SC.Deps.interpret sctx ~scope ~dir rule.deps
+      (SC.Deps.interpret_named sctx ~scope ~dir rule.deps
        >>>
        SC.Action.run
          sctx
          (snd rule.action)
          ~loc:(fst rule.action)
          ~dir
+         ~bindings:(Pform.Map.of_bindings rule.deps)
          ~dep_kind:Required
          ~targets
          ~scope)
@@ -929,7 +930,7 @@ module Gen(P : Install_rules.Params) = struct
       let module S = Sexp.To_sexp in
       Sexp.List
         [ Sexp.unsafe_atom_of_string "user-alias"
-        ; S.list   Jbuild.Dep_conf.sexp_of_t   alias_conf.deps
+        ; Jbuild.Bindings.sexp_of_t Jbuild.Dep_conf.sexp_of_t alias_conf.deps
         ; S.option Action.Unexpanded.sexp_of_t
             (Option.map alias_conf.action ~f:snd)
         ]
@@ -939,7 +940,7 @@ module Gen(P : Install_rules.Params) = struct
       ~name:alias_conf.name
       ~stamp
       ~locks:(interpret_locks ~dir ~scope alias_conf.locks)
-      (SC.Deps.interpret sctx ~scope ~dir alias_conf.deps
+      (SC.Deps.interpret_named sctx ~scope ~dir alias_conf.deps
        >>>
        match alias_conf.action with
        | None -> Build.progn []
@@ -950,6 +951,7 @@ module Gen(P : Install_rules.Params) = struct
            ~loc
            ~dir
            ~dep_kind:Required
+           ~bindings:(Pform.Map.of_bindings alias_conf.deps)
            ~targets:Alias
            ~scope)
 
@@ -976,7 +978,7 @@ module Gen(P : Install_rules.Params) = struct
       let rule =
         { Rule.
           targets = Infer
-        ; deps = []
+        ; deps = Bindings.empty
         ; action =
             (loc, Action.Unexpanded.Redirect (Stdout, diff.file2, run_action))
         ; mode = Standard

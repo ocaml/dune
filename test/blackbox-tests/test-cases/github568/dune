@@ -7,8 +7,7 @@
 (alias
  (name runtest)
  (package lib1)
- (deps test1.exe)
- (action (run %{first-dep})))
+ (action (run ./test1.exe)))
 
 (executable
  (name test1)
@@ -24,8 +23,7 @@
 (alias
  (name runtest)
  (package lib2)
- (deps test2.exe)
- (action (run %{first-dep})))
+ (action (run ./test2.exe)))
 
 (executable
  (name test2)

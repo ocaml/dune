@@ -81,6 +81,26 @@ module Lib_deps : sig
   val of_pps : Pp.t list -> t
 end
 
+module Bindings : sig
+  type 'a one =
+    | Unnamed of 'a
+    | Named of string * 'a list
+
+  type 'a t = 'a one list
+
+  val find : 'a t -> string -> 'a list option
+
+  val fold : 'a t -> f:('a one -> 'acc -> 'acc) -> init:'acc -> 'acc
+
+  val empty : 'a t
+
+  val to_list : 'a t -> 'a list
+
+  val singleton : 'a -> 'a t
+
+  val sexp_of_t : ('a -> Usexp.t) -> 'a t -> Usexp.t
+end
+
 module Dep_conf : sig
   type t =
     | File of String_with_vars.t
@@ -284,7 +304,7 @@ module Rule : sig
 
   type t =
     { targets  : Targets.t
-    ; deps     : Dep_conf.t list
+    ; deps     : Dep_conf.t Bindings.t
     ; action   : Loc.t * Action.Unexpanded.t
     ; mode     : Mode.t
     ; locks    : String_with_vars.t list
@@ -307,7 +327,7 @@ end
 module Alias_conf : sig
   type t =
     { name    : string
-    ; deps    : Dep_conf.t list
+    ; deps    : Dep_conf.t Bindings.t
     ; action  : (Loc.t * Action.Unexpanded.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option
@@ -350,7 +370,7 @@ module Tests : sig
     { exes    : Executables.t
     ; locks   : String_with_vars.t list
     ; package : Package.t option
-    ; deps    : Dep_conf.t list
+    ; deps    : Dep_conf.t Bindings.t
     }
 end
 

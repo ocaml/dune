@@ -525,7 +525,7 @@ module Unexpanded = struct
       Redirect (outputs, E.path ~dir ~f fn, partial_expand t ~dir ~map_exe ~f)
     | Ignore (outputs, t) ->
       Ignore (outputs, partial_expand t ~dir ~map_exe ~f)
-    | Progn l -> Progn (List.map l ~f:(fun t -> partial_expand t ~dir ~map_exe ~f))
+    | Progn l -> Progn (List.map l ~f:(partial_expand ~dir ~map_exe ~f))
     | Echo xs -> Echo (List.map xs ~f:(E.cat_strings ~dir ~f))
     | Cat x -> Cat (E.path ~dir ~f x)
     | Copy (x, y) ->

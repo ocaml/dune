@@ -14,21 +14,19 @@ module Jbuild = struct
     { dir     : Path.t
     ; project : Dune_project.t
     ; stanzas : Stanzas.t
-    ; kind    : File_tree.Dune_file.Kind.t
     }
 end
 
 module Jbuilds = struct
   type script =
-    { dir     : Path.t
-    ; file    : Path.t
-    ; project : Dune_project.t
+    { file    : Path.t
     ; kind    : File_tree.Dune_file.Kind.t
     }
 
   type one =
-    | Literal of Jbuild.t
-    | Script  of script
+    { literal : Jbuild.t
+    ; scripts : script list
+    }
 
   type t =
     { jbuilds               : one list
@@ -155,61 +153,54 @@ end
   let eval { jbuilds; ignore_promoted_rules } ~(context : Context.t) =
     let open Fiber.O in
     let static, dynamic =
-      List.partition_map jbuilds ~f:(function
-        | Literal x -> Left  x
-        | Script  x -> Right x)
+      List.partition_map jbuilds ~f:(fun x ->
+        match x.scripts with
+        | [] -> Left  x.literal
+        | _  -> Right x)
     in
-    Fiber.parallel_map dynamic ~f:(fun { dir; file; project; kind } ->
-      let generated_jbuild =
-        Path.append (Path.relative generated_jbuilds_dir context.name) file
-      in
-      let wrapper = Path.extend_basename generated_jbuild ~suffix:".ml" in
-      ensure_parent_dir_exists generated_jbuild;
-      let requires =
-        create_plugin_wrapper context ~exec_dir:dir ~plugin:file ~wrapper
-          ~target:generated_jbuild ~kind
-      in
-      let context = Option.value context.for_host ~default:context in
-      let cmas =
-        match requires with
-        | No_requires -> []
-        | Unix        -> ["unix.cma"]
-      in
-      let args =
-        List.concat
-          [ [ "-I"; "+compiler-libs" ]
-          ; cmas
-          ; [ Path.to_absolute_filename wrapper ]
-          ]
-      in
-      (* CR-someday jdimino: if we want to allow plugins to use findlib:
-         {[
-           let args =
-             match context.toplevel_path with
-             | None -> args
-             | Some path -> "-I" :: Path.reach ~from:dir path :: args
-           in
-         ]}
-      *)
-      Process.run Strict ~dir ~env:context.env context.ocaml
-        args
-      >>= fun () ->
-      if not (Path.exists generated_jbuild) then
-        die "@{<error>Error:@} %s failed to produce a valid jbuild file.\n\
-             Did you forgot to call [Jbuild_plugin.V*.send]?"
-          (Path.to_string file);
-      let stanzas =
-        Io.Sexp.load generated_jbuild ~mode:Many
-          ~lexer:(File_tree.Dune_file.Kind.lexer kind)
-        |> Stanzas.parse project ~file:generated_jbuild ~kind
-        |> filter_stanzas ~ignore_promoted_rules
-      in
+    Fiber.parallel_map dynamic ~f:(fun one ->
+      let { literal = { dir; project; stanzas }; scripts } = one in
+      Fiber.parallel_map scripts ~f:(fun { file; kind } ->
+        let generated_jbuild =
+          Path.append (Path.relative generated_jbuilds_dir context.name) file
+        in
+        let wrapper = Path.extend_basename generated_jbuild ~suffix:".ml" in
+        ensure_parent_dir_exists generated_jbuild;
+        let requires =
+          create_plugin_wrapper context ~exec_dir:dir ~plugin:file ~wrapper
+            ~target:generated_jbuild ~kind
+        in
+        let context = Option.value context.for_host ~default:context in
+        let cmas =
+          match requires with
+          | No_requires -> []
+          | Unix        -> ["unix.cma"]
+        in
+        let args =
+          List.concat
+            [ [ "-I"; "+compiler-libs" ]
+            ; cmas
+            ; [ Path.to_absolute_filename wrapper ]
+            ]
+        in
+        Process.run Strict ~dir ~env:context.env context.ocaml
+          args
+        >>= fun () ->
+        if not (Path.exists generated_jbuild) then
+          die "@{<error>Error:@} %s failed to produce a valid jbuild file.\n\
+               Did you forgot to call [Jbuild_plugin.V*.send]?"
+            (Path.to_string file);
+        Fiber.return
+          (Io.Sexp.load generated_jbuild ~mode:Many
+             ~lexer:(File_tree.Dune_file.Kind.lexer kind)
+           |> Stanzas.parse project ~file:generated_jbuild ~kind
+           |> filter_stanzas ~ignore_promoted_rules))
+      >>= fun more_stanzas ->
       Fiber.return
         { Jbuild.
           dir
         ; project
-        ; kind
-        ; stanzas
+        ; stanzas = List.concat (stanzas :: more_stanzas)
         })
     >>| fun dynamic ->
     static @ dynamic
@@ -222,26 +213,28 @@ type conf =
   ; projects  : Dune_project.t list
   }
 
-let interpret ~dir ~project ~ignore_promoted_rules
-      ~(dune_file:File_tree.Dune_file.t) =
-  match dune_file.contents with
-  | Plain p ->
-    let stanzas =
-      Stanzas.parse project p.sexps ~file:p.path ~kind:dune_file.kind
-      |> filter_stanzas ~ignore_promoted_rules
-    in
-    let jbuild =
-      Jbuilds.Literal
-        { dir
-        ; project
-        ; stanzas
-        ; kind = dune_file.kind
-        }
-    in
-    p.sexps <- [];
-    jbuild
-  | Ocaml_script file ->
-    Script { dir; project; file; kind = dune_file.kind }
+let interpret ~dir ~project ~ignore_promoted_rules ~dune_files =
+  let stanzas, scripts =
+    List.partition_map dune_files
+      ~f:(fun { File_tree.Dune_file.contents; kind } ->
+        match contents with
+        | Plain p ->
+          let stanzas =
+            Stanzas.parse project p.sexps ~file:p.path ~kind
+            |> filter_stanzas ~ignore_promoted_rules
+          in
+          p.sexps <- [];
+          Left stanzas
+        | Ocaml_script file ->
+          Right { Jbuilds.file; kind })
+  in
+  { Jbuilds.
+    literal = { dir
+              ; project
+              ; stanzas = List.concat stanzas
+              }
+  ; scripts
+  }
 
 let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
   let ftree = File_tree.load Path.root ?extra_ignored_subtrees in
@@ -282,11 +275,11 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
       let sub_dirs = File_tree.Dir.sub_dirs dir in
       let project = Option.value (Path.Map.find projects path) ~default:project in
       let jbuilds =
-        match File_tree.Dir.dune_file dir with
-        | None -> jbuilds
-        | Some dune_file ->
+        match File_tree.Dir.dune_files dir with
+        | [] -> jbuilds
+        | dune_files ->
           let jbuild =
-            interpret ~dir:path ~project ~ignore_promoted_rules ~dune_file
+            interpret ~dir:path ~project ~ignore_promoted_rules ~dune_files
           in
           jbuild :: jbuilds
       in

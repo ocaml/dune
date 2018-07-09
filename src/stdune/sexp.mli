@@ -148,6 +148,10 @@ module Of_sexp : sig
   (** [record fp = enter (fields fp)] *)
   val record : 'a fields_parser -> 'a t
 
+  (** [remainig_fields_as_values t] convert all the remaining fields
+      to values and parse them with [t]. *)
+  val remaining_fields_as_values : 'a t -> 'a fields_parser
+
   (** Consume the next element of the input as a string, int, char, ... *)
   include Combinators with type 'a t := 'a t
 

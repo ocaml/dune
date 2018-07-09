@@ -16,7 +16,7 @@ val create
   :  super_context         : Super_context.t
   -> scope                 : Scope.t
   -> dir                   : Path.t
-  -> ?dir_kind             : File_tree.Dune_file.Kind.t
+  -> dune_version          : Syntax.Version.t
   -> ?obj_dir              : Path.t
   -> modules               : Module.t Module.Name.Map.t
   -> ?alias_module         : Module.t
@@ -34,7 +34,7 @@ val for_alias_module : t -> t
 val super_context        : t -> Super_context.t
 val scope                : t -> Scope.t
 val dir                  : t -> Path.t
-val dir_kind             : t -> File_tree.Dune_file.Kind.t
+val dune_version         : t -> Syntax.Version.t
 val obj_dir              : t -> Path.t
 val modules              : t -> Module.t Module.Name.Map.t
 val alias_module         : t -> Module.t option

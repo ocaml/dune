@@ -129,11 +129,11 @@ let rule_loc ~file_tree ~loc ~dir =
     let dir = Path.drop_optional_build_context dir in
     let file =
       match
-        Option.bind (File_tree.find_dir file_tree dir)
-          ~f:File_tree.Dir.dune_file
+        Option.map (File_tree.find_dir file_tree dir)
+          ~f:File_tree.Dir.dune_files
       with
-      | Some file -> File_tree.Dune_file.path file
-      | None      -> Path.relative dir "_unknown_"
+      | Some (file :: _) -> File_tree.Dune_file.path file
+      | _ -> Path.relative dir "_unknown_"
     in
     Loc.in_file (Path.to_string file)
 

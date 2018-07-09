@@ -532,7 +532,7 @@ module Gen(P : Install_rules.Params) = struct
   let alias_module_build_sandbox = ctx.version < (4, 03, 0)
 
   let library_rules (lib : Library.t) ~modules_partitioner ~dir ~files ~scope
-        ~compile_info ~dir_kind =
+        ~compile_info =
     let obj_dir = Utils.library_object_directory ~dir lib.name in
     let requires = Lib.Compile.requires compile_info in
     let dep_kind = if lib.optional then Build.Optional else Required in
@@ -549,7 +549,7 @@ module Gen(P : Install_rules.Params) = struct
              lib.buildable.preprocessor_deps)
         ~lint:lib.buildable.lint
         ~lib_name:(Some lib.name)
-        ~dir_kind
+        ~kind:(Stanza.File_kind.of_syntax lib.buildable.dune_version)
     in
     let modules = Preprocessing.pp_modules pp modules in
 
@@ -570,7 +570,7 @@ module Gen(P : Install_rules.Params) = struct
         ~super_context:sctx
         ~scope
         ~dir
-        ~dir_kind
+        ~dune_version:lib.buildable.dune_version
         ~obj_dir
         ~modules
         ?alias_module
@@ -582,7 +582,8 @@ module Gen(P : Install_rules.Params) = struct
     in
 
     Modules_partitioner.acknowledge modules_partitioner cctx
-      ~loc:lib.buildable.loc ~modules:source_modules;
+      ~loc:lib.buildable.loc ~modules:source_modules
+      ~dune_version:lib.buildable.dune_version;
     let dep_graphs = Ocamldep.rules cctx in
 
     Option.iter alias_module ~f:(fun m ->
@@ -779,9 +780,10 @@ module Gen(P : Install_rules.Params) = struct
       ~preprocess:(Buildable.single_preprocess lib.buildable)
       ~libname:lib.name
       ~objs_dirs:(Path.Set.singleton obj_dir)
+      ~dune_version:lib.buildable.dune_version
 
   let library_rules (lib : Library.t) ~modules_partitioner ~dir ~files ~scope
-        ~dir_kind : Merlin.t =
+    : Merlin.t =
     let compile_info =
       Lib.DB.get_compile_info (Scope.libs scope) lib.name
         ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
@@ -789,14 +791,13 @@ module Gen(P : Install_rules.Params) = struct
     SC.Libs.gen_select_rules sctx compile_info ~dir;
     SC.Libs.with_lib_deps sctx compile_info ~dir
       ~f:(fun () ->
-        library_rules lib ~modules_partitioner ~dir ~files ~scope ~compile_info
-          ~dir_kind)
+        library_rules lib ~modules_partitioner ~dir ~files ~scope ~compile_info)
 
   (* +-----------------------------------------------------------------+
      | Executables stuff                                               |
      +-----------------------------------------------------------------+ *)
 
-  let executables_rules ~dir ~all_modules ~dir_kind
+  let executables_rules ~dir ~all_modules
         ~modules_partitioner ~scope ~compile_info
         (exes : Executables.t) =
     let requires = Lib.Compile.requires compile_info in
@@ -815,7 +816,7 @@ module Gen(P : Install_rules.Params) = struct
         ~preprocessor_deps
         ~lint:exes.buildable.lint
         ~lib_name:None
-        ~dir_kind
+        ~kind:(Stanza.File_kind.of_syntax exes.buildable.dune_version)
     in
     let modules =
       Module.Name.Map.map modules ~f:(fun m ->
@@ -879,7 +880,7 @@ module Gen(P : Install_rules.Params) = struct
         ~super_context:sctx
         ~scope
         ~dir
-        ~dir_kind
+        ~dune_version:exes.buildable.dune_version
         ~obj_dir
         ~modules
         ~flags
@@ -887,7 +888,8 @@ module Gen(P : Install_rules.Params) = struct
         ~preprocessing:pp
     in
     Modules_partitioner.acknowledge modules_partitioner cctx
-      ~loc:exes.buildable.loc ~modules;
+      ~loc:exes.buildable.loc ~modules
+      ~dune_version:exes.buildable.dune_version;
 
     Exe.build_and_link_many cctx
       ~programs
@@ -900,9 +902,10 @@ module Gen(P : Install_rules.Params) = struct
       ~flags:(Ocaml_flags.common flags)
       ~preprocess:(Buildable.single_preprocess exes.buildable)
       ~objs_dirs:(Path.Set.singleton obj_dir)
+      ~dune_version:exes.buildable.dune_version
 
   let executables_rules ~dir ~all_modules
-        ~modules_partitioner ~scope ~dir_kind
+        ~modules_partitioner ~scope
         (exes : Executables.t) : Merlin.t =
     let compile_info =
       Lib.DB.resolve_user_written_deps (Scope.libs scope)
@@ -914,7 +917,7 @@ module Gen(P : Install_rules.Params) = struct
     SC.Libs.with_lib_deps sctx compile_info ~dir
       ~f:(fun () ->
         executables_rules exes ~dir ~all_modules
-          ~modules_partitioner ~scope ~compile_info ~dir_kind)
+          ~modules_partitioner ~scope ~compile_info)
 
   (* +-----------------------------------------------------------------+
      | Aliases                                                         |
@@ -954,7 +957,7 @@ module Gen(P : Install_rules.Params) = struct
            ~scope)
 
   let tests_rules (t : Tests.t) ~dir ~scope ~all_modules ~modules_partitioner
-        ~dir_kind ~src_dir =
+        ~src_dir =
     let test_kind (loc, name) =
       let sources = SC.source_files sctx ~src_path:src_dir in
       let expected_basename = name ^ ".expected" in
@@ -1011,35 +1014,34 @@ module Gen(P : Install_rules.Params) = struct
           expect_rule run_action diff base_alias loc in
         alias_rules ~dir ~scope alias;
         ignore (user_rule ~dir ~scope rule : Path.t list));
-    executables_rules t.exes ~dir ~all_modules ~scope ~dir_kind
+    executables_rules t.exes ~dir ~all_modules ~scope
       ~modules_partitioner
 
   (* +-----------------------------------------------------------------+
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
 
-  let gen_rules { SC.Dir_with_jbuild. src_dir; ctx_dir; stanzas; scope; kind } =
+  let gen_rules { SC.Dir_with_jbuild. src_dir; ctx_dir; stanzas; scope } =
     (* This interprets "rule" and "copy_files" stanzas. *)
     let files = text_files ~dir:ctx_dir in
     let all_modules = modules_by_dir ~dir:ctx_dir in
-    let modules_partitioner = Modules_partitioner.create ~dir_kind:kind in
+    let modules_partitioner = Modules_partitioner.create () in
     let merlins =
       List.filter_map stanzas ~f:(fun stanza ->
         let dir = ctx_dir in
         match (stanza : Stanza.t) with
         | Library lib ->
-          Some (library_rules lib ~dir ~files ~scope ~modules_partitioner
-                  ~dir_kind:kind)
+          Some (library_rules lib ~dir ~files ~scope ~modules_partitioner)
         | Executables exes ->
           Some (executables_rules exes ~dir ~all_modules ~scope
-                  ~modules_partitioner ~dir_kind:kind)
+                  ~modules_partitioner)
         | Alias alias ->
           alias_rules alias ~dir ~scope;
           None
         | Tests tests ->
           Some (tests_rules tests ~dir ~scope ~all_modules ~src_dir
-                  ~modules_partitioner ~dir_kind:kind)
-        | Copy_files { glob; _ } ->
+                  ~modules_partitioner)
+        | Copy_files { glob; dune_version; _ } ->
           let src_dir =
             let loc = String_with_vars.loc glob in
             let src_glob = SC.expand_vars_string sctx ~dir glob ~scope in
@@ -1047,11 +1049,12 @@ module Gen(P : Install_rules.Params) = struct
           in
           Some
             (Merlin.make ()
-               ~source_dirs:(Path.Set.singleton src_dir))
+               ~source_dirs:(Path.Set.singleton src_dir)
+               ~dune_version)
         | _ -> None)
     in
     Option.iter (Merlin.merge_all merlins) ~f:(fun m ->
-      Merlin.add_rules sctx ~dir:ctx_dir ~scope ~dir_kind:kind
+      Merlin.add_rules sctx ~dir:ctx_dir ~scope
         (Merlin.add_source_dir m src_dir));
     Utop.setup sctx ~dir:ctx_dir ~scope ~libs:(
       List.filter_map stanzas ~f:(function

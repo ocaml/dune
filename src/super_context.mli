@@ -15,7 +15,6 @@ module Dir_with_jbuild : sig
     ; ctx_dir : Path.t (** [_build/context-name/src_dir] *)
     ; stanzas : Stanzas.t
     ; scope   : Scope.t
-    ; kind    : File_tree.Dune_file.Kind.t
     }
 end
 
@@ -24,7 +23,6 @@ module Installable : sig
     { dir    : Path.t
     ; scope  : Scope.t
     ; stanza : Stanza.t
-    ; kind   : File_tree.Dune_file.Kind.t
     }
 end
 

@@ -63,12 +63,13 @@ module Dot_file = struct
 end
 
 type t =
-  { requires   : Lib.Set.t
-  ; flags      : (unit, string list) Build.t
-  ; preprocess : Preprocess.t
-  ; libname    : string option
-  ; source_dirs: Path.Set.t
-  ; objs_dirs  : Path.Set.t
+  { requires     : Lib.Set.t
+  ; flags        : (unit, string list) Build.t
+  ; preprocess   : Preprocess.t
+  ; libname      : string option
+  ; source_dirs  : Path.Set.t
+  ; objs_dirs    : Path.Set.t
+  ; dune_version : Syntax.Version.t
   }
 
 let make
@@ -78,6 +79,7 @@ let make
       ?libname
       ?(source_dirs=Path.Set.empty)
       ?(objs_dirs=Path.Set.empty)
+      ~dune_version
       () =
   (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
   let requires =
@@ -86,30 +88,32 @@ let make
     | Error _ -> Lib.Set.empty
   in
   { requires
-  ; flags      = Build.catch flags    ~on_error:(fun _ -> [])
+  ; flags      = Build.catch flags ~on_error:(fun _ -> [])
   ; preprocess = Preprocess.make preprocess
   ; libname
   ; source_dirs
   ; objs_dirs
+  ; dune_version
   }
 
 let add_source_dir t dir =
   { t with source_dirs = Path.Set.add t.source_dirs dir }
 
-let ppx_flags sctx ~dir:_ ~scope ~dir_kind { preprocess; libname; _ } =
+let ppx_flags sctx ~dir:_ ~scope { preprocess; libname; dune_version; _ } =
   match preprocess with
   | Pps { loc = _; pps; flags } -> begin
-    match Preprocessing.get_ppx_driver sctx ~scope ~dir_kind pps with
-    | Ok exe ->
-      (Path.to_absolute_filename exe
-       :: "--as-ppx"
-       :: Preprocessing.cookie_library_name libname
-       @ flags)
-    | Error _ -> []
-  end
+      match Preprocessing.get_ppx_driver sctx pps ~scope
+              ~kind:(Stanza.File_kind.of_syntax dune_version) with
+      | Ok exe ->
+        (Path.to_absolute_filename exe
+         :: "--as-ppx"
+         :: Preprocessing.cookie_library_name libname
+         @ flags)
+      | Error _ -> []
+    end
   | Other -> []
 
-let dot_merlin sctx ~dir ~scope ~dir_kind ({ requires; flags; _ } as t) =
+let dot_merlin sctx ~dir ~scope ({ requires; flags; _ } as t) =
   match Path.drop_build_context dir with
   | None -> ()
   | Some remaindir ->
@@ -139,7 +143,7 @@ let dot_merlin sctx ~dir ~scope ~dir_kind ({ requires; flags; _ } as t) =
         in
         Dot_file.to_string
           ~remaindir
-          ~ppx:(ppx_flags sctx ~dir ~scope ~dir_kind t)
+          ~ppx:(ppx_flags sctx ~dir ~scope t)
           ~flags
           ~src_dirs
           ~obj_dirs)
@@ -156,12 +160,13 @@ let merge_two a b =
        | None -> b.libname)
   ; source_dirs = Path.Set.union a.source_dirs b.source_dirs
   ; objs_dirs = Path.Set.union a.objs_dirs b.objs_dirs
+  ; dune_version = min a.dune_version b.dune_version
   }
 
 let merge_all = function
   | [] -> None
   | init::ts -> Some (List.fold_left ~init ~f:merge_two ts)
 
-let add_rules sctx ~dir ~scope ~dir_kind merlin =
+let add_rules sctx ~dir ~scope merlin =
   if (SC.context sctx).merlin then
-    dot_merlin sctx ~dir ~scope ~dir_kind merlin
+    dot_merlin sctx ~dir ~scope merlin

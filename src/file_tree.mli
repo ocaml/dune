@@ -54,8 +54,8 @@ module Dir : sig
     -> f:(t -> 'a -> 'a)
     -> 'a
 
-  (** Return the contents of the dune (or jbuild) file in this directory *)
-  val dune_file : t -> Dune_file.t option
+  (** Return the [dune] and/or [jbuild] files in this directory *)
+  val dune_files : t -> Dune_file.t list
 
   (** Return the project this directory is part of *)
   val project : t -> Dune_project.t

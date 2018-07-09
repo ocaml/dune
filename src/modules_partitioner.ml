@@ -1,16 +1,17 @@
 open Import
 
 type 'a t =
-  { dir_kind     : File_tree.Dune_file.Kind.t
-  ; mutable used : ('a * Loc.t list) Module.Name.Map.t
+  { mutable dune_version : Syntax.Version.t
+  ; mutable used         : ('a * Loc.t list) Module.Name.Map.t
   }
 
-let create ~dir_kind =
-  { dir_kind
+let create () =
+  { dune_version = (max_int, max_int)
   ; used = Module.Name.Map.empty
   }
 
-let acknowledge t part ~loc ~modules =
+let acknowledge t part ~loc ~modules ~dune_version =
+  t.dune_version <- min t.dune_version dune_version;
   t.used <-
     Module.Name.Map.merge modules t.used ~f:(fun _name x y ->
       match x with
@@ -29,7 +30,7 @@ let emit_errors t =
     | [] | [_] -> ()
     | loc :: _ ->
       let loc = Loc.in_file loc.start.pos_fname in
-      match t.dir_kind with
+      match Stanza.File_kind.of_syntax t.dune_version with
       | Jbuild ->
         Loc.warn loc
           "Module %a is used in several stanzas:@\n\

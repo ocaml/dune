@@ -134,7 +134,7 @@ module Gen(P : Install_params) = struct
            >>>
            Build.write_file_dyn meta)))
 
-  let lib_install_files ~dir ~sub_dir ~name ~scope ~dir_kind (lib : Library.t) =
+  let lib_install_files ~dir ~sub_dir ~name ~scope (lib : Library.t) =
     let obj_dir = Utils.library_object_directory ~dir lib.name in
     let make_entry section ?dst fn =
       Install.Entry.make section fn
@@ -188,7 +188,7 @@ module Gen(P : Install_params) = struct
       match lib.kind with
       | Normal | Ppx_deriver -> []
       | Ppx_rewriter ->
-        match (dir_kind : File_tree.Dune_file.Kind.t) with
+        match Stanza.File_kind.of_syntax lib.buildable.dune_version with
         | Dune ->
           [Preprocessing.get_compat_ppx_exe sctx ~name ~kind:Dune]
         | Jbuild ->
@@ -302,12 +302,11 @@ module Gen(P : Install_params) = struct
   let init_install () =
     let entries_per_package =
       List.concat_map (SC.stanzas_to_consider_for_install sctx)
-        ~f:(fun { SC.Installable. dir; stanza; kind = dir_kind; scope; _ } ->
+        ~f:(fun { SC.Installable. dir; stanza; scope; _ } ->
           match stanza with
           | Library ({ public = Some { package; sub_dir; name; _ }
                      ; _ } as lib) ->
-            List.map (lib_install_files ~dir ~sub_dir ~name lib ~scope
-                        ~dir_kind)
+            List.map (lib_install_files ~dir ~sub_dir ~name lib ~scope)
               ~f:(fun x -> package.name, x)
           | Install { section; files; package}->
             List.map files ~f:(fun { Install_conf. src; dst } ->

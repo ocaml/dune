@@ -105,10 +105,10 @@ module Dir = struct
     }
 
   and contents =
-    { files     : String.Set.t
-    ; sub_dirs  : t String.Map.t
-    ; dune_file : Dune_file.t option
-    ; project   : Dune_project.t
+    { files      : String.Set.t
+    ; sub_dirs   : t String.Map.t
+    ; dune_files : Dune_file.t list
+    ; project    : Dune_project.t
     }
 
   let contents t = Lazy.force t.contents
@@ -116,10 +116,10 @@ module Dir = struct
   let path t = t.path
   let ignored t = t.ignored
 
-  let files     t = (contents t).files
-  let sub_dirs  t = (contents t).sub_dirs
-  let dune_file t = (contents t).dune_file
-  let project   t = (contents t).project
+  let files      t = (contents t).files
+  let sub_dirs   t = (contents t).sub_dirs
+  let dune_files t = (contents t).dune_files
+  let project    t = (contents t).project
 
   let file_paths t =
     Path.Set.of_string_set (files t) ~f:(Path.relative t.path)
@@ -206,30 +206,33 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
           ~compare:(fun (a, _, _) (b, _, _) -> String.compare a b)
           sub_dirs
       in
-      let project =
-        match Dune_project.load ~dir:path ~files with
-        | Some x -> x
-        | None   -> project
-      in
-      let dune_file, ignored_subdirs =
+      let project, dune_files, ignored_subdirs =
         if ignored then
-          (None, String.Set.empty)
+          (project, [], String.Set.empty)
         else
-          let dune_file, ignored_subdirs =
-            match List.filter ["dune"; "jbuild"] ~f:(String.Set.mem files) with
-            | [] -> (None, String.Set.empty)
-            | [fn] ->
-              if fn = "dune" then
-                Dune_project.ensure_project_file_exists project;
-              let dune_file, ignored_subdirs =
-                Dune_file.load (Path.relative path fn)
-                  ~kind:(Dune_file.Kind.of_basename fn)
-              in
-              (Some dune_file, ignored_subdirs)
-            | _ ->
-              die "Directory %s has both a 'dune' and 'jbuild' file.\n\
-                   This is not allowed"
-                (Path.to_string_maybe_quoted path)
+          let project, stanzas_from_project_file =
+            match Dune_project.load ~dir:path ~files with
+            | Some x -> x
+            | None   -> (project, [])
+          in
+          let ignored_subdirs, stanzas_from_project_file =
+            Dune_file.extract_ignored_subdirs stanzas_from_project_file
+          in
+          let dune_files, ignored_subdirs =
+            List.fold_left ["jbuild"; "dune"] ~init:([], ignored_subdirs)
+              ~f:(fun (dune_files, ignored_subdirs) fn ->
+                if not (String.Set.mem files fn) then
+                  (dune_files, ignored_subdirs)
+                else begin
+                  if fn = "dune" then
+                    Dune_project.ensure_project_file_exists project;
+                  let dune_file, more_ignored_subdirs =
+                    Dune_file.load (Path.relative path fn)
+                      ~kind:(Dune_file.Kind.of_basename fn)
+                  in
+                  (dune_file :: dune_files,
+                   String.Set.union more_ignored_subdirs ignored_subdirs)
+                end)
           in
           let ignored_subdirs =
             if String.Set.mem files "jbuild-ignore" then
@@ -238,7 +241,19 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             else
               ignored_subdirs
           in
-          (dune_file, ignored_subdirs)
+          let dune_files =
+            match stanzas_from_project_file with
+            | [] -> dune_files
+            | sexps ->
+              { Dune_file.
+                kind = Dune
+              ; contents =
+                  Plain { path = Path.relative path Dune_project.filename
+                        ; sexps
+                        }
+              } :: dune_files
+          in
+          (project, dune_files, ignored_subdirs)
       in
       let sub_dirs =
         List.fold_left sub_dirs ~init:String.Map.empty
@@ -263,7 +278,7 @@ let load ?(extra_ignored_subtrees=Path.Set.empty) path =
             String.Map.add acc fn
               (walk path ~dirs_visited ~project ~ignored))
       in
-      { Dir. files; sub_dirs; dune_file; project })
+      { Dir. files; sub_dirs; dune_files; project })
     in
     { path
     ; contents

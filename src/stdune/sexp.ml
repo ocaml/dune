@@ -528,6 +528,22 @@ module Of_sexp = struct
     let x = result ctx (t ctx { unparsed; known = [] }) in
     (x, [])
 
+  let rec field_to_values field acc =
+    let acc =
+      Int.Map.add acc (Ast.loc field.entry).start.pos_cnum field.entry
+    in
+    match field.prev with
+    | None -> acc
+    | Some field -> field_to_values field acc
+
+  let remaining_fields_as_values t (Fields (loc, cstr, uc)) state =
+    let sexps =
+      Int.Map.values
+        (Name_map.fold state.unparsed ~init:Int.Map.empty ~f:field_to_values)
+    in
+    let ctx = Values (loc, cstr, uc) in
+    (result ctx (t ctx sexps), { state with unparsed = Name_map.empty })
+
   let record t = enter (fields t)
 
   type kind =

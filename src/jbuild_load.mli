@@ -5,7 +5,6 @@ module Jbuild : sig
     { dir     : Path.t
     ; project : Dune_project.t
     ; stanzas : Jbuild.Stanzas.t
-    ; kind    : File_tree.Dune_file.Kind.t
     }
 end
 

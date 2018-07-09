@@ -234,7 +234,8 @@ include Sub_system.Register_end_point(
           ~dir:inline_test_dir
           ~modules
           ~requires:runner_libs
-          ~flags:(Ocaml_flags.of_list ["-w"; "-24"]);
+          ~flags:(Ocaml_flags.of_list ["-w"; "-24"])
+          ~dune_version:lib.buildable.dune_version;
       in
       Exe.build_and_link cctx
         ~program:{ name; main_module_name }

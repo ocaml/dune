@@ -241,19 +241,19 @@ module Jbuild_driver = struct
     (driver, List.rev (driver_pp :: rev_others))
 end
 
-let ppx_exe sctx ~key ~dir_kind =
-  match (dir_kind : File_tree.Dune_file.Kind.t) with
+let ppx_exe sctx ~key ~kind =
+  match (kind : File_tree.Dune_file.Kind.t) with
   | Dune ->
     Path.relative (SC.build_dir sctx) (".ppx/" ^ key ^ "/ppx.exe")
   | Jbuild ->
     Path.relative (SC.build_dir sctx) (".ppx/jbuild/" ^ key ^ "/ppx.exe")
 
-let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
+let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~kind pps =
   let ctx = SC.context sctx in
   let mode = Context.best_mode ctx in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
   let jbuild_driver, pps =
-    match (dir_kind : File_tree.Dune_file.Kind.t) with
+    match (kind : File_tree.Dune_file.Kind.t) with
     | Dune -> (None, pps)
     | Jbuild ->
       let driver, pps = Jbuild_driver.analyse_pps pps in
@@ -302,8 +302,8 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
        ; Dep ml
        ])
 
-let get_rules sctx key ~dir_kind =
-  let exe = ppx_exe sctx ~key ~dir_kind in
+let get_rules sctx key ~kind =
+  let exe = ppx_exe sctx ~key ~kind in
   let (key, lib_db) = SC.Scope_key.of_string sctx key in
   let names =
     match key with
@@ -316,18 +316,18 @@ let get_rules sctx key ~dir_kind =
     | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
   in
   let pps = List.map names ~f:Jbuild.Pp.of_string in
-  build_ppx_driver sctx pps ~lib_db ~dep_kind:Required ~target:exe ~dir_kind
+  build_ppx_driver sctx pps ~lib_db ~dep_kind:Required ~target:exe ~kind
 
 let gen_rules sctx components =
   match components with
-  | [key] -> get_rules sctx key ~dir_kind:Dune
-  | ["jbuild"; key] -> get_rules sctx key ~dir_kind:Jbuild
+  | [key] -> get_rules sctx key ~kind:Dune
+  | ["jbuild"; key] -> get_rules sctx key ~kind:Jbuild
   | _ -> ()
 
-let ppx_driver_exe sctx libs ~dir_kind =
+let ppx_driver_exe sctx libs ~kind =
   let names =
     let names = List.rev_map libs ~f:Lib.name in
-    match (dir_kind : File_tree.Dune_file.Kind.t) with
+    match (kind : File_tree.Dune_file.Kind.t) with
     | Dune -> List.sort names ~compare:String.compare
     | Jbuild ->
       match names with
@@ -357,7 +357,7 @@ let ppx_driver_exe sctx libs ~dir_kind =
     | None            -> key
     | Some scope_name -> SC.Scope_key.to_string key scope_name
   in
-  ppx_exe sctx ~key ~dir_kind
+  ppx_exe sctx ~key ~kind
 
 module Compat_ppx_exe_kind = struct
   type t =
@@ -368,7 +368,7 @@ end
 let get_compat_ppx_exe sctx ~name ~kind =
   match (kind : Compat_ppx_exe_kind.t) with
   | Dune ->
-    ppx_exe sctx ~key:name ~dir_kind:Dune
+    ppx_exe sctx ~key:name ~kind:Dune
   | Jbuild driver ->
     (* We know both [name] and [driver] are public libraries, so we
        don't add the scope key. *)
@@ -377,12 +377,12 @@ let get_compat_ppx_exe sctx ~name ~kind =
       | None -> name
       | Some d -> sprintf "%s+%s" name d
     in
-    ppx_exe sctx ~key ~dir_kind:Jbuild
+    ppx_exe sctx ~key ~kind:Jbuild
 
-let get_ppx_driver sctx ~loc ~scope ~dir_kind pps =
+let get_ppx_driver sctx ~loc ~scope ~kind pps =
   let sctx = SC.host sctx in
   let open Result.O in
-  match (dir_kind : File_tree.Dune_file.Kind.t) with
+  match (kind : File_tree.Dune_file.Kind.t) with
   | Dune ->
     Lib.DB.resolve_pps (Scope.libs scope) pps
     >>= fun libs ->
@@ -390,12 +390,12 @@ let get_ppx_driver sctx ~loc ~scope ~dir_kind pps =
     >>=
     Driver.select ~loc:(User_file (loc, pps))
     >>= fun driver ->
-    Ok (ppx_driver_exe sctx libs ~dir_kind, driver)
+    Ok (ppx_driver_exe sctx libs ~kind, driver)
   | Jbuild ->
     let driver = Jbuild_driver.get_driver pps in
     Lib.DB.resolve_pps (Scope.libs scope) pps
     >>= fun libs ->
-    Ok (ppx_driver_exe sctx libs ~dir_kind, driver)
+    Ok (ppx_driver_exe sctx libs ~kind, driver)
 
 let target_var = String_with_vars.virt_var __POS__ "targets"
 let root_var   = String_with_vars.virt_var __POS__ "root"
@@ -435,7 +435,7 @@ let promote_correction fn build ~suffix =
            (Path.extend_basename fn ~suffix))
     ]
 
-let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
+let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~kind =
   Staged.stage (
     let alias = Build_system.Alias.lint ~dir in
     let add_alias fn build =
@@ -473,7 +473,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
           let corrected_suffix = ".lint-corrected" in
           let driver_and_flags =
             let open Result.O in
-            get_ppx_driver sctx ~loc ~scope ~dir_kind pps
+            get_ppx_driver sctx ~loc ~scope ~kind pps
             >>| fun (exe, driver) ->
             (exe,
              let extra_vars =
@@ -509,13 +509,13 @@ type t = (Module.t -> lint:bool -> Module.t) Per_module.t
 let dummy = Per_module.for_all (fun m ~lint:_ -> m)
 
 let make sctx ~dir ~dep_kind ~lint ~preprocess
-      ~preprocessor_deps ~lib_name ~scope ~dir_kind =
+      ~preprocessor_deps ~lib_name ~scope ~kind =
   let preprocessor_deps =
     Build.memoize "preprocessor deps" preprocessor_deps
   in
   let lint_module =
     Staged.unstage (lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope
-                      ~dir_kind)
+                      ~kind)
   in
   Per_module.map preprocess ~f:(function
     | Preprocess.No_preprocessing ->
@@ -556,7 +556,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
       let corrected_suffix = ".ppx-corrected" in
       let driver_and_flags =
         let open Result.O in
-        get_ppx_driver sctx ~loc ~scope ~dir_kind pps >>| fun (exe, driver) ->
+        get_ppx_driver sctx ~loc ~scope ~kind pps >>| fun (exe, driver) ->
         (exe,
          let extra_vars =
            String_map.singleton "corrected-suffix" [Value.String corrected_suffix]
@@ -597,9 +597,9 @@ let pp_modules t ?(lint=true) modules =
 let pp_module_as t ?(lint=true) name m =
   Per_module.get t name m ~lint
 
-let get_ppx_driver sctx ~scope ~dir_kind pps =
+let get_ppx_driver sctx ~scope ~kind pps =
   let sctx = SC.host sctx in
   let open Result.O in
   Lib.DB.resolve_pps (Scope.libs scope) pps
   >>| fun libs ->
-  ppx_driver_exe sctx libs ~dir_kind
+  ppx_driver_exe sctx libs ~kind

@@ -10,7 +10,6 @@ module Dir_with_jbuild = struct
     ; ctx_dir : Path.t
     ; stanzas : Stanzas.t
     ; scope   : Scope.t
-    ; kind    : File_tree.Dune_file.Kind.t
     }
 end
 
@@ -19,7 +18,6 @@ module Installable = struct
     { dir    : Path.t
     ; scope  : Scope.t
     ; stanza : Stanza.t
-    ; kind   : File_tree.Dune_file.Kind.t
     }
 end
 
@@ -261,19 +259,18 @@ let create
   in
   let stanzas =
     List.map stanzas
-      ~f:(fun { Jbuild_load.Jbuild. dir; project; stanzas; kind } ->
+      ~f:(fun { Jbuild_load.Jbuild. dir; project; stanzas } ->
         let ctx_dir = Path.append context.build_dir dir in
         { Dir_with_jbuild.
           src_dir = dir
         ; ctx_dir
         ; stanzas
         ; scope = Scope.DB.find_by_name scopes project.Dune_project.name
-        ; kind
         })
   in
   let stanzas_to_consider_for_install =
     if not external_lib_deps_mode then
-      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; kind; _ } ->
+      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; _ } ->
         List.filter_map stanzas ~f:(fun stanza ->
           let keep =
             match (stanza : Stanza.t) with
@@ -286,16 +283,14 @@ let create
                                 dir = ctx_dir
                               ; scope
                               ; stanza
-                              ; kind
                               }))
     else
-      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; kind; _ } ->
+      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; _ } ->
         List.map stanzas ~f:(fun stanza ->
           { Installable.
             dir = ctx_dir
           ; scope
           ; stanza
-          ; kind
           }))
   in
   let artifacts =

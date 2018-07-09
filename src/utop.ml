@@ -50,7 +50,12 @@ let utop_exe dir =
 let setup sctx ~dir ~(libs : Library.t list) ~scope =
   match libs with
   | [] -> ()
-  | _ :: _ ->
+  | first :: others ->
+    let dune_version =
+      List.fold_left others ~init:first.buildable.dune_version
+        ~f:(fun acc (lib : Library.t) ->
+          min acc lib.buildable.dune_version)
+    in
     let modules =
       Module.Name.Map.singleton
         main_module_name
@@ -77,6 +82,7 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
         ~flags:(Ocaml_flags.append_common
                   (Ocaml_flags.default ~profile:(Super_context.profile sctx))
                   ["-w"; "-24"])
+        ~dune_version
     in
     Exe.build_and_link cctx
       ~program:{ name = exe_name ; main_module_name }

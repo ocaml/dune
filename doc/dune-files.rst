@@ -1115,6 +1115,8 @@ Dependency specification
 Dependencies in ``dune`` files can be specified using one of the following
 syntax:
 
+- ``(:name <dependencies>)`` will bind the the list of dependencies to the
+  ``name`` variable. This variable will be available as ``%{name}`` in actions.
 - ``(file <filename>)`` or simply ``<filename>``: depend on this file
 - ``(alias <alias-name>)``: depend on the construction of this alias, for
   instance: ``(alias src/runtest)``
@@ -1141,6 +1143,33 @@ syntax:
   to test a command against the files that will be installed
 
 In all these cases, the argument supports `Variables expansion`_.
+
+Named Dependencies
+~~~~~~~~~~~~~~~~~~
+
+dune allows a user to organize dependency lists by naming them. The user is
+allowed to assign a group of dependencies a name that can later be referred to
+in actions (like the ``%{deps}`` and ``%{targets}`` built in variables).
+
+One instance where is useful is for naming globs. Here's an example of an
+imaginary bundle command:
+
+.. code:: scheme
+
+   (rule
+    (targets archive.tar)
+    (deps
+     index.html
+     (:css (glob_files *.css))
+     (:js foo.js bar.js)
+     (:img (glob_files *.png) (glob_files *.jpg)))
+    (action
+     (run %{bin:bundle} index.html -css %{css} -js %{js} -img %{img} -o %{targets})))
+
+Note that such named dependency list can also include unnamed dependencies (like
+``index.html`` in the example above). Also, such user defined names wil shadow
+built in variables. So ``(:root x)`` will shadow the built in ``%{root}``
+variable.
 
 .. _glob:
 

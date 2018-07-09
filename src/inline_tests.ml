@@ -220,6 +220,7 @@ include Sub_system.Register_end_point(
           (List.filter_map backends ~f:(fun (backend : Backend.t) ->
              Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
                SC.Action.run sctx action ~loc
+                 ~bindings:Pform.Map.empty
                  ~extra_vars ~dir ~dep_kind:Required ~targets:Alias ~scope)))
         >>^ (fun actions ->
           Action.with_stdout_to target

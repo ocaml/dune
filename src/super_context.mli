@@ -240,6 +240,7 @@ module Action : sig
     :  t
     -> loc:Loc.t
     -> ?extra_vars:Value.t list String.Map.t
+    -> bindings:Pform.Var.t Pform.Map.t
     -> Action.Unexpanded.t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind

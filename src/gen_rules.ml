@@ -194,6 +194,7 @@ module Gen(P : Install_rules.Params) = struct
          (snd rule.action)
          ~loc:(fst rule.action)
          ~dir
+         ~bindings:(Pform.Map.of_bindings rule.deps)
          ~dep_kind:Required
          ~targets
          ~scope)
@@ -950,6 +951,7 @@ module Gen(P : Install_rules.Params) = struct
            ~loc
            ~dir
            ~dep_kind:Required
+           ~bindings:(Pform.Map.of_bindings alias_conf.deps)
            ~targets:Alias
            ~scope)
 

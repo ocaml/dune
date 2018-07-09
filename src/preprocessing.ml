@@ -462,6 +462,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                         ~loc
                         ~dir
                         ~dep_kind
+                        ~bindings:Pform.Map.empty
                         ~targets:(Static [])
                         ~scope)))
         | Pps { loc; pps; flags } ->
@@ -542,6 +543,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
                   ~loc
                   ~dir
                   ~dep_kind
+                  ~bindings:Pform.Map.empty
                   ~targets:(Static [dst])
                   ~scope))
            |> setup_reason_rules sctx ~dir in

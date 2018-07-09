@@ -7,6 +7,7 @@ module Var = struct
     | First_dep
     | Deps
     | Targets
+    | Named_local
 
   let to_value_no_deps_or_targets t ~scope =
     match t with
@@ -14,6 +15,7 @@ module Var = struct
     | Project_root -> Some [Value.Dir (Scope.root scope)]
     | First_dep
     | Deps
+    | Named_local
     | Targets -> None
 end
 
@@ -141,6 +143,8 @@ module Map = struct
 
   let static_vars = String.Map.of_list_exn static_vars
 
+  let superpose = String.Map.superpose
+
   let rec expand t ~syntax_version ~var =
     let name = String_with_vars.Var.name var in
     Option.bind (String.Map.find t name) ~f:(fun v ->
@@ -176,4 +180,13 @@ module Map = struct
         else
           Syntax.Error.deleted_in (String_with_vars.Var.loc var)
             Stanza.syntax syntax_version ~what:(what var) ?repl)
+
+  let empty = String.Map.empty
+
+  let of_bindings =
+    Jbuild.Bindings.fold ~f:(fun x acc ->
+      match x with
+      | Unnamed _ -> acc
+      | Named (s, _) -> String.Map.add acc s (No_info Var.Named_local)
+    ) ~init:empty
 end

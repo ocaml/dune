@@ -239,6 +239,8 @@ module Bindings = struct
 
   type 'a t = 'a one list
 
+  let fold t ~f ~init = List.fold_left ~f:(fun acc x -> f x acc) ~init t
+
   let to_list =
     List.concat_map ~f:(function
       | Unnamed x -> [x]

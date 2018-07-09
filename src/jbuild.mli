@@ -90,6 +90,8 @@ module Bindings : sig
 
   val find : 'a t -> string -> 'a list option
 
+  val fold : 'a t -> f:('a one -> 'acc -> 'acc) -> init:'acc -> 'acc
+
   val empty : 'a t
 
   val to_list : 'a t -> 'a list

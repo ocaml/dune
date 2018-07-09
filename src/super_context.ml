@@ -807,9 +807,10 @@ module Action = struct
           end
         end)
 
-  let run sctx ~loc ?(extra_vars=String.Map.empty)
+  let run sctx ~loc ?(extra_vars=String.Map.empty) ~bindings
         t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
     : (Path.t Bindings.t, Action.t) Build.t =
+    ignore bindings;
     let map_exe = map_exe sctx in
     if targets_written_by_user = Alias then begin
       match Action.Infer.unexpanded_targets t with

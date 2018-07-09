@@ -5,6 +5,7 @@ module Var : sig
     | First_dep
     | Deps
     | Targets
+    | Named_local
 
   val to_value_no_deps_or_targets : t -> scope:Scope.t -> Value.t list option
 end
@@ -41,9 +42,15 @@ module Map : sig
 
   val static_vars : Var.t t
 
+  val superpose : 'a t -> 'a t -> 'a t
+
+  val of_bindings : 'a Jbuild.Bindings.t -> Var.t t
+
   val expand
     :  'a t
     -> syntax_version:Syntax.Version.t
     -> var:String_with_vars.Var.t
     -> 'a option
+
+  val empty : 'a t
 end with type 'a var := 'a t

@@ -264,8 +264,10 @@ module Named = struct
       peek_exn >>= function
       | List (_, Atom (loc, A s) :: _) when
           String.length s > 1 && s.[0] = ':' ->
-        binding elem >>| fun (name, values) ->
-        Left (name, (loc, values))
+        let name = String.sub s ~pos:1 ~len:(String.length s - 1) in
+        enter (junk >>= fun () ->
+               repeat elem >>| fun values ->
+               Left (name, (loc, values)))
       | _ ->
         elem >>| fun elem -> Right elem
     in

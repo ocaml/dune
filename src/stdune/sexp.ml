@@ -380,26 +380,6 @@ module Of_sexp = struct
               }
         "Unknown constructor %s" name
 
-  let binding t =
-    let t name = repeat t >>| fun t -> (name, t) in
-    next_with_user_context (fun uc sexp ->
-      match sexp with
-      | Atom (loc, A s) ->
-        let ctx = Values (loc, Some s, uc) in
-        result ctx (t s ctx [])
-      | Template { loc; _ }
-      | Quoted_string (loc, _) ->
-        of_sexp_error loc "Atom expected"
-      | List (loc, []) ->
-        of_sexp_error loc "Non-empty list expected"
-      | List (loc, name :: args) ->
-        match name with
-        | Quoted_string (loc, _) | List (loc, _) | Template { loc; _ } ->
-          of_sexp_error loc "Atom expected"
-        | Atom (s_loc, A s) ->
-          let ctx loc = Values (loc, Some s, uc) in
-          result (ctx s_loc) (t s (ctx loc) args))
-
   let sum cstrs =
     next_with_user_context (fun uc sexp ->
       match sexp with

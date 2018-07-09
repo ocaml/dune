@@ -201,8 +201,6 @@ module Of_sexp : sig
       list parser. *)
   val sum : (string * 'a t) list -> 'a t
 
-  val binding : 'a t -> (string * ('a list)) t
-
   (** Check the result of a list parser, and raise a properly located
       error in case of failure. *)
   val map_validate

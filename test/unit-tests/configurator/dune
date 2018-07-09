@@ -1,8 +1,3 @@
-(executable
+(test
  (name test_configurator)
  (libraries configurator))
-
-(alias
- (name runtest)
- (deps ./test_configurator.exe)
- (action (run %{first-dep})))

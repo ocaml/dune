@@ -47,6 +47,7 @@ type t =
   ; cxx_flags                        : string list
   ; vars                             : Pform.Var.t Pform.Map.t
   ; macros                           : Pform.Macro.t Pform.Map.t
+  ; ocaml_config                     : Value.t list String.Map.t
   ; chdir                            : (Action.t, Action.t) Build.t
   ; host                             : t option
   ; libs_by_package : (Package.t * Lib.Set.t) Package.Name.Map.t
@@ -99,20 +100,36 @@ let expand_macro t ~syntax_version ~var =
     Exn.code_error "expand_macro can't expand variables"
       [ "var", String_with_vars.Var.sexp_of_t var ]
 
+let expand t ~syntax_version ~var =
+  match
+    match String_with_vars.Var.destruct var with
+    | Var _ -> Left (expand_vars t ~syntax_version ~var)
+    | Macro (_, _) -> Right (expand_macro t ~syntax_version ~var)
+  with
+  | Right None
+  | Left None -> None
+  | Right (Some x) -> Some (Right x)
+  | Left (Some x) -> Some (Left x)
+
 let (expand_vars_string, expand_vars_path) =
   let expand t ~scope ~dir ?(extra_vars=String.Map.empty) s =
     String_with_vars.expand ~mode:Single ~dir s ~f:(fun var syntax_version ->
-      match expand_vars t ~syntax_version ~var with
+      match expand t ~syntax_version ~var with
       | None ->
         String.Map.find extra_vars (String_with_vars.Var.full_name var)
-      | Some v ->
+      | Some (Left v) ->
         begin match Pform.Var.to_value_no_deps_or_targets ~scope v with
         | Some _ as v -> v
         | None ->
           Loc.fail (String_with_vars.Var.loc var)
             "Variable %a is not allowed in this context"
             String_with_vars.Var.pp var
-        end)
+        end
+      | Some (Right Ocaml_config) ->
+        String.Map.find t.ocaml_config (String_with_vars.Var.name var)
+      | Some (Right _) ->
+        Loc.fail (String_with_vars.Var.loc var)
+          "This percent form isn't allowed in this position")
   in
   let expand_vars t ~scope ~dir ?extra_vars s =
     expand t ~scope ~dir ?extra_vars s
@@ -290,6 +307,19 @@ let create
       ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
   let vars = Pform.Map.create_vars ~context ~cxx_flags in
+  let ocaml_config =
+    let string s = [Value.String s] in
+    Ocaml_config.to_list context.ocaml_config
+    |> List.map  ~f:(fun (k, v) ->
+      ( k
+      , match (v : Ocaml_config.Value.t) with
+      | Bool          x -> string (string_of_bool x)
+      | Int           x -> string (string_of_int x)
+      | String        x -> string x
+      | Words         x -> Value.L.strings x
+      | Prog_and_args x -> Value.L.strings (x.prog :: x.args)))
+    |> String.Map.of_list_exn
+  in
   let t =
     { context
     ; host
@@ -305,6 +335,7 @@ let create
     ; cxx_flags
     ; vars
     ; macros = Pform.Map.macros
+    ; ocaml_config
     ; chdir = Build.arr (fun (action : Action.t) ->
         match action with
         | Chdir _ -> action
@@ -597,6 +628,7 @@ module Action = struct
       let key = String_with_vars.Var.full_name var in
       begin match expand_macro sctx ~syntax_version ~var with
       | Some Pform.Macro.Exe -> Some (path_exp (map_exe (Path.relative dir s)))
+      | Some Ocaml_config -> String.Map.find sctx.ocaml_config s
       | Some Dep -> Some (path_exp (Path.relative dir s))
       | Some Bin -> begin
           let sctx = host sctx in

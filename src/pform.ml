@@ -40,7 +40,7 @@ module Map = struct
     ; "deps", since ~version:(1, 0) Deps
     ; "project_root", since ~version:(1, 0) Project_root
 
-    ; "<", deleted_in Deps ~version:(1, 0)
+    ; "<", deleted_in First_dep ~version:(1, 0)
              ~repl:"Use a named dependency instead:\
                     \n\
                     \n\  (deps (:x <dep>) ...)\

@@ -46,6 +46,10 @@ module Map : sig
 
   val of_bindings : 'a Jbuild.Bindings.t -> Var.t t
 
+  val singleton : string -> 'a -> 'a t
+
+  val of_list_exn : (string * 'a) list -> 'a t
+
   val expand
     :  'a t
     -> syntax_version:Syntax.Version.t

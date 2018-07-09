@@ -183,6 +183,12 @@ module Map = struct
 
   let empty = String.Map.empty
 
+  let singleton k v = String.Map.singleton k (No_info v)
+
+  let of_list_exn vars =
+    List.map ~f:(fun (k, x) -> (k, No_info x)) vars
+    |> String.Map.of_list_exn
+
   let of_bindings =
     Jbuild.Bindings.fold ~f:(fun x acc ->
       match x with

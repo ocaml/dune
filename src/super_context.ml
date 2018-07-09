@@ -112,11 +112,13 @@ let expand t ~syntax_version ~var =
   | Left (Some x) -> Some (Left x)
 
 let (expand_vars_string, expand_vars_path) =
-  let expand t ~scope ~dir ?(extra_vars=String.Map.empty) s =
+  let expand t ~scope ~dir ?(bindings=Pform.Map.empty) s =
     String_with_vars.expand ~mode:Single ~dir s ~f:(fun var syntax_version ->
       match expand t ~syntax_version ~var with
       | None ->
-        String.Map.find extra_vars (String_with_vars.Var.full_name var)
+        let open Option.O in
+        Pform.Map.expand bindings ~syntax_version ~var >>=
+        Pform.Var.to_value_no_deps_or_targets ~scope
       | Some (Left v) ->
         begin match Pform.Var.to_value_no_deps_or_targets ~scope v with
         | Some _ as v -> v
@@ -131,19 +133,19 @@ let (expand_vars_string, expand_vars_path) =
         Loc.fail (String_with_vars.Var.loc var)
           "This percent form isn't allowed in this position")
   in
-  let expand_vars t ~scope ~dir ?extra_vars s =
-    expand t ~scope ~dir ?extra_vars s
+  let expand_vars t ~scope ~dir ?bindings s =
+    expand t ~scope ~dir ?bindings s
     |> Value.to_string ~dir
   in
-  let expand_vars_path t ~scope ~dir ?extra_vars s =
-    expand t ~scope ~dir ?extra_vars s
+  let expand_vars_path t ~scope ~dir ?bindings s =
+    expand t ~scope ~dir ?bindings s
     |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir
   in
   (expand_vars, expand_vars_path)
 
-let expand_and_eval_set t ~scope ~dir ?extra_vars set ~standard =
+let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
   let open Build.O in
-  let f = expand_vars_string t ~scope ~dir ?extra_vars in
+  let f = expand_vars_string t ~scope ~dir ?bindings in
   let parse ~loc:_ s = s in
   let (syntax, files) = Ordered_set_lang.Unexpanded.files set ~f in
   match String.Set.to_list files with
@@ -208,7 +210,7 @@ module Env = struct
               ~ocamlopt_flags:cfg.ocamlopt_flags
               ~default
               ~eval:(expand_and_eval_set t ~scope:node.scope ~dir:node.dir
-                       ?extra_vars:None)
+                       ?bindings:None)
         in
         node.ocaml_flags <- Some flags;
         flags
@@ -223,7 +225,7 @@ let ocaml_flags t ~dir ~scope (x : Buildable.t) =
     ~ocamlc_flags:x.ocamlc_flags
     ~ocamlopt_flags:x.ocamlopt_flags
     ~default:(Env.ocaml_flags t ~dir)
-    ~eval:(expand_and_eval_set t ~scope ~dir ?extra_vars:None)
+    ~eval:(expand_and_eval_set t ~scope ~dir ?bindings:None)
 
 let dump_env t ~dir =
   Ocaml_flags.dump (Env.ocaml_flags t ~dir)
@@ -630,7 +632,7 @@ module Action = struct
     | Some x -> x
 
   let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user
-        ~map_exe ~extra_vars t =
+        ~map_exe ~bindings t =
     let acc =
       { failures  = []
       ; lib_deps  = String.Map.empty
@@ -735,14 +737,13 @@ module Action = struct
     in
     let expand var syntax_version =
       let loc = String_with_vars.Var.loc var in
-      let key = String_with_vars.Var.full_name var in
       let res =
         match String_with_vars.Var.destruct var with
         | Macro (_, s) -> expand_form s var syntax_version
         | Var var_name ->
-          begin match expand_vars sctx ~syntax_version ~var with
-          | None -> String.Map.find extra_vars key
-          | Some Targets ->
+          begin match Pform.Map.expand bindings ~syntax_version ~var with
+          | None -> None
+          | Some Pform.Var.Targets ->
             let var () =
               match var_name with
               | "@" -> sprintf "${%s}" var_name
@@ -808,10 +809,9 @@ module Action = struct
             Exn.code_error "Unexpected variable in step2"
               ["var", String_with_vars.Var.sexp_of_t var])
 
-  let run sctx ~loc ?(extra_vars=String.Map.empty) ~bindings
-        t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
+  let run sctx ~loc ~bindings t ~dir ~dep_kind
+        ~targets:targets_written_by_user ~scope
     : (Path.t Bindings.t, Action.t) Build.t =
-    ignore bindings;
     let map_exe = map_exe sctx in
     if targets_written_by_user = Alias then begin
       match Action.Infer.unexpanded_targets t with
@@ -823,8 +823,9 @@ module Action = struct
            This will become an error in the future.";
     end;
     let t, forms =
+      let bindings = Pform.Map.superpose sctx.vars bindings in
       expand_step1 sctx t ~dir ~dep_kind ~scope
-        ~targets_written_by_user ~map_exe ~extra_vars
+        ~targets_written_by_user ~map_exe ~bindings
     in
     let { Action.Infer.Outcome. deps; targets } =
       match targets_written_by_user with

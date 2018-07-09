@@ -243,12 +243,24 @@ Path.append Path.build_dir (Path.relative Path.root "foo")
 
 Path.append Path.build_dir (Path.relative Path.build_dir "foo")
 [%%expect{|
-- : Path.t = (In_build_dir "_build/foo")
+Exception:
+Code_error
+ (List
+   [Quoted_string
+     "Path.append called with directory that's not in the source tree";
+    List [Atom (A "a"); List [Atom (A "In_build_dir"); Atom (A ".")]];
+    List [Atom (A "b"); List [Atom (A "In_build_dir"); Atom (A "foo")]]]).
 |}]
 
 Path.append Path.root (Path.relative Path.build_dir "foo")
 [%%expect{|
-- : Path.t = (In_source_tree "_build/foo")
+Exception:
+Code_error
+ (List
+   [Quoted_string
+     "Path.append called with directory that's not in the source tree";
+    List [Atom (A "a"); List [Atom (A "In_source_tree"); Atom (A ".")]];
+    List [Atom (A "b"); List [Atom (A "In_build_dir"); Atom (A "foo")]]]).
 |}]
 
 Path.append Path.root (Path.relative Path.root "foo")
@@ -263,7 +275,13 @@ Path.append (Path.of_string "/root") (Path.relative Path.root "foo")
 
 Path.append (Path.of_string "/root") (Path.relative Path.build_dir "foo")
 [%%expect{|
-- : Path.t = (External "/root/_build/foo")
+Exception:
+Code_error
+ (List
+   [Quoted_string
+     "Path.append called with directory that's not in the source tree";
+    List [Atom (A "a"); List [Atom (A "External"); Atom (A "/root")]];
+    List [Atom (A "b"); List [Atom (A "In_build_dir"); Atom (A "foo")]]]).
 |}]
 
 Path.rm_rf (Path.of_string "/does/not/exist/foo/bar/baz")

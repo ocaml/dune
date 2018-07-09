@@ -225,7 +225,7 @@ module Deps : sig
     -> scope:Scope.t
     -> dir:Path.t
     -> Dep_conf.t Named.t
-    -> (unit, Path.t list) Build.t
+    -> (unit, Path.t Named.t) Build.t
 end
 
 (** Interpret action written in jbuild files *)
@@ -245,7 +245,7 @@ module Action : sig
     -> dep_kind:Build.lib_dep_kind
     -> targets:targets
     -> scope:Scope.t
-    -> (Path.t list, Action.t) Build.t
+    -> (Path.t Named.t, Action.t) Build.t
 end
 
 module Pkg_version : sig

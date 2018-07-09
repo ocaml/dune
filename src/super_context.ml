@@ -528,11 +528,20 @@ module Deps = struct
     >>^ List.concat
 
   let interpret_named t ~scope ~dir { Named.unnamed; named } =
-    String.Map.fold ~init:unnamed named ~f:(fun (_, ds) acc ->
-      List.rev_append ds acc)
-    |> List.map ~f:(dep t ~scope ~dir)
-    |> Build.all
-    >>^ List.concat
+    let deps l =
+      List.map ~f:(dep t ~scope ~dir) l
+      |> Build.all
+      >>^ List.concat
+    in
+    let unnamed = deps unnamed in
+    let named =
+      String.Map.to_list named
+      |> List.map ~f:(fun (k, d) -> deps d >>^ fun d -> (k, d))
+      |> Build.all
+      >>^ String.Map.of_list_exn
+    in
+    unnamed &&& named >>^ fun (unnamed, named) ->
+    { Named.unnamed; named }
 end
 
 module Pkg_version = struct
@@ -762,31 +771,47 @@ module Action = struct
     let t = U.partial_expand t ~dir ~map_exe ~f:expand in
     (t, acc)
 
-  let expand_step2 ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe t =
+  let expand_step2 ~dir ~dynamic_expansions
+        ~(deps_written_by_user : Path.t Jbuild.Named.t)
+        ~map_exe t =
     U.Partial.expand t ~dir ~map_exe ~f:(fun var syntax_version ->
       let key = String_with_vars.Var.full_name var in
       let loc = String_with_vars.Var.loc var in
       match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
-        Pform.Map.expand Pform.Map.static_vars ~syntax_version ~var
-        |> Option.map ~f:(function
-          | Pform.Var.Deps -> (Value.L.paths deps_written_by_user)
+        begin match
+          Pform.Map.expand Pform.Map.static_vars ~syntax_version ~var
+        with
+        | None ->
+          String.Map.find deps_written_by_user.named key
+          |> Option.map ~f:Value.L.paths
+        | Some x ->
+          begin match x with
+            Pform.Var.Deps ->
+            deps_written_by_user
+            |> Jbuild.Named.fold ~init:[] ~f:List.cons
+            |> Value.L.paths
+            |> Option.some
           | First_dep ->
-            begin match deps_written_by_user with
-            | [] ->
+            begin match Jbuild.Named.first deps_written_by_user with
+            | Error `Named_exists ->
+              Loc.fail loc "%%{first-dep} is not allowed with named dependencies"
+            | Error `Empty ->
               Loc.warn loc "Variable '%s' used with no explicit \
                             dependencies@." key;
-              [Value.String ""]
-            | v :: _  -> [Path v]
+              Some [Value.String ""]
+            | Ok v  -> Some [Path v]
             end
           | _ ->
             Exn.code_error "Unexpected variable in step2"
-              ["var", String_with_vars.Var.sexp_of_t var]))
+              ["var", String_with_vars.Var.sexp_of_t var]
+          end
+        end)
 
   let run sctx ~loc ?(extra_vars=String.Map.empty)
         t ~dir ~dep_kind ~targets:targets_written_by_user ~scope
-    : (Path.t list, Action.t) Build.t =
+    : (Path.t Named.t, Action.t) Build.t =
     let map_exe = map_exe sctx in
     if targets_written_by_user = Alias then begin
       match Action.Infer.unexpanded_targets t with

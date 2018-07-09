@@ -214,7 +214,7 @@ include Sub_system.Register_end_point(
             ~init:extra_vars
             ~f:(fun acc (k, v) -> String.Map.add acc k v)
         in
-        Build.return []
+        Build.return Named.empty
         >>>
         Build.all
           (List.filter_map backends ~f:(fun (backend : Backend.t) ->

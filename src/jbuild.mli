@@ -83,11 +83,17 @@ end
 
 module Named : sig
   type 'a t =
-    { named : (Loc.t * 'a list) String.Map.t
+    { named : 'a list String.Map.t
     ; unnamed : 'a list
     }
 
   val empty : 'a t
+
+  val singleton : 'a -> 'a t
+
+  val first : 'a t -> ('a, [`Empty | `Named_exists]) Result.t
+
+  val fold : 'a t -> f:('a -> 'init -> 'init) -> init:'init -> 'init
 
   val sexp_of_t : ('a -> Usexp.t) -> 'a t -> Usexp.t
 end

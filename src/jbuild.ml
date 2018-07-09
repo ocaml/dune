@@ -234,14 +234,30 @@ end
 
 module Named = struct
   type 'a t =
-    { named: (Loc.t * 'a list) String.Map.t
+    { named: 'a list String.Map.t
     ; unnamed : 'a list
     }
+
+  let fold { named; unnamed } ~f ~init =
+    let flipped x acc = f acc x in
+    String.Map.fold named
+      ~f:(fun x init -> List.fold_left ~f:flipped ~init x)
+      ~init:(List.fold_left ~f:flipped ~init unnamed)
+
+  let first { named; unnamed } =
+    if String.Map.is_empty named then
+      match unnamed with
+      | [] -> Result.Error `Empty
+      | x :: _ -> Ok x
+    else
+      Result.Error `Named_exists
 
   let empty =
     { named = String.Map.empty
     ; unnamed = []
     }
+
+  let singleton x = { empty with unnamed = [x] }
 
   let t elem =
     let binding =
@@ -262,17 +278,18 @@ module Named = struct
       let (named, unnamed) = List.partition_map bindings ~f:(fun x -> x) in
       { unnamed = List.flatten unnamed
       ; named =
-          match String.Map.of_list named with
-          | Ok x -> x
-          | Error (name, (l1, _), (l2, _)) ->
-            of_sexp_errorf l1 "Variable %s is already defined in %s"
-              name (Loc.to_file_colon_line l2)
+          (match String.Map.of_list named with
+           | Ok x -> x
+           | Error (name, (l1, _), (l2, _)) ->
+             of_sexp_errorf l1 "Variable %s is already defined in %s"
+               name (Loc.to_file_colon_line l2))
+          |> String.Map.map ~f:snd
       })
 
   let sexp_of_t sexp_of_a { unnamed; named } =
     let unnamed = List.map ~f:sexp_of_a unnamed in
     let named =
-      String.Map.foldi ~init:[] named ~f:(fun n (_, d) acc ->
+      String.Map.foldi ~init:[] named ~f:(fun n d acc ->
         Sexp.unsafe_atom_of_string (":" ^ n) :: (List.map ~f:sexp_of_a d) @ acc)
     in
     Sexp.List (unnamed @ named)

@@ -82,7 +82,7 @@ val expand_vars_string
   :  t
   -> scope:Scope.t
   -> dir:Path.t
-  -> ?bindings:Pform.Var.t Pform.Map.t
+  -> ?bindings:Pform.Map.t
   -> String_with_vars.t
   -> string
 
@@ -90,7 +90,7 @@ val expand_vars_path
   :  t
   -> scope:Scope.t
   -> dir:Path.t
-  -> ?bindings:Pform.Var.t Pform.Map.t
+  -> ?bindings:Pform.Map.t
   -> String_with_vars.t
   -> Path.t
 
@@ -98,7 +98,7 @@ val expand_and_eval_set
   :  t
   -> scope:Scope.t
   -> dir:Path.t
-  -> ?bindings:Pform.Var.t Pform.Map.t
+  -> ?bindings:Pform.Map.t
   -> Ordered_set_lang.Unexpanded.t
   -> standard:(unit, string list) Build.t
   -> (unit, string list) Build.t
@@ -239,7 +239,7 @@ module Action : sig
   val run
     :  t
     -> loc:Loc.t
-    -> bindings:Pform.Var.t Pform.Map.t
+    -> bindings:Pform.Map.t
     -> Action.Unexpanded.t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind

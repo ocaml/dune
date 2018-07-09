@@ -211,6 +211,8 @@ module Var = struct
     | Var s -> s
     | Macro (k, v) -> k ^ ":" ^ v
 
+  let payload t = t.payload
+
   let to_string = string_of_var
 
   let pp fmt t = Format.pp_print_string fmt (to_string t)
@@ -224,6 +226,12 @@ module Var = struct
     { t with name }
 
   let is_macro t = Option.is_some t.payload
+
+  let describe t =
+    to_string
+      (match t.payload with
+       | None   -> t
+       | Some _ -> { t with payload = Some ".." })
 end
 
 let partial_expand
@@ -277,10 +285,10 @@ let expand t ~mode ~dir ~f =
       | None ->
         begin match var.syntax with
         | Percent ->
-          begin match Var.destruct var with
-          | Var v -> Loc.fail var.loc "unknown variable %S" v
-          | Macro _ -> Loc.fail var.loc "unknown form %s" (string_of_var var)
-          end
+          if Var.is_macro var then
+            Loc.fail var.loc "Unknown macro %s" (Var.describe var)
+          else
+            Loc.fail var.loc "Unknown variable %S" (Var.name var)
         | Dollar_brace
         | Dollar_paren -> Some [Value.String (string_of_var var)]
         end

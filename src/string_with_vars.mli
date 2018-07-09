@@ -56,6 +56,7 @@ module Var : sig
   val name : t -> string
   val loc : t -> Loc.t
   val full_name : t -> string
+  val payload : t -> string option
 
   type kind =
     | Var of string
@@ -63,13 +64,14 @@ module Var : sig
 
   val destruct : t -> kind
 
-  val to_string : t -> string
-
   val with_name : t -> name:string -> t
 
   val with_payload : t -> payload:string option -> t
 
   val is_macro : t -> bool
+
+  (** Describe what this variable is *)
+  val describe : t -> string
 end
 
 val expand

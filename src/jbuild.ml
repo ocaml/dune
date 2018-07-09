@@ -505,10 +505,7 @@ module Lib_deps = struct
       : kind String.Map.t);
     return t
 
-  let t =
-    Stanza.file_kind () >>= function
-    | Dune -> t
-    | Jbuild -> enter t
+  let t = parens_removed_in_dune t
 
   let of_pps pps =
     List.map pps ~f:(fun pp -> Lib_dep.of_pp (Loc.none, pp))

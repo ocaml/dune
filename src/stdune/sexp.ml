@@ -131,6 +131,12 @@ module Of_sexp = struct
     b ctx state
   let map t ~f = t >>| f
 
+  let try_ t f ctx state =
+    try
+      t ctx state
+    with exn ->
+      f exn ctx state
+
   let get_user_context : type k. k context -> Univ_map.t = function
     | Values (_, _, uc) -> uc
     | Fields (_, _, uc) -> uc

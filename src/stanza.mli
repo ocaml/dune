@@ -51,4 +51,9 @@ module Of_sexp : sig
     :  ?check:(unit t)
     -> string
     -> bool fields_parser
+
+  (** Nop in dune files and [enter t] in jbuild files. Additionally it
+      displays a nice error messages when parentheses are used in dune
+      files. *)
+  val parens_removed_in_dune : 'a t -> 'a t
 end

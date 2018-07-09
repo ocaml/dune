@@ -26,14 +26,7 @@ module Macro : sig
     | Ocaml_config
 end
 
-type 'a t =
-  | No_info    of 'a
-  | Since      of 'a * Syntax.Version.t
-  | Deleted_in of 'a * Syntax.Version.t * string option
-  | Renamed_in of Syntax.Version.t * string
-
 module Map : sig
-  type 'a var
   type 'a t
 
   val create_vars : context:Context.t -> cxx_flags:string list -> Var.t t
@@ -57,4 +50,4 @@ module Map : sig
     -> 'a option
 
   val empty : 'a t
-end with type 'a var := 'a t
+end

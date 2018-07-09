@@ -307,7 +307,7 @@ The backend for such a framework looks like this:
           (library
            ((name simple_tests)
             (inline_tests.backend
-             ((generate_runner (run sed "s/(\\*TEST:\\(.*\\)\\*)/let () = \\1;;/" ${impl-files}))
+             ((generate_runner (run sed "s/(\\*TEST:\\(.*\\)\\*)/let () = \\1;;/" %{impl-files}))
              ))))
 
 Now all you have to do is write ``(inline_tests ((backend

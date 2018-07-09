@@ -628,6 +628,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name too-many-parens)
+ (deps (package dune) (source_tree test-cases/too-many-parens))
+ (action
+  (chdir
+   test-cases/too-many-parens
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name use-meta)
  (deps (package dune) (source_tree test-cases/use-meta))
  (action
@@ -735,6 +743,7 @@
   (alias subst)
   (alias syntax-versioning)
   (alias tests-stanza)
+  (alias too-many-parens)
   (alias use-meta)
   (alias utop)
   (alias windows-diff)
@@ -808,6 +817,7 @@
   (alias subst)
   (alias syntax-versioning)
   (alias tests-stanza)
+  (alias too-many-parens)
   (alias use-meta)
   (alias windows-diff)
   (alias workspaces)))

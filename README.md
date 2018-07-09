@@ -1,8 +1,5 @@
-Dune (Jbuilder) - A composable build system
-===========================================
-
-__Jbuilder has been renamed to Dune__. A full renaming of the documentation and
-the tool will be done as part of the 1.0 release.
+Dune - A composable build system
+================================
 
 Dune is a build system designed for OCaml/Reason projects only. It
 focuses on providing the user with a consistent experience and takes
@@ -145,8 +142,8 @@ ocaml-core@googlegroups.com or [open a ticket on github][issues].
 Migration from jbuilder
 -----------------------
 
-Migration from jbuilder to dune is described in the
-[manual](http://dune.readthedocs.io/en/latest/migration.html).
+Dune was formerly known as jbuilder. Migration from jbuilder to dune is
+described in the [manual](http://dune.readthedocs.io/en/latest/migration.html).
 
 Status
 ------
@@ -156,5 +153,4 @@ opam. The package is still in beta version as we are waiting for the
 renaming from Jbuilder to dune before releasing version 1.0.0. Note
 that dune will have backward compatiblity with Jbuilder, in particular
 existing Jbuilder projects will continue to be buildable with
-dune. Additionally, dune will be able to automatically convert a
-Jbuilder project into a dune project.
+dune.

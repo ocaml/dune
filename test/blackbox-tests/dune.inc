@@ -540,6 +540,14 @@
     (diff? run.t run.t.corrected)))))
 
 (alias
+ (name preprocess-with-action)
+ (deps (package dune) (source_tree test-cases/preprocess-with-action))
+ (action
+  (chdir
+   test-cases/preprocess-with-action
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name private-public-overlap)
  (deps (package dune) (source_tree test-cases/private-public-overlap))
  (action
@@ -749,6 +757,7 @@
   (alias package-dep)
   (alias path-variables)
   (alias ppx-rewriter)
+  (alias preprocess-with-action)
   (alias private-public-overlap)
   (alias project-root)
   (alias promote)
@@ -826,6 +835,7 @@
   (alias output-obj)
   (alias package-dep)
   (alias path-variables)
+  (alias preprocess-with-action)
   (alias project-root)
   (alias promote)
   (alias quoting)

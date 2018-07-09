@@ -143,6 +143,9 @@ next
 
 - Lowercase all built-in %{variables} in dune files (#956, @rgrinberg)
 
+- New syntax for naming dependencies: `(deps (:x a b) (:y (glob_files *.c*)))`.
+  This replaces the use for `${<}` in dune files. (#950, @diml, @rgrinberg)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

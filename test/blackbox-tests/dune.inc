@@ -113,6 +113,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dup-fields)
+ (deps (package dune) (source_tree test-cases/dup-fields))
+ (action
+  (chdir
+   test-cases/dup-fields
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name env)
  (deps (package dune) (source_tree test-cases/env))
  (action
@@ -668,6 +676,7 @@
   (alias dune-jbuild-var-case)
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
+  (alias dup-fields)
   (alias env)
   (alias exclude-missing-module)
   (alias exec-cmd)
@@ -748,6 +757,7 @@
   (alias dune-jbuild-var-case)
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
+  (alias dup-fields)
   (alias env)
   (alias exclude-missing-module)
   (alias exec-cmd)

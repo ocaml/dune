@@ -576,11 +576,11 @@ module Action = struct
   type resolved_forms =
     { (* Failed resolutions *)
       mutable failures  : fail list
-    ; (* All "name" for ${lib:name:...}/${lib-available:name} forms *)
+    ; (* All "name" for %{lib:name:...}/%{lib-available:name} forms *)
       mutable lib_deps  : Build.lib_deps
-    ; (* Static deps from ${...} variables. For instance ${exe:...} *)
+    ; (* Static deps from %{...} variables. For instance %{exe:...} *)
       mutable sdeps     : Path.Set.t
-    ; (* Dynamic deps from ${...} variables. For instance ${read:...} *)
+    ; (* Dynamic deps from %{...} variables. For instance %{read:...} *)
       mutable ddeps     : (unit, Value.t list) Build.t String.Map.t
     }
 
@@ -611,7 +611,7 @@ module Action = struct
   let parse_lib_file ~loc s =
     match String.lsplit2 s ~on:':' with
     | None ->
-      Loc.fail loc "invalid ${lib:...} form: %s" s
+      Loc.fail loc "invalid %%{lib:...} form: %s" s
     | Some x -> x
 
   let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user
@@ -805,7 +805,7 @@ module Action = struct
 
            It's likely that what we get here is what the user thinks
            of as temporary files, even though they might conflict with
-           actual targets. We need to tell jbuilder about such things,
+           actual targets. We need to tell dune about such things,
            so that it can report better errors.
 
            {[
@@ -830,7 +830,7 @@ module Action = struct
       if Path.parent_exn target <> dir then
         Loc.fail loc
           "This action has targets in a different directory than the current \
-           one, this is not allowed by Jbuilder at the moment:\n%s"
+           one, this is not allowed by dune at the moment:\n%s"
           (List.map targets ~f:(fun target ->
              sprintf "- %s" (Utils.describe_target target))
            |> String.concat ~sep:"\n"));

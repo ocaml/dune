@@ -778,14 +778,14 @@ module Action = struct
       match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
-        begin match
+        match
           Pform.Map.expand Pform.Map.static_vars ~syntax_version ~var
         with
         | None ->
           Jbuild.Bindings.find deps_written_by_user key
           |> Option.map ~f:Value.L.paths
         | Some x ->
-          begin match x with
+          match x with
             Pform.Var.Deps ->
             deps_written_by_user
             |> Jbuild.Bindings.to_list
@@ -803,9 +803,7 @@ module Action = struct
             end
           | _ ->
             Exn.code_error "Unexpected variable in step2"
-              ["var", String_with_vars.Var.sexp_of_t var]
-          end
-        end)
+              ["var", String_with_vars.Var.sexp_of_t var])
 
   let run sctx ~loc ?(extra_vars=String.Map.empty) ~bindings
         t ~dir ~dep_kind ~targets:targets_written_by_user ~scope

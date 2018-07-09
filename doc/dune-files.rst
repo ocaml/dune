@@ -1038,11 +1038,11 @@ the ``-pp`` or ``-ppx`` of the various OCaml tools.
 Preprocessing with actions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``<action>`` uses the same DSL as described in the `User actions`_ section, and
-for the same reason given in that section, it will be executed from the root of
-the current build context. It is expected to be an action that reads the file
-given as only dependency and outputs the preprocessed file on its standard
-output.
+``<action>`` uses the same DSL as described in the `User actions`_
+section, and for the same reason given in that section, it will be
+executed from the root of the current build context. It is expected to
+be an action that reads the file given as only dependency named
+``input-file`` and outputs the preprocessed file on its standard output.
 
 More precisely, ``(preprocess (action <action>))`` acts as if
 you had setup a rule for every file of the form:
@@ -1055,7 +1055,7 @@ you had setup a rule for every file of the form:
         (action  (with-stdout-to %{@} (chdir %{root} <action>))))
 
 The equivalent of a ``-pp <command>`` option passed to the OCaml compiler is
-``(system "<command> %{<}")``.
+``(system "<command> %{input-file}")``.
 
 Preprocessing with ppx rewriters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

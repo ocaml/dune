@@ -116,6 +116,33 @@ next
 
 - Adapt the behavior of `dune subst` for dune projects (#960, @diml)
 
+- Add the `lib_root` and `libexec_root` sections to install stanzas
+  (#947, @diml)
+
+- Add a `Configurator.V1.Flags` module that improves the flag reading/writing
+  API (#840, @avsm)
+
+- Add a `tests` stanza that simlpified defining regular and expect tests
+  (#822, @rgrinberg)
+
+- Change the `subst` subcommand to lookup the project name from the
+  `dune-project` whenever it's available. (#960, @diml)
+
+- The `subst` subcommand no longer looks up the root workspace. Previously this
+  detection would break the command whenever `-p` wasn't passed. (#960, @diml)
+
+- Add a `# DUNE_GEN` in META template files. This is done for consistency with
+  `# JBUILDER_GEN`. (#958, @rgrinberg)
+
+- Rename the following variables in dune files:
+  `SCOPE_ROOT` to `project_root`
+  `@` to `targets`
+  `<` to `first-dep`
+  `^` to `deps`
+  (#957, @rgrinberg)
+
+- Lowercase all built-in %{variables} in dune files (#956, @rgrinberg)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

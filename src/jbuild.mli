@@ -98,8 +98,6 @@ module Bindings : sig
 
   val singleton : 'a -> 'a t
 
-  val first : 'a t -> ('a, [`Empty | `Named_exists]) Result.t
-
   val sexp_of_t : ('a -> Usexp.t) -> 'a t -> Usexp.t
 end
 

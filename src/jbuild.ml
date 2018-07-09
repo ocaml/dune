@@ -251,14 +251,6 @@ module Bindings = struct
       | Unnamed _ -> None
       | Named (k', x) -> Option.some_if (k = k') x)
 
-  let first t =
-    let rec loop acc = function
-      | [] -> acc
-      | Unnamed x :: xs -> loop (Result.Ok x) xs
-      | Named (_, _) :: _ -> Result.Error `Named_exists
-    in
-    loop (Result.Error `Empty) t
-
   let empty = []
 
   let singleton x = [Unnamed x]

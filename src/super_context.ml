@@ -792,14 +792,17 @@ module Action = struct
             |> Value.L.paths
             |> Option.some
           | First_dep ->
-            begin match Jbuild.Bindings.first deps_written_by_user with
-            | Error `Named_exists ->
-              Loc.fail loc "%%{first-dep} is not allowed with named dependencies"
-            | Error `Empty ->
+            begin match deps_written_by_user with
+            | Named _ :: _ ->
+              (* This case is not possible: ${<} only exist in jbuild
+                 files and named dependencies are not available in
+                 jbuild files *)
+              assert false
+            | Unnamed v :: _ -> Some [Path v]
+            | [] ->
               Loc.warn loc "Variable '%s' used with no explicit \
                             dependencies@." key;
               Some [Value.String ""]
-            | Ok v  -> Some [Path v]
             end
           | _ ->
             Exn.code_error "Unexpected variable in step2"

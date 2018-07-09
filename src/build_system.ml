@@ -790,12 +790,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
           match sandbox_dir with
           | Some sandbox_dir ->
             Path.rm_rf sandbox_dir;
-            let sandboxed path =
-              if Path.is_managed path then
-                Path.append sandbox_dir path
-              else
-                path
-            in
+            let sandboxed path = Path.sandbox_managed_paths ~sandbox_dir path in
             make_local_parent_dirs t all_deps ~map_path:sandboxed;
             make_local_parent_dirs t targets  ~map_path:sandboxed;
             Action.sandbox action

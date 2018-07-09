@@ -667,13 +667,14 @@ let append_local a b =
   | External a -> external_ (External.relative a (Local.to_string b))
 
 let append a b =
-  match kind b with
-  | External _ ->
-    Exn.code_error "Path.append called with non-local second path"
+  match b with
+  | In_build_dir _ | External _ ->
+    Exn.code_error "Path.append called with directory that's \
+                    not in the source tree"
       [ "a", sexp_of_t a
       ; "b", sexp_of_t b
       ]
-  | Local b -> append_local a b
+  | In_source_tree b -> append_local a b
 
 let basename t =
   match kind t with
@@ -763,6 +764,15 @@ let drop_optional_build_context t =
   match extract_build_context t with
   | None -> t
   | Some (_, t) -> t
+
+let local_src   = Local.of_string "src"
+let local_build = Local.of_string "build"
+
+let sandbox_managed_paths ~sandbox_dir t =
+  match t with
+  | External _ -> t
+  | In_source_tree p -> append_local sandbox_dir (Local.append local_src   p)
+  | In_build_dir   p -> append_local sandbox_dir (Local.append local_build p)
 
 let split_first_component t =
   match kind t, is_root t with

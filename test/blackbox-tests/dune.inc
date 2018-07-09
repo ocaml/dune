@@ -612,6 +612,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name shadow-bindings)
+ (deps (package dune) (source_tree test-cases/shadow-bindings))
+ (action
+  (chdir
+   test-cases/shadow-bindings
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name subst)
  (deps (package dune) (source_tree test-cases/subst))
  (action
@@ -749,6 +757,7 @@
   (alias scope-bug)
   (alias scope-ppx-bug)
   (alias select)
+  (alias shadow-bindings)
   (alias subst)
   (alias syntax-versioning)
   (alias tests-stanza)
@@ -824,6 +833,7 @@
   (alias scope-bug)
   (alias scope-ppx-bug)
   (alias select)
+  (alias shadow-bindings)
   (alias subst)
   (alias syntax-versioning)
   (alias tests-stanza)

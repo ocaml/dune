@@ -786,7 +786,7 @@ module Action = struct
           |> Option.map ~f:Value.L.paths
         | Some x ->
           match x with
-            Pform.Var.Deps ->
+          | Deps ->
             deps_written_by_user
             |> Jbuild.Bindings.to_list
             |> Value.L.paths

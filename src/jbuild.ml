@@ -1626,11 +1626,6 @@ module Stanzas = struct
       (let%map () = Syntax.since Stanza.syntax (1, 0)
        and t = Tests.single in
        [Tests t])
-    ; "env",
-      (let%map () = Syntax.since Stanza.syntax (1, 0)
-       and loc = loc
-       and rules = repeat Env.rule in
-       [Env { loc; rules }])
     ]
 
   let jbuild_parser =

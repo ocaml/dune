@@ -1066,10 +1066,14 @@ module Executables = struct
       (field_o "package" (junk >>> loc) >>= function
        | None -> return (t, None)
        | Some loc ->
-         Loc.warn loc
+         (Stanza.file_kind () >>| function
+         | Jbuild -> Loc.warn
+         | Dune   -> Loc.fail) >>= fun func ->
+         func loc
            "This field is useless without a (public_name%s ...) field."
            (if multi then "s" else "");
-         return (t, None))
+         return (t, None)
+      )
     | files ->
       Pkg.field >>= fun package ->
       return (t, Some { Install_conf. section = Bin; files; package })

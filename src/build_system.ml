@@ -116,10 +116,11 @@ module Internal_rule = struct
     ; loc              : Loc.t option
     ; dir              : Path.t
     ; mutable exec     : Exec_status.t
-    ; (* Reverse dependencies, labelled by the requested target *)
+    ; (* Reverse dependencies discovered so far, labelled by the
+         requested target *)
       mutable rev_deps : (Path.t * t) list
-    ; (* Union of all [targets] in [rev_deps] recursively. *)
-      mutable all_targets : Path.Set.t
+    ; (* Transitive reverse dependencies discovered so far. *)
+      mutable transitive_rev_deps : Id.Set.t
     }
 
   let compare a b = Id.compare a.id b.id
@@ -132,9 +133,12 @@ module Internal_rule = struct
     ignore (Lazy.force t.static_deps : Build_interpret.Static_deps.t);
     Build_interpret.lib_deps t.build
 
+  (* Represent the build goal given by the user. This rule is never
+     actually executed and is only used starting point of all
+     dependency paths. *)
   let root =
     { id          = Id.gen ()
-    ; static_deps = lazy { rule_deps = Path.Set.empty
+    ; static_deps = lazy { rule_deps   = Path.Set.empty
                          ; action_deps = Path.Set.empty
                          }
     ; targets     = Path.Set.empty
@@ -147,22 +151,22 @@ module Internal_rule = struct
                                 ; exec_rule = (fun _ -> assert false)
                                 }
     ; rev_deps    = []
-    ; all_targets = Path.Set.empty
+    ; transitive_rev_deps = Id.Set.empty
     }
 
-  let dependency_cycle last t =
+  let dependency_cycle ~last ~last_rev_dep ~last_requested_file =
     let rec build_loop acc t =
-      if Path.Set.mem t.targets last then
-        last :: acc
+      if t.id = last.id then
+        last_requested_file :: acc
       else
-        match
-          List.find t.rev_deps ~f:(fun (_, t) ->
-            Path.Set.mem t.all_targets last)
-        with
-        | None -> assert false
-        | Some (requested_file, t) -> build_loop (requested_file :: acc) t
+        let requested_file, rev_dep =
+          Option.value_exn
+            (List.find t.rev_deps ~f:(fun (_, t) ->
+               Id.Set.mem t.transitive_rev_deps last.id))
+        in
+        build_loop (requested_file :: acc) rev_dep
     in
-    let loop = build_loop [last] t in
+    let loop = build_loop [last_requested_file] last_rev_dep in
     die "Dependency cycle between the following files:\n    %s"
       (String.concat ~sep:"\n--> "
          (List.map loop ~f:Path.to_string))
@@ -171,11 +175,13 @@ module Internal_rule = struct
 
   let push_rev_dep t requested_file ~f =
     Fiber.Var.get dep_path_var >>= fun x ->
-    let t' = Option.value x ~default:root in
-    if Path.Set.mem t'.all_targets requested_file then
-      dependency_cycle requested_file t';
-    t.rev_deps <- (requested_file, t') :: t.rev_deps;
-    t.all_targets <- Path.Set.union t.all_targets t'.all_targets;
+    let rev_dep = Option.value x ~default:root in
+    if Id.Set.mem rev_dep.transitive_rev_deps t.id then
+      dependency_cycle ~last:t ~last_rev_dep:rev_dep
+        ~last_requested_file:requested_file;
+    t.rev_deps <- (requested_file, rev_dep) :: t.rev_deps;
+    t.transitive_rev_deps <-
+      Id.Set.union t.transitive_rev_deps rev_dep.transitive_rev_deps;
     let on_error exn =
       Dep_path.reraise exn (Path requested_file)
     in
@@ -824,8 +830,9 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     t.hook Rule_completed
   in
   let rule =
+    let id = Internal_rule.Id.gen () in
     { Internal_rule.
-      id = Internal_rule.Id.gen ()
+      id
     ; static_deps
     ; targets
     ; build
@@ -834,7 +841,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     ; mode
     ; loc
     ; dir
-    ; all_targets = targets
+    ; transitive_rev_deps = Internal_rule.Id.Set.singleton id
     ; rev_deps = []
     }
   in

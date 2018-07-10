@@ -45,9 +45,11 @@ module Context = struct
       { loc     : Loc.t
       ; profile : string
       ; targets : Target.t list
+      ; env     : Jbuild.Env.t option
       }
 
     let t ~profile =
+      field_o "env" Jbuild.Env.t >>= fun env ->
       field "targets" (list Target.t) ~default:[Target.Native]
       >>= fun targets ->
       field "profile" string ~default:profile
@@ -57,6 +59,7 @@ module Context = struct
         { targets
         ; profile
         ; loc
+        ; env
         }
   end
 
@@ -138,6 +141,7 @@ module Context = struct
       ; targets = [Option.value x ~default:Target.Native]
       ; profile = Option.value profile
                     ~default:Config.default_build_profile
+      ; env = None
       }
 end
 

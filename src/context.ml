@@ -26,6 +26,7 @@ type t =
   ; for_host                : t option
   ; implicit                : bool
   ; build_dir               : Path.t
+  ; env_node                : Shared_stanza.Env.t option
   ; path                    : Path.t list
   ; toplevel_path           : Path.t option
   ; ocaml_bin               : Path.t
@@ -130,7 +131,8 @@ let ocamlpath_sep =
   else
     Bin.path_sep
 
-let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets ~profile () =
+let create ~(kind : Kind.t) ~path ~env ~env_node ~name ~merlin ~targets
+      ~profile () =
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
    | Opam { root; _ } ->
@@ -332,6 +334,7 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets ~profile () =
       ; kind
       ; profile
       ; merlin
+      ; env_node
       ; for_host = host
       ; build_dir
       ; path
@@ -407,10 +410,11 @@ let create ~(kind : Kind.t) ~path ~env ~name ~merlin ~targets ~profile () =
 
 let opam_config_var t var = opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
-let default ?(merlin=true) ~env ~targets () =
-  create ~kind:Default ~path:Bin.path ~env ~name:"default" ~merlin ~targets ()
+let default ?(merlin=true) ~env_node ~env ~targets () =
+  create ~kind:Default ~path:Bin.path ~env ~env_node ~name:"default"
+    ~merlin ~targets ()
 
-let create_for_opam ?root ~env ~targets ~profile ~switch ~name
+let create_for_opam ?root ~env ~env_node ~targets ~profile ~switch ~name
       ?(merlin=false) () =
   match Bin.opam with
   | None -> Utils.program_not_found "opam"
@@ -448,15 +452,16 @@ let create_for_opam ?root ~env ~targets ~profile ~switch ~name
       | Some s -> Bin.parse_path s
     in
     let env = Env.extend env ~vars in
-    create ~kind:(Opam { root; switch }) ~profile ~targets ~path ~env ~name
-      ~merlin ()
+    create ~kind:(Opam { root; switch }) ~profile ~targets ~path ~env ~env_node
+      ~name ~merlin ()
 
 let create ?merlin ~env def =
   match (def : Workspace.Context.t) with
-  | Default { targets; profile; _ } -> default ~env ~profile ~targets ?merlin ()
-  | Opam { base = { targets ; profile ; loc = _ }
+  | Default { targets; profile; env = env_node ; loc = _ } ->
+    default ~env ~env_node ~profile ~targets ?merlin ()
+  | Opam { base = { targets ; profile ; env = env_node ; loc = _ }
          ; name; switch; root; merlin = _ } ->
-    create_for_opam ?root ~env ~profile ~switch ~name ?merlin ~targets ()
+    create_for_opam ?root ~env_node ~env ~profile ~switch ~name ?merlin ~targets ()
 
 let which t s = which ~cache:t.which_cache ~path:t.path s
 

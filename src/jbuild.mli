@@ -366,6 +366,8 @@ module Env : sig
     { loc   : Loc.t
     ; rules : (pattern * config) list
     }
+
+  val t : t Sexp.Of_sexp.t
 end
 
 module Tests : sig

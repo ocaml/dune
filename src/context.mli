@@ -50,6 +50,9 @@ type t =
   ; (** Directory where artifact are stored, for instance "_build/default" *)
     build_dir : Path.t
 
+  ; (** env node that this context was initialized with *)
+    env_node : Shared_stanza.Env.t option
+
   ; (** [PATH] *)
     path : Path.t list
 

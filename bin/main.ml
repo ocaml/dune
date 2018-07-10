@@ -84,7 +84,8 @@ module Main = struct
     setup
       ~log
       ?workspace_file:(
-        Option.map common.workspace_file ~f:Path.of_string)
+        Option.map common.workspace_file
+          ~f:Path.of_filename_relative_to_initial_cwd)
       ?only_packages:common.only_packages
       ?external_lib_deps_mode
       ?x:common.x

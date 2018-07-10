@@ -40,60 +40,63 @@ module Context = struct
         name)
   end
 
-  module Opam = struct
-    type t =
-      { loc     : Loc.t
-      ; name    : string
-      ; profile : string
-      ; switch  : string
-      ; root    : string option
-      ; merlin  : bool
-      ; targets : Target.t list
-      }
-
-    let t ~profile ~x =
-      field   "switch"  string                                    >>= fun switch ->
-      field   "name"    Name.t ~default:switch                    >>= fun name ->
-      field   "targets" (list Target.t) ~default:[Target.Native]  >>= fun targets ->
-      field_o "root"    string                                    >>= fun root ->
-      field_b "merlin"                                            >>= fun merlin ->
-      field   "profile" string ~default:profile                   >>= fun profile ->
-      loc >>= fun loc ->
-      return { loc
-             ; switch
-             ; name
-             ; root
-             ; merlin
-             ; targets = Target.add targets x
-             ; profile
-             }
-  end
-
-  module Default = struct
+  module Base = struct
     type t =
       { loc     : Loc.t
       ; profile : string
       ; targets : Target.t list
       }
 
-    let t ~profile ~x =
+    let t ~profile =
       field "targets" (list Target.t) ~default:[Target.Native]
       >>= fun targets ->
       field "profile" string ~default:profile
       >>= fun profile ->
-      loc
-      >>= fun loc ->
-      return { loc
-             ; targets = Target.add targets x
-             ; profile
+      loc >>= fun loc ->
+      return
+        { targets
+        ; profile
+        ; loc
+        }
+  end
+
+  module Opam = struct
+    type t =
+      { base    : Base.t
+      ; name    : string
+      ; switch  : string
+      ; root    : string option
+      ; merlin  : bool
+      }
+
+    let t ~profile ~x =
+      Base.t ~profile >>= fun base ->
+      field   "switch"  string                 >>= fun switch ->
+      field   "name"    Name.t ~default:switch >>= fun name ->
+      field_o "root"    string                 >>= fun root ->
+      field_b "merlin"                         >>= fun merlin ->
+      let base = { base with targets = Target.add base.targets x } in
+      return { base
+             ; switch
+             ; name
+             ; root
+             ; merlin
              }
+  end
+
+  module Default = struct
+    type t = Base.t
+
+    let t ~profile ~x =
+      Base.t ~profile >>= fun t ->
+      return { t with targets = Target.add t.targets x }
   end
 
   type t = Default of Default.t | Opam of Opam.t
 
   let loc = function
     | Default x -> x.loc
-    | Opam    x -> x.loc
+    | Opam    x -> x.base.loc
 
   let t ~profile ~x =
     sum
@@ -121,7 +124,7 @@ module Context = struct
 
   let targets = function
     | Default x -> x.targets
-    | Opam    x -> x.targets
+    | Opam    x -> x.base.targets
 
   let all_names t =
     let n = name t in

@@ -8,24 +8,25 @@ module Context : sig
       | Native
       | Named of string
   end
-  module Opam : sig
+  module Base : sig
     type t =
       { loc     : Loc.t
-      ; name    : string
       ; profile : string
+      ; targets : Target.t list
+      }
+  end
+  module Opam : sig
+    type t =
+      { base    : Base.t
+      ; name    : string
       ; switch  : string
       ; root    : string option
       ; merlin  : bool
-      ; targets : Target.t list
       }
   end
 
   module Default : sig
-    type t =
-      { loc     : Loc.t
-      ; profile : string
-      ; targets : Target.t list
-      }
+    type t = Base.t
   end
 
   type t = Default of Default.t | Opam of Opam.t

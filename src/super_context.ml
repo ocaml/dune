@@ -624,7 +624,7 @@ let create
           in
           Hashtbl.add t.env ctx_dir
             { dir          = ctx_dir
-            ; inherit_from = inherit_from
+            ; inherit_from
             ; scope        = scope
             ; config       = config
             ; ocaml_flags  = None

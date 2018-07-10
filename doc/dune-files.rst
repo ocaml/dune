@@ -111,7 +111,7 @@ modules you want.
 - ``(cxx_names (<names>))`` is the same as ``c_names`` but for C++ stubs
 
 - ``(install_c_headers (<names>))``, if your library has public C header files
-  that must be installed, you must list them in this field, with the ``.h``
+  that must be installed, you must list them in this field, without the ``.h``
   extension
 
 - ``(modes <modes>)`` modes which should be built by default. The

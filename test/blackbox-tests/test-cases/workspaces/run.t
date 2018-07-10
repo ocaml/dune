@@ -47,3 +47,7 @@ see how we can set a "native" target. Which is the default.
   Entering directory 'targets-native'
   Entering directory 'targets-native'
   message from targets-native test
+
+Workspaces also allow you to set the env for a context:
+
+  $ dune printenv --root workspace-env --profile default

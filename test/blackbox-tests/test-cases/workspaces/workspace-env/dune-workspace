@@ -1,0 +1,7 @@
+(lang dune 1.0)
+
+(context
+ (default
+  (env
+   (default
+    (flags (:standard -machin))))))

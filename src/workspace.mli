@@ -13,7 +13,7 @@ module Context : sig
       { loc     : Loc.t
       ; profile : string
       ; targets : Target.t list
-      ; env     : Jbuild.Env.t option
+      ; env     : Shared_stanza.Env.t option
       }
   end
   module Opam : sig

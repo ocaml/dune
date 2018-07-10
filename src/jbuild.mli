@@ -351,25 +351,6 @@ module Documentation : sig
     }
 end
 
-module Env : sig
-  type config =
-    { flags          : Ordered_set_lang.Unexpanded.t
-    ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
-    ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
-    }
-
-  type pattern =
-    | Profile of string
-    | Any
-
-  type t =
-    { loc   : Loc.t
-    ; rules : (pattern * config) list
-    }
-
-  val t : t Sexp.Of_sexp.t
-end
-
 module Tests : sig
   type t =
     { exes    : Executables.t
@@ -387,7 +368,6 @@ type Stanza.t +=
   | Alias       of Alias_conf.t
   | Copy_files  of Copy_files.t
   | Documentation of Documentation.t
-  | Env         of Env.t
   | Tests       of Tests.t
 
 module Stanzas : sig

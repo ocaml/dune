@@ -45,11 +45,11 @@ module Context = struct
       { loc     : Loc.t
       ; profile : string
       ; targets : Target.t list
-      ; env     : Jbuild.Env.t option
+      ; env     : Shared_stanza.Env.t option
       }
 
     let t ~profile =
-      field_o "env" Jbuild.Env.t >>= fun env ->
+      field_o "env" Shared_stanza.Env.t >>= fun env ->
       field "targets" (list Target.t) ~default:[Target.Native]
       >>= fun targets ->
       field "profile" string ~default:profile

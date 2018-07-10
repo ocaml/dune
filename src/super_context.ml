@@ -1,4 +1,5 @@
 open Import
+open Shared_stanza
 open Jbuild
 
 module A = Action

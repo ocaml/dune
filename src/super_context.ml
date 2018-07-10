@@ -504,18 +504,15 @@ module Deps = struct
     >>^ List.concat
 
   let interpret_named t ~scope ~dir bindings =
-    let unnamed x = Jbuild.Bindings.Unnamed x in
     List.map bindings ~f:(function
       | Jbuild.Bindings.Unnamed p ->
-        dep t ~scope ~dir p >>^ unnamed
+        dep t ~scope ~dir p >>^ fun l ->
+        List.map l ~f:(fun x -> Jbuild.Bindings.Unnamed x)
       | Named (s, ps) ->
-        List.map ~f:(dep t ~scope ~dir) ps
-        |> Build.all
-        >>^ (fun deps -> Jbuild.Bindings.Named (s, deps)))
+        Build.all (List.map ps ~f:(dep t ~scope ~dir)) >>^ fun l ->
+        [Jbuild.Bindings.Named (s, List.concat l)])
     |> Build.all
-    >>^ List.concat_map ~f:(function
-      | Jbuild.Bindings.Unnamed s -> List.map s ~f:unnamed
-      | Named (s, ps) -> [Named (s, List.concat ps)])
+    >>^ List.concat
 end
 
 module Pkg_version = struct

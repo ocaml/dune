@@ -141,6 +141,8 @@ next
   `^` to `deps`
   (#957, @rgrinberg)
 
+- Rename `ROOT` to `workspace_root` in dune files (#993, @diml)
+
 - Lowercase all built-in %{variables} in dune files (#956, @rgrinberg)
 
 - New syntax for naming dependencies: `(deps (:x a b) (:y (glob_files *.c*)))`.

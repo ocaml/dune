@@ -1299,7 +1299,7 @@ module Rule = struct
       ; action  =
           (loc,
            Chdir
-             (S.virt_var __POS__ "root",
+             (S.virt_var __POS__ "workspace_root",
               Run (S.virt_text __POS__ "ocamllex",
                    [ S.virt_text __POS__ "-q"
                    ; S.virt_text __POS__ "-o"
@@ -1320,7 +1320,7 @@ module Rule = struct
       ; action  =
           (loc,
            Chdir
-             (S.virt_var __POS__ "root",
+             (S.virt_var __POS__ "workspace_root",
               Run (S.virt_text __POS__ "ocamlyacc",
                    [S.virt_var __POS__ "deps"])))
       ; mode

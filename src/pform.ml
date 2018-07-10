@@ -113,7 +113,6 @@ module Map = struct
       ; "ocamlopt"       , path ocamlopt
       ; "arch_sixtyfour" , string (string_of_bool context.arch_sixtyfour)
       ; "make"           , make
-      ; "root"           , values [Value.Dir context.build_dir]
       ]
     in
     let uppercased =
@@ -135,6 +134,8 @@ module Map = struct
       ; "ext_dll"        , string context.ext_dll
       ; "ext_exe"        , string context.ext_exe
       ; "profile"        , string context.profile
+      ; "workspace_root" , values [Value.Dir context.build_dir]
+      ; "ROOT"           , renamed_in ~version:(1, 0) ~new_name:"workspace_root"
       ]
     in
     { vars =

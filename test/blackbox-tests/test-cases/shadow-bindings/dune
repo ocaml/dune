@@ -1,8 +1,8 @@
 
 (alias
  (name runtest)
- (deps (:root foo))
- (action (echo %{root})))
+ (deps (:workspace_root foo))
+ (action (echo %{workspace_root})))
 
 (alias
  (name   runtest)

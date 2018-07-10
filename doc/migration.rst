@@ -171,6 +171,7 @@ Jbuild                    Dune
 ``${^}``                  ``%{deps}``
 ``${path:file}``          ``%{dep:file}``
 ``${SCOPE_ROOT}``         ``%{project_root}``
+``${ROOT}``               ``%{workspace_root}``
 ``${findlib:..}``         ``%{lib:..}``
 ``${CPP}``                ``%{cpp}``
 ``${CC}``                 ``%{cc}``

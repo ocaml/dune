@@ -61,7 +61,8 @@ module Run (P : PARAMS) = struct
   let sources ms =
     List.map ~f:source ms
 
-  (* Expand special variables, such as %{root}, in the stanza's flags. *)
+  (* Expand special variables, such as %{workspace_root}, in the stanza's
+     flags. *)
 
   let flags =
     SC.expand_and_eval_set

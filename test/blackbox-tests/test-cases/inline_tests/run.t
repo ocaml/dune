@@ -30,7 +30,7 @@
        (inline-test-runner
         %{library-name}
         -source-tree-root
-        %{root}
+        %{workspace_root}
         -diff-cmd
         -))
       (generate_runner

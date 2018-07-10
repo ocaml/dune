@@ -397,8 +397,8 @@ let get_ppx_driver sctx ~loc ~scope ~dir_kind pps =
     >>= fun libs ->
     Ok (ppx_driver_exe sctx libs ~dir_kind, driver)
 
-let target_var = String_with_vars.virt_var __POS__ "targets"
-let root_var   = String_with_vars.virt_var __POS__ "root"
+let target_var         = String_with_vars.virt_var __POS__ "targets"
+let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
 
 let cookie_library_name lib_name =
   match lib_name with
@@ -451,7 +451,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
           (fun ~source:_ ~ast:_ -> ())
         | Action (loc, action) ->
           (fun ~source ~ast:_ ->
-             let action = Action.Unexpanded.Chdir (root_var, action) in
+             let action = Action.Unexpanded.Chdir (workspace_root_var, action) in
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
                let src_path = Path.relative dir src.name in
                let bindings = Pform.Map.input_file src_path in
@@ -541,7 +541,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
                   (Redirect
                      (Stdout,
                       target_var,
-                      Chdir (root_var,
+                      Chdir (workspace_root_var,
                              action)))
                   ~loc
                   ~dir

@@ -495,7 +495,8 @@ ocamllex
     (rule
       (targets <name>.ml)
       (deps    <name>.mll)
-      (action  (chdir %{root} (run %{bin:ocamllex} -q -o %{targets} %{deps}))))
+      (action  (chdir %{workspace_root}
+                (run %{bin:ocamllex} -q -o %{targets} %{deps}))))
 
 To use a different rule mode, use the long form:
 
@@ -515,7 +516,8 @@ ocamlyacc
     (rule
       (targets <name>.ml <name>.mli)
       (deps    <name>.mly)
-      (action  (chdir %{root} (run %{bin:ocamlyacc} %{deps}))))
+      (action  (chdir %{workspace_root}
+                (run %{bin:ocamlyacc} %{deps}))))
 
 To use a different rule mode, use the long form:
 
@@ -825,19 +827,18 @@ Variables are expanded after the set language is interpreted.
 Variables expansion
 -------------------
 
-Some fields can contains variables of the form ``$(var)`` or ``%{var}`` that are
+Some fields can contains variables of the form ``%{var}`` that are
 expanded by dune.
 
 Dune supports the following variables:
 
--  ``root`` is the relative path to the root of the build
-   context. Note that ``root`` depends on the workspace
-   configuration. As such you shouldn't use ``root`` to denote the
-   root of your project. Use ``project_root`` instead for this purpose
--  ``project_root`` is the root of the current scope. It is typically
-   the toplevel directory of your project and as long as you have at
-   least one ``<package>.opam`` file there, ``project_root`` is
-   independent of the workspace configuration
+- ``project_root`` is the root of the current project. It is typically
+   the toplevel directory of your project and as long as you have a
+   ``dune-project`` file there, ``project_root`` is independent of the
+   workspace configuration
+- ``workspace_root`` is the root of the current workspace. Note that
+  the value of ``workspace_root`` is not constant and depends on
+  whether your project is vendored or not
 -  ``CC`` is the C compiler command line (list made of the compiler
    name followed by its flags) that was used to compile OCaml in the
    current build context
@@ -1051,7 +1052,8 @@ you had setup a rule for every file of the form:
        (rule
         (targets file.pp.ml)
         (deps    file.ml)
-        (action  (with-stdout-to %{targets} (chdir %{root} <action>))))
+        (action  (with-stdout-to %{targets}
+                  (chdir %{workspace_root} <action>))))
 
 The equivalent of a ``-pp <command>`` option passed to the OCaml compiler is
 ``(system "<command> %{input-file}")``.
@@ -1151,8 +1153,8 @@ dune allows a user to organize dependency lists by naming them. The user is
 allowed to assign a group of dependencies a name that can later be referred to
 in actions (like the ``%{deps}`` and ``%{targets}`` built in variables).
 
-One instance where is useful is for naming globs. Here's an example of an
-imaginary bundle command:
+One instance where this is useful is for naming globs. Here's an
+example of an imaginary bundle command:
 
 .. code:: scheme
 
@@ -1166,9 +1168,10 @@ imaginary bundle command:
     (action
      (run %{bin:bundle} index.html -css %{css} -js %{js} -img %{img} -o %{targets})))
 
-Note that such named dependency list can also include unnamed dependencies (like
-``index.html`` in the example above). Also, such user defined names wil shadow
-built in variables. So ``(:root x)`` will shadow the built in ``%{root}``
+Note that such named dependency list can also include unnamed
+dependencies (like ``index.html`` in the example above). Also, such
+user defined names wil shadow built in variables. So
+``(:workspace_root x)`` will shadow the built in ``%{workspace_root}``
 variable.
 
 .. _glob:
@@ -1362,7 +1365,7 @@ of your project. What you should write instead is:
     (rule
      (targets blah.ml)
      (deps    blah.mll)
-     (action  (chdir %{root} (run ocamllex -o %{targets} %{deps}))))
+     (action  (chdir %{workspace_root} (run ocamllex -o %{targets} %{deps}))))
 
 Locks
 -----

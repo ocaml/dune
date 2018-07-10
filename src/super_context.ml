@@ -420,6 +420,7 @@ end = struct
 
   let rec get t ~dir =
     match Hashtbl.find t.env dir with
+    | Some node -> node
     | None ->
       begin match Path.parent dir with
       | None -> raise_notrace Exit
@@ -428,7 +429,6 @@ end = struct
         Hashtbl.add t.env dir node;
         node
       end
-    | Some node -> node
 
   let get t ~dir =
     match get t ~dir with

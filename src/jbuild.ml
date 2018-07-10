@@ -278,7 +278,7 @@ module Bindings = struct
     in
     Stanza.file_kind () >>= function
     | Jbuild -> list (elem >>| fun x -> Unnamed x)
-    | Dune   -> loop String.Set.empty []
+    | Dune   -> parens_removed_in_dune (loop String.Set.empty [])
 
   let sexp_of_t sexp_of_a bindings =
     Sexp.List (

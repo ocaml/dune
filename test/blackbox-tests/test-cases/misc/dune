@@ -42,3 +42,9 @@
 (alias
  (name runtest)
  (deps (glob_files dir-that-doesnt-exist/*)))
+
+;; Check that %{ocaml_bin} expands to a directory and not a path
+
+(alias
+ (name runtest)
+ (action (ignore-stdout (echo %{ocaml_bin}))))

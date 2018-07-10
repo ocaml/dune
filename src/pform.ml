@@ -124,7 +124,7 @@ module Map = struct
       ; "pa_cpp"         , strings (context.c_compiler :: cflags
                                     @ ["-undef"; "-traditional";
                                        "-x"; "c"; "-E"])
-      ; "ocaml_bin"      , path context.ocaml_bin
+      ; "ocaml_bin"      , values [Dir context.ocaml_bin]
       ; "ocaml_version"  , string context.version_string
       ; "ocaml_where"    , string (Path.to_string context.stdlib_dir)
       ; "null"           , string (Path.to_string Config.dev_null)

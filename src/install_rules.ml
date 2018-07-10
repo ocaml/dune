@@ -196,16 +196,18 @@ module Gen(P : Install_params) = struct
             let deps =
               List.concat_map lib.buildable.libraries ~f:Lib_dep.to_lib_names
             in
-            if List.exists deps ~f:(function
-              | "ppx_driver" | "ppxlib" | "ppx_type_conv" -> true
-              | _ -> false) then
-              match Scope.name scope with
-              | Named "ppxlib" ->
+            match
+              List.filter deps ~f:(function
+                | "ppx_driver" | "ppxlib" | "ppx_type_conv" -> true
+                | _ -> false)
+            with
+            | [] -> None
+            | l ->
+              match Scope.name scope, List.mem ~set:l "ppxlib" with
+              | Named "ppxlib", _ | _, true ->
                 Some "ppxlib.runner"
               | _ ->
                 Some "ppx_driver.runner"
-            else
-              None
           in
           [Preprocessing.get_compat_ppx_exe sctx ~name ~kind:(Jbuild driver)]
     in

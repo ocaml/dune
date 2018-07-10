@@ -1063,7 +1063,7 @@ module Executables = struct
     in
     match to_install with
     | [] ->
-      (field_o "package" loc >>= function
+      (field_o "package" (junk >>> loc) >>= function
        | None -> return (t, None)
        | Some loc ->
          Loc.warn loc

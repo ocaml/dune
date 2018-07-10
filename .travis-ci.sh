@@ -46,8 +46,10 @@ case "$TARGET" in
         rm -rf ~/.opam
         opam init --yes
         eval $(opam config env)
-        opam install ocamlfind utop ppxlib reason odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler--yes
-        opam remove jbuilder `opam list --depends-on jbuilder --installed --short` --yes
+        opam install ocamlfind utop ppxlib reason odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler --yes
+        opam remove --yes dune jbuilder \
+             `opam list --depends-on jbuilder --installed --short` --yes \
+             `opam list --depends-on dune     --installed --short` --yes
         if opam info dune &> /dev/null; then
             opam remove dune `opam list --depends-on dune --installed --short` --yes
         fi
@@ -62,15 +64,11 @@ case "$TARGET" in
       echo -en "travis_fold:start:opam.deps\r"
       DATE=$(date +%Y%m%d)
       eval $(opam config env)
-      if [ $(opam pin list | wc -l) -ne 0 ] ; then
+      for pkg in $(opam pin list --short); do
         UPDATE_OPAM=1
-        opam pin remove jbuilder --no-action --yes
-        opam remove jbuilder --yes
-        if opam pin list -s | grep dune; then
-            opam pin remove dune --no-action --yes
-            opam remove dune --yes || true
-        fi
-      fi
+        opam pin remove $pkg --no-action --yes
+        opam remove $pkg --yes || true
+      done
       if [ ! -e ~/.opam/last-update ] || [ $(cat ~/.opam/last-update) != $DATE ] ; then
         opam update --yes
         echo $DATE> ~/.opam/last-update
@@ -79,9 +77,7 @@ case "$TARGET" in
       fi
       opam list
       echo "version: \"1.0+dev$DATE\"" >> dune.opam
-      echo "depends: [\"dune\"]" >> jbuilder.opam
-      opam pin add dune     . --no-action --yes
-      opam pin add jbuilder . --no-action --yes
+      opam pin add dune . --no-action --yes
       opam install ocamlfind utop ppxlib reason odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler --yes
       echo -en "travis_fold:end:opam.deps\r"
     fi

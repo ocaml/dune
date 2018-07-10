@@ -85,7 +85,7 @@ module Of_sexp : sig
       S-expressions.
 
       It is possible to switch between the two mode at any time using
-      the approriate combinator. Some primitives can be used in both
+      the appropriate combinator. Some primitives can be used in both
       mode while some are specific to one mode.  *)
   type ('a, 'kind) parser
 
@@ -97,7 +97,7 @@ module Of_sexp : sig
 
   (** [parse parser context sexp] parse a S-expression using the
       following parser. The input consist of a single
-      S-expression. [context] allows to pass extra informations such as
+      S-expression. [context] allows to pass extra information such as
       versions to individual parsers. *)
   val parse : 'a t -> Univ_map.t -> ast -> 'a
 

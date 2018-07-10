@@ -1,5 +1,5 @@
 Dune is an community orientated open source project. It was originally
-developped at [Jane Street][js] and is now maintained by Jane Street,
+developed at [Jane Street][js] and is now maintained by Jane Street,
 [OCamlLabs][ocl] as well as several developers from the OCaml
 community.
 

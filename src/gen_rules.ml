@@ -368,7 +368,7 @@ module Gen(P : Install_rules.Params) = struct
               Module.Name.Map.mem modules main_module_name) then
             None
           else if Module.Name.Map.mem modules main_module_name then
-            (* This module needs an implementaion for non-jbuilder
+            (* This module needs an implementation for non-jbuilder
                users of the library:
 
                https://github.com/ocaml/dune/issues/567 *)

@@ -71,5 +71,5 @@ Terminology
   profiles are standard:
 
   -  ``release`` which is the profile used for opam releases
-  -  ``dev`` which is the default profile when none is set explicitely, it
+  -  ``dev`` which is the default profile when none is set explicitly, it
      has stricter warnings that the ``release`` one

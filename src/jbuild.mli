@@ -145,8 +145,8 @@ module Public_lib : sig
 end
 
 module Sub_system_info : sig
-  (** The type of all sub-systems informations. This type is what we
-      get just after parsing a [jbuild] file. *)
+  (** The type of all kind of sub-system information.
+      This type is what we get just after parsing a [jbuild] file. *)
   type t = ..
   type sub_system = t = ..
 

@@ -13,7 +13,7 @@ type stanza =
 
 module type PARAMS = sig
 
-  (* [sctx] is the super context. It stores all the informations about the
+  (* [sctx] is the super context. It stores all the information about the
      current build context. The current compiler can be obtained via
      [(SC.context sctx).ocamlc]. *)
 

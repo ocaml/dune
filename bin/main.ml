@@ -969,7 +969,7 @@ let rules =
            \   (context <context-name>)\n\
            \   (action  <action>))"
     ; `P {|$(b,<context-name>) is the context is which the action is executed.
-           It is omitted if the action is independant from the context.|}
+           It is omitted if the action is independent from the context.|}
     ; `P {|$(b,<action>) is the action following the same syntax as user actions,
            as described in the manual.|}
     ; `Blocks help_secs

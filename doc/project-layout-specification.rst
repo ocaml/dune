@@ -26,7 +26,7 @@ Metadata format
 ===============
 
 All configuration files read by Dune are using a syntax similar to the
-one of S-expressions, which is very simple. The Dune langauge can
+one of S-expressions, which is very simple. The Dune language can
 represent three kinds of values: atoms, strings and lists. By
 combining these, it is possible to construct arbitrarily complex
 project descriptions.
@@ -74,12 +74,12 @@ character. Dune recognizes and interprets the following escape
 sequences:
 
 - ``\n`` to represent a newline character
-- ``\r`` to represent a cariage return (character with ASCII code 13)
+- ``\r`` to represent a carriage return (character with ASCII code 13)
 - ``\b`` to represent ASCII character 8
 - ``\t`` to represent a horizontal tab
 - ``\NNN``, a backslash followed by three decimal characters to
   represent the character with ASCII code ``NNN``
-- ``\xHH``, a backslach followed by two hexidecimal characters to
+- ``\xHH``, a backslash followed by two hexadecimal characters to
   represent the character with ASCII code ``HH`` in hexadecimal
 - ``\\``, a double backslash to represent a single backslash
 - ``\%{`` to represent ``%{`` (see :ref:`variables`)

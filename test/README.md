@@ -30,7 +30,7 @@ variable and use it.
 
 Test cases are in `blackbox-tests/test-cases`. Each sub-directory is a
 full blown jbuilder project. Each sub-directory contains a `run.t`
-file, which represent a few invokation of jbuilder along with the
+file, which represents a few invocations of jbuilder along with the
 expected output.
 
 Here is a sample `.t` file:

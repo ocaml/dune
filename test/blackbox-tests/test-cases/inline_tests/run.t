@@ -11,7 +11,7 @@
 
   $ dune runtest too-many-backends
   File "too-many-backends/dune", line 17, characters 1-15:
-  Error: Too many independant inline tests backends found:
+  Error: Too many independent inline tests backends found:
   - "backend_tmb1" in _build/default/too-many-backends
   - "backend_tmb2" in _build/default/too-many-backends
   [1]

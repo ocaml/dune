@@ -29,7 +29,7 @@ type extra_sub_directories_to_keep =
 
     Each callback is used to generate the rules for a given directory
     in the corresponding build context. It receive the directory for
-    which to generate the rules and the splitted part of the path after
+    which to generate the rules and the split part of the path after
     the build context. It must return an additional list of
     sub-directories to keep. This is in addition to the ones that are
     present in the source tree and the ones that already contain rules.

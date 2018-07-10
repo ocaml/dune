@@ -20,11 +20,11 @@ val set_status_line_generator : (unit -> string option) -> unit Fiber.t
 
 val set_concurrency : int -> unit Fiber.t
 
-(** Scheduler informations *)
+(** Scheduler information *)
 type t
 
 (** Wait until less tham [!Clflags.concurrency] external processes are running and return
-    the scheduler informations. *)
+    the scheduler information. *)
 val wait_for_available_job : unit -> t Fiber.t
 
 (** Logger *)

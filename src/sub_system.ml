@@ -53,7 +53,7 @@ module Register_backend(M : Backend) = struct
       match t with
       | Too_many_backends backends ->
         Loc.exnf loc
-          "Too many independant %s found:\n%s"
+          "Too many independent %s found:\n%s"
           (M.desc ~plural:true)
           (String.concat ~sep:"\n"
              (List.map backends ~f:(fun t ->

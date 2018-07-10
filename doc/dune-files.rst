@@ -329,7 +329,7 @@ For instance the following ``modes`` fields are all equivalent:
                   (best object)
                   (best shared_object)))
 
-The extensions for the various linking modes are choosen as follow:
+The extensions for the various linking modes are chosen as follows:
 
 ================ ============= =================
 compilation mode binary kind   extensions

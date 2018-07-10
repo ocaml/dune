@@ -275,7 +275,7 @@ module DB : sig
 
   val available : t -> string -> bool
 
-  (** Retreive the compile informations for the given library. Works
+  (** Retrieve the compile information for the given library. Works
       for libraries that are optional and not available as well. *)
   val get_compile_info : t -> ?allow_overlaps:bool -> string -> Compile.t
 

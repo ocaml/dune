@@ -160,8 +160,8 @@ Finding external libraries
 When a library is not available in the workspace, dune will look it
 up in the installed world, and expect it to be already compiled.
 
-It looks up external libraries using a specific list of search pathes. A
-list of search pathes is specific to a given build context and is
+It looks up external libraries using a specific list of search paths. A
+list of search paths is specific to a given build context and is
 determined as follow:
 
 #. if the ``ocamlfind`` is present in the ``PATH`` of the context, use each line

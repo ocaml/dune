@@ -525,7 +525,7 @@ next
 -----------------------
 
 - Fix the error message when there are more than one `<package>.opam`
-  file for a given pacakge
+  file for a given package
 
 - Report an error when in a wrapped library, a module that is not the
   toplevel module depends on the toplevel module. This doesn't make as

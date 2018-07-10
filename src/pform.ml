@@ -106,6 +106,9 @@ module Map = struct
     let strings s = values (Value.L.strings s) in
     let lowercased =
       [ "cpp"            , strings (context.c_compiler :: cflags @ ["-E"])
+      ; "pa_cpp"         , strings (context.c_compiler :: cflags
+                                    @ ["-undef"; "-traditional";
+                                       "-x"; "c"; "-E"])
       ; "cc"             , strings (context.c_compiler :: cflags)
       ; "cxx"            , strings (context.c_compiler :: cxx_flags)
       ; "ocaml"          , path context.ocaml
@@ -121,9 +124,6 @@ module Map = struct
     in
     let other =
       [ "-verbose"       , values []
-      ; "pa_cpp"         , strings (context.c_compiler :: cflags
-                                    @ ["-undef"; "-traditional";
-                                       "-x"; "c"; "-E"])
       ; "ocaml_bin"      , values [Dir context.ocaml_bin]
       ; "ocaml_version"  , string context.version_string
       ; "ocaml_where"    , string (Path.to_string context.stdlib_dir)

@@ -1,5 +1,5 @@
-next
-----
+1.0.0 (10/07/2018)
+------------------
 
 - Do not load the user configuration file when running inside dune
   (#700 @diml)

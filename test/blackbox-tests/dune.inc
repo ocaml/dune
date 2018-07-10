@@ -596,6 +596,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name reporting-of-cycles)
+ (deps (package dune) (source_tree test-cases/reporting-of-cycles))
+ (action
+  (chdir
+   test-cases/reporting-of-cycles
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name scope-bug)
  (deps (package dune) (source_tree test-cases/scope-bug))
  (action
@@ -763,6 +771,7 @@
   (alias promote)
   (alias quoting)
   (alias redirections)
+  (alias reporting-of-cycles)
   (alias scope-bug)
   (alias scope-ppx-bug)
   (alias select)
@@ -840,6 +849,7 @@
   (alias promote)
   (alias quoting)
   (alias redirections)
+  (alias reporting-of-cycles)
   (alias scope-bug)
   (alias scope-ppx-bug)
   (alias select)

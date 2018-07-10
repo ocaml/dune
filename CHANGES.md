@@ -146,6 +146,9 @@ next
 - New syntax for naming dependencies: `(deps (:x a b) (:y (glob_files *.c*)))`.
   This replaces the use for `${<}` in dune files. (#950, @diml, @rgrinberg)
 
+- Fix detection of dynamic cycles, which in particular may appear when
+  using `(package ..)` dependencies (#988, @diml)
+
 1.0+beta20 (10/04/2018)
 -----------------------
 

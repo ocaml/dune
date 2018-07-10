@@ -135,10 +135,10 @@
   `# JBUILDER_GEN`. (#958, @rgrinberg)
 
 - Rename the following variables in dune files:
-  `SCOPE_ROOT` to `project_root`
-  `@` to `targets`
-  `<` to `first-dep`
-  `^` to `deps`
+  + `SCOPE_ROOT` to `project_root`
+  + `@` to `targets`
+  + `^` to `deps`
+  `<` was renamed in this PR and latter deleted in favor or named dependencies.
   (#957, @rgrinberg)
 
 - Rename `ROOT` to `workspace_root` in dune files (#993, @diml)

@@ -195,32 +195,18 @@ module Var = struct
 
   let loc (t : t) = t.loc
 
-  type kind =
-    | Var of string
-    | Macro of string * string
-
-  let destruct { loc = _ ; name; payload; syntax = _ } =
-    match payload with
-    | None -> Var name
-    | Some p -> Macro (name, p)
-
   let name { name; _ } = name
 
   let full_name t =
-    match destruct t with
-    | Var s -> s
-    | Macro (k, v) -> k ^ ":" ^ v
+    match t.payload with
+    | None -> t.name
+    | Some v -> t.name ^ ":" ^ v
 
   let payload t = t.payload
 
   let to_string = string_of_var
 
-  let pp fmt t = Format.pp_print_string fmt (to_string t)
-
   let sexp_of_t t = Sexp.atom (to_string t)
-
-  let with_payload t ~payload =
-    { t with payload }
 
   let with_name t ~name =
     { t with name }

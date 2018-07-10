@@ -1,3 +1,6 @@
 Dependencies are allowed :patterns
 
-  $ dune build
+  $ dune runtest
+  < = foo
+  foo = a b
+  baz = foo

@@ -3,3 +3,13 @@
  (name runtest)
  (deps (:root foo))
  (action (echo %{root})))
+
+(alias
+ (name   runtest)
+ (deps   (:read x))
+ (action (progn
+          (echo %{read})
+          (echo %{read:y}))))
+
+(rule (with-stdout-to x (echo "a\n")))
+(rule (with-stdout-to y (echo "b\n")))

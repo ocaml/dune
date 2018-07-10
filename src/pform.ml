@@ -1,73 +1,93 @@
 open Import
 
-type t =
-  | Values of Value.t list
-  | Project_root
-  | First_dep
-  | Deps
-  | Targets
-  | Named_local
-  | Exe
-  | Dep
-  | Bin
-  | Lib
-  | Libexec
-  | Lib_available
-  | Version
-  | Read
-  | Read_strings
-  | Read_lines
-  | Path_no_dep
-  | Ocaml_config
+module Var = struct
+  type t =
+    | Values of Value.t list
+    | Project_root
+    | First_dep
+    | Deps
+    | Targets
+    | Named_local
+end
 
-type with_info =
-  | No_info    of t
-  | Since      of t * Syntax.Version.t
-  | Deleted_in of t * Syntax.Version.t * string option
+module Macro = struct
+  type t =
+    | Exe
+    | Dep
+    | Bin
+    | Lib
+    | Libexec
+    | Lib_available
+    | Version
+    | Read
+    | Read_strings
+    | Read_lines
+    | Path_no_dep
+    | Ocaml_config
+end
+
+module Expansion = struct
+  type t =
+    | Var   of Var.t
+    | Macro of Macro.t * string
+end
+
+type 'a t =
+  | No_info    of 'a
+  | Since      of 'a * Syntax.Version.t
+  | Deleted_in of 'a * Syntax.Version.t * string option
   | Renamed_in of Syntax.Version.t * string
 
+let values v                       = No_info (Var.Values v)
+let renamed_in ~new_name ~version  = Renamed_in (version, new_name)
+let deleted_in ~version ?repl kind = Deleted_in (kind, version, repl)
+let since ~version v               = Since (v, version)
+
 module Map = struct
-  type t = with_info String.Map.t
+  type 'a map = 'a t String.Map.t
 
-  let values v                       = No_info (Values v)
-  let renamed_in ~new_name ~version  = Renamed_in (version, new_name)
-  let deleted_in ~version ?repl kind = Deleted_in (kind, version, repl)
-  let since ~version v               = Since (v, version)
+  type t =
+    { vars   : Var.t   map
+    ; macros : Macro.t map
+    }
 
-  let static =
-    let macro x = No_info x in
-    [ "targets", since ~version:(1, 0) Targets
-    ; "deps", since ~version:(1, 0) Deps
-    ; "project_root", since ~version:(1, 0) Project_root
+  let static_vars =
+    String.Map.of_list_exn
+      [ "targets", since ~version:(1, 0) Var.Targets
+      ; "deps", since ~version:(1, 0) Var.Deps
+      ; "project_root", since ~version:(1, 0) Var.Project_root
 
-    ; "<", deleted_in First_dep ~version:(1, 0)
-             ~repl:"Use a named dependency instead:\
-                    \n\
-                    \n\  (deps (:x <dep>) ...)\
-                    \n\   ... %{x} ..."
-    ; "@", renamed_in ~version:(1, 0) ~new_name:"targets"
-    ; "^", renamed_in ~version:(1, 0) ~new_name:"deps"
-    ; "SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root"
+      ; "<", deleted_in Var.First_dep ~version:(1, 0)
+               ~repl:"Use a named dependency instead:\
+                      \n\
+                      \n\  (deps (:x <dep>) ...)\
+                      \n\   ... %{x} ..."
+      ; "@", renamed_in ~version:(1, 0) ~new_name:"targets"
+      ; "^", renamed_in ~version:(1, 0) ~new_name:"deps"
+      ; "SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root"
+      ]
 
-    ; "exe", macro Exe
-    ; "bin", macro Bin
-    ; "lib", macro Lib
-    ; "libexec", macro Libexec
-    ; "lib-available", macro Lib_available
-    ; "version", macro Version
-    ; "read", macro Read
-    ; "read-lines", macro Read_lines
-    ; "read-strings", macro Read_strings
+  let macros =
+    let macro (x : Macro.t) = No_info x in
+    String.Map.of_list_exn
+      [ "exe", macro Exe
+      ; "bin", macro Bin
+      ; "lib", macro Lib
+      ; "libexec", macro Libexec
+      ; "lib-available", macro Lib_available
+      ; "version", macro Version
+      ; "read", macro Read
+      ; "read-lines", macro Read_lines
+      ; "read-strings", macro Read_strings
 
-    ; "dep", since ~version:(1, 0) Dep
+      ; "dep", since ~version:(1, 0) Macro.Dep
 
-    ; "path", renamed_in ~version:(1, 0) ~new_name:"dep"
-    ; "findlib", renamed_in ~version:(1, 0) ~new_name:"lib"
+      ; "path", renamed_in ~version:(1, 0) ~new_name:"dep"
+      ; "findlib", renamed_in ~version:(1, 0) ~new_name:"lib"
 
-    ; "path-no-dep", deleted_in ~version:(1, 0) Path_no_dep
-    ; "ocaml-config", macro Ocaml_config
-    ]
-    |> String.Map.of_list_exn
+      ; "path-no-dep", deleted_in ~version:(1, 0) Macro.Path_no_dep
+      ; "ocaml-config", macro Ocaml_config
+      ]
 
   let create ~(context : Context.t) ~cxx_flags =
     let ocamlopt =
@@ -117,67 +137,96 @@ module Map = struct
       ; "profile"        , string context.profile
       ]
     in
-    String.Map.superpose
-      static
-      (String.Map.of_list_exn
-         (List.concat
-            [ lowercased
-            ; uppercased
-            ; other
-            ]))
+    { vars =
+        String.Map.superpose
+          static_vars
+          (String.Map.of_list_exn
+             (List.concat
+                [ lowercased
+                ; uppercased
+                ; other
+                ]))
+    ; macros
+    }
 
-  let superpose = String.Map.superpose
+  let superpose a b =
+    { vars   = String.Map.superpose a.vars b.vars
+    ; macros = String.Map.superpose a.macros b.macros
+    }
 
-  let rec expand t ~syntax_version ~pform =
+  let rec expand map ~syntax_version ~pform =
+    let open Option.O in
     let name = String_with_vars.Var.name pform in
-    Option.bind (String.Map.find t name) ~f:(fun v ->
-      let describe = String_with_vars.Var.describe in
-      match v with
-      | No_info v -> Some v
-      | Since (v, min_version) ->
-        if syntax_version >= min_version then
-          Some v
-        else
-          Syntax.Error.since (String_with_vars.Var.loc pform)
-            Stanza.syntax min_version
+    String.Map.find map name >>= fun v ->
+    let describe = String_with_vars.Var.describe in
+    match v with
+    | No_info v -> Some v
+    | Since (v, min_version) ->
+      if syntax_version >= min_version then
+        Some v
+      else
+        Syntax.Error.since (String_with_vars.Var.loc pform)
+          Stanza.syntax min_version
+          ~what:(describe pform)
+    | Renamed_in (in_version, new_name) -> begin
+        if syntax_version >= in_version then
+          Syntax.Error.renamed_in (String_with_vars.Var.loc pform)
+            Stanza.syntax syntax_version
             ~what:(describe pform)
-      | Renamed_in (in_version, new_name) -> begin
-          if syntax_version >= in_version then
-            Syntax.Error.renamed_in (String_with_vars.Var.loc pform)
-              Stanza.syntax syntax_version
-              ~what:(describe pform)
-              ~to_:(describe
-                      (String_with_vars.Var.with_name pform ~name:new_name))
-          else
-            expand t ~syntax_version:in_version
-              ~pform:(String_with_vars.Var.with_name pform ~name:new_name)
-        end
-      | Deleted_in (v, in_version, repl) ->
-        if syntax_version < in_version then
-          Some v
+            ~to_:(describe
+                    (String_with_vars.Var.with_name pform ~name:new_name))
         else
-          Syntax.Error.deleted_in (String_with_vars.Var.loc pform)
-            Stanza.syntax syntax_version ~what:(describe pform) ?repl)
+          expand map ~syntax_version:in_version
+            ~pform:(String_with_vars.Var.with_name pform ~name:new_name)
+      end
+    | Deleted_in (v, in_version, repl) ->
+      if syntax_version < in_version then
+        Some v
+      else
+        Syntax.Error.deleted_in (String_with_vars.Var.loc pform)
+          Stanza.syntax syntax_version ~what:(describe pform) ?repl
 
-  let empty = String.Map.empty
+  let expand t ~syntax_version ~pform =
+    match String_with_vars.Var.payload pform with
+    | None ->
+      Option.map (expand t.vars ~syntax_version ~pform) ~f:(fun x ->
+        Expansion.Var x)
+    | Some payload ->
+      Option.map (expand t.macros ~syntax_version ~pform) ~f:(fun x ->
+        Expansion.Macro (x, payload))
 
-  let singleton k v = String.Map.singleton k (No_info v)
+  let empty =
+    { vars   = String.Map.empty
+    ; macros = String.Map.empty
+    }
+
+  let singleton k v =
+    { vars   = String.Map.singleton k (No_info v)
+    ; macros = String.Map.empty
+    }
 
   let of_list_exn pforms =
-    List.map ~f:(fun (k, x) -> (k, No_info x)) pforms
-    |> String.Map.of_list_exn
+    { vars = List.map ~f:(fun (k, x) -> (k, No_info x)) pforms
+             |> String.Map.of_list_exn
+    ; macros = String.Map.empty
+    }
 
-  let of_bindings =
-    Jbuild.Bindings.fold ~f:(fun x acc ->
-      match x with
-      | Unnamed _ -> acc
-      | Named (s, _) -> String.Map.add acc s (No_info Named_local)
-    ) ~init:empty
+  let of_bindings bindings =
+    { vars =
+        Jbuild.Bindings.fold bindings ~init:String.Map.empty ~f:(fun x acc ->
+          match x with
+          | Unnamed _ -> acc
+          | Named (s, _) -> String.Map.add acc s (No_info Var.Named_local))
+    ; macros = String.Map.empty
+    }
 
   let input_file path =
-    let value = Values (Value.L.paths [path]) in
-    [ "input-file", since ~version:(1, 0) value
-    ; "<", renamed_in ~new_name:"input-file" ~version:(1, 0)
-    ]
-    |> String.Map.of_list_exn
+    let value = Var.Values (Value.L.paths [path]) in
+    { vars =
+        String.Map.of_list_exn
+          [ "input-file", since ~version:(1, 0) value
+          ; "<", renamed_in ~new_name:"input-file" ~version:(1, 0)
+          ]
+    ; macros = String.Map.empty
+    }
 end

@@ -85,8 +85,7 @@ let installed_libs t = t.installed_libs
 let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
-let expand_ocaml_config t pform =
-  let name = Option.value_exn (String_with_vars.Var.payload pform) in
+let expand_ocaml_config t pform name =
   match String.Map.find t.ocaml_config name with
   | Some x -> x
   | None ->
@@ -101,9 +100,9 @@ let (expand_vars_string, expand_vars_path) =
        | None -> Pform.Map.expand t.pforms ~syntax_version ~pform
        | Some _ as x -> x)
       |> Option.map ~f:(function
-        | Pform.Values l     -> l
-        | Ocaml_config -> expand_ocaml_config t pform
-        | Project_root -> [Value.Dir (Scope.root scope)]
+        | Pform.Expansion.Var (Values l) -> l
+        | Macro (Ocaml_config, s) -> expand_ocaml_config t pform s
+        | Var Project_root -> [Value.Dir (Scope.root scope)]
         | _ ->
           Loc.fail (String_with_vars.Var.loc pform)
             "%s isn't allowed in this position"
@@ -618,15 +617,14 @@ module Action = struct
     let expand pform syntax_version =
       let loc = String_with_vars.Var.loc pform in
       let key = String_with_vars.Var.full_name pform in
-      let s = Option.value (String_with_vars.Var.payload pform) ~default:"" in
       let res =
         Pform.Map.expand bindings ~syntax_version ~pform
         |> Option.bind ~f:(function
-          | Pform.Values l     -> Some l
-          | Ocaml_config       -> Some (expand_ocaml_config sctx pform)
-          | Project_root       -> Some [Value.Dir (Scope.root scope)]
-          | First_dep | Deps | Named_local -> None
-          | Targets ->
+          | Pform.Expansion.Var (Values l) -> Some l
+          | Macro (Ocaml_config, s) -> Some (expand_ocaml_config sctx pform s)
+          | Var Project_root -> Some [Value.Dir (Scope.root scope)]
+          | Var (First_dep | Deps | Named_local) -> None
+          | Var Targets ->
             begin match targets_written_by_user with
             | Infer ->
               Loc.fail loc "You cannot use %s with inferred rules."
@@ -637,9 +635,9 @@ module Action = struct
             | Static l ->
               Some (Value.L.dirs l) (* XXX hack to signal no dep *)
             end
-          | Exe -> Some (path_exp (map_exe (Path.relative dir s)))
-          | Dep -> Some (path_exp (Path.relative dir s))
-          | Bin -> begin
+          | Macro (Exe, s) -> Some (path_exp (map_exe (Path.relative dir s)))
+          | Macro (Dep, s) -> Some (path_exp (Path.relative dir s))
+          | Macro (Bin, s) -> begin
               let sctx = host sctx in
               match Artifacts.binary (artifacts sctx) s with
               | Ok path -> Some (path_exp path)
@@ -647,7 +645,7 @@ module Action = struct
                 add_fail acc
                   ({ fail = fun () -> Action.Prog.Not_found.raise e })
             end
-          | Lib -> begin
+          | Macro (Lib, s) -> begin
               let lib_dep, file = parse_lib_file ~loc s in
               add_lib_dep acc lib_dep dep_kind;
               match
@@ -656,7 +654,7 @@ module Action = struct
               | Ok path -> Some (path_exp path)
               | Error fail -> add_fail acc fail
             end
-          | Libexec -> begin
+          | Macro (Libexec, s) -> begin
               let sctx = host sctx in
               let lib_dep, file = parse_lib_file ~loc s in
               add_lib_dep acc lib_dep dep_kind;
@@ -679,13 +677,13 @@ module Action = struct
                   add_ddep acc ~key dep
                 end
             end
-          | Lib_available -> begin
+          | Macro (Lib_available, s) -> begin
               let lib = s in
               add_lib_dep acc lib Optional;
               Some (str_exp (string_of_bool (
                 Lib.DB.available (Scope.libs scope) lib)))
             end
-          | Version -> begin
+          | Macro (Version, s) -> begin
               match Package.Name.Map.find (Scope.project scope).packages
                       (Package.Name.of_string s) with
               | Some p ->
@@ -701,7 +699,7 @@ module Action = struct
                     "Package %S doesn't exist in the current project." s
                 }
             end
-          | Read -> begin
+          | Macro (Read, s) -> begin
               let path = Path.relative dir s in
               let data =
                 Build.contents path
@@ -709,7 +707,7 @@ module Action = struct
               in
               add_ddep acc ~key data
             end
-          | Read_lines -> begin
+          | Macro (Read_lines, s) -> begin
               let path = Path.relative dir s in
               let data =
                 Build.lines_of path
@@ -717,7 +715,7 @@ module Action = struct
               in
               add_ddep acc ~key data
             end
-          | Read_strings -> begin
+          | Macro (Read_strings, s) -> begin
               let path = Path.relative dir s in
               let data =
                 Build.strings path
@@ -725,7 +723,7 @@ module Action = struct
               in
               add_ddep acc ~key data
             end
-          | Path_no_dep -> Some [Value.Dir (Path.relative dir s)])
+          | Macro (Path_no_dep, s) -> Some [Value.Dir (Path.relative dir s)])
       in
       Option.iter res ~f:(fun v ->
         acc.sdeps <- Path.Set.union
@@ -746,7 +744,7 @@ module Action = struct
       | Some _ as opt -> opt
       | None ->
         Option.map (Pform.Map.expand bindings ~syntax_version ~pform) ~f:(function
-          | Named_local ->
+          | Var Named_local ->
             begin match Jbuild.Bindings.find deps_written_by_user key with
             | None ->
               Exn.code_error "Local named variable not present in named deps"
@@ -756,11 +754,11 @@ module Action = struct
                 ]
             | Some x -> Value.L.paths x
             end
-          | Deps ->
+          | Var Deps ->
             deps_written_by_user
             |> Jbuild.Bindings.to_list
             |> Value.L.paths
-          | First_dep ->
+          | Var First_dep ->
             begin match deps_written_by_user with
             | Named _ :: _ ->
               (* This case is not possible: ${<} only exist in jbuild

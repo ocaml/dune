@@ -35,62 +35,6 @@ end
 let files_in_source_tree_to_delete () =
   Promoted_to_delete.load ()
 
-module Dependency_path = struct
-  type rule_info =
-    { (* Reason why this rule was visited *)
-      requested_file : Path.t
-    ; (* All targets of the rule *)
-      targets        : Path.Set.t
-    }
-
-  type t =
-    { dependency_path : rule_info list
-    ; (* Union of all [targets] fields in [dependency_path]. Depending on any of these
-         means that there is a cycle. *)
-      targets_seen    : Path.Set.t
-    }
-
-  let var = Fiber.Var.create ()
-
-  let empty =
-    { dependency_path = []
-    ; targets_seen    = Path.Set.empty
-    }
-
-  let dependency_cycle last dep_path =
-    let rec build_loop acc dep_path =
-      match dep_path with
-      | [] -> assert false
-      |  { requested_file; targets } :: dep_path ->
-        if Path.Set.mem targets last then
-          last :: acc
-        else
-          build_loop (requested_file :: acc) dep_path
-    in
-    let loop = build_loop [last] dep_path in
-    die "Dependency cycle between the following files:\n    %s"
-      (String.concat ~sep:"\n--> "
-         (List.map loop ~f:Path.to_string))
-
-  let push requested_file ~targets ~f =
-    Fiber.Var.get var >>= fun x ->
-    let t = Option.value x ~default:empty in
-    if Path.Set.mem t.targets_seen requested_file then
-      dependency_cycle requested_file t.dependency_path;
-    let dependency_path =
-      { requested_file; targets } :: t.dependency_path
-    in
-    let t =
-      { dependency_path
-      ; targets_seen = Path.Set.union targets t.targets_seen
-      }
-    in
-    let on_error exn =
-      Dep_path.reraise exn (Path requested_file)
-    in
-    Fiber.Var.set var t (Fiber.with_error_handler f ~on_error)
-end
-
 module Exec_status = struct
   type rule_evaluation = (Action.t * Path.Set.t) Fiber.Future.t
   type rule_execution = unit Fiber.Future.t
@@ -172,6 +116,11 @@ module Internal_rule = struct
     ; loc              : Loc.t option
     ; dir              : Path.t
     ; mutable exec     : Exec_status.t
+    ; (* Reverse dependencies discovered so far, labelled by the
+         requested target *)
+      mutable rev_deps : (Path.t * t) list
+    ; (* Transitive reverse dependencies discovered so far. *)
+      mutable transitive_rev_deps : Id.Set.t
     }
 
   let compare a b = Id.compare a.id b.id
@@ -183,6 +132,60 @@ module Internal_rule = struct
        [if_file_exists] are resolved inside the [Build.t] value. *)
     ignore (Lazy.force t.static_deps : Build_interpret.Static_deps.t);
     Build_interpret.lib_deps t.build
+
+  (* Represent the build goal given by the user. This rule is never
+     actually executed and is only used starting point of all
+     dependency paths. *)
+  let root =
+    { id          = Id.gen ()
+    ; static_deps = lazy { rule_deps   = Path.Set.empty
+                         ; action_deps = Path.Set.empty
+                         }
+    ; targets     = Path.Set.empty
+    ; context     = None
+    ; build       = Build.return (Action.Progn [])
+    ; mode        = Standard
+    ; loc         = None
+    ; dir         = Path.root
+    ; exec        = Not_started { eval_rule = (fun _ -> assert false)
+                                ; exec_rule = (fun _ -> assert false)
+                                }
+    ; rev_deps    = []
+    ; transitive_rev_deps = Id.Set.empty
+    }
+
+  let dependency_cycle ~last ~last_rev_dep ~last_requested_file =
+    let rec build_loop acc t =
+      if t.id = last.id then
+        last_requested_file :: acc
+      else
+        let requested_file, rev_dep =
+          Option.value_exn
+            (List.find t.rev_deps ~f:(fun (_, t) ->
+               Id.Set.mem t.transitive_rev_deps last.id))
+        in
+        build_loop (requested_file :: acc) rev_dep
+    in
+    let loop = build_loop [last_requested_file] last_rev_dep in
+    die "Dependency cycle between the following files:\n    %s"
+      (String.concat ~sep:"\n--> "
+         (List.map loop ~f:Path.to_string))
+
+  let dep_path_var = Fiber.Var.create ()
+
+  let push_rev_dep t requested_file ~f =
+    Fiber.Var.get dep_path_var >>= fun x ->
+    let rev_dep = Option.value x ~default:root in
+    if Id.Set.mem rev_dep.transitive_rev_deps t.id then
+      dependency_cycle ~last:t ~last_rev_dep:rev_dep
+        ~last_requested_file:requested_file;
+    t.rev_deps <- (requested_file, rev_dep) :: t.rev_deps;
+    t.transitive_rev_deps <-
+      Id.Set.union t.transitive_rev_deps rev_dep.transitive_rev_deps;
+    let on_error exn =
+      Dep_path.reraise exn (Path requested_file)
+    in
+    Fiber.Var.set dep_path_var t (Fiber.with_error_handler f ~on_error)
 end
 
 module File_kind = struct
@@ -827,8 +830,9 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     t.hook Rule_completed
   in
   let rule =
+    let id = Internal_rule.Id.gen () in
     { Internal_rule.
-      id = Internal_rule.Id.gen ()
+      id
     ; static_deps
     ; targets
     ; build
@@ -837,6 +841,8 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
     ; mode
     ; loc
     ; dir
+    ; transitive_rev_deps = Internal_rule.Id.Set.singleton id
+    ; rev_deps = []
     }
   in
   create_file_specs t target_specs rule ~copy_source
@@ -1117,7 +1123,7 @@ and wait_for_file t fn =
       die "File unavailable: %s" (Path.to_string_maybe_quoted fn)
 
 and wait_for_file_found fn (File_spec.T file) =
-  Dependency_path.push fn ~targets:file.rule.targets ~f:(fun () ->
+  Internal_rule.push_rev_dep file.rule fn ~f:(fun () ->
     match file.rule.exec with
     | Not_started { eval_rule; exec_rule } ->
       Fiber.fork eval_rule
@@ -1391,18 +1397,18 @@ let build_rules_internal ?(recursive=false) t ~request =
       Fiber.return ()
     else begin
       rules_seen := Rule.Id.Set.add !rules_seen ir.id;
-      (match ir.exec with
-       | Running { rule_evaluation; _ }
-       | Evaluating_rule { rule_evaluation; _ } ->
-         Fiber.return rule_evaluation
-       | Not_started { eval_rule; exec_rule } ->
-         Fiber.fork (fun () ->
-           Dependency_path.push fn ~targets:ir.targets ~f:eval_rule)
-         >>| fun rule_evaluation ->
-         ir.exec <- Evaluating_rule { rule_evaluation
-                                    ; exec_rule
-                                    };
-         rule_evaluation)
+      (Internal_rule.push_rev_dep ir fn ~f:(fun () ->
+         match ir.exec with
+         | Running { rule_evaluation; _ }
+         | Evaluating_rule { rule_evaluation; _ } ->
+           Fiber.return rule_evaluation
+         | Not_started { eval_rule; exec_rule } ->
+           Fiber.fork eval_rule
+           >>| fun rule_evaluation ->
+           ir.exec <- Evaluating_rule { rule_evaluation
+                                      ; exec_rule
+                                      };
+           rule_evaluation))
       >>= fun rule_evaluation ->
       Fiber.fork (fun () ->
         Fiber.Future.wait rule_evaluation

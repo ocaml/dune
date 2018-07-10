@@ -160,9 +160,9 @@ module Internal_rule = struct
         last_requested_file :: acc
       else
         let requested_file, rev_dep =
-          Option.value_exn
-            (List.find t.rev_deps ~f:(fun (_, t) ->
-               Id.Set.mem t.transitive_rev_deps last.id))
+          List.find_exn
+            t.rev_deps
+            ~f:(fun (_, t) -> Id.Set.mem t.transitive_rev_deps last.id)
         in
         build_loop (requested_file :: acc) rev_dep
     in

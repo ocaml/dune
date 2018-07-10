@@ -77,6 +77,11 @@ let rec find l ~f =
   | [] -> None
   | x :: l -> if f x then Some x else find l ~f
 
+let find_exn l ~f =
+  match find l ~f with
+  | Some x -> x
+  | None -> invalid_arg "List.find_exn"
+
 let rec last = function
   | [] -> None
   | [x] -> Some x

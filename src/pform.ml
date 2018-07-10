@@ -60,8 +60,8 @@ module Map = struct
       ; "<", deleted_in Var.First_dep ~version:(1, 0)
                ~repl:"Use a named dependency instead:\
                       \n\
-                      \n\  (deps (:x <dep>) ...)\
-                      \n\   ... %{x} ..."
+                      \n  (deps (:x <dep>) ...)\
+                      \n   ... %{x} ..."
       ; "@", renamed_in ~version:(1, 0) ~new_name:"targets"
       ; "^", renamed_in ~version:(1, 0) ~new_name:"deps"
       ; "SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root"

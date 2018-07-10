@@ -181,9 +181,10 @@ let find_root () =
       List.fold_left l ~init:max_int ~f:(fun acc (prio, _, _) ->
         min acc prio)
     in
-    match List.find l ~f:(fun (prio, _, _) -> prio = lowest_priority) with
-    | None -> assert false
-    | Some (_, dir, to_cwd) -> (dir, to_cwd)
+    let (_, dir, to_cwd) =
+      List.find_exn l ~f:(fun (prio, _, _) -> prio = lowest_priority)
+    in
+    (dir, to_cwd)
 
 let package_name =
   Arg.conv ((fun p -> Ok (Package.Name.of_string p)), Package.Name.pp)
@@ -896,11 +897,7 @@ let external_lib_deps =
              in
              if only_missing then begin
                let context =
-                 match
-                   List.find setup.contexts ~f:(fun c -> c.name = context_name)
-                 with
-                 | None -> assert false
-                 | Some c -> c
+                 List.find_exn setup.contexts ~f:(fun c -> c.name = context_name)
                in
                let missing =
                  String.Map.filteri externals ~f:(fun name _ ->

@@ -1062,18 +1062,26 @@ module Gen(P : Install_rules.Params) = struct
     List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Menhir.T m ->
-        let cctx =
-          match
-            List.find_map (Menhir_rules.module_names m)
-              ~f:(Modules_partitioner.find modules_partitioner)
-          with
-          | None ->
-            Loc.fail m.loc
-              "I can't determine what library/executable the files produced \
-               by this stanza are part of."
-          | Some cctx -> cctx
-        in
-        Menhir_rules.gen_rules cctx m
+        begin match
+          List.find_map (Menhir_rules.module_names m)
+            ~f:(Modules_partitioner.find modules_partitioner)
+        with
+        | None ->
+          (* This happens often when passing a [-p ...] option that
+             hides a library *)
+          let targets =
+            List.map (Menhir_rules.targets m) ~f:(Path.relative ctx_dir)
+          in
+          SC.add_rule sctx
+            (Build.fail ~targets
+               { fail = fun () ->
+                   Loc.fail m.loc
+                     "I can't determine what library/executable the files \
+                      produced by this stanza are part of."
+               })
+        | Some cctx ->
+          Menhir_rules.gen_rules cctx m
+        end
       | _ -> ());
     Modules_partitioner.emit_errors modules_partitioner
 

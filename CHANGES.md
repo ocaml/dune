@@ -1,3 +1,10 @@
+next
+----
+
+- Fix lookup of command line specified files when `--root` is given. Previously,
+  passing in `--root` in conjunction with `--workspace` or `--config` would not
+  work correctly (#997, @rgrinberg)
+
 1.0.0 (10/07/2018)
 ------------------
 

@@ -29,6 +29,9 @@ module Arg = struct
   end
 
   let path = Path.conv
+
+  [@@@ocaml.warning "-32"]
+  let file = path
 end
 
 type common =

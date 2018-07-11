@@ -7,12 +7,39 @@ open Fiber.O
    bootstrap, so we set this reference here *)
 let () = suggest_function := Cmdliner_suggest.value
 
+module Arg = struct
+  include Arg
+
+  let package_name =
+    Arg.conv ((fun p -> Ok (Package.Name.of_string p)), Package.Name.pp)
+
+  module Path : sig
+    type t
+    val path : t -> Path.t
+    val arg : t -> string
+
+    val conv : t conv
+  end = struct
+    type t = string
+
+    let path p = Path.of_filename_relative_to_initial_cwd p
+    let arg s = s
+
+    let conv = Arg.conv ((fun p -> Ok p), Format.pp_print_string)
+  end
+
+  let path = Path.conv
+
+  [@@@ocaml.warning "-32"]
+  let file = path
+end
+
 type common =
   { debug_dep_path        : bool
   ; debug_findlib         : bool
   ; debug_backtraces      : bool
   ; profile               : string option
-  ; workspace_file        : string option
+  ; workspace_file        : Arg.Path.t option
   ; root                  : string
   ; target_prefix         : string
   ; only_packages         : Package.Name.Set.t option
@@ -83,8 +110,7 @@ module Main = struct
   let setup ~log ?external_lib_deps_mode common =
     setup
       ~log
-      ?workspace_file:(
-        Option.map common.workspace_file ~f:Path.of_string)
+      ?workspace_file:(Option.map ~f:Arg.Path.path common.workspace_file)
       ?only_packages:common.only_packages
       ?external_lib_deps_mode
       ?x:common.x
@@ -186,9 +212,6 @@ let find_root () =
     in
     (dir, to_cwd)
 
-let package_name =
-  Arg.conv ((fun p -> Ok (Package.Name.of_string p)), Package.Name.pp)
-
 let common_footer =
   `Blocks
     [ `S "BUGS"
@@ -255,7 +278,7 @@ let common =
     let orig_args =
       List.concat
         [ dump_opt "--profile" profile
-        ; dump_opt "--workspace" workspace_file
+        ; dump_opt "--workspace" (Option.map ~f:Arg.Path.arg workspace_file)
         ; orig
         ]
     in
@@ -432,7 +455,7 @@ let common =
   in
   let workspace_file =
     Arg.(value
-         & opt (some file) None
+         & opt (some path) None
          & info ["workspace"] ~docs ~docv:"FILE"
              ~doc:"Use this specific workspace file instead of looking it up.")
   in
@@ -469,7 +492,7 @@ let common =
     let config_file =
       let config_file =
         Arg.(value
-             & opt (some file) None
+             & opt (some path) None
              & info ["config-file"] ~docs ~docv:"FILE"
                  ~doc:"Load this configuration file instead of the default one.")
       in
@@ -482,7 +505,7 @@ let common =
       let merge config_file no_config =
         match config_file, no_config with
         | None   , false -> `Ok (None                , Default)
-        | Some fn, false -> `Ok (Some "--config-file", This (Path.of_string fn))
+        | Some fn, false -> `Ok (Some "--config-file", This (Arg.Path.path fn))
         | None   , true  -> `Ok (Some "--no-config"  , No_config)
         | Some _ , true  -> incompatible "--no-config" "--config-file"
       in

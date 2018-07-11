@@ -1,5 +1,4 @@
   $ dune build @runtest @install-file --display short
-  Info: creating file dune-project with this contents: (lang dune 1.0)
          refmt bar.re.ml
       ocamldep .rlib.objs/bar.re.ml.d
       ocamldep pp/.reasononlypp.eobjs/reasononlypp.ml.d

@@ -422,7 +422,12 @@ let setup_reason_rules sctx ~dir (m : Module.t) =
     match f.syntax with
     | OCaml  -> f
     | Reason ->
-      let ml = Module.File.to_ocaml f in
+      let ml =
+        { Module.File.
+          syntax = OCaml
+        ; name   = f.name ^ ".ast"
+        }
+      in
       SC.add_rule sctx (rule f.name ml.name);
       ml)
 

@@ -12,7 +12,7 @@ type common =
   ; debug_findlib         : bool
   ; debug_backtraces      : bool
   ; profile               : string option
-  ; workspace_file        : string option
+  ; workspace_file        : Path.t option
   ; root                  : string
   ; target_prefix         : string
   ; only_packages         : Package.Name.Set.t option
@@ -83,9 +83,7 @@ module Main = struct
   let setup ~log ?external_lib_deps_mode common =
     setup
       ~log
-      ?workspace_file:(
-        Option.map common.workspace_file
-          ~f:Path.of_filename_relative_to_initial_cwd)
+      ?workspace_file:common.workspace_file
       ?only_packages:common.only_packages
       ?external_lib_deps_mode
       ?x:common.x
@@ -190,6 +188,11 @@ let find_root () =
 let package_name =
   Arg.conv ((fun p -> Ok (Package.Name.of_string p)), Package.Name.pp)
 
+let path_arg =
+  Arg.conv ((fun p -> Ok (Path.of_filename_relative_to_initial_cwd p))
+           , Path.pp
+           )
+
 let common_footer =
   `Blocks
     [ `S "BUGS"
@@ -256,7 +259,7 @@ let common =
     let orig_args =
       List.concat
         [ dump_opt "--profile" profile
-        ; dump_opt "--workspace" workspace_file
+        ; dump_opt "--workspace" (Option.map ~f:Path.to_string workspace_file)
         ; orig
         ]
     in
@@ -433,7 +436,7 @@ let common =
   in
   let workspace_file =
     Arg.(value
-         & opt (some file) None
+         & opt (some path_arg) None
          & info ["workspace"] ~docs ~docv:"FILE"
              ~doc:"Use this specific workspace file instead of looking it up.")
   in
@@ -470,7 +473,7 @@ let common =
     let config_file =
       let config_file =
         Arg.(value
-             & opt (some file) None
+             & opt (some path_arg) None
              & info ["config-file"] ~docs ~docv:"FILE"
                  ~doc:"Load this configuration file instead of the default one.")
       in
@@ -483,7 +486,7 @@ let common =
       let merge config_file no_config =
         match config_file, no_config with
         | None   , false -> `Ok (None                , Default)
-        | Some fn, false -> `Ok (Some "--config-file", This (Path.of_string fn))
+        | Some fn, false -> `Ok (Some "--config-file", This fn)
         | None   , true  -> `Ok (Some "--no-config"  , No_config)
         | Some _ , true  -> incompatible "--no-config" "--config-file"
       in

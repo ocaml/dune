@@ -155,9 +155,25 @@ module Map = struct
     ; macros = String.Map.superpose a.macros b.macros
     }
 
+  let parse_bang var : bool * string =
+    match String.drop_prefix var ~prefix:"!" with
+    | None -> (false, var)
+    | Some var -> (true, var)
+
   let rec expand map ~syntax_version ~pform =
     let open Option.O in
-    let name = String_with_vars.Var.name pform in
+    let name =
+      let name = String_with_vars.Var.name pform in
+      if syntax_version >= (1, 0) then
+        name
+      else
+        let (has_bang, name) = parse_bang name in
+        if has_bang then
+          Loc.warn (String_with_vars.Var.loc pform)
+            "The use of the variable prefix '!' is deprecated, \
+             simply use '${%s}'@." name;
+        name
+    in
     String.Map.find map name >>= fun v ->
     let describe = String_with_vars.Var.describe in
     match v with

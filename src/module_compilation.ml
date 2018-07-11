@@ -36,7 +36,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
   let obj_dir  = CC.obj_dir       cctx in
   let ctx      = SC.context       sctx in
   Option.iter (Mode.of_cm_kind cm_kind |> Context.compiler ctx) ~f:(fun compiler ->
-    Option.iter (Module.cm_source ~dir m cm_kind) ~f:(fun src ->
+    Option.iter (Module.cm_source m cm_kind) ~f:(fun src ->
       let ml_kind = Cm_kind.source cm_kind in
       let dst = Module.cm_file_unsafe m ~obj_dir cm_kind in
       let extra_args, extra_deps, other_targets =
@@ -149,10 +149,9 @@ let build_modules ?sandbox ?js_of_ocaml ?dynlink ~dep_graphs cctx =
 
 let ocamlc_i ?sandbox ?(flags=[]) ~dep_graphs cctx (m : Module.t) ~output =
   let sctx     = CC.super_context cctx in
-  let dir      = CC.dir           cctx in
   let obj_dir  = CC.obj_dir       cctx in
   let ctx      = SC.context       sctx in
-  let src = Option.value_exn (Module.file ~dir m Impl) in
+  let src = Option.value_exn (Module.file m Impl) in
   let dep_graph = Ml_kind.Dict.get dep_graphs Impl in
   let cm_deps =
     Build.dyn_paths

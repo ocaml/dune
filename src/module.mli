@@ -25,9 +25,11 @@ end
 
 module File : sig
   type t =
-    { name : string
-    ; syntax: Syntax.t
+    { path   : Path.t
+    ; syntax : Syntax.t
     }
+
+  val make : Syntax.t -> Path.t -> t
 end
 
 (** Representation of a module. It is guaranteed that at least one of
@@ -54,8 +56,8 @@ val name : t -> Name.t
 (** Real unit name once wrapped. This is always a valid module name. *)
 val real_unit_name : t -> Name.t
 
-val file      : t -> dir:    Path.t -> Ml_kind.t -> Path.t option
-val cm_source : t -> dir:    Path.t -> Cm_kind.t -> Path.t option
+val file      : t -> Ml_kind.t -> Path.t option
+val cm_source : t -> Cm_kind.t -> Path.t option
 val cm_file   : t -> obj_dir:Path.t -> Cm_kind.t -> Path.t option
 val cmt_file  : t -> obj_dir:Path.t -> Ml_kind.t -> Path.t option
 

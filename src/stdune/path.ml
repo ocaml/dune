@@ -903,7 +903,7 @@ let compare x y =
 
 let extension t = Filename.extension (to_string t)
 
-let pp ppf t = Format.pp_print_string ppf (to_string t)
+let pp ppf t = Format.pp_print_string ppf (to_string_maybe_quoted t)
 
 let pp_debug ppf = function
   | In_source_tree s ->

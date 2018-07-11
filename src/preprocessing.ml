@@ -4,17 +4,11 @@ open Jbuild
 
 module SC = Super_context
 
-let pp_fname fn =
-  let fn, ext = Filename.split_extension fn in
-  (* We need to to put the .pp before the .ml so that the compiler realises that
-     [foo.pp.mli] is the interface for [foo.pp.ml] *)
-  fn ^ ".pp" ^ ext
-
-let pped_module ~dir m ~f =
+let pped_module m ~f =
   Module.map_files m ~f:(fun kind file ->
-    let pp_fname = pp_fname file.name in
-    f kind (Path.relative dir file.name) (Path.relative dir pp_fname);
-    { file with name = pp_fname })
+    let pp_fname = Path.extend_basename file.path ~suffix:".pp" in
+    f kind file.path pp_fname;
+    { file with path = pp_fname })
 
 module Driver = struct
   module M = struct
@@ -407,17 +401,18 @@ let cookie_library_name lib_name =
 
 (* Generate rules for the reason modules in [modules] and return a
    a new module with only OCaml sources *)
-let setup_reason_rules sctx ~dir (m : Module.t) =
+let setup_reason_rules sctx (m : Module.t) =
   let ctx = SC.context sctx in
   let refmt =
     Artifacts.binary (SC.artifacts sctx) "refmt" ~hint:"opam install reason" in
   let rule src target =
-    let src_path = Path.relative dir src in
     Build.run ~context:ctx refmt
       [ A "--print"
       ; A "binary"
-      ; Dep src_path ]
-      ~stdout_to:(Path.relative dir target) in
+      ; Dep src
+      ]
+      ~stdout_to:target
+  in
   Module.map_files m ~f:(fun _ f ->
     match f.syntax with
     | OCaml  -> f
@@ -425,10 +420,10 @@ let setup_reason_rules sctx ~dir (m : Module.t) =
       let ml =
         { Module.File.
           syntax = OCaml
-        ; name   = f.name ^ ".ast"
+        ; path   = Path.extend_basename f.path ~suffix:".ast"
         }
       in
-      SC.add_rule sctx (rule f.name ml.name);
+      SC.add_rule sctx (rule f.path ml.path);
       ml)
 
 let promote_correction fn build ~suffix =
@@ -447,7 +442,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
       SC.add_alias_action sctx alias build
         ~stamp:(List [ Sexp.unsafe_atom_of_string "lint"
                      ; Sexp.To_sexp.(option string) lib_name
-                     ; Sexp.atom fn
+                     ; Path.sexp_of_t fn
                      ])
     in
     let lint =
@@ -458,10 +453,9 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
           (fun ~source ~ast:_ ->
              let action = Action.Unexpanded.Chdir (workspace_root_var, action) in
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
-               let src_path = Path.relative dir src.name in
-               let bindings = Pform.Map.input_file src_path in
-               add_alias src.name
-                 (Build.path src_path
+               let bindings = Pform.Map.input_file src.path in
+               add_alias src.path
+                 (Build.path src.path
                   >>^ (fun _ -> Jbuild.Bindings.empty)
                   >>> SC.Action.run sctx
                         action
@@ -496,16 +490,16 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
           in
           (fun ~source ~ast ->
              Module.iter ast ~f:(fun kind src ->
-               add_alias src.name
+               add_alias src.path
                  (promote_correction ~suffix:corrected_suffix
-                    (Option.value_exn (Module.file ~dir source kind))
+                    (Option.value_exn (Module.file source kind))
                     (Build.of_result_map driver_and_flags ~f:(fun (exe, flags) ->
                        flags >>>
                        Build.run ~context:(SC.context sctx)
                          (Ok exe)
                          [ args
                          ; Ml_kind.ppx_driver_flag kind
-                         ; Dep (Path.relative dir src.name)
+                         ; Dep src.path
                          ; Dyn (fun x -> As x)
                          ]))))))
     in
@@ -528,13 +522,13 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
   Per_module.map preprocess ~f:(function
     | Preprocess.No_preprocessing ->
       (fun m ~lint ->
-         let ast = setup_reason_rules sctx ~dir m in
+         let ast = setup_reason_rules sctx m in
          if lint then lint_module ~ast ~source:m;
          ast)
     | Action (loc, action) ->
       (fun m ~lint ->
          let ast =
-           pped_module m ~dir ~f:(fun _kind src dst ->
+           pped_module m ~f:(fun _kind src dst ->
              let bindings = Pform.Map.input_file src in
              SC.add_rule sctx
                (preprocessor_deps
@@ -554,7 +548,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
                   ~bindings
                   ~targets:(Static [dst])
                   ~scope))
-           |> setup_reason_rules sctx ~dir in
+           |> setup_reason_rules sctx in
          if lint then lint_module ~ast ~source:m;
          ast)
     | Pps { loc; pps; flags } ->
@@ -580,12 +574,12 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
               ~standard:(Build.return [])))
       in
       (fun m ~lint ->
-         let ast = setup_reason_rules sctx ~dir m in
+         let ast = setup_reason_rules sctx m in
          if lint then lint_module ~ast ~source:m;
-         pped_module ast ~dir ~f:(fun kind src dst ->
+         pped_module ast ~f:(fun kind src dst ->
            SC.add_rule sctx
              (promote_correction ~suffix:corrected_suffix
-                (Option.value_exn (Module.file m ~dir kind))
+                (Option.value_exn (Module.file m kind))
                 (preprocessor_deps >>^ ignore
                  >>>
                  Build.of_result_map driver_and_flags

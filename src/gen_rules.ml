@@ -279,29 +279,36 @@ module Gen(P : Install_rules.Params) = struct
      +-----------------------------------------------------------------+ *)
 
   let guess_modules ~dir ~files =
+    let make_file syntax fn =
+      Module.File.make syntax (Path.relative dir fn)
+    in
     let impl_files, intf_files =
       String.Set.to_list files
       |> List.filter_partition_map ~f:(fun fn ->
         (* we aren't using Filename.extension because we want to handle
            filenames such as foo.cppo.ml *)
         match String.lsplit2 fn ~on:'.' with
-        | Some (_, "ml") -> Left { Module.File.syntax=OCaml ; name=fn }
-        | Some (_, "re") -> Left { Module.File.syntax=Reason ; name=fn }
-        | Some (_, "mli") -> Right { Module.File.syntax=OCaml ; name=fn }
-        | Some (_, "rei") -> Right { Module.File.syntax=Reason ; name=fn }
+        | Some (s, "ml" ) -> Left  (s, make_file OCaml  fn)
+        | Some (s, "re" ) -> Left  (s, make_file Reason fn)
+        | Some (s, "mli") -> Right (s, make_file OCaml  fn)
+        | Some (s, "rei") -> Right (s, make_file Reason fn)
         | _ -> Skip)
     in
     let parse_one_set files =
-      List.map files ~f:(fun (f : Module.File.t) ->
-        (Module.Name.of_string (Filename.chop_extension f.name), f))
+      List.map files ~f:(fun (base, (f : Module.File.t)) ->
+        (Module.Name.of_string base, f))
       |> Module.Name.Map.of_list
       |> function
       | Ok x -> x
       | Error (name, f1, f2) ->
         let src_dir = Path.drop_build_context_exn dir in
-        die "too many files for module %a in %s: %s and %s"
-          Module.Name.pp name (Path.to_string src_dir)
-          f1.name f2.name
+        die "Too many files for module %a in %a:\
+             \n- %a\
+             \n- %a"
+          Module.Name.pp name
+          Path.pp src_dir
+          Path.pp f1.path
+          Path.pp f2.path
     in
     let impls = parse_one_set impl_files in
     let intfs = parse_one_set intf_files in
@@ -374,16 +381,14 @@ module Gen(P : Install_rules.Params) = struct
                https://github.com/ocaml/dune/issues/567 *)
             Some
               (Module.make (Module.Name.add_suffix main_module_name "__")
-                 ~impl:{ name   = sprintf "%s__.ml-gen" lib.name
-                       ; syntax = OCaml
-                       }
+                 ~impl:(Module.File.make OCaml
+                          (Path.relative dir (sprintf "%s__.ml-gen" lib.name)))
                  ~obj_name:(lib.name ^ "__"))
           else
             Some
               (Module.make main_module_name
-                 ~impl:{ name   = lib.name ^ ".ml-gen"
-                       ; syntax = OCaml
-                       }
+                 ~impl:(Module.File.make OCaml
+                          (Path.relative dir (lib.name ^ ".ml-gen")))
                  ~obj_name:lib.name)
         in
         { modules; alias_module; main_module_name })
@@ -604,7 +609,7 @@ module Gen(P : Install_rules.Params) = struct
                 (Module.Name.to_string (Module.real_unit_name m))
             )
             |> String.concat ~sep:"\n")
-         >>> Build.write_file_dyn (Path.relative dir file.name)));
+         >>> Build.write_file_dyn file.path));
 
 
     let dynlink = lib.dynlink in

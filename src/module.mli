@@ -28,8 +28,6 @@ module File : sig
     { name : string
     ; syntax: Syntax.t
     }
-
-  val to_ocaml : t -> t
 end
 
 (** Representation of a module. It is guaranteed that at least one of

@@ -5,6 +5,9 @@ next
   passing in `--root` in conjunction with `--workspace` or `--config` would not
   work correctly (#997, @rgrinberg)
 
+- Change the location of preprocessed files inside the build directory
+  (#1004, @diml)
+
 1.0.0 (10/07/2018)
 ------------------
 

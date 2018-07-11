@@ -19,6 +19,17 @@ end = struct
   let file dir t = Path.append dir t
 end
 
+(* Arguments for the compiler to prevent it from being too clever.
+
+   The compiler creates the cmi when it thinks a .ml file has no
+   corresponding .mli. However this behavior is a bit racy and doesn't
+   work well when the extension is not .ml or when the .ml and .mli
+   are in different directories. This flags makes the compiler think
+   there is a .mli file and will the read the cmi file rather than
+   create it. *)
+let force_read_cmi source_file =
+  [ "-intf-suffix"; Path.extension source_file ]
+
 let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
   let sctx     = CC.super_context cctx in
   let dir      = CC.dir           cctx in
@@ -35,19 +46,11 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
            and to produce the cmx we have to wait to avoid race
            conditions. *)
         | Cmo, None -> [], [], [Target.cm m Cmi]
-        | Cmx, None ->
-          (* Change [-intf-suffix] so that the compiler thinks the
-             cmi exists and reads it instead of re-creating it, which
-             could create a race condition. *)
-          [ "-intf-suffix"
-          ; Filename.extension (Option.value_exn m.impl).name
-          ],
+        | (Cmo | Cmx), _ ->
+          force_read_cmi src,
           [Module.cm_file_unsafe m ~obj_dir Cmi],
           []
-        | Cmi, None -> assert false
-        | Cmi, Some _ -> [], [], []
-        (* We need the .cmi to build either the .cmo or .cmx *)
-        | (Cmo | Cmx), Some _ -> [], [Module.cm_file_unsafe m ~obj_dir Cmi], []
+        | Cmi, _ -> [], [], []
       in
       let other_targets =
         match cm_kind with

@@ -122,11 +122,10 @@ let parse_deps cctx ~file ~unit lines =
 
 let deps_of cctx ~ml_kind unit =
   let sctx = CC.super_context cctx in
-  let dir  = CC.dir           cctx in
   if is_alias_module cctx unit then
     Build.return []
   else
-    match Module.file ~dir unit ml_kind with
+    match Module.file unit ml_kind with
     | None -> Build.return []
     | Some file ->
       let file_in_obj_dir ~suffix file =
@@ -148,9 +147,9 @@ let deps_of cctx ~ml_kind unit =
             if is_alias_module cctx m then
               None
             else
-              match Module.file ~dir m Ml_kind.Intf with
+              match Module.file m Ml_kind.Intf with
               | Some _ as x -> x
-              | None -> Module.file ~dir m Ml_kind.Impl
+              | None -> Module.file m Ml_kind.Impl
           in
           Option.map path ~f:all_deps_path
         in

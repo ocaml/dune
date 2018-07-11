@@ -173,7 +173,7 @@ include Sub_system.Register_end_point(
       let modules =
         Module.Name.Map.singleton main_module_name
           (Module.make main_module_name
-             ~impl:{ name   = main_module_filename
+             ~impl:{ path   = Path.relative inline_test_dir main_module_filename
                    ; syntax = OCaml
                    }
              ~obj_name:name)
@@ -205,7 +205,7 @@ include Sub_system.Register_end_point(
         let files ml_kind =
           Pform.Var.Values (Value.L.paths (
             List.filter_map source_modules ~f:(fun m ->
-              Module.file m ~dir ml_kind)))
+              Module.file m ml_kind)))
         in
         let bindings =
           Pform.Map.of_list_exn
@@ -273,8 +273,8 @@ include Sub_system.Register_end_point(
               (A.run (Ok exe) flags ::
                (Module.Name.Map.values source_modules
                 |> List.concat_map ~f:(fun m ->
-                  [ Module.file m ~dir Impl
-                  ; Module.file m ~dir Intf
+                  [ Module.file m Impl
+                  ; Module.file m Intf
                   ])
                 |> List.filter_map ~f:(fun x -> x)
                 |> List.map ~f:(fun fn ->

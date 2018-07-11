@@ -164,7 +164,7 @@ module Gen(P : Install_params) = struct
               ; List.filter_map Ml_kind.all ~f:(Module.cmt_file m ~obj_dir)
               ; List.filter_map [m.intf;m.impl] ~f:(function
                   | None -> None
-                  | Some f -> Some (Path.relative dir f.name))
+                  | Some f -> Some f.path)
               ])
         ; if_ byte [ lib_archive ~dir lib ~ext:".cma" ]
         ; if_ (Library.has_stubs lib) [ stubs_archive ~dir lib ]

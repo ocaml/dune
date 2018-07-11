@@ -25,9 +25,11 @@ end
 
 module File = struct
   type t =
-    { name : string
+    { path   : Path.t
     ; syntax : Syntax.t
     }
+
+  let make syntax path = { syntax; path }
 end
 
 type t =
@@ -55,7 +57,7 @@ let make ?impl ?intf ?obj_name name =
     match obj_name with
     | Some s -> s
     | None ->
-      let fn = file.name in
+      let fn = Path.basename file.path in
       match String.index fn '.' with
       | None   -> fn
       | Some i -> String.sub fn ~pos:0 ~len:i
@@ -70,17 +72,17 @@ let real_unit_name t = Name.of_string (Filename.basename t.obj_name)
 
 let has_impl t = Option.is_some t.impl
 
-let file t ~dir (kind : Ml_kind.t) =
+let file t (kind : Ml_kind.t) =
   let file =
     match kind with
     | Impl -> t.impl
     | Intf -> t.intf
   in
-  Option.map file ~f:(fun f -> Path.relative dir f.name)
+  Option.map file ~f:(fun f -> f.path)
 
 let obj_file t ~obj_dir ~ext = Path.relative obj_dir (t.obj_name ^ ext)
 
-let cm_source t ~dir kind = file t ~dir (Cm_kind.source kind)
+let cm_source t kind = file t (Cm_kind.source kind)
 
 let cm_file_unsafe t ~obj_dir kind =
   obj_file t ~obj_dir ~ext:(Cm_kind.ext kind)

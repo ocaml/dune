@@ -185,13 +185,17 @@ let find_root () =
     in
     (dir, to_cwd)
 
-let package_name =
-  Arg.conv ((fun p -> Ok (Package.Name.of_string p)), Package.Name.pp)
+module Arg = struct
+  include Arg
 
-let path_arg =
-  Arg.conv ((fun p -> Ok (Path.of_filename_relative_to_initial_cwd p))
-           , Path.pp
-           )
+  let package_name =
+    Arg.conv ((fun p -> Ok (Package.Name.of_string p)), Package.Name.pp)
+
+  let path =
+    Arg.conv ((fun p -> Ok (Path.of_filename_relative_to_initial_cwd p))
+             , Path.pp
+             )
+end
 
 let common_footer =
   `Blocks
@@ -436,7 +440,7 @@ let common =
   in
   let workspace_file =
     Arg.(value
-         & opt (some path_arg) None
+         & opt (some path) None
          & info ["workspace"] ~docs ~docv:"FILE"
              ~doc:"Use this specific workspace file instead of looking it up.")
   in
@@ -473,7 +477,7 @@ let common =
     let config_file =
       let config_file =
         Arg.(value
-             & opt (some path_arg) None
+             & opt (some path) None
              & info ["config-file"] ~docs ~docv:"FILE"
                  ~doc:"Load this configuration file instead of the default one.")
       in

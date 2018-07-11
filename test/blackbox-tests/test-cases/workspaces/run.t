@@ -25,9 +25,7 @@ analogously, jbuilder will ignore it
 specifying the workspace file is possible:
 
   $ dune build --root custom-workspace --workspace custom-workspace/dune-workspace.dev
-  File "/Users/rgrinberg/reps/dune/_build/default/test/blackbox-tests/test-cases/workspaces/custom-workspace/dune-workspace.dev", line 2, characters 10-24:
-  Error: Unknown constructor does-not-exist
-  [1]
+  Entering directory 'custom-workspace'
 
 Workspaces let you set custom profiles
 

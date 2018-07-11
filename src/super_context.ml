@@ -569,27 +569,36 @@ module Action = struct
     | Infer
     | Alias
 
-  type resolved_forms =
-    { (* Failed resolutions *)
-      mutable failures  : fail list
-    ; (* All "name" for %{lib:name:...}/%{lib-available:name} forms *)
-      mutable lib_deps  : Build.lib_deps
-    ; (* Static deps from %{...} variables. For instance %{exe:...} *)
-      mutable sdeps     : Path.Set.t
-    ; (* Dynamic deps from %{...} variables. For instance %{read:...} *)
-      mutable ddeps     : (unit, Value.t list) Build.t String.Map.t
-    }
+  module Resolved_forms = struct
+    type t =
+      { (* Failed resolutions *)
+        mutable failures  : fail list
+      ; (* All "name" for %{lib:name:...}/%{lib-available:name} forms *)
+        mutable lib_deps  : Build.lib_deps
+      ; (* Static deps from %{...} variables. For instance %{exe:...} *)
+        mutable sdeps     : Path.Set.t
+      ; (* Dynamic deps from %{...} variables. For instance %{read:...} *)
+        mutable ddeps     : (unit, Value.t list) Build.t String.Map.t
+      }
 
-  let add_lib_dep acc lib kind =
-    acc.lib_deps <- String.Map.add acc.lib_deps lib kind
+    let empty () =
+      { failures  = []
+      ; lib_deps  = String.Map.empty
+      ; sdeps     = Path.Set.empty
+      ; ddeps     = String.Map.empty
+      }
 
-  let add_fail acc fail =
-    acc.failures <- fail :: acc.failures;
-    None
+    let add_lib_dep acc lib kind =
+      acc.lib_deps <- String.Map.add acc.lib_deps lib kind
 
-  let add_ddep acc ~key dep =
-    acc.ddeps <- String.Map.add acc.ddeps key dep;
-    None
+    let add_fail acc fail =
+      acc.failures <- fail :: acc.failures;
+      None
+
+    let add_ddep acc ~key dep =
+      acc.ddeps <- String.Map.add acc.ddeps key dep;
+      None
+  end
 
   let path_exp path = [Value.Path path]
   let str_exp  str  = [Value.String str]
@@ -612,13 +621,7 @@ module Action = struct
 
   let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user
         ~map_exe ~bindings t =
-    let acc =
-      { failures  = []
-      ; lib_deps  = String.Map.empty
-      ; sdeps     = Path.Set.empty
-      ; ddeps     = String.Map.empty
-      }
-    in
+    let acc = Resolved_forms.empty () in
     let expand pform syntax_version =
       let loc = String_with_vars.Var.loc pform in
       let key = String_with_vars.Var.full_name pform in
@@ -647,26 +650,26 @@ module Action = struct
               match Artifacts.binary (artifacts sctx) s with
               | Ok path -> Some (path_exp path)
               | Error e ->
-                add_fail acc
+                Resolved_forms.add_fail acc
                   ({ fail = fun () -> Action.Prog.Not_found.raise e })
             end
           | Macro (Lib, s) -> begin
               let lib_dep, file = parse_lib_file ~loc s in
-              add_lib_dep acc lib_dep dep_kind;
+              Resolved_forms.add_lib_dep acc lib_dep dep_kind;
               match
                 Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
               with
               | Ok path -> Some (path_exp path)
-              | Error fail -> add_fail acc fail
+              | Error fail -> Resolved_forms.add_fail acc fail
             end
           | Macro (Libexec, s) -> begin
               let sctx = host sctx in
               let lib_dep, file = parse_lib_file ~loc s in
-              add_lib_dep acc lib_dep dep_kind;
+              Resolved_forms.add_lib_dep acc lib_dep dep_kind;
               match
                 Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
               with
-              | Error fail -> add_fail acc fail
+              | Error fail -> Resolved_forms.add_fail acc fail
               | Ok path ->
                 if not Sys.win32 || Filename.extension s = ".exe" then begin
                   Some (path_exp path)
@@ -679,12 +682,12 @@ module Action = struct
                       ~else_:(Build.path path >>^ fun _ ->
                               path_exp path)
                   in
-                  add_ddep acc ~key dep
+                  Resolved_forms.add_ddep acc ~key dep
                 end
             end
           | Macro (Lib_available, s) -> begin
               let lib = s in
-              add_lib_dep acc lib Optional;
+              Resolved_forms.add_lib_dep acc lib Optional;
               Some (str_exp (string_of_bool (
                 Lib.DB.available (Scope.libs scope) lib)))
             end
@@ -697,9 +700,9 @@ module Action = struct
                   | None   -> [Value.String ""]
                   | Some s -> [String s]
                 in
-                add_ddep acc ~key x
+                Resolved_forms.add_ddep acc ~key x
               | None ->
-                add_fail acc { fail = fun () ->
+                Resolved_forms.add_fail acc { fail = fun () ->
                   Loc.fail loc
                     "Package %S doesn't exist in the current project." s
                 }
@@ -710,7 +713,7 @@ module Action = struct
                 Build.contents path
                 >>^ fun s -> [Value.String s]
               in
-              add_ddep acc ~key data
+              Resolved_forms.add_ddep acc ~key data
             end
           | Macro (Read_lines, s) -> begin
               let path = Path.relative dir s in
@@ -718,7 +721,7 @@ module Action = struct
                 Build.lines_of path
                 >>^ Value.L.strings
               in
-              add_ddep acc ~key data
+              Resolved_forms.add_ddep acc ~key data
             end
           | Macro (Read_strings, s) -> begin
               let path = Path.relative dir s in
@@ -726,7 +729,7 @@ module Action = struct
                 Build.strings path
                 >>^ Value.L.strings
               in
-              add_ddep acc ~key data
+              Resolved_forms.add_ddep acc ~key data
             end
           | Macro (Path_no_dep, s) -> Some [Value.Dir (Path.relative dir s)])
       in

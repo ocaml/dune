@@ -560,15 +560,44 @@ module Scope_key = struct
     sprintf "%s@%s" key (Dune_project.Name.encode scope)
 end
 
-module Action = struct
-  open Build.O
-  module U = Action.Unexpanded
+type targets =
+  | Static of Path.t list
+  | Infer
+  | Alias
 
-  type targets =
-    | Static of Path.t list
-    | Infer
-    | Alias
+module Expander : sig
+  module Resolved_forms : sig
+    type t
 
+    (* Failed resolutions *)
+    val failures : t -> fail list
+
+    (* All "name" for %{lib:name:...}/%{lib-available:name} forms *)
+    val lib_deps : t -> Build.lib_deps
+
+    (* Static deps from %{...} variables. For instance %{exe:...} *)
+    val sdeps    : t -> Path.Set.t
+
+    (* Dynamic deps from %{...} variables. For instance %{read:...} *)
+    val ddeps    : t -> (unit, Value.t list) Build.t String.Map.t
+  end
+
+  type sctx = t
+
+  type expander
+    =  sctx
+    -> dir:Path.t
+    -> dep_kind:Build.lib_dep_kind
+    -> scope:Scope.t
+    -> targets_written_by_user:targets
+    -> map_exe:(Path.t -> Path.t)
+    -> bindings:Pform.Map.t
+    -> String_with_vars.Var.t
+    -> Syntax.Version.t
+    -> Value.t list option
+
+  val with_expander : (expander -> 'a) -> 'a * Resolved_forms.t
+end = struct
   module Resolved_forms = struct
     type t =
       { (* Failed resolutions *)
@@ -580,6 +609,11 @@ module Action = struct
       ; (* Dynamic deps from %{...} variables. For instance %{read:...} *)
         mutable ddeps     : (unit, Value.t list) Build.t String.Map.t
       }
+
+    let failures t = t.failures
+    let lib_deps t = t.lib_deps
+    let sdeps t = t.sdeps
+    let ddeps t = t.ddeps
 
     let empty () =
       { failures  = []
@@ -600,8 +634,165 @@ module Action = struct
       None
   end
 
+  type sctx = t
+
+  type expander
+    =  sctx
+    -> dir:Path.t
+    -> dep_kind:Build.lib_dep_kind
+    -> scope:Scope.t
+    -> targets_written_by_user:targets
+    -> map_exe:(Path.t -> Path.t)
+    -> bindings:Pform.Map.t
+    -> String_with_vars.Var.t
+    -> Syntax.Version.t
+    -> Value.t list option
+
   let path_exp path = [Value.Path path]
   let str_exp  str  = [Value.String str]
+
+  let parse_lib_file ~loc s =
+    match String.lsplit2 s ~on:':' with
+    | None ->
+      Loc.fail loc "invalid %%{lib:...} form: %s" s
+    | Some x -> x
+
+  open Build.O
+
+  let expander ~acc sctx ~dir ~dep_kind ~scope ~targets_written_by_user
+        ~map_exe ~bindings pform syntax_version =
+    let loc = String_with_vars.Var.loc pform in
+    let key = String_with_vars.Var.full_name pform in
+    let res =
+      Pform.Map.expand bindings ~syntax_version ~pform
+      |> Option.bind ~f:(function
+        | Pform.Expansion.Var (Values l) -> Some l
+        | Macro (Ocaml_config, s) -> Some (expand_ocaml_config sctx pform s)
+        | Var Project_root -> Some [Value.Dir (Scope.root scope)]
+        | Var (First_dep | Deps | Named_local) -> None
+        | Var Targets ->
+          begin match targets_written_by_user with
+          | Infer ->
+            Loc.fail loc "You cannot use %s with inferred rules."
+              (String_with_vars.Var.describe pform)
+          | Alias ->
+            Loc.fail loc "You cannot use %s in aliases."
+              (String_with_vars.Var.describe pform)
+          | Static l ->
+            Some (Value.L.dirs l) (* XXX hack to signal no dep *)
+          end
+        | Macro (Exe, s) -> Some (path_exp (map_exe (Path.relative dir s)))
+        | Macro (Dep, s) -> Some (path_exp (Path.relative dir s))
+        | Macro (Bin, s) -> begin
+            let sctx = host sctx in
+            match Artifacts.binary (artifacts sctx) s with
+            | Ok path -> Some (path_exp path)
+            | Error e ->
+              Resolved_forms.add_fail acc
+                ({ fail = fun () -> Action.Prog.Not_found.raise e })
+          end
+        | Macro (Lib, s) -> begin
+            let lib_dep, file = parse_lib_file ~loc s in
+            Resolved_forms.add_lib_dep acc lib_dep dep_kind;
+            match
+              Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
+            with
+            | Ok path -> Some (path_exp path)
+            | Error fail -> Resolved_forms.add_fail acc fail
+          end
+        | Macro (Libexec, s) -> begin
+            let sctx = host sctx in
+            let lib_dep, file = parse_lib_file ~loc s in
+            Resolved_forms.add_lib_dep acc lib_dep dep_kind;
+            match
+              Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
+            with
+            | Error fail -> Resolved_forms.add_fail acc fail
+            | Ok path ->
+              if not Sys.win32 || Filename.extension s = ".exe" then begin
+                Some (path_exp path)
+              end else begin
+                let path_exe = Path.extend_basename path ~suffix:".exe" in
+                let dep =
+                  Build.if_file_exists path_exe
+                    ~then_:(Build.path path_exe >>^ fun _ ->
+                            path_exp path_exe)
+                    ~else_:(Build.path path >>^ fun _ ->
+                            path_exp path)
+                in
+                Resolved_forms.add_ddep acc ~key dep
+              end
+          end
+        | Macro (Lib_available, s) -> begin
+            let lib = s in
+            Resolved_forms.add_lib_dep acc lib Optional;
+            Some (str_exp (string_of_bool (
+              Lib.DB.available (Scope.libs scope) lib)))
+          end
+        | Macro (Version, s) -> begin
+            match Package.Name.Map.find (Scope.project scope).packages
+                    (Package.Name.of_string s) with
+            | Some p ->
+              let x =
+                Pkg_version.read sctx p >>^ function
+                | None   -> [Value.String ""]
+                | Some s -> [String s]
+              in
+              Resolved_forms.add_ddep acc ~key x
+            | None ->
+              Resolved_forms.add_fail acc { fail = fun () ->
+                Loc.fail loc
+                  "Package %S doesn't exist in the current project." s
+              }
+          end
+        | Macro (Read, s) -> begin
+            let path = Path.relative dir s in
+            let data =
+              Build.contents path
+              >>^ fun s -> [Value.String s]
+            in
+            Resolved_forms.add_ddep acc ~key data
+          end
+        | Macro (Read_lines, s) -> begin
+            let path = Path.relative dir s in
+            let data =
+              Build.lines_of path
+              >>^ Value.L.strings
+            in
+            Resolved_forms.add_ddep acc ~key data
+          end
+        | Macro (Read_strings, s) -> begin
+            let path = Path.relative dir s in
+            let data =
+              Build.strings path
+              >>^ Value.L.strings
+            in
+            Resolved_forms.add_ddep acc ~key data
+          end
+        | Macro (Path_no_dep, s) -> Some [Value.Dir (Path.relative dir s)])
+    in
+    Option.iter res ~f:(fun v ->
+      acc.sdeps <- Path.Set.union
+                     (Path.Set.of_list (Value.L.deps_only v)) acc.sdeps
+    );
+    res
+
+  let with_expander
+    : 'a. (expander -> 'a) -> 'a * Resolved_forms.t
+    = fun f ->
+      let acc = Resolved_forms.empty () in
+      (f (expander ~acc), acc)
+end
+
+module Action = struct
+  open Build.O
+  module U = Action.Unexpanded
+
+  type nonrec targets = targets =
+    | Static of Path.t list
+    | Infer
+    | Alias
+
 
   let map_exe sctx =
     match sctx.host with
@@ -613,134 +804,12 @@ module Action = struct
           Path.append host.context.build_dir exe
         | _ -> exe
 
-  let parse_lib_file ~loc s =
-    match String.lsplit2 s ~on:':' with
-    | None ->
-      Loc.fail loc "invalid %%{lib:...} form: %s" s
-    | Some x -> x
-
   let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user
         ~map_exe ~bindings t =
-    let acc = Resolved_forms.empty () in
-    let expand pform syntax_version =
-      let loc = String_with_vars.Var.loc pform in
-      let key = String_with_vars.Var.full_name pform in
-      let res =
-        Pform.Map.expand bindings ~syntax_version ~pform
-        |> Option.bind ~f:(function
-          | Pform.Expansion.Var (Values l) -> Some l
-          | Macro (Ocaml_config, s) -> Some (expand_ocaml_config sctx pform s)
-          | Var Project_root -> Some [Value.Dir (Scope.root scope)]
-          | Var (First_dep | Deps | Named_local) -> None
-          | Var Targets ->
-            begin match targets_written_by_user with
-            | Infer ->
-              Loc.fail loc "You cannot use %s with inferred rules."
-                (String_with_vars.Var.describe pform)
-            | Alias ->
-              Loc.fail loc "You cannot use %s in aliases."
-                (String_with_vars.Var.describe pform)
-            | Static l ->
-              Some (Value.L.dirs l) (* XXX hack to signal no dep *)
-            end
-          | Macro (Exe, s) -> Some (path_exp (map_exe (Path.relative dir s)))
-          | Macro (Dep, s) -> Some (path_exp (Path.relative dir s))
-          | Macro (Bin, s) -> begin
-              let sctx = host sctx in
-              match Artifacts.binary (artifacts sctx) s with
-              | Ok path -> Some (path_exp path)
-              | Error e ->
-                Resolved_forms.add_fail acc
-                  ({ fail = fun () -> Action.Prog.Not_found.raise e })
-            end
-          | Macro (Lib, s) -> begin
-              let lib_dep, file = parse_lib_file ~loc s in
-              Resolved_forms.add_lib_dep acc lib_dep dep_kind;
-              match
-                Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
-              with
-              | Ok path -> Some (path_exp path)
-              | Error fail -> Resolved_forms.add_fail acc fail
-            end
-          | Macro (Libexec, s) -> begin
-              let sctx = host sctx in
-              let lib_dep, file = parse_lib_file ~loc s in
-              Resolved_forms.add_lib_dep acc lib_dep dep_kind;
-              match
-                Artifacts.file_of_lib (artifacts sctx) ~loc ~lib:lib_dep ~file
-              with
-              | Error fail -> Resolved_forms.add_fail acc fail
-              | Ok path ->
-                if not Sys.win32 || Filename.extension s = ".exe" then begin
-                  Some (path_exp path)
-                end else begin
-                  let path_exe = Path.extend_basename path ~suffix:".exe" in
-                  let dep =
-                    Build.if_file_exists path_exe
-                      ~then_:(Build.path path_exe >>^ fun _ ->
-                              path_exp path_exe)
-                      ~else_:(Build.path path >>^ fun _ ->
-                              path_exp path)
-                  in
-                  Resolved_forms.add_ddep acc ~key dep
-                end
-            end
-          | Macro (Lib_available, s) -> begin
-              let lib = s in
-              Resolved_forms.add_lib_dep acc lib Optional;
-              Some (str_exp (string_of_bool (
-                Lib.DB.available (Scope.libs scope) lib)))
-            end
-          | Macro (Version, s) -> begin
-              match Package.Name.Map.find (Scope.project scope).packages
-                      (Package.Name.of_string s) with
-              | Some p ->
-                let x =
-                  Pkg_version.read sctx p >>^ function
-                  | None   -> [Value.String ""]
-                  | Some s -> [String s]
-                in
-                Resolved_forms.add_ddep acc ~key x
-              | None ->
-                Resolved_forms.add_fail acc { fail = fun () ->
-                  Loc.fail loc
-                    "Package %S doesn't exist in the current project." s
-                }
-            end
-          | Macro (Read, s) -> begin
-              let path = Path.relative dir s in
-              let data =
-                Build.contents path
-                >>^ fun s -> [Value.String s]
-              in
-              Resolved_forms.add_ddep acc ~key data
-            end
-          | Macro (Read_lines, s) -> begin
-              let path = Path.relative dir s in
-              let data =
-                Build.lines_of path
-                >>^ Value.L.strings
-              in
-              Resolved_forms.add_ddep acc ~key data
-            end
-          | Macro (Read_strings, s) -> begin
-              let path = Path.relative dir s in
-              let data =
-                Build.strings path
-                >>^ Value.L.strings
-              in
-              Resolved_forms.add_ddep acc ~key data
-            end
-          | Macro (Path_no_dep, s) -> Some [Value.Dir (Path.relative dir s)])
-      in
-      Option.iter res ~f:(fun v ->
-        acc.sdeps <- Path.Set.union
-                       (Path.Set.of_list (Value.L.deps_only v)) acc.sdeps
-      );
-      res
-    in
-    let t = U.partial_expand t ~dir ~map_exe ~f:expand in
-    (t, acc)
+    Expander.with_expander (fun expander ->
+      let f = expander sctx ~dir ~dep_kind ~scope ~targets_written_by_user
+                ~map_exe ~bindings in
+      U.partial_expand t ~dir ~map_exe ~f)
 
   let expand_step2 ~dir ~dynamic_expansions ~bindings
         ~(deps_written_by_user : Path.t Jbuild.Bindings.t)
@@ -826,13 +895,13 @@ module Action = struct
              sprintf "- %s" (Utils.describe_target target))
            |> String.concat ~sep:"\n"));
     let build =
-      Build.record_lib_deps_simple forms.lib_deps
+      Build.record_lib_deps_simple (Expander.Resolved_forms.lib_deps forms)
       >>>
-      Build.path_set (Path.Set.union deps forms.sdeps)
+      Build.path_set (Path.Set.union deps (Expander.Resolved_forms.sdeps forms))
       >>>
       Build.arr (fun paths -> ((), paths))
       >>>
-      let ddeps = String.Map.to_list forms.ddeps in
+      let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
       Build.first (Build.all (List.map ddeps ~f:snd))
       >>^ (fun (vals, deps_written_by_user) ->
         let dynamic_expansions =
@@ -857,7 +926,7 @@ module Action = struct
       >>>
       Build.action_dyn () ~dir ~targets
     in
-    match forms.failures with
+    match Expander.Resolved_forms.failures forms with
     | [] -> build
     | fail :: _ -> Build.fail fail >>> build
 end

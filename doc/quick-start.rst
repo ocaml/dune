@@ -173,6 +173,12 @@ this ``dune`` file:
      (c_names         mystubs)
      (c_flags         (-I/blah/include))
      (c_library_flags (-lblah)))
+     
+And compile everything using 
+
+.. code:: bash
+
+    dune build libmylib_stubs.a mylib.cmxa
 
 Defining a library with C stubs using pkg-config
 ================================================

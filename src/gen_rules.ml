@@ -279,8 +279,9 @@ module Gen(P : Install_rules.Params) = struct
      +-----------------------------------------------------------------+ *)
 
   let guess_modules ~dir ~files =
-    let make_file syntax fn =
-      Module.File.make syntax (Path.relative dir fn)
+    let make_module syntax base fn =
+      (Module.Name.of_string base,
+       Module.File.make syntax (Path.relative dir fn))
     in
     let impl_files, intf_files =
       String.Set.to_list files
@@ -288,17 +289,14 @@ module Gen(P : Install_rules.Params) = struct
         (* we aren't using Filename.extension because we want to handle
            filenames such as foo.cppo.ml *)
         match String.lsplit2 fn ~on:'.' with
-        | Some (s, "ml" ) -> Left  (s, make_file OCaml  fn)
-        | Some (s, "re" ) -> Left  (s, make_file Reason fn)
-        | Some (s, "mli") -> Right (s, make_file OCaml  fn)
-        | Some (s, "rei") -> Right (s, make_file Reason fn)
+        | Some (s, "ml" ) -> Left  (make_module OCaml  s fn)
+        | Some (s, "re" ) -> Left  (make_module Reason s fn)
+        | Some (s, "mli") -> Right (make_module OCaml  s fn)
+        | Some (s, "rei") -> Right (make_module Reason s fn)
         | _ -> Skip)
     in
-    let parse_one_set files =
-      List.map files ~f:(fun (base, (f : Module.File.t)) ->
-        (Module.Name.of_string base, f))
-      |> Module.Name.Map.of_list
-      |> function
+    let parse_one_set (files : (Module.Name.t * Module.File.t) list)  =
+      match Module.Name.Map.of_list files with
       | Ok x -> x
       | Error (name, f1, f2) ->
         let src_dir = Path.drop_build_context_exn dir in

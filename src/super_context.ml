@@ -772,8 +772,8 @@ module Action = struct
             Exn.code_error "Unexpected variable in step2"
               ["var", String_with_vars.Var.sexp_of_t pform]))
 
-  let run sctx ~loc ~bindings t ~dir ~dep_kind
-        ~targets:targets_written_by_user ~scope
+  let run sctx ~loc ~bindings ~dir ~dep_kind
+        ~targets:targets_written_by_user ~scope ?(targets_dir=dir) t
     : (Path.t Bindings.t, Action.t) Build.t =
     let bindings = Pform.Map.superpose sctx.pforms bindings in
     let map_exe = map_exe sctx in
@@ -824,7 +824,7 @@ module Action = struct
     in
     let targets = Path.Set.to_list targets in
     List.iter targets ~f:(fun target ->
-      if Path.parent_exn target <> dir then
+      if Path.parent_exn target <> targets_dir then
         Loc.fail loc
           "This action has targets in a different directory than the current \
            one, this is not allowed by dune at the moment:\n%s"

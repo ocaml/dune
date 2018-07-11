@@ -240,11 +240,12 @@ module Action : sig
     :  t
     -> loc:Loc.t
     -> bindings:Pform.Map.t
-    -> Action.Unexpanded.t
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
     -> targets:targets
     -> scope:Scope.t
+    -> ?targets_dir:Path.t (* default: dir *)
+    -> Action.Unexpanded.t
     -> (Path.t Bindings.t, Action.t) Build.t
 end
 

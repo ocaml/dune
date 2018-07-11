@@ -4,9 +4,11 @@ open Jbuild
 
 module SC = Super_context
 
-let pped_module m ~f =
+let pped_module m ~obj_dir ~f =
   Module.map_files m ~f:(fun kind file ->
-    let pp_fname = Path.extend_basename file.path ~suffix:".pp" in
+    let pp_fname =
+      Path.relative obj_dir (Path.basename file.path ^ ".pp")
+    in
     f kind file.path pp_fname;
     { file with path = pp_fname })
 
@@ -401,7 +403,7 @@ let cookie_library_name lib_name =
 
 (* Generate rules for the reason modules in [modules] and return a
    a new module with only OCaml sources *)
-let setup_reason_rules sctx (m : Module.t) =
+let setup_reason_rules sctx ~obj_dir (m : Module.t) =
   let ctx = SC.context sctx in
   let refmt =
     Artifacts.binary (SC.artifacts sctx) "refmt" ~hint:"opam install reason" in
@@ -420,7 +422,7 @@ let setup_reason_rules sctx (m : Module.t) =
       let ml =
         { Module.File.
           syntax = OCaml
-        ; path   = Path.extend_basename f.path ~suffix:".ast"
+        ; path   = Path.relative obj_dir (Path.basename f.path ^ ".ast")
         }
       in
       SC.add_rule sctx (rule f.path ml.path);
@@ -510,7 +512,7 @@ type t = (Module.t -> lint:bool -> Module.t) Per_module.t
 
 let dummy = Per_module.for_all (fun m ~lint:_ -> m)
 
-let make sctx ~dir ~dep_kind ~lint ~preprocess
+let make sctx ~dir ~obj_dir ~dep_kind ~lint ~preprocess
       ~preprocessor_deps ~lib_name ~scope ~dir_kind =
   let preprocessor_deps =
     Build.memoize "preprocessor deps" preprocessor_deps
@@ -522,13 +524,13 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
   Per_module.map preprocess ~f:(function
     | Preprocess.No_preprocessing ->
       (fun m ~lint ->
-         let ast = setup_reason_rules sctx m in
+         let ast = setup_reason_rules sctx m ~obj_dir in
          if lint then lint_module ~ast ~source:m;
          ast)
     | Action (loc, action) ->
       (fun m ~lint ->
          let ast =
-           pped_module m ~f:(fun _kind src dst ->
+           pped_module m ~obj_dir ~f:(fun _kind src dst ->
              let bindings = Pform.Map.input_file src in
              SC.add_rule sctx
                (preprocessor_deps
@@ -547,8 +549,9 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
                   ~dep_kind
                   ~bindings
                   ~targets:(Static [dst])
+                  ~targets_dir:obj_dir
                   ~scope))
-           |> setup_reason_rules sctx in
+           |> setup_reason_rules sctx ~obj_dir in
          if lint then lint_module ~ast ~source:m;
          ast)
     | Pps { loc; pps; flags } ->
@@ -574,9 +577,9 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
               ~standard:(Build.return [])))
       in
       (fun m ~lint ->
-         let ast = setup_reason_rules sctx m in
+         let ast = setup_reason_rules sctx m ~obj_dir in
          if lint then lint_module ~ast ~source:m;
-         pped_module ast ~f:(fun kind src dst ->
+         pped_module ast ~obj_dir ~f:(fun kind src dst ->
            SC.add_rule sctx
              (promote_correction ~suffix:corrected_suffix
                 (Option.value_exn (Module.file m kind))

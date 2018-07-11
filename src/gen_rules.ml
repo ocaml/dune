@@ -548,7 +548,7 @@ module Gen(P : Install_rules.Params) = struct
     (* Preprocess before adding the alias module as it doesn't need
        preprocessing *)
     let pp =
-      Preprocessing.make sctx ~dir ~dep_kind ~scope
+      Preprocessing.make sctx ~dir ~obj_dir ~dep_kind ~scope
         ~preprocess:lib.buildable.preprocess
         ~preprocessor_deps:
           (SC.Deps.interpret sctx ~scope ~dir
@@ -805,6 +805,11 @@ module Gen(P : Install_rules.Params) = struct
   let executables_rules ~dir ~all_modules ~dir_kind
         ~modules_partitioner ~scope ~compile_info
         (exes : Executables.t) =
+    (* Use "eobjs" rather than "objs" to avoid a potential conflict
+       with a library of the same name *)
+    let obj_dir =
+      Utils.executable_object_directory ~dir (List.hd exes.names |> snd)
+    in
     let requires = Lib.Compile.requires compile_info in
     let modules =
       parse_modules ~all_modules ~buildable:exes.buildable
@@ -815,7 +820,7 @@ module Gen(P : Install_rules.Params) = struct
         ~scope ~dir
     in
     let pp =
-      Preprocessing.make sctx ~dir ~dep_kind:Required
+      Preprocessing.make sctx ~dir ~obj_dir ~dep_kind:Required
         ~scope
         ~preprocess:exes.buildable.preprocess
         ~preprocessor_deps
@@ -872,12 +877,6 @@ module Gen(P : Install_rules.Params) = struct
         ~scope
         ~dir
         ~standard:(Build.return [])
-    in
-
-    (* Use "eobjs" rather than "objs" to avoid a potential conflict
-       with a library of the same name *)
-    let obj_dir =
-      Utils.executable_object_directory ~dir (List.hd programs).name
     in
 
     let cctx =

@@ -788,6 +788,7 @@
   (alias project-root)
   (alias promote)
   (alias quoting)
+  (alias reason)
   (alias redirections)
   (alias reporting-of-cycles)
   (alias scope-bug)
@@ -882,6 +883,6 @@
   (alias windows-diff)
   (alias workspaces)))
 
-(alias (name runtest-disabled) (deps (alias reason)))
+(alias (name runtest-disabled) (deps))
 
 (alias (name runtest-js) (deps (alias js_of_ocaml)))

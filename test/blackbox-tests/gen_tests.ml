@@ -107,7 +107,7 @@ let exclusions =
   ; make "output-obj" ~skip_platforms:[Mac; Win] ~skip_ocaml:"<4.06.0"
   ; make "github644" ~external_deps:true
   ; make "private-public-overlap" ~external_deps:true
-  ; make "reason" ~enabled:false
+  ; make "reason" ~external_deps:true
   ; make "menhir"~external_deps:true
   ; make "utop"~external_deps:true
   ; make "configurator" ~skip_platforms:[Win]

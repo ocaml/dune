@@ -1223,7 +1223,7 @@ let exec =
     ]
   in
   let go common context prog no_rebuild args =
-    set_common common ~targets:[];
+    set_common common ~targets:[prog];
     let log = Log.create common in
     let setup = Scheduler.go ~log ~common (Main.setup ~log common) in
     let context = Main.find_context_exn setup ~name:context in

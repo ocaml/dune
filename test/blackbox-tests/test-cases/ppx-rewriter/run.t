@@ -9,13 +9,7 @@
         ocamlc .w_omp_driver.eobjs/w_omp_driver.{cmi,cmo,cmt}
       ocamlopt .w_omp_driver.eobjs/w_omp_driver.{cmx,o}
       ocamlopt w_omp_driver.exe
-  $ dune build ./w_ppx_driver.exe --display short
-      ocamlopt .ppx/jbuild/ppx_driver.runner/ppx.exe
-           ppx w_ppx_driver.pp.ml
-      ocamldep .w_ppx_driver.eobjs/w_ppx_driver.pp.ml.d
-        ocamlc .w_ppx_driver.eobjs/w_ppx_driver.{cmi,cmo,cmt}
-      ocamlopt .w_ppx_driver.eobjs/w_ppx_driver.{cmx,o}
-      ocamlopt w_ppx_driver.exe
+
 This test is broken because ppx_driver doesn't support migrate custom arguments
 #  $ dune build ./w_ppx_driver_flags.exe --display short
   $ dune build && dune exec -- ocamlfind opt -package fooppx -ppxopt "fooppx,-flag" -linkpkg w_omp_driver.ml -o w_omp_driver.exe

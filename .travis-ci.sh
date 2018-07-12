@@ -82,7 +82,7 @@ case "$TARGET" in
       echo "depends: [\"dune\"]" >> jbuilder.opam
       opam pin add dune     . --no-action --yes
       opam pin add jbuilder . --no-action --yes
-      opam install ocamlfind utop ppxlib ppxlib odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler --yes
+      opam install ocamlfind utop ppxlib reason odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler --yes
       echo -en "travis_fold:end:opam.deps\r"
     fi
     echo -en "travis_fold:start:dune.bootstrap\r"

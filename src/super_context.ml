@@ -40,6 +40,7 @@ type t =
   ; public_libs                      : Lib.DB.t
   ; installed_libs                   : Lib.DB.t
   ; stanzas                          : Dir_with_jbuild.t list
+  ; stanzas_per_dir                  : Dir_with_jbuild.t Path.Map.t
   ; packages                         : Package.t Package.Name.Map.t
   ; file_tree                        : File_tree.t
   ; artifacts                        : Artifacts.t
@@ -55,6 +56,7 @@ type t =
 
 let context t = t.context
 let stanzas t = t.stanzas
+let stanzas_in t ~dir = Path.Map.find t.stanzas_per_dir dir
 let packages t = t.packages
 let libs_by_package t = t.libs_by_package
 let artifacts t = t.artifacts
@@ -248,6 +250,11 @@ let create
         ; kind
         })
   in
+  let stanzas_per_dir =
+    List.map stanzas ~f:(fun stanzas ->
+      (stanzas.Dir_with_jbuild.ctx_dir, stanzas))
+    |> Path.Map.of_list_exn
+  in
   let stanzas_to_consider_for_install =
     if not external_lib_deps_mode then
       List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; kind; _ } ->
@@ -305,6 +312,7 @@ let create
     ; public_libs
     ; installed_libs
     ; stanzas
+    ; stanzas_per_dir
     ; packages
     ; file_tree
     ; stanzas_to_consider_for_install

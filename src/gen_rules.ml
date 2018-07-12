@@ -17,11 +17,6 @@ module Gen(P : Install_rules.Params) = struct
   let sctx = P.sctx
   let ctx = SC.context sctx
 
-  let stanzas_per_dir =
-    List.map (SC.stanzas sctx) ~f:(fun stanzas ->
-      (stanzas.SC.Dir_with_jbuild.ctx_dir, stanzas))
-    |> Path.Map.of_list_exn
-
   (* +-----------------------------------------------------------------+
      | Interpretation of [modules] fields                              |
      +-----------------------------------------------------------------+ *)
@@ -195,7 +190,7 @@ module Gen(P : Install_rules.Params) = struct
 
     (* As a side-effect, setup user rules and copy_files rules. *)
     let load_text_files ~dir =
-      match Path.Map.find stanzas_per_dir dir with
+      match SC.stanzas_in sctx ~dir with
       | None -> String.Set.empty
       | Some { stanzas; src_dir; scope; _ } ->
         (* Interpret a few stanzas in order to determine the list of
@@ -1006,7 +1001,7 @@ module Gen(P : Install_rules.Params) = struct
      | "_doc" :: rest -> Odoc.gen_rules rest ~dir
      | ".ppx"  :: rest -> Preprocessing.gen_rules sctx rest
      | _ ->
-       match Path.Map.find stanzas_per_dir dir with
+       match SC.stanzas_in sctx ~dir with
        | Some x -> gen_rules x
        | None ->
          if components <> [] &&

@@ -11,9 +11,9 @@ module Ast = struct
     | Diff : ('a, 'b) t * ('a, 'b) t -> ('a, 'b) t
     | Include : String_with_vars.t -> ('a, unexpanded) t
 
-  let of_list = function
-    | [x]     -> Element x
-    | xs      -> Union (List.map ~f:(fun x -> Element x) xs)
+  let union = function
+    | [x] -> x
+    | xs  -> Union xs
 end
 
 type 'ast generic =
@@ -301,8 +301,8 @@ module Unexpanded = struct
     let context = t.context in
     let f_elems s =
       let loc = String_with_vars.loc s in
-      List.map ~f:(fun s -> (loc, Value.to_string ~dir s)) (f s)
-      |> Ast.of_list
+      Ast.union
+        (List.map (f s) ~f:(fun s -> Ast.Element (loc, Value.to_string ~dir s)))
     in
     let rec expand (t : ast) : ast_expanded =
       let open Ast in

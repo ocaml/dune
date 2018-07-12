@@ -41,7 +41,7 @@ Same, but with error pointing to .ppx
 Test the argument syntax
 
   $ dune build test_ppx_args.cma
-           ppx .test_ppx_args.objs/test_ppx_args.ml.pp
+           ppx .test_ppx_args.objs/test_ppx_args.pp.ml
   .ppx/driver_print_args@foo/ppx.exe
   -arg1
   -arg2
@@ -50,9 +50,9 @@ Test the argument syntax
   --cookie
   library-name="test_ppx_args"
   -o
-  .test_ppx_args.objs/test_ppx_args.ml.pp
+  .test_ppx_args.objs/test_ppx_args.pp.ml
   --impl
   test_ppx_args.ml
   Error: Rule failed to generate the following targets:
-  - .test_ppx_args.objs/test_ppx_args.ml.pp
+  - .test_ppx_args.objs/test_ppx_args.pp.ml
   [1]

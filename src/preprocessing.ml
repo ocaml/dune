@@ -4,13 +4,17 @@ open Jbuild
 
 module SC = Super_context
 
+let pped_path path ~obj_dir ~suffix =
+  (* We need to insert the suffix before the extension as some tools
+     inspect the extension *)
+  let base, ext = Filename.split_extension (Path.basename path) in
+  Path.relative obj_dir (base ^ suffix ^ ext)
+
 let pped_module m ~obj_dir ~f =
   Module.map_files m ~f:(fun kind file ->
-    let pp_fname =
-      Path.relative obj_dir (Path.basename file.path ^ ".pp")
-    in
-    f kind file.path pp_fname;
-    { file with path = pp_fname })
+    let pp_path = pped_path file.path ~obj_dir ~suffix:".pp" in
+    f kind file.path pp_path;
+    { file with path = pp_path })
 
 module Driver = struct
   module M = struct
@@ -422,7 +426,7 @@ let setup_reason_rules sctx ~obj_dir (m : Module.t) =
       let ml =
         { Module.File.
           syntax = OCaml
-        ; path   = Path.relative obj_dir (Path.basename f.path ^ ".ast")
+        ; path   = pped_path f.path ~obj_dir ~suffix:".ast"
         }
       in
       SC.add_rule sctx (rule f.path ml.path);

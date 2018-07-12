@@ -10,6 +10,10 @@ module Ast = struct
     | Union : ('a, 'b) t list -> ('a, 'b) t
     | Diff : ('a, 'b) t * ('a, 'b) t -> ('a, 'b) t
     | Include : String_with_vars.t -> ('a, unexpanded) t
+
+  let of_list = function
+    | [x]     -> Element x
+    | xs      -> Union (List.map ~f:(fun x -> Element x) xs)
 end
 
 type 'ast generic =
@@ -32,7 +36,7 @@ module Parse = struct
       peek_exn >>= function
       | Atom (loc, A "\\") -> Loc.fail loc "unexpected \\"
       | (Atom (_, A "") | Quoted_string (_, _)) | Template _ ->
-        elt >>| fun x -> Element x
+        elt
       | Atom (loc, A s) -> begin
           match s with
           | ":standard" ->
@@ -43,7 +47,7 @@ module Parse = struct
           | _ when s.[0] = ':' ->
             Loc.fail loc "undefined symbol %s" s
           | _ ->
-            elt >>| fun x -> Element x
+            elt
         end
       | List (_, Atom (loc, A s) :: _) -> begin
           match s, kind with
@@ -88,7 +92,8 @@ end
 let t =
   let open Stanza.Of_sexp in
   get_all >>= fun context ->
-  located (Parse.without_include ~elt:(plain_string (fun ~loc s -> (loc, s))))
+  located (Parse.without_include
+             ~elt:(plain_string (fun ~loc s -> Ast.Element (loc, s))))
   >>| fun (loc, ast) ->
   { ast; loc = Some loc; context }
 
@@ -210,10 +215,12 @@ let field ?(default=standard) name = Sexp.Of_sexp.field name t ~default
 module Unexpanded = struct
   type ast = (String_with_vars.t, Ast.unexpanded) Ast.t
   type t = ast generic
-  let t =
+  let t : t Sexp.Of_sexp.t =
     let open Stanza.Of_sexp in
     get_all >>= fun context ->
-    located (Parse.with_include ~elt:String_with_vars.t)
+    located (
+      Parse.with_include
+        ~elt:(String_with_vars.t >>| fun s -> Ast.Element s))
     >>| fun (loc, ast) ->
     { ast
     ; loc = Some loc
@@ -239,12 +246,11 @@ module Unexpanded = struct
   let field ?(default=standard) name = Stanza.Of_sexp.field name t ~default
 
   let files t ~f =
-    let rec loop acc (t : ast) =
+    let rec loop acc (ast : ast) =
       let open Ast in
-      match t with
+      match ast with
       | Element _ | Standard -> acc
-      | Include fn ->
-        String.Set.add acc (f fn)
+      | Include fn -> Path.Set.add acc (f fn)
       | Union l ->
         List.fold_left l ~init:acc ~f:loop
       | Diff (l, r) ->
@@ -255,7 +261,7 @@ module Unexpanded = struct
       | Some (0, _)-> File_tree.Dune_file.Kind.Jbuild
       | None | Some (_, _) -> Dune
     in
-    (syntax, loop String.Set.empty t.ast)
+    (syntax, loop Path.Set.empty t.ast)
 
   let has_special_forms t =
     let rec loop (t : ast) =
@@ -291,31 +297,40 @@ module Unexpanded = struct
     in
     loop t.ast Pos init
 
-  let expand t ~files_contents ~f  =
+  let expand t ~dir ~files_contents ~(f : String_with_vars.t -> Value.t list) =
     let context = t.context in
+    let f_elems s =
+      let loc = String_with_vars.loc s in
+      List.map ~f:(fun s -> (loc, Value.to_string ~dir s)) (f s)
+      |> Ast.of_list
+    in
     let rec expand (t : ast) : ast_expanded =
       let open Ast in
       match t with
-      | Element s -> Element (String_with_vars.loc s, f s)
+      | Element s -> f_elems s
       | Standard -> Standard
       | Include fn ->
         let sexp =
-          let fn = f fn in
-          match String.Map.find files_contents fn with
+          let path =
+            match f fn with
+            | [x] -> Value.to_path ~dir x
+            | _ ->
+              Exn.code_error "Ordered_set_lang.Unexpanded.expand path"
+                ["fn", String_with_vars.sexp_of_t fn]
+          in
+          match Path.Map.find files_contents path with
           | Some x -> x
           | None ->
             Exn.code_error
               "Ordered_set_lang.Unexpanded.expand"
-              [ "included-file", Quoted_string fn
-              ; "files", Sexp.To_sexp.(list string)
-                           (String.Map.keys files_contents)
+              [ "included-file", Path.sexp_of_t path
+              ; "files", Sexp.To_sexp.(list Path.sexp_of_t)
+                           (Path.Map.keys files_contents)
               ]
         in
         let open Stanza.Of_sexp in
         parse
-          (Parse.without_include
-             ~elt:(String_with_vars.t >>| fun s ->
-                   (String_with_vars.loc s, f s)))
+          (Parse.without_include ~elt:(String_with_vars.t >>| f_elems))
           context
           sexp
       | Union l -> Union (List.map l ~f:expand)

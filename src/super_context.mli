@@ -243,8 +243,8 @@ module Action : sig
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
     -> targets:targets
+    -> targets_dir:Path.t
     -> scope:Scope.t
-    -> ?targets_dir:Path.t (* default: dir *)
     -> Action.Unexpanded.t
     -> (Path.t Bindings.t, Action.t) Build.t
 end

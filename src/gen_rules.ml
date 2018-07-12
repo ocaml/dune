@@ -197,6 +197,7 @@ module Gen(P : Install_rules.Params) = struct
          ~bindings:(Pform.Map.of_bindings rule.deps)
          ~dep_kind:Required
          ~targets
+         ~targets_dir:dir
          ~scope)
 
   let copy_files_rules (def: Copy_files.t) ~src_dir ~dir ~scope =
@@ -955,6 +956,7 @@ module Gen(P : Install_rules.Params) = struct
            ~dep_kind:Required
            ~bindings:(Pform.Map.of_bindings alias_conf.deps)
            ~targets:Alias
+           ~targets_dir:dir
            ~scope)
 
   let tests_rules (t : Tests.t) ~dir ~scope ~all_modules ~modules_partitioner

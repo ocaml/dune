@@ -220,7 +220,11 @@ include Sub_system.Register_end_point(
              Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
                SC.Action.run sctx action ~loc
                  ~bindings
-                 ~dir ~dep_kind:Required ~targets:Alias ~scope)))
+                 ~dir
+                 ~dep_kind:Required
+                 ~targets:Alias
+                 ~targets_dir:dir
+                 ~scope)))
         >>^ (fun actions ->
           Action.with_stdout_to target
             (Action.progn actions))

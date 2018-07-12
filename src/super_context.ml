@@ -773,7 +773,7 @@ module Action = struct
               ["var", String_with_vars.Var.sexp_of_t pform]))
 
   let run sctx ~loc ~bindings ~dir ~dep_kind
-        ~targets:targets_written_by_user ~scope ?(targets_dir=dir) t
+        ~targets:targets_written_by_user ~targets_dir ~scope t
     : (Path.t Bindings.t, Action.t) Build.t =
     let bindings = Pform.Map.superpose sctx.pforms bindings in
     let map_exe = map_exe sctx in
@@ -798,23 +798,6 @@ module Action = struct
         let { Action.Infer.Outcome. deps; targets } =
           Action.Infer.partial t ~all_targets:false
         in
-        (* CR-someday jdimino: should this be an error or not?
-
-           It's likely that what we get here is what the user thinks
-           of as temporary files, even though they might conflict with
-           actual targets. We need to tell dune about such things,
-           so that it can report better errors.
-
-           {[
-             let missing = Path.Set.diff targets targets_written_by_user in
-             if not (Path.Set.is_empty missing) then
-               Loc.warn (Loc.in_file (Utils.jbuild_name_in ~dir))
-                 "Missing targets in user action:\n%s"
-                 (List.map (Path.Set.elements missing) ~f:(fun target ->
-                    sprintf "- %s" (Utils.describe_target target))
-                  |> String.concat ~sep:"\n");
-           ]}
-        *)
         { deps; targets = Path.Set.union targets targets_written_by_user }
       | Alias ->
         let { Action.Infer.Outcome. deps; targets = _ } =

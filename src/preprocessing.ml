@@ -470,6 +470,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                         ~dep_kind
                         ~bindings
                         ~targets:(Static [])
+                        ~targets_dir:dir
                         ~scope)))
         | Pps { loc; pps; flags } ->
           let args : _ Arg_spec.t =

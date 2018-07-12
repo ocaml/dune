@@ -175,11 +175,7 @@ like:
 
 .. code:: scheme
 
-          (lang dune 0.1)
-
-The 0.1 version of the language is exactly the same as the Jbuilder language. So
-to convert a Jbuilder project to Dune, simply write this file at the root of
-your project.
+          (lang dune 1.0)
 
 Additionally, they can contains the following stanzas.
 

@@ -43,6 +43,7 @@ val create
 
 val context   : t -> Context.t
 val stanzas   : t -> Dir_with_jbuild.t list
+val stanzas_in : t -> dir:Path.t -> Dir_with_jbuild.t option
 val packages  : t -> Package.t Package.Name.Map.t
 val libs_by_package : t -> (Package.t * Lib.Set.t) Package.Name.Map.t
 val file_tree : t -> File_tree.t

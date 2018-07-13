@@ -172,7 +172,7 @@ module Gen(P : Install_rules.Params) = struct
      +-----------------------------------------------------------------+ *)
 
   module Dir_contents : sig
-    type t =
+    type t = private
       { (* Set of "text" files (.ml, .c, ...). This is
            the set of source files + user generated ones. *)
         text_files : String.Set.t
@@ -930,7 +930,7 @@ module Gen(P : Install_rules.Params) = struct
     let { Dir_contents.
           text_files = files
         ; modules = lazy all_modules
-        ; _
+        ; mlds = _
         } = Dir_contents.get ~dir:ctx_dir
     in
     let modules_partitioner = Modules_partitioner.create ~dir_kind:kind in

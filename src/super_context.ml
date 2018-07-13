@@ -97,8 +97,8 @@ let expand_ocaml_config t pform name =
 
 let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) s =
   String_with_vars.expand ~mode ~dir s ~f:(fun pform syntax_version ->
-    (match Pform.Map.expand bindings ~syntax_version ~pform with
-     | None -> Pform.Map.expand t.pforms ~syntax_version ~pform
+    (match Pform.Map.expand bindings pform syntax_version with
+     | None -> Pform.Map.expand t.pforms pform syntax_version
      | Some _ as x -> x)
     |> Option.map ~f:(function
       | Pform.Expansion.Var (Values l) -> l
@@ -591,9 +591,7 @@ module Expander : sig
     -> targets_written_by_user:targets
     -> map_exe:(Path.t -> Path.t)
     -> bindings:Pform.Map.t
-    -> String_with_vars.Var.t
-    -> Syntax.Version.t
-    -> Value.t list option
+    -> Value.t list option String_with_vars.expander
 
   val with_expander : (expander -> 'a) -> 'a * Resolved_forms.t
 end = struct
@@ -643,9 +641,7 @@ end = struct
     -> targets_written_by_user:targets
     -> map_exe:(Path.t -> Path.t)
     -> bindings:Pform.Map.t
-    -> String_with_vars.Var.t
-    -> Syntax.Version.t
-    -> Value.t list option
+    -> Value.t list option String_with_vars.expander
 
   let path_exp path = [Value.Path path]
   let str_exp  str  = [Value.String str]
@@ -663,7 +659,7 @@ end = struct
     let loc = String_with_vars.Var.loc pform in
     let key = String_with_vars.Var.full_name pform in
     let res =
-      Pform.Map.expand bindings ~syntax_version ~pform
+      Pform.Map.expand bindings pform syntax_version
       |> Option.bind ~f:(function
         | Pform.Expansion.Var (Values l) -> Some l
         | Macro (Ocaml_config, s) -> Some (expand_ocaml_config sctx pform s)
@@ -819,7 +815,7 @@ module Action = struct
       match String.Map.find dynamic_expansions key with
       | Some _ as opt -> opt
       | None ->
-        Option.map (Pform.Map.expand bindings ~syntax_version ~pform) ~f:(function
+        Option.map (Pform.Map.expand bindings pform syntax_version) ~f:(function
           | Var Named_local ->
             begin match Jbuild.Bindings.find deps_written_by_user key with
             | None ->

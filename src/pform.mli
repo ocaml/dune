@@ -48,11 +48,7 @@ module Map : sig
 
   val input_file : Path.t -> t
 
-  val expand
-    :  t
-    -> syntax_version:Syntax.Version.t
-    -> pform:String_with_vars.Var.t
-    -> Expansion.t option
+  val expand : t -> Expansion.t option String_with_vars.expander
 
   val empty : t
 end

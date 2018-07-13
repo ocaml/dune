@@ -83,7 +83,7 @@ module Unexpanded : sig
       :  t
       -> dir:Path.t
       -> map_exe:(Path.t -> Path.t)
-      -> f:(String_with_vars.Var.t -> Syntax.Version.t -> Value.t list option)
+      -> f:(Value.t list option String_with_vars.expander)
       -> Unresolved.t
   end
 
@@ -91,7 +91,7 @@ module Unexpanded : sig
     :  t
     -> dir:Path.t
     -> map_exe:(Path.t -> Path.t)
-    -> f:(String_with_vars.Var.t -> Syntax.Version.t -> Value.t list option)
+    -> f:(Value.t list option String_with_vars.expander)
     -> Partial.t
 end
 

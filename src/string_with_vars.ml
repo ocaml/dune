@@ -264,6 +264,8 @@ let partial_expand
       end
     | _ -> loop [] [] template.parts
 
+type 'a expander = Var.t -> Syntax.Version.t -> 'a
+
 let expand t ~mode ~dir ~f =
   match
     partial_expand t ~mode ~dir ~f:(fun var syntax_version ->

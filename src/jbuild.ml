@@ -1592,6 +1592,7 @@ module Stanzas = struct
       (let%map () = Syntax.since Stanza.syntax (1, 0)
        and t = Tests.single in
        [Tests t])
+    ; "env", Dune_env.Stanza.t >>| fun x -> [Dune_env.T x]
     ]
 
   let jbuild_parser =
@@ -1663,7 +1664,7 @@ module Stanzas = struct
     in
     match
       List.filter_map stanzas
-        ~f:(function Shared_stanza.Env e -> Some e | _ -> None)
+        ~f:(function Dune_env.T e -> Some e | _ -> None)
     with
     | _ :: e :: _ ->
       Loc.fail e.loc "The 'env' stanza cannot appear more than once"

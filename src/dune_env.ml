@@ -1,9 +1,11 @@
-open Import
-open Stanza.Of_sexp
+type stanza = Stanza.t = ..
 
-let field_oslu name = Ordered_set_lang.Unexpanded.field name
+module Stanza = struct
+  open Import
+  open Stanza.Of_sexp
 
-module Env = struct
+  let field_oslu name = Ordered_set_lang.Unexpanded.field name
+
   type config =
     { flags          : Ordered_set_lang.Unexpanded.t
     ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
@@ -40,7 +42,8 @@ module Env = struct
     loc >>= fun loc ->
     repeat rule >>| fun rules ->
     { loc; rules }
+
 end
 
-type Stanza.t +=
-  | Env of Env.t
+type stanza +=
+  | T of Stanza.t

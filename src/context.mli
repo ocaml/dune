@@ -51,7 +51,7 @@ type t =
     build_dir : Path.t
 
   ; (** env node that this context was initialized with *)
-    env_node : Shared_stanza.Env.t option
+    env_node : Dune_env.Stanza.t option
 
   ; (** [PATH] *)
     path : Path.t list

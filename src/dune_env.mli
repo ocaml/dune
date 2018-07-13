@@ -1,6 +1,8 @@
 open Import
 
-module Env : sig
+type stanza = Stanza.t = ..
+
+module Stanza : sig
   type config =
     { flags          : Ordered_set_lang.Unexpanded.t
     ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
@@ -19,5 +21,5 @@ module Env : sig
   val t : t Sexp.Of_sexp.t
 end
 
-type Stanza.t +=
-  | Env of Env.t
+type stanza +=
+  | T of Stanza.t

@@ -26,7 +26,7 @@ type t =
   ; for_host                : t option
   ; implicit                : bool
   ; build_dir               : Path.t
-  ; env_node                : Shared_stanza.Env.t option
+  ; env_node                : Dune_env.Stanza.t option
   ; path                    : Path.t list
   ; toplevel_path           : Path.t option
   ; ocaml_bin               : Path.t

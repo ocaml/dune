@@ -1,5 +1,5 @@
 open Import
-open Shared_stanza
+(* open Dune_env.Stanza *)
 open Jbuild
 
 module A = Action
@@ -29,7 +29,7 @@ module Env_node = struct
     { dir                 : Path.t
     ; inherit_from        : t Lazy.t option
     ; scope               : Scope.t
-    ; config              : Env.t
+    ; config              : Dune_env.Stanza.t
     ; mutable ocaml_flags : Ocaml_flags.t option
     }
 end
@@ -449,7 +449,7 @@ end = struct
         in
         let flags =
           match List.find_map node.config.rules ~f:(fun (pat, cfg) ->
-            match (pat : Env.pattern), profile t with
+            match (pat : Dune_env.Stanza.pattern), profile t with
             | Any, _ -> Some cfg
             | Profile a, b -> Option.some_if (a = b) cfg)
           with
@@ -629,7 +629,7 @@ let create
   List.iter stanzas
     ~f:(fun { Dir_with_jbuild. ctx_dir; scope; stanzas; _ } ->
       List.iter stanzas ~f:(function
-        | Env config ->
+        | Dune_env.T config ->
           let inherit_from =
             if ctx_dir = Scope.root scope then
               context_env_node

@@ -13,7 +13,7 @@ module Context : sig
       { loc     : Loc.t
       ; profile : string
       ; targets : Target.t list
-      ; env     : Shared_stanza.Env.t option
+      ; env     : Dune_env.Stanza.t option
       }
   end
   module Opam : sig

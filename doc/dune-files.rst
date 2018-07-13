@@ -199,9 +199,9 @@ format of executable stanzas is as follows:
 .. code:: scheme
 
     (executable
-      ((name <name>)
-       <optional-fields>
-      ))
+      (name <name>)
+      <optional-fields>
+    )
 
 ``<name>`` is a module name that contains the main entry point of the
 executable. There can be additional modules in the current directory, you only

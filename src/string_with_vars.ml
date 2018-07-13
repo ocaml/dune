@@ -158,7 +158,7 @@ let concat_rev = function
   | l -> String.concat (List.rev l) ~sep:""
 
 module Mode = struct
-  type 'a t =
+  type _ t =
     | Single : Value.t t
     | Many : Value.t list t
 
@@ -263,6 +263,8 @@ let partial_expand
         | Some s -> s)
       end
     | _ -> loop [] [] template.parts
+
+type 'a expander = Var.t -> Syntax.Version.t -> 'a
 
 let expand t ~mode ~dir ~f =
   match

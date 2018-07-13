@@ -35,7 +35,7 @@ val is_var : t -> name:string -> bool
 val text_only : t -> string option
 
 module Mode : sig
-  type 'a t =
+  type _ t =
     | Single : Value.t t
     | Many : Value.t list t
 end
@@ -64,16 +64,18 @@ module Var : sig
   val describe : t -> string
 end
 
+type 'a expander = Var.t -> Syntax.Version.t -> 'a
+
 val expand
   :  t
   -> mode:'a Mode.t
   -> dir:Path.t
-  -> f:(Var.t -> Syntax.Version.t -> Value.t list option)
+  -> f:(Value.t list option expander)
   -> 'a
 
 val partial_expand
   :  t
   -> mode:'a Mode.t
   -> dir:Path.t
-  -> f:(Var.t -> Syntax.Version.t -> Value.t list option)
+  -> f:(Value.t list option expander)
   -> 'a Partial.t

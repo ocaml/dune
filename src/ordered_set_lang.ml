@@ -315,8 +315,9 @@ module Unexpanded = struct
             match f fn with
             | [x] -> Value.to_path ~dir x
             | _ ->
-              Exn.code_error "Ordered_set_lang.Unexpanded.expand path"
-                ["fn", String_with_vars.sexp_of_t fn]
+              Loc.fail (String_with_vars.loc fn)
+                "An unquoted templated expanded to more than one value. \
+                 A file path is expected in this position."
           in
           match Path.Map.find files_contents path with
           | Some x -> x

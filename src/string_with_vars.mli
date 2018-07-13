@@ -35,7 +35,7 @@ val is_var : t -> name:string -> bool
 val text_only : t -> string option
 
 module Mode : sig
-  type 'a t =
+  type _ t =
     | Single : Value.t t
     | Many : Value.t list t
 end

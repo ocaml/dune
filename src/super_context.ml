@@ -583,17 +583,16 @@ module Expander : sig
 
   type sctx = t
 
-  type expander
-    =  sctx
+  val with_expander
+    :  sctx
     -> dir:Path.t
     -> dep_kind:Build.lib_dep_kind
     -> scope:Scope.t
     -> targets_written_by_user:targets
     -> map_exe:(Path.t -> Path.t)
     -> bindings:Pform.Map.t
-    -> Value.t list option String_with_vars.expander
-
-  val with_expander : (expander -> 'a) -> 'a * Resolved_forms.t
+    -> f:(Value.t list option String_with_vars.expander -> 'a)
+    -> 'a * Resolved_forms.t
 end = struct
   module Resolved_forms = struct
     type t =
@@ -632,16 +631,6 @@ end = struct
   end
 
   type sctx = t
-
-  type expander
-    =  sctx
-    -> dir:Path.t
-    -> dep_kind:Build.lib_dep_kind
-    -> scope:Scope.t
-    -> targets_written_by_user:targets
-    -> map_exe:(Path.t -> Path.t)
-    -> bindings:Pform.Map.t
-    -> Value.t list option String_with_vars.expander
 
   let path_exp path = [Value.Path path]
   let str_exp  str  = [Value.String str]
@@ -772,11 +761,12 @@ end = struct
     );
     res
 
-  let with_expander
-    : 'a. (expander -> 'a) -> 'a * Resolved_forms.t
-    = fun f ->
-      let acc = Resolved_forms.empty () in
-      (f (expander ~acc), acc)
+  let with_expander sctx ~dir ~dep_kind ~scope ~targets_written_by_user
+        ~map_exe ~bindings ~f =
+    let acc = Resolved_forms.empty () in
+    ( f (expander ~acc sctx ~dir ~dep_kind ~scope ~targets_written_by_user ~map_exe ~bindings)
+    , acc
+    )
 end
 
 module Action = struct
@@ -801,10 +791,8 @@ module Action = struct
 
   let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user
         ~map_exe ~bindings t =
-    Expander.with_expander (fun expander ->
-      let f = expander sctx ~dir ~dep_kind ~scope ~targets_written_by_user
-                ~map_exe ~bindings in
-      U.partial_expand t ~dir ~map_exe ~f)
+    Expander.with_expander sctx ~dir ~dep_kind ~scope ~targets_written_by_user ~map_exe ~bindings
+      ~f:(fun f -> U.partial_expand t ~dir ~map_exe ~f)
 
   let expand_step2 ~dir ~dynamic_expansions ~bindings
         ~(deps_written_by_user : Path.t Jbuild.Bindings.t)

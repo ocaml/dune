@@ -158,7 +158,7 @@ let concat_rev = function
   | l -> String.concat (List.rev l) ~sep:""
 
 module Mode = struct
-  type 'a t =
+  type _ t =
     | Single : Value.t t
     | Many : Value.t list t
 

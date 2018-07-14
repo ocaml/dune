@@ -362,30 +362,15 @@ let read_file fn =
 
 let generated_file = "boot.ml"
 
+let pp = run_ocamllex "src/let-syntax/lexer.mll";;
+#mod_use "src/let-syntax/lexer.ml";;
+
 let generate_file_with_all_the_sources () =
   let oc = open_out_bin generated_file in
-  let pos_in_generated_file = ref 1 in
-  let pr fmt =
-    ksprintf (fun s ->
-      output_string oc s;
-      output_char oc '\n';
-      incr pos_in_generated_file)
-      fmt
-  in
-  let dump fn =
-    let s = read_file fn in
-    pr "# 1 %S" fn;
-    output_string oc s;
-    let newlines = count_newlines s in
-    let newlines =
-      if s <> "" && s.[String.length s - 1] <> '\n' then begin
-        output_char oc '\n';
-        newlines + 1
-      end else
-        newlines
-    in
-    pos_in_generated_file := !pos_in_generated_file + newlines;
-    pr "# %d %S" (!pos_in_generated_file + 1) generated_file
+  let pp = Lexer.create ~oc ~output_fname:generated_file in
+  let pr fmt = ksprintf (Lexer.print_endline pp) fmt in
+  let dump fname =
+    Lexer.apply pp ~fname
   in
   let modules_by_lib =
     List.map topsorted_module_names ~f:(fun m ->

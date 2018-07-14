@@ -5,8 +5,7 @@ open Printf
 type mode = Generated_code | Source_code
 
 type t =
-  { fname        : string
-  ; output_fname : string
+  { output_fname : string
   ; (* Line number in generated file *)
     mutable line : int
   ; oc           : out_channel
@@ -17,13 +16,13 @@ type t =
 let lexeme_len lb =
   Lexing.lexeme_end lb - Lexing.lexeme_start lb
 
-let fail t lb msg =
+let fail lb msg =
   let start = Lexing.lexeme_start_p lb in
   let stop = Lexing.lexeme_end_p lb in
   Printf.eprintf
     "File %S, line %d, characters %d-%d:\n\
      Error: %s\n%!"
-    t.fname start.pos_lnum (start.pos_cnum - start.pos_bol)
+    start.pos_fname start.pos_lnum (start.pos_cnum - start.pos_bol)
     (stop.pos_cnum - start.pos_bol)
     msg;
   exit 1
@@ -47,7 +46,7 @@ let enter_generated_code t =
 let enter_source_code t (pos : Lexing.position) =
   t.mode <- Source_code;
   pc t '\n';
-  pf t "# %d %S\n" pos.pos_lnum t.fname;
+  pf t "# %d %S\n" pos.pos_lnum pos.pos_fname;
   let col = pos.pos_cnum - pos.pos_bol in
   npc t col ' '
 
@@ -140,7 +139,7 @@ and after_indent t col = parse
       match id with
       | "and" -> And
       | "in"  -> In
-      | _     -> fail t lexbuf "'and' or 'in' keyword expected"
+      | _     -> fail lexbuf "'and' or 'in' keyword expected"
     }
 
 and after_in_and_newline t col = parse
@@ -175,18 +174,30 @@ and lhs t = parse
     }
 
 {
-  let process_file ~fname ~output_fname ~oc =
-    let (And | In) =
-      let t =
-        { fname
-        ; output_fname
-        ; line = 1
-        ; oc
-        ; mode = Generated_code
-        ; buf = Buffer.create 512
-        }
-      in
-      main t (-1) (Lexing.from_channel (open_in_bin fname))
-    in
-    ()
+  let create ~output_fname ~oc =
+    { output_fname
+    ; line = 1
+    ; oc
+    ; mode = Generated_code
+    ; buf = Buffer.create 512
+    }
+
+  let print_endline t s =
+    if t.mode = Source_code then
+      enter_generated_code t;
+    ps t s;
+    pc t '\n'
+
+  let apply t ~fname =
+    let ic = open_in_bin fname in
+    let lb = Lexing.from_channel ic in
+    lb.lex_curr_p <-
+      { pos_fname = fname
+      ; pos_lnum  = 1
+      ; pos_bol   = 0
+      ; pos_cnum  = 0
+      };
+    t.mode <- Generated_code;
+    let (And | In) = main t (-1) lb in
+    close_in ic
 }

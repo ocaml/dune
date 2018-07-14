@@ -1,2 +1,2 @@
 (executable (name pp))
-(ocamllex pp)
+(ocamllex lexer)

@@ -140,7 +140,10 @@ let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
     let set = Ordered_set_lang.Unexpanded.expand set ~dir ~files_contents ~f in
     Ordered_set_lang.String.eval set ~standard ~parse
 
-module Env = struct
+module Env : sig
+  val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
+  val get : t -> dir:Path.t -> Env_node.t
+end = struct
   open Env_node
 
   let rec get t ~dir =
@@ -468,7 +471,7 @@ module Deps = struct
 
   let make_alias t ~scope ~dir s =
     let loc = String_with_vars.loc s in
-    Alias.of_user_written_path ~loc ((expand_vars_path t ~scope ~dir s))
+    Alias.of_user_written_path ~loc (expand_vars_path t ~scope ~dir s)
 
   let dep t ~scope ~dir = function
     | File  s ->

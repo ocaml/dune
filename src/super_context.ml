@@ -87,287 +87,6 @@ let installed_libs t = t.installed_libs
 let find_scope_by_dir  t dir  = Scope.DB.find_by_dir  t.scopes dir
 let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
 
-let expand_ocaml_config t pform name =
-  match String.Map.find t.ocaml_config name with
-  | Some x -> x
-  | None ->
-    Loc.fail (String_with_vars.Var.loc pform)
-      "Unknown ocaml configuration variable %S"
-      name
-
-let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) s =
-  String_with_vars.expand ~mode ~dir s ~f:(fun pform syntax_version ->
-    (match Pform.Map.expand bindings pform syntax_version with
-     | None -> Pform.Map.expand t.pforms pform syntax_version
-     | Some _ as x -> x)
-    |> Option.map ~f:(function
-      | Pform.Expansion.Var (Values l) -> l
-      | Macro (Ocaml_config, s) -> expand_ocaml_config t pform s
-      | Var Project_root -> [Value.Dir (Scope.root scope)]
-      | _ ->
-        Loc.fail (String_with_vars.Var.loc pform)
-          "%s isn't allowed in this position"
-          (String_with_vars.Var.describe pform)))
-
-let expand_vars_string t ~scope ~dir ?bindings s =
-  expand_vars t ~mode:Single ~scope ~dir ?bindings s
-  |> Value.to_string ~dir
-
-let expand_vars_path t ~scope ~dir ?bindings s =
-  expand_vars t ~mode:Single ~scope ~dir ?bindings s
-  |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir
-
-let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
-  let open Build.O in
-  let parse ~loc:_ s = s in
-  let (syntax, files) =
-    let f = expand_vars_path t ~scope ~dir ?bindings in
-    Ordered_set_lang.Unexpanded.files set ~f in
-  let f = expand_vars t ~mode:Many ~scope ~dir ?bindings in
-  match Path.Set.to_list files with
-  | [] ->
-    let set =
-      Ordered_set_lang.Unexpanded.expand set ~dir
-        ~files_contents:Path.Map.empty ~f
-    in
-    standard >>^ fun standard ->
-    Ordered_set_lang.String.eval set ~standard ~parse
-  | paths ->
-    Build.fanout standard (Build.all (List.map paths ~f:(fun f ->
-      Build.read_sexp f syntax)))
-    >>^ fun (standard, sexps) ->
-    let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
-    let set = Ordered_set_lang.Unexpanded.expand set ~dir ~files_contents ~f in
-    Ordered_set_lang.String.eval set ~standard ~parse
-
-module Env : sig
-  val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
-  val get : t -> dir:Path.t -> Env_node.t
-end = struct
-  open Env_node
-
-  let rec get t ~dir =
-    match Hashtbl.find t.env dir with
-    | None ->
-      begin match Path.parent dir with
-      | None -> raise_notrace Exit
-      | Some parent ->
-        let node = get t ~dir:parent in
-        Hashtbl.add t.env dir node;
-        node
-      end
-    | Some node -> node
-
-  let get t ~dir =
-    match get t ~dir with
-    | node -> node
-    | exception Exit ->
-      Exn.code_error "Super_context.Env.get called on invalid directory"
-        [ "dir", Path.sexp_of_t dir ]
-
-  let ocaml_flags t ~dir =
-    let rec loop t node =
-      match node.ocaml_flags with
-      | Some x -> x
-      | None ->
-        let default =
-          match node.inherit_from with
-          | None -> Ocaml_flags.default ~profile:(profile t)
-          | Some (lazy node) -> loop t node
-        in
-        let flags =
-          match List.find_map node.config.rules ~f:(fun (pat, cfg) ->
-            match (pat : Env.pattern), profile t with
-            | Any, _ -> Some cfg
-            | Profile a, b -> Option.some_if (a = b) cfg)
-          with
-          | None -> default
-          | Some cfg ->
-            Ocaml_flags.make
-              ~flags:cfg.flags
-              ~ocamlc_flags:cfg.ocamlc_flags
-              ~ocamlopt_flags:cfg.ocamlopt_flags
-              ~default
-              ~eval:(expand_and_eval_set t ~scope:node.scope ~dir:node.dir
-                       ?bindings:None)
-        in
-        node.ocaml_flags <- Some flags;
-        flags
-    in
-    loop t (get t ~dir)
-
-end
-
-let ocaml_flags t ~dir ~scope (x : Buildable.t) =
-  Ocaml_flags.make
-    ~flags:x.flags
-    ~ocamlc_flags:x.ocamlc_flags
-    ~ocamlopt_flags:x.ocamlopt_flags
-    ~default:(Env.ocaml_flags t ~dir)
-    ~eval:(expand_and_eval_set t ~scope ~dir ?bindings:None)
-
-let dump_env t ~dir =
-  Ocaml_flags.dump (Env.ocaml_flags t ~dir)
-
-let resolve_program t ?hint bin =
-  Artifacts.binary ?hint t.artifacts bin
-
-let create
-      ~(context:Context.t)
-      ?host
-      ~projects
-      ~file_tree
-      ~packages
-      ~stanzas
-      ~external_lib_deps_mode
-      ~build_system
-  =
-  let installed_libs =
-    Lib.DB.create_from_findlib context.findlib ~external_lib_deps_mode
-  in
-  let internal_libs =
-    List.concat_map stanzas ~f:(fun { Jbuild_load.Jbuild. dir; stanzas; _ } ->
-      let ctx_dir = Path.append context.build_dir dir in
-      List.filter_map stanzas ~f:(fun stanza ->
-        match (stanza : Stanza.t) with
-        | Library lib -> Some (ctx_dir, lib)
-        | _ -> None))
-  in
-  let scopes, public_libs =
-    Scope.DB.create
-      ~projects
-      ~context:context.name
-      ~installed_libs
-      internal_libs
-  in
-  let stanzas =
-    List.map stanzas
-      ~f:(fun { Jbuild_load.Jbuild. dir; project; stanzas; kind } ->
-        let ctx_dir = Path.append context.build_dir dir in
-        { Dir_with_jbuild.
-          src_dir = dir
-        ; ctx_dir
-        ; stanzas
-        ; scope = Scope.DB.find_by_name scopes project.Dune_project.name
-        ; kind
-        })
-  in
-  let stanzas_per_dir =
-    List.map stanzas ~f:(fun stanzas ->
-      (stanzas.Dir_with_jbuild.ctx_dir, stanzas))
-    |> Path.Map.of_list_exn
-  in
-  let stanzas_to_consider_for_install =
-    if not external_lib_deps_mode then
-      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; kind; _ } ->
-        List.filter_map stanzas ~f:(fun stanza ->
-          let keep =
-            match (stanza : Stanza.t) with
-            | Library lib -> Lib.DB.available (Scope.libs scope) lib.name
-            | Documentation _
-            | Install _   -> true
-            | _           -> false
-          in
-          Option.some_if keep { Installable.
-                                dir = ctx_dir
-                              ; scope
-                              ; stanza
-                              ; kind
-                              }))
-    else
-      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; kind; _ } ->
-        List.map stanzas ~f:(fun stanza ->
-          { Installable.
-            dir = ctx_dir
-          ; scope
-          ; stanza
-          ; kind
-          }))
-  in
-  let artifacts =
-    Artifacts.create context ~public_libs stanzas
-      ~f:(fun (d : Dir_with_jbuild.t) -> d.stanzas)
-  in
-  let cxx_flags =
-    List.filter context.ocamlc_cflags
-      ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
-  in
-  let pforms = Pform.Map.create ~context ~cxx_flags in
-  let ocaml_config =
-    let string s = [Value.String s] in
-    Ocaml_config.to_list context.ocaml_config
-    |> List.map  ~f:(fun (k, v) ->
-      ( k
-      , match (v : Ocaml_config.Value.t) with
-      | Bool          x -> string (string_of_bool x)
-      | Int           x -> string (string_of_int x)
-      | String        x -> string x
-      | Words         x -> Value.L.strings x
-      | Prog_and_args x -> Value.L.strings (x.prog :: x.args)))
-    |> String.Map.of_list_exn
-  in
-  let t =
-    { context
-    ; host
-    ; build_system
-    ; scopes
-    ; public_libs
-    ; installed_libs
-    ; stanzas
-    ; stanzas_per_dir
-    ; packages
-    ; file_tree
-    ; stanzas_to_consider_for_install
-    ; artifacts
-    ; cxx_flags
-    ; pforms
-    ; ocaml_config
-    ; chdir = Build.arr (fun (action : Action.t) ->
-        match action with
-        | Chdir _ -> action
-        | _ -> Chdir (context.build_dir, action))
-    ; libs_by_package =
-        Lib.DB.all public_libs
-        |> Lib.Set.to_list
-        |> List.map ~f:(fun lib ->
-          (Option.value_exn (Lib.package lib), lib))
-        |> Package.Name.Map.of_list_multi
-        |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
-          let pkg  = Option.value_exn pkg          in
-          let libs = Option.value libs ~default:[] in
-          Some (pkg, Lib.Set.of_list libs))
-    ; env = Hashtbl.create 128
-    }
-  in
-  List.iter stanzas
-    ~f:(fun { Dir_with_jbuild. ctx_dir; scope; stanzas; _ } ->
-      List.iter stanzas ~f:(function
-        | Env config ->
-          let inherit_from =
-            if ctx_dir = Scope.root scope then
-              None
-            else
-              Some (lazy (Env.get t ~dir:(Path.parent_exn ctx_dir)))
-          in
-          Hashtbl.add t.env ctx_dir
-            { dir          = ctx_dir
-            ; inherit_from = inherit_from
-            ; scope        = scope
-            ; config       = config
-            ; ocaml_flags  = None
-            }
-        | _ -> ()));
-  if not (Hashtbl.mem t.env context.build_dir) then
-    Hashtbl.add t.env context.build_dir
-      { Env_node.
-        dir          = context.build_dir
-      ; inherit_from = None
-      ; scope        = Scope.DB.find_by_dir scopes context.build_dir
-      ; config       = { loc = Loc.none; rules = [] }
-      ; ocaml_flags  = None
-      };
-  t
-
 let prefix_rules t prefix ~f =
   Build_system.prefix_rules t.build_system prefix ~f
 
@@ -404,126 +123,41 @@ let source_files t ~src_path =
   | None -> String.Set.empty
   | Some dir -> File_tree.Dir.files dir
 
-module Libs = struct
-  open Build.O
 
-  let gen_select_rules t ~dir compile_info =
-    List.iter (Lib.Compile.resolved_selects compile_info) ~f:(fun rs ->
-      let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
-      let dst = Path.relative dir dst_fn in
-      add_rule t
-        (match src_fn with
-         | Ok src_fn ->
-           let src = Path.relative dir src_fn in
-           Build.copy_and_add_line_directive ~src ~dst
-         | Error e ->
-           Build.fail ~targets:[dst]
-             { fail = fun () ->
-                 raise (Lib.Error (No_solution_found_for_select e))
-             }))
+let expand_ocaml_config t pform name =
+  match String.Map.find t.ocaml_config name with
+  | Some x -> x
+  | None ->
+    Loc.fail (String_with_vars.Var.loc pform)
+      "Unknown ocaml configuration variable %S"
+      name
 
-  let with_lib_deps t compile_info ~dir ~f =
-    let prefix =
-      Build.record_lib_deps (Lib.Compile.user_written_deps compile_info)
-        ~kind:(if Lib.Compile.optional compile_info then
-                 Optional
-               else
-                 Required)
-    in
-    let prefix =
-      if t.context.merlin then
-        Build.path (Path.relative dir ".merlin-exists")
-        >>>
-        prefix
-      else
-        prefix
-    in
-    prefix_rules t prefix ~f
+let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) s =
+  String_with_vars.expand ~mode ~dir s ~f:(fun pform syntax_version ->
+    (match Pform.Map.expand bindings pform syntax_version with
+     | None -> Pform.Map.expand t.pforms pform syntax_version
+     | Some _ as x -> x)
+    |> Option.map ~f:(function
+      | Pform.Expansion.Var (Values l) -> l
+      | Macro (Ocaml_config, s) -> expand_ocaml_config t pform s
+      | Var Project_root -> [Value.Dir (Scope.root scope)]
+      | _ ->
+        Loc.fail (String_with_vars.Var.loc pform)
+          "%s isn't allowed in this position"
+          (String_with_vars.Var.describe pform)))
 
-  let lib_files_alias ~dir ~name ~ext =
-    Alias.make (sprintf "lib-%s%s-all" name ext) ~dir
+let expand_vars_string t ~scope ~dir ?bindings s =
+  expand_vars t ~mode:Single ~scope ~dir ?bindings s
+  |> Value.to_string ~dir
 
-  let setup_file_deps_alias t ~dir ~ext lib files =
-    add_alias_deps t
-      (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext) files
+let expand_vars_path t ~scope ~dir ?bindings s =
+  expand_vars t ~mode:Single ~scope ~dir ?bindings s
+  |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir
 
-  let setup_file_deps_group_alias t ~dir ~exts lib =
-    setup_file_deps_alias t lib ~dir
-      ~ext:(String.concat exts ~sep:"-and-")
-      (List.map exts ~f:(fun ext ->
-         Alias.stamp_file
-           (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext))
-       |> Path.Set.of_list)
-
-  let file_deps t libs ~ext =
-    List.rev_map libs ~f:(fun (lib : Lib.t) ->
-      if Lib.is_local lib then
-        Alias.stamp_file
-          (lib_files_alias ~dir:(Lib.src_dir lib) ~name:(Lib.name lib) ~ext)
-      else
-        Build_system.stamp_file_for_files_of t.build_system
-          ~dir:(Lib.obj_dir lib) ~ext)
-end
-
-module Deps = struct
-  open Build.O
-  open Dep_conf
-
-  let make_alias t ~scope ~dir s =
-    let loc = String_with_vars.loc s in
-    Alias.of_user_written_path ~loc (expand_vars_path t ~scope ~dir s)
-
-  let dep t ~scope ~dir = function
-    | File  s ->
-      let path = expand_vars_path t ~scope ~dir s in
-      Build.path path
-      >>^ fun () -> [path]
-    | Alias s ->
-      Alias.dep (make_alias t ~scope ~dir s)
-      >>^ fun () -> []
-    | Alias_rec s ->
-      Alias.dep_rec ~loc:(String_with_vars.loc s) ~file_tree:t.file_tree
-        (make_alias t ~scope ~dir s)
-      >>^ fun () -> []
-    | Glob_files s -> begin
-        let loc = String_with_vars.loc s in
-        let path = expand_vars_path t ~scope ~dir s in
-        match Glob_lexer.parse_string (Path.basename path) with
-        | Ok re ->
-          let dir = Path.parent_exn path in
-          Build.paths_glob ~loc ~dir (Re.compile re)
-          >>^ Path.Set.to_list
-        | Error (_pos, msg) ->
-          Loc.fail (String_with_vars.loc s) "invalid glob: %s" msg
-      end
-    | Source_tree s ->
-      let path = expand_vars_path t ~scope ~dir s in
-      Build.source_tree ~dir:path ~file_tree:t.file_tree
-      >>^ Path.Set.to_list
-    | Package p ->
-      let pkg = Package.Name.of_string (expand_vars_string t ~scope ~dir p) in
-      Alias.dep (Alias.package_install ~context:t.context ~pkg)
-      >>^ fun () -> []
-    | Universe ->
-      Build.path Build_system.universe_file
-      >>^ fun () -> []
-
-  let interpret t ~scope ~dir l =
-    List.map l ~f:(dep t ~scope ~dir)
-    |> Build.all
-    >>^ List.concat
-
-  let interpret_named t ~scope ~dir bindings =
-    List.map bindings ~f:(function
-      | Jbuild.Bindings.Unnamed p ->
-        dep t ~scope ~dir p >>^ fun l ->
-        List.map l ~f:(fun x -> Jbuild.Bindings.Unnamed x)
-      | Named (s, ps) ->
-        Build.all (List.map ps ~f:(dep t ~scope ~dir)) >>^ fun l ->
-        [Jbuild.Bindings.Named (s, List.concat l)])
-    |> Build.all
-    >>^ List.concat
-end
+type targets =
+  | Static of Path.t list
+  | Infer
+  | Alias
 
 module Pkg_version = struct
   open Build.O
@@ -548,24 +182,6 @@ module Pkg_version = struct
     add_rule sctx (get >>> Build.store_vfile spec);
     Build.vpath spec
 end
-
-module Scope_key = struct
-  let of_string sctx key =
-    match String.rsplit2 key ~on:'@' with
-    | None ->
-      (key, public_libs sctx)
-    | Some (key, scope) ->
-      ( key
-      , Scope.libs (find_scope_by_name sctx (Dune_project.Name.decode scope)))
-
-  let to_string key scope =
-    sprintf "%s@%s" key (Dune_project.Name.encode scope)
-end
-
-type targets =
-  | Static of Path.t list
-  | Infer
-  | Alias
 
 module Expander : sig
   module Resolved_forms : sig
@@ -770,6 +386,391 @@ end = struct
     ( f (expander ~acc sctx ~dir ~dep_kind ~scope ~targets_written_by_user ~map_exe ~bindings)
     , acc
     )
+end
+
+let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
+  let open Build.O in
+  let parse ~loc:_ s = s in
+  let (syntax, files) =
+    let f = expand_vars_path t ~scope ~dir ?bindings in
+    Ordered_set_lang.Unexpanded.files set ~f in
+  let f = expand_vars t ~mode:Many ~scope ~dir ?bindings in
+  match Path.Set.to_list files with
+  | [] ->
+    let set =
+      Ordered_set_lang.Unexpanded.expand set ~dir
+        ~files_contents:Path.Map.empty ~f
+    in
+    standard >>^ fun standard ->
+    Ordered_set_lang.String.eval set ~standard ~parse
+  | paths ->
+    Build.fanout standard (Build.all (List.map paths ~f:(fun f ->
+      Build.read_sexp f syntax)))
+    >>^ fun (standard, sexps) ->
+    let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
+    let set = Ordered_set_lang.Unexpanded.expand set ~dir ~files_contents ~f in
+    Ordered_set_lang.String.eval set ~standard ~parse
+
+module Env : sig
+  val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
+  val get : t -> dir:Path.t -> Env_node.t
+end = struct
+  open Env_node
+
+  let rec get t ~dir =
+    match Hashtbl.find t.env dir with
+    | None ->
+      begin match Path.parent dir with
+      | None -> raise_notrace Exit
+      | Some parent ->
+        let node = get t ~dir:parent in
+        Hashtbl.add t.env dir node;
+        node
+      end
+    | Some node -> node
+
+  let get t ~dir =
+    match get t ~dir with
+    | node -> node
+    | exception Exit ->
+      Exn.code_error "Super_context.Env.get called on invalid directory"
+        [ "dir", Path.sexp_of_t dir ]
+
+  let ocaml_flags t ~dir =
+    let rec loop t node =
+      match node.ocaml_flags with
+      | Some x -> x
+      | None ->
+        let default =
+          match node.inherit_from with
+          | None -> Ocaml_flags.default ~profile:(profile t)
+          | Some (lazy node) -> loop t node
+        in
+        let flags =
+          match List.find_map node.config.rules ~f:(fun (pat, cfg) ->
+            match (pat : Env.pattern), profile t with
+            | Any, _ -> Some cfg
+            | Profile a, b -> Option.some_if (a = b) cfg)
+          with
+          | None -> default
+          | Some cfg ->
+            Ocaml_flags.make
+              ~flags:cfg.flags
+              ~ocamlc_flags:cfg.ocamlc_flags
+              ~ocamlopt_flags:cfg.ocamlopt_flags
+              ~default
+              ~eval:(expand_and_eval_set t ~scope:node.scope ~dir:node.dir
+                       ?bindings:None)
+        in
+        node.ocaml_flags <- Some flags;
+        flags
+    in
+    loop t (get t ~dir)
+
+end
+
+
+let ocaml_flags t ~dir ~scope (x : Buildable.t) =
+  Ocaml_flags.make
+    ~flags:x.flags
+    ~ocamlc_flags:x.ocamlc_flags
+    ~ocamlopt_flags:x.ocamlopt_flags
+    ~default:(Env.ocaml_flags t ~dir)
+    ~eval:(expand_and_eval_set t ~scope ~dir ?bindings:None)
+
+let dump_env t ~dir =
+  Ocaml_flags.dump (Env.ocaml_flags t ~dir)
+
+let resolve_program t ?hint bin =
+  Artifacts.binary ?hint t.artifacts bin
+
+let create
+      ~(context:Context.t)
+      ?host
+      ~projects
+      ~file_tree
+      ~packages
+      ~stanzas
+      ~external_lib_deps_mode
+      ~build_system
+  =
+  let installed_libs =
+    Lib.DB.create_from_findlib context.findlib ~external_lib_deps_mode
+  in
+  let internal_libs =
+    List.concat_map stanzas ~f:(fun { Jbuild_load.Jbuild. dir; stanzas; _ } ->
+      let ctx_dir = Path.append context.build_dir dir in
+      List.filter_map stanzas ~f:(fun stanza ->
+        match (stanza : Stanza.t) with
+        | Library lib -> Some (ctx_dir, lib)
+        | _ -> None))
+  in
+  let scopes, public_libs =
+    Scope.DB.create
+      ~projects
+      ~context:context.name
+      ~installed_libs
+      internal_libs
+  in
+  let stanzas =
+    List.map stanzas
+      ~f:(fun { Jbuild_load.Jbuild. dir; project; stanzas; kind } ->
+        let ctx_dir = Path.append context.build_dir dir in
+        { Dir_with_jbuild.
+          src_dir = dir
+        ; ctx_dir
+        ; stanzas
+        ; scope = Scope.DB.find_by_name scopes project.Dune_project.name
+        ; kind
+        })
+  in
+  let stanzas_per_dir =
+    List.map stanzas ~f:(fun stanzas ->
+      (stanzas.Dir_with_jbuild.ctx_dir, stanzas))
+    |> Path.Map.of_list_exn
+  in
+  let stanzas_to_consider_for_install =
+    if not external_lib_deps_mode then
+      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; kind; _ } ->
+        List.filter_map stanzas ~f:(fun stanza ->
+          let keep =
+            match (stanza : Stanza.t) with
+            | Library lib -> Lib.DB.available (Scope.libs scope) lib.name
+            | Documentation _
+            | Install _   -> true
+            | _           -> false
+          in
+          Option.some_if keep { Installable.
+                                dir = ctx_dir
+                              ; scope
+                              ; stanza
+                              ; kind
+                              }))
+    else
+      List.concat_map stanzas ~f:(fun { ctx_dir; stanzas; scope; kind; _ } ->
+        List.map stanzas ~f:(fun stanza ->
+          { Installable.
+            dir = ctx_dir
+          ; scope
+          ; stanza
+          ; kind
+          }))
+  in
+  let artifacts =
+    Artifacts.create context ~public_libs stanzas
+      ~f:(fun (d : Dir_with_jbuild.t) -> d.stanzas)
+  in
+  let cxx_flags =
+    List.filter context.ocamlc_cflags
+      ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+  in
+  let pforms = Pform.Map.create ~context ~cxx_flags in
+  let ocaml_config =
+    let string s = [Value.String s] in
+    Ocaml_config.to_list context.ocaml_config
+    |> List.map  ~f:(fun (k, v) ->
+      ( k
+      , match (v : Ocaml_config.Value.t) with
+      | Bool          x -> string (string_of_bool x)
+      | Int           x -> string (string_of_int x)
+      | String        x -> string x
+      | Words         x -> Value.L.strings x
+      | Prog_and_args x -> Value.L.strings (x.prog :: x.args)))
+    |> String.Map.of_list_exn
+  in
+  let t =
+    { context
+    ; host
+    ; build_system
+    ; scopes
+    ; public_libs
+    ; installed_libs
+    ; stanzas
+    ; stanzas_per_dir
+    ; packages
+    ; file_tree
+    ; stanzas_to_consider_for_install
+    ; artifacts
+    ; cxx_flags
+    ; pforms
+    ; ocaml_config
+    ; chdir = Build.arr (fun (action : Action.t) ->
+        match action with
+        | Chdir _ -> action
+        | _ -> Chdir (context.build_dir, action))
+    ; libs_by_package =
+        Lib.DB.all public_libs
+        |> Lib.Set.to_list
+        |> List.map ~f:(fun lib ->
+          (Option.value_exn (Lib.package lib), lib))
+        |> Package.Name.Map.of_list_multi
+        |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
+          let pkg  = Option.value_exn pkg          in
+          let libs = Option.value libs ~default:[] in
+          Some (pkg, Lib.Set.of_list libs))
+    ; env = Hashtbl.create 128
+    }
+  in
+  List.iter stanzas
+    ~f:(fun { Dir_with_jbuild. ctx_dir; scope; stanzas; _ } ->
+      List.iter stanzas ~f:(function
+        | Env config ->
+          let inherit_from =
+            if ctx_dir = Scope.root scope then
+              None
+            else
+              Some (lazy (Env.get t ~dir:(Path.parent_exn ctx_dir)))
+          in
+          Hashtbl.add t.env ctx_dir
+            { dir          = ctx_dir
+            ; inherit_from = inherit_from
+            ; scope        = scope
+            ; config       = config
+            ; ocaml_flags  = None
+            }
+        | _ -> ()));
+  if not (Hashtbl.mem t.env context.build_dir) then
+    Hashtbl.add t.env context.build_dir
+      { Env_node.
+        dir          = context.build_dir
+      ; inherit_from = None
+      ; scope        = Scope.DB.find_by_dir scopes context.build_dir
+      ; config       = { loc = Loc.none; rules = [] }
+      ; ocaml_flags  = None
+      };
+  t
+module Libs = struct
+  open Build.O
+
+  let gen_select_rules t ~dir compile_info =
+    List.iter (Lib.Compile.resolved_selects compile_info) ~f:(fun rs ->
+      let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
+      let dst = Path.relative dir dst_fn in
+      add_rule t
+        (match src_fn with
+         | Ok src_fn ->
+           let src = Path.relative dir src_fn in
+           Build.copy_and_add_line_directive ~src ~dst
+         | Error e ->
+           Build.fail ~targets:[dst]
+             { fail = fun () ->
+                 raise (Lib.Error (No_solution_found_for_select e))
+             }))
+
+  let with_lib_deps t compile_info ~dir ~f =
+    let prefix =
+      Build.record_lib_deps (Lib.Compile.user_written_deps compile_info)
+        ~kind:(if Lib.Compile.optional compile_info then
+                 Optional
+               else
+                 Required)
+    in
+    let prefix =
+      if t.context.merlin then
+        Build.path (Path.relative dir ".merlin-exists")
+        >>>
+        prefix
+      else
+        prefix
+    in
+    prefix_rules t prefix ~f
+
+  let lib_files_alias ~dir ~name ~ext =
+    Alias.make (sprintf "lib-%s%s-all" name ext) ~dir
+
+  let setup_file_deps_alias t ~dir ~ext lib files =
+    add_alias_deps t
+      (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext) files
+
+  let setup_file_deps_group_alias t ~dir ~exts lib =
+    setup_file_deps_alias t lib ~dir
+      ~ext:(String.concat exts ~sep:"-and-")
+      (List.map exts ~f:(fun ext ->
+         Alias.stamp_file
+           (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext))
+       |> Path.Set.of_list)
+
+  let file_deps t libs ~ext =
+    List.rev_map libs ~f:(fun (lib : Lib.t) ->
+      if Lib.is_local lib then
+        Alias.stamp_file
+          (lib_files_alias ~dir:(Lib.src_dir lib) ~name:(Lib.name lib) ~ext)
+      else
+        Build_system.stamp_file_for_files_of t.build_system
+          ~dir:(Lib.obj_dir lib) ~ext)
+end
+
+module Deps = struct
+  open Build.O
+  open Dep_conf
+
+  let make_alias t ~scope ~dir s =
+    let loc = String_with_vars.loc s in
+    Alias.of_user_written_path ~loc (expand_vars_path t ~scope ~dir s)
+
+  let dep t ~scope ~dir = function
+    | File  s ->
+      let path = expand_vars_path t ~scope ~dir s in
+      Build.path path
+      >>^ fun () -> [path]
+    | Alias s ->
+      Alias.dep (make_alias t ~scope ~dir s)
+      >>^ fun () -> []
+    | Alias_rec s ->
+      Alias.dep_rec ~loc:(String_with_vars.loc s) ~file_tree:t.file_tree
+        (make_alias t ~scope ~dir s)
+      >>^ fun () -> []
+    | Glob_files s -> begin
+        let loc = String_with_vars.loc s in
+        let path = expand_vars_path t ~scope ~dir s in
+        match Glob_lexer.parse_string (Path.basename path) with
+        | Ok re ->
+          let dir = Path.parent_exn path in
+          Build.paths_glob ~loc ~dir (Re.compile re)
+          >>^ Path.Set.to_list
+        | Error (_pos, msg) ->
+          Loc.fail (String_with_vars.loc s) "invalid glob: %s" msg
+      end
+    | Source_tree s ->
+      let path = expand_vars_path t ~scope ~dir s in
+      Build.source_tree ~dir:path ~file_tree:t.file_tree
+      >>^ Path.Set.to_list
+    | Package p ->
+      let pkg = Package.Name.of_string (expand_vars_string t ~scope ~dir p) in
+      Alias.dep (Alias.package_install ~context:t.context ~pkg)
+      >>^ fun () -> []
+    | Universe ->
+      Build.path Build_system.universe_file
+      >>^ fun () -> []
+
+  let interpret t ~scope ~dir l =
+    List.map l ~f:(dep t ~scope ~dir)
+    |> Build.all
+    >>^ List.concat
+
+  let interpret_named t ~scope ~dir bindings =
+    List.map bindings ~f:(function
+      | Jbuild.Bindings.Unnamed p ->
+        dep t ~scope ~dir p >>^ fun l ->
+        List.map l ~f:(fun x -> Jbuild.Bindings.Unnamed x)
+      | Named (s, ps) ->
+        Build.all (List.map ps ~f:(dep t ~scope ~dir)) >>^ fun l ->
+        [Jbuild.Bindings.Named (s, List.concat l)])
+    |> Build.all
+    >>^ List.concat
+end
+
+module Scope_key = struct
+  let of_string sctx key =
+    match String.rsplit2 key ~on:'@' with
+    | None ->
+      (key, public_libs sctx)
+    | Some (key, scope) ->
+      ( key
+      , Scope.libs (find_scope_by_name sctx (Dune_project.Name.decode scope)))
+
+  let to_string key scope =
+    sprintf "%s@%s" key (Dune_project.Name.encode scope)
 end
 
 module Action = struct

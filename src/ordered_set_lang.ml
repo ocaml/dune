@@ -370,11 +370,9 @@ module Unexpanded = struct
       | Some (0, _)-> File_tree.Dune_file.Kind.Jbuild
       | None | Some (_, _) -> Dune
     in
-    String_with_vars.Partial.Unexpanded (
-      ({ t with ast = expand t.ast }
-      , syntax
-      , !files
-      )
+    ({ t with ast = expand t.ast }
+    , syntax
+    , !files
     )
 end
 

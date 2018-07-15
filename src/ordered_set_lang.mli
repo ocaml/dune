@@ -80,7 +80,7 @@ module Unexpanded : sig
     -> f:(String_with_vars.t
           -> (Value.t list, String_with_vars.t) String_with_vars.Partial.t
          )
-    -> (expanded, Partial.t * Sexp.syntax * Path.Set.t) String_with_vars.Partial.t
+    -> Partial.t * Sexp.syntax * Path.Set.t
 
   type position = Pos | Neg
 

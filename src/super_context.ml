@@ -405,20 +405,25 @@ end
 let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
   let open Build.O in
   let parse ~loc:_ s = s in
-  let f = expand_vars_partial t ~mode:Many ~scope ~dir ?bindings in
-  match Ordered_set_lang.Unexpanded.expand set ~f ~dir with
-  | String_with_vars.Partial.Expanded e ->
+  let (partial, syntax, paths) =
+    let f = expand_vars_partial t ~mode:Many ~scope ~dir ?bindings in
+    Ordered_set_lang.Unexpanded.expand set ~dir ~f
+  in
+  let f = expand_vars t ~scope ~dir ~mode:Many ?bindings in
+  match Path.Set.to_list paths with
+  | [] ->
     standard >>^ fun standard ->
-    Ordered_set_lang.String.eval ~parse ~standard e
-  | Unexpanded (partial, syntax, paths) ->
-    let paths = Path.Set.to_list paths in
+    Ordered_set_lang.Partial.expand partial ~dir ~f
+      ~files_contents:Path.Map.empty
+    |> Ordered_set_lang.String.eval ~parse ~standard
+  | paths ->
     Build.fanout standard (Build.all (List.map paths ~f:(fun f ->
       Build.read_sexp f syntax)))
     >>^ fun (standard, sexps) ->
     let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
     let f = expand_vars t ~scope ~dir ~mode:Many ?bindings in
-    let set = Ordered_set_lang.Partial.expand partial ~dir ~f ~files_contents in
-    Ordered_set_lang.String.eval set ~standard ~parse
+    Ordered_set_lang.Partial.expand partial ~dir ~f ~files_contents
+    |> Ordered_set_lang.String.eval ~standard ~parse
 
 module Env : sig
   val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t

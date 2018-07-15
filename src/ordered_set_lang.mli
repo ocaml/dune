@@ -74,12 +74,16 @@ module Unexpanded : sig
 
   val has_special_forms : t -> bool
 
+  type expander =
+    { f: 'a. mode:'a String_with_vars.Mode.t
+        -> String_with_vars.t
+        -> ('a, String_with_vars.t) String_with_vars.Partial.t
+    }
+
   val expand
     :  t
     -> dir:Path.t
-    -> f:(String_with_vars.t
-          -> (Value.t list, String_with_vars.t) String_with_vars.Partial.t
-         )
+    -> f:expander
     -> Partial.t * Sexp.syntax * Path.Set.t
 
   type position = Pos | Neg

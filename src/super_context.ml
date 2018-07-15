@@ -417,7 +417,10 @@ let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
         ~map_exe:(fun x -> x)
         ~bindings
         ~f:(fun f ->
-          let f = String_with_vars.partial_expand ~mode:Many ~dir ~f in
+          let f : Ordered_set_lang.Unexpanded.expander =
+            { f = fun ~mode sw ->
+                String_with_vars.partial_expand ~mode ~dir ~f sw
+            } in
           Ordered_set_lang.Unexpanded.expand set ~dir ~f)
     in
     (partial, syntax, paths, resolved_forms)

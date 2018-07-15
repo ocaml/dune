@@ -332,13 +332,9 @@ module Unexpanded = struct
     in
     loop t.ast Pos init
 
-  type expander =
-    { f: 'a. mode:'a String_with_vars.Mode.t
-        -> String_with_vars.t
-        -> ('a, String_with_vars.t) String_with_vars.Partial.t
-    }
-
-  let expand t ~dir ~f =
+  let expand t ~dir
+        ~(f : String_with_vars.t
+          -> (Value.t list, String_with_vars.t) String_with_vars.Partial.t) =
     let files = ref Path.Set.empty in
     let rec expand (t : ast) : Partial.ast =
       let open Ast in
@@ -346,20 +342,24 @@ module Unexpanded = struct
       match t with
       | Element s ->
         Element (
-          match f.f ~mode:Many s with
+          match f s with
           | Expanded v -> Expanded (String_with_vars.loc s, v)
           | Unexpanded _ as v -> v)
       | Standard -> Standard
       | Include (Template_path fn) ->
-        begin match f.f ~mode:Single fn with
+        begin match f fn with
         | Unexpanded e ->
           Loc.fail (String_with_vars.loc fn)
             "Failed to fully expand include path. Unexpanded value: %a"
             (Usexp.pp Dune) (String_with_vars.sexp_of_t e)
-        | Expanded x ->
+        | Expanded [x] ->
           let path = Value.to_path ~dir x in
           files := Path.Set.add !files path;
           Include (Expanded_path path)
+        | Expanded ([] | _::_::_) ->
+          Loc.fail (String_with_vars.loc fn)
+            "An unquoted templated expanded to more than one value. \
+             A file path is expected in this position."
         end
       | Union l -> Union (List.map l ~f:expand)
       | Diff (l, r) ->

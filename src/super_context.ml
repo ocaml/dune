@@ -394,10 +394,13 @@ let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
   let open Build.O in
   let parse ~loc:_ s = s in
   let (partial, syntax, paths) =
-    let f = expand_vars ~expand:String_with_vars.partial_expand t ~mode:Many
-              ~scope ~dir ?bindings in
-    Ordered_set_lang.Unexpanded.expand set ~dir ~f
-  in
+    let f =
+      { Ordered_set_lang.Unexpanded.
+        f = fun ~mode sw ->
+          expand_vars ~expand:String_with_vars.partial_expand ~mode t
+              ~scope ~dir ?bindings sw
+      } in
+    Ordered_set_lang.Unexpanded.expand set ~dir ~f in
   let f = expand_vars ~expand:String_with_vars.expand t ~scope ~dir
             ~mode:Many ?bindings in
   match Path.Set.to_list paths with

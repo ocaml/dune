@@ -132,19 +132,21 @@ let expand_ocaml_config t pform name =
       "Unknown ocaml configuration variable %S"
       name
 
-let expand_vars ~expand t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) s =
-  expand s ~mode ~dir ~f:(fun pform syntax_version ->
-    (match Pform.Map.expand bindings pform syntax_version with
-     | None -> Pform.Map.expand t.pforms pform syntax_version
-     | Some _ as x -> x)
-    |> Option.map ~f:(function
-      | Pform.Expansion.Var (Values l) -> l
-      | Macro (Ocaml_config, s) -> expand_ocaml_config t pform s
-      | Var Project_root -> [Value.Dir (Scope.root scope)]
-      | _ ->
-        Loc.fail (String_with_vars.Var.loc pform)
-          "%s isn't allowed in this position"
-          (String_with_vars.Var.describe pform)))
+let expander ?(bindings=Pform.Map.empty) t ~scope pform syntax_version =
+  (match Pform.Map.expand bindings pform syntax_version with
+   | None -> Pform.Map.expand t.pforms pform syntax_version
+   | Some _ as x -> x)
+  |> Option.map ~f:(function
+    | Pform.Expansion.Var (Values l) -> l
+    | Macro (Ocaml_config, s) -> expand_ocaml_config t pform s
+    | Var Project_root -> [Value.Dir (Scope.root scope)]
+    | _ ->
+      Loc.fail (String_with_vars.Var.loc pform)
+        "%s isn't allowed in this position"
+        (String_with_vars.Var.describe pform))
+
+let expand_vars ~expand t ~mode ~scope ~dir ?bindings s =
+  expand s ~mode ~dir ~f:(expander ?bindings t ~scope)
 
 let expand_vars_string t ~scope ~dir ?bindings s =
   expand_vars ~expand:String_with_vars.expand
@@ -200,6 +202,8 @@ module Expander : sig
 
     (* Dynamic deps from %{...} variables. For instance %{read:...} *)
     val ddeps    : t -> (unit, Value.t list) Build.t String.Map.t
+
+    val build    : t -> (unit, Value.t list String.Map.t) Build.t
   end
 
   type sctx = t
@@ -249,6 +253,23 @@ end = struct
     let add_ddep acc ~key dep =
       acc.ddeps <- String.Map.add acc.ddeps key dep;
       None
+
+    let build { lib_deps ; sdeps; ddeps; failures } =
+      let open Build.O in
+      let build =
+        Build.record_lib_deps_simple lib_deps
+        >>>
+        Build.path_set sdeps
+        >>>
+        let ddeps = String.Map.to_list ddeps in
+        Build.all (List.map ddeps ~f:snd)
+        >>^ (fun vals ->
+          List.fold_left2 ddeps vals ~init:String.Map.empty
+            ~f:(fun acc (var, _) value -> String.Map.add acc var value))
+      in
+      match failures with
+      | [] -> build
+      | fail :: _ -> Build.fail fail >>> build
   end
 
   type sctx = t
@@ -393,23 +414,39 @@ end
 let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
   let open Build.O in
   let parse ~loc:_ s = s in
-  let (partial, syntax, paths) =
-    let f = expand_vars ~expand:String_with_vars.partial_expand t ~mode:Many
-              ~scope ~dir ?bindings in
-    Ordered_set_lang.Unexpanded.expand set ~dir ~f
+  let bindings = Option.value ~default:Pform.Map.empty bindings in
+  let (partial, syntax, paths, resolved_forms) =
+    let ((partial, syntax, paths), resolved_forms) =
+      Expander.with_expander t ~dir ~dep_kind:Required
+        ~scope ~targets_written_by_user:(Static [])
+        ~map_exe:(fun x -> x)
+        ~bindings
+        ~f:(fun f ->
+          let f = String_with_vars.partial_expand ~mode:Many ~dir ~f in
+          Ordered_set_lang.Unexpanded.expand set ~dir ~f)
+    in
+    (partial, syntax, paths, resolved_forms)
   in
-  let f = expand_vars ~expand:String_with_vars.expand t ~scope ~dir
-            ~mode:Many ?bindings in
+  let dynamic_expansions = Expander.Resolved_forms.build resolved_forms in
+  let f dynamic_expansions s =
+    String_with_vars.expand s ~mode:Many ~dir ~f:(fun pform syntax_version ->
+      let key = String_with_vars.Var.full_name pform in
+      match String.Map.find dynamic_expansions key with
+      | None -> expander t ~scope pform syntax_version
+      | Some _ as p -> p)
+  in
   match Path.Set.to_list paths with
   | [] ->
-    standard >>^ fun standard ->
+    standard &&& dynamic_expansions >>^ fun (standard, dynamic_expansions) ->
+    let f = f dynamic_expansions in
     Ordered_set_lang.Partial.expand partial ~dir ~f
       ~files_contents:Path.Map.empty
     |> Ordered_set_lang.String.eval ~parse ~standard
   | paths ->
-    Build.fanout standard (Build.all (List.map paths ~f:(fun f ->
+    Build.fanout3 standard dynamic_expansions (Build.all (List.map paths ~f:(fun f ->
       Build.read_sexp f syntax)))
-    >>^ fun (standard, sexps) ->
+    >>^ fun (standard, dynamic_expansions, sexps) ->
+    let f = f dynamic_expansions in
     let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
     Ordered_set_lang.Partial.expand partial ~dir ~f ~files_contents
     |> Ordered_set_lang.String.eval ~standard ~parse

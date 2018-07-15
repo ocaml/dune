@@ -145,17 +145,12 @@ let expander ?(bindings=Pform.Map.empty) t ~scope pform syntax_version =
         "%s isn't allowed in this position"
         (String_with_vars.Var.describe pform))
 
-let expand_vars ~expand t ~mode ~scope ~dir ?bindings s =
-  expand s ~mode ~dir ~f:(expander ?bindings t ~scope)
-
 let expand_vars_string t ~scope ~dir ?bindings s =
-  expand_vars ~expand:String_with_vars.expand
-    t ~mode:Single ~scope ~dir ?bindings s
+  String_with_vars.expand s ~mode:Single ~dir ~f:(expander ?bindings t ~scope)
   |> Value.to_string ~dir
 
 let expand_vars_path t ~scope ~dir ?bindings s =
-  expand_vars ~expand:String_with_vars.expand
-    t ~mode:Single ~scope ~dir ?bindings s
+  String_with_vars.expand s ~mode:Single ~dir ~f:(expander ?bindings t ~scope)
   |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir
 
 type targets =

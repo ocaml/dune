@@ -370,10 +370,8 @@ module Unexpanded = struct
       | Some (0, _)-> File_tree.Dune_file.Kind.Jbuild
       | None | Some (_, _) -> Dune
     in
-    ({ t with ast = expand t.ast }
-    , syntax
-    , !files
-    )
+    let ast = expand t. ast in
+    ({ t with ast }, syntax, !files)
 end
 
 module String = Make(struct

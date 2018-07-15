@@ -41,9 +41,9 @@ module Mode : sig
 end
 
 module Partial : sig
-  type nonrec 'a t =
-    | Expanded of 'a
-    | Unexpanded of t
+  type nonrec ('expanded, 'unexpanded) t =
+    | Expanded of 'expanded
+    | Unexpanded of 'unexpanded
 end
 
 module Var : sig
@@ -78,4 +78,4 @@ val partial_expand
   -> mode:'a Mode.t
   -> dir:Path.t
   -> f:(Value.t list option expander)
-  -> 'a Partial.t
+  -> ('a, t) Partial.t

@@ -179,9 +179,9 @@ module Mode = struct
 end
 
 module Partial = struct
-  type nonrec 'a t =
-    | Expanded of 'a
-    | Unexpanded of t
+  type nonrec ('expanded, 'unexpanded) t =
+    | Expanded of 'expanded
+    | Unexpanded of 'unexpanded
 end
 
 let invalid_multivalue (v : var) x =
@@ -221,11 +221,11 @@ module Var = struct
 end
 
 let partial_expand
-  : 'a.t
+  : 'a. t
   -> mode:'a Mode.t
   -> dir:Path.t
   -> f:(Var.t -> Syntax.Version.t -> Value.t list option)
-  -> 'a Partial.t
+  -> ('a, t) Partial.t
   = fun ({template; syntax_version} as t) ~mode ~dir ~f ->
     let commit_text acc_text acc =
       let s = concat_rev acc_text in

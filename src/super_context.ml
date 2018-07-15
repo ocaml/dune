@@ -425,26 +425,27 @@ let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
     in
     (partial, syntax, paths, resolved_forms)
   in
-  let dynamic_expansions = Expander.Resolved_forms.build resolved_forms in
-  let f dynamic_expansions s =
-    String_with_vars.expand s ~mode:Many ~dir ~f:(fun pform syntax_version ->
-      let key = String_with_vars.Var.full_name pform in
-      match String.Map.find dynamic_expansions key with
-      | None -> expander t ~scope pform syntax_version
-      | Some _ as p -> p)
+  let f =
+    Expander.Resolved_forms.build resolved_forms >>^ fun dynamic_expansions ->
+    fun s ->
+      String_with_vars.expand s ~mode:Many ~dir ~f:(fun pform syntax_version ->
+        let key = String_with_vars.Var.full_name pform in
+        match String.Map.find dynamic_expansions key with
+        | None -> expander t ~scope pform syntax_version
+        | Some _ as p -> p)
   in
   match Path.Set.to_list paths with
   | [] ->
-    standard &&& dynamic_expansions >>^ fun (standard, dynamic_expansions) ->
-    let f = f dynamic_expansions in
+    standard &&& f >>^ fun (standard, f) ->
     Ordered_set_lang.Partial.expand partial ~dir ~f
       ~files_contents:Path.Map.empty
     |> Ordered_set_lang.String.eval ~parse ~standard
   | paths ->
-    Build.fanout3 standard dynamic_expansions (Build.all (List.map paths ~f:(fun f ->
-      Build.read_sexp f syntax)))
-    >>^ fun (standard, dynamic_expansions, sexps) ->
-    let f = f dynamic_expansions in
+    Build.fanout3
+      standard
+      f
+      (Build.all (List.map paths ~f:(fun f -> Build.read_sexp f syntax)))
+    >>^ fun (standard, f, sexps) ->
     let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
     Ordered_set_lang.Partial.expand partial ~dir ~f ~files_contents
     |> Ordered_set_lang.String.eval ~standard ~parse

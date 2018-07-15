@@ -132,22 +132,8 @@ let expand_ocaml_config t pform name =
       "Unknown ocaml configuration variable %S"
       name
 
-let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) s =
-  String_with_vars.expand ~mode ~dir s ~f:(fun pform syntax_version ->
-    (match Pform.Map.expand bindings pform syntax_version with
-     | None -> Pform.Map.expand t.pforms pform syntax_version
-     | Some _ as x -> x)
-    |> Option.map ~f:(function
-      | Pform.Expansion.Var (Values l) -> l
-      | Macro (Ocaml_config, s) -> expand_ocaml_config t pform s
-      | Var Project_root -> [Value.Dir (Scope.root scope)]
-      | _ ->
-        Loc.fail (String_with_vars.Var.loc pform)
-          "%s isn't allowed in this position"
-          (String_with_vars.Var.describe pform)))
-
-let expand_vars_partial t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) s =
-  String_with_vars.partial_expand ~mode ~dir s ~f:(fun pform syntax_version ->
+let expand_vars ~expand t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) s =
+  expand s ~mode ~dir ~f:(fun pform syntax_version ->
     (match Pform.Map.expand bindings pform syntax_version with
      | None -> Pform.Map.expand t.pforms pform syntax_version
      | Some _ as x -> x)
@@ -161,11 +147,13 @@ let expand_vars_partial t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) s =
           (String_with_vars.Var.describe pform)))
 
 let expand_vars_string t ~scope ~dir ?bindings s =
-  expand_vars t ~mode:Single ~scope ~dir ?bindings s
+  expand_vars ~expand:String_with_vars.expand
+    t ~mode:Single ~scope ~dir ?bindings s
   |> Value.to_string ~dir
 
 let expand_vars_path t ~scope ~dir ?bindings s =
-  expand_vars t ~mode:Single ~scope ~dir ?bindings s
+  expand_vars ~expand:String_with_vars.expand
+    t ~mode:Single ~scope ~dir ?bindings s
   |> Value.to_path ~error_loc:(String_with_vars.loc s) ~dir
 
 type targets =
@@ -406,10 +394,12 @@ let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
   let open Build.O in
   let parse ~loc:_ s = s in
   let (partial, syntax, paths) =
-    let f = expand_vars_partial t ~mode:Many ~scope ~dir ?bindings in
+    let f = expand_vars ~expand:String_with_vars.partial_expand t ~mode:Many
+              ~scope ~dir ?bindings in
     Ordered_set_lang.Unexpanded.expand set ~dir ~f
   in
-  let f = expand_vars t ~scope ~dir ~mode:Many ?bindings in
+  let f = expand_vars ~expand:String_with_vars.expand t ~scope ~dir
+            ~mode:Many ?bindings in
   match Path.Set.to_list paths with
   | [] ->
     standard >>^ fun standard ->
@@ -421,7 +411,6 @@ let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
       Build.read_sexp f syntax)))
     >>^ fun (standard, sexps) ->
     let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
-    let f = expand_vars t ~scope ~dir ~mode:Many ?bindings in
     Ordered_set_lang.Partial.expand partial ~dir ~f ~files_contents
     |> Ordered_set_lang.String.eval ~standard ~parse
 

@@ -147,6 +147,7 @@ module Make(Key : Key)(Value : Value with type key = Key.t) = struct
   end
 
   module Make(M : Named_values) = struct
+    [@@@warning "-56"] (* XXX necessary for 4.02.3 *)
     let eval t ~parse ~standard =
       let rec of_ast (t : ast_expanded) =
         let open Ast in
@@ -160,7 +161,10 @@ module Make(Key : Key)(Value : Value with type key = Key.t) = struct
           let left  = of_ast left  in
           let right = of_ast right in
           M.diff left right
-        | Include _ -> .
+        (* XXX the assert false can be replaced with
+           | Include _ -> .
+           once 4.02 is dropped *)
+        | Include _ -> assert false
       in
       of_ast t.ast
   end

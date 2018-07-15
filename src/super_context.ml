@@ -146,6 +146,20 @@ let expand_vars t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) s =
           "%s isn't allowed in this position"
           (String_with_vars.Var.describe pform)))
 
+let expand_vars_partial t ~mode ~scope ~dir ?(bindings=Pform.Map.empty) s =
+  String_with_vars.partial_expand ~mode ~dir s ~f:(fun pform syntax_version ->
+    (match Pform.Map.expand bindings pform syntax_version with
+     | None -> Pform.Map.expand t.pforms pform syntax_version
+     | Some _ as x -> x)
+    |> Option.map ~f:(function
+      | Pform.Expansion.Var (Values l) -> l
+      | Macro (Ocaml_config, s) -> expand_ocaml_config t pform s
+      | Var Project_root -> [Value.Dir (Scope.root scope)]
+      | _ ->
+        Loc.fail (String_with_vars.Var.loc pform)
+          "%s isn't allowed in this position"
+          (String_with_vars.Var.describe pform)))
+
 let expand_vars_string t ~scope ~dir ?bindings s =
   expand_vars t ~mode:Single ~scope ~dir ?bindings s
   |> Value.to_string ~dir
@@ -391,24 +405,19 @@ end
 let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
   let open Build.O in
   let parse ~loc:_ s = s in
-  let (syntax, files) =
-    let f = expand_vars_path t ~scope ~dir ?bindings in
-    Ordered_set_lang.Unexpanded.files set ~f in
-  let f = expand_vars t ~mode:Many ~scope ~dir ?bindings in
-  match Path.Set.to_list files with
-  | [] ->
-    let set =
-      Ordered_set_lang.Unexpanded.expand set ~dir
-        ~files_contents:Path.Map.empty ~f
-    in
+  let f = expand_vars_partial t ~mode:Many ~scope ~dir ?bindings in
+  match Ordered_set_lang.Unexpanded.expand set ~f ~dir with
+  | String_with_vars.Partial.Expanded e ->
     standard >>^ fun standard ->
-    Ordered_set_lang.String.eval set ~standard ~parse
-  | paths ->
+    Ordered_set_lang.String.eval ~parse ~standard e
+  | Unexpanded (partial, syntax, paths) ->
+    let paths = Path.Set.to_list paths in
     Build.fanout standard (Build.all (List.map paths ~f:(fun f ->
       Build.read_sexp f syntax)))
     >>^ fun (standard, sexps) ->
     let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
-    let set = Ordered_set_lang.Unexpanded.expand set ~dir ~files_contents ~f in
+    let f = expand_vars t ~scope ~dir ~mode:Many ?bindings in
+    let set = Ordered_set_lang.Partial.expand partial ~dir ~f ~files_contents in
     Ordered_set_lang.String.eval set ~standard ~parse
 
 module Env : sig

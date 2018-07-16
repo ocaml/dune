@@ -1578,15 +1578,13 @@ let on_load_dir t ~dir ~f =
     p.lazy_generators <- f :: lazy_generators
 
 let eval_glob t ~dir re =
-  let targets = targets_of t ~dir |> Path.Set.to_list |> List.map ~f:Path.basename in
-  let files =
-    match File_tree.find_dir t.file_tree dir with
-    | None -> targets
-    | Some d ->
-      String.Set.union (String.Set.of_list targets) (File_tree.Dir.files d)
-      |> String.Set.to_list
-  in
-  List.filter files ~f:(Re.execp re)
+  Path.Set.fold (targets_of t ~dir) ~init:[] ~f:(fun path acc ->
+    let fn = Path.basename path in
+    if Re.execp re fn then
+      fn :: acc
+    else
+      acc)
+  |> List.rev
 
 module Alias = struct
   include Alias0

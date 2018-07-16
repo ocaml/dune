@@ -388,7 +388,16 @@ module Gen (S : sig val sctx : SC.t end) = struct
       |> Path.Set.of_list
     )
 
-  let entry_modules ~(pkg : Package.t) ~entry_modules_by_lib =
+  let entry_modules_by_lib lib =
+    let dc = Dir_contents.get sctx ~dir:(Lib.src_dir lib) in
+    let m = Dir_contents.modules_of_library dc ~name:(Lib.name lib) in
+    match m.alias_module with
+    | Some alias_mod ->
+      [Option.value ~default:alias_mod
+         (Module.Name.Map.find m.modules m.main_module_name)]
+    | None -> Module.Name.Map.values m.modules
+
+  let entry_modules ~(pkg : Package.t) =
     libs_of_pkg ~pkg:pkg.name
     |> Lib.Set.to_list
     |> List.filter_map ~f:(fun l ->
@@ -438,13 +447,13 @@ module Gen (S : sig val sctx : SC.t end) = struct
         (Path.to_string_maybe_quoted p1)
         (Path.to_string_maybe_quoted p2)
 
-  let setup_package_odoc_rules ~pkg ~mlds ~entry_modules_by_lib =
+  let setup_package_odoc_rules ~pkg ~mlds =
     let mlds = check_mlds_no_dupes ~pkg ~mlds in
     let mlds =
       if String.Map.mem mlds "index" then
         mlds
       else
-        let entry_modules = entry_modules ~pkg ~entry_modules_by_lib in
+        let entry_modules = entry_modules ~pkg in
         let gen_mld = Paths.gen_mld_dir pkg ++ "index.mld" in
         SC.add_rule sctx (
           Build.write_file gen_mld (default_index entry_modules)
@@ -459,59 +468,30 @@ module Gen (S : sig val sctx : SC.t end) = struct
     ) in
     Dep.setup_deps (Pkg pkg.name) (Path.Set.of_list odocs)
 
-  let init ~modules_by_lib ~mlds_of_dir =
-    let docs_by_package =
+  let init () =
+    let mlds_by_package =
       let map = lazy (
         stanzas
         |> List.concat_map ~f:(fun (w : SC.Dir_with_jbuild.t) ->
           List.filter_map w.stanzas ~f:(function
-            | Documentation (d : Jbuild.Documentation.t) ->
-              Some (d.package.name, (w.ctx_dir, d))
+            | Documentation d ->
+              let dc = Dir_contents.get sctx ~dir:w.ctx_dir in
+              let mlds = Dir_contents.mlds dc d in
+              Some (d.package.name, mlds)
             | _ ->
               None
           ))
-        |> Package.Name.Map.of_list_multi
+        |> Package.Name.Map.of_list_reduce ~f:List.rev_append
       ) in
       fun (p : Package.t) ->
         Option.value (Package.Name.Map.find (Lazy.force map) p.name) ~default:[]
-    in
-    let modules_by_lib =
-      let module M = Map.Make(
-      struct
-        type t = Path.t * string
-        let compare (d1, l1) (d2, l2) =
-          match Path.compare d1 d2 with
-          | Ordering.Eq -> String.compare l1 l2
-          | o -> o
-      end) in
-      let lib_to_library = lazy (
-        stanzas
-        |> List.concat_map ~f:(fun (w : SC.Dir_with_jbuild.t) ->
-          List.filter_map w.stanzas ~f:(function
-            | Jbuild.Library (l : Library.t) ->
-              Some ((w.ctx_dir, Library.best_name l), l)
-            | _ ->
-              None
-          ))
-        |> M.of_list_exn
-      ) in
-      fun lib ->
-        let dir = Lib.src_dir lib in
-        let library = Option.value_exn (
-          M.find (Lazy.force lib_to_library) (dir, Lib.name lib)
-        ) in
-        modules_by_lib ~dir library
     in
     SC.packages sctx
     |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
       let rules = lazy (
         setup_package_odoc_rules
           ~pkg
-          ~mlds:(
-            docs_by_package pkg
-            |> List.concat_map ~f:(fun (dir, doc) -> mlds_of_dir doc ~dir)
-          )
-          ~entry_modules_by_lib:modules_by_lib
+          ~mlds:(mlds_by_package pkg)
       ) in
       List.iter [ Paths.odocs (Pkg pkg.name)
                 ; Paths.gen_mld_dir pkg ]

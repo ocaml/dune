@@ -2,8 +2,8 @@
   Entering directory 'jbuild'
   File "jbuild", line 1, characters 0-0:
   Warning: Module "Lib" is used in several stanzas:
-  - jbuild:6
   - jbuild:2
+  - jbuild:6
   To remove this warning, you must specify an explicit "modules" field in every
   library, executable, and executables stanzas in this jbuild file. Note that
   each module cannot appear in more than one "modules" field - it must belong
@@ -18,8 +18,8 @@
   Entering directory 'jbuild'
   File "src/jbuild", line 1, characters 0-0:
   Warning: Module "X" is used in several stanzas:
-  - src/jbuild:2
   - src/jbuild:1
+  - src/jbuild:2
   To remove this warning, you must specify an explicit "modules" field in every
   library, executable, and executables stanzas in this jbuild file. Note that
   each module cannot appear in more than one "modules" field - it must belong
@@ -34,8 +34,8 @@
   Entering directory 'dune'
   File "dune", line 1, characters 0-0:
   Error: Module "Lib" is used in several stanzas:
-  - dune:5
   - dune:1
+  - dune:5
   To fix this error, you must specify an explicit "modules" field in every
   library, executable, and executables stanzas in this dune file. Note that
   each module cannot appear in more than one "modules" field - it must belong
@@ -46,8 +46,8 @@
   Entering directory 'dune'
   File "src/dune", line 1, characters 0-0:
   Error: Module "X" is used in several stanzas:
-  - src/dune:2
   - src/dune:1
+  - src/dune:2
   To fix this error, you must specify an explicit "modules" field in every
   library, executable, and executables stanzas in this dune file. Note that
   each module cannot appear in more than one "modules" field - it must belong

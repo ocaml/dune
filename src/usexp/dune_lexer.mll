@@ -300,4 +300,4 @@ and template_variable = parse
   }
   | '}' | eof
     { error lexbuf "%{...} forms cannot be empty" }
-  | _ { error lexbuf "This character not allowed inside %{...} forms" }
+  | _ { error lexbuf "This character is not allowed inside %{...} forms" }

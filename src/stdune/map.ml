@@ -83,6 +83,29 @@ module Make(Key : Comparable.S) : S with type key = Key.t = struct
     in
     fun l -> loop empty l
 
+  let of_list_map =
+    let rec loop f acc = function
+      | [] -> Result.Ok acc
+      | x :: l ->
+        let k, v = f x in
+        if not (mem acc k) then
+          loop f (add acc k v) l
+        else
+          Error k
+    in
+    fun l ~f ->
+      match loop f empty l with
+      | Ok _ as x -> x
+      | Error k ->
+        match
+          List.filter l ~f:(fun x ->
+            match Key.compare (fst (f x)) k with
+            | Eq -> true
+            | _  -> false)
+        with
+        | x :: y :: _ -> Error (k, x, y)
+        | _ -> assert false
+
   let of_list_exn l =
     match of_list l with
     | Ok    x -> x

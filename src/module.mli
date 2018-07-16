@@ -41,7 +41,7 @@ type t = private
   ; impl      : File.t option
   ; intf      : File.t option
   ; obj_name  : string (** Object name. It is different from [name]
-                          for wrapped modules. *)
+                           for wrapped modules. *)
   }
 
 val make

@@ -116,8 +116,19 @@ module Dep_conf : sig
 end
 
 module Buildable : sig
+  module Id : sig
+    type t =
+      | Library     of string
+      | Executables of string (** Name of the first executable *)
+
+    val compare : t -> t -> Ordering.t
+    module Map : Map.S with type key = t
+    val sexp_of_t : t -> Sexp.t
+  end
+
   type t =
-    { loc                      : Loc.t
+    { id                       : Id.t
+    ; loc                      : Loc.t
     ; modules                  : Ordered_set_lang.t
     ; modules_without_implementation : Ordered_set_lang.t
     ; libraries                : Lib_dep.t list
@@ -343,7 +354,8 @@ end
 
 module Documentation : sig
   type t =
-    { package     : Package.t
+    { loc         : Loc.t
+    ; package     : Package.t
     ; mld_files   : Ordered_set_lang.t
     }
 end

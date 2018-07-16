@@ -571,8 +571,26 @@ module Lib_deps = struct
 end
 
 module Buildable = struct
+  module Id = struct
+    module T = struct
+      type t =
+        | Library     of string
+        | Executables of string
+      let compare : t -> t -> Ordering.t = compare
+    end
+    include T
+    module Map = Map.Make(T)
+
+    let sexp_of_t = function
+      | Library s ->
+        Sexp.List [ Sexp.atom "library"; Sexp.atom_or_quoted_string s ]
+      | Executables s ->
+        Sexp.List [ Sexp.atom "executables"; Sexp.atom_or_quoted_string s ]
+  end
+
   type t =
-    { loc                      : Loc.t
+    { id                       : Id.t
+    ; loc                      : Loc.t
     ; modules                  : Ordered_set_lang.t
     ; modules_without_implementation : Ordered_set_lang.t
     ; libraries                : Lib_dep.t list
@@ -588,7 +606,7 @@ module Buildable = struct
 
   let modules_field name = Ordered_set_lang.field name
 
-  let t =
+  let t id =
     loc >>= fun loc ->
     field "preprocess" Preprocess_map.t ~default:Preprocess_map.default
     >>= fun preprocess ->
@@ -610,7 +628,8 @@ module Buildable = struct
     field_b "allow_overlapping_dependencies"
     >>= fun allow_overlapping_dependencies ->
     return
-      { loc
+      { id
+      ; loc
       ; preprocess
       ; preprocessor_deps
       ; lint
@@ -793,9 +812,9 @@ module Library = struct
 
   let t =
     record
-      (Buildable.t >>= fun buildable ->
-       field      "name" library_name                                      >>= fun name                     ->
+      (field      "name" library_name                                      >>= fun name                     ->
        Public_lib.public_name_field                                        >>= fun public                   ->
+       Buildable.t (Library name) >>= fun buildable ->
        field_o    "synopsis" string                                        >>= fun synopsis                 ->
        field      "install_c_headers" (list string) ~default:[]
        >>= fun install_c_headers ->
@@ -1003,7 +1022,7 @@ module Executables = struct
     }
 
   let common names public_names ~multi =
-    Buildable.t >>= fun buildable ->
+    Buildable.t (Executables (snd (List.hd names))) >>= fun buildable ->
     field "link_executables" ~default:true
       (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
     >>= fun (_ : bool) ->
@@ -1424,9 +1443,9 @@ module Tests = struct
 
   let gen_parse names =
     record
-      (Buildable.t                                         >>= fun buildable ->
-       field_oslu "link_flags"                             >>= fun link_flags ->
+      (field_oslu "link_flags"                             >>= fun link_flags ->
        names                                               >>= fun names ->
+       Buildable.t (Executables (snd (List.hd names)))     >>= fun buildable ->
        field_o "package" Pkg.t                             >>= fun package ->
        field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
        field "modes" Executables.Link_mode.Set.t
@@ -1462,8 +1481,9 @@ end
 
 module Documentation = struct
   type t =
-    { package: Package.t
-    ; mld_files: Ordered_set_lang.t
+    { loc : Loc.t
+    ; package : Package.t
+    ; mld_files : Ordered_set_lang.t
     }
 
   let t =
@@ -1471,8 +1491,10 @@ module Documentation = struct
       (Pkg.field >>= fun package ->
        Ordered_set_lang.field "mld_files"
        >>= fun mld_files ->
+       loc >>= fun loc ->
        return
-         { package
+         { loc
+         ; package
          ; mld_files
          }
       )

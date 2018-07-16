@@ -1,5 +1,5 @@
-(library (name foo))
+(library (name foo) (public_name foo))
 
 (alias
  (name default)
- (echo %{lib:foo:foo.ml}))
+ (action (echo %{lib:foo:foo.ml})))

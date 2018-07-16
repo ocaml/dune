@@ -8,6 +8,8 @@ next
 - Change the location of preprocessed files inside the build directory
   (#1004, @diml)
 
+- Fix parsing of `%{lib:name:file}` forms (#1022, fixes #1019, @diml)
+
 1.0.0 (10/07/2018)
 ------------------
 

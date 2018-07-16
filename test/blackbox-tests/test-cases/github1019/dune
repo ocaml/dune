@@ -1,0 +1,5 @@
+(library (name foo))
+
+(alias
+ (name default)
+ (echo %{lib:foo:foo.ml}))

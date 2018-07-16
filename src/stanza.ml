@@ -41,7 +41,7 @@ module Of_sexp = struct
             ; pp = fun ppf ->
                 Format.fprintf ppf
                   "These parentheses are no longer necessary with dune, \
-                   please remove them."
+                   please remove them.@\n"
             }
         | _ -> None)
 

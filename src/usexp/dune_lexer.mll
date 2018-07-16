@@ -282,7 +282,7 @@ and quoted_string_after_escaped_newline = parse
     { quoted_string lexbuf }
 
 and template_variable = parse
-  | (varname_char+ as name) (':' (varname_char* as payload))? '}'
+  | (varname_char+ as name) (':' ((':' | varname_char)* as payload))? '}'
     { let payload =
         match payload with
         | Some "" -> error lexbuf "payload after : in variable cannot be empty"

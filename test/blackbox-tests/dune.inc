@@ -193,6 +193,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name github1019)
+ (deps (package dune) (source_tree test-cases/github1019))
+ (action
+  (chdir
+   test-cases/github1019
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name github20)
  (deps (package dune) (source_tree test-cases/github20))
  (action
@@ -734,6 +742,7 @@
   (alias findlib-error)
   (alias force-test)
   (alias gen-opam-install-file)
+  (alias github1019)
   (alias github20)
   (alias github24)
   (alias github25)
@@ -821,6 +830,7 @@
   (alias findlib-error)
   (alias force-test)
   (alias gen-opam-install-file)
+  (alias github1019)
   (alias github20)
   (alias github24)
   (alias github25)

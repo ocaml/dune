@@ -27,10 +27,10 @@ The targets should only be interpreted as a single path when quoted
 
   $ dune build @quoted --root filename-space
   File "dune", line 4, characters 17-18:
-  Error: This character not allowed inside %{...} forms
+  Error: This character is not allowed inside %{...} forms
   [1]
 
   $ dune build @unquoted --root filename-space
   File "dune", line 4, characters 17-18:
-  Error: This character not allowed inside %{...} forms
+  Error: This character is not allowed inside %{...} forms
   [1]

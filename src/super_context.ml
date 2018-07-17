@@ -410,20 +410,17 @@ let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
   let open Build.O in
   let parse ~loc:_ s = s in
   let bindings = Option.value ~default:Pform.Map.empty bindings in
-  let (partial, paths, resolved_forms) =
-    let ((partial, paths), resolved_forms) =
-      Expander.with_expander t ~dir ~dep_kind:Required
-        ~scope ~targets_written_by_user:(Static [])
-        ~map_exe:(fun x -> x)
-        ~bindings
-        ~f:(fun f ->
-          let f : Ordered_set_lang.Unexpanded.expander =
-            { f = fun ~mode sw ->
-                String_with_vars.partial_expand ~mode ~dir ~f sw
-            } in
-          Ordered_set_lang.Unexpanded.expand set ~dir ~f)
-    in
-    (partial, paths, resolved_forms)
+  let ((partial, paths), resolved_forms) =
+    Expander.with_expander t ~dir ~dep_kind:Required
+      ~scope ~targets_written_by_user:(Static [])
+      ~map_exe:(fun x -> x)
+      ~bindings
+      ~f:(fun f ->
+        let f : Ordered_set_lang.Unexpanded.expander =
+          { f = fun ~mode sw ->
+              String_with_vars.partial_expand ~mode ~dir ~f sw
+          } in
+        Ordered_set_lang.Unexpanded.expand set ~dir ~f)
   in
   let f =
     Expander.Resolved_forms.build resolved_forms >>^ fun dynamic_expansions ->

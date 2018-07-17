@@ -151,17 +151,21 @@ module Pkg = struct
                                |> List.map ~f:Package.Name.to_string)))
 
   let t =
-    Dune_project.get_exn () >>= fun p ->
-    located Package.Name.t >>| fun (loc, name) ->
+    let%map p = Dune_project.get_exn ()
+    and (loc, name) = located Package.Name.t in
     match resolve p name with
     | Ok    x -> x
     | Error e -> Loc.fail loc "%s" e
 
   let field =
-    Dune_project.get_exn () >>= fun p ->
-    map_validate (field_o "package" string) ~f:(function
-      | None -> default p
-      | Some name -> resolve p (Package.Name.of_string name))
+    map_validate
+      (let%map p = Dune_project.get_exn ()
+       and pkg = field_o "package" string in
+       (p, pkg))
+      ~f:(fun (p, pkg) ->
+        match pkg with
+        | None -> default p
+        | Some name -> resolve p (Package.Name.of_string name))
 end
 
 module Pp : sig
@@ -206,22 +210,20 @@ module Pps_and_flags = struct
   end
 
   module Dune_syntax = struct
-    let rec parse acc_pps acc_flags =
-      eos >>= function
-      | true ->
-        return (List.rev acc_pps, List.rev acc_flags)
-      | false ->
-        plain_string (fun ~loc s -> (loc, s)) >>= fun (loc, s) ->
-        match s with
-        | "--" ->
-          repeat string >>= fun flags ->
-          return (List.rev acc_pps, List.rev_append acc_flags flags)
-        | s when String.is_prefix s ~prefix:"-" ->
-          parse acc_pps (s :: acc_flags)
-        | _ ->
-          parse ((loc, Pp.of_string s) :: acc_pps) acc_flags
-
-    let t = parse [] []
+    let t =
+      let%map l, flags =
+        until_keyword "--"
+          ~before:(plain_string (fun ~loc s -> (loc, s)))
+          ~after:(repeat string)
+      in
+      let pps, more_flags =
+        List.partition_map l ~f:(fun (loc, s) ->
+          if String.is_prefix s ~prefix:"-" then
+            Right s
+          else
+            Left (loc, Pp.of_string s))
+      in
+      (pps, more_flags @ Option.value flags ~default:[])
   end
 
   let t =
@@ -256,29 +258,32 @@ module Bindings = struct
   let singleton x = [Unnamed x]
 
   let t elem =
-    let rec loop vars acc =
-      peek >>= function
-      | None -> return (List.rev acc)
-      | Some (List (_, Atom (loc, A s) :: _)) when
-          String.length s > 1 && s.[0] = ':' ->
-        let name = String.sub s ~pos:1 ~len:(String.length s - 1) in
-        let vars =
-          if not (String.Set.mem vars name) then
-            String.Set.add vars name
-          else
-            of_sexp_errorf loc "Variable %s is defined for the second time."
-              name
-        in
-        enter (junk >>= fun () -> repeat elem)
-        >>= fun values ->
-        loop vars (Named (name, values) :: acc)
-      | _ ->
-        elem >>= fun x ->
-        loop vars (Unnamed x :: acc)
-    in
     Stanza.file_kind () >>= function
     | Jbuild -> list (elem >>| fun x -> Unnamed x)
-    | Dune   -> parens_removed_in_dune (loop String.Set.empty [])
+    | Dune -> parens_removed_in_dune (
+      let%map l =
+        repeat
+          (if_paren_colon_form
+             ~then_:(
+               let%map values = repeat elem in
+               fun (loc, name) ->
+                 Left (loc, name, values))
+             ~else_:(elem >>| fun x -> Right x))
+      in
+      let rec loop vars acc = function
+        | [] -> List.rev acc
+        | Right x :: l -> loop vars (Unnamed x :: acc) l
+        | Left (loc, name, values) :: l ->
+          let vars =
+            if not (String.Set.mem vars name) then
+              String.Set.add vars name
+            else
+              of_sexp_errorf loc "Variable %s is defined for the second time."
+                name
+          in
+          loop vars (Named (name, values) :: acc) l
+      in
+      loop String.Set.empty [] l)
 
   let sexp_of_t sexp_of_a bindings =
     Sexp.List (
@@ -310,12 +315,14 @@ module Dep_conf = struct
         ; "package"    , (sw >>| fun x -> Package x)
         ; "universe"   , return Universe
         ; "files_recursively_in",
-          (Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
-           >>= fun () ->
-           sw >>| fun x -> Source_tree x)
+          (let%map () =
+            Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
+           and x = sw in
+           Source_tree x)
         ; "source_tree",
-          (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
-           sw >>| fun x -> Source_tree x)
+          (let%map () = Syntax.since Stanza.syntax (1, 0)
+           and x = sw in
+           Source_tree x)
         ]
     in
     peek_exn >>= function
@@ -361,8 +368,8 @@ module Preprocess = struct
         (located Action.Unexpanded.t >>| fun (loc, x) ->
          Action (loc, x))
       ; "pps",
-        (loc >>= fun loc ->
-         Pps_and_flags.t >>| fun (pps, flags) ->
+        (let%map loc = loc
+         and pps, flags = Pps_and_flags.t in
          Pps { loc; pps; flags })
       ]
 
@@ -435,10 +442,10 @@ module Js_of_ocaml = struct
 
   let t =
     record
-      (field_oslu "flags" >>= fun flags ->
-       field     "javascript_files" (list string) ~default:[]
-       >>= fun javascript_files ->
-       return { flags; javascript_files })
+      (let%map flags = field_oslu "flags"
+       and javascript_files = field "javascript_files" (list string) ~default:[]
+       in
+       { flags; javascript_files })
 
   let default =
     { flags = Ordered_set_lang.Unexpanded.standard
@@ -464,49 +471,51 @@ module Lib_dep = struct
 
   let choice =
     enter (
-      loc >>= fun loc ->
-      let rec loop required forbidden =
-        peek_exn >>= function
-        | Atom (_, A "->") ->
-          junk >>> file >>| fun file ->
-          let common = String.Set.inter required forbidden in
-          Option.iter (String.Set.choose common) ~f:(fun name ->
-            of_sexp_errorf loc
-              "library %S is both required and forbidden in this clause"
-              name);
-          { required
-          ; forbidden
-          ; file
-          }
-        | Template _ -> no_templates loc "in the select form"
-        | List _ ->
-          of_sexp_errorf loc "(<[!]libraries>... -> <file>) expected"
-        | (Atom (_, A s) | Quoted_string (_, s)) ->
-          junk >>= fun () ->
-          let len = String.length s in
-          if len > 0 && s.[0] = '!' then
-            let s = String.sub s ~pos:1 ~len:(len - 1) in
-            loop required (String.Set.add forbidden s)
-          else
-            loop (String.Set.add required s) forbidden
+      let%map loc = loc
+      and preds, file =
+        until_keyword "->"
+          ~before:(let%map s = string in
+                   let len = String.length s in
+                   if len > 0 && s.[0] = '!' then
+                     let s = String.sub s ~pos:1 ~len:(len - 1) in
+                     Right s
+                   else
+                     Left s)
+          ~after:file
       in
-      loop String.Set.empty String.Set.empty
-    )
+      match file with
+      | None ->
+        of_sexp_errorf loc "(<[!]libraries>... -> <file>) expected"
+      | Some file ->
+        let rec loop required forbidden = function
+          | [] ->
+            let common = String.Set.inter required forbidden in
+            Option.iter (String.Set.choose common) ~f:(fun name ->
+              of_sexp_errorf loc
+                "library %S is both required and forbidden in this clause"
+                name);
+            { required
+            ; forbidden
+            ; file
+            }
+          | Left s :: l ->
+            loop (String.Set.add required s) forbidden l
+          | Right s :: l ->
+            loop required (String.Set.add forbidden s) l
+        in
+        loop String.Set.empty String.Set.empty preds)
 
   let t =
-    peek_exn >>= function
-    | Atom _ | Quoted_string _ ->
-      plain_string (fun ~loc s -> Direct (loc, s))
-    | List (loc, Atom (_, A "select") :: _ :: Atom (_, A "from") :: _) ->
-      enter
-        (junk >>= fun () ->
-         file >>= fun result_fn ->
-         junk >>= fun () ->
-         repeat choice >>= fun choices ->
-         return (Select { result_fn; choices; loc }))
-    | sexp ->
-      of_sexp_error (Sexp.Ast.loc sexp)
-        "<library> or (select <module> from <libraries...>) expected"
+    if_list
+      ~then_:(
+        enter
+          (let%map loc = loc
+           and () = keyword "select"
+           and result_fn = file
+           and () = keyword "from"
+           and choices = repeat choice in
+           Select { result_fn; choices; loc }))
+      ~else_:(plain_string (fun ~loc s -> Direct (loc, s)))
 
   let to_lib_names = function
     | Direct (_, s) -> [s]
@@ -529,8 +538,9 @@ module Lib_deps = struct
     | Forbidden
 
   let t =
-    loc >>= fun loc ->
-    repeat Lib_dep.t >>= fun t ->
+    let%map loc = loc
+    and t = repeat Lib_dep.t
+    in
     let add kind name acc =
       match String.Map.find acc name with
       | None -> String.Map.add acc name kind
@@ -562,7 +572,7 @@ module Lib_deps = struct
             in
             String.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
       : kind String.Map.t);
-    return t
+    t
 
   let t = parens_removed_in_dune t
 
@@ -589,40 +599,37 @@ module Buildable = struct
   let modules_field name = Ordered_set_lang.field name
 
   let t =
-    loc >>= fun loc ->
-    field "preprocess" Preprocess_map.t ~default:Preprocess_map.default
-    >>= fun preprocess ->
-    field "preprocessor_deps" (list Dep_conf.t) ~default:[]
-    >>= fun preprocessor_deps ->
-    field "lint" Lint.t ~default:Lint.default
-    >>= fun lint ->
-    modules_field "modules"
-    >>= fun modules ->
-    modules_field "modules_without_implementation"
-    >>= fun modules_without_implementation ->
-    field "libraries" Lib_deps.t ~default:[]
-    >>= fun libraries ->
-    field_oslu "flags"          >>= fun flags          ->
-    field_oslu "ocamlc_flags"   >>= fun ocamlc_flags   ->
-    field_oslu "ocamlopt_flags" >>= fun ocamlopt_flags ->
-    field "js_of_ocaml" (Js_of_ocaml.t) ~default:Js_of_ocaml.default
-    >>= fun js_of_ocaml ->
-    field_b "allow_overlapping_dependencies"
-    >>= fun allow_overlapping_dependencies ->
-    return
-      { loc
-      ; preprocess
-      ; preprocessor_deps
-      ; lint
-      ; modules
-      ; modules_without_implementation
-      ; libraries
-      ; flags
-      ; ocamlc_flags
-      ; ocamlopt_flags
-      ; js_of_ocaml
-      ; allow_overlapping_dependencies
-      }
+    let%map loc = loc
+    and preprocess =
+      field "preprocess" Preprocess_map.t ~default:Preprocess_map.default
+    and preprocessor_deps =
+      field "preprocessor_deps" (list Dep_conf.t) ~default:[]
+    and lint = field "lint" Lint.t ~default:Lint.default
+    and modules = modules_field "modules"
+    and modules_without_implementation =
+      modules_field "modules_without_implementation"
+    and libraries = field "libraries" Lib_deps.t ~default:[]
+    and flags = field_oslu "flags"
+    and ocamlc_flags = field_oslu "ocamlc_flags"
+    and ocamlopt_flags = field_oslu "ocamlopt_flags"
+    and js_of_ocaml =
+      field "js_of_ocaml" Js_of_ocaml.t ~default:Js_of_ocaml.default
+    and allow_overlapping_dependencies =
+      field_b "allow_overlapping_dependencies"
+    in
+    { loc
+    ; preprocess
+    ; preprocessor_deps
+    ; lint
+    ; modules
+    ; modules_without_implementation
+    ; libraries
+    ; flags
+    ; ocamlc_flags
+    ; ocamlopt_flags
+    ; js_of_ocaml
+    ; allow_overlapping_dependencies
+    }
 
   let single_preprocess t =
     if Per_module.is_constant t.preprocess then
@@ -639,23 +646,27 @@ module Public_lib = struct
     }
 
   let public_name_field =
-    Dune_project.get_exn () >>= fun project ->
-    map_validate (field_o "public_name" string) ~f:(function
-      | None -> Ok None
-      | Some s ->
-        match String.split s ~on:'.' with
-        | [] -> assert false
-        | pkg :: rest ->
-          match Pkg.resolve project (Package.Name.of_string pkg) with
-          | Ok pkg ->
-            Ok (Some
-                  { package = pkg
-                  ; sub_dir =
-                      if rest = [] then None else
-                        Some (String.concat rest ~sep:"/")
-                  ; name    = s
-                  })
-          | Error _ as e -> e)
+    map_validate
+      (let%map project = Dune_project.get_exn ()
+       and name = field_o "public_name" string in
+       (project, name))
+      ~f:(fun (project, name) ->
+        match name with
+        | None -> Ok None
+        | Some s ->
+          match String.split s ~on:'.' with
+          | [] -> assert false
+          | pkg :: rest ->
+            match Pkg.resolve project (Package.Name.of_string pkg) with
+            | Ok pkg ->
+              Ok (Some
+                    { package = pkg
+                    ; sub_dir =
+                        if rest = [] then None else
+                          Some (String.concat rest ~sep:"/")
+                    ; name    = s
+                    })
+            | Error _ as e -> e)
 end
 
 module Sub_system_info = struct
@@ -793,59 +804,60 @@ module Library = struct
 
   let t =
     record
-      (Buildable.t                                                         >>= fun buildable ->
-       field      "name" library_name                                      >>= fun name                     ->
-       Public_lib.public_name_field                                        >>= fun public                   ->
-       field_o    "synopsis" string                                        >>= fun synopsis                 ->
-       field      "install_c_headers" (list string) ~default:[]
-       >>= fun install_c_headers ->
-       field      "ppx_runtime_libraries" (list (located string))
-         ~default:[]
-       >>= fun ppx_runtime_libraries    ->
-       field_oslu "c_flags"                                                >>= fun c_flags                  ->
-       field_oslu "cxx_flags"                                              >>= fun cxx_flags                ->
-       field      "c_names" (list c_name) ~default:[]
-       >>= fun c_names ->
-       field      "cxx_names" (list cxx_name) ~default:[]
-       >>= fun cxx_names ->
-       field_oslu "library_flags"                                          >>= fun library_flags            ->
-       field_oslu "c_library_flags"                                        >>= fun c_library_flags          ->
-       field      "virtual_deps" (list (located string)) ~default:[]       >>= fun virtual_deps             ->
-       field      "modes" Mode_conf.Set.t ~default:Mode_conf.Set.default   >>= fun modes                    ->
-       field      "kind" Kind.t ~default:Kind.Normal                       >>= fun kind                     ->
-       field      "wrapped" bool ~default:true                             >>= fun wrapped                  ->
-       field_b    "optional"                                               >>= fun optional                 ->
-       field      "self_build_stubs_archive" (option string) ~default:None >>= fun self_build_stubs_archive ->
-       field_b    "no_dynlink"                                             >>= fun no_dynlink               ->
-       field_b "no_keep_locs" >>= fun no_keep_locs ->
-       Sub_system_info.record_parser () >>= fun sub_systems ->
-       Dune_project.get_exn () >>= fun project ->
-       Syntax.get_exn Stanza.syntax >>= fun dune_version ->
-       return
-         { name
-         ; public
-         ; synopsis
-         ; install_c_headers
-         ; ppx_runtime_libraries
-         ; modes
-         ; kind
-         ; c_names
-         ; c_flags
-         ; cxx_names
-         ; cxx_flags
-         ; library_flags
-         ; c_library_flags
-         ; self_build_stubs_archive
-         ; virtual_deps
-         ; wrapped
-         ; optional
-         ; buildable
-         ; dynlink = not no_dynlink
-         ; project
-         ; sub_systems
-         ; no_keep_locs
-         ; dune_version
-         })
+      (let%map buildable = Buildable.t
+       and name = field "name" library_name
+       and public = Public_lib.public_name_field
+       and synopsis = field_o "synopsis" string
+       and install_c_headers =
+         field "install_c_headers" (list string) ~default:[]
+       and ppx_runtime_libraries =
+         field "ppx_runtime_libraries" (list (located string)) ~default:[]
+       and c_flags = field_oslu "c_flags"
+       and cxx_flags = field_oslu "cxx_flags"
+       and c_names = field "c_names" (list c_name) ~default:[]
+       and cxx_names = field "cxx_names" (list cxx_name) ~default:[]
+       and library_flags = field_oslu "library_flags"
+       and c_library_flags = field_oslu "c_library_flags"
+       and virtual_deps =
+         field "virtual_deps" (list (located string)) ~default:[]
+       and modes = field "modes" Mode_conf.Set.t ~default:Mode_conf.Set.default
+       and kind = field "kind" Kind.t ~default:Kind.Normal
+       and wrapped = field "wrapped" bool ~default:true
+       and optional = field_b "optional"
+       and self_build_stubs_archive =
+         field "self_build_stubs_archive" (option string) ~default:None
+       and no_dynlink = field_b "no_dynlink"
+       and no_keep_locs = field_b "no_keep_locs"
+       and sub_systems =
+         return () >>= fun () ->
+         Sub_system_info.record_parser ()
+       and project = Dune_project.get_exn ()
+       and dune_version = Syntax.get_exn Stanza.syntax
+       in
+       { name
+       ; public
+       ; synopsis
+       ; install_c_headers
+       ; ppx_runtime_libraries
+       ; modes
+       ; kind
+       ; c_names
+       ; c_flags
+       ; cxx_names
+       ; cxx_flags
+       ; library_flags
+       ; c_library_flags
+       ; self_build_stubs_archive
+       ; virtual_deps
+       ; wrapped
+       ; optional
+       ; buildable
+       ; dynlink = not no_dynlink
+       ; project
+       ; sub_systems
+       ; no_keep_locs
+       ; dune_version
+       })
 
   let has_stubs t =
     match t.c_names, t.cxx_names, t.self_build_stubs_archive with
@@ -890,14 +902,14 @@ module Install_conf = struct
 
   let t =
     record
-      (field   "section" Install.Section.t >>= fun section ->
-       field   "files"   (list file)       >>= fun files ->
-       Pkg.field                           >>= fun package ->
-       return
-         { section
-         ; files
-         ; package
-         })
+      (let%map section = field "section" Install.Section.t
+       and files = field "files" (list file)
+       and package = Pkg.field
+       in
+       { section
+       ; files
+       ; package
+       })
 end
 
 module Executables = struct
@@ -951,9 +963,9 @@ module Executables = struct
     let t =
       peek_exn >>= function
       | List _ ->
-        enter (Mode_conf.t >>= fun mode ->
-               Binary_kind.t >>= fun kind ->
-               return { mode; kind })
+        enter (let%map mode = Mode_conf.t
+               and kind = Binary_kind.t in
+               { mode; kind })
       | _ -> simple
 
     let simple_sexp_of_t link_mode =
@@ -1008,81 +1020,98 @@ module Executables = struct
     ; buildable  : Buildable.t
     }
 
-  let common names public_names ~multi =
-    Buildable.t >>= fun buildable ->
-    field "link_executables" ~default:true
-      (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
-    >>= fun (_ : bool) ->
-    field "link_deps" (list Dep_conf.t) ~default:[] >>= fun link_deps ->
-    field_oslu "link_flags" >>= fun link_flags ->
-    field "modes" Link_mode.Set.t ~default:Link_mode.Set.default
-    >>= fun modes ->
-    map_validate
-      (field "inline_tests" (repeat junk >>| fun _ -> true) ~default:false)
-      ~f:(function
-        | false -> Ok ()
-        | true  ->
-          Error
-            "Inline tests are only allowed in libraries.\n\
-             See https://github.com/ocaml/dune/issues/745 for more details.")
-    >>= fun () ->
-    let t =
-      { names
-      ; link_flags
-      ; link_deps
-      ; modes
-      ; buildable
-      }
+  let common =
+    let%map buildable = Buildable.t
+    and (_ : bool) = field "link_executables" ~default:true
+                       (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
+    and link_deps = field "link_deps" (list Dep_conf.t) ~default:[]
+    and link_flags = field_oslu "link_flags"
+    and modes = field "modes" Link_mode.Set.t ~default:Link_mode.Set.default
+    and () = map_validate
+               (field "inline_tests" (repeat junk >>| fun _ -> true) ~default:false)
+               ~f:(function
+                 | false -> Ok ()
+                 | true  ->
+                   Error
+                     "Inline tests are only allowed in libraries.\n\
+                      See https://github.com/ocaml/dune/issues/745 for more details.")
+    and package = field_o "package" (let%map loc = loc
+                                     and s = string in
+                                     (loc, s))
+    and project = Dune_project.get_exn ()
+    and file_kind = Stanza.file_kind ()
     in
-    let has_public_name =
-      List.exists ~f:Option.is_some public_names
-    in
-    let to_install =
-      match Link_mode.Set.best_install_mode t.modes with
-      | None when has_public_name ->
-        let mode_to_string mode =
-          " - " ^ Sexp.to_string ~syntax:Dune (Link_mode.sexp_of_t mode) in
-        let mode_strings = List.map ~f:mode_to_string Link_mode.installable_modes in
-        Loc.fail
-          buildable.loc
-          "No installable mode found for %s.\n\
-           One of the following modes is required:\n\
-           %s"
-          (if multi then "these executables" else "this executable")
-          (String.concat ~sep:"\n" mode_strings)
-      | None -> []
-      | Some mode ->
-        let ext =
-          match mode.mode with
-          | Native | Best -> ".exe"
-          | Byte -> ".bc"
+    fun names public_names ~multi ->
+      let t =
+        { names
+        ; link_flags
+        ; link_deps
+        ; modes
+        ; buildable
+        }
+      in
+      let has_public_name =
+        List.exists ~f:Option.is_some public_names
+      in
+      let to_install =
+        match Link_mode.Set.best_install_mode t.modes with
+        | None when has_public_name ->
+          let mode_to_string mode =
+            " - " ^ Sexp.to_string ~syntax:Dune (Link_mode.sexp_of_t mode) in
+          let mode_strings = List.map ~f:mode_to_string Link_mode.installable_modes in
+          Loc.fail
+            buildable.loc
+            "No installable mode found for %s.\n\
+             One of the following modes is required:\n\
+             %s"
+            (if multi then "these executables" else "this executable")
+            (String.concat ~sep:"\n" mode_strings)
+        | None -> []
+        | Some mode ->
+          let ext =
+            match mode.mode with
+            | Native | Best -> ".exe"
+            | Byte -> ".bc"
+          in
+          List.map2 names public_names
+            ~f:(fun (_, name) pub ->
+              match pub with
+              | None -> None
+              | Some pub -> Some ({ Install_conf.
+                                    src = name ^ ext
+                                  ; dst = Some pub
+                                  }))
+          |> List.filter_map ~f:(fun x -> x)
+      in
+      match to_install with
+      | [] -> begin
+          match package with
+          | None -> (t, None)
+          | Some (loc, _) ->
+            let func =
+              match file_kind with
+              | Jbuild -> Loc.warn
+              | Dune   -> Loc.fail
+            in
+            func loc
+              "This field is useless without a (public_name%s ...) field."
+              (if multi then "s" else "");
+            (t, None)
+        end
+      | files ->
+        let package =
+          match
+            match package with
+            | None ->
+              (buildable.loc, Pkg.default project)
+            | Some (loc, name) ->
+              (loc, Pkg.resolve project (Package.Name.of_string name))
+          with
+          | (_, Ok x) -> x
+          | (loc, Error msg) ->
+            of_sexp_errorf loc "%s" msg
         in
-        List.map2 names public_names
-          ~f:(fun (_, name) pub ->
-            match pub with
-            | None -> None
-            | Some pub -> Some ({ Install_conf.
-                                  src = name ^ ext
-                                ; dst = Some pub
-                                }))
-        |> List.filter_map ~f:(fun x -> x)
-    in
-    match to_install with
-    | [] ->
-      (field_o "package" (junk >>> loc) >>= function
-       | None -> return (t, None)
-       | Some loc ->
-         (Stanza.file_kind () >>| function
-         | Jbuild -> Loc.warn
-         | Dune   -> Loc.fail) >>= fun func ->
-         func loc
-           "This field is useless without a (public_name%s ...) field."
-           (if multi then "s" else "");
-         return (t, None)
-      )
-    | files ->
-      Pkg.field >>= fun package ->
-      return (t, Some { Install_conf. section = Bin; files; package })
+        (t, Some { Install_conf. section = Bin; files; package })
 
   let public_name =
     string >>| function
@@ -1091,23 +1120,29 @@ module Executables = struct
 
   let multi =
     record
-      (field "names" (list (located string)) >>= fun names ->
-       map_validate (field_o "public_names" (list public_name)) ~f:(function
-         | None -> Ok (List.map names ~f:(fun _ -> None))
-         | Some public_names ->
-           if List.length public_names = List.length names then
-             Ok public_names
-           else
-             Error "The list of public names must be of the same \
-                    length as the list of names")
-       >>= fun public_names ->
-       common names public_names ~multi:true)
+      (let%map names, public_names =
+         map_validate
+           (let%map names = field "names" (list (located string))
+            and pub_names = field_o "public_names" (list public_name) in
+            (names, pub_names))
+           ~f:(fun (names, public_names) ->
+             match public_names with
+             | None -> Ok (names, List.map names ~f:(fun _ -> None))
+             | Some public_names ->
+               if List.length public_names = List.length names then
+                 Ok (names, public_names)
+               else
+                 Error "The list of public names must be of the same \
+                        length as the list of names")
+       and f = common in
+       f names public_names ~multi:true)
 
   let single =
     record
-      (field   "name" (located string) >>= fun name ->
-       field_o "public_name" string >>= fun public_name ->
-       common [name] [public_name] ~multi:false)
+      (let%map name = field "name" (located string)
+       and public_name = field_o "public_name" string
+       and f = common in
+       f [name] [public_name] ~multi:false)
 end
 
 module Rule = struct
@@ -1190,37 +1225,36 @@ module Rule = struct
     }
 
   let long_form =
-    loc >>= fun loc ->
-    field "action"  (located Action.Unexpanded.t)
-    >>= fun action ->
-    field "targets" (list file_in_current_dir)
-    >>= fun targets ->
-    field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
-    >>= fun deps ->
-    field "locks"   (list String_with_vars.t) ~default:[] >>= fun locks ->
-    map_validate
-      (field_b
-         ~check:(Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"(mode fallback)")
-         "fallback" >>= fun fallback ->
-       field_o "mode" Mode.t >>= fun mode ->
-       return (fallback, mode))
-      ~f:(function
-        | true, Some _ ->
-          Error "Cannot use both (fallback) and (mode ...) at the \
-                 same time.\n\
-                 (fallback) is the same as (mode fallback), \
-                 please use the latter in new code."
-        | false, Some mode -> Ok mode
-        | true, None -> Ok Fallback
-        | false, None -> Ok Standard)
-    >>= fun mode ->
-    return { targets = Static targets
-           ; deps
-           ; action
-           ; mode
-           ; locks
-           ; loc
-           }
+    let%map loc = loc
+    and action = field "action" (located Action.Unexpanded.t)
+    and targets = field "targets" (list file_in_current_dir)
+    and deps = field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
+    and locks = field "locks" (list String_with_vars.t) ~default:[]
+    and mode =
+      map_validate
+        (field_b
+           ~check:(Syntax.renamed_in Stanza.syntax (1, 0)
+                     ~to_:"(mode fallback)")
+           "fallback" >>= fun fallback ->
+         field_o "mode" Mode.t >>= fun mode ->
+         return (fallback, mode))
+        ~f:(function
+          | true, Some _ ->
+            Error "Cannot use both (fallback) and (mode ...) at the \
+                   same time.\n\
+                   (fallback) is the same as (mode fallback), \
+                   please use the latter in new code."
+          | false, Some mode -> Ok mode
+          | true, None -> Ok Fallback
+          | false, None -> Ok Standard)
+    in
+    { targets = Static targets
+    ; deps
+    ; action
+    ; mode
+    ; locks
+    ; loc
+    }
 
   let jbuild_syntax =
     peek_exn >>= function
@@ -1256,35 +1290,38 @@ module Rule = struct
     }
 
   let ocamllex_jbuild =
-    peek_exn >>= function
-    | List (_, List (_, _) :: _) ->
-      record
-        (field "modules" (list string) >>= fun modules ->
-         Mode.field >>= fun mode ->
-         return { modules; mode })
-    | _ ->
-      list string >>| fun modules ->
-      { modules
-      ; mode  = Standard
-      }
+    enter
+      (if_list
+         ~then_:(
+           record
+             (let%map modules = field "modules" (list string)
+              and mode = Mode.field in
+              { modules; mode }))
+         ~else_:(
+           repeat string >>| fun modules ->
+           { modules
+           ; mode  = Standard
+           }))
 
   let ocamllex_dune =
-    peek >>= function
-    | None ->
-      return
-        { modules = []
-        ; mode  = Standard
-        }
-    | Some (List _) ->
-      fields
-        (field "modules" (list string) >>= fun modules ->
-         Mode.field >>= fun mode ->
-         return { modules; mode })
-    | Some _ ->
-      repeat string >>| fun modules ->
-      { modules
-      ; mode  = Standard
-      }
+    if_eos
+      ~then_:(
+        return
+          { modules = []
+          ; mode  = Standard
+          })
+      ~else_:(
+        if_list
+          ~then_:(
+            record
+              (let%map modules = field "modules" (list string)
+               and mode = Mode.field in
+               { modules; mode }))
+          ~else_:(
+            repeat string >>| fun modules ->
+            { modules
+            ; mode  = Standard
+            }))
 
   let ocamllex =
     Syntax.get_exn Stanza.syntax >>= fun ver ->
@@ -1352,17 +1389,16 @@ module Menhir = struct
 
   let t =
     record
-      (field_o "merge_into" string >>= fun merge_into ->
-       field_oslu "flags" >>= fun flags ->
-       field "modules" (list string) >>= fun modules ->
-       Rule.Mode.field >>= fun mode ->
-       return
-         { merge_into
-         ; flags
-         ; modules
-         ; mode
-         ; loc = Loc.none
-         })
+      (let%map merge_into = field_o "merge_into" string
+       and flags = field_oslu "flags"
+       and modules = field "modules" (list string)
+       and mode = Rule.Mode.field in
+       { merge_into
+       ; flags
+       ; modules
+       ; mode
+       ; loc = Loc.none
+       })
 
   type Stanza.t += T of t
 
@@ -1373,18 +1409,16 @@ module Menhir = struct
   (* Syntax for jbuild files *)
   let jbuild_syntax =
     record
-      (field_o "merge_into" string >>= fun merge_into ->
-       field_oslu "flags" >>= fun flags ->
-       field "modules" (list string) >>= fun modules ->
-       Rule.Mode.field >>= fun mode ->
-       return
-         { merge_into
-         ; flags
-         ; modules
-         ; mode
-         ; loc = Loc.none
-         }
-      )
+      (let%map merge_into = field_o "merge_into" string
+       and flags = field_oslu "flags"
+       and modules = field "modules" (list string)
+       and mode = Rule.Mode.field in
+       { merge_into
+       ; flags
+       ; modules
+       ; mode
+       ; loc = Loc.none
+       })
 end
 
 module Alias_conf = struct
@@ -1405,19 +1439,18 @@ module Alias_conf = struct
 
   let t =
     record
-      (field "name" alias_name                          >>= fun name ->
-       field_o "package" Pkg.t                          >>= fun package ->
-       field_o "action" (located Action.Unexpanded.t)   >>= fun action ->
-       field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
-       field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
-       >>= fun deps ->
-       return
-         { name
-         ; deps
-         ; action
-         ; package
-         ; locks
-         })
+      (let%map name = field "name" alias_name
+       and package = field_o "package" Pkg.t
+       and action = field_o "action" (located Action.Unexpanded.t)
+       and locks = field "locks" (list String_with_vars.t) ~default:[]
+       and deps = field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
+       in
+       { name
+       ; deps
+       ; action
+       ; package
+       ; locks
+       })
 end
 
 module Tests = struct
@@ -1430,28 +1463,27 @@ module Tests = struct
 
   let gen_parse names =
     record
-      (Buildable.t                                         >>= fun buildable ->
-       field_oslu "link_flags"                             >>= fun link_flags ->
-       names                                               >>= fun names ->
-       field_o "package" Pkg.t                             >>= fun package ->
-       field "locks" (list String_with_vars.t) ~default:[] >>= fun locks ->
-       field "modes" Executables.Link_mode.Set.t
-         ~default:Executables.Link_mode.Set.default >>= fun modes ->
-       field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
-       >>= fun deps ->
-       return
-         { exes =
-             { Executables.
-               link_flags
-             ; link_deps = []
-             ; modes
-             ; buildable
-             ; names
-             }
-         ; locks
-         ; package
-         ; deps
-         })
+      (let%map buildable = Buildable.t
+       and link_flags = field_oslu "link_flags"
+       and names = names
+       and package = field_o "package" Pkg.t
+       and locks = field "locks" (list String_with_vars.t) ~default:[]
+       and modes = field "modes" Executables.Link_mode.Set.t
+                     ~default:Executables.Link_mode.Set.default
+       and deps = field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
+       in
+       { exes =
+           { Executables.
+             link_flags
+           ; link_deps = []
+           ; modes
+           ; buildable
+           ; names
+           }
+       ; locks
+       ; package
+       ; deps
+       })
 
   let multi = gen_parse (field "names" (list (located string)))
 
@@ -1475,15 +1507,13 @@ module Documentation = struct
 
   let t =
     record
-      (Pkg.field >>= fun package ->
-       Ordered_set_lang.field "mld_files"
-       >>= fun mld_files ->
-       loc >>= fun loc ->
-       return
-         { loc
-         ; package
-         ; mld_files
-         }
+      (let%map package = Pkg.field
+       and mld_files = Ordered_set_lang.field "mld_files"
+       and loc = loc in
+       { loc
+       ; package
+       ; mld_files
+       }
       )
 end
 
@@ -1504,26 +1534,20 @@ module Env = struct
     }
 
   let config =
-    field_oslu "flags"          >>= fun flags          ->
-    field_oslu "ocamlc_flags"   >>= fun ocamlc_flags   ->
-    field_oslu "ocamlopt_flags" >>= fun ocamlopt_flags ->
-    return { flags; ocamlc_flags; ocamlopt_flags }
+    let%map flags = field_oslu "flags"
+    and ocamlc_flags = field_oslu "ocamlc_flags"
+    and ocamlopt_flags = field_oslu "ocamlopt_flags"
+    in
+    { flags; ocamlc_flags; ocamlopt_flags }
 
   let rule =
-    peek_exn >>= function
-    | List (_, Atom (_, A pat) :: _) ->
-      enter (
-        junk >>= fun () ->
-        fields config >>= fun configs ->
-        let pat =
-          match pat with
-          | "_" -> Any
-          | s   -> Profile s
-        in
-        return (pat, configs))
-    | sexp ->
-      of_sexp_error (Sexp.Ast.loc sexp)
-        "S-expression of the form (<profile> <fields>) expected"
+    enter
+      (let%map pat =
+         match_keyword [("_", return Any)]
+           ~fallback:(string >>| fun s -> Profile s)
+       and configs = fields config
+       in
+       (pat, configs))
 end
 
 type Stanza.t +=
@@ -1555,54 +1579,57 @@ module Stanzas = struct
 
   let stanzas : constructors =
     [ "library",
-      (Library.t >>| fun x ->
+      (let%map x = Library.t in
        [Library x])
     ; "executable" , Executables.single >>| execs
     ; "executables", Executables.multi  >>| execs
     ; "rule",
-      (loc >>= fun loc ->
-       Rule.t >>| fun x ->
+      (let%map loc = loc
+       and x = Rule.t in
        [Rule { x with loc }])
     ; "ocamllex",
-      (loc >>= fun loc ->
-       Rule.ocamllex >>| fun x ->
-       rules (Rule.ocamllex_to_rule loc x))
+      (let%map loc = loc
+       and x = Rule.ocamllex in
+       (rules (Rule.ocamllex_to_rule loc x)))
     ; "ocamlyacc",
-      (loc >>= fun loc ->
-       Rule.ocamlyacc >>| fun x ->
+      (let%map loc = loc
+       and x = Rule.ocamlyacc in
        rules (Rule.ocamlyacc_to_rule loc x))
     ; "install",
-      (Install_conf.t >>| fun x ->
+      (let%map x = Install_conf.t in
        [Install x])
     ; "alias",
-      (Alias_conf.t >>| fun x ->
+      (let%map x = Alias_conf.t in
        [Alias x])
     ; "copy_files",
-      (Copy_files.t >>| fun glob ->
+      (let%map glob = Copy_files.t in
        [Copy_files {add_line_directive = false; glob}])
     ; "copy_files#",
-      (Copy_files.t >>| fun glob ->
+      (let%map glob = Copy_files.t in
        [Copy_files {add_line_directive = true; glob}])
     ; "include",
-      (loc >>= fun loc ->
-       relative_file >>| fun fn ->
+      (let%map loc = loc
+       and fn = relative_file in
        [Include (loc, fn)])
     ; "documentation",
-      (Documentation.t >>| fun d ->
+      (let%map d = Documentation.t in
        [Documentation d])
     ; "jbuild_version",
-      (Syntax.deleted_in Stanza.syntax (1, 0) >>= fun () ->
-       Jbuild_version.t >>| fun _ -> [])
+      (let%map () = Syntax.deleted_in Stanza.syntax (1, 0)
+       and _ = Jbuild_version.t in
+       [])
     ; "tests",
-      (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
-       (Tests.multi >>| fun t -> [Tests t]))
+      (let%map () = Syntax.since Stanza.syntax (1, 0)
+       and t = Tests.multi in
+       [Tests t])
     ; "test",
-      (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
-       (Tests.single >>| fun t -> [Tests t]))
+      (let%map () = Syntax.since Stanza.syntax (1, 0)
+       and t = Tests.single in
+       [Tests t])
     ; "env",
-      (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
-       loc >>= fun loc ->
-       repeat Env.rule >>| fun rules ->
+      (let%map () = Syntax.since Stanza.syntax (1, 0)
+       and loc = loc
+       and rules = repeat Env.rule in
        [Env { loc; rules }])
     ]
 
@@ -1613,8 +1640,8 @@ module Stanzas = struct
     let stanzas =
       stanzas @
       [ "menhir",
-        (loc >>= fun loc ->
-         Menhir.jbuild_syntax >>| fun x ->
+        (let%map loc = loc
+         and x = Menhir.jbuild_syntax in
          [Menhir.T { x with loc }])
       ]
     in

@@ -361,10 +361,9 @@ module Unexpanded = struct
       | Standard -> Standard
       | Include (Template_path fn) ->
         begin match f.f ~mode:Single fn with
-        | Unexpanded e ->
+        | Unexpanded _ ->
           Loc.fail (String_with_vars.loc fn)
-            "Failed to fully expand include path. Unexpanded value: %a"
-            (Usexp.pp Dune) (String_with_vars.sexp_of_t e)
+            "This percent form is not supported in this position"
         | Expanded x ->
           let path = Value.to_path ~dir x in
           files := Path.Set.add !files path;

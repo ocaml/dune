@@ -7,25 +7,12 @@ module type Params = sig
   val sctx : Super_context.t
 end
 
-module Archives(P : Params) = struct
-  let ctx = Super_context.context P.sctx
-
-  let lib_archive (lib : Library.t) ~dir ~ext =
-    Path.relative dir (lib.name ^ ext)
-
-  let stubs_archive lib ~dir =
-    Library.stubs_archive lib ~dir ~ext_lib:ctx.ext_lib
-
-  let dll (lib : Library.t) ~dir =
-    Path.relative dir (sprintf "dll%s_stubs%s" lib.name ctx.ext_dll)
-end
-
 module Gen(P : Params) = struct
   module Alias = Build_system.Alias
   module SC = Super_context
   open P
 
-  include (Archives(P))
+  let ctx = Super_context.context sctx
 
   let lib_dune_file ~dir ~name =
     Path.relative dir (name ^ ".dune")
@@ -172,16 +159,17 @@ module Gen(P : Params) = struct
                   | None -> None
                   | Some f -> Some f.path)
               ])
-        ; if_ byte [ lib_archive ~dir lib ~ext:".cma" ]
-        ; if_ (Library.has_stubs lib) [ stubs_archive ~dir lib ]
+        ; if_ byte [ Library.archive ~dir lib ~ext:".cma" ]
+        ; if_ (Library.has_stubs lib)
+            [ Library.stubs_archive ~dir lib ~ext_lib:ctx.ext_lib ]
         ; if_ native
             (let files =
-               [ lib_archive ~dir lib ~ext:".cmxa"
-               ; lib_archive ~dir lib ~ext:ctx.ext_lib
+               [ Library.archive ~dir lib ~ext:".cmxa"
+               ; Library.archive ~dir lib ~ext:ctx.ext_lib
                ]
              in
              if ctx.natdynlink_supported && lib.dynlink then
-               files @ [ lib_archive ~dir lib ~ext:".cmxs" ]
+               files @ [ Library.archive ~dir lib ~ext:".cmxs" ]
              else
                files)
         ; List.map lib.buildable.js_of_ocaml.javascript_files ~f:(Path.relative dir)
@@ -189,7 +177,10 @@ module Gen(P : Params) = struct
             Path.relative dir (fn ^ ".h"))
         ]
     in
-    let dlls  = if_ (byte && Library.has_stubs lib && lib.dynlink) [dll ~dir lib] in
+    let dlls  =
+      if_ (byte && Library.has_stubs lib && lib.dynlink)
+        [Library.dll ~dir lib ~ext_dll:ctx.ext_dll]
+    in
     let execs =
       match lib.kind with
       | Normal | Ppx_deriver -> []

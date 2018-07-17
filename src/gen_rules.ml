@@ -21,8 +21,6 @@ module Gen(P : Install_rules.Params) = struct
      | Library stuff                                                   |
      +-----------------------------------------------------------------+ *)
 
-  include Install_rules.Archives(P)
-
   let msvc_hack_cclibs cclibs =
     let f lib =
       if String.is_prefix lib ~prefix:"-l" then
@@ -42,7 +40,7 @@ module Gen(P : Install_rules.Params) = struct
   let build_lib (lib : Library.t) ~scope ~flags ~dir ~obj_dir ~mode
         ~top_sorted_modules ~modules =
     Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
-      let target = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
+      let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
         if not (Library.has_stubs lib) then
           []
@@ -96,7 +94,7 @@ module Gen(P : Install_rules.Params) = struct
            ; Hidden_targets
                (match mode with
                 | Byte -> []
-                | Native -> [lib_archive lib ~dir ~ext:ctx.ext_lib])
+                | Native -> [Library.archive lib ~dir ~ext:ctx.ext_lib])
            ]))
 
   let build_c_file (lib : Library.t) ~scope ~dir ~includes c_name =
@@ -290,8 +288,8 @@ module Gen(P : Install_rules.Params) = struct
                ; Hidden_targets targets
                ])
         in
-        let static = stubs_archive lib ~dir in
-        let dynamic = dll lib ~dir in
+        let static = Library.stubs_archive lib ~dir ~ext_lib:ctx.ext_lib in
+        let dynamic = Library.dll lib ~dir ~ext_dll:ctx.ext_dll in
         let modes =
           Mode_conf.Set.eval lib.modes
             ~has_native:(Option.is_some ctx.ocamlopt)
@@ -342,17 +340,18 @@ module Gen(P : Install_rules.Params) = struct
          ~modules));
     (* Build *.cma.js *)
     SC.add_rules sctx (
-      let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
+      let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte) in
       let target = Path.extend_basename src ~suffix:".js" in
       Js_of_ocaml_rules.build_cm sctx ~scope ~dir
         ~js_of_ocaml:lib.buildable.js_of_ocaml ~src ~target);
 
     if ctx.natdynlink_supported then
       Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
-        let src = lib_archive lib ~dir ~ext:(Mode.compiled_lib_ext Native) in
-        let dst = lib_archive lib ~dir ~ext:".cmxs" in
+        let src = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Native) in
+        let dst = Library.archive lib ~dir ~ext:".cmxs" in
         let build =
-          Build.dyn_paths (Build.arr (fun () -> [lib_archive lib ~dir ~ext:ctx.ext_lib]))
+          Build.dyn_paths (Build.arr (fun () ->
+            [Library.archive lib ~dir ~ext:ctx.ext_lib]))
           >>>
           Ocaml_flags.get flags Native
           >>>
@@ -367,7 +366,7 @@ module Gen(P : Install_rules.Params) = struct
         in
         let build =
           if Library.has_stubs lib then
-            Build.path (stubs_archive ~dir lib)
+            Build.path (Library.stubs_archive ~dir lib ~ext_lib:ctx.ext_lib)
             >>>
             build
           else

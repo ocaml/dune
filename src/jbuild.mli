@@ -116,19 +116,8 @@ module Dep_conf : sig
 end
 
 module Buildable : sig
-  module Id : sig
-    type t =
-      | Library     of string
-      | Executables of string (** Name of the first executable *)
-
-    val compare : t -> t -> Ordering.t
-    module Map : Map.S with type key = t
-    val sexp_of_t : t -> Sexp.t
-  end
-
   type t =
-    { id                       : Id.t
-    ; loc                      : Loc.t
+    { loc                      : Loc.t
     ; modules                  : Ordered_set_lang.t
     ; modules_without_implementation : Ordered_set_lang.t
     ; libraries                : Lib_dep.t list
@@ -242,6 +231,8 @@ module Library : sig
 
   val has_stubs : t -> bool
   val stubs_archive : t -> dir:Path.t -> ext_lib:string -> Path.t
+  val dll : t -> dir:Path.t -> ext_dll:string -> Path.t
+  val archive : t -> dir:Path.t -> ext:string -> Path.t
   val best_name : t -> string
 end
 

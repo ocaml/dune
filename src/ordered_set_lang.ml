@@ -261,8 +261,8 @@ module Partial = struct
         let open Stanza.Of_sexp in
         parse
           (Parse.without_include ~elt:(
-             String_with_vars.t >>| fun sw ->
-             Element (Expanded (String_with_vars.loc sw, f sw))))
+             plain_string (fun ~loc s ->
+               Ast.Element (String_with_vars.Partial.Expanded(loc, [Value.String s])))))
           context
           sexp
         |> eval

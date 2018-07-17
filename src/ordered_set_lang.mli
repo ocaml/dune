@@ -61,6 +61,8 @@ module Partial : sig
     -> files_contents:Sexp.Ast.t Path.Map.t
     -> f:(String_with_vars.t -> Value.t list)
     -> expanded
+
+  val syntax : t -> Usexp.syntax
 end with type expanded := t
 
 module Unexpanded : sig
@@ -84,7 +86,7 @@ module Unexpanded : sig
     :  t
     -> dir:Path.t
     -> f:expander
-    -> Partial.t * Sexp.syntax * Path.Set.t
+    -> Partial.t * Path.Set.t
 
   type position = Pos | Neg
 

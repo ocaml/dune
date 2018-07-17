@@ -267,6 +267,11 @@ module Partial = struct
           sexp
     in
     { t with ast = expand t.ast }
+
+  let syntax t =
+    match Univ_map.find t.context (Syntax.key Stanza.syntax) with
+    | Some (0, _)-> File_tree.Dune_file.Kind.Jbuild
+    | None | Some (_, _) -> Dune
 end
 
 module Unexpanded = struct
@@ -369,13 +374,8 @@ module Unexpanded = struct
       | Diff (l, r) ->
         Diff (expand l, expand r)
     in
-    let syntax =
-      match Univ_map.find t.context (Syntax.key Stanza.syntax) with
-      | Some (0, _)-> File_tree.Dune_file.Kind.Jbuild
-      | None | Some (_, _) -> Dune
-    in
     let ast = expand t. ast in
-    ({ t with ast }, syntax, !files)
+    ({ t with ast }, !files)
 end
 
 module String = Make(struct

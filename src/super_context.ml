@@ -410,8 +410,8 @@ let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
   let open Build.O in
   let parse ~loc:_ s = s in
   let bindings = Option.value ~default:Pform.Map.empty bindings in
-  let (partial, syntax, paths, resolved_forms) =
-    let ((partial, syntax, paths), resolved_forms) =
+  let (partial, paths, resolved_forms) =
+    let ((partial, paths), resolved_forms) =
       Expander.with_expander t ~dir ~dep_kind:Required
         ~scope ~targets_written_by_user:(Static [])
         ~map_exe:(fun x -> x)
@@ -423,7 +423,7 @@ let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
             } in
           Ordered_set_lang.Unexpanded.expand set ~dir ~f)
     in
-    (partial, syntax, paths, resolved_forms)
+    (partial, paths, resolved_forms)
   in
   let f =
     Expander.Resolved_forms.build resolved_forms >>^ fun dynamic_expansions ->
@@ -441,6 +441,7 @@ let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
       ~files_contents:Path.Map.empty
     |> Ordered_set_lang.String.eval ~parse ~standard
   | paths ->
+    let syntax = Ordered_set_lang.Partial.syntax partial in
     Build.fanout3
       standard
       f

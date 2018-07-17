@@ -406,6 +406,16 @@ end = struct
     )
 end
 
+let map_exe sctx =
+  match sctx.host with
+  | None -> (fun exe -> exe)
+  | Some host ->
+    fun exe ->
+      match Path.extract_build_context_dir exe with
+      | Some (dir, exe) when dir = sctx.context.build_dir ->
+        Path.append host.context.build_dir exe
+      | _ -> exe
+
 let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
   let open Build.O in
   let parse ~loc:_ s = s in
@@ -413,7 +423,7 @@ let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
   let ((partial, paths), resolved_forms) =
     Expander.with_expander t ~dir ~dep_kind:Required
       ~scope ~targets_written_by_user:(Static [])
-      ~map_exe:(fun x -> x)
+      ~map_exe:(map_exe t)
       ~bindings
       ~f:(fun f ->
         let f : Ordered_set_lang.Unexpanded.expander =
@@ -819,16 +829,6 @@ module Action = struct
     | Infer
     | Alias
 
-
-  let map_exe sctx =
-    match sctx.host with
-    | None -> (fun exe -> exe)
-    | Some host ->
-      fun exe ->
-        match Path.extract_build_context_dir exe with
-        | Some (dir, exe) when dir = sctx.context.build_dir ->
-          Path.append host.context.build_dir exe
-        | _ -> exe
 
   let expand_step1 sctx ~dir ~dep_kind ~scope ~targets_written_by_user
         ~map_exe ~bindings t =

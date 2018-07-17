@@ -52,18 +52,18 @@ val is_standard : t -> bool
 val field : ?default:t -> string -> t Sexp.Of_sexp.fields_parser
 
 module Partial : sig
-  type expanded = t
   type t
 
-  val expand
+  val eval
     :  t
     -> dir:Path.t
     -> files_contents:Sexp.Ast.t Path.Map.t
     -> f:(String_with_vars.t -> Value.t list)
-    -> expanded
+    -> standard:Value.t list
+    -> Value.t list
 
   val syntax : t -> Usexp.syntax
-end with type expanded := t
+end
 
 module Unexpanded : sig
   type expanded = t

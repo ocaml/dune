@@ -16,10 +16,6 @@ module Ast = struct
     | Union : ('a, 'b) t list -> ('a, 'b) t
     | Diff : ('a, 'b) t * ('a, 'b) t -> ('a, 'b) t
     | Include : 'b include_ -> ('a, 'b) t
-
-  let union = function
-    | [x] -> x
-    | xs  -> Union xs
 end
 
 type 'ast generic =
@@ -229,23 +225,27 @@ module Partial = struct
     , Ast.partial
     ) Ast.t
 
+  module Ordered_value = struct
+    let union = List.flatten
+    let diff ~dir a b =
+      List.filter a ~f:(fun x ->
+        List.for_all b ~f:(fun y ->
+          Ordering.neq (Value.compare_as_string ~dir x y)))
+  end
+
   type t = ast generic
 
-  let expand t ~dir ~files_contents ~(f : String_with_vars.t -> Value.t list) =
+  let eval t ~dir ~files_contents ~f ~standard =
     let context = t.context in
-    let ast_of_values loc vls =
-      List.map vls ~f:(fun s -> Ast.Element (loc, Value.to_string ~dir s))
-      |> Ast.union
-    in
-    let rec expand (t : ast) =
+    let rec eval (t : ast) =
       let open Ast in
       let open String_with_vars.Partial in
       match t with
-      | Element (Expanded (loc, x)) -> ast_of_values loc x
-      | Element (Unexpanded x) -> ast_of_values (String_with_vars.loc x) (f x)
-      | Standard -> Standard
-      | Union l -> Union (List.map l ~f:expand)
-      | Diff (l, r) -> Diff (expand l, expand r)
+      | Element (Expanded (_, x)) -> x
+      | Element (Unexpanded x) -> f x
+      | Standard -> standard
+      | Union l -> Ordered_value.union (List.map l ~f:eval)
+      | Diff (l, r) -> Ordered_value.diff ~dir (eval l) (eval r)
       | Include (Expanded_path path) ->
         let sexp =
           match Path.Map.find files_contents path with
@@ -262,11 +262,12 @@ module Partial = struct
         parse
           (Parse.without_include ~elt:(
              String_with_vars.t >>| fun sw ->
-             ast_of_values (String_with_vars.loc sw) (f sw)))
+             Element (Expanded (String_with_vars.loc sw, f sw))))
           context
           sexp
+        |> eval
     in
-    { t with ast = expand t.ast }
+    eval t.ast
 
   let syntax t =
     match Univ_map.find t.context (Syntax.key Stanza.syntax) with

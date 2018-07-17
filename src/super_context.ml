@@ -416,10 +416,8 @@ let map_exe sctx =
         Path.append host.context.build_dir exe
       | _ -> exe
 
-let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
+let expand_and_eval_set t ~scope ~dir ?(bindings=Pform.Map.empty) set ~standard =
   let open Build.O in
-  let parse ~loc:_ s = s in
-  let bindings = Option.value ~default:Pform.Map.empty bindings in
   let ((partial, paths), resolved_forms) =
     Expander.with_expander t ~dir ~dep_kind:Required
       ~scope ~targets_written_by_user:(Static [])
@@ -441,12 +439,15 @@ let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
         | None -> expander t ~scope pform syntax_version
         | Some _ as p -> p)
   in
+  let eval ~standard ~f ~files_contents =
+    let standard = Value.L.strings standard in
+    Ordered_set_lang.Partial.eval partial ~dir ~standard ~f ~files_contents
+    |> Value.L.to_strings ~dir
+  in
   match Path.Set.to_list paths with
   | [] ->
     standard &&& f >>^ fun (standard, f) ->
-    Ordered_set_lang.Partial.expand partial ~dir ~f
-      ~files_contents:Path.Map.empty
-    |> Ordered_set_lang.String.eval ~parse ~standard
+    eval ~standard ~f ~files_contents:Path.Map.empty
   | paths ->
     let syntax = Ordered_set_lang.Partial.syntax partial in
     Build.fanout3
@@ -455,8 +456,7 @@ let expand_and_eval_set t ~scope ~dir ?bindings set ~standard =
       (Build.all (List.map paths ~f:(fun f -> Build.read_sexp f syntax)))
     >>^ fun (standard, f, sexps) ->
     let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
-    Ordered_set_lang.Partial.expand partial ~dir ~f ~files_contents
-    |> Ordered_set_lang.String.eval ~standard ~parse
+    eval ~f ~files_contents ~standard
 
 module Env : sig
   val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t

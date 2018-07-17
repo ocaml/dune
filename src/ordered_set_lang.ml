@@ -225,7 +225,7 @@ let field ?(default=standard) name = Sexp.Of_sexp.field name t ~default
 
 module Partial = struct
   type ast =
-    ((Loc.t * Value.t list, String_with_vars.t) String_with_vars.Partial.t
+    ((Loc.t * Value.t list) String_with_vars.Partial.t
     , Ast.partial
     ) Ast.t
 
@@ -344,7 +344,7 @@ module Unexpanded = struct
   type expander =
     { f: 'a. mode:'a String_with_vars.Mode.t
         -> String_with_vars.t
-        -> ('a, String_with_vars.t) String_with_vars.Partial.t
+        -> 'a String_with_vars.Partial.t
     }
 
   let expand t ~dir ~f =

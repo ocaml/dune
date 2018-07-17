@@ -79,7 +79,7 @@ module Unexpanded : sig
   type expander =
     { f: 'a. mode:'a String_with_vars.Mode.t
         -> String_with_vars.t
-        -> ('a, String_with_vars.t) String_with_vars.Partial.t
+        -> 'a String_with_vars.Partial.t
     }
 
   val expand

@@ -9,6 +9,10 @@ val to_string : t -> dir:Path.t -> string
 
 val to_path : ?error_loc:Loc.t -> t -> dir:Path.t -> Path.t
 
+val compare : t -> t -> Ordering.t
+
+val compare_as_string : dir:Path.t -> t -> t -> Ordering.t
+
 module L : sig
   val strings : string list -> t list
 

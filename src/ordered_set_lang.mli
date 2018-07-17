@@ -51,6 +51,20 @@ val is_standard : t -> bool
 
 val field : ?default:t -> string -> t Sexp.Of_sexp.fields_parser
 
+module Partial : sig
+  type t
+
+  val eval
+    :  t
+    -> dir:Path.t
+    -> files_contents:Sexp.Ast.t Path.Map.t
+    -> f:(String_with_vars.t -> Value.t list)
+    -> standard:Value.t list
+    -> Value.t list
+
+  val syntax : t -> Usexp.syntax
+end
+
 module Unexpanded : sig
   type expanded = t
   type t
@@ -62,21 +76,17 @@ module Unexpanded : sig
 
   val has_special_forms : t -> bool
 
-  (** List of files needed to expand this set *)
-  val files
-    : t
-    -> f:(String_with_vars.t -> Path.t)
-    -> Sexp.syntax * Path.Set.t
+  type expander =
+    { f: 'a. mode:'a String_with_vars.Mode.t
+        -> String_with_vars.t
+        -> 'a String_with_vars.Partial.t
+    }
 
-  (** Expand [t] using with the given file contents. [file_contents] is a map from
-      filenames to their parsed contents. Every [(:include fn)] in [t] is replaced by
-      [Map.find files_contents fn]. Every element is converted to a string using [f]. *)
   val expand
     :  t
     -> dir:Path.t
-    -> files_contents:Sexp.Ast.t Path.Map.t
-    -> f:(String_with_vars.t -> Value.t list)
-    -> expanded
+    -> f:expander
+    -> Partial.t * Path.Set.t
 
   type position = Pos | Neg
 

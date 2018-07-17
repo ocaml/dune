@@ -120,6 +120,41 @@ module Of_sexp : sig
   (** End of sequence condition. Returns [true] iff they are no more
       S-expressions to parse *)
   val eos : (bool, _) parser
+  val if_eos : then_:('a, 'b) parser -> else_:('a, 'b) parser -> ('a, 'b) parser
+
+  (** If the next element of the sequence is a list, parse it with
+      [then_], otherwise parse it with [else_]. *)
+  val if_list
+    :  then_:'a t
+    -> else_:'a t
+    -> 'a t
+
+  (** If the next element of the sequence is of the form [(:<name>
+     ...)], use [then_] to parse [...]. Otherwise use [else_]. *)
+  val if_paren_colon_form
+    :  then_:(Loc.t * string -> 'a) t
+    -> else_:'a t
+    -> 'a t
+
+  (** Expect the next element to be the following atom. *)
+  val keyword : string -> unit t
+
+  (** {[match_keyword [(k1, t1); (k2, t2); ...] ~fallback]} inspects
+     the next element of the input sequence. If it is an atom equal to
+     one of [k1], [k2], ... then the corresponding parser is used to
+     parse the rest of the sequence. Other [fallback] is used. *)
+  val match_keyword
+    :  (string * 'a t) list
+    -> fallback:'a t
+    -> 'a t
+
+  (** Use [before] to parse elements until the keyword is
+      reached. Then use [after] to parse the rest. *)
+  val until_keyword
+    :  string
+    -> before:'a t
+    -> after:'b t
+    -> ('a list * 'b option) t
 
   (** What is currently being parsed. The second argument is the atom
       at the beginnig of the list when inside a [sum ...] or [field
@@ -191,7 +226,7 @@ module Of_sexp : sig
     -> ('a, unit, string, 'b) format4
     -> 'a
 
-  val located : 'a t -> (Loc.t * 'a) t
+  val located : ('a, 'k) parser -> (Loc.t * 'a, 'k) parser
 
   val enum : (string * 'a) list -> 'a t
 
@@ -237,6 +272,11 @@ module Of_sexp : sig
   (** Default value for [on_dup]. It fails with an appropriate error
       message. *)
   val field_present_too_many_times : Univ_map.t -> string -> Ast.t list -> _
+
+  module Let_syntax : sig
+    val ( $ ) : ('a -> 'b, 'k) parser -> ('a, 'k) parser -> ('b, 'k) parser
+    val const : 'a -> ('a, _) parser
+  end
 end
 
 module type Sexpable = sig

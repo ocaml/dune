@@ -165,10 +165,18 @@ module Of_sexp = struct
     | Values (loc, _, _) -> (loc, state)
     | Fields (loc, _, _) -> (loc, state)
 
-  let eos : type k. k context -> k -> bool * k = fun ctx state ->
+  let at_eos : type k. k context -> k -> bool = fun ctx state ->
     match ctx with
-    | Values _ -> (state = [], state)
-    | Fields _ -> (Name_map.is_empty state.unparsed, state)
+    | Values _ -> state = []
+    | Fields _ -> Name_map.is_empty state.unparsed
+
+  let eos ctx state = (at_eos ctx state, state)
+
+  let if_eos ~then_ ~else_ ctx state =
+    if at_eos ctx state then
+      then_ ctx state
+    else
+      else_ ctx state
 
   let repeat : 'a t -> 'a list t =
     let rec loop t acc ctx l =
@@ -256,6 +264,33 @@ module Of_sexp = struct
     | Values _ -> ((), [])
     | Fields _ -> ((), { state with unparsed = Name_map.empty })
 
+  let keyword kwd =
+    next (function
+      | Atom (_, s) when Atom.to_string s = kwd -> ()
+      | sexp -> of_sexp_errorf (Ast.loc sexp) "'%s' expected" kwd)
+
+  let match_keyword l ~fallback =
+    peek >>= function
+    | Some (Atom (_, A s)) -> begin
+        match List.assoc l s with
+        | Some t -> junk >>> t
+        | None -> fallback
+      end
+    | _ -> fallback
+
+  let until_keyword kwd ~before ~after =
+    let rec loop acc =
+      peek >>= function
+      | None -> return (List.rev acc, None)
+      | Some (Atom (_, A s)) when s = kwd ->
+        junk >>> after >>= fun x ->
+        return (List.rev acc, Some x)
+      | _ ->
+        before >>= fun x ->
+        loop (x :: acc)
+    in
+    loop []
+
   let plain_string f =
     next (function
       | Atom (loc, A s) | Quoted_string (loc, s) -> f ~loc s
@@ -271,33 +306,76 @@ module Of_sexp = struct
       | sexp ->
         of_sexp_error (Ast.loc sexp) "List expected")
 
+  let if_list ~then_ ~else_ =
+    peek_exn >>= function
+    | List _ -> then_
+    | _ -> else_
+
+  let if_paren_colon_form ~then_ ~else_ =
+    peek_exn >>= function
+    | List (_, Atom (loc, A s) :: _) when String.is_prefix s ~prefix:":" ->
+      let name = String.sub s ~pos:1 ~len:(String.length s - 1) in
+      enter
+        (junk >>= fun () ->
+         then_ >>| fun f ->
+         f (loc, name))
+    | _ ->
+      else_
+
   let fix f =
     let rec p = lazy (f r)
     and r ast = (Lazy.force p) ast in
     r
 
-  let located t ctx state1 =
-    let x, state2 = t ctx state1 in
-    match state1 with
-    | sexp :: rest when rest == state2 -> (* common case *)
-      ((Ast.loc sexp, x), state2)
-    | [] ->
-      let (Values (loc, _, _)) = ctx in
-      (({ loc with start = loc.stop }, x), state2)
-    | sexp :: rest ->
-      let loc = Ast.loc sexp in
-      let rec search last l =
-        if l == state2 then
-          (({ loc with stop = (Ast.loc last).stop }, x), state2)
-        else
-          match l with
+  let loc_between_states : type k. k context -> k -> k -> Loc.t
+    = fun ctx state1 state2 ->
+      match ctx with
+      | Values _ -> begin
+          match state1 with
+          | sexp :: rest when rest == state2 -> (* common case *)
+            Ast.loc sexp
           | [] ->
             let (Values (loc, _, _)) = ctx in
-            (({ (Ast.loc sexp) with stop = loc.stop }, x), state2)
+            { loc with start = loc.stop }
           | sexp :: rest ->
+            let loc = Ast.loc sexp in
+            let rec search last l =
+              if l == state2 then
+                { loc with stop = (Ast.loc last).stop }
+              else
+                match l with
+                | [] ->
+                  let (Values (loc, _, _)) = ctx in
+                  { (Ast.loc sexp) with stop = loc.stop }
+                | sexp :: rest ->
+                  search sexp rest
+            in
             search sexp rest
-      in
-      search sexp rest
+        end
+      | Fields _ ->
+        let parsed =
+          Name_map.merge state1.unparsed state2.unparsed
+            ~f:(fun _key before after ->
+              match before, after with
+              | Some _, None -> before
+              | _ -> None)
+        in
+        match
+          Name_map.values parsed
+          |> List.map ~f:(fun f -> Ast.loc f.entry)
+          |> List.sort ~compare:(fun a b ->
+            Int.compare a.Loc.start.pos_cnum b.start.pos_cnum)
+        with
+        | [] ->
+          let (Fields (loc, _, _)) = ctx in
+          loc
+        | first :: l ->
+          let last = List.fold_left l ~init:first ~f:(fun _ x -> x) in
+          { first with stop = last.stop }
+
+  let located t ctx state1 =
+    let x, state2 = t ctx state1 in
+    ((loc_between_states ctx state1 state2, x), state2)
 
   let raw = next (fun x -> x)
 
@@ -427,27 +505,7 @@ module Of_sexp = struct
     match f x with
     | Result.Ok x -> (x, state2)
     | Error msg ->
-      let parsed =
-        Name_map.merge state1.unparsed state2.unparsed
-          ~f:(fun _key before after ->
-            match before, after with
-            | Some _, None -> before
-            | _ -> None)
-      in
-      let loc =
-        match
-          Name_map.values parsed
-          |> List.map ~f:(fun f -> Ast.loc f.entry)
-          |> List.sort ~compare:(fun a b ->
-            Int.compare a.Loc.start.pos_cnum b.start.pos_cnum)
-        with
-        | [] ->
-          let (Fields (loc, _, _)) = ctx in
-          loc
-        | first :: l ->
-          let last = List.fold_left l ~init:first ~f:(fun _ x -> x) in
-          { first with stop = last.stop }
-      in
+      let loc = loc_between_states ctx state1 state2 in
       of_sexp_errorf loc "%s" msg
 
   let field_missing loc name =
@@ -552,6 +610,14 @@ module Of_sexp = struct
       match ctx with
       | Values (loc, cstr, _) -> (Values (loc, cstr), state)
       | Fields (loc, cstr, _) -> (Fields (loc, cstr), state)
+
+  module Let_syntax = struct
+    let ( $ ) f t =
+      f >>= fun f ->
+      t >>| fun t ->
+      f t
+    let const = return
+  end
 end
 
 module type Sexpable = sig

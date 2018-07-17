@@ -41,7 +41,7 @@ let pf t fmt = ksprintf (ps t) fmt
 let enter_generated_code t =
   t.mode <- Generated_code;
   pc t '\n';
-  pf t "# %d %S\n" t.line t.output_fname
+  pf t "# %d %S\n" (t.line + 1) t.output_fname
 
 let enter_source_code t (pos : Lexing.position) =
   t.mode <- Source_code;
@@ -85,6 +85,8 @@ rule main t col = parse
       | "let" -> after_let t col (Lexing.lexeme_start_p lexbuf) lexbuf
       | _     -> main t col lexbuf
     }
+  | ""
+    { fail lexbuf "pp.exe: syntax error" }
 
 and after_let t col pos = parse
   | "%" (id as id)
@@ -107,9 +109,11 @@ and after_let t col pos = parse
           | In  -> []
         in
         let ids, patterns = List.split (loop 1) in
-        enter_generated_code t;
+        (* This is generated code, but if we mark it as such, the error
+           points to the generated code rather than the source code *)
+        enter_source_code t pos;
         ps t "Let_syntax.(fun f -> const f";
-        List.iter ids ~f:(pf t "$ %s");
+        List.iter ids ~f:(pf t " $ %s");
         ps t ") @@ fun ";
         List.iter patterns ~f:(fun (pos, pattern) ->
           pc t '(';
@@ -127,13 +131,26 @@ and after_let t col pos = parse
 and after_newline t col = parse
   | space*
     { pass_through t lexbuf;
-      if lexeme_len lexbuf = col then
-        after_indent t col lexbuf
-      else
+      let len = lexeme_len lexbuf in
+      if len = col then
+        after_indent t lexbuf
+      else if len > col then
         main t col lexbuf
+      else
+        after_invalid_indent t col lexbuf
     }
 
-and after_indent t col = parse
+and after_invalid_indent t col = parse
+  | eof
+    { In }
+  | newline
+    { pass_through t lexbuf;
+      after_newline t col lexbuf
+    }
+  | ""
+    { fail lexbuf "invalid indentation after let%map" }
+
+and after_indent t = parse
   | id as id
     { pass_through t lexbuf;
       match id with
@@ -141,6 +158,8 @@ and after_indent t col = parse
       | "in"  -> In
       | _     -> fail lexbuf "'and' or 'in' keyword expected"
     }
+  | ""
+    { fail lexbuf "'and' or 'in' keyword expected" }
 
 and after_in_and_newline t col = parse
   | space* newline

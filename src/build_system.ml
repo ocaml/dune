@@ -1214,7 +1214,7 @@ let all_targets t =
 let finalize t =
   (* Promotion must be handled before dumping the digest cache, as it
      might delete some entries. *)
-  Action_exec.Promotion.finalize ();
+  Promotion.finalize ();
   Promoted_to_delete.dump ();
   Utils.Cached_digest.dump ();
   Trace.dump t.trace

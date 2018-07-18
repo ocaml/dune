@@ -1402,7 +1402,7 @@ let promote =
     (* We load and restore the digest cache as we need to clear the
        cache for promoted files, due to issues on OSX. *)
     Utils.Cached_digest.load ();
-    Action.Promotion.promote_files_registered_in_last_run ();
+    Action_exec.Promotion.promote_files_registered_in_last_run ();
     Utils.Cached_digest.dump ()
   in
   (term, Term.info "promote" ~doc ~man )

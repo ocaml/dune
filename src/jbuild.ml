@@ -1592,7 +1592,9 @@ module Stanzas = struct
       (let%map () = Syntax.since Stanza.syntax (1, 0)
        and t = Tests.single in
        [Tests t])
-    ; "env", Dune_env.Stanza.t >>| fun x -> [Dune_env.T x]
+    ; "env",
+      (let%map x = Dune_env.Stanza.t in
+       [Dune_env.T x])
     ]
 
   let jbuild_parser =

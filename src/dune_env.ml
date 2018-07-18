@@ -1,7 +1,6 @@
 type stanza = Stanza.t = ..
 
 module Stanza = struct
-  open Import
   open Stanza.Of_sexp
 
   let field_oslu name = Ordered_set_lang.Unexpanded.field name
@@ -38,9 +37,10 @@ module Stanza = struct
        (pat, configs))
 
   let t =
-    Syntax.since Stanza.syntax (1, 0) >>= fun () ->
-    loc >>= fun loc ->
-    repeat rule >>| fun rules ->
+    let%map () = Syntax.since Stanza.syntax (1, 0)
+    and loc = loc
+    and rules = repeat rule
+    in
     { loc; rules }
 
 end

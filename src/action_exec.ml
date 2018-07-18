@@ -227,22 +227,3 @@ let exec ~targets ~context t =
   let purpose = Process.Build_job targets in
   let ectx = { purpose; context } in
   exec t ~ectx ~dir:Path.root ~env ~stdout_to:None ~stderr_to:None
-
-let sandbox t ~sandboxed ~deps ~targets : Action.t =
-  Progn
-    [ Progn (List.filter_map deps ~f:(fun path ->
-        if Path.is_managed path then
-          Some (Action.Symlink (path, sandboxed path))
-        else
-          None))
-    ; Action.map t
-        ~dir:Path.root
-        ~f_string:(fun ~dir:_ x -> x)
-        ~f_path:(fun ~dir:_ p -> sandboxed p)
-        ~f_program:(fun ~dir:_ x -> Result.map x ~f:sandboxed)
-    ; Progn (List.filter_map targets ~f:(fun path ->
-        if Path.is_managed path then
-          Some (Action.Rename (sandboxed path, path))
-        else
-          None))
-    ]

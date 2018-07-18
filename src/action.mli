@@ -117,10 +117,10 @@ module Infer : sig
   val unexpanded_targets : Unexpanded.t -> String_with_vars.t list
 end
 
-val map
+(** Return a sandboxed version of an action *)
+val sandbox
   :  t
-  -> dir:Path.t
-  -> f_program:(dir:Path.t -> Prog.t -> Prog.t)
-  -> f_string:(dir:Path.t -> string -> string)
-  -> f_path:(dir:Path.t -> Path.t -> Path.t)
+  -> sandboxed:(Path.t -> Path.t)
+  -> deps:Path.t list
+  -> targets:Path.t list
   -> t

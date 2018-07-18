@@ -754,3 +754,22 @@ module Infer = struct
   let unexpanded_targets t =
     (Unexp.infer t).targets
 end
+
+let sandbox t ~sandboxed ~deps ~targets : t =
+  Progn
+    [ Progn (List.filter_map deps ~f:(fun path ->
+        if Path.is_managed path then
+          Some (Symlink (path, sandboxed path))
+        else
+          None))
+    ; map t
+        ~dir:Path.root
+        ~f_string:(fun ~dir:_ x -> x)
+        ~f_path:(fun ~dir:_ p -> sandboxed p)
+        ~f_program:(fun ~dir:_ x -> Result.map x ~f:sandboxed)
+    ; Progn (List.filter_map targets ~f:(fun path ->
+        if Path.is_managed path then
+          Some (Rename (sandboxed path, path))
+        else
+          None))
+    ]

@@ -796,7 +796,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
             let sandboxed path = Path.sandbox_managed_paths ~sandbox_dir path in
             make_local_parent_dirs t all_deps ~map_path:sandboxed;
             make_local_parent_dirs t targets  ~map_path:sandboxed;
-            Action_exec.sandbox action
+            Action.sandbox action
               ~sandboxed
               ~deps:all_deps_as_list
               ~targets:targets_as_list

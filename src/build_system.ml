@@ -805,7 +805,7 @@ let rec compile_rule t ?(copy_source=false) pre_rule =
         in
         make_local_dirs t (Action.chdirs action);
         with_locks locks ~f:(fun () ->
-          Action.exec ~context ~targets action) >>| fun () ->
+          Action_exec.exec ~context ~targets action) >>| fun () ->
         Option.iter sandbox_dir ~f:Path.rm_rf;
         (* All went well, these targets are no longer pending *)
         pending_targets := Path.Set.diff !pending_targets targets;
@@ -1214,7 +1214,7 @@ let all_targets t =
 let finalize t =
   (* Promotion must be handled before dumping the digest cache, as it
      might delete some entries. *)
-  Action.Promotion.finalize ();
+  Promotion.finalize ();
   Promoted_to_delete.dump ();
   Utils.Cached_digest.dump ();
   Trace.dump t.trace

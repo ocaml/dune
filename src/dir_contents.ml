@@ -417,22 +417,19 @@ let build_mlds_map (d : Super_context.Dir_with_jbuild.t) ~files =
   in
   List.filter_map d.stanzas ~f:(function
     | Documentation doc ->
-      let mlds = Lazy.force mlds in
       let mlds =
-        if Ordered_set_lang.is_standard doc.mld_files then
-          mlds
-        else
-          Ordered_set_lang.String.eval_unordered doc.mld_files
-            ~parse:(fun ~loc s ->
-              match String.Map.find mlds s with
-              | Some s ->
-                s
-              | None ->
-                Loc.fail loc "%s.mld doesn't exist in %s" s
-                  (Path.to_string_maybe_quoted
-                     (Path.drop_optional_build_context dir))
-            )
-            ~standard:mlds
+        let mlds = Lazy.force mlds in
+        Ordered_set_lang.String.eval_unordered doc.mld_files
+          ~parse:(fun ~loc s ->
+            match String.Map.find mlds s with
+            | Some s ->
+              s
+            | None ->
+              Loc.fail loc "%s.mld doesn't exist in %s" s
+                (Path.to_string_maybe_quoted
+                   (Path.drop_optional_build_context dir))
+          )
+          ~standard:mlds
       in
       Some (doc, List.map (String.Map.values mlds) ~f:(Path.relative dir))
     | _ -> None)

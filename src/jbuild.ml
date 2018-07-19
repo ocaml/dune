@@ -1644,15 +1644,20 @@ module Documentation = struct
       )
 end
 
+module Include_subdirs = struct
+  type t = True | False
+end
+
 type Stanza.t +=
-  | Library     of Library.t
-  | Executables of Executables.t
-  | Rule        of Rule.t
-  | Install     of Install_conf.t
-  | Alias       of Alias_conf.t
-  | Copy_files  of Copy_files.t
-  | Documentation of Documentation.t
-  | Tests       of Tests.t
+  | Library         of Library.t
+  | Executables     of Executables.t
+  | Rule            of Rule.t
+  | Install         of Install_conf.t
+  | Alias           of Alias_conf.t
+  | Copy_files      of Copy_files.t
+  | Documentation   of Documentation.t
+  | Tests           of Tests.t
+  | Include_subdirs of Include_subdirs.t
 
 module Stanzas = struct
   type t = Stanza.t list

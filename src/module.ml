@@ -118,3 +118,11 @@ let map_files t ~f =
     impl = Option.map t.impl ~f:(f Ml_kind.Impl)
   ; intf = Option.map t.intf ~f:(f Ml_kind.Intf)
   }
+
+let dir t =
+  let file =
+    match t.intf with
+    | Some x -> x
+    | None -> Option.value_exn t.impl
+  in
+  Path.parent_exn file.path

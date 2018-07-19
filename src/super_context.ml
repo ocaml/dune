@@ -28,7 +28,7 @@ module Env_node = struct
     { dir                 : Path.t
     ; inherit_from        : t Lazy.t option
     ; scope               : Scope.t
-    ; config              : Env.t
+    ; config              : Dune_env.Stanza.t
     ; mutable ocaml_flags : Ocaml_flags.t option
     }
 end
@@ -419,6 +419,7 @@ end = struct
 
   let rec get t ~dir =
     match Hashtbl.find t.env dir with
+    | Some node -> node
     | None ->
       begin match Path.parent dir with
       | None -> raise_notrace Exit
@@ -427,7 +428,6 @@ end = struct
         Hashtbl.add t.env dir node;
         node
       end
-    | Some node -> node
 
   let get t ~dir =
     match get t ~dir with
@@ -448,7 +448,7 @@ end = struct
         in
         let flags =
           match List.find_map node.config.rules ~f:(fun (pat, cfg) ->
-            match (pat : Env.pattern), profile t with
+            match (pat : Dune_env.Stanza.pattern), profile t with
             | Any, _ -> Some cfg
             | Profile a, b -> Option.some_if (a = b) cfg)
           with
@@ -611,33 +611,40 @@ let create
     ; env = Hashtbl.create 128
     }
   in
+  let context_env_node = lazy (
+    let config =
+      match context.env_node with
+      | Some s -> s
+      | None -> { loc = Loc.none; rules = [] }
+    in
+    { Env_node.
+      dir = context.build_dir
+    ; inherit_from = None
+    ; scope = Scope.DB.find_by_dir scopes context.build_dir
+    ; config
+    ; ocaml_flags = None
+    }
+  ) in
   List.iter stanzas
     ~f:(fun { Dir_with_jbuild. ctx_dir; scope; stanzas; _ } ->
       List.iter stanzas ~f:(function
-        | Env config ->
+        | Dune_env.T config ->
           let inherit_from =
             if ctx_dir = Scope.root scope then
-              None
+              context_env_node
             else
-              Some (lazy (Env.get t ~dir:(Path.parent_exn ctx_dir)))
+              lazy (Env.get t ~dir:(Path.parent_exn ctx_dir))
           in
           Hashtbl.add t.env ctx_dir
             { dir          = ctx_dir
-            ; inherit_from = inherit_from
+            ; inherit_from = Some inherit_from
             ; scope        = scope
             ; config       = config
             ; ocaml_flags  = None
             }
         | _ -> ()));
   if not (Hashtbl.mem t.env context.build_dir) then
-    Hashtbl.add t.env context.build_dir
-      { Env_node.
-        dir          = context.build_dir
-      ; inherit_from = None
-      ; scope        = Scope.DB.find_by_dir scopes context.build_dir
-      ; config       = { loc = Loc.none; rules = [] }
-      ; ocaml_flags  = None
-      };
+    Hashtbl.add t.env context.build_dir (Lazy.force context_env_node);
   t
 module Libs = struct
   open Build.O

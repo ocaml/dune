@@ -1517,39 +1517,6 @@ module Documentation = struct
       )
 end
 
-module Env = struct
-  type config =
-    { flags          : Ordered_set_lang.Unexpanded.t
-    ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
-    ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
-    }
-
-  type pattern =
-    | Profile of string
-    | Any
-
-  type t =
-    { loc   : Loc.t
-    ; rules : (pattern * config) list
-    }
-
-  let config =
-    let%map flags = field_oslu "flags"
-    and ocamlc_flags = field_oslu "ocamlc_flags"
-    and ocamlopt_flags = field_oslu "ocamlopt_flags"
-    in
-    { flags; ocamlc_flags; ocamlopt_flags }
-
-  let rule =
-    enter
-      (let%map pat =
-         match_keyword [("_", return Any)]
-           ~fallback:(string >>| fun s -> Profile s)
-       and configs = fields config
-       in
-       (pat, configs))
-end
-
 type Stanza.t +=
   | Library     of Library.t
   | Executables of Executables.t
@@ -1558,7 +1525,6 @@ type Stanza.t +=
   | Alias       of Alias_conf.t
   | Copy_files  of Copy_files.t
   | Documentation of Documentation.t
-  | Env         of Env.t
   | Tests       of Tests.t
 
 module Stanzas = struct
@@ -1627,10 +1593,8 @@ module Stanzas = struct
        and t = Tests.single in
        [Tests t])
     ; "env",
-      (let%map () = Syntax.since Stanza.syntax (1, 0)
-       and loc = loc
-       and rules = repeat Env.rule in
-       [Env { loc; rules }])
+      (let%map x = Dune_env.Stanza.t in
+       [Dune_env.T x])
     ]
 
   let jbuild_parser =
@@ -1700,7 +1664,10 @@ module Stanzas = struct
                   "\n--> included from %s"
                   (line_loc x))))
     in
-    match List.filter_map stanzas ~f:(function Env e -> Some e | _ -> None) with
+    match
+      List.filter_map stanzas
+        ~f:(function Dune_env.T e -> Some e | _ -> None)
+    with
     | _ :: e :: _ ->
       Loc.fail e.loc "The 'env' stanza cannot appear more than once"
     | _ -> stanzas

@@ -8,24 +8,26 @@ module Context : sig
       | Native
       | Named of string
   end
-  module Opam : sig
+  module Common : sig
     type t =
       { loc     : Loc.t
-      ; name    : string
       ; profile : string
+      ; targets : Target.t list
+      ; env     : Dune_env.Stanza.t option
+      }
+  end
+  module Opam : sig
+    type t =
+      { base    : Common.t
+      ; name    : string
       ; switch  : string
       ; root    : string option
       ; merlin  : bool
-      ; targets : Target.t list
       }
   end
 
   module Default : sig
-    type t =
-      { loc     : Loc.t
-      ; profile : string
-      ; targets : Target.t list
-      }
+    type t = Common.t
   end
 
   type t = Default of Default.t | Opam of Opam.t

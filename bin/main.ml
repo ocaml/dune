@@ -574,6 +574,7 @@ let installed_libraries =
          (Default { loc = Loc.of_pos __POS__
                   ; targets = [Native]
                   ; profile = Config.default_build_profile
+                  ; env     = None
                   })
          ~env
        >>= fun ctxs ->

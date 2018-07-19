@@ -8,7 +8,7 @@ module Context : sig
       | Native
       | Named of string
   end
-  module Base : sig
+  module Common : sig
     type t =
       { loc     : Loc.t
       ; profile : string
@@ -18,7 +18,7 @@ module Context : sig
   end
   module Opam : sig
     type t =
-      { base    : Base.t
+      { base    : Common.t
       ; name    : string
       ; switch  : string
       ; root    : string option
@@ -27,7 +27,7 @@ module Context : sig
   end
 
   module Default : sig
-    type t = Base.t
+    type t = Common.t
   end
 
   type t = Default of Default.t | Opam of Opam.t

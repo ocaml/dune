@@ -40,7 +40,7 @@ module Context = struct
         name)
   end
 
-  module Base = struct
+  module Common = struct
     type t =
       { loc     : Loc.t
       ; profile : string
@@ -65,7 +65,7 @@ module Context = struct
 
   module Opam = struct
     type t =
-      { base    : Base.t
+      { base    : Common.t
       ; name    : string
       ; switch  : string
       ; root    : string option
@@ -73,7 +73,7 @@ module Context = struct
       }
 
     let t ~profile ~x =
-      Base.t ~profile >>= fun base ->
+      Common.t ~profile >>= fun base ->
       field   "switch"  string                 >>= fun switch ->
       field   "name"    Name.t ~default:switch >>= fun name ->
       field_o "root"    string                 >>= fun root ->
@@ -88,10 +88,10 @@ module Context = struct
   end
 
   module Default = struct
-    type t = Base.t
+    type t = Common.t
 
     let t ~profile ~x =
-      Base.t ~profile >>= fun t ->
+      Common.t ~profile >>= fun t ->
       return { t with targets = Target.add t.targets x }
   end
 

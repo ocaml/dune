@@ -1,54 +1,54 @@
   $ dune build @runtest @install-file --display short
-         refmt .rlib.objs/bar.ast.re
-      ocamldep .rlib.objs/bar.ast.re.d
+         refmt bar.re.ml
+      ocamldep .rlib.objs/bar.re.ml.d
       ocamldep pp/.reasononlypp.eobjs/reasononlypp.ml.d
         ocamlc pp/.reasononlypp.eobjs/reasononlypp.{cmi,cmo,cmt}
       ocamlopt pp/.reasononlypp.eobjs/reasononlypp.{cmx,o}
       ocamlopt pp/reasononlypp.exe
-  reasononlypp .rlib.objs/cppome.pp.re
-         refmt .rlib.objs/cppome.pp.ast.re
-      ocamldep .rlib.objs/cppome.pp.ast.re.d
+  reasononlypp cppome.pp.re
+         refmt cppome.pp.re.ml
+      ocamldep .rlib.objs/cppome.pp.re.ml.d
       ocamldep ppx/.reasonppx.objs/reasonppx.ml.d
         ocamlc ppx/.reasonppx.objs/reasonppx.{cmi,cmo,cmt}
       ocamlopt ppx/.reasonppx.objs/reasonppx.{cmx,o}
       ocamlopt ppx/reasonppx.{a,cmxa}
       ocamlopt .ppx/jbuild/reasonppx@rlib/ppx.exe
-           ppx .rlib.objs/foo.pp.ml
+           ppx foo.pp.ml
       ocamldep .rlib.objs/foo.pp.ml.d
-         refmt .rlib.objs/hello.ast.re
-           ppx .rlib.objs/hello.ast.pp.re
-      ocamldep .rlib.objs/hello.ast.pp.re.d
-         refmt .rlib.objs/pped.ast.re
-      ocamldep .rlib.objs/pped.ast.re.d
+         refmt hello.re.ml
+           ppx hello.re.pp.ml
+      ocamldep .rlib.objs/hello.re.pp.ml.d
+         refmt pped.re.ml
+      ocamldep .rlib.objs/pped.re.ml.d
         ocamlc .rlib.objs/rlib.{cmi,cmo,cmt}
       ocamlopt .rlib.objs/rlib.{cmx,o}
       ocamldep .rlib.objs/bar.mli.d
         ocamlc .rlib.objs/rlib__Bar.{cmi,cmti}
       ocamlopt .rlib.objs/rlib__Bar.{cmx,o}
-         refmt .rlib.objs/foo.ast.rei
-           ppx .rlib.objs/foo.ast.pp.rei
-      ocamldep .rlib.objs/foo.ast.pp.rei.d
+         refmt foo.re.mli
+           ppx foo.re.pp.mli
+      ocamldep .rlib.objs/foo.re.pp.mli.d
         ocamlc .rlib.objs/rlib__Foo.{cmi,cmti}
       ocamlopt .rlib.objs/rlib__Foo.{cmx,o}
-         refmt .rlib.objs/hello.ast.rei
-           ppx .rlib.objs/hello.ast.pp.rei
-      ocamldep .rlib.objs/hello.ast.pp.rei.d
+         refmt hello.re.mli
+           ppx hello.re.pp.mli
+      ocamldep .rlib.objs/hello.re.pp.mli.d
         ocamlc .rlib.objs/rlib__Hello.{cmi,cmti}
       ocamlopt .rlib.objs/rlib__Hello.{cmx,o}
-         refmt .rlib.objs/pped.ast.rei
-      ocamldep .rlib.objs/pped.ast.rei.d
+         refmt pped.re.mli
+      ocamldep .rlib.objs/pped.re.mli.d
         ocamlc .rlib.objs/rlib__Pped.{cmi,cmti}
       ocamlopt .rlib.objs/rlib__Pped.{cmx,o}
-  reasononlypp .rlib.objs/cppome.pp.rei
-         refmt .rlib.objs/cppome.pp.ast.rei
-      ocamldep .rlib.objs/cppome.pp.ast.rei.d
+  reasononlypp cppome.pp.rei
+         refmt cppome.pp.re.mli
+      ocamldep .rlib.objs/cppome.pp.re.mli.d
         ocamlc .rlib.objs/rlib__Cppome.{cmi,cmti}
       ocamlopt .rlib.objs/rlib__Cppome.{cmx,o}
       ocamlopt rlib.{a,cmxa}
       ocamlopt rlib.cmxs
-  reasononlypp .rbin.eobjs/rbin.pp.re
-         refmt .rbin.eobjs/rbin.pp.ast.re
-      ocamldep .rbin.eobjs/rbin.pp.ast.re.d
+  reasononlypp rbin.pp.re
+         refmt rbin.pp.re.ml
+      ocamldep .rbin.eobjs/rbin.pp.re.ml.d
         ocamlc .rbin.eobjs/rbin.{cmi,cmo,cmt}
       ocamlopt .rbin.eobjs/rbin.{cmx,o}
       ocamlopt rbin.exe

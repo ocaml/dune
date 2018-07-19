@@ -164,7 +164,7 @@ module Gen(P : Install_rules.Params) = struct
     (* Preprocess before adding the alias module as it doesn't need
        preprocessing *)
     let pp =
-      Preprocessing.make sctx ~dir ~obj_dir ~dep_kind ~scope
+      Preprocessing.make sctx ~dir ~dep_kind ~scope
         ~preprocess:lib.buildable.preprocess
         ~preprocessor_deps:
           (SC.Deps.interpret sctx ~scope ~dir
@@ -437,7 +437,7 @@ module Gen(P : Install_rules.Params) = struct
         ~scope ~dir
     in
     let pp =
-      Preprocessing.make sctx ~dir ~obj_dir ~dep_kind:Required
+      Preprocessing.make sctx ~dir ~dep_kind:Required
         ~scope
         ~preprocess:exes.buildable.preprocess
         ~preprocessor_deps

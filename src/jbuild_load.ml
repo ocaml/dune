@@ -1,20 +1,28 @@
 open Import
 open Jbuild
 
-let filter_stanzas ~ignore_promoted_rules stanzas =
-  if ignore_promoted_rules then
-    List.filter stanzas ~f:(function
-      | Rule { mode = Promote; _ } -> false
-      | _ -> true)
-  else
-    stanzas
-
 module Jbuild = struct
   type t =
     { dir     : Path.t
     ; project : Dune_project.t
     ; stanzas : Stanzas.t
     ; kind    : File_tree.Dune_file.Kind.t
+    }
+
+  let parse sexps ~dir ~file ~project ~kind ~ignore_promoted_rules =
+    let stanzas = Stanzas.parse ~file ~kind project sexps in
+    let stanzas =
+      if ignore_promoted_rules then
+        List.filter stanzas ~f:(function
+          | Rule { mode = Promote; _ } -> false
+          | _ -> true)
+      else
+        stanzas
+    in
+    { dir
+    ; project
+    ; stanzas
+    ; kind
     }
 end
 
@@ -198,19 +206,10 @@ end
         die "@{<error>Error:@} %s failed to produce a valid jbuild file.\n\
              Did you forgot to call [Jbuild_plugin.V*.send]?"
           (Path.to_string file);
-      let stanzas =
-        Io.Sexp.load generated_jbuild ~mode:Many
-          ~lexer:(File_tree.Dune_file.Kind.lexer kind)
-        |> Stanzas.parse project ~file:generated_jbuild ~kind
-        |> filter_stanzas ~ignore_promoted_rules
-      in
       Fiber.return
-        { Jbuild.
-          dir
-        ; project
-        ; kind
-        ; stanzas
-        })
+        (Io.Sexp.load generated_jbuild ~mode:Many
+           ~lexer:(File_tree.Dune_file.Kind.lexer kind)
+         |> Jbuild.parse ~dir ~file ~project ~kind ~ignore_promoted_rules))
     >>| fun dynamic ->
     static @ dynamic
 end
@@ -226,17 +225,10 @@ let interpret ~dir ~project ~ignore_promoted_rules
       ~(dune_file:File_tree.Dune_file.t) =
   match dune_file.contents with
   | Plain p ->
-    let stanzas =
-      Stanzas.parse project p.sexps ~file:p.path ~kind:dune_file.kind
-      |> filter_stanzas ~ignore_promoted_rules
-    in
     let jbuild =
       Jbuilds.Literal
-        { dir
-        ; project
-        ; stanzas
-        ; kind = dune_file.kind
-        }
+        (Jbuild.parse p.sexps ~dir ~file:p.path ~project  ~kind:dune_file.kind
+           ~ignore_promoted_rules)
     in
     p.sexps <- [];
     jbuild
@@ -267,20 +259,14 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
               (Path.to_string_maybe_quoted (Package.opam_file a))
               (Path.to_string_maybe_quoted (Package.opam_file b))))
   in
-  let projects =
-    List.map projects ~f:(fun (p : Dune_project.t) ->
-      (Path.of_local p.root, p))
-    |> Path.Map.of_list_exn
-  in
-  assert (Path.Map.mem projects Path.root);
 
-  let rec walk dir jbuilds project =
+  let rec walk dir jbuilds =
     if File_tree.Dir.ignored dir then
       jbuilds
     else begin
       let path = File_tree.Dir.path dir in
       let sub_dirs = File_tree.Dir.sub_dirs dir in
-      let project = Option.value (Path.Map.find projects path) ~default:project in
+      let project = File_tree.Dir.project dir in
       let jbuilds =
         match File_tree.Dir.dune_file dir with
         | None -> jbuilds
@@ -291,15 +277,12 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
           jbuild :: jbuilds
       in
       String.Map.fold sub_dirs ~init:jbuilds
-        ~f:(fun dir jbuilds -> walk dir jbuilds project)
+        ~f:(fun dir jbuilds -> walk dir jbuilds)
     end
   in
-  let jbuilds =
-    let project = Option.value_exn (Path.Map.find projects Path.root) in
-    walk (File_tree.root ftree) [] project
-  in
+  let jbuilds = walk (File_tree.root ftree) [] in
   { file_tree = ftree
   ; jbuilds = { jbuilds; ignore_promoted_rules }
   ; packages
-  ; projects = Path.Map.values projects
+  ; projects
   }

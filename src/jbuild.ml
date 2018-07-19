@@ -1666,7 +1666,7 @@ type Stanza.t +=
   | Copy_files      of Copy_files.t
   | Documentation   of Documentation.t
   | Tests           of Tests.t
-  | Include_subdirs of Include_subdirs.t
+  | Include_subdirs of Loc.t * Include_subdirs.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -1738,8 +1738,9 @@ module Stanzas = struct
        [Dune_env.T x])
     ; "include_subdirs",
       (let%map () = Syntax.since Stanza.syntax (1, 1)
-       and t = Include_subdirs.t in
-       [Include_subdirs t])
+       and t = Include_subdirs.t
+       and loc = loc in
+       [Include_subdirs (loc, t)])
     ]
 
   let jbuild_parser =

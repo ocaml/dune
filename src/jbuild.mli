@@ -378,7 +378,7 @@ type Stanza.t +=
   | Copy_files      of Copy_files.t
   | Documentation   of Documentation.t
   | Tests           of Tests.t
-  | Include_subdirs of Include_subdirs.t
+  | Include_subdirs of Loc.t * Include_subdirs.t
 
 module Stanzas : sig
   type t = Stanza.t list

@@ -24,3 +24,9 @@ Test some error cases
   - _build/default/b
   - _build/default/a
   [1]
+
+  $ dune build --root error2
+  Entering directory 'error2'
+  File "dune", line 2, characters 0-23:
+  Error: The 'include_subdirs' stanza cannot appear more than once
+  [1]

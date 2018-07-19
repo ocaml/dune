@@ -57,6 +57,11 @@ allowed to write an explicit ``Foo`` module, in which case this will
 be the interface of the library and you are free to expose only the
 modules you want.
 
+Note that by default libraries and other things that consume
+OCaml/Reason modules only consume modules from the directory where the
+stanza appear. In order to delcare a multi-directory library, you need
+to use the :ref:`include_subdirs` stanza.
+
 ``<optional-fields>`` are:
 
 - ``(public_name <name>)`` this is the name under which the library can be
@@ -786,6 +791,28 @@ A directory that is ignored will not be eagerly scanned by Dune. Any
 ``dune`` or other special files in it won't be interpreted either and
 will be treated as raw data. It is however possible to depend on files
 inside ignored sub-directories.
+
+.. _include_subdirs:
+
+include_subdirs
+---------------
+
+The ``include_subdirs`` is used to control how dune considers
+sub-directories of the current directory. By default, it considers
+them as independent directories. However, by adding ``(include_subdirs
+true)`` or simply ``(include_subdirs)`` to your ``dune`` file, dune
+will assume that the sub-directories of the current directory are part
+of the same group of directories. In particular, dune will scan all
+these directories at once when looking for OCaml/Reason files. This
+allows you to split a library between several directories.
+
+Sub-directories are included recursively, however the recursion will
+stop when encountering a sub-directory that:
+
+- is part of a different project (for instance when vendoring projects)
+- contains ``(include_subdirs true)`` or ``(include_subdirs)``
+- contains one of the following stanza that consume modules:
+  ``library``, ``executable(s)`` or ``test(s)``.
 
 Common items
 ============

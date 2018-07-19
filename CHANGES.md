@@ -5,6 +5,9 @@ next
   passing in `--root` in conjunction with `--workspace` or `--config` would not
   work correctly (#997, @rgrinberg)
 
+1.0.1 (19/07/2018)
+------------------
+
 - Fix parsing of `%{lib:name:file}` forms (#1022, fixes #1019, @diml)
 
 1.0.0 (10/07/2018)

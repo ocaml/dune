@@ -19,6 +19,17 @@ let p =
 let reporters = ref []
 let register f = reporters := f :: !reporters
 
+let i_must_not_segfault =
+  let x = lazy (at_exit (fun () ->
+    prerr_endline "
+I must not segfault.  Uncertainty is the mind-killer.  Exceptions are
+the little-death that brings total obliteration.  I will fully express
+my cases.  Execution will pass over me and through me.  And when it
+has gone past, I will unwind the stack along its path.  Where the
+cases are handled there will be nothing.  Only I will remain."))
+  in
+  fun () -> Lazy.force x
+
 (* Firt return value is [true] if the backtrace was printed *)
 let report_with_backtrace exn =
   match List.find_map !reporters ~f:(fun f -> f exn) with
@@ -144,5 +155,6 @@ let report exn =
       Format.pp_print_flush ppf ();
       let s = Buffer.contents err_buf in
       Buffer.clear err_buf;
-      print_to_console s
+      print_to_console s;
+      if p.backtrace then i_must_not_segfault ()
     end

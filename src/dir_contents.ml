@@ -182,6 +182,7 @@ type modules =
 
 type t =
   { kind : kind
+  ; dir : Path.t
   ; text_files : String.Set.t
   ; modules : modules Lazy.t
   ; mlds : (Jbuild.Documentation.t * Path.t list) list Lazy.t
@@ -189,8 +190,11 @@ type t =
 
 and kind =
   | Standalone
-  | Group_root
+  | Group_root of t list Lazy.t
   | Group_part of t
+
+let kind t = t.kind
+let dir t = t.dir
 
 let text_files t = t.text_files
 
@@ -517,7 +521,7 @@ end
 
 let cache = Hashtbl.create 32
 
-let get sctx ~dir =
+let rec get sctx ~dir =
   match Hashtbl.find cache dir with
   | Some t -> t
   | None ->
@@ -525,6 +529,7 @@ let get sctx ~dir =
     | Empty_standalone ft_dir ->
       let t =
         { kind = Standalone
+        ; dir
         ; text_files =
             (match ft_dir with
              | None -> String.Set.empty
@@ -546,6 +551,7 @@ let get sctx ~dir =
       let files = load_text_files sctx ft_dir d in
       let t =
         { kind = Standalone
+        ; dir
         ; text_files = files
         ; modules = lazy (build_modules_map d
                             ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
@@ -599,6 +605,8 @@ let get sctx ~dir =
       in
       let t =
         { kind = Group_root
+                   (lazy (List.map subdirs ~f:(fun (dir, _) -> get sctx ~dir)))
+        ; dir
         ; text_files = files
         ; modules
         ; mlds = lazy (build_mlds_map d ~files)
@@ -608,6 +616,7 @@ let get sctx ~dir =
       List.iter subdirs ~f:(fun (dir, files) ->
         Hashtbl.add cache dir
           { kind = Group_part t
+          ; dir
           ; text_files = files
           ; modules
           ; mlds = lazy (build_mlds_map d ~files)

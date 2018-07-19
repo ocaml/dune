@@ -610,9 +610,8 @@ module Gen(P : Install_rules.Params) = struct
      | Stanza                                                          |
      +-----------------------------------------------------------------+ *)
 
-  let gen_rules { SC.Dir_with_jbuild. src_dir; ctx_dir; stanzas; scope; kind } =
-    (* This interprets "rule" and "copy_files" stanzas. *)
-    let dir_contents = Dir_contents.get sctx ~dir:ctx_dir in
+  let gen_rules dir_contents
+        { SC.Dir_with_jbuild. src_dir; ctx_dir; stanzas; scope; kind } =
     let merlins, cctxs =
       let rec loop stanzas merlins cctxs =
         let dir = ctx_dir in
@@ -695,6 +694,19 @@ module Gen(P : Install_rules.Params) = struct
           Menhir_rules.gen_rules cctx m
         end
       | _ -> ())
+
+  let gen_rules (d : SC.Dir_with_jbuild.t) =
+    (* This interprets "rule" and "copy_files" stanzas. *)
+    let dir_contents = Dir_contents.get sctx ~dir:d.ctx_dir in
+    match Dir_contents.kind dir_contents with
+    | Standalone -> gen_rules dir_contents d
+    | Group_part root -> SC.load_dir sctx ~dir:(Dir_contents.dir root)
+    | Group_root (lazy subs) ->
+      gen_rules dir_contents d;
+      List.iter subs ~f:(fun dc ->
+        match SC.stanzas_in sctx ~dir:(Dir_contents.dir dc) with
+        | None -> ()
+        | Some d -> gen_rules dir_contents d)
 
   let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
     (match components with

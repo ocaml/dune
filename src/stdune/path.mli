@@ -140,6 +140,7 @@ val rm_rf : t -> unit
 val mkdir_p : t -> unit
 
 val extension : t -> string
+val split_extension : t -> t * string
 
 val pp : Format.formatter -> t -> unit
 val pp_debug : Format.formatter -> t -> unit

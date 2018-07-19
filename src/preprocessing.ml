@@ -4,15 +4,15 @@ open Jbuild
 
 module SC = Super_context
 
-let pped_path path ~obj_dir ~suffix =
+let pped_path path ~suffix =
   (* We need to insert the suffix before the extension as some tools
      inspect the extension *)
-  let base, ext = Filename.split_extension (Path.basename path) in
-  Path.relative obj_dir (base ^ suffix ^ ext)
+  let base, ext = Path.split_extension path in
+  Path.extend_basename base ~suffix:(suffix ^ ext)
 
-let pped_module m ~obj_dir ~f =
+let pped_module m ~f =
   Module.map_files m ~f:(fun kind file ->
-    let pp_path = pped_path file.path ~obj_dir ~suffix:".pp" in
+    let pp_path = pped_path file.path ~suffix:".pp" in
     f kind file.path pp_path;
     { file with path = pp_path })
 
@@ -407,7 +407,7 @@ let cookie_library_name lib_name =
 
 (* Generate rules for the reason modules in [modules] and return a
    a new module with only OCaml sources *)
-let setup_reason_rules sctx ~obj_dir (m : Module.t) =
+let setup_reason_rules sctx (m : Module.t) =
   let ctx = SC.context sctx in
   let refmt =
     Artifacts.binary (SC.artifacts sctx) "refmt" ~hint:"opam install reason" in
@@ -423,12 +423,22 @@ let setup_reason_rules sctx ~obj_dir (m : Module.t) =
     match f.syntax with
     | OCaml  -> f
     | Reason ->
-      let ml =
-        { Module.File.
-          syntax = OCaml
-        ; path   = pped_path f.path ~obj_dir ~suffix:".ast"
-        }
+      let path =
+        let base, ext = Path.split_extension f.path in
+        let suffix =
+          match ext with
+          | ".re"  -> ".re.ml"
+          | ".rei" -> ".re.mli"
+          | _     ->
+            Loc.fail
+              (Loc.in_file
+                 (Path.to_string (Path.drop_build_context_exn f.path)))
+              "Unknown file extension for reason source file: %S"
+              ext
+        in
+        Path.extend_basename base ~suffix
       in
+      let ml = Module.File.make OCaml path in
       SC.add_rule sctx (rule f.path ml.path);
       ml)
 
@@ -517,7 +527,7 @@ type t = (Module.t -> lint:bool -> Module.t) Per_module.t
 
 let dummy = Per_module.for_all (fun m ~lint:_ -> m)
 
-let make sctx ~dir ~obj_dir ~dep_kind ~lint ~preprocess
+let make sctx ~dir ~dep_kind ~lint ~preprocess
       ~preprocessor_deps ~lib_name ~scope ~dir_kind =
   let preprocessor_deps =
     Build.memoize "preprocessor deps" preprocessor_deps
@@ -529,13 +539,13 @@ let make sctx ~dir ~obj_dir ~dep_kind ~lint ~preprocess
   Per_module.map preprocess ~f:(function
     | Preprocess.No_preprocessing ->
       (fun m ~lint ->
-         let ast = setup_reason_rules sctx m ~obj_dir in
+         let ast = setup_reason_rules sctx m in
          if lint then lint_module ~ast ~source:m;
          ast)
     | Action (loc, action) ->
       (fun m ~lint ->
          let ast =
-           pped_module m ~obj_dir ~f:(fun _kind src dst ->
+           pped_module m ~f:(fun _kind src dst ->
              let bindings = Pform.Map.input_file src in
              SC.add_rule sctx
                (preprocessor_deps
@@ -554,9 +564,9 @@ let make sctx ~dir ~obj_dir ~dep_kind ~lint ~preprocess
                   ~dep_kind
                   ~bindings
                   ~targets:(Static [dst])
-                  ~targets_dir:obj_dir
+                  ~targets_dir:dir
                   ~scope))
-           |> setup_reason_rules sctx ~obj_dir in
+           |> setup_reason_rules sctx in
          if lint then lint_module ~ast ~source:m;
          ast)
     | Pps { loc; pps; flags } ->
@@ -582,9 +592,9 @@ let make sctx ~dir ~obj_dir ~dep_kind ~lint ~preprocess
               ~standard:(Build.return [])))
       in
       (fun m ~lint ->
-         let ast = setup_reason_rules sctx m ~obj_dir in
+         let ast = setup_reason_rules sctx m in
          if lint then lint_module ~ast ~source:m;
-         pped_module ast ~obj_dir ~f:(fun kind src dst ->
+         pped_module ast ~f:(fun kind src dst ->
            SC.add_rule sctx
              (promote_correction ~suffix:corrected_suffix
                 (Option.value_exn (Module.file m kind))

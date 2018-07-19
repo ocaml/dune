@@ -15,7 +15,7 @@ On the other hand, public libraries may have private preprocessors
       ocamlopt .ppx_internal.objs/ppx_internal.{cmx,o}
       ocamlopt ppx_internal.{a,cmxa}
       ocamlopt .ppx/jbuild/ppx_internal@mylib/ppx.exe
-           ppx .mylib.objs/mylib.pp.ml
+           ppx mylib.pp.ml
       ocamldep .mylib.objs/mylib.pp.ml.d
         ocamlc .mylib.objs/mylib.{cmi,cmo,cmt}
       ocamlopt .mylib.objs/mylib.{cmx,o}
@@ -33,7 +33,7 @@ Unless they introduce private runtime dependencies:
       ocamlopt .private_ppx.objs/private_ppx.{cmx,o}
       ocamlopt private_ppx.{a,cmxa}
       ocamlopt .ppx/jbuild/private_ppx@mylib/ppx.exe
-           ppx .mylib.objs/mylib.pp.ml
+           ppx mylib.pp.ml
       ocamldep .mylib.objs/mylib.pp.ml.d
   [1]
 

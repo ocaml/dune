@@ -148,22 +148,25 @@ end
 type t =
   { merlin_context : string option
   ; contexts       : Context.t list
+  ; env            : Dune_env.Stanza.t option
   }
 
 include Versioned_file.Make(struct type t = unit end)
 let () = Lang.register syntax ()
 
 let t ?x ?profile:cmdline_profile () =
+  field_o "env" Dune_env.Stanza.t >>= fun env ->
   field "profile" string ~default:Config.default_build_profile
   >>= fun profile ->
   let profile = Option.value cmdline_profile ~default:profile in
   multi_field "context" (Context.t ~profile ~x)
   >>= fun contexts ->
   let defined_names = ref String.Set.empty in
-  let { merlin_context; contexts } =
+  let { merlin_context; contexts; env } =
     let init =
       { merlin_context = None
       ; contexts       = []
+      ; env
       }
     in
     List.fold_left contexts ~init ~f:(fun t ctx ->
@@ -178,7 +181,7 @@ let t ?x ?profile:cmdline_profile () =
         Loc.fail (Context.loc ctx)
           "you can only have one context for merlin"
       | Opam { merlin = true; _ }, None ->
-        { merlin_context = Some name; contexts = ctx :: t.contexts }
+        { merlin_context = Some name; contexts = ctx :: t.contexts; env = None }
       | _ ->
         { t with contexts = ctx :: t.contexts })
   in
@@ -200,6 +203,7 @@ let t ?x ?profile:cmdline_profile () =
   return
     { merlin_context
     ; contexts = List.rev contexts
+    ; env
     }
 
 let t ?x ?profile () = fields (t ?x ?profile ())
@@ -207,6 +211,7 @@ let t ?x ?profile () = fields (t ?x ?profile ())
 let default ?x ?profile () =
   { merlin_context = Some "default"
   ; contexts = [Context.default ?x ?profile ()]
+  ; env = None
   }
 
 let load ?x ?profile p =

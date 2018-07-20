@@ -379,6 +379,13 @@ The build profile can be selected in the ``dune-workspace`` file by write a
 
 Note that the command line option ``--profile`` has precedence over this stanza.
 
+env
+~~~
+
+The ``env`` stanza can be used to set the base environment for all contexts in
+this workspace. This environment has the lowest precedence of all other ``env``
+stanzas. The syntax for this stanza is the same dune's :ref:`dune-env` stanza.
+
 context
 ~~~~~~~
 
@@ -406,6 +413,10 @@ context or can be the description of an opam switch, as follows:
 - ``(profile <profile>)`` to set a different profile for a build
   context. This has precedence over the command line option
   ``--profile``
+
+- ``(env <env>)`` to set the environment for a particular context. This is of
+  higher precedence than the toplevel ``env`` stanza in the workspace file. This
+  field the same options as the :ref:`dune-env` stanza.
 
 Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field in order to
 setup cross compilation. See :ref:`advanced-cross-compilation` for more

@@ -612,18 +612,24 @@ let create
     }
   in
   let context_env_node = lazy (
-    let config =
-      match context.env_node with
-      | Some s -> s
-      | None -> { loc = Loc.none; rules = [] }
+    let make ~inherit_from ~config =
+      { Env_node.
+        dir = context.build_dir
+      ; scope = Scope.DB.find_by_dir scopes context.build_dir
+      ; ocaml_flags = None
+      ; inherit_from
+      ; config
+      }
     in
-    { Env_node.
-      dir = context.build_dir
-    ; inherit_from = None
-    ; scope = Scope.DB.find_by_dir scopes context.build_dir
-    ; config
-    ; ocaml_flags = None
-    }
+    match context.env_nodes with
+    | [] ->
+      make ~config:{ loc = Loc.none; rules = [] } ~inherit_from:None
+    | [config] ->
+      make ~config ~inherit_from:None
+    | [context; workspace] ->
+      make ~config:context
+        ~inherit_from:(Some (lazy (make ~inherit_from:None ~config:workspace)))
+    | _::_::_::_ -> assert false
   ) in
   List.iter stanzas
     ~f:(fun { Dir_with_jbuild. ctx_dir; scope; stanzas; _ } ->

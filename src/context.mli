@@ -51,7 +51,7 @@ type t =
     build_dir : Path.t
 
   ; (** env node that this context was initialized with *)
-    env_node : Dune_env.Stanza.t option
+    env_nodes : Dune_env.Stanza.t list
 
   ; (** [PATH] *)
     path : Path.t list
@@ -125,6 +125,7 @@ val compare : t -> t -> Ordering.t
 
 val create
   :  ?merlin:bool
+  -> ?workspace_env:Dune_env.Stanza.t
   -> env:Env.t
   -> Workspace.Context.t
   -> t list Fiber.t

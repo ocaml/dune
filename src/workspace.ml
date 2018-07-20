@@ -5,6 +5,11 @@ open Stanza.Of_sexp
    for simplicity *)
 let syntax = Stanza.syntax
 
+let env_field =
+  field_o "env"
+    (Syntax.since syntax (1, 1) >>= fun () ->
+     Dune_env.Stanza.t)
+
 module Context = struct
   module Target = struct
     type t =
@@ -49,7 +54,7 @@ module Context = struct
       }
 
     let t ~profile =
-      field_o "env" Dune_env.Stanza.t >>= fun env ->
+      env_field >>= fun env ->
       field "targets" (list Target.t) ~default:[Target.Native]
       >>= fun targets ->
       field "profile" string ~default:profile
@@ -155,7 +160,7 @@ include Versioned_file.Make(struct type t = unit end)
 let () = Lang.register syntax ()
 
 let t ?x ?profile:cmdline_profile () =
-  field_o "env" Dune_env.Stanza.t >>= fun env ->
+  env_field >>= fun env ->
   field "profile" string ~default:Config.default_build_profile
   >>= fun profile ->
   let profile = Option.value cmdline_profile ~default:profile in

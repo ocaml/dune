@@ -805,7 +805,8 @@ module Library = struct
   let t =
     record
       (let%map buildable = Buildable.t
-       and name = field "name" library_name
+       and loc = loc
+       and name = field_o "name" library_name
        and public = Public_lib.public_name_field
        and synopsis = field_o "synopsis" string
        and install_c_headers =
@@ -833,6 +834,22 @@ module Library = struct
          Sub_system_info.record_parser ()
        and project = Dune_project.get_exn ()
        and dune_version = Syntax.get_exn Stanza.syntax
+       in
+       let name =
+         match name, public with
+         | Some n, _ -> n
+         | None, Some { name ; _ }  ->
+           if dune_version >= (1, 1) then
+             name
+           else
+             of_sexp_error loc "name field cannot be omitted before version 1.1"
+         | None, None ->
+           of_sexp_error loc (
+             if dune_version >= (1, 1) then
+               "supply at least least one of name or public_name fields"
+             else
+               "name field is missing"
+           )
        in
        { name
        ; public

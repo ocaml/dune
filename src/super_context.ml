@@ -77,7 +77,8 @@ let internal_lib_names t =
           String.Set.add
             (match lib.public with
              | None -> acc
-             | Some { name; _ } -> String.Set.add acc name)
+             | Some { name = (_, name); _ } ->
+               String.Set.add acc name)
             lib.name
         | _ -> acc))
 

@@ -640,20 +640,22 @@ end
 
 module Public_lib = struct
   type t =
-    { name    : string
+    { name    : Loc.t * string
     ; package : Package.t
     ; sub_dir : string option
     }
 
+  let name t = snd t.name
+
   let public_name_field =
     map_validate
       (let%map project = Dune_project.get_exn ()
-       and name = field_o "public_name" string in
-       (project, name))
-      ~f:(fun (project, name) ->
-        match name with
+       and loc_name = field_o "public_name" (located string) in
+       (project, loc_name))
+      ~f:(fun (project, loc_name) ->
+        match loc_name with
         | None -> Ok None
-        | Some s ->
+        | Some ((_, s) as loc_name) ->
           match String.split s ~on:'.' with
           | [] -> assert false
           | pkg :: rest ->
@@ -664,7 +666,7 @@ module Public_lib = struct
                     ; sub_dir =
                         if rest = [] then None else
                           Some (String.concat rest ~sep:"/")
-                    ; name    = s
+                    ; name    = loc_name
                     })
             | Error _ as e -> e)
 end
@@ -838,7 +840,7 @@ module Library = struct
        let name =
          match name, public with
          | Some n, _ -> n
-         | None, Some { name ; _ }  ->
+         | None, Some { name = (_loc, name) ; _ }  ->
            if dune_version >= (1, 1) then
              name
            else
@@ -893,7 +895,7 @@ module Library = struct
   let best_name t =
     match t.public with
     | None -> t.name
-    | Some p -> p.name
+    | Some p -> snd p.name
 end
 
 module Install_conf = struct

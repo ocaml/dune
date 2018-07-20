@@ -1,6 +1,5 @@
   $ echo '(jbuild_version 1)' > dune
   $ dune build
-  Info: creating file dune-project with this contents: (lang dune 1.0)
   File "dune", line 1, characters 0-18:
   Error: 'jbuild_version' was deleted in version 1.0 of the dune language
   [1]

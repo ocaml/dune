@@ -1039,6 +1039,12 @@ module Executables = struct
     ; buildable  : Buildable.t
     }
 
+  let pluralize s ~multi =
+    if multi then
+      s
+    else
+      s ^ "s"
+
   let common =
     let%map buildable = Buildable.t
     and (_ : bool) = field "link_executables" ~default:true
@@ -1059,8 +1065,33 @@ module Executables = struct
                                      (loc, s))
     and project = Dune_project.get_exn ()
     and file_kind = Stanza.file_kind ()
+    and dune_syntax = Syntax.get_exn Stanza.syntax
+    and loc = loc
     in
     fun names public_names ~multi ->
+      let names =
+        match names, public_names with
+        | _::_, _ -> names
+        | [], _::_ ->
+          if dune_syntax >= (1, 1) then
+            List.filter_map public_names ~f:(fun (loc, p) ->
+              match p with
+              | None ->
+                of_sexp_error loc "This executable must have a name field"
+              | Some s -> Some (loc, s))
+          else
+            of_sexp_errorf loc
+              "%s field may not be omitted before dune version 1.1"
+              (pluralize ~multi "name")
+        | [], [] ->
+          if dune_syntax >= (1, 1) then
+            of_sexp_errorf loc "either the %s or the %s field must be present"
+              (pluralize ~multi "name")
+              (pluralize ~multi "public_name")
+          else
+            of_sexp_errorf loc "field %s is missing"
+              (pluralize ~multi "name")
+      in
       let t =
         { names
         ; link_flags
@@ -1070,7 +1101,7 @@ module Executables = struct
         }
       in
       let has_public_name =
-        List.exists ~f:Option.is_some public_names
+        List.exists ~f:(fun (_, n) -> Option.is_some n) public_names
       in
       let to_install =
         match Link_mode.Set.best_install_mode t.modes with
@@ -1093,7 +1124,7 @@ module Executables = struct
             | Byte -> ".bc"
           in
           List.map2 names public_names
-            ~f:(fun (_, name) pub ->
+            ~f:(fun (_, name) (_, pub) ->
               match pub with
               | None -> None
               | Some pub -> Some ({ Install_conf.
@@ -1133,21 +1164,26 @@ module Executables = struct
         (t, Some { Install_conf. section = Bin; files; package })
 
   let public_name =
-    string >>| function
+    located string >>| fun (loc, s) ->
+    (loc
+    , match s with
     | "-" -> None
-    | s   -> Some s
+    | s   -> Some s)
 
   let multi =
     record
       (let%map names, public_names =
          map_validate
-           (let%map names = field "names" (list (located string))
+           (let%map names = field_o "names" (list (located string))
             and pub_names = field_o "public_names" (list public_name) in
             (names, pub_names))
            ~f:(fun (names, public_names) ->
-             match public_names with
-             | None -> Ok (names, List.map names ~f:(fun _ -> None))
-             | Some public_names ->
+             match names, public_names with
+             | None, None -> Ok ([], [])
+             | None, Some p -> Ok ([], p)
+             | Some names, None ->
+               Ok (names, List.map names ~f:(fun _ -> (Loc.none, None)))
+             | Some names, Some public_names ->
                if List.length public_names = List.length names then
                  Ok (names, public_names)
                else
@@ -1158,10 +1194,13 @@ module Executables = struct
 
   let single =
     record
-      (let%map name = field "name" (located string)
-       and public_name = field_o "public_name" string
+      (let%map name = field_o "name" (located string)
+       and public_name = field_o "public_name" (located string)
        and f = common in
-       f [name] [public_name] ~multi:false)
+       f (Option.to_list name)
+         (match public_name with
+          | None -> [Loc.none, None]
+          | Some (loc, n) -> [loc, Some n]) ~multi:false)
 end
 
 module Rule = struct

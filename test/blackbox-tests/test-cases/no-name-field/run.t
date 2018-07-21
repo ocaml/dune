@@ -1,25 +1,19 @@
 the name field can be omitted for libraries when public_name is present
   $ dune build --root no-name-lib
-  File "dune", line 1, characters 9-26:
-  Error: You cannot declare items to be installed without adding a <package>.opam file at the root of your project.
-  To declare elements to be installed as part of package "foo", add a "foo.opam" file at the root of your project.
-  [1]
+  Entering directory 'no-name-lib'
 
 this isn't possible for older syntax <= (1, 0)
   $ dune build --root no-name-lib-syntax-1-0
-  File "dune", line 1, characters 9-26:
-  Error: You cannot declare items to be installed without adding a <package>.opam file at the root of your project.
-  To declare elements to be installed as part of package "foo", add a "foo.opam" file at the root of your project.
+  File "dune", line 1, characters 0-27:
+  Error: name field cannot be omitted before version 1.1
   [1]
 
 executable(s) stanza works the same way
 
   $ dune build --root no-name-exes
-  File "exes/dune", line 1, characters 37-37:
-  Error: unclosed parenthesis at end of input
-  [1]
+  Entering directory 'no-name-exes'
 
   $ dune build --root no-name-exes-syntax-1-0
-  File "dune-project", line 1, characters 0-15:
-  Error: Invalid first line, expected: (lang <lang> <version>)
+  File "dune", line 1, characters 0-36:
+  Error: name field may not be omitted before dune version 1.1
   [1]

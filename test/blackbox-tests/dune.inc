@@ -469,6 +469,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name no-name-field)
+ (deps (package dune) (source_tree test-cases/no-name-field))
+ (action
+  (chdir
+   test-cases/no-name-field
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name null-dep)
  (deps (package dune) (source_tree test-cases/null-dep))
  (action
@@ -782,6 +790,7 @@
   (alias misc)
   (alias multiple-private-libs)
   (alias no-installable-mode)
+  (alias no-name-field)
   (alias null-dep)
   (alias ocaml-config-macro)
   (alias ocaml-syntax)
@@ -868,6 +877,7 @@
   (alias meta-gen)
   (alias misc)
   (alias no-installable-mode)
+  (alias no-name-field)
   (alias null-dep)
   (alias ocaml-config-macro)
   (alias ocaml-syntax)

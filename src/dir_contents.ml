@@ -3,7 +3,12 @@ module Menhir_rules = Menhir
 open Jbuild
 open! No_io
 
-module Modules_field_evaluator = struct
+module Modules_field_evaluator : sig
+  val eval
+    :  modules:Module.t Module.Name.Map.t
+    -> buildable:Buildable.t
+    -> Module.t Module.Name.Map.t
+end = struct
   module Eval = Ordered_set_lang.Make(Module.Name)(struct
       type t = (Module.t, Module.Name.t * Loc.t) result
 

@@ -108,7 +108,7 @@ let link_exe
       ~(linkage:Linkage.t)
       ~top_sorted_modules
       ?(link_flags=Build.arr (fun _ -> []))
-      ?(js_of_ocaml=Jbuild.Js_of_ocaml.default)
+      ?(jsoo_build=Jsoo_stanza.In_buildable.default)
       cctx
   =
   let sctx     = CC.super_context cctx in
@@ -162,9 +162,7 @@ let link_exe
     let cm_and_flags =
       Build.fanout
         (modules_and_cm_files >>^ snd)
-        (SC.expand_and_eval_set sctx ~scope:(CC.scope cctx) ~dir
-           js_of_ocaml.flags
-           ~standard:(Build.return (Js_of_ocaml_rules.standard sctx ~dir)))
+        ((SC.Env.ocaml_flags sctx ~dir |> Ocaml_flags.jsoo).compile)
     in
     SC.add_rules sctx (List.map rules ~f:(fun r -> cm_and_flags >>> r))
 
@@ -172,13 +170,15 @@ let build_and_link_many
       ~programs
       ~linkages
       ?link_flags
-      ?(js_of_ocaml=Jbuild.Js_of_ocaml.default)
+      ?jsoo_build
       cctx
   =
   let dep_graphs = Ocamldep.rules cctx in
 
   (* CR-someday jdimino: this should probably say [~dynlink:false] *)
-  Module_compilation.build_modules cctx ~js_of_ocaml ~dep_graphs;
+  Module_compilation.build_modules cctx
+    ?js_of_ocaml:(Option.map js_of_ocaml ~f:Jsoo_stanza.In_buildable.flags)
+    ~dep_graphs;
 
   List.iter programs ~f:(fun { Program.name; main_module_name } ->
     let top_sorted_modules =

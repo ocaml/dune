@@ -433,25 +433,6 @@ end
 
 let field_oslu name = Ordered_set_lang.Unexpanded.field name
 
-module Js_of_ocaml = struct
-
-  type t =
-    { flags            : Ordered_set_lang.Unexpanded.t
-    ; javascript_files : string list
-    }
-
-  let t =
-    record
-      (let%map flags = field_oslu "flags"
-       and javascript_files = field "javascript_files" (list string) ~default:[]
-       in
-       { flags; javascript_files })
-
-  let default =
-    { flags = Ordered_set_lang.Unexpanded.standard
-    ; javascript_files = [] }
-end
-
 module Lib_dep = struct
   type choice =
     { required  : String.Set.t
@@ -592,7 +573,7 @@ module Buildable = struct
     ; flags                    : Ordered_set_lang.Unexpanded.t
     ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
-    ; js_of_ocaml              : Js_of_ocaml.t
+    ; js_of_ocaml              : Jsoo_stanza.In_buildable.t
     ; allow_overlapping_dependencies : bool
     }
 
@@ -612,8 +593,7 @@ module Buildable = struct
     and flags = field_oslu "flags"
     and ocamlc_flags = field_oslu "ocamlc_flags"
     and ocamlopt_flags = field_oslu "ocamlopt_flags"
-    and js_of_ocaml =
-      field "js_of_ocaml" Js_of_ocaml.t ~default:Js_of_ocaml.default
+    and js_of_ocaml = Jsoo_stanza.In_buildable.field
     and allow_overlapping_dependencies =
       field_b "allow_overlapping_dependencies"
     in

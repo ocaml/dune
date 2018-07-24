@@ -35,12 +35,18 @@ let default_flags ~profile =
 type t =
   { common     : (unit, string list) Build.t
   ; specific   : (unit, string list) Build.t Mode.Dict.t
+  ; jsoo       : (unit, string list) Build.t Jsoo_stanza.Flags.t
   }
 
 let empty =
   let build = Build.arr (fun () -> []) in
   { common   = build
   ; specific = Mode.Dict.make_both build
+  ; jsoo     =
+      { Jsoo_stanza.Flags.
+        compile = build
+      ; link    = build
+      }
   }
 
 let of_list l =
@@ -52,9 +58,11 @@ let default ~profile =
       { byte   = Build.return (default_ocamlc_flags   ())
       ; native = Build.return (default_ocamlopt_flags ())
       }
+  ; jsoo = Jsoo_stanza.Flags.(map (default ~profile) ~f:Build.return)
   }
 
-let make ~flags ~ocamlc_flags ~ocamlopt_flags ~default ~eval =
+let make ~flags ~ocamlc_flags ~ocamlopt_flags
+      ~(jsoo : Jsoo_stanza.Flags.user_written) ~default ~eval =
   let f name x standard =
     Build.memoize name
       (if Ordered_set_lang.Unexpanded.has_special_forms x then
@@ -66,6 +74,10 @@ let make ~flags ~ocamlc_flags ~ocamlopt_flags ~default ~eval =
   ; specific =
       { byte   = f "ocamlc flags"   ocamlc_flags   default.specific.byte
       ; native = f "ocamlopt flags" ocamlopt_flags default.specific.native
+      }
+  ; jsoo =
+      { compile = f "jsoo compile flags" jsoo.compile default.jsoo.compile
+      ; link    = f "jsoo link flags"    jsoo.link    default.jsoo.link
       }
   }
 
@@ -92,3 +104,5 @@ let dump t =
     ; "ocamlc_flags"   , byte
     ; "ocamlopt_flags" , native
     ]
+
+let jsoo t = t.jsoo

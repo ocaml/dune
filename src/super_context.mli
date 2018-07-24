@@ -261,5 +261,7 @@ module Scope_key : sig
 end
 
 module Env : sig
-  val jsoo_compilation : t -> dir:Path.t -> Dune_env.Stanza.Jsoo_compilation.t
+  val jsoo_compilation : t -> dir:Path.t -> Jsoo_stanza.Compilation.t
+
+  val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
 end

@@ -45,15 +45,6 @@ module Lint : sig
 end
 
 
-module Js_of_ocaml : sig
-  type t =
-    { flags            : Ordered_set_lang.Unexpanded.t
-    ; javascript_files : string list
-    }
-
-  val default : t
-end
-
 module Lib_dep : sig
   type choice =
     { required  : String.Set.t
@@ -127,7 +118,7 @@ module Buildable : sig
     ; flags                    : Ordered_set_lang.Unexpanded.t
     ; ocamlc_flags             : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags           : Ordered_set_lang.Unexpanded.t
-    ; js_of_ocaml              : Js_of_ocaml.t
+    ; js_of_ocaml              : Jsoo_stanza.In_buildable.t
     ; allow_overlapping_dependencies : bool
     }
 

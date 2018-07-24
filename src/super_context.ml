@@ -415,7 +415,7 @@ module Env : sig
   val ocaml_flags : t -> dir:Path.t -> Ocaml_flags.t
   val get : t -> dir:Path.t -> Env_node.t
 
-  val jsoo_compilation : t -> dir:Path.t -> Dune_env.Stanza.Jsoo_compilation.t
+  val jsoo_compilation : t -> dir:Path.t -> Jsoo_stanza.Compilation.t
 end = struct
   open Env_node
 
@@ -460,6 +460,7 @@ end = struct
               ~flags:cfg.flags
               ~ocamlc_flags:cfg.ocamlc_flags
               ~ocamlopt_flags:cfg.ocamlopt_flags
+              ~jsoo:cfg.jsoo.flags
               ~default
               ~eval:(expand_and_eval_set t ~scope:node.scope ~dir:node.dir
                        ?bindings:None)
@@ -479,13 +480,12 @@ end = struct
       | None ->
         begin match node.inherit_from with
         | None ->
-          Dune_env.Stanza.Jsoo_compilation.default ~profile:(profile t)
+          Jsoo_stanza.Compilation.default ~profile:(profile t)
         | Some (lazy node) -> loop t node
         end
       | Some cfg ->
-        begin match cfg.jsoo_compilation with
-        | None ->
-          Dune_env.Stanza.Jsoo_compilation.default ~profile:(profile t)
+        begin match cfg.jsoo.compilation with
+        | None -> Jsoo_stanza.Compilation.default ~profile:(profile t)
         | Some jc -> jc
         end
     in
@@ -498,6 +498,7 @@ let ocaml_flags t ~dir ~scope (x : Buildable.t) =
     ~flags:x.flags
     ~ocamlc_flags:x.ocamlc_flags
     ~ocamlopt_flags:x.ocamlopt_flags
+    ~jsoo:x.js_of_ocaml.flags
     ~default:(Env.ocaml_flags t ~dir)
     ~eval:(expand_and_eval_set t ~scope ~dir ?bindings:None)
 

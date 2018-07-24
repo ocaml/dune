@@ -8,6 +8,7 @@ val make
   :  flags          : Ordered_set_lang.Unexpanded.t
   -> ocamlc_flags   : Ordered_set_lang.Unexpanded.t
   -> ocamlopt_flags : Ordered_set_lang.Unexpanded.t
+  -> jsoo           : Jsoo_stanza.Flags.user_written
   -> default:t
   -> eval:(Ordered_set_lang.Unexpanded.t
            -> standard:(unit, string list) Build.t
@@ -29,3 +30,5 @@ val prepend_common : string list -> t -> t
 val common : t -> (unit, string list) Build.t
 
 val dump : t -> (unit, Sexp.t list) Build.t
+
+val jsoo : t -> (unit, string list) Build.t Jsoo_stanza.Flags.t

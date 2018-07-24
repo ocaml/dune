@@ -5,7 +5,7 @@ open Import
 (** Setup rules to build a single module. *)
 val build_module
   :  ?sandbox:bool
-  -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
+  -> ?js_of_ocaml:(unit, string list) Build.t Jsoo_stanza.Flags.t
   -> ?dynlink:bool
   -> dep_graphs:Ocamldep.Dep_graphs.t
   -> Compilation_context.t
@@ -15,7 +15,7 @@ val build_module
 (** Setup rules to build all of the modules in the compilation context. *)
 val build_modules
   :  ?sandbox:bool
-  -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
+  -> ?js_of_ocaml:(unit, string list) Build.t Jsoo_stanza.Flags.t
   -> ?dynlink:bool
   -> dep_graphs:Ocamldep.Dep_graphs.t
   -> Compilation_context.t

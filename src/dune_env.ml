@@ -5,30 +5,11 @@ module Stanza = struct
 
   let field_oslu name = Ordered_set_lang.Unexpanded.field name
 
-  module Jsoo_compilation = struct
-    type t =
-      | Separate
-      | Classic
-
-    let default ~profile =
-      match profile with
-      | "dev" -> Separate
-      | _     -> Classic
-
-    let t =
-      Syntax.since Stanza.syntax (1, 1) >>= fun () ->
-      enum
-        [ "separate", Separate
-        ; "classic", Classic
-        ]
-  end
-
   type config =
     { flags          : Ordered_set_lang.Unexpanded.t
     ; ocamlc_flags   : Ordered_set_lang.Unexpanded.t
     ; ocamlopt_flags : Ordered_set_lang.Unexpanded.t
-
-    ; jsoo_compilation : Jsoo_compilation.t option
+    ; jsoo           : Jsoo_stanza.Env.t
     }
 
   type pattern =
@@ -41,15 +22,15 @@ module Stanza = struct
     }
 
   let config =
-    let%map flags = field_oslu "flags"
-    and ocamlc_flags = field_oslu "ocamlc_flags"
+    let%map flags      = field_oslu "flags"
+    and ocamlc_flags   = field_oslu "ocamlc_flags"
     and ocamlopt_flags = field_oslu "ocamlopt_flags"
-    and jsoo_compilation = field_o "jsoo_compilation" Jsoo_compilation.t
+    and jsoo           = Jsoo_stanza.Env.field
     in
     { flags
     ; ocamlc_flags
     ; ocamlopt_flags
-    ; jsoo_compilation
+    ; jsoo
     }
 
   let rule =

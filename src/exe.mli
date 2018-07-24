@@ -40,7 +40,7 @@ val build_and_link
   :  program:Program.t
   -> linkages:Linkage.t list
   -> ?link_flags:(unit, string list) Build.t
-  -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
+  -> ?js_of_ocaml:_ Jsoo_stanza.Flags.t
   -> Compilation_context.t
   -> unit
 
@@ -48,7 +48,7 @@ val build_and_link_many
   :  programs:Program.t list
   -> linkages:Linkage.t list
   -> ?link_flags:(unit, string list) Build.t
-  -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
+  -> ?jsoo_build:Jsoo_stanza.In_buildable.t
   -> Compilation_context.t
   -> unit
 
@@ -60,6 +60,6 @@ val link_exe
   -> linkage:Linkage.t
   -> top_sorted_modules:(unit, Module.t list) Build.t
   -> ?link_flags:(unit, string list) Build.t
-  -> ?js_of_ocaml:Jbuild.Js_of_ocaml.t
+  -> ?jsoo_build:Jsoo_stanza.In_buildable.t
   -> Compilation_context.t
   -> unit

@@ -27,7 +27,7 @@ Errors:
   Warning: Some modules don't have an implementation.
   You need to add the following field to this stanza:
   
-    (modules_without_implementation (x y))
+    (modules_without_implementation x y)
   
   This will become an error in the future.
         ocamlc .foo.objs/foo.{cmi,cmo,cmt}

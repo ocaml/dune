@@ -91,11 +91,12 @@ end = struct
              \nThis will become an error in the future."
             (let tag = Sexp.unsafe_atom_of_string
                          "modules_without_implementation" in
-             Sexp.to_string ~syntax:Dune
-               (List [ tag
-                     ; Sexp.To_sexp.(list string)
-                         (uncapitalized should_be_listed)
-                     ]))
+             let modules =
+               should_be_listed
+               |> uncapitalized
+               |> List.map ~f:Sexp.To_sexp.string
+             in
+             Sexp.to_string ~syntax:Dune (List (tag :: modules)))
         | Some loc ->
           let list_modules l =
             uncapitalized l

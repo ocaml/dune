@@ -503,7 +503,7 @@ To use a different rule mode, use the long form:
 .. code:: scheme
 
     (ocamllex
-      (modules (<names>))
+      (modules <names>)
       (mode    <mode>))
 
 ocamlyacc

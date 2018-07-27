@@ -488,7 +488,7 @@ stanza is rejected by dune:
 ocamllex
 --------
 
-``(ocamllex (<names>))`` is essentially a shorthand for:
+``(ocamllex <names>)`` is essentially a shorthand for:
 
 .. code:: scheme
 

@@ -509,7 +509,7 @@ To use a different rule mode, use the long form:
 ocamlyacc
 ---------
 
-``(ocamlyacc (<names>))`` is essentially a shorthand for:
+``(ocamlyacc <names>)`` is essentially a shorthand for:
 
 .. code:: scheme
 
@@ -524,7 +524,7 @@ To use a different rule mode, use the long form:
 .. code:: scheme
 
     (ocamlyacc
-      (modules (<names>))
+      (modules <names>)
       (mode    <mode>))
 
 menhir

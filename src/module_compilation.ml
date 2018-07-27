@@ -58,13 +58,14 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
         | Cmi | Cmo -> other_targets
       in
       let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
+      let opaque = ctx.version >= (4, 03, 0) in
       let other_cm_files =
         Build.dyn_paths
           (Ocamldep.Dep_graph.deps_of dep_graph m >>^ fun deps ->
            List.concat_map deps
              ~f:(fun m ->
                let deps = [Module.cm_file_unsafe m ~obj_dir Cmi] in
-               if Module.has_impl m && cm_kind = Cmx then
+               if Module.has_impl m && cm_kind = Cmx && not opaque then
                  Module.cm_file_unsafe m ~obj_dir Cmx :: deps
                else
                  deps))
@@ -86,8 +87,8 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
           let in_dir = Target.file dir target in
           SC.add_rule sctx (Build.symlink ~src:in_obj_dir ~dst:in_dir))
       end;
-      let opaque =
-        if cm_kind = Cmi && not (Module.has_impl m) && ctx.version >= (4, 03, 0) then
+      let opaque_arg =
+        if opaque && cm_kind = Cmi then
           Arg_spec.A "-opaque"
         else
           As []
@@ -119,10 +120,13 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
            ; no_keep_locs
            ; cmt_args
            ; A "-I"; Path obj_dir
-           ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
+           ; (if opaque then
+                Cm_kind.Dict.get (CC.includes cctx) Cmi
+              else
+                Cm_kind.Dict.get (CC.includes cctx) cm_kind)
            ; As extra_args
            ; if dynlink || cm_kind <> Cmx then As [] else A "-nodynlink"
-           ; A "-no-alias-deps"; opaque
+           ; A "-no-alias-deps"; opaque_arg
            ; (match CC.alias_module cctx with
               | None -> S []
               | Some (m : Module.t) ->

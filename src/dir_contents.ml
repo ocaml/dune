@@ -180,6 +180,11 @@ type modules =
     rev_map : Buildable.t Module.Name.Map.t
   }
 
+let empty_modules =
+  { libraries = String.Map.empty
+  ; executables = String.Map.empty
+  ; rev_map = Module.Name.Map.empty
+  }
 type t =
   { kind : kind
   ; dir : Path.t
@@ -537,11 +542,7 @@ let rec get sctx ~dir =
             (match ft_dir with
              | None -> String.Set.empty
              | Some x -> File_tree.Dir.files x)
-        ; modules = lazy
-            { libraries = String.Map.empty
-            ; executables = String.Map.empty
-            ; rev_map = Module.Name.Map.empty
-            }
+        ; modules = lazy empty_modules
         ; mlds = lazy []
         }
       in

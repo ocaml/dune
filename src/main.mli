@@ -30,7 +30,7 @@ val external_lib_deps
   : ?log:Log.t
   -> packages:Package.Name.t list
   -> unit
-  -> Build.lib_deps Path.Map.t
+  -> Lib_deps_info.t Path.Map.t
 
 val find_context_exn : setup -> name:string -> Context.t
 

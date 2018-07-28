@@ -1336,7 +1336,7 @@ let all_lib_deps t ~request =
         let deps =
           match Path.Map.find acc rule.dir with
           | None -> deps
-          | Some deps' -> Build.merge_lib_deps deps deps'
+          | Some deps' -> Lib_deps_info.merge deps deps'
         in
         Path.Map.add acc rule.dir deps)
 
@@ -1355,7 +1355,7 @@ let all_lib_deps_by_context t ~request =
   |> String.Map.filteri ~f:(fun ctx _ -> String.Map.mem t.contexts ctx)
   |> String.Map.map ~f:(function
     | [] -> String.Map.empty
-    | x :: l -> List.fold_left l ~init:x ~f:Build.merge_lib_deps)
+    | x :: l -> List.fold_left l ~init:x ~f:Lib_deps_info.merge)
 
 module Rule = struct
   module Id = Internal_rule.Id

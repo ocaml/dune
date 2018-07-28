@@ -192,7 +192,7 @@ module Expander : sig
     val failures : t -> fail list
 
     (* All "name" for %{lib:name:...}/%{lib-available:name} forms *)
-    val lib_deps : t -> Build.lib_deps
+    val lib_deps : t -> Lib_deps_info.t
 
     (* Static deps from %{...} variables. For instance %{exe:...} *)
     val sdeps    : t -> Path.Set.t
@@ -206,7 +206,7 @@ module Expander : sig
   val with_expander
     :  sctx
     -> dir:Path.t
-    -> dep_kind:Build.lib_dep_kind
+    -> dep_kind:Lib_deps_info.Kind.t
     -> scope:Scope.t
     -> targets_written_by_user:targets
     -> map_exe:(Path.t -> Path.t)
@@ -219,7 +219,7 @@ end = struct
       { (* Failed resolutions *)
         mutable failures  : fail list
       ; (* All "name" for %{lib:name:...}/%{lib-available:name} forms *)
-        mutable lib_deps  : Build.lib_deps
+        mutable lib_deps  : Lib_deps_info.t
       ; (* Static deps from %{...} variables. For instance %{exe:...} *)
         mutable sdeps     : Path.Set.t
       ; (* Dynamic deps from %{...} variables. For instance %{read:...} *)
@@ -673,11 +673,13 @@ module Libs = struct
 
   let with_lib_deps t compile_info ~dir ~f =
     let prefix =
-      Build.record_lib_deps (Lib.Compile.user_written_deps compile_info)
-        ~kind:(if Lib.Compile.optional compile_info then
-                 Optional
-               else
-                 Required)
+      Build.record_lib_deps
+        (Lib_deps.info
+           (Lib.Compile.user_written_deps compile_info)
+           ~kind:(if Lib.Compile.optional compile_info then
+                    Optional
+                  else
+                    Required))
     in
     let prefix =
       if t.context.merlin then
@@ -896,7 +898,7 @@ module Action = struct
              sprintf "- %s" (Utils.describe_target target))
            |> String.concat ~sep:"\n"));
     let build =
-      Build.record_lib_deps_simple (Expander.Resolved_forms.lib_deps forms)
+      Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
       >>>
       Build.path_set (Path.Set.union deps (Expander.Resolved_forms.sdeps forms))
       >>>

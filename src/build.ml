@@ -4,16 +4,6 @@ module Vspec = struct
   type 'a t = T : Path.t * 'a Vfile_kind.t -> 'a t
 end
 
-type lib_dep_kind =
-  | Optional
-  | Required
-type lib_deps = lib_dep_kind String.Map.t
-
-let merge_lib_dep_kind a b =
-  match a, b with
-  | Optional, Optional -> Optional
-  | _ -> Required
-
 module Repr = struct
   type ('a, 'b) t =
     | Arr : ('a -> 'b) -> ('a, 'b) t
@@ -33,7 +23,7 @@ module Repr = struct
     | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.Set.t) t -> ('a, 'a) t
-    | Record_lib_deps : lib_deps -> ('a, 'a) t
+    | Record_lib_deps : Lib_deps_info.t -> ('a, 'a) t
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t
     | Catch : ('a, 'b) t * (exn -> 'b) -> ('a, 'b) t
@@ -75,28 +65,11 @@ end
 include Repr
 let repr t = t
 
-let merge_lib_deps a b =
-  String.Map.merge a b ~f:(fun _ a b ->
-    match a, b with
-    | None, None -> None
-    | x, None | None, x -> x
-    | Some a, Some b -> Some (merge_lib_dep_kind a b))
-
 let arr f = Arr f
 let return x = Arr (fun () -> x)
 
-let record_lib_deps_simple lib_deps =
+let record_lib_deps lib_deps =
   Record_lib_deps lib_deps
-
-let record_lib_deps ~kind lib_deps =
-  Record_lib_deps
-    (List.concat_map lib_deps ~f:(function
-       | Jbuild.Lib_dep.Direct (_, s) -> [(s, kind)]
-       | Select { choices; _ } ->
-         List.concat_map choices ~f:(fun c ->
-           String.Set.to_list c.Jbuild.Lib_dep.required
-           |> List.map ~f:(fun d -> (d, Optional))))
-     |> String.Map.of_list_reduce ~f:merge_lib_dep_kind)
 
 module O = struct
   let ( >>> ) a b =

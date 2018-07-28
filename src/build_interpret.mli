@@ -48,7 +48,7 @@ val static_deps
 
 val lib_deps
   :  (_, _) Build.t
-  -> Build.lib_deps
+  -> Lib_deps_info.t
 
 val targets
   :  (_, _) Build.t

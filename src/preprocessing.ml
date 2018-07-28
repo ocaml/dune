@@ -286,7 +286,8 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
      >>>
      Build.write_file_dyn ml);
   SC.add_rule sctx
-    (Build.record_lib_deps ~kind:dep_kind (Lib_deps.of_pps pps)
+    (Build.record_lib_deps
+       (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pps))
      >>>
      Build.of_result_map driver_and_libs ~f:(fun (_, libs) ->
        Build.paths (Lib.L.archive_files libs ~mode ~ext_lib:ctx.ext_lib))

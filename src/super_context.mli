@@ -250,7 +250,7 @@ module Action : sig
     -> loc:Loc.t
     -> bindings:Pform.Map.t
     -> dir:Path.t
-    -> dep_kind:Build.lib_dep_kind
+    -> dep_kind:Lib_deps_info.Kind.t
     -> targets:targets
     -> targets_dir:Path.t
     -> scope:Scope.t

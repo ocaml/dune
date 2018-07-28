@@ -129,7 +129,7 @@ let static_deps t ~all_targets ~file_tree =
     true
 
 let lib_deps =
-  let rec loop : type a b. (a, b) t -> Build.lib_deps -> Build.lib_deps
+  let rec loop : type a b. (a, b) t -> Lib_deps_info.t -> Lib_deps_info.t
     = fun t acc ->
       match t with
       | Arr _ -> acc
@@ -147,7 +147,7 @@ let lib_deps =
       | Dyn_paths t -> loop t acc
       | Contents _ -> acc
       | Lines_of _ -> acc
-      | Record_lib_deps deps -> Build.merge_lib_deps deps acc
+      | Record_lib_deps deps -> Lib_deps_info.merge deps acc
       | Fail _ -> acc
       | If_file_exists (_, state) ->
         loop (get_if_file_exists_exn state) acc

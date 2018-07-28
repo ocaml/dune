@@ -66,3 +66,22 @@
  (name test_ppx_args)
  (modules test_ppx_args)
  (preprocess (pps -arg1 driver_print_args -arg2 -- -foo bar)))
+
+(library
+ (name driver_print_tool)
+ (modules ())
+ (libraries compiler-libs.common)
+ (ppx.driver (main "\| (fun () ->
+                   "\|    Ast_mapper.run_main (fun argv ->
+                   "\|      Printf.eprintf "tool name: %s\nargs:%s\n"
+                   "\|        (Ast_mapper.tool_name ())
+                   "\|        (String.concat " " argv);
+                   "\|      Ast_mapper.default_mapper))
+                   )))
+
+(rule (with-stdout-to test_ppx_staged.ml (echo "")))
+
+(library
+ (name test_ppx_staged)
+ (modules test_ppx_staged)
+ (preprocess (staged_pps -arg1 driver_print_tool -arg2 -- -foo bar)))

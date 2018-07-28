@@ -231,7 +231,13 @@ let standard =
   ; context = Univ_map.empty
   }
 
-let field ?(default=standard) name = Sexp.Of_sexp.field name t ~default
+let field ?(default=standard) ?check name =
+  let t =
+    match check with
+    | None -> t
+    | Some x -> Sexp.Of_sexp.(>>>) x t
+  in
+  Sexp.Of_sexp.field name t ~default
 
 module Unexpanded = struct
   type ast = (String_with_vars.t, Ast.unexpanded) Ast.t
@@ -265,7 +271,13 @@ module Unexpanded = struct
 
   let standard = standard
 
-  let field ?(default=standard) name = Stanza.Of_sexp.field name t ~default
+  let field ?(default=standard) ?check name =
+    let t =
+      match check with
+      | None -> t
+      | Some x -> Sexp.Of_sexp.(>>>) x t
+    in
+    Sexp.Of_sexp.field name t ~default
 
   let files t ~f =
     let rec loop acc (ast : ast) =

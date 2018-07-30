@@ -1074,11 +1074,11 @@ module Executables = struct
         | _::_, _ -> names
         | [], _::_ ->
           if dune_syntax >= (1, 1) then
-            List.filter_map public_names ~f:(fun (loc, p) ->
+            List.map public_names ~f:(fun (loc, p) ->
               match p with
               | None ->
                 of_sexp_error loc "This executable must have a name field"
-              | Some s -> Some (loc, s))
+              | Some s -> (loc, s))
           else
             of_sexp_errorf loc
               "%s field may not be omitted before dune version 1.1"

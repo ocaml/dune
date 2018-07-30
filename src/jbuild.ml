@@ -844,7 +844,8 @@ module Library = struct
            if dune_version >= (1, 1) then
              name
            else
-             of_sexp_error loc "name field cannot be omitted before version 1.1"
+             of_sexp_error loc "name field cannot be omitted before version \
+                                1.1 of the dune language"
          | None, None ->
            of_sexp_error loc (
              if dune_version >= (1, 1) then

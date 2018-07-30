@@ -11,6 +11,8 @@ module Name = struct
   let of_string = String.capitalize
   let to_string x = x
 
+  let uncapitalize = String.uncapitalize
+
   let pp = Format.pp_print_string
   let pp_quote fmt x = Format.fprintf fmt "%S" x
 

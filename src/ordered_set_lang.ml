@@ -204,6 +204,26 @@ module Make(Key : Key)(Value : Value with type key = Key.t) = struct
       Unordered.eval t ~parse ~standard
 end
 
+module Make_loc(Key : Key)(Value : Value with type key = Key.t) = struct
+  module No_loc = Make(Key)(struct
+      type t = Loc.t * Value.t
+      type key = Key.t
+      let key (_loc, s) = Value.key s
+    end)
+
+  let loc_parse f ~loc s = (loc, f ~loc s)
+
+  let eval t ~parse ~standard =
+    No_loc.eval t
+      ~parse:(loc_parse parse)
+      ~standard:(List.map standard ~f:(fun x -> (Loc.none, x)))
+
+  let eval_unordered t ~parse ~standard =
+    No_loc.eval_unordered t
+      ~parse:(loc_parse parse)
+      ~standard:(Key.Map.map standard ~f:(fun x -> (Loc.none, x)))
+end
+
 let standard =
   { ast = Ast.Standard
   ; loc = None

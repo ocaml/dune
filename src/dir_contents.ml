@@ -3,50 +3,60 @@ module Menhir_rules = Menhir
 open Jbuild
 open! No_io
 
-module Modules_field_evaluator = struct
-  module Eval = Ordered_set_lang.Make(Module.Name)(struct
-      type t = (Module.t, Module.Name.t * Loc.t) result
+module Modules_field_evaluator : sig
+  val eval
+    :  modules:Module.t Module.Name.Map.t
+    -> buildable:Buildable.t
+    -> Module.t Module.Name.Map.t
+end = struct
+
+  let eval =
+    let module Value = struct
+      type t = (Module.t, Module.Name.t) result
 
       type key = Module.Name.t
 
       let key = function
-        | Error (s, _) -> s
+        | Error s -> s
         | Ok m -> Module.name m
-    end)
-
-  let eval ~modules:(all_modules : Module.t Module.Name.Map.t)
-        ~buildable:(conf : Buildable.t) =
-    let fake_modules = ref Module.Name.Map.empty in
-    let parse ~loc s =
+    end in
+    let module Eval = Ordered_set_lang.Make_loc(Module.Name)(Value) in
+    let parse ~all_modules ~fake_modules ~loc s =
       let name = Module.Name.of_string s in
       match Module.Name.Map.find all_modules name with
       | Some m -> Ok m
       | None ->
         fake_modules := Module.Name.Map.add !fake_modules name loc;
-        Error (name, loc)
+        Error name
     in
-    let modules =
-      Eval.eval_unordered
-        conf.modules
-        ~parse
-        ~standard:(Module.Name.Map.map all_modules ~f:(fun m -> Ok m))
+    fun ~all_modules ~standard osl ->
+      let fake_modules = ref Module.Name.Map.empty in
+      let parse = parse ~fake_modules ~all_modules in
+      let standard = Module.Name.Map.map standard ~f:(fun m -> Ok m) in
+      let modules = Eval.eval_unordered ~parse ~standard osl in
+      ( !fake_modules
+      , Module.Name.Map.filter_map modules ~f:(fun (loc, m) ->
+          match m with
+          | Ok m -> Some m
+          | Error s ->
+            Loc.fail loc "Module %a doesn't exist." Module.Name.pp s)
+      , modules
+      )
+
+  let eval ~modules:(all_modules : Module.t Module.Name.Map.t)
+        ~buildable:(conf : Buildable.t) =
+    let (fake_modules, modules, _) =
+      eval ~standard:all_modules ~all_modules conf.modules in
+    let (fake_modules, intf_only, modules_without_implementation_locs) =
+      let (fake_modules', intf_only, locs) =
+        eval ~standard:Module.Name.Map.empty ~all_modules
+          conf.modules_without_implementation in
+      ( Module.Name.Map.superpose fake_modules' fake_modules
+      , intf_only
+      , locs
+      )
     in
-    let only_present_modules modules =
-      Module.Name.Map.filter_map ~f:(function
-        | Ok m -> Some m
-        | Error (s, loc) ->
-          Loc.fail loc "Module %a doesn't exist." Module.Name.pp s
-      ) modules
-    in
-    let modules = only_present_modules modules in
-    let intf_only =
-      Eval.eval_unordered
-        conf.modules_without_implementation
-        ~parse
-        ~standard:Module.Name.Map.empty
-    in
-    let intf_only = only_present_modules intf_only in
-    Module.Name.Map.iteri !fake_modules ~f:(fun m loc ->
+    Module.Name.Map.iteri fake_modules ~f:(fun m loc ->
       Loc.warn loc "Module %a is excluded but it doesn't exist."
         Module.Name.pp m
     );
@@ -62,17 +72,13 @@ module Modules_field_evaluator = struct
         Module.Name.Map.merge intf_only real_intf_only ~f:(fun name x y ->
           match x, y with
           | Some _, Some _ -> None
-          | None  , Some _ ->
-            Some (Left  (String.uncapitalize (Module.Name.to_string name)))
-          | Some _, None   ->
-            Some (Right (String.uncapitalize (Module.Name.to_string name)))
+          | None  , Some _ -> Some (Left name)
+          | Some _, None   -> Some (Right name)
           | None  , None   -> assert false)
         |> Module.Name.Map.values
         |> List.partition_map ~f:(fun x -> x)
       in
-      let list_modules l =
-        String.concat ~sep:"\n" (List.map l ~f:(sprintf "- %s"))
-      in
+      let uncapitalized = List.map ~f:Module.Name.uncapitalize in
       if should_be_listed <> [] then begin
         match Ordered_set_lang.loc conf.modules_without_implementation with
         | None ->
@@ -87,9 +93,15 @@ module Modules_field_evaluator = struct
                          "modules_without_implementation" in
              Sexp.to_string ~syntax:Dune
                (List [ tag
-                     ; Sexp.To_sexp.(list string) should_be_listed
+                     ; Sexp.To_sexp.(list string)
+                         (uncapitalized should_be_listed)
                      ]))
         | Some loc ->
+          let list_modules l =
+            uncapitalized l
+            |> List.map ~f:(sprintf "- %s")
+            |> String.concat ~sep:"\n"
+          in
           Loc.warn loc
             "The following modules must be listed here as they don't \
              have an implementation:\n\
@@ -98,35 +110,15 @@ module Modules_field_evaluator = struct
             (list_modules should_be_listed)
       end;
       if shouldn't_be_listed <> [] then begin
-        (* Re-evaluate conf.modules_without_implementation but this
-           time keep locations *)
-        let module Eval =
-          Ordered_set_lang.Make(Module.Name)(struct
-            type t = Loc.t * Module.t
-            type key = Module.Name.t
-            let key (_, m) = Module.name m
-          end)
-        in
-        let parse ~loc s =
-          let name = Module.Name.of_string s in
-          match Module.Name.Map.find all_modules name with
-          | Some m -> m
-          | None -> Loc.fail loc "Module %s doesn't exist." s
-        in
-        let parse ~loc s = (loc, parse ~loc s) in
-        let shouldn't_be_listed =
-          Eval.eval_unordered conf.modules_without_implementation
-            ~parse
-            ~standard:(Module.Name.Map.map all_modules ~f:(fun m -> (Loc.none, m)))
-          |> Module.Name.Map.values
-          |> List.filter ~f:(fun (_, (m : Module.t)) ->
-            Option.is_some m.impl)
+        let module_name = List.hd shouldn't_be_listed in
+        let (loc, _) =
+          Module.Name.Map.find modules_without_implementation_locs module_name
+          |> Option.value_exn
         in
         (* CR-soon jdimino for jdimino: report all errors *)
-        let loc, m = List.hd shouldn't_be_listed in
         Loc.fail loc
           "Module %a has an implementation, it cannot be listed here"
-          Module.Name.pp m.name
+          Module.Name.pp module_name
       end;
       modules
     end

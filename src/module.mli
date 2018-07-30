@@ -10,6 +10,8 @@ module Name : sig
   val of_string : string -> t
   val to_string : t -> string
 
+  val uncapitalize : t -> string
+
   val pp : Format.formatter -> t -> unit
   val pp_quote : Format.formatter -> t -> unit
 

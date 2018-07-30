@@ -443,12 +443,20 @@ let build_mlds_map (d : Super_context.Dir_with_jbuild.t) ~files =
 module Dir_status = struct
   type t =
     | Empty_standalone of File_tree.Dir.t option
+    (* Directory with no libraries or executables that is not part of
+       a multi-directory group *)
+
     | Is_component_of_a_group_but_not_the_root of
         Super_context.Dir_with_jbuild.t option
+    (* Sub-directory of a directory with [(include_subdirs true)] *)
+
     | Standalone of File_tree.Dir.t
                     * Super_context.Dir_with_jbuild.t
+    (* Directory with at least one library or executable *)
+
     | Group_root of File_tree.Dir.t
                     * Super_context.Dir_with_jbuild.t
+    (* Directory with [(include_subdirs true)] *)
 
   let is_standalone = function
     | Standalone _ | Empty_standalone _ -> true

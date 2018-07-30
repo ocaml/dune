@@ -62,8 +62,8 @@ so for instance the ``jbuild`` file might look like this:
 .. code:: scheme
 
           (library
-           ((name foo)
-            (preprocess (pps (ppx_inline_test)))))
+           (name foo)
+           (preprocess (pps ppx_inline_test)))
 
 In order to instruct dune that our library contains inline tests,
 all we have to do is add an ``inline_tests`` field:
@@ -71,9 +71,9 @@ all we have to do is add an ``inline_tests`` field:
 .. code:: scheme
 
           (library
-           ((name foo)
-            (inline_tests)
-            (preprocess (pps (ppx_inline_test)))))
+           (name foo)
+           (inline_tests)
+           (preprocess (pps ppx_inline_test)))
 
 We can now build and execute this test by running ``dune runtest``. For
 instance, if we make the test fail by replacing ``120`` by ``0`` we get:
@@ -97,8 +97,8 @@ field:
 .. code:: scheme
 
           (library
-           ((name foo)
-            (inline_tests ((backend qtest)))))
+           (name foo)
+           (inline_tests (backend qtest)))
 
 
 Inline expectation tests
@@ -142,9 +142,9 @@ your list of ppx rewriters as follow:
 .. code:: scheme
 
           (library
-           ((name foo)
-            (inline_tests)
-            (preprocess (pps (ppx_expect)))))
+           (name foo)
+           (inline_tests)
+           (preprocess (pps ppx_expect)))
 
 Then calling ``dune runtest`` will run these tests and in case of
 mismatch dune will print a diff of the original source file and
@@ -190,9 +190,9 @@ a ``deps`` field the the ``inline_tests`` field. The argument of this
 .. code:: ocaml
 
           (library
-           ((name foo)
-            (inline_tests ((deps (data.txt))))
-            (preprocess (pps (ppx_expect)))))
+           (name foo)
+           (inline_tests (deps data.txt))
+           (preprocess (pps ppx_expect)))
 
 Passing special arguments to the test runner
 --------------------------------------------
@@ -205,9 +205,9 @@ as:
 .. code:: ocaml
 
           (library
-           ((name foo)
-            (inline_tests ((flags (-foo bar))))
-            (preprocess (pps (ppx_expect)))))
+           (name foo)
+           (inline_tests (flags (-foo bar)))
+           (preprocess (pps ppx_expect)))
 
 The argument of the ``flags`` field follows the :ref:`ordered-set-language`.
 
@@ -222,9 +222,9 @@ such libraries using a ``libraries`` field, such as:
 .. code:: ocaml
 
           (library
-           ((name foo)
-            (inline_tests ((backend qtest)
-                           (libraries (bar))))))
+           (name foo)
+           (inline_tests (backend qtest)
+                         (libraries bar)))
 
 Defining your own inline test backend
 -------------------------------------
@@ -305,10 +305,10 @@ The backend for such a framework looks like this:
 .. code:: scheme
 
           (library
-           ((name simple_tests)
-            (inline_tests.backend
-             ((generate_runner (run sed "s/(\\*TEST:\\(.*\\)\\*)/let () = \\1;;/" %{impl-files}))
-             ))))
+           (name simple_tests)
+           (inline_tests.backend
+            (generate_runner (run sed "s/(\\*TEST:\\(.*\\)\\*)/let () = \\1;;/" %{impl-files}))
+            ))
 
 Now all you have to do is write ``(inline_tests ((backend
 simple_tests)))`` wherever you want to write such tests. Note that
@@ -327,8 +327,8 @@ running your testsuite, simply add this to a jbuild file:
 .. code:: scheme
 
           (alias
-           ((name   runtest)
-            (action (run ./tests.exe))))
+           (name   runtest)
+           (action (run ./tests.exe)))
 
 Hence to define an a test a pair of alias and executable stanzas are required.
 To simplify this common pattern, dune provides a :ref:`tests-stanza` stanza to
@@ -353,8 +353,8 @@ command. For instance let's consider this test:
            (with-stdout-to tests.output (run ./tests.exe)))
 
           (alias
-           ((name runtest)
-            (action (diff tests.expected test.output))))
+           (name runtest)
+           (action (diff tests.expected test.output)))
 
 After having run ``tests.exe`` and dumping its output to ``tests.output``, dune
 will compare the latter to ``tests.expected``. In case of mismatch, dune will

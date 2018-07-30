@@ -129,7 +129,7 @@ If you do not have `make`, you can do the following:
 ```sh
 $ ocaml bootstrap.ml
 $ ./boot.exe
-$ ./_build/default/bin/main_dune.exe install
+$ ./_build/default/bin/main_dune.exe install dune
 ```
 
 Support

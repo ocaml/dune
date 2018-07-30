@@ -46,6 +46,23 @@ module Make(Key : Key)(Value : Value with type key = Key.t)
   : S with type value = Value.t
        and type 'a map = 'a Key.Map.t
 
+(** same as [Make] but will retain the source location of the values in the
+    evaluated results *)
+module Make_loc (Key : Key)(Value : Value with type key = Key.t) : sig
+  val eval
+    :  t
+    -> parse:(loc:Loc.t -> string -> Value.t)
+    -> standard:Value.t list
+    -> (Loc.t * Value.t) list
+
+  (** Same as [eval] but the result is unordered *)
+  val eval_unordered
+    :  t
+    -> parse:(loc:Loc.t -> string -> Value.t)
+    -> standard:Value.t Key.Map.t
+    -> (Loc.t * Value.t) Key.Map.t
+end
+
 val standard : t
 val is_standard : t -> bool
 

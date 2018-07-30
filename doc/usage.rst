@@ -431,29 +431,6 @@ For rare cases where this is not what you want, you can force dune to use a
 different build contexts for merlin by adding the field ``(merlin)`` to this
 context.
 
-Building JavaScript with js_of_ocaml
-====================================
-
-Dune knows how to generate a JavaScript version of an executable
-(``<name>.bc.js``) using the js_of_ocaml compiler (the ``js_of_ocaml-compiler``
-opam package must be installed).
-
-It supports two modes of compilation:
-
-- Direct compilation of a bytecode program to JavaScript. This mode allows
-  js_of_ocaml to perform whole program deadcode elimination and whole program
-  inlining.
-- Separate compilation, where compilation units are compiled to JavaScript
-  separately and then linked together. This mode is useful during development as
-  it builds more quickly.
-
-The separate compilation mode will be selected when the build profile is
-``dev``, which is the default. There is currently no other way to control this
-behaviour.
-
-See the section about :ref:`dune-jsoo` for passing custom flags to the
-js_of_ocaml compiler
-
 Distributing Projects
 =====================
 

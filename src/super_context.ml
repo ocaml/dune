@@ -622,14 +622,14 @@ let create
       }
     in
     match context.env_nodes with
-    | [] ->
+    | { context = None; workspace = None } ->
       make ~config:{ loc = Loc.none; rules = [] } ~inherit_from:None
-    | [config] ->
+    | { context = Some config; workspace = None }
+    | { context = None; workspace = Some config } ->
       make ~config ~inherit_from:None
-    | [context; workspace] ->
+    | { context = Some context ; workspace = Some workspace } ->
       make ~config:context
         ~inherit_from:(Some (lazy (make ~inherit_from:None ~config:workspace)))
-    | _::_::_::_ -> assert false
   ) in
   List.iter stanzas
     ~f:(fun { Dir_with_jbuild. ctx_dir; scope; stanzas; _ } ->

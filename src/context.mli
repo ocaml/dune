@@ -30,6 +30,13 @@ module Kind : sig
   type t = Default | Opam of Opam.t
 end
 
+module Env_nodes : sig
+  type t =
+    { context: Dune_env.Stanza.t option
+    ; workspace: Dune_env.Stanza.t option
+    }
+end
+
 type t =
   { name : string
   ; kind : Kind.t
@@ -51,7 +58,7 @@ type t =
     build_dir : Path.t
 
   ; (** env node that this context was initialized with *)
-    env_nodes : Dune_env.Stanza.t list
+    env_nodes : Env_nodes.t
 
   ; (** [PATH] *)
     path : Path.t list

@@ -18,6 +18,13 @@ module Kind = struct
                            ])
 end
 
+module Env_nodes = struct
+  type t =
+    { context: Dune_env.Stanza.t option
+    ; workspace: Dune_env.Stanza.t option
+    }
+end
+
 type t =
   { name                    : string
   ; kind                    : Kind.t
@@ -26,7 +33,7 @@ type t =
   ; for_host                : t option
   ; implicit                : bool
   ; build_dir               : Path.t
-  ; env_nodes               : Dune_env.Stanza.t list
+  ; env_nodes               : Env_nodes.t
   ; path                    : Path.t list
   ; toplevel_path           : Path.t option
   ; ocaml_bin               : Path.t
@@ -456,14 +463,11 @@ let create_for_opam ?root ~env ~env_nodes ~targets ~profile ~switch ~name
       ~name ~merlin ()
 
 let create ?merlin ?workspace_env ~env def =
-  let env_nodes =
-    match workspace_env with
-    | None -> Option.to_list
-    | Some s ->
-      begin function
-      | None -> [s]
-      | Some x -> [x; s]
-      end
+  let env_nodes context =
+    { Env_nodes.
+      context
+    ; workspace = workspace_env
+    }
   in
   match (def : Workspace.Context.t) with
   | Default { targets; profile; env = env_node ; loc = _ } ->

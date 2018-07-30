@@ -73,7 +73,8 @@ let setup ?(log=Log.no_log)
 
   Fiber.parallel_map workspace.contexts ~f:(fun ctx_def ->
     let name = Workspace.Context.name ctx_def in
-    Context.create ctx_def ~env ~merlin:(workspace.merlin_context = Some name))
+    Context.create ?workspace_env:workspace.env
+      ctx_def ~env ~merlin:(workspace.merlin_context = Some name))
   >>= fun contexts ->
   let contexts = List.concat contexts in
   List.iter contexts ~f:(fun (ctx : Context.t) ->

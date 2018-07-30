@@ -18,6 +18,13 @@ module Kind = struct
                            ])
 end
 
+module Env_nodes = struct
+  type t =
+    { context: Dune_env.Stanza.t option
+    ; workspace: Dune_env.Stanza.t option
+    }
+end
+
 type t =
   { name                    : string
   ; kind                    : Kind.t
@@ -26,7 +33,7 @@ type t =
   ; for_host                : t option
   ; implicit                : bool
   ; build_dir               : Path.t
-  ; env_node                : Dune_env.Stanza.t option
+  ; env_nodes               : Env_nodes.t
   ; path                    : Path.t list
   ; toplevel_path           : Path.t option
   ; ocaml_bin               : Path.t
@@ -131,7 +138,7 @@ let ocamlpath_sep =
   else
     Bin.path_sep
 
-let create ~(kind : Kind.t) ~path ~env ~env_node ~name ~merlin ~targets
+let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ~profile () =
   let opam_var_cache = Hashtbl.create 128 in
   (match kind with
@@ -334,7 +341,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_node ~name ~merlin ~targets
       ; kind
       ; profile
       ; merlin
-      ; env_node
+      ; env_nodes
       ; for_host = host
       ; build_dir
       ; path
@@ -410,11 +417,11 @@ let create ~(kind : Kind.t) ~path ~env ~env_node ~name ~merlin ~targets
 
 let opam_config_var t var = opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
-let default ?(merlin=true) ~env_node ~env ~targets () =
-  create ~kind:Default ~path:Bin.path ~env ~env_node ~name:"default"
+let default ?(merlin=true) ~env_nodes ~env ~targets () =
+  create ~kind:Default ~path:Bin.path ~env ~env_nodes ~name:"default"
     ~merlin ~targets ()
 
-let create_for_opam ?root ~env ~env_node ~targets ~profile ~switch ~name
+let create_for_opam ?root ~env ~env_nodes ~targets ~profile ~switch ~name
       ?(merlin=false) () =
   match Bin.opam with
   | None -> Utils.program_not_found "opam"
@@ -452,16 +459,23 @@ let create_for_opam ?root ~env ~env_node ~targets ~profile ~switch ~name
       | Some s -> Bin.parse_path s
     in
     let env = Env.extend env ~vars in
-    create ~kind:(Opam { root; switch }) ~profile ~targets ~path ~env ~env_node
+    create ~kind:(Opam { root; switch }) ~profile ~targets ~path ~env ~env_nodes
       ~name ~merlin ()
 
-let create ?merlin ~env def =
+let create ?merlin ?workspace_env ~env def =
+  let env_nodes context =
+    { Env_nodes.
+      context
+    ; workspace = workspace_env
+    }
+  in
   match (def : Workspace.Context.t) with
   | Default { targets; profile; env = env_node ; loc = _ } ->
-    default ~env ~env_node ~profile ~targets ?merlin ()
+    default ~env ~env_nodes:(env_nodes env_node) ~profile ~targets ?merlin ()
   | Opam { base = { targets ; profile ; env = env_node ; loc = _ }
          ; name; switch; root; merlin = _ } ->
-    create_for_opam ?root ~env_node ~env ~profile ~switch ~name ?merlin ~targets ()
+    create_for_opam ?root ~env_nodes:(env_nodes env_node) ~env ~profile
+      ~switch ~name ?merlin ~targets ()
 
 let which t s = which ~cache:t.which_cache ~path:t.path s
 

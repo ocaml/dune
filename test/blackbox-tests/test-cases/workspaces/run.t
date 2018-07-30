@@ -53,6 +53,6 @@ Workspaces also allow you to set the env for a context:
   Entering directory 'workspace-env'
   (
    (flags (-w -40 -machin))
-   (ocamlc_flags (-g))
+   (ocamlc_flags (-g -verbose))
    (ocamlopt_flags (-g))
   )

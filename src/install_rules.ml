@@ -304,7 +304,7 @@ module Gen(P : Params) = struct
         ~f:(fun { SC.Installable. dir; stanza; kind = dir_kind; scope; _ } ->
           let dir_contents = Dir_contents.get sctx ~dir in
           match stanza with
-          | Library ({ public = Some { package; sub_dir; name; _ }
+          | Library ({ public = Some { package; sub_dir; name = (_, name); _ }
                      ; _ } as lib) ->
             List.map (lib_install_files ~dir ~sub_dir ~name lib ~scope
                         ~dir_kind ~dir_contents)

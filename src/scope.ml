@@ -78,7 +78,7 @@ module DB = struct
         List.filter_map internal_libs ~f:(fun (_dir, lib) ->
           match lib.public with
           | None -> None
-          | Some p -> Some (p.name, lib.project))
+          | Some p -> Some (Jbuild.Public_lib.name p, lib.project))
         |> String.Map.of_list
         |> function
         | Ok x -> x
@@ -87,7 +87,8 @@ module DB = struct
             List.filter_map internal_libs ~f:(fun (_dir, lib) ->
               match lib.public with
               | None   -> None
-              | Some p -> Option.some_if (name = p.name) lib.buildable.loc)
+              | Some p -> Option.some_if (name = Jbuild.Public_lib.name p)
+                            lib.buildable.loc)
           with
           | [] | [_] -> assert false
           | loc1 :: loc2 :: _ ->

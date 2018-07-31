@@ -988,11 +988,12 @@ module DB = struct
         | None ->
           [(conf.name, Resolve_result.Found info)]
         | Some p ->
-          if p.name = conf.name then
-            [(p.name, Found info)]
+          let name = Jbuild.Public_lib.name p in
+          if name = conf.name then
+            [(name, Found info)]
           else
-            [ p.name   , Found info
-            ; conf.name, Redirect (None, p.name)
+            [ name     , Found info
+            ; conf.name, Redirect (None, name)
             ])
       |> String.Map.of_list
       |> function
@@ -1003,7 +1004,7 @@ module DB = struct
             if name = conf.name ||
                match conf.public with
                | None -> false
-               | Some p -> name = p.name
+               | Some p -> name = Jbuild.Public_lib.name p
             then Some conf.buildable.loc
             else None)
         with

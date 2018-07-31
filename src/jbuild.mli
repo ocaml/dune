@@ -137,11 +137,13 @@ end
 
 module Public_lib : sig
   type t =
-    { name    : string        (** Full public name *)
-    ; package : Package.t     (** Package it is part of *)
-    ; sub_dir : string option (** Subdirectory inside the installation
-                                  directory *)
+    { name    : Loc.t * string (** Full public name *)
+    ; package : Package.t      (** Package it is part of *)
+    ; sub_dir : string option  (** Subdirectory inside the installation
+                                   directory *)
     }
+
+  val name : t -> string
 end
 
 module Sub_system_info : sig

@@ -14,6 +14,15 @@ Test that executables stop the recursion
           main alias default
   Hello, world!
 
+Test with C stubs in sub-directories
+------------------------------------
+
+  $ dune build --root test3
+  File "dune", line 13, characters 16-25:
+  Error: "sub/stub2" is not a valid C name.
+  Hint: To use C files from another directory, use a (copy_files <dir>/*.c) stanza instead.
+  [1]
+
 Test some error cases
 ---------------------
 

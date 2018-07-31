@@ -1,0 +1,13 @@
+(alias
+ (name default)
+ (deps main.exe))
+
+(executable
+ (name main)
+ (libraries foo)
+ (modules main))
+
+(library
+ (name foo)
+ (modules foo)
+ (c_names stub1 sub/stub2))

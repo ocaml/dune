@@ -12,6 +12,9 @@ next
 - Add ``enabled_if`` field for aliases and tests. This field controls whether
   the test will be ran using a boolean expression language. (#819, @rgrinberg)
 
+- Interpret `X` in `--libdir X` as relative to `PREFIX` when `X` is relative
+  (#1072, fix #1070, @diml)
+
 1.0.1 (19/07/2018)
 ------------------
 

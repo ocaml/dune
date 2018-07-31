@@ -1,4 +1,4 @@
-#include <include/dune_test.h>
+#include "include/dune_test.h"
 
 CAMLprim value dune_test_x()
 {

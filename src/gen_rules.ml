@@ -97,9 +97,7 @@ module Gen(P : Install_rules.Params) = struct
                 | Native -> [Library.archive lib ~dir ~ext:ctx.ext_lib])
            ]))
 
-  let build_c_file (lib : Library.t) ~scope ~dir ~includes c_name =
-    let src = Path.relative dir (c_name ^ ".c") in
-    let dst = Path.relative dir (c_name ^ ctx.ext_obj) in
+  let build_c_file (lib : Library.t) ~scope ~dir ~includes (src, dst) =
     SC.add_rule sctx
       (SC.expand_and_eval_set sctx ~scope ~dir lib.c_flags
          ~standard:(Build.return (Context.cc_g ctx))
@@ -107,7 +105,7 @@ module Gen(P : Install_rules.Params) = struct
        Build.run ~context:ctx
          (* We have to execute the rule in the library directory as
             the .o is produced in the current directory *)
-         ~dir
+         ~dir:(Path.parent_exn src)
          (Ok ctx.ocamlc)
          [ As (Utils.g ())
          ; includes
@@ -117,9 +115,7 @@ module Gen(P : Install_rules.Params) = struct
          ]);
     dst
 
-  let build_cxx_file (lib : Library.t) ~scope ~dir ~includes c_name =
-    let src = Path.relative dir (c_name ^ ".cpp") in
-    let dst = Path.relative dir (c_name ^ ctx.ext_obj) in
+  let build_cxx_file (lib : Library.t) ~scope ~dir ~includes (src, dst) =
     let open Arg_spec in
     let output_param =
       if ctx.ccomp_type = "msvc" then
@@ -134,7 +130,7 @@ module Gen(P : Install_rules.Params) = struct
        Build.run ~context:ctx
          (* We have to execute the rule in the library directory as
             the .o is produced in the current directory *)
-         ~dir
+         ~dir:(Path.parent_exn src)
          (SC.resolve_program sctx ctx.c_compiler)
          ([ S [A "-I"; Path ctx.stdlib_dir]
           ; As (SC.cxx_flags sctx)
@@ -240,13 +236,29 @@ module Gen(P : Install_rules.Params) = struct
         ~dep_graphs:(Ocamldep.Dep_graphs.dummy m));
 
     if Library.has_stubs lib then begin
+      let all_dirs = Dir_contents.dirs dir_contents in
       let h_files =
-        String.Set.to_list (Dir_contents.text_files dir_contents)
-        |> List.filter_map ~f:(fun fn ->
-          if String.is_suffix fn ~suffix:".h" then
-            Some (Path.relative dir fn)
-          else
-            None)
+        List.fold_left all_dirs ~init:[] ~f:(fun acc dc ->
+          String.Set.fold (Dir_contents.text_files dc) ~init:acc
+            ~f:(fun fn acc ->
+              if String.is_suffix fn ~suffix:".h" then
+                Path.relative (Dir_contents.dir dc) fn :: acc
+              else
+                acc))
+        |> List.rev
+      in
+      let all_dirs = Path.Set.of_list (List.map all_dirs ~f:Dir_contents.dir) in
+      let resolve_name ~ext (loc, fn) =
+        let p = Path.relative dir (fn ^ ext) in
+        if not (match Path.parent p with
+          | None -> false
+          | Some p -> Path.Set.mem all_dirs p) then
+          Loc.fail loc
+            "File %a is not part of the current directory group. \
+             This is not allowed."
+            Path.pp (Path.drop_optional_build_context p)
+        ;
+        (p, Path.relative dir (fn ^ ctx.ext_obj))
       in
       let o_files =
         let includes =
@@ -258,10 +270,10 @@ module Gen(P : Install_rules.Params) = struct
                   ])
             ]
         in
-        List.map lib.c_names ~f:(
-          build_c_file   lib ~scope ~dir ~includes
-        ) @ List.map lib.cxx_names ~f:(
-          build_cxx_file lib ~scope ~dir ~includes
+        List.map lib.c_names ~f:(fun name ->
+          build_c_file   lib ~scope ~dir ~includes (resolve_name name ~ext:".c")
+        ) @ List.map lib.cxx_names ~f:(fun name ->
+          build_cxx_file lib ~scope ~dir ~includes (resolve_name name ~ext:".cpp")
         )
       in
       match lib.self_build_stubs_archive with

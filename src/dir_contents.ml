@@ -201,6 +201,15 @@ and kind =
 let kind t = t.kind
 let dir t = t.dir
 
+let dirs t =
+  match t.kind with
+  | Standalone -> [t]
+  | Group_root (lazy l) -> t :: l
+  | Group_part t ->
+    match t.kind with
+    | Group_root (lazy l) -> t :: l
+    | _ -> assert false
+
 let text_files t = t.text_files
 
 let modules_of_library t ~name =

@@ -47,3 +47,7 @@ type kind =
   | Group_part of t
 
 val kind : t -> kind
+
+(** All directories in this group, or just [t] if this directory is
+    not part of a group.  *)
+val dirs : t -> t list

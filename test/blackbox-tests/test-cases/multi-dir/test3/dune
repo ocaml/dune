@@ -1,8 +1,4 @@
-(alias
- (name default)
- (deps main.exe))
-
-(executable
+(test
  (name main)
  (libraries foo)
  (modules main))
@@ -11,3 +7,5 @@
  (name foo)
  (modules foo)
  (c_names stub1 sub/stub2))
+
+(include_subdirs unqualified)

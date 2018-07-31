@@ -83,14 +83,12 @@ let c_name, cxx_name =
     plain_string (fun ~loc s ->
       if match s with
         | "" | "." | ".."  -> true
-        | _ -> Filename.basename s <> s then
+        | _ -> false then
         of_sexp_errorf loc
-          "%S is not a valid %s name.\n\
-           Hint: To use %s files from another directory, use a \
-           (copy_files <dir>/*.%s) stanza instead."
+          "%S is not a valid %s name."
           s what what ext
       else
-        s)
+        (loc, s))
   in
   (make "C"   "c",
    make "C++" "cpp")
@@ -836,9 +834,9 @@ module Library = struct
     ; modes                    : Mode_conf.Set.t
     ; kind                     : Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
-    ; c_names                  : string list
+    ; c_names                  : (Loc.t * string) list
     ; cxx_flags                : Ordered_set_lang.Unexpanded.t
-    ; cxx_names                : string list
+    ; cxx_names                : (Loc.t * string) list
     ; library_flags            : Ordered_set_lang.Unexpanded.t
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option

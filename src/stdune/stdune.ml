@@ -18,6 +18,7 @@ module Set        = Set
 module Staged     = Staged
 module String     = String
 module Char       = Char
+module Bool       = Bool
 module Sexp       = Sexp
 module Path       = Path
 module Fmt        = Fmt

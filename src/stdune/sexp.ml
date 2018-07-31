@@ -446,7 +446,6 @@ module Of_sexp = struct
     String.Map.iteri map ~f:(Hashtbl.add tbl);
     tbl
 
-
   let find_cstr cstrs loc name ctx values =
     match List.assoc cstrs name with
     | Some t ->

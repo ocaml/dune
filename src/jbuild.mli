@@ -335,6 +335,7 @@ module Alias_conf : sig
     ; action  : (Loc.t * Action.Unexpanded.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option
+    ; enabled_if : String_with_vars.t Blang.t option
     }
 end
 
@@ -355,10 +356,11 @@ end
 
 module Tests : sig
   type t =
-    { exes    : Executables.t
-    ; locks   : String_with_vars.t list
-    ; package : Package.t option
-    ; deps    : Dep_conf.t Bindings.t
+    { exes       : Executables.t
+    ; locks      : String_with_vars.t list
+    ; package    : Package.t option
+    ; deps       : Dep_conf.t Bindings.t
+    ; enabled_if : String_with_vars.t Blang.t option
     }
 end
 

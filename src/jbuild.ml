@@ -316,7 +316,7 @@ module Dep_conf = struct
         ; "universe"   , return Universe
         ; "files_recursively_in",
           (let%map () =
-            Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
+             Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
            and x = sw in
            Source_tree x)
         ; "source_tree",
@@ -376,6 +376,45 @@ module Preprocess = struct
   let pps = function
     | Pps { pps; _ } -> pps
     | _ -> []
+end
+
+module Blang = struct
+  type 'a t = 'a Blang.t
+
+  open Blang
+  let ops =
+    [ "=", Op.Eq
+    ; ">=", Gte
+    ; "<=", Lt
+    ; ">", Gt
+    ; "<", Lt
+    ; "<>", Neq
+    ]
+
+  let t =
+    let ops =
+      List.map ops ~f:(fun (name, op) ->
+        ( name
+        , (let%map x = String_with_vars.t
+           and y = String_with_vars.t
+           in
+           Compare (op, x, y))))
+    in
+    let t =
+      fix begin fun (t : String_with_vars.t Blang.t Sexp.Of_sexp.t) ->
+        if_list
+          ~then_:(
+            [ "or", repeat t >>| (fun x -> Or x)
+            ; "and", repeat t >>| (fun x -> And x)
+            ] @ ops
+            |> sum)
+          ~else_:(String_with_vars.t >>| fun v -> Expr v)
+      end
+    in
+    let%map () = Syntax.since Stanza.syntax (1, 1)
+    and t = t
+    in
+    t
 end
 
 module Per_module = struct
@@ -1336,15 +1375,15 @@ module Rule = struct
   let dune_syntax =
     peek_exn >>= function
     | List (_, Atom (loc, A s) :: _) -> begin
-      match String.Map.find atom_table s with
-      | None ->
-        of_sexp_errorf loc ~hint:{ on = s
-                                 ; candidates = String.Map.keys atom_table
-                                 }
-          "Unknown action or rule field."
-      | Some Field -> fields long_form
-      | Some Action -> short_form
-    end
+        match String.Map.find atom_table s with
+        | None ->
+          of_sexp_errorf loc ~hint:{ on = s
+                                   ; candidates = String.Map.keys atom_table
+                                   }
+            "Unknown action or rule field."
+        | Some Field -> fields long_form
+        | Some Action -> short_form
+      end
     | sexp ->
       of_sexp_errorf (Sexp.Ast.loc sexp)
         "S-expression of the form (<atom> ...) expected"
@@ -1500,6 +1539,7 @@ module Alias_conf = struct
     ; action  : (Loc.t * Action.Unexpanded.t) option
     ; locks   : String_with_vars.t list
     ; package : Package.t option
+    ; enabled_if : String_with_vars.t Blang.t option
     }
 
   let alias_name =
@@ -1516,21 +1556,24 @@ module Alias_conf = struct
        and action = field_o "action" (located Action.Unexpanded.t)
        and locks = field "locks" (list String_with_vars.t) ~default:[]
        and deps = field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
+       and enabled_if = field_o "enabled_if" Blang.t
        in
        { name
        ; deps
        ; action
        ; package
        ; locks
+       ; enabled_if
        })
 end
 
 module Tests = struct
   type t =
-    { exes    : Executables.t
-    ; locks   : String_with_vars.t list
-    ; package : Package.t option
-    ; deps    : Dep_conf.t Bindings.t
+    { exes       : Executables.t
+    ; locks      : String_with_vars.t list
+    ; package    : Package.t option
+    ; deps       : Dep_conf.t Bindings.t
+    ; enabled_if : String_with_vars.t Blang.t option
     }
 
   let gen_parse names =
@@ -1543,6 +1586,7 @@ module Tests = struct
        and modes = field "modes" Executables.Link_mode.Set.t
                      ~default:Executables.Link_mode.Set.default
        and deps = field "deps" (Bindings.t Dep_conf.t) ~default:Bindings.empty
+       and enabled_if = field_o "enabled_if" Blang.t
        in
        { exes =
            { Executables.
@@ -1555,6 +1599,7 @@ module Tests = struct
        ; locks
        ; package
        ; deps
+       ; enabled_if
        })
 
   let multi = gen_parse (field "names" (list (located string)))

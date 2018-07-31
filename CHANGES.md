@@ -9,6 +9,9 @@ next
   now allowed in toplevel position in the workspace file, or for individual
   contexts. This feature requires `(dune lang 1.1)` (#1038, @rgrinberg)
 
+- Add ``enabled_if`` field for aliases and tests. This field controls whether
+  the test will be ran using a boolean expression language. (#819, @rgrinberg)
+
 1.0.1 (19/07/2018)
 ------------------
 

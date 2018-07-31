@@ -1645,16 +1645,13 @@ module Documentation = struct
 end
 
 module Include_subdirs = struct
-  type t = True | False
+  type t = Qualified | Unqualified
 
   let t =
-    if_eos
-      ~then_:(return True)
-      ~else_:
-        (enum
-           [ "true", True
-           ; "false", False
-           ])
+    enum
+      [ "qualified"  , Qualified
+      ; "unqualified", Unqualified
+      ]
 end
 
 type Stanza.t +=

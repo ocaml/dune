@@ -54,18 +54,16 @@ module Context = struct
       }
 
     let t ~profile =
-      env_field >>= fun env ->
-      field "targets" (list Target.t) ~default:[Target.Native]
-      >>= fun targets ->
-      field "profile" string ~default:profile
-      >>= fun profile ->
-      loc >>= fun loc ->
-      return
-        { targets
-        ; profile
-        ; loc
-        ; env
-        }
+      let%map env = env_field
+      and targets = field "targets" (list Target.t) ~default:[Target.Native]
+      and profile = field "profile" string ~default:profile
+      and loc = loc
+      in
+      { targets
+      ; profile
+      ; loc
+      ; env
+      }
   end
 
   module Opam = struct
@@ -79,25 +77,26 @@ module Context = struct
 
     let t ~profile ~x =
       Common.t ~profile >>= fun base ->
-      field   "switch"  string                 >>= fun switch ->
-      field   "name"    Name.t ~default:switch >>= fun name ->
-      field_o "root"    string                 >>= fun root ->
-      field_b "merlin"                         >>= fun merlin ->
+      field "switch" string >>= fun switch ->
+      let%map name = field "name" Name.t ~default:switch
+      and root = field_o "root" string
+      and merlin = field_b "merlin"
+      in
       let base = { base with targets = Target.add base.targets x } in
-      return { base
-             ; switch
-             ; name
-             ; root
-             ; merlin
-             }
+      { base
+      ; switch
+      ; name
+      ; root
+      ; merlin
+      }
   end
 
   module Default = struct
     type t = Common.t
 
     let t ~profile ~x =
-      Common.t ~profile >>= fun t ->
-      return { t with targets = Target.add t.targets x }
+      Common.t ~profile >>| fun t ->
+      { t with targets = Target.add t.targets x }
   end
 
   type t = Default of Default.t | Opam of Opam.t
@@ -165,7 +164,7 @@ let t ?x ?profile:cmdline_profile () =
   >>= fun profile ->
   let profile = Option.value cmdline_profile ~default:profile in
   multi_field "context" (Context.t ~profile ~x)
-  >>= fun contexts ->
+  >>| fun contexts ->
   let defined_names = ref String.Set.empty in
   let { merlin_context; contexts; env } =
     let init =
@@ -205,11 +204,10 @@ let t ?x ?profile:cmdline_profile () =
       else
         None
   in
-  return
-    { merlin_context
-    ; contexts = List.rev contexts
-    ; env
-    }
+  { merlin_context
+  ; contexts = List.rev contexts
+  ; env
+  }
 
 let t ?x ?profile () = fields (t ?x ?profile ())
 

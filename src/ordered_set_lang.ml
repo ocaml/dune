@@ -91,10 +91,11 @@ end
 
 let t =
   let open Stanza.Of_sexp in
-  get_all >>= fun context ->
-  located (Parse.without_include
-             ~elt:(plain_string (fun ~loc s -> Ast.Element (loc, s))))
-  >>| fun (loc, ast) ->
+  let%map context = get_all
+  and (loc, ast) =
+    located (Parse.without_include
+               ~elt:(plain_string (fun ~loc s -> Ast.Element (loc, s))))
+  in
   { ast; loc = Some loc; context }
 
 let is_standard t =
@@ -237,11 +238,12 @@ module Unexpanded = struct
   type t = ast generic
   let t : t Sexp.Of_sexp.t =
     let open Stanza.Of_sexp in
-    get_all >>= fun context ->
-    located (
-      Parse.with_include
-        ~elt:(String_with_vars.t >>| fun s -> Ast.Element s))
-    >>| fun (loc, ast) ->
+    let%map context = get_all
+    and (loc, ast) =
+      located (
+        Parse.with_include
+          ~elt:(String_with_vars.t >>| fun s -> Ast.Element s))
+    in
     { ast
     ; loc = Some loc
     ; context

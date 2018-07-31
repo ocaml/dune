@@ -44,19 +44,18 @@ module Driver = struct
 
       let parse =
         record
-          (loc >>= fun loc ->
-           Ordered_set_lang.Unexpanded.field "flags"      >>= fun      flags ->
-           Ordered_set_lang.Unexpanded.field "lint_flags" >>= fun lint_flags ->
-           field "main" string >>= fun main ->
-           field "replaces" (list (located string)) ~default:[]
-           >>= fun replaces ->
-           return
-             { loc
-             ; flags
-             ; lint_flags
-             ; main
-             ; replaces
-             })
+          (let%map loc = loc
+           and flags = Ordered_set_lang.Unexpanded.field "flags"
+           and lint_flags = Ordered_set_lang.Unexpanded.field "lint_flags"
+           and main = field "main" string
+           and replaces = field "replaces" (list (located string)) ~default:[]
+           in
+           { loc
+           ; flags
+           ; lint_flags
+           ; main
+           ; replaces
+           })
     end
 
     (* The [lib] field is lazy so that we don't need to fill it for

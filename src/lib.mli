@@ -105,11 +105,12 @@ module Info : sig
     ; pps              : (Loc.t * Jbuild.Pp.t) list
     ; optional         : bool
     ; virtual_deps     : (Loc.t * string) list
+    ; opaque           : bool
     ; dune_version : Syntax.Version.t option
     ; sub_systems      : Jbuild.Sub_system_info.t Sub_system_name.Map.t
     }
 
-  val of_library_stanza : dir:Path.t -> Jbuild.Library.t -> t
+  val of_library_stanza : dir:Path.t -> opaque:bool -> Jbuild.Library.t -> t
   val of_findlib_package : Findlib.Package.t -> t
 end
 
@@ -218,6 +219,8 @@ module Compile : sig
   val optional          : t -> bool
   val user_written_deps : t -> Jbuild.Lib_deps.t
 
+  val opaque : t -> bool
+
   (** Sub-systems used in this compilation context *)
   val sub_systems : t -> sub_system list
 end
@@ -257,6 +260,7 @@ module DB : sig
   (** Create a database from a list of library stanzas *)
   val create_from_library_stanzas
     :  ?parent:t
+    -> opaque:bool
     -> (Path.t * Jbuild.Library.t) list
     -> t
 
@@ -289,6 +293,7 @@ module DB : sig
   val resolve_user_written_deps
     :  t
     -> ?allow_overlaps:bool
+    -> opaque:bool
     -> Jbuild.Lib_dep.t list
     -> pps:(Loc.t * Jbuild.Pp.t) list
     -> Compile.t

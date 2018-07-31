@@ -506,9 +506,11 @@ let create
         | Library lib -> Some (ctx_dir, lib)
         | _ -> None))
   in
+  let opaque = context.profile = "dev" in
   let scopes, public_libs =
     Scope.DB.create
       ~projects
+      ~opaque
       ~context:context.name
       ~installed_libs
       internal_libs

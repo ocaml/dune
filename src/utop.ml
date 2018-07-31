@@ -73,6 +73,7 @@ let setup sctx ~dir ~(libs : Library.t list) ~scope =
         ~scope
         ~dir:utop_exe_dir
         ~modules
+        ~opaque:false
         ~requires
         ~flags:(Ocaml_flags.append_common
                   (Ocaml_flags.default ~profile:(Super_context.profile sctx))

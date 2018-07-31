@@ -5,7 +5,7 @@ module SC = Super_context
 module Includes = struct
   type t = string list Arg_spec.t Cm_kind.Dict.t
 
-  let make sctx ~requires : _ Cm_kind.Dict.t =
+  let make sctx ~opaque ~requires : _ Cm_kind.Dict.t =
     match requires with
     | Error exn -> Cm_kind.Dict.make_all (Arg_spec.Dyn (fun _ -> raise exn))
     | Ok libs ->
@@ -18,15 +18,18 @@ module Includes = struct
                        (SC.Libs.file_deps sctx libs ~ext:".cmi")
                    ]
       in
-      let cmi_and_cmx_includes =
-        Arg_spec.S [ iflags
-                   ; Hidden_deps
-                       (SC.Libs.file_deps sctx libs ~ext:".cmi-and-.cmx")
-                   ]
+      let cmx_includes =
+        if opaque then
+          cmi_includes
+        else
+          Arg_spec.S [ iflags
+                    ; Hidden_deps
+                        (SC.Libs.file_deps sctx libs ~ext:".cmi-and-.cmx")
+                    ]
       in
       { cmi = cmi_includes
       ; cmo = cmi_includes
-      ; cmx = cmi_and_cmx_includes
+      ; cmx = cmx_includes
       }
 
   let empty =
@@ -47,6 +50,7 @@ type t =
   ; includes             : Includes.t
   ; preprocessing        : Preprocessing.t
   ; no_keep_locs         : bool
+  ; opaque               : bool
   }
 
 let super_context        t = t.super_context
@@ -62,12 +66,14 @@ let requires             t = t.requires
 let includes             t = t.includes
 let preprocessing        t = t.preprocessing
 let no_keep_locs         t = t.no_keep_locs
+let opaque               t = t.opaque
 
 let context              t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~dir ?(dir_kind=File_tree.Dune_file.Kind.Dune)
       ?(obj_dir=dir) ~modules ?alias_module ?lib_interface_module ~flags
-      ~requires ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false) () =
+      ~requires ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false)
+      ~opaque () =
   { super_context
   ; scope
   ; dir
@@ -78,9 +84,10 @@ let create ~super_context ~scope ~dir ?(dir_kind=File_tree.Dune_file.Kind.Dune)
   ; lib_interface_module
   ; flags
   ; requires
-  ; includes = Includes.make super_context ~requires
+  ; includes = Includes.make super_context ~requires ~opaque
   ; preprocessing
   ; no_keep_locs
+  ; opaque
   }
 
 let for_alias_module t =

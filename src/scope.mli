@@ -24,6 +24,7 @@ module DB : sig
   val create
     :  projects:Dune_project.t list
     -> context:string
+    -> opaque:bool
     -> installed_libs:Lib.DB.t
     -> (Path.t * Jbuild.Library.t) list
     -> t * Lib.DB.t

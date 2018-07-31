@@ -76,12 +76,13 @@ module Context = struct
       }
 
     let t ~profile ~x =
-      Common.t ~profile >>= fun base ->
-      field "switch" string >>= fun switch ->
-      let%map name = field "name" Name.t ~default:switch
+      let%map base = Common.t ~profile
+      and switch = field "switch" string
+      and name = field_o "name" Name.t
       and root = field_o "root" string
       and merlin = field_b "merlin"
       in
+      let name = Option.value ~default:switch name in
       let base = { base with targets = Target.add base.targets x } in
       { base
       ; switch

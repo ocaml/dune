@@ -237,7 +237,10 @@ follows:
 
 ::
 
-    build: [["dune" "build" "-p" name "-j" jobs]]
+    build: [
+      ["dune" "subst"] {pinned}
+      ["dune" "build" "-p" name "-j" jobs]
+    ]
 
 ``-p pkg`` is a shorthand for ``--root . --only-packages pkg --profile
 release --default-target @install``. ``-p`` is the short version of

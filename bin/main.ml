@@ -1020,9 +1020,9 @@ let get_prefix context ~from_command_line =
   | Some p -> Fiber.return (Path.of_string p)
   | None -> Context.install_prefix context
 
-let get_libdir context ~libdir_from_command_line =
+let get_libdir context ~prefix ~libdir_from_command_line =
   match libdir_from_command_line with
-  | Some p -> Fiber.return (Some (Path.of_string p))
+  | Some p -> Fiber.return (Some (Path.relative prefix p))
   | None -> Context.install_ocaml_libdir context
 
 let print_unix_error f =
@@ -1108,7 +1108,7 @@ let install_uninstall ~what =
          ~f:(fun (context, install_files) ->
            get_prefix context ~from_command_line:prefix_from_command_line
            >>= fun prefix ->
-           get_libdir context ~libdir_from_command_line
+           get_libdir context ~prefix ~libdir_from_command_line
            >>| fun libdir ->
            List.iter install_files ~f:(fun (package, path) ->
              let entries = Install.load_install_file path in

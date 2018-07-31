@@ -5,6 +5,10 @@ next
   passing in `--root` in conjunction with `--workspace` or `--config` would not
   work correctly (#997, @rgrinberg)
 
+- Add support for customizing env nodes in workspace files. The `env` stanza is
+  now allowed in toplevel position in the workspace file, or for individual
+  contexts. This feature requires `(dune lang 1.1)` (#1038, @rgrinberg)
+
 1.0.1 (19/07/2018)
 ------------------
 

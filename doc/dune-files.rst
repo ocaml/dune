@@ -488,7 +488,7 @@ stanza is rejected by dune:
 ocamllex
 --------
 
-``(ocamllex (<names>))`` is essentially a shorthand for:
+``(ocamllex <names>)`` is essentially a shorthand for:
 
 .. code:: scheme
 
@@ -503,13 +503,13 @@ To use a different rule mode, use the long form:
 .. code:: scheme
 
     (ocamllex
-      (modules (<names>))
+      (modules <names>)
       (mode    <mode>))
 
 ocamlyacc
 ---------
 
-``(ocamlyacc (<names>))`` is essentially a shorthand for:
+``(ocamlyacc <names>)`` is essentially a shorthand for:
 
 .. code:: scheme
 
@@ -524,7 +524,7 @@ To use a different rule mode, use the long form:
 .. code:: scheme
 
     (ocamlyacc
-      (modules (<names>))
+      (modules <names>)
       (mode    <mode>))
 
 menhir
@@ -1231,22 +1231,8 @@ follows:
 js_of_ocaml
 -----------
 
-In ``library`` and ``executables`` stanzas, you can specify js_of_ocaml options
-using ``(js_of_ocaml (<js_of_ocaml-options>))``.
-
-``<js_of_ocaml-options>`` are all optional:
-
-- ``(flags <flags>)`` to specify flags passed to ``js_of_ocaml``. This field
-  supports ``(:include ...)`` forms
-
-- ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
-  runtime files.
-
-``<flags>`` is specified in the `Ordered set language`_.
-
-The default value for ``(flags ...)`` depends on the selected build
-profile. The build profile ``dev`` (the default) will enable sourcemap
-and the pretty JavaScript output.
+A :ref:`dune-jsoo-field` exists in executable and libraries stanzas that allows
+one to customize options relevant to jsoo.
 
 .. _user-actions:
 

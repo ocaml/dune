@@ -1,6 +1,5 @@
-  $ cat dune-project
-  cat: dune-project: No such file or directory
-  [1]
+  $ [ -e dune-project ] || echo File does not exist
+  File does not exist
   $ mkdir src
   $ echo '(alias (name runtest) (action (progn)))' >  src/dune
   $ dune build

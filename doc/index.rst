@@ -20,6 +20,7 @@ Welcome to dune's documentation!
    advanced-topics
    configurator
    menhir
+   jsoo
    faq
    known-issues
    migration

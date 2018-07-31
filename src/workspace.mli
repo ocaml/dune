@@ -38,6 +38,7 @@ end
 type t =
   { merlin_context : string option
   ; contexts       : Context.t list
+  ; env            : Dune_env.Stanza.t option
   }
 
 val load : ?x:string -> ?profile:string -> Path.t -> t

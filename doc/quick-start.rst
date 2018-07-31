@@ -136,7 +136,7 @@ Add this field to your ``library`` or ``executable`` stanzas:
 
 .. code:: scheme
 
-    (preprocess (action (run %{bin:cppo} -V OCAML:%{ocaml_version} %{first-dep})))
+    (preprocess (action (run %{bin:cppo} -V OCAML:%{ocaml_version} %{input-file})))
 
 Additionally, if you are include a ``config.h`` file, you need to
 declare the dependency to this file via:
@@ -154,7 +154,7 @@ Write this in your ``dune`` file:
 
     (rule
      (targets foo.ml)
-     (deps    foo.cppo.ml <other files that foo.ml includes>)
+     (deps    (:first-dep foo.cppo.ml) <other files that foo.ml includes>)
      (action  (run %{bin:cppo} %{first-dep} -o %{targets})))
 
 Defining a library with C stubs
@@ -192,8 +192,8 @@ compilation and link flags. Write this ``dune`` file:
 
     (rule
      (targets c_flags.sexp c_library_flags.sexp)
-     (deps    config/discover.exe)
-     (action  (run %{first-dep} -ocamlc %{OCAMLC})))
+     (deps    (:discover config/discover.exe))
+     (action  (run %{discover} -ocamlc %{OCAMLC})))
 
 Then create a ``config`` subdirectory and write this ``dune`` file:
 
@@ -240,8 +240,8 @@ To generate a file ``foo.ml`` using a program from another directory:
 
     (rule
      (targets foo.ml)
-     (deps    ../generator/gen.exe)
-     (action  (run %{first-dep} -o %{targets})))
+     (deps    (:gen ../generator/gen.exe))
+     (action  (run %{gen} -o %{targets})))
 
 Defining tests
 ==============
@@ -252,8 +252,8 @@ Write this in your ``dune`` file:
 
     (alias
      (name    runtest)
-     (deps    my-test-program.exe)
-     (action  (run %{first-dep})))
+     (deps    (:my-prog my-test-program.exe))
+     (action  (run %{my-prog})))
 
 And run the tests with:
 

@@ -379,6 +379,13 @@ The build profile can be selected in the ``dune-workspace`` file by write a
 
 Note that the command line option ``--profile`` has precedence over this stanza.
 
+env
+~~~
+
+The ``env`` stanza can be used to set the base environment for all contexts in
+this workspace. This environment has the lowest precedence of all other ``env``
+stanzas. The syntax for this stanza is the same dune's :ref:`dune-env` stanza.
+
 context
 ~~~~~~~
 
@@ -407,6 +414,10 @@ context or can be the description of an opam switch, as follows:
   context. This has precedence over the command line option
   ``--profile``
 
+- ``(env <env>)`` to set the environment for a particular context. This is of
+  higher precedence than the toplevel ``env`` stanza in the workspace file. This
+  field the same options as the :ref:`dune-env` stanza.
+
 Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field in order to
 setup cross compilation. See :ref:`advanced-cross-compilation` for more
 information.
@@ -419,29 +430,6 @@ artifacts of a single context. Usually, you should use the artifacts from the
 For rare cases where this is not what you want, you can force dune to use a
 different build contexts for merlin by adding the field ``(merlin)`` to this
 context.
-
-Building JavaScript with js_of_ocaml
-====================================
-
-Dune knows how to generate a JavaScript version of an executable
-(``<name>.bc.js``) using the js_of_ocaml compiler (the ``js_of_ocaml-compiler``
-opam package must be installed).
-
-It supports two modes of compilation:
-
-- Direct compilation of a bytecode program to JavaScript. This mode allows
-  js_of_ocaml to perform whole program deadcode elimination and whole program
-  inlining.
-- Separate compilation, where compilation units are compiled to JavaScript
-  separately and then linked together. This mode is useful during development as
-  it builds more quickly.
-
-The separate compilation mode will be selected when the build profile is
-``dev``, which is the default. There is currently no other way to control this
-behaviour.
-
-See the section about :ref:`dune-jsoo` for passing custom flags to the
-js_of_ocaml compiler
 
 Distributing Projects
 =====================

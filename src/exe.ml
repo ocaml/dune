@@ -157,7 +157,7 @@ let link_exe
        ]);
   if linkage.ext = ".bc" then
     let rules =
-      Js_of_ocaml_rules.build_exe sctx ~dir ~js_of_ocaml ~src:exe ~requires
+      Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src:exe
     in
     let cm_and_flags =
       Build.fanout

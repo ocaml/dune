@@ -63,6 +63,8 @@ let includes             t = t.includes
 let preprocessing        t = t.preprocessing
 let no_keep_locs         t = t.no_keep_locs
 
+let context              t = Super_context.context t.super_context
+
 let create ~super_context ~scope ~dir ?(dir_kind=File_tree.Dune_file.Kind.Dune)
       ?(obj_dir=dir) ~modules ?alias_module ?lib_interface_module ~flags
       ~requires ?(preprocessing=Preprocessing.dummy) ?(no_keep_locs=false) () =

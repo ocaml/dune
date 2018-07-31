@@ -6,7 +6,7 @@ open Import
 
     A compilation context contains all the necessary information to
     preprocess and compile OCaml source files. Exactly one compilation
-    context is associated to each library, executable and executbales
+    context is associated to each library, executable and executables
     stanza.
 *)
 type t
@@ -32,6 +32,7 @@ val create
 val for_alias_module : t -> t
 
 val super_context        : t -> Super_context.t
+val context              : t -> Context.t
 val scope                : t -> Scope.t
 val dir                  : t -> Path.t
 val dir_kind             : t -> File_tree.Dune_file.Kind.t

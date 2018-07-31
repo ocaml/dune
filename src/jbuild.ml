@@ -1046,7 +1046,13 @@ module Executables = struct
     else
       s ^ "s"
 
-  let common =
+  let common
+    (* :  (Loc.t * string) list option
+     * -> (Loc.t * string) list option
+     * -> multi:bool
+     * -> unit
+     * -> t * Install_conf.t option Sexp.Of_sexp.t *)
+    =
     let%map buildable = Buildable.t
     and (_ : bool) = field "link_executables" ~default:true
                        (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
@@ -1072,8 +1078,8 @@ module Executables = struct
     fun names public_names ~multi ->
       let names =
         match names, public_names with
-        | _::_, _ -> names
-        | [], _::_ ->
+        | Some names, _ -> names
+        | None, Some public_names ->
           if dune_syntax >= (1, 1) then
             List.map public_names ~f:(fun (loc, p) ->
               match p with
@@ -1084,7 +1090,7 @@ module Executables = struct
             of_sexp_errorf loc
               "%s field may not be omitted before dune version 1.1"
               (pluralize ~multi "name")
-        | [], [] ->
+        | None, None ->
           if dune_syntax >= (1, 1) then
             of_sexp_errorf loc "either the %s or the %s field must be present"
               (pluralize ~multi "name")
@@ -1102,7 +1108,10 @@ module Executables = struct
         }
       in
       let has_public_name =
-        List.exists ~f:(fun (_, n) -> Option.is_some n) public_names
+        (* user could omit public names by avoiding the field or writing - *)
+        match public_names with
+        | None -> false
+        | Some pns -> List.exists ~f:(fun (_, n) -> Option.is_some n) pns
       in
       let to_install =
         match Link_mode.Set.best_install_mode t.modes with
@@ -1123,6 +1132,11 @@ module Executables = struct
             match mode.mode with
             | Native | Best -> ".exe"
             | Byte -> ".bc"
+          in
+          let public_names =
+            match public_names with
+            | None -> List.map names ~f:(fun _ -> (Loc.none, None))
+            | Some pns -> pns
           in
           List.map2 names public_names
             ~f:(fun (_, name) (_, pub) ->
@@ -1180,16 +1194,13 @@ module Executables = struct
             (names, pub_names))
            ~f:(fun (names, public_names) ->
              match names, public_names with
-             | None, None -> Ok ([], [])
-             | None, Some p -> Ok ([], p)
-             | Some names, None ->
-               Ok (names, List.map names ~f:(fun _ -> (Loc.none, None)))
              | Some names, Some public_names ->
                if List.length public_names = List.length names then
-                 Ok (names, public_names)
+                 Ok (Some names, Some public_names)
                else
                  Error "The list of public names must be of the same \
-                        length as the list of names")
+                        length as the list of names"
+             | names, public_names -> Ok (names, public_names))
        and f = common in
        f names public_names ~multi:true)
 
@@ -1198,10 +1209,10 @@ module Executables = struct
       (let%map name = field_o "name" (located string)
        and public_name = field_o "public_name" (located string)
        and f = common in
-       f (Option.to_list name)
-         (match public_name with
-          | None -> [Loc.none, None]
-          | Some (loc, n) -> [loc, Some n]) ~multi:false)
+       f (Option.map name ~f:List.singleton)
+         (Option.map public_name ~f:(fun (loc, s) ->
+            [loc, Some s]))
+         ~multi:false)
 end
 
 module Rule = struct

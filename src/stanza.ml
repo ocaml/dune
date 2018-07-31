@@ -22,8 +22,7 @@ end
 
 let file_kind () =
   let open Sexp.Of_sexp in
-  Syntax.get_exn syntax >>| fun ver ->
-  if ver < (1, 0) then File_kind.Jbuild else Dune
+  Syntax.get_exn syntax >>| File_kind.of_syntax
 
 module Of_sexp = struct
   include Sexp.Of_sexp
@@ -45,11 +44,15 @@ module Of_sexp = struct
             }
         | _ -> None)
 
+  let switch_file_kind ~jbuild ~dune =
+    file_kind () >>= function
+    | Jbuild -> jbuild
+    | Dune -> dune
+
   let parens_removed_in_dune_generic ~is_record t =
-    Syntax.get_exn syntax >>= fun ver ->
-    if ver < (1, 0) then
-      enter t
-    else
+    switch_file_kind
+      ~jbuild:(enter t)
+      ~dune:(
       try_
         t
         (function
@@ -70,6 +73,7 @@ module Of_sexp = struct
               (function
                 | Parens_no_longer_necessary _ as exn -> raise exn
                 | _ -> raise exn))
+    )
 
   let record parse =
     parens_removed_in_dune_generic (fields parse) ~is_record:true

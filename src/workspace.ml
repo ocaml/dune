@@ -117,14 +117,14 @@ module Context = struct
       ]
 
   let t ~profile ~x =
-    Syntax.get_exn syntax >>= function
-    | (0, _) ->
-      (* jbuild-workspace files *)
-      (peek_exn >>= function
-       | List (_, List _ :: _) ->
-         Sexp.Of_sexp.record (Opam.t ~profile ~x) >>| fun x -> Opam x
-       | _ -> t ~profile ~x)
-    | _ -> t ~profile ~x
+    switch_file_kind
+      ~jbuild:
+        (* jbuild-workspace files *)
+        (peek_exn >>= function
+         | List (_, List _ :: _) ->
+           Sexp.Of_sexp.record (Opam.t ~profile ~x) >>| fun x -> Opam x
+         | _ -> t ~profile ~x)
+      ~dune:(t ~profile ~x)
 
   let name = function
     | Default _ -> "default"

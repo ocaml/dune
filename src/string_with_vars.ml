@@ -113,13 +113,10 @@ let t =
     | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
     | List (loc, _) -> Sexp.Of_sexp.of_sexp_error loc "Unexpected list"
   in
-  Syntax.get_exn Stanza.syntax >>= fun syntax_version ->
-  let template =
-    match syntax_version with
-    | (0, _) -> jbuild
-    | (_, _) -> dune
+  let template_parser = Stanza.Of_sexp.switch_file_kind ~jbuild ~dune in
+  let%map syntax_version = Syntax.get_exn Stanza.syntax
+  and template = template_parser
   in
-  template >>| fun template ->
   {template; syntax_version}
 
 let loc t = t.template.loc

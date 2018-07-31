@@ -117,9 +117,8 @@ module Of_sexp : sig
   (** Return the location of the list currently being parsed. *)
   val loc : (Loc.t, _) parser
 
-  (** End of sequence condition. Returns [true] iff they are no more
-      S-expressions to parse *)
-  val eos : (bool, _) parser
+  (** End of sequence condition. Uses [then_] if there are no more
+      S-expressions to parse, [else_] otherwise. *)
   val if_eos : then_:('a, 'b) parser -> else_:('a, 'b) parser -> ('a, 'b) parser
 
   (** If the next element of the sequence is a list, parse it with

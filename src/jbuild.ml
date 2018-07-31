@@ -1302,12 +1302,14 @@ module Rule = struct
     and locks = field "locks" (list String_with_vars.t) ~default:[]
     and mode =
       map_validate
-        (field_b
+        (let%map fallback =
+           field_b
            ~check:(Syntax.renamed_in Stanza.syntax (1, 0)
                      ~to_:"(mode fallback)")
-           "fallback" >>= fun fallback ->
-         field_o "mode" Mode.t >>= fun mode ->
-         return (fallback, mode))
+           "fallback"
+         and mode = field_o "mode" Mode.t
+         in
+         (fallback, mode))
         ~f:(function
           | true, Some _ ->
             Error "Cannot use both (fallback) and (mode ...) at the \

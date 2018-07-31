@@ -12,10 +12,11 @@ module File = struct
     peek_exn >>= function
     | List (_, [_; Atom (_, A "as"); _]) ->
       enter
-        (Path.t >>= fun src ->
-         junk >>= fun () ->
-         Path.t >>= fun dst ->
-         return { src; dst })
+        (let%map src = Path.t
+         and () = junk
+         and dst = Path.t
+         in
+         { src; dst })
     | sexp ->
       Sexp.Of_sexp.of_sexp_errorf (Sexp.Ast.loc sexp)
         "(<file> as <file>) expected"

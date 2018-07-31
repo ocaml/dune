@@ -110,13 +110,12 @@ let default =
   }
 
 let t =
-  field "display" Display.t ~default:default.display
-  >>= fun display ->
-  field "jobs" Concurrency.t ~default:default.concurrency
-  >>= fun concurrency ->
-  return { display
-         ; concurrency
-         }
+  let%map display = field "display" Display.t ~default:default.display
+  and concurrency = field "jobs" Concurrency.t ~default:default.concurrency
+  in
+  { display
+  ; concurrency
+  }
 
 let t = fields t
 

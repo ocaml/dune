@@ -28,29 +28,35 @@ struct
     Sexp.Of_sexp.fix (fun t ->
       sum
         [ "run",
-          (Program.t     >>= fun prog ->
-           repeat string >>| fun args ->
+          (let%map prog = Program.t
+           and args = repeat string
+           in
            Run (prog, args))
         ; "chdir",
-          (path >>= fun dn ->
-           t    >>| fun t ->
+          (let%map dn = path
+           and t = t
+           in
            Chdir (dn, t))
         ; "setenv",
-          (string >>= fun k ->
-           string >>= fun v ->
-           t      >>| fun t ->
+          (let%map k = string
+           and v = string
+           and t = t
+           in
            Setenv (k, v, t))
         ; "with-stdout-to",
-          (path >>= fun fn ->
-           t    >>| fun t ->
+          (let%map fn = path
+           and t = t
+           in
            Redirect (Stdout, fn, t))
         ; "with-stderr-to",
-          (path >>= fun fn ->
-           t    >>| fun t  ->
+          (let%map fn = path
+           and t = t
+           in
            Redirect (Stderr, fn, t))
         ; "with-outputs-to",
-          (path >>= fun fn ->
-           t    >>| fun t  ->
+          (let%map fn = path
+           and t = t
+           in
            Redirect (Outputs, fn, t))
         ; "ignore-stdout",
           (t >>| fun t -> Ignore (Stdout, t))
@@ -61,35 +67,41 @@ struct
         ; "progn",
           (repeat t >>| fun l -> Progn l)
         ; "echo",
-          (string >>= fun x ->
-           repeat string >>| fun xs ->
+          (let%map x = string
+           and xs = repeat string
+           in
            Echo (x :: xs))
         ; "cat",
           (path >>| fun x -> Cat x)
         ; "copy",
-          (path >>= fun src ->
-           path >>| fun dst ->
+          (let%map src = path
+           and dst = path
+           in
            Copy (src, dst))
         ; "copy#",
-          (path >>= fun src ->
-           path >>| fun dst ->
+          (let%map src = path
+           and dst = path
+           in
            Copy_and_add_line_directive (src, dst))
         ; "copy-and-add-line-directive",
-          (path >>= fun src ->
-           path >>| fun dst ->
+          (let%map src = path
+           and dst = path
+           in
            Copy_and_add_line_directive (src, dst))
         ; "system",
           (string >>| fun cmd -> System cmd)
         ; "bash",
           (string >>| fun cmd -> Bash cmd)
         ; "write-file",
-          (path >>= fun fn ->
-           string >>| fun s ->
+          (let%map fn = path
+           and s = string
+           in
            Write_file (fn, s))
         ; "diff",
-          (path >>= fun file1 ->
-           path >>= fun file2 ->
-           Stanza.file_kind () >>| fun kind ->
+          (let%map file1 = path
+           and file2 = path
+           and kind = Stanza.file_kind ()
+           in
            let mode =
              match kind with
              | Jbuild -> Diff_mode.Text_jbuild
@@ -97,9 +109,10 @@ struct
            in
            Diff { optional = false; file1; file2; mode })
         ; "diff?",
-          (path >>= fun file1 ->
-           path >>= fun file2 ->
-           Stanza.file_kind () >>| fun kind ->
+          (let%map file1 = path
+           and file2 = path
+           and kind = Stanza.file_kind ()
+           in
            let mode =
              match kind with
              | Jbuild -> Diff_mode.Text_jbuild
@@ -107,9 +120,10 @@ struct
            in
            Diff { optional = true; file1; file2; mode })
         ; "cmp",
-          (Syntax.since Stanza.syntax (1, 0) >>= fun () ->
-           path >>= fun file1 ->
-           path >>| fun file2 ->
+          (let%map () = Syntax.since Stanza.syntax (1, 0)
+           and file1 = path
+           and file2 = path
+           in
            Diff { optional = false; file1; file2; mode = Binary })
         ])
 

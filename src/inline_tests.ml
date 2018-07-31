@@ -34,21 +34,18 @@ module Backend = struct
 
       let parse =
         record
-          (loc >>= fun loc ->
-           field "runner_libraries" (list (located string)) ~default:[]
-           >>= fun runner_libraries ->
-           Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
-           field_o "generate_runner" (located Action.Unexpanded.t)
-           >>= fun generate_runner ->
-           field "extends" (list (located string)) ~default:[]
-           >>= fun extends ->
-           return
-             { loc
-             ; runner_libraries
-             ; flags
-             ; generate_runner
-             ; extends
-             })
+          (let%map loc = loc
+           and runner_libraries = field "runner_libraries" (list (located string)) ~default:[]
+           and flags = Ordered_set_lang.Unexpanded.field "flags"
+           and generate_runner = field_o "generate_runner" (located Action.Unexpanded.t)
+           and extends = field "extends" (list (located string)) ~default:[]
+           in
+           { loc
+           ; runner_libraries
+           ; flags
+           ; generate_runner
+           ; extends
+           })
     end
 
     type t =
@@ -137,19 +134,18 @@ include Sub_system.Register_end_point(
         | true -> loc >>| empty
         | false ->
           record
-            (loc >>= fun loc ->
-             field "deps" (list Dep_conf.t) ~default:[] >>= fun deps ->
-             Ordered_set_lang.Unexpanded.field "flags" >>= fun flags ->
-             field_o "backend" (located string) >>= fun backend ->
-             field "libraries" (list (located string)) ~default:[]
-             >>= fun libraries ->
-             return
-               { loc
-               ; deps
-               ; flags
-               ; backend
-               ; libraries
-               })
+            (let%map loc = loc
+             and deps = field "deps" (list Dep_conf.t) ~default:[]
+             and flags = Ordered_set_lang.Unexpanded.field "flags"
+             and backend = field_o "backend" (located string)
+             and libraries = field "libraries" (list (located string)) ~default:[]
+             in
+             { loc
+             ; deps
+             ; flags
+             ; backend
+             ; libraries
+             })
     end
 
     let gen_rules c ~(info:Info.t) ~backends =

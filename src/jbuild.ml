@@ -327,10 +327,9 @@ module Dep_conf = struct
            Source_tree x)
         ]
     in
-    peek_exn >>= function
-    | Template _ | Atom _ | Quoted_string _ ->
-      String_with_vars.t >>| fun x -> File x
-    | List _ -> t
+    if_list
+      ~then_:t
+      ~else_:(String_with_vars.t >>| fun x -> File x)
 
   open Sexp
   let sexp_of_t = function
@@ -1032,12 +1031,13 @@ module Executables = struct
       Sexp.Of_sexp.enum simple_representations
 
     let t =
-      peek_exn >>= function
-      | List _ ->
-        enter (let%map mode = Mode_conf.t
-               and kind = Binary_kind.t in
-               { mode; kind })
-      | _ -> simple
+      if_list
+        ~then_:
+          (enter
+             (let%map mode = Mode_conf.t
+              and kind = Binary_kind.t in
+              { mode; kind }))
+        ~else_:simple
 
     let simple_sexp_of_t link_mode =
       let is_ok (_, candidate) =

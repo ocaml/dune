@@ -17,7 +17,7 @@ Test that executables stop the recursion
 Test with C stubs in sub-directories
 ------------------------------------
 
-  $ dune build --root test3 @@runtest
+  $ dune runtest --root test3
   Entering directory 'test3'
           main alias runtest
   Hello, world!

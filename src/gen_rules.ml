@@ -730,11 +730,17 @@ module Gen(P : Install_rules.Params) = struct
        match SC.stanzas_in sctx ~dir with
        | Some x -> gen_rules x
        | None ->
-         if components <> [] &&
-            Option.is_none
-              (File_tree.find_dir (SC.file_tree sctx)
-                 (Path.drop_build_context_exn dir)) then
-           SC.load_dir sctx ~dir:(Path.parent_exn dir));
+         if components <> [] then begin
+           match File_tree.find_dir (SC.file_tree sctx)
+                   (Path.drop_build_context_exn dir) with
+           | None ->
+             SC.load_dir sctx ~dir:(Path.parent_exn dir)
+           | Some _ ->
+             match Dir_contents.kind (Dir_contents.get sctx ~dir) with
+             | Group_part root ->
+               SC.load_dir sctx ~dir:(Dir_contents.dir root)
+             | _ -> ()
+         end);
     match components with
     | [] -> These (String.Set.of_list [".js"; "_doc"; ".ppx"])
     | [(".js"|"_doc"|".ppx")] -> All

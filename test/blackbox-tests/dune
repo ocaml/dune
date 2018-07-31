@@ -1,20 +1,15 @@
 (ignored_subdirs (test-cases))
 
-(library
- (name platform)
- (modules platform)
- (libraries stdune))
-
 (executable
  (name cram)
  (modules cram)
- (libraries test_common platform dune configurator))
+ (libraries test_common dune configurator))
 
 (ocamllex cram)
 
 (executable
  (name gen_tests)
- (libraries stdune platform usexp)
+ (libraries stdune usexp)
  (modules gen_tests))
 
 (include dune.inc)

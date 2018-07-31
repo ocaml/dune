@@ -52,9 +52,8 @@
  (action
   (chdir
    test-cases/configurator
-   (progn
-    (run %{exe:cram.exe} -skip-platforms win -test run.t)
-    (diff? run.t run.t.corrected)))))
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))
+ (enabled_if (<> %{ocaml-config:system} win)))
 
 (alias
  (name copy_files)
@@ -315,9 +314,8 @@
  (action
   (chdir
    test-cases/github764
-   (progn
-    (run %{exe:cram.exe} -skip-platforms win -test run.t)
-    (diff? run.t run.t.corrected)))))
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))
+ (enabled_if (<> %{ocaml-config:system} win)))
 
 (alias
  (name github784)
@@ -535,15 +533,10 @@
   (chdir
    test-cases/output-obj
    (progn
-    (run
-     %{exe:cram.exe}
-     -skip-versions
-     <4.06.0
-     -skip-platforms
-     macosx,win
-     -test
-     run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
+    (diff? run.t run.t.corrected))))
+ (enabled_if
+  (and (<> %{ocaml-config:system} macosx) (<> %{ocaml-config:system} win))))
 
 (alias
  (name package-dep)

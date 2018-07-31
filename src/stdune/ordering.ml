@@ -16,6 +16,11 @@ let to_int = function
   | Eq ->  0
   | Gt ->  1
 
+let to_string = function
+  | Lt -> "<"
+  | Eq -> "="
+  | Gt -> ">"
+
 let neq = function
   | Eq -> false
   | Lt | Gt -> true

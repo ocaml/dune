@@ -82,16 +82,16 @@ let alias sctx ~dir ~scope (alias_conf : Alias_conf.t) =
         } in
       Blang.eval_bool blang ~dir ~f
   in
+  let stamp =
+    let module S = Sexp.To_sexp in
+    Sexp.List
+      [ Sexp.unsafe_atom_of_string "user-alias"
+      ; Jbuild.Bindings.sexp_of_t Jbuild.Dep_conf.sexp_of_t alias_conf.deps
+      ; S.option Action.Unexpanded.sexp_of_t
+          (Option.map alias_conf.action ~f:snd)
+      ]
+  in
   if enabled then
-    let stamp =
-      let module S = Sexp.To_sexp in
-      Sexp.List
-        [ Sexp.unsafe_atom_of_string "user-alias"
-        ; Jbuild.Bindings.sexp_of_t Jbuild.Dep_conf.sexp_of_t alias_conf.deps
-        ; S.option Action.Unexpanded.sexp_of_t
-            (Option.map alias_conf.action ~f:snd)
-        ]
-    in
     add_alias sctx
       ~dir
       ~name:alias_conf.name
@@ -112,3 +112,9 @@ let alias sctx ~dir ~scope (alias_conf : Alias_conf.t) =
            ~targets:Alias
            ~targets_dir:dir
            ~scope)
+  else
+    add_alias sctx
+      ~dir
+      ~name:alias_conf.name
+      ~stamp
+      (Build.return (Action.Progn []))

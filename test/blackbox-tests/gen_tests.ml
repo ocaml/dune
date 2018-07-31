@@ -18,14 +18,40 @@ module Sexp = struct
     |> Usexp.Ast.remove_locs
 end
 
-let alias ?action name ~deps =
+module Platform = struct
+  type t = Win | Mac
+
+  open Usexp
+
+  let to_string = function
+    | Win -> "win"
+    | Mac -> "macosx"
+
+  let t t = atom (to_string t)
+
+  let system_var = Sexp.parse "%{ocaml-config:system}"
+
+  let enabled_if = function
+    | [] -> None
+    | [x] -> Some (List [atom "<>"; system_var; t x])
+    | ps ->
+      Some (List (
+        atom "and"
+        :: List.map ps ~f:(fun p -> List [atom "<>"; system_var; t p])
+      ))
+end
+
+let alias ?enabled_if ?action name ~deps =
   Sexp.constr "alias"
     (Sexp.fields (
        [ "name", [Usexp.atom name]
        ; "deps", deps
        ] @ (match action with
          | None -> []
-         | Some a -> ["action", [a]])))
+         | Some a -> ["action", [a]])
+       @ (match enabled_if with
+         | None -> []
+         | Some e -> ["enabled_if", [e]])))
 
 module Test = struct
   type t =
@@ -56,7 +82,7 @@ module Test = struct
       | None -> []
       | Some s -> ["-skip-versions"; s]
     in
-    let skip_platforms = Platform.to_cmd t.skip_platforms in
+    let enabled_if = Platform.enabled_if t.skip_platforms in
     let action =
       List
         [ atom "chdir"
@@ -67,9 +93,7 @@ module Test = struct
                 ([ atom "run"
                  ; Sexp.parse "%{exe:cram.exe}" ]
                  @ (List.map ~f:Usexp.atom_or_quoted_string
-                      (skip_version
-                       @ skip_platforms
-                       @ ["-test"; "run.t"])))
+                      (skip_version @ ["-test"; "run.t"])))
             ; Sexp.strings ["diff?"; "run.t"; "run.t.corrected"]
             ]
 
@@ -84,6 +108,7 @@ module Test = struct
              ; v
              ; action ] in
     alias t.name
+      ?enabled_if
       ~deps:(
         [ Sexp.strings ["package"; "dune"]
         ; Sexp.strings [ "source_tree"

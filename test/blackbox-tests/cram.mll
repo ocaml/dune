@@ -100,17 +100,15 @@ and postprocess tbl b = parse
 
   let () =
     let skip_versions = ref [] in
-    let skip_platforms = ref [] in
     let expect_test = ref None in
     let args =
-      (Platform.argv skip_platforms)
-      :: [ "-skip-versions"
-         , Arg.String (fun s -> skip_versions := parse_skip_versions s)
-         , "Comma separated versions of ocaml where to skip test"
-         ; "-test"
-         , Arg.String (fun s -> expect_test := Some s)
-         , "expect test file"
-         ] in
+      [ "-skip-versions"
+      , Arg.String (fun s -> skip_versions := parse_skip_versions s)
+      , "Comma separated versions of ocaml where to skip test"
+      ; "-test"
+      , Arg.String (fun s -> expect_test := Some s)
+      , "expect test file"
+      ] in
     Configurator.main ~args ~name:"cram" (fun configurator ->
       let expect_test =
         match !expect_test with
@@ -122,12 +120,6 @@ and postprocess tbl b = parse
           |> parse_version in
         if List.exists !skip_versions ~f:(fun (op, v') ->
           test op ocaml_version v') then
-          exit 0;
-        let platform =
-          Configurator.ocaml_config_var_exn configurator "system" in
-        if List.exists !skip_platforms ~f:(fun p ->
-          Platform.to_string p = platform
-        ) then
           exit 0;
       end;
       Test_common.run_expect_test expect_test ~f:(fun file_contents lexbuf ->

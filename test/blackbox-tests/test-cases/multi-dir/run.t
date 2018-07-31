@@ -27,6 +27,6 @@ Test some error cases
 
   $ dune build --root error2
   Entering directory 'error2'
-  File "dune", line 2, characters 0-23:
+  File "dune", line 2, characters 0-29:
   Error: The 'include_subdirs' stanza cannot appear more than once
   [1]

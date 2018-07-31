@@ -500,7 +500,7 @@ module Dir_status = struct
             let is_group_root, has_modules_consumers =
               analyze_stanzas d.stanzas
             in
-            if is_group_root = Some True then
+            if Option.is_some is_group_root then
               Group_root (ft_dir, d)
             else if not has_modules_consumers &&
                     dir <> project_root &&
@@ -524,7 +524,7 @@ module Dir_status = struct
           let is_group_root, has_modules_consumers =
             analyze_stanzas d.stanzas
           in
-          if is_group_root = Some True then
+          if Option.is_some is_group_root then
             Group_root (ft_dir, d)
           else if has_modules_consumers then
             Standalone (ft_dir, d)

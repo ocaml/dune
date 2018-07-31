@@ -366,7 +366,7 @@ module Tests : sig
 end
 
 module Include_subdirs : sig
-  type t = True | False
+  type t = Unqualified
 end
 
 type Stanza.t +=

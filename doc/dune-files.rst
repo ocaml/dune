@@ -800,11 +800,11 @@ include_subdirs
 The ``include_subdirs`` is used to control how dune considers
 sub-directories of the current directory. By default, it considers
 them as independent directories. However, by adding ``(include_subdirs
-true)`` or simply ``(include_subdirs)`` to your ``dune`` file, dune
-will assume that the sub-directories of the current directory are part
-of the same group of directories. In particular, dune will scan all
-these directories at once when looking for OCaml/Reason files. This
-allows you to split a library between several directories.
+<mode>)`` to your ``dune`` file, dune will assume that the
+sub-directories of the current directory are part of the same group of
+directories. In particular, dune will scan all these directories at
+once when looking for OCaml/Reason files. This allows you to split a
+library between several directories.
 
 Sub-directories are included recursively, however the recursion will
 stop when encountering a sub-directory that:
@@ -813,6 +813,12 @@ stop when encountering a sub-directory that:
 - contains ``(include_subdirs true)`` or ``(include_subdirs)``
 - contains one of the following stanza that consume modules:
   ``library``, ``executable(s)`` or ``test(s)``.
+
+``<mode>`` represent how modules in sub-directories are
+seen. Currently the only supported mode is ``unqualified``, meaning
+that all modules are seen as if they were all in the same
+directory. In particular, you cannot have two modules with the same
+name in two different directories.
 
 Common items
 ============

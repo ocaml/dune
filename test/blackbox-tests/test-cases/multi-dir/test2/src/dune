@@ -2,4 +2,4 @@
 
 (rule (with-stdout-to generated.ml (run gen/gen.exe)))
 
-(include_subdirs true)
+(include_subdirs unqualified)

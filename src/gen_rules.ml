@@ -671,7 +671,11 @@ module Gen(P : Install_rules.Params) = struct
       loop stanzas [] []
     in
     Option.iter (Merlin.merge_all merlins) ~f:(fun m ->
-      Merlin.add_rules sctx ~dir:ctx_dir ~scope ~dir_kind:kind
+      let more_src_dirs =
+        List.map (Dir_contents.dirs dir_contents) ~f:(fun dc ->
+          Path.drop_optional_build_context (Dir_contents.dir dc))
+      in
+      Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~scope ~dir_kind:kind
         (Merlin.add_source_dir m src_dir));
     Utop.setup sctx ~dir:ctx_dir ~scope ~libs:(
       List.filter_map stanzas ~f:(function

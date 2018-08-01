@@ -6,5 +6,7 @@
 
 (library
  (name bar)
- (modules ())
+ (modules file)
  (preprocess (pps fooppx)))
+
+(include_subdirs unqualified)

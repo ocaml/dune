@@ -59,7 +59,7 @@ modules you want.
 
 Note that by default libraries and other things that consume
 OCaml/Reason modules only consume modules from the directory where the
-stanza appear. In order to delcare a multi-directory library, you need
+stanza appear. In order to declare a multi-directory library, you need
 to use the :ref:`include_subdirs` stanza.
 
 ``<optional-fields>`` are:
@@ -810,7 +810,7 @@ Sub-directories are included recursively, however the recursion will
 stop when encountering a sub-directory that:
 
 - is part of a different project (for instance when vendoring projects)
-- contains ``(include_subdirs true)`` or ``(include_subdirs)``
+- contains ``(include_subdirs unqualified)``
 - contains one of the following stanza that consume modules:
   ``library``, ``executable(s)`` or ``test(s)``.
 

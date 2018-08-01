@@ -65,6 +65,8 @@ val cmt_file  : t -> obj_dir:Path.t -> Ml_kind.t -> Path.t option
 
 val obj_file : t -> obj_dir:Path.t -> ext:string -> Path.t
 
+val dir : t -> Path.t
+
 (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx]
     and the module has no implementation. *)
 val cm_file_unsafe : t -> obj_dir:Path.t -> Cm_kind.t -> Path.t

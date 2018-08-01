@@ -449,6 +449,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name multi-dir)
+ (deps (package dune) (source_tree test-cases/multi-dir))
+ (action
+  (chdir
+   test-cases/multi-dir
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name multiple-private-libs)
  (deps (package dune) (source_tree test-cases/multiple-private-libs))
  (action
@@ -781,6 +789,7 @@
   (alias merlin-tests)
   (alias meta-gen)
   (alias misc)
+  (alias multi-dir)
   (alias multiple-private-libs)
   (alias no-installable-mode)
   (alias no-name-field)
@@ -869,6 +878,7 @@
   (alias merlin-tests)
   (alias meta-gen)
   (alias misc)
+  (alias multi-dir)
   (alias no-installable-mode)
   (alias no-name-field)
   (alias null-dep)

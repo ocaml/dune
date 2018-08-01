@@ -1534,6 +1534,7 @@ let get_collector t ~dir =
        else
          "Build_system.get_collector called on closed directory")
       [ "dir", Path.sexp_of_t dir
+      ; "load_dir_stack", Sexp.To_sexp.list Path.sexp_of_t t.load_dir_stack
       ]
 
 let add_rule t (rule : Build_interpret.Rule.t) =

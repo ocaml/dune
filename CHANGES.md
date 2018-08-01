@@ -18,6 +18,9 @@ next
 - Interpret `X` in `--libdir X` as relative to `PREFIX` when `X` is relative
   (#1072, fix #1070, @diml)
 
+- Add support for multi directory libraries by writing
+  `(include_subdirs qualified)` (#1034, @diml)
+
 1.0.1 (19/07/2018)
 ------------------
 

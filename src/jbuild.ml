@@ -83,14 +83,12 @@ let c_name, cxx_name =
     plain_string (fun ~loc s ->
       if match s with
         | "" | "." | ".."  -> true
-        | _ -> Filename.basename s <> s then
+        | _ -> false then
         of_sexp_errorf loc
-          "%S is not a valid %s name.\n\
-           Hint: To use %s files from another directory, use a \
-           (copy_files <dir>/*.%s) stanza instead."
+          "%S is not a valid %s name."
           s what what ext
       else
-        s)
+        (loc, s))
   in
   (make "C"   "c",
    make "C++" "cpp")
@@ -836,9 +834,9 @@ module Library = struct
     ; modes                    : Mode_conf.Set.t
     ; kind                     : Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
-    ; c_names                  : string list
+    ; c_names                  : (Loc.t * string) list
     ; cxx_flags                : Ordered_set_lang.Unexpanded.t
-    ; cxx_names                : string list
+    ; cxx_names                : (Loc.t * string) list
     ; library_flags            : Ordered_set_lang.Unexpanded.t
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
@@ -1644,15 +1642,26 @@ module Documentation = struct
       )
 end
 
+module Include_subdirs = struct
+  type t = No | Unqualified
+
+  let t =
+    enum
+      [ "no", No
+      ; "unqualified", Unqualified
+      ]
+end
+
 type Stanza.t +=
-  | Library     of Library.t
-  | Executables of Executables.t
-  | Rule        of Rule.t
-  | Install     of Install_conf.t
-  | Alias       of Alias_conf.t
-  | Copy_files  of Copy_files.t
-  | Documentation of Documentation.t
-  | Tests       of Tests.t
+  | Library         of Library.t
+  | Executables     of Executables.t
+  | Rule            of Rule.t
+  | Install         of Install_conf.t
+  | Alias           of Alias_conf.t
+  | Copy_files      of Copy_files.t
+  | Documentation   of Documentation.t
+  | Tests           of Tests.t
+  | Include_subdirs of Loc.t * Include_subdirs.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -1722,6 +1731,11 @@ module Stanzas = struct
     ; "env",
       (let%map x = Dune_env.Stanza.t in
        [Dune_env.T x])
+    ; "include_subdirs",
+      (let%map () = Syntax.since Stanza.syntax (1, 1)
+       and t = Include_subdirs.t
+       and loc = loc in
+       [Include_subdirs (loc, t)])
     ]
 
   let jbuild_parser =

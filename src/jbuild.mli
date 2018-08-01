@@ -215,9 +215,9 @@ module Library : sig
     ; modes                    : Mode_conf.Set.t
     ; kind                     : Kind.t
     ; c_flags                  : Ordered_set_lang.Unexpanded.t
-    ; c_names                  : string list
+    ; c_names                  : (Loc.t * string) list
     ; cxx_flags                : Ordered_set_lang.Unexpanded.t
-    ; cxx_names                : string list
+    ; cxx_names                : (Loc.t * string) list
     ; library_flags            : Ordered_set_lang.Unexpanded.t
     ; c_library_flags          : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
@@ -365,15 +365,20 @@ module Tests : sig
     }
 end
 
+module Include_subdirs : sig
+  type t = No | Unqualified
+end
+
 type Stanza.t +=
-  | Library     of Library.t
-  | Executables of Executables.t
-  | Rule        of Rule.t
-  | Install     of Install_conf.t
-  | Alias       of Alias_conf.t
-  | Copy_files  of Copy_files.t
-  | Documentation of Documentation.t
-  | Tests       of Tests.t
+  | Library         of Library.t
+  | Executables     of Executables.t
+  | Rule            of Rule.t
+  | Install         of Install_conf.t
+  | Alias           of Alias_conf.t
+  | Copy_files      of Copy_files.t
+  | Documentation   of Documentation.t
+  | Tests           of Tests.t
+  | Include_subdirs of Loc.t * Include_subdirs.t
 
 module Stanzas : sig
   type t = Stanza.t list

@@ -180,11 +180,33 @@ type modules =
     rev_map : Buildable.t Module.Name.Map.t
   }
 
+let empty_modules =
+  { libraries = String.Map.empty
+  ; executables = String.Map.empty
+  ; rev_map = Module.Name.Map.empty
+  }
 type t =
-  { text_files : String.Set.t
+  { kind : kind
+  ; dir : Path.t
+  ; text_files : String.Set.t
   ; modules : modules Lazy.t
   ; mlds : (Jbuild.Documentation.t * Path.t list) list Lazy.t
   }
+
+and kind =
+  | Standalone
+  | Group_root of t list Lazy.t
+  | Group_part of t
+
+let kind t = t.kind
+let dir t = t.dir
+
+let dirs t =
+  match t.kind with
+  | Standalone -> [t]
+  | Group_root (lazy l)
+  | Group_part { kind = Group_root (lazy l); _ } -> t :: l
+  | Group_part { kind = _; _ } -> assert false
 
 let text_files t = t.text_files
 
@@ -226,7 +248,7 @@ let mlds t (doc : Documentation.t) =
       ]
 
 (* As a side-effect, setup user rules and copy_files rules. *)
-let load_text_files sctx d =
+let load_text_files sctx ft_dir d =
   let { Super_context.Dir_with_jbuild.
         ctx_dir = dir
       ; src_dir
@@ -258,8 +280,7 @@ let load_text_files sctx d =
       | _ -> [])
     |> String.Set.of_list
   in
-  String.Set.union generated_files
-    (Super_context.source_files sctx ~src_path:src_dir)
+  String.Set.union generated_files (File_tree.Dir.files ft_dir)
 
 let modules_of_files ~dir ~files =
   let make_module syntax base fn =
@@ -296,8 +317,7 @@ let modules_of_files ~dir ~files =
   Module.Name.Map.merge impls intfs ~f:(fun name impl intf ->
     Some (Module.make name ?impl ?intf))
 
-let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~files =
-  let modules = modules_of_files ~dir:d.ctx_dir ~files in
+let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
   let libs, exes =
     List.filter_partition_map d.stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
@@ -427,23 +447,201 @@ let build_mlds_map (d : Super_context.Dir_with_jbuild.t) ~files =
       Some (doc, List.map (String.Map.values mlds) ~f:(Path.relative dir))
     | _ -> None)
 
-let get =
-  let cache = Hashtbl.create 32 in
-  fun sctx ~dir ->
-    Hashtbl.find_or_add cache dir ~f:(fun dir ->
-      match Super_context.stanzas_in sctx ~dir with
-      | None ->
-        { text_files = String.Set.empty
-        ; modules = lazy
-            { libraries = String.Map.empty
-            ; executables = String.Map.empty
-            ; rev_map = Module.Name.Map.empty
-            }
+module Dir_status = struct
+  type t =
+    | Empty_standalone of File_tree.Dir.t option
+    (* Directory with no libraries or executables that is not part of
+       a multi-directory group *)
+
+    | Is_component_of_a_group_but_not_the_root of
+        Super_context.Dir_with_jbuild.t option
+    (* Sub-directory of a directory with [(include_subdirs x)] where
+       [x] is not [no] *)
+
+    | Standalone of File_tree.Dir.t
+                    * Super_context.Dir_with_jbuild.t
+    (* Directory with at least one library or executable *)
+
+    | Group_root of File_tree.Dir.t
+                    * Super_context.Dir_with_jbuild.t
+    (* Directory with [(include_subdirs x)] where [x] is not [no] *)
+
+  let is_standalone = function
+    | Standalone _ | Empty_standalone _ -> true
+    | _ -> false
+
+  let cache = Hashtbl.create 32
+
+  let analyze_stanzas stanzas =
+    let is_group_root, has_modules_consumers =
+      List.fold_left stanzas ~init:(None, false) ~f:(fun acc stanza ->
+        let is_group_root, has_modules_consumers = acc in
+        match stanza with
+        | Include_subdirs (loc, x) ->
+          if Option.is_some is_group_root then
+            Loc.fail loc "The 'include_subdirs' stanza cannot appear \
+                          more than once";
+          (Some x, has_modules_consumers)
+        | Library _ | Executables _ | Tests _ ->
+          (is_group_root, true)
+        | _ -> acc)
+    in
+    (Option.value is_group_root ~default:No, has_modules_consumers)
+
+  let rec get sctx ~dir =
+    match Hashtbl.find cache dir with
+    | Some t -> t
+    | None ->
+      let t =
+        match
+          Option.bind (Path.drop_build_context dir)
+            ~f:(File_tree.find_dir (Super_context.file_tree sctx))
+        with
+        | None -> Empty_standalone None
+        | Some ft_dir ->
+          let project_root = Path.of_local (File_tree.Dir.project ft_dir).root in
+          match Super_context.stanzas_in sctx ~dir with
+          | None ->
+            if dir = project_root ||
+               is_standalone (get sctx ~dir:(Path.parent_exn dir)) then
+              Empty_standalone (Some ft_dir)
+            else
+              Is_component_of_a_group_but_not_the_root None
+          | Some d ->
+            let is_group_root, has_modules_consumers =
+              analyze_stanzas d.stanzas
+            in
+            if is_group_root <> No then
+              Group_root (ft_dir, d)
+            else if not has_modules_consumers &&
+                    dir <> project_root &&
+                    not (is_standalone (get sctx ~dir:(Path.parent_exn dir)))
+            then
+              Is_component_of_a_group_but_not_the_root (Some d)
+            else
+              Standalone (ft_dir, d)
+      in
+      Hashtbl.add cache dir t;
+      t
+
+  let get_assuming_parent_is_part_of_group sctx ~dir ft_dir =
+    match Hashtbl.find cache (File_tree.Dir.path ft_dir) with
+    | Some t -> t
+    | None ->
+      let t =
+        match Super_context.stanzas_in sctx ~dir with
+        | None -> Is_component_of_a_group_but_not_the_root None
+        | Some d ->
+          let is_group_root, has_modules_consumers =
+            analyze_stanzas d.stanzas
+          in
+          if is_group_root <> No then
+            Group_root (ft_dir, d)
+          else if has_modules_consumers then
+            Standalone (ft_dir, d)
+          else
+            Is_component_of_a_group_but_not_the_root (Some d)
+      in
+      Hashtbl.add cache dir t;
+      t
+end
+
+let cache = Hashtbl.create 32
+
+let rec get sctx ~dir =
+  match Hashtbl.find cache dir with
+  | Some t -> t
+  | None ->
+    match Dir_status.get sctx ~dir with
+    | Empty_standalone ft_dir ->
+      let t =
+        { kind = Standalone
+        ; dir
+        ; text_files =
+            (match ft_dir with
+             | None -> String.Set.empty
+             | Some x -> File_tree.Dir.files x)
+        ; modules = lazy empty_modules
         ; mlds = lazy []
         }
-      | Some d ->
-        let files = load_text_files sctx d in
-        { text_files = files
-        ; modules = lazy (build_modules_map d ~files)
+      in
+      Hashtbl.add cache dir t;
+      t
+    | Is_component_of_a_group_but_not_the_root _ ->
+      (* Filled while scanning the group root *)
+      Option.value_exn (Hashtbl.find cache dir)
+    | Standalone (ft_dir, d) ->
+      let files = load_text_files sctx ft_dir d in
+      let t =
+        { kind = Standalone
+        ; dir
+        ; text_files = files
+        ; modules = lazy (build_modules_map d
+                            ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
         ; mlds = lazy (build_mlds_map d ~files)
-        })
+        }
+      in
+      Hashtbl.add cache dir t;
+      t
+    | Group_root (ft_dir, d) ->
+      let rec walk ft_dir ~dir acc =
+        match
+          Dir_status.get_assuming_parent_is_part_of_group sctx ft_dir ~dir
+        with
+        | Is_component_of_a_group_but_not_the_root d ->
+          let files =
+            match d with
+            | None -> File_tree.Dir.files ft_dir
+            | Some d -> load_text_files sctx ft_dir d
+          in
+          walk_children ft_dir ~dir ((dir, files) :: acc)
+        | _ -> acc
+      and walk_children ft_dir ~dir acc =
+        String.Map.foldi (File_tree.Dir.sub_dirs ft_dir) ~init:acc
+          ~f:(fun name ft_dir acc ->
+            let dir = Path.relative dir name in
+            walk ft_dir ~dir acc)
+      in
+      let files = load_text_files sctx ft_dir d in
+      let subdirs = walk_children ft_dir ~dir [] in
+      let modules = lazy (
+        let modules =
+          List.fold_left ((dir, files) :: subdirs) ~init:Module.Name.Map.empty
+            ~f:(fun acc (dir, files) ->
+              let modules = modules_of_files ~dir ~files in
+              Module.Name.Map.union acc modules ~f:(fun name x y ->
+                Loc.fail (Loc.in_file
+                            (Path.to_string
+                               (match File_tree.Dir.dune_file ft_dir with
+                                | None ->
+                                  Path.relative (File_tree.Dir.path ft_dir)
+                                    "_unknown_"
+                                | Some d -> File_tree.Dune_file.path d)))
+                  "Module %a appears in several directories:\
+                   @\n- %a\
+                   @\n- %a"
+                  Module.Name.pp_quote name
+                  Path.pp (Module.dir x)
+                  Path.pp (Module.dir y)))
+        in
+        build_modules_map d ~modules)
+      in
+      let t =
+        { kind = Group_root
+                   (lazy (List.map subdirs ~f:(fun (dir, _) -> get sctx ~dir)))
+        ; dir
+        ; text_files = files
+        ; modules
+        ; mlds = lazy (build_mlds_map d ~files)
+        }
+      in
+      Hashtbl.add cache dir t;
+      List.iter subdirs ~f:(fun (dir, files) ->
+        Hashtbl.add cache dir
+          { kind = Group_part t
+          ; dir
+          ; text_files = files
+          ; modules
+          ; mlds = lazy (build_mlds_map d ~files)
+          });
+      t

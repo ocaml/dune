@@ -838,7 +838,7 @@ let clear_executable_bits x = x land (lnot 0o111)
 
 let install_uninstall ~what =
   let doc =
-    sprintf "%s packages using opam-installer." (String.capitalize what)
+    sprintf "%s packages." (String.capitalize what)
   in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
   let term =

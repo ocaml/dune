@@ -221,26 +221,14 @@ module Id = struct
 end
 
 type t =
-  { loc               : Loc.t
+  { info              : Info.t
   ; name              : string
   ; unique_id         : int
-  ; kind              : Jbuild.Library.Kind.t
-  ; status            : Status.t
-  ; src_dir           : Path.t
-  ; obj_dir           : Path.t
-  ; version           : string option
-  ; synopsis          : string option
-  ; archives          : Path.t list Mode.Dict.t
-  ; plugins           : Path.t list Mode.Dict.t
-  ; foreign_archives  : Path.t list Mode.Dict.t
-  ; jsoo_runtime      : Path.t list
   ; requires          : t list Or_exn.t
   ; ppx_runtime_deps  : t list Or_exn.t
   ; pps               : t list Or_exn.t
   ; resolved_selects  : Resolved_select.t list
-  ; optional          : bool
   ; user_written_deps : Jbuild.Lib_deps.t
-  ; dune_version : Syntax.Version.t option
   ; (* This is mutable to avoid this error:
 
        {[
@@ -340,24 +328,24 @@ let not_available ~loc reason fmt =
 
 let name t = t.name
 
-let kind         t = t.kind
-let synopsis     t = t.synopsis
-let archives     t = t.archives
-let plugins      t = t.plugins
-let jsoo_runtime t = t.jsoo_runtime
+let kind         t = t.info.kind
+let synopsis     t = t.info.synopsis
+let archives     t = t.info.archives
+let plugins      t = t.info.plugins
+let jsoo_runtime t = t.info.jsoo_runtime
 let unique_id    t = t.unique_id
 
-let dune_version t = t.dune_version
+let dune_version t = t.info.dune_version
 
-let src_dir t = t.src_dir
-let obj_dir t = t.obj_dir
+let src_dir t = t.info.src_dir
+let obj_dir t = t.info.obj_dir
 
-let is_local t = Path.is_managed t.obj_dir
+let is_local t = Path.is_managed t.info.obj_dir
 
-let status t = t.status
+let status t = t.info.status
 
 let package t =
-  match t.status with
+  match t.info.status with
   | Installed ->
     Some (Findlib.root_package_name t.name
           |> Package.Name.of_string)
@@ -367,7 +355,7 @@ let package t =
 
 let to_id t : Id.t =
   { unique_id = t.unique_id
-  ; path      = t.src_dir
+  ; path      = t.info.src_dir
   ; name      = t.name
   }
 
@@ -405,7 +393,7 @@ module L = struct
   let c_include_paths ts ~stdlib_dir =
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
-        Path.Set.add acc t.src_dir)
+        Path.Set.add acc t.info.src_dir)
     in
     Path.Set.remove dirs stdlib_dir
 
@@ -415,7 +403,8 @@ module L = struct
   let link_flags ts ~mode ~stdlib_dir =
     Arg_spec.S
       (c_include_flags ts ~stdlib_dir ::
-       List.map ts ~f:(fun t -> Arg_spec.Deps (Mode.Dict.get t.archives mode)))
+       List.map ts ~f:(fun t ->
+         Arg_spec.Deps (Mode.Dict.get t.info.archives mode)))
 
   let compile_and_link_flags ~compile ~link ~mode ~stdlib_dir =
     let dirs =
@@ -426,15 +415,15 @@ module L = struct
     Arg_spec.S
       (to_iflags dirs ::
        List.map link ~f:(fun t ->
-         Arg_spec.Deps (Mode.Dict.get t.archives mode)))
+         Arg_spec.Deps (Mode.Dict.get t.info.archives mode)))
 
   let jsoo_runtime_files ts =
-    List.concat_map ts ~f:(fun t -> t.jsoo_runtime)
+    List.concat_map ts ~f:(fun t -> t.info.jsoo_runtime)
 
   let archive_files ts ~mode ~ext_lib =
     List.concat_map ts ~f:(fun t ->
-      Mode.Dict.get t.archives mode @
-      List.map (Mode.Dict.get t.foreign_archives mode)
+      Mode.Dict.get t.info.archives mode @
+      List.map (Mode.Dict.get t.info.foreign_archives mode)
         ~f:(Path.extend_basename ~suffix:ext_lib))
 
   let remove_dups l =
@@ -587,7 +576,7 @@ module Dep_stack = struct
 end
 
 let check_private_deps ~(lib : lib) ~loc ~allow_private_deps =
-  if (not allow_private_deps) && Status.is_private lib.status then
+  if (not allow_private_deps) && Status.is_private lib.info.status then
     Result.Error (Error (
       Private_deps_not_allowed { private_dep = lib ; pd_loc = loc }))
   else
@@ -602,7 +591,7 @@ let already_in_table (info : Info.t) name x =
                  Path.sexp_of_t x.path]
     | St_found t ->
       List [Sexp.unsafe_atom_of_string "Found";
-            Path.sexp_of_t t.src_dir]
+            Path.sexp_of_t t.info.src_dir]
     | St_not_found ->
       Sexp.unsafe_atom_of_string "Not_found"
     | St_hidden (_, { path; reason; _ }) ->
@@ -648,27 +637,15 @@ let rec instantiate db name (info : Info.t) ~stack ~hidden =
   let resolve (loc, name) =
     resolve_dep db name ~allow_private_deps ~loc ~stack in
   let t =
-    { loc               = info.loc
+    { info              = info
     ; name              = name
     ; unique_id         = id.unique_id
-    ; kind              = info.kind
-    ; status            = info.status
-    ; src_dir           = info.src_dir
-    ; obj_dir           = info.obj_dir
-    ; version           = info.version
-    ; synopsis          = info.synopsis
-    ; archives          = info.archives
-    ; plugins           = info.plugins
-    ; foreign_archives  = info.foreign_archives
-    ; jsoo_runtime      = info.jsoo_runtime
     ; requires          = requires
     ; ppx_runtime_deps  = ppx_runtime_deps
     ; pps               = pps
     ; resolved_selects  = resolved_selects
-    ; optional          = info.optional
     ; user_written_deps = Info.user_written_deps info
     ; sub_systems       = Sub_system_name.Map.empty
-    ; dune_version = info.dune_version
     }
   in
   t.sub_systems <-
@@ -688,7 +665,7 @@ let rec instantiate db name (info : Info.t) ~stack ~hidden =
     match hidden with
     | None -> St_found t
     | Some reason ->
-      St_hidden (t, { name; path = t.src_dir; reason })
+      St_hidden (t, { name; path = t.info.src_dir; reason })
   in
   Hashtbl.replace db.table ~key:name ~data:res;
   res
@@ -941,7 +918,7 @@ module Compile = struct
     ; requires          = t.requires >>= closure_with_overlap_checks db
     ; resolved_selects  = t.resolved_selects
     ; pps               = t.pps
-    ; optional          = t.optional
+    ; optional          = t.info.optional
     ; user_written_deps = t.user_written_deps
     ; sub_systems       = t.sub_systems
     }
@@ -1161,9 +1138,9 @@ let report_lib_error ppf (e : Error.t) =
        - %S in %s@,\
       \    %a@,\
        This cannot work.@\n"
-      lib1.name (Path.to_string_maybe_quoted lib1.src_dir)
+      lib1.name (Path.to_string_maybe_quoted lib1.info.src_dir)
       Dep_path.Entries.pp rb1
-      lib2.name (Path.to_string_maybe_quoted lib2.src_dir)
+      lib2.name (Path.to_string_maybe_quoted lib2.info.src_dir)
       Dep_path.Entries.pp rb2
   | Overlap { in_workspace = lib1; installed = (lib2, rb2) } ->
     Format.fprintf ppf
@@ -1172,8 +1149,8 @@ let report_lib_error ppf (e : Error.t) =
        - %S in %s@,\
       \    %a@,\
        This is not allowed.@\n"
-      lib1.name (Path.to_string_maybe_quoted lib1.src_dir)
-      lib2.name (Path.to_string_maybe_quoted lib2.src_dir)
+      lib1.name (Path.to_string_maybe_quoted lib1.info.src_dir)
+      lib2.name (Path.to_string_maybe_quoted lib2.info.src_dir)
       Dep_path.Entries.pp rb2
   | No_solution_found_for_select { loc } ->
     Format.fprintf ppf

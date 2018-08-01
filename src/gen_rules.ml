@@ -245,7 +245,6 @@ module Gen(P : Install_rules.Params) = struct
                 Path.relative (Dir_contents.dir dc) fn :: acc
               else
                 acc))
-        |> List.rev
       in
       let all_dirs = Path.Set.of_list (List.map all_dirs ~f:Dir_contents.dir) in
       let resolve_name ~ext (loc, fn) =

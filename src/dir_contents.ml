@@ -204,11 +204,9 @@ let dir t = t.dir
 let dirs t =
   match t.kind with
   | Standalone -> [t]
-  | Group_root (lazy l) -> t :: l
-  | Group_part t ->
-    match t.kind with
-    | Group_root (lazy l) -> t :: l
-    | _ -> assert false
+  | Group_root (lazy l)
+  | Group_part { kind = Group_root (lazy l); _ } -> t :: l
+  | Group_part { kind = _; _ } -> assert false
 
 let text_files t = t.text_files
 

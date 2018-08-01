@@ -797,28 +797,37 @@ inside ignored sub-directories.
 include_subdirs
 ---------------
 
-The ``include_subdirs`` is used to control how dune considers
-sub-directories of the current directory. By default, it considers
-them as independent directories. However, by adding ``(include_subdirs
-<mode>)`` to your ``dune`` file, dune will assume that the
-sub-directories of the current directory are part of the same group of
-directories. In particular, dune will scan all these directories at
-once when looking for OCaml/Reason files. This allows you to split a
-library between several directories.
+The ``include_subdirs`` stanza is used to control how dune considers
+sub-directories of the current directory. The syntax is as follow:
 
-Sub-directories are included recursively, however the recursion will
-stop when encountering a sub-directory that:
+.. code:: scheme
+
+     (include_subdirs <mode>)
+
+Where ``<mode>`` maybe be one of:
+
+- ``no``, the default
+- ``unqualified``
+
+When the ``include_subdirs`` stanza is not present or ``<mode>`` is
+``no``, dune considers sub-directories as independent. When ``<mode>``
+is ``unqualified``, dune will assume that the sub-directories of the
+current directory are part of the same group of directories. In
+particular, dune will scan all these directories at once when looking
+for OCaml/Reason files. This allows you to split a library between
+several directories. ``unqualified`` means that modules in
+sub-directories are seen as if they were all in the same directory. In
+particular, you cannot have two modules with the same name in two
+different directories. It is planned to add a ``qualified`` mode in
+the future.
+
+Note that sub-directories are included recursively, however the
+recursion will stop when encountering a sub-directory that:
 
 - is part of a different project (for instance when vendoring projects)
 - contains ``(include_subdirs unqualified)``
 - contains one of the following stanza that consume modules:
   ``library``, ``executable(s)`` or ``test(s)``.
-
-``<mode>`` represent how modules in sub-directories are
-seen. Currently the only supported mode is ``unqualified``, meaning
-that all modules are seen as if they were all in the same
-directory. In particular, you cannot have two modules with the same
-name in two different directories.
 
 Common items
 ============

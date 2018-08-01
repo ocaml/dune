@@ -472,17 +472,20 @@ module Dir_status = struct
   let cache = Hashtbl.create 32
 
   let analyze_stanzas stanzas =
-    List.fold_left stanzas ~init:(None, false) ~f:(fun acc stanza ->
-      let is_group_root, has_modules_consumers = acc in
-      match stanza with
-      | Include_subdirs (loc, x) ->
-        if Option.is_some is_group_root then
-          Loc.fail loc "The 'include_subdirs' stanza cannot appear \
-                        more than once";
-        (Some x, has_modules_consumers)
-      | Library _ | Executables _ | Tests _ ->
-        (is_group_root, true)
-      | _ -> acc)
+    let is_group_root, has_modules_consumers =
+      List.fold_left stanzas ~init:(None, false) ~f:(fun acc stanza ->
+        let is_group_root, has_modules_consumers = acc in
+        match stanza with
+        | Include_subdirs (loc, x) ->
+          if Option.is_some is_group_root then
+            Loc.fail loc "The 'include_subdirs' stanza cannot appear \
+                          more than once";
+          (Some x, has_modules_consumers)
+        | Library _ | Executables _ | Tests _ ->
+          (is_group_root, true)
+        | _ -> acc)
+    in
+    (Option.value is_group_root ~default:No, has_modules_consumers)
 
   let rec get sctx ~dir =
     match Hashtbl.find cache dir with
@@ -507,7 +510,7 @@ module Dir_status = struct
             let is_group_root, has_modules_consumers =
               analyze_stanzas d.stanzas
             in
-            if Option.is_some is_group_root then
+            if is_group_root <> No then
               Group_root (ft_dir, d)
             else if not has_modules_consumers &&
                     dir <> project_root &&
@@ -531,7 +534,7 @@ module Dir_status = struct
           let is_group_root, has_modules_consumers =
             analyze_stanzas d.stanzas
           in
-          if Option.is_some is_group_root then
+          if is_group_root <> No then
             Group_root (ft_dir, d)
           else if has_modules_consumers then
             Standalone (ft_dir, d)

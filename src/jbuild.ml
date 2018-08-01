@@ -1643,11 +1643,12 @@ module Documentation = struct
 end
 
 module Include_subdirs = struct
-  type t = Unqualified
+  type t = No | Unqualified
 
   let t =
     enum
-      [ "unqualified", Unqualified
+      [ "no", No
+      ; "unqualified", Unqualified
       ]
 end
 

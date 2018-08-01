@@ -1436,11 +1436,11 @@ let printenv =
           match Path.extract_build_context dir with
           | Some (ctx, _) ->
             let sctx =
-              String_map.find setup.scontexts ctx |> Option.value_exn
+              String.Map.find setup.scontexts ctx |> Option.value_exn
             in
             [dump sctx ~dir]
           | None ->
-            String_map.values setup.scontexts
+            String.Map.values setup.scontexts
             |> List.map ~f:(fun sctx ->
               let dir =
                 Path.append (Super_context.context sctx).build_dir dir

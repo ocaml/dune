@@ -141,7 +141,7 @@ module Simplified = struct
   let rec pp fmt t =
     Fmt.record fmt
       [ "name", Fmt.const Fmt.quoted t.name
-      ; "vars", Fmt.const (String_map.pp Rules.pp) t.vars
+      ; "vars", Fmt.const (String.Map.pp Rules.pp) t.vars
       ; "subs", Fmt.const (Fmt.ocaml_list pp) t.subs
       ]
 end

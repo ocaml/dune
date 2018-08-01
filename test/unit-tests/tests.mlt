@@ -15,7 +15,7 @@ let print_pkg ppf pkg =
 ;;
 
 #install_printer print_pkg;;
-#install_printer String_map.pp;;
+#install_printer String.Map.pp;;
 
 [%%expect{|
 val print_pkg : Format.formatter -> Findlib.Package.t -> unit = <fun>

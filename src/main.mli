@@ -3,7 +3,7 @@ open! Import
 type setup =
   { build_system : Build_system.t
   ; contexts     : Context.t list
-  ; scontexts    : Super_context.t String_map.t
+  ; scontexts    : Super_context.t String.Map.t
   ; packages     : Package.t Package.Name.Map.t
   ; file_tree    : File_tree.t
   ; env          : Env.t

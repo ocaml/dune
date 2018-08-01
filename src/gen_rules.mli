@@ -7,4 +7,4 @@ val gen
   -> ?external_lib_deps_mode:bool (* default: false *)
   -> ?only_packages:Package.Name.Set.t
   -> Jbuild_load.conf
-  -> Super_context.t String_map.t Fiber.t
+  -> Super_context.t String.Map.t Fiber.t

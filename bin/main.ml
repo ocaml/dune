@@ -816,7 +816,7 @@ let clean =
 let format_external_libs libs =
   String.Map.to_list libs
   |> List.map ~f:(fun (name, kind) ->
-    match (kind : Build.lib_dep_kind) with
+    match (kind : Lib_deps_info.Kind.t) with
     | Optional -> sprintf "- %s (optional)" name
     | Required -> sprintf "- %s" name)
   |> String.concat ~sep:"\n"
@@ -875,7 +875,7 @@ let external_lib_deps =
                if String.Map.is_empty missing then
                  acc
                else if String.Map.for_alli missing
-                         ~f:(fun _ kind -> kind = Build.Optional)
+                         ~f:(fun _ kind -> kind = Lib_deps_info.Kind.Optional)
                then begin
                  Format.eprintf
                    "@{<error>Error@}: The following libraries are missing \
@@ -894,7 +894,7 @@ let external_lib_deps =
                    (format_external_libs missing)
                    (String.Map.to_list missing
                     |> List.filter_map ~f:(fun (name, kind) ->
-                      match (kind : Build.lib_dep_kind) with
+                      match (kind : Lib_deps_info.Kind.t) with
                       | Optional -> None
                       | Required -> Some (Findlib.root_package_name name))
                     |> String.Set.of_list

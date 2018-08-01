@@ -10,7 +10,7 @@ val dummy : t
 val make
   :  Super_context.t
   -> dir:Path.t
-  -> dep_kind:Build.lib_dep_kind
+  -> dep_kind:Lib_deps_info.Kind.t
   -> lint:Jbuild.Preprocess_map.t
   -> preprocess:Jbuild.Preprocess_map.t
   -> preprocessor_deps:(unit, Path.t list) Build.t

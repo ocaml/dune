@@ -617,6 +617,16 @@ module Lib_deps = struct
 
   let of_pps pps =
     List.map pps ~f:(fun pp -> Lib_dep.of_pp (Loc.none, pp))
+
+
+  let info t ~kind =
+    List.concat_map t ~f:(function
+       | Lib_dep.Direct (_, s) -> [(s, kind)]
+       | Select { choices; _ } ->
+         List.concat_map choices ~f:(fun c ->
+           String.Set.to_list c.Lib_dep.required
+           |> List.map ~f:(fun d -> (d, Lib_deps_info.Kind.Optional))))
+     |> String.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge
 end
 
 module Buildable = struct

@@ -168,18 +168,7 @@ val mkdir : Path.t -> (_, Action.t) t
 (** Merge a list of actions *)
 val progn : ('a, Action.t) t list -> ('a, Action.t) t
 
-type lib_dep_kind =
-  | Optional
-  | Required
-
-val record_lib_deps
-  :  kind:lib_dep_kind
-  -> Jbuild.Lib_dep.t list
-  -> ('a, 'a) t
-
-type lib_deps = lib_dep_kind String.Map.t
-
-val record_lib_deps_simple : lib_deps -> ('a, 'a) t
+val record_lib_deps : Lib_deps_info.t -> ('a, 'a) t
 
 (**/**)
 
@@ -202,7 +191,7 @@ module Repr : sig
     | Lines_of : Path.t -> ('a, string list) t
     | Vpath : 'a Vspec.t -> (unit, 'a) t
     | Dyn_paths : ('a, Path.Set.t) t -> ('a, 'a) t
-    | Record_lib_deps : lib_deps -> ('a, 'a) t
+    | Record_lib_deps : Lib_deps_info.t -> ('a, 'a) t
     | Fail : fail -> (_, _) t
     | Memo : 'a memo -> (unit, 'a) t
     | Catch : ('a, 'b) t * (exn -> 'b) -> ('a, 'b) t
@@ -232,8 +221,6 @@ module Repr : sig
 end
 
 val repr : ('a, 'b) t -> ('a, 'b) Repr.t
-
-val merge_lib_deps : lib_deps -> lib_deps -> lib_deps
 
 (**/**)
 val paths_for_rule : Path.Set.t -> ('a, 'a) t

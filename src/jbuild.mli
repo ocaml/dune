@@ -79,6 +79,7 @@ end
 module Lib_deps : sig
   type t = Lib_dep.t list
   val of_pps : Pp.t list -> t
+  val info : t -> kind:Lib_deps_info.Kind.t -> Lib_deps_info.t
 end
 
 module Bindings : sig

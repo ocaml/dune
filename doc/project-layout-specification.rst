@@ -82,7 +82,7 @@ sequences:
 - ``\xHH``, a backslash followed by two hexadecimal characters to
   represent the character with ASCII code ``HH`` in hexadecimal
 - ``\\``, a double backslash to represent a single backslash
-- ``\%{`` to represent ``%{`` (see :ref:`variables`)
+- ``\%{`` to represent ``%{`` (see :ref:`variables-project`)
 
 Additionally, a backslash that comes just before the end of the line
 is used to skip the newline up to the next non-space character. For
@@ -140,7 +140,7 @@ descriptions. For instance:
     (body
       This is a simple example of using S-expressions))
 
-.. _variables:
+.. _variables-project:
 
 Variables
 ---------

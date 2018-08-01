@@ -76,12 +76,13 @@ module Context = struct
       }
 
     let t ~profile ~x =
-      Common.t ~profile >>= fun base ->
-      field "switch" string >>= fun switch ->
-      let%map name = field "name" Name.t ~default:switch
+      let%map base = Common.t ~profile
+      and switch = field "switch" string
+      and name = field_o "name" Name.t
       and root = field_o "root" string
       and merlin = field_b "merlin"
       in
+      let name = Option.value ~default:switch name in
       let base = { base with targets = Target.add base.targets x } in
       { base
       ; switch
@@ -116,14 +117,14 @@ module Context = struct
       ]
 
   let t ~profile ~x =
-    Syntax.get_exn syntax >>= function
-    | (0, _) ->
-      (* jbuild-workspace files *)
-      (peek_exn >>= function
-       | List (_, List _ :: _) ->
-         Sexp.Of_sexp.record (Opam.t ~profile ~x) >>| fun x -> Opam x
-       | _ -> t ~profile ~x)
-    | _ -> t ~profile ~x
+    switch_file_kind
+      ~jbuild:
+        (* jbuild-workspace files *)
+        (peek_exn >>= function
+         | List (_, List _ :: _) ->
+           Sexp.Of_sexp.record (Opam.t ~profile ~x) >>| fun x -> Opam x
+         | _ -> t ~profile ~x)
+      ~dune:(t ~profile ~x)
 
   let name = function
     | Default _ -> "default"

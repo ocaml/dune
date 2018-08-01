@@ -225,11 +225,9 @@ module Pps_and_flags = struct
   end
 
   let t =
-    Syntax.get_exn Stanza.syntax >>= fun ver ->
-    if ver < (1, 0) then
-      Jbuild_syntax.t
-    else
-      Dune_syntax.t
+    switch_file_kind
+      ~jbuild:Jbuild_syntax.t
+      ~dune:Dune_syntax.t
 end
 
 module Bindings = struct
@@ -255,10 +253,11 @@ module Bindings = struct
 
   let singleton x = [Unnamed x]
 
-  let t elem =
-    Stanza.file_kind () >>= function
-    | Jbuild -> list (elem >>| fun x -> Unnamed x)
-    | Dune -> parens_removed_in_dune (
+  let jbuild elem =
+    list (elem >>| fun x -> Unnamed x)
+
+  let dune elem =
+    parens_removed_in_dune (
       let%map l =
         repeat
           (if_paren_colon_form
@@ -282,6 +281,11 @@ module Bindings = struct
           loop vars (Named (name, values) :: acc) l
       in
       loop String.Set.empty [] l)
+
+  let t elem =
+    switch_file_kind
+      ~jbuild:(jbuild elem)
+      ~dune:(dune elem)
 
   let sexp_of_t sexp_of_a bindings =
     Sexp.List (
@@ -323,10 +327,9 @@ module Dep_conf = struct
            Source_tree x)
         ]
     in
-    peek_exn >>= function
-    | Template _ | Atom _ | Quoted_string _ ->
-      String_with_vars.t >>| fun x -> File x
-    | List _ -> t
+    if_list
+      ~then_:t
+      ~else_:(String_with_vars.t >>| fun x -> File x)
 
   open Sexp
   let sexp_of_t = function
@@ -1028,12 +1031,13 @@ module Executables = struct
       Sexp.Of_sexp.enum simple_representations
 
     let t =
-      peek_exn >>= function
-      | List _ ->
-        enter (let%map mode = Mode_conf.t
-               and kind = Binary_kind.t in
-               { mode; kind })
-      | _ -> simple
+      if_list
+        ~then_:
+          (enter
+             (let%map mode = Mode_conf.t
+              and kind = Binary_kind.t in
+              { mode; kind }))
+        ~else_:simple
 
     let simple_sexp_of_t link_mode =
       let is_ok (_, candidate) =
@@ -1397,11 +1401,9 @@ module Rule = struct
         "S-expression of the form (<atom> ...) expected"
 
   let t =
-    Syntax.get_exn Stanza.syntax >>= fun ver ->
-    if ver < (1, 0) then
-      jbuild_syntax
-    else
-      dune_syntax
+    switch_file_kind
+      ~jbuild:jbuild_syntax
+      ~dune:dune_syntax
 
   type lex_or_yacc =
     { modules : string list
@@ -1443,11 +1445,9 @@ module Rule = struct
             }))
 
   let ocamllex =
-    Syntax.get_exn Stanza.syntax >>= fun ver ->
-    if ver < (1, 0) then
-      ocamllex_jbuild
-    else
-      ocamllex_dune
+    switch_file_kind
+      ~jbuild:ocamllex_jbuild
+      ~dune:ocamllex_dune
 
   let ocamlyacc = ocamllex
 

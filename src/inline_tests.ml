@@ -130,22 +130,22 @@ include Sub_system.Register_end_point(
       open Stanza.Of_sexp
 
       let parse =
-        eos >>= function
-        | true -> loc >>| empty
-        | false ->
-          record
-            (let%map loc = loc
-             and deps = field "deps" (list Dep_conf.t) ~default:[]
-             and flags = Ordered_set_lang.Unexpanded.field "flags"
-             and backend = field_o "backend" (located string)
-             and libraries = field "libraries" (list (located string)) ~default:[]
-             in
-             { loc
-             ; deps
-             ; flags
-             ; backend
-             ; libraries
-             })
+        if_eos
+          ~then_:(loc >>| empty)
+          ~else_:
+            (record
+               (let%map loc = loc
+                and deps = field "deps" (list Dep_conf.t) ~default:[]
+                and flags = Ordered_set_lang.Unexpanded.field "flags"
+                and backend = field_o "backend" (located string)
+                and libraries = field "libraries" (list (located string)) ~default:[]
+                in
+                { loc
+                ; deps
+                ; flags
+                ; backend
+                ; libraries
+                }))
     end
 
     let gen_rules c ~(info:Info.t) ~backends =

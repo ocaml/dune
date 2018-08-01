@@ -794,6 +794,6 @@ let gen ~contexts ~build_system
   Fiber.parallel_map contexts ~f:make_sctx >>| fun l ->
   let map = String.Map.of_list_exn l in
   Build_system.set_rule_generators build_system
-    (String_map.map map ~f:(fun (module M : Gen) -> M.gen_rules));
-  String_map.iter map ~f:(fun (module M : Gen) -> M.init ());
-  String_map.map map ~f:(fun (module M : Gen) -> M.sctx)
+    (String.Map.map map ~f:(fun (module M : Gen) -> M.gen_rules));
+  String.Map.iter map ~f:(fun (module M : Gen) -> M.init ());
+  String.Map.map map ~f:(fun (module M : Gen) -> M.sctx)

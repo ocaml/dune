@@ -9,15 +9,6 @@ let ksprintf = Printf.ksprintf
 
 let initial_cwd = Sys.getcwd ()
 
-module String_map = struct
-  include String.Map
-
-  let pp f fmt t =
-    Format.pp_print_list (fun fmt (k, v) ->
-      Format.fprintf fmt "@[<hov 2>(%s@ =@ %a)@]" k f v
-    ) fmt (to_list t)
-end
-
 module Sys = struct
   include Sys
 

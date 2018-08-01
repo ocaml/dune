@@ -52,5 +52,9 @@ val enumerate_and : string list -> string
 val enumerate_or  : string list -> string
 
 module Set : Set.S with type elt = t
-module Map : Map.S with type key = t
+module Map : sig
+  include Map.S with type key = t
+
+  val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
+end
 module Table : Hashtbl.S with type key = t

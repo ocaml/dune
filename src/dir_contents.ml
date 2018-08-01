@@ -455,7 +455,8 @@ module Dir_status = struct
 
     | Is_component_of_a_group_but_not_the_root of
         Super_context.Dir_with_jbuild.t option
-    (* Sub-directory of a directory with [(include_subdirs true)] *)
+    (* Sub-directory of a directory with [(include_subdirs x)] where
+       [x] is not [no] *)
 
     | Standalone of File_tree.Dir.t
                     * Super_context.Dir_with_jbuild.t
@@ -463,7 +464,7 @@ module Dir_status = struct
 
     | Group_root of File_tree.Dir.t
                     * Super_context.Dir_with_jbuild.t
-    (* Directory with [(include_subdirs true)] *)
+    (* Directory with [(include_subdirs x)] where [x] is not [no] *)
 
   let is_standalone = function
     | Standalone _ | Empty_standalone _ -> true

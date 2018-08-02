@@ -197,6 +197,8 @@ module Libs : sig
       all the files with extension [ext] of libraries [libs]. *)
   val file_deps : t -> Lib.L.t -> ext:string -> Path.t list
 
+  val file_deps_with_exts : t -> (Lib.t * string) list -> Path.t list
+
   (** Setup the alias that depends on all files with a given extension
       for a library *)
   val setup_file_deps_alias

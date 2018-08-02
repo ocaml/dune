@@ -708,6 +708,15 @@ module Libs = struct
            (lib_files_alias ~dir ~name:(Library.best_name lib) ~ext))
        |> Path.Set.of_list)
 
+  let file_deps_with_exts t lib_exts =
+    List.rev_map lib_exts ~f:(fun ((lib : Lib.t), ext) ->
+      if Lib.is_local lib then
+        Alias.stamp_file
+          (lib_files_alias ~dir:(Lib.src_dir lib) ~name:(Lib.name lib) ~ext)
+      else
+        Build_system.stamp_file_for_files_of t.build_system
+          ~dir:(Lib.obj_dir lib) ~ext)
+
   let file_deps t libs ~ext =
     List.rev_map libs ~f:(fun (lib : Lib.t) ->
       if Lib.is_local lib then

@@ -338,6 +338,8 @@ let plugins      t = t.info.plugins
 let jsoo_runtime t = t.info.jsoo_runtime
 let unique_id    t = t.unique_id
 
+let opaque       t = t.info.opaque
+
 let dune_version t = t.info.dune_version
 
 let src_dir t = t.info.src_dir

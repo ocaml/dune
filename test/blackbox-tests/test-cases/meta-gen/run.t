@@ -31,7 +31,7 @@
     archive(ppx_driver,native) = "foobar_rewriter.cmxa"
     plugin(ppx_driver,byte) = "foobar_rewriter.cma"
     plugin(ppx_driver,native) = "foobar_rewriter.cmxs"
-    # This is what jbuilder uses to find out the runtime dependencies of
+    # This is what dune uses to find out the runtime dependencies of
     # a preprocessor
     ppx_runtime_deps = "foobar.baz"
     # This line makes things transparent for people mixing preprocessors
@@ -47,7 +47,7 @@
     archive(native) = "foobar_rewriter2.cmxa"
     plugin(byte) = "foobar_rewriter2.cma"
     plugin(native) = "foobar_rewriter2.cmxs"
-    # This is what jbuilder uses to find out the runtime dependencies of
+    # This is what dune uses to find out the runtime dependencies of
     # a preprocessor
     ppx_runtime_deps = "foobar.runtime-lib2"
   )

@@ -531,7 +531,7 @@ module Unexpanded = struct
           let loc = String_with_vars.loc fn in
           Loc.fail loc
             "This directory cannot be evaluated statically.\n\
-             This is not allowed by jbuilder"
+             This is not allowed by dune"
       end
     | Setenv (var, value, t) ->
       Setenv (E.string ~dir ~f var, E.string ~dir ~f value,

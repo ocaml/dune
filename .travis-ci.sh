@@ -1,6 +1,7 @@
 #!/bin/bash -xue
 
 PATH=~/ocaml/bin:$PATH; export PATH
+OPAMYES="true"; export OPAMYES
 
 TARGET="$1"; shift
 
@@ -44,14 +45,14 @@ case "$TARGET" in
         cd ../..
         rm -rf src
         rm -rf ~/.opam
-        opam init --yes
+        opam init
         eval $(opam config env)
-        opam install ocamlfind utop ppxlib reason odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler --yes
-        opam remove --yes dune jbuilder \
+        opam install ocamlfind utop ppxlib reason odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler
+        opam remove dune jbuilder \
              `opam list --depends-on jbuilder --installed --short` \
              `opam list --depends-on dune     --installed --short`
         if opam info dune &> /dev/null; then
-            opam remove dune `opam list --depends-on dune --installed --short` --yes
+            opam remove dune `opam list --depends-on dune --installed --short`
         fi
       fi
       cp -a ~/.opam ~/.opam-start
@@ -66,19 +67,19 @@ case "$TARGET" in
       eval $(opam config env)
       for pkg in $(opam pin list --short); do
         UPDATE_OPAM=1
-        opam pin remove $pkg --no-action --yes
-        opam remove $pkg --yes || true
+        opam pin remove $pkg --no-action
+        opam remove $pkg || true
       done
       if [ ! -e ~/.opam/last-update ] || [ $(cat ~/.opam/last-update) != $DATE ] ; then
-        opam update --yes
+        opam update
         echo $DATE> ~/.opam/last-update
         UPDATE_OPAM=1
-        opam upgrade --yes
+        opam upgrade
       fi
       opam list
       echo "version: \"1.0+dev$DATE\"" >> dune.opam
-      opam pin add dune . --no-action --yes
-      opam install ocamlfind utop ppxlib reason odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler --yes
+      opam pin add dune . --no-action
+      opam install ocamlfind utop ppxlib reason odoc ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler
       echo -en "travis_fold:end:opam.deps\r"
     fi
     echo -en "travis_fold:start:dune.bootstrap\r"

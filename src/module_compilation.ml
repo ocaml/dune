@@ -58,7 +58,7 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
         | Cmi | Cmo -> other_targets
       in
       let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
-      let opaque = CC.opaque cctx && ctx.version >= (4, 03, 0) in
+      let opaque = CC.opaque cctx in
       let other_cm_files =
         Build.dyn_paths
           (Ocamldep.Dep_graph.deps_of dep_graph m >>^ fun deps ->

@@ -17,7 +17,7 @@ module Gen(P : Install_rules.Params) = struct
   let sctx = P.sctx
   let ctx = SC.context sctx
 
-  let opaque = ctx.profile = "dev"
+  let opaque = ctx.profile = "dev" && ctx.version >= (4, 03, 0)
 
   (* +-----------------------------------------------------------------+
      | Library stuff                                                   |

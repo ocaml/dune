@@ -56,4 +56,12 @@ module Of_sexp : sig
       displays a nice error messages when parentheses are used in dune
       files. *)
   val parens_removed_in_dune : 'a t -> 'a t
+
+  (** Use a different parser depending on the syntax in the current file.
+      If the syntax version is strictly less than `(1, 0)`, use `jbuild`.
+      Otherwise use `dune`. *)
+  val switch_file_kind :
+   jbuild:('a, 'b) parser ->
+   dune:('a, 'b) parser ->
+   ('a, 'b) parser
 end

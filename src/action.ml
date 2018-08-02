@@ -368,12 +368,13 @@ module Unexpanded = struct
   include Make_ast(String_with_vars)(String_with_vars)(String_with_vars)(Uast)
 
   let t =
-    let open Sexp.Of_sexp in
-    peek_exn >>= function
-    | Template _ | Atom _ | Quoted_string _ as sexp ->
-      of_sexp_errorf (Sexp.Ast.loc sexp)
-        "if you meant for this to be executed with bash, write (bash \"...\") instead"
-    | List _ -> t
+    if_list
+      ~then_:t
+      ~else_:
+        (loc >>| fun loc ->
+         of_sexp_errorf
+           loc
+           "if you meant for this to be executed with bash, write (bash \"...\") instead")
 
   let check_mkdir loc path =
     if not (Path.is_managed path) then

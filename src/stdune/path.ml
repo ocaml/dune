@@ -602,17 +602,17 @@ let of_string ?error_loc s =
       make_local_path (Local.of_string s ?error_loc)
 
 let t =
-  Sexp.Of_sexp.(
-    peek_exn >>= function
-    | Template _ | Atom _ | Quoted_string _ ->
+  let open Sexp.Of_sexp in
+  if_list
+    ~then_:
+      (sum
+         [ "In_build_dir"  , Local.t    >>| in_build_dir
+         ; "In_source_tree", Local.t    >>| in_source_tree
+         ; "External"      , External.t >>| external_
+         ])
+    ~else_:
       (* necessary for old build dirs *)
-      plain_string (fun ~loc:_ s -> of_string s)
-    | List _ ->
-      sum
-        [ "In_build_dir"  , Local.t    >>| in_build_dir
-        ; "In_source_tree", Local.t    >>| in_source_tree
-        ; "External"      , External.t >>| external_
-        ])
+      (plain_string (fun ~loc:_ s -> of_string s))
 
 let sexp_of_t t =
   let constr f x y = Sexp.To_sexp.(pair string f) (x, y) in

@@ -1279,6 +1279,10 @@ let exec =
   in
   (term, Term.info "exec" ~doc ~man)
 
+(** A string that is "%%VERSION%%" but not expanded by [dune subst] *)
+let literal_version =
+  "%%" ^ "VERSION%%"
+
 let subst =
   let doc =
     "Substitute watermarks in source files."
@@ -1294,17 +1298,17 @@ let subst =
     [ `S "DESCRIPTION"
     ; `P {|Substitute $(b,%%ID%%) strings in source files, in a similar fashion to
            what topkg does in the default configuration.|}
-    ; `P {|This command is only meant to be called when a user pins a package to
-           its development version. Especially it replaces $(b,%%VERSION%%) strings
-           by the version obtained from the vcs. Currently only git is supported and
-           the version is obtained from the output of:|}
+    ; `P ({|This command is only meant to be called when a user pins a package to
+            its development version. Especially it replaces $(b,|} ^ literal_version
+          ^{|) strings by the version obtained from the vcs. Currently only git is
+             supported and the version is obtained from the output of:|})
     ; `Pre {|  \$ git describe --always --dirty|}
     ; `P {|$(b,dune subst) substitutes the variables that topkg substitutes with
            the defatult configuration:|}
     ; var "NAME" "the name of the project (from the dune-project file)"
     ; var "VERSION" "output of $(b,git describe --always --dirty)"
-    ; var "VERSION_NUM" "same as $(b,%%VERSION%%) but with a potential leading \
-                         'v' or 'V' dropped"
+    ; var "VERSION_NUM" ("same as $(b," ^ literal_version ^
+                         ") but with a potential leading 'v' or 'V' dropped")
     ; var "VCS_COMMIT_ID" "commit hash from the vcs"
     ; opam "maintainer"
     ; opam "authors"

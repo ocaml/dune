@@ -48,8 +48,8 @@ case "$TARGET" in
         eval $(opam config env)
         opam install ocamlfind utop ppxlib reason odoc menhir ocaml-migrate-parsetree js_of_ocaml-ppx js_of_ocaml-compiler --yes
         opam remove --yes dune jbuilder \
-             `opam list --depends-on jbuilder --installed --short` --yes \
-             `opam list --depends-on dune     --installed --short` --yes
+             `opam list --depends-on jbuilder --installed --short` \
+             `opam list --depends-on dune     --installed --short`
         if opam info dune &> /dev/null; then
             opam remove dune `opam list --depends-on dune --installed --short` --yes
         fi

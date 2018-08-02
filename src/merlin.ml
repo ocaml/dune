@@ -120,7 +120,7 @@ let dot_merlin sctx ~dir ~scope ~dir_kind ({ requires; flags; _ } as t) =
        want to declare a dependency on the contents of the .merlin
        file.
 
-       Currently jbuilder doesn't support declaring a dependency only
+       Currently dune doesn't support declaring a dependency only
        on the existence of a file, so we have to use this trick. *)
     SC.add_rule sctx
       (Build.path merlin_file

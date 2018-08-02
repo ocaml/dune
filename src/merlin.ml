@@ -109,7 +109,8 @@ let ppx_flags sctx ~dir:_ ~scope ~dir_kind { preprocess; libname; _ } =
   end
   | Other -> []
 
-let dot_merlin sctx ~dir ~scope ~dir_kind ({ requires; flags; _ } as t) =
+let dot_merlin sctx ~dir ~more_src_dirs ~scope ~dir_kind
+      ({ requires; flags; _ } as t) =
   match Path.drop_build_context dir with
   | None -> ()
   | Some remaindir ->
@@ -137,6 +138,9 @@ let dot_merlin sctx ~dir ~scope ~dir_kind ({ requires; flags; _ } as t) =
                   |> Path.drop_optional_build_context)
               , Path.Set.add obj_dirs (Lib.obj_dir lib)))
         in
+        let src_dirs =
+          Path.Set.union src_dirs (Path.Set.of_list more_src_dirs)
+        in
         Dot_file.to_string
           ~remaindir
           ~ppx:(ppx_flags sctx ~dir ~scope ~dir_kind t)
@@ -162,6 +166,6 @@ let merge_all = function
   | [] -> None
   | init::ts -> Some (List.fold_left ~init ~f:merge_two ts)
 
-let add_rules sctx ~dir ~scope ~dir_kind merlin =
+let add_rules sctx ~dir ~more_src_dirs ~scope ~dir_kind merlin =
   if (SC.context sctx).merlin then
-    dot_merlin sctx ~dir ~scope ~dir_kind merlin
+    dot_merlin sctx ~dir ~more_src_dirs ~scope ~dir_kind merlin

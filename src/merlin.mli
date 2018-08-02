@@ -22,6 +22,7 @@ val merge_all : t list -> t option
 val add_rules
   : Super_context.t
   -> dir:Path.t
+  -> more_src_dirs:Path.t list
   -> scope:Scope.t
   -> dir_kind:File_tree.Dune_file.Kind.t
   -> t

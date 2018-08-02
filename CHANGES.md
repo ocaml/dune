@@ -19,7 +19,7 @@ next
   (#1072, fix #1070, @diml)
 
 - Add support for multi directory libraries by writing
-  `(include_subdirs qualified)` (#1034, @diml)
+  `(include_subdirs unqualified)` (#1034, @diml)
 
 - Add `(staged_pps ...)` to support staged ppx rewriters such as ones
   using the OCaml typer like `ppx_import` (#1080, fix #193, @diml)

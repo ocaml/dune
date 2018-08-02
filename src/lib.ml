@@ -63,7 +63,6 @@ module Info = struct
     ; pps              : (Loc.t * Jbuild.Pp.t) list
     ; optional         : bool
     ; virtual_deps     : (Loc.t * string) list
-    ; opaque           : bool
     ; dune_version : Syntax.Version.t option
     ; sub_systems      : Jbuild.Sub_system_info.t Sub_system_name.Map.t
     }
@@ -73,7 +72,7 @@ module Info = struct
       ~init:(Deps.to_lib_deps t.requires)
       ~f:(fun acc s -> Jbuild.Lib_dep.Direct s :: acc)
 
-  let of_library_stanza ~dir ~opaque (conf : Jbuild.Library.t) =
+  let of_library_stanza ~dir (conf : Jbuild.Library.t) =
     let archive_file ext = Path.relative dir (conf.name ^ ext) in
     let archive_files ~f_ext =
       Mode.Dict.of_func (fun ~mode -> [archive_file (f_ext mode)])
@@ -117,7 +116,6 @@ module Info = struct
     ; pps = Jbuild.Preprocess_map.pps conf.buildable.preprocess
     ; sub_systems = conf.sub_systems
     ; dune_version = Some conf.dune_version
-    ; opaque
     }
 
   let of_findlib_package pkg =
@@ -144,7 +142,6 @@ module Info = struct
     ; virtual_deps     = []
     ; optional         = false
     ; status           = Installed
-    ; opaque           = false
     ; (* We don't know how these are named for external libraries *)
       foreign_archives = Mode.Dict.make_both []
     ; sub_systems      = sub_systems
@@ -337,8 +334,6 @@ let archives     t = t.info.archives
 let plugins      t = t.info.plugins
 let jsoo_runtime t = t.info.jsoo_runtime
 let unique_id    t = t.unique_id
-
-let opaque       t = t.info.opaque
 
 let dune_version t = t.info.dune_version
 
@@ -914,7 +909,6 @@ module Compile = struct
     ; pps               : t list Or_exn.t
     ; resolved_selects  : Resolved_select.t list
     ; optional          : bool
-    ; opaque            : bool
     ; user_written_deps : Jbuild.Lib_deps.t
     ; sub_systems       : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
     }
@@ -927,7 +921,6 @@ module Compile = struct
     ; optional          = t.info.optional
     ; user_written_deps = t.user_written_deps
     ; sub_systems       = t.sub_systems
-    ; opaque            = t.info.opaque
     }
 
   let direct_requires   t = t.direct_requires
@@ -936,7 +929,6 @@ module Compile = struct
   let pps               t = t.pps
   let optional          t = t.optional
   let user_written_deps t = t.user_written_deps
-  let opaque            t = t.opaque
   let sub_systems t =
     Sub_system_name.Map.values t.sub_systems
     |> List.map ~f:(fun (lazy (Sub_system0.Instance.T ((module M), t))) ->
@@ -965,10 +957,10 @@ module DB = struct
     ; all    = Lazy.from_fun all
     }
 
-  let create_from_library_stanzas ?parent ~opaque stanzas =
+  let create_from_library_stanzas ?parent stanzas =
     let map =
       List.concat_map stanzas ~f:(fun (dir, (conf : Jbuild.Library.t)) ->
-        let info = Info.of_library_stanza ~dir ~opaque conf in
+        let info = Info.of_library_stanza ~dir conf in
         match conf.public with
         | None ->
           [(conf.name, Resolve_result.Found info)]
@@ -1063,7 +1055,7 @@ module DB = struct
       let t = Option.some_if (not allow_overlaps) t in
       Compile.for_lib t lib
 
-  let resolve_user_written_deps t ?(allow_overlaps=false) ~opaque deps ~pps =
+  let resolve_user_written_deps t ?(allow_overlaps=false) deps ~pps =
     let res, pps, resolved_selects =
       resolve_user_deps t (Info.Deps.of_lib_deps deps) ~pps
         ~stack:Dep_stack.empty ~allow_private_deps:true
@@ -1081,7 +1073,6 @@ module DB = struct
     ; optional          = false
     ; user_written_deps = deps
     ; sub_systems       = Sub_system_name.Map.empty
-    ; opaque
     }
 
   let resolve_pps t pps =

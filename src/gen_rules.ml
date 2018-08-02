@@ -17,6 +17,8 @@ module Gen(P : Install_rules.Params) = struct
   let sctx = P.sctx
   let ctx = SC.context sctx
 
+  let opaque = ctx.profile = "dev"
+
   (* +-----------------------------------------------------------------+
      | Library stuff                                                   |
      +-----------------------------------------------------------------+ *)
@@ -199,7 +201,7 @@ module Gen(P : Install_rules.Params) = struct
         ~requires
         ~preprocessing:pp
         ~no_keep_locs:lib.no_keep_locs
-        ~opaque:(Lib.Compile.opaque compile_info)
+        ~opaque
     in
 
     let dep_graphs = Ocamldep.rules cctx in
@@ -521,7 +523,7 @@ module Gen(P : Install_rules.Params) = struct
         ~flags
         ~requires
         ~preprocessing:pp
-        ~opaque:(Lib.Compile.opaque compile_info)
+        ~opaque
     in
 
     Exe.build_and_link_many cctx
@@ -545,7 +547,6 @@ module Gen(P : Install_rules.Params) = struct
         exes.buildable.libraries
         ~pps:(Jbuild.Preprocess_map.pps exes.buildable.preprocess)
         ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-        ~opaque:(ctx.profile = "dev")
     in
     SC.Libs.gen_select_rules sctx compile_info ~dir;
     SC.Libs.with_lib_deps sctx compile_info ~dir

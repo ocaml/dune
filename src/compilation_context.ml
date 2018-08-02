@@ -5,7 +5,7 @@ module SC = Super_context
 module Includes = struct
   type t = string list Arg_spec.t Cm_kind.Dict.t
 
-  let make sctx ~requires : _ Cm_kind.Dict.t =
+  let make sctx ~opaque ~requires : _ Cm_kind.Dict.t =
     match requires with
     | Error exn -> Cm_kind.Dict.make_all (Arg_spec.Dyn (fun _ -> raise exn))
     | Ok libs ->
@@ -22,13 +22,15 @@ module Includes = struct
         Arg_spec.S
           [ iflags
           ; Hidden_deps
-              ( libs
-                |> List.map ~f:(fun lib ->
-                  (lib, if Lib.opaque lib then
-                     ".cmi"
-                   else
-                     ".cmi-and-.cmx"))
-                |> SC.Libs.file_deps_with_exts sctx
+              ( if opaque then
+                  List.map libs ~f:(fun lib ->
+                    (lib, if Lib.is_local lib then
+                       ".cmi"
+                     else
+                       ".cmi-and-.cmx"))
+                  |> SC.Libs.file_deps_with_exts sctx
+                else
+                  SC.Libs.file_deps sctx libs ~ext:".cmi-and-.cmx"
               )
           ]
       in
@@ -89,7 +91,7 @@ let create ~super_context ~scope ~dir ?(dir_kind=File_tree.Dune_file.Kind.Dune)
   ; lib_interface_module
   ; flags
   ; requires
-  ; includes = Includes.make super_context ~requires
+  ; includes = Includes.make super_context ~opaque ~requires
   ; preprocessing
   ; no_keep_locs
   ; opaque

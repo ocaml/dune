@@ -27,6 +27,9 @@ next
 - Use `-opaque` in the `dev` profile. This option trades off binary quality for
   compilation speed when compiling .cmx files. (#1079, fix #1058, @rgrinberg)
 
+- Fix placeholders in `dune subst` documentation (#1090, @emillon, thanks
+  @trefis for the bug report)
+
 1.0.1 (19/07/2018)
 ------------------
 

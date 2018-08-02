@@ -137,9 +137,15 @@ let deps_of cctx ~ml_kind unit =
       let all_deps_file = all_deps_path file in
       let ocamldep_output = file_in_obj_dir file ~suffix:".d" in
       SC.add_rule sctx
-        ( Build.run ~context (Ok context.ocamldep)
-            [A "-modules"; Ml_kind.flag ml_kind; Dep file]
-            ~stdout_to:ocamldep_output
+        (let flags = Option.value unit.pp ~default:(Build.return []) in
+         flags >>>
+         Build.run ~context (Ok context.ocamldep)
+           [ A "-modules"
+           ; Dyn (fun flags -> As flags)
+           ; Ml_kind.flag ml_kind
+           ; Dep file
+           ]
+           ~stdout_to:ocamldep_output
         );
       let build_paths dependencies =
         let dependency_file_path m =

@@ -1107,9 +1107,31 @@ Dune accepts three kinds of preprocessing:
 - ``(action <action>)`` to preprocess files using the given action
 - ``(pps <ppx-rewriters-and-flags>)`` to preprocess files using the given list
   of ppx rewriters
+- ``(staged_pps <ppx-rewriters-and-flags>)`` is similar to ``(pps
+    ...)`` but behave slightly differently and is needed for certain
+    ppx rewriters (see below for details)
 
-Note that in any cases, files are preprocessed only once. Dune doesn't use
-the ``-pp`` or ``-ppx`` of the various OCaml tools.
+Dune normally assumes that the compilation pipeline is sequenced as
+follow:
+
+- code generation (including preprocessing)
+- dependency analysis
+- compilation
+
+Dune uses this fact to optimize the pipeline and in particular share
+the result of code generation and preprocessing between the dependency
+analysis and compilation phases. However, some specific code
+generators or preprocessors require feedback from the compilation
+phase. As a result they must be applied in stages as follows:
+
+- first stage of code geneneration
+- dependency analysis
+- second step of code generation in parallel with compilation
+
+This is the case for ppx rewriters using the OCaml typer for
+instance. When using such ppx rewriters, you must use ``staged_pps``
+instead of ``pps`` in order to force Dune to use the second pipeline,
+which is slower but necessary in this case.
 
 Preprocessing with actions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

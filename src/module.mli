@@ -44,6 +44,7 @@ type t = private
   ; intf      : File.t option
   ; obj_name  : string (** Object name. It is different from [name]
                            for wrapped modules. *)
+  ; pp        : (unit, string list) Build.t option (** Preprocessing flags *)
   }
 
 val make
@@ -84,3 +85,5 @@ val has_impl : t -> bool
 val with_wrapper : t -> libname:string -> t
 
 val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t
+
+val set_pp : t -> (unit, string list) Build.t option -> t

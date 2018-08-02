@@ -66,7 +66,11 @@ end
 val standard : t
 val is_standard : t -> bool
 
-val field : ?default:t -> string -> t Sexp.Of_sexp.fields_parser
+val field
+  :  ?default:t
+  -> ?check:unit Sexp.Of_sexp.t
+  -> string
+  -> t Sexp.Of_sexp.fields_parser
 
 module Unexpanded : sig
   type expanded = t
@@ -75,7 +79,11 @@ module Unexpanded : sig
   include Sexp.Sexpable with type t := t
   val standard : t
 
-  val field : ?default:t -> string -> t Sexp.Of_sexp.fields_parser
+  val field
+    :  ?default:t
+    -> ?check:unit Sexp.Of_sexp.t
+    -> string
+    -> t Sexp.Of_sexp.fields_parser
 
   val has_special_forms : t -> bool
 

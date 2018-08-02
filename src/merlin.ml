@@ -18,14 +18,17 @@ module Preprocess = struct
     | Other, Other -> Other
     | Pps _, Other -> a
     | Other, Pps _ -> b
-    | Pps { loc = _; pps = pps1; flags = flags1 },
-      Pps { loc = _; pps = pps2; flags = flags2 } ->
+    | Pps { loc = _; pps = pps1; flags = flags1; staged = s1 },
+      Pps { loc = _; pps = pps2; flags = flags2; staged = s2 } ->
       match
-        match List.compare flags1 flags2 ~compare:String.compare with
+        match Bool.compare s1 s2 with
+        | Gt| Lt as ne -> ne
         | Eq ->
-          List.compare pps1 pps2 ~compare:(fun (_, a) (_, b) ->
-            Jbuild.Pp.compare a b)
-        | ne -> ne
+          match List.compare flags1 flags2 ~compare:String.compare with
+          | Gt | Lt as ne -> ne
+          | Eq ->
+            List.compare pps1 pps2 ~compare:(fun (_, a) (_, b) ->
+              Jbuild.Pp.compare a b)
       with
       | Eq -> a
       | _  -> Other
@@ -98,7 +101,7 @@ let add_source_dir t dir =
 
 let ppx_flags sctx ~dir:_ ~scope ~dir_kind { preprocess; libname; _ } =
   match preprocess with
-  | Pps { loc = _; pps; flags } -> begin
+  | Pps { loc = _; pps; flags; staged = _ } -> begin
     match Preprocessing.get_ppx_driver sctx ~scope ~dir_kind pps with
     | Ok exe ->
       (Path.to_absolute_filename exe

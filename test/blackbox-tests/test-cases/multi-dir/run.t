@@ -6,8 +6,8 @@ Simple test with a multi dir exe
            foo alias default
   Hello, world!
 
-Test that executables stop the recursion
-----------------------------------------
+Test that include_subdirs stop the recursion
+--------------------------------------------
 
   $ dune build --root test2
   Entering directory 'test2'
@@ -37,4 +37,11 @@ Test some error cases
   Entering directory 'error2'
   File "dune", line 2, characters 0-29:
   Error: The 'include_subdirs' stanza cannot appear more than once
+  [1]
+
+  $ dune build --root error3
+  Entering directory 'error3'
+  File "src/gen/dune", line 1, characters 0-23:
+  Error: This stanza is not allowed in a sub-directory of directory with (include_subdirs unqualified).
+  Hint: add (include_subdirs no) to this file.
   [1]

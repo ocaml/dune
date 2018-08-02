@@ -449,44 +449,46 @@ let build_mlds_map (d : Super_context.Dir_with_jbuild.t) ~files =
 
 module Dir_status = struct
   type t =
-    | Empty_standalone of File_tree.Dir.t option
-    (* Directory with no libraries or executables that is not part of
-       a multi-directory group *)
-
-    | Is_component_of_a_group_but_not_the_root of
-        Super_context.Dir_with_jbuild.t option
-    (* Sub-directory of a directory with [(include_subdirs x)] where
-       [x] is not [no] *)
-
-    | Standalone of File_tree.Dir.t
-                    * Super_context.Dir_with_jbuild.t
-    (* Directory with at least one library or executable *)
+    | Standalone of
+        (File_tree.Dir.t * Super_context.Dir_with_jbuild.t option) option
+    (* Directory not part of a multi-directory group. The argument is
+       [None] for directory that are not from the source tree, such as
+       generated ones. *)
 
     | Group_root of File_tree.Dir.t
                     * Super_context.Dir_with_jbuild.t
     (* Directory with [(include_subdirs x)] where [x] is not [no] *)
 
+    | Is_component_of_a_group_but_not_the_root of
+        Super_context.Dir_with_jbuild.t option
+    (* Sub-directory of a [Group_root _] *)
+
   let is_standalone = function
-    | Standalone _ | Empty_standalone _ -> true
+    | Standalone _ -> true
     | _ -> false
 
   let cache = Hashtbl.create 32
 
-  let analyze_stanzas stanzas =
-    let is_group_root, has_modules_consumers =
-      List.fold_left stanzas ~init:(None, false) ~f:(fun acc stanza ->
-        let is_group_root, has_modules_consumers = acc in
-        match stanza with
-        | Include_subdirs (loc, x) ->
-          if Option.is_some is_group_root then
-            Loc.fail loc "The 'include_subdirs' stanza cannot appear \
-                          more than once";
-          (Some x, has_modules_consumers)
-        | Library _ | Executables _ | Tests _ ->
-          (is_group_root, true)
-        | _ -> acc)
-    in
-    (Option.value is_group_root ~default:No, has_modules_consumers)
+  let get_include_subdirs stanzas =
+    List.fold_left stanzas ~init:None ~f:(fun acc stanza ->
+      match stanza with
+      | Include_subdirs (loc, x) ->
+        if Option.is_some acc then
+          Loc.fail loc "The 'include_subdirs' stanza cannot appear \
+                        more than once";
+        Some x
+      | _ -> acc)
+
+  let check_no_module_consumer stanzas =
+    List.iter stanzas ~f:(fun stanza ->
+      match stanza with
+      | Library { buildable; _} | Executables { buildable; _ }
+      | Tests { exes = { buildable; _ }; _ } ->
+        Loc.fail buildable.loc
+          "This stanza is not allowed in a sub-directory of directory with \
+           (include_subdirs unqualified).\n\
+           Hint: add (include_subdirs no) to this file."
+      | _ -> ())
 
   let rec get sctx ~dir =
     match Hashtbl.find cache dir with
@@ -497,29 +499,38 @@ module Dir_status = struct
           Option.bind (Path.drop_build_context dir)
             ~f:(File_tree.find_dir (Super_context.file_tree sctx))
         with
-        | None -> Empty_standalone None
+        | None -> begin
+            match Path.parent dir with
+            | None -> Standalone None
+            | Some dir ->
+              if is_standalone (get sctx ~dir) then
+                Standalone None
+              else
+                Is_component_of_a_group_but_not_the_root None
+          end
         | Some ft_dir ->
           let project_root = Path.of_local (File_tree.Dir.project ft_dir).root in
           match Super_context.stanzas_in sctx ~dir with
           | None ->
             if dir = project_root ||
                is_standalone (get sctx ~dir:(Path.parent_exn dir)) then
-              Empty_standalone (Some ft_dir)
+              Standalone (Some (ft_dir, None))
             else
               Is_component_of_a_group_but_not_the_root None
           | Some d ->
-            let is_group_root, has_modules_consumers =
-              analyze_stanzas d.stanzas
-            in
-            if is_group_root <> No then
+            match get_include_subdirs d.stanzas with
+            | Some Unqualified ->
               Group_root (ft_dir, d)
-            else if not has_modules_consumers &&
-                    dir <> project_root &&
-                    not (is_standalone (get sctx ~dir:(Path.parent_exn dir)))
-            then
-              Is_component_of_a_group_but_not_the_root (Some d)
-            else
-              Standalone (ft_dir, d)
+            | Some No ->
+              Standalone (Some (ft_dir, Some d))
+            | None ->
+              if dir <> project_root &&
+                 not (is_standalone (get sctx ~dir:(Path.parent_exn dir)))
+              then begin
+                check_no_module_consumer d.stanzas;
+                Is_component_of_a_group_but_not_the_root (Some d)
+              end else
+                Standalone (Some (ft_dir, Some d))
       in
       Hashtbl.add cache dir t;
       t
@@ -532,14 +543,13 @@ module Dir_status = struct
         match Super_context.stanzas_in sctx ~dir with
         | None -> Is_component_of_a_group_but_not_the_root None
         | Some d ->
-          let is_group_root, has_modules_consumers =
-            analyze_stanzas d.stanzas
-          in
-          if is_group_root <> No then
+          match get_include_subdirs d.stanzas with
+          | Some Unqualified ->
             Group_root (ft_dir, d)
-          else if has_modules_consumers then
-            Standalone (ft_dir, d)
-          else
+          | Some No ->
+            Standalone (Some (ft_dir, Some d))
+          | None ->
+            check_no_module_consumer d.stanzas;
             Is_component_of_a_group_but_not_the_root (Some d)
       in
       Hashtbl.add cache dir t;
@@ -553,17 +563,25 @@ let rec get sctx ~dir =
   | Some t -> t
   | None ->
     match Dir_status.get sctx ~dir with
-    | Empty_standalone ft_dir ->
+    | Standalone x ->
       let t =
-        { kind = Standalone
-        ; dir
-        ; text_files =
-            (match ft_dir with
-             | None -> String.Set.empty
-             | Some x -> File_tree.Dir.files x)
-        ; modules = lazy empty_modules
-        ; mlds = lazy []
-        }
+        match x with
+        | Some (ft_dir, Some d) ->
+          let files = load_text_files sctx ft_dir d in
+          { kind = Standalone
+          ; dir
+          ; text_files = files
+          ; modules = lazy (build_modules_map d
+                              ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
+          ; mlds = lazy (build_mlds_map d ~files)
+          }
+        | _ ->
+          { kind = Standalone
+          ; dir
+          ; text_files = String.Set.empty
+          ; modules = lazy empty_modules
+          ; mlds = lazy []
+          }
       in
       Hashtbl.add cache dir t;
       t
@@ -575,19 +593,6 @@ let rec get sctx ~dir =
           (* Filled while scanning the group root *)
           Option.value_exn (Hashtbl.find cache dir)
       end
-    | Standalone (ft_dir, d) ->
-      let files = load_text_files sctx ft_dir d in
-      let t =
-        { kind = Standalone
-        ; dir
-        ; text_files = files
-        ; modules = lazy (build_modules_map d
-                            ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
-        ; mlds = lazy (build_mlds_map d ~files)
-        }
-      in
-      Hashtbl.add cache dir t;
-      t
     | Group_root (ft_dir, d) ->
       let rec walk ft_dir ~dir acc =
         match

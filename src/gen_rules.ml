@@ -17,6 +17,8 @@ module Gen(P : Install_rules.Params) = struct
   let sctx = P.sctx
   let ctx = SC.context sctx
 
+  let opaque = ctx.profile = "dev" && ctx.version >= (4, 03, 0)
+
   (* +-----------------------------------------------------------------+
      | Library stuff                                                   |
      +-----------------------------------------------------------------+ *)
@@ -199,6 +201,7 @@ module Gen(P : Install_rules.Params) = struct
         ~requires
         ~preprocessing:pp
         ~no_keep_locs:lib.no_keep_locs
+        ~opaque
     in
 
     let dep_graphs = Ocamldep.rules cctx in
@@ -520,6 +523,7 @@ module Gen(P : Install_rules.Params) = struct
         ~flags
         ~requires
         ~preprocessing:pp
+        ~opaque
     in
 
     Exe.build_and_link_many cctx

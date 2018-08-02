@@ -233,6 +233,7 @@ include Sub_system.Register_end_point(
           ~scope
           ~dir:inline_test_dir
           ~modules
+          ~opaque:false
           ~requires:runner_libs
           ~flags:(Ocaml_flags.of_list ["-w"; "-24"]);
       in

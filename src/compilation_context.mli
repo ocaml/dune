@@ -25,6 +25,7 @@ val create
   -> requires              : Lib.t list Or_exn.t
   -> ?preprocessing        : Preprocessing.t
   -> ?no_keep_locs         : bool
+  -> opaque                : bool
   -> unit
   -> t
 
@@ -45,3 +46,4 @@ val requires             : t -> Lib.t list Or_exn.t
 val includes             : t -> string list Arg_spec.t Cm_kind.Dict.t
 val preprocessing        : t -> Preprocessing.t
 val no_keep_locs         : t -> bool
+val opaque               : t -> bool

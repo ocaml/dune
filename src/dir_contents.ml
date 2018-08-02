@@ -567,9 +567,14 @@ let rec get sctx ~dir =
       in
       Hashtbl.add cache dir t;
       t
-    | Is_component_of_a_group_but_not_the_root _ ->
-      (* Filled while scanning the group root *)
-      Option.value_exn (Hashtbl.find cache dir)
+    | Is_component_of_a_group_but_not_the_root _ -> begin
+        match Hashtbl.find cache dir with
+        | Some t -> t
+        | None ->
+          ignore (get sctx ~dir:(Path.parent_exn dir) : t);
+          (* Filled while scanning the group root *)
+          Option.value_exn (Hashtbl.find cache dir)
+      end
     | Standalone (ft_dir, d) ->
       let files = load_text_files sctx ft_dir d in
       let t =

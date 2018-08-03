@@ -43,27 +43,8 @@ end = struct
       , modules
       )
 
-  let eval ~modules:(all_modules : Module.t Module.Name.Map.t)
-        ~buildable:(conf : Buildable.t) =
-    let (fake_modules, modules, _) =
-      eval ~standard:all_modules ~all_modules conf.modules in
-    let (fake_modules, intf_only, modules_without_implementation_locs) =
-      let (fake_modules', intf_only, locs) =
-        eval ~standard:Module.Name.Map.empty ~all_modules
-          conf.modules_without_implementation in
-      ( Module.Name.Map.superpose fake_modules' fake_modules
-      , intf_only
-      , locs
-      )
-    in
-    Module.Name.Map.iteri fake_modules ~f:(fun m loc ->
-      Loc.warn loc "Module %a is excluded but it doesn't exist."
-        Module.Name.pp m
-    );
-    let real_intf_only =
-      Module.Name.Map.filter modules
-        ~f:(fun (m : Module.t) -> Option.is_none m.impl)
-    in
+  let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
+        ~real_intf_only ~modules_without_implementation_locs =
     if not (Module.Name.Map.equal intf_only real_intf_only
               ~equal:(fun a b -> Module.name a = Module.name b)) then begin
       let should_be_listed, shouldn't_be_listed =
@@ -78,9 +59,9 @@ end = struct
       in
       let uncapitalized = List.map ~f:Module.Name.uncapitalize in
       if should_be_listed <> [] then begin
-        match Ordered_set_lang.loc conf.modules_without_implementation with
+        match Ordered_set_lang.loc buildable.modules_without_implementation with
         | None ->
-          Loc.warn conf.loc
+          Loc.warn buildable.loc
             "Some modules don't have an implementation.\
              \nYou need to add the following field to this stanza:\
              \n\
@@ -119,7 +100,30 @@ end = struct
           "Module %a has an implementation, it cannot be listed here"
           Module.Name.pp module_name
       end
-    end;
+    end
+
+  let eval ~modules:(all_modules : Module.t Module.Name.Map.t)
+        ~buildable:(conf : Buildable.t) =
+    let (fake_modules, modules, _) =
+      eval ~standard:all_modules ~all_modules conf.modules in
+    let (fake_modules, intf_only, modules_without_implementation_locs) =
+      let (fake_modules', intf_only, locs) =
+        eval ~standard:Module.Name.Map.empty ~all_modules
+          conf.modules_without_implementation in
+      ( Module.Name.Map.superpose fake_modules' fake_modules
+      , intf_only
+      , locs
+      )
+    in
+    Module.Name.Map.iteri fake_modules ~f:(fun m loc ->
+      Loc.warn loc "Module %a is excluded but it doesn't exist."
+        Module.Name.pp m
+    );
+    let real_intf_only =
+      Module.Name.Map.filter modules
+        ~f:(fun (m : Module.t) -> Option.is_none m.impl) in
+    check_invalid_module_listing ~buildable:conf ~intf_only ~real_intf_only
+      ~modules_without_implementation_locs;
     modules
 end
 

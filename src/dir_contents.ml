@@ -64,10 +64,8 @@ end = struct
       Module.Name.Map.filter modules
         ~f:(fun (m : Module.t) -> Option.is_none m.impl)
     in
-    if Module.Name.Map.equal intf_only real_intf_only
-         ~equal:(fun a b -> Module.name a = Module.name b) then
-      modules
-    else begin
+    if not (Module.Name.Map.equal intf_only real_intf_only
+              ~equal:(fun a b -> Module.name a = Module.name b)) then begin
       let should_be_listed, shouldn't_be_listed =
         Module.Name.Map.merge intf_only real_intf_only ~f:(fun name x y ->
           match x, y with
@@ -120,9 +118,9 @@ end = struct
         Loc.fail loc
           "Module %a has an implementation, it cannot be listed here"
           Module.Name.pp module_name
-      end;
-      modules
-    end
+      end
+    end;
+    modules
 end
 
 module Library_modules = struct

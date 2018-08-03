@@ -17,7 +17,8 @@ module Gen(P : Install_rules.Params) = struct
   let sctx = P.sctx
   let ctx = SC.context sctx
 
-  let opaque = ctx.profile = "dev" && ctx.version >= (4, 03, 0)
+  let opaque =
+    ctx.profile = "dev" && Ocaml_version.supports_opaque_for_mli ctx.version
 
   (* +-----------------------------------------------------------------+
      | Library stuff                                                   |
@@ -143,10 +144,11 @@ module Gen(P : Install_rules.Params) = struct
           ]));
     dst
 
-  (* In 4.02, the compiler reads the cmi for module alias even with
-     [-w -49 -no-alias-deps], so we must sandbox the build of the
+  (* If the compiler reads the cmi for module alias even with
+     [-w -49 -no-alias-deps], we must sandbox the build of the
      alias module since the modules it references are built after. *)
-  let alias_module_build_sandbox = ctx.version < (4, 03, 0)
+  let alias_module_build_sandbox =
+    Ocaml_version.always_reads_alias_cmi ctx.version
 
   let library_rules (lib : Library.t) ~dir_contents ~dir ~scope
         ~compile_info ~dir_kind =

@@ -50,7 +50,7 @@ type t =
   ; natdynlink_supported    : bool
   ; ocaml_config            : Ocaml_config.t
   ; version_string          : string
-  ; version                 : int * int * int
+  ; version                 : Ocaml_version.t
   ; stdlib_dir              : Path.t
   ; ccomp_type              : string
   ; c_compiler              : string
@@ -274,16 +274,16 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
          ocaml_config_ok_exn
            (Ocaml_config.Vars.of_lines lines >>= Ocaml_config.make))
     >>= fun (findlib_path, ocfg) ->
-    let version = Ocaml_config.version ocfg in
+    let version = Ocaml_version.of_ocaml_config ocfg in
     let env =
-      (* See comment in ansi_color.ml for setup_env_for_colors. For
-         OCaml < 4.05, OCAML_COLOR is not supported so we use
-         OCAMLPARAM. OCaml 4.02 doesn't support 'color' in OCAMLPARAM,
-         so we just don't force colors with 4.02. *)
+      (* See comment in ansi_color.ml for setup_env_for_colors.
+         For versions where OCAML_COLOR is not supported, but 'color' is in
+         OCAMLPARAM, use the latter.
+         If 'color' is not supported, we just don't force colors with 4.02. *)
       if !Clflags.capture_outputs
       && Lazy.force Colors.stderr_supports_colors
-      && version >= (4, 03, 0)
-      && version <  (4, 05, 0) then
+      && Ocaml_version.supports_color_in_ocamlparam version
+      && not (Ocaml_version.supports_ocaml_color version) then
         let value =
           match Env.get env "OCAMLPARAM" with
           | None -> "color=always,_"
@@ -332,8 +332,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
-    let version        = Ocaml_config.version ocfg        in
     let version_string = Ocaml_config.version_string ocfg in
+    let version        = Ocaml_version.of_ocaml_config ocfg in
     let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
     Fiber.return
       { name

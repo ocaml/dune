@@ -95,10 +95,10 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
       in
       let dir, no_keep_locs =
         if CC.no_keep_locs cctx && cm_kind = Cmi then begin
-          if ctx.version < (4, 03, 0) then
-            (obj_dir, Arg_spec.As [])
+          if Ocaml_version.supports_no_keep_locs ctx.version then
+            (ctx.build_dir, Arg_spec.As ["-no-keep-locs"])
           else
-            (ctx.build_dir, As ["-no-keep-locs"])
+            (obj_dir, As [])
         end else
           (ctx.build_dir, As [])
       in

@@ -958,6 +958,7 @@ module Library = struct
        and dune_version = Syntax.get_exn Stanza.syntax
        in
        let name =
+         let open Syntax.Version.Infix in
          match name, public with
          | Some n, _ ->
            Lib_name.validate n ~wrapped
@@ -1202,6 +1203,7 @@ module Executables = struct
     in
     fun names public_names ~multi ->
       let names =
+        let open Syntax.Version.Infix in
         match names, public_names with
         | Some names, _ -> names
         | None, Some public_names ->

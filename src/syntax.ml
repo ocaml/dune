@@ -1,7 +1,18 @@
 open Import
 
 module Version = struct
-  type t = int * int
+  module T = struct
+    type t = int * int
+
+    let compare (major_a, minor_a) (major_b, minor_b) =
+      match Int.compare major_a major_b with
+      | (Gt | Lt) as ne -> ne
+      | Eq -> Int.compare minor_a minor_b
+  end
+
+  include T
+
+  module Infix = Comparable.Operators(T)
 
   let to_string (a, b) = sprintf "%u.%u" a b
 
@@ -19,8 +30,11 @@ module Version = struct
     | sexp ->
       of_sexp_error (Sexp.Ast.loc sexp) "Atom expected"
 
-  let can_read ~parser_version:(pa, pb) ~data_version:(da, db) =
-    pa = da && db <= pb
+  let can_read
+        ~parser_version:(parser_major, parser_minor)
+        ~data_version:(data_major, data_minor) =
+    let open Int.Infix in
+    parser_major = data_major && parser_minor >= data_minor
 end
 
 module Supported_versions = struct
@@ -92,6 +106,7 @@ let check_supported t (loc, ver) =
       (String.concat ~sep:"\n"
          (List.map (Supported_versions.supported_ranges t.supported_versions)
             ~f:(fun (a, b) ->
+              let open Version.Infix in
               if a = b then
                 sprintf "- %s" (Version.to_string a)
               else
@@ -125,6 +140,7 @@ let desc () =
   | Fields (loc, Some s) -> (loc, sprintf "Field '%s'" s)
 
 let deleted_in t ver =
+  let open Version.Infix in
   get_exn t >>= fun current_ver ->
   if current_ver < ver then
     return ()
@@ -134,6 +150,7 @@ let deleted_in t ver =
   end
 
 let renamed_in t ver ~to_ =
+  let open Version.Infix in
   get_exn t >>= fun current_ver ->
   if current_ver < ver then
     return ()
@@ -143,6 +160,7 @@ let renamed_in t ver ~to_ =
   end
 
 let since t ver =
+  let open Version.Infix in
   get_exn t >>= fun current_ver ->
   if current_ver >= ver then
     return ()

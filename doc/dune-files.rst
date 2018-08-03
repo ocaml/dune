@@ -822,12 +822,14 @@ different directories. It is planned to add a ``qualified`` mode in
 the future.
 
 Note that sub-directories are included recursively, however the
-recursion will stop when encountering a sub-directory that:
+recursion will stop when encountering a sub-directory that contains
+another ``include_subdirs`` stanza. Additionally, it is not allowed
+for a sub-directory of a directory with ``(include_subdirs <x>)``
+where ``<x>`` is not ``no`` to contain one of the following stanzas:
 
-- is part of a different project (for instance when vendoring projects)
-- contains ``(include_subdirs unqualified)``
-- contains one of the following stanza that consume modules:
-  ``library``, ``executable(s)`` or ``test(s)``.
+- ``library``
+- ``executable(s)``
+- ``test(s)``
 
 Common items
 ============

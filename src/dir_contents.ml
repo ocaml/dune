@@ -43,63 +43,101 @@ end = struct
       , modules
       )
 
+  type field =
+    | Modules
+    | Intf_only
+
+  type incorrect_field =
+    { correct_field : field
+    ; module_: Module.t
+    }
+
+  type error =
+    | Incorrect_field of incorrect_field
+
+  let fold_errors ~f ~init ~modules ~intf_only =
+    let init =
+      Module.Name.Map.fold intf_only ~init
+        ~f:(fun (module_ : Module.t) acc ->
+          if Option.is_none module_.impl then
+            acc
+          else
+            f (Incorrect_field
+                 { correct_field = Modules
+                 ; module_
+                 }
+              ) acc)
+    in
+    Module.Name.Map.fold modules ~init
+      ~f:(fun (module_ : Module.t) acc ->
+        if Option.is_some module_.impl then
+          acc
+        else if not (Module.Name.Map.mem intf_only (Module.name module_)) then
+          f (Incorrect_field
+               { correct_field = Intf_only
+               ; module_
+               }
+            ) acc
+        else
+          acc)
+
   let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only
-        ~real_intf_only ~modules_without_implementation_locs =
-    if not (Module.Name.Map.equal intf_only real_intf_only
-              ~equal:(fun a b -> Module.name a = Module.name b)) then begin
-      let should_be_listed, shouldn't_be_listed =
-        Module.Name.Map.merge intf_only real_intf_only ~f:(fun name x y ->
-          match x, y with
-          | Some _, Some _ -> None
-          | None  , Some _ -> Some (Left name)
-          | Some _, None   -> Some (Right name)
-          | None  , None   -> assert false)
-        |> Module.Name.Map.values
-        |> List.partition_map ~f:(fun x -> x)
+        ~modules ~modules_without_implementation_locs =
+    let (missing_modules, missing_intf_only) =
+      let (missing_modules, missing_intf_only) =
+        fold_errors ~init:([], []) ~modules ~intf_only
+          ~f:(fun e (missing_modules, missing_intf_only) ->
+            let (Incorrect_field { correct_field; module_ }) = e in
+            begin match correct_field with
+            | Modules -> (module_ :: missing_modules, missing_intf_only)
+            | Intf_only -> (missing_modules, module_ :: missing_intf_only)
+            end)
       in
-      let uncapitalized = List.map ~f:Module.Name.uncapitalize in
-      if should_be_listed <> [] then begin
-        match Ordered_set_lang.loc buildable.modules_without_implementation with
-        | None ->
-          Loc.warn buildable.loc
-            "Some modules don't have an implementation.\
-             \nYou need to add the following field to this stanza:\
-             \n\
-             \n  %s\
-             \n\
-             \nThis will become an error in the future."
-            (let tag = Sexp.unsafe_atom_of_string
-                         "modules_without_implementation" in
-             let modules =
-               should_be_listed
-               |> uncapitalized
-               |> List.map ~f:Sexp.To_sexp.string
-             in
-             Sexp.to_string ~syntax:Dune (List (tag :: modules)))
-        | Some loc ->
-          let list_modules l =
-            uncapitalized l
-            |> List.map ~f:(sprintf "- %s")
-            |> String.concat ~sep:"\n"
-          in
-          Loc.warn loc
-            "The following modules must be listed here as they don't \
-             have an implementation:\n\
-             %s\n\
-             This will become an error in the future."
-            (list_modules should_be_listed)
-      end;
-      if shouldn't_be_listed <> [] then begin
-        let module_name = List.hd shouldn't_be_listed in
-        let (loc, _) =
-          Module.Name.Map.find modules_without_implementation_locs module_name
-          |> Option.value_exn
+      (List.rev missing_modules, List.rev missing_intf_only)
+    in
+    let uncapitalized =
+      List.map ~f:(fun m -> Module.name m |> Module.Name.uncapitalize) in
+    if missing_intf_only <> [] then begin
+      match Ordered_set_lang.loc buildable.modules_without_implementation with
+      | None ->
+        Loc.warn buildable.loc
+          "Some modules don't have an implementation.\
+           \nYou need to add the following field to this stanza:\
+           \n\
+           \n  %s\
+           \n\
+           \nThis will become an error in the future."
+          (let tag = Sexp.unsafe_atom_of_string
+                       "modules_without_implementation" in
+           let modules =
+             missing_intf_only
+             |> uncapitalized
+             |> List.map ~f:Sexp.To_sexp.string
+           in
+           Sexp.to_string ~syntax:Dune (List (tag :: modules)))
+      | Some loc ->
+        let list_modules l =
+          uncapitalized l
+          |> List.map ~f:(sprintf "- %s")
+          |> String.concat ~sep:"\n"
         in
-        (* CR-soon jdimino for jdimino: report all errors *)
-        Loc.fail loc
-          "Module %a has an implementation, it cannot be listed here"
-          Module.Name.pp module_name
-      end
+        Loc.warn loc
+          "The following modules must be listed here as they don't \
+           have an implementation:\n\
+           %s\n\
+           This will become an error in the future."
+          (list_modules missing_intf_only)
+    end;
+    if missing_modules <> [] then begin
+      let module_name = Module.name (List.hd missing_modules) in
+      let (loc, _) =
+        Module.Name.Map.find modules_without_implementation_locs module_name
+        |> Option.value_exn
+      in
+      (* CR-soon jdimino for jdimino: report all errors *)
+      Loc.fail loc
+        "Module %a has an implementation, it cannot be listed here"
+        Module.Name.pp module_name
     end
 
   let eval ~modules:(all_modules : Module.t Module.Name.Map.t)
@@ -119,10 +157,7 @@ end = struct
       Loc.warn loc "Module %a is excluded but it doesn't exist."
         Module.Name.pp m
     );
-    let real_intf_only =
-      Module.Name.Map.filter modules
-        ~f:(fun (m : Module.t) -> Option.is_none m.impl) in
-    check_invalid_module_listing ~buildable:conf ~intf_only ~real_intf_only
+    check_invalid_module_listing ~buildable:conf ~intf_only ~modules
       ~modules_without_implementation_locs;
     modules
 end

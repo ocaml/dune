@@ -449,6 +449,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name missing-loc-run)
+ (deps (package dune) (source_tree test-cases/missing-loc-run))
+ (action
+  (chdir
+   test-cases/missing-loc-run
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name multi-dir)
  (deps (package dune) (source_tree test-cases/multi-dir))
  (action
@@ -789,6 +797,7 @@
   (alias merlin-tests)
   (alias meta-gen)
   (alias misc)
+  (alias missing-loc-run)
   (alias multi-dir)
   (alias multiple-private-libs)
   (alias no-installable-mode)
@@ -878,6 +887,7 @@
   (alias merlin-tests)
   (alias meta-gen)
   (alias misc)
+  (alias missing-loc-run)
   (alias multi-dir)
   (alias no-installable-mode)
   (alias no-name-field)

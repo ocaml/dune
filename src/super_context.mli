@@ -148,6 +148,7 @@ val add_alias_deps
 val add_alias_action
   :  t
   -> Build_system.Alias.t
+  -> loc:Loc.t option
   -> ?locks:Path.t list
   -> stamp:Sexp.t
   -> (unit, Action.t) Build.t

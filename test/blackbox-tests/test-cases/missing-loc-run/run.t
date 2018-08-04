@@ -2,7 +2,8 @@ Exact path provided by the user:
 
   $ dune runtest --root precise-path
   Entering directory 'precise-path'
-  No rule found for foo.exe
+  File "dune", line 1, characters 0-49:
+  Error: No rule found for foo.exe
   [1]
 
 Path that needs to be searched:

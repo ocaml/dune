@@ -1558,6 +1558,7 @@ module Alias_conf = struct
     ; locks   : String_with_vars.t list
     ; package : Package.t option
     ; enabled_if : String_with_vars.t Blang.t option
+    ; loc : Loc.t
     }
 
   let alias_name =
@@ -1570,6 +1571,7 @@ module Alias_conf = struct
   let t =
     record
       (let%map name = field "name" alias_name
+       and loc = loc
        and package = field_o "package" Pkg.t
        and action = field_o "action" (located Action.Unexpanded.t)
        and locks = field "locks" (list String_with_vars.t) ~default:[]
@@ -1582,6 +1584,7 @@ module Alias_conf = struct
        ; package
        ; locks
        ; enabled_if
+       ; loc
        })
 end
 

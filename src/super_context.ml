@@ -112,8 +112,9 @@ let add_rules t ?sandbox builds =
 let add_alias_deps t alias ?dyn_deps deps =
   Alias.add_deps t.build_system alias ?dyn_deps deps
 
-let add_alias_action t alias ?locks ~stamp action =
-  Alias.add_action t.build_system ~context:t.context alias ?locks ~stamp action
+let add_alias_action t alias ~loc ?locks ~stamp action =
+  Alias.add_action t.build_system ~context:t.context alias ~loc ?locks
+    ~stamp action
 
 let eval_glob t ~dir re = Build_system.eval_glob t.build_system ~dir re
 let load_dir t ~dir = Build_system.load_dir t.build_system ~dir

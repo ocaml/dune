@@ -475,7 +475,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
              let action = Action.Unexpanded.Chdir (workspace_root_var, action) in
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
                let bindings = Pform.Map.input_file src.path in
-               add_alias src.path
+               add_alias src.path ~loc:None
                  (Build.path src.path
                   >>^ (fun _ -> Jbuild.Bindings.empty)
                   >>> SC.Action.run sctx
@@ -516,6 +516,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
           (fun ~source ~ast ->
              Module.iter ast ~f:(fun kind src ->
                add_alias src.path
+                 ~loc:None
                  (promote_correction ~suffix:corrected_suffix
                     (Option.value_exn (Module.file source kind))
                     (Build.of_result_map driver_and_flags ~f:(fun (exe, flags) ->

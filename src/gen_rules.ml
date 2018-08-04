@@ -608,6 +608,7 @@ module Gen(P : Install_rules.Params) = struct
         ; deps = t.deps
         ; action = None
         ; enabled_if = t.enabled_if
+        ; loc
         } in
       match test_kind (loc, s) with
       | `Regular ->

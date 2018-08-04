@@ -258,6 +258,7 @@ include Sub_system.Register_end_point(
       in
 
       SC.add_alias_action sctx
+        ~loc:(Some info.loc)
         (Build_system.Alias.runtest ~dir)
         ~stamp:(List [ Sexp.unsafe_atom_of_string "ppx-runner"
                      ; Quoted_string name

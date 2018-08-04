@@ -171,6 +171,7 @@ module Alias : sig
     :  build_system
     -> t
     -> context:Context.t
+    -> loc:Loc.t option
     -> ?locks:Path.t list
     -> stamp:Sexp.t
     -> (unit, Action.t) Build.t

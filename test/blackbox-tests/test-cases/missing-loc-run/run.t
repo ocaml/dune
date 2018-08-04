@@ -12,3 +12,11 @@ Path that needs to be searched:
   File "dune", line 3, characters 14-32:
   Error: Error: Program foo-does-not-exist not found in the tree or in PATH (context: default)
   [1]
+
+Path in deps field of alias stanza
+
+  $ dune runtest --root alias-deps-field
+  Entering directory 'alias-deps-field'
+  File "dune", line 1, characters 0-38:
+  Error: No rule found for foobar
+  [1]

@@ -33,7 +33,8 @@ let runtime_file ~sctx fname =
   | Ok f -> Arg_spec.Dep f
 
 let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
-  let jsoo = SC.resolve_program sctx ~hint:install_jsoo_hint "js_of_ocaml" in
+  let jsoo =
+    SC.resolve_program sctx ~loc:None ~hint:install_jsoo_hint "js_of_ocaml" in
   let runtime = runtime_file ~sctx "runtime.js" in
   Build.run ~context:(Super_context.context sctx) ~dir
     jsoo
@@ -98,7 +99,8 @@ let link_rule cc ~runtime ~target =
       in
       Arg_spec.Deps (List.concat [all_libs;all_other_modules]))
   in
-  let jsoo_link = SC.resolve_program sctx ~hint:install_jsoo_hint "jsoo_link" in
+  let jsoo_link =
+    SC.resolve_program sctx ~loc:None ~hint:install_jsoo_hint "jsoo_link" in
   Build.run ~context:ctx ~dir:(Compilation_context.dir cc)
     jsoo_link
     [ Arg_spec.A "-o"; Target target

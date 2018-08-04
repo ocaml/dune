@@ -9,5 +9,6 @@ Path that needs to be searched:
 
   $ dune runtest --root search-path
   Entering directory 'search-path'
-  Error: Program foo-does-not-exist not found in the tree or in PATH (context: default)
+  File "dune", line 3, characters 14-32:
+  Error: Error: Program foo-does-not-exist not found in the tree or in PATH (context: default)
   [1]

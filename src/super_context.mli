@@ -170,6 +170,7 @@ val source_files : t -> src_path:Path.t -> String.Set.t
 val resolve_program
   :  t
   -> ?hint:string
+  -> loc:Loc.t option
   -> string
   -> Action.Prog.t
 

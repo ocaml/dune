@@ -1,6 +1,8 @@
 open Import
 open Sexp.Of_sexp
 
+let ignore_loc k ~loc:_ = k
+
 module Outputs = struct
   include Action_intf.Outputs
 
@@ -257,10 +259,11 @@ module Prog = struct
       { context : string
       ; program : string
       ; hint    : string option
+      ; loc     : Loc.t option
       }
 
-    let raise { context ; program ; hint } =
-      Utils.program_not_found ?hint ~context program
+    let raise { context ; program ; hint ; loc } =
+      Utils.program_not_found ?hint ~loc ~context program
   end
 
   type t = (Path.t, Not_found.t) result
@@ -320,13 +323,13 @@ module Unresolved = struct
   module Program = struct
     type t =
       | This   of Path.t
-      | Search of string
+      | Search of Loc.t option * string
 
-    let of_string ~dir s =
+    let of_string ~dir ~loc s =
       if String.contains s '/' then
         This (Path.relative dir s)
       else
-        Search s
+        Search (loc, s)
   end
 
   module type Uast = Action_intf.Ast
@@ -345,18 +348,20 @@ module Unresolved = struct
       ~f_string:(fun ~dir:_ x -> x)
       ~f_program:(fun ~dir:_ -> function
         | This p -> Ok p
-        | Search s -> Ok (f s))
+        | Search (loc, s) -> Ok (f loc s))
 end
 
-let prog_and_args_of_values p ~dir =
+let prog_and_args_of_values ~loc p ~dir =
   match p with
-  | [] -> (Unresolved.Program.Search "", [])
+  | [] -> (Unresolved.Program.Search (loc, ""), [])
   | Value.Dir p :: _ ->
     die "%s is a directory and cannot be used as an executable"
       (Path.to_string_maybe_quoted p)
   | Value.Path p :: xs -> (This p, Value.L.to_strings ~dir xs)
   | String s :: xs ->
-    (Unresolved.Program.of_string ~dir s, Value.L.to_strings ~dir xs)
+    ( Unresolved.Program.of_string ~loc ~dir s
+    , Value.L.to_strings ~dir xs
+    )
 
 module Unexpanded = struct
   module type Uast = Action_intf.Ast
@@ -398,17 +403,19 @@ module Unexpanded = struct
     module E = struct
       let expand ~dir ~mode ~f ~l ~r =
         Either.map ~l
-          ~r:(fun s -> r (String_with_vars.expand s ~dir ~f ~mode) ~dir)
+          ~r:(fun s ->
+            r ~loc:(Some (String_with_vars.loc s))
+              (String_with_vars.expand s ~dir ~f ~mode) ~dir)
 
       let string =
         expand ~mode:Single
           ~l:(fun x -> x)
-          ~r:Value.to_string
+          ~r:(ignore_loc Value.to_string)
 
       let strings =
         expand ~mode:Many
           ~l:(fun x -> [x])
-          ~r:Value.L.to_strings
+          ~r:(ignore_loc Value.L.to_strings)
 
       let path e =
         let error_loc =
@@ -417,7 +424,7 @@ module Unexpanded = struct
           | Right r -> Some (String_with_vars.loc r) in
         expand ~mode:Single
           ~l:(fun x -> x)
-          ~r:Value.(to_path ?error_loc) e
+          ~r:(ignore_loc (Value.(to_path ?error_loc))) e
 
       let prog_and_args =
         expand ~mode:Many
@@ -488,15 +495,17 @@ module Unexpanded = struct
   module E = struct
     let expand ~dir ~mode ~f ~map x =
       match String_with_vars.partial_expand ~mode ~dir ~f x with
-      | Expanded e -> Left (map e ~dir)
+      | Expanded e ->
+        let loc = Some (String_with_vars.loc x) in
+        Left (map ~loc e ~dir)
       | Unexpanded x -> Right x
 
-    let string = expand ~mode:Single ~map:Value.to_string
-    let strings = expand ~mode:Many ~map:Value.L.to_strings
-    let cat_strings = expand ~mode:Many ~map:Value.L.concat
+    let string = expand ~mode:Single ~map:(ignore_loc Value.to_string)
+    let strings = expand ~mode:Many ~map:(ignore_loc Value.L.to_strings)
+    let cat_strings = expand ~mode:Many ~map:(ignore_loc Value.L.concat)
     let path x =
-      let error_loc = String_with_vars.loc x in
-      expand ~mode:Single ~map:(Value.to_path ~error_loc) x
+      expand ~mode:Single ~map:(fun ~loc v ~dir ->
+        Value.to_path ?error_loc:loc v ~dir) x
     let prog_and_args = expand ~mode:Many ~map:prog_and_args_of_values
   end
 

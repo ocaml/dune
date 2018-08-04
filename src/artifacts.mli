@@ -16,6 +16,7 @@ val create
 val binary
   :  t
   -> ?hint:string
+  -> loc:Loc.t option
   -> string
   -> Action.Prog.t
 

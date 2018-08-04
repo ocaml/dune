@@ -289,7 +289,7 @@ end = struct
         | Macro (Dep, s) -> Some (path_exp (Path.relative dir s))
         | Macro (Bin, s) -> begin
             let sctx = host sctx in
-            match Artifacts.binary (artifacts sctx) s with
+            match Artifacts.binary ~loc:None (artifacts sctx) s with
             | Ok path -> Some (path_exp path)
             | Error e ->
               Resolved_forms.add_fail acc
@@ -482,8 +482,8 @@ let ocaml_flags t ~dir ~scope (x : Buildable.t) =
 let dump_env t ~dir =
   Ocaml_flags.dump (Env.ocaml_flags t ~dir)
 
-let resolve_program t ?hint bin =
-  Artifacts.binary ?hint t.artifacts bin
+let resolve_program t ?hint ~loc bin =
+  Artifacts.binary ?hint ~loc t.artifacts bin
 
 let create
       ~(context:Context.t)
@@ -920,9 +920,9 @@ module Action = struct
           expand_step2 t ~dir ~dynamic_expansions ~deps_written_by_user ~map_exe
             ~bindings
         in
-        Action.Unresolved.resolve unresolved ~f:(fun prog ->
+        Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
           let sctx = host sctx in
-          match Artifacts.binary sctx.artifacts prog with
+          match Artifacts.binary ~loc sctx.artifacts prog with
           | Ok path    -> path
           | Error fail -> Action.Prog.Not_found.raise fail))
       >>>

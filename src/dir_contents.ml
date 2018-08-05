@@ -612,7 +612,8 @@ let rec get sctx ~dir =
                               ~modules:(modules_of_files ~dir:d.ctx_dir ~files))
           ; mlds = lazy (build_mlds_map d ~files)
           }
-        | _ ->
+        | Some (_, None)
+        | None ->
           { kind = Standalone
           ; dir
           ; text_files = String.Set.empty

@@ -96,6 +96,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dev-flag-1103)
+ (deps (package dune) (source_tree test-cases/dev-flag-1103))
+ (action
+  (chdir
+   test-cases/dev-flag-1103
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dune-jbuild-var-case)
  (deps (package dune) (source_tree test-cases/dune-jbuild-var-case))
  (action
@@ -755,6 +763,7 @@
   (alias custom-build-dir)
   (alias dep-vars)
   (alias depend-on-the-universe)
+  (alias dev-flag-1103)
   (alias dune-jbuild-var-case)
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
@@ -848,6 +857,7 @@
   (alias custom-build-dir)
   (alias dep-vars)
   (alias depend-on-the-universe)
+  (alias dev-flag-1103)
   (alias dune-jbuild-var-case)
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)

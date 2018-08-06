@@ -125,7 +125,7 @@ module Fancy = struct
     in
     match stdout_to, stderr_to with
     | (File fn1 | Opened_file { filename = fn1; _ }),
-      (File fn2 | Opened_file { filename = fn2; _ }) when fn1 = fn2 ->
+      (File fn2 | Opened_file { filename = fn2; _ }) when Path.equal fn1 fn2 ->
       sprintf "%s &> %s" s (Path.to_string fn1)
     | _ ->
       let s =

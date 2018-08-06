@@ -638,7 +638,7 @@ let create
       List.iter stanzas ~f:(function
         | Dune_env.T config ->
           let inherit_from =
-            if ctx_dir = Scope.root scope then
+            if Path.equal ctx_dir (Scope.root scope) then
               context_env_node
             else
               lazy (Env.get t ~dir:(Path.parent_exn ctx_dir))
@@ -811,7 +811,7 @@ module Action = struct
     | Some host ->
       fun exe ->
         match Path.extract_build_context_dir exe with
-        | Some (dir, exe) when dir = sctx.context.build_dir ->
+        | Some (dir, exe) when Path.equal dir sctx.context.build_dir ->
           Path.append host.context.build_dir exe
         | _ -> exe
 

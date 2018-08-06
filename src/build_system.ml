@@ -431,7 +431,7 @@ let get_dir_status t ~dir =
   Path.Table.find_or_add t.dirs dir ~f:(fun _ ->
     if Path.is_in_source_tree dir then
       Dir_status.Loaded (File_tree.files_of t.file_tree dir)
-    else if dir = Path.build_dir then
+    else if Path.equal dir Path.build_dir then
       (* Not allowed to look here *)
       Dir_status.Loaded Path.Set.empty
     else if not (Path.is_managed dir) then
@@ -901,7 +901,7 @@ and load_dir_and_get_targets t ~dir =
           | [] -> assert false
           | x :: l ->
             t.load_dir_stack <- l;
-            assert (x = dir)));
+            assert (Path.equal x dir)));
       Path.Table.replace t.dirs ~key:dir ~data:Failed_to_load;
       reraise exn
 
@@ -1095,7 +1095,7 @@ The following targets are not:
    | [] -> assert false
    | x :: l ->
      t.load_dir_stack <- l;
-     assert (x = dir));
+     assert (Path.equal x dir));
 
   (* Compile the rules and cleanup stale artifacts *)
   List.iter rules ~f:(compile_rule t ~copy_source:false);
@@ -1528,7 +1528,7 @@ let get_collector t ~dir =
     Exn.code_error
       (if Path.is_in_source_tree dir then
          "Build_system.get_collector called on source directory"
-       else if dir = Path.build_dir then
+       else if Path.equal dir Path.build_dir then
          "Build_system.get_collector called on build_dir"
        else if not (Path.is_managed dir) then
          "Build_system.get_collector called on external directory"

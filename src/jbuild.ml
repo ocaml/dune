@@ -1846,7 +1846,7 @@ module Stanzas = struct
         if not (Path.exists current_file) then
           Loc.fail loc "File %s doesn't exist."
             (Path.to_string_maybe_quoted current_file);
-        if List.exists include_stack ~f:(fun (_, f) -> f = current_file) then
+        if List.exists include_stack ~f:(fun (_, f) -> Path.equal f current_file) then
           raise (Include_loop (current_file, include_stack));
         let sexps = Io.Sexp.load ~lexer current_file ~mode:Many in
         parse stanza_parser sexps ~lexer ~current_file ~include_stack

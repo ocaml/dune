@@ -549,7 +549,7 @@ module Dir_status = struct
           let project_root = Path.of_local (File_tree.Dir.project ft_dir).root in
           match Super_context.stanzas_in sctx ~dir with
           | None ->
-            if dir = project_root ||
+            if Path.equal dir project_root ||
                is_standalone (get sctx ~dir:(Path.parent_exn dir)) then
               Standalone (Some (ft_dir, None))
             else

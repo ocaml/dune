@@ -533,7 +533,7 @@ module Dep_stack = struct
   let to_required_by t ~stop_at =
     let stop_at = stop_at.stack in
     let rec loop acc l =
-      if l == stop_at then
+      if List.physically_equal l stop_at then
         List.rev acc
       else
         match l with

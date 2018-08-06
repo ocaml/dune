@@ -659,6 +659,31 @@ let check_path contexts =
             name
             (hint name (String.Set.to_list contexts))
 
+let resolve_path path ~(setup : Main.setup) =
+  let check_path = check_path setup.contexts in
+  check_path path;
+  let can't_build path =
+    Error (path, target_hint setup path);
+  in
+  if not (Path.is_managed path) then
+    Ok [File path]
+  else if Path.is_in_build_dir path then begin
+    if Build_system.is_target setup.build_system path then
+      Ok [File path]
+    else
+      can't_build path
+  end else
+    match
+      List.filter_map setup.contexts ~f:(fun ctx ->
+        let path = Path.append ctx.Context.build_dir path in
+        if Build_system.is_target setup.build_system path then
+          Some (File path)
+        else
+          None)
+    with
+    | [] -> can't_build path
+    | l  -> Ok l
+
 let resolve_target common (setup : Main.setup) s =
   let check_path = check_path setup.contexts in
   if String.is_prefix s ~prefix:"@" then begin
@@ -679,28 +704,7 @@ let resolve_target common (setup : Main.setup) s =
       Ok [if is_rec then Alias_rec path else Alias path]
   end else begin
     let path = Path.relative Path.root (prefix_target common s) in
-    check_path path;
-    let can't_build path =
-      Error (path, target_hint setup path);
-    in
-    if not (Path.is_managed path) then
-      Ok [File path]
-    else if Path.is_in_build_dir path then begin
-      if Build_system.is_target setup.build_system path then
-        Ok [File path]
-      else
-        can't_build path
-    end else
-      match
-        List.filter_map setup.contexts ~f:(fun ctx ->
-          let path = Path.append ctx.Context.build_dir path in
-          if Build_system.is_target setup.build_system path then
-            Some (File path)
-          else
-            None)
-      with
-      | [] -> can't_build path
-      | l  -> Ok l
+    resolve_path path ~setup
   end
 
 let log_targets ~log targets =

@@ -51,7 +51,7 @@ let create (context : Context.t) ~public_libs l ~f =
   ; public_libs
   }
 
-let binary t ?hint name =
+let binary t ?hint ~loc name =
   if not (Filename.is_relative name) then
     Ok (Path.of_filename_relative_to_initial_cwd name)
   else
@@ -66,6 +66,7 @@ let binary t ?hint name =
             program = name
           ; hint
           ; context = t.context.Context.name
+          ; loc
           }
 
 let file_of_lib t ~loc ~lib ~file =

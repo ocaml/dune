@@ -133,7 +133,7 @@ module Gen(P : Install_rules.Params) = struct
          (* We have to execute the rule in the library directory as
             the .o is produced in the current directory *)
          ~dir:(Path.parent_exn src)
-         (SC.resolve_program sctx ctx.c_compiler)
+         (SC.resolve_program ~loc:None sctx ctx.c_compiler)
          ([ S [A "-I"; Path ctx.stdlib_dir]
           ; As (SC.cxx_flags sctx)
           ; includes
@@ -608,6 +608,7 @@ module Gen(P : Install_rules.Params) = struct
         ; deps = t.deps
         ; action = None
         ; enabled_if = t.enabled_if
+        ; loc
         } in
       match test_kind (loc, s) with
       | `Regular ->

@@ -148,6 +148,7 @@ val add_alias_deps
 val add_alias_action
   :  t
   -> Build_system.Alias.t
+  -> loc:Loc.t option
   -> ?locks:Path.t list
   -> stamp:Sexp.t
   -> (unit, Action.t) Build.t
@@ -170,6 +171,7 @@ val source_files : t -> src_path:Path.t -> String.Set.t
 val resolve_program
   :  t
   -> ?hint:string
+  -> loc:Loc.t option
   -> string
   -> Action.Prog.t
 

@@ -65,9 +65,9 @@ let copy_files sctx ~dir ~scope ~src_dir (def: Copy_files.t) =
          ~dst:file_dst);
     file_dst)
 
-let add_alias sctx ~dir ~name ~stamp ?(locks=[]) build =
+let add_alias sctx ~dir ~name ~stamp ~loc ?(locks=[]) build =
   let alias = Build_system.Alias.make name ~dir in
-  SC.add_alias_action sctx alias ~locks ~stamp build
+  SC.add_alias_action sctx alias ~loc ~locks ~stamp build
 
 let alias sctx ~dir ~scope (alias_conf : Alias_conf.t) =
   let enabled =
@@ -91,9 +91,11 @@ let alias sctx ~dir ~scope (alias_conf : Alias_conf.t) =
           (Option.map alias_conf.action ~f:snd)
       ]
   in
+  let loc = Some alias_conf.loc in
   if enabled then
     add_alias sctx
       ~dir
+      ~loc
       ~name:alias_conf.name
       ~stamp
       ~locks:(interpret_locks sctx ~dir ~scope alias_conf.locks)
@@ -114,6 +116,7 @@ let alias sctx ~dir ~scope (alias_conf : Alias_conf.t) =
            ~scope)
   else
     add_alias sctx
+      ~loc
       ~dir
       ~name:alias_conf.name
       ~stamp

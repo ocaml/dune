@@ -338,6 +338,7 @@ module Alias_conf : sig
     ; locks   : String_with_vars.t list
     ; package : Package.t option
     ; enabled_if : String_with_vars.t Blang.t option
+    ; loc : Loc.t
     }
 end
 

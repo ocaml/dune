@@ -30,6 +30,9 @@ next
 - Fix placeholders in `dune subst` documentation (#1090, @emillon, thanks
   @trefis for the bug report)
 
+- Add locations to errors when a missing binary in PATH comes from a dune file
+  (#1096, fixes #1095, @rgrinberg)
+
 1.0.1 (19/07/2018)
 ------------------
 

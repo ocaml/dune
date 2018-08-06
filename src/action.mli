@@ -11,6 +11,7 @@ module Prog : sig
       { context : string
       ; program : string
       ; hint    : string option
+      ; loc     : Loc.t option
       }
 
     val raise : t -> _
@@ -54,7 +55,7 @@ module Unresolved : sig
   module Program : sig
     type t =
       | This   of Path.t
-      | Search of string
+      | Search of Loc.t option * string
   end
 
   include Action_intf.Ast
@@ -62,7 +63,7 @@ module Unresolved : sig
     with type path    := Path.t
     with type string  := string
 
-  val resolve : t -> f:(string -> Path.t) -> action
+  val resolve : t -> f:(Loc.t option -> string -> Path.t) -> action
 end with type action := t
 
 module Unexpanded : sig

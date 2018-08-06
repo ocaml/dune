@@ -146,7 +146,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
      Hashtbl.add opam_var_cache "root" root
    | Default -> ());
   let prog_not_found_in_path prog =
-    Utils.program_not_found prog ~context:name
+    Utils.program_not_found prog ~context:name ~loc:None
   in
   let which_cache = Hashtbl.create 128 in
   let which x = which ~cache:which_cache ~path x in
@@ -424,7 +424,7 @@ let default ?(merlin=true) ~env_nodes ~env ~targets () =
 let create_for_opam ?root ~env ~env_nodes ~targets ~profile ~switch ~name
       ?(merlin=false) () =
   match Bin.opam with
-  | None -> Utils.program_not_found "opam"
+  | None -> Utils.program_not_found "opam" ~loc:None
   | Some fn ->
     (match root with
      | Some root -> Fiber.return root

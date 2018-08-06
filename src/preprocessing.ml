@@ -415,7 +415,7 @@ let cookie_library_name lib_name =
 let setup_reason_rules sctx (m : Module.t) =
   let ctx = SC.context sctx in
   let refmt =
-    Artifacts.binary (SC.artifacts sctx) "refmt" ~hint:"opam install reason" in
+    SC.resolve_program sctx ~loc:None "refmt" ~hint:"opam install reason" in
   let rule src target =
     Build.run ~context:ctx refmt
       [ A "--print"
@@ -475,7 +475,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
              let action = Action.Unexpanded.Chdir (workspace_root_var, action) in
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
                let bindings = Pform.Map.input_file src.path in
-               add_alias src.path
+               add_alias src.path ~loc:None
                  (Build.path src.path
                   >>^ (fun _ -> Jbuild.Bindings.empty)
                   >>> SC.Action.run sctx
@@ -516,6 +516,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
           (fun ~source ~ast ->
              Module.iter ast ~f:(fun kind src ->
                add_alias src.path
+                 ~loc:None
                  (promote_correction ~suffix:corrected_suffix
                     (Option.value_exn (Module.file source kind))
                     (Build.of_result_map driver_and_flags ~f:(fun (exe, flags) ->

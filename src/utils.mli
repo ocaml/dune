@@ -41,6 +41,7 @@ val analyse_target : Path.t -> target_kind
 val program_not_found
   :  ?context:string
   -> ?hint:string
+  -> loc:Loc.t option
   -> string
   -> _
 

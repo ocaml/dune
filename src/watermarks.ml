@@ -230,7 +230,7 @@ let subst_git ?name () =
   let git =
     match Bin.which "git" with
     | Some x -> x
-    | None -> Utils.program_not_found "git"
+    | None -> Utils.program_not_found "git" ~loc:None
   in
   let env = Env.initial in
   Fiber.fork_and_join

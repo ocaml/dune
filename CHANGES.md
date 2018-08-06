@@ -1,5 +1,5 @@
-next
-----
+1.1.0 (06/08/2018)
+------------------
 
 - Fix lookup of command line specified files when `--root` is given. Previously,
   passing in `--root` in conjunction with `--workspace` or `--config` would not

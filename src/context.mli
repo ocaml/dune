@@ -90,7 +90,7 @@ type t =
 
   ; ocaml_config            : Ocaml_config.t
   ; version_string          : string
-  ; version                 : int * int * int
+  ; version                 : Ocaml_version.t
   ; stdlib_dir              : Path.t
   ; ccomp_type              : string
   ; c_compiler              : string

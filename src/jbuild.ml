@@ -870,15 +870,9 @@ module Mode_conf = struct
     let default = of_list [Byte; Best]
 
     let eval t ~has_native =
-      let best : Mode.t =
-        if has_native then
-          Native
-        else
-          Byte
-      in
       let has_best = mem t Best in
-      let byte = mem t Byte || (has_best && best = Byte) in
-      let native = best = Native && (mem t Native || has_best) in
+      let byte = mem t Byte || (has_best && (not has_native)) in
+      let native = has_native && (mem t Native || has_best) in
       { Mode.Dict.byte; native }
   end
 end

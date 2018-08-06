@@ -487,9 +487,10 @@ module Gen(P : Install_rules.Params) = struct
       let l =
         let has_native = Option.is_some ctx.ocamlopt in
         List.filter_map (L.Set.to_list exes.modes) ~f:(fun (mode : L.t) ->
-          if not has_native && mode.mode = Native then
+          match has_native, mode.mode with
+          | false, Native ->
             None
-          else
+          | _ ->
             Some (Exe.Linkage.of_user_config ctx mode))
       in
       (* If bytecode was requested but not native or best version,

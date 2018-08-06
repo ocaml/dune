@@ -659,72 +659,74 @@ let check_path contexts =
             name
             (hint name (String.Set.to_list contexts))
 
+let resolve_target common (setup : Main.setup) s =
+  let check_path = check_path setup.contexts in
+  if String.is_prefix s ~prefix:"@" then begin
+    let pos, is_rec =
+      if String.length s >= 2 && s.[1] = '@' then
+        (2, false)
+      else
+        (1, true)
+    in
+    let s = String.sub s ~pos ~len:(String.length s - pos) in
+    let path = Path.relative Path.root (prefix_target common s) in
+    check_path path;
+    if Path.is_root path then
+      die "@@ on the command line must be followed by a valid alias name"
+    else if not (Path.is_managed path) then
+      die "@@ on the command line must be followed by a relative path"
+    else
+      Ok [if is_rec then Alias_rec path else Alias path]
+  end else begin
+    let path = Path.relative Path.root (prefix_target common s) in
+    check_path path;
+    let can't_build path =
+      Error (path, target_hint setup path);
+    in
+    if not (Path.is_managed path) then
+      Ok [File path]
+    else if Path.is_in_build_dir path then begin
+      if Build_system.is_target setup.build_system path then
+        Ok [File path]
+      else
+        can't_build path
+    end else
+      match
+        List.filter_map setup.contexts ~f:(fun ctx ->
+          let path = Path.append ctx.Context.build_dir path in
+          if Build_system.is_target setup.build_system path then
+            Some (File path)
+          else
+            None)
+      with
+      | [] -> can't_build path
+      | l  -> Ok l
+  end
+
+let log_targets ~log targets =
+  List.iter targets ~f:(function
+    | File path ->
+      Log.info log @@ "- " ^ (Path.to_string path)
+    | Alias path ->
+      Log.info log @@ "- alias " ^
+                      (Path.to_string_maybe_quoted path)
+    | Alias_rec path ->
+      Log.info log @@ "- recursive alias " ^
+                      (Path.to_string_maybe_quoted path));
+  flush stdout
+
 let resolve_targets ~log common (setup : Main.setup) user_targets =
   match user_targets with
   | [] -> []
   | _ ->
-    let check_path = check_path setup.contexts in
     let targets =
-      List.map user_targets ~f:(fun s ->
-        if String.is_prefix s ~prefix:"@" then begin
-          let pos, is_rec =
-            if String.length s >= 2 && s.[1] = '@' then
-              (2, false)
-            else
-              (1, true)
-          in
-          let s = String.sub s ~pos ~len:(String.length s - pos) in
-          let path = Path.relative Path.root (prefix_target common s) in
-          check_path path;
-          if Path.is_root path then
-            die "@@ on the command line must be followed by a valid alias name"
-          else if not (Path.is_managed path) then
-            die "@@ on the command line must be followed by a relative path"
-          else
-            Ok [if is_rec then Alias_rec path else Alias path]
-        end else begin
-          let path = Path.relative Path.root (prefix_target common s) in
-          check_path path;
-          let can't_build path =
-            Error (path, target_hint setup path);
-          in
-          if not (Path.is_managed path) then
-            Ok [File path]
-          else if Path.is_in_build_dir path then begin
-            if Build_system.is_target setup.build_system path then
-              Ok [File path]
-            else
-              can't_build path
-          end else
-            match
-              List.filter_map setup.contexts ~f:(fun ctx ->
-                let path = Path.append ctx.Context.build_dir path in
-                if Build_system.is_target setup.build_system path then
-                  Some (File path)
-                else
-                  None)
-            with
-            | [] -> can't_build path
-            | l  -> Ok l
-        end
-      )
-    in
+      List.map user_targets ~f:(resolve_target common setup) in
     if common.config.display = Verbose then begin
       Log.info log "Actual targets:";
-      let targets =
-        List.concat_map targets ~f:(function
-          | Ok targets -> targets
-          | Error _ -> []) in
-      List.iter targets ~f:(function
-        | File path ->
-          Log.info log @@ "- " ^ (Path.to_string path)
-        | Alias path ->
-          Log.info log @@ "- alias " ^
-                          (Path.to_string_maybe_quoted path)
-        | Alias_rec path ->
-          Log.info log @@ "- recursive alias " ^
-                          (Path.to_string_maybe_quoted path));
-      flush stdout;
+      List.concat_map targets ~f:(function
+        | Ok targets -> targets
+        | Error _ -> [])
+      |> log_targets ~log
     end;
     targets
 

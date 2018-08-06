@@ -32,19 +32,27 @@ module Name : sig
   val named : string -> t option
 
   val anonymous_root : t
+
+  module Infix : Comparable.OPS with type t = t
 end = struct
-  type t =
-    | Named     of string
-    | Anonymous of Path.t
+  module T = struct
+    type t =
+      | Named     of string
+      | Anonymous of Path.t
+
+    let compare a b =
+      match a, b with
+      | Named     x, Named     y -> String.compare x y
+      | Anonymous x, Anonymous y -> Path.compare   x y
+      | Named     _, Anonymous _ -> Lt
+      | Anonymous _, Named     _ -> Gt
+  end
+
+  include T
+
+  module Infix = Comparable.Operators(T)
 
   let anonymous_root = Anonymous Path.root
-
-  let compare a b =
-    match a, b with
-    | Named     x, Named     y -> String.compare x y
-    | Anonymous x, Anonymous y -> Path.compare   x y
-    | Named     _, Anonymous _ -> Lt
-    | Anonymous _, Named     _ -> Gt
 
   let to_string_hum = function
     | Named     s -> s
@@ -305,6 +313,7 @@ let default_name ~dir ~packages =
   | None -> Option.value_exn (Name.anonymous dir)
   | Some (_, pkg) ->
     let pkg =
+      let open Package.Name.Infix in
       Package.Name.Map.fold packages ~init:pkg ~f:(fun pkg acc ->
         if acc.Package.name <= pkg.Package.name then
           acc

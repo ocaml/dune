@@ -175,6 +175,7 @@ module Library_modules = struct
       if not lib.wrapped then
         modules
       else
+        let open Module.Name.Infix in
         Module.Name.Map.map modules ~f:(fun m ->
           if m.name = main_module_name then
             m
@@ -409,6 +410,7 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
         match Module.Name.Map.of_list rev_modules with
         | Ok x -> x
         | Error (name, _, _) ->
+          let open Module.Name.Infix in
           let locs =
             List.filter_map rev_modules ~f:(fun (n, b) ->
               Option.some_if (n = name) b.loc)

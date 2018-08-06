@@ -1475,6 +1475,7 @@ let package_deps t pkg files =
       else
         List.fold_left pkgs ~init:acc ~f:add_package
   and add_package acc p =
+    let open Package.Name.Infix in
     if p = pkg then
       acc
     else

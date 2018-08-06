@@ -346,6 +346,7 @@ let ppx_driver_exe sctx libs ~dir_kind =
         | Private scope_name   -> Some scope_name
         | Public _ | Installed -> None
       in
+      let open Dune_project.Name.Infix in
       match acc, scope_for_key with
       | Some a, Some b -> assert (a = b); acc
       | Some _, None   -> acc

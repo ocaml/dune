@@ -60,6 +60,7 @@ module Dep_graphs = struct
 end
 
 let parse_module_names ~(unit : Module.t) ~modules words =
+  let open Module.Name.Infix in
   List.filter_map words ~f:(fun m ->
     let m = Module.Name.of_string m in
     if m = unit.name then
@@ -68,6 +69,7 @@ let parse_module_names ~(unit : Module.t) ~modules words =
       Module.Name.Map.find modules m)
 
 let is_alias_module cctx (m : Module.t) =
+  let open Module.Name.Infix in
   match CC.alias_module cctx with
   | None -> false
   | Some alias -> alias.name = m.name
@@ -103,6 +105,7 @@ let parse_deps cctx ~file ~unit lines =
       (match lib_interface_module with
        | None -> ()
        | Some (m : Module.t) ->
+         let open Module.Name.Infix in
          if unit.name <> m.name && not (is_alias_module cctx unit) &&
             List.exists deps ~f:(fun x -> Module.name x = m.name) then
            die "Module %a in directory %s depends on %a.\n\

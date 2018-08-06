@@ -1,13 +1,17 @@
 open Import
 
 module Name = struct
-  type t = string
+  module T = struct
+    type t = string
+    let compare = compare
+  end
+
+  include T
 
   let t = Sexp.atom
 
   let add_suffix = (^)
 
-  let compare = compare
   let of_string = String.capitalize
   let to_string x = x
 
@@ -19,6 +23,7 @@ module Name = struct
   module Set = String.Set
   module Map = String.Map
   module Top_closure = Top_closure.String
+  module Infix = Comparable.Operators(T)
 end
 
 module Syntax = struct

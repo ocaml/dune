@@ -1,11 +1,11 @@
 # Hacking on Dune
 
-This section is for people who want to work on Jbuilder itself.
+This section is for people who want to work on Dune itself.
 
 ## Bootstrap
 
-In order to build itself, Jbuilder uses an OCaml script
-([bootstrap.ml](bootstrap.ml)) that dumps most of the sources of Jbuilder into a
+In order to build itself, Dune uses an OCaml script
+([bootstrap.ml](bootstrap.ml)) that dumps most of the sources of Dune into a
 single `boot.ml` file. This file is built using `ocamlopt` or `ocamlc`
 and used to build everything else.
 
@@ -19,7 +19,7 @@ few parts to speed up the build. In particular:
 ## OCaml compatibility test
 
 Install opam switches for all the entries in the
-[jbuild-workspace.dev](jbuild-workspace.dev) file and run:
+[dune-workspace.dev](dune-workspace.dev) file and run:
 
 ```sh
 $ make all-supported-ocaml-versions
@@ -27,19 +27,19 @@ $ make all-supported-ocaml-versions
 
 ## Repository organization
 
-- `vendor/` contains dependencies of Jbuilder, that have been vendored
-- `plugin/` contains the API given to `jbuild` files that are OCaml
+- `vendor/` contains dependencies of Dune, that have been vendored
+- `plugin/` contains the API given to `dune` files that are OCaml
   scripts
-- `src/` contains the core of `Jbuilder`, as a library so that it can
+- `src/` contains the core of `Dune`, as a library so that it can
   be used to implement the Jenga bridge later
 - `bin/` contains the command line interface
 - `doc/` contains the manual and rules to generate the manual pages
 
 ## Design
 
-Jbuilder was initially designed to sort out the public release of Jane
-Street packages which became incredibly complicated over time. It is
-still successfully used for this purpose.
+Dune (nee "JBuilder") was initially designed to sort out the public release of
+Jane Street packages which became incredibly complicated over time. It is still
+successfully used for this purpose.
 
 One necessary feature to achieve this is the ability to precisely
 report the external dependencies necessary to build a given set of
@@ -49,21 +49,21 @@ files for all Jane Street packages.
 
 To implement this, the build rules are described using a build arrow,
 which is defined in [src/build.mli](src/build.mli). In the end it makes the
-development of the internal rules of Jbuilder very composable and
+development of the internal rules of Dune very composable and
 quite pleasant.
 
-To deal with process multiplexing, Jbuilder uses a simplified
+To deal with process multiplexing, Dune uses a simplified
 Lwt/Async-like monad, implemented in [src/future.mli](src/future.mli).
 
 ## Code flow
 
 - [src/jbuild.mli](src/jbuild.mli) contains the internal representation
-  of `jbuild` files and the parsing code
+  of `dune` files and the parsing code
 - [src/jbuild_load.mli](src/jbuild_load.mli) contains the code to scan
   a source tree and build the internal database by reading
-  the `jbuild` files
+  the `dune` files
 - [src/gen_rules.mli](src/gen_rules.mli) contains all the build rules
-  of Jbuilder
+  of Dune
 - [src/build_system.mli](src/build_system.mli) contains a trivial
   implementation of a Build system. This is what Jenga will provide
   when implementing the bridge

@@ -684,7 +684,7 @@ let resolve_path path ~(setup : Main.setup) =
     | [] -> can't_build path
     | l  -> Ok l
 
-let resolve_target common (setup : Main.setup) s =
+let resolve_target common ~(setup : Main.setup) s =
   let check_path = check_path setup.contexts in
   if String.is_prefix s ~prefix:"@" then begin
     let pos, is_rec =
@@ -719,12 +719,14 @@ let log_targets ~log targets =
                       (Path.to_string_maybe_quoted path));
   flush stdout
 
-let resolve_targets ~log common (setup : Main.setup) user_targets =
+let resolve_targets_mixed ~log common (setup : Main.setup) user_targets =
   match user_targets with
   | [] -> []
   | _ ->
     let targets =
-      List.map user_targets ~f:(resolve_target common setup) in
+      List.map user_targets ~f:(function
+        | `String s -> resolve_target common ~setup s
+        | `Path p -> resolve_path p ~setup) in
     if common.config.display = Verbose then begin
       Log.info log "Actual targets:";
       List.concat_map targets ~f:(function
@@ -733,6 +735,10 @@ let resolve_targets ~log common (setup : Main.setup) user_targets =
       |> log_targets ~log
     end;
     targets
+
+let resolve_targets ~log common (setup : Main.setup) user_targets =
+  List.map ~f:(fun s -> `String s) user_targets
+  |> resolve_targets_mixed ~log common setup
 
 let resolve_targets_exn ~log common setup user_targets =
   resolve_targets ~log common setup user_targets
@@ -1236,8 +1242,8 @@ let exec =
          [p]
        | `This_abs _ ->
          [])
-      |> List.map ~f:Path.to_string
-      |> resolve_targets ~log common setup
+      |> List.map ~f:(fun p -> `Path p)
+      |> resolve_targets_mixed ~log common setup
       |> List.concat_map ~f:(function
         | Ok targets -> targets
         | Error _ -> [])

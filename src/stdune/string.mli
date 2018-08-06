@@ -1,5 +1,6 @@
 include module type of struct include StringLabels end
 
+val equal : t -> t -> bool
 val compare : t -> t -> Ordering.t
 
 val break : t -> pos:int -> t * t

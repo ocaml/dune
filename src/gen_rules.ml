@@ -697,7 +697,7 @@ module Gen(P : Install_rules.Params) = struct
               Option.bind (Dir_contents.lookup_module dir_contents name)
                 ~f:(fun buildable ->
                   List.find_map cctxs ~f:(fun (loc, cctx) ->
-                    Option.some_if (loc = buildable.loc) cctx)))
+                    Option.some_if (Loc.equal loc buildable.loc) cctx)))
         with
         | None ->
           (* This happens often when passing a [-p ...] option that

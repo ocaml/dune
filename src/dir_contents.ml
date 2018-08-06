@@ -274,7 +274,7 @@ let mlds t (doc : Documentation.t) =
   let map = Lazy.force t.mlds in
   match
     List.find_map map ~f:(fun (doc', x) ->
-      Option.some_if (doc.loc = doc'.loc) x)
+      Option.some_if (Loc.equal doc.loc doc'.loc) x)
   with
   | Some x -> x
   | None ->

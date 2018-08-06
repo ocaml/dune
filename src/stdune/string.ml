@@ -7,6 +7,7 @@ include struct
   let uncapitalize_ascii = String.uncapitalize
   let uppercase_ascii    = String.uppercase
   let lowercase_ascii    = String.lowercase
+  let equal (a:string) b = Pervasives.(=) a b
 end
 
 include StringLabels

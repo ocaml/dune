@@ -60,7 +60,7 @@ end = struct
       else
         try
           String.iter s ~f:(function
-            | 'A'..'Z' | 'a'..'z' | '_' | '.' | '0'..'9' -> ()
+            | 'A'..'Z' | 'a'..'z' | '_' | '0'..'9' -> ()
             | _ -> raise_notrace Exit);
           s
         with Exit -> invalid ~loc

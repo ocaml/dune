@@ -21,9 +21,6 @@ executable(s) stanza works the same way
 there's only a public name but it's invalid as a name
 
   $ dune build --root public-name-invalid-name
-  Entering directory 'public-name-invalid-name'
-      ocamlopt .c.find.objs/c.find.{cmx,o} (exit 2)
-  (cd _build/default && /Users/rgrinberg/.opam/4.06.1/bin/ocamlopt.opt -w @a-4-29-40-41-42-44-45-48-58-59-60-40 -strict-sequence -strict-formats -short-paths -keep-locs -w -49 -g -I .c.find.objs -intf-suffix .ml-gen -no-alias-deps -o .c.find.objs/c.find.cmx -c -impl c.find.ml-gen)
-  File "c.find.ml-gen", line 1:
-  Error: Could not find the .cmi file for interface c.find.ml-gen.
+  File "dune", line 1, characters 22-28:
+  Error: invalid library name
   [1]

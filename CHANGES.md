@@ -3,6 +3,8 @@ next
 
 - Fix `$ jbuilder --dev` (#1104, fixes #1103, @rgrinberg)
 
+- Fix dune exec when `--build-dir` is set to an absolute path (#1105, fixes
+  #1101, @rgrinberg)
 
 1.1.0 (06/08/2018)
 ------------------

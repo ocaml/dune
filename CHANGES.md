@@ -6,6 +6,9 @@ next
 - Fix dune exec when `--build-dir` is set to an absolute path (#1105, fixes
   #1101, @rgrinberg)
 
+- Fix duplicate profile argument in suggested command when an external library
+  is missing (#1109, #1106, @emillon)
+
 1.1.0 (06/08/2018)
 ------------------
 

@@ -137,6 +137,8 @@ let exclusions =
   ; make "utop"~external_deps:true
   ; make "configurator" ~skip_platforms:[Win]
   ; make "github764" ~skip_platforms:[Win]
+  ; make "gen-opam-install-file" ~external_deps:true
+  ; make "scope-ppx-bug" ~external_deps:true
   ]
 
 let all_tests = lazy (

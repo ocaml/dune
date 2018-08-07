@@ -399,9 +399,10 @@ let common =
                & info ["dev"] ~docs
                    ~doc:{|Same as $(b,--profile dev)|})
         in
-        match dev with
-        | false -> `Ok false
-        | true ->
+        match dev, Which_program.t with
+        | false, (Dune | Jbuilder) -> `Ok false
+        | true, Jbuilder -> `Ok true
+        | true, Dune ->
           `Error
             (true, "--dev is no longer accepted as it is now the default.")
       and profile =

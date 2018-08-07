@@ -1107,13 +1107,7 @@ module Executables = struct
     else
       s ^ "s"
 
-  let common
-    (* :  (Loc.t * string) list option
-     * -> (Loc.t * string) list option
-     * -> multi:bool
-     * -> unit
-     * -> t * Install_conf.t option Sexp.Of_sexp.t *)
-    =
+  let common =
     let%map buildable = Buildable.t
     and (_ : bool) = field "link_executables" ~default:true
                        (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)

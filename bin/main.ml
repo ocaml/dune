@@ -510,8 +510,7 @@ let common =
   in
   let orig_args =
     List.concat
-      [ dump_opt "--profile" profile
-      ; dump_opt "--workspace" (Option.map ~f:Arg.Path.arg workspace_file)
+      [ dump_opt "--workspace" (Option.map ~f:Arg.Path.arg workspace_file)
       ; orig
       ]
   in

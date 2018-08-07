@@ -40,32 +40,43 @@ let module_names = list module_name >>| String.Set.of_list
 module Lib_name : sig
   type t
 
+  val error_message : string
+
   val to_string : t -> string
 
-  val of_string : loc:Loc.t -> string -> t
+  val of_string : string -> t option
 
   val t : t Sexp.Of_sexp.t
 end = struct
   type t = string
 
-  let invalid ~loc = of_sexp_errorf loc "invalid library name"
+  let error_message =
+    "Error: invalid library name\n\
+     Hint: library names must be non-empty and composed only of \
+     the following characters: 'A'..'Z',  'a'..'z', '_'  or '0'..'9'"
+
+  let invalid ~loc = of_sexp_error loc error_message
 
   let to_string s = s
 
-  let of_string ~loc name =
+  let of_string name =
     match name with
-    | "" -> invalid ~loc
+    | "" -> None
     | s ->
-      if s.[0] = '.' then invalid ~loc
+      if s.[0] = '.' then
+        None
       else
         try
           String.iter s ~f:(function
             | 'A'..'Z' | 'a'..'z' | '_' | '0'..'9' -> ()
             | _ -> raise_notrace Exit);
-          s
-        with Exit -> invalid ~loc
+          Some s
+        with Exit -> None
 
-  let t = plain_string of_string
+  let t = plain_string (fun ~loc s ->
+    match of_string s with
+    | Some n -> n
+    | None -> invalid ~loc)
 end
 
 let file =
@@ -917,7 +928,15 @@ module Library = struct
          | Some n, _ -> n
          | None, Some { name = (loc, name) ; _ }  ->
            if dune_version >= (1, 1) then
-             Lib_name.of_string ~loc name
+             match Lib_name.of_string name with
+             | Some n -> n
+             | None ->
+               of_sexp_errorf loc
+                 "%s.\n\
+                  Public library names don't have this restriction. \
+                  You can either change this public name to be a valid \
+                  library name or add a `name` field with a valid library name."
+                 Lib_name.error_message
            else
              of_sexp_error loc "name field cannot be omitted before version \
                                 1.1 of the dune language"

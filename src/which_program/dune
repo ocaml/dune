@@ -1,6 +1,6 @@
 (library
  (name        which_program)
- (public_name dune.which-program)
+ (public_name dune._which-program)
  (synopsis    "[Internal] Standard library of Dune")
  (wrapped     false)
  (no_keep_locs)

@@ -4,7 +4,7 @@ the name field can be omitted for libraries when public_name is present
 
 this isn't possible for older syntax <= (1, 0)
   $ dune build --root no-name-lib-syntax-1-0
-  File "dune", line 1, characters 0-27:
+  File "dune", line 1, characters 22-25:
   Error: name field cannot be omitted before version 1.1 of the dune language
   [1]
 

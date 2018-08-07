@@ -37,21 +37,36 @@ let module_name =
 
 let module_names = list module_name >>| String.Set.of_list
 
-let invalid_lib_name ~loc = of_sexp_errorf loc "invalid library name"
+module Lib_name : sig
+  type t
 
-let library_name =
-  plain_string (fun ~loc name ->
+  val to_string : t -> string
+
+  val of_string : loc:Loc.t -> string -> t
+
+  val t : t Sexp.Of_sexp.t
+end = struct
+  type t = string
+
+  let invalid ~loc = of_sexp_errorf loc "invalid library name"
+
+  let to_string s = s
+
+  let of_string ~loc name =
     match name with
-    | "" -> invalid_lib_name ~loc
+    | "" -> invalid ~loc
     | s ->
-      if s.[0] = '.' then invalid_lib_name ~loc
+      if s.[0] = '.' then invalid ~loc
       else
         try
           String.iter s ~f:(function
             | 'A'..'Z' | 'a'..'z' | '_' | '.' | '0'..'9' -> ()
             | _ -> raise_notrace Exit);
           s
-        with Exit -> invalid_lib_name ~loc)
+        with Exit -> invalid ~loc
+
+  let t = plain_string of_string
+end
 
 let file =
   plain_string (fun ~loc s ->
@@ -868,7 +883,7 @@ module Library = struct
     record
       (let%map buildable = Buildable.t
        and loc = loc
-       and name = field_o "name" library_name
+       and name = field_o "name" Lib_name.t
        and public = Public_lib.public_name_field
        and synopsis = field_o "synopsis" string
        and install_c_headers =
@@ -900,9 +915,9 @@ module Library = struct
        let name =
          match name, public with
          | Some n, _ -> n
-         | None, Some { name = (_loc, name) ; _ }  ->
+         | None, Some { name = (loc, name) ; _ }  ->
            if dune_version >= (1, 1) then
-             name
+             Lib_name.of_string ~loc name
            else
              of_sexp_error loc "name field cannot be omitted before version \
                                 1.1 of the dune language"
@@ -914,7 +929,7 @@ module Library = struct
                "name field is missing"
            )
        in
-       { name
+       { name = Lib_name.to_string name
        ; public
        ; synopsis
        ; install_c_headers

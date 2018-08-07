@@ -51,7 +51,7 @@ end = struct
   type t = string
 
   let error_message =
-    "Error: invalid library name\n\
+    "invalid library name.\n\
      Hint: library names must be non-empty and composed only of \
      the following characters: 'A'..'Z',  'a'..'z', '_'  or '0'..'9'"
 
@@ -934,8 +934,8 @@ module Library = struct
                of_sexp_errorf loc
                  "%s.\n\
                   Public library names don't have this restriction. \
-                  You can either change this public name to be a valid \
-                  library name or add a `name` field with a valid library name."
+                  You can either change this public name to be a valid library \
+                  name or add a \"name\" field with a valid library name."
                  Lib_name.error_message
            else
              of_sexp_error loc "name field cannot be omitted before version \

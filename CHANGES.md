@@ -9,6 +9,9 @@ next
 - Fix duplicate profile argument in suggested command when an external library
   is missing (#1109, #1106, @emillon)
 
+- Fix #1107. `-opaque` wasn't correctly being added to modules without
+  an interface. (#1108, fix #1107, @rgrinberg)
+
 1.1.0 (06/08/2018)
 ------------------
 

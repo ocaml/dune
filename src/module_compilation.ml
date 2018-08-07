@@ -88,7 +88,9 @@ let build_cm cctx ?sandbox ?(dynlink=true) ~dep_graphs ~cm_kind (m : Module.t) =
           SC.add_rule sctx (Build.symlink ~src:in_obj_dir ~dst:in_dir))
       end;
       let opaque_arg =
-        if opaque && cm_kind = Cmi then
+        let intf_only = cm_kind = Cmi && not (Module.has_impl m) in
+        if opaque
+        || (intf_only && Ocaml_version.supports_opaque_for_mli ctx.version) then
           Arg_spec.A "-opaque"
         else
           As []

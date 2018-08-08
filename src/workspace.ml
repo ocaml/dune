@@ -167,28 +167,22 @@ let t ?x ?profile:cmdline_profile () =
   multi_field "context" (Context.t ~profile ~x)
   >>| fun contexts ->
   let defined_names = ref String.Set.empty in
-  let { merlin_context; contexts; env } =
-    let init =
-      { merlin_context = None
-      ; contexts       = []
-      ; env
-      }
-    in
-    List.fold_left contexts ~init ~f:(fun t ctx ->
+  let merlin_context =
+    List.fold_left contexts ~init:None ~f:(fun acc ctx ->
       let name = Context.name ctx in
       if String.Set.mem !defined_names name then
         Loc.fail (Context.loc ctx)
           "second definition of build context %S" name;
       defined_names := String.Set.union !defined_names
                          (String.Set.of_list (Context.all_names ctx));
-      match ctx, t.merlin_context with
+      match ctx, acc with
       | Opam { merlin = true; _ }, Some _ ->
         Loc.fail (Context.loc ctx)
           "you can only have one context for merlin"
       | Opam { merlin = true; _ }, None ->
-        { t with contexts = ctx :: t.contexts; merlin_context = Some name }
+        Some name
       | _ ->
-        { t with contexts = ctx :: t.contexts })
+        acc)
   in
   let contexts =
     match contexts with

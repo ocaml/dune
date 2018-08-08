@@ -186,7 +186,7 @@ let t ?x ?profile:cmdline_profile () =
         Loc.fail (Context.loc ctx)
           "you can only have one context for merlin"
       | Opam { merlin = true; _ }, None ->
-        { merlin_context = Some name; contexts = ctx :: t.contexts; env = None }
+        { t with contexts = ctx :: t.contexts; merlin_context = Some name }
       | _ ->
         { t with contexts = ctx :: t.contexts })
   in

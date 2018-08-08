@@ -12,6 +12,9 @@ next
 - Fix #1107. `-opaque` wasn't correctly being added to modules without
   an interface. (#1108, fix #1107, @rgrinberg)
 
+- Fix a bug causing the toplevel `env` stanza in the workspace file to
+  be ignored when at least one context had `(merlin)` (#1114, @diml)
+
 1.1.0 (06/08/2018)
 ------------------
 

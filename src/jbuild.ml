@@ -925,12 +925,20 @@ module Library = struct
        in
        let name =
          match name, public with
-         | Some n, _ -> n
+         | Some n, _ -> Lib_name.to_string n
          | None, Some { name = (loc, name) ; _ }  ->
            if dune_version >= (1, 1) then
-             match Lib_name.of_string name with
-             | Some n -> n
-             | None ->
+             match Lib_name.of_string name, wrapped with
+             | Some n, _ -> Lib_name.to_string n
+             | None, false ->
+               Loc.warn loc
+                 "%s.\n\
+                 This is temporary allowed for libraries with (wrapped false).\
+                  \nIt will not be supported in the future. \
+                  Please choose a valid name field."
+                 Lib_name.error_message;
+               name
+             | None, true ->
                of_sexp_errorf loc
                  "%s.\n\
                   Public library names don't have this restriction. \
@@ -948,7 +956,7 @@ module Library = struct
                "name field is missing"
            )
        in
-       { name = Lib_name.to_string name
+       { name
        ; public
        ; synopsis
        ; install_c_headers

@@ -16,6 +16,9 @@ next
   applies when the `name` is derived from the `public_name`. (#1110, fix #1102,
   @rgrinberg)
 
+- Fix a bug causing the toplevel `env` stanza in the workspace file to
+  be ignored when at least one context had `(merlin)` (#1114, @diml)
+
 1.1.0 (06/08/2018)
 ------------------
 

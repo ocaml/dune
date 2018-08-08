@@ -152,6 +152,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name envs-and-contexts)
+ (deps (package dune) (source_tree test-cases/envs-and-contexts))
+ (action
+  (chdir
+   test-cases/envs-and-contexts
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name exclude-missing-module)
  (deps (package dune) (source_tree test-cases/exclude-missing-module))
  (action
@@ -944,6 +952,6 @@
   (alias windows-diff)
   (alias workspaces)))
 
-(alias (name runtest-disabled) (deps))
+(alias (name runtest-disabled) (deps (alias envs-and-contexts)))
 
 (alias (name runtest-js) (deps (alias js_of_ocaml)))

@@ -6,4 +6,4 @@
 (executable
  (modules bar)
  (name bar)
- (libraries foo))
+ (libraries foo.bar))

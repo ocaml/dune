@@ -40,13 +40,20 @@ let module_names = list module_name >>| String.Set.of_list
 module Lib_name : sig
   type t
 
+  type result =
+    | Ok of t
+    | Warn of t
+    | Invalid
+
   val error_message : string
+
+  val warn_message : string
 
   val to_string : t -> string
 
-  val of_string : string -> t option
+  val of_string : string -> result
 
-  val t : t Sexp.Of_sexp.t
+  val t : (Loc.t * result) Sexp.Of_sexp.t
 end = struct
   type t = string
 
@@ -55,28 +62,48 @@ end = struct
      Hint: library names must be non-empty and composed only of \
      the following characters: 'A'..'Z',  'a'..'z', '_'  or '0'..'9'"
 
-  let invalid ~loc = of_sexp_error loc error_message
+  let warn_message =
+    sprintf
+      "%s.\n\
+       This is temporary allowed for libraries with (wrapped false).\
+       \nIt will not be supported in the future. \
+       Please choose a valid name field."
+      error_message
+
+  type result =
+    | Ok of t
+    | Warn of t
+    | Invalid
+
+  let valid_char = function
+    | 'A'..'Z' | 'a'..'z' | '_' | '0'..'9' -> true
+    | _ -> false
 
   let to_string s = s
 
   let of_string name =
     match name with
-    | "" -> None
+    | "" -> Invalid
     | s ->
       if s.[0] = '.' then
-        None
+        Invalid
       else
-        try
-          String.iter s ~f:(function
-            | 'A'..'Z' | 'a'..'z' | '_' | '0'..'9' -> ()
-            | _ -> raise_notrace Exit);
-          Some s
-        with Exit -> None
+        let len = String.length s in
+        let rec loop warn i =
+          if i = len - 1 then
+            if warn then Warn s else Ok s
+          else
+            let c = String.unsafe_get s i in
+            if valid_char c then
+              loop warn (i + 1)
+            else if c = '.' then
+              loop true (i + 1)
+            else
+              Invalid
+        in
+        loop false 0
 
-  let t = plain_string (fun ~loc s ->
-    match of_string s with
-    | Some n -> n
-    | None -> invalid ~loc)
+  let t = plain_string (fun ~loc s -> (loc, of_string s))
 end
 
 let file =
@@ -925,20 +952,23 @@ module Library = struct
        in
        let name =
          match name, public with
-         | Some n, _ -> Lib_name.to_string n
+         | Some (loc, n), _ ->
+           begin match n, wrapped with
+           | Ok n, _ ->  n
+           | Warn _, true -> Loc.fail loc "%s" Lib_name.error_message
+           | Warn n, false -> Loc.warn loc "%s" Lib_name.warn_message; n
+           | Invalid, _ -> Loc.fail loc "%s" Lib_name.error_message
+           end
+           |> Lib_name.to_string
          | None, Some { name = (loc, name) ; _ }  ->
            if dune_version >= (1, 1) then
              match Lib_name.of_string name, wrapped with
-             | Some n, _ -> Lib_name.to_string n
-             | None, false ->
-               Loc.warn loc
-                 "%s.\n\
-                 This is temporary allowed for libraries with (wrapped false).\
-                  \nIt will not be supported in the future. \
-                  Please choose a valid name field."
-                 Lib_name.error_message;
+             | Ok n, _ -> Lib_name.to_string n
+             | Warn _, false ->
+               Loc.warn loc "%s" Lib_name.warn_message;
                name
-             | None, true ->
+             | Warn _, true
+             | Invalid, _ ->
                of_sexp_errorf loc
                  "%s.\n\
                   Public library names don't have this restriction. \

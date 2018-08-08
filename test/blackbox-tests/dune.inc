@@ -786,7 +786,6 @@
   (alias dune-project-edition)
   (alias dup-fields)
   (alias env)
-  (alias envs-and-contexts)
   (alias exclude-missing-module)
   (alias exec-cmd)
   (alias exec-missing)
@@ -882,7 +881,6 @@
   (alias dune-project-edition)
   (alias dup-fields)
   (alias env)
-  (alias envs-and-contexts)
   (alias exclude-missing-module)
   (alias exec-cmd)
   (alias exec-missing)
@@ -944,6 +942,6 @@
   (alias windows-diff)
   (alias workspaces)))
 
-(alias (name runtest-disabled) (deps))
+(alias (name runtest-disabled) (deps (alias envs-and-contexts)))
 
 (alias (name runtest-js) (deps (alias js_of_ocaml)))

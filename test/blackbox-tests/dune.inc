@@ -491,6 +491,14 @@
     (diff? run.t run.t.corrected)))))
 
 (alias
+ (name name-field-validation)
+ (deps (package dune) (source_tree test-cases/name-field-validation))
+ (action
+  (chdir
+   test-cases/name-field-validation
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name no-installable-mode)
  (deps (package dune) (source_tree test-cases/no-installable-mode))
  (action
@@ -818,6 +826,7 @@
   (alias missing-loc-run)
   (alias multi-dir)
   (alias multiple-private-libs)
+  (alias name-field-validation)
   (alias no-installable-mode)
   (alias no-name-field)
   (alias null-dep)
@@ -908,6 +917,7 @@
   (alias misc)
   (alias missing-loc-run)
   (alias multi-dir)
+  (alias name-field-validation)
   (alias no-installable-mode)
   (alias no-name-field)
   (alias null-dep)

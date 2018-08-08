@@ -157,6 +157,7 @@ module Map = struct
 
   let rec expand map ~syntax_version ~pform =
     let open Option.O in
+    let open Syntax.Version.Infix in
     let name = String_with_vars.Var.name pform in
     String.Map.find map name >>= fun v ->
     let describe = String_with_vars.Var.describe in

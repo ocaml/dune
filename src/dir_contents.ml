@@ -175,6 +175,7 @@ module Library_modules = struct
       if not lib.wrapped then
         modules
       else
+        let open Module.Name.Infix in
         Module.Name.Map.map modules ~f:(fun m ->
           if m.name = main_module_name then
             m
@@ -274,7 +275,7 @@ let mlds t (doc : Documentation.t) =
   let map = Lazy.force t.mlds in
   match
     List.find_map map ~f:(fun (doc', x) ->
-      Option.some_if (doc.loc = doc'.loc) x)
+      Option.some_if (Loc.equal doc.loc doc'.loc) x)
   with
   | Some x -> x
   | None ->
@@ -409,6 +410,7 @@ let build_modules_map (d : Super_context.Dir_with_jbuild.t) ~modules =
         match Module.Name.Map.of_list rev_modules with
         | Ok x -> x
         | Error (name, _, _) ->
+          let open Module.Name.Infix in
           let locs =
             List.filter_map rev_modules ~f:(fun (n, b) ->
               Option.some_if (n = name) b.loc)
@@ -549,7 +551,7 @@ module Dir_status = struct
           let project_root = Path.of_local (File_tree.Dir.project ft_dir).root in
           match Super_context.stanzas_in sctx ~dir with
           | None ->
-            if dir = project_root ||
+            if Path.equal dir project_root ||
                is_standalone (get sctx ~dir:(Path.parent_exn dir)) then
               Standalone (Some (ft_dir, None))
             else

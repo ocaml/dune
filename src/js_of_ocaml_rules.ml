@@ -125,7 +125,7 @@ let build_cm cc ~(js_of_ocaml:Jbuild.Js_of_ocaml.t) ~src ~target =
       >>>
       js_of_ocaml_rule sctx ~dir ~flags:(fun flags -> As flags) ~spec ~target:itarget
     ]
-    @ (if target = itarget then
+    @ (if Path.equal target itarget then
          []
        else
          [Build.symlink ~src:itarget ~dst:target])

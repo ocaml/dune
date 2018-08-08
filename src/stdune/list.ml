@@ -115,3 +115,5 @@ let rec nth t i =
   | [], _ -> None
   | x :: _, 0 -> Some x
   | _ :: xs, i -> nth xs (i - 1)
+
+let physically_equal = Pervasives.(==)

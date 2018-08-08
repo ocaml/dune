@@ -114,7 +114,12 @@ let report exn =
     let backtrace = Printexc.get_raw_backtrace () in
     let ppf = err_ppf in
     let p = report_with_backtrace exn in
-    let loc = if p.loc = Some Loc.none then None else p.loc in
+    let loc =
+      if Option.equal Loc.equal p.loc (Some Loc.none) then
+        None
+      else
+        p.loc
+    in
     Option.iter loc ~f:(fun loc -> Loc.print ppf loc);
     p.pp ppf;
     Format.pp_print_flush ppf ();

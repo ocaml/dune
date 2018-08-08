@@ -870,15 +870,9 @@ module Mode_conf = struct
     let default = of_list [Byte; Best]
 
     let eval t ~has_native =
-      let best : Mode.t =
-        if has_native then
-          Native
-        else
-          Byte
-      in
       let has_best = mem t Best in
-      let byte = mem t Byte || (has_best && best = Byte) in
-      let native = best = Native && (mem t Native || has_best) in
+      let byte = mem t Byte || (has_best && (not has_native)) in
+      let native = has_native && (mem t Native || has_best) in
       { Mode.Dict.byte; native }
   end
 end
@@ -958,6 +952,7 @@ module Library = struct
        and dune_version = Syntax.get_exn Stanza.syntax
        in
        let name =
+         let open Syntax.Version.Infix in
          match name, public with
          | Some n, _ ->
            Lib_name.validate n ~wrapped
@@ -1202,6 +1197,7 @@ module Executables = struct
     in
     fun names public_names ~multi ->
       let names =
+        let open Syntax.Version.Infix in
         match names, public_names with
         | Some names, _ -> names
         | None, Some public_names ->
@@ -1844,7 +1840,7 @@ module Stanzas = struct
         if not (Path.exists current_file) then
           Loc.fail loc "File %s doesn't exist."
             (Path.to_string_maybe_quoted current_file);
-        if List.exists include_stack ~f:(fun (_, f) -> f = current_file) then
+        if List.exists include_stack ~f:(fun (_, f) -> Path.equal f current_file) then
           raise (Include_loop (current_file, include_stack));
         let sexps = Io.Sexp.load ~lexer current_file ~mode:Many in
         parse stanza_parser sexps ~lexer ~current_file ~include_stack

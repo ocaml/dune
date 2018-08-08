@@ -76,25 +76,27 @@ module Linkage = struct
     let flags =
       match m.kind with
       | Exe ->
-        if wanted_mode = Native && real_mode = Byte then
-          ["-custom"]
-        else
-          []
+        begin
+          match wanted_mode, real_mode with
+          | Native, Byte -> ["-custom"]
+          | _ -> []
+        end
       | Object -> o_flags
       | Shared_object ->
         let so_flags =
-          if ctx.os_type = "Win32" then
+          if String.equal ctx.os_type "Win32" then
             so_flags_windows
           else
             so_flags_unix
         in
-        if real_mode = Native then
+        match real_mode with
+        | Native ->
           (* The compiler doesn't pass these flags in native mode. This
              looks like a bug in the compiler. *)
           List.concat_map ctx.native_c_libraries ~f:(fun flag ->
             ["-cclib"; flag])
           @ so_flags
-        else
+        | Byte ->
           so_flags
     in
     { ext

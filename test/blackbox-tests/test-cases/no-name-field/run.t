@@ -33,8 +33,7 @@ it's just a warning
   $ dune build --root public-name-invalid-wrapped-false
   Info: creating file dune-project with this contents: (lang dune 1.1)
   File "dune", line 3, characters 14-21:
-  Warning: invalid library name.
+  Error: invalid library name.
   Hint: library names must be non-empty and composed only of the following characters: 'A'..'Z',  'a'..'z', '_'  or '0'..'9'.
-  This is temporary allowed for libraries with (wrapped false).
-  It will not be supported in the future. Please choose a valid name field.
-  Entering directory 'public-name-invalid-wrapped-false'
+  Public library names don't have this restriction. You can either change this public name to be a valid library name or add a "name" field with a valid library name.
+  [1]

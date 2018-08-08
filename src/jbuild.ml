@@ -45,35 +45,42 @@ module Lib_name : sig
     | Warn of t
     | Invalid
 
-  val error_message : string
-
-  val warn_message : string
+  val invalid_message : string
 
   val to_string : t -> string
 
   val of_string : string -> result
 
+  val validate : (Loc.t * result) -> wrapped:bool -> t
+
   val t : (Loc.t * result) Sexp.Of_sexp.t
 end = struct
   type t = string
 
-  let error_message =
+  let invalid_message =
     "invalid library name.\n\
      Hint: library names must be non-empty and composed only of \
      the following characters: 'A'..'Z',  'a'..'z', '_'  or '0'..'9'"
 
-  let warn_message =
+  let wrapped_message =
     sprintf
       "%s.\n\
        This is temporary allowed for libraries with (wrapped false).\
        \nIt will not be supported in the future. \
        Please choose a valid name field."
-      error_message
+      invalid_message
 
   type result =
     | Ok of t
     | Warn of t
     | Invalid
+
+  let validate (loc, res) ~wrapped =
+    match res, wrapped with
+    | Ok s, _ -> s
+    | Warn _, true -> Loc.fail loc "%s" wrapped_message
+    | Warn s, false -> Loc.warn loc "%s" wrapped_message; s
+    | Invalid, _ -> Loc.fail loc "%s" invalid_message
 
   let valid_char = function
     | 'A'..'Z' | 'a'..'z' | '_' | '0'..'9' -> true
@@ -952,29 +959,20 @@ module Library = struct
        in
        let name =
          match name, public with
-         | Some (loc, n), _ ->
-           begin match n, wrapped with
-           | Ok n, _ ->  n
-           | Warn _, true -> Loc.fail loc "%s" Lib_name.error_message
-           | Warn n, false -> Loc.warn loc "%s" Lib_name.warn_message; n
-           | Invalid, _ -> Loc.fail loc "%s" Lib_name.error_message
-           end
+         | Some n, _ ->
+           Lib_name.validate n ~wrapped
            |> Lib_name.to_string
          | None, Some { name = (loc, name) ; _ }  ->
            if dune_version >= (1, 1) then
-             match Lib_name.of_string name, wrapped with
-             | Ok n, _ -> Lib_name.to_string n
-             | Warn _, false ->
-               Loc.warn loc "%s" Lib_name.warn_message;
-               name
-             | Warn _, true
-             | Invalid, _ ->
+             match Lib_name.of_string name with
+             | Ok m -> Lib_name.to_string m
+             | Warn _ | Invalid ->
                of_sexp_errorf loc
                  "%s.\n\
                   Public library names don't have this restriction. \
                   You can either change this public name to be a valid library \
                   name or add a \"name\" field with a valid library name."
-                 Lib_name.error_message
+                 Lib_name.invalid_message
            else
              of_sexp_error loc "name field cannot be omitted before version \
                                 1.1 of the dune language"

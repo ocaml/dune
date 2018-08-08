@@ -26,3 +26,14 @@ there's only a public name but it's invalid as a name
   Hint: library names must be non-empty and composed only of the following characters: 'A'..'Z',  'a'..'z', '_'  or '0'..'9'.
   Public library names don't have this restriction. You can either change this public name to be a valid library name or add a "name" field with a valid library name.
   [1]
+
+there's only a public name which is invalid, but sine the library is unwrapped,
+it's just a warning
+
+  $ dune build --root public-name-invalid-wrapped-false
+  Info: creating file dune-project with this contents: (lang dune 1.1)
+  File "dune", line 3, characters 14-21:
+  Error: invalid library name.
+  Hint: library names must be non-empty and composed only of the following characters: 'A'..'Z',  'a'..'z', '_'  or '0'..'9'.
+  Public library names don't have this restriction. You can either change this public name to be a valid library name or add a "name" field with a valid library name.
+  [1]

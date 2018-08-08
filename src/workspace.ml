@@ -7,7 +7,7 @@ let syntax = Stanza.syntax
 
 let env_field =
   field_o "env"
-    (Syntax.since syntax (1, 1) >>= fun () ->
+    (Syntax.since syntax (Stable (1, 1)) >>= fun () ->
      Dune_env.Stanza.t)
 
 module Context = struct
@@ -228,7 +228,7 @@ let load ?x ?profile p =
     in
     parse
       (enter (t ?x ?profile ()))
-      (Univ_map.singleton (Syntax.key syntax) (0, 0))
+      (Univ_map.singleton (Syntax.key syntax) (Stable (0, 0)))
       sexp
 
 let default ?x ?profile () =

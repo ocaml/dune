@@ -292,8 +292,8 @@ module Unexpanded = struct
     in
     let syntax =
       match Univ_map.find t.context (Syntax.key Stanza.syntax) with
-      | Some (0, _)-> File_tree.Dune_file.Kind.Jbuild
-      | None | Some (_, _) -> Dune
+      | Some Stable (0, _)-> File_tree.Dune_file.Kind.Jbuild
+      | None | Some Stable (_, _) | Some Unstable -> Dune
     in
     (syntax, loop Path.Set.empty t.ast)
 

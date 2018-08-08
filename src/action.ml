@@ -122,7 +122,7 @@ struct
            in
            Diff { optional = true; file1; file2; mode })
         ; "cmp",
-          (let%map () = Syntax.since Stanza.syntax (1, 0)
+          (let%map () = Syntax.since Stanza.syntax (Stable (1, 0))
            and file1 = path
            and file2 = path
            in

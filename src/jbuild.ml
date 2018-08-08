@@ -378,11 +378,11 @@ module Dep_conf = struct
         ; "universe"   , return Universe
         ; "files_recursively_in",
           (let%map () =
-             Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
+             Syntax.renamed_in Stanza.syntax (Stable (1, 0)) ~to_:"source_tree"
            and x = sw in
            Source_tree x)
         ; "source_tree",
-          (let%map () = Syntax.since Stanza.syntax (1, 0)
+          (let%map () = Syntax.since Stanza.syntax (Stable (1, 0))
            and x = sw in
            Source_tree x)
         ]
@@ -438,7 +438,7 @@ module Preprocess = struct
          and pps, flags = Pps_and_flags.t in
          Pps { loc; pps; flags; staged = false })
       ; "staged_pps",
-        (let%map () = Syntax.since Stanza.syntax (1, 1)
+        (let%map () = Syntax.since Stanza.syntax (Stable (1, 1))
          and loc = loc
          and pps, flags = Pps_and_flags.t in
          Pps { loc; pps; flags; staged = true })
@@ -482,7 +482,7 @@ module Blang = struct
           ~else_:(String_with_vars.t >>| fun v -> Expr v)
       end
     in
-    let%map () = Syntax.since Stanza.syntax (1, 1)
+    let%map () = Syntax.since Stanza.syntax (Stable (1, 1))
     and t = t
     in
     t
@@ -958,7 +958,7 @@ module Library = struct
            Lib_name.validate n ~wrapped
            |> Lib_name.to_string
          | None, Some { name = (loc, name) ; _ }  ->
-           if dune_version >= (1, 1) then
+           if dune_version >= Stable (1, 1) then
              match Lib_name.of_string name with
              | Ok m -> Lib_name.to_string m
              | Warn _ | Invalid ->
@@ -973,7 +973,7 @@ module Library = struct
                                 1.1 of the dune language"
          | None, None ->
            of_sexp_error loc (
-             if dune_version >= (1, 1) then
+             if dune_version >= Stable (1, 1) then
                "supply at least least one of name or public_name fields"
              else
                "name field is missing"
@@ -1175,7 +1175,7 @@ module Executables = struct
   let common =
     let%map buildable = Buildable.t
     and (_ : bool) = field "link_executables" ~default:true
-                       (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
+                       (Syntax.deleted_in Stanza.syntax (Stable (1, 0)) >>> bool)
     and link_deps = field "link_deps" (list Dep_conf.t) ~default:[]
     and link_flags = field_oslu "link_flags"
     and modes = field "modes" Link_mode.Set.t ~default:Link_mode.Set.default
@@ -1201,7 +1201,7 @@ module Executables = struct
         match names, public_names with
         | Some names, _ -> names
         | None, Some public_names ->
-          if dune_syntax >= (1, 1) then
+          if dune_syntax >= Stable (1, 1) then
             List.map public_names ~f:(fun (loc, p) ->
               match p with
               | None ->
@@ -1212,7 +1212,7 @@ module Executables = struct
               "%s field may not be omitted before dune version 1.1"
               (pluralize ~multi "name")
         | None, None ->
-          if dune_syntax >= (1, 1) then
+          if dune_syntax >= Stable (1, 1) then
             of_sexp_errorf loc "either the %s or the %s field must be present"
               (pluralize ~multi "name")
               (pluralize ~multi "public_name")
@@ -1425,7 +1425,7 @@ module Rule = struct
       map_validate
         (let%map fallback =
            field_b
-           ~check:(Syntax.renamed_in Stanza.syntax (1, 0)
+           ~check:(Syntax.renamed_in Stanza.syntax (Stable (1, 0))
                      ~to_:"(mode fallback)")
            "fallback"
          and mode = field_o "mode" Mode.t
@@ -1790,22 +1790,22 @@ module Stanzas = struct
       (let%map d = Documentation.t in
        [Documentation d])
     ; "jbuild_version",
-      (let%map () = Syntax.deleted_in Stanza.syntax (1, 0)
+      (let%map () = Syntax.deleted_in Stanza.syntax (Stable (1, 0))
        and _ = Jbuild_version.t in
        [])
     ; "tests",
-      (let%map () = Syntax.since Stanza.syntax (1, 0)
+      (let%map () = Syntax.since Stanza.syntax (Stable (1, 0))
        and t = Tests.multi in
        [Tests t])
     ; "test",
-      (let%map () = Syntax.since Stanza.syntax (1, 0)
+      (let%map () = Syntax.since Stanza.syntax (Stable (1, 0))
        and t = Tests.single in
        [Tests t])
     ; "env",
       (let%map x = Dune_env.Stanza.t in
        [Dune_env.T x])
     ; "include_subdirs",
-      (let%map () = Syntax.since Stanza.syntax (1, 1)
+      (let%map () = Syntax.since Stanza.syntax (Stable (1, 1))
        and t = Include_subdirs.t
        and loc = loc in
        [Include_subdirs (loc, t)])
@@ -1823,7 +1823,7 @@ module Stanzas = struct
          [Menhir.T { x with loc }])
       ]
     in
-    Syntax.set Stanza.syntax (0, 0) (sum stanzas)
+    Syntax.set Stanza.syntax (Stable (0, 0)) (sum stanzas)
 
   let () =
     Dune_project.Lang.register Stanza.syntax stanzas

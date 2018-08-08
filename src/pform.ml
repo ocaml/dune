@@ -53,18 +53,18 @@ module Map = struct
 
   let static_vars =
     String.Map.of_list_exn
-      [ "targets", since ~version:(1, 0) Var.Targets
-      ; "deps", since ~version:(1, 0) Var.Deps
-      ; "project_root", since ~version:(1, 0) Var.Project_root
+      [ "targets", since ~version:(Stable (1, 0)) Var.Targets
+      ; "deps", since ~version:(Stable (1, 0)) Var.Deps
+      ; "project_root", since ~version:(Stable (1, 0)) Var.Project_root
 
-      ; "<", deleted_in Var.First_dep ~version:(1, 0)
+      ; "<", deleted_in Var.First_dep ~version:(Stable (1, 0))
                ~repl:"Use a named dependency instead:\
                       \n\
                       \n  (deps (:x <dep>) ...)\
                       \n   ... %{x} ..."
-      ; "@", renamed_in ~version:(1, 0) ~new_name:"targets"
-      ; "^", renamed_in ~version:(1, 0) ~new_name:"deps"
-      ; "SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root"
+      ; "@", renamed_in ~version:(Stable (1, 0)) ~new_name:"targets"
+      ; "^", renamed_in ~version:(Stable (1, 0)) ~new_name:"deps"
+      ; "SCOPE_ROOT", renamed_in ~version:(Stable (1, 0)) ~new_name:"project_root"
       ]
 
   let macros =
@@ -80,12 +80,12 @@ module Map = struct
       ; "read-lines", macro Read_lines
       ; "read-strings", macro Read_strings
 
-      ; "dep", since ~version:(1, 0) Macro.Dep
+      ; "dep", since ~version:(Stable (1, 0)) Macro.Dep
 
-      ; "path", renamed_in ~version:(1, 0) ~new_name:"dep"
-      ; "findlib", renamed_in ~version:(1, 0) ~new_name:"lib"
+      ; "path", renamed_in ~version:(Stable (1, 0)) ~new_name:"dep"
+      ; "findlib", renamed_in ~version:(Stable (1, 0)) ~new_name:"lib"
 
-      ; "path-no-dep", deleted_in ~version:(1, 0) Macro.Path_no_dep
+      ; "path-no-dep", deleted_in ~version:(Stable (1, 0)) Macro.Path_no_dep
       ; "ocaml-config", macro Ocaml_config
       ]
 
@@ -120,7 +120,7 @@ module Map = struct
     in
     let uppercased =
       List.map lowercased ~f:(fun (k, _) ->
-        (String.uppercase k, renamed_in ~new_name:k ~version:(1, 0)))
+        (String.uppercase k, renamed_in ~new_name:k ~version:(Stable (1, 0))))
     in
     let other =
       [ "-verbose"       , values []
@@ -135,7 +135,7 @@ module Map = struct
       ; "ext_exe"        , string context.ext_exe
       ; "profile"        , string context.profile
       ; "workspace_root" , values [Value.Dir context.build_dir]
-      ; "ROOT"           , renamed_in ~version:(1, 0) ~new_name:"workspace_root"
+      ; "ROOT"           , renamed_in ~version:(Stable (1, 0)) ~new_name:"workspace_root"
       ]
     in
     { vars =
@@ -226,8 +226,8 @@ module Map = struct
     let value = Var.Values (Value.L.paths [path]) in
     { vars =
         String.Map.of_list_exn
-          [ "input-file", since ~version:(1, 0) value
-          ; "<", renamed_in ~new_name:"input-file" ~version:(1, 0)
+          [ "input-file", since ~version:(Stable (1, 0)) value
+          ; "<", renamed_in ~new_name:"input-file" ~version:(Stable (1, 0))
           ]
     ; macros = String.Map.empty
     }

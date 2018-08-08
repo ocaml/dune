@@ -49,7 +49,7 @@ module Driver = struct
            and flags = Ordered_set_lang.Unexpanded.field "flags"
            and as_ppx_flags =
              Ordered_set_lang.Unexpanded.field "flags"
-               ~check:(Syntax.since syntax (1, 1))
+               ~check:(Syntax.since syntax (Stable (1, 1)))
            and lint_flags = Ordered_set_lang.Unexpanded.field "lint_flags"
            and main = field "main" string
            and replaces = field "replaces" (list (located string)) ~default:[]
@@ -99,7 +99,7 @@ module Driver = struct
     let to_sexp t =
       let open Sexp.To_sexp in
       let f x = string (Lib.name (Lazy.force x.lib)) in
-      ((1, 0),
+      (Syntax.Version.Stable (1, 0),
        record
          [ "flags"            , Ordered_set_lang.Unexpanded.sexp_of_t
                                   t.info.flags
@@ -190,7 +190,7 @@ module Jbuild_driver = struct
   let make name info : (Pp.t * Driver.t) Lazy.t = lazy (
     let info =
       let parsing_context =
-        Univ_map.singleton (Syntax.key Stanza.syntax) (0, 0)
+        Univ_map.singleton (Syntax.key Stanza.syntax) (Stable (0, 0))
       in
       Sexp.parse_string ~mode:Single ~fname:"<internal>" info
         ~lexer:Sexp.Lexer.jbuild_token

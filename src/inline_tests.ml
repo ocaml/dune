@@ -83,7 +83,7 @@ module Backend = struct
       let open Sexp.To_sexp in
       let lib x = string (Lib.name x) in
       let f x = string (Lib.name x.lib) in
-      ((1, 0),
+      (Syntax.Version.Stable (1, 0),
        record_fields
          [ field "runner_libraries" (list lib)
              (Result.ok_exn t.runner_libraries)

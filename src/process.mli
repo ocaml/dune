@@ -51,6 +51,7 @@ val run
 (** Run a command and capture its output *)
 val run_capture
   :  ?dir:Path.t
+  -> ?stderr_to:std_output_to
   -> env:Env.t
   -> ?purpose:purpose
   -> (string, 'a) failure_mode
@@ -59,6 +60,7 @@ val run_capture
   -> 'a Fiber.t
 val run_capture_line
   :  ?dir:Path.t
+  -> ?stderr_to:std_output_to
   -> env:Env.t
   -> ?purpose:purpose
   -> (string, 'a) failure_mode
@@ -67,6 +69,7 @@ val run_capture_line
   -> 'a Fiber.t
 val run_capture_lines
   :  ?dir:Path.t
+  -> ?stderr_to:std_output_to
   -> env:Env.t
   -> ?purpose:purpose
   -> (string list, 'a) failure_mode

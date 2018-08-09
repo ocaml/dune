@@ -27,10 +27,12 @@ let parse_sub_systems ~parsing_context sexps =
          1.0 as the version. Which would correspond to the dune syntax (because
          subsystems share the syntax of the dune lang) *)
       match Univ_map.find_exn parsing_context (Syntax.key Stanza.syntax) with
-      | (0, 0) ->
+      | Stable (0, 0) ->
         parsing_context
-      | (_, _) ->
+      | Stable (_, _) ->
         Univ_map.add parsing_context (Syntax.key M.syntax) (snd version)
+      | Unstable ->
+        Errors.die "subsystem with an unstable version number"
     in
     M.T (Sexp.Of_sexp.parse M.parse parsing_context data))
 
@@ -38,8 +40,8 @@ let of_sexp =
   let open Sexp.Of_sexp in
   let version =
     plain_string (fun ~loc -> function
-      | "1" -> (0, 0)
-      | "2" -> (1, 0)
+      | "1" -> Syntax.Version.Stable (0, 0)
+      | "2" -> Syntax.Version.Stable (1, 0)
       | v ->
         of_sexp_errorf loc
           "Unsupported version %S, only version 1 is supported" v)
@@ -99,10 +101,12 @@ let gen ~(dune_version : Syntax.Version.t) confs =
     [ Sexp.unsafe_atom_of_string "dune"
     ; Sexp.unsafe_atom_of_string
         (match dune_version with
-         | (0, 0) -> "1"
-         | (x, _) when x >= 1 -> "2"
-         | (_, _) ->
+         | Stable (0, 0) -> "1"
+         | Stable (x, _) when x >= 1 -> "2"
+         | Stable (_, _) ->
            Exn.code_error "Cannot generate dune with unknown version"
-             ["dune_version", Syntax.Version.sexp_of_t dune_version])
+             ["dune_version", Syntax.Version.sexp_of_t dune_version]
+         | Unstable -> Errors.die "Cannot generate a dune file with an unstable version"
+        )
     ; List sexps
     ]

@@ -13,7 +13,7 @@ let make_text ?(quoted=false) loc s =
       ; quoted
       ; loc
       }
-  ; syntax_version = (1, 0)
+  ; syntax_version = Stable (1, 0)
   }
 
 let literal ~quoted ~loc s =
@@ -123,7 +123,7 @@ let loc t = t.template.loc
 
 let syntax_version t = t.syntax_version
 
-let virt_syntax = (1, 0)
+let virt_syntax = Syntax.Version.Stable (1, 0)
 
 let virt ?(quoted=false) pos s =
   let template = Jbuild.parse ~quoted ~loc:(Loc.of_pos pos) s in

@@ -8,7 +8,9 @@ module Version : sig
       It is always assumed that a parser with version [(X, Y)] can
       read the output produced by a printer at version [(X, Z)] for any
       [Z <= Y]. *)
-  type t = int * int
+  type t =
+    | Stable of int * int
+    | Unstable
 
   include Sexp.Sexpable with type t := t
 
@@ -41,10 +43,12 @@ end
     syntax. [supported_version] is the list of the last minor version
     of each supported major version. [desc] is used to describe what
     this syntax represent in error messages. *)
-val create : name:string -> desc:string -> Version.t list -> t
+val create : name:string -> desc:string -> (int * int) list -> t
 
 (** Return the name of the syntax. *)
 val name : t -> string
+
+val enable_unstable : t -> unit
 
 (** Check that the given version is supported and raise otherwise. *)
 val check_supported : t -> Loc.t * Version.t -> unit

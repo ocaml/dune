@@ -2,65 +2,93 @@ open Import
 
 module Version = struct
   module T = struct
-    type t = int * int
+    type t =
+      | Stable of int * int
+      | Unstable
 
-    let compare (major_a, minor_a) (major_b, minor_b) =
-      match Int.compare major_a major_b with
-      | (Gt | Lt) as ne -> ne
-      | Eq -> Int.compare minor_a minor_b
+    let compare a b =
+      match a, b with
+      | Stable _, Unstable -> Lt
+      | Unstable, Stable _ -> Gt
+      | Unstable, Unstable -> Eq
+      | Stable (major_a, minor_a), Stable (major_b, minor_b) ->
+        begin
+          match Int.compare major_a major_b with
+          | (Gt | Lt) as ne -> ne
+          | Eq -> Int.compare minor_a minor_b
+        end
   end
 
   include T
 
   module Infix = Comparable.Operators(T)
 
-  let to_string (a, b) = sprintf "%u.%u" a b
+  let to_string =
+    function
+    | Stable (a, b) -> sprintf "%u.%u" a b
+    | Unstable -> "unstable"
 
   let sexp_of_t t = Sexp.unsafe_atom_of_string (to_string t)
 
   let t : t Sexp.Of_sexp.t =
     let open Sexp.Of_sexp in
     raw >>| function
+    | Atom (_loc, A "unstable") ->
+      Unstable
     | Atom (loc, A s) -> begin
         try
-          Scanf.sscanf s "%u.%u" (fun a b -> (a, b))
+          Scanf.sscanf s "%u.%u" (fun a b -> Stable (a, b))
         with _ ->
           Loc.fail loc "Atom of the form NNN.NNN expected"
       end
     | sexp ->
       of_sexp_error (Sexp.Ast.loc sexp) "Atom expected"
 
-  let can_read
-        ~parser_version:(parser_major, parser_minor)
-        ~data_version:(data_major, data_minor) =
+  let can_read ~parser_version ~data_version =
+    match parser_version, data_version with
+    | Unstable, Unstable -> true
+    | Unstable, Stable _ -> true
+    | Stable _, Unstable -> false
+    | Stable (parser_major, parser_minor), Stable (data_major, data_minor) ->
     let open Int.Infix in
     parser_major = data_major && parser_minor >= data_minor
 end
 
 module Supported_versions = struct
-  type t = int Int.Map.t
+  type t =
+    { stable_versions : int Int.Map.t
+    ; mutable supports_unstable : bool
+    }
 
   let make l : t =
-    match
-      List.map l ~f:(fun (major, minor) -> (major, minor))
-      |> Int.Map.of_list
-    with
-    | Ok x -> x
+    match Int.Map.of_list l with
+    | Ok stable_versions -> {stable_versions; supports_unstable = false}
     | Error _ ->
+      let versions =
+        List.map ~f:(fun (major, minor) -> Version.Stable (major, minor)) l
+      in
       Exn.code_error
         "Syntax.create"
-        [ "versions", Sexp.To_sexp.list Version.sexp_of_t l ]
+        [("versions", Sexp.To_sexp.list Version.sexp_of_t versions)]
 
-  let greatest_supported_version t = Option.value_exn (Int.Map.max_binding t)
+  let greatest_supported_version t =
+    let (major, minor) =
+      Option.value_exn (Int.Map.max_binding t.stable_versions)
+    in
+    Version.Stable (major, minor)
 
-  let is_supported t (major, minor) =
-    match Int.Map.find t major with
-    | Some minor' -> minor' >= minor
-    | None -> false
+  let is_supported t = function
+    | Version.Stable (major, minor) ->
+      begin
+        match Int.Map.find t.stable_versions major with
+        | Some minor' -> minor' >= minor
+        | None -> false
+      end
+    | Unstable -> t.supports_unstable
 
   let supported_ranges t =
-    Int.Map.to_list t |> List.map ~f:(fun (major, minor) ->
-      ((major, 0), (major, minor)))
+    Int.Map.to_list t.stable_versions |> List.map ~f:(fun (major, minor) ->
+      (Version.Stable (major, 0), Version.Stable (major, minor)))
 end
 
 type t =
@@ -69,6 +97,9 @@ type t =
   ; key  : Version.t Univ_map.Key.t
   ; supported_versions : Supported_versions.t
   }
+
+let enable_unstable t =
+  t.supported_versions.supports_unstable <- true
 
 module Error = struct
   let since loc t ver ~what =

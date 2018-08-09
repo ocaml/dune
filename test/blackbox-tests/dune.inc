@@ -409,6 +409,14 @@
     (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
 
 (alias
+ (name lang-unstable)
+ (deps (package dune) (source_tree test-cases/lang-unstable))
+ (action
+  (chdir
+   test-cases/lang-unstable
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name lib-available)
  (deps (package dune) (source_tree test-cases/lib-available))
  (action
@@ -823,6 +831,7 @@
   (alias inline_tests)
   (alias installable-dup-private-libs)
   (alias intf-only)
+  (alias lang-unstable)
   (alias lib-available)
   (alias link-deps)
   (alias loop)
@@ -916,6 +925,7 @@
   (alias inline_tests)
   (alias installable-dup-private-libs)
   (alias intf-only)
+  (alias lang-unstable)
   (alias lib-available)
   (alias link-deps)
   (alias loop)

@@ -16,8 +16,9 @@ module File_kind = struct
   type t = Sexp.syntax = Jbuild | Dune
 
   let of_syntax = function
-    | (0, _) -> Jbuild
-    | (_, _) -> Dune
+    | Syntax.Version.Stable (0, _) -> Jbuild
+    | Syntax.Version.Stable (_, _) -> Dune
+    | Syntax.Version.Unstable -> Dune
 end
 
 let file_kind () =
@@ -86,7 +87,7 @@ module Of_sexp = struct
 
   let on_dup parsing_context name entries =
     match Univ_map.find parsing_context (Syntax.key syntax) with
-    | Some (0, _) ->
+    | Some Stable (0, _) ->
       let last = Option.value_exn (List.last entries) in
       Loc.warn (Sexp.Ast.loc last)
         "Field %S is present several times, previous occurrences are ignored."

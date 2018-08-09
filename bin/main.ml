@@ -56,6 +56,7 @@ type common =
     orig_args             : string list
   ; config                : Config.t
   ; default_target        : string
+  ; unstable_lang         : bool
   }
 
 let prefix_target common s = common.target_prefix ^ s
@@ -110,6 +111,8 @@ module Main = struct
   include Dune.Main
 
   let setup ~log ?external_lib_deps_mode common =
+    if common.unstable_lang then
+      Syntax.enable_unstable Stanza.syntax;
     setup
       ~log
       ?workspace_file:(Option.map ~f:Arg.Path.path common.workspace_file)
@@ -497,6 +500,11 @@ let common =
          & opt (some string) None
          & info ["diff-command"] ~docs
              ~doc:"Shell command to use to diff files")
+  and unstable_lang =
+    Arg.(value
+         & flag
+         & info ["unstable"]
+             ~doc:"Enable unstable features from the dune language")
   in
   let build_dir = Option.value ~default:"_build" build_dir in
   let root, to_cwd =
@@ -555,6 +563,7 @@ let common =
   ; config
   ; build_dir
   ; default_target
+  ; unstable_lang
   }
 
 let installed_libraries =

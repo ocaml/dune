@@ -37,7 +37,7 @@ module Stanza = struct
        (pat, configs))
 
   let t =
-    let%map () = Syntax.since Stanza.syntax (1, 0)
+    let%map () = Syntax.since Stanza.syntax (Stable (1, 0))
     and loc = loc
     and rules = repeat rule
     in

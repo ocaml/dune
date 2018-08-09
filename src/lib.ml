@@ -637,13 +637,13 @@ let rec instantiate db name (info : Info.t) ~stack ~hidden =
   let resolve (loc, name) =
     resolve_dep db name ~allow_private_deps ~loc ~stack in
   let t =
-    { info              = info
-    ; name              = name
+    { info
+    ; name
     ; unique_id         = id.unique_id
-    ; requires          = requires
-    ; ppx_runtime_deps  = ppx_runtime_deps
-    ; pps               = pps
-    ; resolved_selects  = resolved_selects
+    ; requires
+    ; ppx_runtime_deps
+    ; pps
+    ; resolved_selects
     ; user_written_deps = Info.user_written_deps info
     ; sub_systems       = Sub_system_name.Map.empty
     }

@@ -242,7 +242,7 @@ let load ?extra_ignored_subtrees ?(ignore_promoted_rules=false) () =
       ~f:(fun dir acc ->
         let p = File_tree.Dir.project dir in
         match Path.kind (File_tree.Dir.path dir) with
-        | Local d when d = p.root -> p :: acc
+        | Local d when Path.Local.equal d p.root -> p :: acc
         | _ -> acc)
   in
   let packages =

@@ -5,3 +5,5 @@ module Set : Set.S with type elt = t
 module Map : Map.S with type key = t
 
 val of_string_exn : string -> t
+
+module Infix : Comparable.OPS with type t = t

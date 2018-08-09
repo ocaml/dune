@@ -136,6 +136,7 @@ module Local : sig
   val is_root : t -> bool
   val compare : t -> t -> Ordering.t
   val compare_val : t -> t -> Ordering.t
+  val equal : t -> t -> bool
   val of_string : ?error_loc:Usexp.Loc.t -> string -> t
   val to_string : t -> string
   val relative : ?error_loc:Usexp.Loc.t -> t -> string -> t
@@ -171,6 +172,11 @@ end = struct
     end)()
 
   let compare_val x y = String.compare (to_string x) (to_string y)
+
+  let equal x y =
+    match compare x y with
+    | Eq -> true
+    | Gt | Lt -> false
 
   let root = make "."
 

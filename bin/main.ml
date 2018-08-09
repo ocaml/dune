@@ -510,8 +510,7 @@ let common =
   in
   let orig_args =
     List.concat
-      [ dump_opt "--profile" profile
-      ; dump_opt "--workspace" (Option.map ~f:Arg.Path.arg workspace_file)
+      [ dump_opt "--workspace" (Option.map ~f:Arg.Path.arg workspace_file)
       ; orig
       ]
   in
@@ -631,7 +630,7 @@ let target_hint (setup : Main.setup) path =
     (* Only suggest hints for the basename, otherwise it's slow when there are lots of
        files *)
     List.filter_map candidates ~f:(fun path ->
-      if Path.parent_exn path = sub_dir then
+      if Path.equal (Path.parent_exn path) sub_dir then
         Some (Path.to_string path)
       else
         None)

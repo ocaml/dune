@@ -1,10 +1,23 @@
-next
-----
+1.1.1 (08/08/2018)
+------------------
 
 - Fix `$ jbuilder --dev` (#1104, fixes #1103, @rgrinberg)
 
 - Fix dune exec when `--build-dir` is set to an absolute path (#1105, fixes
   #1101, @rgrinberg)
+
+- Fix duplicate profile argument in suggested command when an external library
+  is missing (#1109, #1106, @emillon)
+
+- `-opaque` wasn't correctly being added to modules without an interface.
+  (#1108, fix #1107, @rgrinberg)
+
+- Fix validation of library `name` fields and make sure this validation also
+  applies when the `name` is derived from the `public_name`. (#1110, fix #1102,
+  @rgrinberg)
+
+- Fix a bug causing the toplevel `env` stanza in the workspace file to
+  be ignored when at least one context had `(merlin)` (#1114, @diml)
 
 1.1.0 (06/08/2018)
 ------------------

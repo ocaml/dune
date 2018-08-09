@@ -37,21 +37,81 @@ let module_name =
 
 let module_names = list module_name >>| String.Set.of_list
 
-let invalid_lib_name ~loc = of_sexp_errorf loc "invalid library name"
+module Lib_name : sig
+  type t
 
-let library_name =
-  plain_string (fun ~loc name ->
+  type result =
+    | Ok of t
+    | Warn of t
+    | Invalid
+
+  val invalid_message : string
+
+  val to_string : t -> string
+
+  val of_string : string -> result
+
+  val validate : (Loc.t * result) -> wrapped:bool -> t
+
+  val t : (Loc.t * result) Sexp.Of_sexp.t
+end = struct
+  type t = string
+
+  let invalid_message =
+    "invalid library name.\n\
+     Hint: library names must be non-empty and composed only of \
+     the following characters: 'A'..'Z',  'a'..'z', '_'  or '0'..'9'"
+
+  let wrapped_message =
+    sprintf
+      "%s.\n\
+       This is temporary allowed for libraries with (wrapped false).\
+       \nIt will not be supported in the future. \
+       Please choose a valid name field."
+      invalid_message
+
+  type result =
+    | Ok of t
+    | Warn of t
+    | Invalid
+
+  let validate (loc, res) ~wrapped =
+    match res, wrapped with
+    | Ok s, _ -> s
+    | Warn _, true -> Loc.fail loc "%s" wrapped_message
+    | Warn s, false -> Loc.warn loc "%s" wrapped_message; s
+    | Invalid, _ -> Loc.fail loc "%s" invalid_message
+
+  let valid_char = function
+    | 'A'..'Z' | 'a'..'z' | '_' | '0'..'9' -> true
+    | _ -> false
+
+  let to_string s = s
+
+  let of_string name =
     match name with
-    | "" -> invalid_lib_name ~loc
+    | "" -> Invalid
     | s ->
-      if s.[0] = '.' then invalid_lib_name ~loc
+      if s.[0] = '.' then
+        Invalid
       else
-        try
-          String.iter s ~f:(function
-            | 'A'..'Z' | 'a'..'z' | '_' | '.' | '0'..'9' -> ()
-            | _ -> raise_notrace Exit);
-          s
-        with Exit -> invalid_lib_name ~loc)
+        let len = String.length s in
+        let rec loop warn i =
+          if i = len - 1 then
+            if warn then Warn s else Ok s
+          else
+            let c = String.unsafe_get s i in
+            if valid_char c then
+              loop warn (i + 1)
+            else if c = '.' then
+              loop true (i + 1)
+            else
+              Invalid
+        in
+        loop false 0
+
+  let t = plain_string (fun ~loc s -> (loc, of_string s))
+end
 
 let file =
   plain_string (fun ~loc s ->
@@ -810,15 +870,9 @@ module Mode_conf = struct
     let default = of_list [Byte; Best]
 
     let eval t ~has_native =
-      let best : Mode.t =
-        if has_native then
-          Native
-        else
-          Byte
-      in
       let has_best = mem t Best in
-      let byte = mem t Byte || (has_best && best = Byte) in
-      let native = best = Native && (mem t Native || has_best) in
+      let byte = mem t Byte || (has_best && (not has_native)) in
+      let native = has_native && (mem t Native || has_best) in
       { Mode.Dict.byte; native }
   end
 end
@@ -868,7 +922,7 @@ module Library = struct
     record
       (let%map buildable = Buildable.t
        and loc = loc
-       and name = field_o "name" library_name
+       and name = field_o "name" Lib_name.t
        and public = Public_lib.public_name_field
        and synopsis = field_o "synopsis" string
        and install_c_headers =
@@ -898,11 +952,22 @@ module Library = struct
        and dune_version = Syntax.get_exn Stanza.syntax
        in
        let name =
+         let open Syntax.Version.Infix in
          match name, public with
-         | Some n, _ -> n
-         | None, Some { name = (_loc, name) ; _ }  ->
+         | Some n, _ ->
+           Lib_name.validate n ~wrapped
+           |> Lib_name.to_string
+         | None, Some { name = (loc, name) ; _ }  ->
            if dune_version >= (1, 1) then
-             name
+             match Lib_name.of_string name with
+             | Ok m -> Lib_name.to_string m
+             | Warn _ | Invalid ->
+               of_sexp_errorf loc
+                 "%s.\n\
+                  Public library names don't have this restriction. \
+                  You can either change this public name to be a valid library \
+                  name or add a \"name\" field with a valid library name."
+                 Lib_name.invalid_message
            else
              of_sexp_error loc "name field cannot be omitted before version \
                                 1.1 of the dune language"
@@ -1107,13 +1172,7 @@ module Executables = struct
     else
       s ^ "s"
 
-  let common
-    (* :  (Loc.t * string) list option
-     * -> (Loc.t * string) list option
-     * -> multi:bool
-     * -> unit
-     * -> t * Install_conf.t option Sexp.Of_sexp.t *)
-    =
+  let common =
     let%map buildable = Buildable.t
     and (_ : bool) = field "link_executables" ~default:true
                        (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
@@ -1138,6 +1197,7 @@ module Executables = struct
     in
     fun names public_names ~multi ->
       let names =
+        let open Syntax.Version.Infix in
         match names, public_names with
         | Some names, _ -> names
         | None, Some public_names ->
@@ -1780,7 +1840,7 @@ module Stanzas = struct
         if not (Path.exists current_file) then
           Loc.fail loc "File %s doesn't exist."
             (Path.to_string_maybe_quoted current_file);
-        if List.exists include_stack ~f:(fun (_, f) -> f = current_file) then
+        if List.exists include_stack ~f:(fun (_, f) -> Path.equal f current_file) then
           raise (Include_loop (current_file, include_stack));
         let sexps = Io.Sexp.load ~lexer current_file ~mode:Many in
         parse stanza_parser sexps ~lexer ~current_file ~include_stack

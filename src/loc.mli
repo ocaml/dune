@@ -3,6 +3,8 @@ type t = Usexp.Loc.t =
   ; stop  : Lexing.position
   }
 
+val equal : t -> t -> bool
+
 val sexp_of_t : t -> Usexp.t
 
 val of_lexbuf : Lexing.lexbuf -> t

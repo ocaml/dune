@@ -27,6 +27,8 @@ module Name : sig
   (** Convert to/from an encoded string that is suitable to use in filenames *)
   val encode : t -> string
   val decode : string -> t
+
+  module Infix : Comparable.OPS with type t = t
 end
 
 module Project_file : sig

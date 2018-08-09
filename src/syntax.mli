@@ -16,6 +16,9 @@ module Version : sig
 
   (** Whether the parser can read the data or not *)
   val can_read : parser_version:t -> data_version:t -> bool
+
+  val compare : t -> t -> Ordering.t
+  module Infix : Comparable.OPS with type t = t
 end
 
 type t

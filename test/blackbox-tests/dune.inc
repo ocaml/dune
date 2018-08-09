@@ -152,6 +152,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name envs-and-contexts)
+ (deps (package dune) (source_tree test-cases/envs-and-contexts))
+ (action
+  (chdir
+   test-cases/envs-and-contexts
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name exclude-missing-module)
  (deps (package dune) (source_tree test-cases/exclude-missing-module))
  (action
@@ -491,6 +499,14 @@
     (diff? run.t run.t.corrected)))))
 
 (alias
+ (name name-field-validation)
+ (deps (package dune) (source_tree test-cases/name-field-validation))
+ (action
+  (chdir
+   test-cases/name-field-validation
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name no-installable-mode)
  (deps (package dune) (source_tree test-cases/no-installable-mode))
  (action
@@ -818,6 +834,7 @@
   (alias missing-loc-run)
   (alias multi-dir)
   (alias multiple-private-libs)
+  (alias name-field-validation)
   (alias no-installable-mode)
   (alias no-name-field)
   (alias null-dep)
@@ -880,7 +897,6 @@
   (alias findlib)
   (alias findlib-error)
   (alias force-test)
-  (alias gen-opam-install-file)
   (alias github1019)
   (alias github20)
   (alias github24)
@@ -909,6 +925,7 @@
   (alias misc)
   (alias missing-loc-run)
   (alias multi-dir)
+  (alias name-field-validation)
   (alias no-installable-mode)
   (alias no-name-field)
   (alias null-dep)
@@ -925,7 +942,6 @@
   (alias redirections)
   (alias reporting-of-cycles)
   (alias scope-bug)
-  (alias scope-ppx-bug)
   (alias select)
   (alias shadow-bindings)
   (alias subst)
@@ -936,6 +952,6 @@
   (alias windows-diff)
   (alias workspaces)))
 
-(alias (name runtest-disabled) (deps))
+(alias (name runtest-disabled) (deps (alias envs-and-contexts)))
 
 (alias (name runtest-js) (deps (alias js_of_ocaml)))

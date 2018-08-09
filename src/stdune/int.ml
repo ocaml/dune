@@ -19,3 +19,5 @@ let of_string_exn s =
   | exception Failure _ ->
     failwith (Printf.sprintf "of_string_exn: invalid int %S" s)
   | s -> s
+
+module Infix = Comparable.Operators(T)

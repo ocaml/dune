@@ -1,5 +1,5 @@
 open Import
-open Jbuild
+open Dune_file
 
 module A = Action
 module Alias = Build_system.Alias
@@ -772,12 +772,12 @@ module Deps = struct
 
   let interpret_named t ~scope ~dir bindings =
     List.map bindings ~f:(function
-      | Jbuild.Bindings.Unnamed p ->
+      | Dune_file.Bindings.Unnamed p ->
         dep t ~scope ~dir p >>^ fun l ->
-        List.map l ~f:(fun x -> Jbuild.Bindings.Unnamed x)
+        List.map l ~f:(fun x -> Dune_file.Bindings.Unnamed x)
       | Named (s, ps) ->
         Build.all (List.map ps ~f:(dep t ~scope ~dir)) >>^ fun l ->
-        [Jbuild.Bindings.Named (s, List.concat l)])
+        [Dune_file.Bindings.Named (s, List.concat l)])
     |> Build.all
     >>^ List.concat
 end
@@ -821,7 +821,7 @@ module Action = struct
       ~f:(fun f -> U.partial_expand t ~dir ~map_exe ~f)
 
   let expand_step2 ~dir ~dynamic_expansions ~bindings
-        ~(deps_written_by_user : Path.t Jbuild.Bindings.t)
+        ~(deps_written_by_user : Path.t Dune_file.Bindings.t)
         ~map_exe t =
     U.Partial.expand t ~dir ~map_exe ~f:(fun pform syntax_version ->
       let key = String_with_vars.Var.full_name pform in
@@ -831,18 +831,18 @@ module Action = struct
       | None ->
         Option.map (Pform.Map.expand bindings pform syntax_version) ~f:(function
           | Var Named_local ->
-            begin match Jbuild.Bindings.find deps_written_by_user key with
+            begin match Dune_file.Bindings.find deps_written_by_user key with
             | None ->
               Exn.code_error "Local named variable not present in named deps"
                 [ "pform", String_with_vars.Var.sexp_of_t pform
                 ; "deps_written_by_user",
-                  Jbuild.Bindings.sexp_of_t Path.sexp_of_t deps_written_by_user
+                  Dune_file.Bindings.sexp_of_t Path.sexp_of_t deps_written_by_user
                 ]
             | Some x -> Value.L.paths x
             end
           | Var Deps ->
             deps_written_by_user
-            |> Jbuild.Bindings.to_list
+            |> Dune_file.Bindings.to_list
             |> Value.L.paths
           | Var First_dep ->
             begin match deps_written_by_user with

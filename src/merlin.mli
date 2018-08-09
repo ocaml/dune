@@ -7,7 +7,7 @@ type t
 val make
   :  ?requires:Lib.t list Or_exn.t
   -> ?flags:(unit, string list) Build.t
-  -> ?preprocess:Jbuild.Preprocess.t
+  -> ?preprocess:Dune_file.Preprocess.t
   -> ?libname:string
   -> ?source_dirs: Path.Set.t
   -> ?objs_dirs:Path.Set.t

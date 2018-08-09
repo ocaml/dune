@@ -28,10 +28,10 @@ module Info = struct
   module Deps = struct
     type t =
       | Simple  of (Loc.t * string) list
-      | Complex of Jbuild.Lib_dep.t list
+      | Complex of Dune_file.Lib_dep.t list
 
     let of_lib_deps deps =
-      let rec loop acc (deps : Jbuild.Lib_dep.t list) =
+      let rec loop acc (deps : Dune_file.Lib_dep.t list) =
         match deps with
         | []               -> Some (List.rev acc)
         | Direct x :: deps -> loop (x :: acc) deps
@@ -42,13 +42,13 @@ module Info = struct
       | None   -> Complex deps
 
     let to_lib_deps = function
-      | Simple  l -> List.map l ~f:Jbuild.Lib_dep.direct
+      | Simple  l -> List.map l ~f:Dune_file.Lib_dep.direct
       | Complex l -> l
   end
 
   type t =
     { loc              : Loc.t
-    ; kind             : Jbuild.Library.Kind.t
+    ; kind             : Dune_file.Library.Kind.t
     ; status           : Status.t
     ; src_dir          : Path.t
     ; obj_dir          : Path.t
@@ -60,26 +60,26 @@ module Info = struct
     ; jsoo_runtime     : Path.t list
     ; requires         : Deps.t
     ; ppx_runtime_deps : (Loc.t * string) list
-    ; pps              : (Loc.t * Jbuild.Pp.t) list
+    ; pps              : (Loc.t * Dune_file.Pp.t) list
     ; optional         : bool
     ; virtual_deps     : (Loc.t * string) list
     ; dune_version : Syntax.Version.t option
-    ; sub_systems      : Jbuild.Sub_system_info.t Sub_system_name.Map.t
+    ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
     }
 
   let user_written_deps t =
     List.fold_left (t.virtual_deps @ t.ppx_runtime_deps)
       ~init:(Deps.to_lib_deps t.requires)
-      ~f:(fun acc s -> Jbuild.Lib_dep.Direct s :: acc)
+      ~f:(fun acc s -> Dune_file.Lib_dep.Direct s :: acc)
 
-  let of_library_stanza ~dir (conf : Jbuild.Library.t) =
+  let of_library_stanza ~dir (conf : Dune_file.Library.t) =
     let archive_file ext = Path.relative dir (conf.name ^ ext) in
     let archive_files ~f_ext =
       Mode.Dict.of_func (fun ~mode -> [archive_file (f_ext mode)])
     in
     let stubs =
-      if Jbuild.Library.has_stubs conf then
-        [Jbuild.Library.stubs_archive conf ~dir ~ext_lib:""]
+      if Dune_file.Library.has_stubs conf then
+        [Dune_file.Library.stubs_archive conf ~dir ~ext_lib:""]
       else
         []
     in
@@ -113,7 +113,7 @@ module Info = struct
     ; virtual_deps     = conf.virtual_deps
     ; requires         = Deps.of_lib_deps conf.buildable.libraries
     ; ppx_runtime_deps = conf.ppx_runtime_libraries
-    ; pps = Jbuild.Preprocess_map.pps conf.buildable.preprocess
+    ; pps = Dune_file.Preprocess_map.pps conf.buildable.preprocess
     ; sub_systems = conf.sub_systems
     ; dune_version = Some conf.dune_version
     }
@@ -228,7 +228,7 @@ type t =
   ; ppx_runtime_deps  : t list Or_exn.t
   ; pps               : t list Or_exn.t
   ; resolved_selects  : Resolved_select.t list
-  ; user_written_deps : Jbuild.Lib_deps.t
+  ; user_written_deps : Dune_file.Lib_deps.t
   ; (* This is mutable to avoid this error:
 
        {[
@@ -447,7 +447,7 @@ module Sub_system = struct
   type t = sub_system = ..
 
   module type S = sig
-    module Info : Jbuild.Sub_system_info.S
+    module Info : Dune_file.Sub_system_info.S
     type t
     type sub_system += T of t
     val instantiate
@@ -745,7 +745,7 @@ and resolve_complex_deps db deps ~allow_private_deps ~stack =
   let res, resolved_selects =
     List.fold_left deps ~init:(Ok [], []) ~f:(fun (acc_res, acc_selects) dep ->
       let res, acc_selects =
-        match (dep : Jbuild.Lib_dep.t) with
+        match (dep : Dune_file.Lib_dep.t) with
         | Direct (loc, name) ->
           let res =
             resolve_dep db name ~allow_private_deps ~loc ~stack >>| fun x -> [x]
@@ -813,7 +813,7 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
         { (fst first) with stop = (fst last).stop }
       in
       let pps =
-        let pps = (pps : (Loc.t * Jbuild.Pp.t) list :> (Loc.t * string) list) in
+        let pps = (pps : (Loc.t * Dune_file.Pp.t) list :> (Loc.t * string) list) in
         resolve_simple_deps db pps ~allow_private_deps:true ~stack
         >>= fun pps ->
         closure_with_overlap_checks None pps ~stack
@@ -909,7 +909,7 @@ module Compile = struct
     ; pps               : t list Or_exn.t
     ; resolved_selects  : Resolved_select.t list
     ; optional          : bool
-    ; user_written_deps : Jbuild.Lib_deps.t
+    ; user_written_deps : Dune_file.Lib_deps.t
     ; sub_systems       : Sub_system0.Instance.t Lazy.t Sub_system_name.Map.t
     }
 
@@ -959,13 +959,13 @@ module DB = struct
 
   let create_from_library_stanzas ?parent stanzas =
     let map =
-      List.concat_map stanzas ~f:(fun (dir, (conf : Jbuild.Library.t)) ->
+      List.concat_map stanzas ~f:(fun (dir, (conf : Dune_file.Library.t)) ->
         let info = Info.of_library_stanza ~dir conf in
         match conf.public with
         | None ->
           [(conf.name, Resolve_result.Found info)]
         | Some p ->
-          let name = Jbuild.Public_lib.name p in
+          let name = Dune_file.Public_lib.name p in
           if name = conf.name then
             [(name, Found info)]
           else
@@ -977,11 +977,11 @@ module DB = struct
       | Ok x -> x
       | Error (name, _, _) ->
         match
-          List.filter_map stanzas ~f:(fun (_, (conf : Jbuild.Library.t)) ->
+          List.filter_map stanzas ~f:(fun (_, (conf : Dune_file.Library.t)) ->
             if name = conf.name ||
                match conf.public with
                | None -> false
-               | Some p -> name = Jbuild.Public_lib.name p
+               | Some p -> name = Dune_file.Public_lib.name p
             then Some conf.buildable.loc
             else None)
         with
@@ -1077,7 +1077,7 @@ module DB = struct
 
   let resolve_pps t pps =
     resolve_simple_deps t ~allow_private_deps:true
-      (pps : (Loc.t *Jbuild.Pp.t) list :> (Loc.t * string) list)
+      (pps : (Loc.t * Dune_file.Pp.t) list :> (Loc.t * string) list)
       ~stack:Dep_stack.empty
 
   let rec all ?(recursive=false) t =

@@ -11,8 +11,8 @@ val make
   :  Super_context.t
   -> dir:Path.t
   -> dep_kind:Lib_deps_info.Kind.t
-  -> lint:Jbuild.Preprocess_map.t
-  -> preprocess:Jbuild.Preprocess_map.t
+  -> lint:Dune_file.Preprocess_map.t
+  -> preprocess:Dune_file.Preprocess_map.t
   -> preprocessor_deps:(unit, Path.t list) Build.t
   -> lib_name:string option
   -> scope:Scope.t
@@ -41,7 +41,7 @@ val get_ppx_driver
   :  Super_context.t
   -> scope:Scope.t
   -> dir_kind:File_tree.Dune_file.Kind.t
-  -> (Loc.t * Jbuild.Pp.t) list
+  -> (Loc.t * Dune_file.Pp.t) list
   -> Path.t Or_exn.t
 
 module Compat_ppx_exe_kind : sig

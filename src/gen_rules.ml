@@ -1,6 +1,6 @@
 open Import
 module Menhir_rules = Menhir
-open Jbuild
+open Dune_file
 open Build.O
 open! No_io
 
@@ -548,7 +548,7 @@ module Gen(P : Install_rules.Params) = struct
     let compile_info =
       Lib.DB.resolve_user_written_deps (Scope.libs scope)
         exes.buildable.libraries
-        ~pps:(Jbuild.Preprocess_map.pps exes.buildable.preprocess)
+        ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
         ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
     in
     SC.Libs.gen_select_rules sctx compile_info ~dir;

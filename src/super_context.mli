@@ -6,7 +6,7 @@
 *)
 
 open Import
-open Jbuild
+open Dune_file
 
 (** A directory with a jbuild *)
 module Dir_with_jbuild : sig
@@ -121,7 +121,7 @@ val prefix_rules
 val add_rule
   :  t
   -> ?sandbox:bool
-  -> ?mode:Jbuild.Rule.Mode.t
+  -> ?mode:Dune_file.Rule.Mode.t
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> (unit, Action.t) Build.t
@@ -129,7 +129,7 @@ val add_rule
 val add_rule_get_targets
   :  t
   -> ?sandbox:bool
-  -> ?mode:Jbuild.Rule.Mode.t
+  -> ?mode:Dune_file.Rule.Mode.t
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> (unit, Action.t) Build.t

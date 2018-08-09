@@ -109,7 +109,7 @@ let link_rule cc ~runtime ~target =
     ; Arg_spec.Dyn get_all
     ]
 
-let build_cm cc ~(js_of_ocaml:Jbuild.Js_of_ocaml.t) ~src ~target =
+let build_cm cc ~(js_of_ocaml:Dune_file.Js_of_ocaml.t) ~src ~target =
   let sctx = Compilation_context.super_context cc in
   let dir = Compilation_context.dir cc in
   if separate_compilation_enabled sctx
@@ -164,7 +164,7 @@ let setup_separate_compilation_rules sctx components =
                As flags) ~spec ~target))
 
 let build_exe cc ~js_of_ocaml ~src =
-  let {Jbuild.Js_of_ocaml.javascript_files; _} = js_of_ocaml in
+  let {Dune_file.Js_of_ocaml.javascript_files; _} = js_of_ocaml in
   let javascript_files =
     List.map javascript_files ~f:(Path.relative (Compilation_context.dir cc)) in
   let mk_target ext = Path.extend_basename src ~suffix:ext in

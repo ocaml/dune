@@ -1,5 +1,5 @@
 open Import
-open Jbuild
+open Dune_file
 open Build.O
 open! No_io
 
@@ -86,7 +86,7 @@ let alias sctx ~dir ~scope (alias_conf : Alias_conf.t) =
     let module S = Sexp.To_sexp in
     Sexp.List
       [ Sexp.unsafe_atom_of_string "user-alias"
-      ; Jbuild.Bindings.sexp_of_t Jbuild.Dep_conf.sexp_of_t alias_conf.deps
+      ; Dune_file.Bindings.sexp_of_t Dune_file.Dep_conf.sexp_of_t alias_conf.deps
       ; S.option Action.Unexpanded.sexp_of_t
           (Option.map alias_conf.action ~f:snd)
       ]

@@ -1,6 +1,6 @@
 open! Import
 
-module type Info = Jbuild.Sub_system_info.S
+module type Info = Dune_file.Sub_system_info.S
 
 module type S = sig
   module Info : Info
@@ -84,7 +84,7 @@ module Library_compilation_context = struct
   type t =
     { super_context  : Super_context.t
     ; dir            : Path.t
-    ; stanza         : Jbuild.Library.t
+    ; stanza         : Dune_file.Library.t
     ; scope          : Scope.t
     ; source_modules : Module.t Module.Name.Map.t
     ; compile_info   : Lib.Compile.t

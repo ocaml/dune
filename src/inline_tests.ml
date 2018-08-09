@@ -1,5 +1,5 @@
 open Import
-open Jbuild
+open Dune_file
 open Build.O
 open! No_io
 
@@ -18,7 +18,7 @@ module Backend = struct
         ; extends          : (Loc.t * string) list
         }
 
-      type Jbuild.Sub_system_info.t += T of t
+      type Dune_file.Sub_system_info.t += T of t
 
       let loc t = t.loc
 
@@ -112,7 +112,7 @@ include Sub_system.Register_end_point(
         ; libraries : (Loc.t * string) list
         }
 
-      type Jbuild.Sub_system_info.t += T of t
+      type Dune_file.Sub_system_info.t += T of t
 
       let empty loc =
         { loc

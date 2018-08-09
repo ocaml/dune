@@ -112,7 +112,7 @@ module Internal_rule = struct
     ; targets          : Path.Set.t
     ; context          : Context.t option
     ; build            : (unit, Action.t) Build.t
-    ; mode             : Jbuild.Rule.Mode.t
+    ; mode             : Dune_file.Rule.Mode.t
     ; loc              : Loc.t option
     ; dir              : Path.t
     ; mutable exec     : Exec_status.t

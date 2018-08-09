@@ -34,10 +34,10 @@ val modules_of_library : t -> name:string -> Library_modules.t
 val modules_of_executables : t -> first_exe:string -> Executables_modules.t
 
 (** Find out what buildable a module is part of *)
-val lookup_module : t -> Module.Name.t -> Jbuild.Buildable.t option
+val lookup_module : t -> Module.Name.t -> Dune_file.Buildable.t option
 
 (** All mld files attached to this documentation stanza *)
-val mlds : t -> Jbuild.Documentation.t -> Path.t list
+val mlds : t -> Dune_file.Documentation.t -> Path.t list
 
 val get : Super_context.t -> dir:Path.t -> t
 

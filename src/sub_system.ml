@@ -3,7 +3,7 @@ open! Import
 include Sub_system_intf
 
 module Register_backend(M : Backend) = struct
-  include Jbuild.Sub_system_info.Register(M.Info)
+  include Dune_file.Sub_system_info.Register(M.Info)
   include Lib.Sub_system.Register(struct
       include M
       type Lib.Sub_system.t += T of t
@@ -121,7 +121,7 @@ type Lib.Sub_system.t +=
     Gen of (Library_compilation_context.t -> unit)
 
 module Register_end_point(M : End_point) = struct
-  include Jbuild.Sub_system_info.Register(M.Info)
+  include Dune_file.Sub_system_info.Register(M.Info)
 
   let gen info (c : Library_compilation_context.t) =
     let open Result.O in

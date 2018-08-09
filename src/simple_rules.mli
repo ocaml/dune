@@ -1,7 +1,7 @@
 (** Simple rules: user, copy_files, alias *)
 
 open Import
-open Jbuild
+open Dune_file
 
 (** Interpret a [(rule ...)] stanza and return the targets it produces. *)
 val user_rule

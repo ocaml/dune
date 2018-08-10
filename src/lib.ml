@@ -575,7 +575,7 @@ module Dep_stack = struct
          }
 end
 
-let check_private_deps ~(lib : lib) ~loc ~allow_private_deps =
+let check_private_deps lib ~loc ~allow_private_deps =
   if (not allow_private_deps) && Status.is_private lib.info.status then
     Result.Error (Error (
       Private_deps_not_allowed { private_dep = lib ; pd_loc = loc }))
@@ -689,7 +689,7 @@ and resolve_dep db name ~allow_private_deps ~loc ~stack : t Or_exn.t =
   match find_internal db name ~stack with
   | St_initializing id ->
     Error (Dep_stack.dependency_cycle stack id)
-  | St_found lib -> check_private_deps ~lib ~loc ~allow_private_deps
+  | St_found lib -> check_private_deps lib ~loc ~allow_private_deps
   | St_not_found ->
     Error (Error (Library_not_available { loc; name; reason = Not_found }))
   | St_hidden (_, hidden) ->
@@ -819,20 +819,12 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
         closure_with_overlap_checks None pps ~stack
       in
       let deps =
-        let rec check_runtime_deps acc pps = function
-          | [] -> loop acc pps
-          | lib :: ppx_rts ->
-            check_private_deps ~lib ~loc ~allow_private_deps >>= fun rt ->
-            check_runtime_deps (rt :: acc) pps ppx_rts
-        and loop acc = function
-          | [] -> Ok acc
-          | pp :: pps ->
-            pp.ppx_runtime_deps >>= fun rt_deps ->
-            check_runtime_deps acc pps rt_deps
-        in
-        deps >>= fun deps ->
-        pps  >>= fun pps  ->
-        loop deps pps
+        (deps >>= fun deps ->
+         pps >>= Result.concat_map ~f:(fun pp -> pp.ppx_runtime_deps)
+         >>| fun pp_deps -> List.rev_append deps pp_deps)
+        >>= fun deps ->
+        List.map deps ~f:(check_private_deps ~loc ~allow_private_deps)
+        |> Result.all
       in
       (deps, pps)
   in

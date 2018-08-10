@@ -35,3 +35,7 @@ val errorf : ('a, unit, string, (_, string) t) format4 -> 'a
 
 (** For compatibility with some other code *)
 type ('a, 'error) result = ('a, 'error) t
+
+module List : sig
+  val map : 'a list -> f:('a -> ('b, 'e) t) -> ('b list, 'e) t
+end

@@ -67,3 +67,14 @@ let rec iter t ~f =
     iter xs ~f
 
 type ('a, 'error) result = ('a, 'error) t
+
+module List = struct
+  let map t ~f =
+    let rec loop acc = function
+      | [] -> Ok (List.rev acc)
+      | x :: xs ->
+        f x >>= fun x ->
+        loop (x :: acc) xs
+    in
+    loop [] t
+end

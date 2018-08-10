@@ -733,13 +733,8 @@ and available_internal db name ~stack =
   | Error _ -> false
 
 and resolve_simple_deps db names ~allow_private_deps ~stack =
-  let rec loop acc = function
-    | [] -> Ok (List.rev acc)
-    | (loc, name) :: names ->
-      resolve_dep db name ~allow_private_deps ~loc ~stack >>= fun x ->
-      loop (x :: acc) names
-  in
-  loop [] names
+  Result.List.map names ~f:(fun (loc, name) ->
+    resolve_dep db name ~allow_private_deps ~loc ~stack)
 
 and resolve_complex_deps db deps ~allow_private_deps ~stack =
   let res, resolved_selects =
@@ -819,12 +814,10 @@ and resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
         closure_with_overlap_checks None pps ~stack
       in
       let deps =
-        (deps >>= fun deps ->
-         pps >>= Result.concat_map ~f:(fun pp -> pp.ppx_runtime_deps)
-         >>| fun pp_deps -> List.rev_append deps pp_deps)
-        >>= fun deps ->
-        List.map deps ~f:(check_private_deps ~loc ~allow_private_deps)
-        |> Result.all
+        deps >>= fun deps ->
+        pps >>= Result.concat_map ~f:(fun pp -> pp.ppx_runtime_deps)
+        >>| List.rev_append deps
+        >>= Result.List.map ~f:(check_private_deps ~loc ~allow_private_deps)
       in
       (deps, pps)
   in
@@ -1021,14 +1014,8 @@ module DB = struct
                       ; reason
                       }))
 
-  let find_many =
-    let rec loop t acc = function
-      | [] -> Ok (List.rev acc)
-      | name :: names ->
-        resolve t (Loc.none, name) >>= fun lib ->
-        loop t (lib ::acc) names
-    in
-    fun t names -> loop t [] names
+  let find_many t =
+    Result.List.map ~f:(fun name -> resolve t (Loc.none, name))
 
   let available t name = available_internal t name ~stack:Dep_stack.empty
 

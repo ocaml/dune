@@ -59,4 +59,11 @@ let concat_map =
   in
   fun l ~f -> loop f [] l
 
+let rec iter t ~f =
+  match t with
+  | [] -> Ok ()
+  | x :: xs ->
+    f x >>= fun () ->
+    iter xs ~f
+
 type ('a, 'error) result = ('a, 'error) t

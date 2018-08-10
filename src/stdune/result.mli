@@ -23,6 +23,8 @@ val map_error : ('a, 'error1) t -> f:('error1 -> 'error2) -> ('a, 'error2) t
 
 val all : ('a, 'error) t list -> ('a list, 'error) t
 
+val iter : 'a list -> f:('a -> (unit, 'error) t) -> (unit, 'error) t
+
 val concat_map
   :  'a list
   -> f:('a -> ('b list, 'error) t)

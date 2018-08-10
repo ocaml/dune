@@ -874,16 +874,10 @@ and closure_with_overlap_checks db ts ~stack =
       >>= fun () ->
       Dep_stack.push stack (to_id t) >>= fun stack ->
       t.requires >>= fun deps ->
-      iter deps ~stack >>| fun () ->
+      Result.iter deps ~f:(loop ~stack) >>| fun () ->
       res := t :: !res
-  and iter ts ~stack =
-    match ts with
-    | [] -> Ok ()
-    | t :: ts ->
-      loop t ~stack >>= fun () ->
-      iter ts ~stack
   in
-  iter ts ~stack >>| fun () ->
+  Result.iter ts ~f:(loop ~stack) >>| fun () ->
   List.rev !res
 
 let closure_with_overlap_checks db l =

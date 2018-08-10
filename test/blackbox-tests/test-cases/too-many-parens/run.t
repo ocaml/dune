@@ -8,10 +8,14 @@ are readable.
 
   $ dune build --root b
   File "dune", line 4, characters 12-17:
+   (libraries (lib)))
+              ^^^^^
   These parentheses are no longer necessary with dune, please remove them.
   [1]
 
   $ dune build --root c
   File "dune", line 3, characters 7-14:
+   (deps (x y z)))
+         ^^^^^^^
   These parentheses are no longer necessary with dune, please remove them.
   [1]

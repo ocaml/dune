@@ -4,6 +4,8 @@ that ${@} is not quoted and doesn't contain exactly 1 element
   $ dune build --root bad x
   Entering directory 'bad'
   File "dune", line 3, characters 27-35:
+   (action (with-stdout-to %{targets} (echo foo))))
+                             ^^^^^^^^
   Error: Variable %{targets} expands to 2 values, however a single value is expected here. Please quote this atom.
   [1]
 
@@ -27,10 +29,14 @@ The targets should only be interpreted as a single path when quoted
 
   $ dune build @quoted --root filename-space
   File "dune", line 4, characters 17-18:
+   (action (echo %{read:foo bar.txt})))
+                   ^
   Error: This character is not allowed inside %{...} forms
   [1]
 
   $ dune build @unquoted --root filename-space
   File "dune", line 4, characters 17-18:
+   (action (echo %{read:foo bar.txt})))
+                   ^
   Error: This character is not allowed inside %{...} forms
   [1]

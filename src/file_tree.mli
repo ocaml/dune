@@ -88,6 +88,9 @@ val files_of : t -> Path.t -> Path.Set.t
 (** [true] iff the path is either a directory or a file *)
 val exists : t -> Path.t -> bool
 
+(** [true] iff the path is a directory *)
+val dir_exists : t -> Path.t -> bool
+
 (** [true] iff the path is a file *)
 val file_exists : t -> Path.t -> string -> bool
 

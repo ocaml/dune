@@ -4,6 +4,9 @@ next
 - Ignore stderr output when trying to find out the number of jobs
   available (#1118, fix #1116, @diml)
 
+- Fix error message when the source directory of `copy_files` does not exist.
+  (#1120, fix #1099, @emillon)
+
 1.1.1 (08/08/2018)
 ------------------
 

@@ -1,5 +1,5 @@
 open Import
-open Jbuild
+open Dune_file
 
 type t =
   { context     : Context.t

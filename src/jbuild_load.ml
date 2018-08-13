@@ -1,5 +1,5 @@
 open Import
-open Jbuild
+open Dune_file
 
 module Jbuild = struct
   type t =

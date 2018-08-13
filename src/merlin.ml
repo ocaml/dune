@@ -6,10 +6,10 @@ module SC = Super_context
 
 module Preprocess = struct
   type t =
-    | Pps of Jbuild.Preprocess.pps
+    | Pps of Dune_file.Preprocess.pps
     | Other
 
-  let make : Jbuild.Preprocess.t -> t = function
+  let make : Dune_file.Preprocess.t -> t = function
     | Pps pps -> Pps pps
     | _       -> Other
 
@@ -28,7 +28,7 @@ module Preprocess = struct
           | Gt | Lt as ne -> ne
           | Eq ->
             List.compare pps1 pps2 ~compare:(fun (_, a) (_, b) ->
-              Jbuild.Pp.compare a b)
+              Dune_file.Pp.compare a b)
       with
       | Eq -> a
       | _  -> Other
@@ -77,7 +77,7 @@ type t =
 let make
       ?(requires=Ok [])
       ?(flags=Build.return [])
-      ?(preprocess=Jbuild.Preprocess.No_preprocessing)
+      ?(preprocess=Dune_file.Preprocess.No_preprocessing)
       ?libname
       ?(source_dirs=Path.Set.empty)
       ?(objs_dirs=Path.Set.empty)

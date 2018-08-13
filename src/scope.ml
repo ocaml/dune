@@ -68,7 +68,7 @@ module DB = struct
           ]
     in
     let libs_by_project_name =
-      List.map internal_libs ~f:(fun (dir, (lib : Jbuild.Library.t)) ->
+      List.map internal_libs ~f:(fun (dir, (lib : Dune_file.Library.t)) ->
         (lib.project.name, (dir, lib)))
       |> Project_name_map.of_list_multi
     in
@@ -78,7 +78,7 @@ module DB = struct
         List.filter_map internal_libs ~f:(fun (_dir, lib) ->
           match lib.public with
           | None -> None
-          | Some p -> Some (Jbuild.Public_lib.name p, lib.project))
+          | Some p -> Some (Dune_file.Public_lib.name p, lib.project))
         |> String.Map.of_list
         |> function
         | Ok x -> x
@@ -87,7 +87,7 @@ module DB = struct
             List.filter_map internal_libs ~f:(fun (_dir, lib) ->
               match lib.public with
               | None   -> None
-              | Some p -> Option.some_if (name = Jbuild.Public_lib.name p)
+              | Some p -> Option.some_if (name = Dune_file.Public_lib.name p)
                             lib.buildable.loc)
           with
           | [] | [_] -> assert false

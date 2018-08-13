@@ -80,7 +80,7 @@
 
 (alias
  (name runtest)
- (deps (:t jbuild.mlt)
+ (deps (:t dune_file.mlt)
   (glob_files %{project_root}/src/.dune.objs/*.cmi)
   (glob_files %{project_root}/src/stdune/.stdune.objs/*.cmi))
  (action (chdir %{project_root}

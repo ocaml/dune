@@ -1,7 +1,7 @@
 (** Generate rules for js_of_ocaml *)
 
 open Import
-open Jbuild
+open Dune_file
 
 val build_cm
   :  Compilation_context.t

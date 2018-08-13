@@ -1,5 +1,5 @@
 open Import
-open Jbuild
+open Dune_file
 open Build.O
 
 module SC = Super_context
@@ -506,7 +506,7 @@ module Gen (S : sig val sctx : SC.t end) = struct
       (stanzas
        |> List.concat_map ~f:(fun (w : SC.Dir_with_jbuild.t) ->
          List.filter_map w.stanzas ~f:(function
-           | Jbuild.Library (l : Jbuild.Library.t) ->
+           | Dune_file.Library (l : Dune_file.Library.t) ->
              begin match l.public with
              | Some _ -> None
              | None ->

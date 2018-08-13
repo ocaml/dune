@@ -21,7 +21,7 @@ val obj_dir : t -> Path.t
 val is_local : t -> bool
 
 val synopsis     : t -> string option
-val kind         : t -> Jbuild.Library.Kind.t
+val kind         : t -> Dune_file.Library.Kind.t
 val archives     : t -> Path.t list Mode.Dict.t
 val plugins      : t -> Path.t list Mode.Dict.t
 val jsoo_runtime : t -> Path.t list
@@ -83,14 +83,14 @@ module Info : sig
   module Deps : sig
     type t =
       | Simple  of (Loc.t * string) list
-      | Complex of Jbuild.Lib_dep.t list
+      | Complex of Dune_file.Lib_dep.t list
   end
 
   (** Raw description of a library, where dependencies are not
       resolved. *)
   type t =
     { loc              : Loc.t
-    ; kind             : Jbuild.Library.Kind.t
+    ; kind             : Dune_file.Library.Kind.t
     ; status           : Status.t
     ; src_dir          : Path.t
     ; obj_dir          : Path.t
@@ -102,14 +102,14 @@ module Info : sig
     ; jsoo_runtime     : Path.t list
     ; requires         : Deps.t
     ; ppx_runtime_deps : (Loc.t * string) list
-    ; pps              : (Loc.t * Jbuild.Pp.t) list
+    ; pps              : (Loc.t * Dune_file.Pp.t) list
     ; optional         : bool
     ; virtual_deps     : (Loc.t * string) list
     ; dune_version : Syntax.Version.t option
-    ; sub_systems      : Jbuild.Sub_system_info.t Sub_system_name.Map.t
+    ; sub_systems      : Dune_file.Sub_system_info.t Sub_system_name.Map.t
     }
 
-  val of_library_stanza : dir:Path.t -> Jbuild.Library.t -> t
+  val of_library_stanza : dir:Path.t -> Dune_file.Library.t -> t
   val of_findlib_package : Findlib.Package.t -> t
 end
 
@@ -216,7 +216,7 @@ module Compile : sig
   val pps : t -> L.t Or_exn.t
 
   val optional          : t -> bool
-  val user_written_deps : t -> Jbuild.Lib_deps.t
+  val user_written_deps : t -> Dune_file.Lib_deps.t
 
   (** Sub-systems used in this compilation context *)
   val sub_systems : t -> sub_system list
@@ -257,7 +257,7 @@ module DB : sig
   (** Create a database from a list of library stanzas *)
   val create_from_library_stanzas
     :  ?parent:t
-    -> (Path.t * Jbuild.Library.t) list
+    -> (Path.t * Dune_file.Library.t) list
     -> t
 
   val create_from_findlib
@@ -289,13 +289,13 @@ module DB : sig
   val resolve_user_written_deps
     :  t
     -> ?allow_overlaps:bool
-    -> Jbuild.Lib_dep.t list
-    -> pps:(Loc.t * Jbuild.Pp.t) list
+    -> Dune_file.Lib_dep.t list
+    -> pps:(Loc.t * Dune_file.Pp.t) list
     -> Compile.t
 
   val resolve_pps
     :  t
-    -> (Loc.t * Jbuild.Pp.t) list
+    -> (Loc.t * Dune_file.Pp.t) list
     -> L.t Or_exn.t
 
   (** Return the list of all libraries in this database. If
@@ -316,7 +316,7 @@ module Sub_system : sig
   type t = sub_system = ..
 
   module type S = sig
-    module Info : Jbuild.Sub_system_info.S
+    module Info : Dune_file.Sub_system_info.S
     type t
     type sub_system += T of t
     val instantiate

@@ -4,7 +4,7 @@ module Jbuild : sig
   type t =
     { dir     : Path.t
     ; project : Dune_project.t
-    ; stanzas : Jbuild.Stanzas.t
+    ; stanzas : Dune_file.Stanzas.t
     ; kind    : File_tree.Dune_file.Kind.t
     }
 end

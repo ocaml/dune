@@ -206,13 +206,13 @@ module Rule = struct
     ; build    : (unit, Action.t) Build.t
     ; targets  : Target.t list
     ; sandbox  : bool
-    ; mode     : Jbuild.Rule.Mode.t
+    ; mode     : Dune_file.Rule.Mode.t
     ; locks    : Path.t list
     ; loc      : Loc.t option
     ; dir      : Path.t
     }
 
-  let make ?(sandbox=false) ?(mode=Jbuild.Rule.Mode.Not_a_rule_stanza)
+  let make ?(sandbox=false) ?(mode=Dune_file.Rule.Mode.Not_a_rule_stanza)
         ~context ?(locks=[]) ?loc build =
     let targets = targets build in
     let dir =

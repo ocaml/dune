@@ -19,7 +19,7 @@ let parse_sub_systems ~parsing_context sexps =
     | Error (name, _, (loc, _, _)) ->
       Loc.fail loc "%S present twice" (Sub_system_name.to_string name))
   |> Sub_system_name.Map.mapi ~f:(fun name (_, version, data) ->
-    let (module M) = Jbuild.Sub_system_info.get name in
+    let (module M) = Dune_file.Sub_system_info.get name in
     Syntax.check_supported M.syntax version;
     let parsing_context =
       (* We set the syntax to the version used when generating this subsystem.
@@ -89,7 +89,7 @@ let gen ~(dune_version : Syntax.Version.t) confs =
   let sexps =
     Sub_system_name.Map.to_list confs
     |> List.map ~f:(fun (name, (ver, conf)) ->
-      let (module M) = Jbuild.Sub_system_info.get name in
+      let (module M) = Dune_file.Sub_system_info.get name in
       Sexp.List [ Sexp.atom (Sub_system_name.to_string name)
                 ; Syntax.Version.sexp_of_t ver
                 ; conf

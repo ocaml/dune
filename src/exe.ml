@@ -51,7 +51,7 @@ module Linkage = struct
   let so_flags_windows = o_flags
   let so_flags_unix    = ["-output-complete-obj"; "-runtime-variant"; "_pic"]
 
-  let of_user_config (ctx : Context.t) (m : Jbuild.Executables.Link_mode.t) =
+  let of_user_config (ctx : Context.t) (m : Dune_file.Executables.Link_mode.t) =
     let wanted_mode : Mode.t =
       match m.mode with
       | Byte   -> Byte
@@ -110,7 +110,7 @@ let link_exe
       ~(linkage:Linkage.t)
       ~top_sorted_modules
       ?(link_flags=Build.arr (fun _ -> []))
-      ?(js_of_ocaml=Jbuild.Js_of_ocaml.default)
+      ?(js_of_ocaml=Dune_file.Js_of_ocaml.default)
       cctx
   =
   let sctx     = CC.super_context cctx in
@@ -174,7 +174,7 @@ let build_and_link_many
       ~programs
       ~linkages
       ?link_flags
-      ?(js_of_ocaml=Jbuild.Js_of_ocaml.default)
+      ?(js_of_ocaml=Dune_file.Js_of_ocaml.default)
       cctx
   =
   let dep_graphs = Ocamldep.rules cctx in

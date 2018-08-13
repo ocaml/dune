@@ -9,6 +9,6 @@ val utop_exe : Path.t -> Path.t
 val setup
   : Super_context.t
   -> dir:Path.t
-  -> libs:Jbuild.Library.t list
+  -> libs:Dune_file.Library.t list
   -> scope:Scope.t
   -> unit

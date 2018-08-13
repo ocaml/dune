@@ -1,6 +1,6 @@
 open Import
 open Build.O
-open Jbuild
+open Dune_file
 
 module SC = Super_context
 
@@ -29,7 +29,7 @@ module Driver = struct
         ; replaces     : (Loc.t * string) list
         }
 
-      type Jbuild.Sub_system_info.t += T of t
+      type Dune_file.Sub_system_info.t += T of t
 
       let loc t = t.loc
 
@@ -269,7 +269,7 @@ let build_ppx_driver sctx ~lib_db ~dep_kind ~target ~dir_kind pps =
       (* Extend the dependency stack as we don't have locations at
          this point *)
       Dep_path.prepend_exn e
-        (Preprocess (pps : Jbuild.Pp.t list :> string list)))
+        (Preprocess (pps : Dune_file.Pp.t list :> string list)))
       (Lib.DB.resolve_pps lib_db
          (List.map pps ~f:(fun x -> (Loc.none, x)))
        >>= Lib.closure
@@ -320,7 +320,7 @@ let get_rules sctx key ~dir_kind =
     | [] -> []
     | driver :: rest -> List.sort rest ~compare:String.compare @ [driver]
   in
-  let pps = List.map names ~f:Jbuild.Pp.of_string in
+  let pps = List.map names ~f:Dune_file.Pp.of_string in
   build_ppx_driver sctx pps ~lib_db ~dep_kind:Required ~target:exe ~dir_kind
 
 let gen_rules sctx components =
@@ -478,7 +478,7 @@ let lint_module sctx ~dir ~dep_kind ~lint ~lib_name ~scope ~dir_kind =
                let bindings = Pform.Map.input_file src.path in
                add_alias src.path ~loc:None
                  (Build.path src.path
-                  >>^ (fun _ -> Jbuild.Bindings.empty)
+                  >>^ (fun _ -> Dune_file.Bindings.empty)
                   >>> SC.Action.run sctx
                         action
                         ~loc
@@ -561,7 +561,7 @@ let make sctx ~dir ~dep_kind ~lint ~preprocess
                (preprocessor_deps
                 >>>
                 Build.path src
-                >>^ (fun _ -> Jbuild.Bindings.empty)
+                >>^ (fun _ -> Dune_file.Bindings.empty)
                 >>>
                 SC.Action.run sctx
                   (Redirect

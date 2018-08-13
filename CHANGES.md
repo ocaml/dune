@@ -7,6 +7,8 @@ next
 - Fix error message when the source directory of `copy_files` does not exist.
   (#1120, fix #1099, @emillon)
 
+- Highlight error locations in error messages (#1121, @emillon)
+
 1.1.1 (08/08/2018)
 ------------------
 

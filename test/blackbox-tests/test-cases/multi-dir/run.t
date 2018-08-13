@@ -36,12 +36,16 @@ Test some error cases
   $ dune build --root error2
   Entering directory 'error2'
   File "dune", line 2, characters 0-29:
+  (include_subdirs unqualified)
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The 'include_subdirs' stanza cannot appear more than once
   [1]
 
   $ dune build --root error3
   Entering directory 'error3'
   File "src/gen/dune", line 1, characters 0-23:
+  (executable (name gen))
+  ^^^^^^^^^^^^^^^^^^^^^^^
   Error: This stanza is not allowed in a sub-directory of directory with (include_subdirs unqualified).
   Hint: add (include_subdirs no) to this file.
   [1]

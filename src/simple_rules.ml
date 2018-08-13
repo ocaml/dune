@@ -51,6 +51,12 @@ let copy_files sctx ~dir ~scope ~src_dir (def: Copy_files.t) =
     | Error (_pos, msg) ->
       Loc.fail (String_with_vars.loc def.glob) "invalid glob: %s" msg
   in
+  let file_tree = Super_context.file_tree sctx in
+  if not (File_tree.dir_exists file_tree src_in_src) then
+    Loc.fail
+      loc
+      "cannot find directory: %a"
+      Path.pp src_in_src;
   (* add rules *)
   let src_in_build = Path.append (SC.context sctx).build_dir src_in_src in
   let files = SC.eval_glob sctx ~dir:src_in_build re in

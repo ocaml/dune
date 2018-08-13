@@ -1169,9 +1169,9 @@ module Executables = struct
 
   let pluralize s ~multi =
     if multi then
-      s
-    else
       s ^ "s"
+    else
+      s
 
   let common =
     let%map buildable = Buildable.t

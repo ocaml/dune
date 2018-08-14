@@ -939,3 +939,7 @@ module Action = struct
     | [] -> build
     | fail :: _ -> Build.fail fail >>> build
 end
+
+let opaque t =
+  t.context.profile = "dev"
+  && Ocaml_version.supports_opaque_for_mli t.context.version

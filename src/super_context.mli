@@ -271,3 +271,5 @@ module Scope_key : sig
 
   val to_string : string -> Dune_project.Name.t -> string
 end
+
+val opaque : t -> bool

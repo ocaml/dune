@@ -146,6 +146,7 @@ module Gen(P : Params) = struct
         in
         Module.Name.Map.values modules
       in
+      let archives = Lib.archives lib' in
       List.concat
         [ List.concat_map modules ~f:(fun m ->
             List.concat
@@ -157,17 +158,16 @@ module Gen(P : Params) = struct
                   | None -> None
                   | Some f -> Some f.path)
               ])
-        ; if_ byte [ Library.archive ~dir lib ~ext:".cma" ]
+        ; if_ byte (Mode.Dict.get archives Mode.Byte)
         ; if_ (Library.has_stubs lib)
             [ Library.stubs_archive ~dir lib ~ext_lib:ctx.ext_lib ]
         ; if_ native
             (let files =
-               [ Library.archive ~dir lib ~ext:".cmxa"
-               ; Library.archive ~dir lib ~ext:ctx.ext_lib
-               ]
+               (Library.archive ~dir lib ~ext:ctx.ext_lib)
+               :: Mode.Dict.get archives Native
              in
              if ctx.natdynlink_supported && Lib.dynlink lib' then
-               files @ [ Library.archive ~dir lib ~ext:".cmxs" ]
+               files @ (Mode.Dict.get (Lib.plugins lib') Native)
              else
                files)
         ; List.map lib.buildable.js_of_ocaml.javascript_files ~f:(Path.relative dir)
